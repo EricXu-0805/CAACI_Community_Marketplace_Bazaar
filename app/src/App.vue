@@ -11,7 +11,7 @@ onLaunch(() => {
 
 <style>
 page {
-  background-color: #f5f5f5;
+  background-color: #f5f5f7;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
     'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 16px;
@@ -21,22 +21,10 @@ page {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Apple-inspired responsive container */
-.app-container {
-  max-width: 480px;
-  margin: 0 auto;
-  min-height: 100vh;
-  background: #fff;
-  position: relative;
-}
-
+/* --- Desktop: hide uni-app bottom tabBar --- */
 @media (min-width: 768px) {
-  page {
-    background-color: #e8e8ed;
-  }
-  .app-container {
-    box-shadow: 0 0 40px rgba(0,0,0,0.08);
-    border-radius: 0;
+  uni-tabbar, .uni-tabbar, .uni-tabbar-bottom {
+    display: none !important;
   }
 }
 </style>
