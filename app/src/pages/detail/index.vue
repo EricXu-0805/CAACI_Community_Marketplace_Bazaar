@@ -1,0 +1,292 @@
+<template>
+  <view class="page" v-if="item">
+    <swiper class="image-swiper" indicator-dots circular>
+      <swiper-item v-for="(img, i) in item.images" :key="i">
+        <image :src="img" mode="aspectFill" class="swiper-image" @click="previewImage(i)" />
+      </swiper-item>
+      <swiper-item v-if="item.images.length === 0">
+        <view class="no-image">暂无图片</view>
+      </swiper-item>
+    </swiper>
+
+    <view class="info-section">
+      <text class="price">¥{{ item.price }}</text>
+      <text class="title">{{ item.title }}</text>
+      <view class="tags">
+        <text class="tag">{{ categoryLabels[item.category] }}</text>
+        <text class="tag">{{ conditionLabels[item.condition] }}</text>
+        <text class="tag location">📍{{ item.location }}</text>
+      </view>
+    </view>
+
+    <view class="desc-section" v-if="item.description">
+      <text class="section-title">描述</text>
+      <text class="desc-text">{{ item.description }}</text>
+    </view>
+
+    <view class="seller-section" v-if="item.profile">
+      <image :src="item.profile.avatar_url || '/static/default-avatar.png'" class="seller-avatar" />
+      <view class="seller-info">
+        <text class="seller-name">{{ item.profile.nickname }}</text>
+        <text class="post-time">{{ formatTime(item.created_at) }}</text>
+      </view>
+      <text class="view-count">{{ item.view_count }} 次浏览</text>
+    </view>
+
+    <view class="bottom-bar">
+      <view class="fav-btn" @click="toggleFavorite">
+        <text>{{ isFavorited ? '❤️' : '🤍' }}</text>
+        <text class="fav-text">{{ isFavorited ? '已收藏' : '收藏' }}</text>
+      </view>
+      <button class="contact-btn" @click="contactSeller">联系卖家</button>
+    </view>
+  </view>
+
+  <view v-else class="loading-page">
+    <text>加载中...</text>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
+import { useItems } from '../../composables/useItems'
+import { useAuth } from '../../composables/useAuth'
+import { useMessages } from '../../composables/useMessages'
+import { CATEGORY_LABELS, CONDITION_LABELS, type Item } from '../../types'
+
+const { fetchItem } = useItems()
+const { currentUser, requireAuth } = useAuth()
+const { getOrCreateConversation } = useMessages()
+
+const categoryLabels = CATEGORY_LABELS
+const conditionLabels = CONDITION_LABELS
+
+const item = ref<Item | null>(null)
+const isFavorited = ref(false)
+
+onLoad(async (options) => {
+  if (options?.id) {
+    try {
+      item.value = await fetchItem(options.id)
+    } catch (error) {
+      uni.showToast({ title: '商品不存在', icon: 'none' })
+      setTimeout(() => uni.navigateBack(), 1500)
+    }
+  }
+})
+
+function previewImage(index: number) {
+  if (!item.value) return
+  uni.previewImage({
+    urls: item.value.images,
+    current: index,
+  })
+}
+
+function toggleFavorite() {
+  if (!requireAuth()) return
+  isFavorited.value = !isFavorited.value
+  uni.showToast({ title: isFavorited.value ? '已收藏' : '取消收藏', icon: 'none' })
+}
+
+async function contactSeller() {
+  if (!requireAuth()) return
+  if (!item.value || !currentUser.value) return
+
+  if (item.value.user_id === currentUser.value.id) {
+    uni.showToast({ title: '这是你自己的商品', icon: 'none' })
+    return
+  }
+
+  try {
+    const conversation = await getOrCreateConversation(
+      item.value.id,
+      currentUser.value.id,
+      item.value.user_id,
+    )
+    uni.navigateTo({ url: `/pages/chat/index?id=${conversation.id}` })
+  } catch (error) {
+    uni.showToast({ title: '发起聊天失败', icon: 'none' })
+  }
+}
+
+function formatTime(dateStr: string): string {
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 60) return `${minutes}分钟前`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}小时前`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}天前`
+  return date.toLocaleDateString()
+}
+</script>
+
+<style lang="scss" scoped>
+.page {
+  min-height: 100vh;
+  background: $bg-secondary;
+  padding-bottom: 130rpx;
+}
+
+.image-swiper {
+  width: 100%;
+  height: 600rpx;
+}
+
+.swiper-image {
+  width: 100%;
+  height: 100%;
+}
+
+.no-image {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: $border-color;
+  color: $text-hint;
+}
+
+.info-section {
+  background: $bg-primary;
+  padding: $spacing-md;
+}
+
+.price {
+  font-size: 44rpx;
+  font-weight: bold;
+  color: $brand-color;
+}
+
+.title {
+  display: block;
+  font-size: 32rpx;
+  color: $text-primary;
+  margin-top: $spacing-sm;
+  line-height: 1.5;
+}
+
+.tags {
+  display: flex;
+  gap: $spacing-sm;
+  margin-top: $spacing-md;
+  flex-wrap: wrap;
+}
+
+.tag {
+  font-size: 22rpx;
+  padding: 4rpx $spacing-sm;
+  background: $bg-secondary;
+  color: $text-secondary;
+  border-radius: $radius-sm;
+}
+
+.desc-section {
+  background: $bg-primary;
+  padding: $spacing-md;
+  margin-top: $spacing-sm;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: $text-primary;
+  margin-bottom: $spacing-sm;
+  display: block;
+}
+
+.desc-text {
+  font-size: 26rpx;
+  color: $text-secondary;
+  line-height: 1.6;
+}
+
+.seller-section {
+  background: $bg-primary;
+  padding: $spacing-md;
+  margin-top: $spacing-sm;
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+}
+
+.seller-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  background: $border-color;
+}
+
+.seller-info {
+  flex: 1;
+}
+
+.seller-name {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: $text-primary;
+  display: block;
+}
+
+.post-time {
+  font-size: 22rpx;
+  color: $text-hint;
+}
+
+.view-count {
+  font-size: 22rpx;
+  color: $text-hint;
+}
+
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  padding: $spacing-md;
+  background: $bg-primary;
+  box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+  gap: $spacing-md;
+}
+
+.fav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+
+  .fav-text {
+    font-size: 20rpx;
+    color: $text-hint;
+  }
+}
+
+.contact-btn {
+  flex: 1;
+  height: 80rpx;
+  background: $brand-color;
+  color: white;
+  border-radius: 40rpx;
+  font-size: 30rpx;
+  font-weight: bold;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: $text-hint;
+}
+</style>
