@@ -1,5 +1,6 @@
 <template>
   <view class="page">
+    <DesktopNav current="messages" />
     <view v-if="!isLoggedIn" class="login-prompt">
       <text>登录后查看消息</text>
       <button class="login-btn" @click="goLogin">去登录</button>
@@ -47,6 +48,7 @@
 import { onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
+import DesktopNav from '../../components/DesktopNav.vue'
 import { useMessages } from '../../composables/useMessages'
 import type { Conversation, Profile } from '../../types'
 

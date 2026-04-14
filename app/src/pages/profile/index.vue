@@ -1,5 +1,6 @@
 <template>
   <view class="page">
+    <DesktopNav current="profile" />
     <view v-if="!isLoggedIn" class="login-section">
       <view class="avatar-placeholder">👤</view>
       <text class="login-hint">登录后体验完整功能</text>
@@ -64,6 +65,7 @@
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
+import DesktopNav from '../../components/DesktopNav.vue'
 import { useItems } from '../../composables/useItems'
 import { STATUS_LABELS, type Item } from '../../types'
 

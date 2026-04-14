@@ -1,5 +1,6 @@
 <template>
   <view class="page">
+    <DesktopNav current="publish" />
     <view class="form">
       <view class="image-section">
         <view class="image-list">
@@ -100,6 +101,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useAuth } from '../../composables/useAuth'
+import DesktopNav from '../../components/DesktopNav.vue'
 import { useItems } from '../../composables/useItems'
 import { CATEGORY_LABELS, CONDITION_LABELS, type ItemCategory, type ItemCondition } from '../../types'
 

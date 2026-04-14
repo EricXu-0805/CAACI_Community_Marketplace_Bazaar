@@ -1,26 +1,6 @@
 <template>
   <view class="page">
-    <!-- 桌面端顶部导航（手机端隐藏） -->
-    <view class="desktop-nav">
-      <view class="desktop-nav-inner">
-        <text class="desktop-logo">🏪 CAACI 集市</text>
-        <view class="desktop-nav-links">
-          <text class="nav-link active" @click="goTab('/pages/index/index')">首页</text>
-          <text class="nav-link" @click="goTab('/pages/publish/index')">发布</text>
-          <text class="nav-link" @click="goTab('/pages/messages/index')">消息</text>
-          <text class="nav-link" @click="goTab('/pages/profile/index')">我的</text>
-        </view>
-        <view class="desktop-search">
-          <text class="search-icon">🔍</text>
-          <input
-            v-model="searchText"
-            placeholder="搜索二手好物..."
-            confirm-type="search"
-            @confirm="onSearch"
-          />
-        </view>
-      </view>
-    </view>
+    <DesktopNav current="index" />
 
     <!-- 手机端 Header（桌面端隐藏） -->
     <view class="mobile-header">
@@ -174,6 +154,7 @@ import { onPullDownRefresh } from '@dcloudio/uni-app'
 import { useItems } from '../../composables/useItems'
 import { CATEGORY_LABELS, CONDITION_LABELS, type ItemCategory, type Item } from '../../types'
 import { MOCK_ITEMS } from '../../composables/useMockData'
+import DesktopNav from '../../components/DesktopNav.vue'
 
 const { items, loading, hasMore, fetchItems } = useItems()
 const useMock = ref(false)
@@ -249,9 +230,7 @@ function goPublish() {
   uni.switchTab({ url: '/pages/publish/index' })
 }
 
-function goTab(url: string) {
-  uni.switchTab({ url })
-}
+
 </script>
 
 <style lang="scss" scoped>
@@ -332,33 +311,6 @@ function goTab(url: string) {
 @media (min-width: 768px) {
   .page { max-width: 1120px; margin: 0 auto; background: #f5f5f7; }
   .mobile-header { display: none; }
-
-  .desktop-nav {
-    display: block;
-    position: sticky; top: 0; z-index: 200;
-    background: #fff; border-bottom: 1px solid #e5e5ea;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-  }
-  .desktop-nav-inner {
-    max-width: 1120px; margin: 0 auto;
-    display: flex; align-items: center; padding: 0 24px; height: 60px; gap: 32px;
-  }
-  .desktop-logo { font-size: 20px; font-weight: 800; color: #FF6B35; white-space: nowrap; cursor: pointer; }
-  .desktop-nav-links { display: flex; gap: 8px; }
-  .nav-link {
-    font-size: 15px; color: #86868b; padding: 8px 16px; border-radius: 8px;
-    cursor: pointer; transition: all 0.15s; font-weight: 500;
-    &:hover { background: #f5f5f7; color: #1d1d1f; }
-    &.active { color: #FF6B35; font-weight: 600; background: #FFF0E8; }
-  }
-  .desktop-search {
-    margin-left: auto; display: flex; align-items: center;
-    background: #f5f5f7; border-radius: 20px; padding: 8px 16px; gap: 8px;
-    width: 280px; transition: width 0.2s;
-    &:focus-within { width: 360px; background: #fff; box-shadow: 0 0 0 2px #FF6B35; }
-    input { flex: 1; font-size: 14px; color: #1d1d1f; border: none; background: transparent; }
-    .search-icon { font-size: 14px; }
-  }
 
   .category-bar { padding: 14px 24px 12px; }
   .cat-item { padding: 8px 18px; }
