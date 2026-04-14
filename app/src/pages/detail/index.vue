@@ -126,167 +126,37 @@ function formatTime(dateStr: string): string {
 </script>
 
 <style lang="scss" scoped>
-.page {
-  min-height: 100vh;
-  background: $bg-secondary;
-  padding-bottom: 130rpx;
-}
-
-.image-swiper {
-  width: 100%;
-  height: 600rpx;
-}
-
-.swiper-image {
-  width: 100%;
-  height: 100%;
-}
-
-.no-image {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: $border-color;
-  color: $text-hint;
-}
-
-.info-section {
-  background: $bg-primary;
-  padding: $spacing-md;
-}
-
-.price {
-  font-size: 44rpx;
-  font-weight: bold;
-  color: $brand-color;
-}
-
-.title {
-  display: block;
-  font-size: 32rpx;
-  color: $text-primary;
-  margin-top: $spacing-sm;
-  line-height: 1.5;
-}
-
-.tags {
-  display: flex;
-  gap: $spacing-sm;
-  margin-top: $spacing-md;
-  flex-wrap: wrap;
-}
-
-.tag {
-  font-size: 22rpx;
-  padding: 4rpx $spacing-sm;
-  background: $bg-secondary;
-  color: $text-secondary;
-  border-radius: $radius-sm;
-}
-
-.desc-section {
-  background: $bg-primary;
-  padding: $spacing-md;
-  margin-top: $spacing-sm;
-}
-
-.section-title {
-  font-size: 28rpx;
-  font-weight: bold;
-  color: $text-primary;
-  margin-bottom: $spacing-sm;
-  display: block;
-}
-
-.desc-text {
-  font-size: 26rpx;
-  color: $text-secondary;
-  line-height: 1.6;
-}
-
-.seller-section {
-  background: $bg-primary;
-  padding: $spacing-md;
-  margin-top: $spacing-sm;
-  display: flex;
-  align-items: center;
-  gap: $spacing-md;
-}
-
-.seller-avatar {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 50%;
-  background: $border-color;
-}
-
-.seller-info {
-  flex: 1;
-}
-
-.seller-name {
-  font-size: 28rpx;
-  font-weight: bold;
-  color: $text-primary;
-  display: block;
-}
-
-.post-time {
-  font-size: 22rpx;
-  color: $text-hint;
-}
-
-.view-count {
-  font-size: 22rpx;
-  color: $text-hint;
-}
-
+.page { min-height: 100vh; background: #f5f5f7; padding-bottom: 72px; max-width: 480px; margin: 0 auto; }
+.image-swiper { width: 100%; height: 320px; }
+.swiper-image { width: 100%; height: 100%; }
+.no-image { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f0f0f0; color: #aeaeb2; font-size: 15px; }
+.info-section { background: #fff; padding: 16px; }
+.price { font-size: 26px; font-weight: 800; color: #FF6B35; letter-spacing: -0.5px; }
+.title { display: block; font-size: 17px; color: #1d1d1f; margin-top: 8px; line-height: 1.5; font-weight: 500; }
+.tags { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.tag { font-size: 12px; padding: 3px 10px; background: #f5f5f7; color: #86868b; border-radius: 6px; }
+.desc-section { background: #fff; padding: 16px; margin-top: 8px; }
+.section-title { font-size: 15px; font-weight: 600; color: #1d1d1f; margin-bottom: 8px; display: block; }
+.desc-text { font-size: 14px; color: #86868b; line-height: 1.7; }
+.seller-section { background: #fff; padding: 16px; margin-top: 8px; display: flex; align-items: center; gap: 12px; }
+.seller-avatar { width: 44px; height: 44px; border-radius: 50%; background: #f0f0f0; }
+.seller-info { flex: 1; }
+.seller-name { font-size: 15px; font-weight: 600; color: #1d1d1f; display: block; }
+.post-time { font-size: 12px; color: #aeaeb2; margin-top: 2px; }
+.view-count { font-size: 12px; color: #aeaeb2; }
 .bottom-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  padding: $spacing-md;
-  background: $bg-primary;
-  box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
-  gap: $spacing-md;
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 480px; display: flex; align-items: center;
+  padding: 12px 16px; background: #fff;
+  box-shadow: 0 -1px 8px rgba(0,0,0,0.06); gap: 16px;
 }
-
-.fav-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4rpx;
-
-  .fav-text {
-    font-size: 20rpx;
-    color: $text-hint;
-  }
+.fav-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0 8px;
+  .fav-text { font-size: 11px; color: #aeaeb2; }
 }
-
 .contact-btn {
-  flex: 1;
-  height: 80rpx;
-  background: $brand-color;
-  color: white;
-  border-radius: 40rpx;
-  font-size: 30rpx;
-  font-weight: bold;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  flex: 1; height: 46px; background: #FF6B35; color: #fff;
+  border-radius: 23px; font-size: 16px; font-weight: 600;
+  border: none; display: flex; align-items: center; justify-content: center;
 }
-
-.loading-page {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  color: $text-hint;
-}
+.loading-page { display: flex; align-items: center; justify-content: center; height: 100vh; color: #aeaeb2; font-size: 15px; }
 </style>

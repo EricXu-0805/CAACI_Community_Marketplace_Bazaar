@@ -81,96 +81,24 @@ async function onSubmit() {
 </script>
 
 <style lang="scss" scoped>
-.page {
-  min-height: 100vh;
-  background: $bg-primary;
-  padding: $spacing-md;
+.page { min-height: 100vh; background: #fff; padding: 16px; max-width: 480px; margin: 0 auto; }
+.header { display: flex; flex-direction: column; align-items: center; padding: 56px 0 36px; }
+.logo { font-size: 48px; }
+.app-name { font-size: 24px; font-weight: 700; color: #1d1d1f; margin-top: 12px; }
+.app-desc { font-size: 14px; color: #aeaeb2; margin-top: 4px; }
+.form { padding: 0 8px; }
+.tab-bar { display: flex; justify-content: center; gap: 32px; margin-bottom: 24px; }
+.tab { font-size: 17px; color: #aeaeb2; padding-bottom: 8px;
+  &.active { color: #FF6B35; font-weight: 700; border-bottom: 2px solid #FF6B35; }
 }
-
-.header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 100rpx 0 60rpx;
-}
-
-.logo {
-  font-size: 80rpx;
-}
-
-.app-name {
-  font-size: 40rpx;
-  font-weight: bold;
-  color: $text-primary;
-  margin-top: $spacing-md;
-}
-
-.app-desc {
-  font-size: 24rpx;
-  color: $text-hint;
-  margin-top: $spacing-xs;
-}
-
-.form {
-  padding: 0 $spacing-md;
-}
-
-.tab-bar {
-  display: flex;
-  justify-content: center;
-  gap: $spacing-xl;
-  margin-bottom: $spacing-lg;
-}
-
-.tab {
-  font-size: 32rpx;
-  color: $text-hint;
-  padding-bottom: $spacing-sm;
-
-  &.active {
-    color: $brand-color;
-    font-weight: bold;
-    border-bottom: 4rpx solid $brand-color;
-  }
-}
-
-.form-group {
-  margin-bottom: $spacing-md;
-}
-
-.form-input {
-  width: 100%;
-  height: 88rpx;
-  background: $bg-secondary;
-  border-radius: $radius-md;
-  padding: 0 $spacing-md;
-  font-size: 28rpx;
-}
-
+.form-group { margin-bottom: 12px; }
+.form-input { width: 100%; height: 48px; background: #f5f5f7; border-radius: 12px; padding: 0 16px; font-size: 15px; }
 .submit-btn {
-  width: 100%;
-  height: 88rpx;
-  background: $brand-color;
-  color: white;
-  border-radius: 44rpx;
-  font-size: 32rpx;
-  font-weight: bold;
-  margin-top: $spacing-lg;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &[disabled] {
-    opacity: 0.6;
-  }
+  width: 100%; height: 48px; background: #FF6B35; color: #fff;
+  border-radius: 24px; font-size: 16px; font-weight: 600;
+  margin-top: 20px; border: none;
+  display: flex; align-items: center; justify-content: center;
+  &[disabled] { opacity: 0.5; }
 }
-
-.agreement {
-  display: block;
-  text-align: center;
-  font-size: 22rpx;
-  color: $text-hint;
-  margin-top: $spacing-lg;
-}
+.agreement { display: block; text-align: center; font-size: 12px; color: #aeaeb2; margin-top: 20px; }
 </style>

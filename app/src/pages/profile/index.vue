@@ -89,190 +89,36 @@ function goDetail(id: string) {
 </script>
 
 <style lang="scss" scoped>
-.page {
-  min-height: 100vh;
-  background: $bg-secondary;
+.page { min-height: 100vh; background: #f5f5f7; max-width: 480px; margin: 0 auto; }
+.login-section { background: #fff; display: flex; flex-direction: column; align-items: center; padding: 64px 16px; gap: 12px; }
+.avatar-placeholder { font-size: 44px; width: 80px; height: 80px; background: #f5f5f7; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.login-hint { color: #aeaeb2; font-size: 14px; }
+.login-btn { padding: 10px 32px; background: #FF6B35; color: #fff; border-radius: 22px; border: none; font-size: 15px; font-weight: 600; }
+.profile-section { background: #fff; padding: 24px 16px; }
+.user-header { display: flex; align-items: center; gap: 16px; }
+.avatar { width: 64px; height: 64px; border-radius: 50%; background: #f0f0f0; }
+.user-info { flex: 1; }
+.nickname { font-size: 20px; font-weight: 700; color: #1d1d1f; display: block; }
+.location { font-size: 13px; color: #aeaeb2; margin-top: 4px; }
+.stats-row { display: flex; margin-top: 20px; padding-top: 20px; border-top: 1px solid #f0f0f0; }
+.stat-item { flex: 1; text-align: center; }
+.stat-num { font-size: 20px; font-weight: 700; color: #1d1d1f; display: block; }
+.stat-label { font-size: 12px; color: #aeaeb2; margin-top: 4px; }
+.section { background: #fff; margin-top: 8px; }
+.section-header { padding: 14px 16px; border-bottom: 1px solid #f0f0f0; }
+.section-title { font-size: 15px; font-weight: 600; color: #1d1d1f; }
+.empty-items { padding: 32px; text-align: center; color: #aeaeb2; font-size: 14px; }
+.my-item { display: flex; padding: 14px 16px; border-bottom: 1px solid #f0f0f0; gap: 12px; }
+.item-img { width: 80px; height: 80px; border-radius: 8px; flex-shrink: 0; object-fit: cover; }
+.item-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.item-title { font-size: 14px; color: #1d1d1f; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4; }
+.item-price { font-size: 17px; font-weight: 700; color: #FF6B35; }
+.item-status { font-size: 11px; align-self: flex-start; padding: 2px 8px; border-radius: 4px;
+  &.active { color: #52C41A; background: rgba(82,196,26,0.1); }
+  &.reserved { color: #FAAD14; background: rgba(250,173,20,0.1); }
+  &.sold { color: #aeaeb2; background: #f5f5f7; }
 }
-
-.login-section {
-  background: $bg-primary;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 100rpx $spacing-md;
-  gap: $spacing-md;
-}
-
-.avatar-placeholder {
-  font-size: 80rpx;
-  width: 160rpx;
-  height: 160rpx;
-  background: $bg-secondary;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.login-hint {
-  color: $text-hint;
-  font-size: 26rpx;
-}
-
-.login-btn {
-  padding: $spacing-sm $spacing-xl;
-  background: $brand-color;
-  color: white;
-  border-radius: 40rpx;
-  border: none;
-  font-size: 28rpx;
-}
-
-.profile-section {
-  background: $bg-primary;
-  padding: $spacing-lg $spacing-md;
-}
-
-.user-header {
-  display: flex;
-  align-items: center;
-  gap: $spacing-md;
-}
-
-.avatar {
-  width: 120rpx;
-  height: 120rpx;
-  border-radius: 50%;
-  background: $border-color;
-}
-
-.user-info {
-  flex: 1;
-}
-
-.nickname {
-  font-size: 36rpx;
-  font-weight: bold;
-  color: $text-primary;
-  display: block;
-}
-
-.location {
-  font-size: 24rpx;
-  color: $text-hint;
-  margin-top: $spacing-xs;
-}
-
-.stats-row {
-  display: flex;
-  margin-top: $spacing-lg;
-  padding-top: $spacing-lg;
-  border-top: 1rpx solid $border-color;
-}
-
-.stat-item {
-  flex: 1;
-  text-align: center;
-}
-
-.stat-num {
-  font-size: 36rpx;
-  font-weight: bold;
-  color: $text-primary;
-  display: block;
-}
-
-.stat-label {
-  font-size: 22rpx;
-  color: $text-hint;
-  margin-top: $spacing-xs;
-}
-
-.section {
-  background: $bg-primary;
-  margin-top: $spacing-sm;
-}
-
-.section-header {
-  padding: $spacing-md;
-  border-bottom: 1rpx solid $border-color;
-}
-
-.section-title {
-  font-size: 28rpx;
-  font-weight: bold;
-  color: $text-primary;
-}
-
-.empty-items {
-  padding: $spacing-xl;
-  text-align: center;
-  color: $text-hint;
-  font-size: 24rpx;
-}
-
-.my-item {
-  display: flex;
-  padding: $spacing-md;
-  border-bottom: 1rpx solid $border-color;
-  gap: $spacing-md;
-}
-
-.item-img {
-  width: 160rpx;
-  height: 160rpx;
-  border-radius: $radius-sm;
-  flex-shrink: 0;
-}
-
-.item-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-xs;
-}
-
-.item-title {
-  font-size: 28rpx;
-  color: $text-primary;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.item-price {
-  font-size: 30rpx;
-  font-weight: bold;
-  color: $brand-color;
-}
-
-.item-status {
-  font-size: 22rpx;
-  align-self: flex-start;
-  padding: 2rpx $spacing-sm;
-  border-radius: $radius-sm;
-
-  &.active { color: $success-color; background: rgba(82, 196, 26, 0.1); }
-  &.reserved { color: $warning-color; background: rgba(250, 173, 20, 0.1); }
-  &.sold { color: $text-hint; background: $bg-secondary; }
-}
-
-.menu-section {
-  margin-top: $spacing-sm;
-  background: $bg-primary;
-}
-
-.menu-item {
-  padding: $spacing-md;
-  text-align: center;
-}
-
-.menu-text {
-  font-size: 28rpx;
-
-  &.danger {
-    color: $danger-color;
-  }
-}
+.menu-section { margin-top: 8px; background: #fff; }
+.menu-item { padding: 16px; text-align: center; }
+.menu-text { font-size: 15px; &.danger { color: #FF4D4F; } }
 </style>

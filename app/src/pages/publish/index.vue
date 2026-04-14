@@ -190,200 +190,92 @@ async function onSubmit() {
 <style lang="scss" scoped>
 .page {
   min-height: 100vh;
-  background: $bg-secondary;
-  padding-bottom: 120rpx;
+  background: #f5f5f7;
+  padding-bottom: 72px;
+  max-width: 480px;
+  margin: 0 auto;
 }
 
-.form {
-  background: $bg-primary;
-}
+.form { background: #fff; }
 
-.image-section {
-  padding: $spacing-md;
-}
+.image-section { padding: 16px; }
 
-.image-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: $spacing-sm;
-}
+.image-list { display: flex; flex-wrap: wrap; gap: 10px; }
 
-.image-item {
-  position: relative;
-  width: 200rpx;
-  height: 200rpx;
-}
+.image-item { position: relative; width: 100px; height: 100px; }
 
-.preview-image {
-  width: 100%;
-  height: 100%;
-  border-radius: $radius-sm;
-}
+.preview-image { width: 100%; height: 100%; border-radius: 8px; object-fit: cover; }
 
 .remove-btn {
-  position: absolute;
-  top: -10rpx;
-  right: -10rpx;
-  width: 40rpx;
-  height: 40rpx;
-  background: $danger-color;
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20rpx;
+  position: absolute; top: -6px; right: -6px;
+  width: 22px; height: 22px; background: #FF4D4F; color: #fff;
+  border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; font-size: 11px;
 }
 
 .image-add {
-  width: 200rpx;
-  height: 200rpx;
-  border: 2rpx dashed $border-color;
-  border-radius: $radius-sm;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: $spacing-xs;
+  width: 100px; height: 100px; border: 1.5px dashed #d1d1d6;
+  border-radius: 8px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px;
 }
 
-.add-icon {
-  font-size: 48rpx;
-  color: $text-hint;
-}
-
-.add-text {
-  font-size: 22rpx;
-  color: $text-hint;
-}
-
-.image-tip {
-  font-size: 22rpx;
-  color: $text-hint;
-  margin-top: $spacing-sm;
-}
+.add-icon { font-size: 28px; color: #aeaeb2; }
+.add-text { font-size: 12px; color: #aeaeb2; }
+.image-tip { font-size: 12px; color: #aeaeb2; margin-top: 8px; }
 
 .form-group {
-  padding: $spacing-md;
-  border-bottom: 1rpx solid $border-color;
-
-  &.row {
-    display: flex;
-    align-items: center;
-  }
+  padding: 14px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  &.row { display: flex; align-items: center; }
 }
 
-.label {
-  font-size: 28rpx;
-  color: $text-primary;
-  width: 120rpx;
-  flex-shrink: 0;
-}
-
-.form-input {
-  font-size: 28rpx;
-  width: 100%;
-}
-
-.title-input {
-  font-size: 32rpx;
-  font-weight: bold;
-}
-
-.form-textarea {
-  width: 100%;
-  height: 200rpx;
-  font-size: 28rpx;
-}
+.label { font-size: 15px; color: #1d1d1f; width: 64px; flex-shrink: 0; }
+.form-input { font-size: 15px; width: 100%; }
+.title-input { font-size: 17px; font-weight: 600; }
+.form-textarea { width: 100%; height: 120px; font-size: 15px; line-height: 1.6; }
 
 .price-input {
-  display: flex;
-  align-items: center;
-  flex: 1;
-
-  .currency {
-    font-size: 32rpx;
-    color: $brand-color;
-    font-weight: bold;
-    margin-right: $spacing-xs;
-  }
+  display: flex; align-items: center; flex: 1;
+  .currency { font-size: 18px; color: #FF6B35; font-weight: 700; margin-right: 4px; }
 }
 
-.flex-input {
-  flex: 1;
-}
+.flex-input { flex: 1; }
 
 .value {
-  flex: 1;
-  text-align: right;
-  font-size: 28rpx;
-  color: $text-primary;
-
-  &.placeholder {
-    color: $text-hint;
-  }
+  flex: 1; text-align: right; font-size: 15px; color: #1d1d1f;
+  &.placeholder { color: #aeaeb2; }
 }
 
-.arrow {
-  font-size: 32rpx;
-  color: $text-hint;
-  margin-left: $spacing-sm;
-}
+.arrow { font-size: 18px; color: #aeaeb2; margin-left: 8px; }
 
 .submit-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: $spacing-md;
-  background: $bg-primary;
-  box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 480px; padding: 12px 16px;
+  background: #fff; box-shadow: 0 -1px 8px rgba(0,0,0,0.06);
 }
 
 .submit-btn {
-  width: 100%;
-  height: 88rpx;
-  background: $brand-color;
-  color: white;
-  border-radius: 44rpx;
-  font-size: 32rpx;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-
-  &[disabled] {
-    opacity: 0.6;
-  }
+  width: 100%; height: 48px; background: #FF6B35; color: #fff;
+  border-radius: 24px; font-size: 16px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; border: none;
+  &[disabled] { opacity: 0.5; }
 }
 
 .picker-panel {
-  background: $bg-primary;
-  border-radius: $radius-lg $radius-lg 0 0;
-  max-height: 60vh;
-  overflow-y: auto;
+  background: #fff; border-radius: 14px 14px 0 0;
+  max-height: 60vh; overflow-y: auto;
 }
 
 .picker-header {
-  display: flex;
-  justify-content: space-between;
-  padding: $spacing-md;
-  border-bottom: 1rpx solid $border-color;
-
-  .picker-title {
-    font-weight: bold;
-  }
+  display: flex; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid #f0f0f0;
+  font-size: 15px;
+  .picker-title { font-weight: 600; }
 }
 
 .picker-item {
-  padding: $spacing-md;
-  font-size: 28rpx;
-  border-bottom: 1rpx solid $border-color;
-
-  &.active {
-    color: $brand-color;
-    font-weight: bold;
-  }
+  padding: 14px 16px; font-size: 15px;
+  border-bottom: 1px solid #f5f5f7;
+  &.active { color: #FF6B35; font-weight: 600; }
 }
 </style>

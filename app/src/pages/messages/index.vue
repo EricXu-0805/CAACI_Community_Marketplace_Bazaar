@@ -85,94 +85,17 @@ function formatTime(dateStr: string): string {
 </script>
 
 <style lang="scss" scoped>
-.page {
-  min-height: 100vh;
-  background: $bg-primary;
-}
-
-.login-prompt, .empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding-top: 300rpx;
-  gap: $spacing-md;
-  color: $text-hint;
-}
-
-.login-btn {
-  margin-top: $spacing-md;
-  padding: $spacing-sm $spacing-xl;
-  background: $brand-color;
-  color: white;
-  border-radius: 40rpx;
-  border: none;
-  font-size: 28rpx;
-}
-
-.empty-sub {
-  font-size: 24rpx;
-}
-
-.conversation-item {
-  display: flex;
-  align-items: center;
-  padding: $spacing-md;
-  border-bottom: 1rpx solid $border-color;
-  gap: $spacing-md;
-}
-
-.avatar {
-  width: 96rpx;
-  height: 96rpx;
-  border-radius: 50%;
-  background: $border-color;
-  flex-shrink: 0;
-}
-
-.conv-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.conv-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.conv-name {
-  font-size: 28rpx;
-  font-weight: bold;
-  color: $text-primary;
-}
-
-.conv-time {
-  font-size: 22rpx;
-  color: $text-hint;
-}
-
-.conv-item-title {
-  font-size: 24rpx;
-  color: $text-secondary;
-  margin-top: $spacing-xs;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: block;
-}
-
-.conv-item-image {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: $radius-sm;
-  flex-shrink: 0;
-}
-
-.loading-tip {
-  text-align: center;
-  padding: $spacing-xl;
-  color: $text-hint;
-  font-size: 24rpx;
-}
+.page { min-height: 100vh; background: #fff; max-width: 480px; margin: 0 auto; }
+.login-prompt, .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 160px; gap: 12px; color: #aeaeb2; font-size: 15px; }
+.login-btn { margin-top: 16px; padding: 10px 32px; background: #FF6B35; color: #fff; border-radius: 22px; border: none; font-size: 15px; font-weight: 600; }
+.empty-sub { font-size: 13px; }
+.conversation-item { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid #f0f0f0; gap: 12px; }
+.avatar { width: 50px; height: 50px; border-radius: 50%; background: #f0f0f0; flex-shrink: 0; }
+.conv-info { flex: 1; min-width: 0; }
+.conv-header { display: flex; justify-content: space-between; align-items: center; }
+.conv-name { font-size: 15px; font-weight: 600; color: #1d1d1f; }
+.conv-time { font-size: 12px; color: #aeaeb2; }
+.conv-item-title { font-size: 13px; color: #86868b; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.conv-item-image { width: 44px; height: 44px; border-radius: 8px; flex-shrink: 0; }
+.loading-tip { text-align: center; padding: 32px; color: #aeaeb2; font-size: 13px; }
 </style>
