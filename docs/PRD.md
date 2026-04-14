@@ -205,7 +205,7 @@
 
 - 人机验证 (CAPTCHA)
 - 网络安全套餐（WAF、DDoS 防护等）
-- **⚠️ 关键原则**：用户个人信息必须存储在服务器端，AI 工具（如 OpenCloud）不可直接访问用户数据
+- **⚠️ 关键原则**：用户个人信息必须存储在服务器端，AI 工具（如 OpenClaw）不可直接访问用户数据
 
 ---
 
@@ -214,8 +214,8 @@
 ### 7.1 AI 辅助开发架构
 
 ```
-OpenCloud (主控, OpenRouter Key)
-  └── OpenCoder (作为 skill/工具)
+OpenClaw (主控, OpenRouter Key)
+  └── OpenCode (作为 skill/工具)
         └── Claude Max Subscription
               └── 执行项目开发任务
 ```
@@ -225,7 +225,7 @@ OpenCloud (主控, OpenRouter Key)
 ```
 ┌──────────────┐     ┌──────────────┐
 │  AI 工具层    │  ✗  │  用户数据层   │
-│  (OpenCloud)  │────→│  (服务器端)   │
+│  (OpenClaw)  │────→│  (服务器端)   │
 │              │ 禁止 │  个人信息     │
 │              │ 直接 │  手机/邮箱    │
 │              │ 访问 │  交易记录     │
