@@ -10,37 +10,37 @@
 		{
 			"path": "pages/publish/index",
 			"style": {
-				"navigationBarTitleText": "Post Item"
+				"navigationStyle": "custom"
 			}
 		},
 		{
 			"path": "pages/messages/index",
 			"style": {
-				"navigationBarTitleText": "Messages"
+				"navigationStyle": "custom"
 			}
 		},
 		{
 			"path": "pages/profile/index",
 			"style": {
-				"navigationBarTitleText": "Profile"
+				"navigationStyle": "custom"
 			}
 		},
 		{
 			"path": "pages/detail/index",
 			"style": {
-				"navigationBarTitleText": "Item Details"
+				"navigationStyle": "custom"
 			}
 		},
 		{
 			"path": "pages/chat/index",
 			"style": {
-				"navigationBarTitleText": "Chat"
+				"navigationStyle": "custom"
 			}
 		},
 		{
 			"path": "pages/login/index",
 			"style": {
-				"navigationBarTitleText": "Sign In"
+				"navigationStyle": "custom"
 			}
 		}
 	],
@@ -51,8 +51,8 @@
 		"backgroundColor": "#F2F2F7"
 	},
 	"tabBar": {
-		"color": "#999999",
-		"selectedColor": "#FF6B35",
+		"color": "#8e8e93",
+		"selectedColor": "#1a1a1a",
 		"borderStyle": "black",
 		"backgroundColor": "#FFFFFF",
 		"list": [

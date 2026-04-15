@@ -152,8 +152,8 @@
                 mode="widthFix"
                 class="card-img"
               />
-              <text v-if="item.condition === 'new'" class="badge badge-new">全新</text>
-              <text v-else-if="item.condition === 'like_new'" class="badge badge-mint">几乎全新</text>
+              <text v-if="item.condition === 'new'" class="badge badge-new">{{ t('condition.new') }}</text>
+              <text v-else-if="item.condition === 'like_new'" class="badge badge-mint">{{ t('condition.like_new') }}</text>
             </view>
             <view class="card-info">
               <text class="card-title">{{ item.title }}</text>
@@ -167,7 +167,7 @@
                     :src="item.profile?.avatar_url || '/static/default-avatar.png'"
                     class="seller-pic"
                   />
-                  <text class="seller-nick">{{ item.profile?.nickname || 'User' }}</text>
+                  <text class="seller-nick">{{ item.profile?.nickname || t('app.user') }}</text>
                 </view>
                 <view class="card-fav">
                   <text class="fav-heart">♥</text>
@@ -192,7 +192,7 @@
       </view>
       <!-- Empty -->
       <view v-if="!loading && !initialLoading && filteredItems.length === 0" class="empty">
-        <text class="empty-icon">🛒</text>
+        <view class="empty-bag-icon"></view>
         <text class="empty-title">{{ t('home.emptyTitle') }}</text>
         <text class="empty-sub">{{ t('home.emptySub') }}</text>
         <view class="empty-btn" @click="goPublish">{{ t('home.postItem') }}</view>
@@ -391,7 +391,10 @@ function goPublish() {
 }
 
 /* ========== Mobile Header ========== */
-.mobile-header { background: #fff; padding: 10px 16px 11px; }
+.mobile-header {
+  background: #fff; padding: 10px 16px 11px;
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+}
 .mh-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .mh-brand { font-size: 18px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.02em; }
 .mh-right { display: flex; align-items: center; gap: 8px; }
@@ -598,7 +601,16 @@ function goPublish() {
 .empty {
   display: flex; flex-direction: column; align-items: center; padding-top: 80px; gap: 8px;
 }
-.empty-icon { font-size: 48px; }
+.empty-bag-icon {
+  width: 36px; height: 40px; border: 2.5px solid #d1d1d6;
+  border-radius: 5px; position: relative; margin-bottom: 6px;
+  &::before {
+    content: ''; position: absolute; top: -10px; left: 5px;
+    width: 22px; height: 12px;
+    border: 2.5px solid #d1d1d6; border-bottom: none;
+    border-radius: 11px 11px 0 0;
+  }
+}
 .empty-title { font-size: 16px; color: #333; font-weight: 600; }
 .empty-sub { font-size: 13px; color: #999; text-align: center; padding: 0 32px; }
 .empty-btn {

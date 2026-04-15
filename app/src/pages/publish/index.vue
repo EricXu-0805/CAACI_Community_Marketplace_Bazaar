@@ -1,19 +1,36 @@
 <template>
   <view class="page">
     <DesktopNav current="publish" />
+
+    <!-- Mobile Header -->
+    <view class="page-header">
+      <text class="ph-title">{{ t('publish.title') }}</text>
+    </view>
+
     <view class="form">
       <view class="image-section">
         <view class="image-list">
           <view v-for="(img, i) in imageList" :key="i" class="image-item">
             <image :src="img" mode="aspectFill" class="preview-image" />
-            <view class="remove-btn" @click="removeImage(i)">✕</view>
+            <view class="remove-btn" @click="removeImage(i)">
+              <view class="remove-x"></view>
+            </view>
+            <view v-if="i === 0" class="cover-tag">
+              <text>{{ t('publish.cover') }}</text>
+            </view>
           </view>
           <view v-if="imageList.length < 9" class="image-add" @click="chooseImage">
-            <text class="add-icon">+</text>
+            <view class="add-icon-css"></view>
             <text class="add-text">{{ t('publish.addPhoto') }}</text>
           </view>
         </view>
         <text class="image-tip">{{ t('publish.photoTip') }}</text>
+      </view>
+
+      <!-- Upload progress -->
+      <view v-if="uploadProgress" class="upload-bar">
+        <view class="upload-fill" :style="{ width: uploadProgress + '%' }"></view>
+        <text class="upload-text">{{ t('publish.uploading') }} {{ uploadProgress }}%</text>
       </view>
 
       <view class="form-group">
@@ -39,7 +56,7 @@
           <text :class="['field-value', { placeholder: !form.category }]">
             {{ form.category ? t('cat.' + form.category) : t('publish.categorySelect') }}
           </text>
-          <text :class="['arrow', { open: showCat }]">›</text>
+          <view :class="['chevron', { open: showCat }]"></view>
         </view>
         <view v-if="showCat" class="pill-grid">
           <view
@@ -60,7 +77,7 @@
           <text :class="['field-value', { placeholder: !form.condition }]">
             {{ form.condition ? t('condition.' + form.condition) : t('publish.conditionSelect') }}
           </text>
-          <text :class="['arrow', { open: showCond }]">›</text>
+          <view :class="['chevron', { open: showCond }]"></view>
         </view>
         <view v-if="showCond" class="pill-grid">
           <view
@@ -78,7 +95,8 @@
         <text class="label">{{ t('publish.location') }}</text>
         <input v-model="form.location" :placeholder="t('publish.locationPlaceholder')" class="form-input flex-input" />
         <view class="loc-detect" @click="onDetectLocation">
-          <text>{{ detectingLoc ? '...' : '⊙' }}</text>
+          <view v-if="detectingLoc" class="loc-spinner"></view>
+          <view v-else class="loc-pin"></view>
         </view>
       </view>
 
@@ -97,6 +115,7 @@
       </button>
     </view>
 
+    <CustomTabBar current="publish" />
   </view>
 </template>
 
@@ -106,6 +125,7 @@ import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useLocation } from '../../composables/useLocation'
 import DesktopNav from '../../components/DesktopNav.vue'
+import CustomTabBar from '../../components/CustomTabBar.vue'
 import { useItems } from '../../composables/useItems'
 import { type ItemCategory, type ItemCondition } from '../../types'
 
@@ -121,6 +141,7 @@ const imageList = ref<string[]>([])
 const showCat = ref(false)
 const showCond = ref(false)
 const submitting = ref(false)
+const uploadProgress = ref(0)
 
 const form = reactive({
   title: '',
@@ -158,9 +179,19 @@ async function onSubmit() {
   if (!form.condition) { uni.showToast({ title: t('publish.needCondition'), icon: 'none' }); return }
 
   submitting.value = true
+  uploadProgress.value = 0
   try {
     let images: string[] = []
-    if (imageList.value.length > 0) images = await uploadImages(imageList.value)
+    if (imageList.value.length > 0) {
+      const total = imageList.value.length
+      const uploaded: string[] = []
+      for (let i = 0; i < total; i++) {
+        const urls = await uploadImages([imageList.value[i]])
+        uploaded.push(...urls)
+        uploadProgress.value = Math.round(((i + 1) / total) * 100)
+      }
+      images = uploaded
+    }
 
     await createItem({
       title: form.title.trim(),
@@ -173,44 +204,119 @@ async function onSubmit() {
       negotiable: form.negotiable,
     })
 
+    uploadProgress.value = 0
+    form.title = ''
+    form.description = ''
+    form.price = ''
+    form.category = ''
+    form.condition = ''
+    form.location = 'UIUC'
+    form.negotiable = false
+    imageList.value = []
     uni.showToast({ title: t('publish.success'), icon: 'success' })
     setTimeout(() => uni.switchTab({ url: '/pages/index/index' }), 1500)
   } catch (error: any) {
     uni.showToast({ title: error.message || t('publish.fail'), icon: 'none' })
   } finally {
     submitting.value = false
+    uploadProgress.value = 0
   }
 }
 </script>
 
 <style lang="scss" scoped>
-.page { min-height: 100vh; background: #f7f7f8; padding-bottom: 72px; max-width: 480px; margin: 0 auto; }
+.page {
+  min-height: 100vh; background: #f2f2f7;
+  padding-bottom: calc(72px + 56px); max-width: 480px; margin: 0 auto;
+}
+
+/* ========== Header ========== */
+.page-header {
+  padding: 11px 16px;
+  padding-top: calc(11px + env(safe-area-inset-top, 0px));
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0.5px solid rgba(0,0,0,0.06);
+  position: sticky; top: 0; z-index: 50;
+}
+.ph-title { font-size: 17px; font-weight: 700; color: #1a1a1a; }
+
+@media (min-width: 768px) { .page-header { display: none; } }
+
+/* ========== Form ========== */
 .form { background: #fff; }
 .image-section { padding: 16px; }
-.image-list { display: flex; flex-wrap: wrap; gap: 10px; }
-.image-item { position: relative; width: 100px; height: 100px; }
-.preview-image { width: 100%; height: 100%; border-radius: 8px; object-fit: cover; }
+.image-list { display: flex; flex-wrap: wrap; gap: 9px; }
+.image-item { position: relative; width: 96px; height: 96px; }
+.preview-image { width: 100%; height: 100%; border-radius: 9px; object-fit: cover; }
 .remove-btn {
-  position: absolute; top: -6px; right: -6px;
-  width: 22px; height: 22px; background: #FF4D4F; color: #fff;
-  border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px;
+  position: absolute; top: -5px; right: -5px;
+  width: 20px; height: 20px; background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.remove-x {
+  width: 10px; height: 10px; position: relative;
+  &::before, &::after {
+    content: ''; position: absolute; top: 50%; left: 0;
+    width: 10px; height: 1.5px; background: #fff; border-radius: 1px;
+  }
+  &::before { transform: rotate(45deg); }
+  &::after { transform: rotate(-45deg); }
+}
+.cover-tag {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+  border-radius: 0 0 9px 9px; text-align: center; padding: 2px 0;
+  text { font-size: 10px; color: #fff; font-weight: 500; }
 }
 .image-add {
-  width: 100px; height: 100px; border: 1.5px dashed #d1d1d6;
-  border-radius: 8px; display: flex; flex-direction: column;
+  width: 96px; height: 96px; border: 1.5px dashed #d1d1d6;
+  border-radius: 9px; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 4px; cursor: pointer;
+  &:active { background: #f7f7f8; }
 }
-.add-icon { font-size: 28px; color: #aeaeb2; }
-.add-text { font-size: 12px; color: #aeaeb2; }
-.image-tip { font-size: 12px; color: #aeaeb2; margin-top: 8px; }
+.add-icon-css {
+  width: 22px; height: 22px; position: relative;
+  &::before, &::after {
+    content: ''; position: absolute; background: #c7c7cc; border-radius: 1px;
+  }
+  &::before { width: 22px; height: 2px; top: 10px; left: 0; }
+  &::after { width: 2px; height: 22px; top: 0; left: 10px; }
+}
+.add-text { font-size: 11px; color: #aeaeb2; }
+.image-tip { font-size: 12px; color: #c7c7cc; margin-top: 8px; }
 
-.form-group { padding: 14px 16px; border-bottom: 1px solid #f0f0f0; &.row { display: flex; align-items: center; } }
-.label { font-size: 15px; color: #1d1d1f; width: 64px; flex-shrink: 0; }
-.form-input { font-size: 15px; width: 100%; }
+/* ========== Upload Progress ========== */
+.upload-bar {
+  position: relative; height: 28px; margin: 0 16px 8px;
+  background: #f2f2f7; border-radius: 6px; overflow: hidden;
+}
+.upload-fill {
+  position: absolute; inset: 0; right: auto;
+  background: rgba(26,26,26,0.08);
+  transition: width 0.3s ease;
+}
+.upload-text {
+  position: relative; z-index: 1;
+  font-size: 12px; color: #636366; font-weight: 500;
+  line-height: 28px; padding-left: 10px;
+}
+
+/* ========== Form Groups ========== */
+.form-group {
+  padding: 13px 16px;
+  border-bottom: 0.5px solid rgba(0,0,0,0.06);
+  &.row { display: flex; align-items: center; }
+}
+.label { font-size: 15px; color: #1a1a1a; width: 64px; flex-shrink: 0; font-weight: 500; }
+.form-input { font-size: 15px; width: 100%; color: #1a1a1a; }
 .title-input { font-size: 17px; font-weight: 600; }
-.form-textarea { width: 100%; height: 120px; font-size: 15px; line-height: 1.6; }
-.price-input { display: flex; align-items: center; flex: 1;
-  .currency { font-size: 18px; color: #FF6B35; font-weight: 700; margin-right: 4px; }
+.form-textarea { width: 100%; height: 110px; font-size: 15px; line-height: 1.6; color: #1a1a1a; }
+.price-input {
+  display: flex; align-items: center; flex: 1;
+  .currency { font-size: 17px; color: #1a1a1a; font-weight: 700; margin-right: 4px; }
 }
 .flex-input { flex: 1; }
 
@@ -219,13 +325,14 @@ async function onSubmit() {
   -webkit-tap-highlight-color: transparent;
 }
 .field-value {
-  flex: 1; text-align: right; font-size: 15px; color: #1d1d1f;
-  &.placeholder { color: #aeaeb2; }
+  flex: 1; text-align: right; font-size: 15px; color: #1a1a1a;
+  &.placeholder { color: #c7c7cc; }
 }
-.arrow {
-  font-size: 18px; color: #aeaeb2; margin-left: 8px;
-  transition: transform 0.2s; display: inline-block;
-  &.open { transform: rotate(90deg); }
+.chevron {
+  width: 8px; height: 8px; margin-left: 8px;
+  border-top: 1.5px solid #c7c7cc; border-right: 1.5px solid #c7c7cc;
+  transform: rotate(45deg); transition: transform 0.2s;
+  &.open { transform: rotate(135deg); }
 }
 
 .pill-grid {
@@ -234,41 +341,49 @@ async function onSubmit() {
 }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 .sel-pill {
-  padding: 8px 15px; border-radius: 8px; font-size: 13px;
-  background: #f2f2f7; color: #636366; cursor: pointer; transition: all 0.12s; font-weight: 500;
+  padding: 7px 14px; border-radius: 8px; font-size: 13px;
+  background: #f2f2f7; color: #636366; cursor: pointer;
+  transition: all 0.12s; font-weight: 500;
   &.active { background: #1a1a1a; color: #fff; }
   &:active { transform: scale(0.96); }
 }
+
+/* ========== Location ========== */
 .loc-detect {
-  width: 36px; height: 36px; border-radius: 8px; background: #f2f2f7;
+  width: 36px; height: 36px; border-radius: 9px; background: #f2f2f7;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; cursor: pointer; margin-left: 6px;
-  font-size: 16px; color: #636366;
   &:active { background: #e5e5ea; }
 }
-
-.submit-bar {
-  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-  width: 100%; max-width: 480px; padding: 10px 16px;
-  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-  background: rgba(252,252,253,0.9);
-  backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-top: 0.5px solid rgba(0,0,0,0.06);
+.loc-pin {
+  width: 12px; height: 16px; position: relative;
+  &::before {
+    content: ''; position: absolute; top: 0; left: 0;
+    width: 12px; height: 12px; border: 2px solid #636366;
+    border-radius: 50%;
+  }
+  &::after {
+    content: ''; position: absolute; bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 4px solid transparent; border-right: 4px solid transparent;
+    border-top: 5px solid #636366;
+  }
 }
-.submit-btn {
-  width: 100%; height: 48px; background: #1a1a1a; color: #fff;
-  border-radius: 12px; font-size: 16px; font-weight: 600;
-  display: flex; align-items: center; justify-content: center; border: none;
-  &[disabled] { opacity: 0.35; }
-  &:active { opacity: 0.8; }
+.loc-spinner {
+  width: 16px; height: 16px;
+  border: 2px solid #e5e5ea; border-top-color: #636366;
+  border-radius: 50%; animation: spin 0.7s linear infinite;
 }
+@keyframes spin { to { transform: rotate(360deg); } }
 
+/* ========== Toggle ========== */
 .toggle-row { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .toggle-hint { flex: 1; font-size: 13px; color: #aeaeb2; text-align: right; margin-right: 10px; }
 .toggle {
   width: 44px; height: 26px; border-radius: 13px;
   background: #e0e0e0; position: relative; transition: background 0.25s; flex-shrink: 0;
-  &.on { background: #FF6B35; }
+  &.on { background: #34C759; }
 }
 .toggle-knob {
   width: 22px; height: 22px; border-radius: 50%; background: #fff;
@@ -276,4 +391,26 @@ async function onSubmit() {
   box-shadow: 0 1px 3px rgba(0,0,0,0.15);
 }
 .toggle.on .toggle-knob { transform: translateX(18px); }
+
+/* ========== Submit ========== */
+.submit-bar {
+  position: fixed; bottom: calc(50px + env(safe-area-inset-bottom, 0px));
+  left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 480px; padding: 9px 16px;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-top: 0.5px solid rgba(0,0,0,0.06);
+  z-index: 40;
+}
+.submit-btn {
+  width: 100%; height: 46px; background: #1a1a1a; color: #fff;
+  border-radius: 23px; font-size: 15px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; border: none;
+  &[disabled] { opacity: 0.3; }
+  &:active { opacity: 0.8; }
+}
+
+@media (min-width: 768px) {
+  .submit-bar { bottom: 0; }
+}
 </style>

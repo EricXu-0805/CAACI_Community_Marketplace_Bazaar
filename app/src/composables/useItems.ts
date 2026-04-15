@@ -122,22 +122,31 @@ export function useItems() {
   }
 
   // Upload images
-  async function uploadImages(files: string[]): Promise<string[]> {
+  async function uploadImages(tempFiles: string[]): Promise<string[]> {
     const urls: string[] = []
 
-    for (const filePath of files) {
-      const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`
+    for (const filePath of tempFiles) {
+      const ext = filePath.split('.').pop()?.toLowerCase() || 'jpg'
+      const contentType = ext === 'png' ? 'image/png' : 'image/jpeg'
+      const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
       const storagePath = `items/${fileName}`
 
-      const { error } = await supabase.storage
-        .from('item-images')
-        .upload(storagePath, filePath as any)
+      try {
+        const response = await fetch(filePath)
+        const blob = await response.blob()
 
-      if (!error) {
-        const { data: urlData } = supabase.storage
+        const { error } = await supabase.storage
           .from('item-images')
-          .getPublicUrl(storagePath)
-        urls.push(urlData.publicUrl)
+          .upload(storagePath, blob, { contentType })
+
+        if (!error) {
+          const { data: urlData } = supabase.storage
+            .from('item-images')
+            .getPublicUrl(storagePath)
+          urls.push(urlData.publicUrl)
+        }
+      } catch {
+        // skip failed upload
       }
     }
 
@@ -157,6 +166,19 @@ export function useItems() {
     return (data || []) as Item[]
   }
 
+  // Update item status (e.g., mark as sold)
+  async function updateItemStatus(id: string, status: string) {
+    const { data, error } = await supabase
+      .from('items')
+      .update({ status })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data as Item
+  }
+
   return {
     items,
     loading,
@@ -165,6 +187,7 @@ export function useItems() {
     fetchItem,
     createItem,
     updateItem,
+    updateItemStatus,
     uploadImages,
     fetchMyItems,
   }

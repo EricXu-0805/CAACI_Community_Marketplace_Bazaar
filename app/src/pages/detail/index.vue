@@ -7,12 +7,18 @@
           <image :src="img" mode="aspectFill" class="swiper-img" @click="previewImage(i)" />
         </swiper-item>
         <swiper-item v-if="item.images.length === 0">
-          <view class="no-img">{{ t('detail.noPhotos') }}</view>
+          <view class="no-img">
+            <view class="no-img-icon"></view>
+            <text>{{ t('detail.noPhotos') }}</text>
+          </view>
         </swiper-item>
       </swiper>
       <!-- Overlay buttons -->
       <view class="img-back" @click="goBack">
-        <text>←</text>
+        <view class="back-arrow"></view>
+      </view>
+      <view class="img-share" @click="onShare">
+        <view class="share-icon"></view>
       </view>
       <view v-if="item.images.length > 1" class="img-counter">
         <text>{{ currentImg + 1 }}/{{ item.images.length }}</text>
@@ -27,9 +33,12 @@
       </view>
       <text class="title">{{ item.title }}</text>
       <view class="tags">
-        <text class="tag">{{ categoryLabels[item.category] }}</text>
-        <text class="tag">{{ conditionLabels[item.condition] }}</text>
-        <text class="tag">📍 {{ item.location }}</text>
+        <text class="tag">{{ t('cat.' + item.category) }}</text>
+        <text class="tag">{{ t('condition.' + item.condition) }}</text>
+        <view class="tag tag-loc">
+          <view class="loc-dot"></view>
+          <text>{{ item.location }}</text>
+        </view>
       </view>
     </view>
 
@@ -68,7 +77,7 @@
     <!-- Bottom Action Bar -->
     <view class="action-bar">
       <view class="fav-btn" @click="toggleFavorite">
-        <text class="fav-icon">{{ isFav ? '❤️' : '🤍' }}</text>
+        <view :class="['heart-icon', { filled: isFav }]"></view>
         <text class="fav-label">{{ isFav ? t('detail.saved') : t('detail.save') }}</text>
       </view>
       <view class="chat-btn" @click="contactSeller">
@@ -80,7 +89,7 @@
   <!-- Loading state -->
   <view v-else class="loading-page">
     <view class="loading-spinner"></view>
-    <text class="loading-text">Loading...</text>
+    <text class="loading-text">{{ t('home.loading') }}</text>
   </view>
 </template>
 
@@ -92,7 +101,7 @@ import { useAuth } from '../../composables/useAuth'
 import { useMessages } from '../../composables/useMessages'
 import { useFavorites } from '../../composables/useFavorites'
 import { useI18n } from '../../composables/useI18n'
-import { CATEGORY_LABELS, CONDITION_LABELS, type Item } from '../../types'
+import { type Item } from '../../types'
 import { MOCK_ITEMS } from '../../composables/useMockData'
 
 const { t } = useI18n()
@@ -100,9 +109,6 @@ const { fetchItem } = useItems()
 const { currentUser, requireAuth } = useAuth()
 const { getOrCreateConversation } = useMessages()
 const { isFavorited: checkFavorited, toggleFavorite: doToggleFavorite, getFavoriteCount, loadMyFavorites } = useFavorites()
-
-const categoryLabels = CATEGORY_LABELS
-const conditionLabels = CONDITION_LABELS
 
 const item = ref<Item | null>(null)
 const isMockItem = ref(false)
@@ -137,6 +143,10 @@ onLoad(async (options) => {
 
 function goBack() {
   uni.navigateBack()
+}
+
+function onShare() {
+  // future: share sheet
 }
 
 function previewImage(index: number) {
@@ -206,55 +216,107 @@ function formatTime(dateStr: string): string {
 .swiper-img { width: 100%; height: 100%; }
 .no-img {
   width: 100%; height: 100%;
-  display: flex; align-items: center; justify-content: center;
-  background: #e8e8ed; color: #999; font-size: 15px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: #e8e8ed; color: #999; font-size: 14px; gap: 8px;
 }
-.img-back {
-  position: absolute; top: 12px; left: 12px; z-index: 10;
+.no-img-icon {
+  width: 36px; height: 28px; border: 2px solid #c7c7cc; border-radius: 4px;
+  position: relative;
+  &::before {
+    content: ''; position: absolute; top: 5px; left: 5px;
+    width: 6px; height: 6px; border-radius: 50%; border: 1.5px solid #c7c7cc;
+  }
+  &::after {
+    content: ''; position: absolute; bottom: 4px; left: 4px;
+    width: 0; height: 0;
+    border-left: 8px solid transparent; border-right: 8px solid transparent;
+    border-bottom: 8px solid #c7c7cc;
+  }
+}
+
+.img-back, .img-share {
+  position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); z-index: 10;
   width: 36px; height: 36px; border-radius: 50%;
   background: rgba(0,0,0,0.3); backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex; align-items: center; justify-content: center;
-  color: #fff; font-size: 18px; cursor: pointer;
+  cursor: pointer;
   &:active { background: rgba(0,0,0,0.5); }
 }
+.img-back { left: 12px; }
+.img-share { right: 12px; }
+
+.back-arrow {
+  width: 10px; height: 10px;
+  border-left: 2px solid #fff; border-bottom: 2px solid #fff;
+  transform: rotate(45deg); margin-left: 3px;
+}
+.share-icon {
+  width: 14px; height: 14px; position: relative;
+  &::before {
+    content: ''; position: absolute; top: 0; left: 50%;
+    width: 2px; height: 9px; background: #fff;
+    transform: translateX(-50%);
+  }
+  &::after {
+    content: ''; position: absolute; top: 0; left: 50%;
+    width: 8px; height: 8px;
+    border-top: 2px solid #fff; border-right: 2px solid #fff;
+    transform: translateX(-50%) rotate(-45deg);
+    transform-origin: center;
+  }
+}
+
 .img-counter {
   position: absolute; bottom: 12px; right: 12px; z-index: 10;
   padding: 3px 10px; border-radius: 10px;
   background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   color: #fff; font-size: 12px; font-weight: 500;
 }
 
 /* ========== Info Card ========== */
 .info-card {
-  background: #fff; padding: 16px; margin-top: -12px;
-  border-radius: 14px 14px 0 0; position: relative; z-index: 5;
+  background: #fff; padding: 18px 16px 16px;
+  margin-top: -14px; border-radius: 14px 14px 0 0;
+  position: relative; z-index: 5;
 }
-.price-row { display: flex; align-items: baseline; gap: 8px; }
-.price { font-size: 28px; font-weight: 800; color: #FF6B35; letter-spacing: -0.5px; }
+.price-row { display: flex; align-items: baseline; gap: 7px; }
+.price {
+  font-size: 26px; font-weight: 800; color: #1a1a1a;
+  letter-spacing: -0.5px; font-variant-numeric: tabular-nums;
+}
 .obo {
   font-size: 11px; font-weight: 700; color: #FF6B35;
   border: 1.5px solid #FF6B35; padding: 2px 6px; border-radius: 4px;
 }
 .title {
-  display: block; font-size: 18px; color: #1d1d1f; font-weight: 600;
-  margin-top: 10px; line-height: 1.5;
+  display: block; font-size: 17px; color: #1d1d1f; font-weight: 600;
+  margin-top: 9px; line-height: 1.45;
 }
-.tags { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+.tags { display: flex; gap: 6px; margin-top: 11px; flex-wrap: wrap; }
 .tag {
   font-size: 12px; padding: 4px 10px;
-  background: #f5f5f7; color: #666; border-radius: 6px;
+  background: #f5f5f7; color: #636366; border-radius: 6px;
+}
+.tag-loc {
+  display: inline-flex; align-items: center; gap: 4px; padding-left: 8px;
+}
+.loc-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #FF6B35; flex-shrink: 0;
 }
 
 /* ========== Sections ========== */
 .section {
-  background: #fff; padding: 16px; margin-top: 8px;
+  background: #fff; padding: 16px; margin-top: 7px;
 }
 .section-label {
   font-size: 14px; font-weight: 600; color: #1d1d1f;
   margin-bottom: 10px; display: block;
 }
 .desc-text {
-  font-size: 14px; color: #666; line-height: 1.7;
+  font-size: 14px; color: #636366; line-height: 1.7;
   &.clamped {
     display: -webkit-box; -webkit-line-clamp: 3;
     -webkit-box-orient: vertical; overflow: hidden;
@@ -262,33 +324,39 @@ function formatTime(dateStr: string): string {
 }
 .expand-btn {
   display: block; margin-top: 6px;
-  font-size: 13px; color: #FF6B35; cursor: pointer; font-weight: 500;
+  font-size: 13px; color: #1a1a1a; cursor: pointer;
+  font-weight: 500; text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* ========== Seller Card ========== */
 .seller-card { display: flex; flex-direction: column; gap: 14px; }
 .seller-row { display: flex; align-items: center; gap: 12px; }
-.seller-avatar { width: 48px; height: 48px; border-radius: 50%; background: #f0f0f0; flex-shrink: 0; }
+.seller-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: #f0f0f0; flex-shrink: 0;
+}
 .seller-info { flex: 1; }
-.seller-name { font-size: 16px; font-weight: 600; color: #1d1d1f; display: block; }
-.seller-meta { font-size: 12px; color: #999; margin-top: 3px; }
+.seller-name { font-size: 15px; font-weight: 600; color: #1d1d1f; display: block; }
+.seller-meta { font-size: 12px; color: #aeaeb2; margin-top: 3px; }
 .stats-row {
-  display: flex; gap: 24px;
-  padding-top: 12px; border-top: 1px solid #f0f0f0;
+  display: flex; gap: 28px;
+  padding-top: 13px; border-top: 1px solid rgba(0,0,0,0.06);
 }
 .stat { display: flex; align-items: baseline; gap: 4px; }
 .stat-num { font-size: 16px; font-weight: 700; color: #1d1d1f; }
-.stat-label { font-size: 12px; color: #999; }
+.stat-label { font-size: 12px; color: #aeaeb2; }
 
 /* ========== Bottom Action Bar ========== */
 .action-bar {
   position: fixed; bottom: 0; left: 0; right: 0;
   display: flex; align-items: center; gap: 16px;
-  padding: 12px 16px;
-  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  padding: 11px 16px;
+  padding-bottom: calc(11px + env(safe-area-inset-bottom, 0px));
   background: rgba(255,255,255,0.92);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid rgba(0,0,0,0.06);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-top: 0.5px solid rgba(0,0,0,0.06);
   z-index: 100;
   max-width: 640px;
   margin: 0 auto;
@@ -298,14 +366,32 @@ function formatTime(dateStr: string): string {
   padding: 0 10px; cursor: pointer;
   &:active { transform: scale(0.9); }
 }
-.fav-icon { font-size: 22px; transition: transform 0.2s; }
-.fav-label { font-size: 10px; color: #999; }
+
+/* CSS Heart Icon */
+.heart-icon {
+  width: 22px; height: 20px; position: relative;
+  &::before, &::after {
+    content: ''; position: absolute; top: 0;
+    width: 11px; height: 17px; border-radius: 11px 11px 0 0;
+    border: 2px solid #c7c7cc;
+    background: transparent;
+  }
+  &::before { left: 0; transform: rotate(-45deg); transform-origin: bottom right; }
+  &::after { right: 0; transform: rotate(45deg); transform-origin: bottom left; }
+
+  &.filled::before, &.filled::after {
+    border-color: #FF4D4F;
+    background: #FF4D4F;
+  }
+}
+
+.fav-label { font-size: 10px; color: #8e8e93; }
 .chat-btn {
-  flex: 1; height: 46px; background: #FF6B35; color: #fff;
-  border-radius: 23px; font-size: 16px; font-weight: 600;
+  flex: 1; height: 44px; background: #1a1a1a; color: #fff;
+  border-radius: 22px; font-size: 15px; font-weight: 600;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
-  &:active { opacity: 0.85; }
+  &:active { opacity: 0.8; }
 }
 
 /* ========== Loading ========== */
@@ -315,12 +401,12 @@ function formatTime(dateStr: string): string {
   height: 100vh; gap: 12px;
 }
 .loading-spinner {
-  width: 28px; height: 28px;
-  border: 3px solid #f0f0f0; border-top-color: #FF6B35;
-  border-radius: 50%; animation: spin 0.8s linear infinite;
+  width: 24px; height: 24px;
+  border: 2.5px solid #e8e8ed; border-top-color: #1a1a1a;
+  border-radius: 50%; animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-.loading-text { font-size: 14px; color: #999; }
+.loading-text { font-size: 13px; color: #aeaeb2; }
 
 /* ========== Desktop ========== */
 @media (min-width: 768px) {

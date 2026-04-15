@@ -1,26 +1,40 @@
 <template>
   <view class="page">
+    <view class="nav-back" @click="goBack">
+      <view class="back-arrow"></view>
+    </view>
     <view class="header">
-      <text class="logo">🏪</text>
+      <view class="logo-mark">
+        <view class="logo-letter">C</view>
+      </view>
       <text class="app-name">{{ t('app.name') }}</text>
       <text class="app-desc">{{ t('app.desc') }}</text>
     </view>
 
     <view class="form">
       <view class="tab-bar">
-        <text :class="['tab', { active: mode === 'login' }]" @click="mode = 'login'">{{ t('login.signIn') }}</text>
-        <text :class="['tab', { active: mode === 'signup' }]" @click="mode = 'signup'">{{ t('login.signUp') }}</text>
+        <view :class="['tab', { active: mode === 'login' }]" @click="mode = 'login'">
+          <text>{{ t('login.signIn') }}</text>
+          <view v-if="mode === 'login'" class="tab-line"></view>
+        </view>
+        <view :class="['tab', { active: mode === 'signup' }]" @click="mode = 'signup'">
+          <text>{{ t('login.signUp') }}</text>
+          <view v-if="mode === 'signup'" class="tab-line"></view>
+        </view>
       </view>
 
       <view v-if="mode === 'signup'" class="form-group">
+        <text class="form-label">{{ t('login.nickname') }}</text>
         <input v-model="nickname" :placeholder="t('login.nickname')" class="form-input" />
       </view>
 
       <view class="form-group">
+        <text class="form-label">{{ t('login.email') }}</text>
         <input v-model="email" :placeholder="t('login.email')" type="text" class="form-input" />
       </view>
 
       <view class="form-group">
+        <text class="form-label">{{ t('login.password') }}</text>
         <input v-model="password" :placeholder="t('login.password')" password class="form-input" />
       </view>
 
@@ -31,6 +45,10 @@
       <text class="agreement" v-if="mode === 'signup'">
         {{ t('login.agreement') }}
       </text>
+    </view>
+
+    <view class="footer">
+      <text class="footer-text">CAACI Community</text>
     </view>
   </view>
 </template>
@@ -47,6 +65,10 @@ const mode = ref<'login' | 'signup'>('login')
 const email = ref('')
 const password = ref('')
 const nickname = ref('')
+
+function goBack() {
+  uni.navigateBack({ fail: () => uni.switchTab({ url: '/pages/index/index' }) })
+}
 
 async function onSubmit() {
   if (!email.value.trim()) {
@@ -83,25 +105,104 @@ async function onSubmit() {
 </script>
 
 <style lang="scss" scoped>
-.page { min-height: 100vh; background: #fff; padding: 16px; max-width: 420px; margin: 0 auto; }
-.header { display: flex; flex-direction: column; align-items: center; padding: 56px 0 36px; }
-.logo { font-size: 48px; }
-.app-name { font-size: 24px; font-weight: 800; color: #FF6B35; margin-top: 12px; letter-spacing: 0.5px; }
-.app-desc { font-size: 14px; color: #999; margin-top: 4px; }
-.form { padding: 0 8px; }
-.tab-bar { display: flex; justify-content: center; gap: 32px; margin-bottom: 24px; }
-.tab { font-size: 17px; color: #bbb; padding-bottom: 8px; cursor: pointer;
-  &.active { color: #FF6B35; font-weight: 700; border-bottom: 2px solid #FF6B35; }
+.page {
+  min-height: 100vh; background: #fff;
+  padding: 0 24px;
+  max-width: 400px; margin: 0 auto;
+  display: flex; flex-direction: column;
 }
-.form-group { margin-bottom: 12px; }
-.form-input { width: 100%; height: 48px; background: #f5f5f5; border-radius: 12px; padding: 0 16px; font-size: 15px; }
-.submit-btn {
-  width: 100%; height: 48px; background: #FF6B35; color: #fff;
-  border-radius: 24px; font-size: 16px; font-weight: 600;
-  margin-top: 20px; border: none;
+
+.nav-back {
+  position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); left: 16px;
+  width: 36px; height: 36px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  &[disabled] { opacity: 0.5; }
-  &:active { opacity: 0.85; }
+  cursor: pointer; z-index: 10;
+  &:active { background: #f2f2f7; }
 }
-.agreement { display: block; text-align: center; font-size: 12px; color: #bbb; margin-top: 20px; }
+.back-arrow {
+  width: 10px; height: 10px;
+  border-left: 2px solid #1a1a1a; border-bottom: 2px solid #1a1a1a;
+  transform: rotate(45deg); margin-left: 3px;
+}
+
+.header {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 72px 0 40px;
+  padding-top: calc(72px + env(safe-area-inset-top, 0px));
+}
+.logo-mark {
+  width: 56px; height: 56px; border-radius: 14px;
+  background: #1a1a1a;
+  display: flex; align-items: center; justify-content: center;
+}
+.logo-letter {
+  font-size: 28px; font-weight: 800; color: #fff;
+  letter-spacing: -1px;
+}
+.app-name {
+  font-size: 22px; font-weight: 700; color: #1a1a1a;
+  margin-top: 16px; letter-spacing: -0.02em;
+}
+.app-desc {
+  font-size: 13px; color: #aeaeb2; margin-top: 5px;
+  letter-spacing: 0.01em;
+}
+
+.form { flex: 1; }
+
+.tab-bar {
+  display: flex; gap: 28px; margin-bottom: 28px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.tab {
+  position: relative; padding-bottom: 12px; cursor: pointer;
+  text { font-size: 16px; color: #c7c7cc; font-weight: 500; }
+  &.active text { color: #1a1a1a; font-weight: 600; }
+}
+.tab-line {
+  position: absolute; bottom: -1px; left: 0; right: 0;
+  height: 2px; background: #1a1a1a; border-radius: 1px;
+}
+
+.form-group { margin-bottom: 18px; }
+.form-label {
+  display: block; font-size: 13px; color: #8e8e93;
+  margin-bottom: 7px; font-weight: 500;
+}
+.form-input {
+  width: 100%; height: 48px;
+  background: #f7f7f8; border-radius: 12px;
+  padding: 0 16px; font-size: 15px; color: #1a1a1a;
+  border: 1px solid transparent;
+  transition: border-color 0.15s, background 0.15s;
+  &:focus {
+    border-color: rgba(0,0,0,0.12);
+    background: #fff;
+  }
+}
+
+.submit-btn {
+  width: 100%; height: 48px;
+  background: #1a1a1a; color: #fff;
+  border-radius: 24px; font-size: 15px; font-weight: 600;
+  margin-top: 24px; border: none;
+  display: flex; align-items: center; justify-content: center;
+  letter-spacing: 0.01em;
+  &[disabled] { opacity: 0.35; }
+  &:active { opacity: 0.8; }
+}
+
+.agreement {
+  display: block; text-align: center;
+  font-size: 12px; color: #c7c7cc; margin-top: 20px;
+  line-height: 1.5;
+}
+
+.footer {
+  padding: 24px 0; text-align: center;
+}
+.footer-text {
+  font-size: 11px; color: #d1d1d6;
+  letter-spacing: 0.05em; font-weight: 500;
+}
 </style>

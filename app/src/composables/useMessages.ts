@@ -125,6 +125,23 @@ export function useMessages() {
       .eq('is_read', false)
   }
 
+  // Fetch conversation detail (for chat header context)
+  async function fetchConversationDetail(conversationId: string) {
+    const { data, error } = await supabase
+      .from('conversations')
+      .select(`
+        *,
+        item:items(id, title, images, price),
+        buyer:profiles!conversations_buyer_id_fkey(id, nickname, avatar_url),
+        seller:profiles!conversations_seller_id_fkey(id, nickname, avatar_url)
+      `)
+      .eq('id', conversationId)
+      .single()
+
+    if (error) throw error
+    return data as Conversation
+  }
+
   return {
     conversations,
     messages,
@@ -135,5 +152,6 @@ export function useMessages() {
     getOrCreateConversation,
     subscribeToMessages,
     markAsRead,
+    fetchConversationDetail,
   }
 }

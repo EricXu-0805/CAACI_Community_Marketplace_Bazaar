@@ -10,7 +10,10 @@
       </view>
       <view class="desktop-right">
         <text class="lang-btn" @click="toggleLang">{{ t('lang.switch') }}</text>
-        <text class="nav-location">📍 {{ t('loc.uiuc') }}</text>
+        <view class="nav-loc-wrap">
+          <view class="nav-loc-dot"></view>
+          <text class="nav-location">{{ t('loc.uiuc') }}</text>
+        </view>
       </view>
     </view>
   </view>
@@ -32,6 +35,8 @@ function go(url: string) { uni.switchTab({ url }) }
 .nav-link:hover { background: #f5f5f7; color: #1d1d1f; }
 .nav-link.active { color: #1a1a1a; font-weight: 600; background: #f2f2f7; }
 .desktop-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.nav-loc-wrap { display: flex; align-items: center; gap: 5px; }
+.nav-loc-dot { width: 5px; height: 5px; border-radius: 50%; background: #FF6B35; flex-shrink: 0; }
 .nav-location { font-size: 13px; color: #86868b; }
 .lang-btn { font-size: 11px; color: #8e8e93; padding: 3px 9px; border: 1px solid #d1d1d6; border-radius: 6px; cursor: pointer; font-weight: 500; }
 .lang-btn:active { background: #f2f2f7; }
