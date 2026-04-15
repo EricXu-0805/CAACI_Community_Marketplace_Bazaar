@@ -77,6 +77,9 @@
       <view class="form-group row">
         <text class="label">{{ t('publish.location') }}</text>
         <input v-model="form.location" :placeholder="t('publish.locationPlaceholder')" class="form-input flex-input" />
+        <view class="loc-detect" @click="onDetectLocation">
+          <text>{{ detectingLoc ? '...' : '⊙' }}</text>
+        </view>
       </view>
 
       <view class="form-group row toggle-row" @click="form.negotiable = !form.negotiable">
@@ -101,12 +104,13 @@
 import { ref, reactive } from 'vue'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
+import { useLocation } from '../../composables/useLocation'
 import DesktopNav from '../../components/DesktopNav.vue'
-
 import { useItems } from '../../composables/useItems'
 import { type ItemCategory, type ItemCondition } from '../../types'
 
 const { t } = useI18n()
+const { detectLocation, detecting: detectingLoc } = useLocation()
 const { requireAuth } = useAuth()
 const { createItem, uploadImages } = useItems()
 
@@ -139,6 +143,11 @@ function chooseImage() {
 
 function removeImage(index: number) {
   imageList.value.splice(index, 1)
+}
+
+async function onDetectLocation() {
+  const loc = await detectLocation()
+  if (loc) form.location = loc
 }
 
 async function onSubmit() {
@@ -175,7 +184,7 @@ async function onSubmit() {
 </script>
 
 <style lang="scss" scoped>
-.page { min-height: 100vh; background: #f2f2f7; padding-bottom: 72px; max-width: 480px; margin: 0 auto; }
+.page { min-height: 100vh; background: #f7f7f8; padding-bottom: 72px; max-width: 480px; margin: 0 auto; }
 .form { background: #fff; }
 .image-section { padding: 16px; }
 .image-list { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -225,24 +234,33 @@ async function onSubmit() {
 }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 .sel-pill {
-  padding: 8px 16px; border-radius: 18px; font-size: 13px;
-  background: #f5f5f5; color: #666; cursor: pointer; transition: all 0.15s;
-  &.active { background: #FFF0E8; color: #FF6B35; font-weight: 600; }
-  &:active { transform: scale(0.95); }
+  padding: 8px 15px; border-radius: 8px; font-size: 13px;
+  background: #f2f2f7; color: #636366; cursor: pointer; transition: all 0.12s; font-weight: 500;
+  &.active { background: #1a1a1a; color: #fff; }
+  &:active { transform: scale(0.96); }
+}
+.loc-detect {
+  width: 36px; height: 36px; border-radius: 8px; background: #f2f2f7;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; cursor: pointer; margin-left: 6px;
+  font-size: 16px; color: #636366;
+  &:active { background: #e5e5ea; }
 }
 
 .submit-bar {
   position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-  width: 100%; max-width: 480px; padding: 12px 16px;
-  background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  width: 100%; max-width: 480px; padding: 10px 16px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  background: rgba(252,252,253,0.9);
+  backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-top: 0.5px solid rgba(0,0,0,0.06);
 }
 .submit-btn {
-  width: 100%; height: 48px; background: #FF6B35; color: #fff;
-  border-radius: 24px; font-size: 16px; font-weight: 600;
+  width: 100%; height: 48px; background: #1a1a1a; color: #fff;
+  border-radius: 12px; font-size: 16px; font-weight: 600;
   display: flex; align-items: center; justify-content: center; border: none;
-  &[disabled] { opacity: 0.5; }
-  &:active { opacity: 0.85; }
+  &[disabled] { opacity: 0.35; }
+  &:active { opacity: 0.8; }
 }
 
 .toggle-row { cursor: pointer; -webkit-tap-highlight-color: transparent; }

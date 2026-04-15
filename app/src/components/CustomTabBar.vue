@@ -1,21 +1,19 @@
 <template>
   <view class="tabbar">
     <view class="tab" @click="go('/pages/index/index')">
-      <text :class="['tab-icon', { active: current === 'index' }]">🏠</text>
-      <text :class="['tab-label', { active: current === 'index' }]">{{ t('nav.home') }}</text>
+      <view :class="['ico', 'ico-home', { active: current === 'index' }]"></view>
+      <text :class="['lbl', { active: current === 'index' }]">{{ t('nav.home') }}</text>
     </view>
     <view class="tab" @click="go('/pages/messages/index')">
-      <text :class="['tab-icon', { active: current === 'messages' }]">💬</text>
-      <text :class="['tab-label', { active: current === 'messages' }]">{{ t('nav.messages') }}</text>
+      <view :class="['ico', 'ico-msg', { active: current === 'messages' }]"></view>
+      <text :class="['lbl', { active: current === 'messages' }]">{{ t('nav.messages') }}</text>
     </view>
-    <view class="tab publish-tab" @click="go('/pages/publish/index')">
-      <view class="publish-btn">
-        <text class="publish-icon">+</text>
-      </view>
+    <view class="tab fab-slot" @click="go('/pages/publish/index')">
+      <view class="fab"><view class="fab-plus"></view></view>
     </view>
     <view class="tab" @click="go('/pages/profile/index')">
-      <text :class="['tab-icon', { active: current === 'profile' }]">👤</text>
-      <text :class="['tab-label', { active: current === 'profile' }]">{{ t('nav.profile') }}</text>
+      <view :class="['ico', 'ico-me', { active: current === 'profile' }]"></view>
+      <text :class="['lbl', { active: current === 'profile' }]">{{ t('nav.profile') }}</text>
     </view>
   </view>
 </template>
@@ -29,23 +27,69 @@ function go(url: string) { uni.switchTab({ url }) }
 
 <style scoped>
 .tabbar {
-  display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 56px;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  background: rgba(255,255,255,0.95); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid rgba(0,0,0,0.06); z-index: 999; align-items: flex-end; justify-content: space-around;
+  display: none; position: fixed; bottom: 0; left: 0; right: 0;
+  height: 50px; padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: rgba(252,252,253,0.88);
+  backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-top: 0.5px solid rgba(0,0,0,0.08);
+  z-index: 999; align-items: flex-end; justify-content: space-around;
 }
-.tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 0 4px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.tab-icon { font-size: 22px; }
-.tab-label { font-size: 10px; color: #999; margin-top: 1px; }
-.tab-label.active { color: #FF6B35; font-weight: 600; }
-.publish-tab { position: relative; }
-.publish-btn {
-  width: 48px; height: 48px; border-radius: 50%;
-  background: linear-gradient(135deg, #FF6B35, #FF8F65);
-  display: flex; align-items: center; justify-content: center; margin-top: -20px;
-  box-shadow: 0 4px 12px rgba(255,107,53,0.35); transition: transform 0.15s;
+.tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 4px 0 2px; cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
-.publish-btn:active { transform: scale(0.92); }
-.publish-icon { font-size: 28px; color: #fff; font-weight: 300; }
+.lbl { font-size: 10px; color: #8e8e93; margin-top: 2px; font-weight: 500; }
+.lbl.active { color: #FF6B35; }
+
+.ico { width: 24px; height: 24px; position: relative; }
+
+.ico-home::before {
+  content: ''; position: absolute; bottom: 0; left: 2px; right: 2px; height: 12px;
+  border: 1.8px solid #8e8e93; border-top: none; border-radius: 0 0 3px 3px;
+}
+.ico-home::after {
+  content: ''; position: absolute; top: 2px; left: 50%; transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 9px solid transparent; border-right: 9px solid transparent;
+  border-bottom: 8px solid #8e8e93;
+}
+.ico-home.active::before { border-color: #FF6B35; }
+.ico-home.active::after { border-bottom-color: #FF6B35; }
+
+.ico-msg::before {
+  content: ''; position: absolute; top: 2px; left: 1px;
+  width: 20px; height: 15px;
+  border: 1.8px solid #8e8e93; border-radius: 10px 10px 10px 2px;
+}
+.ico-msg.active::before { border-color: #FF6B35; }
+
+.ico-me::before {
+  content: ''; position: absolute; top: 1px; left: 7px;
+  width: 10px; height: 10px; border: 1.8px solid #8e8e93; border-radius: 50%;
+}
+.ico-me::after {
+  content: ''; position: absolute; bottom: 0; left: 2px;
+  width: 20px; height: 9px;
+  border: 1.8px solid #8e8e93; border-radius: 10px 10px 0 0; border-bottom: none;
+}
+.ico-me.active::before, .ico-me.active::after { border-color: #FF6B35; }
+
+.fab-slot { position: relative; }
+.fab {
+  width: 42px; height: 42px; border-radius: 13px;
+  background: #FF6B35;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: -12px;
+  box-shadow: 0 2px 8px rgba(255,107,53,0.28);
+  transition: transform 0.12s;
+}
+.fab:active { transform: scale(0.9); }
+.fab-plus { width: 18px; height: 18px; position: relative; }
+.fab-plus::before, .fab-plus::after {
+  content: ''; position: absolute; background: #fff; border-radius: 1px;
+}
+.fab-plus::before { width: 18px; height: 2px; top: 8px; left: 0; }
+.fab-plus::after { width: 2px; height: 18px; top: 0; left: 8px; }
+
 @media (max-width: 767px) { .tabbar { display: flex; } }
 </style>

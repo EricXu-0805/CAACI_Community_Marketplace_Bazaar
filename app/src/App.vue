@@ -11,18 +11,25 @@ onLaunch(() => {
 
 <style>
 page {
-  background-color: #f5f5f7;
+  background-color: #f7f7f8;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
     'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  font-size: 16px;
-  line-height: 1.6;
-  color: #1d1d1f;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #1a1a1a;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
 }
 
-/* Hide native tabBar — replaced by CustomTabBar on mobile, DesktopNav on desktop */
 uni-tabbar, .uni-tabbar, .uni-tabbar-bottom {
   display: none !important;
+}
+
+view, text { box-sizing: border-box; }
+
+input, textarea {
+  font-family: inherit;
+  letter-spacing: inherit;
 }
 </style>
