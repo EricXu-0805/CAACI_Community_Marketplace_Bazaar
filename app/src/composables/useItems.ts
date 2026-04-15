@@ -95,9 +95,12 @@ export function useItems() {
     images: string[]
     negotiable?: boolean
   }) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) throw new Error('Not authenticated')
+
     const { data, error } = await supabase
       .from('items')
-      .insert(item)
+      .insert({ ...item, user_id: session.user.id })
       .select()
       .single()
 
