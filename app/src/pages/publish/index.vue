@@ -93,7 +93,7 @@
         {{ submitting ? t('publish.submitting') : t('publish.submit') }}
       </button>
     </view>
-    <CustomTabBar current="publish" />
+
   </view>
 </template>
 
@@ -102,7 +102,7 @@ import { ref, reactive } from 'vue'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import DesktopNav from '../../components/DesktopNav.vue'
-import CustomTabBar from '../../components/CustomTabBar.vue'
+
 import { useItems } from '../../composables/useItems'
 import { type ItemCategory, type ItemCondition } from '../../types'
 

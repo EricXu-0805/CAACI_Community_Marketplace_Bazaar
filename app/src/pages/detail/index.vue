@@ -93,6 +93,7 @@ import { useMessages } from '../../composables/useMessages'
 import { useFavorites } from '../../composables/useFavorites'
 import { useI18n } from '../../composables/useI18n'
 import { CATEGORY_LABELS, CONDITION_LABELS, type Item } from '../../types'
+import { MOCK_ITEMS } from '../../composables/useMockData'
 
 const { t } = useI18n()
 const { fetchItem } = useItems()
@@ -104,6 +105,7 @@ const categoryLabels = CATEGORY_LABELS
 const conditionLabels = CONDITION_LABELS
 
 const item = ref<Item | null>(null)
+const isMockItem = ref(false)
 const isFav = ref(false)
 const favCount = ref(0)
 const currentImg = ref(0)
@@ -111,13 +113,21 @@ const descExpanded = ref(false)
 
 onLoad(async (options) => {
   if (options?.id) {
+    const mockItem = MOCK_ITEMS.find(m => m.id === options.id)
+    if (mockItem) {
+      item.value = mockItem
+      isMockItem.value = true
+      favCount.value = mockItem.favorite_count || 0
+      return
+    }
+
     try {
       if (currentUser.value) {
         await loadMyFavorites(currentUser.value.id)
       }
-      item.value = await fetchItem(options.id)
-      isFav.value = checkFavorited(options.id)
-      favCount.value = await getFavoriteCount(options.id)
+      item.value = await fetchItem(options.id!)
+      isFav.value = checkFavorited(options.id!)
+      favCount.value = await getFavoriteCount(options.id!)
     } catch (error) {
       uni.showToast({ title: t('detail.notFound'), icon: 'none' })
       setTimeout(() => uni.navigateBack(), 1500)
