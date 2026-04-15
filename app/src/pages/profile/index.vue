@@ -31,43 +31,81 @@
         </view>
       </view>
 
+      <!-- Tappable stats / tabs -->
       <view class="stats-row">
-        <view class="stat-item">
-          <text class="stat-num">{{ myItems.length }}</text>
+        <view :class="['stat-item', { active: currentTab === 'listed' }]" @click="currentTab = 'listed'">
+          <text class="stat-num">{{ listedItems.length }}</text>
           <text class="stat-label">{{ t('profile.listed') }}</text>
         </view>
-        <view class="stat-item">
-          <text class="stat-num">{{ favCount }}</text>
+        <view :class="['stat-item', { active: currentTab === 'saved' }]" @click="currentTab = 'saved'">
+          <text class="stat-num">{{ savedItems.length }}</text>
           <text class="stat-label">{{ t('profile.saved') }}</text>
         </view>
-        <view class="stat-item">
-          <text class="stat-num">{{ soldCount }}</text>
+        <view :class="['stat-item', { active: currentTab === 'sold' }]" @click="currentTab = 'sold'">
+          <text class="stat-num">{{ soldItems.length }}</text>
           <text class="stat-label">{{ t('profile.sold') }}</text>
         </view>
       </view>
     </view>
 
+    <!-- Content list based on active tab -->
     <view v-if="isLoggedIn" class="section">
-      <view class="section-header">
-        <text class="section-title">{{ t('profile.myListings') }}</text>
-      </view>
-
-      <view v-if="myItems.length === 0" class="empty-items">
-        <view class="empty-bag"></view>
-        <text class="empty-text">{{ t('profile.noListings') }}</text>
-      </view>
-
-      <view v-else class="my-items">
-        <view v-for="item in myItems" :key="item.id" class="my-item" @click="goDetail(item.id)">
-          <image :src="item.images[0] || '/static/placeholder.png'" class="item-img" mode="aspectFill" />
-          <view class="item-info">
-            <text class="item-title">{{ item.title }}</text>
-            <text class="item-price">${{ item.price }}</text>
-            <text :class="['item-status', item.status]">{{ t('status.' + item.status) }}</text>
+      <!-- Listed items -->
+      <view v-if="currentTab === 'listed'">
+        <view v-if="listedItems.length === 0" class="empty-items">
+          <view class="empty-bag"></view>
+          <text class="empty-text">{{ t('profile.noListings') }}</text>
+        </view>
+        <view v-else class="my-items">
+          <view v-for="item in listedItems" :key="item.id" class="my-item" @click="goDetail(item.id)">
+            <image :src="item.images?.[0] || '/static/placeholder.png'" class="item-img" mode="aspectFill" />
+            <view class="item-info">
+              <text class="item-title">{{ item.title }}</text>
+              <text class="item-price">${{ item.price }}</text>
+              <text :class="['item-status', item.status]">{{ t('status.' + item.status) }}</text>
+            </view>
+            <view class="item-actions" v-if="item.status === 'active'">
+              <view class="mark-sold-btn" @click.stop="markAsSold(item.id)">
+                <text>{{ t('profile.markSold') }}</text>
+              </view>
+            </view>
           </view>
-          <view class="item-actions" v-if="item.status === 'active'">
-            <view class="mark-sold-btn" @click.stop="markAsSold(item.id)">
-              <text>{{ t('profile.markSold') }}</text>
+        </view>
+      </view>
+
+      <!-- Saved / Favorited items -->
+      <view v-if="currentTab === 'saved'">
+        <view v-if="savedItems.length === 0" class="empty-items">
+          <view class="empty-heart"></view>
+          <text class="empty-text">{{ t('profile.noSaved') }}</text>
+        </view>
+        <view v-else class="my-items">
+          <view v-for="item in savedItems" :key="item.id" class="my-item" @click="goDetail(item.id)">
+            <image :src="item.images?.[0] || '/static/placeholder.png'" class="item-img" mode="aspectFill" />
+            <view class="item-info">
+              <text class="item-title">{{ item.title }}</text>
+              <text class="item-price">${{ item.price }}</text>
+              <view class="item-seller" v-if="item.profile">
+                <text class="seller-name">{{ item.profile.nickname }}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- Sold items -->
+      <view v-if="currentTab === 'sold'">
+        <view v-if="soldItems.length === 0" class="empty-items">
+          <view class="empty-check"></view>
+          <text class="empty-text">{{ t('profile.noSold') }}</text>
+        </view>
+        <view v-else class="my-items">
+          <view v-for="item in soldItems" :key="item.id" class="my-item" @click="goDetail(item.id)">
+            <image :src="item.images?.[0] || '/static/placeholder.png'" class="item-img" mode="aspectFill" />
+            <view class="item-info">
+              <text class="item-title">{{ item.title }}</text>
+              <text class="item-price">${{ item.price }}</text>
+              <text class="item-status sold">{{ t('status.sold') }}</text>
             </view>
           </view>
         </view>
@@ -97,16 +135,20 @@ import type { Item } from '../../types'
 const { t } = useI18n()
 const { currentUser, isLoggedIn, signOut } = useAuth()
 const { fetchMyItems, updateItemStatus } = useItems()
-const { favoriteIds, loadMyFavorites } = useFavorites()
+const { loadMyFavorites, fetchMyFavoriteItems } = useFavorites()
 
+const currentTab = ref<'listed' | 'saved' | 'sold'>('listed')
 const myItems = ref<Item[]>([])
-const favCount = computed(() => favoriteIds.value.size)
-const soldCount = computed(() => myItems.value.filter(i => i.status === 'sold').length)
+const savedItems = ref<Item[]>([])
+
+const listedItems = computed(() => myItems.value.filter(i => i.status !== 'sold'))
+const soldItems = computed(() => myItems.value.filter(i => i.status === 'sold'))
 
 onShow(async () => {
   if (currentUser.value) {
     myItems.value = await fetchMyItems(currentUser.value.id)
     await loadMyFavorites(currentUser.value.id)
+    savedItems.value = await fetchMyFavoriteItems(currentUser.value.id)
   }
 })
 
@@ -119,19 +161,16 @@ function goDetail(id: string) {
 }
 
 function onEditProfile() {
-  // Future: navigate to edit profile page
   uni.showToast({ title: t('profile.editSoon'), icon: 'none' })
 }
 
 async function markAsSold(id: string) {
   try {
-    if (updateItemStatus) {
-      await updateItemStatus(id, 'sold')
-      if (currentUser.value) {
-        myItems.value = await fetchMyItems(currentUser.value.id)
-      }
-      uni.showToast({ title: t('profile.markedSold'), icon: 'success' })
+    await updateItemStatus(id, 'sold')
+    if (currentUser.value) {
+      myItems.value = await fetchMyItems(currentUser.value.id)
     }
+    uni.showToast({ title: t('profile.markedSold'), icon: 'success' })
   } catch {
     uni.showToast({ title: t('profile.markFail'), icon: 'none' })
   }
@@ -160,11 +199,9 @@ async function markAsSold(id: string) {
   align-items: center; padding: 64px 16px; gap: 12px;
 }
 
-/* CSS Person Icon */
 .avatar-placeholder {
   width: 72px; height: 72px; border-radius: 50%;
   background: #f2f2f7; position: relative;
-  display: flex; align-items: center; justify-content: center;
 }
 .ap-head {
   position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
@@ -185,7 +222,7 @@ async function markAsSold(id: string) {
   &:active { opacity: 0.8; }
 }
 
-.profile-section { background: #fff; padding: 22px 16px 18px; }
+.profile-section { background: #fff; padding: 22px 16px 0; }
 .user-header { display: flex; align-items: center; gap: 14px; }
 .avatar {
   width: 58px; height: 58px; border-radius: 50%;
@@ -202,7 +239,6 @@ async function markAsSold(id: string) {
 }
 .location { font-size: 13px; color: #aeaeb2; }
 
-/* Edit Profile Button */
 .edit-btn {
   width: 36px; height: 36px; border-radius: 50%;
   background: #f2f2f7;
@@ -214,8 +250,7 @@ async function markAsSold(id: string) {
   width: 14px; height: 14px; position: relative;
   &::before {
     content: ''; position: absolute; bottom: 0; left: 0;
-    width: 14px; height: 2px; background: #636366;
-    border-radius: 1px;
+    width: 14px; height: 2px; background: #636366; border-radius: 1px;
   }
   &::after {
     content: ''; position: absolute; top: 0; right: 2px;
@@ -225,23 +260,34 @@ async function markAsSold(id: string) {
   }
 }
 
+/* ========== Stats / Tabs ========== */
 .stats-row {
-  display: flex; margin-top: 18px; padding-top: 18px;
+  display: flex; margin-top: 18px;
   border-top: 0.5px solid rgba(0,0,0,0.06);
 }
-.stat-item { flex: 1; text-align: center; }
+.stat-item {
+  flex: 1; text-align: center; padding: 14px 0 12px;
+  cursor: pointer; position: relative;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.1s;
+  &:active { background: #f7f7f8; }
+  &.active::after {
+    content: ''; position: absolute; bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 20px; height: 2px; background: #1a1a1a; border-radius: 1px;
+  }
+}
 .stat-num { font-size: 20px; font-weight: 700; color: #1a1a1a; display: block; }
-.stat-label { font-size: 12px; color: #aeaeb2; margin-top: 3px; }
+.stat-label { font-size: 12px; color: #aeaeb2; margin-top: 3px; display: block; }
+.stat-item.active .stat-label { color: #1a1a1a; }
 
-.section { background: #fff; margin-top: 7px; }
-.section-header { padding: 14px 16px; border-bottom: 0.5px solid rgba(0,0,0,0.06); }
-.section-title { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+/* ========== Content Section ========== */
+.section { background: #fff; margin-top: 7px; min-height: 200px; }
 
 .empty-items {
   display: flex; flex-direction: column; align-items: center;
-  padding: 36px 16px; gap: 10px;
+  padding: 48px 16px; gap: 10px;
 }
-/* CSS Bag Icon */
 .empty-bag {
   width: 28px; height: 32px; border: 2px solid #d1d1d6;
   border-radius: 4px; position: relative;
@@ -252,8 +298,29 @@ async function markAsSold(id: string) {
     border-radius: 8px 8px 0 0;
   }
 }
+.empty-heart {
+  width: 24px; height: 22px; position: relative;
+  &::before, &::after {
+    content: ''; position: absolute; top: 0;
+    width: 12px; height: 18px; border-radius: 12px 12px 0 0;
+    border: 2px solid #d1d1d6;
+  }
+  &::before { left: 0; transform: rotate(-45deg); transform-origin: bottom right; }
+  &::after { right: 0; transform: rotate(45deg); transform-origin: bottom left; }
+}
+.empty-check {
+  width: 24px; height: 24px; border: 2px solid #d1d1d6;
+  border-radius: 50%; position: relative;
+  &::after {
+    content: ''; position: absolute; top: 5px; left: 4px;
+    width: 12px; height: 7px;
+    border-left: 2px solid #d1d1d6; border-bottom: 2px solid #d1d1d6;
+    transform: rotate(-45deg);
+  }
+}
 .empty-text { font-size: 14px; color: #aeaeb2; }
 
+.my-items {}
 .my-item {
   display: flex; padding: 13px 16px;
   border-bottom: 0.5px solid rgba(0,0,0,0.06);
@@ -271,6 +338,8 @@ async function markAsSold(id: string) {
   -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;
 }
 .item-price { font-size: 16px; font-weight: 700; color: #1a1a1a; }
+.item-seller { margin-top: 2px; }
+.seller-name { font-size: 12px; color: #aeaeb2; }
 .item-status {
   font-size: 11px; align-self: flex-start; padding: 2px 8px; border-radius: 4px;
   &.active { color: #34C759; background: rgba(52,199,89,0.1); }
@@ -278,9 +347,7 @@ async function markAsSold(id: string) {
   &.sold { color: #8e8e93; background: #f2f2f7; }
 }
 
-.item-actions {
-  display: flex; align-items: center; flex-shrink: 0;
-}
+.item-actions { display: flex; align-items: center; flex-shrink: 0; }
 .mark-sold-btn {
   padding: 6px 12px; border-radius: 6px;
   background: #f2f2f7; cursor: pointer;

@@ -11,7 +11,7 @@ try {
 
 const messages: Record<Lang, Record<string, string>> = {
   en: {
-    'app.name': 'CAACI Bazaar',
+    'app.name': 'Illini Market',
     'app.desc': 'UIUC Community Marketplace',
     'app.user': 'User',
     'nav.home': 'Home',
@@ -116,6 +116,9 @@ const messages: Record<Lang, Record<string, string>> = {
     'profile.markSold': 'Mark Sold',
     'profile.markedSold': 'Marked as sold',
     'profile.markFail': 'Failed to update',
+    'profile.noSaved': 'No saved items yet',
+    'profile.noSold': 'No sold items yet',
+    'msg.newMessage': 'New message',
     'status.active': 'Active',
     'status.reserved': 'Reserved',
     'status.sold': 'Sold',
@@ -140,7 +143,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'lang.switch': '中文',
   },
   zh: {
-    'app.name': 'CAACI 集市',
+    'app.name': 'Illini 集市',
     'app.desc': 'UIUC 华人社区二手交易平台',
     'app.user': '用户',
     'nav.home': '首页',
@@ -245,6 +248,9 @@ const messages: Record<Lang, Record<string, string>> = {
     'profile.markSold': '标记已售',
     'profile.markedSold': '已标记为售出',
     'profile.markFail': '更新失败',
+    'profile.noSaved': '还没有收藏的商品',
+    'profile.noSold': '还没有已售商品',
+    'msg.newMessage': '收到新消息',
     'status.active': '在售',
     'status.reserved': '已预定',
     'status.sold': '已售出',

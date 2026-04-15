@@ -7,7 +7,10 @@
     <view class="tab" @click="go('/pages/messages/index')">
       <view class="ico-wrap">
         <view :class="['ico', 'ico-msg', { active: current === 'messages' }]"></view>
-        <view v-if="unreadCount > 0" class="badge-dot"></view>
+        <view v-if="unreadCount > 0" class="badge-dot">
+          <text v-if="unreadCount <= 99">{{ unreadCount }}</text>
+          <text v-else>99+</text>
+        </view>
       </view>
       <text :class="['lbl', { active: current === 'messages' }]">{{ t('nav.messages') }}</text>
     </view>
@@ -22,36 +25,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
 import { useI18n } from '../composables/useI18n'
-import { useSupabase } from '../composables/useSupabase'
-import { useAuth } from '../composables/useAuth'
+import { useUnread } from '../composables/useUnread'
 
 defineProps<{ current: string }>()
 const { t } = useI18n()
-const { supabase } = useSupabase()
-const { currentUser } = useAuth()
-
-const unreadCount = ref(0)
-
-onMounted(async () => {
-  if (!currentUser.value) return
-  try {
-    const { count } = await supabase
-      .from('messages')
-      .select('*', { count: 'exact', head: true })
-      .neq('sender_id', currentUser.value.id)
-      .eq('is_read', false)
-      .in('conversation_id',
-        (await supabase
-          .from('conversations')
-          .select('id')
-          .or(`buyer_id.eq.${currentUser.value.id},seller_id.eq.${currentUser.value.id}`)
-        ).data?.map((c: any) => c.id) || []
-      )
-    unreadCount.value = count || 0
-  } catch {}
-})
+const { unreadCount } = useUnread()
 
 function go(url: string) { uni.switchTab({ url }) }
 </script>
@@ -107,10 +86,14 @@ function go(url: string) { uni.switchTab({ url }) }
 .ico-me.active::before, .ico-me.active::after { border-color: #1a1a1a; }
 
 .badge-dot {
-  position: absolute; top: 0; right: 0;
-  width: 8px; height: 8px; border-radius: 50%;
-  background: #FF3B30;
+  position: absolute; top: -4px; right: -8px;
+  min-width: 16px; height: 16px; border-radius: 8px;
+  background: #FF3B30; padding: 0 4px;
+  display: flex; align-items: center; justify-content: center;
   border: 1.5px solid rgba(252,252,253,0.88);
+}
+.badge-dot text {
+  font-size: 9px; color: #fff; font-weight: 700; line-height: 1;
 }
 
 .fab-slot { position: relative; }

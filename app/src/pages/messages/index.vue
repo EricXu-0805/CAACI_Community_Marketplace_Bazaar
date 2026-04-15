@@ -66,16 +66,19 @@ import { useI18n } from '../../composables/useI18n'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import { useMessages } from '../../composables/useMessages'
+import { useUnread } from '../../composables/useUnread'
 
 const { t } = useI18n()
 import type { Conversation, Profile } from '../../types'
 
 const { currentUser, isLoggedIn } = useAuth()
 const { conversations, loading, fetchConversations } = useMessages()
+const { refreshUnreadCount } = useUnread()
 
 onShow(() => {
   if (currentUser.value) {
     fetchConversations(currentUser.value.id)
+    refreshUnreadCount()
   }
 })
 

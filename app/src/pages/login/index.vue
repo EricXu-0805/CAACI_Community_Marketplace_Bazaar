@@ -5,7 +5,7 @@
     </view>
     <view class="header">
       <view class="logo-mark">
-        <view class="logo-letter">C</view>
+        <view class="logo-letter">I</view>
       </view>
       <text class="app-name">{{ t('app.name') }}</text>
       <text class="app-desc">{{ t('app.desc') }}</text>
@@ -48,7 +48,7 @@
     </view>
 
     <view class="footer">
-      <text class="footer-text">CAACI Community</text>
+      <text class="footer-text">Illini Market</text>
     </view>
   </view>
 </template>

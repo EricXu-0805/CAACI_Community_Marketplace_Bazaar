@@ -59,6 +59,19 @@ export function useFavorites() {
     return count || 0
   }
 
+  async function fetchMyFavoriteItems(userId: string) {
+    const { data } = await supabase
+      .from('favorites')
+      .select('item_id, item:items(*, profile:profiles(*))')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (!data) return []
+    return data
+      .map((f: any) => f.item)
+      .filter(Boolean) as import('../types').Item[]
+  }
+
   return {
     favoriteIds,
     loading,
@@ -66,5 +79,6 @@ export function useFavorites() {
     isFavorited,
     toggleFavorite,
     getFavoriteCount,
+    fetchMyFavoriteItems,
   }
 }

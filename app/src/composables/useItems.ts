@@ -75,12 +75,7 @@ export function useItems() {
 
     if (error) throw error
 
-    // Increment view count
-    supabase
-      .from('items')
-      .update({ view_count: (data as Item).view_count + 1 })
-      .eq('id', id)
-      .then() // fire and forget
+    supabase.rpc('increment_view_count', { item_id: id }).then(() => {}, () => {})
 
     return data as Item
   }
@@ -168,10 +163,14 @@ export function useItems() {
 
   // Update item status (e.g., mark as sold)
   async function updateItemStatus(id: string, status: string) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) throw new Error('Not authenticated')
+
     const { data, error } = await supabase
       .from('items')
       .update({ status })
       .eq('id', id)
+      .eq('user_id', session.user.id)
       .select()
       .single()
 
