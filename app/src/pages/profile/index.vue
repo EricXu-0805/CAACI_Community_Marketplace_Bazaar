@@ -4,8 +4,8 @@
 
     <view v-if="!isLoggedIn" class="login-section">
       <view class="avatar-placeholder">👤</view>
-      <text class="login-hint">Sign in to manage your listings</text>
-      <view class="login-btn" @click="goLogin">Sign In</view>
+      <text class="login-hint">{{ t('profile.signInHint') }}</text>
+      <view class="login-btn" @click="goLogin">{{ t('profile.signIn') }}</view>
     </view>
 
     <view v-else class="profile-section">
@@ -20,26 +20,26 @@
       <view class="stats-row">
         <view class="stat-item">
           <text class="stat-num">{{ myItems.length }}</text>
-          <text class="stat-label">Listed</text>
+          <text class="stat-label">{{ t('profile.listed') }}</text>
         </view>
         <view class="stat-item">
           <text class="stat-num">{{ favCount }}</text>
-          <text class="stat-label">Saved</text>
+          <text class="stat-label">{{ t('profile.saved') }}</text>
         </view>
         <view class="stat-item">
           <text class="stat-num">{{ soldCount }}</text>
-          <text class="stat-label">Sold</text>
+          <text class="stat-label">{{ t('profile.sold') }}</text>
         </view>
       </view>
     </view>
 
     <view v-if="isLoggedIn" class="section">
       <view class="section-header">
-        <text class="section-title">My Listings</text>
+        <text class="section-title">{{ t('profile.myListings') }}</text>
       </view>
 
       <view v-if="myItems.length === 0" class="empty-items">
-        <text>You haven't posted anything yet</text>
+        <text>{{ t('profile.noListings') }}</text>
       </view>
 
       <view v-else class="my-items">
@@ -48,7 +48,7 @@
           <view class="item-info">
             <text class="item-title">{{ item.title }}</text>
             <text class="item-price">${{ item.price }}</text>
-            <text :class="['item-status', item.status]">{{ statusLabelsEn[item.status] || item.status }}</text>
+            <text :class="['item-status', item.status]">{{ t('status.' + item.status) }}</text>
           </view>
         </view>
       </view>
@@ -56,7 +56,7 @@
 
     <view v-if="isLoggedIn" class="menu-section">
       <view class="menu-item" @click="signOut">
-        <text class="menu-text danger">Sign Out</text>
+        <text class="menu-text danger">{{ t('profile.signOut') }}</text>
       </view>
     </view>
     <CustomTabBar current="profile" />
@@ -67,22 +67,17 @@
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
+import { useI18n } from '../../composables/useI18n'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import { useItems } from '../../composables/useItems'
 import { useFavorites } from '../../composables/useFavorites'
 import type { Item } from '../../types'
 
+const { t } = useI18n()
 const { currentUser, isLoggedIn, signOut } = useAuth()
 const { fetchMyItems } = useItems()
 const { favoriteIds, loadMyFavorites } = useFavorites()
-
-const statusLabelsEn: Record<string, string> = {
-  active: 'Active',
-  reserved: 'Reserved',
-  sold: 'Sold',
-  deleted: 'Deleted',
-}
 
 const myItems = ref<Item[]>([])
 const favCount = computed(() => favoriteIds.value.size)

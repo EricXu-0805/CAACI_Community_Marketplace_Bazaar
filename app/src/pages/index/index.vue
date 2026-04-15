@@ -4,8 +4,11 @@
 
     <!-- Mobile: Brand row (hidden on desktop) -->
     <view class="mobile-brand">
-      <text class="brand-text">CAACI 集市</text>
-      <text class="brand-loc" @click="switchLocation">📍 UIUC ▾</text>
+      <text class="brand-text">{{ t('app.name') }}</text>
+      <view class="brand-right">
+        <text class="lang-toggle" @click="toggleLang">{{ t('lang.switch') }}</text>
+        <text class="brand-loc">📍 {{ t('loc.uiuc') }}</text>
+      </view>
     </view>
 
     <!-- Search + Filter -->
@@ -14,7 +17,7 @@
         <text class="s-icon">🔍</text>
         <input
           v-model="searchText"
-          placeholder="Search items near UIUC..."
+          :placeholder="t('home.search')"
           confirm-type="search"
           @confirm="onSearch"
         />
@@ -42,12 +45,12 @@
     <view v-if="showFilter" class="filter-mask" @click="showFilter = false"></view>
     <view :class="['filter-sheet', { open: showFilter }]">
       <view class="fs-header">
-        <text class="fs-title">Filters</text>
-        <text class="fs-reset" @click="resetFilters">Reset</text>
+        <text class="fs-title">{{ t('filter.title') }}</text>
+        <text class="fs-reset" @click="resetFilters">{{ t('filter.reset') }}</text>
       </view>
 
       <view class="fs-section">
-        <text class="fs-label">Price Range</text>
+        <text class="fs-label">{{ t('filter.price') }}</text>
         <view class="fs-price-row">
           <view class="fs-price-input">
             <text class="fs-dollar">$</text>
@@ -62,7 +65,7 @@
       </view>
 
       <view class="fs-section">
-        <text class="fs-label">Condition</text>
+        <text class="fs-label">{{ t('filter.condition') }}</text>
         <view class="fs-pills">
           <view
             v-for="(label, key) in conditionOpts"
@@ -76,7 +79,7 @@
       </view>
 
       <view class="fs-section">
-        <text class="fs-label">Location</text>
+        <text class="fs-label">{{ t('filter.location') }}</text>
         <view class="fs-pills">
           <view
             v-for="loc in locationOpts"
@@ -90,7 +93,7 @@
       </view>
 
       <view class="fs-section">
-        <text class="fs-label">Sort</text>
+        <text class="fs-label">{{ t('filter.sort') }}</text>
         <view class="fs-pills">
           <view
             v-for="s in sortOpts"
@@ -105,7 +108,7 @@
 
       <view class="fs-footer">
         <view class="fs-apply" @click="showFilter = false">
-          <text>Apply</text>
+          <text>{{ t('filter.apply') }}</text>
         </view>
       </view>
     </view>
@@ -181,20 +184,20 @@
       <!-- Loading more -->
       <view v-if="loading && !initialLoading" class="tip">
         <view class="dots"><text>·</text><text>·</text><text>·</text></view>
-        <text>Loading</text>
+        <text>{{ t('home.loading') }}</text>
       </view>
       <!-- End of list -->
       <view v-if="!hasMore && filteredItems.length > 0" class="tip">
         <text class="divider"></text>
-        <text>No more items</text>
+        <text>{{ t('home.noMore') }}</text>
         <text class="divider"></text>
       </view>
       <!-- Empty -->
       <view v-if="!loading && !initialLoading && filteredItems.length === 0" class="empty">
         <text class="empty-icon">🛒</text>
-        <text class="empty-title">No items found</text>
-        <text class="empty-sub">Try adjusting your filters or be the first to post!</text>
-        <view class="empty-btn" @click="goPublish">Post Item</view>
+        <text class="empty-title">{{ t('home.emptyTitle') }}</text>
+        <text class="empty-sub">{{ t('home.emptySub') }}</text>
+        <view class="empty-btn" @click="goPublish">{{ t('home.postItem') }}</view>
       </view>
     </scroll-view>
 
@@ -218,10 +221,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { onPullDownRefresh } from '@dcloudio/uni-app'
 import { useItems } from '../../composables/useItems'
+import { useI18n } from '../../composables/useI18n'
 import { CONDITION_LABELS, type ItemCategory, type ItemCondition, type Item } from '../../types'
 import { MOCK_ITEMS } from '../../composables/useMockData'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
+
+const { t, toggleLang } = useI18n()
 
 const { items, loading, hasMore, fetchItems } = useItems()
 const useMock = ref(false)
@@ -241,34 +247,20 @@ const filterCondition = ref('')
 const filterLocation = ref('')
 const sortBy = ref('latest')
 
-const categories = [
-  { value: null, label: 'All' },
-  { value: 'furniture', label: 'Furniture' },
-  { value: 'electronics', label: 'Electronics' },
-  { value: 'clothing', label: 'Fashion' },
-  { value: 'books', label: 'Books' },
-  { value: 'housing', label: 'Housing' },
-  { value: 'vehicles', label: 'Transit' },
-  { value: 'daily', label: 'Daily' },
-  { value: 'food', label: 'Food' },
-  { value: 'other', label: 'Other' },
-]
+const categoryKeys = [null, 'furniture', 'electronics', 'clothing', 'books', 'housing', 'vehicles', 'daily', 'food', 'other']
+const categories = computed(() => categoryKeys.map(k => ({ value: k, label: t(k ? 'cat.' + k : 'cat.all') })))
 
-const conditionOpts: Record<string, string> = {
-  new: 'Brand New',
-  like_new: 'Like New',
-  good: 'Good',
-  fair: 'Fair',
-}
+const conditionKeys = ['new', 'like_new', 'good', 'fair']
+const conditionOpts = computed(() => {
+  const m: Record<string, string> = {}
+  conditionKeys.forEach(k => { m[k] = t('condition.' + k) })
+  return m
+})
 
 const locationOpts = ['Champaign', 'Urbana', 'UIUC']
 
-const sortOpts = [
-  { value: 'latest', label: 'Latest' },
-  { value: 'price_asc', label: 'Price ↑' },
-  { value: 'price_desc', label: 'Price ↓' },
-  { value: 'popular', label: 'Popular' },
-]
+const sortKeys = ['latest', 'price_asc', 'price_desc', 'popular']
+const sortOpts = computed(() => sortKeys.map(k => ({ value: k, label: t('sort.' + k.replace('price_asc', 'priceAsc').replace('price_desc', 'priceDesc')) })))
 
 const activeFilterCount = computed(() => {
   let c = 0
@@ -409,6 +401,8 @@ function goPublish() {
   align-items: center;
 }
 .brand-text { font-size: 19px; font-weight: 800; color: #FF6B35; letter-spacing: 0.5px; }
+.brand-right { display: flex; align-items: center; gap: 8px; }
+.lang-toggle { font-size: 11px; color: #FF6B35; padding: 3px 8px; border: 1px solid #FF6B35; border-radius: 8px; font-weight: 600; }
 .brand-loc { font-size: 13px; color: #999; padding: 3px 10px; background: #f5f5f5; border-radius: 12px; }
 
 /* ========== Search + Filter ========== */

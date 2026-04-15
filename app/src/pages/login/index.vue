@@ -2,34 +2,34 @@
   <view class="page">
     <view class="header">
       <text class="logo">🏪</text>
-      <text class="app-name">CAACI Bazaar</text>
-      <text class="app-desc">UIUC Community Marketplace</text>
+      <text class="app-name">{{ t('app.name') }}</text>
+      <text class="app-desc">{{ t('app.desc') }}</text>
     </view>
 
     <view class="form">
       <view class="tab-bar">
-        <text :class="['tab', { active: mode === 'login' }]" @click="mode = 'login'">Sign In</text>
-        <text :class="['tab', { active: mode === 'signup' }]" @click="mode = 'signup'">Sign Up</text>
+        <text :class="['tab', { active: mode === 'login' }]" @click="mode = 'login'">{{ t('login.signIn') }}</text>
+        <text :class="['tab', { active: mode === 'signup' }]" @click="mode = 'signup'">{{ t('login.signUp') }}</text>
       </view>
 
       <view v-if="mode === 'signup'" class="form-group">
-        <input v-model="nickname" placeholder="Nickname" class="form-input" />
+        <input v-model="nickname" :placeholder="t('login.nickname')" class="form-input" />
       </view>
 
       <view class="form-group">
-        <input v-model="email" placeholder="Email" type="text" class="form-input" />
+        <input v-model="email" :placeholder="t('login.email')" type="text" class="form-input" />
       </view>
 
       <view class="form-group">
-        <input v-model="password" placeholder="Password" password class="form-input" />
+        <input v-model="password" :placeholder="t('login.password')" password class="form-input" />
       </view>
 
       <button class="submit-btn" :disabled="loading" @click="onSubmit">
-        {{ loading ? 'Please wait...' : (mode === 'login' ? 'Sign In' : 'Create Account') }}
+        {{ loading ? t('login.wait') : (mode === 'login' ? t('login.submitLogin') : t('login.submitSignup')) }}
       </button>
 
       <text class="agreement" v-if="mode === 'signup'">
-        By signing up you agree to our Terms and Privacy Policy
+        {{ t('login.agreement') }}
       </text>
     </view>
   </view>
@@ -38,7 +38,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useAuth } from '../../composables/useAuth'
+import { useI18n } from '../../composables/useI18n'
 
+const { t } = useI18n()
 const { signIn, signUp, loading } = useAuth()
 
 const mode = ref<'login' | 'signup'>('login')
@@ -48,32 +50,32 @@ const nickname = ref('')
 
 async function onSubmit() {
   if (!email.value.trim()) {
-    uni.showToast({ title: 'Enter your email', icon: 'none' })
+    uni.showToast({ title: t('login.needEmail'), icon: 'none' })
     return
   }
   if (!password.value || password.value.length < 6) {
-    uni.showToast({ title: 'Password must be 6+ chars', icon: 'none' })
+    uni.showToast({ title: t('login.needPassword'), icon: 'none' })
     return
   }
 
   if (mode.value === 'signup') {
     if (!nickname.value.trim()) {
-      uni.showToast({ title: 'Enter a nickname', icon: 'none' })
+      uni.showToast({ title: t('login.needNickname'), icon: 'none' })
       return
     }
     const { error } = await signUp(email.value.trim(), password.value, nickname.value.trim())
     if (error) {
-      uni.showToast({ title: error.message || 'Sign up failed', icon: 'none' })
+      uni.showToast({ title: error.message || t('login.signupFail'), icon: 'none' })
     } else {
-      uni.showToast({ title: 'Account created!', icon: 'success' })
+      uni.showToast({ title: t('login.signupOk'), icon: 'success' })
       setTimeout(() => uni.navigateBack(), 1500)
     }
   } else {
     const { error } = await signIn(email.value.trim(), password.value)
     if (error) {
-      uni.showToast({ title: error.message || 'Sign in failed', icon: 'none' })
+      uni.showToast({ title: error.message || t('login.loginFail'), icon: 'none' })
     } else {
-      uni.showToast({ title: 'Welcome back!', icon: 'success' })
+      uni.showToast({ title: t('login.loginOk'), icon: 'success' })
       setTimeout(() => uni.navigateBack(), 1000)
     }
   }

@@ -29,20 +29,20 @@
 
       <view v-if="messages.length === 0" class="empty-chat">
         <text class="empty-icon">👋</text>
-        <text>Start the conversation!</text>
+        <text>{{ t('chat.empty') }}</text>
       </view>
     </scroll-view>
 
     <view class="input-bar">
       <input
         v-model="inputText"
-        placeholder="Type a message..."
+        :placeholder="t('chat.placeholder')"
         confirm-type="send"
         @confirm="onSend"
         class="msg-input"
       />
       <view :class="['send-btn', { disabled: !inputText.trim() }]" @click="onSend">
-        <text>Send</text>
+        <text>{{ t('chat.send') }}</text>
       </view>
     </view>
   </view>
@@ -53,6 +53,9 @@ import { ref, onUnmounted, nextTick } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useMessages } from '../../composables/useMessages'
+import { useI18n } from '../../composables/useI18n'
+
+const { t } = useI18n()
 
 const { currentUser } = useAuth()
 const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead } = useMessages()
@@ -93,7 +96,7 @@ async function onSend() {
     await sendMessage(conversationId.value, currentUser.value.id, text)
     nextTick(() => scrollToBottom())
   } catch (error) {
-    uni.showToast({ title: 'Failed to send', icon: 'none' })
+    uni.showToast({ title: t('chat.fail'), icon: 'none' })
     inputText.value = text
   }
 }

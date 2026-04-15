@@ -85,7 +85,6 @@ export function useItems() {
     return data as Item
   }
 
-  // Create item
   async function createItem(item: {
     title: string
     description: string
@@ -94,6 +93,7 @@ export function useItems() {
     condition: string
     location: string
     images: string[]
+    negotiable?: boolean
   }) {
     const { data, error } = await supabase
       .from('items')

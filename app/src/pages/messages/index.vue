@@ -4,14 +4,14 @@
 
     <view v-if="!isLoggedIn" class="login-prompt">
       <text class="prompt-icon">💬</text>
-      <text class="prompt-text">Sign in to view messages</text>
-      <view class="login-btn" @click="goLogin">Sign In</view>
+      <text class="prompt-text">{{ t('msg.signIn') }}</text>
+      <view class="login-btn" @click="goLogin">{{ t('profile.signIn') }}</view>
     </view>
 
     <view v-else-if="conversations.length === 0 && !loading" class="empty">
       <text class="empty-icon">💬</text>
-      <text class="empty-title">No messages yet</text>
-      <text class="empty-sub">Browse items and chat with sellers!</text>
+      <text class="empty-title">{{ t('msg.empty') }}</text>
+      <text class="empty-sub">{{ t('msg.emptySub') }}</text>
     </view>
 
     <view v-else class="conv-list">
@@ -43,7 +43,7 @@
       </view>
     </view>
 
-    <view v-if="loading" class="loading-tip">Loading...</view>
+    <view v-if="loading" class="loading-tip">{{ t('msg.loading') }}</view>
     <CustomTabBar current="messages" />
   </view>
 </template>
@@ -51,9 +51,12 @@
 <script setup lang="ts">
 import { onShow } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
+import { useI18n } from '../../composables/useI18n'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import { useMessages } from '../../composables/useMessages'
+
+const { t } = useI18n()
 import type { Conversation, Profile } from '../../types'
 
 const { currentUser, isLoggedIn } = useAuth()

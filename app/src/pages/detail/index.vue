@@ -7,7 +7,7 @@
           <image :src="img" mode="aspectFill" class="swiper-img" @click="previewImage(i)" />
         </swiper-item>
         <swiper-item v-if="item.images.length === 0">
-          <view class="no-img">No photos</view>
+          <view class="no-img">{{ t('detail.noPhotos') }}</view>
         </swiper-item>
       </swiper>
       <!-- Overlay buttons -->
@@ -35,11 +35,11 @@
 
     <!-- Description -->
     <view class="section" v-if="item.description">
-      <text class="section-label">Description</text>
+      <text class="section-label">{{ t('detail.description') }}</text>
       <view class="desc-wrap">
         <text :class="['desc-text', { clamped: !descExpanded }]">{{ item.description }}</text>
         <text v-if="item.description.length > 100" class="expand-btn" @click="descExpanded = !descExpanded">
-          {{ descExpanded ? 'Show less' : 'Show more' }}
+          {{ descExpanded ? t('detail.showLess') : t('detail.showMore') }}
         </text>
       </view>
     </view>
@@ -56,11 +56,11 @@
       <view class="stats-row">
         <view class="stat">
           <text class="stat-num">{{ item.view_count }}</text>
-          <text class="stat-label">views</text>
+          <text class="stat-label">{{ t('detail.views') }}</text>
         </view>
         <view class="stat">
           <text class="stat-num">{{ favCount }}</text>
-          <text class="stat-label">wants</text>
+          <text class="stat-label">{{ t('detail.wants') }}</text>
         </view>
       </view>
     </view>
@@ -69,10 +69,10 @@
     <view class="action-bar">
       <view class="fav-btn" @click="toggleFavorite">
         <text class="fav-icon">{{ isFav ? '❤️' : '🤍' }}</text>
-        <text class="fav-label">{{ isFav ? 'Saved' : 'Save' }}</text>
+        <text class="fav-label">{{ isFav ? t('detail.saved') : t('detail.save') }}</text>
       </view>
       <view class="chat-btn" @click="contactSeller">
-        <text>Chat with Seller</text>
+        <text>{{ t('detail.chat') }}</text>
       </view>
     </view>
   </view>
@@ -91,8 +91,10 @@ import { useItems } from '../../composables/useItems'
 import { useAuth } from '../../composables/useAuth'
 import { useMessages } from '../../composables/useMessages'
 import { useFavorites } from '../../composables/useFavorites'
+import { useI18n } from '../../composables/useI18n'
 import { CATEGORY_LABELS, CONDITION_LABELS, type Item } from '../../types'
 
+const { t } = useI18n()
 const { fetchItem } = useItems()
 const { currentUser, requireAuth } = useAuth()
 const { getOrCreateConversation } = useMessages()
@@ -117,7 +119,7 @@ onLoad(async (options) => {
       isFav.value = checkFavorited(options.id)
       favCount.value = await getFavoriteCount(options.id)
     } catch (error) {
-      uni.showToast({ title: 'Item not found', icon: 'none' })
+      uni.showToast({ title: t('detail.notFound'), icon: 'none' })
       setTimeout(() => uni.navigateBack(), 1500)
     }
   }
@@ -139,7 +141,7 @@ async function toggleFavorite() {
   const nowFavorited = await doToggleFavorite(currentUser.value.id, item.value.id)
   isFav.value = nowFavorited
   favCount.value += nowFavorited ? 1 : -1
-  uni.showToast({ title: nowFavorited ? 'Saved!' : 'Removed', icon: 'none' })
+  uni.showToast({ title: nowFavorited ? t('detail.saved') : t('detail.save'), icon: 'none' })
 }
 
 async function contactSeller() {
@@ -147,7 +149,7 @@ async function contactSeller() {
   if (!item.value || !currentUser.value) return
 
   if (item.value.user_id === currentUser.value.id) {
-    uni.showToast({ title: "This is your own item", icon: 'none' })
+    uni.showToast({ title: t('detail.ownItem'), icon: 'none' })
     return
   }
 
@@ -159,7 +161,7 @@ async function contactSeller() {
     )
     uni.navigateTo({ url: `/pages/chat/index?id=${conversation.id}` })
   } catch (error) {
-    uni.showToast({ title: 'Failed to start chat', icon: 'none' })
+    uni.showToast({ title: t('detail.chatFail'), icon: 'none' })
   }
 }
 

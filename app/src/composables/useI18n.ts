@@ -1,0 +1,276 @@
+import { ref, computed } from 'vue'
+
+type Lang = 'en' | 'zh'
+
+const currentLang = ref<Lang>('zh')
+
+try {
+  const saved = uni.getStorageSync('lang') as Lang
+  if (saved === 'en' || saved === 'zh') currentLang.value = saved
+} catch {}
+
+const messages: Record<Lang, Record<string, string>> = {
+  en: {
+    'app.name': 'CAACI Bazaar',
+    'app.desc': 'UIUC Community Marketplace',
+    'nav.home': 'Home',
+    'nav.post': 'Post',
+    'nav.messages': 'Messages',
+    'nav.profile': 'Profile',
+    'loc.uiuc': 'UIUC',
+
+    'home.search': 'Search items near UIUC...',
+    'home.loading': 'Loading',
+    'home.noMore': 'No more items',
+    'home.emptyTitle': 'No items found',
+    'home.emptySub': 'Try adjusting your filters or be the first to post!',
+    'home.postItem': 'Post Item',
+
+    'cat.all': 'All',
+    'cat.furniture': 'Furniture',
+    'cat.electronics': 'Electronics',
+    'cat.clothing': 'Fashion',
+    'cat.books': 'Books',
+    'cat.housing': 'Housing',
+    'cat.vehicles': 'Transit',
+    'cat.daily': 'Daily',
+    'cat.food': 'Food',
+    'cat.other': 'Other',
+
+    'condition.new': 'Brand New',
+    'condition.like_new': 'Like New',
+    'condition.good': 'Good',
+    'condition.fair': 'Fair',
+
+    'filter.title': 'Filters',
+    'filter.reset': 'Reset',
+    'filter.price': 'Price Range',
+    'filter.condition': 'Condition',
+    'filter.location': 'Location',
+    'filter.sort': 'Sort',
+    'filter.apply': 'Apply',
+    'sort.latest': 'Latest',
+    'sort.priceAsc': 'Price ↑',
+    'sort.priceDesc': 'Price ↓',
+    'sort.popular': 'Popular',
+
+    'detail.description': 'Description',
+    'detail.showMore': 'Show more',
+    'detail.showLess': 'Show less',
+    'detail.views': 'views',
+    'detail.wants': 'wants',
+    'detail.save': 'Save',
+    'detail.saved': 'Saved',
+    'detail.chat': 'Chat with Seller',
+    'detail.ownItem': 'This is your own item',
+    'detail.notFound': 'Item not found',
+    'detail.chatFail': 'Failed to start chat',
+    'detail.noPhotos': 'No photos',
+
+    'publish.title': 'Post Item',
+    'publish.addPhoto': 'Add Photo',
+    'publish.photoTip': 'Up to 9 photos, first one is the cover',
+    'publish.titlePlaceholder': 'Title (required)',
+    'publish.descPlaceholder': 'Describe your item...',
+    'publish.price': 'Price',
+    'publish.category': 'Category',
+    'publish.categorySelect': 'Select category',
+    'publish.condition': 'Condition',
+    'publish.conditionSelect': 'Select condition',
+    'publish.location': 'Location',
+    'publish.locationPlaceholder': 'e.g. UIUC / Champaign',
+    'publish.obo': 'OBO',
+    'publish.oboHint': 'Accept offers from buyers',
+    'publish.submit': 'Post Item',
+    'publish.submitting': 'Posting...',
+    'publish.success': 'Posted!',
+    'publish.fail': 'Failed to post',
+    'publish.cancel': 'Cancel',
+    'publish.needTitle': 'Title is required',
+    'publish.needPrice': 'Enter a valid price',
+    'publish.needCategory': 'Select a category',
+    'publish.needCondition': 'Select condition',
+
+    'msg.signIn': 'Sign in to view messages',
+    'msg.empty': 'No messages yet',
+    'msg.emptySub': 'Browse items and chat with sellers!',
+    'msg.loading': 'Loading...',
+
+    'chat.empty': 'Start the conversation!',
+    'chat.placeholder': 'Type a message...',
+    'chat.send': 'Send',
+    'chat.fail': 'Failed to send',
+
+    'profile.signInHint': 'Sign in to manage your listings',
+    'profile.signIn': 'Sign In',
+    'profile.listed': 'Listed',
+    'profile.saved': 'Saved',
+    'profile.sold': 'Sold',
+    'profile.myListings': 'My Listings',
+    'profile.noListings': "You haven't posted anything yet",
+    'profile.signOut': 'Sign Out',
+    'status.active': 'Active',
+    'status.reserved': 'Reserved',
+    'status.sold': 'Sold',
+
+    'login.signIn': 'Sign In',
+    'login.signUp': 'Sign Up',
+    'login.nickname': 'Nickname',
+    'login.email': 'Email',
+    'login.password': 'Password',
+    'login.submitLogin': 'Sign In',
+    'login.submitSignup': 'Create Account',
+    'login.wait': 'Please wait...',
+    'login.agreement': 'By signing up you agree to our Terms and Privacy Policy',
+    'login.needEmail': 'Enter your email',
+    'login.needPassword': 'Password must be 6+ chars',
+    'login.needNickname': 'Enter a nickname',
+    'login.signupFail': 'Sign up failed',
+    'login.signupOk': 'Account created!',
+    'login.loginFail': 'Sign in failed',
+    'login.loginOk': 'Welcome back!',
+
+    'lang.switch': '中文',
+  },
+  zh: {
+    'app.name': 'CAACI 集市',
+    'app.desc': 'UIUC 华人社区二手交易平台',
+    'nav.home': '首页',
+    'nav.post': '发布',
+    'nav.messages': '消息',
+    'nav.profile': '我的',
+    'loc.uiuc': 'UIUC',
+
+    'home.search': '搜索二手好物...',
+    'home.loading': '加载中',
+    'home.noMore': '已经到底啦',
+    'home.emptyTitle': '还没有商品',
+    'home.emptySub': '快来发布第一件二手好物吧！',
+    'home.postItem': '去发布',
+
+    'cat.all': '全部',
+    'cat.furniture': '家具',
+    'cat.electronics': '电子',
+    'cat.clothing': '服饰',
+    'cat.books': '书籍',
+    'cat.housing': '转租',
+    'cat.vehicles': '交通',
+    'cat.daily': '日用',
+    'cat.food': '食品',
+    'cat.other': '其他',
+
+    'condition.new': '全新',
+    'condition.like_new': '几乎全新',
+    'condition.good': '良好',
+    'condition.fair': '一般',
+
+    'filter.title': '筛选',
+    'filter.reset': '重置',
+    'filter.price': '价格区间',
+    'filter.condition': '成色',
+    'filter.location': '位置',
+    'filter.sort': '排序',
+    'filter.apply': '确定',
+    'sort.latest': '最新',
+    'sort.priceAsc': '价格↑',
+    'sort.priceDesc': '价格↓',
+    'sort.popular': '最热',
+
+    'detail.description': '描述',
+    'detail.showMore': '展开',
+    'detail.showLess': '收起',
+    'detail.views': '浏览',
+    'detail.wants': '想要',
+    'detail.save': '收藏',
+    'detail.saved': '已收藏',
+    'detail.chat': '联系卖家',
+    'detail.ownItem': '这是你自己的商品',
+    'detail.notFound': '商品不存在',
+    'detail.chatFail': '发起聊天失败',
+    'detail.noPhotos': '暂无图片',
+
+    'publish.title': '发布商品',
+    'publish.addPhoto': '添加图片',
+    'publish.photoTip': '最多9张图片，第一张为封面',
+    'publish.titlePlaceholder': '标题（必填）',
+    'publish.descPlaceholder': '描述一下你的宝贝...',
+    'publish.price': '价格',
+    'publish.category': '分类',
+    'publish.categorySelect': '请选择分类',
+    'publish.condition': '成色',
+    'publish.conditionSelect': '请选择成色',
+    'publish.location': '位置',
+    'publish.locationPlaceholder': '如: UIUC / Champaign',
+    'publish.obo': 'OBO',
+    'publish.oboHint': '接受买家议价',
+    'publish.submit': '发布',
+    'publish.submitting': '发布中...',
+    'publish.success': '发布成功！',
+    'publish.fail': '发布失败',
+    'publish.cancel': '取消',
+    'publish.needTitle': '请输入标题',
+    'publish.needPrice': '请输入有效价格',
+    'publish.needCategory': '请选择分类',
+    'publish.needCondition': '请选择成色',
+
+    'msg.signIn': '登录后查看消息',
+    'msg.empty': '暂无消息',
+    'msg.emptySub': '浏览商品，联系卖家开始聊天吧',
+    'msg.loading': '加载中...',
+
+    'chat.empty': '开始聊天吧！',
+    'chat.placeholder': '输入消息...',
+    'chat.send': '发送',
+    'chat.fail': '发送失败',
+
+    'profile.signInHint': '登录后体验完整功能',
+    'profile.signIn': '登录 / 注册',
+    'profile.listed': '发布',
+    'profile.saved': '收藏',
+    'profile.sold': '已售',
+    'profile.myListings': '我的发布',
+    'profile.noListings': '还没有发布商品',
+    'profile.signOut': '退出登录',
+    'status.active': '在售',
+    'status.reserved': '已预定',
+    'status.sold': '已售出',
+
+    'login.signIn': '登录',
+    'login.signUp': '注册',
+    'login.nickname': '昵称',
+    'login.email': '邮箱',
+    'login.password': '密码',
+    'login.submitLogin': '登录',
+    'login.submitSignup': '注册',
+    'login.wait': '请稍候...',
+    'login.agreement': '注册即表示同意《用户协议》和《隐私政策》',
+    'login.needEmail': '请输入邮箱',
+    'login.needPassword': '密码至少6位',
+    'login.needNickname': '请输入昵称',
+    'login.signupFail': '注册失败',
+    'login.signupOk': '注册成功！',
+    'login.loginFail': '登录失败',
+    'login.loginOk': '登录成功！',
+
+    'lang.switch': 'EN',
+  },
+}
+
+export function useI18n() {
+  function t(key: string): string {
+    return messages[currentLang.value][key] || key
+  }
+
+  function setLang(lang: Lang) {
+    currentLang.value = lang
+    try { uni.setStorageSync('lang', lang) } catch {}
+  }
+
+  function toggleLang() {
+    setLang(currentLang.value === 'zh' ? 'en' : 'zh')
+  }
+
+  const lang = computed(() => currentLang.value)
+
+  return { t, lang, setLang, toggleLang }
+}
