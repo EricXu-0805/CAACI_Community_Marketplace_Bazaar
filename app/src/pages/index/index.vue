@@ -220,8 +220,9 @@ import { ref, computed, onMounted } from 'vue'
 import { onPullDownRefresh } from '@dcloudio/uni-app'
 import { useItems } from '../../composables/useItems'
 import { useI18n } from '../../composables/useI18n'
-import { CONDITION_LABELS, type ItemCategory, type ItemCondition, type Item } from '../../types'
+import type { ItemCategory, Item } from '../../types'
 import { MOCK_ITEMS } from '../../composables/useMockData'
+import { debounce } from '../../utils'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 
@@ -237,7 +238,6 @@ const currentPage = ref(0)
 const isRefreshing = ref(false)
 const columnCount = ref(2)
 
-// Filter state
 const showFilter = ref(false)
 const filterPriceMin = ref('')
 const filterPriceMax = ref('')
@@ -245,7 +245,7 @@ const filterCondition = ref('')
 const filterLocation = ref('')
 const sortBy = ref('latest')
 
-const categoryKeys = [null, 'furniture', 'electronics', 'clothing', 'books', 'housing', 'vehicles', 'daily', 'food', 'other']
+const categoryKeys: (ItemCategory | null)[] = [null, 'furniture', 'electronics', 'clothing', 'books', 'housing', 'vehicles', 'daily', 'food', 'other']
 const categories = computed(() => categoryKeys.map(k => ({ value: k, label: t(k ? 'cat.' + k : 'cat.all') })))
 
 const conditionKeys = ['new', 'like_new', 'good', 'fair']
@@ -326,10 +326,12 @@ onMounted(async () => {
   } catch {}
 
   try {
-    // @ts-ignore
-    uni.onWindowResize?.((res: { size: { windowWidth: number } }) => {
-      columnCount.value = res.size.windowWidth >= 768 ? 3 : 2
-    })
+    const onResize = (uni as any).onWindowResize
+    if (typeof onResize === 'function') {
+      onResize((res: { size: { windowWidth: number } }) => {
+        columnCount.value = res.size.windowWidth >= 768 ? 3 : 2
+      })
+    }
   } catch {}
 
   await fetchItems({ reset: true })
@@ -345,12 +347,14 @@ function selectCategory(category: ItemCategory | null) {
   fetchItems({ category, search: searchText.value, reset: true })
 }
 
-function onSearch() {
+const debouncedFetch = debounce(() => {
   currentPage.value = 0
   fetchItems({ category: selectedCategory.value, search: searchText.value, reset: true })
-}
+}, 300)
 
-function switchLocation() {}
+function onSearch() {
+  debouncedFetch()
+}
 
 function loadMore() {
   if (loading.value || !hasMore.value) return
@@ -471,7 +475,7 @@ function goPublish() {
 
 /* ========== Filter Bottom Sheet ========== */
 .filter-mask {
-  position: fixed; inset: 0; z-index: 500;
+  position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 500;
   background: rgba(0,0,0,0.35);
 }
 .filter-sheet {

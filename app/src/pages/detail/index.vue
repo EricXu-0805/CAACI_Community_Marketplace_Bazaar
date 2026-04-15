@@ -101,8 +101,9 @@ import { useAuth } from '../../composables/useAuth'
 import { useMessages } from '../../composables/useMessages'
 import { useFavorites } from '../../composables/useFavorites'
 import { useI18n } from '../../composables/useI18n'
-import { type Item } from '../../types'
+import type { Item } from '../../types'
 import { MOCK_ITEMS } from '../../composables/useMockData'
+import { formatTime } from '../../utils'
 
 const { t } = useI18n()
 const { fetchItem } = useItems()
@@ -146,7 +147,8 @@ function goBack() {
 }
 
 function onShare() {
-  // future: share sheet
+  if (!item.value) return
+  uni.showShareMenu?.({ withShareTicket: true })
 }
 
 function previewImage(index: number) {
@@ -185,18 +187,6 @@ async function contactSeller() {
   }
 }
 
-function formatTime(dateStr: string): string {
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-  const minutes = Math.floor(diff / 60000)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  if (days < 30) return `${days}d ago`
-  return date.toLocaleDateString()
-}
 </script>
 
 <style lang="scss" scoped>

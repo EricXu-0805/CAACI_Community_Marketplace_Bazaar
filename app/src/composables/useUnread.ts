@@ -4,7 +4,7 @@ import { useAuth } from './useAuth'
 import { useI18n } from './useI18n'
 
 const unreadCount = ref(0)
-let subscribed = false
+let channel: ReturnType<ReturnType<typeof useSupabase>['supabase']['channel']> | null = null
 
 export function useUnread() {
   const { supabase } = useSupabase()
@@ -37,24 +37,33 @@ export function useUnread() {
   }
 
   function startListening() {
-    if (subscribed || !currentUser.value) return
-    subscribed = true
+    if (channel || !currentUser.value) return
 
     const userId = currentUser.value.id
-    supabase
-      .channel('global-new-messages')
+    channel = supabase
+      .channel(`user-${userId}-new-messages`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        (payload) => {
-          const msg = payload.new as any
-          if (msg.sender_id !== userId) {
-            unreadCount.value++
-            uni.showToast({ title: t('msg.newMessage'), icon: 'none', duration: 2000 })
-          }
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `sender_id=neq.${userId}`,
+        },
+        () => {
+          unreadCount.value++
+          uni.showToast({ title: t('msg.newMessage'), icon: 'none', duration: 2000 })
         }
       )
       .subscribe()
+  }
+
+  function stopListening() {
+    if (channel) {
+      supabase.removeChannel(channel)
+      channel = null
+    }
+    unreadCount.value = 0
   }
 
   watch(currentUser, (u) => {
@@ -62,9 +71,9 @@ export function useUnread() {
       refreshUnreadCount()
       startListening()
     } else {
-      unreadCount.value = 0
+      stopListening()
     }
   }, { immediate: true })
 
-  return { unreadCount, refreshUnreadCount }
+  return { unreadCount, refreshUnreadCount, stopListening }
 }

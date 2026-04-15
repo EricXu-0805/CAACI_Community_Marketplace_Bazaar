@@ -90,32 +90,4 @@ export interface Favorite {
   item?: Item
 }
 
-// ============================================
-// UI helper types
-// ============================================
 
-export const CATEGORY_LABELS: Record<ItemCategory, string> = {
-  furniture: '家具',
-  electronics: '电子产品',
-  clothing: '服饰',
-  books: '书籍',
-  housing: '转租/住房',
-  vehicles: '交通工具',
-  daily: '日用品',
-  food: '食品',
-  other: '其他',
-}
-
-export const CONDITION_LABELS: Record<ItemCondition, string> = {
-  new: '全新',
-  like_new: '几乎全新',
-  good: '良好',
-  fair: '一般',
-}
-
-export const STATUS_LABELS: Record<ItemStatus, string> = {
-  active: '在售',
-  reserved: '已预定',
-  sold: '已售出',
-  deleted: '已删除',
-}

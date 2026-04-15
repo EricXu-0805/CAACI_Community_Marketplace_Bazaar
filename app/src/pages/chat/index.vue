@@ -81,7 +81,6 @@ import { ref, onUnmounted, nextTick } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useMessages } from '../../composables/useMessages'
-import { useItems } from '../../composables/useItems'
 import { useI18n } from '../../composables/useI18n'
 import type { Item } from '../../types'
 
@@ -89,7 +88,6 @@ const { t } = useI18n()
 
 const { currentUser, requireAuth } = useAuth()
 const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, fetchConversationDetail } = useMessages()
-const { fetchItem } = useItems()
 
 const inputText = ref('')
 const scrollTarget = ref('')
@@ -122,7 +120,9 @@ onLoad(async (options) => {
           otherUserName.value = other?.nickname || t('app.user')
         }
       }
-    } catch {}
+    } catch {
+      uni.showToast({ title: t('chat.fail'), icon: 'none' })
+    }
 
     unsubscribe = subscribeToMessages(options.id, (newMsg) => {
       messages.value.push(newMsg)

@@ -1,10 +1,11 @@
 import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 
+const favoriteIds = ref<Set<string>>(new Set())
+const loading = ref(false)
+
 export function useFavorites() {
   const { supabase } = useSupabase()
-  const favoriteIds = ref<Set<string>>(new Set())
-  const loading = ref(false)
 
   async function loadMyFavorites(userId: string) {
     const { data } = await supabase
@@ -62,7 +63,7 @@ export function useFavorites() {
   async function fetchMyFavoriteItems(userId: string) {
     const { data } = await supabase
       .from('favorites')
-      .select('item_id, item:items(*, profile:profiles(*))')
+      .select('item_id, item:items(*, profile:profiles(id, nickname, avatar_url, location))')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
 

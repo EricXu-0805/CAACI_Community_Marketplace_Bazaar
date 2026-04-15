@@ -2,13 +2,13 @@ import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 import type { Conversation, Message } from '../types'
 
+const conversations = ref<Conversation[]>([])
+const messages = ref<Message[]>([])
+const loading = ref(false)
+
 export function useMessages() {
   const { supabase } = useSupabase()
-  const conversations = ref<Conversation[]>([])
-  const messages = ref<Message[]>([])
-  const loading = ref(false)
 
-  // Fetch all conversations for current user
   async function fetchConversations(userId: string) {
     loading.value = true
     try {
@@ -32,8 +32,8 @@ export function useMessages() {
     }
   }
 
-  // Fetch messages for a conversation
   async function fetchMessages(conversationId: string) {
+    messages.value = []
     const { data, error } = await supabase
       .from('messages')
       .select('*, sender:profiles(id, nickname, avatar_url)')
@@ -44,8 +44,14 @@ export function useMessages() {
     messages.value = (data || []) as Message[]
   }
 
-  // Send a message
+  function clearMessages() {
+    conversations.value = []
+    messages.value = []
+  }
+
   async function sendMessage(conversationId: string, senderId: string, content: string) {
+    if (content.length > 2000) throw new Error('Message too long')
+
     const { data, error } = await supabase
       .from('messages')
       .insert({
@@ -59,7 +65,6 @@ export function useMessages() {
 
     if (error) throw error
 
-    // Update conversation's last_message_at
     await supabase
       .from('conversations')
       .update({ last_message_at: new Date().toISOString() })
@@ -68,9 +73,7 @@ export function useMessages() {
     return data as Message
   }
 
-  // Create or get existing conversation
   async function getOrCreateConversation(itemId: string, buyerId: string, sellerId: string) {
-    // Check if conversation exists
     const { data: existing } = await supabase
       .from('conversations')
       .select('*')
@@ -81,7 +84,6 @@ export function useMessages() {
 
     if (existing) return existing as Conversation
 
-    // Create new conversation
     const { data, error } = await supabase
       .from('conversations')
       .insert({ item_id: itemId, buyer_id: buyerId, seller_id: sellerId })
@@ -92,7 +94,6 @@ export function useMessages() {
     return data as Conversation
   }
 
-  // Subscribe to new messages in a conversation (realtime)
   function subscribeToMessages(conversationId: string, onNewMessage: (msg: Message) => void) {
     const channel = supabase
       .channel(`messages:${conversationId}`)
@@ -115,7 +116,6 @@ export function useMessages() {
     }
   }
 
-  // Mark messages as read
   async function markAsRead(conversationId: string, userId: string) {
     await supabase
       .from('messages')
@@ -125,7 +125,6 @@ export function useMessages() {
       .eq('is_read', false)
   }
 
-  // Fetch conversation detail (for chat header context)
   async function fetchConversationDetail(conversationId: string) {
     const { data, error } = await supabase
       .from('conversations')
@@ -153,5 +152,6 @@ export function useMessages() {
     subscribeToMessages,
     markAsRead,
     fetchConversationDetail,
+    clearMessages,
   }
 }

@@ -6,27 +6,32 @@ const currentUser = ref<Profile | null>(null)
 const isLoggedIn = computed(() => !!currentUser.value)
 const loading = ref(false)
 
+let authSubscription: { unsubscribe: () => void } | null = null
+
+const ALLOWED_PROFILE_FIELDS = ['nickname', 'avatar_url', 'bio', 'location'] as const
+type AllowedProfileUpdate = Partial<Pick<Profile, typeof ALLOWED_PROFILE_FIELDS[number]>>
+
 export function useAuth() {
   const { supabase } = useSupabase()
 
-  // Initialize auth state
   async function init() {
+    authSubscription?.unsubscribe()
+
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.user) {
       await fetchProfile(session.user.id)
     }
 
-    // Listen for auth changes
-    supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         await fetchProfile(session.user.id)
       } else {
         currentUser.value = null
       }
     })
+    authSubscription = data.subscription
   }
 
-  // Fetch user profile
   async function fetchProfile(userId: string) {
     const { data, error } = await supabase
       .from('profiles')
@@ -39,10 +44,11 @@ export function useAuth() {
     }
   }
 
-  // Email/password signup
   async function signUp(email: string, password: string, nickname: string) {
     loading.value = true
     try {
+      if (password.length < 8) throw new Error('Password must be at least 8 characters')
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -59,7 +65,6 @@ export function useAuth() {
     }
   }
 
-  // Email/password login
   async function signIn(email: string, password: string) {
     loading.value = true
     try {
@@ -76,19 +81,25 @@ export function useAuth() {
     }
   }
 
-  // Logout
   async function signOut() {
     await supabase.auth.signOut()
+    supabase.removeAllChannels()
     currentUser.value = null
     uni.reLaunch({ url: '/pages/index/index' })
   }
 
-  // Update profile
-  async function updateProfile(updates: Partial<Profile>) {
+  async function updateProfile(updates: AllowedProfileUpdate) {
     if (!currentUser.value) return
+
+    const sanitized = Object.fromEntries(
+      Object.entries(updates).filter(([k]) =>
+        (ALLOWED_PROFILE_FIELDS as readonly string[]).includes(k)
+      )
+    )
+
     const { data, error } = await supabase
       .from('profiles')
-      .update(updates)
+      .update(sanitized)
       .eq('id', currentUser.value.id)
       .select()
       .single()
@@ -99,7 +110,6 @@ export function useAuth() {
     return { data, error }
   }
 
-  // Check if logged in, redirect to login if not
   function requireAuth() {
     if (!isLoggedIn.value) {
       uni.navigateTo({ url: '/pages/login/index' })

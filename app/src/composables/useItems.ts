@@ -1,16 +1,23 @@
 import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
-import type { Item, ItemCategory } from '../types'
+import type { Item, ItemCategory, ItemCondition, ItemStatus } from '../types'
+
+const items = ref<Item[]>([])
+const loading = ref(false)
+const hasMore = ref(true)
+
+const PAGE_SIZE = 20
+const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, location'
+const VALID_STATUSES: ItemStatus[] = ['active', 'reserved', 'sold', 'deleted']
+const ALLOWED_UPLOAD_EXTS: Record<string, string> = {
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp',
+}
+const MAX_FILE_SIZE = 5 * 1024 * 1024
+const MAX_IMAGES = 9
 
 export function useItems() {
   const { supabase } = useSupabase()
-  const items = ref<Item[]>([])
-  const loading = ref(false)
-  const hasMore = ref(true)
 
-  const PAGE_SIZE = 20
-
-  // Fetch items with pagination & filters
   async function fetchItems(options: {
     page?: number
     category?: ItemCategory | null
@@ -29,7 +36,7 @@ export function useItems() {
     try {
       let query = supabase
         .from('items')
-        .select('*, profile:profiles(*)')
+        .select(`*, profile:profiles(${PUBLIC_PROFILE_FIELDS})`)
         .eq('status', 'active')
         .order('created_at', { ascending: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
@@ -39,7 +46,11 @@ export function useItems() {
       }
 
       if (search) {
-        query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
+        const sanitized = search
+          .replace(/[%_]/g, '\\$&')
+          .replace(/[.,()]/g, '')
+          .slice(0, 100)
+        query = query.or(`title.ilike.%${sanitized}%,description.ilike.%${sanitized}%`)
       }
 
       if (userId) {
@@ -47,7 +58,6 @@ export function useItems() {
       }
 
       const { data, error } = await query
-
       if (error) throw error
 
       if (data) {
@@ -65,27 +75,25 @@ export function useItems() {
     }
   }
 
-  // Fetch single item
   async function fetchItem(id: string) {
     const { data, error } = await supabase
       .from('items')
-      .select('*, profile:profiles(*)')
+      .select(`*, profile:profiles(${PUBLIC_PROFILE_FIELDS})`)
       .eq('id', id)
       .single()
 
     if (error) throw error
 
     supabase.rpc('increment_view_count', { item_id: id }).then(() => {}, () => {})
-
     return data as Item
   }
 
-  async function createItem(item: {
+  async function createItem(input: {
     title: string
     description: string
     price: number
     category: ItemCategory
-    condition: string
+    condition: ItemCondition
     location: string
     images: string[]
     negotiable?: boolean
@@ -93,9 +101,24 @@ export function useItems() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw new Error('Not authenticated')
 
+    if (input.price < 0 || input.price > 100000) throw new Error('Invalid price')
+    if (input.title.length > 200) throw new Error('Title too long')
+    if (input.description.length > 2000) throw new Error('Description too long')
+    if (input.images.length > MAX_IMAGES) throw new Error('Too many images')
+
     const { data, error } = await supabase
       .from('items')
-      .insert({ ...item, user_id: session.user.id })
+      .insert({
+        user_id: session.user.id,
+        title: input.title,
+        description: input.description,
+        price: input.price,
+        category: input.category,
+        condition: input.condition,
+        location: input.location,
+        images: input.images,
+        negotiable: input.negotiable ?? false,
+      })
       .select()
       .single()
 
@@ -103,12 +126,15 @@ export function useItems() {
     return data as Item
   }
 
-  // Update item
-  async function updateItem(id: string, updates: Partial<Item>) {
+  async function updateItem(id: string, updates: Partial<Pick<Item, 'title' | 'description' | 'price' | 'location' | 'images' | 'negotiable'>>) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) throw new Error('Not authenticated')
+
     const { data, error } = await supabase
       .from('items')
       .update(updates)
       .eq('id', id)
+      .eq('user_id', session.user.id)
       .select()
       .single()
 
@@ -116,39 +142,66 @@ export function useItems() {
     return data as Item
   }
 
-  // Upload images
   async function uploadImages(tempFiles: string[]): Promise<string[]> {
+    if (tempFiles.length > MAX_IMAGES) throw new Error('Too many files')
     const urls: string[] = []
+
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) throw new Error('Not authenticated')
 
     for (const filePath of tempFiles) {
       const ext = filePath.split('.').pop()?.toLowerCase() || 'jpg'
-      const contentType = ext === 'png' ? 'image/png' : 'image/jpeg'
+      const contentType = ALLOWED_UPLOAD_EXTS[ext]
+      if (!contentType) throw new Error(`Unsupported file type: ${ext}`)
+
       const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-      const storagePath = `items/${fileName}`
+      const storagePath = `items/${session.user.id}/${fileName}`
 
       try {
+        let uploadError: any = null
+
+        // #ifdef H5
         const response = await fetch(filePath)
         const blob = await response.blob()
-
-        const { error } = await supabase.storage
+        if (blob.size > MAX_FILE_SIZE) throw new Error('File too large (max 5MB)')
+        const h5Result = await supabase.storage
           .from('item-images')
           .upload(storagePath, blob, { contentType })
+        uploadError = h5Result.error
+        // #endif
 
-        if (!error) {
+        // #ifndef H5
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+        const uploadUrl = `${supabaseUrl}/storage/v1/object/item-images/${storagePath}`
+        uploadError = await new Promise<any>((resolve) => {
+          uni.uploadFile({
+            url: uploadUrl,
+            filePath,
+            name: 'file',
+            header: {
+              Authorization: `Bearer ${session.access_token}`,
+              'x-upsert': 'false',
+            },
+            success: () => resolve(null),
+            fail: (err) => resolve(err),
+          })
+        })
+        // #endif
+
+        if (!uploadError) {
           const { data: urlData } = supabase.storage
             .from('item-images')
             .getPublicUrl(storagePath)
           urls.push(urlData.publicUrl)
         }
-      } catch {
-        // skip failed upload
+      } catch (err) {
+        console.warn('Upload error for', filePath, err)
       }
     }
 
     return urls
   }
 
-  // Fetch user's items (all statuses)
   async function fetchMyItems(userId: string) {
     const { data, error } = await supabase
       .from('items')
@@ -161,8 +214,9 @@ export function useItems() {
     return (data || []) as Item[]
   }
 
-  // Update item status (e.g., mark as sold)
-  async function updateItemStatus(id: string, status: string) {
+  async function updateItemStatus(id: string, status: ItemStatus) {
+    if (!VALID_STATUSES.includes(status)) throw new Error('Invalid status')
+
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw new Error('Not authenticated')
 
@@ -178,6 +232,11 @@ export function useItems() {
     return data as Item
   }
 
+  function clearItems() {
+    items.value = []
+    hasMore.value = true
+  }
+
   return {
     items,
     loading,
@@ -189,5 +248,6 @@ export function useItems() {
     updateItemStatus,
     uploadImages,
     fetchMyItems,
+    clearItems,
   }
 }

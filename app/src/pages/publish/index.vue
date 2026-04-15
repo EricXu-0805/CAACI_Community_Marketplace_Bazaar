@@ -124,10 +124,11 @@ import { ref, reactive } from 'vue'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useLocation } from '../../composables/useLocation'
+import { useItems } from '../../composables/useItems'
+import { compressImage } from '../../utils'
+import type { ItemCategory, ItemCondition } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
-import { useItems } from '../../composables/useItems'
-import { type ItemCategory, type ItemCondition } from '../../types'
 
 const { t } = useI18n()
 const { detectLocation, detecting: detectingLoc } = useLocation()
@@ -186,7 +187,8 @@ async function onSubmit() {
       const total = imageList.value.length
       const uploaded: string[] = []
       for (let i = 0; i < total; i++) {
-        const urls = await uploadImages([imageList.value[i]])
+        const compressed = await compressImage(imageList.value[i])
+        const urls = await uploadImages([compressed])
         uploaded.push(...urls)
         uploadProgress.value = Math.round(((i + 1) / total) * 100)
       }
@@ -198,7 +200,7 @@ async function onSubmit() {
       description: form.description.trim(),
       price: Number(form.price),
       category: form.category as ItemCategory,
-      condition: form.condition as string,
+      condition: form.condition as ItemCondition,
       location: form.location || 'UIUC',
       images,
       negotiable: form.negotiable,
@@ -294,7 +296,7 @@ async function onSubmit() {
   background: #f2f2f7; border-radius: 6px; overflow: hidden;
 }
 .upload-fill {
-  position: absolute; inset: 0; right: auto;
+  position: absolute; top: 0; bottom: 0; left: 0;
   background: rgba(26,26,26,0.08);
   transition: width 0.3s ease;
 }
