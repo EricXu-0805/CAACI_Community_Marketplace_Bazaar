@@ -21,10 +21,8 @@ page {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* --- Desktop: hide uni-app bottom tabBar --- */
-@media (min-width: 768px) {
-  uni-tabbar, .uni-tabbar, .uni-tabbar-bottom {
-    display: none !important;
-  }
+/* Hide native tabBar — replaced by CustomTabBar on mobile, DesktopNav on desktop */
+uni-tabbar, .uni-tabbar, .uni-tabbar-bottom {
+  display: none !important;
 }
 </style>

@@ -10,7 +10,7 @@
         v-for="msg in messages"
         :key="msg.id"
         :id="`msg-${msg.id}`"
-        :class="['message-row', { mine: msg.sender_id === currentUser?.id }]"
+        :class="['msg-row', { mine: msg.sender_id === currentUser?.id }]"
       >
         <image
           v-if="msg.sender_id !== currentUser?.id"
@@ -28,25 +28,28 @@
       </view>
 
       <view v-if="messages.length === 0" class="empty-chat">
-        <text>开始聊天吧！</text>
+        <text class="empty-icon">👋</text>
+        <text>Start the conversation!</text>
       </view>
     </scroll-view>
 
     <view class="input-bar">
       <input
         v-model="inputText"
-        placeholder="输入消息..."
+        placeholder="Type a message..."
         confirm-type="send"
         @confirm="onSend"
         class="msg-input"
       />
-      <button class="send-btn" :disabled="!inputText.trim()" @click="onSend">发送</button>
+      <view :class="['send-btn', { disabled: !inputText.trim() }]" @click="onSend">
+        <text>Send</text>
+      </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onUnmounted, nextTick } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useMessages } from '../../composables/useMessages'
@@ -90,7 +93,7 @@ async function onSend() {
     await sendMessage(conversationId.value, currentUser.value.id, text)
     nextTick(() => scrollToBottom())
   } catch (error) {
-    uni.showToast({ title: '发送失败', icon: 'none' })
+    uni.showToast({ title: 'Failed to send', icon: 'none' })
     inputText.value = text
   }
 }
@@ -103,19 +106,43 @@ function scrollToBottom() {
 </script>
 
 <style lang="scss" scoped>
-.page { height: 100vh; display: flex; flex-direction: column; background: #f5f5f7; max-width: 480px; margin: 0 auto; }
+.page {
+  height: 100vh; display: flex; flex-direction: column;
+  background: #f2f2f7; max-width: 480px; margin: 0 auto;
+}
 .message-list { flex: 1; padding: 16px; }
-.message-row { display: flex; align-items: flex-start; margin-bottom: 12px; gap: 8px;
-  &.mine { flex-direction: row-reverse;
-    .msg-bubble { background: #FF6B35; color: #fff; border-radius: 16px 4px 16px 16px; }
+.msg-row {
+  display: flex; align-items: flex-end; margin-bottom: 10px; gap: 8px;
+  &.mine {
+    flex-direction: row-reverse;
+    .msg-bubble { background: #FF6B35; color: #fff; border-radius: 18px 4px 18px 18px; }
   }
 }
-.msg-avatar { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; background: #f0f0f0; }
-.msg-bubble { max-width: 65%; padding: 10px 14px; background: #fff; border-radius: 4px 16px 16px 16px; font-size: 15px; line-height: 1.55; word-break: break-all; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
-.empty-chat { text-align: center; padding-top: 120px; color: #aeaeb2; font-size: 15px; }
-.input-bar { display: flex; align-items: center; padding: 10px 16px; background: #fff; border-top: 1px solid #f0f0f0; gap: 8px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
-.msg-input { flex: 1; height: 40px; background: #f5f5f7; border-radius: 20px; padding: 0 16px; font-size: 15px; }
-.send-btn { height: 40px; padding: 0 20px; background: #FF6B35; color: #fff; border-radius: 20px; font-size: 15px; font-weight: 600; border: none; display: flex; align-items: center;
-  &[disabled] { opacity: 0.4; }
+.msg-avatar { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; background: #e8e8ed; }
+.msg-bubble {
+  max-width: 68%; padding: 10px 14px;
+  background: #fff; border-radius: 4px 18px 18px 18px;
+  font-size: 15px; line-height: 1.5; word-break: break-all;
+}
+.empty-chat {
+  display: flex; flex-direction: column; align-items: center;
+  padding-top: 100px; gap: 8px; color: #bbb; font-size: 15px;
+}
+.empty-icon { font-size: 40px; }
+.input-bar {
+  display: flex; align-items: center; padding: 10px 14px;
+  background: #fff; border-top: 1px solid #f0f0f0; gap: 8px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+}
+.msg-input {
+  flex: 1; height: 40px; background: #f5f5f5; border-radius: 20px;
+  padding: 0 16px; font-size: 15px;
+}
+.send-btn {
+  height: 40px; padding: 0 20px; background: #FF6B35; color: #fff;
+  border-radius: 20px; font-size: 15px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  &.disabled { opacity: 0.4; pointer-events: none; }
+  &:active { opacity: 0.85; }
 }
 </style>

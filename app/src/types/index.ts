@@ -48,6 +48,8 @@ export interface Item {
   location: string
   images: string[]
   view_count: number
+  favorite_count?: number
+  negotiable?: boolean
   created_at: string
   updated_at: string
   // Joined fields

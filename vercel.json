@@ -1,0 +1,8 @@
+{
+  "buildCommand": "cd app && npm install && npm run build:h5",
+  "outputDirectory": "app/dist/build/h5",
+  "framework": null,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

@@ -27,8 +27,7 @@ function go(url: string) {
 .desktop-nav {
   display: block;
   position: sticky; top: 0; z-index: 200;
-  background: #fff; border-bottom: 1px solid #e5e5ea;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  background: #fff; border-bottom: 1px solid #f0f0f0;
 }
 .desktop-nav-inner {
   max-width: 1120px; margin: 0 auto;

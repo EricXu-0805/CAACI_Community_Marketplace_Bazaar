@@ -1,0 +1,70 @@
+import { ref } from 'vue'
+import { useSupabase } from './useSupabase'
+
+export function useFavorites() {
+  const { supabase } = useSupabase()
+  const favoriteIds = ref<Set<string>>(new Set())
+  const loading = ref(false)
+
+  async function loadMyFavorites(userId: string) {
+    const { data } = await supabase
+      .from('favorites')
+      .select('item_id')
+      .eq('user_id', userId)
+
+    if (data) {
+      favoriteIds.value = new Set(data.map((f: { item_id: string }) => f.item_id))
+    }
+  }
+
+  function isFavorited(itemId: string): boolean {
+    return favoriteIds.value.has(itemId)
+  }
+
+  async function toggleFavorite(userId: string, itemId: string): Promise<boolean> {
+    if (loading.value) return isFavorited(itemId)
+    loading.value = true
+
+    try {
+      if (isFavorited(itemId)) {
+        await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', userId)
+          .eq('item_id', itemId)
+        favoriteIds.value.delete(itemId)
+        return false
+      } else {
+        await supabase
+          .from('favorites')
+          .insert({ user_id: userId, item_id: itemId })
+        favoriteIds.value.add(itemId)
+        return true
+      }
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error)
+      return isFavorited(itemId)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function getFavoriteCount(itemId: string): Promise<number> {
+    const { count, error } = await supabase
+      .from('favorites')
+      .select('*', { count: 'exact', head: true })
+      .eq('item_id', itemId)
+
+    if (error) return 0
+    return count || 0
+  }
+
+  return {
+    favoriteIds,
+    loading,
+    loadMyFavorites,
+    isFavorited,
+    toggleFavorite,
+    getFavoriteCount,
+  }
+}

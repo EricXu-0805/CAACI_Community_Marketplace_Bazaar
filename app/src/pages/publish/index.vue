@@ -10,61 +10,70 @@
           </view>
           <view v-if="imageList.length < 9" class="image-add" @click="chooseImage">
             <text class="add-icon">+</text>
-            <text class="add-text">添加图片</text>
+            <text class="add-text">Add Photo</text>
           </view>
         </view>
-        <text class="image-tip">最多上传9张图片，第一张为封面</text>
+        <text class="image-tip">Up to 9 photos, first one is the cover</text>
       </view>
 
       <view class="form-group">
-        <input v-model="form.title" placeholder="标题（必填）" maxlength="50" class="form-input title-input" />
+        <input v-model="form.title" placeholder="Title (required)" maxlength="50" class="form-input title-input" />
       </view>
 
       <view class="form-group">
-        <textarea v-model="form.description" placeholder="描述一下你的宝贝..." maxlength="500" class="form-textarea" />
+        <textarea v-model="form.description" placeholder="Describe your item..." maxlength="500" class="form-textarea" />
       </view>
 
       <view class="form-group row">
-        <text class="label">价格</text>
+        <text class="label">Price</text>
         <view class="price-input">
-          <text class="currency">¥</text>
+          <text class="currency">$</text>
           <input v-model="form.price" type="digit" placeholder="0.00" class="form-input" />
         </view>
       </view>
 
       <view class="form-group row" @click="showCategoryPicker = true">
-        <text class="label">分类</text>
+        <text class="label">Category</text>
         <text :class="['value', { placeholder: !form.category }]">
-          {{ form.category ? categoryLabels[form.category] : '请选择分类' }}
+          {{ form.category ? categoryLabels[form.category] : 'Select category' }}
         </text>
         <text class="arrow">›</text>
       </view>
 
       <view class="form-group row" @click="showConditionPicker = true">
-        <text class="label">成色</text>
+        <text class="label">Condition</text>
         <text :class="['value', { placeholder: !form.condition }]">
-          {{ form.condition ? conditionLabels[form.condition] : '请选择成色' }}
+          {{ form.condition ? conditionLabels[form.condition] : 'Select condition' }}
         </text>
         <text class="arrow">›</text>
       </view>
 
       <view class="form-group row">
-        <text class="label">位置</text>
-        <input v-model="form.location" placeholder="如: UIUC / Champaign" class="form-input flex-input" />
+        <text class="label">Location</text>
+        <input v-model="form.location" placeholder="e.g. UIUC / Champaign" class="form-input flex-input" />
+      </view>
+
+      <view class="form-group row toggle-row" @click="form.negotiable = !form.negotiable">
+        <text class="label">OBO</text>
+        <text class="toggle-hint">Accept offers from buyers</text>
+        <view :class="['toggle', { on: form.negotiable }]">
+          <view class="toggle-knob"></view>
+        </view>
       </view>
     </view>
 
     <view class="submit-bar">
       <button class="submit-btn" :disabled="submitting" @click="onSubmit">
-        {{ submitting ? '发布中...' : '发布' }}
+        {{ submitting ? 'Posting...' : 'Post Item' }}
       </button>
     </view>
+    <CustomTabBar current="publish" />
 
     <uni-popup ref="categoryPopup" v-if="showCategoryPicker" type="bottom" @close="showCategoryPicker = false">
       <view class="picker-panel">
         <view class="picker-header">
-          <text @click="showCategoryPicker = false">取消</text>
-          <text class="picker-title">选择分类</text>
+          <text @click="showCategoryPicker = false">Cancel</text>
+          <text class="picker-title">Category</text>
           <text />
         </view>
         <view
@@ -81,8 +90,8 @@
     <uni-popup ref="conditionPopup" v-if="showConditionPicker" type="bottom" @close="showConditionPicker = false">
       <view class="picker-panel">
         <view class="picker-header">
-          <text @click="showConditionPicker = false">取消</text>
-          <text class="picker-title">选择成色</text>
+          <text @click="showConditionPicker = false">Cancel</text>
+          <text class="picker-title">Condition</text>
           <text />
         </view>
         <view
@@ -102,6 +111,7 @@
 import { ref, reactive } from 'vue'
 import { useAuth } from '../../composables/useAuth'
 import DesktopNav from '../../components/DesktopNav.vue'
+import CustomTabBar from '../../components/CustomTabBar.vue'
 import { useItems } from '../../composables/useItems'
 import { CATEGORY_LABELS, CONDITION_LABELS, type ItemCategory, type ItemCondition } from '../../types'
 
@@ -123,6 +133,7 @@ const form = reactive({
   category: '' as ItemCategory | '',
   condition: '' as ItemCondition | '',
   location: 'UIUC',
+  negotiable: false,
 })
 
 function chooseImage() {
@@ -144,19 +155,19 @@ async function onSubmit() {
   if (!requireAuth()) return
 
   if (!form.title.trim()) {
-    uni.showToast({ title: '请输入标题', icon: 'none' })
+    uni.showToast({ title: 'Title is required', icon: 'none' })
     return
   }
   if (!form.price || Number(form.price) < 0) {
-    uni.showToast({ title: '请输入有效价格', icon: 'none' })
+    uni.showToast({ title: 'Enter a valid price', icon: 'none' })
     return
   }
   if (!form.category) {
-    uni.showToast({ title: '请选择分类', icon: 'none' })
+    uni.showToast({ title: 'Select a category', icon: 'none' })
     return
   }
   if (!form.condition) {
-    uni.showToast({ title: '请选择成色', icon: 'none' })
+    uni.showToast({ title: 'Select condition', icon: 'none' })
     return
   }
 
@@ -175,14 +186,15 @@ async function onSubmit() {
       condition: form.condition as string,
       location: form.location || 'UIUC',
       images,
-    })
+      negotiable: form.negotiable,
+    } as any)
 
-    uni.showToast({ title: '发布成功！', icon: 'success' })
+    uni.showToast({ title: 'Posted!', icon: 'success' })
     setTimeout(() => {
       uni.switchTab({ url: '/pages/index/index' })
     }, 1500)
   } catch (error: any) {
-    uni.showToast({ title: error.message || '发布失败', icon: 'none' })
+    uni.showToast({ title: error.message || 'Failed to post', icon: 'none' })
   } finally {
     submitting.value = false
   }
@@ -280,4 +292,19 @@ async function onSubmit() {
   border-bottom: 1px solid #f5f5f7;
   &.active { color: #FF6B35; font-weight: 600; }
 }
+
+.toggle-row { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.toggle-hint { flex: 1; font-size: 13px; color: #aeaeb2; text-align: right; margin-right: 10px; }
+.toggle {
+  width: 44px; height: 26px; border-radius: 13px;
+  background: #e0e0e0; position: relative; transition: background 0.25s; flex-shrink: 0;
+  &.on { background: #FF6B35; }
+}
+.toggle-knob {
+  width: 22px; height: 22px; border-radius: 50%; background: #fff;
+  position: absolute; top: 2px; left: 2px;
+  transition: transform 0.25s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.toggle.on .toggle-knob { transform: translateX(18px); }
 </style>

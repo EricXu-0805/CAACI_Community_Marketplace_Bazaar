@@ -10,45 +10,45 @@
 		{
 			"path": "pages/publish/index",
 			"style": {
-				"navigationBarTitleText": "发布商品"
+				"navigationBarTitleText": "Post Item"
 			}
 		},
 		{
 			"path": "pages/messages/index",
 			"style": {
-				"navigationBarTitleText": "消息"
+				"navigationBarTitleText": "Messages"
 			}
 		},
 		{
 			"path": "pages/profile/index",
 			"style": {
-				"navigationBarTitleText": "我的"
+				"navigationBarTitleText": "Profile"
 			}
 		},
 		{
 			"path": "pages/detail/index",
 			"style": {
-				"navigationBarTitleText": "商品详情"
+				"navigationBarTitleText": "Item Details"
 			}
 		},
 		{
 			"path": "pages/chat/index",
 			"style": {
-				"navigationBarTitleText": "聊天"
+				"navigationBarTitleText": "Chat"
 			}
 		},
 		{
 			"path": "pages/login/index",
 			"style": {
-				"navigationBarTitleText": "登录"
+				"navigationBarTitleText": "Sign In"
 			}
 		}
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "CAACI 集市",
+		"navigationBarTitleText": "CAACI Bazaar",
 		"navigationBarBackgroundColor": "#FFFFFF",
-		"backgroundColor": "#F5F5F5"
+		"backgroundColor": "#F2F2F7"
 	},
 	"tabBar": {
 		"color": "#999999",
@@ -58,19 +58,19 @@
 		"list": [
 			{
 				"pagePath": "pages/index/index",
-				"text": "首页"
+				"text": "Home"
 			},
 			{
 				"pagePath": "pages/publish/index",
-				"text": "发布"
+				"text": "Post"
 			},
 			{
 				"pagePath": "pages/messages/index",
-				"text": "消息"
+				"text": "Messages"
 			},
 			{
 				"pagePath": "pages/profile/index",
-				"text": "我的"
+				"text": "Profile"
 			}
 		]
 	}
