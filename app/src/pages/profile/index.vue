@@ -137,7 +137,7 @@ import type { Item } from '../../types'
 
 const { t } = useI18n()
 const { currentUser, isLoggedIn, signOut } = useAuth()
-const { fetchMyItems, updateItemStatus } = useItems()
+const { fetchMyItems, updateItemStatus, deleteItem } = useItems()
 const { loadMyFavorites, fetchMyFavoriteItems } = useFavorites()
 
 const currentTab = ref<'listed' | 'saved' | 'sold'>('listed')
@@ -194,7 +194,7 @@ function onDeleteItem(id: string) {
     success: async (res) => {
       if (!res.confirm) return
       try {
-        await updateItemStatus(id, 'deleted')
+        await deleteItem(id)
         if (currentUser.value) {
           myItems.value = await fetchMyItems(currentUser.value.id)
         }

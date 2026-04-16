@@ -229,6 +229,21 @@ export function useItems() {
     if (error) throw error
   }
 
+  async function deleteItem(id: string) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) throw new Error('Not authenticated')
+
+    const { error } = await supabase
+      .from('items')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', session.user.id)
+
+    if (error) throw error
+
+    items.value = items.value.filter(i => i.id !== id)
+  }
+
   function clearItems() {
     items.value = []
     hasMore.value = true
@@ -245,6 +260,7 @@ export function useItems() {
     updateItemStatus,
     uploadImages,
     fetchMyItems,
+    deleteItem,
     clearItems,
   }
 }

@@ -81,6 +81,7 @@ import { ref, onUnmounted, nextTick } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useMessages } from '../../composables/useMessages'
+import { useUnread } from '../../composables/useUnread'
 import { useI18n } from '../../composables/useI18n'
 import type { Item } from '../../types'
 
@@ -88,6 +89,7 @@ const { t } = useI18n()
 
 const { currentUser, requireAuth } = useAuth()
 const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, fetchConversationDetail } = useMessages()
+const { refreshUnreadCount } = useUnread()
 
 const inputText = ref('')
 const scrollTarget = ref('')
@@ -105,7 +107,8 @@ onLoad(async (options) => {
     scrollToBottom()
 
     if (currentUser.value) {
-      markAsRead(options.id, currentUser.value.id)
+      await markAsRead(options.id, currentUser.value.id)
+      refreshUnreadCount()
     }
 
     // Load conversation detail for item context
@@ -127,6 +130,10 @@ onLoad(async (options) => {
     unsubscribe = subscribeToMessages(options.id, (newMsg) => {
       messages.value.push(newMsg)
       nextTick(() => scrollToBottom())
+      if (currentUser.value && newMsg.sender_id !== currentUser.value.id) {
+        markAsRead(options.id, currentUser.value.id)
+        refreshUnreadCount()
+      }
     })
   }
 })
