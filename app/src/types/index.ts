@@ -32,6 +32,7 @@ export interface Profile {
   avatar_url: string
   bio: string
   location: string
+  is_illini_verified?: boolean
   created_at: string
   updated_at: string
 }
