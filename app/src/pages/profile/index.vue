@@ -137,7 +137,7 @@ import type { Item } from '../../types'
 
 const { t } = useI18n()
 const { currentUser, isLoggedIn, signOut } = useAuth()
-const { fetchMyItems, updateItemStatus, deleteItem } = useItems()
+const { items: homeItems, fetchMyItems, updateItemStatus, deleteItem } = useItems()
 const { loadMyFavorites, fetchMyFavoriteItems } = useFavorites()
 
 const currentTab = ref<'listed' | 'saved' | 'sold'>('listed')
@@ -178,6 +178,7 @@ function onEditProfile() {
 async function markAsSold(id: string) {
   try {
     await updateItemStatus(id, 'sold')
+    homeItems.value = homeItems.value.filter(i => i.id !== id)
     if (currentUser.value) {
       myItems.value = await fetchMyItems(currentUser.value.id)
     }
