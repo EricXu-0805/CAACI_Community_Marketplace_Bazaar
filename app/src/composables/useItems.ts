@@ -8,7 +8,7 @@ const loading = ref(false)
 const hasMore = ref(true)
 
 const PAGE_SIZE = 20
-const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, location, is_illini_verified'
+const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, location'
 const VALID_STATUSES: ItemStatus[] = ['active', 'reserved', 'sold', 'deleted']
 const ALLOWED_UPLOAD_EXTS: Record<string, string> = {
   jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp',
