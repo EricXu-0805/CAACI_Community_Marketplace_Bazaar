@@ -83,8 +83,6 @@ export function useItems() {
       .single()
 
     if (error) throw error
-
-    supabase.rpc('increment_view_count', { item_id: id }).then(() => {}, () => {})
     return data as Item
   }
 

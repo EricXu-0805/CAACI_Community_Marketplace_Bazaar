@@ -129,15 +129,17 @@ onLoad(async (options) => {
     }
 
     try {
-      if (currentUser.value) {
-        await loadMyFavorites(currentUser.value.id)
-      }
-      item.value = await fetchItem(options.id!)
+      const [, itemData] = await Promise.all([
+        currentUser.value ? loadMyFavorites(currentUser.value.id) : Promise.resolve(),
+        fetchItem(options.id!),
+      ])
+      item.value = itemData
       isFav.value = checkFavorited(options.id!)
       favCount.value = await getFavoriteCount(options.id!)
-    } catch (error) {
-      uni.showToast({ title: t('detail.notFound'), icon: 'none' })
-      setTimeout(() => uni.navigateBack(), 1500)
+    } catch (error: any) {
+      console.error('Detail load error:', error)
+      uni.showToast({ title: error?.message || t('detail.notFound'), icon: 'none' })
+      setTimeout(() => uni.navigateBack(), 2000)
     }
   }
 })
