@@ -43,12 +43,11 @@
             {{ (conv as any).last_message_type === 'image' ? '[' + t('chat.photo') + ']' : ((conv as any).last_message_preview || conv.item?.title || '') }}
           </text>
         </view>
-        <image
-          v-if="conv.item?.images?.[0]"
-          :src="conv.item.images[0]"
-          class="conv-thumb"
-          mode="aspectFill"
-        />
+        <view class="conv-thumb-wrap" v-if="conv.item?.images?.[0]">
+          <image :src="conv.item.images[0]" class="conv-thumb" mode="aspectFill" />
+          <text v-if="conv.item?.status === 'sold'" class="thumb-badge sold">{{ t('status.sold') }}</text>
+          <text v-else-if="conv.item?.status === 'reserved'" class="thumb-badge reserved">{{ t('status.reserved') }}</text>
+        </view>
       </view>
     </view>
 
@@ -204,9 +203,17 @@ function goLogin() {
   font-size: 13px; color: #aeaeb2; margin-top: 4px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
 }
+.conv-thumb-wrap { position: relative; flex-shrink: 0; }
 .conv-thumb {
   width: 42px; height: 42px; border-radius: 7px;
-  flex-shrink: 0; background: #f2f2f7;
+  background: #f2f2f7;
+}
+.thumb-badge {
+  position: absolute; bottom: -2px; right: -2px;
+  font-size: 8px; font-weight: 700; padding: 1px 4px;
+  border-radius: 3px; color: #fff;
+  &.sold { background: #FF3B30; }
+  &.reserved { background: #FF9500; }
 }
 
 .loading-tip {

@@ -272,14 +272,15 @@ async function onSubmit() {
       uni.showToast({ title: t('publish.updated'), icon: 'success' })
       setTimeout(() => uni.navigateBack(), 1500)
     } else {
-      await createItem(payload)
+      const newItem = await createItem(payload)
       uploadProgress.value = 0
       form.title = ''; form.description = ''; form.price = ''
       form.category = ''; form.condition = ''; form.location = 'UIUC'
       form.negotiable = false; imageList.value = []
-      fetchItems({ reset: true })
       uni.showToast({ title: t('publish.success'), icon: 'success' })
-      setTimeout(() => uni.switchTab({ url: '/pages/index/index' }), 1500)
+      setTimeout(() => {
+        uni.navigateTo({ url: `/pages/detail/index?id=${newItem.id}` })
+      }, 1000)
     }
   } catch (error: any) {
     uni.showToast({ title: error.message || t('publish.fail'), icon: 'none' })

@@ -7,6 +7,7 @@ import { expandSearch } from '../utils'
 const items = ref<Item[]>([])
 const loading = ref(false)
 const hasMore = ref(true)
+const fetchError = ref('')
 
 const PAGE_SIZE = 20
 const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, location, is_illini_verified'
@@ -39,6 +40,7 @@ export function useItems() {
     }
 
     loading.value = true
+    fetchError.value = ''
     try {
       let query = supabase
         .from('items')
@@ -100,7 +102,8 @@ export function useItems() {
         }
         hasMore.value = data.length === PAGE_SIZE
       }
-    } catch (error) {
+    } catch (error: any) {
+      fetchError.value = error?.message || 'Network error'
       console.error('Failed to fetch items:', error)
     } finally {
       loading.value = false
@@ -307,6 +310,7 @@ export function useItems() {
     items,
     loading,
     hasMore,
+    fetchError,
     fetchItems,
     fetchItem,
     createItem,

@@ -17,7 +17,7 @@ export function useMessages() {
         .from('conversations')
         .select(`
           *,
-          item:items(id, title, images, price),
+          item:items(id, title, images, price, status),
           buyer:profiles!conversations_buyer_id_fkey(id, nickname, avatar_url),
           seller:profiles!conversations_seller_id_fkey(id, nickname, avatar_url)
         `)

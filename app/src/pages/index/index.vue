@@ -209,7 +209,10 @@
                 </view>
                 <view class="card-fav">
                   <text v-if="isOldItem(item.created_at)" class="old-tag">{{ t('home.oldListing') }}</text>
-                  <text class="fav-heart">♥</text>
+                  <text
+                    :class="['fav-heart', { active: isFavorited(item.id) }]"
+                    @click.stop="onQuickFav(item)"
+                  >♥</text>
                   <text class="fav-num">{{ item.favorite_count || 0 }}</text>
                 </view>
               </view>
@@ -231,7 +234,13 @@
         <text class="divider"></text>
       </view>
       <!-- Empty -->
-      <view v-if="!loading && !initialLoading && filteredItems.length === 0" class="empty">
+      <view v-if="fetchError && !loading" class="empty">
+        <text class="empty-title">⚠️</text>
+        <text class="empty-sub">{{ fetchError }}</text>
+        <view class="empty-btn" @click="onRefresh">{{ t('home.retry') }}</view>
+      </view>
+
+      <view v-else-if="!loading && !initialLoading && filteredItems.length === 0" class="empty">
         <view class="empty-bag-icon"></view>
         <text class="empty-title">{{ searchText ? t('home.noResults') : t('home.emptyTitle') }}</text>
         <text class="empty-sub">{{ searchText ? t('home.tryOther') : t('home.emptySub') }}</text>
@@ -266,6 +275,8 @@ import { ref, computed, onMounted } from 'vue'
 import { onPullDownRefresh } from '@dcloudio/uni-app'
 import { useItems } from '../../composables/useItems'
 import { useI18n } from '../../composables/useI18n'
+import { useAuth } from '../../composables/useAuth'
+import { useFavorites } from '../../composables/useFavorites'
 import type { ItemCategory, Item } from '../../types'
 
 import { debounce, formatTime } from '../../utils'
@@ -274,7 +285,9 @@ import CustomTabBar from '../../components/CustomTabBar.vue'
 
 const { t, toggleLang } = useI18n()
 
-const { items, loading, hasMore, fetchItems } = useItems()
+const { items, loading, hasMore, fetchError, fetchItems } = useItems()
+const { currentUser } = useAuth()
+const { isFavorited, toggleFavorite, loadMyFavorites } = useFavorites()
 
 const initialLoading = ref(true)
 
@@ -384,6 +397,7 @@ onMounted(async () => {
     }
   } catch {}
 
+  if (currentUser.value) loadMyFavorites(currentUser.value.id)
   await fetchItems({ ...getFilterParams(), reset: true })
   initialLoading.value = false
 })
@@ -419,6 +433,15 @@ const debouncedFetch = debounce(() => {
   if (searchText.value.trim()) saveSearch(searchText.value.trim())
   fetchItems({ ...getFilterParams(), reset: true })
 }, 300)
+
+async function onQuickFav(item: Item) {
+  if (!currentUser.value) {
+    uni.navigateTo({ url: '/pages/login/index' })
+    return
+  }
+  const nowFav = await toggleFavorite(currentUser.value.id, item.id)
+  item.favorite_count = (item.favorite_count || 0) + (nowFav ? 1 : -1)
+}
 
 function onCardLongPress(item: Item) {
   uni.showActionSheet({
@@ -671,7 +694,12 @@ function goPublish() {
 .seller-pic { width: 16px; height: 16px; border-radius: 50%; background: #f0f0f0; flex-shrink: 0; }
 .seller-nick { font-size: 11px; color: #8e8e93; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card-fav { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
-.fav-heart { font-size: 11px; color: #c7c7cc; }
+.fav-heart {
+  font-size: 13px; color: #c7c7cc; cursor: pointer;
+  transition: color 0.15s, transform 0.15s;
+  &.active { color: #FF3B30; }
+  &:active { transform: scale(1.3); }
+}
 .fav-num { font-size: 10px; color: #aeaeb2; }
 
 /* ========== Skeleton ========== */

@@ -40,6 +40,13 @@
     </view>
 
     <view v-if="isLoggedIn" class="section">
+      <view class="menu-item" @click="onChangePassword">
+        <text class="mi-label">{{ t('settings.changePassword') }}</text>
+        <view class="mi-arrow"></view>
+      </view>
+    </view>
+
+    <view v-if="isLoggedIn" class="section">
       <view class="menu-item danger" @click="onSignOut">
         <text class="mi-label danger-text">{{ t('profile.signOut') }}</text>
       </view>
@@ -88,6 +95,25 @@ function clearCache() {
         cacheSize.value = `${Math.round(info.currentSize / 1024 * 10) / 10} MB`
         uni.showToast({ title: t('settings.cleared'), icon: 'success' })
       } catch {}
+    },
+  })
+}
+
+async function onChangePassword() {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user?.email) return
+
+  uni.showModal({
+    title: t('settings.changePasswordTitle'),
+    content: t('settings.changePasswordHint'),
+    success: async (res) => {
+      if (!res.confirm) return
+      const { error } = await supabase.auth.resetPasswordForEmail(session.user!.email!)
+      if (error) {
+        uni.showToast({ title: error.message, icon: 'none' })
+      } else {
+        uni.showToast({ title: t('settings.changePasswordSent'), icon: 'success', duration: 3000 })
+      }
     },
   })
 }

@@ -29,6 +29,17 @@
       <view class="form-group">
         <text class="label">{{ t('publish.location') }}</text>
         <input v-model="location" placeholder="UIUC" class="form-input" maxlength="50" />
+        <scroll-view scroll-x class="spot-row">
+          <view
+            v-for="spot in CAMPUS_SPOTS"
+            :key="spot.id"
+            class="spot-chip"
+            :class="{ active: location === spotLabel(spot) }"
+            @click="location = spotLabel(spot)"
+          >
+            {{ spotLabel(spot) }}
+          </view>
+        </scroll-view>
       </view>
     </view>
   </view>
@@ -39,10 +50,16 @@ import { ref } from 'vue'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useItems } from '../../composables/useItems'
+import { useCampusSpots, type CampusSpot } from '../../composables/useCampusSpots'
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 const { currentUser, updateProfile } = useAuth()
 const { uploadImages } = useItems()
+const { CAMPUS_SPOTS } = useCampusSpots()
+
+function spotLabel(spot: CampusSpot) {
+  return lang.value === 'zh' ? spot.zh : spot.en
+}
 
 const nickname = ref(currentUser.value?.nickname || '')
 const bio = ref(currentUser.value?.bio || '')
@@ -140,5 +157,13 @@ async function onSave() {
 .form-textarea {
   width: 100%; height: 90px; background: #f7f7f8; border-radius: 10px;
   padding: 10px 14px; font-size: 15px; color: #1a1a1a; line-height: 1.5;
+}
+.spot-row { white-space: nowrap; margin-top: 8px; }
+.spot-chip {
+  display: inline-block; padding: 6px 12px; margin-right: 8px;
+  background: #f2f2f7; color: #1a1a1a; font-size: 13px;
+  border-radius: 14px; cursor: pointer;
+  &:active { background: #e5e5ea; }
+  &.active { background: #1a1a1a; color: #fff; }
 }
 </style>

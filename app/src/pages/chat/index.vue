@@ -394,15 +394,16 @@ function scrollToBottom() {
   max-width: 200px; border-radius: 12px; background: #e8e8ed;
 }
 .img-btn {
-  width: 36px; height: 36px; display: flex;
+  width: 38px; height: 38px; display: flex;
   align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
-  &:active { opacity: 0.5; }
+  background: #f2f2f7; border-radius: 50%;
+  &:active { background: #e5e5ea; }
 }
 .img-icon {
-  width: 20px; height: 16px; border: 1.5px solid #8e8e93; border-radius: 3px; position: relative;
+  width: 20px; height: 16px; border: 1.8px solid #636366; border-radius: 3px; position: relative;
   &::before {
     content: ''; position: absolute; top: 2px; left: 3px;
-    width: 4px; height: 4px; border-radius: 50%; border: 1px solid #8e8e93;
+    width: 4px; height: 4px; border-radius: 50%; border: 1.2px solid #636366;
   }
 }
 
