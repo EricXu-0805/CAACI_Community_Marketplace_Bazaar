@@ -33,6 +33,15 @@
       <view class="ic-arrow"></view>
     </view>
 
+    <view
+      v-if="itemInfo && (itemInfo as any).negotiable && itemInfo.status === 'active' && currentUser?.id !== itemInfo.user_id"
+      class="offer-bar"
+    >
+      <view class="offer-btn" @click="onMakeOffer">
+        <text>💰 {{ t('chat.makeOffer') }}</text>
+      </view>
+    </view>
+
     <scroll-view
       class="message-list"
       scroll-y
@@ -186,6 +195,13 @@ async function onSend() {
     uni.showToast({ title: t('chat.fail'), icon: 'none' })
     inputText.value = text
   }
+}
+
+function onMakeOffer() {
+  if (!itemInfo.value) return
+  const price = itemInfo.value.price
+  const suggested = Math.floor(price * 0.85)
+  inputText.value = `${t('chat.offerMsg')} $${suggested}`
 }
 
 function onMoreActions() {
@@ -345,6 +361,16 @@ function scrollToBottom() {
   background: #fff; border-radius: 10px;
   cursor: pointer;
   &:active { background: #f7f7f8; }
+}
+.offer-bar {
+  padding: 6px 12px 2px;
+}
+.offer-btn {
+  display: flex; align-items: center; justify-content: center;
+  background: #FFF8E1; border: 1px solid #FFD54F;
+  border-radius: 8px; padding: 8px; cursor: pointer;
+  text { font-size: 13px; font-weight: 600; color: #F57F17; }
+  &:active { background: #FFF3C4; }
 }
 .ic-img {
   width: 40px; height: 40px; border-radius: 6px;

@@ -36,13 +36,14 @@
         />
         <view class="conv-info">
           <view class="conv-top">
-            <text class="conv-name">{{ getOtherUser(conv)?.nickname || t('app.user') }}</text>
+            <text :class="['conv-name', { unread: unreadConvIds.has(conv.id) }]">{{ getOtherUser(conv)?.nickname || t('app.user') }}</text>
             <text class="conv-time">{{ formatTime(conv.last_message_at) }}</text>
           </view>
-          <text class="conv-preview">
+          <text :class="['conv-preview', { unread: unreadConvIds.has(conv.id) }]">
             {{ (conv as any).last_message_type === 'image' ? '[' + t('chat.photo') + ']' : ((conv as any).last_message_preview || conv.item?.title || '') }}
           </text>
         </view>
+        <view v-if="unreadConvIds.has(conv.id)" class="unread-dot"></view>
         <view class="conv-thumb-wrap" v-if="conv.item?.images?.[0]">
           <image :src="conv.item.images[0]" class="conv-thumb" mode="aspectFill" />
           <text v-if="conv.item?.status === 'sold'" class="thumb-badge sold">{{ t('status.sold') }}</text>
@@ -74,7 +75,7 @@ const { t } = useI18n()
 
 const { currentUser, isLoggedIn } = useAuth()
 const { conversations, loading, fetchConversations, deleteConversation } = useMessages()
-const { refreshUnreadCount } = useUnread()
+const { unreadConvIds, refreshUnreadCount } = useUnread()
 
 onShow(() => {
   if (currentUser.value) {
@@ -197,11 +198,16 @@ function goLogin() {
 }
 .conv-info { flex: 1; min-width: 0; }
 .conv-top { display: flex; justify-content: space-between; align-items: center; }
-.conv-name { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+.conv-name { font-size: 15px; font-weight: 600; color: #1a1a1a; &.unread { font-weight: 700; } }
+.unread-dot {
+  width: 9px; height: 9px; border-radius: 50%; background: #007AFF;
+  flex-shrink: 0; margin-left: 4px;
+}
 .conv-time { font-size: 12px; color: #c7c7cc; }
 .conv-preview {
   font-size: 13px; color: #aeaeb2; margin-top: 4px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
+  &.unread { color: #1a1a1a; font-weight: 600; }
 }
 .conv-thumb-wrap { position: relative; flex-shrink: 0; }
 .conv-thumb {

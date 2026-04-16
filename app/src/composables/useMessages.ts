@@ -164,7 +164,7 @@ export function useMessages() {
       .from('conversations')
       .select(`
         *,
-        item:items(id, title, images, price, status),
+        item:items(id, title, images, price, status, negotiable, user_id),
         buyer:profiles!conversations_buyer_id_fkey(id, nickname, avatar_url),
         seller:profiles!conversations_seller_id_fkey(id, nickname, avatar_url)
       `)

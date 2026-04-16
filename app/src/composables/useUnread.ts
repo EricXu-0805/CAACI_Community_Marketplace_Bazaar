@@ -4,6 +4,7 @@ import { useAuth } from './useAuth'
 import { useI18n } from './useI18n'
 
 const unreadCount = ref(0)
+const unreadConvIds = ref<Set<string>>(new Set())
 let channel: ReturnType<ReturnType<typeof useSupabase>['supabase']['channel']> | null = null
 
 export function useUnread() {
@@ -23,14 +24,15 @@ export function useUnread() {
       if (!convs || convs.length === 0) { unreadCount.value = 0; return }
 
       const convIds = convs.map((c: any) => c.id)
-      const { count } = await supabase
+      const { data: unreadMsgs, count } = await supabase
         .from('messages')
-        .select('*', { count: 'exact', head: true })
+        .select('conversation_id', { count: 'exact' })
         .neq('sender_id', currentUser.value.id)
         .eq('is_read', false)
         .in('conversation_id', convIds)
 
       unreadCount.value = count || 0
+      unreadConvIds.value = new Set((unreadMsgs || []).map((m: any) => m.conversation_id))
     } catch {
       unreadCount.value = 0
     }
@@ -75,5 +77,5 @@ export function useUnread() {
     }
   }, { immediate: true })
 
-  return { unreadCount, refreshUnreadCount, stopListening }
+  return { unreadCount, unreadConvIds, refreshUnreadCount, stopListening }
 }

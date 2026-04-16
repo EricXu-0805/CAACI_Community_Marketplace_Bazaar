@@ -153,6 +153,8 @@ const messages: Record<Lang, Record<string, string>> = {
 
     'chat.empty': 'Start the conversation!',
     'chat.placeholder': 'Type a message...',
+    'chat.makeOffer': 'Make an Offer',
+    'chat.offerMsg': 'Hi! Would you consider',
     'chat.send': 'Send',
     'chat.fail': 'Failed to send',
     'chat.photo': 'Photo',
@@ -407,6 +409,8 @@ const messages: Record<Lang, Record<string, string>> = {
 
     'chat.empty': '开始聊天吧！',
     'chat.placeholder': '输入消息...',
+    'chat.makeOffer': '出个价',
+    'chat.offerMsg': '你好！能接受这个价格吗？',
     'chat.send': '发送',
     'chat.fail': '发送失败',
     'chat.photo': '图片',

@@ -312,7 +312,14 @@ const filterLocation = ref('')
 const sortBy = ref('latest')
 
 const categoryKeys: (ItemCategory | null)[] = [null, 'furniture', 'electronics', 'clothing', 'books', 'housing', 'vehicles', 'daily', 'food', 'other']
-const categories = computed(() => categoryKeys.map(k => ({ value: k, label: t(k ? 'cat.' + k : 'cat.all') })))
+const categoryEmoji: Record<string, string> = {
+  furniture: '🪑', electronics: '📱', clothing: '👗', books: '📚',
+  housing: '🏠', vehicles: '🚗', daily: '🧴', food: '🍜', other: '📦',
+}
+const categories = computed(() => categoryKeys.map(k => ({
+  value: k,
+  label: (k && categoryEmoji[k] ? categoryEmoji[k] + ' ' : '') + t(k ? 'cat.' + k : 'cat.all'),
+})))
 
 const conditionKeys = ['new', 'like_new', 'good', 'fair']
 const conditionOpts = computed(() => {
