@@ -106,6 +106,18 @@
         </view>
       </view>
 
+      <scroll-view scroll-x class="spot-row">
+        <view
+          v-for="spot in CAMPUS_SPOTS"
+          :key="spot.id"
+          class="spot-chip"
+          :class="{ active: form.location === spotLabel(spot) }"
+          @click="form.location = spotLabel(spot)"
+        >
+          {{ spotLabel(spot) }}
+        </view>
+      </scroll-view>
+
       <view class="form-group row toggle-row" @click="form.negotiable = !form.negotiable">
         <text class="label">{{ t('publish.obo') }}</text>
         <text class="toggle-hint">{{ t('publish.oboHint') }}</text>
@@ -132,6 +144,7 @@ import { watch } from 'vue'
 import { useAuth } from '../../composables/useAuth'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
+import { useCampusSpots, type CampusSpot } from '../../composables/useCampusSpots'
 import { useLocation } from '../../composables/useLocation'
 import { useItems } from '../../composables/useItems'
 import { compressImage } from '../../utils'
@@ -139,7 +152,12 @@ import type { ItemCategory, ItemCondition } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
+const { CAMPUS_SPOTS } = useCampusSpots()
+
+function spotLabel(spot: CampusSpot) {
+  return lang.value === 'zh' ? spot.zh : spot.en
+}
 const { detectLocation, detecting: detectingLoc } = useLocation()
 const { requireAuth } = useAuth()
 const { createItem, updateItem, fetchItem, uploadImages, fetchItems } = useItems()
@@ -399,6 +417,24 @@ async function onSubmit() {
 }
 
 /* ========== Location ========== */
+.spot-row {
+  white-space: nowrap;
+  padding: 0 0 8px 0;
+  margin-top: 4px;
+}
+.spot-chip {
+  display: inline-block;
+  padding: 6px 12px;
+  margin-right: 8px;
+  background: #f2f2f7;
+  color: #1a1a1a;
+  font-size: 13px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+  &:active { background: #e5e5ea; }
+  &.active { background: #1a1a1a; color: #fff; }
+}
 .loc-detect {
   width: 36px; height: 36px; border-radius: 9px; background: #f2f2f7;
   display: flex; align-items: center; justify-content: center;

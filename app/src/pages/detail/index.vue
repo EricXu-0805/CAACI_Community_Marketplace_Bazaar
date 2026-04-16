@@ -58,7 +58,12 @@
       <view class="seller-row" @click="goSeller(item.user_id)">
         <image :src="item.profile.avatar_url || '/static/default-avatar.png'" class="seller-avatar" />
         <view class="seller-info">
-          <text class="seller-name">{{ item.profile.nickname }}</text>
+          <view class="seller-name-row">
+            <text class="seller-name">{{ item.profile.nickname }}</text>
+            <view v-if="item.profile.is_illini_verified" class="illini-badge" :title="t('profile.illiniVerified')">
+              <text class="illini-badge-text">✓ Illini</text>
+            </view>
+          </view>
           <text class="seller-meta">{{ formatTime(item.created_at) }}</text>
         </view>
         <view class="seller-arrow"></view>
@@ -151,6 +156,7 @@ import { useAuth } from '../../composables/useAuth'
 import { useMessages } from '../../composables/useMessages'
 import { useFavorites } from '../../composables/useFavorites'
 import { useI18n } from '../../composables/useI18n'
+import { useModeration } from '../../composables/useModeration'
 import type { Item } from '../../types'
 import { MOCK_ITEMS } from '../../composables/useMockData'
 import { formatTime } from '../../utils'
@@ -162,6 +168,7 @@ const { supabase } = useSupabase()
 const { currentUser, requireAuth } = useAuth()
 const { getOrCreateConversation } = useMessages()
 const { isFavorited: checkFavorited, toggleFavorite: doToggleFavorite, getFavoriteCount, loadMyFavorites } = useFavorites()
+const { reportTarget } = useModeration()
 
 const item = ref<Item | null>(null)
 const sellerOtherItems = ref<Item[]>([])
@@ -237,11 +244,25 @@ function onShare() {
 }
 
 function onReport() {
-  uni.showModal({
-    title: t('detail.reportTitle'),
-    content: t('detail.reportHint'),
-    success: (res) => {
-      if (res.confirm) uni.showToast({ title: t('detail.reported'), icon: 'success' })
+  if (!item.value) return
+  if (!requireAuth()) return
+  const targetId = item.value.id
+  const reasons = [
+    t('report.reasonSpam'),
+    t('report.reasonProhibited'),
+    t('report.reasonMisleading'),
+    t('report.reasonOther'),
+  ]
+  uni.showActionSheet({
+    itemList: reasons,
+    success: async (res) => {
+      const reason = reasons[res.tapIndex]
+      try {
+        await reportTarget('item', targetId, reason)
+        uni.showToast({ title: t('report.thanks'), icon: 'success' })
+      } catch (err: any) {
+        uni.showToast({ title: err?.message || t('report.failed'), icon: 'none' })
+      }
     },
   })
 }
@@ -454,7 +475,16 @@ async function contactSeller() {
   background: #f0f0f0; flex-shrink: 0;
 }
 .seller-info { flex: 1; }
-.seller-name { font-size: 15px; font-weight: 600; color: #1d1d1f; display: block; }
+.seller-name-row { display: flex; align-items: center; gap: 6px; }
+.seller-name { font-size: 15px; font-weight: 600; color: #1d1d1f; }
+.illini-badge {
+  display: inline-flex; align-items: center;
+  background: #13294B; color: #fff;
+  padding: 2px 7px; border-radius: 4px;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.illini-badge-text { color: #fff; font-size: 10px; }
 .seller-meta { font-size: 12px; color: #aeaeb2; margin-top: 3px; }
 .stats-row {
   display: flex; gap: 28px;

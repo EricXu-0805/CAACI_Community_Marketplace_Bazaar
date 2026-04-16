@@ -7,7 +7,12 @@
 
     <view v-if="seller" class="seller-section">
       <image :src="seller.avatar_url || '/static/default-avatar.png'" class="avatar" />
-      <text class="nickname">{{ seller.nickname }}</text>
+      <view class="name-row">
+        <text class="nickname">{{ seller.nickname }}</text>
+        <view v-if="seller.is_illini_verified" class="illini-badge">
+          <text class="illini-badge-text">✓ Illini</text>
+        </view>
+      </view>
       <text v-if="seller.bio" class="bio">{{ seller.bio }}</text>
       <view class="loc-row">
         <view class="loc-dot"></view>
@@ -51,7 +56,7 @@ onLoad(async (options) => {
   const uid = options.id
 
   const [profileRes, itemsRes] = await Promise.all([
-    supabase.from('profiles').select('id, nickname, avatar_url, bio, location').eq('id', uid).single(),
+    supabase.from('profiles').select('id, nickname, avatar_url, bio, location, is_illini_verified').eq('id', uid).single(),
     supabase.from('items').select('*').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
   ])
 
@@ -81,7 +86,15 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   flex-direction: column; align-items: center; gap: 6px;
 }
 .avatar { width: 64px; height: 64px; border-radius: 50%; background: #f2f2f7; }
-.nickname { font-size: 18px; font-weight: 700; color: #1a1a1a; margin-top: 4px; }
+.name-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.nickname { font-size: 18px; font-weight: 700; color: #1a1a1a; }
+.illini-badge {
+  display: inline-flex; align-items: center;
+  background: #13294B; color: #fff;
+  padding: 2px 7px; border-radius: 4px;
+  font-size: 10px; font-weight: 700;
+}
+.illini-badge-text { color: #fff; font-size: 10px; }
 .bio { font-size: 13px; color: #8e8e93; text-align: center; max-width: 280px; }
 .loc-row { display: flex; align-items: center; gap: 4px; }
 .loc-dot { width: 5px; height: 5px; border-radius: 50%; background: #FF6B35; }

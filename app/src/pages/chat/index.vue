@@ -98,6 +98,7 @@ import { useMessages } from '../../composables/useMessages'
 import { useItems } from '../../composables/useItems'
 import { useUnread } from '../../composables/useUnread'
 import { useI18n } from '../../composables/useI18n'
+import { useModeration } from '../../composables/useModeration'
 import { compressImage } from '../../utils'
 import type { Item } from '../../types'
 
@@ -107,12 +108,14 @@ const { currentUser, requireAuth } = useAuth()
 const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, fetchConversationDetail } = useMessages()
 const { uploadImages } = useItems()
 const { refreshUnreadCount } = useUnread()
+const { reportTarget, blockUser } = useModeration()
 
 const inputText = ref('')
 const scrollTarget = ref('')
 const conversationId = ref('')
 const itemInfo = ref<Item | null>(null)
 const otherUserName = ref('')
+const otherUserId = ref('')
 let unsubscribe: (() => void) | null = null
 
 onLoad(async (options) => {
@@ -138,6 +141,7 @@ onLoad(async (options) => {
         if (currentUser.value) {
           const other = detail.buyer_id === currentUser.value.id ? detail.seller : detail.buyer
           otherUserName.value = other?.nickname || t('app.user')
+          otherUserId.value = other?.id || ''
         }
       }
     } catch {
@@ -188,16 +192,48 @@ function onMoreActions() {
   uni.showActionSheet({
     itemList: [t('chat.blockUser'), t('detail.report')],
     success: (res) => {
-      if (res.tapIndex === 0) {
-        uni.showModal({
-          title: t('chat.blockTitle'),
-          content: t('chat.blockHint'),
-          success: (r) => {
-            if (r.confirm) uni.showToast({ title: t('chat.blocked'), icon: 'success' })
-          },
-        })
-      } else {
-        uni.showToast({ title: t('detail.reported'), icon: 'success' })
+      if (res.tapIndex === 0) doBlock()
+      else doReport()
+    },
+  })
+}
+
+function doBlock() {
+  if (!otherUserId.value) return
+  uni.showModal({
+    title: t('block.confirm'),
+    content: t('block.hint'),
+    confirmColor: '#FF3B30',
+    success: async (r) => {
+      if (!r.confirm) return
+      try {
+        await blockUser(otherUserId.value)
+        uni.showToast({ title: t('block.success'), icon: 'success' })
+        setTimeout(() => uni.navigateBack(), 800)
+      } catch (err: any) {
+        uni.showToast({ title: err?.message || t('block.failed'), icon: 'none' })
+      }
+    },
+  })
+}
+
+function doReport() {
+  if (!otherUserId.value) return
+  const reasons = [
+    t('report.reasonSpam'),
+    t('report.reasonAbuse'),
+    t('report.reasonMisleading'),
+    t('report.reasonOther'),
+  ]
+  uni.showActionSheet({
+    itemList: reasons,
+    success: async (res) => {
+      const reason = reasons[res.tapIndex]
+      try {
+        await reportTarget('user', otherUserId.value, reason)
+        uni.showToast({ title: t('report.thanks'), icon: 'success' })
+      } catch (err: any) {
+        uni.showToast({ title: err?.message || t('report.failed'), icon: 'none' })
       }
     },
   })
