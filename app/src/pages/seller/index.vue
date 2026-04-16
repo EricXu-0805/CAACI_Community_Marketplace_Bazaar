@@ -56,7 +56,7 @@ onLoad(async (options) => {
   const uid = options.id
 
   const [profileRes, itemsRes] = await Promise.all([
-    supabase.from('profiles').select('id, nickname, avatar_url, bio, location').eq('id', uid).single(),
+    supabase.from('profiles').select('id, nickname, avatar_url, bio, location, is_illini_verified').eq('id', uid).single(),
     supabase.from('items').select('*').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
   ])
 

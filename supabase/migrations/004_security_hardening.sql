@@ -1,16 +1,22 @@
 -- ============================================
--- 004 Security Hardening
+-- 004 Security Hardening (fully idempotent)
 -- ============================================
--- Fixes 3 latent security issues discovered in prod audit:
---   1. profiles SELECT policy leaked phone/email/wechat_openid
---   2. get_last_messages() was SECURITY DEFINER without auth.uid() filter
---   3. increment_view_count() had no existence check and could be abused
--- Also fixes a deployment-blocking duplicate policy from migration 003
--- and adds a missing composite index on favorites.
+-- Fixes P0 security issues:
+--   1. profiles SELECT leaked phone/email/wechat_openid
+--   2. get_last_messages() had no auth.uid() filter
+--   3. increment_view_count() had no existence check
+-- Also: de-dupes 003's duplicate policy, creates reports/blocks tables,
+-- adds is_illini_verified + delete_my_account RPC, plus missing indexes.
 --
--- Idempotent: safe to re-run. No data loss. No breaking API changes for
--- the frontend (it already uses PUBLIC_PROFILE_FIELDS whitelist).
+-- Idempotent: safe to re-run any number of times. Creates nothing twice,
+-- drops defensively before every CREATE POLICY.
 -- ============================================
+
+-- --------------------------------------------
+-- 0. New column must exist before any GRANT references it
+-- --------------------------------------------
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS is_illini_verified BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- --------------------------------------------
 -- 1. profiles PII fix: column-level GRANTs
@@ -21,6 +27,7 @@
 -- Self-service reads of own PII go through a dedicated RPC below.
 
 DROP POLICY IF EXISTS "Anyone can view profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Public profile rows readable" ON public.profiles;
 
 CREATE POLICY "Public profile rows readable"
   ON public.profiles FOR SELECT
@@ -30,6 +37,8 @@ REVOKE SELECT ON public.profiles FROM anon, authenticated, PUBLIC;
 
 GRANT SELECT (id, nickname, avatar_url, bio, location, created_at, is_illini_verified)
   ON public.profiles TO anon, authenticated;
+
+GRANT UPDATE ON public.profiles TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.get_my_profile()
 RETURNS public.profiles
@@ -100,7 +109,7 @@ CREATE POLICY "Participants can update messages"
   );
 
 -- --------------------------------------------
--- 5. Missing composite index on favorites
+-- 5. Missing indexes on favorites
 -- --------------------------------------------
 CREATE INDEX IF NOT EXISTS idx_favorites_user_item
   ON public.favorites(user_id, item_id);
@@ -109,7 +118,7 @@ CREATE INDEX IF NOT EXISTS idx_favorites_item
   ON public.favorites(item_id);
 
 -- --------------------------------------------
--- 6. Reports table (for the UI-only report/block buttons)
+-- 6. Reports table
 -- --------------------------------------------
 CREATE TABLE IF NOT EXISTS public.reports (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -138,7 +147,7 @@ CREATE POLICY "Users can view own reports"
   USING (auth.uid() = reporter_id);
 
 -- --------------------------------------------
--- 7. Blocks table (for the UI-only block button)
+-- 7. Blocks table
 -- --------------------------------------------
 CREATE TABLE IF NOT EXISTS public.blocks (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -163,10 +172,9 @@ CREATE POLICY "Users manage own blocks"
 -- --------------------------------------------
 -- 8. Account deletion RPC
 -- --------------------------------------------
--- Soft-delete: marks items deleted, clears profile, invalidates auth. We do
--- not hard-delete auth.users from a client-callable function because that
--- requires service_role; a scheduled job can sweep soft-deleted accounts
--- out of auth.users later.
+-- Soft-delete: marks items deleted, clears profile, cascades conversations.
+-- We do not hard-delete auth.users from a client RPC because that requires
+-- service_role; a scheduled job can sweep soft-deleted accounts later.
 
 CREATE OR REPLACE FUNCTION public.delete_my_account()
 RETURNS void
@@ -201,12 +209,8 @@ REVOKE EXECUTE ON FUNCTION public.delete_my_account() FROM anon;
 GRANT EXECUTE ON FUNCTION public.delete_my_account() TO authenticated;
 
 -- --------------------------------------------
--- 9. Illini email verification column
+-- 9. Illini email auto-verification on signup + backfill
 -- --------------------------------------------
-ALTER TABLE public.profiles
-  ADD COLUMN IF NOT EXISTS is_illini_verified BOOLEAN NOT NULL DEFAULT FALSE;
-
--- Auto-flag verified on new signup if email ends in @illinois.edu
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -226,7 +230,6 @@ BEGIN
 END;
 $$;
 
--- Backfill existing users
 UPDATE public.profiles p
 SET is_illini_verified = TRUE
 FROM auth.users u
@@ -235,14 +238,15 @@ WHERE p.id = u.id
   AND p.is_illini_verified = FALSE;
 
 -- --------------------------------------------
--- 9. Verification check
+-- 10. Verification queries (run separately to confirm)
 -- --------------------------------------------
--- Run these after migration to confirm:
---
--- SET role anon;
--- SELECT phone, email FROM public.profiles LIMIT 1;         -- should error / return 0
--- SELECT id, nickname FROM public.public_profiles LIMIT 1;  -- should work
--- RESET role;
---
--- SELECT * FROM public.get_last_messages(ARRAY[gen_random_uuid()]); -- empty without auth
--- SELECT public.increment_view_count(gen_random_uuid());            -- no-op
+-- SELECT has_column_privilege('authenticated', 'public.profiles', 'phone', 'SELECT');
+--   -> expected: false
+-- SELECT has_column_privilege('authenticated', 'public.profiles', 'nickname', 'SELECT');
+--   -> expected: true
+-- SELECT column_name FROM information_schema.columns
+--   WHERE table_name='profiles' AND column_name='is_illini_verified';
+--   -> expected: 1 row
+-- SELECT table_name FROM information_schema.tables
+--   WHERE table_schema='public' AND table_name IN ('reports','blocks');
+--   -> expected: 2 rows
