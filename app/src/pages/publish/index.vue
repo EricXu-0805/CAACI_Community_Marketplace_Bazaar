@@ -4,7 +4,7 @@
 
     <!-- Mobile Header -->
     <view class="page-header">
-      <text class="ph-title">{{ t('publish.title') }}</text>
+      <text class="ph-title">{{ isEdit ? t('publish.editTitle') : t('publish.title') }}</text>
     </view>
 
     <view class="form">
@@ -111,7 +111,7 @@
 
     <view class="submit-bar">
       <button class="submit-btn" :disabled="submitting" @click="onSubmit">
-        {{ submitting ? t('publish.submitting') : t('publish.submit') }}
+        {{ submitting ? t('publish.submitting') : (isEdit ? t('publish.update') : t('publish.submit')) }}
       </button>
     </view>
 
@@ -121,6 +121,7 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useLocation } from '../../composables/useLocation'
@@ -133,7 +134,28 @@ import CustomTabBar from '../../components/CustomTabBar.vue'
 const { t } = useI18n()
 const { detectLocation, detecting: detectingLoc } = useLocation()
 const { requireAuth } = useAuth()
-const { createItem, uploadImages } = useItems()
+const { createItem, updateItem, fetchItem, uploadImages } = useItems()
+
+const editId = ref('')
+const isEdit = ref(false)
+
+onLoad(async (options) => {
+  if (options?.edit) {
+    editId.value = options.edit
+    isEdit.value = true
+    try {
+      const item = await fetchItem(options.edit)
+      form.title = item.title
+      form.description = item.description
+      form.price = String(item.price)
+      form.category = item.category
+      form.condition = item.condition
+      form.location = item.location
+      form.negotiable = item.negotiable ?? false
+      imageList.value = [...item.images]
+    } catch {}
+  }
+})
 
 const categoryKeys: ItemCategory[] = ['furniture', 'electronics', 'clothing', 'books', 'housing', 'vehicles', 'daily', 'food', 'other']
 const conditionKeys = ['new', 'like_new', 'good', 'fair']
@@ -182,20 +204,22 @@ async function onSubmit() {
   submitting.value = true
   uploadProgress.value = 0
   try {
-    let images: string[] = []
-    if (imageList.value.length > 0) {
-      const total = imageList.value.length
-      const uploaded: string[] = []
-      for (let i = 0; i < total; i++) {
-        const compressed = await compressImage(imageList.value[i])
-        const urls = await uploadImages([compressed])
-        uploaded.push(...urls)
-        uploadProgress.value = Math.round(((i + 1) / total) * 100)
-      }
-      images = uploaded
+    const existing: string[] = []
+    const toUpload: string[] = []
+    for (const img of imageList.value) {
+      if (img.startsWith('http')) existing.push(img)
+      else toUpload.push(img)
     }
+    const uploaded: string[] = []
+    for (let i = 0; i < toUpload.length; i++) {
+      const compressed = await compressImage(toUpload[i])
+      const urls = await uploadImages([compressed])
+      uploaded.push(...urls)
+      uploadProgress.value = Math.round(((i + 1) / (toUpload.length || 1)) * 100)
+    }
+    const images = [...existing, ...uploaded]
 
-    await createItem({
+    const payload = {
       title: form.title.trim(),
       description: form.description.trim(),
       price: Number(form.price),
@@ -204,19 +228,21 @@ async function onSubmit() {
       location: form.location || 'UIUC',
       images,
       negotiable: form.negotiable,
-    })
+    }
 
-    uploadProgress.value = 0
-    form.title = ''
-    form.description = ''
-    form.price = ''
-    form.category = ''
-    form.condition = ''
-    form.location = 'UIUC'
-    form.negotiable = false
-    imageList.value = []
-    uni.showToast({ title: t('publish.success'), icon: 'success' })
-    setTimeout(() => uni.switchTab({ url: '/pages/index/index' }), 1500)
+    if (isEdit.value) {
+      await updateItem(editId.value, { ...payload })
+      uni.showToast({ title: t('publish.updated'), icon: 'success' })
+      setTimeout(() => uni.navigateBack(), 1500)
+    } else {
+      await createItem(payload)
+      uploadProgress.value = 0
+      form.title = ''; form.description = ''; form.price = ''
+      form.category = ''; form.condition = ''; form.location = 'UIUC'
+      form.negotiable = false; imageList.value = []
+      uni.showToast({ title: t('publish.success'), icon: 'success' })
+      setTimeout(() => uni.switchTab({ url: '/pages/index/index' }), 1500)
+    }
   } catch (error: any) {
     uni.showToast({ title: error.message || t('publish.fail'), icon: 'none' })
   } finally {

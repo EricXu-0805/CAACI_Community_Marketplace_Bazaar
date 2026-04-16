@@ -27,6 +27,19 @@
       </view>
     </view>
 
+    <!-- Search History -->
+    <view v-if="searchHistory.length > 0 && !searchText" class="search-history">
+      <view class="sh-header">
+        <text class="sh-title">{{ t('home.recentSearch') }}</text>
+        <text class="sh-clear" @click="clearHistory">{{ t('filter.reset') }}</text>
+      </view>
+      <view class="sh-tags">
+        <view v-for="h in searchHistory" :key="h" class="sh-tag" @click="pickHistory(h)">
+          <text>{{ h }}</text>
+        </view>
+      </view>
+    </view>
+
     <!-- Desktop only: Category Pills at top -->
     <scroll-view class="cat-bar desktop-cats" scroll-x enable-flex>
       <view
@@ -347,8 +360,29 @@ function selectCategory(category: ItemCategory | null) {
   fetchItems({ category, search: searchText.value, reset: true })
 }
 
+const MAX_HISTORY = 8
+const searchHistory = ref<string[]>([])
+try { searchHistory.value = JSON.parse(uni.getStorageSync('searchHistory') || '[]') } catch {}
+
+function saveSearch(text: string) {
+  if (!text.trim()) return
+  searchHistory.value = [text, ...searchHistory.value.filter(s => s !== text)].slice(0, MAX_HISTORY)
+  try { uni.setStorageSync('searchHistory', JSON.stringify(searchHistory.value)) } catch {}
+}
+
+function clearHistory() {
+  searchHistory.value = []
+  try { uni.removeStorageSync('searchHistory') } catch {}
+}
+
+function pickHistory(text: string) {
+  searchText.value = text
+  onSearch()
+}
+
 const debouncedFetch = debounce(() => {
   currentPage.value = 0
+  if (searchText.value.trim()) saveSearch(searchText.value.trim())
   fetchItems({ category: selectedCategory.value, search: searchText.value, reset: true })
 }, 300)
 
@@ -622,6 +656,17 @@ function goPublish() {
   background: #1a1a1a; color: #fff; border-radius: 22px;
   font-size: 14px; font-weight: 600; cursor: pointer;
   &:active { opacity: 0.8; }
+}
+
+.search-history { padding: 0 16px 10px; }
+.sh-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.sh-title { font-size: 13px; color: #8e8e93; font-weight: 500; }
+.sh-clear { font-size: 12px; color: #c7c7cc; cursor: pointer; }
+.sh-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.sh-tag {
+  padding: 5px 12px; background: #f2f2f7; border-radius: 14px; cursor: pointer;
+  text { font-size: 13px; color: #636366; }
+  &:active { background: #e5e5ea; }
 }
 
 /* ============================================

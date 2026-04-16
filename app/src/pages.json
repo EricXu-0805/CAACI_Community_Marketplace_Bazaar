@@ -16,13 +16,15 @@
 		{
 			"path": "pages/messages/index",
 			"style": {
-				"navigationStyle": "custom"
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": true
 			}
 		},
 		{
 			"path": "pages/profile/index",
 			"style": {
-				"navigationStyle": "custom"
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": true
 			}
 		},
 		{
@@ -33,6 +35,12 @@
 		},
 		{
 			"path": "pages/chat/index",
+			"style": {
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/profile/edit",
 			"style": {
 				"navigationStyle": "custom"
 			}

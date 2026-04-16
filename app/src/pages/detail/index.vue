@@ -75,13 +75,28 @@
     </view>
 
     <!-- Bottom Action Bar -->
-    <view class="action-bar">
+    <view class="action-bar" v-if="item.user_id !== currentUser?.id">
       <view class="fav-btn" @click="toggleFavorite">
         <view :class="['heart-icon', { filled: isFav }]"></view>
         <text class="fav-label">{{ isFav ? t('detail.saved') : t('detail.save') }}</text>
       </view>
+      <view class="action-btn-small" @click="onReport">
+        <text class="fav-label">{{ t('detail.report') }}</text>
+      </view>
       <view class="chat-btn" @click="contactSeller">
         <text>{{ t('detail.chat') }}</text>
+      </view>
+    </view>
+    <!-- Owner actions -->
+    <view class="action-bar" v-else>
+      <view class="action-btn-small" @click="goEdit">
+        <text class="fav-label">{{ t('profile.edit') }}</text>
+      </view>
+      <view class="action-btn-small" @click="onMarkReserved" v-if="item.status === 'active'">
+        <text class="fav-label">{{ t('detail.reserve') }}</text>
+      </view>
+      <view class="chat-btn" style="background:#34C759" @click="onMarkSold" v-if="item.status !== 'sold'">
+        <text>{{ t('profile.markSold') }}</text>
       </view>
     </view>
   </view>
@@ -106,7 +121,7 @@ import { MOCK_ITEMS } from '../../composables/useMockData'
 import { formatTime } from '../../utils'
 
 const { t } = useI18n()
-const { fetchItem } = useItems()
+const { fetchItem, updateItemStatus } = useItems()
 const { currentUser, requireAuth } = useAuth()
 const { getOrCreateConversation } = useMessages()
 const { isFavorited: checkFavorited, toggleFavorite: doToggleFavorite, getFavoriteCount, loadMyFavorites } = useFavorites()
@@ -150,7 +165,54 @@ function goBack() {
 
 function onShare() {
   if (!item.value) return
+  // #ifdef H5
+  if (navigator.share) {
+    navigator.share({ title: item.value.title, text: `$${item.value.price} - ${item.value.title}`, url: window.location.href })
+  } else {
+    uni.setClipboardData({ data: window.location.href })
+    uni.showToast({ title: t('detail.linkCopied'), icon: 'success' })
+  }
+  // #endif
+  // #ifndef H5
   uni.showShareMenu?.({ withShareTicket: true })
+  // #endif
+}
+
+function onReport() {
+  uni.showModal({
+    title: t('detail.reportTitle'),
+    content: t('detail.reportHint'),
+    success: (res) => {
+      if (res.confirm) uni.showToast({ title: t('detail.reported'), icon: 'success' })
+    },
+  })
+}
+
+function goEdit() {
+  if (!item.value) return
+  uni.navigateTo({ url: `/pages/publish/index?edit=${item.value.id}` })
+}
+
+async function onMarkReserved() {
+  if (!item.value) return
+  try {
+    await updateItemStatus(item.value.id, 'reserved')
+    item.value.status = 'reserved'
+    uni.showToast({ title: t('detail.reserved'), icon: 'success' })
+  } catch {
+    uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+  }
+}
+
+async function onMarkSold() {
+  if (!item.value) return
+  try {
+    await updateItemStatus(item.value.id, 'sold')
+    item.value.status = 'sold'
+    uni.showToast({ title: t('profile.markedSold'), icon: 'success' })
+  } catch {
+    uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+  }
 }
 
 function previewImage(index: number) {
@@ -378,6 +440,11 @@ async function contactSeller() {
 }
 
 .fav-label { font-size: 10px; color: #8e8e93; }
+.action-btn-small {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 0 10px; cursor: pointer;
+  &:active { transform: scale(0.9); }
+}
 .chat-btn {
   flex: 1; height: 44px; background: #1a1a1a; color: #fff;
   border-radius: 22px; font-size: 15px; font-weight: 600;

@@ -60,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useMessages } from '../../composables/useMessages'
@@ -81,6 +81,14 @@ onShow(() => {
     fetchConversations(currentUser.value.id)
     refreshUnreadCount()
   }
+})
+
+onPullDownRefresh(async () => {
+  if (currentUser.value) {
+    await fetchConversations(currentUser.value.id)
+    await refreshUnreadCount()
+  }
+  uni.stopPullDownRefresh()
 })
 
 function getOtherUser(conv: Conversation): Profile | undefined {

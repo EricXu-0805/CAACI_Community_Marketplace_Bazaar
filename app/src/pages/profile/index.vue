@@ -65,6 +65,9 @@
               <text :class="['item-status', item.status]">{{ t('status.' + item.status) }}</text>
             </view>
             <view class="item-actions">
+              <view v-if="item.status === 'active'" class="action-btn" @click.stop="goEdit(item.id)">
+                <text>{{ t('profile.edit') }}</text>
+              </view>
               <view v-if="item.status === 'active'" class="action-btn" @click.stop="markAsSold(item.id)">
                 <text>{{ t('profile.markSold') }}</text>
               </view>
@@ -126,7 +129,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import DesktopNav from '../../components/DesktopNav.vue'
@@ -163,6 +166,18 @@ onShow(async () => {
   }
 })
 
+onPullDownRefresh(async () => {
+  if (currentUser.value) {
+    const uid = currentUser.value.id
+    const [items, , favItems] = await Promise.all([
+      fetchMyItems(uid), loadMyFavorites(uid), fetchMyFavoriteItems(uid),
+    ])
+    myItems.value = items
+    savedItems.value = favItems
+  }
+  uni.stopPullDownRefresh()
+})
+
 function goLogin() {
   uni.navigateTo({ url: '/pages/login/index' })
 }
@@ -171,8 +186,12 @@ function goDetail(id: string) {
   uni.navigateTo({ url: `/pages/detail/index?id=${id}` })
 }
 
+function goEdit(id: string) {
+  uni.navigateTo({ url: `/pages/publish/index?edit=${id}` })
+}
+
 function onEditProfile() {
-  uni.showToast({ title: t('profile.editSoon'), icon: 'none' })
+  uni.navigateTo({ url: '/pages/profile/edit' })
 }
 
 async function markAsSold(id: string) {
