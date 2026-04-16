@@ -5,7 +5,10 @@
       <view class="desktop-nav-links">
         <text :class="['nav-link', { active: current === 'index' }]" @click="go('/pages/index/index')">{{ t('nav.home') }}</text>
         <text :class="['nav-link', { active: current === 'publish' }]" @click="go('/pages/publish/index')">{{ t('nav.post') }}</text>
-        <text :class="['nav-link', { active: current === 'messages' }]" @click="go('/pages/messages/index')">{{ t('nav.messages') }}</text>
+        <view class="nav-link-wrap" @click="go('/pages/messages/index')">
+          <text :class="['nav-link', { active: current === 'messages' }]">{{ t('nav.messages') }}</text>
+          <view v-if="unreadCount > 0" class="nav-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</view>
+        </view>
         <text :class="['nav-link', { active: current === 'profile' }]" @click="go('/pages/profile/index')">{{ t('nav.profile') }}</text>
       </view>
       <view class="desktop-right">
@@ -21,8 +24,10 @@
 
 <script setup lang="ts">
 import { useI18n } from '../composables/useI18n'
+import { useUnread } from '../composables/useUnread'
 defineProps<{ current: string }>()
 const { t, toggleLang } = useI18n()
+const { unreadCount } = useUnread()
 function go(url: string) { uni.switchTab({ url }) }
 </script>
 
@@ -40,5 +45,12 @@ function go(url: string) { uni.switchTab({ url }) }
 .nav-location { font-size: 13px; color: #86868b; }
 .lang-btn { font-size: 11px; color: #8e8e93; padding: 3px 9px; border: 1px solid #d1d1d6; border-radius: 6px; cursor: pointer; font-weight: 500; }
 .lang-btn:active { background: #f2f2f7; }
+.nav-link-wrap { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
+.nav-badge {
+  position: absolute; top: -2px; right: -10px;
+  min-width: 16px; height: 16px; border-radius: 8px;
+  background: #FF3B30; color: #fff; font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; padding: 0 4px;
+}
 @media (max-width: 767px) { .desktop-nav { display: none; } }
 </style>

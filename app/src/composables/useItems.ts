@@ -220,16 +220,13 @@ export function useItems() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw new Error('Not authenticated')
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('items')
       .update({ status })
       .eq('id', id)
       .eq('user_id', session.user.id)
-      .select()
-      .single()
 
     if (error) throw error
-    return data as Item
   }
 
   function clearItems() {

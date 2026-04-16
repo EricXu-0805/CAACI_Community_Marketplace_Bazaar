@@ -3,6 +3,10 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || ''
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.warn('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env')
+}
+
 let supabase: SupabaseClient | null = null
 
 export function useSupabase() {

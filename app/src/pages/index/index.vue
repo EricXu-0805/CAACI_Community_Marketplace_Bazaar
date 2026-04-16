@@ -629,7 +629,7 @@ function goPublish() {
    ============================================ */
 @media (min-width: 768px) {
   .page { max-width: 1120px; margin: 0 auto; }
-  .mobile-brand { display: none; }
+  .mobile-header { display: none; }
   .mobile-cats { display: none; }
   .desktop-cats { display: block; }
 

@@ -6,6 +6,9 @@ const { init } = useAuth()
 
 onLaunch(() => {
   init()
+  uni.onUnhandledRejection?.((e: any) => {
+    console.error('Unhandled rejection:', e.reason)
+  })
 })
 </script>
 

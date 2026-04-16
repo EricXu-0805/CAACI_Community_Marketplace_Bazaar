@@ -85,9 +85,17 @@ async function onSubmit() {
       uni.showToast({ title: t('login.needNickname'), icon: 'none' })
       return
     }
-    const { error } = await signUp(email.value.trim(), password.value, nickname.value.trim())
+    const { data, error } = await signUp(email.value.trim(), password.value, nickname.value.trim())
     if (error) {
       uni.showToast({ title: error.message || t('login.signupFail'), icon: 'none' })
+    } else if (data?.user?.identities?.length === 0) {
+      uni.showToast({ title: t('login.emailExists'), icon: 'none' })
+    } else if (data?.user && !data.session) {
+      uni.showModal({
+        title: t('login.confirmTitle'),
+        content: t('login.confirmHint'),
+        showCancel: false,
+      })
     } else {
       uni.showToast({ title: t('login.signupOk'), icon: 'success' })
       setTimeout(() => uni.navigateBack(), 1500)

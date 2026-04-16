@@ -182,4 +182,13 @@ function goLogin() {
   background: #c7c7cc; animation: pulse 1s ease-in-out infinite;
 }
 @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+@media (min-width: 768px) {
+  .page-header { display: none; }
+  .page { padding-bottom: 0; }
+  .conv-item {
+    border-radius: 8px; margin: 2px 8px;
+    &:hover { background: #f7f7f8; }
+  }
+}
 </style>

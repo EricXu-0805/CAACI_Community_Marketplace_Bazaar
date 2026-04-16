@@ -64,9 +64,12 @@
               <text class="item-price">${{ item.price }}</text>
               <text :class="['item-status', item.status]">{{ t('status.' + item.status) }}</text>
             </view>
-            <view class="item-actions" v-if="item.status === 'active'">
-              <view class="mark-sold-btn" @click.stop="markAsSold(item.id)">
+            <view class="item-actions">
+              <view v-if="item.status === 'active'" class="action-btn" @click.stop="markAsSold(item.id)">
                 <text>{{ t('profile.markSold') }}</text>
+              </view>
+              <view class="action-btn danger" @click.stop="onDeleteItem(item.id)">
+                <text>{{ t('profile.delete') }}</text>
               </view>
             </view>
           </view>
@@ -145,10 +148,18 @@ const listedItems = computed(() => myItems.value.filter(i => i.status !== 'sold'
 const soldItems = computed(() => myItems.value.filter(i => i.status === 'sold'))
 
 onShow(async () => {
-  if (currentUser.value) {
-    myItems.value = await fetchMyItems(currentUser.value.id)
-    await loadMyFavorites(currentUser.value.id)
-    savedItems.value = await fetchMyFavoriteItems(currentUser.value.id)
+  if (!currentUser.value) return
+  const uid = currentUser.value.id
+  try {
+    const [items, _favs, favItems] = await Promise.all([
+      fetchMyItems(uid),
+      loadMyFavorites(uid),
+      fetchMyFavoriteItems(uid),
+    ])
+    myItems.value = items
+    savedItems.value = favItems
+  } catch {
+    uni.showToast({ title: t('profile.markFail'), icon: 'none' })
   }
 })
 
@@ -175,6 +186,25 @@ async function markAsSold(id: string) {
     uni.showToast({ title: t('profile.markFail'), icon: 'none' })
   }
 }
+
+function onDeleteItem(id: string) {
+  uni.showModal({
+    title: t('profile.deleteTitle'),
+    content: t('profile.deleteConfirm'),
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        await updateItemStatus(id, 'deleted')
+        if (currentUser.value) {
+          myItems.value = await fetchMyItems(currentUser.value.id)
+        }
+        uni.showToast({ title: t('profile.deleted'), icon: 'success' })
+      } catch {
+        uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+      }
+    },
+  })
+}
 </script>
 
 <style lang="scss" scoped>
@@ -192,7 +222,10 @@ async function markAsSold(id: string) {
   position: sticky; top: 0; z-index: 50;
 }
 .ph-title { font-size: 17px; font-weight: 700; color: #1a1a1a; }
-@media (min-width: 768px) { .page-header { display: none; } }
+@media (min-width: 768px) {
+  .page-header { display: none; }
+  .page { padding-bottom: 0; }
+}
 
 .login-section {
   background: #fff; display: flex; flex-direction: column;
@@ -320,7 +353,6 @@ async function markAsSold(id: string) {
 }
 .empty-text { font-size: 14px; color: #aeaeb2; }
 
-.my-items {}
 .my-item {
   display: flex; padding: 13px 16px;
   border-bottom: 0.5px solid rgba(0,0,0,0.06);
@@ -347,12 +379,13 @@ async function markAsSold(id: string) {
   &.sold { color: #8e8e93; background: #f2f2f7; }
 }
 
-.item-actions { display: flex; align-items: center; flex-shrink: 0; }
-.mark-sold-btn {
-  padding: 6px 12px; border-radius: 6px;
+.item-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.action-btn {
+  padding: 5px 10px; border-radius: 6px;
   background: #f2f2f7; cursor: pointer;
-  text { font-size: 12px; color: #636366; font-weight: 500; }
+  text { font-size: 11px; color: #636366; font-weight: 500; }
   &:active { background: #e5e5ea; }
+  &.danger text { color: #FF3B30; }
 }
 
 .menu-section { margin-top: 7px; background: #fff; }
