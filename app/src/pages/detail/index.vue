@@ -94,6 +94,19 @@
       </scroll-view>
     </view>
 
+    <!-- Similar items -->
+    <view class="section" v-if="similarItems.length > 0">
+      <text class="section-label">{{ t('detail.similar') }}</text>
+      <scroll-view scroll-x class="more-scroll">
+        <view class="more-list">
+          <view v-for="si in similarItems" :key="si.id" class="more-card" @click="goToOtherItem(si.id)">
+            <image :src="si.images?.[0] || '/static/placeholder.png'" class="mc-img" mode="aspectFill" />
+            <text class="mc-price">${{ si.price }}</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
     <!-- Bottom Action Bar -->
     <view class="action-bar" v-if="item.user_id !== currentUser?.id">
       <view class="fav-btn" @click="toggleFavorite">
@@ -132,6 +145,7 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useItems } from '../../composables/useItems'
+import { useHistory } from '../../composables/useHistory'
 import { useSupabase } from '../../composables/useSupabase'
 import { useAuth } from '../../composables/useAuth'
 import { useMessages } from '../../composables/useMessages'
@@ -143,6 +157,7 @@ import { formatTime } from '../../utils'
 
 const { t } = useI18n()
 const { fetchItem, updateItemStatus } = useItems()
+const { addToHistory } = useHistory()
 const { supabase } = useSupabase()
 const { currentUser, requireAuth } = useAuth()
 const { getOrCreateConversation } = useMessages()
@@ -150,6 +165,7 @@ const { isFavorited: checkFavorited, toggleFavorite: doToggleFavorite, getFavori
 
 const item = ref<Item | null>(null)
 const sellerOtherItems = ref<Item[]>([])
+const similarItems = ref<Item[]>([])
 const isMockItem = ref(false)
 const isFav = ref(false)
 const favCount = ref(0)
@@ -172,6 +188,7 @@ onLoad(async (options) => {
         fetchItem(options.id!),
       ])
       item.value = itemData
+      addToHistory(itemData)
       isFav.value = checkFavorited(options.id!)
       favCount.value = await getFavoriteCount(options.id!)
 
@@ -180,6 +197,12 @@ onLoad(async (options) => {
         .eq('user_id', itemData.user_id).eq('status', 'active')
         .neq('id', itemData.id).limit(6)
       if (otherItems) sellerOtherItems.value = otherItems as Item[]
+
+      const { data: simItems } = await supabase
+        .from('items').select('id, title, price, images')
+        .eq('category', itemData.category).eq('status', 'active')
+        .neq('id', itemData.id).neq('user_id', itemData.user_id).limit(6)
+      if (simItems) similarItems.value = simItems as Item[]
     } catch (error: any) {
       console.error('Detail load error:', error)
       uni.showToast({ title: error?.message || t('detail.notFound'), icon: 'none' })

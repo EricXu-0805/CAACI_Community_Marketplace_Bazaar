@@ -40,6 +40,10 @@
 			}
 		},
 		{
+			"path": "pages/history/index",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
 			"path": "pages/legal/index",
 			"style": { "navigationStyle": "custom" }
 		},

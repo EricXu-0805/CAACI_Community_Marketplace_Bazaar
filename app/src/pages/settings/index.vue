@@ -44,6 +44,12 @@
         <text class="mi-label danger-text">{{ t('profile.signOut') }}</text>
       </view>
     </view>
+
+    <view v-if="isLoggedIn" class="section">
+      <view class="menu-item danger" @click="onDeleteAccount">
+        <text class="mi-label danger-text">{{ t('settings.deleteAccount') }}</text>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -77,6 +83,29 @@ function clearCache() {
         cacheSize.value = '0 MB'
         uni.showToast({ title: t('settings.cleared'), icon: 'success' })
       } catch {}
+    },
+  })
+}
+
+function onDeleteAccount() {
+  uni.showModal({
+    title: t('settings.deleteTitle'),
+    content: t('settings.deleteHint'),
+    confirmColor: '#FF3B30',
+    success: (res) => {
+      if (res.confirm) {
+        uni.showModal({
+          title: t('settings.deleteConfirm'),
+          content: t('settings.deleteConfirmHint'),
+          confirmColor: '#FF3B30',
+          success: async (r) => {
+            if (r.confirm) {
+              signOut()
+              uni.showToast({ title: t('settings.deleteRequested'), icon: 'none', duration: 3000 })
+            }
+          },
+        })
+      }
     },
   })
 }

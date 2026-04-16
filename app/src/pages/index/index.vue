@@ -40,6 +40,21 @@
       </view>
     </view>
 
+    <!-- Quick action banner -->
+    <view v-if="!searchText && !selectedCategory" class="banner-area">
+      <swiper class="banner-swiper" autoplay circular :interval="4000">
+        <swiper-item v-for="(b, i) in banners" :key="i">
+          <view :class="['banner-card', b.color]" @click="b.action">
+            <text class="banner-emoji">{{ b.icon }}</text>
+            <view class="banner-text">
+              <text class="banner-title">{{ b.title }}</text>
+              <text class="banner-sub">{{ b.sub }}</text>
+            </view>
+          </view>
+        </swiper-item>
+      </swiper>
+    </view>
+
     <!-- Desktop only: Category Pills at top -->
     <scroll-view class="cat-bar desktop-cats" scroll-x enable-flex>
       <view
@@ -267,6 +282,11 @@ const selectedCategory = ref<ItemCategory | null>(null)
 const currentPage = ref(0)
 const isRefreshing = ref(false)
 const columnCount = ref(2)
+const banners = computed(() => [
+  { icon: '📦', title: t('banner.sell'), sub: t('banner.sellSub'), color: 'bg-warm', action: () => uni.switchTab({ url: '/pages/publish/index' }) },
+  { icon: '🎓', title: t('banner.grad'), sub: t('banner.gradSub'), color: 'bg-blue', action: () => selectCategory('furniture') },
+  { icon: '💡', title: t('banner.tip'), sub: t('banner.tipSub'), color: 'bg-green', action: () => {} },
+])
 const showBackTop = ref(false)
 const scrollTopVal = ref(0)
 
@@ -716,6 +736,21 @@ function goPublish() {
   font-size: 14px; font-weight: 600; cursor: pointer;
   &:active { opacity: 0.8; }
 }
+
+.banner-area { padding: 0 16px 8px; }
+.banner-swiper { height: 72px; }
+.banner-card {
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+  border-radius: 12px; height: 68px; cursor: pointer;
+  &:active { opacity: 0.9; }
+}
+.bg-warm { background: linear-gradient(135deg, #FFF3E0, #FFE0B2); }
+.bg-blue { background: linear-gradient(135deg, #E3F2FD, #BBDEFB); }
+.bg-green { background: linear-gradient(135deg, #E8F5E9, #C8E6C9); }
+.banner-emoji { font-size: 28px; flex-shrink: 0; }
+.banner-text { flex: 1; }
+.banner-title { font-size: 14px; font-weight: 600; color: #1a1a1a; display: block; }
+.banner-sub { font-size: 11px; color: #636366; margin-top: 2px; display: block; }
 
 .back-top {
   position: fixed; right: 16px; bottom: calc(110px + env(safe-area-inset-bottom, 0px));

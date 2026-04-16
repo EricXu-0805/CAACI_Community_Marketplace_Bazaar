@@ -120,6 +120,10 @@
     </view>
 
     <view v-if="isLoggedIn" class="menu-section">
+      <view class="menu-item" @click="goHistory">
+        <text class="menu-text">{{ t('profile.history') }}</text>
+        <view class="menu-arrow"></view>
+      </view>
       <view class="menu-item" @click="goSettings">
         <text class="menu-text">{{ t('settings.title') }}</text>
         <view class="menu-arrow"></view>
@@ -199,6 +203,7 @@ function goEdit(id: string) {
 
 function onEditProfile() { uni.navigateTo({ url: '/pages/profile/edit' }) }
 function goSettings() { uni.navigateTo({ url: '/pages/settings/index' }) }
+function goHistory() { uni.navigateTo({ url: '/pages/history/index' }) }
 
 async function markAsSold(id: string) {
   try {
