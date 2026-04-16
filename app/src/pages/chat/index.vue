@@ -243,10 +243,10 @@ function scrollToBottom() {
 .msg-row {
   display: flex; align-items: flex-end; margin-bottom: 9px; gap: 8px;
   &.mine {
-    flex-direction: row-reverse;
+    justify-content: flex-end;
     .msg-bubble {
       background: #1a1a1a; color: #fff;
-      border-radius: 18px 4px 18px 18px;
+      border-radius: 18px 18px 4px 18px;
     }
   }
 }

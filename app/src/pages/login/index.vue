@@ -75,7 +75,11 @@ async function onSubmit() {
     uni.showToast({ title: t('login.needEmail'), icon: 'none' })
     return
   }
-  if (!password.value || password.value.length < 8) {
+  if (!password.value) {
+    uni.showToast({ title: t('login.needPassword'), icon: 'none' })
+    return
+  }
+  if (mode.value === 'signup' && password.value.length < 8) {
     uni.showToast({ title: t('login.needPassword'), icon: 'none' })
     return
   }
