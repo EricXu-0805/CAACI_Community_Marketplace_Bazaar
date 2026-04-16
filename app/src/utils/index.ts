@@ -23,6 +23,51 @@ export function debounce<T extends (...args: any[]) => any>(
   }
 }
 
+const SEARCH_SYNONYMS: [string, string[]][] = [
+  ['电脑', ['computer', 'laptop', 'macbook', 'pc', 'dell', 'thinkpad', 'surface']],
+  ['笔记本', ['laptop', 'notebook', 'macbook', 'thinkpad', 'surface']],
+  ['手机', ['phone', 'iphone', 'samsung', 'pixel', 'android']],
+  ['耳机', ['headphone', 'earphone', 'airpod', 'earbud', 'beats', 'sony']],
+  ['平板', ['tablet', 'ipad', 'surface']],
+  ['显示器', ['monitor', 'display', 'screen']],
+  ['键盘', ['keyboard', 'mechanical']],
+  ['鼠标', ['mouse', 'logitech']],
+  ['相机', ['camera', 'canon', 'sony', 'nikon', 'fuji']],
+  ['自行车', ['bike', 'bicycle', 'cycling']],
+  ['车', ['car', 'vehicle', 'toyota', 'honda']],
+  ['沙发', ['sofa', 'couch']],
+  ['桌子', ['desk', 'table']],
+  ['椅子', ['chair', 'herman miller']],
+  ['床', ['bed', 'mattress']],
+  ['书', ['book', 'textbook']],
+  ['衣服', ['clothes', 'clothing', 'jacket', 'coat']],
+  ['鞋', ['shoe', 'sneaker', 'nike', 'adidas']],
+  ['包', ['bag', 'backpack', 'purse']],
+  ['租房', ['housing', 'apartment', 'sublease', 'sublet', 'rent']],
+  ['转租', ['sublease', 'sublet', 'rent']],
+  ['家具', ['furniture', 'ikea']],
+  ['冰箱', ['fridge', 'refrigerator']],
+  ['微波炉', ['microwave']],
+  ['台灯', ['lamp', 'desk lamp', 'light']],
+  // English → Chinese
+  ['laptop', ['笔记本', '电脑']],
+  ['phone', ['手机']],
+  ['bike', ['自行车', '单车']],
+  ['desk', ['桌子', '书桌']],
+  ['chair', ['椅子']],
+]
+
+export function expandSearch(query: string): string[] {
+  const q = query.toLowerCase().trim()
+  const terms = new Set<string>([q])
+  for (const [keyword, synonyms] of SEARCH_SYNONYMS) {
+    if (q.includes(keyword.toLowerCase())) {
+      for (const s of synonyms) terms.add(s)
+    }
+  }
+  return Array.from(terms)
+}
+
 export function compressImage(
   src: string,
   maxWidth = 1200,

@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 import type { Item, ItemCategory, ItemCondition, ItemStatus } from '../types'
+import { expandSearch } from '../utils'
 
 const items = ref<Item[]>([])
 const loading = ref(false)
@@ -46,11 +47,12 @@ export function useItems() {
       }
 
       if (search) {
-        const sanitized = search
-          .replace(/[%_]/g, '\\$&')
-          .replace(/[.,()]/g, '')
-          .slice(0, 100)
-        query = query.or(`title.ilike.%${sanitized}%,description.ilike.%${sanitized}%`)
+        const terms = expandSearch(search)
+        const conditions = terms.map(t => {
+          const s = t.replace(/[%_]/g, '\\$&').replace(/[.,()]/g, '').slice(0, 100)
+          return `title.ilike.%${s}%,description.ilike.%${s}%`
+        })
+        query = query.or(conditions.join(','))
       }
 
       if (userId) {
