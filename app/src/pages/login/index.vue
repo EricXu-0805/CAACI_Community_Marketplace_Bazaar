@@ -43,13 +43,18 @@
         </view>
       </view>
 
+      <text v-if="mode === 'login'" class="forgot-link" @click="onForgotPassword">{{ t('login.forgot') }}</text>
+
       <button class="submit-btn" :disabled="loading" @click="onSubmit">
         {{ loading ? t('login.wait') : (mode === 'login' ? t('login.submitLogin') : t('login.submitSignup')) }}
       </button>
 
-      <text class="agreement" v-if="mode === 'signup'">
-        {{ t('login.agreement') }}
-      </text>
+      <view class="agreement" v-if="mode === 'signup'">
+        <text>{{ t('login.agreePrefix') }}</text>
+        <text class="link" @click="goLegal('terms')">{{ t('legal.terms') }}</text>
+        <text>{{ t('login.agreeAnd') }}</text>
+        <text class="link" @click="goLegal('privacy')">{{ t('legal.privacy') }}</text>
+      </view>
     </view>
 
     <view class="footer">
@@ -61,6 +66,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useAuth } from '../../composables/useAuth'
+import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 
 const { t } = useI18n()
@@ -71,6 +77,25 @@ const email = ref('')
 const password = ref('')
 const nickname = ref('')
 const showPw = ref(false)
+
+const { supabase } = useSupabase()
+
+async function onForgotPassword() {
+  if (!email.value.trim()) {
+    uni.showToast({ title: t('login.needEmail'), icon: 'none' })
+    return
+  }
+  const { error } = await supabase.auth.resetPasswordForEmail(email.value.trim())
+  if (error) {
+    uni.showToast({ title: error.message, icon: 'none' })
+  } else {
+    uni.showModal({ title: t('login.resetSent'), content: t('login.resetHint'), showCancel: false })
+  }
+}
+
+function goLegal(type: string) {
+  uni.navigateTo({ url: `/pages/legal/index${type === 'privacy' ? '?type=privacy' : ''}` })
+}
 
 function goBack() {
   uni.navigateBack({ fail: () => uni.switchTab({ url: '/pages/index/index' }) })
@@ -206,6 +231,11 @@ async function onSubmit() {
   padding: 4px;
 }
 
+.forgot-link {
+  display: block; text-align: right; font-size: 13px;
+  color: #8e8e93; margin-top: 8px; cursor: pointer;
+  &:active { color: #1a1a1a; }
+}
 .submit-btn {
   width: 100%; height: 48px;
   background: #1a1a1a; color: #fff;
@@ -218,9 +248,10 @@ async function onSubmit() {
 }
 
 .agreement {
-  display: block; text-align: center;
-  font-size: 12px; color: #c7c7cc; margin-top: 20px;
+  display: flex; flex-wrap: wrap; justify-content: center;
+  font-size: 12px; color: #c7c7cc; margin-top: 20px; gap: 2px;
   line-height: 1.5;
+  .link { color: #1a1a1a; text-decoration: underline; cursor: pointer; }
 }
 
 .footer {

@@ -75,6 +75,12 @@
       </view>
     </view>
 
+    <!-- Safety tip -->
+    <view class="safety-tip">
+      <text class="st-icon">🛡</text>
+      <text class="st-text">{{ t('detail.safetyTip') }}</text>
+    </view>
+
     <!-- More from seller -->
     <view class="section" v-if="sellerOtherItems.length > 0">
       <text class="section-label">{{ t('detail.moreFromSeller') }}</text>
@@ -474,6 +480,13 @@ async function contactSeller() {
 }
 
 .fav-label { font-size: 10px; color: #8e8e93; }
+.safety-tip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px; background: #f7f7f8; margin-top: 7px;
+}
+.st-icon { font-size: 14px; flex-shrink: 0; }
+.st-text { font-size: 12px; color: #8e8e93; line-height: 1.4; }
+
 .more-scroll { white-space: nowrap; }
 .more-list { display: inline-flex; gap: 8px; padding: 0 0 4px; }
 .more-card {

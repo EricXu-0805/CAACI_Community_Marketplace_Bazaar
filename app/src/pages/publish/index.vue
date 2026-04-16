@@ -35,10 +35,12 @@
 
       <view class="form-group">
         <input v-model="form.title" :placeholder="t('publish.titlePlaceholder')" maxlength="50" class="form-input title-input" />
+        <text class="char-count">{{ form.title.length }}/50</text>
       </view>
 
       <view class="form-group">
         <textarea v-model="form.description" :placeholder="t('publish.descPlaceholder')" maxlength="500" class="form-textarea" />
+        <text class="char-count">{{ form.description.length }}/500</text>
       </view>
 
       <view class="form-group row">
@@ -47,6 +49,10 @@
           <text class="currency">$</text>
           <input v-model="form.price" type="digit" placeholder="0.00" class="form-input" />
         </view>
+      </view>
+
+      <view v-if="avgPrice > 0 && form.category" class="price-hint">
+        <text>{{ t('publish.avgPrice') }}: ${{ avgPrice }}</text>
       </view>
 
       <!-- Category: inline pill selector -->
@@ -122,7 +128,9 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { watch } from 'vue'
 import { useAuth } from '../../composables/useAuth'
+import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 import { useLocation } from '../../composables/useLocation'
 import { useItems } from '../../composables/useItems'
@@ -155,6 +163,17 @@ onLoad(async (options) => {
       imageList.value = [...item.images]
     } catch {}
   }
+})
+
+const { supabase } = useSupabase()
+const avgPrice = ref(0)
+
+watch(() => form.category, async (cat) => {
+  if (!cat) { avgPrice.value = 0; return }
+  const { data } = await supabase.from('items').select('price').eq('category', cat).eq('status', 'active').limit(50)
+  if (data && data.length > 0) {
+    avgPrice.value = Math.round(data.reduce((s: number, i: any) => s + Number(i.price), 0) / data.length)
+  } else { avgPrice.value = 0 }
 })
 
 const categoryKeys: ItemCategory[] = ['furniture', 'electronics', 'clothing', 'books', 'housing', 'vehicles', 'daily', 'food', 'other']
@@ -348,6 +367,8 @@ async function onSubmit() {
   .currency { font-size: 17px; color: #1a1a1a; font-weight: 700; margin-right: 4px; }
 }
 .flex-input { flex: 1; }
+.char-count { display: block; text-align: right; font-size: 11px; color: #c7c7cc; margin-top: 4px; }
+.price-hint { padding: 0 16px 8px; font-size: 12px; color: #8e8e93; }
 
 .field-header {
   display: flex; align-items: center; cursor: pointer;

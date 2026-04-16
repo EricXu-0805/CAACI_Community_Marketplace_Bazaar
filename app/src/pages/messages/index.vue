@@ -28,6 +28,7 @@
         :key="conv.id"
         class="conv-item"
         @click="goChat(conv.id)"
+        @longpress="onLongPress(conv.id)"
       >
         <image
           :src="getOtherUser(conv)?.avatar_url || '/static/default-avatar.png'"
@@ -64,6 +65,7 @@ import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useMessages } from '../../composables/useMessages'
+import { useSupabase } from '../../composables/useSupabase'
 import { useUnread } from '../../composables/useUnread'
 import { formatTime } from '../../utils'
 import type { Conversation, Profile } from '../../types'
@@ -98,6 +100,27 @@ function getOtherUser(conv: Conversation): Profile | undefined {
 
 function goChat(conversationId: string) {
   uni.navigateTo({ url: `/pages/chat/index?id=${conversationId}` })
+}
+
+function onLongPress(convId: string) {
+  uni.showActionSheet({
+    itemList: [t('msg.deleteConv')],
+    success: (res) => {
+      if (res.tapIndex === 0) {
+        uni.showModal({
+          title: t('msg.deleteTitle'),
+          content: t('msg.deleteHint'),
+          success: async (r) => {
+            if (!r.confirm) return
+            const { supabase } = useSupabase()
+            await supabase.from('conversations').delete().eq('id', convId)
+            conversations.value = conversations.value.filter(c => c.id !== convId)
+            uni.showToast({ title: t('msg.deleted'), icon: 'success' })
+          },
+        })
+      }
+    },
+  })
 }
 
 function goLogin() {

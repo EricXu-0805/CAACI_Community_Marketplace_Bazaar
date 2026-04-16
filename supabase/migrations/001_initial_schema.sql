@@ -192,6 +192,10 @@ CREATE POLICY "Authenticated users can create conversations"
   ON public.conversations FOR INSERT
   WITH CHECK (auth.uid() = buyer_id);
 
+CREATE POLICY "Participants can delete conversations"
+  ON public.conversations FOR DELETE
+  USING (auth.uid() = buyer_id OR auth.uid() = seller_id);
+
 -- Messages
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 

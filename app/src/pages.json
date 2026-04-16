@@ -40,6 +40,14 @@
 			}
 		},
 		{
+			"path": "pages/legal/index",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/welcome/index",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
 			"path": "pages/settings/index",
 			"style": { "navigationStyle": "custom" }
 		},

@@ -28,6 +28,17 @@
       </view>
     </view>
 
+    <view class="section">
+      <view class="menu-item" @click="goLegal('terms')">
+        <text class="mi-label">{{ t('legal.terms') }}</text>
+        <view class="mi-arrow"></view>
+      </view>
+      <view class="menu-item" @click="goLegal('privacy')">
+        <text class="mi-label">{{ t('legal.privacy') }}</text>
+        <view class="mi-arrow"></view>
+      </view>
+    </view>
+
     <view v-if="isLoggedIn" class="section">
       <view class="menu-item danger" @click="onSignOut">
         <text class="mi-label danger-text">{{ t('profile.signOut') }}</text>
@@ -51,6 +62,9 @@ try {
 } catch {}
 
 function goBack() { uni.navigateBack() }
+function goLegal(type: string) {
+  uni.navigateTo({ url: `/pages/legal/index${type === 'privacy' ? '?type=privacy' : ''}` })
+}
 
 function clearCache() {
   uni.showModal({

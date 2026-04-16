@@ -25,6 +25,7 @@
             <view class="loc-dot"></view>
             <text class="location">{{ currentUser?.location || 'UIUC' }}</text>
           </view>
+          <text class="join-date" v-if="currentUser?.created_at">{{ t('profile.joined') }} {{ formatJoinDate(currentUser.created_at) }}</text>
         </view>
         <view class="edit-btn" @click="onEditProfile">
           <view class="edit-icon"></view>
@@ -179,6 +180,11 @@ onPullDownRefresh(async () => {
   uni.stopPullDownRefresh()
 })
 
+function formatJoinDate(dateStr: string): string {
+  const d = new Date(dateStr)
+  return `${d.getFullYear()}-${d.getMonth() + 1}`
+}
+
 function goLogin() {
   uni.navigateTo({ url: '/pages/login/index' })
 }
@@ -291,6 +297,7 @@ function onDeleteItem(id: string) {
   background: #FF6B35; flex-shrink: 0;
 }
 .location { font-size: 13px; color: #aeaeb2; }
+.join-date { font-size: 11px; color: #c7c7cc; margin-top: 2px; }
 
 .edit-btn {
   width: 36px; height: 36px; border-radius: 50%;

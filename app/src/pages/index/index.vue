@@ -164,6 +164,7 @@
             :key="item.id"
             class="card"
             @click="goToDetail(item.id)"
+            @longpress="onCardLongPress(item)"
           >
             <view class="card-img-box">
               <image
@@ -188,6 +189,7 @@
                     class="seller-pic"
                   />
                   <text class="seller-nick">{{ item.profile?.nickname || t('app.user') }}</text>
+                  <text class="card-time">{{ formatTime(item.created_at) }}</text>
                 </view>
                 <view class="card-fav">
                   <text v-if="isOldItem(item.created_at)" class="old-tag">{{ t('home.oldListing') }}</text>
@@ -250,7 +252,7 @@ import { useItems } from '../../composables/useItems'
 import { useI18n } from '../../composables/useI18n'
 import type { ItemCategory, Item } from '../../types'
 import { MOCK_ITEMS } from '../../composables/useMockData'
-import { debounce } from '../../utils'
+import { debounce, formatTime } from '../../utils'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 
@@ -402,6 +404,30 @@ const debouncedFetch = debounce(() => {
   if (searchText.value.trim()) saveSearch(searchText.value.trim())
   fetchItems({ category: selectedCategory.value, search: searchText.value, reset: true })
 }, 300)
+
+function onCardLongPress(item: Item) {
+  uni.showActionSheet({
+    itemList: [t('detail.save'), t('home.shareItem')],
+    success: (res) => {
+      if (res.tapIndex === 0) {
+        uni.showToast({ title: t('detail.saved'), icon: 'success' })
+      } else if (res.tapIndex === 1) {
+        // #ifdef H5
+        const url = `${window.location.origin}/pages/detail/index?id=${item.id}`
+        if (navigator.share) {
+          navigator.share({ title: item.title, text: `$${item.price} - ${item.title}`, url })
+        } else {
+          uni.setClipboardData({ data: url })
+          uni.showToast({ title: t('detail.linkCopied'), icon: 'success' })
+        }
+        // #endif
+        // #ifndef H5
+        uni.showToast({ title: t('detail.linkCopied'), icon: 'success' })
+        // #endif
+      }
+    },
+  })
+}
 
 function isOldItem(createdAt: string): boolean {
   return Date.now() - new Date(createdAt).getTime() > 30 * 86400000
@@ -609,6 +635,7 @@ function goPublish() {
 .badge-new { background: rgba(255,107,53,0.85); color: #fff; }
 .badge-mint { background: rgba(52,199,89,0.85); color: #fff; }
 .badge-reserved { background: rgba(255,149,0,0.85); color: #fff; }
+.card-time { font-size: 10px; color: #c7c7cc; margin-left: auto; }
 .old-tag { font-size: 10px; color: #c7c7cc; margin-right: 2px; }
 
 .card-info { padding: 9px 10px 11px; }

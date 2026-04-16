@@ -24,7 +24,11 @@
       />
       <view class="ic-info">
         <text class="ic-title">{{ itemInfo.title }}</text>
-        <text class="ic-price">${{ itemInfo.price }}</text>
+        <view class="ic-bottom">
+          <text class="ic-price">${{ itemInfo.price }}</text>
+          <text v-if="itemInfo.status === 'sold'" class="ic-sold">{{ t('status.sold') }}</text>
+          <text v-else-if="itemInfo.status === 'reserved'" class="ic-reserved">{{ t('status.reserved') }}</text>
+        </view>
       </view>
       <view class="ic-arrow"></view>
     </view>
@@ -315,7 +319,10 @@ function scrollToBottom() {
   font-size: 13px; color: #1a1a1a; font-weight: 500;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
 }
-.ic-price { font-size: 14px; font-weight: 700; color: #1a1a1a; margin-top: 2px; }
+.ic-bottom { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.ic-price { font-size: 14px; font-weight: 700; color: #1a1a1a; }
+.ic-sold { font-size: 11px; color: #FF3B30; font-weight: 600; }
+.ic-reserved { font-size: 11px; color: #FF9500; font-weight: 600; }
 .ic-arrow {
   width: 7px; height: 7px;
   border-top: 1.5px solid #c7c7cc; border-right: 1.5px solid #c7c7cc;

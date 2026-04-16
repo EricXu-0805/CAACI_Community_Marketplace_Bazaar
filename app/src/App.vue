@@ -6,6 +6,11 @@ const { init } = useAuth()
 
 onLaunch(() => {
   init()
+  try {
+    if (!uni.getStorageSync('welcomed')) {
+      uni.reLaunch({ url: '/pages/welcome/index' })
+    }
+  } catch {}
   uni.onUnhandledRejection?.((e: any) => {
     console.error('Unhandled rejection:', e.reason)
   })
