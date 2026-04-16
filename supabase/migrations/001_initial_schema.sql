@@ -214,6 +214,15 @@ CREATE POLICY "Participants can send messages"
     )
   );
 
+CREATE POLICY "Participants can update messages"
+  ON public.messages FOR UPDATE
+  USING (
+    conversation_id IN (
+      SELECT id FROM public.conversations
+      WHERE buyer_id = auth.uid() OR seller_id = auth.uid()
+    )
+  );
+
 -- Favorites
 ALTER TABLE public.favorites ENABLE ROW LEVEL SECURITY;
 
