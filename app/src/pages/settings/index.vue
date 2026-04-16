@@ -57,9 +57,11 @@
 import { ref } from 'vue'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
+import { useSupabase } from '../../composables/useSupabase'
 
 const { t, lang, toggleLang } = useI18n()
 const { isLoggedIn, signOut } = useAuth()
+const { supabase } = useSupabase()
 const cacheSize = ref('--')
 
 try {
@@ -72,6 +74,8 @@ function goLegal(type: string) {
   uni.navigateTo({ url: `/pages/legal/index${type === 'privacy' ? '?type=privacy' : ''}` })
 }
 
+const CACHE_KEYS_TO_CLEAR = ['search_history', 'browse_history', 'home_items_cache']
+
 function clearCache() {
   uni.showModal({
     title: t('settings.clearTitle'),
@@ -79,8 +83,9 @@ function clearCache() {
     success: (res) => {
       if (!res.confirm) return
       try {
-        uni.clearStorageSync()
-        cacheSize.value = '0 MB'
+        for (const key of CACHE_KEYS_TO_CLEAR) uni.removeStorageSync(key)
+        const info = uni.getStorageInfoSync()
+        cacheSize.value = `${Math.round(info.currentSize / 1024 * 10) / 10} MB`
         uni.showToast({ title: t('settings.cleared'), icon: 'success' })
       } catch {}
     },
@@ -89,21 +94,29 @@ function clearCache() {
 
 function onDeleteAccount() {
   uni.showModal({
-    title: t('settings.deleteTitle'),
-    content: t('settings.deleteHint'),
+    title: t('settings.deleteAccountConfirm'),
+    content: t('settings.deleteAccountHint'),
     confirmColor: '#FF3B30',
-    success: (res) => {
-      if (res.confirm) {
-        uni.showModal({
-          title: t('settings.deleteConfirm'),
-          content: t('settings.deleteConfirmHint'),
-          confirmColor: '#FF3B30',
-          success: async (r) => {
-            if (r.confirm) {
-              signOut()
-              uni.showToast({ title: t('settings.deleteRequested'), icon: 'none', duration: 3000 })
-            }
-          },
+    success: async (res) => {
+      if (!res.confirm) return
+      uni.showLoading({ title: '...' })
+      try {
+        const { error } = await supabase.rpc('delete_my_account')
+        if (error) throw error
+        await signOut()
+        uni.hideLoading()
+        uni.showToast({
+          title: t('settings.deleteAccountDone'),
+          icon: 'success',
+          duration: 2000,
+        })
+        setTimeout(() => uni.reLaunch({ url: '/pages/welcome/index' }), 1500)
+      } catch (err: any) {
+        uni.hideLoading()
+        uni.showToast({
+          title: err?.message || t('settings.deleteAccountFailed'),
+          icon: 'none',
+          duration: 3000,
         })
       }
     },

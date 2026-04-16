@@ -8,7 +8,7 @@ const loading = ref(false)
 const hasMore = ref(true)
 
 const PAGE_SIZE = 20
-const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, location'
+const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, location, is_illini_verified'
 const VALID_STATUSES: ItemStatus[] = ['active', 'reserved', 'sold', 'deleted']
 const ALLOWED_UPLOAD_EXTS: Record<string, string> = {
   jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp',
@@ -85,6 +85,11 @@ export function useItems() {
       .single()
 
     if (error) throw error
+
+    supabase.rpc('increment_view_count', { item_id: id }).then(({ error: rpcError }) => {
+      if (rpcError) console.warn('view_count increment failed:', rpcError.message)
+    })
+
     return data as Item
   }
 
@@ -171,6 +176,17 @@ export function useItems() {
         // #endif
 
         // #ifndef H5
+        const fileInfo = await new Promise<{ size: number } | null>((resolve) => {
+          uni.getFileInfo({
+            filePath,
+            success: (info: any) => resolve({ size: info.size }),
+            fail: () => resolve(null),
+          })
+        })
+        if (fileInfo && fileInfo.size > MAX_FILE_SIZE) {
+          throw new Error('File too large (max 5MB)')
+        }
+
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
         const uploadUrl = `${supabaseUrl}/storage/v1/object/item-images/${storagePath}`
         uploadError = await new Promise<any>((resolve) => {
@@ -182,7 +198,13 @@ export function useItems() {
               Authorization: `Bearer ${session.access_token}`,
               'x-upsert': 'false',
             },
-            success: () => resolve(null),
+            success: (res: any) => {
+              if (res.statusCode >= 200 && res.statusCode < 300) {
+                resolve(null)
+              } else {
+                resolve(new Error(`Upload HTTP ${res.statusCode}: ${res.data}`))
+              }
+            },
             fail: (err) => resolve(err),
           })
         })
@@ -193,6 +215,8 @@ export function useItems() {
             .from('item-images')
             .getPublicUrl(storagePath)
           urls.push(urlData.publicUrl)
+        } else {
+          console.warn('Upload rejected for', filePath, uploadError)
         }
       } catch (err) {
         console.warn('Upload error for', filePath, err)

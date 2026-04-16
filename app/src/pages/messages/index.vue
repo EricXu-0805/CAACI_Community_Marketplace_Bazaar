@@ -65,7 +65,6 @@ import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useMessages } from '../../composables/useMessages'
-import { useSupabase } from '../../composables/useSupabase'
 import { useUnread } from '../../composables/useUnread'
 import { formatTime } from '../../utils'
 import type { Conversation, Profile } from '../../types'
@@ -75,7 +74,7 @@ import CustomTabBar from '../../components/CustomTabBar.vue'
 const { t } = useI18n()
 
 const { currentUser, isLoggedIn } = useAuth()
-const { conversations, loading, fetchConversations } = useMessages()
+const { conversations, loading, fetchConversations, deleteConversation } = useMessages()
 const { refreshUnreadCount } = useUnread()
 
 onShow(() => {
@@ -112,10 +111,16 @@ function onLongPress(convId: string) {
           content: t('msg.deleteHint'),
           success: async (r) => {
             if (!r.confirm) return
-            const { supabase } = useSupabase()
-            await supabase.from('conversations').delete().eq('id', convId)
-            conversations.value = conversations.value.filter(c => c.id !== convId)
-            uni.showToast({ title: t('msg.deleted'), icon: 'success' })
+            try {
+              await deleteConversation(convId)
+              uni.showToast({ title: t('msg.deleted'), icon: 'success' })
+            } catch (err: any) {
+              uni.showToast({
+                title: err?.message || t('msg.deleteFailed'),
+                icon: 'none',
+                duration: 2500,
+              })
+            }
           },
         })
       }

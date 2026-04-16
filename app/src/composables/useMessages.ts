@@ -131,12 +131,27 @@ export function useMessages() {
   }
 
   async function markAsRead(conversationId: string, userId: string) {
-    await supabase
+    const { error } = await supabase
       .from('messages')
       .update({ is_read: true })
       .eq('conversation_id', conversationId)
       .neq('sender_id', userId)
       .eq('is_read', false)
+
+    if (error) {
+      console.error('markAsRead failed:', error.message)
+      throw error
+    }
+  }
+
+  async function deleteConversation(conversationId: string) {
+    const { error } = await supabase
+      .from('conversations')
+      .delete()
+      .eq('id', conversationId)
+
+    if (error) throw error
+    conversations.value = conversations.value.filter(c => c.id !== conversationId)
   }
 
   async function fetchConversationDetail(conversationId: string) {
@@ -144,7 +159,7 @@ export function useMessages() {
       .from('conversations')
       .select(`
         *,
-        item:items(id, title, images, price),
+        item:items(id, title, images, price, status),
         buyer:profiles!conversations_buyer_id_fkey(id, nickname, avatar_url),
         seller:profiles!conversations_seller_id_fkey(id, nickname, avatar_url)
       `)
@@ -165,6 +180,7 @@ export function useMessages() {
     getOrCreateConversation,
     subscribeToMessages,
     markAsRead,
+    deleteConversation,
     fetchConversationDetail,
     clearMessages,
   }
