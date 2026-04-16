@@ -158,7 +158,7 @@ import { useFavorites } from '../../composables/useFavorites'
 import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
 import type { Item } from '../../types'
-import { MOCK_ITEMS } from '../../composables/useMockData'
+
 import { formatTime } from '../../utils'
 
 const { t } = useI18n()
@@ -173,7 +173,6 @@ const { reportTarget } = useModeration()
 const item = ref<Item | null>(null)
 const sellerOtherItems = ref<Item[]>([])
 const similarItems = ref<Item[]>([])
-const isMockItem = ref(false)
 const isFav = ref(false)
 const favCount = ref(0)
 const currentImg = ref(0)
@@ -181,14 +180,6 @@ const descExpanded = ref(false)
 
 onLoad(async (options) => {
   if (options?.id) {
-    const mockItem = MOCK_ITEMS.find(m => m.id === options.id)
-    if (mockItem) {
-      item.value = mockItem
-      isMockItem.value = true
-      favCount.value = mockItem.favorite_count || 0
-      return
-    }
-
     try {
       const [, itemData] = await Promise.all([
         currentUser.value ? loadMyFavorites(currentUser.value.id) : Promise.resolve(),

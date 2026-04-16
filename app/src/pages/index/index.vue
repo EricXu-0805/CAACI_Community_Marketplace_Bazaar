@@ -133,7 +133,7 @@
       </view>
 
       <view class="fs-footer">
-        <view class="fs-apply" @click="showFilter = false">
+        <view class="fs-apply" @click="applyFilters">
           <text>{{ t('filter.apply') }}</text>
         </view>
       </view>
@@ -186,6 +186,7 @@
                 :src="item.images?.[0] || '/static/placeholder.png'"
                 mode="widthFix"
                 class="card-img"
+                lazy-load
               />
               <text v-if="item.status === 'reserved'" class="badge badge-reserved">{{ t('status.reserved') }}</text>
               <text v-else-if="item.condition === 'new'" class="badge badge-new">{{ t('condition.new') }}</text>
@@ -266,7 +267,7 @@ import { onPullDownRefresh } from '@dcloudio/uni-app'
 import { useItems } from '../../composables/useItems'
 import { useI18n } from '../../composables/useI18n'
 import type { ItemCategory, Item } from '../../types'
-import { MOCK_ITEMS } from '../../composables/useMockData'
+
 import { debounce, formatTime } from '../../utils'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
@@ -274,7 +275,7 @@ import CustomTabBar from '../../components/CustomTabBar.vue'
 const { t, toggleLang } = useI18n()
 
 const { items, loading, hasMore, fetchItems } = useItems()
-const useMock = ref(false)
+
 const initialLoading = ref(true)
 
 const searchText = ref('')
@@ -322,34 +323,25 @@ const activeFilterCount = computed(() => {
   return c
 })
 
-const displayItems = computed(() => useMock.value ? MOCK_ITEMS : items.value)
+const displayItems = computed(() => items.value)
 
-// Client-side filtering + sorting
+function getFilterParams() {
+  return {
+    category: selectedCategory.value,
+    search: searchText.value,
+    priceMin: filterPriceMin.value ? Number(filterPriceMin.value) : undefined,
+    priceMax: filterPriceMax.value ? Number(filterPriceMax.value) : undefined,
+    condition: filterCondition.value || undefined,
+    sort: sortBy.value,
+  }
+}
+
 const filteredItems = computed(() => {
   let result = [...displayItems.value]
 
-  if (filterPriceMin.value) {
-    const min = Number(filterPriceMin.value)
-    if (!isNaN(min)) result = result.filter(item => item.price >= min)
-  }
-  if (filterPriceMax.value) {
-    const max = Number(filterPriceMax.value)
-    if (!isNaN(max)) result = result.filter(item => item.price <= max)
-  }
-  if (filterCondition.value) {
-    result = result.filter(item => item.condition === filterCondition.value)
-  }
   if (filterLocation.value) {
     const loc = filterLocation.value.toLowerCase()
     result = result.filter(item => item.location.toLowerCase().includes(loc))
-  }
-
-  if (sortBy.value === 'price_asc') {
-    result.sort((a, b) => a.price - b.price)
-  } else if (sortBy.value === 'price_desc') {
-    result.sort((a, b) => b.price - a.price)
-  } else if (sortBy.value === 'popular') {
-    result.sort((a, b) => (b.favorite_count || 0) - (a.favorite_count || 0))
   }
 
   return result
@@ -362,6 +354,12 @@ const columns = computed(() => {
   })
   return cols
 })
+
+function applyFilters() {
+  showFilter.value = false
+  currentPage.value = 0
+  fetchItems({ ...getFilterParams(), reset: true })
+}
 
 function resetFilters() {
   filterPriceMin.value = ''
@@ -386,17 +384,14 @@ onMounted(async () => {
     }
   } catch {}
 
-  await fetchItems({ reset: true })
-  if (items.value.length === 0) {
-    useMock.value = true
-  }
+  await fetchItems({ ...getFilterParams(), reset: true })
   initialLoading.value = false
 })
 
 function selectCategory(category: ItemCategory | null) {
   selectedCategory.value = category
   currentPage.value = 0
-  fetchItems({ category, search: searchText.value, reset: true })
+  fetchItems({ ...getFilterParams(), category, reset: true })
 }
 
 const MAX_HISTORY = 8
@@ -422,7 +417,7 @@ function pickHistory(text: string) {
 const debouncedFetch = debounce(() => {
   currentPage.value = 0
   if (searchText.value.trim()) saveSearch(searchText.value.trim())
-  fetchItems({ category: selectedCategory.value, search: searchText.value, reset: true })
+  fetchItems({ ...getFilterParams(), reset: true })
 }, 300)
 
 function onCardLongPress(item: Item) {
@@ -469,13 +464,13 @@ function scrollToTop() {
 function loadMore() {
   if (loading.value || !hasMore.value) return
   currentPage.value++
-  fetchItems({ page: currentPage.value, category: selectedCategory.value, search: searchText.value })
+  fetchItems({ ...getFilterParams(), page: currentPage.value })
 }
 
 async function onRefresh() {
   isRefreshing.value = true
   currentPage.value = 0
-  await fetchItems({ category: selectedCategory.value, search: searchText.value, reset: true })
+  await fetchItems({ ...getFilterParams(), reset: true })
   isRefreshing.value = false
 }
 

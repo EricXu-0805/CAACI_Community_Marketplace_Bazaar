@@ -20,7 +20,13 @@
       <view class="user-header">
         <image :src="currentUser?.avatar_url || '/static/default-avatar.png'" class="avatar" />
         <view class="user-info">
-          <text class="nickname">{{ currentUser?.nickname }}</text>
+          <view class="name-row">
+            <text class="nickname">{{ currentUser?.nickname }}</text>
+            <view v-if="currentUser?.is_illini_verified" class="illini-badge">
+              <text class="illini-badge-text">✓ Illini</text>
+            </view>
+          </view>
+          <text class="user-bio" v-if="currentUser?.bio">{{ currentUser.bio }}</text>
           <view class="location-row">
             <view class="loc-dot"></view>
             <text class="location">{{ currentUser?.location || 'UIUC' }}</text>
@@ -120,6 +126,11 @@
     </view>
 
     <view v-if="isLoggedIn" class="menu-section">
+      <view class="menu-item" @click="goNotifications">
+        <text class="menu-text">{{ t('notif.title') }}</text>
+        <view v-if="unreadNotifCount > 0" class="menu-badge">{{ unreadNotifCount }}</view>
+        <view class="menu-arrow"></view>
+      </view>
       <view class="menu-item" @click="goHistory">
         <text class="menu-text">{{ t('profile.history') }}</text>
         <view class="menu-arrow"></view>
@@ -142,12 +153,14 @@ import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import { useItems } from '../../composables/useItems'
 import { useFavorites } from '../../composables/useFavorites'
+import { useNotifications } from '../../composables/useNotifications'
 import type { Item } from '../../types'
 
 const { t } = useI18n()
 const { currentUser, isLoggedIn } = useAuth()
 const { items: homeItems, fetchMyItems, updateItemStatus, deleteItem } = useItems()
 const { loadMyFavorites, fetchMyFavoriteItems } = useFavorites()
+const { unreadNotifCount, fetchNotifications } = useNotifications()
 
 const currentTab = ref<'listed' | 'saved' | 'sold'>('listed')
 const myItems = ref<Item[]>([])
@@ -167,6 +180,7 @@ onShow(async () => {
     ])
     myItems.value = items
     savedItems.value = favItems
+    fetchNotifications()
   } catch {
     uni.showToast({ title: t('profile.markFail'), icon: 'none' })
   }
@@ -202,6 +216,7 @@ function goEdit(id: string) {
 }
 
 function onEditProfile() { uni.navigateTo({ url: '/pages/profile/edit' }) }
+function goNotifications() { uni.navigateTo({ url: '/pages/notifications/index' }) }
 function goSettings() { uni.navigateTo({ url: '/pages/settings/index' }) }
 function goHistory() { uni.navigateTo({ url: '/pages/history/index' }) }
 
@@ -293,7 +308,16 @@ function onDeleteItem(id: string) {
   background: #f2f2f7; flex-shrink: 0;
 }
 .user-info { flex: 1; }
-.nickname { font-size: 19px; font-weight: 700; color: #1a1a1a; display: block; }
+.name-row { display: flex; align-items: center; gap: 8px; }
+.nickname { font-size: 19px; font-weight: 700; color: #1a1a1a; }
+.illini-badge {
+  display: inline-flex; align-items: center;
+  background: #13294B; color: #fff;
+  padding: 2px 7px; border-radius: 4px;
+  font-size: 10px; font-weight: 700;
+}
+.illini-badge-text { color: #fff; font-size: 10px; }
+.user-bio { font-size: 13px; color: #636366; margin-top: 2px; }
 .location-row {
   display: flex; align-items: center; gap: 5px; margin-top: 4px;
 }
@@ -423,6 +447,12 @@ function onDeleteItem(id: string) {
 .menu-section { margin-top: 7px; background: #fff; }
 .menu-item { padding: 15px 16px; display: flex; align-items: center; cursor: pointer; &:active { background: #f7f7f8; } }
 .menu-text { font-size: 15px; color: #1a1a1a; flex: 1; }
+.menu-badge {
+  min-width: 18px; height: 18px; border-radius: 9px;
+  background: #FF3B30; color: #fff; font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 5px; margin-right: 8px;
+}
 .menu-arrow {
   width: 7px; height: 7px; border-top: 1.5px solid #c7c7cc;
   border-right: 1.5px solid #c7c7cc; transform: rotate(45deg);
