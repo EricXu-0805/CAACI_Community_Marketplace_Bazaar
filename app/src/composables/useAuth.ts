@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { useSupabase } from './useSupabase'
+import { useModeration } from './useModeration'
 import type { Profile } from '../types'
 
 const currentUser = ref<Profile | null>(null)
@@ -22,25 +23,32 @@ export function useAuth() {
       await fetchProfile(session.user.id)
     }
 
+    const { loadBlockedIds, clearBlocked } = useModeration()
+
     const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         await fetchProfile(session.user.id)
+        loadBlockedIds()
       } else {
         currentUser.value = null
+        clearBlocked()
       }
     })
     authSubscription = data.subscription
   }
 
   async function fetchProfile(userId: string) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
+    const { data, error } = await supabase.rpc('get_my_profile')
 
     if (data && !error) {
       currentUser.value = data as Profile
+    } else {
+      const { data: fallback } = await supabase
+        .from('profiles')
+        .select('id, nickname, avatar_url, bio, location, is_illini_verified, created_at')
+        .eq('id', userId)
+        .single()
+      if (fallback) currentUser.value = fallback as Profile
     }
   }
 
@@ -82,9 +90,11 @@ export function useAuth() {
   }
 
   async function signOut() {
+    const { clearBlocked } = useModeration()
     await supabase.auth.signOut()
     supabase.removeAllChannels()
     currentUser.value = null
+    clearBlocked()
     uni.reLaunch({ url: '/pages/index/index' })
   }
 

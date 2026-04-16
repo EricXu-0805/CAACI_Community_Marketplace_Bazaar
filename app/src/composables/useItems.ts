@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
+import { useModeration } from './useModeration'
 import type { Item, ItemCategory, ItemCondition, ItemStatus } from '../types'
 import { expandSearch } from '../utils'
 
@@ -24,9 +25,13 @@ export function useItems() {
     category?: ItemCategory | null
     search?: string
     userId?: string
+    priceMin?: number
+    priceMax?: number
+    condition?: ItemCondition | null
+    sort?: string
     reset?: boolean
   } = {}) {
-    const { page = 0, category, search, userId, reset = false } = options
+    const { page = 0, category, search, userId, priceMin, priceMax, condition, sort, reset = false } = options
 
     if (reset) {
       items.value = []
@@ -39,8 +44,18 @@ export function useItems() {
         .from('items')
         .select(`*, profile:profiles(${PUBLIC_PROFILE_FIELDS})`)
         .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+
+      if (sort === 'price_asc') {
+        query = query.order('price', { ascending: true })
+      } else if (sort === 'price_desc') {
+        query = query.order('price', { ascending: false })
+      } else if (sort === 'popular') {
+        query = query.order('view_count', { ascending: false })
+      } else {
+        query = query.order('created_at', { ascending: false })
+      }
+
+      query = query.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
 
       if (category) {
         query = query.eq('category', category)
@@ -59,14 +74,29 @@ export function useItems() {
         query = query.eq('user_id', userId)
       }
 
+      if (priceMin !== undefined && priceMin > 0) {
+        query = query.gte('price', priceMin)
+      }
+      if (priceMax !== undefined && priceMax > 0) {
+        query = query.lte('price', priceMax)
+      }
+      if (condition) {
+        query = query.eq('condition', condition)
+      }
+
       const { data, error } = await query
       if (error) throw error
 
       if (data) {
+        const { blockedIds } = useModeration()
+        const filtered = blockedIds.value.size > 0
+          ? (data as Item[]).filter(item => !blockedIds.value.has(item.user_id))
+          : data as Item[]
+
         if (reset) {
-          items.value = data as Item[]
+          items.value = filtered
         } else {
-          items.value.push(...(data as Item[]))
+          items.value.push(...filtered)
         }
         hasMore.value = data.length === PAGE_SIZE
       }

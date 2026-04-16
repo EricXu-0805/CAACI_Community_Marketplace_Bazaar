@@ -1,9 +1,33 @@
+import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 
 export type ReportTarget = 'item' | 'user' | 'message'
 
+const blockedIds = ref<Set<string>>(new Set())
+let loaded = false
+
 export function useModeration() {
   const { supabase } = useSupabase()
+
+  async function loadBlockedIds() {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) { blockedIds.value = new Set(); loaded = false; return }
+
+    const { data } = await supabase
+      .from('blocks')
+      .select('blocked_id')
+      .eq('blocker_id', session.user.id)
+    blockedIds.value = new Set((data || []).map(r => r.blocked_id))
+    loaded = true
+  }
+
+  async function ensureLoaded() {
+    if (!loaded) await loadBlockedIds()
+  }
+
+  function isBlocked(userId: string): boolean {
+    return blockedIds.value.has(userId)
+  }
 
   async function reportTarget(
     targetType: ReportTarget,
@@ -34,6 +58,7 @@ export function useModeration() {
       blocked_id: blockedId,
     })
     if (error && error.code !== '23505') throw error
+    blockedIds.value.add(blockedId)
   }
 
   async function unblockUser(blockedId: string) {
@@ -46,19 +71,22 @@ export function useModeration() {
       .eq('blocker_id', session.user.id)
       .eq('blocked_id', blockedId)
     if (error) throw error
+    blockedIds.value.delete(blockedId)
   }
 
-  async function listBlockedIds(): Promise<string[]> {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) return []
-
-    const { data, error } = await supabase
-      .from('blocks')
-      .select('blocked_id')
-      .eq('blocker_id', session.user.id)
-    if (error) return []
-    return (data || []).map(row => row.blocked_id)
+  function clearBlocked() {
+    blockedIds.value = new Set()
+    loaded = false
   }
 
-  return { reportTarget, blockUser, unblockUser, listBlockedIds }
+  return {
+    blockedIds,
+    isBlocked,
+    loadBlockedIds,
+    ensureLoaded,
+    reportTarget,
+    blockUser,
+    unblockUser,
+    clearBlocked,
+  }
 }

@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
+import { useModeration } from './useModeration'
 import type { Conversation, Message } from '../types'
 
 const conversations = ref<Conversation[]>([])
@@ -25,7 +26,11 @@ export function useMessages() {
 
       if (error) throw error
 
-      const convs = (data || []) as Conversation[]
+      const { blockedIds } = useModeration()
+      let convs = (data || []) as Conversation[]
+      if (blockedIds.value.size > 0) {
+        convs = convs.filter(c => !blockedIds.value.has(c.buyer_id) && !blockedIds.value.has(c.seller_id))
+      }
       if (convs.length > 0) {
         const ids = convs.map(c => c.id)
         const { data: lastMsgs } = await supabase.rpc('get_last_messages', { conv_ids: ids })
