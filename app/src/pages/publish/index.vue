@@ -134,7 +134,7 @@ import CustomTabBar from '../../components/CustomTabBar.vue'
 const { t } = useI18n()
 const { detectLocation, detecting: detectingLoc } = useLocation()
 const { requireAuth } = useAuth()
-const { createItem, updateItem, fetchItem, uploadImages } = useItems()
+const { createItem, updateItem, fetchItem, uploadImages, fetchItems } = useItems()
 
 const editId = ref('')
 const isEdit = ref(false)
@@ -240,6 +240,7 @@ async function onSubmit() {
       form.title = ''; form.description = ''; form.price = ''
       form.category = ''; form.condition = ''; form.location = 'UIUC'
       form.negotiable = false; imageList.value = []
+      fetchItems({ reset: true })
       uni.showToast({ title: t('publish.success'), icon: 'success' })
       setTimeout(() => uni.switchTab({ url: '/pages/index/index' }), 1500)
     }

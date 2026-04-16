@@ -165,7 +165,8 @@
                 mode="widthFix"
                 class="card-img"
               />
-              <text v-if="item.condition === 'new'" class="badge badge-new">{{ t('condition.new') }}</text>
+              <text v-if="item.status === 'reserved'" class="badge badge-reserved">{{ t('status.reserved') }}</text>
+              <text v-else-if="item.condition === 'new'" class="badge badge-new">{{ t('condition.new') }}</text>
               <text v-else-if="item.condition === 'like_new'" class="badge badge-mint">{{ t('condition.like_new') }}</text>
             </view>
             <view class="card-info">
@@ -578,6 +579,7 @@ function goPublish() {
 }
 .badge-new { background: rgba(255,107,53,0.85); color: #fff; }
 .badge-mint { background: rgba(52,199,89,0.85); color: #fff; }
+.badge-reserved { background: rgba(255,149,0,0.85); color: #fff; }
 
 .card-info { padding: 9px 10px 11px; }
 .card-title {

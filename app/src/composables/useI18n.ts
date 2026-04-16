@@ -114,6 +114,10 @@ const messages: Record<Lang, Record<string, string>> = {
     'chat.placeholder': 'Type a message...',
     'chat.send': 'Send',
     'chat.fail': 'Failed to send',
+    'chat.blockUser': 'Block User',
+    'chat.blockTitle': 'Block this user?',
+    'chat.blockHint': 'You will no longer receive messages from this user.',
+    'chat.blocked': 'User blocked',
 
     'profile.signInHint': 'Sign in to manage your listings',
     'profile.signIn': 'Sign In',
@@ -272,6 +276,10 @@ const messages: Record<Lang, Record<string, string>> = {
     'chat.placeholder': '输入消息...',
     'chat.send': '发送',
     'chat.fail': '发送失败',
+    'chat.blockUser': '拉黑用户',
+    'chat.blockTitle': '拉黑该用户？',
+    'chat.blockHint': '拉黑后将不再收到该用户的消息。',
+    'chat.blocked': '已拉黑',
 
     'profile.signInHint': '登录后体验完整功能',
     'profile.signIn': '登录 / 注册',

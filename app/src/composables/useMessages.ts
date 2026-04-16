@@ -49,8 +49,8 @@ export function useMessages() {
     messages.value = []
   }
 
-  async function sendMessage(conversationId: string, senderId: string, content: string) {
-    if (content.length > 2000) throw new Error('Message too long')
+  async function sendMessage(conversationId: string, senderId: string, content: string, type: 'text' | 'image' = 'text') {
+    if (type === 'text' && content.length > 2000) throw new Error('Message too long')
 
     const { data, error } = await supabase
       .from('messages')
@@ -58,7 +58,7 @@ export function useMessages() {
         conversation_id: conversationId,
         sender_id: senderId,
         content,
-        message_type: 'text',
+        message_type: type,
       })
       .select()
       .single()

@@ -35,7 +35,12 @@
 
       <view class="form-group">
         <text class="form-label">{{ t('login.password') }}</text>
-        <input v-model="password" :placeholder="t('login.password')" password class="form-input" />
+        <view class="pw-wrap">
+          <input v-model="password" :placeholder="t('login.password')" :password="!showPw" class="form-input pw-input" />
+          <view class="pw-toggle" @click="showPw = !showPw">
+            <text>{{ showPw ? '◉' : '○' }}</text>
+          </view>
+        </view>
       </view>
 
       <button class="submit-btn" :disabled="loading" @click="onSubmit">
@@ -65,6 +70,7 @@ const mode = ref<'login' | 'signup'>('login')
 const email = ref('')
 const password = ref('')
 const nickname = ref('')
+const showPw = ref(false)
 
 function goBack() {
   uni.navigateBack({ fail: () => uni.switchTab({ url: '/pages/index/index' }) })
@@ -191,6 +197,13 @@ async function onSubmit() {
     border-color: rgba(0,0,0,0.12);
     background: #fff;
   }
+}
+.pw-wrap { position: relative; }
+.pw-input { padding-right: 44px; }
+.pw-toggle {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  cursor: pointer; font-size: 18px; color: #8e8e93;
+  padding: 4px;
 }
 
 .submit-btn {

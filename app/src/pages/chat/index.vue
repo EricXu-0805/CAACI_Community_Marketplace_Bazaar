@@ -10,6 +10,9 @@
         <text class="ch-item-title">{{ itemInfo.title }}</text>
       </view>
       <text v-else class="ch-name-only">{{ otherUserName || t('nav.messages') }}</text>
+      <view class="ch-more" @click="onMoreActions">
+        <view class="more-dot"></view><view class="more-dot"></view><view class="more-dot"></view>
+      </view>
     </view>
 
     <!-- Item Context Card -->
@@ -43,9 +46,10 @@
           :src="msg.sender?.avatar_url || '/static/default-avatar.png'"
           class="msg-avatar"
         />
-        <view class="msg-bubble">
+        <view class="msg-bubble" v-if="msg.message_type !== 'image'">
           <text>{{ msg.content }}</text>
         </view>
+        <image v-else :src="msg.content" class="msg-image" mode="widthFix" @click="previewImg(msg.content)" />
         <image
           v-if="msg.sender_id === currentUser?.id"
           :src="currentUser?.avatar_url || '/static/default-avatar.png'"
@@ -62,6 +66,9 @@
     </scroll-view>
 
     <view class="input-bar">
+      <view class="img-btn" @click="onSendImage">
+        <view class="img-icon"></view>
+      </view>
       <input
         v-model="inputText"
         :placeholder="t('chat.placeholder')"
@@ -81,14 +88,17 @@ import { ref, onUnmounted, nextTick } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useMessages } from '../../composables/useMessages'
+import { useItems } from '../../composables/useItems'
 import { useUnread } from '../../composables/useUnread'
 import { useI18n } from '../../composables/useI18n'
+import { compressImage } from '../../utils'
 import type { Item } from '../../types'
 
 const { t } = useI18n()
 
 const { currentUser, requireAuth } = useAuth()
 const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, fetchConversationDetail } = useMessages()
+const { uploadImages } = useItems()
 const { refreshUnreadCount } = useUnread()
 
 const inputText = ref('')
@@ -167,6 +177,50 @@ async function onSend() {
   }
 }
 
+function onMoreActions() {
+  uni.showActionSheet({
+    itemList: [t('chat.blockUser'), t('detail.report')],
+    success: (res) => {
+      if (res.tapIndex === 0) {
+        uni.showModal({
+          title: t('chat.blockTitle'),
+          content: t('chat.blockHint'),
+          success: (r) => {
+            if (r.confirm) uni.showToast({ title: t('chat.blocked'), icon: 'success' })
+          },
+        })
+      } else {
+        uni.showToast({ title: t('detail.reported'), icon: 'success' })
+      }
+    },
+  })
+}
+
+function previewImg(url: string) {
+  uni.previewImage({ urls: [url], current: url })
+}
+
+async function onSendImage() {
+  if (!currentUser.value || !conversationId.value) return
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: async (res) => {
+      try {
+        const compressed = await compressImage(res.tempFilePaths[0])
+        const urls = await uploadImages([compressed])
+        if (urls.length > 0) {
+          await sendMessage(conversationId.value, currentUser.value!.id, urls[0], 'image')
+          nextTick(() => scrollToBottom())
+        }
+      } catch {
+        uni.showToast({ title: t('chat.fail'), icon: 'none' })
+      }
+    },
+  })
+}
+
 function scrollToBottom() {
   if (messages.value.length > 0) {
     scrollTarget.value = `msg-${messages.value[messages.value.length - 1].id}`
@@ -213,6 +267,13 @@ function scrollToBottom() {
 .ch-name-only {
   font-size: 16px; font-weight: 600; color: #1a1a1a; flex: 1;
 }
+.ch-more {
+  display: flex; gap: 3px; padding: 8px; cursor: pointer; flex-shrink: 0;
+  &:active { opacity: 0.5; }
+}
+.more-dot {
+  width: 4px; height: 4px; border-radius: 50%; background: #8e8e93;
+}
 
 /* ========== Item Context Card ========== */
 .item-card {
@@ -258,6 +319,21 @@ function scrollToBottom() {
   max-width: 68%; padding: 10px 14px;
   background: #fff; border-radius: 4px 18px 18px 18px;
   font-size: 15px; line-height: 1.5; word-break: break-all;
+}
+.msg-image {
+  max-width: 200px; border-radius: 12px; background: #e8e8ed;
+}
+.img-btn {
+  width: 36px; height: 36px; display: flex;
+  align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
+  &:active { opacity: 0.5; }
+}
+.img-icon {
+  width: 20px; height: 16px; border: 1.5px solid #8e8e93; border-radius: 3px; position: relative;
+  &::before {
+    content: ''; position: absolute; top: 2px; left: 3px;
+    width: 4px; height: 4px; border-radius: 50%; border: 1px solid #8e8e93;
+  }
 }
 
 .empty-chat {
