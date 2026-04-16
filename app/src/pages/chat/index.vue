@@ -35,12 +35,14 @@
       :scroll-into-view="scrollTarget"
       scroll-with-animation
     >
-      <view
-        v-for="msg in messages"
-        :key="msg.id"
-        :id="`msg-${msg.id}`"
-        :class="['msg-row', { mine: msg.sender_id === currentUser?.id }]"
-      >
+      <template v-for="(msg, idx) in messages" :key="msg.id">
+        <view v-if="shouldShowTime(idx)" class="time-divider">
+          <text>{{ formatChatTime(msg.created_at) }}</text>
+        </view>
+        <view
+          :id="`msg-${msg.id}`"
+          :class="['msg-row', { mine: msg.sender_id === currentUser?.id }]"
+        >
         <image
           v-if="msg.sender_id !== currentUser?.id"
           :src="msg.sender?.avatar_url || '/static/default-avatar.png'"
@@ -56,6 +58,7 @@
           class="msg-avatar"
         />
       </view>
+      </template>
 
       <view v-if="messages.length === 0" class="empty-chat">
         <view class="ec-icon">
@@ -196,6 +199,26 @@ function onMoreActions() {
   })
 }
 
+function shouldShowTime(idx: number): boolean {
+  if (idx === 0) return true
+  const curr = new Date(messages.value[idx].created_at).getTime()
+  const prev = new Date(messages.value[idx - 1].created_at).getTime()
+  return curr - prev > 5 * 60 * 1000
+}
+
+function formatChatTime(dateStr: string): string {
+  const d = new Date(dateStr)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterday = new Date(today.getTime() - 86400000)
+  const msgDay = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+  if (msgDay.getTime() === today.getTime()) return time
+  if (msgDay.getTime() === yesterday.getTime()) return `${t('chat.yesterday')} ${time}`
+  return `${d.getMonth() + 1}/${d.getDate()} ${time}`
+}
+
 function previewImg(url: string) {
   uni.previewImage({ urls: [url], current: url })
 }
@@ -305,7 +328,11 @@ function scrollToBottom() {
   display: flex; align-items: flex-end; margin-bottom: 9px; gap: 8px;
   &.mine {
     justify-content: flex-end;
-    .msg-bubble {
+.time-divider {
+  text-align: center; padding: 12px 0 6px;
+  text { font-size: 11px; color: #c7c7cc; background: #f2f2f7; padding: 2px 10px; border-radius: 8px; }
+}
+.msg-bubble {
       background: #1a1a1a; color: #fff;
       border-radius: 18px 18px 4px 18px;
     }

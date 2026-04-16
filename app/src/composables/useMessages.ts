@@ -24,7 +24,21 @@ export function useMessages() {
         .order('last_message_at', { ascending: false })
 
       if (error) throw error
-      conversations.value = (data || []) as Conversation[]
+
+      const convs = (data || []) as Conversation[]
+      if (convs.length > 0) {
+        const ids = convs.map(c => c.id)
+        const { data: lastMsgs } = await supabase.rpc('get_last_messages', { conv_ids: ids })
+        if (lastMsgs) {
+          const msgMap = new Map((lastMsgs as any[]).map(m => [m.conversation_id, m]))
+          for (const c of convs) {
+            const lm = msgMap.get(c.id)
+            if (lm) (c as any).last_message_preview = lm.content
+            if (lm) (c as any).last_message_type = lm.message_type
+          }
+        }
+      }
+      conversations.value = convs
     } catch (error) {
       console.error('Failed to fetch conversations:', error)
     } finally {

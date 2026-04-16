@@ -9,6 +9,11 @@ onLaunch(() => {
   uni.onUnhandledRejection?.((e: any) => {
     console.error('Unhandled rejection:', e.reason)
   })
+  uni.onNetworkStatusChange?.((res: { isConnected: boolean }) => {
+    if (!res.isConnected) {
+      uni.showToast({ title: 'No network connection', icon: 'none', duration: 3000 })
+    }
+  })
 })
 </script>
 

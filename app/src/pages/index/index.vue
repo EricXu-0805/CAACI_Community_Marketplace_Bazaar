@@ -128,7 +128,9 @@
     <scroll-view
       class="feed"
       scroll-y
+      :scroll-top="scrollTopVal"
       @scrolltolower="loadMore"
+      @scroll="onScroll"
       refresher-enabled
       :refresher-triggered="isRefreshing"
       @refresherrefresh="onRefresh"
@@ -151,8 +153,12 @@
       </view>
 
       <!-- Real Content -->
-      <view v-else class="waterfall">
-        <view v-for="(col, ci) in columns" :key="ci" class="wf-col">
+      <view v-else>
+        <view v-if="searchText || selectedCategory" class="result-count">
+          <text>{{ filteredItems.length }} {{ t('home.results') }}</text>
+        </view>
+        <view class="waterfall">
+          <view v-for="(col, ci) in columns" :key="ci" class="wf-col">
           <view
             v-for="item in col"
             :key="item.id"
@@ -184,12 +190,14 @@
                   <text class="seller-nick">{{ item.profile?.nickname || t('app.user') }}</text>
                 </view>
                 <view class="card-fav">
+                  <text v-if="isOldItem(item.created_at)" class="old-tag">{{ t('home.oldListing') }}</text>
                   <text class="fav-heart">♥</text>
                   <text class="fav-num">{{ item.favorite_count || 0 }}</text>
                 </view>
               </view>
             </view>
           </view>
+        </view>
         </view>
       </view>
 
@@ -207,11 +215,17 @@
       <!-- Empty -->
       <view v-if="!loading && !initialLoading && filteredItems.length === 0" class="empty">
         <view class="empty-bag-icon"></view>
-        <text class="empty-title">{{ t('home.emptyTitle') }}</text>
-        <text class="empty-sub">{{ t('home.emptySub') }}</text>
-        <view class="empty-btn" @click="goPublish">{{ t('home.postItem') }}</view>
+        <text class="empty-title">{{ searchText ? t('home.noResults') : t('home.emptyTitle') }}</text>
+        <text class="empty-sub">{{ searchText ? t('home.tryOther') : t('home.emptySub') }}</text>
+        <view v-if="searchText" class="empty-btn" @click="searchText = ''; onSearch()">{{ t('home.clearSearch') }}</view>
+        <view v-else class="empty-btn" @click="goPublish">{{ t('home.postItem') }}</view>
       </view>
     </scroll-view>
+
+    <!-- Back to top -->
+    <view v-if="showBackTop" class="back-top" @click="scrollToTop">
+      <view class="bt-arrow"></view>
+    </view>
 
     <CustomTabBar current="index" />
 
@@ -251,6 +265,8 @@ const selectedCategory = ref<ItemCategory | null>(null)
 const currentPage = ref(0)
 const isRefreshing = ref(false)
 const columnCount = ref(2)
+const showBackTop = ref(false)
+const scrollTopVal = ref(0)
 
 const showFilter = ref(false)
 const filterPriceMin = ref('')
@@ -387,8 +403,21 @@ const debouncedFetch = debounce(() => {
   fetchItems({ category: selectedCategory.value, search: searchText.value, reset: true })
 }, 300)
 
+function isOldItem(createdAt: string): boolean {
+  return Date.now() - new Date(createdAt).getTime() > 30 * 86400000
+}
+
 function onSearch() {
   debouncedFetch()
+}
+
+function onScroll(e: any) {
+  showBackTop.value = e.detail.scrollTop > 600
+}
+
+function scrollToTop() {
+  scrollTopVal.value = 1
+  setTimeout(() => { scrollTopVal.value = 0 }, 50)
 }
 
 function loadMore() {
@@ -580,6 +609,7 @@ function goPublish() {
 .badge-new { background: rgba(255,107,53,0.85); color: #fff; }
 .badge-mint { background: rgba(52,199,89,0.85); color: #fff; }
 .badge-reserved { background: rgba(255,149,0,0.85); color: #fff; }
+.old-tag { font-size: 10px; color: #c7c7cc; margin-right: 2px; }
 
 .card-info { padding: 9px 10px 11px; }
 .card-title {
@@ -658,6 +688,25 @@ function goPublish() {
   background: #1a1a1a; color: #fff; border-radius: 22px;
   font-size: 14px; font-weight: 600; cursor: pointer;
   &:active { opacity: 0.8; }
+}
+
+.back-top {
+  position: fixed; right: 16px; bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(255,255,255,0.9); box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; z-index: 100;
+  &:active { transform: scale(0.9); }
+}
+.bt-arrow {
+  width: 10px; height: 10px;
+  border-left: 2px solid #1a1a1a; border-top: 2px solid #1a1a1a;
+  transform: rotate(45deg); margin-top: 3px;
+}
+
+.result-count {
+  padding: 4px 16px 8px; font-size: 12px; color: #8e8e93;
 }
 
 .search-history { padding: 0 16px 10px; }

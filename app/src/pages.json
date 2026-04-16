@@ -40,6 +40,14 @@
 			}
 		},
 		{
+			"path": "pages/settings/index",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/seller/index",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
 			"path": "pages/profile/edit",
 			"style": {
 				"navigationStyle": "custom"

@@ -236,7 +236,19 @@ CREATE POLICY "Users can remove favorites"
   ON public.favorites FOR DELETE USING (auth.uid() = user_id);
 
 -- ============================================
--- 8. Realtime (for messaging)
+-- 8. Get last message per conversation (for preview)
+-- ============================================
+CREATE OR REPLACE FUNCTION get_last_messages(conv_ids UUID[])
+RETURNS TABLE(conversation_id UUID, content TEXT, message_type message_type) AS $$
+  SELECT DISTINCT ON (m.conversation_id)
+    m.conversation_id, m.content, m.message_type
+  FROM messages m
+  WHERE m.conversation_id = ANY(conv_ids)
+  ORDER BY m.conversation_id, m.created_at DESC
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
+
+-- ============================================
+-- 9. Realtime (for messaging)
 -- ============================================
 ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.conversations;

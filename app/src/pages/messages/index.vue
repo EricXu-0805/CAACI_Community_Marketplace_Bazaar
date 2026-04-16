@@ -38,8 +38,8 @@
             <text class="conv-name">{{ getOtherUser(conv)?.nickname || t('app.user') }}</text>
             <text class="conv-time">{{ formatTime(conv.last_message_at) }}</text>
           </view>
-          <text class="conv-preview" v-if="conv.item">
-            {{ conv.item.title }}
+          <text class="conv-preview">
+            {{ (conv as any).last_message_type === 'image' ? '[' + t('chat.photo') + ']' : ((conv as any).last_message_preview || conv.item?.title || '') }}
           </text>
         </view>
         <image

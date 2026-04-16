@@ -1,0 +1,108 @@
+<template>
+  <view class="page">
+    <view class="header">
+      <view class="back-btn" @click="goBack"><view class="back-arrow"></view></view>
+      <text class="header-title">{{ seller?.nickname || t('app.user') }}</text>
+    </view>
+
+    <view v-if="seller" class="seller-section">
+      <image :src="seller.avatar_url || '/static/default-avatar.png'" class="avatar" />
+      <text class="nickname">{{ seller.nickname }}</text>
+      <text v-if="seller.bio" class="bio">{{ seller.bio }}</text>
+      <view class="loc-row">
+        <view class="loc-dot"></view>
+        <text class="loc-text">{{ seller.location || 'UIUC' }}</text>
+      </view>
+      <text class="item-count">{{ sellerItems.length }} {{ t('seller.listings') }}</text>
+    </view>
+
+    <view class="items-grid">
+      <view v-for="item in sellerItems" :key="item.id" class="grid-item" @click="goDetail(item.id)">
+        <image :src="item.images?.[0] || '/static/placeholder.png'" class="gi-img" mode="aspectFill" />
+        <view class="gi-info">
+          <text class="gi-title">{{ item.title }}</text>
+          <text class="gi-price">${{ item.price }}</text>
+        </view>
+      </view>
+    </view>
+
+    <view v-if="sellerItems.length === 0 && !loading" class="empty">
+      <text>{{ t('seller.noItems') }}</text>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
+import { useSupabase } from '../../composables/useSupabase'
+import { useI18n } from '../../composables/useI18n'
+import type { Profile, Item } from '../../types'
+
+const { t } = useI18n()
+const { supabase } = useSupabase()
+
+const seller = ref<Profile | null>(null)
+const sellerItems = ref<Item[]>([])
+const loading = ref(true)
+
+onLoad(async (options) => {
+  if (!options?.id) return
+  const uid = options.id
+
+  const [profileRes, itemsRes] = await Promise.all([
+    supabase.from('profiles').select('id, nickname, avatar_url, bio, location').eq('id', uid).single(),
+    supabase.from('items').select('*').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
+  ])
+
+  if (profileRes.data) seller.value = profileRes.data as Profile
+  if (itemsRes.data) sellerItems.value = itemsRes.data as Item[]
+  loading.value = false
+})
+
+function goBack() { uni.navigateBack() }
+function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${id}` }) }
+</script>
+
+<style lang="scss" scoped>
+.page { min-height: 100vh; background: #f2f2f7; max-width: 480px; margin: 0 auto; }
+
+.header {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  background: #fff; border-bottom: 0.5px solid rgba(0,0,0,0.06);
+}
+.back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.back-arrow { width: 9px; height: 9px; border-left: 2px solid #1a1a1a; border-bottom: 2px solid #1a1a1a; transform: rotate(45deg); margin-left: 4px; }
+.header-title { font-size: 17px; font-weight: 600; color: #1a1a1a; }
+
+.seller-section {
+  background: #fff; padding: 24px 16px; display: flex;
+  flex-direction: column; align-items: center; gap: 6px;
+}
+.avatar { width: 64px; height: 64px; border-radius: 50%; background: #f2f2f7; }
+.nickname { font-size: 18px; font-weight: 700; color: #1a1a1a; margin-top: 4px; }
+.bio { font-size: 13px; color: #8e8e93; text-align: center; max-width: 280px; }
+.loc-row { display: flex; align-items: center; gap: 4px; }
+.loc-dot { width: 5px; height: 5px; border-radius: 50%; background: #FF6B35; }
+.loc-text { font-size: 12px; color: #aeaeb2; }
+.item-count { font-size: 13px; color: #636366; font-weight: 500; margin-top: 4px; }
+
+.items-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+  background: rgba(0,0,0,0.06); margin-top: 7px;
+}
+.grid-item {
+  background: #fff; cursor: pointer;
+  &:active { opacity: 0.8; }
+}
+.gi-img { width: 100%; height: 180px; }
+.gi-info { padding: 8px 10px; }
+.gi-title {
+  font-size: 13px; color: #1a1a1a; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.gi-price { font-size: 15px; font-weight: 700; color: #1a1a1a; margin-top: 4px; display: block; }
+
+.empty { padding: 60px 16px; text-align: center; color: #aeaeb2; font-size: 14px; }
+</style>

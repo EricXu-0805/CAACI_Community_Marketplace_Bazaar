@@ -55,12 +55,13 @@
 
     <!-- Seller Card -->
     <view class="section seller-card" v-if="item.profile">
-      <view class="seller-row">
+      <view class="seller-row" @click="goSeller(item.user_id)">
         <image :src="item.profile.avatar_url || '/static/default-avatar.png'" class="seller-avatar" />
         <view class="seller-info">
           <text class="seller-name">{{ item.profile.nickname }}</text>
           <text class="seller-meta">{{ formatTime(item.created_at) }}</text>
         </view>
+        <view class="seller-arrow"></view>
       </view>
       <view class="stats-row">
         <view class="stat">
@@ -72,6 +73,19 @@
           <text class="stat-label">{{ t('detail.wants') }}</text>
         </view>
       </view>
+    </view>
+
+    <!-- More from seller -->
+    <view class="section" v-if="sellerOtherItems.length > 0">
+      <text class="section-label">{{ t('detail.moreFromSeller') }}</text>
+      <scroll-view scroll-x class="more-scroll">
+        <view class="more-list">
+          <view v-for="si in sellerOtherItems" :key="si.id" class="more-card" @click="goToOtherItem(si.id)">
+            <image :src="si.images?.[0] || '/static/placeholder.png'" class="mc-img" mode="aspectFill" />
+            <text class="mc-price">${{ si.price }}</text>
+          </view>
+        </view>
+      </scroll-view>
     </view>
 
     <!-- Bottom Action Bar -->
@@ -112,6 +126,7 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useItems } from '../../composables/useItems'
+import { useSupabase } from '../../composables/useSupabase'
 import { useAuth } from '../../composables/useAuth'
 import { useMessages } from '../../composables/useMessages'
 import { useFavorites } from '../../composables/useFavorites'
@@ -122,11 +137,13 @@ import { formatTime } from '../../utils'
 
 const { t } = useI18n()
 const { fetchItem, updateItemStatus } = useItems()
+const { supabase } = useSupabase()
 const { currentUser, requireAuth } = useAuth()
 const { getOrCreateConversation } = useMessages()
 const { isFavorited: checkFavorited, toggleFavorite: doToggleFavorite, getFavoriteCount, loadMyFavorites } = useFavorites()
 
 const item = ref<Item | null>(null)
+const sellerOtherItems = ref<Item[]>([])
 const isMockItem = ref(false)
 const isFav = ref(false)
 const favCount = ref(0)
@@ -151,6 +168,12 @@ onLoad(async (options) => {
       item.value = itemData
       isFav.value = checkFavorited(options.id!)
       favCount.value = await getFavoriteCount(options.id!)
+
+      const { data: otherItems } = await supabase
+        .from('items').select('id, title, price, images')
+        .eq('user_id', itemData.user_id).eq('status', 'active')
+        .neq('id', itemData.id).limit(6)
+      if (otherItems) sellerOtherItems.value = otherItems as Item[]
     } catch (error: any) {
       console.error('Detail load error:', error)
       uni.showToast({ title: error?.message || t('detail.notFound'), icon: 'none' })
@@ -159,8 +182,14 @@ onLoad(async (options) => {
   }
 })
 
-function goBack() {
-  uni.navigateBack()
+function goBack() { uni.navigateBack() }
+
+function goToOtherItem(id: string) {
+  uni.navigateTo({ url: `/pages/detail/index?id=${id}` })
+}
+
+function goSeller(uid: string) {
+  uni.navigateTo({ url: `/pages/seller/index?id=${uid}` })
 }
 
 function onShare() {
@@ -385,7 +414,12 @@ async function contactSeller() {
 
 /* ========== Seller Card ========== */
 .seller-card { display: flex; flex-direction: column; gap: 14px; }
-.seller-row { display: flex; align-items: center; gap: 12px; }
+.seller-row { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.seller-arrow {
+  width: 7px; height: 7px; flex-shrink: 0;
+  border-top: 1.5px solid #c7c7cc; border-right: 1.5px solid #c7c7cc;
+  transform: rotate(45deg);
+}
 .seller-avatar {
   width: 44px; height: 44px; border-radius: 50%;
   background: #f0f0f0; flex-shrink: 0;
@@ -440,6 +474,15 @@ async function contactSeller() {
 }
 
 .fav-label { font-size: 10px; color: #8e8e93; }
+.more-scroll { white-space: nowrap; }
+.more-list { display: inline-flex; gap: 8px; padding: 0 0 4px; }
+.more-card {
+  width: 100px; flex-shrink: 0; cursor: pointer;
+  &:active { opacity: 0.8; }
+}
+.mc-img { width: 100px; height: 100px; border-radius: 8px; background: #f2f2f7; }
+.mc-price { font-size: 13px; font-weight: 700; color: #1a1a1a; margin-top: 4px; display: block; }
+
 .action-btn-small {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   padding: 0 10px; cursor: pointer;

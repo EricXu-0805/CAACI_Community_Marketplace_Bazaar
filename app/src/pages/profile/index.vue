@@ -119,8 +119,9 @@
     </view>
 
     <view v-if="isLoggedIn" class="menu-section">
-      <view class="menu-item" @click="signOut">
-        <text class="menu-text danger">{{ t('profile.signOut') }}</text>
+      <view class="menu-item" @click="goSettings">
+        <text class="menu-text">{{ t('settings.title') }}</text>
+        <view class="menu-arrow"></view>
       </view>
     </view>
     <CustomTabBar current="profile" />
@@ -139,7 +140,7 @@ import { useFavorites } from '../../composables/useFavorites'
 import type { Item } from '../../types'
 
 const { t } = useI18n()
-const { currentUser, isLoggedIn, signOut } = useAuth()
+const { currentUser, isLoggedIn } = useAuth()
 const { items: homeItems, fetchMyItems, updateItemStatus, deleteItem } = useItems()
 const { loadMyFavorites, fetchMyFavoriteItems } = useFavorites()
 
@@ -190,9 +191,8 @@ function goEdit(id: string) {
   uni.navigateTo({ url: `/pages/publish/index?edit=${id}` })
 }
 
-function onEditProfile() {
-  uni.navigateTo({ url: '/pages/profile/edit' })
-}
+function onEditProfile() { uni.navigateTo({ url: '/pages/profile/edit' }) }
+function goSettings() { uni.navigateTo({ url: '/pages/settings/index' }) }
 
 async function markAsSold(id: string) {
   try {
@@ -409,9 +409,10 @@ function onDeleteItem(id: string) {
 }
 
 .menu-section { margin-top: 7px; background: #fff; }
-.menu-item { padding: 15px; text-align: center; cursor: pointer; }
-.menu-text {
-  font-size: 15px;
-  &.danger { color: #FF3B30; }
+.menu-item { padding: 15px 16px; display: flex; align-items: center; cursor: pointer; &:active { background: #f7f7f8; } }
+.menu-text { font-size: 15px; color: #1a1a1a; flex: 1; }
+.menu-arrow {
+  width: 7px; height: 7px; border-top: 1.5px solid #c7c7cc;
+  border-right: 1.5px solid #c7c7cc; transform: rotate(45deg);
 }
 </style>
