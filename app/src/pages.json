@@ -74,6 +74,10 @@
 			"style": { "navigationStyle": "custom" }
 		},
 		{
+			"path": "pages/reset-password/index",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
 			"path": "pages/login/index",
 			"style": {
 				"navigationStyle": "custom"

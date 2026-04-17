@@ -249,14 +249,20 @@ async function onSubmit() {
       if (img.startsWith('http')) existing.push(img)
       else toUpload.push(img)
     }
-    const uploaded: string[] = []
-    for (let i = 0; i < toUpload.length; i++) {
-      const compressed = await compressImage(toUpload[i])
-      const urls = await uploadImages([compressed])
-      uploaded.push(...urls)
-      uploadProgress.value = Math.round(((i + 1) / (toUpload.length || 1)) * 100)
+
+    let uploaded: string[] = []
+    if (toUpload.length > 0) {
+      uploaded = await uploadImages(toUpload)
+      uploadProgress.value = 100
+      if (uploaded.length === 0) {
+        throw new Error(t('publish.uploadFailed'))
+      }
     }
+
     const images = [...existing, ...uploaded]
+    if (images.length === 0) {
+      throw new Error(t('publish.needImage'))
+    }
 
     const payload = {
       title: form.title.trim(),
@@ -285,7 +291,8 @@ async function onSubmit() {
       }, 1000)
     }
   } catch (error: any) {
-    uni.showToast({ title: error.message || t('publish.fail'), icon: 'none' })
+    console.error('Publish error:', error)
+    uni.showToast({ title: error?.message || t('publish.fail'), icon: 'none', duration: 3000 })
   } finally {
     submitting.value = false
     uploadProgress.value = 0

@@ -113,7 +113,10 @@ async function onChangePassword() {
     content: t('settings.changePasswordHint'),
     success: async (res) => {
       if (!res.confirm) return
-      const { error } = await supabase.auth.resetPasswordForEmail(session.user!.email!)
+      const redirectTo = typeof window !== 'undefined'
+        ? `${window.location.origin}/#/pages/reset-password/index`
+        : undefined
+      const { error } = await supabase.auth.resetPasswordForEmail(session.user!.email!, { redirectTo })
       if (error) {
         uni.showToast({ title: error.message, icon: 'none' })
       } else {

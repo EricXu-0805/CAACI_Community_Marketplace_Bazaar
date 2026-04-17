@@ -57,11 +57,15 @@ export function useAuth() {
     try {
       if (password.length < 8) throw new Error('Password must be at least 8 characters')
 
+      const emailRedirectTo = typeof window !== 'undefined'
+        ? `${window.location.origin}/#/pages/index/index`
+        : undefined
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: { nickname },
+          emailRedirectTo,
         },
       })
       if (error) throw error

@@ -85,7 +85,10 @@ async function onForgotPassword() {
     uni.showToast({ title: t('login.needEmail'), icon: 'none' })
     return
   }
-  const { error } = await supabase.auth.resetPasswordForEmail(email.value.trim())
+  const redirectTo = typeof window !== 'undefined'
+    ? `${window.location.origin}/#/pages/reset-password/index`
+    : undefined
+  const { error } = await supabase.auth.resetPasswordForEmail(email.value.trim(), { redirectTo })
   if (error) {
     uni.showToast({ title: error.message, icon: 'none' })
   } else {
