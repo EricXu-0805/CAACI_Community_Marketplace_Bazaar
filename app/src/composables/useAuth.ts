@@ -40,15 +40,22 @@ export function useAuth() {
   async function fetchProfile(userId: string) {
     const { data, error } = await supabase.rpc('get_my_profile')
 
-    if (data && !error) {
+    if (data && data.id && !error) {
       currentUser.value = data as Profile
+      return
+    }
+
+    const { data: fallback, error: fbErr } = await supabase
+      .from('profiles')
+      .select('id, nickname, avatar_url, bio, location, is_illini_verified, created_at')
+      .eq('id', userId)
+      .single()
+
+    if (fallback && fallback.id) {
+      currentUser.value = fallback as Profile
     } else {
-      const { data: fallback } = await supabase
-        .from('profiles')
-        .select('id, nickname, avatar_url, bio, location, is_illini_verified, created_at')
-        .eq('id', userId)
-        .single()
-      if (fallback) currentUser.value = fallback as Profile
+      console.warn('fetchProfile: no profile found for', userId, fbErr?.message)
+      currentUser.value = null
     }
   }
 
@@ -103,7 +110,10 @@ export function useAuth() {
   }
 
   async function updateProfile(updates: AllowedProfileUpdate) {
-    if (!currentUser.value) return
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) {
+      return { error: new Error('Not authenticated') }
+    }
 
     const sanitized = Object.fromEntries(
       Object.entries(updates).filter(([k]) =>
@@ -114,11 +124,11 @@ export function useAuth() {
     const { error } = await supabase
       .from('profiles')
       .update(sanitized)
-      .eq('id', currentUser.value.id)
+      .eq('id', session.user.id)
 
     if (!error) {
       const { data: fresh } = await supabase.rpc('get_my_profile')
-      if (fresh) currentUser.value = fresh as Profile
+      if (fresh && fresh.id) currentUser.value = fresh as Profile
     }
     return { error }
   }
