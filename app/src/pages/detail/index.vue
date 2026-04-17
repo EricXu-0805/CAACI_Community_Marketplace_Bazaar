@@ -35,7 +35,7 @@
     <!-- Price + Title -->
     <view class="info-card">
       <view class="price-row">
-        <text class="price">${{ item.price }}</text>
+        <text class="price">{{ formatPrice(item.price, t("home.free")) }}</text>
         <text v-if="item.negotiable" class="obo">OBO</text>
       </view>
       <text class="title">{{ item.title }}</text>
@@ -100,7 +100,7 @@
         <view class="more-list">
           <view v-for="si in sellerOtherItems" :key="si.id" class="more-card" @click="goToOtherItem(si.id)">
             <image :src="si.images?.[0] || '/static/placeholder.png'" class="mc-img" mode="aspectFill" />
-            <text class="mc-price">${{ si.price }}</text>
+            <text class="mc-price">{{ formatPrice(si.price, t("home.free")) }}</text>
           </view>
         </view>
       </scroll-view>
@@ -113,7 +113,7 @@
         <view class="more-list">
           <view v-for="si in similarItems" :key="si.id" class="more-card" @click="goToOtherItem(si.id)">
             <image :src="si.images?.[0] || '/static/placeholder.png'" class="mc-img" mode="aspectFill" />
-            <text class="mc-price">${{ si.price }}</text>
+            <text class="mc-price">{{ formatPrice(si.price, t("home.free")) }}</text>
           </view>
         </view>
       </scroll-view>
@@ -180,7 +180,7 @@ import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
 import type { Item } from '../../types'
 
-import { formatTime, haptic } from '../../utils'
+import { formatTime, haptic, formatPrice } from '../../utils'
 
 const { t } = useI18n()
 const { fetchItem, updateItemStatus } = useItems()
@@ -354,7 +354,8 @@ async function contactSeller() {
       currentUser.value.id,
       item.value.user_id,
     )
-    uni.navigateTo({ url: `/pages/chat/index?id=${conversation.id}` })
+    const prefill = encodeURIComponent(t('chat.prefillInterest').replace('{title}', item.value.title))
+    uni.navigateTo({ url: `/pages/chat/index?id=${conversation.id}&prefill=${prefill}` })
   } catch (error) {
     uni.showToast({ title: t('detail.chatFail'), icon: 'none' })
   }

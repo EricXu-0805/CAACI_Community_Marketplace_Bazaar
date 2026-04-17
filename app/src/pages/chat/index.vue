@@ -25,7 +25,7 @@
       <view class="ic-info">
         <text class="ic-title">{{ itemInfo.title }}</text>
         <view class="ic-bottom">
-          <text class="ic-price">${{ itemInfo.price }}</text>
+          <text class="ic-price">{{ formatPrice(itemInfo.price, t("home.free")) }}</text>
           <text v-if="itemInfo.status === 'sold'" class="ic-sold">{{ t('status.sold') }}</text>
           <text v-else-if="itemInfo.status === 'reserved'" class="ic-reserved">{{ t('status.reserved') }}</text>
         </view>
@@ -125,7 +125,7 @@ import { useItems } from '../../composables/useItems'
 import { useUnread } from '../../composables/useUnread'
 import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
-import { compressImage } from '../../utils'
+import { compressImage, formatPrice } from '../../utils'
 import type { Item } from '../../types'
 
 const { t } = useI18n()
@@ -155,6 +155,10 @@ onLoad(async (options) => {
     if (currentUser.value) {
       await markAsRead(options.id, currentUser.value.id)
       refreshUnreadCount()
+    }
+
+    if (options.prefill && messages.value.length === 0) {
+      try { inputText.value = decodeURIComponent(options.prefill as string) } catch {}
     }
 
     // Load conversation detail for item context

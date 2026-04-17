@@ -48,7 +48,7 @@
         <image :src="item.images?.[0] || '/static/placeholder.png'" class="gi-img" mode="aspectFill" />
         <view class="gi-info">
           <text class="gi-title">{{ item.title }}</text>
-          <text class="gi-price">${{ item.price }}</text>
+          <text class="gi-price">{{ formatPrice(item.price, t("home.free")) }}</text>
         </view>
       </view>
     </view>
@@ -66,6 +66,7 @@ import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
 import type { Profile, Item } from '../../types'
+import { formatPrice } from '../../utils'
 
 const { t, lang } = useI18n()
 const { supabase } = useSupabase()

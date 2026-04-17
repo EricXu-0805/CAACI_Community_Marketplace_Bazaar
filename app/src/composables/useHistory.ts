@@ -19,10 +19,15 @@ export function useHistory() {
     save()
   }
 
+  function removeFromHistory(id: string) {
+    history.value = history.value.filter(i => i.id !== id)
+    save()
+  }
+
   function clearHistory() {
     history.value = []
     try { uni.removeStorageSync('viewHistory') } catch {}
   }
 
-  return { history, addToHistory, clearHistory }
+  return { history, addToHistory, removeFromHistory, clearHistory }
 }

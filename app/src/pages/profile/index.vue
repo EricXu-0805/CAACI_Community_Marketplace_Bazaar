@@ -77,7 +77,7 @@
             <image :src="item.images?.[0] || '/static/placeholder.png'" class="item-img" mode="aspectFill" />
             <view class="item-info">
               <text class="item-title">{{ item.title }}</text>
-              <text class="item-price">${{ item.price }}</text>
+              <text class="item-price">{{ formatPrice(item.price, t("home.free")) }}</text>
               <text :class="['item-status', item.status]">{{ t('status.' + item.status) }}</text>
             </view>
             <view class="item-actions">
@@ -106,7 +106,7 @@
             <image :src="item.images?.[0] || '/static/placeholder.png'" class="item-img" mode="aspectFill" />
             <view class="item-info">
               <text class="item-title">{{ item.title }}</text>
-              <text class="item-price">${{ item.price }}</text>
+              <text class="item-price">{{ formatPrice(item.price, t("home.free")) }}</text>
               <text v-if="item.status === 'sold'" class="item-status sold">{{ t('status.sold') }}</text>
               <text v-else-if="item.status === 'reserved'" class="item-status reserved">{{ t('status.reserved') }}</text>
               <view v-else class="item-seller" v-if="item.profile">
@@ -128,7 +128,7 @@
             <image :src="item.images?.[0] || '/static/placeholder.png'" class="item-img" mode="aspectFill" />
             <view class="item-info">
               <text class="item-title">{{ item.title }}</text>
-              <text class="item-price">${{ item.price }}</text>
+              <text class="item-price">{{ formatPrice(item.price, t("home.free")) }}</text>
               <text class="item-status sold">{{ t('status.sold') }}</text>
             </view>
           </view>
@@ -166,6 +166,7 @@ import { useItems } from '../../composables/useItems'
 import { useFavorites } from '../../composables/useFavorites'
 import { useNotifications } from '../../composables/useNotifications'
 import type { Item } from '../../types'
+import { formatPrice } from '../../utils'
 
 const { t } = useI18n()
 const { currentUser, isLoggedIn } = useAuth()

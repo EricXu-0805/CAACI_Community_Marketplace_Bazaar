@@ -185,12 +185,18 @@
               <image
                 :src="item.images?.[0] || '/static/placeholder.png'"
                 mode="widthFix"
-                class="card-img"
+                :class="['card-img', { 'card-img-sold': item.status === 'sold' }]"
                 lazy-load
               />
-              <text v-if="item.status === 'reserved'" class="badge badge-reserved">{{ t('status.reserved') }}</text>
+              <view v-if="item.status === 'sold'" class="sold-overlay">
+                <text>{{ t('status.sold') }}</text>
+              </view>
+              <text v-else-if="item.status === 'reserved'" class="badge badge-reserved">{{ t('status.reserved') }}</text>
               <text v-else-if="item.condition === 'new'" class="badge badge-new">{{ t('condition.new') }}</text>
               <text v-else-if="item.condition === 'like_new'" class="badge badge-mint">{{ t('condition.like_new') }}</text>
+              <view v-if="item.images && item.images.length > 1" class="img-count-badge">
+                <text>{{ item.images.length }}</text>
+              </view>
             </view>
             <view class="card-info">
               <text class="card-title">{{ item.title }}</text>
@@ -676,7 +682,25 @@ function goPublish() {
   &:active { transform: scale(0.98); }
 }
 .card-img-box { position: relative; width: 100%; }
-.card-img { width: 100%; display: block; }
+.card-img {
+  width: 100%; display: block;
+  transition: filter 0.2s;
+  &.card-img-sold { filter: grayscale(1) brightness(0.85); }
+}
+.sold-overlay {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 6px 14px; border-radius: 6px;
+  background: rgba(0,0,0,0.6);
+  text { color: #fff; font-size: 13px; font-weight: 700; letter-spacing: 1px; }
+}
+.img-count-badge {
+  position: absolute; top: 7px; right: 7px;
+  padding: 2px 7px; border-radius: 10px;
+  background: rgba(0,0,0,0.55); backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  text { color: #fff; font-size: 10px; font-weight: 600; }
+}
 .badge {
   position: absolute; top: 7px; left: 7px;
   padding: 2px 7px; border-radius: 5px; font-size: 10px; font-weight: 600;

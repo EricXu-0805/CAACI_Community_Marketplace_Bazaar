@@ -11,11 +11,17 @@
     </view>
 
     <view v-else class="items">
-      <view v-for="item in history" :key="item.id" class="item-row" @click="goDetail(item.id)">
+      <view
+        v-for="item in history"
+        :key="item.id"
+        class="item-row"
+        @click="goDetail(item.id)"
+        @longpress="onRemoveOne(item.id)"
+      >
         <image :src="item.images?.[0] || '/static/placeholder.png'" class="item-img" mode="aspectFill" />
         <view class="item-info">
           <text class="item-title">{{ item.title }}</text>
-          <text class="item-price">${{ item.price }}</text>
+          <text class="item-price">{{ formatPrice(item.price, t('home.free')) }}</text>
         </view>
       </view>
     </view>
@@ -25,12 +31,23 @@
 <script setup lang="ts">
 import { useI18n } from '../../composables/useI18n'
 import { useHistory } from '../../composables/useHistory'
+import { formatPrice } from '../../utils'
 
 const { t } = useI18n()
-const { history, clearHistory } = useHistory()
+const { history, removeFromHistory, clearHistory } = useHistory()
 
 function goBack() { uni.navigateBack() }
 function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${id}` }) }
+
+function onRemoveOne(id: string) {
+  uni.showActionSheet({
+    itemList: [t('history.removeOne')],
+    success: (res) => {
+      if (res.tapIndex === 0) removeFromHistory(id)
+    },
+  })
+}
+
 function onClear() {
   uni.showModal({
     title: t('history.clearTitle'),
