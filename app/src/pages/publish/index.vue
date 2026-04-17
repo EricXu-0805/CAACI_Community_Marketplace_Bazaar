@@ -24,7 +24,7 @@
             <text class="add-text">{{ t('publish.addPhoto') }}</text>
           </view>
         </view>
-        <text class="image-tip">{{ t('publish.photoTip') }}</text>
+        <text class="image-tip">{{ t('publish.imageOptional') }}</text>
       </view>
 
       <!-- Upload progress -->
@@ -233,7 +233,6 @@ async function onDetectLocation() {
 
 async function onSubmit() {
   if (!requireAuth()) return
-  if (imageList.value.length === 0) { uni.showToast({ title: t('publish.needImage'), icon: 'none' }); return }
   if (!form.title.trim()) { uni.showToast({ title: t('publish.needTitle'), icon: 'none' }); return }
   if (!form.price || Number(form.price) < 0) { uni.showToast({ title: t('publish.needPrice'), icon: 'none' }); return }
   if (Number(form.price) > 100000) { uni.showToast({ title: t('publish.priceTooHigh'), icon: 'none' }); return }
@@ -260,9 +259,6 @@ async function onSubmit() {
     }
 
     const images = [...existing, ...uploaded]
-    if (images.length === 0) {
-      throw new Error(t('publish.needImage'))
-    }
 
     const payload = {
       title: form.title.trim(),

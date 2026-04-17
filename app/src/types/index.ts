@@ -11,6 +11,7 @@ export type ItemCategory =
   | 'vehicles'
   | 'daily'
   | 'food'
+  | 'currency_exchange'
   | 'other'
 
 export type ItemCondition = 'new' | 'like_new' | 'good' | 'fair'
@@ -32,9 +33,36 @@ export interface Profile {
   avatar_url: string
   bio: string
   location: string
+  uid?: string
   is_illini_verified?: boolean
   created_at: string
   updated_at: string
+}
+
+export interface Post {
+  id: string
+  user_id: string
+  content: string
+  images: string[]
+  is_official: boolean
+  is_pinned: boolean
+  like_count: number
+  comment_count: number
+  status: 'active' | 'deleted' | 'hidden'
+  created_at: string
+  updated_at: string
+  profile?: Profile
+  liked_by_me?: boolean
+}
+
+export interface PostComment {
+  id: string
+  post_id: string
+  user_id: string
+  content: string
+  parent_comment_id: string | null
+  created_at: string
+  profile?: Profile
 }
 
 export interface Item {
@@ -64,7 +92,10 @@ export interface Conversation {
   seller_id: string
   last_message_at: string
   created_at: string
-  // Joined fields
+  is_pinned_buyer?: boolean
+  is_pinned_seller?: boolean
+  is_muted_buyer?: boolean
+  is_muted_seller?: boolean
   item?: Item
   buyer?: Profile
   seller?: Profile

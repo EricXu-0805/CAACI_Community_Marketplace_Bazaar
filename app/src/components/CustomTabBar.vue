@@ -4,6 +4,13 @@
       <view :class="['ico', 'ico-home', { active: current === 'index' }]"></view>
       <text :class="['lbl', { active: current === 'index' }]">{{ t('nav.home') }}</text>
     </view>
+    <view class="tab" @click="go('/pages/plaza/index')">
+      <view :class="['ico', 'ico-plaza', { active: current === 'plaza' }]"></view>
+      <text :class="['lbl', { active: current === 'plaza' }]">{{ t('nav.plaza') }}</text>
+    </view>
+    <view class="tab fab-slot" @click="go('/pages/publish/index')">
+      <view class="fab"><view class="fab-plus"></view></view>
+    </view>
     <view class="tab" @click="go('/pages/messages/index')">
       <view class="ico-wrap">
         <view :class="['ico', 'ico-msg', { active: current === 'messages' }]"></view>
@@ -11,11 +18,9 @@
           <text v-if="unreadCount <= 99">{{ unreadCount }}</text>
           <text v-else>99+</text>
         </view>
+        <view v-else-if="hasMutedUnread" class="badge-dot-only"></view>
       </view>
       <text :class="['lbl', { active: current === 'messages' }]">{{ t('nav.messages') }}</text>
-    </view>
-    <view class="tab fab-slot" @click="go('/pages/publish/index')">
-      <view class="fab"><view class="fab-plus"></view></view>
     </view>
     <view class="tab" @click="go('/pages/profile/index')">
       <view :class="['ico', 'ico-me', { active: current === 'profile' }]"></view>
@@ -30,7 +35,7 @@ import { useUnread } from '../composables/useUnread'
 
 defineProps<{ current: string }>()
 const { t } = useI18n()
-const { unreadCount } = useUnread()
+const { unreadCount, hasMutedUnread } = useUnread()
 
 function go(url: string) { uni.switchTab({ url }) }
 </script>
@@ -47,12 +52,13 @@ function go(url: string) { uni.switchTab({ url }) }
 .tab {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 4px 0 2px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  height: 50px;
 }
 .lbl { font-size: 10px; color: #8e8e93; margin-top: 2px; font-weight: 500; }
 .lbl.active { color: #1a1a1a; }
 
 .ico { width: 24px; height: 24px; position: relative; }
-.ico-wrap { position: relative; }
+.ico-wrap { position: relative; width: 24px; height: 24px; }
 
 .ico-home::before {
   content: ''; position: absolute; bottom: 0; left: 2px; right: 2px; height: 12px;
@@ -66,6 +72,18 @@ function go(url: string) { uni.switchTab({ url }) }
 }
 .ico-home.active::before { border-color: #1a1a1a; }
 .ico-home.active::after { border-bottom-color: #1a1a1a; }
+
+.ico-plaza::before {
+  content: ''; position: absolute; top: 3px; left: 2px;
+  width: 20px; height: 14px; border: 1.8px solid #8e8e93; border-radius: 3px;
+}
+.ico-plaza::after {
+  content: ''; position: absolute; bottom: 3px; left: 7px;
+  width: 10px; height: 2px; background: #8e8e93; border-radius: 1px;
+  box-shadow: 0 -4px 0 -1px #8e8e93;
+}
+.ico-plaza.active::before { border-color: #1a1a1a; }
+.ico-plaza.active::after { background: #1a1a1a; box-shadow: 0 -4px 0 -1px #1a1a1a; }
 
 .ico-msg::before {
   content: ''; position: absolute; top: 2px; left: 1px;
@@ -95,23 +113,29 @@ function go(url: string) { uni.switchTab({ url }) }
 .badge-dot text {
   font-size: 9px; color: #fff; font-weight: 700; line-height: 1;
 }
+.badge-dot-only {
+  position: absolute; top: -2px; right: -2px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #FF3B30;
+  border: 1.5px solid rgba(252,252,253,0.88);
+}
 
 .fab-slot { position: relative; }
 .fab {
-  width: 42px; height: 42px; border-radius: 13px;
+  width: 40px; height: 40px; border-radius: 13px;
   background: #1a1a1a;
   display: flex; align-items: center; justify-content: center;
-  margin-top: -12px;
+  margin-top: -10px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   transition: transform 0.12s;
 }
 .fab:active { transform: scale(0.9); }
-.fab-plus { width: 18px; height: 18px; position: relative; }
+.fab-plus { width: 16px; height: 16px; position: relative; }
 .fab-plus::before, .fab-plus::after {
   content: ''; position: absolute; background: #fff; border-radius: 1px;
 }
-.fab-plus::before { width: 18px; height: 2px; top: 8px; left: 0; }
-.fab-plus::after { width: 2px; height: 18px; top: 0; left: 8px; }
+.fab-plus::before { width: 16px; height: 2px; top: 7px; left: 0; }
+.fab-plus::after { width: 2px; height: 16px; top: 0; left: 7px; }
 
 @media (max-width: 767px) { .tabbar { display: flex; } }
 </style>

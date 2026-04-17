@@ -5,6 +5,8 @@ import { useI18n } from './useI18n'
 
 const unreadCount = ref(0)
 const unreadConvIds = ref<Set<string>>(new Set())
+const hasMutedUnread = ref(false)
+const mutedConvIds = ref<Set<string>>(new Set())
 let channel: ReturnType<ReturnType<typeof useSupabase>['supabase']['channel']> | null = null
 
 export function useUnread() {
@@ -13,26 +15,57 @@ export function useUnread() {
   const { t } = useI18n()
 
   async function refreshUnreadCount() {
-    if (!currentUser.value) { unreadCount.value = 0; return }
+    if (!currentUser.value) {
+      unreadCount.value = 0
+      unreadConvIds.value = new Set()
+      hasMutedUnread.value = false
+      mutedConvIds.value = new Set()
+      return
+    }
 
+    const uid = currentUser.value.id
     try {
       const { data: convs } = await supabase
         .from('conversations')
-        .select('id')
-        .or(`buyer_id.eq.${currentUser.value.id},seller_id.eq.${currentUser.value.id}`)
+        .select('id, buyer_id, seller_id, is_muted_buyer, is_muted_seller')
+        .or(`buyer_id.eq.${uid},seller_id.eq.${uid}`)
 
-      if (!convs || convs.length === 0) { unreadCount.value = 0; return }
+      if (!convs || convs.length === 0) {
+        unreadCount.value = 0
+        unreadConvIds.value = new Set()
+        hasMutedUnread.value = false
+        return
+      }
 
       const convIds = convs.map((c: any) => c.id)
-      const { data: unreadMsgs, count } = await supabase
+      const muted = new Set<string>()
+      for (const c of convs) {
+        const isMuted = (c.buyer_id === uid && c.is_muted_buyer) || (c.seller_id === uid && c.is_muted_seller)
+        if (isMuted) muted.add(c.id)
+      }
+      mutedConvIds.value = muted
+
+      const { data: unreadMsgs } = await supabase
         .from('messages')
-        .select('conversation_id', { count: 'exact' })
-        .neq('sender_id', currentUser.value.id)
+        .select('conversation_id')
+        .neq('sender_id', uid)
         .eq('is_read', false)
         .in('conversation_id', convIds)
 
-      unreadCount.value = count || 0
-      unreadConvIds.value = new Set((unreadMsgs || []).map((m: any) => m.conversation_id))
+      const unreadSet = new Set<string>((unreadMsgs || []).map((m: any) => m.conversation_id))
+
+      let count = 0
+      let mutedWithUnread = false
+      for (const cid of unreadSet) {
+        if (muted.has(cid)) {
+          mutedWithUnread = true
+        } else {
+          count++
+        }
+      }
+      unreadCount.value = count
+      unreadConvIds.value = unreadSet
+      hasMutedUnread.value = mutedWithUnread
     } catch {
       unreadCount.value = 0
     }
@@ -52,9 +85,13 @@ export function useUnread() {
           table: 'messages',
           filter: `sender_id=neq.${userId}`,
         },
-        () => {
-          unreadCount.value++
-          uni.showToast({ title: t('msg.newMessage'), icon: 'none', duration: 2000 })
+        (payload) => {
+          const newMsg = payload.new as any
+          refreshUnreadCount()
+          const convId = newMsg?.conversation_id
+          if (convId && !mutedConvIds.value.has(convId)) {
+            uni.showToast({ title: t('msg.newMessage'), icon: 'none', duration: 2000 })
+          }
         }
       )
       .subscribe()
@@ -66,6 +103,7 @@ export function useUnread() {
       channel = null
     }
     unreadCount.value = 0
+    hasMutedUnread.value = false
   }
 
   watch(currentUser, (u) => {
@@ -77,5 +115,5 @@ export function useUnread() {
     }
   }, { immediate: true })
 
-  return { unreadCount, unreadConvIds, refreshUnreadCount, stopListening }
+  return { unreadCount, unreadConvIds, mutedConvIds, hasMutedUnread, refreshUnreadCount, stopListening }
 }

@@ -23,8 +23,13 @@
           <view class="name-row">
             <text class="nickname">{{ currentUser?.nickname }}</text>
             <view v-if="currentUser?.is_illini_verified" class="illini-badge">
-              <text class="illini-badge-text">✓ Illini</text>
+              <text class="illini-badge-text">Illini</text>
             </view>
+          </view>
+          <view v-if="currentUser?.uid" class="uid-row" @click="copyUid">
+            <text class="uid-label">{{ t('profile.uid') }}:</text>
+            <text class="uid-value">{{ currentUser.uid }}</text>
+            <view class="uid-copy"></view>
           </view>
           <text class="user-bio" v-if="currentUser?.bio">{{ currentUser.bio }}</text>
           <view class="location-row">
@@ -241,6 +246,14 @@ function goNotifications() { uni.navigateTo({ url: '/pages/notifications/index' 
 function goSettings() { uni.navigateTo({ url: '/pages/settings/index' }) }
 function goHistory() { uni.navigateTo({ url: '/pages/history/index' }) }
 
+function copyUid() {
+  if (!currentUser.value?.uid) return
+  uni.setClipboardData({
+    data: currentUser.value.uid,
+    success: () => uni.showToast({ title: t('profile.uidCopied'), icon: 'success' }),
+  })
+}
+
 function markAsSold(id: string) {
   uni.showModal({
     title: t('profile.markSoldTitle'),
@@ -348,6 +361,24 @@ function onDeleteItem(id: string) {
 .illini-badge-text { color: #fff; font-size: 10px; }
 .user-bio { font-size: 13px; color: #636366; margin-top: 2px; }
 
+.uid-row {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 3px; padding: 2px 7px;
+  background: #f2f2f7; border-radius: 4px; cursor: pointer;
+  &:active { background: #e5e5ea; }
+}
+.uid-label { font-size: 10px; color: #8e8e93; font-weight: 500; }
+.uid-value { font-size: 11px; color: #1a1a1a; font-weight: 600; letter-spacing: 0.02em; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.uid-copy {
+  width: 10px; height: 10px; border: 1.2px solid #8e8e93; border-radius: 2px;
+  position: relative; margin-left: 2px;
+  &::before {
+    content: ''; position: absolute; top: -3px; left: -3px;
+    width: 8px; height: 8px; background: #fff;
+    border: 1.2px solid #8e8e93; border-radius: 2px;
+  }
+}
+
 .verify-prompt {
   display: flex; align-items: center; gap: 12px;
   margin: 12px 16px 0; padding: 12px 14px;
@@ -429,13 +460,19 @@ function onDeleteItem(id: string) {
   padding: 48px 16px; gap: 10px;
 }
 .empty-bag {
-  width: 28px; height: 32px; border: 2px solid #d1d1d6;
-  border-radius: 4px; position: relative;
+  width: 36px; height: 40px; border: 2px solid #d1d1d6;
+  border-radius: 4px 4px 6px 6px; position: relative; margin-bottom: 4px;
   &::before {
-    content: ''; position: absolute; top: -8px; left: 4px;
-    width: 16px; height: 10px;
+    content: ''; position: absolute; top: -9px; left: 50%;
+    transform: translateX(-50%);
+    width: 20px; height: 12px;
     border: 2px solid #d1d1d6; border-bottom: none;
-    border-radius: 8px 8px 0 0;
+    border-radius: 10px 10px 0 0;
+  }
+  &::after {
+    content: ''; position: absolute; top: 4px; left: 50%;
+    transform: translateX(-50%);
+    width: 14px; height: 2px; background: #d1d1d6; border-radius: 1px;
   }
 }
 .empty-heart {

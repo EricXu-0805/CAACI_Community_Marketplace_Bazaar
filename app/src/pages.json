@@ -8,6 +8,13 @@
 			}
 		},
 		{
+			"path": "pages/plaza/index",
+			"style": {
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
 			"path": "pages/publish/index",
 			"style": {
 				"navigationStyle": "custom"
@@ -99,6 +106,10 @@
 			{
 				"pagePath": "pages/index/index",
 				"text": "Home"
+			},
+			{
+				"pagePath": "pages/plaza/index",
+				"text": "Plaza"
 			},
 			{
 				"pagePath": "pages/publish/index",

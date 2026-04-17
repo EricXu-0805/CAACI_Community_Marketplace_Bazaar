@@ -67,10 +67,34 @@
       </view>
     </scroll-view>
 
+    <!-- Active filter summary bar (shows when filters are applied, even if sheet closed) -->
+    <view v-if="activeFilterCount > 0 && !showFilter" class="active-filter-bar">
+      <scroll-view scroll-x class="afb-scroll">
+        <view v-if="filterPriceMin || filterPriceMax" class="afb-chip" @click="showFilter = true">
+          <text>${{ filterPriceMin || '0' }}–${{ filterPriceMax || '∞' }}</text>
+        </view>
+        <view v-if="filterCondition" class="afb-chip" @click="showFilter = true">
+          <text>{{ t('condition.' + filterCondition) }}</text>
+        </view>
+        <view v-if="filterLocation" class="afb-chip" @click="showFilter = true">
+          <text>{{ filterLocation }}</text>
+        </view>
+        <view v-if="sortBy !== 'latest'" class="afb-chip" @click="showFilter = true">
+          <text>{{ t('sort.' + sortBy.replace('price_asc', 'priceAsc').replace('price_desc', 'priceDesc')) }}</text>
+        </view>
+      </scroll-view>
+      <view class="afb-clear" @click="onClearAllFilters">
+        <text>{{ t('home.clearFilters') }}</text>
+      </view>
+    </view>
+
     <!-- Filter Bottom Sheet -->
     <view v-if="showFilter" class="filter-mask" @click="showFilter = false"></view>
     <view :class="['filter-sheet', { open: showFilter }]">
       <view class="fs-header">
+        <view class="fs-close" @click="showFilter = false">
+          <view class="fs-x"></view>
+        </view>
         <text class="fs-title">{{ t('filter.title') }}</text>
         <text class="fs-reset" @click="resetFilters">{{ t('filter.reset') }}</text>
       </view>
@@ -319,7 +343,7 @@ const filterCondition = ref('')
 const filterLocation = ref('')
 const sortBy = ref('latest')
 
-const categoryKeys: (ItemCategory | null)[] = [null, 'furniture', 'electronics', 'clothing', 'books', 'housing', 'vehicles', 'daily', 'food', 'other']
+const categoryKeys: (ItemCategory | null)[] = [null, 'furniture', 'electronics', 'clothing', 'books', 'housing', 'vehicles', 'daily', 'food', 'currency_exchange', 'other']
 const categories = computed(() => categoryKeys.map(k => ({
   value: k,
   label: t(k ? 'cat.' + k : 'cat.all'),
@@ -391,6 +415,12 @@ function resetFilters() {
   filterCondition.value = ''
   filterLocation.value = ''
   sortBy.value = 'latest'
+}
+
+function onClearAllFilters() {
+  resetFilters()
+  currentPage.value = 0
+  fetchItems({ ...getFilterParams(), reset: true })
 }
 
 onMounted(async () => {
@@ -640,9 +670,46 @@ function goPublish() {
   display: flex; justify-content: space-between; align-items: center;
   padding: 18px 0 14px;
   position: sticky; top: 0; background: #fff; z-index: 1;
+  gap: 12px;
 }
-.fs-title { font-size: 17px; font-weight: 700; color: #1d1d1f; }
-.fs-reset { font-size: 14px; color: #FF6B35; cursor: pointer; }
+.fs-close {
+  width: 28px; height: 28px; border-radius: 50%; background: #f2f2f7;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  &:active { background: #e5e5ea; }
+}
+.fs-x {
+  width: 12px; height: 12px; position: relative;
+  &::before, &::after {
+    content: ''; position: absolute; top: 50%; left: 0;
+    width: 12px; height: 1.5px; background: #636366; border-radius: 1px;
+  }
+  &::before { transform: rotate(45deg); }
+  &::after { transform: rotate(-45deg); }
+}
+.fs-title { flex: 1; font-size: 17px; font-weight: 700; color: #1d1d1f; text-align: center; }
+.fs-reset { font-size: 14px; color: #FF6B35; cursor: pointer; flex-shrink: 0; }
+
+.active-filter-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px 8px;
+  background: #fff;
+  border-bottom: 0.5px solid rgba(0,0,0,0.04);
+}
+.afb-scroll { flex: 1; white-space: nowrap; overflow: hidden; }
+.afb-chip {
+  display: inline-flex; align-items: center;
+  padding: 5px 11px; margin-right: 6px; border-radius: 14px;
+  background: rgba(255,107,53,0.08); cursor: pointer;
+  text { font-size: 12px; color: #FF6B35; font-weight: 500; }
+  &:active { background: rgba(255,107,53,0.16); }
+}
+.afb-clear {
+  padding: 5px 10px; border-radius: 14px;
+  background: #f2f2f7; cursor: pointer; flex-shrink: 0;
+  text { font-size: 12px; color: #636366; font-weight: 500; }
+  &:active { background: #e5e5ea; }
+}
 .fs-section { margin-bottom: 18px; }
 .fs-label { font-size: 13px; color: #999; margin-bottom: 10px; display: block; }
 .fs-price-row { display: flex; align-items: center; gap: 10px; }

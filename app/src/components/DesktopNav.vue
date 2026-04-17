@@ -4,6 +4,7 @@
       <text class="desktop-logo" @click="go('/pages/index/index')">{{ t('app.name') }}</text>
       <view class="desktop-nav-links">
         <text :class="['nav-link', { active: current === 'index' }]" @click="go('/pages/index/index')">{{ t('nav.home') }}</text>
+        <text :class="['nav-link', { active: current === 'plaza' }]" @click="go('/pages/plaza/index')">{{ t('nav.plaza') }}</text>
         <text :class="['nav-link', { active: current === 'publish' }]" @click="go('/pages/publish/index')">{{ t('nav.post') }}</text>
         <view class="nav-link-wrap" @click="go('/pages/messages/index')">
           <text :class="['nav-link', { active: current === 'messages' }]">{{ t('nav.messages') }}</text>

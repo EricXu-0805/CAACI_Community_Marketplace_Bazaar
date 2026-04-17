@@ -32,13 +32,17 @@
       </view>
     </view>
 
-    <!-- Price + Title -->
     <view class="info-card">
       <view class="price-row">
         <text class="price">{{ formatPrice(item.price, t("home.free")) }}</text>
         <text v-if="item.negotiable" class="obo">OBO</text>
       </view>
-      <text class="title">{{ item.title }}</text>
+      <view class="title-row">
+        <text class="title">{{ translated ? translatedTitle : item.title }}</text>
+        <view class="translate-btn" @click="toggleTranslate">
+          <text>{{ translated ? 'A文' : '文A' }}</text>
+        </view>
+      </view>
       <view class="tags">
         <text class="tag">{{ t('cat.' + item.category) }}</text>
         <text class="tag">{{ t('condition.' + item.condition) }}</text>
@@ -49,11 +53,10 @@
       </view>
     </view>
 
-    <!-- Description -->
     <view class="section" v-if="item.description">
       <text class="section-label">{{ t('detail.description') }}</text>
       <view class="desc-wrap">
-        <text :class="['desc-text', { clamped: !descExpanded }]">{{ item.description }}</text>
+        <text :class="['desc-text', { clamped: !descExpanded }]">{{ translated ? translatedDesc : item.description }}</text>
         <text v-if="item.description.length > 100" class="expand-btn" @click="descExpanded = !descExpanded">
           {{ descExpanded ? t('detail.showLess') : t('detail.showMore') }}
         </text>
@@ -180,7 +183,8 @@ import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
 import type { Item } from '../../types'
 
-import { formatTime, haptic, formatPrice } from '../../utils'
+import { formatTime, haptic, formatPrice, quickTranslate } from '../../utils'
+import { computed } from 'vue'
 
 const { t } = useI18n()
 const { fetchItem, updateItemStatus } = useItems()
@@ -199,6 +203,22 @@ const favCount = ref(0)
 const currentImg = ref(0)
 const descExpanded = ref(false)
 const notFound = ref(false)
+const translated = ref(false)
+
+const { lang } = useI18n()
+
+const translatedTitle = computed(() => {
+  if (!item.value) return ''
+  return quickTranslate(item.value.title, lang.value as 'en' | 'zh')
+})
+const translatedDesc = computed(() => {
+  if (!item.value) return ''
+  return quickTranslate(item.value.description, lang.value as 'en' | 'zh')
+})
+
+function toggleTranslate() {
+  translated.value = !translated.value
+}
 
 onLoad(async (options) => {
   if (options?.id) {
@@ -464,9 +484,18 @@ async function contactSeller() {
   font-size: 11px; font-weight: 700; color: #FF6B35;
   border: 1.5px solid #FF6B35; padding: 2px 6px; border-radius: 4px;
 }
+.title-row {
+  display: flex; align-items: flex-start; gap: 10px; margin-top: 9px;
+}
 .title {
-  display: block; font-size: 17px; color: #1d1d1f; font-weight: 600;
-  margin-top: 9px; line-height: 1.45;
+  flex: 1; display: block; font-size: 17px; color: #1d1d1f; font-weight: 600;
+  line-height: 1.45;
+}
+.translate-btn {
+  flex-shrink: 0; padding: 4px 8px;
+  background: #f2f2f7; border-radius: 6px; cursor: pointer;
+  text { font-size: 11px; color: #636366; font-weight: 600; letter-spacing: 0.02em; }
+  &:active { background: #e5e5ea; }
 }
 .tags { display: flex; gap: 6px; margin-top: 11px; flex-wrap: wrap; }
 .tag {

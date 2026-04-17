@@ -45,16 +45,21 @@
 
       <text v-if="mode === 'login'" class="forgot-link" @click="onForgotPassword">{{ t('login.forgot') }}</text>
 
+      <view class="agreement-row" v-if="mode === 'signup'" @click="agreed = !agreed">
+        <view :class="['agree-check', { on: agreed }]">
+          <view v-if="agreed" class="check-mark"></view>
+        </view>
+        <text class="agree-text">
+          <text>{{ t('login.agreePrefix') }}</text>
+          <text class="link" @click.stop="goLegal('terms')">{{ t('legal.terms') }}</text>
+          <text>{{ t('login.agreeAnd') }}</text>
+          <text class="link" @click.stop="goLegal('privacy')">{{ t('legal.privacy') }}</text>
+        </text>
+      </view>
+
       <button class="submit-btn" :disabled="loading" @click="onSubmit">
         {{ loading ? t('login.wait') : (mode === 'login' ? t('login.submitLogin') : t('login.submitSignup')) }}
       </button>
-
-      <view class="agreement" v-if="mode === 'signup'">
-        <text>{{ t('login.agreePrefix') }}</text>
-        <text class="link" @click="goLegal('terms')">{{ t('legal.terms') }}</text>
-        <text>{{ t('login.agreeAnd') }}</text>
-        <text class="link" @click="goLegal('privacy')">{{ t('legal.privacy') }}</text>
-      </view>
     </view>
 
     <view class="footer">
@@ -77,6 +82,7 @@ const email = ref('')
 const password = ref('')
 const nickname = ref('')
 const showPw = ref(false)
+const agreed = ref(false)
 
 const { supabase } = useSupabase()
 
@@ -121,6 +127,10 @@ async function onSubmit() {
   if (mode.value === 'signup') {
     if (!nickname.value.trim()) {
       uni.showToast({ title: t('login.needNickname'), icon: 'none' })
+      return
+    }
+    if (!agreed.value) {
+      uni.showToast({ title: t('login.agreeRequired'), icon: 'none', duration: 2500 })
       return
     }
     const { data, error } = await signUp(email.value.trim(), password.value, nickname.value.trim())
@@ -250,10 +260,25 @@ async function onSubmit() {
   &:active { opacity: 0.8; }
 }
 
-.agreement {
-  display: flex; flex-wrap: wrap; justify-content: center;
-  font-size: 12px; color: #c7c7cc; margin-top: 20px; gap: 2px;
-  line-height: 1.5;
+.agreement-row {
+  display: flex; align-items: flex-start; gap: 9px;
+  margin-top: 18px; padding: 4px 2px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.agree-check {
+  width: 18px; height: 18px; border: 1.5px solid #c7c7cc;
+  border-radius: 4px; flex-shrink: 0; margin-top: 1px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  &.on { background: #1a1a1a; border-color: #1a1a1a; }
+}
+.check-mark {
+  width: 10px; height: 6px;
+  border-left: 1.5px solid #fff; border-bottom: 1.5px solid #fff;
+  transform: rotate(-45deg); margin-top: -2px;
+}
+.agree-text {
+  font-size: 12px; color: #636366; line-height: 1.5; flex: 1;
   .link { color: #1a1a1a; text-decoration: underline; cursor: pointer; }
 }
 

@@ -81,6 +81,13 @@ function onChangeAvatar() {
   })
 }
 
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out`)), ms)
+    p.then(v => { clearTimeout(timer); resolve(v) }, e => { clearTimeout(timer); reject(e) })
+  })
+}
+
 async function onSave() {
   if (!nickname.value.trim()) {
     uni.showToast({ title: t('login.needNickname'), icon: 'none' })
@@ -89,11 +96,13 @@ async function onSave() {
   if (saving.value) return
 
   saving.value = true
+  const failsafe = setTimeout(() => { saving.value = false }, 20000)
+
   try {
     let finalAvatar = avatarUrl.value
     if (finalAvatar && !finalAvatar.startsWith('http')) {
       try {
-        const urls = await uploadImages([finalAvatar])
+        const urls = await withTimeout(uploadImages([finalAvatar]), 15000, 'avatar upload')
         if (urls.length > 0) {
           finalAvatar = urls[0]
         } else {
@@ -107,12 +116,12 @@ async function onSave() {
       }
     }
 
-    const result = await updateProfile({
+    const result = await withTimeout(updateProfile({
       nickname: nickname.value.trim(),
       bio: bio.value.trim(),
       location: location.value.trim() || 'UIUC',
       avatar_url: finalAvatar,
-    })
+    }), 10000, 'profile update')
 
     if (result?.error) {
       console.error('Profile update error:', result.error)
@@ -126,6 +135,7 @@ async function onSave() {
     console.error('onSave error:', err)
     uni.showToast({ title: err?.message || t('profile.markFail'), icon: 'none', duration: 3000 })
   } finally {
+    clearTimeout(failsafe)
     saving.value = false
   }
 }

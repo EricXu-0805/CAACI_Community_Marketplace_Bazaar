@@ -31,6 +31,13 @@ export function useMessages() {
       if (blockedIds.value.size > 0) {
         convs = convs.filter(c => !blockedIds.value.has(c.buyer_id) && !blockedIds.value.has(c.seller_id))
       }
+
+      convs.sort((a, b) => {
+        const aPinned = (a.buyer_id === userId && a.is_pinned_buyer) || (a.seller_id === userId && a.is_pinned_seller)
+        const bPinned = (b.buyer_id === userId && b.is_pinned_buyer) || (b.seller_id === userId && b.is_pinned_seller)
+        if (aPinned !== bPinned) return aPinned ? -1 : 1
+        return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
+      })
       if (convs.length > 0) {
         const ids = convs.map(c => c.id)
         const { data: lastMsgs } = await supabase.rpc('get_last_messages', { conv_ids: ids })
@@ -184,6 +191,45 @@ export function useMessages() {
     return data as Conversation
   }
 
+  async function setConversationPinned(conv: Conversation, userId: string, pinned: boolean) {
+    const field = conv.buyer_id === userId ? 'is_pinned_buyer' : 'is_pinned_seller'
+    const { error } = await supabase
+      .from('conversations')
+      .update({ [field]: pinned })
+      .eq('id', conv.id)
+    if (error) throw error
+    ;(conv as any)[field] = pinned
+  }
+
+  async function setConversationMuted(conv: Conversation, userId: string, muted: boolean) {
+    const field = conv.buyer_id === userId ? 'is_muted_buyer' : 'is_muted_seller'
+    const { error } = await supabase
+      .from('conversations')
+      .update({ [field]: muted })
+      .eq('id', conv.id)
+    if (error) throw error
+    ;(conv as any)[field] = muted
+  }
+
+  async function markConversationUnread(conversationId: string, userId: string) {
+    const { data: lastMsg } = await supabase
+      .from('messages')
+      .select('id')
+      .eq('conversation_id', conversationId)
+      .neq('sender_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (lastMsg) {
+      const { error } = await supabase
+        .from('messages')
+        .update({ is_read: false })
+        .eq('id', lastMsg.id)
+      if (error) throw error
+    }
+  }
+
   return {
     conversations,
     messages,
@@ -194,9 +240,12 @@ export function useMessages() {
     getOrCreateConversation,
     subscribeToMessages,
     markAsRead,
+    markConversationUnread,
     deleteConversation,
     deleteMessage,
     fetchConversationDetail,
+    setConversationPinned,
+    setConversationMuted,
     clearMessages,
   }
 }

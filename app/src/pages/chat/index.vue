@@ -131,7 +131,7 @@ import type { Item } from '../../types'
 const { t } = useI18n()
 
 const { currentUser, requireAuth } = useAuth()
-const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, deleteMessage, fetchConversationDetail } = useMessages()
+const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, deleteMessage, fetchConversationDetail, setConversationPinned, setConversationMuted } = useMessages()
 const { uploadImages } = useItems()
 const { refreshUnreadCount } = useUnread()
 const { reportTarget, blockUser } = useModeration()
@@ -142,6 +142,9 @@ const conversationId = ref('')
 const itemInfo = ref<Item | null>(null)
 const otherUserName = ref('')
 const otherUserId = ref('')
+const conversationDetail = ref<any>(null)
+const convPinned = ref(false)
+const convMuted = ref(false)
 let unsubscribe: (() => void) | null = null
 
 onLoad(async (options) => {
@@ -161,10 +164,10 @@ onLoad(async (options) => {
       try { inputText.value = decodeURIComponent(options.prefill as string) } catch {}
     }
 
-    // Load conversation detail for item context
     try {
       const detail = await fetchConversationDetail(options.id)
       if (detail) {
+        conversationDetail.value = detail
         if (detail.item) {
           itemInfo.value = detail.item
         }
@@ -172,6 +175,9 @@ onLoad(async (options) => {
           const other = detail.buyer_id === currentUser.value.id ? detail.seller : detail.buyer
           otherUserName.value = other?.nickname || t('app.user')
           otherUserId.value = other?.id || ''
+          const isBuyer = detail.buyer_id === currentUser.value.id
+          convPinned.value = isBuyer ? !!detail.is_pinned_buyer : !!detail.is_pinned_seller
+          convMuted.value = isBuyer ? !!detail.is_muted_buyer : !!detail.is_muted_seller
         }
       }
     } catch {
@@ -241,12 +247,42 @@ function onMakeOffer() {
 
 function onMoreActions() {
   uni.showActionSheet({
-    itemList: [t('chat.blockUser'), t('detail.report')],
+    itemList: [
+      convMuted.value ? t('chat.unmute') : t('chat.mute'),
+      convPinned.value ? t('msg.unpin') : t('msg.pin'),
+      t('chat.blockUser'),
+      t('detail.report'),
+    ],
     success: (res) => {
-      if (res.tapIndex === 0) doBlock()
-      else doReport()
+      if (res.tapIndex === 0) toggleMute()
+      else if (res.tapIndex === 1) togglePin()
+      else if (res.tapIndex === 2) doBlock()
+      else if (res.tapIndex === 3) doReport()
     },
   })
+}
+
+async function togglePin() {
+  if (!conversationDetail.value || !currentUser.value) return
+  try {
+    await setConversationPinned(conversationDetail.value, currentUser.value.id, !convPinned.value)
+    convPinned.value = !convPinned.value
+    uni.showToast({ title: convPinned.value ? t('msg.pinned') : t('msg.unpin'), icon: 'success' })
+  } catch (err: any) {
+    uni.showToast({ title: err?.message || t('msg.actionFailed'), icon: 'none' })
+  }
+}
+
+async function toggleMute() {
+  if (!conversationDetail.value || !currentUser.value) return
+  try {
+    await setConversationMuted(conversationDetail.value, currentUser.value.id, !convMuted.value)
+    convMuted.value = !convMuted.value
+    uni.showToast({ title: convMuted.value ? t('msg.muted') : t('chat.unmute'), icon: 'success' })
+    refreshUnreadCount()
+  } catch (err: any) {
+    uni.showToast({ title: err?.message || t('msg.actionFailed'), icon: 'none' })
+  }
 }
 
 function doBlock() {
