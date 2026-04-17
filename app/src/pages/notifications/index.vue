@@ -7,7 +7,7 @@
     </view>
 
     <view v-if="notifications.length === 0" class="empty">
-      <text class="empty-icon">🔔</text>
+      <view class="empty-bell"></view>
       <text class="empty-text">{{ t('notif.empty') }}</text>
     </view>
 
@@ -19,10 +19,11 @@
         @click="onTap(n)"
         @longpress="onLongPress(n.id)"
       >
-        <view class="notif-icon">
-          <text>{{ n.type === 'price_drop' ? '💰' : n.type === 'sold' ? '🎉' : '📢' }}</text>
+        <view :class="['notif-icon', 'ni-' + n.type]">
+          <text>{{ n.type === 'price_drop' ? '↓' : n.type === 'sold' ? '✓' : '!' }}</text>
         </view>
         <view class="notif-content">
+          <text class="notif-type">{{ n.type === 'price_drop' ? t('notif.priceDrop') : n.type === 'sold' ? t('notif.itemSold') : t('notif.system') }}</text>
           <text class="notif-title">{{ n.title }}</text>
           <text class="notif-body">{{ n.body }}</text>
           <text class="notif-time">{{ formatTime(n.created_at) }}</text>
@@ -81,7 +82,19 @@ function onLongPress(id: string) {
 .empty {
   display: flex; flex-direction: column; align-items: center; padding-top: 120px; gap: 12px;
 }
-.empty-icon { font-size: 40px; }
+.empty-bell {
+  width: 44px; height: 44px; border: 2.5px solid #d1d1d6; border-radius: 50%;
+  position: relative;
+  &::before {
+    content: ''; position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
+    width: 18px; height: 13px; border: 2px solid #d1d1d6;
+    border-radius: 10px 10px 0 0; border-bottom: none;
+  }
+  &::after {
+    content: ''; position: absolute; bottom: 7px; left: 50%; transform: translateX(-50%);
+    width: 6px; height: 3px; border-radius: 0 0 3px 3px; background: #d1d1d6;
+  }
+}
 .empty-text { font-size: 14px; color: #aeaeb2; }
 
 .notif-item {
@@ -92,9 +105,20 @@ function onLongPress(id: string) {
   &:active { background: #f7f7f8; }
   &.unread { background: #F0F7FF; }
 }
-.notif-icon { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+.notif-icon {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-size: 14px; font-weight: 700;
+}
+.ni-price_drop { background: #FFF3E0; color: #E65100; }
+.ni-sold { background: #E8F5E9; color: #2E7D32; }
+.ni-system { background: #F3E5F5; color: #6A1B9A; }
 .notif-content { flex: 1; min-width: 0; }
-.notif-title { font-size: 14px; font-weight: 600; color: #1a1a1a; display: block; }
+.notif-type {
+  font-size: 11px; font-weight: 600; color: #8e8e93; display: block;
+  text-transform: uppercase; letter-spacing: 0.3px;
+}
+.notif-title { font-size: 14px; font-weight: 600; color: #1a1a1a; display: block; margin-top: 2px; }
 .notif-body {
   font-size: 13px; color: #636366; margin-top: 3px; display: block;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;

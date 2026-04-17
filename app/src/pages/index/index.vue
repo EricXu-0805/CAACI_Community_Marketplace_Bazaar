@@ -235,7 +235,7 @@
       </view>
       <!-- Empty -->
       <view v-if="fetchError && !loading" class="empty">
-        <text class="empty-title">⚠️</text>
+        <view class="empty-error-icon"></view>
         <text class="empty-sub">{{ fetchError }}</text>
         <view class="empty-btn" @click="onRefresh">{{ t('home.retry') }}</view>
       </view>
@@ -312,13 +312,9 @@ const filterLocation = ref('')
 const sortBy = ref('latest')
 
 const categoryKeys: (ItemCategory | null)[] = [null, 'furniture', 'electronics', 'clothing', 'books', 'housing', 'vehicles', 'daily', 'food', 'other']
-const categoryEmoji: Record<string, string> = {
-  furniture: '🪑', electronics: '📱', clothing: '👗', books: '📚',
-  housing: '🏠', vehicles: '🚗', daily: '🧴', food: '🍜', other: '📦',
-}
 const categories = computed(() => categoryKeys.map(k => ({
   value: k,
-  label: (k && categoryEmoji[k] ? categoryEmoji[k] + ' ' : '') + t(k ? 'cat.' + k : 'cat.all'),
+  label: t(k ? 'cat.' + k : 'cat.all'),
 })))
 
 const conditionKeys = ['new', 'like_new', 'good', 'fair']
@@ -747,6 +743,15 @@ function goPublish() {
 
 .empty {
   display: flex; flex-direction: column; align-items: center; padding-top: 80px; gap: 8px;
+}
+.empty-error-icon {
+  width: 40px; height: 40px; border: 2.5px solid #d1d1d6;
+  border-radius: 50%; position: relative; margin-bottom: 6px;
+  &::before {
+    content: '!'; position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 20px; font-weight: 700; color: #d1d1d6;
+  }
 }
 .empty-bag-icon {
   width: 36px; height: 40px; border: 2.5px solid #d1d1d6;

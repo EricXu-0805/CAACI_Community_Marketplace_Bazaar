@@ -98,7 +98,9 @@
             <view class="item-info">
               <text class="item-title">{{ item.title }}</text>
               <text class="item-price">${{ item.price }}</text>
-              <view class="item-seller" v-if="item.profile">
+              <text v-if="item.status === 'sold'" class="item-status sold">{{ t('status.sold') }}</text>
+              <text v-else-if="item.status === 'reserved'" class="item-status reserved">{{ t('status.reserved') }}</text>
+              <view v-else class="item-seller" v-if="item.profile">
                 <text class="seller-name">{{ item.profile.nickname }}</text>
               </view>
             </view>

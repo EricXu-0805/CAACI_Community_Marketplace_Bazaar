@@ -34,11 +34,11 @@
     </view>
 
     <view
-      v-if="itemInfo && (itemInfo as any).negotiable && itemInfo.status === 'active' && currentUser?.id !== itemInfo.user_id"
+      v-if="itemInfo && itemInfo.negotiable && itemInfo.status === 'active' && currentUser?.id !== itemInfo.user_id"
       class="offer-bar"
     >
       <view class="offer-btn" @click="onMakeOffer">
-        <text>💰 {{ t('chat.makeOffer') }}</text>
+        <text>{{ t('chat.makeOffer') }}</text>
       </view>
     </view>
 
@@ -190,6 +190,8 @@ async function onSend() {
 
   try {
     await sendMessage(conversationId.value, currentUser.value.id, text)
+    markAsRead(conversationId.value, currentUser.value.id)
+    refreshUnreadCount()
     nextTick(() => scrollToBottom())
   } catch (error) {
     uni.showToast({ title: t('chat.fail'), icon: 'none' })

@@ -112,28 +112,34 @@
       </scroll-view>
     </view>
 
-    <!-- Bottom Action Bar -->
+    <!-- Action Bar: Buyer -->
     <view class="action-bar" v-if="item.user_id !== currentUser?.id">
       <view class="fav-btn" @click="toggleFavorite">
         <view :class="['heart-icon', { filled: isFav }]"></view>
         <text class="fav-label">{{ isFav ? t('detail.saved') : t('detail.save') }}</text>
       </view>
-      <view class="action-btn-small" @click="onReport">
-        <text class="fav-label">{{ t('detail.report') }}</text>
+      <view :class="['action-btn-small', { reported: reported }]" @click="onReport">
+        <text class="fav-label">{{ reported ? t('report.thanks') : t('detail.report') }}</text>
       </view>
-      <view class="chat-btn" @click="contactSeller">
+      <view v-if="item.status === 'sold'" class="chat-btn chat-btn-disabled">
+        <text>{{ t('status.sold') }}</text>
+      </view>
+      <view v-else class="chat-btn" @click="contactSeller">
         <text>{{ t('detail.chat') }}</text>
       </view>
     </view>
-    <!-- Owner actions -->
+    <!-- Action Bar: Owner -->
     <view class="action-bar" v-else>
-      <view class="action-btn-small" @click="goEdit">
+      <view class="action-btn-small" @click="goEdit" v-if="item.status === 'active'">
         <text class="fav-label">{{ t('profile.edit') }}</text>
       </view>
       <view class="action-btn-small" @click="onMarkReserved" v-if="item.status === 'active'">
         <text class="fav-label">{{ t('detail.reserve') }}</text>
       </view>
-      <view class="chat-btn" style="background:#34C759" @click="onMarkSold" v-if="item.status !== 'sold'">
+      <view v-if="item.status === 'sold'" class="chat-btn chat-btn-disabled">
+        <text>{{ t('status.sold') }}</text>
+      </view>
+      <view v-else class="chat-btn chat-btn-confirm" @click="onMarkSold">
         <text>{{ t('profile.markSold') }}</text>
       </view>
     </view>
@@ -196,11 +202,14 @@ onLoad(async (options) => {
         .neq('id', itemData.id).limit(6)
       if (otherItems) sellerOtherItems.value = otherItems as Item[]
 
+      const { blockedIds } = useModeration()
       const { data: simItems } = await supabase
-        .from('items').select('id, title, price, images')
+        .from('items').select('id, title, price, images, user_id')
         .eq('category', itemData.category).eq('status', 'active')
-        .neq('id', itemData.id).neq('user_id', itemData.user_id).limit(6)
-      if (simItems) similarItems.value = simItems as Item[]
+        .neq('id', itemData.id).neq('user_id', itemData.user_id).limit(12)
+      if (simItems) {
+        similarItems.value = (simItems as Item[]).filter(i => !blockedIds.value.has(i.user_id)).slice(0, 6)
+      }
     } catch (error: any) {
       console.error('Detail load error:', error)
       uni.showToast({ title: error?.message || t('detail.notFound'), icon: 'none' })
@@ -234,8 +243,10 @@ function onShare() {
   // #endif
 }
 
+const reported = ref(false)
+
 function onReport() {
-  if (!item.value) return
+  if (!item.value || reported.value) return
   if (!requireAuth()) return
   const targetId = item.value.id
   const reasons = [
@@ -250,6 +261,7 @@ function onReport() {
       const reason = reasons[res.tapIndex]
       try {
         await reportTarget('item', targetId, reason)
+        reported.value = true
         uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
         uni.showToast({ title: err?.message || t('report.failed'), icon: 'none' })
@@ -551,6 +563,12 @@ async function contactSeller() {
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
   &:active { opacity: 0.8; }
+}
+.chat-btn-confirm { background: #34C759; }
+.chat-btn-disabled {
+  background: #e5e5ea; cursor: default;
+  text { color: #8e8e93; }
+  &:active { opacity: 1; }
 }
 
 /* ========== Loading ========== */
