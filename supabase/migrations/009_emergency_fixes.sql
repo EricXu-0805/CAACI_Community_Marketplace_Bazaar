@@ -73,8 +73,7 @@ ON CONFLICT (id) DO NOTHING;
 --    Only applies to @illinois.edu and @gmail.com (trusted domains during beta).
 -- --------------------------------------------
 UPDATE auth.users
-SET email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
-    confirmed_at = COALESCE(confirmed_at, NOW())
+SET email_confirmed_at = NOW()
 WHERE email_confirmed_at IS NULL
   AND (LOWER(email) LIKE '%@illinois.edu' OR LOWER(email) LIKE '%@gmail.com');
 
