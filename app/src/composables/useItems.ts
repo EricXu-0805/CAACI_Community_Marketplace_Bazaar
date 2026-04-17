@@ -12,9 +12,6 @@ const fetchError = ref('')
 const PAGE_SIZE = 20
 const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, location, is_illini_verified'
 const VALID_STATUSES: ItemStatus[] = ['active', 'reserved', 'sold', 'deleted']
-const ALLOWED_UPLOAD_EXTS: Record<string, string> = {
-  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp',
-}
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 const MAX_IMAGES = 9
 
@@ -188,10 +185,6 @@ export function useItems() {
     if (!session?.user) throw new Error('Not authenticated')
 
     for (const filePath of tempFiles) {
-      const ext = filePath.split('.').pop()?.toLowerCase() || 'jpg'
-      const contentType = ALLOWED_UPLOAD_EXTS[ext]
-      if (!contentType) throw new Error(`Unsupported file type: ${ext}`)
-
       const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`
       const storagePath = `items/${session.user.id}/${fileName}`
 

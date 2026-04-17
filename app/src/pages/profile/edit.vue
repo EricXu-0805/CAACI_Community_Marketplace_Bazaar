@@ -86,13 +86,25 @@ async function onSave() {
     uni.showToast({ title: t('login.needNickname'), icon: 'none' })
     return
   }
+  if (saving.value) return
 
   saving.value = true
   try {
     let finalAvatar = avatarUrl.value
     if (finalAvatar && !finalAvatar.startsWith('http')) {
-      const urls = await uploadImages([finalAvatar])
-      if (urls.length > 0) finalAvatar = urls[0]
+      try {
+        const urls = await uploadImages([finalAvatar])
+        if (urls.length > 0) {
+          finalAvatar = urls[0]
+        } else {
+          uni.showToast({ title: t('editProfile.avatarFailed'), icon: 'none', duration: 3000 })
+          finalAvatar = currentUser.value?.avatar_url || ''
+        }
+      } catch (uploadErr: any) {
+        console.error('Avatar upload error:', uploadErr)
+        uni.showToast({ title: uploadErr?.message || t('editProfile.avatarFailed'), icon: 'none', duration: 3000 })
+        finalAvatar = currentUser.value?.avatar_url || ''
+      }
     }
 
     const result = await updateProfile({

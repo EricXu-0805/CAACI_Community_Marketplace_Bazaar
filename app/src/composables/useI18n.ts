@@ -272,6 +272,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'resetPw.linkInvalid': 'This reset link is invalid or has expired',
     'resetPw.backLogin': 'Back to Login',
     'publish.uploadFailed': 'Image upload failed. Please try again.',
+    'editProfile.avatarFailed': 'Avatar upload failed. Other changes saved.',
     'login.resetHint': 'Check your inbox for a password reset link.',
 
     'welcome.skip': 'Skip',
@@ -581,6 +582,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'resetPw.linkInvalid': '重置链接无效或已过期',
     'resetPw.backLogin': '返回登录',
     'publish.uploadFailed': '图片上传失败，请重试',
+    'editProfile.avatarFailed': '头像上传失败，其他资料已保存',
     'login.resetHint': '请查收邮箱中的密码重置链接。',
 
     'welcome.skip': '跳过',
