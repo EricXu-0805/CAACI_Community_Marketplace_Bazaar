@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 import { useModeration } from './useModeration'
 import type { Item, ItemCategory, ItemCondition, ItemStatus } from '../types'
-import { expandSearch } from '../utils'
+import { compressImage, expandSearch } from '../utils'
 
 const items = ref<Item[]>([])
 const loading = ref(false)
@@ -192,26 +192,28 @@ export function useItems() {
       const contentType = ALLOWED_UPLOAD_EXTS[ext]
       if (!contentType) throw new Error(`Unsupported file type: ${ext}`)
 
-      const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+      const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`
       const storagePath = `items/${session.user.id}/${fileName}`
 
       try {
         let uploadError: any = null
 
         // #ifdef H5
-        const response = await fetch(filePath)
+        const compressed = await compressImage(filePath, 1600, 0.82)
+        const response = await fetch(compressed)
         const blob = await response.blob()
         if (blob.size > MAX_FILE_SIZE) throw new Error('File too large (max 5MB)')
         const h5Result = await supabase.storage
           .from('item-images')
-          .upload(storagePath, blob, { contentType })
+          .upload(storagePath, blob, { contentType: 'image/jpeg' })
         uploadError = h5Result.error
         // #endif
 
         // #ifndef H5
+        const compressedPath = await compressImage(filePath, 1600, 0.82)
         const fileInfo = await new Promise<{ size: number } | null>((resolve) => {
           uni.getFileInfo({
-            filePath,
+            filePath: compressedPath,
             success: (info: any) => resolve({ size: info.size }),
             fail: () => resolve(null),
           })
@@ -225,7 +227,7 @@ export function useItems() {
         uploadError = await new Promise<any>((resolve) => {
           uni.uploadFile({
             url: uploadUrl,
-            filePath,
+            filePath: compressedPath,
             name: 'file',
             header: {
               Authorization: `Bearer ${session.access_token}`,

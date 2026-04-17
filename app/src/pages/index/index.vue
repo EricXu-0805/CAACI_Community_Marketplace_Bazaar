@@ -230,7 +230,7 @@
       <!-- End of list -->
       <view v-if="!hasMore && filteredItems.length > 0" class="tip">
         <text class="divider"></text>
-        <text>{{ t('home.noMore') }}</text>
+        <text>{{ t('home.endOf') }} · {{ filteredItems.length }} {{ t('home.results') }}</text>
         <text class="divider"></text>
       </view>
       <!-- Empty -->
@@ -277,6 +277,7 @@ import { useItems } from '../../composables/useItems'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
 import { useFavorites } from '../../composables/useFavorites'
+import { useModeration } from '../../composables/useModeration'
 import type { ItemCategory, Item } from '../../types'
 
 import { debounce, formatTime } from '../../utils'
@@ -288,6 +289,7 @@ const { t, toggleLang } = useI18n()
 const { items, loading, hasMore, fetchError, fetchItems } = useItems()
 const { currentUser } = useAuth()
 const { isFavorited, toggleFavorite, loadMyFavorites } = useFavorites()
+const { ensureLoaded: ensureBlockedLoaded } = useModeration()
 
 const initialLoading = ref(true)
 
@@ -400,7 +402,12 @@ onMounted(async () => {
     }
   } catch {}
 
-  if (currentUser.value) loadMyFavorites(currentUser.value.id)
+  if (currentUser.value) {
+    await Promise.all([
+      loadMyFavorites(currentUser.value.id),
+      ensureBlockedLoaded(),
+    ])
+  }
   await fetchItems({ ...getFilterParams(), reset: true })
   initialLoading.value = false
 })

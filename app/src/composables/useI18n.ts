@@ -23,6 +23,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'home.search': 'Search items near UIUC...',
     'home.loading': 'Loading',
     'home.noMore': 'No more items',
+    'home.endOf': 'End of list',
     'home.emptyTitle': 'No items found',
     'home.emptySub': 'Try adjusting your filters or be the first to post!',
     'home.postItem': 'Post Item',
@@ -247,6 +248,8 @@ const messages: Record<Lang, Record<string, string>> = {
 
     'seller.listings': 'listings',
     'seller.noItems': 'No items from this seller',
+    'seller.blockedTitle': 'User blocked',
+    'seller.blockedSub': 'You blocked this user. Unblock from settings to view their profile.',
     'settings.title': 'Settings',
     'settings.language': 'Language',
     'settings.clearCache': 'Clear Cache',
@@ -281,6 +284,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'home.search': '搜索二手好物...',
     'home.loading': '加载中',
     'home.noMore': '已经到底啦',
+    'home.endOf': '已经到底',
     'home.emptyTitle': '还没有商品',
     'home.emptySub': '快来发布第一件二手好物吧！',
     'home.postItem': '去发布',
@@ -505,6 +509,8 @@ const messages: Record<Lang, Record<string, string>> = {
 
     'seller.listings': '件商品',
     'seller.noItems': '该卖家暂无商品',
+    'seller.blockedTitle': '用户已屏蔽',
+    'seller.blockedSub': '你已屏蔽该用户。在设置中解除屏蔽以查看其主页。',
     'settings.title': '设置',
     'settings.language': '语言',
     'settings.clearCache': '清除缓存',

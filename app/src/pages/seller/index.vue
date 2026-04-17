@@ -5,7 +5,13 @@
       <text class="header-title">{{ seller?.nickname || t('app.user') }}</text>
     </view>
 
-    <view v-if="seller" class="seller-section">
+    <view v-if="blocked" class="blocked-state">
+      <view class="blocked-icon"></view>
+      <text class="blocked-title">{{ t('seller.blockedTitle') }}</text>
+      <text class="blocked-sub">{{ t('seller.blockedSub') }}</text>
+    </view>
+
+    <view v-else-if="seller" class="seller-section">
       <image :src="seller.avatar_url || '/static/default-avatar.png'" class="avatar" />
       <view class="name-row">
         <text class="nickname">{{ seller.nickname }}</text>
@@ -42,18 +48,28 @@ import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
+import { useModeration } from '../../composables/useModeration'
 import type { Profile, Item } from '../../types'
 
 const { t } = useI18n()
 const { supabase } = useSupabase()
+const { ensureLoaded, isBlocked } = useModeration()
 
 const seller = ref<Profile | null>(null)
 const sellerItems = ref<Item[]>([])
 const loading = ref(true)
+const blocked = ref(false)
 
 onLoad(async (options) => {
   if (!options?.id) return
   const uid = options.id
+
+  await ensureLoaded()
+  if (isBlocked(uid)) {
+    blocked.value = true
+    loading.value = false
+    return
+  }
 
   const [profileRes, itemsRes] = await Promise.all([
     supabase.from('profiles').select('id, nickname, avatar_url, bio, location, is_illini_verified').eq('id', uid).single(),
@@ -118,4 +134,20 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .gi-price { font-size: 15px; font-weight: 700; color: #1a1a1a; margin-top: 4px; display: block; }
 
 .empty { padding: 60px 16px; text-align: center; color: #aeaeb2; font-size: 14px; }
+
+.blocked-state {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 80px 40px 40px; gap: 10px; text-align: center;
+}
+.blocked-icon {
+  width: 48px; height: 48px; border: 2.5px solid #d1d1d6;
+  border-radius: 50%; position: relative; margin-bottom: 6px;
+  &::before {
+    content: ''; position: absolute; top: 50%; left: 8px; right: 8px;
+    height: 2.5px; background: #d1d1d6;
+    transform: rotate(-45deg);
+  }
+}
+.blocked-title { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+.blocked-sub { font-size: 13px; color: #8e8e93; line-height: 1.5; max-width: 240px; }
 </style>
