@@ -28,22 +28,25 @@ export function useFavorites() {
 
     try {
       if (isFavorited(itemId)) {
-        await supabase
+        const { error } = await supabase
           .from('favorites')
           .delete()
           .eq('user_id', userId)
           .eq('item_id', itemId)
+        if (error) throw error
         favoriteIds.value.delete(itemId)
         return false
       } else {
-        await supabase
+        const { error } = await supabase
           .from('favorites')
           .insert({ user_id: userId, item_id: itemId })
+        if (error && error.code !== '23505') throw error
         favoriteIds.value.add(itemId)
         return true
       }
     } catch (error) {
       console.error('Failed to toggle favorite:', error)
+      uni.showToast({ title: 'Failed, please try again', icon: 'none' })
       return isFavorited(itemId)
     } finally {
       loading.value = false

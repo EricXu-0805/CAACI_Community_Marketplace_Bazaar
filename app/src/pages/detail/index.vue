@@ -71,7 +71,7 @@
           <view class="seller-name-row">
             <text class="seller-name">{{ item.profile.nickname }}</text>
             <view v-if="item.profile.is_illini_verified" class="illini-badge" :title="t('profile.illiniVerified')">
-              <text class="illini-badge-text">✓ Illini</text>
+              <text class="illini-badge-text">Illini</text>
             </view>
           </view>
           <text class="seller-meta">{{ formatTime(item.created_at) }}</text>
@@ -102,7 +102,7 @@
       <scroll-view scroll-x class="more-scroll">
         <view class="more-list">
           <view v-for="si in sellerOtherItems" :key="si.id" class="more-card" @click="goToOtherItem(si.id)">
-            <image :src="si.images?.[0] || '/static/placeholder.png'" class="mc-img" mode="aspectFill" />
+            <image :src="si.images?.[0] || '/static/placeholder.svg'" class="mc-img" mode="aspectFill" />
             <text class="mc-price">{{ formatPrice(si.price, t("home.free")) }}</text>
           </view>
         </view>
@@ -115,7 +115,7 @@
       <scroll-view scroll-x class="more-scroll">
         <view class="more-list">
           <view v-for="si in similarItems" :key="si.id" class="more-card" @click="goToOtherItem(si.id)">
-            <image :src="si.images?.[0] || '/static/placeholder.png'" class="mc-img" mode="aspectFill" />
+            <image :src="si.images?.[0] || '/static/placeholder.svg'" class="mc-img" mode="aspectFill" />
             <text class="mc-price">{{ formatPrice(si.price, t("home.free")) }}</text>
           </view>
         </view>
@@ -184,7 +184,7 @@ import { useModeration } from '../../composables/useModeration'
 import type { Item } from '../../types'
 
 import { formatTime, haptic, formatPrice, quickTranslate } from '../../utils'
-import { computed } from 'vue'
+import { computed, onUnmounted } from 'vue'
 
 const { t } = useI18n()
 const { fetchItem, updateItemStatus } = useItems()
@@ -220,36 +220,40 @@ function toggleTranslate() {
   translated.value = !translated.value
 }
 
+let alive = true
+onUnmounted(() => { alive = false })
+
 onLoad(async (options) => {
-  if (options?.id) {
-    try {
-      const [, itemData] = await Promise.all([
-        currentUser.value ? loadMyFavorites(currentUser.value.id) : Promise.resolve(),
-        fetchItem(options.id!),
-      ])
-      item.value = itemData
-      addToHistory(itemData)
-      isFav.value = checkFavorited(options.id!)
-      favCount.value = await getFavoriteCount(options.id!)
+  if (!options?.id) return
+  try {
+    const [, itemData] = await Promise.all([
+      currentUser.value ? loadMyFavorites(currentUser.value.id) : Promise.resolve(),
+      fetchItem(options.id!),
+    ])
+    if (!alive) return
+    item.value = itemData
+    addToHistory(itemData)
+    isFav.value = checkFavorited(options.id!)
+    favCount.value = await getFavoriteCount(options.id!)
+    if (!alive) return
 
-      const { data: otherItems } = await supabase
-        .from('items').select('id, title, price, images')
-        .eq('user_id', itemData.user_id).eq('status', 'active')
-        .neq('id', itemData.id).limit(6)
-      if (otherItems) sellerOtherItems.value = otherItems as Item[]
+    const { data: otherItems } = await supabase
+      .from('items').select('id, title, price, images')
+      .eq('user_id', itemData.user_id).eq('status', 'active')
+      .neq('id', itemData.id).limit(6)
+    if (alive && otherItems) sellerOtherItems.value = otherItems as Item[]
 
-      const { blockedIds } = useModeration()
-      const { data: simItems } = await supabase
-        .from('items').select('id, title, price, images, user_id')
-        .eq('category', itemData.category).eq('status', 'active')
-        .neq('id', itemData.id).neq('user_id', itemData.user_id).limit(12)
-      if (simItems) {
-        similarItems.value = (simItems as Item[]).filter(i => !blockedIds.value.has(i.user_id)).slice(0, 6)
-      }
-    } catch (error: any) {
-      console.error('Detail load error:', error)
-      notFound.value = true
+    const { blockedIds } = useModeration()
+    const { data: simItems } = await supabase
+      .from('items').select('id, title, price, images, user_id')
+      .eq('category', itemData.category).eq('status', 'active')
+      .neq('id', itemData.id).neq('user_id', itemData.user_id).limit(12)
+    if (alive && simItems) {
+      similarItems.value = (simItems as Item[]).filter(i => !blockedIds.value.has(i.user_id)).slice(0, 6)
     }
+  } catch (error: any) {
+    console.error('Detail load error:', error)
+    if (alive) notFound.value = true
   }
 })
 

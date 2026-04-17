@@ -16,7 +16,8 @@ export function useMessages() {
       const { data, error } = await supabase
         .from('conversations')
         .select(`
-          *,
+          id, item_id, buyer_id, seller_id, last_message_at, created_at,
+          is_pinned_buyer, is_pinned_seller, is_muted_buyer, is_muted_seller,
           item:items(id, title, images, price, status),
           buyer:profiles!conversations_buyer_id_fkey(id, nickname, avatar_url),
           seller:profiles!conversations_seller_id_fkey(id, nickname, avatar_url)
@@ -91,23 +92,25 @@ export function useMessages() {
 
     if (error) throw error
 
-    await supabase
+    const { error: convUpdateError } = await supabase
       .from('conversations')
       .update({ last_message_at: new Date().toISOString() })
       .eq('id', conversationId)
+    if (convUpdateError) console.warn('conversation last_message_at update failed:', convUpdateError.message)
 
     return data as Message
   }
 
   async function getOrCreateConversation(itemId: string, buyerId: string, sellerId: string) {
-    const { data: existing } = await supabase
+    const { data: existing, error: findErr } = await supabase
       .from('conversations')
       .select('*')
       .eq('item_id', itemId)
       .eq('buyer_id', buyerId)
       .eq('seller_id', sellerId)
-      .single()
+      .maybeSingle()
 
+    if (findErr) throw findErr
     if (existing) return existing as Conversation
 
     const { data, error } = await supabase

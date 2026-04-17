@@ -18,7 +18,7 @@
         @click="goDetail(item.id)"
         @longpress="onRemoveOne(item.id)"
       >
-        <image :src="item.images?.[0] || '/static/placeholder.png'" class="item-img" mode="aspectFill" />
+        <image :src="item.images?.[0] || '/static/placeholder.svg'" class="item-img" mode="aspectFill" />
         <view class="item-info">
           <text class="item-title">{{ item.title }}</text>
           <text class="item-price">{{ formatPrice(item.price, t('home.free')) }}</text>

@@ -82,9 +82,9 @@
     <view v-if="showComposer" class="sheet-mask" @click="showComposer = false"></view>
     <view :class="['composer', { open: showComposer }]">
       <view class="comp-header">
-        <text class="comp-cancel" @click="showComposer = false">{{ t('plaza.cancel') }}</text>
+        <text class="comp-cancel" @click="onComposerCancel">{{ t('plaza.cancel') }}</text>
         <text class="comp-title">{{ t('plaza.write') }}</text>
-        <text :class="['comp-submit', { disabled: !composerText.trim() || submitting }]" @click="onSubmitPost">
+        <text :class="['comp-submit', { disabled: (!composerText.trim() && composerImages.length === 0) || submitting }]" @click="onSubmitPost">
           {{ submitting ? t('login.wait') : t('plaza.submit') }}
         </text>
       </view>
@@ -95,7 +95,20 @@
         :focus="showComposer"
         maxlength="2000"
       />
+      <view v-if="composerImages.length > 0" class="comp-images">
+        <view v-for="(img, i) in composerImages" :key="i" class="ci-wrap">
+          <image :src="img" class="ci-img" mode="aspectFill" />
+          <view class="ci-remove" @click="removeComposerImage(i)">
+            <view class="ci-x"></view>
+          </view>
+        </view>
+      </view>
       <view class="comp-footer">
+        <view class="comp-tools">
+          <view v-if="composerImages.length < 4" class="comp-add-img" @click="onComposerPickImage">
+            <view class="cai-ico"></view>
+          </view>
+        </view>
         <text class="comp-count">{{ 2000 - composerText.length }} {{ t('plaza.charsLeft') }}</text>
       </view>
     </view>
@@ -129,6 +142,7 @@
           :placeholder="t('plaza.commentHint')"
           class="cs-input"
           confirm-type="send"
+          :focus="!!commentingPost"
           @confirm="onSubmitComment"
           maxlength="1000"
         />
@@ -149,8 +163,9 @@ import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
 import { usePlaza } from '../../composables/usePlaza'
 import { useModeration } from '../../composables/useModeration'
+import { useItems } from '../../composables/useItems'
 import type { Post, PostComment } from '../../types'
-import { formatTime } from '../../utils'
+import { formatTime, compressImage } from '../../utils'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 
@@ -164,7 +179,9 @@ const pageIdx = ref(0)
 
 const showComposer = ref(false)
 const composerText = ref('')
+const composerImages = ref<string[]>([])
 const submitting = ref(false)
+const { uploadImages } = useItems()
 
 const commentingPost = ref<Post | null>(null)
 const comments = ref<PostComment[]>([])
@@ -203,17 +220,51 @@ async function onToggleLike(post: Post) {
   }
 }
 
+function onComposerCancel() {
+  showComposer.value = false
+  composerText.value = ''
+  composerImages.value = []
+}
+
+function onComposerPickImage() {
+  uni.chooseImage({
+    count: 4 - composerImages.value.length,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: async (res: any) => {
+      const paths: string[] = res.tempFilePaths || []
+      for (const p of paths) {
+        try {
+          const c = await compressImage(p, 1600, 0.82)
+          composerImages.value.push(c)
+        } catch {
+          composerImages.value.push(p)
+        }
+      }
+    },
+  })
+}
+
+function removeComposerImage(idx: number) {
+  composerImages.value.splice(idx, 1)
+}
+
 async function onSubmitPost() {
   if (!requireAuth()) return
-  if (!composerText.value.trim()) {
+  if (!composerText.value.trim() && composerImages.value.length === 0) {
     uni.showToast({ title: t('plaza.needContent'), icon: 'none' })
     return
   }
   if (submitting.value) return
   submitting.value = true
   try {
-    await createPost(composerText.value)
+    let imageUrls: string[] = []
+    if (composerImages.value.length > 0) {
+      imageUrls = await uploadImages(composerImages.value)
+    }
+    await createPost(composerText.value, imageUrls)
     composerText.value = ''
+    composerImages.value = []
     showComposer.value = false
     uni.showToast({ title: t('plaza.posted'), icon: 'success' })
   } catch (err: any) {
@@ -493,9 +544,50 @@ function onCommentLongPress(c: PostComment) {
   font-size: 15px; color: #1a1a1a; line-height: 1.5;
   box-sizing: border-box;
 }
+.comp-images {
+  display: flex; gap: 8px; padding: 4px 16px 8px;
+  flex-wrap: wrap;
+}
+.ci-wrap {
+  position: relative; width: 72px; height: 72px;
+  border-radius: 8px; overflow: hidden;
+}
+.ci-img { width: 100%; height: 100%; background: #f2f2f7; }
+.ci-remove {
+  position: absolute; top: 3px; right: 3px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  &:active { opacity: 0.7; }
+}
+.ci-x {
+  width: 10px; height: 10px; position: relative;
+  &::before, &::after {
+    content: ''; position: absolute; top: 50%; left: 0;
+    width: 10px; height: 1.5px; background: #fff;
+  }
+  &::before { transform: rotate(45deg); }
+  &::after { transform: rotate(-45deg); }
+}
 .comp-footer {
-  padding: 8px 16px; text-align: right;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 16px;
   border-top: 0.5px solid rgba(0,0,0,0.06);
+}
+.comp-tools { display: flex; gap: 12px; }
+.comp-add-img {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: #f2f2f7; display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  &:active { background: #e5e5ea; }
+}
+.cai-ico {
+  width: 18px; height: 14px; border: 1.8px solid #636366;
+  border-radius: 2px; position: relative;
+  &::before {
+    content: ''; position: absolute; top: 2px; left: 3px;
+    width: 4px; height: 4px; border-radius: 50%; border: 1.4px solid #636366;
+  }
 }
 .comp-count { font-size: 12px; color: #c7c7cc; }
 

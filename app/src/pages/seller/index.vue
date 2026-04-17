@@ -16,7 +16,7 @@
       <view class="name-row">
         <text class="nickname">{{ seller.nickname }}</text>
         <view v-if="seller.is_illini_verified" class="illini-badge">
-          <text class="illini-badge-text">✓ Illini</text>
+          <text class="illini-badge-text">Illini</text>
         </view>
       </view>
       <text v-if="seller.bio" class="bio">{{ seller.bio }}</text>
@@ -45,7 +45,7 @@
 
     <view class="items-grid">
       <view v-for="item in sellerItems" :key="item.id" class="grid-item" @click="goDetail(item.id)">
-        <image :src="item.images?.[0] || '/static/placeholder.png'" class="gi-img" mode="aspectFill" />
+        <image :src="item.images?.[0] || '/static/placeholder.svg'" class="gi-img" mode="aspectFill" />
         <view class="gi-info">
           <text class="gi-title">{{ item.title }}</text>
           <text class="gi-price">{{ formatPrice(item.price, t("home.free")) }}</text>

@@ -18,7 +18,7 @@
     <!-- Item Context Card -->
     <view class="item-card" v-if="itemInfo" @click="goToItem">
       <image
-        :src="itemInfo.images?.[0] || '/static/placeholder.png'"
+        :src="itemInfo.images?.[0] || '/static/placeholder.svg'"
         class="ic-img"
         mode="aspectFill"
       />

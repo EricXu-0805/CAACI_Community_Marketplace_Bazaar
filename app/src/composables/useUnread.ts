@@ -51,6 +51,7 @@ export function useUnread() {
         .neq('sender_id', uid)
         .eq('is_read', false)
         .in('conversation_id', convIds)
+        .limit(500)
 
       const unreadSet = new Set<string>((unreadMsgs || []).map((m: any) => m.conversation_id))
 

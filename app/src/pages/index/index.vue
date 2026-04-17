@@ -18,7 +18,7 @@
             confirm-type="search"
             @confirm="onSearch"
           />
-          <view v-if="searchText" class="sf-clear" @click.stop="searchText = ''; onSearch()">×</view>
+          <view v-if="searchText" class="sf-clear" @click.stop="onClearSearch">×</view>
         </view>
         <view class="filter-btn" @click="showFilter = !showFilter">
           <view class="fb-lines"><view></view><view></view><view></view></view>
@@ -207,7 +207,7 @@
           >
             <view class="card-img-box">
               <image
-                :src="item.images?.[0] || '/static/placeholder.png'"
+                :src="item.images?.[0] || '/static/placeholder.svg'"
                 mode="widthFix"
                 :class="['card-img', { 'card-img-sold': item.status === 'sold' }]"
                 lazy-load
@@ -302,7 +302,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { onPullDownRefresh } from '@dcloudio/uni-app'
+import { onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import { useItems } from '../../composables/useItems'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
@@ -335,6 +335,7 @@ const banners = computed(() => [
 ])
 const showBackTop = ref(false)
 const scrollTopVal = ref(0)
+const lastScrollTop = ref(0)
 
 const showFilter = ref(false)
 const filterPriceMin = ref('')
@@ -523,14 +524,31 @@ function onSearch() {
   debouncedFetch()
 }
 
+function onClearSearch() {
+  searchText.value = ''
+  haptic('light')
+  onSearch()
+}
+
 function onScroll(e: any) {
   showBackTop.value = e.detail.scrollTop > 600
+  lastScrollTop.value = e.detail.scrollTop
 }
 
 function scrollToTop() {
   scrollTopVal.value = 1
   setTimeout(() => { scrollTopVal.value = 0 }, 50)
 }
+
+onShow(() => {
+  if (lastScrollTop.value > 0) {
+    const saved = lastScrollTop.value
+    setTimeout(() => {
+      scrollTopVal.value = saved
+      setTimeout(() => { scrollTopVal.value = 0 }, 100)
+    }, 50)
+  }
+})
 
 function loadMore() {
   if (loading.value || !hasMore.value) return

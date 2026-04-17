@@ -39,18 +39,20 @@ export function useNotifications() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) return
 
-    await supabase
+    const { error } = await supabase
       .from('notifications')
       .update({ is_read: true })
       .eq('user_id', session.user.id)
       .eq('is_read', false)
+    if (error) throw error
 
     notifications.value = notifications.value.map(n => ({ ...n, is_read: true }))
     unreadNotifCount.value = 0
   }
 
   async function markRead(id: string) {
-    await supabase.from('notifications').update({ is_read: true }).eq('id', id)
+    const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', id)
+    if (error) throw error
     const n = notifications.value.find(x => x.id === id)
     if (n && !n.is_read) {
       n.is_read = true
@@ -59,7 +61,8 @@ export function useNotifications() {
   }
 
   async function deleteNotification(id: string) {
-    await supabase.from('notifications').delete().eq('id', id)
+    const { error } = await supabase.from('notifications').delete().eq('id', id)
+    if (error) throw error
     const wasUnread = notifications.value.find(x => x.id === id && !x.is_read)
     notifications.value = notifications.value.filter(n => n.id !== id)
     if (wasUnread) unreadNotifCount.value = Math.max(0, unreadNotifCount.value - 1)
