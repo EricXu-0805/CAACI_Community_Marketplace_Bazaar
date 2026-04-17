@@ -72,10 +72,10 @@
           :src="msg.sender?.avatar_url || '/static/default-avatar.svg'"
           class="msg-avatar"
         />
-        <view class="msg-bubble" v-if="msg.message_type !== 'image'">
+        <view class="msg-bubble" v-if="msg.message_type !== 'image'" @longpress="onMsgLongPress(msg)">
           <text>{{ msg.content }}</text>
         </view>
-        <image v-else :src="msg.content" class="msg-image" mode="widthFix" @click="previewImg(msg.content)" />
+        <image v-else :src="msg.content" class="msg-image" mode="widthFix" @click="previewImg(msg.content)" @longpress="onMsgLongPress(msg)" />
         <image
           v-if="msg.sender_id === currentUser?.id"
           :src="currentUser?.avatar_url || '/static/default-avatar.svg'"
@@ -131,7 +131,7 @@ import type { Item } from '../../types'
 const { t } = useI18n()
 
 const { currentUser, requireAuth } = useAuth()
-const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, fetchConversationDetail } = useMessages()
+const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, deleteMessage, fetchConversationDetail } = useMessages()
 const { uploadImages } = useItems()
 const { refreshUnreadCount } = useUnread()
 const { reportTarget, blockUser } = useModeration()
@@ -304,6 +304,42 @@ function formatChatTime(dateStr: string): string {
   if (msgDay.getTime() === today.getTime()) return time
   if (msgDay.getTime() === yesterday.getTime()) return `${t('chat.yesterday')} ${time}`
   return `${d.getMonth() + 1}/${d.getDate()} ${time}`
+}
+
+function onMsgLongPress(msg: any) {
+  const isMine = msg.sender_id === currentUser.value?.id
+  const isText = msg.message_type !== 'image'
+
+  const actions: string[] = []
+  if (isText) actions.push(t('chat.copy'))
+  if (isMine) actions.push(t('chat.deleteMsg'))
+  if (actions.length === 0) return
+
+  uni.showActionSheet({
+    itemList: actions,
+    success: (res) => {
+      const action = actions[res.tapIndex]
+      if (action === t('chat.copy')) {
+        uni.setClipboardData({ data: msg.content })
+        uni.showToast({ title: t('chat.copied'), icon: 'success' })
+      } else if (action === t('chat.deleteMsg')) {
+        uni.showModal({
+          title: t('chat.deleteMsgTitle'),
+          content: t('chat.deleteMsgHint'),
+          confirmColor: '#FF3B30',
+          success: async (r) => {
+            if (!r.confirm) return
+            try {
+              await deleteMessage(msg.id)
+              uni.showToast({ title: t('chat.deleted'), icon: 'success' })
+            } catch {
+              uni.showToast({ title: t('chat.fail'), icon: 'none' })
+            }
+          },
+        })
+      }
+    },
+  })
 }
 
 function previewImg(url: string) {

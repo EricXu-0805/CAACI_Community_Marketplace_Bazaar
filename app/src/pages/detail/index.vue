@@ -23,6 +23,13 @@
       <view v-if="item.images.length > 1" class="img-counter">
         <text>{{ currentImg + 1 }}/{{ item.images.length }}</text>
       </view>
+      <view v-if="item.images.length > 1" class="img-dots">
+        <view
+          v-for="(_, i) in item.images"
+          :key="i"
+          :class="['img-dot', { active: currentImg === i }]"
+        ></view>
+      </view>
     </view>
 
     <!-- Price + Title -->
@@ -145,6 +152,14 @@
     </view>
   </view>
 
+  <view v-else-if="notFound" class="not-found-page">
+    <view class="nf-back" @click="goBack"><view class="nf-arrow"></view></view>
+    <view class="nf-icon"></view>
+    <text class="nf-title">{{ t('detail.notFoundTitle') }}</text>
+    <text class="nf-sub">{{ t('detail.notFoundSub') }}</text>
+    <view class="nf-btn" @click="goHome">{{ t('detail.backHome') }}</view>
+  </view>
+
   <!-- Loading state -->
   <view v-else class="loading-page">
     <view class="loading-spinner"></view>
@@ -165,7 +180,7 @@ import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
 import type { Item } from '../../types'
 
-import { formatTime } from '../../utils'
+import { formatTime, haptic } from '../../utils'
 
 const { t } = useI18n()
 const { fetchItem, updateItemStatus } = useItems()
@@ -183,6 +198,7 @@ const isFav = ref(false)
 const favCount = ref(0)
 const currentImg = ref(0)
 const descExpanded = ref(false)
+const notFound = ref(false)
 
 onLoad(async (options) => {
   if (options?.id) {
@@ -212,13 +228,13 @@ onLoad(async (options) => {
       }
     } catch (error: any) {
       console.error('Detail load error:', error)
-      uni.showToast({ title: error?.message || t('detail.notFound'), icon: 'none' })
-      setTimeout(() => uni.navigateBack(), 2000)
+      notFound.value = true
     }
   }
 })
 
-function goBack() { uni.navigateBack() }
+function goBack() { uni.navigateBack({ fail: () => uni.switchTab({ url: '/pages/index/index' }) }) }
+function goHome() { uni.switchTab({ url: '/pages/index/index' }) }
 
 function goToOtherItem(id: string) {
   uni.navigateTo({ url: `/pages/detail/index?id=${id}` })
@@ -316,6 +332,7 @@ async function toggleFavorite() {
   if (!requireAuth()) return
   if (!item.value || !currentUser.value) return
 
+  haptic('light')
   const nowFavorited = await doToggleFavorite(currentUser.value.id, item.value.id)
   isFav.value = nowFavorited
   favCount.value += nowFavorited ? 1 : -1
@@ -419,6 +436,16 @@ async function contactSeller() {
   background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   color: #fff; font-size: 12px; font-weight: 500;
+}
+.img-dots {
+  position: absolute; bottom: 12px; left: 0; right: 0;
+  display: flex; justify-content: center; gap: 5px; z-index: 10;
+}
+.img-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,0.45);
+  transition: all 0.2s;
+  &.active { background: #fff; width: 16px; border-radius: 3px; }
 }
 
 /* ========== Info Card ========== */
@@ -594,6 +621,37 @@ async function contactSeller() {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 .loading-text { font-size: 13px; color: #aeaeb2; }
+
+.not-found-page {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 100vh; gap: 10px; padding: 0 40px; text-align: center;
+  background: #fff;
+}
+.nf-back {
+  position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); left: 14px;
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: #f2f2f7; cursor: pointer;
+}
+.nf-arrow { width: 9px; height: 9px; border-left: 2px solid #1a1a1a; border-bottom: 2px solid #1a1a1a; transform: rotate(45deg); margin-left: 3px; }
+.nf-icon {
+  width: 60px; height: 60px; border: 3px solid #d1d1d6;
+  border-radius: 50%; position: relative; margin-bottom: 8px;
+  &::before {
+    content: ''; position: absolute; top: 50%; left: 14px; right: 14px; height: 3px;
+    background: #d1d1d6;
+    transform: translateY(-50%);
+  }
+}
+.nf-title { font-size: 17px; font-weight: 700; color: #1a1a1a; }
+.nf-sub { font-size: 14px; color: #8e8e93; line-height: 1.5; max-width: 280px; }
+.nf-btn {
+  margin-top: 20px; padding: 12px 28px; background: #1a1a1a;
+  color: #fff; border-radius: 22px; font-size: 14px; font-weight: 600;
+  cursor: pointer;
+  &:active { opacity: 0.8; }
+}
 
 /* ========== Desktop ========== */
 @media (min-width: 768px) {

@@ -12,6 +12,20 @@ export function formatTime(dateStr: string): string {
   return date.toLocaleDateString()
 }
 
+export function haptic(style: 'light' | 'medium' | 'heavy' = 'light') {
+  // #ifdef H5
+  try {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      const ms = style === 'light' ? 8 : style === 'medium' ? 15 : 25
+      navigator.vibrate(ms)
+    }
+  } catch {}
+  // #endif
+  // #ifndef H5
+  try { uni.vibrateShort?.({ type: style === 'heavy' ? 'heavy' : 'light' } as any) } catch {}
+  // #endif
+}
+
 export function debounce<T extends (...args: any[]) => any>(
   fn: T,
   delay: number,

@@ -280,7 +280,7 @@ import { useFavorites } from '../../composables/useFavorites'
 import { useModeration } from '../../composables/useModeration'
 import type { ItemCategory, Item } from '../../types'
 
-import { debounce, formatTime, formatPrice } from '../../utils'
+import { debounce, formatTime, formatPrice, haptic } from '../../utils'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 
@@ -449,6 +449,7 @@ async function onQuickFav(item: Item) {
     uni.navigateTo({ url: '/pages/login/index' })
     return
   }
+  haptic('light')
   const nowFav = await toggleFavorite(currentUser.value.id, item.id)
   item.favorite_count = (item.favorite_count || 0) + (nowFav ? 1 : -1)
 }

@@ -149,6 +149,15 @@ export function useMessages() {
     }
   }
 
+  async function deleteMessage(messageId: string) {
+    const { error } = await supabase
+      .from('messages')
+      .delete()
+      .eq('id', messageId)
+    if (error) throw error
+    messages.value = messages.value.filter(m => m.id !== messageId)
+  }
+
   async function deleteConversation(conversationId: string) {
     const { error } = await supabase
       .from('conversations')
@@ -186,6 +195,7 @@ export function useMessages() {
     subscribeToMessages,
     markAsRead,
     deleteConversation,
+    deleteMessage,
     fetchConversationDetail,
     clearMessages,
   }
