@@ -201,7 +201,7 @@
               <view class="card-bottom">
                 <view class="card-seller">
                   <image
-                    :src="item.profile?.avatar_url || '/static/default-avatar.png'"
+                    :src="item.profile?.avatar_url || '/static/default-avatar.svg'"
                     class="seller-pic"
                   />
                   <text class="seller-nick">{{ item.profile?.nickname || t('app.user') }}</text>
@@ -454,11 +454,12 @@ async function onQuickFav(item: Item) {
 }
 
 function onCardLongPress(item: Item) {
+  const favLabel = isFavorited(item.id) ? t('home.unsave') : t('detail.save')
   uni.showActionSheet({
-    itemList: [t('detail.save'), t('home.shareItem')],
-    success: (res) => {
+    itemList: [favLabel, t('home.shareItem')],
+    success: async (res) => {
       if (res.tapIndex === 0) {
-        uni.showToast({ title: t('detail.saved'), icon: 'success' })
+        await onQuickFav(item)
       } else if (res.tapIndex === 1) {
         // #ifdef H5
         const url = `${window.location.origin}/share/${item.id}`

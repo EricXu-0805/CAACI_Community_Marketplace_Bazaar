@@ -70,6 +70,10 @@
 			"style": { "navigationStyle": "custom" }
 		},
 		{
+			"path": "pages/blocked/index",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
 			"path": "pages/login/index",
 			"style": {
 				"navigationStyle": "custom"

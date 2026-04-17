@@ -31,7 +31,7 @@
         @longpress="onLongPress(conv.id)"
       >
         <image
-          :src="getOtherUser(conv)?.avatar_url || '/static/default-avatar.png'"
+          :src="getOtherUser(conv)?.avatar_url || '/static/default-avatar.svg'"
           class="conv-avatar"
         />
         <view class="conv-info">

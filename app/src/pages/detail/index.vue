@@ -56,7 +56,7 @@
     <!-- Seller Card -->
     <view class="section seller-card" v-if="item.profile">
       <view class="seller-row" @click="goSeller(item.user_id)">
-        <image :src="item.profile.avatar_url || '/static/default-avatar.png'" class="seller-avatar" />
+        <image :src="item.profile.avatar_url || '/static/default-avatar.svg'" class="seller-avatar" />
         <view class="seller-info">
           <view class="seller-name-row">
             <text class="seller-name">{{ item.profile.nickname }}</text>

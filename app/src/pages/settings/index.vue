@@ -40,6 +40,10 @@
     </view>
 
     <view v-if="isLoggedIn" class="section">
+      <view class="menu-item" @click="goBlocked">
+        <text class="mi-label">{{ t('settings.blockedUsers') }}</text>
+        <view class="mi-arrow"></view>
+      </view>
       <view class="menu-item" @click="onChangePassword">
         <text class="mi-label">{{ t('settings.changePassword') }}</text>
         <view class="mi-arrow"></view>
@@ -80,6 +84,7 @@ function goBack() { uni.navigateBack() }
 function goLegal(type: string) {
   uni.navigateTo({ url: `/pages/legal/index${type === 'privacy' ? '?type=privacy' : ''}` })
 }
+function goBlocked() { uni.navigateTo({ url: '/pages/blocked/index' }) }
 
 const CACHE_KEYS_TO_CLEAR = ['search_history', 'browse_history', 'home_items_cache']
 

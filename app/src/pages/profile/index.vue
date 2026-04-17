@@ -18,7 +18,7 @@
 
     <view v-else class="profile-section">
       <view class="user-header">
-        <image :src="currentUser?.avatar_url || '/static/default-avatar.png'" class="avatar" />
+        <image :src="currentUser?.avatar_url || '/static/default-avatar.svg'" class="avatar" />
         <view class="user-info">
           <view class="name-row">
             <text class="nickname">{{ currentUser?.nickname }}</text>
@@ -36,6 +36,15 @@
         <view class="edit-btn" @click="onEditProfile">
           <view class="edit-icon"></view>
         </view>
+      </view>
+
+      <view v-if="!currentUser?.is_illini_verified" class="verify-prompt" @click="onVerifyIllini">
+        <view class="vp-icon">✓</view>
+        <view class="vp-text">
+          <text class="vp-title">{{ t('profile.verifyTitle') }}</text>
+          <text class="vp-sub">{{ t('profile.verifySub') }}</text>
+        </view>
+        <view class="vp-arrow"></view>
       </view>
 
       <!-- Tappable stats / tabs -->
@@ -218,6 +227,15 @@ function goEdit(id: string) {
 }
 
 function onEditProfile() { uni.navigateTo({ url: '/pages/profile/edit' }) }
+
+function onVerifyIllini() {
+  uni.showModal({
+    title: t('profile.verifyTitle'),
+    content: t('profile.verifyHint'),
+    confirmText: t('profile.verifyGotIt'),
+    showCancel: false,
+  })
+}
 function goNotifications() { uni.navigateTo({ url: '/pages/notifications/index' }) }
 function goSettings() { uni.navigateTo({ url: '/pages/settings/index' }) }
 function goHistory() { uni.navigateTo({ url: '/pages/history/index' }) }
@@ -328,6 +346,28 @@ function onDeleteItem(id: string) {
 }
 .illini-badge-text { color: #fff; font-size: 10px; }
 .user-bio { font-size: 13px; color: #636366; margin-top: 2px; }
+
+.verify-prompt {
+  display: flex; align-items: center; gap: 12px;
+  margin: 12px 16px 0; padding: 12px 14px;
+  background: #EFF4FB; border-radius: 10px;
+  cursor: pointer;
+  &:active { background: #E5ECF6; }
+}
+.vp-icon {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: #13294B; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; flex-shrink: 0;
+}
+.vp-text { flex: 1; min-width: 0; }
+.vp-title { font-size: 13px; font-weight: 600; color: #13294B; display: block; }
+.vp-sub { font-size: 11px; color: #4a5a75; margin-top: 2px; display: block; }
+.vp-arrow {
+  width: 6px; height: 6px; flex-shrink: 0;
+  border-top: 1.5px solid #13294B; border-right: 1.5px solid #13294B;
+  transform: rotate(45deg);
+}
 .location-row {
   display: flex; align-items: center; gap: 5px; margin-top: 4px;
 }

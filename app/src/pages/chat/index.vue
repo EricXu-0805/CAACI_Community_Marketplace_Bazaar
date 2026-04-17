@@ -69,7 +69,7 @@
         >
         <image
           v-if="msg.sender_id !== currentUser?.id"
-          :src="msg.sender?.avatar_url || '/static/default-avatar.png'"
+          :src="msg.sender?.avatar_url || '/static/default-avatar.svg'"
           class="msg-avatar"
         />
         <view class="msg-bubble" v-if="msg.message_type !== 'image'">
@@ -78,9 +78,15 @@
         <image v-else :src="msg.content" class="msg-image" mode="widthFix" @click="previewImg(msg.content)" />
         <image
           v-if="msg.sender_id === currentUser?.id"
-          :src="currentUser?.avatar_url || '/static/default-avatar.png'"
+          :src="currentUser?.avatar_url || '/static/default-avatar.svg'"
           class="msg-avatar"
         />
+      </view>
+      <view v-if="msg.sender_id === currentUser?.id && (msg as any)._pending" class="msg-status pending">
+        <text>{{ t('chat.sending') }}</text>
+      </view>
+      <view v-else-if="msg.sender_id === currentUser?.id && (msg as any)._failed" class="msg-status failed" @click="retrySend(msg)">
+        <text>{{ t('chat.sendFailed') }}</text>
       </view>
       </template>
 
