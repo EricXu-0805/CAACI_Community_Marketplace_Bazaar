@@ -165,34 +165,8 @@ const { createItem, updateItem, fetchItem, uploadImages, fetchItems } = useItems
 const editId = ref('')
 const isEdit = ref(false)
 
-onLoad(async (options) => {
-  if (options?.edit) {
-    editId.value = options.edit
-    isEdit.value = true
-    try {
-      const item = await fetchItem(options.edit)
-      form.title = item.title
-      form.description = item.description
-      form.price = String(item.price)
-      form.category = item.category
-      form.condition = item.condition
-      form.location = item.location
-      form.negotiable = item.negotiable ?? false
-      imageList.value = [...item.images]
-    } catch {}
-  }
-})
-
 const { supabase } = useSupabase()
 const avgPrice = ref(0)
-
-watch(() => form.category, async (cat) => {
-  if (!cat) { avgPrice.value = 0; return }
-  const { data } = await supabase.from('items').select('price').eq('category', cat).eq('status', 'active').limit(50)
-  if (data && data.length > 0) {
-    avgPrice.value = Math.round(data.reduce((s: number, i: any) => s + Number(i.price), 0) / data.length)
-  } else { avgPrice.value = 0 }
-})
 
 const categoryKeys: ItemCategory[] = ['furniture', 'electronics', 'clothing', 'books', 'housing', 'vehicles', 'daily', 'food', 'other']
 const conditionKeys = ['new', 'like_new', 'good', 'fair']
@@ -211,6 +185,32 @@ const form = reactive({
   condition: '' as ItemCondition | '',
   location: 'UIUC',
   negotiable: false,
+})
+
+onLoad(async (options) => {
+  if (options?.edit) {
+    editId.value = options.edit
+    isEdit.value = true
+    try {
+      const item = await fetchItem(options.edit)
+      form.title = item.title
+      form.description = item.description
+      form.price = String(item.price)
+      form.category = item.category
+      form.condition = item.condition
+      form.location = item.location
+      form.negotiable = item.negotiable ?? false
+      imageList.value = [...item.images]
+    } catch {}
+  }
+})
+
+watch(() => form.category, async (cat) => {
+  if (!cat) { avgPrice.value = 0; return }
+  const { data } = await supabase.from('items').select('price').eq('category', cat).eq('status', 'active').limit(50)
+  if (data && data.length > 0) {
+    avgPrice.value = Math.round(data.reduce((s: number, i: any) => s + Number(i.price), 0) / data.length)
+  } else { avgPrice.value = 0 }
 })
 
 function chooseImage() {

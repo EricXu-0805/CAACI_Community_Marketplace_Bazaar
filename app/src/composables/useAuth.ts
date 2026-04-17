@@ -107,17 +107,16 @@ export function useAuth() {
       )
     )
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('profiles')
       .update(sanitized)
       .eq('id', currentUser.value.id)
-      .select()
-      .single()
 
-    if (data && !error) {
-      currentUser.value = data as Profile
+    if (!error) {
+      const { data: fresh } = await supabase.rpc('get_my_profile')
+      if (fresh) currentUser.value = fresh as Profile
     }
-    return { data, error }
+    return { error }
   }
 
   function requireAuth() {
