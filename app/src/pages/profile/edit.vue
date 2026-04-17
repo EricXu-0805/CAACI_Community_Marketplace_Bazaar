@@ -95,17 +95,24 @@ async function onSave() {
       if (urls.length > 0) finalAvatar = urls[0]
     }
 
-    await updateProfile({
+    const result = await updateProfile({
       nickname: nickname.value.trim(),
       bio: bio.value.trim(),
       location: location.value.trim() || 'UIUC',
       avatar_url: finalAvatar,
     })
 
+    if (result?.error) {
+      console.error('Profile update error:', result.error)
+      uni.showToast({ title: result.error.message || t('profile.markFail'), icon: 'none', duration: 3000 })
+      return
+    }
+
     uni.showToast({ title: t('editProfile.saved'), icon: 'success' })
     setTimeout(() => uni.navigateBack(), 1000)
-  } catch {
-    uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+  } catch (err: any) {
+    console.error('onSave error:', err)
+    uni.showToast({ title: err?.message || t('profile.markFail'), icon: 'none', duration: 3000 })
   } finally {
     saving.value = false
   }
