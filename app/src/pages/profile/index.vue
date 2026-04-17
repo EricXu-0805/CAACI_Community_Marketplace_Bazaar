@@ -222,17 +222,25 @@ function goNotifications() { uni.navigateTo({ url: '/pages/notifications/index' 
 function goSettings() { uni.navigateTo({ url: '/pages/settings/index' }) }
 function goHistory() { uni.navigateTo({ url: '/pages/history/index' }) }
 
-async function markAsSold(id: string) {
-  try {
-    await updateItemStatus(id, 'sold')
-    homeItems.value = homeItems.value.filter(i => i.id !== id)
-    if (currentUser.value) {
-      myItems.value = await fetchMyItems(currentUser.value.id)
-    }
-    uni.showToast({ title: t('profile.markedSold'), icon: 'success' })
-  } catch {
-    uni.showToast({ title: t('profile.markFail'), icon: 'none' })
-  }
+function markAsSold(id: string) {
+  uni.showModal({
+    title: t('profile.markSoldTitle'),
+    content: t('profile.markSoldHint'),
+    confirmText: t('profile.markSold'),
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        await updateItemStatus(id, 'sold')
+        homeItems.value = homeItems.value.filter(i => i.id !== id)
+        if (currentUser.value) {
+          myItems.value = await fetchMyItems(currentUser.value.id)
+        }
+        uni.showToast({ title: t('profile.markedSold'), icon: 'success' })
+      } catch {
+        uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+      }
+    },
+  })
 }
 
 function onDeleteItem(id: string) {

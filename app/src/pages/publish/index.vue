@@ -233,8 +233,10 @@ async function onDetectLocation() {
 
 async function onSubmit() {
   if (!requireAuth()) return
+  if (imageList.value.length === 0) { uni.showToast({ title: t('publish.needImage'), icon: 'none' }); return }
   if (!form.title.trim()) { uni.showToast({ title: t('publish.needTitle'), icon: 'none' }); return }
   if (!form.price || Number(form.price) < 0) { uni.showToast({ title: t('publish.needPrice'), icon: 'none' }); return }
+  if (Number(form.price) > 100000) { uni.showToast({ title: t('publish.priceTooHigh'), icon: 'none' }); return }
   if (!form.category) { uni.showToast({ title: t('publish.needCategory'), icon: 'none' }); return }
   if (!form.condition) { uni.showToast({ title: t('publish.needCondition'), icon: 'none' }); return }
 

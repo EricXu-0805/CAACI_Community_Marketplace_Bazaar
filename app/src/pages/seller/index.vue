@@ -24,7 +24,23 @@
         <view class="loc-dot"></view>
         <text class="loc-text">{{ seller.location || 'UIUC' }}</text>
       </view>
-      <text class="item-count">{{ sellerItems.length }} {{ t('seller.listings') }}</text>
+
+      <view class="trust-row">
+        <view class="trust-stat">
+          <text class="trust-num">{{ activeCount }}</text>
+          <text class="trust-label">{{ t('seller.active') }}</text>
+        </view>
+        <view class="trust-divider"></view>
+        <view class="trust-stat">
+          <text class="trust-num">{{ soldCount }}</text>
+          <text class="trust-label">{{ t('seller.sold') }}</text>
+        </view>
+        <view class="trust-divider"></view>
+        <view class="trust-stat">
+          <text class="trust-num">{{ joinLabel }}</text>
+          <text class="trust-label">{{ t('seller.joined') }}</text>
+        </view>
+      </view>
     </view>
 
     <view class="items-grid">
@@ -44,21 +60,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
 import type { Profile, Item } from '../../types'
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 const { supabase } = useSupabase()
 const { ensureLoaded, isBlocked } = useModeration()
 
 const seller = ref<Profile | null>(null)
 const sellerItems = ref<Item[]>([])
+const soldCount = ref(0)
 const loading = ref(true)
 const blocked = ref(false)
+
+const activeCount = computed(() => sellerItems.value.length)
+const joinLabel = computed(() => {
+  if (!seller.value?.created_at) return '—'
+  const d = new Date(seller.value.created_at)
+  if (lang.value === 'zh') {
+    return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}`
+  }
+  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+})
 
 onLoad(async (options) => {
   if (!options?.id) return
@@ -71,13 +98,15 @@ onLoad(async (options) => {
     return
   }
 
-  const [profileRes, itemsRes] = await Promise.all([
-    supabase.from('profiles').select('id, nickname, avatar_url, bio, location, is_illini_verified').eq('id', uid).single(),
+  const [profileRes, itemsRes, soldRes] = await Promise.all([
+    supabase.from('profiles').select('id, nickname, avatar_url, bio, location, is_illini_verified, created_at').eq('id', uid).single(),
     supabase.from('items').select('*').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
+    supabase.from('items').select('id', { count: 'exact', head: true }).eq('user_id', uid).eq('status', 'sold'),
   ])
 
   if (profileRes.data) seller.value = profileRes.data as Profile
   if (itemsRes.data) sellerItems.value = itemsRes.data as Item[]
+  soldCount.value = soldRes.count || 0
   loading.value = false
 })
 
@@ -115,7 +144,19 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .loc-row { display: flex; align-items: center; gap: 4px; }
 .loc-dot { width: 5px; height: 5px; border-radius: 50%; background: #FF6B35; }
 .loc-text { font-size: 12px; color: #aeaeb2; }
-.item-count { font-size: 13px; color: #636366; font-weight: 500; margin-top: 4px; }
+.trust-row {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0; margin-top: 14px;
+  background: #f7f7f8; border-radius: 10px;
+  padding: 10px 16px;
+}
+.trust-stat {
+  display: flex; flex-direction: column; align-items: center;
+  flex: 1; gap: 2px;
+}
+.trust-num { font-size: 15px; font-weight: 700; color: #1a1a1a; }
+.trust-label { font-size: 11px; color: #8e8e93; }
+.trust-divider { width: 0.5px; height: 24px; background: rgba(0,0,0,0.1); }
 
 .items-grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: 1px;

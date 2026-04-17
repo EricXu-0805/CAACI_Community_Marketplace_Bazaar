@@ -43,6 +43,17 @@
     </view>
 
     <scroll-view
+      v-if="messages.length === 0 && itemInfo && itemInfo.status === 'active' && currentUser?.id !== itemInfo.user_id"
+      scroll-x
+      class="quick-replies"
+    >
+      <view class="qr-chip" @click="sendQuickReply(t('chat.qrStillAvailable'))">{{ t('chat.qrStillAvailable') }}</view>
+      <view class="qr-chip" @click="sendQuickReply(t('chat.qrLowerPrice'))">{{ t('chat.qrLowerPrice') }}</view>
+      <view class="qr-chip" @click="sendQuickReply(t('chat.qrWhenMeet'))">{{ t('chat.qrWhenMeet') }}</view>
+      <view class="qr-chip" @click="sendQuickReply(t('chat.qrMoreDetails'))">{{ t('chat.qrMoreDetails') }}</view>
+    </scroll-view>
+
+    <scroll-view
       class="message-list"
       scroll-y
       :scroll-into-view="scrollTarget"
@@ -179,6 +190,18 @@ function goBack() {
 function goToItem() {
   if (itemInfo.value) {
     uni.navigateTo({ url: `/pages/detail/index?id=${itemInfo.value.id}` })
+  }
+}
+
+async function sendQuickReply(text: string) {
+  if (!currentUser.value || !conversationId.value) return
+  try {
+    await sendMessage(conversationId.value, currentUser.value.id, text)
+    markAsRead(conversationId.value, currentUser.value.id)
+    refreshUnreadCount()
+    nextTick(() => scrollToBottom())
+  } catch {
+    uni.showToast({ title: t('chat.fail'), icon: 'none' })
   }
 }
 
@@ -373,6 +396,16 @@ function scrollToBottom() {
   border-radius: 8px; padding: 8px; cursor: pointer;
   text { font-size: 13px; font-weight: 600; color: #F57F17; }
   &:active { background: #FFF3C4; }
+}
+.quick-replies {
+  white-space: nowrap; padding: 8px 12px 4px;
+}
+.qr-chip {
+  display: inline-block; padding: 7px 14px; margin-right: 8px;
+  background: #fff; border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 16px; font-size: 13px; color: #1a1a1a;
+  cursor: pointer;
+  &:active { background: #f7f7f8; }
 }
 .ic-img {
   width: 40px; height: 40px; border-radius: 6px;

@@ -231,10 +231,11 @@ function goSeller(uid: string) {
 function onShare() {
   if (!item.value) return
   // #ifdef H5
+  const shareUrl = `${window.location.origin}/share/${item.value.id}`
   if (navigator.share) {
-    navigator.share({ title: item.value.title, text: `$${item.value.price} - ${item.value.title}`, url: window.location.href })
+    navigator.share({ title: item.value.title, text: `$${item.value.price} - ${item.value.title}`, url: shareUrl })
   } else {
-    uni.setClipboardData({ data: window.location.href })
+    uni.setClipboardData({ data: shareUrl })
     uni.showToast({ title: t('detail.linkCopied'), icon: 'success' })
   }
   // #endif
@@ -286,15 +287,24 @@ async function onMarkReserved() {
   }
 }
 
-async function onMarkSold() {
+function onMarkSold() {
   if (!item.value) return
-  try {
-    await updateItemStatus(item.value.id, 'sold')
-    item.value.status = 'sold'
-    uni.showToast({ title: t('profile.markedSold'), icon: 'success' })
-  } catch {
-    uni.showToast({ title: t('profile.markFail'), icon: 'none' })
-  }
+  const id = item.value.id
+  uni.showModal({
+    title: t('profile.markSoldTitle'),
+    content: t('profile.markSoldHint'),
+    confirmText: t('profile.markSold'),
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        await updateItemStatus(id, 'sold')
+        if (item.value) item.value.status = 'sold'
+        uni.showToast({ title: t('profile.markedSold'), icon: 'success' })
+      } catch {
+        uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+      }
+    },
+  })
 }
 
 function previewImage(index: number) {

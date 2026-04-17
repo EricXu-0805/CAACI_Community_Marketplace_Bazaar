@@ -195,7 +195,7 @@
             <view class="card-info">
               <text class="card-title">{{ item.title }}</text>
               <view class="card-price-row">
-                <text class="card-price">${{ item.price }}</text>
+                <text :class="['card-price', { 'card-price-free': item.price === 0 }]">{{ formatPrice(item.price, t('home.free')) }}</text>
                 <text v-if="item.negotiable" class="obo-tag">OBO</text>
               </view>
               <view class="card-bottom">
@@ -280,7 +280,7 @@ import { useFavorites } from '../../composables/useFavorites'
 import { useModeration } from '../../composables/useModeration'
 import type { ItemCategory, Item } from '../../types'
 
-import { debounce, formatTime } from '../../utils'
+import { debounce, formatTime, formatPrice } from '../../utils'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 
@@ -461,7 +461,7 @@ function onCardLongPress(item: Item) {
         uni.showToast({ title: t('detail.saved'), icon: 'success' })
       } else if (res.tapIndex === 1) {
         // #ifdef H5
-        const url = `${window.location.origin}/pages/detail/index?id=${item.id}`
+        const url = `${window.location.origin}/share/${item.id}`
         if (navigator.share) {
           navigator.share({ title: item.title, text: `$${item.price} - ${item.title}`, url })
         } else {
@@ -694,6 +694,7 @@ function goPublish() {
 }
 .card-price-row { display: flex; align-items: baseline; gap: 4px; margin-top: 5px; }
 .card-price { font-size: 15px; font-weight: 600; color: #1a1a1a; letter-spacing: -0.02em; }
+.card-price-free { color: #34C759; }
 .obo-tag {
   font-size: 9px; font-weight: 600; color: #FF6B35;
   background: rgba(255,107,53,0.08); padding: 1px 4px; border-radius: 3px;

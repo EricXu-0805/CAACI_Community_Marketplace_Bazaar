@@ -68,6 +68,11 @@ export function expandSearch(query: string): string[] {
   return Array.from(terms)
 }
 
+export function formatPrice(price: number, freeLabel = 'Free'): string {
+  if (price === 0) return freeLabel
+  return '$' + (Number.isInteger(price) ? price.toString() : price.toFixed(2))
+}
+
 export function compressImage(
   src: string,
   maxWidth = 1200,
