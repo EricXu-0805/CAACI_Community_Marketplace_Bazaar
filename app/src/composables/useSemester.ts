@@ -109,7 +109,7 @@ function phaseFor(date: Date): SemesterPhase {
 export function useSemester() {
   const now = new Date()
   const phase = computed(() => phaseFor(now))
-  const config = computed(() => PHASE_CONTENT[phase.value])
+  const config = computed(() => ({ ...PHASE_CONTENT[phase.value] }))
 
   function title(lang: 'en' | 'zh'): string {
     return lang === 'zh' ? config.value.titleZh : config.value.titleEn
