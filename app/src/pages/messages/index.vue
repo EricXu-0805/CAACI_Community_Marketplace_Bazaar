@@ -127,11 +127,14 @@ onShow(() => {
 })
 
 onPullDownRefresh(async () => {
-  if (currentUser.value) {
-    await fetchConversations(currentUser.value.id)
-    await refreshUnreadCount()
+  try {
+    if (currentUser.value) {
+      await fetchConversations(currentUser.value.id)
+      await refreshUnreadCount()
+    }
+  } finally {
+    uni.stopPullDownRefresh()
   }
-  uni.stopPullDownRefresh()
 })
 
 function getOtherUser(conv: Conversation): Profile | undefined {

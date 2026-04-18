@@ -155,7 +155,7 @@
       </view>
     </view>
 
-    <CustomTabBar current="plaza" />
+    <CustomTabBar v-if="!commentingPost && !showComposer" current="plaza" />
   </view>
 </template>
 
@@ -203,15 +203,24 @@ onMounted(async () => {
 })
 
 async function onRefresh() {
+  if (refreshing.value) return
   refreshing.value = true
   pageIdx.value = 0
-  await fetchPosts({ reset: true })
-  refreshing.value = false
+  const failsafe = setTimeout(() => { refreshing.value = false }, 10000)
+  try {
+    await fetchPosts({ reset: true })
+  } finally {
+    clearTimeout(failsafe)
+    refreshing.value = false
+  }
 }
 
 onPullDownRefresh(async () => {
-  await onRefresh()
-  uni.stopPullDownRefresh()
+  try {
+    await onRefresh()
+  } finally {
+    uni.stopPullDownRefresh()
+  }
 })
 
 async function loadMore() {
@@ -529,10 +538,10 @@ function onCommentLongPress(c: PostComment) {
 
 .sheet-mask {
   position: fixed; inset: 0; background: rgba(0,0,0,0.4);
-  z-index: 500;
+  z-index: 1000;
 }
 .composer-fullpage {
-  position: fixed; inset: 0; z-index: 600;
+  position: fixed; inset: 0; z-index: 1100;
   background: #fff;
   display: flex; flex-direction: column;
   max-width: 480px; margin: 0 auto;
@@ -605,12 +614,13 @@ function onCommentLongPress(c: PostComment) {
 .comp-count { font-size: 12px; color: #c7c7cc; }
 
 .comments-sheet {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 501;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1001;
   max-width: 480px; margin: 0 auto;
   background: #fff; border-radius: 16px 16px 0 0;
   transform: translateY(100%);
   transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   height: 70vh; display: flex; flex-direction: column;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
   &.open { transform: translateY(0); }
 }
 .cs-header {

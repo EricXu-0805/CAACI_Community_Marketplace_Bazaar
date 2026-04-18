@@ -18,23 +18,31 @@ export function useAuth() {
   async function init() {
     authSubscription?.unsubscribe()
 
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.user) {
-      await fetchProfile(session.user.id)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        fetchProfile(session.user.id).catch(err => console.warn('fetchProfile failed:', err))
+      }
+    } catch (err) {
+      console.warn('getSession failed:', err)
     }
 
     const { loadBlockedIds, clearBlocked } = useModeration()
 
-    const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        await fetchProfile(session.user.id)
-        loadBlockedIds()
-      } else {
-        currentUser.value = null
-        clearBlocked()
-      }
-    })
-    authSubscription = data.subscription
+    try {
+      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.user) {
+          fetchProfile(session.user.id).catch(err => console.warn('fetchProfile failed:', err))
+          loadBlockedIds()
+        } else {
+          currentUser.value = null
+          clearBlocked()
+        }
+      })
+      authSubscription = data.subscription
+    } catch (err) {
+      console.warn('onAuthStateChange failed:', err)
+    }
   }
 
   async function fetchProfile(userId: string) {

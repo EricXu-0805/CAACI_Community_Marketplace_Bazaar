@@ -9,13 +9,22 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 
 let supabase: SupabaseClient | null = null
 
+function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const timeoutMs = 25000
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  return fetch(input, { ...init, signal: controller.signal })
+    .finally(() => clearTimeout(timer))
+}
+
 export function useSupabase() {
   if (!supabase) {
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        // uni-app storage adapter
+        detectSessionInUrl: true,
+        flowType: 'pkce',
         storage: {
           getItem: (key: string) => {
             try {
@@ -35,6 +44,9 @@ export function useSupabase() {
             } catch {}
           },
         },
+      },
+      global: {
+        fetch: fetchWithTimeout as typeof fetch,
       },
     })
   }
