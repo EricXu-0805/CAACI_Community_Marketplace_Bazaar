@@ -24,7 +24,7 @@ export function usePlaza() {
     try {
       const { data, error } = await supabase
         .from('posts')
-        .select(`*, profile:profiles(${PUBLIC_PROFILE_FIELDS})`)
+        .select(`*, profile:profiles!posts_user_id_fkey(${PUBLIC_PROFILE_FIELDS})`)
         .eq('status', 'active')
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
@@ -75,7 +75,7 @@ export function usePlaza() {
         content: payloadContent,
         images,
       })
-      .select(`*, profile:profiles(${PUBLIC_PROFILE_FIELDS})`)
+      .select(`*, profile:profiles!posts_user_id_fkey(${PUBLIC_PROFILE_FIELDS})`)
       .single()
 
     if (error) throw error
@@ -117,7 +117,7 @@ export function usePlaza() {
   async function fetchComments(postId: string): Promise<PostComment[]> {
     const { data, error } = await supabase
       .from('post_comments')
-      .select(`*, profile:profiles(${PUBLIC_PROFILE_FIELDS})`)
+      .select(`*, profile:profiles!post_comments_user_id_fkey(${PUBLIC_PROFILE_FIELDS})`)
       .eq('post_id', postId)
       .order('created_at', { ascending: true })
     if (error) throw error
@@ -136,7 +136,7 @@ export function usePlaza() {
         content: trimmed,
         parent_comment_id: parentId || null,
       })
-      .select(`*, profile:profiles(${PUBLIC_PROFILE_FIELDS})`)
+      .select(`*, profile:profiles!post_comments_user_id_fkey(${PUBLIC_PROFILE_FIELDS})`)
       .single()
     if (error) throw error
     const post = posts.value.find(p => p.id === postId)
