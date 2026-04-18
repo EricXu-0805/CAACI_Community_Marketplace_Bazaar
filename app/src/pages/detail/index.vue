@@ -110,7 +110,7 @@
       <scroll-view scroll-x class="more-scroll">
         <view class="more-list">
           <view v-for="si in sellerOtherItems" :key="si.id" class="more-card" @click="goToOtherItem(si.id)">
-            <image :src="si.images?.[0] || '/static/placeholder.svg'" class="mc-img" mode="aspectFill" lazy-load />
+            <image :src="thumbUrl(si.images?.[0], 'list') || '/static/placeholder.svg'" class="mc-img" mode="aspectFill" lazy-load />
             <text class="mc-price">{{ formatPrice(si.price, t("home.free")) }}</text>
           </view>
         </view>
@@ -123,7 +123,7 @@
       <scroll-view scroll-x class="more-scroll">
         <view class="more-list">
           <view v-for="si in similarItems" :key="si.id" class="more-card" @click="goToOtherItem(si.id)">
-            <image :src="si.images?.[0] || '/static/placeholder.svg'" class="mc-img" mode="aspectFill" lazy-load />
+            <image :src="thumbUrl(si.images?.[0], 'list') || '/static/placeholder.svg'" class="mc-img" mode="aspectFill" lazy-load />
             <text class="mc-price">{{ formatPrice(si.price, t("home.free")) }}</text>
           </view>
         </view>
@@ -191,7 +191,7 @@ import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
 import type { Item } from '../../types'
 
-import { formatTime, haptic, formatPrice, quickTranslate } from '../../utils'
+import { formatTime, haptic, formatPrice, quickTranslate, thumbUrl } from '../../utils'
 import { computed, onUnmounted } from 'vue'
 
 const { t } = useI18n()

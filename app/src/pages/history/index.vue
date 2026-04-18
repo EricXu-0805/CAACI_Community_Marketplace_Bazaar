@@ -29,7 +29,7 @@
         @click="goDetail(item.id)"
         @longpress="onRemoveOne(item.id, 'item')"
       >
-        <image :src="item.images?.[0] || '/static/placeholder.svg'" class="item-img" mode="aspectFill" lazy-load />
+        <image :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'" class="item-img" mode="aspectFill" lazy-load />
         <view class="item-info">
           <text class="item-title">{{ item.title }}</text>
           <text class="item-price">{{ formatPrice(item.price, t('home.free')) }}</text>
@@ -71,7 +71,7 @@
 import { ref, computed } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { useHistory } from '../../composables/useHistory'
-import { formatPrice } from '../../utils'
+import { formatPrice, thumbUrl } from '../../utils'
 
 const { t } = useI18n()
 const {

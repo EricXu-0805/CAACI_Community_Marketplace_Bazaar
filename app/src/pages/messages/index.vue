@@ -57,7 +57,7 @@
           <view v-if="unreadConvIds.has(conv.id) && !isMuted(conv)" class="unread-dot"></view>
           <view v-else-if="unreadConvIds.has(conv.id) && isMuted(conv)" class="muted-dot"></view>
           <view class="conv-thumb-wrap" v-if="conv.item?.images?.[0]">
-            <image :src="conv.item.images[0]" class="conv-thumb" mode="aspectFill" lazy-load />
+            <image :src="thumbUrl(conv.item.images[0], 'list')" class="conv-thumb" mode="aspectFill" lazy-load />
             <text v-if="conv.item?.status === 'sold'" class="thumb-badge sold">{{ t('status.sold') }}</text>
             <text v-else-if="conv.item?.status === 'reserved'" class="thumb-badge reserved">{{ t('status.reserved') }}</text>
           </view>
@@ -96,7 +96,7 @@ import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useMessages } from '../../composables/useMessages'
 import { useUnread } from '../../composables/useUnread'
-import { formatTime } from '../../utils'
+import { formatTime, thumbUrl } from '../../utils'
 import type { Conversation, Profile } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'

@@ -1,3 +1,21 @@
+const SUPABASE_STORAGE_MARKER = "/storage/v1/object/public/"
+const SUPABASE_RENDER_PATH = "/storage/v1/render/image/public/"
+
+export function thumbUrl(
+  url: string | null | undefined,
+  size: "list" | "card" | "detail" | "avatar" = "list",
+): string {
+  if (!url) return ""
+  if (!url.includes(SUPABASE_STORAGE_MARKER)) return url
+  const rendered = url.replace(SUPABASE_STORAGE_MARKER, SUPABASE_RENDER_PATH)
+  const params =
+    size === "avatar" ? "width=96&height=96&quality=75&resize=cover"
+    : size === "list" ? "width=480&quality=72&resize=cover"
+    : size === "card" ? "width=640&quality=75&resize=cover"
+    : "width=1280&quality=82"
+  return `${rendered}?${params}`
+}
+
 export function formatTime(dateStr: string): string {
   const date = new Date(dateStr)
   const now = new Date()

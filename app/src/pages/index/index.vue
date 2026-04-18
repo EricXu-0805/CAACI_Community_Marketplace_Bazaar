@@ -214,7 +214,7 @@
           >
             <view class="card-img-box">
               <image
-                :src="item.images?.[0] || '/static/placeholder.svg'"
+                :src="thumbUrl(item.images?.[0], 'card') || '/static/placeholder.svg'"
                 mode="widthFix"
                 :class="['card-img', { 'card-img-sold': item.status === 'sold' }]"
                 lazy-load
@@ -306,7 +306,7 @@ import { useFavorites } from '../../composables/useFavorites'
 import { useModeration } from '../../composables/useModeration'
 import type { ItemCategory, Item } from '../../types'
 
-import { debounce, formatTime, formatPrice, haptic, quickTranslate } from '../../utils'
+import { debounce, formatTime, formatPrice, haptic, quickTranslate, thumbUrl } from '../../utils'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 

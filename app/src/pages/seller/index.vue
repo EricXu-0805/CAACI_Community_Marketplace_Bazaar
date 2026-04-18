@@ -45,7 +45,7 @@
 
     <view class="items-grid">
       <view v-for="item in sellerItems" :key="item.id" class="grid-item" @click="goDetail(item.id)">
-        <image :src="item.images?.[0] || '/static/placeholder.svg'" class="gi-img" mode="aspectFill" lazy-load />
+        <image :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'" class="gi-img" mode="aspectFill" lazy-load />
         <view class="gi-info">
           <text class="gi-title">{{ item.title }}</text>
           <text class="gi-price">{{ formatPrice(item.price, t("home.free")) }}</text>
@@ -66,7 +66,7 @@ import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
 import type { Profile, Item } from '../../types'
-import { formatPrice } from '../../utils'
+import { formatPrice, thumbUrl } from '../../utils'
 
 const { t, lang } = useI18n()
 const { supabase } = useSupabase()
@@ -102,7 +102,7 @@ onLoad(async (options) => {
   const [profileRes, itemsRes, soldRes] = await Promise.all([
     supabase.from('profiles').select('id, nickname, avatar_url, bio, location, is_illini_verified, created_at').eq('id', uid).single(),
     supabase.from('items').select('id, title, price, images, status, condition, category, created_at').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
-    supabase.from('items').select('id', { count: 'exact', head: true }).eq('user_id', uid).eq('status', 'sold'),
+    supabase.from('items').select('id', { count: 'estimated', head: true }).eq('user_id', uid).eq('status', 'sold'),
   ])
 
   if (profileRes.data) seller.value = profileRes.data as Profile

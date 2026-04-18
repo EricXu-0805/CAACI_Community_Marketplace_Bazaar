@@ -58,7 +58,7 @@ export function useFavorites() {
   async function getFavoriteCount(itemId: string): Promise<number> {
     const { count, error } = await supabase
       .from('favorites')
-      .select('*', { count: 'exact', head: true })
+      .select('*', { count: 'estimated', head: true })
       .eq('item_id', itemId)
 
     if (error) return 0

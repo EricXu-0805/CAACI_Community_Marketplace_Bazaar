@@ -79,7 +79,7 @@
         </view>
         <view v-else class="my-items">
           <view v-for="item in listedItems" :key="item.id" class="my-item" @click="goDetail(item.id)">
-            <image :src="item.images?.[0] || '/static/placeholder.svg'" class="item-img" mode="aspectFill" lazy-load />
+            <image :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'" class="item-img" mode="aspectFill" lazy-load />
             <view class="item-info">
               <text class="item-title">{{ item.title }}</text>
               <text class="item-price">{{ formatPrice(item.price, t("home.free")) }}</text>
@@ -108,7 +108,7 @@
         </view>
         <view v-else class="my-items">
           <view v-for="item in savedItems" :key="item.id" class="my-item" @click="goDetail(item.id)">
-            <image :src="item.images?.[0] || '/static/placeholder.svg'" class="item-img" mode="aspectFill" lazy-load />
+            <image :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'" class="item-img" mode="aspectFill" lazy-load />
             <view class="item-info">
               <text class="item-title">{{ item.title }}</text>
               <text class="item-price">{{ formatPrice(item.price, t("home.free")) }}</text>
@@ -130,7 +130,7 @@
         </view>
         <view v-else class="my-items">
           <view v-for="item in soldItems" :key="item.id" class="my-item" @click="goDetail(item.id)">
-            <image :src="item.images?.[0] || '/static/placeholder.svg'" class="item-img" mode="aspectFill" lazy-load />
+            <image :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'" class="item-img" mode="aspectFill" lazy-load />
             <view class="item-info">
               <text class="item-title">{{ item.title }}</text>
               <text class="item-price">{{ formatPrice(item.price, t("home.free")) }}</text>
@@ -171,7 +171,7 @@ import { useItems } from '../../composables/useItems'
 import { useFavorites } from '../../composables/useFavorites'
 import { useNotifications } from '../../composables/useNotifications'
 import type { Item } from '../../types'
-import { formatPrice } from '../../utils'
+import { formatPrice, thumbUrl } from '../../utils'
 
 const { t } = useI18n()
 const { currentUser, isLoggedIn } = useAuth()

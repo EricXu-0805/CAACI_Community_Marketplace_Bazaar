@@ -52,7 +52,7 @@
               <image
                 v-for="(img, i) in post.images"
                 :key="i"
-                :src="img"
+                :src="thumbUrl(img, 'card')"
                 mode="aspectFill"
                 class="post-image"
                 lazy-load
@@ -182,7 +182,7 @@ import { useModeration } from '../../composables/useModeration'
 import { useItems } from '../../composables/useItems'
 import { useHistory } from '../../composables/useHistory'
 import type { Post, PostComment } from '../../types'
-import { formatTime, compressImage, friendlyErrorMessage } from '../../utils'
+import { formatTime, compressImage, friendlyErrorMessage, thumbUrl } from '../../utils'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 
