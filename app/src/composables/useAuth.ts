@@ -1,9 +1,6 @@
 import { ref, computed } from 'vue'
 import { useSupabase } from './useSupabase'
 import { useModeration } from './useModeration'
-import { useFollow } from './useFollow'
-import { useSavedSearch } from './useSavedSearch'
-import { useFavorites } from './useFavorites'
 import type { Profile } from '../types'
 
 const currentUser = ref<Profile | null>(null)
@@ -113,16 +110,19 @@ export function useAuth() {
 
   async function signOut() {
     const { clearBlocked } = useModeration()
-    const { reset: resetFollow } = useFollow()
-    const { reset: resetSaved } = useSavedSearch()
-    const { reset: resetFavs } = useFavorites()
     await supabase.auth.signOut()
     supabase.removeAllChannels()
     currentUser.value = null
     clearBlocked()
-    resetFollow()
-    resetSaved()
-    resetFavs()
+    try {
+      const followMod = await import('./useFollow')
+      followMod.useFollow().reset()
+      const savedMod = await import('./useSavedSearch')
+      savedMod.useSavedSearch().reset()
+      const favMod = await import('./useFavorites')
+      favMod.useFavorites().reset()
+    } catch {
+    }
     uni.reLaunch({ url: '/pages/index/index' })
   }
 
