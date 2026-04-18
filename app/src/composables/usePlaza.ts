@@ -64,14 +64,15 @@ export function usePlaza() {
   async function createPost(content: string, images: string[] = []) {
     if (!currentUser.value) throw new Error('Not authenticated')
     const trimmed = content.trim()
-    if (!trimmed) throw new Error('Content required')
+    if (!trimmed && images.length === 0) throw new Error('Content required')
     if (trimmed.length > 2000) throw new Error('Content too long')
 
+    const payloadContent = trimmed || ' '
     const { data, error } = await supabase
       .from('posts')
       .insert({
         user_id: currentUser.value.id,
-        content: trimmed,
+        content: payloadContent,
         images,
       })
       .select(`*, profile:profiles(${PUBLIC_PROFILE_FIELDS})`)

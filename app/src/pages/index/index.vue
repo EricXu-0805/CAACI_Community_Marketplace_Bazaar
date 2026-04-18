@@ -598,13 +598,12 @@ function goPublish() {
 
 /* ========== Mobile Header ========== */
 .mobile-header {
-  background: rgba(255,255,255,0.92);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  flex-shrink: 0;
+  background: #fff;
   padding: 10px 16px 11px;
   padding-top: calc(10px + env(safe-area-inset-top, 0px));
-  position: sticky; top: 0; z-index: 50;
   border-bottom: 0.5px solid rgba(0,0,0,0.04);
+  z-index: 50;
 }
 .mh-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .mh-brand { font-size: 18px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.02em; }

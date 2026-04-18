@@ -4,10 +4,27 @@ import { useAuth } from "./composables/useAuth"
 
 const { init } = useAuth()
 
+function detectAuthRecoveryAndRoute(): boolean {
+  // #ifdef H5
+  if (typeof window === 'undefined') return false
+  const hash = window.location.hash || ''
+  const isRecovery = hash.includes('type=recovery') || hash.includes('access_token=')
+  if (!isRecovery) return false
+  const alreadyOnReset = hash.startsWith('#/pages/reset-password')
+  if (alreadyOnReset) return false
+  uni.reLaunch({ url: '/pages/reset-password/index' })
+  return true
+  // #endif
+  // #ifndef H5
+  return false
+  // #endif
+}
+
 onLaunch(() => {
   init()
+  const routedToReset = detectAuthRecoveryAndRoute()
   try {
-    if (!uni.getStorageSync('welcomed')) {
+    if (!routedToReset && !uni.getStorageSync('welcomed')) {
       uni.reLaunch({ url: '/pages/welcome/index' })
     }
   } catch {}

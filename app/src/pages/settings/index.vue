@@ -114,7 +114,7 @@ async function onChangePassword() {
     success: async (res) => {
       if (!res.confirm) return
       const redirectTo = typeof window !== 'undefined'
-        ? `${window.location.origin}/#/pages/reset-password/index`
+        ? `${window.location.origin}/`
         : undefined
       const { error } = await supabase.auth.resetPasswordForEmail(session.user!.email!, { redirectTo })
       if (error) {

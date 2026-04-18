@@ -416,8 +416,10 @@ function scrollToBottom() {
 
 <style lang="scss" scoped>
 .page {
-  height: 100vh; display: flex; flex-direction: column;
+  height: 100vh; height: 100dvh;
+  display: flex; flex-direction: column;
   background: #f2f2f7; max-width: 480px; margin: 0 auto;
+  overflow: hidden;
 }
 
 /* ========== Chat Header ========== */
@@ -509,7 +511,10 @@ function scrollToBottom() {
 }
 
 /* ========== Messages ========== */
-.message-list { flex: 1; padding: 12px 16px; }
+.message-list {
+  flex: 1; min-height: 0;
+  padding: 12px 16px;
+}
 .msg-row {
   display: flex; align-items: flex-end; margin-bottom: 9px; gap: 8px;
   &.mine {

@@ -79,8 +79,7 @@
       </view>
     </scroll-view>
 
-    <view v-if="showComposer" class="sheet-mask" @click="showComposer = false"></view>
-    <view :class="['composer', { open: showComposer }]">
+    <view v-if="showComposer" class="composer-fullpage">
       <view class="comp-header">
         <text class="comp-cancel" @click="onComposerCancel">{{ t('plaza.cancel') }}</text>
         <text class="comp-title">{{ t('plaza.write') }}</text>
@@ -88,19 +87,22 @@
           {{ submitting ? t('login.wait') : t('plaza.submit') }}
         </text>
       </view>
-      <textarea
-        v-model="composerText"
-        :placeholder="t('plaza.postHint')"
-        class="comp-textarea"
-        :adjust-position="false"
-        :focus="composerFocused"
-        maxlength="2000"
-      />
-      <view v-if="composerImages.length > 0" class="comp-images">
-        <view v-for="(img, i) in composerImages" :key="i" class="ci-wrap">
-          <image :src="img" class="ci-img" mode="aspectFill" />
-          <view class="ci-remove" @click="removeComposerImage(i)">
-            <view class="ci-x"></view>
+      <view class="comp-body">
+        <textarea
+          v-model="composerText"
+          :placeholder="t('plaza.postHint')"
+          class="comp-textarea"
+          :adjust-position="true"
+          :auto-height="true"
+          :focus="composerFocused"
+          maxlength="2000"
+        />
+        <view v-if="composerImages.length > 0" class="comp-images">
+          <view v-for="(img, i) in composerImages" :key="i" class="ci-wrap">
+            <image :src="img" class="ci-img" mode="aspectFill" />
+            <view class="ci-remove" @click="removeComposerImage(i)">
+              <view class="ci-x"></view>
+            </view>
           </view>
         </view>
       </view>
@@ -529,14 +531,16 @@ function onCommentLongPress(c: PostComment) {
   position: fixed; inset: 0; background: rgba(0,0,0,0.4);
   z-index: 500;
 }
-.composer {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 501;
-  background: #fff; border-radius: 16px 16px 0 0;
-  transform: translateY(100%);
-  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-  max-height: 70vh;
+.composer-fullpage {
+  position: fixed; inset: 0; z-index: 600;
+  background: #fff;
+  display: flex; flex-direction: column;
+  max-width: 480px; margin: 0 auto;
+  padding-top: env(safe-area-inset-top, 0);
   padding-bottom: env(safe-area-inset-bottom, 0);
-  &.open { transform: translateY(0); }
+}
+.comp-body {
+  flex: 1; overflow-y: auto; display: flex; flex-direction: column;
 }
 .comp-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -549,9 +553,9 @@ function onCommentLongPress(c: PostComment) {
   &.disabled { opacity: 0.3; pointer-events: none; }
 }
 .comp-textarea {
-  width: 100%; padding: 16px; min-height: 160px; max-height: 300px;
-  font-size: 15px; color: #1a1a1a; line-height: 1.5;
-  box-sizing: border-box;
+  width: 100%; padding: 16px; min-height: 200px;
+  font-size: 16px; color: #1a1a1a; line-height: 1.5;
+  box-sizing: border-box; background: transparent; border: none;
 }
 .comp-images {
   display: flex; gap: 8px; padding: 4px 16px 8px;
