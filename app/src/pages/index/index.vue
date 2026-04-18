@@ -647,30 +647,46 @@ function goPublish() {
   display: flex; align-items: center; justify-content: center;
 }
 
-/* ========== Category Pills ========== */
-.cat-bar { white-space: nowrap; padding: 7px 12px 9px; }
+.cat-bar { white-space: nowrap; }
 .pill {
-  display: inline-flex; align-items: center;
-  padding: 6px 14px; margin: 0 4px 0 0; border-radius: 16px;
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 32px;
+  padding: 0 14px; margin: 0 6px 0 0; border-radius: 16px;
   font-size: 13px; color: #636366; background: #fff;
   border: 1px solid #d1d1d6;
   transition: all 0.15s; cursor: pointer; font-weight: 500;
+  line-height: 1;
+  box-sizing: border-box;
+  flex-shrink: 0;
   &.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
   &:active { transform: scale(0.96); }
 }
 
 .mc-wrap {
   position: relative;
-  margin-top: 4px;
+  margin-top: 6px;
+  padding-bottom: 6px;
 }
 .mobile-cats {
   display: block;
-  padding: 2px 14px 4px 14px;
+  padding: 4px 12px 10px 12px;
+  white-space: nowrap;
+}
+.mobile-cats::-webkit-scrollbar {
+  height: 3px;
+  margin-top: 6px;
+}
+.mobile-cats::-webkit-scrollbar-track {
+  background: transparent;
+}
+.mobile-cats::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
 }
 .mc-fade {
-  position: absolute; top: 0; right: 0; bottom: 0;
-  width: 32px;
-  background: linear-gradient(to right, rgba(255,255,255,0), #fff 70%);
+  position: absolute; top: 0; right: 0; bottom: 6px;
+  width: 28px;
+  background: linear-gradient(to right, rgba(255,255,255,0), #fff 75%);
   pointer-events: none;
 }
 /* Desktop: hide mobile cats, show desktop cats */

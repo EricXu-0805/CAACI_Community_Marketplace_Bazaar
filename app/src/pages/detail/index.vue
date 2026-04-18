@@ -133,7 +133,7 @@
     <!-- Action Bar: Buyer -->
     <view class="action-bar" v-if="item.user_id !== currentUser?.id">
       <view class="fav-btn" @click="toggleFavorite">
-        <view :class="['heart-icon', { filled: isFav }]"></view>
+        <image :src="isFav ? '/static/heart-filled.svg' : '/static/heart.svg'" class="heart-img" />
         <text class="fav-label">{{ isFav ? t('detail.saved') : t('detail.save') }}</text>
       </view>
       <view :class="['action-btn-small', { reported: reported }]" @click="onReport">
@@ -619,23 +619,7 @@ async function contactSeller() {
   &:active { transform: scale(0.9); }
 }
 
-/* CSS Heart Icon */
-.heart-icon {
-  width: 22px; height: 20px; position: relative;
-  &::before, &::after {
-    content: ''; position: absolute; top: 0;
-    width: 11px; height: 17px; border-radius: 11px 11px 0 0;
-    border: 2px solid #c7c7cc;
-    background: transparent;
-  }
-  &::before { left: 0; transform: rotate(-45deg); transform-origin: bottom right; }
-  &::after { right: 0; transform: rotate(45deg); transform-origin: bottom left; }
-
-  &.filled::before, &.filled::after {
-    border-color: #FF4D4F;
-    background: #FF4D4F;
-  }
-}
+.heart-img { width: 24px; height: 24px; }
 
 .fav-label { font-size: 10px; color: #8e8e93; }
 .safety-tip {

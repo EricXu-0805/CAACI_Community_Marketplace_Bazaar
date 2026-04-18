@@ -103,7 +103,7 @@
       <!-- Saved / Favorited items -->
       <view v-if="currentTab === 'saved'">
         <view v-if="savedItems.length === 0" class="empty-items">
-          <view class="empty-heart"></view>
+          <image src="/static/heart.svg" class="empty-heart-img" />
           <text class="empty-text">{{ t('profile.noSaved') }}</text>
         </view>
         <view v-else class="my-items">
@@ -475,16 +475,7 @@ function onDeleteItem(id: string) {
     width: 14px; height: 2px; background: #d1d1d6; border-radius: 1px;
   }
 }
-.empty-heart {
-  width: 24px; height: 22px; position: relative;
-  &::before, &::after {
-    content: ''; position: absolute; top: 0;
-    width: 12px; height: 18px; border-radius: 12px 12px 0 0;
-    border: 2px solid #d1d1d6;
-  }
-  &::before { left: 0; transform: rotate(-45deg); transform-origin: bottom right; }
-  &::after { right: 0; transform: rotate(45deg); transform-origin: bottom left; }
-}
+.empty-heart-img { width: 36px; height: 36px; opacity: 0.5; }
 .empty-check {
   width: 24px; height: 24px; border: 2px solid #d1d1d6;
   border-radius: 50%; position: relative;
