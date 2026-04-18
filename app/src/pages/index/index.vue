@@ -37,7 +37,6 @@
             <text>{{ cat.label }}</text>
           </view>
         </scroll-view>
-        <view class="mc-fade"></view>
       </view>
     </view>
 
@@ -698,29 +697,19 @@ function goPublish() {
 .mc-wrap {
   position: relative;
   margin-top: 6px;
-  padding-bottom: 6px;
+  padding-bottom: 4px;
 }
 .mobile-cats {
   display: block;
-  padding: 4px 12px 10px 12px;
+  padding: 4px 12px 6px 12px;
   white-space: nowrap;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 .mobile-cats::-webkit-scrollbar {
-  height: 3px;
-  margin-top: 6px;
-}
-.mobile-cats::-webkit-scrollbar-track {
-  background: transparent;
-}
-.mobile-cats::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
-  border-radius: 2px;
-}
-.mc-fade {
-  position: absolute; top: 0; right: 0; bottom: 6px;
-  width: 28px;
-  background: linear-gradient(to right, rgba(255,255,255,0), #fff 75%);
-  pointer-events: none;
+  display: none;
+  width: 0;
+  height: 0;
 }
 /* Desktop: hide mobile cats, show desktop cats */
 .desktop-cats {
