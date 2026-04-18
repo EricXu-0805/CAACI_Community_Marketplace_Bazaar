@@ -155,6 +155,10 @@
         <text class="menu-text">{{ t('nav.following') }}</text>
         <view class="menu-arrow"></view>
       </view>
+      <view class="menu-item" @click="goSavedSearches">
+        <text class="menu-text">{{ t('savedSearch.title') }}</text>
+        <view class="menu-arrow"></view>
+      </view>
       <view class="menu-item" @click="goSettings">
         <text class="menu-text">{{ t('settings.title') }}</text>
         <view class="menu-arrow"></view>
@@ -250,6 +254,7 @@ function goNotifications() { uni.navigateTo({ url: '/pages/notifications/index' 
 function goSettings() { uni.navigateTo({ url: '/pages/settings/index' }) }
 function goHistory() { uni.navigateTo({ url: '/pages/history/index' }) }
 function goFollowing() { uni.navigateTo({ url: '/pages/following/index' }) }
+function goSavedSearches() { uni.navigateTo({ url: '/pages/saved-searches/index' }) }
 
 function copyUid() {
   if (!currentUser.value?.uid) return

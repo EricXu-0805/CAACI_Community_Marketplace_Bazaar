@@ -437,6 +437,16 @@ const messages: Record<Lang, Record<string, string>> = {
     'nav.following': 'Following',
     'follow.emptyFeed': "Your following feed is empty — follow sellers to see their new listings here.",
     'notif.newListing': 'New listing',
+
+    'savedSearch.title': 'Saved Searches',
+    'savedSearch.hint': "We'll notify you when a new listing matches your saved search.",
+    'savedSearch.empty': 'No saved searches yet. Tap + to add one.',
+    'savedSearch.new': 'New Saved Search',
+    'savedSearch.keyword': 'Keyword',
+    'savedSearch.keywordPh': 'e.g. ECON 101 textbook, iPhone 13, desk',
+    'savedSearch.created': 'Saved',
+    'savedSearch.deleteConfirm': 'Delete this saved search?',
+    'savedSearch.match': 'Matches your saved search',
   },
   zh: {
     'app.name': 'Illini 集市',
@@ -865,6 +875,16 @@ const messages: Record<Lang, Record<string, string>> = {
     'nav.following': '关注',
     'follow.emptyFeed': '还没有关注的卖家。关注后,Ta 上新你会第一时间看到。',
     'notif.newListing': '新品上架',
+
+    'savedSearch.title': '订阅搜索',
+    'savedSearch.hint': '订阅后,新商品只要匹配你的关键词会第一时间通知你。',
+    'savedSearch.empty': '还没订阅,点右下角 + 新建一条。',
+    'savedSearch.new': '新建订阅',
+    'savedSearch.keyword': '关键词',
+    'savedSearch.keywordPh': '如:ECON 101 教材、iPhone 13、桌子',
+    'savedSearch.created': '已订阅',
+    'savedSearch.deleteConfirm': '删除这条订阅?',
+    'savedSearch.match': '匹配你的订阅',
   },
 }
 
