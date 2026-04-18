@@ -318,26 +318,33 @@ onLoad(async (options) => {
     item.value = itemData
     addToHistory(itemData)
     isFav.value = checkFavorited(options.id!)
-    favCount.value = await getFavoriteCount(options.id!)
+
+    const needsRated = itemData.status === 'sold'
+      && currentUser.value
+      && itemData.user_id !== currentUser.value.id
+
+    const [favCountRes, ratedRes, otherItemsRes, simItemsRes] = await Promise.all([
+      getFavoriteCount(options.id!),
+      needsRated ? hasRated(itemData.user_id, itemData.id) : Promise.resolve(false),
+      supabase
+        .from('items').select('id, title, price, images')
+        .eq('user_id', itemData.user_id).eq('status', 'active')
+        .neq('id', itemData.id).limit(6),
+      supabase
+        .from('items').select('id, title, price, images, user_id')
+        .eq('category', itemData.category).eq('status', 'active')
+        .neq('id', itemData.id).neq('user_id', itemData.user_id).limit(12),
+    ])
+
     if (!alive) return
-
-    if (itemData.status === 'sold' && currentUser.value && itemData.user_id !== currentUser.value.id) {
-      alreadyRated.value = await hasRated(itemData.user_id, itemData.id)
-    }
-
-    const { data: otherItems } = await supabase
-      .from('items').select('id, title, price, images')
-      .eq('user_id', itemData.user_id).eq('status', 'active')
-      .neq('id', itemData.id).limit(6)
-    if (alive && otherItems) sellerOtherItems.value = otherItems as Item[]
-
-    const { blockedIds } = useModeration()
-    const { data: simItems } = await supabase
-      .from('items').select('id, title, price, images, user_id')
-      .eq('category', itemData.category).eq('status', 'active')
-      .neq('id', itemData.id).neq('user_id', itemData.user_id).limit(12)
-    if (alive && simItems) {
-      similarItems.value = (simItems as Item[]).filter(i => !blockedIds.value.has(i.user_id)).slice(0, 6)
+    favCount.value = favCountRes
+    alreadyRated.value = !!ratedRes
+    if (otherItemsRes.data) sellerOtherItems.value = otherItemsRes.data as Item[]
+    if (simItemsRes.data) {
+      const { blockedIds } = useModeration()
+      similarItems.value = (simItemsRes.data as Item[])
+        .filter(i => !blockedIds.value.has(i.user_id))
+        .slice(0, 6)
     }
   } catch (error: any) {
     console.error('Detail load error:', error)
