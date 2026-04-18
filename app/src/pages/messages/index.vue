@@ -57,7 +57,7 @@
           <view v-if="unreadConvIds.has(conv.id) && !isMuted(conv)" class="unread-dot"></view>
           <view v-else-if="unreadConvIds.has(conv.id) && isMuted(conv)" class="muted-dot"></view>
           <view class="conv-thumb-wrap" v-if="conv.item?.images?.[0]">
-            <image :src="conv.item.images[0]" class="conv-thumb" mode="aspectFill" />
+            <image :src="conv.item.images[0]" class="conv-thumb" mode="aspectFill" lazy-load />
             <text v-if="conv.item?.status === 'sold'" class="thumb-badge sold">{{ t('status.sold') }}</text>
             <text v-else-if="conv.item?.status === 'reserved'" class="thumb-badge reserved">{{ t('status.reserved') }}</text>
           </view>

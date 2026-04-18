@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 import { useModeration } from './useModeration'
+import { useI18n } from './useI18n'
 import type { Conversation, Message } from '../types'
 
 const conversations = ref<Conversation[]>([])
@@ -9,6 +10,7 @@ const loading = ref(false)
 
 export function useMessages() {
   const { supabase } = useSupabase()
+  const { t } = useI18n()
 
   async function fetchConversations(userId: string) {
     loading.value = true
@@ -54,7 +56,7 @@ export function useMessages() {
       conversations.value = convs
     } catch (error: any) {
       console.error('Failed to fetch conversations:', error)
-      uni.showToast({ title: error?.message || 'Failed to load messages', icon: 'none', duration: 3000 })
+      uni.showToast({ title: error?.message || t('error.loadFailed'), icon: 'none', duration: 3000 })
     } finally {
       loading.value = false
     }

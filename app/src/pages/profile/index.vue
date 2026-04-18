@@ -79,7 +79,7 @@
         </view>
         <view v-else class="my-items">
           <view v-for="item in listedItems" :key="item.id" class="my-item" @click="goDetail(item.id)">
-            <image :src="item.images?.[0] || '/static/placeholder.svg'" class="item-img" mode="aspectFill" />
+            <image :src="item.images?.[0] || '/static/placeholder.svg'" class="item-img" mode="aspectFill" lazy-load />
             <view class="item-info">
               <text class="item-title">{{ item.title }}</text>
               <text class="item-price">{{ formatPrice(item.price, t("home.free")) }}</text>
@@ -108,7 +108,7 @@
         </view>
         <view v-else class="my-items">
           <view v-for="item in savedItems" :key="item.id" class="my-item" @click="goDetail(item.id)">
-            <image :src="item.images?.[0] || '/static/placeholder.svg'" class="item-img" mode="aspectFill" />
+            <image :src="item.images?.[0] || '/static/placeholder.svg'" class="item-img" mode="aspectFill" lazy-load />
             <view class="item-info">
               <text class="item-title">{{ item.title }}</text>
               <text class="item-price">{{ formatPrice(item.price, t("home.free")) }}</text>
@@ -130,7 +130,7 @@
         </view>
         <view v-else class="my-items">
           <view v-for="item in soldItems" :key="item.id" class="my-item" @click="goDetail(item.id)">
-            <image :src="item.images?.[0] || '/static/placeholder.svg'" class="item-img" mode="aspectFill" />
+            <image :src="item.images?.[0] || '/static/placeholder.svg'" class="item-img" mode="aspectFill" lazy-load />
             <view class="item-info">
               <text class="item-title">{{ item.title }}</text>
               <text class="item-price">{{ formatPrice(item.price, t("home.free")) }}</text>

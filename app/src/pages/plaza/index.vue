@@ -55,6 +55,7 @@
                 :src="img"
                 mode="aspectFill"
                 class="post-image"
+                lazy-load
                 @click.stop="previewImage(post.images, i)"
               />
             </view>

@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 import { useModeration } from './useModeration'
+import { useI18n } from './useI18n'
 import type { Item, ItemCategory, ItemCondition, ItemStatus } from '../types'
 import { compressImage, expandSearch } from '../utils'
 
@@ -11,12 +12,15 @@ const fetchError = ref('')
 
 const PAGE_SIZE = 20
 const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, location, is_illini_verified'
+const LIST_ITEM_FIELDS =
+  'id, user_id, title, price, category, condition, status, location, images, view_count, favorite_count, negotiable, created_at'
 const VALID_STATUSES: ItemStatus[] = ['active', 'reserved', 'sold', 'deleted']
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 const MAX_IMAGES = 9
 
 export function useItems() {
   const { supabase } = useSupabase()
+  const { t } = useI18n()
 
   async function fetchItems(options: {
     page?: number
@@ -41,7 +45,7 @@ export function useItems() {
     try {
       let query = supabase
         .from('items')
-        .select(`*, profile:profiles(${PUBLIC_PROFILE_FIELDS})`)
+        .select(`${LIST_ITEM_FIELDS}, profile:profiles(${PUBLIC_PROFILE_FIELDS})`)
         .eq('status', 'active')
 
       if (sort === 'price_asc') {
@@ -88,9 +92,10 @@ export function useItems() {
 
       if (data) {
         const { blockedIds } = useModeration()
+        const rows = data as unknown as Item[]
         const filtered = blockedIds.value.size > 0
-          ? (data as Item[]).filter(item => !blockedIds.value.has(item.user_id))
-          : data as Item[]
+          ? rows.filter(item => !blockedIds.value.has(item.user_id))
+          : rows
 
         if (reset) {
           items.value = filtered
@@ -100,7 +105,7 @@ export function useItems() {
         hasMore.value = data.length === PAGE_SIZE
       }
     } catch (error: any) {
-      fetchError.value = error?.message || 'Network error'
+      fetchError.value = error?.message || t('error.loadFailed')
       console.error('Failed to fetch items:', error)
     } finally {
       loading.value = false

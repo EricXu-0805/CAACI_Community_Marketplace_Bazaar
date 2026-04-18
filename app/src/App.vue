@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { onLaunch } from "@dcloudio/uni-app"
 import { useAuth } from "./composables/useAuth"
+import { useI18n } from "./composables/useI18n"
 
 const { init } = useAuth()
+const { t } = useI18n()
 
 function detectAuthRecoveryAndRoute(): boolean {
   // #ifdef H5
@@ -33,7 +35,7 @@ onLaunch(() => {
   })
   uni.onNetworkStatusChange?.((res: { isConnected: boolean }) => {
     if (!res.isConnected) {
-      uni.showToast({ title: 'No network connection', icon: 'none', duration: 3000 })
+      uni.showToast({ title: t('error.noNetwork'), icon: 'none', duration: 3000 })
     }
   })
 })

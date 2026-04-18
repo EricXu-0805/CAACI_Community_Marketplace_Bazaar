@@ -412,6 +412,10 @@ const messages: Record<Lang, Record<string, string>> = {
 
     'home.noFilterMatch': 'No items match your filters',
     'home.removeFilters': 'Clear filters',
+
+    'error.noNetwork': 'No network connection',
+    'error.loadFailed': 'Failed to load',
+    'error.actionFailed': 'Something went wrong. Please try again.',
   },
   zh: {
     'app.name': 'Illini 集市',
@@ -815,6 +819,10 @@ const messages: Record<Lang, Record<string, string>> = {
 
     'home.noFilterMatch': '没有符合筛选条件的商品',
     'home.removeFilters': '清除筛选',
+
+    'error.noNetwork': '网络连接已断开',
+    'error.loadFailed': '加载失败',
+    'error.actionFailed': '操作失败，请重试',
   },
 }
 

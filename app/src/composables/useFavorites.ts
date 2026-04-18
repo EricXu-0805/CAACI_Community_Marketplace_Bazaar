@@ -1,11 +1,13 @@
 import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
+import { useI18n } from './useI18n'
 
 const favoriteIds = ref<Set<string>>(new Set())
 const loading = ref(false)
 
 export function useFavorites() {
   const { supabase } = useSupabase()
+  const { t } = useI18n()
 
   async function loadMyFavorites(userId: string) {
     const { data } = await supabase
@@ -46,7 +48,7 @@ export function useFavorites() {
       }
     } catch (error) {
       console.error('Failed to toggle favorite:', error)
-      uni.showToast({ title: 'Failed, please try again', icon: 'none' })
+      uni.showToast({ title: t('error.actionFailed'), icon: 'none' })
       return isFavorited(itemId)
     } finally {
       loading.value = false
@@ -66,7 +68,7 @@ export function useFavorites() {
   async function fetchMyFavoriteItems(userId: string) {
     const { data } = await supabase
       .from('favorites')
-      .select('item_id, item:items(*, profile:profiles(id, nickname, avatar_url, location))')
+      .select('item_id, item:items(id, user_id, title, price, category, condition, status, location, images, view_count, favorite_count, negotiable, created_at, profile:profiles(id, nickname, avatar_url, location))')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
 

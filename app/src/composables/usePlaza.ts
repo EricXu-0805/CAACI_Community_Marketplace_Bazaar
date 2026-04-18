@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 import { useAuth } from './useAuth'
 import { useModeration } from './useModeration'
+import { useI18n } from './useI18n'
 import type { Post, PostComment } from '../types'
 
 const posts = ref<Post[]>([])
@@ -13,6 +14,7 @@ const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, is_illini_verified, uid
 export function usePlaza() {
   const { supabase } = useSupabase()
   const { currentUser } = useAuth()
+  const { t } = useI18n()
 
   async function fetchPosts(options: { page?: number; reset?: boolean } = {}) {
     const { page = 0, reset = false } = options
@@ -55,7 +57,7 @@ export function usePlaza() {
       hasMore.value = (data || []).length === PAGE_SIZE
     } catch (err: any) {
       console.error('fetchPosts failed:', err)
-      uni.showToast({ title: err?.message || 'Failed to load plaza', icon: 'none', duration: 3000 })
+      uni.showToast({ title: err?.message || t('error.loadFailed'), icon: 'none', duration: 3000 })
     } finally {
       loading.value = false
     }

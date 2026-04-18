@@ -80,7 +80,7 @@
         <view class="msg-bubble" v-if="msg.message_type !== 'image'" @longpress="onMsgLongPress(msg)">
           <text>{{ msg.content }}</text>
         </view>
-        <image v-else :src="msg.content" class="msg-image" mode="widthFix" @click="previewImg(msg.content)" @longpress="onMsgLongPress(msg)" />
+        <image v-else :src="msg.content" class="msg-image" mode="widthFix" lazy-load @click="previewImg(msg.content)" @longpress="onMsgLongPress(msg)" />
         <image
           v-if="msg.sender_id === currentUser?.id"
           :src="currentUser?.avatar_url || '/static/default-avatar.svg'"

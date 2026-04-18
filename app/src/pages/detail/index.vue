@@ -110,7 +110,7 @@
       <scroll-view scroll-x class="more-scroll">
         <view class="more-list">
           <view v-for="si in sellerOtherItems" :key="si.id" class="more-card" @click="goToOtherItem(si.id)">
-            <image :src="si.images?.[0] || '/static/placeholder.svg'" class="mc-img" mode="aspectFill" />
+            <image :src="si.images?.[0] || '/static/placeholder.svg'" class="mc-img" mode="aspectFill" lazy-load />
             <text class="mc-price">{{ formatPrice(si.price, t("home.free")) }}</text>
           </view>
         </view>
@@ -123,7 +123,7 @@
       <scroll-view scroll-x class="more-scroll">
         <view class="more-list">
           <view v-for="si in similarItems" :key="si.id" class="more-card" @click="goToOtherItem(si.id)">
-            <image :src="si.images?.[0] || '/static/placeholder.svg'" class="mc-img" mode="aspectFill" />
+            <image :src="si.images?.[0] || '/static/placeholder.svg'" class="mc-img" mode="aspectFill" lazy-load />
             <text class="mc-price">{{ formatPrice(si.price, t("home.free")) }}</text>
           </view>
         </view>
