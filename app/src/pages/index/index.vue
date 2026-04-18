@@ -246,10 +246,11 @@
                 </view>
                 <view class="card-fav">
                   <text v-if="isOldItem(item.created_at)" class="old-tag">{{ t('home.oldListing') }}</text>
-                  <view
-                    :class="['heart-ico', { active: isFavorited(item.id) }]"
+                  <image
+                    :src="isFavorited(item.id) ? '/static/heart-filled.svg' : '/static/heart.svg'"
+                    class="heart-img"
                     @click.stop="onQuickFav(item)"
-                  ></view>
+                  />
                   <text class="fav-num">{{ item.favorite_count || 0 }}</text>
                 </view>
               </view>
@@ -852,35 +853,10 @@ function goPublish() {
 .card-seller { display: flex; align-items: center; gap: 5px; flex: 1; min-width: 0; }
 .seller-pic { width: 16px; height: 16px; border-radius: 50%; background: #f0f0f0; flex-shrink: 0; }
 .seller-nick { font-size: 11px; color: #8e8e93; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.card-fav { display: flex; align-items: center; gap: 4px; flex-shrink: 0; padding: 2px; }
-.heart-ico {
-  width: 16px; height: 14px; position: relative;
-  cursor: pointer;
+.card-fav { display: flex; align-items: center; gap: 4px; flex-shrink: 0; padding: 4px 2px; }
+.heart-img {
+  width: 18px; height: 18px; cursor: pointer;
   transition: transform 0.15s;
-  &::before, &::after {
-    content: ''; position: absolute; top: 0;
-    width: 8px; height: 12px;
-    background: transparent;
-    border: 1.6px solid #8e8e93;
-    border-radius: 8px 8px 0 0;
-    transition: all 0.15s;
-  }
-  &::before {
-    left: 0;
-    transform: rotate(-45deg);
-    transform-origin: bottom right;
-    border-right: none;
-  }
-  &::after {
-    right: 0;
-    transform: rotate(45deg);
-    transform-origin: bottom left;
-    border-left: none;
-  }
-  &.active::before, &.active::after {
-    background: #FF3B30;
-    border-color: #FF3B30;
-  }
   &:active { transform: scale(1.25); }
 }
 .fav-num { font-size: 10px; color: #aeaeb2; }

@@ -42,7 +42,7 @@
         v-for="p in postHistory"
         :key="p.id"
         class="post-row"
-        @click="goPlaza()"
+        @click="goPostDetail(p.id)"
         @longpress="onRemoveOne(p.id, 'post')"
       >
         <image :src="p.profile?.avatar_url || '/static/default-avatar.svg'" class="post-avatar" />
@@ -88,7 +88,7 @@ const currentList = computed(() => tab.value === 'items' ? history.value : postH
 
 function goBack() { uni.navigateBack() }
 function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${id}` }) }
-function goPlaza() { uni.switchTab({ url: '/pages/plaza/index' }) }
+function goPostDetail(id: string) { uni.navigateTo({ url: `/pages/post/index?id=${id}` }) }
 
 function onRemoveOne(id: string, kind: 'item' | 'post') {
   uni.showActionSheet({

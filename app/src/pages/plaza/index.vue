@@ -29,45 +29,50 @@
 
       <view v-else class="posts">
         <view v-for="post in posts" :key="post.id" class="post-card">
-          <view class="post-header">
-            <image :src="post.profile?.avatar_url || '/static/default-avatar.svg'" class="pa-avatar" />
-            <view class="pa-info">
-              <view class="pa-name-row">
-                <text class="pa-name">{{ post.profile?.nickname || t('app.user') }}</text>
-                <view v-if="post.is_official" class="badge-official"><text>{{ t('plaza.official') }}</text></view>
-                <view v-else-if="post.profile?.is_illini_verified" class="badge-illini"><text>Illini</text></view>
-                <view v-if="post.is_pinned" class="badge-pinned"><text>{{ t('plaza.pinned') }}</text></view>
+          <view class="post-tappable" @click="goPostDetail(post)">
+            <view class="post-header">
+              <image :src="post.profile?.avatar_url || '/static/default-avatar.svg'" class="pa-avatar" />
+              <view class="pa-info">
+                <view class="pa-name-row">
+                  <text class="pa-name">{{ post.profile?.nickname || t('app.user') }}</text>
+                  <view v-if="post.is_official" class="badge-official"><text>{{ t('plaza.official') }}</text></view>
+                  <view v-else-if="post.profile?.is_illini_verified" class="badge-illini"><text>Illini</text></view>
+                  <view v-if="post.is_pinned" class="badge-pinned"><text>{{ t('plaza.pinned') }}</text></view>
+                </view>
+                <text class="pa-time">{{ formatTime(post.created_at) }}</text>
               </view>
-              <text class="pa-time">{{ formatTime(post.created_at) }}</text>
+              <view v-if="post.user_id === currentUser?.id" class="post-more" @click.stop="onDeletePost(post)">
+                <view class="pm-dot"></view><view class="pm-dot"></view><view class="pm-dot"></view>
+              </view>
             </view>
-            <view v-if="post.user_id === currentUser?.id" class="post-more" @click="onDeletePost(post)">
-              <view class="pm-dot"></view><view class="pm-dot"></view><view class="pm-dot"></view>
+
+            <text class="post-content">{{ post.content }}</text>
+
+            <view v-if="post.images && post.images.length > 0" class="post-images">
+              <image
+                v-for="(img, i) in post.images"
+                :key="i"
+                :src="img"
+                mode="aspectFill"
+                class="post-image"
+                @click.stop="previewImage(post.images, i)"
+              />
             </view>
-          </view>
-
-          <text class="post-content">{{ post.content }}</text>
-
-          <view v-if="post.images && post.images.length > 0" class="post-images">
-            <image
-              v-for="(img, i) in post.images"
-              :key="i"
-              :src="img"
-              mode="aspectFill"
-              class="post-image"
-              @click="previewImage(post.images, i)"
-            />
           </view>
 
           <view class="post-actions">
-            <view class="pa-btn" @click="onToggleLike(post)">
-              <view :class="['heart', { active: post.liked_by_me }]"></view>
+            <view class="pa-btn" @click.stop="onToggleLike(post)">
+              <image
+                :src="post.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'"
+                class="heart-img"
+              />
               <text :class="['pa-num', { active: post.liked_by_me }]">{{ post.like_count }}</text>
             </view>
-            <view class="pa-btn" @click="openComments(post)">
+            <view class="pa-btn" @click.stop="openComments(post)">
               <view class="bubble-ico"></view>
               <text class="pa-num">{{ post.comment_count }}</text>
             </view>
-            <view class="pa-btn" @click="onSharePost(post)">
+            <view class="pa-btn" @click.stop="onSharePost(post)">
               <view class="share-ico"></view>
             </view>
           </view>
@@ -329,6 +334,11 @@ function previewImage(urls: string[], idx: number) {
   uni.previewImage({ urls, current: urls[idx] })
 }
 
+function goPostDetail(post: Post) {
+  addPostToHistory(post)
+  uni.navigateTo({ url: `/pages/post/index?id=${post.id}` })
+}
+
 function onSharePost(post: Post) {
   uni.setClipboardData({
     data: post.content,
@@ -492,6 +502,11 @@ function onCommentLongPress(c: PostComment) {
   background: #fff; padding: 14px 16px;
   border-bottom: 0.5px solid rgba(0,0,0,0.05);
 }
+.post-tappable {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  &:active { opacity: 0.7; }
+}
 .post-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
 .pa-avatar {
   width: 36px; height: 36px; border-radius: 50%;
@@ -546,16 +561,9 @@ function onCommentLongPress(c: PostComment) {
   -webkit-tap-highlight-color: transparent;
   &:active { opacity: 0.6; }
 }
-.heart {
-  width: 18px; height: 16px; position: relative;
-  &::before, &::after {
-    content: ''; position: absolute; top: 0;
-    width: 9px; height: 13px; border-radius: 9px 9px 0 0;
-    background: transparent; border: 1.8px solid #8e8e93;
-  }
-  &::before { left: 0; transform: rotate(-45deg); transform-origin: bottom right; }
-  &::after { right: 0; transform: rotate(45deg); transform-origin: bottom left; }
-  &.active::before, &.active::after { background: #FF3B30; border-color: #FF3B30; }
+.heart-img {
+  width: 20px; height: 20px; transition: transform 0.15s;
+  &:active { transform: scale(1.2); }
 }
 .pa-num { font-size: 12px; color: #8e8e93; font-weight: 500; &.active { color: #FF3B30; } }
 

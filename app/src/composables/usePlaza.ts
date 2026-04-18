@@ -61,6 +61,28 @@ export function usePlaza() {
     }
   }
 
+  async function fetchPost(id: string): Promise<Post | null> {
+    const { data, error } = await supabase
+      .from('posts')
+      .select(`*, profile:profiles!posts_user_id_fkey(${PUBLIC_PROFILE_FIELDS})`)
+      .eq('id', id)
+      .eq('status', 'active')
+      .maybeSingle()
+    if (error) throw error
+    if (!data) return null
+    const post = data as Post
+    if (currentUser.value) {
+      const { data: myLike } = await supabase
+        .from('post_likes')
+        .select('post_id')
+        .eq('user_id', currentUser.value.id)
+        .eq('post_id', id)
+        .maybeSingle()
+      post.liked_by_me = !!myLike
+    }
+    return post
+  }
+
   async function createPost(content: string, images: string[] = []) {
     if (!currentUser.value) throw new Error('Not authenticated')
     const trimmed = content.trim()
@@ -159,6 +181,7 @@ export function usePlaza() {
     loading,
     hasMore,
     fetchPosts,
+    fetchPost,
     createPost,
     deletePost,
     toggleLike,

@@ -354,6 +354,8 @@ const messages: Record<Lang, Record<string, string>> = {
     'plaza.contentCopied': 'Content copied',
     'plaza.replyingTo': 'Replying to',
     'plaza.replyHint': 'Write your reply...',
+    'plaza.notFound': 'Post not found',
+    'plaza.backToPlaza': 'Back to plaza',
 
     'scam.bannerTitle': 'Currency exchange — watch out for scams',
     'scam.bannerBody': 'Pig-butchering scams are common here. Meet in person on campus, never wire first, never share your bank login.',
@@ -755,6 +757,8 @@ const messages: Record<Lang, Record<string, string>> = {
     'plaza.contentCopied': '内容已复制',
     'plaza.replyingTo': '回复',
     'plaza.replyHint': '写一条回复...',
+    'plaza.notFound': '找不到这条动态',
+    'plaza.backToPlaza': '返回广场',
 
     'scam.bannerTitle': '换汇提醒 - 警惕杀猪盘',
     'scam.bannerBody': '杀猪盘诈骗常见于换汇交易。请当面在校园公共场所交易，绝不先转账，绝不共享银行账户密码。',
