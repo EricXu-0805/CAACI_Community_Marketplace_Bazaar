@@ -237,6 +237,7 @@
                 <text>{{ t('status.sold') }}</text>
               </view>
               <text v-else-if="item.status === 'reserved'" class="badge badge-reserved">{{ t('status.reserved') }}</text>
+              <text v-else-if="item.condition === 'defective'" class="badge badge-defect">{{ t('condition.defective') }}</text>
               <text v-else-if="item.condition === 'new'" class="badge badge-new">{{ t('condition.new') }}</text>
               <text v-else-if="item.condition === 'like_new'" class="badge badge-mint">{{ t('condition.like_new') }}</text>
               <view v-if="item.images && item.images.length > 1" class="img-count-badge">
@@ -893,6 +894,7 @@ function goPublish() {
 }
 .badge-new { background: rgba(255,107,53,0.85); color: #fff; }
 .badge-mint { background: rgba(52,199,89,0.85); color: #fff; }
+.badge-defect { background: rgba(239,68,68,0.88); color: #fff; }
 .badge-reserved { background: rgba(255,149,0,0.85); color: #fff; }
 .card-time { font-size: 10px; color: #c7c7cc; margin-left: auto; }
 .old-tag { font-size: 10px; color: #c7c7cc; margin-right: 2px; }

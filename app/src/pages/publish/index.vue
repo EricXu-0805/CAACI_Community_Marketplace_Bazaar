@@ -89,10 +89,11 @@
           <view
             v-for="cond in conditionKeys"
             :key="cond"
-            :class="['sel-pill', { active: form.condition === cond }]"
+            :class="['sel-pill cond-pill', { active: form.condition === cond }]"
             @click="form.condition = cond as any; showCond = false"
           >
-            <text>{{ t('condition.' + cond) }}</text>
+            <text class="cp-name">{{ t('condition.' + cond) }}</text>
+            <text class="cp-hint">{{ t('condition.' + cond + '_hint') }}</text>
           </view>
         </view>
       </view>
@@ -169,7 +170,7 @@ const { supabase } = useSupabase()
 const avgPrice = ref(0)
 
 const categoryKeys: ItemCategory[] = ['furniture', 'electronics', 'clothing', 'books', 'housing', 'vehicles', 'daily', 'food', 'other']
-const conditionKeys = ['new', 'like_new', 'good', 'fair']
+const conditionKeys = ['new', 'like_new', 'good', 'fair', 'defective']
 
 const imageList = ref<string[]>([])
 const showCat = ref(false)
@@ -446,6 +447,14 @@ async function onSubmit() {
   &.active { background: #1a1a1a; color: #fff; }
   &:active { transform: scale(0.96); }
 }
+.cond-pill {
+  display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
+  padding: 8px 14px;
+  min-width: 112px;
+}
+.cp-name { font-size: 13px; font-weight: 600; }
+.cp-hint { font-size: 10px; opacity: 0.7; line-height: 1.25; }
+.cond-pill.active .cp-hint { color: rgba(255,255,255,0.8); }
 
 /* ========== Location ========== */
 .spot-row {

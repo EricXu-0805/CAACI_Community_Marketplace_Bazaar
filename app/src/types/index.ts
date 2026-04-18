@@ -14,7 +14,7 @@ export type ItemCategory =
   | 'currency_exchange'
   | 'other'
 
-export type ItemCondition = 'new' | 'like_new' | 'good' | 'fair'
+export type ItemCondition = 'new' | 'like_new' | 'good' | 'fair' | 'defective'
 
 export type ItemStatus = 'active' | 'reserved' | 'sold' | 'deleted'
 
