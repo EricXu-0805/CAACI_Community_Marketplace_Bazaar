@@ -19,8 +19,6 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
           if (id.includes("@supabase")) return "supabase";
-          if (id.includes("/vue/") || id.includes("@vue/")) return "vue";
-          if (id.includes("@dcloudio")) return "uni";
         },
       },
     },
