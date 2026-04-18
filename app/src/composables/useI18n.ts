@@ -422,6 +422,10 @@ const messages: Record<Lang, Record<string, string>> = {
     'error.noNetwork': 'No network connection',
     'error.loadFailed': 'Failed to load',
     'error.actionFailed': 'Something went wrong. Please try again.',
+
+    'pickup.safeZone': 'Safe Zone',
+    'pickup.pickupAt': 'Meet at',
+    'pickup.prefSafe': 'Seller prefers on-campus pickup',
   },
   zh: {
     'app.name': 'Illini 集市',
@@ -835,6 +839,10 @@ const messages: Record<Lang, Record<string, string>> = {
     'error.noNetwork': '网络连接已断开',
     'error.loadFailed': '加载失败',
     'error.actionFailed': '操作失败，请重试',
+
+    'pickup.safeZone': '校园安全点',
+    'pickup.pickupAt': '取货点',
+    'pickup.prefSafe': '卖家偏好校园内取货',
   },
 }
 

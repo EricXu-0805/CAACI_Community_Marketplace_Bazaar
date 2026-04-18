@@ -46,9 +46,10 @@
       <view class="tags">
         <text class="tag">{{ t('cat.' + item.category) }}</text>
         <text class="tag">{{ t('condition.' + item.condition) }}</text>
-        <view class="tag tag-loc">
+        <view :class="['tag', 'tag-loc', { 'tag-safe': locationSpot?.safe }]">
           <view class="loc-dot"></view>
           <text>{{ item.location }}</text>
+          <text v-if="locationSpot?.safe" class="safe-badge">{{ t('pickup.safeZone') }}</text>
         </view>
       </view>
     </view>
@@ -192,6 +193,7 @@ import { useModeration } from '../../composables/useModeration'
 import type { Item } from '../../types'
 
 import { formatTime, haptic, formatPrice, quickTranslate, thumbUrl } from '../../utils'
+import { matchSpot } from '../../composables/useCampusSpots'
 import { computed, onUnmounted } from 'vue'
 
 const { t } = useI18n()
@@ -212,6 +214,8 @@ const currentImg = ref(0)
 const descExpanded = ref(false)
 const notFound = ref(false)
 const translated = ref(false)
+
+const locationSpot = computed(() => matchSpot(item.value?.location))
 
 const { lang } = useI18n()
 
@@ -516,6 +520,16 @@ async function contactSeller() {
 }
 .tag-loc {
   display: inline-flex; align-items: center; gap: 4px; padding-left: 8px;
+}
+.tag-safe {
+  background: #e9f7ef; color: #1a7a3d;
+}
+.tag-safe .loc-dot { background: #22c55e; }
+.safe-badge {
+  font-size: 10px; font-weight: 600;
+  margin-left: 6px; padding: 2px 6px;
+  background: #22c55e; color: #fff;
+  border-radius: 4px;
 }
 .loc-dot {
   width: 5px; height: 5px; border-radius: 50%;
