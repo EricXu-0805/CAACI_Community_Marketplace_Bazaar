@@ -26,16 +26,19 @@
         </view>
       </view>
 
-      <scroll-view class="cat-bar mobile-cats" scroll-x enable-flex>
-        <view
-          v-for="cat in categories"
-          :key="'m'+cat.value"
-          :class="['pill', { active: selectedCategory === cat.value }]"
-          @click="selectCategory(cat.value)"
-        >
-          <text>{{ cat.label }}</text>
-        </view>
-      </scroll-view>
+      <view class="mc-wrap">
+        <scroll-view class="cat-bar mobile-cats" scroll-x enable-flex>
+          <view
+            v-for="cat in categories"
+            :key="'m'+cat.value"
+            :class="['pill', { active: selectedCategory === cat.value }]"
+            @click="selectCategory(cat.value)"
+          >
+            <text>{{ cat.label }}</text>
+          </view>
+        </scroll-view>
+        <view class="mc-fade"></view>
+      </view>
     </view>
 
     <!-- Search History -->
@@ -647,16 +650,27 @@ function goPublish() {
 .cat-bar { white-space: nowrap; padding: 7px 12px 9px; }
 .pill {
   display: inline-flex; align-items: center;
-  padding: 5px 14px; margin: 0 2px; border-radius: 8px;
-  font-size: 13px; color: #636366; background: transparent;
+  padding: 6px 14px; margin: 0 4px 0 0; border-radius: 16px;
+  font-size: 13px; color: #636366; background: #fff;
+  border: 1px solid #d1d1d6;
   transition: all 0.15s; cursor: pointer; font-weight: 500;
-  &.active { background: #1a1a1a; color: #fff; }
+  &.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  &:active { transform: scale(0.96); }
 }
 
+.mc-wrap {
+  position: relative;
+  margin-top: 4px;
+}
 .mobile-cats {
   display: block;
-  margin-top: 4px;
-  padding: 2px 0 4px;
+  padding: 2px 14px 4px 14px;
+}
+.mc-fade {
+  position: absolute; top: 0; right: 0; bottom: 0;
+  width: 32px;
+  background: linear-gradient(to right, rgba(255,255,255,0), #fff 70%);
+  pointer-events: none;
 }
 /* Desktop: hide mobile cats, show desktop cats */
 .desktop-cats {

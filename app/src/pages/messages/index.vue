@@ -311,9 +311,8 @@ function goLogin() {
 .page-header {
   padding: 11px 16px;
   padding-top: calc(11px + env(safe-area-inset-top, 0px));
-  background: rgba(255,255,255,0.92);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  background: #fff;
+  border-bottom: 0.5px solid rgba(0,0,0,0.06);
   position: sticky; top: 0; z-index: 50;
 }
 .page-title {

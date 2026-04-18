@@ -174,6 +174,7 @@ import { useAuth } from '../../composables/useAuth'
 import { usePlaza } from '../../composables/usePlaza'
 import { useModeration } from '../../composables/useModeration'
 import { useItems } from '../../composables/useItems'
+import { useHistory } from '../../composables/useHistory'
 import type { Post, PostComment } from '../../types'
 import { formatTime, compressImage, friendlyErrorMessage } from '../../utils'
 import DesktopNav from '../../components/DesktopNav.vue'
@@ -193,6 +194,7 @@ const composerImages = ref<string[]>([])
 const composerFocused = ref(false)
 const submitting = ref(false)
 const { uploadImages } = useItems()
+const { addPostToHistory } = useHistory()
 
 function openComposer() {
   showComposer.value = true
@@ -231,6 +233,7 @@ async function loadMore() {
 
 async function onToggleLike(post: Post) {
   if (!requireAuth()) return
+  addPostToHistory(post)
   try {
     await toggleLike(post)
   } catch (err: any) {
@@ -335,6 +338,7 @@ function onSharePost(post: Post) {
 
 async function openComments(post: Post) {
   commentingPost.value = post
+  addPostToHistory(post)
   comments.value = []
   loadingComments.value = true
   try {
