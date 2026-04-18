@@ -3,6 +3,11 @@ import uni from "@dcloudio/vite-plugin-uni";
 
 export default defineConfig({
   plugins: [uni()],
+  css: {
+    preprocessorOptions: {
+      scss: { api: "modern-compiler" },
+    },
+  },
   build: {
     target: "es2017",
     minify: "esbuild",
