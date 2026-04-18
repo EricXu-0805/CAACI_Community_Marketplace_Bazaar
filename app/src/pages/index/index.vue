@@ -217,6 +217,7 @@
                 :src="thumbUrl(item.images?.[0], 'card') || '/static/placeholder.svg'"
                 mode="widthFix"
                 :class="['card-img', { 'card-img-sold': item.status === 'sold' }]"
+                :alt="item.title"
                 lazy-load
               />
               <view v-if="item.status === 'sold'" class="sold-overlay">

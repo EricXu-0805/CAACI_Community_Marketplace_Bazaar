@@ -45,7 +45,7 @@
 
     <view class="items-grid">
       <view v-for="item in sellerItems" :key="item.id" class="grid-item" @click="goDetail(item.id)">
-        <image :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'" class="gi-img" mode="aspectFill" lazy-load />
+        <image :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'" :alt="item.title" class="gi-img" mode="aspectFill" lazy-load />
         <view class="gi-info">
           <text class="gi-title">{{ item.title }}</text>
           <text class="gi-price">{{ formatPrice(item.price, t("home.free")) }}</text>

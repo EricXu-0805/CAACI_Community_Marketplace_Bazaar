@@ -25,19 +25,40 @@
 
       <view v-if="mode === 'signup'" class="form-group">
         <text class="form-label">{{ t('login.nickname') }}</text>
-        <input v-model="nickname" :placeholder="t('login.nickname')" class="form-input" />
+        <input
+          v-model="nickname"
+          :placeholder="t('login.nickname')"
+          class="form-input"
+          autocomplete="nickname"
+          maxlength="40"
+        />
       </view>
 
       <view class="form-group">
         <text class="form-label">{{ t('login.email') }}</text>
-        <input v-model="email" :placeholder="t('login.email')" type="text" class="form-input" />
+        <input
+          v-model="email"
+          :placeholder="t('login.email')"
+          type="email"
+          inputmode="email"
+          autocomplete="email"
+          spellcheck="false"
+          class="form-input"
+        />
       </view>
 
       <view class="form-group">
         <text class="form-label">{{ t('login.password') }}</text>
         <view class="pw-wrap">
-          <input v-model="password" :placeholder="t('login.password')" :password="!showPw" class="form-input pw-input" />
-          <view class="pw-toggle" @click="showPw = !showPw">
+          <input
+            v-model="password"
+            :placeholder="t('login.password')"
+            :password="!showPw"
+            :autocomplete="mode === 'signup' ? 'new-password' : 'current-password'"
+            class="form-input pw-input"
+            maxlength="72"
+          />
+          <view class="pw-toggle" @click="showPw = !showPw" role="button" :aria-label="showPw ? t('login.password') : t('login.password')">
             <text>{{ showPw ? '◉' : '○' }}</text>
           </view>
         </view>
