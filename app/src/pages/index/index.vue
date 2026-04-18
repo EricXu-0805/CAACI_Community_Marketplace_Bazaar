@@ -74,6 +74,19 @@
       </view>
     </view>
 
+    <view
+      v-if="showSemesterBanner"
+      class="semester-banner"
+      :style="{ '--sb-accent': semesterConfig.accent }"
+      @click="onSemesterBannerTap"
+    >
+      <view class="seb-body">
+        <text class="seb-title">{{ semesterTitle(lang as 'en' | 'zh') }}</text>
+        <text class="seb-sub">{{ semesterSubtitle(lang as 'en' | 'zh') }}</text>
+      </view>
+      <view class="seb-arrow">›</view>
+    </view>
+
     <!-- Active filter summary bar (shows when filters are applied, even if sheet closed) -->
     <view v-if="activeFilterCount > 0 && !showFilter" class="active-filter-bar">
       <scroll-view scroll-x class="afb-scroll">
@@ -305,6 +318,7 @@ import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
 import { useFavorites } from '../../composables/useFavorites'
 import { useModeration } from '../../composables/useModeration'
+import { useSemester } from '../../composables/useSemester'
 import type { ItemCategory, Item } from '../../types'
 
 import { debounce, formatTime, formatPrice, haptic, quickTranslate, thumbUrl } from '../../utils'
@@ -312,6 +326,23 @@ import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 
 const { t, toggleLang, lang } = useI18n()
+const { phase: semesterPhase, config: semesterConfig, title: semesterTitle, subtitle: semesterSubtitle } = useSemester()
+
+const semesterDismissed = ref<boolean>(false)
+try { semesterDismissed.value = !!uni.getStorageSync(`semester_dismissed_${semesterPhase.value}`) } catch {}
+
+const showSemesterBanner = computed(() =>
+  !semesterDismissed.value
+  && semesterPhase.value !== 'fall_session'
+  && semesterPhase.value !== 'spring_session'
+  && semesterPhase.value !== 'summer'
+  && !selectedCategory.value,
+)
+
+function onSemesterBannerTap() {
+  const cat = semesterConfig.value.category as ItemCategory | undefined
+  if (cat) selectCategory(cat)
+}
 
 function localizeTitle(title: string): string {
   if (!title) return ''
@@ -762,6 +793,20 @@ function goPublish() {
 .sb-body { flex: 1; display: flex; flex-direction: column; gap: 3px; }
 .sb-title { font-size: 12px; font-weight: 700; color: #A65B00; }
 .sb-text { font-size: 11px; color: #8B5000; line-height: 1.45; }
+
+.semester-banner {
+  display: flex; align-items: center; gap: 12px;
+  margin: 8px 12px 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: linear-gradient(100deg, var(--sb-accent, #3b82f6) 0%, rgba(255,255,255,0) 130%);
+  color: #fff;
+  cursor: pointer;
+}
+.seb-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.seb-title { font-size: 14px; font-weight: 700; color: #fff; }
+.seb-sub { font-size: 12px; color: rgba(255,255,255,0.88); line-height: 1.4; }
+.seb-arrow { font-size: 22px; color: rgba(255,255,255,0.88); line-height: 1; }
 
 .active-filter-bar {
   display: flex; align-items: center; gap: 8px;
