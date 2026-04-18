@@ -44,7 +44,11 @@
           <text class="trust-label">{{ t('seller.sold') }}</text>
         </view>
         <view class="trust-divider"></view>
-        <view class="trust-stat">
+        <view v-if="seller.rating_count && seller.rating_count > 0" class="trust-stat">
+          <text class="trust-num">★ {{ (seller.avg_rating ?? 0).toFixed(1) }}</text>
+          <text class="trust-label">{{ seller.rating_count }} {{ t('rating.count') }}</text>
+        </view>
+        <view v-else class="trust-stat">
           <text class="trust-num">{{ joinLabel }}</text>
           <text class="trust-label">{{ t('seller.joined') }}</text>
         </view>
@@ -127,7 +131,7 @@ onLoad(async (options) => {
   }
 
   const [profileRes, itemsRes, soldRes] = await Promise.all([
-    supabase.from('profiles').select('id, nickname, avatar_url, bio, location, is_illini_verified, created_at').eq('id', uid).single(),
+    supabase.from('profiles').select('id, nickname, avatar_url, bio, location, is_illini_verified, created_at, avg_rating, rating_count').eq('id', uid).single(),
     supabase.from('items').select('id, title, price, images, status, condition, category, created_at').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
     supabase.from('items').select('id', { count: 'estimated', head: true }).eq('user_id', uid).eq('status', 'sold'),
   ])

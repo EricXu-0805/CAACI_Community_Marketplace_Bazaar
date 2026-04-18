@@ -35,8 +35,21 @@ export interface Profile {
   location: string
   uid?: string
   is_illini_verified?: boolean
+  avg_rating?: number
+  rating_count?: number
   created_at: string
   updated_at: string
+}
+
+export interface Rating {
+  id: string
+  rater_id: string
+  ratee_id: string
+  item_id: string
+  stars: number
+  comment: string | null
+  created_at: string
+  rater?: Profile
 }
 
 export interface Post {

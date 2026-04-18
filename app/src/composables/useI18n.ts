@@ -447,6 +447,16 @@ const messages: Record<Lang, Record<string, string>> = {
     'savedSearch.created': 'Saved',
     'savedSearch.deleteConfirm': 'Delete this saved search?',
     'savedSearch.match': 'Matches your saved search',
+
+    'rating.count': 'ratings',
+    'rating.title': 'Rate this deal',
+    'rating.prompt': 'How was your experience with {name}?',
+    'rating.commentPh': 'Optional: one sentence for other buyers (max 500 chars)',
+    'rating.submit': 'Submit rating',
+    'rating.submitted': 'Thanks for your rating',
+    'rating.rateSeller': 'Rate seller',
+    'rating.rateBuyer': 'Rate buyer',
+    'rating.alreadyRated': 'You rated this deal',
   },
   zh: {
     'app.name': 'Illini 集市',
@@ -885,6 +895,16 @@ const messages: Record<Lang, Record<string, string>> = {
     'savedSearch.created': '已订阅',
     'savedSearch.deleteConfirm': '删除这条订阅?',
     'savedSearch.match': '匹配你的订阅',
+
+    'rating.count': '条评价',
+    'rating.title': '给这次交易打个分',
+    'rating.prompt': '这次和 {name} 的交易体验如何?',
+    'rating.commentPh': '可选:写一句话给其他买家参考(最多 500 字)',
+    'rating.submit': '提交评分',
+    'rating.submitted': '感谢你的评价',
+    'rating.rateSeller': '评价卖家',
+    'rating.rateBuyer': '评价买家',
+    'rating.alreadyRated': '你已评价过这次交易',
   },
 }
 

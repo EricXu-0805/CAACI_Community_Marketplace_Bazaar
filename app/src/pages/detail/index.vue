@@ -140,14 +140,16 @@
       <view :class="['action-btn-small', { reported: reported }]" @click="onReport">
         <text class="fav-label">{{ reported ? t('report.thanks') : t('detail.report') }}</text>
       </view>
-      <view v-if="item.status === 'sold'" class="chat-btn chat-btn-disabled">
-        <text>{{ t('status.sold') }}</text>
+      <view v-if="item.status === 'sold' && !alreadyRated" class="chat-btn chat-btn-rate" @click="openRating">
+        <text>★ {{ t('rating.rateSeller') }}</text>
+      </view>
+      <view v-else-if="item.status === 'sold'" class="chat-btn chat-btn-disabled">
+        <text>{{ t('rating.alreadyRated') }}</text>
       </view>
       <view v-else class="chat-btn" @click="contactSeller">
         <text>{{ t('detail.chat') }}</text>
       </view>
     </view>
-    <!-- Action Bar: Owner -->
     <view class="action-bar" v-else>
       <view class="action-btn-small" @click="goEdit" v-if="item.status === 'active'">
         <text class="fav-label">{{ t('profile.edit') }}</text>
@@ -161,6 +163,35 @@
       <view v-else class="chat-btn chat-btn-confirm" @click="onMarkSold">
         <text>{{ t('profile.markSold') }}</text>
       </view>
+    </view>
+  </view>
+
+  <view v-if="showRating" class="sheet-mask" @click="showRating = false"></view>
+  <view :class="['rating-sheet', { open: showRating }]" v-if="item">
+    <view class="rs-header">
+      <text class="rs-title">{{ t('rating.title') }}</text>
+      <view class="rs-close" @click="showRating = false"><view class="cs-x"></view></view>
+    </view>
+    <text class="rs-prompt">{{ t('rating.prompt').replace('{name}', item.profile?.nickname || t('app.user')) }}</text>
+    <view class="rs-stars">
+      <view
+        v-for="n in 5"
+        :key="n"
+        :class="['rs-star', { on: ratingStars >= n }]"
+        @click="ratingStars = n"
+      >★</view>
+    </view>
+    <textarea
+      v-model="ratingComment"
+      :placeholder="t('rating.commentPh')"
+      maxlength="500"
+      class="rs-textarea"
+    />
+    <view
+      :class="['rs-submit', { disabled: ratingStars === 0 || ratingSubmitting }]"
+      @click="onSubmitRating"
+    >
+      <text>{{ t('rating.submit') }}</text>
     </view>
   </view>
 
@@ -192,8 +223,9 @@ import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
 import type { Item } from '../../types'
 
-import { formatTime, haptic, formatPrice, quickTranslate, thumbUrl } from '../../utils'
+import { formatTime, haptic, formatPrice, quickTranslate, thumbUrl, friendlyErrorMessage } from '../../utils'
 import { matchSpot } from '../../composables/useCampusSpots'
+import { useRatings } from '../../composables/useRatings'
 import { computed, onUnmounted } from 'vue'
 
 const { t } = useI18n()
@@ -216,6 +248,46 @@ const notFound = ref(false)
 const translated = ref(false)
 
 const locationSpot = computed(() => matchSpot(item.value?.location))
+
+const { submitRating, hasRated } = useRatings()
+const showRating = ref(false)
+const ratingStars = ref(0)
+const ratingComment = ref('')
+const ratingSubmitting = ref(false)
+const alreadyRated = ref(false)
+
+async function openRating() {
+  if (!requireAuth()) return
+  if (!item.value || !currentUser.value) return
+  if (item.value.user_id === currentUser.value.id) return
+  showRating.value = true
+  ratingStars.value = 0
+  ratingComment.value = ''
+}
+
+async function onSubmitRating() {
+  if (!item.value || ratingStars.value === 0 || ratingSubmitting.value) return
+  ratingSubmitting.value = true
+  try {
+    await submitRating({
+      rateeId: item.value.user_id,
+      itemId: item.value.id,
+      stars: ratingStars.value,
+      comment: ratingComment.value,
+    })
+    alreadyRated.value = true
+    showRating.value = false
+    uni.showToast({ title: t('rating.submitted'), icon: 'success' })
+  } catch (err: any) {
+    uni.showToast({
+      title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
+      icon: 'none',
+      duration: 2500,
+    })
+  } finally {
+    ratingSubmitting.value = false
+  }
+}
 
 const { lang } = useI18n()
 
@@ -248,6 +320,10 @@ onLoad(async (options) => {
     isFav.value = checkFavorited(options.id!)
     favCount.value = await getFavoriteCount(options.id!)
     if (!alive) return
+
+    if (itemData.status === 'sold' && currentUser.value && itemData.user_id !== currentUser.value.id) {
+      alreadyRated.value = await hasRated(itemData.user_id, itemData.id)
+    }
 
     const { data: otherItems } = await supabase
       .from('items').select('id, title, price, images')
@@ -665,6 +741,57 @@ async function contactSeller() {
   &:active { opacity: 0.8; }
 }
 .chat-btn-confirm { background: #34C759; }
+.chat-btn-rate { background: #fbbf24; color: #1a1a1a; font-weight: 700; }
+
+.sheet-mask {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000;
+}
+.rating-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1001;
+  background: #fff; border-radius: 18px 18px 0 0;
+  padding: 18px 18px calc(24px + env(safe-area-inset-bottom));
+  transform: translateY(100%); transition: transform 0.26s ease;
+  &.open { transform: translateY(0); }
+}
+.rs-header { display: flex; align-items: center; justify-content: space-between; }
+.rs-title { font-size: 17px; font-weight: 700; }
+.rs-close {
+  width: 28px; height: 28px; border-radius: 50%; background: #f2f2f7;
+  display: flex; align-items: center; justify-content: center; position: relative;
+}
+.cs-x {
+  width: 12px; height: 12px; position: relative;
+  &::before, &::after {
+    content: ''; position: absolute; top: 50%; left: 0; right: 0;
+    height: 1.5px; background: #636366; border-radius: 1px;
+  }
+  &::before { transform: rotate(45deg); }
+  &::after { transform: rotate(-45deg); }
+}
+.rs-prompt { display: block; margin: 14px 0 8px; font-size: 14px; color: var(--text-secondary, #5a5a63); }
+.rs-stars {
+  display: flex; justify-content: center; gap: 8px; padding: 14px 0;
+}
+.rs-star {
+  font-size: 38px; line-height: 1; color: #e5e5ea;
+  cursor: pointer;
+  &.on { color: #fbbf24; }
+  &:active { transform: scale(0.9); }
+}
+.rs-textarea {
+  width: 100%; min-height: 80px;
+  background: #f5f5f7; border-radius: 10px;
+  padding: 10px 12px; font-size: 14px; color: #1a1a1a;
+  margin-top: 4px; box-sizing: border-box;
+}
+.rs-submit {
+  margin-top: 14px; padding: 13px; border-radius: 12px;
+  background: #1a1a1a; color: #fff;
+  text-align: center; font-size: 15px; font-weight: 600;
+  cursor: pointer;
+  &.disabled { background: #c7c7cc; pointer-events: none; }
+  &:active { transform: scale(0.98); }
+}
 .chat-btn-disabled {
   background: #e5e5ea; cursor: default;
   text { color: #8e8e93; }
