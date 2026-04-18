@@ -18,7 +18,7 @@ export function useMessages() {
         .select(`
           id, item_id, buyer_id, seller_id, last_message_at, created_at,
           is_pinned_buyer, is_pinned_seller, is_muted_buyer, is_muted_seller,
-          item:items(id, title, images, price, status),
+          item:items(id, title, images, price, status, category),
           buyer:profiles!conversations_buyer_id_fkey(id, nickname, avatar_url, is_illini_verified),
           seller:profiles!conversations_seller_id_fkey(id, nickname, avatar_url, is_illini_verified)
         `)
@@ -184,7 +184,7 @@ export function useMessages() {
       .from('conversations')
       .select(`
         *,
-        item:items(id, title, images, price, status, negotiable, user_id),
+        item:items(id, title, images, price, status, negotiable, user_id, category),
         buyer:profiles!conversations_buyer_id_fkey(id, nickname, avatar_url),
         seller:profiles!conversations_seller_id_fkey(id, nickname, avatar_url)
       `)

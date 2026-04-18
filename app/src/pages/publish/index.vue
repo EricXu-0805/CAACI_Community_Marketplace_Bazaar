@@ -239,6 +239,21 @@ async function onSubmit() {
   if (!form.category) { uni.showToast({ title: t('publish.needCategory'), icon: 'none' }); return }
   if (!form.condition) { uni.showToast({ title: t('publish.needCondition'), icon: 'none' }); return }
 
+  if (form.category === 'currency_exchange' && !isEdit.value) {
+    const confirmed = await new Promise<boolean>((resolve) => {
+      uni.showModal({
+        title: t('scam.publishTitle'),
+        content: t('scam.publishBody'),
+        confirmText: t('scam.publishAgree'),
+        cancelText: t('scam.publishCancel'),
+        confirmColor: '#FF9500',
+        success: (r) => resolve(!!r.confirm),
+        fail: () => resolve(false),
+      })
+    })
+    if (!confirmed) return
+  }
+
   submitting.value = true
   uploadProgress.value = 0
   const failsafe = setTimeout(() => { submitting.value = false }, 60000)

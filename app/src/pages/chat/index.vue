@@ -33,6 +33,11 @@
       <view class="ic-arrow"></view>
     </view>
 
+    <view v-if="itemInfo?.category === 'currency_exchange'" class="chat-scam">
+      <view class="cs-icon"><view class="cs-excl"></view></view>
+      <text class="cs-text">{{ t('scam.chatWarn') }}</text>
+    </view>
+
     <view
       v-if="itemInfo && itemInfo.negotiable && itemInfo.status === 'active' && currentUser?.id !== itemInfo.user_id"
       class="offer-bar"
@@ -513,6 +518,25 @@ function scrollToBottom() {
 }
 
 /* ========== Item Context Card ========== */
+.chat-scam {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+  background: #FFF4E6;
+  border-bottom: 0.5px solid rgba(255,149,0,0.2);
+}
+.cs-icon {
+  width: 16px; height: 16px; border-radius: 50%; background: #FF9500;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.cs-excl {
+  width: 1.5px; height: 7px; background: #fff; border-radius: 1px; position: relative;
+}
+.cs-excl::after {
+  content: ''; position: absolute; bottom: -4px; left: -0.75px;
+  width: 3px; height: 2.5px; background: #fff; border-radius: 2px;
+}
+.cs-text { font-size: 11px; color: #8B5000; line-height: 1.4; flex: 1; font-weight: 500; }
+
 .item-card {
   display: flex; align-items: center; gap: 10px;
   margin: 9px 12px 0; padding: 9px 12px;

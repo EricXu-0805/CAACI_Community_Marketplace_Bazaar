@@ -63,6 +63,14 @@
       </view>
     </scroll-view>
 
+    <view v-if="selectedCategory === 'currency_exchange'" class="scam-banner">
+      <view class="sb-icon"><view class="sb-excl"></view></view>
+      <view class="sb-body">
+        <text class="sb-title">{{ t('scam.bannerTitle') }}</text>
+        <text class="sb-text">{{ t('scam.bannerBody') }}</text>
+      </view>
+    </view>
+
     <!-- Active filter summary bar (shows when filters are applied, even if sheet closed) -->
     <view v-if="activeFilterCount > 0 && !showFilter" class="active-filter-bar">
       <scroll-view scroll-x class="afb-scroll">
@@ -697,6 +705,31 @@ function goPublish() {
 }
 .fs-title { flex: 1; font-size: 17px; font-weight: 700; color: #1d1d1f; text-align: center; }
 .fs-reset { font-size: 14px; color: #FF6B35; cursor: pointer; flex-shrink: 0; }
+
+.scam-banner {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 14px;
+  background: #FFF4E6;
+  border-bottom: 0.5px solid rgba(255,149,0,0.25);
+  border-left: 3px solid #FF9500;
+}
+.sb-icon {
+  flex-shrink: 0; width: 20px; height: 20px;
+  border-radius: 50%; background: #FF9500;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 1px;
+}
+.sb-excl {
+  width: 2px; height: 10px; background: #fff; border-radius: 1px;
+  position: relative;
+}
+.sb-excl::after {
+  content: ''; position: absolute; bottom: -5px; left: -1px;
+  width: 4px; height: 3px; background: #fff; border-radius: 2px;
+}
+.sb-body { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.sb-title { font-size: 12px; font-weight: 700; color: #A65B00; }
+.sb-text { font-size: 11px; color: #8B5000; line-height: 1.45; }
 
 .active-filter-bar {
   display: flex; align-items: center; gap: 8px;
