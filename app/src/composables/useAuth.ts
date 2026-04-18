@@ -126,9 +126,8 @@ export function useAuth() {
       .update(sanitized)
       .eq('id', session.user.id)
 
-    if (!error) {
-      const { data: fresh } = await supabase.rpc('get_my_profile')
-      if (fresh && fresh.id) currentUser.value = fresh as Profile
+    if (!error && currentUser.value) {
+      currentUser.value = { ...currentUser.value, ...sanitized } as Profile
     }
     return { error }
   }

@@ -4,7 +4,7 @@
 
     <view class="page-header">
       <text class="ph-title">{{ t('plaza.title') }}</text>
-      <view class="compose-btn" @click="showComposer = true" v-if="isLoggedIn">
+      <view class="compose-btn" @click="openComposer" v-if="isLoggedIn">
         <view class="cb-pen"></view>
       </view>
     </view>
@@ -24,7 +24,7 @@
       <view v-else-if="posts.length === 0" class="empty">
         <view class="empty-icon"></view>
         <text class="empty-text">{{ t('plaza.empty') }}</text>
-        <view v-if="isLoggedIn" class="cta-btn" @click="showComposer = true">{{ t('plaza.write') }}</view>
+        <view v-if="isLoggedIn" class="cta-btn" @click="openComposer">{{ t('plaza.write') }}</view>
       </view>
 
       <view v-else class="posts">
@@ -92,7 +92,8 @@
         v-model="composerText"
         :placeholder="t('plaza.postHint')"
         class="comp-textarea"
-        :focus="showComposer"
+        :adjust-position="false"
+        :focus="composerFocused"
         maxlength="2000"
       />
       <view v-if="composerImages.length > 0" class="comp-images">
@@ -180,8 +181,14 @@ const pageIdx = ref(0)
 const showComposer = ref(false)
 const composerText = ref('')
 const composerImages = ref<string[]>([])
+const composerFocused = ref(false)
 const submitting = ref(false)
 const { uploadImages } = useItems()
+
+function openComposer() {
+  showComposer.value = true
+  setTimeout(() => { composerFocused.value = true }, 300)
+}
 
 const commentingPost = ref<Post | null>(null)
 const comments = ref<PostComment[]>([])
@@ -221,6 +228,7 @@ async function onToggleLike(post: Post) {
 }
 
 function onComposerCancel() {
+  composerFocused.value = false
   showComposer.value = false
   composerText.value = ''
   composerImages.value = []
@@ -366,13 +374,13 @@ function onCommentLongPress(c: PostComment) {
 
 <style lang="scss" scoped>
 .page {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   background: #f2f2f7;
   max-width: 480px;
   margin: 0 auto;
-  padding-bottom: 70px;
   display: flex; flex-direction: column;
-  height: 100vh;
+  overflow: hidden;
 }
 
 .page-header {
@@ -403,7 +411,8 @@ function onCommentLongPress(c: PostComment) {
 
 .feed {
   flex: 1;
-  height: calc(100vh - 115px);
+  min-height: 0;
+  padding-bottom: 70px;
 }
 
 .loading, .empty {
@@ -650,7 +659,7 @@ function onCommentLongPress(c: PostComment) {
 
 @media (min-width: 768px) {
   .page-header { display: none; }
-  .page { padding-bottom: 0; height: auto; min-height: 100vh; }
-  .feed { height: calc(100vh - 65px); }
+  .page { padding-bottom: 0; height: auto; min-height: 100vh; overflow: visible; }
+  .feed { padding-bottom: 0; }
 }
 </style>

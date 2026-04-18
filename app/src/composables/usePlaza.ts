@@ -53,8 +53,9 @@ export function usePlaza() {
       if (reset) posts.value = result
       else posts.value.push(...result)
       hasMore.value = (data || []).length === PAGE_SIZE
-    } catch (err) {
+    } catch (err: any) {
       console.error('fetchPosts failed:', err)
+      uni.showToast({ title: err?.message || 'Failed to load plaza', icon: 'none', duration: 3000 })
     } finally {
       loading.value = false
     }

@@ -184,6 +184,12 @@ export function useItems() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw new Error('Not authenticated')
 
+    const withTimeout = <T>(p: Promise<T>, ms: number, label: string): Promise<T> =>
+      new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+        p.then(v => { clearTimeout(timer); resolve(v) }, e => { clearTimeout(timer); reject(e) })
+      })
+
     for (const filePath of tempFiles) {
       const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`
       const storagePath = `items/${session.user.id}/${fileName}`
@@ -196,9 +202,11 @@ export function useItems() {
         const response = await fetch(compressed)
         const blob = await response.blob()
         if (blob.size > MAX_FILE_SIZE) throw new Error('File too large (max 5MB)')
-        const h5Result = await supabase.storage
-          .from('item-images')
-          .upload(storagePath, blob, { contentType: 'image/jpeg' })
+        const h5Result = await withTimeout(
+          supabase.storage.from('item-images').upload(storagePath, blob, { contentType: 'image/jpeg' }),
+          30000,
+          'image upload',
+        )
         uploadError = h5Result.error
         // #endif
 

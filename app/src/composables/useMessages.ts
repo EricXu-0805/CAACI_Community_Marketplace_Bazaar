@@ -19,8 +19,8 @@ export function useMessages() {
           id, item_id, buyer_id, seller_id, last_message_at, created_at,
           is_pinned_buyer, is_pinned_seller, is_muted_buyer, is_muted_seller,
           item:items(id, title, images, price, status),
-          buyer:profiles!conversations_buyer_id_fkey(id, nickname, avatar_url),
-          seller:profiles!conversations_seller_id_fkey(id, nickname, avatar_url)
+          buyer:profiles!conversations_buyer_id_fkey(id, nickname, avatar_url, is_illini_verified),
+          seller:profiles!conversations_seller_id_fkey(id, nickname, avatar_url, is_illini_verified)
         `)
         .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`)
         .order('last_message_at', { ascending: false })
@@ -52,8 +52,9 @@ export function useMessages() {
         }
       }
       conversations.value = convs
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch conversations:', error)
+      uni.showToast({ title: error?.message || 'Failed to load messages', icon: 'none', duration: 3000 })
     } finally {
       loading.value = false
     }

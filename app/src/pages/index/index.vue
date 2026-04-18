@@ -223,7 +223,7 @@
               </view>
             </view>
             <view class="card-info">
-              <text class="card-title">{{ item.title }}</text>
+              <text class="card-title">{{ localizeTitle(item.title) }}</text>
               <view class="card-price-row">
                 <text :class="['card-price', { 'card-price-free': item.price === 0 }]">{{ formatPrice(item.price, t('home.free')) }}</text>
                 <text v-if="item.negotiable" class="obo-tag">OBO</text>
@@ -310,11 +310,16 @@ import { useFavorites } from '../../composables/useFavorites'
 import { useModeration } from '../../composables/useModeration'
 import type { ItemCategory, Item } from '../../types'
 
-import { debounce, formatTime, formatPrice, haptic } from '../../utils'
+import { debounce, formatTime, formatPrice, haptic, quickTranslate } from '../../utils'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 
-const { t, toggleLang } = useI18n()
+const { t, toggleLang, lang } = useI18n()
+
+function localizeTitle(title: string): string {
+  if (!title) return ''
+  return quickTranslate(title, lang.value as 'en' | 'zh')
+}
 
 const { items, loading, hasMore, fetchError, fetchItems } = useItems()
 const { currentUser } = useAuth()
@@ -584,14 +589,22 @@ function goPublish() {
    ============================================ */
 
 .page {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  display: flex; flex-direction: column;
   background: #f2f2f7;
+  overflow: hidden;
 }
 
 /* ========== Mobile Header ========== */
 .mobile-header {
-  background: #fff; padding: 10px 16px 11px;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  padding: 10px 16px 11px;
   padding-top: calc(10px + env(safe-area-inset-top, 0px));
+  position: sticky; top: 0; z-index: 50;
+  border-bottom: 0.5px solid rgba(0,0,0,0.04);
 }
 .mh-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .mh-brand { font-size: 18px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.02em; }
@@ -754,7 +767,7 @@ function goPublish() {
 }
 
 /* ========== Feed ========== */
-.feed { height: calc(100vh - 120px); }
+.feed { flex: 1; min-height: 0; padding-bottom: 70px; }
 
 /* ========== Waterfall ========== */
 .waterfall { display: flex; padding: 5px; gap: 5px; padding-bottom: 54px; }
@@ -950,7 +963,7 @@ function goPublish() {
   .desktop-cats { padding: 10px 24px 12px; }
   .pill { padding: 7px 20px; font-size: 14px; }
 
-  .feed { height: calc(100vh - 165px); }
+  .feed { flex: 1; min-height: 0; padding-bottom: 0; }
   .waterfall { padding: 10px 24px; gap: 10px; padding-bottom: 10px; }
   .wf-col { gap: 10px; }
 

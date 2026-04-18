@@ -241,6 +241,7 @@ async function onSubmit() {
 
   submitting.value = true
   uploadProgress.value = 0
+  const failsafe = setTimeout(() => { submitting.value = false }, 60000)
   try {
     const existing: string[] = []
     const toUpload: string[] = []
@@ -251,7 +252,11 @@ async function onSubmit() {
 
     let uploaded: string[] = []
     if (toUpload.length > 0) {
-      uploaded = await uploadImages(toUpload)
+      try {
+        uploaded = await uploadImages(toUpload)
+      } catch (upErr: any) {
+        throw new Error(upErr?.message || t('publish.uploadFailed'))
+      }
       uploadProgress.value = 100
       if (uploaded.length === 0) {
         throw new Error(t('publish.uploadFailed'))
@@ -290,6 +295,7 @@ async function onSubmit() {
     console.error('Publish error:', error)
     uni.showToast({ title: error?.message || t('publish.fail'), icon: 'none', duration: 3000 })
   } finally {
+    clearTimeout(failsafe)
     submitting.value = false
     uploadProgress.value = 0
   }

@@ -299,7 +299,9 @@ function goLogin() {
 
 <style lang="scss" scoped>
 .page {
-  min-height: 100vh; background: #fff;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #fff;
   max-width: 480px; margin: 0 auto; padding-bottom: 70px;
 }
 

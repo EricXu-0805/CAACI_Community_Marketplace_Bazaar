@@ -42,12 +42,15 @@ function go(url: string) { uni.switchTab({ url }) }
 
 <style scoped>
 .tabbar {
-  display: none; position: fixed; bottom: 0; left: 0; right: 0;
+  display: none; position: fixed; bottom: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 100%; max-width: 480px;
   height: 50px; padding-bottom: env(safe-area-inset-bottom, 0px);
   background: rgba(252,252,253,0.88);
   backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-top: 0.5px solid rgba(0,0,0,0.08);
   z-index: 999; align-items: flex-end; justify-content: space-around;
+  box-sizing: border-box;
 }
 .tab {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
