@@ -381,6 +381,9 @@ const messages: Record<Lang, Record<string, string>> = {
     'plaza.noComments': 'No comments yet',
     'plaza.viewAll': 'View all',
     'plaza.charsLeft': 'chars left',
+    'plaza.attachItem': 'Tag item',
+    'plaza.pickItem': 'Pick one of your listings',
+    'plaza.noMyItems': 'You have no active listings to tag',
 
     'login.agreeRequired': 'Please agree to the Terms and Privacy Policy to sign up',
     'login.agreeCheckbox': 'I agree to the Terms of Service and Privacy Policy',
@@ -798,6 +801,9 @@ const messages: Record<Lang, Record<string, string>> = {
     'plaza.noComments': '还没有评论',
     'plaza.viewAll': '查看全部',
     'plaza.charsLeft': '字剩余',
+    'plaza.attachItem': '挂商品',
+    'plaza.pickItem': '选一件你正在售卖的商品',
+    'plaza.noMyItems': '你目前没有在售商品',
 
     'login.agreeRequired': '请先同意《用户协议》与《隐私政策》',
     'login.agreeCheckbox': '我已阅读并同意《用户协议》和《隐私政策》',

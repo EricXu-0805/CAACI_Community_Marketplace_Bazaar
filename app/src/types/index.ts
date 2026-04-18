@@ -51,8 +51,10 @@ export interface Post {
   status: 'active' | 'deleted' | 'hidden'
   created_at: string
   updated_at: string
+  attached_item_id?: string | null
   profile?: Profile
   liked_by_me?: boolean
+  attached_item?: Pick<Item, 'id' | 'title' | 'price' | 'images' | 'status'> | null
 }
 
 export interface PostComment {

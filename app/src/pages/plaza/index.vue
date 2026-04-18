@@ -61,6 +61,26 @@
             </view>
           </view>
 
+          <view
+            v-if="post.attached_item"
+            class="attached-item-card"
+            @click.stop="goToAttachedItem(post.attached_item!.id)"
+          >
+            <image
+              :src="thumbUrl(post.attached_item.images?.[0], 'list') || '/static/placeholder.svg'"
+              class="aic-img"
+              mode="aspectFill"
+              lazy-load
+              :alt="post.attached_item.title"
+            />
+            <view class="aic-body">
+              <text class="aic-title">{{ post.attached_item.title }}</text>
+              <text class="aic-price">${{ post.attached_item.price }}</text>
+              <text v-if="post.attached_item.status === 'sold'" class="aic-sold">{{ t('status.sold') }}</text>
+            </view>
+            <view class="aic-arrow">›</view>
+          </view>
+
           <view class="post-actions">
             <view class="pa-btn" @click.stop="onToggleLike(post)">
               <image
@@ -111,15 +131,60 @@
             </view>
           </view>
         </view>
+        <view v-if="composerAttachedItem" class="comp-attached" @click="composerAttachedItem = null">
+          <image
+            :src="thumbUrl(composerAttachedItem.images?.[0], 'list') || '/static/placeholder.svg'"
+            class="ca-img"
+            mode="aspectFill"
+          />
+          <view class="ca-body">
+            <text class="ca-title">{{ composerAttachedItem.title }}</text>
+            <text class="ca-price">${{ composerAttachedItem.price }}</text>
+          </view>
+          <view class="ca-remove"><view class="ci-x"></view></view>
+        </view>
       </view>
       <view class="comp-footer">
         <view class="comp-tools">
           <view v-if="composerImages.length < 4" class="comp-add-img" @click="onComposerPickImage">
             <view class="cai-ico"></view>
           </view>
+          <view v-if="!composerAttachedItem" class="comp-attach-btn" @click="onOpenAttachSheet">
+            <text class="cab-ico">🏷️</text>
+            <text class="cab-label">{{ t('plaza.attachItem') }}</text>
+          </view>
         </view>
         <text class="comp-count">{{ 2000 - composerText.length }} {{ t('plaza.charsLeft') }}</text>
       </view>
+    </view>
+
+    <view v-if="showAttachSheet" class="sheet-mask" @click="showAttachSheet = false"></view>
+    <view :class="['attach-sheet', { open: showAttachSheet }]">
+      <view class="as-header">
+        <text class="as-title">{{ t('plaza.pickItem') }}</text>
+        <view class="as-close" @click="showAttachSheet = false"><view class="cs-x"></view></view>
+      </view>
+      <scroll-view class="as-list" scroll-y>
+        <view v-if="myActiveItems.length === 0" class="as-empty">
+          <text>{{ t('plaza.noMyItems') }}</text>
+        </view>
+        <view
+          v-for="it in myActiveItems"
+          :key="it.id"
+          class="as-item"
+          @click="onPickAttachedItem(it)"
+        >
+          <image
+            :src="thumbUrl(it.images?.[0], 'list') || '/static/placeholder.svg'"
+            class="as-img"
+            mode="aspectFill"
+          />
+          <view class="as-body">
+            <text class="as-title-text">{{ it.title }}</text>
+            <text class="as-price">${{ it.price }}</text>
+          </view>
+        </view>
+      </scroll-view>
     </view>
 
     <view v-if="commentingPost" class="sheet-mask" @click="closeComments"></view>
@@ -188,7 +253,7 @@ import CustomTabBar from '../../components/CustomTabBar.vue'
 
 const { t, lang } = useI18n()
 const { currentUser, isLoggedIn, requireAuth } = useAuth()
-const { posts, loading, hasMore, fetchPosts, createPost, deletePost, toggleLike, fetchComments, createComment, deleteComment } = usePlaza()
+const { posts, loading, hasMore, fetchPosts, createPost, deletePost, toggleLike, fetchComments, createComment, deleteComment, fetchMyActiveItems } = usePlaza()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
 
 const refreshing = ref(false)
@@ -199,6 +264,28 @@ const composerText = ref('')
 const composerImages = ref<string[]>([])
 const composerFocused = ref(false)
 const submitting = ref(false)
+
+type AttachableItem = NonNullable<Post['attached_item']>
+const composerAttachedItem = ref<AttachableItem | null>(null)
+const showAttachSheet = ref(false)
+const myActiveItems = ref<AttachableItem[]>([])
+
+async function onOpenAttachSheet() {
+  if (!requireAuth()) return
+  showAttachSheet.value = true
+  if (myActiveItems.value.length === 0) {
+    myActiveItems.value = await fetchMyActiveItems() as AttachableItem[]
+  }
+}
+
+function onPickAttachedItem(it: AttachableItem) {
+  composerAttachedItem.value = it
+  showAttachSheet.value = false
+}
+
+function goToAttachedItem(id: string) {
+  uni.navigateTo({ url: `/pages/detail/index?id=${id}` })
+}
 const { uploadImages } = useItems()
 const { addPostToHistory } = useHistory()
 
@@ -252,6 +339,7 @@ function onComposerCancel() {
   showComposer.value = false
   composerText.value = ''
   composerImages.value = []
+  composerAttachedItem.value = null
 }
 
 function onComposerPickImage() {
@@ -291,9 +379,10 @@ async function onSubmitPost() {
     if (composerImages.value.length > 0) {
       imageUrls = await uploadImages(composerImages.value)
     }
-    await createPost(composerText.value, imageUrls)
+    await createPost(composerText.value, imageUrls, composerAttachedItem.value?.id || null)
     composerText.value = ''
     composerImages.value = []
+    composerAttachedItem.value = null
     showComposer.value = false
     uni.showToast({ title: t('plaza.posted'), icon: 'success' })
   } catch (err: any) {
@@ -665,6 +754,76 @@ function onCommentLongPress(c: PostComment) {
   }
 }
 .comp-count { font-size: 12px; color: #c7c7cc; }
+
+.comp-attach-btn {
+  display: flex; align-items: center; gap: 4px;
+  padding: 6px 10px; border-radius: 8px;
+  background: #f2f2f7; cursor: pointer;
+  &:active { background: #e5e5ea; }
+}
+.cab-ico { font-size: 14px; }
+.cab-label { font-size: 12px; color: #636366; font-weight: 500; }
+
+.comp-attached {
+  margin-top: 10px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px; border: 1px solid #e5e5ea; border-radius: 10px;
+  background: #fafafc; cursor: pointer;
+}
+.ca-img { width: 48px; height: 48px; border-radius: 8px; flex-shrink: 0; }
+.ca-body { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ca-title { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ca-price { font-size: 13px; color: #FF6B35; font-weight: 600; }
+.ca-remove {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.attached-item-card {
+  margin: 8px 14px 0 54px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px; border: 1px solid #e5e5ea; border-radius: 10px;
+  background: #fafafc;
+  cursor: pointer;
+  &:active { background: #f2f2f7; }
+}
+.aic-img { width: 52px; height: 52px; border-radius: 8px; flex-shrink: 0; }
+.aic-body { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.aic-title { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aic-price { font-size: 14px; color: #FF6B35; font-weight: 700; }
+.aic-sold { font-size: 11px; color: #8e8e93; }
+.aic-arrow { font-size: 22px; color: #c7c7cc; line-height: 1; flex-shrink: 0; }
+
+.attach-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1002;
+  max-height: 70vh; background: #fff; border-radius: 20px 20px 0 0;
+  transform: translateY(100%); transition: transform 0.26s ease;
+  display: flex; flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
+  &.open { transform: translateY(0); }
+}
+.as-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 0.5px solid rgba(0,0,0,0.06);
+}
+.as-title { font-size: 15px; font-weight: 600; }
+.as-close {
+  width: 28px; height: 28px; border-radius: 50%; background: #f2f2f7;
+  display: flex; align-items: center; justify-content: center;
+}
+.as-list { flex: 1; padding: 8px 16px 16px; }
+.as-empty { text-align: center; color: #8e8e93; padding: 32px 0; font-size: 13px; }
+.as-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 0.5px solid rgba(0,0,0,0.04);
+  cursor: pointer;
+  &:active { background: #f2f2f7; }
+}
+.as-img { width: 56px; height: 56px; border-radius: 8px; flex-shrink: 0; }
+.as-body { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.as-title-text { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.as-price { font-size: 13px; color: #FF6B35; font-weight: 600; }
 
 .comments-sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 1001;

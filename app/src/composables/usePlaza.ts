@@ -10,6 +10,10 @@ const loading = ref(false)
 const hasMore = ref(true)
 const PAGE_SIZE = 20
 const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, is_illini_verified, uid'
+const ATTACHED_ITEM_FIELDS = 'id, title, price, images, status'
+const POST_SELECT = `*,
+  profile:profiles!posts_user_id_fkey(${PUBLIC_PROFILE_FIELDS}),
+  attached_item:items!posts_attached_item_id_fkey(${ATTACHED_ITEM_FIELDS})`
 
 export function usePlaza() {
   const { supabase } = useSupabase()
@@ -26,7 +30,7 @@ export function usePlaza() {
     try {
       const { data, error } = await supabase
         .from('posts')
-        .select(`*, profile:profiles!posts_user_id_fkey(${PUBLIC_PROFILE_FIELDS})`)
+        .select(POST_SELECT)
         .eq('status', 'active')
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
@@ -66,7 +70,7 @@ export function usePlaza() {
   async function fetchPost(id: string): Promise<Post | null> {
     const { data, error } = await supabase
       .from('posts')
-      .select(`*, profile:profiles!posts_user_id_fkey(${PUBLIC_PROFILE_FIELDS})`)
+      .select(POST_SELECT)
       .eq('id', id)
       .eq('status', 'active')
       .maybeSingle()
@@ -85,10 +89,10 @@ export function usePlaza() {
     return post
   }
 
-  async function createPost(content: string, images: string[] = []) {
+  async function createPost(content: string, images: string[] = [], attachedItemId: string | null = null) {
     if (!currentUser.value) throw new Error('Not authenticated')
     const trimmed = content.trim()
-    if (!trimmed && images.length === 0) throw new Error('Content required')
+    if (!trimmed && images.length === 0 && !attachedItemId) throw new Error('Content required')
     if (trimmed.length > 2000) throw new Error('Content too long')
 
     const payloadContent = trimmed || ' '
@@ -98,13 +102,26 @@ export function usePlaza() {
         user_id: currentUser.value.id,
         content: payloadContent,
         images,
+        attached_item_id: attachedItemId,
       })
-      .select(`*, profile:profiles!posts_user_id_fkey(${PUBLIC_PROFILE_FIELDS})`)
+      .select(POST_SELECT)
       .single()
 
     if (error) throw error
     posts.value = [data as Post, ...posts.value]
     return data as Post
+  }
+
+  async function fetchMyActiveItems(): Promise<Array<Pick<import('../types').Item, 'id' | 'title' | 'price' | 'images' | 'status'>>> {
+    if (!currentUser.value) return []
+    const { data } = await supabase
+      .from('items')
+      .select(ATTACHED_ITEM_FIELDS)
+      .eq('user_id', currentUser.value.id)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(20)
+    return (data || []) as any
   }
 
   async function deletePost(postId: string) {
@@ -190,5 +207,6 @@ export function usePlaza() {
     fetchComments,
     createComment,
     deleteComment,
+    fetchMyActiveItems,
   }
 }
