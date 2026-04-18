@@ -25,6 +25,14 @@
         <text class="loc-text">{{ seller.location || 'UIUC' }}</text>
       </view>
 
+      <view
+        v-if="!isOwnProfile"
+        :class="['follow-btn', { following: isFollowing(seller.id) }]"
+        @click="onToggleFollow"
+      >
+        <text>{{ isFollowing(seller.id) ? t('follow.following') : t('follow.follow') }}</text>
+      </view>
+
       <view class="trust-row">
         <view class="trust-stat">
           <text class="trust-num">{{ activeCount }}</text>
@@ -65,12 +73,16 @@ import { onLoad } from '@dcloudio/uni-app'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
+import { useAuth } from '../../composables/useAuth'
+import { useFollow } from '../../composables/useFollow'
 import type { Profile, Item } from '../../types'
 import { formatPrice, thumbUrl } from '../../utils'
 
 const { t, lang } = useI18n()
 const { supabase } = useSupabase()
 const { ensureLoaded, isBlocked } = useModeration()
+const { currentUser, requireAuth } = useAuth()
+const { isFollowing, toggleFollow, loadMyFollowing } = useFollow()
 
 const seller = ref<Profile | null>(null)
 const sellerItems = ref<Item[]>([])
@@ -78,7 +90,22 @@ const soldCount = ref(0)
 const loading = ref(true)
 const blocked = ref(false)
 
+const isOwnProfile = computed(() => currentUser.value?.id && seller.value?.id === currentUser.value.id)
 const activeCount = computed(() => sellerItems.value.length)
+
+async function onToggleFollow() {
+  if (!requireAuth() || !seller.value) return
+  try {
+    const nowFollowing = await toggleFollow(seller.value.id)
+    uni.showToast({
+      title: t(nowFollowing ? 'follow.followed' : 'follow.unfollowed'),
+      icon: 'none',
+      duration: 1500,
+    })
+  } catch (err: any) {
+    uni.showToast({ title: err?.message || t('error.actionFailed'), icon: 'none' })
+  }
+}
 const joinLabel = computed(() => {
   if (!seller.value?.created_at) return '—'
   const d = new Date(seller.value.created_at)
@@ -109,6 +136,7 @@ onLoad(async (options) => {
   if (itemsRes.data) sellerItems.value = itemsRes.data as Item[]
   soldCount.value = soldRes.count || 0
   loading.value = false
+  if (currentUser.value) await loadMyFollowing()
 })
 
 function goBack() { uni.navigateBack() }
@@ -145,6 +173,21 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .loc-row { display: flex; align-items: center; gap: 4px; }
 .loc-dot { width: 5px; height: 5px; border-radius: 50%; background: #FF6B35; }
 .loc-text { font-size: 12px; color: #aeaeb2; }
+
+.follow-btn {
+  margin-top: 12px;
+  padding: 8px 22px; border-radius: 20px;
+  background: #1a1a1a; color: #fff;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s;
+  &:active { transform: scale(0.96); }
+  &.following {
+    background: #fff; color: #1a1a1a;
+    border: 1px solid #d1d1d6;
+  }
+}
+
 .trust-row {
   display: flex; align-items: center; justify-content: center;
   gap: 0; margin-top: 14px;

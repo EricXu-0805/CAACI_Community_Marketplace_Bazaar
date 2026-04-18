@@ -429,6 +429,14 @@ const messages: Record<Lang, Record<string, string>> = {
     'pickup.safeZone': 'Safe Zone',
     'pickup.pickupAt': 'Meet at',
     'pickup.prefSafe': 'Seller prefers on-campus pickup',
+
+    'follow.follow': 'Follow',
+    'follow.following': 'Following',
+    'follow.followed': 'Following — you will be notified of new listings',
+    'follow.unfollowed': 'Unfollowed',
+    'nav.following': 'Following',
+    'follow.emptyFeed': "Your following feed is empty — follow sellers to see their new listings here.",
+    'notif.newListing': 'New listing',
   },
   zh: {
     'app.name': 'Illini 集市',
@@ -849,6 +857,14 @@ const messages: Record<Lang, Record<string, string>> = {
     'pickup.safeZone': '校园安全点',
     'pickup.pickupAt': '取货点',
     'pickup.prefSafe': '卖家偏好校园内取货',
+
+    'follow.follow': '关注',
+    'follow.following': '已关注',
+    'follow.followed': '已关注,对方发新品会通知你',
+    'follow.unfollowed': '已取消关注',
+    'nav.following': '关注',
+    'follow.emptyFeed': '还没有关注的卖家。关注后,Ta 上新你会第一时间看到。',
+    'notif.newListing': '新品上架',
   },
 }
 
