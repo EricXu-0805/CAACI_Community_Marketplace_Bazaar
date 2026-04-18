@@ -156,7 +156,7 @@
           @confirm="onSubmitComment"
           maxlength="1000"
         />
-        <view :class="['cs-send', { disabled: !commentText.trim() }]" @click="onSubmitComment">
+        <view :class="['cs-send', { disabled: !commentText.trim() || commentSubmitting }]" @click="onSubmitComment">
           <text>{{ replyTo ? t('plaza.reply') : t('plaza.comment') }}</text>
         </view>
       </view>
@@ -175,11 +175,11 @@ import { usePlaza } from '../../composables/usePlaza'
 import { useModeration } from '../../composables/useModeration'
 import { useItems } from '../../composables/useItems'
 import type { Post, PostComment } from '../../types'
-import { formatTime, compressImage } from '../../utils'
+import { formatTime, compressImage, friendlyErrorMessage } from '../../utils'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 const { currentUser, isLoggedIn, requireAuth } = useAuth()
 const { posts, loading, hasMore, fetchPosts, createPost, deletePost, toggleLike, fetchComments, createComment, deleteComment } = usePlaza()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
@@ -276,6 +276,7 @@ async function onSubmitPost() {
   }
   if (submitting.value) return
   submitting.value = true
+  const failsafe = setTimeout(() => { submitting.value = false }, 30000)
   try {
     let imageUrls: string[] = []
     if (composerImages.value.length > 0) {
@@ -287,8 +288,13 @@ async function onSubmitPost() {
     showComposer.value = false
     uni.showToast({ title: t('plaza.posted'), icon: 'success' })
   } catch (err: any) {
-    uni.showToast({ title: err?.message || t('plaza.postFail'), icon: 'none' })
+    uni.showToast({
+      title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
+      icon: 'none',
+      duration: 2500,
+    })
   } finally {
+    clearTimeout(failsafe)
     submitting.value = false
   }
 }
@@ -345,9 +351,14 @@ function closeComments() {
   replyTo.value = null
 }
 
+const commentSubmitting = ref(false)
+
 async function onSubmitComment() {
   if (!requireAuth()) return
   if (!commentText.value.trim() || !commentingPost.value) return
+  if (commentSubmitting.value) return
+  commentSubmitting.value = true
+  const failsafe = setTimeout(() => { commentSubmitting.value = false }, 15000)
   try {
     let text = commentText.value
     if (replyTo.value) {
@@ -363,7 +374,14 @@ async function onSubmitComment() {
     replyTo.value = null
     uni.showToast({ title: t('plaza.commented'), icon: 'success' })
   } catch (err: any) {
-    uni.showToast({ title: err?.message || t('plaza.postFail'), icon: 'none' })
+    uni.showToast({
+      title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
+      icon: 'none',
+      duration: 2500,
+    })
+  } finally {
+    clearTimeout(failsafe)
+    commentSubmitting.value = false
   }
 }
 

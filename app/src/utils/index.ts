@@ -12,6 +12,41 @@ export function formatTime(dateStr: string): string {
   return date.toLocaleDateString()
 }
 
+const RATE_LIMIT_MESSAGES: Record<string, { en: string; zh: string }> = {
+  rate_limit_items_hour:    { en: 'Too many items this hour. Try again later.',       zh: '本小时发布太多,稍后再试' },
+  rate_limit_items_day:     { en: 'Daily item limit reached. Try again tomorrow.',    zh: '今日已达发布上限' },
+  duplicate_item:           { en: 'You just posted this. Wait a moment.',              zh: '刚刚已发布过这条,请稍等' },
+  rate_limit_posts_hour:    { en: 'Too many posts this hour. Slow down.',              zh: '本小时发帖太多,慢一点' },
+  rate_limit_posts_day:     { en: 'Daily post limit reached.',                         zh: '今日已达发帖上限' },
+  duplicate_post:           { en: 'You just posted that. Please wait.',                zh: '刚刚已发过这条' },
+  rate_limit_comments_hour: { en: 'Commenting too fast. Please wait a minute.',        zh: '评论太快,请稍等' },
+  rate_limit_comments_day:  { en: 'Daily comment limit reached.',                      zh: '今日评论已达上限' },
+  duplicate_comment:        { en: 'You just wrote that. Please wait.',                 zh: '刚刚写过这条评论' },
+  rate_limit_messages_minute: { en: 'Slow down — too many messages.',                  zh: '发送太快,请慢一点' },
+  rate_limit_messages_hour: { en: 'Hourly message limit reached.',                     zh: '本小时消息已达上限' },
+  duplicate_message:        { en: 'Duplicate message blocked.',                        zh: '重复消息已拦截' },
+  rate_limit_reports_hour:  { en: 'Too many reports recently.',                        zh: '举报太频繁' },
+  rate_limit_reports_day:   { en: 'Daily report limit reached.',                       zh: '今日举报已达上限' },
+  reports_unique_reporter_target: { en: 'You have already reported this.',             zh: '你已举报过这个' },
+}
+
+export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string {
+  if (!err) return ''
+  const raw = String(err?.message || err?.code || err || '').toLowerCase()
+  for (const key of Object.keys(RATE_LIMIT_MESSAGES)) {
+    if (raw.includes(key.toLowerCase())) {
+      return RATE_LIMIT_MESSAGES[key][lang]
+    }
+  }
+  if (raw.includes('duplicate key') || err?.code === '23505') {
+    return lang === 'zh' ? '刚刚已提交过,请稍等' : 'Already submitted. Please wait.'
+  }
+  if (raw.includes('jwt') || raw.includes('not authenticated')) {
+    return lang === 'zh' ? '请重新登录' : 'Please sign in again'
+  }
+  return err?.message || (lang === 'zh' ? '操作失败' : 'Something went wrong')
+}
+
 export function haptic(style: 'light' | 'medium' | 'heavy' = 'light') {
   // #ifdef H5
   try {

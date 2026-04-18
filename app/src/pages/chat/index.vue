@@ -120,7 +120,7 @@
         @confirm="onSend"
         class="msg-input"
       />
-      <view :class="['send-btn', { disabled: !inputText.trim() }]" @click="onSend">
+      <view :class="['send-btn', { disabled: !inputText.trim() || sending }]" @click="onSend">
         <view class="send-arrow"></view>
       </view>
     </view>
@@ -136,10 +136,10 @@ import { useItems } from '../../composables/useItems'
 import { useUnread } from '../../composables/useUnread'
 import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
-import { compressImage, formatPrice } from '../../utils'
+import { compressImage, formatPrice, friendlyErrorMessage } from '../../utils'
 import type { Item } from '../../types'
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 
 const { currentUser, requireAuth } = useAuth()
 const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, deleteMessage, fetchConversationDetail, setConversationPinned, setConversationMuted } = useMessages()
@@ -233,9 +233,12 @@ async function sendQuickReply(text: string) {
   }
 }
 
+const sending = ref(false)
+
 async function onSend() {
   const text = inputText.value.trim()
   if (!text || !currentUser.value || !conversationId.value) return
+  if (sending.value) return
 
   let finalText = text
   if (replyToMsg.value) {
@@ -248,16 +251,25 @@ async function onSend() {
   inputText.value = ''
   const wasReplying = replyToMsg.value
   replyToMsg.value = null
+  sending.value = true
+  const failsafe = setTimeout(() => { sending.value = false }, 15000)
 
   try {
     await sendMessage(conversationId.value, currentUser.value.id, finalText)
     markAsRead(conversationId.value, currentUser.value.id)
     refreshUnreadCount()
     nextTick(() => scrollToBottom())
-  } catch (error) {
-    uni.showToast({ title: t('chat.fail'), icon: 'none' })
+  } catch (error: any) {
+    uni.showToast({
+      title: friendlyErrorMessage(error, lang.value as 'en' | 'zh'),
+      icon: 'none',
+      duration: 2500,
+    })
     inputText.value = text
     replyToMsg.value = wasReplying
+  } finally {
+    clearTimeout(failsafe)
+    sending.value = false
   }
 }
 
@@ -415,11 +427,14 @@ function previewImg(url: string) {
 
 async function onSendImage() {
   if (!currentUser.value || !conversationId.value) return
+  if (sending.value) return
   uni.chooseImage({
     count: 1,
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
     success: async (res) => {
+      sending.value = true
+      const failsafe = setTimeout(() => { sending.value = false }, 30000)
       try {
         const compressed = await compressImage(res.tempFilePaths[0])
         const urls = await uploadImages([compressed])
@@ -427,8 +442,15 @@ async function onSendImage() {
           await sendMessage(conversationId.value, currentUser.value!.id, urls[0], 'image')
           nextTick(() => scrollToBottom())
         }
-      } catch {
-        uni.showToast({ title: t('chat.fail'), icon: 'none' })
+      } catch (err: any) {
+        uni.showToast({
+          title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
+          icon: 'none',
+          duration: 2500,
+        })
+      } finally {
+        clearTimeout(failsafe)
+        sending.value = false
       }
     },
   })

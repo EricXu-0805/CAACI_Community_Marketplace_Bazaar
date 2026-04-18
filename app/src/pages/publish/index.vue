@@ -147,7 +147,7 @@ import { useI18n } from '../../composables/useI18n'
 import { useCampusSpots, type CampusSpot } from '../../composables/useCampusSpots'
 import { useLocation } from '../../composables/useLocation'
 import { useItems } from '../../composables/useItems'
-import { compressImage } from '../../utils'
+import { friendlyErrorMessage } from '../../utils'
 import type { ItemCategory, ItemCondition } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
@@ -293,7 +293,11 @@ async function onSubmit() {
     }
   } catch (error: any) {
     console.error('Publish error:', error)
-    uni.showToast({ title: error?.message || t('publish.fail'), icon: 'none', duration: 3000 })
+    uni.showToast({
+      title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('publish.fail'),
+      icon: 'none',
+      duration: 3000,
+    })
   } finally {
     clearTimeout(failsafe)
     submitting.value = false
