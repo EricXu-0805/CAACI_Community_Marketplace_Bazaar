@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page page-lock">
     <!-- Header with item context -->
     <view class="chat-header">
       <view class="ch-back" @click="goBack">

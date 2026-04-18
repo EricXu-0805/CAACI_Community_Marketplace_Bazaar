@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page page-lock">
     <DesktopNav current="plaza" />
 
     <view class="page-header">

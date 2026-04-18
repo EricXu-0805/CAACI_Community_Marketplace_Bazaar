@@ -52,6 +52,30 @@ page {
   letter-spacing: -0.01em;
 }
 
+/* ============================================
+   On H5 mobile, uni-app's internal uni-page-wrapper
+   / uni-page-body elements scroll instead of letting
+   the inner .page do it. That makes the page header
+   scroll off screen. The .page-lock class takes the
+   page out of normal flow entirely (fixed inset 0),
+   so there is nothing above it that can scroll.
+   Desktop (>=768px) opts out since those pages want
+   to scroll normally with the desktop nav on top.
+   ============================================ */
+html, body, uni-app, uni-page, uni-page-wrapper, uni-page-body, #app {
+  overscroll-behavior: none;
+}
+
+@media (max-width: 767px) {
+  .page-lock {
+    position: fixed !important;
+    top: 0; left: 0; right: 0; bottom: 0;
+    max-width: none !important;
+    margin: 0 !important;
+    z-index: 1;
+  }
+}
+
 uni-tabbar, .uni-tabbar, .uni-tabbar-bottom {
   display: none !important;
 }

@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page page-lock">
     <DesktopNav current="index" />
 
     <view class="mobile-header">
