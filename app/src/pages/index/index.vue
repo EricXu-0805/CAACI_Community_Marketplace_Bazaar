@@ -25,6 +25,17 @@
           <view v-if="activeFilterCount > 0" class="fb-badge">{{ activeFilterCount }}</view>
         </view>
       </view>
+
+      <scroll-view class="cat-bar mobile-cats" scroll-x enable-flex>
+        <view
+          v-for="cat in categories"
+          :key="'m'+cat.value"
+          :class="['pill', { active: selectedCategory === cat.value }]"
+          @click="selectCategory(cat.value)"
+        >
+          <text>{{ cat.label }}</text>
+        </view>
+      </scroll-view>
     </view>
 
     <!-- Search History -->
@@ -38,21 +49,6 @@
           <text>{{ h }}</text>
         </view>
       </view>
-    </view>
-
-    <!-- Quick action banner -->
-    <view v-if="!searchText && !selectedCategory" class="banner-area">
-      <swiper class="banner-swiper" autoplay circular :interval="4000">
-        <swiper-item v-for="(b, i) in banners" :key="i">
-          <view :class="['banner-card', b.color]" @click="b.action">
-            <text class="banner-emoji">{{ b.icon }}</text>
-            <view class="banner-text">
-              <text class="banner-title">{{ b.title }}</text>
-              <text class="banner-sub">{{ b.sub }}</text>
-            </view>
-          </view>
-        </swiper-item>
-      </swiper>
     </view>
 
     <!-- Desktop only: Category Pills at top -->
@@ -239,10 +235,10 @@
                 </view>
                 <view class="card-fav">
                   <text v-if="isOldItem(item.created_at)" class="old-tag">{{ t('home.oldListing') }}</text>
-                  <text
-                    :class="['fav-heart', { active: isFavorited(item.id) }]"
+                  <view
+                    :class="['heart-ico', { active: isFavorited(item.id) }]"
                     @click.stop="onQuickFav(item)"
-                  >♥</text>
+                  ></view>
                   <text class="fav-num">{{ item.favorite_count || 0 }}</text>
                 </view>
               </view>
@@ -285,24 +281,12 @@
     </view>
 
     <CustomTabBar current="index" />
-
-    <!-- Mobile: Category Pills at bottom (above tabBar) -->
-    <scroll-view class="cat-bar mobile-cats" scroll-x enable-flex>
-      <view
-        v-for="cat in categories"
-        :key="'m'+cat.value"
-        :class="['pill', { active: selectedCategory === cat.value }]"
-        @click="selectCategory(cat.value)"
-      >
-        <text>{{ cat.label }}</text>
-      </view>
-    </scroll-view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { onPullDownRefresh, onShow } from '@dcloudio/uni-app'
+import { onShow } from '@dcloudio/uni-app'
 import { useItems } from '../../composables/useItems'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
@@ -349,7 +333,7 @@ const filterCondition = ref('')
 const filterLocation = ref('')
 const sortBy = ref('latest')
 
-const categoryKeys: (ItemCategory | null)[] = [null, 'furniture', 'electronics', 'clothing', 'books', 'housing', 'vehicles', 'daily', 'food', 'currency_exchange', 'other']
+const categoryKeys: (ItemCategory | null)[] = [null, 'currency_exchange', 'electronics', 'furniture', 'housing', 'clothing', 'books', 'vehicles', 'daily', 'food', 'other']
 const categories = computed(() => categoryKeys.map(k => ({
   value: k,
   label: t(k ? 'cat.' + k : 'cat.all'),
@@ -562,16 +546,17 @@ function loadMore() {
 }
 
 async function onRefresh() {
+  if (isRefreshing.value) return
   isRefreshing.value = true
   currentPage.value = 0
-  await fetchItems({ ...getFilterParams(), reset: true })
-  isRefreshing.value = false
+  const failsafe = setTimeout(() => { isRefreshing.value = false }, 10000)
+  try {
+    await fetchItems({ ...getFilterParams(), reset: true })
+  } finally {
+    clearTimeout(failsafe)
+    isRefreshing.value = false
+  }
 }
-
-onPullDownRefresh(async () => {
-  await onRefresh()
-  uni.stopPullDownRefresh()
-})
 
 function goToDetail(id: string) {
   uni.navigateTo({ url: `/pages/detail/index?id=${id}` })
@@ -660,17 +645,10 @@ function goPublish() {
   &.active { background: #1a1a1a; color: #fff; }
 }
 
-/* Mobile: categories fixed at bottom above tabBar */
 .mobile-cats {
   display: block;
-  position: fixed;
-  bottom: calc(50px + env(safe-area-inset-bottom, 0px));
-  left: 0; right: 0; z-index: 90;
-  background: rgba(252,252,253,0.9);
-  backdrop-filter: saturate(180%) blur(16px);
-  -webkit-backdrop-filter: saturate(180%) blur(16px);
-  border-top: 0.5px solid rgba(0,0,0,0.06);
-  padding: 5px 10px 6px;
+  margin-top: 4px;
+  padding: 2px 0 4px;
 }
 /* Desktop: hide mobile cats, show desktop cats */
 .desktop-cats {
@@ -827,12 +805,36 @@ function goPublish() {
 .card-seller { display: flex; align-items: center; gap: 5px; flex: 1; min-width: 0; }
 .seller-pic { width: 16px; height: 16px; border-radius: 50%; background: #f0f0f0; flex-shrink: 0; }
 .seller-nick { font-size: 11px; color: #8e8e93; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.card-fav { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
-.fav-heart {
-  font-size: 13px; color: #c7c7cc; cursor: pointer;
-  transition: color 0.15s, transform 0.15s;
-  &.active { color: #FF3B30; }
-  &:active { transform: scale(1.3); }
+.card-fav { display: flex; align-items: center; gap: 4px; flex-shrink: 0; padding: 2px; }
+.heart-ico {
+  width: 16px; height: 14px; position: relative;
+  cursor: pointer;
+  transition: transform 0.15s;
+  &::before, &::after {
+    content: ''; position: absolute; top: 0;
+    width: 8px; height: 12px;
+    background: transparent;
+    border: 1.6px solid #8e8e93;
+    border-radius: 8px 8px 0 0;
+    transition: all 0.15s;
+  }
+  &::before {
+    left: 0;
+    transform: rotate(-45deg);
+    transform-origin: bottom right;
+    border-right: none;
+  }
+  &::after {
+    right: 0;
+    transform: rotate(45deg);
+    transform-origin: bottom left;
+    border-left: none;
+  }
+  &.active::before, &.active::after {
+    background: #FF3B30;
+    border-color: #FF3B30;
+  }
+  &:active { transform: scale(1.25); }
 }
 .fav-num { font-size: 10px; color: #aeaeb2; }
 

@@ -128,21 +128,28 @@
         <view v-if="comments.length === 0 && !loadingComments" class="cs-empty">
           <text>{{ t('plaza.noComments') }}</text>
         </view>
-        <view v-for="c in comments" :key="c.id" class="cs-item" @longpress="onCommentLongPress(c)">
+        <view v-for="c in comments" :key="c.id" class="cs-item" @click="onCommentTap(c)" @longpress="onCommentLongPress(c)">
           <image :src="c.profile?.avatar_url || '/static/default-avatar.svg'" class="cs-avatar" />
           <view class="cs-body">
             <view class="cs-top">
               <text class="cs-name">{{ c.profile?.nickname || t('app.user') }}</text>
               <text class="cs-time">{{ formatTime(c.created_at) }}</text>
             </view>
+            <text v-if="c.reply_to_name" class="cs-reply-ref">@{{ c.reply_to_name }}</text>
             <text class="cs-content">{{ c.content }}</text>
           </view>
         </view>
       </scroll-view>
+      <view v-if="replyTo" class="cs-reply-bar">
+        <text class="cs-reply-label">{{ t('plaza.replyingTo') }} @{{ replyTo.profile?.nickname || t('app.user') }}</text>
+        <view class="cs-reply-x" @click="replyTo = null">
+          <view class="cs-rx"></view>
+        </view>
+      </view>
       <view class="cs-input-bar">
         <input
           v-model="commentText"
-          :placeholder="t('plaza.commentHint')"
+          :placeholder="replyTo ? t('plaza.replyHint') : t('plaza.commentHint')"
           class="cs-input"
           confirm-type="send"
           :focus="!!commentingPost"
@@ -150,7 +157,7 @@
           maxlength="1000"
         />
         <view :class="['cs-send', { disabled: !commentText.trim() }]" @click="onSubmitComment">
-          <text>{{ t('plaza.comment') }}</text>
+          <text>{{ replyTo ? t('plaza.reply') : t('plaza.comment') }}</text>
         </view>
       </view>
     </view>
@@ -161,7 +168,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { onPullDownRefresh } from '@dcloudio/uni-app'
+
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
 import { usePlaza } from '../../composables/usePlaza'
@@ -196,6 +203,7 @@ const commentingPost = ref<Post | null>(null)
 const comments = ref<PostComment[]>([])
 const loadingComments = ref(false)
 const commentText = ref('')
+const replyTo = ref<PostComment | null>(null)
 
 onMounted(async () => {
   await ensureBlockedLoaded()
@@ -214,14 +222,6 @@ async function onRefresh() {
     refreshing.value = false
   }
 }
-
-onPullDownRefresh(async () => {
-  try {
-    await onRefresh()
-  } finally {
-    uni.stopPullDownRefresh()
-  }
-})
 
 async function loadMore() {
   if (loading.value || !hasMore.value) return
@@ -321,10 +321,9 @@ function previewImage(urls: string[], idx: number) {
 }
 
 function onSharePost(post: Post) {
-  const preview = post.content.slice(0, 80)
   uni.setClipboardData({
-    data: preview,
-    success: () => uni.showToast({ title: t('detail.linkCopied'), icon: 'success' }),
+    data: post.content,
+    success: () => uni.showToast({ title: t('plaza.contentCopied'), icon: 'success' }),
   })
 }
 
@@ -343,41 +342,64 @@ function closeComments() {
   commentingPost.value = null
   comments.value = []
   commentText.value = ''
+  replyTo.value = null
 }
 
 async function onSubmitComment() {
   if (!requireAuth()) return
   if (!commentText.value.trim() || !commentingPost.value) return
   try {
-    const c = await createComment(commentingPost.value.id, commentText.value)
+    let text = commentText.value
+    if (replyTo.value) {
+      const name = replyTo.value.profile?.nickname || t('app.user')
+      text = `@${name} ${text}`
+    }
+    const c = await createComment(commentingPost.value.id, text, replyTo.value?.id)
+    if (replyTo.value) {
+      ;(c as any).reply_to_name = replyTo.value.profile?.nickname || t('app.user')
+    }
     comments.value.push(c)
     commentText.value = ''
+    replyTo.value = null
     uni.showToast({ title: t('plaza.commented'), icon: 'success' })
   } catch (err: any) {
     uni.showToast({ title: err?.message || t('plaza.postFail'), icon: 'none' })
   }
 }
 
+function onCommentTap(c: PostComment) {
+  if (!currentUser.value) return
+  if (c.user_id === currentUser.value.id) return
+  replyTo.value = c
+}
+
 function onCommentLongPress(c: PostComment) {
-  if (!currentUser.value || c.user_id !== currentUser.value.id) return
+  if (!currentUser.value) return
+  const isMine = c.user_id === currentUser.value.id
+  const items = isMine ? [t('plaza.delete')] : [t('plaza.reply'), t('plaza.report')]
   uni.showActionSheet({
-    itemList: [t('plaza.delete')],
-    itemColor: '#FF3B30',
+    itemList: items,
+    itemColor: isMine ? '#FF3B30' : '#1a1a1a',
     success: (res) => {
-      if (res.tapIndex !== 0) return
-      uni.showModal({
-        title: t('plaza.commentDeleteConfirm'),
-        confirmColor: '#FF3B30',
-        success: async (r) => {
-          if (!r.confirm || !commentingPost.value) return
-          try {
-            await deleteComment(c.id, commentingPost.value.id)
-            comments.value = comments.value.filter(x => x.id !== c.id)
-          } catch (err: any) {
-            uni.showToast({ title: err?.message || t('msg.actionFailed'), icon: 'none' })
-          }
-        },
-      })
+      if (isMine && res.tapIndex === 0) {
+        uni.showModal({
+          title: t('plaza.commentDeleteConfirm'),
+          confirmColor: '#FF3B30',
+          success: async (r) => {
+            if (!r.confirm || !commentingPost.value) return
+            try {
+              await deleteComment(c.id, commentingPost.value.id)
+              comments.value = comments.value.filter(x => x.id !== c.id)
+            } catch (err: any) {
+              uni.showToast({ title: err?.message || t('msg.actionFailed'), icon: 'none' })
+            }
+          },
+        })
+      } else if (!isMine && res.tapIndex === 0) {
+        replyTo.value = c
+      } else if (!isMine && res.tapIndex === 1) {
+        reportTarget('user', c.user_id)
+      }
     },
   })
 }
@@ -654,6 +676,31 @@ function onCommentLongPress(c: PostComment) {
 .cs-time { font-size: 11px; color: #c7c7cc; }
 .cs-content { font-size: 14px; color: #1a1a1a; line-height: 1.45; margin-top: 2px; display: block; word-break: break-word; }
 
+.cs-reply-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 12px;
+  background: rgba(255,107,53,0.08);
+  border-top: 0.5px solid rgba(255,107,53,0.2);
+}
+.cs-reply-label { font-size: 12px; color: #FF6B35; font-weight: 500; flex: 1; }
+.cs-reply-x {
+  width: 20px; height: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  &:active { background: rgba(255,107,53,0.15); }
+}
+.cs-rx {
+  width: 10px; height: 10px; position: relative;
+  &::before, &::after {
+    content: ''; position: absolute; top: 50%; left: 0;
+    width: 10px; height: 1.5px; background: #FF6B35;
+  }
+  &::before { transform: rotate(45deg); }
+  &::after { transform: rotate(-45deg); }
+}
+.cs-reply-ref {
+  display: block; font-size: 11px; color: #FF6B35; font-weight: 500;
+  margin-top: 2px;
+}
 .cs-input-bar {
   display: flex; gap: 8px; padding: 9px 12px;
   background: #fff; border-top: 0.5px solid rgba(0,0,0,0.06);

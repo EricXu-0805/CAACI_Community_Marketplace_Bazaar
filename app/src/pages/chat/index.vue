@@ -98,13 +98,24 @@
       </view>
     </scroll-view>
 
+    <view v-if="replyToMsg" class="reply-ctx">
+      <view class="rc-bar"></view>
+      <view class="rc-body">
+        <text class="rc-label">{{ t('chat.replyingTo') }}</text>
+        <text class="rc-text">{{ (replyToMsg.message_type === 'image' ? '[' + t('chat.photo') + ']' : replyToMsg.content).slice(0, 80) }}</text>
+      </view>
+      <view class="rc-x" @click="replyToMsg = null">
+        <view class="rc-x-inner"></view>
+      </view>
+    </view>
+
     <view class="input-bar">
       <view class="img-btn" @click="onSendImage">
         <view class="img-icon"></view>
       </view>
       <input
         v-model="inputText"
-        :placeholder="t('chat.placeholder')"
+        :placeholder="replyToMsg ? t('chat.replyingHint') : t('chat.placeholder')"
         confirm-type="send"
         @confirm="onSend"
         class="msg-input"
@@ -137,6 +148,7 @@ const { refreshUnreadCount } = useUnread()
 const { reportTarget, blockUser } = useModeration()
 
 const inputText = ref('')
+const replyToMsg = ref<any>(null)
 const scrollTarget = ref('')
 const conversationId = ref('')
 const itemInfo = ref<Item | null>(null)
@@ -225,16 +237,27 @@ async function onSend() {
   const text = inputText.value.trim()
   if (!text || !currentUser.value || !conversationId.value) return
 
+  let finalText = text
+  if (replyToMsg.value) {
+    const quoted = replyToMsg.value.message_type === 'image'
+      ? `[${t('chat.photo')}]`
+      : (replyToMsg.value.content || '').slice(0, 80)
+    finalText = `> ${quoted}\n${text}`
+  }
+
   inputText.value = ''
+  const wasReplying = replyToMsg.value
+  replyToMsg.value = null
 
   try {
-    await sendMessage(conversationId.value, currentUser.value.id, text)
+    await sendMessage(conversationId.value, currentUser.value.id, finalText)
     markAsRead(conversationId.value, currentUser.value.id)
     refreshUnreadCount()
     nextTick(() => scrollToBottom())
   } catch (error) {
     uni.showToast({ title: t('chat.fail'), icon: 'none' })
     inputText.value = text
+    replyToMsg.value = wasReplying
   }
 }
 
@@ -351,6 +374,7 @@ function onMsgLongPress(msg: any) {
   const isText = msg.message_type !== 'image'
 
   const actions: string[] = []
+  if (!isMine) actions.push(t('chat.reply'))
   if (isText) actions.push(t('chat.copy'))
   if (isMine) actions.push(t('chat.deleteMsg'))
   if (actions.length === 0) return
@@ -359,7 +383,10 @@ function onMsgLongPress(msg: any) {
     itemList: actions,
     success: (res) => {
       const action = actions[res.tapIndex]
-      if (action === t('chat.copy')) {
+      if (action === t('chat.reply')) {
+        replyToMsg.value = msg
+        nextTick(() => { /* keyboard opens via input focus naturally */ })
+      } else if (action === t('chat.copy')) {
         uni.setClipboardData({ data: msg.content })
         uni.showToast({ title: t('chat.copied'), icon: 'success' })
       } else if (action === t('chat.deleteMsg')) {
@@ -576,6 +603,38 @@ function scrollToBottom() {
 }
 
 /* ========== Input Bar ========== */
+.reply-ctx {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px;
+  background: rgba(255,107,53,0.08);
+  border-top: 0.5px solid rgba(255,107,53,0.15);
+  max-width: 480px; margin: 0 auto;
+  width: 100%; box-sizing: border-box;
+}
+.rc-bar { width: 3px; align-self: stretch; background: #FF6B35; border-radius: 2px; }
+.rc-body { flex: 1; min-width: 0; }
+.rc-label { display: block; font-size: 11px; color: #FF6B35; font-weight: 600; }
+.rc-text {
+  display: block; font-size: 13px; color: #636366;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  margin-top: 2px;
+}
+.rc-x {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  &:active { background: rgba(255,107,53,0.15); }
+}
+.rc-x-inner {
+  width: 11px; height: 11px; position: relative;
+  &::before, &::after {
+    content: ''; position: absolute; top: 50%; left: 0;
+    width: 11px; height: 1.5px; background: #FF6B35;
+  }
+  &::before { transform: rotate(45deg); }
+  &::after { transform: rotate(-45deg); }
+}
+
 .input-bar {
   display: flex; align-items: center; padding: 9px 14px;
   background: #fff; border-top: 0.5px solid rgba(0,0,0,0.06); gap: 8px;
