@@ -78,6 +78,10 @@ export function useFavorites() {
       .filter(Boolean) as import('../types').Item[]
   }
 
+  function reset() {
+    favoriteIds.value = new Set()
+  }
+
   return {
     favoriteIds,
     loading,
@@ -86,5 +90,6 @@ export function useFavorites() {
     toggleFavorite,
     getFavoriteCount,
     fetchMyFavoriteItems,
+    reset,
   }
 }

@@ -79,6 +79,11 @@ export function useFollow() {
     return count || 0
   }
 
+  function reset() {
+    following.value = new Set()
+    followingLoaded.value = false
+  }
+
   return {
     following,
     followingLoaded,
@@ -87,5 +92,6 @@ export function useFollow() {
     toggleFollow,
     fetchFollowingFeed,
     followerCount,
+    reset,
   }
 }

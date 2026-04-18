@@ -67,5 +67,10 @@ export function useSavedSearch() {
     items.value = items.value.filter(s => s.id !== id)
   }
 
-  return { items, loaded, fetchMine, create, remove }
+  function reset() {
+    items.value = []
+    loaded.value = false
+  }
+
+  return { items, loaded, fetchMine, create, remove, reset }
 }
