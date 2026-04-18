@@ -1,0 +1,291 @@
+================================================================================
+CAACI COMMUNITY MARKETPLACE BAZAAR
+Accessibility + i18n + UX Consistency Audit
+================================================================================
+
+AUDIT DATE: 2024
+PROJECT: uni-app Vue 3 Bilingual (EN/CN) Marketplace
+SCOPE: Full codebase audit (30+ pages, 15+ composables)
+
+================================================================================
+EXECUTIVE SUMMARY
+================================================================================
+
+Total Issues Found: 30+ (prioritized)
+Critical Issues: 2
+High Priority: 8
+Medium Priority: 15
+Low Priority: 5+
+
+Status: App has good i18n infrastructure but needs fixes for:
+  - Hardcoded error messages (not translated)
+  - Missing alt attributes on 24 images
+  - Low contrast text (WCAG AA failures)
+  - Inconsistent loading/error states
+  - Missing accessibility attributes
+
+================================================================================
+TOP 5 CRITICAL ISSUES
+================================================================================
+
+1. HARDCODED ENGLISH ERROR MESSAGE (App.vue:36)
+   - "No network connection" not translated
+   - Chinese users see English
+   - Fix: Add i18n key 'error.noNetwork'
+
+2. MISSING ALT ATTRIBUTES ON IMAGES (24 instances)
+   - Product images, avatars, message images
+   - Fails WCAG 2.1 Level A
+   - Fix: Add alt="..." to all <image> tags
+
+3. HARDCODED ERROR MESSAGES IN COMPOSABLES
+   - "Failed to load plaza", "Failed to load messages"
+   - Chinese users see English
+   - Fix: Add i18n keys for all errors
+
+4. LOGIN FORM EMAIL INPUT TYPE
+   - Uses type="text" instead of type="email"
+   - Mobile keyboards don't show @ symbol
+   - Fix: Change to type="email"
+
+5. PASSWORD AUTOCOMPLETE MISSING
+   - No autocomplete="current-password" or "new-password"
+   - Password managers can't autofill
+   - Fix: Add autocomplete attribute
+
+================================================================================
+CONTRAST ISSUES (WCAG AA Failures)
+================================================================================
+
+- #999 gray on white (filter labels, empty state text)
+- #ccc gray on white (price range dash)
+- #bbb gray on white (helper text)
+- #8e8e93 gray on white (seller stats labels)
+
+Fix: Change all to #666 or darker
+
+================================================================================
+ACCESSIBILITY GAPS
+================================================================================
+
+Images:
+  - 24 <image> tags missing alt attributes
+  - Affects: products, avatars, messages, thumbnails
+
+Forms:
+  - Email input: type="text" (should be type="email")
+  - Password: missing autocomplete attributes
+  - No <label> elements for inputs
+  - Character counters not labeled for screen readers
+
+Touch Targets:
+  - Back buttons: 32px (should be 44px minimum)
+  - Close buttons: 32px (should be 44px minimum)
+  - Filter buttons: 32px (should be 44px minimum)
+
+Keyboard Navigation:
+  - Custom buttons don't respond to Enter/Space
+  - No focus indicators visible
+  - No keyboard trap prevention
+
+Screen Readers:
+  - No aria-live on toasts
+  - No aria-label on icon buttons
+  - No aria-hidden on decorative elements
+  - No role="button" on clickable divs
+
+================================================================================
+I18N COVERAGE GAPS
+================================================================================
+
+Hardcoded English Strings:
+  - "No network connection" (App.vue:36)
+  - "Failed to load plaza" (usePlaza.ts)
+  - "Failed to load messages" (useMessages.ts)
+  - "Failed, please try again" (useFavorites.ts)
+  - Time ago strings: "5m ago", "2h ago", "3d ago" (formatTime)
+  - Currency symbol: $ (hardcoded in multiple places)
+
+Language Conditionals (Fragile):
+  - lang.value === 'zh' ? spot.zh : spot.en (5+ files)
+  - Should use i18n keys instead
+
+Date/Number Formatting:
+  - formatTime() returns English strings
+  - formatPrice() hardcodes $ symbol
+  - No toLocaleString() usage
+
+================================================================================
+UX CONSISTENCY GAPS
+================================================================================
+
+Loading States:
+  - Inconsistent across pages
+  - Detail page: NO loading state
+  - Seller page: HAS loading state
+  - Home page: HAS loading state
+
+Error States:
+  - Detail page: NO error state
+  - Seller page: NO error state
+  - Inconsistent error messages
+
+Empty States:
+  - Inconsistent icons (SVG, CSS, none)
+  - No unified empty state component
+
+Toast Notifications:
+  - Duration varies: 2000ms, 2500ms, 3000ms
+  - No consistent styling
+
+Confirm Dialogs:
+  - Some use i18n, some hardcoded
+  - Inconsistent button order
+
+Pull-to-Refresh:
+  - Only on messages and profile pages
+  - Should be on more list pages
+
+================================================================================
+FORM & INPUT ISSUES
+================================================================================
+
+Required Fields:
+  - No visual indicator for required fields
+  - No required attribute on inputs
+
+Validation:
+  - Inline validation missing
+  - Submit-time validation only
+
+Character Counters:
+  - Present but not labeled for screen readers
+  - No aria-label
+
+Autocomplete:
+  - Email input: missing type="email"
+  - Password: missing autocomplete attributes
+  - Signup nickname: missing autocomplete="username"
+
+Keyboard Hints:
+  - Some inputs have confirm-type="send" ✓
+  - Some inputs have confirm-type="search" ✓
+  - Missing inputmode attributes
+
+================================================================================
+MOBILE H5 SPECIFICS
+================================================================================
+
+Safe Area Insets:
+  ✓ Properly implemented with env(safe-area-inset-*)
+  ✓ Used in: CustomTabBar, all pages
+
+Pull-to-Refresh:
+  - Only on 2 pages (messages, profile)
+  - Should be on more list pages
+
+Double-Tap-to-Zoom:
+  - Not explicitly prevented
+  - May cause issues on interactive elements
+
+iOS Momentum Scrolling:
+  - Not explicitly enabled
+  - Should add -webkit-overflow-scrolling: touch
+
+Android Back Button:
+  - Not explicitly handled
+  - Should implement back button handler
+
+================================================================================
+DARK MODE
+================================================================================
+
+Current Status:
+  ❌ No dark mode support
+  ❌ No prefers-color-scheme media query
+  ❌ No CSS variables for theming
+
+Recommendation:
+  - Add CSS variables for colors
+  - Implement @media (prefers-color-scheme: dark)
+  - Test with system dark mode
+
+================================================================================
+RECOMMENDATIONS BY PRIORITY
+================================================================================
+
+IMMEDIATE (This Sprint):
+  1. Add alt attributes to all 24 images
+  2. Fix email input type and password autocomplete
+  3. Fix contrast issues (#999, #ccc, #bbb, #8e8e93)
+  4. Add i18n key for network error
+  5. Increase touch target sizes to 44px minimum
+
+SHORT TERM (Next Sprint):
+  1. Translate all error messages in composables
+  2. Add loading/error states to detail and seller pages
+  3. Add keyboard navigation to custom buttons
+  4. Add focus indicators
+  5. Add aria-labels to icon buttons
+
+MEDIUM TERM (2-3 Sprints):
+  1. Refactor time formatting to use i18n
+  2. Create consistent empty state component
+  3. Implement dark mode support
+  4. Add aria-live to toasts
+  5. Standardize toast durations
+
+LONG TERM (Ongoing):
+  1. Add form labels and aria-labels
+  2. Implement comprehensive keyboard navigation
+  3. Add screen reader testing to QA process
+  4. Add accessibility testing to CI/CD
+  5. Consider WCAG 2.1 AA certification
+
+================================================================================
+TESTING CHECKLIST
+================================================================================
+
+- [ ] Screen reader testing (NVDA, JAWS, VoiceOver)
+- [ ] Keyboard-only navigation
+- [ ] Contrast checking (WebAIM, Axe DevTools)
+- [ ] Touch target size verification
+- [ ] Mobile keyboard testing (iOS, Android)
+- [ ] Dark mode testing
+- [ ] i18n testing (both EN and ZH)
+- [ ] Error state testing
+- [ ] Loading state testing
+- [ ] Empty state testing
+
+================================================================================
+TOOLS RECOMMENDED
+================================================================================
+
+Contrast:
+  - WebAIM Contrast Checker
+  - Axe DevTools
+
+Accessibility:
+  - Axe DevTools
+  - WAVE
+  - Lighthouse
+
+i18n:
+  - i18next
+  - vue-i18n (consider migration from current system)
+
+Testing:
+  - Cypress with accessibility plugins
+
+Screen Readers:
+  - NVDA (Windows)
+  - JAWS (Windows)
+  - VoiceOver (Mac/iOS)
+
+================================================================================
+DETAILED REPORT
+================================================================================
+
+See: ACCESSIBILITY_I18N_UX_AUDIT.md (full report with all 30 issues)
+
+================================================================================
