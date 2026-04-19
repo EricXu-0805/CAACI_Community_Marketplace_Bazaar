@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 
-export type ReportTarget = 'item' | 'user' | 'message'
+export type ReportTarget = 'item' | 'user' | 'message' | 'post' | 'comment'
 
 const blockedIds = ref<Set<string>>(new Set())
 let loaded = false

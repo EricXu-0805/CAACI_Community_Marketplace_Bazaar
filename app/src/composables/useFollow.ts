@@ -6,13 +6,15 @@ import type { Item } from '../types'
 const following = ref<Set<string>>(new Set())
 const followingLoaded = ref(false)
 
-const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, location, is_illini_verified'
+const PUBLIC_PROFILE_FIELDS_FULL = 'id, nickname, avatar_url, location, is_illini_verified, status_text, status_emoji'
+const PUBLIC_PROFILE_FIELDS_LEGACY = 'id, nickname, avatar_url, location, is_illini_verified'
 const LIST_ITEM_FIELDS_FULL =
   'id, user_id, title, price, category, condition, status, location, location_verified, images, view_count, favorite_count, negotiable, created_at'
 const LIST_ITEM_FIELDS_LEGACY =
   'id, user_id, title, price, category, condition, status, location, images, view_count, favorite_count, negotiable, created_at'
 
 let followLocVerifiedAvailable = true
+let followStatusAvailable = true
 
 export function useFollow() {
   const { supabase } = useSupabase()
@@ -67,9 +69,10 @@ export function useFollow() {
     const ids = Array.from(following.value)
     const runQuery = () => {
       const fields = followLocVerifiedAvailable ? LIST_ITEM_FIELDS_FULL : LIST_ITEM_FIELDS_LEGACY
+      const profileFields = followStatusAvailable ? PUBLIC_PROFILE_FIELDS_FULL : PUBLIC_PROFILE_FIELDS_LEGACY
       return supabase
         .from('items')
-        .select(`${fields}, profile:profiles(${PUBLIC_PROFILE_FIELDS})`)
+        .select(`${fields}, profile:profiles(${profileFields})`)
         .in('user_id', ids)
         .eq('status', 'active')
         .order('created_at', { ascending: false })
@@ -79,6 +82,11 @@ export function useFollow() {
     if (error?.code === '42703' && String(error.message || '').includes('location_verified')) {
       console.warn('[useFollow] items.location_verified missing — falling back (run migration 020)')
       followLocVerifiedAvailable = false
+      ;({ data, error } = await runQuery())
+    }
+    if (error?.code === '42703' && /status_/.test(String(error.message || ''))) {
+      console.warn('[useFollow] profiles.status_* missing — falling back (run migration 021)')
+      followStatusAvailable = false
       ;({ data } = await runQuery())
     }
     return (data || []) as unknown as Item[]

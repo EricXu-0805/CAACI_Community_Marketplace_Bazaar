@@ -225,12 +225,13 @@
             @click="goToDetail(item.id)"
             @longpress="onCardLongPress(item)"
           >
-            <view class="card-img-box">
+            <view class="card-img-box" :style="cardBoxStyle(item.id)">
               <img
                 :src="thumbUrl(item.images?.[0], 'card') || '/static/placeholder.svg'"
                 :class="['card-img', { 'card-img-sold': item.status === 'sold' }]"
                 :alt="item.title"
                 loading="lazy"
+                @load="onImgLoad(item.id, $event)"
               />
               <view v-if="item.status === 'sold'" class="sold-overlay">
                 <text>{{ t('status.sold') }}</text>
@@ -357,7 +358,7 @@ function localizeTitle(title: string): string {
 const { items, loading, hasMore, fetchError, fetchItems } = useItems()
 const { currentUser } = useAuth()
 const { isFavorited, toggleFavorite, loadMyFavorites } = useFavorites()
-const { ensureLoaded: ensureBlockedLoaded } = useModeration()
+const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
 
 const initialLoading = ref(true)
 
@@ -411,6 +412,19 @@ const activeFilterCount = computed(() => {
 })
 
 const displayItems = computed(() => items.value)
+
+const imgRatio = ref<Record<string, number>>({})
+function onImgLoad(id: string, e: Event) {
+  const img = e.target as HTMLImageElement
+  if (!img?.naturalWidth || !img?.naturalHeight) return
+  const ratio = img.naturalWidth / img.naturalHeight
+  const clamped = Math.max(0.55, Math.min(ratio, 1.4))
+  imgRatio.value = { ...imgRatio.value, [id]: clamped }
+}
+function cardBoxStyle(id: string): string {
+  const r = imgRatio.value[id]
+  return r ? `aspect-ratio: ${r};` : ''
+}
 
 function getFilterParams() {
   return {
@@ -531,8 +545,11 @@ async function onQuickFav(item: Item) {
 
 function onCardLongPress(item: Item) {
   const favLabel = isFavorited(item.id) ? t('home.unsave') : t('detail.save')
+  const isMine = currentUser.value?.id && item.user_id === currentUser.value.id
+  const actions: string[] = [favLabel, t('home.shareItem')]
+  if (!isMine) actions.push(t('report.reportItem'))
   uni.showActionSheet({
-    itemList: [favLabel, t('home.shareItem')],
+    itemList: actions,
     success: async (res) => {
       if (res.tapIndex === 0) {
         await onQuickFav(item)
@@ -549,6 +566,29 @@ function onCardLongPress(item: Item) {
         // #ifndef H5
         uni.showToast({ title: t('detail.linkCopied'), icon: 'success' })
         // #endif
+      } else if (res.tapIndex === 2 && !isMine) {
+        promptReportItem(item.id)
+      }
+    },
+  })
+}
+
+function promptReportItem(itemId: string) {
+  const reasons = [
+    t('report.reasonSpam'),
+    t('report.reasonProhibited'),
+    t('report.reasonMisleading'),
+    t('report.reasonOther'),
+  ]
+  uni.showActionSheet({
+    itemList: reasons,
+    success: async (res) => {
+      const reason = reasons[res.tapIndex]
+      try {
+        await reportTarget('item', itemId, reason)
+        uni.showToast({ title: t('report.thanks'), icon: 'success' })
+      } catch (err: any) {
+        uni.showToast({ title: err?.message || t('report.failed'), icon: 'none' })
       }
     },
   })
@@ -879,19 +919,22 @@ function goPublish() {
   transition: transform 0.1s;
   &:active { transform: scale(0.98); }
 }
-/* Fixed 3:4 aspect ratio reserves space BEFORE image loads → no layout
-   reflow when lazy-loaded images arrive → scroll stays smooth. Images
-   are letterboxed with object-fit:contain so full image is visible
-   without cropping or distortion. Grey fill shows letterbox bars. */
+/* Xiaohongshu-style waterfall: each card sizes to its own image's
+   aspect ratio once loaded (inline style set from naturalWidth/Height
+   in onImgLoad). Before load, fall back to 4:5 placeholder so there's
+   still a space reserved — yes there's a small jump on load, but the
+   alternative (uniform 3:4 + contain) produces the grey letterbox
+   bars the user said looked disjointed. Ratio is clamped 0.55–1.4 so
+   extreme tall/wide images don't destroy the grid. */
 .card-img-box {
   position: relative; width: 100%;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 4 / 5;
   background: #f2f2f7;
-  overflow: hidden;           /* clip card rounded corners */
+  overflow: hidden;
 }
 .card-img {
   width: 100%; height: 100%;
-  object-fit: contain;        /* whole image visible, no crop, no distortion */
+  object-fit: cover;
   display: block;
   transition: filter 0.2s;
   &.card-img-sold { filter: grayscale(1) brightness(0.85); }

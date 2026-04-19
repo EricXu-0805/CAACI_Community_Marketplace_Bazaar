@@ -11,17 +11,23 @@ const hasMore = ref(true)
 const fetchError = ref('')
 
 const PAGE_SIZE = 20
-const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, location, is_illini_verified'
+const PUBLIC_PROFILE_FIELDS_FULL = 'id, nickname, avatar_url, location, is_illini_verified, status_text, status_emoji'
+const PUBLIC_PROFILE_FIELDS_LEGACY = 'id, nickname, avatar_url, location, is_illini_verified'
 const LIST_ITEM_FIELDS_FULL =
   'id, user_id, title, price, category, condition, status, location, location_verified, images, view_count, favorite_count, negotiable, created_at'
 const LIST_ITEM_FIELDS_LEGACY =
   'id, user_id, title, price, category, condition, status, location, images, view_count, favorite_count, negotiable, created_at'
 
-// Set to true once we detect migration 020 has been applied. Stays true for
-// the session; flips to false if the first real query fails with 42703.
 let locationVerifiedAvailable = true
+let profileStatusAvailable = true
 function isMissingLocationVerified(err: any): boolean {
   return err?.code === '42703' && String(err?.message || '').includes('location_verified')
+}
+function isMissingStatusColumn(err: any): boolean {
+  return err?.code === '42703' && /status_/.test(String(err?.message || ''))
+}
+function publicProfileFields() {
+  return profileStatusAvailable ? PUBLIC_PROFILE_FIELDS_FULL : PUBLIC_PROFILE_FIELDS_LEGACY
 }
 
 const VALID_STATUSES: ItemStatus[] = ['active', 'reserved', 'sold', 'deleted']
@@ -57,7 +63,7 @@ export function useItems() {
         const fields = locationVerifiedAvailable ? LIST_ITEM_FIELDS_FULL : LIST_ITEM_FIELDS_LEGACY
         let q = supabase
           .from('items')
-          .select(`${fields}, profile:profiles(${PUBLIC_PROFILE_FIELDS})`)
+          .select(`${fields}, profile:profiles(${publicProfileFields()})`)
           .eq('status', 'active')
 
         if (sort === 'price_asc') q = q.order('price', { ascending: true })
@@ -89,6 +95,11 @@ export function useItems() {
         locationVerifiedAvailable = false
         ;({ data, error } = await buildQuery())
       }
+      if (error && isMissingStatusColumn(error)) {
+        console.warn('[useItems] profiles.status_* missing — falling back (run migration 021)')
+        profileStatusAvailable = false
+        ;({ data, error } = await buildQuery())
+      }
       if (error) throw error
 
       if (data) {
@@ -114,12 +125,18 @@ export function useItems() {
   }
 
   async function fetchItem(id: string) {
-    const { data, error } = await supabase
+    const runFetch = () => supabase
       .from('items')
-      .select(`*, profile:profiles(${PUBLIC_PROFILE_FIELDS})`)
+      .select(`*, profile:profiles(${publicProfileFields()})`)
       .eq('id', id)
       .single()
 
+    let { data, error } = await runFetch()
+    if (error && isMissingStatusColumn(error)) {
+      console.warn('[useItems] profiles.status_* missing — falling back (run migration 021)')
+      profileStatusAvailable = false
+      ;({ data, error } = await runFetch())
+    }
     if (error) throw error
 
     supabase.rpc('increment_view_count', { item_id: id }).then(({ error: rpcError }) => {

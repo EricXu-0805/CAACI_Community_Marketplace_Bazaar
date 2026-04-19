@@ -44,7 +44,7 @@
 
       <view v-else class="posts">
         <view v-for="post in posts" :key="post.id" class="post-card">
-          <view class="post-tappable" @click="goPostDetail(post)">
+          <view class="post-tappable" @click="goPostDetail(post)" @longpress="onPostLongPress(post)">
             <view class="post-header">
               <image :src="post.profile?.avatar_url || '/static/default-avatar.svg'" class="pa-avatar" />
               <view class="pa-info">
@@ -63,12 +63,15 @@
 
             <text class="post-content">{{ post.content }}</text>
 
-            <view v-if="post.images && post.images.length > 0" class="post-images">
+            <view
+              v-if="post.images && post.images.length > 0"
+              :class="['post-images', `pi-n${Math.min(post.images.length, 4)}`]"
+            >
               <image
                 v-for="(img, i) in post.images"
                 :key="i"
                 :src="thumbUrl(img, 'card')"
-                mode="aspectFill"
+                :mode="post.images.length === 1 ? 'widthFix' : 'aspectFill'"
                 class="post-image"
                 lazy-load
                 @click.stop="previewImage(post.images, i)"
@@ -571,18 +574,30 @@ function onCommentLongPress(c: PostComment) {
 }
 
 function promptReportUser(userId: string) {
-  const reasons = [
-    t('report.reasonSpam'),
-    t('report.reasonAbuse'),
-    t('report.reasonMisleading'),
-    t('report.reasonOther'),
-  ]
+  promptReport('user', userId)
+}
+
+function onPostLongPress(post: any) {
+  if (post.user_id === currentUser.value?.id) return
+  uni.showActionSheet({
+    itemList: [t('report.reportPost'), t('report.reportUser')],
+    success: (res) => {
+      if (res.tapIndex === 0) promptReport('post', post.id)
+      else if (res.tapIndex === 1) promptReport('user', post.user_id)
+    },
+  })
+}
+
+function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId: string) {
+  const reasons = targetType === 'user'
+    ? [t('report.reasonSpam'), t('report.reasonAbuse'), t('report.reasonMisleading'), t('report.reasonOther')]
+    : [t('report.reasonSpam'), t('report.reasonProhibited'), t('report.reasonMisleading'), t('report.reasonOther')]
   uni.showActionSheet({
     itemList: reasons,
     success: async (res) => {
       const reason = reasons[res.tapIndex]
       try {
-        await reportTarget('user', userId, reason)
+        await reportTarget(targetType, targetId, reason)
         uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
         uni.showToast({ title: err?.message || t('report.failed'), icon: 'none' })
@@ -733,9 +748,22 @@ function promptReportUser(userId: string) {
 }
 
 .post-images {
-  display: grid; grid-template-columns: 1fr 1fr 1fr;
-  gap: 4px; margin-top: 10px;
+  display: grid; gap: 4px; margin-top: 10px;
 }
+.post-images.pi-n1 {
+  grid-template-columns: 1fr;
+  max-width: 300px;
+  .post-image {
+    aspect-ratio: auto;
+    max-height: 420px;
+    width: auto; max-width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+}
+.post-images.pi-n2 { grid-template-columns: 1fr 1fr; }
+.post-images.pi-n3 { grid-template-columns: 1fr 1fr 1fr; }
+.post-images.pi-n4 { grid-template-columns: 1fr 1fr; }
 .post-image {
   width: 100%; aspect-ratio: 1; border-radius: 8px;
   background: #f2f2f7; object-fit: cover; cursor: pointer;

@@ -10,7 +10,7 @@
     </view>
 
     <scroll-view v-if="post" class="body" scroll-y>
-      <view class="post-card">
+      <view class="post-card" @longpress="onPostLongPress">
         <view class="post-head">
           <image :src="post.profile?.avatar_url || '/static/default-avatar.svg'" class="avatar" />
           <view class="head-info">
@@ -263,18 +263,32 @@ function onCommentLongPress(c: PostComment) {
 }
 
 function promptReportUser(userId: string) {
-  const reasons = [
-    t('report.reasonSpam'),
-    t('report.reasonAbuse'),
-    t('report.reasonMisleading'),
-    t('report.reasonOther'),
-  ]
+  promptReport('user', userId)
+}
+
+function onPostLongPress() {
+  if (!post.value || post.value.user_id === currentUser.value?.id) return
+  const postId = post.value.id
+  const userId = post.value.user_id
+  uni.showActionSheet({
+    itemList: [t('report.reportPost'), t('report.reportUser')],
+    success: (res) => {
+      if (res.tapIndex === 0) promptReport('post', postId)
+      else if (res.tapIndex === 1) promptReport('user', userId)
+    },
+  })
+}
+
+function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId: string) {
+  const reasons = targetType === 'user'
+    ? [t('report.reasonSpam'), t('report.reasonAbuse'), t('report.reasonMisleading'), t('report.reasonOther')]
+    : [t('report.reasonSpam'), t('report.reasonProhibited'), t('report.reasonMisleading'), t('report.reasonOther')]
   uni.showActionSheet({
     itemList: reasons,
     success: async (res) => {
       const reason = reasons[res.tapIndex]
       try {
-        await reportTarget('user', userId, reason)
+        await reportTarget(targetType, targetId, reason)
         uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
         uni.showToast({ title: err?.message || t('report.failed'), icon: 'none' })

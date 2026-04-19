@@ -254,8 +254,19 @@ function toggleEmoji() {
   }
 }
 
-function onPickEmoji(emoji: string) {
-  inputText.value = (inputText.value || '') + emoji
+async function onPickEmoji(emoji: string) {
+  emojiOpen.value = false
+  if (!currentUser.value || !conversationId.value) return
+  try {
+    await sendMessage(conversationId.value, currentUser.value.id, emoji, 'text')
+    nextTick(() => scrollToBottom())
+  } catch (err: any) {
+    uni.showToast({
+      title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
+      icon: 'none',
+      duration: 2500,
+    })
+  }
 }
 
 async function retrySend(msg: any) {
@@ -669,9 +680,14 @@ function scrollToBottom() {
   background: #f2f2f7; border-radius: 50%;
   &:active { background: #e5e5ea; }
   &.active { background: #1a1a1a; }
-  &.active .emoji-btn-glyph { filter: grayscale(0.25); }
+  &.active .emoji-btn-glyph { opacity: 1; filter: none; }
 }
-.emoji-btn-glyph { font-size: 20px; line-height: 1; }
+.emoji-btn-glyph {
+  font-size: 20px; line-height: 1;
+  opacity: 0.45;
+  filter: grayscale(0.6);
+  transition: opacity 0.15s, filter 0.15s;
+}
 
 .empty-chat {
   display: flex; flex-direction: column; align-items: center;

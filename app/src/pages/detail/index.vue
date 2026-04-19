@@ -83,6 +83,10 @@
               <text class="illini-badge-text">Illini</text>
             </view>
           </view>
+          <text v-if="item.profile.status_text || item.profile.status_emoji" class="seller-status">
+            <text v-if="item.profile.status_emoji" class="ss-emoji">{{ item.profile.status_emoji }}</text>
+            <text v-if="item.profile.status_text" class="ss-text">{{ item.profile.status_text }}</text>
+          </text>
           <text class="seller-meta">{{ formatTime(item.created_at) }}</text>
         </view>
         <view class="seller-arrow"></view>
@@ -707,6 +711,15 @@ async function contactSeller() {
 }
 .illini-badge-text { color: #fff; font-size: 10px; }
 .seller-meta { font-size: 12px; color: #aeaeb2; margin-top: 3px; }
+.seller-status {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 3px;
+  padding: 2px 8px; border-radius: 10px;
+  background: rgba(26,122,255,0.08);
+  align-self: flex-start;
+}
+.ss-emoji { font-size: 12px; line-height: 1; }
+.ss-text { font-size: 12px; color: #1a7aff; line-height: 1.3; }
 .stats-row {
   display: flex; gap: 28px;
   padding-top: 13px; border-top: 1px solid rgba(0,0,0,0.06);
