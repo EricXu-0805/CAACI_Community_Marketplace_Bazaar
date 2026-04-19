@@ -12,6 +12,14 @@ let authSubscription: { unsubscribe: () => void } | null = null
 const ALLOWED_PROFILE_FIELDS = ['nickname', 'avatar_url', 'bio', 'location', 'status_text', 'status_emoji'] as const
 type AllowedProfileUpdate = Partial<Pick<Profile, typeof ALLOWED_PROFILE_FIELDS[number]>>
 
+function sanitizeStatus(raw: string, maxLen: number): string {
+  return raw
+    .replace(/<[^>]*>/g, '')
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .trim()
+    .slice(0, maxLen)
+}
+
 export function useAuth() {
   const { supabase } = useSupabase()
 
@@ -132,16 +140,34 @@ export function useAuth() {
       return { error: new Error('Not authenticated') }
     }
 
-    const sanitized = Object.fromEntries(
+    const sanitized: Record<string, any> = Object.fromEntries(
       Object.entries(updates).filter(([k]) =>
         (ALLOWED_PROFILE_FIELDS as readonly string[]).includes(k)
       )
     )
+    if (typeof sanitized.status_text === 'string') {
+      sanitized.status_text = sanitizeStatus(sanitized.status_text, 60)
+      if (!sanitized.status_text) sanitized.status_text = null
+    }
+    if (typeof sanitized.status_emoji === 'string') {
+      sanitized.status_emoji = sanitizeStatus(sanitized.status_emoji, 8)
+      if (!sanitized.status_emoji) sanitized.status_emoji = null
+    }
 
-    const { error } = await supabase
+    let { error } = await supabase
       .from('profiles')
       .update(sanitized)
       .eq('id', session.user.id)
+
+    if (error?.code === '42703' && /status_/.test(String(error.message || ''))) {
+      console.warn('[useAuth] profiles.status_* missing — retrying without (run migration 021)')
+      delete sanitized.status_text
+      delete sanitized.status_emoji
+      ;({ error } = await supabase
+        .from('profiles')
+        .update(sanitized)
+        .eq('id', session.user.id))
+    }
 
     if (!error && currentUser.value) {
       currentUser.value = { ...currentUser.value, ...sanitized } as Profile

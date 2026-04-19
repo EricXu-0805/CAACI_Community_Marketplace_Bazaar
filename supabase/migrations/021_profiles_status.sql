@@ -19,4 +19,17 @@ ALTER TABLE public.profiles
 
 -- No index — status is not searchable, only displayed.
 -- Existing profiles get NULL which the UI renders as nothing.
+
+-- Column-level SELECT grants must be re-extended whenever we add a
+-- profile column, because migrations 004 / 010 / 018 use column-list
+-- grants (not table-wide) — any new column is otherwise hidden from
+-- anon + authenticated even if RLS would allow it.
+DO $$
+BEGIN
+  BEGIN
+    EXECUTE 'GRANT SELECT (id, nickname, avatar_url, bio, location, is_illini_verified, created_at, updated_at, uid, avg_rating, rating_count, status_text, status_emoji) ON public.profiles TO anon, authenticated';
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'grant on profiles.status_* failed: %', SQLERRM;
+  END;
+END $$;
 -- ============================================

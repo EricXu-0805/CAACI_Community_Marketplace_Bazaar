@@ -12,8 +12,18 @@ const fetchError = ref('')
 
 const PAGE_SIZE = 20
 const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, location, is_illini_verified'
-const LIST_ITEM_FIELDS =
+const LIST_ITEM_FIELDS_FULL =
   'id, user_id, title, price, category, condition, status, location, location_verified, images, view_count, favorite_count, negotiable, created_at'
+const LIST_ITEM_FIELDS_LEGACY =
+  'id, user_id, title, price, category, condition, status, location, images, view_count, favorite_count, negotiable, created_at'
+
+// Set to true once we detect migration 020 has been applied. Stays true for
+// the session; flips to false if the first real query fails with 42703.
+let locationVerifiedAvailable = true
+function isMissingLocationVerified(err: any): boolean {
+  return err?.code === '42703' && String(err?.message || '').includes('location_verified')
+}
+
 const VALID_STATUSES: ItemStatus[] = ['active', 'reserved', 'sold', 'deleted']
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 const MAX_IMAGES = 9
@@ -43,51 +53,42 @@ export function useItems() {
     loading.value = true
     fetchError.value = ''
     try {
-      let query = supabase
-        .from('items')
-        .select(`${LIST_ITEM_FIELDS}, profile:profiles(${PUBLIC_PROFILE_FIELDS})`)
-        .eq('status', 'active')
+      const buildQuery = () => {
+        const fields = locationVerifiedAvailable ? LIST_ITEM_FIELDS_FULL : LIST_ITEM_FIELDS_LEGACY
+        let q = supabase
+          .from('items')
+          .select(`${fields}, profile:profiles(${PUBLIC_PROFILE_FIELDS})`)
+          .eq('status', 'active')
 
-      if (sort === 'price_asc') {
-        query = query.order('price', { ascending: true })
-      } else if (sort === 'price_desc') {
-        query = query.order('price', { ascending: false })
-      } else if (sort === 'popular') {
-        query = query.order('view_count', { ascending: false })
-      } else {
-        query = query.order('created_at', { ascending: false })
+        if (sort === 'price_asc') q = q.order('price', { ascending: true })
+        else if (sort === 'price_desc') q = q.order('price', { ascending: false })
+        else if (sort === 'popular') q = q.order('view_count', { ascending: false })
+        else q = q.order('created_at', { ascending: false })
+
+        q = q.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+
+        if (category) q = q.eq('category', category)
+        if (search) {
+          const terms = expandSearch(search)
+          const conditions = terms.map(t => {
+            const s = t.replace(/[%_]/g, '\\$&').replace(/[.,()]/g, '').slice(0, 100)
+            return `title.ilike.%${s}%,description.ilike.%${s}%`
+          })
+          q = q.or(conditions.join(','))
+        }
+        if (userId) q = q.eq('user_id', userId)
+        if (priceMin !== undefined && priceMin > 0) q = q.gte('price', priceMin)
+        if (priceMax !== undefined && priceMax > 0) q = q.lte('price', priceMax)
+        if (condition) q = q.eq('condition', condition)
+        return q
       }
 
-      query = query.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
-
-      if (category) {
-        query = query.eq('category', category)
+      let { data, error } = await buildQuery()
+      if (error && isMissingLocationVerified(error)) {
+        console.warn('[useItems] items.location_verified missing — falling back (run migration 020)')
+        locationVerifiedAvailable = false
+        ;({ data, error } = await buildQuery())
       }
-
-      if (search) {
-        const terms = expandSearch(search)
-        const conditions = terms.map(t => {
-          const s = t.replace(/[%_]/g, '\\$&').replace(/[.,()]/g, '').slice(0, 100)
-          return `title.ilike.%${s}%,description.ilike.%${s}%`
-        })
-        query = query.or(conditions.join(','))
-      }
-
-      if (userId) {
-        query = query.eq('user_id', userId)
-      }
-
-      if (priceMin !== undefined && priceMin > 0) {
-        query = query.gte('price', priceMin)
-      }
-      if (priceMax !== undefined && priceMax > 0) {
-        query = query.lte('price', priceMax)
-      }
-      if (condition) {
-        query = query.eq('condition', condition)
-      }
-
-      const { data, error } = await query
       if (error) throw error
 
       if (data) {
@@ -147,41 +148,58 @@ export function useItems() {
     if (input.description.length > 2000) throw new Error('Description too long')
     if (input.images.length > MAX_IMAGES) throw new Error('Too many images')
 
-    const { data, error } = await supabase
-      .from('items')
-      .insert({
-        user_id: session.user.id,
-        title: input.title,
-        description: input.description,
-        price: input.price,
-        category: input.category,
-        condition: input.condition,
-        location: input.location,
-        images: input.images,
-        negotiable: input.negotiable ?? false,
-        location_verified: input.location_verified ?? false,
-      })
-      .select()
-      .single()
+    const basePayload: Record<string, any> = {
+      user_id: session.user.id,
+      title: input.title,
+      description: input.description,
+      price: input.price,
+      category: input.category,
+      condition: input.condition,
+      location: input.location,
+      images: input.images,
+      negotiable: input.negotiable ?? false,
+    }
+    if (locationVerifiedAvailable) basePayload.location_verified = input.location_verified ?? false
 
-    if (error) throw error
-    return data as Item
+    let insertRes = await supabase.from('items').insert(basePayload).select().single()
+    if (insertRes.error && isMissingLocationVerified(insertRes.error)) {
+      locationVerifiedAvailable = false
+      delete basePayload.location_verified
+      insertRes = await supabase.from('items').insert(basePayload).select().single()
+    }
+    if (insertRes.error) throw insertRes.error
+    return insertRes.data as Item
   }
 
   async function updateItem(id: string, updates: Partial<Pick<Item, 'title' | 'description' | 'price' | 'location' | 'images' | 'negotiable' | 'location_verified'>>) {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw new Error('Not authenticated')
 
-    const { data, error } = await supabase
+    const patch: Record<string, any> = { ...updates }
+    if (!locationVerifiedAvailable) delete patch.location_verified
+
+    let res = await supabase
       .from('items')
-      .update(updates)
+      .update(patch)
       .eq('id', id)
       .eq('user_id', session.user.id)
       .select()
       .single()
 
-    if (error) throw error
-    return data as Item
+    if (res.error && isMissingLocationVerified(res.error)) {
+      locationVerifiedAvailable = false
+      delete patch.location_verified
+      res = await supabase
+        .from('items')
+        .update(patch)
+        .eq('id', id)
+        .eq('user_id', session.user.id)
+        .select()
+        .single()
+    }
+
+    if (res.error) throw res.error
+    return res.data as Item
   }
 
   async function uploadImages(tempFiles: string[]): Promise<string[]> {

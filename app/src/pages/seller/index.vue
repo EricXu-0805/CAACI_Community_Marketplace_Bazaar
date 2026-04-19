@@ -141,8 +141,18 @@ onLoad(async (options) => {
     return
   }
 
+  const fetchSellerProfile = async () => {
+    const full = 'id, nickname, avatar_url, bio, location, is_illini_verified, created_at, avg_rating, rating_count, status_text, status_emoji'
+    const legacy = 'id, nickname, avatar_url, bio, location, is_illini_verified, created_at, avg_rating, rating_count'
+    const first = await supabase.from('profiles').select(full).eq('id', uid).single()
+    if (first.error?.code === '42703') {
+      console.warn('[seller] profiles.status_* missing — falling back (run migration 021)')
+      return await supabase.from('profiles').select(legacy).eq('id', uid).single()
+    }
+    return first
+  }
   const [profileRes, itemsRes, soldRes] = await Promise.all([
-    supabase.from('profiles').select('id, nickname, avatar_url, bio, location, is_illini_verified, created_at, avg_rating, rating_count, status_text, status_emoji').eq('id', uid).single(),
+    fetchSellerProfile(),
     supabase.from('items').select('id, title, price, images, status, condition, category, created_at').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
     supabase.from('items').select('id', { count: 'estimated', head: true }).eq('user_id', uid).eq('status', 'sold'),
   ])

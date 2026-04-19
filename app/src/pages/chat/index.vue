@@ -118,17 +118,22 @@
       <view class="img-btn" @click="onSendImage">
         <view class="img-icon"></view>
       </view>
+      <view :class="['emoji-btn', { active: emojiOpen }]" @click="toggleEmoji">
+        <text class="emoji-btn-glyph">😊</text>
+      </view>
       <input
         v-model="inputText"
         :placeholder="replyToMsg ? t('chat.replyingHint') : t('chat.placeholder')"
         confirm-type="send"
         @confirm="onSend"
+        @focus="emojiOpen = false"
         class="msg-input"
       />
       <view :class="['send-btn', { disabled: !inputText.trim() || sending }]" @click="onSend">
         <view class="send-arrow"></view>
       </view>
     </view>
+    <ChatEmojiPanel :open="emojiOpen" @pick="onPickEmoji" />
   </view>
 </template>
 
@@ -143,6 +148,7 @@ import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
 import { compressImage, formatPrice, friendlyErrorMessage } from '../../utils'
 import type { Item } from '../../types'
+import ChatEmojiPanel from '../../components/ChatEmojiPanel.vue'
 
 const { t, lang } = useI18n()
 
@@ -153,6 +159,7 @@ const { refreshUnreadCount } = useUnread()
 const { reportTarget, blockUser } = useModeration()
 
 const inputText = ref('')
+const emojiOpen = ref(false)
 const replyToMsg = ref<any>(null)
 const scrollTarget = ref('')
 const conversationId = ref('')
@@ -239,6 +246,17 @@ async function sendQuickReply(text: string) {
 }
 
 const sending = ref(false)
+
+function toggleEmoji() {
+  emojiOpen.value = !emojiOpen.value
+  if (emojiOpen.value) {
+    try { uni.hideKeyboard?.() } catch {}
+  }
+}
+
+function onPickEmoji(emoji: string) {
+  inputText.value = (inputText.value || '') + emoji
+}
 
 async function onSend() {
   const text = inputText.value.trim()
@@ -588,15 +606,15 @@ function scrollToBottom() {
   flex: 1; min-height: 0;
   padding: 12px 16px;
 }
-.msg-row {
-  display: flex; align-items: flex-end; margin-bottom: 9px; gap: 8px;
-  &.mine {
-    justify-content: flex-end;
 .time-divider {
   text-align: center; padding: 12px 0 6px;
   text { font-size: 11px; color: #c7c7cc; background: #f2f2f7; padding: 2px 10px; border-radius: 8px; }
 }
-.msg-bubble {
+.msg-row {
+  display: flex; align-items: flex-end; margin-bottom: 9px; gap: 8px;
+  &.mine {
+    justify-content: flex-end;
+    .msg-bubble {
       background: #1a1a1a; color: #fff;
       border-radius: 18px 18px 4px 18px;
     }
@@ -627,6 +645,15 @@ function scrollToBottom() {
     width: 4px; height: 4px; border-radius: 50%; border: 1.2px solid #636366;
   }
 }
+.emoji-btn {
+  width: 38px; height: 38px; display: flex;
+  align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
+  background: #f2f2f7; border-radius: 50%;
+  &:active { background: #e5e5ea; }
+  &.active { background: #1a1a1a; }
+  &.active .emoji-btn-glyph { filter: grayscale(0.25); }
+}
+.emoji-btn-glyph { font-size: 20px; line-height: 1; }
 
 .empty-chat {
   display: flex; flex-direction: column; align-items: center;
