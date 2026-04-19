@@ -574,6 +574,10 @@ function onCardLongPress(item: Item) {
 }
 
 function promptReportItem(itemId: string) {
+  if (!currentUser.value) {
+    uni.navigateTo({ url: '/pages/login/index' })
+    return
+  }
   const reasons = [
     t('report.reasonSpam'),
     t('report.reasonProhibited'),
@@ -931,6 +935,7 @@ function goPublish() {
   aspect-ratio: 4 / 5;
   background: #f2f2f7;
   overflow: hidden;
+  transition: aspect-ratio 0.2s ease-out;
 }
 .card-img {
   width: 100%; height: 100%;

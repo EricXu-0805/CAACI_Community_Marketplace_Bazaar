@@ -259,6 +259,8 @@ async function onPickEmoji(emoji: string) {
   if (!currentUser.value || !conversationId.value) return
   try {
     await sendMessage(conversationId.value, currentUser.value.id, emoji, 'text')
+    markAsRead(conversationId.value, currentUser.value.id)
+    refreshUnreadCount()
     nextTick(() => scrollToBottom())
   } catch (err: any) {
     uni.showToast({

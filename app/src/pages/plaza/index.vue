@@ -578,7 +578,11 @@ function promptReportUser(userId: string) {
 }
 
 function onPostLongPress(post: any) {
-  if (post.user_id === currentUser.value?.id) return
+  if (!currentUser.value) {
+    uni.navigateTo({ url: '/pages/login/index' })
+    return
+  }
+  if (post.user_id === currentUser.value.id) return
   uni.showActionSheet({
     itemList: [t('report.reportPost'), t('report.reportUser')],
     success: (res) => {

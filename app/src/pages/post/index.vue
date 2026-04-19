@@ -267,7 +267,12 @@ function promptReportUser(userId: string) {
 }
 
 function onPostLongPress() {
-  if (!post.value || post.value.user_id === currentUser.value?.id) return
+  if (!post.value) return
+  if (!currentUser.value) {
+    uni.navigateTo({ url: '/pages/login/index' })
+    return
+  }
+  if (post.value.user_id === currentUser.value.id) return
   const postId = post.value.id
   const userId = post.value.user_id
   uni.showActionSheet({
