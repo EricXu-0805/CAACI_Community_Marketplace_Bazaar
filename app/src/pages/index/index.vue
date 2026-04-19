@@ -27,7 +27,7 @@
       </view>
 
       <view class="mc-wrap">
-        <scroll-view class="cat-bar mobile-cats" scroll-x enable-flex>
+        <scroll-view class="cat-bar mobile-cats" scroll-x enable-flex :show-scrollbar="false">
           <view
             v-for="cat in categories"
             :key="'m'+cat.value"
@@ -37,6 +37,7 @@
             <text>{{ cat.label }}</text>
           </view>
         </scroll-view>
+        <view class="mc-fade" aria-hidden="true"></view>
       </view>
     </view>
 
@@ -702,13 +703,31 @@ function goPublish() {
   display: block;
   padding: 4px 12px 6px 12px;
   white-space: nowrap;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: none;        /* Firefox: hide scrollbar (belt) */
+  -ms-overflow-style: none;     /* legacy IE/Edge */
 }
-.mobile-cats::-webkit-scrollbar {
+/* Belt-and-suspenders — uni-scroll-view renders an inner div that
+   can overlay a 3px scrollbar on Chrome; :show-scrollbar="false" is
+   the primary fix (adds .uni-scroll-view-scrollbar-hidden), these are
+   backup selectors in case scoped styles don't reach. */
+.mobile-cats::-webkit-scrollbar,
+.mobile-cats :deep(.uni-scroll-view)::-webkit-scrollbar {
   display: none;
   width: 0;
   height: 0;
+}
+.mobile-cats :deep(.uni-scroll-view) {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+/* Right-edge fade: hints "more tabs to the right". Pinned to right:0
+   with a smooth opacity ramp (transparent -> solid white). Non-clickable. */
+.mc-fade {
+  position: absolute;
+  top: 0; right: 0; bottom: 4px;     /* bottom matches .mc-wrap padding so it doesn't over-extend */
+  width: 32px;
+  background: linear-gradient(to right, rgba(255,255,255,0) 0%, #fff 100%);
+  pointer-events: none;               /* taps pass through to underlying pill */
 }
 /* Desktop: hide mobile cats, show desktop cats */
 .desktop-cats {
@@ -1040,6 +1059,7 @@ function goPublish() {
   .page { max-width: 1120px; margin: 0 auto; }
   .mobile-header { display: none; }
   .mobile-cats { display: none; }
+  .mc-fade { display: none; } /* fade belongs to the mobile bar; desktop has its own cat row */
   .desktop-cats { display: block; }
 
   .search-wrap { padding: 14px 24px; }
