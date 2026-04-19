@@ -165,7 +165,23 @@ Phase 0          Phase 1           Phase 2           Phase 3
 ### 小 bug / 打磨
 - [x] 2026-04-18 卖家主页 stats 间距(未售/已售/加入时间文字挤在一起)→ 已修
 - [x] 2026-04-18 已预定状态不能取消 → 已加 "取消预定" 按钮
-- [x] 2026-04-18 安全地点 verified badge → 已加
+- [x] 2026-04-18 安全地点 verified badge → 已加(geo 验证 v1)
+- [x] 2026-04-19 Safe-zone 3 态 → `location_verified` 字段,只认 geo 验证
+- [x] 2026-04-19 首页滚动卡顿 → aspect-ratio 3:4 预留空间
+- [x] 2026-04-19 Profile 页加取消预留入口
+- [x] 2026-04-19 用户状态(WeChat 式)→ 已上线
+- [x] 2026-04-19 Plaza 帖子分享卡片(OG meta)→ 已上线
+- [x] 2026-04-19 Plaza 帖子搜索 + 中英互转 → 已上线
+
+### 下一 session 接手(未完成)
+- [ ] **表情包(内置)** — feature 7,预估 200-400 LOC:
+  - `ChatEmojiPanel.vue` 组件(新建,12 个内置 emoji grid)
+  - 聊天输入栏加 emoji icon trigger
+  - `messages.content` 已是 text 字段,emoji 直接拼进去即可(首版不做混合 text+image)
+  - 第二版再考虑 PNG 梗图(需要 storage bucket `stickers/` + 审核流)
+  - DIY 用户自上传 — 第三版(需要举报/审核/版权策略)
+- [ ] 扩充 `SEARCH_SYNONYMS` 字典(~50 对 → 目标 200 对)
+- [ ] OG meta 补充到微信 JS-SDK 卡片(需要华协公众号 appId/secret)
 
 ### 技术债 / 后续优化
 - [ ] 大文件拆分:home / plaza / chat / detail 各 ~4000 LOC,需拆 components
