@@ -82,6 +82,29 @@ uni-tabbar, .uni-tabbar, .uni-tabbar-bottom {
   display: none !important;
 }
 
+/* ============================================
+   Global scrollbar suppression for all uni-app
+   <scroll-view> elements on H5. uni-app compiles
+   scroll-view to a wrapper containing an inner
+   <div class="uni-scroll-view"> which is the actual
+   scroller. Page-level scoped styles can't reach that
+   div, so we hide it globally here. This is stronger
+   than per-component :show-scrollbar="false". Pages
+   can still opt into visible scrollbars by overriding
+   this on a specific class if needed.
+   ============================================ */
+uni-scroll-view ::-webkit-scrollbar,
+.uni-scroll-view::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+  background: transparent !important;
+}
+uni-scroll-view, .uni-scroll-view {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
 view, text { box-sizing: border-box; }
 
 input, textarea {

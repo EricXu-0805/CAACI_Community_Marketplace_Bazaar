@@ -151,6 +151,11 @@
       </view>
     </view>
     <view class="action-bar" v-else>
+      <!-- Sellers can also favorite their own item (e.g. to bookmark it for later). -->
+      <view class="fav-btn" @click="toggleFavorite">
+        <image :src="isFav ? '/static/heart-filled.svg' : '/static/heart.svg'" class="heart-img" />
+        <text class="fav-label">{{ isFav ? t('detail.saved') : t('detail.save') }}</text>
+      </view>
       <view class="action-btn-small" @click="goEdit" v-if="item.status === 'active'">
         <text class="fav-label">{{ t('profile.edit') }}</text>
       </view>

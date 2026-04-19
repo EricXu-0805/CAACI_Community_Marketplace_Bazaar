@@ -876,14 +876,10 @@ function goPublish() {
 }
 .card-img-box {
   position: relative; width: 100%;
-  background: #f2f2f7;        /* letterbox fill shown around tall images that are shrunk to fit */
-  display: flex; justify-content: center;
-  overflow: hidden;
+  overflow: hidden;           /* clip card rounded corners */
 }
 .card-img {
-  width: 100%; height: auto;  /* natural aspect ratio (Pinterest waterfall) for normal images */
-  max-height: 480px;          /* cap super-tall images (e.g. 9:16 phone screenshots) */
-  object-fit: contain;        /* when the cap kicks in, shrink-to-fit WITHOUT cropping — letterbox */
+  width: 100%; height: auto;  /* scale image so its width fits the card; height follows natural aspect ratio (widthFix) */
   display: block;
   transition: filter 0.2s;
   &.card-img-sold { filter: grayscale(1) brightness(0.85); }

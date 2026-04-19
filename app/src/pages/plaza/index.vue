@@ -158,7 +158,7 @@
       </view>
     </view>
 
-    <view v-if="showAttachSheet" class="sheet-mask" @click="showAttachSheet = false"></view>
+    <view v-if="showAttachSheet" class="sheet-mask sheet-mask-over-composer" @click="showAttachSheet = false"></view>
     <view :class="['attach-sheet', { open: showAttachSheet }]">
       <view class="as-header">
         <text class="as-title">{{ t('plaza.pickItem') }}</text>
@@ -795,8 +795,12 @@ function onCommentLongPress(c: PostComment) {
 .aic-sold { font-size: 11px; color: #8e8e93; }
 .aic-arrow { font-size: 22px; color: #c7c7cc; line-height: 1; flex-shrink: 0; }
 
+/* Attach-item picker opens ON TOP of the compose-fullpage (z-index 1100).
+   Its mask + sheet must sit above 1100 so users see it without closing
+   the composer first. Bumped to 1200 range. */
+.sheet-mask-over-composer { z-index: 1200 !important; }
 .attach-sheet {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1002;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1201;
   max-height: 70vh; background: #fff; border-radius: 20px 20px 0 0;
   transform: translateY(100%); transition: transform 0.26s ease;
   display: flex; flex-direction: column;

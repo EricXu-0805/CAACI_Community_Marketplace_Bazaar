@@ -277,6 +277,16 @@ async function onSubmit() {
       if (uploaded.length === 0) {
         throw new Error(t('publish.uploadFailed'))
       }
+      /* Diagnostic: surface partial upload failures that would otherwise be
+         swallowed. uploadImages() catches per-file errors and skips them,
+         so uploaded.length < toUpload.length means some images were lost. */
+      if (uploaded.length < toUpload.length) {
+        uni.showToast({
+          title: `${uploaded.length}/${toUpload.length} images uploaded`,
+          icon: 'none',
+          duration: 4000,
+        })
+      }
     }
 
     const images = [...existing, ...uploaded]
