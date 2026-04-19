@@ -1,6 +1,6 @@
 # 开发路线图 (ROADMAP)
 
-> 最后更新：2025-04-13
+> 最后更新：2026-04-19 (late session)
 > 状态：规划中
 
 ---
@@ -172,16 +172,24 @@ Phase 0          Phase 1           Phase 2           Phase 3
 - [x] 2026-04-19 用户状态(WeChat 式)→ 已上线
 - [x] 2026-04-19 Plaza 帖子分享卡片(OG meta)→ 已上线
 - [x] 2026-04-19 Plaza 帖子搜索 + 中英互转 → 已上线
+- [x] 2026-04-19 (late) 表情包 v1 内置 emoji 面板 → 已上线(6 分类 ~200 emoji + Recent)
+- [x] 2026-04-19 (late) Schema fallback 硬化:migration 未跑时降级而非 500
+- [x] 2026-04-19 (late) Chat retrySend 未定义 bug / Plaza 举报缺 reason 崩溃 → 修
+- [x] 2026-04-19 (late) SEARCH_SYNONYMS 140 → 330 对(含品牌/外设/电器/母婴/UIUC)
+- [x] 2026-04-19 (late) useI18n.t() 支持 {param} 插值
+- [x] 2026-04-19 (late) 项目 TypeScript 错误 18 → 0
+- [x] 2026-04-19 (late) migration 021 补 GRANT (status_text/emoji 之前对 anon 隐藏)
 
-### 下一 session 接手(未完成)
-- [ ] **表情包(内置)** — feature 7,预估 200-400 LOC:
-  - `ChatEmojiPanel.vue` 组件(新建,12 个内置 emoji grid)
-  - 聊天输入栏加 emoji icon trigger
-  - `messages.content` 已是 text 字段,emoji 直接拼进去即可(首版不做混合 text+image)
-  - 第二版再考虑 PNG 梗图(需要 storage bucket `stickers/` + 审核流)
-  - DIY 用户自上传 — 第三版(需要举报/审核/版权策略)
-- [ ] 扩充 `SEARCH_SYNONYMS` 字典(~50 对 → 目标 200 对)
-- [ ] OG meta 补充到微信 JS-SDK 卡片(需要华协公众号 appId/secret)
+### 下一 session 候选
+- [ ] **表情包 v2 — sticker PNG**(奶龙等梗图)
+  - 建 `supabase/storage/stickers/` bucket + public read policy
+  - 准备 5-10 张 PNG 放进去(版权预先审核)
+  - `messages.message_type` 增 `'sticker'` 枚举值,或约定 `content = "sticker://<key>"`
+  - chat 渲染 img tag,面板追加 "贴纸" 分类
+- [ ] **表情包 v3 — 用户 DIY 自上传**(需举报/版权审核流先定好再做)
+- [ ] OG meta → 微信 JS-SDK 卡片(需要华协公众号 appId/secret)
+- [ ] 拆分大文件 `pages/index` (1110 LOC) / `pages/plaza` (998) / `pages/detail` (878) → 独立 PR
+- [ ] 集成 CI(GitHub Actions 跑 `type-check` + `build:h5`)防回归
 
 ### 技术债 / 后续优化
 - [ ] 大文件拆分:home / plaza / chat / detail 各 ~4000 LOC,需拆 components
