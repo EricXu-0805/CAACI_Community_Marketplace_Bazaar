@@ -856,7 +856,11 @@ function goPublish() {
   transition: transform 0.1s;
   &:active { transform: scale(0.98); }
 }
-.card-img-box { position: relative; width: 100%; }
+.card-img-box {
+  position: relative; width: 100%;
+  max-height: 320px; /* cap tall/portrait images (long screenshots) so cards don't stretch; tap card to see full image in detail page */
+  overflow: hidden;
+}
 .card-img {
   width: 100%; display: block;
   transition: filter 0.2s;
