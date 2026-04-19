@@ -225,12 +225,11 @@
             @longpress="onCardLongPress(item)"
           >
             <view class="card-img-box">
-              <image
+              <img
                 :src="thumbUrl(item.images?.[0], 'card') || '/static/placeholder.svg'"
-                mode="widthFix"
                 :class="['card-img', { 'card-img-sold': item.status === 'sold' }]"
                 :alt="item.title"
-                lazy-load
+                loading="lazy"
               />
               <view v-if="item.status === 'sold'" class="sold-overlay">
                 <text>{{ t('status.sold') }}</text>
@@ -858,11 +857,15 @@ function goPublish() {
 }
 .card-img-box {
   position: relative; width: 100%;
-  max-height: 320px; /* cap tall/portrait images (long screenshots) so cards don't stretch; tap card to see full image in detail page */
+  background: #f2f2f7;        /* letterbox fill shown around tall images that are shrunk to fit */
+  display: flex; justify-content: center;
   overflow: hidden;
 }
 .card-img {
-  width: 100%; display: block;
+  width: 100%; height: auto;  /* natural aspect ratio (Pinterest waterfall) for normal images */
+  max-height: 480px;          /* cap super-tall images (e.g. 9:16 phone screenshots) */
+  object-fit: contain;        /* when the cap kicks in, shrink-to-fit WITHOUT cropping — letterbox */
+  display: block;
   transition: filter 0.2s;
   &.card-img-sold { filter: grayscale(1) brightness(0.85); }
 }
