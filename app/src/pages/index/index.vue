@@ -225,13 +225,12 @@
             @click="goToDetail(item.id)"
             @longpress="onCardLongPress(item)"
           >
-            <view class="card-img-box" :style="cardBoxStyle(item.id)">
+            <view class="card-img-box">
               <img
                 :src="thumbUrl(item.images?.[0], 'card') || '/static/placeholder.svg'"
                 :class="['card-img', { 'card-img-sold': item.status === 'sold' }]"
                 :alt="item.title"
                 loading="lazy"
-                @load="onImgLoad(item.id, $event)"
               />
               <view v-if="item.status === 'sold'" class="sold-overlay">
                 <text>{{ t('status.sold') }}</text>
@@ -412,19 +411,6 @@ const activeFilterCount = computed(() => {
 })
 
 const displayItems = computed(() => items.value)
-
-const imgRatio = ref<Record<string, number>>({})
-function onImgLoad(id: string, e: Event) {
-  const img = e.target as HTMLImageElement
-  if (!img?.naturalWidth || !img?.naturalHeight) return
-  const ratio = img.naturalWidth / img.naturalHeight
-  const clamped = Math.max(0.55, Math.min(ratio, 1.4))
-  imgRatio.value = { ...imgRatio.value, [id]: clamped }
-}
-function cardBoxStyle(id: string): string {
-  const r = imgRatio.value[id]
-  return r ? `aspect-ratio: ${r};` : ''
-}
 
 function getFilterParams() {
   return {
@@ -923,23 +909,20 @@ function goPublish() {
   transition: transform 0.1s;
   &:active { transform: scale(0.98); }
 }
-/* Xiaohongshu-style waterfall: each card sizes to its own image's
-   aspect ratio once loaded (inline style set from naturalWidth/Height
-   in onImgLoad). Before load, fall back to 4:5 placeholder so there's
-   still a space reserved — yes there's a small jump on load, but the
-   alternative (uniform 3:4 + contain) produces the grey letterbox
-   bars the user said looked disjointed. Ratio is clamped 0.55–1.4 so
-   extreme tall/wide images don't destroy the grid. */
+/* Xiaohongshu waterfall: the image itself drives card height.
+   width:100% + height:auto means <img> renders at its natural
+   aspect ratio, no cropping, no stretching, no letterbox. The
+   card-img-box has no aspect-ratio, so it grows to whatever
+   the image needs. */
 .card-img-box {
   position: relative; width: 100%;
-  aspect-ratio: 4 / 5;
   background: #f2f2f7;
   overflow: hidden;
-  transition: aspect-ratio 0.2s ease-out;
+  min-height: 120px;
 }
 .card-img {
-  width: 100%; height: 100%;
-  object-fit: cover;
+  width: 100%;
+  height: auto;
   display: block;
   transition: filter 0.2s;
   &.card-img-sold { filter: grayscale(1) brightness(0.85); }

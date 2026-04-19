@@ -4,7 +4,7 @@
     <view class="img-area">
       <swiper class="img-swiper" :current="currentImg" @change="currentImg = $event.detail.current" circular>
         <swiper-item v-for="(img, i) in item.images" :key="i">
-          <image :src="img" mode="aspectFill" class="swiper-img" @click="previewImage(i)" />
+          <image :src="img" mode="aspectFit" class="swiper-img" @click="previewImage(i)" />
         </swiper-item>
         <swiper-item v-if="item.images.length === 0">
           <view class="no-img">
@@ -518,8 +518,8 @@ async function contactSeller() {
   width: 100%;
   background: #e8e8ed;
 }
-.img-swiper { width: 100%; height: 380px; }
-.swiper-img { width: 100%; height: 100%; }
+.img-swiper { width: 100%; height: 380px; background: #f2f2f7; }
+.swiper-img { width: 100%; height: 100%; background: #f2f2f7; }
 .no-img {
   width: 100%; height: 100%;
   display: flex; flex-direction: column; align-items: center; justify-content: center;

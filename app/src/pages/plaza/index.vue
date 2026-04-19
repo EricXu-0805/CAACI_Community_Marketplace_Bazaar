@@ -67,13 +67,12 @@
               v-if="post.images && post.images.length > 0"
               :class="['post-images', `pi-n${Math.min(post.images.length, 4)}`]"
             >
-              <image
+              <img
                 v-for="(img, i) in post.images"
                 :key="i"
                 :src="thumbUrl(img, 'card')"
-                :mode="post.images.length === 1 ? 'widthFix' : 'aspectFill'"
                 class="post-image"
-                lazy-load
+                loading="lazy"
                 @click.stop="previewImage(post.images, i)"
               />
             </view>
@@ -755,14 +754,16 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   display: grid; gap: 4px; margin-top: 10px;
 }
 .post-images.pi-n1 {
-  grid-template-columns: 1fr;
-  max-width: 300px;
+  display: block;
   .post-image {
-    aspect-ratio: auto;
-    max-height: 420px;
-    width: auto; max-width: 100%;
+    width: auto;
     height: auto;
+    max-width: 100%;
+    max-height: 520px;
+    aspect-ratio: auto;
     object-fit: contain;
+    border-radius: 10px;
+    background: #f2f2f7;
   }
 }
 .post-images.pi-n2 { grid-template-columns: 1fr 1fr; }
@@ -771,6 +772,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .post-image {
   width: 100%; aspect-ratio: 1; border-radius: 8px;
   background: #f2f2f7; object-fit: cover; cursor: pointer;
+  display: block;
 }
 
 .post-actions {
