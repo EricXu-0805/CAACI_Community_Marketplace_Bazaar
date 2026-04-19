@@ -190,8 +190,15 @@ async function onToggleLike() {
 
 function onShare() {
   if (!post.value) return
+  /* Server-side OG meta renders at /share-post/:id. See api/share-post.js. */
+  let origin = 'https://caaci-community-marketplace-bazaar.vercel.app'
+  // #ifdef H5
+  if (typeof window !== 'undefined' && window.location?.origin) origin = window.location.origin
+  // #endif
+  const url = `${origin}/share-post/${post.value.id}`
+  const preview = post.value.content.slice(0, 60).replace(/\n/g, ' ')
   uni.setClipboardData({
-    data: post.value.content,
+    data: `${preview}…\n${url}`,
     success: () => uni.showToast({ title: t('plaza.contentCopied'), icon: 'success' }),
   })
 }

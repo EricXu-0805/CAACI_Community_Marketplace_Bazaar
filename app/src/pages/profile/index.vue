@@ -31,6 +31,10 @@
             <text class="uid-value">{{ currentUser.uid }}</text>
             <view class="uid-copy"></view>
           </view>
+          <text class="user-status" v-if="currentUser?.status_text || currentUser?.status_emoji">
+            <text v-if="currentUser?.status_emoji" class="us-emoji">{{ currentUser.status_emoji }}</text>
+            <text v-if="currentUser?.status_text" class="us-text">{{ currentUser.status_text }}</text>
+          </text>
           <text class="user-bio" v-if="currentUser?.bio">{{ currentUser.bio }}</text>
           <view class="location-row">
             <view class="loc-dot"></view>
@@ -385,6 +389,9 @@ function onDeleteItem(id: string) {
 }
 .illini-badge-text { color: #fff; font-size: 10px; }
 .user-bio { font-size: 13px; color: #636366; margin-top: 2px; }
+.user-status { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; }
+.us-emoji { font-size: 14px; line-height: 1; }
+.us-text { font-size: 13px; color: #1a7aff; line-height: 1.3; }
 
 .uid-row {
   display: inline-flex; align-items: center; gap: 4px;

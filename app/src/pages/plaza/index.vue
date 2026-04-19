@@ -430,8 +430,17 @@ function goPostDetail(post: Post) {
 }
 
 function onSharePost(post: Post) {
+  /* Server-side OG meta renders at /share-post/:id so shared links unfurl
+     into a rich card with the post title + excerpt + image in WeChat /
+     Twitter / Slack / etc. See api/share-post.js. */
+  let origin = 'https://caaci-community-marketplace-bazaar.vercel.app'
+  // #ifdef H5
+  if (typeof window !== 'undefined' && window.location?.origin) origin = window.location.origin
+  // #endif
+  const url = `${origin}/share-post/${post.id}`
+  const preview = post.content.slice(0, 60).replace(/\n/g, ' ')
   uni.setClipboardData({
-    data: post.content,
+    data: `${preview}…\n${url}`,
     success: () => uni.showToast({ title: t('plaza.contentCopied'), icon: 'success' }),
   })
 }

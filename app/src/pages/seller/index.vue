@@ -19,6 +19,10 @@
           <text class="illini-badge-text">Illini</text>
         </view>
       </view>
+      <text v-if="seller.status_text || seller.status_emoji" class="user-status">
+        <text v-if="seller.status_emoji" class="us-emoji">{{ seller.status_emoji }}</text>
+        <text v-if="seller.status_text" class="us-text">{{ seller.status_text }}</text>
+      </text>
       <text v-if="seller.bio" class="bio">{{ seller.bio }}</text>
       <view class="loc-row">
         <view class="loc-dot"></view>
@@ -138,7 +142,7 @@ onLoad(async (options) => {
   }
 
   const [profileRes, itemsRes, soldRes] = await Promise.all([
-    supabase.from('profiles').select('id, nickname, avatar_url, bio, location, is_illini_verified, created_at, avg_rating, rating_count').eq('id', uid).single(),
+    supabase.from('profiles').select('id, nickname, avatar_url, bio, location, is_illini_verified, created_at, avg_rating, rating_count, status_text, status_emoji').eq('id', uid).single(),
     supabase.from('items').select('id, title, price, images, status, condition, category, created_at').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
     supabase.from('items').select('id', { count: 'estimated', head: true }).eq('user_id', uid).eq('status', 'sold'),
   ])
@@ -181,6 +185,12 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 }
 .illini-badge-text { color: #fff; font-size: 10px; }
 .bio { font-size: 13px; color: #8e8e93; text-align: center; max-width: 280px; }
+.user-status {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 12px; background: rgba(26,122,255,0.08);
+}
+.us-emoji { font-size: 13px; line-height: 1; }
+.us-text { font-size: 12px; color: #1a7aff; line-height: 1.3; }
 .loc-row { display: flex; align-items: center; gap: 4px; }
 .loc-dot { width: 5px; height: 5px; border-radius: 50%; background: #FF6B35; }
 .loc-text { font-size: 12px; color: #aeaeb2; }

@@ -22,6 +22,14 @@
       </view>
 
       <view class="form-group">
+        <text class="label">{{ t('editProfile.status') }}</text>
+        <view class="status-row">
+          <input v-model="statusEmoji" placeholder="🎓" class="form-input status-emoji" maxlength="4" />
+          <input v-model="statusText" :placeholder="t('editProfile.statusPlaceholder')" class="form-input status-text" maxlength="60" />
+        </view>
+      </view>
+
+      <view class="form-group">
         <text class="label">{{ t('editProfile.bio') }}</text>
         <textarea v-model="bio" :placeholder="t('editProfile.bioPlaceholder')" class="form-textarea" maxlength="200" />
       </view>
@@ -65,6 +73,8 @@ const nickname = ref(currentUser.value?.nickname || '')
 const bio = ref(currentUser.value?.bio || '')
 const location = ref(currentUser.value?.location || 'UIUC')
 const avatarUrl = ref(currentUser.value?.avatar_url || '')
+const statusText = ref(currentUser.value?.status_text || '')
+const statusEmoji = ref(currentUser.value?.status_emoji || '')
 const saving = ref(false)
 
 function goBack() { uni.navigateBack() }
@@ -121,6 +131,8 @@ async function onSave() {
       bio: bio.value.trim(),
       location: location.value.trim() || 'UIUC',
       avatar_url: finalAvatar,
+      status_text: statusText.value.trim() || null,
+      status_emoji: statusEmoji.value.trim() || null,
     }), 10000, 'profile update')
 
     if (result?.error) {
@@ -187,6 +199,9 @@ async function onSave() {
   width: 100%; height: 90px; background: #f7f7f8; border-radius: 10px;
   padding: 10px 14px; font-size: 15px; color: #1a1a1a; line-height: 1.5;
 }
+.status-row { display: flex; gap: 8px; }
+.status-emoji { width: 56px; flex-shrink: 0; text-align: center; padding: 0; font-size: 20px; }
+.status-text { flex: 1; }
 .spot-row { white-space: nowrap; margin-top: 8px; }
 .spot-chip {
   display: inline-block; padding: 6px 12px; margin-right: 8px;

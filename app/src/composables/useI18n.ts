@@ -247,6 +247,8 @@ const messages: Record<Lang, Record<string, string>> = {
     'editProfile.changeAvatar': 'Change Photo',
     'editProfile.bio': 'Bio',
     'editProfile.bioPlaceholder': 'Tell us about yourself...',
+    'editProfile.status': 'Status',
+    'editProfile.statusPlaceholder': 'What are you up to?',
 
     'login.signIn': 'Sign In',
     'login.signUp': 'Sign Up',
@@ -698,6 +700,8 @@ const messages: Record<Lang, Record<string, string>> = {
     'editProfile.changeAvatar': '更换头像',
     'editProfile.bio': '简介',
     'editProfile.bioPlaceholder': '介绍一下自己...',
+    'editProfile.status': '状态',
+    'editProfile.statusPlaceholder': '最近在做什么？',
 
     'login.signIn': '登录',
     'login.signUp': '注册',

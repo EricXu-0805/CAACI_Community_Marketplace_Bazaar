@@ -34,6 +34,8 @@ export interface Profile {
   bio: string
   location: string
   uid?: string
+  status_text?: string | null
+  status_emoji?: string | null
   is_illini_verified?: boolean
   avg_rating?: number
   rating_count?: number

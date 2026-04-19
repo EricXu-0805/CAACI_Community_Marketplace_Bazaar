@@ -4,6 +4,7 @@
   "framework": null,
   "rewrites": [
     { "source": "/share/:id", "destination": "/api/share?id=:id" },
+    { "source": "/share-post/:id", "destination": "/api/share-post?id=:id" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

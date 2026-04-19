@@ -9,7 +9,7 @@ const loading = ref(false)
 
 let authSubscription: { unsubscribe: () => void } | null = null
 
-const ALLOWED_PROFILE_FIELDS = ['nickname', 'avatar_url', 'bio', 'location'] as const
+const ALLOWED_PROFILE_FIELDS = ['nickname', 'avatar_url', 'bio', 'location', 'status_text', 'status_emoji'] as const
 type AllowedProfileUpdate = Partial<Pick<Profile, typeof ALLOWED_PROFILE_FIELDS[number]>>
 
 export function useAuth() {
