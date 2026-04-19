@@ -935,8 +935,13 @@ const messages: Record<Lang, Record<string, string>> = {
 }
 
 export function useI18n() {
-  function t(key: string): string {
-    return messages[currentLang.value][key] || key
+  function t(key: string, params?: Record<string, string | number>): string {
+    const raw = messages[currentLang.value][key] || key
+    if (!params) return raw
+    return raw.replace(/\{(\w+)\}/g, (_, k) => {
+      const v = params[k]
+      return v === undefined || v === null ? '' : String(v)
+    })
   }
 
   function setLang(lang: Lang) {

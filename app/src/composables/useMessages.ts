@@ -30,7 +30,7 @@ export function useMessages() {
       if (error) throw error
 
       const { blockedIds } = useModeration()
-      let convs = (data || []) as Conversation[]
+      let convs = (data || []) as unknown as Conversation[]
       if (blockedIds.value.size > 0) {
         convs = convs.filter(c => !blockedIds.value.has(c.buyer_id) && !blockedIds.value.has(c.seller_id))
       }

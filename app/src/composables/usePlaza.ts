@@ -50,7 +50,7 @@ export function usePlaza() {
 
       if (error) throw error
 
-      let result = (data || []) as Post[]
+      let result = (data || []) as unknown as Post[]
 
       const { blockedIds } = useModeration()
       if (blockedIds.value.size > 0) {
@@ -88,7 +88,7 @@ export function usePlaza() {
       .maybeSingle()
     if (error) throw error
     if (!data) return null
-    const post = data as Post
+    const post = data as unknown as Post
     if (currentUser.value) {
       const { data: myLike } = await supabase
         .from('post_likes')
@@ -120,8 +120,8 @@ export function usePlaza() {
       .single()
 
     if (error) throw error
-    posts.value = [data as Post, ...posts.value]
-    return data as Post
+    posts.value = [data as unknown as Post, ...posts.value]
+    return data as unknown as Post
   }
 
   async function fetchMyActiveItems(): Promise<Array<Pick<import('../types').Item, 'id' | 'title' | 'price' | 'images' | 'status'>>> {

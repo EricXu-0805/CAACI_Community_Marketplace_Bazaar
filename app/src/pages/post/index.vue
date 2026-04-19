@@ -256,7 +256,28 @@ function onCommentLongPress(c: PostComment) {
       } else if (!isMine && res.tapIndex === 0) {
         replyTo.value = c
       } else if (!isMine && res.tapIndex === 1) {
-        reportTarget('user', c.user_id)
+        promptReportUser(c.user_id)
+      }
+    },
+  })
+}
+
+function promptReportUser(userId: string) {
+  const reasons = [
+    t('report.reasonSpam'),
+    t('report.reasonAbuse'),
+    t('report.reasonMisleading'),
+    t('report.reasonOther'),
+  ]
+  uni.showActionSheet({
+    itemList: reasons,
+    success: async (res) => {
+      const reason = reasons[res.tapIndex]
+      try {
+        await reportTarget('user', userId, reason)
+        uni.showToast({ title: t('report.thanks'), icon: 'success' })
+      } catch (err: any) {
+        uni.showToast({ title: err?.message || t('report.failed'), icon: 'none' })
       }
     },
   })

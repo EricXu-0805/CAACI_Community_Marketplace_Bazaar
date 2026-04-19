@@ -80,6 +80,7 @@ export interface PostComment {
   parent_comment_id: string | null
   created_at: string
   profile?: Profile
+  reply_to_name?: string | null
 }
 
 export interface Item {

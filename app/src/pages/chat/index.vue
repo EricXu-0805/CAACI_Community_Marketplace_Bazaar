@@ -258,6 +258,24 @@ function onPickEmoji(emoji: string) {
   inputText.value = (inputText.value || '') + emoji
 }
 
+async function retrySend(msg: any) {
+  if (!currentUser.value || !conversationId.value) return
+  const text = msg?.content
+  if (!text) return
+  const idx = messages.value.findIndex(m => m.id === msg.id)
+  if (idx >= 0) messages.value.splice(idx, 1)
+  try {
+    await sendMessage(conversationId.value, currentUser.value.id, text, msg.message_type || 'text')
+    nextTick(() => scrollToBottom())
+  } catch (err: any) {
+    uni.showToast({
+      title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
+      icon: 'none',
+      duration: 2500,
+    })
+  }
+}
+
 async function onSend() {
   const text = inputText.value.trim()
   if (!text || !currentUser.value || !conversationId.value) return

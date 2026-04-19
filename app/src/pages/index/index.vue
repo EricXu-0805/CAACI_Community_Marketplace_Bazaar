@@ -141,7 +141,7 @@
             v-for="(label, key) in conditionOpts"
             :key="key"
             :class="['fpill', { active: filterCondition === key }]"
-            @click="filterCondition = filterCondition === key ? '' : key"
+            @click="filterCondition = filterCondition === key ? '' : (key as ItemCondition)"
           >
             <text>{{ label }}</text>
           </view>
@@ -324,7 +324,7 @@ import { useFavorites } from '../../composables/useFavorites'
 import { useModeration } from '../../composables/useModeration'
 import { useSemester } from '../../composables/useSemester'
 import { matchSpot } from '../../composables/useCampusSpots'
-import type { ItemCategory, Item } from '../../types'
+import type { ItemCategory, ItemCondition, Item } from '../../types'
 
 import { debounce, formatTime, formatPrice, haptic, quickTranslate, thumbUrl } from '../../utils'
 import DesktopNav from '../../components/DesktopNav.vue'
@@ -378,7 +378,7 @@ const lastScrollTop = ref(0)
 const showFilter = ref(false)
 const filterPriceMin = ref('')
 const filterPriceMax = ref('')
-const filterCondition = ref('')
+const filterCondition = ref<ItemCondition | ''>('')
 const filterLocation = ref('')
 const sortBy = ref('latest')
 
@@ -388,7 +388,7 @@ const categories = computed(() => categoryKeys.map(k => ({
   label: t(k ? 'cat.' + k : 'cat.all'),
 })))
 
-const conditionKeys = ['new', 'like_new', 'good', 'fair']
+const conditionKeys: ItemCondition[] = ['new', 'like_new', 'good', 'fair']
 const conditionOpts = computed(() => {
   const m: Record<string, string> = {}
   conditionKeys.forEach(k => { m[k] = t('condition.' + k) })
