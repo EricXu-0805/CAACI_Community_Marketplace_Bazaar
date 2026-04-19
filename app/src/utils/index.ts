@@ -62,6 +62,12 @@ export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string
   if (raw.includes('jwt') || raw.includes('not authenticated')) {
     return lang === 'zh' ? '请重新登录' : 'Please sign in again'
   }
+  if (err?.code === '23514' && raw.includes('reports_target_type_check')) {
+    return lang === 'zh' ? '举报功能尚未就绪,请联系管理员' : 'Report type not allowed yet — DB migration pending'
+  }
+  if (err?.code === '42703') {
+    return lang === 'zh' ? '功能即将上线,请刷新后重试' : 'Feature rolling out — please refresh'
+  }
   return err?.message || (lang === 'zh' ? '操作失败' : 'Something went wrong')
 }
 

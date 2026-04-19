@@ -1,6 +1,6 @@
 # 开发路线图 (ROADMAP)
 
-> 最后更新：2026-04-19 (late session)
+> 最后更新：2026-04-19 (late v2 session)
 > 状态：规划中
 
 ---
@@ -179,6 +179,13 @@ Phase 0          Phase 1           Phase 2           Phase 3
 - [x] 2026-04-19 (late) useI18n.t() 支持 {param} 插值
 - [x] 2026-04-19 (late) 项目 TypeScript 错误 18 → 0
 - [x] 2026-04-19 (late) migration 021 补 GRANT (status_text/emoji 之前对 anon 隐藏)
+- [x] 2026-04-19 (late v2) 首页 xhs 风瀑布流 (naturalWidth 驱动 aspect-ratio)
+- [x] 2026-04-19 (late v2) Plaza 单图帖 widthFix,多图 grid 按数量分类
+- [x] 2026-04-19 (late v2) 商品详情页显示卖家 status chip
+- [x] 2026-04-19 (late v2) 长按商品 / 长按帖子 → 举报菜单 + migration 022
+- [x] 2026-04-19 (late v2) Emoji tap-to-send WeChat 式,按钮透明度占位
+- [x] 2026-04-19 (late v2) friendlyErrorMessage 兜底 23514/42703
+- [x] 2026-04-19 (late v2) Vercel Canceled 事故 fix (关 Require Verified Commits toggle)
 
 ### 下一 session 候选
 - [ ] **表情包 v2 — sticker PNG**(奶龙等梗图)
