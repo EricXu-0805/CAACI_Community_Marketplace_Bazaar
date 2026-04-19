@@ -4,6 +4,7 @@ import { useAuth } from './useAuth'
 import { useModeration } from './useModeration'
 import { useI18n } from './useI18n'
 import type { Post, PostComment } from '../types'
+import { expandSearch } from '../utils'
 
 const posts = ref<Post[]>([])
 const loading = ref(false)
@@ -20,21 +21,32 @@ export function usePlaza() {
   const { currentUser } = useAuth()
   const { t } = useI18n()
 
-  async function fetchPosts(options: { page?: number; reset?: boolean } = {}) {
-    const { page = 0, reset = false } = options
+  async function fetchPosts(options: { page?: number; reset?: boolean; search?: string } = {}) {
+    const { page = 0, reset = false, search } = options
     if (reset) {
       posts.value = []
       hasMore.value = true
     }
     loading.value = true
     try {
-      const { data, error } = await supabase
+      let q = supabase
         .from('posts')
         .select(POST_SELECT)
         .eq('status', 'active')
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+
+      if (search && search.trim()) {
+        const terms = expandSearch(search)
+        const conditions = terms.map(term => {
+          const s = term.replace(/[%_]/g, '\\$&').replace(/[.,()]/g, '').slice(0, 100)
+          return `content.ilike.%${s}%`
+        })
+        q = q.or(conditions.join(','))
+      }
+
+      const { data, error } = await q
 
       if (error) throw error
 

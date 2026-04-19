@@ -342,6 +342,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'legal.emailCopied': 'Email copied',
 
     'plaza.title': 'Plaza',
+    'plaza.searchPlaceholder': 'Search posts...',
     'plaza.official': 'Official',
     'plaza.pinned': 'Pinned',
     'plaza.empty': 'No posts yet. Be the first!',
@@ -795,6 +796,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'legal.emailCopied': '邮箱已复制',
 
     'plaza.title': '广场',
+    'plaza.searchPlaceholder': '搜索帖子...',
     'plaza.official': '官方',
     'plaza.pinned': '置顶',
     'plaza.empty': '还没有动态，来发第一条吧！',

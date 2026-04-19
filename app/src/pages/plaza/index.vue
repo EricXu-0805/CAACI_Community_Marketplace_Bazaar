@@ -9,6 +9,21 @@
       </view>
     </view>
 
+    <view class="search-wrap">
+      <view class="search-bar">
+        <view class="sb-icon"></view>
+        <input
+          v-model="searchText"
+          :placeholder="t('plaza.searchPlaceholder')"
+          class="sb-input"
+          confirm-type="search"
+          @input="onSearchInput"
+          @confirm="onSearchSubmit"
+        />
+        <view v-if="searchText" class="sb-clear" @click="clearSearch"></view>
+      </view>
+    </view>
+
     <scroll-view
       class="feed"
       scroll-y
@@ -259,6 +274,26 @@ const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
 const refreshing = ref(false)
 const pageIdx = ref(0)
 
+const searchText = ref('')
+let searchDebounce: ReturnType<typeof setTimeout> | null = null
+function onSearchInput() {
+  if (searchDebounce) clearTimeout(searchDebounce)
+  searchDebounce = setTimeout(() => {
+    pageIdx.value = 0
+    fetchPosts({ reset: true, search: searchText.value })
+  }, 300)
+}
+function onSearchSubmit() {
+  if (searchDebounce) clearTimeout(searchDebounce)
+  pageIdx.value = 0
+  fetchPosts({ reset: true, search: searchText.value })
+}
+function clearSearch() {
+  searchText.value = ''
+  pageIdx.value = 0
+  fetchPosts({ reset: true })
+}
+
 const showComposer = ref(false)
 const composerText = ref('')
 const composerImages = ref<string[]>([])
@@ -311,7 +346,7 @@ async function onRefresh() {
   pageIdx.value = 0
   const failsafe = setTimeout(() => { refreshing.value = false }, 10000)
   try {
-    await fetchPosts({ reset: true })
+    await fetchPosts({ reset: true, search: searchText.value })
   } finally {
     clearTimeout(failsafe)
     refreshing.value = false
@@ -321,7 +356,7 @@ async function onRefresh() {
 async function loadMore() {
   if (loading.value || !hasMore.value) return
   pageIdx.value++
-  await fetchPosts({ page: pageIdx.value })
+  await fetchPosts({ page: pageIdx.value, search: searchText.value })
 }
 
 async function onToggleLike(post: Post) {
@@ -571,6 +606,40 @@ function onCommentLongPress(c: PostComment) {
     background: #fff;
     clip-path: polygon(0 100%, 40% 100%, 100% 40%, 60% 0, 0 60%);
   }
+}
+
+.search-wrap {
+  padding: 8px 16px; background: #fff;
+  border-bottom: 0.5px solid rgba(0,0,0,0.06);
+}
+.search-bar {
+  display: flex; align-items: center; gap: 8px;
+  background: #f2f2f7; border-radius: 10px;
+  padding: 8px 12px;
+}
+.sb-icon {
+  width: 15px; height: 15px; flex-shrink: 0;
+  border: 1.5px solid #8e8e93; border-radius: 50%;
+  position: relative;
+  &::after {
+    content: ''; position: absolute; right: -3px; bottom: -3px;
+    width: 6px; height: 1.5px; background: #8e8e93;
+    transform: rotate(45deg); transform-origin: left center;
+  }
+}
+.sb-input {
+  flex: 1; background: transparent; border: none; outline: none;
+  font-size: 14px; color: #1a1a1a;
+}
+.sb-clear {
+  width: 16px; height: 16px; flex-shrink: 0; cursor: pointer;
+  background: #c7c7cc; border-radius: 50%; position: relative;
+  &::before, &::after {
+    content: ''; position: absolute; inset: 0;
+    margin: auto; width: 8px; height: 1.5px; background: #fff;
+  }
+  &::before { transform: rotate(45deg); }
+  &::after { transform: rotate(-45deg); }
 }
 
 .feed {
