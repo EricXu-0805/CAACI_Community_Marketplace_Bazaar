@@ -129,3 +129,46 @@ Phase 0          Phase 1           Phase 2           Phase 3
 | M3: 公测 | 华协社区内推广 | TBD |
 | M4: 商户上线 | 商户合作体系启动 | TBD |
 | M5: App 上架 | iOS App 上架 Apple Store | TBD |
+
+---
+
+## Backlog：2026-Q2 想法池（未排期）
+
+> 来源：session 转录、用户反馈。排期前需要 PM 过滤 + 细化。每一项都不是小活，实现前要拆 ticket + 独立 branch。
+
+### 表情包系统 (M)
+- [ ] 内置表情包:聊天输入框旁加表情 icon,弹出面板
+- [ ] 一两套 DIY 主题(奶龙之类的梗图)
+- [ ] 用户自定义:允许上传自己的小表情,以某个人为主角
+- **风险**:内容审核(谁都能上传梗图 → 可能涉版权/低俗),需审核流程
+- **依赖**:chat 的 message 字段要支持 emoji/image 混合
+
+### 帖子搜索 + 模糊匹配完善 (M)
+- [ ] 帖子(Plaza posts)的搜索框 —— 目前只有商品能搜
+- [ ] 商品搜索的模糊匹配:typo-tolerant(trigram index 已有,效果没达到预期)
+- [ ] 中英互转搜索:搜 "book" 也能命中中文标题 "书籍",反之亦然
+- [ ] 关联搜索:搜 "iphone" 带出 "apple / 苹果 / 手机 / phone"
+- **依赖**:已有 migration 007(trigram),可能需要 008+ 加 synonyms 表
+
+### 用户状态 (S)
+- [ ] profile 加 "status" 字段(类似微信个性签名/状态)
+- [ ] 头像旁显示 emoji + 短句 ("🎓 期末ing")
+- [ ] 可空,可自行清除
+
+### 分享深链 + 卡片预览 (L)
+- [ ] 商品和帖子都生成短链(/share/:id)
+- [ ] 微信里转发时展示卡片(og:image + 微信 SDK 的 wx.updateAppMessageShareData)
+- [ ] B 站/微信风格:标题 + 缩略图 + 价格,不是裸链接
+- **依赖**:需要 server-side render `og:` meta 或 H5 page meta;微信分享必须走 JS-SDK 签名
+- **风险**:微信 JS-SDK 需要公众号 appId 和 secret,华协侧要配合
+
+### 小 bug / 打磨
+- [x] 2026-04-18 卖家主页 stats 间距(未售/已售/加入时间文字挤在一起)→ 已修
+- [x] 2026-04-18 已预定状态不能取消 → 已加 "取消预定" 按钮
+- [x] 2026-04-18 安全地点 verified badge → 已加
+
+### 技术债 / 后续优化
+- [ ] 大文件拆分:home / plaza / chat / detail 各 ~4000 LOC,需拆 components
+- [ ] TypeScript 4.9 → 5.x 升级(独立 PR)
+- [ ] @dcloudio/core 4080 → 5000 升级(alpha,需回归)
+- [ ] vue 3.4 → 3.5(之前 markRaw 有 edge case,再等等)

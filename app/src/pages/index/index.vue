@@ -242,6 +242,10 @@
               <view v-if="item.images && item.images.length > 1" class="img-count-badge">
                 <text>{{ item.images.length }}</text>
               </view>
+              <view v-if="matchSpot(item.location)?.safe" class="badge-safe-corner" :aria-label="t('pickup.safeZone')">
+                <text class="bsc-check">✓</text>
+                <text class="bsc-label">{{ t('pickup.safeZone') }}</text>
+              </view>
             </view>
             <view class="card-info">
               <text class="card-title">{{ localizeTitle(item.title) }}</text>
@@ -319,6 +323,7 @@ import { useAuth } from '../../composables/useAuth'
 import { useFavorites } from '../../composables/useFavorites'
 import { useModeration } from '../../composables/useModeration'
 import { useSemester } from '../../composables/useSemester'
+import { matchSpot } from '../../composables/useCampusSpots'
 import type { ItemCategory, Item } from '../../types'
 
 import { debounce, formatTime, formatPrice, haptic, quickTranslate, thumbUrl } from '../../utils'
@@ -907,6 +912,18 @@ function goPublish() {
 .badge-mint { background: rgba(52,199,89,0.85); color: #fff; }
 .badge-defect { background: rgba(239,68,68,0.88); color: #fff; }
 .badge-reserved { background: rgba(255,149,0,0.85); color: #fff; }
+/* Safe-zone "verified pickup spot" badge — bottom-left, green to signal trust.
+   Placed opposite to .img-count-badge (top-right) and .badge (top-left) so it
+   never collides with either. */
+.badge-safe-corner {
+  position: absolute; bottom: 7px; left: 7px;
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 7px 2px 5px; border-radius: 10px;
+  background: rgba(34,197,94,0.92);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.bsc-check { font-size: 10px; color: #fff; font-weight: 800; line-height: 1; }
+.bsc-label { font-size: 10px; color: #fff; font-weight: 600; line-height: 1; }
 .card-time { font-size: 10px; color: #c7c7cc; margin-left: auto; }
 .old-tag { font-size: 10px; color: #c7c7cc; margin-right: 2px; }
 

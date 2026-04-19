@@ -162,6 +162,9 @@
       <view class="action-btn-small" @click="onMarkReserved" v-if="item.status === 'active'">
         <text class="fav-label">{{ t('detail.reserve') }}</text>
       </view>
+      <view class="action-btn-small" @click="onUnreserve" v-if="item.status === 'reserved'">
+        <text class="fav-label">{{ t('detail.unreserve') }}</text>
+      </view>
       <view v-if="item.status === 'sold'" class="chat-btn chat-btn-disabled">
         <text>{{ t('status.sold') }}</text>
       </view>
@@ -422,6 +425,17 @@ async function onMarkReserved() {
     await updateItemStatus(item.value.id, 'reserved')
     item.value.status = 'reserved'
     uni.showToast({ title: t('detail.reserved'), icon: 'success' })
+  } catch {
+    uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+  }
+}
+
+async function onUnreserve() {
+  if (!item.value) return
+  try {
+    await updateItemStatus(item.value.id, 'active')
+    item.value.status = 'active'
+    uni.showToast({ title: t('detail.unreserved'), icon: 'success' })
   } catch {
     uni.showToast({ title: t('profile.markFail'), icon: 'none' })
   }

@@ -57,7 +57,13 @@
 
     <view class="items-grid">
       <view v-for="item in sellerItems" :key="item.id" class="grid-item" @click="goDetail(item.id)">
-        <image :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'" :alt="item.title" class="gi-img" mode="aspectFill" lazy-load />
+        <view class="gi-img-wrap">
+          <image :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'" :alt="item.title" class="gi-img" mode="aspectFill" lazy-load />
+          <view v-if="matchSpot(item.location)?.safe" class="badge-safe-corner" :aria-label="t('pickup.safeZone')">
+            <text class="bsc-check">✓</text>
+            <text class="bsc-label">{{ t('pickup.safeZone') }}</text>
+          </view>
+        </view>
         <view class="gi-info">
           <text class="gi-title">{{ item.title }}</text>
           <text class="gi-price">{{ formatPrice(item.price, t("home.free")) }}</text>
@@ -79,6 +85,7 @@ import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
 import { useAuth } from '../../composables/useAuth'
 import { useFollow } from '../../composables/useFollow'
+import { matchSpot } from '../../composables/useCampusSpots'
 import type { Profile, Item } from '../../types'
 import { formatPrice, thumbUrl } from '../../utils'
 
@@ -193,13 +200,15 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 }
 
 .trust-row {
-  display: flex; align-items: center; justify-content: center;
-  gap: 0; margin-top: 14px;
+  display: flex; align-items: center; justify-content: space-around;
+  gap: 10px;                  /* was 0 — stats were cramped together */
+  margin-top: 14px;
   background: #f7f7f8; border-radius: 10px;
-  padding: 10px 16px;
+  padding: 12px 20px;         /* was 10px 16px — more breathing room */
 }
 .trust-stat {
   display: flex; flex-direction: column; align-items: center;
+  padding: 0 4px;             /* extra horizontal padding so numbers/labels don't touch the dividers */
   flex: 1; gap: 2px;
 }
 .trust-num { font-size: 15px; font-weight: 700; color: #1a1a1a; }
@@ -214,8 +223,20 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   background: #fff; cursor: pointer;
   &:active { opacity: 0.8; }
 }
+.gi-img-wrap { position: relative; }
 .gi-img { width: 100%; height: 180px; }
 .gi-info { padding: 8px 10px; }
+
+/* Safe-zone verified pickup badge — same style as home feed cards. */
+.badge-safe-corner {
+  position: absolute; bottom: 7px; left: 7px;
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 7px 2px 5px; border-radius: 10px;
+  background: rgba(34,197,94,0.92);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.bsc-check { font-size: 10px; color: #fff; font-weight: 800; line-height: 1; }
+.bsc-label { font-size: 10px; color: #fff; font-weight: 600; line-height: 1; }
 .gi-title {
   font-size: 13px; color: #1a1a1a; line-height: 1.3;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;

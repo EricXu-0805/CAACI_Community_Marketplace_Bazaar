@@ -18,13 +18,19 @@
           class="card"
           @click="goDetail(it.id)"
         >
-          <image
-            :src="thumbUrl(it.images?.[0], 'card') || '/static/placeholder.svg'"
-            :alt="it.title"
-            class="card-img"
-            mode="aspectFill"
-            lazy-load
-          />
+          <view class="card-img-wrap">
+            <image
+              :src="thumbUrl(it.images?.[0], 'card') || '/static/placeholder.svg'"
+              :alt="it.title"
+              class="card-img"
+              mode="aspectFill"
+              lazy-load
+            />
+            <view v-if="matchSpot(it.location)?.safe" class="badge-safe-corner" :aria-label="t('pickup.safeZone')">
+              <text class="bsc-check">✓</text>
+              <text class="bsc-label">{{ t('pickup.safeZone') }}</text>
+            </view>
+          </view>
           <view class="card-body">
             <text class="card-title">{{ it.title }}</text>
             <text class="card-price">{{ formatPrice(it.price, t('home.free')) }}</text>
@@ -47,6 +53,7 @@ import { ref, onMounted } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { useFollow } from '../../composables/useFollow'
 import { useAuth } from '../../composables/useAuth'
+import { matchSpot } from '../../composables/useCampusSpots'
 import type { Item } from '../../types'
 import { formatPrice, thumbUrl } from '../../utils'
 
@@ -109,8 +116,20 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   cursor: pointer;
   &:active { opacity: 0.85; }
 }
+.card-img-wrap { position: relative; }
 .card-img { width: 100%; height: 160px; }
 .card-body { padding: 8px 10px 10px; }
+
+/* Safe-zone verified pickup badge — matches home feed style. */
+.badge-safe-corner {
+  position: absolute; bottom: 7px; left: 7px;
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 7px 2px 5px; border-radius: 10px;
+  background: rgba(34,197,94,0.92);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.bsc-check { font-size: 10px; color: #fff; font-weight: 800; line-height: 1; }
+.bsc-label { font-size: 10px; color: #fff; font-weight: 600; line-height: 1; }
 .card-title {
   font-size: 13px; color: #1a1a1a; line-height: 1.3;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
