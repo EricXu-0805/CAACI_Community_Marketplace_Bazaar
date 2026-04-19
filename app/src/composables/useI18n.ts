@@ -429,6 +429,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'error.actionFailed': 'Something went wrong. Please try again.',
 
     'pickup.safeZone': 'Safe Zone',
+    'pickup.verifiedPickup': 'Verified Pickup',
     'pickup.pickupAt': 'Meet at',
     'pickup.prefSafe': 'Seller prefers on-campus pickup',
 
@@ -879,6 +880,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'error.actionFailed': '操作失败，请重试',
 
     'pickup.safeZone': '校园安全点',
+    'pickup.verifiedPickup': '认证地点',
     'pickup.pickupAt': '取货点',
     'pickup.prefSafe': '卖家偏好校园内取货',
 

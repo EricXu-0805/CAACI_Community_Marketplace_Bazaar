@@ -145,7 +145,7 @@ import { watch } from 'vue'
 import { useAuth } from '../../composables/useAuth'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
-import { useCampusSpots, type CampusSpot } from '../../composables/useCampusSpots'
+import { useCampusSpots, matchSpot, type CampusSpot } from '../../composables/useCampusSpots'
 import { useLocation } from '../../composables/useLocation'
 import { useItems } from '../../composables/useItems'
 import { friendlyErrorMessage } from '../../utils'
@@ -188,6 +188,11 @@ const form = reactive({
   negotiable: false,
 })
 
+const locationVerified = ref(false)
+watch(() => form.location, () => {
+  locationVerified.value = false
+})
+
 onLoad(async (options) => {
   if (options?.edit) {
     editId.value = options.edit
@@ -202,6 +207,8 @@ onLoad(async (options) => {
       form.location = item.location
       form.negotiable = item.negotiable ?? false
       imageList.value = [...item.images]
+      const verifiedOnLoad = !!(item as any).location_verified
+      queueMicrotask(() => { locationVerified.value = verifiedOnLoad })
     } catch {}
   }
 })
@@ -229,7 +236,10 @@ function removeImage(index: number) {
 
 async function onDetectLocation() {
   const loc = await detectLocation()
-  if (loc) form.location = loc
+  if (!loc) return
+  form.location = loc
+  const spot = matchSpot(loc)
+  locationVerified.value = !!(spot && spot.safe)
 }
 
 async function onSubmit() {
@@ -300,6 +310,7 @@ async function onSubmit() {
       location: form.location || 'UIUC',
       images,
       negotiable: form.negotiable,
+      location_verified: locationVerified.value,
     }
 
     if (isEdit.value) {

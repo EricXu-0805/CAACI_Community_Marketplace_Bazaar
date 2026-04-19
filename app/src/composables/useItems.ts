@@ -13,7 +13,7 @@ const fetchError = ref('')
 const PAGE_SIZE = 20
 const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, location, is_illini_verified'
 const LIST_ITEM_FIELDS =
-  'id, user_id, title, price, category, condition, status, location, images, view_count, favorite_count, negotiable, created_at'
+  'id, user_id, title, price, category, condition, status, location, location_verified, images, view_count, favorite_count, negotiable, created_at'
 const VALID_STATUSES: ItemStatus[] = ['active', 'reserved', 'sold', 'deleted']
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 const MAX_IMAGES = 9
@@ -137,6 +137,7 @@ export function useItems() {
     location: string
     images: string[]
     negotiable?: boolean
+    location_verified?: boolean
   }) {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw new Error('Not authenticated')
@@ -158,6 +159,7 @@ export function useItems() {
         location: input.location,
         images: input.images,
         negotiable: input.negotiable ?? false,
+        location_verified: input.location_verified ?? false,
       })
       .select()
       .single()
@@ -166,7 +168,7 @@ export function useItems() {
     return data as Item
   }
 
-  async function updateItem(id: string, updates: Partial<Pick<Item, 'title' | 'description' | 'price' | 'location' | 'images' | 'negotiable'>>) {
+  async function updateItem(id: string, updates: Partial<Pick<Item, 'title' | 'description' | 'price' | 'location' | 'images' | 'negotiable' | 'location_verified'>>) {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw new Error('Not authenticated')
 

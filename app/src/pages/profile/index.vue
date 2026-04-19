@@ -92,6 +92,9 @@
               <view v-if="item.status === 'active'" class="action-btn" @click.stop="markAsSold(item.id)">
                 <text>{{ t('profile.markSold') }}</text>
               </view>
+              <view v-if="item.status === 'reserved'" class="action-btn" @click.stop="unreserveItem(item.id)">
+                <text>{{ t('detail.unreserve') }}</text>
+              </view>
               <view class="action-btn danger" @click.stop="onDeleteItem(item.id)">
                 <text>{{ t('profile.delete') }}</text>
               </view>
@@ -283,6 +286,18 @@ function markAsSold(id: string) {
       }
     },
   })
+}
+
+async function unreserveItem(id: string) {
+  try {
+    await updateItemStatus(id, 'active')
+    if (currentUser.value) {
+      myItems.value = await fetchMyItems(currentUser.value.id)
+    }
+    uni.showToast({ title: t('detail.unreserved'), icon: 'success' })
+  } catch {
+    uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+  }
 }
 
 function onDeleteItem(id: string) {

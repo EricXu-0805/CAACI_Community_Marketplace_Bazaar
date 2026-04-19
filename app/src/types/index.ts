@@ -90,6 +90,7 @@ export interface Item {
   condition: ItemCondition
   status: ItemStatus
   location: string
+  location_verified?: boolean
   images: string[]
   view_count: number
   favorite_count?: number

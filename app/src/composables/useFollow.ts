@@ -8,7 +8,7 @@ const followingLoaded = ref(false)
 
 const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, location, is_illini_verified'
 const LIST_ITEM_FIELDS =
-  'id, user_id, title, price, category, condition, status, location, images, view_count, favorite_count, negotiable, created_at'
+  'id, user_id, title, price, category, condition, status, location, location_verified, images, view_count, favorite_count, negotiable, created_at'
 
 export function useFollow() {
   const { supabase } = useSupabase()

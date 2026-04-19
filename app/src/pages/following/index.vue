@@ -26,9 +26,9 @@
               mode="aspectFill"
               lazy-load
             />
-            <view v-if="matchSpot(it.location)?.safe" class="badge-safe-corner" :aria-label="t('pickup.safeZone')">
+            <view v-if="it.location_verified && matchSpot(it.location)?.safe" class="badge-safe-corner" :aria-label="t('pickup.verifiedPickup')">
               <text class="bsc-check">✓</text>
-              <text class="bsc-label">{{ t('pickup.safeZone') }}</text>
+              <text class="bsc-label">{{ t('pickup.verifiedPickup') }}</text>
             </view>
           </view>
           <view class="card-body">

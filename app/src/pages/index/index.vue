@@ -242,9 +242,9 @@
               <view v-if="item.images && item.images.length > 1" class="img-count-badge">
                 <text>{{ item.images.length }}</text>
               </view>
-              <view v-if="matchSpot(item.location)?.safe" class="badge-safe-corner" :aria-label="t('pickup.safeZone')">
+              <view v-if="item.location_verified && matchSpot(item.location)?.safe" class="badge-safe-corner" :aria-label="t('pickup.verifiedPickup')">
                 <text class="bsc-check">✓</text>
-                <text class="bsc-label">{{ t('pickup.safeZone') }}</text>
+                <text class="bsc-label">{{ t('pickup.verifiedPickup') }}</text>
               </view>
             </view>
             <view class="card-info">
@@ -879,12 +879,19 @@ function goPublish() {
   transition: transform 0.1s;
   &:active { transform: scale(0.98); }
 }
+/* Fixed 3:4 aspect ratio reserves space BEFORE image loads → no layout
+   reflow when lazy-loaded images arrive → scroll stays smooth. Images
+   are letterboxed with object-fit:contain so full image is visible
+   without cropping or distortion. Grey fill shows letterbox bars. */
 .card-img-box {
   position: relative; width: 100%;
+  aspect-ratio: 3 / 4;
+  background: #f2f2f7;
   overflow: hidden;           /* clip card rounded corners */
 }
 .card-img {
-  width: 100%; height: auto;  /* scale image so its width fits the card; height follows natural aspect ratio (widthFix) */
+  width: 100%; height: 100%;
+  object-fit: contain;        /* whole image visible, no crop, no distortion */
   display: block;
   transition: filter 0.2s;
   &.card-img-sold { filter: grayscale(1) brightness(0.85); }

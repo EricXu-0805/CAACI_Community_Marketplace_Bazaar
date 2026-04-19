@@ -46,10 +46,10 @@
       <view class="tags">
         <text class="tag">{{ t('cat.' + item.category) }}</text>
         <text class="tag">{{ t('condition.' + item.condition) }}</text>
-        <view :class="['tag', 'tag-loc', { 'tag-safe': locationSpot?.safe }]">
+        <view :class="['tag', 'tag-loc', { 'tag-safe': item.location_verified && locationSpot?.safe }]">
           <view class="loc-dot"></view>
           <text>{{ item.location }}</text>
-          <text v-if="locationSpot?.safe" class="safe-badge">{{ t('pickup.safeZone') }}</text>
+          <text v-if="item.location_verified && locationSpot?.safe" class="safe-badge">{{ t('pickup.verifiedPickup') }}</text>
         </view>
       </view>
     </view>

@@ -59,9 +59,9 @@
       <view v-for="item in sellerItems" :key="item.id" class="grid-item" @click="goDetail(item.id)">
         <view class="gi-img-wrap">
           <image :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'" :alt="item.title" class="gi-img" mode="aspectFill" lazy-load />
-          <view v-if="matchSpot(item.location)?.safe" class="badge-safe-corner" :aria-label="t('pickup.safeZone')">
+          <view v-if="item.location_verified && matchSpot(item.location)?.safe" class="badge-safe-corner" :aria-label="t('pickup.verifiedPickup')">
             <text class="bsc-check">✓</text>
-            <text class="bsc-label">{{ t('pickup.safeZone') }}</text>
+            <text class="bsc-label">{{ t('pickup.verifiedPickup') }}</text>
           </view>
         </view>
         <view class="gi-info">
