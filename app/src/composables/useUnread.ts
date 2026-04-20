@@ -2,12 +2,13 @@ import { ref, watch } from 'vue'
 import { useSupabase } from './useSupabase'
 import { useAuth } from './useAuth'
 import { useI18n } from './useI18n'
+import { subscribeToUserInbox } from './useRealtimeFallback'
 
 const unreadCount = ref(0)
 const unreadConvIds = ref<Set<string>>(new Set())
 const hasMutedUnread = ref(false)
 const mutedConvIds = ref<Set<string>>(new Set())
-let channel: ReturnType<ReturnType<typeof useSupabase>['supabase']['channel']> | null = null
+let inboxUnsub: (() => void) | null = null
 
 export function useUnread() {
   const { supabase } = useSupabase()
@@ -73,35 +74,22 @@ export function useUnread() {
   }
 
   function startListening() {
-    if (channel || !currentUser.value) return
+    if (inboxUnsub || !currentUser.value) return
 
     const userId = currentUser.value.id
-    channel = supabase
-      .channel(`user-${userId}-new-messages`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `sender_id=neq.${userId}`,
-        },
-        (payload) => {
-          const newMsg = payload.new as any
-          refreshUnreadCount()
-          const convId = newMsg?.conversation_id
-          if (convId && !mutedConvIds.value.has(convId)) {
-            uni.showToast({ title: t('msg.newMessage'), icon: 'none', duration: 2000 })
-          }
-        }
-      )
-      .subscribe()
+    inboxUnsub = subscribeToUserInbox(userId, (newMsg: any) => {
+      refreshUnreadCount()
+      const convId = newMsg?.conversation_id
+      if (convId && !mutedConvIds.value.has(convId)) {
+        uni.showToast({ title: t('msg.newMessage'), icon: 'none', duration: 2000 })
+      }
+    })
   }
 
   function stopListening() {
-    if (channel) {
-      supabase.removeChannel(channel)
-      channel = null
+    if (inboxUnsub) {
+      inboxUnsub()
+      inboxUnsub = null
     }
     unreadCount.value = 0
     hasMutedUnread.value = false

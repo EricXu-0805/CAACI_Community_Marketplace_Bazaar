@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 import { useModeration } from './useModeration'
 import { useI18n } from './useI18n'
+import { subscribeToConversation as subscribeToConversationFallback } from './useRealtimeFallback'
 import type { Conversation, Message } from '../types'
 import { checkContent, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
 
@@ -136,25 +137,10 @@ export function useMessages() {
   }
 
   function subscribeToMessages(conversationId: string, onNewMessage: (msg: Message) => void) {
-    const channel = supabase
-      .channel(`messages:${conversationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`,
-        },
-        (payload) => {
-          onNewMessage(payload.new as Message)
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    /* Platform-aware: H5 uses Supabase Realtime (WebSocket); mp targets
+       use polling because their uni.connectSocket doesn't speak the
+       Phoenix channel protocol. See useRealtimeFallback for details. */
+    return subscribeToConversationFallback(conversationId, (m) => onNewMessage(m as Message))
   }
 
   async function markAsRead(conversationId: string, userId: string) {

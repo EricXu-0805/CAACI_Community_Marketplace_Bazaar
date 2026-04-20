@@ -13,7 +13,7 @@ everything that is required beyond the code, in order.
 | `uni.request` timeout + abort | Working | 25 s timeout, AbortSignal wired |
 | Image upload (`chooseImage`, compress, upload) | Working | needs `requiredPrivateInfos` (already in manifest) |
 | File picker (`chooseMedia`) | Working | ditto |
-| Supabase Realtime (chat websocket) | **Not working** | See §3 below — polling fallback planned |
+| Supabase Realtime (chat websocket) | Polling fallback active on mp | See §3 — `useRealtimeFallback.ts` auto-switches |
 | Deep-linking via `#/...` routes | Replace with `uni.navigateTo` only | no `window.location.hash` on mp |
 | `fetch`/`WebSocket`/`navigator` | Use uni.* | `mpFetch` handles fetch; see §3 for WebSocket |
 | OpenAI proxies (`/api/moderate`, `/api/translate`) | Work — hosted on Vercel, reachable via uni.request | needs domain allow-list |
@@ -57,25 +57,35 @@ then add:
 
 WeChat takes ~5 minutes to propagate the allow-list.
 
-## 3. Supabase Realtime (chat websocket) — known gap
+## 3. Supabase Realtime (chat websocket) — polling fallback
 
 The supabase-js realtime client uses Phoenix channels over a single
 WebSocket. WeChat mp has `wx.connectSocket` but it **does not round-trip
-cleanly** through Phoenix's handshake. Reported symptom: the channel
-subscribes, but `broadcast` and `postgres_changes` events never fire.
+cleanly** through Phoenix's handshake. Symptom: the channel subscribes,
+but `broadcast` and `postgres_changes` events never fire.
 
-The current plan:
+**Resolved** by `app/src/composables/useRealtimeFallback.ts`:
 
-1. On mp, short-circuit `subscribeToMessages()` to a 2-second poll of
-   `messages` filtered by `conversation_id`. This is ugly but reliable
-   and costs nothing if the conversation has no activity.
-2. Alternative: write a tiny Vercel edge function that long-polls
-   Supabase via the server-side socket and returns events to the mp
-   client via HTTP. More work, less polling cost.
+- Exports `subscribeToConversation(id, cb)` and `subscribeToUserInbox(userId, cb)`.
+- On H5 returns a real Supabase channel (existing behavior).
+- On every mp target returns a polling loop with identical
+  `(subscribe, unsubscribe)` ergonomics — so call sites stay
+  platform-agnostic.
+- Cadence: per-conversation = 3 s, user-wide inbox = 10 s.
+- Cursor strategy: remembers the last row's `created_at` and asks for
+  rows newer than that. `created_at` is a monotonic server clock, so
+  this is simpler and safer than tracking uuids.
+- Errors are swallowed per tick (offline periods don't spam logs).
+- Pages sleep in mp when backgrounded, so polling auto-pauses.
 
-Neither is done yet; mp users will see a working chat inbox but
-new messages won't push — they'll arrive on the next manual refresh
-or when the user taps into the conversation.
+Call sites already migrated:
+- `useMessages.subscribeToMessages()` → delegates to fallback
+- `useUnread.startListening()` → delegates to fallback
+
+Potential upgrade path (not done; probably not worth it):
+write a Vercel edge function that long-polls Supabase server-side and
+streams events to the mp client via HTTP. More work, less polling
+cost, but at current traffic the 3–10 s tick is invisible.
 
 ## 4. Page-to-tabBar mismatch
 
