@@ -41,15 +41,18 @@ function go(url: string) { uni.switchTab({ url }) }
 </script>
 
 <style scoped>
-/* Height = fixed 50px row + bottom safe-area chin. Using calc instead of
-   relying on padding to grow the box solves the old bug where icons
-   (24 + 10px label) spilled above the background on devices with a
-   home indicator (the 50px was being eaten by safe-area padding). */
+/* Height = 56px row + bottom safe-area chin. Bumped from 50→56 because
+   on short-viewport devices the 24px icon + 2px gap + 12px label stack
+   (~38px content) was visually crowding the top edge — users reported
+   the icon's upper half appearing to bleed into the page canvas above.
+   The extra 6px is split: 2px more top breathing room, 4px more bottom
+   chin before the safe-area. The FAB's margin-top: -10px still lifts it
+   above the bar, as before. */
 .tabbar {
   display: none; position: fixed; bottom: 0; left: 50%;
   transform: translateX(-50%);
   width: 100%; max-width: 480px;
-  height: calc(50px + env(safe-area-inset-bottom, 0px));
+  height: calc(56px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   background: rgba(252,252,253,0.88);
   backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
@@ -59,8 +62,8 @@ function go(url: string) { uni.switchTab({ url }) }
 }
 .tab {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 4px 0 2px; cursor: pointer; -webkit-tap-highlight-color: transparent;
-  height: 50px;
+  padding: 7px 0 4px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  height: 56px;
 }
 .lbl { font-size: 10px; color: #8e8e93; margin-top: 2px; font-weight: 500; }
 .lbl.active { color: #1a1a1a; }

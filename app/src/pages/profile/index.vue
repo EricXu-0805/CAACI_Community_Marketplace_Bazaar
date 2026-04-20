@@ -327,7 +327,7 @@ function onDeleteItem(id: string) {
 <style lang="scss" scoped>
 .page {
   min-height: 100vh; background: #f2f2f7;
-  max-width: 480px; margin: 0 auto; padding-bottom: 70px;
+  max-width: 480px; margin: 0 auto; padding-bottom: 76px;
 }
 
 .page-header {

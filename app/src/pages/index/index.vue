@@ -903,9 +903,14 @@ function goPublish() {
   cursor: pointer; transition: all 0.15s; font-weight: 500;
   &.active { background: #1a1a1a; color: #fff; }
 }
-/* Sheet now sits above the tabbar (z 1001 > 999), so no tabbar-height
-   clearance needed — the existing safe-area pad handles home-indicator. */
+/* Even though the sheet wins z-index (1001 > 999 on tabbar), the apply
+   button visually coincided with the tabbar row, creating a jarring
+   double-control illusion. Physical clearance (= tabbar height) fixes it
+   on mobile. Desktop has no tabbar so the base padding is enough. */
 .fs-footer { padding-top: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+@media (max-width: 767px) {
+  .fs-footer { padding-bottom: calc(18px + 56px + env(safe-area-inset-bottom, 0px)); }
+}
 .fs-apply {
   width: 100%; padding: 14px; border-radius: 24px;
   background: #FF6B35; color: #fff; font-size: 15px; font-weight: 600;
@@ -914,7 +919,7 @@ function goPublish() {
 }
 
 /* ========== Feed ========== */
-.feed { flex: 1; min-height: 0; padding-bottom: 70px; }
+.feed { flex: 1; min-height: 0; padding-bottom: 76px; }
 
 /* ========== Waterfall ========== */
 .waterfall { display: flex; padding: 5px; gap: 5px; padding-bottom: 54px; }
@@ -1091,7 +1096,7 @@ function goPublish() {
 .banner-sub { font-size: 11px; color: #636366; margin-top: 2px; display: block; }
 
 .back-top {
-  position: fixed; right: 16px; bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+  position: fixed; right: 16px; bottom: calc(116px + env(safe-area-inset-bottom, 0px));
   width: 40px; height: 40px; border-radius: 50%;
   background: rgba(255,255,255,0.9); box-shadow: 0 2px 8px rgba(0,0,0,0.12);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);

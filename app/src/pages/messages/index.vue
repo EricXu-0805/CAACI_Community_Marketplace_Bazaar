@@ -301,7 +301,7 @@ function goLogin() {
   min-height: 100vh;
   min-height: 100dvh;
   background: #fff;
-  max-width: 480px; margin: 0 auto; padding-bottom: 70px;
+  max-width: 480px; margin: 0 auto; padding-bottom: 76px;
 }
 
 .page-header {

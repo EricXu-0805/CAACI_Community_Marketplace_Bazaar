@@ -636,10 +636,16 @@ function scrollToBottom() {
 /* ========== Messages ========== */
 .message-list {
   flex: 1; min-height: 0;
-  padding: 12px 16px;
+  padding: 12px 12px 12px 16px;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  box-sizing: border-box;
 }
+/* Guarantee the right-side (mine) avatar never clips against the scroll
+   container edge. The row is flex-end, so a 4px right offset on the
+   avatar itself gives reliable clearance even when uni-scroll-view adds
+   its own padding/overlay scrollbar on H5 Chrome. */
+.msg-row.mine .msg-avatar { margin-right: 4px; }
 /* Belt-and-suspenders — on H5 Chrome the uni-scroll-view overlay
    scrollbar was clipping ~15px off the right-side avatar on "mine"
    messages. :show-scrollbar="false" is the primary fix; these
@@ -661,6 +667,7 @@ function scrollToBottom() {
 }
 .msg-row {
   display: flex; align-items: flex-end; margin-bottom: 9px; gap: 8px;
+  width: 100%; box-sizing: border-box;
   &.mine {
     justify-content: flex-end;
     .msg-bubble {
@@ -672,11 +679,13 @@ function scrollToBottom() {
 .msg-avatar {
   width: 32px; height: 32px; border-radius: 50%;
   flex-shrink: 0; background: #e8e8ed;
+  object-fit: cover;
 }
 .msg-bubble {
-  max-width: 68%; padding: 10px 14px;
+  max-width: calc(100% - 48px); padding: 10px 14px;
   background: #fff; border-radius: 4px 18px 18px 18px;
   font-size: 15px; line-height: 1.5; word-break: break-all;
+  box-sizing: border-box;
 }
 .msg-image {
   max-width: 200px; border-radius: 12px; background: #e8e8ed;
