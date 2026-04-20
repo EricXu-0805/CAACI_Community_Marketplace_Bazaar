@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { makeMpFetch } from '../utils/mpFetch'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || ''
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
@@ -16,6 +17,13 @@ function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise
   return fetch(input, { ...init, signal: controller.signal })
     .finally(() => clearTimeout(timer))
 }
+
+// #ifdef MP-WEIXIN || MP-QQ || MP-BAIDU || MP-ALIPAY || MP-TOUTIAO
+const platformFetch = makeMpFetch()
+// #endif
+// #ifndef MP-WEIXIN || MP-QQ || MP-BAIDU || MP-ALIPAY || MP-TOUTIAO
+const platformFetch = fetchWithTimeout as typeof fetch
+// #endif
 
 export function useSupabase() {
   if (!supabase) {
@@ -46,7 +54,7 @@ export function useSupabase() {
         },
       },
       global: {
-        fetch: fetchWithTimeout as typeof fetch,
+        fetch: platformFetch,
       },
     })
   }

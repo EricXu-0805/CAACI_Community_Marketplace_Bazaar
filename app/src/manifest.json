@@ -34,9 +34,22 @@
     "mp-weixin": {
         "appid": "",
         "setting": {
-            "urlCheck": false
+            "urlCheck": false,
+            "es6": true,
+            "minified": true,
+            "postcss": true
         },
-        "usingComponents": true
+        "usingComponents": true,
+        "lazyCodeLoading": "requiredComponents",
+        "requiredPrivateInfos": [
+            "chooseImage",
+            "chooseMedia"
+        ],
+        "permission": {
+            "scope.userLocation": {
+                "desc": "Used to show listings and meetup spots near you."
+            }
+        }
     },
     "uniStatistics": {
         "enable": false
