@@ -49,15 +49,12 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  SELECT p.suspension_level
-    INTO active_level
-    FROM public.profiles p
-   WHERE p.id = actor_id;
-
-  SELECT p.suspended_until
-    INTO ends_at
-    FROM public.profiles p
-   WHERE p.id = actor_id;
+  active_level := (
+    SELECT p.suspension_level FROM public.profiles p WHERE p.id = actor_id
+  );
+  ends_at := (
+    SELECT p.suspended_until FROM public.profiles p WHERE p.id = actor_id
+  );
 
   IF active_level IS NOT NULL
      AND active_level >= 2

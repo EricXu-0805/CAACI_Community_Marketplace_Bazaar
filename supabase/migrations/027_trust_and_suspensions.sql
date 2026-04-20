@@ -195,57 +195,64 @@ DECLARE
 BEGIN
   IF profile_id_in IS NULL THEN RETURN 50::smallint; END IF;
 
-  SELECT pr.created_at
-    INTO profile_created_at
-    FROM public.profiles pr
-   WHERE pr.id = profile_id_in;
-
-  SELECT pr.shadow_banned
-    INTO is_shadow_banned
-    FROM public.profiles pr
-   WHERE pr.id = profile_id_in;
+  -- Use scalar-subquery assignment (var := (SELECT ...)) everywhere
+  -- instead of SELECT...INTO. The INTO form — even single-target —
+  -- has been shipping the 42P01 "relation does not exist" misparse
+  -- on Supabase PG 15's editor path. Scalar subqueries sidestep the
+  -- whole INTO parser state machine.
+  profile_created_at := (
+    SELECT pr.created_at FROM public.profiles pr WHERE pr.id = profile_id_in
+  );
+  is_shadow_banned := (
+    SELECT pr.shadow_banned FROM public.profiles pr WHERE pr.id = profile_id_in
+  );
 
   IF profile_created_at IS NULL THEN RETURN 50::smallint; END IF;
 
   age_days := GREATEST(0, (now()::date - profile_created_at::date));
   score := score + LEAST(10, age_days / 7);
 
-  SELECT COUNT(*) INTO good_ratings
-    FROM public.ratings r
-   WHERE r.ratee_id = profile_id_in AND r.stars >= 4;
+  good_ratings := (
+    SELECT COUNT(*) FROM public.ratings r
+     WHERE r.ratee_id = profile_id_in AND r.stars >= 4
+  );
   score := score + LEAST(20, good_ratings * 2);
 
-  SELECT COUNT(*) INTO report_count
-    FROM public.reports rp
-   WHERE rp.target_type = 'user'
-     AND rp.target_id = profile_id_in
-     AND rp.status IN ('pending', 'reviewed');
+  report_count := (
+    SELECT COUNT(*) FROM public.reports rp
+     WHERE rp.target_type = 'user'
+       AND rp.target_id = profile_id_in
+       AND rp.status IN ('pending', 'reviewed')
+  );
   score := score - LEAST(30, report_count * 5);
 
-  SELECT COUNT(*) INTO recent_suspensions
-    FROM public.suspensions s
-   WHERE s.profile_id = profile_id_in
-     AND s.started_at > now() - interval '180 days'
-     AND s.level >= 2;
+  recent_suspensions := (
+    SELECT COUNT(*) FROM public.suspensions s
+     WHERE s.profile_id = profile_id_in
+       AND s.started_at > now() - interval '180 days'
+       AND s.level >= 2
+  );
   score := score - LEAST(30, recent_suspensions * 10);
 
-  SELECT EXISTS(
+  has_active_susp := EXISTS(
     SELECT 1 FROM public.suspensions s2
      WHERE s2.profile_id = profile_id_in
        AND s2.lifted_at IS NULL
        AND (s2.ends_at IS NULL OR s2.ends_at > now())
        AND s2.level >= 2
-  ) INTO has_active_susp;
+  );
   IF has_active_susp THEN score := score - 15; END IF;
 
   IF is_shadow_banned THEN score := score - 10; END IF;
 
-  SELECT COUNT(DISTINCT other_fp.profile_id) INTO sibling_alts
-    FROM public.device_fingerprints my_fp
-    JOIN public.device_fingerprints other_fp
-      ON other_fp.fp_hash = my_fp.fp_hash
-     AND other_fp.profile_id <> my_fp.profile_id
-   WHERE my_fp.profile_id = profile_id_in;
+  sibling_alts := (
+    SELECT COUNT(DISTINCT other_fp.profile_id)
+      FROM public.device_fingerprints my_fp
+      JOIN public.device_fingerprints other_fp
+        ON other_fp.fp_hash = my_fp.fp_hash
+       AND other_fp.profile_id <> my_fp.profile_id
+     WHERE my_fp.profile_id = profile_id_in
+  );
   score := score - LEAST(16, sibling_alts * 8);
 
   RETURN GREATEST(0, LEAST(100, score))::smallint;
@@ -382,19 +389,21 @@ BEGIN
 
   IF target IS NULL THEN RAISE EXCEPTION 'not_found'; END IF;
 
-  SELECT COALESCE(MAX(s.level), 0)
-    INTO max_active_level
-    FROM public.suspensions s
-   WHERE s.profile_id = target
-     AND s.lifted_at IS NULL
-     AND (s.ends_at IS NULL OR s.ends_at > now());
+  max_active_level := (
+    SELECT COALESCE(MAX(s.level), 0)
+      FROM public.suspensions s
+     WHERE s.profile_id = target
+       AND s.lifted_at IS NULL
+       AND (s.ends_at IS NULL OR s.ends_at > now())
+  );
 
-  SELECT MAX(s.ends_at)
-    INTO max_active_ends
-    FROM public.suspensions s
-   WHERE s.profile_id = target
-     AND s.lifted_at IS NULL
-     AND (s.ends_at IS NULL OR s.ends_at > now());
+  max_active_ends := (
+    SELECT MAX(s.ends_at)
+      FROM public.suspensions s
+     WHERE s.profile_id = target
+       AND s.lifted_at IS NULL
+       AND (s.ends_at IS NULL OR s.ends_at > now())
+  );
 
   UPDATE public.profiles
      SET suspension_level = COALESCE(max_active_level, 0),
@@ -464,15 +473,12 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  SELECT p.suspension_level
-    INTO active_level
-    FROM public.profiles p
-   WHERE p.id = actor_id;
-
-  SELECT p.suspended_until
-    INTO ends_at
-    FROM public.profiles p
-   WHERE p.id = actor_id;
+  active_level := (
+    SELECT p.suspension_level FROM public.profiles p WHERE p.id = actor_id
+  );
+  ends_at := (
+    SELECT p.suspended_until FROM public.profiles p WHERE p.id = actor_id
+  );
 
   IF active_level IS NOT NULL
      AND active_level >= 2
@@ -538,13 +544,15 @@ BEGIN
     RAISE EXCEPTION 'invalid_appeal_length';
   END IF;
 
-  SELECT id INTO sid
-    FROM public.suspensions
-   WHERE profile_id = auth.uid()
-     AND lifted_at IS NULL
-     AND appeal_note IS NULL
-   ORDER BY created_at DESC
-   LIMIT 1;
+  sid := (
+    SELECT s.id
+      FROM public.suspensions s
+     WHERE s.profile_id = auth.uid()
+       AND s.lifted_at IS NULL
+       AND s.appeal_note IS NULL
+     ORDER BY s.created_at DESC
+     LIMIT 1
+  );
 
   IF sid IS NULL THEN RAISE EXCEPTION 'no_active_suspension'; END IF;
 
