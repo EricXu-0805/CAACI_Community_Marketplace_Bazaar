@@ -43,6 +43,11 @@ export interface Profile {
   consented_at?: string | null
   onboarded_at?: string | null
   campus_area?: string | null
+  trust_score?: number
+  shadow_banned?: boolean
+  suspension_level?: number
+  suspended_until?: string | null
+  warning_count?: number
   created_at: string
   updated_at: string
 }

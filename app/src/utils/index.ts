@@ -62,7 +62,16 @@ const MODERATION_MESSAGES: Record<string, { en: string; zh: string }> = {
 
 export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string {
   if (!err) return ''
-  const raw = String(err?.message || err?.code || err || '').toLowerCase()
+  const rawMessage = String(err?.message || err?.code || err || '')
+  const raw = rawMessage.toLowerCase()
+
+  if (raw.startsWith('suspension_active:')) {
+    const parts = rawMessage.split(':')
+    const lvl = parts[1] || '?'
+    return lang === 'zh'
+      ? `账号已被限制（L${lvl}），请查看协议详情`
+      : `Your account is suspended (L${lvl}). See Terms for details.`
+  }
 
   if (raw.startsWith('moderation_block:')) {
     const cat = raw.split(':')[1] as keyof typeof MODERATION_MESSAGES

@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { useSupabase } from './useSupabase'
 import { useModeration } from './useModeration'
+import { deviceFingerprintHash, deviceUASnippet } from '../utils/fingerprint'
 import type { Profile } from '../types'
 
 const currentUser = ref<Profile | null>(null)
@@ -42,6 +43,7 @@ export function useAuth() {
         if (session?.user) {
           fetchProfile(session.user.id).catch(err => console.warn('fetchProfile failed:', err))
           loadBlockedIds()
+          recordFingerprint().catch(() => {})
         } else {
           currentUser.value = null
           clearBlocked()
@@ -50,6 +52,22 @@ export function useAuth() {
       authSubscription = data.subscription
     } catch (err) {
       console.warn('onAuthStateChange failed:', err)
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) recordFingerprint().catch(() => {})
+    } catch {}
+  }
+
+  async function recordFingerprint() {
+    try {
+      const hash = await deviceFingerprintHash()
+      const ua   = deviceUASnippet()
+      if (!hash || hash.length < 8) return
+      await supabase.rpc('record_fingerprint', { fp_hash_in: hash, ua_snippet_in: ua })
+    } catch (err) {
+      console.warn('record_fingerprint failed (non-fatal):', err)
     }
   }
 

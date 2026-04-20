@@ -6,7 +6,7 @@ moderation won't actually fire.
 
 ---
 
-## 1. Run the four new Supabase migrations
+## 1. Run the five new Supabase migrations
 
 Paste each into **Supabase Dashboard → SQL Editor**, in order:
 
@@ -14,6 +14,7 @@ Paste each into **Supabase Dashboard → SQL Editor**, in order:
 2. `supabase/migrations/024_content_moderation.sql` — creates `moderation_keywords` table + BEFORE INSERT triggers on `posts`, `post_comments`, `items`, `messages`. Seeds ~40 baseline terms.
 3. `supabase/migrations/025_content_moderation_lexicon.sql` — bulk inserts ~2,382 terms sourced from `konsheng/Sensitive-lexicon` (MIT). Political buckets filtered out.
 4. `supabase/migrations/026_profile_consent.sql` — adds `tos_version`, `consented_at`, `onboarded_at`, `campus_area` columns on `profiles`; exposes `record_consent()` and `mark_onboarded()` RPCs used by the onboarding wizard and the re-consent screen.
+5. `supabase/migrations/027_trust_and_suspensions.sql` — Security C: adds `trust_score`, `shadow_banned`, `suspension_level`, `suspended_until`, `last_fp_hash`, `warning_count` on `profiles`; creates `suspensions` history table, `device_fingerprints` table, `compute_trust_score()` / `recompute_trust_score()` / `apply_ban_level()` / `lift_suspension()` / `submit_appeal()` / `record_fingerprint()` RPCs; adds BEFORE INSERT `enforce_actor` triggers on `posts`/`post_comments`/`items`/`messages` that block writes for users with active suspension; exposes `items_visible` / `posts_visible` views that filter shadow-banned authors (except for the author themselves).
 
 **Verify:**
 ```sql

@@ -113,6 +113,10 @@
 		{
 			"path": "pages/reconsent/index",
 			"style": { "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/suspended/index",
+			"style": { "navigationStyle": "custom" }
 		}
 	],
 	"globalStyle": {

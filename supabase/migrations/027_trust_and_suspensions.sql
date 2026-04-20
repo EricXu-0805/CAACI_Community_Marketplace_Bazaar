@@ -1,0 +1,501 @@
+-- ============================================
+-- 027 Security C: trust score, suspensions, device fingerprint, shadowban
+-- ============================================
+-- This migration is the backend half of the "ban ladder" promised in
+-- the Terms of Service (ToS §9). The app's content-safety stack already
+-- blocks obvious bad content; this layer is about the *actor*:
+--   · every profile gets a trust_score 0-100 (default 50) and a
+--     shadow_banned flag
+--   · active suspensions are tracked in public.suspensions with a
+--     level 0-5 that maps to the ToS ladder
+--   · every publish path (posts, items, comments, messages) calls
+--     enforce_actor() via trigger, which raises a friendly error
+--     'suspension_active:<level>:<ends_at>' if a current suspension
+--     would block the action
+--   · shadow_banned = true hides a user's output from OTHER users'
+--     feeds but NOT from their own profile, so they can't tell they
+--     are shadow-banned (matches how this is done everywhere else).
+-- ============================================
+
+-- --------------------------------------------
+-- 1. Profile columns for trust state
+-- --------------------------------------------
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS trust_score        smallint NOT NULL DEFAULT 50
+    CHECK (trust_score BETWEEN 0 AND 100),
+  ADD COLUMN IF NOT EXISTS shadow_banned      boolean  NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS suspension_level   smallint NOT NULL DEFAULT 0
+    CHECK (suspension_level BETWEEN 0 AND 5),
+  ADD COLUMN IF NOT EXISTS suspended_until    timestamptz,
+  ADD COLUMN IF NOT EXISTS last_fp_hash       text,
+  ADD COLUMN IF NOT EXISTS last_fp_seen_at    timestamptz,
+  ADD COLUMN IF NOT EXISTS warning_count      integer  NOT NULL DEFAULT 0;
+
+CREATE INDEX IF NOT EXISTS profiles_trust_score_idx
+  ON public.profiles (trust_score);
+CREATE INDEX IF NOT EXISTS profiles_suspension_idx
+  ON public.profiles (suspended_until) WHERE suspended_until IS NOT NULL;
+CREATE INDEX IF NOT EXISTS profiles_shadow_idx
+  ON public.profiles (shadow_banned) WHERE shadow_banned = true;
+
+-- --------------------------------------------
+-- 2. suspensions history table
+--    (immutable log; current effective suspension is cached on
+--     profiles.suspension_level / suspended_until for fast triggers)
+-- --------------------------------------------
+CREATE TABLE IF NOT EXISTS public.suspensions (
+  id           uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  profile_id   uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  level        smallint NOT NULL CHECK (level BETWEEN 0 AND 5),
+  reason       text NOT NULL,
+  category     text NOT NULL DEFAULT 'generic',
+  issued_by    uuid,
+  started_at   timestamptz NOT NULL DEFAULT now(),
+  ends_at      timestamptz,
+  lifted_at    timestamptz,
+  lifted_by    uuid,
+  lift_reason  text,
+  appeal_note  text,
+  created_at   timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS suspensions_profile_active_idx
+  ON public.suspensions (profile_id, ends_at DESC)
+  WHERE lifted_at IS NULL;
+CREATE INDEX IF NOT EXISTS suspensions_created_idx
+  ON public.suspensions (created_at DESC);
+
+ALTER TABLE public.suspensions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS suspensions_self_read ON public.suspensions;
+CREATE POLICY suspensions_self_read ON public.suspensions
+  FOR SELECT USING (auth.uid() = profile_id);
+
+-- No INSERT/UPDATE/DELETE policy: only service_role (admin script)
+-- can mutate this table. RPCs below provide the controlled surface.
+
+-- --------------------------------------------
+-- 3. device_fingerprints table
+--    Records which profiles a given device hash has logged in under.
+--    Used by trust_score compute to detect multi-account patterns,
+--    and by apply_ban_level() to propagate bans to known alt accounts.
+--    Hashes are one-way (SHA-256 of client-derived signal); we never
+--    store the raw signal. No per-user PII is visible to other users.
+-- --------------------------------------------
+CREATE TABLE IF NOT EXISTS public.device_fingerprints (
+  id           bigserial PRIMARY KEY,
+  profile_id   uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  fp_hash      text NOT NULL,
+  first_seen   timestamptz NOT NULL DEFAULT now(),
+  last_seen    timestamptz NOT NULL DEFAULT now(),
+  seen_count   integer NOT NULL DEFAULT 1,
+  ua_snippet   text,
+  UNIQUE (profile_id, fp_hash)
+);
+
+CREATE INDEX IF NOT EXISTS device_fp_hash_idx
+  ON public.device_fingerprints (fp_hash, last_seen DESC);
+
+ALTER TABLE public.device_fingerprints ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS dfp_self_read ON public.device_fingerprints;
+CREATE POLICY dfp_self_read ON public.device_fingerprints
+  FOR SELECT USING (auth.uid() = profile_id);
+
+-- --------------------------------------------
+-- 4. record_fingerprint(hash, ua_snippet) RPC
+--    Called by the client at startup. Upserts the (profile, fp)
+--    pair, updates last_seen/seen_count, and mirrors the most-recent
+--    hash onto profiles.last_fp_hash so triggers that don't want to
+--    join into device_fingerprints can read it cheaply.
+-- --------------------------------------------
+CREATE OR REPLACE FUNCTION public.record_fingerprint(
+  fp_hash_in    text,
+  ua_snippet_in text DEFAULT NULL
+)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  uid uuid := auth.uid();
+  cleaned_hash text;
+  cleaned_ua   text;
+BEGIN
+  IF uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated';
+  END IF;
+
+  cleaned_hash := btrim(COALESCE(fp_hash_in, ''));
+  IF length(cleaned_hash) < 8 OR length(cleaned_hash) > 128 THEN
+    RAISE EXCEPTION 'invalid_fingerprint';
+  END IF;
+  IF cleaned_hash !~ '^[a-zA-Z0-9_-]+$' THEN
+    RAISE EXCEPTION 'invalid_fingerprint_format';
+  END IF;
+
+  cleaned_ua := left(COALESCE(ua_snippet_in, ''), 120);
+
+  INSERT INTO public.device_fingerprints (profile_id, fp_hash, ua_snippet)
+  VALUES (uid, cleaned_hash, cleaned_ua)
+  ON CONFLICT (profile_id, fp_hash)
+  DO UPDATE SET
+    last_seen  = now(),
+    seen_count = public.device_fingerprints.seen_count + 1,
+    ua_snippet = COALESCE(EXCLUDED.ua_snippet, public.device_fingerprints.ua_snippet);
+
+  UPDATE public.profiles
+     SET last_fp_hash    = cleaned_hash,
+         last_fp_seen_at = now()
+   WHERE id = uid;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.record_fingerprint(text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.record_fingerprint(text, text) TO authenticated;
+
+-- --------------------------------------------
+-- 5. compute_trust_score(profile_id) — pure function
+--    Deterministic 0-100 score derived from signals already in the db.
+--    Not cached per-call; recompute_trust_score() below writes it
+--    into profiles.trust_score on demand.
+--
+--    Weights (intentionally conservative — the score is advisory,
+--    NOT a hard gate; suspension_level is the hard gate):
+--      base                               =  50
+--      + min(10, days_since_signup / 7)   up to +10 over 10 weeks
+--      + 2 per 4-or-5-star rating received (capped +20)
+--      - 5 per pending/reviewed report against user (capped -30)
+--      - 10 per suspension in last 180 days (capped -30)
+--      - 15 if any active suspension
+--      - 10 if shadow_banned
+--      - 8  per shared-fp sibling account (max -16) — detects alts
+-- --------------------------------------------
+CREATE OR REPLACE FUNCTION public.compute_trust_score(p uuid)
+RETURNS smallint LANGUAGE plpgsql STABLE AS $$
+DECLARE
+  score               integer := 50;
+  age_days            integer;
+  good_ratings        integer;
+  report_count        integer;
+  recent_suspensions  integer;
+  active_suspension   boolean;
+  sb                  boolean;
+  sibling_alts        integer;
+BEGIN
+  IF p IS NULL THEN RETURN 50::smallint; END IF;
+
+  SELECT GREATEST(0, EXTRACT(DAY FROM (now() - created_at))::int),
+         shadow_banned
+    INTO age_days, sb
+    FROM public.profiles WHERE id = p;
+
+  IF age_days IS NULL THEN RETURN 50::smallint; END IF;
+
+  score := score + LEAST(10, age_days / 7);
+
+  SELECT COUNT(*) INTO good_ratings
+    FROM public.ratings
+   WHERE ratee_id = p AND stars >= 4;
+  score := score + LEAST(20, good_ratings * 2);
+
+  SELECT COUNT(*) INTO report_count
+    FROM public.reports
+   WHERE target_type = 'user' AND target_id = p
+     AND status IN ('pending', 'reviewed');
+  score := score - LEAST(30, report_count * 5);
+
+  SELECT COUNT(*) INTO recent_suspensions
+    FROM public.suspensions
+   WHERE profile_id = p
+     AND started_at > now() - interval '180 days'
+     AND level >= 2;
+  score := score - LEAST(30, recent_suspensions * 10);
+
+  SELECT EXISTS(
+    SELECT 1 FROM public.suspensions
+     WHERE profile_id = p
+       AND lifted_at IS NULL
+       AND (ends_at IS NULL OR ends_at > now())
+       AND level >= 2
+  ) INTO active_suspension;
+  IF active_suspension THEN score := score - 15; END IF;
+
+  IF sb THEN score := score - 10; END IF;
+
+  SELECT COUNT(DISTINCT other.profile_id) INTO sibling_alts
+    FROM public.device_fingerprints me
+    JOIN public.device_fingerprints other
+      ON other.fp_hash = me.fp_hash
+     AND other.profile_id <> me.profile_id
+   WHERE me.profile_id = p;
+  score := score - LEAST(16, sibling_alts * 8);
+
+  RETURN GREATEST(0, LEAST(100, score))::smallint;
+END;
+$$;
+
+-- Materializer. Callable by the user themself (cheap) and by
+-- service_role from cron. Never trust the client's claimed score.
+CREATE OR REPLACE FUNCTION public.recompute_trust_score(p uuid DEFAULT NULL)
+RETURNS smallint LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  target uuid;
+  s smallint;
+BEGIN
+  target := COALESCE(p, auth.uid());
+  IF target IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
+  IF auth.uid() IS NOT NULL AND auth.uid() <> target THEN
+    RAISE EXCEPTION 'forbidden';
+  END IF;
+  s := public.compute_trust_score(target);
+  UPDATE public.profiles SET trust_score = s WHERE id = target;
+  RETURN s;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.recompute_trust_score(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.recompute_trust_score(uuid) TO authenticated;
+
+-- --------------------------------------------
+-- 6. apply_ban_level(target, level, reason)
+--    Admin-only. Called via service_role. Writes to suspensions +
+--    updates the cached profiles columns. For level 5 (perma), also
+--    sets shadow_banned so any grace-period content stays hidden.
+--    Alt-account propagation: any profile sharing a recent device fp
+--    with the target is auto-shadowbanned (level-2 soft sanction).
+-- --------------------------------------------
+CREATE OR REPLACE FUNCTION public.apply_ban_level(
+  target_in   uuid,
+  level_in    smallint,
+  reason_in   text,
+  category_in text DEFAULT 'generic',
+  hours_in    integer DEFAULT NULL
+)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  new_id uuid;
+  duration interval;
+  ends timestamptz;
+  alt_id uuid;
+BEGIN
+  IF level_in NOT BETWEEN 0 AND 5 THEN RAISE EXCEPTION 'invalid_level'; END IF;
+  IF target_in IS NULL THEN RAISE EXCEPTION 'invalid_target'; END IF;
+  IF reason_in IS NULL OR length(btrim(reason_in)) = 0 THEN RAISE EXCEPTION 'reason_required'; END IF;
+
+  duration := CASE
+    WHEN hours_in IS NOT NULL THEN (hours_in || ' hours')::interval
+    WHEN level_in = 0 THEN NULL
+    WHEN level_in = 1 THEN NULL
+    WHEN level_in = 2 THEN interval '72 hours'
+    WHEN level_in = 3 THEN interval '7 days'
+    WHEN level_in = 4 THEN interval '30 days'
+    WHEN level_in = 5 THEN NULL
+  END;
+
+  ends := CASE
+    WHEN duration IS NULL AND level_in = 5 THEN 'infinity'::timestamptz
+    WHEN duration IS NULL THEN NULL
+    ELSE now() + duration
+  END;
+
+  INSERT INTO public.suspensions (profile_id, level, reason, category, issued_by, ends_at)
+  VALUES (target_in, level_in, reason_in, category_in, auth.uid(), ends)
+  RETURNING id INTO new_id;
+
+  UPDATE public.profiles
+     SET suspension_level = level_in,
+         suspended_until  = ends,
+         shadow_banned    = CASE
+           WHEN level_in >= 3 THEN true
+           ELSE shadow_banned
+         END,
+         warning_count = CASE
+           WHEN level_in = 1 THEN warning_count + 1
+           ELSE warning_count
+         END
+   WHERE id = target_in;
+
+  IF level_in >= 4 THEN
+    FOR alt_id IN
+      SELECT DISTINCT other.profile_id
+        FROM public.device_fingerprints me
+        JOIN public.device_fingerprints other
+          ON other.fp_hash = me.fp_hash
+         AND other.profile_id <> me.profile_id
+       WHERE me.profile_id = target_in
+         AND other.last_seen > now() - interval '90 days'
+    LOOP
+      UPDATE public.profiles
+         SET shadow_banned = true
+       WHERE id = alt_id AND suspension_level < 4;
+    END LOOP;
+  END IF;
+
+  PERFORM public.recompute_trust_score(target_in);
+  RETURN new_id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.apply_ban_level(uuid, smallint, text, text, integer) FROM PUBLIC;
+-- Grant to service_role only (implicit — no authenticated grant).
+
+-- --------------------------------------------
+-- 7. lift_suspension(suspension_id, reason)
+--    Admin-only via service_role. Clears the suspension and
+--    recomputes the cached profile columns based on whatever
+--    suspensions remain.
+-- --------------------------------------------
+CREATE OR REPLACE FUNCTION public.lift_suspension(
+  suspension_id uuid,
+  reason_in     text
+)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  target uuid;
+  max_active_level smallint;
+  max_active_ends  timestamptz;
+BEGIN
+  UPDATE public.suspensions
+     SET lifted_at   = now(),
+         lifted_by   = auth.uid(),
+         lift_reason = reason_in
+   WHERE id = suspension_id
+   RETURNING profile_id INTO target;
+
+  IF target IS NULL THEN RAISE EXCEPTION 'not_found'; END IF;
+
+  SELECT COALESCE(MAX(level), 0),
+         MAX(ends_at)
+    INTO max_active_level, max_active_ends
+    FROM public.suspensions
+   WHERE profile_id = target
+     AND lifted_at IS NULL
+     AND (ends_at IS NULL OR ends_at > now());
+
+  UPDATE public.profiles
+     SET suspension_level = COALESCE(max_active_level, 0),
+         suspended_until  = max_active_ends,
+         shadow_banned    = CASE
+           WHEN COALESCE(max_active_level, 0) < 3 THEN false
+           ELSE shadow_banned
+         END
+   WHERE id = target;
+
+  PERFORM public.recompute_trust_score(target);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.lift_suspension(uuid, text) FROM PUBLIC;
+
+-- --------------------------------------------
+-- 8. is_posting_allowed(uid) — the hard gate
+-- --------------------------------------------
+CREATE OR REPLACE FUNCTION public.is_posting_allowed(uid uuid)
+RETURNS boolean LANGUAGE sql STABLE AS $$
+  SELECT NOT EXISTS(
+    SELECT 1 FROM public.profiles
+     WHERE id = uid
+       AND suspension_level >= 2
+       AND (suspended_until IS NULL OR suspended_until > now())
+  );
+$$;
+
+-- --------------------------------------------
+-- 9. BEFORE INSERT trigger factory — enforce on every publish path
+-- --------------------------------------------
+CREATE OR REPLACE FUNCTION public.trg_enforce_actor()
+RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE
+  uid uuid;
+  lvl smallint;
+  ends timestamptz;
+BEGIN
+  uid := CASE TG_TABLE_NAME
+    WHEN 'posts'         THEN NEW.user_id
+    WHEN 'post_comments' THEN NEW.user_id
+    WHEN 'items'         THEN NEW.user_id
+    WHEN 'messages'      THEN NEW.sender_id
+  END;
+
+  IF uid IS NULL THEN RETURN NEW; END IF;
+  IF uid <> COALESCE(auth.uid(), uid) THEN RETURN NEW; END IF;
+
+  SELECT suspension_level, suspended_until
+    INTO lvl, ends
+    FROM public.profiles WHERE id = uid;
+
+  IF lvl IS NOT NULL AND lvl >= 2 AND (ends IS NULL OR ends > now()) THEN
+    RAISE EXCEPTION 'suspension_active:%:%',
+      lvl, COALESCE(to_char(ends, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), 'permanent');
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS enforce_actor_posts         ON public.posts;
+DROP TRIGGER IF EXISTS enforce_actor_post_comments ON public.post_comments;
+DROP TRIGGER IF EXISTS enforce_actor_items         ON public.items;
+DROP TRIGGER IF EXISTS enforce_actor_messages      ON public.messages;
+
+CREATE TRIGGER enforce_actor_posts         BEFORE INSERT ON public.posts         FOR EACH ROW EXECUTE FUNCTION public.trg_enforce_actor();
+CREATE TRIGGER enforce_actor_post_comments BEFORE INSERT ON public.post_comments FOR EACH ROW EXECUTE FUNCTION public.trg_enforce_actor();
+CREATE TRIGGER enforce_actor_items         BEFORE INSERT ON public.items         FOR EACH ROW EXECUTE FUNCTION public.trg_enforce_actor();
+CREATE TRIGGER enforce_actor_messages      BEFORE INSERT ON public.messages      FOR EACH ROW EXECUTE FUNCTION public.trg_enforce_actor();
+
+-- --------------------------------------------
+-- 10. Feed shadow-limit view
+--     Wraps items so home-feed queries can filter shadowbanned
+--     authors *unless* the viewer is the author. Use this from the
+--     client's fetch-items path (switch target from items to
+--     items_visible). Existing queries on `items` still work; only
+--     new callers opt in.
+-- --------------------------------------------
+CREATE OR REPLACE VIEW public.items_visible AS
+SELECT i.*
+  FROM public.items i
+  JOIN public.profiles p ON p.id = i.user_id
+ WHERE p.shadow_banned = false
+    OR i.user_id = auth.uid();
+
+GRANT SELECT ON public.items_visible TO anon, authenticated;
+
+CREATE OR REPLACE VIEW public.posts_visible AS
+SELECT po.*
+  FROM public.posts po
+  JOIN public.profiles p ON p.id = po.user_id
+ WHERE p.shadow_banned = false
+    OR po.user_id = auth.uid();
+
+GRANT SELECT ON public.posts_visible TO anon, authenticated;
+
+-- --------------------------------------------
+-- 11. Self-appeal window: allow a banned user to append one appeal
+--     note to their most recent active suspension.
+-- --------------------------------------------
+CREATE OR REPLACE FUNCTION public.submit_appeal(note_in text)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  sid uuid;
+  cleaned text;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
+  cleaned := btrim(COALESCE(note_in, ''));
+  IF length(cleaned) < 10 OR length(cleaned) > 2000 THEN
+    RAISE EXCEPTION 'invalid_appeal_length';
+  END IF;
+
+  SELECT id INTO sid
+    FROM public.suspensions
+   WHERE profile_id = auth.uid()
+     AND lifted_at IS NULL
+     AND appeal_note IS NULL
+   ORDER BY created_at DESC
+   LIMIT 1;
+
+  IF sid IS NULL THEN RAISE EXCEPTION 'no_active_suspension'; END IF;
+
+  UPDATE public.suspensions SET appeal_note = cleaned WHERE id = sid;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.submit_appeal(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.submit_appeal(text) TO authenticated;

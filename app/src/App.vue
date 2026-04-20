@@ -25,10 +25,12 @@ const { t } = useI18n()
 const GATE_EXEMPT_PAGES = [
   'pages/onboarding/index',
   'pages/reconsent/index',
+  'pages/suspended/index',
   'pages/legal/index',
   'pages/login/index',
   'pages/reset-password/index',
   'pages/welcome/index',
+  'pages/settings/index',
 ]
 
 function currentPagePath(): string {
@@ -41,12 +43,24 @@ function currentPagePath(): string {
   }
 }
 
+function isSuspensionActive(u: { suspension_level?: number; suspended_until?: string | null }): boolean {
+  if (!u.suspension_level || u.suspension_level < 2) return false
+  if (!u.suspended_until) return true
+  const ends = Date.parse(u.suspended_until)
+  if (Number.isNaN(ends)) return true
+  return ends > Date.now()
+}
+
 function enforceConsentGate() {
   const u = currentUser.value
   if (!u) return
   const here = currentPagePath()
   if (GATE_EXEMPT_PAGES.some(p => here === p)) return
 
+  if (isSuspensionActive(u)) {
+    uni.reLaunch({ url: '/pages/suspended/index' })
+    return
+  }
   if (!u.onboarded_at) {
     uni.reLaunch({ url: '/pages/onboarding/index' })
     return
