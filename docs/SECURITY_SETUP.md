@@ -6,13 +6,14 @@ moderation won't actually fire.
 
 ---
 
-## 1. Run the three new Supabase migrations
+## 1. Run the four new Supabase migrations
 
 Paste each into **Supabase Dashboard → SQL Editor**, in order:
 
 1. `supabase/migrations/023_banners.sql` — creates `banners` table + `banners_live` view, seeds two rows.
 2. `supabase/migrations/024_content_moderation.sql` — creates `moderation_keywords` table + BEFORE INSERT triggers on `posts`, `post_comments`, `items`, `messages`. Seeds ~40 baseline terms.
 3. `supabase/migrations/025_content_moderation_lexicon.sql` — bulk inserts ~2,382 terms sourced from `konsheng/Sensitive-lexicon` (MIT). Political buckets filtered out.
+4. `supabase/migrations/026_profile_consent.sql` — adds `tos_version`, `consented_at`, `onboarded_at`, `campus_area` columns on `profiles`; exposes `record_consent()` and `mark_onboarded()` RPCs used by the onboarding wizard and the re-consent screen.
 
 **Verify:**
 ```sql
@@ -20,6 +21,10 @@ SELECT count(*) FROM public.moderation_keywords WHERE active = true;
 -- expect ~2400
 SELECT count(*) FROM public.banners_live;
 -- expect >= 2
+SELECT column_name FROM information_schema.columns
+ WHERE table_schema='public' AND table_name='profiles'
+   AND column_name IN ('tos_version','onboarded_at','campus_area');
+-- expect 3 rows
 ```
 
 **Rollback if needed:**

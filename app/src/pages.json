@@ -105,6 +105,14 @@
 			"style": {
 				"navigationStyle": "custom"
 			}
+		},
+		{
+			"path": "pages/onboarding/index",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/reconsent/index",
+			"style": { "navigationStyle": "custom" }
 		}
 	],
 	"globalStyle": {

@@ -2,31 +2,67 @@
   <view class="page">
     <view class="header">
       <view class="back-btn" @click="goBack"><view class="back-arrow"></view></view>
-      <text class="header-title">{{ isPrivacy ? t('legal.privacy') : t('legal.terms') }}</text>
+      <text class="header-title">{{ title }}</text>
     </view>
-    <view class="content">
-      <text class="body" v-if="!isPrivacy">{{ t('legal.termsBody') }}</text>
-      <text class="body" v-else>{{ t('legal.privacyBody') }}</text>
+    <view class="tabs">
+      <view
+        v-for="tab in tabs"
+        :key="tab.type"
+        :class="['tab', { active: docType === tab.type }]"
+        @click="docType = tab.type"
+      >
+        <text>{{ tab.label }}</text>
+      </view>
+    </view>
+    <scroll-view class="content" scroll-y :show-scrollbar="false">
+      <text class="body">{{ body }}</text>
       <view class="contact-row" @click="onContactEmail">
         <text class="contact-label">{{ t('legal.contactLabel') }}</text>
         <text class="contact-email">{{ contactEmail }}</text>
         <text class="contact-hint">{{ t('legal.contactHint') }}</text>
       </view>
-    </view>
+    </scroll-view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
+import {
+  TERMS_EN, TERMS_ZH,
+  PRIVACY_EN, PRIVACY_ZH,
+  GUIDELINES_EN, GUIDELINES_ZH,
+  type LegalDocType,
+} from '../../legal'
 
-const { t } = useI18n()
-const isPrivacy = ref(false)
+const { t, lang } = useI18n()
+const docType = ref<LegalDocType>('terms')
 const contactEmail = 'illini.market.help@gmail.com'
 
+const tabs = computed(() => [
+  { type: 'terms' as LegalDocType,      label: t('legal.terms') },
+  { type: 'privacy' as LegalDocType,    label: t('legal.privacy') },
+  { type: 'guidelines' as LegalDocType, label: t('legal.guidelines') },
+])
+
+const title = computed(() => {
+  const tab = tabs.value.find(x => x.type === docType.value)
+  return tab ? tab.label : t('legal.terms')
+})
+
+const body = computed(() => {
+  const zh = lang.value === 'zh'
+  if (docType.value === 'privacy')    return zh ? PRIVACY_ZH    : PRIVACY_EN
+  if (docType.value === 'guidelines') return zh ? GUIDELINES_ZH : GUIDELINES_EN
+  return zh ? TERMS_ZH : TERMS_EN
+})
+
 onLoad((options) => {
-  if (options?.type === 'privacy') isPrivacy.value = true
+  const t = options?.type
+  if (t === 'privacy' || t === 'guidelines' || t === 'terms') {
+    docType.value = t as LegalDocType
+  }
 })
 
 function goBack() { uni.navigateBack() }
@@ -46,16 +82,43 @@ function onContactEmail() {
 </script>
 
 <style lang="scss" scoped>
-.page { min-height: 100vh; background: #fff; max-width: 640px; margin: 0 auto; }
+.page {
+  height: 100vh; height: 100dvh;
+  display: flex; flex-direction: column;
+  background: #fff; max-width: 640px; margin: 0 auto;
+}
 .header {
   display: flex; align-items: center; gap: 12px; padding: 12px 16px;
   padding-top: calc(12px + env(safe-area-inset-top, 0px));
   border-bottom: 0.5px solid rgba(0,0,0,0.06);
+  flex-shrink: 0;
 }
 .back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .back-arrow { width: 9px; height: 9px; border-left: 2px solid #1a1a1a; border-bottom: 2px solid #1a1a1a; transform: rotate(45deg); margin-left: 4px; }
 .header-title { font-size: 17px; font-weight: 600; color: #1a1a1a; }
-.content { padding: 20px 16px 40px; }
+
+.tabs {
+  display: flex; gap: 4px;
+  padding: 10px 12px 8px;
+  border-bottom: 0.5px solid rgba(0,0,0,0.06);
+  flex-shrink: 0;
+}
+.tab {
+  flex: 1; text-align: center;
+  padding: 8px 6px; border-radius: 8px;
+  background: #f2f2f7; cursor: pointer;
+  text { font-size: 13px; color: #636366; font-weight: 500; }
+  &:active { background: #e5e5ea; }
+  &.active {
+    background: #1a1a1a;
+    text { color: #fff; }
+  }
+}
+
+.content {
+  flex: 1; min-height: 0;
+  padding: 20px 16px calc(40px + env(safe-area-inset-bottom, 0px));
+}
 .body { font-size: 14px; color: #636366; line-height: 1.8; white-space: pre-wrap; }
 .contact-row {
   margin-top: 20px; padding: 16px; border-radius: 12px;

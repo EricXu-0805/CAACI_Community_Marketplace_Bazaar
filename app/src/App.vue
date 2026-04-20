@@ -1,10 +1,64 @@
 <script setup lang="ts">
+import { watch } from 'vue'
 import { onLaunch } from "@dcloudio/uni-app"
 import { useAuth } from "./composables/useAuth"
 import { useI18n } from "./composables/useI18n"
+import { CURRENT_CONSENT_VERSION } from './legal'
 
-const { init } = useAuth()
+const { init, currentUser } = useAuth()
 const { t } = useI18n()
+
+/*
+ * Re-consent + onboarding gate.
+ *
+ * Runs whenever the logged-in profile changes (login, signup, page
+ * refresh). Decides in order:
+ *   1. If profile has no onboarded_at → send to the onboarding wizard.
+ *   2. Else if profile.tos_version < CURRENT_CONSENT_VERSION → send
+ *      to the re-consent screen.
+ *   3. Else let the user through.
+ *
+ * We exempt a handful of routes from the redirect so users can actually
+ * READ the ToS and Privacy on those screens, and so the routing step
+ * of the gate itself doesn't fight with auth / password-reset flows.
+ */
+const GATE_EXEMPT_PAGES = [
+  'pages/onboarding/index',
+  'pages/reconsent/index',
+  'pages/legal/index',
+  'pages/login/index',
+  'pages/reset-password/index',
+  'pages/welcome/index',
+]
+
+function currentPagePath(): string {
+  try {
+    const pages = getCurrentPages() as Array<{ route?: string }>
+    if (pages.length === 0) return ''
+    return pages[pages.length - 1].route || ''
+  } catch {
+    return ''
+  }
+}
+
+function enforceConsentGate() {
+  const u = currentUser.value
+  if (!u) return
+  const here = currentPagePath()
+  if (GATE_EXEMPT_PAGES.some(p => here === p)) return
+
+  if (!u.onboarded_at) {
+    uni.reLaunch({ url: '/pages/onboarding/index' })
+    return
+  }
+  if (!u.tos_version || u.tos_version < CURRENT_CONSENT_VERSION) {
+    uni.reLaunch({ url: '/pages/reconsent/index' })
+  }
+}
+
+watch(currentUser, () => {
+  setTimeout(enforceConsentGate, 100)
+})
 
 function detectAuthRecoveryAndRoute(): boolean {
   // #ifdef H5

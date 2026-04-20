@@ -37,6 +37,10 @@
         <text class="mi-label">{{ t('legal.privacy') }}</text>
         <view class="mi-arrow"></view>
       </view>
+      <view class="menu-item" @click="goLegal('guidelines')">
+        <text class="mi-label">{{ t('legal.guidelines') }}</text>
+        <view class="mi-arrow"></view>
+      </view>
     </view>
 
     <view v-if="isLoggedIn" class="section">
@@ -82,7 +86,7 @@ try {
 
 function goBack() { uni.navigateBack() }
 function goLegal(type: string) {
-  uni.navigateTo({ url: `/pages/legal/index${type === 'privacy' ? '?type=privacy' : ''}` })
+  uni.navigateTo({ url: `/pages/legal/index?type=${type}` })
 }
 function goBlocked() { uni.navigateTo({ url: '/pages/blocked/index' }) }
 

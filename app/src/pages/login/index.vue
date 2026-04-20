@@ -73,8 +73,10 @@
         <text class="agree-text">
           <text>{{ t('login.agreePrefix') }}</text>
           <text class="link" @click.stop="goLegal('terms')">{{ t('legal.terms') }}</text>
-          <text>{{ t('login.agreeAnd') }}</text>
+          <text>, </text>
           <text class="link" @click.stop="goLegal('privacy')">{{ t('legal.privacy') }}</text>
+          <text>{{ t('login.agreeAnd') }}</text>
+          <text class="link" @click.stop="goLegal('guidelines')">{{ t('legal.guidelines') }}</text>
         </text>
       </view>
 
@@ -124,7 +126,7 @@ async function onForgotPassword() {
 }
 
 function goLegal(type: string) {
-  uni.navigateTo({ url: `/pages/legal/index${type === 'privacy' ? '?type=privacy' : ''}` })
+  uni.navigateTo({ url: `/pages/legal/index?type=${type}` })
 }
 
 function goBack() {
@@ -167,7 +169,9 @@ async function onSubmit() {
       })
     } else {
       uni.showToast({ title: t('login.signupOk'), icon: 'success' })
-      setTimeout(() => uni.navigateBack(), 1500)
+      setTimeout(() => {
+        uni.reLaunch({ url: '/pages/onboarding/index' })
+      }, 1200)
     }
   } else {
     const { error } = await signIn(email.value.trim(), password.value)

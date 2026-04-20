@@ -39,6 +39,10 @@ export interface Profile {
   is_illini_verified?: boolean
   avg_rating?: number
   rating_count?: number
+  tos_version?: string | null
+  consented_at?: string | null
+  onboarded_at?: string | null
+  campus_area?: string | null
   created_at: string
   updated_at: string
 }
