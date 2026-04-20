@@ -111,7 +111,7 @@ onLaunch(() => {
 
 <style>
 page {
-  background-color: #f7f7f8;
+  background-color: #fafafb;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
     'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 15px;
@@ -212,9 +212,94 @@ button:focus-visible,
   border: 0;
 }
 
+/*
+ * Flat design tokens. Use these over one-off hex values in page
+ * styles so a future recolor only touches this file.
+ *
+ * Radius scale: xs 6, sm 8, md 12, lg 16, pill 22 (button height /2).
+ * Stick to these five steps — if you reach for 10 or 14, round to
+ * the nearest step instead.
+ */
 :root {
+  --text-primary:   #1a1a1a;
   --text-secondary: #5a5a63;
   --text-tertiary:  #767680;
+  --text-muted:     #8e8e93;
+  --text-faint:     #aeaeb2;
   --text-disabled:  #a0a0a8;
+
+  --bg-page:    #fafafb;
+  --bg-elev-1:  #ffffff;
+  --bg-elev-2:  #f7f7f8;
+  --bg-subtle:  #f2f2f7;
+  --bg-inset:   #e8e8ed;
+
+  --line-hair:  rgba(0, 0, 0, 0.05);
+  --line-soft:  rgba(0, 0, 0, 0.08);
+  --line-bold:  rgba(0, 0, 0, 0.12);
+
+  --accent-primary: #1a1a1a;
+  --accent-action:  #FF6B35;
+  --accent-good:    #22c55e;
+  --accent-warn:    #FF9500;
+  --accent-danger:  #FF3B30;
+
+  --radius-xs:   6px;
+  --radius-sm:   8px;
+  --radius-md:  12px;
+  --radius-lg:  16px;
+  --radius-pill: 22px;
+
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+
+  --font-weight-regular: 400;
+  --font-weight-medium:  500;
+  --font-weight-semi:    600;
+  --font-weight-bold:    700;
+
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.03), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-pop:  0 4px 16px rgba(0, 0, 0, 0.08);
 }
+
+/*
+ * Shared utility classes. Opt-in per page; not forced on existing
+ * components so we don't break their scoped styles.
+ */
+.u-card {
+  background: var(--bg-elev-1);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+}
+.u-divider {
+  height: 0.5px;
+  background: var(--line-hair);
+  width: 100%;
+}
+.u-btn-primary {
+  background: var(--accent-primary);
+  color: #fff;
+  padding: 12px 18px;
+  border-radius: var(--radius-pill);
+  font-size: 15px;
+  font-weight: var(--font-weight-semi);
+  text-align: center;
+  cursor: pointer;
+}
+.u-btn-primary:active { opacity: 0.85; }
+.u-btn-ghost {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  padding: 12px 18px;
+  border-radius: var(--radius-pill);
+  font-size: 15px;
+  font-weight: var(--font-weight-semi);
+  text-align: center;
+  cursor: pointer;
+}
+.u-btn-ghost:active { background: var(--bg-inset); }
 </style>
