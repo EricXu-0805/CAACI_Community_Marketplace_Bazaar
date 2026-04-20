@@ -168,7 +168,19 @@ GRANT EXECUTE ON FUNCTION public.record_fingerprint(text, text) TO authenticated
 --      - 10 if shadow_banned
 --      - 8  per shared-fp sibling account (max -16) — detects alts
 -- --------------------------------------------
-CREATE OR REPLACE FUNCTION public.compute_trust_score(p uuid)
+-- Parser-trap note: this function used to compute age_days as
+-- EXTRACT(DAY FROM (now() - created_at)). On Supabase PG 15, the
+-- `FROM` keyword inside EXTRACT confuses plpgsql's statement-boundary
+-- scanner in SELECT...INTO multi-target form, causing it to misread
+-- the INTO targets as SQL-level table names (42P01 relation "age_days"
+-- does not exist). Fixed by splitting into two assignments and using
+-- plain date subtraction instead of EXTRACT.
+--
+-- Also: param renamed from `p` to `profile_id_in`. The DROP FUNCTION
+-- below cleans up the old signature if a previous partial run left
+-- it behind (PG treats param name changes as a new overload).
+DROP FUNCTION IF EXISTS public.compute_trust_score(uuid);
+CREATE OR REPLACE FUNCTION public.compute_trust_score(profile_id_in uuid)
 RETURNS smallint LANGUAGE plpgsql STABLE AS $$
 DECLARE
   score               integer := 50;
@@ -176,56 +188,59 @@ DECLARE
   good_ratings        integer;
   report_count        integer;
   recent_suspensions  integer;
-  active_suspension   boolean;
-  sb                  boolean;
+  has_active_susp     boolean;
+  is_shadow_banned    boolean;
   sibling_alts        integer;
+  profile_created_at  timestamptz;
 BEGIN
-  IF p IS NULL THEN RETURN 50::smallint; END IF;
+  IF profile_id_in IS NULL THEN RETURN 50::smallint; END IF;
 
-  SELECT GREATEST(0, EXTRACT(DAY FROM (now() - created_at))::int),
-         shadow_banned
-    INTO age_days, sb
-    FROM public.profiles WHERE id = p;
+  SELECT pr.created_at, pr.shadow_banned
+    INTO profile_created_at, is_shadow_banned
+    FROM public.profiles pr
+   WHERE pr.id = profile_id_in;
 
-  IF age_days IS NULL THEN RETURN 50::smallint; END IF;
+  IF profile_created_at IS NULL THEN RETURN 50::smallint; END IF;
 
+  age_days := GREATEST(0, (now()::date - profile_created_at::date));
   score := score + LEAST(10, age_days / 7);
 
   SELECT COUNT(*) INTO good_ratings
-    FROM public.ratings
-   WHERE ratee_id = p AND stars >= 4;
+    FROM public.ratings r
+   WHERE r.ratee_id = profile_id_in AND r.stars >= 4;
   score := score + LEAST(20, good_ratings * 2);
 
   SELECT COUNT(*) INTO report_count
-    FROM public.reports
-   WHERE target_type = 'user' AND target_id = p
-     AND status IN ('pending', 'reviewed');
+    FROM public.reports rp
+   WHERE rp.target_type = 'user'
+     AND rp.target_id = profile_id_in
+     AND rp.status IN ('pending', 'reviewed');
   score := score - LEAST(30, report_count * 5);
 
   SELECT COUNT(*) INTO recent_suspensions
-    FROM public.suspensions
-   WHERE profile_id = p
-     AND started_at > now() - interval '180 days'
-     AND level >= 2;
+    FROM public.suspensions s
+   WHERE s.profile_id = profile_id_in
+     AND s.started_at > now() - interval '180 days'
+     AND s.level >= 2;
   score := score - LEAST(30, recent_suspensions * 10);
 
   SELECT EXISTS(
-    SELECT 1 FROM public.suspensions
-     WHERE profile_id = p
-       AND lifted_at IS NULL
-       AND (ends_at IS NULL OR ends_at > now())
-       AND level >= 2
-  ) INTO active_suspension;
-  IF active_suspension THEN score := score - 15; END IF;
+    SELECT 1 FROM public.suspensions s2
+     WHERE s2.profile_id = profile_id_in
+       AND s2.lifted_at IS NULL
+       AND (s2.ends_at IS NULL OR s2.ends_at > now())
+       AND s2.level >= 2
+  ) INTO has_active_susp;
+  IF has_active_susp THEN score := score - 15; END IF;
 
-  IF sb THEN score := score - 10; END IF;
+  IF is_shadow_banned THEN score := score - 10; END IF;
 
-  SELECT COUNT(DISTINCT other.profile_id) INTO sibling_alts
-    FROM public.device_fingerprints me
-    JOIN public.device_fingerprints other
-      ON other.fp_hash = me.fp_hash
-     AND other.profile_id <> me.profile_id
-   WHERE me.profile_id = p;
+  SELECT COUNT(DISTINCT other_fp.profile_id) INTO sibling_alts
+    FROM public.device_fingerprints my_fp
+    JOIN public.device_fingerprints other_fp
+      ON other_fp.fp_hash = my_fp.fp_hash
+     AND other_fp.profile_id <> my_fp.profile_id
+   WHERE my_fp.profile_id = profile_id_in;
   score := score - LEAST(16, sibling_alts * 8);
 
   RETURN GREATEST(0, LEAST(100, score))::smallint;
