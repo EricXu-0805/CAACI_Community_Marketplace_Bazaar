@@ -33,6 +33,8 @@
       @refresherrefresh="onRefresh"
       @scrolltolower="loadMore"
     >
+      <PlazaBannerCarousel />
+
       <view v-if="loading && posts.length === 0" class="loading">
         <text>{{ t('home.loading') }}...</text>
       </view>
@@ -268,6 +270,7 @@ import type { Post, PostComment } from '../../types'
 import { formatTime, compressImage, friendlyErrorMessage, thumbUrl } from '../../utils'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
+import PlazaBannerCarousel from '../../components/PlazaBannerCarousel.vue'
 
 const { t, lang } = useI18n()
 const { currentUser, isLoggedIn, requireAuth } = useAuth()

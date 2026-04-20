@@ -138,10 +138,11 @@
     <!-- Action Bar: Buyer -->
     <view class="action-bar" v-if="item.user_id !== currentUser?.id">
       <view class="fav-btn" @click="toggleFavorite">
-        <image :src="isFav ? '/static/heart-filled.svg' : '/static/heart.svg'" class="heart-img" />
+        <image :src="isFav ? '/static/heart-filled.svg' : '/static/heart.svg'" class="icon-img" />
         <text class="fav-label">{{ isFav ? t('detail.saved') : t('detail.save') }}</text>
       </view>
-      <view :class="['action-btn-small', { reported: reported }]" @click="onReport">
+      <view :class="['fav-btn', { reported: reported }]" @click="onReport">
+        <view class="icon-img ico-report"></view>
         <text class="fav-label">{{ reported ? t('report.thanks') : t('detail.report') }}</text>
       </view>
       <view v-if="item.status === 'sold' && !alreadyRated" class="chat-btn chat-btn-rate" @click="openRating">
@@ -155,18 +156,20 @@
       </view>
     </view>
     <view class="action-bar" v-else>
-      <!-- Sellers can also favorite their own item (e.g. to bookmark it for later). -->
       <view class="fav-btn" @click="toggleFavorite">
-        <image :src="isFav ? '/static/heart-filled.svg' : '/static/heart.svg'" class="heart-img" />
+        <image :src="isFav ? '/static/heart-filled.svg' : '/static/heart.svg'" class="icon-img" />
         <text class="fav-label">{{ isFav ? t('detail.saved') : t('detail.save') }}</text>
       </view>
-      <view class="action-btn-small" @click="goEdit" v-if="item.status === 'active'">
+      <view class="fav-btn" @click="goEdit" v-if="item.status === 'active'">
+        <view class="icon-img ico-edit"></view>
         <text class="fav-label">{{ t('profile.edit') }}</text>
       </view>
-      <view class="action-btn-small" @click="onMarkReserved" v-if="item.status === 'active'">
+      <view class="fav-btn" @click="onMarkReserved" v-if="item.status === 'active'">
+        <view class="icon-img ico-reserve"></view>
         <text class="fav-label">{{ t('detail.reserve') }}</text>
       </view>
-      <view class="action-btn-small" @click="onUnreserve" v-if="item.status === 'reserved'">
+      <view class="fav-btn" @click="onUnreserve" v-if="item.status === 'reserved'">
+        <view class="icon-img ico-reserve on"></view>
         <text class="fav-label">{{ t('detail.unreserve') }}</text>
       </view>
       <view v-if="item.status === 'sold'" class="chat-btn chat-btn-disabled">
@@ -743,14 +746,68 @@ async function contactSeller() {
   margin: 0 auto;
 }
 .fav-btn {
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: 0 10px; cursor: pointer;
-  &:active { transform: scale(0.9); }
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center;
+  min-width: 48px; height: 44px;
+  gap: 3px; padding: 0 6px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  &:active { transform: scale(0.92); }
 }
 
-.heart-img { width: 24px; height: 24px; }
+.icon-img { width: 22px; height: 22px; flex-shrink: 0; display: block; }
+.heart-img { width: 22px; height: 22px; }
 
-.fav-label { font-size: 10px; color: #8e8e93; }
+.ico-edit {
+  position: relative;
+  &::before {
+    content: ''; position: absolute;
+    top: 14px; left: 1px; right: 5px; height: 2px;
+    background: #636366; border-radius: 1px;
+    transform: rotate(-45deg); transform-origin: left center;
+  }
+  &::after {
+    content: ''; position: absolute;
+    top: 1px; right: 1px;
+    width: 6px; height: 6px;
+    background: #636366; border-radius: 1px;
+    transform: rotate(45deg);
+  }
+}
+.ico-report {
+  position: relative;
+  &::before {
+    content: ''; position: absolute;
+    top: 0; bottom: 0; left: 5px;
+    width: 2px; background: #636366; border-radius: 1px;
+  }
+  &::after {
+    content: ''; position: absolute;
+    top: 1px; left: 7px;
+    width: 10px; height: 6px;
+    background: #636366;
+    clip-path: polygon(0 0, 100% 50%, 0 100%);
+  }
+}
+.reported .ico-report {
+  &::before { background: #34C759; }
+  &::after { background: #34C759; }
+}
+.ico-reserve {
+  position: relative;
+  border: 1.8px solid #636366; border-radius: 3px;
+  &::before {
+    content: ''; position: absolute;
+    top: 3px; left: 3px; right: 3px; height: 2px;
+    background: #636366; border-radius: 1px;
+  }
+  &.on {
+    background: rgba(255,149,0,0.12);
+    border-color: #FF9500;
+    &::before { background: #FF9500; }
+  }
+}
+
+.fav-label { font-size: 10px; color: #8e8e93; line-height: 1; }
 .safety-tip {
   display: flex; align-items: center; gap: 8px;
   padding: 10px 16px; background: #f7f7f8; margin-top: 7px;
@@ -768,9 +825,12 @@ async function contactSeller() {
 .mc-price { font-size: 13px; font-weight: 700; color: #1a1a1a; margin-top: 4px; display: block; }
 
 .action-btn-small {
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: 0 10px; cursor: pointer;
-  &:active { transform: scale(0.9); }
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center;
+  min-width: 48px; height: 44px;
+  gap: 3px; padding: 0 6px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  &:active { transform: scale(0.92); }
 }
 .chat-btn {
   flex: 1; height: 44px; background: #1a1a1a; color: #fff;
