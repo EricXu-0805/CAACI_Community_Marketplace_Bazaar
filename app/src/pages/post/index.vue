@@ -24,7 +24,17 @@
           </view>
         </view>
 
-        <text class="content">{{ post.content }}</text>
+        <view class="content-wrap">
+          <text class="content">{{ translated ? translatedContent : post.content }}</text>
+          <view
+            v-if="post.content && post.content.trim().length > 0"
+            :class="['translate-btn', { loading: translatePending }]"
+            @click.stop="toggleTranslate"
+          >
+            <text v-if="!translatePending">{{ translated ? 'A文' : '文A' }}</text>
+            <text v-else>···</text>
+          </view>
+        </view>
 
         <view v-if="post.images && post.images.length > 0" class="images">
           <image
@@ -115,14 +125,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
 import { usePlaza } from '../../composables/usePlaza'
 import { useModeration } from '../../composables/useModeration'
 import { useHistory } from '../../composables/useHistory'
-import { formatTime, friendlyErrorMessage } from '../../utils'
+import { useTranslate } from '../../composables/useTranslate'
+import { formatTime, friendlyErrorMessage, quickTranslate } from '../../utils'
 import type { Post, PostComment } from '../../types'
 
 const { t, lang } = useI18n()
@@ -140,6 +151,34 @@ const replyTo = ref<PostComment | null>(null)
 const submitting = ref(false)
 
 const postId = ref('')
+
+/* ---------- AI translation (post content)
+   Mirrors the detail-page pattern: cache-first, A文/文A toggle,
+   static-dictionary fallback when /api/translate is unavailable or the
+   OPENAI_API_KEY isn't set on the edge function. */
+const { translate: translateText, getCached, pending: translatePending } = useTranslate()
+const translated = ref(false)
+const translatedContent = ref('')
+
+async function ensureTranslation() {
+  if (!post.value || !post.value.content) return
+  const target = lang.value as 'en' | 'zh'
+  const cached = getCached(post.value.content, target)
+  translatedContent.value = cached || quickTranslate(post.value.content, target)
+  if (cached) return
+  const t2 = await translateText(post.value.content, target)
+  if (!post.value) return
+  if (t2) translatedContent.value = t2
+}
+
+async function toggleTranslate() {
+  translated.value = !translated.value
+  if (translated.value) await ensureTranslation()
+}
+
+watch(lang, async () => {
+  if (translated.value && post.value) await ensureTranslation()
+})
 
 onLoad((options) => {
   if (options?.id) {
@@ -211,7 +250,7 @@ function onDelete() {
   if (!post.value) return
   uni.showModal({
     title: t('plaza.deleteConfirm'),
-    confirmColor: '#FF3B30',
+    confirmColor: 'var(--accent-danger)',
     success: async (r) => {
       if (!r.confirm || !post.value) return
       try {
@@ -236,12 +275,12 @@ function onCommentLongPress(c: PostComment) {
   const items = isMine ? [t('plaza.delete')] : [t('plaza.reply'), t('plaza.report')]
   uni.showActionSheet({
     itemList: items,
-    itemColor: isMine ? '#FF3B30' : '#1a1a1a',
+    itemColor: isMine ? 'var(--accent-danger)' : '#1a1a1a',
     success: (res) => {
       if (isMine && res.tapIndex === 0) {
         uni.showModal({
           title: t('plaza.commentDeleteConfirm'),
-          confirmColor: '#FF3B30',
+          confirmColor: 'var(--accent-danger)',
           success: async (r) => {
             if (!r.confirm || !post.value) return
             try {
@@ -335,7 +374,7 @@ async function onSubmitComment() {
 <style lang="scss" scoped>
 .page {
   height: 100vh; height: 100dvh;
-  background: #f2f2f7;
+  background: var(--bg-subtle);
   max-width: 480px; margin: 0 auto;
   display: flex; flex-direction: column;
   overflow: hidden;
@@ -345,8 +384,8 @@ async function onSubmitComment() {
   display: flex; align-items: center; justify-content: space-between;
   padding: 11px 14px;
   padding-top: calc(11px + env(safe-area-inset-top, 0px));
-  background: #fff;
-  border-bottom: 0.5px solid rgba(0,0,0,0.06);
+  background: var(--bg-elev-1);
+  border-bottom: 0.5px solid var(--line-hair);
   flex-shrink: 0;
 }
 .back-btn {
@@ -358,7 +397,7 @@ async function onSubmitComment() {
   border-left: 2px solid #1a1a1a; border-bottom: 2px solid #1a1a1a;
   transform: rotate(45deg); margin-left: 4px;
 }
-.header-title { flex: 1; font-size: 16px; font-weight: 700; color: #1a1a1a; text-align: center; }
+.header-title { flex: 1; font-size: 16px; font-weight: 700; color: var(--text-primary); text-align: center; }
 .more-btn {
   width: 32px; height: 32px;
   display: flex; align-items: center; justify-content: center; gap: 3px;
@@ -369,7 +408,7 @@ async function onSubmitComment() {
 .body { flex: 1; min-height: 0; }
 
 .loading, .not-found {
-  padding: 80px 16px; text-align: center; color: #aeaeb2; font-size: 14px;
+  padding: 80px 16px; text-align: center; color: var(--text-faint); font-size: 14px;
   display: flex; flex-direction: column; align-items: center; gap: 14px;
 }
 .back-home {
@@ -379,17 +418,17 @@ async function onSubmitComment() {
 }
 
 .post-card {
-  background: #fff; padding: 16px;
+  background: var(--bg-elev-1); padding: 16px;
 }
 .post-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
-.avatar { width: 42px; height: 42px; border-radius: 50%; background: #f2f2f7; flex-shrink: 0; }
+.avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--bg-subtle); flex-shrink: 0; }
 .head-info { flex: 1; min-width: 0; }
 .head-name-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.head-name { font-size: 15px; font-weight: 600; color: #1a1a1a; }
-.head-time { font-size: 11px; color: #aeaeb2; display: block; margin-top: 2px; }
+.head-name { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.head-time { font-size: 11px; color: var(--text-faint); display: block; margin-top: 2px; }
 
 .badge-official {
-  background: #FF6B35; color: #fff;
+  background: var(--accent-action); color: #fff;
   padding: 1px 6px; border-radius: 4px;
   text { font-size: 10px; font-weight: 700; }
 }
@@ -399,25 +438,36 @@ async function onSubmitComment() {
   text { font-size: 10px; font-weight: 700; color: #fff; }
 }
 .badge-pinned {
-  background: rgba(255,107,53,0.12); color: #FF6B35;
+  background: rgba(255,107,53,0.12); color: var(--accent-action);
   padding: 1px 6px; border-radius: 4px;
-  text { font-size: 10px; font-weight: 600; color: #FF6B35; }
+  text { font-size: 10px; font-weight: 600; color: var(--accent-action); }
 }
 
+.content-wrap { position: relative; padding-right: 44px; }
 .content {
-  font-size: 15px; color: #1a1a1a; line-height: 1.55;
+  font-size: 15px; color: var(--text-primary); line-height: 1.55;
   white-space: pre-wrap; word-break: break-word; display: block;
+}
+.translate-btn {
+  position: absolute; top: 0; right: 0;
+  min-width: 36px; height: 24px; border-radius: 12px;
+  background: var(--bg-subtle); padding: 0 8px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  text { font-size: 11px; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.3px; }
+  &:active { background: var(--bg-inset); }
+  &.loading { opacity: 0.7; pointer-events: none; }
 }
 
 .images { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .post-img {
   width: 100%; max-height: 480px;
-  border-radius: 10px; background: #f2f2f7; cursor: pointer;
+  border-radius: 10px; background: var(--bg-subtle); cursor: pointer;
 }
 
 .stats-row {
   display: flex; gap: 28px; margin-top: 16px;
-  padding-top: 14px; border-top: 0.5px solid rgba(0,0,0,0.06);
+  padding-top: 14px; border-top: 0.5px solid var(--line-hair);
 }
 .stat-btn {
   display: flex; align-items: center; gap: 6px; cursor: pointer;
@@ -425,7 +475,7 @@ async function onSubmitComment() {
   &:active { opacity: 0.6; }
 }
 .heart-img { width: 22px; height: 22px; }
-.stat-num { font-size: 13px; color: #8e8e93; font-weight: 500; &.active { color: #FF3B30; } }
+.stat-num { font-size: 13px; color: var(--text-muted); font-weight: 500; &.active { color: var(--accent-danger); } }
 .bubble-ico {
   width: 20px; height: 16px; border: 1.8px solid #8e8e93;
   border-radius: 9px 9px 9px 2px;
@@ -445,34 +495,34 @@ async function onSubmitComment() {
   }
 }
 
-.comments-section { background: #fff; margin-top: 8px; }
+.comments-section { background: var(--bg-elev-1); margin-top: 8px; }
 .cs-header { padding: 14px 16px 8px; border-bottom: 0.5px solid rgba(0,0,0,0.04); }
-.cs-title { font-size: 14px; font-weight: 700; color: #1a1a1a; }
-.cs-empty { padding: 40px 16px; text-align: center; color: #c7c7cc; font-size: 13px; }
+.cs-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.cs-empty { padding: 40px 16px; text-align: center; color: var(--text-faint); font-size: 13px; }
 .cs-item {
   display: flex; gap: 10px; padding: 12px 16px;
   border-bottom: 0.5px solid rgba(0,0,0,0.04);
 }
-.cs-avatar { width: 32px; height: 32px; border-radius: 50%; background: #f2f2f7; flex-shrink: 0; }
+.cs-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-subtle); flex-shrink: 0; }
 .cs-body { flex: 1; min-width: 0; }
 .cs-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.cs-name { font-size: 13px; font-weight: 600; color: #1a1a1a; }
-.cs-time { font-size: 11px; color: #c7c7cc; }
+.cs-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.cs-time { font-size: 11px; color: var(--text-faint); }
 .cs-content {
-  font-size: 14px; color: #1a1a1a; line-height: 1.5;
+  font-size: 14px; color: var(--text-primary); line-height: 1.5;
   margin-top: 2px; display: block; word-break: break-word;
 }
 
 .input-wrapper {
-  flex-shrink: 0; background: #fff;
-  border-top: 0.5px solid rgba(0,0,0,0.06);
+  flex-shrink: 0; background: var(--bg-elev-1);
+  border-top: 0.5px solid var(--line-hair);
 }
 .reply-bar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 7px 14px;
   background: rgba(255,107,53,0.08);
 }
-.reply-label { font-size: 12px; color: #FF6B35; font-weight: 500; flex: 1; }
+.reply-label { font-size: 12px; color: var(--accent-action); font-weight: 500; flex: 1; }
 .reply-x {
   width: 22px; height: 22px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
@@ -481,7 +531,7 @@ async function onSubmitComment() {
   width: 11px; height: 11px; position: relative;
   &::before, &::after {
     content: ''; position: absolute; top: 50%; left: 0;
-    width: 11px; height: 1.5px; background: #FF6B35;
+    width: 11px; height: 1.5px; background: var(--accent-action);
   }
   &::before { transform: rotate(45deg); }
   &::after { transform: rotate(-45deg); }
@@ -491,8 +541,8 @@ async function onSubmitComment() {
   padding-bottom: calc(9px + env(safe-area-inset-bottom));
 }
 .input {
-  flex: 1; height: 40px; background: #f2f2f7; border-radius: 20px;
-  padding: 0 14px; font-size: 14px; color: #1a1a1a;
+  flex: 1; height: 40px; background: var(--bg-subtle); border-radius: 20px;
+  padding: 0 14px; font-size: 14px; color: var(--text-primary);
 }
 .send-btn {
   padding: 0 18px; height: 40px; border-radius: 20px;
