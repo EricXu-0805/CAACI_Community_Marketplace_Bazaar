@@ -401,39 +401,51 @@ $$;
 -- --------------------------------------------
 -- 9. BEFORE INSERT trigger factory — enforce on every publish path
 -- --------------------------------------------
--- NOTE: do NOT fold the branches below back into a single
---   `uid := CASE TG_TABLE_NAME WHEN 'posts' THEN NEW.user_id ... END;`
--- On recent Postgres builds, plpgsql types the CASE result as text
--- because NEW's concrete record type is only known at trigger-fire
--- time, and then `WHERE id = uid` fails with 42883 (uuid = text).
--- See migration 028 for the post-mortem.
+-- Two parser pitfalls baked into this function. See migration 028
+-- for the full post-mortem. Briefly:
+--   1. Do NOT collapse the IF/ELSIF into a single CASE TG_TABLE_NAME
+--      WHEN 'posts' THEN NEW.user_id ... END — on modern PG the
+--      CASE coerces to text, breaking `WHERE id = actor_id` with 42883.
+--   2. Do NOT rename active_level / ends_at back to lvl / ends —
+--      `ends` is reserved in PG 14+ frame clauses and throws the
+--      plpgsql parser out of sync, leading to a bogus 42P01
+--      "relation lvl does not exist" at SELECT INTO.
 CREATE OR REPLACE FUNCTION public.trg_enforce_actor()
 RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE
-  uid uuid;
-  lvl smallint;
-  ends timestamptz;
+  actor_id     uuid;
+  active_level smallint;
+  ends_at      timestamptz;
 BEGIN
   IF TG_TABLE_NAME = 'posts' THEN
-    uid := NEW.user_id;
+    actor_id := NEW.user_id;
   ELSIF TG_TABLE_NAME = 'post_comments' THEN
-    uid := NEW.user_id;
+    actor_id := NEW.user_id;
   ELSIF TG_TABLE_NAME = 'items' THEN
-    uid := NEW.user_id;
+    actor_id := NEW.user_id;
   ELSIF TG_TABLE_NAME = 'messages' THEN
-    uid := NEW.sender_id;
+    actor_id := NEW.sender_id;
   END IF;
 
-  IF uid IS NULL THEN RETURN NEW; END IF;
-  IF auth.uid() IS NOT NULL AND uid <> auth.uid() THEN RETURN NEW; END IF;
+  IF actor_id IS NULL THEN
+    RETURN NEW;
+  END IF;
 
-  SELECT suspension_level, suspended_until
-    INTO lvl, ends
-    FROM public.profiles WHERE id = uid;
+  IF auth.uid() IS NOT NULL AND actor_id <> auth.uid() THEN
+    RETURN NEW;
+  END IF;
 
-  IF lvl IS NOT NULL AND lvl >= 2 AND (ends IS NULL OR ends > now()) THEN
+  SELECT p.suspension_level, p.suspended_until
+    INTO active_level, ends_at
+    FROM public.profiles p
+   WHERE p.id = actor_id;
+
+  IF active_level IS NOT NULL
+     AND active_level >= 2
+     AND (ends_at IS NULL OR ends_at > now()) THEN
     RAISE EXCEPTION 'suspension_active:%:%',
-      lvl, COALESCE(to_char(ends, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), 'permanent');
+      active_level,
+      COALESCE(to_char(ends_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), 'permanent');
   END IF;
 
   RETURN NEW;
