@@ -195,8 +195,13 @@ DECLARE
 BEGIN
   IF profile_id_in IS NULL THEN RETURN 50::smallint; END IF;
 
-  SELECT pr.created_at, pr.shadow_banned
-    INTO profile_created_at, is_shadow_banned
+  SELECT pr.created_at
+    INTO profile_created_at
+    FROM public.profiles pr
+   WHERE pr.id = profile_id_in;
+
+  SELECT pr.shadow_banned
+    INTO is_shadow_banned
     FROM public.profiles pr
    WHERE pr.id = profile_id_in;
 
@@ -377,13 +382,19 @@ BEGIN
 
   IF target IS NULL THEN RAISE EXCEPTION 'not_found'; END IF;
 
-  SELECT COALESCE(MAX(level), 0),
-         MAX(ends_at)
-    INTO max_active_level, max_active_ends
-    FROM public.suspensions
-   WHERE profile_id = target
-     AND lifted_at IS NULL
-     AND (ends_at IS NULL OR ends_at > now());
+  SELECT COALESCE(MAX(s.level), 0)
+    INTO max_active_level
+    FROM public.suspensions s
+   WHERE s.profile_id = target
+     AND s.lifted_at IS NULL
+     AND (s.ends_at IS NULL OR s.ends_at > now());
+
+  SELECT MAX(s.ends_at)
+    INTO max_active_ends
+    FROM public.suspensions s
+   WHERE s.profile_id = target
+     AND s.lifted_at IS NULL
+     AND (s.ends_at IS NULL OR s.ends_at > now());
 
   UPDATE public.profiles
      SET suspension_level = COALESCE(max_active_level, 0),
@@ -453,8 +464,13 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  SELECT p.suspension_level, p.suspended_until
-    INTO active_level, ends_at
+  SELECT p.suspension_level
+    INTO active_level
+    FROM public.profiles p
+   WHERE p.id = actor_id;
+
+  SELECT p.suspended_until
+    INTO ends_at
     FROM public.profiles p
    WHERE p.id = actor_id;
 

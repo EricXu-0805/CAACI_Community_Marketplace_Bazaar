@@ -49,8 +49,13 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  SELECT p.suspension_level, p.suspended_until
-    INTO active_level, ends_at
+  SELECT p.suspension_level
+    INTO active_level
+    FROM public.profiles p
+   WHERE p.id = actor_id;
+
+  SELECT p.suspended_until
+    INTO ends_at
     FROM public.profiles p
    WHERE p.id = actor_id;
 
