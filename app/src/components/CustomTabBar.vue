@@ -41,15 +41,20 @@ function go(url: string) { uni.switchTab({ url }) }
 </script>
 
 <style scoped>
+/* Height = fixed 50px row + bottom safe-area chin. Using calc instead of
+   relying on padding to grow the box solves the old bug where icons
+   (24 + 10px label) spilled above the background on devices with a
+   home indicator (the 50px was being eaten by safe-area padding). */
 .tabbar {
   display: none; position: fixed; bottom: 0; left: 50%;
   transform: translateX(-50%);
   width: 100%; max-width: 480px;
-  height: 50px; padding-bottom: env(safe-area-inset-bottom, 0px);
+  height: calc(50px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   background: rgba(252,252,253,0.88);
   backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-top: 0.5px solid rgba(0,0,0,0.08);
-  z-index: 999; align-items: flex-end; justify-content: space-around;
+  z-index: 999; align-items: flex-start; justify-content: space-around;
   box-sizing: border-box;
 }
 .tab {

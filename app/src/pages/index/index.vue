@@ -784,13 +784,16 @@ function goPublish() {
 }
 
 /* ========== Filter Bottom Sheet ========== */
+/* z-index must be higher than .tabbar (999) — otherwise the tabbar
+   floats above the sheet and covers the "Apply" button. Mask sits
+   just below the sheet but still above the tabbar so it dims it too. */
 .filter-mask {
-  position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 500;
+  position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 1000;
   background: rgba(0,0,0,0.35);
 }
 .filter-sheet {
   position: fixed;
-  bottom: 0; left: 0; right: 0; z-index: 501;
+  bottom: 0; left: 0; right: 0; z-index: 1001;
   background: #fff;
   border-radius: 16px 16px 0 0;
   padding: 0 20px 20px;
@@ -900,7 +903,9 @@ function goPublish() {
   cursor: pointer; transition: all 0.15s; font-weight: 500;
   &.active { background: #1a1a1a; color: #fff; }
 }
-.fs-footer { padding-top: 10px; padding-bottom: env(safe-area-inset-bottom, 0px); }
+/* Sheet now sits above the tabbar (z 1001 > 999), so no tabbar-height
+   clearance needed — the existing safe-area pad handles home-indicator. */
+.fs-footer { padding-top: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
 .fs-apply {
   width: 100%; padding: 14px; border-radius: 24px;
   background: #FF6B35; color: #fff; font-size: 15px; font-weight: 600;
@@ -1138,6 +1143,16 @@ function goPublish() {
     transition: transform 0.15s, box-shadow 0.15s;
     &:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
     &:active { transform: scale(0.99); }
+  }
+  /* Desktop cards are ~370px wide — a tall portrait image at height:auto
+     would render as a 600–800px ribbon and look broken. On mobile this
+     is fine (col ~180px, any ratio looks natural), so we cap here only. */
+  .card-img-box {
+    max-height: 520px;
+  }
+  .card-img {
+    max-height: 520px;
+    object-fit: cover;
   }
   .card-info { padding: 10px 12px 12px; }
   .card-title { font-size: 14px; }

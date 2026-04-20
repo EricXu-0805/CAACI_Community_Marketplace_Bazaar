@@ -61,6 +61,7 @@
     <scroll-view
       class="message-list"
       scroll-y
+      :show-scrollbar="false"
       :scroll-into-view="scrollTarget"
       scroll-with-animation
     >
@@ -636,6 +637,23 @@ function scrollToBottom() {
 .message-list {
   flex: 1; min-height: 0;
   padding: 12px 16px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+/* Belt-and-suspenders — on H5 Chrome the uni-scroll-view overlay
+   scrollbar was clipping ~15px off the right-side avatar on "mine"
+   messages. :show-scrollbar="false" is the primary fix; these
+   selectors are fallbacks in case scoped styles don't reach through
+   uni's inner render. */
+.message-list::-webkit-scrollbar,
+.message-list :deep(.uni-scroll-view)::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.message-list :deep(.uni-scroll-view) {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 .time-divider {
   text-align: center; padding: 12px 0 6px;
