@@ -22,9 +22,10 @@
           <view v-if="imageList.length < 9" class="image-add" @click="chooseImage">
             <view class="add-icon-css"></view>
             <text class="add-text">{{ t('publish.addPhoto') }}</text>
+            <text class="add-count">{{ imageList.length }}/9</text>
           </view>
         </view>
-        <text class="image-tip">{{ t('publish.imageOptional') }}</text>
+        <text class="image-tip">{{ imageList.length >= 9 ? t('publish.imageMaxReached') : t('publish.imageOptional') }}</text>
       </view>
 
       <!-- Upload progress -->
@@ -139,8 +140,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { ref, reactive, computed, onUnmounted } from 'vue'
+import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { watch } from 'vue'
 import { useAuth } from '../../composables/useAuth'
 import { useSupabase } from '../../composables/useSupabase'
@@ -221,12 +222,161 @@ watch(() => form.category, async (cat) => {
   } else { avgPrice.value = 0 }
 })
 
+const MAX_IMAGES_PUBLISH = 9
+
+/* ---------- Draft save ----------
+   Persist in-progress form data to local storage so users don't lose
+   work when they accidentally tap a tabbar icon mid-compose. Scoped to
+   new-item mode only (edit mode has a live item row already). */
+const DRAFT_KEY = 'publish_draft_v1'
+
+const isDirty = computed(() => {
+  if (isEdit.value) return false
+  return (
+    form.title.trim().length > 0 ||
+    form.description.trim().length > 0 ||
+    form.price.trim().length > 0 ||
+    form.category !== '' ||
+    form.condition !== '' ||
+    form.negotiable !== false ||
+    imageList.value.length > 0
+  )
+})
+
+function saveDraft() {
+  try {
+    uni.setStorageSync(DRAFT_KEY, {
+      form: { ...form },
+      images: [...imageList.value],
+      savedAt: Date.now(),
+    })
+  } catch { /* storage full / private mode — ignore */ }
+}
+
+function clearDraft() {
+  try { uni.removeStorageSync(DRAFT_KEY) } catch { /* ignore */ }
+}
+
+type PublishDraft = { form: Record<string, any>; images: string[]; savedAt: number }
+
+function loadDraft(): PublishDraft | null {
+  try {
+    const raw = uni.getStorageSync(DRAFT_KEY)
+    if (!raw || typeof raw !== 'object') return null
+    return raw as PublishDraft
+  } catch { return null }
+}
+
+function applyDraft(draft: { form: any; images: string[] }) {
+  Object.assign(form, draft.form)
+  imageList.value = [...(draft.images || [])]
+  uni.showToast({ title: t('publish.draftRestored'), icon: 'none' })
+}
+
+function promptSaveDraft(onDecided: () => void) {
+  uni.showModal({
+    title: t('publish.draftPromptTitle'),
+    content: t('publish.draftPromptBody'),
+    confirmText: t('publish.draftSave'),
+    cancelText: t('publish.draftDiscard'),
+    confirmColor: '#1a1a1a',
+    success: (r) => {
+      if (r.confirm) {
+        saveDraft()
+        uni.showToast({ title: t('publish.draftSaved'), icon: 'none' })
+      } else if (r.cancel) {
+        clearDraft()
+      }
+      onDecided()
+    },
+    fail: () => onDecided(),
+  })
+}
+
+/* Tabbar uses uni.switchTab, which bypasses navigation guards. The
+   official escape hatch is uni.addInterceptor('switchTab'). Scope the
+   interceptor to this page's lifetime so other pages don't inherit it. */
+let switchTabInterceptor: { invoke: (args: any) => boolean } | null = null
+let pendingTabUrl = ''
+
+function installTabGuard() {
+  if (switchTabInterceptor) return
+  switchTabInterceptor = {
+    invoke(args: { url: string }) {
+      /* Staying on the publish tab itself shouldn't trigger the prompt. */
+      if (args.url && args.url.includes('/pages/publish/index')) return true
+      if (!isDirty.value) return true
+      pendingTabUrl = args.url
+      promptSaveDraft(() => {
+        if (pendingTabUrl) {
+          const url = pendingTabUrl
+          pendingTabUrl = ''
+          uni.switchTab({ url })
+        }
+      })
+      return false
+    },
+  }
+  uni.addInterceptor('switchTab', switchTabInterceptor)
+}
+
+function removeTabGuard() {
+  if (switchTabInterceptor) {
+    uni.removeInterceptor('switchTab')
+    switchTabInterceptor = null
+  }
+}
+
+onShow(() => {
+  if (isEdit.value) return
+  const draft = loadDraft()
+  if (draft && !isDirty.value) {
+    uni.showModal({
+      title: t('publish.draftRestoreTitle'),
+      content: t('publish.draftRestoreBody'),
+      confirmText: t('publish.draftRestore'),
+      cancelText: t('publish.draftDiscard'),
+      confirmColor: '#1a1a1a',
+      success: (r) => {
+        if (r.confirm) applyDraft(draft)
+        else if (r.cancel) clearDraft()
+      },
+    })
+  }
+  installTabGuard()
+})
+
+onHide(() => { removeTabGuard() })
+onUnload(() => { removeTabGuard() })
+onUnmounted(() => { removeTabGuard() })
+
 function chooseImage() {
+  const remaining = MAX_IMAGES_PUBLISH - imageList.value.length
+  if (remaining <= 0) {
+    uni.showToast({ title: t('publish.imageMaxReached'), icon: 'none' })
+    return
+  }
   uni.chooseImage({
-    count: 9 - imageList.value.length,
+    count: remaining,
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
-    success: (res) => { imageList.value.push(...res.tempFilePaths) },
+    success: (res) => {
+      /* On H5 the `count` hint is advisory — the underlying <input
+         type="file" multiple> lets users pick unlimited files. Enforce
+         the cap here and surface it to the user (WeChat-style) instead
+         of silently truncating. */
+      const picked = res.tempFilePaths || []
+      const accepted = picked.slice(0, remaining)
+      const dropped = picked.length - accepted.length
+      imageList.value.push(...accepted)
+      if (dropped > 0) {
+        uni.showToast({
+          title: t('publish.imageDropped').replace('{n}', String(dropped)),
+          icon: 'none',
+          duration: 2500,
+        })
+      }
+    },
   })
 }
 
@@ -323,6 +473,7 @@ async function onSubmit() {
       form.title = ''; form.description = ''; form.price = ''
       form.category = ''; form.condition = ''; form.location = 'UIUC'
       form.negotiable = false; imageList.value = []
+      clearDraft()
       uni.showToast({ title: t('publish.success'), icon: 'success' })
       setTimeout(() => {
         uni.navigateTo({ url: `/pages/detail/index?id=${newItem.id}` })
@@ -346,7 +497,7 @@ async function onSubmit() {
 <style lang="scss" scoped>
 .page {
   min-height: 100vh; background: #f2f2f7;
-  padding-bottom: calc(72px + 56px); max-width: 480px; margin: 0 auto;
+  padding-bottom: calc(72px + 62px); max-width: 480px; margin: 0 auto;
 }
 
 /* ========== Header ========== */
@@ -405,6 +556,7 @@ async function onSubmit() {
   &::after { width: 2px; height: 22px; top: 0; left: 10px; }
 }
 .add-text { font-size: 11px; color: #aeaeb2; }
+.add-count { font-size: 10px; color: #c7c7cc; margin-top: 2px; font-variant-numeric: tabular-nums; }
 .image-tip { font-size: 12px; color: #c7c7cc; margin-top: 8px; }
 
 /* ========== Upload Progress ========== */
@@ -541,7 +693,7 @@ async function onSubmit() {
 
 /* ========== Submit ========== */
 .submit-bar {
-  position: fixed; bottom: calc(50px + env(safe-area-inset-bottom, 0px));
+  position: fixed; bottom: calc(56px + env(safe-area-inset-bottom, 0px));
   left: 50%; transform: translateX(-50%);
   width: 100%; max-width: 480px; padding: 9px 16px;
   background: rgba(255,255,255,0.92);
