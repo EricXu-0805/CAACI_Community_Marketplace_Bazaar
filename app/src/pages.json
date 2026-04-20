@@ -117,6 +117,10 @@
 		{
 			"path": "pages/suspended/index",
 			"style": { "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/admin/index",
+			"style": { "navigationStyle": "custom", "navigationBarTitleText": "Moderation" }
 		}
 	],
 	"globalStyle": {
