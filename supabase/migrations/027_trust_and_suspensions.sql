@@ -401,6 +401,12 @@ $$;
 -- --------------------------------------------
 -- 9. BEFORE INSERT trigger factory — enforce on every publish path
 -- --------------------------------------------
+-- NOTE: do NOT fold the branches below back into a single
+--   `uid := CASE TG_TABLE_NAME WHEN 'posts' THEN NEW.user_id ... END;`
+-- On recent Postgres builds, plpgsql types the CASE result as text
+-- because NEW's concrete record type is only known at trigger-fire
+-- time, and then `WHERE id = uid` fails with 42883 (uuid = text).
+-- See migration 028 for the post-mortem.
 CREATE OR REPLACE FUNCTION public.trg_enforce_actor()
 RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE
@@ -408,15 +414,18 @@ DECLARE
   lvl smallint;
   ends timestamptz;
 BEGIN
-  uid := CASE TG_TABLE_NAME
-    WHEN 'posts'         THEN NEW.user_id
-    WHEN 'post_comments' THEN NEW.user_id
-    WHEN 'items'         THEN NEW.user_id
-    WHEN 'messages'      THEN NEW.sender_id
-  END;
+  IF TG_TABLE_NAME = 'posts' THEN
+    uid := NEW.user_id;
+  ELSIF TG_TABLE_NAME = 'post_comments' THEN
+    uid := NEW.user_id;
+  ELSIF TG_TABLE_NAME = 'items' THEN
+    uid := NEW.user_id;
+  ELSIF TG_TABLE_NAME = 'messages' THEN
+    uid := NEW.sender_id;
+  END IF;
 
   IF uid IS NULL THEN RETURN NEW; END IF;
-  IF uid <> COALESCE(auth.uid(), uid) THEN RETURN NEW; END IF;
+  IF auth.uid() IS NOT NULL AND uid <> auth.uid() THEN RETURN NEW; END IF;
 
   SELECT suspension_level, suspended_until
     INTO lvl, ends
