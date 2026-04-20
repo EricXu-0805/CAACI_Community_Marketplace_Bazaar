@@ -258,6 +258,7 @@
                   <image
                     :src="item.profile?.avatar_url || '/static/default-avatar.svg'"
                     class="seller-pic"
+                    mode="aspectFill"
                   />
                   <text class="seller-nick">{{ item.profile?.nickname || t('app.user') }}</text>
                   <text class="card-time">{{ formatTime(item.created_at) }}</text>
@@ -755,14 +756,20 @@ function goPublish() {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-/* Right-edge fade: hints "more tabs to the right". Pinned to right:0
-   with a smooth opacity ramp (transparent -> solid white). Non-clickable. */
+/* Right-edge fade: hints "more tabs to the right". Reaches the right
+   edge fully opaque and ramps smoothly toward transparent further left. */
 .mc-fade {
   position: absolute;
-  top: 0; right: 0; bottom: 4px;     /* bottom matches .mc-wrap padding so it doesn't over-extend */
-  width: 32px;
-  background: linear-gradient(to right, rgba(255,255,255,0) 0%, #fff 100%);
-  pointer-events: none;               /* taps pass through to underlying pill */
+  top: 0; right: 0; bottom: 4px;
+  width: 72px;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.55) 55%,
+    rgba(255, 255, 255, 0.9) 85%,
+    #fff 100%
+  );
+  pointer-events: none;
 }
 /* Desktop: hide mobile cats, show desktop cats */
 .desktop-cats {

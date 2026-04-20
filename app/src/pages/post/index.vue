@@ -12,7 +12,7 @@
     <scroll-view v-if="post" class="body" scroll-y>
       <view class="post-card" @longpress="onPostLongPress">
         <view class="post-head">
-          <image :src="post.profile?.avatar_url || '/static/default-avatar.svg'" class="avatar" />
+          <image :src="post.profile?.avatar_url || '/static/default-avatar.svg'" class="avatar" mode="aspectFill" />
           <view class="head-info">
             <view class="head-name-row">
               <text class="head-name">{{ post.profile?.nickname || t('app.user') }}</text>
@@ -69,7 +69,7 @@
           @click="onCommentTap(c)"
           @longpress="onCommentLongPress(c)"
         >
-          <image :src="c.profile?.avatar_url || '/static/default-avatar.svg'" class="cs-avatar" />
+          <image :src="c.profile?.avatar_url || '/static/default-avatar.svg'" class="cs-avatar" mode="aspectFill" />
           <view class="cs-body">
             <view class="cs-top">
               <text class="cs-name">{{ c.profile?.nickname || t('app.user') }}</text>

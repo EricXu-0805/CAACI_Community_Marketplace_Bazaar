@@ -45,7 +45,7 @@
         @click="goPostDetail(p.id)"
         @longpress="onRemoveOne(p.id, 'post')"
       >
-        <image :src="p.profile?.avatar_url || '/static/default-avatar.svg'" class="post-avatar" />
+        <image :src="p.profile?.avatar_url || '/static/default-avatar.svg'" class="post-avatar" mode="aspectFill" />
         <view class="post-info">
           <view class="post-top">
             <text class="post-name">{{ p.profile?.nickname || t('app.user') }}</text>

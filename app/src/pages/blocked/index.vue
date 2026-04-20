@@ -13,7 +13,7 @@
 
     <view v-else class="list">
       <view v-for="p in blockedProfiles" :key="p.id" class="row">
-        <image :src="p.avatar_url || '/static/default-avatar.svg'" class="avatar" />
+        <image :src="p.avatar_url || '/static/default-avatar.svg'" class="avatar" mode="aspectFill" />
         <view class="info">
           <text class="nickname">{{ p.nickname }}</text>
           <text v-if="p.bio" class="bio">{{ p.bio }}</text>

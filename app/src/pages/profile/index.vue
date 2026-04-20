@@ -18,7 +18,7 @@
 
     <view v-else class="profile-section">
       <view class="user-header">
-        <image :src="currentUser?.avatar_url || '/static/default-avatar.svg'" class="avatar" />
+        <image :src="currentUser?.avatar_url || '/static/default-avatar.svg'" class="avatar" mode="aspectFill" />
         <view class="user-info">
           <view class="name-row">
             <text class="nickname">{{ currentUser?.nickname }}</text>

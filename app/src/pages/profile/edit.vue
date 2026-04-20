@@ -12,7 +12,7 @@
 
     <view class="form">
       <view class="avatar-section" @click="onChangeAvatar">
-        <image :src="avatarUrl || '/static/default-avatar.svg'" class="avatar-preview" />
+        <image :src="avatarUrl || '/static/default-avatar.svg'" class="avatar-preview" mode="aspectFill" />
         <text class="avatar-hint">{{ t('editProfile.changeAvatar') }}</text>
       </view>
 

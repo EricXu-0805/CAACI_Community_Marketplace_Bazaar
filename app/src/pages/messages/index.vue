@@ -40,6 +40,7 @@
           <image
             :src="getOtherUser(conv)?.avatar_url || '/static/default-avatar.svg'"
             class="conv-avatar"
+            mode="aspectFill"
           />
           <view class="conv-info">
             <view class="conv-top">
@@ -63,19 +64,19 @@
           </view>
         </view>
 
-        <!-- Left swipe actions (revealed from right) -->
+        <!-- Swipe-left reveals all actions on the right, in a single
+             consistent direction. Pin sits first so it stays reachable
+             even at a partial swipe; delete is farthest from the thumb
+             so it's harder to trigger by accident. -->
         <view class="swipe-actions right">
+          <view class="swipe-act act-pin" @click="togglePin(conv)">
+            <text>{{ isPinned(conv) ? t('msg.unpin') : t('msg.pin') }}</text>
+          </view>
           <view class="swipe-act act-read" @click="toggleRead(conv)">
             <text>{{ unreadConvIds.has(conv.id) ? t('msg.markRead') : t('msg.markUnread') }}</text>
           </view>
           <view class="swipe-act act-delete" @click="onDelete(conv)">
             <text>{{ t('profile.delete') }}</text>
-          </view>
-        </view>
-        <!-- Right swipe actions (revealed from left) -->
-        <view class="swipe-actions left">
-          <view class="swipe-act act-pin" @click="togglePin(conv)">
-            <text>{{ isPinned(conv) ? t('msg.unpin') : t('msg.pin') }}</text>
           </view>
         </view>
       </view>
@@ -116,6 +117,7 @@ const {
 } = useMessages()
 const { unreadConvIds, refreshUnreadCount } = useUnread()
 
+const SWIPE_OPEN = 210
 const swipeOffsets = reactive<Record<string, number>>({})
 const touchState = reactive({ startX: 0, startY: 0, id: '' as string, locked: false, dir: '' as 'x' | 'y' | '' })
 
@@ -201,7 +203,7 @@ function onTouchMove(e: any, id: string) {
   }
 
   if (touchState.dir === 'x') {
-    const clamped = Math.max(-160, Math.min(80, dx))
+    const clamped = Math.max(-SWIPE_OPEN, Math.min(0, dx))
     swipeOffsets[id] = clamped
   }
 }
@@ -209,13 +211,7 @@ function onTouchMove(e: any, id: string) {
 function onTouchEnd(id: string) {
   if (touchState.id !== id) return
   const offset = swipeOffsets[id] || 0
-  if (offset < -60) {
-    swipeOffsets[id] = -140
-  } else if (offset > 40) {
-    swipeOffsets[id] = 70
-  } else {
-    swipeOffsets[id] = 0
-  }
+  swipeOffsets[id] = offset < -SWIPE_OPEN / 3 ? -SWIPE_OPEN : 0
   touchState.id = ''
 }
 

@@ -46,7 +46,7 @@
         <view v-for="post in posts" :key="post.id" class="post-card">
           <view class="post-tappable" @click="goPostDetail(post)" @longpress="onPostLongPress(post)">
             <view class="post-header">
-              <image :src="post.profile?.avatar_url || '/static/default-avatar.svg'" class="pa-avatar" />
+              <image :src="post.profile?.avatar_url || '/static/default-avatar.svg'" class="pa-avatar" mode="aspectFill" />
               <view class="pa-info">
                 <view class="pa-name-row">
                   <text class="pa-name">{{ post.profile?.nickname || t('app.user') }}</text>
@@ -217,7 +217,7 @@
           <text>{{ t('plaza.noComments') }}</text>
         </view>
         <view v-for="c in comments" :key="c.id" class="cs-item" @click="onCommentTap(c)" @longpress="onCommentLongPress(c)">
-          <image :src="c.profile?.avatar_url || '/static/default-avatar.svg'" class="cs-avatar" />
+          <image :src="c.profile?.avatar_url || '/static/default-avatar.svg'" class="cs-avatar" mode="aspectFill" />
           <view class="cs-body">
             <view class="cs-top">
               <text class="cs-name">{{ c.profile?.nickname || t('app.user') }}</text>

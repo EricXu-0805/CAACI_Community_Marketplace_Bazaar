@@ -35,7 +35,7 @@
             <text class="card-title">{{ it.title }}</text>
             <text class="card-price">{{ formatPrice(it.price, t('home.free')) }}</text>
             <view class="card-seller" v-if="it.profile">
-              <image :src="it.profile.avatar_url || '/static/default-avatar.svg'" class="cs-avatar" />
+              <image :src="it.profile.avatar_url || '/static/default-avatar.svg'" class="cs-avatar" mode="aspectFill" />
               <text class="cs-name">{{ it.profile.nickname }}</text>
             </view>
           </view>

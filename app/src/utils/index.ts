@@ -8,10 +8,12 @@ export function thumbUrl(
   if (!url) return ""
   if (!url.includes(SUPABASE_STORAGE_MARKER)) return url
   const rendered = url.replace(SUPABASE_STORAGE_MARKER, SUPABASE_RENDER_PATH)
+  // Do NOT add `resize=cover` for list/card: without a matching `height`
+  // Supabase image-transform crops to a square and chops tall/wide photos.
   const params =
     size === "avatar" ? "width=96&height=96&quality=75&resize=cover"
-    : size === "list" ? "width=480&quality=72&resize=cover"
-    : size === "card" ? "width=640&quality=75&resize=cover"
+    : size === "list" ? "width=480&quality=72"
+    : size === "card" ? "width=640&quality=75"
     : "width=1280&quality=82"
   return `${rendered}?${params}`
 }
