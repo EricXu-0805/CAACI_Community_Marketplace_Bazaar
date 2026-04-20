@@ -68,8 +68,15 @@ export default async function handler(request) {
     })
 
     if (!r.ok) {
+      let upstreamBody = null
+      try { upstreamBody = await r.text() } catch {}
       return new Response(
-        JSON.stringify({ flagged: false, skipped: true, reason: `upstream_${r.status}` }),
+        JSON.stringify({
+          flagged: false,
+          skipped: true,
+          reason: `upstream_${r.status}`,
+          debug: upstreamBody ? upstreamBody.slice(0, 400) : null,
+        }),
         { status: 200, headers },
       )
     }
