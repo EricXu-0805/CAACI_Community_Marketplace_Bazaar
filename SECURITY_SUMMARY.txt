@@ -1,0 +1,302 @@
+================================================================================
+CAACI COMMUNITY MARKETPLACE - SECURITY AUDIT SUMMARY
+================================================================================
+
+PROJECT: /Users/xiaogangxu/Projects/CAACI_Community_Marketplace_Bazaar
+AUDIT DATE: April 2024
+OVERALL RATING: STRONG ✅
+
+================================================================================
+1. RATE LIMITING - COMPREHENSIVE ✅
+================================================================================
+
+Server-Side Enforcement (Database Triggers):
+  • Items:     10/hour, 30/day (60s dedupe window)
+  • Posts:     10/hour, 30/day (60s dedupe window)
+  • Comments:  30/hour, 100/day (30s dedupe window)
+  • Messages:  30/min, 300/hour (5s dedupe window)
+  • Reports:   10/hour, 30/day (+ UNIQUE constraint)
+  • Follows:   30/hour, 100/day
+
+Dedupe Normalization: LOWER(TRIM(regexp_replace(..., '\s+', ' ', 'g')))
+  → Catches case/whitespace variations
+
+Files:
+  • supabase/migrations/012_rate_limiting_and_dedupe.sql (lines 1-302)
+  • supabase/migrations/013_security_patches.sql (lines 120-310)
+  • app/src/utils/index.ts (lines 35-74) - Error messages
+
+Gap: No client-side debounce on submit buttons (utility exists but unused)
+
+================================================================================
+2. CONTENT MODERATION - PARTIAL ⚠️
+================================================================================
+
+Implemented:
+  ✅ Length validation (titles, descriptions, posts, comments, messages)
+  ✅ HTML/control character sanitization (status_text/status_emoji only)
+  ✅ PII protection via column-level GRANTs (phone, email, wechat hidden)
+
+NOT Implemented:
+  ❌ Keyword/profanity filtering
+  ❌ Phone number / WeChat ID / QR code regex validation
+  ❌ URL validation in posts/items
+  ❌ Content keyword filtering (relies on user reports)
+
+Files:
+  • supabase/migrations/004_security_hardening.sql (lines 22-54)
+  • app/src/composables/useAuth.ts (lines 15-21)
+
+================================================================================
+3. REPORTS SYSTEM - FUNCTIONAL ✅
+================================================================================
+
+Report Table:
+  • Supports: item, user, message, post, comment
+  • Rate limited: 10/hour, 30/day
+  • Unique constraint: UNIQUE(reporter_id, target_type, target_id)
+  • Status tracking: pending, reviewed, resolved, dismissed
+
+RLS Policies:
+  • Users can only INSERT reports where they are reporter
+  • Users can only SELECT their own reports
+
+Gap: NO ADMIN DASHBOARD UI to review/resolve reports
+     (Table exists but no UI to manage)
+
+Files:
+  • supabase/migrations/004_security_hardening.sql (lines 123-148)
+  • supabase/migrations/022_reports_post_target.sql (lines 1-5)
+  • app/src/composables/useModeration.ts (lines 32-49)
+
+================================================================================
+4. BLOCK LIST - FULLY INTEGRATED ✅
+================================================================================
+
+Block Table:
+  • UNIQUE(blocker_id, blocked_id)
+  • CHECK (blocker_id <> blocked_id)
+  • RLS: Users manage own blocks only
+
+Client-Side Integration:
+  • Blocks loaded on auth init
+  • Filtered from: items feed, plaza posts, messages/conversations
+  • UI: pages/blocked/index.vue (block/unblock management)
+
+Files:
+  • supabase/migrations/004_security_hardening.sql (lines 152-171)
+  • app/src/composables/useModeration.ts (lines 6-75)
+  • app/src/composables/useItems.ts (lines 105-110)
+  • app/src/composables/usePlaza.ts (lines 55-58)
+  • app/src/composables/useMessages.ts (lines 32-36)
+  • app/src/pages/blocked/index.vue (lines 1-133)
+
+================================================================================
+5. AUTH PROTECTION - BASIC ⚠️
+================================================================================
+
+Implemented:
+  ✅ Password minimum 8 characters
+  ✅ Email verification required (Supabase auth)
+  ✅ Illini email auto-verification (@illinois.edu → is_illini_verified=true)
+
+NOT Implemented:
+  ❌ Captcha (reCAPTCHA v3 / hCaptcha)
+  ❌ Disposable email detection
+  ❌ Rate limiting on signup attempts (Supabase handles)
+
+Files:
+  • app/src/composables/useAuth.ts (lines 78-101)
+  • supabase/migrations/004_security_hardening.sql (lines 214-238)
+
+================================================================================
+6. DUPLICATE DETECTION - COMPREHENSIVE ✅
+================================================================================
+
+All duplicates detected via normalized string comparison:
+  LOWER(TRIM(regexp_replace(content, '\s+', ' ', 'g')))
+
+By Content Type:
+  • Items:     60s window
+  • Posts:     60s window
+  • Comments:  30s window
+  • Messages:  5s window
+
+Files:
+  • supabase/migrations/012_rate_limiting_and_dedupe.sql (lines 1-302)
+  • supabase/migrations/013_security_patches.sql (lines 120-310)
+
+================================================================================
+7. ROW LEVEL SECURITY (RLS) - COMPREHENSIVE ✅
+================================================================================
+
+All Tables Enabled:
+  profiles, items, conversations, messages, favorites, posts, post_comments,
+  post_likes, follows, ratings, reports, blocks, notifications, storage.objects
+
+WITH CHECK Guards (Prevent Field Tampering):
+  ✅ items.UPDATE:           auth.uid() = user_id
+  ✅ messages.INSERT:        auth.uid() = sender_id
+  ✅ conversations.UPDATE:   auth.uid() = buyer_id OR seller_id
+  ✅ post_likes.UPDATE:      false (explicit deny)
+  ✅ notifications.INSERT:   false (explicit deny)
+  ✅ storage.objects.INSERT: path restriction to items/<uid>/*
+
+Additional Protections:
+  ✅ BEFORE UPDATE trigger on conversations (enforce_conversation_flag_ownership)
+     → Buyer can only change buyer flags, seller can only change seller flags
+  ✅ BEFORE UPDATE trigger on posts (prevent self-pin, is_official flip)
+
+Permissive Policies (Intentional):
+  • profiles SELECT (true) - necessary for FK embeds, mitigated by column GRANTs
+  • items SELECT (status != 'deleted') - marketplace visibility
+  • posts SELECT (status = 'active') - plaza visibility
+  • post_comments SELECT (true) - comment visibility
+  • post_likes SELECT (true) - like count visibility
+  • follows SELECT (true) - follow graph visibility
+  • ratings SELECT (true) - rating visibility
+  • storage.objects SELECT - image visibility
+
+Files:
+  • supabase/migrations/001_initial_schema.sql (lines 157-240)
+  • supabase/migrations/004_security_hardening.sql (lines 29-147)
+  • supabase/migrations/010_plaza_and_uid_and_chat_flags.sql (lines 153-223)
+  • supabase/migrations/011_rls_hardening_and_perf_indexes.sql (lines 23-100)
+  • supabase/migrations/013_security_patches.sql (lines 32-117)
+
+================================================================================
+8. BAN/SUSPENSION SYSTEM - NOT IMPLEMENTED ❌
+================================================================================
+
+Current State:
+  • NO user_status field on profiles
+  • NO graduated bans (warning → 24h → 7d → permanent)
+  • NO appeal mechanism
+  • Only soft-delete available (user-initiated only)
+
+Account Deletion (Soft-Delete):
+  • Anonymizes profile (nickname → '[deleted]')
+  • Marks items as deleted
+  • Deletes conversations
+  • Clears PII (phone, email, wechat_openid)
+  • Does NOT delete auth.users (requires service_role)
+
+Files:
+  • supabase/migrations/004_security_hardening.sql (lines 179-209)
+
+Recommendation: Add user_status field + admin ban UI
+
+================================================================================
+9. FILE UPLOAD SECURITY - GOOD ✅
+================================================================================
+
+Controls:
+  ✅ Max 9 images per listing
+  ✅ Max 5 MB per image
+  ✅ JPEG only (hardcoded contentType)
+  ✅ Compression: 1600px width, 82% quality
+  ✅ Path restriction: items/<uid>/<filename>
+  ✅ RLS policy enforces path restriction
+  ✅ 30-second upload timeout
+  ✅ Randomized filenames (prevents enumeration)
+
+NOT Implemented:
+  ❌ Virus/malware scanning (ClamAV, VirusTotal)
+  ❌ EXIF data stripping (could leak location)
+  ❌ Image validation (could upload non-image with .jpg extension)
+  ❌ Duplicate image detection
+
+Files:
+  • app/src/composables/useItems.ts (lines 222-305)
+  • supabase/migrations/011_rls_hardening_and_perf_indexes.sql (lines 114-124)
+
+================================================================================
+10. API ENDPOINTS - SECURE ✅
+================================================================================
+
+probe-022.js (Migration health check)
+  • Uses SERVICE_ROLE if available, falls back to ANON_KEY
+  • Cleans up test data
+  • ⚠️ Exposes which key is being used in response
+
+share.js (Item OG metadata)
+  • Uses ANON_KEY (public data only)
+  • HTML escapes all user input
+  • Caches response (60s client, 300s CDN)
+
+share-post.js (Post OG metadata)
+  • Uses ANON_KEY (public data only)
+  • HTML escapes all user input
+  • Caches response (60s client, 300s CDN)
+
+Service Role Usage:
+  ✅ Only in probe-022.js (testing)
+  ✅ NOT in client-side code
+  ✅ Stored in environment variable
+
+Files:
+  • api/probe-022.js (lines 1-71)
+  • api/share.js (lines 1-64)
+  • api/share-post.js (lines 1-65)
+
+================================================================================
+CRITICAL GAPS (Priority Order)
+================================================================================
+
+1. [HIGH] No admin dashboard for reports
+   → Build UI to review/resolve reports, assign moderators
+
+2. [HIGH] No ban/suspension system
+   → Add user_status field, graduated bans, appeal mechanism
+
+3. [MEDIUM] No content keyword filtering
+   → Implement Perspective API or custom keyword list
+
+4. [MEDIUM] No captcha on signup
+   → Add reCAPTCHA v3 or hCaptcha
+
+5. [MEDIUM] No disposable email detection
+   → Use disposable-email-domains API
+
+6. [MEDIUM] No image virus scanning
+   → Integrate ClamAV or VirusTotal API
+
+7. [LOW] No client-side debounce on submit
+   → Add debounce to form submit buttons
+
+8. [LOW] No phone/WeChat/QR validation
+   → Add regex validation for contact info
+
+9. [LOW] No EXIF stripping
+   → Strip EXIF data from uploaded images
+
+================================================================================
+STRENGTHS
+================================================================================
+
+✅ Comprehensive server-side rate limiting with normalized duplicate detection
+✅ RLS policies with WITH CHECK guards on all write operations
+✅ PII protection via column-level GRANTs
+✅ Block list integration across all feeds
+✅ Conversation flag isolation via BEFORE UPDATE trigger
+✅ Notification INSERT denial via explicit CHECK (false) policy
+✅ Storage upload restrictions to user's own folder
+✅ Illini email auto-verification for campus badge
+✅ Unique constraint on reports to prevent spam
+✅ Error handling with friendly messages for rate limits
+✅ 37 SECURITY DEFINER functions for elevated operations
+✅ 22 migrations with comprehensive security hardening
+
+================================================================================
+RECOMMENDATION
+================================================================================
+
+This is a WELL-HARDENED marketplace with strong fundamentals. For production:
+
+Priority 1: Admin dashboard + ban system (enables moderation)
+Priority 2: Content filtering + captcha (reduces abuse)
+Priority 3: Image scanning + EXIF stripping (data protection)
+
+Current state is suitable for beta/MVP with user reports as primary moderation.
+
+================================================================================

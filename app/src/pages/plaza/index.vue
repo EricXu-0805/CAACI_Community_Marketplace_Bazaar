@@ -6,6 +6,7 @@
       <text class="ph-title">{{ t('plaza.title') }}</text>
       <view class="compose-btn" @click="openComposer" v-if="isLoggedIn">
         <view class="cb-pen"></view>
+        <text class="cb-label">{{ t('plaza.write') }}</text>
       </view>
     </view>
 
@@ -537,19 +538,21 @@ async function onSubmitComment() {
 
 function onCommentTap(c: PostComment) {
   if (!currentUser.value) return
-  if (c.user_id === currentUser.value.id) return
   replyTo.value = c
 }
 
 function onCommentLongPress(c: PostComment) {
   if (!currentUser.value) return
   const isMine = c.user_id === currentUser.value.id
-  const items = isMine ? [t('plaza.delete')] : [t('plaza.reply'), t('plaza.report')]
+  const items = isMine
+    ? [t('plaza.reply'), t('plaza.delete')]
+    : [t('plaza.reply'), t('plaza.report')]
   uni.showActionSheet({
     itemList: items,
-    itemColor: isMine ? '#FF3B30' : '#1a1a1a',
     success: (res) => {
-      if (isMine && res.tapIndex === 0) {
+      if (res.tapIndex === 0) {
+        replyTo.value = c
+      } else if (isMine && res.tapIndex === 1) {
         uni.showModal({
           title: t('plaza.commentDeleteConfirm'),
           confirmColor: '#FF3B30',
@@ -563,8 +566,6 @@ function onCommentLongPress(c: PostComment) {
             }
           },
         })
-      } else if (!isMine && res.tapIndex === 0) {
-        replyTo.value = c
       } else if (!isMine && res.tapIndex === 1) {
         promptReportUser(c.user_id)
       }
@@ -633,19 +634,22 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 }
 .ph-title { font-size: 17px; font-weight: 700; color: #1a1a1a; }
 .compose-btn {
-  width: 34px; height: 34px; border-radius: 50%;
-  background: #1a1a1a; display: flex; align-items: center; justify-content: center;
+  height: 32px; padding: 0 12px 0 10px;
+  border-radius: 16px;
+  background: #1a1a1a;
+  display: inline-flex; align-items: center; gap: 6px;
   cursor: pointer;
-  &:active { opacity: 0.8; }
+  &:active { opacity: 0.82; }
 }
 .cb-pen {
-  width: 14px; height: 14px; position: relative;
+  width: 12px; height: 12px; position: relative;
   &::before {
     content: ''; position: absolute; inset: 0;
     background: #fff;
     clip-path: polygon(0 100%, 40% 100%, 100% 40%, 60% 0, 0 60%);
   }
 }
+.cb-label { font-size: 13px; color: #fff; font-weight: 600; line-height: 1; }
 
 .search-wrap {
   padding: 8px 16px; background: #fff;

@@ -227,7 +227,6 @@ function onDelete() {
 
 function onCommentTap(c: PostComment) {
   if (!currentUser.value) return
-  if (c.user_id === currentUser.value.id) return
   replyTo.value = c
 }
 

@@ -734,13 +734,18 @@ function goPublish() {
   position: relative;
   margin-top: 6px;
   padding-bottom: 4px;
+  /* Parent .mobile-header has 16px right padding. Bleed this container
+     past that padding so the fade can actually reach the physical edge. */
+  margin-right: -16px;
 }
 .mobile-cats {
   display: block;
+  /* right side has the extra 16px so pills can scroll under the fade */
   padding: 4px 12px 6px 12px;
+  padding-right: 16px;
   white-space: nowrap;
-  scrollbar-width: none;        /* Firefox: hide scrollbar (belt) */
-  -ms-overflow-style: none;     /* legacy IE/Edge */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 /* Belt-and-suspenders — uni-scroll-view renders an inner div that
    can overlay a 3px scrollbar on Chrome; :show-scrollbar="false" is
@@ -761,7 +766,7 @@ function goPublish() {
 .mc-fade {
   position: absolute;
   top: 0; right: 0; bottom: 4px;
-  width: 72px;
+  width: 88px;
   background: linear-gradient(
     to right,
     rgba(255, 255, 255, 0) 0%,
