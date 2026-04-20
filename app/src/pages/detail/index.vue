@@ -39,8 +39,9 @@
       </view>
       <view class="title-row">
         <text class="title">{{ translated ? translatedTitle : item.title }}</text>
-        <view class="translate-btn" @click="toggleTranslate">
-          <text>{{ translated ? 'A文' : '文A' }}</text>
+        <view :class="['translate-btn', { loading: translatePending }]" @click="toggleTranslate">
+          <text v-if="!translatePending">{{ translated ? 'A文' : '文A' }}</text>
+          <text v-else>···</text>
         </view>
       </view>
       <view class="tags">
@@ -241,7 +242,8 @@ import type { Item } from '../../types'
 import { formatTime, haptic, formatPrice, quickTranslate, thumbUrl, friendlyErrorMessage } from '../../utils'
 import { matchSpot } from '../../composables/useCampusSpots'
 import { useRatings } from '../../composables/useRatings'
-import { computed, onUnmounted } from 'vue'
+import { useTranslate } from '../../composables/useTranslate'
+import { computed, onUnmounted, watch } from 'vue'
 
 const { t } = useI18n()
 const { fetchItem, updateItemStatus } = useItems()
@@ -305,19 +307,44 @@ async function onSubmitRating() {
 }
 
 const { lang } = useI18n()
+const { translate: translateText, getCached, pending: translatePending } = useTranslate()
 
-const translatedTitle = computed(() => {
-  if (!item.value) return ''
-  return quickTranslate(item.value.title, lang.value as 'en' | 'zh')
-})
-const translatedDesc = computed(() => {
-  if (!item.value) return ''
-  return quickTranslate(item.value.description, lang.value as 'en' | 'zh')
-})
+const translatedTitle = ref('')
+const translatedDesc = ref('')
 
-function toggleTranslate() {
-  translated.value = !translated.value
+function dictionaryFallback(kind: 'title' | 'desc'): string {
+  if (!item.value) return ''
+  const src = kind === 'title' ? item.value.title : item.value.description
+  return quickTranslate(src, lang.value as 'en' | 'zh')
 }
+
+async function ensureTranslation() {
+  if (!item.value) return
+  const target = lang.value as 'en' | 'zh'
+  const cachedT = getCached(item.value.title, target)
+  const cachedD = getCached(item.value.description, target)
+  translatedTitle.value = cachedT || dictionaryFallback('title')
+  translatedDesc.value  = cachedD || dictionaryFallback('desc')
+  if (cachedT && cachedD) return
+  const [t2, d2] = await Promise.all([
+    cachedT ? Promise.resolve(cachedT) : translateText(item.value.title, target),
+    cachedD ? Promise.resolve(cachedD) : translateText(item.value.description, target),
+  ])
+  if (!item.value) return
+  if (t2) translatedTitle.value = t2
+  if (d2) translatedDesc.value  = d2
+}
+
+async function toggleTranslate() {
+  translated.value = !translated.value
+  if (translated.value) await ensureTranslation()
+}
+
+watch(lang, async () => {
+  if (translated.value && item.value) {
+    await ensureTranslation()
+  }
+})
 
 let alive = true
 onUnmounted(() => { alive = false })
