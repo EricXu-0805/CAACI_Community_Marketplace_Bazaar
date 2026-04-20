@@ -115,11 +115,11 @@ CREATE OR REPLACE FUNCTION public.record_fingerprint(
 )
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
-  uid uuid := auth.uid();
+  caller_id    uuid := auth.uid();
   cleaned_hash text;
   cleaned_ua   text;
 BEGIN
-  IF uid IS NULL THEN
+  IF caller_id IS NULL THEN
     RAISE EXCEPTION 'not_authenticated';
   END IF;
 
@@ -134,7 +134,7 @@ BEGIN
   cleaned_ua := left(COALESCE(ua_snippet_in, ''), 120);
 
   INSERT INTO public.device_fingerprints (profile_id, fp_hash, ua_snippet)
-  VALUES (uid, cleaned_hash, cleaned_ua)
+  VALUES (caller_id, cleaned_hash, cleaned_ua)
   ON CONFLICT (profile_id, fp_hash)
   DO UPDATE SET
     last_seen  = now(),
@@ -144,7 +144,7 @@ BEGIN
   UPDATE public.profiles
      SET last_fp_hash    = cleaned_hash,
          last_fp_seen_at = now()
-   WHERE id = uid;
+   WHERE id = caller_id;
 END;
 $$;
 
@@ -271,16 +271,16 @@ CREATE OR REPLACE FUNCTION public.apply_ban_level(
 )
 RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
-  new_id uuid;
-  duration interval;
-  ends timestamptz;
-  alt_id uuid;
+  new_id       uuid;
+  ban_interval interval;
+  ends_at_val  timestamptz;
+  alt_id       uuid;
 BEGIN
   IF level_in NOT BETWEEN 0 AND 5 THEN RAISE EXCEPTION 'invalid_level'; END IF;
   IF target_in IS NULL THEN RAISE EXCEPTION 'invalid_target'; END IF;
   IF reason_in IS NULL OR length(btrim(reason_in)) = 0 THEN RAISE EXCEPTION 'reason_required'; END IF;
 
-  duration := CASE
+  ban_interval := CASE
     WHEN hours_in IS NOT NULL THEN (hours_in || ' hours')::interval
     WHEN level_in = 0 THEN NULL
     WHEN level_in = 1 THEN NULL
@@ -290,19 +290,19 @@ BEGIN
     WHEN level_in = 5 THEN NULL
   END;
 
-  ends := CASE
-    WHEN duration IS NULL AND level_in = 5 THEN 'infinity'::timestamptz
-    WHEN duration IS NULL THEN NULL
-    ELSE now() + duration
+  ends_at_val := CASE
+    WHEN ban_interval IS NULL AND level_in = 5 THEN 'infinity'::timestamptz
+    WHEN ban_interval IS NULL THEN NULL
+    ELSE now() + ban_interval
   END;
 
   INSERT INTO public.suspensions (profile_id, level, reason, category, issued_by, ends_at)
-  VALUES (target_in, level_in, reason_in, category_in, auth.uid(), ends)
+  VALUES (target_in, level_in, reason_in, category_in, auth.uid(), ends_at_val)
   RETURNING id INTO new_id;
 
   UPDATE public.profiles
      SET suspension_level = level_in,
-         suspended_until  = ends,
+         suspended_until  = ends_at_val,
          shadow_banned    = CASE
            WHEN level_in >= 3 THEN true
            ELSE shadow_banned
@@ -386,15 +386,18 @@ $$;
 REVOKE ALL ON FUNCTION public.lift_suspension(uuid, text) FROM PUBLIC;
 
 -- --------------------------------------------
--- 8. is_posting_allowed(uid) — the hard gate
+-- 8. is_posting_allowed(profile_id) — the hard gate
+--    Param was named `uid` originally. Supabase's search_path makes
+--    `uid` (bareword) ambiguous with auth.uid(), which can trip a
+--    42883 uuid=text on SELECT planning. Renamed to profile_id_in.
 -- --------------------------------------------
-CREATE OR REPLACE FUNCTION public.is_posting_allowed(uid uuid)
+CREATE OR REPLACE FUNCTION public.is_posting_allowed(profile_id_in uuid)
 RETURNS boolean LANGUAGE sql STABLE AS $$
   SELECT NOT EXISTS(
-    SELECT 1 FROM public.profiles
-     WHERE id = uid
-       AND suspension_level >= 2
-       AND (suspended_until IS NULL OR suspended_until > now())
+    SELECT 1 FROM public.profiles p
+     WHERE p.id = profile_id_in
+       AND p.suspension_level >= 2
+       AND (p.suspended_until IS NULL OR p.suspended_until > now())
   );
 $$;
 
