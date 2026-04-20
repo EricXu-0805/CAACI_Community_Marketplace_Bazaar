@@ -538,7 +538,7 @@ async function contactSeller() {
 <style lang="scss" scoped>
 .page {
   min-height: 100vh;
-  background: #f2f2f7;
+  background: var(--bg-subtle);
   padding-bottom: 80px;
 }
 
@@ -546,14 +546,14 @@ async function contactSeller() {
 .img-area {
   position: relative;
   width: 100%;
-  background: #e8e8ed;
+  background: var(--bg-inset);
 }
-.img-swiper { width: 100%; height: 380px; background: #f2f2f7; }
-.swiper-img { width: 100%; height: 100%; background: #f2f2f7; }
+.img-swiper { width: 100%; height: 380px; background: var(--bg-subtle); }
+.swiper-img { width: 100%; height: 100%; background: var(--bg-subtle); }
 .no-img {
   width: 100%; height: 100%;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: #e8e8ed; color: #999; font-size: 14px; gap: 8px;
+  background: var(--bg-inset); color: #999; font-size: 14px; gap: 8px;
 }
 .no-img-icon {
   width: 36px; height: 28px; border: 2px solid #c7c7cc; border-radius: 4px;
@@ -591,7 +591,7 @@ async function contactSeller() {
   width: 14px; height: 14px; position: relative;
   &::before {
     content: ''; position: absolute; top: 0; left: 50%;
-    width: 2px; height: 9px; background: #fff;
+    width: 2px; height: 9px; background: var(--bg-elev-1);
     transform: translateX(-50%);
   }
   &::after {
@@ -618,23 +618,23 @@ async function contactSeller() {
   width: 6px; height: 6px; border-radius: 50%;
   background: rgba(255,255,255,0.45);
   transition: all 0.2s;
-  &.active { background: #fff; width: 16px; border-radius: 3px; }
+  &.active { background: var(--bg-elev-1); width: 16px; border-radius: 3px; }
 }
 
 /* ========== Info Card ========== */
 .info-card {
-  background: #fff; padding: 18px 16px 16px;
+  background: var(--bg-elev-1); padding: 18px 16px 16px;
   margin-top: -14px; border-radius: 14px 14px 0 0;
   position: relative; z-index: 5;
 }
 .price-row { display: flex; align-items: baseline; gap: 7px; }
 .price {
-  font-size: 26px; font-weight: 800; color: #1a1a1a;
+  font-size: 26px; font-weight: 800; color: var(--text-primary);
   letter-spacing: -0.5px; font-variant-numeric: tabular-nums;
 }
 .obo {
-  font-size: 11px; font-weight: 700; color: #FF6B35;
-  border: 1.5px solid #FF6B35; padding: 2px 6px; border-radius: 4px;
+  font-size: 11px; font-weight: 700; color: var(--accent-action);
+  border: 1.5px solid var(--accent-action); padding: 2px 6px; border-radius: 4px;
 }
 .title-row {
   display: flex; align-items: flex-start; gap: 10px; margin-top: 9px;
@@ -645,14 +645,14 @@ async function contactSeller() {
 }
 .translate-btn {
   flex-shrink: 0; padding: 4px 8px;
-  background: #f2f2f7; border-radius: 6px; cursor: pointer;
-  text { font-size: 11px; color: #636366; font-weight: 600; letter-spacing: 0.02em; }
-  &:active { background: #e5e5ea; }
+  background: var(--bg-subtle); border-radius: 6px; cursor: pointer;
+  text { font-size: 11px; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.02em; }
+  &:active { background: var(--bg-inset); }
 }
 .tags { display: flex; gap: 6px; margin-top: 11px; flex-wrap: wrap; }
 .tag {
   font-size: 12px; padding: 4px 10px;
-  background: #f5f5f7; color: #636366; border-radius: 6px;
+  background: #f5f5f7; color: var(--text-secondary); border-radius: 6px;
 }
 .tag-loc {
   display: inline-flex; align-items: center; gap: 4px; padding-left: 8px;
@@ -660,51 +660,51 @@ async function contactSeller() {
 .tag-safe {
   background: #e9f7ef; color: #1a7a3d;
 }
-.tag-safe .loc-dot { background: #22c55e; }
+.tag-safe .loc-dot { background: var(--accent-good); }
 .safe-badge {
   font-size: 10px; font-weight: 600;
   margin-left: 6px; padding: 2px 6px;
-  background: #22c55e; color: #fff;
+  background: var(--accent-good); color: #fff;
   border-radius: 4px;
 }
 .loc-dot {
   width: 5px; height: 5px; border-radius: 50%;
-  background: #FF6B35; flex-shrink: 0;
+  background: var(--accent-action); flex-shrink: 0;
 }
 
 .scam-card {
   margin: 7px 0 0;
   padding: 12px 14px;
   background: #FFF4E6;
-  border-left: 3px solid #FF9500;
+  border-left: 3px solid var(--accent-warn);
 }
 .sc-head {
   display: flex; align-items: center; gap: 8px; margin-bottom: 5px;
 }
 .sc-icon {
-  width: 20px; height: 20px; border-radius: 50%; background: #FF9500;
+  width: 20px; height: 20px; border-radius: 50%; background: var(--accent-warn);
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 .sc-excl {
-  width: 2px; height: 10px; background: #fff; border-radius: 1px; position: relative;
+  width: 2px; height: 10px; background: var(--bg-elev-1); border-radius: 1px; position: relative;
 }
 .sc-excl::after {
   content: ''; position: absolute; bottom: -5px; left: -1px;
-  width: 4px; height: 3px; background: #fff; border-radius: 2px;
+  width: 4px; height: 3px; background: var(--bg-elev-1); border-radius: 2px;
 }
 .sc-title { font-size: 13px; font-weight: 700; color: #A65B00; }
 .sc-body { font-size: 12px; color: #8B5000; line-height: 1.55; display: block; }
 
 /* ========== Sections ========== */
 .section {
-  background: #fff; padding: 16px; margin-top: 7px;
+  background: var(--bg-elev-1); padding: 16px; margin-top: 7px;
 }
 .section-label {
   font-size: 14px; font-weight: 600; color: #1d1d1f;
   margin-bottom: 10px; display: block;
 }
 .desc-text {
-  font-size: 14px; color: #636366; line-height: 1.7;
+  font-size: 14px; color: var(--text-secondary); line-height: 1.7;
   &.clamped {
     display: -webkit-box; -webkit-line-clamp: 3;
     -webkit-box-orient: vertical; overflow: hidden;
@@ -712,7 +712,7 @@ async function contactSeller() {
 }
 .expand-btn {
   display: block; margin-top: 6px;
-  font-size: 13px; color: #1a1a1a; cursor: pointer;
+  font-size: 13px; color: var(--text-primary); cursor: pointer;
   font-weight: 500; text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -740,7 +740,7 @@ async function contactSeller() {
   letter-spacing: 0.2px;
 }
 .illini-badge-text { color: #fff; font-size: 10px; }
-.seller-meta { font-size: 12px; color: #aeaeb2; margin-top: 3px; }
+.seller-meta { font-size: 12px; color: var(--text-faint); margin-top: 3px; }
 .seller-status {
   display: inline-flex; align-items: center; gap: 4px;
   margin-top: 3px;
@@ -756,7 +756,7 @@ async function contactSeller() {
 }
 .stat { display: flex; align-items: baseline; gap: 4px; }
 .stat-num { font-size: 16px; font-weight: 700; color: #1d1d1f; }
-.stat-label { font-size: 12px; color: #aeaeb2; }
+.stat-label { font-size: 12px; color: var(--text-faint); }
 
 /* ========== Bottom Action Bar ========== */
 .action-bar {
@@ -767,7 +767,7 @@ async function contactSeller() {
   background: rgba(255,255,255,0.92);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-top: 0.5px solid rgba(0,0,0,0.06);
+  border-top: 0.5px solid var(--line-hair);
   z-index: 100;
   max-width: 640px;
   margin: 0 auto;
@@ -816,8 +816,8 @@ async function contactSeller() {
   }
 }
 .reported .ico-report {
-  &::before { background: #34C759; }
-  &::after { background: #34C759; }
+  &::before { background: var(--accent-good); }
+  &::after { background: var(--accent-good); }
 }
 .ico-reserve {
   position: relative;
@@ -829,18 +829,18 @@ async function contactSeller() {
   }
   &.on {
     background: rgba(255,149,0,0.12);
-    border-color: #FF9500;
-    &::before { background: #FF9500; }
+    border-color: var(--accent-warn);
+    &::before { background: var(--accent-warn); }
   }
 }
 
-.fav-label { font-size: 10px; color: #8e8e93; line-height: 1; }
+.fav-label { font-size: 10px; color: var(--text-muted); line-height: 1; }
 .safety-tip {
   display: flex; align-items: center; gap: 8px;
-  padding: 10px 16px; background: #f7f7f8; margin-top: 7px;
+  padding: 10px 16px; background: var(--bg-elev-2); margin-top: 7px;
 }
 .st-icon { font-size: 14px; flex-shrink: 0; }
-.st-text { font-size: 12px; color: #8e8e93; line-height: 1.4; }
+.st-text { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
 
 .more-scroll { white-space: nowrap; }
 .more-list { display: inline-flex; gap: 8px; padding: 0 0 4px; }
@@ -848,8 +848,8 @@ async function contactSeller() {
   width: 100px; flex-shrink: 0; cursor: pointer;
   &:active { opacity: 0.8; }
 }
-.mc-img { width: 100px; height: 100px; border-radius: 8px; background: #f2f2f7; }
-.mc-price { font-size: 13px; font-weight: 700; color: #1a1a1a; margin-top: 4px; display: block; }
+.mc-img { width: 100px; height: 100px; border-radius: 8px; background: var(--bg-subtle); }
+.mc-price { font-size: 13px; font-weight: 700; color: var(--text-primary); margin-top: 4px; display: block; }
 
 .action-btn-small {
   display: flex; flex-direction: column; align-items: center;
@@ -866,15 +866,15 @@ async function contactSeller() {
   cursor: pointer;
   &:active { opacity: 0.8; }
 }
-.chat-btn-confirm { background: #34C759; }
-.chat-btn-rate { background: #fbbf24; color: #1a1a1a; font-weight: 700; }
+.chat-btn-confirm { background: var(--accent-good); }
+.chat-btn-rate { background: #fbbf24; color: var(--text-primary); font-weight: 700; }
 
 .sheet-mask {
   position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000;
 }
 .rating-sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 1001;
-  background: #fff; border-radius: 18px 18px 0 0;
+  background: var(--bg-elev-1); border-radius: 18px 18px 0 0;
   padding: 18px 18px calc(24px + env(safe-area-inset-bottom));
   transform: translateY(100%); transition: transform 0.26s ease;
   &.open { transform: translateY(0); }
@@ -882,7 +882,7 @@ async function contactSeller() {
 .rs-header { display: flex; align-items: center; justify-content: space-between; }
 .rs-title { font-size: 17px; font-weight: 700; }
 .rs-close {
-  width: 28px; height: 28px; border-radius: 50%; background: #f2f2f7;
+  width: 28px; height: 28px; border-radius: 50%; background: var(--bg-subtle);
   display: flex; align-items: center; justify-content: center; position: relative;
 }
 .cs-x {
@@ -907,7 +907,7 @@ async function contactSeller() {
 .rs-textarea {
   width: 100%; min-height: 80px;
   background: #f5f5f7; border-radius: 10px;
-  padding: 10px 12px; font-size: 14px; color: #1a1a1a;
+  padding: 10px 12px; font-size: 14px; color: var(--text-primary);
   margin-top: 4px; box-sizing: border-box;
 }
 .rs-submit {
@@ -919,8 +919,8 @@ async function contactSeller() {
   &:active { transform: scale(0.98); }
 }
 .chat-btn-disabled {
-  background: #e5e5ea; cursor: default;
-  text { color: #8e8e93; }
+  background: var(--bg-inset); cursor: default;
+  text { color: var(--text-muted); }
   &:active { opacity: 1; }
 }
 
@@ -932,23 +932,23 @@ async function contactSeller() {
 }
 .loading-spinner {
   width: 24px; height: 24px;
-  border: 2.5px solid #e8e8ed; border-top-color: #1a1a1a;
+  border: 2.5px solid #e8e8ed; border-top-color: var(--text-primary);
   border-radius: 50%; animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-.loading-text { font-size: 13px; color: #aeaeb2; }
+.loading-text { font-size: 13px; color: var(--text-faint); }
 
 .not-found-page {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   height: 100vh; gap: 10px; padding: 0 40px; text-align: center;
-  background: #fff;
+  background: var(--bg-elev-1);
 }
 .nf-back {
   position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); left: 14px;
   width: 36px; height: 36px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  background: #f2f2f7; cursor: pointer;
+  background: var(--bg-subtle); cursor: pointer;
 }
 .nf-arrow { width: 9px; height: 9px; border-left: 2px solid #1a1a1a; border-bottom: 2px solid #1a1a1a; transform: rotate(45deg); margin-left: 3px; }
 .nf-icon {
@@ -960,8 +960,8 @@ async function contactSeller() {
     transform: translateY(-50%);
   }
 }
-.nf-title { font-size: 17px; font-weight: 700; color: #1a1a1a; }
-.nf-sub { font-size: 14px; color: #8e8e93; line-height: 1.5; max-width: 280px; }
+.nf-title { font-size: 17px; font-weight: 700; color: var(--text-primary); }
+.nf-sub { font-size: 14px; color: var(--text-muted); line-height: 1.5; max-width: 280px; }
 .nf-btn {
   margin-top: 20px; padding: 12px 28px; background: #1a1a1a;
   color: #fff; border-radius: 22px; font-size: 14px; font-weight: 600;

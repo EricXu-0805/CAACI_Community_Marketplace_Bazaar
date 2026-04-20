@@ -160,8 +160,8 @@ function g_key(e: string, i: number) {
 
 <style lang="scss" scoped>
 .emoji-panel {
-  background: #fff;
-  border-top: 0.5px solid rgba(0,0,0,0.06);
+  background: var(--bg-elev-1);
+  border-top: 0.5px solid var(--line-hair);
   max-height: 280px;
   display: flex;
   flex-direction: column;
@@ -181,10 +181,10 @@ function g_key(e: string, i: number) {
 }
 .ep-tab {
   font-size: 12px;
-  color: #636366;
+  color: var(--text-secondary);
   padding: 6px 10px;
   border-radius: 14px;
-  background: #f2f2f7;
+  background: var(--bg-subtle);
   cursor: pointer;
   flex-shrink: 0;
   &.active {
@@ -212,7 +212,7 @@ function g_key(e: string, i: number) {
   height: 40px;
   border-radius: 8px;
   cursor: pointer;
-  &:active { background: #f2f2f7; }
+  &:active { background: var(--bg-subtle); }
 }
 .ep-emoji { font-size: 22px; line-height: 1; }
 </style>

@@ -256,7 +256,7 @@ function onDelete(conv: Conversation) {
   uni.showModal({
     title: t('msg.deleteTitle'),
     content: t('msg.deleteHint'),
-    confirmColor: '#FF3B30',
+    confirmColor: 'var(--accent-danger)',
     success: async (r) => {
       if (!r.confirm) return
       try {
@@ -300,19 +300,19 @@ function goLogin() {
 .page {
   min-height: 100vh;
   min-height: 100dvh;
-  background: #fff;
+  background: var(--bg-elev-1);
   max-width: 480px; margin: 0 auto; padding-bottom: 76px;
 }
 
 .page-header {
   padding: 11px 16px;
   padding-top: calc(11px + env(safe-area-inset-top, 0px));
-  background: #fff;
-  border-bottom: 0.5px solid rgba(0,0,0,0.06);
+  background: var(--bg-elev-1);
+  border-bottom: 0.5px solid var(--line-hair);
   position: sticky; top: 0; z-index: 50;
 }
 .page-title {
-  font-size: 17px; font-weight: 700; color: #1a1a1a;
+  font-size: 17px; font-weight: 700; color: var(--text-primary);
 }
 
 .login-prompt, .empty {
@@ -337,9 +337,9 @@ function goLogin() {
     width: 4px; height: 4px; border-radius: 50%; background: #d1d1d6;
   }
 }
-.prompt-text { font-size: 14px; color: #aeaeb2; }
-.empty-title { font-size: 16px; color: #1a1a1a; font-weight: 600; }
-.empty-sub { font-size: 13px; color: #aeaeb2; }
+.prompt-text { font-size: 14px; color: var(--text-faint); }
+.empty-title { font-size: 16px; color: var(--text-primary); font-weight: 600; }
+.empty-sub { font-size: 13px; color: var(--text-faint); }
 .login-btn {
   margin-top: 12px; padding: 10px 36px;
   background: #1a1a1a; color: #fff; border-radius: 22px;
@@ -349,26 +349,26 @@ function goLogin() {
 
 .conv-row {
   position: relative; overflow: hidden;
-  border-bottom: 0.5px solid rgba(0,0,0,0.06);
+  border-bottom: 0.5px solid var(--line-hair);
 }
 
 .conv-item {
   display: flex; align-items: center; padding: 13px 16px;
   gap: 12px; cursor: pointer;
-  background: #fff;
+  background: var(--bg-elev-1);
   transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
   position: relative; z-index: 2;
-  &:active { background: #f7f7f8; }
+  &:active { background: var(--bg-elev-2); }
 }
 .conv-avatar {
   width: 48px; height: 48px; border-radius: 50%;
-  background: #f2f2f7; flex-shrink: 0;
+  background: var(--bg-subtle); flex-shrink: 0;
 }
 .conv-info { flex: 1; min-width: 0; }
 .conv-top { display: flex; justify-content: space-between; align-items: center; }
 .conv-name-wrap { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .conv-name {
-  font-size: 15px; font-weight: 600; color: #1a1a1a;
+  font-size: 15px; font-weight: 600; color: var(--text-primary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   &.unread { font-weight: 700; }
 }
@@ -376,11 +376,11 @@ function goLogin() {
   width: 10px; height: 10px; position: relative; flex-shrink: 0;
   &::before {
     content: ''; position: absolute; top: 0; left: 3px;
-    width: 4px; height: 6px; background: #FF9500; border-radius: 1px;
+    width: 4px; height: 6px; background: var(--accent-warn); border-radius: 1px;
   }
   &::after {
     content: ''; position: absolute; bottom: 0; left: 0;
-    width: 10px; height: 2px; background: #FF9500; border-radius: 1px;
+    width: 10px; height: 2px; background: var(--accent-warn); border-radius: 1px;
   }
 }
 .mute-badge {
@@ -405,23 +405,23 @@ function goLogin() {
   width: 7px; height: 7px; border-radius: 50%; background: #c7c7cc;
   flex-shrink: 0; margin-left: 4px;
 }
-.conv-time { font-size: 12px; color: #c7c7cc; flex-shrink: 0; margin-left: 6px; }
+.conv-time { font-size: 12px; color: var(--text-faint); flex-shrink: 0; margin-left: 6px; }
 .conv-preview {
-  font-size: 13px; color: #aeaeb2; margin-top: 4px;
+  font-size: 13px; color: var(--text-faint); margin-top: 4px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
-  &.unread { color: #1a1a1a; font-weight: 600; }
+  &.unread { color: var(--text-primary); font-weight: 600; }
 }
 .conv-thumb-wrap { position: relative; flex-shrink: 0; }
 .conv-thumb {
   width: 42px; height: 42px; border-radius: 7px;
-  background: #f2f2f7;
+  background: var(--bg-subtle);
 }
 .thumb-badge {
   position: absolute; bottom: -2px; right: -2px;
   font-size: 8px; font-weight: 700; padding: 1px 4px;
   border-radius: 3px; color: #fff;
-  &.sold { background: #FF3B30; }
-  &.reserved { background: #FF9500; }
+  &.sold { background: var(--accent-danger); }
+  &.reserved { background: var(--accent-warn); }
 }
 
 .swipe-actions {
@@ -436,12 +436,12 @@ function goLogin() {
   text { font-size: 13px; color: #fff; font-weight: 600; text-align: center; }
 }
 .act-read { background: #007AFF; }
-.act-delete { background: #FF3B30; }
-.act-pin { background: #FF9500; }
+.act-delete { background: var(--accent-danger); }
+.act-pin { background: var(--accent-warn); }
 
 .loading-tip {
   display: flex; align-items: center; justify-content: center;
-  padding: 32px; gap: 8px; color: #c7c7cc; font-size: 13px;
+  padding: 32px; gap: 8px; color: var(--text-faint); font-size: 13px;
 }
 .loading-dot {
   width: 5px; height: 5px; border-radius: 50%;
@@ -454,7 +454,7 @@ function goLogin() {
   .page { padding-bottom: 0; }
   .conv-item {
     border-radius: 8px; margin: 2px 8px;
-    &:hover { background: #f7f7f8; }
+    &:hover { background: var(--bg-elev-2); }
   }
 }
 </style>

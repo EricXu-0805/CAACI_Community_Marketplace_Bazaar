@@ -33,24 +33,24 @@ function go(url: string) { uni.switchTab({ url }) }
 </script>
 
 <style scoped>
-.desktop-nav { display: block; position: sticky; top: 0; z-index: 200; background: #fff; border-bottom: 1px solid #f0f0f0; }
+.desktop-nav { display: block; position: sticky; top: 0; z-index: 200; background: var(--bg-elev-1); border-bottom: 1px solid #f0f0f0; }
 .desktop-nav-inner { max-width: 1120px; margin: 0 auto; display: flex; align-items: center; padding: 0 24px; height: 56px; gap: 24px; }
-.desktop-logo { font-size: 17px; font-weight: 700; color: #1a1a1a; white-space: nowrap; cursor: pointer; letter-spacing: -0.02em; }
+.desktop-logo { font-size: 17px; font-weight: 700; color: var(--text-primary); white-space: nowrap; cursor: pointer; letter-spacing: -0.02em; }
 .desktop-nav-links { display: flex; gap: 4px; }
 .nav-link { font-size: 15px; color: #86868b; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: all 0.15s; font-weight: 500; }
 .nav-link:hover { background: #f5f5f7; color: #1d1d1f; }
-.nav-link.active { color: #1a1a1a; font-weight: 600; background: #f2f2f7; }
+.nav-link.active { color: var(--text-primary); font-weight: 600; background: var(--bg-subtle); }
 .desktop-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
 .nav-loc-wrap { display: flex; align-items: center; gap: 5px; }
-.nav-loc-dot { width: 5px; height: 5px; border-radius: 50%; background: #FF6B35; flex-shrink: 0; }
+.nav-loc-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-action); flex-shrink: 0; }
 .nav-location { font-size: 13px; color: #86868b; }
-.lang-btn { font-size: 11px; color: #8e8e93; padding: 3px 9px; border: 1px solid #d1d1d6; border-radius: 6px; cursor: pointer; font-weight: 500; }
-.lang-btn:active { background: #f2f2f7; }
+.lang-btn { font-size: 11px; color: var(--text-muted); padding: 3px 9px; border: 1px solid #d1d1d6; border-radius: 6px; cursor: pointer; font-weight: 500; }
+.lang-btn:active { background: var(--bg-subtle); }
 .nav-link-wrap { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
 .nav-badge {
   position: absolute; top: -2px; right: -10px;
   min-width: 16px; height: 16px; border-radius: 8px;
-  background: #FF3B30; color: #fff; font-size: 10px; font-weight: 700;
+  background: var(--accent-danger); color: #fff; font-size: 10px; font-weight: 700;
   display: flex; align-items: center; justify-content: center; padding: 0 4px;
 }
 @media (max-width: 767px) { .desktop-nav { display: none; } }

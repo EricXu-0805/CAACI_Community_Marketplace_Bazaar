@@ -84,7 +84,7 @@ function onTap(b: Banner) {
   aspect-ratio: 5 / 2;
   border-radius: 12px;
   overflow: hidden;
-  background: #f2f2f7;
+  background: var(--bg-subtle);
 }
 
 .banner-slide {
