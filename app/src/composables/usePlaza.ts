@@ -5,6 +5,7 @@ import { useModeration } from './useModeration'
 import { useI18n } from './useI18n'
 import type { Post, PostComment } from '../types'
 import { expandSearch } from '../utils'
+import { checkContent, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
 
 const posts = ref<Post[]>([])
 const loading = ref(false)
@@ -107,6 +108,14 @@ export function usePlaza() {
     if (!trimmed && images.length === 0 && !attachedItemId) throw new Error('Content required')
     if (trimmed.length > 2000) throw new Error('Content too long')
 
+    if (trimmed) {
+      const safety = checkContent(trimmed, { kind: 'post' })
+      if (!safety.ok) throw new Error(`moderation_block:${safety.category}:${safety.reason || ''}`)
+      if (isLocalDuplicate('post', trimmed)) throw new Error('duplicate_post')
+      const ai = await remoteModerate(trimmed)
+      if (ai.flagged) throw new Error(`moderation_block:sensitive_word:ai(${ai.categories.join(',')})`)
+    }
+
     const payloadContent = trimmed || ' '
     const { data, error } = await supabase
       .from('posts')
@@ -181,6 +190,12 @@ export function usePlaza() {
     if (!currentUser.value) throw new Error('Not authenticated')
     const trimmed = content.trim()
     if (!trimmed) throw new Error('Content required')
+
+    const safety = checkContent(trimmed, { kind: 'comment' })
+    if (!safety.ok) throw new Error(`moderation_block:${safety.category}:${safety.reason || ''}`)
+    if (isLocalDuplicate(`comment:${postId}`, trimmed)) throw new Error('duplicate_comment')
+    const aiComment = await remoteModerate(trimmed)
+    if (aiComment.flagged) throw new Error(`moderation_block:sensitive_word:ai(${aiComment.categories.join(',')})`)
     const { data, error } = await supabase
       .from('post_comments')
       .insert({

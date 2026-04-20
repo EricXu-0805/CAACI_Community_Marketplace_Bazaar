@@ -4,6 +4,7 @@ import { useModeration } from './useModeration'
 import { useI18n } from './useI18n'
 import type { Item, ItemCategory, ItemCondition, ItemStatus } from '../types'
 import { compressImage, expandSearch } from '../utils'
+import { checkContent, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
 
 const items = ref<Item[]>([])
 const loading = ref(false)
@@ -164,6 +165,18 @@ export function useItems() {
     if (input.title.length > 200) throw new Error('Title too long')
     if (input.description.length > 2000) throw new Error('Description too long')
     if (input.images.length > MAX_IMAGES) throw new Error('Too many images')
+
+    const titleCheck = checkContent(input.title, { kind: 'item_title' })
+    if (!titleCheck.ok) throw new Error(`moderation_block:${titleCheck.category}:${titleCheck.reason || ''}`)
+    if (input.description) {
+      const descCheck = checkContent(input.description, { kind: 'item_desc' })
+      if (!descCheck.ok) throw new Error(`moderation_block:${descCheck.category}:${descCheck.reason || ''}`)
+    }
+    if (isLocalDuplicate('item', `${input.title}::${input.description}`)) {
+      throw new Error('duplicate_item')
+    }
+    const ai = await remoteModerate(`${input.title}\n${input.description}`)
+    if (ai.flagged) throw new Error(`moderation_block:sensitive_word:ai(${ai.categories.join(',')})`)
 
     const basePayload: Record<string, any> = {
       user_id: session.user.id,

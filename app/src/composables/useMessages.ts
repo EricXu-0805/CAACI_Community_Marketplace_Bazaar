@@ -3,6 +3,7 @@ import { useSupabase } from './useSupabase'
 import { useModeration } from './useModeration'
 import { useI18n } from './useI18n'
 import type { Conversation, Message } from '../types'
+import { checkContent, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
 
 const conversations = ref<Conversation[]>([])
 const messages = ref<Message[]>([])
@@ -81,6 +82,14 @@ export function useMessages() {
 
   async function sendMessage(conversationId: string, senderId: string, content: string, type: 'text' | 'image' = 'text') {
     if (type === 'text' && content.length > 2000) throw new Error('Message too long')
+
+    if (type === 'text') {
+      const safety = checkContent(content, { kind: 'message', allowLinks: false })
+      if (!safety.ok) throw new Error(`moderation_block:${safety.category}:${safety.reason || ''}`)
+      if (isLocalDuplicate(`msg:${conversationId}`, content)) throw new Error('duplicate_message')
+      const ai = await remoteModerate(content)
+      if (ai.flagged) throw new Error(`moderation_block:sensitive_word:ai(${ai.categories.join(',')})`)
+    }
 
     const { data, error } = await supabase
       .from('messages')

@@ -50,9 +50,26 @@ const RATE_LIMIT_MESSAGES: Record<string, { en: string; zh: string }> = {
   reports_unique_reporter_target: { en: 'You have already reported this.',             zh: '你已举报过这个' },
 }
 
+const MODERATION_MESSAGES: Record<string, { en: string; zh: string }> = {
+  too_short:        { en: 'Content is too short.',                           zh: '内容太短' },
+  too_long:         { en: 'Content is too long.',                            zh: '内容太长' },
+  contact_info:     { en: 'Please use in-app chat — no phone, WeChat, or email allowed here.', zh: '请使用站内私信，不要留手机号、微信或邮箱' },
+  sensitive_word:   { en: 'Content contains disallowed terms.',              zh: '内容包含违规词，请修改后重试' },
+  suspicious_link:  { en: 'Links are not allowed in this field.',            zh: '此处不允许发送链接' },
+  qr_image:         { en: 'Images containing QR codes are not allowed.',     zh: '图片中检测到二维码，不允许发送' },
+  spam_pattern:     { en: 'This looks like spam. Please rewrite.',           zh: '疑似垃圾内容，请修改' },
+}
+
 export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string {
   if (!err) return ''
   const raw = String(err?.message || err?.code || err || '').toLowerCase()
+
+  if (raw.startsWith('moderation_block:')) {
+    const cat = raw.split(':')[1] as keyof typeof MODERATION_MESSAGES
+    if (cat && MODERATION_MESSAGES[cat]) return MODERATION_MESSAGES[cat][lang]
+    return lang === 'zh' ? '内容未通过审核' : 'Content blocked by moderation'
+  }
+
   for (const key of Object.keys(RATE_LIMIT_MESSAGES)) {
     if (raw.includes(key.toLowerCase())) {
       return RATE_LIMIT_MESSAGES[key][lang]
