@@ -150,8 +150,18 @@
           </view>
           <text class="card-meta">Warnings: {{ w.warning_count }}</text>
           <view class="card-actions">
+            <view class="mini-btn" @click="openUser(w.profile_id)">Open profile</view>
             <view class="mini-btn" @click="onBanPrompt(w.profile_id, w.nickname)">Apply ban</view>
           </view>
+        </view>
+      </view>
+
+      <view v-else-if="activeTab === 'audit'" class="list">
+        <view v-if="auditLog.length === 0" class="empty"><text>No audit events yet.</text></view>
+        <view v-for="r in auditLog" :key="r.id" class="audit-row">
+          <text :class="['audit-kind', 'kind-' + r.event_kind]">{{ r.event_kind }}</text>
+          <text class="audit-msg">{{ fmtAuditEvent(r) }}</text>
+          <text class="audit-time">{{ fmtTime(r.created_at) }}</text>
         </view>
       </view>
     </view>
@@ -206,7 +216,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 
-type TabId = 'reports' | 'suspensions' | 'appeals' | 'warnings'
+type TabId = 'reports' | 'suspensions' | 'appeals' | 'warnings' | 'audit'
 
 interface ReportRow {
   id: string; reporter_id: string; reporter_nickname: string
@@ -244,13 +254,26 @@ const tabList: Array<{ id: TabId; label: string }> = [
   { id: 'suspensions', label: 'Suspensions' },
   { id: 'appeals',     label: 'Appeals' },
   { id: 'warnings',    label: 'Flagged' },
+  { id: 'audit',       label: 'Audit log' },
 ]
 const activeTab = ref<TabId>('reports')
+
+interface AuditRow {
+  id: number
+  event_kind: string
+  actor_id: string | null
+  actor_nickname: string | null
+  target_id: string | null
+  target_nickname: string | null
+  details: Record<string, any>
+  created_at: string
+}
 
 const stats = ref<StatsRow | null>(null)
 const loading = ref(false)
 const reports = ref<ReportRow[]>([])
 const suspensions = ref<SuspensionRow[]>([])
+const auditLog = ref<AuditRow[]>([])
 const suspensionQuery = ref('')
 const filteredSuspensions = computed(() => {
   const q = suspensionQuery.value.trim().toLowerCase()
@@ -356,11 +379,34 @@ async function loadTab(tab: TabId) {
       appeals.value = await apiGet<AppealRow[]>({ resource: 'appeals', limit: '100' })
     } else if (tab === 'warnings') {
       warnings.value = await apiGet<WarningRow[]>({ resource: 'warnings', limit: '100' })
+    } else if (tab === 'audit') {
+      auditLog.value = await apiGet<AuditRow[]>({ resource: 'audit', limit: '200' })
     }
   } catch (err: any) {
     uni.showToast({ title: err?.message || 'Load failed', icon: 'none' })
   } finally {
     loading.value = false
+  }
+}
+
+function fmtAuditEvent(r: AuditRow): string {
+  const actor = r.actor_nickname || (r.actor_id ? r.actor_id.slice(0, 8) : 'system')
+  const target = r.target_nickname || (r.target_id ? r.target_id.slice(0, 8) : '—')
+  switch (r.event_kind) {
+    case 'ban_applied':
+      return `${actor} banned ${target} (L${r.details?.level}): ${r.details?.reason || ''}`
+    case 'suspension_lifted':
+      return `${actor} lifted suspension on ${target}: ${r.details?.reason || ''}`
+    case 'report_status_changed':
+      return `${actor} changed report ${r.target_id?.slice(0, 8)} status: ${r.details?.from} → ${r.details?.to}`
+    case 'actor_blocked':
+      return `${actor} blocked from ${r.details?.table} (L${r.details?.level})`
+    case 'admin_login':
+      return `Admin login`
+    case 'admin_unauthorized':
+      return `Unauthorized admin access attempt`
+    default:
+      return `${r.event_kind} by ${actor}`
   }
 }
 
@@ -634,6 +680,29 @@ onMounted(async () => {
   font-size: 12px; color: var(--text-secondary); cursor: pointer;
   padding: 4px 8px;
   &:active { opacity: 0.6; }
+}
+
+.audit-row {
+  display: flex; gap: 10px; align-items: baseline;
+  padding: 10px 12px; background: var(--bg-elev-1); border-radius: 8px;
+  font-size: 12px;
+}
+.audit-kind {
+  flex-shrink: 0; font-size: 10px; font-weight: 700;
+  padding: 2px 6px; border-radius: 10px;
+  letter-spacing: 0.3px;
+  background: var(--bg-subtle); color: var(--text-secondary);
+}
+.kind-ban_applied           { background: #FFE5E5; color: var(--accent-danger); }
+.kind-suspension_lifted     { background: #E8F5E9; color: var(--accent-good); }
+.kind-report_status_changed { background: #E3F2FD; color: #0A84FF; }
+.kind-actor_blocked         { background: #FFF4E6; color: var(--accent-warn); }
+.kind-admin_login           { background: var(--bg-subtle); color: var(--text-muted); }
+.kind-admin_unauthorized    { background: var(--accent-primary); color: #fff; }
+.audit-msg { flex: 1; color: var(--text-primary); word-break: break-all; }
+.audit-time {
+  flex-shrink: 0; font-size: 10px; color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .mini-btn {

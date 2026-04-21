@@ -134,6 +134,14 @@ async function handleGet(request) {
     return json({ data })
   }
 
+  if (resource === 'audit') {
+    const kind = url.searchParams.get('kind')
+    const data = await rpc('admin_list_audit_log', {
+      limit_in: limit, offset_in: offset, kind_filter: kind || null,
+    })
+    return json({ data })
+  }
+
   return json({ error: 'unknown_resource' }, 400)
 }
 
