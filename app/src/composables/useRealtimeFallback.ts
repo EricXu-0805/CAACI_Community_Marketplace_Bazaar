@@ -1,17 +1,19 @@
 import { useSupabase } from './useSupabase'
 
 /*
- * Realtime abstraction that falls back to polling when Supabase's
- * Phoenix channel handshake is unavailable — specifically on WeChat
- * mini-program (mp-weixin), which supports uni.connectSocket but NOT
- * the Phoenix protocol that @supabase/realtime-js speaks. The same
- * is true for the other non-H5 mp adapters.
+ * Realtime abstraction with three tiers:
  *
- * Strategy: on H5 use real channels (existing behavior); on every mp
- * target, return a polling loop with identical (subscribe, unsub)
- * ergonomics. Call sites stay platform-agnostic.
+ *   H5                   → Supabase channel (Phoenix over WebSocket)
+ *   mp + long-poll ok    → /api/realtime-poll (~1s server-side tick)
+ *   mp + long-poll down  → direct PostgREST poll (3-10s client tick)
  *
- * Polling cadence is intentionally conservative:
+ * Phoenix channels don't work on mp because uni.connectSocket can't
+ * round-trip the channel handshake. Long-poll is an opt-in upgrade
+ * of the plain polling path: same (subscribe, unsub) surface, better
+ * latency, graceful fallback if the edge endpoint 5xx's or CORS's
+ * or isn't deployed yet.
+ *
+ * Polling cadence (only used when long-poll is unavailable):
  *   · per-conversation message feed    → 3s
  *   · global unread + toast            → 10s
  * Short-polling is fine on mp because mini-program pages sleep when
@@ -28,6 +30,25 @@ function isRealtimeSupported(): boolean {
   // #ifndef H5
   return false
   // #endif
+}
+
+function longPollBase(): string {
+  // #ifdef H5
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin + '/api/realtime-poll'
+  }
+  // #endif
+  return 'https://caaci-community-marketplace-bazaar.vercel.app/api/realtime-poll'
+}
+
+/* Circuit breaker: if long-poll fails twice in a row, skip it for
+   this session and fall back to direct PostgREST polling. Prevents
+   a broken edge deploy from blocking chat entirely. */
+let longPollStrikes = 0
+const LONG_POLL_CIRCUIT_LIMIT = 2
+
+function longPollEnabled(): boolean {
+  return longPollStrikes < LONG_POLL_CIRCUIT_LIMIT
 }
 
 interface PollOptions<T> {
@@ -61,6 +82,66 @@ function startPoll<T>(opts: PollOptions<T>): Unsubscribe {
   }
 }
 
+interface LongPollOptions {
+  scope: 'conversation' | 'inbox'
+  id: string
+  onRows: (rows: any[]) => void
+}
+
+function startLongPoll(opts: LongPollOptions): Unsubscribe {
+  const { supabase } = useSupabase()
+  let alive = true
+  let sinceCursor: string | null = null
+
+  async function tick(): Promise<void> {
+    if (!alive) return
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
+      const url = new URL(longPollBase())
+      url.searchParams.set('scope', opts.scope)
+      url.searchParams.set('id', opts.id)
+      if (sinceCursor) url.searchParams.set('since', sinceCursor)
+
+      const ctrl = new AbortController()
+      /* Slightly longer than the edge function's 20s hold so the edge
+         gets a chance to return its final {rows:[]} before we abort. */
+      const abortTimer = setTimeout(() => ctrl.abort(), 28000)
+      const r = await fetch(url.toString(), {
+        method: 'GET',
+        headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
+        signal: ctrl.signal,
+      })
+      clearTimeout(abortTimer)
+
+      if (!r.ok) {
+        longPollStrikes++
+        if (alive && !longPollEnabled()) return
+        if (alive) setTimeout(tick, 1000)
+        return
+      }
+
+      longPollStrikes = 0
+      const body = await r.json().catch(() => ({}))
+      const rows = Array.isArray(body?.rows) ? body.rows : []
+      if (rows.length > 0) {
+        opts.onRows(rows)
+        sinceCursor = body?.next_since || rows[rows.length - 1]?.created_at || sinceCursor
+      } else if (body?.next_since) {
+        sinceCursor = body.next_since
+      }
+      if (alive) setTimeout(tick, 50)
+    } catch {
+      longPollStrikes++
+      if (alive && longPollEnabled()) setTimeout(tick, 1500)
+    }
+  }
+
+  tick()
+
+  return () => { alive = false }
+}
+
 export function subscribeToConversation(
   conversationId: string,
   onNewMessage: (msg: any) => void,
@@ -85,10 +166,19 @@ export function subscribeToConversation(
     return () => { supabase.removeChannel(channel) }
   }
 
-  /* Polling fallback — remember the last seen row and ask for newer ones
-     each tick. Using created_at > $last_seen is simpler than tracking
-     ids because messages are append-only and created_at carries a
-     monotonic server clock. */
+  if (longPollEnabled()) {
+    return startLongPoll({
+      scope: 'conversation',
+      id: conversationId,
+      onRows: (rows) => { for (const r of rows) onNewMessage(r) },
+    })
+  }
+
+  /* Direct PostgREST poll — used on mp when the long-poll edge route is
+     absent or has tripped the circuit breaker. Remember the last seen
+     row and ask for newer ones each tick. Using created_at > $last_seen
+     is simpler than tracking ids because messages are append-only and
+     created_at carries a monotonic server clock. */
   let lastSeen: string | null = null
 
   return startPoll({
@@ -138,6 +228,14 @@ export function subscribeToUserInbox(
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
+  }
+
+  if (longPollEnabled()) {
+    return startLongPoll({
+      scope: 'inbox',
+      id: userId,
+      onRows: (rows) => { for (const r of rows) onNewMessage(r) },
+    })
   }
 
   let lastSeen: string | null = null

@@ -13,7 +13,7 @@ everything that is required beyond the code, in order.
 | `uni.request` timeout + abort | Working | 25 s timeout, AbortSignal wired |
 | Image upload (`chooseImage`, compress, upload) | Working | needs `requiredPrivateInfos` (already in manifest) |
 | File picker (`chooseMedia`) | Working | ditto |
-| Supabase Realtime (chat websocket) | Polling fallback active on mp | See §3 — `useRealtimeFallback.ts` auto-switches |
+| Supabase Realtime (chat websocket) | Server-long-poll on mp (~1s latency); direct-poll fallback | See §3 — `useRealtimeFallback.ts` 3-tier strategy |
 | Deep-linking via `#/...` routes | Replace with `uni.navigateTo` only | no `window.location.hash` on mp |
 | `fetch`/`WebSocket`/`navigator` | Use uni.* | `mpFetch` handles fetch; see §3 for WebSocket |
 | OpenAI proxies (`/api/moderate`, `/api/translate`) | Work — hosted on Vercel, reachable via uni.request | needs domain allow-list |
@@ -64,28 +64,41 @@ WebSocket. WeChat mp has `wx.connectSocket` but it **does not round-trip
 cleanly** through Phoenix's handshake. Symptom: the channel subscribes,
 but `broadcast` and `postgres_changes` events never fire.
 
-**Resolved** by `app/src/composables/useRealtimeFallback.ts`:
+**Resolved** by a 3-tier strategy in `app/src/composables/useRealtimeFallback.ts`:
 
-- Exports `subscribeToConversation(id, cb)` and `subscribeToUserInbox(userId, cb)`.
-- On H5 returns a real Supabase channel (existing behavior).
-- On every mp target returns a polling loop with identical
-  `(subscribe, unsubscribe)` ergonomics — so call sites stay
-  platform-agnostic.
-- Cadence: per-conversation = 3 s, user-wide inbox = 10 s.
-- Cursor strategy: remembers the last row's `created_at` and asks for
-  rows newer than that. `created_at` is a monotonic server clock, so
-  this is simpler and safer than tracking uuids.
-- Errors are swallowed per tick (offline periods don't spam logs).
-- Pages sleep in mp when backgrounded, so polling auto-pauses.
+| Platform | Path | Latency |
+|---|---|---|
+| H5 | `supabase.channel(...)` (Phoenix over WebSocket) | <200 ms |
+| mp + long-poll OK | `GET /api/realtime-poll?scope=...&id=...&since=...` | ~1 s |
+| mp + long-poll 5xx'd | Direct PostgREST `GET /rest/v1/messages` every 3 s | 3 s |
 
-Call sites already migrated:
-- `useMessages.subscribeToMessages()` → delegates to fallback
-- `useUnread.startListening()` → delegates to fallback
+Long-poll protocol:
+1. Client opens `GET /api/realtime-poll?scope=conversation&id=X&since=TS`
+   with its Supabase JWT in the Authorization header.
+2. Edge function (`api/realtime-poll.js`) tight-polls Supabase every
+   800 ms internally, held up to 20 s (under Vercel's 25 s edge cap).
+3. Returns `{rows:[…], next_since: "ISO"}` on first hit, or
+   `{rows:[]}` on timeout.
+4. Client immediately re-opens with the new cursor.
 
-Potential upgrade path (not done; probably not worth it):
-write a Vercel edge function that long-polls Supabase server-side and
-streams events to the mp client via HTTP. More work, less polling
-cost, but at current traffic the 3–10 s tick is invisible.
+Security:
+- Forwards the caller's JWT, does NOT use service_role — RLS on
+  `public.messages` evaluates against the real user, so a participant
+  in conversation A cannot long-poll conversation B.
+- `SUPABASE_ANON_KEY` + `SUPABASE_URL` are the only env vars needed
+  for this route (service_role stays exclusive to `/api/admin`).
+
+Circuit breaker: if long-poll returns 5xx / throws / aborts twice in a
+row the client falls back to direct 3s PostgREST polling for the rest
+of that session. Prevents a broken edge deploy from blocking chat.
+
+Call sites (platform-agnostic):
+- `useMessages.subscribeToMessages()`
+- `useUnread.startListening()`
+
+Cursor strategy: remember the last row's `created_at`, ask for rows
+newer than it. `created_at` is a monotonic server clock, simpler and
+safer than tracking uuids.
 
 ## 4. Page-to-tabBar mismatch
 
