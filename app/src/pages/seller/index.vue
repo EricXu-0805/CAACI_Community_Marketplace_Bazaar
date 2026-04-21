@@ -169,24 +169,24 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 </script>
 
 <style lang="scss" scoped>
-.page { min-height: 100vh; background: #f2f2f7; max-width: 480px; margin: 0 auto; }
+.page { min-height: 100vh; background: var(--bg-subtle); max-width: 480px; margin: 0 auto; }
 
 .header {
   display: flex; align-items: center; gap: 12px; padding: 12px 16px;
   padding-top: calc(12px + env(safe-area-inset-top, 0px));
-  background: #fff; border-bottom: 0.5px solid rgba(0,0,0,0.06);
+  background: var(--bg-elev-1); border-bottom: 0.5px solid var(--line-hair);
 }
 .back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.back-arrow { width: 9px; height: 9px; border-left: 2px solid #1a1a1a; border-bottom: 2px solid #1a1a1a; transform: rotate(45deg); margin-left: 4px; }
-.header-title { font-size: 17px; font-weight: 600; color: #1a1a1a; }
+.back-arrow { width: 9px; height: 9px; border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary); transform: rotate(45deg); margin-left: 4px; }
+.header-title { font-size: 17px; font-weight: 600; color: var(--text-primary); }
 
 .seller-section {
-  background: #fff; padding: 24px 16px; display: flex;
+  background: var(--bg-elev-1); padding: 24px 16px; display: flex;
   flex-direction: column; align-items: center; gap: 6px;
 }
-.avatar { width: 64px; height: 64px; border-radius: 50%; background: #f2f2f7; }
+.avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--bg-subtle); }
 .name-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
-.nickname { font-size: 18px; font-weight: 700; color: #1a1a1a; }
+.nickname { font-size: 18px; font-weight: 700; color: var(--text-primary); }
 .illini-badge {
   display: inline-flex; align-items: center;
   background: #13294B; color: #fff;
@@ -194,7 +194,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   font-size: 10px; font-weight: 700;
 }
 .illini-badge-text { color: #fff; font-size: 10px; }
-.bio { font-size: 13px; color: #8e8e93; text-align: center; max-width: 280px; }
+.bio { font-size: 13px; color: var(--text-muted); text-align: center; max-width: 280px; }
 .user-status {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 3px 10px; border-radius: 12px; background: rgba(26,122,255,0.08);
@@ -202,19 +202,19 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .us-emoji { font-size: 13px; line-height: 1; }
 .us-text { font-size: 12px; color: #1a7aff; line-height: 1.3; }
 .loc-row { display: flex; align-items: center; gap: 4px; }
-.loc-dot { width: 5px; height: 5px; border-radius: 50%; background: #FF6B35; }
-.loc-text { font-size: 12px; color: #aeaeb2; }
+.loc-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-action); }
+.loc-text { font-size: 12px; color: var(--text-faint); }
 
 .follow-btn {
   margin-top: 12px;
   padding: 8px 22px; border-radius: 20px;
-  background: #1a1a1a; color: #fff;
+  background: var(--accent-primary); color: #fff;
   font-size: 13px; font-weight: 600;
   cursor: pointer;
   transition: all 0.12s;
   &:active { transform: scale(0.96); }
   &.following {
-    background: #fff; color: #1a1a1a;
+    background: var(--bg-elev-1); color: var(--text-primary);
     border: 1px solid #d1d1d6;
   }
 }
@@ -223,7 +223,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   display: flex; align-items: center; justify-content: space-around;
   gap: 10px;                  /* was 0 — stats were cramped together */
   margin-top: 14px;
-  background: #f7f7f8; border-radius: 10px;
+  background: var(--bg-elev-2); border-radius: 10px;
   padding: 12px 20px;         /* was 10px 16px — more breathing room */
 }
 .trust-stat {
@@ -231,8 +231,8 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   padding: 0 4px;             /* extra horizontal padding so numbers/labels don't touch the dividers */
   flex: 1; gap: 2px;
 }
-.trust-num { font-size: 15px; font-weight: 700; color: #1a1a1a; }
-.trust-label { font-size: 11px; color: #8e8e93; }
+.trust-num { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.trust-label { font-size: 11px; color: var(--text-muted); }
 .trust-divider { width: 0.5px; height: 24px; background: rgba(0,0,0,0.1); }
 
 .items-grid {
@@ -240,7 +240,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   background: rgba(0,0,0,0.06); margin-top: 7px;
 }
 .grid-item {
-  background: #fff; cursor: pointer;
+  background: var(--bg-elev-1); cursor: pointer;
   &:active { opacity: 0.8; }
 }
 .gi-img-wrap { position: relative; }
@@ -258,12 +258,12 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .bsc-check { font-size: 10px; color: #fff; font-weight: 800; line-height: 1; }
 .bsc-label { font-size: 10px; color: #fff; font-weight: 600; line-height: 1; }
 .gi-title {
-  font-size: 13px; color: #1a1a1a; line-height: 1.3;
+  font-size: 13px; color: var(--text-primary); line-height: 1.3;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.gi-price { font-size: 15px; font-weight: 700; color: #1a1a1a; margin-top: 4px; display: block; }
+.gi-price { font-size: 15px; font-weight: 700; color: var(--text-primary); margin-top: 4px; display: block; }
 
-.empty { padding: 60px 16px; text-align: center; color: #aeaeb2; font-size: 14px; }
+.empty { padding: 60px 16px; text-align: center; color: var(--text-faint); font-size: 14px; }
 
 .blocked-state {
   display: flex; flex-direction: column; align-items: center;
@@ -278,6 +278,6 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
     transform: rotate(-45deg);
   }
 }
-.blocked-title { font-size: 15px; font-weight: 600; color: #1a1a1a; }
-.blocked-sub { font-size: 13px; color: #8e8e93; line-height: 1.5; max-width: 240px; }
+.blocked-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.blocked-sub { font-size: 13px; color: var(--text-muted); line-height: 1.5; max-width: 240px; }
 </style>

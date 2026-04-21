@@ -679,7 +679,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .compose-btn {
   height: 32px; padding: 0 12px 0 10px;
   border-radius: 16px;
-  background: #1a1a1a;
+  background: var(--accent-primary);
   display: inline-flex; align-items: center; gap: 6px;
   cursor: pointer;
   &:active { opacity: 0.82; }
@@ -705,11 +705,11 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 }
 .sb-icon {
   width: 15px; height: 15px; flex-shrink: 0;
-  border: 1.5px solid #8e8e93; border-radius: 50%;
+  border: 1.5px solid var(--text-muted); border-radius: 50%;
   position: relative;
   &::after {
     content: ''; position: absolute; right: -3px; bottom: -3px;
-    width: 6px; height: 1.5px; background: #8e8e93;
+    width: 6px; height: 1.5px; background: var(--text-muted);
     transform: rotate(45deg); transform-origin: left center;
   }
 }
@@ -719,7 +719,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 }
 .sb-clear {
   width: 16px; height: 16px; flex-shrink: 0; cursor: pointer;
-  background: #c7c7cc; border-radius: 50%; position: relative;
+  background: var(--text-faint); border-radius: 50%; position: relative;
   &::before, &::after {
     content: ''; position: absolute; inset: 0;
     margin: auto; width: 8px; height: 1.5px; background: var(--bg-elev-1);
@@ -746,7 +746,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .empty-text { font-size: 14px; color: var(--text-muted); }
 .cta-btn {
   margin-top: 8px; padding: 10px 28px;
-  background: #1a1a1a; color: #fff; border-radius: 22px;
+  background: var(--accent-primary); color: #fff; border-radius: 22px;
   font-size: 14px; font-weight: 600; cursor: pointer;
   &:active { opacity: 0.85; }
 }
@@ -774,7 +774,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   display: flex; gap: 3px; padding: 6px; cursor: pointer;
   &:active { opacity: 0.5; }
 }
-.pm-dot { width: 3px; height: 3px; border-radius: 50%; background: #aeaeb2; }
+.pm-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--text-faint); }
 
 .badge-official {
   background: var(--accent-action); color: #fff;
@@ -835,7 +835,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 
 .post-actions {
   display: flex; gap: 24px; margin-top: 12px;
-  padding-top: 10px; border-top: 0.5px solid rgba(0,0,0,0.05);
+  padding-top: 10px; border-top: 0.5px solid var(--line-hair);
 }
 .pa-btn {
   display: flex; align-items: center; gap: 6px; cursor: pointer;
@@ -849,7 +849,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .pa-num { font-size: 12px; color: var(--text-muted); font-weight: 500; &.active { color: var(--accent-danger); } }
 
 .bubble-ico {
-  width: 18px; height: 15px; border: 1.8px solid #8e8e93;
+  width: 18px; height: 15px; border: 1.8px solid var(--text-muted);
   border-radius: 8px 8px 8px 2px;
 }
 .share-ico {
@@ -857,13 +857,13 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   &::before {
     content: ''; position: absolute; top: 1px; left: 50%;
     transform: translateX(-50%);
-    width: 0; height: 8px; border-left: 1.8px solid #8e8e93;
+    width: 0; height: 8px; border-left: 1.8px solid var(--text-muted);
   }
   &::after {
     content: ''; position: absolute; top: 0; left: 50%;
     transform: translateX(-50%) rotate(45deg);
     width: 8px; height: 8px;
-    border-left: 1.8px solid #8e8e93; border-top: 1.8px solid #8e8e93;
+    border-left: 1.8px solid var(--text-muted); border-top: 1.8px solid var(--text-muted);
   }
 }
 
@@ -937,11 +937,11 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   &:active { background: var(--bg-inset); }
 }
 .cai-ico {
-  width: 18px; height: 14px; border: 1.8px solid #636366;
+  width: 18px; height: 14px; border: 1.8px solid var(--text-secondary);
   border-radius: 2px; position: relative;
   &::before {
     content: ''; position: absolute; top: 2px; left: 3px;
-    width: 4px; height: 4px; border-radius: 50%; border: 1.4px solid #636366;
+    width: 4px; height: 4px; border-radius: 50%; border: 1.4px solid var(--text-secondary);
   }
 }
 .comp-count { font-size: 12px; color: var(--text-faint); }
@@ -958,7 +958,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .comp-attached {
   margin-top: 10px;
   display: flex; align-items: center; gap: 10px;
-  padding: 8px; border: 1px solid #e5e5ea; border-radius: 10px;
+  padding: 8px; border: 1px solid var(--bg-inset); border-radius: 10px;
   background: #fafafc; cursor: pointer;
 }
 .ca-img { width: 48px; height: 48px; border-radius: 8px; flex-shrink: 0; }
@@ -974,7 +974,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .attached-item-card {
   margin: 8px 14px 0 54px;
   display: flex; align-items: center; gap: 10px;
-  padding: 8px; border: 1px solid #e5e5ea; border-radius: 10px;
+  padding: 8px; border: 1px solid var(--bg-inset); border-radius: 10px;
   background: #fafafc;
   cursor: pointer;
   &:active { background: var(--bg-subtle); }
@@ -1043,7 +1043,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   width: 12px; height: 12px; position: relative;
   &::before, &::after {
     content: ''; position: absolute; top: 50%; left: 0;
-    width: 12px; height: 1.5px; background: #636366;
+    width: 12px; height: 1.5px; background: var(--text-secondary);
   }
   &::before { transform: rotate(45deg); }
   &::after { transform: rotate(-45deg); }
@@ -1097,7 +1097,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 }
 .cs-send {
   padding: 0 16px; height: 40px; border-radius: 20px;
-  background: #1a1a1a; color: #fff; display: flex; align-items: center;
+  background: var(--accent-primary); color: #fff; display: flex; align-items: center;
   cursor: pointer;
   text { font-size: 13px; color: #fff; font-weight: 600; }
   &.disabled { opacity: 0.3; pointer-events: none; }

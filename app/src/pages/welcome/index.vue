@@ -46,7 +46,7 @@ function finish() {
 
 <style lang="scss" scoped>
 .page {
-  height: 100vh; background: #fff; display: flex;
+  height: 100vh; background: var(--bg-elev-1); display: flex;
   flex-direction: column; max-width: 480px; margin: 0 auto;
 }
 .swiper { flex: 1; }
@@ -55,20 +55,20 @@ function finish() {
   align-items: center; justify-content: center; padding: 0 40px; gap: 16px;
 }
 .slide-icon { font-size: 64px; }
-.slide-title { font-size: 22px; font-weight: 700; color: #1a1a1a; text-align: center; }
-.slide-desc { font-size: 14px; color: #8e8e93; text-align: center; line-height: 1.6; }
+.slide-title { font-size: 22px; font-weight: 700; color: var(--text-primary); text-align: center; }
+.slide-desc { font-size: 14px; color: var(--text-muted); text-align: center; line-height: 1.6; }
 
 .dots { display: flex; justify-content: center; gap: 8px; padding: 16px 0; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: #e0e0e0; transition: all 0.2s; }
-.dot.active { width: 24px; border-radius: 4px; background: #1a1a1a; }
+.dot.active { width: 24px; border-radius: 4px; background: var(--accent-primary); }
 
 .bottom { padding: 16px 24px 40px; }
 .skip-btn {
   text-align: center; padding: 14px;
-  text { font-size: 15px; color: #8e8e93; }
+  text { font-size: 15px; color: var(--text-muted); }
 }
 .start-btn {
-  background: #1a1a1a; border-radius: 24px; padding: 14px; text-align: center;
+  background: var(--accent-primary); border-radius: 24px; padding: 14px; text-align: center;
   text { font-size: 15px; font-weight: 600; color: #fff; }
   &:active { opacity: 0.8; }
 }

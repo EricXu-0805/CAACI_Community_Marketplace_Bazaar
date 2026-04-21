@@ -67,16 +67,16 @@ function onLongPress(id: string) {
 </script>
 
 <style lang="scss" scoped>
-.page { min-height: 100vh; background: #f2f2f7; max-width: 480px; margin: 0 auto; }
+.page { min-height: 100vh; background: var(--bg-subtle); max-width: 480px; margin: 0 auto; }
 
 .header {
   display: flex; align-items: center; gap: 12px; padding: 12px 16px;
   padding-top: calc(12px + env(safe-area-inset-top, 0px));
-  background: #fff; border-bottom: 0.5px solid rgba(0,0,0,0.06);
+  background: var(--bg-elev-1); border-bottom: 0.5px solid var(--line-hair);
 }
 .back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.back-arrow { width: 9px; height: 9px; border-left: 2px solid #1a1a1a; border-bottom: 2px solid #1a1a1a; transform: rotate(45deg); margin-left: 4px; }
-.header-title { font-size: 17px; font-weight: 600; color: #1a1a1a; flex: 1; }
+.back-arrow { width: 9px; height: 9px; border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary); transform: rotate(45deg); margin-left: 4px; }
+.header-title { font-size: 17px; font-weight: 600; color: var(--text-primary); flex: 1; }
 .mark-all { font-size: 13px; color: #007AFF; cursor: pointer; }
 
 .empty {
@@ -95,14 +95,14 @@ function onLongPress(id: string) {
     width: 6px; height: 3px; border-radius: 0 0 3px 3px; background: #d1d1d6;
   }
 }
-.empty-text { font-size: 14px; color: #aeaeb2; }
+.empty-text { font-size: 14px; color: var(--text-faint); }
 
 .notif-item {
   display: flex; align-items: flex-start; gap: 12px;
-  padding: 14px 16px; background: #fff;
-  border-bottom: 0.5px solid rgba(0,0,0,0.06);
+  padding: 14px 16px; background: var(--bg-elev-1);
+  border-bottom: 0.5px solid var(--line-hair);
   cursor: pointer; transition: background 0.1s;
-  &:active { background: #f7f7f8; }
+  &:active { background: var(--bg-elev-2); }
   &.unread { background: #F0F7FF; }
 }
 .notif-icon {
@@ -115,15 +115,15 @@ function onLongPress(id: string) {
 .ni-system { background: #F3E5F5; color: #6A1B9A; }
 .notif-content { flex: 1; min-width: 0; }
 .notif-type {
-  font-size: 11px; font-weight: 600; color: #8e8e93; display: block;
+  font-size: 11px; font-weight: 600; color: var(--text-muted); display: block;
   text-transform: uppercase; letter-spacing: 0.3px;
 }
-.notif-title { font-size: 14px; font-weight: 600; color: #1a1a1a; display: block; margin-top: 2px; }
+.notif-title { font-size: 14px; font-weight: 600; color: var(--text-primary); display: block; margin-top: 2px; }
 .notif-body {
-  font-size: 13px; color: #636366; margin-top: 3px; display: block;
+  font-size: 13px; color: var(--text-secondary); margin-top: 3px; display: block;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.notif-time { font-size: 11px; color: #aeaeb2; margin-top: 4px; display: block; }
+.notif-time { font-size: 11px; color: var(--text-faint); margin-top: 4px; display: block; }
 .notif-dot {
   width: 8px; height: 8px; border-radius: 50%; background: #007AFF;
   flex-shrink: 0; margin-top: 6px;

@@ -187,7 +187,7 @@ async function onSubmit() {
 
 <style lang="scss" scoped>
 .page {
-  min-height: 100vh; background: #fff;
+  min-height: 100vh; background: var(--bg-elev-1);
   padding: 0 24px;
   max-width: 400px; margin: 0 auto;
   display: flex; flex-direction: column;
@@ -198,11 +198,11 @@ async function onSubmit() {
   width: 36px; height: 36px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; z-index: 10;
-  &:active { background: #f2f2f7; }
+  &:active { background: var(--bg-subtle); }
 }
 .back-arrow {
   width: 10px; height: 10px;
-  border-left: 2px solid #1a1a1a; border-bottom: 2px solid #1a1a1a;
+  border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary);
   transform: rotate(45deg); margin-left: 3px;
 }
 
@@ -213,7 +213,7 @@ async function onSubmit() {
 }
 .logo-mark {
   width: 56px; height: 56px; border-radius: 14px;
-  background: #1a1a1a;
+  background: var(--accent-primary);
   display: flex; align-items: center; justify-content: center;
 }
 .logo-letter {
@@ -221,11 +221,11 @@ async function onSubmit() {
   letter-spacing: -1px;
 }
 .app-name {
-  font-size: 22px; font-weight: 700; color: #1a1a1a;
+  font-size: 22px; font-weight: 700; color: var(--text-primary);
   margin-top: 16px; letter-spacing: -0.02em;
 }
 .app-desc {
-  font-size: 13px; color: #aeaeb2; margin-top: 5px;
+  font-size: 13px; color: var(--text-faint); margin-top: 5px;
   letter-spacing: 0.01em;
 }
 
@@ -233,50 +233,50 @@ async function onSubmit() {
 
 .tab-bar {
   display: flex; gap: 28px; margin-bottom: 28px;
-  border-bottom: 1px solid rgba(0,0,0,0.06);
+  border-bottom: 1px solid var(--line-hair);
 }
 .tab {
   position: relative; padding-bottom: 12px; cursor: pointer;
-  text { font-size: 16px; color: #c7c7cc; font-weight: 500; }
-  &.active text { color: #1a1a1a; font-weight: 600; }
+  text { font-size: 16px; color: var(--text-faint); font-weight: 500; }
+  &.active text { color: var(--text-primary); font-weight: 600; }
 }
 .tab-line {
   position: absolute; bottom: -1px; left: 0; right: 0;
-  height: 2px; background: #1a1a1a; border-radius: 1px;
+  height: 2px; background: var(--accent-primary); border-radius: 1px;
 }
 
 .form-group { margin-bottom: 18px; }
 .form-label {
-  display: block; font-size: 13px; color: #8e8e93;
+  display: block; font-size: 13px; color: var(--text-muted);
   margin-bottom: 7px; font-weight: 500;
 }
 .form-input {
   width: 100%; height: 48px;
-  background: #f7f7f8; border-radius: 12px;
-  padding: 0 16px; font-size: 15px; color: #1a1a1a;
+  background: var(--bg-elev-2); border-radius: 12px;
+  padding: 0 16px; font-size: 15px; color: var(--text-primary);
   border: 1px solid transparent;
   transition: border-color 0.15s, background 0.15s;
   &:focus {
     border-color: rgba(0,0,0,0.12);
-    background: #fff;
+    background: var(--bg-elev-1);
   }
 }
 .pw-wrap { position: relative; }
 .pw-input { padding-right: 44px; }
 .pw-toggle {
   position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-  cursor: pointer; font-size: 18px; color: #8e8e93;
+  cursor: pointer; font-size: 18px; color: var(--text-muted);
   padding: 4px;
 }
 
 .forgot-link {
   display: block; text-align: right; font-size: 13px;
-  color: #8e8e93; margin-top: 8px; cursor: pointer;
-  &:active { color: #1a1a1a; }
+  color: var(--text-muted); margin-top: 8px; cursor: pointer;
+  &:active { color: var(--text-primary); }
 }
 .submit-btn {
   width: 100%; height: 48px;
-  background: #1a1a1a; color: #fff;
+  background: var(--accent-primary); color: #fff;
   border-radius: 24px; font-size: 15px; font-weight: 600;
   margin-top: 24px; border: none;
   display: flex; align-items: center; justify-content: center;
@@ -291,11 +291,11 @@ async function onSubmit() {
   -webkit-tap-highlight-color: transparent;
 }
 .agree-check {
-  width: 18px; height: 18px; border: 1.5px solid #c7c7cc;
+  width: 18px; height: 18px; border: 1.5px solid var(--text-faint);
   border-radius: 4px; flex-shrink: 0; margin-top: 1px;
   display: flex; align-items: center; justify-content: center;
   transition: all 0.15s;
-  &.on { background: #1a1a1a; border-color: #1a1a1a; }
+  &.on { background: var(--accent-primary); border-color: var(--text-primary); }
 }
 .check-mark {
   width: 10px; height: 6px;
@@ -303,8 +303,8 @@ async function onSubmit() {
   transform: rotate(-45deg); margin-top: -2px;
 }
 .agree-text {
-  font-size: 12px; color: #636366; line-height: 1.5; flex: 1;
-  .link { color: #1a1a1a; text-decoration: underline; cursor: pointer; }
+  font-size: 12px; color: var(--text-secondary); line-height: 1.5; flex: 1;
+  .link { color: var(--text-primary); text-decoration: underline; cursor: pointer; }
 }
 
 .footer {

@@ -177,7 +177,7 @@ async function finish() {
 
 <style lang="scss" scoped>
 .page {
-  min-height: 100vh; background: #fff;
+  min-height: 100vh; background: var(--bg-elev-1);
   display: flex; flex-direction: column;
   padding: 0 24px 24px;
   padding-top: calc(20px + env(safe-area-inset-top, 0px));
@@ -190,31 +190,31 @@ async function finish() {
 }
 .pdot {
   width: 24px; height: 4px; border-radius: 2px;
-  background: #e8e8ed;
+  background: var(--bg-inset);
   transition: background 0.2s, width 0.2s;
-  &.done { background: #1a1a1a; }
-  &.active { background: #1a1a1a; width: 36px; }
+  &.done { background: var(--accent-primary); }
+  &.active { background: var(--accent-primary); width: 36px; }
 }
 .step { flex: 1; display: flex; flex-direction: column; gap: 10px; padding-top: 12px; }
-.title { font-size: 22px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.02em; }
-.sub { font-size: 14px; color: #8e8e93; line-height: 1.5; margin-bottom: 16px; }
+.title { font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
+.sub { font-size: 14px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px; }
 .field { display: flex; flex-direction: column; gap: 8px; position: relative; }
-.label { font-size: 12px; color: #8e8e93; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.label { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .input {
-  border: 0; border-bottom: 1.5px solid #e8e8ed;
-  padding: 10px 0; font-size: 17px; color: #1a1a1a;
+  border: 0; border-bottom: 1.5px solid var(--bg-inset);
+  padding: 10px 0; font-size: 17px; color: var(--text-primary);
   background: transparent; width: 100%;
 }
-.count { font-size: 11px; color: #c7c7cc; align-self: flex-end; }
+.count { font-size: 11px; color: var(--text-faint); align-self: flex-end; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .chip {
   padding: 10px 16px; border-radius: 18px;
-  background: #f2f2f7; border: 1px solid transparent;
+  background: var(--bg-subtle); border: 1px solid transparent;
   cursor: pointer;
-  text { font-size: 14px; color: #636366; font-weight: 500; }
+  text { font-size: 14px; color: var(--text-secondary); font-weight: 500; }
   &.on {
-    background: #1a1a1a; border-color: #1a1a1a;
+    background: var(--accent-primary); border-color: var(--text-primary);
     text { color: #fff; }
   }
   &:active { transform: scale(0.96); }
@@ -223,10 +223,10 @@ async function finish() {
 .avatar-row { display: flex; align-items: center; gap: 16px; padding: 8px 0; }
 .avatar-preview {
   width: 80px; height: 80px; border-radius: 50%;
-  background: #f2f2f7; flex-shrink: 0;
+  background: var(--bg-subtle); flex-shrink: 0;
 }
 .avatar-actions { display: flex; flex-direction: column; gap: 8px; }
-.skip-hint { font-size: 12px; color: #8e8e93; cursor: pointer; padding: 4px 0; }
+.skip-hint { font-size: 12px; color: var(--text-muted); cursor: pointer; padding: 4px 0; }
 
 .bottom { display: flex; gap: 10px; padding-top: 16px; }
 .btn-primary, .btn-ghost {
@@ -235,13 +235,13 @@ async function finish() {
   cursor: pointer;
 }
 .btn-primary {
-  background: #1a1a1a; color: #fff;
+  background: var(--accent-primary); color: #fff;
   &.disabled { opacity: 0.3; pointer-events: none; }
   &:active { opacity: 0.85; }
 }
 .btn-ghost {
-  background: #f2f2f7; color: #1a1a1a;
-  &:active { background: #e5e5ea; }
+  background: var(--bg-subtle); color: var(--text-primary);
+  &:active { background: var(--bg-inset); }
 }
 .btn-primary.half, .btn-ghost.half { flex: 1; }
 </style>

@@ -73,44 +73,44 @@ function go(url: string) { uni.switchTab({ url }) }
 
 .ico-home::before {
   content: ''; position: absolute; bottom: 0; left: 2px; right: 2px; height: 12px;
-  border: 1.8px solid #8e8e93; border-top: none; border-radius: 0 0 3px 3px;
+  border: 1.8px solid var(--text-muted); border-top: none; border-radius: 0 0 3px 3px;
 }
 .ico-home::after {
   content: ''; position: absolute; top: 2px; left: 50%; transform: translateX(-50%);
   width: 0; height: 0;
   border-left: 9px solid transparent; border-right: 9px solid transparent;
-  border-bottom: 8px solid #8e8e93;
+  border-bottom: 8px solid var(--text-muted);
 }
 .ico-home.active::before { border-color: var(--text-primary); }
 .ico-home.active::after { border-bottom-color: var(--text-primary); }
 
 .ico-plaza::before {
   content: ''; position: absolute; top: 3px; left: 2px;
-  width: 20px; height: 14px; border: 1.8px solid #8e8e93; border-radius: 3px;
+  width: 20px; height: 14px; border: 1.8px solid var(--text-muted); border-radius: 3px;
 }
 .ico-plaza::after {
   content: ''; position: absolute; bottom: 3px; left: 7px;
-  width: 10px; height: 2px; background: #8e8e93; border-radius: 1px;
-  box-shadow: 0 -4px 0 -1px #8e8e93;
+  width: 10px; height: 2px; background: var(--text-muted); border-radius: 1px;
+  box-shadow: 0 -4px 0 -1px var(--text-muted);
 }
 .ico-plaza.active::before { border-color: var(--text-primary); }
-.ico-plaza.active::after { background: #1a1a1a; box-shadow: 0 -4px 0 -1px #1a1a1a; }
+.ico-plaza.active::after { background: var(--accent-primary); box-shadow: 0 -4px 0 -1px var(--accent-primary); }
 
 .ico-msg::before {
   content: ''; position: absolute; top: 2px; left: 1px;
   width: 20px; height: 15px;
-  border: 1.8px solid #8e8e93; border-radius: 10px 10px 10px 2px;
+  border: 1.8px solid var(--text-muted); border-radius: 10px 10px 10px 2px;
 }
 .ico-msg.active::before { border-color: var(--text-primary); }
 
 .ico-me::before {
   content: ''; position: absolute; top: 1px; left: 7px;
-  width: 10px; height: 10px; border: 1.8px solid #8e8e93; border-radius: 50%;
+  width: 10px; height: 10px; border: 1.8px solid var(--text-muted); border-radius: 50%;
 }
 .ico-me::after {
   content: ''; position: absolute; bottom: 0; left: 2px;
   width: 20px; height: 9px;
-  border: 1.8px solid #8e8e93; border-radius: 10px 10px 0 0; border-bottom: none;
+  border: 1.8px solid var(--text-muted); border-radius: 10px 10px 0 0; border-bottom: none;
 }
 .ico-me.active::before, .ico-me.active::after { border-color: var(--text-primary); }
 
@@ -134,7 +134,7 @@ function go(url: string) { uni.switchTab({ url }) }
 .fab-slot { position: relative; }
 .fab {
   width: 40px; height: 40px; border-radius: 13px;
-  background: #1a1a1a;
+  background: var(--accent-primary);
   display: flex; align-items: center; justify-content: center;
   margin-top: -10px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);

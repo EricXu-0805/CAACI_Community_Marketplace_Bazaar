@@ -85,32 +85,32 @@ function onContactEmail() {
 .page {
   height: 100vh; height: 100dvh;
   display: flex; flex-direction: column;
-  background: #fff; max-width: 640px; margin: 0 auto;
+  background: var(--bg-elev-1); max-width: 640px; margin: 0 auto;
 }
 .header {
   display: flex; align-items: center; gap: 12px; padding: 12px 16px;
   padding-top: calc(12px + env(safe-area-inset-top, 0px));
-  border-bottom: 0.5px solid rgba(0,0,0,0.06);
+  border-bottom: 0.5px solid var(--line-hair);
   flex-shrink: 0;
 }
 .back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.back-arrow { width: 9px; height: 9px; border-left: 2px solid #1a1a1a; border-bottom: 2px solid #1a1a1a; transform: rotate(45deg); margin-left: 4px; }
-.header-title { font-size: 17px; font-weight: 600; color: #1a1a1a; }
+.back-arrow { width: 9px; height: 9px; border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary); transform: rotate(45deg); margin-left: 4px; }
+.header-title { font-size: 17px; font-weight: 600; color: var(--text-primary); }
 
 .tabs {
   display: flex; gap: 4px;
   padding: 10px 12px 8px;
-  border-bottom: 0.5px solid rgba(0,0,0,0.06);
+  border-bottom: 0.5px solid var(--line-hair);
   flex-shrink: 0;
 }
 .tab {
   flex: 1; text-align: center;
   padding: 8px 6px; border-radius: 8px;
-  background: #f2f2f7; cursor: pointer;
-  text { font-size: 13px; color: #636366; font-weight: 500; }
-  &:active { background: #e5e5ea; }
+  background: var(--bg-subtle); cursor: pointer;
+  text { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+  &:active { background: var(--bg-inset); }
   &.active {
-    background: #1a1a1a;
+    background: var(--accent-primary);
     text { color: #fff; }
   }
 }
@@ -119,13 +119,13 @@ function onContactEmail() {
   flex: 1; min-height: 0;
   padding: 20px 16px calc(40px + env(safe-area-inset-bottom, 0px));
 }
-.body { font-size: 14px; color: #636366; line-height: 1.8; white-space: pre-wrap; }
+.body { font-size: 14px; color: var(--text-secondary); line-height: 1.8; white-space: pre-wrap; }
 .contact-row {
   margin-top: 20px; padding: 16px; border-radius: 12px;
-  background: #f7f7f8; cursor: pointer;
+  background: var(--bg-elev-2); cursor: pointer;
   &:active { background: #eeeeef; }
 }
-.contact-label { display: block; font-size: 12px; color: #8e8e93; font-weight: 600; }
-.contact-email { display: block; font-size: 15px; color: #1a1a1a; font-weight: 600; margin-top: 4px; text-decoration: underline; }
-.contact-hint { display: block; font-size: 11px; color: #aeaeb2; margin-top: 6px; line-height: 1.5; }
+.contact-label { display: block; font-size: 12px; color: var(--text-muted); font-weight: 600; }
+.contact-email { display: block; font-size: 15px; color: var(--text-primary); font-weight: 600; margin-top: 4px; text-decoration: underline; }
+.contact-hint { display: block; font-size: 11px; color: var(--text-faint); margin-top: 6px; line-height: 1.5; }
 </style>

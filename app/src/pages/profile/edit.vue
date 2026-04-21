@@ -154,12 +154,12 @@ async function onSave() {
 </script>
 
 <style lang="scss" scoped>
-.page { min-height: 100vh; background: #f2f2f7; max-width: 480px; margin: 0 auto; }
+.page { min-height: 100vh; background: var(--bg-subtle); max-width: 480px; margin: 0 auto; }
 
 .header {
   display: flex; align-items: center; padding: 12px 16px;
   padding-top: calc(12px + env(safe-area-inset-top, 0px));
-  background: #fff; border-bottom: 0.5px solid rgba(0,0,0,0.06);
+  background: var(--bg-elev-1); border-bottom: 0.5px solid var(--line-hair);
 }
 .back-btn {
   width: 32px; height: 32px; display: flex;
@@ -167,37 +167,37 @@ async function onSave() {
 }
 .back-arrow {
   width: 9px; height: 9px;
-  border-left: 2px solid #1a1a1a; border-bottom: 2px solid #1a1a1a;
+  border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary);
   transform: rotate(45deg); margin-left: 4px;
 }
-.header-title { flex: 1; text-align: center; font-size: 17px; font-weight: 600; color: #1a1a1a; }
+.header-title { flex: 1; text-align: center; font-size: 17px; font-weight: 600; color: var(--text-primary); }
 .save-btn {
   cursor: pointer;
-  text { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+  text { font-size: 15px; font-weight: 600; color: var(--text-primary); }
   .disabled { opacity: 0.3; }
 }
 
-.form { background: #fff; margin-top: 7px; }
+.form { background: var(--bg-elev-1); margin-top: 7px; }
 .avatar-section {
   display: flex; flex-direction: column; align-items: center;
   padding: 24px 16px; gap: 8px; cursor: pointer;
 }
 .avatar-preview {
-  width: 72px; height: 72px; border-radius: 50%; background: #f2f2f7;
+  width: 72px; height: 72px; border-radius: 50%; background: var(--bg-subtle);
 }
 .avatar-hint { font-size: 13px; color: #007AFF; }
 
 .form-group {
-  padding: 13px 16px; border-top: 0.5px solid rgba(0,0,0,0.06);
+  padding: 13px 16px; border-top: 0.5px solid var(--line-hair);
 }
-.label { font-size: 13px; color: #8e8e93; margin-bottom: 7px; display: block; font-weight: 500; }
+.label { font-size: 13px; color: var(--text-muted); margin-bottom: 7px; display: block; font-weight: 500; }
 .form-input {
-  width: 100%; height: 44px; background: #f7f7f8; border-radius: 10px;
-  padding: 0 14px; font-size: 15px; color: #1a1a1a;
+  width: 100%; height: 44px; background: var(--bg-elev-2); border-radius: 10px;
+  padding: 0 14px; font-size: 15px; color: var(--text-primary);
 }
 .form-textarea {
-  width: 100%; height: 90px; background: #f7f7f8; border-radius: 10px;
-  padding: 10px 14px; font-size: 15px; color: #1a1a1a; line-height: 1.5;
+  width: 100%; height: 90px; background: var(--bg-elev-2); border-radius: 10px;
+  padding: 10px 14px; font-size: 15px; color: var(--text-primary); line-height: 1.5;
 }
 .status-row { display: flex; gap: 8px; }
 .status-emoji { width: 56px; flex-shrink: 0; text-align: center; padding: 0; font-size: 20px; }
@@ -205,9 +205,9 @@ async function onSave() {
 .spot-row { white-space: nowrap; margin-top: 8px; }
 .spot-chip {
   display: inline-block; padding: 6px 12px; margin-right: 8px;
-  background: #f2f2f7; color: #1a1a1a; font-size: 13px;
+  background: var(--bg-subtle); color: var(--text-primary); font-size: 13px;
   border-radius: 14px; cursor: pointer;
-  &:active { background: #e5e5ea; }
-  &.active { background: #1a1a1a; color: #fff; }
+  &:active { background: var(--bg-inset); }
+  &.active { background: var(--accent-primary); color: #fff; }
 }
 </style>

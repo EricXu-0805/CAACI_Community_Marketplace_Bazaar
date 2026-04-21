@@ -556,17 +556,17 @@ async function contactSeller() {
   background: var(--bg-inset); color: #999; font-size: 14px; gap: 8px;
 }
 .no-img-icon {
-  width: 36px; height: 28px; border: 2px solid #c7c7cc; border-radius: 4px;
+  width: 36px; height: 28px; border: 2px solid var(--text-faint); border-radius: 4px;
   position: relative;
   &::before {
     content: ''; position: absolute; top: 5px; left: 5px;
-    width: 6px; height: 6px; border-radius: 50%; border: 1.5px solid #c7c7cc;
+    width: 6px; height: 6px; border-radius: 50%; border: 1.5px solid var(--text-faint);
   }
   &::after {
     content: ''; position: absolute; bottom: 4px; left: 4px;
     width: 0; height: 0;
     border-left: 8px solid transparent; border-right: 8px solid transparent;
-    border-bottom: 8px solid #c7c7cc;
+    border-bottom: 8px solid var(--text-faint);
   }
 }
 
@@ -722,7 +722,7 @@ async function contactSeller() {
 .seller-row { display: flex; align-items: center; gap: 12px; cursor: pointer; }
 .seller-arrow {
   width: 7px; height: 7px; flex-shrink: 0;
-  border-top: 1.5px solid #c7c7cc; border-right: 1.5px solid #c7c7cc;
+  border-top: 1.5px solid var(--text-faint); border-right: 1.5px solid var(--text-faint);
   transform: rotate(45deg);
 }
 .seller-avatar {
@@ -752,7 +752,7 @@ async function contactSeller() {
 .ss-text { font-size: 12px; color: #1a7aff; line-height: 1.3; }
 .stats-row {
   display: flex; gap: 28px;
-  padding-top: 13px; border-top: 1px solid rgba(0,0,0,0.06);
+  padding-top: 13px; border-top: 1px solid var(--line-hair);
 }
 .stat { display: flex; align-items: baseline; gap: 4px; }
 .stat-num { font-size: 16px; font-weight: 700; color: #1d1d1f; }
@@ -789,14 +789,14 @@ async function contactSeller() {
   &::before {
     content: ''; position: absolute;
     top: 14px; left: 1px; right: 5px; height: 2px;
-    background: #636366; border-radius: 1px;
+    background: var(--text-secondary); border-radius: 1px;
     transform: rotate(-45deg); transform-origin: left center;
   }
   &::after {
     content: ''; position: absolute;
     top: 1px; right: 1px;
     width: 6px; height: 6px;
-    background: #636366; border-radius: 1px;
+    background: var(--text-secondary); border-radius: 1px;
     transform: rotate(45deg);
   }
 }
@@ -805,13 +805,13 @@ async function contactSeller() {
   &::before {
     content: ''; position: absolute;
     top: 0; bottom: 0; left: 5px;
-    width: 2px; background: #636366; border-radius: 1px;
+    width: 2px; background: var(--text-secondary); border-radius: 1px;
   }
   &::after {
     content: ''; position: absolute;
     top: 1px; left: 7px;
     width: 10px; height: 6px;
-    background: #636366;
+    background: var(--text-secondary);
     clip-path: polygon(0 0, 100% 50%, 0 100%);
   }
 }
@@ -821,11 +821,11 @@ async function contactSeller() {
 }
 .ico-reserve {
   position: relative;
-  border: 1.8px solid #636366; border-radius: 3px;
+  border: 1.8px solid var(--text-secondary); border-radius: 3px;
   &::before {
     content: ''; position: absolute;
     top: 3px; left: 3px; right: 3px; height: 2px;
-    background: #636366; border-radius: 1px;
+    background: var(--text-secondary); border-radius: 1px;
   }
   &.on {
     background: rgba(255,149,0,0.12);
@@ -860,7 +860,7 @@ async function contactSeller() {
   &:active { transform: scale(0.92); }
 }
 .chat-btn {
-  flex: 1; height: 44px; background: #1a1a1a; color: #fff;
+  flex: 1; height: 44px; background: var(--accent-primary); color: #fff;
   border-radius: 22px; font-size: 15px; font-weight: 600;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
@@ -889,7 +889,7 @@ async function contactSeller() {
   width: 12px; height: 12px; position: relative;
   &::before, &::after {
     content: ''; position: absolute; top: 50%; left: 0; right: 0;
-    height: 1.5px; background: #636366; border-radius: 1px;
+    height: 1.5px; background: var(--text-secondary); border-radius: 1px;
   }
   &::before { transform: rotate(45deg); }
   &::after { transform: rotate(-45deg); }
@@ -912,10 +912,10 @@ async function contactSeller() {
 }
 .rs-submit {
   margin-top: 14px; padding: 13px; border-radius: 12px;
-  background: #1a1a1a; color: #fff;
+  background: var(--accent-primary); color: #fff;
   text-align: center; font-size: 15px; font-weight: 600;
   cursor: pointer;
-  &.disabled { background: #c7c7cc; pointer-events: none; }
+  &.disabled { background: var(--text-faint); pointer-events: none; }
   &:active { transform: scale(0.98); }
 }
 .chat-btn-disabled {
@@ -932,7 +932,7 @@ async function contactSeller() {
 }
 .loading-spinner {
   width: 24px; height: 24px;
-  border: 2.5px solid #e8e8ed; border-top-color: var(--text-primary);
+  border: 2.5px solid var(--bg-inset); border-top-color: var(--text-primary);
   border-radius: 50%; animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -950,7 +950,7 @@ async function contactSeller() {
   display: flex; align-items: center; justify-content: center;
   background: var(--bg-subtle); cursor: pointer;
 }
-.nf-arrow { width: 9px; height: 9px; border-left: 2px solid #1a1a1a; border-bottom: 2px solid #1a1a1a; transform: rotate(45deg); margin-left: 3px; }
+.nf-arrow { width: 9px; height: 9px; border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary); transform: rotate(45deg); margin-left: 3px; }
 .nf-icon {
   width: 60px; height: 60px; border: 3px solid #d1d1d6;
   border-radius: 50%; position: relative; margin-bottom: 8px;
@@ -963,7 +963,7 @@ async function contactSeller() {
 .nf-title { font-size: 17px; font-weight: 700; color: var(--text-primary); }
 .nf-sub { font-size: 14px; color: var(--text-muted); line-height: 1.5; max-width: 280px; }
 .nf-btn {
-  margin-top: 20px; padding: 12px 28px; background: #1a1a1a;
+  margin-top: 20px; padding: 12px 28px; background: var(--accent-primary);
   color: #fff; border-radius: 22px; font-size: 14px; font-weight: 600;
   cursor: pointer;
   &:active { opacity: 0.8; }

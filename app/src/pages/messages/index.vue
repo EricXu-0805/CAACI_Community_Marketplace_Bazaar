@@ -342,7 +342,7 @@ function goLogin() {
 .empty-sub { font-size: 13px; color: var(--text-faint); }
 .login-btn {
   margin-top: 12px; padding: 10px 36px;
-  background: #1a1a1a; color: #fff; border-radius: 22px;
+  background: var(--accent-primary); color: #fff; border-radius: 22px;
   font-size: 14px; font-weight: 600; cursor: pointer;
   &:active { opacity: 0.8; }
 }
@@ -393,7 +393,7 @@ function goLogin() {
   }
   &::after {
     content: ''; position: absolute; top: 0; right: 0;
-    width: 11px; height: 1.5px; background: #aeaeb2;
+    width: 11px; height: 1.5px; background: var(--text-faint);
     transform: rotate(-35deg); transform-origin: center;
   }
 }
@@ -402,7 +402,7 @@ function goLogin() {
   flex-shrink: 0; margin-left: 4px;
 }
 .muted-dot {
-  width: 7px; height: 7px; border-radius: 50%; background: #c7c7cc;
+  width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint);
   flex-shrink: 0; margin-left: 4px;
 }
 .conv-time { font-size: 12px; color: var(--text-faint); flex-shrink: 0; margin-left: 6px; }
@@ -445,7 +445,7 @@ function goLogin() {
 }
 .loading-dot {
   width: 5px; height: 5px; border-radius: 50%;
-  background: #c7c7cc; animation: pulse 1s ease-in-out infinite;
+  background: var(--text-faint); animation: pulse 1s ease-in-out infinite;
 }
 @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 

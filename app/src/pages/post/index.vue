@@ -394,7 +394,7 @@ async function onSubmitComment() {
 }
 .back-arrow {
   width: 9px; height: 9px;
-  border-left: 2px solid #1a1a1a; border-bottom: 2px solid #1a1a1a;
+  border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary);
   transform: rotate(45deg); margin-left: 4px;
 }
 .header-title { flex: 1; font-size: 16px; font-weight: 700; color: var(--text-primary); text-align: center; }
@@ -403,7 +403,7 @@ async function onSubmitComment() {
   display: flex; align-items: center; justify-content: center; gap: 3px;
   cursor: pointer;
 }
-.mb-dot { width: 3px; height: 3px; border-radius: 50%; background: #8e8e93; }
+.mb-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--text-muted); }
 
 .body { flex: 1; min-height: 0; }
 
@@ -412,7 +412,7 @@ async function onSubmitComment() {
   display: flex; flex-direction: column; align-items: center; gap: 14px;
 }
 .back-home {
-  padding: 10px 28px; background: #1a1a1a; color: #fff;
+  padding: 10px 28px; background: var(--accent-primary); color: #fff;
   border-radius: 22px; font-size: 14px; font-weight: 600; cursor: pointer;
   &:active { opacity: 0.85; }
 }
@@ -477,7 +477,7 @@ async function onSubmitComment() {
 .heart-img { width: 22px; height: 22px; }
 .stat-num { font-size: 13px; color: var(--text-muted); font-weight: 500; &.active { color: var(--accent-danger); } }
 .bubble-ico {
-  width: 20px; height: 16px; border: 1.8px solid #8e8e93;
+  width: 20px; height: 16px; border: 1.8px solid var(--text-muted);
   border-radius: 9px 9px 9px 2px;
 }
 .share-ico {
@@ -485,13 +485,13 @@ async function onSubmitComment() {
   &::before {
     content: ''; position: absolute; top: 1px; left: 50%;
     transform: translateX(-50%);
-    width: 0; height: 9px; border-left: 1.8px solid #8e8e93;
+    width: 0; height: 9px; border-left: 1.8px solid var(--text-muted);
   }
   &::after {
     content: ''; position: absolute; top: 0; left: 50%;
     transform: translateX(-50%) rotate(45deg);
     width: 9px; height: 9px;
-    border-left: 1.8px solid #8e8e93; border-top: 1.8px solid #8e8e93;
+    border-left: 1.8px solid var(--text-muted); border-top: 1.8px solid var(--text-muted);
   }
 }
 
@@ -546,7 +546,7 @@ async function onSubmitComment() {
 }
 .send-btn {
   padding: 0 18px; height: 40px; border-radius: 20px;
-  background: #1a1a1a; color: #fff;
+  background: var(--accent-primary); color: #fff;
   display: flex; align-items: center; cursor: pointer;
   text { font-size: 13px; color: #fff; font-weight: 600; }
   &.disabled { opacity: 0.3; pointer-events: none; }

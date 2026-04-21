@@ -407,7 +407,7 @@ async function onSubmit() {
         content: t('scam.publishBody'),
         confirmText: t('scam.publishAgree'),
         cancelText: t('scam.publishCancel'),
-        confirmColor: '#FF9500',
+        confirmColor: 'var(--accent-warn)',
         success: (r) => resolve(!!r.confirm),
         fail: () => resolve(false),
       })
@@ -496,7 +496,7 @@ async function onSubmit() {
 
 <style lang="scss" scoped>
 .page {
-  min-height: 100vh; background: #f2f2f7;
+  min-height: 100vh; background: var(--bg-subtle);
   padding-bottom: calc(72px + 62px); max-width: 480px; margin: 0 auto;
 }
 
@@ -507,15 +507,15 @@ async function onSubmit() {
   background: rgba(255,255,255,0.92);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-bottom: 0.5px solid rgba(0,0,0,0.06);
+  border-bottom: 0.5px solid var(--line-hair);
   position: sticky; top: 0; z-index: 50;
 }
-.ph-title { font-size: 17px; font-weight: 700; color: #1a1a1a; }
+.ph-title { font-size: 17px; font-weight: 700; color: var(--text-primary); }
 
 @media (min-width: 768px) { .page-header { display: none; } }
 
 /* ========== Form ========== */
-.form { background: #fff; }
+.form { background: var(--bg-elev-1); }
 .image-section { padding: 16px; }
 .image-list { display: flex; flex-wrap: wrap; gap: 9px; }
 .image-item { position: relative; width: 96px; height: 96px; }
@@ -530,7 +530,7 @@ async function onSubmit() {
   width: 10px; height: 10px; position: relative;
   &::before, &::after {
     content: ''; position: absolute; top: 50%; left: 0;
-    width: 10px; height: 1.5px; background: #fff; border-radius: 1px;
+    width: 10px; height: 1.5px; background: var(--bg-elev-1); border-radius: 1px;
   }
   &::before { transform: rotate(45deg); }
   &::after { transform: rotate(-45deg); }
@@ -545,24 +545,24 @@ async function onSubmit() {
   width: 96px; height: 96px; border: 1.5px dashed #d1d1d6;
   border-radius: 9px; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 4px; cursor: pointer;
-  &:active { background: #f7f7f8; }
+  &:active { background: var(--bg-elev-2); }
 }
 .add-icon-css {
   width: 22px; height: 22px; position: relative;
   &::before, &::after {
-    content: ''; position: absolute; background: #c7c7cc; border-radius: 1px;
+    content: ''; position: absolute; background: var(--text-faint); border-radius: 1px;
   }
   &::before { width: 22px; height: 2px; top: 10px; left: 0; }
   &::after { width: 2px; height: 22px; top: 0; left: 10px; }
 }
-.add-text { font-size: 11px; color: #aeaeb2; }
-.add-count { font-size: 10px; color: #c7c7cc; margin-top: 2px; font-variant-numeric: tabular-nums; }
-.image-tip { font-size: 12px; color: #c7c7cc; margin-top: 8px; }
+.add-text { font-size: 11px; color: var(--text-faint); }
+.add-count { font-size: 10px; color: var(--text-faint); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.image-tip { font-size: 12px; color: var(--text-faint); margin-top: 8px; }
 
 /* ========== Upload Progress ========== */
 .upload-bar {
   position: relative; height: 28px; margin: 0 16px 8px;
-  background: #f2f2f7; border-radius: 6px; overflow: hidden;
+  background: var(--bg-subtle); border-radius: 6px; overflow: hidden;
 }
 .upload-fill {
   position: absolute; top: 0; bottom: 0; left: 0;
@@ -571,39 +571,39 @@ async function onSubmit() {
 }
 .upload-text {
   position: relative; z-index: 1;
-  font-size: 12px; color: #636366; font-weight: 500;
+  font-size: 12px; color: var(--text-secondary); font-weight: 500;
   line-height: 28px; padding-left: 10px;
 }
 
 /* ========== Form Groups ========== */
 .form-group {
   padding: 13px 16px;
-  border-bottom: 0.5px solid rgba(0,0,0,0.06);
+  border-bottom: 0.5px solid var(--line-hair);
   &.row { display: flex; align-items: center; }
 }
-.label { font-size: 15px; color: #1a1a1a; width: 64px; flex-shrink: 0; font-weight: 500; }
-.form-input { font-size: 15px; width: 100%; color: #1a1a1a; }
+.label { font-size: 15px; color: var(--text-primary); width: 64px; flex-shrink: 0; font-weight: 500; }
+.form-input { font-size: 15px; width: 100%; color: var(--text-primary); }
 .title-input { font-size: 17px; font-weight: 600; }
-.form-textarea { width: 100%; height: 110px; font-size: 15px; line-height: 1.6; color: #1a1a1a; }
+.form-textarea { width: 100%; height: 110px; font-size: 15px; line-height: 1.6; color: var(--text-primary); }
 .price-input {
   display: flex; align-items: center; flex: 1;
-  .currency { font-size: 17px; color: #1a1a1a; font-weight: 700; margin-right: 4px; }
+  .currency { font-size: 17px; color: var(--text-primary); font-weight: 700; margin-right: 4px; }
 }
 .flex-input { flex: 1; }
-.char-count { display: block; text-align: right; font-size: 11px; color: #c7c7cc; margin-top: 4px; }
-.price-hint { padding: 0 16px 8px; font-size: 12px; color: #8e8e93; }
+.char-count { display: block; text-align: right; font-size: 11px; color: var(--text-faint); margin-top: 4px; }
+.price-hint { padding: 0 16px 8px; font-size: 12px; color: var(--text-muted); }
 
 .field-header {
   display: flex; align-items: center; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 .field-value {
-  flex: 1; text-align: right; font-size: 15px; color: #1a1a1a;
-  &.placeholder { color: #c7c7cc; }
+  flex: 1; text-align: right; font-size: 15px; color: var(--text-primary);
+  &.placeholder { color: var(--text-faint); }
 }
 .chevron {
   width: 8px; height: 8px; margin-left: 8px;
-  border-top: 1.5px solid #c7c7cc; border-right: 1.5px solid #c7c7cc;
+  border-top: 1.5px solid var(--text-faint); border-right: 1.5px solid var(--text-faint);
   transform: rotate(45deg); transition: transform 0.2s;
   &.open { transform: rotate(135deg); }
 }
@@ -615,9 +615,9 @@ async function onSubmit() {
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 .sel-pill {
   padding: 7px 14px; border-radius: 8px; font-size: 13px;
-  background: #f2f2f7; color: #636366; cursor: pointer;
+  background: var(--bg-subtle); color: var(--text-secondary); cursor: pointer;
   transition: all 0.12s; font-weight: 500;
-  &.active { background: #1a1a1a; color: #fff; }
+  &.active { background: var(--accent-primary); color: #fff; }
   &:active { transform: scale(0.96); }
 }
 .cond-pill {
@@ -639,26 +639,26 @@ async function onSubmit() {
   display: inline-block;
   padding: 6px 12px;
   margin-right: 8px;
-  background: #f2f2f7;
-  color: #1a1a1a;
+  background: var(--bg-subtle);
+  color: var(--text-primary);
   font-size: 13px;
   border-radius: 14px;
   cursor: pointer;
   transition: background 0.15s;
-  &:active { background: #e5e5ea; }
-  &.active { background: #1a1a1a; color: #fff; }
+  &:active { background: var(--bg-inset); }
+  &.active { background: var(--accent-primary); color: #fff; }
 }
 .loc-detect {
-  width: 36px; height: 36px; border-radius: 9px; background: #f2f2f7;
+  width: 36px; height: 36px; border-radius: 9px; background: var(--bg-subtle);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; cursor: pointer; margin-left: 6px;
-  &:active { background: #e5e5ea; }
+  &:active { background: var(--bg-inset); }
 }
 .loc-pin {
   width: 12px; height: 16px; position: relative;
   &::before {
     content: ''; position: absolute; top: 0; left: 0;
-    width: 12px; height: 12px; border: 2px solid #636366;
+    width: 12px; height: 12px; border: 2px solid var(--text-secondary);
     border-radius: 50%;
   }
   &::after {
@@ -671,21 +671,21 @@ async function onSubmit() {
 }
 .loc-spinner {
   width: 16px; height: 16px;
-  border: 2px solid #e5e5ea; border-top-color: #636366;
+  border: 2px solid var(--bg-inset); border-top-color: var(--text-secondary);
   border-radius: 50%; animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ========== Toggle ========== */
 .toggle-row { cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.toggle-hint { flex: 1; font-size: 13px; color: #aeaeb2; text-align: right; margin-right: 10px; }
+.toggle-hint { flex: 1; font-size: 13px; color: var(--text-faint); text-align: right; margin-right: 10px; }
 .toggle {
   width: 44px; height: 26px; border-radius: 13px;
   background: #e0e0e0; position: relative; transition: background 0.25s; flex-shrink: 0;
-  &.on { background: #34C759; }
+  &.on { background: var(--accent-good); }
 }
 .toggle-knob {
-  width: 22px; height: 22px; border-radius: 50%; background: #fff;
+  width: 22px; height: 22px; border-radius: 50%; background: var(--bg-elev-1);
   position: absolute; top: 2px; left: 2px; transition: transform 0.25s;
   box-shadow: 0 1px 3px rgba(0,0,0,0.15);
 }
@@ -698,11 +698,11 @@ async function onSubmit() {
   width: 100%; max-width: 480px; padding: 9px 16px;
   background: rgba(255,255,255,0.92);
   backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-top: 0.5px solid rgba(0,0,0,0.06);
+  border-top: 0.5px solid var(--line-hair);
   z-index: 40;
 }
 .submit-btn {
-  width: 100%; height: 46px; background: #1a1a1a; color: #fff;
+  width: 100%; height: 46px; background: var(--accent-primary); color: #fff;
   border-radius: 23px; font-size: 15px; font-weight: 600;
   display: flex; align-items: center; justify-content: center; border: none;
   &[disabled] { opacity: 0.3; }

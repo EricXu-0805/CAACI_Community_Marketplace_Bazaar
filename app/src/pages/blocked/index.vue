@@ -87,16 +87,16 @@ function onUnblock(id: string, name: string) {
 </script>
 
 <style lang="scss" scoped>
-.page { min-height: 100vh; background: #f2f2f7; max-width: 480px; margin: 0 auto; }
+.page { min-height: 100vh; background: var(--bg-subtle); max-width: 480px; margin: 0 auto; }
 
 .header {
   display: flex; align-items: center; gap: 12px; padding: 12px 16px;
   padding-top: calc(12px + env(safe-area-inset-top, 0px));
-  background: #fff; border-bottom: 0.5px solid rgba(0,0,0,0.06);
+  background: var(--bg-elev-1); border-bottom: 0.5px solid var(--line-hair);
 }
 .back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.back-arrow { width: 9px; height: 9px; border-left: 2px solid #1a1a1a; border-bottom: 2px solid #1a1a1a; transform: rotate(45deg); margin-left: 4px; }
-.header-title { font-size: 17px; font-weight: 600; color: #1a1a1a; }
+.back-arrow { width: 9px; height: 9px; border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary); transform: rotate(45deg); margin-left: 4px; }
+.header-title { font-size: 17px; font-weight: 600; color: var(--text-primary); }
 
 .empty {
   display: flex; flex-direction: column; align-items: center;
@@ -108,26 +108,26 @@ function onUnblock(id: string, name: string) {
   border-radius: 22px 22px 12px 12px;
   margin-bottom: 6px;
 }
-.empty-text { font-size: 15px; font-weight: 600; color: #1a1a1a; }
-.empty-sub { font-size: 13px; color: #8e8e93; max-width: 260px; line-height: 1.5; }
+.empty-text { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.empty-sub { font-size: 13px; color: var(--text-muted); max-width: 260px; line-height: 1.5; }
 
-.list { background: #fff; margin-top: 7px; }
+.list { background: var(--bg-elev-1); margin-top: 7px; }
 .row {
   display: flex; align-items: center; gap: 12px;
-  padding: 12px 16px; border-bottom: 0.5px solid rgba(0,0,0,0.06);
+  padding: 12px 16px; border-bottom: 0.5px solid var(--line-hair);
   &:last-child { border-bottom: none; }
 }
-.avatar { width: 40px; height: 40px; border-radius: 50%; background: #f2f2f7; flex-shrink: 0; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--bg-subtle); flex-shrink: 0; }
 .info { flex: 1; min-width: 0; }
-.nickname { font-size: 15px; font-weight: 600; color: #1a1a1a; display: block; }
+.nickname { font-size: 15px; font-weight: 600; color: var(--text-primary); display: block; }
 .bio {
-  font-size: 12px; color: #8e8e93; margin-top: 2px; display: block;
+  font-size: 12px; color: var(--text-muted); margin-top: 2px; display: block;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .unblock-btn {
   padding: 6px 14px; border-radius: 14px;
-  background: #f2f2f7; cursor: pointer;
-  text { font-size: 13px; font-weight: 500; color: #1a1a1a; }
-  &:active { background: #e5e5ea; }
+  background: var(--bg-subtle); cursor: pointer;
+  text { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+  &:active { background: var(--bg-inset); }
 }
 </style>

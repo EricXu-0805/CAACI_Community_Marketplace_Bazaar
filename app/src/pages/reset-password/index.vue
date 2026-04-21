@@ -98,7 +98,7 @@ function goLogin() {
 
 <style lang="scss" scoped>
 .page {
-  min-height: 100vh; background: #fff;
+  min-height: 100vh; background: var(--bg-elev-1);
   padding: 0 24px; max-width: 400px; margin: 0 auto;
   display: flex; flex-direction: column;
 }
@@ -110,38 +110,38 @@ function goLogin() {
 }
 .logo-mark {
   width: 56px; height: 56px; border-radius: 14px;
-  background: #1a1a1a;
+  background: var(--accent-primary);
   display: flex; align-items: center; justify-content: center;
 }
 .logo-letter { font-size: 28px; font-weight: 800; color: #fff; letter-spacing: -1px; }
-.app-name { font-size: 22px; font-weight: 700; color: #1a1a1a; margin-top: 16px; }
-.app-desc { font-size: 13px; color: #aeaeb2; margin-top: 5px; text-align: center; line-height: 1.5; padding: 0 20px; }
+.app-name { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-top: 16px; }
+.app-desc { font-size: 13px; color: var(--text-faint); margin-top: 5px; text-align: center; line-height: 1.5; padding: 0 20px; }
 
 .loading {
   display: flex; flex-direction: column; align-items: center;
   gap: 14px; padding: 60px 0;
-  text { font-size: 13px; color: #8e8e93; }
+  text { font-size: 13px; color: var(--text-muted); }
 }
 .spinner {
   width: 24px; height: 24px;
-  border: 2.5px solid #e8e8ed; border-top-color: #1a1a1a;
+  border: 2.5px solid var(--bg-inset); border-top-color: var(--text-primary);
   border-radius: 50%; animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .form { flex: 1; }
 .form-group { margin-bottom: 18px; }
-.form-label { display: block; font-size: 13px; color: #8e8e93; margin-bottom: 7px; font-weight: 500; }
+.form-label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 7px; font-weight: 500; }
 .form-input {
   width: 100%; height: 48px;
-  background: #f7f7f8; border-radius: 12px;
-  padding: 0 16px; font-size: 15px; color: #1a1a1a;
+  background: var(--bg-elev-2); border-radius: 12px;
+  padding: 0 16px; font-size: 15px; color: var(--text-primary);
   border: 1px solid transparent;
-  &:focus { border-color: rgba(0,0,0,0.12); background: #fff; }
+  &:focus { border-color: rgba(0,0,0,0.12); background: var(--bg-elev-1); }
 }
 .submit-btn {
   width: 100%; height: 48px;
-  background: #1a1a1a; color: #fff;
+  background: var(--accent-primary); color: #fff;
   border-radius: 24px; font-size: 15px; font-weight: 600;
   margin-top: 24px; border: none;
   &[disabled] { opacity: 0.35; }
@@ -152,9 +152,9 @@ function goLogin() {
   display: flex; flex-direction: column; align-items: center;
   padding: 40px 0; gap: 20px;
 }
-.error-text { font-size: 14px; color: #FF3B30; text-align: center; line-height: 1.5; }
+.error-text { font-size: 14px; color: var(--accent-danger); text-align: center; line-height: 1.5; }
 .back-btn {
-  padding: 12px 28px; background: #1a1a1a; color: #fff;
+  padding: 12px 28px; background: var(--accent-primary); color: #fff;
   border-radius: 22px; font-size: 14px; font-weight: 600; cursor: pointer;
   &:active { opacity: 0.8; }
 }

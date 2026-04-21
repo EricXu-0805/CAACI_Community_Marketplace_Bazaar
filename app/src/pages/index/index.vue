@@ -684,14 +684,14 @@ function goPublish() {
   input { flex: 1; font-size: 15px; color: var(--text-primary); background: transparent; }
 }
 .sf-icon {
-  width: 16px; height: 16px; border: 1.8px solid #8e8e93; border-radius: 50%; position: relative; flex-shrink: 0;
+  width: 16px; height: 16px; border: 1.8px solid var(--text-muted); border-radius: 50%; position: relative; flex-shrink: 0;
 }
 .sf-icon::after {
   content: ''; position: absolute; bottom: -4px; right: -4px;
-  width: 5px; height: 1.8px; background: #8e8e93; transform: rotate(45deg);
+  width: 5px; height: 1.8px; background: var(--text-muted); transform: rotate(45deg);
 }
 .sf-clear {
-  width: 18px; height: 18px; border-radius: 50%; background: #c7c7cc;
+  width: 18px; height: 18px; border-radius: 50%; background: var(--text-faint);
   color: #fff; font-size: 12px; font-weight: 600;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
@@ -703,7 +703,7 @@ function goPublish() {
 }
 .fb-lines {
   display: flex; flex-direction: column; gap: 3px; width: 16px;
-  view { height: 1.8px; background: #636366; border-radius: 1px; }
+  view { height: 1.8px; background: var(--text-secondary); border-radius: 1px; }
   view:nth-child(1) { width: 16px; }
   view:nth-child(2) { width: 12px; }
   view:nth-child(3) { width: 8px; }
@@ -726,7 +726,7 @@ function goPublish() {
   line-height: 1;
   box-sizing: border-box;
   flex-shrink: 0;
-  &.active { background: #1a1a1a; color: #fff; border-color: var(--text-primary); }
+  &.active { background: var(--accent-primary); color: #fff; border-color: var(--text-primary); }
   &:active { transform: scale(0.96); }
 }
 
@@ -819,7 +819,7 @@ function goPublish() {
   width: 12px; height: 12px; position: relative;
   &::before, &::after {
     content: ''; position: absolute; top: 50%; left: 0;
-    width: 12px; height: 1.5px; background: #636366; border-radius: 1px;
+    width: 12px; height: 1.5px; background: var(--text-secondary); border-radius: 1px;
   }
   &::before { transform: rotate(45deg); }
   &::after { transform: rotate(-45deg); }
@@ -901,7 +901,7 @@ function goPublish() {
   padding: 7px 15px; border-radius: 8px;
   font-size: 13px; color: var(--text-secondary); background: var(--bg-subtle);
   cursor: pointer; transition: all 0.15s; font-weight: 500;
-  &.active { background: #1a1a1a; color: #fff; }
+  &.active { background: var(--accent-primary); color: #fff; }
 }
 /* Even though the sheet wins z-index (1001 > 999 on tabbar), the apply
    button visually coincided with the tabbar row, creating a jarring
@@ -1075,7 +1075,7 @@ function goPublish() {
 .empty-sub { font-size: 13px; color: #999; text-align: center; padding: 0 32px; }
 .empty-btn {
   margin-top: 18px; padding: 11px 32px;
-  background: #1a1a1a; color: #fff; border-radius: 22px;
+  background: var(--accent-primary); color: #fff; border-radius: 22px;
   font-size: 14px; font-weight: 600; cursor: pointer;
   &:active { opacity: 0.8; }
 }
@@ -1106,7 +1106,7 @@ function goPublish() {
 }
 .bt-arrow {
   width: 10px; height: 10px;
-  border-left: 2px solid #1a1a1a; border-top: 2px solid #1a1a1a;
+  border-left: 2px solid var(--accent-primary); border-top: 2px solid var(--accent-primary);
   transform: rotate(45deg); margin-top: 3px;
 }
 

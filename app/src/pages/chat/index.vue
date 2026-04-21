@@ -545,7 +545,7 @@ function scrollToBottom() {
 }
 .ch-arrow {
   width: 9px; height: 9px;
-  border-left: 2px solid #1a1a1a; border-bottom: 2px solid #1a1a1a;
+  border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary);
   transform: rotate(45deg); margin-left: 4px;
 }
 .ch-info { flex: 1; min-width: 0; }
@@ -564,7 +564,7 @@ function scrollToBottom() {
   &:active { opacity: 0.5; }
 }
 .more-dot {
-  width: 4px; height: 4px; border-radius: 50%; background: #8e8e93;
+  width: 4px; height: 4px; border-radius: 50%; background: var(--text-muted);
 }
 
 /* ========== Item Context Card ========== */
@@ -609,7 +609,7 @@ function scrollToBottom() {
 }
 .qr-chip {
   display: inline-block; padding: 7px 14px; margin-right: 8px;
-  background: var(--bg-elev-1); border: 1px solid rgba(0,0,0,0.08);
+  background: var(--bg-elev-1); border: 1px solid var(--line-soft);
   border-radius: 16px; font-size: 13px; color: var(--text-primary);
   cursor: pointer;
   &:active { background: var(--bg-elev-2); }
@@ -629,7 +629,7 @@ function scrollToBottom() {
 .ic-reserved { font-size: 11px; color: var(--accent-warn); font-weight: 600; }
 .ic-arrow {
   width: 7px; height: 7px;
-  border-top: 1.5px solid #c7c7cc; border-right: 1.5px solid #c7c7cc;
+  border-top: 1.5px solid var(--text-faint); border-right: 1.5px solid var(--text-faint);
   transform: rotate(45deg); flex-shrink: 0;
 }
 
@@ -671,7 +671,7 @@ function scrollToBottom() {
   &.mine {
     justify-content: flex-end;
     .msg-bubble {
-      background: #1a1a1a; color: #fff;
+      background: var(--accent-primary); color: #fff;
       border-radius: 18px 18px 4px 18px;
     }
   }
@@ -697,10 +697,10 @@ function scrollToBottom() {
   &:active { background: var(--bg-inset); }
 }
 .img-icon {
-  width: 20px; height: 16px; border: 1.8px solid #636366; border-radius: 3px; position: relative;
+  width: 20px; height: 16px; border: 1.8px solid var(--text-secondary); border-radius: 3px; position: relative;
   &::before {
     content: ''; position: absolute; top: 2px; left: 3px;
-    width: 4px; height: 4px; border-radius: 50%; border: 1.2px solid #636366;
+    width: 4px; height: 4px; border-radius: 50%; border: 1.2px solid var(--text-secondary);
   }
 }
 .emoji-btn {
@@ -708,7 +708,7 @@ function scrollToBottom() {
   align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
   background: var(--bg-subtle); border-radius: 50%;
   &:active { background: var(--bg-inset); }
-  &.active { background: #1a1a1a; }
+  &.active { background: var(--accent-primary); }
   &.active .emoji-btn-glyph { opacity: 1; filter: none; }
 }
 .emoji-btn-glyph {
@@ -781,7 +781,7 @@ function scrollToBottom() {
   padding: 0 16px; font-size: 15px; color: var(--text-primary);
 }
 .send-btn {
-  width: 40px; height: 40px; background: #1a1a1a;
+  width: 40px; height: 40px; background: var(--accent-primary);
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; flex-shrink: 0;

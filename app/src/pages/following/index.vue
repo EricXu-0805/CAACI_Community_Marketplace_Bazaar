@@ -94,16 +94,16 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 </script>
 
 <style lang="scss" scoped>
-.page { min-height: 100vh; background: #f2f2f7; max-width: 480px; margin: 0 auto; }
+.page { min-height: 100vh; background: var(--bg-subtle); max-width: 480px; margin: 0 auto; }
 
 .header {
   display: flex; align-items: center; gap: 12px; padding: 12px 16px;
   padding-top: calc(12px + env(safe-area-inset-top, 0px));
-  background: #fff; border-bottom: 0.5px solid rgba(0,0,0,0.06);
+  background: var(--bg-elev-1); border-bottom: 0.5px solid var(--line-hair);
 }
 .back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.back-arrow { width: 9px; height: 9px; border-left: 2px solid #1a1a1a; border-bottom: 2px solid #1a1a1a; transform: rotate(45deg); margin-left: 4px; }
-.header-title { font-size: 17px; font-weight: 600; color: #1a1a1a; }
+.back-arrow { width: 9px; height: 9px; border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary); transform: rotate(45deg); margin-left: 4px; }
+.header-title { font-size: 17px; font-weight: 600; color: var(--text-primary); }
 
 .list { flex: 1; height: calc(100vh - 56px); }
 
@@ -112,7 +112,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   padding: 8px;
 }
 .card {
-  background: #fff; border-radius: 10px; overflow: hidden;
+  background: var(--bg-elev-1); border-radius: 10px; overflow: hidden;
   cursor: pointer;
   &:active { opacity: 0.85; }
 }
@@ -131,12 +131,12 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .bsc-check { font-size: 10px; color: #fff; font-weight: 800; line-height: 1; }
 .bsc-label { font-size: 10px; color: #fff; font-weight: 600; line-height: 1; }
 .card-title {
-  font-size: 13px; color: #1a1a1a; line-height: 1.3;
+  font-size: 13px; color: var(--text-primary); line-height: 1.3;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.card-price { font-size: 15px; font-weight: 700; color: #1a1a1a; margin-top: 4px; display: block; }
+.card-price { font-size: 15px; font-weight: 700; color: var(--text-primary); margin-top: 4px; display: block; }
 .card-seller { display: flex; align-items: center; gap: 5px; margin-top: 5px; }
-.cs-avatar { width: 16px; height: 16px; border-radius: 50%; background: #f2f2f7; }
+.cs-avatar { width: 16px; height: 16px; border-radius: 50%; background: var(--bg-subtle); }
 .cs-name { font-size: 11px; color: var(--text-secondary, #5a5a63); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .empty {
@@ -144,9 +144,9 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   padding: 80px 40px; gap: 12px; text-align: center;
 }
 .empty-icon { font-size: 48px; }
-.empty-text { font-size: 14px; color: #8e8e93; line-height: 1.5; }
+.empty-text { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
 
 .loading-tip, .end-tip {
-  text-align: center; padding: 16px; font-size: 12px; color: #aeaeb2;
+  text-align: center; padding: 16px; font-size: 12px; color: var(--text-faint);
 }
 </style>

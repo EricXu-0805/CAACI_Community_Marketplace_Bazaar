@@ -356,18 +356,18 @@ function onDeleteItem(id: string) {
 .ap-head {
   position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
   width: 18px; height: 18px; border-radius: 50%;
-  border: 2.5px solid #c7c7cc;
+  border: 2.5px solid var(--text-faint);
 }
 .ap-body {
   position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
   width: 30px; height: 14px; border-radius: 15px 15px 0 0;
-  border: 2.5px solid #c7c7cc; border-bottom: none;
+  border: 2.5px solid var(--text-faint); border-bottom: none;
 }
 
 .login-hint { color: var(--text-faint); font-size: 14px; }
 .login-btn {
   margin-top: 4px; padding: 10px 36px;
-  background: #1a1a1a; color: #fff; border-radius: 22px;
+  background: var(--accent-primary); color: #fff; border-radius: 22px;
   font-size: 14px; font-weight: 600; cursor: pointer;
   &:active { opacity: 0.8; }
 }
@@ -402,12 +402,12 @@ function onDeleteItem(id: string) {
 .uid-label { font-size: 10px; color: var(--text-muted); font-weight: 500; }
 .uid-value { font-size: 11px; color: var(--text-primary); font-weight: 600; letter-spacing: 0.02em; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .uid-copy {
-  width: 10px; height: 10px; border: 1.2px solid #8e8e93; border-radius: 2px;
+  width: 10px; height: 10px; border: 1.2px solid var(--text-muted); border-radius: 2px;
   position: relative; margin-left: 2px;
   &::before {
     content: ''; position: absolute; top: -3px; left: -3px;
     width: 8px; height: 8px; background: var(--bg-elev-1);
-    border: 1.2px solid #8e8e93; border-radius: 2px;
+    border: 1.2px solid var(--text-muted); border-radius: 2px;
   }
 }
 
@@ -453,11 +453,11 @@ function onDeleteItem(id: string) {
   width: 14px; height: 14px; position: relative;
   &::before {
     content: ''; position: absolute; bottom: 0; left: 0;
-    width: 14px; height: 2px; background: #636366; border-radius: 1px;
+    width: 14px; height: 2px; background: var(--text-secondary); border-radius: 1px;
   }
   &::after {
     content: ''; position: absolute; top: 0; right: 2px;
-    width: 2px; height: 10px; background: #636366;
+    width: 2px; height: 10px; background: var(--text-secondary);
     border-radius: 1px; transform: rotate(-40deg);
     transform-origin: bottom center;
   }
@@ -477,7 +477,7 @@ function onDeleteItem(id: string) {
   &.active::after {
     content: ''; position: absolute; bottom: 0; left: 50%;
     transform: translateX(-50%);
-    width: 20px; height: 2px; background: #1a1a1a; border-radius: 1px;
+    width: 20px; height: 2px; background: var(--accent-primary); border-radius: 1px;
   }
 }
 .stat-num { font-size: 20px; font-weight: 700; color: var(--text-primary); display: block; }
@@ -565,7 +565,7 @@ function onDeleteItem(id: string) {
   padding: 0 5px; margin-right: 8px;
 }
 .menu-arrow {
-  width: 7px; height: 7px; border-top: 1.5px solid #c7c7cc;
-  border-right: 1.5px solid #c7c7cc; transform: rotate(45deg);
+  width: 7px; height: 7px; border-top: 1.5px solid var(--text-faint);
+  border-right: 1.5px solid var(--text-faint); transform: rotate(45deg);
 }
 </style>
