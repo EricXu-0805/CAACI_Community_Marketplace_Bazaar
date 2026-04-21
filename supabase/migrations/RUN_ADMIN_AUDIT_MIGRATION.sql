@@ -13,6 +13,14 @@
 
 BEGIN;
 
+-- PG 42P13: CREATE OR REPLACE cannot change the output shape of a
+-- RETURNS TABLE function. Since this bundle adds 4 new columns
+-- (issued_by / issued_by_nickname / lifted_by / lifted_by_nickname)
+-- to three existing RPCs from 029, we must DROP them first.
+DROP FUNCTION IF EXISTS public.admin_list_suspensions(integer, integer, boolean);
+DROP FUNCTION IF EXISTS public.admin_get_suspension_detail(uuid);
+DROP FUNCTION IF EXISTS public.admin_list_appeals(integer, integer);
+
 CREATE OR REPLACE FUNCTION public.admin_list_suspensions(
   limit_in       integer DEFAULT 50,
   offset_in      integer DEFAULT 0,

@@ -11,6 +11,16 @@
 -- ban was applied via service_role outside an admin's auth session
 -- (e.g. a cron or a one-off SQL; we show "system").
 -- ============================================
+--
+-- PG quirk: CREATE OR REPLACE FUNCTION refuses to change the output
+-- shape of a RETURNS TABLE(...) function. Since 030 adds four columns
+-- to three existing RPCs, we have to DROP each one first. IF EXISTS
+-- keeps this migration idempotent across fresh and partial-apply DBs.
+-- ============================================
+
+DROP FUNCTION IF EXISTS public.admin_list_suspensions(integer, integer, boolean);
+DROP FUNCTION IF EXISTS public.admin_get_suspension_detail(uuid);
+DROP FUNCTION IF EXISTS public.admin_list_appeals(integer, integer);
 
 CREATE OR REPLACE FUNCTION public.admin_list_suspensions(
   limit_in       integer DEFAULT 50,
