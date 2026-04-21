@@ -241,6 +241,27 @@ CAACI_Community_Marketplace_Bazaar/
 2. **AI 开发工具**（OpenClaw / OpenCode）只操作代码仓库，**不可直接访问生产数据库**
 3. Supabase 生产环境的密钥不存入代码仓库
 
+### Trust & safety (Security C stack)
+
+Documented separately — see:
+
+- [`docs/admin/IMPLEMENTATION_GUIDE.md`](./admin/IMPLEMENTATION_GUIDE.md) — admin dashboard architecture, RPC surface, edge routes
+- [`docs/admin/RUNBOOK.md`](./admin/RUNBOOK.md) — daily operator workflow, ban-ladder decision tree, troubleshooting
+- [`docs/WECHAT_MP_SETUP.md`](./WECHAT_MP_SETUP.md) §3 — realtime polling / long-poll fallback for mp-weixin
+- Migrations 027, 028 — trust score + suspensions + device fingerprints + enforce-actor trigger
+- Migrations 029–031 — admin RPCs + audit log
+
+Key invariants:
+- Admin trust boundary is OUTSIDE the user auth system (shared-secret
+  `ADMIN_API_KEY` + service_role), so a stolen Supabase user session
+  can't reach admin routes.
+- Every admin action writes to `public.admin_audit_log` (append-only,
+  RLS-gated, service_role-only SELECT). Audit failures never block
+  the parent action.
+- `trg_enforce_actor` blocks posts / items / comments / messages at
+  INSERT time for any user with `suspension_level >= 2`. Dual-logged
+  to the audit table AND Supabase's server logs via `RAISE LOG`.
+
 ### Row Level Security (RLS) 策略
 
 ```sql
