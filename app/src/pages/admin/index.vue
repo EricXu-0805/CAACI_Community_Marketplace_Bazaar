@@ -81,8 +81,18 @@
       </view>
 
       <view v-else-if="activeTab === 'suspensions'" class="list">
-        <view v-if="suspensions.length === 0" class="empty"><text>No suspensions.</text></view>
-        <view v-for="s in suspensions" :key="s.id" class="card">
+        <view class="search-row">
+          <input
+            v-model="suspensionQuery"
+            class="search-input"
+            placeholder="Filter by nickname, reason, or id prefix"
+          />
+          <text v-if="suspensionQuery" class="search-clear" @click="suspensionQuery = ''">Clear</text>
+        </view>
+        <view v-if="filteredSuspensions.length === 0" class="empty">
+          <text>{{ suspensionQuery ? 'No matches.' : 'No suspensions.' }}</text>
+        </view>
+        <view v-for="s in filteredSuspensions" :key="s.id" class="card">
           <view class="card-head">
             <image :src="s.profile_avatar_url || '/static/default-avatar.svg'" class="mini-avatar" mode="aspectFill" />
             <text class="card-title">{{ s.profile_nickname || s.profile_id }}</text>
@@ -95,9 +105,14 @@
           <text class="card-time">
             Started {{ fmtTime(s.started_at) }} · Ends {{ s.ends_at ? fmtTime(s.ends_at) : 'permanent' }}
           </text>
+          <text class="card-audit">
+            Issued by <text class="audit-name">{{ s.issued_by_nickname || 'system' }}</text>
+            <text v-if="s.lifted_by_nickname"> · Lifted by <text class="audit-name">{{ s.lifted_by_nickname }}</text></text>
+          </text>
           <text v-if="s.has_appeal" class="card-appeal-flag">Appeal filed</text>
           <view class="card-actions">
             <view class="mini-btn" @click="openSuspension(s)">Open</view>
+            <view class="mini-btn" @click="openUser(s.profile_id)">Open profile</view>
             <view v-if="!s.lifted_at" class="mini-btn primary" @click="onLiftSuspension(s)">Lift</view>
           </view>
         </view>
@@ -158,8 +173,10 @@
           <text v-if="detailRow.note" class="d-row"><text class="d-key">Note: </text>{{ detailRow.note }}</text>
           <text class="d-row"><text class="d-key">Status: </text>{{ detailRow.status }}</text>
           <text class="d-row"><text class="d-key">Filed: </text>{{ fmtTime(detailRow.created_at) }}</text>
-          <view v-if="detailRow.target_user_id" class="d-actions">
-            <view class="mini-btn" @click="onBanPrompt(detailRow.target_user_id, detailRow.target_user_nickname)">Apply ban to author</view>
+          <view class="d-actions">
+            <view v-if="canOpenTarget(detailRow)" class="mini-btn" @click="openTarget(detailRow)">Open target</view>
+            <view v-if="detailRow.target_user_id" class="mini-btn" @click="openUser(detailRow.target_user_id)">Open author profile</view>
+            <view v-if="detailRow.target_user_id" class="mini-btn danger" @click="onBanPrompt(detailRow.target_user_id, detailRow.target_user_nickname)">Apply ban to author</view>
           </view>
         </view>
         <view v-else-if="detailKind === 'suspension' && detailRow">
@@ -167,14 +184,18 @@
           <text class="d-row"><text class="d-key">Level: </text>L{{ detailRow.level }}</text>
           <text class="d-row"><text class="d-key">Category: </text>{{ detailRow.category }}</text>
           <text class="d-row"><text class="d-key">Reason: </text>{{ detailRow.reason }}</text>
+          <text class="d-row"><text class="d-key">Issued by: </text>{{ detailRow.issued_by_nickname || 'system' }}</text>
           <text class="d-row"><text class="d-key">Started: </text>{{ fmtTime(detailRow.started_at) }}</text>
           <text class="d-row"><text class="d-key">Ends: </text>{{ detailRow.ends_at ? fmtTime(detailRow.ends_at) : 'permanent' }}</text>
           <text class="d-row"><text class="d-key">Trust score: </text>{{ detailRow.profile_trust_score }}</text>
           <text class="d-row"><text class="d-key">Warnings: </text>{{ detailRow.profile_warning_count }}</text>
           <text v-if="detailRow.appeal_note" class="d-row d-appeal">Appeal: “{{ detailRow.appeal_note }}”</text>
-          <text v-if="detailRow.lifted_at" class="d-row"><text class="d-key">Lifted: </text>{{ fmtTime(detailRow.lifted_at) }} ({{ detailRow.lift_reason || '—' }})</text>
-          <view class="d-actions" v-if="!detailRow.lifted_at">
-            <view class="mini-btn primary" @click="onLiftSuspension(detailRow)">Lift</view>
+          <text v-if="detailRow.lifted_at" class="d-row">
+            <text class="d-key">Lifted: </text>{{ fmtTime(detailRow.lifted_at) }} by {{ detailRow.lifted_by_nickname || 'system' }} ({{ detailRow.lift_reason || '—' }})
+          </text>
+          <view class="d-actions">
+            <view class="mini-btn" @click="openUser(detailRow.profile_id)">Open profile</view>
+            <view v-if="!detailRow.lifted_at" class="mini-btn primary" @click="onLiftSuspension(detailRow)">Lift</view>
           </view>
         </view>
       </scroll-view>
@@ -197,6 +218,8 @@ interface SuspensionRow {
   level: number; reason: string; category: string
   started_at: string; ends_at: string | null; lifted_at: string | null
   has_appeal: boolean; appeal_note: string | null; created_at: string
+  issued_by: string | null; issued_by_nickname: string | null
+  lifted_by: string | null; lifted_by_nickname: string | null
 }
 interface AppealRow extends SuspensionRow { /* same shape */ }
 interface WarningRow {
@@ -228,6 +251,16 @@ const stats = ref<StatsRow | null>(null)
 const loading = ref(false)
 const reports = ref<ReportRow[]>([])
 const suspensions = ref<SuspensionRow[]>([])
+const suspensionQuery = ref('')
+const filteredSuspensions = computed(() => {
+  const q = suspensionQuery.value.trim().toLowerCase()
+  if (!q) return suspensions.value
+  return suspensions.value.filter((s) => {
+    const nick = (s.profile_nickname || '').toLowerCase()
+    const reason = (s.reason || '').toLowerCase()
+    return nick.includes(q) || reason.includes(q) || s.profile_id.toLowerCase().startsWith(q)
+  })
+})
 const appeals = ref<AppealRow[]>([])
 const warnings = ref<WarningRow[]>([])
 
@@ -373,6 +406,45 @@ async function openSuspension(s: SuspensionRow | AppealRow) {
   } finally {
     detailLoading.value = false
   }
+}
+
+/* Open-target navigation from report detail. Map each target_type to the
+   page that renders it in the consumer app. comment + message have no
+   dedicated viewer, so we degrade gracefully: comments jump to the parent
+   post page, messages are labelled not-viewable (admin can still see the
+   preview in the report detail sheet). */
+function canOpenTarget(row: any): boolean {
+  if (!row) return false
+  if (row.target_type === 'item' || row.target_type === 'post') return !!row.target_id
+  if (row.target_type === 'user') return !!row.target_id
+  if (row.target_type === 'comment') return !!row.target_user_id
+  return false
+}
+
+function openTarget(row: any) {
+  detailOpen.value = false
+  if (row.target_type === 'item') {
+    uni.navigateTo({ url: `/pages/detail/index?id=${row.target_id}` })
+  } else if (row.target_type === 'post') {
+    uni.navigateTo({ url: `/pages/post/index?id=${row.target_id}` })
+  } else if (row.target_type === 'user') {
+    uni.navigateTo({ url: `/pages/seller/index?id=${row.target_id}` })
+  } else if (row.target_type === 'comment' && row.target_user_id) {
+    uni.showToast({
+      title: 'Comment has no standalone page — opening author',
+      icon: 'none',
+      duration: 2000,
+    })
+    uni.navigateTo({ url: `/pages/seller/index?id=${row.target_user_id}` })
+  } else {
+    uni.showToast({ title: 'Cannot open this target type', icon: 'none' })
+  }
+}
+
+function openUser(userId: string) {
+  if (!userId) return
+  detailOpen.value = false
+  uni.navigateTo({ url: `/pages/seller/index?id=${userId}` })
 }
 
 function onLiftSuspension(s: { id: string }) {
@@ -544,7 +616,25 @@ onMounted(async () => {
 .card-appeal { font-size: 13px; color: var(--text-primary); background: #FFF4E6; padding: 8px 10px; border-radius: 6px; border-left: 3px solid var(--accent-warn); }
 .card-appeal-flag { font-size: 11px; color: var(--accent-warn); font-weight: 600; }
 .card-time { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.card-audit { font-size: 11px; color: var(--text-muted); }
+.audit-name { color: var(--text-secondary); font-weight: 600; }
 .card-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+
+.search-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; background: var(--bg-elev-1); border-radius: 10px;
+  margin-bottom: 4px;
+}
+.search-input {
+  flex: 1; height: 28px; padding: 0 8px;
+  background: var(--bg-subtle); border-radius: 6px;
+  font-size: 13px; color: var(--text-primary);
+}
+.search-clear {
+  font-size: 12px; color: var(--text-secondary); cursor: pointer;
+  padding: 4px 8px;
+  &:active { opacity: 0.6; }
+}
 
 .mini-btn {
   padding: 6px 12px; border-radius: 6px;
