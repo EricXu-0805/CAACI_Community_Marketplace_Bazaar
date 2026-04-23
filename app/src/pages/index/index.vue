@@ -14,53 +14,23 @@
         <text class="mh-brand">{{ t('app.name') }}</text>
       </view>
       <view class="mh-search">
-        <view class="search-field">
+        <!--
+          Search affordance — tapping anywhere on the 'input' navigates
+          to the dedicated search page (per refinement-pass: recent
+          searches live there, not as a floating dropdown here). Renders
+          the typed query (if any) as a static label so the user sees
+          what they last searched; the live edit happens on the search
+          page with a focused input.
+        -->
+        <view class="search-field search-proxy" @click="goToSearch">
           <view class="sf-icon"></view>
-          <input
-            v-model="searchText"
-            :placeholder="t('home.search')"
-            confirm-type="search"
-            @focus="onSearchFocus"
-            @blur="onSearchBlur"
-            @confirm="onSearch"
-          />
+          <text v-if="searchText" class="sf-text">{{ searchText }}</text>
+          <text v-else class="sf-placeholder">{{ t('home.search') }}</text>
           <view v-if="searchText" class="sf-clear" @click.stop="onClearSearch">×</view>
         </view>
-        <view class="filter-btn" @click="showFilter = !showFilter">
+        <view class="filter-btn" @click.stop="showFilter = !showFilter">
           <view class="fb-lines"><view></view><view></view><view></view></view>
           <view v-if="activeFilterCount > 0" class="fb-badge">{{ activeFilterCount }}</view>
-        </view>
-
-        <!--
-          Recent-search dropdown. Lives inside .mh-search (which is
-          position: relative) so it anchors right under the search field,
-          mimicking the native Xianyu / Taobao pattern. Only renders while
-          the input is focused AND the user hasn't typed anything — once
-          they type, the result list below does the work. We delay the
-          hide on blur so tapping a chip doesn't dismiss the menu before
-          pickHistory() fires.
-        -->
-        <view
-          v-if="searchFocused && searchHistory.length > 0 && !searchText"
-          class="search-history-pop"
-          @mousedown.stop.prevent
-          @touchstart.stop
-        >
-          <view class="sh-header">
-            <text class="sh-title">{{ t('home.recentSearch') }}</text>
-            <text class="sh-clear" @click="clearHistory">{{ t('filter.reset') }}</text>
-          </view>
-          <view class="sh-tags">
-            <view
-              v-for="h in searchHistory"
-              :key="h"
-              class="sh-tag"
-              @mousedown.prevent
-              @click="pickHistory(h)"
-            >
-              <text>{{ h }}</text>
-            </view>
-          </view>
         </view>
       </view>
 
@@ -531,40 +501,53 @@ function selectCategory(category: ItemCategory | null) {
   fetchItems({ ...getFilterParams(), category, reset: true })
 }
 
-const MAX_HISTORY = 8
-const searchHistory = ref<string[]>([])
-try { searchHistory.value = JSON.parse(uni.getStorageSync('searchHistory') || '[]') } catch {}
-
-// Drives the dropdown visibility. Blur is debounced (180ms) so tapping a
-// history chip doesn't dismiss the menu before pickHistory() fires.
-const searchFocused = ref(false)
-let blurTimer: ReturnType<typeof setTimeout> | null = null
-
-function onSearchFocus() {
-  if (blurTimer) { clearTimeout(blurTimer); blurTimer = null }
-  searchFocused.value = true
-}
-function onSearchBlur() {
-  if (blurTimer) clearTimeout(blurTimer)
-  blurTimer = setTimeout(() => { searchFocused.value = false }, 180)
+/*
+ * Search history + focus state previously lived here as a floating
+ * dropdown. Moved to /pages/search/index.vue per the refinement pass
+ * so the home page isn't crowded by the recent-search pills.
+ *
+ * Home's search field is now a PROXY — tapping it navigateTo()'s
+ * the search page, which handles recent + browse-by-category +
+ * live input. The search page hands results back via two storage
+ * keys (pending_search | pending_category) that we consume on
+ * onShow below.
+ */
+function goToSearch() {
+  uni.navigateTo({ url: '/pages/search/index' })
 }
 
+function consumePendingSearch() {
+  try {
+    const ps = uni.getStorageSync('pending_search')
+    if (ps) {
+      uni.removeStorageSync('pending_search')
+      searchText.value = ps
+      onSearch()
+      return
+    }
+    const pc = uni.getStorageSync('pending_category')
+    if (pc !== '' && pc !== undefined && pc !== null) {
+      uni.removeStorageSync('pending_category')
+      selectCategory(pc || null)
+    }
+  } catch {}
+}
+
+/*
+ * Lightweight history save used when home re-fires the search via
+ * the debounced fetch (e.g. after the user comes back from search
+ * page and we want the filtered feed to also persist the query).
+ * The full recent-search surface is maintained on the search page.
+ */
+const SEARCH_HISTORY_MAX = 8
 function saveSearch(text: string) {
   if (!text.trim()) return
-  searchHistory.value = [text, ...searchHistory.value.filter(s => s !== text)].slice(0, MAX_HISTORY)
-  try { uni.setStorageSync('searchHistory', JSON.stringify(searchHistory.value)) } catch {}
-}
-
-function clearHistory() {
-  searchHistory.value = []
-  try { uni.removeStorageSync('searchHistory') } catch {}
-}
-
-function pickHistory(text: string) {
-  if (blurTimer) { clearTimeout(blurTimer); blurTimer = null }
-  searchFocused.value = false
-  searchText.value = text
-  onSearch()
+  try {
+    const raw = uni.getStorageSync('searchHistory') || '[]'
+    const list: string[] = JSON.parse(raw)
+    const next = [text, ...list.filter((s) => s !== text)].slice(0, SEARCH_HISTORY_MAX)
+    uni.setStorageSync('searchHistory', JSON.stringify(next))
+  } catch {}
 }
 
 const debouncedFetch = debounce(() => {
@@ -666,6 +649,7 @@ function scrollToTop() {
 }
 
 onShow(() => {
+  consumePendingSearch()
   if (lastScrollTop.value > 0) {
     const saved = lastScrollTop.value
     setTimeout(() => {
@@ -749,25 +733,6 @@ function goPublish() {
    are intentionally gone. Removing them keeps the header compact. */
 .mh-search {
   display: flex; align-items: center; gap: 9px;
-  position: relative;
-}
-.search-history-pop {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 54px;
-  background: var(--bg-elev-1);
-  border-radius: 12px;
-  padding: 10px 12px 12px;
-  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
-  z-index: 200;
-  max-height: 260px;
-  overflow-y: auto;
-  animation: shp-fade 0.16s ease-out;
-}
-@keyframes shp-fade {
-  from { opacity: 0; transform: translateY(-4px); }
-  to   { opacity: 1; transform: translateY(0); }
 }
 /*
  * Search field — refinement pattern: white surface, UIUC-blue hairline
@@ -1222,17 +1187,28 @@ function goPublish() {
   padding: 4px 16px 8px; font-size: 12px; color: var(--text-muted);
 }
 
-/* These sh-* classes now live inside .search-history-pop (the dropdown).
-   The old standalone .search-history block was removed — its padding and
-   flow-layout no longer apply. Keeping the shared tag styles here. */
-.sh-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.sh-title { font-size: 13px; color: var(--text-muted); font-weight: 500; }
-.sh-clear { font-size: 12px; color: var(--text-faint); cursor: pointer; }
-.sh-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.sh-tag {
-  padding: 5px 12px; background: var(--bg-subtle); border-radius: 14px; cursor: pointer;
-  text { font-size: 13px; color: var(--text-secondary); }
-  &:active { background: var(--bg-inset); }
+/*
+ * Search proxy field — tapping anywhere on this bar navigates to
+ * /pages/search/index. No native input; the visible text is either
+ * the placeholder or the last search query (static label).
+ */
+.search-proxy { cursor: pointer; }
+.sf-placeholder {
+  flex: 1;
+  font-size: 13px;
+  color: var(--ink-quiet);
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+}
+.sf-text {
+  flex: 1;
+  font-size: 13px;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ============================================

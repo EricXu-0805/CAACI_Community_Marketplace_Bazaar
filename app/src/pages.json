@@ -107,6 +107,10 @@
 			}
 		},
 		{
+			"path": "pages/search/index",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
 			"path": "pages/onboarding/index",
 			"style": { "navigationStyle": "custom" }
 		},

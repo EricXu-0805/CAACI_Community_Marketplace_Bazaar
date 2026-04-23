@@ -1,0 +1,288 @@
+<template>
+  <view class="page">
+    <!--
+      Search page — refinement-pass layout (moved here from the
+      home dropdown). Focused input + cancel, recent searches,
+      category browse grid. On submit we hand the query back to
+      the home feed via a pending_search storage key that
+      home's onShow() consumes and clears.
+    -->
+    <view class="page-header">
+      <view class="search-field">
+        <view class="sf-icon"></view>
+        <input
+          v-model="query"
+          :placeholder="t('home.search')"
+          class="sf-input"
+          confirm-type="search"
+          :focus="true"
+          @confirm="onSubmit"
+        />
+        <view v-if="query" class="sf-clear" @click="query = ''">×</view>
+      </view>
+      <text class="cancel-btn" @click="goBack">{{ t('filter.cancel') }}</text>
+    </view>
+
+    <scroll-view class="body" scroll-y :show-scrollbar="false">
+      <view v-if="recent.length > 0" class="section">
+        <view class="sec-header">
+          <text class="sec-title">{{ t('home.recentSearch') }}</text>
+          <text class="sec-clear" @click="clearHistory">{{ t('filter.reset') }}</text>
+        </view>
+        <view class="chip-row">
+          <view
+            v-for="h in recent"
+            :key="h"
+            class="chip"
+            @click="pick(h)"
+          >
+            <text class="chip-text">{{ h }}</text>
+            <view class="chip-x" @click.stop="removeOne(h)"></view>
+          </view>
+        </view>
+      </view>
+
+      <view class="section">
+        <view class="sec-header">
+          <text class="sec-title">{{ t('home.browseByCategory') }}</text>
+        </view>
+        <view class="cat-grid">
+          <view
+            v-for="c in categories"
+            :key="'c'+c.value"
+            class="cat-tile"
+            @click="pickCategory(c.value)"
+          >
+            <text class="cat-emoji">{{ c.emoji }}</text>
+            <text class="cat-label">{{ c.label }}</text>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+import { useI18n } from '../../composables/useI18n'
+import type { ItemCategory } from '../../types'
+
+const { t } = useI18n()
+
+const query = ref('')
+const recent = ref<string[]>([])
+
+try {
+  recent.value = JSON.parse(uni.getStorageSync('searchHistory') || '[]')
+} catch {}
+
+const MAX_HISTORY = 8
+const STORAGE_KEY = 'searchHistory'
+
+const CATEGORY_META: Record<string, string> = {
+  all: '🏷️',
+  currency_exchange: '💱',
+  electronics: '🎧',
+  furniture: '🛋️',
+  housing: '🏠',
+  clothing: '👕',
+  books: '📚',
+  vehicles: '🚲',
+  daily: '🧺',
+  food: '🍜',
+  other: '✨',
+}
+const catKeys: (ItemCategory | null)[] = [
+  'currency_exchange', 'electronics', 'furniture', 'housing', 'clothing',
+  'books', 'vehicles', 'daily', 'food', 'other',
+]
+const categories = computed(() => catKeys.map(k => ({
+  value: k,
+  label: t('cat.' + k),
+  emoji: CATEGORY_META[k || 'other'] || '🏷️',
+})))
+
+function saveToHistory(text: string) {
+  const trimmed = text.trim()
+  if (!trimmed) return
+  recent.value = [trimmed, ...recent.value.filter(s => s !== trimmed)].slice(0, MAX_HISTORY)
+  try { uni.setStorageSync(STORAGE_KEY, JSON.stringify(recent.value)) } catch {}
+}
+
+function onSubmit() {
+  const text = query.value.trim()
+  if (!text) return
+  saveToHistory(text)
+  try {
+    uni.setStorageSync('pending_search', text)
+    uni.removeStorageSync('pending_category')
+  } catch {}
+  uni.navigateBack()
+}
+
+function pick(text: string) {
+  query.value = text
+  onSubmit()
+}
+
+function pickCategory(cat: ItemCategory | null) {
+  try {
+    uni.setStorageSync('pending_category', cat || '')
+    uni.removeStorageSync('pending_search')
+  } catch {}
+  uni.navigateBack()
+}
+
+function removeOne(text: string) {
+  recent.value = recent.value.filter(s => s !== text)
+  try { uni.setStorageSync(STORAGE_KEY, JSON.stringify(recent.value)) } catch {}
+}
+
+function clearHistory() {
+  recent.value = []
+  try { uni.removeStorageSync(STORAGE_KEY) } catch {}
+}
+
+function goBack() { uni.navigateBack() }
+</script>
+
+<style lang="scss" scoped>
+.page {
+  min-height: 100vh;
+  background: var(--canvas);
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex; flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.page-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 16px;
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+  background: var(--canvas);
+  border-bottom: 0.5px solid var(--border);
+}
+
+.search-field {
+  flex: 1; display: flex; align-items: center; gap: 8px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 9px 13px;
+}
+.sf-icon {
+  width: 14px; height: 14px; flex-shrink: 0;
+  border: 1.6px solid var(--ink-faint); border-radius: 50%; position: relative;
+}
+.sf-icon::after {
+  content: ''; position: absolute; right: -4px; bottom: -4px;
+  width: 5px; height: 1.6px; background: var(--ink-faint);
+  transform: rotate(45deg); transform-origin: left center;
+}
+.sf-input {
+  flex: 1;
+  font-size: 14px;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+  background: transparent;
+  border: none; outline: none;
+}
+.sf-clear {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--ink-faint);
+  color: #fff; font-size: 12px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  cursor: pointer;
+}
+.cancel-btn {
+  font-size: 14px;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  flex-shrink: 0;
+  &:active { opacity: 0.6; }
+}
+
+.body {
+  flex: 1;
+  padding: 4px 16px 24px;
+}
+
+.section {
+  margin-top: 20px;
+}
+.sec-header {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.sec-title {
+  font-family: var(--font-serif);
+  font-size: 15px; font-weight: 500;
+  color: var(--ink);
+  letter-spacing: 0.03em;
+}
+.sec-clear {
+  font-size: 11px;
+  color: var(--ink-quiet);
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  &:active { opacity: 0.6; }
+}
+
+/*
+ * Recent-search chips — refinement-pass pattern:
+ *   parchment bg pill + inline × remover. Tap chip body to search,
+ *   tap × to delete just that entry (debounced via click.stop).
+ */
+.chip-row {
+  display: flex; flex-wrap: wrap; gap: 7px;
+}
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px 6px 12px;
+  background: var(--parchment);
+  color: var(--ink);
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background var(--dur-1, 120ms) var(--ease-std, ease);
+  &:active { background: var(--frame); }
+}
+.chip-text { line-height: 1.2; }
+.chip-x {
+  width: 12px; height: 12px; position: relative; flex-shrink: 0;
+  &::before, &::after {
+    content: ''; position: absolute; top: 50%; left: 0; right: 0;
+    height: 1.5px; background: var(--ink-quiet);
+    border-radius: 1px;
+  }
+  &::before { transform: rotate(45deg); }
+  &::after  { transform: rotate(-45deg); }
+  &:active { opacity: 0.5; }
+}
+
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 9px;
+}
+.cat-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 12px 4px;
+  background: var(--parchment);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--dur-1, 120ms) var(--ease-std, ease);
+  &:active { background: var(--frame); }
+}
+.cat-emoji { font-size: 20px; line-height: 1; }
+.cat-label {
+  font-size: 11px;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  text-align: center;
+}
+</style>
