@@ -48,7 +48,8 @@ export function useBanners() {
   async function fetchBanners(): Promise<void> {
     loading.value = true
     try {
-      const { data, error } = await useSupabase()
+      const { supabase } = useSupabase()
+      const { data, error } = await supabase
         .from('banners_live')
         .select('id, image_url, target_url, title, title_en, title_zh, priority')
 

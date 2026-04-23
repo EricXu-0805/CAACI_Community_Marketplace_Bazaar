@@ -18,11 +18,12 @@ function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise
     .finally(() => clearTimeout(timer))
 }
 
+let platformFetch: typeof fetch
 // #ifdef MP-WEIXIN || MP-QQ || MP-BAIDU || MP-ALIPAY || MP-TOUTIAO
-const platformFetch = makeMpFetch()
+platformFetch = makeMpFetch()
 // #endif
 // #ifndef MP-WEIXIN || MP-QQ || MP-BAIDU || MP-ALIPAY || MP-TOUTIAO
-const platformFetch = fetchWithTimeout as typeof fetch
+platformFetch = fetchWithTimeout as typeof fetch
 // #endif
 
 export function useSupabase() {
