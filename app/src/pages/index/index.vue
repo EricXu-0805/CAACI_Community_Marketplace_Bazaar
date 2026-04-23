@@ -467,7 +467,7 @@ const categories = computed(() => categoryKeys.map(k => ({
  * "blue = tech / green = vehicles / red = brand" visually.
  */
 const CATEGORY_TILE_META: Record<string, { emoji: string; color: string }> = {
-  all:               { emoji: '🏷️', color: '#F5D9CE' }, // brand-soft (terracotta wash)
+  all:               { emoji: '🏷️', color: '#FDEEE8' }, // brand-soft (Illini orange wash)
   currency_exchange: { emoji: '💱', color: '#F5E4CB' }, // warning-soft (amber)
   electronics:       { emoji: '🎧', color: '#E4E1F2' }, // lavender
   furniture:         { emoji: '🛋️', color: '#E3E7D4' }, // sage
@@ -477,7 +477,7 @@ const CATEGORY_TILE_META: Record<string, { emoji: string; color: string }> = {
   vehicles:          { emoji: '🚲', color: '#DDE5D0' }, // success-soft (sage)
   daily:             { emoji: '🧺', color: '#EADAC2' }, // wheat
   food:              { emoji: '🍜', color: '#F2D9C3' }, // apricot
-  other:             { emoji: '✨', color: '#E5DFD5' }, // ash
+  other:             { emoji: '✨', color: '#E5E5F0' }, // lavender-ash
 }
 const categoryGridTiles = computed(() =>
   categoryKeys.map(k => {

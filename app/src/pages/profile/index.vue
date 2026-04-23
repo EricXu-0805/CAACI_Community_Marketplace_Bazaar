@@ -548,14 +548,14 @@ function onDeleteItem(id: string) {
   box-shadow: var(--shadow-pop);
   overflow: hidden;
   color: var(--canvas);
-  /* decorative terracotta arc top-right — seal-like, low opacity */
+  /* decorative Illini-orange arc top-right — seal-like, low opacity */
   &::before {
     content: '';
     position: absolute;
     top: -40px; right: -40px;
     width: 140px; height: 140px;
     border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, rgba(199, 74, 47, 0.45), rgba(199, 74, 47, 0) 65%);
+    background: radial-gradient(circle at 30% 30%, rgba(232, 74, 39, 0.45), rgba(232, 74, 39, 0) 65%);
     pointer-events: none;
   }
   & > * { position: relative; z-index: 1; }
@@ -566,7 +566,7 @@ function onDeleteItem(id: string) {
   width: 72px; height: 72px; border-radius: 50%;
   background: linear-gradient(135deg, var(--brand-soft) 0%, var(--brand) 100%);
   flex-shrink: 0;
-  box-shadow: 0 6px 16px rgba(199, 74, 47, 0.35);
+  box-shadow: 0 6px 16px rgba(232, 74, 39, 0.35);
   border: 2px solid var(--canvas);
 }
 .user-info { flex: 1; min-width: 0; }
