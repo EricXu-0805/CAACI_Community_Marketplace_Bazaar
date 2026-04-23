@@ -75,16 +75,19 @@
       the active one is ringed in coral.
     -->
     <view class="mobile-only-block">
+      <!--
+        Hero — refinement pass "semester notice" card.
+        White surface on parchment canvas, with an orange icon square,
+        navy serif title, warm-stone subtitle, orange chevron. Taps to
+        the publish page. Emoji renders on top of the icon square.
+      -->
       <view class="hero" @click="goPublish">
+        <text class="deco-emoji">🎒</text>
         <view class="hero-text">
           <text class="hero-title">{{ t('home.heroTitle') }}</text>
           <text class="hero-subtitle">{{ t('home.heroSubtitle') }}</text>
         </view>
-        <view class="hero-deco">
-          <view class="deco-circle c1"></view>
-          <view class="deco-circle c2"></view>
-          <text class="deco-emoji">🎒</text>
-        </view>
+        <text class="hero-deco">›</text>
       </view>
 
       <view class="cat-grid">
@@ -780,24 +783,31 @@ function goPublish() {
   overflow: hidden;
 }
 
-/* ========== Mobile Header ========== */
+/*
+ * Mobile header — canvas background (not white) so the whole top of
+ * the app reads as one warm sheet of paper. White card surfaces
+ * below (hero, cat-grid, item cards) sit on top and get visual
+ * separation from their shadows + hairline borders.
+ */
 .mobile-header {
   flex-shrink: 0;
-  background: var(--bg-elev-1);
+  background: var(--canvas);
   padding: 10px 16px 11px;
   padding-top: calc(10px + env(safe-area-inset-top, 0px));
-  border-bottom: 0.5px solid rgba(0,0,0,0.04);
   z-index: 50;
 }
 .mh-top { display: flex; justify-content: flex-start; align-items: center; margin-bottom: 10px; }
-/* Brand word-mark uses ivory_academy serif ladder so the app name
-   reads as a masthead ("Illini 集市") not a tech-product wordmark. */
+/*
+ * Brand word-mark — serif masthead per refinement pass. Navy ink
+ * on the canvas reads like a bookshop sign; 22px Fraunces gives
+ * the weight without needing bold.
+ */
 .mh-brand {
   font-family: var(--font-serif);
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 500;
   color: var(--ink);
-  letter-spacing: -0.3px;
+  letter-spacing: 0.02em;
   line-height: 1.2;
 }
 /* .mh-right / .mh-lang previously housed the inline language toggle.
@@ -825,28 +835,46 @@ function goPublish() {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+/*
+ * Search field — refinement pattern: white surface, UIUC-blue hairline
+ * border, navy text. The previous parchment-bg input blended into the
+ * header and read as a placeholder slot; white-on-parchment reads as
+ * an active input field.
+ */
 .search-field {
   flex: 1; display: flex; align-items: center;
-  background: var(--bg-subtle); border-radius: 10px; padding: 8px 12px; gap: 7px;
-  input { flex: 1; font-size: 15px; color: var(--text-primary); background: transparent; }
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 9px 13px;
+  gap: 8px;
+  input {
+    flex: 1;
+    font-size: 13px;
+    color: var(--ink);
+    background: transparent;
+    letter-spacing: 0.02em;
+  }
 }
 .sf-icon {
-  width: 16px; height: 16px; border: 1.8px solid var(--text-muted); border-radius: 50%; position: relative; flex-shrink: 0;
+  width: 14px; height: 14px; border: 1.6px solid var(--ink-faint); border-radius: 50%; position: relative; flex-shrink: 0;
 }
 .sf-icon::after {
   content: ''; position: absolute; bottom: -4px; right: -4px;
-  width: 5px; height: 1.8px; background: var(--text-muted); transform: rotate(45deg);
+  width: 5px; height: 1.6px; background: var(--ink-faint); transform: rotate(45deg);
 }
 .sf-clear {
-  width: 18px; height: 18px; border-radius: 50%; background: var(--text-faint);
+  width: 18px; height: 18px; border-radius: 50%; background: var(--ink-faint);
   color: #fff; font-size: 12px; font-weight: 600;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 .filter-btn {
-  position: relative; width: 36px; height: 36px; border-radius: 10px;
-  background: var(--bg-subtle); display: flex; align-items: center; justify-content: center;
+  position: relative; width: 38px; height: 38px; border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; cursor: pointer;
-  &:active { background: var(--bg-inset); }
+  &:active { background: var(--parchment); }
 }
 .fb-lines {
   display: flex; flex-direction: column; gap: 3px; width: 16px;
@@ -863,23 +891,29 @@ function goPublish() {
 }
 
 .cat-bar { white-space: nowrap; }
-/* Category pills: warm neutral border + filled coral when active.
-   Matches the mock's pill-and-primary palette. */
+/*
+ * Category pills — refinement pass style:
+ *   · Inactive: white bg + UIUC-blue-alpha hairline border
+ *   · Active:   solid orange + white text
+ *   · Letter-spacing 0.02em so CN glyphs breathe at 13px
+ */
 .pill {
   display: inline-flex; align-items: center; justify-content: center;
   height: 32px;
   padding: 0 14px; margin: 0 6px 0 0; border-radius: var(--radius-pill);
-  font-size: 13px; color: var(--text-secondary); background: var(--bg-elev-1);
-  border: 1px solid var(--line-bold);
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 0.5px solid var(--border-strong);
   transition: all 0.15s; cursor: pointer; font-weight: 500;
   line-height: 1;
+  letter-spacing: 0.02em;
   box-sizing: border-box;
   flex-shrink: 0;
   &.active {
-    background: var(--accent-primary);
+    background: var(--brand);
     color: #fff;
-    border-color: var(--accent-primary);
-    box-shadow: var(--shadow-cta);
+    border-color: var(--brand);
   }
   &:active { transform: scale(0.96); }
 }
@@ -908,74 +942,83 @@ function goPublish() {
 }
 
 /*
- * Hero banner — 米白书院 p-banner pattern.
+ * Hero banner — UIUC Fusion "semester notice" card pattern.
  *
- * The coral 135deg gradient was a "hot marketplace" aesthetic; the
- * ivory_academy direction uses a deep-ink panel with ivory typography
- * (like a bookshop sign or a museum placard). Serif title + mono
- * eyebrow ("IN THE BAZAAR") gives the scholarly tone.
- *
- * No gradient, just flat ink — ivory_academy explicitly avoids
- * gradients everywhere except the semester banner.
+ * The previous deep-ink slab + coral gradient before that were both
+ * too "shouty". The refinement pass shows a clean WHITE card on the
+ * parchment canvas, with an orange-tinted icon square on the left,
+ * a navy serif title, and a warm-stone body line. This reads as a
+ * campus bulletin, not a marketing banner — exactly right for a
+ * student co-op marketplace.
  */
 .hero {
   position: relative;
-  min-height: 108px;
-  margin-bottom: 14px;
-  padding: 16px 20px;
-  background: var(--ink);
-  border-radius: var(--radius-lg);
+  min-height: 76px;
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
   overflow: hidden;
-  color: var(--canvas);
+  color: var(--ink);
   box-sizing: border-box;
-  box-shadow: var(--shadow-pop);
+  box-shadow: var(--shadow-soft);
   cursor: pointer;
-  &:active { transform: scale(0.995); opacity: 0.96; }
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  &:active { transform: scale(0.995); background: var(--brand-ghost); }
+}
+.hero::before {
+  /* Left-edge orange square "icon chip" — refinement pattern. Fills
+     in for the old backpack emoji slot with a calmer on-brand motif. */
+  content: '';
+  width: 40px; height: 40px; border-radius: 11px;
+  background: var(--brand-soft);
+  border: 0.5px solid rgba(232, 74, 39, 0.18);
+  flex-shrink: 0;
 }
 .hero-text {
   position: relative;
   z-index: 2;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  max-width: 70%;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
 }
 .hero-title {
   font-family: var(--font-serif);
-  font-size: 22px;
+  font-size: 15px;
   font-weight: 500;
-  letter-spacing: -0.3px;
-  line-height: 1.2;
-  color: var(--canvas);
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  color: var(--ink);
 }
 .hero-subtitle {
   font-size: 12px;
-  color: rgba(245, 240, 230, 0.78);
-  letter-spacing: 0.2px;
-  line-height: 1.4;
+  color: var(--ink-quiet);
+  letter-spacing: 0.02em;
+  line-height: 1.5;
 }
+/* Arrow chevron right-aligned, warm orange like a link affordance. */
 .hero-deco {
-  position: absolute; right: 12px; top: 0; bottom: 0;
-  width: 120px; z-index: 1; pointer-events: none;
+  position: static;
+  width: auto;
+  color: var(--brand);
+  font-family: var(--font-serif);
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
 }
-/* Subtle decorative "stamp" circles in warm brand tone — barely
-   visible on the ink canvas, act as etched paper texture hints. */
-.deco-circle {
-  position: absolute; border-radius: 50%;
-  background: rgba(199, 74, 47, 0.18);
-  border: 0.5px solid rgba(245, 240, 230, 0.08);
-}
-.deco-circle.c1 { width: 90px; height: 90px; right: -20px; top: -20px; }
-.deco-circle.c2 {
-  width: 50px; height: 50px; right: 52px; bottom: -15px;
-  background: rgba(245, 240, 230, 0.08);
-  border-color: rgba(245, 240, 230, 0.12);
-}
+.deco-circle { display: none; }
 .deco-emoji {
-  position: absolute; right: 15px; top: 50%;
+  position: absolute;
+  top: 50%; left: 16px;
   transform: translateY(-50%);
-  font-size: 50px; z-index: 2;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
+  font-size: 22px;
+  z-index: 2;
+  line-height: 1;
 }
 
 .cat-grid {
@@ -983,9 +1026,9 @@ function goPublish() {
   grid-template-columns: repeat(4, 1fr);
   gap: 14px 0;
   padding: 16px 6px;
-  background: var(--paper);
+  background: var(--surface);
   border: 0.5px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-soft);
   margin-bottom: 12px;
 }
@@ -1000,14 +1043,20 @@ function goPublish() {
   width: 46px; height: 46px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   transition: transform 0.12s, box-shadow 0.15s;
-  border: 0.5px solid rgba(31, 29, 27, 0.04);
+  border: 0.5px solid rgba(19, 41, 75, 0.06);
 }
-/* Active ring uses brand (terracotta) + warm brand-tinted shadow so it
-   reads as "selected" without yelling. Ivory_academy keeps the brand
-   color rare and intentional — one ring at a time. */
+/*
+ * Active tile ring — Illini orange with a matching warm halo.
+ * The single-ring rule (one category visually "selected" at a time)
+ * keeps the orange budget disciplined.
+ */
 .cat-tile.active .cat-icon {
-  box-shadow: 0 0 0 2px var(--brand), 0 4px 10px rgba(199, 74, 47, 0.22);
+  box-shadow: 0 0 0 2px var(--brand), 0 4px 10px rgba(232, 74, 39, 0.25);
   transform: scale(1.04);
+}
+.cat-tile.active .cat-name {
+  color: var(--brand);
+  font-weight: 600;
 }
 .cat-emoji { font-size: 22px; line-height: 1; }
 .cat-name {

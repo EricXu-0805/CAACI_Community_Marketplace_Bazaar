@@ -159,21 +159,24 @@ onLaunch(() => {
 /* #endif */
 
 page {
-  /* Ivory cream background matches the 米白书院 redesign and stays
-     consistent across all pages. Individual .page containers are
-     allowed to stack elev-1 (paper) surfaces on top for cards. */
-  background-color: #F5F0E6;
+  /*
+   * Body defaults per the refinement-pass "fix the plastic feel" rules:
+   *   letter-spacing 0.02em + line-height 1.7 + color #13294B.
+   * Tight 0 letter-spacing + 1.4 line-height was the single biggest
+   * source of cram-scanned-like-plastic vibes on CJK screens.
+   */
+  background-color: #FBF7EB;
   font-family:
-    'Noto Sans SC',
+    'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC',
     -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
-    'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  font-size: 15px;
-  line-height: 1.5;
-  color: #2A2A2E;
+    'Helvetica Neue', 'Microsoft YaHei', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #13294B;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  letter-spacing: -0.01em;
-  font-feature-settings: 'kern', 'ss01';
+  letter-spacing: 0.02em;
+  font-feature-settings: 'kern';
 }
 
 /* ============================================
@@ -268,78 +271,93 @@ button:focus-visible,
 
 /*
  * ============================================================
- * Design tokens — 米白书院 (Ivory Academy) palette v3.
+ * Design tokens — UIUC Fusion (refinement pass v4).
  *
  * Ports the production design-system tokens from
  *   /Users/xiaogangxu/Downloads/Illini Market Design System/
- *   ui_kits/ivory_academy/tokens.css
+ *   uploads/illini_refinement_pass_tab_typography_search.html
+ *
+ * This is the explicit "fix the plastic feel" pass. The old
+ * v3 ivory_academy went too warm (terracotta + ink); the real
+ * Illini Market direction is:
+ *   · UIUC Illini Blue  #13294B  → all body text + titles
+ *   · Illini Orange     #E84A27  → brand · price · CTA
+ *   · Warm parchment    #FBF7EB  → canvas
+ *   · White surface     #FFFFFF  → cards sitting on the canvas
+ *   · Paper / tab bg    #F6F0DF  → tab bar + inset chips
+ *   · UIUC-blue borders rgba(19,41,75,0.08) — subtle cool cast,
+ *     not warm beige. This is why the app feels "crisper" in
+ *     the refinement pass.
  *
  * Migration history:
  *   v1 — neutral grey (#fafafb + #1a1a1a black)
  *   v2 — warm campus market (#faf7f0 cream + #FF5A4C coral)
- *   v3 — 米白书院 (#F5F0E6 ivory + #C74A2F terracotta) ← here
+ *   v3 — 米白书院 (#F5F0E6 ivory + #C74A2F terracotta)
+ *   v4 — UIUC Fusion (#FBF7EB + #13294B + #E84A27) ← here
  *
- * Legacy variable names are preserved so every page cascades
- * without code edits — `var(--accent-primary)` now evaluates to
- * terracotta instead of coral, `var(--bg-page)` to ivory instead
- * of cream. New semantic names (--brand, --canvas, --paper,
- * --ink, --ink-soft) are added alongside and SHOULD be preferred
- * for new code.
- *
- * Palette reference:
- *   · Brand  #C74A2F  terracotta — prices, CTAs, brand seal
- *   · Canvas #F5F0E6  ivory cream — page background
- *   · Paper  #FBF8F2  brighter cream — card/sheet surface
- *   · Ink    #2A2A2E  soft near-black — body text
- *   · Border #E8DFCC  warm beige hairline
- *   · Success #5D7C4A sage — verified, free, safe-pickup
- *   · Warning #D4923C amber — OBO, price-drop, scam
- *   · Danger  #B53333 scholarly red — destructive
- *
- * Radius scale: xs 4 · sm 8 · md 12 · lg 18 · xl 28 · pill 999.
- * Shadow tints use rgba(31,29,27,...) — warm grey, NOT pure black.
+ * Legacy variable names (--accent-primary, --bg-page, --text-*)
+ * are preserved so every page cascades without code edits.
  */
 :root {
-  /* ---------- TEXT (legacy names, still used by many pages) ---------- */
-  --text-primary:   #2A2A2E;   /* ink       */
-  --text-secondary: #57524B;   /* ink-soft  */
-  --text-tertiary:  #6B6358;
-  --text-muted:     #8B8478;   /* ink-quiet */
-  --text-faint:     #B6AE9F;
-  --text-disabled:  #B6AE9F;
+  /* ---------- TEXT (all tiers cascade from UIUC navy) ---------- */
+  --text-primary:   #13294B;   /* ink       — UIUC Illini Blue */
+  --text-secondary: #3E3D35;   /* ink-soft  — warm near-black */
+  --text-tertiary:  #4A4738;
+  --text-muted:     #6B6A5A;   /* ink-quiet — warm stone */
+  --text-faint:     #8E8C7E;   /* ink-faint — scaffolding */
+  --text-disabled:  #B0AE9E;
 
-  /* ---------- NEW SEMANTIC NAMES (prefer these going forward) ------- */
-  --ink:         #2A2A2E;
-  --ink-soft:    #57524B;
-  --ink-quiet:   #8B8478;
-  --ink-faint:   #B6AE9F;
+  /* ---------- NEW SEMANTIC NAMES (prefer these going forward) ---------- */
+  --ink:         #13294B;   /* UIUC navy — body + titles */
+  --ink-soft:    #3E3D35;
+  --ink-quiet:   #6B6A5A;
+  --ink-faint:   #8E8C7E;
+  --ink-inverse: #FBF7EB;   /* text on ink panels */
 
-  /* ---------- SURFACES ---------- */
-  --bg-page:    #F5F0E6;   /* canvas    */
-  --bg-elev-1:  #FBF8F2;   /* paper     */
-  --bg-elev-2:  #F0E9DA;   /* paper-2   */
-  --bg-subtle:  #F0E9DA;   /* chip / input bg */
-  --bg-inset:   #E8DFCC;   /* pressed chip   */
+  /* ---------- SURFACES ----------
+   * Three-layer stack — outer frame → canvas (page) → surface (card).
+   * Parchment (--parchment / --surface-alt) is a 4th, specific-use
+   * tone for tab bar + chip insets so they read as "paper fabric"
+   * over the canvas instead of plastic white on top of cream.
+   */
+  --bg-page:    #FBF7EB;   /* canvas - page background */
+  --bg-elev-1:  #FFFFFF;   /* surface - card (pure white) */
+  --bg-elev-2:  #F6F0DF;   /* parchment - tab bar + inset bg */
+  --bg-subtle:  #F6F0DF;   /* chip / input / meta bg */
+  --bg-inset:   #EDE6D5;   /* pressed chip / frame */
 
-  --canvas:     #F5F0E6;
-  --paper:      #FBF8F2;
-  --paper-2:    #F0E9DA;
-  --paper-3:    #E8DFCC;
+  --canvas:        #FBF7EB;
+  --surface:       #FFFFFF;
+  --surface-alt:   #F6F0DF;   /* alias · parchment */
+  --parchment:     #F6F0DF;
+  --frame:         #EDE6D5;
 
-  /* ---------- BORDERS ---------- */
-  --line-hair:  rgba(31, 29, 27, 0.08);
-  --line-soft:  rgba(31, 29, 27, 0.12);
-  --line-bold:  rgba(31, 29, 27, 0.18);
+  /* Legacy paper aliases (back-compat with Phase 1-3 code) */
+  --paper:      #FFFFFF;
+  --paper-2:    #F6F0DF;
+  --paper-3:    #EDE6D5;
 
-  --border:        #E8DFCC;
-  --border-strong: #D8CDB3;
-  --border-hair:   rgba(31, 29, 27, 0.08);
+  /* ---------- BORDERS (UIUC blue alpha — gives subtle cool cast) ---------- */
+  --line-hair:  rgba(19, 41, 75, 0.08);
+  --line-soft:  rgba(19, 41, 75, 0.12);
+  --line-bold:  rgba(19, 41, 75, 0.18);
 
-  /* ---------- BRAND (the one color that spends energy) ---------- */
-  --brand:          #C74A2F;   /* terracotta — price · CTA · seal */
-  --brand-deep:     #A23A22;   /* hover / pressed */
-  --brand-soft:     #F5D9CE;   /* chip bg · soft fill */
-  --brand-ghost:    #FBEAE2;   /* hover tint on paper */
+  --border:        rgba(19, 41, 75, 0.08);
+  --border-strong: rgba(19, 41, 75, 0.18);
+  --border-hair:   rgba(19, 41, 75, 0.06);
+  --border-warm:   #E8DFCC;   /* legacy warm beige — kept for opt-in retro surfaces */
+
+  /* ---------- BRAND (Illini Orange) ---------- */
+  --brand:          #E84A27;   /* Illini orange — price · CTA · seal */
+  --brand-deep:     #B43A1C;   /* hover / pressed · Altgeld-ish */
+  --brand-soft:     #FDEEE8;   /* chip bg · soft fill */
+  --brand-ghost:    #FDF5F0;   /* hover tint on white */
+
+  /* ---------- UIUC Campus accents (verified badge / official content) ---------- */
+  --campus-blue:      #13294B;
+  --campus-blue-soft: #E5EAF2;
+  --campus-orange:    #E84A27;
+  --campus-orange-deep: #B43A1C;
 
   /* Legacy accent names map to brand so existing pages cascade. */
   --accent-primary:      var(--brand);
@@ -348,9 +366,9 @@ button:focus-visible,
   --accent-action:       var(--brand);
   --accent-ink:          var(--ink);
   --accent-green:        #5D7C4A;
-  --accent-good:         #5D7C4A;   /* success · was #22c55e */
-  --accent-warn:         #D4923C;   /* warning · was #FF9500 */
-  --accent-danger:       #B53333;   /* danger  · was #FF3B30 */
+  --accent-good:         #5D7C4A;
+  --accent-warn:         #D4923C;
+  --accent-danger:       #B53333;
 
   /* Explicit success / warn / danger pairs (soft bg + foreground) */
   --success:      #5D7C4A;
@@ -393,16 +411,16 @@ button:focus-visible,
   --font-mono:
     'JetBrains Mono', 'SF Mono', Menlo, ui-monospace, monospace;
 
-  /* ---------- ELEVATION (warm-tinted, not pure black) ---------- */
-  --shadow-hair:       0 0 0 1px rgba(31, 29, 27, 0.06);
-  --shadow-soft:       0 1px 2px rgba(31, 29, 27, 0.04),
-                       0 4px 12px rgba(31, 29, 27, 0.04);
-  --shadow-pop:        0 2px 4px rgba(31, 29, 27, 0.05),
-                       0 12px 28px rgba(31, 29, 27, 0.08);
-  --shadow-float:      0 1px 2px rgba(31, 29, 27, 0.06),
-                       0 24px 56px -16px rgba(31, 29, 27, 0.18);
-  --shadow-cta:        0 2px 4px rgba(199, 74, 47, 0.15),
-                       0 12px 28px -8px rgba(199, 74, 47, 0.28);
+  /* ---------- ELEVATION (UIUC navy alpha — crisper than warm brown) ---------- */
+  --shadow-hair:       0 0 0 1px rgba(19, 41, 75, 0.06);
+  --shadow-soft:       0 1px 2px rgba(19, 41, 75, 0.04),
+                       0 4px 12px rgba(19, 41, 75, 0.06);
+  --shadow-pop:        0 2px 4px rgba(19, 41, 75, 0.05),
+                       0 12px 28px rgba(19, 41, 75, 0.10);
+  --shadow-float:      0 1px 2px rgba(19, 41, 75, 0.06),
+                       0 24px 56px -16px rgba(19, 41, 75, 0.20);
+  --shadow-cta:        0 2px 4px rgba(232, 74, 39, 0.15),
+                       0 12px 28px -8px rgba(232, 74, 39, 0.28);
   --shadow-brand:      var(--shadow-cta);
 }
 
