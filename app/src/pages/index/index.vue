@@ -375,7 +375,7 @@ import { useSemester } from '../../composables/useSemester'
 import { matchSpot } from '../../composables/useCampusSpots'
 import type { ItemCategory, ItemCondition, Item } from '../../types'
 
-import { debounce, formatTime, formatPrice, haptic, quickTranslate, thumbUrl } from '../../utils'
+import { debounce, formatTime, formatPrice, haptic, thumbUrl } from '../../utils'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 
@@ -399,25 +399,18 @@ function onSemesterBannerTap() {
 }
 
 /*
- * Card-title localization priority (from best to worst):
- *   1. items.title_i18n[currentLang] — filled by publish-time auto-
- *      translation, zero-latency, human-quality if endpoint succeeded
- *   2. items.title_i18n[fallback] → any — cheap guard for partial maps
- *   3. quickTranslate(title, currentLang) — tiny static dictionary
- *      that rewrites common keywords (iPhone / textbook / etc.) so the
- *      card at least doesn't show raw Chinese on an English-toggled UI
- *      for legacy rows
- *   4. original title
+ * Thin delegate to localize().
  *
- * `localize()` handles 1+2+4 on its own; we layer quickTranslate in
- * between for the legacy-row case only.
+ * An earlier version branched to quickTranslate() for items whose
+ * title_i18n was missing. That shortcut SKIPPED the auto-translate
+ * scheduler inside localize(), so legacy rows stayed in their source
+ * language forever no matter how long the user waited. Going straight
+ * through localize() means a missing map still fires the background
+ * fetch and the card flips to the translated title once it returns.
  */
 function localizeItemTitle(it: { title: string; title_i18n?: Record<string, string> | null }): string {
   if (!it?.title) return ''
-  if (it.title_i18n && Object.keys(it.title_i18n).length > 0) {
-    return localize(it.title_i18n, it.title)
-  }
-  return quickTranslate(it.title, lang.value as 'en' | 'zh')
+  return localize(it.title_i18n, it.title)
 }
 
 const { items, loading, hasMore, fetchError, fetchItems } = useItems()

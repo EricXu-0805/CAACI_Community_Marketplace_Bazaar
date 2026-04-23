@@ -89,11 +89,27 @@ function scheduleAutoTranslate(text: string, target: Lang) {
     .then((r) => (r.ok ? r.json() : null))
     .then((json) => {
       const translated = typeof json?.translated === 'string' ? json.translated.trim() : ''
+      /*
+       * Always cache something so a subsequent render doesn't schedule
+       * another fetch. If the endpoint returned an empty / identical
+       * string (API misconfigured, no key, CORS failure, …), we cache
+       * the original text itself as a "tried and gave up" marker. The
+       * template then reads original from the cache on next render and
+       * localize()'s `if (cached) return cached` short-circuit stops
+       * the scheduler from firing again — without this, every render
+       * on every card triggers another round-trip.
+       */
       if (translated && translated !== text) {
         autoLocalizeCache.value = { ...autoLocalizeCache.value, [key]: translated }
+      } else {
+        autoLocalizeCache.value = { ...autoLocalizeCache.value, [key]: text }
       }
     })
-    .catch(() => { /* network error, quietly keep showing original */ })
+    .catch(() => {
+      // Same idea as above: cache the original so subsequent renders
+      // don't refire the fetch in a tight loop.
+      autoLocalizeCache.value = { ...autoLocalizeCache.value, [key]: text }
+    })
     .finally(() => {
       clearTimeout(timer)
       inflightAutoTranslate.delete(key)
