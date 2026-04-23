@@ -3,7 +3,7 @@ import { useSupabase } from './useSupabase'
 import { useModeration } from './useModeration'
 import { useI18n } from './useI18n'
 import type { Item, ItemCategory, ItemCondition, ItemStatus } from '../types'
-import { compressImage, expandSearch } from '../utils'
+import { compressImage, expandSearch, getImageDimensions } from '../utils'
 import { checkContent, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
 
 const items = ref<Item[]>([])
@@ -14,8 +14,18 @@ const fetchError = ref('')
 const PAGE_SIZE = 20
 const PUBLIC_PROFILE_FIELDS_FULL = 'id, nickname, avatar_url, location, is_illini_verified, status_text, status_emoji'
 const PUBLIC_PROFILE_FIELDS_LEGACY = 'id, nickname, avatar_url, location, is_illini_verified'
+/*
+ * Select lists.
+ *
+ * FULL includes every post-014/015 column we care about for the card grid.
+ * LEGACY drops the i18n / dimension / location_verified columns so pre-
+ * migration databases don't bomb with 42703. When fetchItems() hits such
+ * an error we flip the respective boolean flags below and retry with the
+ * reduced list; pages then get back plain Item rows with the new fields
+ * simply `undefined`, and the frontend's ?? fallbacks quietly carry on.
+ */
 const LIST_ITEM_FIELDS_FULL =
-  'id, user_id, title, price, category, condition, status, location, location_verified, images, view_count, favorite_count, negotiable, created_at'
+  'id, user_id, title, title_i18n, description_i18n, source_lang, price, category, condition, status, location, location_verified, images, image_dimensions, view_count, favorite_count, negotiable, created_at'
 const LIST_ITEM_FIELDS_LEGACY =
   'id, user_id, title, price, category, condition, status, location, images, view_count, favorite_count, negotiable, created_at'
 
@@ -62,9 +72,18 @@ export function useItems() {
     try {
       const buildQuery = () => {
         const fields = locationVerifiedAvailable ? LIST_ITEM_FIELDS_FULL : LIST_ITEM_FIELDS_LEGACY
+        /*
+         * The select() call's TS inference tries to build a discriminated union
+         * over every possible column combination. With the 015 migration
+         * LIST_ITEM_FIELDS_FULL now crosses ~17 columns and TS 4.9 blows past
+         * the "union too complex" ceiling (TS2590). Casting to `any` on the
+         * select string is the standard supabase-js escape — we cast back at
+         * the return boundary below where the typed `Item[]` shape is
+         * reasserted.
+         */
         let q = supabase
           .from('items')
-          .select(`${fields}, profile:profiles(${publicProfileFields()})`)
+          .select(`${fields}, profile:profiles(${publicProfileFields()})` as any)
           .eq('status', 'active')
 
         if (sort === 'price_asc') q = q.order('price', { ascending: true })
@@ -147,6 +166,15 @@ export function useItems() {
     return data as Item
   }
 
+  /*
+   * Create an item.
+   *
+   * Post-migration fields (title_i18n, description_i18n, source_lang,
+   * image_dimensions) are optional — if the connected Supabase database
+   * hasn't run 014/015 yet the insert will fail with 42703 and we'll
+   * retry minus those keys. The same backward-compat treatment the
+   * existing location_verified column already enjoys.
+   */
   async function createItem(input: {
     title: string
     description: string
@@ -155,6 +183,10 @@ export function useItems() {
     condition: ItemCondition
     location: string
     images: string[]
+    image_dimensions?: Array<{ w: number; h: number }>
+    title_i18n?: Record<string, string> | null
+    description_i18n?: Record<string, string> | null
+    source_lang?: string | null
     negotiable?: boolean
     location_verified?: boolean
   }) {
@@ -190,6 +222,23 @@ export function useItems() {
       negotiable: input.negotiable ?? false,
     }
     if (locationVerifiedAvailable) basePayload.location_verified = input.location_verified ?? false
+    if (input.image_dimensions && input.image_dimensions.length) {
+      basePayload.image_dimensions = input.image_dimensions
+    }
+    if (input.title_i18n) basePayload.title_i18n = input.title_i18n
+    if (input.description_i18n) basePayload.description_i18n = input.description_i18n
+    if (input.source_lang) basePayload.source_lang = input.source_lang
+
+    const stripNewCols = (p: Record<string, any>) => {
+      delete p.image_dimensions
+      delete p.title_i18n
+      delete p.description_i18n
+      delete p.source_lang
+    }
+    const isMissingNewCol = (err: any): boolean => {
+      const msg = String(err?.message || '')
+      return err?.code === '42703' && /image_dimensions|title_i18n|description_i18n|source_lang/.test(msg)
+    }
 
     let insertRes = await supabase.from('items').insert(basePayload).select().single()
     if (insertRes.error && isMissingLocationVerified(insertRes.error)) {
@@ -197,11 +246,15 @@ export function useItems() {
       delete basePayload.location_verified
       insertRes = await supabase.from('items').insert(basePayload).select().single()
     }
+    if (insertRes.error && isMissingNewCol(insertRes.error)) {
+      stripNewCols(basePayload)
+      insertRes = await supabase.from('items').insert(basePayload).select().single()
+    }
     if (insertRes.error) throw insertRes.error
     return insertRes.data as Item
   }
 
-  async function updateItem(id: string, updates: Partial<Pick<Item, 'title' | 'description' | 'price' | 'location' | 'images' | 'negotiable' | 'location_verified'>>) {
+  async function updateItem(id: string, updates: Partial<Pick<Item, 'title' | 'description' | 'price' | 'location' | 'images' | 'image_dimensions' | 'title_i18n' | 'description_i18n' | 'source_lang' | 'negotiable' | 'location_verified'>>) {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw new Error('Not authenticated')
 
@@ -232,9 +285,26 @@ export function useItems() {
     return res.data as Item
   }
 
-  async function uploadImages(tempFiles: string[]): Promise<string[]> {
+  /*
+   * Upload a batch of local file references to Supabase Storage and
+   * return a parallel pair of arrays: final public URLs + per-image
+   * natural dimensions measured BEFORE compression.
+   *
+   * Important contract: urls.length === dims.length. When an upload
+   * fails we skip BOTH — the caller's image_dimensions[] will still
+   * line up 1:1 with the urls[] it writes into items.images.
+   *
+   * Dimensions are measured against the original file so the stored
+   * aspect ratio matches the unscaled image the user uploaded. Any
+   * downscaling done by compressImage() preserves ratio, so the
+   * numbers stay meaningful after Supabase's render-time thumbnail.
+   */
+  async function uploadImagesWithDims(
+    tempFiles: string[],
+  ): Promise<{ urls: string[]; dims: Array<{ w: number; h: number }> }> {
     if (tempFiles.length > MAX_IMAGES) throw new Error('Too many files')
     const urls: string[] = []
+    const dims: Array<{ w: number; h: number }> = []
 
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw new Error('Not authenticated')
@@ -250,6 +320,10 @@ export function useItems() {
       const storagePath = `items/${session.user.id}/${fileName}`
 
       try {
+        // Measure before compression so the stored w/h is the author's
+        // real photo aspect, not a rounded canvas output. Swallows errors.
+        const naturalDims = await getImageDimensions(filePath)
+
         let uploadError: any = null
 
         // #ifdef H5
@@ -306,6 +380,7 @@ export function useItems() {
             .from('item-images')
             .getPublicUrl(storagePath)
           urls.push(urlData.publicUrl)
+          dims.push(naturalDims)
         } else {
           console.warn('Upload rejected for', filePath, uploadError)
         }
@@ -314,6 +389,12 @@ export function useItems() {
       }
     }
 
+    return { urls, dims }
+  }
+
+  // Back-compat thin wrapper: legacy callers that only want URLs.
+  async function uploadImages(tempFiles: string[]): Promise<string[]> {
+    const { urls } = await uploadImagesWithDims(tempFiles)
     return urls
   }
 
@@ -375,6 +456,7 @@ export function useItems() {
     updateItem,
     updateItemStatus,
     uploadImages,
+    uploadImagesWithDims,
     fetchMyItems,
     deleteItem,
     clearItems,

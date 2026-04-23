@@ -31,7 +31,7 @@
       >
         <image :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'" :alt="item.title" class="item-img" mode="aspectFill" lazy-load />
         <view class="item-info">
-          <text class="item-title">{{ item.title }}</text>
+          <text class="item-title">{{ localize(item.title_i18n, item.title) }}</text>
           <text class="item-price">{{ formatPrice(item.price, t('home.free')) }}</text>
         </view>
       </view>
@@ -73,7 +73,7 @@ import { useI18n } from '../../composables/useI18n'
 import { useHistory } from '../../composables/useHistory'
 import { formatPrice, thumbUrl } from '../../utils'
 
-const { t } = useI18n()
+const { t, localize } = useI18n()
 const {
   history,
   postHistory,

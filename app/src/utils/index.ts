@@ -633,3 +633,37 @@ export function compressImage(
     // #endif
   })
 }
+
+/*
+ * Read the natural pixel dimensions of any image source we can reach
+ * (temp file path from uni.chooseImage, a blob:/data: URL on H5, an
+ * http(s) URL, or a Supabase storage URL).
+ *
+ * Returns { w: 0, h: 0 } on failure so callers can write the result
+ * straight into image_dimensions[] without worrying about exceptions.
+ * We use this at publish time to save dimensions alongside each uploaded
+ * URL — paired with the jsonb column from migration 014 it means cards
+ * can size correctly on first paint (no CLS) instead of waiting for
+ * each <image> to fire @load.
+ */
+export function getImageDimensions(src: string): Promise<{ w: number; h: number }> {
+  return new Promise((resolve) => {
+    if (!src) return resolve({ w: 0, h: 0 })
+
+    // #ifdef H5
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve({ w: img.naturalWidth || 0, h: img.naturalHeight || 0 })
+    img.onerror = () => resolve({ w: 0, h: 0 })
+    img.src = src
+    // #endif
+
+    // #ifndef H5
+    uni.getImageInfo({
+      src,
+      success: (res) => resolve({ w: res.width || 0, h: res.height || 0 }),
+      fail: () => resolve({ w: 0, h: 0 }),
+    })
+    // #endif
+  })
+}

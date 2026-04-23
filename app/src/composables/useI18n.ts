@@ -1,15 +1,40 @@
 import { ref, computed } from 'vue'
 
-type Lang = 'en' | 'zh'
+/*
+ * App-wide supported locales.
+ *
+ * Kept as a union of BCP-47-ish codes so we can drop new ones in without
+ * rewriting downstream types. If you add a locale here you MUST also:
+ *   1. add a matching key block to `messages` below (even partial is OK —
+ *      `t()` falls back to the default locale and then to the key itself)
+ *   2. add a label entry to `SUPPORTED_LANGS`
+ *   3. update the DB check constraint in migration 015 (source_lang list)
+ *
+ * 'zh' and 'en' are the only fully-populated locales today; stubs for
+ * ja/ko/zh-Hant are intentionally not shipped yet — we hold that until
+ * the user-facing plan expands.
+ */
+export type Lang = 'zh' | 'en' | 'ja' | 'ko' | 'zh-Hant'
 
-const currentLang = ref<Lang>('zh')
+export const SUPPORTED_LANGS: Array<{ code: Lang; label: string }> = [
+  { code: 'zh', label: '中文' },
+  { code: 'en', label: 'English' },
+]
+
+export const DEFAULT_LANG: Lang = 'zh'
+
+function coerceLang(v: unknown): Lang | null {
+  return SUPPORTED_LANGS.some((l) => l.code === v) ? (v as Lang) : null
+}
+
+const currentLang = ref<Lang>(DEFAULT_LANG)
 
 try {
-  const saved = uni.getStorageSync('lang') as Lang
-  if (saved === 'en' || saved === 'zh') currentLang.value = saved
+  const saved = coerceLang(uni.getStorageSync('lang'))
+  if (saved) currentLang.value = saved
 } catch {}
 
-const messages: Record<Lang, Record<string, string>> = {
+const messages: Partial<Record<Lang, Record<string, string>>> = {
   en: {
     'app.name': 'Illini Market',
     'app.desc': 'UIUC Community Marketplace',
@@ -167,6 +192,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'report.reportItem': 'Report item',
     'report.reportPost': 'Report post',
     'report.reportUser': 'Report user',
+    'report.submitting': 'Submitting — a moderator will review shortly…',
     'block.confirm': 'Block this user?',
     'block.hint': 'You will no longer see their items or messages.',
     'block.success': 'User blocked',
@@ -342,6 +368,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'legal.contactLabel': 'Contact',
     'legal.contactHint': 'Tap to open email. We read these, but please allow a few days for a reply.',
     'legal.emailCopied': 'Email copied',
+    'settings.legalCombined': 'Terms, Privacy & Guidelines',
 
     'plaza.title': 'Plaza',
     'plaza.searchPlaceholder': 'Search posts...',
@@ -704,6 +731,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'report.reportItem': '举报商品',
     'report.reportPost': '举报帖子',
     'report.reportUser': '举报用户',
+    'report.submitting': '正在提交，管理员会尽快审核…',
     'block.confirm': '屏蔽该用户？',
     'block.hint': '你将不再看到 Ta 的商品和消息',
     'block.success': '已屏蔽',
@@ -879,6 +907,7 @@ const messages: Record<Lang, Record<string, string>> = {
     'legal.contactLabel': '联系我们',
     'legal.contactHint': '点击打开邮件。我们会读这些邮件，但回复可能需要几天时间。',
     'legal.emailCopied': '邮箱已复制',
+    'settings.legalCombined': '用户协议 / 隐私 / 社区守则',
 
     'plaza.title': '广场',
     'plaza.searchPlaceholder': '搜索帖子...',
@@ -1088,7 +1117,9 @@ const messages: Record<Lang, Record<string, string>> = {
 
 export function useI18n() {
   function t(key: string, params?: Record<string, string | number>): string {
-    const raw = messages[currentLang.value][key] || key
+    const primary = messages[currentLang.value]?.[key]
+    const fallback = messages[DEFAULT_LANG]?.[key]
+    const raw = primary ?? fallback ?? key
     if (!params) return raw
     return raw.replace(/\{(\w+)\}/g, (_, k) => {
       const v = params[k]
@@ -1096,16 +1127,42 @@ export function useI18n() {
     })
   }
 
-  function setLang(lang: Lang) {
-    currentLang.value = lang
-    try { uni.setStorageSync('lang', lang) } catch {}
+  function setLang(next: Lang) {
+    if (!SUPPORTED_LANGS.some((l) => l.code === next)) return
+    currentLang.value = next
+    try { uni.setStorageSync('lang', next) } catch {}
   }
 
   function toggleLang() {
     setLang(currentLang.value === 'zh' ? 'en' : 'zh')
   }
 
+  /*
+   * Pick the best localized string out of a jsonb map like
+   *   { zh: '小米手机', en: 'Xiaomi phone' }
+   *
+   * Fallback chain: current UI lang → default lang → first available
+   * value in the map → the `original` argument → empty string. This is
+   * the canonical read helper every page should use to show
+   * item.title / item.description / post.content so that an empty i18n
+   * map or a missing language never ends up rendering as blank text.
+   */
+  function localize(
+    map: Record<string, string> | null | undefined,
+    original?: string | null,
+  ): string {
+    if (map) {
+      const hit = map[currentLang.value]
+      if (hit && hit.trim()) return hit
+      const fb = map[DEFAULT_LANG]
+      if (fb && fb.trim()) return fb
+      const anyVal = Object.values(map).find((v) => typeof v === 'string' && v.trim())
+      if (anyVal) return anyVal
+    }
+    return original || ''
+  }
+
   const lang = computed(() => currentLang.value)
 
-  return { t, lang, setLang, toggleLang }
+  return { t, lang, setLang, toggleLang, localize }
 }

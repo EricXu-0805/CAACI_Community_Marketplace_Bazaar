@@ -29,14 +29,28 @@ export function useModeration() {
     return blockedIds.value.has(userId)
   }
 
+  /*
+   * Insert a report row, then block on a 5–10s padding window.
+   *
+   * The DB write itself is a single row that returns in ~80ms, which
+   * made the flow feel like the tap was swallowed and invited frivolous
+   * repeat reports. Padding the perceived processing time (while the
+   * caller shows a loading indicator) signals that a human moderator
+   * will actually review, mirrors the pacing of larger marketplaces,
+   * and meaningfully reduces double-submits. Callers that need the
+   * raw insert (e.g. internal tooling) can pass skipDelay: true.
+   */
   async function reportTarget(
     targetType: ReportTarget,
     targetId: string,
     reason: string,
-    note = ''
+    note = '',
+    opts: { skipDelay?: boolean } = {}
   ) {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw new Error('Not authenticated')
+
+    const startedAt = Date.now()
 
     const { error } = await supabase.from('reports').insert({
       reporter_id: session.user.id,
@@ -46,6 +60,15 @@ export function useModeration() {
       note: note.slice(0, 500),
     })
     if (error) throw error
+
+    if (!opts.skipDelay) {
+      const floorMs = 5000
+      const ceilingMs = 10000
+      const elapsed = Date.now() - startedAt
+      const jitter = Math.floor(Math.random() * (ceilingMs - floorMs))
+      const remaining = Math.max(0, floorMs - elapsed) + jitter
+      if (remaining > 0) await new Promise(r => setTimeout(r, remaining))
+    }
   }
 
   async function blockUser(blockedId: string) {

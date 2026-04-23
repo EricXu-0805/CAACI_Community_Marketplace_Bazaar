@@ -50,14 +50,53 @@ const saving = ref(false)
 onMounted(async () => {
   try {
     // #ifdef H5
-    const hash = typeof window !== 'undefined' ? window.location.hash : ''
+    /*
+     * Supabase sends recovery links back to ourselves with a hash like
+     *   #access_token=...&type=recovery&...
+     * App.vue intercepts the initial load and reLaunches here, but reLaunch
+     * overwrites the URL hash, which would also wipe the recovery token
+     * before detectSessionInUrl can consume it. App.vue now stashes the
+     * original hash on window.__authRecoveryHash; we restore it here and
+     * hand it to the Supabase client explicitly, then strip it from the
+     * URL so it can't leak via back/forward.
+     */
+    let hash = typeof window !== 'undefined' ? (window.location.hash || '') : ''
+    const stashed = typeof window !== 'undefined' ? ((window as any).__authRecoveryHash || '') : ''
+    if (stashed && !hash.includes('access_token=') && !hash.includes('error=')) {
+      hash = stashed as string
+      try { delete (window as any).__authRecoveryHash } catch {}
+    }
+
     if (hash.includes('error=')) {
       const params = new URLSearchParams(hash.slice(hash.indexOf('?') + 1))
       errorMsg.value = params.get('error_description') || params.get('error') || t('resetPw.linkInvalid')
       ready.value = true
       return
     }
+
+    if (hash.includes('access_token=') && typeof window !== 'undefined') {
+      // Parse "#access_token=...&refresh_token=..." (supabase uses either '?' or no delim)
+      const qIdx = hash.indexOf('?')
+      const raw = qIdx >= 0 ? hash.slice(qIdx + 1) : hash.replace(/^#/, '')
+      const params = new URLSearchParams(raw)
+      const access_token = params.get('access_token') || ''
+      const refresh_token = params.get('refresh_token') || ''
+      if (access_token && refresh_token) {
+        try {
+          await supabase.auth.setSession({ access_token, refresh_token })
+        } catch {}
+      }
+      // Hide the token from the visible URL so refresh / share won't replay it.
+      try {
+        const clean = window.location.pathname + window.location.search + '#/pages/reset-password/index'
+        window.history.replaceState(null, '', clean)
+      } catch {}
+    }
     // #endif
+
+    // Give the Supabase SDK a moment to finish processing setSession / detectSessionInUrl
+    await new Promise((r) => setTimeout(r, 150))
+
     const { data, error } = await supabase.auth.getSession()
     if (error || !data.session) {
       errorMsg.value = t('resetPw.linkInvalid')

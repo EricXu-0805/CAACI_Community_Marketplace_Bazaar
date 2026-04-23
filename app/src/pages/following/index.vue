@@ -5,7 +5,7 @@
       <text class="header-title">{{ t('nav.following') }}</text>
     </view>
 
-    <scroll-view class="list" scroll-y @scrolltolower="loadMore">
+    <scroll-view class="list" scroll-y :scroll-top="scrollTopVal" :scroll-with-animation="false" @scrolltolower="loadMore">
       <view v-if="items.length === 0 && !loading" class="empty">
         <text class="empty-icon">👥</text>
         <text class="empty-text">{{ t('follow.emptyFeed') }}</text>
@@ -21,7 +21,7 @@
           <view class="card-img-wrap">
             <image
               :src="thumbUrl(it.images?.[0], 'card') || '/static/placeholder.svg'"
-              :alt="it.title"
+              :alt="localize(it.title_i18n, it.title)"
               class="card-img"
               mode="aspectFill"
               lazy-load
@@ -32,7 +32,7 @@
             </view>
           </view>
           <view class="card-body">
-            <text class="card-title">{{ it.title }}</text>
+            <text class="card-title">{{ localize(it.title_i18n, it.title) }}</text>
             <text class="card-price">{{ formatPrice(it.price, t('home.free')) }}</text>
             <view class="card-seller" v-if="it.profile">
               <image :src="it.profile.avatar_url || '/static/default-avatar.svg'" class="cs-avatar" mode="aspectFill" />
@@ -49,7 +49,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, nextTick, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import { useFollow } from '../../composables/useFollow'
 import { useAuth } from '../../composables/useAuth'
@@ -57,7 +58,7 @@ import { matchSpot } from '../../composables/useCampusSpots'
 import type { Item } from '../../types'
 import { formatPrice, thumbUrl } from '../../utils'
 
-const { t } = useI18n()
+const { t, localize } = useI18n()
 const { currentUser } = useAuth()
 const { fetchFollowingFeed, loadMyFollowing } = useFollow()
 
@@ -65,6 +66,20 @@ const items = ref<Item[]>([])
 const loading = ref(false)
 const hasMore = ref(true)
 const page = ref(0)
+
+/*
+ * uni-app <scroll-view> keeps its last scrollTop across navigations, so
+ * reopening this page from the profile menu would drop the user into the
+ * middle of the feed. Drive the scrollTop via a ref and bump it to 0 on
+ * every onShow. The 1 → 0 two-step is required because assigning the same
+ * value twice in a row is a no-op in uni-app H5.
+ */
+const scrollTopVal = ref(0)
+function resetScroll() {
+  scrollTopVal.value = 1
+  nextTick(() => { scrollTopVal.value = 0 })
+}
+onShow(() => { resetScroll() })
 
 onMounted(async () => {
   if (!currentUser.value) {

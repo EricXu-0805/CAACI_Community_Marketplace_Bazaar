@@ -52,13 +52,13 @@
               <text class="conv-time">{{ formatTime(conv.last_message_at) }}</text>
             </view>
             <text :class="['conv-preview', { unread: unreadConvIds.has(conv.id) && !isMuted(conv) }]">
-              {{ (conv as any).last_message_type === 'image' ? '[' + t('chat.photo') + ']' : ((conv as any).last_message_preview || conv.item?.title || '') }}
+              {{ (conv as any).last_message_type === 'image' ? '[' + t('chat.photo') + ']' : ((conv as any).last_message_preview || (conv.item ? localize(conv.item.title_i18n, conv.item.title) : '')) }}
             </text>
           </view>
           <view v-if="unreadConvIds.has(conv.id) && !isMuted(conv)" class="unread-dot"></view>
           <view v-else-if="unreadConvIds.has(conv.id) && isMuted(conv)" class="muted-dot"></view>
           <view class="conv-thumb-wrap" v-if="conv.item?.images?.[0]">
-            <image :src="thumbUrl(conv.item.images[0], 'list')" :alt="conv.item.title" class="conv-thumb" mode="aspectFill" lazy-load />
+            <image :src="thumbUrl(conv.item.images[0], 'list')" :alt="localize(conv.item.title_i18n, conv.item.title)" class="conv-thumb" mode="aspectFill" lazy-load />
             <text v-if="conv.item?.status === 'sold'" class="thumb-badge sold">{{ t('status.sold') }}</text>
             <text v-else-if="conv.item?.status === 'reserved'" class="thumb-badge reserved">{{ t('status.reserved') }}</text>
           </view>
@@ -102,7 +102,7 @@ import type { Conversation, Profile } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 
-const { t } = useI18n()
+const { t, localize } = useI18n()
 
 const { currentUser, isLoggedIn } = useAuth()
 const {

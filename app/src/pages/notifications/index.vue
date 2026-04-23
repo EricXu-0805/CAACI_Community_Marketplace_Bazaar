@@ -43,7 +43,18 @@ import { formatTime } from '../../utils'
 const { t } = useI18n()
 const { notifications, fetchNotifications, markAllRead, markRead, deleteNotification } = useNotifications()
 
-onShow(() => { fetchNotifications() })
+onShow(() => {
+  fetchNotifications()
+  /*
+   * uni-app preserves uni-page-body scroll position between navigations,
+   * so re-entering this page would drop the user halfway down the list.
+   * Force the document back to top so the latest notifications are visible.
+   */
+  // #ifdef H5
+  try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }) } catch {}
+  // #endif
+  try { uni.pageScrollTo({ scrollTop: 0, duration: 0 }) } catch {}
+})
 
 function goBack() { uni.navigateBack() }
 

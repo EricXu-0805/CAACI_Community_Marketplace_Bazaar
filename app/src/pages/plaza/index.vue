@@ -80,12 +80,25 @@
               v-if="post.images && post.images.length > 0"
               :class="['post-images', `pi-n${Math.min(post.images.length, 4)}`]"
             >
+              <!--
+                Single-image posts drop into pi-n1 (contain + max-height).
+                Multi-image posts render in a 2/3-col grid. We used to hard-
+                code aspect-ratio:1 + object-fit:cover, which sliced the
+                sides off any photo that wasn't square — the very "only
+                the middle strip is kept" symptom users reported. Instead
+                we track each image's natural ratio via @load and apply
+                it inline; pi-n1 stays unconstrained, grid cells use the
+                first image's ratio as a tidy default (falls back to 4/5,
+                the most common phone-photo aspect).
+              -->
               <img
                 v-for="(img, i) in post.images"
                 :key="i"
                 :src="thumbUrl(img, 'card')"
                 class="post-image"
+                :style="postImgStyleFor(post, i)"
                 loading="lazy"
+                @load="onPostImgLoad(post.id, i, $event)"
                 @click.stop="previewImage(post.images, i)"
               />
             </view>
@@ -104,7 +117,7 @@
               :alt="post.attached_item.title"
             />
             <view class="aic-body">
-              <text class="aic-title">{{ post.attached_item.title }}</text>
+              <text class="aic-title">{{ localize(post.attached_item.title_i18n, post.attached_item.title) }}</text>
               <text class="aic-price">${{ post.attached_item.price }}</text>
               <text v-if="post.attached_item.status === 'sold'" class="aic-sold">{{ t('status.sold') }}</text>
             </view>
@@ -168,7 +181,7 @@
             mode="aspectFill"
           />
           <view class="ca-body">
-            <text class="ca-title">{{ composerAttachedItem.title }}</text>
+            <text class="ca-title">{{ localize(composerAttachedItem.title_i18n, composerAttachedItem.title) }}</text>
             <text class="ca-price">${{ composerAttachedItem.price }}</text>
           </view>
           <view class="ca-remove"><view class="ci-x"></view></view>
@@ -210,7 +223,7 @@
             mode="aspectFill"
           />
           <view class="as-body">
-            <text class="as-title-text">{{ it.title }}</text>
+            <text class="as-title-text">{{ localize(it.title_i18n, it.title) }}</text>
             <text class="as-price">${{ it.price }}</text>
           </view>
         </view>
@@ -283,13 +296,51 @@ import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PlazaBannerCarousel from '../../components/PlazaBannerCarousel.vue'
 
-const { t, lang } = useI18n()
+const { t, lang, localize } = useI18n()
 const { currentUser, isLoggedIn, requireAuth } = useAuth()
-const { posts, loading, hasMore, fetchPosts, createPost, deletePost, toggleLike, fetchComments, createComment, deleteComment, fetchMyActiveItems } = usePlaza()
+const { posts, loading, hasMore, fetchPosts, createPost, updatePostI18n, deletePost, toggleLike, fetchComments, createComment, deleteComment, fetchMyActiveItems } = usePlaza()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
 
 const refreshing = ref(false)
 const pageIdx = ref(0)
+
+/*
+ * Per-post image aspect map. Key: post.id → Array<{w, h}> populated
+ * lazily as each <img> fires @load. The multi-image grid applies the
+ * FIRST image's ratio uniformly to all cells so the row stays tidy
+ * (Xiaohongshu-style). Single-image posts (pi-n1) ignore this map
+ * and use their own CSS (contain + max-height 520).
+ *
+ * We cache these so scrolling back doesn't re-measure. A future DB-
+ * backed image_dimensions column (see migration proposal) would let
+ * us skip onLoad entirely and prevent the 1-frame layout shift on
+ * first paint, but for now client-side measurement is good enough.
+ */
+const postImgDims = ref<Record<string, Array<{ w: number; h: number }>>>({})
+
+function onPostImgLoad(postId: string, i: number, ev: any) {
+  const d = ev?.detail || {}
+  const w = d.width || ev?.target?.naturalWidth || 0
+  const h = d.height || ev?.target?.naturalHeight || 0
+  if (w <= 0 || h <= 0) return
+  const arr = postImgDims.value[postId] ? [...postImgDims.value[postId]] : []
+  arr[i] = { w, h }
+  postImgDims.value = { ...postImgDims.value, [postId]: arr }
+}
+
+function postImgStyleFor(post: Post, i: number): Record<string, string> {
+  const imgs = post.images || []
+  // Single image: keep CSS-driven layout (contain + max-height handles it).
+  if (imgs.length <= 1) return {}
+  // Multi-image grid: use the first image's ratio as the uniform tile ratio.
+  const dims = postImgDims.value[post.id]
+  const first = dims?.[0]
+  if (first && first.w > 0 && first.h > 0) {
+    const ratio = Math.max(0.5, Math.min(first.w / first.h, 1.8))
+    return { 'aspect-ratio': String(ratio), 'object-fit': 'contain' }
+  }
+  return {}
+}
 
 const searchText = ref('')
 let searchDebounce: ReturnType<typeof setTimeout> | null = null
@@ -338,7 +389,8 @@ function onPickAttachedItem(it: AttachableItem) {
 function goToAttachedItem(id: string) {
   uni.navigateTo({ url: `/pages/detail/index?id=${id}` })
 }
-const { uploadImages } = useItems()
+const { uploadImagesWithDims } = useItems()
+const { translateContentToAll } = useTranslate()
 const { addPostToHistory } = useHistory()
 
 function openComposer() {
@@ -457,15 +509,42 @@ async function onSubmitPost() {
   const failsafe = setTimeout(() => { submitting.value = false }, 30000)
   try {
     let imageUrls: string[] = []
+    let imageDims: Array<{ w: number; h: number }> = []
     if (composerImages.value.length > 0) {
-      imageUrls = await uploadImages(composerImages.value)
+      const up = await uploadImagesWithDims(composerImages.value)
+      imageUrls = up.urls
+      imageDims = up.dims
     }
-    await createPost(composerText.value, imageUrls, composerAttachedItem.value?.id || null)
+
+    const trimmed = composerText.value.trim()
+    const sourceLang = lang.value
+
+    const newPost = await createPost(
+      composerText.value,
+      imageUrls,
+      composerAttachedItem.value?.id || null,
+      {
+        image_dimensions: imageDims,
+        content_i18n: trimmed ? { [sourceLang]: trimmed } : null,
+        source_lang: sourceLang,
+      },
+    )
+
     composerText.value = ''
     composerImages.value = []
     composerAttachedItem.value = null
     showComposer.value = false
     uni.showToast({ title: t('plaza.posted'), icon: 'success' })
+
+    // Fire-and-forget bilingual fill. Same strategy as the item publish
+    // flow: don't block the toast, best-effort upsert the other locale.
+    if (trimmed && newPost?.id) {
+      translateContentToAll(trimmed, sourceLang as any)
+        .then((map) => {
+          if (Object.keys(map).length > 1) updatePostI18n(newPost.id, map)
+        })
+        .catch((err) => console.warn('[plaza] bilingual fill skipped:', err))
+    }
   } catch (err: any) {
     uni.showToast({
       title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
@@ -643,10 +722,13 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
     itemList: reasons,
     success: async (res) => {
       const reason = reasons[res.tapIndex]
+      uni.showLoading({ title: t('report.submitting') || t('login.wait'), mask: true })
       try {
         await reportTarget(targetType, targetId, reason)
+        uni.hideLoading()
         uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
+        uni.hideLoading()
         uni.showToast({ title: err?.message || t('report.failed'), icon: 'none' })
       }
     },
@@ -827,9 +909,21 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .post-images.pi-n2 { grid-template-columns: 1fr 1fr; }
 .post-images.pi-n3 { grid-template-columns: 1fr 1fr 1fr; }
 .post-images.pi-n4 { grid-template-columns: 1fr 1fr; }
+/*
+ * Default grid tile: aspect-ratio and object-fit are overridden by the
+ * per-image inline style produced by postImgStyleFor() once the first
+ * image in the post reports its natural dimensions. 4/5 portrait is the
+ * visual fallback (most phone photos) — critically we use `contain`, not
+ * `cover`, so side pixels are never discarded. A soft background fills
+ * any letterbox bands so the grid still reads as solid.
+ */
 .post-image {
-  width: 100%; aspect-ratio: 1; border-radius: 8px;
-  background: var(--bg-subtle); object-fit: cover; cursor: pointer;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  border-radius: 8px;
+  background: var(--bg-subtle);
+  object-fit: contain;
+  cursor: pointer;
   display: block;
 }
 

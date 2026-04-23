@@ -75,73 +75,114 @@
 
     <!-- Content list based on active tab -->
     <view v-if="isLoggedIn" class="section">
-      <!-- Listed items -->
+      <!--
+        Listed / Saved / Sold all render through the same 2-column grid
+        below. The previous horizontal-row layout (72×72 thumb + flex row)
+        was cramped and didn't show enough of the photo — the whole point
+        of the profile is to browse your own listings visually. We now
+        mirror the following-page grid: width = 50%, image height tracks
+        each photo's natural aspect ratio (captured via @load), so a plate
+        stays a plate. Actions (edit/markSold/delete) move into the card
+        body so taps still work from within the tile.
+      -->
       <view v-if="currentTab === 'listed'">
         <view v-if="listedItems.length === 0" class="empty-items">
           <view class="empty-bag"></view>
           <text class="empty-text">{{ t('profile.noListings') }}</text>
         </view>
         <view v-else class="my-items">
-          <view v-for="item in listedItems" :key="item.id" class="my-item" @click="goDetail(item.id)">
-            <image :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'" :alt="item.title" class="item-img" mode="aspectFill" lazy-load />
-            <view class="item-info">
-              <text class="item-title">{{ item.title }}</text>
-              <text class="item-price">{{ formatPrice(item.price, t("home.free")) }}</text>
-              <text :class="['item-status', item.status]">{{ t('status.' + item.status) }}</text>
+          <view v-for="item in listedItems" :key="item.id" class="my-card" @click="goDetail(item.id)">
+            <view class="mc-img-wrap">
+              <image
+                :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'"
+                :alt="item.title"
+                class="mc-img"
+                mode="aspectFit"
+                :style="myImgStyleFor(item.id)"
+                @load="onMyImgLoad(item.id, $event)"
+                lazy-load
+              />
             </view>
-            <view class="item-actions">
-              <view v-if="item.status === 'active'" class="action-btn" @click.stop="goEdit(item.id)">
-                <text>{{ t('profile.edit') }}</text>
+            <view class="mc-body">
+              <text class="mc-title">{{ localize(item.title_i18n, item.title) }}</text>
+              <view class="mc-meta">
+                <text class="mc-price">{{ formatPrice(item.price, t("home.free")) }}</text>
+                <text :class="['mc-status', item.status]">{{ t('status.' + item.status) }}</text>
               </view>
-              <view v-if="item.status === 'active'" class="action-btn" @click.stop="markAsSold(item.id)">
-                <text>{{ t('profile.markSold') }}</text>
-              </view>
-              <view v-if="item.status === 'reserved'" class="action-btn" @click.stop="unreserveItem(item.id)">
-                <text>{{ t('detail.unreserve') }}</text>
-              </view>
-              <view class="action-btn danger" @click.stop="onDeleteItem(item.id)">
-                <text>{{ t('profile.delete') }}</text>
+              <view class="mc-actions">
+                <view v-if="item.status === 'active'" class="mc-act" @click.stop="goEdit(item.id)">
+                  <text>{{ t('profile.edit') }}</text>
+                </view>
+                <view v-if="item.status === 'active'" class="mc-act" @click.stop="markAsSold(item.id)">
+                  <text>{{ t('profile.markSold') }}</text>
+                </view>
+                <view v-if="item.status === 'reserved'" class="mc-act" @click.stop="unreserveItem(item.id)">
+                  <text>{{ t('detail.unreserve') }}</text>
+                </view>
+                <view class="mc-act danger" @click.stop="onDeleteItem(item.id)">
+                  <text>{{ t('profile.delete') }}</text>
+                </view>
               </view>
             </view>
           </view>
         </view>
       </view>
 
-      <!-- Saved / Favorited items -->
       <view v-if="currentTab === 'saved'">
         <view v-if="savedItems.length === 0" class="empty-items">
           <image src="/static/heart.svg" class="empty-heart-img" />
           <text class="empty-text">{{ t('profile.noSaved') }}</text>
         </view>
         <view v-else class="my-items">
-          <view v-for="item in savedItems" :key="item.id" class="my-item" @click="goDetail(item.id)">
-            <image :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'" :alt="item.title" class="item-img" mode="aspectFill" lazy-load />
-            <view class="item-info">
-              <text class="item-title">{{ item.title }}</text>
-              <text class="item-price">{{ formatPrice(item.price, t("home.free")) }}</text>
-              <text v-if="item.status === 'sold'" class="item-status sold">{{ t('status.sold') }}</text>
-              <text v-else-if="item.status === 'reserved'" class="item-status reserved">{{ t('status.reserved') }}</text>
-              <view v-else class="item-seller" v-if="item.profile">
-                <text class="seller-name">{{ item.profile.nickname }}</text>
+          <view v-for="item in savedItems" :key="item.id" class="my-card" @click="goDetail(item.id)">
+            <view class="mc-img-wrap">
+              <image
+                :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'"
+                :alt="item.title"
+                class="mc-img"
+                mode="aspectFit"
+                :style="myImgStyleFor(item.id)"
+                @load="onMyImgLoad(item.id, $event)"
+                lazy-load
+              />
+            </view>
+            <view class="mc-body">
+              <text class="mc-title">{{ localize(item.title_i18n, item.title) }}</text>
+              <view class="mc-meta">
+                <text class="mc-price">{{ formatPrice(item.price, t("home.free")) }}</text>
+                <text v-if="item.status === 'sold'" class="mc-status sold">{{ t('status.sold') }}</text>
+                <text v-else-if="item.status === 'reserved'" class="mc-status reserved">{{ t('status.reserved') }}</text>
+                <text v-else-if="item.profile" class="mc-seller">{{ item.profile.nickname }}</text>
               </view>
             </view>
           </view>
         </view>
       </view>
 
-      <!-- Sold items -->
       <view v-if="currentTab === 'sold'">
         <view v-if="soldItems.length === 0" class="empty-items">
           <view class="empty-check"></view>
           <text class="empty-text">{{ t('profile.noSold') }}</text>
         </view>
         <view v-else class="my-items">
-          <view v-for="item in soldItems" :key="item.id" class="my-item" @click="goDetail(item.id)">
-            <image :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'" :alt="item.title" class="item-img" mode="aspectFill" lazy-load />
-            <view class="item-info">
-              <text class="item-title">{{ item.title }}</text>
-              <text class="item-price">{{ formatPrice(item.price, t("home.free")) }}</text>
-              <text class="item-status sold">{{ t('status.sold') }}</text>
+          <view v-for="item in soldItems" :key="item.id" class="my-card" @click="goDetail(item.id)">
+            <view class="mc-img-wrap">
+              <image
+                :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'"
+                :alt="item.title"
+                class="mc-img"
+                mode="aspectFit"
+                :style="myImgStyleFor(item.id)"
+                @load="onMyImgLoad(item.id, $event)"
+                lazy-load
+              />
+            </view>
+            <view class="mc-body">
+              <text class="mc-title">{{ localize(item.title_i18n, item.title) }}</text>
+              <view class="mc-meta">
+                <text class="mc-price">{{ formatPrice(item.price, t("home.free")) }}</text>
+                <text class="mc-status sold">{{ t('status.sold') }}</text>
+              </view>
             </view>
           </view>
         </view>
@@ -188,7 +229,7 @@ import { useNotifications } from '../../composables/useNotifications'
 import type { Item } from '../../types'
 import { formatPrice, thumbUrl } from '../../utils'
 
-const { t } = useI18n()
+const { t, localize } = useI18n()
 const { currentUser, isLoggedIn } = useAuth()
 const { items: homeItems, fetchMyItems, updateItemStatus, deleteItem } = useItems()
 const { loadMyFavorites, fetchMyFavoriteItems } = useFavorites()
@@ -197,6 +238,33 @@ const { unreadNotifCount, fetchNotifications } = useNotifications()
 const currentTab = ref<'listed' | 'saved' | 'sold'>('listed')
 const myItems = ref<Item[]>([])
 const savedItems = ref<Item[]>([])
+
+/*
+ * Per-item cover-image aspect map. Populated by @load on the <image>
+ * elements; keyed by item.id so listed/saved/sold tabs share the same
+ * cache (same item appears in multiple tabs). Without this, the 2-col
+ * cards would need a hard aspect-ratio guess and the "plate turns into
+ * oval" symptom comes right back. Once we have a DB-backed
+ * image_dimensions column (see migration proposal) we can skip the
+ * @load wait entirely.
+ */
+const itemImgAspect = ref<Record<string, number>>({})
+
+function onMyImgLoad(id: string, ev: any) {
+  const d = ev?.detail || {}
+  const w = d.width || ev?.target?.naturalWidth || 0
+  const h = d.height || ev?.target?.naturalHeight || 0
+  if (w > 0 && h > 0) {
+    itemImgAspect.value = { ...itemImgAspect.value, [id]: w / h }
+  }
+}
+
+function myImgStyleFor(id: string): Record<string, string> {
+  const r = itemImgAspect.value[id]
+  if (!r) return {}
+  const clamped = Math.max(0.6, Math.min(r, 1.6))
+  return { 'aspect-ratio': String(clamped) }
+}
 
 const listedItems = computed(() => myItems.value.filter(i => i.status !== 'sold'))
 const soldItems = computed(() => myItems.value.filter(i => i.status === 'sold'))
@@ -372,11 +440,36 @@ function onDeleteItem(id: string) {
   &:active { opacity: 0.8; }
 }
 
-.profile-section { background: var(--bg-elev-1); padding: 22px 16px 0; }
+/*
+ * Profile user-card.
+ *
+ * The new campus-market look pairs a subtle coral-to-white gradient
+ * wash behind the avatar area with a pure-white card below so the
+ * stats row reads cleanly. We layer the gradient via a pseudo-element
+ * so it stays behind all content without disrupting taps.
+ */
+.profile-section {
+  position: relative;
+  background: var(--bg-elev-1);
+  padding: 28px 16px 0;
+  overflow: hidden;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 140px;
+    background: linear-gradient(180deg, rgba(255,90,76,0.08) 0%, rgba(255,255,255,0) 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  & > * { position: relative; z-index: 1; }
+}
 .user-header { display: flex; align-items: center; gap: 14px; }
 .avatar {
-  width: 58px; height: 58px; border-radius: 50%;
-  background: var(--bg-subtle); flex-shrink: 0;
+  width: 64px; height: 64px; border-radius: 50%;
+  background: linear-gradient(135deg, #FFB5AD 0%, #FF7A6E 100%);
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(255, 90, 76, 0.18);
 }
 .user-info { flex: 1; }
 .name-row { display: flex; align-items: center; gap: 8px; }
@@ -463,13 +556,20 @@ function onDeleteItem(id: string) {
   }
 }
 
-/* ========== Stats / Tabs ========== */
+/*
+ * Profile stats row.
+ *
+ * 3-tab switcher (发布 / 收藏 / 已售) with the active tab indicated by
+ * a coral-red bar underneath + brighter label. The hairline on top is
+ * gone in favor of a dividing gap (bg-subtle below), which reads better
+ * on the new warm background.
+ */
 .stats-row {
-  display: flex; margin-top: 18px;
-  border-top: 0.5px solid var(--line-hair);
+  display: flex; margin-top: 22px;
+  padding-top: 10px;
 }
 .stat-item {
-  flex: 1; text-align: center; padding: 14px 0 12px;
+  flex: 1; text-align: center; padding: 14px 0 14px;
   cursor: pointer; position: relative;
   -webkit-tap-highlight-color: transparent;
   transition: background 0.1s;
@@ -477,12 +577,15 @@ function onDeleteItem(id: string) {
   &.active::after {
     content: ''; position: absolute; bottom: 0; left: 50%;
     transform: translateX(-50%);
-    width: 20px; height: 2px; background: var(--accent-primary); border-radius: 1px;
+    width: 24px; height: 3px;
+    background: var(--accent-primary);
+    border-radius: 2px;
   }
 }
-.stat-num { font-size: 20px; font-weight: 700; color: var(--text-primary); display: block; }
-.stat-label { font-size: 12px; color: var(--text-faint); margin-top: 3px; display: block; }
-.stat-item.active .stat-label { color: var(--text-primary); }
+.stat-num { font-size: 22px; font-weight: 700; color: var(--text-primary); display: block; }
+.stat-label { font-size: 12px; color: var(--text-muted); margin-top: 3px; display: block; }
+.stat-item.active .stat-num { color: var(--accent-primary); }
+.stat-item.active .stat-label { color: var(--text-primary); font-weight: 600; }
 
 /* ========== Content Section ========== */
 .section { background: var(--bg-elev-1); margin-top: 7px; min-height: 200px; }
@@ -520,37 +623,72 @@ function onDeleteItem(id: string) {
 }
 .empty-text { font-size: 14px; color: var(--text-faint); }
 
-.my-item {
-  display: flex; padding: 13px 16px;
-  border-bottom: 0.5px solid var(--line-hair);
-  gap: 12px; cursor: pointer;
-  &:active { background: var(--bg-elev-2); }
+/*
+ * 2-column grid matching the Following-feed layout. Half page width per
+ * card (gap is 8px). The image wrapper defines a fallback 4/5 aspect for
+ * the pre-load placeholder so the grid doesn't collapse before photos
+ * arrive; once @load fires we override it inline. object-fit: contain
+ * keeps the full photo visible — circles stay circles, no side-crop.
+ */
+.my-items {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 8px;
 }
-.item-img {
-  width: 72px; height: 72px; border-radius: 9px;
-  flex-shrink: 0; background: var(--bg-subtle); object-fit: cover;
+.my-card {
+  background: var(--bg-elev-1);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.15s;
+  &:active { transform: scale(0.98); opacity: 0.92; }
 }
-.item-info { flex: 1; display: flex; flex-direction: column; gap: 4px; justify-content: center; }
-.item-title {
-  font-size: 14px; color: var(--text-primary);
+.mc-img-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  background: var(--bg-subtle);
+  overflow: hidden;
+}
+.mc-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  background: var(--bg-subtle);
+}
+.mc-body {
+  padding: 8px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mc-title {
+  font-size: 13px; color: var(--text-primary); line-height: 1.3;
   display: -webkit-box; -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;
+  -webkit-box-orient: vertical; overflow: hidden;
 }
-.item-price { font-size: 16px; font-weight: 700; color: var(--text-primary); }
-.item-seller { margin-top: 2px; }
-.seller-name { font-size: 12px; color: var(--text-faint); }
-.item-status {
-  font-size: 11px; align-self: flex-start; padding: 2px 8px; border-radius: 4px;
+.mc-meta {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 6px; margin-top: 2px; flex-wrap: wrap;
+}
+.mc-price { font-size: 15px; font-weight: 700; color: var(--accent-primary); }
+.mc-seller { font-size: 11px; color: var(--text-faint); }
+.mc-status {
+  font-size: 10px; padding: 1px 6px; border-radius: 4px; align-self: center;
   &.active { color: var(--accent-good); background: rgba(52,199,89,0.1); }
   &.reserved { color: var(--accent-warn); background: rgba(255,149,0,0.1); }
   &.sold { color: var(--text-muted); background: var(--bg-subtle); }
 }
-
-.item-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
-.action-btn {
-  padding: 5px 10px; border-radius: 6px;
+.mc-actions {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;
+}
+.mc-act {
+  padding: 3px 8px; border-radius: 5px;
   background: var(--bg-subtle); cursor: pointer;
-  text { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
+  text { font-size: 10px; color: var(--text-secondary); font-weight: 500; }
   &:active { background: var(--bg-inset); }
   &.danger text { color: var(--accent-danger); }
 }

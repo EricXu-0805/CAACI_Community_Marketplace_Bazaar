@@ -35,3 +35,12 @@ coverage/
 *.tgz
 .cache/
 .vercel
+
+# WeChat mini-program IDE local config
+project.config.json
+project.private.config.json
+
+# Ad-hoc analysis scratch (kept local, not committed)
+IMAGE_ANALYSIS_INDEX.md
+IMAGE_RENDERING_ANALYSIS.md
+IMAGE_RENDERING_QUICK_SUMMARY.txt

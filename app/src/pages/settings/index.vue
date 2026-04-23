@@ -6,9 +6,9 @@
     </view>
 
     <view class="section">
-      <view class="menu-item" @click="toggleLang">
+      <view class="menu-item" @click="onPickLanguage">
         <text class="mi-label">{{ t('settings.language') }}</text>
-        <text class="mi-value">{{ lang === 'zh' ? '中文' : 'English' }}</text>
+        <text class="mi-value">{{ currentLangLabel }}</text>
         <view class="mi-arrow"></view>
       </view>
     </view>
@@ -29,16 +29,14 @@
     </view>
 
     <view class="section">
+      <!--
+        Consolidated entry: the legal page is already a 3-tab document
+        (terms / privacy / guidelines). Surfacing three separate rows here
+        was redundant noise — the destination is the same file either way.
+        Landing on 'terms' matches what the former top row did.
+      -->
       <view class="menu-item" @click="goLegal('terms')">
-        <text class="mi-label">{{ t('legal.terms') }}</text>
-        <view class="mi-arrow"></view>
-      </view>
-      <view class="menu-item" @click="goLegal('privacy')">
-        <text class="mi-label">{{ t('legal.privacy') }}</text>
-        <view class="mi-arrow"></view>
-      </view>
-      <view class="menu-item" @click="goLegal('guidelines')">
-        <text class="mi-label">{{ t('legal.guidelines') }}</text>
+        <text class="mi-label">{{ t('settings.legalCombined') }}</text>
         <view class="mi-arrow"></view>
       </view>
     </view>
@@ -69,15 +67,46 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useSupabase } from '../../composables/useSupabase'
 
-const { t, lang, toggleLang } = useI18n()
+const { t, lang, setLang } = useI18n()
 const { isLoggedIn, signOut } = useAuth()
 const { supabase } = useSupabase()
 const cacheSize = ref('--')
+
+/*
+ * Language picker.
+ *
+ * Source of truth for the list of supported locales. Adding a new one
+ * (say 'ja', 'ko', 'zh-Hant') is: (1) add an entry here, (2) fill in
+ * the matching Record<string, string> block in useI18n.ts. Nothing
+ * else in the app hard-codes 'zh' or 'en' for UI, because the useI18n
+ * API hands out the current lang via a computed ref and every page
+ * pulls labels through t(). For item/post content bilingualism see
+ * the Wave 3b notes — that still needs a DB column.
+ */
+type SupportedLang = 'zh' | 'en'
+const LANGUAGES: Array<{ code: SupportedLang; label: string }> = [
+  { code: 'zh', label: '中文' },
+  { code: 'en', label: 'English' },
+]
+
+const currentLangLabel = computed(
+  () => LANGUAGES.find(l => l.code === lang.value)?.label || 'English'
+)
+
+function onPickLanguage() {
+  uni.showActionSheet({
+    itemList: LANGUAGES.map(l => l.label),
+    success: (res) => {
+      const pick = LANGUAGES[res.tapIndex]
+      if (pick && pick.code !== lang.value) setLang(pick.code)
+    },
+  })
+}
 
 try {
   const info = uni.getStorageInfoSync()

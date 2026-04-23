@@ -69,7 +69,7 @@
           </view>
         </view>
         <view class="gi-info">
-          <text class="gi-title">{{ item.title }}</text>
+          <text class="gi-title">{{ localize(item.title_i18n, item.title) }}</text>
           <text class="gi-price">{{ formatPrice(item.price, t("home.free")) }}</text>
         </view>
       </view>
@@ -93,7 +93,7 @@ import { matchSpot } from '../../composables/useCampusSpots'
 import type { Profile, Item } from '../../types'
 import { formatPrice, thumbUrl } from '../../utils'
 
-const { t, lang } = useI18n()
+const { t, lang, localize } = useI18n()
 const { supabase } = useSupabase()
 const { ensureLoaded, isBlocked } = useModeration()
 const { currentUser, requireAuth } = useAuth()

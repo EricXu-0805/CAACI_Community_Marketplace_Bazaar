@@ -63,11 +63,19 @@ export interface Rating {
   rater?: Profile
 }
 
+export interface ImageDim {
+  w: number
+  h: number
+}
+
 export interface Post {
   id: string
   user_id: string
   content: string
   images: string[]
+  image_dimensions?: ImageDim[]
+  content_i18n?: Record<string, string> | null
+  source_lang?: string | null
   is_official: boolean
   is_pinned: boolean
   like_count: number
@@ -78,7 +86,7 @@ export interface Post {
   attached_item_id?: string | null
   profile?: Profile
   liked_by_me?: boolean
-  attached_item?: Pick<Item, 'id' | 'title' | 'price' | 'images' | 'status'> | null
+  attached_item?: Pick<Item, 'id' | 'title' | 'title_i18n' | 'price' | 'images' | 'status'> | null
 }
 
 export interface PostComment {
@@ -97,6 +105,9 @@ export interface Item {
   user_id: string
   title: string
   description: string
+  title_i18n?: Record<string, string> | null
+  description_i18n?: Record<string, string> | null
+  source_lang?: string | null
   price: number
   category: ItemCategory
   condition: ItemCondition
@@ -104,6 +115,7 @@ export interface Item {
   location: string
   location_verified?: boolean
   images: string[]
+  image_dimensions?: ImageDim[]
   view_count: number
   favorite_count?: number
   negotiable?: boolean

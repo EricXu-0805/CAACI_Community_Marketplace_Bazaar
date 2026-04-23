@@ -3,11 +3,15 @@
     <DesktopNav current="index" />
 
     <view class="mobile-header">
+      <!--
+        Language toggle moved to Settings → "Language" (matches the
+        Instagram / WhatsApp pattern). Keeping it in the top-right of
+        every page made the header feel noisy and blocked future 3rd-
+        language expansion (Jp / Kr / zh-Hant). The header is now just
+        brand + search + categories.
+      -->
       <view class="mh-top">
         <text class="mh-brand">{{ t('app.name') }}</text>
-        <view class="mh-right">
-          <text class="mh-lang" @click="toggleLang">{{ t('lang.switch') }}</text>
-        </view>
       </view>
       <view class="mh-search">
         <view class="search-field">
@@ -16,6 +20,8 @@
             v-model="searchText"
             :placeholder="t('home.search')"
             confirm-type="search"
+            @focus="onSearchFocus"
+            @blur="onSearchBlur"
             @confirm="onSearch"
           />
           <view v-if="searchText" class="sf-clear" @click.stop="onClearSearch">×</view>
@@ -23,6 +29,38 @@
         <view class="filter-btn" @click="showFilter = !showFilter">
           <view class="fb-lines"><view></view><view></view><view></view></view>
           <view v-if="activeFilterCount > 0" class="fb-badge">{{ activeFilterCount }}</view>
+        </view>
+
+        <!--
+          Recent-search dropdown. Lives inside .mh-search (which is
+          position: relative) so it anchors right under the search field,
+          mimicking the native Xianyu / Taobao pattern. Only renders while
+          the input is focused AND the user hasn't typed anything — once
+          they type, the result list below does the work. We delay the
+          hide on blur so tapping a chip doesn't dismiss the menu before
+          pickHistory() fires.
+        -->
+        <view
+          v-if="searchFocused && searchHistory.length > 0 && !searchText"
+          class="search-history-pop"
+          @mousedown.stop.prevent
+          @touchstart.stop
+        >
+          <view class="sh-header">
+            <text class="sh-title">{{ t('home.recentSearch') }}</text>
+            <text class="sh-clear" @click="clearHistory">{{ t('filter.reset') }}</text>
+          </view>
+          <view class="sh-tags">
+            <view
+              v-for="h in searchHistory"
+              :key="h"
+              class="sh-tag"
+              @mousedown.prevent
+              @click="pickHistory(h)"
+            >
+              <text>{{ h }}</text>
+            </view>
+          </view>
         </view>
       </view>
 
@@ -38,19 +76,6 @@
           </view>
         </scroll-view>
         <view class="mc-fade" aria-hidden="true"></view>
-      </view>
-    </view>
-
-    <!-- Search History -->
-    <view v-if="searchHistory.length > 0 && !searchText" class="search-history">
-      <view class="sh-header">
-        <text class="sh-title">{{ t('home.recentSearch') }}</text>
-        <text class="sh-clear" @click="clearHistory">{{ t('filter.reset') }}</text>
-      </view>
-      <view class="sh-tags">
-        <view v-for="h in searchHistory" :key="h" class="sh-tag" @click="pickHistory(h)">
-          <text>{{ h }}</text>
-        </view>
       </view>
     </view>
 
@@ -248,7 +273,7 @@
               </view>
             </view>
             <view class="card-info">
-              <text class="card-title">{{ localizeTitle(item.title) }}</text>
+              <text class="card-title">{{ localizeItemTitle(item) }}</text>
               <view class="card-price-row">
                 <text :class="['card-price', { 'card-price-free': item.price === 0 }]">{{ formatPrice(item.price, t('home.free')) }}</text>
                 <text v-if="item.negotiable" class="obo-tag">OBO</text>
@@ -331,7 +356,7 @@ import { debounce, formatTime, formatPrice, haptic, quickTranslate, thumbUrl } f
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 
-const { t, toggleLang, lang } = useI18n()
+const { t, lang, localize } = useI18n()
 const { phase: semesterPhase, config: semesterConfig, title: semesterTitle, subtitle: semesterSubtitle } = useSemester()
 
 const semesterDismissed = ref<boolean>(false)
@@ -350,9 +375,26 @@ function onSemesterBannerTap() {
   if (cat) selectCategory(cat)
 }
 
-function localizeTitle(title: string): string {
-  if (!title) return ''
-  return quickTranslate(title, lang.value as 'en' | 'zh')
+/*
+ * Card-title localization priority (from best to worst):
+ *   1. items.title_i18n[currentLang] — filled by publish-time auto-
+ *      translation, zero-latency, human-quality if endpoint succeeded
+ *   2. items.title_i18n[fallback] → any — cheap guard for partial maps
+ *   3. quickTranslate(title, currentLang) — tiny static dictionary
+ *      that rewrites common keywords (iPhone / textbook / etc.) so the
+ *      card at least doesn't show raw Chinese on an English-toggled UI
+ *      for legacy rows
+ *   4. original title
+ *
+ * `localize()` handles 1+2+4 on its own; we layer quickTranslate in
+ * between for the legacy-row case only.
+ */
+function localizeItemTitle(it: { title: string; title_i18n?: Record<string, string> | null }): string {
+  if (!it?.title) return ''
+  if (it.title_i18n && Object.keys(it.title_i18n).length > 0) {
+    return localize(it.title_i18n, it.title)
+  }
+  return quickTranslate(it.title, lang.value as 'en' | 'zh')
 }
 
 const { items, loading, hasMore, fetchError, fetchItems } = useItems()
@@ -498,6 +540,20 @@ const MAX_HISTORY = 8
 const searchHistory = ref<string[]>([])
 try { searchHistory.value = JSON.parse(uni.getStorageSync('searchHistory') || '[]') } catch {}
 
+// Drives the dropdown visibility. Blur is debounced (180ms) so tapping a
+// history chip doesn't dismiss the menu before pickHistory() fires.
+const searchFocused = ref(false)
+let blurTimer: ReturnType<typeof setTimeout> | null = null
+
+function onSearchFocus() {
+  if (blurTimer) { clearTimeout(blurTimer); blurTimer = null }
+  searchFocused.value = true
+}
+function onSearchBlur() {
+  if (blurTimer) clearTimeout(blurTimer)
+  blurTimer = setTimeout(() => { searchFocused.value = false }, 180)
+}
+
 function saveSearch(text: string) {
   if (!text.trim()) return
   searchHistory.value = [text, ...searchHistory.value.filter(s => s !== text)].slice(0, MAX_HISTORY)
@@ -510,6 +566,8 @@ function clearHistory() {
 }
 
 function pickHistory(text: string) {
+  if (blurTimer) { clearTimeout(blurTimer); blurTimer = null }
+  searchFocused.value = false
   searchText.value = text
   onSearch()
 }
@@ -575,10 +633,13 @@ function promptReportItem(itemId: string) {
     itemList: reasons,
     success: async (res) => {
       const reason = reasons[res.tapIndex]
+      uni.showLoading({ title: t('report.submitting') || t('login.wait'), mask: true })
       try {
         await reportTarget('item', itemId, reason)
+        uni.hideLoading()
         uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
+        uni.hideLoading()
         uni.showToast({ title: err?.message || t('report.failed'), icon: 'none' })
       }
     },
@@ -670,14 +731,33 @@ function goPublish() {
   border-bottom: 0.5px solid rgba(0,0,0,0.04);
   z-index: 50;
 }
-.mh-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.mh-top { display: flex; justify-content: flex-start; align-items: center; margin-bottom: 10px; }
 .mh-brand { font-size: 18px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
-.mh-right { display: flex; align-items: center; gap: 8px; }
-.mh-lang {
-  font-size: 11px; color: var(--text-muted); padding: 3px 9px;
-  border: 1px solid #d1d1d6; border-radius: 6px; font-weight: 500;
+/* .mh-right / .mh-lang previously housed the inline language toggle.
+   Language switching moved to Settings → Language, so those rules
+   are intentionally gone. Removing them keeps the header compact. */
+.mh-search {
+  display: flex; align-items: center; gap: 9px;
+  position: relative;
 }
-.mh-search { display: flex; align-items: center; gap: 9px; }
+.search-history-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 54px;
+  background: var(--bg-elev-1);
+  border-radius: 12px;
+  padding: 10px 12px 12px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+  z-index: 200;
+  max-height: 260px;
+  overflow-y: auto;
+  animation: shp-fade 0.16s ease-out;
+}
+@keyframes shp-fade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 .search-field {
   flex: 1; display: flex; align-items: center;
   background: var(--bg-subtle); border-radius: 10px; padding: 8px 12px; gap: 7px;
@@ -716,17 +796,24 @@ function goPublish() {
 }
 
 .cat-bar { white-space: nowrap; }
+/* Category pills: warm neutral border + filled coral when active.
+   Matches the mock's pill-and-primary palette. */
 .pill {
   display: inline-flex; align-items: center; justify-content: center;
   height: 32px;
-  padding: 0 14px; margin: 0 6px 0 0; border-radius: 16px;
+  padding: 0 14px; margin: 0 6px 0 0; border-radius: var(--radius-pill);
   font-size: 13px; color: var(--text-secondary); background: var(--bg-elev-1);
-  border: 1px solid #d1d1d6;
+  border: 1px solid var(--line-bold);
   transition: all 0.15s; cursor: pointer; font-weight: 500;
   line-height: 1;
   box-sizing: border-box;
   flex-shrink: 0;
-  &.active { background: var(--accent-primary); color: #fff; border-color: var(--text-primary); }
+  &.active {
+    background: var(--accent-primary);
+    color: #fff;
+    border-color: var(--accent-primary);
+    box-shadow: var(--shadow-cta);
+  }
   &:active { transform: scale(0.96); }
 }
 
@@ -740,9 +827,14 @@ function goPublish() {
 }
 .mobile-cats {
   display: block;
-  /* right side has the extra 16px so pills can scroll under the fade */
+  /* The fade overlay is 88px wide (see .mc-fade below). Earlier we only
+     reserved 16px here, so the last pill ("其他" / Other) ended up
+     permanently hidden underneath the white fade. Reserving the full
+     fade width + a 12px breathing strip lets every category scroll out
+     from under the gradient and be fully tappable. */
   padding: 4px 12px 6px 12px;
-  padding-right: 16px;
+  padding-right: calc(88px + 12px);
+  scroll-padding-right: 88px;
   white-space: nowrap;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -762,7 +854,9 @@ function goPublish() {
   -ms-overflow-style: none;
 }
 /* Right-edge fade: hints "more tabs to the right". Reaches the right
-   edge fully opaque and ramps smoothly toward transparent further left. */
+   edge fully opaque and ramps smoothly toward transparent further left.
+   Pair with .mobile-cats' padding-right: 88px+12px so the last pill can
+   scroll past the gradient instead of being permanently swallowed by it. */
 .mc-fade {
   position: absolute;
   top: 0; right: 0; bottom: 4px;
@@ -912,9 +1006,10 @@ function goPublish() {
   .fs-footer { padding-bottom: calc(18px + 56px + env(safe-area-inset-bottom, 0px)); }
 }
 .fs-apply {
-  width: 100%; padding: 14px; border-radius: 24px;
-  background: var(--accent-action); color: #fff; font-size: 15px; font-weight: 600;
+  width: 100%; padding: 14px; border-radius: var(--radius-pill);
+  background: var(--accent-primary); color: #fff; font-size: 15px; font-weight: 600;
   text-align: center; cursor: pointer;
+  box-shadow: var(--shadow-cta);
   &:active { opacity: 0.85; }
 }
 
@@ -925,10 +1020,18 @@ function goPublish() {
 .waterfall { display: flex; padding: 5px; gap: 5px; padding-bottom: 54px; }
 .wf-col { flex: 1; display: flex; flex-direction: column; gap: 5px; }
 
-/* ========== Card ========== */
+/* ========== Card ==========
+   New visual language: slightly larger radius + soft elevation shadow
+   matches the campus-market mock. The shadow color uses warm neutrals
+   (brown-tinted alpha) instead of cool grey so it blends into the
+   cream page background without a muddy halo. */
 .card {
-  background: var(--bg-elev-1); border-radius: 12px; overflow: hidden; cursor: pointer;
-  transition: transform 0.1s;
+  background: var(--bg-elev-1);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.1s, box-shadow 0.15s;
   &:active { transform: scale(0.98); }
 }
 /* Xiaohongshu waterfall: the image itself drives card height.
@@ -994,11 +1097,17 @@ function goPublish() {
   overflow: hidden; word-break: break-all;
 }
 .card-price-row { display: flex; align-items: baseline; gap: 4px; margin-top: 5px; }
-.card-price { font-size: 15px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.02em; }
+/* Price in coral red to match the new brand accent — makes listings
+   feel more marketplace-y and stands out from the neutral title text. */
+.card-price {
+  font-size: 16px; font-weight: 700;
+  color: var(--accent-primary);
+  letter-spacing: -0.02em;
+}
 .card-price-free { color: var(--accent-good); }
 .obo-tag {
-  font-size: 9px; font-weight: 600; color: var(--accent-action);
-  background: rgba(255,107,53,0.08); padding: 1px 4px; border-radius: 3px;
+  font-size: 9px; font-weight: 600; color: var(--accent-primary);
+  background: var(--accent-primary-soft); padding: 1px 4px; border-radius: 3px;
 }
 
 .card-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 7px; }
@@ -1114,7 +1223,9 @@ function goPublish() {
   padding: 4px 16px 8px; font-size: 12px; color: var(--text-muted);
 }
 
-.search-history { padding: 0 16px 10px; }
+/* These sh-* classes now live inside .search-history-pop (the dropdown).
+   The old standalone .search-history block was removed — its padding and
+   flow-layout no longer apply. Keeping the shared tag styles here. */
 .sh-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .sh-title { font-size: 13px; color: var(--text-muted); font-weight: 500; }
 .sh-clear { font-size: 12px; color: var(--text-faint); cursor: pointer; }
@@ -1150,14 +1261,20 @@ function goPublish() {
     &:active { transform: scale(0.99); }
   }
   /* Desktop cards are ~370px wide — a tall portrait image at height:auto
-     would render as a 600–800px ribbon and look broken. On mobile this
-     is fine (col ~180px, any ratio looks natural), so we cap here only. */
+     would render as a 600–800px ribbon and look broken. Cap it, but use
+     `contain` instead of `cover` so the image isn't cropped (which was
+     the "plate turns into an oval" symptom reported on desktop). A soft
+     background fills the letterbox strip so the card still looks solid. */
   .card-img-box {
     max-height: 520px;
+    background: var(--bg-subtle);
+    overflow: hidden;
   }
   .card-img {
     max-height: 520px;
-    object-fit: cover;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
   }
   .card-info { padding: 10px 12px 12px; }
   .card-title { font-size: 14px; }

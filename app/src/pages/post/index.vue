@@ -25,7 +25,7 @@
         </view>
 
         <view class="content-wrap">
-          <text class="content">{{ translated ? translatedContent : post.content }}</text>
+          <text class="content">{{ displayContent }}</text>
           <view
             v-if="post.content && post.content.trim().length > 0"
             :class="['translate-btn', { loading: translatePending }]"
@@ -37,12 +37,25 @@
         </view>
 
         <view v-if="post.images && post.images.length > 0" class="images">
+          <!--
+            widthFix alone is unreliable on uni-app H5: the component adds
+            an inline `height` once the image loads, but combined with any
+            CSS max-height it was previously clipped horizontally on tall
+            photos, producing the "stretched" feel users reported. We drive
+            the layout via `aspect-ratio` when we know the natural ratio
+            (captured via @load below) and fall back to widthFix + the image's
+            intrinsic height. Either way, object-fit stays `contain` so the
+            original aspect is preserved and nothing is ever cropped or
+            stretched — this is the same contract as an Instagram long post.
+          -->
           <image
             v-for="(img, i) in post.images"
             :key="i"
             :src="img"
             mode="widthFix"
             class="post-img"
+            :style="postImgStyles[i]"
+            @load="onImgLoad(i, $event)"
             @click="previewImage(post.images, i)"
           />
         </view>
@@ -125,7 +138,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
@@ -136,7 +149,7 @@ import { useTranslate } from '../../composables/useTranslate'
 import { formatTime, friendlyErrorMessage, quickTranslate } from '../../utils'
 import type { Post, PostComment } from '../../types'
 
-const { t, lang } = useI18n()
+const { t, lang, localize } = useI18n()
 const { currentUser, requireAuth } = useAuth()
 const { fetchPost, deletePost, toggleLike, fetchComments, createComment, deleteComment } = usePlaza()
 const { reportTarget } = useModeration()
@@ -152,6 +165,29 @@ const submitting = ref(false)
 
 const postId = ref('')
 
+/*
+ * Per-image style map keyed by array index. We populate aspect-ratio
+ * once the image reports its natural dimensions via @load. Until then
+ * widthFix is what holds the layout, and the image reserves 0 height —
+ * this is a minor CLS but unavoidable without DB-stored dimensions
+ * (see docs/audit recommendation: add image_dimensions jsonb column).
+ */
+const postImgStyles = ref<Record<number, Record<string, string>>>({})
+
+function onImgLoad(i: number, ev: any) {
+  // uni-app H5 and the native img element both surface naturalWidth/Height
+  // on ev.detail.{width,height} — fall back to the underlying target if not.
+  const detail = ev?.detail || {}
+  const w = detail.width || ev?.target?.naturalWidth || 0
+  const h = detail.height || ev?.target?.naturalHeight || 0
+  if (w > 0 && h > 0) {
+    postImgStyles.value = {
+      ...postImgStyles.value,
+      [i]: { 'aspect-ratio': `${w} / ${h}`, height: 'auto' },
+    }
+  }
+}
+
 /* ---------- AI translation (post content)
    Mirrors the detail-page pattern: cache-first, A文/文A toggle,
    static-dictionary fallback when /api/translate is unavailable or the
@@ -159,6 +195,19 @@ const postId = ref('')
 const { translate: translateText, getCached, pending: translatePending } = useTranslate()
 const translated = ref(false)
 const translatedContent = ref('')
+
+/*
+ * Same two-layer pattern as the item detail page:
+ *   - default:  localize(post.content_i18n, post.content) picks the
+ *               pre-translated entry from the jsonb map, falling back
+ *               to the author's original on a missing/legacy row
+ *   - A文 mode: the user explicitly asked for an AI re-translation
+ */
+const displayContent = computed(() => {
+  if (!post.value) return ''
+  if (translated.value && translatedContent.value) return translatedContent.value
+  return localize(post.value.content_i18n, post.value.content)
+})
 
 async function ensureTranslation() {
   if (!post.value || !post.value.content) return
@@ -330,10 +379,13 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
     itemList: reasons,
     success: async (res) => {
       const reason = reasons[res.tapIndex]
+      uni.showLoading({ title: t('report.submitting') || t('login.wait'), mask: true })
       try {
         await reportTarget(targetType, targetId, reason)
+        uni.hideLoading()
         uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
+        uni.hideLoading()
         uni.showToast({ title: err?.message || t('report.failed'), icon: 'none' })
       }
     },
@@ -461,8 +513,21 @@ async function onSubmitComment() {
 
 .images { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .post-img {
-  width: 100%; max-height: 480px;
-  border-radius: 10px; background: var(--bg-subtle); cursor: pointer;
+  /*
+   * IMPORTANT: no max-height and no object-fit here. An earlier version
+   * capped height at 480px which, combined with mode="widthFix", produced
+   * a "stretched horizontally" effect on tall images (the element was
+   * forced to 100% width but the browser clipped the computed height).
+   * We now let the image's true aspect ratio dictate height — tall photos
+   * just render tall. Very extreme cases (e.g. 1:5) still look reasonable
+   * because the card itself is max 480px wide on mobile.
+   */
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 10px;
+  background: var(--bg-subtle);
+  cursor: pointer;
 }
 
 .stats-row {

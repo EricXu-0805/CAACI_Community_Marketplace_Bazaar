@@ -149,6 +149,7 @@ import { useI18n } from '../../composables/useI18n'
 import { useCampusSpots, matchSpot, type CampusSpot } from '../../composables/useCampusSpots'
 import { useLocation } from '../../composables/useLocation'
 import { useItems } from '../../composables/useItems'
+import { useTranslate } from '../../composables/useTranslate'
 import { friendlyErrorMessage } from '../../utils'
 import type { ItemCategory, ItemCondition } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
@@ -162,10 +163,51 @@ function spotLabel(spot: CampusSpot) {
 }
 const { detectLocation, detecting: detectingLoc } = useLocation()
 const { requireAuth } = useAuth()
-const { createItem, updateItem, fetchItem, uploadImages, fetchItems } = useItems()
+const { createItem, updateItem, fetchItem, uploadImagesWithDims, fetchItems } = useItems()
+const { translateItemContent } = useTranslate()
 
 const editId = ref('')
 const isEdit = ref(false)
+
+/*
+ * Fire-and-forget bilingual filler.
+ *
+ * Publish UX must not block on translation — the endpoint can be cold
+ * (8s) and we already pay 5-10s for moderation. So we insert the row
+ * with only the source-language entry in title_i18n, pop the success
+ * toast immediately, and THEN ask the translator to fill the other
+ * locale(s) and patch the row via updateItem. If the network drops or
+ * the endpoint returns garbage, the i18n map stays partial and the
+ * reader-side fallback (`map[lang] ?? original`) simply shows the
+ * author's original text in whatever language they typed it in — not
+ * a regression from the pre-migration state.
+ */
+async function scheduleBilingualFill(
+  itemId: string,
+  title: string,
+  description: string,
+  sourceLang: string,
+) {
+  try {
+    if (!title && !description) return
+    const { title_i18n, description_i18n } = await translateItemContent({
+      title,
+      description,
+      sourceLang: sourceLang as any,
+    })
+    const titleKeys = Object.keys(title_i18n)
+    const descKeys = Object.keys(description_i18n)
+    // Nothing new — author-only map already in DB.
+    if (titleKeys.length <= 1 && descKeys.length <= 1) return
+
+    await updateItem(itemId, {
+      title_i18n: Object.keys(title_i18n).length ? title_i18n : null,
+      description_i18n: Object.keys(description_i18n).length ? description_i18n : null,
+    })
+  } catch (err) {
+    console.warn('[publish] bilingual fill skipped:', err)
+  }
+}
 
 const { supabase } = useSupabase()
 const avgPrice = ref(0)
@@ -427,9 +469,12 @@ async function onSubmit() {
     }
 
     let uploaded: string[] = []
+    let uploadedDims: Array<{ w: number; h: number }> = []
     if (toUpload.length > 0) {
       try {
-        uploaded = await uploadImages(toUpload)
+        const res = await uploadImagesWithDims(toUpload)
+        uploaded = res.urls
+        uploadedDims = res.dims
       } catch (upErr: any) {
         throw new Error(upErr?.message || t('publish.uploadFailed'))
       }
@@ -438,8 +483,8 @@ async function onSubmit() {
         throw new Error(t('publish.uploadFailed'))
       }
       /* Diagnostic: surface partial upload failures that would otherwise be
-         swallowed. uploadImages() catches per-file errors and skips them,
-         so uploaded.length < toUpload.length means some images were lost. */
+         swallowed. uploadImagesWithDims() catches per-file errors and skips
+         them, so uploaded.length < toUpload.length means some images were lost. */
       if (uploaded.length < toUpload.length) {
         uni.showToast({
           title: `${uploaded.length}/${toUpload.length} images uploaded`,
@@ -450,15 +495,40 @@ async function onSubmit() {
     }
 
     const images = [...existing, ...uploaded]
+    /*
+     * image_dimensions covers ONLY the newly uploaded images in this
+     * call; pre-existing URLs (edit flow) don't get dimensions because
+     * we can't reliably measure arbitrary remote URLs client-side. The
+     * frontend still falls back to @load for those, so leaving their
+     * slots absent is correct. We use `null` pads rather than zeros so
+     * consumers can distinguish "unknown" from "0×0".
+     */
+    const existingDims: Array<{ w: number; h: number } | null> = existing.map(() => null)
+    const finalDims = [...existingDims, ...uploadedDims].filter(
+      (d): d is { w: number; h: number } => !!d && d.w > 0 && d.h > 0,
+    )
+
+    const trimmedTitle = form.title.trim()
+    const trimmedDesc = form.description.trim()
+    // Author-language is today's UI locale. Settings is the only place a
+    // user can change it, so this is a correct proxy for "what language
+    // did they think in while writing this listing".
+    const sourceLang = lang.value
 
     const payload = {
-      title: form.title.trim(),
-      description: form.description.trim(),
+      title: trimmedTitle,
+      description: trimmedDesc,
       price: Number(form.price),
       category: form.category as ItemCategory,
       condition: form.condition as ItemCondition,
       location: form.location || 'UIUC',
       images,
+      image_dimensions: finalDims,
+      // Seed the i18n maps with the original text in the source lang.
+      // The async translation pass below adds the other language(s).
+      title_i18n: trimmedTitle ? { [sourceLang]: trimmedTitle } : null,
+      description_i18n: trimmedDesc ? { [sourceLang]: trimmedDesc } : null,
+      source_lang: sourceLang,
       negotiable: form.negotiable,
       location_verified: locationVerified.value,
     }
@@ -466,6 +536,7 @@ async function onSubmit() {
     if (isEdit.value) {
       await updateItem(editId.value, { ...payload })
       uni.showToast({ title: t('publish.updated'), icon: 'success' })
+      scheduleBilingualFill(editId.value, trimmedTitle, trimmedDesc, sourceLang)
       setTimeout(() => uni.navigateBack(), 1500)
     } else {
       const newItem = await createItem(payload)
@@ -475,6 +546,7 @@ async function onSubmit() {
       form.negotiable = false; imageList.value = []
       clearDraft()
       uni.showToast({ title: t('publish.success'), icon: 'success' })
+      scheduleBilingualFill(newItem.id, trimmedTitle, trimmedDesc, sourceLang)
       setTimeout(() => {
         uni.navigateTo({ url: `/pages/detail/index?id=${newItem.id}` })
       }, 1000)

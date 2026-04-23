@@ -7,7 +7,7 @@
       </view>
       <view class="ch-info" v-if="itemInfo">
         <text class="ch-name">{{ otherUserName }}</text>
-        <text class="ch-item-title">{{ itemInfo.title }}</text>
+        <text class="ch-item-title">{{ localize(itemInfo.title_i18n, itemInfo.title) }}</text>
       </view>
       <text v-else class="ch-name-only">{{ otherUserName || t('nav.messages') }}</text>
       <view class="ch-more" @click="onMoreActions">
@@ -23,7 +23,7 @@
         mode="aspectFill"
       />
       <view class="ic-info">
-        <text class="ic-title">{{ itemInfo.title }}</text>
+        <text class="ic-title">{{ localize(itemInfo.title_i18n, itemInfo.title) }}</text>
         <view class="ic-bottom">
           <text class="ic-price">{{ formatPrice(itemInfo.price, t("home.free")) }}</text>
           <text v-if="itemInfo.status === 'sold'" class="ic-sold">{{ t('status.sold') }}</text>
@@ -151,7 +151,7 @@ import { compressImage, formatPrice, friendlyErrorMessage } from '../../utils'
 import type { Item } from '../../types'
 import ChatEmojiPanel from '../../components/ChatEmojiPanel.vue'
 
-const { t, lang } = useI18n()
+const { t, lang, localize } = useI18n()
 
 const { currentUser, requireAuth } = useAuth()
 const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, deleteMessage, fetchConversationDetail, setConversationPinned, setConversationMuted } = useMessages()
@@ -406,10 +406,13 @@ function doReport() {
     itemList: reasons,
     success: async (res) => {
       const reason = reasons[res.tapIndex]
+      uni.showLoading({ title: t('report.submitting') || t('login.wait'), mask: true })
       try {
         await reportTarget('user', otherUserId.value, reason)
+        uni.hideLoading()
         uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
+        uni.hideLoading()
         uni.showToast({ title: err?.message || t('report.failed'), icon: 'none' })
       }
     },
@@ -688,7 +691,16 @@ function scrollToBottom() {
   box-sizing: border-box;
 }
 .msg-image {
-  max-width: 200px; border-radius: 12px; background: var(--bg-inset);
+  /* widthFix + max-width keeps chat photos bubble-sized no matter what
+     the source dimensions are. Adding max-height stops a pathological
+     1:5 portrait from blowing out the row. height:auto + display:block
+     make sure no browser quirks around inline-image baselines kick in. */
+  max-width: 200px;
+  max-height: 280px;
+  height: auto;
+  display: block;
+  border-radius: 12px;
+  background: var(--bg-inset);
 }
 .img-btn {
   width: 38px; height: 38px; display: flex;

@@ -82,6 +82,15 @@ function detectAuthRecoveryAndRoute(): boolean {
   if (!isRecovery) return false
   const alreadyOnReset = hash.startsWith('#/pages/reset-password')
   if (alreadyOnReset) return false
+  /*
+   * IMPORTANT: reLaunch overwrites the URL hash, which would strip the
+   * Supabase recovery token (access_token=... / type=recovery) that
+   * detectSessionInUrl relies on. We stash the raw auth hash on window
+   * so /pages/reset-password/index can re-parse it after navigation.
+   * This must run synchronously BEFORE reLaunch, otherwise the SDK will
+   * silently fail to produce a session and the page renders blank.
+   */
+  try { (window as any).__authRecoveryHash = hash } catch {}
   uni.reLaunch({ url: '/pages/reset-password/index' })
   return true
   // #endif
@@ -111,7 +120,10 @@ onLaunch(() => {
 
 <style>
 page {
-  background-color: #fafafb;
+  /* Warm cream background matches the Illini Market redesign and stays
+     consistent across all pages. Individual .page containers are allowed
+     to stack elev-1 (pure white) surfaces on top for cards. */
+  background-color: #faf7f0;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
     'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 15px;
@@ -213,33 +225,49 @@ button:focus-visible,
 }
 
 /*
- * Flat design tokens. Use these over one-off hex values in page
- * styles so a future recolor only touches this file.
+ * Design tokens — "Warm Campus Market" palette.
+ *
+ * This used to be a neutral grey scheme (#fafafb cool bg + black primary).
+ * The redesigned CAACI brief is a warmer, friendlier market feel — cream
+ * background, coral-red primary, soft earthy dividers, pill buttons. We
+ * keep all the old variable *names* so every page updates atomically;
+ * only their values change. The small handful of one-off hex literals
+ * still sprinkled in page SCSS will get mopped up opportunistically.
+ *
+ * Palette reference:
+ *   - Primary / CTA:  #FF5A4C coral red (was #1a1a1a black)
+ *   - Primary soft:   #FFE8E4 (tag bg, hover tint)
+ *   - Background:     #FAF7F0 cream off-white (was #fafafb cool grey)
+ *   - Card surface:   #FFFFFF
+ *   - Border hair:    #EFEAE0 warm beige
+ *   - Accent:         #2D5B4E dark green (complement, use sparingly)
  *
  * Radius scale: xs 6, sm 8, md 12, lg 16, pill 22 (button height /2).
- * Stick to these five steps — if you reach for 10 or 14, round to
- * the nearest step instead.
  */
 :root {
   --text-primary:   #1a1a1a;
-  --text-secondary: #5a5a63;
-  --text-tertiary:  #767680;
-  --text-muted:     #8e8e93;
-  --text-faint:     #aeaeb2;
+  --text-secondary: #4a4a4a;
+  --text-tertiary:  #6e6e6e;
+  --text-muted:     #8a8a8a;
+  --text-faint:     #b8b8b8;
   --text-disabled:  #a0a0a8;
 
-  --bg-page:    #fafafb;
+  --bg-page:    #faf7f0;
   --bg-elev-1:  #ffffff;
-  --bg-elev-2:  #f7f7f8;
-  --bg-subtle:  #f2f2f7;
-  --bg-inset:   #e8e8ed;
+  --bg-elev-2:  #f5f0e8;
+  --bg-subtle:  #f2ece0;
+  --bg-inset:   #efeae0;
 
-  --line-hair:  rgba(0, 0, 0, 0.05);
-  --line-soft:  rgba(0, 0, 0, 0.08);
-  --line-bold:  rgba(0, 0, 0, 0.12);
+  --line-hair:  rgba(60, 40, 20, 0.06);
+  --line-soft:  rgba(60, 40, 20, 0.10);
+  --line-bold:  rgba(60, 40, 20, 0.14);
 
-  --accent-primary: #1a1a1a;
-  --accent-action:  #FF6B35;
+  --accent-primary: #FF5A4C;
+  --accent-primary-soft: #FFE8E4;
+  --accent-primary-deep: #E64A3D;
+  --accent-action:  #FF5A4C;
+  --accent-ink:     #1a1a1a;
+  --accent-green:   #2D5B4E;
   --accent-good:    #22c55e;
   --accent-warn:    #FF9500;
   --accent-danger:  #FF3B30;
@@ -248,7 +276,8 @@ button:focus-visible,
   --radius-sm:   8px;
   --radius-md:  12px;
   --radius-lg:  16px;
-  --radius-pill: 22px;
+  --radius-xl:  20px;
+  --radius-pill: 999px;
 
   --space-1:  4px;
   --space-2:  8px;
@@ -262,8 +291,9 @@ button:focus-visible,
   --font-weight-semi:    600;
   --font-weight-bold:    700;
 
-  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.03), 0 2px 8px rgba(0, 0, 0, 0.04);
-  --shadow-pop:  0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-soft: 0 1px 2px rgba(60, 40, 20, 0.03), 0 2px 12px rgba(60, 40, 20, 0.04);
+  --shadow-pop:  0 4px 16px rgba(60, 40, 20, 0.08);
+  --shadow-cta:  0 6px 14px rgba(255, 90, 76, 0.28);
 }
 
 /*

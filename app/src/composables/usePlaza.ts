@@ -12,7 +12,10 @@ const loading = ref(false)
 const hasMore = ref(true)
 const PAGE_SIZE = 20
 const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, is_illini_verified, uid'
-const ATTACHED_ITEM_FIELDS = 'id, title, price, images, status'
+// title_i18n is included so attached-item previews localize too. Supabase
+// returns the column as null on pre-015 databases and localize() silently
+// falls back to plain `title`, so this is safe on unmigrated schemas.
+const ATTACHED_ITEM_FIELDS = 'id, title, title_i18n, price, images, status'
 const POST_SELECT = `*,
   profile:profiles!posts_user_id_fkey(${PUBLIC_PROFILE_FIELDS}),
   attached_item:items!posts_attached_item_id_fkey(${ATTACHED_ITEM_FIELDS})`
@@ -102,7 +105,28 @@ export function usePlaza() {
     return post
   }
 
-  async function createPost(content: string, images: string[] = [], attachedItemId: string | null = null) {
+  /*
+   * Create a plaza post.
+   *
+   * Post-014/015 writes (image_dimensions, content_i18n, source_lang) are
+   * optional and silently retried-without on a 42703 schema error, so
+   * this function works against older databases that haven't applied the
+   * image-dimensions / content-i18n migrations.
+   *
+   * content_i18n is seeded with the author's text in `sourceLang` only;
+   * the caller is expected to kick off an async translator after this
+   * returns and upsert the other locale(s) via updatePostI18n.
+   */
+  async function createPost(
+    content: string,
+    images: string[] = [],
+    attachedItemId: string | null = null,
+    extras: {
+      image_dimensions?: Array<{ w: number; h: number }>
+      content_i18n?: Record<string, string> | null
+      source_lang?: string | null
+    } = {},
+  ) {
     if (!currentUser.value) throw new Error('Not authenticated')
     const trimmed = content.trim()
     if (!trimmed && images.length === 0 && !attachedItemId) throw new Error('Content required')
@@ -117,20 +141,51 @@ export function usePlaza() {
     }
 
     const payloadContent = trimmed || ' '
-    const { data, error } = await supabase
-      .from('posts')
-      .insert({
-        user_id: currentUser.value.id,
-        content: payloadContent,
-        images,
-        attached_item_id: attachedItemId,
-      })
-      .select(POST_SELECT)
-      .single()
+    const basePayload: Record<string, any> = {
+      user_id: currentUser.value.id,
+      content: payloadContent,
+      images,
+      attached_item_id: attachedItemId,
+    }
+    if (extras.image_dimensions && extras.image_dimensions.length) {
+      basePayload.image_dimensions = extras.image_dimensions
+    }
+    if (extras.content_i18n) basePayload.content_i18n = extras.content_i18n
+    if (extras.source_lang) basePayload.source_lang = extras.source_lang
 
-    if (error) throw error
-    posts.value = [data as unknown as Post, ...posts.value]
-    return data as unknown as Post
+    const stripNewCols = (p: Record<string, any>) => {
+      delete p.image_dimensions
+      delete p.content_i18n
+      delete p.source_lang
+    }
+    const isMissingNewCol = (err: any): boolean => {
+      const msg = String(err?.message || '')
+      return err?.code === '42703' && /image_dimensions|content_i18n|source_lang/.test(msg)
+    }
+
+    let res = await supabase.from('posts').insert(basePayload).select(POST_SELECT).single()
+    if (res.error && isMissingNewCol(res.error)) {
+      stripNewCols(basePayload)
+      res = await supabase.from('posts').insert(basePayload).select(POST_SELECT).single()
+    }
+    if (res.error) throw res.error
+    posts.value = [res.data as unknown as Post, ...posts.value]
+    return res.data as unknown as Post
+  }
+
+  /*
+   * Patch a post's content_i18n after an async translation call. Thin
+   * helper so the publish flow doesn't have to reach into supabase
+   * directly, and it stays within the RLS boundary of the row owner.
+   */
+  async function updatePostI18n(postId: string, content_i18n: Record<string, string>) {
+    if (!currentUser.value) return
+    const { error } = await supabase
+      .from('posts')
+      .update({ content_i18n })
+      .eq('id', postId)
+      .eq('user_id', currentUser.value.id)
+    if (error) console.warn('[usePlaza] updatePostI18n:', error.message)
   }
 
   async function fetchMyActiveItems(): Promise<Array<Pick<import('../types').Item, 'id' | 'title' | 'price' | 'images' | 'status'>>> {
@@ -229,6 +284,7 @@ export function usePlaza() {
     fetchPosts,
     fetchPost,
     createPost,
+    updatePostI18n,
     deletePost,
     toggleLike,
     fetchComments,

@@ -1,7 +1,20 @@
 import { ref } from 'vue'
 import { quickTranslate } from '../utils'
+import { SUPPORTED_LANGS, type Lang as AppLang } from './useI18n'
 
+/*
+ * Target-language type for this composable's translation API.
+ *
+ * We currently hit an OpenAI translation endpoint that's optimized for
+ * bidirectional zh↔en, so the request payload is still typed as
+ * 'zh' | 'en'. The source argument on the item-level helper below,
+ * however, accepts the full app Lang union (zh | en | ja | ko | zh-Hant)
+ * so callers don't have to do the narrowing themselves — unsupported
+ * targets just resolve to an empty translation, preserving the
+ * "show the original" contract in localize().
+ */
 type Lang = 'en' | 'zh'
+const TRANSLATABLE: Lang[] = ['zh', 'en']
 
 interface CachedEntry {
   translated: string
@@ -104,5 +117,71 @@ export function useTranslate() {
     }
   }
 
-  return { translate, getCached, pending }
+  /*
+   * Publish-time content translation.
+   *
+   * Given the text the author typed and the language they typed it in,
+   * produce the complementary translations for every OTHER supported
+   * locale and return a map ready to drop into jsonb columns like
+   * items.title_i18n / description_i18n / posts.content_i18n.
+   *
+   * Guarantees the source lang is always present in the returned map so
+   * the frontend's `map[lang] ?? original` fallback never re-translates
+   * the author's words. Individual target-lang failures fall through
+   * silently — we prefer a partial i18n map over blocking the publish.
+   *
+   * Caller is expected to run this async after the insert has already
+   * returned, then upsert the result back onto the row. Blocking the
+   * publish UI on translation would feel laggy and the endpoint can be
+   * cold.
+   */
+  async function translateContentToAll(
+    text: string,
+    sourceLang: AppLang,
+  ): Promise<Record<string, string>> {
+    const map: Record<string, string> = {}
+    if (!text || !text.trim()) return map
+    map[sourceLang] = text
+
+    const targets = TRANSLATABLE.filter(l => l !== sourceLang)
+    await Promise.all(
+      targets.map(async (target) => {
+        try {
+          const translated = await translate(text, target)
+          if (translated && translated !== text) map[target] = translated
+        } catch { /* swallow: partial map is fine */ }
+      }),
+    )
+    return map
+  }
+
+  /*
+   * Translate both title and description (or content) in one call so a
+   * publish flow that wants bilingual storage can just:
+   *   const { title_i18n, description_i18n } = await translateItemContent({ … })
+   *   await updateItem(id, { title_i18n, description_i18n })
+   */
+  async function translateItemContent(input: {
+    title: string
+    description?: string
+    sourceLang: AppLang
+  }): Promise<{
+    title_i18n: Record<string, string>
+    description_i18n: Record<string, string>
+  }> {
+    const [title_i18n, description_i18n] = await Promise.all([
+      translateContentToAll(input.title, input.sourceLang),
+      translateContentToAll(input.description || '', input.sourceLang),
+    ])
+    return { title_i18n, description_i18n }
+  }
+
+  return {
+    translate,
+    getCached,
+    pending,
+    translateContentToAll,
+    translateItemContent,
+    SUPPORTED_LANGS,
+  }
 }

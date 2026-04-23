@@ -2,9 +2,28 @@
   <view class="page" v-if="item">
     <!-- Image Carousel -->
     <view class="img-area">
-      <swiper class="img-swiper" :current="currentImg" @change="currentImg = $event.detail.current" circular>
+      <!--
+        Swiper height follows the *current* image's aspect ratio so users
+        see the original framing, not a letterboxed 380px slab. Capped at
+        85vh so a vertical 9:16 photo won't take the entire screen above
+        the fold. aspectFit preserves ratio inside whatever box we hand it,
+        so there's no cropping. The aspect map is populated on @load.
+      -->
+      <swiper
+        class="img-swiper"
+        :style="swiperStyle"
+        :current="currentImg"
+        @change="currentImg = $event.detail.current"
+        circular
+      >
         <swiper-item v-for="(img, i) in item.images" :key="i">
-          <image :src="img" mode="aspectFit" class="swiper-img" @click="previewImage(i)" />
+          <image
+            :src="img"
+            mode="aspectFit"
+            class="swiper-img"
+            @load="onHeroImgLoad(i, $event)"
+            @click="previewImage(i)"
+          />
         </swiper-item>
         <swiper-item v-if="item.images.length === 0">
           <view class="no-img">
@@ -38,7 +57,7 @@
         <text v-if="item.negotiable" class="obo">OBO</text>
       </view>
       <view class="title-row">
-        <text class="title">{{ translated ? translatedTitle : item.title }}</text>
+        <text class="title">{{ displayTitle }}</text>
         <view :class="['translate-btn', { loading: translatePending }]" @click="toggleTranslate">
           <text v-if="!translatePending">{{ translated ? 'A文' : '文A' }}</text>
           <text v-else>···</text>
@@ -66,7 +85,7 @@
     <view class="section" v-if="item.description">
       <text class="section-label">{{ t('detail.description') }}</text>
       <view class="desc-wrap">
-        <text :class="['desc-text', { clamped: !descExpanded }]">{{ translated ? translatedDesc : item.description }}</text>
+        <text :class="['desc-text', { clamped: !descExpanded }]">{{ displayDescription }}</text>
         <text v-if="item.description.length > 100" class="expand-btn" @click="descExpanded = !descExpanded">
           {{ descExpanded ? t('detail.showLess') : t('detail.showMore') }}
         </text>
@@ -245,7 +264,7 @@ import { useRatings } from '../../composables/useRatings'
 import { useTranslate } from '../../composables/useTranslate'
 import { computed, onUnmounted, watch } from 'vue'
 
-const { t } = useI18n()
+const { t, lang, localize } = useI18n()
 const { fetchItem, updateItemStatus } = useItems()
 const { addToHistory } = useHistory()
 const { supabase } = useSupabase()
@@ -264,7 +283,67 @@ const descExpanded = ref(false)
 const notFound = ref(false)
 const translated = ref(false)
 
+/*
+ * Two layers of content localization are in play:
+ *   1. Pre-translated i18n map (items.title_i18n / description_i18n) —
+ *      populated at publish time (migration 015). This is what most
+ *      users see once the async translator has run.
+ *   2. On-demand "A文" toggle — still supported for legacy rows where
+ *      the i18n map is missing, and as a "retry with AI" escape hatch.
+ *
+ * displayTitle / displayDescription collapse the two layers into one
+ * template-readable string: if user hit A文 we show the live translation;
+ * otherwise we show localize(i18n map, original) which cleanly falls
+ * back to the author's original text when no translation exists.
+ */
+const displayTitle = computed(() => {
+  if (!item.value) return ''
+  if (translated.value && translatedTitle.value) return translatedTitle.value
+  return localize(item.value.title_i18n, item.value.title)
+})
+const displayDescription = computed(() => {
+  if (!item.value) return ''
+  if (translated.value && translatedDesc.value) return translatedDesc.value
+  return localize(item.value.description_i18n, item.value.description)
+})
+
 const locationSpot = computed(() => matchSpot(item.value?.location))
+
+/*
+ * Hero-carousel aspect tracking.
+ *
+ * uni-app <swiper> requires a concrete height; earlier we hard-coded 380px,
+ * which letterboxed any photo that wasn't ~5:3 and made Xianyu-style full-
+ * frame shots feel cramped. We now:
+ *   1. record each slide's natural ratio as the image loads
+ *   2. pick the *current* slide's ratio to size the swiper
+ *   3. cap at 85vh so a 9:16 portrait doesn't swallow the whole viewport
+ *   4. fall back to 4:5 (a Xianyu-ish default) before the first @load fires
+ * This is the Category B pattern from the spec: detail views return real
+ * framing, no squeezing, no stretching.
+ */
+const imgAspects = ref<Record<number, number>>({})
+
+function onHeroImgLoad(i: number, ev: any) {
+  const d = ev?.detail || {}
+  const w = d.width || ev?.target?.naturalWidth || 0
+  const h = d.height || ev?.target?.naturalHeight || 0
+  if (w > 0 && h > 0) {
+    imgAspects.value = { ...imgAspects.value, [i]: w / h }
+  }
+}
+
+const swiperStyle = computed(() => {
+  const ratio = imgAspects.value[currentImg.value] || (4 / 5)
+  // For very tall portraits, cap at 85vh; for panoramas clamp the lower end too.
+  const clamped = Math.max(0.5, Math.min(ratio, 2.0))
+  // Swiper width = viewport width (up to its max-width breakpoint), height derives from ratio
+  return {
+    aspectRatio: String(clamped),
+    maxHeight: '85vh',
+    height: 'auto',
+  }
+})
 
 const { submitRating, hasRated } = useRatings()
 const showRating = ref(false)
@@ -306,7 +385,7 @@ async function onSubmitRating() {
   }
 }
 
-const { lang } = useI18n()
+// lang / localize / t all come from the top-level useI18n() destructure.
 const { translate: translateText, getCached, pending: translatePending } = useTranslate()
 
 const translatedTitle = ref('')
@@ -437,11 +516,15 @@ function onReport() {
     itemList: reasons,
     success: async (res) => {
       const reason = reasons[res.tapIndex]
+      // The 5–10s pacing lives inside reportTarget() so every call site gets it.
+      uni.showLoading({ title: t('report.submitting') || t('login.wait'), mask: true })
       try {
         await reportTarget('item', targetId, reason)
         reported.value = true
+        uni.hideLoading()
         uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
+        uni.hideLoading()
         uni.showToast({ title: err?.message || t('report.failed'), icon: 'none' })
       }
     },
@@ -548,7 +631,14 @@ async function contactSeller() {
   width: 100%;
   background: var(--bg-inset);
 }
-.img-swiper { width: 100%; height: 380px; background: var(--bg-subtle); }
+/*
+ * Height is injected via :style="swiperStyle" (aspect-ratio + max-height).
+ * Keep `background` so tall portraits letterbox into a neutral surface
+ * instead of showing whatever is behind during the initial @load settle.
+ * Never re-introduce a hard `height: Xpx` here — it would fight the
+ * aspect-ratio style and we'd be back to the squashed look.
+ */
+.img-swiper { width: 100%; background: var(--bg-subtle); }
 .swiper-img { width: 100%; height: 100%; background: var(--bg-subtle); }
 .no-img {
   width: 100%; height: 100%;
@@ -762,11 +852,12 @@ async function contactSeller() {
 .action-bar {
   position: fixed; bottom: 0; left: 0; right: 0;
   display: flex; align-items: center; gap: 16px;
-  padding: 11px 16px;
-  padding-bottom: calc(11px + env(safe-area-inset-bottom, 0px));
-  background: rgba(255,255,255,0.92);
+  padding: 12px 16px;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  background: rgba(255,255,255,0.95);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: 0 -4px 16px rgba(60, 40, 20, 0.06);
   border-top: 0.5px solid var(--line-hair);
   z-index: 100;
   max-width: 640px;
@@ -859,15 +950,27 @@ async function contactSeller() {
   -webkit-tap-highlight-color: transparent;
   &:active { transform: scale(0.92); }
 }
+/*
+ * Primary CTA at the bottom of the detail page.
+ *
+ * Now uses a coral-red gradient + pill shape to match the "campus-market"
+ * redesign's hero button. The boxed shadow gives it lift above the
+ * translucent action-bar backdrop. Semantic variants (-confirm / -rate)
+ * override background to keep status visually distinct.
+ */
 .chat-btn {
-  flex: 1; height: 44px; background: var(--accent-primary); color: #fff;
-  border-radius: 22px; font-size: 15px; font-weight: 600;
+  flex: 1; height: 44px;
+  background: linear-gradient(135deg, #FF7A6E 0%, var(--accent-primary) 100%);
+  color: #fff;
+  border-radius: var(--radius-pill);
+  font-size: 15px; font-weight: 600;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
-  &:active { opacity: 0.8; }
+  box-shadow: var(--shadow-cta);
+  &:active { opacity: 0.88; }
 }
-.chat-btn-confirm { background: var(--accent-good); }
-.chat-btn-rate { background: #fbbf24; color: var(--text-primary); font-weight: 700; }
+.chat-btn-confirm { background: var(--accent-good); box-shadow: 0 6px 14px rgba(34,197,94,0.28); }
+.chat-btn-rate { background: #fbbf24; color: var(--text-primary); font-weight: 700; box-shadow: 0 6px 14px rgba(251,191,36,0.28); }
 
 .sheet-mask {
   position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000;
@@ -972,7 +1075,11 @@ async function contactSeller() {
 /* ========== Desktop ========== */
 @media (min-width: 768px) {
   .page { max-width: 640px; margin: 0 auto; }
-  .img-swiper { height: 460px; }
+  /*
+   * Don't hard-set height here either. The inline :style aspect-ratio
+   * handles it, and the 85vh cap keeps the hero from eating the whole
+   * above-the-fold on big screens.
+   */
   .info-card { border-radius: 0; }
 }
 </style>

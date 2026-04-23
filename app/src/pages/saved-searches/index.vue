@@ -9,7 +9,7 @@
       <text>{{ t('savedSearch.hint') }}</text>
     </view>
 
-    <scroll-view class="list" scroll-y>
+    <scroll-view class="list" scroll-y :scroll-top="scrollTopVal" :scroll-with-animation="false">
       <view v-if="items.length === 0" class="empty">
         <text class="empty-icon">🔔</text>
         <text class="empty-text">{{ t('savedSearch.empty') }}</text>
@@ -83,7 +83,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, nextTick, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
 import { useSavedSearch } from '../../composables/useSavedSearch'
@@ -104,6 +105,22 @@ const form = ref<{ keyword: string; category: ItemCategory | null; priceMin: str
 })
 
 const categoryKeys: (ItemCategory | null)[] = [null, 'electronics', 'furniture', 'books', 'clothing', 'housing', 'daily', 'vehicles', 'food', 'currency_exchange', 'other']
+
+/*
+ * uni-app <scroll-view> remembers its last scrollTop between page shows.
+ * Entering via profile's menu would often land the user mid-list. We drive
+ * scrollTop through a ref and bump it to 0 on every onShow — the 1 → 0
+ * flicker is deliberate because assigning the same number twice in a row
+ * doesn't retrigger the scroll reset in uni-app H5.
+ */
+const scrollTopVal = ref(0)
+
+function resetScroll() {
+  scrollTopVal.value = 1
+  nextTick(() => { scrollTopVal.value = 0 })
+}
+
+onShow(() => { resetScroll() })
 
 onMounted(async () => {
   if (!currentUser.value) {

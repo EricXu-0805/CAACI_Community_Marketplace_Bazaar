@@ -118,8 +118,25 @@ function onContactEmail() {
 .content {
   flex: 1; min-height: 0;
   padding: 20px 16px calc(40px + env(safe-area-inset-bottom, 0px));
+  /* Hard horizontal containment: long URLs / CJK without separators would
+     otherwise push the scroll-view past the right edge (H5 <text> elements
+     don't shrink to parent like <div>). The inner text still wraps below. */
+  box-sizing: border-box;
+  width: 100%;
+  overflow-x: hidden;
 }
-.body { font-size: 14px; color: var(--text-secondary); line-height: 1.8; white-space: pre-wrap; }
+.body {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  font-size: 14px; color: var(--text-secondary); line-height: 1.8;
+  white-space: pre-wrap;
+  /* break-word handles Western long URLs; anywhere handles long CJK runs */
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+}
 .contact-row {
   margin-top: 20px; padding: 16px; border-radius: 12px;
   background: var(--bg-elev-2); cursor: pointer;
