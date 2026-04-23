@@ -324,7 +324,7 @@ function onCommentLongPress(c: PostComment) {
   const items = isMine ? [t('plaza.delete')] : [t('plaza.reply'), t('plaza.report')]
   uni.showActionSheet({
     itemList: items,
-    itemColor: isMine ? 'var(--accent-danger)' : '#1a1a1a',
+    itemColor: isMine ? 'var(--accent-danger)' : '#2A2A2E',
     success: (res) => {
       if (isMine && res.tapIndex === 0) {
         uni.showModal({

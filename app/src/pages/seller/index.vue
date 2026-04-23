@@ -200,7 +200,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   padding: 3px 10px; border-radius: 12px; background: rgba(26,122,255,0.08);
 }
 .us-emoji { font-size: 13px; line-height: 1; }
-.us-text { font-size: 12px; color: #1a7aff; line-height: 1.3; }
+.us-text { font-size: 12px; color: var(--campus-blue); line-height: 1.45; }
 .loc-row { display: flex; align-items: center; gap: 4px; }
 .loc-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-action); }
 .loc-text { font-size: 12px; color: var(--text-faint); }
@@ -215,7 +215,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   &:active { transform: scale(0.96); }
   &.following {
     background: var(--bg-elev-1); color: var(--text-primary);
-    border: 1px solid #d1d1d6;
+    border: 1px solid var(--border-strong);
   }
 }
 
@@ -270,7 +270,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   padding: 80px 40px 40px; gap: 10px; text-align: center;
 }
 .blocked-icon {
-  width: 48px; height: 48px; border: 2.5px solid #d1d1d6;
+  width: 48px; height: 48px; border: 2.5px solid var(--border-strong);
   border-radius: 50%; position: relative; margin-bottom: 6px;
   &::before {
     content: ''; position: absolute; top: 50%; left: 8px; right: 8px;

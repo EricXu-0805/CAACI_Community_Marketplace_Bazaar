@@ -250,7 +250,7 @@ function goBack() { uni.navigateBack() }
   padding: 14px 16px; border-bottom: 0.5px solid var(--line-hair);
 }
 .fs-cancel, .fs-save { font-size: 14px; cursor: pointer; color: var(--text-secondary, #5a5a63); }
-.fs-save { color: #1a7aff; font-weight: 600; &.disabled { color: var(--text-faint); pointer-events: none; } }
+.fs-save { color: var(--brand); font-weight: 600; &.disabled { color: var(--text-faint); pointer-events: none; } }
 .fs-title { font-size: 15px; font-weight: 600; }
 .fs-body { padding: 12px 16px 20px; }
 .fs-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }

@@ -559,7 +559,7 @@ function onDeleteItem(id: string) {
     top: -40px; right: -40px;
     width: 140px; height: 140px;
     border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, rgba(232, 74, 39, 0.45), rgba(232, 74, 39, 0) 65%);
+    background: radial-gradient(circle at 30% 30%, rgba(199, 74, 47, 0.45), rgba(199, 74, 47, 0) 65%);
     pointer-events: none;
   }
   & > * { position: relative; z-index: 1; }
@@ -568,9 +568,9 @@ function onDeleteItem(id: string) {
 .user-row { display: flex; align-items: center; gap: 14px; }
 .avatar-big {
   width: 72px; height: 72px; border-radius: 50%;
-  background: linear-gradient(135deg, #FDEEE8 0%, #E84A27 100%);
+  background: linear-gradient(135deg, #F5D9CE 0%, #C74A2F 100%);
   flex-shrink: 0;
-  box-shadow: 0 6px 16px rgba(232, 74, 39, 0.35);
+  box-shadow: 0 6px 16px rgba(199, 74, 47, 0.35);
   border: 2px solid #F5F0E6;
 }
 .user-info { flex: 1; min-width: 0; }

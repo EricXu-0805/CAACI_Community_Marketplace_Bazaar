@@ -1,79 +1,117 @@
-$brand-color: #FF6B35;
-$brand-color-light: #FFF0E8;
-$text-primary: #333333;
-$text-secondary: #666666;
-$text-hint: #999999;
-$bg-primary: #FFFFFF;
-$bg-secondary: #F5F5F5;
-$border-color: #EEEEEE;
-$success-color: #52C41A;
-$warning-color: #FAAD14;
-$danger-color: #FF4D4F;
-$radius-sm: 8rpx;
-$radius-md: 16rpx;
-$radius-lg: 24rpx;
-$spacing-xs: 8rpx;
-$spacing-sm: 16rpx;
-$spacing-md: 24rpx;
-$spacing-lg: 32rpx;
-$spacing-xl: 48rpx;
+/* ==========================================================================
+ * Illini 集市 · Design Tokens · 米白书院 Hybrid v5
+ * ==========================================================================
+ * uni-app framework-level SCSS variables. These drive uni-app's internal
+ * components (uni-tabbar, uni-button, uni-input defaults) since Vue 3
+ * files can't consume pure CSS custom properties at @import time.
+ *
+ * Keep in sync with :root in App.vue. When you change a brand-level
+ * value here, mirror it to the App.vue --* token map too.
+ *
+ * See /Users/xiaogangxu/Downloads/Illini Market Design System/uploads/uni.scss
+ * for the full token taxonomy.
+ * ========================================================================== */
 
-$uni-color-primary: #FF6B35;
-$uni-color-success: #4cd964;
-$uni-color-warning: #f0ad4e;
-$uni-color-error: #dd524d;
+/* 品牌色 · Brand (terracotta — 米白书院) */
+$brand-color:        #C74A2F;
+$brand-color-light:  #F5D9CE;
+$brand-color-dark:   #A03A24;
+
+/* 文字 · Ink (warm charcoal — anti-plastic) */
+$text-primary:    #2A2A2E;
+$text-secondary:  #57524B;
+$text-hint:       #8B8478;
+$text-inverse:    #F5F0E6;
+
+/* 背景 · Surface (warm paper stack) */
+$bg-primary:      #F5F0E6;   // canvas
+$bg-secondary:    #FBF8F2;   // card surface
+$bg-surface-alt:  #F0E9DA;   // chip / inset
+
+/* 边框 · Border (warm beige — paper edge) */
+$border-color:         #E8DFCC;
+$border-color-strong:  #D8CDB3;
+
+/* 功能色 · Semantic (tuned to sit beside terracotta) */
+$success-color:       #5D7C4A;   // sage olive
+$warning-color:       #D4923C;   // amber
+$danger-color:        #B53333;   // vermilion
+
+/* UIUC Campus accents (reserved for verified / official only) */
+$campus-blue:         #13294B;
+$campus-orange:       #FF5F05;
+
+/* 圆角 · Radius (uni-app uses rpx for responsive sizing) */
+$radius-sm:   16rpx;   //  8px
+$radius-md:   24rpx;   // 12px
+$radius-lg:   36rpx;   // 18px
+$radius-xl:   56rpx;   // 28px
+
+/* 间距 · Spacing (4pt grid) */
+$spacing-xs:  8rpx;
+$spacing-sm:  16rpx;
+$spacing-md:  24rpx;
+$spacing-lg:  32rpx;
+$spacing-xl:  48rpx;
+
+/* ==========================================================================
+ *  uni-app framework variables — DO NOT RENAME (framework references them)
+ * ========================================================================== */
+
+$uni-color-primary: $brand-color;
+$uni-color-success: $success-color;
+$uni-color-warning: $warning-color;
+$uni-color-error:   $danger-color;
 
 /* 文字基本颜色 */
-$uni-text-color: #333; // 基本色
-$uni-text-color-inverse: #fff; // 反色
-$uni-text-color-grey: #999; // 辅助灰色，如加载更多的提示信息
-$uni-text-color-placeholder: #808080;
-$uni-text-color-disable: #c0c0c0;
+$uni-text-color:             $text-primary;
+$uni-text-color-inverse:     $text-inverse;
+$uni-text-color-grey:        $text-hint;
+$uni-text-color-placeholder: $text-hint;
+$uni-text-color-disable:     #C0BCB2;
 
 /* 背景颜色 */
-$uni-bg-color: #fff;
-$uni-bg-color-grey: #f8f8f8;
-$uni-bg-color-hover: #f1f1f1; // 点击状态颜色
-$uni-bg-color-mask: rgba(0, 0, 0, 0.4); // 遮罩颜色
+$uni-bg-color:       $bg-primary;
+$uni-bg-color-grey:  $bg-surface-alt;
+$uni-bg-color-hover: #ECE4D1;
+$uni-bg-color-mask:  rgba(42, 42, 46, 0.5);
 
 /* 边框颜色 */
-$uni-border-color: #c8c7cc;
+$uni-border-color: $border-color;
 
-/* 尺寸变量 */
-
-/* 文字尺寸 */
-$uni-font-size-sm: 12px;
-$uni-font-size-base: 14px;
-$uni-font-size-lg: 16;
+/* 文字尺寸 (refinement pass — body 15px not 14px) */
+$uni-font-size-sm:   12px;
+$uni-font-size-base: 15px;
+$uni-font-size-lg:   17px;
 
 /* 图片尺寸 */
-$uni-img-size-sm: 20px;
+$uni-img-size-sm:   20px;
 $uni-img-size-base: 26px;
-$uni-img-size-lg: 40px;
+$uni-img-size-lg:   40px;
 
 /* Border Radius */
-$uni-border-radius-sm: 2px;
-$uni-border-radius-base: 3px;
-$uni-border-radius-lg: 6px;
+$uni-border-radius-sm:     4px;
+$uni-border-radius-base:   8px;
+$uni-border-radius-lg:    12px;
 $uni-border-radius-circle: 50%;
 
 /* 水平间距 */
-$uni-spacing-row-sm: 5px;
+$uni-spacing-row-sm:   5px;
 $uni-spacing-row-base: 10px;
-$uni-spacing-row-lg: 15px;
+$uni-spacing-row-lg:   15px;
 
 /* 垂直间距 */
-$uni-spacing-col-sm: 4px;
+$uni-spacing-col-sm:   4px;
 $uni-spacing-col-base: 8px;
-$uni-spacing-col-lg: 12px;
+$uni-spacing-col-lg:   12px;
 
 /* 透明度 */
-$uni-opacity-disabled: 0.3; // 组件禁用态的透明度
+$uni-opacity-disabled: 0.4;
 
-/* 文章场景相关 */
-$uni-color-title: #2c405a; // 文章标题颜色
-$uni-font-size-title: 20px;
-$uni-color-subtitle: #555; // 二级标题颜色
-$uni-font-size-subtitle: 18px;
-$uni-color-paragraph: #3f536e; // 文章段落颜色
+/* 文章场景（保留向后兼容） */
+$uni-color-title:        $text-primary;
+$uni-font-size-title:    20px;
+$uni-color-subtitle:     $text-secondary;
+$uni-font-size-subtitle: 17px;
+$uni-color-paragraph:    $text-primary;
 $uni-font-size-paragraph: 15px;

@@ -37,14 +37,14 @@ function go(url: string) { uni.switchTab({ url }) }
 .desktop-nav-inner { max-width: 1120px; margin: 0 auto; display: flex; align-items: center; padding: 0 24px; height: 56px; gap: 24px; }
 .desktop-logo { font-size: 17px; font-weight: 700; color: var(--text-primary); white-space: nowrap; cursor: pointer; letter-spacing: -0.02em; }
 .desktop-nav-links { display: flex; gap: 4px; }
-.nav-link { font-size: 15px; color: #86868b; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: all 0.15s; font-weight: 500; }
+.nav-link { font-size: 15px; color: var(--ink-quiet); padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: all 0.15s; font-weight: 500; }
 .nav-link:hover { background: var(--bg-subtle); color: #1d1d1f; }
 .nav-link.active { color: var(--text-primary); font-weight: 600; background: var(--bg-subtle); }
 .desktop-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
 .nav-loc-wrap { display: flex; align-items: center; gap: 5px; }
 .nav-loc-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-action); flex-shrink: 0; }
-.nav-location { font-size: 13px; color: #86868b; }
-.lang-btn { font-size: 11px; color: var(--text-muted); padding: 3px 9px; border: 1px solid #d1d1d6; border-radius: 6px; cursor: pointer; font-weight: 500; }
+.nav-location { font-size: 13px; color: var(--ink-quiet); }
+.lang-btn { font-size: 11px; color: var(--text-muted); padding: 3px 9px; border: 1px solid var(--border-strong); border-radius: 6px; cursor: pointer; font-weight: 500; }
 .lang-btn:active { background: var(--bg-subtle); }
 .nav-link-wrap { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
 .nav-badge {

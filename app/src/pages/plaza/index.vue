@@ -841,7 +841,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   padding: 80px 16px; gap: 12px; color: var(--text-faint); font-size: 14px;
 }
 .empty-icon {
-  width: 48px; height: 36px; border: 2.5px solid #d1d1d6;
+  width: 48px; height: 36px; border: 2.5px solid var(--border-strong);
   border-radius: 18px 18px 18px 4px; position: relative;
   margin-bottom: 4px;
 }

@@ -1126,21 +1126,21 @@ function goPublish() {
   display: flex; flex-direction: column; align-items: center; padding-top: 80px; gap: 8px;
 }
 .empty-error-icon {
-  width: 40px; height: 40px; border: 2.5px solid #d1d1d6;
+  width: 40px; height: 40px; border: 2.5px solid var(--border-strong);
   border-radius: 50%; position: relative; margin-bottom: 6px;
   &::before {
     content: '!'; position: absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 20px; font-weight: 700; color: #d1d1d6;
+    font-size: 20px; font-weight: 700; color: var(--border-strong);
   }
 }
 .empty-bag-icon {
-  width: 36px; height: 40px; border: 2.5px solid #d1d1d6;
+  width: 36px; height: 40px; border: 2.5px solid var(--border-strong);
   border-radius: 5px; position: relative; margin-bottom: 6px;
   &::before {
     content: ''; position: absolute; top: -10px; left: 5px;
     width: 22px; height: 12px;
-    border: 2.5px solid #d1d1d6; border-bottom: none;
+    border: 2.5px solid var(--border-strong); border-bottom: none;
     border-radius: 11px 11px 0 0;
   }
 }
@@ -1227,7 +1227,7 @@ function goPublish() {
 
   .card {
     transition: transform 0.15s, box-shadow 0.15s;
-    &:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(19,41,75,0.08); }
+    &:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(42, 42, 46, 0.08); }
     &:active { transform: scale(0.99); }
   }
   /*

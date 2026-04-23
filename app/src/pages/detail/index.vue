@@ -875,7 +875,7 @@ async function contactSeller() {
   align-self: flex-start;
 }
 .ss-emoji { font-size: 12px; line-height: 1; }
-.ss-text { font-size: 12px; color: #1a7aff; line-height: 1.3; }
+.ss-text { font-size: 12px; color: var(--campus-blue); line-height: 1.45; }
 .stats-row {
   display: flex; gap: 28px;
   padding-top: 13px; border-top: 1px solid var(--line-hair);
@@ -1113,11 +1113,11 @@ async function contactSeller() {
 }
 .nf-arrow { width: 9px; height: 9px; border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary); transform: rotate(45deg); margin-left: 3px; }
 .nf-icon {
-  width: 60px; height: 60px; border: 3px solid #d1d1d6;
+  width: 60px; height: 60px; border: 3px solid var(--border-strong);
   border-radius: 50%; position: relative; margin-bottom: 8px;
   &::before {
     content: ''; position: absolute; top: 50%; left: 14px; right: 14px; height: 3px;
-    background: #d1d1d6;
+    background: var(--border-strong);
     transform: translateY(-50%);
   }
 }

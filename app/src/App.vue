@@ -246,7 +246,7 @@ input:focus-visible,
 textarea:focus-visible,
 button:focus-visible,
 .focusable:focus-visible {
-  outline: 2px solid #1a7aff !important;
+  outline: 2px solid var(--brand) !important;
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -276,113 +276,138 @@ button:focus-visible,
 
 /*
  * ============================================================
- * Design tokens — UIUC Fusion (refinement pass v4).
+ * Design tokens — Hybrid v5 (米白书院 commerce + UIUC accent)
  *
- * Ports the production design-system tokens from
+ * Source of truth (per dual-track tokens.css v2):
  *   /Users/xiaogangxu/Downloads/Illini Market Design System/
- *   uploads/illini_refinement_pass_tab_typography_search.html
+ *     uploads/illini-market-design-system.html
+ *     uploads/illini-market-design-system-ff69aead.html
+ *     tokens.css                  ← dual-track design intent
+ *     uploads/uni.scss            ← matching SCSS source
  *
- * This is the explicit "fix the plastic feel" pass. The old
- * v3 ivory_academy went too warm (terracotta + ink); the real
- * Illini Market direction is:
- *   · UIUC Illini Blue  #13294B  → all body text + titles
- *   · Illini Orange     #E84A27  → brand · price · CTA
- *   · Warm parchment    #FBF7EB  → canvas
- *   · White surface     #FFFFFF  → cards sitting on the canvas
- *   · Paper / tab bg    #F6F0DF  → tab bar + inset chips
- *   · UIUC-blue borders rgba(19,41,75,0.08) — subtle cool cast,
- *     not warm beige. This is why the app feels "crisper" in
- *     the refinement pass.
+ * The two big design-system HTML files use 米白书院 throughout
+ * (terracotta #C74A2F + warm charcoal #2A2A2E + cream #F5F0E6)
+ * for ALL commerce, feed, detail, chat, profile, publish, and
+ * tab-bar surfaces. UIUC navy + Illini orange are RESERVED for
+ * specific moments of campus identity:
+ *   · "Illini 认证" / verified-pickup badges
+ *   · CAACI 官方 posts in plaza
+ *   · 反诈 / scam-warning banners
+ *   · academic seal moments (welcome, onboarding hero)
+ * Never on prices, never on default CTAs.
+ *
+ * Why this beats v4 (UIUC Fusion):
+ *   · navy ink on cream reads cold and corporate; warm-charcoal
+ *     ink on cream reads bookish and lived-in (the anti-plastic
+ *     direction the user has asked for since session 2).
+ *   · terracotta carries the "stamp / seal / pottery" energy
+ *     that matches the Fraunces serif headers.
+ *   · UIUC identity is preserved — but as accreditation, not
+ *     wallpaper. README.md explicitly names ivory_academy
+ *     "PRIMARY" and marketplace "SECONDARY".
  *
  * Migration history:
  *   v1 — neutral grey (#fafafb + #1a1a1a black)
  *   v2 — warm campus market (#faf7f0 cream + #FF5A4C coral)
  *   v3 — 米白书院 (#F5F0E6 ivory + #C74A2F terracotta)
- *   v4 — UIUC Fusion (#FBF7EB + #13294B + #E84A27) ← here
+ *   v4 — UIUC Fusion (#FBF7EB + #13294B + #E84A27)
+ *   v5 — Hybrid 双轨 (米白书院 + UIUC reserved) ← here
  *
  * Legacy variable names (--accent-primary, --bg-page, --text-*)
  * are preserved so every page cascades without code edits.
  */
 :root {
-  /* ---------- TEXT (all tiers cascade from UIUC navy) ---------- */
-  --text-primary:   #13294B;   /* ink       — UIUC Illini Blue */
-  --text-secondary: #3E3D35;   /* ink-soft  — warm near-black */
-  --text-tertiary:  #4A4738;
-  --text-muted:     #6B6A5A;   /* ink-quiet — warm stone */
-  --text-faint:     #8E8C7E;   /* ink-faint — scaffolding */
-  --text-disabled:  #B0AE9E;
+  /* ---------- TEXT (warm charcoal — the anti-plastic ink) ---------- */
+  --text-primary:   #2A2A2E;   /* ink       — warm charcoal */
+  --text-secondary: #57524B;   /* ink-soft  — secondary, walnut */
+  --text-tertiary:  #6B6557;
+  --text-muted:     #8B8478;   /* ink-quiet — meta · stone */
+  --text-faint:     #B6AE9F;   /* ink-faint — scaffolding */
+  --text-disabled:  #C0BCB2;
 
   /* ---------- NEW SEMANTIC NAMES (prefer these going forward) ---------- */
-  --ink:         #13294B;   /* UIUC navy — body + titles */
-  --ink-soft:    #3E3D35;
-  --ink-quiet:   #6B6A5A;
-  --ink-faint:   #8E8C7E;
-  --ink-inverse: #FBF7EB;   /* text on ink panels */
+  --ink:         #2A2A2E;   /* warm charcoal — body + titles */
+  --ink-soft:    #57524B;
+  --ink-quiet:   #8B8478;
+  --ink-faint:   #B6AE9F;
+  --ink-inverse: #F5F0E6;   /* text on ink panels (cream) */
 
   /* ---------- SURFACES ----------
-   * Three-layer stack — outer frame → canvas (page) → surface (card).
-   * Parchment (--parchment / --surface-alt) is a 4th, specific-use
-   * tone for tab bar + chip insets so they read as "paper fabric"
-   * over the canvas instead of plastic white on top of cream.
+   * Three-layer stack:
+   *   canvas (page bg)  — warm cream
+   *   surface (card)    — slightly lighter paper
+   *   surface-alt       — chip / inset / tab bar paper-fabric
+   *   frame             — pressed chip / hover
    */
-  --bg-page:    #FBF7EB;   /* canvas - page background */
-  --bg-elev-1:  #FFFFFF;   /* surface - card (pure white) */
-  --bg-elev-2:  #F6F0DF;   /* parchment - tab bar + inset bg */
-  --bg-subtle:  #F6F0DF;   /* chip / input / meta bg */
-  --bg-inset:   #EDE6D5;   /* pressed chip / frame */
+  --bg-page:    #F5F0E6;   /* canvas - page background */
+  --bg-elev-1:  #FBF8F2;   /* surface - card (warm white) */
+  --bg-elev-2:  #F0E9DA;   /* surface-alt - tab bar + inset bg */
+  --bg-subtle:  #F0E9DA;   /* chip / input / meta bg */
+  --bg-inset:   #E8DFCC;   /* pressed chip / frame */
 
-  --canvas:        #FBF7EB;
-  --surface:       #FFFFFF;
-  --surface-alt:   #F6F0DF;   /* alias · parchment */
-  --parchment:     #F6F0DF;
-  --frame:         #EDE6D5;
+  --canvas:        #F5F0E6;
+  --surface:       #FBF8F2;
+  --surface-alt:   #F0E9DA;
+  --parchment:     #F0E9DA;   /* alias for tab bar treatment */
+  --frame:         #E8DFCC;
 
   /*
-   * Surface + canvas RGB triplets — exposed for rgba() so
-   * frosted-glass page headers can fade out over the native
-   * surface color (not hardcoded white). Dark-mode block below
-   * flips these to the dark hex equivalents.
+   * Surface + canvas RGB triplets — for rgba() so frosted-glass
+   * headers can fade out over the native surface color. Dark-
+   * mode block below flips these to dark equivalents.
    */
-  --surface-rgb: 255, 255, 255;
-  --canvas-rgb:  251, 247, 235;
+  --surface-rgb: 251, 248, 242;
+  --canvas-rgb:  245, 240, 230;
 
   /* Legacy paper aliases (back-compat with Phase 1-3 code) */
-  --paper:      #FFFFFF;
-  --paper-2:    #F6F0DF;
-  --paper-3:    #EDE6D5;
+  --paper:      #FBF8F2;
+  --paper-2:    #F0E9DA;
+  --paper-3:    #E8DFCC;
 
-  /* ---------- BORDERS (UIUC blue alpha — gives subtle cool cast) ---------- */
-  --line-hair:  rgba(19, 41, 75, 0.08);
-  --line-soft:  rgba(19, 41, 75, 0.12);
-  --line-bold:  rgba(19, 41, 75, 0.18);
+  /* ---------- BORDERS (warm beige — paper-edge feel) ---------- */
+  --line-hair:  rgba(42, 42, 46, 0.06);
+  --line-soft:  rgba(42, 42, 46, 0.10);
+  --line-bold:  rgba(42, 42, 46, 0.16);
 
-  --border:        rgba(19, 41, 75, 0.08);
-  --border-strong: rgba(19, 41, 75, 0.18);
-  --border-hair:   rgba(19, 41, 75, 0.06);
-  --border-warm:   #E8DFCC;   /* legacy warm beige — kept for opt-in retro surfaces */
+  --border:        #E8DFCC;
+  --border-strong: #D8CDB3;
+  --border-hair:   rgba(42, 42, 46, 0.05);
+  --border-warm:   #E8DFCC;   /* same as default; kept for back-compat */
 
-  /* ---------- BRAND (Illini Orange) ---------- */
-  --brand:          #E84A27;   /* Illini orange — price · CTA · seal */
-  --brand-deep:     #B43A1C;   /* hover / pressed · Altgeld-ish */
-  --brand-soft:     #FDEEE8;   /* chip bg · soft fill */
-  --brand-ghost:    #FDF5F0;   /* hover tint on white */
+  /* ---------- BRAND (terracotta — pottery red) ---------- */
+  --brand:          #C74A2F;   /* terracotta — price · CTA · seal */
+  --brand-deep:     #A03A24;   /* hover / pressed */
+  --brand-soft:     #F5D9CE;   /* chip bg · soft fill */
+  --brand-ghost:    #FBEAE2;   /* hover tint on white */
 
-  /* ---------- UIUC Campus accents (verified badge / official content) ---------- */
+  /* ---------- UIUC Campus accents (verified · official · academic seal)
+   * Use ONLY when surface is genuinely about university identity:
+   *   · Illini 认证 badge → background var(--campus-blue-soft) + text var(--campus-blue)
+   *   · CAACI 官方 post header → background var(--campus-blue) + text var(--ink-inverse)
+   *   · "查看 UIUC 校历 / 校园活动" entry CTAs → use --campus-orange
+   * NEVER: prices, regular CTAs, body text, default buttons.
+   * --------------------------------------------------------- */
   --campus-blue:      #13294B;
   --campus-blue-soft: #E5EAF2;
-  --campus-orange:    #E84A27;
-  --campus-orange-deep: #B43A1C;
+  --campus-blue-deep: #0A1A33;
+  --campus-orange:    #FF5F05;   /* canonical Illini Orange */
+  --campus-orange-deep: #B33D00; /* Altgeld — AA on light gray */
+  --campus-orange-soft: #FFF1E6;
 
-  /* Legacy accent names map to brand so existing pages cascade. */
+  /* Legacy accent names map to brand so existing pages cascade.
+   * Anything legacy that meant "this is the official brand color"
+   * now resolves to terracotta. The two accent-good / warn / danger
+   * are tuned to sit beside terracotta without clashing (sage olive
+   * green, amber, vermilion). */
   --accent-primary:      var(--brand);
   --accent-primary-soft: var(--brand-soft);
   --accent-primary-deep: var(--brand-deep);
   --accent-action:       var(--brand);
   --accent-ink:          var(--ink);
-  --accent-green:        #5D7C4A;
+  --accent-green:        #5D7C4A;   /* sage olive — verified · free price */
   --accent-good:         #5D7C4A;
-  --accent-warn:         #D4923C;
-  --accent-danger:       #B53333;
+  --accent-warn:         #D4923C;   /* amber — currency exchange warning */
+  --accent-danger:       #B53333;   /* vermilion — destructive */
 
   /* Explicit success / warn / danger pairs (soft bg + foreground) */
   --success:      #5D7C4A;
@@ -425,16 +450,19 @@ button:focus-visible,
   --font-mono:
     'JetBrains Mono', 'SF Mono', Menlo, ui-monospace, monospace;
 
-  /* ---------- ELEVATION (UIUC navy alpha — crisper than warm brown) ---------- */
-  --shadow-hair:       0 0 0 1px rgba(19, 41, 75, 0.06);
-  --shadow-soft:       0 1px 2px rgba(19, 41, 75, 0.04),
-                       0 4px 12px rgba(19, 41, 75, 0.06);
-  --shadow-pop:        0 2px 4px rgba(19, 41, 75, 0.05),
-                       0 12px 28px rgba(19, 41, 75, 0.10);
-  --shadow-float:      0 1px 2px rgba(19, 41, 75, 0.06),
-                       0 24px 56px -16px rgba(19, 41, 75, 0.20);
-  --shadow-cta:        0 2px 4px rgba(232, 74, 39, 0.15),
-                       0 12px 28px -8px rgba(232, 74, 39, 0.28);
+  /* ---------- ELEVATION (warm ink alpha — paper drop shadow)
+   * Apple-style 3-layer soft lift, tuned to warm cream canvas.
+   * No heavy black drop-shadows — uses ink charcoal at low alpha
+   * so the lift reads as "card on paper" instead of "screen". */
+  --shadow-hair:       0 0 0 1px rgba(42, 42, 46, 0.06);
+  --shadow-soft:       0 1px 2px rgba(42, 42, 46, 0.04),
+                       0 4px 12px rgba(42, 42, 46, 0.06);
+  --shadow-pop:        0 2px 4px rgba(42, 42, 46, 0.05),
+                       0 12px 28px rgba(42, 42, 46, 0.08);
+  --shadow-float:      0 1px 2px rgba(42, 42, 46, 0.06),
+                       0 24px 56px -16px rgba(42, 42, 46, 0.18);
+  --shadow-cta:        0 2px 4px rgba(199, 74, 47, 0.15),
+                       0 12px 28px -8px rgba(199, 74, 47, 0.28);
   --shadow-brand:      var(--shadow-cta);
 
   /* ----------------------------------------------------------
@@ -472,10 +500,12 @@ button:focus-visible,
  *   1. html[data-theme="dark"]  — manual toggle (prefer this)
  *   2. @media (prefers-color-scheme: dark) — system setting
  *
- * Ported from uni.scss L194-221. The dark palette is warm-tinted
- * rather than cool — keeps the "paper" feel consistent with the
- * light canvas. Brand orange lightens from #E84A27 → #E06A4A to
- * stay legible on dark ink.
+ * Tuned to keep the "paper" feel even at night — warm-tinted
+ * dark surfaces, cream-on-charcoal text. Brand terracotta
+ * brightens from #C74A2F → #E06A4A so it stays legible on
+ * dark canvas without burning the eye. UIUC campus blue
+ * lifts from #13294B → #2A4A7B for dark-mode AA contrast on
+ * the verified-badge soft surface.
  * ============================================================ */
 [data-theme="dark"] {
   --ink:         #F0E8D6;
@@ -516,10 +546,19 @@ button:focus-visible,
   --border-strong: rgba(240, 232, 214, 0.20);
   --border-hair:   rgba(240, 232, 214, 0.06);
 
+  /* Brand — terracotta lifts to brighter ember on dark ink */
   --brand:       #E06A4A;
   --brand-deep:  #C45A3A;
   --brand-soft:  rgba(224, 106, 74, 0.15);
   --brand-ghost: rgba(224, 106, 74, 0.08);
+
+  /* Campus accents — UIUC navy lifts so verified pill stays legible */
+  --campus-blue:      #6A8AC2;
+  --campus-blue-soft: rgba(106, 138, 194, 0.15);
+  --campus-blue-deep: #4A6BA0;
+  --campus-orange:    #FF7B33;
+  --campus-orange-deep: #FF9560;
+  --campus-orange-soft: rgba(255, 123, 51, 0.15);
 
   --success:      #8BA670;
   --success-soft: rgba(139, 166, 112, 0.15);
@@ -574,6 +613,9 @@ button:focus-visible,
     --paper-2:    #2E2A23;
     --paper-3:    #332F28;
 
+    --surface-rgb: 38, 35, 30;
+    --canvas-rgb:  28, 26, 23;
+
     --line-hair:  rgba(240, 232, 214, 0.08);
     --border:        rgba(240, 232, 214, 0.10);
     --border-strong: rgba(240, 232, 214, 0.20);
@@ -581,6 +623,13 @@ button:focus-visible,
     --brand:       #E06A4A;
     --brand-deep:  #C45A3A;
     --brand-soft:  rgba(224, 106, 74, 0.15);
+
+    --campus-blue:      #6A8AC2;
+    --campus-blue-soft: rgba(106, 138, 194, 0.15);
+    --campus-blue-deep: #4A6BA0;
+    --campus-orange:    #FF7B33;
+    --campus-orange-deep: #FF9560;
+    --campus-orange-soft: rgba(255, 123, 51, 0.15);
   }
 }
 

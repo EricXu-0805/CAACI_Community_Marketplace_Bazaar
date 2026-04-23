@@ -321,7 +321,7 @@ function promptSaveDraft(onDecided: () => void) {
     content: t('publish.draftPromptBody'),
     confirmText: t('publish.draftSave'),
     cancelText: t('publish.draftDiscard'),
-    confirmColor: '#13294B',
+    confirmColor: '#2A2A2E',
     success: (r) => {
       if (r.confirm) {
         saveDraft()
@@ -378,7 +378,7 @@ onShow(() => {
       content: t('publish.draftRestoreBody'),
       confirmText: t('publish.draftRestore'),
       cancelText: t('publish.draftDiscard'),
-      confirmColor: '#13294B',
+      confirmColor: '#2A2A2E',
       success: (r) => {
         if (r.confirm) applyDraft(draft)
         else if (r.cancel) clearDraft()

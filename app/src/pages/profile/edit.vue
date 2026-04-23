@@ -185,7 +185,7 @@ async function onSave() {
 .avatar-preview {
   width: 72px; height: 72px; border-radius: 50%; background: var(--bg-subtle);
 }
-.avatar-hint { font-size: 13px; color: #007AFF; }
+.avatar-hint { font-size: 13px; color: var(--brand); }
 
 .form-group {
   padding: 13px 16px; border-top: 0.5px solid var(--line-hair);

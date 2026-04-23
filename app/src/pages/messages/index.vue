@@ -326,7 +326,7 @@ function goLogin() {
   margin-bottom: 4px;
 }
 .pi-bubble, .ei-bubble {
-  width: 36px; height: 28px; border: 2.5px solid #d1d1d6;
+  width: 36px; height: 28px; border: 2.5px solid var(--border-strong);
   border-radius: 16px 16px 16px 4px; position: relative;
   &::before {
     content: ''; position: absolute; top: 8px; left: 7px;
@@ -388,7 +388,7 @@ function goLogin() {
   &::before {
     content: ''; position: absolute; top: 1px; left: 0;
     width: 9px; height: 9px;
-    border: 1.5px solid #aeaeb2;
+    border: 1.5px solid var(--ink-faint);
     border-radius: 50% 50% 0 0 / 60% 60% 0 0;
   }
   &::after {
@@ -398,7 +398,7 @@ function goLogin() {
   }
 }
 .unread-dot {
-  width: 9px; height: 9px; border-radius: 50%; background: #007AFF;
+  width: 9px; height: 9px; border-radius: 50%; background: var(--brand);
   flex-shrink: 0; margin-left: 4px;
 }
 .muted-dot {
@@ -435,7 +435,7 @@ function goLogin() {
   width: 70px; padding: 0 10px; cursor: pointer;
   text { font-size: 13px; color: #fff; font-weight: 600; text-align: center; }
 }
-.act-read { background: #007AFF; }
+.act-read { background: var(--brand); }
 .act-delete { background: var(--accent-danger); }
 .act-pin { background: var(--accent-warn); }
 

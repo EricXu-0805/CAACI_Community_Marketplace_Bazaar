@@ -104,7 +104,7 @@ function onUnblock(id: string, name: string) {
 }
 .empty-shield {
   width: 44px; height: 50px; position: relative;
-  border: 2.5px solid #d1d1d6;
+  border: 2.5px solid var(--border-strong);
   border-radius: 22px 22px 12px 12px;
   margin-bottom: 6px;
 }

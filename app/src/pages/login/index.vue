@@ -311,7 +311,7 @@ async function onSubmit() {
   padding: 24px 0; text-align: center;
 }
 .footer-text {
-  font-size: 11px; color: #d1d1d6;
+  font-size: 11px; color: var(--ink-faint);
   letter-spacing: 0.05em; font-weight: 500;
 }
 </style>
