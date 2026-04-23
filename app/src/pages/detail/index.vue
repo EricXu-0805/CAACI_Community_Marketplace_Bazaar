@@ -851,7 +851,7 @@ async function contactSeller() {
 .seller-name { font-size: 15px; font-weight: 600; color: #1d1d1f; }
 .illini-badge {
   display: inline-flex; align-items: center;
-  background: #13294B; color: #fff;
+  background: var(--campus-blue); color: #fff;
   padding: 2px 7px; border-radius: 4px;
   font-size: 10px; font-weight: 700;
   letter-spacing: 0.2px;

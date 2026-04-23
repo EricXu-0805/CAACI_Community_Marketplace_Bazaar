@@ -321,7 +321,7 @@ function promptSaveDraft(onDecided: () => void) {
     content: t('publish.draftPromptBody'),
     confirmText: t('publish.draftSave'),
     cancelText: t('publish.draftDiscard'),
-    confirmColor: '#1a1a1a',
+    confirmColor: '#13294B',
     success: (r) => {
       if (r.confirm) {
         saveDraft()
@@ -378,7 +378,7 @@ onShow(() => {
       content: t('publish.draftRestoreBody'),
       confirmText: t('publish.draftRestore'),
       cancelText: t('publish.draftDiscard'),
-      confirmColor: '#1a1a1a',
+      confirmColor: '#13294B',
       success: (r) => {
         if (r.confirm) applyDraft(draft)
         else if (r.cancel) clearDraft()
@@ -614,10 +614,14 @@ async function onSubmit() {
   text { font-size: 10px; color: #fff; font-weight: 500; }
 }
 .image-add {
-  width: 96px; height: 96px; border: 1.5px dashed #d1d1d6;
-  border-radius: 9px; display: flex; flex-direction: column;
+  width: 96px; height: 96px;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 4px; cursor: pointer;
-  &:active { background: var(--bg-elev-2); }
+  transition: background var(--dur-1, 120ms) var(--ease-std, ease);
+  &:active { background: var(--paper-2); }
 }
 .add-icon-css {
   width: 22px; height: 22px; position: relative;
@@ -738,7 +742,7 @@ async function onSubmit() {
     transform: translateX(-50%);
     width: 0; height: 0;
     border-left: 4px solid transparent; border-right: 4px solid transparent;
-    border-top: 5px solid #636366;
+    border-top: 5px solid var(--ink-quiet);
   }
 }
 .loc-spinner {
@@ -753,8 +757,10 @@ async function onSubmit() {
 .toggle-hint { flex: 1; font-size: 13px; color: var(--text-faint); text-align: right; margin-right: 10px; }
 .toggle {
   width: 44px; height: 26px; border-radius: 13px;
-  background: #e0e0e0; position: relative; transition: background 0.25s; flex-shrink: 0;
-  &.on { background: var(--accent-good); }
+  background: var(--border-strong);
+  position: relative; transition: background var(--dur-2, 220ms) var(--ease-std, ease);
+  flex-shrink: 0;
+  &.on { background: var(--success); }
 }
 .toggle-knob {
   width: 22px; height: 22px; border-radius: 50%; background: var(--bg-elev-1);

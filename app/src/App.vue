@@ -164,15 +164,18 @@ page {
    *   letter-spacing 0.02em + line-height 1.7 + color #13294B.
    * Tight 0 letter-spacing + 1.4 line-height was the single biggest
    * source of cram-scanned-like-plastic vibes on CJK screens.
+   *
+   * Uses CSS variables so dark mode can flip everything via
+   * [data-theme="dark"] on <html> or via system preference.
    */
-  background-color: #FBF7EB;
+  background-color: var(--canvas);
   font-family:
     'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC',
     -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
     'Helvetica Neue', 'Microsoft YaHei', system-ui, sans-serif;
-  font-size: 14px;
-  line-height: 1.7;
-  color: #13294B;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: 0.02em;
@@ -422,6 +425,149 @@ button:focus-visible,
   --shadow-cta:        0 2px 4px rgba(232, 74, 39, 0.15),
                        0 12px 28px -8px rgba(232, 74, 39, 0.28);
   --shadow-brand:      var(--shadow-cta);
+
+  /* ----------------------------------------------------------
+   * MOTION — 5 durations × 5 easing curves, from motion.html
+   *
+   *   dur-1 120ms  micro   button hover, chip toggle
+   *   dur-2 220ms  tap     press state, card lift
+   *   dur-3 360ms  sheet   bottom sheet, drawer, toast
+   *   dur-4 560ms  page    page transition, detail open
+   *   dur-5 900ms  story   onboarding, loading spinner
+   *
+   *   ease-std   default (slow-fast-slow)
+   *   ease-in    element entrance
+   *   ease-out   element exit
+   *   ease-warm  card lift, like bounce (spring-ish)
+   *   ease-crisp tab switch, emphasis
+   * ---------------------------------------------------------- */
+  --dur-1: 120ms;
+  --dur-2: 220ms;
+  --dur-3: 360ms;
+  --dur-4: 560ms;
+  --dur-5: 900ms;
+  --ease-std:   cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in:    cubic-bezier(0, 0, 0.2, 1);
+  --ease-out:   cubic-bezier(0.4, 0, 1, 1);
+  --ease-warm:  cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-crisp: cubic-bezier(0.7, 0, 0.3, 1);
+}
+
+/*
+ * ============================================================
+ * Dark mode — "夜读书房" (night study)
+ *
+ * Two triggers (either one activates):
+ *   1. html[data-theme="dark"]  — manual toggle (prefer this)
+ *   2. @media (prefers-color-scheme: dark) — system setting
+ *
+ * Ported from uni.scss L194-221. The dark palette is warm-tinted
+ * rather than cool — keeps the "paper" feel consistent with the
+ * light canvas. Brand orange lightens from #E84A27 → #E06A4A to
+ * stay legible on dark ink.
+ * ============================================================ */
+[data-theme="dark"] {
+  --ink:         #F0E8D6;
+  --ink-soft:    rgba(240, 232, 214, 0.72);
+  --ink-quiet:   rgba(240, 232, 214, 0.52);
+  --ink-faint:   rgba(240, 232, 214, 0.32);
+  --ink-inverse: #1C1A17;
+
+  --text-primary:   var(--ink);
+  --text-secondary: var(--ink-soft);
+  --text-tertiary:  var(--ink-soft);
+  --text-muted:     var(--ink-quiet);
+  --text-faint:     var(--ink-faint);
+  --text-disabled:  rgba(240, 232, 214, 0.22);
+
+  --bg-page:    #1C1A17;
+  --bg-elev-1:  #26231E;
+  --bg-elev-2:  #2E2A23;
+  --bg-subtle:  #2E2A23;
+  --bg-inset:   #332F28;
+
+  --canvas:     #1C1A17;
+  --surface:    #26231E;
+  --surface-alt: #2E2A23;
+  --parchment:  #2E2A23;
+  --frame:      #332F28;
+  --paper:      #26231E;
+  --paper-2:    #2E2A23;
+  --paper-3:    #332F28;
+
+  --line-hair:  rgba(240, 232, 214, 0.08);
+  --line-soft:  rgba(240, 232, 214, 0.12);
+  --line-bold:  rgba(240, 232, 214, 0.18);
+  --border:        rgba(240, 232, 214, 0.10);
+  --border-strong: rgba(240, 232, 214, 0.20);
+  --border-hair:   rgba(240, 232, 214, 0.06);
+
+  --brand:       #E06A4A;
+  --brand-deep:  #C45A3A;
+  --brand-soft:  rgba(224, 106, 74, 0.15);
+  --brand-ghost: rgba(224, 106, 74, 0.08);
+
+  --success:      #8BA670;
+  --success-soft: rgba(139, 166, 112, 0.15);
+  --warning:      #E5B170;
+  --warning-soft: rgba(229, 177, 112, 0.15);
+  --danger:       #E06666;
+  --danger-soft:  rgba(224, 102, 102, 0.15);
+
+  --accent-good:   var(--success);
+  --accent-warn:   var(--warning);
+  --accent-danger: var(--danger);
+
+  --shadow-hair: 0 0 0 1px rgba(0, 0, 0, 0.3);
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.2);
+  --shadow-pop:  0 2px 4px rgba(0, 0, 0, 0.35), 0 12px 28px rgba(0, 0, 0, 0.3);
+  --shadow-float:0 1px 2px rgba(0, 0, 0, 0.4), 0 24px 56px -16px rgba(0, 0, 0, 0.5);
+  --shadow-cta:  0 2px 4px rgba(224, 106, 74, 0.25), 0 12px 28px -8px rgba(224, 106, 74, 0.4);
+}
+
+/*
+ * System-preference fallback — honors the user's OS theme when
+ * they haven't manually overridden via data-theme="dark". Lets
+ * the app ship with no settings UI and still feel dark-native
+ * for night users.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink:         #F0E8D6;
+    --ink-soft:    rgba(240, 232, 214, 0.72);
+    --ink-quiet:   rgba(240, 232, 214, 0.52);
+    --ink-faint:   rgba(240, 232, 214, 0.32);
+    --ink-inverse: #1C1A17;
+
+    --text-primary:   var(--ink);
+    --text-secondary: var(--ink-soft);
+    --text-tertiary:  var(--ink-soft);
+    --text-muted:     var(--ink-quiet);
+    --text-faint:     var(--ink-faint);
+
+    --bg-page:    #1C1A17;
+    --bg-elev-1:  #26231E;
+    --bg-elev-2:  #2E2A23;
+    --bg-subtle:  #2E2A23;
+    --bg-inset:   #332F28;
+
+    --canvas:     #1C1A17;
+    --surface:    #26231E;
+    --surface-alt: #2E2A23;
+    --parchment:  #2E2A23;
+    --frame:      #332F28;
+    --paper:      #26231E;
+    --paper-2:    #2E2A23;
+    --paper-3:    #332F28;
+
+    --line-hair:  rgba(240, 232, 214, 0.08);
+    --border:        rgba(240, 232, 214, 0.10);
+    --border-strong: rgba(240, 232, 214, 0.20);
+
+    --brand:       #E06A4A;
+    --brand-deep:  #C45A3A;
+    --brand-soft:  rgba(224, 106, 74, 0.15);
+  }
 }
 
 /*

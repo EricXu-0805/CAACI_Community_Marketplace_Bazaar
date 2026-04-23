@@ -88,42 +88,51 @@ function onLongPress(id: string) {
 .back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .back-arrow { width: 9px; height: 9px; border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary); transform: rotate(45deg); margin-left: 4px; }
 .header-title { font-size: 17px; font-weight: 600; color: var(--text-primary); flex: 1; }
-.mark-all { font-size: 13px; color: #007AFF; cursor: pointer; }
+.mark-all { font-size: 13px; color: var(--brand); cursor: pointer; }
 
 .empty {
   display: flex; flex-direction: column; align-items: center; padding-top: 120px; gap: 12px;
 }
 .empty-bell {
-  width: 44px; height: 44px; border: 2.5px solid #d1d1d6; border-radius: 50%;
+  width: 44px; height: 44px; border: 2.5px solid var(--border-strong); border-radius: 50%;
   position: relative;
   &::before {
     content: ''; position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
-    width: 18px; height: 13px; border: 2px solid #d1d1d6;
+    width: 18px; height: 13px; border: 2px solid var(--border-strong);
     border-radius: 10px 10px 0 0; border-bottom: none;
   }
   &::after {
     content: ''; position: absolute; bottom: 7px; left: 50%; transform: translateX(-50%);
-    width: 6px; height: 3px; border-radius: 0 0 3px 3px; background: #d1d1d6;
+    width: 6px; height: 3px; border-radius: 0 0 3px 3px; background: var(--border-strong);
   }
 }
 .empty-text { font-size: 14px; color: var(--text-faint); }
 
+/*
+ * Notification icon tints — refitted from Material Design
+ * primaries (orange/green/purple) onto the UIUC Fusion palette
+ * so colors read "warm + scholarly" instead of Android app.
+ *   · price_drop → brand-soft (Illini orange wash) + brand-deep
+ *   · sold       → success-soft (sage wash) + success
+ *   · system     → campus-blue-soft (UIUC navy wash) + campus-blue
+ * Unread row + unread dot also shift to the palette.
+ */
 .notif-item {
   display: flex; align-items: flex-start; gap: 12px;
   padding: 14px 16px; background: var(--bg-elev-1);
   border-bottom: 0.5px solid var(--line-hair);
   cursor: pointer; transition: background 0.1s;
   &:active { background: var(--bg-elev-2); }
-  &.unread { background: #F0F7FF; }
+  &.unread { background: var(--campus-blue-soft); }
 }
 .notif-icon {
   width: 32px; height: 32px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; font-size: 14px; font-weight: 700;
 }
-.ni-price_drop { background: #FFF3E0; color: #E65100; }
-.ni-sold { background: #E8F5E9; color: #2E7D32; }
-.ni-system { background: #F3E5F5; color: #6A1B9A; }
+.ni-price_drop { background: var(--brand-soft);     color: var(--brand-deep); }
+.ni-sold       { background: var(--success-soft);   color: var(--success); }
+.ni-system     { background: var(--campus-blue-soft); color: var(--campus-blue); }
 .notif-content { flex: 1; min-width: 0; }
 .notif-type {
   font-size: 11px; font-weight: 600; color: var(--text-muted); display: block;
@@ -136,7 +145,7 @@ function onLongPress(id: string) {
 }
 .notif-time { font-size: 11px; color: var(--text-faint); margin-top: 4px; display: block; }
 .notif-dot {
-  width: 8px; height: 8px; border-radius: 50%; background: #007AFF;
+  width: 8px; height: 8px; border-radius: 50%; background: var(--brand);
   flex-shrink: 0; margin-top: 6px;
 }
 </style>

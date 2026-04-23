@@ -672,32 +672,37 @@ function onDeleteItem(id: string) {
   line-height: 1;
 }
 
-/* ===== Illini verify prompt — UIUC navy stays intentional (this is the
-   ONE place we let campus blue through, because Illini verification IS
-   an official-university affordance) ===== */
+/*
+ * Illini verify prompt — this is the ONE place we let UIUC campus
+ * blue through, because Illini verification IS an official
+ * university affordance. Tokenized to --campus-blue so dark mode
+ * can override it to a lighter navy if legibility demands.
+ */
 .verify-prompt {
   display: flex; align-items: center; gap: 12px;
   margin-top: 12px; padding: 12px 14px;
   background: var(--paper);
   border: 0.5px solid var(--border);
-  border-left: 3px solid #13294B;
+  border-left: 3px solid var(--campus-blue);
   border-radius: var(--radius-md);
   cursor: pointer;
   box-shadow: var(--shadow-soft);
+  transition: background var(--dur-1, 120ms) var(--ease-std, ease);
   &:active { background: var(--paper-2); }
 }
 .vp-icon {
   width: 28px; height: 28px; border-radius: 50%;
-  background: #13294B; color: #fff;
+  background: var(--campus-blue); color: #fff;
   display: flex; align-items: center; justify-content: center;
   font-size: 14px; font-weight: 700; flex-shrink: 0;
 }
 .vp-text { flex: 1; min-width: 0; }
-.vp-title { font-size: 13px; font-weight: 600; color: #13294B; display: block; }
+.vp-title { font-size: 13px; font-weight: 600; color: var(--campus-blue); display: block; }
 .vp-sub { font-size: 11px; color: var(--ink-soft); margin-top: 2px; display: block; }
 .vp-arrow {
   width: 6px; height: 6px; flex-shrink: 0;
-  border-top: 1.5px solid #13294B; border-right: 1.5px solid #13294B;
+  border-top: 1.5px solid var(--campus-blue);
+  border-right: 1.5px solid var(--campus-blue);
   transform: rotate(45deg);
 }
 

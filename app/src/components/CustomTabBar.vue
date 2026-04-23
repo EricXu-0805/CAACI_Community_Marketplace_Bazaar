@@ -75,7 +75,7 @@ function go(url: string) { uni.switchTab({ url }) }
   display: none; position: fixed; bottom: 0; left: 50%;
   transform: translateX(-50%);
   width: 100%; max-width: 480px;
-  height: calc(60px + env(safe-area-inset-bottom, 0px));
+  height: calc(62px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   background: var(--parchment);
   border-top: 0.5px solid var(--border);
@@ -86,9 +86,11 @@ function go(url: string) { uni.switchTab({ url }) }
   position: relative;
   flex: 1;
   display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-  padding: 10px 0 4px;
+  padding: 10px 0 6px;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
-  height: 60px;
+  height: 62px;
+  transition: transform var(--dur-1, 120ms) var(--ease-std, ease);
+  &:active { transform: scale(0.94); }
 }
 .tab-dot {
   position: absolute;
@@ -98,13 +100,19 @@ function go(url: string) { uni.switchTab({ url }) }
   width: 4px; height: 4px;
   border-radius: 50%;
   background: var(--brand);
+  animation: dot-pulse var(--dur-3, 360ms) var(--ease-warm, ease-out);
+}
+@keyframes dot-pulse {
+  from { transform: translateX(-50%) scale(0); opacity: 0; }
+  to   { transform: translateX(-50%) scale(1); opacity: 1; }
 }
 .lbl {
   font-size: 10px;
   color: var(--ink-quiet);
-  margin-top: 3px;
+  margin-top: 4px;
   font-weight: 400;
   letter-spacing: 0.06em;
+  transition: color var(--dur-1, 120ms) var(--ease-std, ease);
 }
 .lbl.active { color: var(--ink); font-weight: 500; }
 

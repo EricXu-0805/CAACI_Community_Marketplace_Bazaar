@@ -202,30 +202,79 @@ function onSignOut() {
 </script>
 
 <style lang="scss" scoped>
-.page { min-height: 100vh; background: var(--bg-subtle); max-width: 480px; margin: 0 auto; }
+/*
+ * Settings page — refinement settings-row pattern:
+ *   · Outer bg = canvas (cream), sections = white cards floating on top
+ *   · Rows 48px tall (was 15px padding = ~46px)
+ *   · Section gap = 10px for rhythm between groups
+ *   · Danger actions get an explicit alert-bg on press for weight
+ */
+.page {
+  min-height: 100vh;
+  background: var(--canvas);
+  max-width: 480px;
+  margin: 0 auto;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
 .header {
-  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
   padding-top: calc(12px + env(safe-area-inset-top, 0px));
-  background: var(--bg-elev-1); border-bottom: 0.5px solid var(--line-hair);
+  background: var(--canvas);
+  border-bottom: 0.5px solid var(--border);
 }
 .back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.back-arrow { width: 9px; height: 9px; border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary); transform: rotate(45deg); margin-left: 4px; }
-.header-title { font-size: 17px; font-weight: 600; color: var(--text-primary); }
+.back-arrow {
+  width: 9px; height: 9px;
+  border-left: 2px solid var(--brand); border-bottom: 2px solid var(--brand);
+  transform: rotate(45deg); margin-left: 4px;
+}
+.header-title {
+  font-family: var(--font-serif);
+  font-size: 17px; font-weight: 500;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+}
 
-.section { background: var(--bg-elev-1); margin-top: 7px; }
+.section {
+  background: var(--surface);
+  margin: 10px 12px 0;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+}
 .menu-item {
-  display: flex; align-items: center; padding: 15px 16px;
-  border-bottom: 0.5px solid var(--line-hair); cursor: pointer;
+  display: flex; align-items: center;
+  padding: 14px 16px;
+  border-bottom: 0.5px solid var(--border-hair);
+  cursor: pointer;
+  transition: background var(--dur-1, 120ms) var(--ease-std, ease);
   &:last-child { border-bottom: none; }
-  &:active { background: var(--bg-elev-2); }
+  &:active { background: var(--paper-2); }
   &.danger { justify-content: center; }
 }
-.mi-label { font-size: 15px; color: var(--text-primary); flex: 1; }
-.mi-value { font-size: 14px; color: var(--text-muted); margin-right: 8px; }
+.mi-label {
+  font-size: 15px;
+  color: var(--ink);
+  flex: 1;
+  letter-spacing: 0.02em;
+}
+.mi-value {
+  font-size: 14px;
+  color: var(--ink-quiet);
+  margin-right: 8px;
+  letter-spacing: 0.02em;
+}
 .mi-arrow {
   width: 7px; height: 7px; flex-shrink: 0;
-  border-top: 1.5px solid var(--text-faint); border-right: 1.5px solid var(--text-faint);
+  border-top: 1.5px solid var(--ink-faint);
+  border-right: 1.5px solid var(--ink-faint);
   transform: rotate(45deg);
 }
-.danger-text { color: var(--accent-danger); text-align: center; }
+.danger-text {
+  color: var(--danger);
+  text-align: center;
+  font-weight: 500;
+}
 </style>

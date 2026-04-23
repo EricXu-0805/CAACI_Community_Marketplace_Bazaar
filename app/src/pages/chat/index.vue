@@ -570,42 +570,60 @@ function scrollToBottom() {
   width: 4px; height: 4px; border-radius: 50%; background: var(--text-muted);
 }
 
-/* ========== Item Context Card ========== */
+/*
+ * Scam-warning banner — follows design-system safety-flow pattern:
+ *   warning-soft bg (warm parchment with amber cast) + 3px left-edge
+ *   amber border + amber-text body. Replaces hardcoded #FFF4E6 / #8B5000.
+ */
 .chat-scam {
   display: flex; align-items: center; gap: 8px;
   padding: 8px 14px;
-  background: #FFF4E6;
-  border-bottom: 0.5px solid rgba(255,149,0,0.2);
+  background: var(--warning-soft);
+  border-left: 3px solid var(--warning);
+  border-bottom: 0.5px solid rgba(212, 146, 60, 0.24);
 }
 .cs-icon {
-  width: 16px; height: 16px; border-radius: 50%; background: var(--accent-warn);
+  width: 16px; height: 16px; border-radius: 50%; background: var(--warning);
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 .cs-excl {
-  width: 1.5px; height: 7px; background: var(--bg-elev-1); border-radius: 1px; position: relative;
+  width: 1.5px; height: 7px; background: #fff; border-radius: 1px; position: relative;
 }
 .cs-excl::after {
   content: ''; position: absolute; bottom: -4px; left: -0.75px;
-  width: 3px; height: 2.5px; background: var(--bg-elev-1); border-radius: 2px;
+  width: 3px; height: 2.5px; background: #fff; border-radius: 2px;
 }
-.cs-text { font-size: 11px; color: #8B5000; line-height: 1.4; flex: 1; font-weight: 500; }
+.cs-text {
+  font-size: 11px;
+  color: var(--warning);
+  filter: brightness(0.75);
+  line-height: 1.4; flex: 1; font-weight: 500;
+  letter-spacing: 0.02em;
+}
 
 .item-card {
   display: flex; align-items: center; gap: 10px;
   margin: 9px 12px 0; padding: 9px 12px;
-  background: var(--bg-elev-1); border-radius: 10px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  &:active { background: var(--bg-elev-2); }
+  &:active { background: var(--paper-2); }
 }
 .offer-bar {
   padding: 6px 12px 2px;
 }
 .offer-btn {
   display: flex; align-items: center; justify-content: center;
-  background: #FFF8E1; border: 1px solid #FFD54F;
-  border-radius: 8px; padding: 8px; cursor: pointer;
-  text { font-size: 13px; font-weight: 600; color: #F57F17; }
-  &:active { background: #FFF3C4; }
+  background: var(--warning-soft); border: 0.5px solid var(--warning);
+  border-radius: var(--radius-md); padding: 8px; cursor: pointer;
+  text {
+    font-size: 13px; font-weight: 600;
+    color: var(--warning);
+    filter: brightness(0.75);
+    letter-spacing: 0.02em;
+  }
+  &:active { background: rgba(212, 146, 60, 0.2); }
 }
 .quick-replies {
   white-space: nowrap; padding: 8px 12px 4px;
@@ -740,13 +758,13 @@ function scrollToBottom() {
   width: 32px; height: 24px; position: relative;
   &::before {
     content: ''; position: absolute; top: 2px; left: 0;
-    width: 28px; height: 20px; border: 2px solid #d1d1d6;
+    width: 28px; height: 20px; border: 2px solid var(--border-strong);
     border-radius: 14px 14px 14px 4px;
   }
   &::after {
     content: ''; position: absolute; top: 9px; left: 7px;
     width: 12px; height: 3px; border-radius: 2px;
-    background: #d1d1d6;
+    background: var(--border-strong);
   }
 }
 

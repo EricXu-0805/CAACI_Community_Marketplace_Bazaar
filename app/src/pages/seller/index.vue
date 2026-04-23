@@ -189,7 +189,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .nickname { font-size: 18px; font-weight: 700; color: var(--text-primary); }
 .illini-badge {
   display: inline-flex; align-items: center;
-  background: #13294B; color: #fff;
+  background: var(--campus-blue); color: #fff;
   padding: 2px 7px; border-radius: 4px;
   font-size: 10px; font-weight: 700;
 }

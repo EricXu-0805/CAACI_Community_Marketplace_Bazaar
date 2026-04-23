@@ -485,7 +485,7 @@ async function onSubmitComment() {
   text { font-size: 10px; font-weight: 700; }
 }
 .badge-illini {
-  background: #13294B; color: #fff;
+  background: var(--campus-blue); color: #fff;
   padding: 1px 6px; border-radius: 4px;
   text { font-size: 10px; font-weight: 700; color: #fff; }
 }

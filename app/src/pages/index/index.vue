@@ -67,53 +67,21 @@
     </view>
 
     <!--
-      Hero banner + category grid — ported from the campus-market
-      reference design. Renders only on mobile (<768px); desktop
-      retains the existing .desktop-cats pill scroll above the feed
-      because the hero/grid would eat too much real estate on a wide
-      layout. Clicking a category scrolls the feed to that filter;
-      the active one is ringed in coral.
+      Category rail — horizontal pill scroll per marketplace/ kit's
+      HomeScreen + refinement pass. The previous 4×3 grid + tall hero
+      ate too much vertical space; this compact rail matches Xianyu /
+      Taobao feel and keeps the fold tight.
     -->
-    <view class="mobile-only-block">
-      <!--
-        Hero — refinement pass "semester notice" card.
-        White surface on parchment canvas, with an orange icon square,
-        navy serif title, warm-stone subtitle, orange chevron. Taps to
-        the publish page. Emoji renders on top of the icon square.
-      -->
-      <view class="hero" @click="goPublish">
-        <text class="deco-emoji">🎒</text>
-        <view class="hero-text">
-          <text class="hero-title">{{ t('home.heroTitle') }}</text>
-          <text class="hero-subtitle">{{ t('home.heroSubtitle') }}</text>
-        </view>
-        <text class="hero-deco">›</text>
-      </view>
-
-      <view class="cat-grid">
+    <scroll-view class="cat-bar" scroll-x :show-scrollbar="false">
+      <view class="cat-bar-inner">
         <view
-          v-for="cat in categoryGridTiles"
-          :key="'g'+cat.value"
-          :class="['cat-tile', { active: selectedCategory === cat.value }]"
+          v-for="cat in categories"
+          :key="'c'+cat.value"
+          :class="['pill', { active: selectedCategory === cat.value }]"
           @click="selectCategory(cat.value)"
         >
-          <view class="cat-icon" :style="{ background: cat.color }">
-            <text class="cat-emoji">{{ cat.emoji }}</text>
-          </view>
-          <text class="cat-name">{{ cat.label }}</text>
+          <text>{{ cat.label }}</text>
         </view>
-      </view>
-    </view>
-
-    <!-- Desktop only: Category Pills at top -->
-    <scroll-view class="cat-bar desktop-cats" scroll-x enable-flex>
-      <view
-        v-for="cat in categories"
-        :key="'d'+cat.value"
-        :class="['pill', { active: selectedCategory === cat.value }]"
-        @click="selectCategory(cat.value)"
-      >
-        <text>{{ cat.label }}</text>
       </view>
     </scroll-view>
 
@@ -458,40 +426,6 @@ const categories = computed(() => categoryKeys.map(k => ({
  * keep `null` ("All") at position 0 so tapping it clears the filter and
  * shows everything, matching the pill behavior.
  */
-/*
- * Category tile colors — muted pottery-glaze palette harmonized
- * with the 米白书院 ivory canvas. Each tint is pulled within ~8%
- * of the paper surface so circles read as "washed" rather than
- * candy-bright (the old coral-pastel set clashed with terracotta
- * brand). Keeps enough hue separation that users still associate
- * "blue = tech / green = vehicles / red = brand" visually.
- */
-const CATEGORY_TILE_META: Record<string, { emoji: string; color: string }> = {
-  all:               { emoji: '🏷️', color: '#FDEEE8' }, // brand-soft (Illini orange wash)
-  currency_exchange: { emoji: '💱', color: '#F5E4CB' }, // warning-soft (amber)
-  electronics:       { emoji: '🎧', color: '#E4E1F2' }, // lavender
-  furniture:         { emoji: '🛋️', color: '#E3E7D4' }, // sage
-  housing:           { emoji: '🏠', color: '#EEE2D4' }, // linen
-  clothing:          { emoji: '👕', color: '#F4DAD5' }, // blush
-  books:             { emoji: '📚', color: '#EDE4D0' }, // parchment
-  vehicles:          { emoji: '🚲', color: '#DDE5D0' }, // success-soft (sage)
-  daily:             { emoji: '🧺', color: '#EADAC2' }, // wheat
-  food:              { emoji: '🍜', color: '#F2D9C3' }, // apricot
-  other:             { emoji: '✨', color: '#E5E5F0' }, // lavender-ash
-}
-const categoryGridTiles = computed(() =>
-  categoryKeys.map(k => {
-    const key = k || 'all'
-    const meta = CATEGORY_TILE_META[key] || CATEGORY_TILE_META.other
-    return {
-      value: k,
-      label: t(k ? 'cat.' + k : 'cat.all'),
-      emoji: meta.emoji,
-      color: meta.color,
-    }
-  }),
-)
-
 const conditionKeys: ItemCondition[] = ['new', 'like_new', 'good', 'fair']
 const conditionOpts = computed(() => {
   const m: Record<string, string> = {}
@@ -890,17 +824,31 @@ function goPublish() {
   display: flex; align-items: center; justify-content: center;
 }
 
-.cat-bar { white-space: nowrap; }
 /*
- * Category pills — refinement pass style:
- *   · Inactive: white bg + UIUC-blue-alpha hairline border
- *   · Active:   solid orange + white text
- *   · Letter-spacing 0.02em so CN glyphs breathe at 13px
+ * Category rail — the horizontal pill scroll from the marketplace/
+ * kit's HomeScreen.jsx. The prior 4×3 circle grid + tall hero ate
+ * more than 400px of vertical space; this compact rail keeps the
+ * fold to ~50px and lets products breathe above the fold. Matches
+ * how Xianyu / Taobao / Xiaohongshu handle category navigation on
+ * feed pages.
  */
+.cat-bar {
+  flex-shrink: 0;
+  padding: 8px 16px 10px;
+  background: var(--canvas);
+  border-bottom: 0.5px solid var(--border);
+  white-space: nowrap;
+}
+.cat-bar-inner {
+  display: inline-flex;
+  gap: 6px;
+  padding-right: 16px;
+}
 .pill {
   display: inline-flex; align-items: center; justify-content: center;
-  height: 32px;
-  padding: 0 14px; margin: 0 6px 0 0; border-radius: var(--radius-pill);
+  height: 30px;
+  padding: 0 13px;
+  border-radius: var(--radius-pill);
   font-size: 13px;
   color: var(--ink);
   background: var(--surface);
@@ -916,158 +864,6 @@ function goPublish() {
     border-color: var(--brand);
   }
   &:active { transform: scale(0.96); }
-}
-
-/* .mc-wrap / .mobile-cats / .mc-fade intentionally removed — the
-   mobile pill scroll was replaced by the .cat-grid circle layout
-   above. .desktop-cats still uses .pill (below) for the wide layout. */
-/* Desktop: hide mobile cats, show desktop cats */
-.desktop-cats {
-  display: none;
-  background: var(--bg-elev-1);
-  border-bottom: 1px solid #f0f0f0;
-}
-
-/* ============================================================
-   Hero banner + category circle grid — campus-market port.
-
-   Both live inside .mobile-only-block which is simply a display:block
-   on mobile and display:none at the 768px desktop breakpoint (see the
-   @media block near the bottom of this file). Desktop keeps the
-   existing .desktop-cats pill scroll above the feed because the hero
-   would eat too much real estate on a wide layout.
-   ============================================================ */
-.mobile-only-block {
-  padding: 12px 16px 4px;
-}
-
-/*
- * Hero banner — UIUC Fusion "semester notice" card pattern.
- *
- * The previous deep-ink slab + coral gradient before that were both
- * too "shouty". The refinement pass shows a clean WHITE card on the
- * parchment canvas, with an orange-tinted icon square on the left,
- * a navy serif title, and a warm-stone body line. This reads as a
- * campus bulletin, not a marketing banner — exactly right for a
- * student co-op marketplace.
- */
-.hero {
-  position: relative;
-  min-height: 76px;
-  margin-bottom: 12px;
-  padding: 14px 16px;
-  background: var(--surface);
-  border: 0.5px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  color: var(--ink);
-  box-sizing: border-box;
-  box-shadow: var(--shadow-soft);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  &:active { transform: scale(0.995); background: var(--brand-ghost); }
-}
-.hero::before {
-  /* Left-edge orange square "icon chip" — refinement pattern. Fills
-     in for the old backpack emoji slot with a calmer on-brand motif. */
-  content: '';
-  width: 40px; height: 40px; border-radius: 11px;
-  background: var(--brand-soft);
-  border: 0.5px solid rgba(232, 74, 39, 0.18);
-  flex-shrink: 0;
-}
-.hero-text {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  flex: 1;
-  min-width: 0;
-}
-.hero-title {
-  font-family: var(--font-serif);
-  font-size: 15px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  line-height: 1.25;
-  color: var(--ink);
-}
-.hero-subtitle {
-  font-size: 12px;
-  color: var(--ink-quiet);
-  letter-spacing: 0.02em;
-  line-height: 1.5;
-}
-/* Arrow chevron right-aligned, warm orange like a link affordance. */
-.hero-deco {
-  position: static;
-  width: auto;
-  color: var(--brand);
-  font-family: var(--font-serif);
-  font-size: 20px;
-  line-height: 1;
-  flex-shrink: 0;
-}
-.deco-circle { display: none; }
-.deco-emoji {
-  position: absolute;
-  top: 50%; left: 16px;
-  transform: translateY(-50%);
-  font-size: 22px;
-  z-index: 2;
-  line-height: 1;
-}
-
-.cat-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px 0;
-  padding: 16px 6px;
-  background: var(--surface);
-  border: 0.5px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-soft);
-  margin-bottom: 12px;
-}
-.cat-tile {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 6px; padding: 4px 0;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  &:active { opacity: 0.65; }
-}
-.cat-icon {
-  width: 46px; height: 46px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  transition: transform 0.12s, box-shadow 0.15s;
-  border: 0.5px solid rgba(19, 41, 75, 0.06);
-}
-/*
- * Active tile ring — Illini orange with a matching warm halo.
- * The single-ring rule (one category visually "selected" at a time)
- * keeps the orange budget disciplined.
- */
-.cat-tile.active .cat-icon {
-  box-shadow: 0 0 0 2px var(--brand), 0 4px 10px rgba(232, 74, 39, 0.25);
-  transform: scale(1.04);
-}
-.cat-tile.active .cat-name {
-  color: var(--brand);
-  font-weight: 600;
-}
-.cat-emoji { font-size: 22px; line-height: 1; }
-.cat-name {
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.2;
-  text-align: center;
-}
-.cat-tile.active .cat-name {
-  color: var(--accent-primary);
-  font-weight: 600;
 }
 
 /* ========== Filter Bottom Sheet ========== */
@@ -1445,13 +1241,9 @@ function goPublish() {
 @media (min-width: 768px) {
   .page { max-width: 1120px; margin: 0 auto; }
   .mobile-header { display: none; }
-  .mobile-only-block { display: none; }
-  .desktop-cats { display: block; }
 
-  .search-wrap { padding: 14px 24px; }
-  .search-bar { max-width: 560px; }
-  .desktop-cats { padding: 10px 24px 12px; }
-  .pill { padding: 7px 20px; font-size: 14px; }
+  .cat-bar { padding: 10px 24px 12px; }
+  .pill { padding: 7px 20px; font-size: 14px; height: 32px; }
 
   .feed { flex: 1; min-height: 0; padding-bottom: 0; }
   .waterfall { padding: 10px 24px; gap: 10px; padding-bottom: 10px; }
@@ -1459,14 +1251,14 @@ function goPublish() {
 
   .card {
     transition: transform 0.15s, box-shadow 0.15s;
-    &:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+    &:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(19,41,75,0.08); }
     &:active { transform: scale(0.99); }
   }
-  /* Desktop cards are ~370px wide — a tall portrait image at height:auto
-     would render as a 600–800px ribbon and look broken. Cap it, but use
-     `contain` instead of `cover` so the image isn't cropped (which was
-     the "plate turns into an oval" symptom reported on desktop). A soft
-     background fills the letterbox strip so the card still looks solid. */
+  /*
+   * Desktop cards are ~370px wide — a tall portrait image at height:auto
+   * would render as a 600-800px ribbon. Cap height + contain to keep
+   * round plates round instead of getting cropped to a strip.
+   */
   .card-img-box {
     max-height: 520px;
     background: var(--bg-subtle);

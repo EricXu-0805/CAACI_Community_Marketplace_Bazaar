@@ -740,7 +740,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .page {
   height: 100vh;
   height: 100dvh;
-  background: var(--bg-subtle);
+  background: var(--canvas);
   max-width: 480px;
   margin: 0 auto;
   display: flex; flex-direction: column;
@@ -751,60 +751,80 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   display: flex; align-items: center; justify-content: space-between;
   padding: 11px 16px;
   padding-top: calc(11px + env(safe-area-inset-top, 0px));
-  background: rgba(255,255,255,0.92);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-bottom: 0.5px solid var(--line-hair);
+  background: var(--canvas);
+  border-bottom: 0.5px solid var(--border);
   z-index: 20;
 }
-.ph-title { font-size: 17px; font-weight: 700; color: var(--text-primary); }
+.ph-title {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+}
 .compose-btn {
-  height: 32px; padding: 0 12px 0 10px;
-  border-radius: 16px;
-  background: var(--accent-primary);
+  height: 32px; padding: 0 13px 0 11px;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
   display: inline-flex; align-items: center; gap: 6px;
   cursor: pointer;
-  &:active { opacity: 0.82; }
+  box-shadow: var(--shadow-cta);
+  transition: background var(--dur-1, 120ms) var(--ease-std, ease);
+  &:active { background: var(--brand-deep); }
 }
 .cb-pen {
   width: 12px; height: 12px; position: relative;
   &::before {
     content: ''; position: absolute; inset: 0;
-    background: var(--bg-elev-1);
+    background: #fff;
     clip-path: polygon(0 100%, 40% 100%, 100% 40%, 60% 0, 0 60%);
   }
 }
-.cb-label { font-size: 13px; color: #fff; font-weight: 600; line-height: 1; }
+.cb-label {
+  font-size: 13px; color: #fff; font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
 
+/*
+ * Plaza search — refinement pattern: white input on canvas, UIUC
+ * navy alpha border. Was previously parchment-on-white which blended
+ * into the header chrome.
+ */
 .search-wrap {
-  padding: 8px 16px; background: var(--bg-elev-1);
-  border-bottom: 0.5px solid var(--line-hair);
+  padding: 8px 16px;
+  background: var(--canvas);
+  border-bottom: 0.5px solid var(--border);
 }
 .search-bar {
   display: flex; align-items: center; gap: 8px;
-  background: var(--bg-subtle); border-radius: 10px;
-  padding: 8px 12px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 9px 13px;
 }
 .sb-icon {
-  width: 15px; height: 15px; flex-shrink: 0;
-  border: 1.5px solid var(--text-muted); border-radius: 50%;
+  width: 14px; height: 14px; flex-shrink: 0;
+  border: 1.6px solid var(--ink-faint); border-radius: 50%;
   position: relative;
   &::after {
     content: ''; position: absolute; right: -3px; bottom: -3px;
-    width: 6px; height: 1.5px; background: var(--text-muted);
+    width: 6px; height: 1.6px; background: var(--ink-faint);
     transform: rotate(45deg); transform-origin: left center;
   }
 }
 .sb-input {
   flex: 1; background: transparent; border: none; outline: none;
-  font-size: 14px; color: var(--text-primary);
+  font-size: 13px;
+  color: var(--ink);
+  letter-spacing: 0.02em;
 }
 .sb-clear {
   width: 16px; height: 16px; flex-shrink: 0; cursor: pointer;
-  background: var(--text-faint); border-radius: 50%; position: relative;
+  background: var(--ink-faint); border-radius: 50%; position: relative;
   &::before, &::after {
     content: ''; position: absolute; inset: 0;
-    margin: auto; width: 8px; height: 1.5px; background: var(--bg-elev-1);
+    margin: auto; width: 8px; height: 1.5px; background: #fff;
   }
   &::before { transform: rotate(45deg); }
   &::after { transform: rotate(-45deg); }
@@ -864,7 +884,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   text { font-size: 10px; font-weight: 700; }
 }
 .badge-illini {
-  background: #13294B; color: #fff;
+  background: var(--campus-blue); color: #fff;
   padding: 1px 6px; border-radius: 4px;
   text { font-size: 10px; font-weight: 700; color: #fff; }
 }
