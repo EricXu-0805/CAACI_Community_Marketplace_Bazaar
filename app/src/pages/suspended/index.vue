@@ -205,11 +205,11 @@ function onSignOut() {
   width: 72px; height: 72px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   margin-bottom: 4px;
-  background: rgba(255,149,0,0.1);
+  background: rgba(212, 146, 60, 0.10);
 }
-.hero-icon.level-2 { background: rgba(255,149,0,0.12); }
+.hero-icon.level-2 { background: rgba(212, 146, 60, 0.12); }
 .hero-icon.level-3 { background: rgba(199,74,47,0.14); }
-.hero-icon.level-4 { background: rgba(239,68,68,0.14); }
+.hero-icon.level-4 { background: rgba(181, 51, 51, 0.14); }
 .hero-icon.level-5 { background: rgba(127,29,29,0.15); }
 .hero-icon-inner {
   width: 4px; height: 28px; border-radius: 2px; background: var(--accent-warn);
@@ -237,7 +237,7 @@ function onSignOut() {
   padding: 16px; margin-bottom: 12px;
   border: 0.5px solid var(--line-hair);
 }
-.card.notice { background: var(--success-soft); border-color: rgba(34,197,94,0.25); }
+.card.notice { background: var(--success-soft); border-color: rgba(93, 124, 74, 0.25); }
 .card-title { display: block; font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
 .card-body { display: block; font-size: 13px; color: var(--text-secondary); line-height: 1.55; white-space: pre-wrap; }
 

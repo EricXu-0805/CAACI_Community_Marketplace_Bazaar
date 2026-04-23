@@ -643,7 +643,7 @@ async function contactSeller() {
 .no-img {
   width: 100%; height: 100%;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: var(--bg-inset); color: #999; font-size: 14px; gap: 8px;
+  background: var(--bg-inset); color: var(--ink-quiet); font-size: 14px; gap: 8px;
 }
 .no-img-icon {
   width: 36px; height: 28px; border: 2px solid var(--text-faint); border-radius: 4px;
@@ -769,7 +769,7 @@ async function contactSeller() {
 .tags { display: flex; gap: 6px; margin-top: 11px; flex-wrap: wrap; }
 .tag {
   font-size: 12px; padding: 4px 10px;
-  background: #f5f5f7; color: var(--text-secondary); border-radius: 6px;
+  background: var(--bg-subtle); color: var(--text-secondary); border-radius: 6px;
 }
 .tag-loc {
   display: inline-flex; align-items: center; gap: 4px; padding-left: 8px;
@@ -955,7 +955,7 @@ async function contactSeller() {
     background: var(--text-secondary); border-radius: 1px;
   }
   &.on {
-    background: rgba(255,149,0,0.12);
+    background: var(--warning-soft);
     border-color: var(--accent-warn);
     &::before { background: var(--accent-warn); }
   }

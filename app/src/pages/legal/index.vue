@@ -140,7 +140,7 @@ function onContactEmail() {
 .contact-row {
   margin-top: 20px; padding: 16px; border-radius: 12px;
   background: var(--bg-elev-2); cursor: pointer;
-  &:active { background: #eeeeef; }
+  &:active { background: var(--bg-inset); }
 }
 .contact-label { display: block; font-size: 12px; color: var(--text-muted); font-weight: 600; }
 .contact-email { display: block; font-size: 15px; color: var(--text-primary); font-weight: 600; margin-top: 4px; text-decoration: underline; }

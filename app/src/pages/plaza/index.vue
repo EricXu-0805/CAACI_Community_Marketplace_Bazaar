@@ -888,10 +888,15 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   padding: 1px 6px; border-radius: 4px;
   text { font-size: 10px; font-weight: 700; color: #fff; }
 }
+/* Pinned uses amber warning per design spec — differentiates from
+ * official (brand terracotta) and verified (campus blue). Three
+ * semantic badge colors, three distinct roles, so users can scan
+ * a feed of mixed posts and know "what kind of thing" each is at
+ * a glance. */
 .badge-pinned {
-  background: rgba(199,74,47,0.12); color: var(--accent-action);
+  background: var(--warning-soft); color: var(--warning);
   padding: 1px 6px; border-radius: 4px;
-  text { font-size: 10px; font-weight: 600; color: var(--accent-action); }
+  text { font-size: 10px; font-weight: 600; color: var(--warning); letter-spacing: 0.02em; }
 }
 
 .post-content-wrap { position: relative; padding-right: 40px; }
@@ -1072,8 +1077,8 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .comp-attached {
   margin-top: 10px;
   display: flex; align-items: center; gap: 10px;
-  padding: 8px; border: 1px solid var(--bg-inset); border-radius: 10px;
-  background: #fafafc; cursor: pointer;
+  padding: 8px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--bg-subtle); cursor: pointer;
 }
 .ca-img { width: 48px; height: 48px; border-radius: 8px; flex-shrink: 0; }
 .ca-body { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -1088,10 +1093,10 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .attached-item-card {
   margin: 8px 14px 0 54px;
   display: flex; align-items: center; gap: 10px;
-  padding: 8px; border: 1px solid var(--bg-inset); border-radius: 10px;
-  background: #fafafc;
+  padding: 8px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--bg-subtle);
   cursor: pointer;
-  &:active { background: var(--bg-subtle); }
+  &:active { background: var(--bg-inset); }
 }
 .aic-img { width: 52px; height: 52px; border-radius: 8px; flex-shrink: 0; }
 .aic-body { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }

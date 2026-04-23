@@ -593,11 +593,16 @@ function scrollToBottom() {
   content: ''; position: absolute; bottom: -4px; left: -0.75px;
   width: 3px; height: 2.5px; background: #fff; border-radius: 2px;
 }
+/* Body text pins to --ink-soft (not amber-darkened) so it stays in the
+ * readable text range. Amber-on-amber-tint was a legibility hazard
+ * that used filter: brightness(0.75) as a workaround — cleaner to
+ * just use an ink tone and let the left border + icon carry the
+ * "warning" meaning. Matches index .scam-banner and the design-
+ * system chat-warn-banner spec. */
 .cs-text {
-  font-size: 11px;
-  color: var(--warning);
-  filter: brightness(0.75);
-  line-height: 1.4; flex: 1; font-weight: 500;
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.6; flex: 1; font-weight: 500;
   letter-spacing: 0.02em;
 }
 

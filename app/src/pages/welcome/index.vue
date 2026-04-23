@@ -59,7 +59,7 @@ function finish() {
 .slide-desc { font-size: 14px; color: var(--text-muted); text-align: center; line-height: 1.6; }
 
 .dots { display: flex; justify-content: center; gap: 8px; padding: 16px 0; }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: #e0e0e0; transition: all 0.2s; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border-strong); transition: all 0.2s; }
 .dot.active { width: 24px; border-radius: 4px; background: var(--accent-primary); }
 
 .bottom { padding: 16px 24px 40px; }

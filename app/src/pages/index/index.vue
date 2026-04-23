@@ -1026,9 +1026,9 @@ function goPublish() {
   backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
 .badge-new { background: rgba(199,74,47,0.85); color: #fff; }
-.badge-mint { background: rgba(52,199,89,0.85); color: #fff; }
-.badge-defect { background: rgba(239,68,68,0.88); color: #fff; }
-.badge-reserved { background: rgba(255,149,0,0.85); color: #fff; }
+.badge-mint { background: rgba(93, 124, 74, 0.92); color: #fff; }
+.badge-defect { background: rgba(181, 51, 51, 0.92); color: #fff; }
+.badge-reserved { background: rgba(212, 146, 60, 0.92); color: #fff; }
 /* Safe-zone "verified pickup spot" badge — bottom-left, green to signal trust.
    Placed opposite to .img-count-badge (top-right) and .badge (top-left) so it
    never collides with either. */
@@ -1036,7 +1036,7 @@ function goPublish() {
   position: absolute; bottom: 7px; left: 7px;
   display: inline-flex; align-items: center; gap: 3px;
   padding: 2px 7px 2px 5px; border-radius: 10px;
-  background: rgba(34,197,94,0.92);
+  background: rgba(93, 124, 74, 0.92);
   backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
 .bsc-check { font-size: 10px; color: #fff; font-weight: 800; line-height: 1; }

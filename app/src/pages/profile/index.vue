@@ -812,7 +812,7 @@ function onDeleteItem(id: string) {
 }
 .horz-info { padding: 8px 10px 10px; }
 .horz-title {
-  font-size: 12px; line-height: 1.3;
+  font-size: 12px; line-height: 1.45; letter-spacing: 0.02em;
   color: var(--text-primary);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -839,7 +839,7 @@ function onDeleteItem(id: string) {
   font-size: 10px; padding: 1px 6px; border-radius: 4px;
   margin-top: 4px; align-self: flex-start;
   display: inline-block;
-  &.reserved { color: var(--accent-warn); background: rgba(255,149,0,0.1); }
+  &.reserved { color: var(--accent-warn); background: rgba(212, 146, 60, 0.10); }
   &.sold { color: var(--text-muted); background: var(--bg-subtle); }
 }
 
@@ -873,7 +873,7 @@ function onDeleteItem(id: string) {
 }
 .fav-body { padding: 8px 10px 10px; }
 .fav-title {
-  font-size: 12px; color: var(--text-primary); line-height: 1.3;
+  font-size: 12px; color: var(--text-primary); line-height: 1.45; letter-spacing: 0.02em;
   display: -webkit-box; -webkit-line-clamp: 2;
   -webkit-box-orient: vertical; overflow: hidden;
 }
@@ -890,7 +890,7 @@ function onDeleteItem(id: string) {
 .fav-seller { font-size: 10px; color: var(--text-faint); }
 .fav-status {
   font-size: 10px; padding: 1px 6px; border-radius: 4px;
-  &.reserved { color: var(--accent-warn); background: rgba(255,149,0,0.1); }
+  &.reserved { color: var(--accent-warn); background: rgba(212, 146, 60, 0.10); }
   &.sold { color: var(--text-muted); background: var(--bg-subtle); }
 }
 

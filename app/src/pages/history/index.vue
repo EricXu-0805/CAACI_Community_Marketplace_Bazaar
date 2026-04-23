@@ -158,7 +158,7 @@ function onClear() {
 .item-img { width: 64px; height: 64px; border-radius: 8px; flex-shrink: 0; background: var(--bg-subtle); }
 .item-info { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
 .item-title {
-  font-size: 14px; color: var(--text-primary); line-height: 1.3;
+  font-size: 14px; color: var(--text-primary); line-height: 1.45; letter-spacing: 0.02em;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .item-price { font-size: 15px; font-weight: 700; color: var(--text-primary); }

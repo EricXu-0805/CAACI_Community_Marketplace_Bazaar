@@ -143,7 +143,7 @@ function onDecline() {
   width: 14px; height: 18px; border: 2px solid #3b82f6;
   border-radius: 2px;
 }
-.doc-privacy { background: rgba(34,197,94,0.1); }
+.doc-privacy { background: rgba(93, 124, 74, 0.10); }
 .doc-privacy::before {
   content: ''; position: absolute; top: 9px; left: 10px;
   width: 16px; height: 14px; border: 2px solid var(--accent-good);
