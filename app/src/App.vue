@@ -3,10 +3,12 @@ import { watch } from 'vue'
 import { onLaunch } from "@dcloudio/uni-app"
 import { useAuth } from "./composables/useAuth"
 import { useI18n } from "./composables/useI18n"
+import { useTheme } from "./composables/useTheme"
 import { CURRENT_CONSENT_VERSION } from './legal'
 
 const { init, currentUser } = useAuth()
 const { t } = useI18n()
+useTheme()
 
 /*
  * Re-consent + onboarding gate.
@@ -335,6 +337,15 @@ button:focus-visible,
   --parchment:     #F6F0DF;
   --frame:         #EDE6D5;
 
+  /*
+   * Surface + canvas RGB triplets — exposed for rgba() so
+   * frosted-glass page headers can fade out over the native
+   * surface color (not hardcoded white). Dark-mode block below
+   * flips these to the dark hex equivalents.
+   */
+  --surface-rgb: 255, 255, 255;
+  --canvas-rgb:  251, 247, 235;
+
   /* Legacy paper aliases (back-compat with Phase 1-3 code) */
   --paper:      #FFFFFF;
   --paper-2:    #F6F0DF;
@@ -494,6 +505,9 @@ button:focus-visible,
   --paper:      #26231E;
   --paper-2:    #2E2A23;
   --paper-3:    #332F28;
+
+  --surface-rgb: 38, 35, 30;
+  --canvas-rgb:  28, 26, 23;
 
   --line-hair:  rgba(240, 232, 214, 0.08);
   --line-soft:  rgba(240, 232, 214, 0.12);

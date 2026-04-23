@@ -237,7 +237,7 @@ function onSignOut() {
   padding: 16px; margin-bottom: 12px;
   border: 0.5px solid var(--line-hair);
 }
-.card.notice { background: #f0fdf4; border-color: rgba(34,197,94,0.25); }
+.card.notice { background: var(--success-soft); border-color: rgba(34,197,94,0.25); }
 .card-title { display: block; font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
 .card-body { display: block; font-size: 13px; color: var(--text-secondary); line-height: 1.55; white-space: pre-wrap; }
 

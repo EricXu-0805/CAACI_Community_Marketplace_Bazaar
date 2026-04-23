@@ -576,7 +576,7 @@ async function onSubmit() {
 .page-header {
   padding: 11px 16px;
   padding-top: calc(11px + env(safe-area-inset-top, 0px));
-  background: rgba(255,255,255,0.92);
+  background: rgba(var(--surface-rgb), 0.92);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-bottom: 0.5px solid var(--line-hair);
@@ -774,7 +774,7 @@ async function onSubmit() {
   position: fixed; bottom: calc(56px + env(safe-area-inset-bottom, 0px));
   left: 50%; transform: translateX(-50%);
   width: 100%; max-width: 480px; padding: 9px 16px;
-  background: rgba(255,255,255,0.92);
+  background: rgba(var(--surface-rgb), 0.92);
   backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-top: 0.5px solid var(--line-hair);
   z-index: 40;

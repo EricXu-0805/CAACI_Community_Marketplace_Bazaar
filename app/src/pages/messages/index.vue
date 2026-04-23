@@ -330,11 +330,11 @@ function goLogin() {
   border-radius: 16px 16px 16px 4px; position: relative;
   &::before {
     content: ''; position: absolute; top: 8px; left: 7px;
-    width: 4px; height: 4px; border-radius: 50%; background: #d1d1d6;
+    width: 4px; height: 4px; border-radius: 50%; background: var(--border-strong);
   }
   &::after {
     content: ''; position: absolute; top: 8px; left: 15px;
-    width: 4px; height: 4px; border-radius: 50%; background: #d1d1d6;
+    width: 4px; height: 4px; border-radius: 50%; background: var(--border-strong);
   }
 }
 .prompt-text { font-size: 14px; color: var(--text-faint); }

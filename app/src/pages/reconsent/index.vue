@@ -176,7 +176,7 @@ function onDecline() {
 
 .summary {
   display: block; margin-top: 12px; padding: 14px;
-  background: #fff4e6; border-left: 3px solid var(--accent-warn);
+  background: var(--warning-soft); border-left: 3px solid var(--accent-warn);
   border-radius: 8px;
   font-size: 13px; color: #8B5000; line-height: 1.55;
 }

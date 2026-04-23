@@ -479,7 +479,7 @@ function onDeleteItem(id: string) {
 .page-header {
   padding: 11px 16px;
   padding-top: calc(11px + env(safe-area-inset-top, 0px));
-  background: rgba(255,255,255,0.92);
+  background: rgba(var(--surface-rgb), 0.92);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   position: sticky; top: 0; z-index: 50;
@@ -532,22 +532,26 @@ function onDeleteItem(id: string) {
 
 /* ===== User card (米白书院 passport pattern) =====
  *
- * Deep-ink panel up top (like a bookshop member card stamped in
- * wax) with an ivory-colored name + serif ladder. The prior coral
- * gradient wash was replaced by a subtle terracotta arc — present
- * only as a "seal" above the avatar, so the card still has brand
- * identity but reads scholarly, not candy. Stats bar at the
- * bottom on paper so the numbers stay legible at 20px.
+ * Deep UIUC-navy panel (pinned to --campus-blue, NOT to --ink)
+ * so it stays navy in BOTH light and dark mode instead of
+ * flipping ink→cream and becoming unreadable. Ivory text on
+ * navy is the stable "passport" read. Light mode: navy on
+ * cream, high contrast. Dark mode: navy on near-black — still
+ * distinct because navy has cool hue vs the warm dark canvas.
+ *
+ * Seal arc + avatar shadow use hardcoded Illini-orange alpha
+ * (not var(--brand)) so they stay the same warm terracotta
+ * tone in both themes — they're decorative, not brand-state.
  */
 .user-card {
   position: relative;
-  background: var(--ink);
+  background: var(--campus-blue);
   border-radius: var(--radius-xl);
   margin-top: 10px;
   padding: 22px 18px 0;
   box-shadow: var(--shadow-pop);
   overflow: hidden;
-  color: var(--canvas);
+  color: #F5F0E6;
   /* decorative Illini-orange arc top-right — seal-like, low opacity */
   &::before {
     content: '';
@@ -564,19 +568,24 @@ function onDeleteItem(id: string) {
 .user-row { display: flex; align-items: center; gap: 14px; }
 .avatar-big {
   width: 72px; height: 72px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--brand-soft) 0%, var(--brand) 100%);
+  background: linear-gradient(135deg, #FDEEE8 0%, #E84A27 100%);
   flex-shrink: 0;
   box-shadow: 0 6px 16px rgba(232, 74, 39, 0.35);
-  border: 2px solid var(--canvas);
+  border: 2px solid #F5F0E6;
 }
 .user-info { flex: 1; min-width: 0; }
 .name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/*
+ * Name + meta on the user card pin to ivory (#F5F0E6) since the
+ * card background is pinned to navy. Using var(--canvas) here would
+ * flip to dark in dark mode and disappear against the navy panel.
+ */
 .nickname {
   font-family: var(--font-serif);
   font-size: 22px;
   font-weight: 500;
   letter-spacing: -0.3px;
-  color: var(--canvas);
+  color: #F5F0E6;
 }
 .illini-badge {
   display: inline-flex; align-items: center;
@@ -599,7 +608,7 @@ function onDeleteItem(id: string) {
 }
 .uid-label { font-size: 10px; color: rgba(245, 240, 230, 0.6); font-weight: 500; }
 .uid-value {
-  font-size: 11px; color: var(--canvas); font-weight: 500; letter-spacing: 0.05em;
+  font-size: 11px; color: #F5F0E6; font-weight: 500; letter-spacing: 0.05em;
   font-family: var(--font-mono);
 }
 .location { font-size: 12px; color: rgba(245, 240, 230, 0.72); }
@@ -620,12 +629,12 @@ function onDeleteItem(id: string) {
   width: 14px; height: 14px; position: relative;
   &::before {
     content: ''; position: absolute; bottom: 0; left: 0;
-    width: 14px; height: 2px; background: var(--canvas); border-radius: 1px;
+    width: 14px; height: 2px; background: #F5F0E6; border-radius: 1px;
     opacity: 0.82;
   }
   &::after {
     content: ''; position: absolute; top: 0; right: 2px;
-    width: 2px; height: 10px; background: var(--canvas);
+    width: 2px; height: 10px; background: #F5F0E6;
     border-radius: 1px; transform: rotate(-40deg);
     transform-origin: bottom center;
     opacity: 0.82;
@@ -633,14 +642,15 @@ function onDeleteItem(id: string) {
 }
 
 /* ===== 4-stat strip inside the user card =====
-   Lives in the bottom edge of the deep-ink panel; numbers render in
-   serif so they feel like a "passport" data plate, not a UI counter. */
+   Lives in the bottom edge of the navy panel; numbers render in
+   serif so they feel like a "passport" data plate, not a UI counter.
+   All inner text pins to ivory since the panel bg is pinned navy. */
 .stats-row {
   display: flex; align-items: stretch;
   margin: 20px -18px 0;
   padding: 14px 18px 14px;
   border-top: 0.5px solid rgba(245, 240, 230, 0.12);
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.18);
 }
 .stat-item {
   flex: 1; text-align: center;
@@ -659,7 +669,7 @@ function onDeleteItem(id: string) {
   font-size: 22px;
   font-weight: 500;
   letter-spacing: -0.02em;
-  color: var(--canvas);
+  color: #F5F0E6;
   display: block;
   line-height: 1;
   font-feature-settings: 'tnum';

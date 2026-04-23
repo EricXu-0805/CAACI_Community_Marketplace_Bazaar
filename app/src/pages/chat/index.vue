@@ -534,7 +534,7 @@ function scrollToBottom() {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 16px;
   padding-top: calc(12px + env(safe-area-inset-top, 0px));
-  background: rgba(255,255,255,0.92);
+  background: rgba(var(--surface-rgb), 0.92);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-bottom: 0.5px solid var(--line-hair);

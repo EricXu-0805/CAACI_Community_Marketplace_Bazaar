@@ -21,8 +21,16 @@
       <view :class="['ico', 'ico-plaza', { active: current === 'plaza' }]"></view>
       <text :class="['lbl', { active: current === 'plaza' }]">{{ t('nav.plaza') }}</text>
     </view>
+    <!--
+      FAB tab — aligned into the same icon + label rhythm as the
+      other 4 tabs. The + button lifts ~8px above (smaller overshoot
+      than the old -14px) and has a label underneath so the whole
+      bar reads as one horizontal row instead of "4 tabs + a stray
+      orange button sticking out".
+    -->
     <view class="tab fab-slot" @click="go('/pages/publish/index')">
       <view class="fab"><view class="fab-plus"></view></view>
+      <text class="lbl fab-lbl">{{ t('nav.post') }}</text>
     </view>
     <view :class="['tab', { active: current === 'messages' }]" @click="go('/pages/messages/index')">
       <view v-if="current === 'messages'" class="tab-dot"></view>
@@ -190,28 +198,46 @@ function go(url: string) { uni.switchTab({ url }) }
 }
 
 /*
- * FAB — Illini orange with a 3px parchment ring that's the SAME
- * color as the tab bar, so the button reads as pressed INTO the
- * paper (like a thumb-pressed wax seal) instead of glued on top.
- * This is the single biggest anti-plastic move in the refinement.
+ * FAB — Illini orange rounded square with a 3px parchment ring
+ * (same color as tab bar, so it reads as pressed INTO the paper).
+ *
+ * Sized + positioned to MATCH the other 4 tabs' visual rhythm:
+ *   · 40×40px (was 46, shrunk to match the 20px line icon footprint
+ *     plus ring padding — same total footprint as a regular tab icon)
+ *   · margin-top -6px (was -14, now protrudes a gentle 6px instead
+ *     of dominating the bar like a logo button)
+ *   · Label "发布 / Post" sits below the FAB at the same y-axis as
+ *     the other 4 tab labels, so all 5 read as one horizontal row.
  */
-.fab-slot { position: relative; }
+.fab-slot {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 10px 0 6px;
+}
 .fab {
-  width: 46px; height: 46px; border-radius: 16px;
+  width: 40px; height: 40px; border-radius: 12px;
   background: var(--brand);
   display: flex; align-items: center; justify-content: center;
-  margin-top: -14px;
+  margin-top: -6px;
   border: 3px solid var(--parchment);
   box-shadow: var(--shadow-cta);
-  transition: transform 0.12s, background 0.15s;
+  transition: transform var(--dur-1, 120ms) var(--ease-std, ease),
+              background var(--dur-1, 120ms) var(--ease-std, ease);
 }
-.fab:active { transform: scale(0.92); background: var(--brand-deep); }
-.fab-plus { width: 16px; height: 16px; position: relative; }
+.fab-slot:active .fab { transform: scale(0.92); background: var(--brand-deep); }
+.fab-plus { width: 14px; height: 14px; position: relative; }
 .fab-plus::before, .fab-plus::after {
   content: ''; position: absolute; background: #fff; border-radius: 1px;
 }
-.fab-plus::before { width: 16px; height: 2px; top: 7px; left: 0; }
-.fab-plus::after { width: 2px; height: 16px; top: 0; left: 7px; }
+.fab-plus::before { width: 14px; height: 2px; top: 6px; left: 0; }
+.fab-plus::after  { width: 2px; height: 14px; top: 0; left: 6px; }
+.fab-lbl {
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--ink-quiet);
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
 
 @media (max-width: 767px) { .tabbar { display: flex; } }
 </style>

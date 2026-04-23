@@ -11,6 +11,11 @@
         <text class="mi-value">{{ currentLangLabel }}</text>
         <view class="mi-arrow"></view>
       </view>
+      <view class="menu-item" @click="onPickTheme">
+        <text class="mi-label">{{ t('settings.appearance') }}</text>
+        <text class="mi-value">{{ currentThemeLabel }}</text>
+        <view class="mi-arrow"></view>
+      </view>
     </view>
 
     <view class="section">
@@ -71,10 +76,12 @@ import { computed, ref } from 'vue'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useSupabase } from '../../composables/useSupabase'
+import { useTheme, type ThemePref } from '../../composables/useTheme'
 
 const { t, lang, setLang } = useI18n()
 const { isLoggedIn, signOut } = useAuth()
 const { supabase } = useSupabase()
+const { pref: themePref, setPref: setThemePref } = useTheme()
 const cacheSize = ref('--')
 
 /*
@@ -104,6 +111,30 @@ function onPickLanguage() {
     success: (res) => {
       const pick = LANGUAGES[res.tapIndex]
       if (pick && pick.code !== lang.value) setLang(pick.code)
+    },
+  })
+}
+
+/*
+ * Appearance (light / dark / auto) picker. Default is 'auto' — follows
+ * system preference via prefers-color-scheme media query. Manual choices
+ * override the system and persist via uni.setStorageSync(). See
+ * useTheme.ts for the storage + DOM flip mechanism.
+ */
+const THEMES: Array<{ code: ThemePref; label: () => string }> = [
+  { code: 'auto',  label: () => t('settings.themeAuto') },
+  { code: 'light', label: () => t('settings.themeLight') },
+  { code: 'dark',  label: () => t('settings.themeDark') },
+]
+const currentThemeLabel = computed(
+  () => THEMES.find(x => x.code === themePref.value)?.label() || t('settings.themeAuto'),
+)
+function onPickTheme() {
+  uni.showActionSheet({
+    itemList: THEMES.map(x => x.label()),
+    success: (res) => {
+      const pick = THEMES[res.tapIndex]
+      if (pick && pick.code !== themePref.value) setThemePref(pick.code)
     },
   })
 }

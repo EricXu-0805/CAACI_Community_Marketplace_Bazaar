@@ -233,11 +233,11 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 }
 .trust-num { font-size: 15px; font-weight: 700; color: var(--text-primary); }
 .trust-label { font-size: 11px; color: var(--text-muted); }
-.trust-divider { width: 0.5px; height: 24px; background: rgba(0,0,0,0.1); }
+.trust-divider { width: 0.5px; height: 24px; background: var(--border-strong); }
 
 .items-grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
-  background: rgba(0,0,0,0.06); margin-top: 7px;
+  background: var(--border); margin-top: 7px;
 }
 .grid-item {
   background: var(--bg-elev-1); cursor: pointer;
@@ -274,7 +274,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   border-radius: 50%; position: relative; margin-bottom: 6px;
   &::before {
     content: ''; position: absolute; top: 50%; left: 8px; right: 8px;
-    height: 2.5px; background: #d1d1d6;
+    height: 2.5px; background: var(--border-strong);
     transform: rotate(-45deg);
   }
 }

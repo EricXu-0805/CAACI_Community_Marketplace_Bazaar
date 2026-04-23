@@ -589,7 +589,7 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .admin {
-  min-height: 100vh; background: #f5f5f7;
+  min-height: 100vh; background: var(--bg-subtle);
   padding: 20px 16px 40px; max-width: 960px; margin: 0 auto;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
@@ -659,7 +659,7 @@ onMounted(async () => {
 .card-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .card-meta { font-size: 13px; color: var(--text-secondary); }
 .card-note { font-size: 13px; color: var(--text-primary); font-style: italic; }
-.card-appeal { font-size: 13px; color: var(--text-primary); background: #FFF4E6; padding: 8px 10px; border-radius: 6px; border-left: 3px solid var(--accent-warn); }
+.card-appeal { font-size: 13px; color: var(--text-primary); background: var(--warning-soft); padding: 8px 10px; border-radius: 6px; border-left: 3px solid var(--accent-warn); }
 .card-appeal-flag { font-size: 11px; color: var(--accent-warn); font-weight: 600; }
 .card-time { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .card-audit { font-size: 11px; color: var(--text-muted); }
@@ -693,10 +693,10 @@ onMounted(async () => {
   letter-spacing: 0.3px;
   background: var(--bg-subtle); color: var(--text-secondary);
 }
-.kind-ban_applied           { background: #FFE5E5; color: var(--accent-danger); }
-.kind-suspension_lifted     { background: #E8F5E9; color: var(--accent-good); }
-.kind-report_status_changed { background: #E3F2FD; color: #0A84FF; }
-.kind-actor_blocked         { background: #FFF4E6; color: var(--accent-warn); }
+.kind-ban_applied           { background: var(--danger-soft); color: var(--accent-danger); }
+.kind-suspension_lifted     { background: var(--success-soft); color: var(--accent-good); }
+.kind-report_status_changed { background: var(--campus-blue-soft); color: #0A84FF; }
+.kind-actor_blocked         { background: var(--warning-soft); color: var(--accent-warn); }
 .kind-admin_login           { background: var(--bg-subtle); color: var(--text-muted); }
 .kind-admin_unauthorized    { background: var(--accent-primary); color: #fff; }
 .audit-msg { flex: 1; color: var(--text-primary); word-break: break-all; }
@@ -712,7 +712,7 @@ onMounted(async () => {
   &:active { background: var(--bg-inset); }
   &.primary { background: var(--accent-primary); color: #fff; }
   &.primary:active { opacity: 0.85; }
-  &.danger { background: #FFE5E5; color: var(--accent-danger); }
+  &.danger { background: var(--danger-soft); color: var(--accent-danger); }
   &.danger:active { background: #FFD1D1; }
 }
 
@@ -720,17 +720,17 @@ onMounted(async () => {
   padding: 2px 8px; border-radius: 10px;
   font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
 }
-.pill-pending    { background: #FFF4E6; color: var(--accent-warn); }
-.pill-reviewed   { background: #E3F2FD; color: #0A84FF; }
-.pill-resolved   { background: #E8F5E9; color: var(--accent-good); }
+.pill-pending    { background: var(--warning-soft); color: var(--accent-warn); }
+.pill-reviewed   { background: var(--campus-blue-soft); color: #0A84FF; }
+.pill-resolved   { background: var(--success-soft); color: var(--accent-good); }
 .pill-dismissed  { background: var(--bg-subtle); color: var(--text-muted); }
-.pill-active     { background: #FFE5E5; color: var(--accent-danger); }
-.pill-lifted     { background: #E8F5E9; color: var(--accent-good); }
+.pill-active     { background: var(--danger-soft); color: var(--accent-danger); }
+.pill-lifted     { background: var(--success-soft); color: var(--accent-good); }
 .pill-expired    { background: var(--bg-subtle); color: var(--text-muted); }
 .pill-shadow     { background: var(--accent-primary); color: #fff; }
 .pill-trust      { background: var(--bg-subtle); color: var(--text-secondary); }
-.level-0, .level-1 { background: #FFF4E6; color: var(--accent-warn); }
-.level-2, .level-3 { background: #FFE5E5; color: var(--accent-danger); }
+.level-0, .level-1 { background: var(--warning-soft); color: var(--accent-warn); }
+.level-2, .level-3 { background: var(--danger-soft); color: var(--accent-danger); }
 .level-4, .level-5 { background: var(--accent-primary); color: #fff; }
 
 .detail-mask {
@@ -762,6 +762,6 @@ onMounted(async () => {
 .d-row { display: block; font-size: 13px; color: var(--text-primary); line-height: 1.6; margin-bottom: 6px; }
 .d-key { color: var(--text-secondary); font-weight: 600; }
 .d-preview { background: var(--bg-subtle); padding: 8px 10px; border-radius: 6px; margin: 8px 0; font-style: italic; }
-.d-appeal { background: #FFF4E6; padding: 10px; border-radius: 6px; border-left: 3px solid var(--accent-warn); margin: 10px 0; }
+.d-appeal { background: var(--warning-soft); padding: 10px; border-radius: 6px; border-left: 3px solid var(--accent-warn); margin: 10px 0; }
 .d-actions { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
 </style>

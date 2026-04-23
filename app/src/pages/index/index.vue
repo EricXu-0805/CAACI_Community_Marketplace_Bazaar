@@ -970,15 +970,15 @@ function goPublish() {
   &:active { background: var(--bg-inset); }
 }
 .fs-section { margin-bottom: 18px; }
-.fs-label { font-size: 13px; color: #999; margin-bottom: 10px; display: block; }
+.fs-label { font-size: 13px; color: var(--ink-quiet); margin-bottom: 10px; display: block; }
 .fs-price-row { display: flex; align-items: center; gap: 10px; }
 .fs-price-input {
   flex: 1; display: flex; align-items: center;
   background: #f5f5f5; border-radius: 10px; padding: 10px 12px; gap: 4px;
-  input { flex: 1; font-size: 15px; color: #333; background: transparent; }
+  input { flex: 1; font-size: 15px; color: var(--ink); background: transparent; }
 }
-.fs-dollar { font-size: 15px; color: #999; font-weight: 600; }
-.fs-dash { color: #ccc; font-size: 16px; }
+.fs-dollar { font-size: 15px; color: var(--ink-quiet); font-weight: 600; }
+.fs-dash { color: var(--ink-faint); font-size: 16px; }
 .fs-pills { display: flex; flex-wrap: wrap; gap: 8px; }
 .fpill {
   padding: 7px 15px; border-radius: 8px;
@@ -1111,7 +1111,7 @@ function goPublish() {
 
 .card-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 7px; }
 .card-seller { display: flex; align-items: center; gap: 5px; flex: 1; min-width: 0; }
-.seller-pic { width: 16px; height: 16px; border-radius: 50%; background: #f0f0f0; flex-shrink: 0; }
+.seller-pic { width: 16px; height: 16px; border-radius: 50%; background: var(--bg-subtle); flex-shrink: 0; }
 .seller-nick { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card-fav { display: flex; align-items: center; gap: 4px; flex-shrink: 0; padding: 4px 2px; }
 .heart-img {
@@ -1179,8 +1179,8 @@ function goPublish() {
     border-radius: 11px 11px 0 0;
   }
 }
-.empty-title { font-size: 16px; color: #333; font-weight: 600; }
-.empty-sub { font-size: 13px; color: #999; text-align: center; padding: 0 32px; }
+.empty-title { font-size: 16px; color: var(--ink); font-weight: 600; }
+.empty-sub { font-size: 13px; color: var(--ink-quiet); text-align: center; padding: 0 32px; }
 .empty-btn {
   margin-top: 18px; padding: 11px 32px;
   background: var(--accent-primary); color: #fff; border-radius: 22px;

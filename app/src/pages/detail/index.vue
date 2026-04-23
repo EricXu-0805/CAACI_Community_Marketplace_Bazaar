@@ -757,7 +757,7 @@ async function contactSeller() {
   display: flex; align-items: flex-start; gap: 10px; margin-top: 9px;
 }
 .title {
-  flex: 1; display: block; font-size: 17px; color: #1d1d1f; font-weight: 600;
+  flex: 1; display: block; font-size: 17px; color: var(--ink); font-weight: 600;
   line-height: 1.45;
 }
 .translate-btn {
@@ -775,7 +775,7 @@ async function contactSeller() {
   display: inline-flex; align-items: center; gap: 4px; padding-left: 8px;
 }
 .tag-safe {
-  background: #e9f7ef; color: #1a7a3d;
+  background: var(--success-soft); color: var(--success);
 }
 .tag-safe .loc-dot { background: var(--accent-good); }
 .safe-badge {
@@ -809,15 +809,24 @@ async function contactSeller() {
   content: ''; position: absolute; bottom: -5px; left: -1px;
   width: 4px; height: 3px; background: var(--bg-elev-1); border-radius: 2px;
 }
-.sc-title { font-size: 13px; font-weight: 700; color: #A65B00; }
-.sc-body { font-size: 12px; color: #8B5000; line-height: 1.55; display: block; }
+.sc-title {
+  font-size: 13px; font-weight: 700;
+  color: var(--warning);
+  filter: brightness(0.75);
+}
+.sc-body {
+  font-size: 12px;
+  color: var(--warning);
+  filter: brightness(0.7);
+  line-height: 1.55; display: block;
+}
 
 /* ========== Sections ========== */
 .section {
   background: var(--bg-elev-1); padding: 16px; margin-top: 7px;
 }
 .section-label {
-  font-size: 14px; font-weight: 600; color: #1d1d1f;
+  font-size: 14px; font-weight: 600; color: var(--ink);
   margin-bottom: 10px; display: block;
 }
 .desc-text {
@@ -844,11 +853,11 @@ async function contactSeller() {
 }
 .seller-avatar {
   width: 44px; height: 44px; border-radius: 50%;
-  background: #f0f0f0; flex-shrink: 0;
+  background: var(--bg-subtle); flex-shrink: 0;
 }
 .seller-info { flex: 1; }
 .seller-name-row { display: flex; align-items: center; gap: 6px; }
-.seller-name { font-size: 15px; font-weight: 600; color: #1d1d1f; }
+.seller-name { font-size: 15px; font-weight: 600; color: var(--ink); }
 .illini-badge {
   display: inline-flex; align-items: center;
   background: var(--campus-blue); color: #fff;
@@ -872,7 +881,7 @@ async function contactSeller() {
   padding-top: 13px; border-top: 1px solid var(--line-hair);
 }
 .stat { display: flex; align-items: baseline; gap: 4px; }
-.stat-num { font-size: 16px; font-weight: 700; color: #1d1d1f; }
+.stat-num { font-size: 16px; font-weight: 700; color: var(--ink); }
 .stat-label { font-size: 12px; color: var(--text-faint); }
 
 /* ========== Bottom Action Bar ========== */
@@ -881,7 +890,7 @@ async function contactSeller() {
   display: flex; align-items: center; gap: 16px;
   padding: 12px 16px;
   padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-  background: rgba(255,255,255,0.95);
+  background: rgba(var(--surface-rgb), 0.95);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   box-shadow: 0 -4px 16px rgba(60, 40, 20, 0.06);
