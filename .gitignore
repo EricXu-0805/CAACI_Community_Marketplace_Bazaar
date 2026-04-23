@@ -41,6 +41,12 @@ project.config.json
 project.private.config.json
 
 # Ad-hoc analysis scratch (kept local, not committed)
+_ai_notes/
 IMAGE_ANALYSIS_INDEX.md
 IMAGE_RENDERING_ANALYSIS.md
 IMAGE_RENDERING_QUICK_SUMMARY.txt
+DESIGN_TOKENS_*.md
+DESIGN_TOKENS_*.txt
+SECURITY_AUDIT_INDEX.md
+SECURITY_AUDIT.md
+SECURITY_SUMMARY.txt

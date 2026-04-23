@@ -137,19 +137,43 @@ onLaunch(() => {
 </script>
 
 <style>
+/*
+ * ============================================================
+ * Illini Market · 米白书院 (Ivory Academy) type + color system.
+ *
+ * Fonts load on H5 only (Google Fonts CDN). WeChat / Alipay /
+ * Baidu mini-program builds ignore the @import and fall through
+ * to the system stack — PingFang SC stays the Chinese rendering
+ * path there until we self-host woff2 files under /static/fonts.
+ *
+ * Stack philosophy:
+ *   · Display + prices + brand word-marks → Fraunces (EN) + Noto
+ *     Serif SC (中文). Scholarly, bookshop-on-Green-Street feel.
+ *   · UI body + meta + chips → Noto Sans SC for CN screen clarity
+ *     at 11-13px (衬线在这个字号糊), Source Serif 4 / system for EN.
+ *   · display=swap so we never block LCP behind webfonts; a system
+ *     fallback renders immediately and swaps once Fraunces loads.
+ * ============================================================ */
+/* #ifdef H5 */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600&display=swap');
+/* #endif */
+
 page {
-  /* Warm cream background matches the Illini Market redesign and stays
-     consistent across all pages. Individual .page containers are allowed
-     to stack elev-1 (pure white) surfaces on top for cards. */
-  background-color: #faf7f0;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+  /* Ivory cream background matches the 米白书院 redesign and stays
+     consistent across all pages. Individual .page containers are
+     allowed to stack elev-1 (paper) surfaces on top for cards. */
+  background-color: #F5F0E6;
+  font-family:
+    'Noto Sans SC',
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
     'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 15px;
   line-height: 1.5;
-  color: #1a1a1a;
+  color: #2A2A2E;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: -0.01em;
+  font-feature-settings: 'kern', 'ss01';
 }
 
 /* ============================================
@@ -243,93 +267,252 @@ button:focus-visible,
 }
 
 /*
- * Design tokens — "Warm Campus Market" palette.
+ * ============================================================
+ * Design tokens — 米白书院 (Ivory Academy) palette v3.
  *
- * This used to be a neutral grey scheme (#fafafb cool bg + black primary).
- * The redesigned CAACI brief is a warmer, friendlier market feel — cream
- * background, coral-red primary, soft earthy dividers, pill buttons. We
- * keep all the old variable *names* so every page updates atomically;
- * only their values change. The small handful of one-off hex literals
- * still sprinkled in page SCSS will get mopped up opportunistically.
+ * Ports the production design-system tokens from
+ *   /Users/xiaogangxu/Downloads/Illini Market Design System/
+ *   ui_kits/ivory_academy/tokens.css
+ *
+ * Migration history:
+ *   v1 — neutral grey (#fafafb + #1a1a1a black)
+ *   v2 — warm campus market (#faf7f0 cream + #FF5A4C coral)
+ *   v3 — 米白书院 (#F5F0E6 ivory + #C74A2F terracotta) ← here
+ *
+ * Legacy variable names are preserved so every page cascades
+ * without code edits — `var(--accent-primary)` now evaluates to
+ * terracotta instead of coral, `var(--bg-page)` to ivory instead
+ * of cream. New semantic names (--brand, --canvas, --paper,
+ * --ink, --ink-soft) are added alongside and SHOULD be preferred
+ * for new code.
  *
  * Palette reference:
- *   - Primary / CTA:  #FF5A4C coral red (was #1a1a1a black)
- *   - Primary soft:   #FFE8E4 (tag bg, hover tint)
- *   - Background:     #FAF7F0 cream off-white (was #fafafb cool grey)
- *   - Card surface:   #FFFFFF
- *   - Border hair:    #EFEAE0 warm beige
- *   - Accent:         #2D5B4E dark green (complement, use sparingly)
+ *   · Brand  #C74A2F  terracotta — prices, CTAs, brand seal
+ *   · Canvas #F5F0E6  ivory cream — page background
+ *   · Paper  #FBF8F2  brighter cream — card/sheet surface
+ *   · Ink    #2A2A2E  soft near-black — body text
+ *   · Border #E8DFCC  warm beige hairline
+ *   · Success #5D7C4A sage — verified, free, safe-pickup
+ *   · Warning #D4923C amber — OBO, price-drop, scam
+ *   · Danger  #B53333 scholarly red — destructive
  *
- * Radius scale: xs 6, sm 8, md 12, lg 16, pill 22 (button height /2).
+ * Radius scale: xs 4 · sm 8 · md 12 · lg 18 · xl 28 · pill 999.
+ * Shadow tints use rgba(31,29,27,...) — warm grey, NOT pure black.
  */
 :root {
-  --text-primary:   #1a1a1a;
-  --text-secondary: #4a4a4a;
-  --text-tertiary:  #6e6e6e;
-  --text-muted:     #8a8a8a;
-  --text-faint:     #b8b8b8;
-  --text-disabled:  #a0a0a8;
+  /* ---------- TEXT (legacy names, still used by many pages) ---------- */
+  --text-primary:   #2A2A2E;   /* ink       */
+  --text-secondary: #57524B;   /* ink-soft  */
+  --text-tertiary:  #6B6358;
+  --text-muted:     #8B8478;   /* ink-quiet */
+  --text-faint:     #B6AE9F;
+  --text-disabled:  #B6AE9F;
 
-  --bg-page:    #faf7f0;
-  --bg-elev-1:  #ffffff;
-  --bg-elev-2:  #f5f0e8;
-  --bg-subtle:  #f2ece0;
-  --bg-inset:   #efeae0;
+  /* ---------- NEW SEMANTIC NAMES (prefer these going forward) ------- */
+  --ink:         #2A2A2E;
+  --ink-soft:    #57524B;
+  --ink-quiet:   #8B8478;
+  --ink-faint:   #B6AE9F;
 
-  --line-hair:  rgba(60, 40, 20, 0.06);
-  --line-soft:  rgba(60, 40, 20, 0.10);
-  --line-bold:  rgba(60, 40, 20, 0.14);
+  /* ---------- SURFACES ---------- */
+  --bg-page:    #F5F0E6;   /* canvas    */
+  --bg-elev-1:  #FBF8F2;   /* paper     */
+  --bg-elev-2:  #F0E9DA;   /* paper-2   */
+  --bg-subtle:  #F0E9DA;   /* chip / input bg */
+  --bg-inset:   #E8DFCC;   /* pressed chip   */
 
-  --accent-primary: #FF5A4C;
-  --accent-primary-soft: #FFE8E4;
-  --accent-primary-deep: #E64A3D;
-  --accent-action:  #FF5A4C;
-  --accent-ink:     #1a1a1a;
-  --accent-green:   #2D5B4E;
-  --accent-good:    #22c55e;
-  --accent-warn:    #FF9500;
-  --accent-danger:  #FF3B30;
+  --canvas:     #F5F0E6;
+  --paper:      #FBF8F2;
+  --paper-2:    #F0E9DA;
+  --paper-3:    #E8DFCC;
 
-  --radius-xs:   6px;
-  --radius-sm:   8px;
-  --radius-md:  12px;
-  --radius-lg:  16px;
-  --radius-xl:  20px;
+  /* ---------- BORDERS ---------- */
+  --line-hair:  rgba(31, 29, 27, 0.08);
+  --line-soft:  rgba(31, 29, 27, 0.12);
+  --line-bold:  rgba(31, 29, 27, 0.18);
+
+  --border:        #E8DFCC;
+  --border-strong: #D8CDB3;
+  --border-hair:   rgba(31, 29, 27, 0.08);
+
+  /* ---------- BRAND (the one color that spends energy) ---------- */
+  --brand:          #C74A2F;   /* terracotta — price · CTA · seal */
+  --brand-deep:     #A23A22;   /* hover / pressed */
+  --brand-soft:     #F5D9CE;   /* chip bg · soft fill */
+  --brand-ghost:    #FBEAE2;   /* hover tint on paper */
+
+  /* Legacy accent names map to brand so existing pages cascade. */
+  --accent-primary:      var(--brand);
+  --accent-primary-soft: var(--brand-soft);
+  --accent-primary-deep: var(--brand-deep);
+  --accent-action:       var(--brand);
+  --accent-ink:          var(--ink);
+  --accent-green:        #5D7C4A;
+  --accent-good:         #5D7C4A;   /* success · was #22c55e */
+  --accent-warn:         #D4923C;   /* warning · was #FF9500 */
+  --accent-danger:       #B53333;   /* danger  · was #FF3B30 */
+
+  /* Explicit success / warn / danger pairs (soft bg + foreground) */
+  --success:      #5D7C4A;
+  --success-soft: #E4EADA;
+  --warning:      #D4923C;
+  --warning-soft: #F5E4CB;
+  --danger:       #B53333;
+  --danger-soft:  #F0D4D4;
+
+  /* ---------- RADII (ivory_academy 5 steps) ---------- */
+  --radius-xs:    4px;
+  --radius-sm:    8px;
+  --radius-md:   12px;
+  --radius-lg:   18px;
+  --radius-xl:   28px;
   --radius-pill: 999px;
 
+  /* ---------- SPACING (4pt grid) ---------- */
   --space-1:  4px;
   --space-2:  8px;
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 20px;
   --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
 
+  /* ---------- WEIGHT ---------- */
   --font-weight-regular: 400;
   --font-weight-medium:  500;
   --font-weight-semi:    600;
   --font-weight-bold:    700;
 
-  --shadow-soft: 0 1px 2px rgba(60, 40, 20, 0.03), 0 2px 12px rgba(60, 40, 20, 0.04);
-  --shadow-pop:  0 4px 16px rgba(60, 40, 20, 0.08);
-  --shadow-cta:  0 6px 14px rgba(255, 90, 76, 0.28);
+  /* ---------- TYPE FAMILIES ---------- */
+  --font-serif:
+    'Fraunces', 'Noto Serif SC', 'Songti SC', Georgia, 'Times New Roman', serif;
+  --font-hei:
+    'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC',
+    'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+  --font-mono:
+    'JetBrains Mono', 'SF Mono', Menlo, ui-monospace, monospace;
+
+  /* ---------- ELEVATION (warm-tinted, not pure black) ---------- */
+  --shadow-hair:       0 0 0 1px rgba(31, 29, 27, 0.06);
+  --shadow-soft:       0 1px 2px rgba(31, 29, 27, 0.04),
+                       0 4px 12px rgba(31, 29, 27, 0.04);
+  --shadow-pop:        0 2px 4px rgba(31, 29, 27, 0.05),
+                       0 12px 28px rgba(31, 29, 27, 0.08);
+  --shadow-float:      0 1px 2px rgba(31, 29, 27, 0.06),
+                       0 24px 56px -16px rgba(31, 29, 27, 0.18);
+  --shadow-cta:        0 2px 4px rgba(199, 74, 47, 0.15),
+                       0 12px 28px -8px rgba(199, 74, 47, 0.28);
+  --shadow-brand:      var(--shadow-cta);
 }
 
 /*
- * Shared utility classes. Opt-in per page; not forced on existing
- * components so we don't break their scoped styles.
- */
+ * ============================================================
+ * Shared utility classes. Opt-in per page; not forced on
+ * existing components so we don't break their scoped styles.
+ *
+ * TYPE CLASSES (ivory_academy ladder) — prefer these over
+ * inline font-size hex stacks:
+ *   .t-display      — Fraunces 28px hero word-mark
+ *   .t-title-serif  — Fraunces 22px section title
+ *   .t-price-serif  — Fraunces 22px terracotta price
+ *   .t-label        — mono eyebrow 10px uppercase
+ *   .t-meta         — 12px ink-quiet for timestamps, counters
+ *
+ * Use serif on numbers + brand + prices + headings; sans on
+ * everything else. Never mix serif for a 10-11px CN label —
+ * it glyph-crams on retina screens.
+ * ============================================================ */
+
+/* ---------- TYPE ---------- */
+.t-display {
+  font-family: var(--font-serif);
+  font-size: 28px;
+  line-height: 1.1;
+  font-weight: 500;
+  letter-spacing: -0.5px;
+  color: var(--ink);
+}
+.t-title-serif {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+  color: var(--ink);
+}
+.t-subtitle-serif {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  line-height: 1.35;
+  font-weight: 500;
+  color: var(--ink);
+}
+.t-price-serif {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--brand);
+  letter-spacing: -0.01em;
+  font-feature-settings: 'tnum';
+}
+.t-price-serif.sm { font-size: 17px; }
+.t-price-serif.free { color: var(--success); }
+
+.t-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--ink-quiet);
+  font-weight: 500;
+}
+.t-meta {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-quiet);
+}
+
+/* ---------- SURFACES ---------- */
 .u-card {
-  background: var(--bg-elev-1);
+  background: var(--paper);
+  border: 0.5px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-soft);
 }
+.u-card.flat { box-shadow: none; }
 .u-divider {
   height: 0.5px;
-  background: var(--line-hair);
+  background: var(--border-hair);
   width: 100%;
 }
+
+/* ---------- BUTTONS ----------
+ *   .u-btn-primary = ink background (the "default" ladder button)
+ *   .u-btn-brand   = terracotta CTA (commits — "Post", "Confirm")
+ *   .u-btn-ghost   = paper-2 neutral
+ *   Legacy: .u-btn-primary historically pointed at the coral
+ *   accent; we migrated it to ink to match ivory_academy CTA
+ *   ladder. If a page really wants the brand color, use
+ *   .u-btn-brand.
+ */
 .u-btn-primary {
-  background: var(--accent-primary);
+  background: var(--ink);
+  color: var(--canvas);
+  padding: 12px 18px;
+  border-radius: var(--radius-pill);
+  font-size: 15px;
+  font-weight: var(--font-weight-semi);
+  text-align: center;
+  cursor: pointer;
+  border: 0;
+  transition: opacity .15s ease, transform .08s ease;
+}
+.u-btn-primary:active { opacity: 0.85; transform: translateY(1px); }
+
+.u-btn-brand {
+  background: var(--brand);
   color: #fff;
   padding: 12px 18px;
   border-radius: var(--radius-pill);
@@ -337,17 +520,48 @@ button:focus-visible,
   font-weight: var(--font-weight-semi);
   text-align: center;
   cursor: pointer;
+  border: 0;
+  box-shadow: var(--shadow-cta);
+  transition: background .15s ease, transform .08s ease;
 }
-.u-btn-primary:active { opacity: 0.85; }
+.u-btn-brand:active { background: var(--brand-deep); transform: translateY(1px); }
+
 .u-btn-ghost {
-  background: var(--bg-subtle);
-  color: var(--text-primary);
+  background: var(--paper-2);
+  color: var(--ink);
   padding: 12px 18px;
   border-radius: var(--radius-pill);
   font-size: 15px;
   font-weight: var(--font-weight-semi);
   text-align: center;
   cursor: pointer;
+  border: 0;
 }
-.u-btn-ghost:active { background: var(--bg-inset); }
+.u-btn-ghost:active { background: var(--paper-3); }
+
+/* Chip / pill rail — used in filters, tags, category bar */
+.u-chip {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-soft);
+  border: 0.5px solid var(--border-strong);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.u-chip.active {
+  background: var(--ink);
+  color: var(--canvas);
+  border-color: var(--ink);
+}
+.u-chip.brand {
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+  border-color: transparent;
+}
 </style>
