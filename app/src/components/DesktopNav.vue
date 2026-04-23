@@ -38,7 +38,7 @@ function go(url: string) { uni.switchTab({ url }) }
 .desktop-logo { font-size: 17px; font-weight: 700; color: var(--text-primary); white-space: nowrap; cursor: pointer; letter-spacing: -0.02em; }
 .desktop-nav-links { display: flex; gap: 4px; }
 .nav-link { font-size: 15px; color: var(--ink-quiet); padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: all 0.15s; font-weight: 500; }
-.nav-link:hover { background: var(--bg-subtle); color: #1d1d1f; }
+.nav-link:hover { background: var(--bg-subtle); color: var(--ink); }
 .nav-link.active { color: var(--text-primary); font-weight: 600; background: var(--bg-subtle); }
 .desktop-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
 .nav-loc-wrap { display: flex; align-items: center; gap: 5px; }

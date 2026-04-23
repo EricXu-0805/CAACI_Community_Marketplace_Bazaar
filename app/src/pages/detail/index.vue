@@ -792,7 +792,7 @@ async function contactSeller() {
 .scam-card {
   margin: 7px 0 0;
   padding: 12px 14px;
-  background: #FFF4E6;
+  background: var(--warning-soft);
   border-left: 3px solid var(--accent-warn);
 }
 .sc-head {

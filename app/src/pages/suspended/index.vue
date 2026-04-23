@@ -208,7 +208,7 @@ function onSignOut() {
   background: rgba(255,149,0,0.1);
 }
 .hero-icon.level-2 { background: rgba(255,149,0,0.12); }
-.hero-icon.level-3 { background: rgba(255,107,53,0.14); }
+.hero-icon.level-3 { background: rgba(199,74,47,0.14); }
 .hero-icon.level-4 { background: rgba(239,68,68,0.14); }
 .hero-icon.level-5 { background: rgba(127,29,29,0.15); }
 .hero-icon-inner {
@@ -227,7 +227,7 @@ function onSignOut() {
   font-size: 11px; color: var(--accent-action); font-weight: 700;
   letter-spacing: 0.08em; text-transform: uppercase;
   padding: 3px 10px; border-radius: 10px;
-  background: rgba(255,107,53,0.08);
+  background: rgba(199,74,47,0.08);
 }
 .hero-title { font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; text-align: center; }
 .hero-sub { font-size: 14px; color: var(--text-secondary); line-height: 1.5; text-align: center; padding: 0 8px; }

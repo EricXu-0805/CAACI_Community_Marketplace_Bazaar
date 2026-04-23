@@ -490,7 +490,7 @@ async function onSubmitComment() {
   text { font-size: 10px; font-weight: 700; color: #fff; }
 }
 .badge-pinned {
-  background: rgba(255,107,53,0.12); color: var(--accent-action);
+  background: rgba(199,74,47,0.12); color: var(--accent-action);
   padding: 1px 6px; border-radius: 4px;
   text { font-size: 10px; font-weight: 600; color: var(--accent-action); }
 }
@@ -585,7 +585,7 @@ async function onSubmitComment() {
 .reply-bar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 7px 14px;
-  background: rgba(255,107,53,0.08);
+  background: rgba(199,74,47,0.08);
 }
 .reply-label { font-size: 12px; color: var(--accent-action); font-weight: 500; flex: 1; }
 .reply-x {

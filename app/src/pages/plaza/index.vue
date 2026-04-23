@@ -889,7 +889,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   text { font-size: 10px; font-weight: 700; color: #fff; }
 }
 .badge-pinned {
-  background: rgba(255,107,53,0.12); color: var(--accent-action);
+  background: rgba(199,74,47,0.12); color: var(--accent-action);
   padding: 1px 6px; border-radius: 4px;
   text { font-size: 10px; font-weight: 600; color: var(--accent-action); }
 }
@@ -1178,14 +1178,14 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .cs-reply-bar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 6px 12px;
-  background: rgba(255,107,53,0.08);
-  border-top: 0.5px solid rgba(255,107,53,0.2);
+  background: rgba(199,74,47,0.08);
+  border-top: 0.5px solid rgba(199,74,47,0.2);
 }
 .cs-reply-label { font-size: 12px; color: var(--accent-action); font-weight: 500; flex: 1; }
 .cs-reply-x {
   width: 20px; height: 20px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
-  &:active { background: rgba(255,107,53,0.15); }
+  &:active { background: rgba(199,74,47,0.15); }
 }
 .cs-rx {
   width: 10px; height: 10px; position: relative;

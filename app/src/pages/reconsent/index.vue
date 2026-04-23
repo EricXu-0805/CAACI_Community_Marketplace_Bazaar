@@ -116,7 +116,7 @@ function onDecline() {
 .badge {
   align-self: flex-start;
   padding: 3px 10px; border-radius: 10px;
-  background: rgba(255,107,53,0.08);
+  background: rgba(199,74,47,0.08);
   font-size: 11px; color: var(--accent-action); font-weight: 700;
   letter-spacing: 0.04em; text-transform: uppercase;
   margin-bottom: 8px;
@@ -154,7 +154,7 @@ function onDecline() {
   width: 10px; height: 10px; border: 2px solid var(--accent-good);
   border-bottom: none; border-radius: 5px 5px 0 0;
 }
-.doc-guidelines { background: rgba(255,107,53,0.1); }
+.doc-guidelines { background: rgba(199,74,47,0.1); }
 .doc-guidelines::before {
   content: ''; position: absolute; top: 10px; left: 11px;
   width: 14px; height: 16px; border: 2px solid var(--accent-action);
