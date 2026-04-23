@@ -112,6 +112,8 @@ const messages: Partial<Record<Lang, Record<string, string>>> = {
     'nav.profile': 'Profile',
     'loc.uiuc': 'UIUC',
 
+    'home.heroTitle': 'Graduation Season',
+    'home.heroSubtitle': 'Great finds, student prices · on campus only',
     'home.search': 'Search items near UIUC...',
     'home.loading': 'Loading',
     'home.noMore': 'No more items',
@@ -522,6 +524,10 @@ const messages: Partial<Record<Lang, Record<string, string>>> = {
     'profile.uidCopied': 'ID copied',
     'profile.browsed': 'Viewed',
     'profile.myItems': 'Listed',
+    'profile.quickActions': 'Quick Actions',
+    'profile.soldSection': 'Sold',
+    'profile.savedSection': 'My Favorites',
+    'profile.moreSection': 'More',
 
     'publish.imageOptional': 'Images optional — text-only posts are fine',
     'publish.imageMaxReached': 'Max 9 photos reached',
@@ -651,6 +657,8 @@ const messages: Partial<Record<Lang, Record<string, string>>> = {
     'nav.profile': '我的',
     'loc.uiuc': 'UIUC',
 
+    'home.heroTitle': '毕业季闲置',
+    'home.heroSubtitle': '好物低价 · 只在本校',
     'home.search': '搜索二手好物...',
     'home.loading': '加载中',
     'home.noMore': '已经到底啦',
@@ -1061,6 +1069,10 @@ const messages: Partial<Record<Lang, Record<string, string>>> = {
     'profile.uidCopied': 'ID 已复制',
     'profile.browsed': '浏览过',
     'profile.myItems': '我发布的',
+    'profile.quickActions': '快捷入口',
+    'profile.soldSection': '已售出',
+    'profile.savedSection': '我的收藏',
+    'profile.moreSection': '更多',
 
     'publish.imageOptional': '图片可选 - 不上传也可以发布',
     'publish.imageMaxReached': '最多上传 9 张',

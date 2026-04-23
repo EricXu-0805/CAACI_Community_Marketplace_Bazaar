@@ -64,18 +64,41 @@
         </view>
       </view>
 
-      <view class="mc-wrap">
-        <scroll-view class="cat-bar mobile-cats" scroll-x enable-flex :show-scrollbar="false">
-          <view
-            v-for="cat in categories"
-            :key="'m'+cat.value"
-            :class="['pill', { active: selectedCategory === cat.value }]"
-            @click="selectCategory(cat.value)"
-          >
-            <text>{{ cat.label }}</text>
+    </view>
+
+    <!--
+      Hero banner + category grid — ported from the campus-market
+      reference design. Renders only on mobile (<768px); desktop
+      retains the existing .desktop-cats pill scroll above the feed
+      because the hero/grid would eat too much real estate on a wide
+      layout. Clicking a category scrolls the feed to that filter;
+      the active one is ringed in coral.
+    -->
+    <view class="mobile-only-block">
+      <view class="hero" @click="goPublish">
+        <view class="hero-text">
+          <text class="hero-title">{{ t('home.heroTitle') }}</text>
+          <text class="hero-subtitle">{{ t('home.heroSubtitle') }}</text>
+        </view>
+        <view class="hero-deco">
+          <view class="deco-circle c1"></view>
+          <view class="deco-circle c2"></view>
+          <text class="deco-emoji">🎒</text>
+        </view>
+      </view>
+
+      <view class="cat-grid">
+        <view
+          v-for="cat in categoryGridTiles"
+          :key="'g'+cat.value"
+          :class="['cat-tile', { active: selectedCategory === cat.value }]"
+          @click="selectCategory(cat.value)"
+        >
+          <view class="cat-icon" :style="{ background: cat.color }">
+            <text class="cat-emoji">{{ cat.emoji }}</text>
           </view>
-        </scroll-view>
-        <view class="mc-fade" aria-hidden="true"></view>
+          <text class="cat-name">{{ cat.label }}</text>
+        </view>
       </view>
     </view>
 
@@ -430,6 +453,40 @@ const categories = computed(() => categoryKeys.map(k => ({
   value: k,
   label: t(k ? 'cat.' + k : 'cat.all'),
 })))
+
+/*
+ * Category grid tiles for the mobile hero area.
+ *
+ * The 4-col circle grid replaces the horizontal pill scroll. Each
+ * category gets an emoji icon + soft pastel tile color. We intentionally
+ * keep `null` ("All") at position 0 so tapping it clears the filter and
+ * shows everything, matching the pill behavior.
+ */
+const CATEGORY_TILE_META: Record<string, { emoji: string; color: string }> = {
+  all:               { emoji: '🏷️', color: '#FFE8E4' },
+  currency_exchange: { emoji: '💱', color: '#FFF3DB' },
+  electronics:       { emoji: '🎧', color: '#E4EEFF' },
+  furniture:         { emoji: '🛋️', color: '#E9EADF' },
+  housing:           { emoji: '🏠', color: '#F0E4FF' },
+  clothing:          { emoji: '👕', color: '#FFE9EE' },
+  books:             { emoji: '📚', color: '#FFF3DB' },
+  vehicles:          { emoji: '🚲', color: '#E0F5E8' },
+  daily:             { emoji: '🧺', color: '#FFEED9' },
+  food:              { emoji: '🍜', color: '#FFE4D6' },
+  other:             { emoji: '✨', color: '#ECEAF5' },
+}
+const categoryGridTiles = computed(() =>
+  categoryKeys.map(k => {
+    const key = k || 'all'
+    const meta = CATEGORY_TILE_META[key] || CATEGORY_TILE_META.other
+    return {
+      value: k,
+      label: t(k ? 'cat.' + k : 'cat.all'),
+      emoji: meta.emoji,
+      color: meta.color,
+    }
+  }),
+)
 
 const conditionKeys: ItemCondition[] = ['new', 'like_new', 'good', 'fair']
 const conditionOpts = computed(() => {
@@ -817,64 +874,104 @@ function goPublish() {
   &:active { transform: scale(0.96); }
 }
 
-.mc-wrap {
-  position: relative;
-  margin-top: 6px;
-  padding-bottom: 4px;
-  /* Parent .mobile-header has 16px right padding. Bleed this container
-     past that padding so the fade can actually reach the physical edge. */
-  margin-right: -16px;
-}
-.mobile-cats {
-  display: block;
-  /* The fade overlay is 88px wide (see .mc-fade below). Earlier we only
-     reserved 16px here, so the last pill ("其他" / Other) ended up
-     permanently hidden underneath the white fade. Reserving the full
-     fade width + a 12px breathing strip lets every category scroll out
-     from under the gradient and be fully tappable. */
-  padding: 4px 12px 6px 12px;
-  padding-right: calc(88px + 12px);
-  scroll-padding-right: 88px;
-  white-space: nowrap;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-/* Belt-and-suspenders — uni-scroll-view renders an inner div that
-   can overlay a 3px scrollbar on Chrome; :show-scrollbar="false" is
-   the primary fix (adds .uni-scroll-view-scrollbar-hidden), these are
-   backup selectors in case scoped styles don't reach. */
-.mobile-cats::-webkit-scrollbar,
-.mobile-cats :deep(.uni-scroll-view)::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
-}
-.mobile-cats :deep(.uni-scroll-view) {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-/* Right-edge fade: hints "more tabs to the right". Reaches the right
-   edge fully opaque and ramps smoothly toward transparent further left.
-   Pair with .mobile-cats' padding-right: 88px+12px so the last pill can
-   scroll past the gradient instead of being permanently swallowed by it. */
-.mc-fade {
-  position: absolute;
-  top: 0; right: 0; bottom: 4px;
-  width: 88px;
-  background: linear-gradient(
-    to right,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.55) 55%,
-    rgba(255, 255, 255, 0.9) 85%,
-    #fff 100%
-  );
-  pointer-events: none;
-}
+/* .mc-wrap / .mobile-cats / .mc-fade intentionally removed — the
+   mobile pill scroll was replaced by the .cat-grid circle layout
+   above. .desktop-cats still uses .pill (below) for the wide layout. */
 /* Desktop: hide mobile cats, show desktop cats */
 .desktop-cats {
   display: none;
   background: var(--bg-elev-1);
   border-bottom: 1px solid #f0f0f0;
+}
+
+/* ============================================================
+   Hero banner + category circle grid — campus-market port.
+
+   Both live inside .mobile-only-block which is simply a display:block
+   on mobile and display:none at the 768px desktop breakpoint (see the
+   @media block near the bottom of this file). Desktop keeps the
+   existing .desktop-cats pill scroll above the feed because the hero
+   would eat too much real estate on a wide layout.
+   ============================================================ */
+.mobile-only-block {
+  padding: 12px 16px 4px;
+}
+
+.hero {
+  position: relative;
+  height: 100px;
+  margin-bottom: 14px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #FF7A6E 0%, #FF5A4C 100%);
+  border-radius: 16px;
+  overflow: hidden;
+  color: #fff;
+  box-sizing: border-box;
+  box-shadow: var(--shadow-cta);
+  cursor: pointer;
+  &:active { transform: scale(0.995); opacity: 0.96; }
+}
+.hero-text { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 6px; }
+.hero-title {
+  font-size: 20px; font-weight: 700; color: #fff;
+  letter-spacing: 1px; line-height: 1.15;
+}
+.hero-subtitle {
+  font-size: 12px; color: rgba(255,255,255,0.92);
+  letter-spacing: 0.4px; line-height: 1.3;
+}
+.hero-deco {
+  position: absolute; right: 16px; top: 0; bottom: 0;
+  width: 120px; z-index: 1; pointer-events: none;
+}
+.deco-circle {
+  position: absolute; border-radius: 50%;
+  background: rgba(255,255,255,0.16);
+}
+.deco-circle.c1 { width: 90px; height: 90px; right: -20px; top: -20px; }
+.deco-circle.c2 { width: 50px; height: 50px; right: 50px; bottom: -15px; background: rgba(255,255,255,0.22); }
+.deco-emoji {
+  position: absolute; right: 15px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 50px; z-index: 2;
+}
+
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px 0;
+  padding: 16px 6px;
+  background: var(--bg-elev-1);
+  border-radius: 16px;
+  box-shadow: var(--shadow-soft);
+  margin-bottom: 12px;
+}
+.cat-tile {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 6px; padding: 4px 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  &:active { opacity: 0.65; }
+}
+.cat-icon {
+  width: 46px; height: 46px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.12s, box-shadow 0.15s;
+}
+.cat-tile.active .cat-icon {
+  box-shadow: 0 0 0 2px var(--accent-primary), 0 4px 10px rgba(255,90,76,0.25);
+  transform: scale(1.04);
+}
+.cat-emoji { font-size: 22px; line-height: 1; }
+.cat-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.2;
+  text-align: center;
+}
+.cat-tile.active .cat-name {
+  color: var(--accent-primary);
+  font-weight: 600;
 }
 
 /* ========== Filter Bottom Sheet ========== */
@@ -1242,8 +1339,7 @@ function goPublish() {
 @media (min-width: 768px) {
   .page { max-width: 1120px; margin: 0 auto; }
   .mobile-header { display: none; }
-  .mobile-cats { display: none; }
-  .mc-fade { display: none; } /* fade belongs to the mobile bar; desktop has its own cat row */
+  .mobile-only-block { display: none; }
   .desktop-cats { display: block; }
 
   .search-wrap { padding: 14px 24px; }

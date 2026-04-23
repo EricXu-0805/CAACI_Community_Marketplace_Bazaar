@@ -2,7 +2,21 @@
   <view class="page">
     <DesktopNav current="profile" />
 
-    <!-- Mobile Header -->
+    <!--
+      Profile page — campus-market redesign.
+
+      Structure mirrors the reference mock:
+        1. Gradient user card (avatar + nickname + location + edit button)
+        2. 4-stat strip (non-clickable, just numbers)
+        3. Quick-actions grid (4 colorful icon buttons)
+        4. 我发布的 (active listings, horizontal scroll)
+        5. 已售 (sold listings, horizontal scroll, hidden when empty)
+        6. 我收藏的 (favorites, 2-col grid)
+        7. 更多 (settings / blocked / sign out)
+
+      Previous 3-tab filter (listed/saved/sold) is gone — the mock
+      surfaces everything sequentially so users don't hunt in tabs.
+    -->
     <view class="page-header">
       <text class="ph-title">{{ t('nav.profile') }}</text>
     </view>
@@ -16,37 +30,62 @@
       <view class="login-btn" @click="goLogin">{{ t('profile.signIn') }}</view>
     </view>
 
-    <view v-else class="profile-section">
-      <view class="user-header">
-        <image :src="currentUser?.avatar_url || '/static/default-avatar.svg'" class="avatar" mode="aspectFill" />
-        <view class="user-info">
-          <view class="name-row">
-            <text class="nickname">{{ currentUser?.nickname }}</text>
-            <view v-if="currentUser?.is_illini_verified" class="illini-badge">
-              <text class="illini-badge-text">Illini</text>
+    <view v-else class="logged-in-wrap">
+      <!-- User card -->
+      <view class="user-card">
+        <view class="user-card-bg"></view>
+        <view class="user-row">
+          <image :src="currentUser?.avatar_url || '/static/default-avatar.svg'" class="avatar-big" mode="aspectFill" />
+          <view class="user-info">
+            <view class="name-row">
+              <text class="nickname">{{ currentUser?.nickname }}</text>
+              <view v-if="currentUser?.is_illini_verified" class="illini-badge">
+                <text class="illini-badge-text">Illini</text>
+              </view>
             </view>
+            <view class="user-meta-row">
+              <view v-if="currentUser?.uid" class="uid-row" @click.stop="copyUid">
+                <text class="uid-label">{{ t('profile.uid') }}</text>
+                <text class="uid-value">{{ currentUser.uid }}</text>
+              </view>
+              <text class="location">📍 {{ currentUser?.location || 'UIUC' }}</text>
+            </view>
+            <text class="user-status" v-if="currentUser?.status_text || currentUser?.status_emoji">
+              <text v-if="currentUser?.status_emoji" class="us-emoji">{{ currentUser.status_emoji }}</text>
+              <text v-if="currentUser?.status_text" class="us-text">{{ currentUser.status_text }}</text>
+            </text>
+            <text class="user-bio" v-if="currentUser?.bio">{{ currentUser.bio }}</text>
           </view>
-          <view v-if="currentUser?.uid" class="uid-row" @click="copyUid">
-            <text class="uid-label">{{ t('profile.uid') }}:</text>
-            <text class="uid-value">{{ currentUser.uid }}</text>
-            <view class="uid-copy"></view>
+          <view class="edit-btn" @click="onEditProfile">
+            <view class="edit-icon"></view>
           </view>
-          <text class="user-status" v-if="currentUser?.status_text || currentUser?.status_emoji">
-            <text v-if="currentUser?.status_emoji" class="us-emoji">{{ currentUser.status_emoji }}</text>
-            <text v-if="currentUser?.status_text" class="us-text">{{ currentUser.status_text }}</text>
-          </text>
-          <text class="user-bio" v-if="currentUser?.bio">{{ currentUser.bio }}</text>
-          <view class="location-row">
-            <view class="loc-dot"></view>
-            <text class="location">{{ currentUser?.location || 'UIUC' }}</text>
-          </view>
-          <text class="join-date" v-if="currentUser?.created_at">{{ t('profile.joined') }} {{ formatJoinDate(currentUser.created_at) }}</text>
         </view>
-        <view class="edit-btn" @click="onEditProfile">
-          <view class="edit-icon"></view>
+
+        <!-- 4-stat strip -->
+        <view class="stats-row">
+          <view class="stat-item">
+            <text class="stat-num">{{ listedItems.length }}</text>
+            <text class="stat-label">{{ t('profile.listed') }}</text>
+          </view>
+          <view class="stat-divider"></view>
+          <view class="stat-item">
+            <text class="stat-num">{{ savedItems.length }}</text>
+            <text class="stat-label">{{ t('profile.saved') }}</text>
+          </view>
+          <view class="stat-divider"></view>
+          <view class="stat-item">
+            <text class="stat-num">{{ soldItems.length }}</text>
+            <text class="stat-label">{{ t('profile.sold') }}</text>
+          </view>
+          <view class="stat-divider"></view>
+          <view class="stat-item" @click="goHistory">
+            <text class="stat-num">{{ totalBrowsed }}</text>
+            <text class="stat-label">{{ t('profile.browsed') }}</text>
+          </view>
         </view>
       </view>
 
+      <!-- Illini verify prompt -->
       <view v-if="!currentUser?.is_illini_verified" class="verify-prompt" @click="onVerifyIllini">
         <view class="vp-icon">✓</view>
         <view class="vp-text">
@@ -56,162 +95,160 @@
         <view class="vp-arrow"></view>
       </view>
 
-      <!-- Tappable stats / tabs -->
-      <view class="stats-row">
-        <view :class="['stat-item', { active: currentTab === 'listed' }]" @click="currentTab = 'listed'">
-          <text class="stat-num">{{ listedItems.length }}</text>
-          <text class="stat-label">{{ t('profile.listed') }}</text>
-        </view>
-        <view :class="['stat-item', { active: currentTab === 'saved' }]" @click="currentTab = 'saved'">
-          <text class="stat-num">{{ savedItems.length }}</text>
-          <text class="stat-label">{{ t('profile.saved') }}</text>
-        </view>
-        <view :class="['stat-item', { active: currentTab === 'sold' }]" @click="currentTab = 'sold'">
-          <text class="stat-num">{{ soldItems.length }}</text>
-          <text class="stat-label">{{ t('profile.sold') }}</text>
+      <!-- Quick actions grid -->
+      <view class="section-block">
+        <text class="block-title">{{ t('profile.quickActions') }}</text>
+        <view class="action-grid">
+          <view class="action-item" @click="goNotifications">
+            <view class="action-icon" style="background: #FFE8E4">
+              <text class="action-emoji">🔔</text>
+            </view>
+            <text class="action-label">{{ t('notif.title') }}</text>
+            <view v-if="unreadNotifCount > 0" class="action-badge">{{ unreadNotifCount }}</view>
+          </view>
+          <view class="action-item" @click="goHistory">
+            <view class="action-icon" style="background: #E4EEFF">
+              <text class="action-emoji">👣</text>
+            </view>
+            <text class="action-label">{{ t('profile.history') }}</text>
+          </view>
+          <view class="action-item" @click="goFollowing">
+            <view class="action-icon" style="background: #E9EADF">
+              <text class="action-emoji">❤️</text>
+            </view>
+            <text class="action-label">{{ t('nav.following') }}</text>
+          </view>
+          <view class="action-item" @click="goSavedSearches">
+            <view class="action-icon" style="background: #FFF3DB">
+              <text class="action-emoji">🔍</text>
+            </view>
+            <text class="action-label">{{ t('savedSearch.title') }}</text>
+          </view>
         </view>
       </view>
-    </view>
 
-    <!-- Content list based on active tab -->
-    <view v-if="isLoggedIn" class="section">
-      <!--
-        Listed / Saved / Sold all render through the same 2-column grid
-        below. The previous horizontal-row layout (72×72 thumb + flex row)
-        was cramped and didn't show enough of the photo — the whole point
-        of the profile is to browse your own listings visually. We now
-        mirror the following-page grid: width = 50%, image height tracks
-        each photo's natural aspect ratio (captured via @load), so a plate
-        stays a plate. Actions (edit/markSold/delete) move into the card
-        body so taps still work from within the tile.
-      -->
-      <view v-if="currentTab === 'listed'">
-        <view v-if="listedItems.length === 0" class="empty-items">
-          <view class="empty-bag"></view>
-          <text class="empty-text">{{ t('profile.noListings') }}</text>
+      <!-- 我发布的 (active + reserved) -->
+      <view class="section-block">
+        <view class="block-title-row">
+          <text class="block-title">{{ t('profile.myListings') }}</text>
+          <text v-if="listedItems.length > 0" class="block-count">{{ listedItems.length }}</text>
         </view>
-        <view v-else class="my-items">
-          <view v-for="item in listedItems" :key="item.id" class="my-card" @click="goDetail(item.id)">
-            <view class="mc-img-wrap">
+        <view v-if="listedItems.length === 0" class="empty-mini">
+          <text class="empty-mini-emoji">🧺</text>
+          <text class="empty-mini-text">{{ t('profile.noListings') }}</text>
+        </view>
+        <scroll-view v-else scroll-x class="horz-scroll" :show-scrollbar="false">
+          <view class="horz-row">
+            <view
+              v-for="item in listedItems"
+              :key="item.id"
+              class="horz-card"
+              @click="goDetail(item.id)"
+              @longpress="onCardLongPress(item)"
+            >
               <image
                 :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'"
-                :alt="item.title"
-                class="mc-img"
+                class="horz-img"
+                mode="aspectFill"
+                lazy-load
+              />
+              <view class="horz-info">
+                <text class="horz-title">{{ localize(item.title_i18n, item.title) }}</text>
+                <text class="horz-price">{{ formatPrice(item.price, t('home.free')) }}</text>
+                <text v-if="item.status !== 'active'" :class="['horz-status', item.status]">
+                  {{ t('status.' + item.status) }}
+                </text>
+              </view>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <!-- 已售出 -->
+      <view v-if="soldItems.length > 0" class="section-block">
+        <view class="block-title-row">
+          <text class="block-title">{{ t('profile.soldSection') }}</text>
+          <text class="block-count">{{ soldItems.length }}</text>
+        </view>
+        <scroll-view scroll-x class="horz-scroll" :show-scrollbar="false">
+          <view class="horz-row">
+            <view
+              v-for="item in soldItems"
+              :key="item.id"
+              class="horz-card sold"
+              @click="goDetail(item.id)"
+            >
+              <image
+                :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'"
+                class="horz-img"
+                mode="aspectFill"
+                lazy-load
+              />
+              <view class="horz-info">
+                <text class="horz-title">{{ localize(item.title_i18n, item.title) }}</text>
+                <text class="horz-price">{{ formatPrice(item.price, t('home.free')) }}</text>
+                <text class="horz-status sold">{{ t('status.sold') }}</text>
+              </view>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <!-- 我收藏的 -->
+      <view class="section-block">
+        <view class="block-title-row">
+          <text class="block-title">{{ t('profile.savedSection') }}</text>
+          <text v-if="savedItems.length > 0" class="block-count">{{ savedItems.length }}</text>
+        </view>
+        <view v-if="savedItems.length === 0" class="empty-mini">
+          <text class="empty-mini-emoji">💭</text>
+          <text class="empty-mini-text">{{ t('profile.noSaved') }}</text>
+        </view>
+        <view v-else class="fav-grid">
+          <view
+            v-for="item in savedItems"
+            :key="item.id"
+            class="fav-card"
+            @click="goDetail(item.id)"
+          >
+            <view class="fav-img-wrap">
+              <image
+                :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'"
+                class="fav-img"
                 mode="aspectFit"
                 :style="myImgStyleFor(item.id)"
                 @load="onMyImgLoad(item.id, $event)"
                 lazy-load
               />
             </view>
-            <view class="mc-body">
-              <text class="mc-title">{{ localize(item.title_i18n, item.title) }}</text>
-              <view class="mc-meta">
-                <text class="mc-price">{{ formatPrice(item.price, t("home.free")) }}</text>
-                <text :class="['mc-status', item.status]">{{ t('status.' + item.status) }}</text>
-              </view>
-              <view class="mc-actions">
-                <view v-if="item.status === 'active'" class="mc-act" @click.stop="goEdit(item.id)">
-                  <text>{{ t('profile.edit') }}</text>
-                </view>
-                <view v-if="item.status === 'active'" class="mc-act" @click.stop="markAsSold(item.id)">
-                  <text>{{ t('profile.markSold') }}</text>
-                </view>
-                <view v-if="item.status === 'reserved'" class="mc-act" @click.stop="unreserveItem(item.id)">
-                  <text>{{ t('detail.unreserve') }}</text>
-                </view>
-                <view class="mc-act danger" @click.stop="onDeleteItem(item.id)">
-                  <text>{{ t('profile.delete') }}</text>
-                </view>
+            <view class="fav-body">
+              <text class="fav-title">{{ localize(item.title_i18n, item.title) }}</text>
+              <view class="fav-meta">
+                <text class="fav-price">{{ formatPrice(item.price, t('home.free')) }}</text>
+                <text v-if="item.status === 'sold'" class="fav-status sold">{{ t('status.sold') }}</text>
+                <text v-else-if="item.status === 'reserved'" class="fav-status reserved">{{ t('status.reserved') }}</text>
+                <text v-else-if="item.profile" class="fav-seller">{{ item.profile.nickname }}</text>
               </view>
             </view>
           </view>
         </view>
       </view>
 
-      <view v-if="currentTab === 'saved'">
-        <view v-if="savedItems.length === 0" class="empty-items">
-          <image src="/static/heart.svg" class="empty-heart-img" />
-          <text class="empty-text">{{ t('profile.noSaved') }}</text>
-        </view>
-        <view v-else class="my-items">
-          <view v-for="item in savedItems" :key="item.id" class="my-card" @click="goDetail(item.id)">
-            <view class="mc-img-wrap">
-              <image
-                :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'"
-                :alt="item.title"
-                class="mc-img"
-                mode="aspectFit"
-                :style="myImgStyleFor(item.id)"
-                @load="onMyImgLoad(item.id, $event)"
-                lazy-load
-              />
-            </view>
-            <view class="mc-body">
-              <text class="mc-title">{{ localize(item.title_i18n, item.title) }}</text>
-              <view class="mc-meta">
-                <text class="mc-price">{{ formatPrice(item.price, t("home.free")) }}</text>
-                <text v-if="item.status === 'sold'" class="mc-status sold">{{ t('status.sold') }}</text>
-                <text v-else-if="item.status === 'reserved'" class="mc-status reserved">{{ t('status.reserved') }}</text>
-                <text v-else-if="item.profile" class="mc-seller">{{ item.profile.nickname }}</text>
-              </view>
-            </view>
+      <!-- 更多 -->
+      <view class="section-block">
+        <text class="block-title">{{ t('profile.moreSection') }}</text>
+        <view class="list-menu">
+          <view class="menu-row" @click="goSettings">
+            <text class="menu-row-icon">⚙️</text>
+            <text class="menu-row-text">{{ t('settings.title') }}</text>
+            <text class="menu-row-arrow">›</text>
           </view>
         </view>
       </view>
 
-      <view v-if="currentTab === 'sold'">
-        <view v-if="soldItems.length === 0" class="empty-items">
-          <view class="empty-check"></view>
-          <text class="empty-text">{{ t('profile.noSold') }}</text>
-        </view>
-        <view v-else class="my-items">
-          <view v-for="item in soldItems" :key="item.id" class="my-card" @click="goDetail(item.id)">
-            <view class="mc-img-wrap">
-              <image
-                :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'"
-                :alt="item.title"
-                class="mc-img"
-                mode="aspectFit"
-                :style="myImgStyleFor(item.id)"
-                @load="onMyImgLoad(item.id, $event)"
-                lazy-load
-              />
-            </view>
-            <view class="mc-body">
-              <text class="mc-title">{{ localize(item.title_i18n, item.title) }}</text>
-              <view class="mc-meta">
-                <text class="mc-price">{{ formatPrice(item.price, t("home.free")) }}</text>
-                <text class="mc-status sold">{{ t('status.sold') }}</text>
-              </view>
-            </view>
-          </view>
-        </view>
-      </view>
+      <view style="height: 80px;"></view>
     </view>
 
-    <view v-if="isLoggedIn" class="menu-section">
-      <view class="menu-item" @click="goNotifications">
-        <text class="menu-text">{{ t('notif.title') }}</text>
-        <view v-if="unreadNotifCount > 0" class="menu-badge">{{ unreadNotifCount }}</view>
-        <view class="menu-arrow"></view>
-      </view>
-      <view class="menu-item" @click="goHistory">
-        <text class="menu-text">{{ t('profile.history') }}</text>
-        <view class="menu-arrow"></view>
-      </view>
-      <view class="menu-item" @click="goFollowing">
-        <text class="menu-text">{{ t('nav.following') }}</text>
-        <view class="menu-arrow"></view>
-      </view>
-      <view class="menu-item" @click="goSavedSearches">
-        <text class="menu-text">{{ t('savedSearch.title') }}</text>
-        <view class="menu-arrow"></view>
-      </view>
-      <view class="menu-item" @click="goSettings">
-        <text class="menu-text">{{ t('settings.title') }}</text>
-        <view class="menu-arrow"></view>
-      </view>
-    </view>
     <CustomTabBar current="profile" />
   </view>
 </template>
@@ -235,9 +272,21 @@ const { items: homeItems, fetchMyItems, updateItemStatus, deleteItem } = useItem
 const { loadMyFavorites, fetchMyFavoriteItems } = useFavorites()
 const { unreadNotifCount, fetchNotifications } = useNotifications()
 
-const currentTab = ref<'listed' | 'saved' | 'sold'>('listed')
 const myItems = ref<Item[]>([])
 const savedItems = ref<Item[]>([])
+const totalBrowsed = ref(0)
+
+function loadBrowsedCount() {
+  try {
+    const raw = uni.getStorageSync('browse_history')
+    if (typeof raw === 'string' && raw) {
+      const arr = JSON.parse(raw)
+      if (Array.isArray(arr)) totalBrowsed.value = arr.length
+    } else if (Array.isArray(raw)) {
+      totalBrowsed.value = raw.length
+    }
+  } catch {}
+}
 
 /*
  * Per-item cover-image aspect map. Populated by @load on the <image>
@@ -270,6 +319,7 @@ const listedItems = computed(() => myItems.value.filter(i => i.status !== 'sold'
 const soldItems = computed(() => myItems.value.filter(i => i.status === 'sold'))
 
 onShow(async () => {
+  loadBrowsedCount()
   if (!currentUser.value) return
   const uid = currentUser.value.id
   try {
@@ -285,6 +335,31 @@ onShow(async () => {
     uni.showToast({ title: t('profile.markFail'), icon: 'none' })
   }
 })
+
+/*
+ * Long-press on a listing card opens an action sheet so users can still
+ * edit / mark-sold / unreserve / delete without needing dedicated tap
+ * targets on the card body (the new horizontal-scroll card is too small
+ * to fit buttons inline).
+ */
+function onCardLongPress(item: Item) {
+  const actions: Array<{ label: string; run: () => void | Promise<void> }> = []
+  if (item.status === 'active') {
+    actions.push({ label: t('profile.edit'), run: () => goEdit(item.id) })
+    actions.push({ label: t('profile.markSold'), run: () => markAsSold(item.id) })
+  } else if (item.status === 'reserved') {
+    actions.push({ label: t('detail.unreserve'), run: () => unreserveItem(item.id) })
+  }
+  actions.push({ label: t('profile.delete'), run: () => onDeleteItem(item.id) })
+
+  uni.showActionSheet({
+    itemList: actions.map(a => a.label),
+    success: (res) => {
+      const picked = actions[res.tapIndex]
+      if (picked) picked.run()
+    },
+  })
+}
 
 onPullDownRefresh(async () => {
   if (currentUser.value) {
@@ -441,39 +516,50 @@ function onDeleteItem(id: string) {
 }
 
 /*
- * Profile user-card.
+ * Profile — campus-market redesign CSS.
  *
- * The new campus-market look pairs a subtle coral-to-white gradient
- * wash behind the avatar area with a pure-white card below so the
- * stats row reads cleanly. We layer the gradient via a pseudo-element
- * so it stays behind all content without disrupting taps.
+ * Page wrapper (.logged-in-wrap) becomes the vertical scroll container.
+ * Sections (.section-block) stack one-per-concept with 12px gaps on a
+ * cream page background. Each block is a white rounded card with the
+ * shared shadow-soft token — matches the Xiaohongshu/campus-market feel.
  */
-.profile-section {
+.logged-in-wrap {
+  padding: 0 12px;
+}
+
+/* ===== User card ===== */
+.user-card {
   position: relative;
   background: var(--bg-elev-1);
-  padding: 28px 16px 0;
+  border-radius: var(--radius-xl);
+  margin-top: 10px;
+  padding: 22px 18px 14px;
+  box-shadow: var(--shadow-soft);
   overflow: hidden;
+  /* decorative coral wash behind the avatar row — gives the card its
+     warm marketplace identity without stealing legibility from stats */
   &::before {
     content: '';
     position: absolute;
     inset: 0 0 auto 0;
-    height: 140px;
-    background: linear-gradient(180deg, rgba(255,90,76,0.08) 0%, rgba(255,255,255,0) 100%);
+    height: 120px;
+    background: linear-gradient(135deg, rgba(255,122,110,0.18) 0%, rgba(255,90,76,0.05) 60%, transparent 100%);
     pointer-events: none;
-    z-index: 0;
   }
   & > * { position: relative; z-index: 1; }
 }
-.user-header { display: flex; align-items: center; gap: 14px; }
-.avatar {
-  width: 64px; height: 64px; border-radius: 50%;
+.user-card-bg { display: none; }
+.user-row { display: flex; align-items: center; gap: 14px; }
+.avatar-big {
+  width: 72px; height: 72px; border-radius: 50%;
   background: linear-gradient(135deg, #FFB5AD 0%, #FF7A6E 100%);
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(255, 90, 76, 0.18);
+  box-shadow: 0 6px 16px rgba(255, 90, 76, 0.22);
+  border: 2px solid #fff;
 }
-.user-info { flex: 1; }
-.name-row { display: flex; align-items: center; gap: 8px; }
-.nickname { font-size: 19px; font-weight: 700; color: var(--text-primary); }
+.user-info { flex: 1; min-width: 0; }
+.name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.nickname { font-size: 20px; font-weight: 700; color: var(--text-primary); }
 .illini-badge {
   display: inline-flex; align-items: center;
   background: #13294B; color: #fff;
@@ -481,65 +567,29 @@ function onDeleteItem(id: string) {
   font-size: 10px; font-weight: 700;
 }
 .illini-badge-text { color: #fff; font-size: 10px; }
-.user-bio { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
-.user-status { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; }
-.us-emoji { font-size: 14px; line-height: 1; }
-.us-text { font-size: 13px; color: #1a7aff; line-height: 1.3; }
-
+.user-meta-row {
+  display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap;
+}
 .uid-row {
-  display: inline-flex; align-items: center; gap: 4px;
-  margin-top: 3px; padding: 2px 7px;
-  background: var(--bg-subtle); border-radius: 4px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 8px;
+  background: var(--bg-subtle); border-radius: var(--radius-pill); cursor: pointer;
   &:active { background: var(--bg-inset); }
 }
 .uid-label { font-size: 10px; color: var(--text-muted); font-weight: 500; }
 .uid-value { font-size: 11px; color: var(--text-primary); font-weight: 600; letter-spacing: 0.02em; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-.uid-copy {
-  width: 10px; height: 10px; border: 1.2px solid var(--text-muted); border-radius: 2px;
-  position: relative; margin-left: 2px;
-  &::before {
-    content: ''; position: absolute; top: -3px; left: -3px;
-    width: 8px; height: 8px; background: var(--bg-elev-1);
-    border: 1.2px solid var(--text-muted); border-radius: 2px;
-  }
-}
-
-.verify-prompt {
-  display: flex; align-items: center; gap: 12px;
-  margin: 12px 16px 0; padding: 12px 14px;
-  background: #EFF4FB; border-radius: 10px;
-  cursor: pointer;
-  &:active { background: #E5ECF6; }
-}
-.vp-icon {
-  width: 28px; height: 28px; border-radius: 50%;
-  background: #13294B; color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px; font-weight: 700; flex-shrink: 0;
-}
-.vp-text { flex: 1; min-width: 0; }
-.vp-title { font-size: 13px; font-weight: 600; color: #13294B; display: block; }
-.vp-sub { font-size: 11px; color: #4a5a75; margin-top: 2px; display: block; }
-.vp-arrow {
-  width: 6px; height: 6px; flex-shrink: 0;
-  border-top: 1.5px solid #13294B; border-right: 1.5px solid #13294B;
-  transform: rotate(45deg);
-}
-.location-row {
-  display: flex; align-items: center; gap: 5px; margin-top: 4px;
-}
-.loc-dot {
-  width: 5px; height: 5px; border-radius: 50%;
-  background: var(--accent-action); flex-shrink: 0;
-}
-.location { font-size: 13px; color: var(--text-faint); }
-.join-date { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+.location { font-size: 12px; color: var(--text-muted); }
+.user-status { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; }
+.us-emoji { font-size: 14px; line-height: 1; }
+.us-text { font-size: 13px; color: #1a7aff; line-height: 1.3; }
+.user-bio { font-size: 13px; color: var(--text-secondary); margin-top: 4px; display: block; line-height: 1.4; }
 
 .edit-btn {
   width: 36px; height: 36px; border-radius: 50%;
-  background: var(--bg-subtle);
+  background: rgba(255,255,255,0.8);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; flex-shrink: 0;
+  box-shadow: var(--shadow-soft);
   &:active { background: var(--bg-inset); }
 }
 .edit-icon {
@@ -556,154 +606,218 @@ function onDeleteItem(id: string) {
   }
 }
 
-/*
- * Profile stats row.
- *
- * 3-tab switcher (发布 / 收藏 / 已售) with the active tab indicated by
- * a coral-red bar underneath + brighter label. The hairline on top is
- * gone in favor of a dividing gap (bg-subtle below), which reads better
- * on the new warm background.
- */
+/* ===== 4-stat strip inside the user card ===== */
 .stats-row {
-  display: flex; margin-top: 22px;
-  padding-top: 10px;
+  display: flex; align-items: stretch;
+  margin-top: 20px;
+  padding: 14px 0 4px;
+  border-top: 0.5px solid var(--line-hair);
 }
 .stat-item {
-  flex: 1; text-align: center; padding: 14px 0 14px;
-  cursor: pointer; position: relative;
+  flex: 1; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.1s;
-  &:active { background: var(--bg-elev-2); }
-  &.active::after {
-    content: ''; position: absolute; bottom: 0; left: 50%;
-    transform: translateX(-50%);
-    width: 24px; height: 3px;
-    background: var(--accent-primary);
-    border-radius: 2px;
-  }
+  &:active { opacity: 0.6; }
 }
-.stat-num { font-size: 22px; font-weight: 700; color: var(--text-primary); display: block; }
-.stat-label { font-size: 12px; color: var(--text-muted); margin-top: 3px; display: block; }
-.stat-item.active .stat-num { color: var(--accent-primary); }
-.stat-item.active .stat-label { color: var(--text-primary); font-weight: 600; }
+.stat-divider {
+  width: 0.5px;
+  background: var(--line-hair);
+  margin: 6px 0;
+}
+.stat-num { font-size: 20px; font-weight: 700; color: var(--text-primary); display: block; line-height: 1; }
+.stat-label { font-size: 11px; color: var(--text-muted); display: block; line-height: 1; }
 
-/* ========== Content Section ========== */
-.section { background: var(--bg-elev-1); margin-top: 7px; min-height: 200px; }
-
-.empty-items {
-  display: flex; flex-direction: column; align-items: center;
-  padding: 48px 16px; gap: 10px;
-}
-.empty-bag {
-  width: 36px; height: 40px; border: 2px solid #d1d1d6;
-  border-radius: 4px 4px 6px 6px; position: relative; margin-bottom: 4px;
-  &::before {
-    content: ''; position: absolute; top: -9px; left: 50%;
-    transform: translateX(-50%);
-    width: 20px; height: 12px;
-    border: 2px solid #d1d1d6; border-bottom: none;
-    border-radius: 10px 10px 0 0;
-  }
-  &::after {
-    content: ''; position: absolute; top: 4px; left: 50%;
-    transform: translateX(-50%);
-    width: 14px; height: 2px; background: #d1d1d6; border-radius: 1px;
-  }
-}
-.empty-heart-img { width: 36px; height: 36px; opacity: 0.5; }
-.empty-check {
-  width: 24px; height: 24px; border: 2px solid #d1d1d6;
-  border-radius: 50%; position: relative;
-  &::after {
-    content: ''; position: absolute; top: 5px; left: 4px;
-    width: 12px; height: 7px;
-    border-left: 2px solid #d1d1d6; border-bottom: 2px solid #d1d1d6;
-    transform: rotate(-45deg);
-  }
-}
-.empty-text { font-size: 14px; color: var(--text-faint); }
-
-/*
- * 2-column grid matching the Following-feed layout. Half page width per
- * card (gap is 8px). The image wrapper defines a fallback 4/5 aspect for
- * the pre-load placeholder so the grid doesn't collapse before photos
- * arrive; once @load fires we override it inline. object-fit: contain
- * keeps the full photo visible — circles stay circles, no side-crop.
- */
-.my-items {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 8px;
-}
-.my-card {
-  background: var(--bg-elev-1);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
+/* ===== Illini verify prompt — stays visually distinct (UIUC navy) ===== */
+.verify-prompt {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 12px; padding: 12px 14px;
+  background: #EFF4FB;
+  border-radius: var(--radius-lg);
   cursor: pointer;
   box-shadow: var(--shadow-soft);
-  transition: transform 0.15s;
-  &:active { transform: scale(0.98); opacity: 0.92; }
+  &:active { background: #E5ECF6; }
 }
-.mc-img-wrap {
+.vp-icon {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: #13294B; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; flex-shrink: 0;
+}
+.vp-text { flex: 1; min-width: 0; }
+.vp-title { font-size: 13px; font-weight: 600; color: #13294B; display: block; }
+.vp-sub { font-size: 11px; color: #4a5a75; margin-top: 2px; display: block; }
+.vp-arrow {
+  width: 6px; height: 6px; flex-shrink: 0;
+  border-top: 1.5px solid #13294B; border-right: 1.5px solid #13294B;
+  transform: rotate(45deg);
+}
+
+/* ===== Section blocks (shared wrapper for quick-actions / horz / fav / more) ===== */
+.section-block {
+  background: var(--bg-elev-1);
+  border-radius: var(--radius-xl);
+  margin-top: 12px;
+  padding: 16px 14px;
+  box-shadow: var(--shadow-soft);
+}
+.block-title {
+  font-size: 15px; font-weight: 700; color: var(--text-primary);
+  display: block; line-height: 1;
+  &::before {
+    content: '';
+    display: inline-block;
+    width: 4px; height: 14px;
+    background: var(--accent-primary);
+    border-radius: 2px;
+    margin-right: 8px;
+    vertical-align: -1px;
+  }
+}
+.block-title-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.block-count { font-size: 12px; color: var(--text-muted); }
+
+/* ===== Quick actions grid (4-col colored icon buttons) ===== */
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 12px;
+}
+.action-item {
   position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 4px 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  &:active { opacity: 0.6; }
+}
+.action-icon {
+  width: 48px; height: 48px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.action-emoji { font-size: 22px; line-height: 1; }
+.action-label { font-size: 12px; color: var(--text-secondary); line-height: 1; }
+.action-badge {
+  position: absolute;
+  top: -2px; right: calc(50% - 28px);
+  min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent-danger);
+  color: #fff; font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ===== Horizontal scroll card (我发布的 / 已售) ===== */
+.horz-scroll { white-space: nowrap; margin: 0 -4px; }
+.horz-row { display: inline-flex; gap: 10px; padding: 0 4px 4px; }
+.horz-card {
+  width: 130px; flex-shrink: 0;
+  background: var(--bg-elev-1);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(60,40,20,0.05);
+  cursor: pointer;
+  transition: transform 0.15s;
+  &:active { transform: scale(0.97); }
+  &.sold { opacity: 0.85; }
+}
+.horz-img {
+  width: 130px; height: 130px;
+  display: block;
+  background: var(--bg-subtle);
+}
+.horz-info { padding: 8px 10px 10px; }
+.horz-title {
+  font-size: 12px; line-height: 1.3;
+  color: var(--text-primary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 32px;
+}
+.horz-price {
+  font-size: 14px; font-weight: 700;
+  color: var(--accent-primary);
+  margin-top: 4px;
+  display: block;
+}
+.horz-status {
+  font-size: 10px; padding: 1px 6px; border-radius: 4px;
+  margin-top: 4px; align-self: flex-start;
+  display: inline-block;
+  &.reserved { color: var(--accent-warn); background: rgba(255,149,0,0.1); }
+  &.sold { color: var(--text-muted); background: var(--bg-subtle); }
+}
+
+/* ===== Favorites 2-col grid ===== */
+.fav-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+.fav-card {
+  background: var(--bg-elev-1);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(60,40,20,0.05);
+  cursor: pointer;
+  transition: transform 0.15s;
+  &:active { transform: scale(0.98); }
+}
+.fav-img-wrap {
   width: 100%;
   aspect-ratio: 4 / 5;
   background: var(--bg-subtle);
   overflow: hidden;
 }
-.mc-img {
-  width: 100%;
-  height: 100%;
+.fav-img {
+  width: 100%; height: 100%;
   display: block;
   object-fit: contain;
   background: var(--bg-subtle);
 }
-.mc-body {
-  padding: 8px 10px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.mc-title {
-  font-size: 13px; color: var(--text-primary); line-height: 1.3;
+.fav-body { padding: 8px 10px 10px; }
+.fav-title {
+  font-size: 12px; color: var(--text-primary); line-height: 1.3;
   display: -webkit-box; -webkit-line-clamp: 2;
   -webkit-box-orient: vertical; overflow: hidden;
 }
-.mc-meta {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 6px; margin-top: 2px; flex-wrap: wrap;
-}
-.mc-price { font-size: 15px; font-weight: 700; color: var(--accent-primary); }
-.mc-seller { font-size: 11px; color: var(--text-faint); }
-.mc-status {
-  font-size: 10px; padding: 1px 6px; border-radius: 4px; align-self: center;
-  &.active { color: var(--accent-good); background: rgba(52,199,89,0.1); }
+.fav-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+.fav-price { font-size: 14px; font-weight: 700; color: var(--accent-primary); }
+.fav-seller { font-size: 10px; color: var(--text-faint); }
+.fav-status {
+  font-size: 10px; padding: 1px 6px; border-radius: 4px;
   &.reserved { color: var(--accent-warn); background: rgba(255,149,0,0.1); }
   &.sold { color: var(--text-muted); background: var(--bg-subtle); }
 }
-.mc-actions {
-  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;
-}
-.mc-act {
-  padding: 3px 8px; border-radius: 5px;
-  background: var(--bg-subtle); cursor: pointer;
-  text { font-size: 10px; color: var(--text-secondary); font-weight: 500; }
-  &:active { background: var(--bg-inset); }
-  &.danger text { color: var(--accent-danger); }
-}
 
-.menu-section { margin-top: 7px; background: var(--bg-elev-1); }
-.menu-item { padding: 15px 16px; display: flex; align-items: center; cursor: pointer; &:active { background: var(--bg-elev-2); } }
-.menu-text { font-size: 15px; color: var(--text-primary); flex: 1; }
-.menu-badge {
-  min-width: 18px; height: 18px; border-radius: 9px;
-  background: var(--accent-danger); color: #fff; font-size: 10px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  padding: 0 5px; margin-right: 8px;
+/* ===== Empty-state mini ===== */
+.empty-mini {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 28px 16px; gap: 8px;
+  text-align: center;
 }
-.menu-arrow {
-  width: 7px; height: 7px; border-top: 1.5px solid var(--text-faint);
-  border-right: 1.5px solid var(--text-faint); transform: rotate(45deg);
+.empty-mini-emoji { font-size: 36px; line-height: 1; opacity: 0.7; }
+.empty-mini-text { font-size: 13px; color: var(--text-muted); }
+
+/* ===== More menu (list) ===== */
+.list-menu { margin-top: 12px; }
+.menu-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  &:active { opacity: 0.55; }
+}
+.menu-row-icon { font-size: 18px; flex-shrink: 0; }
+.menu-row-text { flex: 1; font-size: 14px; color: var(--text-primary); }
+.menu-row-arrow {
+  font-size: 20px; color: var(--text-faint); line-height: 1;
 }
 </style>
