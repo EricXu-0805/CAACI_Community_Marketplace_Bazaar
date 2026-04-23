@@ -489,28 +489,18 @@ button:focus-visible,
 }
 
 /* ---------- BUTTONS ----------
- *   .u-btn-primary = ink background (the "default" ladder button)
- *   .u-btn-brand   = terracotta CTA (commits — "Post", "Confirm")
+ *   .u-btn-primary = terracotta brand (backward-compat alias: the
+ *                    previous coral `--accent-primary` callers now
+ *                    inherit the ivory_academy brand tone with no
+ *                    per-page edits)
+ *   .u-btn-brand   = terracotta brand (explicit name)
+ *   .u-btn-ink     = deep-ink CTA ladder — used for "default" action
+ *                    buttons in ivory_academy (e.g. "Apply filters")
+ *                    when brand should stay reserved for commits
+ *                    ("Post Item", "Confirm Sold")
  *   .u-btn-ghost   = paper-2 neutral
- *   Legacy: .u-btn-primary historically pointed at the coral
- *   accent; we migrated it to ink to match ivory_academy CTA
- *   ladder. If a page really wants the brand color, use
- *   .u-btn-brand.
  */
-.u-btn-primary {
-  background: var(--ink);
-  color: var(--canvas);
-  padding: 12px 18px;
-  border-radius: var(--radius-pill);
-  font-size: 15px;
-  font-weight: var(--font-weight-semi);
-  text-align: center;
-  cursor: pointer;
-  border: 0;
-  transition: opacity .15s ease, transform .08s ease;
-}
-.u-btn-primary:active { opacity: 0.85; transform: translateY(1px); }
-
+.u-btn-primary,
 .u-btn-brand {
   background: var(--brand);
   color: #fff;
@@ -524,7 +514,22 @@ button:focus-visible,
   box-shadow: var(--shadow-cta);
   transition: background .15s ease, transform .08s ease;
 }
+.u-btn-primary:active,
 .u-btn-brand:active { background: var(--brand-deep); transform: translateY(1px); }
+
+.u-btn-ink {
+  background: var(--ink);
+  color: var(--canvas);
+  padding: 12px 18px;
+  border-radius: var(--radius-pill);
+  font-size: 15px;
+  font-weight: var(--font-weight-semi);
+  text-align: center;
+  cursor: pointer;
+  border: 0;
+  transition: opacity .15s ease, transform .08s ease;
+}
+.u-btn-ink:active { opacity: 0.85; transform: translateY(1px); }
 
 .u-btn-ghost {
   background: var(--paper-2);

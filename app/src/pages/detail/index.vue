@@ -718,13 +718,40 @@ async function contactSeller() {
   position: relative; z-index: 5;
 }
 .price-row { display: flex; align-items: baseline; gap: 7px; }
+/*
+ * Price — the star of the detail page.
+ *
+ * 米白书院 calls for serif terracotta at ~28px with tabular numerals.
+ * The previous 800-weight sans "marketplace" style was too loud next
+ * to the warm canvas; Fraunces 600 at 28px reads bookshop-confident.
+ * Free items drop to sage (--success) to differentiate.
+ */
 .price {
-  font-size: 26px; font-weight: 800; color: var(--text-primary);
-  letter-spacing: -0.5px; font-variant-numeric: tabular-nums;
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--brand);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-feature-settings: 'tnum';
 }
+.price.free { color: var(--success); }
+/*
+ * OBO — "or best offer", ivory_academy puts this in amber (warning
+ * tone) because it's a price-open affordance, not a CTA. Small pill,
+ * mono-ish caps, fits next to the terracotta price without fighting
+ * for attention.
+ */
 .obo {
-  font-size: 11px; font-weight: 700; color: var(--accent-action);
-  border: 1.5px solid var(--accent-action); padding: 2px 6px; border-radius: 4px;
+  font-size: 10px; font-weight: 600;
+  color: var(--warning);
+  border: 0.5px solid var(--warning);
+  padding: 2px 5px;
+  border-radius: var(--radius-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  background: var(--warning-soft);
 }
 .title-row {
   display: flex; align-items: flex-start; gap: 10px; margin-top: 9px;
@@ -940,7 +967,16 @@ async function contactSeller() {
   &:active { opacity: 0.8; }
 }
 .mc-img { width: 100px; height: 100px; border-radius: 8px; background: var(--bg-subtle); }
-.mc-price { font-size: 13px; font-weight: 700; color: var(--text-primary); margin-top: 4px; display: block; }
+.mc-price {
+  font-family: var(--font-serif);
+  font-size: 15px; font-weight: 600;
+  color: var(--brand);
+  letter-spacing: -0.01em;
+  margin-top: 4px;
+  display: block;
+  line-height: 1;
+  font-feature-settings: 'tnum';
+}
 
 .action-btn-small {
   display: flex; flex-direction: column; align-items: center;
@@ -953,24 +989,35 @@ async function contactSeller() {
 /*
  * Primary CTA at the bottom of the detail page.
  *
- * Now uses a coral-red gradient + pill shape to match the "campus-market"
- * redesign's hero button. The boxed shadow gives it lift above the
- * translucent action-bar backdrop. Semantic variants (-confirm / -rate)
- * override background to keep status visually distinct.
+ * Ivory_academy CTA ladder puts the "talk to seller" action on the
+ * brand (terracotta). No gradient — flat brand + subtle CTA shadow.
+ * Semantic variants:
+ *   · confirm (确认交易) → sage success
+ *   · rate (去评价)     → amber warning (encourages action without
+ *     overpromising a "celebration" state)
  */
 .chat-btn {
   flex: 1; height: 44px;
-  background: linear-gradient(135deg, #FF7A6E 0%, var(--accent-primary) 100%);
+  background: var(--brand);
   color: #fff;
   border-radius: var(--radius-pill);
   font-size: 15px; font-weight: 600;
+  letter-spacing: 0.02em;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
   box-shadow: var(--shadow-cta);
-  &:active { opacity: 0.88; }
+  border: 0;
+  transition: background 0.15s ease, transform 0.08s ease;
+  &:active { background: var(--brand-deep); transform: translateY(1px); }
 }
-.chat-btn-confirm { background: var(--accent-good); box-shadow: 0 6px 14px rgba(34,197,94,0.28); }
-.chat-btn-rate { background: #fbbf24; color: var(--text-primary); font-weight: 700; box-shadow: 0 6px 14px rgba(251,191,36,0.28); }
+.chat-btn-confirm {
+  background: var(--success); color: #fff;
+  box-shadow: 0 6px 14px rgba(93, 124, 74, 0.28);
+}
+.chat-btn-rate {
+  background: var(--warning); color: #fff;
+  box-shadow: 0 6px 14px rgba(212, 146, 60, 0.28);
+}
 
 .sheet-mask {
   position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000;
@@ -1002,16 +1049,17 @@ async function contactSeller() {
   display: flex; justify-content: center; gap: 8px; padding: 14px 0;
 }
 .rs-star {
-  font-size: 38px; line-height: 1; color: #e5e5ea;
+  font-size: 38px; line-height: 1; color: var(--border-strong);
   cursor: pointer;
-  &.on { color: #fbbf24; }
+  &.on { color: var(--warning); }
   &:active { transform: scale(0.9); }
 }
 .rs-textarea {
   width: 100%; min-height: 80px;
-  background: #f5f5f7; border-radius: 10px;
+  background: var(--paper-2); border-radius: var(--radius-md);
   padding: 10px 12px; font-size: 14px; color: var(--text-primary);
   margin-top: 4px; box-sizing: border-box;
+  border: 0.5px solid var(--border);
 }
 .rs-submit {
   margin-top: 14px; padding: 13px; border-radius: 12px;

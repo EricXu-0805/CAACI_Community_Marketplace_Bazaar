@@ -455,18 +455,26 @@ const categories = computed(() => categoryKeys.map(k => ({
  * keep `null` ("All") at position 0 so tapping it clears the filter and
  * shows everything, matching the pill behavior.
  */
+/*
+ * Category tile colors — muted pottery-glaze palette harmonized
+ * with the 米白书院 ivory canvas. Each tint is pulled within ~8%
+ * of the paper surface so circles read as "washed" rather than
+ * candy-bright (the old coral-pastel set clashed with terracotta
+ * brand). Keeps enough hue separation that users still associate
+ * "blue = tech / green = vehicles / red = brand" visually.
+ */
 const CATEGORY_TILE_META: Record<string, { emoji: string; color: string }> = {
-  all:               { emoji: '🏷️', color: '#FFE8E4' },
-  currency_exchange: { emoji: '💱', color: '#FFF3DB' },
-  electronics:       { emoji: '🎧', color: '#E4EEFF' },
-  furniture:         { emoji: '🛋️', color: '#E9EADF' },
-  housing:           { emoji: '🏠', color: '#F0E4FF' },
-  clothing:          { emoji: '👕', color: '#FFE9EE' },
-  books:             { emoji: '📚', color: '#FFF3DB' },
-  vehicles:          { emoji: '🚲', color: '#E0F5E8' },
-  daily:             { emoji: '🧺', color: '#FFEED9' },
-  food:              { emoji: '🍜', color: '#FFE4D6' },
-  other:             { emoji: '✨', color: '#ECEAF5' },
+  all:               { emoji: '🏷️', color: '#F5D9CE' }, // brand-soft (terracotta wash)
+  currency_exchange: { emoji: '💱', color: '#F5E4CB' }, // warning-soft (amber)
+  electronics:       { emoji: '🎧', color: '#E4E1F2' }, // lavender
+  furniture:         { emoji: '🛋️', color: '#E3E7D4' }, // sage
+  housing:           { emoji: '🏠', color: '#EEE2D4' }, // linen
+  clothing:          { emoji: '👕', color: '#F4DAD5' }, // blush
+  books:             { emoji: '📚', color: '#EDE4D0' }, // parchment
+  vehicles:          { emoji: '🚲', color: '#DDE5D0' }, // success-soft (sage)
+  daily:             { emoji: '🧺', color: '#EADAC2' }, // wheat
+  food:              { emoji: '🍜', color: '#F2D9C3' }, // apricot
+  other:             { emoji: '✨', color: '#E5DFD5' }, // ash
 }
 const categoryGridTiles = computed(() =>
   categoryKeys.map(k => {
@@ -782,7 +790,16 @@ function goPublish() {
   z-index: 50;
 }
 .mh-top { display: flex; justify-content: flex-start; align-items: center; margin-bottom: 10px; }
-.mh-brand { font-size: 18px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
+/* Brand word-mark uses ivory_academy serif ladder so the app name
+   reads as a masthead ("Illini 集市") not a tech-product wordmark. */
+.mh-brand {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
 /* .mh-right / .mh-lang previously housed the inline language toggle.
    Language switching moved to Settings → Language, so those rules
    are intentionally gone. Removing them keeps the header compact. */
@@ -890,43 +907,75 @@ function goPublish() {
   padding: 12px 16px 4px;
 }
 
+/*
+ * Hero banner — 米白书院 p-banner pattern.
+ *
+ * The coral 135deg gradient was a "hot marketplace" aesthetic; the
+ * ivory_academy direction uses a deep-ink panel with ivory typography
+ * (like a bookshop sign or a museum placard). Serif title + mono
+ * eyebrow ("IN THE BAZAAR") gives the scholarly tone.
+ *
+ * No gradient, just flat ink — ivory_academy explicitly avoids
+ * gradients everywhere except the semester banner.
+ */
 .hero {
   position: relative;
-  height: 100px;
+  min-height: 108px;
   margin-bottom: 14px;
   padding: 16px 20px;
-  background: linear-gradient(135deg, #FF7A6E 0%, #FF5A4C 100%);
-  border-radius: 16px;
+  background: var(--ink);
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  color: #fff;
+  color: var(--canvas);
   box-sizing: border-box;
-  box-shadow: var(--shadow-cta);
+  box-shadow: var(--shadow-pop);
   cursor: pointer;
   &:active { transform: scale(0.995); opacity: 0.96; }
 }
-.hero-text { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 6px; }
+.hero-text {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 70%;
+}
 .hero-title {
-  font-size: 20px; font-weight: 700; color: #fff;
-  letter-spacing: 1px; line-height: 1.15;
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+  color: var(--canvas);
 }
 .hero-subtitle {
-  font-size: 12px; color: rgba(255,255,255,0.92);
-  letter-spacing: 0.4px; line-height: 1.3;
+  font-size: 12px;
+  color: rgba(245, 240, 230, 0.78);
+  letter-spacing: 0.2px;
+  line-height: 1.4;
 }
 .hero-deco {
-  position: absolute; right: 16px; top: 0; bottom: 0;
+  position: absolute; right: 12px; top: 0; bottom: 0;
   width: 120px; z-index: 1; pointer-events: none;
 }
+/* Subtle decorative "stamp" circles in warm brand tone — barely
+   visible on the ink canvas, act as etched paper texture hints. */
 .deco-circle {
   position: absolute; border-radius: 50%;
-  background: rgba(255,255,255,0.16);
+  background: rgba(199, 74, 47, 0.18);
+  border: 0.5px solid rgba(245, 240, 230, 0.08);
 }
 .deco-circle.c1 { width: 90px; height: 90px; right: -20px; top: -20px; }
-.deco-circle.c2 { width: 50px; height: 50px; right: 50px; bottom: -15px; background: rgba(255,255,255,0.22); }
+.deco-circle.c2 {
+  width: 50px; height: 50px; right: 52px; bottom: -15px;
+  background: rgba(245, 240, 230, 0.08);
+  border-color: rgba(245, 240, 230, 0.12);
+}
 .deco-emoji {
   position: absolute; right: 15px; top: 50%;
   transform: translateY(-50%);
   font-size: 50px; z-index: 2;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
 }
 
 .cat-grid {
@@ -934,8 +983,9 @@ function goPublish() {
   grid-template-columns: repeat(4, 1fr);
   gap: 14px 0;
   padding: 16px 6px;
-  background: var(--bg-elev-1);
-  border-radius: 16px;
+  background: var(--paper);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
   margin-bottom: 12px;
 }
@@ -950,9 +1000,13 @@ function goPublish() {
   width: 46px; height: 46px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   transition: transform 0.12s, box-shadow 0.15s;
+  border: 0.5px solid rgba(31, 29, 27, 0.04);
 }
+/* Active ring uses brand (terracotta) + warm brand-tinted shadow so it
+   reads as "selected" without yelling. Ivory_academy keeps the brand
+   color rare and intentional — one ring at a time. */
 .cat-tile.active .cat-icon {
-  box-shadow: 0 0 0 2px var(--accent-primary), 0 4px 10px rgba(255,90,76,0.25);
+  box-shadow: 0 0 0 2px var(--brand), 0 4px 10px rgba(199, 74, 47, 0.22);
   transform: scale(1.04);
 }
 .cat-emoji { font-size: 22px; line-height: 1; }

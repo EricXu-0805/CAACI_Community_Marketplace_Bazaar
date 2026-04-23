@@ -95,31 +95,34 @@
         <view class="vp-arrow"></view>
       </view>
 
-      <!-- Quick actions grid -->
+      <!-- Quick actions grid —
+           tints picked from the 米白书院 pottery-glaze palette. All
+           four sit within ~8% of paper so the circles read as
+           "washed" instead of candy. -->
       <view class="section-block">
         <text class="block-title">{{ t('profile.quickActions') }}</text>
         <view class="action-grid">
           <view class="action-item" @click="goNotifications">
-            <view class="action-icon" style="background: #FFE8E4">
+            <view class="action-icon action-icon--brand">
               <text class="action-emoji">🔔</text>
             </view>
             <text class="action-label">{{ t('notif.title') }}</text>
             <view v-if="unreadNotifCount > 0" class="action-badge">{{ unreadNotifCount }}</view>
           </view>
           <view class="action-item" @click="goHistory">
-            <view class="action-icon" style="background: #E4EEFF">
+            <view class="action-icon action-icon--lavender">
               <text class="action-emoji">👣</text>
             </view>
             <text class="action-label">{{ t('profile.history') }}</text>
           </view>
           <view class="action-item" @click="goFollowing">
-            <view class="action-icon" style="background: #E9EADF">
+            <view class="action-icon action-icon--sage">
               <text class="action-emoji">❤️</text>
             </view>
             <text class="action-label">{{ t('nav.following') }}</text>
           </view>
           <view class="action-item" @click="goSavedSearches">
-            <view class="action-icon" style="background: #FFF3DB">
+            <view class="action-icon action-icon--amber">
               <text class="action-emoji">🔍</text>
             </view>
             <text class="action-label">{{ t('savedSearch.title') }}</text>
@@ -527,23 +530,32 @@ function onDeleteItem(id: string) {
   padding: 0 12px;
 }
 
-/* ===== User card ===== */
+/* ===== User card (米白书院 passport pattern) =====
+ *
+ * Deep-ink panel up top (like a bookshop member card stamped in
+ * wax) with an ivory-colored name + serif ladder. The prior coral
+ * gradient wash was replaced by a subtle terracotta arc — present
+ * only as a "seal" above the avatar, so the card still has brand
+ * identity but reads scholarly, not candy. Stats bar at the
+ * bottom on paper so the numbers stay legible at 20px.
+ */
 .user-card {
   position: relative;
-  background: var(--bg-elev-1);
+  background: var(--ink);
   border-radius: var(--radius-xl);
   margin-top: 10px;
-  padding: 22px 18px 14px;
-  box-shadow: var(--shadow-soft);
+  padding: 22px 18px 0;
+  box-shadow: var(--shadow-pop);
   overflow: hidden;
-  /* decorative coral wash behind the avatar row — gives the card its
-     warm marketplace identity without stealing legibility from stats */
+  color: var(--canvas);
+  /* decorative terracotta arc top-right — seal-like, low opacity */
   &::before {
     content: '';
     position: absolute;
-    inset: 0 0 auto 0;
-    height: 120px;
-    background: linear-gradient(135deg, rgba(255,122,110,0.18) 0%, rgba(255,90,76,0.05) 60%, transparent 100%);
+    top: -40px; right: -40px;
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(199, 74, 47, 0.45), rgba(199, 74, 47, 0) 65%);
     pointer-events: none;
   }
   & > * { position: relative; z-index: 1; }
@@ -552,19 +564,26 @@ function onDeleteItem(id: string) {
 .user-row { display: flex; align-items: center; gap: 14px; }
 .avatar-big {
   width: 72px; height: 72px; border-radius: 50%;
-  background: linear-gradient(135deg, #FFB5AD 0%, #FF7A6E 100%);
+  background: linear-gradient(135deg, var(--brand-soft) 0%, var(--brand) 100%);
   flex-shrink: 0;
-  box-shadow: 0 6px 16px rgba(255, 90, 76, 0.22);
-  border: 2px solid #fff;
+  box-shadow: 0 6px 16px rgba(199, 74, 47, 0.35);
+  border: 2px solid var(--canvas);
 }
 .user-info { flex: 1; min-width: 0; }
 .name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.nickname { font-size: 20px; font-weight: 700; color: var(--text-primary); }
+.nickname {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+  color: var(--canvas);
+}
 .illini-badge {
   display: inline-flex; align-items: center;
-  background: #13294B; color: #fff;
-  padding: 2px 7px; border-radius: 4px;
-  font-size: 10px; font-weight: 700;
+  background: var(--success); color: #fff;
+  padding: 2px 7px; border-radius: var(--radius-xs);
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.08em;
 }
 .illini-badge-text { color: #fff; font-size: 10px; }
 .user-meta-row {
@@ -573,45 +592,55 @@ function onDeleteItem(id: string) {
 .uid-row {
   display: inline-flex; align-items: center; gap: 3px;
   padding: 2px 8px;
-  background: var(--bg-subtle); border-radius: var(--radius-pill); cursor: pointer;
-  &:active { background: var(--bg-inset); }
+  background: rgba(245, 240, 230, 0.12);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  &:active { background: rgba(245, 240, 230, 0.2); }
 }
-.uid-label { font-size: 10px; color: var(--text-muted); font-weight: 500; }
-.uid-value { font-size: 11px; color: var(--text-primary); font-weight: 600; letter-spacing: 0.02em; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-.location { font-size: 12px; color: var(--text-muted); }
+.uid-label { font-size: 10px; color: rgba(245, 240, 230, 0.6); font-weight: 500; }
+.uid-value {
+  font-size: 11px; color: var(--canvas); font-weight: 500; letter-spacing: 0.05em;
+  font-family: var(--font-mono);
+}
+.location { font-size: 12px; color: rgba(245, 240, 230, 0.72); }
 .user-status { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; }
 .us-emoji { font-size: 14px; line-height: 1; }
-.us-text { font-size: 13px; color: #1a7aff; line-height: 1.3; }
-.user-bio { font-size: 13px; color: var(--text-secondary); margin-top: 4px; display: block; line-height: 1.4; }
+.us-text { font-size: 13px; color: rgba(245, 240, 230, 0.82); line-height: 1.3; }
+.user-bio { font-size: 13px; color: rgba(245, 240, 230, 0.78); margin-top: 4px; display: block; line-height: 1.4; }
 
 .edit-btn {
   width: 36px; height: 36px; border-radius: 50%;
-  background: rgba(255,255,255,0.8);
+  background: rgba(245, 240, 230, 0.12);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; flex-shrink: 0;
-  box-shadow: var(--shadow-soft);
-  &:active { background: var(--bg-inset); }
+  border: 0.5px solid rgba(245, 240, 230, 0.18);
+  &:active { background: rgba(245, 240, 230, 0.22); }
 }
 .edit-icon {
   width: 14px; height: 14px; position: relative;
   &::before {
     content: ''; position: absolute; bottom: 0; left: 0;
-    width: 14px; height: 2px; background: var(--text-secondary); border-radius: 1px;
+    width: 14px; height: 2px; background: var(--canvas); border-radius: 1px;
+    opacity: 0.82;
   }
   &::after {
     content: ''; position: absolute; top: 0; right: 2px;
-    width: 2px; height: 10px; background: var(--text-secondary);
+    width: 2px; height: 10px; background: var(--canvas);
     border-radius: 1px; transform: rotate(-40deg);
     transform-origin: bottom center;
+    opacity: 0.82;
   }
 }
 
-/* ===== 4-stat strip inside the user card ===== */
+/* ===== 4-stat strip inside the user card =====
+   Lives in the bottom edge of the deep-ink panel; numbers render in
+   serif so they feel like a "passport" data plate, not a UI counter. */
 .stats-row {
   display: flex; align-items: stretch;
-  margin-top: 20px;
-  padding: 14px 0 4px;
-  border-top: 0.5px solid var(--line-hair);
+  margin: 20px -18px 0;
+  padding: 14px 18px 14px;
+  border-top: 0.5px solid rgba(245, 240, 230, 0.12);
+  background: rgba(0, 0, 0, 0.15);
 }
 .stat-item {
   flex: 1; text-align: center;
@@ -622,21 +651,40 @@ function onDeleteItem(id: string) {
 }
 .stat-divider {
   width: 0.5px;
-  background: var(--line-hair);
+  background: rgba(245, 240, 230, 0.14);
   margin: 6px 0;
 }
-.stat-num { font-size: 20px; font-weight: 700; color: var(--text-primary); display: block; line-height: 1; }
-.stat-label { font-size: 11px; color: var(--text-muted); display: block; line-height: 1; }
+.stat-num {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--canvas);
+  display: block;
+  line-height: 1;
+  font-feature-settings: 'tnum';
+}
+.stat-label {
+  font-size: 11px;
+  color: rgba(245, 240, 230, 0.64);
+  letter-spacing: 0.04em;
+  display: block;
+  line-height: 1;
+}
 
-/* ===== Illini verify prompt — stays visually distinct (UIUC navy) ===== */
+/* ===== Illini verify prompt — UIUC navy stays intentional (this is the
+   ONE place we let campus blue through, because Illini verification IS
+   an official-university affordance) ===== */
 .verify-prompt {
   display: flex; align-items: center; gap: 12px;
   margin-top: 12px; padding: 12px 14px;
-  background: #EFF4FB;
-  border-radius: var(--radius-lg);
+  background: var(--paper);
+  border: 0.5px solid var(--border);
+  border-left: 3px solid #13294B;
+  border-radius: var(--radius-md);
   cursor: pointer;
   box-shadow: var(--shadow-soft);
-  &:active { background: #E5ECF6; }
+  &:active { background: var(--paper-2); }
 }
 .vp-icon {
   width: 28px; height: 28px; border-radius: 50%;
@@ -646,7 +694,7 @@ function onDeleteItem(id: string) {
 }
 .vp-text { flex: 1; min-width: 0; }
 .vp-title { font-size: 13px; font-weight: 600; color: #13294B; display: block; }
-.vp-sub { font-size: 11px; color: #4a5a75; margin-top: 2px; display: block; }
+.vp-sub { font-size: 11px; color: var(--ink-soft); margin-top: 2px; display: block; }
 .vp-arrow {
   width: 6px; height: 6px; flex-shrink: 0;
   border-top: 1.5px solid #13294B; border-right: 1.5px solid #13294B;
@@ -655,20 +703,26 @@ function onDeleteItem(id: string) {
 
 /* ===== Section blocks (shared wrapper for quick-actions / horz / fav / more) ===== */
 .section-block {
-  background: var(--bg-elev-1);
-  border-radius: var(--radius-xl);
+  background: var(--paper);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
   margin-top: 12px;
   padding: 16px 14px;
   box-shadow: var(--shadow-soft);
 }
 .block-title {
-  font-size: 15px; font-weight: 700; color: var(--text-primary);
-  display: block; line-height: 1;
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+  color: var(--ink);
+  display: block;
+  line-height: 1.2;
   &::before {
     content: '';
     display: inline-block;
-    width: 4px; height: 14px;
-    background: var(--accent-primary);
+    width: 3px; height: 14px;
+    background: var(--brand);
     border-radius: 2px;
     margin-right: 8px;
     vertical-align: -1px;
@@ -698,9 +752,20 @@ function onDeleteItem(id: string) {
 .action-icon {
   width: 48px; height: 48px; border-radius: 14px;
   display: flex; align-items: center; justify-content: center;
+  border: 0.5px solid rgba(31, 29, 27, 0.04);
 }
+/*
+ * Pottery-glaze variants. Each tint stays within ~8% of paper so the
+ * tiles read as washed ceramic rather than the old candy palette.
+ * Brand/amber/sage/lavender give enough hue separation that users
+ * can still pattern-match by color after 1-2 visits.
+ */
+.action-icon--brand    { background: var(--brand-soft); }
+.action-icon--amber    { background: var(--warning-soft); }
+.action-icon--sage     { background: var(--success-soft); }
+.action-icon--lavender { background: #E4E1F2; }
 .action-emoji { font-size: 22px; line-height: 1; }
-.action-label { font-size: 12px; color: var(--text-secondary); line-height: 1; }
+.action-label { font-size: 12px; color: var(--ink-soft); line-height: 1.2; }
 .action-badge {
   position: absolute;
   top: -2px; right: calc(50% - 28px);
@@ -740,11 +805,18 @@ function onDeleteItem(id: string) {
   overflow: hidden;
   min-height: 32px;
 }
+/* Prices render in the 米白书院 serif ladder + terracotta — matches
+   the design system's "price is the only confident number on the
+   page" principle. */
 .horz-price {
-  font-size: 14px; font-weight: 700;
-  color: var(--accent-primary);
+  font-family: var(--font-serif);
+  font-size: 17px; font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--brand);
   margin-top: 4px;
   display: block;
+  line-height: 1;
+  font-feature-settings: 'tnum';
 }
 .horz-status {
   font-size: 10px; padding: 1px 6px; border-radius: 4px;
@@ -789,7 +861,14 @@ function onDeleteItem(id: string) {
   -webkit-box-orient: vertical; overflow: hidden;
 }
 .fav-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
-.fav-price { font-size: 14px; font-weight: 700; color: var(--accent-primary); }
+.fav-price {
+  font-family: var(--font-serif);
+  font-size: 17px; font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--brand);
+  line-height: 1;
+  font-feature-settings: 'tnum';
+}
 .fav-seller { font-size: 10px; color: var(--text-faint); }
 .fav-status {
   font-size: 10px; padding: 1px 6px; border-radius: 4px;
