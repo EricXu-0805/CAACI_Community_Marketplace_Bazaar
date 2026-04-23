@@ -53,7 +53,7 @@
 
     <view class="info-card">
       <view class="price-row">
-        <text class="price">{{ formatPrice(item.price, t("home.free")) }}</text>
+        <text :class="['price', { free: !item.price || item.price === 0 }]">{{ formatPrice(item.price, t("home.free")) }}</text>
         <text v-if="item.negotiable" class="obo">OBO</text>
       </view>
       <view class="title-row">
@@ -136,7 +136,7 @@
         <view class="more-list">
           <view v-for="si in sellerOtherItems" :key="si.id" class="more-card" @click="goToOtherItem(si.id)">
             <image :src="thumbUrl(si.images?.[0], 'list') || '/static/placeholder.svg'" :alt="si.title" class="mc-img" mode="aspectFill" lazy-load />
-            <text class="mc-price">{{ formatPrice(si.price, t("home.free")) }}</text>
+            <text :class="['mc-price', { free: !si.price || si.price === 0 }]">{{ formatPrice(si.price, t("home.free")) }}</text>
           </view>
         </view>
       </scroll-view>
@@ -149,7 +149,7 @@
         <view class="more-list">
           <view v-for="si in similarItems" :key="si.id" class="more-card" @click="goToOtherItem(si.id)">
             <image :src="thumbUrl(si.images?.[0], 'list') || '/static/placeholder.svg'" :alt="si.title" class="mc-img" mode="aspectFill" lazy-load />
-            <text class="mc-price">{{ formatPrice(si.price, t("home.free")) }}</text>
+            <text :class="['mc-price', { free: !si.price || si.price === 0 }]">{{ formatPrice(si.price, t("home.free")) }}</text>
           </view>
         </view>
       </scroll-view>
@@ -977,6 +977,7 @@ async function contactSeller() {
   line-height: 1;
   font-feature-settings: 'tnum';
 }
+.mc-price.free { color: var(--success); }
 
 .action-btn-small {
   display: flex; flex-direction: column; align-items: center;

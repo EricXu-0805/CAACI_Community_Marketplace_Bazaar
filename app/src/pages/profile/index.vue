@@ -157,7 +157,7 @@
               />
               <view class="horz-info">
                 <text class="horz-title">{{ localize(item.title_i18n, item.title) }}</text>
-                <text class="horz-price">{{ formatPrice(item.price, t('home.free')) }}</text>
+                <text :class="['horz-price', { free: !item.price || item.price === 0 }]">{{ formatPrice(item.price, t('home.free')) }}</text>
                 <text v-if="item.status !== 'active'" :class="['horz-status', item.status]">
                   {{ t('status.' + item.status) }}
                 </text>
@@ -189,7 +189,7 @@
               />
               <view class="horz-info">
                 <text class="horz-title">{{ localize(item.title_i18n, item.title) }}</text>
-                <text class="horz-price">{{ formatPrice(item.price, t('home.free')) }}</text>
+                <text :class="['horz-price', { free: !item.price || item.price === 0 }]">{{ formatPrice(item.price, t('home.free')) }}</text>
                 <text class="horz-status sold">{{ t('status.sold') }}</text>
               </view>
             </view>
@@ -227,7 +227,7 @@
             <view class="fav-body">
               <text class="fav-title">{{ localize(item.title_i18n, item.title) }}</text>
               <view class="fav-meta">
-                <text class="fav-price">{{ formatPrice(item.price, t('home.free')) }}</text>
+                <text :class="['fav-price', { free: !item.price || item.price === 0 }]">{{ formatPrice(item.price, t('home.free')) }}</text>
                 <text v-if="item.status === 'sold'" class="fav-status sold">{{ t('status.sold') }}</text>
                 <text v-else-if="item.status === 'reserved'" class="fav-status reserved">{{ t('status.reserved') }}</text>
                 <text v-else-if="item.profile" class="fav-seller">{{ item.profile.nickname }}</text>
@@ -807,7 +807,8 @@ function onDeleteItem(id: string) {
 }
 /* Prices render in the 米白书院 serif ladder + terracotta — matches
    the design system's "price is the only confident number on the
-   page" principle. */
+   page" principle. Free items drop to sage (--success) so 免费 / Free
+   reads as a positive-state affordance, not a price. */
 .horz-price {
   font-family: var(--font-serif);
   font-size: 17px; font-weight: 600;
@@ -818,6 +819,7 @@ function onDeleteItem(id: string) {
   line-height: 1;
   font-feature-settings: 'tnum';
 }
+.horz-price.free { color: var(--success); }
 .horz-status {
   font-size: 10px; padding: 1px 6px; border-radius: 4px;
   margin-top: 4px; align-self: flex-start;
@@ -869,6 +871,7 @@ function onDeleteItem(id: string) {
   line-height: 1;
   font-feature-settings: 'tnum';
 }
+.fav-price.free { color: var(--success); }
 .fav-seller { font-size: 10px; color: var(--text-faint); }
 .fav-status {
   font-size: 10px; padding: 1px 6px; border-radius: 4px;

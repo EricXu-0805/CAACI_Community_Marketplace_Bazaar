@@ -1241,17 +1241,27 @@ function goPublish() {
   overflow: hidden; word-break: break-all;
 }
 .card-price-row { display: flex; align-items: baseline; gap: 4px; margin-top: 5px; }
-/* Price in coral red to match the new brand accent — makes listings
-   feel more marketplace-y and stands out from the neutral title text. */
+/* Waterfall card price in Fraunces serif + terracotta — matches the
+   米白书院 "price is the only confident number on the page" rule.
+   Free items shift to sage so "免费 / Free" reads as positive state. */
 .card-price {
-  font-size: 16px; font-weight: 700;
-  color: var(--accent-primary);
-  letter-spacing: -0.02em;
+  font-family: var(--font-serif);
+  font-size: 17px; font-weight: 600;
+  color: var(--brand);
+  letter-spacing: -0.01em;
+  line-height: 1;
+  font-feature-settings: 'tnum';
 }
-.card-price-free { color: var(--accent-good); }
+.card-price-free { color: var(--success); }
+/* OBO chip — amber-toned warning pill, ivory_academy pattern. */
 .obo-tag {
-  font-size: 9px; font-weight: 600; color: var(--accent-primary);
-  background: var(--accent-primary-soft); padding: 1px 4px; border-radius: 3px;
+  font-size: 9px; font-weight: 600;
+  color: var(--warning);
+  background: var(--warning-soft);
+  padding: 1px 4px;
+  border-radius: var(--radius-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .card-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 7px; }
@@ -1421,7 +1431,7 @@ function goPublish() {
   }
   .card-info { padding: 10px 12px 12px; }
   .card-title { font-size: 14px; }
-  .card-price { font-size: 16px; }
+  .card-price { font-size: 18px; }
   .seller-pic { width: 20px; height: 20px; }
   .seller-nick { font-size: 12px; }
   .fav-num { font-size: 12px; }
