@@ -34,6 +34,72 @@ try {
   if (saved) currentLang.value = saved
 } catch {}
 
+/*
+ * Shared auto-localize cache.
+ *
+ * Keyed by `${target}:${truncated text}`, reactive so any component
+ * currently rendering an entry will re-render the moment a value
+ * lands (via the returned ref's .value = ...).
+ *
+ * Stored OUTSIDE the useI18n() closure so every page that asks for
+ * the same translation reuses the same in-memory result — e.g. the
+ * home list, detail page, and chat header all share the cache for
+ * the same item title. Resets when the tab closes. We don't persist
+ * this to storage because successful translations should land back
+ * into the DB via publish-time upsert; this cache only fills the
+ * interim window.
+ */
+const autoLocalizeCache = ref<Record<string, string>>({})
+const inflightAutoTranslate = new Set<string>()
+
+function autoKey(text: string, target: Lang): string {
+  return `${target}:${text.length}:${text.slice(0, 200)}`
+}
+
+function scheduleAutoTranslate(text: string, target: Lang) {
+  if (!text || !text.trim()) return
+  const key = autoKey(text, target)
+  if (autoLocalizeCache.value[key]) return
+  if (inflightAutoTranslate.has(key)) return
+  // Only two targets supported by the translation endpoint today.
+  if (target !== 'zh' && target !== 'en') return
+  inflightAutoTranslate.add(key)
+
+  let endpoint = '/api/translate'
+  // #ifdef H5
+  try {
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      endpoint = window.location.origin + '/api/translate'
+    }
+  } catch {}
+  // #endif
+  // #ifndef H5
+  endpoint = 'https://caaci-community-marketplace-bazaar.vercel.app/api/translate'
+  // #endif
+
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), 10000)
+
+  fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, target }),
+    signal: ctrl.signal,
+  })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((json) => {
+      const translated = typeof json?.translated === 'string' ? json.translated.trim() : ''
+      if (translated && translated !== text) {
+        autoLocalizeCache.value = { ...autoLocalizeCache.value, [key]: translated }
+      }
+    })
+    .catch(() => { /* network error, quietly keep showing original */ })
+    .finally(() => {
+      clearTimeout(timer)
+      inflightAutoTranslate.delete(key)
+    })
+}
+
 const messages: Partial<Record<Lang, Record<string, string>>> = {
   en: {
     'app.name': 'Illini Market',
@@ -1159,10 +1225,80 @@ export function useI18n() {
       const anyVal = Object.values(map).find((v) => typeof v === 'string' && v.trim())
       if (anyVal) return anyVal
     }
-    return original || ''
+    const text = original || ''
+    if (!text) return ''
+    /*
+     * Auto-translate escape hatch: when the DB row has no i18n map (yet
+     * — async publish translation still in flight, or a legacy pre-015
+     * row), check the session cache. If a background fetch has
+     * completed, render its result; otherwise schedule the fetch and
+     * show the original in the meantime. Because `autoLocalizeCache`
+     * is a ref, the template re-renders the instant the fetch lands.
+     */
+    const cached = autoLocalizeCache.value[autoKey(text, currentLang.value)]
+    if (cached) return cached
+    if (currentLang.value !== DEFAULT_LANG || detectsAsForeign(text, currentLang.value)) {
+      scheduleAutoTranslate(text, currentLang.value)
+    }
+    return text
+  }
+
+  /*
+   * Heuristic to decide whether to bother firing a translation for
+   * text that's nominally in the current UI lang. If the user viewing
+   * in Chinese sees a piece of text full of ASCII words, it was likely
+   * authored in English and is worth translating. Same the other way
+   * round for CJK. Stops us from firing a pointless en→en fetch.
+   */
+  function detectsAsForeign(text: string, uiLang: Lang): boolean {
+    const hasCjk = /[\u4e00-\u9fff\u3400-\u4dbf]/.test(text)
+    const hasLatin = /[A-Za-z]{3,}/.test(text)
+    if (uiLang === 'zh' && !hasCjk && hasLatin) return true
+    if (uiLang === 'en' && hasCjk && !hasLatin) return true
+    return false
+  }
+
+  /*
+   * Reactive auto-translating localizer, for rows that don't yet have
+   * a title_i18n / content_i18n map (legacy rows published before the
+   * 015 migration, or brand-new rows whose async translation hasn't
+   * upserted back yet).
+   *
+   * Given an `original` string, returns a computed that:
+   *   1. Tries localize(map, original) first (instant if pre-translated)
+   *   2. If that returns `original` AND the current UI lang is not the
+   *      detected source lang, kicks off a background fetch to the
+   *      translator and updates reactively once resolved
+   *   3. Caches per-text in module scope so repeated renders across
+   *      many cards only hit the endpoint once
+   *
+   * While translating, the caller still sees the original (no blank
+   * flash). On failure silently continues to show original — that's
+   * the "author's original language" fallback, same as localize().
+   */
+  function useAutoLocalize(
+    mapGetter: () => Record<string, string> | null | undefined,
+    originalGetter: () => string | null | undefined,
+  ) {
+    const pendingFetch = ref(false)
+    const result = computed(() => {
+      const map = mapGetter()
+      const original = originalGetter() || ''
+      const target = currentLang.value
+      if (map) {
+        const hit = map[target]
+        if (hit && hit.trim()) return hit
+      }
+      if (!original) return ''
+      const cached = autoLocalizeCache.value[autoKey(original, target)]
+      if (cached) return cached
+      scheduleAutoTranslate(original, target)
+      return original
+    })
+    return { result, pendingFetch }
   }
 
   const lang = computed(() => currentLang.value)
 
-  return { t, lang, setLang, toggleLang, localize }
+  return { t, lang, setLang, toggleLang, localize, useAutoLocalize }
 }

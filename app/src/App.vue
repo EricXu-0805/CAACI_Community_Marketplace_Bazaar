@@ -78,19 +78,37 @@ function detectAuthRecoveryAndRoute(): boolean {
   // #ifdef H5
   if (typeof window === 'undefined') return false
   const hash = window.location.hash || ''
-  const isRecovery = hash.includes('type=recovery') || hash.includes('access_token=')
-  if (!isRecovery) return false
-  const alreadyOnReset = hash.startsWith('#/pages/reset-password')
-  if (alreadyOnReset) return false
+  const search = window.location.search || ''
   /*
-   * IMPORTANT: reLaunch overwrites the URL hash, which would strip the
-   * Supabase recovery token (access_token=... / type=recovery) that
-   * detectSessionInUrl relies on. We stash the raw auth hash on window
-   * so /pages/reset-password/index can re-parse it after navigation.
-   * This must run synchronously BEFORE reLaunch, otherwise the SDK will
-   * silently fail to produce a session and the page renders blank.
+   * Supabase returns users from a password-reset email in TWO shapes,
+   * depending on the auth flow:
+   *
+   *   · PKCE flow (our current setting, `flowType: 'pkce'`):
+   *       https://site.com/?code=<uuid>
+   *     The exchange is done via supabase.auth.exchangeCodeForSession(code).
+   *
+   *   · Implicit flow (legacy):
+   *       https://site.com/#access_token=<jwt>&refresh_token=<jwt>&type=recovery
+   *     The exchange is done via supabase.auth.setSession({...}).
+   *
+   * Previous iterations of this code only looked at the hash, missing
+   * PKCE entirely — users were silently dropped at the home page with
+   * no password form. We now detect BOTH and stash whichever parameters
+   * are present on `window` so the reset-password page can consume them
+   * after uni-app's reLaunch wipes the URL.
    */
-  try { (window as any).__authRecoveryHash = hash } catch {}
+  const hashIsRecovery = hash.includes('type=recovery') || hash.includes('access_token=')
+  const searchIsRecovery = /[?&]code=[^&]+/.test(search)
+  if (!hashIsRecovery && !searchIsRecovery) return false
+
+  const onReset = hash.startsWith('#/pages/reset-password')
+  if (onReset) return false
+
+  try {
+    ;(window as any).__authRecoveryHash = hash
+    ;(window as any).__authRecoverySearch = search
+  } catch {}
+
   uni.reLaunch({ url: '/pages/reset-password/index' })
   return true
   // #endif

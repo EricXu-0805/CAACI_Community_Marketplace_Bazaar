@@ -51,21 +51,32 @@ onMounted(async () => {
   try {
     // #ifdef H5
     /*
-     * Supabase sends recovery links back to ourselves with a hash like
-     *   #access_token=...&type=recovery&...
-     * App.vue intercepts the initial load and reLaunches here, but reLaunch
-     * overwrites the URL hash, which would also wipe the recovery token
-     * before detectSessionInUrl can consume it. App.vue now stashes the
-     * original hash on window.__authRecoveryHash; we restore it here and
-     * hand it to the Supabase client explicitly, then strip it from the
-     * URL so it can't leak via back/forward.
+     * Two recovery shapes to consume, mirroring what App.vue detected:
+     *
+     *   PKCE  — ?code=<uuid> in window.location.search
+     *           exchange via supabase.auth.exchangeCodeForSession(code)
+     *   IMPL  — #access_token=&refresh_token=&type=recovery in hash
+     *           exchange via supabase.auth.setSession({...})
+     *
+     * App.vue stashes the original search + hash on window because its
+     * reLaunch rewrites both. We read the stash first, fall back to
+     * whatever is still on window.location, then clean up so back/
+     * forward can't replay the tokens.
      */
+    const stashedSearch: string =
+      typeof window !== 'undefined' ? ((window as any).__authRecoverySearch || '') : ''
+    const stashedHash: string =
+      typeof window !== 'undefined' ? ((window as any).__authRecoveryHash || '') : ''
+
+    let search = typeof window !== 'undefined' ? (window.location.search || '') : ''
     let hash = typeof window !== 'undefined' ? (window.location.hash || '') : ''
-    const stashed = typeof window !== 'undefined' ? ((window as any).__authRecoveryHash || '') : ''
-    if (stashed && !hash.includes('access_token=') && !hash.includes('error=')) {
-      hash = stashed as string
-      try { delete (window as any).__authRecoveryHash } catch {}
-    }
+    if (stashedSearch && !/[?&]code=/.test(search)) search = stashedSearch
+    if (stashedHash && !hash.includes('access_token=') && !hash.includes('error=')) hash = stashedHash
+
+    try {
+      delete (window as any).__authRecoverySearch
+      delete (window as any).__authRecoveryHash
+    } catch {}
 
     if (hash.includes('error=')) {
       const params = new URLSearchParams(hash.slice(hash.indexOf('?') + 1))
@@ -74,8 +85,16 @@ onMounted(async () => {
       return
     }
 
-    if (hash.includes('access_token=') && typeof window !== 'undefined') {
-      // Parse "#access_token=...&refresh_token=..." (supabase uses either '?' or no delim)
+    const codeMatch = search.match(/[?&]code=([^&]+)/)
+    if (codeMatch && codeMatch[1]) {
+      try {
+        await supabase.auth.exchangeCodeForSession(decodeURIComponent(codeMatch[1]))
+      } catch (err: any) {
+        errorMsg.value = err?.message || t('resetPw.linkInvalid')
+        ready.value = true
+        return
+      }
+    } else if (hash.includes('access_token=')) {
       const qIdx = hash.indexOf('?')
       const raw = qIdx >= 0 ? hash.slice(qIdx + 1) : hash.replace(/^#/, '')
       const params = new URLSearchParams(raw)
@@ -84,17 +103,20 @@ onMounted(async () => {
       if (access_token && refresh_token) {
         try {
           await supabase.auth.setSession({ access_token, refresh_token })
-        } catch {}
+        } catch (err: any) {
+          errorMsg.value = err?.message || t('resetPw.linkInvalid')
+          ready.value = true
+          return
+        }
       }
-      // Hide the token from the visible URL so refresh / share won't replay it.
-      try {
-        const clean = window.location.pathname + window.location.search + '#/pages/reset-password/index'
-        window.history.replaceState(null, '', clean)
-      } catch {}
     }
+
+    try {
+      const clean = window.location.pathname + '#/pages/reset-password/index'
+      window.history.replaceState(null, '', clean)
+    } catch {}
     // #endif
 
-    // Give the Supabase SDK a moment to finish processing setSession / detectSessionInUrl
     await new Promise((r) => setTimeout(r, 150))
 
     const { data, error } = await supabase.auth.getSession()
