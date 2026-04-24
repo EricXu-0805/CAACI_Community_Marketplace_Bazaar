@@ -343,17 +343,25 @@ button:focus-visible,
  * are preserved so every page cascades without code edits.
  */
 /*
- * Design-token root — DUAL-SELECTOR.
+ * Design-token root — PLATFORM-SPLIT.
  *
- * `:root` targets the document root on H5 (browsers match it to <html>).
- * `page` targets the mp-weixin page root (WXSS only recognises the
- * `page` pseudo-element, not `:root` — without this duplicate selector
- * every `var(--*)` call on mp-weixin resolves to the CSS initial value,
- * which turned the profile page's cream-on-navy text into cream-on-white
- * (invisible) during first WeChat DevTools launch. Don't remove `page`.
+ * First attempt used the combined selector list `:root, page { ... }`
+ * on the theory that WXSS would ignore the unknown `:root` half and
+ * apply the rule to `page`. That theory was wrong: WXSS appears to
+ * reject the ENTIRE rule when any selector in the list is invalid,
+ * so on mp-weixin the tokens never reached `page` and every
+ * `var(--*)` lookup resolved to the CSS initial value (color
+ * collapsed to black/transparent, backgrounds went white, text
+ * became invisible on navy cards). The H5 side worked fine because
+ * browsers happily drop the unknown `page` half of the list.
+ *
+ * Fix: split into two isolated rules with the same declaration block.
+ * On H5, only `:root { ... }` takes effect (browsers don't know the
+ * `page` element exists). On mp-weixin, only `page { ... }` takes
+ * effect (WXSS doesn't know `:root`). The apparent duplication is
+ * the price of cross-platform correctness; keep them in sync.
  */
-:root,
-page {
+:root {
   /* ---------- TEXT (warm charcoal — the anti-plastic ink) ---------- */
   --text-primary:   #2A2A2E;   /* ink       — warm charcoal */
   --text-secondary: #57524B;   /* ink-soft  — secondary, walnut */
@@ -517,6 +525,110 @@ page {
    *   ease-warm  card lift, like bounce (spring-ish)
    *   ease-crisp tab switch, emphasis
    * ---------------------------------------------------------- */
+  --dur-1: 120ms;
+  --dur-2: 220ms;
+  --dur-3: 360ms;
+  --dur-4: 560ms;
+  --dur-5: 900ms;
+  --ease-std:   cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in:    cubic-bezier(0, 0, 0.2, 1);
+  --ease-out:   cubic-bezier(0.4, 0, 1, 1);
+  --ease-warm:  cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-crisp: cubic-bezier(0.7, 0, 0.3, 1);
+}
+
+/*
+ * mp-weixin mirror of the :root token set above. See the explanatory
+ * comment on the :root block for why this duplication is needed.
+ * Keep declarations in lock-step — a divergence here and text goes
+ * invisible on mp, backgrounds go transparent, etc.
+ */
+page {
+  --text-primary:   #2A2A2E;
+  --text-secondary: #57524B;
+  --text-tertiary:  #6B6557;
+  --text-muted:     #8B8478;
+  --text-faint:     #B6AE9F;
+  --text-disabled:  #C0BCB2;
+  --ink:         #2A2A2E;
+  --ink-soft:    #57524B;
+  --ink-quiet:   #8B8478;
+  --ink-faint:   #B6AE9F;
+  --ink-inverse: #F5F0E6;
+  --bg-page:    #F5F0E6;
+  --bg-elev-1:  #FBF8F2;
+  --bg-elev-2:  #F0E9DA;
+  --bg-subtle:  #F0E9DA;
+  --bg-inset:   #E8DFCC;
+  --canvas:        #F5F0E6;
+  --surface:       #FBF8F2;
+  --surface-alt:   #F0E9DA;
+  --parchment:     #F0E9DA;
+  --frame:         #E8DFCC;
+  --surface-rgb: 251, 248, 242;
+  --canvas-rgb:  245, 240, 230;
+  --paper:      #FBF8F2;
+  --paper-2:    #F0E9DA;
+  --paper-3:    #E8DFCC;
+  --line-hair:  rgba(42, 42, 46, 0.06);
+  --line-soft:  rgba(42, 42, 46, 0.10);
+  --line-bold:  rgba(42, 42, 46, 0.16);
+  --border:        #E8DFCC;
+  --border-strong: #D8CDB3;
+  --border-hair:   rgba(42, 42, 46, 0.05);
+  --border-warm:   #E8DFCC;
+  --brand:          #C74A2F;
+  --brand-deep:     #A03A24;
+  --brand-soft:     #F5D9CE;
+  --brand-ghost:    #FBEAE2;
+  --campus-blue:      #13294B;
+  --campus-blue-soft: #E5EAF2;
+  --campus-blue-deep: #0A1A33;
+  --campus-orange:    #FF5F05;
+  --campus-orange-deep: #B33D00;
+  --campus-orange-soft: #FFF1E6;
+  --accent-primary:      #C74A2F;
+  --accent-primary-soft: #F5D9CE;
+  --accent-primary-deep: #A03A24;
+  --accent-action:       #C74A2F;
+  --accent-ink:          #2A2A2E;
+  --accent-green:        #5D7C4A;
+  --accent-good:         #5D7C4A;
+  --accent-warn:         #D4923C;
+  --accent-danger:       #B53333;
+  --success:      #5D7C4A;
+  --success-soft: #E4EADA;
+  --warning:      #D4923C;
+  --warning-soft: #F5E4CB;
+  --danger:       #B53333;
+  --danger-soft:  #F0D4D4;
+  --radius-xs:    4px;
+  --radius-sm:    8px;
+  --radius-md:   12px;
+  --radius-lg:   18px;
+  --radius-xl:   28px;
+  --radius-pill: 999px;
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+  --font-weight-regular: 400;
+  --font-weight-medium:  500;
+  --font-weight-semi:    600;
+  --font-weight-bold:    700;
+  --font-serif: 'Fraunces', 'Noto Serif SC', 'Songti SC', Georgia, 'Times New Roman', serif;
+  --font-hei:   'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+  --font-mono:  'JetBrains Mono', 'SF Mono', Menlo, ui-monospace, monospace;
+  --shadow-hair:  0 0 0 1px rgba(42, 42, 46, 0.06);
+  --shadow-soft:  0 1px 2px rgba(42, 42, 46, 0.04), 0 4px 12px rgba(42, 42, 46, 0.06);
+  --shadow-pop:   0 2px 4px rgba(42, 42, 46, 0.05), 0 12px 28px rgba(42, 42, 46, 0.08);
+  --shadow-float: 0 1px 2px rgba(42, 42, 46, 0.06), 0 24px 56px -16px rgba(42, 42, 46, 0.18);
+  --shadow-cta:   0 2px 4px rgba(199, 74, 47, 0.15), 0 12px 28px -8px rgba(199, 74, 47, 0.28);
+  --shadow-brand: 0 2px 4px rgba(199, 74, 47, 0.15), 0 12px 28px -8px rgba(199, 74, 47, 0.28);
   --dur-1: 120ms;
   --dur-2: 220ms;
   --dur-3: 360ms;
