@@ -185,11 +185,30 @@ async function signInWithPassword(email, password) {
   return body
 }
 
+function sanitizeNickname(raw) {
+  if (typeof raw !== 'string') return ''
+  return raw
+    .replace(/<[^>]*>/g, '')
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .replace(/[\u200B-\u200F\uFEFF]/g, '')
+    .trim()
+    .slice(0, 40)
+}
+
+function sanitizeAvatarUrl(raw) {
+  if (typeof raw !== 'string') return ''
+  const trimmed = raw.trim().slice(0, 500)
+  if (!/^https?:\/\//i.test(trimmed)) return ''
+  return trimmed
+}
+
 async function bindWechatIdentityOnProfile(userId, openid, unionid, nickname, avatar) {
   const patch = { wechat_openid: openid }
   if (unionid) patch.wechat_unionid = unionid
-  if (nickname) patch.nickname = String(nickname).slice(0, 40)
-  if (avatar) patch.avatar_url = String(avatar).slice(0, 500)
+  const cleanNickname = sanitizeNickname(nickname)
+  if (cleanNickname) patch.nickname = cleanNickname
+  const cleanAvatar = sanitizeAvatarUrl(avatar)
+  if (cleanAvatar) patch.avatar_url = cleanAvatar
 
   const r = await fetch(
     `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
@@ -245,8 +264,8 @@ export default async function handler(request) {
   try { body = await request.json() } catch { return json({ error: 'bad_json' }, 400) }
 
   const jsCode   = typeof body?.js_code === 'string' ? body.js_code.trim() : ''
-  const nickname = typeof body?.nickname === 'string' ? body.nickname.slice(0, 40) : ''
-  const avatar   = typeof body?.avatar_url === 'string' ? body.avatar_url.slice(0, 500) : ''
+  const nickname = sanitizeNickname(body?.nickname)
+  const avatar   = sanitizeAvatarUrl(body?.avatar_url)
 
   if (!jsCode || jsCode.length > 256) return json({ error: 'bad_js_code' }, 400)
 
