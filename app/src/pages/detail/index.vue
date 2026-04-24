@@ -3,11 +3,10 @@
     <!-- Image Carousel -->
     <view class="img-area">
       <!--
-        Swiper height follows the *current* image's aspect ratio so users
-        see the original framing, not a letterboxed 380px slab. Capped at
-        85vh so a vertical 9:16 photo won't take the entire screen above
-        the fold. aspectFit preserves ratio inside whatever box we hand it,
-        so there's no cropping. The aspect map is populated on @load.
+        Swiper height is frozen on item.image_dimensions[0] so swipes
+        between slides don't resize the viewport mid-gesture (xianyu
+        contract). Capped at 85vh. aspectFit letterboxes non-hero
+        slides inside the frame instead of cropping.
       -->
       <swiper
         class="img-swiper"
@@ -21,7 +20,6 @@
             :src="img"
             mode="aspectFit"
             class="swiper-img"
-            @load="onHeroImgLoad(i, $event)"
             @click="previewImage(i)"
           />
         </swiper-item>
@@ -259,6 +257,7 @@ import { useModeration } from '../../composables/useModeration'
 import type { Item } from '../../types'
 
 import { formatTime, haptic, formatPrice, quickTranslate, thumbUrl, friendlyErrorMessage } from '../../utils'
+import { dimsToRatio } from '../../utils/imgStyle'
 import { matchSpot } from '../../composables/useCampusSpots'
 import { useRatings } from '../../composables/useRatings'
 import { useTranslate } from '../../composables/useTranslate'
@@ -310,36 +309,24 @@ const displayDescription = computed(() => {
 const locationSpot = computed(() => matchSpot(item.value?.location))
 
 /*
- * Hero-carousel aspect tracking.
+ * Hero-carousel height.
  *
- * uni-app <swiper> requires a concrete height; earlier we hard-coded 380px,
- * which letterboxed any photo that wasn't ~5:3 and made Xianyu-style full-
- * frame shots feel cramped. We now:
- *   1. record each slide's natural ratio as the image loads
- *   2. pick the *current* slide's ratio to size the swiper
- *   3. cap at 85vh so a 9:16 portrait doesn't swallow the whole viewport
- *   4. fall back to 4:5 (a Xianyu-ish default) before the first @load fires
- * This is the Category B pattern from the spec: detail views return real
- * framing, no squeezing, no stretching.
+ * uni-app <swiper> needs a concrete height. We size it from the FIRST
+ * image's DB-persisted dims (migration 014) — not the currently visible
+ * slide — so swiping from a 4:5 portrait to a 3:4 landscape doesn't
+ * shrink the swiper mid-gesture (we used to do that; it produced a
+ * jarring viewport jump every swipe). Xianyu / Taobao both freeze the
+ * carousel height on image[0]; subsequent slides letterbox inside it
+ * via aspectFit, which is acceptable for a detail view.
+ *
+ * Fallback: no DB dims → 4/5 (the most common vertical-phone aspect).
+ * Safety net: max-height 85vh so a 9:16 portrait can't eat the whole
+ * viewport and push the price/title below the fold.
  */
-const imgAspects = ref<Record<number, number>>({})
-
-function onHeroImgLoad(i: number, ev: any) {
-  const d = ev?.detail || {}
-  const w = d.width || ev?.target?.naturalWidth || 0
-  const h = d.height || ev?.target?.naturalHeight || 0
-  if (w > 0 && h > 0) {
-    imgAspects.value = { ...imgAspects.value, [i]: w / h }
-  }
-}
-
 const swiperStyle = computed(() => {
-  const ratio = imgAspects.value[currentImg.value] || (4 / 5)
-  // For very tall portraits, cap at 85vh; for panoramas clamp the lower end too.
-  const clamped = Math.max(0.5, Math.min(ratio, 2.0))
-  // Swiper width = viewport width (up to its max-width breakpoint), height derives from ratio
+  const ratio = dimsToRatio(item.value?.image_dimensions, 0) ?? (4 / 5)
   return {
-    aspectRatio: String(clamped),
+    aspectRatio: String(ratio),
     maxHeight: '85vh',
     height: 'auto',
   }
