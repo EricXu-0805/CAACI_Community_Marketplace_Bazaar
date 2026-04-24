@@ -1,15 +1,9 @@
 -- ============================================================
 -- 032_security_hardening_round2.sql
 --
--- Closes three gaps surfaced by the April 2024 deep-scan audit.
---
--- ⚠ RUN ORDER — each section is independently applicable. If one
---   fails (most likely the storage section due to ownership), the
---   rest still apply. Forward-only. Idempotent. Safe to re-run.
---
---    Section 1 — public.post_comments          (works in SQL Editor)
---    Section 2 — storage.objects DELETE policy (SEE FALLBACK BELOW)
---    Section 3 — public.profiles consent       (works in SQL Editor)
+-- Three audit gaps. Forward-only. Idempotent. Safe to re-run.
+-- Every section is independently applicable — a failure in section 2
+-- does NOT abort sections 1 and 3.
 -- ============================================================
 
 
@@ -26,7 +20,7 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'public'
-      AND tablename = 'post_comments'
+      AND tablename  = 'post_comments'
       AND policyname = 'Users can update own comments'
   ) THEN
     CREATE POLICY "Users can update own comments"
@@ -46,23 +40,46 @@ COMMENT ON POLICY "Users can update own comments" ON public.post_comments IS
 
 -- ---------------- 2. storage.objects DELETE policy alignment ----------------
 --
--- Current DELETE policy on item-images validates only path[1]
--- ('items'), while INSERT validates path[1] AND path[2] (<auth.uid()>).
--- Net: user can DELETE another user's images by guessing the path.
+-- Current DELETE policy on item-images validates only path[1] ('items'),
+-- while INSERT validates path[1] AND path[2] (<auth.uid()>). Net: one
+-- user can DELETE another user's images by guessing the path.
 --
--- OWNERSHIP NOTE: storage.objects is owned by supabase_storage_admin.
--- The Dashboard SQL Editor runs as postgres which cannot DROP/CREATE
--- policies on it directly. We try SET LOCAL ROLE first; if that
--- fails (error 42501), the EXCEPTION block emits a NOTICE with the
--- manual UI fix and the migration continues to section 3.
+-- PLATFORM NOTE: Since Supabase's April 2025 platform change
+-- (supabase/postgres PR #994), the postgres role — which SQL Editor
+-- runs as — is no longer a member of supabase_storage_admin, so
+-- DROP POLICY on storage.objects raises 42501 "must be owner". The
+-- canonical workaround (also used by migration 011 in this repo) is
+-- to wrap DROP in a nested BEGIN/EXCEPTION that swallows
+-- insufficient_privilege. CREATE POLICY on storage.objects is still
+-- allowed per Supabase's April 2025 whitelist.
+--
+-- FAILURE MODE: If the DROP is silently skipped, the old broken
+-- policy remains and the IF NOT EXISTS guard around CREATE
+-- short-circuits — you'll see the RAISE NOTICE in the output and
+-- must apply the fix via the Dashboard UI instead:
+--    Storage → Policies → item-images → "Users can delete own images"
+--    → edit → set USING to the expression below.
 
 DO $$
+DECLARE
+  drop_succeeded boolean := false;
 BEGIN
   BEGIN
-    SET LOCAL ROLE supabase_storage_admin;
-
     DROP POLICY IF EXISTS "Users can delete own images" ON storage.objects;
+    drop_succeeded := true;
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      RAISE NOTICE '032 section 2: DROP POLICY skipped (postgres no longer owns storage.objects since Supabase April 2025 platform change). The old broken DELETE policy is still in place. Fix via Dashboard: Storage -> Policies -> item-images -> edit "Users can delete own images" -> set USING to: bucket_id = ''item-images'' AND (storage.foldername(name))[1] = ''items'' AND (storage.foldername(name))[2] = auth.uid()::text';
+    WHEN OTHERS THEN
+      RAISE NOTICE '032 section 2: DROP POLICY failed with unexpected error: %. Skipping CREATE. Apply via Dashboard UI.', SQLERRM;
+  END;
 
+  IF drop_succeeded AND NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage'
+      AND tablename  = 'objects'
+      AND policyname = 'Users can delete own images'
+  ) THEN
     CREATE POLICY "Users can delete own images"
       ON storage.objects
       FOR DELETE
@@ -72,14 +89,27 @@ BEGIN
         AND (storage.foldername(name))[1] = 'items'
         AND (storage.foldername(name))[2] = auth.uid()::text
       );
+    RAISE NOTICE '032 section 2: storage.objects DELETE policy updated to validate BOTH path segments.';
+  END IF;
+END
+$$;
 
-    RESET ROLE;
-    RAISE NOTICE '032 section 2: storage.objects DELETE policy updated';
+-- COMMENT ON POLICY also requires ownership on storage.objects, so
+-- wrap it the same way. If the policy update above was deferred to
+-- the Dashboard UI, this comment attach is a no-op.
 
-  EXCEPTION WHEN OTHERS THEN
-    BEGIN RESET ROLE; EXCEPTION WHEN OTHERS THEN NULL; END;
-    RAISE NOTICE '032 section 2: could not modify storage.objects from this session (error: %). Apply this fix MANUALLY via Supabase Dashboard → Storage → Policies → item-images bucket → edit "Users can delete own images" → USING expression: bucket_id = ''item-images'' AND (storage.foldername(name))[1] = ''items'' AND (storage.foldername(name))[2] = auth.uid()::text', SQLERRM;
-  END;
+DO $$
+BEGIN
+  EXECUTE $cmt$
+    COMMENT ON POLICY "Users can delete own images" ON storage.objects IS
+      '032: DELETE now validates path[1]=''items'' AND path[2]=auth.uid().
+       Previously only path[1] was checked, letting any authenticated
+       user delete other users items/<uid>/<file> objects.'
+  $cmt$;
+EXCEPTION
+  WHEN insufficient_privilege THEN NULL;
+  WHEN undefined_object       THEN NULL;
+  WHEN OTHERS                 THEN NULL;
 END
 $$;
 
