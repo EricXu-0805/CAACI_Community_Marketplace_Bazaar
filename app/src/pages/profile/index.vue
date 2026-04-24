@@ -582,7 +582,15 @@ function onDeleteItem(id: string) {
     background: radial-gradient(circle at 30% 30%, rgba(199, 74, 47, 0.45), rgba(199, 74, 47, 0) 65%);
     pointer-events: none;
   }
-  & > * { position: relative; z-index: 1; }
+  /*
+   * All direct children must stack above the terracotta arc ::before.
+   * We use `view` instead of `*` because WXSS rejects the universal
+   * selector + scope-attribute combo that Vue scoped CSS produces
+   * (`*.data-v-xxxxx` fails to parse on WeChat lib 3.15.x). Every
+   * direct child of .user-card in the template is a <view>, so this
+   * covers the same set without the compat footgun.
+   */
+  & > view { position: relative; z-index: 1; }
 }
 .user-card-bg { display: none; }
 .user-row { display: flex; align-items: center; gap: 14px; }
