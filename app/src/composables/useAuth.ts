@@ -98,9 +98,15 @@ export function useAuth() {
     try {
       if (password.length < 8) throw new Error('Password must be at least 8 characters')
 
-      const emailRedirectTo = typeof window !== 'undefined'
-        ? `${window.location.origin}/#/pages/index/index`
-        : undefined
+      let emailRedirectTo: string | undefined
+      // #ifdef H5
+      if (typeof window !== 'undefined') {
+        emailRedirectTo = `${window.location.origin}/#/pages/index/index`
+      }
+      // #endif
+      // #ifndef H5
+      emailRedirectTo = 'https://caaci-community-marketplace-bazaar.vercel.app/#/pages/index/index'
+      // #endif
       const { data, error } = await supabase.auth.signUp({
         email,
         password,

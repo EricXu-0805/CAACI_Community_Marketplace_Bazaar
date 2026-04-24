@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { quickTranslate } from '../utils'
+import { platformFetch } from './useSupabase'
 import { SUPPORTED_LANGS, type Lang as AppLang } from './useI18n'
 
 /*
@@ -95,7 +96,7 @@ export function useTranslate() {
     try {
       const ctrl = new AbortController()
       const timer = setTimeout(() => ctrl.abort(), 8000)
-      const r = await fetch(endpoint, {
+      const r = await platformFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, target }),

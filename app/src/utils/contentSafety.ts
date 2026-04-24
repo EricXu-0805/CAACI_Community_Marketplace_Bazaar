@@ -235,7 +235,8 @@ export async function remoteModerate(text: string): Promise<{ flagged: boolean; 
   try {
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), 3000)
-    const r = await fetch(MODERATE_ENDPOINT, {
+    const { platformFetch } = await import('../composables/useSupabase')
+    const r = await platformFetch(MODERATE_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: text.slice(0, 8000) }),

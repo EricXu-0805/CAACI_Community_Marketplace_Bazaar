@@ -215,6 +215,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { platformFetch } from '../../composables/useSupabase'
 
 type TabId = 'reports' | 'suspensions' | 'appeals' | 'warnings' | 'audit'
 
@@ -305,8 +306,10 @@ function apiBase(): string {
 }
 
 async function apiGet<T>(params: Record<string, string>): Promise<T> {
-  const qs = new URLSearchParams(params).toString()
-  const r = await fetch(`${apiBase()}?${qs}`, {
+  const qs = Object.entries(params)
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join('&')
+  const r = await platformFetch(`${apiBase()}?${qs}`, {
     method: 'GET',
     headers: { 'x-admin-key': adminKey.value },
   })
@@ -317,7 +320,7 @@ async function apiGet<T>(params: Record<string, string>): Promise<T> {
 }
 
 async function apiPost<T>(body: Record<string, any>): Promise<T> {
-  const r = await fetch(apiBase(), {
+  const r = await platformFetch(apiBase(), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

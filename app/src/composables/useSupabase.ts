@@ -18,6 +18,21 @@ function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise
     .finally(() => clearTimeout(timer))
 }
 
+/*
+ * `platformFetch` — the app-wide adaptive fetch.
+ *
+ * Exported so every module that needs to call our Vercel edge routes
+ * (/api/translate, /api/moderate, /api/realtime-poll, /api/admin, etc.)
+ * can go through the SAME code path Supabase does. On mp-weixin /
+ * mp-qq / mp-baidu / mp-alipay / mp-toutiao this routes through
+ * uni.request via `mpFetch`; on H5 it's the native fetch wrapped in
+ * a 25 s AbortController.
+ *
+ * Rule of thumb inside this repo: **never call globalThis.fetch
+ * directly**. Import `platformFetch` from here instead — otherwise
+ * your call site WILL crash on mp because `fetch` is undefined in
+ * the WeChat runtime.
+ */
 let platformFetch: typeof fetch
 // #ifdef MP-WEIXIN || MP-QQ || MP-BAIDU || MP-ALIPAY || MP-TOUTIAO
 platformFetch = makeMpFetch()
@@ -25,6 +40,8 @@ platformFetch = makeMpFetch()
 // #ifndef MP-WEIXIN || MP-QQ || MP-BAIDU || MP-ALIPAY || MP-TOUTIAO
 platformFetch = fetchWithTimeout as typeof fetch
 // #endif
+
+export { platformFetch }
 
 export function useSupabase() {
   if (!supabase) {

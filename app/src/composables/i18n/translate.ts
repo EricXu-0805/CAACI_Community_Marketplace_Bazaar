@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { platformFetch } from '../useSupabase'
 import type { Lang } from './types'
 
 /*
@@ -65,7 +66,7 @@ export function scheduleAutoTranslate(text: string, target: Lang) {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), 10000)
 
-  fetch(endpoint, {
+  platformFetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, target }),

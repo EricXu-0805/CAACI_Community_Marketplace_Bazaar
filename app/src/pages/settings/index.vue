@@ -177,9 +177,13 @@ async function onChangePassword() {
     content: t('settings.changePasswordHint'),
     success: async (res) => {
       if (!res.confirm) return
-      const redirectTo = typeof window !== 'undefined'
-        ? `${window.location.origin}/`
-        : undefined
+      let redirectTo: string | undefined
+      // #ifdef H5
+      if (typeof window !== 'undefined') redirectTo = `${window.location.origin}/`
+      // #endif
+      // #ifndef H5
+      redirectTo = 'https://caaci-community-marketplace-bazaar.vercel.app/'
+      // #endif
       const { error } = await supabase.auth.resetPasswordForEmail(session.user!.email!, { redirectTo })
       if (error) {
         uni.showToast({ title: error.message, icon: 'none' })

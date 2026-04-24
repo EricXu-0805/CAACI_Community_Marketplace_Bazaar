@@ -1,4 +1,4 @@
-import { useSupabase } from './useSupabase'
+import { useSupabase, platformFetch } from './useSupabase'
 import { MESSAGE_FIELDS } from './useMessages'
 
 /*
@@ -108,7 +108,7 @@ function startLongPoll(opts: LongPollOptions): Unsubscribe {
       /* Slightly longer than the edge function's 20s hold so the edge
          gets a chance to return its final {rows:[]} before we abort. */
       const abortTimer = setTimeout(() => ctrl.abort(), 28000)
-      const r = await fetch(url.toString(), {
+      const r = await platformFetch(url.toString(), {
         method: 'GET',
         headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
         signal: ctrl.signal,
