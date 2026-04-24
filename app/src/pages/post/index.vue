@@ -38,15 +38,11 @@
 
         <view v-if="post.images && post.images.length > 0" class="images">
           <!--
-            widthFix alone is unreliable on uni-app H5: the component adds
-            an inline `height` once the image loads, but combined with any
-            CSS max-height it was previously clipped horizontally on tall
-            photos, producing the "stretched" feel users reported. We drive
-            the layout via `aspect-ratio` when we know the natural ratio
-            (captured via @load below) and fall back to widthFix + the image's
-            intrinsic height. Either way, object-fit stays `contain` so the
-            original aspect is preserved and nothing is ever cropped or
-            stretched — this is the same contract as an Instagram long post.
+            Each image reserves its exact slot via DB-persisted dims
+            (migration 014). widthFix is kept as a belt-and-braces
+            fallback for pre-014 rows whose image_dimensions is null;
+            object-fit: contain guarantees no stretching even when the
+            clamp in dimsToAspectStyle kicks in on extreme uploads.
           -->
           <image
             v-for="(img, i) in post.images"
@@ -54,8 +50,7 @@
             :src="img"
             mode="widthFix"
             class="post-img"
-            :style="postImgStyles[i]"
-            @load="onImgLoad(i, $event)"
+            :style="dimsToAspectStyle(post.image_dimensions, i)"
             @click="previewImage(post.images, i)"
           />
         </view>
@@ -147,6 +142,7 @@ import { useModeration } from '../../composables/useModeration'
 import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
 import { formatTime, friendlyErrorMessage, quickTranslate } from '../../utils'
+import { dimsToAspectStyle } from '../../utils/imgStyle'
 import type { Post, PostComment } from '../../types'
 
 const { t, lang, localize } = useI18n()
@@ -164,29 +160,6 @@ const replyTo = ref<PostComment | null>(null)
 const submitting = ref(false)
 
 const postId = ref('')
-
-/*
- * Per-image style map keyed by array index. We populate aspect-ratio
- * once the image reports its natural dimensions via @load. Until then
- * widthFix is what holds the layout, and the image reserves 0 height —
- * this is a minor CLS but unavoidable without DB-stored dimensions
- * (see docs/audit recommendation: add image_dimensions jsonb column).
- */
-const postImgStyles = ref<Record<number, Record<string, string>>>({})
-
-function onImgLoad(i: number, ev: any) {
-  // uni-app H5 and the native img element both surface naturalWidth/Height
-  // on ev.detail.{width,height} — fall back to the underlying target if not.
-  const detail = ev?.detail || {}
-  const w = detail.width || ev?.target?.naturalWidth || 0
-  const h = detail.height || ev?.target?.naturalHeight || 0
-  if (w > 0 && h > 0) {
-    postImgStyles.value = {
-      ...postImgStyles.value,
-      [i]: { 'aspect-ratio': `${w} / ${h}`, height: 'auto' },
-    }
-  }
-}
 
 /* ---------- AI translation (post content)
    Mirrors the detail-page pattern: cache-first, A文/文A toggle,
