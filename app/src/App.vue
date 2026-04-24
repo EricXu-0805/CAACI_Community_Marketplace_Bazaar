@@ -6,6 +6,28 @@ import { useI18n } from "./composables/useI18n"
 import { useTheme } from "./composables/useTheme"
 import { CURRENT_CONSENT_VERSION } from './legal'
 
+/*
+ * Self-hosted webfonts.
+ *
+ * These used to come from fonts.googleapis.com at runtime — one remote
+ * origin, blocking critical-path CSS, no SRI, and a third-party cookie
+ * dependency that the CSP had to special-case. Fontsource ships the
+ * same faces as npm packages with @font-face + unicode-range + woff2,
+ * Vite bundles the CSS, and the font files land on our own origin so:
+ *   · no 3rd-party DNS/TLS handshake before first paint
+ *   · CSP frame-src/connect-src no longer needs googleapis.com
+ *   · fonts are cacheable under our own asset-hash rules
+ * font-display: swap is baked into each face, so the system fallback
+ * renders immediately and Fraunces / Noto swap in once decoded.
+ *
+ * H5-only: mini-program platforms ignore @font-face webfonts anyway.
+ */
+// #ifdef H5
+import '@fontsource-variable/fraunces/opsz.css'
+import '@fontsource-variable/noto-sans-sc/wght.css'
+import '@fontsource-variable/noto-serif-sc/wght.css'
+// #endif
+
 const { init, currentUser } = useAuth()
 const { t } = useI18n()
 useTheme()
@@ -156,9 +178,13 @@ onLaunch(() => {
  *   · display=swap so we never block LCP behind webfonts; a system
  *     fallback renders immediately and swaps once Fraunces loads.
  * ============================================================ */
-/* #ifdef H5 */
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600&display=swap');
-/* #endif */
+/*
+ * Google Fonts @import removed — webfonts are now self-hosted via
+ * @fontsource packages imported in <script setup> above. Vite
+ * inlines the @font-face declarations + woff2 assets onto our own
+ * origin so there's no fonts.googleapis.com round-trip before first
+ * paint, and the CSP no longer has to whitelist Google Fonts CDNs.
+ */
 
 page {
   /*

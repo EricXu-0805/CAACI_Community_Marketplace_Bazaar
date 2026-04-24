@@ -4,7 +4,6 @@
   "scripts": {
     "dev:custom": "uni -p",
     "dev:h5": "uni",
-
     "dev:mp-alipay": "uni -p mp-alipay",
     "dev:mp-baidu": "uni -p mp-baidu",
     "dev:mp-jd": "uni -p mp-jd",
@@ -20,7 +19,6 @@
     "dev:quickapp-webview-union": "uni -p quickapp-webview-union",
     "build:custom": "uni build -p",
     "build:h5": "uni build",
-
     "build:mp-alipay": "uni build -p mp-alipay",
     "build:mp-baidu": "uni build -p mp-baidu",
     "build:mp-jd": "uni build -p mp-jd",
@@ -53,6 +51,9 @@
     "@dcloudio/uni-mp-weixin": "3.0.0-4080420251103001",
     "@dcloudio/uni-mp-xhs": "3.0.0-4080420251103001",
     "@dcloudio/uni-quickapp-webview": "3.0.0-4080420251103001",
+    "@fontsource-variable/fraunces": "^5.2.9",
+    "@fontsource-variable/noto-sans-sc": "^5.2.10",
+    "@fontsource-variable/noto-serif-sc": "^5.2.10",
     "@supabase/supabase-js": "^2.103.0",
     "vue": "^3.4.21"
   },
