@@ -18,7 +18,7 @@
           :focus="true"
           @confirm="onSubmit"
         />
-        <view v-if="query" class="sf-clear" @click="query = ''">×</view>
+        <view v-if="query" class="sf-clear" role="button" :aria-label="t('a11y.searchClear')" @click="query = ''">×</view>
       </view>
       <text class="cancel-btn" @click="goBack">{{ t('filter.cancel') }}</text>
     </view>
@@ -37,7 +37,7 @@
             @click="pick(h)"
           >
             <text class="chip-text">{{ h }}</text>
-            <view class="chip-x" @click.stop="removeOne(h)"></view>
+            <view class="chip-x" role="button" :aria-label="t('a11y.delete')" @click.stop="removeOne(h)"></view>
           </view>
         </view>
       </view>

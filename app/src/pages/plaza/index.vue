@@ -170,7 +170,7 @@
             </view>
           </view>
         </view>
-        <view v-if="composerAttachedItem" class="comp-attached" @click="composerAttachedItem = null">
+        <view v-if="composerAttachedItem" class="comp-attached" role="button" :aria-label="t('a11y.delete')" @click="composerAttachedItem = null">
           <image
             :src="thumbUrl(composerAttachedItem.images?.[0], 'list') || '/static/placeholder.svg'"
             class="ca-img"

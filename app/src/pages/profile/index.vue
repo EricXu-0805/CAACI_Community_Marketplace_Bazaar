@@ -56,7 +56,7 @@
             </text>
             <text class="user-bio" v-if="currentUser?.bio">{{ currentUser.bio }}</text>
           </view>
-          <view class="edit-btn" @click="onEditProfile">
+          <view class="edit-btn" role="button" :aria-label="t('a11y.edit')" @click="onEditProfile">
             <view class="edit-icon"></view>
           </view>
         </view>

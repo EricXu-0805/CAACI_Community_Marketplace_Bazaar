@@ -12,7 +12,7 @@
         <view class="image-list">
           <view v-for="(img, i) in imageList" :key="i" class="image-item">
             <image :src="img" mode="aspectFill" class="preview-image" />
-            <view class="remove-btn" @click="removeImage(i)">
+            <view class="remove-btn" role="button" :aria-label="t('a11y.delete')" @click="removeImage(i)">
               <view class="remove-x"></view>
             </view>
             <view v-if="i === 0" class="cover-tag">
@@ -102,7 +102,7 @@
       <view class="form-group row">
         <text class="label">{{ t('publish.location') }}</text>
         <input v-model="form.location" :placeholder="t('publish.locationPlaceholder')" class="form-input flex-input" />
-        <view class="loc-detect" @click="onDetectLocation">
+        <view class="loc-detect" role="button" :aria-label="t('a11y.detectLocation')" @click="onDetectLocation">
           <view v-if="detectingLoc" class="loc-spinner"></view>
           <view v-else class="loc-pin"></view>
         </view>

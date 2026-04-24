@@ -170,7 +170,7 @@
     <view :class="['detail-sheet', { open: detailOpen }]">
       <view class="detail-head">
         <text class="detail-title">{{ detailTitle }}</text>
-        <view class="detail-close" @click="detailOpen = false"><text>×</text></view>
+          <view class="detail-close" role="button" aria-label="Close" @click="detailOpen = false"><text>×</text></view>
       </view>
       <scroll-view class="detail-body" scroll-y>
         <view v-if="detailLoading" class="empty"><text>Loading…</text></view>

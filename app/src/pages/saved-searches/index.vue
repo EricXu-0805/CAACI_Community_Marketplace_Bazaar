@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <view class="header">
-      <view class="back-btn" @click="goBack"><view class="back-arrow"></view></view>
+      <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><view class="back-arrow"></view></view>
       <text class="header-title">{{ t('savedSearch.title') }}</text>
     </view>
 
@@ -25,14 +25,14 @@
               </text>
             </view>
           </view>
-          <view class="ss-del" @click="onDelete(s.id)">
+          <view class="ss-del" role="button" :aria-label="t('a11y.delete')" @click="onDelete(s.id)">
             <view class="trash-ico"></view>
           </view>
         </view>
       </view>
     </scroll-view>
 
-    <view class="fab" @click="showForm = true">
+    <view class="fab" role="button" :aria-label="t('a11y.addSavedSearch')" @click="showForm = true">
       <text class="fab-plus">+</text>
     </view>
 

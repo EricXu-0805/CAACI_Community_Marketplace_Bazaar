@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <view class="header">
-      <view class="back-btn" @click="goBack"><view class="back-arrow"></view></view>
+      <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><view class="back-arrow"></view></view>
       <text class="header-title">{{ t('nav.following') }}</text>
     </view>
 

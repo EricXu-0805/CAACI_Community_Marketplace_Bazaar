@@ -1,6 +1,6 @@
 <template>
   <view class="page">
-    <view class="nav-back" @click="goBack">
+    <view class="nav-back" role="button" :aria-label="t('a11y.back')" @click="goBack">
       <view class="back-arrow"></view>
     </view>
     <view class="header">
@@ -58,7 +58,7 @@
             class="form-input pw-input"
             maxlength="72"
           />
-          <view class="pw-toggle" @click="showPw = !showPw" role="button" :aria-label="showPw ? t('login.password') : t('login.password')">
+          <view class="pw-toggle" role="button" :aria-label="t('a11y.passwordToggle')" @click="showPw = !showPw">
             <text>{{ showPw ? '◉' : '○' }}</text>
           </view>
         </view>

@@ -1,9 +1,9 @@
 <template>
   <view class="page">
     <view class="header">
-      <view class="back-btn" @click="goBack"><view class="back-arrow"></view></view>
+      <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><view class="back-arrow"></view></view>
       <text class="header-title">{{ t('plaza.title') }}</text>
-      <view v-if="post && currentUser?.id === post.user_id" class="more-btn" @click="onDelete">
+      <view v-if="post && currentUser?.id === post.user_id" class="more-btn" role="button" :aria-label="t('a11y.more')" @click="onDelete">
         <view class="mb-dot"></view><view class="mb-dot"></view><view class="mb-dot"></view>
       </view>
       <view v-else style="width: 32px;"></view>
@@ -29,6 +29,8 @@
           <view
             v-if="post.content && post.content.trim().length > 0"
             :class="['translate-btn', { loading: translatePending }]"
+            role="button"
+            :aria-label="t('a11y.translate')"
             @click.stop="toggleTranslate"
           >
             <text v-if="!translatePending">{{ translated ? 'A文' : '文A' }}</text>
@@ -56,7 +58,7 @@
         </view>
 
         <view class="stats-row">
-          <view class="stat-btn" @click="onToggleLike">
+          <view class="stat-btn" role="button" :aria-label="post.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click="onToggleLike">
             <image
               :src="post.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'"
               class="heart-img"
@@ -67,7 +69,7 @@
             <view class="bubble-ico"></view>
             <text class="stat-num">{{ post.comment_count }}</text>
           </view>
-          <view class="stat-btn" @click="onShare">
+          <view class="stat-btn" role="button" :aria-label="t('a11y.share')" @click="onShare">
             <view class="share-ico"></view>
           </view>
         </view>
@@ -111,7 +113,7 @@
     <view v-if="post" class="input-wrapper">
       <view v-if="replyTo" class="reply-bar">
         <text class="reply-label">{{ t('plaza.replyingTo') }} @{{ replyTo.profile?.nickname || t('app.user') }}</text>
-        <view class="reply-x" @click="replyTo = null">
+        <view class="reply-x" role="button" :aria-label="t('a11y.close')" @click="replyTo = null">
           <view class="rx-inner"></view>
         </view>
       </view>

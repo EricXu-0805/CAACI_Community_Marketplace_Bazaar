@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <view class="header">
-      <view class="back-btn" @click="goBack"><view class="back-arrow"></view></view>
+      <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><view class="back-arrow"></view></view>
       <text class="header-title">{{ t('notif.title') }}</text>
       <text v-if="notifications.length > 0" class="mark-all" @click="onMarkAll">{{ t('notif.markAll') }}</text>
     </view>
