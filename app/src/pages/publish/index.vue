@@ -472,10 +472,14 @@ async function onSubmit() {
     let uploadedDims: Array<{ w: number; h: number }> = []
     if (toUpload.length > 0) {
       try {
+        console.log('[publish-debug] toUpload paths:', toUpload)
         const res = await uploadImagesWithDims(toUpload)
         uploaded = res.urls
         uploadedDims = res.dims
+        console.log('[publish-debug] uploadImagesWithDims returned urls:', uploaded)
+        console.log('[publish-debug] uploadImagesWithDims returned dims:', JSON.stringify(uploadedDims))
       } catch (upErr: any) {
+        console.error('[publish-debug] uploadImagesWithDims threw:', upErr)
         throw new Error(upErr?.message || t('publish.uploadFailed'))
       }
       uploadProgress.value = 100
@@ -504,9 +508,13 @@ async function onSubmit() {
      * consumers can distinguish "unknown" from "0×0".
      */
     const existingDims: Array<{ w: number; h: number } | null> = existing.map(() => null)
+    console.log('[publish-debug] existingDims (pre-filter):', JSON.stringify(existingDims))
+    console.log('[publish-debug] uploadedDims (pre-filter):', JSON.stringify(uploadedDims))
     const finalDims = [...existingDims, ...uploadedDims].filter(
       (d): d is { w: number; h: number } => !!d && d.w > 0 && d.h > 0,
     )
+    console.log('[publish-debug] finalDims (post-filter):', JSON.stringify(finalDims))
+    console.log('[publish-debug] finalDims length:', finalDims.length, '/ images length:', images.length)
 
     const trimmedTitle = form.title.trim()
     const trimmedDesc = form.description.trim()
@@ -532,6 +540,8 @@ async function onSubmit() {
       negotiable: form.negotiable,
       location_verified: locationVerified.value,
     }
+    console.log('[publish-debug] payload.images:', payload.images)
+    console.log('[publish-debug] payload.image_dimensions:', JSON.stringify(payload.image_dimensions))
 
     if (isEdit.value) {
       await updateItem(editId.value, { ...payload })
