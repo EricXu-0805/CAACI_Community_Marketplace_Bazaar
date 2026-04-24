@@ -151,8 +151,7 @@ npm run build:mp-weixin
 
 ## 7. Submission checklist (when you're ready)
 
-- [x] `appid` filled in `manifest.json` (`wx35fabaf23507f171`, landed
-      with commit b345015)
+- [x] `appid` filled in `manifest.json` (`wxc3da81aa8852a6ff`)
 - [ ] All four domain lists populated on mp.weixin.qq.com
 - [ ] `setting.urlCheck` left as `false` in manifest (the real
       check happens server-side during upload)
