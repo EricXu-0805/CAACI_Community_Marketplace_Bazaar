@@ -26,7 +26,7 @@
             :lazy-load="i > 0"
           />
           <view v-if="titleOf(b)" class="banner-label">
-            <text>{{ titleOf(b) }}</text>
+            <text class="banner-label-text">{{ titleOf(b) }}</text>
           </view>
         </view>
       </swiper-item>
@@ -107,10 +107,16 @@ function onTap(b: Banner) {
   padding: 22px 14px 14px;
   background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.42) 100%);
   pointer-events: none;
-  text {
-    font-size: 13px; color: #fff; font-weight: 600;
-    letter-spacing: 0.02em;
-  }
+}
+/*
+ * Explicit class instead of nested `text { }` so the compiled output
+ * stays inside the component-WXSS whitelist (.class only; tag name
+ * selectors are banned inside isComponent:true SFCs). See the same
+ * pattern in CustomTabBar.badge-count.
+ */
+.banner-label-text {
+  font-size: 13px; color: #fff; font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .banner-skeleton {

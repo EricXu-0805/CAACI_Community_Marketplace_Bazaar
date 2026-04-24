@@ -37,8 +37,8 @@
       <view class="ico-wrap">
         <view :class="['ico', 'ico-msg', { active: current === 'messages' }]"></view>
         <view v-if="unreadCount > 0" class="badge-dot">
-          <text v-if="unreadCount <= 99">{{ unreadCount }}</text>
-          <text v-else>99+</text>
+          <text v-if="unreadCount <= 99" class="badge-count">{{ unreadCount }}</text>
+          <text v-else class="badge-count">99+</text>
         </view>
         <view v-else-if="hasMutedUnread" class="badge-dot-only"></view>
       </view>
@@ -186,7 +186,14 @@ function go(url: string) { uni.switchTab({ url }) }
   display: flex; align-items: center; justify-content: center;
   border: 1.5px solid var(--parchment);
 }
-.badge-dot text {
+/*
+ * Use an explicit class (.badge-count) instead of targeting the <text>
+ * tag. Component WXSS in mp-weixin forbids tag name selectors — only
+ * .class, ::before, ::after are allowed inside a component's style
+ * block. Page-level WXSS is more lenient but CustomTabBar is an
+ * isComponent:true SFC so it falls under the stricter grammar.
+ */
+.badge-dot .badge-count {
   font-size: 9px; color: #fff; font-weight: 700; line-height: 1;
   font-family: var(--font-mono, 'SF Mono', Menlo, monospace);
 }
