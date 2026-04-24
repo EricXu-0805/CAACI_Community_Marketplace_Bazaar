@@ -11,16 +11,35 @@ export { SUPPORTED_LANGS, DEFAULT_LANG } from './i18n/types'
 
 const currentLang = ref<Lang>(DEFAULT_LANG)
 
-try {
-  const saved = coerceLang(uni.getStorageSync('lang'))
-  if (saved) {
-    currentLang.value = saved
-  } else {
-    currentLang.value = detectSystemLang()
-  }
-} catch {}
+/*
+ * Lang resolution is deferred until the FIRST useI18n() call, not run
+ * at module-import time. On mp-weixin, modules are imported during
+ * the WeChat service-thread bootstrap — calling uni.getStorageSync
+ * and uni.getSystemInfoSync at that point used to race with the
+ * runtime's own setData handshake and contributed to the
+ * `WAServiceMainContext.js timeout` blank-screen we hit on 3.15.x.
+ *
+ * Lazy init is idempotent (the boolean guard), so the first page
+ * setup() call pays a one-time cost and every subsequent useI18n()
+ * call short-circuits. H5 is unaffected — there's no service-thread
+ * boundary to race with there.
+ */
+let langInitialized = false
+function ensureLangInit() {
+  if (langInitialized) return
+  langInitialized = true
+  try {
+    const saved = coerceLang(uni.getStorageSync('lang'))
+    if (saved) {
+      currentLang.value = saved
+    } else {
+      currentLang.value = detectSystemLang()
+    }
+  } catch {}
+}
 
 export function useI18n() {
+  ensureLangInit()
   function t(key: string, params?: Record<string, string | number>): string {
     const primary = messages[currentLang.value]?.[key]
     const fallback = messages[DEFAULT_LANG]?.[key]
