@@ -335,17 +335,14 @@ export function useItems() {
         p.then(v => { clearTimeout(timer); resolve(v) }, e => { clearTimeout(timer); reject(e) })
       })
 
-    console.log('[upload-debug] uploadImagesWithDims starting, tempFiles count:', tempFiles.length)
     for (const filePath of tempFiles) {
       const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`
       const storagePath = `items/${session.user.id}/${fileName}`
 
       try {
-        console.log('[upload-debug] processing filePath:', filePath?.slice(0, 80))
         // Measure before compression so the stored w/h is the author's
         // real photo aspect, not a rounded canvas output. Swallows errors.
         const naturalDims = await getImageDimensions(filePath)
-        console.log('[upload-debug] naturalDims for', filePath?.slice(0, 40), '→', naturalDims)
 
         let uploadError: any = null
 
@@ -404,16 +401,14 @@ export function useItems() {
             .getPublicUrl(storagePath)
           urls.push(urlData.publicUrl)
           dims.push(naturalDims)
-          console.log('[upload-debug] pushed url + dims:', urlData.publicUrl.slice(-40), naturalDims)
         } else {
-          console.warn('[upload-debug] Upload rejected for', filePath?.slice(0, 40), uploadError)
+          console.warn('Upload rejected for', filePath, uploadError)
         }
       } catch (err) {
-        console.warn('[upload-debug] Upload error for', filePath?.slice(0, 40), err)
+        console.warn('Upload error for', filePath, err)
       }
     }
 
-    console.log('[upload-debug] uploadImagesWithDims final: urls.length =', urls.length, ', dims =', JSON.stringify(dims))
     return { urls, dims }
   }
 
