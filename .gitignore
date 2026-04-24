@@ -41,12 +41,30 @@ project.config.json
 project.private.config.json
 
 # Ad-hoc analysis scratch (kept local, not committed)
+# Background-agent audits drop output at the project root; we sweep
+# them into _ai_notes/ before commit. The patterns below catch the
+# ones we've seen so they don't slip into a commit accidentally.
 _ai_notes/
-IMAGE_ANALYSIS_INDEX.md
-IMAGE_RENDERING_ANALYSIS.md
-IMAGE_RENDERING_QUICK_SUMMARY.txt
+*_AUDIT.md
+*_AUDIT_*.md
+*_AUDIT.txt
+*_AUDIT_*.txt
+*_SUMMARY.md
+*_SUMMARY.txt
+*_REPORT.md
+*_FIXES.md
+AUDIT_*.md
+AUDIT_*.txt
 DESIGN_TOKENS_*.md
 DESIGN_TOKENS_*.txt
-SECURITY_AUDIT_INDEX.md
-SECURITY_AUDIT.md
-SECURITY_SUMMARY.txt
+DESIGN_TOKEN_*.md
+DESIGN_SYSTEM_*.md
+DARK_MODE_*.md
+DARK_MODE_*.txt
+IMAGE_ANALYSIS_*.md
+IMAGE_RENDERING_*.md
+IMAGE_RENDERING_*.txt
+PERFORMANCE_*.md
+PERFORMANCE_*.txt
+UI_*.md
+EXPLORATION_*.md
