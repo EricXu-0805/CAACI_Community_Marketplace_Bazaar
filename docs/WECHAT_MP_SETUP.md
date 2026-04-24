@@ -199,7 +199,7 @@ Project Settings → Environment Variables → add for **Production + Preview**:
 |---|---|---|
 | `WECHAT_APPID` | mp.weixin.qq.com → 开发管理 → 开发设置 → AppID | Same value already in `src/manifest.json` — OK to bundle either side. |
 | `WECHAT_APPSECRET` | same page, click "生成" if first time, save immediately | **SERVER ONLY.** If you ever paste this into a git-tracked file, re-gen it immediately. |
-| `SUPABASE_JWT_SECRET` | Supabase Dashboard → Settings → API → "JWT Secret" | **SERVER ONLY.** This is the key that signs EVERY Supabase session — treat it like root. Rotating it invalidates every live session. |
+| `SUPABASE_JWT_SECRET` | Supabase Dashboard → Settings → API → "JWT Secret" | **SERVER ONLY.** This is the key that signs EVERY Supabase session — treat it like root. Rotating it invalidates every live session. Also confirm the project still uses the default **HS256** algorithm (Settings → API → "JWT Settings" → "Algorithm"). The edge route signs HS256; if you've opted your project into asymmetric keys (RS256 / ES256), the minted JWT will be rejected by GoTrue and WeChat sign-in will silently fail to establish a session. Migration to asymmetric would require rewriting `mintSupabaseJwt` in `api/auth/wechat-login.js` to sign with a private key. |
 
 `SUPABASE_SERVICE_ROLE_KEY` is assumed already set (the other admin
 endpoints use it). `SUPABASE_URL` is already set.

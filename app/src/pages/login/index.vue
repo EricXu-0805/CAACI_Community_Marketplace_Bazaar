@@ -13,7 +13,7 @@
 
     <view class="form">
       <!-- #ifdef MP-WEIXIN -->
-      <button class="wx-btn" :disabled="loading" open-type="getUserInfo" @click="onWeChatLogin">
+      <button class="wx-btn" :disabled="loading" @click="onWeChatLogin">
         <text class="wx-icon">✦</text>
         <text>{{ loading ? t('login.wait') : t('login.wechatQuick') }}</text>
       </button>
