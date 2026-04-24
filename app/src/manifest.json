@@ -42,8 +42,7 @@
         "usingComponents": true,
         "lazyCodeLoading": "requiredComponents",
         "requiredPrivateInfos": [
-            "chooseImage",
-            "chooseMedia"
+            "getLocation"
         ],
         "permission": {
             "scope.userLocation": {
