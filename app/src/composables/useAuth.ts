@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { useSupabase } from './useSupabase'
+import { useSupabase, platformFetch } from './useSupabase'
 import { useModeration } from './useModeration'
 import { deviceFingerprintHash, deviceUASnippet } from '../utils/fingerprint'
 import type { Profile } from '../types'
@@ -140,6 +140,48 @@ export function useAuth() {
     }
   }
 
+  async function signInWithWeChat(): Promise<{ data: any; error: any }> {
+    // #ifndef MP-WEIXIN
+    return { data: null, error: new Error('wechat_login_only_available_on_mp_weixin') }
+    // #endif
+    // #ifdef MP-WEIXIN
+    loading.value = true
+    try {
+      const code: string = await new Promise((resolve, reject) => {
+        uni.login({
+          provider: 'weixin',
+          success: (res: any) => res?.code ? resolve(res.code) : reject(new Error('no_code')),
+          fail: (err: any) => reject(new Error(err?.errMsg || 'wx_login_failed')),
+        })
+      })
+
+      const endpoint = 'https://caaci-community-marketplace-bazaar.vercel.app/api/auth/wechat-login'
+      const res = await platformFetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ js_code: code }),
+      })
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({}))
+        throw new Error(detail?.error || `http_${res.status}`)
+      }
+      const payload = await res.json()
+      if (!payload?.access_token) throw new Error('no_access_token')
+
+      const { error } = await supabase.auth.setSession({
+        access_token: payload.access_token,
+        refresh_token: payload.refresh_token || payload.access_token,
+      })
+      if (error) throw error
+      return { data: payload, error: null }
+    } catch (error: any) {
+      return { data: null, error }
+    } finally {
+      loading.value = false
+    }
+    // #endif
+  }
+
   async function signOut() {
     const { clearBlocked } = useModeration()
     await supabase.auth.signOut()
@@ -214,6 +256,7 @@ export function useAuth() {
     init,
     signUp,
     signIn,
+    signInWithWeChat,
     signOut,
     updateProfile,
     requireAuth,

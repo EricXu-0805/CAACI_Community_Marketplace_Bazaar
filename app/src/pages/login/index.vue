@@ -12,6 +12,18 @@
     </view>
 
     <view class="form">
+      <!-- #ifdef MP-WEIXIN -->
+      <button class="wx-btn" :disabled="loading" open-type="getUserInfo" @click="onWeChatLogin">
+        <text class="wx-icon">✦</text>
+        <text>{{ loading ? t('login.wait') : t('login.wechatQuick') }}</text>
+      </button>
+      <view class="or-divider">
+        <view class="or-line"></view>
+        <text class="or-text">{{ t('login.orEmail') }}</text>
+        <view class="or-line"></view>
+      </view>
+      <!-- #endif -->
+
       <view class="tab-bar">
         <view :class="['tab', { active: mode === 'login' }]" @click="mode = 'login'">
           <text>{{ t('login.signIn') }}</text>
@@ -98,7 +110,7 @@ import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 
 const { t } = useI18n()
-const { signIn, signUp, loading } = useAuth()
+const { signIn, signUp, signInWithWeChat, loading } = useAuth()
 
 const mode = ref<'login' | 'signup'>('login')
 const email = ref('')
@@ -135,6 +147,21 @@ function goLegal(type: string) {
 
 function goBack() {
   uni.navigateBack({ fail: () => uni.switchTab({ url: '/pages/index/index' }) })
+}
+
+async function onWeChatLogin() {
+  if (loading.value) return
+  const { error } = await signInWithWeChat()
+  if (error) {
+    uni.showToast({
+      title: error?.message ? `${t('login.wechatFail')}: ${error.message}` : t('login.wechatFail'),
+      icon: 'none',
+      duration: 3000,
+    })
+    return
+  }
+  uni.showToast({ title: t('login.loginOk'), icon: 'success' })
+  setTimeout(() => uni.reLaunch({ url: '/pages/index/index' }), 800)
 }
 
 async function onSubmit() {
@@ -287,6 +314,32 @@ async function onSubmit() {
   letter-spacing: 0.01em;
   &[disabled] { opacity: 0.35; }
   &:active { opacity: 0.8; }
+}
+
+.wx-btn {
+  width: 100%; height: 48px;
+  background: #07C160; color: #fff;
+  border-radius: 24px; font-size: 15px; font-weight: 600;
+  margin-top: 8px; border: none;
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px; letter-spacing: 0.01em;
+  &[disabled] { opacity: 0.45; }
+  &:active { opacity: 0.85; }
+}
+.wx-icon {
+  font-size: 18px; line-height: 1;
+}
+
+.or-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 22px 0 6px;
+}
+.or-line {
+  flex: 1; height: 1px; background: var(--border);
+}
+.or-text {
+  font-size: 12px; color: var(--ink-quiet);
+  letter-spacing: 0.04em;
 }
 
 .agreement-row {

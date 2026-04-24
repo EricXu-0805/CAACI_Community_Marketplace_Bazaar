@@ -151,16 +151,119 @@ npm run build:mp-weixin
 
 ## 7. Submission checklist (when you're ready)
 
-- [ ] `appid` filled in `manifest.json`
+- [x] `appid` filled in `manifest.json` (`wx35fabaf23507f171`, landed
+      with commit b345015)
 - [ ] All four domain lists populated on mp.weixin.qq.com
 - [ ] `setting.urlCheck` left as `false` in manifest (the real
       check happens server-side during upload)
-- [ ] `requiredPrivateInfos` includes every API you actually call
-      (chooseImage, chooseMedia, getLocation if used)
+- [x] `requiredPrivateInfos` includes every API you actually call
+      (chooseImage, chooseMedia — see manifest.json)
 - [ ] Tested on a physical phone via DevTools → 真机调试
 - [ ] Privacy agreement page (§3 of our Privacy Policy already
       covers this — point the mp privacy section at /pages/legal)
 - [ ] Operator info / ICP beian filed (required for any mp used
       by people in mainland China)
+- [ ] §8 below: WECHAT_APPSECRET + SUPABASE_JWT_SECRET env vars
+      set on Vercel (required for wx.login to function at all)
 
 Allow ~3–5 business days for WeChat's first review.
+
+## 8. wx.login silent sign-in — deployment guide
+
+Scaffolding: migration 034 (`034_wechat_auth_support.sql`) + edge route
+(`api/auth/wechat-login.js`) + front-end (`composables/useAuth.ts`
+`signInWithWeChat()`, button in `pages/login/index.vue`). Landing the
+code is not enough — you must also provision three secrets and apply
+the migration. Do these in order; skipping §8.1 makes §8.2 return 503.
+
+### 8.1 Apply migration 034
+
+Supabase SQL Editor:
+
+```sql
+-- From repo root:
+--   supabase/migrations/034_wechat_auth_support.sql
+-- Or via CLI:
+supabase db push
+```
+
+This is additive only:
+- `profiles.wechat_unionid TEXT UNIQUE` column
+- `public.upsert_wechat_user(openid, unionid, nickname, avatar)` RPC
+
+### 8.2 Provision three env vars on Vercel
+
+Project Settings → Environment Variables → add for **Production + Preview**:
+
+| Name | Value source | Guard-rails |
+|---|---|---|
+| `WECHAT_APPID` | mp.weixin.qq.com → 开发管理 → 开发设置 → AppID | Same value already in `src/manifest.json` — OK to bundle either side. |
+| `WECHAT_APPSECRET` | same page, click "生成" if first time, save immediately | **SERVER ONLY.** If you ever paste this into a git-tracked file, re-gen it immediately. |
+| `SUPABASE_JWT_SECRET` | Supabase Dashboard → Settings → API → "JWT Secret" | **SERVER ONLY.** This is the key that signs EVERY Supabase session — treat it like root. Rotating it invalidates every live session. |
+
+`SUPABASE_SERVICE_ROLE_KEY` is assumed already set (the other admin
+endpoints use it). `SUPABASE_URL` is already set.
+
+After setting, redeploy (push an empty commit or hit "Redeploy" in
+Vercel dashboard). Env-var changes do not propagate to running
+functions until next deploy.
+
+### 8.3 Add domain to mp.weixin.qq.com allow-list
+
+§2 lists the four domain categories. Adding `/api/auth/wechat-login`
+needs:
+
+- **request 合法域名**: `https://caaci-community-marketplace-bazaar.vercel.app`
+  (already required for /api/moderate and /api/translate)
+
+No new entry needed — the domain is shared with existing endpoints.
+
+### 8.4 Test in WeChat DevTools
+
+```bash
+npm run build:mp-weixin
+# DevTools → Import project → app/dist/build/mp-weixin/
+# 详情 → 本地设置 → 勾 "不校验合法域名" (dev only)
+# Click login page → "微信一键登录" button
+```
+
+Expected happy path:
+1. Click "微信一键登录" → DevTools simulates wx.login and returns a code
+2. Edge function exchanges code → openid (if AppSecret is wrong or
+   code is fake, you'll see `wechat_exchange_failed` and a `wxErrcode`
+   — look it up in the [WeChat error code table][wxerr])
+3. profiles row is found or created; JWT minted; client session set
+4. Page reLaunches to home; you should see profile.wechat_openid
+   populated in Supabase table editor
+
+[wxerr]: https://developers.weixin.qq.com/miniprogram/dev/framework/server-ability/backend-api.html
+
+### 8.5 Known limitations of the current skeleton
+
+The Phase 3 skeleton is deliberately narrow — enough to sign users
+in, not enough to handle every edge case. Before inviting real
+users, expand:
+
+- **No account linking.** An email user who later signs in with
+  WeChat will get a SEPARATE profile row. No UX to merge them
+  yet. Short-term workaround: force users to pick one identity
+  per device. Long-term: add a settings page action "bind WeChat
+  to this account" that sends the js_code along with the current
+  email session JWT, and have the edge function merge if and only
+  if the email session matches.
+- **No replay protection.** WeChat's `jscode2session` single-uses
+  the code, which is the main guard, but we should still throttle
+  per-IP at the edge.
+- **1h JWT, no refresh rotation.** The client re-calls `wx.login`
+  on 401 (silent on mp). If the user backgrounds the app for >1h
+  and opens it, there will be one quiet re-auth round-trip before
+  the first REST call succeeds.
+- **No user profile fetch from WeChat.** We accept `nickname` and
+  `avatar_url` from the client, but the client has to call
+  `wx.getUserProfile` first and pass them in. The current login
+  button does not do this — it just wx.logins for openid. Add
+  nickname/avatar capture to the button if you want prefilled
+  profiles.
+- **No unionid cross-app logic.** If you ever ship a second
+  mp-weixin app with the same open-platform account, link the
+  two by unionid in a separate migration 035.
