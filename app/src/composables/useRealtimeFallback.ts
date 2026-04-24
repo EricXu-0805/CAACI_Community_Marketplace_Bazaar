@@ -1,5 +1,5 @@
 import { useSupabase, platformFetch } from './useSupabase'
-import { MESSAGE_FIELDS } from './useMessages'
+import { MESSAGE_FIELDS } from './useMessages.constants'
 
 /*
  * Realtime abstraction with three tiers:

@@ -3,6 +3,7 @@ import { useSupabase } from './useSupabase'
 import { useModeration } from './useModeration'
 import { useI18n } from './useI18n'
 import { subscribeToConversation as subscribeToConversationFallback } from './useRealtimeFallback'
+import { MESSAGE_FIELDS } from './useMessages.constants'
 import type { Conversation, Message } from '../types'
 import { checkContent, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
 
@@ -12,8 +13,12 @@ import { checkContent, isLocalDuplicate, remoteModerate } from '../utils/content
  * adds tos_version, flagged_at, etc) starts shipping down the wire
  * even when no UI surface consumes it. Named lists keep payloads lean
  * and make it obvious where to update when a new read dependency lands.
+ *
+ * MESSAGE_FIELDS lives in ./useMessages.constants to break a Vite
+ * chunker cycle with useRealtimeFallback. Re-exported here so external
+ * callers keep the single import site.
  */
-export const MESSAGE_FIELDS = 'id, conversation_id, sender_id, content, message_type, is_read, created_at' as const
+export { MESSAGE_FIELDS }
 export const CONVERSATION_FIELDS =
   'id, item_id, buyer_id, seller_id, last_message_at, created_at, is_pinned_buyer, is_pinned_seller, is_muted_buyer, is_muted_seller' as const
 
