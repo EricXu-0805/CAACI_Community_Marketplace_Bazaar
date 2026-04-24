@@ -310,7 +310,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { useItems } from '../../composables/useItems'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
@@ -694,6 +694,15 @@ onShow(() => {
     }, 50)
   }
 })
+
+onShareAppMessage(() => ({
+  title: 'Illini Market · UIUC 校园二手交易',
+  path: '/pages/index/index',
+}))
+
+onShareTimeline(() => ({
+  title: 'Illini Market · UIUC 校园二手交易',
+}))
 
 function loadMore() {
   if (loading.value || !hasMore.value) return

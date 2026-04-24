@@ -83,7 +83,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
@@ -107,6 +107,26 @@ const blocked = ref(false)
 
 const isOwnProfile = computed(() => currentUser.value?.id && seller.value?.id === currentUser.value.id)
 const activeCount = computed(() => sellerItems.value.length)
+
+onShareAppMessage(() => {
+  const s = seller.value
+  if (!s) return { title: 'Illini Market · UIUC 校园二手交易', path: '/pages/index/index' }
+  return {
+    title: `${s.nickname || '商家'} 的 Illini Market 主页`,
+    path: `/pages/seller/index?id=${s.id}`,
+    imageUrl: s.avatar_url || '',
+  }
+})
+
+onShareTimeline(() => {
+  const s = seller.value
+  if (!s) return { title: 'Illini Market · UIUC 校园二手交易' }
+  return {
+    title: `${s.nickname || '商家'} 的 Illini Market 主页`,
+    query: `id=${s.id}`,
+    imageUrl: s.avatar_url || '',
+  }
+})
 
 async function onToggleFollow() {
   if (!requireAuth() || !seller.value) return

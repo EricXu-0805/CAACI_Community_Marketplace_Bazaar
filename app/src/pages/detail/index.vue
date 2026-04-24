@@ -246,7 +246,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { useItems } from '../../composables/useItems'
 import { useHistory } from '../../composables/useHistory'
 import { useSupabase } from '../../composables/useSupabase'
@@ -489,6 +489,36 @@ onLoad(async (options) => {
   } catch (error: any) {
     console.error('Detail load error:', error)
     if (alive) notFound.value = true
+  }
+})
+
+/*
+ * WeChat mp share card. H5 never fires these hooks (no-op on web) —
+ * the existing navigator.share / setClipboardData path in onShare()
+ * handles H5 sharing. On mp, tapping the top-right "···" → "转发" uses
+ * onShareAppMessage; "分享到朋友圈" uses onShareTimeline. Both return
+ * a snapshot of the item; if item hasn't loaded yet we return a
+ * generic app-level card so the share never appears empty.
+ */
+onShareAppMessage(() => {
+  const it = item.value
+  if (!it) return { title: 'Illini Market · UIUC 校园二手交易', path: '/pages/index/index' }
+  const priceLabel = it.price && it.price > 0 ? `$${it.price}` : t('home.free')
+  return {
+    title: `${priceLabel} · ${it.title}`,
+    path: `/pages/detail/index?id=${it.id}`,
+    imageUrl: it.images?.[0] ? thumbUrl(it.images[0], 'card') : '',
+  }
+})
+
+onShareTimeline(() => {
+  const it = item.value
+  if (!it) return { title: 'Illini Market · UIUC 校园二手交易' }
+  const priceLabel = it.price && it.price > 0 ? `$${it.price}` : t('home.free')
+  return {
+    title: `${priceLabel} · ${it.title}`,
+    query: `id=${it.id}`,
+    imageUrl: it.images?.[0] ? thumbUrl(it.images[0], 'card') : '',
   }
 })
 

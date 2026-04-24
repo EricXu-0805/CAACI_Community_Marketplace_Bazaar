@@ -137,7 +137,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
 import { usePlaza } from '../../composables/usePlaza'
@@ -236,6 +236,28 @@ watch(lang, async () => {
 onLoad((options) => {
   if (options?.id) {
     postId.value = options.id as string
+  }
+})
+
+onShareAppMessage(() => {
+  const p = post.value
+  if (!p) return { title: '校园广场 · Illini Market', path: '/pages/plaza/index' }
+  const firstLine = (p.content || '').split('\n')[0].slice(0, 50).trim() || '校园广场 · Illini Market'
+  return {
+    title: firstLine,
+    path: `/pages/post/index?id=${p.id}`,
+    imageUrl: p.images?.[0] || '',
+  }
+})
+
+onShareTimeline(() => {
+  const p = post.value
+  if (!p) return { title: '校园广场 · Illini Market' }
+  const firstLine = (p.content || '').split('\n')[0].slice(0, 50).trim() || '校园广场 · Illini Market'
+  return {
+    title: firstLine,
+    query: `id=${p.id}`,
+    imageUrl: p.images?.[0] || '',
   }
 })
 

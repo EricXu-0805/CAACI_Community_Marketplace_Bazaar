@@ -258,7 +258,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
+import { onShow, onPullDownRefresh, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import DesktopNav from '../../components/DesktopNav.vue'
@@ -320,6 +320,26 @@ function myImgStyleFor(id: string): Record<string, string> {
 
 const listedItems = computed(() => myItems.value.filter(i => i.status !== 'sold'))
 const soldItems = computed(() => myItems.value.filter(i => i.status === 'sold'))
+
+onShareAppMessage(() => {
+  const u = currentUser.value
+  if (!u) return { title: 'Illini Market · UIUC 校园二手交易', path: '/pages/index/index' }
+  return {
+    title: `${u.nickname || '我'} 的 Illini Market 主页`,
+    path: `/pages/seller/index?id=${u.id}`,
+    imageUrl: u.avatar_url || '',
+  }
+})
+
+onShareTimeline(() => {
+  const u = currentUser.value
+  if (!u) return { title: 'Illini Market · UIUC 校园二手交易' }
+  return {
+    title: `${u.nickname || '我'} 的 Illini Market 主页`,
+    query: `id=${u.id}`,
+    imageUrl: u.avatar_url || '',
+  }
+})
 
 onShow(async () => {
   loadBrowsedCount()

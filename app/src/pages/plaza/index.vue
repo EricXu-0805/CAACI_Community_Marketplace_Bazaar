@@ -279,6 +279,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
@@ -299,6 +300,15 @@ const { t, lang, localize } = useI18n()
 const { currentUser, isLoggedIn, requireAuth } = useAuth()
 const { posts, loading, hasMore, fetchPosts, createPost, updatePostI18n, deletePost, toggleLike, fetchComments, createComment, deleteComment, fetchMyActiveItems } = usePlaza()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
+
+onShareAppMessage(() => ({
+  title: '校园广场 · Illini Market',
+  path: '/pages/plaza/index',
+}))
+
+onShareTimeline(() => ({
+  title: '校园广场 · Illini Market',
+}))
 
 const refreshing = ref(false)
 const pageIdx = ref(0)
