@@ -208,6 +208,34 @@ After setting, redeploy (push an empty commit or hit "Redeploy" in
 Vercel dashboard). Env-var changes do not propagate to running
 functions until next deploy.
 
+**Verify the env vars actually reached the edge function** without
+opening WeChat DevTools. The endpoint has a GET health branch that
+returns a boolean per env var (never leaks values):
+
+```bash
+curl https://caaci-community-marketplace-bazaar.vercel.app/api/auth/wechat-login
+```
+
+Expect:
+
+```json
+{
+  "endpoint": "wechat-login",
+  "configured": {
+    "WECHAT_APPID": true,
+    "WECHAT_APPSECRET": true,
+    "SUPABASE_URL": true,
+    "SUPABASE_SERVICE_ROLE_KEY": true,
+    "SUPABASE_JWT_SECRET": true
+  },
+  "ready": true
+}
+```
+
+Any `false` means that var did not land on the deploy. Double-check
+it's set on both Production + Preview environments and that you
+triggered a new deploy after setting.
+
 ### 8.3 Add domain to mp.weixin.qq.com allow-list
 
 §2 lists the four domain categories. Adding `/api/auth/wechat-login`

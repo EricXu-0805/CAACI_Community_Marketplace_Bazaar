@@ -188,6 +188,21 @@ async function bindWechatIdentity(openid, unionid, nickname, avatar) {
 
 export default async function handler(request) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204 })
+
+  if (request.method === 'GET') {
+    return json({
+      endpoint: 'wechat-login',
+      configured: {
+        WECHAT_APPID:              !!WECHAT_APPID,
+        WECHAT_APPSECRET:          !!WECHAT_APPSECRET,
+        SUPABASE_URL:              !!SUPABASE_URL,
+        SUPABASE_SERVICE_ROLE_KEY: !!SUPABASE_SERVICE,
+        SUPABASE_JWT_SECRET:       !!SUPABASE_JWT_SECRET,
+      },
+      ready: !!(WECHAT_APPID && WECHAT_APPSECRET && SUPABASE_URL && SUPABASE_SERVICE && SUPABASE_JWT_SECRET),
+    })
+  }
+
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405)
 
   if (!WECHAT_APPID || !WECHAT_APPSECRET) return json({ error: 'wechat_not_configured' }, 503)
