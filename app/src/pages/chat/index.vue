@@ -714,14 +714,19 @@ function scrollToBottom() {
   box-sizing: border-box;
 }
 .msg-image {
-  /* widthFix + max-width keeps chat photos bubble-sized no matter what
-     the source dimensions are. Adding max-height stops a pathological
-     1:5 portrait from blowing out the row. height:auto + display:block
-     make sure no browser quirks around inline-image baselines kick in. */
+  /* widthFix handles the common case (natural-ratio photo in a 200px
+     bubble). The max-height: 60vh cap is the belt: a 1:5 full-phone
+     screenshot used to blow past an entire viewport inside the thread
+     and push every earlier message off-screen. Clamped to 60% of the
+     viewport's height it fills the bubble prominently without hijacking
+     the scroll. object-fit: contain is the braces — once max-height
+     clamps the box, contain keeps the screenshot letterboxed instead
+     of stretched. */
   max-width: 200px;
-  max-height: 280px;
+  max-height: 60vh;
   height: auto;
   display: block;
+  object-fit: contain;
   border-radius: 12px;
   background: var(--bg-inset);
 }
