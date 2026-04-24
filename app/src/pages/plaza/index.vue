@@ -81,24 +81,18 @@
               :class="['post-images', `pi-n${Math.min(post.images.length, 4)}`]"
             >
               <!--
-                Single-image posts drop into pi-n1 (contain + max-height).
-                Multi-image posts render in a 2/3-col grid. We used to hard-
-                code aspect-ratio:1 + object-fit:cover, which sliced the
-                sides off any photo that wasn't square — the very "only
-                the middle strip is kept" symptom users reported. Instead
-                we track each image's natural ratio via @load and apply
-                it inline; pi-n1 stays unconstrained, grid cells use the
-                first image's ratio as a tidy default (falls back to 4/5,
-                the most common phone-photo aspect).
+                Each slot reserves its exact aspect ratio from the DB-persisted
+                post.image_dimensions (migration 014). Unknown slots fall back
+                to 4/5 via dimsToAspectStyle's default; clamp [0.4, 2.5] stops
+                freak panoramas from stretching a cell.
               -->
               <img
                 v-for="(img, i) in post.images"
                 :key="i"
                 :src="thumbUrl(img, 'card')"
                 class="post-image"
-                :style="postImgStyleFor(post, i)"
+                :style="dimsToAspectStyle(post.image_dimensions, i)"
                 loading="lazy"
-                @load="onPostImgLoad(post.id, i, $event)"
                 @click.stop="previewImage(post.images, i)"
               />
             </view>
@@ -292,6 +286,7 @@ import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
 import type { Post, PostComment } from '../../types'
 import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl } from '../../utils'
+import { dimsToAspectStyle } from '../../utils/imgStyle'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PlazaBannerCarousel from '../../components/PlazaBannerCarousel.vue'
@@ -303,44 +298,6 @@ const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
 
 const refreshing = ref(false)
 const pageIdx = ref(0)
-
-/*
- * Per-post image aspect map. Key: post.id → Array<{w, h}> populated
- * lazily as each <img> fires @load. The multi-image grid applies the
- * FIRST image's ratio uniformly to all cells so the row stays tidy
- * (Xiaohongshu-style). Single-image posts (pi-n1) ignore this map
- * and use their own CSS (contain + max-height 520).
- *
- * We cache these so scrolling back doesn't re-measure. A future DB-
- * backed image_dimensions column (see migration proposal) would let
- * us skip onLoad entirely and prevent the 1-frame layout shift on
- * first paint, but for now client-side measurement is good enough.
- */
-const postImgDims = ref<Record<string, Array<{ w: number; h: number }>>>({})
-
-function onPostImgLoad(postId: string, i: number, ev: any) {
-  const d = ev?.detail || {}
-  const w = d.width || ev?.target?.naturalWidth || 0
-  const h = d.height || ev?.target?.naturalHeight || 0
-  if (w <= 0 || h <= 0) return
-  const arr = postImgDims.value[postId] ? [...postImgDims.value[postId]] : []
-  arr[i] = { w, h }
-  postImgDims.value = { ...postImgDims.value, [postId]: arr }
-}
-
-function postImgStyleFor(post: Post, i: number): Record<string, string> {
-  const imgs = post.images || []
-  // Single image: keep CSS-driven layout (contain + max-height handles it).
-  if (imgs.length <= 1) return {}
-  // Multi-image grid: use the first image's ratio as the uniform tile ratio.
-  const dims = postImgDims.value[post.id]
-  const first = dims?.[0]
-  if (first && first.w > 0 && first.h > 0) {
-    const ratio = Math.max(0.5, Math.min(first.w / first.h, 1.8))
-    return { 'aspect-ratio': String(ratio), 'object-fit': 'contain' }
-  }
-  return {}
-}
 
 const searchText = ref('')
 let searchDebounce: ReturnType<typeof setTimeout> | null = null
