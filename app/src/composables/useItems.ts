@@ -28,6 +28,15 @@ const LIST_ITEM_FIELDS_FULL =
   'id, user_id, title, title_i18n, description_i18n, source_lang, price, category, condition, status, location, location_verified, images, image_dimensions, view_count, favorite_count, negotiable, created_at'
 const LIST_ITEM_FIELDS_LEGACY =
   'id, user_id, title, price, category, condition, status, location, images, view_count, favorite_count, negotiable, created_at'
+/*
+ * DETAIL lists add `description` and `updated_at` to the LIST variants —
+ * these are only needed on single-item screens (detail page, profile
+ * "my items"), never in the card grid. Same FULL/LEGACY split: FULL
+ * mirrors a fully-migrated schema, LEGACY strips the post-014/015
+ * columns that PostgreSQL will 42703 on unmigrated databases.
+ */
+const DETAIL_ITEM_FIELDS_FULL = `${LIST_ITEM_FIELDS_FULL}, description, updated_at`
+const DETAIL_ITEM_FIELDS_LEGACY = `${LIST_ITEM_FIELDS_LEGACY}, description, updated_at`
 
 let locationVerifiedAvailable = true
 let profileStatusAvailable = true
@@ -37,8 +46,14 @@ function isMissingLocationVerified(err: any): boolean {
 function isMissingStatusColumn(err: any): boolean {
   return err?.code === '42703' && /status_/.test(String(err?.message || ''))
 }
+function isMissingPostMigrationColumn(err: any): boolean {
+  return err?.code === '42703' && /image_dimensions|title_i18n|description_i18n|source_lang|location_verified/.test(String(err?.message || ''))
+}
 function publicProfileFields() {
   return profileStatusAvailable ? PUBLIC_PROFILE_FIELDS_FULL : PUBLIC_PROFILE_FIELDS_LEGACY
+}
+function detailItemFields() {
+  return locationVerifiedAvailable ? DETAIL_ITEM_FIELDS_FULL : DETAIL_ITEM_FIELDS_LEGACY
 }
 
 const VALID_STATUSES: ItemStatus[] = ['active', 'reserved', 'sold', 'deleted']
@@ -147,11 +162,16 @@ export function useItems() {
   async function fetchItem(id: string) {
     const runFetch = () => supabase
       .from('items')
-      .select(`*, profile:profiles(${publicProfileFields()})`)
+      .select(`${detailItemFields()}, profile:profiles(${publicProfileFields()})` as any)
       .eq('id', id)
       .single()
 
     let { data, error } = await runFetch()
+    if (error && isMissingPostMigrationColumn(error)) {
+      console.warn('[useItems] items post-migration column missing — falling back (run migrations 014/015/020)')
+      locationVerifiedAvailable = false
+      ;({ data, error } = await runFetch())
+    }
     if (error && isMissingStatusColumn(error)) {
       console.warn('[useItems] profiles.status_* missing — falling back (run migration 021)')
       profileStatusAvailable = false
@@ -163,7 +183,7 @@ export function useItems() {
       if (rpcError) console.warn('view_count increment failed:', rpcError.message)
     })
 
-    return data as Item
+    return data as unknown as Item
   }
 
   /*
@@ -399,15 +419,21 @@ export function useItems() {
   }
 
   async function fetchMyItems(userId: string) {
-    const { data, error } = await supabase
+    const runFetch = () => supabase
       .from('items')
-      .select('*')
+      .select(detailItemFields() as any)
       .eq('user_id', userId)
       .neq('status', 'deleted')
       .order('created_at', { ascending: false })
 
+    let { data, error } = await runFetch()
+    if (error && isMissingPostMigrationColumn(error)) {
+      console.warn('[useItems] items post-migration column missing — falling back (run migrations 014/015/020)')
+      locationVerifiedAvailable = false
+      ;({ data, error } = await runFetch())
+    }
     if (error) throw error
-    return (data || []) as Item[]
+    return (data || []) as unknown as Item[]
   }
 
   async function updateItemStatus(id: string, status: ItemStatus) {
