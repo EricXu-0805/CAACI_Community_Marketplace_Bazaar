@@ -330,6 +330,20 @@ html, body, uni-app, uni-page, uni-page-wrapper, uni-page-body, #app {
   overscroll-behavior: none;
 }
 
+/*
+ * .page-lock was originally introduced to fix an H5-only quirk:
+ * uni-app's uni-page-wrapper / uni-page-body wrap the page and
+ * scroll independently, which on mobile web let the page header
+ * scroll off-screen. Taking .page out of flow (position: fixed
+ * inset 0) forces the viewport to own the scroll.
+ *
+ * On mp-weixin the WeChat runtime owns page scrolling natively
+ * — there is no uni-page-wrapper equivalent and `position: fixed`
+ * on the whole page root fights the compositor, empirically
+ * making descendant <text> nodes invisible during first paint.
+ * H5-only via #ifdef so mp renders normally.
+ */
+/* #ifdef H5 */
 @media (max-width: 767px) {
   .page-lock {
     position: fixed !important;
@@ -339,6 +353,7 @@ html, body, uni-app, uni-page, uni-page-wrapper, uni-page-body, #app {
     z-index: 1;
   }
 }
+/* #endif */
 
 uni-tabbar, .uni-tabbar, .uni-tabbar-bottom {
   display: none !important;
