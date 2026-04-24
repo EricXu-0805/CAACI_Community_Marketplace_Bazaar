@@ -1,6 +1,14 @@
 -- ============================================
 -- 015 Plaza posts can tag one marketplace item
 -- ============================================
+-- ⚠️  DUPLICATE PREFIX with 015_content_i18n.sql.
+--     Both files exist in production with version "015_*".
+--     Supabase tracks each by full filename hash so production is
+--     unaffected, but `supabase db reset` locally executes them in
+--     lexicographic order: content_i18n then plaza_item_tag. Future
+--     migrations depending on either should target "015b" or "016".
+--     See migration 032 for audit context.
+--
 -- Inspired by Xiaohongshu's in-post product cards. A plaza post can
 -- optionally reference a single item_id. The client renders the
 -- attached item as a compact card at the bottom of the post. Tapping

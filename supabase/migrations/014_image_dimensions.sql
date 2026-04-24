@@ -1,6 +1,15 @@
 -- ============================================================
 -- 014_image_dimensions.sql
 --
+-- ⚠️  DUPLICATE PREFIX with 014_condition_defective.sql.
+--     Both files exist in production with version "014_*".
+--     Supabase tracks each by full filename hash so production is
+--     unaffected, but `supabase db reset` locally will execute them
+--     in lexicographic order: condition_defective then image_dimensions.
+--     If you write a new migration that depends on EITHER, target
+--     "014b" or "015" so ordering is unambiguous.
+--     See migration 032 for the audit context.
+--
 -- Adds image_dimensions to items and posts (plaza) so the frontend can
 -- compute per-image aspect ratios on FIRST paint (zero CLS), without
 -- waiting for each image to actually load.

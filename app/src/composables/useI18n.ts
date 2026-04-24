@@ -94,11 +94,28 @@ try {
  * into the DB via publish-time upsert; this cache only fills the
  * interim window.
  */
+const AUTO_LOCALIZE_CACHE_MAX = 500
 const autoLocalizeCache = ref<Record<string, string>>({})
+const autoLocalizeOrder: string[] = []
 const inflightAutoTranslate = new Set<string>()
 
 function autoKey(text: string, target: Lang): string {
   return `${target}:${text.length}:${text.slice(0, 200)}`
+}
+
+function rememberAutoLocalize(key: string, value: string): void {
+  if (!(key in autoLocalizeCache.value)) {
+    autoLocalizeOrder.push(key)
+    if (autoLocalizeOrder.length > AUTO_LOCALIZE_CACHE_MAX) {
+      const evicted = autoLocalizeOrder.shift()
+      if (evicted) {
+        const { [evicted]: _, ...rest } = autoLocalizeCache.value
+        autoLocalizeCache.value = { ...rest, [key]: value }
+        return
+      }
+    }
+  }
+  autoLocalizeCache.value = { ...autoLocalizeCache.value, [key]: value }
 }
 
 function scheduleAutoTranslate(text: string, target: Lang) {
@@ -145,15 +162,15 @@ function scheduleAutoTranslate(text: string, target: Lang) {
        * on every card triggers another round-trip.
        */
       if (translated && translated !== text) {
-        autoLocalizeCache.value = { ...autoLocalizeCache.value, [key]: translated }
+        rememberAutoLocalize(key, translated)
       } else {
-        autoLocalizeCache.value = { ...autoLocalizeCache.value, [key]: text }
+        rememberAutoLocalize(key, text)
       }
     })
     .catch(() => {
       // Same idea as above: cache the original so subsequent renders
       // don't refire the fetch in a tight loop.
-      autoLocalizeCache.value = { ...autoLocalizeCache.value, [key]: text }
+      rememberAutoLocalize(key, text)
     })
     .finally(() => {
       clearTimeout(timer)

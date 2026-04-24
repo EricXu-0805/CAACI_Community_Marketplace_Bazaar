@@ -95,7 +95,17 @@ export function useUnread() {
     hasMutedUnread.value = false
   }
 
-  watch(currentUser, (u) => {
+  /*
+   * watch returns its own stopHandle; we tear that down whenever the
+   * currentUser flips identity so the previous user's subscription
+   * doesn't keep ticking against the new user's session. Without
+   * this, signing out + back in as a different user left an orphan
+   * realtime channel ticking on the prior uid.
+   */
+  const stopWatch = watch(currentUser, (u, prev) => {
+    if (prev && (!u || u.id !== prev.id)) {
+      stopListening()
+    }
     if (u) {
       refreshUnreadCount()
       startListening()
@@ -104,5 +114,13 @@ export function useUnread() {
     }
   }, { immediate: true })
 
-  return { unreadCount, unreadConvIds, mutedConvIds, hasMutedUnread, refreshUnreadCount, stopListening }
+  return {
+    unreadCount,
+    unreadConvIds,
+    mutedConvIds,
+    hasMutedUnread,
+    refreshUnreadCount,
+    stopListening,
+    stopWatch,
+  }
 }
