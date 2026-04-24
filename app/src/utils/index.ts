@@ -8,13 +8,19 @@ export function thumbUrl(
   if (!url) return ""
   if (!url.includes(SUPABASE_STORAGE_MARKER)) return url
   const rendered = url.replace(SUPABASE_STORAGE_MARKER, SUPABASE_RENDER_PATH)
-  // Do NOT add `resize=cover` for list/card: without a matching `height`
-  // Supabase image-transform crops to a square and chops tall/wide photos.
+  // Supabase image-transform defaults to resize=cover. With ONLY a width
+  // param (no height), cover treats the original image's height as the
+  // target height and crops width down to 640 — producing a tall vertical
+  // sliver of the original photo, not a proportional thumbnail. Empirically
+  // verified 2025-04-24: a 1080×1920 source came back as 640×1920, not
+  // 640×1138. Fix is resize=contain, which scales proportionally and
+  // ignores the missing height. Avatar stays cover because circular
+  // avatars want square crops.
   const params =
     size === "avatar" ? "width=96&height=96&quality=75&resize=cover"
-    : size === "list" ? "width=480&quality=72"
-    : size === "card" ? "width=640&quality=75"
-    : "width=1280&quality=82"
+    : size === "list" ? "width=480&quality=72&resize=contain"
+    : size === "card" ? "width=640&quality=75&resize=contain"
+    : "width=1280&quality=82&resize=contain"
   return `${rendered}?${params}`
 }
 
