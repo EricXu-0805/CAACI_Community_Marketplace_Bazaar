@@ -342,7 +342,18 @@ button:focus-visible,
  * Legacy variable names (--accent-primary, --bg-page, --text-*)
  * are preserved so every page cascades without code edits.
  */
-:root {
+/*
+ * Design-token root — DUAL-SELECTOR.
+ *
+ * `:root` targets the document root on H5 (browsers match it to <html>).
+ * `page` targets the mp-weixin page root (WXSS only recognises the
+ * `page` pseudo-element, not `:root` — without this duplicate selector
+ * every `var(--*)` call on mp-weixin resolves to the CSS initial value,
+ * which turned the profile page's cream-on-navy text into cream-on-white
+ * (invisible) during first WeChat DevTools launch. Don't remove `page`.
+ */
+:root,
+page {
   /* ---------- TEXT (warm charcoal — the anti-plastic ink) ---------- */
   --text-primary:   #2A2A2E;   /* ink       — warm charcoal */
   --text-secondary: #57524B;   /* ink-soft  — secondary, walnut */
