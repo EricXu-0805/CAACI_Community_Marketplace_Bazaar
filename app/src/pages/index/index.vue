@@ -218,6 +218,7 @@
               <img
                 :src="thumbUrl(item.images?.[0], 'card') || '/static/placeholder.svg'"
                 :class="['card-img', { 'card-img-sold': item.status === 'sold' }]"
+                :style="dimsToAspectStyle(item.image_dimensions, 0)"
                 :alt="item.title"
                 loading="lazy"
               />
@@ -317,6 +318,7 @@ import { matchSpot } from '../../composables/useCampusSpots'
 import type { ItemCategory, ItemCondition, Item } from '../../types'
 
 import { debounce, formatTime, formatPrice, haptic, thumbUrl } from '../../utils'
+import { dimsToAspectStyle } from '../../utils/imgStyle'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 
@@ -988,11 +990,12 @@ function goPublish() {
   transition: transform 0.1s, box-shadow 0.15s;
   &:active { transform: scale(0.98); }
 }
-/* Xiaohongshu waterfall: the image itself drives card height.
-   width:100% + height:auto means <img> renders at its natural
-   aspect ratio, no cropping, no stretching, no letterbox. The
-   card-img-box has no aspect-ratio, so it grows to whatever
-   the image needs. */
+/* Xiaohongshu waterfall: each <img> carries an inline aspect-ratio
+   driven by items.image_dimensions (migration 014), so the box
+   reserves slot-accurate space on first paint — no CLS while the
+   real image decodes. Missing dims fall back to 4/5 via
+   dimsToAspectStyle. object-fit: contain is the safety net for
+   freak clamped ratios. */
 .card-img-box {
   position: relative; width: 100%;
   background: var(--bg-subtle);
@@ -1001,8 +1004,8 @@ function goPublish() {
 }
 .card-img {
   width: 100%;
-  height: auto;
   display: block;
+  object-fit: contain;
   transition: filter 0.2s;
   &.card-img-sold { filter: grayscale(1) brightness(0.85); }
 }
@@ -1231,19 +1234,21 @@ function goPublish() {
     &:active { transform: scale(0.99); }
   }
   /*
-   * Desktop cards are ~370px wide — a tall portrait image at height:auto
-   * would render as a 600-800px ribbon. Cap height + contain to keep
-   * round plates round instead of getting cropped to a strip.
+   * Desktop cards are ~370px wide. The inline aspect-ratio from
+   * image_dimensions already reserves correct height on first paint;
+   * we only need a soft safety cap for freakishly tall uploads (e.g.
+   * full-phone screenshots) so one rogue card can't sink the column.
+   * 1200px is ~3× the card width — permissive enough that normal
+   * portraits (4:5, 3:4, 2:3) render uncropped.
    */
   .card-img-box {
-    max-height: 520px;
+    max-height: 1200px;
     background: var(--bg-subtle);
     overflow: hidden;
   }
   .card-img {
-    max-height: 520px;
+    max-height: 1200px;
     width: 100%;
-    height: auto;
     object-fit: contain;
   }
   .card-info { padding: 10px 12px 12px; }
