@@ -218,9 +218,10 @@
               <img
                 :src="thumbUrl(item.images?.[0], 'card') || '/static/placeholder.svg'"
                 :class="['card-img', { 'card-img-sold': item.status === 'sold' }]"
-                :style="dimsToAspectStyle(item.image_dimensions, 0)"
+                :style="dimsToAspectStyle(effectiveDims(item), 0)"
                 :alt="item.title"
                 loading="lazy"
+                @load="onImgLoad($event, item, 0)"
               />
               <view v-if="item.status === 'sold'" class="sold-overlay">
                 <text>{{ t('status.sold') }}</text>
@@ -320,7 +321,8 @@ import { matchSpot } from '../../composables/useCampusSpots'
 import type { ItemCategory, ItemCondition, Item } from '../../types'
 
 import { debounce, formatTime, formatPrice, haptic, thumbUrl } from '../../utils'
-import { dimsToAspectStyle } from '../../utils/imgStyle'
+import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
+import type { ImageDim } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 
@@ -364,6 +366,36 @@ const { isFavorited, toggleFavorite, loadMyFavorites } = useFavorites()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
 
 const initialLoading = ref(true)
+
+/*
+ * Render-side safety net for image dims.
+ *
+ * Migration 014 persists image_dimensions so cards can reserve the
+ * correct aspect-ratio slot on first paint. When the DB value is
+ * empty/invalid (pre-migration rows OR a publish write that never
+ * landed — see _ai_notes/IMAGE_PIPELINE_*.md), we fall back to
+ * naturalWidth/Height measured once the image decodes. DB always
+ * wins; this is the "DB didn't have data" rescue path only.
+ */
+const measuredDims = ref<Record<string, ImageDim[]>>({})
+
+function effectiveDims(item: Item): ImageDim[] | null {
+  const fromDb = item?.image_dimensions
+  if (Array.isArray(fromDb) && fromDb.length > 0 && fromDb.some((d) => d && d.w > 0 && d.h > 0)) {
+    return fromDb
+  }
+  return measuredDims.value[item.id] || null
+}
+
+function onImgLoad(e: any, item: Item, idx: number) {
+  const fromDb = item?.image_dimensions
+  if (Array.isArray(fromDb) && fromDb[idx] && fromDb[idx].w > 0 && fromDb[idx].h > 0) return
+  const natural = readNaturalDims(e)
+  if (!natural) return
+  const prev = measuredDims.value[item.id] ? measuredDims.value[item.id].slice() : []
+  prev[idx] = natural
+  measuredDims.value = { ...measuredDims.value, [item.id]: prev }
+}
 
 const searchText = ref('')
 const selectedCategory = ref<ItemCategory | null>(null)

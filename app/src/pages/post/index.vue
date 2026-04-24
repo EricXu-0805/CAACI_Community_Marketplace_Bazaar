@@ -52,7 +52,8 @@
             :src="img"
             mode="widthFix"
             class="post-img"
-            :style="dimsToAspectStyle(post.image_dimensions, i)"
+            :style="dimsToAspectStyle(effectiveDims(), i)"
+            @load="onImgLoad($event, i)"
             @click="previewImage(post.images, i)"
           />
         </view>
@@ -144,8 +145,8 @@ import { useModeration } from '../../composables/useModeration'
 import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
 import { formatTime, friendlyErrorMessage, quickTranslate } from '../../utils'
-import { dimsToAspectStyle } from '../../utils/imgStyle'
-import type { Post, PostComment } from '../../types'
+import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
+import type { ImageDim, Post, PostComment } from '../../types'
 
 const { t, lang, localize } = useI18n()
 const { currentUser, requireAuth } = useAuth()
@@ -162,6 +163,34 @@ const replyTo = ref<PostComment | null>(null)
 const submitting = ref(false)
 
 const postId = ref('')
+
+/*
+ * Render-side safety net for post.image_dimensions.
+ *
+ * See pages/index/index.vue for the contract. Single-post variant: the
+ * cache is a plain array (no id keying needed) since this page renders
+ * exactly one post. DB values always win; onImgLoad only patches the
+ * idx when the DB slot is missing or 0×0.
+ */
+const measuredDims = ref<ImageDim[]>([])
+
+function effectiveDims(): ImageDim[] | null {
+  const fromDb = post.value?.image_dimensions
+  if (Array.isArray(fromDb) && fromDb.length > 0 && fromDb.some((d) => d && d.w > 0 && d.h > 0)) {
+    return fromDb
+  }
+  return measuredDims.value.length > 0 ? measuredDims.value : null
+}
+
+function onImgLoad(e: any, idx: number) {
+  const fromDb = post.value?.image_dimensions
+  if (Array.isArray(fromDb) && fromDb[idx] && fromDb[idx].w > 0 && fromDb[idx].h > 0) return
+  const natural = readNaturalDims(e)
+  if (!natural) return
+  const next = measuredDims.value.slice()
+  next[idx] = natural
+  measuredDims.value = next
+}
 
 /* ---------- AI translation (post content)
    Mirrors the detail-page pattern: cache-first, A文/文A toggle,

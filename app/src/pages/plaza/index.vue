@@ -93,8 +93,9 @@
                 :key="i"
                 :src="thumbUrl(img, 'card')"
                 class="post-image"
-                :style="dimsToAspectStyle(post.image_dimensions, i)"
+                :style="dimsToAspectStyle(effectiveDims(post), i)"
                 loading="lazy"
+                @load="onImgLoad($event, post, i)"
                 @click.stop="previewImage(post.images, i)"
               />
             </view>
@@ -288,7 +289,8 @@ import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
 import type { Post, PostComment } from '../../types'
 import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl } from '../../utils'
-import { dimsToAspectStyle } from '../../utils/imgStyle'
+import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
+import type { ImageDim } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PlazaBannerCarousel from '../../components/PlazaBannerCarousel.vue'
@@ -300,6 +302,34 @@ const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
 
 const refreshing = ref(false)
 const pageIdx = ref(0)
+
+/*
+ * Render-side safety net for post.image_dimensions.
+ *
+ * Same contract as the home feed (see pages/index/index.vue): DB wins,
+ * but when image_dimensions is empty ([]) we measure on @load and patch
+ * a local map keyed by post.id so subsequent re-renders reserve the
+ * right slot. See _ai_notes/IMAGE_PIPELINE_*.md for why.
+ */
+const measuredDims = ref<Record<string, ImageDim[]>>({})
+
+function effectiveDims(post: Post): ImageDim[] | null {
+  const fromDb = post?.image_dimensions
+  if (Array.isArray(fromDb) && fromDb.length > 0 && fromDb.some((d) => d && d.w > 0 && d.h > 0)) {
+    return fromDb
+  }
+  return measuredDims.value[post.id] || null
+}
+
+function onImgLoad(e: any, post: Post, idx: number) {
+  const fromDb = post?.image_dimensions
+  if (Array.isArray(fromDb) && fromDb[idx] && fromDb[idx].w > 0 && fromDb[idx].h > 0) return
+  const natural = readNaturalDims(e)
+  if (!natural) return
+  const prev = measuredDims.value[post.id] ? measuredDims.value[post.id].slice() : []
+  prev[idx] = natural
+  measuredDims.value = { ...measuredDims.value, [post.id]: prev }
+}
 
 const searchText = ref('')
 let searchDebounce: ReturnType<typeof setTimeout> | null = null

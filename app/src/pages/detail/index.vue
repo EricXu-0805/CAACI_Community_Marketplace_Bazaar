@@ -20,6 +20,7 @@
             :src="img"
             mode="aspectFit"
             class="swiper-img"
+            @load="onHeroImgLoad($event, i)"
             @click="previewImage(i)"
           />
         </swiper-item>
@@ -257,7 +258,8 @@ import { useModeration } from '../../composables/useModeration'
 import type { Item } from '../../types'
 
 import { formatTime, haptic, formatPrice, quickTranslate, thumbUrl, friendlyErrorMessage } from '../../utils'
-import { dimsToRatio } from '../../utils/imgStyle'
+import { dimsToRatio, readNaturalDims } from '../../utils/imgStyle'
+import type { ImageDim } from '../../types'
 import { matchSpot } from '../../composables/useCampusSpots'
 import { useRatings } from '../../composables/useRatings'
 import { useTranslate } from '../../composables/useTranslate'
@@ -309,22 +311,52 @@ const displayDescription = computed(() => {
 const locationSpot = computed(() => matchSpot(item.value?.location))
 
 /*
+ * Render-side safety net for the hero carousel.
+ *
+ * Same pattern as pages/index/index.vue + pages/post/index.vue: when
+ * the DB-persisted image_dimensions are empty, we fall back to a
+ * locally-measured cache that fills in via @load. Swiper height stays
+ * frozen on slot 0 (xianyu contract, avoids mid-gesture viewport
+ * jumps), so only measuredDims[0] actually drives sizing — but we
+ * populate every slot we see decoded so the data is there if the
+ * height-freeze rule ever relaxes.
+ */
+const measuredDims = ref<ImageDim[]>([])
+
+function effectiveDims(): ImageDim[] | null {
+  const fromDb = item.value?.image_dimensions
+  if (Array.isArray(fromDb) && fromDb.length > 0 && fromDb.some((d) => d && d.w > 0 && d.h > 0)) {
+    return fromDb
+  }
+  return measuredDims.value.length > 0 ? measuredDims.value : null
+}
+
+function onHeroImgLoad(e: any, i: number) {
+  const fromDb = item.value?.image_dimensions
+  if (Array.isArray(fromDb) && fromDb[i] && fromDb[i].w > 0 && fromDb[i].h > 0) return
+  const natural = readNaturalDims(e)
+  if (!natural) return
+  const next = measuredDims.value.slice()
+  next[i] = natural
+  measuredDims.value = next
+}
+
+/*
  * Hero-carousel height.
  *
  * uni-app <swiper> needs a concrete height. We size it from the FIRST
- * image's DB-persisted dims (migration 014) — not the currently visible
- * slide — so swiping from a 4:5 portrait to a 3:4 landscape doesn't
- * shrink the swiper mid-gesture (we used to do that; it produced a
- * jarring viewport jump every swipe). Xianyu / Taobao both freeze the
- * carousel height on image[0]; subsequent slides letterbox inside it
- * via aspectFit, which is acceptable for a detail view.
+ * image's dims (DB-persisted from migration 014, with @load fallback
+ * for empty-DB rows) — not the currently visible slide — so swiping
+ * from a 4:5 portrait to a 3:4 landscape doesn't shrink the swiper
+ * mid-gesture. Xianyu / Taobao both freeze the carousel height on
+ * image[0]; subsequent slides letterbox via aspectFit.
  *
- * Fallback: no DB dims → 4/5 (the most common vertical-phone aspect).
- * Safety net: max-height 85vh so a 9:16 portrait can't eat the whole
- * viewport and push the price/title below the fold.
+ * Fallback: no dims anywhere → 4/5 (the most common vertical-phone
+ * aspect). Safety net: max-height 85vh so a 9:16 portrait can't eat
+ * the whole viewport and push the price/title below the fold.
  */
 const swiperStyle = computed(() => {
-  const ratio = dimsToRatio(item.value?.image_dimensions, 0) ?? (4 / 5)
+  const ratio = dimsToRatio(effectiveDims(), 0) ?? (4 / 5)
   return {
     aspectRatio: String(ratio),
     maxHeight: '85vh',
