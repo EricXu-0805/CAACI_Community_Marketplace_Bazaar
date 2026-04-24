@@ -6,6 +6,17 @@ import { subscribeToConversation as subscribeToConversationFallback } from './us
 import type { Conversation, Message } from '../types'
 import { checkContent, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
 
+/*
+ * Explicit column lists for the two tables we touch here. SELECT '*'
+ * is a liability as the schema grows — every new column (migration
+ * adds tos_version, flagged_at, etc) starts shipping down the wire
+ * even when no UI surface consumes it. Named lists keep payloads lean
+ * and make it obvious where to update when a new read dependency lands.
+ */
+export const MESSAGE_FIELDS = 'id, conversation_id, sender_id, content, message_type, is_read, created_at' as const
+export const CONVERSATION_FIELDS =
+  'id, item_id, buyer_id, seller_id, last_message_at, created_at, is_pinned_buyer, is_pinned_seller, is_muted_buyer, is_muted_seller' as const
+
 const conversations = ref<Conversation[]>([])
 const messages = ref<Message[]>([])
 const loading = ref(false)
@@ -19,13 +30,10 @@ export function useMessages() {
     try {
       const { data, error } = await supabase
         .from('conversations')
-        .select(`
-          id, item_id, buyer_id, seller_id, last_message_at, created_at,
-          is_pinned_buyer, is_pinned_seller, is_muted_buyer, is_muted_seller,
+        .select(`${CONVERSATION_FIELDS},
           item:items(id, title, images, price, status, category),
           buyer:profiles!conversations_buyer_id_fkey(id, nickname, avatar_url, is_illini_verified),
-          seller:profiles!conversations_seller_id_fkey(id, nickname, avatar_url, is_illini_verified)
-        `)
+          seller:profiles!conversations_seller_id_fkey(id, nickname, avatar_url, is_illini_verified)`)
         .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`)
         .order('last_message_at', { ascending: false })
 
@@ -68,12 +76,15 @@ export function useMessages() {
     messages.value = []
     const { data, error } = await supabase
       .from('messages')
-      .select('*, sender:profiles(id, nickname, avatar_url)')
+      .select(`${MESSAGE_FIELDS}, sender:profiles(id, nickname, avatar_url)`)
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true })
 
     if (error) throw error
-    messages.value = (data || []) as Message[]
+    /* PostgREST embed 'sender:profiles(...)' resolves to a single row via
+       the FK, but TS can't narrow that from our template-literal select —
+       the as-unknown hop matches the pattern already used by fetchConversations. */
+    messages.value = (data || []) as unknown as Message[]
   }
 
   function clearMessages() {
@@ -117,7 +128,7 @@ export function useMessages() {
   async function getOrCreateConversation(itemId: string, buyerId: string, sellerId: string) {
     const { data: existing, error: findErr } = await supabase
       .from('conversations')
-      .select('*')
+      .select(CONVERSATION_FIELDS)
       .eq('item_id', itemId)
       .eq('buyer_id', buyerId)
       .eq('seller_id', sellerId)
@@ -179,17 +190,15 @@ export function useMessages() {
   async function fetchConversationDetail(conversationId: string) {
     const { data, error } = await supabase
       .from('conversations')
-      .select(`
-        *,
+      .select(`${CONVERSATION_FIELDS},
         item:items(id, title, images, price, status, negotiable, user_id, category),
         buyer:profiles!conversations_buyer_id_fkey(id, nickname, avatar_url),
-        seller:profiles!conversations_seller_id_fkey(id, nickname, avatar_url)
-      `)
+        seller:profiles!conversations_seller_id_fkey(id, nickname, avatar_url)`)
       .eq('id', conversationId)
       .single()
 
     if (error) throw error
-    return data as Conversation
+    return data as unknown as Conversation
   }
 
   async function setConversationPinned(conv: Conversation, userId: string, pinned: boolean) {

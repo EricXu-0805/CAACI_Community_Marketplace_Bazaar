@@ -1,4 +1,5 @@
 import { useSupabase } from './useSupabase'
+import { MESSAGE_FIELDS } from './useMessages'
 
 /*
  * Realtime abstraction with three tiers:
@@ -186,7 +187,7 @@ export function subscribeToConversation(
     run: async () => {
       const q = supabase
         .from('messages')
-        .select('*')
+        .select(MESSAGE_FIELDS)
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true })
         .limit(50)
