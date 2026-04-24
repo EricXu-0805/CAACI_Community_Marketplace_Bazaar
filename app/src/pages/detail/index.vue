@@ -448,11 +448,11 @@ onLoad(async (options) => {
       getFavoriteCount(options.id!),
       needsRated ? hasRated(itemData.user_id, itemData.id) : Promise.resolve(false),
       supabase
-        .from('items').select('id, title, price, images')
+        .from('items').select('id, title, price, images, image_dimensions')
         .eq('user_id', itemData.user_id).eq('status', 'active')
         .neq('id', itemData.id).limit(6),
       supabase
-        .from('items').select('id, title, price, images, user_id')
+        .from('items').select('id, title, price, images, image_dimensions, user_id')
         .eq('category', itemData.category).eq('status', 'active')
         .neq('id', itemData.id).neq('user_id', itemData.user_id).limit(12),
     ])

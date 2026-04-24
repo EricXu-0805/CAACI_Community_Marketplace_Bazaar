@@ -153,7 +153,7 @@ onLoad(async (options) => {
   }
   const [profileRes, itemsRes, soldRes] = await Promise.all([
     fetchSellerProfile(),
-    supabase.from('items').select('id, title, price, images, status, condition, category, created_at').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
+    supabase.from('items').select('id, title, price, images, image_dimensions, status, condition, category, created_at').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
     supabase.from('items').select('id', { count: 'estimated', head: true }).eq('user_id', uid).eq('status', 'sold'),
   ])
 

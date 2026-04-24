@@ -68,7 +68,7 @@ export function useFavorites() {
   async function fetchMyFavoriteItems(userId: string) {
     const { data } = await supabase
       .from('favorites')
-      .select('item_id, item:items(id, user_id, title, price, category, condition, status, location, images, view_count, favorite_count, negotiable, created_at, profile:profiles(id, nickname, avatar_url, location))')
+      .select('item_id, item:items(id, user_id, title, price, category, condition, status, location, images, image_dimensions, view_count, favorite_count, negotiable, created_at, profile:profiles(id, nickname, avatar_url, location))')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
 

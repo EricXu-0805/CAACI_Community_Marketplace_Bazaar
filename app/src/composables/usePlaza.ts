@@ -15,7 +15,7 @@ const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, is_illini_verified, uid
 // title_i18n is included so attached-item previews localize too. Supabase
 // returns the column as null on pre-015 databases and localize() silently
 // falls back to plain `title`, so this is safe on unmigrated schemas.
-const ATTACHED_ITEM_FIELDS = 'id, title, title_i18n, price, images, status'
+const ATTACHED_ITEM_FIELDS = 'id, title, title_i18n, price, images, image_dimensions, status'
 const POST_SELECT = `*,
   profile:profiles!posts_user_id_fkey(${PUBLIC_PROFILE_FIELDS}),
   attached_item:items!posts_attached_item_id_fkey(${ATTACHED_ITEM_FIELDS})`
