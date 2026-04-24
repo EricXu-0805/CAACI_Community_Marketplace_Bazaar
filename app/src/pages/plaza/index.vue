@@ -4,7 +4,7 @@
 
     <view class="page-header">
       <text class="ph-title">{{ t('plaza.title') }}</text>
-      <view class="compose-btn" @click="openComposer" v-if="isLoggedIn">
+      <view class="compose-btn" role="button" :aria-label="t('a11y.compose')" @click="openComposer" v-if="isLoggedIn">
         <view class="cb-pen"></view>
         <text class="cb-label">{{ t('plaza.write') }}</text>
       </view>
@@ -21,7 +21,7 @@
           @input="onSearchInput"
           @confirm="onSearchSubmit"
         />
-        <view v-if="searchText" class="sb-clear" @click="clearSearch"></view>
+        <view v-if="searchText" class="sb-clear" role="button" :aria-label="t('a11y.searchClear')" @click="clearSearch"></view>
       </view>
     </view>
 
@@ -59,7 +59,7 @@
                 </view>
                 <text class="pa-time">{{ formatTime(post.created_at) }}</text>
               </view>
-              <view v-if="post.user_id === currentUser?.id" class="post-more" @click.stop="onDeletePost(post)">
+              <view v-if="post.user_id === currentUser?.id" class="post-more" role="button" :aria-label="t('a11y.more')" @click.stop="onDeletePost(post)">
                 <view class="pm-dot"></view><view class="pm-dot"></view><view class="pm-dot"></view>
               </view>
             </view>
@@ -69,6 +69,8 @@
               <view
                 v-if="post.content && post.content.trim().length > 0"
                 :class="['pc-translate', { loading: translatingId === post.id }]"
+                role="button"
+                :aria-label="t('a11y.translate')"
                 @click.stop="togglePostTranslate(post)"
               >
                 <text v-if="translatingId !== post.id">{{ translations[post.id] ? 'A文' : '文A' }}</text>
@@ -119,18 +121,18 @@
           </view>
 
           <view class="post-actions">
-            <view class="pa-btn" @click.stop="onToggleLike(post)">
+            <view class="pa-btn" role="button" :aria-label="post.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleLike(post)">
               <image
                 :src="post.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'"
                 class="heart-img"
               />
               <text :class="['pa-num', { active: post.liked_by_me }]">{{ post.like_count }}</text>
             </view>
-            <view class="pa-btn" @click.stop="openComments(post)">
+            <view class="pa-btn" role="button" :aria-label="t('a11y.comment')" @click.stop="openComments(post)">
               <view class="bubble-ico"></view>
               <text class="pa-num">{{ post.comment_count }}</text>
             </view>
-            <view class="pa-btn" @click.stop="onSharePost(post)">
+            <view class="pa-btn" role="button" :aria-label="t('a11y.share')" @click.stop="onSharePost(post)">
               <view class="share-ico"></view>
             </view>
           </view>
@@ -163,7 +165,7 @@
         <view v-if="composerImages.length > 0" class="comp-images">
           <view v-for="(img, i) in composerImages" :key="i" class="ci-wrap">
             <image :src="img" class="ci-img" mode="aspectFill" />
-            <view class="ci-remove" @click="removeComposerImage(i)">
+            <view class="ci-remove" role="button" :aria-label="t('a11y.delete')" @click="removeComposerImage(i)">
               <view class="ci-x"></view>
             </view>
           </view>
@@ -183,7 +185,7 @@
       </view>
       <view class="comp-footer">
         <view class="comp-tools">
-          <view v-if="composerImages.length < 4" class="comp-add-img" @click="onComposerPickImage">
+          <view v-if="composerImages.length < 4" class="comp-add-img" role="button" :aria-label="t('a11y.pickImage')" @click="onComposerPickImage">
             <view class="cai-ico"></view>
           </view>
           <view v-if="!composerAttachedItem" class="comp-attach-btn" @click="onOpenAttachSheet">
@@ -199,7 +201,7 @@
     <view :class="['attach-sheet', { open: showAttachSheet }]">
       <view class="as-header">
         <text class="as-title">{{ t('plaza.pickItem') }}</text>
-        <view class="as-close" @click="showAttachSheet = false"><view class="cs-x"></view></view>
+        <view class="as-close" role="button" :aria-label="t('a11y.close')" @click="showAttachSheet = false"><view class="cs-x"></view></view>
       </view>
       <scroll-view class="as-list" scroll-y>
         <view v-if="myActiveItems.length === 0" class="as-empty">
@@ -228,7 +230,7 @@
     <view :class="['comments-sheet', { open: !!commentingPost }]">
       <view class="cs-header">
         <text class="cs-title">{{ t('plaza.comments') }} ({{ commentingPost?.comment_count || 0 }})</text>
-        <view class="cs-close" @click="closeComments">
+        <view class="cs-close" role="button" :aria-label="t('a11y.close')" @click="closeComments">
           <view class="cs-x"></view>
         </view>
       </view>
@@ -250,7 +252,7 @@
       </scroll-view>
       <view v-if="replyTo" class="cs-reply-bar">
         <text class="cs-reply-label">{{ t('plaza.replyingTo') }} @{{ replyTo.profile?.nickname || t('app.user') }}</text>
-        <view class="cs-reply-x" @click="replyTo = null">
+        <view class="cs-reply-x" role="button" :aria-label="t('a11y.close')" @click="replyTo = null">
           <view class="cs-rx"></view>
         </view>
       </view>
@@ -264,7 +266,7 @@
           @confirm="onSubmitComment"
           maxlength="1000"
         />
-        <view :class="['cs-send', { disabled: !commentText.trim() || commentSubmitting }]" @click="onSubmitComment">
+        <view :class="['cs-send', { disabled: !commentText.trim() || commentSubmitting }]" role="button" :aria-label="t('a11y.sendMessage')" @click="onSubmitComment">
           <text>{{ replyTo ? t('plaza.reply') : t('plaza.comment') }}</text>
         </view>
       </view>

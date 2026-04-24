@@ -31,10 +31,10 @@
         </swiper-item>
       </swiper>
       <!-- Overlay buttons -->
-      <view class="img-back" @click="goBack">
+      <view class="img-back" role="button" :aria-label="t('a11y.back')" @click="goBack">
         <view class="back-arrow"></view>
       </view>
-      <view class="img-share" @click="onShare">
+      <view class="img-share" role="button" :aria-label="t('a11y.share')" @click="onShare">
         <view class="share-icon"></view>
       </view>
       <view v-if="item.images.length > 1" class="img-counter">
@@ -56,7 +56,7 @@
       </view>
       <view class="title-row">
         <text class="title">{{ displayTitle }}</text>
-        <view :class="['translate-btn', { loading: translatePending }]" @click="toggleTranslate">
+        <view :class="['translate-btn', { loading: translatePending }]" role="button" :aria-label="t('a11y.translate')" @click="toggleTranslate">
           <text v-if="!translatePending">{{ translated ? 'A文' : '文A' }}</text>
           <text v-else>···</text>
         </view>
@@ -203,7 +203,7 @@
   <view :class="['rating-sheet', { open: showRating }]" v-if="item">
     <view class="rs-header">
       <text class="rs-title">{{ t('rating.title') }}</text>
-      <view class="rs-close" @click="showRating = false"><view class="cs-x"></view></view>
+      <view class="rs-close" role="button" :aria-label="t('a11y.close')" @click="showRating = false"><view class="cs-x"></view></view>
     </view>
     <text class="rs-prompt">{{ t('rating.prompt').replace('{name}', item.profile?.nickname || t('app.user')) }}</text>
     <view class="rs-stars">
@@ -229,7 +229,7 @@
   </view>
 
   <view v-else-if="notFound" class="not-found-page">
-    <view class="nf-back" @click="goBack"><view class="nf-arrow"></view></view>
+    <view class="nf-back" role="button" :aria-label="t('a11y.back')" @click="goBack"><view class="nf-arrow"></view></view>
     <view class="nf-icon"></view>
     <text class="nf-title">{{ t('detail.notFoundTitle') }}</text>
     <text class="nf-sub">{{ t('detail.notFoundSub') }}</text>

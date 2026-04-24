@@ -2,7 +2,7 @@
   <view class="page page-lock">
     <!-- Header with item context -->
     <view class="chat-header">
-      <view class="ch-back" @click="goBack">
+      <view class="ch-back" role="button" :aria-label="t('a11y.back')" @click="goBack">
         <view class="ch-arrow"></view>
       </view>
       <view class="ch-info" v-if="itemInfo">
@@ -10,7 +10,7 @@
         <text class="ch-item-title">{{ localize(itemInfo.title_i18n, itemInfo.title) }}</text>
       </view>
       <text v-else class="ch-name-only">{{ otherUserName || t('nav.messages') }}</text>
-      <view class="ch-more" @click="onMoreActions">
+      <view class="ch-more" role="button" :aria-label="t('a11y.conversationMore')" @click="onMoreActions">
         <view class="more-dot"></view><view class="more-dot"></view><view class="more-dot"></view>
       </view>
     </view>
@@ -110,16 +110,16 @@
         <text class="rc-label">{{ t('chat.replyingTo') }}</text>
         <text class="rc-text">{{ (replyToMsg.message_type === 'image' ? '[' + t('chat.photo') + ']' : replyToMsg.content).slice(0, 80) }}</text>
       </view>
-      <view class="rc-x" @click="replyToMsg = null">
+      <view class="rc-x" role="button" :aria-label="t('a11y.close')" @click="replyToMsg = null">
         <view class="rc-x-inner"></view>
       </view>
     </view>
 
     <view class="input-bar">
-      <view class="img-btn" @click="onSendImage">
+      <view class="img-btn" role="button" :aria-label="t('a11y.pickImage')" @click="onSendImage">
         <view class="img-icon"></view>
       </view>
-      <view :class="['emoji-btn', { active: emojiOpen }]" @click="toggleEmoji">
+      <view :class="['emoji-btn', { active: emojiOpen }]" role="button" :aria-label="t('a11y.emojiToggle')" @click="toggleEmoji">
         <text class="emoji-btn-glyph">😊</text>
       </view>
       <input
@@ -130,7 +130,7 @@
         @focus="emojiOpen = false"
         class="msg-input"
       />
-      <view :class="['send-btn', { disabled: !inputText.trim() || sending }]" @click="onSend">
+      <view :class="['send-btn', { disabled: !inputText.trim() || sending }]" role="button" :aria-label="t('a11y.sendMessage')" @click="onSend">
         <view class="send-arrow"></view>
       </view>
     </view>

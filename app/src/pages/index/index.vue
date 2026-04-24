@@ -22,13 +22,13 @@
           what they last searched; the live edit happens on the search
           page with a focused input.
         -->
-        <view class="search-field search-proxy" @click="goToSearch">
+        <view class="search-field search-proxy" @click="goToSearch" role="button" :aria-label="t('a11y.search')">
           <view class="sf-icon"></view>
           <text v-if="searchText" class="sf-text">{{ searchText }}</text>
           <text v-else class="sf-placeholder">{{ t('home.search') }}</text>
-          <view v-if="searchText" class="sf-clear" @click.stop="onClearSearch">×</view>
+          <view v-if="searchText" class="sf-clear" role="button" :aria-label="t('a11y.searchClear')" @click.stop="onClearSearch">×</view>
         </view>
-        <view class="filter-btn" @click.stop="showFilter = !showFilter">
+        <view class="filter-btn" role="button" :aria-label="t('a11y.filter')" @click.stop="showFilter = !showFilter">
           <view class="fb-lines"><view></view><view></view><view></view></view>
           <view v-if="activeFilterCount > 0" class="fb-badge">{{ activeFilterCount }}</view>
         </view>
@@ -101,11 +101,11 @@
     <view v-if="showFilter" class="filter-mask" @click="showFilter = false"></view>
     <view :class="['filter-sheet', { open: showFilter }]">
       <view class="fs-header">
-        <view class="fs-close" @click="showFilter = false">
+        <view class="fs-close" role="button" :aria-label="t('a11y.filterClose')" @click="showFilter = false">
           <view class="fs-x"></view>
         </view>
         <text class="fs-title">{{ t('filter.title') }}</text>
-        <text class="fs-reset" @click="resetFilters">{{ t('filter.reset') }}</text>
+        <text class="fs-reset" role="button" :aria-label="t('a11y.filterReset')" @click="resetFilters">{{ t('filter.reset') }}</text>
       </view>
 
       <view class="fs-section">
@@ -258,6 +258,8 @@
                   <image
                     :src="isFavorited(item.id) ? '/static/heart-filled.svg' : '/static/heart.svg'"
                     class="heart-img"
+                    role="button"
+                    :aria-label="isFavorited(item.id) ? t('a11y.unfavorite') : t('a11y.favorite')"
                     @click.stop="onQuickFav(item)"
                   />
                   <text class="fav-num">{{ item.favorite_count || 0 }}</text>
@@ -297,7 +299,7 @@
     </scroll-view>
 
     <!-- Back to top -->
-    <view v-if="showBackTop" class="back-top" @click="scrollToTop">
+    <view v-if="showBackTop" class="back-top" role="button" :aria-label="t('a11y.backToTop')" @click="scrollToTop">
       <view class="bt-arrow"></view>
     </view>
 
