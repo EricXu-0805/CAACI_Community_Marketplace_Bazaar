@@ -26,17 +26,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 
 const { t } = useI18n()
 const current = ref(0)
 
-const slides = [
+/*
+ * Reactive: was a plain array literal which called t() once at setup
+ * time and froze the returned strings. Two problems on mp-weixin:
+ *   1. If setLang() flips the UI lang while the user is still on
+ *      welcome, slides don't re-render.
+ *   2. If useI18n()'s lazy ensureLangInit() hasn't populated
+ *      currentLang yet when setup() runs (a timing race we've seen
+ *      on WeChat 3.15.x cold starts), t() returns the raw key
+ *      string (e.g. "welcome.t1") and that string is permanently
+ *      baked into the array. Slides then render as the raw keys.
+ * computed() both defers evaluation to render time AND makes slides
+ * re-run on currentLang changes.
+ */
+const slides = computed(() => [
   { icon: '🛍', title: t('welcome.t1'), desc: t('welcome.d1') },
   { icon: '💬', title: t('welcome.t2'), desc: t('welcome.d2') },
   { icon: '🛡', title: t('welcome.t3'), desc: t('welcome.d3') },
-]
+])
 
 function finish() {
   try { uni.setStorageSync('welcomed', '1') } catch {}
