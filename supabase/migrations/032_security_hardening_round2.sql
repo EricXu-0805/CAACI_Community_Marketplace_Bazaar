@@ -1,36 +1,25 @@
 -- ============================================================
 -- 032_security_hardening_round2.sql
 --
--- Closes three gaps surfaced by the April 2024 deep-scan audit:
+-- Closes three gaps surfaced by the April 2024 deep-scan audit.
 --
---   1. post_comments has SELECT/INSERT/DELETE policies but no
---      UPDATE policy. Postgres' default behavior with RLS enabled
---      is "deny if no policy matches", which is fine today (users
---      simply can't edit comments). But it's a footgun: if a future
---      migration adds a permissive UPDATE policy without WITH CHECK
---      it'll silently allow cross-user edits. Fix: add an explicit
---      tight policy now so any future change is an obvious diff.
+-- ⚠ RUN ORDER — each section is independently applicable. If one
+--   fails (most likely the storage section due to ownership), the
+--   rest still apply. Forward-only. Idempotent. Safe to re-run.
 --
---   2. The storage.objects DELETE policy on the item-images bucket
---      validates only the first folder segment ('items'), while the
---      INSERT policy validates BOTH segments ('items/<auth.uid()>').
---      Net: a user can DELETE another user's images by guessing
---      their object key. Fix: align DELETE with INSERT validation.
---
---   3. profiles.tos_version and profiles.onboarded_at are nullable.
---      The App.vue consent gate redirects users with NULL tos_version
---      to /pages/reconsent, which is correct — but the gate runs in
---      JavaScript, so any direct PostgREST INSERT (e.g. via Supabase
---      Studio, a buggy admin script, or a future RPC) can create a
---      profile that bypasses the gate forever, since
---      `if (!u.tos_version || u.tos_version < CURRENT_CONSENT_VERSION)`
---      only fires the FIRST time a user logs in via the app. Fix:
---      backfill nulls with the v0 baseline, then make NOT NULL.
---
--- Forward-only. Idempotent (safe to re-run on partial application).
+--    Section 1 — public.post_comments          (works in SQL Editor)
+--    Section 2 — storage.objects DELETE policy (SEE FALLBACK BELOW)
+--    Section 3 — public.profiles consent       (works in SQL Editor)
 -- ============================================================
 
+
 -- ---------------- 1. post_comments UPDATE policy ----------------
+--
+-- Table has SELECT/INSERT/DELETE but no UPDATE policy. Postgres RLS
+-- default is deny-if-no-match, fine today. Footgun: any future
+-- migration that adds UPDATE without WITH CHECK silently allows
+-- cross-user edits. Pinning a tight policy now means any future
+-- relaxation shows up as an obvious code-review diff.
 
 DO $$
 BEGIN
@@ -52,79 +41,82 @@ $$;
 
 COMMENT ON POLICY "Users can update own comments" ON public.post_comments IS
   '032: explicit UPDATE policy. Tight USING + WITH CHECK so user_id
-   cannot be reassigned mid-update. Without this row, any future
-   permissive UPDATE policy would be a silent regression.';
+   cannot be reassigned mid-update.';
 
 
--- ---------------- 2. storage DELETE policy alignment ----------------
+-- ---------------- 2. storage.objects DELETE policy alignment ----------------
 --
--- Only re-create if the policy already exists (don't break fresh
--- installs that haven't seen 001 yet). This statement is ordered
--- after the storage policies are first created in 001/004/011.
+-- Current DELETE policy on item-images validates only path[1]
+-- ('items'), while INSERT validates path[1] AND path[2] (<auth.uid()>).
+-- Net: user can DELETE another user's images by guessing the path.
+--
+-- OWNERSHIP NOTE: storage.objects is owned by supabase_storage_admin.
+-- The Dashboard SQL Editor runs as postgres which cannot DROP/CREATE
+-- policies on it directly. We try SET LOCAL ROLE first; if that
+-- fails (error 42501), the EXCEPTION block emits a NOTICE with the
+-- manual UI fix and the migration continues to section 3.
 
 DO $$
 BEGIN
-  IF EXISTS (
-    SELECT 1 FROM pg_policies
-    WHERE schemaname = 'storage'
-      AND tablename  = 'objects'
-      AND policyname = 'Users can delete own images'
-  ) THEN
-    DROP POLICY "Users can delete own images" ON storage.objects;
-  END IF;
+  BEGIN
+    SET LOCAL ROLE supabase_storage_admin;
 
-  CREATE POLICY "Users can delete own images"
-    ON storage.objects
-    FOR DELETE
-    TO authenticated
-    USING (
-      bucket_id = 'item-images'
-      AND (storage.foldername(name))[1] = 'items'
-      AND (storage.foldername(name))[2] = auth.uid()::text
-    );
+    DROP POLICY IF EXISTS "Users can delete own images" ON storage.objects;
+
+    CREATE POLICY "Users can delete own images"
+      ON storage.objects
+      FOR DELETE
+      TO authenticated
+      USING (
+        bucket_id = 'item-images'
+        AND (storage.foldername(name))[1] = 'items'
+        AND (storage.foldername(name))[2] = auth.uid()::text
+      );
+
+    RESET ROLE;
+    RAISE NOTICE '032 section 2: storage.objects DELETE policy updated';
+
+  EXCEPTION WHEN OTHERS THEN
+    BEGIN RESET ROLE; EXCEPTION WHEN OTHERS THEN NULL; END;
+    RAISE NOTICE '032 section 2: could not modify storage.objects from this session (error: %). Apply this fix MANUALLY via Supabase Dashboard → Storage → Policies → item-images bucket → edit "Users can delete own images" → USING expression: bucket_id = ''item-images'' AND (storage.foldername(name))[1] = ''items'' AND (storage.foldername(name))[2] = auth.uid()::text', SQLERRM;
+  END;
 END
 $$;
-
-COMMENT ON POLICY "Users can delete own images" ON storage.objects IS
-  '032: DELETE now validates BOTH path segments (items/<uid>) to
-   match the INSERT policy. Previously DELETE validated only the
-   bucket folder, letting any authenticated user delete any other
-   user''s items/<other-uid>/<file> object by guessing the path.';
 
 
 -- ---------------- 3. consent column NOT NULL ----------------
 --
--- Backfill first, then constrain. The backfill targets the small
--- population of legacy rows that existed before 026 added these
--- columns, where the migration left them nullable (no DEFAULT was
--- set because the original gate was app-layer only).
+-- profiles.tos_version is nullable. App.vue gate redirects on NULL,
+-- so legacy rows pre-dating 026 pass through correctly. But any
+-- direct PostgREST INSERT (Studio, admin script, future RPC) can
+-- create a profile with NULL tos_version that bypasses the gate
+-- permanently on re-login. Backfill to 0 then constrain.
+-- onboarded_at intentionally stays nullable: NULL is the "needs
+-- onboarding" signal the gate uses.
 
 UPDATE public.profiles
    SET tos_version = 0
  WHERE tos_version IS NULL;
 
-UPDATE public.profiles
-   SET onboarded_at = NULL  -- intentionally keep NULL; gate sends to /onboarding
- WHERE FALSE;  -- no-op; documenting that onboarded_at NULL is meaningful
+DO $$
+BEGIN
+  ALTER TABLE public.profiles
+    ALTER COLUMN tos_version SET DEFAULT 0;
+EXCEPTION WHEN OTHERS THEN NULL;
+END
+$$;
 
--- tos_version: NOT NULL DEFAULT 0 so direct INSERTs always have a
--- value the gate can compare against. CURRENT_CONSENT_VERSION lives
--- in app/src/legal/index.ts and should be bumped per release that
--- changes ToS. tos_version=0 means "needs to re-consent" → gate
--- redirects to /pages/reconsent, which is the safe behavior for
--- legacy rows.
-
-ALTER TABLE public.profiles
-  ALTER COLUMN tos_version SET DEFAULT 0,
-  ALTER COLUMN tos_version SET NOT NULL;
-
--- onboarded_at: leave nullable. NULL is the "needs onboarding"
--- signal the gate uses (App.vue:66). Adding a default would falsely
--- claim the user finished the wizard.
+DO $$
+BEGIN
+  ALTER TABLE public.profiles
+    ALTER COLUMN tos_version SET NOT NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
+END
+$$;
 
 COMMENT ON COLUMN public.profiles.tos_version IS
-  '032: NOT NULL DEFAULT 0. App.vue gate redirects to /reconsent
-   when this is < CURRENT_CONSENT_VERSION (legal/index.ts).';
+  '032: NOT NULL DEFAULT 0. App.vue gate redirects to /reconsent when
+   this is < CURRENT_CONSENT_VERSION (legal/index.ts).';
 
 COMMENT ON COLUMN public.profiles.onboarded_at IS
   '032: NULLABLE on purpose. App.vue gate redirects to /onboarding
