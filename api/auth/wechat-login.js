@@ -267,11 +267,27 @@ export default async function handler(request) {
     if (!session?.user?.id) throw new Error('signin_no_user_id')
     await bindWechatIdentityOnProfile(session.user.id, openid, unionid, nickname, avatar)
   } catch (err) {
-    return json({
-      error: err.message,
-      detail: err.detail,
-      status: err.status,
-    }, 500)
+    /*
+     * Log detailed error server-side (visible in Vercel function logs)
+     * but return ONLY a generic opaque error code to the client. The
+     * prior shape leaked err.message + err.detail + Supabase status
+     * to anyone calling the endpoint, which enables:
+     *   · account enumeration (different error per "email exists" vs
+     *     "invalid credentials" vs "create failed")
+     *   · fingerprinting of our Supabase version + auth flow
+     *   · probing for PASSWORD_SALT misconfiguration via differential
+     *     error messages
+     * Client gets a stable "login_failed" it can surface generically;
+     * ops can pull the real error from function logs by correlating
+     * on the timestamp or adding a request-id later if needed.
+     */
+    console.error('[wechat-login] auth path failed', {
+      openid_suffix: openid?.slice(-6),
+      message: err?.message,
+      detail: err?.detail,
+      status: err?.status,
+    })
+    return json({ error: 'login_failed' }, 500)
   }
 
   return json(session)

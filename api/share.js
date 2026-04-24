@@ -1,7 +1,9 @@
 export const config = { runtime: 'edge' }
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://lfhvgprfphyfvhidegum.supabase.co'
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || ''
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || ''
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function escapeHtml(s) {
   return String(s || '').replace(/[&<>"']/g, c => (
@@ -11,14 +13,15 @@ function escapeHtml(s) {
 
 export default async function handler(req) {
   const url = new URL(req.url)
-  const id = url.searchParams.get('id')
+  const rawId = url.searchParams.get('id')
+  const id = UUID_RE.test(rawId || '') ? rawId : null
   const site = url.origin
 
   let item = null
-  if (id && SUPABASE_ANON_KEY) {
+  if (id && SUPABASE_URL && SUPABASE_ANON_KEY) {
     try {
       const r = await fetch(
-        `${SUPABASE_URL}/rest/v1/items?id=eq.${id}&select=id,title,description,price,images&limit=1`,
+        `${SUPABASE_URL}/rest/v1/items?id=eq.${encodeURIComponent(id)}&select=id,title,description,price,images&limit=1`,
         { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
       )
       const rows = await r.json()

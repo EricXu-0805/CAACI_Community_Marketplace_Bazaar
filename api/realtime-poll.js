@@ -45,16 +45,17 @@ function json(body, status = 200) {
 }
 
 async function fetchRows(scope, id, since, userJwt) {
+  const encId = encodeURIComponent(id)
   let url
   if (scope === 'conversation') {
     const sinceFilter = since ? `&created_at=gt.${encodeURIComponent(since)}` : ''
     url = `${SUPABASE_URL}/rest/v1/messages`
-      + `?conversation_id=eq.${id}${sinceFilter}`
+      + `?conversation_id=eq.${encId}${sinceFilter}`
       + `&order=created_at.asc&limit=${ROW_LIMIT}&select=*`
   } else if (scope === 'inbox') {
     const sinceFilter = since ? `&created_at=gt.${encodeURIComponent(since)}` : ''
     url = `${SUPABASE_URL}/rest/v1/messages`
-      + `?sender_id=neq.${id}${sinceFilter}`
+      + `?sender_id=neq.${encId}${sinceFilter}`
       + `&order=created_at.asc&limit=${ROW_LIMIT}`
       + `&select=id,conversation_id,sender_id,created_at`
   } else {
