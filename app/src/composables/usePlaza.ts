@@ -16,6 +16,7 @@ const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, is_illini_verified, uid
 // returns the column as null on pre-015 databases and localize() silently
 // falls back to plain `title`, so this is safe on unmigrated schemas.
 const ATTACHED_ITEM_FIELDS = 'id, title, title_i18n, price, images, image_dimensions, status'
+const POST_COMMENT_FIELDS = 'id, post_id, user_id, content, parent_comment_id, created_at'
 const POST_SELECT = `*,
   profile:profiles!posts_user_id_fkey(${PUBLIC_PROFILE_FIELDS}),
   attached_item:items!posts_attached_item_id_fkey(${ATTACHED_ITEM_FIELDS})`
@@ -234,11 +235,11 @@ export function usePlaza() {
   async function fetchComments(postId: string): Promise<PostComment[]> {
     const { data, error } = await supabase
       .from('post_comments')
-      .select(`*, profile:profiles!post_comments_user_id_fkey(${PUBLIC_PROFILE_FIELDS})`)
+      .select(`${POST_COMMENT_FIELDS}, profile:profiles!post_comments_user_id_fkey(${PUBLIC_PROFILE_FIELDS})`)
       .eq('post_id', postId)
       .order('created_at', { ascending: true })
     if (error) throw error
-    return (data || []) as PostComment[]
+    return (data || []) as unknown as PostComment[]
   }
 
   async function createComment(postId: string, content: string, parentId?: string): Promise<PostComment> {
@@ -259,12 +260,12 @@ export function usePlaza() {
         content: trimmed,
         parent_comment_id: parentId || null,
       })
-      .select(`*, profile:profiles!post_comments_user_id_fkey(${PUBLIC_PROFILE_FIELDS})`)
+      .select(`${POST_COMMENT_FIELDS}, profile:profiles!post_comments_user_id_fkey(${PUBLIC_PROFILE_FIELDS})`)
       .single()
     if (error) throw error
     const post = posts.value.find(p => p.id === postId)
     if (post) post.comment_count += 1
-    return data as PostComment
+    return data as unknown as PostComment
   }
 
   async function deleteComment(commentId: string, postId: string) {

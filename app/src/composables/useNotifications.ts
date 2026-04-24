@@ -12,6 +12,8 @@ export interface Notification {
   created_at: string
 }
 
+const NOTIFICATION_FIELDS = 'id, user_id, type, title, body, item_id, is_read, created_at'
+
 const notifications = ref<Notification[]>([])
 const unreadNotifCount = ref(0)
 
@@ -24,7 +26,7 @@ export function useNotifications() {
 
     const { data, error } = await supabase
       .from('notifications')
-      .select('*')
+      .select(NOTIFICATION_FIELDS)
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
       .limit(50)

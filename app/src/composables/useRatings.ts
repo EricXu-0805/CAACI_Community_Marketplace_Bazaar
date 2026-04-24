@@ -3,6 +3,7 @@ import { useAuth } from './useAuth'
 import type { Rating } from '../types'
 
 const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, is_illini_verified, uid'
+const RATING_FIELDS = 'id, rater_id, ratee_id, item_id, stars, comment, created_at'
 
 export function useRatings() {
   const { supabase } = useSupabase()
@@ -34,12 +35,12 @@ export function useRatings() {
   async function fetchForUser(userId: string, limit = 20): Promise<Rating[]> {
     const { data, error } = await supabase
       .from('ratings')
-      .select(`*, rater:profiles!ratings_rater_id_fkey(${PUBLIC_PROFILE_FIELDS})`)
+      .select(`${RATING_FIELDS}, rater:profiles!ratings_rater_id_fkey(${PUBLIC_PROFILE_FIELDS})`)
       .eq('ratee_id', userId)
       .order('created_at', { ascending: false })
       .limit(limit)
     if (error) throw error
-    return (data || []) as Rating[]
+    return (data || []) as unknown as Rating[]
   }
 
   async function hasRated(rateeId: string, itemId: string): Promise<boolean> {

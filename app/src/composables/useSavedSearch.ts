@@ -14,6 +14,8 @@ export interface SavedSearch {
   last_notified_at: string | null
 }
 
+const SAVED_SEARCH_FIELDS = 'id, user_id, keyword, category, price_min, price_max, created_at, last_notified_at'
+
 const items = ref<SavedSearch[]>([])
 const loaded = ref(false)
 
@@ -25,7 +27,7 @@ export function useSavedSearch() {
     if (!currentUser.value) { items.value = []; loaded.value = true; return [] }
     const { data, error } = await supabase
       .from('saved_searches')
-      .select('*')
+      .select(SAVED_SEARCH_FIELDS)
       .eq('user_id', currentUser.value.id)
       .order('created_at', { ascending: false })
     if (error) throw error
