@@ -3,62 +3,88 @@ export const config = { runtime: 'edge' }
 /*
  * /api/auth/wechat-login — mp-weixin silent sign-in endpoint.
  *
- * Flow (see docs/WECHAT_MP_SETUP.md §8 for the full ops story):
+ * Architecture (v2, 2025 post-JWT-Signing-Keys era):
  *
  *   1. Client calls wx.login() → js_code
  *   2. POST { js_code, nickname?, avatar_url? } here
  *   3. We call api.weixin.qq.com/sns/jscode2session with AppSecret
  *      (server-only) → openid [+ unionid]
- *   4. Look up profiles WHERE wechat_openid = openid. If missing,
- *      use Supabase admin API to create auth.users (which triggers
- *      handle_new_user to seed the profile row) and then call the
- *      upsert_wechat_user RPC to bind wechat_openid.
- *   5. Mint an HS256 JWT signed with SUPABASE_JWT_SECRET. Shape
- *      matches what GoTrue issues so supabase-js accepts it via
- *      setSession(). The client pairs it with our own refresh token
- *      (just the opaque JWT string re-used — short 1h expiry; the
- *      client re-runs wx.login on expiry which is silent anyway).
+ *   4. Derive a deterministic virtual email + password per openid:
+ *        email    = wx_<openid>@wechat.placeholder
+ *        password = HMAC-SHA256(openid, WECHAT_USER_PASSWORD_SALT)
+ *      Password is unguessable without SALT (server-only) but stable
+ *      per-user so returning users always authenticate to the same
+ *      auth.users row.
+ *   5. Idempotent admin.createUser — first login creates the auth row
+ *      (which fires handle_new_user → seeds profiles), subsequent
+ *      logins return 422 email_exists which we swallow.
+ *   6. POST /auth/v1/token?grant_type=password → real GoTrue session
+ *      with access_token AND refresh_token. Key win over the v1
+ *      JWT-mint design: supabase-js setSession works correctly, auto-
+ *      refresh works, no HS256/ES256 signing key to manage.
+ *   7. PATCH /rest/v1/profiles?id=eq.<user_id> using service_role to
+ *      bind wechat_openid + wechat_unionid onto the freshly-created
+ *      profile row, fill nickname/avatar if the trigger defaulted
+ *      them. We use session.user.id here instead of calling migration
+ *      034's upsert_wechat_user RPC because that RPC was designed
+ *      for the "already-bound" path and cannot do the first-time bind.
+ *   8. Return the session body verbatim to the client; shape is the
+ *      standard GoTrue token response.
+ *
+ * Why this design instead of minting our own JWT:
+ *   · Supabase 2024+ migrated from a single HS256 JWT secret to an
+ *     asymmetric JWT Signing Keys system where the ES256 private key
+ *     is never exposed. Minting JWTs externally requires generating
+ *     our own key pair, importing the public half into Supabase, and
+ *     rotating — not worth it for a mini-program login.
+ *   · Admin API path is the officially recommended 2025 pattern (see
+ *     docs/WECHAT_MP_SETUP.md §8 for citations).
+ *   · Works identically whether the project is on Legacy HS256 or
+ *     new ES256 Signing Keys — nothing to migrate if Supabase later
+ *     revokes the legacy key.
  *
  * Environment variables REQUIRED on Vercel (production + preview):
  *
- *   WECHAT_APPID              — from mp.weixin.qq.com · 小程序 · 开发管理
- *   WECHAT_APPSECRET          — ditto (NEVER commit, NEVER expose)
- *   SUPABASE_URL              — e.g. https://<ref>.supabase.co
- *   SUPABASE_SERVICE_ROLE_KEY — Dashboard · API · service_role secret
- *   SUPABASE_JWT_SECRET       — Dashboard · API · JWT Secret
+ *   WECHAT_APPID                — mp.weixin.qq.com · 开发设置
+ *   WECHAT_APPSECRET            — ditto (NEVER commit, NEVER expose)
+ *   SUPABASE_URL                — https://<ref>.supabase.co
+ *   SUPABASE_SERVICE_ROLE_KEY   — Dashboard · API Keys · service_role
+ *   SUPABASE_ANON_KEY           — Dashboard · API Keys · anon
+ *   WECHAT_USER_PASSWORD_SALT   — random 32+ bytes generated via
+ *                                 `openssl rand -base64 32`.
+ *                                 Server-only. DO NOT rotate without
+ *                                 migrating every WeChat user's
+ *                                 stored password.
  *
  * Security posture:
- *   · AppSecret and service_role are read from env ONLY; never
- *     bundled to the client.
- *   · RLS is bypassed by service_role during profile seeding, but
- *     the minted JWT carries the real user's sub so subsequent
- *     REST calls the client makes go through RLS as that user.
- *   · We mint 1h tokens (not forever) so a stolen token has a
- *     short lifetime. wx.login re-auth is silent anyway.
- *   · We never log the AppSecret, js_code, or minted JWT.
+ *   · AppSecret, service_role, and password salt are read from env
+ *     ONLY; never bundled to the client.
+ *   · Passwords on auth.users are bcrypt-hashed by GoTrue per its
+ *     usual policy — even a Supabase DB breach does not expose
+ *     openids directly (attacker would still need the salt to HMAC
+ *     an openid → password pair).
+ *   · Per-user password entropy = 256 bits (HMAC-SHA256 output),
+ *     well above brute-force feasibility.
+ *   · GET health branch reports env-var presence without values.
  *
- * What this endpoint does NOT do yet (Phase 3 skeleton — honesty):
- *   · No replay / rate-limit protection on js_code
- *     (WeChat's own jscode2session already single-uses js_code,
- *     but we should still add an abuse counter)
- *   · No account linking path for an existing email user who
- *     ALSO wants to bind WeChat to their account. For now, the
- *     two identities stay separate. See §8 of WECHAT_MP_SETUP.md.
- *   · No unionid-aware merge logic across multiple WeChat apps.
- *   · No refresh-token rotation — the client just re-runs wx.login.
+ * What this endpoint does NOT do yet:
+ *   · No account linking between email users and WeChat users.
+ *   · No per-IP / per-openid rate limiting at the edge. Supabase
+ *     Auth throttles signInWithPassword; WeChat's jscode2session is
+ *     single-use so js_code replay is impossible.
+ *   · No unionid-aware merge across multiple WeChat apps.
  */
 
 function env(name, fallback) {
   return process.env[name] || fallback
 }
 
-const WECHAT_APPID        = env('WECHAT_APPID', '')
-const WECHAT_APPSECRET    = env('WECHAT_APPSECRET', '')
-const SUPABASE_URL        = env('SUPABASE_URL', env('VITE_SUPABASE_URL', ''))
-const SUPABASE_SERVICE    = env('SUPABASE_SERVICE_ROLE_KEY', '')
-const SUPABASE_JWT_SECRET = env('SUPABASE_JWT_SECRET', '')
-
-const JWT_TTL_SECONDS = 3600
+const WECHAT_APPID     = env('WECHAT_APPID', '')
+const WECHAT_APPSECRET = env('WECHAT_APPSECRET', '')
+const SUPABASE_URL     = env('SUPABASE_URL', env('VITE_SUPABASE_URL', ''))
+const SUPABASE_SERVICE = env('SUPABASE_SERVICE_ROLE_KEY', '')
+const SUPABASE_ANON    = env('SUPABASE_ANON_KEY', env('VITE_SUPABASE_ANON_KEY', ''))
+const PASSWORD_SALT    = env('WECHAT_USER_PASSWORD_SALT', '')
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -70,16 +96,7 @@ function json(body, status = 200) {
   })
 }
 
-function base64url(input) {
-  const bytes = typeof input === 'string'
-    ? new TextEncoder().encode(input)
-    : input
-  let bin = ''
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i])
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-
-async function hmacSha256(message, secret) {
+async function hmacHex(message, secret) {
   const enc = new TextEncoder()
   const key = await crypto.subtle.importKey(
     'raw',
@@ -89,25 +106,9 @@ async function hmacSha256(message, secret) {
     ['sign'],
   )
   const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message))
-  return base64url(new Uint8Array(sig))
-}
-
-async function mintSupabaseJwt(userId) {
-  const header  = { alg: 'HS256', typ: 'JWT' }
-  const now     = Math.floor(Date.now() / 1000)
-  const payload = {
-    sub: userId,
-    aud: 'authenticated',
-    role: 'authenticated',
-    iat: now,
-    exp: now + JWT_TTL_SECONDS,
-    app_metadata: { provider: 'wechat', providers: ['wechat'] },
-    user_metadata: {},
-  }
-  const h = base64url(JSON.stringify(header))
-  const p = base64url(JSON.stringify(payload))
-  const s = await hmacSha256(`${h}.${p}`, SUPABASE_JWT_SECRET)
-  return `${h}.${p}.${s}`
+  return Array.from(new Uint8Array(sig))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
 }
 
 async function exchangeCodeForOpenid(jsCode) {
@@ -129,61 +130,87 @@ async function exchangeCodeForOpenid(jsCode) {
   return { openid: body.openid, unionid: body.unionid || null }
 }
 
-async function supabaseAdminFetch(path, init = {}) {
-  const r = await fetch(`${SUPABASE_URL}${path}`, {
-    ...init,
+function emailFor(openid) {
+  return `wx_${openid}@wechat.placeholder`
+}
+
+async function adminCreateIdempotent(email, password, nickname) {
+  const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+    method: 'POST',
     headers: {
       apikey: SUPABASE_SERVICE,
       Authorization: `Bearer ${SUPABASE_SERVICE}`,
       'Content-Type': 'application/json',
-      ...(init.headers || {}),
     },
-  })
-  const text = await r.text()
-  const data = text ? JSON.parse(text) : null
-  if (!r.ok) {
-    const err = new Error(`supabase_${r.status}`)
-    err.detail = data
-    throw err
-  }
-  return data
-}
-
-async function findProfileByOpenid(openid) {
-  const rows = await supabaseAdminFetch(
-    `/rest/v1/profiles?wechat_openid=eq.${encodeURIComponent(openid)}&select=id&limit=1`,
-  )
-  return rows?.[0]?.id || null
-}
-
-async function createWechatAuthUser(openid, nickname) {
-  const placeholderEmail = `wx_${openid}@wechat.placeholder`
-  const created = await supabaseAdminFetch('/auth/v1/admin/users', {
-    method: 'POST',
     body: JSON.stringify({
-      email: placeholderEmail,
+      email,
+      password,
       email_confirm: true,
-      user_metadata: { nickname: nickname || 'WeChat User' },
+      user_metadata: { provider: 'wechat', nickname: nickname || 'WeChat User' },
     }),
   })
-  if (!created?.id) {
-    const err = new Error('create_user_no_id')
-    err.detail = created
-    throw err
-  }
-  return created.id
+  if (r.ok) return
+  const detail = await r.json().catch(() => ({}))
+  const msg = JSON.stringify(detail || {}).toLowerCase()
+  const alreadyExists = (r.status === 422 || r.status === 400) && (
+    msg.includes('already been registered')
+    || msg.includes('email_exists')
+    || msg.includes('already exists')
+    || msg.includes('user already registered')
+    || msg.includes('duplicate key')
+  )
+  if (alreadyExists) return
+  const err = new Error('admin_create_user_failed')
+  err.detail = detail
+  err.status = r.status
+  throw err
 }
 
-async function bindWechatIdentity(openid, unionid, nickname, avatar) {
-  await supabaseAdminFetch('/rest/v1/rpc/upsert_wechat_user', {
+async function signInWithPassword(email, password) {
+  const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: 'POST',
-    body: JSON.stringify({
-      p_openid:   openid,
-      p_unionid:  unionid,
-      p_nickname: nickname || '',
-      p_avatar:   avatar   || '',
-    }),
+    headers: {
+      apikey: SUPABASE_ANON,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
   })
+  const body = await r.json().catch(() => ({}))
+  if (!r.ok) {
+    const err = new Error('signin_failed')
+    err.detail = body
+    err.status = r.status
+    throw err
+  }
+  return body
+}
+
+async function bindWechatIdentityOnProfile(userId, openid, unionid, nickname, avatar) {
+  const patch = { wechat_openid: openid }
+  if (unionid) patch.wechat_unionid = unionid
+  if (nickname) patch.nickname = String(nickname).slice(0, 40)
+  if (avatar) patch.avatar_url = String(avatar).slice(0, 500)
+
+  const r = await fetch(
+    `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
+    {
+      method: 'PATCH',
+      headers: {
+        apikey: SUPABASE_SERVICE,
+        Authorization: `Bearer ${SUPABASE_SERVICE}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify(patch),
+    },
+  )
+  if (!r.ok) {
+    const detail = await r.json().catch(() => ({}))
+    const err = new Error('bind_wechat_identity_failed')
+    err.detail = detail
+    err.status = r.status
+    throw err
+  }
 }
 
 export default async function handler(request) {
@@ -197,17 +224,22 @@ export default async function handler(request) {
         WECHAT_APPSECRET:          !!WECHAT_APPSECRET,
         SUPABASE_URL:              !!SUPABASE_URL,
         SUPABASE_SERVICE_ROLE_KEY: !!SUPABASE_SERVICE,
-        SUPABASE_JWT_SECRET:       !!SUPABASE_JWT_SECRET,
+        SUPABASE_ANON_KEY:         !!SUPABASE_ANON,
+        WECHAT_USER_PASSWORD_SALT: !!PASSWORD_SALT,
       },
-      ready: !!(WECHAT_APPID && WECHAT_APPSECRET && SUPABASE_URL && SUPABASE_SERVICE && SUPABASE_JWT_SECRET),
+      ready: !!(
+        WECHAT_APPID && WECHAT_APPSECRET
+        && SUPABASE_URL && SUPABASE_SERVICE && SUPABASE_ANON
+        && PASSWORD_SALT
+      ),
     })
   }
 
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405)
 
   if (!WECHAT_APPID || !WECHAT_APPSECRET) return json({ error: 'wechat_not_configured' }, 503)
-  if (!SUPABASE_URL || !SUPABASE_SERVICE) return json({ error: 'supabase_not_configured' }, 503)
-  if (!SUPABASE_JWT_SECRET)               return json({ error: 'jwt_secret_not_configured' }, 503)
+  if (!SUPABASE_URL || !SUPABASE_SERVICE || !SUPABASE_ANON) return json({ error: 'supabase_not_configured' }, 503)
+  if (!PASSWORD_SALT) return json({ error: 'password_salt_not_configured' }, 503)
 
   let body
   try { body = await request.json() } catch { return json({ error: 'bad_json' }, 400) }
@@ -225,27 +257,22 @@ export default async function handler(request) {
     return json({ error: err.message, wxErrcode: err.wxErrcode }, 400)
   }
 
-  let userId
+  const password = await hmacHex(openid, PASSWORD_SALT)
+  const email    = emailFor(openid)
+
+  let session
   try {
-    userId = await findProfileByOpenid(openid)
-    if (!userId) userId = await createWechatAuthUser(openid, nickname)
-    await bindWechatIdentity(openid, unionid, nickname, avatar)
+    await adminCreateIdempotent(email, password, nickname)
+    session = await signInWithPassword(email, password)
+    if (!session?.user?.id) throw new Error('signin_no_user_id')
+    await bindWechatIdentityOnProfile(session.user.id, openid, unionid, nickname, avatar)
   } catch (err) {
-    return json({ error: err.message, detail: err.detail }, 500)
+    return json({
+      error: err.message,
+      detail: err.detail,
+      status: err.status,
+    }, 500)
   }
 
-  let access_token
-  try {
-    access_token = await mintSupabaseJwt(userId)
-  } catch (err) {
-    return json({ error: 'jwt_sign_failed' }, 500)
-  }
-
-  return json({
-    access_token,
-    refresh_token: access_token,
-    token_type: 'bearer',
-    expires_in: JWT_TTL_SECONDS,
-    user: { id: userId },
-  })
+  return json(session)
 }

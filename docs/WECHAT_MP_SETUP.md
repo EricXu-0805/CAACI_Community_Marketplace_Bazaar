@@ -162,8 +162,9 @@ npm run build:mp-weixin
       covers this — point the mp privacy section at /pages/legal)
 - [ ] Operator info / ICP beian filed (required for any mp used
       by people in mainland China)
-- [ ] §8 below: WECHAT_APPSECRET + SUPABASE_JWT_SECRET env vars
-      set on Vercel (required for wx.login to function at all)
+- [ ] §8 below: WECHAT_APPSECRET + WECHAT_USER_PASSWORD_SALT +
+      SUPABASE_ANON_KEY env vars set on Vercel (required for
+      wx.login to function at all)
 
 Allow ~3–5 business days for WeChat's first review.
 
@@ -187,21 +188,30 @@ supabase db push
 ```
 
 This is additive only:
-- `profiles.wechat_unionid TEXT UNIQUE` column
+- `profiles.wechat_unionid TEXT UNIQUE` column (used by the edge route)
 - `public.upsert_wechat_user(openid, unionid, nickname, avatar)` RPC
+  (currently UNUSED by the v2 edge route — it was designed for a JWT
+  signing path that has been replaced. Column remains useful; the RPC
+  stays as dead code until 035 cleans it up or repurposes it for
+  account linking.)
 
-### 8.2 Provision three env vars on Vercel
+### 8.2 Provision four env vars on Vercel
 
 Project Settings → Environment Variables → add for **Production + Preview**:
 
 | Name | Value source | Guard-rails |
 |---|---|---|
 | `WECHAT_APPID` | mp.weixin.qq.com → 开发管理 → 开发设置 → AppID | Same value already in `src/manifest.json` — OK to bundle either side. |
-| `WECHAT_APPSECRET` | same page, click "生成" if first time, save immediately | **SERVER ONLY.** If you ever paste this into a git-tracked file, re-gen it immediately. |
-| `SUPABASE_JWT_SECRET` | Supabase Dashboard → Settings → API → "JWT Secret" | **SERVER ONLY.** This is the key that signs EVERY Supabase session — treat it like root. Rotating it invalidates every live session. Also confirm the project still uses the default **HS256** algorithm (Settings → API → "JWT Settings" → "Algorithm"). The edge route signs HS256; if you've opted your project into asymmetric keys (RS256 / ES256), the minted JWT will be rejected by GoTrue and WeChat sign-in will silently fail to establish a session. Migration to asymmetric would require rewriting `mintSupabaseJwt` in `api/auth/wechat-login.js` to sign with a private key. |
+| `WECHAT_APPSECRET` | same page, click "重置" to reveal a fresh secret, save immediately | **SERVER ONLY.** Each "重置" click rotates the secret; any previous deployment using the old one breaks. |
+| `SUPABASE_ANON_KEY` | Supabase Dashboard → Settings → API Keys → `anon` public | Same key the browser uses. Safe to also be in `VITE_SUPABASE_ANON_KEY`, but edge route needs a non-VITE alias. |
+| `WECHAT_USER_PASSWORD_SALT` | **generate locally**: `openssl rand -base64 32` | **SERVER ONLY.** Feeds an HMAC-SHA256 that derives each WeChat user's auth.users password from their openid. Do NOT rotate — every existing WeChat user's stored password would become unreachable, forcing a re-link migration. |
 
-`SUPABASE_SERVICE_ROLE_KEY` is assumed already set (the other admin
-endpoints use it). `SUPABASE_URL` is already set.
+`SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_URL` are assumed already
+set (other admin endpoints use them). We deliberately do NOT require
+`SUPABASE_JWT_SECRET` — the v2 architecture uses Supabase's Admin API
++ `signInWithPassword` to obtain a real GoTrue session instead of
+minting JWTs ourselves. This sidesteps the entire HS256-vs-ES256
+signing-key migration story (see §8.6 for the reasoning).
 
 After setting, redeploy (push an empty commit or hit "Redeploy" in
 Vercel dashboard). Env-var changes do not propagate to running
@@ -225,7 +235,8 @@ Expect:
     "WECHAT_APPSECRET": true,
     "SUPABASE_URL": true,
     "SUPABASE_SERVICE_ROLE_KEY": true,
-    "SUPABASE_JWT_SECRET": true
+    "SUPABASE_ANON_KEY": true,
+    "WECHAT_USER_PASSWORD_SALT": true
   },
   "ready": true
 }
@@ -259,9 +270,12 @@ Expected happy path:
 2. Edge function exchanges code → openid (if AppSecret is wrong or
    code is fake, you'll see `wechat_exchange_failed` and a `wxErrcode`
    — look it up in the [WeChat error code table][wxerr])
-3. profiles row is found or created; JWT minted; client session set
-4. Page reLaunches to home; you should see profile.wechat_openid
-   populated in Supabase table editor
+3. Admin API creates (or reuses) a hidden `wx_<openid>@wechat.placeholder`
+   auth.users row; signInWithPassword returns a real GoTrue session;
+   service_role PATCH binds wechat_openid on profiles
+4. Page reLaunches to home; in Supabase table editor, look for a row
+   in profiles with `wechat_openid = o<something>` matching the
+   DevTools openid
 
 [wxerr]: https://developers.weixin.qq.com/miniprogram/dev/framework/server-ability/backend-api.html
 
@@ -281,10 +295,6 @@ users, expand:
 - **No replay protection.** WeChat's `jscode2session` single-uses
   the code, which is the main guard, but we should still throttle
   per-IP at the edge.
-- **1h JWT, no refresh rotation.** The client re-calls `wx.login`
-  on 401 (silent on mp). If the user backgrounds the app for >1h
-  and opens it, there will be one quiet re-auth round-trip before
-  the first REST call succeeds.
 - **No user profile fetch from WeChat.** We accept `nickname` and
   `avatar_url` from the client, but the client has to call
   `wx.getUserProfile` first and pass them in. The current login
@@ -294,3 +304,37 @@ users, expand:
 - **No unionid cross-app logic.** If you ever ship a second
   mp-weixin app with the same open-platform account, link the
   two by unionid in a separate migration 035.
+- **WECHAT_USER_PASSWORD_SALT is not rotatable.** Every WeChat
+  user's auth.users password is HMAC(openid, SALT). Rotating SALT
+  invalidates every WeChat user's login. If compromised, the
+  response is: (a) set new SALT, (b) run a migration that resets
+  every `wx_*@wechat.placeholder` user's password in auth.users
+  to the new HMAC, (c) tell users to relog. Not trivial.
+
+### 8.6 Why v2 instead of minting our own JWT
+
+The v1 skeleton (commit 5b7223a, superseded by b6ea34a cleanup)
+signed its own HS256 JWTs using the project's JWT secret. That
+architecture has one narrow weakness and one fatal future-proof
+problem:
+
+1. **Supabase migrated to asymmetric JWT Signing Keys (ES256)** in
+   2024-2025. On projects that went through the migration (like
+   this one — `caaci-marketplace` rotated Oct 2025), the "Current
+   key" is ECC P-256 and the "Legacy HS256" is kept alive only for
+   verifying previously-issued tokens. Third parties cannot extract
+   the ES256 private key; Supabase intentionally blocks this.
+
+2. **HS256 minting still works today** because the Legacy key stays
+   trusted for verification. But a single "Revoke" click on the
+   Legacy key in the dashboard instantly kills every HS256-minted
+   token. That's a loaded footgun.
+
+The v2 Admin API approach bypasses the entire signing problem:
+GoTrue itself issues the session token, signs it with whatever key
+is current, and gives us back `{ access_token, refresh_token, user }`.
+We never hold a signing key. Works the same on HS256, ES256, or any
+future algorithm Supabase introduces.
+
+Citations: <https://supabase.com/docs/guides/auth/signing-keys>,
+<https://supabase.com/docs/guides/auth/jwts#using-custom-or-third-party-jwts>.
