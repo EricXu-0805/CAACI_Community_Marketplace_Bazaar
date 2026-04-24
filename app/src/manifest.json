@@ -40,7 +40,6 @@
             "postcss": true
         },
         "usingComponents": true,
-        "lazyCodeLoading": "requiredComponents",
         "requiredPrivateInfos": [
             "getLocation"
         ],
