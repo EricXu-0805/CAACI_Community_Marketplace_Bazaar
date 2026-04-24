@@ -431,6 +431,39 @@ uni-scroll-view, .uni-scroll-view {
 
 view, text { box-sizing: border-box; }
 
+/*
+ * mp-weixin text color safety net.
+ *
+ * WeChat's `<text>` element is a native component, not a plain inline
+ * box. CSS `color` and CSS custom properties set on `page` / `.page`
+ * are NOT reliably inherited to `<text>` descendants on WXSS runtimes
+ * (observed on base library 3.15.0 + uni-app Vue 3 SFC output). Result:
+ * all bare `<text>{{ t('...') }}</text>` nodes rendered at #000 against
+ * our intended ink, or worse — if the layout ancestor sets a dark
+ * background, rendered transparent-on-dark.
+ *
+ * Hard-code the literal hex instead of `var(--ink)` so this works even
+ * when custom properties fail to cascade (the failure mode we actually
+ * hit: `page, .page { --ink: ... }` rule getting partially dropped by
+ * the runtime after uni-app's own `page { --status-bar-height: ... }`
+ * injection). Class-level `color: var(--ink)` rules on specific text
+ * elements still win over this on cascade — they layer on top and
+ * re-resolve when the var IS available. This is just the floor.
+ *
+ * H5 is unaffected — browsers inherit color from <html> / <body> /
+ * .page just fine, and the hex matches --ink so no visual divergence.
+ */
+text {
+  color: #2A2A2E;
+  font-family: 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC',
+    -apple-system, BlinkMacSystemFont, 'Helvetica Neue',
+    'Microsoft YaHei', system-ui, sans-serif;
+}
+
+[data-theme="dark"] text {
+  color: #F0E8D6;
+}
+
 input, textarea {
   font-family: inherit;
   letter-spacing: inherit;
