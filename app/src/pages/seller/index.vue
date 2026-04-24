@@ -243,8 +243,15 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   background: var(--bg-elev-1); cursor: pointer;
   &:active { opacity: 0.8; }
 }
-.gi-img-wrap { position: relative; }
-.gi-img { width: 100%; height: 180px; }
+/* Seller grid deliberately opts OUT of the DB-dims pipeline: individual
+   items across a shop look like a storefront only when every tile is
+   the same shape. Xiaohongshu profile / Taobao storefront grids all
+   adopt the same 4:5 portrait frame + aspectFill (cover) contract, so
+   the grid reads as a product shelf, not a mixed feed. Center-crop is
+   acceptable because the seller already chose image[0] as the hero —
+   detail page preserves the full uncropped image. */
+.gi-img-wrap { position: relative; aspect-ratio: 4 / 5; overflow: hidden; }
+.gi-img { width: 100%; height: 100%; }
 .gi-info { padding: 8px 10px; }
 
 /* Safe-zone verified pickup badge — same style as home feed cards. */
