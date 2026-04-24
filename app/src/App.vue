@@ -186,24 +186,130 @@ onLaunch(() => {
  * paint, and the CSP no longer has to whitelist Google Fonts CDNs.
  */
 
-page {
+page,
+.page {
   /*
-   * Body defaults per the refinement-pass "fix the plastic feel" rules:
-   *   letter-spacing 0.02em + line-height 1.7 + color #13294B.
-   * Tight 0 letter-spacing + 1.4 line-height was the single biggest
-   * source of cram-scanned-like-plastic vibes on CJK screens.
+   * Body defaults + design tokens, scoped to BOTH the bare `page`
+   * pseudo-element AND to any <view class="page"> root used across
+   * the app. uni-app's mp-weixin compiler auto-injects its own
+   * `page { --status-bar-height, ... }` rule AFTER our app.wxss,
+   * which on some WXSS runtimes wipes out the preceding `page { ... }`
+   * rule entirely (cascade-of-last-rule behaviour). Duplicating onto
+   * .page gives us a second anchor that the framework never targets —
+   * even if WXSS keeps only the framework's `page` rule, the class
+   * rule on the root <view class="page"> still carries tokens and
+   * inherits them to descendants. H5 is unaffected — :root{}
+   * below still owns document-level tokens there.
    *
-   * Uses CSS variables so dark mode can flip everything via
-   * [data-theme="dark"] on <html> or via system preference.
+   * letter-spacing 0.02em + line-height 1.6 + warm-charcoal color
+   * is the "anti-plastic" body stack per the refinement pass; tight
+   * 0 letter-spacing + 1.4 line-height was the single biggest source
+   * of the cram-scanned feel on CJK screens.
    */
-  background-color: var(--canvas);
+  --text-primary:   #2A2A2E;
+  --text-secondary: #57524B;
+  --text-tertiary:  #6B6557;
+  --text-muted:     #8B8478;
+  --text-faint:     #B6AE9F;
+  --text-disabled:  #C0BCB2;
+  --ink:         #2A2A2E;
+  --ink-soft:    #57524B;
+  --ink-quiet:   #8B8478;
+  --ink-faint:   #B6AE9F;
+  --ink-inverse: #F5F0E6;
+  --bg-page:    #F5F0E6;
+  --bg-elev-1:  #FBF8F2;
+  --bg-elev-2:  #F0E9DA;
+  --bg-subtle:  #F0E9DA;
+  --bg-inset:   #E8DFCC;
+  --canvas:        #F5F0E6;
+  --surface:       #FBF8F2;
+  --surface-alt:   #F0E9DA;
+  --parchment:     #F0E9DA;
+  --frame:         #E8DFCC;
+  --surface-rgb: 251, 248, 242;
+  --canvas-rgb:  245, 240, 230;
+  --paper:      #FBF8F2;
+  --paper-2:    #F0E9DA;
+  --paper-3:    #E8DFCC;
+  --line-hair:  rgba(42, 42, 46, 0.06);
+  --line-soft:  rgba(42, 42, 46, 0.10);
+  --line-bold:  rgba(42, 42, 46, 0.16);
+  --border:        #E8DFCC;
+  --border-strong: #D8CDB3;
+  --border-hair:   rgba(42, 42, 46, 0.05);
+  --border-warm:   #E8DFCC;
+  --brand:          #C74A2F;
+  --brand-deep:     #A03A24;
+  --brand-soft:     #F5D9CE;
+  --brand-ghost:    #FBEAE2;
+  --campus-blue:      #13294B;
+  --campus-blue-soft: #E5EAF2;
+  --campus-blue-deep: #0A1A33;
+  --campus-orange:    #FF5F05;
+  --campus-orange-deep: #B33D00;
+  --campus-orange-soft: #FFF1E6;
+  --accent-primary:      #C74A2F;
+  --accent-primary-soft: #F5D9CE;
+  --accent-primary-deep: #A03A24;
+  --accent-action:       #C74A2F;
+  --accent-ink:          #2A2A2E;
+  --accent-green:        #5D7C4A;
+  --accent-good:         #5D7C4A;
+  --accent-warn:         #D4923C;
+  --accent-danger:       #B53333;
+  --success:      #5D7C4A;
+  --success-soft: #E4EADA;
+  --warning:      #D4923C;
+  --warning-soft: #F5E4CB;
+  --danger:       #B53333;
+  --danger-soft:  #F0D4D4;
+  --radius-xs:    4px;
+  --radius-sm:    8px;
+  --radius-md:   12px;
+  --radius-lg:   18px;
+  --radius-xl:   28px;
+  --radius-pill: 999px;
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+  --font-weight-regular: 400;
+  --font-weight-medium:  500;
+  --font-weight-semi:    600;
+  --font-weight-bold:    700;
+  --font-serif: 'Fraunces', 'Noto Serif SC', 'Songti SC', Georgia, 'Times New Roman', serif;
+  --font-hei:   'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+  --font-mono:  'JetBrains Mono', 'SF Mono', Menlo, ui-monospace, monospace;
+  --shadow-hair:  0 0 0 1px rgba(42, 42, 46, 0.06);
+  --shadow-soft:  0 1px 2px rgba(42, 42, 46, 0.04), 0 4px 12px rgba(42, 42, 46, 0.06);
+  --shadow-pop:   0 2px 4px rgba(42, 42, 46, 0.05), 0 12px 28px rgba(42, 42, 46, 0.08);
+  --shadow-float: 0 1px 2px rgba(42, 42, 46, 0.06), 0 24px 56px -16px rgba(42, 42, 46, 0.18);
+  --shadow-cta:   0 2px 4px rgba(199, 74, 47, 0.15), 0 12px 28px -8px rgba(199, 74, 47, 0.28);
+  --shadow-brand: 0 2px 4px rgba(199, 74, 47, 0.15), 0 12px 28px -8px rgba(199, 74, 47, 0.28);
+  --dur-1: 120ms;
+  --dur-2: 220ms;
+  --dur-3: 360ms;
+  --dur-4: 560ms;
+  --dur-5: 900ms;
+  --ease-std:   cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in:    cubic-bezier(0, 0, 0.2, 1);
+  --ease-out:   cubic-bezier(0.4, 0, 1, 1);
+  --ease-warm:  cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-crisp: cubic-bezier(0.7, 0, 0.3, 1);
+
+  background-color: #F5F0E6;
   font-family:
     'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC',
     -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
     'Helvetica Neue', 'Microsoft YaHei', system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.6;
-  color: var(--ink);
+  color: #2A2A2E;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: 0.02em;
@@ -525,110 +631,6 @@ button:focus-visible,
    *   ease-warm  card lift, like bounce (spring-ish)
    *   ease-crisp tab switch, emphasis
    * ---------------------------------------------------------- */
-  --dur-1: 120ms;
-  --dur-2: 220ms;
-  --dur-3: 360ms;
-  --dur-4: 560ms;
-  --dur-5: 900ms;
-  --ease-std:   cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-in:    cubic-bezier(0, 0, 0.2, 1);
-  --ease-out:   cubic-bezier(0.4, 0, 1, 1);
-  --ease-warm:  cubic-bezier(0.2, 0.8, 0.2, 1);
-  --ease-crisp: cubic-bezier(0.7, 0, 0.3, 1);
-}
-
-/*
- * mp-weixin mirror of the :root token set above. See the explanatory
- * comment on the :root block for why this duplication is needed.
- * Keep declarations in lock-step — a divergence here and text goes
- * invisible on mp, backgrounds go transparent, etc.
- */
-page {
-  --text-primary:   #2A2A2E;
-  --text-secondary: #57524B;
-  --text-tertiary:  #6B6557;
-  --text-muted:     #8B8478;
-  --text-faint:     #B6AE9F;
-  --text-disabled:  #C0BCB2;
-  --ink:         #2A2A2E;
-  --ink-soft:    #57524B;
-  --ink-quiet:   #8B8478;
-  --ink-faint:   #B6AE9F;
-  --ink-inverse: #F5F0E6;
-  --bg-page:    #F5F0E6;
-  --bg-elev-1:  #FBF8F2;
-  --bg-elev-2:  #F0E9DA;
-  --bg-subtle:  #F0E9DA;
-  --bg-inset:   #E8DFCC;
-  --canvas:        #F5F0E6;
-  --surface:       #FBF8F2;
-  --surface-alt:   #F0E9DA;
-  --parchment:     #F0E9DA;
-  --frame:         #E8DFCC;
-  --surface-rgb: 251, 248, 242;
-  --canvas-rgb:  245, 240, 230;
-  --paper:      #FBF8F2;
-  --paper-2:    #F0E9DA;
-  --paper-3:    #E8DFCC;
-  --line-hair:  rgba(42, 42, 46, 0.06);
-  --line-soft:  rgba(42, 42, 46, 0.10);
-  --line-bold:  rgba(42, 42, 46, 0.16);
-  --border:        #E8DFCC;
-  --border-strong: #D8CDB3;
-  --border-hair:   rgba(42, 42, 46, 0.05);
-  --border-warm:   #E8DFCC;
-  --brand:          #C74A2F;
-  --brand-deep:     #A03A24;
-  --brand-soft:     #F5D9CE;
-  --brand-ghost:    #FBEAE2;
-  --campus-blue:      #13294B;
-  --campus-blue-soft: #E5EAF2;
-  --campus-blue-deep: #0A1A33;
-  --campus-orange:    #FF5F05;
-  --campus-orange-deep: #B33D00;
-  --campus-orange-soft: #FFF1E6;
-  --accent-primary:      #C74A2F;
-  --accent-primary-soft: #F5D9CE;
-  --accent-primary-deep: #A03A24;
-  --accent-action:       #C74A2F;
-  --accent-ink:          #2A2A2E;
-  --accent-green:        #5D7C4A;
-  --accent-good:         #5D7C4A;
-  --accent-warn:         #D4923C;
-  --accent-danger:       #B53333;
-  --success:      #5D7C4A;
-  --success-soft: #E4EADA;
-  --warning:      #D4923C;
-  --warning-soft: #F5E4CB;
-  --danger:       #B53333;
-  --danger-soft:  #F0D4D4;
-  --radius-xs:    4px;
-  --radius-sm:    8px;
-  --radius-md:   12px;
-  --radius-lg:   18px;
-  --radius-xl:   28px;
-  --radius-pill: 999px;
-  --space-1:  4px;
-  --space-2:  8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-7: 32px;
-  --space-8: 48px;
-  --font-weight-regular: 400;
-  --font-weight-medium:  500;
-  --font-weight-semi:    600;
-  --font-weight-bold:    700;
-  --font-serif: 'Fraunces', 'Noto Serif SC', 'Songti SC', Georgia, 'Times New Roman', serif;
-  --font-hei:   'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
-  --font-mono:  'JetBrains Mono', 'SF Mono', Menlo, ui-monospace, monospace;
-  --shadow-hair:  0 0 0 1px rgba(42, 42, 46, 0.06);
-  --shadow-soft:  0 1px 2px rgba(42, 42, 46, 0.04), 0 4px 12px rgba(42, 42, 46, 0.06);
-  --shadow-pop:   0 2px 4px rgba(42, 42, 46, 0.05), 0 12px 28px rgba(42, 42, 46, 0.08);
-  --shadow-float: 0 1px 2px rgba(42, 42, 46, 0.06), 0 24px 56px -16px rgba(42, 42, 46, 0.18);
-  --shadow-cta:   0 2px 4px rgba(199, 74, 47, 0.15), 0 12px 28px -8px rgba(199, 74, 47, 0.28);
-  --shadow-brand: 0 2px 4px rgba(199, 74, 47, 0.15), 0 12px 28px -8px rgba(199, 74, 47, 0.28);
   --dur-1: 120ms;
   --dur-2: 220ms;
   --dur-3: 360ms;
