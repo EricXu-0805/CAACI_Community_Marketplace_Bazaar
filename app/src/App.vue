@@ -142,21 +142,68 @@ function detectAuthRecoveryAndRoute(): boolean {
 }
 
 onLaunch(() => {
-  init()
-  const routedToReset = detectAuthRecoveryAndRoute()
-  try {
-    if (!routedToReset && !uni.getStorageSync('welcomed')) {
-      uni.reLaunch({ url: '/pages/welcome/index' })
-    }
-  } catch {}
+  /*
+   * Global error handlers — register FIRST and synchronously, so any
+   * subsequent rejection in the deferred-init block is captured rather
+   * than vanishing into the WeChat service-thread void.
+   *
+   * onError fires for synchronous JS exceptions in any page lifecycle;
+   * onUnhandledRejection fires for promise rejections without a .catch.
+   * Both surface in the WeChat DevTools Console panel, which is the
+   * only debugging surface we have once the app reaches a real device.
+   */
+  uni.onError?.((err: any) => {
+    console.error('[onError]', err)
+  })
   uni.onUnhandledRejection?.((e: any) => {
-    console.error('Unhandled rejection:', e.reason)
+    console.error('[onUnhandledRejection]', e?.reason || e)
   })
   uni.onNetworkStatusChange?.((res: { isConnected: boolean }) => {
     if (!res.isConnected) {
       uni.showToast({ title: t('error.noNetwork'), icon: 'none', duration: 3000 })
     }
   })
+
+  /*
+   * Defer the heavy startup work (Supabase getSession round-trip, auth
+   * subscription wire-up, and the first-launch reLaunch to /welcome)
+   * to a 0-ms setTimeout so it runs AFTER the WeChat service thread
+   * finishes its initial setData→view-thread handshake.
+   *
+   * Symptom this fixes: WeChat DevTools threw
+   *   `Error: timeout at WAServiceMainContext.js?t=wechat&v=3.15.x:1`
+   * with launch time stretching from ~1 s to 5 s+ and the first page
+   * never painting (blank screen, no tabBar text). Two contributors:
+   *
+   *   1. WeChat 3.15.x base-library regression — confirmed by dcloud
+   *      community + WeChat staff ("问题已知正在修复"). The runtime
+   *      stricter-times the initial service-thread tick.
+   *   2. Our own `init()` did `await supabase.auth.getSession()`
+   *      synchronously inside onLaunch, blocking that tick with a
+   *      network round-trip. Combined with `uni.reLaunch` firing in
+   *      the same tick, the framework couldn't complete its initial
+   *      setData before the timeout cutoff.
+   *
+   * setTimeout 0 yields the macrotask queue, lets the WeChat runtime
+   * do its handshake, then runs init/reLaunch in the next loop. The
+   * try/catch is the last line of defense — anything that throws here
+   * gets logged to console instead of silently killing the boot.
+   */
+  setTimeout(() => {
+    try {
+      init()
+    } catch (err) {
+      console.error('[onLaunch] init failed:', err)
+    }
+    try {
+      const routedToReset = detectAuthRecoveryAndRoute()
+      if (!routedToReset && !uni.getStorageSync('welcomed')) {
+        uni.reLaunch({ url: '/pages/welcome/index' })
+      }
+    } catch (err) {
+      console.error('[onLaunch] welcome routing failed:', err)
+    }
+  }, 0)
 })
 </script>
 
