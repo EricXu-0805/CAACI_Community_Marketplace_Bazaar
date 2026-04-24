@@ -108,10 +108,19 @@ available on mp:
 
 - **Plaza**: works; just make sure any `<video>` tags have posters
   because mp video autoplay requires user interaction.
-- **Publish**: `uni.chooseImage` works, but the image compression
-  path in `utils/compressImage` currently branches on
-  `#ifdef H5` only. Need an `#ifdef MP-WEIXIN` branch that uses
-  `wx.compressImage` instead. **Not done yet.**
+- **Publish**: `uni.chooseImage` works. Image compression in
+  `utils/index.ts::compressImage` already has the correct dual
+  branch — H5 uses canvas + toDataURL, non-H5 uses `uni.compressImage`
+  with the same signature. ✅ Done in `src/utils/index.ts:610`.
+
+### tabBar icons
+
+`pages.json` currently declares `tabBar.list` with text only and no
+`iconPath` / `selectedIconPath`. This is LEGAL on mp — tabs render
+as text-only — but reviewers and users expect icons. When you add
+them, use 81×81 PNGs (standard mp dimensions) and put them under
+`src/static/tab/` since `src/static/*` is the only folder uni-app
+ships verbatim to the mp bundle.
 
 ## 5. Build commands
 
