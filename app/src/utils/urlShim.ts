@@ -156,23 +156,36 @@ export function installUrlShim(): void {
 
   const g = globalThis as any
 
-  let nativeWorks = false
-  try {
-    if (typeof g.URL === 'function') {
-      const probe = new g.URL('https://example.com/path')
-      if (
-        probe &&
-        probe.hostname === 'example.com' &&
-        probe.protocol === 'https:'
-      ) {
-        nativeWorks = true
-      }
-    }
-  } catch {
-    nativeWorks = false
-  }
-
-  if (nativeWorks) return
-
+  /*
+   * Force-install on every mp build, no probing. WeChat DevTools
+   * on 3.15.x has a quirk where `globalThis.URL` *appears* to work
+   * (probe succeeds) but the bare-identifier `URL` lookup inside
+   * vendor.js (where supabase-js lives) still fails. Probing native
+   * therefore false-positives and skips installation, leaving the
+   * actual call site broken.
+   *
+   * This entry point is only reached from #ifdef MP-WEIXIN code in
+   * useSupabase.ts, so we know we're on a mp platform here. Always
+   * overwrite globalThis.URL with our shim — it's WHATWG-subset-
+   * compliant for supabase-js's needs and 1.5 KB minified, so the
+   * cost of overriding even when native works is negligible.
+   *
+   * Also assign onto common alternate global handles in case the mp
+   * runtime exposes URL via a different path (legacy `wx.URL`,
+   * uni-vendor injected `globalContext`, etc).
+   */
   g.URL = MiniURL as unknown as typeof URL
+  try {
+    if (typeof g.global !== 'undefined') g.global.URL = MiniURL
+  } catch {}
+  try {
+    if (typeof g.window !== 'undefined') g.window.URL = MiniURL
+  } catch {}
+  try {
+    if (typeof g.self !== 'undefined') g.self.URL = MiniURL
+  } catch {}
+
+  try {
+    console.warn('[urlShim] installed MiniURL on globalThis.URL')
+  } catch {}
 }

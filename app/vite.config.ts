@@ -1,8 +1,45 @@
 import { defineConfig } from "vite";
+import type { Plugin } from "vite";
 import uni from "@dcloudio/vite-plugin-uni";
 
+/*
+ * Rewrites every `new URL(` and `new URLSearchParams(` reference inside
+ * @supabase/* package code to go through `globalThis.` on mp builds.
+ *
+ * Why: WeChat mini-program JSCore exposes URL on globalThis but bare
+ * identifier lookup inside vendor.js can return undefined (witnessed
+ * on 3.15.x DevTools — globalThis.URL probe succeeds, but supabase-js's
+ * `new URL(supabaseUrl)` still throws because the call site is in a
+ * scope where bare `URL` doesn't reach the global). Forcing the lookup
+ * through `globalThis.URL` (where our urlShim installs MiniURL) routes
+ * the call to the polyfill regardless of scope quirks.
+ *
+ * Scoped to @supabase/* paths so we don't accidentally rewrite our own
+ * code or unrelated deps. Only fires when UNI_PLATFORM is mp-* — H5
+ * builds keep native URL.
+ */
+function mpUrlGlobalThisRewrite(): Plugin {
+  return {
+    name: "mp-supabase-url-globalthis",
+    enforce: "pre",
+    transform(code, id) {
+      const platform = process.env.UNI_PLATFORM || "";
+      if (!platform.startsWith("mp-")) return null;
+      if (!id.includes("@supabase")) return null;
+      if (!code.includes("new URL(") && !code.includes("new URLSearchParams("))
+        return null;
+      return {
+        code: code
+          .replace(/new URL\(/g, "new globalThis.URL(")
+          .replace(/new URLSearchParams\(/g, "new globalThis.URLSearchParams("),
+        map: null,
+      };
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [uni()],
+  plugins: [mpUrlGlobalThisRewrite(), uni()],
   build: {
     target: "es2017",
     minify: "esbuild",
