@@ -713,7 +713,11 @@ async function onSubmit() {
   border-bottom: 0.5px solid var(--line-hair);
   &.row { display: flex; align-items: center; }
 }
-.label { font-size: 15px; color: var(--text-primary); width: 64px; flex-shrink: 0; font-weight: 500; }
+/* Labels need a min-width so short Chinese labels (分类 / 成色 / 价格) line
+   up vertically across rows, but a fixed width breaks longer English labels
+   (Category / Condition / Location). min-width + flex-shrink: 0 + padding-right
+   gives both: ZH locks to the 64px floor, EN grows past it without wrapping. */
+.label { font-size: 15px; color: var(--text-primary); min-width: 64px; flex-shrink: 0; font-weight: 500; padding-right: 8px; }
 .form-input { font-size: 15px; width: 100%; color: var(--text-primary); }
 .title-input { font-size: 17px; font-weight: 600; }
 .form-textarea { width: 100%; height: 110px; font-size: 15px; line-height: 1.6; color: var(--text-primary); }
