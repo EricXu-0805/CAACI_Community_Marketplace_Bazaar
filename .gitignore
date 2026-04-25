@@ -68,3 +68,4 @@ PERFORMANCE_*.md
 PERFORMANCE_*.txt
 UI_*.md
 EXPLORATION_*.md
+.gstack/

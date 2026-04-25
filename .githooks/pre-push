@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# Pre-push hook — runs the same checks GitHub Actions runs, locally,
+# before the push leaves your machine. Catches type errors and build
+# breaks within ~30s instead of 1-2 minutes after CI fails.
+#
+# Bypass when needed (hotfix, reverting, etc.):
+#   git push --no-verify
+#
+# Why type-check + build:h5 + build:mp-weixin (matches CI exactly):
+#   · vue-tsc catches ~80% of issues in 5s
+#   · build:h5 catches Vite/dynamic-import problems (~25s)
+#   · build:mp-weixin catches mp-specific regressions like the
+#     URL/Headers polyfill bugs we hit before — Vercel never builds
+#     mp so this is the only pre-push gate for the WeChat mini-program
+
+set -e
+
+# Color output if terminal supports it
+if [ -t 1 ] && command -v tput >/dev/null 2>&1 && [ "$(tput colors 2>/dev/null || echo 0)" -ge 8 ]; then
+  RED=$(tput setaf 1); GREEN=$(tput setaf 2); YELLOW=$(tput setaf 3); BOLD=$(tput bold); RESET=$(tput sgr0)
+else
+  RED=""; GREEN=""; YELLOW=""; BOLD=""; RESET=""
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+APP_DIR="${REPO_ROOT}/app"
+
+if [ ! -d "$APP_DIR" ]; then
+  echo "${YELLOW}[pre-push]${RESET} no app/ directory, skipping checks"
+  exit 0
+fi
+
+cd "$APP_DIR"
+
+echo "${BOLD}[pre-push]${RESET} running pre-push checks (~30s, --no-verify to bypass)"
+echo ""
+
+# ──────────────────────────────────────────────────────────────────
+# 1. Type check
+# ──────────────────────────────────────────────────────────────────
+echo "${BOLD}[1/3]${RESET} vue-tsc --noEmit"
+if npm run type-check >/tmp/pre-push-typecheck.log 2>&1; then
+  echo "  ${GREEN}✓${RESET} type-check passed"
+else
+  echo "  ${RED}✗${RESET} type-check FAILED"
+  echo ""
+  cat /tmp/pre-push-typecheck.log | tail -30
+  echo ""
+  echo "${YELLOW}Push blocked.${RESET} Fix the type errors above, or bypass with: ${BOLD}git push --no-verify${RESET}"
+  exit 1
+fi
+
+# ──────────────────────────────────────────────────────────────────
+# 2. H5 build (matches Vercel's deploy command)
+# ──────────────────────────────────────────────────────────────────
+echo ""
+echo "${BOLD}[2/3]${RESET} npm run build:h5 (this is the one Vercel runs)"
+export VITE_SUPABASE_URL="${VITE_SUPABASE_URL:-https://pre-push-stub.supabase.co}"
+export VITE_SUPABASE_ANON_KEY="${VITE_SUPABASE_ANON_KEY:-pre-push-stub-anon-key}"
+if npm run build:h5 >/tmp/pre-push-build-h5.log 2>&1; then
+  echo "  ${GREEN}✓${RESET} build:h5 passed"
+else
+  echo "  ${RED}✗${RESET} build:h5 FAILED"
+  echo ""
+  cat /tmp/pre-push-build-h5.log | tail -30
+  echo ""
+  echo "${YELLOW}Push blocked.${RESET} Fix the build errors above, or bypass with: ${BOLD}git push --no-verify${RESET}"
+  exit 1
+fi
+
+# ──────────────────────────────────────────────────────────────────
+# 3. mp-weixin build (only gate for WeChat regressions)
+# ──────────────────────────────────────────────────────────────────
+echo ""
+echo "${BOLD}[3/3]${RESET} npm run build:mp-weixin (Vercel never runs this — last line of defense)"
+if npm run build:mp-weixin >/tmp/pre-push-build-mp.log 2>&1; then
+  echo "  ${GREEN}✓${RESET} build:mp-weixin passed"
+else
+  echo "  ${RED}✗${RESET} build:mp-weixin FAILED"
+  echo ""
+  cat /tmp/pre-push-build-mp.log | tail -30
+  echo ""
+  echo "${YELLOW}Push blocked.${RESET} Fix the build errors above, or bypass with: ${BOLD}git push --no-verify${RESET}"
+  exit 1
+fi
+
+echo ""
+echo "${GREEN}${BOLD}[pre-push] all checks passed — pushing.${RESET}"
+exit 0
