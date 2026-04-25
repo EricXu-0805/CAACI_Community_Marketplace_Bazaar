@@ -686,9 +686,26 @@ async function contactSeller() {
  * instead of showing whatever is behind during the initial @load settle.
  * Never re-introduce a hard `height: Xpx` here — it would fight the
  * aspect-ratio style and we'd be back to the squashed look.
+ *
+ * display: block + vertical-align: top defend against the classic
+ * inline-baseline ghost-gap that browsers paint below replaced
+ * elements. Without these, tall portrait images on mobile leave a
+ * 4-6px sliver of bg-subtle between the swiper and the info-card,
+ * which users see as "weird exposure below the image".
  */
-.img-swiper { width: 100%; background: var(--bg-subtle); }
-.swiper-img { width: 100%; height: 100%; background: var(--bg-subtle); }
+.img-swiper {
+  display: block;
+  width: 100%;
+  background: var(--bg-subtle);
+  vertical-align: top;
+}
+.swiper-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-subtle);
+  vertical-align: top;
+}
 .no-img {
   width: 100%; height: 100%;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
