@@ -1,51 +1,32 @@
 /*
- * Minimal URL constructor shim for WeChat mini-program JSCore.
+ * Minimal Web-API shims for WeChat mini-program JSCore.
  *
- * Why this file exists:
- *   @supabase/supabase-js >=2.49.5 calls `new URL(supabaseUrl)` inside
- *   validateSupabaseUrl() during createClient(). On WeChat mp's JSCore
- *   the global URL constructor either doesn't exist OR isn't reachable
- *   via bare-identifier lookup (it may exist on globalThis but bare
- *   `URL` resolves to undefined). Result: every cold start threw
- *     `Error: Invalid supabaseUrl: Provided URL is malformed.`
- *   from validateSupabaseUrl's try/catch. Vue's setup() bailed,
- *   mp-weixin still mounted the template, every {{ binding }}
- *   rendered as undefined → page shell visible but NO TEXT.
- *   Two days of "blank text on mp-weixin" was this single missing API.
+ * Three constructors that supabase-js needs but mp's JSCore lacks:
  *
- * What this implements: ONLY the URL surface that supabase-js touches:
- *   · `new URL(absoluteUrl)`              — absolute parse
- *   · `new URL(relativePath, baseURL)`    — base+relative resolve
- *   · `.protocol` (read + write)          — used to swap http→ws
- *   · `.hostname`                         — split('.')[0] for storageKey
- *   · `.href`                             — final string for fetch URLs
- *   · `.pathname`, `.search`, `.hash`,
- *     `.host`, `.port`, `.origin`         — completeness for any other
- *                                            transitive supabase code
+ *   · URL              — used by validateSupabaseUrl + endpoint
+ *                        construction (auth/v1, rest/v1, etc).
+ *   · Headers          — used by fetchWithAuth to merge apikey +
+ *                        Authorization onto every outgoing request.
+ *                        Without it: ReferenceError on createClient.
+ *   · AbortController  — used by realtime, functions, and webauthn
+ *                        for request cancellation. Without it:
+ *                        ReferenceError when realtime channels are
+ *                        instantiated or RPCs are timed out.
  *
- * What this does NOT implement (intentionally — keeps the shim tiny):
- *   · `.searchParams`                     — supabase doesn't use it at
- *                                            client-init time, and our
- *                                            mpFetch shim handles all
- *                                            actual HTTP queries
- *   · username/password authority         — supabase URLs never have them
- *   · IDN / unicode hostname normalization — supabase URLs are ASCII
- *   · WHATWG-spec edge cases              — not needed for our use
+ * Source-of-truth grep against node_modules/@supabase/* found these
+ * three plus URLSearchParams (handled by the Vite rewrite plugin so
+ * the bare-identifier call sites don't fail). No Request/Response/
+ * Event constructor uses surface in production paths we exercise.
  *
- * Why not `core-js/web/url` or `whatwg-url`:
- *   · core-js URL is ~40 KB gzip — significant for a 1.2 MB mp budget
- *   · whatwg-url is much heavier and pulls in IDN tables
- *   · `url-polyfill` (npm) only attaches to global/window/self/this and
- *     mp-weixin's runtime has none of those — IIFE receives undefined
- *     and the assignment silently fails, so it's a no-op on mp.
- *   · This shim is ~80 lines, attaches to globalThis explicitly, and
- *     covers the exact supabase-js surface verified against
- *     node_modules/@supabase/supabase-js/dist/main/SupabaseClient.js.
+ * Activation: call installMpWebApiShim() once before importing any
+ * @supabase package. Idempotent. Force-installs every time on mp
+ * (no probe — DevTools' globalThis.URL probe-success was a false
+ * positive; the bare-identifier call site inside vendor.js still
+ * failed). H5 and Node bypass this whole module via #ifdef MP-WEIXIN.
  *
- * Activation: call installUrlShim() exactly once before
- * @supabase/supabase-js is imported. Idempotent — repeat calls
- * short-circuit. No-op when a working native URL is detected (so H5
- * and Node never pay the cost; conditional compilation also gates it).
+ * Sized to fit: ~3 KB minified. Intentionally NOT WHATWG-compliant
+ * for edge cases — covers ONLY what supabase-js actually invokes.
+ * Future missing API: extend here with a probe + minimal class.
  */
 
 const ABS_URL_RE = /^([a-z][a-z0-9+.-]*:)\/\/([^/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/i
@@ -148,44 +129,170 @@ class MiniURL {
   }
 }
 
+class MiniHeaders {
+  private map: Record<string, string>
+
+  constructor(init?: any) {
+    this.map = {}
+    if (!init) return
+    if (init instanceof MiniHeaders) {
+      this.map = { ...init.map }
+      return
+    }
+    if (Array.isArray(init)) {
+      for (const pair of init) {
+        if (Array.isArray(pair) && pair.length >= 2) {
+          this.set(String(pair[0]), String(pair[1]))
+        }
+      }
+      return
+    }
+    if (typeof init.forEach === 'function') {
+      init.forEach((value: any, key: any) => {
+        this.set(String(key), String(value))
+      })
+      return
+    }
+    if (typeof init === 'object') {
+      for (const key of Object.keys(init)) {
+        const value = (init as any)[key]
+        if (value !== undefined && value !== null) {
+          this.set(String(key), String(value))
+        }
+      }
+    }
+  }
+
+  has(name: string): boolean {
+    return name.toLowerCase() in this.map
+  }
+
+  get(name: string): string | null {
+    const v = this.map[name.toLowerCase()]
+    return v === undefined ? null : v
+  }
+
+  set(name: string, value: string): void {
+    this.map[name.toLowerCase()] = String(value)
+  }
+
+  append(name: string, value: string): void {
+    const key = name.toLowerCase()
+    const existing = this.map[key]
+    this.map[key] = existing ? existing + ', ' + String(value) : String(value)
+  }
+
+  delete(name: string): void {
+    delete this.map[name.toLowerCase()]
+  }
+
+  forEach(
+    cb: (value: string, key: string, parent: MiniHeaders) => void,
+    thisArg?: any,
+  ): void {
+    for (const key of Object.keys(this.map)) {
+      cb.call(thisArg, this.map[key], key, this)
+    }
+  }
+
+  *entries(): IterableIterator<[string, string]> {
+    for (const key of Object.keys(this.map)) {
+      yield [key, this.map[key]]
+    }
+  }
+
+  *keys(): IterableIterator<string> {
+    for (const key of Object.keys(this.map)) yield key
+  }
+
+  *values(): IterableIterator<string> {
+    for (const key of Object.keys(this.map)) yield this.map[key]
+  }
+}
+
+class MiniAbortSignal {
+  aborted = false
+  reason: any = undefined
+  private listeners: Array<(ev: any) => void> = []
+  onabort: ((ev: any) => void) | null = null
+
+  addEventListener(type: string, cb: (ev: any) => void): void {
+    if (type !== 'abort' || typeof cb !== 'function') return
+    this.listeners.push(cb)
+  }
+
+  removeEventListener(type: string, cb: (ev: any) => void): void {
+    if (type !== 'abort') return
+    const idx = this.listeners.indexOf(cb)
+    if (idx >= 0) this.listeners.splice(idx, 1)
+  }
+
+  dispatchAbort(reason: any): void {
+    if (this.aborted) return
+    this.aborted = true
+    this.reason = reason
+    const ev = { type: 'abort', target: this }
+    for (const cb of this.listeners.slice()) {
+      try {
+        cb(ev)
+      } catch {}
+    }
+    if (typeof this.onabort === 'function') {
+      try {
+        this.onabort(ev)
+      } catch {}
+    }
+  }
+
+  throwIfAborted(): void {
+    if (this.aborted) {
+      const err = this.reason ?? new Error('aborted')
+      throw err
+    }
+  }
+}
+
+class MiniAbortController {
+  signal: MiniAbortSignal
+
+  constructor() {
+    this.signal = new MiniAbortSignal()
+  }
+
+  abort(reason?: any): void {
+    this.signal.dispatchAbort(reason)
+  }
+}
+
 let installed = false
 
-export function installUrlShim(): void {
+export function installMpWebApiShim(): void {
   if (installed) return
   installed = true
 
   const g = globalThis as any
 
-  /*
-   * Force-install on every mp build, no probing. WeChat DevTools
-   * on 3.15.x has a quirk where `globalThis.URL` *appears* to work
-   * (probe succeeds) but the bare-identifier `URL` lookup inside
-   * vendor.js (where supabase-js lives) still fails. Probing native
-   * therefore false-positives and skips installation, leaving the
-   * actual call site broken.
-   *
-   * This entry point is only reached from #ifdef MP-WEIXIN code in
-   * useSupabase.ts, so we know we're on a mp platform here. Always
-   * overwrite globalThis.URL with our shim — it's WHATWG-subset-
-   * compliant for supabase-js's needs and 1.5 KB minified, so the
-   * cost of overriding even when native works is negligible.
-   *
-   * Also assign onto common alternate global handles in case the mp
-   * runtime exposes URL via a different path (legacy `wx.URL`,
-   * uni-vendor injected `globalContext`, etc).
-   */
   g.URL = MiniURL as unknown as typeof URL
-  try {
-    if (typeof g.global !== 'undefined') g.global.URL = MiniURL
-  } catch {}
-  try {
-    if (typeof g.window !== 'undefined') g.window.URL = MiniURL
-  } catch {}
-  try {
-    if (typeof g.self !== 'undefined') g.self.URL = MiniURL
-  } catch {}
+  g.Headers = MiniHeaders as unknown as typeof Headers
+  g.AbortController = MiniAbortController as unknown as typeof AbortController
+  g.AbortSignal = MiniAbortSignal as unknown as typeof AbortSignal
+
+  for (const handle of ['global', 'window', 'self']) {
+    try {
+      if (typeof g[handle] !== 'undefined') {
+        g[handle].URL = MiniURL
+        g[handle].Headers = MiniHeaders
+        g[handle].AbortController = MiniAbortController
+        g[handle].AbortSignal = MiniAbortSignal
+      }
+    } catch {}
+  }
 
   try {
-    console.warn('[urlShim] installed MiniURL on globalThis.URL')
+    console.warn(
+      '[mpShim] installed URL + Headers + AbortController on globalThis',
+    )
   } catch {}
 }
+
+export const installUrlShim = installMpWebApiShim

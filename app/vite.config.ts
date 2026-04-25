@@ -18,20 +18,23 @@ import uni from "@dcloudio/vite-plugin-uni";
  * code or unrelated deps. Only fires when UNI_PLATFORM is mp-* — H5
  * builds keep native URL.
  */
-function mpUrlGlobalThisRewrite(): Plugin {
+function mpWebApiGlobalThisRewrite(): Plugin {
+  const APIS = ["URL", "URLSearchParams", "Headers", "AbortController", "AbortSignal"];
+  const constructorRe = new RegExp(
+    `new (${APIS.join("|")})\\(`,
+    "g",
+  );
   return {
-    name: "mp-supabase-url-globalthis",
+    name: "mp-supabase-webapi-globalthis",
     enforce: "pre",
     transform(code, id) {
       const platform = process.env.UNI_PLATFORM || "";
       if (!platform.startsWith("mp-")) return null;
       if (!id.includes("@supabase")) return null;
-      if (!code.includes("new URL(") && !code.includes("new URLSearchParams("))
-        return null;
+      if (!constructorRe.test(code)) return null;
+      constructorRe.lastIndex = 0;
       return {
-        code: code
-          .replace(/new URL\(/g, "new globalThis.URL(")
-          .replace(/new URLSearchParams\(/g, "new globalThis.URLSearchParams("),
+        code: code.replace(constructorRe, (_m, ctor) => `new globalThis.${ctor}(`),
         map: null,
       };
     },
@@ -39,7 +42,7 @@ function mpUrlGlobalThisRewrite(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [mpUrlGlobalThisRewrite(), uni()],
+  plugins: [mpWebApiGlobalThisRewrite(), uni()],
   build: {
     target: "es2017",
     minify: "esbuild",
