@@ -203,6 +203,23 @@ onLaunch(() => {
     } catch (err) {
       console.error('[onLaunch] welcome routing failed:', err)
     }
+
+    /*
+     * Hide WeChat's native bottom tabBar on mp-weixin. The pages.json
+     * tabBar config is kept (uni.switchTab needs it for routing), but
+     * we render our own CustomTabBar.vue inside each tab page, so the
+     * native bar is a duplicate that overlaps. uni.hideTabBar persists
+     * for the app lifecycle in mp-weixin — onLaunch is enough; we
+     * don't need per-page onShow calls. H5 has its own #ifdef-guarded
+     * `uni-tabbar { display: none }` rule in the global style above.
+     */
+    // #ifdef MP-WEIXIN
+    try {
+      uni.hideTabBar({ animation: false })
+    } catch (err) {
+      console.warn('[onLaunch] hideTabBar failed:', err)
+    }
+    // #endif
   }, 0)
 })
 </script>
