@@ -777,8 +777,13 @@ function scrollToBottom() {
 }
 .emoji-btn-glyph {
   font-size: 20px; line-height: 1;
-  opacity: 0.45;
-  filter: grayscale(0.6);
+  /* Inactive opacity raised from 0.45 → 0.78 so the button is
+     legible at rest. The grayscale filter softened from 0.6 → 0.2
+     so the smiley still reads as colourful, just dimmed. The
+     .active rule above resets to opacity 1 + no filter when the
+     panel is open. */
+  opacity: 0.78;
+  filter: grayscale(0.2);
   transition: opacity 0.15s, filter 0.15s;
 }
 
