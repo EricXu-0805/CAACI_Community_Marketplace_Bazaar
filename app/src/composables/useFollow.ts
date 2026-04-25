@@ -6,25 +6,15 @@ import type { Item } from '../types'
 const following = ref<Set<string>>(new Set())
 const followingLoaded = ref(false)
 
-const PUBLIC_PROFILE_FIELDS_FULL = 'id, nickname, avatar_url, location, is_illini_verified, status_text, status_emoji'
-const PUBLIC_PROFILE_FIELDS_LEGACY = 'id, nickname, avatar_url, location, is_illini_verified'
 /*
- * Keep in sync with useItems.ts LIST_ITEM_FIELDS_FULL. The follow feed
- * renders the same card UI as the home feed, so it needs the same DB
- * columns: image_dimensions for slot-accurate aspect reservation
- * (migration 014) and title_i18n / description_i18n / source_lang for
- * the en↔zh switch (migration 015). Omitting them makes followed-seller
- * cards fall back to 4/5 aspect and untranslated titles — a subtle
- * regression that only shows up for users following foreign-language
- * sellers.
+ * Keep in sync with useItems.ts. Both composables render the same card
+ * UI; if you add a new column here, add it there too. The legacy
+ * 014/015/020/021-fallback paths were retired in the 035-era cleanup
+ * since every active database has these columns.
  */
-const LIST_ITEM_FIELDS_FULL =
+const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, location, is_illini_verified, status_text, status_emoji'
+const LIST_ITEM_FIELDS =
   'id, user_id, title, title_i18n, description_i18n, source_lang, price, category, condition, status, location, location_verified, images, image_dimensions, view_count, favorite_count, negotiable, created_at'
-const LIST_ITEM_FIELDS_LEGACY =
-  'id, user_id, title, price, category, condition, status, location, images, view_count, favorite_count, negotiable, created_at'
-
-let followLocVerifiedAvailable = true
-let followStatusAvailable = true
 
 export function useFollow() {
   const { supabase } = useSupabase()
@@ -77,35 +67,19 @@ export function useFollow() {
       if (following.value.size === 0) return []
     }
     const ids = Array.from(following.value)
-    const runQuery = () => {
-      const fields = followLocVerifiedAvailable ? LIST_ITEM_FIELDS_FULL : LIST_ITEM_FIELDS_LEGACY
-      const profileFields = followStatusAvailable ? PUBLIC_PROFILE_FIELDS_FULL : PUBLIC_PROFILE_FIELDS_LEGACY
-      /*
-       * Cast select() to any — same pattern as useItems.ts:101. The
-       * wider field list added for image_dimensions + i18n crosses
-       * supabase-js's discriminated-union inference ceiling (TS2590).
-       * Type assertion at the return boundary (below) restores the
-       * proper Item[] shape for callers.
-       */
-      return supabase
-        .from('items')
-        .select(`${fields}, profile:profiles(${profileFields})` as any)
-        .in('user_id', ids)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .range(page * pageSize, (page + 1) * pageSize - 1)
-    }
-    let { data, error } = await runQuery()
-    if (error?.code === '42703' && String(error.message || '').includes('location_verified')) {
-      console.warn('[useFollow] items.location_verified missing — falling back (run migration 020)')
-      followLocVerifiedAvailable = false
-      ;({ data, error } = await runQuery())
-    }
-    if (error?.code === '42703' && /status_/.test(String(error.message || ''))) {
-      console.warn('[useFollow] profiles.status_* missing — falling back (run migration 021)')
-      followStatusAvailable = false
-      ;({ data } = await runQuery())
-    }
+    /*
+     * Cast select() to any — same TS2590 union-complexity workaround
+     * documented in useItems.ts. Type assertion at the return boundary
+     * below restores the proper Item[] shape for callers.
+     */
+    const { data, error } = await supabase
+      .from('items')
+      .select(`${LIST_ITEM_FIELDS}, profile:profiles(${PUBLIC_PROFILE_FIELDS})` as any)
+      .in('user_id', ids)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .range(page * pageSize, (page + 1) * pageSize - 1)
+    if (error) throw error
     return (data || []) as unknown as Item[]
   }
 
