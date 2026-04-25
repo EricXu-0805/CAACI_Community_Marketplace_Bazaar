@@ -279,16 +279,36 @@ const myItems = ref<Item[]>([])
 const savedItems = ref<Item[]>([])
 const totalBrowsed = ref(0)
 
+/*
+ * Read the browse-history count from local storage. Source-of-truth for
+ * what gets shown next to the "Browsed" stat on the profile.
+ *
+ * Pre-fix this read 'browse_history' — a key that was never written by
+ * any code path. useHistory.ts has been writing to 'viewHistory' (items)
+ * and 'postViewHistory' (plaza posts) since the composable was added,
+ * so the count was permanently 0. Reading both keys mirrors what the
+ * /pages/history/index page actually displays (items + posts in two
+ * tabs), so a user who has viewed 3 items and 2 posts sees "5".
+ *
+ * Each storage value is a JSON-stringified array of objects (Item or
+ * Post). uni storage on H5 returns the parsed object directly when
+ * setStorageSync was given a non-string; on mp it returns the string.
+ * Handle both shapes so we don't depend on platform quirks.
+ */
 function loadBrowsedCount() {
-  try {
-    const raw = uni.getStorageSync('browse_history')
-    if (typeof raw === 'string' && raw) {
-      const arr = JSON.parse(raw)
-      if (Array.isArray(arr)) totalBrowsed.value = arr.length
-    } else if (Array.isArray(raw)) {
-      totalBrowsed.value = raw.length
-    }
-  } catch {}
+  let total = 0
+  for (const key of ['viewHistory', 'postViewHistory']) {
+    try {
+      const raw = uni.getStorageSync(key)
+      if (typeof raw === 'string' && raw) {
+        const arr = JSON.parse(raw)
+        if (Array.isArray(arr)) total += arr.length
+      } else if (Array.isArray(raw)) {
+        total += raw.length
+      }
+    } catch { /* corrupt key — skip */ }
+  }
+  totalBrowsed.value = total
 }
 
 /*
