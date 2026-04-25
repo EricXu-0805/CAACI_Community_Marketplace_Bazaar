@@ -145,8 +145,11 @@
         v-model="inputText"
         :placeholder="replyToMsg ? t('chat.replyingHint') : t('chat.placeholder')"
         confirm-type="send"
+        :focus="inputFocused"
+        :adjust-position="true"
         @confirm="onSend"
         @focus="emojiOpen = false"
+        @blur="inputFocused = false"
         class="msg-input"
       />
       <view :class="['send-btn', { disabled: !inputText.trim() || sending }]" role="button" :aria-label="t('a11y.sendMessage')" @click="onSend">
@@ -182,6 +185,25 @@ const { reportTarget, blockUser } = useModeration()
 const inputText = ref('')
 const chatInputRef = ref<any>(null)
 const emojiOpen = ref(false)
+/*
+ * inputFocused drives the uni-app `<input :focus>` binding so we can
+ * programmatically refocus after onSend. The contract:
+ *   · Default false on mount — chat shouldn't grab focus over scrollback
+ *     the moment the user lands on the page
+ *   · Toggle false → nextTick → true to re-trigger focus after a
+ *     successful send (uni-app's :focus is edge-triggered on the
+ *     false→true transition, not level-triggered on identity)
+ *   · @blur resets to false so the next send-cycle's toggle is a real
+ *     transition, not a no-op
+ *   · toggleEmoji also clears it so opening the emoji panel doesn't
+ *     race with the focus binding to keep the keyboard up
+ *
+ * The earlier H5-only native.focus() (commit a395107) didn't reliably
+ * re-engage the keyboard on iOS Safari because focus() outside the
+ * user-gesture stack is silently ignored. The :focus prop is the
+ * canonical uni-app surface for this and works on both H5 and mp.
+ */
+const inputFocused = ref(false)
 const replyToMsg = ref<any>(null)
 const scrollTarget = ref('')
 const conversationId = ref('')
@@ -272,6 +294,10 @@ const sending = ref(false)
 function toggleEmoji() {
   emojiOpen.value = !emojiOpen.value
   if (emojiOpen.value) {
+    /* Releasing the focus binding before hiding the keyboard prevents
+       the next render from re-engaging :focus="true" and bouncing the
+       keyboard right back up. */
+    inputFocused.value = false
     try { uni.hideKeyboard?.() } catch {}
   }
 }
@@ -362,12 +388,24 @@ async function onSend() {
       scrollToBottom()
       /*
        * Re-focus the input after a successful send so users can fire
-       * follow-up messages without re-tapping the field. Without this,
-       * the keyboard collapses on every send and rapid back-and-forth
-       * conversations require an extra tap per message. H5 uses the
-       * native focus(); mp doesn't expose it cleanly through the uni
-       * <input>, so we degrade silently.
+       * follow-up messages without re-tapping the field.
+       *
+       * The earlier H5-only native.focus() (commit a395107) was a no-op
+       * in practice — focus() outside the user-gesture stack is silently
+       * ignored by iOS Safari, and we're inside a nextTick microtask
+       * which puts us past the gesture window.
+       *
+       * The reliable path is uni-app's `:focus` prop, which is edge-
+       * triggered: false → true triggers focus, level-true does nothing.
+       * We toggle false→nextTick→true to force the transition even if
+       * the prior send already left it true.
+       *
+       * H5 native.focus() retained as belt-and-suspenders — it's a
+       * no-op in the bad case and an instant focus in the good case
+       * (e.g., desktop Chrome where gesture rules are looser).
        */
+      inputFocused.value = false
+      nextTick(() => { inputFocused.value = true })
       // #ifdef H5
       try {
         const root = (chatInputRef.value as any)?.$el as HTMLElement | undefined
