@@ -1,0 +1,115 @@
+name: CI
+
+# Runs the same checks Vercel runs (and a couple it doesn't). Triggers
+# on every push and on pull requests targeting main, so PRs get a green
+# check before merging and direct pushes to main still get a signal.
+#
+# Three independent jobs in a matrix:
+#   typecheck   — vue-tsc --noEmit  (catches TS errors before deploy)
+#   build-h5    — `uni build`        (matches Vercel's build command)
+#   build-mp    — `uni build -p mp-weixin` (catches mp-only regressions
+#                                            since Vercel never builds it)
+#
+# All three run in parallel against the same node_modules cache.
+# build-mp is the one that catches the URL/Headers/AbortController
+# polyfill regressions we hit this session — Vercel deploys would have
+# silently shipped a broken mp build because Vercel only runs the H5
+# command.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  typecheck:
+    name: Type-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install (legacy-peer-deps for @sentry/vue + uni-app peer)
+        working-directory: app
+        run: npm ci --legacy-peer-deps
+
+      - name: vue-tsc --noEmit
+        working-directory: app
+        run: npm run type-check
+
+  build-h5:
+    name: Build H5
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install
+        working-directory: app
+        run: npm ci --legacy-peer-deps
+
+      - name: Build (H5)
+        working-directory: app
+        run: npm run build:h5
+        env:
+          # Stub values — the build only needs the strings to exist;
+          # Vercel injects the real values at deploy time.
+          VITE_SUPABASE_URL: https://ci-stub.supabase.co
+          VITE_SUPABASE_ANON_KEY: ci-stub-anon-key
+
+      - name: Verify dist exists
+        run: test -d app/dist/build/h5 && ls -la app/dist/build/h5 | head -10
+
+  build-mp-weixin:
+    name: Build mp-weixin
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install
+        working-directory: app
+        run: npm ci --legacy-peer-deps
+
+      - name: Build (mp-weixin)
+        working-directory: app
+        run: npm run build:mp-weixin
+        env:
+          VITE_SUPABASE_URL: https://ci-stub.supabase.co
+          VITE_SUPABASE_ANON_KEY: ci-stub-anon-key
+
+      - name: Verify dist exists
+        run: test -d app/dist/build/mp-weixin && ls -la app/dist/build/mp-weixin | head -10
