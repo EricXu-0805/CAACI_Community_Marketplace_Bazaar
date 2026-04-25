@@ -77,14 +77,121 @@ function resolveRelative(rel: string, baseHref: string): string {
   return baseParsed.protocol + '//' + baseParsed.host + path
 }
 
+class MiniURLSearchParams {
+  private pairs: Array<[string, string]>
+
+  constructor(init?: any) {
+    this.pairs = []
+    if (!init) return
+    if (typeof init === 'string') {
+      const s = init.startsWith('?') ? init.slice(1) : init
+      if (!s) return
+      for (const part of s.split('&')) {
+        if (!part) continue
+        const eq = part.indexOf('=')
+        const k = eq >= 0 ? part.slice(0, eq) : part
+        const v = eq >= 0 ? part.slice(eq + 1) : ''
+        try {
+          this.pairs.push([decodeURIComponent(k), decodeURIComponent(v)])
+        } catch {
+          this.pairs.push([k, v])
+        }
+      }
+      return
+    }
+    if (init instanceof MiniURLSearchParams) {
+      this.pairs = init.pairs.slice()
+      return
+    }
+    if (Array.isArray(init)) {
+      for (const pair of init) {
+        if (Array.isArray(pair) && pair.length >= 2) {
+          this.pairs.push([String(pair[0]), String(pair[1])])
+        }
+      }
+      return
+    }
+    if (typeof init === 'object') {
+      for (const key of Object.keys(init)) {
+        const value = (init as any)[key]
+        if (value !== undefined && value !== null) {
+          this.pairs.push([key, String(value)])
+        }
+      }
+    }
+  }
+
+  set(name: string, value: string): void {
+    const k = String(name)
+    this.pairs = this.pairs.filter((p) => p[0] !== k)
+    this.pairs.push([k, String(value)])
+  }
+
+  append(name: string, value: string): void {
+    this.pairs.push([String(name), String(value)])
+  }
+
+  get(name: string): string | null {
+    const k = String(name)
+    for (const pair of this.pairs) {
+      if (pair[0] === k) return pair[1]
+    }
+    return null
+  }
+
+  getAll(name: string): string[] {
+    const k = String(name)
+    return this.pairs.filter((p) => p[0] === k).map((p) => p[1])
+  }
+
+  has(name: string): boolean {
+    const k = String(name)
+    return this.pairs.some((p) => p[0] === k)
+  }
+
+  delete(name: string): void {
+    const k = String(name)
+    this.pairs = this.pairs.filter((p) => p[0] !== k)
+  }
+
+  forEach(
+    cb: (value: string, key: string, parent: MiniURLSearchParams) => void,
+    thisArg?: any,
+  ): void {
+    for (const pair of this.pairs) {
+      cb.call(thisArg, pair[1], pair[0], this)
+    }
+  }
+
+  toString(): string {
+    return this.pairs
+      .map(
+        ([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v),
+      )
+      .join('&')
+  }
+
+  *entries(): IterableIterator<[string, string]> {
+    for (const pair of this.pairs) yield [pair[0], pair[1]]
+  }
+
+  *keys(): IterableIterator<string> {
+    for (const pair of this.pairs) yield pair[0]
+  }
+
+  *values(): IterableIterator<string> {
+    for (const pair of this.pairs) yield pair[1]
+  }
+}
+
 class MiniURL {
   protocol: string
   hostname: string
   host: string
   port: string
   pathname: string
-  search: string
   hash: string
+  searchParams: MiniURLSearchParams
 
   constructor(input: string, base?: string | MiniURL) {
     let resolved: string
@@ -101,8 +208,17 @@ class MiniURL {
     this.host = parsed.host
     this.port = parsed.port
     this.pathname = parsed.pathname
-    this.search = parsed.search
     this.hash = parsed.hash
+    this.searchParams = new MiniURLSearchParams(parsed.search)
+  }
+
+  get search(): string {
+    const s = this.searchParams.toString()
+    return s ? '?' + s : ''
+  }
+
+  set search(value: string) {
+    this.searchParams = new MiniURLSearchParams(value || '')
   }
 
   get href(): string {
@@ -273,6 +389,7 @@ export function installMpWebApiShim(): void {
   const g = globalThis as any
 
   g.URL = MiniURL as unknown as typeof URL
+  g.URLSearchParams = MiniURLSearchParams as unknown as typeof URLSearchParams
   g.Headers = MiniHeaders as unknown as typeof Headers
   g.AbortController = MiniAbortController as unknown as typeof AbortController
   g.AbortSignal = MiniAbortSignal as unknown as typeof AbortSignal
@@ -281,6 +398,7 @@ export function installMpWebApiShim(): void {
     try {
       if (typeof g[handle] !== 'undefined') {
         g[handle].URL = MiniURL
+        g[handle].URLSearchParams = MiniURLSearchParams
         g[handle].Headers = MiniHeaders
         g[handle].AbortController = MiniAbortController
         g[handle].AbortSignal = MiniAbortSignal
@@ -290,7 +408,7 @@ export function installMpWebApiShim(): void {
 
   try {
     console.warn(
-      '[mpShim] installed URL + Headers + AbortController on globalThis',
+      '[mpShim] installed URL/URLSearchParams/Headers/AbortController on globalThis',
     )
   } catch {}
 }
