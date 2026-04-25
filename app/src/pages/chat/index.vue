@@ -380,6 +380,34 @@ async function onSend() {
   sending.value = true
   const failsafe = setTimeout(() => { sending.value = false }, 15000)
 
+  /*
+   * SYNCHRONOUS H5 focus — must happen BEFORE `await sendMessage`,
+   * still inside the click event's user-gesture stack. iOS Safari
+   * silently ignores focus() called from a nextTick / setTimeout /
+   * post-await microtask; once we yield the event loop, the gesture
+   * is released and the keyboard dismisses for good.
+   *
+   * Two prior attempts at this issue both put the focus call inside
+   * a nextTick AFTER the await — exactly the broken pattern:
+   *   · a395107 — direct native.focus() inside post-await nextTick
+   *   · 5c8623c — :focus binding toggled inside post-await nextTick
+   * Both passed code review and desktop Chrome (looser gesture rules)
+   * and both failed real-device acceptance on iOS Safari.
+   *
+   * The native.focus() call is now placed synchronously, before any
+   * await, so it runs while the click handler is still on the user-
+   * gesture stack. The :focus binding toggle stays after the await
+   * for mp-weixin only, where the documented uni-app pattern works
+   * because mp targets don't enforce iOS Safari's gesture model.
+   */
+  // #ifdef H5
+  try {
+    const root = (chatInputRef.value as any)?.$el as HTMLElement | undefined
+    const native = root?.querySelector?.('input') as HTMLInputElement | null
+    native?.focus()
+  } catch { /* fall through — :focus toggle below is the mp backup */ }
+  // #endif
+
   try {
     await sendMessage(conversationId.value, currentUser.value.id, finalText)
     markAsRead(conversationId.value, currentUser.value.id)
@@ -387,31 +415,16 @@ async function onSend() {
     nextTick(() => {
       scrollToBottom()
       /*
-       * Re-focus the input after a successful send so users can fire
-       * follow-up messages without re-tapping the field.
-       *
-       * The earlier H5-only native.focus() (commit a395107) was a no-op
-       * in practice — focus() outside the user-gesture stack is silently
-       * ignored by iOS Safari, and we're inside a nextTick microtask
-       * which puts us past the gesture window.
-       *
-       * The reliable path is uni-app's `:focus` prop, which is edge-
-       * triggered: false → true triggers focus, level-true does nothing.
-       * We toggle false→nextTick→true to force the transition even if
-       * the prior send already left it true.
-       *
-       * H5 native.focus() retained as belt-and-suspenders — it's a
-       * no-op in the bad case and an instant focus in the good case
-       * (e.g., desktop Chrome where gesture rules are looser).
+       * mp-weixin re-focus path. H5 already engaged via the synchronous
+       * native.focus() above; this toggle is for the platforms that
+       * don't have iOS Safari's gesture-window restriction. uni-app's
+       * `:focus` prop is edge-triggered (false → true triggers focus,
+       * level-true is a no-op), so toggle false → nextTick → true to
+       * force the transition even if the previous send left it true.
        */
+      // #ifndef H5
       inputFocused.value = false
       nextTick(() => { inputFocused.value = true })
-      // #ifdef H5
-      try {
-        const root = (chatInputRef.value as any)?.$el as HTMLElement | undefined
-        const native = root?.querySelector?.('input') as HTMLInputElement | null
-        native?.focus()
-      } catch { /* keyboard will reopen on next tap, no harm */ }
       // #endif
     })
   } catch (error: any) {
