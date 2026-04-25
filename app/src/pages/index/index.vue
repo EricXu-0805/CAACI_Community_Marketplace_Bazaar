@@ -52,6 +52,14 @@
         >
           <text>{{ cat.label }}</text>
         </view>
+        <!--
+          Trailing transparent spacer — gives the last pill room to
+          breathe past the right safe-area / scrollbar edge so it
+          never gets visually clipped. Without this the rightmost pill
+          sits flush against the viewport edge and looks chopped on
+          devices with rounded corners or a notch on the right.
+        -->
+        <view class="cat-tab-spacer" aria-hidden="true"></view>
       </view>
     </scroll-view>
 
@@ -860,6 +868,12 @@ function goPublish() {
   display: inline-flex;
   gap: 6px;
   padding-right: 16px;
+}
+.cat-tab-spacer {
+  display: inline-block;
+  width: 80rpx;
+  flex-shrink: 0;
+  pointer-events: none;
 }
 .pill {
   display: inline-flex; align-items: center; justify-content: center;
