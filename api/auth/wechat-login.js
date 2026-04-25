@@ -3,45 +3,45 @@ export const config = { runtime: 'edge' }
 /*
  * /api/auth/wechat-login — mp-weixin silent sign-in endpoint.
  *
- * Architecture (v2, 2025 post-JWT-Signing-Keys era):
+ * Architecture (v3, 2025-12 — wechat_password_map era):
  *
  *   1. Client calls wx.login() → js_code
  *   2. POST { js_code, nickname?, avatar_url? } here
  *   3. We call api.weixin.qq.com/sns/jscode2session with AppSecret
  *      (server-only) → openid [+ unionid]
- *   4. Derive a deterministic virtual email + password per openid:
- *        email    = wx_<openid>@wechat.placeholder
- *        password = HMAC-SHA256(openid, WECHAT_USER_PASSWORD_SALT)
- *      Password is unguessable without SALT (server-only) but stable
- *      per-user so returning users always authenticate to the same
- *      auth.users row.
- *   5. Idempotent admin.createUser — first login creates the auth row
- *      (which fires handle_new_user → seeds profiles), subsequent
- *      logins return 422 email_exists which we swallow.
- *   6. POST /auth/v1/token?grant_type=password → real GoTrue session
- *      with access_token AND refresh_token. Key win over the v1
- *      JWT-mint design: supabase-js setSession works correctly, auto-
- *      refresh works, no HS256/ES256 signing key to manage.
- *   7. PATCH /rest/v1/profiles?id=eq.<user_id> using service_role to
+ *   4. Resolve the user's GoTrue password:
+ *        a. Look up wechat_password_map[openid]. If found, use it.
+ *        b. Otherwise generate a fresh 32-byte random hex password,
+ *           call admin.updateUserById to set it on auth.users (or
+ *           admin.createUser if the row doesn't exist yet), then
+ *           UPSERT into wechat_password_map for next time.
+ *        c. Transitional fallback: if migration 035 has not been
+ *           applied (table missing → 404 from PostgREST), and the
+ *           legacy WECHAT_USER_PASSWORD_SALT env var IS set, derive
+ *           the password via HMAC like v2 used to. This branch will
+ *           be removed once the wechat_password_map table is
+ *           guaranteed-present in every environment.
+ *   5. POST /auth/v1/token?grant_type=password → real GoTrue session
+ *      with access_token AND refresh_token.
+ *   6. PATCH /rest/v1/profiles?id=eq.<user_id> using service_role to
  *      bind wechat_openid + wechat_unionid onto the freshly-created
  *      profile row, fill nickname/avatar if the trigger defaulted
- *      them. We use session.user.id here instead of calling migration
- *      034's upsert_wechat_user RPC because that RPC was designed
- *      for the "already-bound" path and cannot do the first-time bind.
- *   8. Return the session body verbatim to the client; shape is the
- *      standard GoTrue token response.
+ *      them.
+ *   7. Return the session body verbatim to the client.
  *
- * Why this design instead of minting our own JWT:
- *   · Supabase 2024+ migrated from a single HS256 JWT secret to an
- *     asymmetric JWT Signing Keys system where the ES256 private key
- *     is never exposed. Minting JWTs externally requires generating
- *     our own key pair, importing the public half into Supabase, and
- *     rotating — not worth it for a mini-program login.
- *   · Admin API path is the officially recommended 2025 pattern (see
- *     docs/WECHAT_MP_SETUP.md §8 for citations).
- *   · Works identically whether the project is on Legacy HS256 or
- *     new ES256 Signing Keys — nothing to migrate if Supabase later
- *     revokes the legacy key.
+ * Why per-user random passwords instead of HMAC(openid, SALT):
+ *   · Single-secret blast radius: a leaked SALT lets an attacker
+ *     compute every user's plaintext password from their (non-secret)
+ *     openid. Per-user random passwords cap the damage at one user.
+ *   · Rotatable: rotating SALT in v2 invalidated EVERY existing
+ *     user. Rotating one row in wechat_password_map invalidates
+ *     exactly that user — they can re-login and get a fresh password.
+ *   · Defense in depth: the password row in postgres is plaintext
+ *     (not bcrypt) so we can pass it to GoTrue's signInWithPassword
+ *     unchanged. Mitigations: RLS deny-all on wechat_password_map,
+ *     no anon/authenticated grants, service_role-only access. A DB
+ *     dump still requires the WeChat AppSecret + email mapping to
+ *     be useful to an attacker.
  *
  * Environment variables REQUIRED on Vercel (production + preview):
  *
@@ -50,29 +50,18 @@ export const config = { runtime: 'edge' }
  *   SUPABASE_URL                — https://<ref>.supabase.co
  *   SUPABASE_SERVICE_ROLE_KEY   — Dashboard · API Keys · service_role
  *   SUPABASE_ANON_KEY           — Dashboard · API Keys · anon
- *   WECHAT_USER_PASSWORD_SALT   — random 32+ bytes generated via
- *                                 `openssl rand -base64 32`.
- *                                 Server-only. DO NOT rotate without
- *                                 migrating every WeChat user's
- *                                 stored password.
  *
- * Security posture:
- *   · AppSecret, service_role, and password salt are read from env
- *     ONLY; never bundled to the client.
- *   · Passwords on auth.users are bcrypt-hashed by GoTrue per its
- *     usual policy — even a Supabase DB breach does not expose
- *     openids directly (attacker would still need the salt to HMAC
- *     an openid → password pair).
- *   · Per-user password entropy = 256 bits (HMAC-SHA256 output),
- *     well above brute-force feasibility.
- *   · GET health branch reports env-var presence without values.
+ * Env var TRANSITIONAL (drop after all active users have migrated):
  *
- * What this endpoint does NOT do yet:
- *   · No account linking between email users and WeChat users.
- *   · No per-IP / per-openid rate limiting at the edge. Supabase
- *     Auth throttles signInWithPassword; WeChat's jscode2session is
- *     single-use so js_code replay is impossible.
- *   · No unionid-aware merge across multiple WeChat apps.
+ *   WECHAT_USER_PASSWORD_SALT   — only consulted when the new
+ *                                 wechat_password_map table is
+ *                                 unreachable (e.g. migration 035
+ *                                 not yet applied). Once you confirm
+ *                                 every active user has a row in
+ *                                 wechat_password_map you can delete
+ *                                 the env var; the lookup branch
+ *                                 will then surface a clear error
+ *                                 to anyone who never re-logged.
  */
 
 function env(name, fallback) {
@@ -111,6 +100,14 @@ async function hmacHex(message, secret) {
     .join('')
 }
 
+function randomHex(byteLen = 32) {
+  const buf = new Uint8Array(byteLen)
+  crypto.getRandomValues(buf)
+  return Array.from(buf)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
 async function exchangeCodeForOpenid(jsCode) {
   const url = 'https://api.weixin.qq.com/sns/jscode2session'
     + `?appid=${encodeURIComponent(WECHAT_APPID)}`
@@ -134,7 +131,110 @@ function emailFor(openid) {
   return `wx_${openid}@wechat.placeholder`
 }
 
-async function adminCreateIdempotent(email, password, nickname) {
+/*
+ * Fetch the stored auth password for an openid from
+ * public.wechat_password_map (migration 035). Returns:
+ *   { password: string }            — found, use this
+ *   { password: null }              — not found, caller must mint+store
+ *   { password: null, missing: true } — table doesn't exist yet
+ *                                       (migration 035 unapplied);
+ *                                       caller may fall back to HMAC
+ *
+ * service_role bypasses RLS; the table denies anon/authenticated entirely.
+ */
+async function lookupStoredPassword(openid) {
+  const url = `${SUPABASE_URL}/rest/v1/wechat_password_map`
+    + `?select=password&openid=eq.${encodeURIComponent(openid)}&limit=1`
+  const r = await fetch(url, {
+    headers: {
+      apikey: SUPABASE_SERVICE,
+      Authorization: `Bearer ${SUPABASE_SERVICE}`,
+      Accept: 'application/json',
+    },
+  })
+  if (r.status === 404) return { password: null, missing: true }
+  if (!r.ok) {
+    const detail = await r.json().catch(() => ({}))
+    const err = new Error('wechat_password_lookup_failed')
+    err.detail = detail
+    err.status = r.status
+    throw err
+  }
+  const rows = await r.json().catch(() => [])
+  const password = Array.isArray(rows) && rows[0]?.password ? rows[0].password : null
+  return { password }
+}
+
+async function storePassword(openid, password) {
+  const url = `${SUPABASE_URL}/rest/v1/wechat_password_map`
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_SERVICE,
+      Authorization: `Bearer ${SUPABASE_SERVICE}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'resolution=merge-duplicates,return=minimal',
+    },
+    body: JSON.stringify({ openid, password }),
+  })
+  if (!r.ok) {
+    const detail = await r.json().catch(() => ({}))
+    const err = new Error('wechat_password_store_failed')
+    err.detail = detail
+    err.status = r.status
+    throw err
+  }
+}
+
+async function adminLookupUserByEmail(email) {
+  const url = `${SUPABASE_URL}/auth/v1/admin/users?email=${encodeURIComponent(email)}`
+  const r = await fetch(url, {
+    headers: {
+      apikey: SUPABASE_SERVICE,
+      Authorization: `Bearer ${SUPABASE_SERVICE}`,
+    },
+  })
+  if (!r.ok) {
+    const detail = await r.json().catch(() => ({}))
+    const err = new Error('admin_lookup_failed')
+    err.detail = detail
+    err.status = r.status
+    throw err
+  }
+  const body = await r.json().catch(() => ({}))
+  const user = Array.isArray(body?.users) ? body.users[0] : null
+  return user || null
+}
+
+async function adminUpdateUserPassword(userId, password) {
+  const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
+    method: 'PUT',
+    headers: {
+      apikey: SUPABASE_SERVICE,
+      Authorization: `Bearer ${SUPABASE_SERVICE}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ password }),
+  })
+  if (!r.ok) {
+    const detail = await r.json().catch(() => ({}))
+    const err = new Error('admin_update_user_failed')
+    err.detail = detail
+    err.status = r.status
+    throw err
+  }
+}
+
+/*
+ * Idempotent createOrUpdate: try create with the given password. If
+ * the user already exists, look them up and PUT the password onto the
+ * existing row. Returns nothing on success; throws on hard failure.
+ *
+ * On the 422 "already exists" branch we MUST update the password,
+ * not swallow — the caller is about to call signInWithPassword with
+ * `password`, which will fail unless we sync auth.users.
+ */
+async function adminUpsertUserWithPassword(email, password, nickname) {
   const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
     method: 'POST',
     headers: {
@@ -150,6 +250,7 @@ async function adminCreateIdempotent(email, password, nickname) {
     }),
   })
   if (r.ok) return
+
   const detail = await r.json().catch(() => ({}))
   const msg = JSON.stringify(detail || {}).toLowerCase()
   const alreadyExists = (r.status === 422 || r.status === 400) && (
@@ -159,11 +260,20 @@ async function adminCreateIdempotent(email, password, nickname) {
     || msg.includes('user already registered')
     || msg.includes('duplicate key')
   )
-  if (alreadyExists) return
-  const err = new Error('admin_create_user_failed')
-  err.detail = detail
-  err.status = r.status
-  throw err
+  if (!alreadyExists) {
+    const err = new Error('admin_create_user_failed')
+    err.detail = detail
+    err.status = r.status
+    throw err
+  }
+
+  const existing = await adminLookupUserByEmail(email)
+  if (!existing?.id) {
+    const err = new Error('admin_user_exists_but_lookup_empty')
+    err.detail = { lookup_email: email }
+    throw err
+  }
+  await adminUpdateUserPassword(existing.id, password)
 }
 
 async function signInWithPassword(email, password) {
@@ -232,12 +342,52 @@ async function bindWechatIdentityOnProfile(userId, openid, unionid, nickname, av
   }
 }
 
+/*
+ * Resolve the GoTrue password for `openid`. Three paths:
+ *
+ *   1. wechat_password_map has a row → use it (steady state).
+ *   2. Table reachable but no row → mint random 32-byte hex,
+ *      sync auth.users via admin upsert, persist to map, return.
+ *   3. Table missing (migration 035 not applied) AND
+ *      WECHAT_USER_PASSWORD_SALT env var present → fall back to
+ *      HMAC for backward compat. We do NOT attempt to migrate
+ *      this user yet — once the migration runs, their next login
+ *      hits path 2 and they're upgraded automatically.
+ *
+ * Returns the resolved password string.
+ */
+async function resolvePassword(openid, email, nickname) {
+  const looked = await lookupStoredPassword(openid).catch(err => {
+    if (err?.status === 404) return { password: null, missing: true }
+    throw err
+  })
+
+  if (looked.password) {
+    return looked.password
+  }
+
+  if (looked.missing) {
+    if (!PASSWORD_SALT) {
+      const err = new Error('password_storage_unavailable')
+      err.detail = { hint: 'Apply supabase/migrations/035_wechat_password_map.sql, or set WECHAT_USER_PASSWORD_SALT during transition.' }
+      throw err
+    }
+    return await hmacHex(openid, PASSWORD_SALT)
+  }
+
+  const fresh = randomHex(32)
+  await adminUpsertUserWithPassword(email, fresh, nickname)
+  await storePassword(openid, fresh)
+  return fresh
+}
+
 export default async function handler(request) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204 })
 
   if (request.method === 'GET') {
     return json({
       endpoint: 'wechat-login',
+      version: 'v3-wechat_password_map',
       configured: {
         WECHAT_APPID:              !!WECHAT_APPID,
         WECHAT_APPSECRET:          !!WECHAT_APPSECRET,
@@ -249,7 +399,6 @@ export default async function handler(request) {
       ready: !!(
         WECHAT_APPID && WECHAT_APPSECRET
         && SUPABASE_URL && SUPABASE_SERVICE && SUPABASE_ANON
-        && PASSWORD_SALT
       ),
     })
   }
@@ -258,7 +407,6 @@ export default async function handler(request) {
 
   if (!WECHAT_APPID || !WECHAT_APPSECRET) return json({ error: 'wechat_not_configured' }, 503)
   if (!SUPABASE_URL || !SUPABASE_SERVICE || !SUPABASE_ANON) return json({ error: 'supabase_not_configured' }, 503)
-  if (!PASSWORD_SALT) return json({ error: 'password_salt_not_configured' }, 503)
 
   let body
   try { body = await request.json() } catch { return json({ error: 'bad_json' }, 400) }
@@ -276,29 +424,26 @@ export default async function handler(request) {
     return json({ error: err.message, wxErrcode: err.wxErrcode }, 400)
   }
 
-  const password = await hmacHex(openid, PASSWORD_SALT)
-  const email    = emailFor(openid)
+  const email = emailFor(openid)
 
   let session
   try {
-    await adminCreateIdempotent(email, password, nickname)
+    const password = await resolvePassword(openid, email, nickname)
     session = await signInWithPassword(email, password)
     if (!session?.user?.id) throw new Error('signin_no_user_id')
     await bindWechatIdentityOnProfile(session.user.id, openid, unionid, nickname, avatar)
   } catch (err) {
     /*
      * Log detailed error server-side (visible in Vercel function logs)
-     * but return ONLY a generic opaque error code to the client. The
-     * prior shape leaked err.message + err.detail + Supabase status
-     * to anyone calling the endpoint, which enables:
+     * but return ONLY a generic opaque error code to the client. This
+     * avoids leaking:
      *   · account enumeration (different error per "email exists" vs
      *     "invalid credentials" vs "create failed")
      *   · fingerprinting of our Supabase version + auth flow
-     *   · probing for PASSWORD_SALT misconfiguration via differential
-     *     error messages
+     *   · probing for storage/migration state via differential errors
      * Client gets a stable "login_failed" it can surface generically;
      * ops can pull the real error from function logs by correlating
-     * on the timestamp or adding a request-id later if needed.
+     * on the timestamp.
      */
     console.error('[wechat-login] auth path failed', {
       openid_suffix: openid?.slice(-6),
