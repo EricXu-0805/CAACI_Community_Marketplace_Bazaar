@@ -755,11 +755,18 @@ function goPublish() {
 .mobile-header {
   flex-shrink: 0;
   background: var(--canvas);
-  padding: 10px 16px 11px;
-  padding-top: calc(10px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
+  padding: 0 16px 11px;
+  padding-top: var(--mp-status-bar);
   z-index: 50;
 }
-.mh-top { display: flex; justify-content: flex-start; align-items: center; margin-bottom: 10px; }
+.mh-top {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  height: var(--mp-navbar-height, 44px);
+  padding-right: var(--mp-navbar-right-pad, 104px);
+  margin-bottom: 8px;
+}
 /*
  * Brand word-mark — serif masthead per refinement pass. Navy ink
  * on the canvas reads like a bookshop sign; 22px Fraunces gives

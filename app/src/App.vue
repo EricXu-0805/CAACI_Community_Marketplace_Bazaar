@@ -366,6 +366,38 @@ page,
   --ease-warm:  cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-crisp: cubic-bezier(0.7, 0, 0.3, 1);
 
+  /*
+   * WeChat mp-weixin custom-navbar tokens — capsule button awareness.
+   *
+   * Every mp-weixin page (with navigationStyle: custom) has the
+   * native capsule (minimize + close buttons) anchored top-right:
+   *   · width:  87 px on iOS, 87 px on Android
+   *   · height: 32 px on both
+   *   · top:    statusBar + 4 px (iOS) / + 8 px (Android)
+   *   · right:  7 px (iOS) / 10 px (Android)
+   * Source: WeChat official navbar guidelines, verified against
+   * uni.getMenuButtonBoundingClientRect() output. Values stay
+   * remarkably stable across WeChat 2.x → 3.15.x.
+   *
+   * Net "WeChat reserved top area" = statusBar (--status-bar-height,
+   * 25-44 px device-dependent) + 44 px capsule slot. Custom navbars
+   * MUST be at least 44 px tall AND keep clickable elements out of
+   * the right ~104 px (capsule width 87 + right gap 7 + visual breath
+   * 10) or they get hidden under / collide with the capsule.
+   *
+   * Usage:
+   *   .your-navbar {
+   *     padding-top: var(--mp-status-bar);
+   *     min-height: calc(var(--mp-status-bar) + var(--mp-navbar-height));
+   *     padding-right: var(--mp-navbar-right-pad);
+   *   }
+   * H5 keeps env(safe-area-inset-top) for notch via the existing
+   * fallback chain.
+   */
+  --mp-status-bar:        var(--status-bar-height, env(safe-area-inset-top, 0px));
+  --mp-navbar-height:     44px;   /* capsule 32 + 12 padding */
+  --mp-navbar-right-pad:  104px;  /* capsule 87 + 7 right + 10 breath */
+
   background-color: #F5F0E6;
   font-family:
     'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC',
