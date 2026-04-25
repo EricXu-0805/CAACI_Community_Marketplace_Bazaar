@@ -489,6 +489,49 @@ const SEARCH_SYNONYMS: [string, string[]][] = [
   ['配送', ['delivery', 'drop off']],
   ['急售', ['urgent sale', 'must sell', 'moving sale']],
   ['毕业', ['graduation', 'graduating', 'moving out', 'move out']],
+
+  /*
+   * English-keyed reverse mappings — added 2025-04-25.
+   *
+   * The existing dictionary mostly maps from Chinese keys (苹果) to
+   * English variants (apple/macbook/iphone). When a user types in
+   * English, expandSearch() walks the dictionary looking for keywords
+   * that q.includes(keyword) — so 'apple' fails to match key '苹果',
+   * meaning "apple" → ["apple"] only, never expanding to macbook etc.
+   *
+   * These entries fill that gap: top-level English category nouns
+   * (apple, mac, bike, book, phone, etc.) gain explicit synonym lists
+   * so an EN→EN search ("apple" → MacBook listings) actually finds
+   * relevant items even though the title doesn't contain "apple".
+   *
+   * Order matters slightly: longer keywords first so "mac mini" matches
+   * before bare "mac" steals the trigger. expandSearch dedupes results
+   * via the Set, so duplication across entries is harmless.
+   */
+  ['apple', ['macbook', 'iphone', 'ipad', 'airpods', 'imac', 'mac', '苹果', 'apple watch']],
+  ['mac', ['macbook', 'imac', 'apple', 'mac mini', 'mac studio']],
+  ['phone', ['iphone', 'pixel', 'samsung', 'galaxy', '手机']],
+  ['laptop', ['macbook', 'thinkpad', 'xps', 'computer', '笔记本', '电脑']],
+  ['computer', ['laptop', 'desktop', 'pc', 'imac', 'macbook', '电脑']],
+  ['bike', ['bicycle', '自行车', '单车', 'cycle', 'mountain bike']],
+  ['bicycle', ['bike', '自行车', '单车']],
+  ['book', ['textbook', '书', '教材', '课本', 'novel']],
+  ['textbook', ['book', 'course book', '教材', '课本']],
+  ['headphones', ['airpods', 'earbuds', '耳机']],
+  ['earbuds', ['airpods', 'headphones', '耳机']],
+  ['monitor', ['display', '显示器', 'screen']],
+  ['keyboard', ['mechanical keyboard', '键盘']],
+  ['speaker', ['speakers', '音箱', 'sonos', 'bose']],
+  ['tv', ['television', '电视', 'samsung tv', 'lg tv']],
+  ['fridge', ['refrigerator', '冰箱']],
+  ['couch', ['sofa', '沙发']],
+  ['desk', ['table', '桌子', '书桌']],
+  ['chair', ['椅子', 'office chair', 'gaming chair']],
+  ['bed', ['mattress', '床', '床垫']],
+  ['lamp', ['light', '台灯']],
+  ['backpack', ['bag', '背包', '书包']],
+  ['shoes', ['sneakers', 'boots', '鞋']],
+  ['jacket', ['coat', 'hoodie', '外套']],
 ]
 
 export function expandSearch(query: string): string[] {
