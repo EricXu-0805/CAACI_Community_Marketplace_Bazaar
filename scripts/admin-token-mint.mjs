@@ -10,9 +10,11 @@
  *   1. Save it in their browser localStorage under key "admin_token"
  *      via the admin dashboard's first-visit prompt
  *   2. (Optional) keep a backup in 1Password / a vault
- *   3. If lost, re-mint a new one and revoke the old via
- *      `node scripts/admin-token-revoke.mjs <token_id>` (TODO),
- *      or via the dashboard's "Active Sessions" panel.
+ *   3. If lost, re-mint a new one and revoke the old via:
+ *        node scripts/admin-token-revoke.mjs --list           # find the id
+ *        node scripts/admin-token-revoke.mjs --id <id> --apply
+ *      or by email if a single admin needs all their tokens revoked:
+ *        node scripts/admin-token-revoke.mjs --email <addr> --apply
  *
  * Usage:
  *   export SUPABASE_URL=https://<project>.supabase.co
