@@ -553,21 +553,34 @@ function previewImg(url: string) {
 async function onSendImage() {
   if (!currentUser.value || !conversationId.value) return
   if (sending.value) return
+  console.log('[chat-img-debug] onSendImage tap')
   uni.chooseImage({
     count: 1,
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
     success: async (res) => {
+      console.log('[chat-img-debug] chooseImage OK, tempPath:', res.tempFilePaths?.[0])
       sending.value = true
       const failsafe = setTimeout(() => { sending.value = false }, 30000)
       try {
         const compressed = await compressImage(res.tempFilePaths[0])
+        console.log('[chat-img-debug] compressed:', typeof compressed === 'string' ? compressed.slice(0, 60) : compressed)
         const urls = await uploadImages([compressed])
-        if (urls.length > 0) {
-          await sendMessage(conversationId.value, currentUser.value!.id, urls[0], 'image')
-          nextTick(() => scrollToBottom())
+        console.log('[chat-img-debug] uploaded URLs count:', urls.length)
+        if (urls.length === 0) {
+          /*
+           * Upload returned 0 URLs — uploadImagesWithDims swallowed a
+           * per-file error. Previously this branch was silent; the
+           * sender saw 'sending' clear with no message and no toast.
+           * Surface a clear failure so they know to retry.
+           */
+          throw new Error(t('chat.imageUploadFailed') || 'Image upload failed — please retry')
         }
+        await sendMessage(conversationId.value, currentUser.value!.id, urls[0], 'image')
+        console.log('[chat-img-debug] sendMessage OK, url:', urls[0])
+        nextTick(() => scrollToBottom())
       } catch (err: any) {
+        console.warn('[chat-img-debug] flow failed:', err)
         uni.showToast({
           title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
           icon: 'none',
@@ -577,6 +590,9 @@ async function onSendImage() {
         clearTimeout(failsafe)
         sending.value = false
       }
+    },
+    fail: (err) => {
+      console.warn('[chat-img-debug] chooseImage fail:', err)
     },
   })
 }
