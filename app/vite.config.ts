@@ -3,6 +3,24 @@ import type { Plugin } from "vite";
 import uni from "@dcloudio/vite-plugin-uni";
 
 /*
+ * VITE_RELEASE auto-derivation order:
+ *   1. VITE_RELEASE env var (manual override — useful for testing or
+ *      pinning a release name across multiple deploys)
+ *   2. VERCEL_GIT_COMMIT_SHA — auto-injected by Vercel at build time,
+ *      first 7 chars match `git log --oneline` short SHAs
+ *   3. 'dev' — local development fallback so Sentry still tags events
+ *      with a sensible release rather than `undefined`
+ *
+ * Wired into the bundle via Vite's `define` (string-replace at build
+ * time), not via the env-var pipeline, because VERCEL_* vars are not
+ * VITE_-prefixed and Vite's default env loader filters them out.
+ */
+const RELEASE_TAG =
+  process.env.VITE_RELEASE
+  || (process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7))
+  || 'dev';
+
+/*
  * Rewrites every `new URL(` and `new URLSearchParams(` reference inside
  * @supabase/* package code to go through `globalThis.` on mp builds.
  *
@@ -43,6 +61,9 @@ function mpWebApiGlobalThisRewrite(): Plugin {
 
 export default defineConfig({
   plugins: [mpWebApiGlobalThisRewrite(), uni()],
+  define: {
+    'import.meta.env.VITE_RELEASE': JSON.stringify(RELEASE_TAG),
+  },
   build: {
     target: "es2017",
     minify: "esbuild",
