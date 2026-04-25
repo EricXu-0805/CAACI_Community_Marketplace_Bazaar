@@ -47,7 +47,27 @@
 
       <view v-else class="posts">
         <view v-for="post in posts" :key="post.id" class="post-card">
+          <!--
+            Pinned-collapsed surface: when a pinned announcement is in
+            its compact state, render a single-line summary that the
+            user can tap to expand. Avoids the long-pinned-post-eats-
+            the-fold problem (P2-1) while preserving the announcement's
+            visibility. Tapping the chevron expands the card in place.
+          -->
           <view
+            v-if="post.is_pinned && !pinnedExpanded.has(post.id)"
+            class="pinned-collapsed"
+            @click="pinnedExpanded.add(post.id)"
+          >
+            <text class="pc-icon">📌</text>
+            <view class="pc-body">
+              <text class="pc-title">{{ post.profile?.nickname || t('plaza.pinned') }}</text>
+              <text class="pc-meta">{{ formatTime(post.created_at) }} · {{ t('plaza.tapToExpand') || 'tap to expand' }}</text>
+            </view>
+            <text class="pc-chev">›</text>
+          </view>
+          <view
+            v-else
             class="post-tappable"
             @click="goPostDetail(post)"
             @touchstart="postLongPress.onTouchstart(post)"
@@ -428,6 +448,16 @@ const replyTo = ref<PostComment | null>(null)
    fallback pipeline as the detail page, keyed to the current app lang. */
 const translations = reactive<Record<string, string>>({})
 const translatingId = ref('')
+
+/*
+ * Set of pinned-post IDs the user has chosen to expand. Pinned posts
+ * default to compact (single-line summary) so a long announcement
+ * doesn't eat the fold. Reactive so adding an ID triggers a re-render
+ * of the relevant card. Reset when posts are re-fetched is not
+ * needed — IDs are stable, and a re-pinned-from-collapsed transition
+ * is fine (user explicitly chose to expand it before).
+ */
+const pinnedExpanded = reactive(new Set<string>())
 const { translate: translateText, getCached } = useTranslate()
 
 async function togglePostTranslate(post: Post) {
@@ -897,6 +927,35 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   &:active { opacity: 0.7; }
+}
+
+/* Pinned-collapsed compact surface — single-line summary that expands
+   on tap. Sized to ~88rpx so it doesn't eat scroll real-estate the way
+   a fully-rendered pinned post used to. */
+.pinned-collapsed {
+  display: flex; align-items: center; gap: 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  padding: 4px 0;
+  &:active { opacity: 0.7; }
+}
+.pc-icon { font-size: 20px; line-height: 1; flex-shrink: 0; }
+.pc-body {
+  flex: 1 1 auto; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.pc-title {
+  font-size: 14px; font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pc-meta {
+  font-size: 12px; color: var(--text-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pc-chev {
+  font-size: 18px; color: var(--text-faint); flex-shrink: 0;
+  font-weight: 300;
 }
 .post-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
 .pa-avatar {
