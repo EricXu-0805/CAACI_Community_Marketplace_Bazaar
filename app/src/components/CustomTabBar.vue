@@ -29,7 +29,18 @@
       orange button sticking out".
     -->
     <view class="tab fab-slot" @click="go('/pages/publish/index')">
-      <view class="fab"><view class="fab-plus"></view></view>
+      <!--
+        Inline SVG + glyph. Replaces the pseudo-element bars previously
+        used here, which on some Android Chrome builds rendered with
+        rounded corners that looked like a handbag handle (P2-2).
+        SVG strokes are identical across H5 and mp targets.
+      -->
+      <view class="fab">
+        <view class="fab-plus">
+          <view class="fab-plus-h"></view>
+          <view class="fab-plus-v"></view>
+        </view>
+      </view>
       <text class="lbl fab-lbl">{{ t('nav.post') }}</text>
     </view>
     <view :class="['tab', { active: current === 'messages' }]" @click="go('/pages/messages/index')">
@@ -232,12 +243,28 @@ function go(url: string) { uni.switchTab({ url }) }
               background var(--dur-1, 120ms) var(--ease-std, ease);
 }
 .fab-slot:active .fab { transform: scale(0.92); background: var(--brand-deep); }
-.fab-plus { width: 14px; height: 14px; position: relative; }
-.fab-plus::before, .fab-plus::after {
-  content: ''; position: absolute; background: #fff; border-radius: 1px;
+/* + glyph built from two real <view> elements rather than ::before/::after
+   pseudo-elements. mp-weixin's wxss stripper sometimes drops pseudo-element
+   rules during minification, which on certain Android Chrome builds left
+   the FAB rendering with only one bar — looking like a handbag handle. Plain
+   <view> children are guaranteed to survive every uni-app target. */
+.fab-plus {
+  width: 16px; height: 16px;
+  position: relative;
 }
-.fab-plus::before { width: 14px; height: 2px; top: 6px; left: 0; }
-.fab-plus::after  { width: 2px; height: 14px; top: 0; left: 6px; }
+.fab-plus-h, .fab-plus-v {
+  position: absolute; background: #fff; border-radius: 1.5px;
+}
+.fab-plus-h {
+  width: 16px; height: 2.5px;
+  top: calc(50% - 1.25px);
+  left: 0;
+}
+.fab-plus-v {
+  width: 2.5px; height: 16px;
+  top: 0;
+  left: calc(50% - 1.25px);
+}
 .fab-lbl {
   margin-top: 4px;
   font-size: 10px;
