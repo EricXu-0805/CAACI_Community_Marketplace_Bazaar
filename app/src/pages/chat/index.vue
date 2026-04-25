@@ -141,6 +141,7 @@
         <text class="emoji-btn-glyph">😊</text>
       </view>
       <input
+        ref="chatInputRef"
         v-model="inputText"
         :placeholder="replyToMsg ? t('chat.replyingHint') : t('chat.placeholder')"
         confirm-type="send"
@@ -179,6 +180,7 @@ const { refreshUnreadCount } = useUnread()
 const { reportTarget, blockUser } = useModeration()
 
 const inputText = ref('')
+const chatInputRef = ref<any>(null)
 const emojiOpen = ref(false)
 const replyToMsg = ref<any>(null)
 const scrollTarget = ref('')
@@ -274,21 +276,45 @@ function toggleEmoji() {
   }
 }
 
-async function onPickEmoji(emoji: string) {
-  emojiOpen.value = false
-  if (!currentUser.value || !conversationId.value) return
+function onPickEmoji(emoji: string) {
+  /*
+   * Insert the emoji into the input value instead of sending it as its
+   * own message. The previous behaviour was to fire sendMessage(emoji)
+   * directly, which surprised users — they expected to compose a
+   * sentence with emoji embedded, not blast a one-glyph message every
+   * time they tapped the panel.
+   *
+   * We try cursor-aware insertion on H5 (where the underlying <input>
+   * exposes selectionStart). If that's not available — mp targets, or
+   * the input hasn't been focused yet — fall back to appending to the
+   * end of inputText. The user can always backspace and reposition;
+   * the contract is "emoji enters the field, never escapes as a
+   * standalone message".
+   *
+   * Keep the panel open so the user can tap several in a row. Closing
+   * it would force them to re-toggle for the second emoji.
+   */
+  // #ifdef H5
   try {
-    await sendMessage(conversationId.value, currentUser.value.id, emoji, 'text')
-    markAsRead(conversationId.value, currentUser.value.id)
-    refreshUnreadCount()
-    nextTick(() => scrollToBottom())
-  } catch (err: any) {
-    uni.showToast({
-      title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
-      icon: 'none',
-      duration: 2500,
-    })
-  }
+    const root = (chatInputRef.value as any)?.$el as HTMLElement | undefined
+    const native = root?.querySelector?.('input') as HTMLInputElement | null
+    if (native && typeof native.selectionStart === 'number') {
+      const before = inputText.value.slice(0, native.selectionStart)
+      const after = inputText.value.slice(native.selectionEnd ?? native.selectionStart)
+      const next = `${before}${emoji}${after}`
+      inputText.value = next
+      nextTick(() => {
+        try {
+          native.focus()
+          const pos = before.length + emoji.length
+          native.setSelectionRange(pos, pos)
+        } catch { /* fallback: cursor stays where it lands */ }
+      })
+      return
+    }
+  } catch { /* fall through to append */ }
+  // #endif
+  inputText.value = `${inputText.value}${emoji}`
 }
 
 async function retrySend(msg: any) {
