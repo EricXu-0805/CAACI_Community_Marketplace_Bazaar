@@ -191,11 +191,16 @@ async function onSave() {
   padding: 13px 16px; border-top: 0.5px solid var(--line-hair);
 }
 .label { font-size: 13px; color: var(--text-muted); margin-bottom: 7px; display: block; font-weight: 500; }
+/* box-sizing: border-box keeps width: 100% honest. Without it, the
+   horizontal padding adds 28px to the 100% width and the input
+   overflows the .form-group container on narrow viewports. */
 .form-input {
+  box-sizing: border-box;
   width: 100%; height: 44px; background: var(--bg-elev-2); border-radius: 10px;
   padding: 0 14px; font-size: 15px; color: var(--text-primary);
 }
 .form-textarea {
+  box-sizing: border-box;
   width: 100%; height: 90px; background: var(--bg-elev-2); border-radius: 10px;
   padding: 10px 14px; font-size: 15px; color: var(--text-primary); line-height: 1.5;
 }
