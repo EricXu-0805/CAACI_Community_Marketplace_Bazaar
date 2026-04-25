@@ -5,6 +5,7 @@ import { useAuth } from "./composables/useAuth"
 import { useI18n } from "./composables/useI18n"
 import { useTheme } from "./composables/useTheme"
 import { CURRENT_CONSENT_VERSION } from './legal'
+import { captureException } from './utils/sentry'
 
 /*
  * Self-hosted webfonts.
@@ -154,9 +155,12 @@ onLaunch(() => {
    */
   uni.onError?.((err: any) => {
     console.error('[onError]', err)
+    captureException(err, { tags: { source: 'uni.onError' }, level: 'error' })
   })
   uni.onUnhandledRejection?.((e: any) => {
-    console.error('[onUnhandledRejection]', e?.reason || e)
+    const reason = e?.reason || e
+    console.error('[onUnhandledRejection]', reason)
+    captureException(reason, { tags: { source: 'uni.onUnhandledRejection' }, level: 'error' })
   })
   uni.onNetworkStatusChange?.((res: { isConnected: boolean }) => {
     if (!res.isConnected) {
@@ -194,6 +198,7 @@ onLaunch(() => {
       init()
     } catch (err) {
       console.error('[onLaunch] init failed:', err)
+      captureException(err, { tags: { source: 'onLaunch.init' }, level: 'error' })
     }
     try {
       const routedToReset = detectAuthRecoveryAndRoute()
@@ -202,6 +207,7 @@ onLaunch(() => {
       }
     } catch (err) {
       console.error('[onLaunch] welcome routing failed:', err)
+      captureException(err, { tags: { source: 'onLaunch.welcomeRouting' }, level: 'error' })
     }
 
     /*
