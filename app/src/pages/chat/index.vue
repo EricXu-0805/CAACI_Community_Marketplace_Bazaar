@@ -539,18 +539,30 @@ function formatChatTime(dateStr: string): string {
   return `${d.getMonth() + 1}/${d.getDate()} ${time}`
 }
 
-/* 3s + haptic recognizer to reduce mis-fires on the chat surface
+/* 2s + haptic recognizer to reduce mis-fires on the chat surface
    (a thumb resting on a bubble used to fire reply/copy/delete with
-   a 350ms accident; long thresholds let the user commit deliberately). */
-const msgLongPress = useLongPress<[any]>((msg) => onMsgLongPress(msg), 3000)
+   a 350ms accident; 2s gives the user enough time to commit
+   deliberately while staying snappy enough that "yes I really
+   wanted to long-press this" doesn't feel like waiting). Tuned
+   down from 3s in batch #2 — 3s tested as too slow in user
+   acceptance, but 350ms native is still too easy. */
+const msgLongPress = useLongPress<[any]>((msg) => onMsgLongPress(msg), 2000)
 
 function onMsgLongPress(msg: any) {
   const isMine = msg.sender_id === currentUser.value?.id
   const isText = msg.message_type !== 'image'
 
+  /*
+   * Action ordering for non-mine messages: reply → copy (text only) → report.
+   * Report goes LAST so a finger sliding through the sheet doesn't blast
+   * the destructive option first. For mine messages we keep delete-only
+   * (you don't report your own messages and copying your own message
+   * isn't a common workflow — keep the sheet short).
+   */
   const actions: string[] = []
   if (!isMine) actions.push(t('chat.reply'))
   if (isText) actions.push(t('chat.copy'))
+  if (!isMine) actions.push(t('detail.report'))
   if (isMine) actions.push(t('chat.deleteMsg'))
   if (actions.length === 0) return
 
@@ -564,6 +576,12 @@ function onMsgLongPress(msg: any) {
       } else if (action === t('chat.copy')) {
         uni.setClipboardData({ data: msg.content })
         uni.showToast({ title: t('chat.copied'), icon: 'success' })
+      } else if (action === t('detail.report')) {
+        /* Re-uses the same reason sheet + reportTarget pipeline as the
+           header's "more → Report" action. In a 1:1 chat, the message
+           sender (when !isMine) is by definition otherUserId, so we
+           don't need to thread msg.sender_id through. */
+        doReport()
       } else if (action === t('chat.deleteMsg')) {
         uni.showModal({
           title: t('chat.deleteMsgTitle'),

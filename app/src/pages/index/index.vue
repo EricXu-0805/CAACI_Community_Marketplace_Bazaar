@@ -614,11 +614,12 @@ async function onQuickFav(item: Item) {
   item.favorite_count = (item.favorite_count || 0) + (nowFav ? 1 : -1)
 }
 
-/* 3s + haptic for the home feed report flow — a thumb resting on a
+/* 2s + haptic for the home feed report flow — a thumb resting on a
    card during scroll used to fire the report action sheet at 350ms,
-   which scared users away from scrolling. 3s gives clear "I really
-   want to do this" intent. */
-const cardLongPress = useLongPress<[Item]>((item) => onCardLongPress(item), 3000)
+   which scared users away from scrolling. Tuned down from 3s in
+   batch #2 — 3s tested as too slow in user acceptance; 2s preserves
+   the deliberate-intent gate while feeling responsive. */
+const cardLongPress = useLongPress<[Item]>((item) => onCardLongPress(item), 2000)
 
 function onCardLongPress(item: Item) {
   const favLabel = isFavorited(item.id) ? t('home.unsave') : t('detail.save')
