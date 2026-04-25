@@ -184,11 +184,22 @@ async function onChangePassword() {
       // #ifndef H5
       redirectTo = 'https://caaci-community-marketplace-bazaar.vercel.app/'
       // #endif
+      console.log('[reset-pw-debug] settings change password — email:', session.user!.email, 'redirectTo:', redirectTo)
       const { error } = await supabase.auth.resetPasswordForEmail(session.user!.email!, { redirectTo })
       if (error) {
-        uni.showToast({ title: error.message, icon: 'none' })
+        console.warn('[reset-pw-debug] settings resetPasswordForEmail error:', error)
+        uni.showModal({
+          title: t('login.resetFailTitle') || 'Could not send reset email',
+          content: error.message,
+          showCancel: false,
+        })
       } else {
-        uni.showToast({ title: t('settings.changePasswordSent'), icon: 'success', duration: 3000 })
+        console.log('[reset-pw-debug] settings reset email queued OK')
+        uni.showModal({
+          title: t('settings.changePasswordSent'),
+          content: t('login.resetHint'),
+          showCancel: false,
+        })
       }
     },
   })

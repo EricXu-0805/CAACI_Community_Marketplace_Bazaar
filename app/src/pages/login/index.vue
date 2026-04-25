@@ -122,7 +122,17 @@ const agreed = ref(false)
 const { supabase } = useSupabase()
 
 async function onForgotPassword() {
-  if (!email.value.trim()) {
+  const trimmedEmail = email.value.trim().toLowerCase()
+  if (!trimmedEmail) {
+    uni.showToast({ title: t('login.needEmail'), icon: 'none' })
+    return
+  }
+  /*
+   * Basic shape check before hitting the API. Supabase's own validation
+   * is fine, but a syntactically broken email returns a generic 400
+   * with no localized message — easier to catch here.
+   */
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
     uni.showToast({ title: t('login.needEmail'), icon: 'none' })
     return
   }
@@ -133,11 +143,28 @@ async function onForgotPassword() {
   // #ifndef H5
   redirectTo = 'https://caaci-community-marketplace-bazaar.vercel.app/'
   // #endif
-  const { error } = await supabase.auth.resetPasswordForEmail(email.value.trim(), { redirectTo })
+  console.log('[reset-pw-debug] sending reset email to:', trimmedEmail, 'redirectTo:', redirectTo)
+  const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, { redirectTo })
   if (error) {
-    uni.showToast({ title: error.message, icon: 'none' })
+    console.warn('[reset-pw-debug] resetPasswordForEmail error:', error)
+    uni.showModal({
+      title: t('login.resetFailTitle') || 'Could not send reset email',
+      content: error.message,
+      showCancel: false,
+    })
   } else {
-    uni.showModal({ title: t('login.resetSent'), content: t('login.resetHint'), showCancel: false })
+    console.log('[reset-pw-debug] reset email request OK (delivery is async)')
+    /*
+     * Supabase's resetPasswordForEmail returns success even if the email
+     * is queued (or rate-limited internally). The user should be told
+     * explicitly that this can take a moment AND to check their spam
+     * folder, since we can't see whether the email actually arrived.
+     */
+    uni.showModal({
+      title: t('login.resetSent'),
+      content: t('login.resetHint'),
+      showCancel: false,
+    })
   }
 }
 

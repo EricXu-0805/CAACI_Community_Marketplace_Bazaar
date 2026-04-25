@@ -48,6 +48,7 @@ const confirmPw = ref('')
 const saving = ref(false)
 
 onMounted(async () => {
+  console.log('[reset-pw-debug] reset-password page mounted')
   try {
     // #ifdef H5
     /*
@@ -62,6 +63,12 @@ onMounted(async () => {
      * reLaunch rewrites both. We read the stash first, fall back to
      * whatever is still on window.location, then clean up so back/
      * forward can't replay the tokens.
+     *
+     * detectSessionInUrl=true on the supabase client may have ALREADY
+     * consumed the recovery params before we get here (see Type-A in
+     * the quick-getSession check below). That's fine — getSession()
+     * will return the recovery session and we'll skip the manual
+     * exchange.
      */
     const stashedSearch: string =
       typeof window !== 'undefined' ? ((window as any).__authRecoverySearch || '') : ''
@@ -72,6 +79,7 @@ onMounted(async () => {
     let hash = typeof window !== 'undefined' ? (window.location.hash || '') : ''
     if (stashedSearch && !/[?&]code=/.test(search)) search = stashedSearch
     if (stashedHash && !hash.includes('access_token=') && !hash.includes('error=')) hash = stashedHash
+    console.log('[reset-pw-debug] stashed?', { stashedSearch: !!stashedSearch, stashedHash: !!stashedHash })
 
     try {
       delete (window as any).__authRecoverySearch
@@ -80,34 +88,52 @@ onMounted(async () => {
 
     if (hash.includes('error=')) {
       const params = new URLSearchParams(hash.slice(hash.indexOf('?') + 1))
-      errorMsg.value = params.get('error_description') || params.get('error') || t('resetPw.linkInvalid')
+      const desc = params.get('error_description') || params.get('error')
+      console.warn('[reset-pw-debug] link error param:', desc)
+      errorMsg.value = desc || t('resetPw.linkInvalid')
       ready.value = true
       return
     }
 
-    const codeMatch = search.match(/[?&]code=([^&]+)/)
-    if (codeMatch && codeMatch[1]) {
-      try {
-        await supabase.auth.exchangeCodeForSession(decodeURIComponent(codeMatch[1]))
-      } catch (err: any) {
-        errorMsg.value = err?.message || t('resetPw.linkInvalid')
-        ready.value = true
-        return
-      }
-    } else if (hash.includes('access_token=')) {
-      const qIdx = hash.indexOf('?')
-      const raw = qIdx >= 0 ? hash.slice(qIdx + 1) : hash.replace(/^#/, '')
-      const params = new URLSearchParams(raw)
-      const access_token = params.get('access_token') || ''
-      const refresh_token = params.get('refresh_token') || ''
-      if (access_token && refresh_token) {
+    /*
+     * Fast-path: maybe detectSessionInUrl already turned the recovery
+     * params into a live session. Check first to avoid double-exchange
+     * (which produces "code already used" errors on PKCE).
+     */
+    const earlyCheck = await supabase.auth.getSession()
+    if (earlyCheck.data.session) {
+      console.log('[reset-pw-debug] session already established (detectSessionInUrl)')
+    } else {
+      const codeMatch = search.match(/[?&]code=([^&]+)/)
+      if (codeMatch && codeMatch[1]) {
+        console.log('[reset-pw-debug] exchanging PKCE code')
         try {
-          await supabase.auth.setSession({ access_token, refresh_token })
+          await supabase.auth.exchangeCodeForSession(decodeURIComponent(codeMatch[1]))
         } catch (err: any) {
+          console.warn('[reset-pw-debug] exchangeCodeForSession failed:', err)
           errorMsg.value = err?.message || t('resetPw.linkInvalid')
           ready.value = true
           return
         }
+      } else if (hash.includes('access_token=')) {
+        console.log('[reset-pw-debug] consuming implicit-flow tokens from hash')
+        const qIdx = hash.indexOf('?')
+        const raw = qIdx >= 0 ? hash.slice(qIdx + 1) : hash.replace(/^#/, '')
+        const params = new URLSearchParams(raw)
+        const access_token = params.get('access_token') || ''
+        const refresh_token = params.get('refresh_token') || ''
+        if (access_token && refresh_token) {
+          try {
+            await supabase.auth.setSession({ access_token, refresh_token })
+          } catch (err: any) {
+            console.warn('[reset-pw-debug] setSession failed:', err)
+            errorMsg.value = err?.message || t('resetPw.linkInvalid')
+            ready.value = true
+            return
+          }
+        }
+      } else {
+        console.warn('[reset-pw-debug] no recovery params found anywhere')
       }
     }
 
@@ -121,10 +147,14 @@ onMounted(async () => {
 
     const { data, error } = await supabase.auth.getSession()
     if (error || !data.session) {
+      console.warn('[reset-pw-debug] no session after exchange:', error)
       errorMsg.value = t('resetPw.linkInvalid')
+    } else {
+      console.log('[reset-pw-debug] session ready, user:', data.session.user.id)
     }
     ready.value = true
   } catch (err: any) {
+    console.warn('[reset-pw-debug] outer catch:', err)
     errorMsg.value = err?.message || t('resetPw.linkInvalid')
     ready.value = true
   }
@@ -141,11 +171,30 @@ async function onSave() {
   }
   saving.value = true
   try {
+    console.log('[reset-pw-debug] calling updateUser')
     const { error } = await supabase.auth.updateUser({ password: newPassword.value })
     if (error) throw error
+    console.log('[reset-pw-debug] password updated, signing out and redirecting to login')
+    /*
+     * Sign out the recovery session before redirecting. Two reasons:
+     *   1. The session created from the recovery token is short-lived
+     *      and tied to the recovery flow — leaving it active can lead
+     *      to "I changed my password but I'm still logged in with the
+     *      old one" confusion (the OLD session token, not the new
+     *      password, is what's authenticating subsequent calls).
+     *   2. Redirecting to login forces the user to actually exercise
+     *      the new password, which catches "I typed it wrong" before
+     *      they discover it 5 minutes later.
+     */
+    try {
+      await supabase.auth.signOut()
+    } catch (signOutErr) {
+      console.warn('[reset-pw-debug] signOut after updateUser failed (continuing):', signOutErr)
+    }
     uni.showToast({ title: t('resetPw.success'), icon: 'success', duration: 2000 })
-    setTimeout(() => uni.reLaunch({ url: '/pages/index/index' }), 1500)
+    setTimeout(() => uni.reLaunch({ url: '/pages/login/index' }), 1500)
   } catch (err: any) {
+    console.warn('[reset-pw-debug] updateUser failed:', err)
     uni.showToast({ title: err?.message || t('resetPw.fail'), icon: 'none', duration: 3000 })
   } finally {
     saving.value = false
