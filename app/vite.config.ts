@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import type { Plugin } from "vite";
 import uni from "@dcloudio/vite-plugin-uni";
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 
 /*
  * VITE_RELEASE auto-derivation order:
@@ -19,6 +20,45 @@ const RELEASE_TAG =
   process.env.VITE_RELEASE
   || (process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7))
   || 'dev';
+
+/*
+ * Sentry source-map upload gate.
+ *
+ * Source maps are valuable in production — they turn
+ *   at e (assets/index-DRvVKW3T.js:1:54312)
+ * into
+ *   at handleSubmit (src/pages/login/index.vue:42:15)
+ * inside Sentry's stack trace viewer.
+ *
+ * The trade-off: shipping .map files publicly leaks the original
+ * source. The fix is `build.sourcemap: 'hidden'` (generate the .map
+ * but omit the //# sourceMappingURL comment), pair that with
+ * @sentry/vite-plugin to upload the .map files to Sentry, then delete
+ * them from the build output so Vercel never serves them.
+ *
+ * The plugin is gated on SENTRY_AUTH_TOKEN being present:
+ *   · Local dev: token absent → plugin skipped, build is fast, no
+ *     source maps generated (sourcemap option still in effect but
+ *     plugin won't upload anything)
+ *   · Vercel production deploys: token present in env → plugin runs,
+ *     uploads to Sentry, deletes .map files post-upload
+ *   · CI (GitHub Actions): we deliberately do NOT pass the token, so
+ *     CI builds stay fast and don't pollute Sentry releases. Vercel
+ *     is the source of truth for what's deployed.
+ *
+ * mp-* builds (UNI_PLATFORM=mp-weixin etc.) skip the plugin entirely:
+ *   1. Sentry browser SDK doesn't run on mp targets so symbolicating
+ *      mp stack traces with H5 source maps is meaningless
+ *   2. Vite's sourcemap output for mp-weixin is a different beast (mp
+ *      packages files into wxs bundles); the plugin would try to
+ *      upload them under the same release as H5 and pollute the data
+ */
+const isMpBuild = (process.env.UNI_PLATFORM || "").startsWith("mp-");
+const sentryEnabled =
+  !isMpBuild
+  && !!process.env.SENTRY_AUTH_TOKEN
+  && !!process.env.SENTRY_ORG
+  && !!process.env.SENTRY_PROJECT;
 
 /*
  * Rewrites every `new URL(` and `new URLSearchParams(` reference inside
@@ -60,7 +100,25 @@ function mpWebApiGlobalThisRewrite(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [mpWebApiGlobalThisRewrite(), uni()],
+  plugins: [
+    mpWebApiGlobalThisRewrite(),
+    uni(),
+    ...(sentryEnabled
+      ? [
+          sentryVitePlugin({
+            authToken: process.env.SENTRY_AUTH_TOKEN!,
+            org: process.env.SENTRY_ORG!,
+            project: process.env.SENTRY_PROJECT!,
+            release: { name: RELEASE_TAG },
+            sourcemaps: {
+              assets: ["./dist/build/h5/**"],
+              filesToDeleteAfterUpload: ["./dist/build/h5/**/*.map"],
+            },
+            telemetry: false,
+          }),
+        ]
+      : []),
+  ],
   define: {
     'import.meta.env.VITE_RELEASE': JSON.stringify(RELEASE_TAG),
   },
@@ -70,6 +128,7 @@ export default defineConfig({
     cssCodeSplit: true,
     reportCompressedSize: false,
     chunkSizeWarningLimit: 600,
+    sourcemap: sentryEnabled ? "hidden" : false,
     rollupOptions: {
       output: {
         manualChunks(id) {
