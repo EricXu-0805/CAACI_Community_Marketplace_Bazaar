@@ -70,7 +70,7 @@
             v-for="cat in categoryKeys"
             :key="cat"
             :class="['sel-pill', { active: form.category === cat }]"
-            @click="form.category = cat; showCat = false"
+            @click="onCategoryTap(cat)"
           >
             <text>{{ t('cat.' + cat) }}</text>
           </view>
@@ -91,7 +91,7 @@
             v-for="cond in conditionKeys"
             :key="cond"
             :class="['sel-pill cond-pill', { active: form.condition === cond }]"
-            @click="form.condition = cond as any; showCond = false"
+            @click="onConditionTap(cond)"
           >
             <text class="cp-name">{{ t('condition.' + cond) }}</text>
             <text class="cp-hint">{{ t('condition.' + cond + '_hint') }}</text>
@@ -236,6 +236,24 @@ watch(() => form.location, () => {
   locationVerified.value = false
 })
 
+/*
+ * Tag toggle handlers: tapping the currently-active pill clears the
+ * selection (form.category / form.condition becomes ''). This is what
+ * lets users escape the "I picked a category by mistake, now the form
+ * is permanently dirty" trap. The pill's active style adds a × hint
+ * (see .sel-pill.active::after in the scoped styles) to advertise
+ * that re-tapping unselects. Sheet auto-closes on either path so the
+ * user immediately sees the field returning to its placeholder state.
+ */
+function onCategoryTap(cat: ItemCategory) {
+  form.category = form.category === cat ? '' : cat
+  showCat.value = false
+}
+function onConditionTap(cond: string) {
+  form.condition = (form.condition === cond ? '' : cond) as ItemCondition | ''
+  showCond.value = false
+}
+
 onLoad(async (options) => {
   if (options?.edit) {
     editId.value = options.edit
@@ -315,6 +333,28 @@ function applyDraft(draft: { form: any; images: string[] }) {
   uni.showToast({ title: t('publish.draftRestored'), icon: 'none' })
 }
 
+/*
+ * Reset all form state to defaults — used after the user picks "Save"
+ * or "Discard" in the draft prompt. Critical: without this reset the
+ * form stays dirty after the prompt closes, which means the recursive
+ * uni.switchTab() inside promptSaveDraft's onDecided callback would
+ * trigger the SAME tab guard, the SAME prompt, and uni.showModal's
+ * single-instance lock would swallow the second modal silently — user
+ * sees "stuck on publish, second tap does nothing". Resetting first
+ * makes isDirty=false, so the recursive switchTab passes through the
+ * guard cleanly.
+ */
+function resetForm() {
+  form.title = ''
+  form.description = ''
+  form.price = ''
+  form.category = ''
+  form.condition = ''
+  form.location = 'UIUC'
+  form.negotiable = false
+  imageList.value = []
+}
+
 function promptSaveDraft(onDecided: () => void) {
   uni.showModal({
     title: t('publish.draftPromptTitle'),
@@ -325,13 +365,26 @@ function promptSaveDraft(onDecided: () => void) {
     success: (r) => {
       if (r.confirm) {
         saveDraft()
+        resetForm()
         uni.showToast({ title: t('publish.draftSaved'), icon: 'none' })
       } else if (r.cancel) {
         clearDraft()
+        resetForm()
+      } else {
+        // Modal dismissed without a clear confirm/cancel (rare on H5
+        // but possible on mp). Don't navigate — leave the form alone
+        // and let the user try again. Equivalent to fail() below.
+        pendingTabUrl = ''
+        return
       }
       onDecided()
     },
-    fail: () => onDecided(),
+    /*
+     * Modal failed to show at all (very rare — usually means uni runtime
+     * is in a degraded state). Don't auto-navigate; clear the pending
+     * URL so the next tab tap starts fresh instead of silently jumping.
+     */
+    fail: () => { pendingTabUrl = '' },
   })
 }
 
@@ -693,7 +746,25 @@ async function onSubmit() {
   padding: 7px 14px; border-radius: 8px; font-size: 13px;
   background: var(--bg-subtle); color: var(--text-secondary); cursor: pointer;
   transition: all 0.12s; font-weight: 500;
-  &.active { background: var(--accent-primary); color: #fff; }
+  position: relative;
+  &.active {
+    background: var(--accent-primary); color: #fff;
+    /* × hint: tells the user "tap again to deselect". Pure CSS, no
+       icon dep. Only renders on active state so the inactive pill
+       layout stays unchanged. */
+    padding-right: 26px;
+    &::after {
+      content: '×';
+      position: absolute;
+      right: 9px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px;
+      line-height: 1;
+      color: rgba(255, 255, 255, 0.65);
+      font-weight: 400;
+    }
+  }
   &:active { transform: scale(0.96); }
 }
 .cond-pill {
