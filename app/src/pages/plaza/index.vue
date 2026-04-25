@@ -68,13 +68,30 @@
           </view>
           <view
             v-else
-            class="post-tappable"
+            :class="['post-tappable', { 'pinned-expanded': post.is_pinned && pinnedExpanded.has(post.id) }]"
             @click="goPostDetail(post)"
             @touchstart="postLongPress.onTouchstart(post)"
             @touchend="postLongPress.onTouchend"
             @touchcancel="postLongPress.onTouchcancel"
             @touchmove="postLongPress.onTouchmove"
           >
+            <!--
+              Collapse affordance for an EXPANDED pinned announcement.
+              Sits above the card content (top-right) so a user who
+              opened the announcement can put it back. @click.stop is
+              load-bearing — the parent .post-tappable@click would
+              otherwise navigate-to-detail, and the user would never
+              see the collapse fire.
+            -->
+            <view
+              v-if="post.is_pinned && pinnedExpanded.has(post.id)"
+              class="pinned-collapse-btn"
+              role="button"
+              :aria-label="t('plaza.collapse') || 'Collapse'"
+              @click.stop="pinnedExpanded.delete(post.id)"
+            >
+              <view class="pcb-chev"></view>
+            </view>
             <view class="post-header">
               <image :src="post.profile?.avatar_url || '/static/default-avatar.svg'" class="pa-avatar" mode="aspectFill" />
               <view class="pa-info">
@@ -644,6 +661,14 @@ function previewImage(urls: string[], idx: number) {
 }
 
 function goPostDetail(post: Post) {
+  /*
+   * An EXPANDED pinned post should not navigate on body tap — the user
+   * just expanded it to read in place; surprise-navigating into the
+   * detail page would be hostile. The dedicated chevron button (top-
+   * right of the expanded card) is the only way to dismiss back to
+   * compact. Non-pinned posts behave as before.
+   */
+  if (post.is_pinned && pinnedExpanded.has(post.id)) return
   addPostToHistory(post)
   uni.navigateTo({ url: `/pages/post/index?id=${post.id}` })
 }
@@ -926,7 +951,46 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .post-tappable {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  position: relative;          /* anchors .pinned-collapse-btn */
   &:active { opacity: 0.7; }
+}
+
+/* Expanded-pinned variant: body is read-only — no nav, no press feedback,
+   so users don't get a "tap landed somewhere" cue when nothing should
+   happen. Only the dedicated collapse chevron triggers an action. */
+.post-tappable.pinned-expanded {
+  cursor: default;
+  &:active { opacity: 1; }
+}
+
+/* Collapse affordance, top-right of the expanded pinned card.
+   38px tap target is comfortable for thumb-reach without overlapping
+   the post-header avatar (which sits on the left). The chevron is
+   built from CSS borders to match every other arrow icon in this
+   file (no font-icon dependency). */
+.pinned-collapse-btn {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+  -webkit-tap-highlight-color: transparent;
+  &:active { background: var(--bg-subtle); opacity: 1; }
+}
+.pcb-chev {
+  width: 9px; height: 9px;
+  border-top: 1.8px solid var(--text-secondary);
+  border-left: 1.8px solid var(--text-secondary);
+  transform: rotate(45deg);
+  /* Optical centering — the rotated square sits visually low without
+     this nudge. 2px down + 0px right brings the chevron to center. */
+  margin-top: 4px;
 }
 
 /* Pinned-collapsed compact surface — single-line summary that expands
