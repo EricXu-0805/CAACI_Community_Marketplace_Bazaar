@@ -34,6 +34,27 @@ export function matchSpot(location: string | null | undefined): CampusSpot | nul
   return null
 }
 
+/*
+ * Render a stored location string in the current UI language.
+ *
+ * Locations are persisted as whatever string the publisher picked
+ * (so user A on zh saves '伊利尼学生中心', user B viewing in en sees
+ * the raw zh string unless we localize at render time). matchSpot()
+ * gives us the bilingual entry; pick the side matching `lang`.
+ *
+ * Falls back to the raw string when the stored value isn't a known
+ * campus spot (free-form locations like '北区公寓' or 'Greg Hall').
+ */
+export function localizeLocation(
+  raw: string | null | undefined,
+  lang: 'en' | 'zh',
+): string {
+  if (!raw) return ''
+  const spot = matchSpot(raw)
+  if (!spot) return raw
+  return lang === 'zh' ? spot.zh : spot.en
+}
+
 export function useCampusSpots() {
-  return { CAMPUS_SPOTS, matchSpot }
+  return { CAMPUS_SPOTS, matchSpot, localizeLocation }
 }

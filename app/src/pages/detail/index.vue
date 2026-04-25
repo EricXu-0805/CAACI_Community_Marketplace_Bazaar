@@ -67,7 +67,7 @@
         <text class="tag">{{ t('condition.' + item.condition) }}</text>
         <view :class="['tag', 'tag-loc', { 'tag-safe': item.location_verified && locationSpot?.safe }]">
           <view class="loc-dot"></view>
-          <text>{{ item.location }}</text>
+          <text>{{ displayLocation }}</text>
           <text v-if="item.location_verified && locationSpot?.safe" class="safe-badge">{{ t('pickup.verifiedPickup') }}</text>
         </view>
       </view>
@@ -260,7 +260,7 @@ import type { Item } from '../../types'
 import { formatTime, haptic, formatPrice, quickTranslate, thumbUrl, friendlyErrorMessage } from '../../utils'
 import { dimsToRatio, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
-import { matchSpot } from '../../composables/useCampusSpots'
+import { matchSpot, localizeLocation } from '../../composables/useCampusSpots'
 import { useRatings } from '../../composables/useRatings'
 import { useTranslate } from '../../composables/useTranslate'
 import { computed, onUnmounted, watch } from 'vue'
@@ -309,6 +309,9 @@ const displayDescription = computed(() => {
 })
 
 const locationSpot = computed(() => matchSpot(item.value?.location))
+const displayLocation = computed(() =>
+  localizeLocation(item.value?.location, lang.value as 'en' | 'zh')
+)
 
 /*
  * Render-side safety net for the hero carousel.
