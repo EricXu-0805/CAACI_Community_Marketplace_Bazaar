@@ -2,6 +2,10 @@
   <view class="admin">
     <view class="admin-header">
       <text class="admin-title">Moderation Dashboard</text>
+      <view v-if="unlocked && currentAdmin" class="admin-whoami">
+        <text class="admin-whoami-label">{{ currentAdmin.label }}</text>
+        <text v-if="currentAdmin.detail" class="admin-whoami-detail">{{ currentAdmin.detail }}</text>
+      </view>
       <view v-if="unlocked" class="admin-logout" @click="onLogout">Sign out</view>
     </view>
 
@@ -250,6 +254,38 @@ const unlocked = ref(false)
 const checking = ref(false)
 const gateError = ref('')
 
+/*
+ * Logged-in-admin display in the dashboard header.
+ *
+ * Source: GET /api/admin?resource=whoami after successful unlock.
+ * Per-admin tokens (migration 036) carry an admin_name + admin_email
+ * from when they were minted; the legacy shared-key path returns nulls
+ * because there's no identity attached to the shared key. Display rules:
+ *   1. profiles.nickname (passed as admin_name) — preferred
+ *   2. email prefix (before the @) — fallback when name missing
+ *   3. literal '管理员' / 'Admin' — when both missing (legacy key)
+ */
+interface WhoAmI {
+  admin_id: string | null
+  admin_name: string | null
+  admin_email: string | null
+  source: string | null
+}
+const whoami = ref<WhoAmI | null>(null)
+const currentAdmin = computed(() => {
+  if (!whoami.value) return null
+  const name = whoami.value.admin_name?.trim() || ''
+  const email = whoami.value.admin_email?.trim() || ''
+  if (name) {
+    return { label: name, detail: email || null }
+  }
+  if (email) {
+    const prefix = email.split('@')[0]
+    return { label: prefix, detail: email }
+  }
+  return { label: 'Admin', detail: '(legacy shared key)' }
+})
+
 const tabList: Array<{ id: TabId; label: string }> = [
   { id: 'reports',     label: 'Reports' },
   { id: 'suspensions', label: 'Suspensions' },
@@ -344,6 +380,7 @@ async function onUnlock() {
     uni.setStorageSync(STORAGE_KEY, adminKey.value)
     unlocked.value = true
     keyInput.value = ''
+    await loadWhoAmI()
     await loadTab(activeTab.value)
     await loadStats()
   } catch (err: any) {
@@ -356,9 +393,19 @@ async function onUnlock() {
   }
 }
 
+async function loadWhoAmI() {
+  try {
+    whoami.value = await apiGet<WhoAmI>({ resource: 'whoami' })
+  } catch {
+    /* whoami is non-critical — failing to fetch shouldn't block the dashboard */
+    whoami.value = null
+  }
+}
+
 function onLogout() {
   adminKey.value = ''
   unlocked.value = false
+  whoami.value = null
   stats.value = null
   reports.value = []
   suspensions.value = []
@@ -581,6 +628,7 @@ onMounted(async () => {
     try {
       await apiGet<StatsRow>({ resource: 'stats' })
       unlocked.value = true
+      await loadWhoAmI()
       await loadTab(activeTab.value)
       await loadStats()
     } catch {
@@ -599,11 +647,27 @@ onMounted(async () => {
 .admin-header {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 18px;
+  gap: 12px;
 }
-.admin-title { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+.admin-title { font-size: 22px; font-weight: 700; color: var(--text-primary); flex-shrink: 0; }
+.admin-whoami {
+  flex: 1 1 auto; min-width: 0;
+  display: flex; flex-direction: column; align-items: flex-end;
+  text-align: right;
+  margin-right: 4px;
+}
+.admin-whoami-label {
+  font-size: 13px; font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px;
+}
+.admin-whoami-detail {
+  font-size: 11px; color: var(--text-faint);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px;
+}
 .admin-logout {
   font-size: 13px; color: var(--accent-danger); cursor: pointer;
-  padding: 6px 10px; border-radius: 6px;
+  padding: 6px 10px; border-radius: 6px; flex-shrink: 0;
   &:active { background: rgba(255,59,48,0.08); }
 }
 

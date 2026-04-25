@@ -203,11 +203,28 @@ async function recordAdminLogin(adminId, source) {
   }
 }
 
-async function handleGet(request) {
+async function handleGet(request, auth) {
   const url = new URL(request.url)
   const resource = url.searchParams.get('resource') || ''
   const limit = Math.max(1, Math.min(200, parseInt(url.searchParams.get('limit') || '50', 10)))
   const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10))
+
+  if (resource === 'whoami') {
+    /*
+     * Returns the current admin's identity so the dashboard can show
+     * "logged in as <name>" in its header. Pulled from the auth result
+     * we already computed in checkAuth — no extra DB roundtrip. Legacy
+     * shared-key sessions return null fields (no per-admin identity).
+     */
+    return json({
+      data: {
+        admin_id:    auth?.adminId    || null,
+        admin_name:  auth?.adminName  || null,
+        admin_email: auth?.adminEmail || null,
+        source:      auth?.source     || null,
+      },
+    })
+  }
 
   if (resource === 'stats') {
     const data = await rpc('admin_dashboard_stats', {})
@@ -413,7 +430,7 @@ export default async function handler(request) {
   }
 
   try {
-    if (request.method === 'GET')  return await handleGet(request)
+    if (request.method === 'GET')  return await handleGet(request, auth)
     if (request.method === 'POST') return await handlePost(request, auth)
     return json({ error: 'method_not_allowed' }, 405)
   } catch (err) {
