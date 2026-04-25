@@ -509,10 +509,23 @@ async function onSubmitPost() {
   try {
     let imageUrls: string[] = []
     let imageDims: Array<{ w: number; h: number }> = []
-    if (composerImages.value.length > 0) {
+    const expectedImages = composerImages.value.length
+    console.log('[plaza-debug] onSubmitPost expectedImages:', expectedImages)
+    if (expectedImages > 0) {
       const up = await uploadImagesWithDims(composerImages.value)
       imageUrls = up.urls
       imageDims = up.dims
+      console.log('[plaza-debug] uploaded:', imageUrls.length, '/', expectedImages)
+      if (imageUrls.length === 0) {
+        throw new Error(t('plaza.uploadFailed') || 'Image upload failed — please retry')
+      }
+      if (imageUrls.length < expectedImages) {
+        uni.showToast({
+          title: `${imageUrls.length}/${expectedImages} images uploaded`,
+          icon: 'none',
+          duration: 4000,
+        })
+      }
     }
 
     const trimmed = composerText.value.trim()

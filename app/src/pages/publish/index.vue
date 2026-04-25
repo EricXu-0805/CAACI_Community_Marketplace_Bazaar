@@ -520,6 +520,7 @@ async function onSubmit() {
       if (img.startsWith('http')) existing.push(img)
       else toUpload.push(img)
     }
+    console.log('[publish-debug] images split — existing:', existing.length, 'toUpload:', toUpload.length)
 
     let uploaded: string[] = []
     let uploadedDims: Array<{ w: number; h: number }> = []
@@ -529,9 +530,11 @@ async function onSubmit() {
         uploaded = res.urls
         uploadedDims = res.dims
       } catch (upErr: any) {
+        console.warn('[publish-debug] upload threw:', upErr)
         throw new Error(upErr?.message || t('publish.uploadFailed'))
       }
       uploadProgress.value = 100
+      console.log('[publish-debug] uploaded:', uploaded.length, '/', toUpload.length)
       if (uploaded.length === 0) {
         throw new Error(t('publish.uploadFailed'))
       }

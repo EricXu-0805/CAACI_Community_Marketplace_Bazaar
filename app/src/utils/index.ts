@@ -655,20 +655,35 @@ export function compressImage(
 export function getImageDimensions(src: string): Promise<{ w: number; h: number }> {
   return new Promise((resolve) => {
     if (!src) return resolve({ w: 0, h: 0 })
+    const shortSrc = src.slice(0, 60) + (src.length > 60 ? '…' : '')
 
     // #ifdef H5
     const img = new Image()
     img.crossOrigin = 'anonymous'
-    img.onload = () => resolve({ w: img.naturalWidth || 0, h: img.naturalHeight || 0 })
-    img.onerror = () => resolve({ w: 0, h: 0 })
+    img.onload = () => {
+      const dims = { w: img.naturalWidth || 0, h: img.naturalHeight || 0 }
+      console.log('[dims-debug] H5 onload:', shortSrc, '→', dims.w, 'x', dims.h)
+      resolve(dims)
+    }
+    img.onerror = (e) => {
+      console.warn('[dims-debug] H5 onerror for:', shortSrc, e)
+      resolve({ w: 0, h: 0 })
+    }
     img.src = src
     // #endif
 
     // #ifndef H5
     uni.getImageInfo({
       src,
-      success: (res) => resolve({ w: res.width || 0, h: res.height || 0 }),
-      fail: () => resolve({ w: 0, h: 0 }),
+      success: (res) => {
+        const dims = { w: res.width || 0, h: res.height || 0 }
+        console.log('[dims-debug] mp getImageInfo OK:', shortSrc, '→', dims.w, 'x', dims.h)
+        resolve(dims)
+      },
+      fail: (err) => {
+        console.warn('[dims-debug] mp getImageInfo fail:', shortSrc, err)
+        resolve({ w: 0, h: 0 })
+      },
     })
     // #endif
   })

@@ -256,8 +256,28 @@ export function useItems() {
     const urls: string[] = []
     const dims: Array<{ w: number; h: number }> = []
 
+    /*
+     * Diagnostic logging — re-added 2025-04-25 to investigate "post saved
+     * but images missing" reports. Tagged [upload-debug] so the user can
+     * filter the H5 console by that string. The earlier round of logs
+     * (commits 372c3f0 / f848922) was removed once the dim-measurement
+     * issue was resolved; the upload-path issue is a different shape.
+     *
+     * What we log per file:
+     *   · the temp-file path (first 60 chars to keep noise down)
+     *   · natural dimensions measured BEFORE compression
+     *   · compressed blob size (H5) or file size (mp)
+     *   · the resolved storage path
+     *   · success or the underlying error object
+     *
+     * Plus a summary on entry and exit so we can correlate the per-file
+     * lines with "expected vs actual" counts at the call site.
+     */
+    console.log('[upload-debug] uploadImagesWithDims start, files:', tempFiles.length)
+
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw new Error('Not authenticated')
+    console.log('[upload-debug] session user:', session.user.id)
 
     const withTimeout = <T>(p: Promise<T>, ms: number, label: string): Promise<T> =>
       new Promise<T>((resolve, reject) => {
@@ -266,11 +286,14 @@ export function useItems() {
       })
 
     for (const filePath of tempFiles) {
+      const shortPath = filePath.slice(0, 60) + (filePath.length > 60 ? '…' : '')
       const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`
       const storagePath = `items/${session.user.id}/${fileName}`
+      console.log('[upload-debug] processing file:', shortPath, '→', storagePath)
 
       try {
         const naturalDims = await getImageDimensions(filePath)
+        console.log('[upload-debug] dims measured:', naturalDims.w, 'x', naturalDims.h)
 
         let uploadError: any = null
 
@@ -278,6 +301,7 @@ export function useItems() {
         const compressed = await compressImage(filePath, 1600, 0.82)
         const response = await fetch(compressed)
         const blob = await response.blob()
+        console.log('[upload-debug] blob size (compressed):', blob.size, 'bytes')
         if (blob.size > MAX_FILE_SIZE) throw new Error('File too large (max 5MB)')
         const h5Result = await withTimeout(
           supabase.storage.from('item-images').upload(storagePath, blob, { contentType: 'image/jpeg' }),
@@ -285,6 +309,11 @@ export function useItems() {
           'image upload',
         )
         uploadError = h5Result.error
+        if (uploadError) {
+          console.warn('[upload-debug] H5 upload error:', uploadError)
+        } else {
+          console.log('[upload-debug] H5 upload OK')
+        }
         // #endif
 
         // #ifndef H5
@@ -296,6 +325,7 @@ export function useItems() {
             fail: () => resolve(null),
           })
         })
+        console.log('[upload-debug] mp file size:', fileInfo?.size ?? 'unknown')
         if (fileInfo && fileInfo.size > MAX_FILE_SIZE) {
           throw new Error('File too large (max 5MB)')
         }
@@ -313,12 +343,17 @@ export function useItems() {
             },
             success: (res: any) => {
               if (res.statusCode >= 200 && res.statusCode < 300) {
+                console.log('[upload-debug] mp upload OK, status:', res.statusCode)
                 resolve(null)
               } else {
+                console.warn('[upload-debug] mp upload error, status:', res.statusCode, 'body:', res.data)
                 resolve(new Error(`Upload HTTP ${res.statusCode}: ${res.data}`))
               }
             },
-            fail: (err) => resolve(err),
+            fail: (err) => {
+              console.warn('[upload-debug] mp uploadFile fail:', err)
+              resolve(err)
+            },
           })
         })
         // #endif
@@ -329,14 +364,16 @@ export function useItems() {
             .getPublicUrl(storagePath)
           urls.push(urlData.publicUrl)
           dims.push(naturalDims)
+          console.log('[upload-debug] pushed URL:', urlData.publicUrl)
         } else {
-          console.warn('Upload rejected for', filePath, uploadError)
+          console.warn('[upload-debug] skipping file due to upload error:', filePath)
         }
       } catch (err) {
-        console.warn('Upload error for', filePath, err)
+        console.warn('[upload-debug] caught exception for', shortPath, err)
       }
     }
 
+    console.log('[upload-debug] DONE — urls:', urls.length, 'dims:', dims.length, 'expected:', tempFiles.length)
     return { urls, dims }
   }
 
