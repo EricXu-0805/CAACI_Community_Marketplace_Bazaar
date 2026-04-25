@@ -710,7 +710,7 @@ async function contactSeller() {
 }
 
 .img-back, .img-share {
-  position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); z-index: 10;
+  position: absolute; top: calc(12px + var(--status-bar-height, env(safe-area-inset-top, 0px))); z-index: 10;
   width: 36px; height: 36px; border-radius: 50%;
   background: rgba(0,0,0,0.3); backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -1155,7 +1155,7 @@ async function contactSeller() {
   background: var(--bg-elev-1);
 }
 .nf-back {
-  position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); left: 14px;
+  position: absolute; top: calc(14px + var(--status-bar-height, env(safe-area-inset-top, 0px))); left: 14px;
   width: 36px; height: 36px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   background: var(--bg-subtle); cursor: pointer;

@@ -756,7 +756,7 @@ function goPublish() {
   flex-shrink: 0;
   background: var(--canvas);
   padding: 10px 16px 11px;
-  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+  padding-top: calc(10px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
   z-index: 50;
 }
 .mh-top { display: flex; justify-content: flex-start; align-items: center; margin-bottom: 10px; }

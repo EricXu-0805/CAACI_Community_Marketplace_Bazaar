@@ -306,7 +306,7 @@ function goLogin() {
 
 .page-header {
   padding: 11px 16px;
-  padding-top: calc(11px + env(safe-area-inset-top, 0px));
+  padding-top: calc(11px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
   background: var(--bg-elev-1);
   border-bottom: 0.5px solid var(--line-hair);
   position: sticky; top: 0; z-index: 50;

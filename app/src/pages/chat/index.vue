@@ -533,7 +533,7 @@ function scrollToBottom() {
 .chat-header {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 16px;
-  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  padding-top: calc(12px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
   background: rgba(var(--surface-rgb), 0.92);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);

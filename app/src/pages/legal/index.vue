@@ -89,7 +89,7 @@ function onContactEmail() {
 }
 .header {
   display: flex; align-items: center; gap: 12px; padding: 12px 16px;
-  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  padding-top: calc(12px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
   border-bottom: 0.5px solid var(--line-hair);
   flex-shrink: 0;
 }

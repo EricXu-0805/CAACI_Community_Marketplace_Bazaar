@@ -498,7 +498,7 @@ function onDeleteItem(id: string) {
 
 .page-header {
   padding: 11px 16px;
-  padding-top: calc(11px + env(safe-area-inset-top, 0px));
+  padding-top: calc(11px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
   background: rgba(var(--surface-rgb), 0.92);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);

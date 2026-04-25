@@ -113,7 +113,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 
 .header {
   display: flex; align-items: center; gap: 12px; padding: 12px 16px;
-  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  padding-top: calc(12px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
   background: var(--bg-elev-1); border-bottom: 0.5px solid var(--line-hair);
 }
 .back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }

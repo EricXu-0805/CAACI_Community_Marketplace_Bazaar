@@ -461,7 +461,7 @@ async function onSubmitComment() {
 .header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 11px 14px;
-  padding-top: calc(11px + env(safe-area-inset-top, 0px));
+  padding-top: calc(11px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
   background: var(--bg-elev-1);
   border-bottom: 0.5px solid var(--line-hair);
   flex-shrink: 0;

@@ -158,7 +158,7 @@ async function onSave() {
 
 .header {
   display: flex; align-items: center; padding: 12px 16px;
-  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  padding-top: calc(12px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
   background: var(--bg-elev-1); border-bottom: 0.5px solid var(--line-hair);
 }
 .back-btn {

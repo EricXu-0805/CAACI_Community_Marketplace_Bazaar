@@ -225,7 +225,7 @@ async function onSubmit() {
 }
 
 .nav-back {
-  position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); left: 16px;
+  position: absolute; top: calc(14px + var(--status-bar-height, env(safe-area-inset-top, 0px))); left: 16px;
   width: 36px; height: 36px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; z-index: 10;
@@ -240,7 +240,7 @@ async function onSubmit() {
 .header {
   display: flex; flex-direction: column; align-items: center;
   padding: 72px 0 40px;
-  padding-top: calc(72px + env(safe-area-inset-top, 0px));
+  padding-top: calc(72px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
 }
 .logo-mark {
   width: 56px; height: 56px; border-radius: 14px;
