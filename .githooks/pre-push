@@ -12,6 +12,14 @@
 #   · build:mp-weixin catches mp-specific regressions like the
 #     URL/Headers polyfill bugs we hit before — Vercel never builds
 #     mp so this is the only pre-push gate for the WeChat mini-program
+#
+# Smart skip (added 2025-04-25):
+#   When the diff between remote and local heads contains ONLY files
+#   that can't break the build (docs, migrations, scripts, edge
+#   functions, etc.), the type-check + builds are skipped and the
+#   push goes through in <1s. The allow-list is conservative — anything
+#   touching app/src, vite.config.ts, package.json, or vercel.json
+#   triggers the full check.
 
 set -e
 
@@ -27,6 +35,79 @@ APP_DIR="${REPO_ROOT}/app"
 
 if [ ! -d "$APP_DIR" ]; then
   echo "${YELLOW}[pre-push]${RESET} no app/ directory, skipping checks"
+  exit 0
+fi
+
+# ──────────────────────────────────────────────────────────────────
+# Smart skip: are all changed files in the build-irrelevant allow-list?
+# ──────────────────────────────────────────────────────────────────
+# git pre-push hook receives one line per pushed ref on stdin:
+#   <local_ref> <local_sha> <remote_ref> <remote_sha>
+# remote_sha = 40 zeros means "new branch on remote" — diff against
+# origin/main as a fallback so first-push branches still get the
+# correct file set instead of "everything since the dawn of time".
+#
+# If stdin is empty (manual hook invocation), we can't determine the
+# diff and fall back to running the full check (the safe default).
+
+ZERO_SHA="0000000000000000000000000000000000000000"
+DEFAULT_BRANCH="origin/main"
+
+is_buildable() {
+  # Returns 0 (truthy) if the path needs the full build check.
+  # Returns 1 (falsy) for paths that are safe to skip.
+  case "$1" in
+    _ai_notes/*)                  return 1 ;;
+    docs/*)                       return 1 ;;
+    .github/*)                    return 1 ;;
+    .gitignore|LICENSE|.gitattributes) return 1 ;;
+    supabase/migrations/*.sql)    return 1 ;;
+    supabase/email-templates/*)   return 1 ;;
+    supabase/_ops/*)              return 1 ;;
+    api/*)                        return 1 ;;
+    scripts/*.mjs|scripts/*.sh)   return 1 ;;
+    *.md|*.txt)                   return 1 ;;
+    project.config.json|project.private.config.json) return 1 ;;
+    *)                            return 0 ;;
+  esac
+}
+
+determine_skip() {
+  if [ ! -t 0 ]; then
+    local stdin_data
+    stdin_data="$(cat)"
+    if [ -z "$stdin_data" ]; then
+      return 1
+    fi
+    while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
+      [ -z "$local_sha" ] && continue
+      [ "$local_sha" = "$ZERO_SHA" ] && continue
+      local range
+      if [ "$remote_sha" = "$ZERO_SHA" ]; then
+        if git rev-parse --verify --quiet "$DEFAULT_BRANCH" >/dev/null; then
+          range="$DEFAULT_BRANCH..$local_sha"
+        else
+          return 1
+        fi
+      else
+        range="$remote_sha..$local_sha"
+      fi
+      local files
+      files="$(git diff --name-only "$range" 2>/dev/null)" || return 1
+      while IFS= read -r f; do
+        [ -z "$f" ] && continue
+        if is_buildable "$f"; then
+          return 1
+        fi
+      done <<< "$files"
+    done <<< "$stdin_data"
+    return 0
+  fi
+  return 1
+}
+
+if determine_skip; then
+  echo "${YELLOW}[pre-push]${RESET} only docs/migrations/scripts/api changed — skipping type-check + builds"
   exit 0
 fi
 
