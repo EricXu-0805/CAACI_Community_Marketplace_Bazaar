@@ -220,7 +220,10 @@
             :key="item.id"
             class="card"
             @click="goToDetail(item.id)"
-            @longpress="onCardLongPress(item)"
+            @touchstart="cardLongPress.onTouchstart(item)"
+            @touchend="cardLongPress.onTouchend"
+            @touchcancel="cardLongPress.onTouchcancel"
+            @touchmove="cardLongPress.onTouchmove"
           >
             <view class="card-img-box">
               <img
@@ -326,6 +329,7 @@ import { useFavorites } from '../../composables/useFavorites'
 import { useModeration } from '../../composables/useModeration'
 import { useSemester } from '../../composables/useSemester'
 import { matchSpot } from '../../composables/useCampusSpots'
+import { useLongPress } from '../../composables/useLongPress'
 import type { ItemCategory, ItemCondition, Item } from '../../types'
 
 import { debounce, formatTime, formatPrice, haptic, thumbUrl } from '../../utils'
@@ -609,6 +613,12 @@ async function onQuickFav(item: Item) {
   const nowFav = await toggleFavorite(currentUser.value.id, item.id)
   item.favorite_count = (item.favorite_count || 0) + (nowFav ? 1 : -1)
 }
+
+/* 3s + haptic for the home feed report flow — a thumb resting on a
+   card during scroll used to fire the report action sheet at 350ms,
+   which scared users away from scrolling. 3s gives clear "I really
+   want to do this" intent. */
+const cardLongPress = useLongPress<[Item]>((item) => onCardLongPress(item), 3000)
 
 function onCardLongPress(item: Item) {
   const favLabel = isFavorited(item.id) ? t('home.unsave') : t('detail.save')

@@ -78,10 +78,28 @@
           :src="msg.sender?.avatar_url || '/static/default-avatar.svg'"
           class="msg-avatar"
         />
-        <view class="msg-bubble" v-if="msg.message_type !== 'image'" @longpress="onMsgLongPress(msg)">
+        <view
+          class="msg-bubble"
+          v-if="msg.message_type !== 'image'"
+          @touchstart="msgLongPress.onTouchstart(msg)"
+          @touchend="msgLongPress.onTouchend"
+          @touchcancel="msgLongPress.onTouchcancel"
+          @touchmove="msgLongPress.onTouchmove"
+        >
           <text>{{ msg.content }}</text>
         </view>
-        <image v-else :src="msg.content" class="msg-image" mode="widthFix" lazy-load @click="previewImg(msg.content)" @longpress="onMsgLongPress(msg)" />
+        <image
+          v-else
+          :src="msg.content"
+          class="msg-image"
+          mode="widthFix"
+          lazy-load
+          @click="previewImg(msg.content)"
+          @touchstart="msgLongPress.onTouchstart(msg)"
+          @touchend="msgLongPress.onTouchend"
+          @touchcancel="msgLongPress.onTouchcancel"
+          @touchmove="msgLongPress.onTouchmove"
+        />
         <image
           v-if="msg.sender_id === currentUser?.id"
           :src="currentUser?.avatar_url || '/static/default-avatar.svg'"
@@ -147,6 +165,7 @@ import { useItems } from '../../composables/useItems'
 import { useUnread } from '../../composables/useUnread'
 import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
+import { useLongPress } from '../../composables/useLongPress'
 import { compressImage, formatPrice, friendlyErrorMessage } from '../../utils'
 import type { Item } from '../../types'
 import ChatEmojiPanel from '../../components/ChatEmojiPanel.vue'
@@ -438,6 +457,11 @@ function formatChatTime(dateStr: string): string {
   if (msgDay.getTime() === yesterday.getTime()) return `${t('chat.yesterday')} ${time}`
   return `${d.getMonth() + 1}/${d.getDate()} ${time}`
 }
+
+/* 3s + haptic recognizer to reduce mis-fires on the chat surface
+   (a thumb resting on a bubble used to fire reply/copy/delete with
+   a 350ms accident; long thresholds let the user commit deliberately). */
+const msgLongPress = useLongPress<[any]>((msg) => onMsgLongPress(msg), 3000)
 
 function onMsgLongPress(msg: any) {
   const isMine = msg.sender_id === currentUser.value?.id

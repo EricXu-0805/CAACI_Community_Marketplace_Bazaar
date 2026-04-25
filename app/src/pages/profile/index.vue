@@ -147,7 +147,10 @@
               :key="item.id"
               class="horz-card"
               @click="goDetail(item.id)"
-              @longpress="onCardLongPress(item)"
+              @touchstart="cardLongPress.onTouchstart(item)"
+              @touchend="cardLongPress.onTouchend"
+              @touchcancel="cardLongPress.onTouchcancel"
+              @touchmove="cardLongPress.onTouchmove"
             >
               <image
                 :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'"
@@ -266,6 +269,7 @@ import CustomTabBar from '../../components/CustomTabBar.vue'
 import { useItems } from '../../composables/useItems'
 import { useFavorites } from '../../composables/useFavorites'
 import { useNotifications } from '../../composables/useNotifications'
+import { useLongPress } from '../../composables/useLongPress'
 import type { Item } from '../../types'
 import { formatPrice, thumbUrl } from '../../utils'
 
@@ -385,6 +389,11 @@ onShow(async () => {
  * targets on the card body (the new horizontal-scroll card is too small
  * to fit buttons inline).
  */
+/* 3s threshold prevents accidental edit/markSold/delete from a
+   thumb resting on a card while scrolling. Owner actions are
+   destructive enough to warrant the longer hold. */
+const cardLongPress = useLongPress<[Item]>((item) => onCardLongPress(item), 3000)
+
 function onCardLongPress(item: Item) {
   const actions: Array<{ label: string; run: () => void | Promise<void> }> = []
   if (item.status === 'active') {

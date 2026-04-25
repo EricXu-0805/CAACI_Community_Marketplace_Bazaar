@@ -10,7 +10,13 @@
     </view>
 
     <scroll-view v-if="post" class="body" scroll-y>
-      <view class="post-card" @longpress="onPostLongPress">
+      <view
+        class="post-card"
+        @touchstart="postLongPress.onTouchstart()"
+        @touchend="postLongPress.onTouchend"
+        @touchcancel="postLongPress.onTouchcancel"
+        @touchmove="postLongPress.onTouchmove"
+      >
         <view class="post-head">
           <image :src="post.profile?.avatar_url || '/static/default-avatar.svg'" class="avatar" mode="aspectFill" />
           <view class="head-info">
@@ -88,7 +94,10 @@
           :key="c.id"
           class="cs-item"
           @click="onCommentTap(c)"
-          @longpress="onCommentLongPress(c)"
+          @touchstart="commentLongPress.onTouchstart(c)"
+          @touchend="commentLongPress.onTouchend"
+          @touchcancel="commentLongPress.onTouchcancel"
+          @touchmove="commentLongPress.onTouchmove"
         >
           <image :src="c.profile?.avatar_url || '/static/default-avatar.svg'" class="cs-avatar" mode="aspectFill" />
           <view class="cs-body">
@@ -144,6 +153,7 @@ import { usePlaza } from '../../composables/usePlaza'
 import { useModeration } from '../../composables/useModeration'
 import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
+import { useLongPress } from '../../composables/useLongPress'
 import { formatTime, friendlyErrorMessage, quickTranslate } from '../../utils'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim, Post, PostComment } from '../../types'
@@ -343,6 +353,12 @@ function onCommentTap(c: PostComment) {
   if (!currentUser.value) return
   replyTo.value = c
 }
+
+/* 3s + haptic — same rationale as the home feed and plaza pages.
+   Long-press here surfaces report / delete actions; we want
+   deliberate intent before either fires. */
+const postLongPress = useLongPress<[]>(() => onPostLongPress(), 3000)
+const commentLongPress = useLongPress<[PostComment]>((c) => onCommentLongPress(c), 3000)
 
 function onCommentLongPress(c: PostComment) {
   if (!currentUser.value) return

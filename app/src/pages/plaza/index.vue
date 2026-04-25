@@ -47,7 +47,14 @@
 
       <view v-else class="posts">
         <view v-for="post in posts" :key="post.id" class="post-card">
-          <view class="post-tappable" @click="goPostDetail(post)" @longpress="onPostLongPress(post)">
+          <view
+            class="post-tappable"
+            @click="goPostDetail(post)"
+            @touchstart="postLongPress.onTouchstart(post)"
+            @touchend="postLongPress.onTouchend"
+            @touchcancel="postLongPress.onTouchcancel"
+            @touchmove="postLongPress.onTouchmove"
+          >
             <view class="post-header">
               <image :src="post.profile?.avatar_url || '/static/default-avatar.svg'" class="pa-avatar" mode="aspectFill" />
               <view class="pa-info">
@@ -239,7 +246,16 @@
         <view v-if="comments.length === 0 && !loadingComments" class="cs-empty">
           <text>{{ t('plaza.noComments') }}</text>
         </view>
-        <view v-for="c in comments" :key="c.id" class="cs-item" @click="onCommentTap(c)" @longpress="onCommentLongPress(c)">
+        <view
+          v-for="c in comments"
+          :key="c.id"
+          class="cs-item"
+          @click="onCommentTap(c)"
+          @touchstart="commentLongPress.onTouchstart(c)"
+          @touchend="commentLongPress.onTouchend"
+          @touchcancel="commentLongPress.onTouchcancel"
+          @touchmove="commentLongPress.onTouchmove"
+        >
           <image :src="c.profile?.avatar_url || '/static/default-avatar.svg'" class="cs-avatar" mode="aspectFill" />
           <view class="cs-body">
             <view class="cs-top">
@@ -288,6 +304,7 @@ import { useModeration } from '../../composables/useModeration'
 import { useItems } from '../../composables/useItems'
 import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
+import { useLongPress } from '../../composables/useLongPress'
 import type { Post, PostComment } from '../../types'
 import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl } from '../../utils'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
@@ -674,6 +691,12 @@ function onCommentTap(c: PostComment) {
   if (!currentUser.value) return
   replyTo.value = c
 }
+
+/* 3s + haptic — long-press surfaces report/delete actions on plaza
+   posts and comments. Same UX rationale as home/post pages: thumb
+   resting during scroll used to trigger at 350ms. */
+const postLongPress = useLongPress<[any]>((post) => onPostLongPress(post), 3000)
+const commentLongPress = useLongPress<[PostComment]>((c) => onCommentLongPress(c), 3000)
 
 function onCommentLongPress(c: PostComment) {
   if (!currentUser.value) return
