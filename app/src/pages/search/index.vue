@@ -154,22 +154,37 @@ function goBack() { uni.navigateBack() }
   margin: 0 auto;
   display: flex; flex-direction: column;
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
+/*
+ * box-sizing + min-width: 0 on the flex parent and child are the
+ * combination that keeps the cancel button visible no matter how long
+ * the placeholder or typed query is. Without min-width: 0 on the flex-1
+ * child, the input's intrinsic min-content width refuses to shrink,
+ * pushing the cancel button off-screen on narrow viewports — which is
+ * what users were seeing when they had to swipe to find it.
+ */
 .page-header {
   display: flex; align-items: center; gap: 10px;
   padding: 8px 16px;
   padding-top: calc(10px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
   background: var(--canvas);
   border-bottom: 0.5px solid var(--border);
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .search-field {
-  flex: 1; display: flex; align-items: center; gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex; align-items: center; gap: 8px;
   background: var(--surface);
   border: 0.5px solid var(--border);
   border-radius: var(--radius-md);
   padding: 9px 13px;
+  box-sizing: border-box;
 }
 .sf-icon {
   width: 14px; height: 14px; flex-shrink: 0;
@@ -181,7 +196,8 @@ function goBack() { uni.navigateBack() }
   transform: rotate(45deg); transform-origin: left center;
 }
 .sf-input {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 14px;
   color: var(--ink);
   letter-spacing: 0.02em;
