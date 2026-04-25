@@ -358,7 +358,24 @@ async function onSend() {
     await sendMessage(conversationId.value, currentUser.value.id, finalText)
     markAsRead(conversationId.value, currentUser.value.id)
     refreshUnreadCount()
-    nextTick(() => scrollToBottom())
+    nextTick(() => {
+      scrollToBottom()
+      /*
+       * Re-focus the input after a successful send so users can fire
+       * follow-up messages without re-tapping the field. Without this,
+       * the keyboard collapses on every send and rapid back-and-forth
+       * conversations require an extra tap per message. H5 uses the
+       * native focus(); mp doesn't expose it cleanly through the uni
+       * <input>, so we degrade silently.
+       */
+      // #ifdef H5
+      try {
+        const root = (chatInputRef.value as any)?.$el as HTMLElement | undefined
+        const native = root?.querySelector?.('input') as HTMLInputElement | null
+        native?.focus()
+      } catch { /* keyboard will reopen on next tap, no harm */ }
+      // #endif
+    })
   } catch (error: any) {
     uni.showToast({
       title: friendlyErrorMessage(error, lang.value as 'en' | 'zh'),
