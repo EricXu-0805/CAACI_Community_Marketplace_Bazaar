@@ -26,18 +26,16 @@ export function useAuth() {
 
   async function init() {
     authSubscription?.unsubscribe()
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        fetchProfile(session.user.id).catch(err => console.warn('fetchProfile failed:', err))
-      }
-    } catch (err) {
-      console.warn('getSession failed:', err)
-    }
-
     const { loadBlockedIds, clearBlocked } = useModeration()
 
+    /*
+     * Wire onAuthStateChange BEFORE getSession so the listener is
+     * already attached when getSession's INITIAL_SESSION event fires.
+     * Prior order called getSession twice with onAuthStateChange in
+     * between — two network round-trips on cold start (worse on mp
+     * where each is ~1 s) and a window where TOKEN_REFRESHED could
+     * fire and trigger a third fetchProfile.
+     */
     try {
       const { data } = supabase.auth.onAuthStateChange((_event, session) => {
         if (session?.user) {
@@ -56,8 +54,13 @@ export function useAuth() {
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) recordFingerprint().catch(() => {})
-    } catch {}
+      if (session?.user) {
+        fetchProfile(session.user.id).catch(err => console.warn('fetchProfile failed:', err))
+        recordFingerprint().catch(() => {})
+      }
+    } catch (err) {
+      console.warn('getSession failed:', err)
+    }
   }
 
   async function recordFingerprint() {

@@ -121,12 +121,15 @@ export function useMessages() {
 
     if (error) throw error
 
-    const { error: convUpdateError } = await supabase
-      .from('conversations')
-      .update({ last_message_at: new Date().toISOString() })
-      .eq('id', conversationId)
-    if (convUpdateError) console.warn('conversation last_message_at update failed:', convUpdateError.message)
-
+    /*
+     * No client-side conversations.last_message_at UPDATE here:
+     * migration 003 installed the bump_conversation_last_message
+     * trigger on messages AFTER INSERT, so the server keeps it in
+     * sync. Doing it from the client too was a redundant RTT and
+     * a race (client clock skew vs trigger NOW() — whoever lands
+     * second wins, which on a slow phone could be the client and
+     * give wrong sort order in the conversations list).
+     */
     return data as Message
   }
 

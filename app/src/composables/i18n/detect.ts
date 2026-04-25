@@ -22,8 +22,23 @@ export function detectSystemLang(): Lang {
     }
     // #endif
     // #ifndef H5
-    const info = uni.getSystemInfoSync()
-    raw = (info as { language?: string }).language || ''
+    /*
+     * uni.getSystemInfoSync is deprecated since WeChat base library
+     * 2.20.1 — the runtime nags on every call. Replacement is the
+     * trio getDeviceInfo / getWindowInfo / getAppBaseInfo, with
+     * locale living on getAppBaseInfo. Try the new one first; fall
+     * back to the deprecated call so we still work on older platforms
+     * (mp-baidu/mp-alipay/mp-toutiao haven't all caught up).
+     */
+    const getAppBaseInfo = (uni as any).getAppBaseInfo
+    if (typeof getAppBaseInfo === 'function') {
+      const info = getAppBaseInfo()
+      raw = (info?.language || info?.host?.language || '') as string
+    }
+    if (!raw) {
+      const info = uni.getSystemInfoSync()
+      raw = (info as { language?: string }).language || ''
+    }
     // #endif
   } catch {}
 
