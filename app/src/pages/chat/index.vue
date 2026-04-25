@@ -170,7 +170,7 @@ import { useUnread } from '../../composables/useUnread'
 import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
 import { useLongPress } from '../../composables/useLongPress'
-import { compressImage, formatPrice, friendlyErrorMessage } from '../../utils'
+import { formatPrice, friendlyErrorMessage } from '../../utils'
 import type { Item } from '../../types'
 import ChatEmojiPanel from '../../components/ChatEmojiPanel.vue'
 
@@ -178,7 +178,7 @@ const { t, lang, localize } = useI18n()
 
 const { currentUser, requireAuth } = useAuth()
 const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, deleteMessage, fetchConversationDetail, setConversationPinned, setConversationMuted } = useMessages()
-const { uploadImages } = useItems()
+const { uploadOneImage } = useItems()
 const { refreshUnreadCount } = useUnread()
 const { reportTarget, blockUser } = useModeration()
 
@@ -615,32 +615,52 @@ async function onSendImage() {
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
     success: async (res) => {
-      console.log('[chat-img-debug] chooseImage OK, tempPath:', res.tempFilePaths?.[0])
+      const tempPath = res.tempFilePaths?.[0]
+      console.log('[chat-img-debug] chooseImage OK, tempPath:', tempPath)
+      if (!tempPath) {
+        console.warn('[chat-img-debug] chooseImage returned no tempFilePaths')
+        return
+      }
       sending.value = true
       const failsafe = setTimeout(() => { sending.value = false }, 30000)
       try {
-        const compressed = await compressImage(res.tempFilePaths[0])
-        console.log('[chat-img-debug] compressed:', typeof compressed === 'string' ? compressed.slice(0, 60) : compressed)
-        const urls = await uploadImages([compressed])
-        console.log('[chat-img-debug] uploaded URLs count:', urls.length)
-        if (urls.length === 0) {
-          /*
-           * Upload returned 0 URLs — uploadImagesWithDims swallowed a
-           * per-file error. Previously this branch was silent; the
-           * sender saw 'sending' clear with no message and no toast.
-           * Surface a clear failure so they know to retry.
-           */
-          throw new Error(t('chat.imageUploadFailed') || 'Image upload failed — please retry')
-        }
-        await sendMessage(conversationId.value, currentUser.value!.id, urls[0], 'image')
-        console.log('[chat-img-debug] sendMessage OK, url:', urls[0])
+        /*
+         * uploadOneImage (added in batch #2) replaces the previous
+         * compressImage(...) → uploadImages([compressed]) chain. The
+         * old chain pre-compressed the photo into a data:URL and then
+         * uploadImages re-compressed it inside uploadImagesWithDims —
+         * a wasted pass on H5 and a quality loss for mp. Worse,
+         * uploadImagesWithDims's per-file error handler swallowed
+         * Supabase storage failures and returned an empty urls array,
+         * which surfaced to the user as a generic 'imageUploadFailed'
+         * toast with no actionable diagnostic. uploadOneImage throws
+         * with the actual underlying error message (RLS violation,
+         * 413 payload too large, network error, etc.) so the toast
+         * below shows what really went wrong.
+         */
+        const { url } = await uploadOneImage(tempPath)
+        console.log('[chat-img-debug] uploaded URL:', url)
+        await sendMessage(conversationId.value, currentUser.value!.id, url, 'image')
+        console.log('[chat-img-debug] sendMessage OK, url:', url)
         nextTick(() => scrollToBottom())
       } catch (err: any) {
         console.warn('[chat-img-debug] flow failed:', err)
+        /*
+         * Surface the underlying error string directly. friendlyErrorMessage
+         * was generic-ifying 'Storage upload failed: 413 Payload Too
+         * Large' and 'new row violates row-level security policy …'
+         * into a vague 'something went wrong' toast that left users
+         * with no path forward. The Supabase error string is plain
+         * English and tells the user whether to retry, pick a smaller
+         * file, or report the bug. Capped at 80 chars so a long
+         * stack-trace-style error doesn't overflow the toast.
+         */
+        const raw = err?.message ? `${err.message}` : ''
+        const fallback = t('chat.imageUploadFailed') || 'Image upload failed — please retry'
         uni.showToast({
-          title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
+          title: raw ? raw.slice(0, 80) : fallback,
           icon: 'none',
-          duration: 2500,
+          duration: 3500,
         })
       } finally {
         clearTimeout(failsafe)

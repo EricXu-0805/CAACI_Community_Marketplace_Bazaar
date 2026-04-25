@@ -382,6 +382,106 @@ export function useItems() {
     return urls
   }
 
+  /*
+   * uploadOneImage — single-file upload that THROWS on any failure
+   * instead of swallowing per-file errors like uploadImagesWithDims.
+   *
+   * Why this exists: uploadImagesWithDims was designed for the publish
+   * + plaza flows where partial success is acceptable (5 of 6 photos
+   * uploaded → still post the item with a toast about the missed one).
+   * That contract intentionally swallows per-file errors. Chat's
+   * image-send flow is the OPPOSITE shape: 1 file in, 1 message out;
+   * if the upload fails, there's no message to send and the user
+   * needs to know WHY the file didn't make it (RLS? bucket missing?
+   * 413? auth expired?). The swallowed-then-empty-array pattern was
+   * surfacing as a generic 'imageUploadFailed' toast with no diagnostic
+   * — users had no way to tell whether to retry, pick a smaller photo,
+   * or report the bug.
+   *
+   * This method threads the actual Supabase error through to the
+   * caller so the toast can show 'Storage upload failed: 413 Payload
+   * Too Large' or 'new row violates row-level security policy' or
+   * whatever the real cause is. It also drops the chat's outer
+   * pre-compression pass — uploadImagesWithDims was already
+   * compressing internally; the second pass on a data:URL of an
+   * already-compressed image was wasted work and a quality loss.
+   */
+  async function uploadOneImage(
+    tempFile: string,
+  ): Promise<{ url: string; dims: { w: number; h: number } }> {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) throw new Error('Not authenticated')
+
+    const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`
+    const storagePath = `items/${session.user.id}/${fileName}`
+    console.log('[upload-debug] uploadOneImage start:', tempFile.slice(0, 60), '→', storagePath)
+
+    const naturalDims = await getImageDimensions(tempFile)
+    console.log('[upload-debug] dims:', naturalDims.w, 'x', naturalDims.h)
+
+    // #ifdef H5
+    const compressed = await compressImage(tempFile, 1600, 0.82)
+    const response = await fetch(compressed)
+    const blob = await response.blob()
+    console.log('[upload-debug] blob size:', blob.size, 'bytes')
+    if (blob.size > MAX_FILE_SIZE) throw new Error('File too large (max 5MB)')
+    const { error: h5Err } = await supabase.storage
+      .from('item-images')
+      .upload(storagePath, blob, { contentType: 'image/jpeg' })
+    if (h5Err) {
+      console.warn('[upload-debug] H5 upload error:', h5Err)
+      throw new Error(`Storage upload failed: ${h5Err.message || 'unknown'}`)
+    }
+    console.log('[upload-debug] H5 upload OK')
+    // #endif
+
+    // #ifndef H5
+    const compressedPath = await compressImage(tempFile, 1600, 0.82)
+    const fileInfo = await new Promise<{ size: number } | null>((resolve) => {
+      uni.getFileInfo({
+        filePath: compressedPath,
+        success: (info: any) => resolve({ size: info.size }),
+        fail: () => resolve(null),
+      })
+    })
+    console.log('[upload-debug] mp file size:', fileInfo?.size ?? 'unknown')
+    if (fileInfo && fileInfo.size > MAX_FILE_SIZE) throw new Error('File too large (max 5MB)')
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+    const uploadUrl = `${supabaseUrl}/storage/v1/object/item-images/${storagePath}`
+    await new Promise<void>((resolve, reject) => {
+      uni.uploadFile({
+        url: uploadUrl,
+        filePath: compressedPath,
+        name: 'file',
+        header: {
+          Authorization: `Bearer ${session.access_token}`,
+          'x-upsert': 'false',
+        },
+        success: (res: any) => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            console.log('[upload-debug] mp upload OK, status:', res.statusCode)
+            resolve()
+          } else {
+            console.warn('[upload-debug] mp upload error, status:', res.statusCode, 'body:', res.data)
+            reject(new Error(`Storage upload failed: HTTP ${res.statusCode} ${res.data || ''}`.trim()))
+          }
+        },
+        fail: (err) => {
+          console.warn('[upload-debug] mp uploadFile fail:', err)
+          reject(new Error(err?.errMsg || 'Storage upload failed (network)'))
+        },
+      })
+    })
+    // #endif
+
+    const { data: urlData } = supabase.storage.from('item-images').getPublicUrl(storagePath)
+    if (!urlData?.publicUrl) {
+      throw new Error('Storage upload succeeded but public URL resolution failed')
+    }
+    console.log('[upload-debug] uploadOneImage DONE:', urlData.publicUrl)
+    return { url: urlData.publicUrl, dims: naturalDims }
+  }
+
   async function fetchMyItems(userId: string) {
     const { data, error } = await supabase
       .from('items')
@@ -440,6 +540,7 @@ export function useItems() {
     updateItemStatus,
     uploadImages,
     uploadImagesWithDims,
+    uploadOneImage,
     fetchMyItems,
     deleteItem,
     clearItems,
