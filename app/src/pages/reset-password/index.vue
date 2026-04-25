@@ -207,18 +207,35 @@ onMounted(async () => {
     } else {
       console.log('[reset-pw-debug] session ready, user:', data.session.user.id)
       /*
-       * Page-arrival inference fallback. If PASSWORD_RECOVERY didn't
-       * fire (because supabase-js consumed the URL before our listener
-       * subscribed, or because we processed the URL manually above),
-       * still treat this as a recovery flow — App.vue's gate is the
-       * only legitimate path here. The recovery scope is encoded in
-       * the email's code itself (server-side), so the JWT we have
-       * IS recovery-scoped regardless of which client path consumed
-       * it; the event is just the explicit notification.
+       * The earlier page-arrival inference fallback (commit a0b8983) is
+       * REMOVED. Reasoning from the user's verification of P0-3:
+       *
+       *   1. With redirectTo now pointing at /pages/reset-password/index
+       *      directly (login + settings updated in this hotfix), the user
+       *      lands on this page WITH the recovery URL still intact.
+       *      supabase-js's detectSessionInUrl auto-detects, fires
+       *      PASSWORD_RECOVERY, our listener (subscribed in this onMounted
+       *      above) catches it, isRecovery flips true. That is the path
+       *      we trust to set isRecovery — only the canonical event.
+       *
+       *   2. The previous fallback ('session OK + on this page → infer
+       *      recovery') falsely triggered for an already-logged-in user
+       *      who happened to navigate here without a recovery URL. They
+       *      had a regular SIGNED_IN session from localStorage, the
+       *      fallback flipped isRecovery=true, onSave called updateUser,
+       *      and gotrue's secure_password_change check rejected with
+       *      400 'Current password required'. The user saw a confusing
+       *      error and was stuck.
+       *
+       * If PASSWORD_RECOVERY never fires by the time we get here (the
+       * session WAS established but not as recovery), surface a clear
+       * "link invalid / expired" error and the back-to-login button
+       * (rendered by the .error block below). DO NOT call updateUser —
+       * we know it would 400.
        */
       if (!isRecovery.value) {
-        console.log('[reset-pw-debug] PASSWORD_RECOVERY did not fire — falling back to page-arrival inference')
-        isRecovery.value = true
+        console.warn('[reset-pw-debug] session exists but PASSWORD_RECOVERY did not fire — treating as invalid recovery context')
+        errorMsg.value = t('resetPw.linkInvalid')
       }
     }
     ready.value = true
@@ -236,12 +253,12 @@ onUnmounted(() => {
 async function onSave() {
   if (!isRecovery.value) {
     /*
-     * Defense-in-depth: the page-arrival inference above sets isRecovery
-     * to true once a session is confirmed, so this branch should be
-     * unreachable for legitimate flows. If we somehow hit it (e.g., the
-     * session never established but ready was set true through the
-     * error branch), refuse to call updateUser — we'd hit Supabase's
-     * "Current password required" error and confuse the user.
+     * Hard gate. With the inference fallback removed (see onMounted
+     * above), reaching this branch means either the recovery URL
+     * never arrived or PASSWORD_RECOVERY never fired — calling
+     * updateUser({password}) would 400 with 'Current password
+     * required'. Tell the user to start over from the email link
+     * and short-circuit.
      */
     console.warn('[reset-pw-debug] onSave called outside recovery flow — refusing')
     uni.showToast({

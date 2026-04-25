@@ -136,12 +136,26 @@ async function onForgotPassword() {
     uni.showToast({ title: t('login.needEmail'), icon: 'none' })
     return
   }
+  /*
+   * redirectTo MUST point at the actual reset-password page, not at the
+   * site root. Supabase appends ?code=<pkce> to redirectTo and bounces
+   * the user there after token verify; if the bounce lands on '/' the
+   * user is silently logged in, supabase-js fires PASSWORD_RECOVERY
+   * during that intermediate root-page load (where no recovery
+   * listener is attached yet), and by the time the user manually
+   * navigates to /pages/reset-password the recovery context is gone
+   * — updateUser({password}) then 400s with 'Current password
+   * required'. See evidence in _ai_notes/HOTFIX_2026-04-25.md.
+   *
+   * The hash-route target (/#/pages/reset-password/index) is in the
+   * Supabase Redirect URL allow-list (user-confirmed via dashboard).
+   */
   let redirectTo: string | undefined
   // #ifdef H5
-  if (typeof window !== 'undefined') redirectTo = `${window.location.origin}/`
+  if (typeof window !== 'undefined') redirectTo = `${window.location.origin}/#/pages/reset-password/index`
   // #endif
   // #ifndef H5
-  redirectTo = 'https://caaci-community-marketplace-bazaar.vercel.app/'
+  redirectTo = 'https://caaci-community-marketplace-bazaar.vercel.app/#/pages/reset-password/index'
   // #endif
   console.log('[reset-pw-debug] sending reset email to:', trimmedEmail, 'redirectTo:', redirectTo)
   const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, { redirectTo })

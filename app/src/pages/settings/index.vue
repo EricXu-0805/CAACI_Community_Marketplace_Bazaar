@@ -184,12 +184,19 @@ async function onChangePassword() {
     content: t('settings.changePasswordHint'),
     success: async (res) => {
       if (!res.confirm) return
+      /*
+       * Same redirectTo target as login → 'Forgot password' (login/index.vue):
+       * point at /pages/reset-password directly, not site root. Otherwise the
+       * recovery URL is consumed on the root-page intermediate load and
+       * PASSWORD_RECOVERY is lost before the reset page even mounts. See
+       * the same comment block in login/index.vue for the full diagnosis.
+       */
       let redirectTo: string | undefined
       // #ifdef H5
-      if (typeof window !== 'undefined') redirectTo = `${window.location.origin}/`
+      if (typeof window !== 'undefined') redirectTo = `${window.location.origin}/#/pages/reset-password/index`
       // #endif
       // #ifndef H5
-      redirectTo = 'https://caaci-community-marketplace-bazaar.vercel.app/'
+      redirectTo = 'https://caaci-community-marketplace-bazaar.vercel.app/#/pages/reset-password/index'
       // #endif
       console.log('[reset-pw-debug] settings change password — email:', session.user!.email, 'redirectTo:', redirectTo)
       const { error } = await supabase.auth.resetPasswordForEmail(session.user!.email!, { redirectTo })
