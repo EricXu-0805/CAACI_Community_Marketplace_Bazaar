@@ -134,7 +134,14 @@ function onPickTheme() {
     itemList: THEMES.map(x => x.label()),
     success: (res) => {
       const pick = THEMES[res.tapIndex]
-      if (pick && pick.code !== themePref.value) setThemePref(pick.code)
+      if (pick && pick.code !== themePref.value) {
+        setThemePref(pick.code)
+        uni.showToast({
+          title: pick.label(),
+          icon: 'none',
+          duration: 1200,
+        })
+      }
     },
   })
 }
