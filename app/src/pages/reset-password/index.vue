@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 
@@ -46,9 +46,64 @@ const errorMsg = ref('')
 const newPassword = ref('')
 const confirmPw = ref('')
 const saving = ref(false)
+/*
+ * isRecovery is the gate that lets onSave call updateUser({password})
+ * without Supabase rejecting with "Current password required when
+ * setting new password.". That error comes from gotrue's
+ * secure_password_change check on a non-recovery session.
+ *
+ * Two ways to flip this true:
+ *   (a) Canonical: supabase.auth.onAuthStateChange fires
+ *       'PASSWORD_RECOVERY' (subscribed below). This happens when
+ *       supabase-js's internal detectSessionInUrl pipeline consumes
+ *       the recovery URL and marks the session as recovery-scoped.
+ *   (b) Page-arrival inference fallback: any user landing on
+ *       /pages/reset-password/index got here because App.vue's
+ *       detectAuthRecoveryAndRoute() routed them — there's no other
+ *       entry. So once we have a session AND we're on this page,
+ *       it's safe to treat it as recovery even if the event didn't
+ *       fire (e.g., supabase-js consumed the URL before our listener
+ *       subscribed, since onMounted runs after createClient init).
+ *
+ * The combination handles both the canonical case (client.detectSessionInUrl
+ * worked) and the racy case (we processed the URL ourselves in
+ * onMounted's manual exchange path).
+ */
+const isRecovery = ref(false)
+
+let unsubscribeAuth: (() => void) | null = null
 
 onMounted(async () => {
   console.log('[reset-pw-debug] reset-password page mounted')
+
+  /*
+   * Subscribe FIRST, before any URL processing or session inspection.
+   * If supabase-js's internal detectSessionInUrl pipeline is still
+   * processing the recovery URL when this listener attaches, we'll
+   * catch its PASSWORD_RECOVERY event. If it already fired (race),
+   * we fall through to the page-arrival inference below.
+   *
+   * The PASSWORD_RECOVERY event is the canonical signal that the
+   * established session was authenticated via a recovery token —
+   * supabase-js guarantees updateUser({password}) called against
+   * this session will not be rejected by gotrue's secure-password-
+   * change check.
+   */
+  try {
+    const sub = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[reset-pw-debug] auth event:', event, 'session?', !!session)
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('[reset-pw-debug] PASSWORD_RECOVERY received — recovery flow confirmed')
+        isRecovery.value = true
+      }
+    })
+    unsubscribeAuth = () => {
+      try { sub.data.subscription.unsubscribe() } catch {}
+    }
+  } catch (err) {
+    console.warn('[reset-pw-debug] onAuthStateChange wire failed:', err)
+  }
+
   try {
     // #ifdef H5
     /*
@@ -151,6 +206,20 @@ onMounted(async () => {
       errorMsg.value = t('resetPw.linkInvalid')
     } else {
       console.log('[reset-pw-debug] session ready, user:', data.session.user.id)
+      /*
+       * Page-arrival inference fallback. If PASSWORD_RECOVERY didn't
+       * fire (because supabase-js consumed the URL before our listener
+       * subscribed, or because we processed the URL manually above),
+       * still treat this as a recovery flow — App.vue's gate is the
+       * only legitimate path here. The recovery scope is encoded in
+       * the email's code itself (server-side), so the JWT we have
+       * IS recovery-scoped regardless of which client path consumed
+       * it; the event is just the explicit notification.
+       */
+      if (!isRecovery.value) {
+        console.log('[reset-pw-debug] PASSWORD_RECOVERY did not fire — falling back to page-arrival inference')
+        isRecovery.value = true
+      }
     }
     ready.value = true
   } catch (err: any) {
@@ -160,7 +229,28 @@ onMounted(async () => {
   }
 })
 
+onUnmounted(() => {
+  if (unsubscribeAuth) unsubscribeAuth()
+})
+
 async function onSave() {
+  if (!isRecovery.value) {
+    /*
+     * Defense-in-depth: the page-arrival inference above sets isRecovery
+     * to true once a session is confirmed, so this branch should be
+     * unreachable for legitimate flows. If we somehow hit it (e.g., the
+     * session never established but ready was set true through the
+     * error branch), refuse to call updateUser — we'd hit Supabase's
+     * "Current password required" error and confuse the user.
+     */
+    console.warn('[reset-pw-debug] onSave called outside recovery flow — refusing')
+    uni.showToast({
+      title: t('resetPw.notRecovery') || 'Open this page from the password-reset email link',
+      icon: 'none',
+      duration: 3000,
+    })
+    return
+  }
   if (newPassword.value.length < 8) {
     uni.showToast({ title: t('login.needPassword'), icon: 'none' })
     return
@@ -171,7 +261,7 @@ async function onSave() {
   }
   saving.value = true
   try {
-    console.log('[reset-pw-debug] calling updateUser')
+    console.log('[reset-pw-debug] calling updateUser (recovery flow)')
     const { error } = await supabase.auth.updateUser({ password: newPassword.value })
     if (error) throw error
     console.log('[reset-pw-debug] password updated, signing out and redirecting to login')
