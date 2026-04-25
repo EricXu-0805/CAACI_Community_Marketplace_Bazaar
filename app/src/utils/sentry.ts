@@ -3,28 +3,27 @@ import type { App } from 'vue'
 /*
  * Sentry initialisation for Illini Market.
  *
- * Why a wrapper instead of inlining in main.ts:
- *   1. mp-weixin and other mini-program targets bundle the entire main.ts
- *      module graph; eagerly importing @sentry/vue would balloon the
- *      mp bundle by ~80 KB even though Sentry's browser SDK does not
- *      run on the WeChat JSCore (no fetch, no Performance API, no
- *      addEventListener). The #ifdef H5 guard plus dynamic import
- *      keeps the mp build slim — Sentry code is dropped entirely by
- *      uni-app's conditional compiler.
- *   2. Centralises the DSN / env / sample-rate config so future tweaks
- *      (release tagging, beforeSend filters) do not have to touch
- *      app boot code.
- *   3. Lets us gate on VITE_SENTRY_DSN being present at runtime —
- *      preview deploys without the DSN env var fall through to a
- *      no-op without errors, and local dev runs against `vite` keep
- *      the boot path lightweight (no DSN = no Sentry init).
+ * The @sentry/vue static import + initSentry body are wrapped in
+ * #ifdef H5. uni-app's conditional-compilation preprocessor strips
+ * the entire H5 block before Vite bundles, so the mp-weixin /
+ * mp-alipay / etc. builds never see the Sentry SDK — no bundle
+ * weight on mini-program targets, where Sentry's browser SDK can't
+ * run anyway (no fetch, no Performance API, no addEventListener).
  *
- * The captureException helper exported here is the only Sentry surface
- * the rest of the app should call. Components and composables do
- * `import { captureException } from '../utils/sentry'` and the wrapper
- * decides whether to forward to Sentry (H5 + DSN configured) or fall
- * back to console.error (mp-weixin, or H5 without DSN).
+ * Synchronous init (vs the previous async dynamic import) is what
+ * keeps the @sentry/vue "Misconfigured SDK. Vue app is already
+ * mounted." warning from firing — uni-app calls our createApp() and
+ * mounts immediately, so Sentry has to be live before that mount.
+ *
+ * captureException is the only call surface other modules should
+ * use. On H5 with DSN configured, it forwards to Sentry. On
+ * mp-weixin or H5 without DSN, it falls back to console.error so
+ * crashes still surface in WeChat DevTools / browser DevTools.
  */
+
+// #ifdef H5
+import * as Sentry from '@sentry/vue'
+// #endif
 
 type CaptureContext = {
   tags?: Record<string, string>
@@ -32,18 +31,15 @@ type CaptureContext = {
   level?: 'fatal' | 'error' | 'warning' | 'info' | 'debug'
 }
 
-let sentryRef: typeof import('@sentry/vue') | null = null
-
-export async function initSentry(app: App): Promise<void> {
+export function initSentry(app: App): void {
   // #ifdef H5
   const dsn = (import.meta.env.VITE_SENTRY_DSN as string | undefined) || ''
   if (!dsn) return
 
-  try {
-    const Sentry = await import('@sentry/vue')
-    const env = (import.meta.env.MODE as string | undefined) || 'production'
-    const release = (import.meta.env.VITE_RELEASE as string | undefined) || undefined
+  const env = (import.meta.env.MODE as string | undefined) || 'production'
+  const release = (import.meta.env.VITE_RELEASE as string | undefined) || undefined
 
+  try {
     Sentry.init({
       app,
       dsn,
@@ -77,14 +73,13 @@ export async function initSentry(app: App): Promise<void> {
         return event
       },
     })
-
-    sentryRef = Sentry
   } catch (err) {
     /*
-     * Sentry init failure must never break app boot. Log to console so
-     * the reason is visible during dev/preview without leaving a tracking
-     * hole at runtime — captureException calls below will quietly noop
-     * since sentryRef stays null.
+     * Sentry init failure must never break app boot. Log to console
+     * so the reason is visible during dev/preview without leaving a
+     * tracking hole at runtime — captureException calls below quietly
+     * fall through to console.error since the Sentry.captureException
+     * call itself will throw if init failed.
      */
     console.warn('[sentry] init failed', err)
   }
@@ -94,21 +89,15 @@ export async function initSentry(app: App): Promise<void> {
   // #endif
 }
 
-/*
- * Forward an exception to Sentry on H5 (when initialised), or fall
- * through to console.error elsewhere. Always swallows its own errors —
- * a broken telemetry path must never produce visible failures in the
- * app.
- */
 export function captureException(err: unknown, ctx?: CaptureContext): void {
-  if (sentryRef) {
-    try {
-      sentryRef.captureException(err, ctx as Parameters<typeof sentryRef.captureException>[1])
-      return
-    } catch (telemErr) {
-      console.warn('[sentry] captureException failed', telemErr)
-    }
+  // #ifdef H5
+  try {
+    Sentry.captureException(err, ctx as Parameters<typeof Sentry.captureException>[1])
+    return
+  } catch (telemErr) {
+    console.warn('[sentry] captureException failed', telemErr)
   }
+  // #endif
   if (ctx?.tags || ctx?.extra) {
     console.error('[error]', err, ctx)
   } else {
@@ -117,14 +106,14 @@ export function captureException(err: unknown, ctx?: CaptureContext): void {
 }
 
 export function captureMessage(message: string, level: 'info' | 'warning' | 'error' = 'info'): void {
-  if (sentryRef) {
-    try {
-      sentryRef.captureMessage(message, level)
-      return
-    } catch (telemErr) {
-      console.warn('[sentry] captureMessage failed', telemErr)
-    }
+  // #ifdef H5
+  try {
+    Sentry.captureMessage(message, level)
+    return
+  } catch (telemErr) {
+    console.warn('[sentry] captureMessage failed', telemErr)
   }
+  // #endif
   if (level === 'error') console.error('[message]', message)
   else if (level === 'warning') console.warn('[message]', message)
   else console.log('[message]', message)
