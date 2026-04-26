@@ -114,7 +114,7 @@
           :key="spot.id"
           class="spot-chip"
           :class="{ active: form.location === spotLabel(spot) }"
-          @click="form.location = spotLabel(spot)"
+          @click="onSpotChipTap(spot)"
         >
           {{ spotLabel(spot) }}
         </view>
@@ -482,9 +482,41 @@ function removeImage(index: number) {
 async function onDetectLocation() {
   const loc = await detectLocation()
   if (!loc) return
+  console.log('[publish-debug] location detected via geolocation:', loc, 'prevLocation:', form.location)
   form.location = loc
   const spot = matchSpot(loc)
   locationVerified.value = !!(spot && spot.safe)
+}
+
+/*
+ * Trace shim around the spot-chip tap path.
+ *
+ * Investigating user-reported "selected location but the listing
+ * details show empty/UIUC default" — static analysis finds no
+ * obvious cause: chip click sets form.location, payload includes it,
+ * createItem inserts it, detail page reads it. Logging the actual
+ * values seen at runtime is the cheapest way to isolate which
+ * link in that chain is breaking. Three possibilities the trace
+ * will distinguish:
+ *
+ *   1. Chip @click never fires → the log line below is missing
+ *      from the user's console paste; problem is event binding.
+ *   2. Chip fires but assignment doesn't stick → log shows the
+ *      label being assigned, but the submit-time form.location log
+ *      shows the default 'UIUC' or empty; problem is reactivity.
+ *   3. Assignment sticks all the way to payload but DB write loses
+ *      it → submit + payload logs show the right value but the
+ *      createItem-result log shows location empty / default;
+ *      problem is server-side (RLS column projection, trigger).
+ *
+ * The function name `onSpotChipTap` (vs an inline expression in the
+ * template) also gives the user a single point to add a breakpoint
+ * to from devtools without re-reading template diff.
+ */
+function onSpotChipTap(spot: CampusSpot) {
+  const label = spotLabel(spot)
+  console.log('[publish-debug] spot chip tapped:', { id: spot.id, label, prevLocation: form.location })
+  form.location = label
 }
 
 async function onSubmit() {
@@ -571,6 +603,28 @@ async function onSubmit() {
     // did they think in while writing this listing".
     const sourceLang = lang.value
 
+    /*
+     * Diagnostic snapshot of the form state at submit time. Pairs
+     * with the spot-chip + detect-location traces above to isolate
+     * the "user picked a location but it didn't persist" report.
+     * Truncates verbose fields (title/description/images URLs) so
+     * the log line stays readable when pasted from the user's H5
+     * devtools console.
+     */
+    console.log('[publish-debug] submit prep — form snapshot:', {
+      mode: isEdit.value ? 'edit' : 'create',
+      editId: editId.value || null,
+      title: trimmedTitle.slice(0, 40),
+      category: form.category,
+      condition: form.condition,
+      price: form.price,
+      location: form.location,
+      locationVerified: locationVerified.value,
+      negotiable: form.negotiable,
+      imagesCount: imageList.value.length,
+      sourceLang,
+    })
+
     const payload = {
       title: trimmedTitle,
       description: trimmedDesc,
@@ -589,13 +643,27 @@ async function onSubmit() {
       location_verified: locationVerified.value,
     }
 
+    /*
+     * Same trace, post-payload-construction. Compare the location
+     * value here against the form.location above — if they diverge,
+     * the `|| 'UIUC'` fallback was hit (form.location was falsy at
+     * submit time despite the user appearing to have selected one).
+     */
+    console.log('[publish-debug] submit prep — payload location field:', {
+      payloadLocation: payload.location,
+      payloadLocationVerified: payload.location_verified,
+      finalImagesCount: payload.images.length,
+    })
+
     if (isEdit.value) {
-      await updateItem(editId.value, { ...payload })
+      const updated = await updateItem(editId.value, { ...payload })
+      console.log('[publish-debug] updateItem returned — DB row location:', updated?.location, 'id:', updated?.id)
       uni.showToast({ title: t('publish.updated'), icon: 'success' })
       scheduleBilingualFill(editId.value, trimmedTitle, trimmedDesc, sourceLang)
       setTimeout(() => uni.navigateBack(), 1500)
     } else {
       const newItem = await createItem(payload)
+      console.log('[publish-debug] createItem returned — DB row location:', newItem?.location, 'id:', newItem?.id)
       uploadProgress.value = 0
       form.title = ''; form.description = ''; form.price = ''
       form.category = ''; form.condition = ''; form.location = 'UIUC'
