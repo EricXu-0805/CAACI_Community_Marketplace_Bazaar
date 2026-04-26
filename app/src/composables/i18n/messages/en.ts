@@ -79,6 +79,7 @@ const en: Record<string, string> = {
   'cat.daily': 'Daily',
   'cat.food': 'Food',
   'cat.currency_exchange': 'Currency',
+  'cat.rideshare': 'Rideshare',
   'cat.other': 'Other',
 
   'condition.new': 'Brand New',

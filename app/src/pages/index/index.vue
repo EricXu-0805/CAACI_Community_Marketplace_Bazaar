@@ -430,7 +430,7 @@ const filterCondition = ref<ItemCondition | ''>('')
 const filterLocation = ref('')
 const sortBy = ref('latest')
 
-const categoryKeys: (ItemCategory | null)[] = [null, 'currency_exchange', 'electronics', 'furniture', 'housing', 'clothing', 'books', 'vehicles', 'daily', 'food', 'other']
+const categoryKeys: (ItemCategory | null)[] = [null, 'currency_exchange', 'rideshare', 'electronics', 'furniture', 'housing', 'clothing', 'books', 'vehicles', 'daily', 'food', 'other']
 const categories = computed(() => categoryKeys.map(k => ({
   value: k,
   label: t(k ? 'cat.' + k : 'cat.all'),

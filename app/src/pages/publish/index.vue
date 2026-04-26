@@ -212,7 +212,7 @@ async function scheduleBilingualFill(
 const { supabase } = useSupabase()
 const avgPrice = ref(0)
 
-const categoryKeys: ItemCategory[] = ['furniture', 'electronics', 'clothing', 'books', 'housing', 'vehicles', 'daily', 'food', 'other']
+const categoryKeys: ItemCategory[] = ['furniture', 'electronics', 'clothing', 'books', 'housing', 'vehicles', 'rideshare', 'daily', 'food', 'other']
 const conditionKeys = ['new', 'like_new', 'good', 'fair', 'defective']
 
 const imageList = ref<string[]>([])

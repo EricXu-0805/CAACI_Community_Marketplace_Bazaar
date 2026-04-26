@@ -12,6 +12,7 @@ export type ItemCategory =
   | 'daily'
   | 'food'
   | 'currency_exchange'
+  | 'rideshare'
   | 'other'
 
 export type ItemCondition = 'new' | 'like_new' | 'good' | 'fair' | 'defective'

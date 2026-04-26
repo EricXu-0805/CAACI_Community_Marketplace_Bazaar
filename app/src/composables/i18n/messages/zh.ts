@@ -79,6 +79,7 @@ const zh: Record<string, string> = {
   'cat.daily': '日用',
   'cat.food': '食品',
   'cat.currency_exchange': '换币',
+  'cat.rideshare': '拼车',
   'cat.other': '其他',
 
   'condition.new': '全新',
