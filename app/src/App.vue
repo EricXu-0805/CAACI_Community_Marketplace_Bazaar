@@ -99,6 +99,106 @@ watch(currentUser, () => {
   setTimeout(enforceConsentGate, 100)
 })
 
+/*
+ * extractHashAuthCode — synchronous PKCE-code-in-hash rescue for
+ * hash-router PKCE recovery URLs.
+ *
+ * The bug shape (verified by user, hotfix r1 caveat predicted it):
+ *   Site uses uni-app hash routing → resetPasswordForEmail's redirectTo
+ *   is /#/pages/reset-password/index. After Supabase verifies the email
+ *   token it appends ?code=<pkce> and bounces the user to:
+ *       https://...vercel.app/#/pages/reset-password/index?code=xxx
+ *   By URL spec, everything after `#` is the FRAGMENT — so:
+ *       window.location.search = ''   (empty)
+ *       window.location.hash    = '#/pages/reset-password/index?code=xxx'
+ *   supabase-js's detectSessionInUrl only looks at search; the code is
+ *   invisible to it. The Supabase server-side token expires unused; the
+ *   user gets bounced to /?error=otp_expired without the reset-password
+ *   page ever mounting.
+ *
+ * Fix shape: extract the code from the hash BEFORE supabase-js runs
+ * (i.e., before useSupabase() / createClient()), stash it on window,
+ * strip it from the hash via history.replaceState. The reset-password
+ * page consumes the stash on mount and calls exchangeCodeForSession
+ * (after subscribing the PASSWORD_RECOVERY listener, so the event
+ * isn't dropped on the floor again).
+ *
+ * Why not just exchange right here?
+ *   1. The supabase client doesn't exist yet — useSupabase()/createClient
+ *      run inside the setTimeout below.
+ *   2. exchangeCodeForSession's resolve fires PASSWORD_RECOVERY
+ *      synchronously to subscribed listeners. The reset-password page's
+ *      listener subscribes in onMounted, which runs AFTER this entry
+ *      hook. If we exchanged here, the event would fire before any
+ *      listener was subscribed → lost again.
+ *
+ * Why use history.replaceState instead of leaving the URL alone?
+ *   1. supabase-js's detectSessionInUrl might still try to clean up the
+ *      URL on init even if it didn't find anything to consume — better
+ *      to leave a clean URL behind so its cleanup is a no-op.
+ *   2. Browsers show the cleaner URL to the user post-fix.
+ *   3. Back-button navigation won't replay the code.
+ *
+ * H5 only — mp targets don't have window.location / hash routing in
+ * this shape; password recovery on mp would go through a different
+ * channel (and currently isn't supported via email link there).
+ */
+function extractHashAuthCode(): void {
+  // #ifdef H5
+  if (typeof window === 'undefined') return
+  const hash = window.location.hash || ''
+  const search = window.location.search || ''
+  console.log('[reset-pw-debug] entry: location.hash=', hash)
+  console.log('[reset-pw-debug] entry: location.search=', search)
+
+  /*
+   * Only intervene when ?code= is in the hash. Search-side codes
+   * (clean redirectTo URLs without a fragment) are handled correctly
+   * by supabase-js's own detectSessionInUrl pipeline — leave that path
+   * alone to avoid double-exchange. Implicit-flow recovery (#access_token
+   * + type=recovery) also handled by supabase-js + the existing
+   * detectAuthRecoveryAndRoute below; not our concern here.
+   */
+  const codeInHash = hash.match(/[?&]code=([^&]+)/)
+  if (!codeInHash || !codeInHash[1]) {
+    console.log('[reset-pw-debug] entry: no ?code= in hash, skipping extraction')
+    return
+  }
+
+  const code = decodeURIComponent(codeInHash[1])
+  console.log('[reset-pw-debug] entry: detected ?code= in hash fragment, extracting code=' + code.slice(0, 8) + '...')
+
+  ;(window as any).__pendingAuthCode = code
+
+  try {
+    /*
+     * Hash format: '#<path>?<query>'. Parse, strip code+state, rejoin.
+     * Using URLSearchParams keeps unrelated query params intact (e.g.,
+     * if a future redirectTo carries ?lang=en or similar). state= is
+     * the PKCE round-trip companion to code= — gone with the code.
+     */
+    const hashStr = hash.startsWith('#') ? hash.slice(1) : hash
+    const qIdx = hashStr.indexOf('?')
+    let path = hashStr
+    let query = ''
+    if (qIdx >= 0) {
+      path = hashStr.slice(0, qIdx)
+      query = hashStr.slice(qIdx + 1)
+    }
+    const params = new URLSearchParams(query)
+    params.delete('code')
+    params.delete('state')
+    const newQuery = params.toString()
+    const newHash = '#' + path + (newQuery ? '?' + newQuery : '')
+    const newUrl = window.location.pathname + window.location.search + newHash
+    console.log('[reset-pw-debug] entry: rewriting URL to clear code from hash →', newUrl)
+    window.history.replaceState({}, '', newUrl)
+  } catch (err) {
+    console.warn('[reset-pw-debug] entry: history.replaceState failed (continuing — code already stashed):', err)
+  }
+  // #endif
+}
+
 function detectAuthRecoveryAndRoute(): boolean {
   // #ifdef H5
   if (typeof window === 'undefined') return false
@@ -143,6 +243,26 @@ function detectAuthRecoveryAndRoute(): boolean {
 }
 
 onLaunch(() => {
+  /*
+   * SYNCHRONOUS hash-PKCE-code rescue — must run BEFORE the setTimeout
+   * below kicks off useSupabase() / createClient(). Once supabase-js
+   * initializes, its detectSessionInUrl pipeline can choose to
+   * history.replaceState the URL even when it didn't find anything to
+   * exchange — wiping our hash code with it. Doing the extraction here,
+   * synchronously in onLaunch's first tick, guarantees the code is
+   * stashed and the URL cleaned before any of that runs.
+   *
+   * Wrapped in try/catch so a hash-parse oddity can never block the rest
+   * of app boot — worst case we lose this one recovery attempt and the
+   * existing /error= handling shows the user a friendly "link expired"
+   * message in the .error block.
+   */
+  try {
+    extractHashAuthCode()
+  } catch (err) {
+    console.warn('[reset-pw-debug] entry: extractHashAuthCode threw (non-fatal):', err)
+  }
+
   /*
    * Global error handlers — register FIRST and synchronously, so any
    * subsequent rejection in the deferred-init block is captured rather

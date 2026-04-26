@@ -107,23 +107,65 @@ onMounted(async () => {
   try {
     // #ifdef H5
     /*
-     * Two recovery shapes to consume, mirroring what App.vue detected:
+     * Hash-routed PKCE rescue (hotfix r2). App.vue's onLaunch
+     * extractHashAuthCode() runs synchronously before any supabase code
+     * and stashes the PKCE code from the hash fragment onto
+     * window.__pendingAuthCode (because supabase-js's detectSessionInUrl
+     * only inspects search, not hash). Consume that stash here NOW —
+     * after the PASSWORD_RECOVERY listener subscribed above, so the
+     * event isn't lost — and exchange the code for a recovery session.
+     *
+     * The existing search/hash manual-exchange paths below are preserved
+     * as fallbacks for non-hash-routed shapes (e.g., a future redirectTo
+     * to a clean URL, or implicit-flow tokens in hash).
+     */
+    const pendingCode: string | null =
+      typeof window !== 'undefined' ? ((window as any).__pendingAuthCode || null) : null
+    if (pendingCode) {
+      try { delete (window as any).__pendingAuthCode } catch {}
+      console.log('[reset-pw-debug] entry: consuming __pendingAuthCode (from hash extraction)')
+      try {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(pendingCode)
+        if (error) {
+          console.warn('[reset-pw-debug] entry: exchange failed:', error)
+          errorMsg.value = error.message || t('resetPw.linkInvalid')
+          ready.value = true
+          return
+        }
+        console.log('[reset-pw-debug] entry: exchange OK, session user=', data.session?.user?.id)
+        /*
+         * exchangeCodeForSession's resolve fires PASSWORD_RECOVERY
+         * synchronously to subscribed listeners. Our listener (above)
+         * should have flipped isRecovery=true by now. If supabase-js's
+         * event-emit timing differs (microtask vs sync), let the
+         * existing getSession check below confirm the session — we
+         * don't add a separate fallback because the user explicitly
+         * removed page-arrival inference in hotfix r1.
+         */
+      } catch (err: any) {
+        console.warn('[reset-pw-debug] entry: exchange threw:', err)
+        errorMsg.value = err?.message || t('resetPw.linkInvalid')
+        ready.value = true
+        return
+      }
+    }
+    // #endif
+
+    // #ifdef H5
+    /*
+     * Two LEGACY recovery shapes to consume, mirroring what App.vue's
+     * detectAuthRecoveryAndRoute stashed:
      *
      *   PKCE  — ?code=<uuid> in window.location.search
      *           exchange via supabase.auth.exchangeCodeForSession(code)
      *   IMPL  — #access_token=&refresh_token=&type=recovery in hash
      *           exchange via supabase.auth.setSession({...})
      *
-     * App.vue stashes the original search + hash on window because its
-     * reLaunch rewrites both. We read the stash first, fall back to
-     * whatever is still on window.location, then clean up so back/
-     * forward can't replay the tokens.
-     *
-     * detectSessionInUrl=true on the supabase client may have ALREADY
-     * consumed the recovery params before we get here (see Type-A in
-     * the quick-getSession check below). That's fine — getSession()
-     * will return the recovery session and we'll skip the manual
-     * exchange.
+     * Note: as of hotfix r2 the typical PKCE path is the
+     * __pendingAuthCode block above (extracted from hash before
+     * supabase init). The blocks below remain as defense for the
+     * less-common shapes — code in search (clean redirectTo URLs),
+     * implicit-flow tokens, or anything App.vue's older logic stashed.
      */
     const stashedSearch: string =
       typeof window !== 'undefined' ? ((window as any).__authRecoverySearch || '') : ''
