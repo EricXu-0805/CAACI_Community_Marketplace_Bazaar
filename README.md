@@ -101,13 +101,18 @@ npm install
 # 或用 Supabase CLI:  supabase db push
 
 # 4. 启动
-npm run dev:h5          # H5 (http://localhost:5173)
+npm run dev:h5          # H5 (http://localhost:5173) — Vite only, /api/* 会 404
+npm run dev:vercel      # vercel dev (http://localhost:3000) — 同时跑 Vite + /api/* edge functions
 npm run dev:mp-weixin   # 微信小程序 (需微信开发者工具)
 
 # 5. 生产构建
 npm run build:h5        # 产物在 app/dist/build/h5
 npm run type-check      # 只做类型检查
 ```
+
+**`dev:vercel` 用途**: 当你需要本地调试 `/api/translate`、`/api/moderate`、`/api/admin` 等
+serverless 函数时使用 (Vite 不会 serve `api/*` 文件)。首次使用前需 `vercel login` + 项目链接
+(本仓库已 link，`.vercel/` 已存在)。`dev:h5` 适合纯前端开发；`dev:vercel` 适合需要打 API 的场景。
 
 ## 部署
 

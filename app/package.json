@@ -4,6 +4,7 @@
   "scripts": {
     "dev:custom": "uni -p",
     "dev:h5": "uni",
+    "dev:vercel": "cd .. && vercel dev",
     "dev:mp-alipay": "uni -p mp-alipay",
     "dev:mp-baidu": "uni -p mp-baidu",
     "dev:mp-jd": "uni -p mp-jd",
