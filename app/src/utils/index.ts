@@ -650,38 +650,174 @@ export function formatPrice(price: number, freeLabel = 'Free'): string {
   return '$' + (Number.isInteger(price) ? price.toString() : price.toFixed(2))
 }
 
+/*
+ * Client-side image compression — storage budget mitigation.
+ *
+ * At projected UIUC adoption (~5000 students × ~10 photos/month) raw
+ * 4K phone photos at 3-5 MB each would exhaust Supabase free tier
+ * 1 GB Storage cap inside the first year. Compressing to a 1080-px
+ * long edge at JPEG quality 82 brings a typical 4032×3024 phone
+ * shot down to ≈ 500 KB while preserving display quality at every
+ * card/cell size we render (the largest is 750 rpx ≈ ~360 px on
+ * desktop, ~280 px on phones, both well below 1080).
+ *
+ * Long edge (vs width) matters for portrait phone shots — the camera
+ * stores them at 3024×4032 and the previous "compare against width"
+ * gate ran the resize on the wrong axis, sometimes downscaling
+ * landscape wide shots while leaving 4 K portraits untouched.
+ *
+ * H5 path: createImageBitmap(blob, { imageOrientation: 'from-image' })
+ * is the canonical way to apply EXIF orientation BEFORE the canvas
+ * draw — without it, photos taken in portrait mode land sideways
+ * because the camera writes a "rotate 90°" EXIF tag instead of
+ * baking the rotation into the pixels. The option ships in Chrome
+ * 79+ / Firefox 77+ / Safari 14.1+, which covers ~99 % of our
+ * student user base. On older Safari it silently no-ops
+ * (orientation may render wrong, but the upload still succeeds —
+ * graceful degradation).
+ *
+ * mp-weixin path: uni.compressImage's compressedWidth /
+ * compressedHeight params (basic library 2.10.0+) handle the resize
+ * server-side on the WeChat runtime, no canvas dance required. EXIF
+ * is applied automatically by the WeChat JPEG decoder.
+ *
+ * Skip-if-already-small: if the long edge is already ≤ maxLongEdge
+ * we return the source unchanged to avoid a re-encode that would
+ * only chip away at quality without saving meaningful bytes.
+ */
 export function compressImage(
   src: string,
-  maxWidth = 1200,
-  quality = 0.8,
+  maxLongEdge = 1080,
+  quality = 0.82,
 ): Promise<string> {
   return new Promise((resolve) => {
     // #ifdef H5
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => {
-      const ratio = Math.min(1, maxWidth / img.width)
-      const canvas = document.createElement('canvas')
-      canvas.width = img.width * ratio
-      canvas.height = img.height * ratio
-      const ctx = canvas.getContext('2d')!
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-      resolve(canvas.toDataURL('image/jpeg', quality))
-    }
-    img.onerror = () => resolve(src)
-    img.src = src
+    void compressH5(src, maxLongEdge, quality).then(resolve, () => resolve(src))
     // #endif
 
     // #ifndef H5
-    uni.compressImage({
-      src,
-      quality: quality * 100,
-      success: (res) => resolve(res.tempFilePath),
-      fail: () => resolve(src),
-    })
+    void compressMP(src, maxLongEdge, quality).then(resolve, () => resolve(src))
     // #endif
   })
 }
+
+// #ifdef H5
+async function compressH5(src: string, maxLongEdge: number, quality: number): Promise<string> {
+  const shortSrc = src.slice(0, 60) + (src.length > 60 ? '…' : '')
+  let origBlob: Blob
+  try {
+    const resp = await fetch(src)
+    origBlob = await resp.blob()
+  } catch (err) {
+    console.warn('[compress-debug] H5 fetch failed for', shortSrc, err)
+    return src
+  }
+  const origKB = Math.round(origBlob.size / 1024)
+
+  let bitmap: ImageBitmap | null = null
+  try {
+    /*
+     * imageOrientation: 'from-image' is the EXIF correction switch.
+     * The cast routes around TS 4.9's lib.dom.d.ts, which still types
+     * ImageOrientation as 'none' | 'flipY'; modern browsers accept
+     * 'from-image' at runtime (Chrome 79+/FF 77+/Safari 14.1+) and
+     * silently fall through to default orientation on older runtimes.
+     */
+    bitmap = await createImageBitmap(origBlob, { imageOrientation: 'from-image' as 'none' })
+  } catch (err) {
+    console.warn('[compress-debug] H5 createImageBitmap failed for', shortSrc, err)
+    return src
+  }
+
+  const origW = bitmap.width
+  const origH = bitmap.height
+  const longEdge = Math.max(origW, origH)
+
+  if (longEdge <= maxLongEdge) {
+    console.log(`[compress-debug] H5 skip (≤${maxLongEdge}): ${origW}x${origH}, ${origKB}KB`)
+    bitmap.close?.()
+    return src
+  }
+
+  const ratio = maxLongEdge / longEdge
+  const targetW = Math.round(origW * ratio)
+  const targetH = Math.round(origH * ratio)
+  const canvas = document.createElement('canvas')
+  canvas.width = targetW
+  canvas.height = targetH
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    bitmap.close?.()
+    return src
+  }
+  ctx.drawImage(bitmap, 0, 0, targetW, targetH)
+  bitmap.close?.()
+
+  const dataUrl = canvas.toDataURL('image/jpeg', quality)
+  // toDataURL returns base64; actual byte size ≈ length × 0.75
+  const compressedKB = Math.round((dataUrl.length * 0.75) / 1024)
+  console.log(`[compress-debug] H5: ${origW}x${origH} ${origKB}KB → ${targetW}x${targetH} ${compressedKB}KB q${Math.round(quality * 100)}`)
+  return dataUrl
+}
+// #endif
+
+// #ifndef H5
+function compressMP(src: string, maxLongEdge: number, quality: number): Promise<string> {
+  return new Promise((resolve) => {
+    /*
+     * Measure first so we can pass compressedWidth/compressedHeight
+     * (uni.compressImage on mp-weixin since basic library 2.10.0).
+     * If the runtime is older or getImageInfo fails we fall back to
+     * uni.compressImage without target dims — still gets us the
+     * quality re-encode even if it doesn't downscale.
+     */
+    uni.getImageInfo({
+      src,
+      success: (info) => {
+        const w = info.width || 0
+        const h = info.height || 0
+        const longEdge = Math.max(w, h)
+        const shortSrc = src.slice(0, 60) + (src.length > 60 ? '…' : '')
+
+        if (longEdge > 0 && longEdge <= maxLongEdge) {
+          console.log(`[compress-debug] mp skip (≤${maxLongEdge}): ${w}x${h}`)
+          resolve(src)
+          return
+        }
+
+        const opts: UniApp.CompressImageOptions = {
+          src,
+          quality: Math.round(quality * 100),
+          success: (res) => {
+            console.log(`[compress-debug] mp: ${w}x${h} → max ${maxLongEdge}px q${Math.round(quality * 100)}`)
+            resolve(res.tempFilePath)
+          },
+          fail: (err) => {
+            console.warn('[compress-debug] mp compress fail for', shortSrc, err)
+            resolve(src)
+          },
+        }
+        if (longEdge > 0) {
+          const ratio = maxLongEdge / longEdge
+          ;(opts as UniApp.CompressImageOptions & { compressedWidth?: number; compressedHeight?: number }).compressedWidth = Math.round(w * ratio)
+          ;(opts as UniApp.CompressImageOptions & { compressedWidth?: number; compressedHeight?: number }).compressedHeight = Math.round(h * ratio)
+        }
+        uni.compressImage(opts)
+      },
+      fail: (err) => {
+        const shortSrc = src.slice(0, 60) + (src.length > 60 ? '…' : '')
+        console.warn('[compress-debug] mp getImageInfo fail for', shortSrc, err)
+        uni.compressImage({
+          src,
+          quality: Math.round(quality * 100),
+          success: (res) => resolve(res.tempFilePath),
+          fail: () => resolve(src),
+        })
+      },
+    })
+  })
+}
+// #endif
 
 /*
  * Read the natural pixel dimensions of any image source we can reach

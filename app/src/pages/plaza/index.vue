@@ -547,7 +547,7 @@ function onComposerPickImage() {
       const paths: string[] = res.tempFilePaths || []
       for (const p of paths) {
         try {
-          const c = await compressImage(p, 1600, 0.82)
+          const c = await compressImage(p)
           composerImages.value.push(c)
         } catch {
           composerImages.value.push(p)

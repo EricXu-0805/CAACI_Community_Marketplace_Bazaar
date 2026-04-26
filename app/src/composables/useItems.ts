@@ -298,7 +298,7 @@ export function useItems() {
         let uploadError: any = null
 
         // #ifdef H5
-        const compressed = await compressImage(filePath, 1600, 0.82)
+        const compressed = await compressImage(filePath)
         const response = await fetch(compressed)
         const blob = await response.blob()
         console.log('[upload-debug] blob size (compressed):', blob.size, 'bytes')
@@ -317,7 +317,7 @@ export function useItems() {
         // #endif
 
         // #ifndef H5
-        const compressedPath = await compressImage(filePath, 1600, 0.82)
+        const compressedPath = await compressImage(filePath)
         const fileInfo = await new Promise<{ size: number } | null>((resolve) => {
           uni.getFileInfo({
             filePath: compressedPath,
@@ -420,7 +420,7 @@ export function useItems() {
     console.log('[upload-debug] dims:', naturalDims.w, 'x', naturalDims.h)
 
     // #ifdef H5
-    const compressed = await compressImage(tempFile, 1600, 0.82)
+    const compressed = await compressImage(tempFile)
     const response = await fetch(compressed)
     const blob = await response.blob()
     console.log('[upload-debug] blob size:', blob.size, 'bytes')
@@ -436,7 +436,7 @@ export function useItems() {
     // #endif
 
     // #ifndef H5
-    const compressedPath = await compressImage(tempFile, 1600, 0.82)
+    const compressedPath = await compressImage(tempFile)
     const fileInfo = await new Promise<{ size: number } | null>((resolve) => {
       uni.getFileInfo({
         filePath: compressedPath,
