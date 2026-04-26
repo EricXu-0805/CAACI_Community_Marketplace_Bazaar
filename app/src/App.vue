@@ -203,7 +203,42 @@ function extractAuthCodeFromUrl(): void {
     return
   }
 
-  console.log(`[reset-pw-debug] entry: detected ?code= in ${foundIn}, extracting code=${code.slice(0, 8)}...`)
+  /*
+   * Distinguish a recovery code (must be stashed for reset-password to
+   * exchange in onMounted) from a non-recovery PKCE code (e.g. an
+   * OAuth-callback redirect, which lands on `${origin}/` and should
+   * be left for supabase-js's detectSessionInUrl pipeline to consume
+   * as part of the SIGNED_IN flow).
+   *
+   * The cheap, reliable signal is the hash route component:
+   *
+   *   · Recovery email → redirectTo is `${origin}/#/pages/reset-password/index`
+   *     so window.location.hash starts with '#/pages/reset-password/'.
+   *   · Google OAuth   → redirectTo is `${origin}/`
+   *     so window.location.hash is '' (empty) or '#/' or '#/pages/index/index'
+   *     depending on which page first renders post-redirect.
+   *   · Any other PKCE return shape we add later (Apple, GitHub, magic
+   *     link, etc.) defaults to the OAuth branch — they go to the home
+   *     page and supabase-js handles them transparently.
+   *
+   * If we stashed an OAuth code instead of letting supabase-js consume
+   * it, two things break: (a) the SIGNED_IN event never fires (because
+   * detectSessionInUrl can't find the code we just removed), and (b)
+   * the reset-password page never mounts on a fresh OAuth login, so
+   * __pendingAuthCode would sit in window forever and the user would
+   * land on the home page un-authenticated despite the URL having
+   * shown a valid code. The route check below prevents that footgun.
+   */
+  const hashRoute = (hash.split('?')[0] || '').toLowerCase()
+  const isRecoveryRoute = hashRoute.includes('/pages/reset-password/')
+  if (!isRecoveryRoute) {
+    console.log(
+      `[reset-pw-debug] entry: ?code= present in ${foundIn} but hash route is ${hashRoute || '(empty)'} — not recovery, leaving code in URL for supabase-js detectSessionInUrl (likely OAuth callback)`,
+    )
+    return
+  }
+
+  console.log(`[reset-pw-debug] entry: detected recovery ?code= in ${foundIn}, extracting code=${code.slice(0, 8)}...`)
 
   ;(window as any).__pendingAuthCode = code
 

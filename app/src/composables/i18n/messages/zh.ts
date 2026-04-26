@@ -82,6 +82,11 @@ const zh: Record<string, string> = {
   'cat.rideshare': '拼车',
   'cat.other': '其他',
 
+  'login.googleSignIn': '使用 Google 登录',
+  'login.googleFail': 'Google 登录失败',
+  'login.oauthUnsupported': '当前平台暂不支持 Google 登录',
+  'login.orContinue': '或',
+
   'condition.new': '全新',
   'condition.like_new': '几乎全新',
   'condition.good': '良好',

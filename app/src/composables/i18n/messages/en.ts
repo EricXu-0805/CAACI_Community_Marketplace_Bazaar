@@ -82,6 +82,11 @@ const en: Record<string, string> = {
   'cat.rideshare': 'Rideshare',
   'cat.other': 'Other',
 
+  'login.googleSignIn': 'Sign in with Google',
+  'login.googleFail': 'Google sign-in failed',
+  'login.oauthUnsupported': 'Google sign-in is not supported on this platform',
+  'login.orContinue': 'or',
+
   'condition.new': 'Brand New',
   'condition.like_new': 'Like New',
   'condition.good': 'Good',

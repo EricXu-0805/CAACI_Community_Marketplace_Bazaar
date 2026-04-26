@@ -95,6 +95,34 @@
       <button class="submit-btn" :disabled="loading" @click="onSubmit">
         {{ loading ? t('login.wait') : (mode === 'login' ? t('login.submitLogin') : t('login.submitSignup')) }}
       </button>
+
+      <!-- #ifdef H5 -->
+      <!--
+        Google OAuth — H5-only secondary auth path. Placed BELOW the
+        email form (per spec) with an 'or' divider so the email/password
+        path stays primary. Same button works for both 'login' and
+        'signup' tab modes — Supabase signInWithOAuth creates a profile
+        on first sign-in, so the user doesn't need to think about which
+        tab they're on. mp-weixin gets the WeChat button at the top of
+        the form instead; Google OAuth has no sane mp flow and would be
+        decorative noise there.
+
+        Until the dashboard configuration in the commit message is done,
+        clicking this button surfaces a 'provider is not enabled' error
+        from Supabase — that's the expected pre-config state.
+      -->
+      <view class="or-divider google-divider">
+        <view class="or-line"></view>
+        <text class="or-text">{{ t('login.orContinue') }}</text>
+        <view class="or-line"></view>
+      </view>
+      <button class="google-btn" :disabled="loading" @click="onSignInWithGoogle">
+        <view class="g-icon-circle">
+          <text class="g-icon-letter">G</text>
+        </view>
+        <text>{{ t('login.googleSignIn') }}</text>
+      </button>
+      <!-- #endif -->
     </view>
 
     <view class="footer">
@@ -188,6 +216,87 @@ function goLegal(type: string) {
 
 function goBack() {
   uni.navigateBack({ fail: () => uni.switchTab({ url: '/pages/index/index' }) })
+}
+
+/*
+ * Google OAuth — H5-only entry point.
+ *
+ * Calls supabase.auth.signInWithOAuth with provider=google. Supabase
+ * generates the Google authorize URL (with PKCE state + code_challenge
+ * baked in) and the H5 supabase-js implementation calls
+ * window.location.assign(...) to navigate the page there. The user
+ * authenticates with Google, Google bounces back to Supabase's
+ * /auth/v1/callback (the URL configured in Google Cloud Console),
+ * Supabase verifies and bounces to our redirectTo with `?code=<pkce>`
+ * appended.
+ *
+ * On return the app boots fresh:
+ *   1. App.vue's extractAuthCodeFromUrl runs synchronously, sees the
+ *      ?code= but ALSO sees the hash route is NOT /pages/reset-password
+ *      → leaves the URL alone (post r3a-Fix6 update to the entry hook).
+ *   2. setTimeout(0) fires init() which creates the supabase client
+ *      with detectSessionInUrl: true.
+ *   3. supabase-js detectSessionInUrl pipeline finds the search-side
+ *      ?code=, exchanges it via exchangeCodeForSession, fires SIGNED_IN.
+ *   4. useAuth's auth subscriber catches SIGNED_IN, sets currentUser,
+ *      and the consent gate watcher (also in App.vue) decides whether
+ *      to send the user to onboarding (first-time) or just let them
+ *      enter the home page.
+ *
+ * No code path in this file owns the post-redirect handling — that's
+ * all delegated to the existing init() + auth subscriber chain. Means
+ * Google OAuth is wired in by adding ONLY this handler + the button
+ * + the entry-hook discrimination, no chat with the home page or
+ * the index lifecycle.
+ *
+ * IMPORTANT — dashboard config required before this works end-to-end.
+ * See the commit message for the full Google Cloud Console + Supabase
+ * Dashboard steps. Without that config, signInWithOAuth returns an
+ * error like 'Unsupported provider: provider is not enabled', which
+ * is what the catch+toast below surfaces.
+ *
+ * Mp-weixin / other mp targets fall through to a single toast and
+ * exit — there's no Google in those environments.
+ */
+async function onSignInWithGoogle() {
+  if (loading.value) return
+  // #ifdef H5
+  if (typeof window === 'undefined') return
+  const redirectTo = `${window.location.origin}/`
+  console.log('[oauth-debug] starting Google sign-in, redirectTo:', redirectTo)
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo },
+    })
+    if (error) {
+      console.warn('[oauth-debug] signInWithOAuth error:', error)
+      uni.showToast({
+        title: error.message ? `${t('login.googleFail')}: ${error.message}` : t('login.googleFail'),
+        icon: 'none',
+        duration: 3000,
+      })
+      return
+    }
+    /*
+     * Success path is silent: signInWithOAuth has already issued the
+     * window.location.assign() to Google. Any code after this would
+     * be racing with the page navigation. The success "toast" is the
+     * Google sign-in screen the user is about to see.
+     */
+    console.log('[oauth-debug] OAuth flow initiated, awaiting Google redirect')
+  } catch (err: any) {
+    console.warn('[oauth-debug] signInWithOAuth threw:', err)
+    uni.showToast({
+      title: err?.message ? `${t('login.googleFail')}: ${err.message}` : t('login.googleFail'),
+      icon: 'none',
+      duration: 3000,
+    })
+  }
+  // #endif
+  // #ifndef H5
+  uni.showToast({ title: t('login.oauthUnsupported'), icon: 'none', duration: 2500 })
+  // #endif
 }
 
 async function onWeChatLogin() {
@@ -395,6 +504,41 @@ async function onSubmit() {
 }
 .wx-icon {
   font-size: 18px; line-height: 1;
+}
+
+/*
+ * Google OAuth button — white surface + warm-charcoal text, secondary
+ * to the brand-colored email submit button above. Uses a stylized 'G'
+ * monogram in a brand-soft circle instead of Google's official 'G'
+ * mark — Google's brand guidelines (https://about.google/brand-resource-center/)
+ * forbid placing the official mark on a button without their approval
+ * pipeline, and an unbranded 'G' is industry-standard for "OAuth via
+ * Google" affordances. The circle background uses --bg-subtle so the
+ * button visually pairs with --bg-elev-2 form inputs above.
+ */
+.google-divider { margin-top: 18px; margin-bottom: 12px; }
+.google-btn {
+  width: 100%; height: 48px;
+  background: var(--surface); color: var(--ink);
+  border: 0.5px solid var(--border-strong);
+  border-radius: 24px; font-size: 15px; font-weight: 500;
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px; letter-spacing: 0.01em;
+  padding: 0 16px;
+  &[disabled] { opacity: 0.45; }
+  &:active { background: var(--bg-subtle); transform: translateY(1px); }
+}
+.g-icon-circle {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--bg-subtle);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.g-icon-letter {
+  font-family: var(--font-serif);
+  font-size: 14px; font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
 }
 
 .or-divider {
