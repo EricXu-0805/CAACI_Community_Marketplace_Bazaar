@@ -354,14 +354,15 @@ function onCommentTap(c: PostComment) {
   replyTo.value = c
 }
 
-/* 2s + haptic — same rationale as the home feed and plaza pages.
+/* 1.5s + haptic — same rationale as the home feed and plaza pages.
    Long-press here surfaces report / delete actions; we want
-   deliberate intent before either fires. Tuned down from 3s in
-   batch #2 — 3s tested as too slow in user acceptance. Both post
-   and comment longpress move together so the feel of the post
-   detail surface is consistent. */
-const postLongPress = useLongPress<[]>(() => onPostLongPress(), 2000)
-const commentLongPress = useLongPress<[PostComment]>((c) => onCommentLongPress(c), 2000)
+   deliberate intent before either fires. Tuned 3s → 2s in batch #2,
+   then 2s → 1.5s in batch #3a — 2s still tested as draggy in user
+   acceptance; 1.5s keeps the deliberate-intent gate without feeling
+   like waiting. Both post and comment longpress move together so the
+   feel of the post detail surface is consistent. */
+const postLongPress = useLongPress<[]>(() => onPostLongPress(), 1500)
+const commentLongPress = useLongPress<[PostComment]>((c) => onCommentLongPress(c), 1500)
 
 function onCommentLongPress(c: PostComment) {
   if (!currentUser.value) return

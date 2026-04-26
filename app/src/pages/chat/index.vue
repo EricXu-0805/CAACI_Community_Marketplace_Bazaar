@@ -552,14 +552,13 @@ function formatChatTime(dateStr: string): string {
   return `${d.getMonth() + 1}/${d.getDate()} ${time}`
 }
 
-/* 2s + haptic recognizer to reduce mis-fires on the chat surface
+/* 1.5s + haptic recognizer to reduce mis-fires on the chat surface
    (a thumb resting on a bubble used to fire reply/copy/delete with
-   a 350ms accident; 2s gives the user enough time to commit
-   deliberately while staying snappy enough that "yes I really
-   wanted to long-press this" doesn't feel like waiting). Tuned
-   down from 3s in batch #2 — 3s tested as too slow in user
-   acceptance, but 350ms native is still too easy. */
-const msgLongPress = useLongPress<[any]>((msg) => onMsgLongPress(msg), 2000)
+   a 350ms accident). Tuned 3s → 2s in batch #2, then 2s → 1.5s in
+   batch #3a — 2s still tested as draggy in user acceptance; 1.5s
+   keeps the deliberate-intent gate while feeling snappy enough that
+   "yes I really wanted to long-press this" doesn't feel like waiting. */
+const msgLongPress = useLongPress<[any]>((msg) => onMsgLongPress(msg), 1500)
 
 function onMsgLongPress(msg: any) {
   const isMine = msg.sender_id === currentUser.value?.id

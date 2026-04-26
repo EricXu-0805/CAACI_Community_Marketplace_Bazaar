@@ -747,14 +747,16 @@ function onCommentTap(c: PostComment) {
   replyTo.value = c
 }
 
-/* 2s + haptic — long-press surfaces report/delete actions on plaza
+/* 1.5s + haptic — long-press surfaces report/delete actions on plaza
    posts and comments. Same UX rationale as home/post pages: thumb
-   resting during scroll used to trigger at 350ms. Tuned down from
-   3s in batch #2 — 3s tested as too slow in user acceptance.
-   Comment longpress moves in lockstep with post longpress so the
-   feel of the plaza surface is consistent across what you grab. */
-const postLongPress = useLongPress<[any]>((post) => onPostLongPress(post), 2000)
-const commentLongPress = useLongPress<[PostComment]>((c) => onCommentLongPress(c), 2000)
+   resting during scroll used to trigger at 350ms. Tuned 3s → 2s in
+   batch #2, then 2s → 1.5s in batch #3a — 2s still tested as draggy
+   in user acceptance; 1.5s preserves the deliberate-intent gate while
+   feeling responsive. Comment longpress moves in lockstep with post
+   longpress so the feel of the plaza surface is consistent across
+   whichever element a thumb lands on. */
+const postLongPress = useLongPress<[any]>((post) => onPostLongPress(post), 1500)
+const commentLongPress = useLongPress<[PostComment]>((c) => onCommentLongPress(c), 1500)
 
 function onCommentLongPress(c: PostComment) {
   if (!currentUser.value) return
