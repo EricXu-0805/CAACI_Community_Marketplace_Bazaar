@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { quickTranslate } from '../utils'
 import { platformFetch } from './useSupabase'
+import { addBreadcrumb } from '../utils/sentry'
 import { SUPPORTED_LANGS, type Lang as AppLang } from './useI18n'
 
 /*
@@ -105,6 +106,31 @@ export function useTranslate() {
 
       if (!r.ok) return quickTranslate(text, target)
       const json = await r.json()
+
+      /*
+       * Surface server-side skip reasons in Sentry as breadcrumbs (NOT
+       * exceptions — skipped: true is a 200 OK, not a failure).
+       * api/translate.js returns { skipped: true, reason: 'no_key' |
+       * 'empty' | 'upstream_<status>' } when the OpenAI proxy can't
+       * fulfil the request. Without this trail, "translations stopped
+       * working" reports require a server-log audit; with it the
+       * reason is visible in the user's Sentry session within seconds.
+       * Per Fix 5 audit recommendation 6d. Text content is NOT
+       * included to avoid PII / oversized payloads.
+       */
+      if (json && json.skipped === true) {
+        addBreadcrumb({
+          category: 'api.translate',
+          level: 'info',
+          message: 'translate skipped',
+          data: {
+            reason: typeof json.reason === 'string' ? json.reason : 'unknown',
+            target,
+            text_len: text.length,
+          },
+        })
+      }
+
       const translated = typeof json?.translated === 'string' ? json.translated.trim() : ''
       if (!translated) return quickTranslate(text, target)
 

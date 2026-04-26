@@ -118,3 +118,25 @@ export function captureMessage(message: string, level: 'info' | 'warning' | 'err
   else if (level === 'warning') console.warn('[message]', message)
   else console.log('[message]', message)
 }
+
+export function addBreadcrumb(crumb: {
+  category: string
+  message: string
+  level?: 'fatal' | 'error' | 'warning' | 'info' | 'debug'
+  data?: Record<string, unknown>
+}): void {
+  // #ifdef H5
+  try {
+    Sentry.addBreadcrumb({
+      category: crumb.category,
+      message: crumb.message,
+      level: crumb.level || 'info',
+      data: crumb.data,
+    })
+    return
+  } catch (telemErr) {
+    console.warn('[sentry] addBreadcrumb failed', telemErr)
+  }
+  // #endif
+  void crumb
+}
