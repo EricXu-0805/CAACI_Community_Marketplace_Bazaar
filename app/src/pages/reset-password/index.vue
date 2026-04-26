@@ -137,14 +137,43 @@ onMounted(async () => {
         }
         console.log('[reset-pw-debug] entry: exchange OK, session user=', data.session?.user?.id)
         /*
-         * exchangeCodeForSession's resolve fires PASSWORD_RECOVERY
-         * synchronously to subscribed listeners. Our listener (above)
-         * should have flipped isRecovery=true by now. If supabase-js's
-         * event-emit timing differs (microtask vs sync), let the
-         * existing getSession check below confirm the session — we
-         * don't add a separate fallback because the user explicitly
-         * removed page-arrival inference in hotfix r1.
+         * R4 fix: PKCE flow exchangeCodeForSession() in supabase-js v2
+         * fires SIGNED_IN, never PASSWORD_RECOVERY. PASSWORD_RECOVERY
+         * only fires from supabase-js's own implicit-flow URL parsing
+         * (#access_token=...&type=recovery shape). Our hash-routed
+         * site is forced to PKCE, so the listener-based path that r1
+         * built will NEVER receive the canonical event no matter how
+         * we tune timing — verified empirically across r1, r2, r3.
+         *
+         * URL evidence is sufficient here:
+         *   1. App.vue's entry hook stashed __pendingAuthCode by
+         *      extracting ?code= from window.location.search/hash —
+         *      this code only appears in the URL when Supabase
+         *      bounces a user from a recovery email link.
+         *   2. exchangeCodeForSession just succeeded with that code,
+         *      producing a recovery-scoped session (server-side
+         *      enforced — the code itself is recovery-scoped).
+         *   3. There is no legitimate non-recovery scenario that puts
+         *      a Supabase PKCE code in the URL of this page.
+         *
+         * Therefore: set isRecovery=true and short-circuit. The
+         * legacy fallback paths below (manual search/hash exchange,
+         * getSession check, !isRecovery → linkInvalid) only need to
+         * cover the case where there was NO pending code to begin
+         * with (i.e. a logged-in user navigated here directly, no
+         * recovery URL involved).
+         *
+         * The PASSWORD_RECOVERY event listener above is retained as
+         * a no-op safety net — if Supabase changes behavior in a
+         * future version, or if implicit flow is enabled somewhere,
+         * the listener will set isRecovery from that signal too.
+         * Until then it's a free observability source (logs the
+         * event type for every auth state change).
          */
+        console.log('[reset-pw-debug] URL evidence + exchange success → treating as recovery flow')
+        isRecovery.value = true
+        ready.value = true
+        return
       } catch (err: any) {
         console.warn('[reset-pw-debug] entry: exchange threw:', err)
         errorMsg.value = err?.message || t('resetPw.linkInvalid')
