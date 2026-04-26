@@ -306,8 +306,40 @@ function detectAuthRecoveryAndRoute(): boolean {
    * are present on `window` so the reset-password page can consume them
    * after uni-app's reLaunch wipes the URL.
    */
+  /*
+   * Hash-route guard mirrors extractAuthCodeFromUrl's Fix 6 check.
+   * Without it, this function — which runs from setTimeout(0) AFTER
+   * Fix 6's gatekeeper — fires on Google OAuth callbacks too: their
+   * URL shape is /?code=<pkce>&state=<...> with empty hash, identical
+   * at the regex level to a recovery email link. Pre-fix the
+   * uni.reLaunch below hijacked OAuth callbacks to reset-password
+   * page, where getSession() found a valid SIGNED_IN session but
+   * PASSWORD_RECOVERY never fired (PKCE OAuth fires SIGNED_IN, not
+   * recovery — confirmed across r1–r4 of P0-3) and the page surfaced
+   * "重置链接无效或已过期". Diagnosis in
+   * _ai_notes/OAUTH_RESET_PW_DIAGNOSIS.md (option 1).
+   *
+   * hashIsRecovery stays UNGATED — it covers the implicit-flow
+   * recovery shape (#access_token=&type=recovery) which never
+   * collides with OAuth (OAuth never lands access_token in hash).
+   * Only searchIsRecovery needs the route gate, and the gate is the
+   * same one Fix 6 uses in extractAuthCodeFromUrl (lines ~232-238):
+   * a code in window.location.search counts as recovery only when
+   * the hash route also points at /pages/reset-password/.
+   *
+   * Recovery email URL /?code=X#/pages/reset-password/index still
+   * matches isRecoveryRoute=true, so this guard is a no-op for the
+   * exception-fallback safety net (case #9 in the diagnosis): if
+   * extractAuthCodeFromUrl threw and didn't strip+stash the code,
+   * the URL still has ?code= AND the hash still routes to reset-
+   * password, so searchIsRecovery is true here and the legacy
+   * __authRecoverySearch path on reset-password's onMounted picks
+   * up the slack.
+   */
+  const hashRoute = (hash.split('?')[0] || '').toLowerCase()
+  const isRecoveryRoute = hashRoute.includes('/pages/reset-password/')
   const hashIsRecovery = hash.includes('type=recovery') || hash.includes('access_token=')
-  const searchIsRecovery = /[?&]code=[^&]+/.test(search)
+  const searchIsRecovery = /[?&]code=[^&]+/.test(search) && isRecoveryRoute
   if (!hashIsRecovery && !searchIsRecovery) return false
 
   const onReset = hash.startsWith('#/pages/reset-password')
