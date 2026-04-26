@@ -107,23 +107,26 @@ onMounted(async () => {
   try {
     // #ifdef H5
     /*
-     * Hash-routed PKCE rescue (hotfix r2). App.vue's onLaunch
-     * extractHashAuthCode() runs synchronously before any supabase code
-     * and stashes the PKCE code from the hash fragment onto
-     * window.__pendingAuthCode (because supabase-js's detectSessionInUrl
-     * only inspects search, not hash). Consume that stash here NOW —
-     * after the PASSWORD_RECOVERY listener subscribed above, so the
-     * event isn't lost — and exchange the code for a recovery session.
+     * URL-extracted PKCE rescue. App.vue's onLaunch
+     * extractAuthCodeFromUrl() runs synchronously before any supabase
+     * code and stashes the PKCE code from EITHER location.search or
+     * location.hash onto window.__pendingAuthCode (search-side is the
+     * common case for hash-routed redirectTo — verified in r3 evidence;
+     * hash-side is the fallback path predicted in r2). Consume that
+     * stash here NOW — after the PASSWORD_RECOVERY listener subscribed
+     * above, so the synchronous event from exchangeCodeForSession's
+     * resolve isn't lost — and exchange the code for a recovery session.
      *
      * The existing search/hash manual-exchange paths below are preserved
-     * as fallbacks for non-hash-routed shapes (e.g., a future redirectTo
-     * to a clean URL, or implicit-flow tokens in hash).
+     * as fallbacks for shapes the entry extractor doesn't catch (e.g.,
+     * implicit-flow tokens in hash, or anything App.vue's older
+     * detectAuthRecoveryAndRoute stashed).
      */
     const pendingCode: string | null =
       typeof window !== 'undefined' ? ((window as any).__pendingAuthCode || null) : null
     if (pendingCode) {
       try { delete (window as any).__pendingAuthCode } catch {}
-      console.log('[reset-pw-debug] entry: consuming __pendingAuthCode (from hash extraction)')
+      console.log('[reset-pw-debug] entry: consuming __pendingAuthCode (from URL extraction)')
       try {
         const { data, error } = await supabase.auth.exchangeCodeForSession(pendingCode)
         if (error) {

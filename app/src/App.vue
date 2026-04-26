@@ -100,28 +100,44 @@ watch(currentUser, () => {
 })
 
 /*
- * extractHashAuthCode — synchronous PKCE-code-in-hash rescue for
- * hash-router PKCE recovery URLs.
+ * extractAuthCodeFromUrl — synchronous PKCE-code rescue, runs before
+ * supabase-js init can race us for the URL.
  *
- * The bug shape (verified by user, hotfix r1 caveat predicted it):
- *   Site uses uni-app hash routing → resetPasswordForEmail's redirectTo
- *   is /#/pages/reset-password/index. After Supabase verifies the email
- *   token it appends ?code=<pkce> and bounces the user to:
- *       https://...vercel.app/#/pages/reset-password/index?code=xxx
- *   By URL spec, everything after `#` is the FRAGMENT — so:
- *       window.location.search = ''   (empty)
- *       window.location.hash    = '#/pages/reset-password/index?code=xxx'
- *   supabase-js's detectSessionInUrl only looks at search; the code is
- *   invisible to it. The Supabase server-side token expires unused; the
- *   user gets bounced to /?error=otp_expired without the reset-password
- *   page ever mounting.
+ * Bug shape across the three rounds of investigation:
  *
- * Fix shape: extract the code from the hash BEFORE supabase-js runs
- * (i.e., before useSupabase() / createClient()), stash it on window,
- * strip it from the hash via history.replaceState. The reset-password
- * page consumes the stash on mount and calls exchangeCodeForSession
- * (after subscribing the PASSWORD_RECOVERY listener, so the event
- * isn't dropped on the floor again).
+ *   r1 (63bf953): redirectTo was '${origin}/' → Supabase bounced users
+ *     to root, supabase-js consumed the recovery URL there but
+ *     PASSWORD_RECOVERY fired before reset-password page existed.
+ *
+ *   r2 (86e45aa): changed redirectTo to '${origin}/#/pages/reset-
+ *     password/index'. Predicted caveat: '?code=' might land in the
+ *     hash fragment (after '#'), invisible to supabase-js's search-
+ *     only detector. Built this function to handle THAT case.
+ *
+ *   r3 (this commit): user re-tested with new SMTP and showed actual
+ *     evidence — '?code=' lands in window.location.search (BEFORE the
+ *     '#'), not the hash. Browser parses it like:
+ *       window.location.search = '?code=<pkce>'
+ *       window.location.hash   = '#/pages/reset-password/index'
+ *     supabase-js's detectSessionInUrl finds the search-side code,
+ *     auto-exchanges it, and fires SIGNED_IN + INITIAL_SESSION — but
+ *     NOT PASSWORD_RECOVERY (race / v2 implementation difference for
+ *     search-based PKCE auto-exchange). Reset-password page's listener
+ *     never receives the event, falls through to invalid-recovery
+ *     error.
+ *
+ * Fix: pre-empt supabase-js's auto-detect by extracting the code from
+ * EITHER search or hash (whichever the deployment lands it in), stash
+ * it on window, clean the URL. The reset-password page then exchanges
+ * the stashed code in onMounted AFTER subscribing the PASSWORD_RECOVERY
+ * listener — so the synchronous event from exchangeCodeForSession's
+ * resolve is caught.
+ *
+ * Why check search first:
+ *   The user's verified evidence shows search is where Supabase actually
+ *   puts it for the hash-routed redirectTo. Hash-side detection stays
+ *   as a fallback for any future Supabase config / version change that
+ *   shifts the code into the fragment.
  *
  * Why not just exchange right here?
  *   1. The supabase client doesn't exist yet — useSupabase()/createClient
@@ -130,20 +146,21 @@ watch(currentUser, () => {
  *      synchronously to subscribed listeners. The reset-password page's
  *      listener subscribes in onMounted, which runs AFTER this entry
  *      hook. If we exchanged here, the event would fire before any
- *      listener was subscribed → lost again.
+ *      listener was subscribed → lost.
  *
- * Why use history.replaceState instead of leaving the URL alone?
- *   1. supabase-js's detectSessionInUrl might still try to clean up the
- *      URL on init even if it didn't find anything to consume — better
- *      to leave a clean URL behind so its cleanup is a no-op.
- *   2. Browsers show the cleaner URL to the user post-fix.
- *   3. Back-button navigation won't replay the code.
+ * Why history.replaceState rewrite the URL:
+ *   1. Once we've stashed the code, leaving it in the URL invites
+ *      supabase-js's detectSessionInUrl to also see it and auto-
+ *      exchange (which is exactly what failed in r2's evidence —
+ *      SIGNED_IN fires from the auto-exchange, no PASSWORD_RECOVERY).
+ *      Cleaning the URL before supabase-js runs guarantees only OUR
+ *      exchange (in reset-password's onMounted) actually happens.
+ *   2. Browsers show the cleaner URL to the user.
+ *   3. Back-button navigation can't replay the code.
  *
- * H5 only — mp targets don't have window.location / hash routing in
- * this shape; password recovery on mp would go through a different
- * channel (and currently isn't supported via email link there).
+ * H5 only — mp targets don't have window.location / hash routing.
  */
-function extractHashAuthCode(): void {
+function extractAuthCodeFromUrl(): void {
   // #ifdef H5
   if (typeof window === 'undefined') return
   const hash = window.location.hash || ''
@@ -152,46 +169,78 @@ function extractHashAuthCode(): void {
   console.log('[reset-pw-debug] entry: location.search=', search)
 
   /*
-   * Only intervene when ?code= is in the hash. Search-side codes
-   * (clean redirectTo URLs without a fragment) are handled correctly
-   * by supabase-js's own detectSessionInUrl pipeline — leave that path
-   * alone to avoid double-exchange. Implicit-flow recovery (#access_token
-   * + type=recovery) also handled by supabase-js + the existing
-   * detectAuthRecoveryAndRoute below; not our concern here.
+   * Two locations to probe, in priority order:
+   *   1. window.location.search → '?code=xxx' before any '#'.
+   *      This is what Supabase actually emits for hash-routed
+   *      redirectTo (verified in r3 evidence).
+   *   2. window.location.hash → '?code=xxx' AFTER the '#', as part
+   *      of the fragment query. Predicted shape from r2; kept as
+   *      fallback since some Supabase setups / future versions might
+   *      place the code there.
    */
-  const codeInHash = hash.match(/[?&]code=([^&]+)/)
-  if (!codeInHash || !codeInHash[1]) {
-    console.log('[reset-pw-debug] entry: no ?code= in hash, skipping extraction')
+  let code: string | null = null
+  let foundIn: 'search' | 'hash' | null = null
+
+  if (search) {
+    const params = new URLSearchParams(search)
+    const c = params.get('code')
+    if (c) {
+      code = c
+      foundIn = 'search'
+    }
+  }
+
+  if (!code) {
+    const codeInHash = hash.match(/[?&]code=([^&]+)/)
+    if (codeInHash && codeInHash[1]) {
+      code = decodeURIComponent(codeInHash[1])
+      foundIn = 'hash'
+    }
+  }
+
+  if (!code || !foundIn) {
+    console.log('[reset-pw-debug] entry: no ?code= in either search or hash, skipping extraction')
     return
   }
 
-  const code = decodeURIComponent(codeInHash[1])
-  console.log('[reset-pw-debug] entry: detected ?code= in hash fragment, extracting code=' + code.slice(0, 8) + '...')
+  console.log(`[reset-pw-debug] entry: detected ?code= in ${foundIn}, extracting code=${code.slice(0, 8)}...`)
 
   ;(window as any).__pendingAuthCode = code
 
   try {
     /*
-     * Hash format: '#<path>?<query>'. Parse, strip code+state, rejoin.
-     * Using URLSearchParams keeps unrelated query params intact (e.g.,
-     * if a future redirectTo carries ?lang=en or similar). state= is
-     * the PKCE round-trip companion to code= — gone with the code.
+     * Strip code+state from wherever they were found, leaving any other
+     * query params intact (lang, ref, etc.). state= is the PKCE round-
+     * trip companion to code= and goes with it.
      */
-    const hashStr = hash.startsWith('#') ? hash.slice(1) : hash
-    const qIdx = hashStr.indexOf('?')
-    let path = hashStr
-    let query = ''
-    if (qIdx >= 0) {
-      path = hashStr.slice(0, qIdx)
-      query = hashStr.slice(qIdx + 1)
+    let newSearch = search
+    let newHash = hash
+
+    if (foundIn === 'search') {
+      const params = new URLSearchParams(search)
+      params.delete('code')
+      params.delete('state')
+      const remaining = params.toString()
+      newSearch = remaining ? '?' + remaining : ''
+    } else {
+      // foundIn === 'hash' — strip from the hash's query portion
+      const hashStr = hash.startsWith('#') ? hash.slice(1) : hash
+      const qIdx = hashStr.indexOf('?')
+      let path = hashStr
+      let query = ''
+      if (qIdx >= 0) {
+        path = hashStr.slice(0, qIdx)
+        query = hashStr.slice(qIdx + 1)
+      }
+      const params = new URLSearchParams(query)
+      params.delete('code')
+      params.delete('state')
+      const remaining = params.toString()
+      newHash = '#' + path + (remaining ? '?' + remaining : '')
     }
-    const params = new URLSearchParams(query)
-    params.delete('code')
-    params.delete('state')
-    const newQuery = params.toString()
-    const newHash = '#' + path + (newQuery ? '?' + newQuery : '')
-    const newUrl = window.location.pathname + window.location.search + newHash
-    console.log('[reset-pw-debug] entry: rewriting URL to clear code from hash →', newUrl)
+
+    const newUrl = window.location.pathname + newSearch + newHash
+    console.log(`[reset-pw-debug] entry: rewriting URL to clear code from ${foundIn} →`, newUrl)
     window.history.replaceState({}, '', newUrl)
   } catch (err) {
     console.warn('[reset-pw-debug] entry: history.replaceState failed (continuing — code already stashed):', err)
@@ -258,9 +307,9 @@ onLaunch(() => {
    * message in the .error block.
    */
   try {
-    extractHashAuthCode()
+    extractAuthCodeFromUrl()
   } catch (err) {
-    console.warn('[reset-pw-debug] entry: extractHashAuthCode threw (non-fatal):', err)
+    console.warn('[reset-pw-debug] entry: extractAuthCodeFromUrl threw (non-fatal):', err)
   }
 
   /*
