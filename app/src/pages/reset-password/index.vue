@@ -355,25 +355,38 @@ async function onSave() {
     console.log('[reset-pw-debug] calling updateUser (recovery flow)')
     const { error } = await supabase.auth.updateUser({ password: newPassword.value })
     if (error) throw error
-    console.log('[reset-pw-debug] password updated, signing out and redirecting to login')
+    console.log('[reset-pw-debug] password updated, redirecting to home')
     /*
-     * Sign out the recovery session before redirecting. Two reasons:
-     *   1. The session created from the recovery token is short-lived
-     *      and tied to the recovery flow — leaving it active can lead
-     *      to "I changed my password but I'm still logged in with the
-     *      old one" confusion (the OLD session token, not the new
-     *      password, is what's authenticating subsequent calls).
-     *   2. Redirecting to login forces the user to actually exercise
-     *      the new password, which catches "I typed it wrong" before
-     *      they discover it 5 minutes later.
+     * Previously: signed out the recovery session and bounced the user
+     * to /pages/login/index to make them re-authenticate with the new
+     * password. That was rejected during user acceptance as redundant —
+     * by this point the user has already (a) proved they own the email
+     * by clicking the recovery link, and (b) typed + confirmed the new
+     * password. Forcing a third "type the password again at the login
+     * page" step adds friction without adding security.
+     *
+     * The recovery session that exchangeCodeForSession built (in
+     * onMounted above) is a fully-valid PKCE session — it's NOT a
+     * short-lived recovery-only token, despite the name. The old
+     * session's password field has been replaced by updateUser's
+     * write, so subsequent server-side calls authenticated by this
+     * session are authenticated against the NEW password, not the old
+     * one. Leaving it active and dropping the user on the home page is
+     * both safe and the canonical Supabase recommendation for the
+     * password-recovery → continue-using-app flow.
+     *
+     * reLaunch (vs navigateTo / switchTab):
+     *   · reLaunch flushes the back-stack so Back can't bounce the
+     *     user back to the reset-password page (which would error out
+     *     with linkInvalid because __pendingAuthCode was already
+     *     consumed).
+     *   · reLaunch supports tabBar destinations like /pages/index/index,
+     *     while navigateTo would reject it.
+     *   · Mirrors the post-login navigation in pages/login/index.vue —
+     *     both auth-success terminals land on home the same way.
      */
-    try {
-      await supabase.auth.signOut()
-    } catch (signOutErr) {
-      console.warn('[reset-pw-debug] signOut after updateUser failed (continuing):', signOutErr)
-    }
     uni.showToast({ title: t('resetPw.success'), icon: 'success', duration: 2000 })
-    setTimeout(() => uni.reLaunch({ url: '/pages/login/index' }), 1500)
+    setTimeout(() => uni.reLaunch({ url: '/pages/index/index' }), 1500)
   } catch (err: any) {
     console.warn('[reset-pw-debug] updateUser failed:', err)
     uni.showToast({ title: err?.message || t('resetPw.fail'), icon: 'none', duration: 3000 })

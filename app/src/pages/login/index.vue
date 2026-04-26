@@ -251,7 +251,33 @@ async function onSubmit() {
       uni.showToast({ title: error.message || t('login.loginFail'), icon: 'none' })
     } else {
       uni.showToast({ title: t('login.loginOk'), icon: 'success' })
-      setTimeout(() => uni.navigateBack(), 1000)
+      /*
+       * Replaced uni.navigateBack() with reLaunch to /pages/index/index.
+       *
+       * Why navigateBack failed: when users land on the login page from
+       * /pages/welcome/index.vue (the very first launch path) OR from a
+       * direct deep-link (recovery email, OAuth callback, share URL),
+       * the navigation stack is just [login] — there is nothing to go
+       * back to. uni.navigateBack silently no-ops in that case (no
+       * fail callback to fall through), so the user sees the success
+       * toast and stays parked on the login page. They had to manually
+       * refresh / re-tap a tab to actually enter the app.
+       *
+       * reLaunch is the right primitive here because:
+       *   1. After login, "go back" is semantically wrong — the user
+       *      is now authenticated, the back stack should be flushed
+       *      (no hitting Back to return to a logged-out page).
+       *   2. /pages/index/index is a tabBar page, so we can't use
+       *      navigateTo (uni-app rejects tabBar destinations from
+       *      navigateTo). reLaunch handles tabBar pages cleanly.
+       *   3. WeChat-login success above (line ~205) already does
+       *      reLaunch to the same destination — bringing email-login
+       *      in line keeps both auth paths consistent.
+       *
+       * 800ms (matched to the WeChat-login path) lets the success
+       * toast register visually before the page swap.
+       */
+      setTimeout(() => uni.reLaunch({ url: '/pages/index/index' }), 800)
     }
   }
 }
