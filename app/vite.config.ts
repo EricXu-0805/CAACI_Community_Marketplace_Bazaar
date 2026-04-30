@@ -1,3 +1,4 @@
+import path from "node:path";
 import { defineConfig } from "vite";
 import type { Plugin } from "vite";
 import uni from "@dcloudio/vite-plugin-uni";
@@ -76,6 +77,64 @@ const sentryEnabled =
  * code or unrelated deps. Only fires when UNI_PLATFORM is mp-* — H5
  * builds keep native URL.
  */
+/*
+ * Override uni-h5-vite's plugin/config.js chunkFileNames hook for chunks
+ * whose facade module resolves outside app/src/ (i.e. node_modules
+ * content reached via dynamic import). uni-h5-vite prepends a dirname-
+ * relative-to-src prefix to every chunk's [name]. For in-src chunks
+ * that produces the existing project convention
+ * (`composables-useFavorites.<hash>.js`, `pages-publish-index.<hash>.js`).
+ * For node_modules content the relative path begins with `../`,
+ * yielding a chunk filename like `..-node_modules-heic-to-dist-heic-to.<hash>.js`
+ * — whose leading `..-` is an invalid ES module specifier prefix that
+ * the browser's module resolver rejects when the chunk is dynamic-
+ * imported (witnessed for heic-to in commit f4adfb8 — see
+ * _ai_notes/HEIC_VITE_CHUNK_DIAGNOSIS.md §10).
+ *
+ * Why a Vite plugin (not user-config rollupOptions): Vite merges plugin
+ * `config` hook returns ON TOP of user config, so chunkFileNames set in
+ * user rollupOptions.output is overwritten by uni-h5-vite's plugin
+ * (uni-h5-vite runs as `uni()` in our plugins array). Empirically
+ * verified — user-config chunkFileNames was never invoked. The fix is
+ * to wrap our override in a plugin with `enforce: 'post'` so it runs
+ * AFTER uni() and gets the last write into the merged config.
+ *
+ * The function mirrors uni-h5-vite's in-src naming exactly (so chunk
+ * names like `composables-useFavorites.<hash>.js` are unchanged and
+ * browser caches stay valid for existing users) and only diverges when
+ * dirname starts with `..` — i.e. node_modules content. Those chunks
+ * become `assets/[name].[hash].js`, where `[name]` is whatever
+ * manualChunks() set it to (`heic-to`, `supabase`, etc.).
+ */
+function chunkFileNamesForNodeModules(): Plugin {
+  return {
+    name: "override-chunk-filenames-for-node-modules",
+    enforce: "post",
+    config() {
+      return {
+        build: {
+          rollupOptions: {
+            output: {
+              chunkFileNames: (chunkInfo: { facadeModuleId?: string | null }) => {
+                const inputDir = process.env.UNI_INPUT_DIR || path.resolve(__dirname, "src");
+                if (chunkInfo.facadeModuleId) {
+                  const dirname = path
+                    .relative(inputDir, path.dirname(chunkInfo.facadeModuleId))
+                    .replace(/\\/g, "/");
+                  if (dirname && !dirname.startsWith("..")) {
+                    return `assets/${dirname.replace(/\//g, "-")}-[name].[hash].js`;
+                  }
+                }
+                return "assets/[name].[hash].js";
+              },
+            },
+          },
+        },
+      };
+    },
+  };
+}
+
 function mpWebApiGlobalThisRewrite(): Plugin {
   const APIS = ["URL", "URLSearchParams", "Headers", "AbortController", "AbortSignal"];
   const constructorRe = new RegExp(
@@ -103,6 +162,7 @@ export default defineConfig({
   plugins: [
     mpWebApiGlobalThisRewrite(),
     uni(),
+    chunkFileNamesForNodeModules(),
     ...(sentryEnabled
       ? [
           sentryVitePlugin({
@@ -136,6 +196,7 @@ export default defineConfig({
           if (id.includes("@supabase")) return "supabase";
           if (id.includes("/vue/") || id.includes("@vue/")) return "vue";
           if (id.includes("@dcloudio")) return "uni";
+          if (id.includes("/heic-to/")) return "heic-to";
         },
       },
     },
