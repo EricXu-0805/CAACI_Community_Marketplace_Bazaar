@@ -131,12 +131,13 @@ async function pickAvatar() {
       })
     })
     if (!res?.tempFilePaths?.[0]) return
-    const compressed = await compressImage(res.tempFilePaths[0])
-    const urls = await uploadImages([compressed])
+    const compressed = await compressImage(res.tempFilePaths[0], { entryPoint: 'onboarding' })
+    const urls = await uploadImages([compressed], { entryPoint: 'onboarding' })
     if (urls[0]) avatarUrl.value = urls[0]
   } catch (e: any) {
     if (e?.errMsg && /cancel/i.test(e.errMsg)) return
-    uni.showToast({ title: t('onboarding.photoFail'), icon: 'none' })
+    const title = e?.heic === true ? t('heic.unsupported') : t('onboarding.photoFail')
+    uni.showToast({ title, icon: 'none' })
   }
 }
 

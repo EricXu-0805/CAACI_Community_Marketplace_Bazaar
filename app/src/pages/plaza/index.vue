@@ -547,9 +547,13 @@ function onComposerPickImage() {
       const paths: string[] = res.tempFilePaths || []
       for (const p of paths) {
         try {
-          const c = await compressImage(p)
+          const c = await compressImage(p, { entryPoint: 'plaza' })
           composerImages.value.push(c)
-        } catch {
+        } catch (err: any) {
+          if (err?.heic === true) {
+            uni.showToast({ title: t('heic.unsupported'), icon: 'none', duration: 3500 })
+            continue
+          }
           composerImages.value.push(p)
         }
       }
@@ -576,7 +580,13 @@ async function onSubmitPost() {
     const expectedImages = composerImages.value.length
     console.log('[plaza-debug] onSubmitPost expectedImages:', expectedImages)
     if (expectedImages > 0) {
-      const up = await uploadImagesWithDims(composerImages.value)
+      let up: { urls: string[]; dims: Array<{ w: number; h: number }> }
+      try {
+        up = await uploadImagesWithDims(composerImages.value, { entryPoint: 'plaza' })
+      } catch (upErr: any) {
+        if (upErr?.heic === true) throw new Error(t('heic.unsupported'))
+        throw upErr
+      }
       imageUrls = up.urls
       imageDims = up.dims
       console.log('[plaza-debug] uploaded:', imageUrls.length, '/', expectedImages)

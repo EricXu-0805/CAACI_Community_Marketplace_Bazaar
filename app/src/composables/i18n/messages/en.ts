@@ -162,6 +162,8 @@ const en: Record<string, string> = {
   'publish.cancel': 'Cancel',
   'publish.cover': 'Cover',
   'publish.uploading': 'Uploading',
+  'heic.converting': 'Converting image…',
+  'heic.unsupported': 'Image format not supported. Please pick another.',
   'publish.needTitle': 'Title is required',
   'publish.needPrice': 'Enter a valid price',
   'publish.needImage': 'Add at least 1 photo',

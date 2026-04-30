@@ -1,3 +1,8 @@
+// #ifdef H5
+import { useI18n } from '../composables/useI18n'
+import { addBreadcrumb } from './sentry'
+// #endif
+
 const SUPABASE_STORAGE_MARKER = "/storage/v1/object/public/"
 const SUPABASE_RENDER_PATH = "/storage/v1/render/image/public/"
 
@@ -684,25 +689,251 @@ export function formatPrice(price: number, freeLabel = 'Free'): string {
  * Skip-if-already-small: if the long edge is already ≤ maxLongEdge
  * we return the source unchanged to avoid a re-encode that would
  * only chip away at quality without saving meaningful bytes.
+ *
+ * HEIC handling (batch 3b-β, 2026-04-30):
+ * iPhone's default camera format is HEIC. Chrome and Firefox cannot
+ * decode HEIC via createImageBitmap — the call throws InvalidStateError.
+ * Before this fix, that exception was caught and the original HEIC
+ * blob URL was returned silently; the upload then stored the HEIC
+ * bytes in Supabase mislabeled as image/jpeg, producing listings with
+ * unrenderable images on every browser except Safari 17+ and native
+ * iOS/macOS preview. The new flow: detect HEIC by mime + magic-bytes
+ * before createImageBitmap, try Safari 17+ native decode first (zero
+ * library cost), and only on native-decode failure dynamic-import
+ * heic-to to convert HEIC → JPEG. The library is wrapped in #ifdef H5
+ * + dynamic import, so it never reaches the mp-weixin bundle and never
+ * loads on JPEG/PNG flows. HEIC failures HARD-fail (throw) so the
+ * caller surfaces an explicit "image format not supported" toast
+ * instead of producing a broken listing — see batch 3b-β plan §4.1
+ * Q2 (HARD-FAIL universally) for the rationale.
  */
+
+/*
+ * Backwards-compat overloads. Existing positional calls
+ *   compressImage(src)               · compressImage(src, 1600)
+ *   compressImage(src, 1080, 0.82)
+ * keep working unchanged. New options-form
+ *   compressImage(src, { entryPoint: 'publish' })
+ * threads an optional entryPoint tag through to Sentry breadcrumbs
+ * for triage ("which user surface produced this HEIC failure?").
+ */
+export interface CompressOptions {
+  maxLongEdge?: number
+  quality?: number
+  /*
+   * Free-form tag attached to image.heic Sentry breadcrumbs. Convention:
+   * one of 'publish' | 'plaza' | 'chat' | 'profile' | 'onboarding'.
+   * Optional; absent value yields entry_point: undefined in the
+   * breadcrumb data, which Sentry renders as the literal string.
+   */
+  entryPoint?: string
+}
+
+export function compressImage(src: string): Promise<string>
+export function compressImage(src: string, maxLongEdge: number, quality?: number): Promise<string>
+export function compressImage(src: string, options: CompressOptions): Promise<string>
 export function compressImage(
   src: string,
-  maxLongEdge = 1080,
-  quality = 0.82,
+  arg2?: number | CompressOptions,
+  arg3?: number,
 ): Promise<string> {
-  return new Promise((resolve) => {
+  let maxLongEdge = 1080
+  let quality = 0.82
+  let entryPoint: string | undefined
+
+  if (typeof arg2 === 'object' && arg2 !== null) {
+    if (typeof arg2.maxLongEdge === 'number') maxLongEdge = arg2.maxLongEdge
+    if (typeof arg2.quality === 'number') quality = arg2.quality
+    entryPoint = arg2.entryPoint
+  } else {
+    if (typeof arg2 === 'number') maxLongEdge = arg2
+    if (typeof arg3 === 'number') quality = arg3
+  }
+
+  return new Promise((resolve, reject) => {
     // #ifdef H5
-    void compressH5(src, maxLongEdge, quality).then(resolve, () => resolve(src))
+    /*
+     * H5: hand HEIC errors UP to the caller (reject), but keep the
+     * legacy "return src on non-HEIC failure" contract for everything
+     * else (fetch fail, OOM on large JPEG, etc.). compressH5 throws
+     * only HeicConversionError; all other paths still return src.
+     */
+    void compressH5(src, maxLongEdge, quality, entryPoint).then(resolve, reject)
     // #endif
 
     // #ifndef H5
+    /*
+     * mp-weixin: HEIC is decoded natively by the WeChat runtime on iOS;
+     * Android WeChat support is verified empirically. No HEIC-specific
+     * code path here. Keep the silent-fallback contract so any future
+     * uni.compressImage failure produces the original src unchanged.
+     */
     void compressMP(src, maxLongEdge, quality).then(resolve, () => resolve(src))
     // #endif
   })
 }
 
 // #ifdef H5
-async function compressH5(src: string, maxLongEdge: number, quality: number): Promise<string> {
+/*
+ * HEIC support helpers. All H5-only — uni-app conditional compilation
+ * strips this entire block from the mp-weixin / mp-alipay / etc. builds,
+ * so the heic-to library never reaches a mini-program bundle.
+ */
+
+/*
+ * Marker error for HEIC conversion failures. We propagate this to the
+ * caller (publish/plaza/chat/profile/onboarding) so it can show a
+ * specific 'heic.unsupported' toast instead of generic 'upload failed'.
+ *
+ * NOT exported as a class (instanceof checks fail across module
+ * boundaries with bundler-side class identity). Callers check the
+ * heic discriminator field instead: `if (err?.heic === true) …`.
+ */
+function makeHeicError(message: string): Error & { heic: true } {
+  const e = new Error(message) as Error & { heic: true }
+  e.heic = true
+  e.name = 'HeicConversionError'
+  return e
+}
+
+/*
+ * Detect HEIC by mime type + ISO BMFF magic-bytes. Cheap (reads only
+ * the first 12 bytes of the blob) and runs WITHOUT loading the heic-to
+ * library — that's the whole point of doing detection before library
+ * import. JPEG/PNG flows pay zero library cost.
+ *
+ * MIME-type check first (fast path; works when uni.chooseImage's blob
+ * is well-typed). Magic-bytes fallback for blobs with empty .type
+ * (sometimes happens with createObjectURL + fetch on Chrome).
+ *
+ * HEIC/HEIF brand codes from ISO/IEC 23008-12 + 14496-12:
+ *   heic  — HEVC single image
+ *   heix  — HEVC single image, 10-bit
+ *   hevc  — HEVC image sequence
+ *   hevx  — HEVC image sequence, 10-bit
+ *   mif1  — image format compatibility (covers most iOS HEIC files)
+ *   msf1  — image sequence format
+ */
+async function looksLikeHeic(blob: Blob): Promise<boolean> {
+  const t = (blob.type || '').toLowerCase()
+  if (t === 'image/heic' || t === 'image/heif' || t === 'image/heic-sequence' || t === 'image/heif-sequence') {
+    return true
+  }
+  try {
+    const head = blob.slice(0, 12)
+    const buf = await head.arrayBuffer()
+    const view = new Uint8Array(buf)
+    // 'ftyp' at offset 4 → 0x66 0x74 0x79 0x70
+    if (view.length >= 12 && view[4] === 0x66 && view[5] === 0x74 && view[6] === 0x79 && view[7] === 0x70) {
+      const brand = String.fromCharCode(view[8], view[9], view[10], view[11]).toLowerCase()
+      if (brand === 'heic' || brand === 'heix' || brand === 'hevc' || brand === 'hevx' || brand === 'mif1' || brand === 'msf1') {
+        return true
+      }
+    }
+  } catch {
+    /* fall through to false */
+  }
+  return false
+}
+
+/*
+ * Dynamic-import wrapper around heic-to. The await import() is what
+ * Vite picks up to code-split heic-to into its own chunk — so the
+ * ~2 MB libheif payload only downloads on the first HEIC pick, not
+ * on initial page load. JPEG-only sessions never load it at all.
+ *
+ * heic-to's quality is set to 0.92 (vs the canvas re-encode's 0.82)
+ * so the intermediate blob doesn't compound losses. The final
+ * dataUrl from canvas.toDataURL still encodes at the caller's
+ * requested quality (default 0.82); heic-to's quality only matters
+ * if the long-edge skip-resize branch returns the heic-to blob
+ * directly without canvas re-encode.
+ *
+ * Note: heic-to rejects with various shapes (string, ErrorEvent,
+ * Error) — caller wraps in errorToShortString to normalize.
+ */
+async function heicToJpegBlob(blob: Blob): Promise<Blob> {
+  const { heicTo } = await import('heic-to')
+  return heicTo({ blob, type: 'image/jpeg', quality: 0.92 })
+}
+
+/*
+ * FileReader wrapper to base64-encode a blob, used when the long edge
+ * is already ≤ maxLongEdge AND the source was HEIC. We can't return
+ * the original src in that case (the original is the unrenderable HEIC
+ * blob URL); we have to return a data: URL of the converted JPEG so
+ * the upload step gets actual JPEG bytes.
+ */
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(reader.error || new Error('FileReader read failed'))
+    reader.readAsDataURL(blob)
+  })
+}
+
+/*
+ * heic-to does NOT throw structured Error objects; rejection values
+ * include raw strings ('Can\'t convert canvas to blob.'), ErrorEvent
+ * objects, or plain Errors depending on which internal path failed.
+ * Normalize to a short string for breadcrumb data + caller toast.
+ */
+function errorToShortString(err: unknown): string {
+  if (err instanceof Error) return err.message || err.name
+  if (typeof err === 'string') return err
+  if (err && typeof err === 'object') {
+    const e = err as { message?: unknown; name?: unknown; type?: unknown }
+    if (typeof e.message === 'string') return e.message
+    if (typeof e.name === 'string') return e.name
+    if (typeof e.type === 'string') return e.type
+  }
+  try { return String(err) } catch { return 'unknown' }
+}
+
+/*
+ * Module-level guard for nested showLoading calls. uni.showLoading
+ * does NOT support stacking — a second call replaces the title, and
+ * a single hideLoading dismisses both. We only ever show ONE loading
+ * (ours), and only hide what we showed. If a caller is already showing
+ * its own loading when HEIC conversion starts, our call will stomp the
+ * outer title to "Converting image…" — which is at least truthful, and
+ * none of the current call sites do that anyway (they use button-disable
+ * or progress bars instead). See batch 3b-β plan §3.3.
+ */
+let heicLoadingShownByUs = false
+
+function tryShowHeicLoading(): void {
+  if (heicLoadingShownByUs) return
+  heicLoadingShownByUs = true
+  try {
+    /*
+     * useI18n() is module-level safe: currentLang is a top-level ref
+     * and t() just reads it synchronously. The .computed it creates
+     * leaks (no effect scope to dispose it) but the leak is one
+     * computed per HEIC operation — negligible at our scale.
+     */
+    const { t } = useI18n()
+    uni.showLoading({ title: t('heic.converting'), mask: true })
+  } catch (err) {
+    /* showLoading failure is non-fatal; conversion still proceeds */
+    console.warn('[compress-debug] showLoading failed', err)
+    heicLoadingShownByUs = false
+  }
+}
+
+function tryHideHeicLoading(): void {
+  if (!heicLoadingShownByUs) return
+  heicLoadingShownByUs = false
+  try { uni.hideLoading() } catch { /* swallow — already hidden or torn down */ }
+}
+
+async function compressH5(
+  src: string,
+  maxLongEdge: number,
+  quality: number,
+  entryPoint?: string,
+): Promise<string> {
   const shortSrc = src.slice(0, 60) + (src.length > 60 ? '…' : '')
   let origBlob: Blob
   try {
@@ -714,19 +945,124 @@ async function compressH5(src: string, maxLongEdge: number, quality: number): Pr
   }
   const origKB = Math.round(origBlob.size / 1024)
 
-  let bitmap: ImageBitmap | null = null
+  /*
+   * HEIC detection runs BEFORE createImageBitmap so we can route HEIC
+   * blobs through the converter without first triggering the (always-
+   * failing on Chrome/Firefox) native decode. Detection is byte-level,
+   * doesn't load the heic-to library.
+   */
+  let heicInput = false
   try {
+    heicInput = await looksLikeHeic(origBlob)
+  } catch {
+    /* detection error → treat as non-HEIC and fall through */
+  }
+
+  let workingBlob: Blob = origBlob
+  let bitmap: ImageBitmap | null = null
+
+  if (heicInput) {
+    addBreadcrumb({
+      category: 'image.heic',
+      level: 'info',
+      message: 'heic detected',
+      data: {
+        size_before_bytes: origBlob.size,
+        mime_in: origBlob.type || 'unknown',
+        entry_point: entryPoint,
+      },
+    })
+
     /*
-     * imageOrientation: 'from-image' is the EXIF correction switch.
-     * The cast routes around TS 4.9's lib.dom.d.ts, which still types
-     * ImageOrientation as 'none' | 'flipY'; modern browsers accept
-     * 'from-image' at runtime (Chrome 79+/FF 77+/Safari 14.1+) and
-     * silently fall through to default orientation on older runtimes.
+     * Try Safari 17+ native HEIC decode first. Saves the ~2 MB heic-to
+     * download for the ~40 % of our user base on Safari (iOS + macOS).
+     * On Chrome/Firefox this throws InvalidStateError immediately and
+     * we fall through to the heic-to dynamic import.
      */
-    bitmap = await createImageBitmap(origBlob, { imageOrientation: 'from-image' as 'none' })
-  } catch (err) {
-    console.warn('[compress-debug] H5 createImageBitmap failed for', shortSrc, err)
-    return src
+    try {
+      bitmap = await createImageBitmap(origBlob, { imageOrientation: 'from-image' as 'none' })
+      addBreadcrumb({
+        category: 'image.heic',
+        level: 'info',
+        message: 'heic native-decoded',
+        data: { size_before_bytes: origBlob.size, entry_point: entryPoint },
+      })
+    } catch {
+      /*
+       * Native decode failed → invoke heic-to. Show loading overlay
+       * because conversion is 1–8 s on real-world phones and silent
+       * waits feel broken. The overlay hides on completion (success
+       * or failure) via the finally block.
+       */
+      tryShowHeicLoading()
+      const t0 = Date.now()
+      try {
+        workingBlob = await heicToJpegBlob(origBlob)
+        const dt = Date.now() - t0
+        if (!workingBlob || workingBlob.size === 0 || !workingBlob.type.startsWith('image/')) {
+          throw makeHeicError('heic-to returned invalid blob')
+        }
+        addBreadcrumb({
+          category: 'image.heic',
+          level: 'info',
+          message: 'heic converted',
+          data: {
+            size_before_bytes: origBlob.size,
+            size_after_bytes: workingBlob.size,
+            convert_ms: dt,
+            mime_out: workingBlob.type,
+            entry_point: entryPoint,
+            library: 'heic-to',
+          },
+        })
+      } catch (convErr) {
+        const dt = Date.now() - t0
+        addBreadcrumb({
+          category: 'image.heic',
+          level: 'warning',
+          message: 'heic conversion failed',
+          data: {
+            size_before_bytes: origBlob.size,
+            mime_in: origBlob.type || 'unknown',
+            err_msg_truncated: errorToShortString(convErr).slice(0, 80),
+            convert_ms: dt,
+            entry_point: entryPoint,
+          },
+        })
+        /*
+         * HARD-FAIL per batch 3b-β Q2: throw a HEIC-marker error so
+         * callers (publish/plaza/chat/profile/onboarding) can show
+         * 'heic.unsupported' toast and refuse to create the listing.
+         * Re-wrap if the original error is already a heic-marker
+         * error (e.g. the invalid-blob validation above).
+         */
+        if ((convErr as { heic?: unknown })?.heic === true) throw convErr as Error
+        throw makeHeicError(errorToShortString(convErr) || 'HEIC conversion failed')
+      } finally {
+        tryHideHeicLoading()
+      }
+    }
+  }
+
+  /*
+   * Skip recreating the bitmap if Safari already produced one. For
+   * non-Safari HEIC AND non-HEIC paths, create the bitmap from
+   * workingBlob (which is either the converted JPEG or the original).
+   */
+  if (!bitmap) {
+    try {
+      bitmap = await createImageBitmap(workingBlob, { imageOrientation: 'from-image' as 'none' })
+    } catch (err) {
+      console.warn('[compress-debug] H5 createImageBitmap failed for', shortSrc, err)
+      /*
+       * Post-conversion bitmap failure on a HEIC: workingBlob holds
+       * valid JPEG bytes from heic-to; return as data URL so the
+       * upload still gets renderable bytes (at full size, no resize).
+       * Non-HEIC failures keep the legacy "return src" contract.
+       */
+      if (heicInput) return blobToDataUrl(workingBlob)
+      return src
+    }
   }
 
   const origW = bitmap.width
@@ -736,6 +1072,13 @@ async function compressH5(src: string, maxLongEdge: number, quality: number): Pr
   if (longEdge <= maxLongEdge) {
     console.log(`[compress-debug] H5 skip (≤${maxLongEdge}): ${origW}x${origH}, ${origKB}KB`)
     bitmap.close?.()
+    /*
+     * For converted HEIC: src is the unrenderable HEIC blob URL, so
+     * we MUST return the converted blob's data URL even when skipping
+     * the resize. For non-HEIC: src is already a valid JPEG/PNG blob
+     * URL; return it unchanged (legacy skip-if-small path).
+     */
+    if (heicInput) return blobToDataUrl(workingBlob)
     return src
   }
 
@@ -748,6 +1091,7 @@ async function compressH5(src: string, maxLongEdge: number, quality: number): Pr
   const ctx = canvas.getContext('2d')
   if (!ctx) {
     bitmap.close?.()
+    if (heicInput) return blobToDataUrl(workingBlob)
     return src
   }
   ctx.drawImage(bitmap, 0, 0, targetW, targetH)

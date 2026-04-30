@@ -558,11 +558,12 @@ async function onSubmit() {
     let uploadedDims: Array<{ w: number; h: number }> = []
     if (toUpload.length > 0) {
       try {
-        const res = await uploadImagesWithDims(toUpload)
+        const res = await uploadImagesWithDims(toUpload, { entryPoint: 'publish' })
         uploaded = res.urls
         uploadedDims = res.dims
       } catch (upErr: any) {
         console.warn('[publish-debug] upload threw:', upErr)
+        if (upErr?.heic === true) throw new Error(t('heic.unsupported'))
         throw new Error(upErr?.message || t('publish.uploadFailed'))
       }
       uploadProgress.value = 100

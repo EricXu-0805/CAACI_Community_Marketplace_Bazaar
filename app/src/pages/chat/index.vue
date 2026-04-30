@@ -650,7 +650,7 @@ async function onSendImage() {
          * 413 payload too large, network error, etc.) so the toast
          * below shows what really went wrong.
          */
-        const { url } = await uploadOneImage(tempPath)
+        const { url } = await uploadOneImage(tempPath, { entryPoint: 'chat' })
         console.log('[chat-img-debug] uploaded URL:', url)
         await sendMessage(conversationId.value, currentUser.value!.id, url, 'image')
         console.log('[chat-img-debug] sendMessage OK, url:', url)
@@ -666,11 +666,16 @@ async function onSendImage() {
          * English and tells the user whether to retry, pick a smaller
          * file, or report the bug. Capped at 80 chars so a long
          * stack-trace-style error doesn't overflow the toast.
+         *
+         * HEIC errors get a dedicated translated toast — the raw
+         * heic-to error string ('Can\'t convert canvas to blob.') is
+         * meaningless to end users.
          */
+        const heicMsg = err?.heic === true ? t('heic.unsupported') : null
         const raw = err?.message ? `${err.message}` : ''
         const fallback = t('chat.imageUploadFailed') || 'Image upload failed — please retry'
         uni.showToast({
-          title: raw ? raw.slice(0, 80) : fallback,
+          title: heicMsg || (raw ? raw.slice(0, 80) : fallback),
           icon: 'none',
           duration: 3500,
         })

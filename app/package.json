@@ -58,6 +58,7 @@
     "@fontsource-variable/noto-serif-sc": "^5.2.10",
     "@sentry/vue": "^10.50.0",
     "@supabase/supabase-js": "^2.103.0",
+    "heic-to": "^1.4.2",
     "vue": "^3.4.21"
   },
   "devDependencies": {

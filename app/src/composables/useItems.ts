@@ -251,6 +251,7 @@ export function useItems() {
    */
   async function uploadImagesWithDims(
     tempFiles: string[],
+    options?: { entryPoint?: string },
   ): Promise<{ urls: string[]; dims: Array<{ w: number; h: number }> }> {
     if (tempFiles.length > MAX_IMAGES) throw new Error('Too many files')
     const urls: string[] = []
@@ -298,13 +299,13 @@ export function useItems() {
         let uploadError: any = null
 
         // #ifdef H5
-        const compressed = await compressImage(filePath)
+        const compressed = await compressImage(filePath, { entryPoint: options?.entryPoint })
         const response = await fetch(compressed)
         const blob = await response.blob()
         console.log('[upload-debug] blob size (compressed):', blob.size, 'bytes')
         if (blob.size > MAX_FILE_SIZE) throw new Error('File too large (max 5MB)')
         const h5Result = await withTimeout(
-          supabase.storage.from('item-images').upload(storagePath, blob, { contentType: 'image/jpeg' }),
+          supabase.storage.from('item-images').upload(storagePath, blob, { contentType: blob.type || 'image/jpeg' }),
           30000,
           'image upload',
         )
@@ -317,7 +318,7 @@ export function useItems() {
         // #endif
 
         // #ifndef H5
-        const compressedPath = await compressImage(filePath)
+        const compressedPath = await compressImage(filePath, { entryPoint: options?.entryPoint })
         const fileInfo = await new Promise<{ size: number } | null>((resolve) => {
           uni.getFileInfo({
             filePath: compressedPath,
@@ -369,6 +370,10 @@ export function useItems() {
           console.warn('[upload-debug] skipping file due to upload error:', filePath)
         }
       } catch (err) {
+        if ((err as { heic?: unknown })?.heic === true) {
+          console.warn('[upload-debug] heic error — aborting batch:', shortPath, err)
+          throw err
+        }
         console.warn('[upload-debug] caught exception for', shortPath, err)
       }
     }
@@ -377,8 +382,11 @@ export function useItems() {
     return { urls, dims }
   }
 
-  async function uploadImages(tempFiles: string[]): Promise<string[]> {
-    const { urls } = await uploadImagesWithDims(tempFiles)
+  async function uploadImages(
+    tempFiles: string[],
+    options?: { entryPoint?: string },
+  ): Promise<string[]> {
+    const { urls } = await uploadImagesWithDims(tempFiles, options)
     return urls
   }
 
@@ -408,10 +416,12 @@ export function useItems() {
    */
   async function uploadOneImage(
     tempFile: string,
+    options?: { entryPoint?: string },
   ): Promise<{ url: string; dims: { w: number; h: number } }> {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw new Error('Not authenticated')
 
+    const entryPoint = options?.entryPoint || 'chat'
     const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`
     const storagePath = `items/${session.user.id}/${fileName}`
     console.log('[upload-debug] uploadOneImage start:', tempFile.slice(0, 60), '→', storagePath)
@@ -420,14 +430,14 @@ export function useItems() {
     console.log('[upload-debug] dims:', naturalDims.w, 'x', naturalDims.h)
 
     // #ifdef H5
-    const compressed = await compressImage(tempFile)
+    const compressed = await compressImage(tempFile, { entryPoint })
     const response = await fetch(compressed)
     const blob = await response.blob()
     console.log('[upload-debug] blob size:', blob.size, 'bytes')
     if (blob.size > MAX_FILE_SIZE) throw new Error('File too large (max 5MB)')
     const { error: h5Err } = await supabase.storage
       .from('item-images')
-      .upload(storagePath, blob, { contentType: 'image/jpeg' })
+      .upload(storagePath, blob, { contentType: blob.type || 'image/jpeg' })
     if (h5Err) {
       console.warn('[upload-debug] H5 upload error:', h5Err)
       throw new Error(`Storage upload failed: ${h5Err.message || 'unknown'}`)
@@ -436,7 +446,7 @@ export function useItems() {
     // #endif
 
     // #ifndef H5
-    const compressedPath = await compressImage(tempFile)
+    const compressedPath = await compressImage(tempFile, { entryPoint })
     const fileInfo = await new Promise<{ size: number } | null>((resolve) => {
       uni.getFileInfo({
         filePath: compressedPath,

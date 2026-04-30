@@ -112,7 +112,7 @@ async function onSave() {
     let finalAvatar = avatarUrl.value
     if (finalAvatar && !finalAvatar.startsWith('http')) {
       try {
-        const urls = await withTimeout(uploadImages([finalAvatar]), 15000, 'avatar upload')
+        const urls = await withTimeout(uploadImages([finalAvatar], { entryPoint: 'profile' }), 15000, 'avatar upload')
         if (urls.length > 0) {
           finalAvatar = urls[0]
         } else {
@@ -121,7 +121,9 @@ async function onSave() {
         }
       } catch (uploadErr: any) {
         console.error('Avatar upload error:', uploadErr)
-        uni.showToast({ title: uploadErr?.message || t('editProfile.avatarFailed'), icon: 'none', duration: 3000 })
+        const title = uploadErr?.heic === true ? t('heic.unsupported')
+          : (uploadErr?.message || t('editProfile.avatarFailed'))
+        uni.showToast({ title, icon: 'none', duration: 3000 })
         finalAvatar = currentUser.value?.avatar_url || ''
       }
     }
