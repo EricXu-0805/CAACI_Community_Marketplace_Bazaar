@@ -789,10 +789,14 @@ export function compressImage(
  * boundaries with bundler-side class identity). Callers check the
  * heic discriminator field instead: `if (err?.heic === true) …`.
  */
-function makeHeicError(message: string): Error & { heic: true } {
-  const e = new Error(message) as Error & { heic: true }
+function makeHeicError(
+  message: string,
+  cause?: unknown,
+): Error & { heic: true; heicCause?: unknown } {
+  const e = new Error(message) as Error & { heic: true; heicCause?: unknown }
   e.heic = true
   e.name = 'HeicConversionError'
+  if (cause !== undefined) e.heicCause = cause
   return e
 }
 
@@ -880,15 +884,21 @@ function blobToDataUrl(blob: Blob): Promise<string> {
  * Normalize to a short string for breadcrumb data + caller toast.
  */
 function errorToShortString(err: unknown): string {
-  if (err instanceof Error) return err.message || err.name
-  if (typeof err === 'string') return err
+  if (err === undefined || err === null) return 'unknown'
+  if (err instanceof Error) return err.message || err.name || 'Error'
+  if (typeof err === 'string') return err || 'unknown'
   if (err && typeof err === 'object') {
     const e = err as { message?: unknown; name?: unknown; type?: unknown }
-    if (typeof e.message === 'string') return e.message
-    if (typeof e.name === 'string') return e.name
-    if (typeof e.type === 'string') return e.type
+    if (typeof e.message === 'string' && e.message) return e.message
+    if (typeof e.name === 'string' && e.name) return e.name
+    if (typeof e.type === 'string' && e.type) return e.type
   }
-  try { return String(err) } catch { return 'unknown' }
+  try {
+    const s = String(err)
+    return s && s !== '[object Object]' && s !== 'undefined' && s !== 'null' ? s : 'unknown'
+  } catch {
+    return 'unknown'
+  }
 }
 
 /*
@@ -1037,7 +1047,17 @@ async function compressH5(
          * error (e.g. the invalid-blob validation above).
          */
         if ((convErr as { heic?: unknown })?.heic === true) throw convErr as Error
-        throw makeHeicError(errorToShortString(convErr) || 'HEIC conversion failed')
+        /*
+         * "heic-to failed:" prefix gives the console reader an instant
+         * signal that this came from the converter (vs other Error
+         * sites in the pipeline). heicCause preserves the raw error
+         * object so a future debugger or Sentry pre-send hook can
+         * inspect the underlying DOMException / ErrorEvent / string
+         * (heic-to rejects with assorted shapes — see librarian
+         * research in _ai_notes/HEIC_HOTFIX_PLAN.md §2.1).
+         */
+        const causeMsg = errorToShortString(convErr)
+        throw makeHeicError(`heic-to failed: ${causeMsg}`, convErr)
       } finally {
         tryHideHeicLoading()
       }
