@@ -3,7 +3,7 @@ import { useSupabase } from './useSupabase'
 import { useModeration } from './useModeration'
 import { useI18n } from './useI18n'
 import type { Item, ItemCategory, ItemCondition, ItemStatus } from '../types'
-import { compressImage, expandSearch, getImageDimensions } from '../utils'
+import { compressImage, detectImageMimeType, expandSearch, getImageDimensions } from '../utils'
 import { checkContent, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
 
 const items = ref<Item[]>([])
@@ -304,8 +304,9 @@ export function useItems() {
         const blob = await response.blob()
         console.log('[upload-debug] blob size (compressed):', blob.size, 'bytes')
         if (blob.size > MAX_FILE_SIZE) throw new Error('File too large (max 5MB)')
+        const contentType = await detectImageMimeType(blob)
         const h5Result = await withTimeout(
-          supabase.storage.from('item-images').upload(storagePath, blob, { contentType: blob.type || 'image/jpeg' }),
+          supabase.storage.from('item-images').upload(storagePath, blob, { contentType }),
           30000,
           'image upload',
         )
@@ -435,9 +436,10 @@ export function useItems() {
     const blob = await response.blob()
     console.log('[upload-debug] blob size:', blob.size, 'bytes')
     if (blob.size > MAX_FILE_SIZE) throw new Error('File too large (max 5MB)')
+    const contentType = await detectImageMimeType(blob)
     const { error: h5Err } = await supabase.storage
       .from('item-images')
-      .upload(storagePath, blob, { contentType: blob.type || 'image/jpeg' })
+      .upload(storagePath, blob, { contentType })
     if (h5Err) {
       console.warn('[upload-debug] H5 upload error:', h5Err)
       throw new Error(`Storage upload failed: ${h5Err.message || 'unknown'}`)

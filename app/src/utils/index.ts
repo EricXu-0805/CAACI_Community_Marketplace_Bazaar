@@ -1231,3 +1231,85 @@ export function getImageDimensions(src: string): Promise<{ w: number; h: number 
     // #endif
   })
 }
+
+/*
+ * Detect image MIME type by reading the first 12 bytes of the blob
+ * and matching against well-known magic-byte signatures.
+ *
+ * Why we don't trust blob.type alone:
+ *   · uni.chooseImage / file picker on some Android browsers strips
+ *     the MIME metadata, leaving blob.type as the empty string
+ *   · HEIC blobs sometimes arrive with empty .type because Chrome
+ *     and Firefox don't recognize the format natively
+ *   · A few mobile browsers report wrong MIME for camera output
+ *
+ * Without this check, the previous fallback chain
+ *   blob.type || 'image/jpeg'
+ * silently mislabels PNG / GIF / WEBP / HEIC bytes as image/jpeg
+ * in Supabase Storage. Modern browsers tolerate the mismatch via
+ * magic-byte sniffing on render, so the bug is invisible in the
+ * UI today — but strict CDNs key cache entries on Content-Type and
+ * would misroute non-JPEG bytes labeled image/jpeg, and any future
+ * MIME-enforcing infrastructure would expose the bug as broken
+ * images. Setting it correctly at upload time costs ~12-byte read.
+ *
+ * Magic-byte signatures from RFC and MDN:
+ *   PNG    89 50 4E 47 0D 0A 1A 0A
+ *   GIF    47 49 46 38 (37|39) 61              ('GIF87a' or 'GIF89a')
+ *   JPEG   FF D8 FF
+ *   WEBP   52 49 46 46 ?? ?? ?? ?? 57 45 42 50  (RIFF header + 'WEBP' at 8)
+ *   HEIC   ?? ?? ?? ?? 66 74 79 70              (ISO BMFF 'ftyp' at 4)
+ *
+ * The 'ftyp' check for HEIC is brand-agnostic — true HEIC files have
+ * brand codes like heic / heix / mif1 (see looksLikeHeic for the
+ * strict check), and MP4 / MOV also use ftyp. False positives are
+ * extremely unlikely on the upload pipeline because the caller has
+ * already filtered to image picks via uni.chooseImage; the looser
+ * check here is sufficient for Content-Type labeling.
+ *
+ * Fast-path: trust blob.type when it's a known good value, skipping
+ * the bytes read entirely. Slow-path falls through to magic-byte
+ * detection. Final fallback is blob.type or 'application/octet-stream'.
+ */
+export async function detectImageMimeType(blob: Blob): Promise<string> {
+  const declared = blob.type
+  if (
+    declared === 'image/png' ||
+    declared === 'image/gif' ||
+    declared === 'image/jpeg' ||
+    declared === 'image/webp' ||
+    declared === 'image/heic' ||
+    declared === 'image/heif'
+  ) {
+    return declared
+  }
+  try {
+    const head = new Uint8Array(await blob.slice(0, 12).arrayBuffer())
+    if (head.length >= 8 &&
+        head[0] === 0x89 && head[1] === 0x50 && head[2] === 0x4E && head[3] === 0x47 &&
+        head[4] === 0x0D && head[5] === 0x0A && head[6] === 0x1A && head[7] === 0x0A) {
+      return 'image/png'
+    }
+    if (head.length >= 6 &&
+        head[0] === 0x47 && head[1] === 0x49 && head[2] === 0x46 && head[3] === 0x38 &&
+        (head[4] === 0x37 || head[4] === 0x39) && head[5] === 0x61) {
+      return 'image/gif'
+    }
+    if (head.length >= 3 &&
+        head[0] === 0xFF && head[1] === 0xD8 && head[2] === 0xFF) {
+      return 'image/jpeg'
+    }
+    if (head.length >= 12 &&
+        head[0] === 0x52 && head[1] === 0x49 && head[2] === 0x46 && head[3] === 0x46 &&
+        head[8] === 0x57 && head[9] === 0x45 && head[10] === 0x42 && head[11] === 0x50) {
+      return 'image/webp'
+    }
+    if (head.length >= 8 &&
+        head[4] === 0x66 && head[5] === 0x74 && head[6] === 0x79 && head[7] === 0x70) {
+      return 'image/heic'
+    }
+  } catch {
+    /* fall through to declared / octet-stream */
+  }
+  return declared || 'application/octet-stream'
+}
