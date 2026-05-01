@@ -179,7 +179,11 @@ export function useItems() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw new Error('Not authenticated')
 
-    if (input.price < 0 || input.price > 100000) throw new Error('Invalid price')
+    // Hard cap is 1M as anti-typo / anti-abuse defense in depth. The 100k
+    // soft ceiling is enforced as a UI modal in pages/publish/index.vue
+    // (gives user "are you sure?" affordance). 1M is far above any
+    // legitimate campus listing — no one prices a textbook at $1M.
+    if (input.price < 0 || input.price > 1_000_000) throw new Error('Invalid price')
     if (input.title.length > 200) throw new Error('Title too long')
     if (input.description.length > 2000) throw new Error('Description too long')
     if (input.images.length > MAX_IMAGES) throw new Error('Too many images')
@@ -223,6 +227,12 @@ export function useItems() {
   async function updateItem(id: string, updates: Partial<Pick<Item, 'title' | 'description' | 'price' | 'location' | 'images' | 'image_dimensions' | 'title_i18n' | 'description_i18n' | 'source_lang' | 'negotiable' | 'location_verified'>>) {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw new Error('Not authenticated')
+
+    // Mirror the createItem hard cap. Without this guard, a user could create
+    // a listing under the cap then edit it past — backend integrity hole.
+    if (updates.price !== undefined && (updates.price < 0 || updates.price > 1_000_000)) {
+      throw new Error('Invalid price')
+    }
 
     const { data, error } = await supabase
       .from('items')
