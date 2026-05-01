@@ -283,37 +283,82 @@
         <view v-if="comments.length === 0 && !loadingComments" class="cs-empty">
           <text>{{ t('plaza.noComments') }}</text>
         </view>
-        <view
-          v-for="c in comments"
-          :key="c.id"
-          class="cs-item"
-          @touchstart="commentLongPress.onTouchstart(c)"
-          @touchend="commentLongPress.onTouchend"
-          @touchcancel="commentLongPress.onTouchcancel"
-          @touchmove="commentLongPress.onTouchmove"
-        >
-          <image
-            :src="c.profile?.avatar_url || '/static/default-avatar.svg'"
-            class="cs-avatar"
-            mode="aspectFill"
-            @click="onCommentTap(c)"
-          />
-          <view class="cs-body" @click="onCommentTap(c)">
-            <view class="cs-top">
-              <text class="cs-name">{{ c.profile?.nickname || t('app.user') }}</text>
-              <text class="cs-time">{{ formatTime(c.created_at) }}</text>
-            </view>
-            <text v-if="c.reply_to_name" class="cs-reply-ref">@{{ c.reply_to_name }}</text>
-            <text class="cs-content">{{ c.content }}</text>
-            <view class="cs-actions">
-              <view class="cs-like-btn" role="button" :aria-label="c.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(c)">
-                <image :src="c.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" class="cs-heart-img" />
-                <text v-if="(c.like_count ?? 0) > 0" :class="['cs-like-num', { active: c.liked_by_me }]">{{ c.like_count }}</text>
+        <template v-for="thread in commentThreads" :key="thread.parent.id">
+          <view
+            class="cs-item"
+            @touchstart="commentLongPress.onTouchstart(thread.parent)"
+            @touchend="commentLongPress.onTouchend"
+            @touchcancel="commentLongPress.onTouchcancel"
+            @touchmove="commentLongPress.onTouchmove"
+          >
+            <image
+              :src="thread.parent.profile?.avatar_url || '/static/default-avatar.svg'"
+              class="cs-avatar"
+              mode="aspectFill"
+              @click="onCommentTap(thread.parent)"
+            />
+            <view class="cs-body" @click="onCommentTap(thread.parent)">
+              <view class="cs-top">
+                <text class="cs-name">{{ thread.parent.profile?.nickname || t('app.user') }}</text>
+                <text class="cs-time">{{ formatTime(thread.parent.created_at) }}</text>
               </view>
-              <text class="cs-reply-btn" @click.stop="onCommentTap(c)">{{ t('plaza.reply') }}</text>
+              <text class="cs-content">{{ thread.parent.content }}</text>
+              <view class="cs-actions">
+                <view class="cs-like-btn" role="button" :aria-label="thread.parent.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(thread.parent)">
+                  <image :src="thread.parent.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" class="cs-heart-img" />
+                  <text v-if="(thread.parent.like_count ?? 0) > 0" :class="['cs-like-num', { active: thread.parent.liked_by_me }]">{{ thread.parent.like_count }}</text>
+                </view>
+                <text class="cs-reply-btn" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
+              </view>
             </view>
           </view>
-        </view>
+
+          <template v-if="thread.children.length > 0">
+            <view
+              v-for="child in (expandedReplies.has(thread.parent.id) ? thread.children : thread.children.slice(0, 3))"
+              :key="child.id"
+              class="cs-item cs-item-child"
+              @touchstart="commentLongPress.onTouchstart(child)"
+              @touchend="commentLongPress.onTouchend"
+              @touchcancel="commentLongPress.onTouchcancel"
+              @touchmove="commentLongPress.onTouchmove"
+            >
+              <image
+                :src="child.profile?.avatar_url || '/static/default-avatar.svg'"
+                class="cs-avatar"
+                mode="aspectFill"
+                @click="onCommentTap(child)"
+              />
+              <view class="cs-body" @click="onCommentTap(child)">
+                <view class="cs-top">
+                  <text class="cs-name">{{ child.profile?.nickname || t('app.user') }}</text>
+                  <text class="cs-time">{{ formatTime(child.created_at) }}</text>
+                </view>
+                <text v-if="child.reply_to_name" class="cs-reply-ref">@{{ child.reply_to_name }}</text>
+                <text class="cs-content">{{ child.content }}</text>
+                <view class="cs-actions">
+                  <view class="cs-like-btn" role="button" :aria-label="child.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(child)">
+                    <image :src="child.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" class="cs-heart-img" />
+                    <text v-if="(child.like_count ?? 0) > 0" :class="['cs-like-num', { active: child.liked_by_me }]">{{ child.like_count }}</text>
+                  </view>
+                  <text class="cs-reply-btn" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
+                </view>
+              </view>
+            </view>
+
+            <view
+              v-if="thread.children.length > 3"
+              class="cs-expand-link cs-item-child"
+              @click="toggleReplies(thread.parent.id)"
+            >
+              <text class="cs-expand-text">
+                {{ expandedReplies.has(thread.parent.id)
+                    ? t('plaza.hideReplies')
+                    : t('plaza.viewMoreReplies', { count: thread.children.length - 3 }) }}
+              </text>
+            </view>
+          </template>
+        </template>
       </scroll-view>
       <view v-if="replyTo" class="cs-reply-bar">
         <text class="cs-reply-label">{{ t('plaza.replyingTo') }} @{{ replyTo.profile?.nickname || t('app.user') }}</text>
@@ -344,12 +389,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
-import { usePlaza } from '../../composables/usePlaza'
+import { usePlaza, groupCommentsByParent } from '../../composables/usePlaza'
 import { useModeration } from '../../composables/useModeration'
 import { useItems } from '../../composables/useItems'
 import { useHistory } from '../../composables/useHistory'
@@ -474,6 +519,20 @@ const replyTo = ref<PostComment | null>(null)
 // inputFocused 由用户显式动作驱动：tap 输入框 / tap 评论 / tap "回复" / tap 长按菜单"回复"。
 // 关闭 sheet / 切评论 reset 回 false，保证下次打开时键盘不会自动起。
 const inputFocused = ref(false)
+
+// Per-thread expand state. Stores top-level comment ids whose >3 replies
+// are unfolded. Replaced (not mutated) on toggle so Vue's Set reactivity
+// reliably triggers re-render across both H5 and mp-weixin runtimes.
+const expandedReplies = ref<Set<string>>(new Set())
+
+function toggleReplies(parentId: string) {
+  const next = new Set(expandedReplies.value)
+  if (next.has(parentId)) next.delete(parentId)
+  else next.add(parentId)
+  expandedReplies.value = next
+}
+
+const commentThreads = computed(() => groupCommentsByParent(comments.value))
 
 /* ---------- Per-card translation (plaza list)
    translations[post.id] holds the translated content; presence of a
@@ -745,6 +804,7 @@ function closeComments() {
   commentText.value = ''
   replyTo.value = null
   inputFocused.value = false
+  expandedReplies.value = new Set()
 }
 
 const commentSubmitting = ref(false)
@@ -761,10 +821,17 @@ async function onSubmitComment() {
       const name = replyTo.value.profile?.nickname || t('app.user')
       text = `@${name} ${text}`
     }
-    const c = await createComment(commentingPost.value.id, text, replyTo.value?.id)
-    if (replyTo.value) {
-      ;(c as any).reply_to_name = replyTo.value.profile?.nickname || t('app.user')
-    }
+    // 单层缩进语义：parent 永远指向顶层祖先。若 replyTo 是子评论，跳一级；
+    // 否则就是它自己。groupCommentsByParent 渲染时也会做 walk-up 防御。
+    const parentId = replyTo.value
+      ? (replyTo.value.parent_comment_id ?? replyTo.value.id)
+      : undefined
+    const c = await createComment(commentingPost.value.id, text, parentId)
+    // fetchComments hydrates reply_to_name from DB on next refresh; for the
+    // optimistic push here we mirror the same logic by reading replyTo's nickname.
+    c.reply_to_name = replyTo.value
+      ? (replyTo.value.profile?.nickname ?? null)
+      : null
     comments.value.push(c)
     commentText.value = ''
     replyTo.value = null
@@ -1426,6 +1493,23 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   cursor: pointer;
   padding: 2px 0;
   &:active { color: var(--text-secondary); }
+}
+
+.cs-item-child {
+  padding-left: 48px;
+}
+.cs-expand-link {
+  display: flex;
+  align-items: center;
+  padding: 6px 16px 6px 48px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  &:active { opacity: 0.6; }
+}
+.cs-expand-text {
+  font-size: 12px;
+  color: var(--campus-blue);
+  font-weight: 500;
 }
 
 .cs-reply-bar {

@@ -416,6 +416,8 @@ const en: Record<string, string> = {
   'plaza.replyHint': 'Write your reply...',
   'plaza.reportComment': 'Report comment',
   'plaza.reportUser': 'Report user',
+  'plaza.viewMoreReplies': 'View {count} more replies',
+  'plaza.hideReplies': 'Hide replies',
   'plaza.notFound': 'Post not found',
   'plaza.backToPlaza': 'Back to plaza',
 

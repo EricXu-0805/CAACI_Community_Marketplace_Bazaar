@@ -416,6 +416,8 @@ const zh: Record<string, string> = {
   'plaza.replyHint': '写一条回复...',
   'plaza.reportComment': '举报评论',
   'plaza.reportUser': '举报用户',
+  'plaza.viewMoreReplies': '查看 {count} 条回复',
+  'plaza.hideReplies': '收起回复',
   'plaza.notFound': '找不到这条动态',
   'plaza.backToPlaza': '返回广场',
 

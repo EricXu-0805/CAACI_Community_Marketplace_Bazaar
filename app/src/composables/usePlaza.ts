@@ -21,6 +21,67 @@ const POST_SELECT = `*,
   profile:profiles!posts_user_id_fkey(${PUBLIC_PROFILE_FIELDS}),
   attached_item:items!posts_attached_item_id_fkey(${ATTACHED_ITEM_FIELDS})`
 
+export interface CommentThread {
+  parent: PostComment
+  children: PostComment[]
+}
+
+/*
+ * Group flat comment list into top-level threads.
+ *
+ * Single-level indentation semantic: ALL replies render under their
+ * top-level ancestor regardless of how deep their parent_comment_id
+ * chain goes in storage. New replies are normalized at submit time
+ * (see onSubmitComment in plaza/post pages), but this function also
+ * walks up the chain at render time as defense against stale or
+ * manually-mutated rows in prod.
+ *
+ * Walk-up cap = 10 hops to defend against accidental cycles.
+ *
+ * Orphans (parent_comment_id points at a comment NOT in the current
+ * list — e.g. parent was deleted, or hidden by RLS) are surfaced as
+ * top-level rather than dropped. Preserves user-visible content even
+ * when the conversation context can't be reconstructed.
+ */
+export function groupCommentsByParent(comments: PostComment[]): CommentThread[] {
+  const byId = new Map(comments.map(c => [c.id, c]))
+  const topLevel: PostComment[] = []
+  const childMap = new Map<string, PostComment[]>()
+
+  function topLevelAncestorId(c: PostComment): string {
+    let cur = c
+    let hops = 0
+    while (cur.parent_comment_id && byId.has(cur.parent_comment_id) && hops < 10) {
+      cur = byId.get(cur.parent_comment_id)!
+      hops++
+    }
+    return cur.id
+  }
+
+  for (const c of comments) {
+    if (!c.parent_comment_id) {
+      topLevel.push(c)
+      continue
+    }
+    const ancestorId = topLevelAncestorId(c)
+    if (ancestorId === c.id) {
+      // Orphan: parent_comment_id set but parent not in list (deleted? RLS-hidden?)
+      topLevel.push(c)
+    } else {
+      const arr = childMap.get(ancestorId) ?? []
+      arr.push(c)
+      childMap.set(ancestorId, arr)
+    }
+  }
+
+  return topLevel.map(p => ({
+    parent: p,
+    children: (childMap.get(p.id) ?? []).sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    ),
+  }))
+}
+
 export function usePlaza() {
   const { supabase } = useSupabase()
   const { currentUser } = useAuth()
@@ -272,6 +333,26 @@ export function usePlaza() {
         .in('comment_id', commentIds)
       const likeSet = new Set((myLikes || []).map((l: any) => l.comment_id))
       result.forEach(c => { c.liked_by_me = likeSet.has(c.id) })
+    }
+
+    /*
+     * Hydrate reply_to_name from parent_comment_id → parent.profile.nickname.
+     * Replaces the previous client-side onSubmitComment-only assignment which
+     * vanished after page refresh. Now reply_to_name reflects DB truth via
+     * in-memory lookup at fetch time. Top-level comments get null. Orphan
+     * children whose parent was deleted/hidden also get null (groupCommentsByParent
+     * surfaces them as top-level, so the @<name> ref would be misleading).
+     */
+    if (result.length > 0) {
+      const byId = new Map(result.map(c => [c.id, c]))
+      for (const c of result) {
+        if (c.parent_comment_id) {
+          const parent = byId.get(c.parent_comment_id)
+          c.reply_to_name = parent?.profile?.nickname ?? null
+        } else {
+          c.reply_to_name = null
+        }
+      }
     }
     return result
   }
