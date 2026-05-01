@@ -220,6 +220,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { platformFetch } from '../../composables/useSupabase'
+import { BASE_URL } from '../../config/runtime'
 
 type TabId = 'reports' | 'suspensions' | 'appeals' | 'warnings' | 'audit'
 
@@ -338,7 +339,7 @@ function apiBase(): string {
     return window.location.origin + '/api/admin'
   }
   // #endif
-  return 'https://caaci-community-marketplace-bazaar.vercel.app/api/admin'
+  return `${BASE_URL}/api/admin`
 }
 
 async function apiGet<T>(params: Record<string, string>): Promise<T> {

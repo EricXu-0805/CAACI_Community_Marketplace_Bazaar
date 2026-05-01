@@ -1,5 +1,6 @@
 import { useSupabase, platformFetch } from './useSupabase'
 import { MESSAGE_FIELDS } from './useMessages.constants'
+import { BASE_URL } from '../config/runtime'
 
 /*
  * Realtime abstraction with three tiers:
@@ -39,7 +40,7 @@ function longPollBase(): string {
     return window.location.origin + '/api/realtime-poll'
   }
   // #endif
-  return 'https://caaci-community-marketplace-bazaar.vercel.app/api/realtime-poll'
+  return `${BASE_URL}/api/realtime-poll`
 }
 
 /* Circuit breaker: if long-poll fails twice in a row, skip it for

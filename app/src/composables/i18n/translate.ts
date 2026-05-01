@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { platformFetch } from '../useSupabase'
 import type { Lang } from './types'
+import { BASE_URL } from '../../config/runtime'
 
 /*
  * Shared auto-localize cache.
@@ -60,7 +61,7 @@ export function scheduleAutoTranslate(text: string, target: Lang) {
   } catch {}
   // #endif
   // #ifndef H5
-  endpoint = 'https://caaci-community-marketplace-bazaar.vercel.app/api/translate'
+  endpoint = `${BASE_URL}/api/translate`
   // #endif
 
   const ctrl = new AbortController()

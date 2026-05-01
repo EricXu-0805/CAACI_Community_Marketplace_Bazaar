@@ -136,6 +136,7 @@ import { ref } from 'vue'
 import { useAuth } from '../../composables/useAuth'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
+import { BASE_URL } from '../../config/runtime'
 
 const { t } = useI18n()
 const { signIn, signUp, signInWithWeChat, loading } = useAuth()
@@ -183,7 +184,7 @@ async function onForgotPassword() {
   if (typeof window !== 'undefined') redirectTo = `${window.location.origin}/#/pages/reset-password/index`
   // #endif
   // #ifndef H5
-  redirectTo = 'https://caaci-community-marketplace-bazaar.vercel.app/#/pages/reset-password/index'
+  redirectTo = `${BASE_URL}/#/pages/reset-password/index`
   // #endif
   console.log('[reset-pw-debug] sending reset email to:', trimmedEmail, 'redirectTo:', redirectTo)
   const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, { redirectTo })

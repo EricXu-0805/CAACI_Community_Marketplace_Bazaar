@@ -77,6 +77,7 @@ import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useSupabase } from '../../composables/useSupabase'
 import { useTheme, type ThemePref } from '../../composables/useTheme'
+import { BASE_URL } from '../../config/runtime'
 
 const { t, lang, setLang } = useI18n()
 const { isLoggedIn, signOut } = useAuth()
@@ -196,7 +197,7 @@ async function onChangePassword() {
       if (typeof window !== 'undefined') redirectTo = `${window.location.origin}/#/pages/reset-password/index`
       // #endif
       // #ifndef H5
-      redirectTo = 'https://caaci-community-marketplace-bazaar.vercel.app/#/pages/reset-password/index'
+      redirectTo = `${BASE_URL}/#/pages/reset-password/index`
       // #endif
       console.log('[reset-pw-debug] settings change password — email:', session.user!.email, 'redirectTo:', redirectTo)
       const { error } = await supabase.auth.resetPasswordForEmail(session.user!.email!, { redirectTo })

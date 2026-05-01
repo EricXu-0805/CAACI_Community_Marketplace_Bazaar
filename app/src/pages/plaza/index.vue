@@ -347,6 +347,7 @@ import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbU
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
+import { BASE_URL } from '../../config/runtime'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PlazaBannerCarousel from '../../components/PlazaBannerCarousel.vue'
 
@@ -687,7 +688,7 @@ function onSharePost(post: Post) {
   /* Server-side OG meta renders at /share-post/:id so shared links unfurl
      into a rich card with the post title + excerpt + image in WeChat /
      Twitter / Slack / etc. See api/share-post.js. */
-  let origin = 'https://caaci-community-marketplace-bazaar.vercel.app'
+  let origin = BASE_URL
   // #ifdef H5
   if (typeof window !== 'undefined' && window.location?.origin) origin = window.location.origin
   // #endif

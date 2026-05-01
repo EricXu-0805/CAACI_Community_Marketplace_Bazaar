@@ -3,6 +3,7 @@ import { quickTranslate } from '../utils'
 import { platformFetch } from './useSupabase'
 import { addBreadcrumb } from '../utils/sentry'
 import { SUPPORTED_LANGS, type Lang as AppLang } from './useI18n'
+import { BASE_URL } from '../config/runtime'
 
 /*
  * Target-language type for this composable's translation API.
@@ -37,7 +38,7 @@ try {
   // #endif
 } catch {}
 // #ifndef H5
-endpoint = 'https://caaci-community-marketplace-bazaar.vercel.app/api/translate'
+endpoint = `${BASE_URL}/api/translate`
 // #endif
 
 const mem = new Map<string, CachedEntry>()

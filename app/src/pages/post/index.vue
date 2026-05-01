@@ -157,6 +157,7 @@ import { useLongPress } from '../../composables/useLongPress'
 import { formatTime, friendlyErrorMessage, quickTranslate } from '../../utils'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim, Post, PostComment } from '../../types'
+import { BASE_URL } from '../../config/runtime'
 
 const { t, lang, localize } = useI18n()
 const { currentUser, requireAuth } = useAuth()
@@ -315,7 +316,7 @@ async function onToggleLike() {
 function onShare() {
   if (!post.value) return
   /* Server-side OG meta renders at /share-post/:id. See api/share-post.js. */
-  let origin = 'https://caaci-community-marketplace-bazaar.vercel.app'
+  let origin = BASE_URL
   // #ifdef H5
   if (typeof window !== 'undefined' && window.location?.origin) origin = window.location.origin
   // #endif

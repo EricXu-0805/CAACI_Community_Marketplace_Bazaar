@@ -3,6 +3,7 @@ import { useSupabase, platformFetch } from './useSupabase'
 import { useModeration } from './useModeration'
 import { deviceFingerprintHash, deviceUASnippet } from '../utils/fingerprint'
 import type { Profile } from '../types'
+import { BASE_URL } from '../config/runtime'
 
 const currentUser = ref<Profile | null>(null)
 const isLoggedIn = computed(() => !!currentUser.value)
@@ -108,7 +109,7 @@ export function useAuth() {
       }
       // #endif
       // #ifndef H5
-      emailRedirectTo = 'https://caaci-community-marketplace-bazaar.vercel.app/#/pages/index/index'
+      emailRedirectTo = `${BASE_URL}/#/pages/index/index`
       // #endif
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -158,7 +159,7 @@ export function useAuth() {
         })
       })
 
-      const endpoint = 'https://caaci-community-marketplace-bazaar.vercel.app/api/auth/wechat-login'
+      const endpoint = `${BASE_URL}/api/auth/wechat-login`
       const res = await platformFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

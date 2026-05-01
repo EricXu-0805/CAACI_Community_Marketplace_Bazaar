@@ -19,6 +19,8 @@
  * decide whether to hard-block or just warn.
  */
 
+import { BASE_URL } from '../config/runtime'
+
 export type SafetyCategory =
   | 'ok'
   | 'too_short'
@@ -227,7 +229,7 @@ try {
 } catch {}
 // #endif
 // #ifndef H5
-MODERATE_ENDPOINT = 'https://caaci-community-marketplace-bazaar.vercel.app/api/moderate'
+MODERATE_ENDPOINT = `${BASE_URL}/api/moderate`
 // #endif
 
 export async function remoteModerate(text: string): Promise<{ flagged: boolean; categories: string[] }> {
