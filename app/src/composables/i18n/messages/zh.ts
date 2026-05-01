@@ -171,6 +171,7 @@ const zh: Record<string, string> = {
   'publish.priceTooHighBody': '您输入的价格似乎过高。校园二手物品超过 ¥100,000 比较少见，请确认是否真要发布。',
   'publish.priceTooHighConfirm': '确认发布',
   'publish.priceTooHighCancel': '返回修改',
+  'publish.priceExceedsLimit': '价格超出系统限制（最高 ¥1,000,000）',
   'publish.needCategory': '请选择分类',
   'publish.needCondition': '请选择成色',
   'publish.avgPrice': '该分类均价',

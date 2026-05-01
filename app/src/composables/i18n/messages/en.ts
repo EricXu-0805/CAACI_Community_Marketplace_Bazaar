@@ -171,6 +171,7 @@ const en: Record<string, string> = {
   'publish.priceTooHighBody': 'The price you entered seems unusually high. Listings over $100,000 are rare on a campus marketplace — confirm before listing?',
   'publish.priceTooHighConfirm': 'Yes, list it',
   'publish.priceTooHighCancel': 'Edit price',
+  'publish.priceExceedsLimit': 'Price exceeds the limit (max $1,000,000)',
   'publish.needCategory': 'Select a category',
   'publish.needCondition': 'Select condition',
   'publish.avgPrice': 'Avg price in this category',

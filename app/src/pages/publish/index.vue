@@ -695,6 +695,16 @@ async function onSubmit() {
       }, 1000)
     }
   } catch (error: any) {
+    // Backend createItem/updateItem in useItems.ts throw 'Invalid price' when
+    // input.price > 1,000,000 (the hard cap, defense-in-depth above the 100k
+    // soft ceiling enforced by the modal earlier in onSubmit). Translate to a
+    // user-friendly toast that names the actual limit so users know what to do
+    // — the raw 'Invalid price' string is too terse and doesn't tell the user
+    // whether they hit a min, max, or some other constraint.
+    if (error?.message === 'Invalid price') {
+      uni.showToast({ title: t('publish.priceExceedsLimit'), icon: 'none', duration: 3000 })
+      return
+    }
     console.error('Publish error:', error)
     uni.showToast({
       title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('publish.fail'),
