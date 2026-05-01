@@ -1221,6 +1221,8 @@ function goPublish() {
     width: 22px; height: 12px;
     border: 2.5px solid var(--border-strong); border-bottom: none;
     border-radius: 11px 11px 0 0;
+    /* App.vue's `view, text` border-box reset doesn't reach ::before; opt in so 22px is the outer width and the handle centers on the bag body. */
+    box-sizing: border-box;
   }
 }
 .empty-title { font-size: 16px; color: var(--ink); font-weight: 600; }
