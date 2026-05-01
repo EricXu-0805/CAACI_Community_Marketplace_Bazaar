@@ -69,3 +69,7 @@ PERFORMANCE_*.txt
 UI_*.md
 EXPLORATION_*.md
 .gstack/
+
+# Local env files
+app/.env
+.env
