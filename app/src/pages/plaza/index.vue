@@ -292,7 +292,12 @@
           @touchcancel="commentLongPress.onTouchcancel"
           @touchmove="commentLongPress.onTouchmove"
         >
-          <image :src="c.profile?.avatar_url || '/static/default-avatar.svg'" class="cs-avatar" mode="aspectFill" />
+          <image
+            :src="c.profile?.avatar_url || '/static/default-avatar.svg'"
+            class="cs-avatar"
+            mode="aspectFill"
+            @click="onCommentTap(c)"
+          />
           <view class="cs-body" @click="onCommentTap(c)">
             <view class="cs-top">
               <text class="cs-name">{{ c.profile?.nickname || t('app.user') }}</text>
@@ -763,6 +768,8 @@ async function onSubmitComment() {
   }
 }
 
+// cs-avatar 也绑同 handler — 当前没用户主页页面，tap 头像 fallback 到回复，
+// 避免 silent dead-zone。未来用户主页 ready 后改 cs-avatar @click 跳主页。
 function onCommentTap(c: PostComment) {
   if (!currentUser.value) return
   replyTo.value = c
