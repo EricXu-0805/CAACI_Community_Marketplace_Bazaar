@@ -412,6 +412,8 @@ const en: Record<string, string> = {
   'plaza.contentCopied': 'Content copied',
   'plaza.replyingTo': 'Replying to',
   'plaza.replyHint': 'Write your reply...',
+  'plaza.reportComment': 'Report comment',
+  'plaza.reportUser': 'Report user',
   'plaza.notFound': 'Post not found',
   'plaza.backToPlaza': 'Back to plaza',
 

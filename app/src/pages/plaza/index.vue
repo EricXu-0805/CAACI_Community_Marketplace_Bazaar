@@ -287,20 +287,22 @@
           v-for="c in comments"
           :key="c.id"
           class="cs-item"
-          @click="onCommentTap(c)"
           @touchstart="commentLongPress.onTouchstart(c)"
           @touchend="commentLongPress.onTouchend"
           @touchcancel="commentLongPress.onTouchcancel"
           @touchmove="commentLongPress.onTouchmove"
         >
           <image :src="c.profile?.avatar_url || '/static/default-avatar.svg'" class="cs-avatar" mode="aspectFill" />
-          <view class="cs-body">
+          <view class="cs-body" @click="onCommentTap(c)">
             <view class="cs-top">
               <text class="cs-name">{{ c.profile?.nickname || t('app.user') }}</text>
               <text class="cs-time">{{ formatTime(c.created_at) }}</text>
             </view>
             <text v-if="c.reply_to_name" class="cs-reply-ref">@{{ c.reply_to_name }}</text>
             <text class="cs-content">{{ c.content }}</text>
+            <view class="cs-actions">
+              <text class="cs-reply-btn" @click.stop="onCommentTap(c)">{{ t('plaza.reply') }}</text>
+            </view>
           </view>
         </view>
       </scroll-view>
@@ -316,7 +318,9 @@
           :placeholder="replyTo ? t('plaza.replyHint') : t('plaza.commentHint')"
           class="cs-input"
           confirm-type="send"
-          :focus="!!commentingPost"
+          :focus="inputFocused"
+          @focus="inputFocused = true"
+          @blur="inputFocused = false"
           @confirm="onSubmitComment"
           maxlength="1000"
         />
@@ -457,6 +461,10 @@ const comments = ref<PostComment[]>([])
 const loadingComments = ref(false)
 const commentText = ref('')
 const replyTo = ref<PostComment | null>(null)
+// Sheet 打开时 input 不应自动 focus（避免键盘挡评论列表）。
+// inputFocused 由用户显式动作驱动：tap 输入框 / tap 评论 / tap "回复" / tap 长按菜单"回复"。
+// 关闭 sheet / 切评论 reset 回 false，保证下次打开时键盘不会自动起。
+const inputFocused = ref(false)
 
 /* ---------- Per-card translation (plaza list)
    translations[post.id] holds the translated content; presence of a
@@ -702,6 +710,7 @@ function onSharePost(post: Post) {
 
 async function openComments(post: Post) {
   commentingPost.value = post
+  inputFocused.value = false
   addPostToHistory(post)
   comments.value = []
   loadingComments.value = true
@@ -717,6 +726,7 @@ function closeComments() {
   comments.value = []
   commentText.value = ''
   replyTo.value = null
+  inputFocused.value = false
 }
 
 const commentSubmitting = ref(false)
@@ -756,6 +766,7 @@ async function onSubmitComment() {
 function onCommentTap(c: PostComment) {
   if (!currentUser.value) return
   replyTo.value = c
+  inputFocused.value = true
 }
 
 /* 1.5s + haptic — long-press surfaces report/delete actions on plaza
@@ -772,14 +783,19 @@ const commentLongPress = useLongPress<[PostComment]>((c) => onCommentLongPress(c
 function onCommentLongPress(c: PostComment) {
   if (!currentUser.value) return
   const isMine = c.user_id === currentUser.value.id
+  // Owner: 回复 / 删除（删除带二次确认 modal）
+  // Non-owner: 回复 / 举报评论 / 举报用户 — 三选一拆开是因为举报评论内容
+  // 和举报用户是不同的 moderation queue case (评论可能炒人 vs 用户多次违规)。
+  // ReportTarget type 已含 'comment'（useModeration.ts:4），schema ready 不需要 migration。
   const items = isMine
     ? [t('plaza.reply'), t('plaza.delete')]
-    : [t('plaza.reply'), t('plaza.report')]
+    : [t('plaza.reply'), t('plaza.reportComment'), t('plaza.reportUser')]
   uni.showActionSheet({
     itemList: items,
     success: (res) => {
       if (res.tapIndex === 0) {
         replyTo.value = c
+        inputFocused.value = true
       } else if (isMine && res.tapIndex === 1) {
         uni.showModal({
           title: t('plaza.commentDeleteConfirm'),
@@ -795,6 +811,8 @@ function onCommentLongPress(c: PostComment) {
           },
         })
       } else if (!isMine && res.tapIndex === 1) {
+        promptReport('comment', c.id)
+      } else if (!isMine && res.tapIndex === 2) {
         promptReportUser(c.user_id)
       }
     },
@@ -1353,6 +1371,20 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .cs-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
 .cs-time { font-size: 11px; color: var(--text-faint); }
 .cs-content { font-size: 14px; color: var(--text-primary); line-height: 1.45; margin-top: 2px; display: block; word-break: break-word; }
+.cs-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+.cs-reply-btn {
+  font-size: 12px;
+  color: var(--text-faint);
+  font-weight: 500;
+  cursor: pointer;
+  padding: 2px 0;
+  &:active { color: var(--text-secondary); }
+}
 
 .cs-reply-bar {
   display: flex; align-items: center; justify-content: space-between;

@@ -412,6 +412,8 @@ const zh: Record<string, string> = {
   'plaza.contentCopied': '内容已复制',
   'plaza.replyingTo': '回复',
   'plaza.replyHint': '写一条回复...',
+  'plaza.reportComment': '举报评论',
+  'plaza.reportUser': '举报用户',
   'plaza.notFound': '找不到这条动态',
   'plaza.backToPlaza': '返回广场',
 
