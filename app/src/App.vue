@@ -640,14 +640,14 @@ page,
   --mp-navbar-height:     44px;   /* capsule 32 + 12 padding */
   --mp-navbar-right-pad:  104px;  /* capsule 87 + 7 right + 10 breath */
 
-  background-color: #F5F0E6;
+  background-color: var(--canvas);
   font-family:
     'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC',
     -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
     'Helvetica Neue', 'Microsoft YaHei', system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.6;
-  color: #2A2A2E;
+  color: var(--ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: 0.02em;
@@ -1044,7 +1044,9 @@ button:focus-visible,
  * lifts from #13294B → #2A4A7B for dark-mode AA contrast on
  * the verified-badge soft surface.
  * ============================================================ */
-[data-theme="dark"] {
+[data-theme="dark"],
+[data-theme="dark"] page,
+[data-theme="dark"] .page {
   --ink:         #F0E8D6;
   --ink-soft:    rgba(240, 232, 214, 0.72);
   --ink-quiet:   rgba(240, 232, 214, 0.52);
@@ -1122,7 +1124,9 @@ button:focus-visible,
  * for night users.
  */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-theme="light"]),
+  :root:not([data-theme="light"]) page,
+  :root:not([data-theme="light"]) .page {
     --ink:         #F0E8D6;
     --ink-soft:    rgba(240, 232, 214, 0.72);
     --ink-quiet:   rgba(240, 232, 214, 0.52);
