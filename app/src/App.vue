@@ -398,6 +398,40 @@ onLaunch(() => {
     console.error('[onUnhandledRejection]', reason)
     captureException(reason, { tags: { source: 'uni.onUnhandledRejection' }, level: 'error' })
   })
+
+  /*
+   * Stale-chunk auto-recovery (H5 only).
+   *
+   * After a Vercel deploy the user's open tab still references the
+   * previous bundle's content-hashed filenames. The next lazy import
+   * (uni-app generates one per page route) or <link rel="modulepreload">
+   * fetches a path that no longer exists and rejects with one of:
+   *   "Failed to fetch dynamically imported module"
+   *   "Unable to preload CSS for /assets/index-*.css"
+   *
+   * Both are harmless if the user refreshes — the new index.html has
+   * fresh hashes. Auto-reload turns the rejection into a brief
+   * "App updated, refreshing…" toast and a window.location.reload()
+   * so users don't see a broken nav. preventDefault() also stops the
+   * rejection from propagating to Sentry's global handler (the
+   * ignoreErrors filter in utils/sentry.ts is the second line of
+   * defense for any case where preventDefault doesn't work, e.g.
+   * Safari treating it differently).
+   */
+  // #ifdef H5
+  if (typeof window !== 'undefined') {
+    window.addEventListener('unhandledrejection', (e) => {
+      const reason: any = e?.reason
+      const msg = String(reason?.message || reason || '')
+      if (/Failed to fetch dynamically imported module|Unable to preload CSS/i.test(msg)) {
+        e.preventDefault()
+        try { uni.showToast({ title: t('app.deployRefreshing'), icon: 'none', duration: 1200 }) } catch {}
+        setTimeout(() => { try { window.location.reload() } catch {} }, 500)
+      }
+    })
+  }
+  // #endif
+
   uni.onNetworkStatusChange?.((res: { isConnected: boolean }) => {
     if (!res.isConnected) {
       uni.showToast({ title: t('error.noNetwork'), icon: 'none', duration: 3000 })

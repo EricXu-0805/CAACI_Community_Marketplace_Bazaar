@@ -158,6 +158,7 @@ const zh: Record<string, string> = {
   'publish.fail': '发布失败',
   'publish.editFetchFailed': '无法加载该商品，可能已被删除',
   'publish.editTitle': '编辑商品',
+  'app.deployRefreshing': '应用已更新，正在刷新…',
   'publish.update': '保存修改',
   'publish.updated': '已更新！',
   'publish.cancel': '取消',

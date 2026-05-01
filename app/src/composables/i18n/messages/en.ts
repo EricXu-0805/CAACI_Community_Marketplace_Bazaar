@@ -158,6 +158,7 @@ const en: Record<string, string> = {
   'publish.fail': 'Failed to post',
   'publish.editFetchFailed': "Couldn't load this listing — it may have been removed",
   'publish.editTitle': 'Edit Item',
+  'app.deployRefreshing': 'App updated, refreshing…',
   'publish.update': 'Save Changes',
   'publish.updated': 'Updated!',
   'publish.cancel': 'Cancel',

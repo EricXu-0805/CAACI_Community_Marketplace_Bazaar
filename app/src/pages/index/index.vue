@@ -637,6 +637,9 @@ function onCardLongPress(item: Item) {
         const url = `${window.location.origin}/share/${item.id}`
         if (navigator.share) {
           navigator.share({ title: item.title, text: `$${item.price} - ${item.title}`, url })
+            .catch((err: any) => {
+              if (err?.name !== 'AbortError') console.warn('[share] failed:', err)
+            })
         } else {
           uni.setClipboardData({ data: url })
           uni.showToast({ title: t('detail.linkCopied'), icon: 'success' })

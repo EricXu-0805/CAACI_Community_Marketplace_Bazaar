@@ -542,6 +542,9 @@ function onShare() {
   const shareUrl = `${window.location.origin}/share/${item.value.id}`
   if (navigator.share) {
     navigator.share({ title: item.value.title, text: `$${item.value.price} - ${item.value.title}`, url: shareUrl })
+      .catch((err: any) => {
+        if (err?.name !== 'AbortError') console.warn('[share] failed:', err)
+      })
   } else {
     uni.setClipboardData({ data: shareUrl })
     uni.showToast({ title: t('detail.linkCopied'), icon: 'success' })

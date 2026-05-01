@@ -58,6 +58,25 @@ export function initSentry(app: App): void {
         Sentry.browserTracingIntegration(),
       ],
       /*
+       * Drop the three highest-volume noise sources before they hit the
+       * Sentry quota. Each one is benign behavior, not a real bug:
+       *
+       *   · Failed to fetch dynamically imported module / Unable to
+       *     preload CSS — stale chunk references after a Vercel deploy.
+       *     The window.unhandledrejection listener in App.vue picks
+       *     these up and triggers window.location.reload() so the user
+       *     gets the new bundle automatically.
+       *   · AbortError: Share canceled — DOMException code 20 thrown
+       *     when a user dismisses the native share sheet. The share
+       *     callsites already .catch() this; this filter is a
+       *     belt-and-suspenders for any future callsite that forgets.
+       */
+      ignoreErrors: [
+        /Failed to fetch dynamically imported module/i,
+        /Unable to preload CSS/i,
+        'AbortError: Share canceled',
+      ],
+      /*
        * Strip user-identifying request data by default. Supabase URLs
        * carry the project ref; Vercel edge URLs carry our own domain;
        * neither leaks PII but we drop request bodies anyway in case a
@@ -65,10 +84,37 @@ export function initSentry(app: App): void {
        * into a payload.
        */
       sendDefaultPii: false,
-      beforeSend(event) {
+      beforeSend(event, hint) {
         if (event.request) {
           delete event.request.cookies
           delete event.request.data
+        }
+
+        /*
+         * Normalize uni-app callback rejections from the {errMsg: "..."}
+         * shape into a real exception value so Sentry can group them by
+         * the actual error string instead of bucketing every single one
+         * under the unhelpful "Object captured as promise rejection
+         * with keys: errMsg" placeholder.
+         *
+         * The underlying offenders are uni.* APIs (chooseImage,
+         * uploadFile, previewImage, showShareMenu, etc) whose .fail
+         * callbacks reject without wrapping err in `new Error(...)`.
+         * Most call sites in this repo wrap correctly; this catches
+         * any future leak so the alert remains debuggable.
+         */
+        const orig = hint?.originalException as { errMsg?: unknown } | null | undefined
+        if (
+          orig &&
+          typeof orig === 'object' &&
+          !(orig instanceof Error) &&
+          'errMsg' in orig &&
+          typeof orig.errMsg === 'string'
+        ) {
+          event.exception = {
+            values: [{ type: 'UniAppRejection', value: orig.errMsg }],
+          }
+          event.tags = { ...event.tags, source: 'uni-app-errMsg' }
         }
         return event
       },
