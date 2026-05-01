@@ -106,6 +106,12 @@
               <text class="cs-time">{{ formatTime(c.created_at) }}</text>
             </view>
             <text class="cs-content">{{ c.content }}</text>
+            <view class="cs-actions">
+              <view class="cs-like-btn" role="button" :aria-label="c.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(c)">
+                <image :src="c.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" class="cs-heart-img" />
+                <text v-if="(c.like_count ?? 0) > 0" :class="['cs-like-num', { active: c.liked_by_me }]">{{ c.like_count }}</text>
+              </view>
+            </view>
           </view>
         </view>
       </view>
@@ -161,7 +167,7 @@ import { BASE_URL } from '../../config/runtime'
 
 const { t, lang, localize } = useI18n()
 const { currentUser, requireAuth } = useAuth()
-const { fetchPost, deletePost, toggleLike, fetchComments, createComment, deleteComment } = usePlaza()
+const { fetchPost, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment } = usePlaza()
 const { reportTarget } = useModeration()
 const { addPostToHistory } = useHistory()
 
@@ -353,6 +359,15 @@ function onDelete() {
 function onCommentTap(c: PostComment) {
   if (!currentUser.value) return
   replyTo.value = c
+}
+
+async function onToggleCommentLike(comment: PostComment) {
+  if (!requireAuth()) return
+  try {
+    await toggleCommentLike(comment)
+  } catch (err: any) {
+    uni.showToast({ title: err?.message || t('msg.actionFailed'), icon: 'none' })
+  }
 }
 
 /* 1.5s + haptic — same rationale as the home feed and plaza pages.
@@ -623,6 +638,34 @@ async function onSubmitComment() {
 .cs-content {
   font-size: 14px; color: var(--text-primary); line-height: 1.5;
   margin-top: 2px; display: block; word-break: break-word;
+}
+.cs-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+.cs-like-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  padding: 2px 0;
+  &:active { opacity: 0.6; }
+}
+.cs-heart-img {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.15s;
+  &:active { transform: scale(1.2); }
+}
+.cs-like-num {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  &.active { color: var(--accent-danger); }
 }
 
 .input-wrapper {

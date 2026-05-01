@@ -306,6 +306,10 @@
             <text v-if="c.reply_to_name" class="cs-reply-ref">@{{ c.reply_to_name }}</text>
             <text class="cs-content">{{ c.content }}</text>
             <view class="cs-actions">
+              <view class="cs-like-btn" role="button" :aria-label="c.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(c)">
+                <image :src="c.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" class="cs-heart-img" />
+                <text v-if="(c.like_count ?? 0) > 0" :class="['cs-like-num', { active: c.liked_by_me }]">{{ c.like_count }}</text>
+              </view>
               <text class="cs-reply-btn" @click.stop="onCommentTap(c)">{{ t('plaza.reply') }}</text>
             </view>
           </view>
@@ -362,7 +366,7 @@ import PlazaBannerCarousel from '../../components/PlazaBannerCarousel.vue'
 
 const { t, lang, localize } = useI18n()
 const { currentUser, isLoggedIn, requireAuth } = useAuth()
-const { posts, loading, hasMore, fetchPosts, createPost, updatePostI18n, deletePost, toggleLike, fetchComments, createComment, deleteComment, fetchMyActiveItems } = usePlaza()
+const { posts, loading, hasMore, fetchPosts, createPost, updatePostI18n, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, fetchMyActiveItems } = usePlaza()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
 
 onShareAppMessage(() => ({
@@ -539,6 +543,15 @@ async function onToggleLike(post: Post) {
   addPostToHistory(post)
   try {
     await toggleLike(post)
+  } catch (err: any) {
+    uni.showToast({ title: err?.message || t('msg.actionFailed'), icon: 'none' })
+  }
+}
+
+async function onToggleCommentLike(comment: PostComment) {
+  if (!requireAuth()) return
+  try {
+    await toggleCommentLike(comment)
   } catch (err: any) {
     uni.showToast({ title: err?.message || t('msg.actionFailed'), icon: 'none' })
   }
@@ -1383,6 +1396,28 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   align-items: center;
   gap: 12px;
   margin-top: 4px;
+}
+.cs-like-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  padding: 2px 0;
+  &:active { opacity: 0.6; }
+}
+.cs-heart-img {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.15s;
+  &:active { transform: scale(1.2); }
+}
+.cs-like-num {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  &.active { color: var(--accent-danger); }
 }
 .cs-reply-btn {
   font-size: 12px;

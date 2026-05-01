@@ -73,3 +73,7 @@ EXPLORATION_*.md
 # Local env files
 app/.env
 .env
+
+# Supabase CLI runtime state — contains pooler-url with embedded DB
+# password and linked-project.json. Must NOT be committed.
+supabase/.temp/

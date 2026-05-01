@@ -16,7 +16,7 @@ const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, is_illini_verified, uid
 // returns the column as null on pre-015 databases and localize() silently
 // falls back to plain `title`, so this is safe on unmigrated schemas.
 const ATTACHED_ITEM_FIELDS = 'id, title, title_i18n, price, images, image_dimensions, status'
-const POST_COMMENT_FIELDS = 'id, post_id, user_id, content, parent_comment_id, created_at'
+const POST_COMMENT_FIELDS = 'id, post_id, user_id, content, parent_comment_id, like_count, created_at'
 const POST_SELECT = `*,
   profile:profiles!posts_user_id_fkey(${PUBLIC_PROFILE_FIELDS}),
   attached_item:items!posts_attached_item_id_fkey(${ATTACHED_ITEM_FIELDS})`
@@ -232,6 +232,28 @@ export function usePlaza() {
     }
   }
 
+  async function toggleCommentLike(comment: PostComment) {
+    if (!currentUser.value) throw new Error('Not authenticated')
+    const uid = currentUser.value.id
+    if (comment.liked_by_me) {
+      const { error } = await supabase
+        .from('post_comment_likes')
+        .delete()
+        .eq('comment_id', comment.id)
+        .eq('user_id', uid)
+      if (error) throw error
+      comment.liked_by_me = false
+      comment.like_count = Math.max(0, (comment.like_count ?? 0) - 1)
+    } else {
+      const { error } = await supabase
+        .from('post_comment_likes')
+        .insert({ comment_id: comment.id, user_id: uid })
+      if (error && error.code !== '23505') throw error
+      comment.liked_by_me = true
+      comment.like_count = (comment.like_count ?? 0) + 1
+    }
+  }
+
   async function fetchComments(postId: string): Promise<PostComment[]> {
     const { data, error } = await supabase
       .from('post_comments')
@@ -239,7 +261,19 @@ export function usePlaza() {
       .eq('post_id', postId)
       .order('created_at', { ascending: true })
     if (error) throw error
-    return (data || []) as unknown as PostComment[]
+    const result = (data || []) as unknown as PostComment[]
+
+    if (currentUser.value && result.length > 0) {
+      const commentIds = result.map(c => c.id)
+      const { data: myLikes } = await supabase
+        .from('post_comment_likes')
+        .select('comment_id')
+        .eq('user_id', currentUser.value.id)
+        .in('comment_id', commentIds)
+      const likeSet = new Set((myLikes || []).map((l: any) => l.comment_id))
+      result.forEach(c => { c.liked_by_me = likeSet.has(c.id) })
+    }
+    return result
   }
 
   async function createComment(postId: string, content: string, parentId?: string): Promise<PostComment> {
@@ -288,6 +322,7 @@ export function usePlaza() {
     updatePostI18n,
     deletePost,
     toggleLike,
+    toggleCommentLike,
     fetchComments,
     createComment,
     deleteComment,

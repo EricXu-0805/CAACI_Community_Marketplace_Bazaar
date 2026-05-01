@@ -96,9 +96,11 @@ export interface PostComment {
   user_id: string
   content: string
   parent_comment_id: string | null
+  like_count?: number
   created_at: string
   profile?: Profile
   reply_to_name?: string | null
+  liked_by_me?: boolean
 }
 
 export interface Item {
