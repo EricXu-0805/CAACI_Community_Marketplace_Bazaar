@@ -585,7 +585,7 @@ function onReport() {
 
 function goEdit() {
   if (!item.value) return
-  uni.navigateTo({ url: `/pages/publish/index?edit=${item.value.id}` })
+  uni.navigateTo({ url: `/pages/publish/edit?id=${item.value.id}` })
 }
 
 async function onMarkReserved() {

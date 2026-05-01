@@ -2,9 +2,18 @@
   <view class="page">
     <DesktopNav current="publish" />
 
-    <!-- Mobile Header -->
-    <view class="page-header">
-      <text class="ph-title">{{ t('publish.title') }}</text>
+    <!--
+      Subpage header with back button — mirrors pages/profile/edit.vue
+      (the canonical non-tabbar subpage pattern in this repo). The
+      bottom .submit-bar with "Save Changes" button is preserved per
+      the Hybrid header decision: thumb-reachable + matches the
+      new-publish flow's muscle memory. No top-bar Save action.
+    -->
+    <view class="header">
+      <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack">
+        <view class="back-arrow"></view>
+      </view>
+      <text class="header-title">{{ t('publish.editTitle') }}</text>
     </view>
 
     <view class="form">
@@ -131,18 +140,20 @@
 
     <view class="submit-bar">
       <button class="submit-btn" :disabled="submitting" @click="onSubmit">
-        {{ submitting ? t('publish.submitting') : t('publish.submit') }}
+        {{ submitting ? t('publish.submitting') : t('publish.update') }}
       </button>
     </view>
-
-    <CustomTabBar current="publish" />
+    <!--
+      No <CustomTabBar /> here — this is a non-tabbar subpage. Users
+      land here via uni.navigateTo from detail / profile and exit via
+      the back button or after a successful save (uni.navigateBack).
+    -->
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onUnmounted } from 'vue'
-import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
-import { watch } from 'vue'
+import { ref, reactive, watch } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
@@ -153,7 +164,6 @@ import { useTranslate } from '../../composables/useTranslate'
 import { friendlyErrorMessage } from '../../utils'
 import type { ItemCategory, ItemCondition } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
-import CustomTabBar from '../../components/CustomTabBar.vue'
 
 const { t, lang } = useI18n()
 const { CAMPUS_SPOTS } = useCampusSpots()
@@ -163,21 +173,21 @@ function spotLabel(spot: CampusSpot) {
 }
 const { detectLocation, detecting: detectingLoc } = useLocation()
 const { requireAuth } = useAuth()
-const { createItem, updateItem, fetchItem, uploadImagesWithDims, fetchItems } = useItems()
+const { updateItem, fetchItem, uploadImagesWithDims } = useItems()
 const { translateItemContent } = useTranslate()
 
+const editId = ref('')
+
+function goBack() { uni.navigateBack() }
+
 /*
- * Fire-and-forget bilingual filler.
- *
- * Publish UX must not block on translation — the endpoint can be cold
- * (8s) and we already pay 5-10s for moderation. So we insert the row
- * with only the source-language entry in title_i18n, pop the success
- * toast immediately, and THEN ask the translator to fill the other
- * locale(s) and patch the row via updateItem. If the network drops or
- * the endpoint returns garbage, the i18n map stays partial and the
- * reader-side fallback (`map[lang] ?? original`) simply shows the
- * author's original text in whatever language they typed it in — not
- * a regression from the pre-migration state.
+ * Fire-and-forget bilingual filler — same pattern as publish/index.vue.
+ * Save UX must not block on translation. The user sees "Updated!" toast
+ * and navigateBack immediately; the translator runs in the background
+ * and patches title_i18n / description_i18n via updateItem if it gets
+ * back something useful before the page unloads. If it fails, the
+ * existing reader-side fallback (`map[lang] ?? original`) keeps showing
+ * the author's text in whatever language they typed.
  */
 async function scheduleBilingualFill(
   itemId: string,
@@ -194,7 +204,6 @@ async function scheduleBilingualFill(
     })
     const titleKeys = Object.keys(title_i18n)
     const descKeys = Object.keys(description_i18n)
-    // Nothing new — author-only map already in DB.
     if (titleKeys.length <= 1 && descKeys.length <= 1) return
 
     await updateItem(itemId, {
@@ -202,7 +211,7 @@ async function scheduleBilingualFill(
       description_i18n: Object.keys(description_i18n).length ? description_i18n : null,
     })
   } catch (err) {
-    console.warn('[publish] bilingual fill skipped:', err)
+    console.warn('[publish-edit] bilingual fill skipped:', err)
   }
 }
 
@@ -233,15 +242,6 @@ watch(() => form.location, () => {
   locationVerified.value = false
 })
 
-/*
- * Tag toggle handlers: tapping the currently-active pill clears the
- * selection (form.category / form.condition becomes ''). This is what
- * lets users escape the "I picked a category by mistake, now the form
- * is permanently dirty" trap. The pill's active style adds a × hint
- * (see .sel-pill.active::after in the scoped styles) to advertise
- * that re-tapping unselects. Sheet auto-closes on either path so the
- * user immediately sees the field returning to its placeholder state.
- */
 function onCategoryTap(cat: ItemCategory) {
   form.category = form.category === cat ? '' : cat
   showCat.value = false
@@ -252,11 +252,51 @@ function onConditionTap(cond: string) {
 }
 
 /*
- * Edit-mode entry was split into pages/publish/edit.vue (registered as
- * a non-tabbar subpage in pages.json). This file is now exclusively the
- * tabbar "Post" entry for new-listing creation; an onLoad here would
- * only ever see options without an edit id and is not needed.
+ * Edit-mode load: read ?id=<itemId> and prefill the form from the
+ * existing row. If the id is missing OR fetchItem rejects (item
+ * deleted, RLS denies, network blip), surface a friendly toast and
+ * auto-navigate back instead of leaving the user on a stuck-empty
+ * form with a Save button that would fail server-side anyway.
+ *
+ * The bare `?id=` requirement is enforced first because reaching this
+ * page without an id is illegitimate — the only callers are detail
+ * and profile, both of which always pass an id. A bare URL means a
+ * hand-crafted attempt or a stale deep link; same UX response works.
  */
+onLoad(async (options) => {
+  if (!options?.id) {
+    uni.showToast({
+      title: t('publish.editFetchFailed'),
+      icon: 'none',
+      duration: 2000,
+    })
+    setTimeout(() => uni.navigateBack(), 1500)
+    return
+  }
+  editId.value = options.id
+  try {
+    const item = await fetchItem(options.id)
+    form.title = item.title
+    form.description = item.description
+    form.price = String(item.price)
+    form.category = item.category
+    form.condition = item.condition
+    form.location = item.location
+    form.negotiable = item.negotiable ?? false
+    imageList.value = [...item.images]
+    const verifiedOnLoad = !!(item as any).location_verified
+    queueMicrotask(() => { locationVerified.value = verifiedOnLoad })
+  } catch (err) {
+    console.error('[publish-edit] fetch item failed:', err)
+    uni.showToast({
+      title: t('publish.editFetchFailed'),
+      icon: 'none',
+      duration: 2000,
+    })
+    setTimeout(() => uni.navigateBack(), 1500)
+    return
+  }
+})
 
 watch(() => form.category, async (cat) => {
   if (!cat) { avgPrice.value = 0; return }
@@ -267,165 +307,6 @@ watch(() => form.category, async (cat) => {
 })
 
 const MAX_IMAGES_PUBLISH = 9
-
-/* ---------- Draft save ----------
-   Persist in-progress form data to local storage so users don't lose
-   work when they accidentally tap a tabbar icon mid-compose. Scoped to
-   new-item mode only (edit mode has a live item row already). */
-const DRAFT_KEY = 'publish_draft_v1'
-
-const isDirty = computed(() => {
-  return (
-    form.title.trim().length > 0 ||
-    form.description.trim().length > 0 ||
-    form.price.trim().length > 0 ||
-    form.category !== '' ||
-    form.condition !== '' ||
-    form.negotiable !== false ||
-    imageList.value.length > 0
-  )
-})
-
-function saveDraft() {
-  try {
-    uni.setStorageSync(DRAFT_KEY, {
-      form: { ...form },
-      images: [...imageList.value],
-      savedAt: Date.now(),
-    })
-  } catch { /* storage full / private mode — ignore */ }
-}
-
-function clearDraft() {
-  try { uni.removeStorageSync(DRAFT_KEY) } catch { /* ignore */ }
-}
-
-type PublishDraft = { form: Record<string, any>; images: string[]; savedAt: number }
-
-function loadDraft(): PublishDraft | null {
-  try {
-    const raw = uni.getStorageSync(DRAFT_KEY)
-    if (!raw || typeof raw !== 'object') return null
-    return raw as PublishDraft
-  } catch { return null }
-}
-
-function applyDraft(draft: { form: any; images: string[] }) {
-  Object.assign(form, draft.form)
-  imageList.value = [...(draft.images || [])]
-  uni.showToast({ title: t('publish.draftRestored'), icon: 'none' })
-}
-
-/*
- * Reset all form state to defaults — used after the user picks "Save"
- * or "Discard" in the draft prompt. Critical: without this reset the
- * form stays dirty after the prompt closes, which means the recursive
- * uni.switchTab() inside promptSaveDraft's onDecided callback would
- * trigger the SAME tab guard, the SAME prompt, and uni.showModal's
- * single-instance lock would swallow the second modal silently — user
- * sees "stuck on publish, second tap does nothing". Resetting first
- * makes isDirty=false, so the recursive switchTab passes through the
- * guard cleanly.
- */
-function resetForm() {
-  form.title = ''
-  form.description = ''
-  form.price = ''
-  form.category = ''
-  form.condition = ''
-  form.location = 'UIUC'
-  form.negotiable = false
-  imageList.value = []
-}
-
-function promptSaveDraft(onDecided: () => void) {
-  uni.showModal({
-    title: t('publish.draftPromptTitle'),
-    content: t('publish.draftPromptBody'),
-    confirmText: t('publish.draftSave'),
-    cancelText: t('publish.draftDiscard'),
-    confirmColor: '#2A2A2E',
-    success: (r) => {
-      if (r.confirm) {
-        saveDraft()
-        resetForm()
-        uni.showToast({ title: t('publish.draftSaved'), icon: 'none' })
-      } else if (r.cancel) {
-        clearDraft()
-        resetForm()
-      } else {
-        // Modal dismissed without a clear confirm/cancel (rare on H5
-        // but possible on mp). Don't navigate — leave the form alone
-        // and let the user try again. Equivalent to fail() below.
-        pendingTabUrl = ''
-        return
-      }
-      onDecided()
-    },
-    /*
-     * Modal failed to show at all (very rare — usually means uni runtime
-     * is in a degraded state). Don't auto-navigate; clear the pending
-     * URL so the next tab tap starts fresh instead of silently jumping.
-     */
-    fail: () => { pendingTabUrl = '' },
-  })
-}
-
-/* Tabbar uses uni.switchTab, which bypasses navigation guards. The
-   official escape hatch is uni.addInterceptor('switchTab'). Scope the
-   interceptor to this page's lifetime so other pages don't inherit it. */
-let switchTabInterceptor: { invoke: (args: any) => boolean } | null = null
-let pendingTabUrl = ''
-
-function installTabGuard() {
-  if (switchTabInterceptor) return
-  switchTabInterceptor = {
-    invoke(args: { url: string }) {
-      /* Staying on the publish tab itself shouldn't trigger the prompt. */
-      if (args.url && args.url.includes('/pages/publish/index')) return true
-      if (!isDirty.value) return true
-      pendingTabUrl = args.url
-      promptSaveDraft(() => {
-        if (pendingTabUrl) {
-          const url = pendingTabUrl
-          pendingTabUrl = ''
-          uni.switchTab({ url })
-        }
-      })
-      return false
-    },
-  }
-  uni.addInterceptor('switchTab', switchTabInterceptor)
-}
-
-function removeTabGuard() {
-  if (switchTabInterceptor) {
-    uni.removeInterceptor('switchTab')
-    switchTabInterceptor = null
-  }
-}
-
-onShow(() => {
-  const draft = loadDraft()
-  if (draft && !isDirty.value) {
-    uni.showModal({
-      title: t('publish.draftRestoreTitle'),
-      content: t('publish.draftRestoreBody'),
-      confirmText: t('publish.draftRestore'),
-      cancelText: t('publish.draftDiscard'),
-      confirmColor: '#2A2A2E',
-      success: (r) => {
-        if (r.confirm) applyDraft(draft)
-        else if (r.cancel) clearDraft()
-      },
-    })
-  }
-  installTabGuard()
-})
-
-onHide(() => { removeTabGuard() })
-onUnload(() => { removeTabGuard() })
-onUnmounted(() => { removeTabGuard() })
 
 function chooseImage() {
   const remaining = MAX_IMAGES_PUBLISH - imageList.value.length
@@ -438,10 +319,6 @@ function chooseImage() {
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
     success: (res) => {
-      /* On H5 the `count` hint is advisory — the underlying <input
-         type="file" multiple> lets users pick unlimited files. Enforce
-         the cap here and surface it to the user (WeChat-style) instead
-         of silently truncating. */
       const picked = res.tempFilePaths || []
       const accepted = picked.slice(0, remaining)
       const dropped = picked.length - accepted.length
@@ -464,54 +341,24 @@ function removeImage(index: number) {
 async function onDetectLocation() {
   const loc = await detectLocation()
   if (!loc) return
-  console.log('[publish-debug] location detected via geolocation:', loc, 'prevLocation:', form.location)
+  console.log('[publish-edit-debug] location detected via geolocation:', loc, 'prevLocation:', form.location)
   form.location = loc
   const spot = matchSpot(loc)
   locationVerified.value = !!(spot && spot.safe)
 }
 
-/*
- * Trace shim around the spot-chip tap path.
- *
- * Investigating user-reported "selected location but the listing
- * details show empty/UIUC default" — static analysis finds no
- * obvious cause: chip click sets form.location, payload includes it,
- * createItem inserts it, detail page reads it. Logging the actual
- * values seen at runtime is the cheapest way to isolate which
- * link in that chain is breaking. Three possibilities the trace
- * will distinguish:
- *
- *   1. Chip @click never fires → the log line below is missing
- *      from the user's console paste; problem is event binding.
- *   2. Chip fires but assignment doesn't stick → log shows the
- *      label being assigned, but the submit-time form.location log
- *      shows the default 'UIUC' or empty; problem is reactivity.
- *   3. Assignment sticks all the way to payload but DB write loses
- *      it → submit + payload logs show the right value but the
- *      createItem-result log shows location empty / default;
- *      problem is server-side (RLS column projection, trigger).
- *
- * The function name `onSpotChipTap` (vs an inline expression in the
- * template) also gives the user a single point to add a breakpoint
- * to from devtools without re-reading template diff.
- */
 function onSpotChipTap(spot: CampusSpot) {
   const label = spotLabel(spot)
-  console.log('[publish-debug] spot chip tapped:', { id: spot.id, label, prevLocation: form.location })
+  console.log('[publish-edit-debug] spot chip tapped:', { id: spot.id, label, prevLocation: form.location })
   form.location = label
 }
 
 async function onSubmit() {
   if (!requireAuth()) return
-  // Required-field hard blocks — order matches form visual top-to-bottom flow
   if (!form.title.trim()) { uni.showToast({ title: t('publish.needTitle'), icon: 'none' }); return }
   if (!form.price || Number(form.price) < 0) { uni.showToast({ title: t('publish.needPrice'), icon: 'none' }); return }
   if (!form.category) { uni.showToast({ title: t('publish.needCategory'), icon: 'none' }); return }
   if (!form.condition) { uni.showToast({ title: t('publish.needCondition'), icon: 'none' }); return }
-  // Soft gating — price advisory uses modal confirm so user must ack but can continue.
-  // Mirrors the currency_exchange scam-warning modal below (same uni.showModal style).
-  // 100,000 is a soft ceiling; 99% of trips above it are unit/decimal mistakes,
-  // and user actively confirming is cheap insurance.
   if (Number(form.price) > 100000) {
     const confirmed = await new Promise<boolean>((resolve) => {
       uni.showModal({
@@ -527,20 +374,13 @@ async function onSubmit() {
     if (!confirmed) return
   }
 
-  if (form.category === 'currency_exchange') {
-    const confirmed = await new Promise<boolean>((resolve) => {
-      uni.showModal({
-        title: t('scam.publishTitle'),
-        content: t('scam.publishBody'),
-        confirmText: t('scam.publishAgree'),
-        cancelText: t('scam.publishCancel'),
-        confirmColor: 'var(--accent-warn)',
-        success: (r) => resolve(!!r.confirm),
-        fail: () => resolve(false),
-      })
-    })
-    if (!confirmed) return
-  }
+  /*
+   * No currency_exchange scam-warning modal here — the original guard
+   * in publish/index.vue was already gated `!isEdit.value` (don't
+   * re-warn on every edit), and currency_exchange is not selectable
+   * in the pill grid anyway (anomaly F, out of scope). Carrying the
+   * dead guard into this file would just be noise.
+   */
 
   submitting.value = true
   uploadProgress.value = 0
@@ -552,7 +392,7 @@ async function onSubmit() {
       if (img.startsWith('http')) existing.push(img)
       else toUpload.push(img)
     }
-    console.log('[publish-debug] images split — existing:', existing.length, 'toUpload:', toUpload.length)
+    console.log('[publish-edit-debug] images split — existing:', existing.length, 'toUpload:', toUpload.length)
 
     let uploaded: string[] = []
     let uploadedDims: Array<{ w: number; h: number }> = []
@@ -562,18 +402,15 @@ async function onSubmit() {
         uploaded = res.urls
         uploadedDims = res.dims
       } catch (upErr: any) {
-        console.warn('[publish-debug] upload threw:', upErr)
+        console.warn('[publish-edit-debug] upload threw:', upErr)
         if (upErr?.heic === true) throw new Error(t('heic.unsupported'))
         throw new Error(upErr?.message || t('publish.uploadFailed'))
       }
       uploadProgress.value = 100
-      console.log('[publish-debug] uploaded:', uploaded.length, '/', toUpload.length)
+      console.log('[publish-edit-debug] uploaded:', uploaded.length, '/', toUpload.length)
       if (uploaded.length === 0) {
         throw new Error(t('publish.uploadFailed'))
       }
-      /* Diagnostic: surface partial upload failures that would otherwise be
-         swallowed. uploadImagesWithDims() catches per-file errors and skips
-         them, so uploaded.length < toUpload.length means some images were lost. */
       if (uploaded.length < toUpload.length) {
         uni.showToast({
           title: `${uploaded.length}/${toUpload.length} images uploaded`,
@@ -584,14 +421,6 @@ async function onSubmit() {
     }
 
     const images = [...existing, ...uploaded]
-    /*
-     * image_dimensions covers ONLY the newly uploaded images in this
-     * call; pre-existing URLs (edit flow) don't get dimensions because
-     * we can't reliably measure arbitrary remote URLs client-side. The
-     * frontend still falls back to @load for those, so leaving their
-     * slots absent is correct. We use `null` pads rather than zeros so
-     * consumers can distinguish "unknown" from "0×0".
-     */
     const existingDims: Array<{ w: number; h: number } | null> = existing.map(() => null)
     const finalDims = [...existingDims, ...uploadedDims].filter(
       (d): d is { w: number; h: number } => !!d && d.w > 0 && d.h > 0,
@@ -599,20 +428,10 @@ async function onSubmit() {
 
     const trimmedTitle = form.title.trim()
     const trimmedDesc = form.description.trim()
-    // Author-language is today's UI locale. Settings is the only place a
-    // user can change it, so this is a correct proxy for "what language
-    // did they think in while writing this listing".
     const sourceLang = lang.value
 
-    /*
-     * Diagnostic snapshot of the form state at submit time. Pairs
-     * with the spot-chip + detect-location traces above to isolate
-     * the "user picked a location but it didn't persist" report.
-     * Truncates verbose fields (title/description/images URLs) so
-     * the log line stays readable when pasted from the user's H5
-     * devtools console.
-     */
-    console.log('[publish-debug] submit prep — form snapshot:', {
+    console.log('[publish-edit-debug] submit prep — form snapshot:', {
+      editId: editId.value,
       title: trimmedTitle.slice(0, 40),
       category: form.category,
       condition: form.condition,
@@ -633,8 +452,6 @@ async function onSubmit() {
       location: form.location || 'UIUC',
       images,
       image_dimensions: finalDims,
-      // Seed the i18n maps with the original text in the source lang.
-      // The async translation pass below adds the other language(s).
       title_i18n: trimmedTitle ? { [sourceLang]: trimmedTitle } : null,
       description_i18n: trimmedDesc ? { [sourceLang]: trimmedDesc } : null,
       source_lang: sourceLang,
@@ -642,42 +459,23 @@ async function onSubmit() {
       location_verified: locationVerified.value,
     }
 
-    /*
-     * Same trace, post-payload-construction. Compare the location
-     * value here against the form.location above — if they diverge,
-     * the `|| 'UIUC'` fallback was hit (form.location was falsy at
-     * submit time despite the user appearing to have selected one).
-     */
-    console.log('[publish-debug] submit prep — payload location field:', {
+    console.log('[publish-edit-debug] submit prep — payload location field:', {
       payloadLocation: payload.location,
       payloadLocationVerified: payload.location_verified,
       finalImagesCount: payload.images.length,
     })
 
-    const newItem = await createItem(payload)
-    console.log('[publish-debug] createItem returned — DB row location:', newItem?.location, 'id:', newItem?.id)
-    uploadProgress.value = 0
-    form.title = ''; form.description = ''; form.price = ''
-    form.category = ''; form.condition = ''; form.location = 'UIUC'
-    form.negotiable = false; imageList.value = []
-    clearDraft()
-    uni.showToast({ title: t('publish.success'), icon: 'success' })
-    scheduleBilingualFill(newItem.id, trimmedTitle, trimmedDesc, sourceLang)
-    setTimeout(() => {
-      uni.navigateTo({ url: `/pages/detail/index?id=${newItem.id}` })
-    }, 1000)
+    const updated = await updateItem(editId.value, { ...payload })
+    console.log('[publish-edit-debug] updateItem returned — DB row location:', updated?.location, 'id:', updated?.id)
+    uni.showToast({ title: t('publish.updated'), icon: 'success' })
+    scheduleBilingualFill(editId.value, trimmedTitle, trimmedDesc, sourceLang)
+    setTimeout(() => uni.navigateBack(), 1500)
   } catch (error: any) {
-    // Backend createItem/updateItem in useItems.ts throw 'Invalid price' when
-    // input.price > 1,000,000 (the hard cap, defense-in-depth above the 100k
-    // soft ceiling enforced by the modal earlier in onSubmit). Translate to a
-    // user-friendly toast that names the actual limit so users know what to do
-    // — the raw 'Invalid price' string is too terse and doesn't tell the user
-    // whether they hit a min, max, or some other constraint.
     if (error?.message === 'Invalid price') {
       uni.showToast({ title: t('publish.priceExceedsLimit'), icon: 'none', duration: 3000 })
       return
     }
-    console.error('Publish error:', error)
+    console.error('Publish-edit error:', error)
     uni.showToast({
       title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('publish.fail'),
       icon: 'none',
@@ -697,21 +495,37 @@ async function onSubmit() {
   padding-bottom: calc(72px + 62px); max-width: 480px; margin: 0 auto;
 }
 
-/* ========== Header ========== */
-.page-header {
-  padding: 11px 16px;
-  padding-top: calc(11px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
-  background: rgba(var(--surface-rgb), 0.92);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-bottom: 0.5px solid var(--line-hair);
+/*
+  ========== Header (subpage style with back button) ==========
+  Replaces the sticky title-only .page-header used in publish/index.vue.
+  Mirrors pages/profile/edit.vue's header so the two edit-flow subpages
+  have a consistent shape. .header-title gets padding-right equal to
+  the back-btn width (32px) so the title is visually centered without
+  needing a right-side spacer view.
+*/
+.header {
+  display: flex; align-items: center; padding: 12px 16px;
+  padding-top: calc(12px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
+  background: var(--bg-elev-1); border-bottom: 0.5px solid var(--line-hair);
   position: sticky; top: 0; z-index: 50;
 }
-.ph-title { font-size: 17px; font-weight: 700; color: var(--text-primary); }
+.back-btn {
+  width: 32px; height: 32px; display: flex;
+  align-items: center; justify-content: center; cursor: pointer;
+}
+.back-arrow {
+  width: 9px; height: 9px;
+  border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary);
+  transform: rotate(45deg); margin-left: 4px;
+}
+.header-title {
+  flex: 1; text-align: center; font-size: 17px; font-weight: 600;
+  color: var(--text-primary); padding-right: 32px;
+}
 
-@media (min-width: 768px) { .page-header { display: none; } }
+@media (min-width: 768px) { .header { display: none; } }
 
-/* ========== Form ========== */
+/* ========== Form (verbatim from publish/index.vue) ========== */
 .form { background: var(--bg-elev-1); }
 .image-section { padding: 16px; }
 .image-list { display: flex; flex-wrap: wrap; gap: 9px; }
@@ -782,10 +596,6 @@ async function onSubmit() {
   border-bottom: 0.5px solid var(--line-hair);
   &.row { display: flex; align-items: center; }
 }
-/* Labels need a min-width so short Chinese labels (分类 / 成色 / 价格) line
-   up vertically across rows, but a fixed width breaks longer English labels
-   (Category / Condition / Location). min-width + flex-shrink: 0 + padding-right
-   gives both: ZH locks to the 64px floor, EN grows past it without wrapping. */
 .label { font-size: 15px; color: var(--text-primary); min-width: 64px; flex-shrink: 0; font-weight: 500; padding-right: 8px; }
 .form-input { font-size: 15px; width: 100%; color: var(--text-primary); }
 .title-input { font-size: 17px; font-weight: 600; }
@@ -825,9 +635,6 @@ async function onSubmit() {
   position: relative;
   &.active {
     background: var(--accent-primary); color: #fff;
-    /* × hint: tells the user "tap again to deselect". Pure CSS, no
-       icon dep. Only renders on active state so the inactive pill
-       layout stays unchanged. */
     padding-right: 26px;
     &::after {
       content: '×';
@@ -916,7 +723,15 @@ async function onSubmit() {
 }
 .toggle.on .toggle-knob { transform: translateX(18px); }
 
-/* ========== Submit ========== */
+/*
+  ========== Submit (Hybrid header decision) ==========
+  This subpage keeps the bottom .submit-bar with the "Save Changes"
+  button instead of moving Save into the top header. The 56px bottom
+  offset accounts for the absent CustomTabBar — but mp-weixin and H5
+  agree: position:fixed / safe-area-inset-bottom is the same calc as
+  publish/index.vue. Kept identical so users get muscle-memory match
+  with the new-publish flow.
+*/
 .submit-bar {
   position: fixed; bottom: calc(56px + env(safe-area-inset-bottom, 0px));
   left: 50%; transform: translateX(-50%);

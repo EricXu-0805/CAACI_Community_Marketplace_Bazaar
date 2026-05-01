@@ -25,6 +25,12 @@
 			}
 		},
 		{
+			"path": "pages/publish/edit",
+			"style": {
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/messages/index",
 			"style": {
 				"navigationStyle": "custom",

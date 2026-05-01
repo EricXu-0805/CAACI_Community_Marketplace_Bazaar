@@ -439,7 +439,7 @@ function goDetail(id: string) {
 }
 
 function goEdit(id: string) {
-  uni.navigateTo({ url: `/pages/publish/index?edit=${id}` })
+  uni.navigateTo({ url: `/pages/publish/edit?id=${id}` })
 }
 
 function onEditProfile() { uni.navigateTo({ url: '/pages/profile/edit' }) }

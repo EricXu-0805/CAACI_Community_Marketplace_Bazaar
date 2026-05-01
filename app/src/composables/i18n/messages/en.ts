@@ -156,6 +156,7 @@ const en: Record<string, string> = {
   'publish.submitting': 'Posting...',
   'publish.success': 'Posted!',
   'publish.fail': 'Failed to post',
+  'publish.editFetchFailed': "Couldn't load this listing — it may have been removed",
   'publish.editTitle': 'Edit Item',
   'publish.update': 'Save Changes',
   'publish.updated': 'Updated!',
