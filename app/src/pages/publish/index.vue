@@ -521,11 +521,29 @@ function onSpotChipTap(spot: CampusSpot) {
 
 async function onSubmit() {
   if (!requireAuth()) return
+  // Required-field hard blocks — order matches form visual top-to-bottom flow
   if (!form.title.trim()) { uni.showToast({ title: t('publish.needTitle'), icon: 'none' }); return }
   if (!form.price || Number(form.price) < 0) { uni.showToast({ title: t('publish.needPrice'), icon: 'none' }); return }
-  if (Number(form.price) > 100000) { uni.showToast({ title: t('publish.priceTooHigh'), icon: 'none' }); return }
   if (!form.category) { uni.showToast({ title: t('publish.needCategory'), icon: 'none' }); return }
   if (!form.condition) { uni.showToast({ title: t('publish.needCondition'), icon: 'none' }); return }
+  // Soft gating — price advisory uses modal confirm so user must ack but can continue.
+  // Mirrors the currency_exchange scam-warning modal below (same uni.showModal style).
+  // 100,000 is a soft ceiling; 99% of trips above it are unit/decimal mistakes,
+  // and user actively confirming is cheap insurance.
+  if (Number(form.price) > 100000) {
+    const confirmed = await new Promise<boolean>((resolve) => {
+      uni.showModal({
+        title: t('publish.priceTooHigh'),
+        content: t('publish.priceTooHighBody'),
+        confirmText: t('publish.priceTooHighConfirm'),
+        cancelText: t('publish.priceTooHighCancel'),
+        confirmColor: 'var(--accent-warn)',
+        success: (r) => resolve(!!r.confirm),
+        fail: () => resolve(false),
+      })
+    })
+    if (!confirmed) return
+  }
 
   if (form.category === 'currency_exchange' && !isEdit.value) {
     const confirmed = await new Promise<boolean>((resolve) => {
