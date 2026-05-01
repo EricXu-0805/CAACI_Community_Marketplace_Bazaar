@@ -234,6 +234,50 @@ export function useItems() {
       throw new Error('Invalid price')
     }
 
+    // Mirror createItem's length guards (lines 187-188). Without these a
+    // user could create a short listing then edit the text fields past
+    // the limits — closes anomaly E from the handoff.
+    if (updates.title !== undefined && updates.title.length > 200) {
+      throw new Error('Title too long')
+    }
+    if (updates.description !== undefined && updates.description.length > 2000) {
+      throw new Error('Description too long')
+    }
+
+    /*
+     * Mirror createItem's moderation pipeline (lines 191-201) so users
+     * cannot bypass AI/keyword screening by posting a clean listing
+     * then editing title/description to sensitive content. Each guard
+     * short-circuits on `!== undefined` so non-text edits — price-only,
+     * image-only, location-only, status flips via updateItemStatus,
+     * and the post-publish bilingual i18n fill from scheduleBilingualFill
+     * (publish/index.vue:203) — pay zero moderation cost and stay fast.
+     *
+     * Error strings match createItem byte-exact so friendlyErrorMessage
+     * (utils/index.ts:87) translates them with the existing keys; no
+     * new i18n entries needed. The DB-side trg_moderate_items trigger
+     * (migrations 024 / 033) is a defense-in-depth layer that catches
+     * keyword hits at the SQL boundary but does NOT call OpenAI — this
+     * client gate is what closes the AI-tier portion of the bypass.
+     */
+    if (updates.title !== undefined) {
+      const titleCheck = checkContent(updates.title, { kind: 'item_title' })
+      if (!titleCheck.ok) throw new Error(`moderation_block:${titleCheck.category}:${titleCheck.reason || ''}`)
+    }
+    if (updates.description !== undefined && updates.description) {
+      const descCheck = checkContent(updates.description, { kind: 'item_desc' })
+      if (!descCheck.ok) throw new Error(`moderation_block:${descCheck.category}:${descCheck.reason || ''}`)
+    }
+    if (updates.title !== undefined || updates.description !== undefined) {
+      const aiInput = [updates.title, updates.description]
+        .filter((v): v is string => typeof v === 'string' && v.length > 0)
+        .join('\n')
+      if (aiInput.length > 0) {
+        const ai = await remoteModerate(aiInput)
+        if (ai.flagged) throw new Error(`moderation_block:sensitive_word:ai(${ai.categories.join(',')})`)
+      }
+    }
+
     const { data, error } = await supabase
       .from('items')
       .update(updates)
