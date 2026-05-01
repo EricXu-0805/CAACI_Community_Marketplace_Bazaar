@@ -552,6 +552,7 @@ page,
   --campus-blue:      #13294B;
   --campus-blue-soft: #E5EAF2;
   --campus-blue-deep: #0A1A33;
+  --campus-blue-surface: #13294B;
   --campus-orange:    #FF5F05;
   --campus-orange-deep: #B33D00;
   --campus-orange-soft: #FFF1E6;
@@ -927,6 +928,7 @@ button:focus-visible,
   --campus-blue:      #13294B;
   --campus-blue-soft: #E5EAF2;
   --campus-blue-deep: #0A1A33;
+  --campus-blue-surface: #13294B;
   --campus-orange:    #FF5F05;   /* canonical Illini Orange */
   --campus-orange-deep: #B33D00; /* Altgeld — AA on light gray */
   --campus-orange-soft: #FFF1E6;
@@ -1095,6 +1097,7 @@ button:focus-visible,
   --campus-blue:      #6A8AC2;
   --campus-blue-soft: rgba(106, 138, 194, 0.15);
   --campus-blue-deep: #4A6BA0;
+  --campus-blue-surface: #13294B;
   --campus-orange:    #FF7B33;
   --campus-orange-deep: #FF9560;
   --campus-orange-soft: rgba(255, 123, 51, 0.15);
@@ -1168,6 +1171,7 @@ button:focus-visible,
     --campus-blue:      #6A8AC2;
     --campus-blue-soft: rgba(106, 138, 194, 0.15);
     --campus-blue-deep: #4A6BA0;
+    --campus-blue-surface: #13294B;
     --campus-orange:    #FF7B33;
     --campus-orange-deep: #FF9560;
     --campus-orange-soft: rgba(255, 123, 51, 0.15);

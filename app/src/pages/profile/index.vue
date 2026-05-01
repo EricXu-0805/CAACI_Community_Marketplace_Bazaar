@@ -581,12 +581,15 @@ function onDeleteItem(id: string) {
 
 /* ===== User card (米白书院 passport pattern) =====
  *
- * Deep UIUC-navy panel (pinned to --campus-blue, NOT to --ink)
- * so it stays navy in BOTH light and dark mode instead of
- * flipping ink→cream and becoming unreadable. Ivory text on
- * navy is the stable "passport" read. Light mode: navy on
- * cream, high contrast. Dark mode: navy on near-black — still
- * distinct because navy has cool hue vs the warm dark canvas.
+ * Deep UIUC-navy panel pinned to --campus-blue-surface, a constant
+ * that does NOT lift in dark mode (always #13294B). The plain
+ * --campus-blue token DOES lift to a periwinkle (#6A8AC2) in dark
+ * for verified-badge text legibility on soft surfaces — using it
+ * here would make this large panel float visually on dark canvas,
+ * breaking the "passport" read. --campus-blue-surface stays navy
+ * in BOTH modes. Light: navy on cream, high contrast. Dark: navy
+ * on near-black — still distinct because navy has cool hue vs the
+ * warm dark canvas.
  *
  * Seal arc + avatar shadow use hardcoded Illini-orange alpha
  * (not var(--brand)) so they stay the same warm terracotta
@@ -594,7 +597,7 @@ function onDeleteItem(id: string) {
  */
 .user-card {
   position: relative;
-  background: var(--campus-blue);
+  background: var(--campus-blue-surface);
   border-radius: var(--radius-xl);
   margin-top: 10px;
   padding: 22px 18px 0;
