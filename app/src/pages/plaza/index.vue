@@ -286,11 +286,12 @@
                 :placeholder="replyTo ? t('plaza.replyHint') : t('plaza.commentHint')"
                 confirm-type="send"
                 :focus="inputFocused"
-                :cursor-spacing="20"
-                :adjust-position="true"
+                :cursor-spacing="0"
+                :adjust-position="false"
                 @focus="inputFocused = true"
                 @blur="inputFocused = false"
                 @confirm="onSubmitComment"
+                @keyup.enter="onSubmitComment"
                 maxlength="1000"
               />
               <view :class="['ci-send', { disabled: !commentText.trim() || commentSubmitting }]" role="button" :aria-label="t('a11y.sendMessage')" @click.stop="onSubmitComment">
