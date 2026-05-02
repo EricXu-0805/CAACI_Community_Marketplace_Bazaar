@@ -409,7 +409,6 @@ const en: Record<string, string> = {
   'plaza.delete': 'Delete',
   'plaza.deleteConfirm': 'Delete this post?',
   'plaza.commentDeleteConfirm': 'Delete this comment?',
-  'plaza.report': 'Report',
   'plaza.share': 'Share',
   'plaza.contentCopied': 'Content copied',
   'plaza.replyingTo': 'Replying to',

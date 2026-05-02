@@ -452,7 +452,9 @@ const commentLongPress = useLongPress<[PostComment]>((c) => onCommentLongPress(c
 function onCommentLongPress(c: PostComment) {
   if (!currentUser.value) return
   const isMine = c.user_id === currentUser.value.id
-  const items = isMine ? [t('plaza.delete')] : [t('plaza.reply'), t('plaza.report')]
+  const items = isMine
+    ? [t('plaza.delete')]
+    : [t('plaza.reply'), t('plaza.reportComment'), t('plaza.reportUser')]
   uni.showActionSheet({
     itemList: items,
     itemColor: isMine ? 'var(--accent-danger)' : '#2A2A2E',
@@ -474,6 +476,8 @@ function onCommentLongPress(c: PostComment) {
       } else if (!isMine && res.tapIndex === 0) {
         replyTo.value = c
       } else if (!isMine && res.tapIndex === 1) {
+        promptReport('comment', c.id)
+      } else if (!isMine && res.tapIndex === 2) {
         promptReportUser(c.user_id)
       }
     },

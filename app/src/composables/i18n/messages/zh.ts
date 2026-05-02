@@ -409,7 +409,6 @@ const zh: Record<string, string> = {
   'plaza.delete': '删除',
   'plaza.deleteConfirm': '删除这条动态？',
   'plaza.commentDeleteConfirm': '删除这条评论？',
-  'plaza.report': '举报',
   'plaza.share': '分享',
   'plaza.contentCopied': '内容已复制',
   'plaza.replyingTo': '回复',
