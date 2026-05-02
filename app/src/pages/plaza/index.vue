@@ -181,6 +181,127 @@
               <view class="share-ico"></view>
             </view>
           </view>
+
+          <!-- Inline comments expansion (D1 Strategy B: single-active accordion).
+               @click.stop on root + every interactive child blocks the post-card
+               body's goPostDetail navigation handler (post-tappable @click). -->
+          <view v-if="commentingPost?.id === post.id" class="comments-inline" @click.stop>
+            <view class="ci-count-label">
+              <text>{{ t('plaza.commentCount', { count: comments.length }) }}</text>
+            </view>
+
+            <view v-if="loadingComments && comments.length === 0" class="ci-loading">
+              <text>{{ t('home.loading') }}</text>
+            </view>
+            <view v-else-if="comments.length === 0" class="ci-empty">
+              <text>{{ t('plaza.noComments') }}</text>
+            </view>
+
+            <template v-for="thread in commentThreads" :key="thread.parent.id">
+              <view
+                class="cs-item"
+                @touchstart="commentLongPress.onTouchstart(thread.parent)"
+                @touchend="commentLongPress.onTouchend"
+                @touchcancel="commentLongPress.onTouchcancel"
+                @touchmove="commentLongPress.onTouchmove"
+              >
+                <image
+                  :src="thread.parent.profile?.avatar_url || '/static/default-avatar.svg'"
+                  class="cs-avatar"
+                  mode="aspectFill"
+                  @click.stop="onCommentTap(thread.parent)"
+                />
+                <view class="cs-body" @click.stop="onCommentTap(thread.parent)">
+                  <view class="cs-top">
+                    <text class="cs-name">{{ thread.parent.profile?.nickname || t('app.user') }}</text>
+                    <text class="cs-time">{{ formatTime(thread.parent.created_at) }}</text>
+                  </view>
+                  <text class="cs-content">{{ thread.parent.content }}</text>
+                  <view class="cs-actions">
+                    <view class="cs-like-btn" role="button" :aria-label="thread.parent.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(thread.parent)">
+                      <image :src="thread.parent.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" class="cs-heart-img" />
+                      <text v-if="(thread.parent.like_count ?? 0) > 0" :class="['cs-like-num', { active: thread.parent.liked_by_me }]">{{ thread.parent.like_count }}</text>
+                    </view>
+                    <text class="cs-reply-btn" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
+                  </view>
+                </view>
+              </view>
+
+              <template v-if="thread.children.length > 0">
+                <view
+                  v-for="child in (expandedReplies.has(thread.parent.id) ? thread.children : thread.children.slice(0, 3))"
+                  :key="child.id"
+                  class="cs-item cs-item-child"
+                  @touchstart="commentLongPress.onTouchstart(child)"
+                  @touchend="commentLongPress.onTouchend"
+                  @touchcancel="commentLongPress.onTouchcancel"
+                  @touchmove="commentLongPress.onTouchmove"
+                >
+                  <image
+                    :src="child.profile?.avatar_url || '/static/default-avatar.svg'"
+                    class="cs-avatar"
+                    mode="aspectFill"
+                    @click.stop="onCommentTap(child)"
+                  />
+                  <view class="cs-body" @click.stop="onCommentTap(child)">
+                    <view class="cs-top">
+                      <text class="cs-name">{{ child.profile?.nickname || t('app.user') }}</text>
+                      <text class="cs-time">{{ formatTime(child.created_at) }}</text>
+                    </view>
+                    <text v-if="child.reply_to_name" class="cs-reply-ref">@{{ child.reply_to_name }}</text>
+                    <text class="cs-content">{{ child.content }}</text>
+                    <view class="cs-actions">
+                      <view class="cs-like-btn" role="button" :aria-label="child.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(child)">
+                        <image :src="child.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" class="cs-heart-img" />
+                        <text v-if="(child.like_count ?? 0) > 0" :class="['cs-like-num', { active: child.liked_by_me }]">{{ child.like_count }}</text>
+                      </view>
+                      <text class="cs-reply-btn" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
+                    </view>
+                  </view>
+                </view>
+
+                <view
+                  v-if="thread.children.length > 3"
+                  class="cs-expand-link cs-item-child"
+                  @click.stop="toggleReplies(thread.parent.id)"
+                >
+                  <text class="cs-expand-text">
+                    {{ expandedReplies.has(thread.parent.id)
+                        ? t('plaza.hideReplies')
+                        : t('plaza.viewMoreReplies', { count: thread.children.length - 3 }) }}
+                  </text>
+                </view>
+              </template>
+            </template>
+
+            <view v-if="replyTo" class="ci-reply-bar">
+              <text class="ci-reply-label">{{ t('plaza.replyingTo') }} @{{ replyTo.profile?.nickname || t('app.user') }}</text>
+              <view class="ci-reply-x" role="button" :aria-label="t('a11y.close')" @click.stop="replyTo = null"><view class="ci-rx"></view></view>
+            </view>
+
+            <view class="ci-input-bar">
+              <input
+                v-model="commentText"
+                class="ci-input"
+                :placeholder="replyTo ? t('plaza.replyHint') : t('plaza.commentHint')"
+                confirm-type="send"
+                :focus="inputFocused"
+                :cursor-spacing="20"
+                :adjust-position="true"
+                @focus="inputFocused = true"
+                @blur="inputFocused = false"
+                @confirm="onSubmitComment"
+                maxlength="1000"
+              />
+              <view :class="['ci-send', { disabled: !commentText.trim() || commentSubmitting }]" role="button" :aria-label="t('a11y.sendMessage')" @click.stop="onSubmitComment">
+                <text>{{ replyTo ? t('plaza.reply') : t('plaza.comment') }}</text>
+              </view>
+            </view>
+
+            <view class="ci-collapse-link" role="button" :aria-label="t('plaza.collapseComments')" @click.stop="closeComments">
+              <text class="ci-collapse-text">{{ t('plaza.collapseComments') }}</text>
+            </view>
+          </view>
         </view>
       </view>
 
@@ -271,120 +392,7 @@
       </scroll-view>
     </view>
 
-    <view v-if="commentingPost" class="sheet-mask" @click="closeComments"></view>
-    <view :class="['comments-sheet', { open: !!commentingPost }]">
-      <view class="cs-header">
-        <text class="cs-title">{{ t('plaza.comments') }} ({{ commentingPost?.comment_count || 0 }})</text>
-        <view class="cs-close" role="button" :aria-label="t('a11y.close')" @click="closeComments">
-          <view class="cs-x"></view>
-        </view>
-      </view>
-      <scroll-view class="cs-list" scroll-y>
-        <view v-if="comments.length === 0 && !loadingComments" class="cs-empty">
-          <text>{{ t('plaza.noComments') }}</text>
-        </view>
-        <template v-for="thread in commentThreads" :key="thread.parent.id">
-          <view
-            class="cs-item"
-            @touchstart="commentLongPress.onTouchstart(thread.parent)"
-            @touchend="commentLongPress.onTouchend"
-            @touchcancel="commentLongPress.onTouchcancel"
-            @touchmove="commentLongPress.onTouchmove"
-          >
-            <image
-              :src="thread.parent.profile?.avatar_url || '/static/default-avatar.svg'"
-              class="cs-avatar"
-              mode="aspectFill"
-              @click="onCommentTap(thread.parent)"
-            />
-            <view class="cs-body" @click="onCommentTap(thread.parent)">
-              <view class="cs-top">
-                <text class="cs-name">{{ thread.parent.profile?.nickname || t('app.user') }}</text>
-                <text class="cs-time">{{ formatTime(thread.parent.created_at) }}</text>
-              </view>
-              <text class="cs-content">{{ thread.parent.content }}</text>
-              <view class="cs-actions">
-                <view class="cs-like-btn" role="button" :aria-label="thread.parent.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(thread.parent)">
-                  <image :src="thread.parent.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" class="cs-heart-img" />
-                  <text v-if="(thread.parent.like_count ?? 0) > 0" :class="['cs-like-num', { active: thread.parent.liked_by_me }]">{{ thread.parent.like_count }}</text>
-                </view>
-                <text class="cs-reply-btn" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
-              </view>
-            </view>
-          </view>
-
-          <template v-if="thread.children.length > 0">
-            <view
-              v-for="child in (expandedReplies.has(thread.parent.id) ? thread.children : thread.children.slice(0, 3))"
-              :key="child.id"
-              class="cs-item cs-item-child"
-              @touchstart="commentLongPress.onTouchstart(child)"
-              @touchend="commentLongPress.onTouchend"
-              @touchcancel="commentLongPress.onTouchcancel"
-              @touchmove="commentLongPress.onTouchmove"
-            >
-              <image
-                :src="child.profile?.avatar_url || '/static/default-avatar.svg'"
-                class="cs-avatar"
-                mode="aspectFill"
-                @click="onCommentTap(child)"
-              />
-              <view class="cs-body" @click="onCommentTap(child)">
-                <view class="cs-top">
-                  <text class="cs-name">{{ child.profile?.nickname || t('app.user') }}</text>
-                  <text class="cs-time">{{ formatTime(child.created_at) }}</text>
-                </view>
-                <text v-if="child.reply_to_name" class="cs-reply-ref">@{{ child.reply_to_name }}</text>
-                <text class="cs-content">{{ child.content }}</text>
-                <view class="cs-actions">
-                  <view class="cs-like-btn" role="button" :aria-label="child.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(child)">
-                    <image :src="child.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" class="cs-heart-img" />
-                    <text v-if="(child.like_count ?? 0) > 0" :class="['cs-like-num', { active: child.liked_by_me }]">{{ child.like_count }}</text>
-                  </view>
-                  <text class="cs-reply-btn" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
-                </view>
-              </view>
-            </view>
-
-            <view
-              v-if="thread.children.length > 3"
-              class="cs-expand-link cs-item-child"
-              @click="toggleReplies(thread.parent.id)"
-            >
-              <text class="cs-expand-text">
-                {{ expandedReplies.has(thread.parent.id)
-                    ? t('plaza.hideReplies')
-                    : t('plaza.viewMoreReplies', { count: thread.children.length - 3 }) }}
-              </text>
-            </view>
-          </template>
-        </template>
-      </scroll-view>
-      <view v-if="replyTo" class="cs-reply-bar">
-        <text class="cs-reply-label">{{ t('plaza.replyingTo') }} @{{ replyTo.profile?.nickname || t('app.user') }}</text>
-        <view class="cs-reply-x" role="button" :aria-label="t('a11y.close')" @click="replyTo = null">
-          <view class="cs-rx"></view>
-        </view>
-      </view>
-      <view class="cs-input-bar">
-        <input
-          v-model="commentText"
-          :placeholder="replyTo ? t('plaza.replyHint') : t('plaza.commentHint')"
-          class="cs-input"
-          confirm-type="send"
-          :focus="inputFocused"
-          @focus="inputFocused = true"
-          @blur="inputFocused = false"
-          @confirm="onSubmitComment"
-          maxlength="1000"
-        />
-        <view :class="['cs-send', { disabled: !commentText.trim() || commentSubmitting }]" role="button" :aria-label="t('a11y.sendMessage')" @click="onSubmitComment">
-          <text>{{ replyTo ? t('plaza.reply') : t('plaza.comment') }}</text>
-        </view>
-      </view>
-    </view>
-
-    <CustomTabBar v-if="!commentingPost && !showComposer" current="plaza" />
+    <CustomTabBar v-if="!showComposer" current="plaza" />
   </view>
 </template>
 
@@ -580,6 +588,9 @@ onMounted(async () => {
 
 async function onRefresh() {
   if (refreshing.value) return
+  // D8: collapse any inline-expanded comments before refreshing posts —
+  // the expanded post may not survive the reset (deleted / RLS-hidden / out of new window).
+  closeComments()
   refreshing.value = true
   pageIdx.value = 0
   const failsafe = setTimeout(() => { refreshing.value = false }, 10000)
@@ -786,6 +797,12 @@ function onSharePost(post: Post) {
 }
 
 async function openComments(post: Post) {
+  // D1+D4 accordion: same-post tap toggles close; different-post tap auto-collapses
+  // current then opens new (closeComments resets all state, including expandedReplies).
+  if (commentingPost.value?.id === post.id) {
+    closeComments()
+    return
+  }
   commentingPost.value = post
   inputFocused.value = false
   addPostToHistory(post)
@@ -1267,10 +1284,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 
 .end-tip { text-align: center; padding: 24px; font-size: 12px; color: var(--text-faint); }
 
-.sheet-mask {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
-  z-index: 1000;
-}
 .composer-fullpage {
   position: fixed; inset: 0; z-index: 1100;
   background: var(--bg-elev-1);
@@ -1418,36 +1431,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .as-title-text { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .as-price { font-size: 13px; color: var(--accent-action); font-weight: 600; }
 
-.comments-sheet {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1001;
-  max-width: 480px; margin: 0 auto;
-  background: var(--bg-elev-1); border-radius: 16px 16px 0 0;
-  transform: translateY(100%);
-  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-  height: 70vh; display: flex; flex-direction: column;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
-  &.open { transform: translateY(0); }
-}
-.cs-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 16px; border-bottom: 0.5px solid var(--line-hair);
-}
-.cs-title { font-size: 15px; font-weight: 700; color: var(--text-primary); }
-.cs-close {
-  width: 28px; height: 28px; border-radius: 50%; background: var(--bg-subtle);
-  display: flex; align-items: center; justify-content: center; cursor: pointer;
-}
-.cs-x {
-  width: 12px; height: 12px; position: relative;
-  &::before, &::after {
-    content: ''; position: absolute; top: 50%; left: 0;
-    width: 12px; height: 1.5px; background: var(--text-secondary);
-  }
-  &::before { transform: rotate(45deg); }
-  &::after { transform: rotate(-45deg); }
-}
-.cs-list { flex: 1; padding: 8px 0; }
-.cs-empty { padding: 40px 16px; text-align: center; color: var(--text-faint); font-size: 13px; }
 .cs-item {
   display: flex; gap: 10px; padding: 12px 16px;
   border-bottom: 0.5px solid rgba(0,0,0,0.04);
@@ -1512,19 +1495,49 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   font-weight: 500;
 }
 
-.cs-reply-bar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 6px 12px;
-  background: rgba(199,74,47,0.08);
-  border-top: 0.5px solid rgba(199,74,47,0.2);
+.cs-reply-ref {
+  display: block; font-size: 11px; color: var(--accent-action); font-weight: 500;
+  margin-top: 2px;
 }
-.cs-reply-label { font-size: 12px; color: var(--accent-action); font-weight: 500; flex: 1; }
-.cs-reply-x {
+
+/* Inline comments expansion (P0-3b Strategy B). Renders inside the post-card
+   v-for, conditional on commentingPost?.id === post.id. Negative horizontal
+   margin extends the section to the post-card edges (post-card has padding:
+   14px 16px). Border-top creates a soft separator from post-actions row. */
+.comments-inline {
+  background: var(--bg-elev-1);
+  border-top: 0.5px solid var(--line-hair);
+  margin: 8px -16px 0 -16px;
+  padding-top: 4px;
+}
+.ci-count-label {
+  padding: 8px 16px 4px 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.ci-loading,
+.ci-empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+.ci-reply-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 16px;
+  background: var(--bg-subtle);
+  border-top: 0.5px solid var(--line-hair);
+}
+.ci-reply-label { font-size: 12px; color: var(--accent-action); font-weight: 500; flex: 1; }
+.ci-reply-x {
   width: 20px; height: 20px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
   &:active { background: rgba(199,74,47,0.15); }
 }
-.cs-rx {
+.ci-rx {
   width: 10px; height: 10px; position: relative;
   &::before, &::after {
     content: ''; position: absolute; top: 50%; left: 0;
@@ -1533,25 +1546,40 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   &::before { transform: rotate(45deg); }
   &::after { transform: rotate(-45deg); }
 }
-.cs-reply-ref {
-  display: block; font-size: 11px; color: var(--accent-action); font-weight: 500;
-  margin-top: 2px;
+
+.ci-input-bar {
+  display: flex; gap: 8px; align-items: center;
+  padding: 8px 16px;
+  background: var(--bg-elev-1);
+  border-top: 0.5px solid var(--line-hair);
 }
-.cs-input-bar {
-  display: flex; gap: 8px; padding: 9px 12px;
-  background: var(--bg-elev-1); border-top: 0.5px solid var(--line-hair);
-  padding-bottom: calc(9px + env(safe-area-inset-bottom));
-}
-.cs-input {
-  flex: 1; height: 40px; background: var(--bg-subtle); border-radius: 20px;
+.ci-input {
+  flex: 1; height: 36px; background: var(--bg-subtle); border-radius: 18px;
   padding: 0 14px; font-size: 14px; color: var(--text-primary);
 }
-.cs-send {
-  padding: 0 16px; height: 40px; border-radius: 20px;
-  background: var(--accent-primary); color: #fff; display: flex; align-items: center;
+.ci-send {
+  padding: 0 14px; height: 36px; border-radius: 18px;
+  background: var(--accent-primary); color: #fff;
+  display: flex; align-items: center;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
   text { font-size: 13px; color: #fff; font-weight: 600; }
   &.disabled { opacity: 0.3; pointer-events: none; }
+  &:active { opacity: 0.8; }
+}
+
+.ci-collapse-link {
+  padding: 10px 16px;
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  border-top: 0.5px solid var(--line-hair);
+  &:active { opacity: 0.6; }
+}
+.ci-collapse-text {
+  font-size: 12px;
+  color: var(--campus-blue);
+  font-weight: 500;
 }
 
 @media (min-width: 768px) {

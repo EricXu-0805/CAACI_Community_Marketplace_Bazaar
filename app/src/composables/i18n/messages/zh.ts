@@ -418,6 +418,8 @@ const zh: Record<string, string> = {
   'plaza.reportUser': '举报用户',
   'plaza.viewMoreReplies': '查看 {count} 条回复',
   'plaza.hideReplies': '收起回复',
+  'plaza.collapseComments': '收起评论',
+  'plaza.commentCount': '{count} 条评论',
   'plaza.notFound': '找不到这条动态',
   'plaza.backToPlaza': '返回广场',
 
