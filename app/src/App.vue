@@ -755,7 +755,7 @@ uni-scroll-view, .uni-scroll-view {
   -ms-overflow-style: none !important;
 }
 
-view, text { box-sizing: border-box; }
+view, text, input, button, textarea { box-sizing: border-box; }
 
 /*
  * mp-weixin text color safety net.
