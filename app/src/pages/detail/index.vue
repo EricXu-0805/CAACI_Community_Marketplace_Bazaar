@@ -258,7 +258,7 @@ import { useModeration } from '../../composables/useModeration'
 import type { Item } from '../../types'
 
 import { formatTime, haptic, formatPrice, quickTranslate, thumbUrl, friendlyErrorMessage } from '../../utils'
-import { dimsToRatio, readNaturalDims } from '../../utils/imgStyle'
+import { readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
 import { matchSpot, localizeLocation } from '../../composables/useCampusSpots'
 import { useRatings } from '../../composables/useRatings'
@@ -358,8 +358,22 @@ function onHeroImgLoad(e: any, i: number) {
  * aspect). Safety net: max-height 85vh so a 9:16 portrait can't eat
  * the whole viewport and push the price/title below the fold.
  */
+// Pick the most landscape-leaning aspect across all images so the swiper
+// viewport doesn't get locked to an unusually tall image0. Subsequent
+// slides then horizontal-letterbox (acceptable) instead of vertical-
+// letterbox (the "200-300px blank band" bug Eric reported on long-image items).
+function bestAspect(dims: ImageDim[] | null): number | null {
+  if (!dims || !dims.length) return null
+  let maxRatio = 0
+  for (const d of dims) {
+    if (d?.w && d?.h) maxRatio = Math.max(maxRatio, d.w / d.h)
+  }
+  if (maxRatio === 0) return null
+  return Math.max(0.4, Math.min(maxRatio, 2.5))
+}
+
 const swiperStyle = computed(() => {
-  const ratio = dimsToRatio(effectiveDims(), 0) ?? (4 / 5)
+  const ratio = bestAspect(effectiveDims()) ?? (4 / 5)
   return {
     aspectRatio: String(ratio),
     maxHeight: '85vh',
