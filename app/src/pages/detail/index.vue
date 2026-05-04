@@ -691,7 +691,7 @@ async function contactSeller() {
 .page {
   min-height: 100vh;
   background: var(--bg-subtle);
-  padding-bottom: 80px;
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
 }
 
 /* ========== Image Area ========== */
