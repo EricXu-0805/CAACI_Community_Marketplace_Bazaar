@@ -223,6 +223,7 @@ function goBack() { uni.navigateBack() }
 .body {
   flex: 1;
   padding: 4px 16px 24px;
+  box-sizing: border-box;
 }
 
 .section {
@@ -281,7 +282,7 @@ function goBack() { uni.navigateBack() }
 
 .cat-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 9px;
 }
 .cat-tile {
@@ -300,5 +301,7 @@ function goBack() { uni.navigateBack() }
   letter-spacing: 0.02em;
   line-height: 1.2;
   text-align: center;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 </style>
