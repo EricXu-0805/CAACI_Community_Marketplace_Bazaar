@@ -116,11 +116,11 @@
         <text class="or-text">{{ t('login.orContinue') }}</text>
         <view class="or-line"></view>
       </view>
-      <button class="google-btn" :disabled="loading" @click="onSignInWithGoogle">
+      <button class="google-btn" :disabled="loading || googleLoading" @click="onSignInWithGoogle">
         <view class="g-icon-circle">
           <text class="g-icon-letter">G</text>
         </view>
-        <text>{{ t('login.googleSignIn') }}</text>
+        <text>{{ googleLoading ? t('login.connectingGoogle') : t('login.googleSignIn') }}</text>
       </button>
       <!-- #endif -->
     </view>
@@ -147,6 +147,7 @@ const password = ref('')
 const nickname = ref('')
 const showPw = ref(false)
 const agreed = ref(false)
+const googleLoading = ref(false)
 
 const { supabase } = useSupabase()
 
@@ -260,9 +261,10 @@ function goBack() {
  * exit — there's no Google in those environments.
  */
 async function onSignInWithGoogle() {
-  if (loading.value) return
+  if (loading.value || googleLoading.value) return
   // #ifdef H5
   if (typeof window === 'undefined') return
+  googleLoading.value = true
   const redirectTo = `${window.location.origin}/`
   console.log('[oauth-debug] starting Google sign-in, redirectTo:', redirectTo)
   try {
@@ -272,6 +274,7 @@ async function onSignInWithGoogle() {
     })
     if (error) {
       console.warn('[oauth-debug] signInWithOAuth error:', error)
+      googleLoading.value = false
       uni.showToast({
         title: error.message ? `${t('login.googleFail')}: ${error.message}` : t('login.googleFail'),
         icon: 'none',
@@ -284,10 +287,15 @@ async function onSignInWithGoogle() {
      * window.location.assign() to Google. Any code after this would
      * be racing with the page navigation. The success "toast" is the
      * Google sign-in screen the user is about to see.
+     *
+     * googleLoading.value stays true on success — the page navigates
+     * away to Google before any reset matters; on return the page
+     * re-mounts fresh with googleLoading reset to its initial false.
      */
     console.log('[oauth-debug] OAuth flow initiated, awaiting Google redirect')
   } catch (err: any) {
     console.warn('[oauth-debug] signInWithOAuth threw:', err)
+    googleLoading.value = false
     uni.showToast({
       title: err?.message ? `${t('login.googleFail')}: ${err.message}` : t('login.googleFail'),
       icon: 'none',

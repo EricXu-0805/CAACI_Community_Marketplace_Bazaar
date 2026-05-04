@@ -86,6 +86,8 @@ const en: Record<string, string> = {
   'login.googleFail': 'Google sign-in failed',
   'login.oauthUnsupported': 'Google sign-in is not supported on this platform',
   'login.orContinue': 'or',
+  'login.signingIn': 'Signing in...',
+  'login.connectingGoogle': 'Connecting...',
 
   'condition.new': 'Brand New',
   'condition.like_new': 'Like New',

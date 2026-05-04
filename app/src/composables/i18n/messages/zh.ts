@@ -86,6 +86,8 @@ const zh: Record<string, string> = {
   'login.googleFail': 'Google 登录失败',
   'login.oauthUnsupported': '当前平台暂不支持 Google 登录',
   'login.orContinue': '或',
+  'login.signingIn': '登录中,请稍候...',
+  'login.connectingGoogle': '跳转中...',
 
   'condition.new': '全新',
   'condition.like_new': '几乎全新',

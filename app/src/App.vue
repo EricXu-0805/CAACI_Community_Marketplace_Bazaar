@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from 'vue'
+import { ref, watch } from 'vue'
 import { onLaunch } from "@dcloudio/uni-app"
 import { useAuth } from "./composables/useAuth"
 import { useI18n } from "./composables/useI18n"
@@ -32,6 +32,27 @@ import '@fontsource-variable/noto-serif-sc/wght.css'
 const { init, currentUser } = useAuth()
 const { t } = useI18n()
 useTheme()
+
+/*
+ * OAuth-callback affordance overlay (H5 only).
+ *
+ * Tracks whether the SPA booted with an OAuth `?code=` in the URL
+ * (set synchronously by extractAuthCodeFromUrl below). When true,
+ * onLaunch raises a uni.showLoading modal with mask:true that
+ * covers the home/welcome page during the ~1.5–4.5s PKCE-exchange
+ * + fetchProfile resolution window — see audit
+ *   §"Where the perceptible delay originates"
+ * for the full chain. The watcher below dismisses the modal as
+ * soon as currentUser populates; an 8s safety timer prevents a
+ * silently-failed exchange from leaving the modal stuck on screen.
+ *
+ * App.vue cannot render UI directly in uni-app (no <template>
+ * block on the application instance), so the affordance is the
+ * native uni.showLoading modal rather than a custom Vue overlay.
+ * mp-weixin never enters this branch (extractAuthCodeFromUrl is
+ * `#ifdef H5`, and the typeof-window guard short-circuits anyway).
+ */
+const oauthCallbackInFlight = ref(false)
 
 /*
  * Re-consent + onboarding gate.
@@ -97,6 +118,23 @@ function enforceConsentGate() {
 
 watch(currentUser, () => {
   setTimeout(enforceConsentGate, 100)
+})
+
+/*
+ * OAuth-callback overlay dismissal.
+ *
+ * Kept as a separate watcher (not merged into the consent-gate one
+ * above) so the two concerns stay independent: consent-gate has a
+ * 100ms debounce + may navigate away; this just hides the modal as
+ * soon as currentUser populates. The 8s safety timer in onLaunch
+ * is the failure-mode cover (silent PKCE/profile failure → modal
+ * still dismisses), so most of the time this watcher fires first.
+ */
+watch(currentUser, (user) => {
+  if (user && oauthCallbackInFlight.value) {
+    oauthCallbackInFlight.value = false
+    try { uni.hideLoading() } catch {}
+  }
 })
 
 /*
@@ -235,6 +273,15 @@ function extractAuthCodeFromUrl(): void {
     console.log(
       `[reset-pw-debug] entry: ?code= present in ${foundIn} but hash route is ${hashRoute || '(empty)'} — not recovery, leaving code in URL for supabase-js detectSessionInUrl (likely OAuth callback)`,
     )
+    /*
+     * Affordance flag for the OAuth-callback overlay. Read in onLaunch
+     * after this function returns to decide whether to raise a
+     * uni.showLoading modal during the PKCE-exchange + fetchProfile
+     * window. `(window as any)` because we don't extend the global
+     * Window interface for a single internal flag; leading semicolon
+     * defends against ASI on the preceding console.log expression.
+     */
+    ;(window as any).__oauthInFlight = true
     return
   }
 
@@ -377,6 +424,40 @@ onLaunch(() => {
     extractAuthCodeFromUrl()
   } catch (err) {
     console.warn('[reset-pw-debug] entry: extractAuthCodeFromUrl threw (non-fatal):', err)
+  }
+
+  /*
+   * OAuth-callback overlay raise.
+   *
+   * Reads the flag set inside extractAuthCodeFromUrl's OAuth-callback
+   * branch (search-side ?code= with non-recovery hash). When raised,
+   * the user sees a blocking native loading modal instead of the
+   * home/welcome page rendering in logged-out state during the
+   * ~1.5–4.5s PKCE-exchange + fetchProfile resolution window. The
+   * watcher on currentUser (script-setup top) hides the modal as
+   * soon as the profile lands; the 8s setTimeout below is the
+   * silent-failure safety belt — if PKCE exchange or fetchProfile
+   * fails for any reason (network, RLS), the modal still dismisses
+   * so the user isn't trapped.
+   *
+   * mp-weixin never enters this branch: extractAuthCodeFromUrl is
+   * `#ifdef H5`-guarded and never sets the flag; the typeof-window
+   * guard short-circuits regardless. Cost on mp-weixin = one boolean
+   * check per cold start.
+   */
+  if (typeof window !== 'undefined' && (window as any).__oauthInFlight) {
+    oauthCallbackInFlight.value = true
+    try {
+      uni.showLoading({ title: t('login.signingIn'), mask: true })
+    } catch (err) {
+      console.warn('[oauth-debug] showLoading failed (non-fatal):', err)
+    }
+    setTimeout(() => {
+      if (oauthCallbackInFlight.value) {
+        oauthCallbackInFlight.value = false
+        try { uni.hideLoading() } catch {}
+      }
+    }, 8000)
   }
 
   /*
