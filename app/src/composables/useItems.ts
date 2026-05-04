@@ -13,6 +13,12 @@ const fetchError = ref('')
 
 const PAGE_SIZE = 20
 
+// Race guard for fetchItems(): items/loading/hasMore/fetchError above are
+// module-scoped, so every consumer of useItems() shares one race surface.
+// Without this counter a slow earlier request can resolve AFTER a faster
+// later one and overwrite the new tab's data with the old tab's data.
+let latestRequestId = 0
+
 /*
  * Public column projection — kept aligned with migrations 014 / 015 /
  * 020 / 021 (all production-applied; the 035-era LEGACY fallback path
@@ -46,6 +52,7 @@ export function useItems() {
     reset?: boolean
   } = {}) {
     const { page = 0, category, search, userId, priceMin, priceMax, condition, sort, reset = false } = options
+    const requestId = ++latestRequestId
 
     if (reset) {
       items.value = []
@@ -88,6 +95,7 @@ export function useItems() {
           limit_in:     PAGE_SIZE,
           offset_in:    page * PAGE_SIZE,
         })
+        if (requestId !== latestRequestId) return
         data = rpcRes.data
         error = rpcRes.error
       } else {
@@ -118,6 +126,7 @@ export function useItems() {
         if (condition) q = q.eq('condition', condition)
 
         const res = await q
+        if (requestId !== latestRequestId) return
         data = res.data
         error = res.error
       }
@@ -139,10 +148,13 @@ export function useItems() {
         hasMore.value = data.length === PAGE_SIZE
       }
     } catch (error: any) {
+      if (requestId !== latestRequestId) return
       fetchError.value = error?.message || t('error.loadFailed')
       console.error('Failed to fetch items:', error)
     } finally {
-      loading.value = false
+      if (requestId === latestRequestId) {
+        loading.value = false
+      }
     }
   }
 
