@@ -71,7 +71,7 @@
             maxlength="72"
           />
           <view class="pw-toggle" role="button" :aria-label="t('a11y.passwordToggle')" @click="showPw = !showPw">
-            <text>{{ showPw ? '◉' : '○' }}</text>
+            <image :src="showPw ? '/static/eye-off.svg' : '/static/eye.svg'" class="pw-toggle-icon" mode="aspectFit" />
           </view>
         </view>
       </view>
@@ -475,6 +475,11 @@ async function onSubmit() {
   position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
   cursor: pointer; font-size: 18px; color: var(--text-muted);
   padding: 4px;
+}
+.pw-toggle-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
 }
 
 .forgot-link {

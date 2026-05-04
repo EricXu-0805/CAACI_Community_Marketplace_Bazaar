@@ -14,11 +14,21 @@
     <view v-else-if="ready && !errorMsg" class="form">
       <view class="form-group">
         <text class="form-label">{{ t('resetPw.newPassword') }}</text>
-        <input v-model="newPassword" :placeholder="t('resetPw.newPassword')" password class="form-input" />
+        <view class="pw-wrap">
+          <input v-model="newPassword" :placeholder="t('resetPw.newPassword')" :password="!showNewPw" class="form-input pw-input" />
+          <view class="pw-toggle" role="button" :aria-label="t('a11y.passwordToggle')" @click="showNewPw = !showNewPw">
+            <image :src="showNewPw ? '/static/eye-off.svg' : '/static/eye.svg'" class="pw-toggle-icon" mode="aspectFit" />
+          </view>
+        </view>
       </view>
       <view class="form-group">
         <text class="form-label">{{ t('resetPw.confirm') }}</text>
-        <input v-model="confirmPw" :placeholder="t('resetPw.confirm')" password class="form-input" />
+        <view class="pw-wrap">
+          <input v-model="confirmPw" :placeholder="t('resetPw.confirm')" :password="!showConfirmPw" class="form-input pw-input" />
+          <view class="pw-toggle" role="button" :aria-label="t('a11y.passwordToggle')" @click="showConfirmPw = !showConfirmPw">
+            <image :src="showConfirmPw ? '/static/eye-off.svg' : '/static/eye.svg'" class="pw-toggle-icon" mode="aspectFit" />
+          </view>
+        </view>
       </view>
 
       <button class="submit-btn" :disabled="saving" @click="onSave">
@@ -45,6 +55,8 @@ const ready = ref(false)
 const errorMsg = ref('')
 const newPassword = ref('')
 const confirmPw = ref('')
+const showNewPw = ref(false)
+const showConfirmPw = ref(false)
 const saving = ref(false)
 /*
  * isRecovery is the gate that lets onSave call updateUser({password})
@@ -442,6 +454,15 @@ function goLogin() {
   padding: 0 16px; font-size: 15px; color: var(--text-primary);
   border: 1px solid transparent;
   &:focus { border-color: rgba(0,0,0,0.12); background: var(--bg-elev-1); }
+}
+.pw-wrap { position: relative; }
+.pw-input { padding-right: 44px; }
+.pw-toggle {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  cursor: pointer; padding: 4px; color: var(--text-muted);
+}
+.pw-toggle-icon {
+  width: 18px; height: 18px; display: block;
 }
 .submit-btn {
   width: 100%; height: 48px;
