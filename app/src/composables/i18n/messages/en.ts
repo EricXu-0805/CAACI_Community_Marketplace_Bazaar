@@ -164,6 +164,8 @@ const en: Record<string, string> = {
   'publish.cancel': 'Cancel',
   'publish.cover': 'Cover',
   'publish.uploading': 'Uploading',
+  'publish.useCurrentLocation': 'Use current location',
+  'publish.detectingLocation': 'Detecting...',
   'heic.converting': 'Converting image…',
   'heic.unsupported': 'Image format not supported. Please pick another.',
   'publish.needTitle': 'Title is required',

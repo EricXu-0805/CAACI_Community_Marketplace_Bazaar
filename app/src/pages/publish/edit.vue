@@ -111,10 +111,6 @@
       <view class="form-group row">
         <text class="label">{{ t('publish.location') }}</text>
         <input v-model="form.location" :placeholder="t('publish.locationPlaceholder')" class="form-input flex-input" />
-        <view class="loc-detect" role="button" :aria-label="t('a11y.detectLocation')" @click="onDetectLocation">
-          <view v-if="detectingLoc" class="loc-spinner"></view>
-          <view v-else class="loc-pin"></view>
-        </view>
       </view>
 
       <scroll-view scroll-x class="spot-row">
@@ -128,6 +124,19 @@
           {{ spotLabel(spot) }}
         </view>
       </scroll-view>
+
+      <view
+        class="locate-btn"
+        :class="{ 'locate-btn--detecting': detectingLoc }"
+        role="button"
+        :aria-label="t('a11y.detectLocation')"
+        :aria-busy="detectingLoc ? 'true' : 'false'"
+        @click="!detectingLoc && onDetectLocation()"
+      >
+        <view v-if="detectingLoc" class="locate-btn-spinner"></view>
+        <image v-else class="locate-btn-icon" src="/static/locate.svg" mode="aspectFit" />
+        <text class="locate-btn-text">{{ detectingLoc ? t('publish.detectingLocation') : t('publish.useCurrentLocation') }}</text>
+      </view>
 
       <view class="form-group row toggle-row" @click="form.negotiable = !form.negotiable">
         <text class="label">{{ t('publish.obo') }}</text>
@@ -678,32 +687,52 @@ async function onSubmit() {
   &:active { background: var(--bg-inset); }
   &.active { background: var(--accent-primary); color: #fff; }
 }
-.loc-detect {
-  width: 36px; height: 36px; border-radius: 9px; background: var(--bg-subtle);
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; cursor: pointer; margin-left: 6px;
-  &:active { background: var(--bg-inset); }
-}
-.loc-pin {
-  width: 12px; height: 16px; position: relative;
-  &::before {
-    content: ''; position: absolute; top: 0; left: 0;
-    width: 12px; height: 12px; border: 2px solid var(--text-secondary);
-    border-radius: 50%;
+.locate-btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 12px 14px;
+  margin-top: 10px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-strong, var(--bg-inset));
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:active {
+    background: var(--bg-inset);
   }
-  &::after {
-    content: ''; position: absolute; bottom: 0; left: 50%;
-    transform: translateX(-50%);
-    width: 0; height: 0;
-    border-left: 4px solid transparent; border-right: 4px solid transparent;
-    border-top: 5px solid var(--ink-quiet);
+
+  &--detecting {
+    pointer-events: none;
+    opacity: 0.75;
   }
 }
-.loc-spinner {
-  width: 16px; height: 16px;
-  border: 2px solid var(--bg-inset); border-top-color: var(--text-secondary);
-  border-radius: 50%; animation: spin 0.7s linear infinite;
+
+.locate-btn-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  flex-shrink: 0;
 }
+
+.locate-btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--bg-inset);
+  border-top-color: var(--text-secondary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.locate-btn-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1;
+}
+
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ========== Toggle ========== */

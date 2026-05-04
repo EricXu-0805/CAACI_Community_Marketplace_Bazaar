@@ -164,6 +164,8 @@ const zh: Record<string, string> = {
   'publish.cancel': '取消',
   'publish.cover': '封面',
   'publish.uploading': '上传中',
+  'publish.useCurrentLocation': '使用当前位置',
+  'publish.detectingLocation': '检测中...',
   'heic.converting': '图片转换中…',
   'heic.unsupported': '这种图片格式不支持，请换一张',
   'publish.needTitle': '请输入标题',
