@@ -11,6 +11,12 @@ const posts = ref<Post[]>([])
 const loading = ref(false)
 const hasMore = ref(true)
 const PAGE_SIZE = 20
+
+// Race guard for fetchPosts(): posts/loading/hasMore above are module-scoped,
+// so every consumer of usePlaza() shares one race surface. Mirrors the same
+// pattern applied to useItems.ts in commit 66466d3.
+let latestRequestId = 0
+
 const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, is_illini_verified, uid'
 // title_i18n is included so attached-item previews localize too. Supabase
 // returns the column as null on pre-015 databases and localize() silently
@@ -89,6 +95,7 @@ export function usePlaza() {
 
   async function fetchPosts(options: { page?: number; reset?: boolean; search?: string } = {}) {
     const { page = 0, reset = false, search } = options
+    const requestId = ++latestRequestId
     if (reset) {
       posts.value = []
       hasMore.value = true
@@ -113,6 +120,7 @@ export function usePlaza() {
       }
 
       const { data, error } = await q
+      if (requestId !== latestRequestId) return
 
       if (error) throw error
 
@@ -130,6 +138,7 @@ export function usePlaza() {
           .select('post_id')
           .eq('user_id', currentUser.value.id)
           .in('post_id', postIds)
+        if (requestId !== latestRequestId) return
         const likeSet = new Set((myLikes || []).map((l: any) => l.post_id))
         result.forEach(p => { p.liked_by_me = likeSet.has(p.id) })
       }
@@ -138,10 +147,13 @@ export function usePlaza() {
       else posts.value.push(...result)
       hasMore.value = (data || []).length === PAGE_SIZE
     } catch (err: any) {
+      if (requestId !== latestRequestId) return
       console.error('fetchPosts failed:', err)
       uni.showToast({ title: err?.message || t('error.loadFailed'), icon: 'none', duration: 3000 })
     } finally {
-      loading.value = false
+      if (requestId === latestRequestId) {
+        loading.value = false
+      }
     }
   }
 
