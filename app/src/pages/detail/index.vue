@@ -376,6 +376,8 @@ const swiperStyle = computed(() => {
   const ratio = bestAspect(effectiveDims()) ?? (4 / 5)
   return {
     aspectRatio: String(ratio),
+    maxHeight: '70vh',
+    height: 'auto',
   }
 })
 
@@ -699,10 +701,7 @@ async function contactSeller() {
   background: var(--bg-inset);
 }
 /*
- * Height is injected via :style="swiperStyle" (aspect-ratio only); the
- * max-height cap lives in this rule below so we can pair the vh fallback
- * with the dvh modern variant — see comment at the max-height pair.
- *
+ * Height is injected via :style="swiperStyle" (aspect-ratio + max-height).
  * Keep `background` so tall portraits letterbox into a neutral surface
  * instead of showing whatever is behind during the initial @load settle.
  * Never re-introduce a hard `height: Xpx` here — it would fight the
@@ -719,17 +718,6 @@ async function contactSeller() {
   width: 100%;
   background: var(--bg-subtle);
   vertical-align: top;
-  /*
-   * iOS Safari quirk: vh uses the LARGEST viewport (toolbar collapsed),
-   * not the currently-visible one. On a fresh page load with the URL bar
-   * showing, 70vh (== 70% of 844px on iPhone 12) ≈ 591px, but the visible
-   * viewport is only ~700-780px → swiper appears to take ~75-80% of
-   * screen even though math is correct. dvh tracks the dynamic visible
-   * viewport. vh fallback for pre-iOS-15.4 / pre-Chrome-108 browsers
-   * (browsers without dvh support keep the 70vh rule).
-   */
-  max-height: 70vh;
-  max-height: 70dvh;
 }
 .swiper-img {
   display: block;
