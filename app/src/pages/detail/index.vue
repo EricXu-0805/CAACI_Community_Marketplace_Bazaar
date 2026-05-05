@@ -5,7 +5,7 @@
       <!--
         Swiper height is frozen on item.image_dimensions[0] so swipes
         between slides don't resize the viewport mid-gesture (xianyu
-        contract). Capped at 85vh. aspectFit letterboxes non-hero
+        contract). Capped at 70vh. aspectFit letterboxes non-hero
         slides inside the frame instead of cropping.
       -->
       <swiper
@@ -355,7 +355,7 @@ function onHeroImgLoad(e: any, i: number) {
  * image[0]; subsequent slides letterbox via aspectFit.
  *
  * Fallback: no dims anywhere → 4/5 (the most common vertical-phone
- * aspect). Safety net: max-height 85vh so a 9:16 portrait can't eat
+ * aspect). Safety net: max-height 70vh so a 9:16 portrait can't eat
  * the whole viewport and push the price/title below the fold.
  */
 // Pick the most landscape-leaning aspect across all images so the swiper
@@ -376,7 +376,7 @@ const swiperStyle = computed(() => {
   const ratio = bestAspect(effectiveDims()) ?? (4 / 5)
   return {
     aspectRatio: String(ratio),
-    maxHeight: '85vh',
+    maxHeight: '70vh',
     height: 'auto',
   }
 })
@@ -1221,7 +1221,7 @@ async function contactSeller() {
   .page { max-width: 640px; margin: 0 auto; }
   /*
    * Don't hard-set height here either. The inline :style aspect-ratio
-   * handles it, and the 85vh cap keeps the hero from eating the whole
+   * handles it, and the 70vh cap keeps the hero from eating the whole
    * above-the-fold on big screens.
    */
   .info-card { border-radius: 0; }
