@@ -1294,7 +1294,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 .comp-body {
-  flex: 1; overflow-y: auto; display: flex; flex-direction: column;
+  flex: 1; overflow-y: auto;
 }
 .comp-header {
   display: flex; align-items: center; justify-content: space-between;
