@@ -1379,7 +1379,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .ca-price { font-size: 13px; color: var(--accent-action); font-weight: 600; }
 .ca-remove {
   width: 22px; height: 22px; border-radius: 50%;
-  background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;
+  background: var(--ink-soft); display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
 
