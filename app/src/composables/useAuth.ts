@@ -11,6 +11,17 @@ const loading = ref(false)
 
 let authSubscription: { unsubscribe: () => void } | null = null
 
+/*
+ * Race-guard counter for concurrent fetchProfile calls. On cold start, init()
+ * fires fetchProfile twice concurrently — once from onAuthStateChange's
+ * INITIAL_SESSION event and once from getSession() resolution. Without this
+ * guard, the slower call's failure path could overwrite the faster call's
+ * success on currentUser, hiding the entire isLoggedIn-gated UI until app
+ * full-quit + reopen rebuilds the JS module. Mirrors the requestId pattern
+ * in composables/useItems.ts and composables/usePlaza.ts.
+ */
+let latestProfileRequestId = 0
+
 const ALLOWED_PROFILE_FIELDS = ['nickname', 'avatar_url', 'bio', 'location', 'status_text', 'status_emoji'] as const
 type AllowedProfileUpdate = Partial<Pick<Profile, typeof ALLOWED_PROFILE_FIELDS[number]>>
 
@@ -76,24 +87,49 @@ export function useAuth() {
   }
 
   async function fetchProfile(userId: string) {
-    const { data, error } = await supabase.rpc('get_my_profile')
+    /*
+     * Race-guarded against the dual-invocation pattern in init() above:
+     * onAuthStateChange's INITIAL_SESSION and getSession() both fire
+     * fetchProfile on cold start. requestId is captured at entry and
+     * rechecked after every await; on mismatch we abandon the write so
+     * the slower call cannot clobber the faster call's authoritative
+     * state. See latestProfileRequestId comment at module top.
+     */
+    const requestId = ++latestProfileRequestId
 
-    if (data && data.id && !error) {
-      currentUser.value = data as Profile
-      return
-    }
+    try {
+      const { data, error } = await supabase.rpc('get_my_profile')
+      if (requestId !== latestProfileRequestId) return
 
-    const { data: fallback, error: fbErr } = await supabase
-      .from('profiles')
-      .select('id, nickname, avatar_url, bio, location, is_illini_verified, created_at')
-      .eq('id', userId)
-      .single()
+      if (data && data.id && !error) {
+        currentUser.value = data as Profile
+        return
+      }
 
-    if (fallback && fallback.id) {
-      currentUser.value = fallback as Profile
-    } else {
-      console.warn('fetchProfile: no profile found for', userId, fbErr?.message)
-      currentUser.value = null
+      const { data: fallback, error: fbErr } = await supabase
+        .from('profiles')
+        .select('id, nickname, avatar_url, bio, location, is_illini_verified, created_at')
+        .eq('id', userId)
+        .single()
+      if (requestId !== latestProfileRequestId) return
+
+      if (fallback && fallback.id) {
+        currentUser.value = fallback as Profile
+      } else {
+        /*
+         * No-row branch must NOT null currentUser. Pre-N12, this line
+         * wrote currentUser.value = null, which on cold start let the
+         * loser of the dual-call race erase the winner's success and
+         * hide the entire isLoggedIn-gated UI until app quit + reopen.
+         * Actual sign-out clears currentUser via the SIGNED_OUT path
+         * in onAuthStateChange (line ~47); fetchProfile no longer
+         * participates in clearing state.
+         */
+        console.warn('fetchProfile: no profile found for', userId, fbErr?.message)
+      }
+    } catch (err) {
+      if (requestId !== latestProfileRequestId) return
+      throw err
     }
   }
 
