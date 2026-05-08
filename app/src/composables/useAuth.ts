@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 import { useSupabase, platformFetch } from './useSupabase'
 import { useModeration } from './useModeration'
 import { deviceFingerprintHash, deviceUASnippet } from '../utils/fingerprint'
+import { addBreadcrumb } from '../utils/sentry'
 import type { Profile } from '../types'
 import { BASE_URL } from '../config/runtime'
 
@@ -123,9 +124,17 @@ export function useAuth() {
          * hide the entire isLoggedIn-gated UI until app quit + reopen.
          * Actual sign-out clears currentUser via the SIGNED_OUT path
          * in onAuthStateChange (line ~47); fetchProfile no longer
-         * participates in clearing state.
+         * participates in clearing state. Breadcrumb surfaces this
+         * rare path in Sentry so future regressions are debuggable
+         * without a server-log audit.
          */
         console.warn('fetchProfile: no profile found for', userId, fbErr?.message)
+        addBreadcrumb({
+          category: 'auth',
+          level: 'warning',
+          message: 'fetchProfile: no profile row found',
+          data: { userId, fbErr: fbErr?.message || null },
+        })
       }
     } catch (err) {
       if (requestId !== latestProfileRequestId) return
