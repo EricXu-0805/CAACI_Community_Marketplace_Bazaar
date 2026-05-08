@@ -1294,7 +1294,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 .comp-body {
-  flex: 1; overflow-y: auto;
+  flex: 1; overflow-y: auto; display: flex; flex-direction: column;
 }
 .comp-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -1379,7 +1379,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .ca-price { font-size: 13px; color: var(--accent-action); font-weight: 600; }
 .ca-remove {
   width: 22px; height: 22px; border-radius: 50%;
-  background: var(--ink-soft); display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
 
