@@ -9,6 +9,7 @@ const zh: Record<string, string> = {
   'a11y.share': '分享',
   'a11y.edit': '编辑',
   'a11y.delete': '删除',
+  'a11y.removeChip': '移除挂载的商品',
   'a11y.search': '搜索',
   'a11y.searchClear': '清除搜索',
   'a11y.filter': '打开筛选',
@@ -447,6 +448,7 @@ const zh: Record<string, string> = {
   'plaza.attachItem': '挂商品',
   'plaza.pickItem': '选一件你正在售卖的商品',
   'plaza.noMyItems': '你目前没有在售商品',
+  'plaza.partialPublish': '动态已发布，但商品挂载失败',
 
   'login.agreeRequired': '请先同意《用户协议》与《隐私政策》',
   'login.agreeCheckbox': '我已阅读并同意《用户协议》和《隐私政策》',
