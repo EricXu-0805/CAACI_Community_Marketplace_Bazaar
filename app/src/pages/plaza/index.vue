@@ -538,6 +538,15 @@ function onAttachBtnClick() {
 }
 
 function onPickAttachedItem(it: AttachableItem) {
+  // N14 layer 2 — defense vs orphan picker: if composer is already
+  // closed (e.g. user tapped composer cancel while picker stayed open
+  // and then tapped through to a row), drop the pick and close the sheet.
+  // Without this, the chip would land on composerAttachedItems and
+  // bleed into the next openComposer session as a phantom selection.
+  if (!showComposer.value) {
+    showAttachSheet.value = false
+    return
+  }
   if (chipCapReached.value) {
     showAttachSheet.value = false
     return
@@ -562,6 +571,20 @@ const { translateContentToAll } = useTranslate()
 const { addPostToHistory } = useHistory()
 
 function openComposer() {
+  // N14 layer 3 — baseline reset before show. Defends against any
+  // stale composer state surviving from a prior session via a path
+  // that bypassed onComposerCancel (tab keep-alive, system back,
+  // OAuth roundtrip in keep-alive scenarios). Re-set everything to
+  // the empty default so what the user sees on open is always a
+  // fresh composer. Focus is intentionally still scheduled inside
+  // the existing 300ms setTimeout — focus must fire AFTER the modal
+  // becomes visible, not before, so the soft keyboard mounts on the
+  // visible textarea (mirroring the previous timing contract).
+  composerText.value = ''
+  composerImages.value = []
+  composerAttachedItems.value = []
+  showAttachSheet.value = false
+  composerFocused.value = false
   showComposer.value = true
   setTimeout(() => { composerFocused.value = true }, 300)
 }
@@ -681,6 +704,10 @@ function onComposerCancel() {
   composerText.value = ''
   composerImages.value = []
   composerAttachedItems.value = []
+  // N14 layer 1 — close any orphan picker sheet so a sheet that was
+  // mounted on top of the composer doesn't survive cancel and accept
+  // a row tap that would silently mutate the next composer session.
+  showAttachSheet.value = false
 }
 
 function onComposerPickImage() {
@@ -1481,8 +1508,16 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   padding: 14px 16px; border-bottom: 0.5px solid var(--line-hair);
 }
 .as-title { font-size: 15px; font-weight: 600; }
+/* N13 — Picker close button visibility in light mode.
+   Was background: var(--bg-subtle) which sits ~same lightness as
+   .as-header (sheet's own bg-elev-1 paper), so the round button
+   silhouette dissolved into the header. Switching to var(--ink-soft)
+   gives the round container a clear walnut/dark-warm fill that reads
+   unambiguously as "tap target" against the cream sheet header.
+   Size (28×28) and flex layout untouched — matches detail/index.vue's
+   .rs-close pattern (Eric's reference). */
 .as-close {
-  width: 28px; height: 28px; border-radius: 50%; background: var(--bg-subtle);
+  width: 28px; height: 28px; border-radius: 50%; background: var(--ink-soft);
   display: flex; align-items: center; justify-content: center;
 }
 .as-list { flex: 1; padding: 8px 16px 16px; }
@@ -1647,6 +1682,37 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   font-size: 12px;
   color: var(--campus-blue);
   font-weight: 500;
+}
+
+/* N13 — X stroke for the picker close button.
+   Mirrored from pages/detail/index.vue (.cs-x at L1134-1142) so the
+   <view class="cs-x"/> inside .as-close has a definition under plaza's
+   scoped <style>. Without this, the X stays unstyled (0×0 inline) and
+   only the round container is visible — which was half of the N13 bug
+   (the other half being the container's own bg blending with header).
+
+   ONE deliberate deviation from verbatim mirror: stroke color is
+   var(--ink-inverse) here, NOT var(--text-secondary) like detail.
+   Reason: detail's .rs-close uses bg=--bg-subtle (light) + stroke=
+   --text-secondary (dark) — high contrast pair. Plaza's new .as-close
+   uses bg=--ink-soft (#57524B in :root, rgba(240,232,214,0.72) in
+   data-theme="dark") which collides exactly with --text-secondary
+   (same hex/alias in both themes — verified against App.vue token map).
+   --ink-inverse inverts cleanly: cream stroke on dark button (light
+   mode) or dark stroke on cream button (dark mode), giving a visible
+   X regardless of theme. Eric's "verbatim mirror" instruction in the
+   N13 spec assumed token values that don't actually hold under the
+   spec's own bg=--ink-soft change; this 1-property deviation preserves
+   the N13 fix goal (X visibility) while keeping the laps-rotation
+   structure verbatim. */
+.cs-x {
+  width: 12px; height: 12px; position: relative;
+  &::before, &::after {
+    content: ''; position: absolute; top: 50%; left: 0; right: 0;
+    height: 1.5px; background: var(--ink-inverse); border-radius: 1px;
+  }
+  &::before { transform: rotate(45deg); }
+  &::after { transform: rotate(-45deg); }
 }
 
 @media (min-width: 768px) {
