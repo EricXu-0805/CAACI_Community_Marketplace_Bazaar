@@ -6,6 +6,7 @@ import { useI18n } from './useI18n'
 import type { Post, PostComment } from '../types'
 import { expandSearch } from '../utils'
 import { checkContent, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
+import { addBreadcrumb } from '../utils/sentry'
 
 const posts = ref<Post[]>([])
 const loading = ref(false)
@@ -23,9 +24,15 @@ const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, is_illini_verified, uid
 // falls back to plain `title`, so this is safe on unmigrated schemas.
 const ATTACHED_ITEM_FIELDS = 'id, title, title_i18n, price, images, image_dimensions, status'
 const POST_COMMENT_FIELDS = 'id, post_id, user_id, content, parent_comment_id, like_count, created_at'
+// post_items is mig 041's join table; replaces the single posts.attached_item_id
+// column. Display order is enforced by the .order(..., { foreignTable: 'post_items' })
+// clause on every SELECT below — Supabase doesn't sort nested relations otherwise.
 const POST_SELECT = `*,
   profile:profiles!posts_user_id_fkey(${PUBLIC_PROFILE_FIELDS}),
-  attached_item:items!posts_attached_item_id_fkey(${ATTACHED_ITEM_FIELDS})`
+  post_items(
+    display_order,
+    item:items(${ATTACHED_ITEM_FIELDS})
+  )`
 
 export interface CommentThread {
   parent: PostComment
@@ -108,6 +115,7 @@ export function usePlaza() {
         .eq('status', 'active')
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
+        .order('display_order', { foreignTable: 'post_items', ascending: true })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
 
       if (search && search.trim()) {
@@ -190,21 +198,33 @@ export function usePlaza() {
    * content_i18n is seeded with the author's text in `sourceLang` only;
    * the caller is expected to kick off an async translator after this
    * returns and upsert the other locale(s) via updatePostI18n.
+   *
+   * N7-redux (mig 041): attached items move from a single posts.attached_item_id
+   * column to the post_items join table. The write is now two-step — insert
+   * the post row first, then bulk-insert the post_items rows. If step 2 fails
+   * after step 1 succeeds, the post exists without its chips; we surface this
+   * via the `partial: true` return so the caller can show a soft warning
+   * toast. The post itself is not rolled back (no client-side transactions
+   * via supabase-js; a cleaner solution would be a SECURITY DEFINER RPC, but
+   * that is out of scope for this sprint).
    */
   async function createPost(
     content: string,
     images: string[] = [],
-    attachedItemId: string | null = null,
+    attachedItemIds: string[] = [],
     extras: {
       image_dimensions?: Array<{ w: number; h: number }>
       content_i18n?: Record<string, string> | null
       source_lang?: string | null
     } = {},
-  ) {
+  ): Promise<{ id: string; partial: boolean; itemsErr?: any }> {
     if (!currentUser.value) throw new Error('Not authenticated')
     const trimmed = content.trim()
-    if (!trimmed && images.length === 0 && !attachedItemId) throw new Error('Content required')
+    if (!trimmed && images.length === 0 && attachedItemIds.length === 0) {
+      throw new Error('Content required')
+    }
     if (trimmed.length > 2000) throw new Error('Content too long')
+    if (attachedItemIds.length > 3) throw new Error('plaza.attachItemCapExceeded')
 
     if (trimmed) {
       const safety = checkContent(trimmed, { kind: 'post' })
@@ -219,7 +239,6 @@ export function usePlaza() {
       user_id: currentUser.value.id,
       content: payloadContent,
       images,
-      attached_item_id: attachedItemId,
     }
     if (extras.image_dimensions && extras.image_dimensions.length) {
       basePayload.image_dimensions = extras.image_dimensions
@@ -237,14 +256,58 @@ export function usePlaza() {
       return err?.code === '42703' && /image_dimensions|content_i18n|source_lang/.test(msg)
     }
 
+    /* Step 1: insert post row. POST_SELECT includes post_items but the
+       relation is empty at this point — step 2 backfills it. */
     let res = await supabase.from('posts').insert(basePayload).select(POST_SELECT).single()
     if (res.error && isMissingNewCol(res.error)) {
       stripNewCols(basePayload)
       res = await supabase.from('posts').insert(basePayload).select(POST_SELECT).single()
     }
     if (res.error) throw res.error
-    posts.value = [res.data as unknown as Post, ...posts.value]
-    return res.data as unknown as Post
+    let post = res.data as unknown as Post
+    const newId = post.id
+
+    /* Step 2: bulk insert post_items in addition order. RLS enforces
+       (post owner AND item owner); BEFORE INSERT trigger enforces 3-cap. */
+    let partial = false
+    let itemsErr: any = null
+    if (attachedItemIds.length > 0) {
+      const rows = attachedItemIds.map((item_id, idx) => ({
+        post_id: newId,
+        item_id,
+        display_order: idx,
+      }))
+      const { error: piErr } = await supabase.from('post_items').insert(rows)
+      if (piErr) {
+        partial = true
+        itemsErr = piErr
+        addBreadcrumb({
+          category: 'plaza',
+          level: 'error',
+          message: 'createPost: post created but post_items insert failed',
+          data: {
+            postId: newId,
+            itemCount: attachedItemIds.length,
+            err: piErr.message || null,
+            code: (piErr as any)?.code || null,
+          },
+        })
+      } else {
+        /* Refetch to populate the post_items relation in our local cache,
+           ordered by display_order — the insert-time .select returned an
+           empty post_items array since rows didn't exist yet. */
+        const { data: full } = await supabase
+          .from('posts')
+          .select(POST_SELECT)
+          .order('display_order', { foreignTable: 'post_items', ascending: true })
+          .eq('id', newId)
+          .single()
+        if (full) post = full as unknown as Post
+      }
+    }
+
+    posts.value = [post, ...posts.value]
+    return { id: newId, partial, itemsErr }
   }
 
   /*

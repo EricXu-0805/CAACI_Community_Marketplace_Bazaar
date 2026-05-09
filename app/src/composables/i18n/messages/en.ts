@@ -9,6 +9,7 @@ const en: Record<string, string> = {
   'a11y.share': 'Share',
   'a11y.edit': 'Edit',
   'a11y.delete': 'Delete',
+  'a11y.removeChip': 'Remove attached item',
   'a11y.search': 'Search',
   'a11y.searchClear': 'Clear search',
   'a11y.filter': 'Open filters',
@@ -447,6 +448,7 @@ const en: Record<string, string> = {
   'plaza.attachItem': 'Tag item',
   'plaza.pickItem': 'Pick one of your listings',
   'plaza.noMyItems': 'You have no active listings to tag',
+  'plaza.partialPublish': 'Post published, but failed to attach items',
 
   'login.agreeRequired': 'Please agree to the Terms and Privacy Policy to sign up',
   'login.agreeCheckbox': 'I agree to the Terms of Service and Privacy Policy',

@@ -146,21 +146,22 @@
           </view>
 
           <view
-            v-if="post.attached_item"
+            v-for="pi in (post.post_items || [])"
+            :key="pi.item.id"
             class="attached-item-card"
-            @click.stop="goToAttachedItem(post.attached_item!.id)"
+            @click.stop="goToAttachedItem(pi.item.id)"
           >
             <image
-              :src="thumbUrl(post.attached_item.images?.[0], 'list') || '/static/placeholder.svg'"
+              :src="thumbUrl(pi.item.images?.[0], 'list') || '/static/placeholder.svg'"
               class="aic-img"
               mode="aspectFill"
               lazy-load
-              :alt="post.attached_item.title"
+              :alt="pi.item.title"
             />
             <view class="aic-body">
-              <text class="aic-title">{{ localize(post.attached_item.title_i18n, post.attached_item.title) }}</text>
-              <text class="aic-price">${{ post.attached_item.price }}</text>
-              <text v-if="post.attached_item.status === 'sold'" class="aic-sold">{{ t('status.sold') }}</text>
+              <text class="aic-title">{{ localize(pi.item.title_i18n, pi.item.title) }}</text>
+              <text class="aic-price">${{ pi.item.price }}</text>
+              <text v-if="pi.item.status === 'sold'" class="aic-sold">{{ t('status.sold') }}</text>
             </view>
             <view class="aic-arrow">›</view>
           </view>
@@ -337,17 +338,30 @@
             </view>
           </view>
         </view>
-        <view v-if="composerAttachedItem" class="comp-attached" role="button" :aria-label="t('a11y.delete')" @click="composerAttachedItem = null">
+      </view>
+      <view v-if="composerAttachedItems.length > 0" class="comp-dock">
+        <view
+          v-for="it in composerAttachedItems"
+          :key="it.id"
+          class="comp-attached"
+        >
           <image
-            :src="thumbUrl(composerAttachedItem.images?.[0], 'list') || '/static/placeholder.svg'"
+            :src="thumbUrl(it.images?.[0], 'list') || '/static/placeholder.svg'"
             class="ca-img"
             mode="aspectFill"
           />
           <view class="ca-body">
-            <text class="ca-title">{{ localize(composerAttachedItem.title_i18n, composerAttachedItem.title) }}</text>
-            <text class="ca-price">${{ composerAttachedItem.price }}</text>
+            <text class="ca-title">{{ localize(it.title_i18n, it.title) }}</text>
+            <text class="ca-price">${{ it.price }}</text>
           </view>
-          <view class="ca-remove"><view class="ci-x"></view></view>
+          <view
+            class="ca-remove"
+            role="button"
+            :aria-label="t('a11y.removeChip')"
+            @click.stop="removeChip(it.id)"
+          >
+            <view class="ci-x"></view>
+          </view>
         </view>
       </view>
       <view class="comp-footer">
@@ -355,7 +369,13 @@
           <view v-if="composerImages.length < 4" class="comp-add-img" role="button" :aria-label="t('a11y.pickImage')" @click="onComposerPickImage">
             <view class="cai-ico"></view>
           </view>
-          <view v-if="!composerAttachedItem" class="comp-attach-btn" @click="onOpenAttachSheet">
+          <view
+            class="comp-attach-btn"
+            :class="{ disabled: chipCapReached }"
+            role="button"
+            :aria-disabled="chipCapReached ? 'true' : 'false'"
+            @click="onAttachBtnClick"
+          >
             <text class="cab-ico">🏷️</text>
             <text class="cab-label">{{ t('plaza.attachItem') }}</text>
           </view>
@@ -371,11 +391,11 @@
         <view class="as-close" role="button" :aria-label="t('a11y.close')" @click="showAttachSheet = false"><view class="cs-x"></view></view>
       </view>
       <scroll-view class="as-list" scroll-y>
-        <view v-if="myActiveItems.length === 0" class="as-empty">
+        <view v-if="availableActiveItems.length === 0" class="as-empty">
           <text>{{ t('plaza.noMyItems') }}</text>
         </view>
         <view
-          v-for="it in myActiveItems"
+          v-for="it in availableActiveItems"
           :key="it.id"
           class="as-item"
           @click="onPickAttachedItem(it)"
@@ -489,10 +509,20 @@ const composerImages = ref<string[]>([])
 const composerFocused = ref(false)
 const submitting = ref(false)
 
-type AttachableItem = NonNullable<Post['attached_item']>
-const composerAttachedItem = ref<AttachableItem | null>(null)
+type AttachableItem = NonNullable<Post['post_items']>[number]['item']
+const MAX_CHIPS = 3
+const composerAttachedItems = ref<AttachableItem[]>([])
+const chipCapReached = computed(() => composerAttachedItems.value.length >= MAX_CHIPS)
 const showAttachSheet = ref(false)
 const myActiveItems = ref<AttachableItem[]>([])
+/* Picker hides items already attached to this composer session, so the
+   user can't pick the same item twice (matches the (post_id, item_id)
+   composite PK in mig 041's post_items — duplicate would 23505 server-side). */
+const availableActiveItems = computed(() =>
+  myActiveItems.value.filter(
+    it => !composerAttachedItems.value.some(c => c.id === it.id),
+  ),
+)
 
 async function onOpenAttachSheet() {
   if (!requireAuth()) return
@@ -502,9 +532,26 @@ async function onOpenAttachSheet() {
   }
 }
 
+function onAttachBtnClick() {
+  if (chipCapReached.value) return
+  onOpenAttachSheet()
+}
+
 function onPickAttachedItem(it: AttachableItem) {
-  composerAttachedItem.value = it
+  if (chipCapReached.value) {
+    showAttachSheet.value = false
+    return
+  }
+  if (composerAttachedItems.value.some(c => c.id === it.id)) {
+    showAttachSheet.value = false
+    return
+  }
+  composerAttachedItems.value.push(it)
   showAttachSheet.value = false
+}
+
+function removeChip(itemId: string) {
+  composerAttachedItems.value = composerAttachedItems.value.filter(c => c.id !== itemId)
 }
 
 function goToAttachedItem(id: string) {
@@ -633,7 +680,7 @@ function onComposerCancel() {
   showComposer.value = false
   composerText.value = ''
   composerImages.value = []
-  composerAttachedItem.value = null
+  composerAttachedItems.value = []
 }
 
 function onComposerPickImage() {
@@ -703,10 +750,10 @@ async function onSubmitPost() {
     const trimmed = composerText.value.trim()
     const sourceLang = lang.value
 
-    const newPost = await createPost(
+    const result = await createPost(
       composerText.value,
       imageUrls,
-      composerAttachedItem.value?.id || null,
+      composerAttachedItems.value.map(c => c.id),
       {
         image_dimensions: imageDims,
         content_i18n: trimmed ? { [sourceLang]: trimmed } : null,
@@ -716,16 +763,25 @@ async function onSubmitPost() {
 
     composerText.value = ''
     composerImages.value = []
-    composerAttachedItem.value = null
+    composerAttachedItems.value = []
     showComposer.value = false
-    uni.showToast({ title: t('plaza.posted'), icon: 'success' })
+
+    if (result.partial) {
+      /* Post row landed but post_items insert failed (RLS reject /
+         net blip / cap overflow). Soft-warn — the post is intact and
+         visible; chips just aren't attached. Sentry breadcrumb fires
+         from createPost itself. */
+      uni.showToast({ title: t('plaza.partialPublish'), icon: 'none', duration: 4000 })
+    } else {
+      uni.showToast({ title: t('plaza.posted'), icon: 'success' })
+    }
 
     // Fire-and-forget bilingual fill. Same strategy as the item publish
     // flow: don't block the toast, best-effort upsert the other locale.
-    if (trimmed && newPost?.id) {
+    if (trimmed && result.id) {
       translateContentToAll(trimmed, sourceLang as any)
         .then((map) => {
-          if (Object.keys(map).length > 1) updatePostI18n(newPost.id, map)
+          if (Object.keys(map).length > 1) updatePostI18n(result.id, map)
         })
         .catch((err) => console.warn('[plaza] bilingual fill skipped:', err))
     }
@@ -1363,15 +1419,23 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   padding: 6px 10px; border-radius: 8px;
   background: var(--bg-subtle); cursor: pointer;
   &:active { background: var(--bg-inset); }
+  &.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    &:active { background: var(--bg-subtle); }
+  }
 }
 .cab-ico { font-size: 14px; }
 .cab-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
 
+.comp-dock {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 0 16px 8px;
+}
 .comp-attached {
-  margin-top: 10px;
   display: flex; align-items: center; gap: 10px;
   padding: 8px; border: 1px solid var(--border); border-radius: 10px;
-  background: var(--bg-subtle); cursor: pointer;
+  background: var(--bg-subtle);
 }
 .ca-img { width: 48px; height: 48px; border-radius: 8px; flex-shrink: 0; }
 .ca-body { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -1381,6 +1445,8 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   width: 22px; height: 22px; border-radius: 50%;
   background: var(--ink-soft); display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+  cursor: pointer;
+  &:active { opacity: 0.7; }
 }
 
 .attached-item-card {
