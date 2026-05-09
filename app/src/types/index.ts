@@ -84,10 +84,12 @@ export interface Post {
   status: 'active' | 'deleted' | 'hidden'
   created_at: string
   updated_at: string
-  attached_item_id?: string | null
   profile?: Profile
   liked_by_me?: boolean
-  attached_item?: Pick<Item, 'id' | 'title' | 'title_i18n' | 'price' | 'images' | 'status'> | null
+  post_items?: Array<{
+    item: Pick<Item, 'id' | 'title' | 'title_i18n' | 'price' | 'images' | 'image_dimensions' | 'status'>
+    display_order: number
+  }>
 }
 
 export interface PostComment {
