@@ -538,6 +538,15 @@ function onAttachBtnClick() {
 }
 
 function onPickAttachedItem(it: AttachableItem) {
+  // N14 layer 2 — defense vs orphan picker: if composer is already
+  // closed (e.g. user tapped composer cancel while picker stayed open
+  // and then tapped through to a row), drop the pick and close the sheet.
+  // Without this, the chip would land on composerAttachedItems and
+  // bleed into the next openComposer session as a phantom selection.
+  if (!showComposer.value) {
+    showAttachSheet.value = false
+    return
+  }
   if (chipCapReached.value) {
     showAttachSheet.value = false
     return
@@ -562,6 +571,20 @@ const { translateContentToAll } = useTranslate()
 const { addPostToHistory } = useHistory()
 
 function openComposer() {
+  // N14 layer 3 — baseline reset before show. Defends against any
+  // stale composer state surviving from a prior session via a path
+  // that bypassed onComposerCancel (tab keep-alive, system back,
+  // OAuth roundtrip in keep-alive scenarios). Re-set everything to
+  // the empty default so what the user sees on open is always a
+  // fresh composer. Focus is intentionally still scheduled inside
+  // the existing 300ms setTimeout — focus must fire AFTER the modal
+  // becomes visible, not before, so the soft keyboard mounts on the
+  // visible textarea (mirroring the previous timing contract).
+  composerText.value = ''
+  composerImages.value = []
+  composerAttachedItems.value = []
+  showAttachSheet.value = false
+  composerFocused.value = false
   showComposer.value = true
   setTimeout(() => { composerFocused.value = true }, 300)
 }
@@ -681,6 +704,10 @@ function onComposerCancel() {
   composerText.value = ''
   composerImages.value = []
   composerAttachedItems.value = []
+  // N14 layer 1 — close any orphan picker sheet so a sheet that was
+  // mounted on top of the composer doesn't survive cancel and accept
+  // a row tap that would silently mutate the next composer session.
+  showAttachSheet.value = false
 }
 
 function onComposerPickImage() {
