@@ -1078,6 +1078,16 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   color: var(--ink);
   letter-spacing: 0.02em;
 }
+
+/* P1 §1.6: soften page-title color in dark — see commentary in
+ * profile/index.vue. Plaza's title uses --ink directly (vs the
+ * --text-primary alias used in profile/publish) but both resolve to
+ * #F0E8D6 cream in dark, with the same 14:1 over-contrast problem.
+ * --ink-strong (0.92α) drops to ~12:1. Light unchanged. */
+[data-theme="dark"] .ph-title { color: var(--ink-strong); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ph-title { color: var(--ink-strong); }
+}
 .compose-btn {
   height: 32px; padding: 0 13px 0 11px;
   border-radius: var(--radius-pill);

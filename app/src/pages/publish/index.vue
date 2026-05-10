@@ -718,6 +718,15 @@ async function onSubmit() {
 }
 .ph-title { font-size: 17px; font-weight: 700; color: var(--text-primary); }
 
+/* P1 §1.6: soften page-title color in dark — see commentary in
+ * profile/index.vue. Pure cream-on-charcoal hits ~14:1 contrast on
+ * the deepened dark canvas; --ink-strong (0.92α) drops to ~12:1
+ * while staying above AA. Light unchanged. */
+[data-theme="dark"] .ph-title { color: var(--ink-strong); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ph-title { color: var(--ink-strong); }
+}
+
 @media (min-width: 768px) { .page-header { display: none; } }
 
 /* ========== Form ========== */

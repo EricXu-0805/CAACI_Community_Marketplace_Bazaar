@@ -534,6 +534,17 @@ function onDeleteItem(id: string) {
   position: sticky; top: 0; z-index: 50;
 }
 .ph-title { font-size: 17px; font-weight: 700; color: var(--text-primary); }
+
+/* P1 §1.6: soften page-title color in dark — pure cream-on-charcoal
+ * (--text-primary → --ink #F0E8D6) hits ~14:1 contrast on the
+ * deepened dark canvas, which reads as "shouting" for a header.
+ * Drop to --ink-strong (0.92α) for a more comfortable ~12:1 while
+ * staying well above AA. Scoped-style specificity beats the App.vue
+ * global rule, so the override has to live per-page. Light unchanged. */
+[data-theme="dark"] .ph-title { color: var(--ink-strong); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ph-title { color: var(--ink-strong); }
+}
 @media (min-width: 768px) {
   .page-header { display: none; }
   .page { padding-bottom: 0; }
