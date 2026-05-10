@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!--
+    Dark-mode default avatar (v3 P1, spec §1.4).
+    Background = #36322B (matches --surface-alt in dark).
+    Figure stroke = #F0E8D6 @ 0.32 alpha (matches --ink-faint in dark).
+    Light-mode counterpart is /static/default-avatar.svg.
+    Paired by the theme-aware `defaultAvatar` computed in messages/chat.
+  -->
+  <rect width="64" height="64" fill="#36322B"/>
+  <circle cx="32" cy="26" r="10" fill="#F0E8D6" fill-opacity="0.32"/>
+  <path d="M12 56 Q12 40 32 40 Q52 40 52 56 Z" fill="#F0E8D6" fill-opacity="0.32"/>
+</svg>

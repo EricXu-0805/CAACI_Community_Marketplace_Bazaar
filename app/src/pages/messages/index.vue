@@ -38,7 +38,7 @@
           @longpress="onMoreMenu(conv)"
         >
           <image
-            :src="getOtherUser(conv)?.avatar_url || '/static/default-avatar.svg'"
+            :src="getOtherUser(conv)?.avatar_url || defaultAvatar"
             class="conv-avatar"
             mode="aspectFill"
           />
@@ -91,12 +91,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useMessages } from '../../composables/useMessages'
 import { useUnread } from '../../composables/useUnread'
+import { useTheme } from '../../composables/useTheme'
 import { formatTime, thumbUrl } from '../../utils'
 import type { Conversation, Profile } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
@@ -116,6 +117,20 @@ const {
   markConversationUnread,
 } = useMessages()
 const { unreadConvIds, refreshUnreadCount } = useUnread()
+const { isDark } = useTheme()
+
+/*
+ * Theme-aware avatar fallback (v3 P1, spec §1.4).
+ *
+ * The light default-avatar.svg is a flat white circle with a gray
+ * figure — fine on cream canvas, but renders as a glaring near-white
+ * disk on the deepened dark canvas (#15130F). Swap to the dark-paired
+ * SVG (surface-alt background, ink-faint figure) when isDark resolves
+ * true. Light-mode users see the original asset unchanged.
+ */
+const defaultAvatar = computed(() =>
+  isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
+)
 
 const SWIPE_OPEN = 210
 const swipeOffsets = reactive<Record<string, number>>({})

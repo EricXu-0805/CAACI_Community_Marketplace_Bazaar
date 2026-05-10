@@ -75,7 +75,7 @@
         >
         <image
           v-if="msg.sender_id !== currentUser?.id"
-          :src="msg.sender?.avatar_url || '/static/default-avatar.svg'"
+          :src="msg.sender?.avatar_url || defaultAvatar"
           class="msg-avatar"
         />
         <view
@@ -102,7 +102,7 @@
         />
         <image
           v-if="msg.sender_id === currentUser?.id"
-          :src="currentUser?.avatar_url || '/static/default-avatar.svg'"
+          :src="currentUser?.avatar_url || defaultAvatar"
           class="msg-avatar"
         />
       </view>
@@ -161,9 +161,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onUnmounted, nextTick } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
+import { useTheme } from '../../composables/useTheme'
 import { useMessages } from '../../composables/useMessages'
 import { useItems } from '../../composables/useItems'
 import { useUnread } from '../../composables/useUnread'
@@ -181,6 +182,19 @@ const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, d
 const { uploadOneImage } = useItems()
 const { refreshUnreadCount } = useUnread()
 const { reportTarget, blockUser } = useModeration()
+const { isDark } = useTheme()
+
+/*
+ * Theme-aware avatar fallback (v3 P1, spec §1.4).
+ *
+ * Both the incoming-message avatar (sender) and outgoing-message
+ * avatar (current user) fall back to default-avatar.svg when no
+ * avatar_url is set. The light SVG glares on dark canvas — see
+ * messages/index.vue for the full rationale.
+ */
+const defaultAvatar = computed(() =>
+  isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
+)
 
 const inputText = ref('')
 const chatInputRef = ref<any>(null)
