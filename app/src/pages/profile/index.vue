@@ -625,6 +625,35 @@ function onDeleteItem(id: string) {
   & > view { position: relative; z-index: 1; }
 }
 .user-card-bg { display: none; }
+
+/*
+ * Dark-mode override for the passport panel (v3 P1, spec §1.2).
+ *
+ * The light treatment pins to --campus-blue-surface (constant #13294B)
+ * for high contrast against the cream canvas — see the comment above
+ * the .user-card rule for the full rationale. On the deepened dark
+ * canvas (#15130F after P1.1) that constant navy reads muddy against
+ * the warm-charcoal page background: the panel loses its "passport"
+ * lift and visually merges with the canvas.
+ *
+ * --user-card-grad-dark (#1A2540 → #2C3E5C) is a desaturated navy pair
+ * tuned for dark canvas. It keeps the cool-hue campus identity vs the
+ * warm canvas, but the gradient transition restores the visual lift
+ * the solid color loses. All inner card content (avatar, nickname,
+ * stats-row, illini badge, edit-btn) stays pinned to ivory and reads
+ * fine over either gradient stop.
+ *
+ * Light mode is unchanged.
+ */
+[data-theme="dark"] .user-card {
+  background: var(--user-card-grad-dark);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .user-card {
+    background: var(--user-card-grad-dark);
+  }
+}
+
 .user-row { display: flex; align-items: center; gap: 14px; }
 .avatar-big {
   width: 72px; height: 72px; border-radius: 50%;
