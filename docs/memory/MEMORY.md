@@ -1,0 +1,22 @@
+# Memory Index
+
+- [Session startup — state check before accepting work](session_startup_state_check.md) — read memory + git + audit dir + handoff; report 4-line state snapshot to Eric; only THEN accept work
+- [User — Eric Xu / Illini Market](user_eric_illini_market.md) — solo maintainer; uni-app + Vue 3 + Supabase + Vercel + Resend; beta May 2026
+- [Communication — direct, bilingual, push-back expected](communication_bilingual_direct.md) — anti-fluff, mixed CN/EN technical vocab, push back during fatigue
+- [Workflow — audit-first, atomic commits, 5-section final report](workflow_audit_first.md) — audit→spec→build→review→push→verify, "修一个验收一个"
+- [Workflow — audit-only first vs audit+fix 一把过](sprint_form_audit_only_vs_one_pass.md) — audit-only when cross-platform / new module / quirky API / animation / view-dependent schema
+- [Memory mirror in repo `docs/memory/`](docs_memory_mirror_convention.md) — Cowork local is source-of-truth; sync BOTH on every memory update; Cowork wins on conflict
+- [Actors — Eric / Chat-Claude / audit-build agent three-role model](actors_three_role_model.md) — Eric=red-line, Chat=PM/specs/review, OpenCode (was Claude Code) executes audit+build, never pushes
+- [OpenCode — no self-decided history rewrite on red builds](opencode_no_self_decided_history_rewrite.md) — STOP and ask Eric; no reset+recommit / amend / rebase; forward-add only
+- [Red-line zones — Eric-only ops, never Claude](red_line_zones.md) — migrations, Auth Dashboard, PKCE, CSP, etc.; Supabase CLI db push/pull FORBIDDEN
+- [Pre-push hook — three-green required](pre_push_three_green.md) — vue-tsc + build:h5 + build:mp-weixin all green
+- [PR merge policy — squash-merge](pr_merge_squash_policy.md) — atomic on feature branch, squashed on main
+- [GitHub PR creation gotcha — compare page doesn't auto-create](github_pr_creation_compare_page_gotcha.md) — must click green "Create pull request"; use `gh pr create --body` or select "Submit" to skip
+- [Windows cmd.exe — multi-line `-m` commit messages don't work](windows_cmd_multiline_commit_gotcha.md) — use multiple `-m` flags or `-F filepath` or single-line title; body silently dropped on multi-line `-m`
+- [Git push proxies — Zach (Eric author) / Kenny-JT (raw "走 B")](zach_git_proxy.md) — both push on Eric's behalf; identity policy diverged after Vercel Pro upgrade
+- [Design system asset — "Illini Market Design System" zip](design_system_asset_zip.md) — tokens, SKILL.md, mockups; for post-bug-queue redesign
+- [Design system — two-track (ivory_academy / marketplace)](design_system_two_track.md) — ivory_academy primary commerce; marketplace ONLY campus-official
+- [Reserved accounts — 6 protected user accounts](reserved_accounts_six.md) — never wipe: CAACI小助手, Eric, Kenny, Zach, Eric WeChat, utj test
+- [Backlog — Location verification + GPS precision](backlog_location_verification_gps.md) — verified-location badge + building-level GPS; surfaced 2026-05-04
+- [Backlog — prepare script Windows incompat](backlog_prepare_script_windows_incompat.md) — Unix shell syntax breaks Windows npm install; not launch blocker
+- [Google OAuth — supabase.co page is correct](google_oauth_supabase_redirect.md) — fix only via Supabase Custom Domain (red-line, post-launch)
