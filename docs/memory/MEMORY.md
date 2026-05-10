@@ -12,6 +12,7 @@
 - [Pre-push hook — three-green required](pre_push_three_green.md) — vue-tsc + build:h5 + build:mp-weixin all green
 - [PR merge policy — squash-merge](pr_merge_squash_policy.md) — atomic on feature branch, squashed on main
 - [GitHub PR creation gotcha — compare page doesn't auto-create](github_pr_creation_compare_page_gotcha.md) — must click green "Create pull request"; use `gh pr create --body` or select "Submit" to skip
+- [Windows cmd.exe — multi-line `-m` commit messages don't work](windows_cmd_multiline_commit_gotcha.md) — use multiple `-m` flags or `-F filepath` or single-line title; body silently dropped on multi-line `-m`
 - [Git push proxies — Zach (Eric author) / Kenny-JT (raw "走 B")](zach_git_proxy.md) — both push on Eric's behalf; identity policy diverged after Vercel Pro upgrade
 - [Design system asset — "Illini Market Design System" zip](design_system_asset_zip.md) — tokens, SKILL.md, mockups; for post-bug-queue redesign
 - [Design system — two-track (ivory_academy / marketplace)](design_system_two_track.md) — ivory_academy primary commerce; marketplace ONLY campus-official
