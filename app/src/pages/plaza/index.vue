@@ -339,6 +339,7 @@
           </view>
         </view>
       </view>
+      <view class="comp-bottom-stack" :style="{ transform: `translateY(-${kb.height}px)` }">
       <view v-if="composerAttachedItems.length > 0" class="comp-dock">
         <view
           v-for="it in composerAttachedItems"
@@ -381,6 +382,7 @@
           </view>
         </view>
         <text class="comp-count">{{ 2000 - composerText.length }} {{ t('plaza.charsLeft') }}</text>
+      </view>
       </view>
     </view>
 
@@ -429,6 +431,7 @@ import { useItems } from '../../composables/useItems'
 import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
 import { useLongPress } from '../../composables/useLongPress'
+import { useKeyboardHeight } from '../../composables/useKeyboardHeight'
 import type { Post, PostComment } from '../../types'
 import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl } from '../../utils'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
@@ -442,6 +445,7 @@ const { t, lang, localize } = useI18n()
 const { currentUser, isLoggedIn, requireAuth } = useAuth()
 const { posts, loading, hasMore, fetchPosts, createPost, updatePostI18n, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, fetchMyActiveItems } = usePlaza()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
+const kb = useKeyboardHeight()
 
 onShareAppMessage(() => ({
   title: '校园广场 · Illini Market',
@@ -1713,6 +1717,26 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   }
   &::before { transform: rotate(45deg); }
   &::after { transform: rotate(-45deg); }
+}
+
+/* N7-redux D3 — keyboard-aware dock wrapper.
+   Lifts .comp-dock + .comp-footer above the soft keyboard via transform
+   translateY. GPU-composited (not layout) → smooth animation regardless
+   of main-thread work. Triggered by useKeyboardHeight composable;
+   transform value bound inline on the .comp-bottom-stack element.
+   Duration 0.25s matches typical iOS keyboard rise (~250ms).
+
+   Background MUST be opaque — the wrapper transform-lifts above the
+   textarea region while still occupying its flex slot at the bottom
+   (transform doesn't relayout). Without an opaque bg, .comp-footer's
+   border-top edge, .comp-count text, and inter-button gaps would
+   show the textarea content through the lifted wrapper. Using
+   var(--bg-elev-1) matches the .composer-fullpage parent bg so the
+   lifted wrapper visually fuses with the rest of the composer chrome. */
+.comp-bottom-stack {
+  background: var(--bg-elev-1);
+  transition: transform 0.25s ease-out;
+  will-change: transform;
 }
 
 @media (min-width: 768px) {
