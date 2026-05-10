@@ -58,9 +58,14 @@ import { onLoad, onUnload } from '@dcloudio/uni-app'
  */
 
 export interface KeyboardState {
-  /** Current soft-keyboard height in CSS pixels (px); 0 when keyboard is closed or a hardware keyboard is in use. */
+  /**
+   * Current soft-keyboard height in CSS pixels (px); 0 when keyboard
+   * is closed, a hardware keyboard is in use, or the detected viewport
+   * shrink is below `minThreshold` (filtered as false-positive — e.g.
+   * iOS Safari URL bar collapse, pull-to-refresh).
+   */
   height: Ref<number>
-  /** Convenience flag: true when height > minThreshold (default 50). Filters URL-bar / overscroll false positives. */
+  /** Convenience flag: true when height > 0 (i.e. above minThreshold). Filters URL-bar / overscroll false positives. */
   isOpen: Ref<boolean>
 }
 
@@ -102,8 +107,15 @@ export function useKeyboardHeight(opts: UseKeyboardHeightOptions = {}): Keyboard
     if (debounceTimer) clearTimeout(debounceTimer)
     debounceTimer = setTimeout(() => {
       const clamped = Math.max(0, next)
-      height.value = clamped
-      isOpen.value = clamped > minThreshold
+      // Below minThreshold = "not a real keyboard". False positives we
+      // need to suppress: iOS Safari URL bar collapse (~50px), pull-to-
+      // refresh / overscroll rubber-band, and any sub-keyboard viewport
+      // shrink. Gate height too (not just isOpen) — callers binding
+      // transform to .height would otherwise see a 50px wrapper jump on
+      // URL bar collapse even though isOpen correctly reads false.
+      const gated = clamped > minThreshold ? clamped : 0
+      height.value = gated
+      isOpen.value = gated > 0
       debounceTimer = null
     }, debounceMs)
   }

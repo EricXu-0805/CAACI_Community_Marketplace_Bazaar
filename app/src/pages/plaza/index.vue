@@ -1724,8 +1724,17 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
    translateY. GPU-composited (not layout) → smooth animation regardless
    of main-thread work. Triggered by useKeyboardHeight composable;
    transform value bound inline on the .comp-bottom-stack element.
-   Duration 0.25s matches typical iOS keyboard rise (~250ms). */
+   Duration 0.25s matches typical iOS keyboard rise (~250ms).
+
+   Background MUST be opaque — the wrapper transform-lifts above the
+   textarea region while still occupying its flex slot at the bottom
+   (transform doesn't relayout). Without an opaque bg, .comp-footer's
+   border-top edge, .comp-count text, and inter-button gaps would
+   show the textarea content through the lifted wrapper. Using
+   var(--bg-elev-1) matches the .composer-fullpage parent bg so the
+   lifted wrapper visually fuses with the rest of the composer chrome. */
 .comp-bottom-stack {
+  background: var(--bg-elev-1);
   transition: transform 0.25s ease-out;
   will-change: transform;
 }
