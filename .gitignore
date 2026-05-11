@@ -70,6 +70,13 @@ UI_*.md
 EXPLORATION_*.md
 .gstack/
 
+# Memory mirror — docs/memory/*.md is the canonical sync layer for Cowork
+# chat memory and must NEVER be ignored, even though some filenames
+# accidentally match the audit/design-system patterns above on case-
+# insensitive filesystems (Windows). Whitelist explicitly:
+!docs/memory/
+!docs/memory/**
+
 # Local env files
 app/.env
 .env
