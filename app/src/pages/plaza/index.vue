@@ -62,7 +62,7 @@
             <text class="pc-icon">📌</text>
             <view class="pc-body">
               <text class="pc-title">{{ post.profile?.nickname || t('plaza.pinned') }}</text>
-              <text class="pc-meta">{{ formatTime(post.created_at) }} · {{ t('plaza.tapToExpand') || 'tap to expand' }}</text>
+              <text class="pc-meta">{{ formatTime(post.created_at) }} · {{ t('plaza.tapToExpand') }}</text>
             </view>
             <text class="pc-chev">›</text>
           </view>
@@ -87,7 +87,7 @@
               v-if="post.is_pinned && pinnedExpanded.has(post.id)"
               class="pinned-collapse-btn"
               role="button"
-              :aria-label="t('plaza.collapse') || 'Collapse'"
+              :aria-label="t('plaza.collapse')"
               @click.stop="pinnedExpanded.delete(post.id)"
             >
               <view class="pcb-chev"></view>
@@ -767,7 +767,7 @@ async function onSubmitPost() {
       imageDims = up.dims
       console.log('[plaza-debug] uploaded:', imageUrls.length, '/', expectedImages)
       if (imageUrls.length === 0) {
-        throw new Error(t('plaza.uploadFailed') || 'Image upload failed — please retry')
+        throw new Error(t('plaza.uploadFailed'))
       }
       if (imageUrls.length < expectedImages) {
         uni.showToast({

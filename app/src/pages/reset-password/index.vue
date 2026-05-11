@@ -348,7 +348,7 @@ async function onSave() {
      */
     console.warn('[reset-pw-debug] onSave called outside recovery flow — refusing')
     uni.showToast({
-      title: t('resetPw.notRecovery') || 'Open this page from the password-reset email link',
+          title: t('resetPw.notRecovery'),
       icon: 'none',
       duration: 3000,
     })

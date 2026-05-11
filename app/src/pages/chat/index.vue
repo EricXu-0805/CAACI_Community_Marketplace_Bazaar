@@ -687,7 +687,7 @@ async function onSendImage() {
          */
         const heicMsg = err?.heic === true ? t('heic.unsupported') : null
         const raw = err?.message ? `${err.message}` : ''
-        const fallback = t('chat.imageUploadFailed') || 'Image upload failed — please retry'
+        const fallback = t('chat.imageUploadFailed')
         uni.showToast({
           title: heicMsg || (raw ? raw.slice(0, 80) : fallback),
           icon: 'none',

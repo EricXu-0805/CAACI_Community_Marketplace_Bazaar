@@ -192,7 +192,7 @@ async function onForgotPassword() {
   if (error) {
     console.warn('[reset-pw-debug] resetPasswordForEmail error:', error)
     uni.showModal({
-      title: t('login.resetFailTitle') || 'Could not send reset email',
+      title: t('login.resetFailTitle'),
       content: error.message,
       showCancel: false,
     })
