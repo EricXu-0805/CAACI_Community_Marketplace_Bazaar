@@ -14,9 +14,12 @@
 - [GitHub PR creation gotcha — compare page doesn't auto-create](github_pr_creation_compare_page_gotcha.md) — must click green "Create pull request"; use `gh pr create --body` or select "Submit" to skip
 - [Windows cmd.exe — multi-line `-m` commit messages don't work](windows_cmd_multiline_commit_gotcha.md) — use multiple `-m` flags or `-F filepath` or single-line title; body silently dropped on multi-line `-m`
 - [Git push proxies — Zach (Eric author) / Kenny-JT (raw "走 B")](zach_git_proxy.md) — both push on Eric's behalf; identity policy diverged after Vercel Pro upgrade
-- [Design system asset — "Illini Market Design System" zip](design_system_asset_zip.md) — tokens, SKILL.md, mockups; for post-bug-queue redesign
+- [Design system asset — "Illini Market Design System" zip](design_system_asset_zip.md) — vision-archive snapshot; prod App.vue:972+ is source-of-truth; do NOT import zip CSS
 - [Design system — two-track (ivory_academy / marketplace)](design_system_two_track.md) — ivory_academy primary commerce; marketplace ONLY campus-official
 - [Reserved accounts — 6 protected user accounts](reserved_accounts_six.md) — never wipe: CAACI小助手, Eric, Kenny, Zach, Eric WeChat, utj test
 - [Backlog — Location verification + GPS precision](backlog_location_verification_gps.md) — verified-location badge + building-level GPS; surfaced 2026-05-04
 - [Backlog — prepare script Windows incompat](backlog_prepare_script_windows_incompat.md) — Unix shell syntax breaks Windows npm install; not launch blocker
 - [Google OAuth — supabase.co page is correct](google_oauth_supabase_redirect.md) — fix only via Supabase Custom Domain (red-line, post-launch)
+- [V3 P1 — Dark mode fixes shipped 2026-05-10](v3_p1_dark_mode_shipped.md) — main squash 162b1a9 + hotfix; tokens + 5 surfaces + i18n + messages swipe; v3.5 backlog 7 items
+- [Lesson — show full element block when patching Vue template bindings](lesson_template_binding_full_block.md) — single-line :class= patch invites dropping sibling static class; from v3 P1 hotfix incident
+- [V3 phase status tracker — P1 shipped, P2-P4 deferred](sprint_v3_phase_status.md) — live tracker; ask Eric "ready to resume Px?" before writing next OpenCode prompt
