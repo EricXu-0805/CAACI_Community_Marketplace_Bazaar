@@ -362,9 +362,26 @@ function goLogin() {
   &:active { opacity: 0.8; }
 }
 
+/*
+ * Conversation row chrome (v3 P1 follow-up, dark-mode adaptations).
+ *
+ * Two fixes in here:
+ *   1. Explicit background — without it the .conv-item transform creates
+ *      sub-pixel render gaps at the edges, and the absolutely-positioned
+ *      .swipe-actions (brand orange / amber / danger red) bleed through
+ *      as thin colored lines along the row top/bottom. Pinning conv-row
+ *      to --bg-elev-1 (the same color as the resting .conv-item bg)
+ *      fills any gap with the matching tone.
+ *   2. Divider visibility — --line-hair is rgba(240,232,214,0.06) in
+ *      dark, which is essentially invisible on the warm-charcoal canvas.
+ *      Switch to --border (0.10α) for a hairline that actually reads
+ *      while staying subtle. Light mode also benefits — --border there
+ *      is the same neutral beige, just at higher relative contrast.
+ */
 .conv-row {
   position: relative; overflow: hidden;
-  border-bottom: 0.5px solid var(--line-hair);
+  background: var(--bg-elev-1);
+  border-bottom: 0.5px solid var(--border);
 }
 
 .conv-item {
@@ -378,6 +395,11 @@ function goLogin() {
 .conv-avatar {
   width: 48px; height: 48px; border-radius: 50%;
   background: var(--bg-subtle); flex-shrink: 0;
+  /* Hairline keeps the avatar circle readable even when no fallback
+   * image has loaded yet (the default-avatar SVG already has visual
+   * contrast against this bg, but the brief pre-load moment was
+   * showing as a flat patch in dark). */
+  border: 0.5px solid var(--border);
 }
 .conv-info { flex: 1; min-width: 0; }
 .conv-top { display: flex; justify-content: space-between; align-items: center; }
@@ -441,7 +463,16 @@ function goLogin() {
 
 .swipe-actions {
   position: absolute; top: 0; bottom: 0;
-  display: flex; z-index: 1;
+  display: flex;
+  /* Explicit z-index: 0 (was 1) — sits behind the new .conv-row
+   * background (auto z-index from document flow = 0) AND behind the
+   * .conv-item layer (z-index: 2). The earlier z:1 still rendered
+   * correctly because .conv-item:2 stacked above, but with .conv-row
+   * now painted at z:0 too, leaving the actions at z:1 would have
+   * placed them ABOVE the row background — re-introducing the leak.
+   * Drop to z:0 so the stacking order is unambiguous: actions →
+   * row bg → item content. */
+  z-index: 0;
 }
 .swipe-actions.right { right: 0; }
 .swipe-actions.left { left: 0; }
