@@ -1169,6 +1169,14 @@ button:focus-visible,
   --ink-quiet:   rgba(240, 232, 214, 0.52);
   --ink-faint:   rgba(240, 232, 214, 0.32);
   --ink-inverse: #1C1A17;
+  /* P1-1: AA-contrast placeholder text (splits --ink-quiet into two roles
+   * so .55-alpha placeholders stop collapsing into the same value as
+   * meta/caption text, which fails AA on the deepened dark canvas). */
+  --ink-placeholder: rgba(240, 232, 214, 0.62);
+  /* P2-2: page-title softener — prevents the 14:1 over-contrast that
+   * pure cream-on-charcoal produces on hero titles. Used by .ph-title
+   * scoped styles in dark only. */
+  --ink-strong:      rgba(240, 232, 214, 0.92);
 
   --text-primary:   var(--ink);
   --text-secondary: var(--ink-soft);
@@ -1177,23 +1185,31 @@ button:focus-visible,
   --text-faint:     var(--ink-faint);
   --text-disabled:  rgba(240, 232, 214, 0.22);
 
-  --bg-page:    #1C1A17;
+  /* P0-1: Surface ladder — widened ΔE so cards/chips/pressed states lift
+   * visibly on dark. Canvas deepens 1 step; chip-bg + pressed-inset
+   * lighten 1 step each; surface (#26231E) and frame (#332F28) stay as
+   * middle anchors. Legacy `--bg-*` aliases mirror the new semantic
+   * names so 198+ existing component usages get the visible benefit
+   * automatically. */
+  --bg-page:    #15130F;   /* was #1C1A17 — canvas deepens 1 step */
   --bg-elev-1:  #26231E;
-  --bg-elev-2:  #2E2A23;
-  --bg-subtle:  #2E2A23;
-  --bg-inset:   #332F28;
+  --bg-elev-2:  #36322B;   /* was #2E2A23 — chip bg lightens 1 step */
+  --bg-subtle:  #36322B;   /* was #2E2A23 — chip bg lightens 1 step */
+  --bg-inset:   #423D33;   /* was #332F28 — pressed/inset lightens 1 step */
 
-  --canvas:     #1C1A17;
+  --canvas:     #15130F;   /* was #1C1A17 — canvas deepens 1 step */
   --surface:    #26231E;
-  --surface-alt: #2E2A23;
-  --parchment:  #2E2A23;
+  --surface-alt: #36322B;  /* was #2E2A23 — chip bg lightens 1 step */
+  /* P0-3: tab bar reverses depth direction in dark — bar is DEEPER than
+   * canvas so it reads as a base shelf instead of a floating panel. */
+  --parchment:  #13110D;   /* was #2E2A23 — now darker than canvas */
   --frame:      #332F28;
   --paper:      #26231E;
-  --paper-2:    #2E2A23;
-  --paper-3:    #332F28;
+  --paper-2:    #36322B;   /* was #2E2A23 — alias of surface-alt */
+  --paper-3:    #423D33;   /* was #332F28 — pressed/inset lightens 1 step */
 
   --surface-rgb: 38, 35, 30;
-  --canvas-rgb:  28, 26, 23;
+  --canvas-rgb:  21, 19, 15;   /* matches new --canvas #15130F so frosted-glass headers fade without color banding */
 
   --line-hair:  rgba(240, 232, 214, 0.08);
   --line-soft:  rgba(240, 232, 214, 0.12);
@@ -1216,6 +1232,14 @@ button:focus-visible,
   --campus-orange:    #FF7B33;
   --campus-orange-deep: #FF9560;
   --campus-orange-soft: rgba(255, 123, 51, 0.15);
+  /* P1-2: campus chip surface for dark — keeps navy aesthetic without
+   * the chip graying out into the warm dark canvas. */
+  --campus-blue-chip-bg:     rgba(19, 41, 75, 0.45);
+  --campus-blue-chip-border: rgba(106, 138, 194, 0.3);
+  /* P1-4: profile user-card gradient — desaturated navy pair for dark
+   * mode (was a solid --campus-blue-surface; gradient lifts the large
+   * panel off the deepened canvas without graying its identity). */
+  --user-card-grad-dark:     linear-gradient(135deg, #1A2540, #2C3E5C);
 
   --success:      #8BA670;
   --success-soft: rgba(139, 166, 112, 0.15);
@@ -1228,10 +1252,16 @@ button:focus-visible,
   --accent-warn:   var(--warning);
   --accent-danger: var(--danger);
 
-  --shadow-hair: 0 0 0 1px rgba(0, 0, 0, 0.3);
-  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.2);
-  --shadow-pop:  0 2px 4px rgba(0, 0, 0, 0.35), 0 12px 28px rgba(0, 0, 0, 0.3);
-  --shadow-float:0 1px 2px rgba(0, 0, 0, 0.4), 0 24px 56px -16px rgba(0, 0, 0, 0.5);
+  /* P0-2: shadows go warm-deep rgba(8,6,4,...) instead of pure black,
+   * matching the warm canvas undertone so shadows read as "paper on
+   * paper at night" rather than "object floating in void". --shadow-hair
+   * becomes an Apple Big Sur–style inset top-edge highlight (a 0.5px
+   * cream-tinted inset) so cards in dark mode catch a subtle edge-light
+   * instead of relying on outline alone. */
+  --shadow-hair: inset 0 0 0 0.5px rgba(240, 232, 214, 0.06);
+  --shadow-soft: 0 1px 2px rgba(8, 6, 4, 0.6),  0 4px 12px rgba(8, 6, 4, 0.5);
+  --shadow-pop:  0 2px 4px rgba(8, 6, 4, 0.7),  0 12px 28px rgba(8, 6, 4, 0.55);
+  --shadow-float:0 1px 2px rgba(8, 6, 4, 0.7),  0 24px 56px -16px rgba(8, 6, 4, 0.7);
   --shadow-cta:  0 2px 4px rgba(224, 106, 74, 0.25), 0 12px 28px -8px rgba(224, 106, 74, 0.4);
 }
 
@@ -1250,6 +1280,9 @@ button:focus-visible,
     --ink-quiet:   rgba(240, 232, 214, 0.52);
     --ink-faint:   rgba(240, 232, 214, 0.32);
     --ink-inverse: #1C1A17;
+    /* P1-1 + P2-2: mirror of [data-theme="dark"] — see commentary there. */
+    --ink-placeholder: rgba(240, 232, 214, 0.62);
+    --ink-strong:      rgba(240, 232, 214, 0.92);
 
     --text-primary:   var(--ink);
     --text-secondary: var(--ink-soft);
@@ -1257,23 +1290,27 @@ button:focus-visible,
     --text-muted:     var(--ink-quiet);
     --text-faint:     var(--ink-faint);
 
-    --bg-page:    #1C1A17;
+    /* P0-1: widened surface ΔE — see [data-theme="dark"] block above for
+     * the full rationale. Mirrored here so users who never toggle the
+     * manual theme but have OS dark mode get the same ladder. */
+    --bg-page:    #15130F;
     --bg-elev-1:  #26231E;
-    --bg-elev-2:  #2E2A23;
-    --bg-subtle:  #2E2A23;
-    --bg-inset:   #332F28;
+    --bg-elev-2:  #36322B;
+    --bg-subtle:  #36322B;
+    --bg-inset:   #423D33;
 
-    --canvas:     #1C1A17;
+    --canvas:     #15130F;
     --surface:    #26231E;
-    --surface-alt: #2E2A23;
-    --parchment:  #2E2A23;
+    --surface-alt: #36322B;
+    /* P0-3: tab bar reverses depth direction (deeper than canvas). */
+    --parchment:  #13110D;
     --frame:      #332F28;
     --paper:      #26231E;
-    --paper-2:    #2E2A23;
-    --paper-3:    #332F28;
+    --paper-2:    #36322B;
+    --paper-3:    #423D33;
 
     --surface-rgb: 38, 35, 30;
-    --canvas-rgb:  28, 26, 23;
+    --canvas-rgb:  21, 19, 15;   /* matches new --canvas #15130F */
 
     --line-hair:  rgba(240, 232, 214, 0.08);
     --border:        rgba(240, 232, 214, 0.10);
@@ -1290,6 +1327,20 @@ button:focus-visible,
     --campus-orange:    #FF7B33;
     --campus-orange-deep: #FF9560;
     --campus-orange-soft: rgba(255, 123, 51, 0.15);
+    /* P1-2 + P1-4: new dark-mode component tokens (see data-theme block). */
+    --campus-blue-chip-bg:     rgba(19, 41, 75, 0.45);
+    --campus-blue-chip-border: rgba(106, 138, 194, 0.3);
+    --user-card-grad-dark:     linear-gradient(135deg, #1A2540, #2C3E5C);
+
+    /* P0-2: warm-deep shadows + inset edge-light highlight — mirror of
+     * the data-theme block. Adding these here also closes a pre-existing
+     * gap where prefers-dark users (no manual theme) were inheriting
+     * the LIGHT-mode shadow alphas on a dark canvas. */
+    --shadow-hair: inset 0 0 0 0.5px rgba(240, 232, 214, 0.06);
+    --shadow-soft: 0 1px 2px rgba(8, 6, 4, 0.6),  0 4px 12px rgba(8, 6, 4, 0.5);
+    --shadow-pop:  0 2px 4px rgba(8, 6, 4, 0.7),  0 12px 28px rgba(8, 6, 4, 0.55);
+    --shadow-float:0 1px 2px rgba(8, 6, 4, 0.7),  0 24px 56px -16px rgba(8, 6, 4, 0.7);
+    --shadow-cta:  0 2px 4px rgba(224, 106, 74, 0.25), 0 12px 28px -8px rgba(224, 106, 74, 0.4);
   }
 }
 

@@ -95,6 +95,42 @@ function onTap(b: Banner) {
   &:active { opacity: 0.9; }
 }
 
+/*
+ * Dark-mode saturation tint (v3 P1, spec §1.5).
+ *
+ * Banner images are user-uploaded promo graphics — typically bright,
+ * highly-saturated marketing imagery. On the deepened dark canvas
+ * (#15130F after P1.1) those colors clash and visually punch through
+ * the warm-paper mood. Overlay a canvas-tinted gradient (top 0.35α,
+ * bottom 0.1α) on the ::after of each slide so the upper half mutes
+ * but the bottom — where .banner-label sits — keeps the caption
+ * legible. Uses rgba(var(--canvas-rgb), …) so the tint tracks any
+ * future canvas color updates without a hardcoded hex sync drift.
+ * Light mode untouched — banner images render at full saturation.
+ */
+[data-theme="dark"] .banner-slide::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    rgba(var(--canvas-rgb), 0.35),
+    rgba(var(--canvas-rgb), 0.1)
+  );
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .banner-slide::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      rgba(var(--canvas-rgb), 0.35),
+      rgba(var(--canvas-rgb), 0.1)
+    );
+  }
+}
+
 .banner-img {
   width: 100%;
   height: 100%;

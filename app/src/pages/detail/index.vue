@@ -1165,10 +1165,31 @@ async function contactSeller() {
   &.disabled { background: var(--text-faint); pointer-events: none; }
   &:active { transform: scale(0.98); }
 }
+/*
+ * Sold-state CTA — visually inert (v3 P1, spec §1.3).
+ *
+ * Applied alongside .chat-btn for both buyer view ("已评价 / Already
+ * rated") and seller view ("已售出 / Sold"). Without this override the
+ * disabled view inherits --shadow-cta (terracotta glow) from the base
+ * .chat-btn rule and reads as "alive / actionable", contradicting the
+ * sold semantics. Source order beats specificity here (this rule is
+ * later in the stylesheet than .chat-btn), so no !important needed.
+ *
+ * Changes vs. previous:
+ *   · box-shadow: --shadow-cta → --shadow-soft  (drop brand glow)
+ *   · opacity: 1 → 0.55                          (canonical disabled)
+ *   · cursor: default → not-allowed              (a11y affordance)
+ *   · pointer-events: none                       (prevent accidental tap)
+ *   · text color: --text-muted → --ink-soft      (legible under 0.55 opacity)
+ * The &:active rule is dropped — pointer-events: none makes it unreachable.
+ */
 .chat-btn-disabled {
-  background: var(--bg-inset); cursor: default;
-  text { color: var(--text-muted); }
-  &:active { opacity: 1; }
+  background: var(--bg-inset);
+  box-shadow: var(--shadow-soft);
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+  text { color: var(--ink-soft); }
 }
 
 /* ========== Loading ========== */

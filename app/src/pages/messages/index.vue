@@ -26,7 +26,7 @@
       <view
         v-for="conv in conversations"
         :key="conv.id"
-        class="conv-row"
+        class="{ 'is-swiped': (swipeOffsets[conv.id] || 0) < -5 }"
         @touchstart="onTouchStart($event, conv.id)"
         @touchmove="onTouchMove($event, conv.id)"
         @touchend="onTouchEnd(conv.id)"
@@ -38,7 +38,7 @@
           @longpress="onMoreMenu(conv)"
         >
           <image
-            :src="getOtherUser(conv)?.avatar_url || '/static/default-avatar.svg'"
+            :src="getOtherUser(conv)?.avatar_url || defaultAvatar"
             class="conv-avatar"
             mode="aspectFill"
           />
@@ -91,12 +91,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useMessages } from '../../composables/useMessages'
 import { useUnread } from '../../composables/useUnread'
+import { useTheme } from '../../composables/useTheme'
 import { formatTime, thumbUrl } from '../../utils'
 import type { Conversation, Profile } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
@@ -116,6 +117,20 @@ const {
   markConversationUnread,
 } = useMessages()
 const { unreadConvIds, refreshUnreadCount } = useUnread()
+const { isDark } = useTheme()
+
+/*
+ * Theme-aware avatar fallback (v3 P1, spec §1.4).
+ *
+ * The light default-avatar.svg is a flat white circle with a gray
+ * figure — fine on cream canvas, but renders as a glaring near-white
+ * disk on the deepened dark canvas (#15130F). Swap to the dark-paired
+ * SVG (surface-alt background, ink-faint figure) when isDark resolves
+ * true. Light-mode users see the original asset unchanged.
+ */
+const defaultAvatar = computed(() =>
+  isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
+)
 
 const SWIPE_OPEN = 210
 const swipeOffsets = reactive<Record<string, number>>({})
@@ -347,9 +362,25 @@ function goLogin() {
   &:active { opacity: 0.8; }
 }
 
+/*
+ * Conversation row chrome (v3 P1 follow-up, dark-mode adaptations).
+ *
+ * Two fixes in here:
+ *   1. Explicit background — without it the .conv-item transform creates
+ *      sub-pixel render gaps at the edges, and the absolutely-positioned
+ *      .swipe-actions (brand orange / amber / danger red) bleed through
+ *      as thin colored lines along the row top/bottom. Pinning conv-row
+ *      to --bg-elev-1 (the same color as the resting .conv-item bg)
+ *      fills any gap with the matching tone.
+ *   2. Divider visibility — --line-hair is rgba(240,232,214,0.06) in
+ *      dark, which is essentially invisible on the warm-charcoal canvas.
+ *      Switch to --border (0.10α) for a hairline that actually reads
+ *      while staying subtle. Light mode also benefits — --border there
+ *      is the same neutral beige, just at higher relative contrast.
+ */
 .conv-row {
   position: relative; overflow: hidden;
-  border-bottom: 0.5px solid var(--line-hair);
+  border-bottom: 0.5px solid var(--border);
 }
 
 .conv-item {
@@ -363,6 +394,11 @@ function goLogin() {
 .conv-avatar {
   width: 48px; height: 48px; border-radius: 50%;
   background: var(--bg-subtle); flex-shrink: 0;
+  /* Hairline keeps the avatar circle readable even when no fallback
+   * image has loaded yet (the default-avatar SVG already has visual
+   * contrast against this bg, but the brief pre-load moment was
+   * showing as a flat patch in dark). */
+  border: 0.5px solid var(--border);
 }
 .conv-info { flex: 1; min-width: 0; }
 .conv-top { display: flex; justify-content: space-between; align-items: center; }
@@ -424,9 +460,37 @@ function goLogin() {
   &.reserved { background: var(--accent-warn); }
 }
 
+/*
+ * Swipe-action visibility — the real fix for the dark-mode color leak.
+ *
+ * Per CSS 2.1 Appendix E painting order: a containing block's background
+ * paints in layer 0, while positioned descendants (.swipe-actions,
+ * position:absolute) paint in layer 7. So adding a background to .conv-row
+ * — the previous attempt — could never cover the actions. Only the
+ * .conv-item layer (z:2) actually covers them, and any sub-pixel rendering
+ * gap (border, anti-aliasing, transform rounding) leaks the brand-orange /
+ * amber / danger-red action backgrounds along the row edges.
+ *
+ * Real fix: keep actions visibility:hidden by default, flip to visible only
+ * when the user has actually swiped past a small threshold (-5px). The
+ * is-swiped class is computed in the template from swipeOffsets[conv.id].
+ * With the actions truly not painting in the resting state, sub-pixel gaps
+ * become irrelevant — there's nothing behind .conv-item to leak.
+ *
+ * The -5px threshold tolerates touch-gesture jitter at swipe-start without
+ * flickering the actions visible. No transition on visibility (CSS animates
+ * it binarily, not over time) — acceptable because the swipe itself is the
+ * perceived animation. z-index: 0 retained so even when visible, conv-item
+ * still covers the left portion until the user keeps swiping.
+ */
 .swipe-actions {
   position: absolute; top: 0; bottom: 0;
-  display: flex; z-index: 1;
+  display: flex;
+  z-index: 0;
+  visibility: hidden;
+}
+.conv-row.is-swiped .swipe-actions {
+  visibility: visible;
 }
 .swipe-actions.right { right: 0; }
 .swipe-actions.left { left: 0; }

@@ -62,7 +62,7 @@
             <text class="pc-icon">📌</text>
             <view class="pc-body">
               <text class="pc-title">{{ post.profile?.nickname || t('plaza.pinned') }}</text>
-              <text class="pc-meta">{{ formatTime(post.created_at) }} · {{ t('plaza.tapToExpand') || 'tap to expand' }}</text>
+              <text class="pc-meta">{{ formatTime(post.created_at) }} · {{ t('plaza.tapToExpand') }}</text>
             </view>
             <text class="pc-chev">›</text>
           </view>
@@ -87,7 +87,7 @@
               v-if="post.is_pinned && pinnedExpanded.has(post.id)"
               class="pinned-collapse-btn"
               role="button"
-              :aria-label="t('plaza.collapse') || 'Collapse'"
+              :aria-label="t('plaza.collapse')"
               @click.stop="pinnedExpanded.delete(post.id)"
             >
               <view class="pcb-chev"></view>
@@ -767,7 +767,7 @@ async function onSubmitPost() {
       imageDims = up.dims
       console.log('[plaza-debug] uploaded:', imageUrls.length, '/', expectedImages)
       if (imageUrls.length === 0) {
-        throw new Error(t('plaza.uploadFailed') || 'Image upload failed — please retry')
+        throw new Error(t('plaza.uploadFailed'))
       }
       if (imageUrls.length < expectedImages) {
         uni.showToast({
@@ -1077,6 +1077,16 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   font-weight: 500;
   color: var(--ink);
   letter-spacing: 0.02em;
+}
+
+/* P1 §1.6: soften page-title color in dark — see commentary in
+ * profile/index.vue. Plaza's title uses --ink directly (vs the
+ * --text-primary alias used in profile/publish) but both resolve to
+ * #F0E8D6 cream in dark, with the same 14:1 over-contrast problem.
+ * --ink-strong (0.92α) drops to ~12:1. Light unchanged. */
+[data-theme="dark"] .ph-title { color: var(--ink-strong); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ph-title { color: var(--ink-strong); }
 }
 .compose-btn {
   height: 32px; padding: 0 13px 0 11px;
