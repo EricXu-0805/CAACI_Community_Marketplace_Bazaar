@@ -26,7 +26,7 @@
       <view
         v-for="conv in conversations"
         :key="conv.id"
-        class="conv-row"
+        class="{ 'is-swiped': (swipeOffsets[conv.id] || 0) < -5 }"
         @touchstart="onTouchStart($event, conv.id)"
         @touchmove="onTouchMove($event, conv.id)"
         @touchend="onTouchEnd(conv.id)"
@@ -380,7 +380,6 @@ function goLogin() {
  */
 .conv-row {
   position: relative; overflow: hidden;
-  background: var(--bg-elev-1);
   border-bottom: 0.5px solid var(--border);
 }
 
@@ -461,18 +460,37 @@ function goLogin() {
   &.reserved { background: var(--accent-warn); }
 }
 
+/*
+ * Swipe-action visibility — the real fix for the dark-mode color leak.
+ *
+ * Per CSS 2.1 Appendix E painting order: a containing block's background
+ * paints in layer 0, while positioned descendants (.swipe-actions,
+ * position:absolute) paint in layer 7. So adding a background to .conv-row
+ * — the previous attempt — could never cover the actions. Only the
+ * .conv-item layer (z:2) actually covers them, and any sub-pixel rendering
+ * gap (border, anti-aliasing, transform rounding) leaks the brand-orange /
+ * amber / danger-red action backgrounds along the row edges.
+ *
+ * Real fix: keep actions visibility:hidden by default, flip to visible only
+ * when the user has actually swiped past a small threshold (-5px). The
+ * is-swiped class is computed in the template from swipeOffsets[conv.id].
+ * With the actions truly not painting in the resting state, sub-pixel gaps
+ * become irrelevant — there's nothing behind .conv-item to leak.
+ *
+ * The -5px threshold tolerates touch-gesture jitter at swipe-start without
+ * flickering the actions visible. No transition on visibility (CSS animates
+ * it binarily, not over time) — acceptable because the swipe itself is the
+ * perceived animation. z-index: 0 retained so even when visible, conv-item
+ * still covers the left portion until the user keeps swiping.
+ */
 .swipe-actions {
   position: absolute; top: 0; bottom: 0;
   display: flex;
-  /* Explicit z-index: 0 (was 1) — sits behind the new .conv-row
-   * background (auto z-index from document flow = 0) AND behind the
-   * .conv-item layer (z-index: 2). The earlier z:1 still rendered
-   * correctly because .conv-item:2 stacked above, but with .conv-row
-   * now painted at z:0 too, leaving the actions at z:1 would have
-   * placed them ABOVE the row background — re-introducing the leak.
-   * Drop to z:0 so the stacking order is unambiguous: actions →
-   * row bg → item content. */
   z-index: 0;
+  visibility: hidden;
+}
+.conv-row.is-swiped .swipe-actions {
+  visibility: visible;
 }
 .swipe-actions.right { right: 0; }
 .swipe-actions.left { left: 0; }
