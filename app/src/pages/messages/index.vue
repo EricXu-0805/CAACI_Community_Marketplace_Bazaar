@@ -26,7 +26,8 @@
       <view
         v-for="conv in conversations"
         :key="conv.id"
-        class="{ 'is-swiped': (swipeOffsets[conv.id] || 0) < -5 }"
+        class="conv-row"
+        :class="{ 'is-swiped': (swipeOffsets[conv.id] || 0) < -5 }"
         @touchstart="onTouchStart($event, conv.id)"
         @touchmove="onTouchMove($event, conv.id)"
         @touchend="onTouchEnd(conv.id)"
