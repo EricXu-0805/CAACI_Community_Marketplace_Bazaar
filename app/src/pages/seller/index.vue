@@ -12,7 +12,7 @@
     </view>
 
     <view v-else-if="seller" class="seller-section">
-      <image :src="seller.avatar_url || '/static/default-avatar.svg'" class="avatar" mode="aspectFill" />
+      <image :src="seller.avatar_url || defaultAvatarSrc" class="avatar" mode="aspectFill" />
       <view class="name-row">
         <text class="nickname">{{ seller.nickname }}</text>
         <view v-if="seller.is_illini_verified" class="illini-badge">
@@ -87,6 +87,7 @@ import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
+import { useTheme } from '../../composables/useTheme'
 import { useAuth } from '../../composables/useAuth'
 import { useFollow } from '../../composables/useFollow'
 import { matchSpot } from '../../composables/useCampusSpots'
@@ -94,6 +95,10 @@ import type { Profile, Item } from '../../types'
 import { formatPrice, thumbUrl } from '../../utils'
 
 const { t, lang, localize } = useI18n()
+const { isDark } = useTheme()
+const defaultAvatarSrc = computed(() =>
+  isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
+)
 const { supabase } = useSupabase()
 const { ensureLoaded, isBlocked } = useModeration()
 const { currentUser, requireAuth } = useAuth()

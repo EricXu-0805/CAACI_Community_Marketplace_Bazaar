@@ -18,7 +18,7 @@
         @touchmove="postLongPress.onTouchmove"
       >
         <view class="post-head">
-          <image :src="post.profile?.avatar_url || '/static/default-avatar.svg'" class="avatar" mode="aspectFill" />
+          <image :src="post.profile?.avatar_url || defaultAvatarSrc" class="avatar" mode="aspectFill" />
           <view class="head-info">
             <view class="head-name-row">
               <text class="head-name">{{ post.profile?.nickname || t('app.user') }}</text>
@@ -98,7 +98,7 @@
             @touchmove="commentLongPress.onTouchmove"
           >
             <image
-              :src="thread.parent.profile?.avatar_url || '/static/default-avatar.svg'"
+              :src="thread.parent.profile?.avatar_url || defaultAvatarSrc"
               class="cs-avatar"
               mode="aspectFill"
               @click="onCommentTap(thread.parent)"
@@ -130,7 +130,7 @@
               @touchmove="commentLongPress.onTouchmove"
             >
               <image
-                :src="child.profile?.avatar_url || '/static/default-avatar.svg'"
+                :src="child.profile?.avatar_url || defaultAvatarSrc"
                 class="cs-avatar"
                 mode="aspectFill"
                 @click="onCommentTap(child)"
@@ -206,6 +206,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { onLoad, onUnload, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
+import { useTheme } from '../../composables/useTheme'
 import { usePlaza, groupCommentsByParent } from '../../composables/usePlaza'
 import { useModeration } from '../../composables/useModeration'
 import { useHistory } from '../../composables/useHistory'
@@ -217,6 +218,10 @@ import type { ImageDim, Post, PostComment } from '../../types'
 import { BASE_URL } from '../../config/runtime'
 
 const { t, lang, localize } = useI18n()
+const { isDark } = useTheme()
+const defaultAvatarSrc = computed(() =>
+  isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
+)
 const { currentUser, requireAuth } = useAuth()
 const { fetchPost, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment } = usePlaza()
 const { reportTarget } = useModeration()

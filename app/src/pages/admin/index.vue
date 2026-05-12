@@ -98,7 +98,7 @@
         </view>
         <view v-for="s in filteredSuspensions" :key="s.id" class="card">
           <view class="card-head">
-            <image :src="s.profile_avatar_url || '/static/default-avatar.svg'" class="mini-avatar" mode="aspectFill" />
+            <image :src="s.profile_avatar_url || defaultAvatarSrc" class="mini-avatar" mode="aspectFill" />
             <text class="card-title">{{ s.profile_nickname || s.profile_id }}</text>
             <text :class="['pill', 'level-' + s.level]">L{{ s.level }}</text>
             <text v-if="s.lifted_at" class="pill pill-lifted">lifted</text>
@@ -126,7 +126,7 @@
         <view v-if="appeals.length === 0" class="empty"><text>No pending appeals.</text></view>
         <view v-for="a in appeals" :key="a.id" class="card">
           <view class="card-head">
-            <image :src="a.profile_avatar_url || '/static/default-avatar.svg'" class="mini-avatar" mode="aspectFill" />
+            <image :src="a.profile_avatar_url || defaultAvatarSrc" class="mini-avatar" mode="aspectFill" />
             <text class="card-title">{{ a.profile_nickname || a.profile_id }}</text>
             <text :class="['pill', 'level-' + a.level]">L{{ a.level }}</text>
           </view>
@@ -146,7 +146,7 @@
         <view v-if="warnings.length === 0" class="empty"><text>No flagged profiles.</text></view>
         <view v-for="w in warnings" :key="w.profile_id" class="card">
           <view class="card-head">
-            <image :src="w.avatar_url || '/static/default-avatar.svg'" class="mini-avatar" mode="aspectFill" />
+            <image :src="w.avatar_url || defaultAvatarSrc" class="mini-avatar" mode="aspectFill" />
             <text class="card-title">{{ w.nickname || w.profile_id }}</text>
             <text class="pill pill-trust">Trust {{ w.trust_score }}</text>
             <text v-if="w.shadow_banned" class="pill pill-shadow">shadow</text>
@@ -221,6 +221,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { platformFetch } from '../../composables/useSupabase'
 import { BASE_URL } from '../../config/runtime'
+import { useTheme } from '../../composables/useTheme'
 
 type TabId = 'reports' | 'suspensions' | 'appeals' | 'warnings' | 'audit'
 
@@ -247,6 +248,11 @@ interface StatsRow {
   active_suspensions: number; pending_reports: number
   pending_appeals: number; shadow_banned: number
 }
+
+const { isDark } = useTheme()
+const defaultAvatarSrc = computed(() =>
+  isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
+)
 
 const STORAGE_KEY = 'admin_api_key_v1'
 const adminKey = ref('')

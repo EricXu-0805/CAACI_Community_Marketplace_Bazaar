@@ -12,7 +12,7 @@
 
     <view class="form">
       <view class="avatar-section" @click="onChangeAvatar">
-        <image :src="avatarUrl || '/static/default-avatar.svg'" class="avatar-preview" mode="aspectFill" />
+        <image :src="avatarUrl || defaultAvatarSrc" class="avatar-preview" mode="aspectFill" />
         <text class="avatar-hint">{{ t('editProfile.changeAvatar') }}</text>
       </view>
 
@@ -54,13 +54,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
+import { useTheme } from '../../composables/useTheme'
 import { useItems } from '../../composables/useItems'
 import { useCampusSpots, type CampusSpot } from '../../composables/useCampusSpots'
 
 const { t, lang } = useI18n()
+const { isDark } = useTheme()
+const defaultAvatarSrc = computed(() =>
+  isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
+)
 const { currentUser, updateProfile } = useAuth()
 const { uploadImages } = useItems()
 const { CAMPUS_SPOTS } = useCampusSpots()

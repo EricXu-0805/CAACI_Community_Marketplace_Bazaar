@@ -35,7 +35,7 @@
             <text class="card-title">{{ localize(it.title_i18n, it.title) }}</text>
             <text class="card-price">{{ formatPrice(it.price, t('home.free')) }}</text>
             <view class="card-seller" v-if="it.profile">
-              <image :src="it.profile.avatar_url || '/static/default-avatar.svg'" class="cs-avatar" mode="aspectFill" />
+              <image :src="it.profile.avatar_url || defaultAvatarSrc" class="cs-avatar" mode="aspectFill" />
               <text class="cs-name">{{ it.profile.nickname }}</text>
             </view>
           </view>
@@ -49,9 +49,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
+import { useTheme } from '../../composables/useTheme'
 import { useFollow } from '../../composables/useFollow'
 import { useAuth } from '../../composables/useAuth'
 import { matchSpot } from '../../composables/useCampusSpots'
@@ -59,6 +60,10 @@ import type { Item } from '../../types'
 import { formatPrice, thumbUrl } from '../../utils'
 
 const { t, localize } = useI18n()
+const { isDark } = useTheme()
+const defaultAvatarSrc = computed(() =>
+  isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
+)
 const { currentUser } = useAuth()
 const { fetchFollowingFeed, loadMyFollowing } = useFollow()
 

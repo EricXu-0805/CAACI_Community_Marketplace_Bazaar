@@ -45,7 +45,7 @@
       <view class="avatar-row">
         <image
           class="avatar-preview"
-          :src="avatarUrl || '/static/default-avatar.svg'"
+          :src="avatarUrl || defaultAvatarSrc"
           mode="aspectFill"
         />
         <view class="avatar-actions">
@@ -72,12 +72,17 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
+import { useTheme } from '../../composables/useTheme'
 import { useSupabase } from '../../composables/useSupabase'
 import { useItems } from '../../composables/useItems'
 import { compressImage } from '../../utils'
 import { CURRENT_CONSENT_VERSION } from '../../legal'
 
 const { t } = useI18n()
+const { isDark } = useTheme()
+const defaultAvatarSrc = computed(() =>
+  isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
+)
 const { currentUser } = useAuth()
 const { supabase } = useSupabase()
 const { uploadImages } = useItems()
