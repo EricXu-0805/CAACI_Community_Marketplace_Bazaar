@@ -72,6 +72,8 @@ Vue's class merging combines static + binding correctly when both are present.
 
 ## v3.5 backlog (new — accumulated during P1 visual smoke + hotfix iteration)
 
+**Ship status (2026-05-13)**: items 1 (avatar dark-fallback × 12 surfaces) and 2 (banner-skeleton token-ization) shipped via PR #13 squash `2243751`. See `v35_launch_blocker_shipped.md` for details. Item 2 shipped with a shimmer-becomes-flat trade-off — see `lesson_spec_token_check_actual_values.md` for the spec-side learning + 1-line follow-up path (`--paper-2` → `--bg-inset` reactivates motion).
+
 - **Avatar dark-fallback sweep** to 12 remaining surfaces beyond messages+chat: `index/index.vue:261`, `plaza/index.vue:96+210+242`, `post/index.vue:21+101+133`, `detail/index.vue:97`, `profile/index.vue:38`, `profile/edit.vue:15`, `seller/index.vue:15`, `history/index.vue:48`, `following/index.vue:38`, `admin/index.vue:101+129+149`, `blocked/index.vue:16`, `onboarding/index.vue:48`
 - **`.banner-skeleton`** in `PlazaBannerCarousel.vue:122` uses hardcoded light hex — bright stripes on dark canvas during banner load
 - **`--frame` semantic divergence** from `--bg-inset`/`--paper-3` (was alias, now diverges per "middle anchor"); naming clarification needed
