@@ -159,7 +159,31 @@ function onTap(b: Banner) {
   width: 100%;
   aspect-ratio: 5 / 2;
   border-radius: 12px;
-  background: linear-gradient(90deg, #eaeaef 0%, #f2f2f7 50%, #eaeaef 100%);
+  /*
+   * Theme-aware skeleton surface (v3.5 launch-blocker).
+   *
+   * Was hardcoded light-mode hex (#eaeaef / #f2f2f7), which flashed
+   * as bright stripes on the deepened dark canvas (#15130F) during
+   * banner load — see v3.5 backlog in v3_p1_dark_mode_shipped.md.
+   *
+   * Both --bg-subtle and --paper-2 are legacy aliases of --bg-elev-2
+   * (per v3 P1 alias extension) and resolve to the same value within
+   * each theme, so the gradient effectively renders as a solid block:
+   *   light → #F0E9DA (warm parchment)
+   *   dark  → #36322B (warm-deep)
+   * That trades the original shimmer animation for a flat themed
+   * placeholder. Acceptable tradeoff for the launch-blocker — the
+   * bright-stripes-on-dark bug is fully resolved either way, and
+   * background-size + animation: shimmer are retained so a future
+   * spec change to point at two ΔE-distinct tokens (e.g. --bg-subtle
+   * + --bg-inset) lights the shimmer back up without a code edit.
+   */
+  background: linear-gradient(
+    90deg,
+    var(--bg-subtle) 0%,
+    var(--paper-2) 50%,
+    var(--bg-subtle) 100%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
 }
