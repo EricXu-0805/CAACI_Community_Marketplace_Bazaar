@@ -76,6 +76,15 @@ EXPLORATION_*.md
 # insensitive filesystems (Windows). Whitelist explicitly:
 !docs/memory/
 !docs/memory/**
+# Audit deliverables — docs/audit/*.md is the canonical location for
+# intentional audit content. The *_AUDIT.md / AUDIT_*.md / *_FIXES.md
+# / etc. patterns above were scoped to catch background-agent slop at
+# project root, but on case-insensitive filesystems (Windows) they also
+# match every intentional audit deliverable in docs/audit/. ~15 existing
+# tracked files survive only via index grandfathering; new files are
+# silently dropped. Whitelist explicitly (parallels docs/memory/ above):
+!docs/audit/
+!docs/audit/**
 
 # Local env files
 app/.env
