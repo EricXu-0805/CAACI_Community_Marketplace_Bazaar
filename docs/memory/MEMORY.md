@@ -22,4 +22,6 @@
 - [Google OAuth — supabase.co page is correct](google_oauth_supabase_redirect.md) — fix only via Supabase Custom Domain (red-line, post-launch)
 - [V3 P1 — Dark mode fixes shipped 2026-05-10](v3_p1_dark_mode_shipped.md) — main squash 162b1a9 + hotfix; tokens + 5 surfaces + i18n + messages swipe; v3.5 backlog 7 items
 - [Lesson — show full element block when patching Vue template bindings](lesson_template_binding_full_block.md) — single-line :class= patch invites dropping sibling static class; from v3 P1 hotfix incident
-- [V3 phase status tracker — P1 shipped, P2-P4 deferred](sprint_v3_phase_status.md) — live tracker; ask Eric "ready to resume Px?" before writing next OpenCode prompt
+- [V3 phase status tracker — P1 + P2a shipped, P2b queued](sprint_v3_phase_status.md) — live tracker; ask Eric "ready to resume Px?" before writing next OpenCode prompt
+- [V3 P2a — Icon + Button infrastructure shipped 2026-05-11](v3_p2a_shipped.md) — PR #12 6 commits; 43 icons / 52 SVGs frozen; P2b surface migration is next
+- [Lesson — dual-write must verify BOTH MEMORY.md + audit .gitignore](lesson_memory_dual_write_must_verify.md) — from 2026-05-11 recovery; .gitignore patterns silent-match memory filenames on Windows core.ignorecase=true

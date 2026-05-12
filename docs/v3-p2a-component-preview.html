@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>v3 P2a Component Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Noto+Serif+SC:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    /* ============================================================
+     * Prod tokens — copied verbatim from app/src/App.vue:972-1146
+     * (light) and 1164-1266 (dark, [data-theme="dark"] block).
+     * Kept inline so this file is standalone (file:// works).
+     * ============================================================ */
+    :root {
+      --text-primary:   #2A2A2E;
+      --text-secondary: #57524B;
+      --text-tertiary:  #6B6557;
+      --text-muted:     #8B8478;
+      --text-faint:     #B6AE9F;
+      --text-disabled:  #C0BCB2;
+
+      --ink:         #2A2A2E;
+      --ink-soft:    #57524B;
+      --ink-quiet:   #8B8478;
+      --ink-faint:   #B6AE9F;
+      --ink-inverse: #F5F0E6;
+
+      --bg-page:    #F5F0E6;
+      --bg-elev-1:  #FBF8F2;
+      --bg-elev-2:  #F0E9DA;
+      --bg-subtle:  #F0E9DA;
+      --bg-inset:   #E8DFCC;
+
+      --canvas:        #F5F0E6;
+      --surface:       #FBF8F2;
+      --surface-alt:   #F0E9DA;
+      --parchment:     #F0E9DA;
+      --frame:         #E8DFCC;
+      --paper:         #FBF8F2;
+      --paper-2:       #F0E9DA;
+      --paper-3:       #E8DFCC;
+
+      --surface-rgb: 251, 248, 242;
+      --canvas-rgb:  245, 240, 230;
+
+      --line-hair:  rgba(42, 42, 46, 0.06);
+      --line-soft:  rgba(42, 42, 46, 0.10);
+      --line-bold:  rgba(42, 42, 46, 0.16);
+
+      --border:        #E8DFCC;
+      --border-strong: #D8CDB3;
+      --border-hair:   rgba(42, 42, 46, 0.05);
+      --border-warm:   #E8DFCC;
+
+      --brand:          #C74A2F;
+      --brand-deep:     #A03A24;
+      --brand-soft:     #F5D9CE;
+      --brand-ghost:    #FBEAE2;
+
+      --campus-blue:      #13294B;
+      --campus-blue-soft: #E5EAF2;
+      --campus-blue-deep: #0A1A33;
+      --campus-blue-surface: #13294B;
+      --campus-orange:    #FF5F05;
+      --campus-orange-deep: #B33D00;
+      --campus-orange-soft: #FFF1E6;
+
+      --accent-green:        #5D7C4A;
+      --accent-good:         #5D7C4A;
+      --accent-warn:         #D4923C;
+      --accent-danger:       #B53333;
+
+      --success:      #5D7C4A;
+      --success-soft: #E4EADA;
+      --warning:      #D4923C;
+      --warning-soft: #F5E4CB;
+      --danger:       #B53333;
+      --danger-soft:  #F0D4D4;
+
+      --radius-xs:    4px;
+      --radius-sm:    8px;
+      --radius-md:   12px;
+      --radius-lg:   18px;
+      --radius-xl:   28px;
+      --radius-pill: 999px;
+
+      --space-1:  4px;
+      --space-2:  8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-7: 32px;
+      --space-8: 48px;
+
+      --font-weight-regular: 400;
+      --font-weight-medium:  500;
+      --font-weight-semi:    600;
+      --font-weight-bold:    700;
+
+      --font-serif: 'Fraunces', 'Noto Serif SC', 'Songti SC', Georgia, 'Times New Roman', serif;
+      --font-hei:   'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+      --font-mono:  'JetBrains Mono', 'SF Mono', Menlo, ui-monospace, monospace;
+
+      --shadow-hair:       0 0 0 1px rgba(42, 42, 46, 0.06);
+      --shadow-soft:       0 1px 2px rgba(42, 42, 46, 0.04), 0 4px 12px rgba(42, 42, 46, 0.06);
+      --shadow-pop:        0 2px 4px rgba(42, 42, 46, 0.05), 0 12px 28px rgba(42, 42, 46, 0.08);
+      --shadow-float:      0 1px 2px rgba(42, 42, 46, 0.06), 0 24px 56px -16px rgba(42, 42, 46, 0.18);
+      --shadow-cta:        0 2px 4px rgba(199, 74, 47, 0.15), 0 12px 28px -8px rgba(199, 74, 47, 0.28);
+      --shadow-brand:      var(--shadow-cta);
+
+      --dur-1: 120ms;
+      --dur-2: 220ms;
+      --dur-3: 360ms;
+      --dur-4: 560ms;
+      --dur-5: 900ms;
+      --ease-std:   cubic-bezier(0.4, 0, 0.2, 1);
+      --ease-in:    cubic-bezier(0, 0, 0.2, 1);
+      --ease-out:   cubic-bezier(0.4, 0, 1, 1);
+      --ease-warm:  cubic-bezier(0.2, 0.8, 0.2, 1);
+      --ease-crisp: cubic-bezier(0.7, 0, 0.3, 1);
+    }
+
+    [data-theme="dark"] {
+      --ink:         #F0E8D6;
+      --ink-soft:    rgba(240, 232, 214, 0.72);
+      --ink-quiet:   rgba(240, 232, 214, 0.52);
+      --ink-faint:   rgba(240, 232, 214, 0.32);
+      --ink-inverse: #1C1A17;
+      --ink-placeholder: rgba(240, 232, 214, 0.62);
+      --ink-strong:      rgba(240, 232, 214, 0.92);
+
+      --text-primary:   #F0E8D6;
+      --text-secondary: rgba(240, 232, 214, 0.72);
+      --text-tertiary:  rgba(240, 232, 214, 0.72);
+      --text-muted:     rgba(240, 232, 214, 0.52);
+      --text-faint:     rgba(240, 232, 214, 0.32);
+      --text-disabled:  rgba(240, 232, 214, 0.22);
+
+      --bg-page:    #15130F;
+      --bg-elev-1:  #26231E;
+      --bg-elev-2:  #36322B;
+      --bg-subtle:  #36322B;
+      --bg-inset:   #423D33;
+
+      --canvas:     #15130F;
+      --surface:    #26231E;
+      --surface-alt: #36322B;
+      --parchment:  #13110D;
+      --frame:      #332F28;
+      --paper:      #26231E;
+      --paper-2:    #36322B;
+      --paper-3:    #423D33;
+
+      --surface-rgb: 38, 35, 30;
+      --canvas-rgb:  21, 19, 15;
+
+      --line-hair:  rgba(240, 232, 214, 0.08);
+      --line-soft:  rgba(240, 232, 214, 0.12);
+      --line-bold:  rgba(240, 232, 214, 0.18);
+      --border:        rgba(240, 232, 214, 0.10);
+      --border-strong: rgba(240, 232, 214, 0.20);
+      --border-hair:   rgba(240, 232, 214, 0.06);
+
+      --brand:       #E06A4A;
+      --brand-deep:  #C45A3A;
+      --brand-soft:  rgba(224, 106, 74, 0.15);
+      --brand-ghost: rgba(224, 106, 74, 0.08);
+
+      --campus-blue:      #6A8AC2;
+      --campus-blue-soft: rgba(106, 138, 194, 0.15);
+      --campus-blue-deep: #4A6BA0;
+      --campus-blue-surface: #13294B;
+      --campus-orange:    #FF7B33;
+      --campus-orange-deep: #FF9560;
+      --campus-orange-soft: rgba(255, 123, 51, 0.15);
+      --campus-blue-chip-bg:     rgba(19, 41, 75, 0.45);
+      --campus-blue-chip-border: rgba(106, 138, 194, 0.3);
+      --user-card-grad-dark:     linear-gradient(135deg, #1A2540, #2C3E5C);
+
+      --success:      #8BA670;
+      --success-soft: rgba(139, 166, 112, 0.15);
+      --warning:      #E5B170;
+      --warning-soft: rgba(229, 177, 112, 0.15);
+      --danger:       #E06666;
+      --danger-soft:  rgba(224, 102, 102, 0.15);
+
+      --shadow-hair: inset 0 0 0 0.5px rgba(240, 232, 214, 0.06);
+      --shadow-soft: 0 1px 2px rgba(8, 6, 4, 0.6),  0 4px 12px rgba(8, 6, 4, 0.5);
+      --shadow-pop:  0 2px 4px rgba(8, 6, 4, 0.7),  0 12px 28px rgba(8, 6, 4, 0.55);
+      --shadow-float:0 1px 2px rgba(8, 6, 4, 0.7),  0 24px 56px -16px rgba(8, 6, 4, 0.7);
+      --shadow-cta:  0 2px 4px rgba(224, 106, 74, 0.25), 0 12px 28px -8px rgba(224, 106, 74, 0.4);
+    }
+
+    /* ============================================================
+     * Layout — preview chrome only, not part of the component spec.
+     * ============================================================ */
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-hei);
+      background: var(--canvas);
+      color: var(--ink);
+      min-height: 100vh;
+      padding: 48px 32px 80px;
+      transition: background var(--dur-2) var(--ease-std), color var(--dur-2) var(--ease-std);
+    }
+    main { max-width: 1200px; margin: 0 auto; }
+
+    header { margin-bottom: 48px; }
+    h1 {
+      font-family: var(--font-serif);
+      font-size: 32px;
+      font-weight: 500;
+      letter-spacing: -0.5px;
+      color: var(--ink);
+      margin: 0 0 8px;
+    }
+    .subtitle {
+      font-size: 14px;
+      color: var(--ink-soft);
+      margin: 0;
+      max-width: 720px;
+      line-height: 1.5;
+    }
+    .meta {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--ink-quiet);
+      margin-top: 12px;
+    }
+
+    section { margin-top: 56px; }
+    h2 {
+      font-family: var(--font-serif);
+      font-size: 24px;
+      font-weight: 500;
+      letter-spacing: -0.3px;
+      color: var(--ink);
+      margin: 0 0 8px;
+      padding-bottom: 12px;
+      border-bottom: 0.5px solid var(--border);
+    }
+    h2 .count {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--ink-quiet);
+      margin-left: 12px;
+    }
+    h3 {
+      font-family: var(--font-serif);
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--ink-soft);
+      margin: 28px 0 12px;
+    }
+
+    /* Theme toggle */
+    .theme-toggle {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 100;
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      border: 0.5px solid var(--border-strong);
+      background: var(--surface);
+      color: var(--ink);
+      font-size: 18px;
+      cursor: pointer;
+      box-shadow: var(--shadow-soft);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background var(--dur-1) var(--ease-std), transform var(--dur-1) var(--ease-std);
+      font-family: inherit;
+    }
+    .theme-toggle:hover { background: var(--bg-subtle); }
+    .theme-toggle:active { transform: scale(0.94); }
+
+    /* ============================================================
+     * Icon grid
+     * ============================================================ */
+    .icon-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    .icon-card {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      transition: background var(--dur-1) var(--ease-std);
+    }
+    .icon-card .icons-row {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      justify-content: center;
+      min-height: 32px;
+    }
+    .icon-cell {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .icon-cell svg { display: block; width: 100%; height: 100%; }
+    .icon-cell.size-xs { width: 16px; height: 16px; }
+    .icon-cell.size-sm { width: 20px; height: 20px; }
+    .icon-cell.size-md { width: 24px; height: 24px; }
+    .icon-cell.size-lg { width: 32px; height: 32px; }
+    .weight-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--ink-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-top: -4px;
+    }
+    .icon-card .name {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--ink-quiet);
+      text-align: center;
+      line-height: 1.3;
+      word-break: break-all;
+    }
+    .icon-card .has-both {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    .icon-card .pair-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    /* ============================================================
+     * Button grid — visual matrix
+     * ============================================================ */
+    .btn-legend {
+      display: flex;
+      gap: 16px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--ink-quiet);
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .btn-legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .btn-legend .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--brand); }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 140px repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 0.5px solid var(--line-hair);
+    }
+    .btn-row.header { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.6px; text-transform: uppercase; color: var(--ink-quiet); padding-bottom: 6px; border-bottom: 0.5px solid var(--border); }
+    .btn-row.header div { text-align: center; }
+    .btn-row.header > :first-child { text-align: left; }
+    .btn-row .row-label { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); }
+    .btn-cell { display: flex; align-items: center; justify-content: center; }
+
+    /* ============================================================
+     * UButton — copied 1:1 from app/src/components/UButton.vue
+     * ============================================================ */
+    .u-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-hei, -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif);
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      border: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      position: relative;
+      transition:
+        transform var(--dur-1) var(--ease-std),
+        background var(--dur-1) var(--ease-std),
+        box-shadow var(--dur-1) var(--ease-std),
+        color var(--dur-1) var(--ease-std),
+        opacity var(--dur-1) var(--ease-std);
+    }
+    .u-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+    .u-btn-sm { height: 32px; min-width: 44px; padding: 0 var(--space-4); font-size: 13px; border-radius: var(--radius-pill); }
+    .u-btn-md { height: 44px; min-width: 44px; padding: 0 var(--space-5); font-size: 15px; border-radius: var(--radius-pill); }
+    .u-btn-lg { height: 52px; min-width: 44px; padding: 0 var(--space-6); font-size: 16px; border-radius: var(--radius-lg); }
+
+    .u-btn.is-block { width: 100%; }
+
+    .u-btn-primary   { background: var(--brand); color: #fff; box-shadow: var(--shadow-cta); }
+    .u-btn-secondary { background: var(--ink); color: var(--canvas); box-shadow: var(--shadow-soft); }
+    .u-btn-ghost     { background: transparent; color: var(--ink); border: 0.5px solid var(--border-strong); }
+    .u-btn-campus    { background: var(--campus-blue); color: #fff; box-shadow: var(--shadow-soft); }
+    .u-btn-danger    { background: var(--danger); color: #fff; box-shadow: var(--shadow-soft); }
+
+    .u-btn.is-disabled {
+      background: var(--ink-faint);
+      color: var(--ink-quiet);
+      box-shadow: none;
+      cursor: not-allowed;
+      opacity: 0.55;
+      pointer-events: none;
+    }
+    .u-btn.is-loading { pointer-events: none; cursor: not-allowed; }
+    .u-btn-spinner {
+      width: 14px;
+      height: 14px;
+      display: inline-flex;
+      animation: u-btn-spin 0.8s linear infinite;
+    }
+    .u-btn-spinner svg { width: 100%; height: 100%; display: block; }
+    @keyframes u-btn-spin {
+      from { transform: rotate(0); }
+      to   { transform: rotate(360deg); }
+    }
+
+    /* Active-state simulation (since :active is mouse-only).
+     * Each variant gets the same press treatment it would on tap. */
+    .u-btn.is-active-sim                   { transform: scale(0.97); }
+    .u-btn-primary.is-active-sim           { background: var(--brand-deep); box-shadow: var(--shadow-soft); }
+    .u-btn-secondary.is-active-sim         { opacity: 0.9; }
+    .u-btn-ghost.is-active-sim             { background: var(--bg-subtle); }
+    .u-btn-campus.is-active-sim            { background: var(--campus-blue-deep); }
+    .u-btn-danger.is-active-sim            { opacity: 0.92; }
+
+    /* Hover-state simulation (since hover is desktop-only). Renders the
+     * persistent hover treatment for desktop ≥768px hoverable devices. */
+    .u-btn-primary.is-hover-sim   { background: var(--brand-deep); box-shadow: var(--shadow-pop); }
+    .u-btn-secondary.is-hover-sim { background: var(--ink-soft); }
+    .u-btn-ghost.is-hover-sim     { background: var(--bg-subtle); }
+    .u-btn-campus.is-hover-sim    { background: var(--campus-blue-deep); box-shadow: var(--shadow-pop); }
+    .u-btn-danger.is-hover-sim    { opacity: 0.92; box-shadow: var(--shadow-pop); }
+
+    @media (hover: hover) and (min-width: 768px) {
+      .u-btn-primary:hover:not(.is-disabled):not(.is-loading)   { background: var(--brand-deep); box-shadow: var(--shadow-pop); }
+      .u-btn-secondary:hover:not(.is-disabled):not(.is-loading) { background: var(--ink-soft); }
+      .u-btn-ghost:hover:not(.is-disabled):not(.is-loading)     { background: var(--bg-subtle); }
+      .u-btn-campus:hover:not(.is-disabled):not(.is-loading)    { background: var(--campus-blue-deep); box-shadow: var(--shadow-pop); }
+      .u-btn-danger:hover:not(.is-disabled):not(.is-loading)    { opacity: 0.92; box-shadow: var(--shadow-pop); }
+    }
+
+    /* ============================================================
+     * Spot-check rows
+     * ============================================================ */
+    .spot-row {
+      display: grid;
+      grid-template-columns: 140px 1fr 1fr 1fr;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 0.5px solid var(--line-hair);
+      align-items: center;
+    }
+    .spot-row.header {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--ink-quiet);
+      padding-bottom: 6px;
+      border-bottom: 0.5px solid var(--border);
+    }
+    .spot-row .label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--ink-soft);
+    }
+    .size-flight {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    .size-flight .stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .size-flight .stack > .px {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--ink-faint);
+    }
+
+    /* Footer */
+    footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 0.5px solid var(--border);
+      font-size: 13px;
+      color: var(--ink-quiet);
+      line-height: 1.55;
+    }
+    footer code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background: var(--bg-subtle);
+      padding: 1px 6px;
+      border-radius: var(--radius-xs);
+    }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">☀</button>
+
+  <main>
+    <header>
+      <h1>v3 P2a Component Preview</h1>
+      <p class="subtitle">
+        Pre-flight visual review of <code style="font-family:var(--font-mono);font-size:12px;">UIcon</code> + <code style="font-family:var(--font-mono);font-size:12px;">UButton</code> + 52 frozen SVGs.
+        Tokens are embedded verbatim from <code style="font-family:var(--font-mono);font-size:12px;">app/src/App.vue</code> light + dark blocks.
+        Toggle theme to verify dark-mode parity. If anything looks wrong, do NOT push the branch — surface to chat-Claude.
+      </p>
+      <p class="meta">Generated 2026-05-11 · feat/v3-p2a-icon-components · 43 icon names / 52 SVG variants / 5 button variants · standalone (file:// works)</p>
+    </header>
+
+    <section>
+      <h2>Icons <span class="count">43 names · 52 variants</span></h2>
+
+      <h3>Tab bar · 4 names × regular + filled</h3>
+      <div class="icon-grid" data-group="tabbar"></div>
+
+      <h3>Content actions · 5 names × regular + filled</h3>
+      <div class="icon-grid" data-group="content"></div>
+
+      <h3>Utility · 11 stroke-only</h3>
+      <div class="icon-grid" data-group="utility"></div>
+
+      <h3>Emoji replacements · 2 stroke-only</h3>
+      <div class="icon-grid" data-group="emoji"></div>
+
+      <h3>Profile quick-actions · 4 stroke-only</h3>
+      <div class="icon-grid" data-group="profile"></div>
+
+      <h3>Detail / profile chrome · 7 stroke-only</h3>
+      <div class="icon-grid" data-group="chrome"></div>
+
+      <h3>Product categories · 9 stroke-only <span style="font-family:var(--font-mono); font-size:10px; color:var(--ink-faint); margin-left:8px;">(sublease aliases to home-regular — not a separate key)</span></h3>
+      <div class="icon-grid" data-group="categories"></div>
+
+      <h3>Plaza interactions · 1 stroke-only</h3>
+      <div class="icon-grid" data-group="plaza"></div>
+    </section>
+
+    <section>
+      <h2>UButton <span class="count">5 variants × 3 sizes × 5 states</span></h2>
+      <div class="btn-legend">
+        <span><span class="dot"></span>Default</span>
+        <span><span class="dot" style="background:var(--brand-deep);"></span>Active (sim)</span>
+        <span><span class="dot" style="background:var(--ink-faint);"></span>Disabled</span>
+        <span><span class="dot" style="background:var(--brand);"></span>Loading</span>
+        <span><span class="dot" style="background:var(--brand-deep);"></span>Hover (sim, desktop ≥768px only)</span>
+      </div>
+      <div id="btn-matrix"></div>
+    </section>
+
+    <section>
+      <h2>Sizing &amp; color spot-check</h2>
+      <p class="subtitle" style="margin-bottom:16px;">5 representative icons at 4 sizes (xs/sm/md/lg = 16/20/24/32) × 3 colors (ink, brand, campus-blue). Verifies color token resolution + size scaling.</p>
+      <div id="spot-check"></div>
+    </section>
+
+    <footer>
+      <p>
+        <strong>Generated 2026-05-11.</strong> Pre-flight visual review for v3 P2a build (<code>feat/v3-p2a-icon-components</code>).
+        If anything looks wrong (icon shape off, button variant doesn't match prod token, dark mode flips wrong, etc.),
+        do NOT push the branch — surface to chat-Claude.
+      </p>
+      <p style="margin-top:8px;">
+        Source: <code>app/src/components/icons/registry.ts</code>, <code>app/src/components/UIcon.vue</code>, <code>app/src/components/UButton.vue</code>.
+        Spec: <code>docs/audit/V3_VISUAL_REFRESH_SPEC.md §P2</code>. Frozen design lock: 2026-05-11 (43 names / 52 SVGs accepted through 10 review rounds).
+      </p>
+    </footer>
+  </main>
+
+  <script>
+    /* ----------------------------------------------------------
+     * Icon registry — copied 1:1 from app/src/components/icons/registry.ts.
+     * Inline so this file works offline (file:// served).
+     * ---------------------------------------------------------- */
+    const ICONS = {
+      'home-regular':     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12 12 4l9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>',
+      'home-filled':      '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 12.5h2.5V21h6v-6h3v6h6v-8.5H22z"/></svg>',
+      'plaza-regular':    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h10"/><path d="M7 14h6"/></svg>',
+      'plaza-filled':     '<svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path d="M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM7 9.7h10v1.6H7zM7 13.7h6v1.6H7z"/></svg>',
+      'messages-regular': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 8.5-8.5 8.5 8.5 0 0 1 8.5 8.5z"/></svg>',
+      'messages-filled':  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 8.5-8.5 8.5 8.5 0 0 1 8.5 8.5z"/></svg>',
+      'profile-regular':  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg>',
+      'profile-filled':   '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M20 21v-1a7 7 0 0 0-7-7h-2a7 7 0 0 0-7 7v1z"/></svg>',
+
+      'heart-regular':       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>',
+      'heart-filled':        '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>',
+      'chat-bubble-regular': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+      'chat-bubble-filled':  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+      'bell-regular':        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
+      'bell-filled':         '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9z"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>',
+      'tag-regular':         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.41 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5"/></svg>',
+      'tag-filled':          '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.59 13.41 13.41 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82zM7 5.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>',
+      'lightbulb-regular':   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.4.3.6.7.6 1.2v1.1c0 .6.4 1 1 1h4.8c.6 0 1-.4 1-1V16c0-.5.3-.9.6-1.2A7 7 0 0 0 12 2z"/></svg>',
+      'lightbulb-filled':    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-4 12.7c.4.3.6.7.6 1.2v1.1c0 .6.4 1 1 1h4.8c.6 0 1-.4 1-1V16c0-.5.3-.9.6-1.2A7 7 0 0 0 12 2z"/><path d="M9 18.5h6v1.5H9zM10 21h4v1h-4z"/></svg>',
+
+      'back-regular':            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>',
+      'share-regular':           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="m8 8 4-4 4 4"/><path d="M6 11v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-8"/></svg>',
+      'image-regular':           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>',
+      'search-regular':          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>',
+      'filter-regular':          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>',
+      'plus-regular':            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>',
+      'close-regular':           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+      'more-horizontal-regular': '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
+      'more-vertical-regular':   '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>',
+      'chevron-right-regular':   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>',
+      'chevron-left-regular':    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg>',
+
+      'coffee-regular':     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M6 2v2"/><path d="M10 2v2"/><path d="M14 2v2"/></svg>',
+      'graduation-regular': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 4 2 10l10 6 10-6z"/><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg>',
+
+      'history-regular':     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>',
+      'user-plus-regular':   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 5 2.7"/><path d="M19 13v6"/><path d="M16 16h6"/></svg>',
+      'bookmark-regular':    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
+      'layout-grid-regular': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+
+      'edit-regular':         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/><path d="M15 5l4 4"/></svg>',
+      'flag-regular':         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V4h12l-2 4 2 4H4"/></svg>',
+      'location-pin-regular': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-7.5-7-12a7 7 0 0 1 14 0c0 4.5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>',
+      'settings-regular':     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6 1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+      'shield-regular':       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+      'arrow-up-regular':     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>',
+      'reserved-regular':     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v18l6-4 6 4V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z"/><circle cx="12" cy="8" r="3"/></svg>',
+
+      'cat-currency-regular':    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h13"/><path d="m13 5 3 3-3 3"/><path d="M21 16H8"/><path d="m11 13-3 3 3 3"/></svg>',
+      'cat-electronics-regular': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M10 6h4"/><path d="M11 19h2"/></svg>',
+      'cat-furniture-regular':   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3H3z"/><path d="M5 12V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v4"/><path d="M5 17v2M19 17v2"/></svg>',
+      'cat-clothing-regular':    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m20 8-4-4-4 2-4-2-4 4 3 3v9h10v-9z"/></svg>',
+      'cat-books-regular':       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+      'cat-transport-regular':   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>',
+      'cat-daily-regular':       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h18l-1.5 13H4.5z"/><path d="M8 8V5a4 4 0 0 1 8 0v3"/></svg>',
+      'cat-food-regular':        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13a9 9 0 0 0 18 0v-1H3z"/><path d="M7 8c0-1 1-2 2-2"/><path d="M11 8c0-1 1-2 2-2"/><path d="M15 8c0-1 1-2 2-2"/></svg>',
+      'cat-other-regular':       '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="6" r="1.6"/><circle cx="12" cy="6" r="1.6"/><circle cx="18" cy="6" r="1.6"/><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/><circle cx="6" cy="18" r="1.6"/><circle cx="12" cy="18" r="1.6"/><circle cx="18" cy="18" r="1.6"/></svg>',
+
+      'forward-regular': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5l6 6-6 6v-4c-4 0-8 1-10 5 0-6 4-9 10-9z"/></svg>',
+    };
+
+    const SPINNER_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.4-8.6"/></svg>';
+
+    /* Group definitions — names per the registry doc layout. */
+    const GROUPS = {
+      tabbar:     [['home','both'],['plaza','both'],['messages','both'],['profile','both']],
+      content:    [['heart','both'],['chat-bubble','both'],['bell','both'],['tag','both'],['lightbulb','both']],
+      utility:    [['back','regular'],['share','regular'],['image','regular'],['search','regular'],['filter','regular'],['plus','regular'],['close','regular'],['more-horizontal','regular'],['more-vertical','regular'],['chevron-right','regular'],['chevron-left','regular']],
+      emoji:      [['coffee','regular'],['graduation','regular']],
+      profile:    [['history','regular'],['user-plus','regular'],['bookmark','regular'],['layout-grid','regular']],
+      chrome:     [['edit','regular'],['flag','regular'],['location-pin','regular'],['settings','regular'],['shield','regular'],['arrow-up','regular'],['reserved','regular']],
+      categories: [['cat-currency','regular'],['cat-electronics','regular'],['cat-furniture','regular'],['cat-clothing','regular'],['cat-books','regular'],['cat-transport','regular'],['cat-daily','regular'],['cat-food','regular'],['cat-other','regular']],
+      plaza:      [['forward','regular']],
+    };
+
+    function makeIconCell(key, size) {
+      const wrap = document.createElement('span');
+      wrap.className = 'icon-cell size-' + (size || 'md');
+      wrap.innerHTML = ICONS[key] || '';
+      return wrap;
+    }
+
+    function makeIconCard(name, mode) {
+      const card = document.createElement('div');
+      card.className = 'icon-card';
+
+      const iconsRow = document.createElement('div');
+      iconsRow.className = 'icons-row';
+
+      if (mode === 'both') {
+        const regWrap = document.createElement('div');
+        regWrap.className = 'pair-cell';
+        regWrap.appendChild(makeIconCell(name + '-regular', 'md'));
+        const regLabel = document.createElement('span');
+        regLabel.className = 'weight-label';
+        regLabel.textContent = 'reg';
+        regWrap.appendChild(regLabel);
+        iconsRow.appendChild(regWrap);
+
+        const fillWrap = document.createElement('div');
+        fillWrap.className = 'pair-cell';
+        fillWrap.appendChild(makeIconCell(name + '-filled', 'md'));
+        const fillLabel = document.createElement('span');
+        fillLabel.className = 'weight-label';
+        fillLabel.textContent = 'fill';
+        fillWrap.appendChild(fillLabel);
+        iconsRow.appendChild(fillWrap);
+      } else {
+        iconsRow.appendChild(makeIconCell(name + '-regular', 'md'));
+      }
+
+      const label = document.createElement('div');
+      label.className = 'name';
+      label.textContent = name;
+
+      card.appendChild(iconsRow);
+      card.appendChild(label);
+      return card;
+    }
+
+    function renderIconGroups() {
+      Object.keys(GROUPS).forEach(function (group) {
+        const container = document.querySelector('[data-group="' + group + '"]');
+        if (!container) return;
+        GROUPS[group].forEach(function (entry) {
+          container.appendChild(makeIconCard(entry[0], entry[1]));
+        });
+      });
+    }
+
+    /* ----------------------------------------------------------
+     * Button matrix
+     * ---------------------------------------------------------- */
+    const VARIANTS = ['primary','secondary','ghost','campus','danger'];
+    const SIZES = ['sm','md','lg'];
+    const STATE_LABELS = ['default','active (sim)','disabled','loading','hover (sim)'];
+
+    function makeBtn(variant, size, state) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'u-btn u-btn-' + variant + ' u-btn-' + size;
+      if (state === 'active')   btn.classList.add('is-active-sim');
+      if (state === 'disabled') btn.classList.add('is-disabled');
+      if (state === 'loading')  btn.classList.add('is-loading');
+      if (state === 'hover')    btn.classList.add('is-hover-sim');
+
+      if (state === 'loading') {
+        const sp = document.createElement('span');
+        sp.className = 'u-btn-spinner';
+        sp.innerHTML = SPINNER_SVG;
+        btn.appendChild(sp);
+      } else {
+        btn.textContent = labelFor(variant);
+      }
+      return btn;
+    }
+
+    function labelFor(variant) {
+      switch (variant) {
+        case 'primary':   return '发布';
+        case 'secondary': return '询价';
+        case 'ghost':     return '取消';
+        case 'campus':    return '校历';
+        case 'danger':    return '删除';
+        default:          return 'Button';
+      }
+    }
+
+    function renderBtnMatrix() {
+      const root = document.getElementById('btn-matrix');
+      if (!root) return;
+
+      // Header row
+      const header = document.createElement('div');
+      header.className = 'btn-row header';
+      const headerCells = ['variant / size'].concat(STATE_LABELS);
+      headerCells.forEach(function (text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        header.appendChild(div);
+      });
+      root.appendChild(header);
+
+      // One row per variant × size = 15 rows total
+      VARIANTS.forEach(function (variant) {
+        SIZES.forEach(function (size) {
+          const row = document.createElement('div');
+          row.className = 'btn-row';
+          const label = document.createElement('div');
+          label.className = 'row-label';
+          label.textContent = variant + ' · ' + size;
+          row.appendChild(label);
+
+          ['default','active','disabled','loading','hover'].forEach(function (state) {
+            const cell = document.createElement('div');
+            cell.className = 'btn-cell';
+            cell.appendChild(makeBtn(variant, size, state));
+            row.appendChild(cell);
+          });
+
+          root.appendChild(row);
+        });
+      });
+    }
+
+    /* ----------------------------------------------------------
+     * Spot-check
+     * ---------------------------------------------------------- */
+    const SPOT_ICONS = ['home','heart','bell','search','plus'];
+    const SPOT_SIZES = [['xs','16'],['sm','20'],['md','24'],['lg','32']];
+    const SPOT_COLORS = [
+      { key: 'currentColor',    label: 'ink (inherit)' },
+      { key: 'var(--brand)',    label: 'brand' },
+      { key: 'var(--campus-blue)', label: 'campus-blue' },
+    ];
+
+    function makeSizeFlight(iconName, colorCssValue) {
+      const flight = document.createElement('div');
+      flight.className = 'size-flight';
+      SPOT_SIZES.forEach(function (sizePair) {
+        const stack = document.createElement('div');
+        stack.className = 'stack';
+        const cell = makeIconCell(iconName + '-regular', sizePair[0]);
+        cell.style.color = colorCssValue;
+        stack.appendChild(cell);
+        const px = document.createElement('span');
+        px.className = 'px';
+        px.textContent = sizePair[1] + 'px';
+        stack.appendChild(px);
+        flight.appendChild(stack);
+      });
+      return flight;
+    }
+
+    function renderSpotCheck() {
+      const root = document.getElementById('spot-check');
+      if (!root) return;
+
+      // Header row
+      const header = document.createElement('div');
+      header.className = 'spot-row header';
+      ['icon', 'ink (inherit)', 'brand', 'campus-blue'].forEach(function (text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        header.appendChild(div);
+      });
+      root.appendChild(header);
+
+      SPOT_ICONS.forEach(function (name) {
+        const row = document.createElement('div');
+        row.className = 'spot-row';
+        const label = document.createElement('div');
+        label.className = 'label';
+        label.textContent = name;
+        row.appendChild(label);
+        SPOT_COLORS.forEach(function (color) {
+          row.appendChild(makeSizeFlight(name, color.key));
+        });
+        root.appendChild(row);
+      });
+    }
+
+    /* ----------------------------------------------------------
+     * Theme toggle
+     * ---------------------------------------------------------- */
+    function setupThemeToggle() {
+      const btn = document.getElementById('theme-toggle');
+      function syncLabel() {
+        const cur = document.documentElement.dataset.theme;
+        btn.textContent = cur === 'dark' ? '🌙' : '☀';
+        btn.setAttribute('aria-label', 'Switch to ' + (cur === 'dark' ? 'light' : 'dark') + ' mode');
+      }
+      btn.addEventListener('click', function () {
+        const cur = document.documentElement.dataset.theme;
+        document.documentElement.dataset.theme = cur === 'dark' ? 'light' : 'dark';
+        syncLabel();
+      });
+      syncLabel();
+    }
+
+    /* ----------------------------------------------------------
+     * Boot
+     * ---------------------------------------------------------- */
+    document.addEventListener('DOMContentLoaded', function () {
+      renderIconGroups();
+      renderBtnMatrix();
+      renderSpotCheck();
+      setupThemeToggle();
+    });
+  </script>
+</body>
+</html>
