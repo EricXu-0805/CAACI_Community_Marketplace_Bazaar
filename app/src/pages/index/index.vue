@@ -258,7 +258,7 @@
               <view class="card-bottom">
                 <view class="card-seller">
                   <image
-                    :src="item.profile?.avatar_url || '/static/default-avatar.svg'"
+                    :src="item.profile?.avatar_url || defaultAvatarSrc"
                     class="seller-pic"
                     mode="aspectFill"
                   />
@@ -325,6 +325,7 @@ import { onShow, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { useItems } from '../../composables/useItems'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
+import { useTheme } from '../../composables/useTheme'
 import { useFavorites } from '../../composables/useFavorites'
 import { useModeration } from '../../composables/useModeration'
 import { useSemester } from '../../composables/useSemester'
@@ -339,6 +340,10 @@ import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 
 const { t, lang, localize } = useI18n()
+const { isDark } = useTheme()
+const defaultAvatarSrc = computed(() =>
+  isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
+)
 const { phase: semesterPhase, config: semesterConfig, title: semesterTitle, subtitle: semesterSubtitle } = useSemester()
 
 const semesterDismissed = ref<boolean>(false)

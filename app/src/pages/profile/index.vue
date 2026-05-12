@@ -35,7 +35,7 @@
       <view class="user-card">
         <view class="user-card-bg"></view>
         <view class="user-row">
-          <image :src="currentUser?.avatar_url || '/static/default-avatar.svg'" class="avatar-big" mode="aspectFill" />
+          <image :src="currentUser?.avatar_url || defaultAvatarSrc" class="avatar-big" mode="aspectFill" />
           <view class="user-info">
             <view class="name-row">
               <text class="nickname">{{ currentUser?.nickname }}</text>
@@ -264,6 +264,7 @@ import { ref, computed } from 'vue'
 import { onShow, onPullDownRefresh, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
+import { useTheme } from '../../composables/useTheme'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import { useItems } from '../../composables/useItems'
@@ -274,6 +275,10 @@ import type { Item } from '../../types'
 import { formatPrice, thumbUrl } from '../../utils'
 
 const { t, localize } = useI18n()
+const { isDark } = useTheme()
+const defaultAvatarSrc = computed(() =>
+  isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
+)
 const { currentUser, isLoggedIn } = useAuth()
 const { items: homeItems, fetchMyItems, updateItemStatus, deleteItem } = useItems()
 const { loadMyFavorites, fetchMyFavoriteItems } = useFavorites()

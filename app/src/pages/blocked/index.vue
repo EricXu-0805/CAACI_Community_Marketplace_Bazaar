@@ -13,7 +13,7 @@
 
     <view v-else class="list">
       <view v-for="p in blockedProfiles" :key="p.id" class="row">
-        <image :src="p.avatar_url || '/static/default-avatar.svg'" class="avatar" mode="aspectFill" />
+        <image :src="p.avatar_url || defaultAvatarSrc" class="avatar" mode="aspectFill" />
         <view class="info">
           <text class="nickname">{{ p.nickname }}</text>
           <text v-if="p.bio" class="bio">{{ p.bio }}</text>
@@ -27,11 +27,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
+import { useTheme } from '../../composables/useTheme'
 
 interface BlockedProfile {
   id: string
@@ -41,6 +42,10 @@ interface BlockedProfile {
 }
 
 const { t } = useI18n()
+const { isDark } = useTheme()
+const defaultAvatarSrc = computed(() =>
+  isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
+)
 const { supabase } = useSupabase()
 const { blockedIds, loadBlockedIds, unblockUser } = useModeration()
 

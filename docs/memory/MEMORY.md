@@ -16,12 +16,14 @@
 - [Git push proxies — Zach (Eric author) / Kenny-JT (raw "走 B")](zach_git_proxy.md) — both push on Eric's behalf; identity policy diverged after Vercel Pro upgrade
 - [Design system asset — "Illini Market Design System" zip](design_system_asset_zip.md) — vision-archive snapshot; prod App.vue:972+ is source-of-truth; do NOT import zip CSS
 - [Design system — two-track (ivory_academy / marketplace)](design_system_two_track.md) — ivory_academy primary commerce; marketplace ONLY campus-official
-- [Reserved accounts — 6 protected user accounts](reserved_accounts_six.md) — never wipe: CAACI小助手, Eric, Kenny, Zach, Eric WeChat, utj test
+- [Reserved accounts — post-wipe rebuild status](reserved_accounts_six.md) — 2026-05-11 wipe invalidated all UUIDs; Eric rebuilt 2026-05-12 (55373dd3...); 5 pending
 - [Backlog — Location verification + GPS precision](backlog_location_verification_gps.md) — verified-location badge + building-level GPS; surfaced 2026-05-04
 - [Backlog — prepare script Windows incompat](backlog_prepare_script_windows_incompat.md) — Unix shell syntax breaks Windows npm install; not launch blocker
+- [Backlog — Onboarding step 1 keyboard occlusion](backlog_onboarding_keyboard_occlusion.md) — nickname input covered; audit-only first; surfaced 2026-05-12
 - [Google OAuth — supabase.co page is correct](google_oauth_supabase_redirect.md) — fix only via Supabase Custom Domain (red-line, post-launch)
 - [V3 P1 — Dark mode fixes shipped 2026-05-10](v3_p1_dark_mode_shipped.md) — main squash 162b1a9 + hotfix; tokens + 5 surfaces + i18n + messages swipe; v3.5 backlog 7 items
 - [Lesson — show full element block when patching Vue template bindings](lesson_template_binding_full_block.md) — single-line :class= patch invites dropping sibling static class; from v3 P1 hotfix incident
 - [V3 phase status tracker — P1 + P2a shipped, P2b queued](sprint_v3_phase_status.md) — live tracker; ask Eric "ready to resume Px?" before writing next OpenCode prompt
 - [V3 P2a — Icon + Button infrastructure shipped 2026-05-11](v3_p2a_shipped.md) — PR #12 6 commits; 43 icons / 52 SVGs frozen; P2b surface migration is next
 - [Lesson — dual-write must verify BOTH MEMORY.md + audit .gitignore](lesson_memory_dual_write_must_verify.md) — from 2026-05-11 recovery; .gitignore patterns silent-match memory filenames on Windows core.ignorecase=true
+- [Lesson — sub-agent secret-gen prompts must split plaintext from safe-share](lesson_subagent_secret_split.md) — from 2026-05-12 admin token leak; copy-paste reflex

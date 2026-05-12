@@ -94,7 +94,7 @@
     <!-- Seller Card -->
     <view class="section seller-card" v-if="item.profile">
       <view class="seller-row" @click="goSeller(item.user_id)">
-        <image :src="item.profile.avatar_url || '/static/default-avatar.svg'" class="seller-avatar" mode="aspectFill" />
+        <image :src="item.profile.avatar_url || defaultAvatarSrc" class="seller-avatar" mode="aspectFill" />
         <view class="seller-info">
           <view class="seller-name-row">
             <text class="seller-name">{{ item.profile.nickname }}</text>
@@ -255,6 +255,7 @@ import { useMessages } from '../../composables/useMessages'
 import { useFavorites } from '../../composables/useFavorites'
 import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
+import { useTheme } from '../../composables/useTheme'
 import type { Item } from '../../types'
 
 import { formatTime, haptic, formatPrice, quickTranslate, thumbUrl, friendlyErrorMessage } from '../../utils'
@@ -266,6 +267,10 @@ import { useTranslate } from '../../composables/useTranslate'
 import { computed, onUnmounted, watch } from 'vue'
 
 const { t, lang, localize } = useI18n()
+const { isDark } = useTheme()
+const defaultAvatarSrc = computed(() =>
+  isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
+)
 const { fetchItem, updateItemStatus } = useItems()
 const { addToHistory } = useHistory()
 const { supabase } = useSupabase()

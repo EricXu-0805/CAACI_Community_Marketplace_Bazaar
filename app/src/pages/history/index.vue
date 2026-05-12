@@ -45,7 +45,7 @@
         @click="goPostDetail(p.id)"
         @longpress="onRemoveOne(p.id, 'post')"
       >
-        <image :src="p.profile?.avatar_url || '/static/default-avatar.svg'" class="post-avatar" mode="aspectFill" />
+        <image :src="p.profile?.avatar_url || defaultAvatarSrc" class="post-avatar" mode="aspectFill" />
         <view class="post-info">
           <view class="post-top">
             <text class="post-name">{{ p.profile?.nickname || t('app.user') }}</text>
@@ -71,9 +71,14 @@
 import { ref, computed } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { useHistory } from '../../composables/useHistory'
+import { useTheme } from '../../composables/useTheme'
 import { formatPrice, thumbUrl } from '../../utils'
 
 const { t, localize } = useI18n()
+const { isDark } = useTheme()
+const defaultAvatarSrc = computed(() =>
+  isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
+)
 const {
   history,
   postHistory,

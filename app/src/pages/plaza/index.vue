@@ -93,7 +93,7 @@
               <view class="pcb-chev"></view>
             </view>
             <view class="post-header">
-              <image :src="post.profile?.avatar_url || '/static/default-avatar.svg'" class="pa-avatar" mode="aspectFill" />
+              <image :src="post.profile?.avatar_url || defaultAvatarSrc" class="pa-avatar" mode="aspectFill" />
               <view class="pa-info">
                 <view class="pa-name-row">
                   <text class="pa-name">{{ post.profile?.nickname || t('app.user') }}</text>
@@ -207,7 +207,7 @@
                 @touchmove="commentLongPress.onTouchmove"
               >
                 <image
-                  :src="thread.parent.profile?.avatar_url || '/static/default-avatar.svg'"
+                  :src="thread.parent.profile?.avatar_url || defaultAvatarSrc"
                   class="cs-avatar"
                   mode="aspectFill"
                   @click.stop="onCommentTap(thread.parent)"
@@ -239,7 +239,7 @@
                   @touchmove="commentLongPress.onTouchmove"
                 >
                   <image
-                    :src="child.profile?.avatar_url || '/static/default-avatar.svg'"
+                    :src="child.profile?.avatar_url || defaultAvatarSrc"
                     class="cs-avatar"
                     mode="aspectFill"
                     @click.stop="onCommentTap(child)"
@@ -425,6 +425,7 @@ import { onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
+import { useTheme } from '../../composables/useTheme'
 import { usePlaza, groupCommentsByParent } from '../../composables/usePlaza'
 import { useModeration } from '../../composables/useModeration'
 import { useItems } from '../../composables/useItems'
@@ -442,6 +443,10 @@ import CustomTabBar from '../../components/CustomTabBar.vue'
 import PlazaBannerCarousel from '../../components/PlazaBannerCarousel.vue'
 
 const { t, lang, localize } = useI18n()
+const { isDark } = useTheme()
+const defaultAvatarSrc = computed(() =>
+  isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
+)
 const { currentUser, isLoggedIn, requireAuth } = useAuth()
 const { posts, loading, hasMore, fetchPosts, createPost, updatePostI18n, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, fetchMyActiveItems } = usePlaza()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
