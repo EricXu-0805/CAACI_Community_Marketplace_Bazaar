@@ -23,3 +23,4 @@
 - [V3 P1 — Dark mode fixes shipped 2026-05-10](v3_p1_dark_mode_shipped.md) — main squash 162b1a9 + hotfix; tokens + 5 surfaces + i18n + messages swipe; v3.5 backlog 7 items
 - [Lesson — show full element block when patching Vue template bindings](lesson_template_binding_full_block.md) — single-line :class= patch invites dropping sibling static class; from v3 P1 hotfix incident
 - [V3 phase status tracker — P1 shipped, P2-P4 deferred](sprint_v3_phase_status.md) — live tracker; ask Eric "ready to resume Px?" before writing next OpenCode prompt
+- [Lesson — dual-write must verify BOTH MEMORY.md + audit .gitignore](lesson_memory_dual_write_must_verify.md) — from 2026-05-11 recovery; .gitignore patterns silent-match memory filenames on Windows core.ignorecase=true
