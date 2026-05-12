@@ -1,0 +1,68 @@
+<template>
+  <view class="u-icon" :style="iconStyle">
+    <view v-if="iconHTML" class="u-icon-svg" v-html="iconHTML"></view>
+  </view>
+</template>
+
+<script setup lang="ts">
+/**
+ * UIcon — renders one of the registry icons at a fixed size, optionally
+ * tinted to a token color or hex.
+ *
+ * Usage:
+ *   <UIcon name="home" />                        // 24px, regular weight, currentColor
+ *   <UIcon name="heart" weight="filled" />       // 24px, filled
+ *   <UIcon name="bell" size="lg" color="brand" />  // 32px, tinted to var(--brand)
+ *   <UIcon name="search" color="#FF0000" />      // 24px, tinted to hex
+ *
+ * If `name-weight` not in registry, falls back to `name-regular`. If that's
+ * also missing, renders nothing (no error — safe default).
+ */
+import { computed } from 'vue'
+import { ICONS, type IconName, type IconWeight } from './icons/registry'
+
+const props = withDefaults(defineProps<{
+  name: IconName | string
+  weight?: IconWeight
+  size?: 'xs' | 'sm' | 'md' | 'lg'
+  color?: string
+}>(), {
+  weight: 'regular',
+  size: 'md',
+  color: 'currentColor',
+})
+
+const SIZES: Record<string, number> = { xs: 16, sm: 20, md: 24, lg: 32 }
+
+const iconHTML = computed(() => {
+  const key = `${props.name}-${props.weight}`
+  return ICONS[key] || ICONS[`${props.name}-regular`] || ''
+})
+
+const iconStyle = computed(() => ({
+  width: `${SIZES[props.size]}px`,
+  height: `${SIZES[props.size]}px`,
+  color: props.color.startsWith('#') || props.color === 'currentColor'
+    ? props.color
+    : `var(--${props.color})`,
+}))
+</script>
+
+<style scoped>
+.u-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  vertical-align: middle;
+  line-height: 0;
+}
+.u-icon-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.u-icon-svg :deep(svg) {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+</style>
