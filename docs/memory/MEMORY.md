@@ -3,7 +3,7 @@
 - [Session startup — state check before accepting work](session_startup_state_check.md) — read memory + git + audit dir + handoff; report 4-line state snapshot to Eric; only THEN accept work
 - [User — Eric Xu / Illini Market](user_eric_illini_market.md) — solo maintainer; uni-app + Vue 3 + Supabase + Vercel + Resend; beta May 2026
 - [Communication — direct, bilingual, push-back expected](communication_bilingual_direct.md) — anti-fluff, mixed CN/EN technical vocab, push back during fatigue
-- [Workflow — audit-first, atomic commits, 5-section final report](workflow_audit_first.md) — audit→spec→build→review→push→verify, "修一个验收一个"
+- [Workflow — debug → OpenCode → smoke test → memory → push](workflow_audit_first.md) — 5-step 2026-05-12 ordering; smoke test HARD pre-push gate; sprint memory rides with deliverable branch (no Round 2)
 - [Workflow — audit-only first vs audit+fix 一把过](sprint_form_audit_only_vs_one_pass.md) — audit-only when cross-platform / new module / quirky API / animation / view-dependent schema
 - [Memory mirror in repo `docs/memory/`](docs_memory_mirror_convention.md) — Cowork local is source-of-truth; sync BOTH on every memory update; Cowork wins on conflict
 - [Actors — Eric / Chat-Claude / audit-build agent three-role model](actors_three_role_model.md) — Eric=red-line, Chat=PM/specs/review, OpenCode (was Claude Code) executes audit+build, never pushes
@@ -19,11 +19,14 @@
 - [Reserved accounts — post-wipe rebuild status](reserved_accounts_six.md) — 2026-05-11 wipe invalidated all UUIDs; Eric rebuilt 2026-05-12 (55373dd3...); 5 pending
 - [Backlog — Location verification + GPS precision](backlog_location_verification_gps.md) — verified-location badge + building-level GPS; surfaced 2026-05-04
 - [Backlog — prepare script Windows incompat](backlog_prepare_script_windows_incompat.md) — Unix shell syntax breaks Windows npm install; not launch blocker
-- [Backlog — Onboarding step 1 keyboard occlusion](backlog_onboarding_keyboard_occlusion.md) — nickname input covered; audit-only first; surfaced 2026-05-12
+- [Backlog — Onboarding step 1 keyboard occlusion (audit shipped, fix queued)](backlog_onboarding_keyboard_occlusion.md) — audit shipped 2026-05-12; F2 fix (reuse useKeyboardHeight from D3, ~10-15 LOC single-file); 4 real-device open questions pending
 - [Google OAuth — supabase.co page is correct](google_oauth_supabase_redirect.md) — fix only via Supabase Custom Domain (red-line, post-launch)
 - [V3 P1 — Dark mode fixes shipped 2026-05-10](v3_p1_dark_mode_shipped.md) — main squash 162b1a9 + hotfix; tokens + 5 surfaces + i18n + messages swipe; v3.5 backlog 7 items
 - [Lesson — show full element block when patching Vue template bindings](lesson_template_binding_full_block.md) — single-line :class= patch invites dropping sibling static class; from v3 P1 hotfix incident
-- [V3 phase status tracker — P1 + P2a shipped, P2b queued](sprint_v3_phase_status.md) — live tracker; ask Eric "ready to resume Px?" before writing next OpenCode prompt
+- [V3 phase status tracker — P1 + P2a + v3.5 partial shipped, P2b queued](sprint_v3_phase_status.md) — live tracker; ask Eric "ready to resume Px?" before writing next OpenCode prompt
 - [V3 P2a — Icon + Button infrastructure shipped 2026-05-11](v3_p2a_shipped.md) — PR #12 6 commits; 43 icons / 52 SVGs frozen; P2b surface migration is next
 - [Lesson — dual-write must verify BOTH MEMORY.md + audit .gitignore](lesson_memory_dual_write_must_verify.md) — from 2026-05-11 recovery; .gitignore patterns silent-match memory filenames on Windows core.ignorecase=true
 - [Lesson — sub-agent secret-gen prompts must split plaintext from safe-share](lesson_subagent_secret_split.md) — from 2026-05-12 admin token leak; copy-paste reflex
+- [V3.5 partial — Launch-blocker bundle shipped 2026-05-13](v35_launch_blocker_shipped.md) — PR #13 squash 2243751: avatar fallback ×12 + banner skeleton; shimmer flat trade-off
+- [Lesson — spec CSS gradient must check token VALUES not just existence](lesson_spec_token_check_actual_values.md) — from 2026-05-13 banner shimmer no-op
+- [Lesson — `.gitignore *_AUDIT.md` is mis-scoped; `!docs/audit/` whitelist is the class fix](lesson_audit_md_lowercase_suffix.md) — lowercase rename alone does NOT save on Windows core.ignorecase=true; 15+ existing audits survive only via index grandfathering; from 2026-05-12 V3.5 onboarding keyboard audit two-STOP empirical diagnostic
