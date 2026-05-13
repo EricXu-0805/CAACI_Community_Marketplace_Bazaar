@@ -2,8 +2,8 @@
 name: V3.5 partial — Launch-blocker bundle shipped 2026-05-13 (PR #13)
 description: 2 of 6 v3.5 backlog items shipped via PR #13 squash 2243751; avatar dark-fallback x 12 surfaces + PlazaBannerCarousel banner-skeleton token-ization + bundled docs commit; shimmer-becomes-flat trade-off documented inline; --paper-2 -> --bg-inset is a 1-line follow-up to reactivate shimmer motion
 type: project
-originSessionId: b953b797-5c97-4889-9ddc-e30f716e29b0
 ---
+
 V3.5 polish sweep partial ship — 2 of 6 backlog items closed in a single PR before beta launch.
 
 - **PR**: #13 on `EricXu-0805/CAACI_Community_Marketplace_Bazaar`
