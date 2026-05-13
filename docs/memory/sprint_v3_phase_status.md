@@ -13,6 +13,7 @@ originSessionId: b953b797-5c97-4889-9ddc-e30f716e29b0
 | **P4** | Motion sweep + 8 component micro-interactions | ⏸ **DEFERRED 2026-05-10** | SPEC §P4 ready. Q4-A and Q4-B still open at restart time |
 | **v3.5** | Polish sweep (avatar dark fallback × 12 surfaces, banner skeleton, frame token clarification, Sass deprecation, list-row contrast, partial-swipe leak) | 🚧 **PARTIAL — 2 of 6 SHIPPED 2026-05-13** | PR #13 (squash `2243751`): avatar fallback × 12 + banner skeleton tokens. 4 items + 1 new follow-up (shimmer reactivation) remaining. Details in `v35_launch_blocker_shipped.md` |
 | **v3.5 KB audit** | Onboarding step 1 nickname input keyboard occlusion — audit only | ✅ **AUDIT SHIPPED 2026-05-12** | Branch `audit/v35-onboarding-keyboard` squash-merged to main. 2 commits: `chore(gitignore): whitelist docs/audit/` (class fix parallel to PR #11) + `docs(audit): v3.5 onboarding keyboard occlusion audit` (381-line audit at `docs/audit/V35_onboarding_keyboard_audit.md`). Fix sprint **queued**: F2 reuses `useKeyboardHeight.ts` from D3, ~10-15 LOC single-file. 4 real-device open questions pending (audit §7) before fix kickoff. Details in `backlog_onboarding_keyboard_occlusion.md` |
+| **v3.5 GC audit** | Onboarding step 1 nickname input glyph clipping — audit only | ✅ **AUDIT SHIPPED 2026-05-12** | Branch `audit/v35-onboarding-glyph-clipping` off main `7eda10b` (PR #16 squash). 1 commit: `docs(audit): v3.5 onboarding nickname glyph clipping audit` (437-line audit at `docs/audit/V35_onboarding_glyph_clipping_audit.md`). Three-green cleared. Fix sprint **queued**: F1 = `line-height: 1.4` on `.input` (1-2 LOC single-file). 7 real-device smoke questions pending (audit §5). ORTHOGONAL F5 anomaly (dead-loaded webfont family-name mismatch) flagged as separate sprint. Details in `backlog_onboarding_glyph_clipping.md` |
 
 ---
 
@@ -29,3 +30,6 @@ originSessionId: b953b797-5c97-4889-9ddc-e30f716e29b0
 - V3.5 KB audit details: `backlog_onboarding_keyboard_occlusion.md` (status + audit findings + F2 fix recommendation + 4 open questions)
 - V3.5 KB audit md: `docs/audit/V35_onboarding_keyboard_audit.md`
 - Two-STOP `.gitignore` lesson from V3.5 KB audit: `lesson_audit_md_lowercase_suffix.md`
+- V3.5 GC audit details: `backlog_onboarding_glyph_clipping.md` (status + audit findings + F1 fix recommendation + 7 open questions + F5 orthogonal anomaly)
+- V3.5 GC audit md: `docs/audit/V35_onboarding_glyph_clipping_audit.md`
+- Cmd terminal truncation lesson from V3.5 GC audit triage: `lesson_git_show_terminal_truncation.md`
