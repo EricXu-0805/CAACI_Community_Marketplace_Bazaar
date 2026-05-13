@@ -2,8 +2,8 @@
 name: Backlog — Onboarding step 1 nickname input keyboard occlusion (audit shipped, fix queued)
 description: New users on `pages/onboarding/index.vue` step 1 see nickname input partially covered by soft keyboard. Audit shipped 2026-05-12 via `audit/v35-onboarding-keyboard` branch (`docs/audit/V35_onboarding_keyboard_audit.md`, 381 lines). Fix sprint queued: F2 reuses `useKeyboardHeight.ts` composable from D3, single-file ~10-15 LOC. 4 real-device open questions pending before kickoff.
 type: project
+originSessionId: b953b797-5c97-4889-9ddc-e30f716e29b0
 ---
-
 **Symptom**: On `app/src/pages/onboarding/index.vue` step 1 (the post-signup profile setup screen where new users fill nickname / campus area / avatar), when the user taps the nickname `<input>` to type, the soft keyboard rises and **partially covers the input field or the bottom CTA buttons**. Reported by Eric 2026-05-12 during post-wipe smoke test.
 
 **Status**: ✅ **AUDIT SHIPPED 2026-05-12** via `audit/v35-onboarding-keyboard` branch, squash-merged to main. 2 atomic commits on feature branch:

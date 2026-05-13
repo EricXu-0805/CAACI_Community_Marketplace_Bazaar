@@ -2,8 +2,8 @@
 name: V3 Phase 2a — Icon + Button infrastructure shipped 2026-05-11 (PR #12)
 description: 43 icon names / 52 SVG variants frozen via 10 design rounds; UIcon.vue + UButton.vue + registry.ts + preview HTML on feat/v3-p2a-icon-components branch; P2b surface migration is next phase; squash SHA TBD next session
 type: project
+originSessionId: 8ed7d95e-d7be-4a14-ac48-2308079cb50d
 ---
-
 V3 visual refresh sprint Phase 2a delivered via PR #12 on `feat/v3-p2a-icon-components` (6 atomic commits: a8870a9 → 1234786). Squash merge SHA to be back-filled next session.
 
 **New files (committed via P2a PR):**

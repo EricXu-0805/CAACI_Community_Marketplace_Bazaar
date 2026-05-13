@@ -2,8 +2,8 @@
 name: Lesson — chat-Claude's memory dual-write must verify BOTH MEMORY.md + audit .gitignore
 description: From 2026-05-11 memory sync recovery. Two oversights compounded — chat-Claude updated Cowork local MEMORY.md but never mirrored to repo; .gitignore audit patterns (uppercase) silently matched 4 lowercase memory filenames on Windows core.ignorecase=true. Going forward, every memory update must explicitly Write BOTH MEMORY.md files in the same response + audit new memory filenames against .gitignore before committing
 type: feedback
+originSessionId: 8ed7d95e-d7be-4a14-ac48-2308079cb50d
 ---
-
 After ~25 memory writes across the v3 P1 sprint, Zach pulled main expecting Cowork-readable memory and surfaced two compounding gaps. Both are violations of `docs_memory_mirror_convention.md` that chat-Claude should have prevented.
 
 ## Root cause 1 — MEMORY.md index drift

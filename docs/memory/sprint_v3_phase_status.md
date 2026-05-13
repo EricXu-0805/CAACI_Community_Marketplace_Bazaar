@@ -2,8 +2,8 @@
 name: V3 Visual Refresh — phase status tracker (P1 + P2a + v3.5 partial shipped, P2b queued)
 description: Live tracker for the 4-phase v3 sprint per docs/audit/V3_VISUAL_REFRESH_SPEC.md. P1 (dark mode) shipped 2026-05-10; P2a (icon + button infrastructure) shipped 2026-05-11 via PR #12; v3.5 partial (2/6 backlog items) shipped 2026-05-13 via PR #13 squash 2243751; v3.5 onboarding keyboard audit shipped 2026-05-12 via separate audit/v35-onboarding-keyboard branch; P2b queued; P3/P4 deferred. Update this file when phase status changes
 type: project
+originSessionId: b953b797-5c97-4889-9ddc-e30f716e29b0
 ---
-
 | Phase | Scope | Status | Notes |
 |---|---|---|---|
 | **P1** | Dark mode token + 5 component fixes | ✅ **SHIPPED 2026-05-10** | Main squash `162b1a9` + hotfix squash `e8becd7` (#9). Full details in `v3_p1_dark_mode_shipped.md` |

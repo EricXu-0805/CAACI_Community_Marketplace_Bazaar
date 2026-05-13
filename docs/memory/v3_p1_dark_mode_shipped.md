@@ -2,8 +2,8 @@
 name: V3 Phase 1 — Dark mode fixes shipped 2026-05-10 (merged via 2 squash PRs)
 description: P1 main squash 162b1a9 + hotfix squash e8becd7 (#9). 7 new dark tokens + 9 changed values; warm-deep shadows; legacy --bg-* aliases extended; 5 component surfaces fixed; 6 missing i18n keys; messages swipe-actions visibility-toggle. mp-weixin compat actually survived (deferral now P2+ only). Hotfix needed because main squash dropped 2 messages template fixes (conv-row class + :class binding colon)
 type: project
+originSessionId: 8ed7d95e-d7be-4a14-ac48-2308079cb50d
 ---
-
 V3 visual refresh sprint Phase 1 merged via two squash PRs:
 
 - **Main PR squash:** `162b1a9` — `feat(theme): v3 P1 dark-mode — tokens + 5 surfaces + i18n + messages swipe fix`

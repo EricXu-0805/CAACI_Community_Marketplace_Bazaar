@@ -2,8 +2,8 @@
 name: GitHub PR creation — compare page does NOT auto-create PR
 description: Both `git push` remote URL and `gh pr create` "Continue in browser" land on compare page; must click green "Create pull request" + re-paste body; prefer `gh pr create --body` flag or "Submit" prompt
 type: reference
+originSessionId: 9852fdfb-dfb7-46b2-9864-95942d5727dd
 ---
-
 GitHub PR creation has TWO paths that land on a "Comparing changes" page (URL pattern `/compare/main...<branch>`) which does NOT auto-create the PR. The user must click the green "Create pull request" button on that page to actually create it.
 
 **Path A — push then click remote URL**: After `git push -u origin <branch>`, the remote prints "Create a pull request for ... visiting `https://github.com/.../pull/new/<branch>`". Opening that URL → compare page → still need to click "Create pull request".

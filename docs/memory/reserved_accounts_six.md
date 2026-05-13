@@ -2,8 +2,8 @@
 name: Reserved accounts — post-wipe rebuild status (2026-05-12)
 description: 6 reserved user accounts; 2026-05-11 prod wipe invalidated all old UUIDs; Eric rebuilt 2026-05-12 with new UUID + admin_tokens row; 5 others pending rebuild
 type: project
+originSessionId: b953b797-5c97-4889-9ddc-e30f716e29b0
 ---
-
 **2026-05-11 prod data wipe** invalidated all 6 reserved account UUIDs. Old UUIDs and pinned post id `e107f8f3-8430-4e37-b0c4-7f7da734949c` are **dead references** — do NOT cite them as if they're live.
 
 Rebuild status as of 2026-05-12:
