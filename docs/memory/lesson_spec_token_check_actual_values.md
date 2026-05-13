@@ -2,8 +2,8 @@
 name: Lesson — spec CSS gradient/animation must check actual token VALUES, not just token existence
 description: When chat-Claude proposes CSS that depends on color differences between design tokens (gradients, shimmer animations, etc.), look up actual VALUES in App.vue; legacy aliases may share the same canonical value (per v3 P1 mirror) and produce a visual no-op despite both tokens existing
 type: feedback
+originSessionId: b953b797-5c97-4889-9ddc-e30f716e29b0
 ---
-
 When proposing CSS that depends on a **color difference** between two or more design tokens (e.g. `linear-gradient(--token-a, --token-b)`, `shimmer` keyframe with multi-stop gradient, hover-state contrast, focus ring vs background, etc.), the spec MUST check the **actual numeric values** of those tokens in `app/src/App.vue`, not just confirm the tokens exist.
 
 **Why:** 2026-05-13 incident. Spec for v3.5 banner-skeleton fix proposed `linear-gradient(90deg, var(--bg-subtle) 0%, var(--paper-2) 50%, var(--bg-subtle) 100%)` to replace hardcoded light hex (`#eaeaef`/`#f2f2f7`). The spec verified both tokens "are defined in BOTH `:root` and `[data-theme="dark"]` blocks" — checked existence, not values. OpenCode's audit caught that `--bg-subtle` ≡ `--paper-2` within each theme (v3 P1 legacy alias extension mirrored multiple aliases to the same canonical value: `#F0E9DA` in light, `#36322B` in dark). The proposed gradient resolved to a solid color in both themes, turning the `shimmer` animation into a visual no-op. The launch-blocker (bright white stripes on dark canvas) was still fully resolved by the change, but the motion polish was lost. A 1-line follow-up (`--paper-2` → `--bg-inset`) is needed to reactivate motion.
