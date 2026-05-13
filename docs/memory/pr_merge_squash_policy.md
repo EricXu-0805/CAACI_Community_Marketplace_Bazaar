@@ -2,8 +2,8 @@
 name: PR merge policy — squash-merge, all changes via PR (main is protected)
 description: Squash-merge chosen 2026-05-08; main has GitHub branch protection (3 required status checks); ALL changes including docs-only must go through PR (direct push rejected with GH006)
 type: feedback
+originSessionId: 9852fdfb-dfb7-46b2-9864-95942d5727dd
 ---
-
 PR merge policy is squash-merge (chosen 2026-05-08). Atomic commits ("修一个验收一个") live on feature branches; main holds one squashed commit per feature for clean bisect / cherry-pick. To recover atomic commits, find the deleted feature branch via reflog or `gh pr view`.
 
 **All changes go through PR — no direct push to main.** main has GitHub branch protection enabled requiring 3 status checks; direct push (`git push origin main`) is rejected with `error: GH006: Protected branch update failed`. Even docs-only / mig-only changes must go through a feature branch + PR + squash-merge.

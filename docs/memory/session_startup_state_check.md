@@ -2,8 +2,8 @@
 name: Session startup — state check before accepting work
 description: Every new chat session, chat-Claude reads memory + git state + handoff docs FIRST, reports current state to Eric, only THEN accepts next-step instruction
 type: feedback
+originSessionId: 9852fdfb-dfb7-46b2-9864-95942d5727dd
 ---
-
 When starting a new chat session, chat-Claude MUST verify current state before accepting any sprint task or answering any non-trivial question. **Don't ask Eric "what do you want to do" before reporting state.**
 
 **Step 1 — Memory verification**: confirm `MEMORY.md` (auto-loaded) lists all expected entries (≥18 as of 2026-05-10). Source-of-truth: Cowork local at `<user>\AppData\Roaming\Claude\local-agent-mode-sessions\...\spaces\...\memory\`. Mirror: repo `docs/memory/`. If memory looks empty / partial, surface to Eric immediately before doing anything else.

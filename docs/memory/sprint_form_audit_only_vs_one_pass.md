@@ -2,8 +2,8 @@
 name: Workflow — audit-only first vs audit+fix 一把过 decision rule
 description: Audit-only first when cross-platform / new module / quirky API / animation / view-dependent schema; audit+fix 一把过 for single-file UI / well-understood pattern / state cleanup
 type: feedback
+originSessionId: 9852fdfb-dfb7-46b2-9864-95942d5727dd
 ---
-
 **Audit-only first** (audit md output → Chat-Claude reviews + Eric decides → fix is a separate sprint) is required when the sprint has ANY of:
 - Cross-platform code paths that diverge (e.g. H5 `visualViewport` vs mp-weixin `uni.onKeyboardHeightChange`)
 - New composable / module without project precedent (greenfield code)

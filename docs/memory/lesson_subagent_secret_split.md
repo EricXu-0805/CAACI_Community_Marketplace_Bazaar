@@ -2,8 +2,8 @@
 name: Lesson — sub-agent secret-gen prompts must split plaintext from safe-share output
 description: Prompts that delegate secret generation (tokens / hashes / keys) to OpenCode or any sub-agent MUST visually + structurally separate plaintext from safe-to-share output, else user's copy-paste reflex leaks plaintext to upstream chat
 type: feedback
+originSessionId: b953b797-5c97-4889-9ddc-e30f716e29b0
 ---
-
 When writing a prompt for a sub-agent (OpenCode / Claude Code / other) that generates a secret (admin token, API key, password, signed URL, webhook secret, etc.) AND a derivable non-secret artifact (hash, public key, SQL with hash baked in, etc.), the prompt MUST:
 
 1. **Visually separate plaintext from non-secret output**. Use distinct banners like `=== PRIVATE — DO NOT SHARE ===` above plaintext and `=== SAFE TO SHARE WITH CHAT-CLAUDE ===` above the hash / SQL block.

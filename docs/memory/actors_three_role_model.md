@@ -2,8 +2,8 @@
 name: Actors — Eric / Chat-Claude / audit-build agent three-role model
 description: Eric=red-line/decisions/push, Chat-Claude=PM/specs/review, audit-build agent (OpenCode current, Claude Code through 2026-05-09) executes audit+build, never pushes/PRs/merges
 type: feedback
+originSessionId: 9852fdfb-dfb7-46b2-9864-95942d5727dd
 ---
-
 3-actor model: Eric makes decisions + manually pushes commits + manually runs SQL (red-line ops). Chat-Claude is PM/specs/review/prompt-strategy. Audit/build agent executes audit + build, commits to feature branch, but NEVER pushes / NEVER creates PR / NEVER merges — Eric does those manually via GitHub UI. Long chats compress to handoff packages ("接力包") that get pasted into new chat windows.
 
 **Audit/build agent identity:** OpenCode (current, since 2026-05-10). Was Claude Code through 2026-05-09 N13/N14 sprint. Address the agent by current name (OpenCode) when writing prompts.

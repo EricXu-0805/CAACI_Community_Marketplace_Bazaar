@@ -2,8 +2,8 @@
 name: Git push proxies — Zach (Eric author spoof) + Kenny-JT (raw "走 B")
 description: Two authorized git/push proxies; Zach (macOS, spoofs Eric author for Vercel free-plan legacy) + Kenny-JT (Windows, raw identity per "走 B" decision 2026-05-09 after Vercel Pro)
 type: project
+originSessionId: 9852fdfb-dfb7-46b2-9864-95942d5727dd
 ---
-
 Eric does not push from his own machine. Two authorized git/push proxies operate on his behalf:
 
 **Zach** (GitHub `Zach070805`, machine `/Users/zhaozeyu/...`, macOS)

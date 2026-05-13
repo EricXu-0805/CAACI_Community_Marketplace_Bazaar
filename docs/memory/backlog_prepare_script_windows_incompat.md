@@ -2,8 +2,8 @@
 name: Backlog — package.json prepare script Windows-incompat
 description: Unix shell syntax in prepare script breaks Windows npm install; pre-push hook may not auto-install on fresh Windows clone; Kenny machine works via manual setup
 type: project
+originSessionId: 9852fdfb-dfb7-46b2-9864-95942d5727dd
 ---
-
 `package.json` prepare script uses Unix shell syntax: `cd .. && git config core.hooksPath .githooks 2>/dev/null || true`. Windows cmd.exe doesn't recognize `2>/dev/null` redirect or `|| true` operator, so npm install fails on the prepare step on Windows machines unless `--ignore-scripts` flag is used.
 
 **Side effect:** pre-push three-green hook may not auto-install on fresh Windows clones. Kenny machine works because `git config core.hooksPath .githooks` was manually run previously (proven by D3 push triggering hook 2026-05-10).

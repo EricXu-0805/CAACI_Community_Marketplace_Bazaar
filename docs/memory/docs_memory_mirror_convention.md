@@ -2,8 +2,8 @@
 name: Memory mirror in repo `docs/memory/`
 description: Cowork local memory is source-of-truth; repo `docs/memory/` is mirror for backup + team reference; chat-Claude must sync BOTH on every memory update; Cowork wins on conflict
 type: project
+originSessionId: 9852fdfb-dfb7-46b2-9864-95942d5727dd
 ---
-
 Memory files (chat-Claude's persistent context layer) live in two places:
 
 **Source-of-truth**: Cowork local at
