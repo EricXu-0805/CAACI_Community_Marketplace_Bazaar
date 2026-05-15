@@ -64,6 +64,27 @@
           />
         </view>
 
+        <view
+          v-for="pi in (post.post_items || [])"
+          :key="pi.item.id"
+          class="attached-item-card"
+          @click.stop="goToAttachedItem(pi.item.id)"
+        >
+          <image
+            :src="thumbUrl(pi.item.images?.[0], 'list') || '/static/placeholder.svg'"
+            class="aic-img"
+            mode="aspectFill"
+            lazy-load
+            :alt="pi.item.title"
+          />
+          <view class="aic-body">
+            <text class="aic-title">{{ localize(pi.item.title_i18n, pi.item.title) }}</text>
+            <text class="aic-price">${{ pi.item.price }}</text>
+            <text v-if="pi.item.status === 'sold'" class="aic-sold">{{ t('status.sold') }}</text>
+          </view>
+          <view class="aic-arrow">›</view>
+        </view>
+
         <view class="stats-row">
           <view class="stat-btn" role="button" :aria-label="post.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click="onToggleLike">
             <image
@@ -212,7 +233,7 @@ import { useModeration } from '../../composables/useModeration'
 import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
 import { useLongPress } from '../../composables/useLongPress'
-import { formatTime, friendlyErrorMessage, quickTranslate } from '../../utils'
+import { formatTime, friendlyErrorMessage, quickTranslate, thumbUrl } from '../../utils'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim, Post, PostComment } from '../../types'
 import { BASE_URL } from '../../config/runtime'
@@ -383,6 +404,9 @@ async function loadComments() {
 
 function goBack() { uni.navigateBack({ fail: () => goPlaza() }) }
 function goPlaza() { uni.switchTab({ url: '/pages/plaza/index' }) }
+function goToAttachedItem(id: string) {
+  uni.navigateTo({ url: `/pages/detail/index?id=${id}` })
+}
 
 async function onToggleLike() {
   if (!requireAuth() || !post.value) return
@@ -679,6 +703,36 @@ async function onSubmitComment() {
   background: var(--bg-subtle);
   cursor: pointer;
 }
+
+/*
+ * Attached-item chips (mig 041 post_items join table).
+ * Plaza list at pages/plaza/index.vue:148-167 + :1498-1511 has the
+ * source pattern. Copied verbatim here with margin adjusted: plaza's
+ * "margin: 8px 14px 0 54px" left-insets to align under the avatar
+ * column; detail page has no avatar inset, so margin is "12px 0 0 0"
+ * (top spacing only). Sibling rule tightens subsequent chips to 8px
+ * since the first chip's 12px gap from .images already reads as a
+ * section break. P2b sprint may extract this into a shared component
+ * (AttachedItemChip.vue); for now M0 keeps the two copies in sync
+ * via grep for ".attached-item-card".
+ */
+.attached-item-card {
+  margin: 12px 0 0 0;
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--bg-subtle);
+  cursor: pointer;
+  &:active { background: var(--bg-inset); }
+}
+.attached-item-card + .attached-item-card {
+  margin-top: 8px;
+}
+.aic-img { width: 52px; height: 52px; border-radius: 8px; flex-shrink: 0; }
+.aic-body { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.aic-title { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aic-price { font-size: 14px; color: var(--accent-action); font-weight: 700; }
+.aic-sold { font-size: 11px; color: var(--text-muted); }
+.aic-arrow { font-size: 22px; color: var(--text-faint); line-height: 1; flex-shrink: 0; }
 
 .stats-row {
   display: flex; gap: 28px; margin-top: 16px;
