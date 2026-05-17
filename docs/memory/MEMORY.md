@@ -16,7 +16,7 @@
 - [Git push proxies — Zach (Eric author) / Kenny-JT (raw "走 B")](zach_git_proxy.md) — both push on Eric's behalf; identity policy diverged after Vercel Pro upgrade
 - [Design system asset — "Illini Market Design System" zip](design_system_asset_zip.md) — vision-archive snapshot; prod App.vue:972+ is source-of-truth; do NOT import zip CSS
 - [Design system — two-track (ivory_academy / marketplace)](design_system_two_track.md) — ivory_academy primary commerce; marketplace ONLY campus-official
-- [Reserved accounts — post-wipe rebuild status](reserved_accounts_six.md) — 2026-05-11 wipe invalidated all UUIDs; Eric rebuilt 2026-05-12 (55373dd3...); 5 pending
+- [Reserved accounts — post-restore state](reserved_accounts_six.md) — 2026-05-17 restore brought back all 6 pre-wipe identities; 5/12 rebuild UUIDs (`55373dd3...` + admin_tokens `7bc0a8d8...`) GONE; UUIDs TBD requery
 - [Backlog — Location verification + GPS precision](backlog_location_verification_gps.md) — verified-location badge + building-level GPS; surfaced 2026-05-04
 - [Backlog — prepare script Windows incompat](backlog_prepare_script_windows_incompat.md) — Unix shell syntax breaks Windows npm install; not launch blocker
 - [Backlog — Onboarding step 1 keyboard occlusion (audit shipped, fix queued)](backlog_onboarding_keyboard_occlusion.md) — audit shipped 2026-05-12; F2 fix (reuse useKeyboardHeight from D3, ~10-15 LOC single-file); 4 real-device open questions pending
@@ -32,3 +32,5 @@
 - [Lesson — `.gitignore *_AUDIT.md` is mis-scoped; `!docs/audit/` whitelist is the class fix](lesson_audit_md_lowercase_suffix.md) — lowercase rename alone does NOT save on Windows core.ignorecase=true; 15+ existing audits survive only via index grandfathering; from 2026-05-12 V3.5 onboarding keyboard audit two-STOP empirical diagnostic
 - [Backlog — Onboarding glyph clipping (audit shipped 2026-05-12, fix queued)](backlog_onboarding_glyph_clipping.md) — F1 = line-height:1.4 on .input (1-2 LOC single-file); 7 real-device Qs pending; ORTHOGONAL F5 (dead-loaded webfont family-name mismatch) is separate sprint
 - [Lesson — `git show <ref>:file` cmd output can be silently truncated](lesson_git_show_terminal_truncation.md) — never trust visual line count in cmd.exe; pipe through findstr count or to file+more; from 2026-05-12 memory-sync triage phantom-drift incident
+- [V3 M0 — Post detail attached-item chip rendering shipped 2026-05-17](v3_m0_post_chip_shipped.md) — PR #18 squash 3299b0a; mig-041 regression fix; single-file copy-paste (not extracted) + `fetchPost` `.order` side-fix; defer extraction to P2b
+- [Lesson — Supabase Pro scheduled backups (free, daily) vs PITR ($100/mo); Storage NOT included in DB backup](lesson_scheduled_backup_restore.md) — 2026-05-17 restore-then-rewipe pattern for fresh-start with retained identity; restored 5 pending reserved accounts for free
