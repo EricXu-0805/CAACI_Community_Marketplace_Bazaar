@@ -171,6 +171,7 @@ export function usePlaza() {
       .select(POST_SELECT)
       .eq('id', id)
       .eq('status', 'active')
+      .order('display_order', { foreignTable: 'post_items', ascending: true })
       .maybeSingle()
     if (error) throw error
     if (!data) return null
