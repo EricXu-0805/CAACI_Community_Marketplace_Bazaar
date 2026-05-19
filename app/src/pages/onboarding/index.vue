@@ -207,9 +207,14 @@ async function finish() {
 .field { display: flex; flex-direction: column; gap: 8px; position: relative; }
 .label { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .input {
+  /* uni-app <uni-input> wrapper framework caps height to 1.4em (~23.8px @ fs:17px)
+     which clips PingFang SC glyphs on iOS Safari. F1 (line-height: 1.5) made it
+     worse via unitless-number inheritance to inner real <input>. F1b: explicit
+     height: 48px overrides the framework cap, matching login/publish pattern.
+     See: docs/memory/lesson_uni_input_wrapper_not_native.md */
+  height: 48px;
   border: 0; border-bottom: 1.5px solid var(--bg-inset);
-  /* line-height explicit — fixes iOS Safari PingFang SC descender clipping (audit F1 §6) */
-  padding: 10px 0; font-size: 17px; line-height: 1.5; color: var(--text-primary);
+  padding: 0; font-size: 17px; color: var(--text-primary);
   background: transparent; width: 100%;
 }
 .count { font-size: 11px; color: var(--text-faint); align-self: flex-end; }
