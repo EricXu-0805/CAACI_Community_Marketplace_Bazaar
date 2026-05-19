@@ -8,9 +8,9 @@ originSessionId: b350322d-3f7f-470f-b423-3a74dd2cb691
 
 **Distinct from**: `backlog_onboarding_keyboard_occlusion.md` (2026-05-12 audit) — that bug is about `.bottom` CTA buttons being hidden behind the risen soft keyboard. This bug is glyph clipping INSIDE the rendered input box, observed pre-focus / pre-keyboard. **Fix sprints MUST stay independent** — one bug's fix could mask or interact with the other.
 
-**Status**: ✅ **AUDIT SHIPPED 2026-05-12** via `audit/v35-onboarding-glyph-clipping` branch (off main HEAD `7eda10b` — PR #16 squash). 1 atomic commit on feature branch: `docs(audit): v3.5 onboarding nickname glyph clipping audit` (437-line audit md at `docs/audit/V35_onboarding_glyph_clipping_audit.md`). Three-green pre-push gate cleared (vue-tsc exit 0 + build:h5 exit 0 + build:mp-weixin exit 0).
+**Status**: ✅ **AUDIT SHIPPED 2026-05-12** via `audit/v35-onboarding-glyph-clipping` branch (off main HEAD `7eda10b` — PR #17 squash `f9023b1`). 1 atomic commit on feature branch: `docs(audit): v3.5 onboarding nickname glyph clipping audit` (437-line audit md at `docs/audit/V35_onboarding_glyph_clipping_audit.md`). Three-green pre-push gate cleared (vue-tsc exit 0 + build:h5 exit 0 + build:mp-weixin exit 0).
 
-Fix sprint **queued**, not yet kicked off — pending Eric's real-device smoke of audit §5 questions.
+✅ **FIX SHIPPED 2026-05-17** via `fix/f1-onboarding-glyph-clipping` branch (PR #?, squash TBD). 1-file 2-LOC SCSS edit at `app/src/pages/onboarding/index.vue:209-213` — added `line-height: 1.5` + inline comment cross-referencing audit. Chose 1.5 over audit's 1.4 for sibling consistency (`.sub` rule at line 206 already uses 1.5) + 0.86px safety margin under baseline. Closeout: `v3_f1_glyph_clipping_shipped.md`.
 
 **Audit root cause (H1, HIGH confidence)**: `.input` rule at `app/src/pages/onboarding/index.vue:209-213` has NO `line-height`, NO `height`, vertical-only `padding: 10px 0`, `font-size: 17px`. iOS Safari `<input>` does NOT reliably inherit page-level `line-height: 1.6` (`App.vue:765`); at `line-height: normal` resolved via system font (PingFang SC on iOS) intrinsic metrics (~1.4em ≈ 23.8px at 17px), descender envelope (~0.34em ≈ 5.78px below baseline) clips against the `<input>` element's implicit `overflow: hidden`. Codebase has 9 `<input>` rules in `app/src/**/*.vue`; onboarding is the only "underline-style + no height + vertical-only padding + 17px" outlier — all others either have explicit `height: 40-48px` (login/reset-password/post boxed pattern) or `font-size: 15px` (publish/search/profile minimal).
 
@@ -23,6 +23,8 @@ Fix sprint **queued**, not yet kicked off — pending Eric's real-device smoke o
 
 - **F3** (global `input, textarea { line-height: inherit }` at `App.vue:874-877` — architectural root fix, MEDIUM regression risk codebase-wide, deferred to follow-up sprint after Eric has bandwidth for full input-consumer visual regression sweep on plaza composer / login / publish / search / profile / saved-searches / post / reset-password)
 - **F5** (dead-loaded webfont — orthogonal anomaly, separate sprint)
+
+> ✅ **RESOLVED 2026-05-17** — F1 fix shipped without waiting for these answers. See `v3_f1_glyph_clipping_shipped.md` for closeout. Defaults assumed for Q3 (mp-weixin), Q4 (orientation), Q7 (iPhone SE) — all real-device-only with low-risk defaults; Q1/Q2/Q5/Q6 are dev-attemptable but Mac dev does not reliably reproduce iOS Safari clipping. Audit H1 HIGH confidence + Eric's prod screenshot were sufficient evidence to ship. Section preserved below for historical reference.
 
 **Pending before fix sprint kickoff (audit §5 — 7 real-device smoke questions)**:
 

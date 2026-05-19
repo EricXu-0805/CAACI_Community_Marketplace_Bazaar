@@ -208,7 +208,8 @@ async function finish() {
 .label { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .input {
   border: 0; border-bottom: 1.5px solid var(--bg-inset);
-  padding: 10px 0; font-size: 17px; color: var(--text-primary);
+  /* line-height explicit — fixes iOS Safari PingFang SC descender clipping (audit F1 §6) */
+  padding: 10px 0; font-size: 17px; line-height: 1.5; color: var(--text-primary);
   background: transparent; width: 100%;
 }
 .count { font-size: 11px; color: var(--text-faint); align-self: flex-end; }
