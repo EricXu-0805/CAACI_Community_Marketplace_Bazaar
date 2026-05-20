@@ -55,14 +55,29 @@ useTheme()
 const oauthCallbackInFlight = ref(false)
 
 /*
- * Re-consent + onboarding gate.
+ * Re-consent + suspension gate.
  *
  * Runs whenever the logged-in profile changes (login, signup, page
  * refresh). Decides in order:
- *   1. If profile has no onboarded_at → send to the onboarding wizard.
- *   2. Else if profile.tos_version < CURRENT_CONSENT_VERSION → send
- *      to the re-consent screen.
+ *   1. If user is suspended (level >= 2, not expired) → /pages/suspended/index.
+ *   2. Else if profile.tos_version < CURRENT_CONSENT_VERSION → /pages/reconsent/index.
  *   3. Else let the user through.
+ *
+ * O1 (2026-05-20): the onboarding flow was removed entirely. The previous
+ * gate branch `if (!u.onboarded_at) → /pages/onboarding/index` was dropped
+ * because F1/F1b/F1c all failed real-device verification on the nickname
+ * input glyph clipping bug and audit revealed the wizard was collecting
+ * mostly redundant or dead data (nickname is already in the signup form
+ * for email users / available as full_name for Google OAuth; campus_area
+ * column is never read elsewhere; avatar is editable post-signup via
+ * profile/edit). The remaining load-bearing piece — legal consent — is
+ * already handled by the reconsent branch below: new users have
+ * tos_version='0' (per migration 032) which is < CURRENT_CONSENT_VERSION,
+ * so they naturally fall through to the existing reconsent page on first
+ * login. See docs/memory/o1_onboarding_removed.md.
+ *
+ * Onboarding route stays registered in pages.json + this exempt list as
+ * an intentional orphan to keep any stale deep-link safe from 404.
  *
  * We exempt a handful of routes from the redirect so users can actually
  * READ the ToS and Privacy on those screens, and so the routing step
@@ -107,10 +122,10 @@ function enforceConsentGate() {
     uni.reLaunch({ url: '/pages/suspended/index' })
     return
   }
-  if (!u.onboarded_at) {
-    uni.reLaunch({ url: '/pages/onboarding/index' })
-    return
-  }
+  // O1 (2026-05-20): onboarding branch removed. New users (tos_version='0'
+  // < CURRENT_CONSENT_VERSION per migration 032 default) fall through to
+  // the reconsent check below — which is the canonical legal-consent surface.
+  // See docs/memory/o1_onboarding_removed.md.
   if (!u.tos_version || u.tos_version < CURRENT_CONSENT_VERSION) {
     uni.reLaunch({ url: '/pages/reconsent/index' })
   }
