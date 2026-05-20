@@ -216,6 +216,15 @@ async function finish() {
   border: 0; border-bottom: 1.5px solid var(--bg-inset);
   padding: 0; font-size: 17px; color: var(--text-primary);
   background: transparent; width: 100%;
+
+  /* M1 fix (F1c): uni-app's .uni-input-placeholder is absolutely-positioned at wrapper
+     top (top: auto + flex column → static-position fallback at content-box top), which
+     OVERLAPS the value text once <uni-input> has visible height (F1b's 48px exposed it).
+     Hide placeholder unconditionally — .label "NICKNAME" above field provides sufficient
+     visual hint. See docs/memory/lesson_uni_app_placeholder_overlay.md */
+  :deep(.uni-input-placeholder) {
+    display: none;
+  }
 }
 .count { font-size: 11px; color: var(--text-faint); align-self: flex-end; }
 
