@@ -359,8 +359,17 @@ async function onSubmit() {
       })
     } else {
       uni.showToast({ title: t('login.signupOk'), icon: 'success' })
+      /*
+       * O1 (2026-05-20): onboarding flow removed. New users with default
+       * tos_version='0' will hit the App.vue gate's reconsent branch on
+       * first profile load and get redirected to /pages/reconsent/index
+       * (the canonical consent surface). The legal acceptance step is
+       * preserved; the wizard's nickname/campus/avatar collection is
+       * gone (redundant / dead-data / editable post-signup). See
+       * docs/memory/o1_onboarding_removed.md.
+       */
       setTimeout(() => {
-        uni.reLaunch({ url: '/pages/onboarding/index' })
+        uni.reLaunch({ url: '/pages/index/index' })
       }, 1200)
     }
   } else {
