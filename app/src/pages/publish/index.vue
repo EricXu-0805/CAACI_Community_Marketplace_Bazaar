@@ -471,11 +471,27 @@ function removeImage(index: number) {
 }
 
 async function onDetectLocation() {
-  const loc = await detectLocation()
-  if (!loc) return
-  console.log('[publish-debug] location detected via geolocation:', loc, 'prevLocation:', form.location)
-  form.location = loc
-  const spot = matchSpot(loc)
+  const result = await detectLocation()
+  if (!result.ok) {
+    const reasonKey: Record<string, string> = {
+      permission_denied: 'publish.gpsPermissionDenied',
+      permission_prompt_dismissed: 'publish.gpsPermissionDismissed',
+      position_unavailable: 'publish.gpsUnavailable',
+      timeout: 'publish.gpsTimeout',
+      geocode_failed: 'publish.gpsGeocodeFailed',
+      unsupported: 'publish.gpsUnsupported',
+    }
+    console.warn('[publish-debug] location detect failed:', result.reason)
+    uni.showToast({
+      title: t(reasonKey[result.reason] || 'publish.gpsUnknownError'),
+      icon: 'none',
+      duration: 2500,
+    })
+    return
+  }
+  console.log('[publish-debug] location detected via geolocation:', result.location, 'prevLocation:', form.location)
+  form.location = result.location
+  const spot = matchSpot(result.location)
   locationVerified.value = !!(spot && spot.safe)
 }
 
