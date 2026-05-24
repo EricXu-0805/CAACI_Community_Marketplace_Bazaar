@@ -1477,6 +1477,63 @@ button:focus-visible,
   color: var(--ink-quiet);
 }
 
+/* ============================================================
+ * M1 — kit v5 semantic type ladder (mirrored from
+ * colors_and_type.css §SEMANTIC TYPE CLASSES, lines 336-373).
+ *
+ * SHADOWS prod's older .t-display + .t-meta defined above:
+ *   · .t-display (kit 40px / fraunces) shadows prod (28px). 0
+ *     consumers today; M3 surface migration adopts kit value.
+ *   · .t-meta (kit tokenized 12px/1.4/ink-quiet) is FUNCTIONALLY
+ *     identical to prod's literal 12px/1.4/ink-quiet — last-rule
+ *     wins makes kit the canonical resolution.
+ *
+ * Prod's legacy .t-title-serif / .t-subtitle-serif /
+ * .t-price-serif / .t-label have NO kit equivalent and remain
+ * untouched. M3 sprint to consolidate.
+ *
+ * Phase 1a (M1, this PR) installs definitions only. No surface
+ * consumes these yet — `.t-*` migration is M3. Zero visual
+ * change expected.
+ * ============================================================ */
+.t-display { font-family: var(--font-serif); font-weight: var(--font-weight-regular);
+             font-size: var(--t-display); line-height: var(--lh-display);
+             letter-spacing: var(--ls-display); color: var(--ink); }
+.t-h1      { font-family: var(--font-serif); font-weight: var(--font-weight-medium);
+             font-size: var(--t-h1); line-height: var(--lh-h1);
+             letter-spacing: var(--ls-h1); color: var(--ink); }
+.t-h2      { font-family: var(--font-serif); font-weight: var(--font-weight-medium);
+             font-size: var(--t-h2); line-height: var(--lh-h2);
+             letter-spacing: var(--ls-h2); color: var(--ink); }
+.t-h3      { font-family: var(--font-serif); font-weight: var(--font-weight-medium);
+             font-size: var(--t-h3); line-height: var(--lh-h3);
+             letter-spacing: var(--ls-h3); color: var(--ink); }
+.t-title    { font-family: var(--font-hei); font-weight: var(--font-weight-semi);
+              font-size: 15px; line-height: 1.35; color: var(--ink); }
+.t-body     { font-family: var(--font-hei); font-size: var(--t-body);
+              line-height: var(--lh-body); letter-spacing: var(--ls-body);
+              color: var(--ink); }
+.t-caption  { font-family: var(--font-hei); font-size: var(--t-caption);
+              line-height: var(--lh-caption); color: var(--ink); }
+.t-meta     { font-family: var(--font-hei); font-size: var(--t-meta);
+              line-height: var(--lh-meta); color: var(--ink-quiet); }
+.t-micro    { font-family: var(--font-mono); font-size: var(--t-micro);
+              line-height: var(--lh-micro); color: var(--ink-quiet);
+              letter-spacing: 0.06em; }
+.t-tag      { font-family: var(--font-mono); font-size: var(--t-tag);
+              font-weight: var(--font-weight-medium); line-height: var(--lh-tag);
+              letter-spacing: 0.12em; text-transform: uppercase; }
+.t-eyebrow  { font-family: var(--font-mono); font-size: 11px;
+              letter-spacing: 0.16em; text-transform: uppercase;
+              color: var(--ink-quiet); }
+
+.t-price        { font-family: var(--font-serif); font-weight: var(--font-weight-semi);
+                  letter-spacing: var(--ls-price); color: var(--brand); }
+.t-price.lg     { font-size: var(--t-price-lg); }
+.t-price.md     { font-size: var(--t-price-md); }
+.t-price.sm     { font-size: var(--t-price-sm); }
+.t-price.free   { color: var(--accent-good); }
+
 /* ---------- SURFACES ---------- */
 .u-card {
   background: var(--paper);
