@@ -482,7 +482,7 @@ async function onSubmit() {
   border: 1px solid transparent;
   transition: border-color 0.15s, background 0.15s;
   &:focus {
-    border-color: rgba(0,0,0,0.12);
+    border-color: var(--line-soft);
     background: var(--bg-elev-1);
   }
 }

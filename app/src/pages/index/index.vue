@@ -1004,7 +1004,7 @@ function goPublish() {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 12px 8px;
   background: var(--bg-elev-1);
-  border-bottom: 0.5px solid rgba(0,0,0,0.04);
+  border-bottom: 0.5px solid var(--line-hair);
 }
 .afb-scroll { flex: 1; white-space: nowrap; overflow: hidden; }
 .afb-chip {
@@ -1260,7 +1260,7 @@ function goPublish() {
 .back-top {
   position: fixed; right: 16px; bottom: calc(116px + env(safe-area-inset-bottom, 0px));
   width: 40px; height: 40px; border-radius: 50%;
-  background: rgba(255,255,255,0.9); box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.9); box-shadow: var(--shadow-pop);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; z-index: 100;
