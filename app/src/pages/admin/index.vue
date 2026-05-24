@@ -681,7 +681,7 @@ onMounted(async () => {
 .gate {
   display: flex; flex-direction: column; gap: 12px;
   max-width: 360px; margin: 80px auto 0; padding: 22px;
-  background: var(--bg-elev-1); border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  background: var(--bg-elev-1); border-radius: 14px; box-shadow: var(--shadow-soft);
 }
 .gate-label { font-size: 13px; color: var(--text-secondary); }
 .gate-input {
@@ -706,7 +706,7 @@ onMounted(async () => {
   flex: 1; min-width: 140px;
   padding: 14px 16px; background: var(--bg-elev-1); border-radius: 12px;
   display: flex; flex-direction: column; gap: 4px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+  box-shadow: var(--shadow-soft);
 }
 .stat-n { font-size: 22px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .stat-l { font-size: 12px; color: var(--text-secondary); }

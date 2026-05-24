@@ -765,12 +765,12 @@ async function onSubmitComment() {
 }
 
 .comments-section { background: var(--bg-elev-1); margin-top: 8px; }
-.cs-header { padding: 14px 16px 8px; border-bottom: 0.5px solid rgba(0,0,0,0.04); }
+.cs-header { padding: 14px 16px 8px; border-bottom: 0.5px solid var(--line-hair); }
 .cs-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
 .cs-empty { padding: 40px 16px; text-align: center; color: var(--text-faint); font-size: 13px; }
 .cs-item {
   display: flex; gap: 10px; padding: 12px 16px;
-  border-bottom: 0.5px solid rgba(0,0,0,0.04);
+  border-bottom: 0.5px solid var(--line-hair);
 }
 .cs-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-subtle); flex-shrink: 0; }
 .cs-body { flex: 1; min-width: 0; }
