@@ -692,7 +692,6 @@ page,
   --accent-primary-deep: #A03A24;
   --accent-action:       #C74A2F;
   --accent-ink:          #2A2A2E;
-  --accent-green:        #5D7C4A;
   --accent-good:         #5D7C4A;
   --accent-warn:         #D4923C;
   --accent-danger:       #B53333;
@@ -1091,8 +1090,7 @@ button:focus-visible,
   --accent-primary-deep: var(--brand-deep);
   --accent-action:       var(--brand);
   --accent-ink:          var(--ink);
-  --accent-green:        #5D7C4A;   /* sage olive — verified · free price */
-  --accent-good:         #5D7C4A;
+  --accent-good:         #5D7C4A;   /* sage olive — verified · free price */
   --accent-warn:         #D4923C;   /* amber — currency exchange warning */
   --accent-danger:       #B53333;   /* vermilion — destructive */
 
