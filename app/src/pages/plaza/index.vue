@@ -1543,7 +1543,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .as-empty { text-align: center; color: var(--text-muted); padding: 32px 0; font-size: 13px; }
 .as-item {
   display: flex; align-items: center; gap: 12px;
-  padding: 10px 0; border-bottom: 0.5px solid rgba(0,0,0,0.04);
+  padding: 10px 0; border-bottom: 0.5px solid var(--line-hair);
   cursor: pointer;
   &:active { background: var(--bg-subtle); }
 }
@@ -1554,7 +1554,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 
 .cs-item {
   display: flex; gap: 10px; padding: 12px 16px;
-  border-bottom: 0.5px solid rgba(0,0,0,0.04);
+  border-bottom: 0.5px solid var(--line-hair);
 }
 .cs-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-subtle); flex-shrink: 0; }
 .cs-body { flex: 1; min-width: 0; }

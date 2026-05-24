@@ -966,7 +966,7 @@ async function onSubmit() {
 .toggle-knob {
   width: 22px; height: 22px; border-radius: 50%; background: var(--bg-elev-1);
   position: absolute; top: 2px; left: 2px; transition: transform 0.25s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-soft);
 }
 .toggle.on .toggle-knob { transform: translateX(18px); }
 
