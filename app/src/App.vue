@@ -653,6 +653,7 @@ page,
   --ink-quiet:   #8B8478;
   --ink-faint:   #B6AE9F;
   --ink-inverse: #F5F0E6;
+  --ink-disabled: #C0BCB2;
   --bg-page:    #F5F0E6;
   --bg-elev-1:  #FBF8F2;
   --bg-elev-2:  #F0E9DA;
@@ -722,12 +723,14 @@ page,
   --font-serif: 'Fraunces', 'Noto Serif SC', 'Songti SC', Georgia, 'Times New Roman', serif;
   --font-hei:   'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
   --font-mono:  'JetBrains Mono', 'SF Mono', Menlo, ui-monospace, monospace;
+  --font-sans:  var(--font-hei);
   --shadow-hair:  0 0 0 1px rgba(42, 42, 46, 0.06);
   --shadow-soft:  0 1px 2px rgba(42, 42, 46, 0.04), 0 4px 12px rgba(42, 42, 46, 0.06);
   --shadow-pop:   0 2px 4px rgba(42, 42, 46, 0.05), 0 12px 28px rgba(42, 42, 46, 0.08);
   --shadow-float: 0 1px 2px rgba(42, 42, 46, 0.06), 0 24px 56px -16px rgba(42, 42, 46, 0.18);
   --shadow-cta:   0 2px 4px rgba(199, 74, 47, 0.15), 0 12px 28px -8px rgba(199, 74, 47, 0.28);
   --shadow-brand: 0 2px 4px rgba(199, 74, 47, 0.15), 0 12px 28px -8px rgba(199, 74, 47, 0.28);
+  --shadow-fab:   0 4px 14px rgba(199, 74, 47, 0.30);
   --dur-1: 120ms;
   --dur-2: 220ms;
   --dur-3: 360ms;
@@ -738,6 +741,20 @@ page,
   --ease-out:   cubic-bezier(0.4, 0, 1, 1);
   --ease-warm:  cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-crisp: cubic-bezier(0.7, 0, 0.3, 1);
+
+  --t-display: 40px;   --lh-display: 1.08;  --ls-display: -0.025em;
+  --t-h1:      28px;   --lh-h1:      1.18;  --ls-h1:      -0.02em;
+  --t-h2:      22px;   --lh-h2:      1.25;  --ls-h2:      -0.015em;
+  --t-h3:      17px;   --lh-h3:      1.3;   --ls-h3:      -0.01em;
+  --t-body:    15px;   --lh-body:    1.6;   --ls-body:    0.02em;
+  --t-caption: 13px;   --lh-caption: 1.45;
+  --t-meta:    12px;   --lh-meta:    1.4;
+  --t-micro:   11px;   --lh-micro:   1.4;
+  --t-tag:     10px;   --lh-tag:     1;
+  --t-price-lg: 22px;
+  --t-price-md: 17px;
+  --t-price-sm: 14px;
+  --ls-price:  -0.02em;
 
   /*
    * WeChat mp-weixin custom-navbar tokens — capsule button awareness.
@@ -999,6 +1016,7 @@ button:focus-visible,
   --ink-quiet:   #8B8478;
   --ink-faint:   #B6AE9F;
   --ink-inverse: #F5F0E6;   /* text on ink panels (cream) */
+  --ink-disabled: #C0BCB2;
 
   /* ---------- SURFACES ----------
    * Three-layer stack:
@@ -1118,6 +1136,7 @@ button:focus-visible,
     'Microsoft YaHei', 'Helvetica Neue', sans-serif;
   --font-mono:
     'JetBrains Mono', 'SF Mono', Menlo, ui-monospace, monospace;
+  --font-sans:  var(--font-hei);
 
   /* ---------- ELEVATION (warm ink alpha — paper drop shadow)
    * Apple-style 3-layer soft lift, tuned to warm cream canvas.
@@ -1133,6 +1152,7 @@ button:focus-visible,
   --shadow-cta:        0 2px 4px rgba(199, 74, 47, 0.15),
                        0 12px 28px -8px rgba(199, 74, 47, 0.28);
   --shadow-brand:      var(--shadow-cta);
+  --shadow-fab:        0 4px 14px rgba(199, 74, 47, 0.30);
 
   /* ----------------------------------------------------------
    * MOTION — 5 durations × 5 easing curves, from motion.html
@@ -1159,6 +1179,36 @@ button:focus-visible,
   --ease-out:   cubic-bezier(0.4, 0, 1, 1);
   --ease-warm:  cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-crisp: cubic-bezier(0.7, 0, 0.3, 1);
+
+  /* M1 — type scale + price scale tokens (kit v5 colors_and_type.css).
+   * Consumed by global .t-* classes below. ls-body 0.02em + lh-body 1.6
+   * is the kit's anti-plastic body stack — body text already applies
+   * these inline above; tokens are the spec source. */
+  --t-display: 40px;   --lh-display: 1.08;  --ls-display: -0.025em;
+  --t-h1:      28px;   --lh-h1:      1.18;  --ls-h1:      -0.02em;
+  --t-h2:      22px;   --lh-h2:      1.25;  --ls-h2:      -0.015em;
+  --t-h3:      17px;   --lh-h3:      1.3;   --ls-h3:      -0.01em;
+  --t-body:    15px;   --lh-body:    1.6;   --ls-body:    0.02em;
+  --t-caption: 13px;   --lh-caption: 1.45;
+  --t-meta:    12px;   --lh-meta:    1.4;
+  --t-micro:   11px;   --lh-micro:   1.4;
+  --t-tag:     10px;   --lh-tag:     1;
+  --t-price-lg: 22px;
+  --t-price-md: 17px;
+  --t-price-sm: 14px;
+  --ls-price:  -0.02em;
+}
+
+/* M1 — desktop type-scale bump (kit v5 colors_and_type.css:456-462).
+ * H5 ≥768px only; mp-weixin is mobile and never hits this breakpoint
+ * so no page/.page mirror is needed. */
+@media (min-width: 768px) {
+  :root {
+    --t-display: 56px;   --lh-display: 1.05;
+    --t-h1:      38px;   --lh-h1:      1.15;
+    --t-h2:      26px;
+    --t-body:    16px;
+  }
 }
 
 /*
