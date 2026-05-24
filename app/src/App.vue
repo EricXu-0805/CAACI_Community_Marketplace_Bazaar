@@ -653,6 +653,7 @@ page,
   --ink-quiet:   #8B8478;
   --ink-faint:   #B6AE9F;
   --ink-inverse: #F5F0E6;
+  --ink-disabled: #C0BCB2;
   --bg-page:    #F5F0E6;
   --bg-elev-1:  #FBF8F2;
   --bg-elev-2:  #F0E9DA;
@@ -691,7 +692,6 @@ page,
   --accent-primary-deep: #A03A24;
   --accent-action:       #C74A2F;
   --accent-ink:          #2A2A2E;
-  --accent-green:        #5D7C4A;
   --accent-good:         #5D7C4A;
   --accent-warn:         #D4923C;
   --accent-danger:       #B53333;
@@ -722,12 +722,14 @@ page,
   --font-serif: 'Fraunces', 'Noto Serif SC', 'Songti SC', Georgia, 'Times New Roman', serif;
   --font-hei:   'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
   --font-mono:  'JetBrains Mono', 'SF Mono', Menlo, ui-monospace, monospace;
+  --font-sans:  var(--font-hei);
   --shadow-hair:  0 0 0 1px rgba(42, 42, 46, 0.06);
   --shadow-soft:  0 1px 2px rgba(42, 42, 46, 0.04), 0 4px 12px rgba(42, 42, 46, 0.06);
   --shadow-pop:   0 2px 4px rgba(42, 42, 46, 0.05), 0 12px 28px rgba(42, 42, 46, 0.08);
   --shadow-float: 0 1px 2px rgba(42, 42, 46, 0.06), 0 24px 56px -16px rgba(42, 42, 46, 0.18);
   --shadow-cta:   0 2px 4px rgba(199, 74, 47, 0.15), 0 12px 28px -8px rgba(199, 74, 47, 0.28);
   --shadow-brand: 0 2px 4px rgba(199, 74, 47, 0.15), 0 12px 28px -8px rgba(199, 74, 47, 0.28);
+  --shadow-fab:   0 4px 14px rgba(199, 74, 47, 0.30);
   --dur-1: 120ms;
   --dur-2: 220ms;
   --dur-3: 360ms;
@@ -738,6 +740,20 @@ page,
   --ease-out:   cubic-bezier(0.4, 0, 1, 1);
   --ease-warm:  cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-crisp: cubic-bezier(0.7, 0, 0.3, 1);
+
+  --t-display: 40px;   --lh-display: 1.08;  --ls-display: -0.025em;
+  --t-h1:      28px;   --lh-h1:      1.18;  --ls-h1:      -0.02em;
+  --t-h2:      22px;   --lh-h2:      1.25;  --ls-h2:      -0.015em;
+  --t-h3:      17px;   --lh-h3:      1.3;   --ls-h3:      -0.01em;
+  --t-body:    15px;   --lh-body:    1.6;   --ls-body:    0.02em;
+  --t-caption: 13px;   --lh-caption: 1.45;
+  --t-meta:    12px;   --lh-meta:    1.4;
+  --t-micro:   11px;   --lh-micro:   1.4;
+  --t-tag:     10px;   --lh-tag:     1;
+  --t-price-lg: 22px;
+  --t-price-md: 17px;
+  --t-price-sm: 14px;
+  --ls-price:  -0.02em;
 
   /*
    * WeChat mp-weixin custom-navbar tokens — capsule button awareness.
@@ -999,6 +1015,7 @@ button:focus-visible,
   --ink-quiet:   #8B8478;
   --ink-faint:   #B6AE9F;
   --ink-inverse: #F5F0E6;   /* text on ink panels (cream) */
+  --ink-disabled: #C0BCB2;
 
   /* ---------- SURFACES ----------
    * Three-layer stack:
@@ -1073,8 +1090,7 @@ button:focus-visible,
   --accent-primary-deep: var(--brand-deep);
   --accent-action:       var(--brand);
   --accent-ink:          var(--ink);
-  --accent-green:        #5D7C4A;   /* sage olive — verified · free price */
-  --accent-good:         #5D7C4A;
+  --accent-good:         #5D7C4A;   /* sage olive — verified · free price */
   --accent-warn:         #D4923C;   /* amber — currency exchange warning */
   --accent-danger:       #B53333;   /* vermilion — destructive */
 
@@ -1118,6 +1134,7 @@ button:focus-visible,
     'Microsoft YaHei', 'Helvetica Neue', sans-serif;
   --font-mono:
     'JetBrains Mono', 'SF Mono', Menlo, ui-monospace, monospace;
+  --font-sans:  var(--font-hei);
 
   /* ---------- ELEVATION (warm ink alpha — paper drop shadow)
    * Apple-style 3-layer soft lift, tuned to warm cream canvas.
@@ -1133,6 +1150,7 @@ button:focus-visible,
   --shadow-cta:        0 2px 4px rgba(199, 74, 47, 0.15),
                        0 12px 28px -8px rgba(199, 74, 47, 0.28);
   --shadow-brand:      var(--shadow-cta);
+  --shadow-fab:        0 4px 14px rgba(199, 74, 47, 0.30);
 
   /* ----------------------------------------------------------
    * MOTION — 5 durations × 5 easing curves, from motion.html
@@ -1159,6 +1177,36 @@ button:focus-visible,
   --ease-out:   cubic-bezier(0.4, 0, 1, 1);
   --ease-warm:  cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-crisp: cubic-bezier(0.7, 0, 0.3, 1);
+
+  /* M1 — type scale + price scale tokens (kit v5 colors_and_type.css).
+   * Consumed by global .t-* classes below. ls-body 0.02em + lh-body 1.6
+   * is the kit's anti-plastic body stack — body text already applies
+   * these inline above; tokens are the spec source. */
+  --t-display: 40px;   --lh-display: 1.08;  --ls-display: -0.025em;
+  --t-h1:      28px;   --lh-h1:      1.18;  --ls-h1:      -0.02em;
+  --t-h2:      22px;   --lh-h2:      1.25;  --ls-h2:      -0.015em;
+  --t-h3:      17px;   --lh-h3:      1.3;   --ls-h3:      -0.01em;
+  --t-body:    15px;   --lh-body:    1.6;   --ls-body:    0.02em;
+  --t-caption: 13px;   --lh-caption: 1.45;
+  --t-meta:    12px;   --lh-meta:    1.4;
+  --t-micro:   11px;   --lh-micro:   1.4;
+  --t-tag:     10px;   --lh-tag:     1;
+  --t-price-lg: 22px;
+  --t-price-md: 17px;
+  --t-price-sm: 14px;
+  --ls-price:  -0.02em;
+}
+
+/* M1 — desktop type-scale bump (kit v5 colors_and_type.css:456-462).
+ * H5 ≥768px only; mp-weixin is mobile and never hits this breakpoint
+ * so no page/.page mirror is needed. */
+@media (min-width: 768px) {
+  :root {
+    --t-display: 56px;   --lh-display: 1.05;
+    --t-h1:      38px;   --lh-h1:      1.15;
+    --t-h2:      26px;
+    --t-body:    16px;
+  }
 }
 
 /*
@@ -1426,6 +1474,63 @@ button:focus-visible,
   line-height: 1.4;
   color: var(--ink-quiet);
 }
+
+/* ============================================================
+ * M1 — kit v5 semantic type ladder (mirrored from
+ * colors_and_type.css §SEMANTIC TYPE CLASSES, lines 336-373).
+ *
+ * SHADOWS prod's older .t-display + .t-meta defined above:
+ *   · .t-display (kit 40px / fraunces) shadows prod (28px). 0
+ *     consumers today; M3 surface migration adopts kit value.
+ *   · .t-meta (kit tokenized 12px/1.4/ink-quiet) is FUNCTIONALLY
+ *     identical to prod's literal 12px/1.4/ink-quiet — last-rule
+ *     wins makes kit the canonical resolution.
+ *
+ * Prod's legacy .t-title-serif / .t-subtitle-serif /
+ * .t-price-serif / .t-label have NO kit equivalent and remain
+ * untouched. M3 sprint to consolidate.
+ *
+ * Phase 1a (M1, this PR) installs definitions only. No surface
+ * consumes these yet — `.t-*` migration is M3. Zero visual
+ * change expected.
+ * ============================================================ */
+.t-display { font-family: var(--font-serif); font-weight: var(--font-weight-regular);
+             font-size: var(--t-display); line-height: var(--lh-display);
+             letter-spacing: var(--ls-display); color: var(--ink); }
+.t-h1      { font-family: var(--font-serif); font-weight: var(--font-weight-medium);
+             font-size: var(--t-h1); line-height: var(--lh-h1);
+             letter-spacing: var(--ls-h1); color: var(--ink); }
+.t-h2      { font-family: var(--font-serif); font-weight: var(--font-weight-medium);
+             font-size: var(--t-h2); line-height: var(--lh-h2);
+             letter-spacing: var(--ls-h2); color: var(--ink); }
+.t-h3      { font-family: var(--font-serif); font-weight: var(--font-weight-medium);
+             font-size: var(--t-h3); line-height: var(--lh-h3);
+             letter-spacing: var(--ls-h3); color: var(--ink); }
+.t-title    { font-family: var(--font-hei); font-weight: var(--font-weight-semi);
+              font-size: 15px; line-height: 1.35; color: var(--ink); }
+.t-body     { font-family: var(--font-hei); font-size: var(--t-body);
+              line-height: var(--lh-body); letter-spacing: var(--ls-body);
+              color: var(--ink); }
+.t-caption  { font-family: var(--font-hei); font-size: var(--t-caption);
+              line-height: var(--lh-caption); color: var(--ink); }
+.t-meta     { font-family: var(--font-hei); font-size: var(--t-meta);
+              line-height: var(--lh-meta); color: var(--ink-quiet); }
+.t-micro    { font-family: var(--font-mono); font-size: var(--t-micro);
+              line-height: var(--lh-micro); color: var(--ink-quiet);
+              letter-spacing: 0.06em; }
+.t-tag      { font-family: var(--font-mono); font-size: var(--t-tag);
+              font-weight: var(--font-weight-medium); line-height: var(--lh-tag);
+              letter-spacing: 0.12em; text-transform: uppercase; }
+.t-eyebrow  { font-family: var(--font-mono); font-size: 11px;
+              letter-spacing: 0.16em; text-transform: uppercase;
+              color: var(--ink-quiet); }
+
+.t-price        { font-family: var(--font-serif); font-weight: var(--font-weight-semi);
+                  letter-spacing: var(--ls-price); color: var(--brand); }
+.t-price.lg     { font-size: var(--t-price-lg); }
+.t-price.md     { font-size: var(--t-price-md); }
+.t-price.sm     { font-size: var(--t-price-sm); }
+.t-price.free   { color: var(--accent-good); }
 
 /* ---------- SURFACES ---------- */
 .u-card {
