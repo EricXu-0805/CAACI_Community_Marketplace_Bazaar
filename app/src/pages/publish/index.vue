@@ -233,7 +233,7 @@ const form = reactive({
   price: '',
   category: '' as ItemCategory | '',
   condition: '' as ItemCondition | '',
-  location: 'UIUC',
+  location: '',
   negotiable: false,
 })
 
@@ -342,7 +342,7 @@ function resetForm() {
   form.price = ''
   form.category = ''
   form.condition = ''
-  form.location = 'UIUC'
+  form.location = ''
   form.negotiable = false
   imageList.value = []
 }
@@ -510,7 +510,7 @@ async function onDetectLocation() {
  *      from the user's console paste; problem is event binding.
  *   2. Chip fires but assignment doesn't stick → log shows the
  *      label being assigned, but the submit-time form.location log
- *      shows the default 'UIUC' or empty; problem is reactivity.
+ *      shows empty (the field's clean default); problem is reactivity.
  *   3. Assignment sticks all the way to payload but DB write loses
  *      it → submit + payload logs show the right value but the
  *      createItem-result log shows location empty / default;
@@ -655,7 +655,7 @@ async function onSubmit() {
       price: Number(form.price),
       category: form.category as ItemCategory,
       condition: form.condition as ItemCondition,
-      location: form.location || 'UIUC',
+      location: form.location || '',
       images,
       image_dimensions: finalDims,
       // Seed the i18n maps with the original text in the source lang.
@@ -670,8 +670,10 @@ async function onSubmit() {
     /*
      * Same trace, post-payload-construction. Compare the location
      * value here against the form.location above — if they diverge,
-     * the `|| 'UIUC'` fallback was hit (form.location was falsy at
+     * the `|| ''` fallback was hit (form.location was falsy at
      * submit time despite the user appearing to have selected one).
+     * Post-Phase-1b: empty string is the honest default; the old
+     * 'UIUC' sentinel masked unfilled-location submissions.
      */
     console.log('[publish-debug] submit prep — payload location field:', {
       payloadLocation: payload.location,
@@ -683,7 +685,7 @@ async function onSubmit() {
     console.log('[publish-debug] createItem returned — DB row location:', newItem?.location, 'id:', newItem?.id)
     uploadProgress.value = 0
     form.title = ''; form.description = ''; form.price = ''
-    form.category = ''; form.condition = ''; form.location = 'UIUC'
+    form.category = ''; form.condition = ''; form.location = ''
     form.negotiable = false; imageList.value = []
     clearDraft()
     uni.showToast({ title: t('publish.success'), icon: 'success' })

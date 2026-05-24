@@ -242,7 +242,7 @@ const form = reactive({
   price: '',
   category: '' as ItemCategory | '',
   condition: '' as ItemCondition | '',
-  location: 'UIUC',
+  location: '',
   negotiable: false,
 })
 
@@ -474,7 +474,7 @@ async function onSubmit() {
       price: Number(form.price),
       category: form.category as ItemCategory,
       condition: form.condition as ItemCondition,
-      location: form.location || 'UIUC',
+      location: form.location || '',
       images,
       image_dimensions: finalDims,
       title_i18n: trimmedTitle ? { [sourceLang]: trimmedTitle } : null,
