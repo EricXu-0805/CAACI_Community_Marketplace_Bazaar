@@ -1,6 +1,6 @@
 ---
 name: Backlog — Location verification + GPS building-level precision
-description: Verified-location badge on listings to reduce risk; current GPS only resolves "UIUC" coarse, needs building-level precision; code evidence locationVerified ref publish/index.vue:470, matchSpot(), mig 020; surfaced 2026-05-04
+description: Verified-location badge on listings to reduce risk; current GPS only resolves "UIUC" coarse, needs building-level precision; code evidence locationVerified ref publish/index.vue:240, :479, matchSpot(), mig 020; surfaced 2026-05-04
 type: project
 originSessionId: 9852fdfb-dfb7-46b2-9864-95942d5727dd
 ---
