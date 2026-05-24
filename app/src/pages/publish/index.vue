@@ -145,6 +145,11 @@
     </view>
 
     <CustomTabBar current="publish" />
+
+    <PermissionDeniedModal
+      :visible="permissionModalVisible"
+      @close="permissionModalVisible = false"
+    />
   </view>
 </template>
 
@@ -163,6 +168,7 @@ import { friendlyErrorMessage } from '../../utils'
 import type { ItemCategory, ItemCondition } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
+import PermissionDeniedModal from '../../components/PermissionDeniedModal.vue'
 
 const { t, lang } = useI18n()
 const { CAMPUS_SPOTS } = useCampusSpots()
@@ -241,6 +247,14 @@ const locationVerified = ref(false)
 watch(() => form.location, () => {
   locationVerified.value = false
 })
+
+/*
+ * Phase 1b: permission_denied now opens a modal (LocationPermission
+ * DeniedModal) instead of a fleeting toast. The modal teaches users
+ * the Settings path; other failure reasons stay as toast since
+ * they're either retryable or environmental.
+ */
+const permissionModalVisible = ref(false)
 
 /*
  * Tag toggle handlers: tapping the currently-active pill clears the
@@ -473,15 +487,25 @@ function removeImage(index: number) {
 async function onDetectLocation() {
   const result = await detectLocation()
   if (!result.ok) {
+    console.warn('[publish-debug] location detect failed:', result.reason)
+    /*
+     * Phase 1b dispatch: permission_denied → modal (teach the
+     * Settings path), other reasons → toast (retryable or rare
+     * environmental). The publish.gpsPermissionDenied i18n key
+     * stays in the cluster for forward-compat / fallback even
+     * though it's no longer routed through the toast path here.
+     */
+    if (result.reason === 'permission_denied') {
+      permissionModalVisible.value = true
+      return
+    }
     const reasonKey: Record<string, string> = {
-      permission_denied: 'publish.gpsPermissionDenied',
       permission_prompt_dismissed: 'publish.gpsPermissionDismissed',
       position_unavailable: 'publish.gpsUnavailable',
       timeout: 'publish.gpsTimeout',
       geocode_failed: 'publish.gpsGeocodeFailed',
       unsupported: 'publish.gpsUnsupported',
     }
-    console.warn('[publish-debug] location detect failed:', result.reason)
     uni.showToast({
       title: t(reasonKey[result.reason] || 'publish.gpsUnknownError'),
       icon: 'none',
