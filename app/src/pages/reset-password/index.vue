@@ -453,7 +453,7 @@ function goLogin() {
   background: var(--bg-elev-2); border-radius: 12px;
   padding: 0 16px; font-size: 15px; color: var(--text-primary);
   border: 1px solid transparent;
-  &:focus { border-color: rgba(0,0,0,0.12); background: var(--bg-elev-1); }
+  &:focus { border-color: var(--line-soft); background: var(--bg-elev-1); }
 }
 .pw-wrap { position: relative; }
 .pw-input { padding-right: 44px; }

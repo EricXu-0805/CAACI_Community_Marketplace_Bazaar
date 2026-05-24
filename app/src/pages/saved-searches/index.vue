@@ -186,7 +186,7 @@ function goBack() { uni.navigateBack() }
 
 .hint {
   padding: 10px 16px; font-size: 12px; color: var(--text-secondary, #5a5a63);
-  background: var(--bg-elev-2); border-bottom: 0.5px solid rgba(0,0,0,0.04);
+  background: var(--bg-elev-2); border-bottom: 0.5px solid var(--line-hair);
 }
 .list { padding: 8px 12px 100px; }
 .empty {
@@ -229,7 +229,7 @@ function goBack() { uni.navigateBack() }
   width: 52px; height: 52px; border-radius: 50%;
   background: var(--accent-primary); color: #fff;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  box-shadow: var(--shadow-pop);
   cursor: pointer; z-index: 10;
   &:active { transform: scale(0.96); }
 }

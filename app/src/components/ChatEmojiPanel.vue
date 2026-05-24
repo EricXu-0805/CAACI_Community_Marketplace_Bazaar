@@ -177,7 +177,7 @@ function g_key(e: string, i: number) {
   padding: 8px 12px 4px;
   overflow-x: auto;
   white-space: nowrap;
-  border-bottom: 0.5px solid rgba(0,0,0,0.04);
+  border-bottom: 0.5px solid var(--line-hair);
 }
 .ep-tab {
   font-size: 12px;
