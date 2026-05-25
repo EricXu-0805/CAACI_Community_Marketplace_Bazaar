@@ -122,17 +122,17 @@ export function useLocation() {
 
       const name = await reverseGeocode(res.latitude, res.longitude)
       /*
-       * reverseGeocode preserves its legacy `precise || city || 'UIUC'`
-       * fallback (line 60 above the pre-refactor cutover) so existing
-       * callers that imported it directly keep their contract.
-       * detectLocation, however, treats the 'UIUC' sentinel as failure:
-       * it's the documented fallback string from a Nominatim miss, NOT
-       * a building-level resolution. Anyone receiving { ok: true } can
-       * trust the location string is a real geocoded value. Phase 2
-       * will replace the sentinel with a typed null return; flagged in
-       * 2026-05-23 audit anomaly.
+       * reverseGeocode returns `string | null` post-Phase-1b: a real
+       * geocoded address, or null when Nominatim missed / threw. The
+       * old `precise || city || 'UIUC'` literal-string fallback was a
+       * Phase-1a TODO (see 2026-05-23 audit anomaly A3) — Phase 1b
+       * cashes in the promise of a typed-null contract. Anyone
+       * receiving { ok: true, location } can trust it's a real
+       * building/road/city label, never the project's default-handle
+       * string. The geocode_failed reason fires only for true Nominatim
+       * misses (null) or empty strings.
        */
-      if (!name || name === 'UIUC') {
+      if (!name) {
         return { ok: false, reason: 'geocode_failed' }
       }
       cachedLocation.value = name
@@ -144,7 +144,7 @@ export function useLocation() {
     }
   }
 
-  async function reverseGeocode(lat: number, lng: number): Promise<string> {
+  async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
     try {
       const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1`
 
@@ -173,9 +173,9 @@ export function useLocation() {
       if (city && parts.length < 2) parts.push(city)
 
       const precise = parts.slice(0, 2).join(', ')
-      return precise || city || 'UIUC'
+      return precise || city || null
     } catch {
-      return 'UIUC'
+      return null
     }
   }
 

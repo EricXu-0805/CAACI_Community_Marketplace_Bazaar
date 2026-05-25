@@ -145,6 +145,11 @@
     </view>
 
     <CustomTabBar current="publish" />
+
+    <PermissionDeniedModal
+      :visible="permissionModalVisible"
+      @close="permissionModalVisible = false"
+    />
   </view>
 </template>
 
@@ -163,6 +168,7 @@ import { friendlyErrorMessage } from '../../utils'
 import type { ItemCategory, ItemCondition } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
+import PermissionDeniedModal from '../../components/PermissionDeniedModal.vue'
 
 const { t, lang } = useI18n()
 const { CAMPUS_SPOTS } = useCampusSpots()
@@ -233,7 +239,7 @@ const form = reactive({
   price: '',
   category: '' as ItemCategory | '',
   condition: '' as ItemCondition | '',
-  location: 'UIUC',
+  location: '',
   negotiable: false,
 })
 
@@ -241,6 +247,14 @@ const locationVerified = ref(false)
 watch(() => form.location, () => {
   locationVerified.value = false
 })
+
+/*
+ * Phase 1b: permission_denied now opens a modal (LocationPermission
+ * DeniedModal) instead of a fleeting toast. The modal teaches users
+ * the Settings path; other failure reasons stay as toast since
+ * they're either retryable or environmental.
+ */
+const permissionModalVisible = ref(false)
 
 /*
  * Tag toggle handlers: tapping the currently-active pill clears the
@@ -342,7 +356,7 @@ function resetForm() {
   form.price = ''
   form.category = ''
   form.condition = ''
-  form.location = 'UIUC'
+  form.location = ''
   form.negotiable = false
   imageList.value = []
 }
@@ -473,15 +487,25 @@ function removeImage(index: number) {
 async function onDetectLocation() {
   const result = await detectLocation()
   if (!result.ok) {
+    console.warn('[publish-debug] location detect failed:', result.reason)
+    /*
+     * Phase 1b dispatch: permission_denied → modal (teach the
+     * Settings path), other reasons → toast (retryable or rare
+     * environmental). The publish.gpsPermissionDenied i18n key
+     * stays in the cluster for forward-compat / fallback even
+     * though it's no longer routed through the toast path here.
+     */
+    if (result.reason === 'permission_denied') {
+      permissionModalVisible.value = true
+      return
+    }
     const reasonKey: Record<string, string> = {
-      permission_denied: 'publish.gpsPermissionDenied',
       permission_prompt_dismissed: 'publish.gpsPermissionDismissed',
       position_unavailable: 'publish.gpsUnavailable',
       timeout: 'publish.gpsTimeout',
       geocode_failed: 'publish.gpsGeocodeFailed',
       unsupported: 'publish.gpsUnsupported',
     }
-    console.warn('[publish-debug] location detect failed:', result.reason)
     uni.showToast({
       title: t(reasonKey[result.reason] || 'publish.gpsUnknownError'),
       icon: 'none',
@@ -510,7 +534,7 @@ async function onDetectLocation() {
  *      from the user's console paste; problem is event binding.
  *   2. Chip fires but assignment doesn't stick → log shows the
  *      label being assigned, but the submit-time form.location log
- *      shows the default 'UIUC' or empty; problem is reactivity.
+ *      shows empty (the field's clean default); problem is reactivity.
  *   3. Assignment sticks all the way to payload but DB write loses
  *      it → submit + payload logs show the right value but the
  *      createItem-result log shows location empty / default;
@@ -655,7 +679,7 @@ async function onSubmit() {
       price: Number(form.price),
       category: form.category as ItemCategory,
       condition: form.condition as ItemCondition,
-      location: form.location || 'UIUC',
+      location: form.location || '',
       images,
       image_dimensions: finalDims,
       // Seed the i18n maps with the original text in the source lang.
@@ -670,8 +694,10 @@ async function onSubmit() {
     /*
      * Same trace, post-payload-construction. Compare the location
      * value here against the form.location above — if they diverge,
-     * the `|| 'UIUC'` fallback was hit (form.location was falsy at
+     * the `|| ''` fallback was hit (form.location was falsy at
      * submit time despite the user appearing to have selected one).
+     * Post-Phase-1b: empty string is the honest default; the old
+     * 'UIUC' sentinel masked unfilled-location submissions.
      */
     console.log('[publish-debug] submit prep — payload location field:', {
       payloadLocation: payload.location,
@@ -683,7 +709,7 @@ async function onSubmit() {
     console.log('[publish-debug] createItem returned — DB row location:', newItem?.location, 'id:', newItem?.id)
     uploadProgress.value = 0
     form.title = ''; form.description = ''; form.price = ''
-    form.category = ''; form.condition = ''; form.location = 'UIUC'
+    form.category = ''; form.condition = ''; form.location = ''
     form.negotiable = false; imageList.value = []
     clearDraft()
     uni.showToast({ title: t('publish.success'), icon: 'success' })
