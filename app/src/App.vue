@@ -1426,14 +1426,6 @@ button:focus-visible,
  * ============================================================ */
 
 /* ---------- TYPE ---------- */
-.t-display {
-  font-family: var(--font-serif);
-  font-size: 28px;
-  line-height: 1.1;
-  font-weight: 500;
-  letter-spacing: -0.5px;
-  color: var(--ink);
-}
 .t-title-serif {
   font-family: var(--font-serif);
   font-size: 22px;
@@ -1468,11 +1460,6 @@ button:focus-visible,
   text-transform: uppercase;
   color: var(--ink-quiet);
   font-weight: 500;
-}
-.t-meta {
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--ink-quiet);
 }
 
 /* ============================================================
