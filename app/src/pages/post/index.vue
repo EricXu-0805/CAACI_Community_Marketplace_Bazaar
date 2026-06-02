@@ -234,6 +234,7 @@ import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
 import { useLongPress } from '../../composables/useLongPress'
 import { formatTime, friendlyErrorMessage, quickTranslate, thumbUrl } from '../../utils'
+import { DIALOG_DANGER, DIALOG_INK } from '../../utils/dialogColors'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim, Post, PostComment } from '../../types'
 import { BASE_URL } from '../../config/runtime'
@@ -440,7 +441,7 @@ function onDelete() {
   if (!post.value) return
   uni.showModal({
     title: t('plaza.deleteConfirm'),
-    confirmColor: 'var(--accent-danger)',
+    confirmColor: DIALOG_DANGER,
     success: async (r) => {
       if (!r.confirm || !post.value) return
       try {
@@ -486,12 +487,12 @@ function onCommentLongPress(c: PostComment) {
     : [t('plaza.reply'), t('plaza.reportComment'), t('plaza.reportUser')]
   uni.showActionSheet({
     itemList: items,
-    itemColor: isMine ? 'var(--accent-danger)' : '#2A2A2E',
+    itemColor: isMine ? DIALOG_DANGER : DIALOG_INK,
     success: (res) => {
       if (isMine && res.tapIndex === 0) {
         uni.showModal({
           title: t('plaza.commentDeleteConfirm'),
-          confirmColor: 'var(--accent-danger)',
+          confirmColor: DIALOG_DANGER,
           success: async (r) => {
             if (!r.confirm || !post.value) return
             try {

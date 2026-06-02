@@ -172,6 +172,7 @@ import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
 import { useLongPress } from '../../composables/useLongPress'
 import { formatPrice, friendlyErrorMessage } from '../../utils'
+import { DIALOG_DANGER } from '../../utils/dialogColors'
 import type { Item } from '../../types'
 import ChatEmojiPanel from '../../components/ChatEmojiPanel.vue'
 
@@ -507,7 +508,7 @@ function doBlock() {
   uni.showModal({
     title: t('block.confirm'),
     content: t('block.hint'),
-    confirmColor: 'var(--accent-danger)',
+    confirmColor: DIALOG_DANGER,
     success: async (r) => {
       if (!r.confirm) return
       try {
@@ -612,7 +613,7 @@ function onMsgLongPress(msg: any) {
         uni.showModal({
           title: t('chat.deleteMsgTitle'),
           content: t('chat.deleteMsgHint'),
-          confirmColor: 'var(--accent-danger)',
+          confirmColor: DIALOG_DANGER,
           success: async (r) => {
             if (!r.confirm) return
             try {

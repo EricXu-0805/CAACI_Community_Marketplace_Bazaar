@@ -176,6 +176,7 @@ import { useLocation } from '../../composables/useLocation'
 import { useItems } from '../../composables/useItems'
 import { useTranslate } from '../../composables/useTranslate'
 import { friendlyErrorMessage } from '../../utils'
+import { DIALOG_WARN } from '../../utils/dialogColors'
 import type { ItemCategory, ItemCondition } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
 import PermissionDeniedModal from '../../components/PermissionDeniedModal.vue'
@@ -415,7 +416,7 @@ async function onSubmit() {
         content: t('publish.priceTooHighBody'),
         confirmText: t('publish.priceTooHighConfirm'),
         cancelText: t('publish.priceTooHighCancel'),
-        confirmColor: 'var(--accent-warn)',
+        confirmColor: DIALOG_WARN,
         success: (r) => resolve(!!r.confirm),
         fail: () => resolve(false),
       })

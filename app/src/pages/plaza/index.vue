@@ -435,6 +435,7 @@ import { useLongPress } from '../../composables/useLongPress'
 import { useKeyboardHeight } from '../../composables/useKeyboardHeight'
 import type { Post, PostComment } from '../../types'
 import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl } from '../../utils'
+import { DIALOG_DANGER } from '../../utils/dialogColors'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
@@ -836,12 +837,12 @@ async function onSubmitPost() {
 function onDeletePost(post: Post) {
   uni.showActionSheet({
     itemList: [t('plaza.delete')],
-    itemColor: 'var(--accent-danger)',
+    itemColor: DIALOG_DANGER,
     success: (res) => {
       if (res.tapIndex !== 0) return
       uni.showModal({
         title: t('plaza.deleteConfirm'),
-        confirmColor: 'var(--accent-danger)',
+        confirmColor: DIALOG_DANGER,
         success: async (r) => {
           if (!r.confirm) return
           try {
@@ -996,7 +997,7 @@ function onCommentLongPress(c: PostComment) {
       } else if (isMine && res.tapIndex === 1) {
         uni.showModal({
           title: t('plaza.commentDeleteConfirm'),
-          confirmColor: 'var(--accent-danger)',
+          confirmColor: DIALOG_DANGER,
           success: async (r) => {
             if (!r.confirm || !commentingPost.value) return
             try {

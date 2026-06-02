@@ -100,6 +100,7 @@ import { useMessages } from '../../composables/useMessages'
 import { useUnread } from '../../composables/useUnread'
 import { useTheme } from '../../composables/useTheme'
 import { formatTime, thumbUrl } from '../../utils'
+import { DIALOG_DANGER } from '../../utils/dialogColors'
 import type { Conversation, Profile } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
@@ -272,7 +273,7 @@ function onDelete(conv: Conversation) {
   uni.showModal({
     title: t('msg.deleteTitle'),
     content: t('msg.deleteHint'),
-    confirmColor: 'var(--accent-danger)',
+    confirmColor: DIALOG_DANGER,
     success: async (r) => {
       if (!r.confirm) return
       try {

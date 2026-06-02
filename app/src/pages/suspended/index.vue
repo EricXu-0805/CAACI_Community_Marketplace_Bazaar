@@ -71,6 +71,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
 import { useSupabase } from '../../composables/useSupabase'
+import { DIALOG_DANGER } from '../../utils/dialogColors'
 
 const { t, lang } = useI18n()
 const { currentUser, signOut } = useAuth()
@@ -182,7 +183,7 @@ function onSignOut() {
     content: t('suspended.signOutHint'),
     confirmText: t('profile.signOut'),
     cancelText: t('reconsent.goBack'),
-    confirmColor: 'var(--accent-danger)',
+    confirmColor: DIALOG_DANGER,
     success: (r) => { if (r.confirm) signOut() },
   })
 }

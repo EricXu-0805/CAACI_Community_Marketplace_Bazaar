@@ -51,6 +51,7 @@ import { ref } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { useSupabase } from '../../composables/useSupabase'
 import { useAuth } from '../../composables/useAuth'
+import { DIALOG_DANGER } from '../../utils/dialogColors'
 import {
   TERMS_VERSION,
   PRIVACY_VERSION,
@@ -94,7 +95,7 @@ function onDecline() {
     content: t('reconsent.declineHint'),
     confirmText: t('reconsent.signOut'),
     cancelText: t('reconsent.goBack'),
-    confirmColor: 'var(--accent-danger)',
+    confirmColor: DIALOG_DANGER,
     success: (r) => {
       if (r.confirm) signOut()
     },

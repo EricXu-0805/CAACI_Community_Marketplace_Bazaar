@@ -165,6 +165,7 @@ import { useLocation } from '../../composables/useLocation'
 import { useItems } from '../../composables/useItems'
 import { useTranslate } from '../../composables/useTranslate'
 import { friendlyErrorMessage } from '../../utils'
+import { DIALOG_INK, DIALOG_WARN } from '../../utils/dialogColors'
 import type { ItemCategory, ItemCondition } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
@@ -367,7 +368,7 @@ function promptSaveDraft(onDecided: () => void) {
     content: t('publish.draftPromptBody'),
     confirmText: t('publish.draftSave'),
     cancelText: t('publish.draftDiscard'),
-    confirmColor: '#2A2A2E',
+    confirmColor: DIALOG_INK,
     success: (r) => {
       if (r.confirm) {
         saveDraft()
@@ -436,7 +437,7 @@ onShow(() => {
       content: t('publish.draftRestoreBody'),
       confirmText: t('publish.draftRestore'),
       cancelText: t('publish.draftDiscard'),
-      confirmColor: '#2A2A2E',
+      confirmColor: DIALOG_INK,
       success: (r) => {
         if (r.confirm) applyDraft(draft)
         else if (r.cancel) clearDraft()
@@ -568,7 +569,7 @@ async function onSubmit() {
         content: t('publish.priceTooHighBody'),
         confirmText: t('publish.priceTooHighConfirm'),
         cancelText: t('publish.priceTooHighCancel'),
-        confirmColor: 'var(--accent-warn)',
+        confirmColor: DIALOG_WARN,
         success: (r) => resolve(!!r.confirm),
         fail: () => resolve(false),
       })
@@ -583,7 +584,7 @@ async function onSubmit() {
         content: t('scam.publishBody'),
         confirmText: t('scam.publishAgree'),
         cancelText: t('scam.publishCancel'),
-        confirmColor: 'var(--accent-warn)',
+        confirmColor: DIALOG_WARN,
         success: (r) => resolve(!!r.confirm),
         fail: () => resolve(false),
       })
