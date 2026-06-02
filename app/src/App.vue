@@ -1412,70 +1412,14 @@ button:focus-visible,
  * Shared utility classes. Opt-in per page; not forced on
  * existing components so we don't break their scoped styles.
  *
- * TYPE CLASSES (ivory_academy ladder) — prefer these over
- * inline font-size hex stacks:
- *   .t-display      — Fraunces 28px hero word-mark
- *   .t-title-serif  — Fraunces 22px section title
- *   .t-price-serif  — Fraunces 22px terracotta price
- *   .t-label        — mono eyebrow 10px uppercase
- *   .t-meta         — 12px ink-quiet for timestamps, counters
- *
  * Use serif on numbers + brand + prices + headings; sans on
  * everything else. Never mix serif for a 10-11px CN label —
  * it glyph-crams on retina screens.
  * ============================================================ */
 
-/* ---------- TYPE ---------- */
-.t-title-serif {
-  font-family: var(--font-serif);
-  font-size: 22px;
-  line-height: 1.25;
-  font-weight: 500;
-  letter-spacing: -0.3px;
-  color: var(--ink);
-}
-.t-subtitle-serif {
-  font-family: var(--font-serif);
-  font-size: 15px;
-  line-height: 1.35;
-  font-weight: 500;
-  color: var(--ink);
-}
-.t-price-serif {
-  font-family: var(--font-serif);
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1;
-  color: var(--brand);
-  letter-spacing: -0.01em;
-  font-feature-settings: 'tnum';
-}
-.t-price-serif.sm { font-size: 17px; }
-.t-price-serif.free { color: var(--success); }
-
-.t-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  color: var(--ink-quiet);
-  font-weight: 500;
-}
-
 /* ============================================================
  * M1 — kit v5 semantic type ladder (mirrored from
  * colors_and_type.css §SEMANTIC TYPE CLASSES, lines 336-373).
- *
- * SHADOWS prod's older .t-display + .t-meta defined above:
- *   · .t-display (kit 40px / fraunces) shadows prod (28px). 0
- *     consumers today; M3 surface migration adopts kit value.
- *   · .t-meta (kit tokenized 12px/1.4/ink-quiet) is FUNCTIONALLY
- *     identical to prod's literal 12px/1.4/ink-quiet — last-rule
- *     wins makes kit the canonical resolution.
- *
- * Prod's legacy .t-title-serif / .t-subtitle-serif /
- * .t-price-serif / .t-label have NO kit equivalent and remain
- * untouched. M3 sprint to consolidate.
  *
  * Phase 1a (M1, this PR) installs definitions only. No surface
  * consumes these yet — `.t-*` migration is M3. Zero visual
