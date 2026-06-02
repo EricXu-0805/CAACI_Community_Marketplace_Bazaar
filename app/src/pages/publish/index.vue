@@ -150,6 +150,13 @@
       :visible="permissionModalVisible"
       @close="permissionModalVisible = false"
     />
+
+    <ScamInterceptModal
+      :visible="showScamModal"
+      @understand="onScamUnderstand"
+      @close="showScamModal = false"
+      @learnMore="onScamLearnMore"
+    />
   </view>
 </template>
 
@@ -170,6 +177,7 @@ import type { ItemCategory, ItemCondition } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PermissionDeniedModal from '../../components/PermissionDeniedModal.vue'
+import ScamInterceptModal from '../../components/ScamInterceptModal.vue'
 
 const { t, lang } = useI18n()
 const { CAMPUS_SPOTS } = useCampusSpots()
@@ -266,9 +274,37 @@ const permissionModalVisible = ref(false)
  * that re-tapping unselects. Sheet auto-closes on either path so the
  * user immediately sees the field returning to its placeholder state.
  */
+/*
+ * Currency-exchange scam-intercept modal. Client-side gate only (no
+ * backend): first time a user selects the currency_exchange category we
+ * show the rich safety modal, then remember via a localStorage flag so
+ * it never nags on subsequent selections. The existing submit-time
+ * uni.showModal confirm (in onSubmit) stays as the hard ack gate; this
+ * modal is the earlier, friendlier teach-the-rules moment.
+ */
+const SCAM_MODAL_SEEN_KEY = 'scam_modal_seen_v1'
+const showScamModal = ref(false)
+
+function maybeShowScamModal() {
+  let seen = ''
+  try { seen = uni.getStorageSync(SCAM_MODAL_SEEN_KEY) } catch { /* private mode — treat as unseen */ }
+  if (!seen) showScamModal.value = true
+}
+
+function onScamUnderstand() {
+  try { uni.setStorageSync(SCAM_MODAL_SEEN_KEY, '1') } catch { /* ignore */ }
+  showScamModal.value = false
+}
+
+function onScamLearnMore() {
+  showScamModal.value = false
+  uni.navigateTo({ url: '/pages/legal/index' })
+}
+
 function onCategoryTap(cat: ItemCategory) {
   form.category = form.category === cat ? '' : cat
   showCat.value = false
+  if (form.category === 'currency_exchange') maybeShowScamModal()
 }
 function onConditionTap(cond: string) {
   form.condition = (form.condition === cond ? '' : cond) as ItemCondition | ''

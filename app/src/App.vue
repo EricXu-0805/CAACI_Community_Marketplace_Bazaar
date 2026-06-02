@@ -1563,4 +1563,14 @@ button:focus-visible,
   color: var(--warning);
   border-color: transparent;
 }
+
+/* ---------- MOTION (transform/opacity only — mp-weixin safe) ---------- */
+@keyframes heart-pop { 0% { transform: scale(1); } 40% { transform: scale(1.32); } 100% { transform: scale(1); } }
+.u-anim-heart-pop { animation: heart-pop var(--dur-2) var(--ease-warm); }
+.u-press { transition: transform var(--dur-1) var(--ease-std); }
+.u-press:active { transform: scale(0.96); }
+@media (prefers-reduced-motion: reduce) {
+  .u-anim-heart-pop { animation: none; }
+  .u-press, .u-press:active { transition: none; transform: none; }
+}
 </style>

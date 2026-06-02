@@ -35,18 +35,38 @@
     >
       <PlazaBannerCarousel />
 
+      <scroll-view class="feed-tabs" scroll-x :show-scrollbar="false">
+        <view class="ft-row">
+          <view
+            v-for="tab in feedTabs"
+            :key="tab.key"
+            :class="['ft-chip', { active: activeTab === tab.key }]"
+            role="button"
+            :aria-pressed="activeTab === tab.key ? 'true' : 'false'"
+            @click="activeTab = tab.key"
+          >
+            <text class="t-tag ft-label">{{ tab.label }}</text>
+          </view>
+        </view>
+      </scroll-view>
+
       <view v-if="loading && posts.length === 0" class="loading">
         <text>{{ t('home.loading') }}...</text>
       </view>
 
-      <view v-else-if="posts.length === 0" class="empty">
+      <view v-else-if="tabComingSoon" class="empty">
+        <view class="empty-icon"></view>
+        <text class="empty-text">{{ t('plaza.comingSoon') }}</text>
+      </view>
+
+      <view v-else-if="visiblePosts.length === 0" class="empty">
         <view class="empty-icon"></view>
         <text class="empty-text">{{ t('plaza.empty') }}</text>
         <view v-if="isLoggedIn" class="cta-btn" @click="openComposer">{{ t('plaza.write') }}</view>
       </view>
 
       <view v-else class="posts">
-        <view v-for="post in posts" :key="post.id" class="post-card">
+        <view v-for="post in visiblePosts" :key="post.id" class="post-card">
           <!--
             Pinned-collapsed surface: when a pinned announcement is in
             its compact state, render a single-line summary that the
@@ -307,7 +327,7 @@
         </view>
       </view>
 
-      <view v-if="!hasMore && posts.length > 0" class="end-tip">
+      <view v-if="!tabComingSoon && !hasMore && visiblePosts.length > 0" class="end-tip">
         <text>{{ t('home.endOf') }}</text>
       </view>
     </scroll-view>
@@ -464,6 +484,29 @@ onShareTimeline(() => ({
 
 const refreshing = ref(false)
 const pageIdx = ref(0)
+
+/*
+ * Visual feed sub-tabs. Client-side only for now — no extra RPC. Two
+ * tabs filter the already-loaded `posts` (推荐 = all, 官方 = is_official);
+ * 关注 / 活动 have no client data yet so they render a coming-soon shell.
+ * Data wiring (following graph, events feed) is deferred to the
+ * functional track.
+ */
+type FeedTabKey = 'recommend' | 'following' | 'official' | 'events'
+const activeTab = ref<FeedTabKey>('recommend')
+const COMING_SOON_TABS: ReadonlySet<FeedTabKey> = new Set(['following', 'events'])
+const feedTabs = computed<{ key: FeedTabKey; label: string }[]>(() => [
+  { key: 'following', label: t('plaza.tab.following') },
+  { key: 'recommend', label: t('plaza.tab.recommend') },
+  { key: 'official', label: t('plaza.tab.official') },
+  { key: 'events', label: t('plaza.tab.events') },
+])
+const tabComingSoon = computed(() => COMING_SOON_TABS.has(activeTab.value))
+const visiblePosts = computed(() => {
+  if (tabComingSoon.value) return []
+  if (activeTab.value === 'official') return posts.value.filter((p) => p.is_official)
+  return posts.value
+})
 
 /*
  * Render-side safety net for post.image_dimensions.
@@ -1160,6 +1203,49 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   }
   &::before { transform: rotate(45deg); }
   &::after { transform: rotate(-45deg); }
+}
+
+/*
+ * Feed sub-tabs — ink-fill active chip row (active = --ink bg /
+ * --ink-inverse text; inactive = --ink-quiet on transparent). Brand is
+ * reserved for price/CTA/official, so selection state uses ink per the
+ * nav-filter convention. Horizontally scrollable, 32px chips.
+ */
+.feed-tabs {
+  width: 100%;
+  white-space: nowrap;
+  padding: var(--space-2) 0;
+  border-bottom: 0.5px solid var(--line-hair);
+}
+.ft-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+}
+.ft-chip {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  border: 0.5px solid var(--border);
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-1, 120ms) var(--ease-std, ease),
+    color var(--dur-1, 120ms) var(--ease-std, ease);
+  &:active { opacity: 0.7; }
+  &.active {
+    background: var(--ink);
+    border-color: var(--ink);
+  }
+}
+.ft-label {
+  color: var(--ink-quiet);
+  line-height: 1;
+  .ft-chip.active & { color: var(--ink-inverse); }
 }
 
 .feed {

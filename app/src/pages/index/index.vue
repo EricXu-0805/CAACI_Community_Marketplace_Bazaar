@@ -47,7 +47,7 @@
         <view
           v-for="cat in categories"
           :key="'c'+cat.value"
-          :class="['pill', { active: selectedCategory === cat.value }]"
+          :class="['pill', 'u-press', { active: selectedCategory === cat.value }]"
           @click="selectCategory(cat.value)"
         >
           <text>{{ cat.label }}</text>
@@ -73,15 +73,16 @@
 
     <view
       v-if="showSemesterBanner"
-      class="semester-banner"
-      :style="{ '--sb-accent': semesterConfig.accent }"
+      class="semester-banner u-press"
       @click="onSemesterBannerTap"
     >
+      <text class="seb-arc" aria-hidden="true">I</text>
       <view class="seb-body">
+        <text class="seb-stamp t-eyebrow">{{ t('app.name') }}</text>
         <text class="seb-title">{{ semesterTitle(lang as 'en' | 'zh') }}</text>
         <text class="seb-sub">{{ semesterSubtitle(lang as 'en' | 'zh') }}</text>
       </view>
-      <view class="seb-arrow">›</view>
+      <text class="seb-arrow">›</text>
     </view>
 
     <!-- Active filter summary bar (shows when filters are applied, even if sheet closed) -->
@@ -218,7 +219,7 @@
           <view
             v-for="item in col"
             :key="item.id"
-            class="card"
+            class="card u-press"
             @click="goToDetail(item.id)"
             @touchstart="cardLongPress.onTouchstart(item)"
             @touchend="cardLongPress.onTouchend"
@@ -269,7 +270,7 @@
                   <text v-if="isOldItem(item.created_at)" class="old-tag">{{ t('home.oldListing') }}</text>
                   <image
                     :src="isFavorited(item.id) ? '/static/heart-filled.svg' : '/static/heart.svg'"
-                    class="heart-img"
+                    :class="['heart-img', { 'u-anim-heart-pop': isFavorited(item.id) }]"
                     role="button"
                     :aria-label="isFavorited(item.id) ? t('a11y.unfavorite') : t('a11y.favorite')"
                     @click.stop="onQuickFav(item)"
@@ -438,7 +439,7 @@ const sortBy = ref('latest')
 const categoryKeys: (ItemCategory | null)[] = [null, 'currency_exchange', 'rideshare', 'electronics', 'furniture', 'housing', 'clothing', 'books', 'vehicles', 'daily', 'food', 'other']
 const categories = computed(() => categoryKeys.map(k => ({
   value: k,
-  label: t(k ? 'cat.' + k : 'cat.all'),
+  label: t(k ? 'cat.pair.' + k : 'cat.pair.all'),
 })))
 
 /*
@@ -987,19 +988,66 @@ function goPublish() {
 .sb-title { font-size: 12px; font-weight: 700; color: var(--warning); letter-spacing: 0.01em; }
 .sb-text { font-size: 11px; color: var(--ink-soft); line-height: 1.6; }
 
+/*
+ * Semester / move-out banner — kit ink-editorial card (index_v1.html
+ * .card.feature + components-banners.html "ghosted I"). Ink fill, a
+ * mono brand stamp in campus-orange, serif title in ink-inverse, and
+ * a ghosted serif "I" arc bleeding off the right edge as the brand
+ * accent. Replaces the prior off-system blue→orange gradient.
+ */
 .semester-banner {
-  display: flex; align-items: center; gap: 12px;
-  margin: 8px 12px 4px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: linear-gradient(100deg, var(--sb-accent, var(--campus-blue)) 0%, rgba(255,255,255,0) 130%);
-  color: #fff;
+  position: relative;
+  overflow: hidden;
+  display: flex; align-items: center; gap: var(--space-3);
+  margin: var(--space-2) var(--space-3) var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--ink);
+  box-shadow: var(--shadow-pop);
   cursor: pointer;
 }
-.seb-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.seb-title { font-size: 14px; font-weight: 700; color: #fff; }
-.seb-sub { font-size: 12px; color: rgba(255,255,255,0.88); line-height: 1.4; }
-.seb-arrow { font-size: 22px; color: rgba(255,255,255,0.88); line-height: 1; }
+/* Decorative serif "I" arc — the brand accent. Cream-ghosted so it
+   reads as a watermark on the ink fill, not a literal glyph. */
+.seb-arc {
+  position: absolute; right: -14px; top: -34px;
+  font-family: var(--font-serif);
+  font-size: 140px; font-weight: 600; line-height: 1;
+  letter-spacing: -0.08em;
+  color: var(--brand-ghost);
+  opacity: 0.1;
+  pointer-events: none;
+}
+.seb-body {
+  position: relative;
+  flex: 1; display: flex; flex-direction: column; gap: 3px;
+  min-width: 0;
+}
+/* Mono eyebrow stamp — campus-orange override of the global .t-eyebrow
+   (which defaults to --ink-quiet, unreadable on ink). */
+.seb-stamp {
+  color: var(--campus-orange);
+  margin-bottom: 2px;
+}
+.seb-title {
+  font-family: var(--font-serif);
+  font-size: 15px; font-weight: 600;
+  color: var(--ink-inverse);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.seb-sub {
+  font-size: 12px;
+  color: var(--ink-inverse);
+  opacity: 0.72;
+  line-height: 1.4;
+}
+.seb-arrow {
+  position: relative;
+  font-family: var(--font-serif);
+  font-size: 22px; line-height: 1;
+  color: var(--brand-soft);
+  flex-shrink: 0;
+}
 
 .active-filter-bar {
   display: flex; align-items: center; gap: 8px;

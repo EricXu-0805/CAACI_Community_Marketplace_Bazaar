@@ -157,6 +157,13 @@
       </view>
     </view>
     <ChatEmojiPanel :open="emojiOpen" @pick="onPickEmoji" />
+
+    <ScamInterceptModal
+      :visible="showScamModal"
+      @understand="onScamUnderstand"
+      @close="showScamModal = false"
+      @learnMore="onScamLearnMore"
+    />
   </view>
 </template>
 
@@ -175,6 +182,7 @@ import { formatPrice, friendlyErrorMessage } from '../../utils'
 import { DIALOG_DANGER } from '../../utils/dialogColors'
 import type { Item } from '../../types'
 import ChatEmojiPanel from '../../components/ChatEmojiPanel.vue'
+import ScamInterceptModal from '../../components/ScamInterceptModal.vue'
 
 const { t, lang, localize } = useI18n()
 
@@ -230,6 +238,32 @@ const convPinned = ref(false)
 const convMuted = ref(false)
 let unsubscribe: (() => void) | null = null
 
+/*
+ * Currency-exchange scam-intercept modal. Same client-side gate as
+ * publish/index.vue: when the chat is about a currency_exchange item we
+ * show the rich safety modal once, then remember via a localStorage flag
+ * shared with publish. The persistent .chat-scam banner above stays as
+ * the always-on reminder; this modal is the one-time teach moment.
+ */
+const SCAM_MODAL_SEEN_KEY = 'scam_modal_seen_v1'
+const showScamModal = ref(false)
+
+function maybeShowScamModal() {
+  let seen = ''
+  try { seen = uni.getStorageSync(SCAM_MODAL_SEEN_KEY) } catch { /* private mode — treat as unseen */ }
+  if (!seen) showScamModal.value = true
+}
+
+function onScamUnderstand() {
+  try { uni.setStorageSync(SCAM_MODAL_SEEN_KEY, '1') } catch { /* ignore */ }
+  showScamModal.value = false
+}
+
+function onScamLearnMore() {
+  showScamModal.value = false
+  uni.navigateTo({ url: '/pages/legal/index' })
+}
+
 onLoad(async (options) => {
   if (!requireAuth()) return
 
@@ -253,6 +287,7 @@ onLoad(async (options) => {
         conversationDetail.value = detail
         if (detail.item) {
           itemInfo.value = detail.item
+          if (detail.item.category === 'currency_exchange') maybeShowScamModal()
         }
         if (currentUser.value) {
           const other = detail.buyer_id === currentUser.value.id ? detail.seller : detail.buyer
