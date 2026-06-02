@@ -1550,12 +1550,17 @@ button:focus-visible,
 }
 .u-chip.active {
   background: var(--ink);
-  color: var(--canvas);
+  color: var(--ink-inverse);
   border-color: var(--ink);
 }
 .u-chip.brand {
   background: var(--brand-soft);
   color: var(--brand-deep);
+  border-color: transparent;
+}
+.u-chip.warn {
+  background: var(--warning-soft);
+  color: var(--warning);
   border-color: transparent;
 }
 </style>

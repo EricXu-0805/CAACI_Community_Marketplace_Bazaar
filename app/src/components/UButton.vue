@@ -79,7 +79,7 @@ function onClick(evt: Event) {
   align-items: center;
   justify-content: center;
   font-family: var(--font-hei, -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif);
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.01em;
   cursor: pointer;
   border: 0;

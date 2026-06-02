@@ -630,7 +630,7 @@ async function onSubmit() {
 }
 .upload-fill {
   position: absolute; top: 0; bottom: 0; left: 0;
-  background: rgba(26,26,26,0.08);
+  background: var(--line-hair);
   transition: width 0.3s ease;
 }
 .upload-text {

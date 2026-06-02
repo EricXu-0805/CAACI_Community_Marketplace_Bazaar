@@ -33,7 +33,7 @@ function go(url: string) { uni.switchTab({ url }) }
 </script>
 
 <style scoped>
-.desktop-nav { display: block; position: sticky; top: 0; z-index: 200; background: var(--bg-elev-1); border-bottom: 1px solid #f0f0f0; }
+.desktop-nav { display: block; position: sticky; top: 0; z-index: 200; background: var(--bg-elev-1); border-bottom: 1px solid var(--border); }
 .desktop-nav-inner { max-width: 1120px; margin: 0 auto; display: flex; align-items: center; padding: 0 24px; height: 56px; gap: 24px; }
 .desktop-logo { font-size: 17px; font-weight: 700; color: var(--text-primary); white-space: nowrap; cursor: pointer; letter-spacing: -0.02em; }
 .desktop-nav-links { display: flex; gap: 4px; }

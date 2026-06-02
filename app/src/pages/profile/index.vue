@@ -619,7 +619,7 @@ function onDeleteItem(id: string) {
   padding: 22px 18px 0;
   box-shadow: var(--shadow-pop);
   overflow: hidden;
-  color: #F5F0E6;
+  color: var(--ink-inverse);
   /* decorative Illini-orange arc top-right — seal-like, low opacity */
   &::before {
     content: '';
@@ -673,10 +673,10 @@ function onDeleteItem(id: string) {
 .user-row { display: flex; align-items: center; gap: 14px; }
 .avatar-big {
   width: 72px; height: 72px; border-radius: 50%;
-  background: linear-gradient(135deg, #F5D9CE 0%, #C74A2F 100%);
+  background: linear-gradient(135deg, var(--brand-soft) 0%, var(--brand) 100%);
   flex-shrink: 0;
   box-shadow: 0 6px 16px rgba(199, 74, 47, 0.35);
-  border: 2px solid #F5F0E6;
+  border: 2px solid var(--ink-inverse);
 }
 .user-info { flex: 1; min-width: 0; }
 .name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -690,7 +690,7 @@ function onDeleteItem(id: string) {
   font-size: 22px;
   font-weight: 500;
   letter-spacing: -0.3px;
-  color: #F5F0E6;
+  color: var(--ink-inverse);
 }
 .illini-badge {
   display: inline-flex; align-items: center;
@@ -713,7 +713,7 @@ function onDeleteItem(id: string) {
 }
 .uid-label { font-size: 10px; color: rgba(245, 240, 230, 0.6); font-weight: 500; }
 .uid-value {
-  font-size: 11px; color: #F5F0E6; font-weight: 500; letter-spacing: 0.05em;
+  font-size: 11px; color: var(--ink-inverse); font-weight: 500; letter-spacing: 0.05em;
   font-family: var(--font-mono);
 }
 .location { font-size: 12px; color: rgba(245, 240, 230, 0.72); }
@@ -734,12 +734,12 @@ function onDeleteItem(id: string) {
   width: 14px; height: 14px; position: relative;
   &::before {
     content: ''; position: absolute; bottom: 0; left: 0;
-    width: 14px; height: 2px; background: #F5F0E6; border-radius: 1px;
+    width: 14px; height: 2px; background: var(--ink-inverse); border-radius: 1px;
     opacity: 0.82;
   }
   &::after {
     content: ''; position: absolute; top: 0; right: 2px;
-    width: 2px; height: 10px; background: #F5F0E6;
+    width: 2px; height: 10px; background: var(--ink-inverse);
     border-radius: 1px; transform: rotate(-40deg);
     transform-origin: bottom center;
     opacity: 0.82;
@@ -755,7 +755,7 @@ function onDeleteItem(id: string) {
   margin: 20px -18px 0;
   padding: 14px 18px 14px;
   border-top: 0.5px solid rgba(245, 240, 230, 0.12);
-  background: rgba(0, 0, 0, 0.18);
+  background: rgba(31, 29, 27, 0.18);
 }
 .stat-item {
   flex: 1; text-align: center;
@@ -774,7 +774,7 @@ function onDeleteItem(id: string) {
   font-size: 22px;
   font-weight: 500;
   letter-spacing: -0.02em;
-  color: #F5F0E6;
+  color: var(--ink-inverse);
   display: block;
   line-height: 1;
   font-feature-settings: 'tnum';
@@ -883,7 +883,7 @@ function onDeleteItem(id: string) {
 .action-icon--brand    { background: var(--brand-soft); }
 .action-icon--amber    { background: var(--warning-soft); }
 .action-icon--sage     { background: var(--success-soft); }
-.action-icon--lavender { background: #E4E1F2; }
+.action-icon--lavender { background: var(--campus-blue-soft); }
 .action-emoji { font-size: 22px; line-height: 1; }
 .action-label { font-size: 12px; color: var(--ink-soft); line-height: 1.2; }
 .action-badge {

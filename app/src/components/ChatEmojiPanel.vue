@@ -188,8 +188,8 @@ function g_key(e: string, i: number) {
   cursor: pointer;
   flex-shrink: 0;
   &.active {
-    background: var(--accent-primary);
-    color: #fff;
+    background: var(--ink);
+    color: var(--ink-inverse);
     font-weight: 600;
   }
   &:active { opacity: 0.75; }

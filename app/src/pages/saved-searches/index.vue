@@ -185,7 +185,7 @@ function goBack() { uni.navigateBack() }
 .header-title { font-size: 17px; font-weight: 600; color: var(--text-primary); }
 
 .hint {
-  padding: 10px 16px; font-size: 12px; color: var(--text-secondary, #5a5a63);
+  padding: 10px 16px; font-size: 12px; color: var(--text-secondary, var(--ink-quiet));
   background: var(--bg-elev-2); border-bottom: 0.5px solid var(--line-hair);
 }
 .list { padding: 8px 12px 100px; }
@@ -206,7 +206,7 @@ function goBack() { uni.navigateBack() }
 .ss-meta { display: flex; gap: 6px; flex-wrap: wrap; }
 .ss-chip {
   font-size: 11px; padding: 3px 8px;
-  background: var(--bg-subtle); color: var(--text-secondary, #5a5a63);
+  background: var(--bg-subtle); color: var(--text-secondary, var(--ink-quiet));
   border-radius: 10px;
 }
 .ss-del {
@@ -249,12 +249,12 @@ function goBack() { uni.navigateBack() }
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 16px; border-bottom: 0.5px solid var(--line-hair);
 }
-.fs-cancel, .fs-save { font-size: 14px; cursor: pointer; color: var(--text-secondary, #5a5a63); }
+.fs-cancel, .fs-save { font-size: 14px; cursor: pointer; color: var(--text-secondary, var(--ink-quiet)); }
 .fs-save { color: var(--brand); font-weight: 600; &.disabled { color: var(--text-faint); pointer-events: none; } }
 .fs-title { font-size: 15px; font-weight: 600; }
 .fs-body { padding: 12px 16px 20px; }
 .fs-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-.fs-label { font-size: 12px; color: var(--text-secondary, #5a5a63); }
+.fs-label { font-size: 12px; color: var(--text-secondary, var(--ink-quiet)); }
 .fs-input {
   padding: 10px 12px; border-radius: 8px;
   background: var(--bg-subtle); font-size: 14px;
@@ -262,9 +262,9 @@ function goBack() { uni.navigateBack() }
 .fs-cats { display: flex; flex-wrap: wrap; gap: 6px; }
 .fs-chip {
   padding: 5px 12px; border-radius: 14px; font-size: 12px;
-  background: var(--bg-subtle); color: var(--text-secondary, #5a5a63);
+  background: var(--bg-subtle); color: var(--text-secondary, var(--ink-quiet));
   cursor: pointer;
-  &.active { background: var(--accent-primary); color: #fff; }
+  &.active { background: var(--ink); color: var(--ink-inverse); }
 }
 .fs-row-price { }
 .fs-price-wrap { display: flex; align-items: center; gap: 8px; }

@@ -910,9 +910,9 @@ function goPublish() {
   box-sizing: border-box;
   flex-shrink: 0;
   &.active {
-    background: var(--brand);
-    color: #fff;
-    border-color: var(--brand);
+    background: var(--ink);
+    color: var(--ink-inverse);
+    border-color: var(--ink);
   }
   &:active { transform: scale(0.96); }
 }
@@ -965,12 +965,13 @@ function goPublish() {
   display: flex; align-items: flex-start; gap: 10px;
   padding: 10px 14px;
   background: var(--warning-soft);
-  border-bottom: 0.5px solid rgba(212, 146, 60, 0.25);
+  border-bottom: 0.5px solid var(--warning-soft);
   border-left: 3px solid var(--warning);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 .sb-icon {
   flex-shrink: 0; width: 20px; height: 20px;
-  border-radius: 50%; background: var(--accent-warn);
+  border-radius: 50%; background: var(--warning);
   display: flex; align-items: center; justify-content: center;
   margin-top: 1px;
 }
@@ -991,7 +992,7 @@ function goPublish() {
   margin: 8px 12px 4px;
   padding: 12px 14px;
   border-radius: 12px;
-  background: linear-gradient(100deg, var(--sb-accent, #3b82f6) 0%, rgba(255,255,255,0) 130%);
+  background: linear-gradient(100deg, var(--sb-accent, var(--campus-blue)) 0%, rgba(255,255,255,0) 130%);
   color: #fff;
   cursor: pointer;
 }
@@ -1035,7 +1036,7 @@ function goPublish() {
   padding: 7px 15px; border-radius: 8px;
   font-size: 13px; color: var(--text-secondary); background: var(--bg-subtle);
   cursor: pointer; transition: all 0.15s; font-weight: 500;
-  &.active { background: var(--accent-primary); color: #fff; }
+  &.active { background: var(--ink); color: var(--ink-inverse); }
 }
 /* Even though the sheet wins z-index (1001 > 999 on tabbar), the apply
    button visually coincided with the tabbar row, creating a jarring
@@ -1066,8 +1067,9 @@ function goPublish() {
    (brown-tinted alpha) instead of cool grey so it blends into the
    cream page background without a muddy halo. */
 .card {
-  background: var(--bg-elev-1);
-  border-radius: var(--radius-xl);
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  border: 0.5px solid var(--border);
   overflow: hidden;
   cursor: pointer;
   box-shadow: var(--shadow-soft);
@@ -1082,7 +1084,7 @@ function goPublish() {
    freak clamped ratios. */
 .card-img-box {
   position: relative; width: 100%;
-  background: var(--bg-subtle);
+  background: var(--surface-alt);
   overflow: hidden;
   min-height: 120px;
 }
@@ -1109,13 +1111,12 @@ function goPublish() {
 }
 .badge {
   position: absolute; top: 7px; left: 7px;
-  padding: 2px 7px; border-radius: 5px; font-size: 10px; font-weight: 600;
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  padding: 2px 7px; border-radius: var(--radius-xs); font-size: 10px; font-weight: 600;
 }
-.badge-new { background: rgba(199,74,47,0.85); color: #fff; }
-.badge-mint { background: rgba(93, 124, 74, 0.92); color: #fff; }
-.badge-defect { background: rgba(181, 51, 51, 0.92); color: #fff; }
-.badge-reserved { background: rgba(212, 146, 60, 0.92); color: #fff; }
+.badge-new { background: var(--brand); color: var(--ink-inverse); }
+.badge-mint { background: var(--success); color: var(--ink-inverse); }
+.badge-defect { background: var(--danger); color: var(--ink-inverse); }
+.badge-reserved { background: var(--warning); color: var(--ink-inverse); }
 /* Safe-zone "verified pickup spot" badge — bottom-left, green to signal trust.
    Placed opposite to .img-count-badge (top-right) and .badge (top-left) so it
    never collides with either. */
@@ -1123,11 +1124,10 @@ function goPublish() {
   position: absolute; bottom: 7px; left: 7px;
   display: inline-flex; align-items: center; gap: 3px;
   padding: 2px 7px 2px 5px; border-radius: 10px;
-  background: rgba(93, 124, 74, 0.92);
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  background: var(--success);
 }
-.bsc-check { font-size: 10px; color: #fff; font-weight: 800; line-height: 1; }
-.bsc-label { font-size: 10px; color: #fff; font-weight: 600; line-height: 1; }
+.bsc-check { font-size: 10px; color: var(--ink-inverse); font-weight: 800; line-height: 1; }
+.bsc-label { font-size: 10px; color: var(--ink-inverse); font-weight: 600; line-height: 1; }
 .card-time { font-size: 10px; color: var(--text-faint); margin-left: auto; }
 .old-tag { font-size: 10px; color: var(--text-faint); margin-right: 2px; }
 
@@ -1196,7 +1196,7 @@ function goPublish() {
 /* ========== States ========== */
 .tip {
   display: flex; align-items: center; justify-content: center;
-  padding: 20px; gap: 8px; color: #bbb; font-size: 12px;
+  padding: 20px; gap: 8px; color: var(--ink-faint); font-size: 12px;
 }
 .dots {
   display: flex; gap: 2px;
@@ -1249,9 +1249,9 @@ function goPublish() {
   border-radius: 12px; height: 68px; cursor: pointer;
   &:active { opacity: 0.9; }
 }
-.bg-warm { background: linear-gradient(135deg, #FFF3E0, #FFE0B2); }
-.bg-blue { background: linear-gradient(135deg, #E3F2FD, #BBDEFB); }
-.bg-green { background: linear-gradient(135deg, #E8F5E9, #C8E6C9); }
+.bg-warm { background: var(--warning-soft); }
+.bg-blue { background: var(--campus-blue-soft); }
+.bg-green { background: var(--success-soft); }
 .banner-emoji { font-size: 28px; flex-shrink: 0; }
 .banner-text { flex: 1; }
 .banner-title { font-size: 14px; font-weight: 600; color: var(--text-primary); display: block; }

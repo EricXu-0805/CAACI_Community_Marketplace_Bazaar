@@ -220,8 +220,8 @@ function onSignOut() {
   width: 8px; height: 8px; border-radius: 50%; background: var(--accent-warn);
 }
 .level-3 .hero-icon-inner, .level-3 .hero-icon-inner::after { background: var(--accent-action); }
-.level-4 .hero-icon-inner, .level-4 .hero-icon-inner::after { background: #ef4444; }
-.level-5 .hero-icon-inner, .level-5 .hero-icon-inner::after { background: #7f1d1d; }
+.level-4 .hero-icon-inner, .level-4 .hero-icon-inner::after { background: var(--danger); }
+.level-5 .hero-icon-inner, .level-5 .hero-icon-inner::after { background: var(--danger); }
 
 .hero-badge {
   font-size: 11px; color: var(--accent-action); font-weight: 700;

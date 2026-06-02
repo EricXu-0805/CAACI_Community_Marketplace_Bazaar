@@ -222,7 +222,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .bio { font-size: 13px; color: var(--text-muted); text-align: center; max-width: 280px; }
 .user-status {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 3px 10px; border-radius: 12px; background: rgba(26,122,255,0.08);
+  padding: 3px 10px; border-radius: 12px; background: var(--campus-blue-soft);
 }
 .us-emoji { font-size: 13px; line-height: 1; }
 .us-text { font-size: 12px; color: var(--campus-blue); line-height: 1.45; }
@@ -283,9 +283,8 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .badge-safe-corner {
   position: absolute; bottom: 7px; left: 7px;
   display: inline-flex; align-items: center; gap: 3px;
-  padding: 2px 7px 2px 5px; border-radius: 10px;
-  background: rgba(93, 124, 74, 0.92);
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  padding: 2px 7px 2px 5px; border-radius: var(--radius-xs);
+  background: var(--success);
 }
 .bsc-check { font-size: 10px; color: #fff; font-weight: 800; line-height: 1; }
 .bsc-label { font-size: 10px; color: #fff; font-weight: 600; line-height: 1; }

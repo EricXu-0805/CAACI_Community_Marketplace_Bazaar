@@ -649,7 +649,7 @@ onMounted(async () => {
 .admin {
   min-height: 100vh; background: var(--bg-subtle);
   padding: 20px 16px 40px; max-width: 960px; margin: 0 auto;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-hei);
 }
 .admin-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -675,7 +675,7 @@ onMounted(async () => {
 .admin-logout {
   font-size: 13px; color: var(--accent-danger); cursor: pointer;
   padding: 6px 10px; border-radius: 6px; flex-shrink: 0;
-  &:active { background: rgba(255,59,48,0.08); }
+  &:active { background: var(--danger-soft); }
 }
 
 .gate {
@@ -769,7 +769,7 @@ onMounted(async () => {
 }
 .kind-ban_applied           { background: var(--danger-soft); color: var(--accent-danger); }
 .kind-suspension_lifted     { background: var(--success-soft); color: var(--accent-good); }
-.kind-report_status_changed { background: var(--campus-blue-soft); color: #0A84FF; }
+.kind-report_status_changed { background: var(--campus-blue-soft); color: var(--campus-blue); }
 .kind-actor_blocked         { background: var(--warning-soft); color: var(--accent-warn); }
 .kind-admin_login           { background: var(--bg-subtle); color: var(--text-muted); }
 .kind-admin_unauthorized    { background: var(--accent-primary); color: #fff; }
@@ -787,7 +787,7 @@ onMounted(async () => {
   &.primary { background: var(--accent-primary); color: #fff; }
   &.primary:active { opacity: 0.85; }
   &.danger { background: var(--danger-soft); color: var(--accent-danger); }
-  &.danger:active { background: #FFD1D1; }
+  &.danger:active { background: var(--danger-soft); }
 }
 
 .pill {
@@ -795,7 +795,7 @@ onMounted(async () => {
   font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
 }
 .pill-pending    { background: var(--warning-soft); color: var(--accent-warn); }
-.pill-reviewed   { background: var(--campus-blue-soft); color: #0A84FF; }
+.pill-reviewed   { background: var(--campus-blue-soft); color: var(--campus-blue); }
 .pill-resolved   { background: var(--success-soft); color: var(--accent-good); }
 .pill-dismissed  { background: var(--bg-subtle); color: var(--text-muted); }
 .pill-active     { background: var(--danger-soft); color: var(--accent-danger); }

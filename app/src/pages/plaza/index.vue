@@ -1155,7 +1155,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   background: var(--ink-faint); border-radius: 50%; position: relative;
   &::before, &::after {
     content: ''; position: absolute; inset: 0;
-    margin: auto; width: 8px; height: 1.5px; background: #fff;
+    margin: auto; width: 8px; height: 1.5px; background: var(--ink-inverse);
   }
   &::before { transform: rotate(45deg); }
   &::after { transform: rotate(-45deg); }
@@ -1425,7 +1425,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .ci-remove {
   position: absolute; top: 3px; right: 3px;
   width: 20px; height: 20px; border-radius: 50%;
-  background: rgba(0,0,0,0.6);
+  background: rgba(31,29,27,0.6);
   display: flex; align-items: center; justify-content: center; cursor: pointer;
   &:active { opacity: 0.7; }
 }
@@ -1656,7 +1656,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   width: 20px; height: 20px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  &:active { background: rgba(199,74,47,0.15); }
+  &:active { background: var(--brand-ghost); }
 }
 .ci-rx {
   width: 10px; height: 10px; position: relative;
