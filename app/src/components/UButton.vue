@@ -25,13 +25,15 @@
  * UButton — primary tap target component for v3.
  *
  * Variants:
- *   primary   — terracotta brand bg, white text — for confirms / 发布 / 立即联系
- *   secondary — ink bg, canvas text — for affirm-but-not-commit (e.g. 询价)
- *   ghost     — transparent bg, ink text, border — for cancel / secondary actions
- *   campus    — UIUC navy bg, white text — ONLY for the 5 official-affiliated surfaces
- *               (Illini badge, CAACI官方 post header, 校历 entry, verified pickup, scam-official)
- *               per docs/memory/design_system_two_track.md
- *   danger    — danger red bg, white text — for delete / unfollow / report
+ *   primary     — terracotta brand bg, white text — for confirms / 发布 / 立即联系
+ *   secondary   — ink bg, canvas text — for affirm-but-not-commit (e.g. 询价)
+ *   ghost       — filled-subtle paper-2 neutral bg, ink text, no border — kit
+ *                 canonical "Ghost" (tokens.css .u-btn-ghost / components-buttons.html).
+ *                 Matches the App.vue .u-btn-ghost utility one-to-one.
+ *   campus      — UIUC navy bg, white text — ONLY for the 5 official-affiliated surfaces
+ *                 (Illini badge, CAACI官方 post header, 校历 entry, verified pickup, scam-official)
+ *                 per docs/memory/design_system_two_track.md
+ *   danger      — danger red bg, white text — for delete / unfollow / report
  *
  * Sizes:
  *   sm  — 32px height, padding 16px horizontal, font 13
@@ -128,13 +130,14 @@ function onClick(evt: Event) {
   opacity: 0.9;
 }
 
+/* Kit canonical ghost = filled-subtle paper-2 neutral (tokens.css .u-btn-ghost),
+   one-to-one with the App.vue .u-btn-ghost utility — NOT bordered-transparent. */
 .u-btn-ghost {
-  background: transparent;
+  background: var(--paper-2);
   color: var(--ink);
-  border: 0.5px solid var(--border-strong);
 }
 .u-btn-ghost:active:not(.is-disabled):not(.is-loading) {
-  background: var(--bg-subtle);
+  background: var(--paper-3);
 }
 
 .u-btn-campus {
@@ -198,7 +201,7 @@ function onClick(evt: Event) {
     background: var(--ink-soft);
   }
   .u-btn-ghost:hover:not(.is-disabled):not(.is-loading) {
-    background: var(--bg-subtle);
+    background: var(--paper-3);
   }
   .u-btn-campus:hover:not(.is-disabled):not(.is-loading) {
     background: var(--campus-blue-deep);
