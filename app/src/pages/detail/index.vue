@@ -980,9 +980,8 @@ async function contactSeller() {
 .illini-badge {
   display: inline-flex; align-items: center;
   background: var(--campus-blue); color: #fff;
-  padding: 2px 7px; border-radius: 4px;
+  padding: 1px 6px; border-radius: 4px;
   font-size: 10px; font-weight: 700;
-  letter-spacing: 0.2px;
 }
 .illini-badge-text { color: #fff; font-size: 10px; }
 .seller-meta { font-size: 12px; color: var(--text-faint); margin-top: 3px; }

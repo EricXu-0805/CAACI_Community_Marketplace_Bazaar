@@ -215,7 +215,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .illini-badge {
   display: inline-flex; align-items: center;
   background: var(--campus-blue); color: #fff;
-  padding: 2px 7px; border-radius: 4px;
+  padding: 1px 6px; border-radius: 4px;
   font-size: 10px; font-weight: 700;
 }
 .illini-badge-text { color: #fff; font-size: 10px; }
