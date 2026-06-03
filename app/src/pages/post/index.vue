@@ -655,7 +655,7 @@ async function onSubmitComment() {
 .head-time { font-size: 11px; color: var(--text-faint); display: block; margin-top: 2px; }
 
 .badge-official {
-  background: var(--accent-action); color: #fff;
+  background: var(--campus-orange); color: #fff;
   padding: 1px 6px; border-radius: 4px;
   text { font-size: 10px; font-weight: 700; }
 }

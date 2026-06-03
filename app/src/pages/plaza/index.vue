@@ -1510,7 +1510,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .pm-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--text-faint); }
 
 .badge-official {
-  background: var(--accent-action); color: #fff;
+  background: var(--campus-orange); color: #fff;
   padding: 1px 6px; border-radius: 4px;
   text { font-size: 10px; font-weight: 700; }
 }
