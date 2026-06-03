@@ -238,10 +238,10 @@
               <view v-if="item.status === 'sold'" class="sold-overlay">
                 <text>{{ t('status.sold') }}</text>
               </view>
-              <text v-else-if="item.status === 'reserved'" class="badge badge-reserved">{{ t('status.reserved') }}</text>
-              <text v-else-if="item.condition === 'defective'" class="badge badge-defect">{{ t('condition.defective') }}</text>
-              <text v-else-if="item.condition === 'new'" class="badge badge-new">{{ t('condition.new') }}</text>
-              <text v-else-if="item.condition === 'like_new'" class="badge badge-mint">{{ t('condition.like_new') }}</text>
+              <view v-else-if="item.status === 'reserved'" class="card-cond-badge"><UBadge variant="reserved">{{ t('status.reserved') }}</UBadge></view>
+              <view v-else-if="item.condition === 'defective'" class="card-cond-badge"><UBadge variant="defect">{{ t('condition.defective') }}</UBadge></view>
+              <view v-else-if="item.condition === 'new'" class="card-cond-badge"><UBadge variant="new">{{ t('condition.new') }}</UBadge></view>
+              <view v-else-if="item.condition === 'like_new'" class="card-cond-badge"><UBadge variant="mint">{{ t('condition.like_new') }}</UBadge></view>
               <view v-if="item.images && item.images.length > 1" class="img-count-badge">
                 <text>{{ item.images.length }}</text>
               </view>
@@ -339,6 +339,7 @@ import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
+import UBadge from '../../components/UBadge.vue'
 
 const { t, lang, localize } = useI18n()
 const { isDark } = useTheme()
@@ -1157,14 +1158,9 @@ function goPublish() {
   -webkit-backdrop-filter: blur(6px);
   text { color: #fff; font-size: 10px; font-weight: 600; }
 }
-.badge {
-  position: absolute; top: 7px; left: 7px;
-  padding: 2px 7px; border-radius: var(--radius-xs); font-size: 10px; font-weight: 600;
-}
-.badge-new { background: var(--brand); color: var(--ink-inverse); }
-.badge-mint { background: var(--success); color: var(--ink-inverse); }
-.badge-defect { background: var(--danger); color: var(--ink-inverse); }
-.badge-reserved { background: var(--warning); color: var(--ink-inverse); }
+/* Condition pill visual lives in components/UBadge.vue now; the page only
+   owns its placement (top-left over the card image). */
+.card-cond-badge { position: absolute; top: 7px; left: 7px; }
 /* Safe-zone "verified pickup spot" badge — bottom-left, green to signal trust.
    Placed opposite to .img-count-badge (top-right) and .badge (top-left) so it
    never collides with either. */

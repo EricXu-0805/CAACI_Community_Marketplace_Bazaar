@@ -152,8 +152,8 @@
               <view class="pa-info">
                 <view class="pa-name-row">
                   <text class="pa-name">{{ post.profile?.nickname || t('app.user') }}</text>
-                  <view v-if="post.is_official" class="badge-official"><text>{{ t('plaza.official') }}</text></view>
-                  <view v-else-if="post.profile?.is_illini_verified" class="badge-illini"><text>Illini</text></view>
+                  <UBadge v-if="post.is_official" variant="official">{{ t('plaza.official') }}</UBadge>
+                  <UBadge v-else-if="post.profile?.is_illini_verified" variant="illini">Illini</UBadge>
                   <view v-if="post.is_pinned" class="badge-pinned"><text>{{ t('plaza.pinned') }}</text></view>
                 </view>
                 <text class="pa-time">{{ formatTime(post.created_at) }}</text>
@@ -501,6 +501,7 @@ import DesktopNav from '../../components/DesktopNav.vue'
 import { BASE_URL } from '../../config/runtime'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PlazaBannerCarousel from '../../components/PlazaBannerCarousel.vue'
+import UBadge from '../../components/UBadge.vue'
 
 const { t, lang, localize } = useI18n()
 const { isDark } = useTheme()
@@ -1509,16 +1510,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 }
 .pm-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--text-faint); }
 
-.badge-official {
-  background: var(--campus-orange); color: #fff;
-  padding: 1px 6px; border-radius: 4px;
-  text { font-size: 10px; font-weight: 700; }
-}
-.badge-illini {
-  background: var(--campus-blue); color: #fff;
-  padding: 1px 6px; border-radius: 4px;
-  text { font-size: 10px; font-weight: 700; color: #fff; }
-}
+/* official + illini badges → components/UBadge.vue (variants official/illini). */
 /* Pinned uses amber warning per design spec — differentiates from
  * official (brand terracotta) and verified (campus blue). Three
  * semantic badge colors, three distinct roles, so users can scan
