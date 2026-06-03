@@ -15,9 +15,7 @@
       <image :src="seller.avatar_url || defaultAvatarSrc" class="avatar" mode="aspectFill" />
       <view class="name-row">
         <text class="nickname">{{ seller.nickname }}</text>
-        <view v-if="seller.is_illini_verified" class="illini-badge">
-          <text class="illini-badge-text">Illini</text>
-        </view>
+        <UBadge v-if="seller.is_illini_verified" variant="illini">Illini</UBadge>
       </view>
       <text v-if="seller.status_text || seller.status_emoji" class="user-status">
         <text v-if="seller.status_emoji" class="us-emoji">{{ seller.status_emoji }}</text>
@@ -93,6 +91,7 @@ import { useFollow } from '../../composables/useFollow'
 import { matchSpot } from '../../composables/useCampusSpots'
 import type { Profile, Item } from '../../types'
 import { formatPrice, thumbUrl } from '../../utils'
+import UBadge from '../../components/UBadge.vue'
 
 const { t, lang, localize } = useI18n()
 const { isDark } = useTheme()
@@ -212,13 +211,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--bg-subtle); }
 .name-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
 .nickname { font-size: 18px; font-weight: 700; color: var(--text-primary); }
-.illini-badge {
-  display: inline-flex; align-items: center;
-  background: var(--campus-blue); color: #fff;
-  padding: 1px 6px; border-radius: 4px;
-  font-size: 10px; font-weight: 700;
-}
-.illini-badge-text { color: #fff; font-size: 10px; }
+/* illini badge → components/UBadge.vue (variant illini). */
 .bio { font-size: 13px; color: var(--text-muted); text-align: center; max-width: 280px; }
 .user-status {
   display: inline-flex; align-items: center; gap: 4px;
