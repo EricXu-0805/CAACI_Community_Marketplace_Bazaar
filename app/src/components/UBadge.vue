@@ -33,7 +33,8 @@ defineProps<{
 .u-badge--mint     { background: var(--success); color: var(--ink-inverse); }
 .u-badge--defect   { background: var(--danger);  color: var(--ink-inverse); }
 .u-badge--reserved { background: var(--warning); color: var(--ink-inverse); }
-/* post/plaza pills — verbatim lift (1px 6px, weight 700, #fff on fill). */
-.u-badge--official { background: var(--accent-action); color: #fff; padding: 1px 6px; font-weight: 700; }
+/* post/plaza pills (1px 6px, weight 700, #fff on fill). official = campus-orange
+   per D1 (university-identity), matching reconcile's .badge-official recolor. */
+.u-badge--official { background: var(--campus-orange); color: #fff; padding: 1px 6px; font-weight: 700; }
 .u-badge--illini   { background: var(--campus-blue);   color: #fff; padding: 1px 6px; font-weight: 700; }
 </style>
