@@ -14,10 +14,11 @@
  * the prior `.badge .badge-*` pills.
  *
  * Variants are added consumer-driven as each page migrates — no unused
- * variants. Today: condition (new · mint=like-new · defect · reserved).
+ * variants. Today: condition (new · mint=like-new · defect · reserved) +
+ * official · illini (post/plaza pills; 1px 6px / weight 700 — verbatim lift).
  */
 defineProps<{
-  variant: 'new' | 'mint' | 'defect' | 'reserved'
+  variant: 'new' | 'mint' | 'defect' | 'reserved' | 'official' | 'illini'
 }>()
 </script>
 
@@ -32,4 +33,7 @@ defineProps<{
 .u-badge--mint     { background: var(--success); color: var(--ink-inverse); }
 .u-badge--defect   { background: var(--danger);  color: var(--ink-inverse); }
 .u-badge--reserved { background: var(--warning); color: var(--ink-inverse); }
+/* post/plaza pills — verbatim lift (1px 6px, weight 700, #fff on fill). */
+.u-badge--official { background: var(--accent-action); color: #fff; padding: 1px 6px; font-weight: 700; }
+.u-badge--illini   { background: var(--campus-blue);   color: #fff; padding: 1px 6px; font-weight: 700; }
 </style>
