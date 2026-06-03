@@ -1,7 +1,7 @@
 <template>
   <view class="page" v-if="item">
     <!-- Image Carousel -->
-    <view class="img-area">
+    <view :class="['img-area', { 'is-sold': item.status === 'sold' }]">
       <!--
         Swiper height is frozen on item.image_dimensions[0] so swipes
         between slides don't resize the viewport mid-gesture (xianyu
@@ -31,6 +31,9 @@
           </view>
         </swiper-item>
       </swiper>
+      <view v-if="item.status === 'sold'" class="sold-overlay">
+        <text class="sold-stamp">{{ t('status.sold') }}</text>
+      </view>
       <!-- Overlay buttons -->
       <view class="img-back" role="button" :aria-label="t('a11y.back')" @click="goBack">
         <view class="back-arrow"></view>
@@ -706,6 +709,31 @@ async function contactSeller() {
   background: var(--bg-inset);
 }
 /*
+ * Sold-state hero (gate §4 refine): desaturate the photo and stamp a
+ * rotated serif "SOLD" over it — the kit's product_card_v2 pattern
+ * (overlay rgba(31,29,27,.5) + ink-inverse stamp). Overlay is inert so
+ * the back/share buttons above it stay tappable.
+ */
+.img-area.is-sold .swiper-img {
+  filter: grayscale(1) brightness(0.92);
+}
+.sold-overlay {
+  position: absolute; inset: 0; z-index: 6;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(31,29,27,0.5);
+  pointer-events: none;
+}
+.sold-stamp {
+  font-family: var(--font-serif);
+  font-size: 24px; font-weight: 600;
+  color: var(--ink-inverse);
+  border: 2px solid var(--ink-inverse);
+  padding: 6px 14px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transform: rotate(-6deg);
+}
+/*
  * Height is injected via :style="swiperStyle" (aspect-ratio + max-height).
  * Keep `background` so tall portraits letterbox into a neutral surface
  * instead of showing whatever is behind during the initial @load settle.
@@ -952,9 +980,8 @@ async function contactSeller() {
 .illini-badge {
   display: inline-flex; align-items: center;
   background: var(--campus-blue); color: #fff;
-  padding: 2px 7px; border-radius: 4px;
+  padding: 1px 6px; border-radius: 4px;
   font-size: 10px; font-weight: 700;
-  letter-spacing: 0.2px;
 }
 .illini-badge-text { color: #fff; font-size: 10px; }
 .seller-meta { font-size: 12px; color: var(--text-faint); margin-top: 3px; }
@@ -962,7 +989,7 @@ async function contactSeller() {
   display: inline-flex; align-items: center; gap: 4px;
   margin-top: 3px;
   padding: 2px 8px; border-radius: 10px;
-  background: rgba(26,122,255,0.08);
+  background: var(--campus-blue-soft);
   align-self: flex-start;
 }
 .ss-emoji { font-size: 12px; line-height: 1; }
@@ -1145,7 +1172,7 @@ async function contactSeller() {
   &::before { transform: rotate(45deg); }
   &::after { transform: rotate(-45deg); }
 }
-.rs-prompt { display: block; margin: 14px 0 8px; font-size: 14px; color: var(--text-secondary, #5a5a63); }
+.rs-prompt { display: block; margin: 14px 0 8px; font-size: 14px; color: var(--text-secondary); }
 .rs-stars {
   display: flex; justify-content: center; gap: 8px; padding: 14px 0;
 }

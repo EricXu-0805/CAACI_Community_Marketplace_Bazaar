@@ -220,8 +220,8 @@ async function finish() {
   cursor: pointer;
   text { font-size: 14px; color: var(--text-secondary); font-weight: 500; }
   &.on {
-    background: var(--accent-primary); border-color: var(--text-primary);
-    text { color: #fff; }
+    background: var(--ink); border-color: var(--ink);
+    text { color: var(--ink-inverse); }
   }
   &:active { transform: scale(0.96); }
 }

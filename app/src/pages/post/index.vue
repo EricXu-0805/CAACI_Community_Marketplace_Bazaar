@@ -234,6 +234,7 @@ import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
 import { useLongPress } from '../../composables/useLongPress'
 import { formatTime, friendlyErrorMessage, quickTranslate, thumbUrl } from '../../utils'
+import { DIALOG_DANGER, DIALOG_INK } from '../../utils/dialogColors'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim, Post, PostComment } from '../../types'
 import { BASE_URL } from '../../config/runtime'
@@ -440,7 +441,7 @@ function onDelete() {
   if (!post.value) return
   uni.showModal({
     title: t('plaza.deleteConfirm'),
-    confirmColor: 'var(--accent-danger)',
+    confirmColor: DIALOG_DANGER,
     success: async (r) => {
       if (!r.confirm || !post.value) return
       try {
@@ -486,12 +487,12 @@ function onCommentLongPress(c: PostComment) {
     : [t('plaza.reply'), t('plaza.reportComment'), t('plaza.reportUser')]
   uni.showActionSheet({
     itemList: items,
-    itemColor: isMine ? 'var(--accent-danger)' : '#2A2A2E',
+    itemColor: isMine ? DIALOG_DANGER : DIALOG_INK,
     success: (res) => {
       if (isMine && res.tapIndex === 0) {
         uni.showModal({
           title: t('plaza.commentDeleteConfirm'),
-          confirmColor: 'var(--accent-danger)',
+          confirmColor: DIALOG_DANGER,
           success: async (r) => {
             if (!r.confirm || !post.value) return
             try {
@@ -654,7 +655,7 @@ async function onSubmitComment() {
 .head-time { font-size: 11px; color: var(--text-faint); display: block; margin-top: 2px; }
 
 .badge-official {
-  background: var(--accent-action); color: #fff;
+  background: var(--campus-orange); color: #fff;
   padding: 1px 6px; border-radius: 4px;
   text { font-size: 10px; font-weight: 700; }
 }
@@ -664,9 +665,9 @@ async function onSubmitComment() {
   text { font-size: 10px; font-weight: 700; color: #fff; }
 }
 .badge-pinned {
-  background: rgba(199,74,47,0.12); color: var(--accent-action);
+  background: var(--warning-soft); color: var(--warning);
   padding: 1px 6px; border-radius: 4px;
-  text { font-size: 10px; font-weight: 600; color: var(--accent-action); }
+  text { font-size: 10px; font-weight: 600; color: var(--warning); letter-spacing: 0.02em; }
 }
 
 .content-wrap { position: relative; padding-right: 44px; }

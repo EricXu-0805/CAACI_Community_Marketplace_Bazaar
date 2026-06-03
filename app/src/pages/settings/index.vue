@@ -77,6 +77,7 @@ import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useSupabase } from '../../composables/useSupabase'
 import { useTheme, type ThemePref } from '../../composables/useTheme'
+import { DIALOG_DANGER } from '../../utils/dialogColors'
 import { BASE_URL } from '../../config/runtime'
 
 const { t, lang, setLang } = useI18n()
@@ -224,7 +225,7 @@ function onDeleteAccount() {
   uni.showModal({
     title: t('settings.deleteAccountConfirm'),
     content: t('settings.deleteAccountHint'),
-    confirmColor: 'var(--accent-danger)',
+    confirmColor: DIALOG_DANGER,
     success: async (res) => {
       if (!res.confirm) return
       uni.showLoading({ title: '...' })

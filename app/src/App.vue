@@ -677,7 +677,7 @@ page,
   --border-hair:   rgba(42, 42, 46, 0.05);
   --border-warm:   #E8DFCC;
   --brand:          #C74A2F;
-  --brand-deep:     #A03A24;
+  --brand-deep:     #A23A22;
   --brand-soft:     #F5D9CE;
   --brand-ghost:    #FBEAE2;
   --campus-blue:      #13294B;
@@ -724,7 +724,7 @@ page,
   --font-mono:  'JetBrains Mono', 'SF Mono', Menlo, ui-monospace, monospace;
   --font-sans:  var(--font-hei);
   --shadow-hair:  0 0 0 1px rgba(42, 42, 46, 0.06);
-  --shadow-soft:  0 1px 2px rgba(42, 42, 46, 0.04), 0 4px 12px rgba(42, 42, 46, 0.06);
+  --shadow-soft:  0 1px 2px rgba(42, 42, 46, 0.04), 0 4px 12px rgba(42, 42, 46, 0.04);
   --shadow-pop:   0 2px 4px rgba(42, 42, 46, 0.05), 0 12px 28px rgba(42, 42, 46, 0.08);
   --shadow-float: 0 1px 2px rgba(42, 42, 46, 0.06), 0 24px 56px -16px rgba(42, 42, 46, 0.18);
   --shadow-cta:   0 2px 4px rgba(199, 74, 47, 0.15), 0 12px 28px -8px rgba(199, 74, 47, 0.28);
@@ -1061,7 +1061,7 @@ button:focus-visible,
 
   /* ---------- BRAND (terracotta — pottery red) ---------- */
   --brand:          #C74A2F;   /* terracotta — price · CTA · seal */
-  --brand-deep:     #A03A24;   /* hover / pressed */
+  --brand-deep:     #A23A22;   /* hover / pressed */
   --brand-soft:     #F5D9CE;   /* chip bg · soft fill */
   --brand-ghost:    #FBEAE2;   /* hover tint on white */
 
@@ -1142,7 +1142,7 @@ button:focus-visible,
    * so the lift reads as "card on paper" instead of "screen". */
   --shadow-hair:       0 0 0 1px rgba(42, 42, 46, 0.06);
   --shadow-soft:       0 1px 2px rgba(42, 42, 46, 0.04),
-                       0 4px 12px rgba(42, 42, 46, 0.06);
+                       0 4px 12px rgba(42, 42, 46, 0.04);
   --shadow-pop:        0 2px 4px rgba(42, 42, 46, 0.05),
                        0 12px 28px rgba(42, 42, 46, 0.08);
   --shadow-float:      0 1px 2px rgba(42, 42, 46, 0.06),
@@ -1550,12 +1550,27 @@ button:focus-visible,
 }
 .u-chip.active {
   background: var(--ink);
-  color: var(--canvas);
+  color: var(--ink-inverse);
   border-color: var(--ink);
 }
 .u-chip.brand {
   background: var(--brand-soft);
   color: var(--brand-deep);
   border-color: transparent;
+}
+.u-chip.warn {
+  background: var(--warning-soft);
+  color: var(--warning);
+  border-color: transparent;
+}
+
+/* ---------- MOTION (transform/opacity only — mp-weixin safe) ---------- */
+@keyframes heart-pop { 0% { transform: scale(1); } 40% { transform: scale(1.32); } 100% { transform: scale(1); } }
+.u-anim-heart-pop { animation: heart-pop var(--dur-2) var(--ease-warm); }
+.u-press { transition: transform var(--dur-1) var(--ease-std); }
+.u-press:active { transform: scale(0.96); }
+@media (prefers-reduced-motion: reduce) {
+  .u-anim-heart-pop { animation: none; }
+  .u-press, .u-press:active { transition: none; transform: none; }
 }
 </style>

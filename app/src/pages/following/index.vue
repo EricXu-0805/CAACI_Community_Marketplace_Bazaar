@@ -157,7 +157,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .card-price { font-size: 15px; font-weight: 700; color: var(--text-primary); margin-top: 4px; display: block; }
 .card-seller { display: flex; align-items: center; gap: 5px; margin-top: 5px; }
 .cs-avatar { width: 16px; height: 16px; border-radius: 50%; background: var(--bg-subtle); }
-.cs-name { font-size: 11px; color: var(--text-secondary, #5a5a63); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-name { font-size: 11px; color: var(--text-secondary, var(--ink-quiet)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .empty {
   display: flex; flex-direction: column; align-items: center;

@@ -12,12 +12,12 @@
       <text :id="bodyId" class="pdm-body t-body">{{ t('publish.permissionModalBody') }}</text>
 
       <view class="pdm-actions">
-        <button class="u-btn-brand pdm-btn" @click="onOpenSettings">
+        <UButton variant="primary" block class="pdm-btn" @click="onOpenSettings">
           {{ t('publish.permissionModalOpenSettings') }}
-        </button>
-        <button class="u-btn-ghost pdm-btn" @click="onDismiss">
+        </UButton>
+        <UButton variant="ghost" block class="pdm-btn" @click="onDismiss">
           {{ t('publish.permissionModalDismiss') }}
-        </button>
+        </UButton>
       </view>
     </view>
   </view>
@@ -26,6 +26,7 @@
 <script setup lang="ts">
 import { computed, watch, onUnmounted } from 'vue'
 import { useI18n } from '../composables/useI18n'
+import UButton from './UButton.vue'
 
 const { t } = useI18n()
 
@@ -185,21 +186,12 @@ onUnmounted(() => {
 }
 
 /*
-  .u-btn-brand and .u-btn-ghost come from App.vue:1561-1603 (M1).
-  Override min-height + width to fill the panel — the kit defaults
-  are intrinsic-sized but a modal needs the buttons stacked-full so
-  thumb targets are unambiguous on mobile.
+  Action buttons are <UButton variant=primary/ghost block> — the
+  component owns fill, text, radius, font, sizing (md = 44px, the
+  iOS 44pt target), and flex centering. The modal adds only layout:
+  the .pdm-btn class lands on the component root, so the desktop
+  `flex: 1` row split below applies to it directly.
 */
-.pdm-btn {
-  width: 100%;
-  height: 46px;
-  font-size: 15px;
-  font-weight: 600;
-  border-radius: 23px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
 /*
   Enter animations — pdmMaskIn fades the backdrop, pdmPanelIn fades

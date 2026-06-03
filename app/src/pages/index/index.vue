@@ -47,7 +47,7 @@
         <view
           v-for="cat in categories"
           :key="'c'+cat.value"
-          :class="['pill', { active: selectedCategory === cat.value }]"
+          :class="['pill', 'u-press', { active: selectedCategory === cat.value }]"
           @click="selectCategory(cat.value)"
         >
           <text>{{ cat.label }}</text>
@@ -73,15 +73,16 @@
 
     <view
       v-if="showSemesterBanner"
-      class="semester-banner"
-      :style="{ '--sb-accent': semesterConfig.accent }"
+      class="semester-banner u-press"
       @click="onSemesterBannerTap"
     >
+      <text class="seb-arc" aria-hidden="true">I</text>
       <view class="seb-body">
+        <text class="seb-stamp t-eyebrow">{{ t('app.name') }}</text>
         <text class="seb-title">{{ semesterTitle(lang as 'en' | 'zh') }}</text>
         <text class="seb-sub">{{ semesterSubtitle(lang as 'en' | 'zh') }}</text>
       </view>
-      <view class="seb-arrow">›</view>
+      <text class="seb-arrow">›</text>
     </view>
 
     <!-- Active filter summary bar (shows when filters are applied, even if sheet closed) -->
@@ -218,7 +219,7 @@
           <view
             v-for="item in col"
             :key="item.id"
-            class="card"
+            class="card u-press"
             @click="goToDetail(item.id)"
             @touchstart="cardLongPress.onTouchstart(item)"
             @touchend="cardLongPress.onTouchend"
@@ -269,7 +270,7 @@
                   <text v-if="isOldItem(item.created_at)" class="old-tag">{{ t('home.oldListing') }}</text>
                   <image
                     :src="isFavorited(item.id) ? '/static/heart-filled.svg' : '/static/heart.svg'"
-                    class="heart-img"
+                    :class="['heart-img', { 'u-anim-heart-pop': isFavorited(item.id) }]"
                     role="button"
                     :aria-label="isFavorited(item.id) ? t('a11y.unfavorite') : t('a11y.favorite')"
                     @click.stop="onQuickFav(item)"
@@ -438,7 +439,7 @@ const sortBy = ref('latest')
 const categoryKeys: (ItemCategory | null)[] = [null, 'currency_exchange', 'rideshare', 'electronics', 'furniture', 'housing', 'clothing', 'books', 'vehicles', 'daily', 'food', 'other']
 const categories = computed(() => categoryKeys.map(k => ({
   value: k,
-  label: t(k ? 'cat.' + k : 'cat.all'),
+  label: t(k ? 'cat.pair.' + k : 'cat.pair.all'),
 })))
 
 /*
@@ -910,9 +911,9 @@ function goPublish() {
   box-sizing: border-box;
   flex-shrink: 0;
   &.active {
-    background: var(--brand);
-    color: #fff;
-    border-color: var(--brand);
+    background: var(--ink);
+    color: var(--ink-inverse);
+    border-color: var(--ink);
   }
   &:active { transform: scale(0.96); }
 }
@@ -965,12 +966,13 @@ function goPublish() {
   display: flex; align-items: flex-start; gap: 10px;
   padding: 10px 14px;
   background: var(--warning-soft);
-  border-bottom: 0.5px solid rgba(212, 146, 60, 0.25);
+  border-bottom: 0.5px solid var(--warning-soft);
   border-left: 3px solid var(--warning);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 .sb-icon {
   flex-shrink: 0; width: 20px; height: 20px;
-  border-radius: 50%; background: var(--accent-warn);
+  border-radius: 50%; background: var(--warning);
   display: flex; align-items: center; justify-content: center;
   margin-top: 1px;
 }
@@ -986,19 +988,66 @@ function goPublish() {
 .sb-title { font-size: 12px; font-weight: 700; color: var(--warning); letter-spacing: 0.01em; }
 .sb-text { font-size: 11px; color: var(--ink-soft); line-height: 1.6; }
 
+/*
+ * Semester / move-out banner — kit ink-editorial card (index_v1.html
+ * .card.feature + components-banners.html "ghosted I"). Ink fill, a
+ * mono brand stamp in campus-orange, serif title in ink-inverse, and
+ * a ghosted serif "I" arc bleeding off the right edge as the brand
+ * accent. Replaces the prior off-system blue→orange gradient.
+ */
 .semester-banner {
-  display: flex; align-items: center; gap: 12px;
-  margin: 8px 12px 4px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: linear-gradient(100deg, var(--sb-accent, #3b82f6) 0%, rgba(255,255,255,0) 130%);
-  color: #fff;
+  position: relative;
+  overflow: hidden;
+  display: flex; align-items: center; gap: var(--space-3);
+  margin: var(--space-2) var(--space-3) var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--ink);
+  box-shadow: var(--shadow-pop);
   cursor: pointer;
 }
-.seb-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.seb-title { font-size: 14px; font-weight: 700; color: #fff; }
-.seb-sub { font-size: 12px; color: rgba(255,255,255,0.88); line-height: 1.4; }
-.seb-arrow { font-size: 22px; color: rgba(255,255,255,0.88); line-height: 1; }
+/* Decorative serif "I" arc — the brand accent. Cream-ghosted so it
+   reads as a watermark on the ink fill, not a literal glyph. */
+.seb-arc {
+  position: absolute; right: -14px; top: -34px;
+  font-family: var(--font-serif);
+  font-size: 140px; font-weight: 600; line-height: 1;
+  letter-spacing: -0.08em;
+  color: var(--brand-ghost);
+  opacity: 0.1;
+  pointer-events: none;
+}
+.seb-body {
+  position: relative;
+  flex: 1; display: flex; flex-direction: column; gap: 3px;
+  min-width: 0;
+}
+/* Mono eyebrow stamp — campus-orange override of the global .t-eyebrow
+   (which defaults to --ink-quiet, unreadable on ink). */
+.seb-stamp {
+  color: var(--campus-orange);
+  margin-bottom: 2px;
+}
+.seb-title {
+  font-family: var(--font-serif);
+  font-size: 15px; font-weight: 600;
+  color: var(--ink-inverse);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.seb-sub {
+  font-size: 12px;
+  color: var(--ink-inverse);
+  opacity: 0.72;
+  line-height: 1.4;
+}
+.seb-arrow {
+  position: relative;
+  font-family: var(--font-serif);
+  font-size: 22px; line-height: 1;
+  color: var(--brand-soft);
+  flex-shrink: 0;
+}
 
 .active-filter-bar {
   display: flex; align-items: center; gap: 8px;
@@ -1035,7 +1084,7 @@ function goPublish() {
   padding: 7px 15px; border-radius: 8px;
   font-size: 13px; color: var(--text-secondary); background: var(--bg-subtle);
   cursor: pointer; transition: all 0.15s; font-weight: 500;
-  &.active { background: var(--accent-primary); color: #fff; }
+  &.active { background: var(--ink); color: var(--ink-inverse); }
 }
 /* Even though the sheet wins z-index (1001 > 999 on tabbar), the apply
    button visually coincided with the tabbar row, creating a jarring
@@ -1066,8 +1115,9 @@ function goPublish() {
    (brown-tinted alpha) instead of cool grey so it blends into the
    cream page background without a muddy halo. */
 .card {
-  background: var(--bg-elev-1);
-  border-radius: var(--radius-xl);
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  border: 0.5px solid var(--border);
   overflow: hidden;
   cursor: pointer;
   box-shadow: var(--shadow-soft);
@@ -1082,7 +1132,7 @@ function goPublish() {
    freak clamped ratios. */
 .card-img-box {
   position: relative; width: 100%;
-  background: var(--bg-subtle);
+  background: var(--surface-alt);
   overflow: hidden;
   min-height: 120px;
 }
@@ -1109,13 +1159,12 @@ function goPublish() {
 }
 .badge {
   position: absolute; top: 7px; left: 7px;
-  padding: 2px 7px; border-radius: 5px; font-size: 10px; font-weight: 600;
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  padding: 2px 7px; border-radius: var(--radius-xs); font-size: 10px; font-weight: 600;
 }
-.badge-new { background: rgba(199,74,47,0.85); color: #fff; }
-.badge-mint { background: rgba(93, 124, 74, 0.92); color: #fff; }
-.badge-defect { background: rgba(181, 51, 51, 0.92); color: #fff; }
-.badge-reserved { background: rgba(212, 146, 60, 0.92); color: #fff; }
+.badge-new { background: var(--brand); color: var(--ink-inverse); }
+.badge-mint { background: var(--success); color: var(--ink-inverse); }
+.badge-defect { background: var(--danger); color: var(--ink-inverse); }
+.badge-reserved { background: var(--warning); color: var(--ink-inverse); }
 /* Safe-zone "verified pickup spot" badge — bottom-left, green to signal trust.
    Placed opposite to .img-count-badge (top-right) and .badge (top-left) so it
    never collides with either. */
@@ -1123,11 +1172,10 @@ function goPublish() {
   position: absolute; bottom: 7px; left: 7px;
   display: inline-flex; align-items: center; gap: 3px;
   padding: 2px 7px 2px 5px; border-radius: 10px;
-  background: rgba(93, 124, 74, 0.92);
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  background: var(--success);
 }
-.bsc-check { font-size: 10px; color: #fff; font-weight: 800; line-height: 1; }
-.bsc-label { font-size: 10px; color: #fff; font-weight: 600; line-height: 1; }
+.bsc-check { font-size: 10px; color: var(--ink-inverse); font-weight: 800; line-height: 1; }
+.bsc-label { font-size: 10px; color: var(--ink-inverse); font-weight: 600; line-height: 1; }
 .card-time { font-size: 10px; color: var(--text-faint); margin-left: auto; }
 .old-tag { font-size: 10px; color: var(--text-faint); margin-right: 2px; }
 
@@ -1196,7 +1244,7 @@ function goPublish() {
 /* ========== States ========== */
 .tip {
   display: flex; align-items: center; justify-content: center;
-  padding: 20px; gap: 8px; color: #bbb; font-size: 12px;
+  padding: 20px; gap: 8px; color: var(--ink-faint); font-size: 12px;
 }
 .dots {
   display: flex; gap: 2px;
@@ -1249,9 +1297,9 @@ function goPublish() {
   border-radius: 12px; height: 68px; cursor: pointer;
   &:active { opacity: 0.9; }
 }
-.bg-warm { background: linear-gradient(135deg, #FFF3E0, #FFE0B2); }
-.bg-blue { background: linear-gradient(135deg, #E3F2FD, #BBDEFB); }
-.bg-green { background: linear-gradient(135deg, #E8F5E9, #C8E6C9); }
+.bg-warm { background: var(--warning-soft); }
+.bg-blue { background: var(--campus-blue-soft); }
+.bg-green { background: var(--success-soft); }
 .banner-emoji { font-size: 28px; flex-shrink: 0; }
 .banner-text { flex: 1; }
 .banner-title { font-size: 14px; font-weight: 600; color: var(--text-primary); display: block; }

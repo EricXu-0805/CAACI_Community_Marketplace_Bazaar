@@ -51,6 +51,7 @@ import { ref } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { useSupabase } from '../../composables/useSupabase'
 import { useAuth } from '../../composables/useAuth'
+import { DIALOG_DANGER } from '../../utils/dialogColors'
 import {
   TERMS_VERSION,
   PRIVACY_VERSION,
@@ -94,7 +95,7 @@ function onDecline() {
     content: t('reconsent.declineHint'),
     confirmText: t('reconsent.signOut'),
     cancelText: t('reconsent.goBack'),
-    confirmColor: 'var(--accent-danger)',
+    confirmColor: DIALOG_DANGER,
     success: (r) => {
       if (r.confirm) signOut()
     },
@@ -130,17 +131,17 @@ function onDecline() {
   padding: 14px 16px; border-radius: 12px;
   background: var(--bg-elev-2); margin-bottom: 10px;
   cursor: pointer;
-  &:active { background: #eeeeef; }
+  &:active { background: var(--bg-inset); }
 }
 .doc-icon {
   width: 36px; height: 36px; border-radius: 10px;
   flex-shrink: 0; position: relative;
   background: var(--bg-elev-1);
 }
-.doc-terms { background: rgba(59,130,246,0.1); }
+.doc-terms { background: var(--campus-blue-soft); }
 .doc-terms::before {
   content: ''; position: absolute; top: 9px; left: 11px;
-  width: 14px; height: 18px; border: 2px solid #3b82f6;
+  width: 14px; height: 18px; border: 2px solid var(--campus-blue);
   border-radius: 2px;
 }
 .doc-privacy { background: rgba(93, 124, 74, 0.10); }
@@ -178,7 +179,7 @@ function onDecline() {
   display: block; margin-top: 12px; padding: 14px;
   background: var(--warning-soft); border-left: 3px solid var(--accent-warn);
   border-radius: 8px;
-  font-size: 13px; color: #8B5000; line-height: 1.55;
+  font-size: 13px; color: var(--accent-warn); line-height: 1.55;
 }
 
 .footer {

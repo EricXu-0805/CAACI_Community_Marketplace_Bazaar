@@ -150,6 +150,13 @@
       :visible="permissionModalVisible"
       @close="permissionModalVisible = false"
     />
+
+    <ScamInterceptModal
+      :visible="showScamModal"
+      @understand="onScamUnderstand"
+      @close="showScamModal = false"
+      @learnMore="onScamLearnMore"
+    />
   </view>
 </template>
 
@@ -165,10 +172,12 @@ import { useLocation } from '../../composables/useLocation'
 import { useItems } from '../../composables/useItems'
 import { useTranslate } from '../../composables/useTranslate'
 import { friendlyErrorMessage } from '../../utils'
+import { DIALOG_INK, DIALOG_WARN } from '../../utils/dialogColors'
 import type { ItemCategory, ItemCondition } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PermissionDeniedModal from '../../components/PermissionDeniedModal.vue'
+import ScamInterceptModal from '../../components/ScamInterceptModal.vue'
 
 const { t, lang } = useI18n()
 const { CAMPUS_SPOTS } = useCampusSpots()
@@ -265,9 +274,37 @@ const permissionModalVisible = ref(false)
  * that re-tapping unselects. Sheet auto-closes on either path so the
  * user immediately sees the field returning to its placeholder state.
  */
+/*
+ * Currency-exchange scam-intercept modal. Client-side gate only (no
+ * backend): first time a user selects the currency_exchange category we
+ * show the rich safety modal, then remember via a localStorage flag so
+ * it never nags on subsequent selections. The existing submit-time
+ * uni.showModal confirm (in onSubmit) stays as the hard ack gate; this
+ * modal is the earlier, friendlier teach-the-rules moment.
+ */
+const SCAM_MODAL_SEEN_KEY = 'scam_modal_seen_v1'
+const showScamModal = ref(false)
+
+function maybeShowScamModal() {
+  let seen = ''
+  try { seen = uni.getStorageSync(SCAM_MODAL_SEEN_KEY) } catch { /* private mode — treat as unseen */ }
+  if (!seen) showScamModal.value = true
+}
+
+function onScamUnderstand() {
+  try { uni.setStorageSync(SCAM_MODAL_SEEN_KEY, '1') } catch { /* ignore */ }
+  showScamModal.value = false
+}
+
+function onScamLearnMore() {
+  showScamModal.value = false
+  uni.navigateTo({ url: '/pages/legal/index' })
+}
+
 function onCategoryTap(cat: ItemCategory) {
   form.category = form.category === cat ? '' : cat
   showCat.value = false
+  if (form.category === 'currency_exchange') maybeShowScamModal()
 }
 function onConditionTap(cond: string) {
   form.condition = (form.condition === cond ? '' : cond) as ItemCondition | ''
@@ -367,7 +404,7 @@ function promptSaveDraft(onDecided: () => void) {
     content: t('publish.draftPromptBody'),
     confirmText: t('publish.draftSave'),
     cancelText: t('publish.draftDiscard'),
-    confirmColor: '#2A2A2E',
+    confirmColor: DIALOG_INK,
     success: (r) => {
       if (r.confirm) {
         saveDraft()
@@ -436,7 +473,7 @@ onShow(() => {
       content: t('publish.draftRestoreBody'),
       confirmText: t('publish.draftRestore'),
       cancelText: t('publish.draftDiscard'),
-      confirmColor: '#2A2A2E',
+      confirmColor: DIALOG_INK,
       success: (r) => {
         if (r.confirm) applyDraft(draft)
         else if (r.cancel) clearDraft()
@@ -568,7 +605,7 @@ async function onSubmit() {
         content: t('publish.priceTooHighBody'),
         confirmText: t('publish.priceTooHighConfirm'),
         cancelText: t('publish.priceTooHighCancel'),
-        confirmColor: 'var(--accent-warn)',
+        confirmColor: DIALOG_WARN,
         success: (r) => resolve(!!r.confirm),
         fail: () => resolve(false),
       })
@@ -583,7 +620,7 @@ async function onSubmit() {
         content: t('scam.publishBody'),
         confirmText: t('scam.publishAgree'),
         cancelText: t('scam.publishCancel'),
-        confirmColor: 'var(--accent-warn)',
+        confirmColor: DIALOG_WARN,
         success: (r) => resolve(!!r.confirm),
         fail: () => resolve(false),
       })
@@ -827,7 +864,7 @@ async function onSubmit() {
 }
 .upload-fill {
   position: absolute; top: 0; bottom: 0; left: 0;
-  background: rgba(26,26,26,0.08);
+  background: var(--line-hair);
   transition: width 0.3s ease;
 }
 .upload-text {
