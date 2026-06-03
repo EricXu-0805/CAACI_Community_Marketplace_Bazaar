@@ -50,7 +50,42 @@
         </view>
       </scroll-view>
 
-      <view v-if="loading && posts.length === 0" class="loading">
+      <template v-if="activeTab === 'following'">
+        <view v-if="followLoading && followItems.length === 0" class="loading">
+          <text>{{ t('home.loading') }}...</text>
+        </view>
+
+        <view v-else-if="followItems.length === 0" class="empty">
+          <view class="empty-icon"></view>
+          <text class="empty-text">{{ isLoggedIn ? t('follow.emptyFeed') : t('profile.signInHint') }}</text>
+        </view>
+
+        <view v-else class="follow-grid">
+          <view
+            v-for="it in followItems"
+            :key="it.id"
+            class="follow-card"
+            @click="goToFollowItem(it.id)"
+          >
+            <image
+              :src="thumbUrl(it.images?.[0], 'card') || '/static/placeholder.svg'"
+              class="fc-img"
+              mode="aspectFill"
+              lazy-load
+            />
+            <view class="fc-body">
+              <text class="fc-title">{{ localize(it.title_i18n, it.title) }}</text>
+              <text class="fc-price">{{ formatPrice(it.price, t('home.free')) }}</text>
+              <view v-if="it.profile" class="fc-seller">
+                <image :src="it.profile.avatar_url || defaultAvatarSrc" class="fc-avatar" mode="aspectFill" />
+                <text class="fc-nick">{{ it.profile.nickname }}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </template>
+
+      <view v-else-if="loading && posts.length === 0" class="loading">
         <text>{{ t('home.loading') }}...</text>
       </view>
 
@@ -327,7 +362,10 @@
         </view>
       </view>
 
-      <view v-if="!tabComingSoon && !hasMore && visiblePosts.length > 0" class="end-tip">
+      <view
+        v-if="activeTab === 'following' ? (!followHasMore && followItems.length > 0) : (!tabComingSoon && !hasMore && visiblePosts.length > 0)"
+        class="end-tip"
+      >
         <text>{{ t('home.endOf') }}</text>
       </view>
     </scroll-view>
@@ -440,21 +478,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
 import { useTheme } from '../../composables/useTheme'
 import { usePlaza, groupCommentsByParent } from '../../composables/usePlaza'
+import { useFollow } from '../../composables/useFollow'
 import { useModeration } from '../../composables/useModeration'
 import { useItems } from '../../composables/useItems'
 import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
 import { useLongPress } from '../../composables/useLongPress'
 import { useKeyboardHeight } from '../../composables/useKeyboardHeight'
-import type { Post, PostComment } from '../../types'
-import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl } from '../../utils'
+import type { Post, PostComment, Item } from '../../types'
+import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl, formatPrice } from '../../utils'
 import { DIALOG_DANGER } from '../../utils/dialogColors'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
@@ -470,6 +509,7 @@ const defaultAvatarSrc = computed(() =>
 )
 const { currentUser, isLoggedIn, requireAuth } = useAuth()
 const { posts, loading, hasMore, fetchPosts, createPost, updatePostI18n, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, fetchMyActiveItems } = usePlaza()
+const { fetchFollowingFeed, loadMyFollowing } = useFollow()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
 const kb = useKeyboardHeight()
 
@@ -486,15 +526,16 @@ const refreshing = ref(false)
 const pageIdx = ref(0)
 
 /*
- * Visual feed sub-tabs. Client-side only for now — no extra RPC. Two
- * tabs filter the already-loaded `posts` (推荐 = all, 官方 = is_official);
- * 关注 / 活动 have no client data yet so they render a coming-soon shell.
- * Data wiring (following graph, events feed) is deferred to the
- * functional track.
+ * Visual feed sub-tabs. 推荐 / 官方 filter the already-loaded `posts`
+ * client-side (推荐 = all, 官方 = is_official). 关注 loads the current
+ * user's followed sellers' active LISTINGS via useFollow.fetchFollowingFeed
+ * (marketplace items, not posts — a "what people I follow are selling"
+ * view, mirroring pages/following/index.vue). 活动 (events) has no data
+ * source yet so it still renders a coming-soon shell.
  */
 type FeedTabKey = 'recommend' | 'following' | 'official' | 'events'
 const activeTab = ref<FeedTabKey>('recommend')
-const COMING_SOON_TABS: ReadonlySet<FeedTabKey> = new Set(['following', 'events'])
+const COMING_SOON_TABS: ReadonlySet<FeedTabKey> = new Set(['events'])
 const feedTabs = computed<{ key: FeedTabKey; label: string }[]>(() => [
   { key: 'following', label: t('plaza.tab.following') },
   { key: 'recommend', label: t('plaza.tab.recommend') },
@@ -506,6 +547,42 @@ const visiblePosts = computed(() => {
   if (tabComingSoon.value) return []
   if (activeTab.value === 'official') return posts.value.filter((p) => p.is_official)
   return posts.value
+})
+
+/* 关注 tab — followed sellers' active listings (items, not posts). Lazy-
+ * loaded the first time the user opens the tab, then paginated via the
+ * scroll-view's bottom-reach handler. followLoaded gates the one-shot
+ * initial fetch; followLoading guards against concurrent loads. */
+const FOLLOW_PAGE_SIZE = 20
+const followItems = ref<Item[]>([])
+const followLoading = ref(false)
+const followHasMore = ref(true)
+const followPage = ref(0)
+const followLoaded = ref(false)
+
+async function loadFollowing(reset: boolean) {
+  if (followLoading.value) return
+  if (!currentUser.value) {
+    followItems.value = []
+    followLoaded.value = true
+    return
+  }
+  if (reset) followPage.value = 0
+  followLoading.value = true
+  try {
+    await loadMyFollowing()
+    const rows = await fetchFollowingFeed(followPage.value)
+    if (reset) followItems.value = rows
+    else followItems.value.push(...rows)
+    followHasMore.value = rows.length === FOLLOW_PAGE_SIZE
+    followLoaded.value = true
+  } finally {
+    followLoading.value = false
+  }
+}
+
+watch(activeTab, (k) => {
+  if (k === 'following' && !followLoaded.value) loadFollowing(true)
 })
 
 /*
@@ -619,6 +696,10 @@ function removeChip(itemId: string) {
 function goToAttachedItem(id: string) {
   uni.navigateTo({ url: `/pages/detail/index?id=${id}` })
 }
+
+function goToFollowItem(id: string) {
+  uni.navigateTo({ url: `/pages/detail/index?id=${id}` })
+}
 const { uploadImagesWithDims } = useItems()
 const { translateContentToAll } = useTranslate()
 const { addPostToHistory } = useHistory()
@@ -727,6 +808,13 @@ async function onRefresh() {
 }
 
 async function loadMore() {
+  if (activeTab.value === 'following') {
+    if (!followLoading.value && followHasMore.value) {
+      followPage.value += 1
+      await loadFollowing(false)
+    }
+    return
+  }
   if (loading.value || !hasMore.value) return
   pageIdx.value++
   await fetchPosts({ page: pageIdx.value, search: searchText.value })
@@ -1269,6 +1357,63 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   background: var(--accent-primary); color: #fff; border-radius: 22px;
   font-size: 14px; font-weight: 600; cursor: pointer;
   &:active { opacity: 0.85; }
+}
+
+/* 关注 tab — 2-col grid of followed sellers' active listings (item
+   cards, visually distinct from the post-cards in 推荐/官方). Tokenized
+   to ivory_academy v5 — surface card on warm border, terracotta price. */
+.follow-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+.follow-card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--dur-1, 120ms) var(--ease-std, ease);
+  &:active { transform: scale(0.98); }
+}
+.fc-img {
+  width: 100%;
+  height: 160px;
+  display: block;
+  background: var(--bg-subtle);
+}
+.fc-body {
+  padding: var(--space-2) var(--space-2) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fc-title {
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.fc-price {
+  color: var(--brand);
+  font-size: 15px;
+  font-weight: 700;
+  display: block;
+}
+.fc-seller { display: flex; align-items: center; gap: 5px; }
+.fc-avatar {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--bg-subtle); flex-shrink: 0;
+}
+.fc-nick {
+  font-size: 11px; color: var(--ink-quiet);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
 .posts { padding: 8px 0 20px; }
