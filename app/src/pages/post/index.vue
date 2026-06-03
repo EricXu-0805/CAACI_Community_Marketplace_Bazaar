@@ -665,9 +665,9 @@ async function onSubmitComment() {
   text { font-size: 10px; font-weight: 700; color: #fff; }
 }
 .badge-pinned {
-  background: rgba(199,74,47,0.12); color: var(--accent-action);
+  background: var(--warning-soft); color: var(--warning);
   padding: 1px 6px; border-radius: 4px;
-  text { font-size: 10px; font-weight: 600; color: var(--accent-action); }
+  text { font-size: 10px; font-weight: 600; color: var(--warning); letter-spacing: 0.02em; }
 }
 
 .content-wrap { position: relative; padding-right: 44px; }
