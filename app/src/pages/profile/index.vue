@@ -694,10 +694,9 @@ function onDeleteItem(id: string) {
 }
 .illini-badge {
   display: inline-flex; align-items: center;
-  background: var(--success); color: #fff;
-  padding: 2px 7px; border-radius: var(--radius-xs);
-  font-size: 10px; font-weight: 600;
-  letter-spacing: 0.08em;
+  background: var(--campus-blue); color: #fff;
+  padding: 1px 6px; border-radius: var(--radius-xs);
+  font-size: 10px; font-weight: 700;
 }
 .illini-badge-text { color: #fff; font-size: 10px; }
 .user-meta-row {
