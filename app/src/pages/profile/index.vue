@@ -39,9 +39,7 @@
           <view class="user-info">
             <view class="name-row">
               <text class="nickname">{{ currentUser?.nickname }}</text>
-              <view v-if="currentUser?.is_illini_verified" class="illini-badge">
-                <text class="illini-badge-text">Illini</text>
-              </view>
+              <UBadge v-if="currentUser?.is_illini_verified" variant="illini">Illini</UBadge>
             </view>
             <view class="user-meta-row">
               <view v-if="currentUser?.uid" class="uid-row" @click.stop="copyUid">
@@ -267,6 +265,7 @@ import { useI18n } from '../../composables/useI18n'
 import { useTheme } from '../../composables/useTheme'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
+import UBadge from '../../components/UBadge.vue'
 import { useItems } from '../../composables/useItems'
 import { useFavorites } from '../../composables/useFavorites'
 import { useNotifications } from '../../composables/useNotifications'
@@ -692,13 +691,7 @@ function onDeleteItem(id: string) {
   letter-spacing: -0.3px;
   color: var(--ink-inverse);
 }
-.illini-badge {
-  display: inline-flex; align-items: center;
-  background: var(--campus-blue); color: #fff;
-  padding: 1px 6px; border-radius: var(--radius-xs);
-  font-size: 10px; font-weight: 700;
-}
-.illini-badge-text { color: #fff; font-size: 10px; }
+/* illini badge → components/UBadge.vue (variant illini). */
 .user-meta-row {
   display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap;
 }
