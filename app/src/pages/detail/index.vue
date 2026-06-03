@@ -101,9 +101,7 @@
         <view class="seller-info">
           <view class="seller-name-row">
             <text class="seller-name">{{ item.profile.nickname }}</text>
-            <view v-if="item.profile.is_illini_verified" class="illini-badge" :title="t('profile.illiniVerified')">
-              <text class="illini-badge-text">Illini</text>
-            </view>
+            <UBadge v-if="item.profile.is_illini_verified" variant="illini" :title="t('profile.illiniVerified')">Illini</UBadge>
           </view>
           <text v-if="item.profile.status_text || item.profile.status_emoji" class="seller-status">
             <text v-if="item.profile.status_emoji" class="ss-emoji">{{ item.profile.status_emoji }}</text>
@@ -268,6 +266,7 @@ import { matchSpot, localizeLocation } from '../../composables/useCampusSpots'
 import { useRatings } from '../../composables/useRatings'
 import { useTranslate } from '../../composables/useTranslate'
 import { computed, onUnmounted, watch } from 'vue'
+import UBadge from '../../components/UBadge.vue'
 
 const { t, lang, localize } = useI18n()
 const { isDark } = useTheme()
@@ -977,13 +976,7 @@ async function contactSeller() {
 .seller-info { flex: 1; }
 .seller-name-row { display: flex; align-items: center; gap: 6px; }
 .seller-name { font-size: 15px; font-weight: 600; color: var(--ink); }
-.illini-badge {
-  display: inline-flex; align-items: center;
-  background: var(--campus-blue); color: #fff;
-  padding: 1px 6px; border-radius: 4px;
-  font-size: 10px; font-weight: 700;
-}
-.illini-badge-text { color: #fff; font-size: 10px; }
+/* illini badge → components/UBadge.vue (variant illini). */
 .seller-meta { font-size: 12px; color: var(--text-faint); margin-top: 3px; }
 .seller-status {
   display: inline-flex; align-items: center; gap: 4px;
