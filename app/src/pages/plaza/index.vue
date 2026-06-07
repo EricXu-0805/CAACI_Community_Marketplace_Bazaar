@@ -93,7 +93,7 @@
               <view class="pcb-chev"></view>
             </view>
             <view class="post-header">
-              <image :src="post.profile?.avatar_url || '/static/default-avatar.svg'" class="pa-avatar" mode="aspectFill" />
+              <image :src="post.profile?.avatar_url || '/static/default-avatar.svg'" :alt="post.profile?.nickname || 'avatar'" class="pa-avatar" mode="aspectFill" />
               <view class="pa-info">
                 <view class="pa-name-row">
                   <text class="pa-name">{{ post.profile?.nickname || t('app.user') }}</text>
@@ -170,6 +170,7 @@
             <view class="pa-btn" role="button" :aria-label="post.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleLike(post)">
               <image
                 :src="post.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'"
+                alt=""
                 class="heart-img"
               />
               <text :class="['pa-num', { active: post.liked_by_me }]">{{ post.like_count }}</text>
@@ -208,6 +209,7 @@
               >
                 <image
                   :src="thread.parent.profile?.avatar_url || '/static/default-avatar.svg'"
+                  :alt="thread.parent.profile?.nickname || 'avatar'"
                   class="cs-avatar"
                   mode="aspectFill"
                   @click.stop="onCommentTap(thread.parent)"
@@ -220,7 +222,7 @@
                   <text class="cs-content">{{ thread.parent.content }}</text>
                   <view class="cs-actions">
                     <view class="cs-like-btn" role="button" :aria-label="thread.parent.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(thread.parent)">
-                      <image :src="thread.parent.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" class="cs-heart-img" />
+                      <image :src="thread.parent.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                       <text v-if="(thread.parent.like_count ?? 0) > 0" :class="['cs-like-num', { active: thread.parent.liked_by_me }]">{{ thread.parent.like_count }}</text>
                     </view>
                     <text class="cs-reply-btn" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
@@ -240,6 +242,7 @@
                 >
                   <image
                     :src="child.profile?.avatar_url || '/static/default-avatar.svg'"
+                    :alt="child.profile?.nickname || 'avatar'"
                     class="cs-avatar"
                     mode="aspectFill"
                     @click.stop="onCommentTap(child)"
@@ -253,7 +256,7 @@
                     <text class="cs-content">{{ child.content }}</text>
                     <view class="cs-actions">
                       <view class="cs-like-btn" role="button" :aria-label="child.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(child)">
-                        <image :src="child.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" class="cs-heart-img" />
+                        <image :src="child.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                         <text v-if="(child.like_count ?? 0) > 0" :class="['cs-like-num', { active: child.liked_by_me }]">{{ child.like_count }}</text>
                       </view>
                       <text class="cs-reply-btn" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
@@ -332,7 +335,7 @@
         />
         <view v-if="composerImages.length > 0" class="comp-images">
           <view v-for="(img, i) in composerImages" :key="i" class="ci-wrap">
-            <image :src="img" class="ci-img" mode="aspectFill" />
+            <image :src="img" alt="Photo" class="ci-img" mode="aspectFill" />
             <view class="ci-remove" role="button" :aria-label="t('a11y.delete')" @click="removeComposerImage(i)">
               <view class="ci-x"></view>
             </view>
@@ -348,6 +351,7 @@
         >
           <image
             :src="thumbUrl(it.images?.[0], 'list') || '/static/placeholder.svg'"
+            :alt="localize(it.title_i18n, it.title)"
             class="ca-img"
             mode="aspectFill"
           />
@@ -404,8 +408,10 @@
         >
           <image
             :src="thumbUrl(it.images?.[0], 'list') || '/static/placeholder.svg'"
+            :alt="localize(it.title_i18n, it.title)"
             class="as-img"
             mode="aspectFill"
+            lazy-load
           />
           <view class="as-body">
             <text class="as-title-text">{{ localize(it.title_i18n, it.title) }}</text>
@@ -421,7 +427,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
+import { onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
 
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
@@ -443,7 +449,7 @@ import PlazaBannerCarousel from '../../components/PlazaBannerCarousel.vue'
 
 const { t, lang, localize } = useI18n()
 const { currentUser, isLoggedIn, requireAuth } = useAuth()
-const { posts, loading, hasMore, fetchPosts, createPost, updatePostI18n, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, fetchMyActiveItems } = usePlaza()
+const { posts, loading, hasMore, fetchPosts, createPost, updatePostI18n, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, fetchMyActiveItems, clearPosts } = usePlaza()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
 const kb = useKeyboardHeight()
 
@@ -455,6 +461,13 @@ onShareAppMessage(() => ({
 onShareTimeline(() => ({
   title: '校园广场 · Illini Market',
 }))
+
+// Release the module-scoped feed on page unload so posts (with images +
+// comments) don't outlive the page. Tab pages rarely unload, so this is a
+// safety net rather than a hot path.
+onUnload(() => {
+  clearPosts()
+})
 
 const refreshing = ref(false)
 const pageIdx = ref(0)

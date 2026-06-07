@@ -39,6 +39,7 @@
         >
           <image
             :src="getOtherUser(conv)?.avatar_url || '/static/default-avatar.svg'"
+            :alt="getOtherUser(conv)?.nickname || 'avatar'"
             class="conv-avatar"
             mode="aspectFill"
           />
@@ -92,7 +93,7 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
+import { onShow, onPullDownRefresh, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useMessages } from '../../composables/useMessages'
@@ -114,6 +115,7 @@ const {
   setConversationMuted,
   markAsRead,
   markConversationUnread,
+  clearMessages,
 } = useMessages()
 const { unreadConvIds, refreshUnreadCount } = useUnread()
 
@@ -131,12 +133,20 @@ onShow(() => {
 onPullDownRefresh(async () => {
   try {
     if (currentUser.value) {
-      await fetchConversations(currentUser.value.id)
+      // Explicit refresh bypasses the SWR TTL guard.
+      await fetchConversations(currentUser.value.id, { force: true })
       await refreshUnreadCount()
     }
   } finally {
     uni.stopPullDownRefresh()
   }
+})
+
+// Release the module-scoped conversations/messages on page unload so the
+// list doesn't outlive the page. (Tab pages rarely unload, so this is a
+// safety net rather than a hot path.)
+onUnload(() => {
+  clearMessages()
 })
 
 function getOtherUser(conv: Conversation): Profile | undefined {

@@ -259,6 +259,7 @@
                 <view class="card-seller">
                   <image
                     :src="item.profile?.avatar_url || '/static/default-avatar.svg'"
+                    :alt="item.profile?.nickname || 'avatar'"
                     class="seller-pic"
                     mode="aspectFill"
                   />
@@ -269,6 +270,7 @@
                   <text v-if="isOldItem(item.created_at)" class="old-tag">{{ t('home.oldListing') }}</text>
                   <image
                     :src="isFavorited(item.id) ? '/static/heart-filled.svg' : '/static/heart.svg'"
+                    alt=""
                     class="heart-img"
                     role="button"
                     :aria-label="isFavorited(item.id) ? t('a11y.unfavorite') : t('a11y.favorite')"
@@ -321,7 +323,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { onShow, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
+import { onShow, onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
 import { useItems } from '../../composables/useItems'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
@@ -372,7 +374,7 @@ function localizeItemTitle(it: { title: string; title_i18n?: Record<string, stri
   return localize(it.title_i18n, it.title)
 }
 
-const { items, loading, hasMore, fetchError, fetchItems } = useItems()
+const { items, loading, hasMore, fetchError, fetchItems, clearItems } = useItems()
 const { currentUser } = useAuth()
 const { isFavorited, toggleFavorite, loadMyFavorites } = useFavorites()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
@@ -534,13 +536,33 @@ onMounted(async () => {
   } catch {}
 
   if (currentUser.value) {
+    /*
+     * fetchItems() filters out blocked sellers by reading
+     * useModeration().blockedIds AFTER its query resolves, and nothing
+     * re-filters the feed reactively — so blocked IDs MUST be loaded
+     * before fetchItems runs, or a blocked seller's item can slip onto
+     * the first paint and persist until the next fetch. Hence blocked is
+     * still a gate. Favorites only drive heart-icon state and are
+     * independent of the feed query, so we start them in parallel and let
+     * them overlap fetchItems instead of serially blocking on them.
+     */
+    const favReady = loadMyFavorites(currentUser.value.id)
+    await ensureBlockedLoaded()
     await Promise.all([
-      loadMyFavorites(currentUser.value.id),
-      ensureBlockedLoaded(),
+      fetchItems({ ...getFilterParams(), reset: true }),
+      favReady,
     ])
+  } else {
+    await fetchItems({ ...getFilterParams(), reset: true })
   }
-  await fetchItems({ ...getFilterParams(), reset: true })
   initialLoading.value = false
+})
+
+// Release the module-scoped feed on page unload (safety net — the home tab
+// rarely unloads during normal use, but this stops the items[] array from
+// outliving the page when it does).
+onUnload(() => {
+  clearItems()
 })
 
 function selectCategory(category: ItemCategory | null) {
@@ -1191,7 +1213,8 @@ function goPublish() {
 /* ========== States ========== */
 .tip {
   display: flex; align-items: center; justify-content: center;
-  padding: 20px; gap: 8px; color: #bbb; font-size: 12px;
+  /* was #bbb (~2.3:1 on cream — fails WCAG AA). --ink-soft is 6.4:1. */
+  padding: 20px; gap: 8px; color: var(--ink-soft); font-size: 12px;
 }
 .dots {
   display: flex; gap: 2px;

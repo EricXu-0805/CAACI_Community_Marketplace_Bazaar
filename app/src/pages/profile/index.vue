@@ -35,7 +35,7 @@
       <view class="user-card">
         <view class="user-card-bg"></view>
         <view class="user-row">
-          <image :src="currentUser?.avatar_url || '/static/default-avatar.svg'" class="avatar-big" mode="aspectFill" />
+          <image :src="currentUser?.avatar_url || '/static/default-avatar.svg'" :alt="currentUser?.nickname || 'avatar'" class="avatar-big" mode="aspectFill" />
           <view class="user-info">
             <view class="name-row">
               <text class="nickname">{{ currentUser?.nickname }}</text>
@@ -154,6 +154,7 @@
             >
               <image
                 :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'"
+                :alt="localize(item.title_i18n, item.title)"
                 class="horz-img"
                 mode="aspectFill"
                 lazy-load
@@ -186,6 +187,7 @@
             >
               <image
                 :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'"
+                :alt="localize(item.title_i18n, item.title)"
                 class="horz-img"
                 mode="aspectFill"
                 lazy-load
@@ -220,6 +222,7 @@
             <view class="fav-img-wrap">
               <image
                 :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'"
+                :alt="localize(item.title_i18n, item.title)"
                 class="fav-img"
                 mode="aspectFit"
                 :style="myImgStyleFor(item.id)"
@@ -417,7 +420,8 @@ onPullDownRefresh(async () => {
   if (currentUser.value) {
     const uid = currentUser.value.id
     const [items, , favItems] = await Promise.all([
-      fetchMyItems(uid), loadMyFavorites(uid), fetchMyFavoriteItems(uid),
+      // Explicit refresh bypasses the my-items SWR TTL guard.
+      fetchMyItems(uid, { force: true }), loadMyFavorites(uid), fetchMyFavoriteItems(uid),
     ])
     myItems.value = items
     savedItems.value = favItems

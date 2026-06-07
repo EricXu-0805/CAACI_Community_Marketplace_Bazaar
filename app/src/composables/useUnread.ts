@@ -3,6 +3,7 @@ import { useSupabase } from './useSupabase'
 import { useAuth } from './useAuth'
 import { useI18n } from './useI18n'
 import { subscribeToUserInbox } from './useRealtimeFallback'
+import { invalidateConversations } from './useMessages'
 
 const unreadCount = ref(0)
 const unreadConvIds = ref<Set<string>>(new Set())
@@ -79,6 +80,10 @@ export function useUnread() {
     const userId = currentUser.value.id
     inboxUnsub = subscribeToUserInbox(userId, (newMsg: any) => {
       refreshUnreadCount()
+      // A new incoming message changes the conversations list (preview, sort,
+      // or a brand-new conversation row); drop the SWR cache so the next
+      // messages-tab onShow refetches instead of serving a stale list.
+      invalidateConversations()
       const convId = newMsg?.conversation_id
       if (convId && !mutedConvIds.value.has(convId)) {
         uni.showToast({ title: t('msg.newMessage'), icon: 'none', duration: 2000 })

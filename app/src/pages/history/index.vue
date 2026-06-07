@@ -45,7 +45,7 @@
         @click="goPostDetail(p.id)"
         @longpress="onRemoveOne(p.id, 'post')"
       >
-        <image :src="p.profile?.avatar_url || '/static/default-avatar.svg'" class="post-avatar" mode="aspectFill" />
+        <image :src="p.profile?.avatar_url || '/static/default-avatar.svg'" :alt="p.profile?.nickname || 'avatar'" class="post-avatar" mode="aspectFill" />
         <view class="post-info">
           <view class="post-top">
             <text class="post-name">{{ p.profile?.nickname || t('app.user') }}</text>
@@ -57,8 +57,10 @@
               v-for="(img, i) in p.images.slice(0, 3)"
               :key="i"
               :src="img"
+              :alt="'Post photo'"
               class="post-thumb"
               mode="aspectFill"
+              lazy-load
             />
           </view>
         </view>
