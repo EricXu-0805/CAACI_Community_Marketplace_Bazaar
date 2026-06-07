@@ -46,6 +46,7 @@ function env(name, fallback) {
 
 const SUPABASE_URL = env('SUPABASE_URL', env('VITE_SUPABASE_URL', ''))
 const SERVICE_KEY  = env('SUPABASE_SERVICE_ROLE_KEY', '')
+const STRIPE_KEY   = env('STRIPE_SECRET_KEY', '')
 
 async function sha256Hex(input) {
   const buf = new TextEncoder().encode(input)
@@ -187,6 +188,71 @@ async function rpc(fn, args) {
   return data
 }
 
+/*
+ * Direct PostgREST table access with the service-role key. Used for the
+ * subscription/plan/refund surfaces (migration 043) — same precedent as
+ * the revoke_token PATCH below. `path` includes the table + query string.
+ */
+async function restTable(path, { method = 'GET', body, prefer } = {}) {
+  if (!SUPABASE_URL || !SERVICE_KEY) throw new Error('supabase_not_configured')
+  const headers = {
+    apikey: SERVICE_KEY,
+    Authorization: `Bearer ${SERVICE_KEY}`,
+    'Content-Type': 'application/json',
+  }
+  if (prefer) headers.Prefer = prefer
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  const text = await r.text()
+  let data = null
+  try { data = text ? JSON.parse(text) : null } catch { data = text }
+  if (!r.ok) throw new Error((data && data.message) || `postgrest_${r.status}`)
+  return data
+}
+
+/*
+ * Flatten a nested object into Stripe's form-encoded bracket notation.
+ * Mirrors the helper in api/subscriptions/index.js — kept inline because
+ * edge functions resolve independently (no shared module).
+ */
+function toForm(obj, prefix, out) {
+  out = out || new URLSearchParams()
+  for (const key of Object.keys(obj)) {
+    const val = obj[key]
+    if (val === undefined || val === null) continue
+    const field = prefix ? `${prefix}[${key}]` : key
+    if (typeof val === 'object' && !Array.isArray(val)) {
+      toForm(val, field, out)
+    } else if (Array.isArray(val)) {
+      val.forEach((item, i) => {
+        if (item !== null && typeof item === 'object') toForm(item, `${field}[${i}]`, out)
+        else out.append(`${field}[${i}]`, String(item))
+      })
+    } else {
+      out.append(field, String(val))
+    }
+  }
+  return out
+}
+
+async function stripe(path, params, method = 'POST') {
+  if (!STRIPE_KEY) throw new Error('stripe_not_configured')
+  const r = await fetch(`https://api.stripe.com/v1/${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${STRIPE_KEY}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params ? toForm(params).toString() : undefined,
+  })
+  const data = await r.json().catch(() => null)
+  if (!r.ok) throw new Error(data?.error?.message || `stripe_${r.status}`)
+  return data
+}
+
 async function recordAdminLogin(adminId, source) {
   if (!SUPABASE_URL || !SERVICE_KEY) return
   if (!adminId) return
@@ -291,6 +357,47 @@ async function handleGet(request, auth) {
     return json({ data })
   }
 
+  // ---------- Subscription management (migration 043) ----------
+  if (resource === 'subscriptions') {
+    const data = await rpc('admin_list_subscriptions', {
+      limit_in: limit,
+      offset_in: offset,
+      status_filter: url.searchParams.get('status') || null,
+      plan_filter: url.searchParams.get('plan_id') || null,
+      search_in: url.searchParams.get('search') || null,
+    })
+    return json({ data })
+  }
+
+  if (resource === 'subscription') {
+    const id = url.searchParams.get('id')
+    if (!id) return json({ error: 'missing_id' }, 400)
+    const data = await rpc('admin_get_subscription_detail', { id_in: id })
+    return json({ data })
+  }
+
+  if (resource === 'invoices') {
+    const data = await rpc('admin_list_invoices', {
+      limit_in: limit,
+      offset_in: offset,
+      status_filter: url.searchParams.get('status') || null,
+    })
+    return json({ data })
+  }
+
+  if (resource === 'subscription_metrics') {
+    const data = await rpc('admin_subscription_metrics', {})
+    return json({ data })
+  }
+
+  if (resource === 'plans') {
+    // Full catalogue incl. inactive — admin needs to see everything.
+    const data = await restTable(
+      'subscription_plans?select=*&order=sort_order.asc,created_at.desc',
+    )
+    return json({ data })
+  }
+
   return json({ error: 'unknown_resource' }, 400)
 }
 
@@ -390,6 +497,158 @@ async function handlePost(request, auth) {
       return json({ error: 'revoke_failed', detail }, 500)
     }
     return json({ success: true })
+  }
+
+  // ---------- Subscription management actions (migration 043) ----------
+
+  if (body.action === 'upsert_plan') {
+    // Create or update a sellable plan. `id` present → update, else insert.
+    const p = body.plan || {}
+    if (!p.code || !p.name || !p.interval || p.amount_cents == null) {
+      return json({ error: 'missing_args' }, 400)
+    }
+    const fields = {
+      code: p.code,
+      name: p.name,
+      name_zh: p.name_zh ?? null,
+      description: p.description ?? null,
+      description_zh: p.description_zh ?? null,
+      stripe_price_id: p.stripe_price_id ?? null,
+      interval: p.interval,
+      amount_cents: p.amount_cents,
+      currency: p.currency || 'usd',
+      benefits: p.benefits ?? [],
+      is_active: p.is_active ?? true,
+      sort_order: p.sort_order ?? 0,
+    }
+    let data
+    if (body.id) {
+      data = await restTable(`subscription_plans?id=eq.${encodeURIComponent(body.id)}`, {
+        method: 'PATCH', prefer: 'return=representation', body: fields,
+      })
+    } else {
+      data = await restTable('subscription_plans', {
+        method: 'POST', prefer: 'return=representation', body: fields,
+      })
+    }
+    const row = Array.isArray(data) ? data[0] : data
+    if (auth.adminId) {
+      await rpc('record_audit', {
+        event_kind_in: 'plan_upserted',
+        actor_id_in: auth.adminId,
+        target_id_in: row?.id || null,
+        details_in: { via: 'edge_admin', code: fields.code },
+      }).catch(err => console.warn('[admin] audit plan_upserted failed', err?.message))
+    }
+    return json({ data: row })
+  }
+
+  if (body.action === 'grant_subscription') {
+    // Manually grant/extend a comp subscription (source='manual'). Does not
+    // touch Stripe — used for community comps / corrections.
+    if (!body.user_id || !body.plan_id || !body.current_period_end) {
+      return json({ error: 'missing_args' }, 400)
+    }
+    const data = await restTable('subscriptions', {
+      method: 'POST', prefer: 'return=representation',
+      body: {
+        user_id: body.user_id,
+        plan_id: body.plan_id,
+        status: body.status || 'active',
+        current_period_end: body.current_period_end,
+        source: 'manual',
+        notes: body.notes ?? null,
+      },
+    })
+    const row = Array.isArray(data) ? data[0] : data
+    if (auth.adminId) {
+      await rpc('record_audit', {
+        event_kind_in: 'subscription_granted',
+        actor_id_in: auth.adminId,
+        target_id_in: row?.id || null,
+        details_in: { via: 'edge_admin', user_id: body.user_id, plan_id: body.plan_id },
+      }).catch(err => console.warn('[admin] audit subscription_granted failed', err?.message))
+    }
+    return json({ data: row })
+  }
+
+  if (body.action === 'cancel_subscription') {
+    // Cancel a Stripe subscription. DB state is reconciled by the webhook.
+    if (!body.stripe_subscription_id) return json({ error: 'missing_args' }, 400)
+    const immediate = body.immediate === true
+    if (immediate) {
+      await stripe(`subscriptions/${body.stripe_subscription_id}`, null, 'DELETE')
+    } else {
+      await stripe(`subscriptions/${body.stripe_subscription_id}`, { cancel_at_period_end: true })
+    }
+    if (auth.adminId) {
+      await rpc('record_audit', {
+        event_kind_in: 'subscription_canceled',
+        actor_id_in: auth.adminId,
+        target_id_in: body.subscription_id || null,
+        details_in: { via: 'edge_admin', stripe_subscription_id: body.stripe_subscription_id, immediate },
+      }).catch(err => console.warn('[admin] audit subscription_canceled failed', err?.message))
+    }
+    return json({ success: true })
+  }
+
+  if (body.action === 'change_plan') {
+    // Swap a subscription to a different Stripe price. Needs the current
+    // subscription item id + the target price id.
+    if (!body.stripe_subscription_id || !body.item_id || !body.stripe_price_id) {
+      return json({ error: 'missing_args' }, 400)
+    }
+    await stripe(`subscriptions/${body.stripe_subscription_id}`, {
+      items: [{ id: body.item_id, price: body.stripe_price_id }],
+      proration_behavior: body.proration_behavior || 'create_prorations',
+    })
+    if (auth.adminId) {
+      await rpc('record_audit', {
+        event_kind_in: 'subscription_changed',
+        actor_id_in: auth.adminId,
+        target_id_in: body.subscription_id || null,
+        details_in: { via: 'edge_admin', to_price: body.stripe_price_id },
+      }).catch(err => console.warn('[admin] audit subscription_changed failed', err?.message))
+    }
+    return json({ success: true })
+  }
+
+  if (body.action === 'issue_refund') {
+    // Refund a charge (full or partial) and record it. The charge.refunded
+    // webhook will also sync, but we write immediately for admin feedback.
+    if (!body.stripe_charge_id && !body.stripe_payment_intent_id) {
+      return json({ error: 'missing_args' }, 400)
+    }
+    const params = {}
+    if (body.stripe_charge_id) params.charge = body.stripe_charge_id
+    if (body.stripe_payment_intent_id) params.payment_intent = body.stripe_payment_intent_id
+    if (body.amount_cents != null) params.amount = body.amount_cents
+    // Stripe's `reason` only accepts a fixed enum; a free-form admin note is
+    // kept in our refunds.reason column, not sent to Stripe.
+    const STRIPE_REASONS = ['duplicate', 'fraudulent', 'requested_by_customer']
+    if (body.reason && STRIPE_REASONS.includes(body.reason)) params.reason = body.reason
+    const refund = await stripe('refunds', params)
+    await restTable('refunds?on_conflict=stripe_refund_id', {
+      method: 'POST', prefer: 'resolution=merge-duplicates,return=minimal',
+      body: {
+        stripe_refund_id: refund.id,
+        invoice_id: body.invoice_id || null,
+        amount_cents: refund.amount ?? null,
+        currency: refund.currency || null,
+        reason: body.reason || refund.reason || null,
+        operator_id: auth.adminId || null,
+        status: refund.status || null,
+      },
+    }).catch(err => console.warn('[admin] refunds insert failed', err?.message))
+    if (auth.adminId) {
+      await rpc('record_audit', {
+        event_kind_in: 'refund_issued',
+        actor_id_in: auth.adminId,
+        target_id_in: body.invoice_id || null,
+        details_in: { via: 'edge_admin', stripe_refund_id: refund.id, amount_cents: refund.amount },
+      }).catch(err => console.warn('[admin] audit refund_issued failed', err?.message))
+    }
+    return json({ data: { id: refund.id, status: refund.status } })
   }
 
   return json({ error: 'unknown_action' }, 400)

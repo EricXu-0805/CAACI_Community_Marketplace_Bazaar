@@ -40,6 +40,29 @@ rollout window. Each per-admin token in `admin_tokens` supersedes it. When
 all admins are on per-admin tokens, remove the env var to lock the legacy
 path. Verify by attempting the old shared key — should get 401.
 
+### Stripe subscriptions (migration 043)
+
+| Var | Vercel | GH Actions | Local `.env` | If missing |
+|---|---|---|---|---|
+| `STRIPE_SECRET_KEY` | ✅ | ❌ | ⚠️ shell-only | `api/subscriptions` + admin cancel/refund return 500. Checkout/portal unavailable. |
+| `STRIPE_WEBHOOK_SECRET` | ✅ | ❌ | ⚠️ shell-only | `api/stripe/webhook` returns 500 / rejects all events — DB never syncs. |
+| `STRIPE_PORTAL_CONFIGURATION_ID` | ✅ optional | ❌ | ❌ | Billing Portal uses your Stripe default configuration. |
+
+Server-side only — **never** VITE-prefixed, never in the browser bundle. Notes:
+
+- **Webhook endpoint**: in the Stripe Dashboard add a webhook to
+  `https://<deploy>/api/stripe/webhook` and subscribe to:
+  `checkout.session.completed`, `customer.subscription.created/updated/deleted`,
+  `invoice.payment_succeeded`, `invoice.payment_failed`, `charge.refunded`.
+  Copy its signing secret into `STRIPE_WEBHOOK_SECRET`.
+- **Plans**: each row in `subscription_plans` references a Stripe Price via
+  `stripe_price_id`. CAACI creates the Product + Price in Stripe, then fills
+  `stripe_price_id` (via the admin `upsert_plan` action). No price/secret is
+  hard-coded.
+- **Local testing**: `stripe listen --forward-to localhost:3000/api/stripe/webhook`
+  prints a temporary signing secret — export it as `STRIPE_WEBHOOK_SECRET` for
+  the dev session.
+
 ### Observability (Sentry)
 
 | Var | Vercel | GH Actions | Local `.env` | If missing |
