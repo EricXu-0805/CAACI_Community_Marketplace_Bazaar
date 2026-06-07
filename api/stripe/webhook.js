@@ -215,22 +215,24 @@ export default async function handler(request) {
     })
   }
 
-  // Idempotency: record event.id; if it already exists, this is a retry.
+  // Idempotency: skip only events we have already processed SUCCESSFULLY.
+  // We record event.id AFTER handling (below), not before — otherwise a
+  // handler that throws would mark the event seen, and Stripe's retry would
+  // be short-circuited as a duplicate, losing the event forever. Re-running
+  // a handler is safe (all writes are merge-duplicates upserts).
   try {
-    const inserted = await rest('stripe_events', {
-      method: 'POST',
-      prefer: 'resolution=ignore-duplicates,return=representation',
-      body: { event_id: event.id, type: event.type },
-    })
-    if (Array.isArray(inserted) && inserted.length === 0) {
+    const seen = await rest(
+      `stripe_events?event_id=eq.${encodeURIComponent(event.id)}&select=event_id&limit=1`,
+    )
+    if (Array.isArray(seen) && seen.length > 0) {
       return new Response(JSON.stringify({ received: true, duplicate: true }), {
         status: 200, headers: { 'Content-Type': 'application/json' },
       })
     }
   } catch (e) {
-    // If the idempotency insert itself fails, fall through and process —
-    // Stripe will retry on a non-2xx anyway. Better to act than to drop.
-    console.warn('[stripe] idempotency insert failed', e?.message)
+    // Existence check failed — fall through and process. Worst case is a
+    // harmless re-process; dropping the event would be worse.
+    console.warn('[stripe] idempotency check failed', e?.message)
   }
 
   try {
@@ -295,6 +297,18 @@ export default async function handler(request) {
     return new Response(JSON.stringify({ error: err?.message || 'handler_error' }), {
       status: 500, headers: { 'Content-Type': 'application/json' },
     })
+  }
+
+  // Mark processed only now that handling succeeded. ignore-duplicates makes
+  // a concurrent double-delivery a harmless no-op.
+  try {
+    await rest('stripe_events', {
+      method: 'POST',
+      prefer: 'resolution=ignore-duplicates,return=minimal',
+      body: { event_id: event.id, type: event.type },
+    })
+  } catch (e) {
+    console.warn('[stripe] idempotency record failed', e?.message)
   }
 
   return new Response(JSON.stringify({ received: true }), {
