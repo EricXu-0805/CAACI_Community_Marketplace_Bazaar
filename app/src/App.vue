@@ -630,12 +630,12 @@ page,
   --text-primary:   #2A2A2E;
   --text-secondary: #57524B;
   --text-tertiary:  #6B6557;
-  --text-muted:     #8B8478;
+  --text-muted:     #6B6459;
   --text-faint:     #B6AE9F;
   --text-disabled:  #C0BCB2;
   --ink:         #2A2A2E;
   --ink-soft:    #57524B;
-  --ink-quiet:   #8B8478;
+  --ink-quiet:   #6B6459;
   --ink-faint:   #B6AE9F;
   --ink-inverse: #F5F0E6;
   --bg-page:    #F5F0E6;
@@ -974,14 +974,14 @@ button:focus-visible,
   --text-primary:   #2A2A2E;   /* ink       — warm charcoal */
   --text-secondary: #57524B;   /* ink-soft  — secondary, walnut */
   --text-tertiary:  #6B6557;
-  --text-muted:     #8B8478;   /* ink-quiet — meta · stone */
+  --text-muted:     #6B6459;   /* ink-quiet — meta · stone */
   --text-faint:     #B6AE9F;   /* ink-faint — scaffolding */
   --text-disabled:  #C0BCB2;
 
   /* ---------- NEW SEMANTIC NAMES (prefer these going forward) ---------- */
   --ink:         #2A2A2E;   /* warm charcoal — body + titles */
   --ink-soft:    #57524B;
-  --ink-quiet:   #8B8478;
+  --ink-quiet:   #6B6459;
   --ink-faint:   #B6AE9F;
   --ink-inverse: #F5F0E6;   /* text on ink panels (cream) */
 

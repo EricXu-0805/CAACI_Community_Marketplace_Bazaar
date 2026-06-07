@@ -46,6 +46,7 @@
         <image
           class="avatar-preview"
           :src="avatarUrl || '/static/default-avatar.svg'"
+          :alt="nickname || 'avatar'"
           mode="aspectFill"
         />
         <view class="avatar-actions">

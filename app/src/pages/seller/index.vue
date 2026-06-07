@@ -12,7 +12,7 @@
     </view>
 
     <view v-else-if="seller" class="seller-section">
-      <image :src="seller.avatar_url || '/static/default-avatar.svg'" class="avatar" mode="aspectFill" />
+      <image :src="seller.avatar_url || '/static/default-avatar.svg'" :alt="seller.nickname || 'avatar'" class="avatar" mode="aspectFill" />
       <view class="name-row">
         <text class="nickname">{{ seller.nickname }}</text>
         <view v-if="seller.is_illini_verified" class="illini-badge">

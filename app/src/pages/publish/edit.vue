@@ -20,7 +20,7 @@
       <view class="image-section">
         <view class="image-list">
           <view v-for="(img, i) in imageList" :key="i" class="image-item">
-            <image :src="img" mode="aspectFill" class="preview-image" />
+            <image :src="img" :alt="form.title || 'Item photo'" mode="aspectFill" class="preview-image" />
             <view class="remove-btn" role="button" :aria-label="t('a11y.delete')" @click="removeImage(i)">
               <view class="remove-x"></view>
             </view>
@@ -134,7 +134,7 @@
         @click="!detectingLoc && onDetectLocation()"
       >
         <view v-if="detectingLoc" class="locate-btn-spinner"></view>
-        <image v-else class="locate-btn-icon" src="/static/locate.svg" mode="aspectFit" />
+        <image v-else class="locate-btn-icon" src="/static/locate.svg" alt="" mode="aspectFit" />
         <text class="locate-btn-text">{{ detectingLoc ? t('publish.detectingLocation') : t('publish.useCurrentLocation') }}</text>
       </view>
 

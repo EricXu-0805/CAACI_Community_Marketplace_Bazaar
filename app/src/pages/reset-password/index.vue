@@ -15,18 +15,18 @@
       <view class="form-group">
         <text class="form-label">{{ t('resetPw.newPassword') }}</text>
         <view class="pw-wrap">
-          <input v-model="newPassword" :placeholder="t('resetPw.newPassword')" :password="!showNewPw" class="form-input pw-input" />
+          <input v-model="newPassword" :placeholder="t('resetPw.newPassword')" :password="!showNewPw" autocomplete="new-password" class="form-input pw-input" />
           <view class="pw-toggle" role="button" :aria-label="t('a11y.passwordToggle')" @click="showNewPw = !showNewPw">
-            <image :src="showNewPw ? '/static/eye-off.svg' : '/static/eye.svg'" class="pw-toggle-icon" mode="aspectFit" />
+            <image :src="showNewPw ? '/static/eye-off.svg' : '/static/eye.svg'" alt="" class="pw-toggle-icon" mode="aspectFit" />
           </view>
         </view>
       </view>
       <view class="form-group">
         <text class="form-label">{{ t('resetPw.confirm') }}</text>
         <view class="pw-wrap">
-          <input v-model="confirmPw" :placeholder="t('resetPw.confirm')" :password="!showConfirmPw" class="form-input pw-input" />
+          <input v-model="confirmPw" :placeholder="t('resetPw.confirm')" :password="!showConfirmPw" autocomplete="new-password" class="form-input pw-input" />
           <view class="pw-toggle" role="button" :aria-label="t('a11y.passwordToggle')" @click="showConfirmPw = !showConfirmPw">
-            <image :src="showConfirmPw ? '/static/eye-off.svg' : '/static/eye.svg'" class="pw-toggle-icon" mode="aspectFit" />
+            <image :src="showConfirmPw ? '/static/eye-off.svg' : '/static/eye.svg'" alt="" class="pw-toggle-icon" mode="aspectFit" />
           </view>
         </view>
       </view>
