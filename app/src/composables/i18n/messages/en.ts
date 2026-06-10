@@ -224,6 +224,7 @@ const en: Record<string, string> = {
   'msg.filterUnread': 'Unread',
   'msg.filterItems': 'Items',
   'msg.noFiltered': 'No matching chats',
+  'msg.selectHint': 'Select a conversation to start',
   'msg.deleteConv': 'Delete Conversation',
   'msg.deleteTitle': 'Delete this conversation?',
   'msg.deleteHint': 'All messages will be permanently deleted.',

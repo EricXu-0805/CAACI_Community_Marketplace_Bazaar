@@ -1,0 +1,1458 @@
+<template>
+  <view class="chat-thread">
+    <!-- Header with item context -->
+    <view class="chat-header">
+      <view v-if="!embedded" class="ch-back" role="button" :aria-label="t('a11y.back')" @click="goBack">
+        <view class="ch-arrow"></view>
+      </view>
+      <view class="ch-info" v-if="itemInfo">
+        <text class="ch-name">{{ otherUserName }}</text>
+        <text v-if="headerStatus" :class="['ch-status', { typing: peerTyping }]">{{ headerStatus }}</text>
+        <text v-else class="ch-item-title">{{ localize(itemInfo.title_i18n, itemInfo.title) }}</text>
+      </view>
+      <text v-else class="ch-name-only">{{ otherUserName || t('nav.messages') }}</text>
+      <view class="ch-more" role="button" :aria-label="t('a11y.conversationMore')" @click="onMoreActions">
+        <view class="more-dot"></view><view class="more-dot"></view><view class="more-dot"></view>
+      </view>
+    </view>
+
+    <!-- Item Context Card -->
+    <view class="item-card" v-if="itemInfo" @click="goToItem">
+      <image
+        :src="itemInfo.images?.[0] || '/static/placeholder.svg'"
+        :alt="localize(itemInfo.title_i18n, itemInfo.title)"
+        class="ic-img"
+        mode="aspectFill"
+      />
+      <view class="ic-info">
+        <text class="ic-title">{{ localize(itemInfo.title_i18n, itemInfo.title) }}</text>
+        <view class="ic-bottom">
+          <text class="ic-price">{{ formatPrice(itemInfo.price, t("home.free")) }}</text>
+          <text v-if="itemInfo.status === 'sold'" class="ic-sold">{{ t('status.sold') }}</text>
+          <text v-else-if="itemInfo.status === 'reserved'" class="ic-reserved">{{ t('status.reserved') }}</text>
+        </view>
+      </view>
+      <view class="ic-arrow"></view>
+    </view>
+
+    <view v-if="itemInfo?.category === 'currency_exchange'" class="chat-scam">
+      <view class="cs-icon"><view class="cs-excl"></view></view>
+      <text class="cs-text">{{ t('scam.chatWarn') }}</text>
+    </view>
+
+    <view
+      v-if="itemInfo && itemInfo.negotiable && itemInfo.status === 'active' && currentUser?.id !== itemInfo.user_id"
+      class="offer-bar"
+    >
+      <view class="offer-btn" @click="openOfferSheet">
+        <text>{{ t('chat.makeOffer') }}</text>
+      </view>
+    </view>
+
+    <scroll-view
+      v-if="messages.length === 0 && itemInfo && itemInfo.status === 'active' && currentUser?.id !== itemInfo.user_id"
+      scroll-x
+      class="quick-replies"
+    >
+      <view class="qr-chip" @click="sendQuickReply(t('chat.qrStillAvailable'))">{{ t('chat.qrStillAvailable') }}</view>
+      <view class="qr-chip" @click="sendQuickReply(t('chat.qrLowerPrice'))">{{ t('chat.qrLowerPrice') }}</view>
+      <view class="qr-chip" @click="sendQuickReply(t('chat.qrWhenMeet'))">{{ t('chat.qrWhenMeet') }}</view>
+      <view class="qr-chip" @click="sendQuickReply(t('chat.qrMoreDetails'))">{{ t('chat.qrMoreDetails') }}</view>
+    </scroll-view>
+
+    <scroll-view
+      class="message-list"
+      scroll-y
+      :show-scrollbar="false"
+      :scroll-into-view="scrollTarget"
+      scroll-with-animation
+      @click="onMessageAreaTap"
+    >
+      <template v-for="(entry, idx) in timeline" :key="entry.key">
+        <view v-if="shouldShowTimeAt(idx)" class="time-divider">
+          <text>{{ formatChatTime(entry.created_at) }}</text>
+        </view>
+
+        <!-- ===== Offer entry (structured negotiation, migration 051) ===== -->
+        <template v-if="entry.kind === 'offer'">
+          <view class="offer-entry" :class="{ mine: entry.offer.from_user === currentUser?.id }">
+            <view class="offer-card" :class="'oc-st-' + entry.offer.status">
+              <view class="oc-head">
+                <text class="oc-eyebrow">{{ entry.offer.from_user === currentUser?.id ? t('chat.offerYou') : t('chat.offerThem') }}</text>
+                <text class="oc-status">{{ offerStatusLabel(entry.offer) }}</text>
+              </view>
+              <text class="oc-price">${{ fmtOfferPrice(entry.offer.price) }}</text>
+              <text v-if="entry.offer.note" class="oc-note">{{ entry.offer.note }}</text>
+              <view v-if="entry.offer.status === 'pending' && offerIncoming(entry.offer) && !offerExpired(entry.offer)" class="oc-actions">
+                <view class="oc-btn oc-decline" @click="declineOffer(entry.offer)"><text>{{ t('chat.offerDecline') }}</text></view>
+                <view class="oc-btn oc-counter" @click="openCounter(entry.offer)"><text>{{ t('chat.offerCounter') }}</text></view>
+                <view class="oc-btn oc-accept" @click="acceptOffer(entry.offer)"><text>{{ t('chat.offerAccept') }}</text></view>
+              </view>
+              <text v-else-if="entry.offer.status === 'pending'" class="oc-meta">
+                {{ offerExpired(entry.offer) ? t('chat.offerExpired') : t('chat.offerWaiting') }}
+              </text>
+              <text v-if="entry.offer.status === 'pending' && !offerExpired(entry.offer)" class="oc-expiry">{{ t('chat.offerExpiry') }}</text>
+            </view>
+          </view>
+          <view v-if="entry.offer.status === 'accepted'" class="deal-line">
+            <text>🎉 {{ t('chat.dealReached').replace('{price}', '$' + fmtOfferPrice(entry.offer.price)) }}</text>
+          </view>
+        </template>
+
+        <!-- ===== Message entry ===== -->
+        <template v-else>
+          <view
+            :id="`msg-${entry.msg.id}`"
+            :class="['msg-row', { mine: entry.msg.sender_id === currentUser?.id }]"
+          >
+            <image
+              v-if="entry.msg.sender_id !== currentUser?.id"
+              :src="entry.msg.sender?.avatar_url || defaultAvatar"
+              :alt="entry.msg.sender?.nickname || 'avatar'"
+              class="msg-avatar"
+            />
+            <!-- Sticker message: whole body is one [sticker:*] token — bare
+                 artwork, no bubble chrome (WeChat sticker semantics). -->
+            <view
+              v-if="stickerOf(entry.msg)"
+              class="msg-sticker"
+              @touchstart="msgLongPress.onTouchstart(entry.msg)"
+              @touchend="msgLongPress.onTouchend"
+              @touchcancel="msgLongPress.onTouchcancel"
+              @touchmove="msgLongPress.onTouchmove"
+            >
+              <USticker :name="stickerOf(entry.msg)!" :size="84" />
+            </view>
+            <view
+              class="msg-bubble"
+              v-else-if="entry.msg.message_type !== 'image' && entry.msg.message_type !== 'video'"
+              @touchstart="msgLongPress.onTouchstart(entry.msg)"
+              @touchend="msgLongPress.onTouchend"
+              @touchcancel="msgLongPress.onTouchcancel"
+              @touchmove="msgLongPress.onTouchmove"
+            >
+              <text>{{ entry.msg.content }}</text>
+            </view>
+            <image
+              v-else-if="entry.msg.message_type === 'image'"
+              :src="entry.msg.content"
+              alt="Photo"
+              class="msg-image"
+              mode="widthFix"
+              lazy-load
+              @click="previewImg(entry.msg.content)"
+              @touchstart="msgLongPress.onTouchstart(entry.msg)"
+              @touchend="msgLongPress.onTouchend"
+              @touchcancel="msgLongPress.onTouchcancel"
+              @touchmove="msgLongPress.onTouchmove"
+            />
+            <!-- 私信视频 (migration 048) — native controls; no autoplay so a
+                 scroll through history doesn't start playback. -->
+            <video
+              v-else
+              :src="entry.msg.content"
+              class="msg-video"
+              controls
+              :show-fullscreen-btn="true"
+              object-fit="contain"
+            />
+            <image
+              v-if="entry.msg.sender_id === currentUser?.id"
+              :src="currentUser?.avatar_url || defaultAvatar"
+              :alt="currentUser?.nickname || 'avatar'"
+              class="msg-avatar"
+            />
+          </view>
+          <view v-if="entry.msg.sender_id === currentUser?.id && entry.msg._pending" class="msg-status pending">
+            <text>{{ t('chat.sending') }}</text>
+          </view>
+          <view v-else-if="entry.msg.sender_id === currentUser?.id && entry.msg._failed" class="msg-status failed" @click="retrySend(entry.msg)">
+            <text>{{ t('chat.sendFailed') }}</text>
+          </view>
+        </template>
+      </template>
+
+      <view v-if="timeline.length === 0" class="empty-chat">
+        <view class="ec-icon">
+          <view class="ec-wave"></view>
+        </view>
+        <text>{{ t('chat.empty') }}</text>
+      </view>
+    </scroll-view>
+
+    <view v-if="replyToMsg" class="reply-ctx">
+      <view class="rc-bar"></view>
+      <view class="rc-body">
+        <text class="rc-label">{{ t('chat.replyingTo') }}</text>
+        <text class="rc-text">{{ replyPreview(replyToMsg).slice(0, 80) }}</text>
+      </view>
+      <view class="rc-x" role="button" :aria-label="t('a11y.close')" @click="replyToMsg = null">
+        <view class="rc-x-inner"></view>
+      </view>
+    </view>
+
+    <!-- 键盘联想 (P3): typed keyword tail → emoji quick-insert chips.
+         Appends to the input; never replaces typed text. -->
+    <view v-if="emojiSuggestions.length" class="suggest-row">
+      <view
+        v-for="e in emojiSuggestions"
+        :key="e"
+        class="suggest-chip"
+        role="button"
+        :aria-label="e"
+        @click="applySuggestion(e)"
+      >
+        <text class="suggest-emoji">{{ e }}</text>
+      </view>
+    </view>
+
+    <view class="input-bar">
+      <view class="img-btn" role="button" :aria-label="t('a11y.pickImage')" @click="onSendImage">
+        <UIcon name="image" size="sm" color="text-secondary" />
+      </view>
+      <view class="img-btn" role="button" :aria-label="t('a11y.pickVideo')" @click="onSendVideo">
+        <UIcon name="video" size="sm" color="text-secondary" />
+      </view>
+      <view :class="['emoji-btn', { active: emojiOpen }]" role="button" :aria-label="t('a11y.emojiToggle')" @click="toggleEmoji">
+        <text class="emoji-btn-glyph">😊</text>
+      </view>
+      <input
+        ref="chatInputRef"
+        v-model="inputText"
+        :placeholder="replyToMsg ? t('chat.replyingHint') : t('chat.placeholder')"
+        confirm-type="send"
+        :focus="inputFocused"
+        :adjust-position="true"
+        @confirm="onSend"
+        @focus="emojiOpen = false"
+        @blur="inputFocused = false"
+        class="msg-input"
+      />
+      <view :class="['send-btn', { disabled: !inputText.trim() || sending }]" role="button" :aria-label="t('a11y.sendMessage')" @click="onSend">
+        <UIcon name="arrow-up" size="sm" color="#fff" />
+      </view>
+    </view>
+    <ChatEmojiPanel :open="emojiOpen" @pick="onPickEmoji" @pick-sticker="onPickSticker" />
+
+    <ScamInterceptModal
+      :visible="showScamModal"
+      @understand="onScamUnderstand"
+      @close="showScamModal = false"
+      @learnMore="onScamLearnMore"
+    />
+
+    <!-- Offer composer (new offer + counter) -->
+    <view v-if="offerSheet.open" class="offer-mask" @click="closeOfferSheet"></view>
+    <view :class="['offer-sheet', { open: offerSheet.open }]">
+      <view class="os-handle"></view>
+      <text class="os-title">{{ offerSheet.mode === 'counter' ? t('chat.offerCounterTitle') : t('chat.offerTitle') }}</text>
+      <text v-if="itemInfo" class="os-ref">{{ localize(itemInfo.title_i18n, itemInfo.title) }} · {{ t('chat.offerListPrice') }} {{ formatPrice(itemInfo.price, t('home.free')) }}</text>
+      <view class="os-input-row">
+        <text class="os-dollar">$</text>
+        <input v-model="offerPriceInput" type="digit" class="os-input" :placeholder="t('chat.offerPricePh')" />
+      </view>
+      <scroll-view v-if="quickAmounts.length" scroll-x class="os-quick">
+        <view v-for="a in quickAmounts" :key="a" class="os-quick-chip" @click="offerPriceInput = String(a)">
+          <text>${{ a }}</text>
+        </view>
+      </scroll-view>
+      <input v-model="offerNoteInput" class="os-note" :placeholder="t('chat.offerNotePh')" maxlength="300" />
+      <view :class="['os-submit', { disabled: !Number(offerPriceInput) || offerSubmitting }]" @click="submitOfferSheet">
+        <text>{{ offerSheet.mode === 'counter' ? t('chat.offerSendCounter') : t('chat.offerSend') }}</text>
+      </view>
+      <text class="os-expiry-hint">{{ t('chat.offerExpiry') }}</text>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useAuth } from '../composables/useAuth'
+import { useTheme } from '../composables/useTheme'
+import { useMessages } from '../composables/useMessages'
+import { useOffers } from '../composables/useOffers'
+import { usePresence } from '../composables/usePresence'
+import { useItems } from '../composables/useItems'
+import { useUnread } from '../composables/useUnread'
+import { useI18n } from '../composables/useI18n'
+import { useModeration } from '../composables/useModeration'
+import { useLongPress } from '../composables/useLongPress'
+import { formatPrice, friendlyErrorMessage } from '../utils'
+import { DIALOG_DANGER } from '../utils/dialogColors'
+import type { Item, Offer } from '../types'
+import ChatEmojiPanel from './ChatEmojiPanel.vue'
+import UIcon from './UIcon.vue'
+import USticker from './USticker.vue'
+import { parseStickerToken, stickerToken, type StickerName } from './stickers/registry'
+import { suggestEmoji } from '../composables/useEmojiSuggest'
+import ScamInterceptModal from './ScamInterceptModal.vue'
+
+const props = defineProps<{ conversationId: string; prefill?: string; embedded?: boolean }>()
+
+const { t, lang, localize } = useI18n()
+
+const { currentUser, requireAuth } = useAuth()
+const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, deleteMessage, fetchConversationDetail, setConversationPinned, setConversationMuted } = useMessages()
+const { offers, fetchOffers, makeOffer, respondToOffer, subscribeToOffers } = useOffers()
+const { startPresence, isOnline, subscribeTyping } = usePresence()
+const { uploadOneImage, uploadOneVideo } = useItems()
+const { refreshUnreadCount } = useUnread()
+const { reportTarget, blockUser } = useModeration()
+const { isDark } = useTheme()
+
+/*
+ * Theme-aware avatar fallback (v3 P1, spec §1.4).
+ *
+ * Both the incoming-message avatar (sender) and outgoing-message
+ * avatar (current user) fall back to default-avatar.svg when no
+ * avatar_url is set. The light SVG glares on dark canvas — see
+ * messages/index.vue for the full rationale.
+ */
+const defaultAvatar = computed(() =>
+  isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
+)
+
+const inputText = ref('')
+const chatInputRef = ref<any>(null)
+const emojiOpen = ref(false)
+/*
+ * inputFocused drives the uni-app `<input :focus>` binding so we can
+ * programmatically refocus after onSend. The contract:
+ *   · Default false on mount — chat shouldn't grab focus over scrollback
+ *     the moment the user lands on the page
+ *   · Toggle false → nextTick → true to re-trigger focus after a
+ *     successful send (uni-app's :focus is edge-triggered on the
+ *     false→true transition, not level-triggered on identity)
+ *   · @blur resets to false so the next send-cycle's toggle is a real
+ *     transition, not a no-op
+ *   · toggleEmoji also clears it so opening the emoji panel doesn't
+ *     race with the focus binding to keep the keyboard up
+ *
+ * The earlier H5-only native.focus() (commit a395107) didn't reliably
+ * re-engage the keyboard on iOS Safari because focus() outside the
+ * user-gesture stack is silently ignored. The :focus prop is the
+ * canonical uni-app surface for this and works on both H5 and mp.
+ */
+const inputFocused = ref(false)
+const replyToMsg = ref<any>(null)
+const scrollTarget = ref('')
+const conversationId = ref('')
+const itemInfo = ref<Item | null>(null)
+const otherUserName = ref('')
+const otherUserId = ref('')
+const conversationDetail = ref<any>(null)
+const convPinned = ref(false)
+const convMuted = ref(false)
+let unsubscribe: (() => void) | null = null
+let offersUnsub: (() => void) | null = null
+
+// Presence + typing (v5 Phase 7, H5 best-effort).
+const peerTyping = ref(false)
+let typingApi: { sendTyping: () => void; unsubscribe: () => void } | null = null
+let typingClear: ReturnType<typeof setTimeout> | null = null
+const headerStatus = computed(() => {
+  if (peerTyping.value) return t('chat.typing')
+  if (isOnline(otherUserId.value)) return t('chat.onlineReply')
+  return ''
+})
+watch(inputText, (v) => { if (v && typingApi) typingApi.sendTyping() })
+
+/*
+ * Currency-exchange scam-intercept modal. Same client-side gate as
+ * publish/index.vue: when the chat is about a currency_exchange item we
+ * show the rich safety modal once, then remember via a localStorage flag
+ * shared with publish. The persistent .chat-scam banner above stays as
+ * the always-on reminder; this modal is the one-time teach moment.
+ */
+const SCAM_MODAL_SEEN_KEY = 'scam_modal_seen_v1'
+const showScamModal = ref(false)
+
+function maybeShowScamModal() {
+  let seen = ''
+  try { seen = uni.getStorageSync(SCAM_MODAL_SEEN_KEY) } catch { /* private mode — treat as unseen */ }
+  if (!seen) showScamModal.value = true
+}
+
+function onScamUnderstand() {
+  try { uni.setStorageSync(SCAM_MODAL_SEEN_KEY, '1') } catch { /* ignore */ }
+  showScamModal.value = false
+}
+
+function onScamLearnMore() {
+  showScamModal.value = false
+  uni.navigateTo({ url: '/pages/legal/index' })
+}
+
+onMounted(async () => {
+  if (!requireAuth()) return
+  const options = { id: props.conversationId, prefill: props.prefill }
+
+  if (options?.id) {
+    conversationId.value = options.id
+    await fetchMessages(options.id)
+    try { await fetchOffers(options.id) } catch { /* offers are additive — never block the chat */ }
+    scrollToBottom()
+
+    if (currentUser.value) {
+      await markAsRead(options.id, currentUser.value.id)
+      refreshUnreadCount()
+    }
+
+    if (options.prefill && messages.value.length === 0) {
+      try { inputText.value = decodeURIComponent(options.prefill as string) } catch {}
+    }
+
+    try {
+      const detail = await fetchConversationDetail(options.id)
+      if (detail) {
+        conversationDetail.value = detail
+        if (detail.item) {
+          itemInfo.value = detail.item
+          if (detail.item.category === 'currency_exchange') maybeShowScamModal()
+        }
+        if (currentUser.value) {
+          const other = detail.buyer_id === currentUser.value.id ? detail.seller : detail.buyer
+          otherUserName.value = other?.nickname || t('app.user')
+          otherUserId.value = other?.id || ''
+          const isBuyer = detail.buyer_id === currentUser.value.id
+          convPinned.value = isBuyer ? !!detail.is_pinned_buyer : !!detail.is_pinned_seller
+          convMuted.value = isBuyer ? !!detail.is_muted_buyer : !!detail.is_muted_seller
+        }
+      }
+    } catch {
+      uni.showToast({ title: t('chat.fail'), icon: 'none' })
+    }
+
+    unsubscribe = subscribeToMessages(options.id, (newMsg) => {
+      messages.value.push(newMsg)
+      nextTick(() => scrollToBottom())
+      if (currentUser.value && newMsg.sender_id !== currentUser.value.id) {
+        markAsRead(options.id, currentUser.value.id)
+        refreshUnreadCount()
+      }
+    })
+
+    // Live offer cards (H5 realtime; mp degrades to the onLoad fetch).
+    offersUnsub = subscribeToOffers(options.id, () => {
+      fetchOffers(options.id!).then(() => nextTick(() => scrollToBottom())).catch(() => {})
+    })
+
+    // Presence + typing (best-effort): peer online label + "正在输入…".
+    startPresence()
+    typingApi = subscribeTyping(options.id, () => {
+      peerTyping.value = true
+      if (typingClear) clearTimeout(typingClear)
+      typingClear = setTimeout(() => { peerTyping.value = false }, 3000)
+    })
+  }
+})
+
+onUnmounted(() => {
+  if (unsubscribe) unsubscribe()
+  if (offersUnsub) offersUnsub()
+  if (typingApi) typingApi.unsubscribe()
+  if (typingClear) clearTimeout(typingClear)
+})
+
+function goBack() {
+  uni.navigateBack()
+}
+
+function goToItem() {
+  if (itemInfo.value) {
+    uni.navigateTo({ url: `/pages/detail/index?id=${itemInfo.value.id}` })
+  }
+}
+
+async function sendQuickReply(text: string) {
+  if (!currentUser.value || !conversationId.value) return
+  try {
+    await sendMessage(conversationId.value, currentUser.value.id, text)
+    markAsRead(conversationId.value, currentUser.value.id)
+    refreshUnreadCount()
+    nextTick(() => scrollToBottom())
+  } catch {
+    uni.showToast({ title: t('chat.fail'), icon: 'none' })
+  }
+}
+
+const sending = ref(false)
+
+/*
+ * Tapping the message area dismisses the emoji panel (N#5). A scroll
+ * gesture fires touchmove, not click, so scrolling the history won't
+ * close it; only a discrete tap does. The panel is a sibling of this
+ * scroll-view, so picking emojis (which keeps the panel open by design)
+ * does not bubble here. No-op when already closed.
+ */
+function onMessageAreaTap() {
+  if (emojiOpen.value) emojiOpen.value = false
+}
+
+function toggleEmoji() {
+  emojiOpen.value = !emojiOpen.value
+  if (emojiOpen.value) {
+    /* Releasing the focus binding before hiding the keyboard prevents
+       the next render from re-engaging :focus="true" and bouncing the
+       keyboard right back up. */
+    inputFocused.value = false
+    try { uni.hideKeyboard?.() } catch {}
+  }
+}
+
+function onPickEmoji(emoji: string) {
+  /*
+   * Insert the emoji into the input value instead of sending it as its
+   * own message. The previous behaviour was to fire sendMessage(emoji)
+   * directly, which surprised users — they expected to compose a
+   * sentence with emoji embedded, not blast a one-glyph message every
+   * time they tapped the panel.
+   *
+   * We try cursor-aware insertion on H5 (where the underlying <input>
+   * exposes selectionStart). If that's not available — mp targets, or
+   * the input hasn't been focused yet — fall back to appending to the
+   * end of inputText. The user can always backspace and reposition;
+   * the contract is "emoji enters the field, never escapes as a
+   * standalone message".
+   *
+   * Keep the panel open so the user can tap several in a row. Closing
+   * it would force them to re-toggle for the second emoji.
+   */
+  // #ifdef H5
+  try {
+    const root = (chatInputRef.value as any)?.$el as HTMLElement | undefined
+    const native = root?.querySelector?.('input') as HTMLInputElement | null
+    if (native && typeof native.selectionStart === 'number') {
+      const before = inputText.value.slice(0, native.selectionStart)
+      const after = inputText.value.slice(native.selectionEnd ?? native.selectionStart)
+      const next = `${before}${emoji}${after}`
+      inputText.value = next
+      nextTick(() => {
+        try {
+          native.focus()
+          const pos = before.length + emoji.length
+          native.setSelectionRange(pos, pos)
+        } catch { /* fallback: cursor stays where it lands */ }
+      })
+      return
+    }
+  } catch { /* fall through to append */ }
+  // #endif
+  inputText.value = `${inputText.value}${emoji}`
+}
+
+function stickerOf(msg: any): StickerName | null {
+  if (msg.message_type && msg.message_type !== 'text') return null
+  return parseStickerToken(msg.content || '')
+}
+
+function replyPreview(msg: any): string {
+  if (msg.message_type === 'image') return `[${t('chat.photo')}]`
+  if (msg.message_type === 'video') return `[${t('chat.video')}]`
+  if (stickerOf(msg)) return `[${t('chat.sticker')}]`
+  return msg.content || ''
+}
+
+/* Stickers send immediately on tap (panel stays open) — unlike unicode
+   emoji, which insert into the input via onPickEmoji above. */
+async function onPickSticker(name: StickerName) {
+  if (!currentUser.value || !conversationId.value || sending.value) return
+  sending.value = true
+  try {
+    await sendMessage(conversationId.value, currentUser.value.id, stickerToken(name))
+    markAsRead(conversationId.value, currentUser.value.id)
+    refreshUnreadCount()
+    nextTick(() => scrollToBottom())
+  } catch (error: any) {
+    uni.showToast({
+      title: friendlyErrorMessage(error, lang.value as 'en' | 'zh'),
+      icon: 'none',
+      duration: 2500,
+    })
+  } finally {
+    sending.value = false
+  }
+}
+
+const emojiSuggestions = computed(() => suggestEmoji(inputText.value))
+
+function applySuggestion(emoji: string) {
+  inputText.value = `${inputText.value}${emoji}`
+}
+
+async function retrySend(msg: any) {
+  if (!currentUser.value || !conversationId.value) return
+  const text = msg?.content
+  if (!text) return
+  const idx = messages.value.findIndex(m => m.id === msg.id)
+  if (idx >= 0) messages.value.splice(idx, 1)
+  try {
+    await sendMessage(conversationId.value, currentUser.value.id, text, msg.message_type || 'text')
+    nextTick(() => scrollToBottom())
+  } catch (err: any) {
+    uni.showToast({
+      title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
+      icon: 'none',
+      duration: 2500,
+    })
+  }
+}
+
+async function onSend() {
+  const text = inputText.value.trim()
+  if (!text || !currentUser.value || !conversationId.value) return
+  if (sending.value) return
+
+  let finalText = text
+  if (replyToMsg.value) {
+    const quoted = replyPreview(replyToMsg.value).slice(0, 80)
+    finalText = `> ${quoted}\n${text}`
+  }
+
+  inputText.value = ''
+  const wasReplying = replyToMsg.value
+  replyToMsg.value = null
+  sending.value = true
+  const failsafe = setTimeout(() => { sending.value = false }, 15000)
+
+  /*
+   * SYNCHRONOUS H5 focus — must happen BEFORE `await sendMessage`,
+   * still inside the click event's user-gesture stack. iOS Safari
+   * silently ignores focus() called from a nextTick / setTimeout /
+   * post-await microtask; once we yield the event loop, the gesture
+   * is released and the keyboard dismisses for good.
+   *
+   * Two prior attempts at this issue both put the focus call inside
+   * a nextTick AFTER the await — exactly the broken pattern:
+   *   · a395107 — direct native.focus() inside post-await nextTick
+   *   · 5c8623c — :focus binding toggled inside post-await nextTick
+   * Both passed code review and desktop Chrome (looser gesture rules)
+   * and both failed real-device acceptance on iOS Safari.
+   *
+   * The native.focus() call is now placed synchronously, before any
+   * await, so it runs while the click handler is still on the user-
+   * gesture stack. The :focus binding toggle stays after the await
+   * for mp-weixin only, where the documented uni-app pattern works
+   * because mp targets don't enforce iOS Safari's gesture model.
+   */
+  // #ifdef H5
+  try {
+    const root = (chatInputRef.value as any)?.$el as HTMLElement | undefined
+    const native = root?.querySelector?.('input') as HTMLInputElement | null
+    native?.focus()
+  } catch { /* fall through — :focus toggle below is the mp backup */ }
+  // #endif
+
+  try {
+    await sendMessage(conversationId.value, currentUser.value.id, finalText)
+    markAsRead(conversationId.value, currentUser.value.id)
+    refreshUnreadCount()
+    nextTick(() => {
+      scrollToBottom()
+      /*
+       * mp-weixin re-focus path. H5 already engaged via the synchronous
+       * native.focus() above; this toggle is for the platforms that
+       * don't have iOS Safari's gesture-window restriction. uni-app's
+       * `:focus` prop is edge-triggered (false → true triggers focus,
+       * level-true is a no-op), so toggle false → nextTick → true to
+       * force the transition even if the previous send left it true.
+       */
+      // #ifndef H5
+      inputFocused.value = false
+      nextTick(() => { inputFocused.value = true })
+      // #endif
+    })
+  } catch (error: any) {
+    uni.showToast({
+      title: friendlyErrorMessage(error, lang.value as 'en' | 'zh'),
+      icon: 'none',
+      duration: 2500,
+    })
+    inputText.value = text
+    replyToMsg.value = wasReplying
+  } finally {
+    clearTimeout(failsafe)
+    sending.value = false
+  }
+}
+
+
+function onMoreActions() {
+  uni.showActionSheet({
+    itemList: [
+      convMuted.value ? t('chat.unmute') : t('chat.mute'),
+      convPinned.value ? t('msg.unpin') : t('msg.pin'),
+      t('chat.blockUser'),
+      t('detail.report'),
+    ],
+    success: (res) => {
+      if (res.tapIndex === 0) toggleMute()
+      else if (res.tapIndex === 1) togglePin()
+      else if (res.tapIndex === 2) doBlock()
+      else if (res.tapIndex === 3) doReport()
+    },
+  })
+}
+
+async function togglePin() {
+  if (!conversationDetail.value || !currentUser.value) return
+  try {
+    await setConversationPinned(conversationDetail.value, currentUser.value.id, !convPinned.value)
+    convPinned.value = !convPinned.value
+    uni.showToast({ title: convPinned.value ? t('msg.pinned') : t('msg.unpin'), icon: 'success' })
+  } catch (err: any) {
+    uni.showToast({ title: err?.message || t('msg.actionFailed'), icon: 'none' })
+  }
+}
+
+async function toggleMute() {
+  if (!conversationDetail.value || !currentUser.value) return
+  try {
+    await setConversationMuted(conversationDetail.value, currentUser.value.id, !convMuted.value)
+    convMuted.value = !convMuted.value
+    uni.showToast({ title: convMuted.value ? t('msg.muted') : t('chat.unmute'), icon: 'success' })
+    refreshUnreadCount()
+  } catch (err: any) {
+    uni.showToast({ title: err?.message || t('msg.actionFailed'), icon: 'none' })
+  }
+}
+
+function doBlock() {
+  if (!otherUserId.value) return
+  uni.showModal({
+    title: t('block.confirm'),
+    content: t('block.hint'),
+    confirmColor: DIALOG_DANGER,
+    success: async (r) => {
+      if (!r.confirm) return
+      try {
+        await blockUser(otherUserId.value)
+        uni.showToast({ title: t('block.success'), icon: 'success' })
+        setTimeout(() => uni.navigateBack(), 800)
+      } catch (err: any) {
+        uni.showToast({ title: err?.message || t('block.failed'), icon: 'none' })
+      }
+    },
+  })
+}
+
+function doReport() {
+  if (!otherUserId.value) return
+  const reasons = [
+    t('report.reasonSpam'),
+    t('report.reasonAbuse'),
+    t('report.reasonMisleading'),
+    t('report.reasonOther'),
+  ]
+  uni.showActionSheet({
+    itemList: reasons,
+    success: async (res) => {
+      const reason = reasons[res.tapIndex]
+      uni.showLoading({ title: t('report.submitting') || t('login.wait'), mask: true })
+      try {
+        await reportTarget('user', otherUserId.value, reason)
+        uni.hideLoading()
+        uni.showToast({ title: t('report.thanks'), icon: 'success' })
+      } catch (err: any) {
+        uni.hideLoading()
+        uni.showToast({ title: err?.message || t('report.failed'), icon: 'none' })
+      }
+    },
+  })
+}
+
+/*
+ * Unified chat timeline: messages + offers merged and sorted by created_at,
+ * so structured offers (migration 051) interleave with text in the right
+ * place. Each entry is tagged so the template renders a bubble or an offer
+ * card. Time dividers run over this merged list.
+ */
+type TimelineEntry =
+  | { kind: 'msg'; key: string; created_at: string; msg: any }
+  | { kind: 'offer'; key: string; created_at: string; offer: Offer }
+
+const timeline = computed<TimelineEntry[]>(() => {
+  const out: TimelineEntry[] = []
+  for (const m of messages.value) out.push({ kind: 'msg', key: 'm-' + m.id, created_at: m.created_at, msg: m })
+  for (const o of offers.value) out.push({ kind: 'offer', key: 'o-' + o.id, created_at: o.created_at, offer: o })
+  out.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+  return out
+})
+
+function shouldShowTimeAt(idx: number): boolean {
+  if (idx === 0) return true
+  const curr = new Date(timeline.value[idx].created_at).getTime()
+  const prev = new Date(timeline.value[idx - 1].created_at).getTime()
+  return curr - prev > 5 * 60 * 1000
+}
+
+// ---- Offer helpers ----
+function fmtOfferPrice(p: number): string {
+  return Number.isInteger(p) ? String(p) : String(Math.round(p * 100) / 100)
+}
+function offerIncoming(o: Offer): boolean {
+  return o.to_user === currentUser.value?.id
+}
+function offerExpired(o: Offer): boolean {
+  return new Date(o.expires_at).getTime() <= Date.now()
+}
+function offerStatusLabel(o: Offer): string {
+  if (o.status === 'pending' && offerExpired(o)) return t('chat.offerStatus.expired')
+  return t('chat.offerStatus.' + o.status)
+}
+
+// ---- Offer composer (new offer + counter share one bottom sheet) ----
+const offerSheet = ref<{ open: boolean; mode: 'new' | 'counter'; targetId: string }>({ open: false, mode: 'new', targetId: '' })
+const offerPriceInput = ref('')
+const offerNoteInput = ref('')
+const offerSubmitting = ref(false)
+const quickAmounts = computed<number[]>(() => {
+  const p = itemInfo.value?.price || 0
+  if (!p || p <= 0) return []
+  return [0.9, 0.8, 0.7].map(r => Math.max(1, Math.round(p * r)))
+})
+
+function openOfferSheet() {
+  offerPriceInput.value = ''
+  offerNoteInput.value = ''
+  offerSheet.value = { open: true, mode: 'new', targetId: '' }
+}
+function openCounter(o: Offer) {
+  offerPriceInput.value = ''
+  offerNoteInput.value = ''
+  offerSheet.value = { open: true, mode: 'counter', targetId: o.id }
+}
+function closeOfferSheet() {
+  offerSheet.value.open = false
+}
+async function submitOfferSheet() {
+  const price = Number(offerPriceInput.value)
+  if (!conversationId.value || !price || price <= 0 || offerSubmitting.value) return
+  offerSubmitting.value = true
+  try {
+    if (offerSheet.value.mode === 'counter' && offerSheet.value.targetId) {
+      await respondToOffer(offerSheet.value.targetId, 'counter', price, offerNoteInput.value)
+    } else {
+      await makeOffer(conversationId.value, price, offerNoteInput.value)
+    }
+    await fetchOffers(conversationId.value)
+    offerSheet.value.open = false
+    nextTick(() => scrollToBottom())
+  } catch (err: any) {
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
+  } finally {
+    offerSubmitting.value = false
+  }
+}
+async function acceptOffer(o: Offer) { await respondOffer(o, 'accept') }
+async function declineOffer(o: Offer) { await respondOffer(o, 'decline') }
+async function respondOffer(o: Offer, action: 'accept' | 'decline') {
+  if (!conversationId.value) return
+  try {
+    await respondToOffer(o.id, action)
+    await fetchOffers(conversationId.value)
+    nextTick(() => scrollToBottom())
+  } catch (err: any) {
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
+  }
+}
+
+function formatChatTime(dateStr: string): string {
+  const d = new Date(dateStr)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterday = new Date(today.getTime() - 86400000)
+  const msgDay = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+  if (msgDay.getTime() === today.getTime()) return time
+  if (msgDay.getTime() === yesterday.getTime()) return `${t('chat.yesterday')} ${time}`
+  return `${d.getMonth() + 1}/${d.getDate()} ${time}`
+}
+
+/* 1.5s + haptic recognizer to reduce mis-fires on the chat surface
+   (a thumb resting on a bubble used to fire reply/copy/delete with
+   a 350ms accident). Tuned 3s → 2s in batch #2, then 2s → 1.5s in
+   batch #3a — 2s still tested as draggy in user acceptance; 1.5s
+   keeps the deliberate-intent gate while feeling snappy enough that
+   "yes I really wanted to long-press this" doesn't feel like waiting. */
+const msgLongPress = useLongPress<[any]>((msg) => onMsgLongPress(msg), 1500)
+
+function onMsgLongPress(msg: any) {
+  const isMine = msg.sender_id === currentUser.value?.id
+  const isText = msg.message_type !== 'image'
+
+  /*
+   * Action ordering for non-mine messages: reply → copy (text only) → report.
+   * Report goes LAST so a finger sliding through the sheet doesn't blast
+   * the destructive option first. For mine messages we keep delete-only
+   * (you don't report your own messages and copying your own message
+   * isn't a common workflow — keep the sheet short).
+   */
+  const actions: string[] = []
+  if (!isMine) actions.push(t('chat.reply'))
+  if (isText) actions.push(t('chat.copy'))
+  if (!isMine) actions.push(t('detail.report'))
+  if (isMine) actions.push(t('chat.deleteMsg'))
+  if (actions.length === 0) return
+
+  uni.showActionSheet({
+    itemList: actions,
+    success: (res) => {
+      const action = actions[res.tapIndex]
+      if (action === t('chat.reply')) {
+        replyToMsg.value = msg
+        nextTick(() => { /* keyboard opens via input focus naturally */ })
+      } else if (action === t('chat.copy')) {
+        uni.setClipboardData({ data: msg.content })
+        uni.showToast({ title: t('chat.copied'), icon: 'success' })
+      } else if (action === t('detail.report')) {
+        /* Re-uses the same reason sheet + reportTarget pipeline as the
+           header's "more → Report" action. In a 1:1 chat, the message
+           sender (when !isMine) is by definition otherUserId, so we
+           don't need to thread msg.sender_id through. */
+        doReport()
+      } else if (action === t('chat.deleteMsg')) {
+        uni.showModal({
+          title: t('chat.deleteMsgTitle'),
+          content: t('chat.deleteMsgHint'),
+          confirmColor: DIALOG_DANGER,
+          success: async (r) => {
+            if (!r.confirm) return
+            try {
+              await deleteMessage(msg.id)
+              uni.showToast({ title: t('chat.deleted'), icon: 'success' })
+            } catch {
+              uni.showToast({ title: t('chat.fail'), icon: 'none' })
+            }
+          },
+        })
+      }
+    },
+  })
+}
+
+function previewImg(url: string) {
+  uni.previewImage({ urls: [url], current: url })
+}
+
+async function onSendImage() {
+  if (!currentUser.value || !conversationId.value) return
+  if (sending.value) return
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: async (res) => {
+      const tempPath = res.tempFilePaths?.[0]
+      if (!tempPath) return
+      sending.value = true
+      const failsafe = setTimeout(() => { sending.value = false }, 30000)
+      try {
+        /*
+         * uploadOneImage (added in batch #2) replaces the previous
+         * compressImage(...) → uploadImages([compressed]) chain. The
+         * old chain pre-compressed the photo into a data:URL and then
+         * uploadImages re-compressed it inside uploadImagesWithDims —
+         * a wasted pass on H5 and a quality loss for mp. Worse,
+         * uploadImagesWithDims's per-file error handler swallowed
+         * Supabase storage failures and returned an empty urls array,
+         * which surfaced to the user as a generic 'imageUploadFailed'
+         * toast with no actionable diagnostic. uploadOneImage throws
+         * with the actual underlying error message (RLS violation,
+         * 413 payload too large, network error, etc.) so the toast
+         * below shows what really went wrong.
+         */
+        const { url } = await uploadOneImage(tempPath, { entryPoint: 'chat' })
+        await sendMessage(conversationId.value, currentUser.value!.id, url, 'image')
+        nextTick(() => scrollToBottom())
+      } catch (err: any) {
+        /*
+         * Surface the underlying error string directly. friendlyErrorMessage
+         * was generic-ifying 'Storage upload failed: 413 Payload Too
+         * Large' and 'new row violates row-level security policy …'
+         * into a vague 'something went wrong' toast that left users
+         * with no path forward. The Supabase error string is plain
+         * English and tells the user whether to retry, pick a smaller
+         * file, or report the bug. Capped at 80 chars so a long
+         * stack-trace-style error doesn't overflow the toast.
+         *
+         * HEIC errors get a dedicated translated toast — the raw
+         * heic-to error string ('Can\'t convert canvas to blob.') is
+         * meaningless to end users.
+         */
+        const heicMsg = err?.heic === true ? t('heic.unsupported') : null
+        const raw = err?.message ? `${err.message}` : ''
+        const fallback = t('chat.imageUploadFailed')
+        uni.showToast({
+          title: heicMsg || (raw ? raw.slice(0, 80) : fallback),
+          icon: 'none',
+          duration: 3500,
+        })
+      } finally {
+        clearTimeout(failsafe)
+        sending.value = false
+      }
+    },
+  })
+}
+
+async function onSendVideo() {
+  if (!currentUser.value || !conversationId.value) return
+  if (sending.value) return
+  uni.chooseVideo({
+    sourceType: ['album', 'camera'],
+    maxDuration: 60,
+    compressed: true,
+    success: async (res: any) => {
+      const tempPath = res.tempFilePath
+      if (!tempPath) return
+      /* Early reject when the picker reports size (mp does; H5 varies) —
+         saves the user from uploading 19MB before hearing "too large".
+         uploadOneVideo re-checks authoritatively either way. */
+      if (res.size && res.size > 20 * 1024 * 1024) {
+        uni.showToast({ title: t('chat.videoTooLarge'), icon: 'none', duration: 3000 })
+        return
+      }
+      sending.value = true
+      const failsafe = setTimeout(() => { sending.value = false }, 60000)
+      try {
+        const { url } = await uploadOneVideo(tempPath)
+        await sendMessage(conversationId.value, currentUser.value!.id, url, 'video')
+        nextTick(() => scrollToBottom())
+      } catch (err: any) {
+        const raw = err?.message ? `${err.message}` : ''
+        const friendly = raw === 'video_too_large' ? t('chat.videoTooLarge') : null
+        uni.showToast({
+          title: friendly || (raw ? raw.slice(0, 80) : t('chat.videoUploadFailed')),
+          icon: 'none',
+          duration: 3500,
+        })
+      } finally {
+        clearTimeout(failsafe)
+        sending.value = false
+      }
+    },
+  })
+}
+
+function scrollToBottom() {
+  if (messages.value.length > 0) {
+    scrollTarget.value = `msg-${messages.value[messages.value.length - 1].id}`
+  }
+}
+</script>
+
+<style lang="scss" scoped>
+.chat-thread {
+  height: 100%; min-height: 0;
+  display: flex; flex-direction: column;
+  background: var(--bg-subtle);
+  overflow: hidden;
+}
+
+/* ========== Chat Header ========== */
+.chat-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  padding-top: calc(12px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
+  background: rgba(var(--surface-rgb), 0.92);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0.5px solid var(--line-hair);
+  z-index: 10;
+}
+.ch-back {
+  width: 32px; height: 32px; display: flex;
+  align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  &:active { opacity: 0.5; }
+}
+.ch-arrow {
+  width: 9px; height: 9px;
+  border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary);
+  transform: rotate(45deg); margin-left: 4px;
+}
+.ch-info { flex: 1; min-width: 0; }
+.ch-name {
+  font-size: 16px; font-weight: 600; color: var(--text-primary); display: block;
+}
+.ch-item-title {
+  font-size: 12px; color: var(--text-faint); margin-top: 1px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
+}
+/* Presence/typing subtitle — sage when online, terracotta while typing. */
+.ch-status {
+  font-size: 12px; color: var(--success); margin-top: 1px; display: block;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ch-status.typing { color: var(--brand); }
+.ch-name-only {
+  font-size: 16px; font-weight: 600; color: var(--text-primary); flex: 1;
+}
+.ch-more {
+  display: flex; gap: 3px; padding: 8px; cursor: pointer; flex-shrink: 0;
+  &:active { opacity: 0.5; }
+}
+.more-dot {
+  width: 4px; height: 4px; border-radius: 50%; background: var(--text-muted);
+}
+
+/*
+ * Scam-warning banner — follows design-system safety-flow pattern:
+ *   warning-soft bg (warm parchment with amber cast) + 3px left-edge
+ *   amber border + amber-text body. Replaces hardcoded #FFF4E6 / #8B5000.
+ */
+.chat-scam {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+  background: var(--warning-soft);
+  border-left: 3px solid var(--warning);
+  border-bottom: 0.5px solid rgba(212, 146, 60, 0.24);
+}
+.cs-icon {
+  width: 16px; height: 16px; border-radius: 50%; background: var(--warning);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.cs-excl {
+  width: 1.5px; height: 7px; background: #fff; border-radius: 1px; position: relative;
+}
+.cs-excl::after {
+  content: ''; position: absolute; bottom: -4px; left: -0.75px;
+  width: 3px; height: 2.5px; background: #fff; border-radius: 2px;
+}
+/* Body text pins to --ink-soft (not amber-darkened) so it stays in the
+ * readable text range. Amber-on-amber-tint was a legibility hazard
+ * that used filter: brightness(0.75) as a workaround — cleaner to
+ * just use an ink tone and let the left border + icon carry the
+ * "warning" meaning. Matches index .scam-banner and the design-
+ * system chat-warn-banner spec. */
+.cs-text {
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.6; flex: 1; font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.item-card {
+  display: flex; align-items: center; gap: 10px;
+  margin: 9px 12px 0; padding: 9px 12px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  &:active { background: var(--paper-2); }
+}
+.offer-bar {
+  padding: 6px 12px 2px;
+}
+.offer-btn {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--warning-soft); border: 0.5px solid var(--warning);
+  border-radius: var(--radius-md); padding: 8px; cursor: pointer;
+  text {
+    font-size: 13px; font-weight: 600;
+    color: var(--warning);
+    filter: brightness(0.75);
+    letter-spacing: 0.02em;
+  }
+  &:active { background: rgba(212, 146, 60, 0.2); }
+}
+.quick-replies {
+  white-space: nowrap; padding: 8px 12px 4px;
+}
+.qr-chip {
+  display: inline-block; padding: 7px 14px; margin-right: 8px;
+  background: var(--bg-elev-1); border: 1px solid var(--line-soft);
+  border-radius: 16px; font-size: 13px; color: var(--text-primary);
+  cursor: pointer;
+  &:active { background: var(--bg-elev-2); }
+}
+.ic-img {
+  width: 40px; height: 40px; border-radius: 6px;
+  flex-shrink: 0; background: var(--bg-subtle);
+}
+.ic-info { flex: 1; min-width: 0; }
+.ic-title {
+  font-size: 13px; color: var(--text-primary); font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
+}
+.ic-bottom { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.ic-price { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.ic-sold { font-size: 11px; color: var(--accent-danger); font-weight: 600; }
+.ic-reserved { font-size: 11px; color: var(--accent-warn); font-weight: 600; }
+.ic-arrow {
+  width: 7px; height: 7px;
+  border-top: 1.5px solid var(--text-faint); border-right: 1.5px solid var(--text-faint);
+  transform: rotate(45deg); flex-shrink: 0;
+}
+
+/* ========== Messages ========== */
+.message-list {
+  flex: 1; min-height: 0;
+  padding: 12px 12px 12px 16px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  box-sizing: border-box;
+}
+/* Guarantee the right-side (mine) avatar never clips against the scroll
+   container edge. The row is flex-end, so a 4px right offset on the
+   avatar itself gives reliable clearance even when uni-scroll-view adds
+   its own padding/overlay scrollbar on H5 Chrome. */
+.msg-row.mine .msg-avatar { margin-right: 4px; }
+/* Belt-and-suspenders — on H5 Chrome the uni-scroll-view overlay
+   scrollbar was clipping ~15px off the right-side avatar on "mine"
+   messages. :show-scrollbar="false" is the primary fix; these
+   selectors are fallbacks in case scoped styles don't reach through
+   uni's inner render. */
+.message-list::-webkit-scrollbar,
+.message-list :deep(.uni-scroll-view)::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.message-list :deep(.uni-scroll-view) {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+/* ===== Structured offer cards (migration 051) ===== */
+.offer-entry { display: flex; margin: 4px 0 9px; }
+.offer-entry.mine { justify-content: flex-end; }
+.offer-card {
+  width: 72%; max-width: 270px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 12px 14px;
+}
+.offer-entry.mine .offer-card { background: var(--brand-ghost); border-color: var(--brand-soft); }
+.oc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.oc-eyebrow { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-quiet); }
+.oc-status { font-size: 11px; font-weight: 600; color: var(--ink-quiet); }
+.oc-st-accepted .oc-status { color: var(--success); }
+.oc-st-declined .oc-status, .oc-st-expired .oc-status { color: var(--ink-faint); }
+.oc-st-countered .oc-status { color: var(--warning); }
+.oc-price { display: block; font-family: var(--font-serif); font-size: 26px; font-weight: 600; color: var(--brand); letter-spacing: -0.02em; line-height: 1.1; }
+.oc-st-declined .oc-price, .oc-st-expired .oc-price, .oc-st-countered .oc-price { color: var(--ink-quiet); text-decoration: line-through; }
+.oc-note { display: block; margin-top: 4px; font-size: 12px; color: var(--ink-soft); line-height: 1.5; }
+.oc-meta { display: block; margin-top: 8px; font-size: 12px; color: var(--ink-quiet); }
+.oc-expiry { display: block; margin-top: 6px; font-size: 10px; color: var(--ink-faint); }
+.oc-actions { display: flex; gap: 6px; margin-top: 10px; }
+.oc-btn {
+  flex: 1; height: 32px; border-radius: var(--radius-pill);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  text { font-size: 12px; font-weight: 600; }
+  &:active { transform: scale(0.96); }
+}
+.oc-accept { background: var(--brand); text { color: #fff; } }
+.oc-decline { background: var(--surface-alt); text { color: var(--ink-soft); } }
+.oc-counter { background: var(--surface-alt); text { color: var(--ink); } }
+
+.deal-line {
+  text-align: center; margin: 2px 0 12px;
+  text { font-size: 12px; font-weight: 600; color: var(--success); background: var(--success-soft); padding: 5px 14px; border-radius: var(--radius-pill); }
+}
+
+/* ===== Offer composer sheet ===== */
+.offer-mask { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.35); z-index: 1000; }
+.offer-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1001;
+  background: var(--bg-elev-1);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: 8px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translateY(100%);
+  transition: transform var(--dur-3) var(--ease-warm);
+  max-width: 480px; margin: 0 auto;
+  &.open { transform: translateY(0); }
+}
+.os-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 0 auto 14px; }
+.os-title { display: block; font-family: var(--font-serif); font-size: 18px; font-weight: 600; color: var(--ink); }
+.os-ref { display: block; margin-top: 4px; font-size: 12px; color: var(--ink-quiet); }
+.os-input-row { display: flex; align-items: center; gap: 6px; margin-top: 16px; padding: 12px 14px; background: var(--bg-subtle); border-radius: var(--radius-md); }
+.os-dollar { font-family: var(--font-serif); font-size: 22px; font-weight: 600; color: var(--brand); }
+.os-input { flex: 1; font-family: var(--font-serif); font-size: 22px; color: var(--ink); background: transparent; }
+.os-quick { white-space: nowrap; margin-top: 10px; }
+.os-quick-chip {
+  display: inline-flex; align-items: center; height: 30px; padding: 0 14px; margin-right: 8px;
+  border-radius: var(--radius-pill); background: var(--surface-alt);
+  text { font-family: var(--font-mono); font-size: 13px; color: var(--ink-soft); }
+  &:active { background: var(--frame); }
+}
+.os-note { margin-top: 12px; padding: 11px 14px; background: var(--bg-subtle); border-radius: var(--radius-md); font-size: 14px; color: var(--ink); width: 100%; box-sizing: border-box; }
+.os-submit {
+  margin-top: 16px; height: 48px; border-radius: var(--radius-pill);
+  background: var(--brand); display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--shadow-cta); cursor: pointer;
+  text { font-size: 15px; font-weight: 600; color: #fff; }
+  &:active { opacity: 0.85; }
+  &.disabled { background: var(--ink-faint); box-shadow: none; pointer-events: none; }
+}
+.os-expiry-hint { display: block; text-align: center; margin-top: 10px; font-size: 11px; color: var(--ink-faint); }
+
+.time-divider {
+  text-align: center; padding: 12px 0 6px;
+  text { font-size: 11px; color: var(--text-faint); background: var(--bg-subtle); padding: 2px 10px; border-radius: 8px; }
+}
+.msg-row {
+  display: flex; align-items: flex-end; margin-bottom: 9px; gap: 8px;
+  width: 100%; box-sizing: border-box;
+  &.mine {
+    justify-content: flex-end;
+    .msg-bubble {
+      background: var(--accent-primary); color: #fff;
+      border-radius: 18px 18px 4px 18px;
+    }
+  }
+}
+.msg-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  flex-shrink: 0; background: var(--bg-inset);
+  object-fit: cover;
+}
+.msg-bubble {
+  max-width: calc(100% - 48px); padding: 10px 14px;
+  background: var(--bg-elev-1); border-radius: 4px 18px 18px 18px;
+  font-size: 15px; line-height: 1.5; word-break: break-all;
+  box-sizing: border-box;
+}
+.msg-image {
+  /* widthFix handles the common case (natural-ratio photo in a 200px
+     bubble). The max-height: 60vh cap is the belt: a 1:5 full-phone
+     screenshot used to blow past an entire viewport inside the thread
+     and push every earlier message off-screen. Clamped to 60% of the
+     viewport's height it fills the bubble prominently without hijacking
+     the scroll. object-fit: contain is the braces — once max-height
+     clamps the box, contain keeps the screenshot letterboxed instead
+     of stretched. */
+  max-width: 200px;
+  max-height: 60vh;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  border-radius: 12px;
+  background: var(--bg-inset);
+}
+.msg-video {
+  width: 220px;
+  max-width: 60vw;
+  height: 160px;
+  border-radius: 12px;
+  background: var(--bg-inset);
+}
+/* Sticker messages float bare — no bubble chrome. */
+.msg-sticker {
+  padding: 2px;
+}
+.img-btn {
+  width: 38px; height: 38px; display: flex;
+  align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
+  background: var(--bg-subtle); border-radius: 50%;
+  &:active { background: var(--bg-inset); }
+}
+.emoji-btn {
+  width: 38px; height: 38px; display: flex;
+  align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
+  background: var(--bg-subtle); border-radius: 50%;
+  &:active { background: var(--bg-inset); }
+  &.active { background: var(--accent-primary); }
+  &.active .emoji-btn-glyph { opacity: 1; filter: none; }
+}
+.emoji-btn-glyph {
+  font-size: 20px; line-height: 1;
+  /* Inactive opacity raised from 0.45 → 0.78 so the button is
+     legible at rest. The grayscale filter softened from 0.6 → 0.2
+     so the smiley still reads as colourful, just dimmed. The
+     .active rule above resets to opacity 1 + no filter when the
+     panel is open. */
+  opacity: 0.78;
+  filter: grayscale(0.2);
+  transition: opacity 0.15s, filter 0.15s;
+}
+
+.empty-chat {
+  display: flex; flex-direction: column; align-items: center;
+  padding-top: 80px; gap: 10px; color: var(--text-faint); font-size: 14px;
+}
+/* CSS Wave Icon */
+.ec-icon { margin-bottom: 4px; }
+.ec-wave {
+  width: 32px; height: 24px; position: relative;
+  &::before {
+    content: ''; position: absolute; top: 2px; left: 0;
+    width: 28px; height: 20px; border: 2px solid var(--border-strong);
+    border-radius: 14px 14px 14px 4px;
+  }
+  &::after {
+    content: ''; position: absolute; top: 9px; left: 7px;
+    width: 12px; height: 3px; border-radius: 2px;
+    background: var(--border-strong);
+  }
+}
+
+/* ========== Input Bar ========== */
+.reply-ctx {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px;
+  background: rgba(199,74,47,0.08);
+  border-top: 0.5px solid rgba(199,74,47,0.15);
+  max-width: 480px; margin: 0 auto;
+  width: 100%; box-sizing: border-box;
+}
+.rc-bar { width: 3px; align-self: stretch; background: var(--accent-action); border-radius: 2px; }
+.rc-body { flex: 1; min-width: 0; }
+.rc-label { display: block; font-size: 11px; color: var(--accent-action); font-weight: 600; }
+.rc-text {
+  display: block; font-size: 13px; color: var(--text-secondary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  margin-top: 2px;
+}
+.rc-x {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  &:active { background: rgba(199,74,47,0.15); }
+}
+.rc-x-inner {
+  width: 11px; height: 11px; position: relative;
+  &::before, &::after {
+    content: ''; position: absolute; top: 50%; left: 0;
+    width: 11px; height: 1.5px; background: var(--accent-action);
+  }
+  &::before { transform: rotate(45deg); }
+  &::after { transform: rotate(-45deg); }
+}
+
+.suggest-row {
+  display: flex; gap: 8px; padding: 6px 14px;
+  background: var(--bg-elev-1); border-top: 0.5px solid var(--line-hair);
+  max-width: 480px; margin: 0 auto; width: 100%; box-sizing: border-box;
+  overflow-x: auto;
+}
+.suggest-chip {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--bg-subtle);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  &:active { background: var(--bg-inset); }
+}
+.suggest-emoji { font-size: 19px; line-height: 1; }
+
+.input-bar {
+  display: flex; align-items: center; padding: 9px 14px;
+  background: var(--bg-elev-1); border-top: 0.5px solid var(--line-hair); gap: 8px;
+  padding-bottom: calc(9px + env(safe-area-inset-bottom));
+}
+.msg-input {
+  flex: 1; height: 40px; background: var(--bg-subtle); border-radius: 20px;
+  padding: 0 16px; font-size: 15px; color: var(--text-primary);
+}
+.send-btn {
+  width: 40px; height: 40px; background: var(--accent-primary);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  &.disabled { opacity: 0.25; pointer-events: none; }
+  &:active { opacity: 0.7; }
+}
+</style>

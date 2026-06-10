@@ -224,6 +224,7 @@ const zh: Record<string, string> = {
   'msg.filterUnread': '未读',
   'msg.filterItems': '商品',
   'msg.noFiltered': '没有符合的会话',
+  'msg.selectHint': '选择一个对话开始',
   'msg.deleteConv': '删除对话',
   'msg.deleteTitle': '删除该对话？',
   'msg.deleteHint': '所有消息将被永久删除。',

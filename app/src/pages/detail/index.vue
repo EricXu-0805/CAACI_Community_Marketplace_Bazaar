@@ -1,5 +1,6 @@
 <template>
-  <view class="page" v-if="item">
+  <AppSidebar current="" />
+  <view class="page has-sidebar" v-if="item">
     <!-- Image Carousel -->
     <view :class="['img-area', { 'is-sold': item.status === 'sold' }]">
       <!--
@@ -263,7 +264,7 @@
     </view>
   </view>
 
-  <view v-else-if="notFound" class="not-found-page">
+  <view v-else-if="notFound" class="not-found-page has-sidebar">
     <view class="nf-back" role="button" :aria-label="t('a11y.back')" @click="goBack"><view class="nf-arrow"></view></view>
     <view class="nf-icon"></view>
     <text class="nf-title">{{ t('detail.notFoundTitle') }}</text>
@@ -272,7 +273,7 @@
   </view>
 
   <!-- Loading state -->
-  <view v-else class="loading-page">
+  <view v-else class="loading-page has-sidebar">
     <view class="loading-spinner"></view>
     <text class="loading-text">{{ t('home.loading') }}</text>
   </view>
@@ -301,6 +302,7 @@ import { useTranslate } from '../../composables/useTranslate'
 import { computed, onUnmounted, watch } from 'vue'
 import UBadge from '../../components/UBadge.vue'
 import UIcon from '../../components/UIcon.vue'
+import AppSidebar from '../../components/AppSidebar.vue'
 
 const { t, lang, localize } = useI18n()
 const { isDark } = useTheme()
@@ -1310,24 +1312,27 @@ async function contactSeller() {
 
 /* ========== Desktop ========== */
 @media (min-width: 768px) {
-  .page { max-width: 640px; margin: 0 auto; }
+  /* Sidebar rail (.has-sidebar) reserves the left via padding-left; the
+     page box is rail + 640 reading column, centered, so the content sits
+     in a 640 column right of the rail (box-sizing:border-box from
+     .has-sidebar makes max-width include the padding). */
+  .page { max-width: calc(640px + var(--sidebar-w, 240px)); margin: 0 auto; }
   /*
    * Don't hard-set height here either. The inline :style aspect-ratio
    * handles it, and the 70vh cap keeps the hero from eating the whole
    * above-the-fold on big screens.
    */
   .info-card { border-radius: 0; }
-  /* The action bar is position:fixed full-width; align it under the
-     centered 640px reading column instead of spanning the viewport. */
+  /* Fixed bars span the post-rail band and center within it at 640 —
+     the same pattern as publish's submit bar. */
   .action-bar {
-    left: 50%; right: auto; transform: translateX(-50%);
-    width: 100%; max-width: 640px;
+    left: var(--sidebar-w, 240px); right: 0; transform: none;
+    width: auto; max-width: 640px; margin-left: auto; margin-right: auto;
   }
-  /* Same for the rating bottom-sheet — keep it aligned to the 640 column. */
   .rating-sheet {
-    left: 50%; right: auto; width: 100%; max-width: 640px;
-    transform: translateX(-50%) translateY(100%);
+    left: var(--sidebar-w, 240px); right: 0; width: auto; max-width: 640px;
+    margin-left: auto; margin-right: auto; transform: translateY(100%);
   }
-  .rating-sheet.open { transform: translateX(-50%) translateY(0); }
+  .rating-sheet.open { transform: translateY(0); }
 }
 </style>
