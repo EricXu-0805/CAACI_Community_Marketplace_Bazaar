@@ -370,6 +370,7 @@ const en: Record<string, string> = {
   'login.signUp': 'Sign Up',
   'login.nickname': 'Nickname',
   'login.email': 'Email',
+  'login.illiniEmail': 'Illini email · unlocks the verified badge',
   'login.password': 'Password',
   'login.submitLogin': 'Sign In',
   'login.submitSignup': 'Create Account',
