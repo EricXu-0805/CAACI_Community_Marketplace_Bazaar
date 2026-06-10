@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { quickTranslate } from '../utils'
-import { platformFetch } from './useSupabase'
+import { platformFetch, useSupabase } from './useSupabase'
 import { addBreadcrumb } from '../utils/sentry'
 import { SUPPORTED_LANGS, type Lang as AppLang } from './useI18n'
 import { BASE_URL } from '../config/runtime'
@@ -96,11 +96,19 @@ export function useTranslate() {
 
     pending.value = true
     try {
+      /* /api/translate requires a Supabase JWT (abuse control — the
+         endpoint fronts paid OpenAI calls). Logged-out users skip the
+         round trip entirely and get the static dictionary. */
+      const { supabase } = useSupabase()
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
+      if (!jwt) return quickTranslate(text, target)
+
       const ctrl = new AbortController()
       const timer = setTimeout(() => ctrl.abort(), 8000)
       const r = await platformFetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
         body: JSON.stringify({ text, target }),
         signal: ctrl.signal,
       }).finally(() => clearTimeout(timer))

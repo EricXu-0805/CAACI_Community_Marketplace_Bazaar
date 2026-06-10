@@ -1,5 +1,12 @@
 # CAACI Community Marketplace - COMPREHENSIVE SECURITY AUDIT
 
+> **⚠️ SUPERSEDED — RESOLVED AS OF MIGRATION 013 (verified 2026-06-10).**
+> Every CRITICAL finding below (notifications INSERT policy, conversation
+> participant isolation, etc.) was patched in
+> `supabase/migrations/013_security_patches.sql`; migrations now run to 042+.
+> This document is kept as historical context for why 013 exists. Do NOT
+> re-report its findings as live — audit the current schema instead.
+
 **Audit Date:** 2024  
 **Scope:** uni-app Vue 3 + Supabase (migrations 001-012)  
 **Threat Model:** Adversarial attacker with ChatGPT, willing to write scripts
