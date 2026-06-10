@@ -107,19 +107,27 @@ export function useMessages() {
     }
   }
 
+  // Cap a single conversation load. A long-running thread can hold
+  // thousands of rows; loading them all blew up the DOM and memory.
+  // Fetch the most-recent MESSAGE_PAGE descending, then flip to
+  // chronological for render (older history is rarely scrolled to in
+  // a marketplace chat; a "load earlier" affordance can come later).
+  const MESSAGE_PAGE = 200
+
   async function fetchMessages(conversationId: string) {
     messages.value = []
     const { data, error } = await supabase
       .from('messages')
       .select(`${MESSAGE_FIELDS}, sender:profiles(id, nickname, avatar_url)`)
       .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
+      .limit(MESSAGE_PAGE)
 
     if (error) throw error
     /* PostgREST embed 'sender:profiles(...)' resolves to a single row via
        the FK, but TS can't narrow that from our template-literal select —
        the as-unknown hop matches the pattern already used by fetchConversations. */
-    messages.value = (data || []) as unknown as Message[]
+    messages.value = ((data || []) as unknown as Message[]).reverse()
   }
 
   function clearMessages() {

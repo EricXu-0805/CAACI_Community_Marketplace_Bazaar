@@ -403,7 +403,9 @@ async function loadComments() {
   loadingComments.value = true
   try {
     comments.value = await fetchComments(postId.value)
-  } catch {} finally {
+  } catch (err: any) {
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
+  } finally {
     loadingComments.value = false
   }
 }

@@ -31,7 +31,8 @@ export function useNotifications() {
       .order('created_at', { ascending: false })
       .limit(50)
 
-    if (!error && data) {
+    if (error) throw error
+    if (data) {
       notifications.value = data as Notification[]
       unreadNotifCount.value = data.filter((n: any) => !n.is_read).length
     }
