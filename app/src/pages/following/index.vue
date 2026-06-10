@@ -155,11 +155,10 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   position: absolute; bottom: 7px; left: 7px;
   display: inline-flex; align-items: center; gap: 3px;
   padding: 2px 7px 2px 5px; border-radius: 10px;
-  background: rgba(93, 124, 74, 0.92);
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  background: var(--success);
 }
-.bsc-check { font-size: 10px; color: #fff; font-weight: 800; line-height: 1; }
-.bsc-label { font-size: 10px; color: #fff; font-weight: 600; line-height: 1; }
+.bsc-check { font-size: 10px; color: var(--ink-inverse); font-weight: 800; line-height: 1; }
+.bsc-label { font-size: 10px; color: var(--ink-inverse); font-weight: 600; line-height: 1; }
 .card-title {
   font-size: 13px; color: var(--text-primary); line-height: 1.45; letter-spacing: 0.02em;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;

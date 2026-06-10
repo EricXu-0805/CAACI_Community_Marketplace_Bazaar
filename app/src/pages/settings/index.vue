@@ -29,7 +29,7 @@
     <view class="section">
       <view class="menu-item">
         <text class="mi-label">{{ t('settings.version') }}</text>
-        <text class="mi-value">0.1.0</text>
+        <text class="mi-value">{{ appVersionLabel }}</text>
       </view>
     </view>
 
@@ -78,13 +78,14 @@ import { useI18n } from '../../composables/useI18n'
 import { useSupabase } from '../../composables/useSupabase'
 import { useTheme, type ThemePref } from '../../composables/useTheme'
 import { DIALOG_DANGER } from '../../utils/dialogColors'
-import { BASE_URL } from '../../config/runtime'
+import { BASE_URL, APP_VERSION, BUILD_REF } from '../../config/runtime'
 
 const { t, lang, setLang } = useI18n()
 const { isLoggedIn, signOut } = useAuth()
 const { supabase } = useSupabase()
 const { pref: themePref, setPref: setThemePref } = useTheme()
 const cacheSize = ref('--')
+const appVersionLabel = `${APP_VERSION} · ${BUILD_REF}`
 
 /*
  * Language picker.
