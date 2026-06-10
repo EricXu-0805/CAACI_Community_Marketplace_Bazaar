@@ -23,13 +23,13 @@
           page with a focused input.
         -->
         <view class="search-field search-proxy" @click="goToSearch" role="button" :aria-label="t('a11y.search')">
-          <view class="sf-icon"></view>
+          <UIcon name="search" size="xs" color="ink-faint" />
           <text v-if="searchText" class="sf-text">{{ searchText }}</text>
           <text v-else class="sf-placeholder">{{ t('home.search') }}</text>
           <view v-if="searchText" class="sf-clear" role="button" :aria-label="t('a11y.searchClear')" @click.stop="onClearSearch">×</view>
         </view>
         <view class="filter-btn" role="button" :aria-label="t('a11y.filter')" @click.stop="showFilter = !showFilter">
-          <view class="fb-lines"><view></view><view></view><view></view></view>
+          <UIcon name="filter" size="xs" color="text-secondary" />
           <text class="fb-label">{{ t('home.filter') }}</text>
           <view v-if="activeFilterCount > 0" class="fb-badge">{{ activeFilterCount }}</view>
         </view>
@@ -343,6 +343,7 @@ import type { ImageDim } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import UBadge from '../../components/UBadge.vue'
+import UIcon from '../../components/UIcon.vue'
 
 const { t, lang, localize } = useI18n()
 const { isDark } = useTheme()
@@ -860,13 +861,6 @@ function goPublish() {
     letter-spacing: 0.02em;
   }
 }
-.sf-icon {
-  width: 14px; height: 14px; border: 1.6px solid var(--ink-faint); border-radius: 50%; position: relative; flex-shrink: 0;
-}
-.sf-icon::after {
-  content: ''; position: absolute; bottom: -4px; right: -4px;
-  width: 5px; height: 1.6px; background: var(--ink-faint); transform: rotate(45deg);
-}
 .sf-clear {
   width: 18px; height: 18px; border-radius: 50%; background: var(--ink-faint);
   color: #fff; font-size: 12px; font-weight: 600;
@@ -884,13 +878,6 @@ function goPublish() {
   &:active { background: var(--parchment); }
 }
 .fb-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); line-height: 1; }
-.fb-lines {
-  display: flex; flex-direction: column; gap: 3px; width: 16px;
-  view { height: 1.8px; background: var(--text-secondary); border-radius: 1px; }
-  view:nth-child(1) { width: 16px; }
-  view:nth-child(2) { width: 12px; }
-  view:nth-child(3) { width: 8px; }
-}
 .fb-badge {
   position: absolute; top: 1px; right: 1px;
   width: 15px; height: 15px; border-radius: 50%;

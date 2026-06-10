@@ -150,10 +150,10 @@
 
     <view class="input-bar">
       <view class="img-btn" role="button" :aria-label="t('a11y.pickImage')" @click="onSendImage">
-        <view class="img-icon"></view>
+        <UIcon name="image" size="sm" color="text-secondary" />
       </view>
       <view class="img-btn" role="button" :aria-label="t('a11y.pickVideo')" @click="onSendVideo">
-        <view class="video-icon"></view>
+        <UIcon name="video" size="sm" color="text-secondary" />
       </view>
       <view :class="['emoji-btn', { active: emojiOpen }]" role="button" :aria-label="t('a11y.emojiToggle')" @click="toggleEmoji">
         <text class="emoji-btn-glyph">😊</text>
@@ -171,7 +171,7 @@
         class="msg-input"
       />
       <view :class="['send-btn', { disabled: !inputText.trim() || sending }]" role="button" :aria-label="t('a11y.sendMessage')" @click="onSend">
-        <view class="send-arrow"></view>
+        <UIcon name="arrow-up" size="sm" color="#fff" />
       </view>
     </view>
     <ChatEmojiPanel :open="emojiOpen" @pick="onPickEmoji" />
@@ -200,6 +200,7 @@ import { formatPrice, friendlyErrorMessage } from '../../utils'
 import { DIALOG_DANGER } from '../../utils/dialogColors'
 import type { Item } from '../../types'
 import ChatEmojiPanel from '../../components/ChatEmojiPanel.vue'
+import UIcon from '../../components/UIcon.vue'
 import ScamInterceptModal from '../../components/ScamInterceptModal.vue'
 
 const { t, lang, localize } = useI18n()
@@ -1026,23 +1027,6 @@ function scrollToBottom() {
   background: var(--bg-subtle); border-radius: 50%;
   &:active { background: var(--bg-inset); }
 }
-.img-icon {
-  width: 20px; height: 16px; border: 1.8px solid var(--text-secondary); border-radius: 3px; position: relative;
-  &::before {
-    content: ''; position: absolute; top: 2px; left: 3px;
-    width: 4px; height: 4px; border-radius: 50%; border: 1.2px solid var(--text-secondary);
-  }
-}
-/* Camcorder glyph: body + right-pointing lens triangle. */
-.video-icon {
-  width: 15px; height: 14px; border: 1.8px solid var(--text-secondary); border-radius: 3px; position: relative; margin-right: 5px;
-  &::after {
-    content: ''; position: absolute; top: 2px; right: -7px;
-    border-top: 4px solid transparent; border-bottom: 4px solid transparent;
-    border-left: 6px solid var(--text-secondary);
-    transform: rotate(180deg);
-  }
-}
 .emoji-btn {
   width: 38px; height: 38px; display: flex;
   align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
@@ -1132,10 +1116,5 @@ function scrollToBottom() {
   cursor: pointer; flex-shrink: 0;
   &.disabled { opacity: 0.25; pointer-events: none; }
   &:active { opacity: 0.7; }
-}
-.send-arrow {
-  width: 10px; height: 10px;
-  border-top: 2px solid #fff; border-right: 2px solid #fff;
-  transform: rotate(-45deg); margin-left: -2px;
 }
 </style>

@@ -11,14 +11,33 @@
          so it reads as embedded IN the paper, not glued on top.
   -->
   <view class="tabbar">
+    <!--
+      Icon rendering is split per target (P2b): H5 uses the v3 UIcon
+      registry (regular at rest, filled + ink when active). mp-weixin
+      keeps the CSS-drawn icons below because UIcon injects SVG via
+      v-html, which compiles to <rich-text> on mp — and WeChat's
+      rich-text tag whitelist drops <svg>, rendering nothing. Same
+      limitation applies to every UIcon surface on mp; tracked as an
+      mp-launch work item.
+    -->
     <view :class="['tab', { active: current === 'index' }]" @click="go('/pages/index/index')">
       <view v-if="current === 'index'" class="tab-dot"></view>
+      <!-- #ifdef H5 -->
+      <UIcon name="home" size="sm" :weight="current === 'index' ? 'filled' : 'regular'" :color="current === 'index' ? 'ink' : 'ink-faint'" />
+      <!-- #endif -->
+      <!-- #ifndef H5 -->
       <view :class="['ico', 'ico-home', { active: current === 'index' }]"></view>
+      <!-- #endif -->
       <text :class="['lbl', { active: current === 'index' }]">{{ t('nav.home') }}</text>
     </view>
     <view :class="['tab', { active: current === 'plaza' }]" @click="go('/pages/plaza/index')">
       <view v-if="current === 'plaza'" class="tab-dot"></view>
+      <!-- #ifdef H5 -->
+      <UIcon name="plaza" size="sm" :weight="current === 'plaza' ? 'filled' : 'regular'" :color="current === 'plaza' ? 'ink' : 'ink-faint'" />
+      <!-- #endif -->
+      <!-- #ifndef H5 -->
       <view :class="['ico', 'ico-plaza', { active: current === 'plaza' }]"></view>
+      <!-- #endif -->
       <text :class="['lbl', { active: current === 'plaza' }]">{{ t('nav.plaza') }}</text>
     </view>
     <!--
@@ -46,7 +65,12 @@
     <view :class="['tab', { active: current === 'messages' }]" @click="go('/pages/messages/index')">
       <view v-if="current === 'messages'" class="tab-dot"></view>
       <view class="ico-wrap">
+        <!-- #ifdef H5 -->
+        <UIcon name="messages" size="sm" :weight="current === 'messages' ? 'filled' : 'regular'" :color="current === 'messages' ? 'ink' : 'ink-faint'" />
+        <!-- #endif -->
+        <!-- #ifndef H5 -->
         <view :class="['ico', 'ico-msg', { active: current === 'messages' }]"></view>
+        <!-- #endif -->
         <view v-if="unreadCount > 0" class="badge-dot">
           <text v-if="unreadCount <= 99" class="badge-count">{{ unreadCount }}</text>
           <text v-else class="badge-count">99+</text>
@@ -57,7 +81,12 @@
     </view>
     <view :class="['tab', { active: current === 'profile' }]" @click="go('/pages/profile/index')">
       <view v-if="current === 'profile'" class="tab-dot"></view>
+      <!-- #ifdef H5 -->
+      <UIcon name="profile" size="sm" :weight="current === 'profile' ? 'filled' : 'regular'" :color="current === 'profile' ? 'ink' : 'ink-faint'" />
+      <!-- #endif -->
+      <!-- #ifndef H5 -->
       <view :class="['ico', 'ico-me', { active: current === 'profile' }]"></view>
+      <!-- #endif -->
       <text :class="['lbl', { active: current === 'profile' }]">{{ t('nav.profile') }}</text>
     </view>
   </view>
@@ -66,6 +95,9 @@
 <script setup lang="ts">
 import { useI18n } from '../composables/useI18n'
 import { useUnread } from '../composables/useUnread'
+// #ifdef H5
+import UIcon from './UIcon.vue'
+// #endif
 
 defineProps<{ current: string }>()
 const { t } = useI18n()
@@ -135,17 +167,19 @@ function go(url: string) { uni.switchTab({ url }) }
 }
 .lbl.active { color: var(--ink); font-weight: 500; }
 
-.ico { width: 24px; height: 24px; position: relative; }
-.ico-wrap { position: relative; width: 24px; height: 24px; }
+.ico-wrap { position: relative; width: 20px; height: 20px; }
 
 /*
  * Icons — 20px line weight 1.6, lean and restrained. Active state
  * shifts stroke from ink-faint → ink (navy), NOT to brand — the
  * orange is carried by the .tab-dot above. Keeps the bar from
  * looking "lit up" in 3 places when only 1 tab is selected.
+ *
+ * CSS-drawn variants are mp-only — H5 renders registry UIcons
+ * (see template note).
  */
-.ico { width: 20px; height: 20px; }
-.ico-wrap { width: 20px; height: 20px; }
+/* #ifndef H5 */
+.ico { width: 20px; height: 20px; position: relative; }
 
 .ico-home::before {
   content: ''; position: absolute; bottom: 0; left: 2px; right: 2px; height: 10px;
@@ -189,6 +223,7 @@ function go(url: string) { uni.switchTab({ url }) }
   border: 1.6px solid var(--ink-faint); border-radius: 9px 9px 0 0; border-bottom: none;
 }
 .ico-me.active::before, .ico-me.active::after { border-color: var(--ink); }
+/* #endif */
 
 .badge-dot {
   position: absolute; top: -4px; right: -8px;

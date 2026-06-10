@@ -20,7 +20,7 @@
             </view>
           </view>
           <view v-if="imageList.length < 9" class="image-add" @click="chooseImage">
-            <view class="add-icon-css"></view>
+            <UIcon name="plus" color="text-faint" />
             <text class="add-text">{{ t('publish.addPhoto') }}</text>
             <text class="add-count">{{ imageList.length }}/9</text>
           </view>
@@ -139,9 +139,9 @@
     </view>
 
     <view class="submit-bar">
-      <button class="submit-btn" :disabled="submitting" @click="onSubmit">
-        {{ submitting ? t('publish.submitting') : t('publish.submit') }}
-      </button>
+      <UButton size="lg" block :loading="submitting" @click="onSubmit">
+        {{ t('publish.submit') }}
+      </UButton>
     </view>
 
     <CustomTabBar current="publish" />
@@ -178,6 +178,8 @@ import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PermissionDeniedModal from '../../components/PermissionDeniedModal.vue'
 import ScamInterceptModal from '../../components/ScamInterceptModal.vue'
+import UIcon from '../../components/UIcon.vue'
+import UButton from '../../components/UButton.vue'
 
 const { t, lang } = useI18n()
 const { CAMPUS_SPOTS } = useCampusSpots()
@@ -845,14 +847,6 @@ async function onSubmit() {
   transition: background var(--dur-1, 120ms) var(--ease-std, ease);
   &:active { background: var(--paper-2); }
 }
-.add-icon-css {
-  width: 22px; height: 22px; position: relative;
-  &::before, &::after {
-    content: ''; position: absolute; background: var(--text-faint); border-radius: 1px;
-  }
-  &::before { width: 22px; height: 2px; top: 10px; left: 0; }
-  &::after { width: 2px; height: 22px; top: 0; left: 10px; }
-}
 .add-text { font-size: 11px; color: var(--text-faint); }
 .add-count { font-size: 10px; color: var(--text-faint); margin-top: 2px; font-variant-numeric: tabular-nums; }
 .image-tip { font-size: 12px; color: var(--text-faint); margin-top: 8px; }
@@ -1043,14 +1037,6 @@ async function onSubmit() {
   border-top: 0.5px solid var(--line-hair);
   z-index: 40;
 }
-.submit-btn {
-  width: 100%; height: 46px; background: var(--accent-primary); color: #fff;
-  border-radius: 23px; font-size: 15px; font-weight: 600;
-  display: flex; align-items: center; justify-content: center; border: none;
-  &[disabled] { opacity: 0.3; }
-  &:active { opacity: 0.8; }
-}
-
 @media (min-width: 768px) {
   .submit-bar { bottom: 0; }
 }
