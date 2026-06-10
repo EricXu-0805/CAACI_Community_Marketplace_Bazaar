@@ -43,7 +43,7 @@
       v-if="itemInfo && itemInfo.negotiable && itemInfo.status === 'active' && currentUser?.id !== itemInfo.user_id"
       class="offer-bar"
     >
-      <view class="offer-btn" @click="onMakeOffer">
+      <view class="offer-btn" @click="openOfferSheet">
         <text>{{ t('chat.makeOffer') }}</text>
       </view>
     </view>
@@ -67,81 +67,111 @@
       scroll-with-animation
       @click="onMessageAreaTap"
     >
-      <template v-for="(msg, idx) in messages" :key="msg.id">
-        <view v-if="shouldShowTime(idx)" class="time-divider">
-          <text>{{ formatChatTime(msg.created_at) }}</text>
+      <template v-for="(entry, idx) in timeline" :key="entry.key">
+        <view v-if="shouldShowTimeAt(idx)" class="time-divider">
+          <text>{{ formatChatTime(entry.created_at) }}</text>
         </view>
-        <view
-          :id="`msg-${msg.id}`"
-          :class="['msg-row', { mine: msg.sender_id === currentUser?.id }]"
-        >
-        <image
-          v-if="msg.sender_id !== currentUser?.id"
-          :src="msg.sender?.avatar_url || defaultAvatar"
-          :alt="msg.sender?.nickname || 'avatar'"
-          class="msg-avatar"
-        />
-        <!-- Sticker message: whole body is one [sticker:*] token — bare
-             artwork, no bubble chrome (WeChat sticker semantics). -->
-        <view
-          v-if="stickerOf(msg)"
-          class="msg-sticker"
-          @touchstart="msgLongPress.onTouchstart(msg)"
-          @touchend="msgLongPress.onTouchend"
-          @touchcancel="msgLongPress.onTouchcancel"
-          @touchmove="msgLongPress.onTouchmove"
-        >
-          <USticker :name="stickerOf(msg)!" :size="84" />
-        </view>
-        <view
-          class="msg-bubble"
-          v-else-if="msg.message_type !== 'image' && msg.message_type !== 'video'"
-          @touchstart="msgLongPress.onTouchstart(msg)"
-          @touchend="msgLongPress.onTouchend"
-          @touchcancel="msgLongPress.onTouchcancel"
-          @touchmove="msgLongPress.onTouchmove"
-        >
-          <text>{{ msg.content }}</text>
-        </view>
-        <image
-          v-else-if="msg.message_type === 'image'"
-          :src="msg.content"
-          alt="Photo"
-          class="msg-image"
-          mode="widthFix"
-          lazy-load
-          @click="previewImg(msg.content)"
-          @touchstart="msgLongPress.onTouchstart(msg)"
-          @touchend="msgLongPress.onTouchend"
-          @touchcancel="msgLongPress.onTouchcancel"
-          @touchmove="msgLongPress.onTouchmove"
-        />
-        <!-- 私信视频 (migration 048) — native controls; no autoplay so a
-             scroll through history doesn't start playback. -->
-        <video
-          v-else
-          :src="msg.content"
-          class="msg-video"
-          controls
-          :show-fullscreen-btn="true"
-          object-fit="contain"
-        />
-        <image
-          v-if="msg.sender_id === currentUser?.id"
-          :src="currentUser?.avatar_url || defaultAvatar"
-          :alt="currentUser?.nickname || 'avatar'"
-          class="msg-avatar"
-        />
-      </view>
-      <view v-if="msg.sender_id === currentUser?.id && (msg as any)._pending" class="msg-status pending">
-        <text>{{ t('chat.sending') }}</text>
-      </view>
-      <view v-else-if="msg.sender_id === currentUser?.id && (msg as any)._failed" class="msg-status failed" @click="retrySend(msg)">
-        <text>{{ t('chat.sendFailed') }}</text>
-      </view>
+
+        <!-- ===== Offer entry (structured negotiation, migration 051) ===== -->
+        <template v-if="entry.kind === 'offer'">
+          <view class="offer-entry" :class="{ mine: entry.offer.from_user === currentUser?.id }">
+            <view class="offer-card" :class="'oc-st-' + entry.offer.status">
+              <view class="oc-head">
+                <text class="oc-eyebrow">{{ entry.offer.from_user === currentUser?.id ? t('chat.offerYou') : t('chat.offerThem') }}</text>
+                <text class="oc-status">{{ offerStatusLabel(entry.offer) }}</text>
+              </view>
+              <text class="oc-price">${{ fmtOfferPrice(entry.offer.price) }}</text>
+              <text v-if="entry.offer.note" class="oc-note">{{ entry.offer.note }}</text>
+              <view v-if="entry.offer.status === 'pending' && offerIncoming(entry.offer) && !offerExpired(entry.offer)" class="oc-actions">
+                <view class="oc-btn oc-decline" @click="declineOffer(entry.offer)"><text>{{ t('chat.offerDecline') }}</text></view>
+                <view class="oc-btn oc-counter" @click="openCounter(entry.offer)"><text>{{ t('chat.offerCounter') }}</text></view>
+                <view class="oc-btn oc-accept" @click="acceptOffer(entry.offer)"><text>{{ t('chat.offerAccept') }}</text></view>
+              </view>
+              <text v-else-if="entry.offer.status === 'pending'" class="oc-meta">
+                {{ offerExpired(entry.offer) ? t('chat.offerExpired') : t('chat.offerWaiting') }}
+              </text>
+              <text v-if="entry.offer.status === 'pending' && !offerExpired(entry.offer)" class="oc-expiry">{{ t('chat.offerExpiry') }}</text>
+            </view>
+          </view>
+          <view v-if="entry.offer.status === 'accepted'" class="deal-line">
+            <text>🎉 {{ t('chat.dealReached').replace('{price}', '$' + fmtOfferPrice(entry.offer.price)) }}</text>
+          </view>
+        </template>
+
+        <!-- ===== Message entry ===== -->
+        <template v-else>
+          <view
+            :id="`msg-${entry.msg.id}`"
+            :class="['msg-row', { mine: entry.msg.sender_id === currentUser?.id }]"
+          >
+            <image
+              v-if="entry.msg.sender_id !== currentUser?.id"
+              :src="entry.msg.sender?.avatar_url || defaultAvatar"
+              :alt="entry.msg.sender?.nickname || 'avatar'"
+              class="msg-avatar"
+            />
+            <!-- Sticker message: whole body is one [sticker:*] token — bare
+                 artwork, no bubble chrome (WeChat sticker semantics). -->
+            <view
+              v-if="stickerOf(entry.msg)"
+              class="msg-sticker"
+              @touchstart="msgLongPress.onTouchstart(entry.msg)"
+              @touchend="msgLongPress.onTouchend"
+              @touchcancel="msgLongPress.onTouchcancel"
+              @touchmove="msgLongPress.onTouchmove"
+            >
+              <USticker :name="stickerOf(entry.msg)!" :size="84" />
+            </view>
+            <view
+              class="msg-bubble"
+              v-else-if="entry.msg.message_type !== 'image' && entry.msg.message_type !== 'video'"
+              @touchstart="msgLongPress.onTouchstart(entry.msg)"
+              @touchend="msgLongPress.onTouchend"
+              @touchcancel="msgLongPress.onTouchcancel"
+              @touchmove="msgLongPress.onTouchmove"
+            >
+              <text>{{ entry.msg.content }}</text>
+            </view>
+            <image
+              v-else-if="entry.msg.message_type === 'image'"
+              :src="entry.msg.content"
+              alt="Photo"
+              class="msg-image"
+              mode="widthFix"
+              lazy-load
+              @click="previewImg(entry.msg.content)"
+              @touchstart="msgLongPress.onTouchstart(entry.msg)"
+              @touchend="msgLongPress.onTouchend"
+              @touchcancel="msgLongPress.onTouchcancel"
+              @touchmove="msgLongPress.onTouchmove"
+            />
+            <!-- 私信视频 (migration 048) — native controls; no autoplay so a
+                 scroll through history doesn't start playback. -->
+            <video
+              v-else
+              :src="entry.msg.content"
+              class="msg-video"
+              controls
+              :show-fullscreen-btn="true"
+              object-fit="contain"
+            />
+            <image
+              v-if="entry.msg.sender_id === currentUser?.id"
+              :src="currentUser?.avatar_url || defaultAvatar"
+              :alt="currentUser?.nickname || 'avatar'"
+              class="msg-avatar"
+            />
+          </view>
+          <view v-if="entry.msg.sender_id === currentUser?.id && entry.msg._pending" class="msg-status pending">
+            <text>{{ t('chat.sending') }}</text>
+          </view>
+          <view v-else-if="entry.msg.sender_id === currentUser?.id && entry.msg._failed" class="msg-status failed" @click="retrySend(entry.msg)">
+            <text>{{ t('chat.sendFailed') }}</text>
+          </view>
+        </template>
       </template>
 
-      <view v-if="messages.length === 0" class="empty-chat">
+      <view v-if="timeline.length === 0" class="empty-chat">
         <view class="ec-icon">
           <view class="ec-wave"></view>
         </view>
@@ -209,6 +239,28 @@
       @close="showScamModal = false"
       @learnMore="onScamLearnMore"
     />
+
+    <!-- Offer composer (new offer + counter) -->
+    <view v-if="offerSheet.open" class="offer-mask" @click="closeOfferSheet"></view>
+    <view :class="['offer-sheet', { open: offerSheet.open }]">
+      <view class="os-handle"></view>
+      <text class="os-title">{{ offerSheet.mode === 'counter' ? t('chat.offerCounterTitle') : t('chat.offerTitle') }}</text>
+      <text v-if="itemInfo" class="os-ref">{{ localize(itemInfo.title_i18n, itemInfo.title) }} · {{ t('chat.offerListPrice') }} {{ formatPrice(itemInfo.price, t('home.free')) }}</text>
+      <view class="os-input-row">
+        <text class="os-dollar">$</text>
+        <input v-model="offerPriceInput" type="digit" class="os-input" :placeholder="t('chat.offerPricePh')" />
+      </view>
+      <scroll-view v-if="quickAmounts.length" scroll-x class="os-quick">
+        <view v-for="a in quickAmounts" :key="a" class="os-quick-chip" @click="offerPriceInput = String(a)">
+          <text>${{ a }}</text>
+        </view>
+      </scroll-view>
+      <input v-model="offerNoteInput" class="os-note" :placeholder="t('chat.offerNotePh')" maxlength="300" />
+      <view :class="['os-submit', { disabled: !Number(offerPriceInput) || offerSubmitting }]" @click="submitOfferSheet">
+        <text>{{ offerSheet.mode === 'counter' ? t('chat.offerSendCounter') : t('chat.offerSend') }}</text>
+      </view>
+      <text class="os-expiry-hint">{{ t('chat.offerExpiry') }}</text>
+    </view>
   </view>
 </template>
 
@@ -218,6 +270,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useTheme } from '../../composables/useTheme'
 import { useMessages } from '../../composables/useMessages'
+import { useOffers } from '../../composables/useOffers'
 import { useItems } from '../../composables/useItems'
 import { useUnread } from '../../composables/useUnread'
 import { useI18n } from '../../composables/useI18n'
@@ -225,7 +278,7 @@ import { useModeration } from '../../composables/useModeration'
 import { useLongPress } from '../../composables/useLongPress'
 import { formatPrice, friendlyErrorMessage } from '../../utils'
 import { DIALOG_DANGER } from '../../utils/dialogColors'
-import type { Item } from '../../types'
+import type { Item, Offer } from '../../types'
 import ChatEmojiPanel from '../../components/ChatEmojiPanel.vue'
 import UIcon from '../../components/UIcon.vue'
 import USticker from '../../components/USticker.vue'
@@ -237,6 +290,7 @@ const { t, lang, localize } = useI18n()
 
 const { currentUser, requireAuth } = useAuth()
 const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, deleteMessage, fetchConversationDetail, setConversationPinned, setConversationMuted } = useMessages()
+const { offers, fetchOffers, makeOffer, respondToOffer, subscribeToOffers } = useOffers()
 const { uploadOneImage, uploadOneVideo } = useItems()
 const { refreshUnreadCount } = useUnread()
 const { reportTarget, blockUser } = useModeration()
@@ -286,6 +340,7 @@ const conversationDetail = ref<any>(null)
 const convPinned = ref(false)
 const convMuted = ref(false)
 let unsubscribe: (() => void) | null = null
+let offersUnsub: (() => void) | null = null
 
 /*
  * Currency-exchange scam-intercept modal. Same client-side gate as
@@ -319,6 +374,7 @@ onLoad(async (options) => {
   if (options?.id) {
     conversationId.value = options.id
     await fetchMessages(options.id)
+    try { await fetchOffers(options.id) } catch { /* offers are additive — never block the chat */ }
     scrollToBottom()
 
     if (currentUser.value) {
@@ -359,11 +415,17 @@ onLoad(async (options) => {
         refreshUnreadCount()
       }
     })
+
+    // Live offer cards (H5 realtime; mp degrades to the onLoad fetch).
+    offersUnsub = subscribeToOffers(options.id, () => {
+      fetchOffers(options.id!).then(() => nextTick(() => scrollToBottom())).catch(() => {})
+    })
   }
 })
 
 onUnmounted(() => {
   if (unsubscribe) unsubscribe()
+  if (offersUnsub) offersUnsub()
 })
 
 function goBack() {
@@ -588,12 +650,6 @@ async function onSend() {
   }
 }
 
-function onMakeOffer() {
-  if (!itemInfo.value) return
-  const price = itemInfo.value.price
-  const suggested = Math.floor(price * 0.85)
-  inputText.value = `${t('chat.offerMsg')} $${suggested}`
-}
 
 function onMoreActions() {
   uni.showActionSheet({
@@ -679,11 +735,100 @@ function doReport() {
   })
 }
 
-function shouldShowTime(idx: number): boolean {
+/*
+ * Unified chat timeline: messages + offers merged and sorted by created_at,
+ * so structured offers (migration 051) interleave with text in the right
+ * place. Each entry is tagged so the template renders a bubble or an offer
+ * card. Time dividers run over this merged list.
+ */
+type TimelineEntry =
+  | { kind: 'msg'; key: string; created_at: string; msg: any }
+  | { kind: 'offer'; key: string; created_at: string; offer: Offer }
+
+const timeline = computed<TimelineEntry[]>(() => {
+  const out: TimelineEntry[] = []
+  for (const m of messages.value) out.push({ kind: 'msg', key: 'm-' + m.id, created_at: m.created_at, msg: m })
+  for (const o of offers.value) out.push({ kind: 'offer', key: 'o-' + o.id, created_at: o.created_at, offer: o })
+  out.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+  return out
+})
+
+function shouldShowTimeAt(idx: number): boolean {
   if (idx === 0) return true
-  const curr = new Date(messages.value[idx].created_at).getTime()
-  const prev = new Date(messages.value[idx - 1].created_at).getTime()
+  const curr = new Date(timeline.value[idx].created_at).getTime()
+  const prev = new Date(timeline.value[idx - 1].created_at).getTime()
   return curr - prev > 5 * 60 * 1000
+}
+
+// ---- Offer helpers ----
+function fmtOfferPrice(p: number): string {
+  return Number.isInteger(p) ? String(p) : String(Math.round(p * 100) / 100)
+}
+function offerIncoming(o: Offer): boolean {
+  return o.to_user === currentUser.value?.id
+}
+function offerExpired(o: Offer): boolean {
+  return new Date(o.expires_at).getTime() <= Date.now()
+}
+function offerStatusLabel(o: Offer): string {
+  if (o.status === 'pending' && offerExpired(o)) return t('chat.offerStatus.expired')
+  return t('chat.offerStatus.' + o.status)
+}
+
+// ---- Offer composer (new offer + counter share one bottom sheet) ----
+const offerSheet = ref<{ open: boolean; mode: 'new' | 'counter'; targetId: string }>({ open: false, mode: 'new', targetId: '' })
+const offerPriceInput = ref('')
+const offerNoteInput = ref('')
+const offerSubmitting = ref(false)
+const quickAmounts = computed<number[]>(() => {
+  const p = itemInfo.value?.price || 0
+  if (!p || p <= 0) return []
+  return [0.9, 0.8, 0.7].map(r => Math.max(1, Math.round(p * r)))
+})
+
+function openOfferSheet() {
+  offerPriceInput.value = ''
+  offerNoteInput.value = ''
+  offerSheet.value = { open: true, mode: 'new', targetId: '' }
+}
+function openCounter(o: Offer) {
+  offerPriceInput.value = ''
+  offerNoteInput.value = ''
+  offerSheet.value = { open: true, mode: 'counter', targetId: o.id }
+}
+function closeOfferSheet() {
+  offerSheet.value.open = false
+}
+async function submitOfferSheet() {
+  const price = Number(offerPriceInput.value)
+  if (!conversationId.value || !price || price <= 0 || offerSubmitting.value) return
+  offerSubmitting.value = true
+  try {
+    if (offerSheet.value.mode === 'counter' && offerSheet.value.targetId) {
+      await respondToOffer(offerSheet.value.targetId, 'counter', price, offerNoteInput.value)
+    } else {
+      await makeOffer(conversationId.value, price, offerNoteInput.value)
+    }
+    await fetchOffers(conversationId.value)
+    offerSheet.value.open = false
+    nextTick(() => scrollToBottom())
+  } catch (err: any) {
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
+  } finally {
+    offerSubmitting.value = false
+  }
+}
+async function acceptOffer(o: Offer) { await respondOffer(o, 'accept') }
+async function declineOffer(o: Offer) { await respondOffer(o, 'decline') }
+async function respondOffer(o: Offer, action: 'accept' | 'decline') {
+  if (!conversationId.value) return
+  try {
+    await respondToOffer(o.id, action)
+    await fetchOffers(conversationId.value)
+    nextTick(() => scrollToBottom())
+  } catch (err: any) {
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
+  }
 }
 
 function formatChatTime(dateStr: string): string {
@@ -1038,6 +1183,81 @@ function scrollToBottom() {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+/* ===== Structured offer cards (migration 051) ===== */
+.offer-entry { display: flex; margin: 4px 0 9px; }
+.offer-entry.mine { justify-content: flex-end; }
+.offer-card {
+  width: 72%; max-width: 270px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 12px 14px;
+}
+.offer-entry.mine .offer-card { background: var(--brand-ghost); border-color: var(--brand-soft); }
+.oc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.oc-eyebrow { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-quiet); }
+.oc-status { font-size: 11px; font-weight: 600; color: var(--ink-quiet); }
+.oc-st-accepted .oc-status { color: var(--success); }
+.oc-st-declined .oc-status, .oc-st-expired .oc-status { color: var(--ink-faint); }
+.oc-st-countered .oc-status { color: var(--warning); }
+.oc-price { display: block; font-family: var(--font-serif); font-size: 26px; font-weight: 600; color: var(--brand); letter-spacing: -0.02em; line-height: 1.1; }
+.oc-st-declined .oc-price, .oc-st-expired .oc-price, .oc-st-countered .oc-price { color: var(--ink-quiet); text-decoration: line-through; }
+.oc-note { display: block; margin-top: 4px; font-size: 12px; color: var(--ink-soft); line-height: 1.5; }
+.oc-meta { display: block; margin-top: 8px; font-size: 12px; color: var(--ink-quiet); }
+.oc-expiry { display: block; margin-top: 6px; font-size: 10px; color: var(--ink-faint); }
+.oc-actions { display: flex; gap: 6px; margin-top: 10px; }
+.oc-btn {
+  flex: 1; height: 32px; border-radius: var(--radius-pill);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  text { font-size: 12px; font-weight: 600; }
+  &:active { transform: scale(0.96); }
+}
+.oc-accept { background: var(--brand); text { color: #fff; } }
+.oc-decline { background: var(--surface-alt); text { color: var(--ink-soft); } }
+.oc-counter { background: var(--surface-alt); text { color: var(--ink); } }
+
+.deal-line {
+  text-align: center; margin: 2px 0 12px;
+  text { font-size: 12px; font-weight: 600; color: var(--success); background: var(--success-soft); padding: 5px 14px; border-radius: var(--radius-pill); }
+}
+
+/* ===== Offer composer sheet ===== */
+.offer-mask { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.35); z-index: 1000; }
+.offer-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1001;
+  background: var(--bg-elev-1);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: 8px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translateY(100%);
+  transition: transform var(--dur-3) var(--ease-warm);
+  max-width: 480px; margin: 0 auto;
+  &.open { transform: translateY(0); }
+}
+.os-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 0 auto 14px; }
+.os-title { display: block; font-family: var(--font-serif); font-size: 18px; font-weight: 600; color: var(--ink); }
+.os-ref { display: block; margin-top: 4px; font-size: 12px; color: var(--ink-quiet); }
+.os-input-row { display: flex; align-items: center; gap: 6px; margin-top: 16px; padding: 12px 14px; background: var(--bg-subtle); border-radius: var(--radius-md); }
+.os-dollar { font-family: var(--font-serif); font-size: 22px; font-weight: 600; color: var(--brand); }
+.os-input { flex: 1; font-family: var(--font-serif); font-size: 22px; color: var(--ink); background: transparent; }
+.os-quick { white-space: nowrap; margin-top: 10px; }
+.os-quick-chip {
+  display: inline-flex; align-items: center; height: 30px; padding: 0 14px; margin-right: 8px;
+  border-radius: var(--radius-pill); background: var(--surface-alt);
+  text { font-family: var(--font-mono); font-size: 13px; color: var(--ink-soft); }
+  &:active { background: var(--frame); }
+}
+.os-note { margin-top: 12px; padding: 11px 14px; background: var(--bg-subtle); border-radius: var(--radius-md); font-size: 14px; color: var(--ink); width: 100%; box-sizing: border-box; }
+.os-submit {
+  margin-top: 16px; height: 48px; border-radius: var(--radius-pill);
+  background: var(--brand); display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--shadow-cta); cursor: pointer;
+  text { font-size: 15px; font-weight: 600; color: #fff; }
+  &:active { opacity: 0.85; }
+  &.disabled { background: var(--ink-faint); box-shadow: none; pointer-events: none; }
+}
+.os-expiry-hint { display: block; text-align: center; margin-top: 10px; font-size: 11px; color: var(--ink-faint); }
+
 .time-divider {
   text-align: center; padding: 12px 0 6px;
   text { font-size: 11px; color: var(--text-faint); background: var(--bg-subtle); padding: 2px 10px; border-radius: 8px; }

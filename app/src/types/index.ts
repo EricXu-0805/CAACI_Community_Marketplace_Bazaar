@@ -69,6 +69,23 @@ export interface ImageDim {
   h: number
 }
 
+export type OfferStatus = 'pending' | 'accepted' | 'declined' | 'countered' | 'expired'
+
+export interface Offer {
+  id: string
+  conversation_id: string
+  item_id: string | null
+  from_user: string
+  to_user: string
+  price: number
+  status: OfferStatus
+  parent_offer_id: string | null
+  note: string | null
+  expires_at: string
+  created_at: string
+  updated_at: string
+}
+
 export interface Post {
   id: string
   user_id: string
