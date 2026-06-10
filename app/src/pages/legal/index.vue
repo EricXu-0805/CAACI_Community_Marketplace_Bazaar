@@ -35,10 +35,11 @@ import {
   GUIDELINES_EN, GUIDELINES_ZH,
   type LegalDocType,
 } from '../../legal'
+import { SUPPORT_EMAIL } from '../../config/runtime'
 
 const { t, lang } = useI18n()
 const docType = ref<LegalDocType>('terms')
-const contactEmail = 'illini.market.help@gmail.com'
+const contactEmail = SUPPORT_EMAIL
 
 const tabs = computed(() => [
   { type: 'terms' as LegalDocType,      label: t('legal.terms') },

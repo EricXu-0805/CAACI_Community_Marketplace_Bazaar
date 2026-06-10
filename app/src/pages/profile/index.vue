@@ -138,7 +138,7 @@
           <text v-if="listedItems.length > 0" class="block-count">{{ listedItems.length }}</text>
         </view>
         <view v-if="listedItems.length === 0" class="empty-mini">
-          <text class="empty-mini-emoji">🧺</text>
+          <UIcon name="tag" size="lg" color="ink-faint" />
           <text class="empty-mini-text">{{ t('profile.noListings') }}</text>
         </view>
         <scroll-view v-else scroll-x class="horz-scroll" :show-scrollbar="false">
@@ -210,7 +210,7 @@
           <text v-if="savedItems.length > 0" class="block-count">{{ savedItems.length }}</text>
         </view>
         <view v-if="savedItems.length === 0" class="empty-mini">
-          <text class="empty-mini-emoji">💭</text>
+          <UIcon name="heart" size="lg" color="ink-faint" />
           <text class="empty-mini-text">{{ t('profile.noSaved') }}</text>
         </view>
         <view v-else class="fav-grid">
@@ -1006,7 +1006,6 @@ function onDeleteItem(id: string) {
   padding: 28px 16px; gap: 8px;
   text-align: center;
 }
-.empty-mini-emoji { font-size: 36px; line-height: 1; opacity: 0.7; }
 .empty-mini-text { font-size: 13px; color: var(--text-muted); }
 
 /* ===== More menu (list) ===== */

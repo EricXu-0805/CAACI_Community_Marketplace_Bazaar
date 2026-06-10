@@ -24,7 +24,7 @@ import { ICONS, type IconName, type IconWeight } from './icons/registry'
 const props = withDefaults(defineProps<{
   name: IconName | string
   weight?: IconWeight
-  size?: 'xs' | 'sm' | 'md' | 'lg'
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   color?: string
 }>(), {
   weight: 'regular',
@@ -32,7 +32,9 @@ const props = withDefaults(defineProps<{
   color: 'currentColor',
 })
 
-const SIZES: Record<string, number> = { xs: 16, sm: 20, md: 24, lg: 32 }
+// xl (48) added for hero/empty-state contexts (welcome slides, empty lists)
+// where a 32px chrome icon reads too small.
+const SIZES: Record<string, number> = { xs: 16, sm: 20, md: 24, lg: 32, xl: 48 }
 
 const iconHTML = computed(() => {
   const key = `${props.name}-${props.weight}`

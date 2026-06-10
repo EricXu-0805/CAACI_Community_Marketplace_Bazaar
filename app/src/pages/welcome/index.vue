@@ -3,7 +3,7 @@
     <swiper class="swiper" :current="current" @change="current = $event.detail.current">
       <swiper-item v-for="(slide, i) in slides" :key="i">
         <view class="slide">
-          <view class="slide-icon">{{ slide.icon }}</view>
+          <view class="slide-icon"><UIcon :name="slide.icon" size="xl" color="brand" /></view>
           <text class="slide-title">{{ slide.title }}</text>
           <text class="slide-desc">{{ slide.desc }}</text>
         </view>
@@ -28,6 +28,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useI18n } from '../../composables/useI18n'
+import UIcon from '../../components/UIcon.vue'
 
 const { t } = useI18n()
 const current = ref(0)
@@ -46,9 +47,9 @@ const current = ref(0)
  * re-run on currentLang changes.
  */
 const slides = computed(() => [
-  { icon: '🛍', title: t('welcome.t1'), desc: t('welcome.d1') },
-  { icon: '💬', title: t('welcome.t2'), desc: t('welcome.d2') },
-  { icon: '🛡', title: t('welcome.t3'), desc: t('welcome.d3') },
+  { icon: 'tag', title: t('welcome.t1'), desc: t('welcome.d1') },
+  { icon: 'chat-bubble', title: t('welcome.t2'), desc: t('welcome.d2') },
+  { icon: 'shield', title: t('welcome.t3'), desc: t('welcome.d3') },
 ])
 
 function finish() {
