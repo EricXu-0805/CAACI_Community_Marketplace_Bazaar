@@ -7,7 +7,7 @@
  * - Filled: fill: currentColor, no stroke
  * - Visual weight anchored to Lucide regular; redrawn fresh per project style
  *
- * 43 icon names, 52 total SVG variants. Some have regular + filled weight pair
+ * 44 icon names, 53 total SVG variants. Some have regular + filled weight pair
  * (tab bar, content actions). Others stroke-only (utility, categories, etc).
  *
  * Aliases note: the search-page sublease category chip should use
@@ -20,7 +20,7 @@
 export type IconName =
   | 'home' | 'plaza' | 'messages' | 'profile'
   | 'heart' | 'chat-bubble' | 'bell' | 'tag' | 'lightbulb'
-  | 'back' | 'share' | 'image' | 'search' | 'filter' | 'plus' | 'close'
+  | 'back' | 'share' | 'image' | 'video' | 'search' | 'filter' | 'plus' | 'close'
   | 'more-horizontal' | 'more-vertical' | 'chevron-right' | 'chevron-left'
   | 'coffee' | 'graduation'
   | 'history' | 'user-plus' | 'bookmark' | 'layout-grid'
@@ -58,6 +58,9 @@ export const ICONS: Record<string, string> = {
   'back-regular':            `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>`,
   'share-regular':           `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="m8 8 4-4 4 4"/><path d="M6 11v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-8"/></svg>`,
   'image-regular':           `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>`,
+  // 'video' added 2026-06 for the chat toolbar (P2b) — new name, no frozen
+  // paths touched. Camcorder body + lens wedge, weight anchored to Lucide.
+  'video-regular':           `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6.5" width="13" height="11" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5"/></svg>`,
   'search-regular':          `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>`,
   'filter-regular':          `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>`,
   'plus-regular':            `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>`,

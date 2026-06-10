@@ -162,8 +162,8 @@
         <image :src="isFav ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="icon-img" />
         <text class="fav-label">{{ isFav ? t('detail.saved') : t('detail.save') }}</text>
       </view>
-      <view :class="['fav-btn', { reported: reported }]" @click="onReport">
-        <view class="icon-img ico-report"></view>
+      <view class="fav-btn" @click="onReport">
+        <UIcon name="flag" :color="reported ? 'accent-good' : 'text-secondary'" />
         <text class="fav-label">{{ reported ? t('report.thanks') : t('detail.report') }}</text>
       </view>
       <view v-if="item.status === 'sold' && !alreadyRated" class="chat-btn chat-btn-rate" @click="openRating">
@@ -182,15 +182,15 @@
         <text class="fav-label">{{ isFav ? t('detail.saved') : t('detail.save') }}</text>
       </view>
       <view class="fav-btn" @click="goEdit" v-if="item.status === 'active'">
-        <view class="icon-img ico-edit"></view>
+        <UIcon name="edit" color="text-secondary" />
         <text class="fav-label">{{ t('profile.edit') }}</text>
       </view>
       <view class="fav-btn" @click="onMarkReserved" v-if="item.status === 'active'">
-        <view class="icon-img ico-reserve"></view>
+        <UIcon name="reserved" color="text-secondary" />
         <text class="fav-label">{{ t('detail.reserve') }}</text>
       </view>
       <view class="fav-btn" @click="onUnreserve" v-if="item.status === 'reserved'">
-        <view class="icon-img ico-reserve on"></view>
+        <UIcon name="reserved" color="accent-warn" />
         <text class="fav-label">{{ t('detail.unreserve') }}</text>
       </view>
       <view v-if="item.status === 'sold'" class="chat-btn chat-btn-disabled">
@@ -268,6 +268,7 @@ import { useRatings } from '../../composables/useRatings'
 import { useTranslate } from '../../composables/useTranslate'
 import { computed, onUnmounted, watch } from 'vue'
 import UBadge from '../../components/UBadge.vue'
+import UIcon from '../../components/UIcon.vue'
 
 const { t, lang, localize } = useI18n()
 const { isDark } = useTheme()
@@ -1022,56 +1023,6 @@ async function contactSeller() {
 
 .icon-img { width: 22px; height: 22px; flex-shrink: 0; display: block; }
 .heart-img { width: 22px; height: 22px; }
-
-.ico-edit {
-  position: relative;
-  &::before {
-    content: ''; position: absolute;
-    top: 14px; left: 1px; right: 5px; height: 2px;
-    background: var(--text-secondary); border-radius: 1px;
-    transform: rotate(-45deg); transform-origin: left center;
-  }
-  &::after {
-    content: ''; position: absolute;
-    top: 1px; right: 1px;
-    width: 6px; height: 6px;
-    background: var(--text-secondary); border-radius: 1px;
-    transform: rotate(45deg);
-  }
-}
-.ico-report {
-  position: relative;
-  &::before {
-    content: ''; position: absolute;
-    top: 0; bottom: 0; left: 5px;
-    width: 2px; background: var(--text-secondary); border-radius: 1px;
-  }
-  &::after {
-    content: ''; position: absolute;
-    top: 1px; left: 7px;
-    width: 10px; height: 6px;
-    background: var(--text-secondary);
-    clip-path: polygon(0 0, 100% 50%, 0 100%);
-  }
-}
-.reported .ico-report {
-  &::before { background: var(--accent-good); }
-  &::after { background: var(--accent-good); }
-}
-.ico-reserve {
-  position: relative;
-  border: 1.8px solid var(--text-secondary); border-radius: 3px;
-  &::before {
-    content: ''; position: absolute;
-    top: 3px; left: 3px; right: 3px; height: 2px;
-    background: var(--text-secondary); border-radius: 1px;
-  }
-  &.on {
-    background: var(--warning-soft);
-    border-color: var(--accent-warn);
-    &::before { background: var(--accent-warn); }
-  }
-}
 
 .fav-label { font-size: 10px; color: var(--text-muted); line-height: 1; }
 .safety-tip {
