@@ -19,3 +19,7 @@ dist
 *.njsproj
 *.sln
 *.sw?
+# Playwright smoke
+test-results/
+playwright-report/
+.playwright/
