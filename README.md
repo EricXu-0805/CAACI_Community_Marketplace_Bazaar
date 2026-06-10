@@ -108,11 +108,27 @@ npm run dev:mp-weixin   # 微信小程序 (需微信开发者工具)
 # 5. 生产构建
 npm run build:h5        # 产物在 app/dist/build/h5
 npm run type-check      # 只做类型检查
+
+# 6. 冒烟回归(手动门,非 CI)
+npm run smoke           # 24 页 × 亮/暗 加载无 console 错误(webkit/iOS Safari 引擎)
 ```
 
 **`dev:vercel` 用途**: 当你需要本地调试 `/api/translate`、`/api/moderate`、`/api/admin` 等
 serverless 函数时使用 (Vite 不会 serve `api/*` 文件)。首次使用前需 `vercel login` + 项目链接
 (本仓库已 link，`.vercel/` 已存在)。`dev:h5` 适合纯前端开发；`dev:vercel` 适合需要打 API 的场景。
+
+### 冒烟回归 `npm run smoke`
+
+大改动前后(尤其**接入新 UI 库时**)跑一遍当回归门:加载全部页面(亮+暗,webkit
+= iOS Safari 引擎),断言无意外 console 错误。**不进 CI**(CI 保持 type-check + 双端
+build 的精简矩阵);这是手动门。首次需 `npx playwright install webkit` 下引擎。
+
+- 默认只跑**登出态全页巡检**(无凭据,安全)。
+- 想验证**登录态写路径**(发布/广场/聊天):`SMOKE_EMAIL=<邮箱> SMOKE_PASSWORD=<密码> npm run smoke`
+  ——凭据走环境变量,不入库。
+- config 会自动清理 `*_PROXY` 环境变量(本机 Clash 等代理会拦截 localhost 让就绪探针挂起;
+  仅影响 Node 探针,浏览器仍直连)。
+- 用例在 [app/smoke/](app/smoke/),配置 [app/playwright.config.ts](app/playwright.config.ts)。
 
 ## 部署
 

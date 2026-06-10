@@ -34,7 +34,8 @@
     "build:quickapp-webview-huawei": "uni build -p quickapp-webview-huawei",
     "build:quickapp-webview-union": "uni build -p quickapp-webview-union",
     "type-check": "vue-tsc --noEmit",
-    "prepare": "cd .. && git config core.hooksPath .githooks 2>/dev/null || true"
+    "prepare": "cd .. && git config core.hooksPath .githooks 2>/dev/null || true",
+    "smoke": "playwright test"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-4080420251103001",
@@ -67,6 +68,7 @@
     "@dcloudio/uni-cli-shared": "3.0.0-4080420251103001",
     "@dcloudio/uni-stacktracey": "3.0.0-4080420251103001",
     "@dcloudio/vite-plugin-uni": "3.0.0-4080420251103001",
+    "@playwright/test": "^1.60.0",
     "@sentry/vite-plugin": "^5.2.0",
     "@vue/runtime-core": "^3.4.21",
     "@vue/tsconfig": "^0.1.3",
