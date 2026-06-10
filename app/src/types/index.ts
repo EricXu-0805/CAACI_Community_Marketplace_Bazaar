@@ -19,7 +19,7 @@ export type ItemCondition = 'new' | 'like_new' | 'good' | 'fair' | 'defective'
 
 export type ItemStatus = 'active' | 'reserved' | 'sold' | 'deleted'
 
-export type MessageType = 'text' | 'image'
+export type MessageType = 'text' | 'image' | 'video'
 
 // ============================================
 // Database row types

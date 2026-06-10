@@ -34,6 +34,8 @@ const DETAIL_ITEM_FIELDS = `${LIST_ITEM_FIELDS}, description, updated_at`
 
 const VALID_STATUSES: ItemStatus[] = ['active', 'reserved', 'sold', 'deleted']
 const MAX_FILE_SIZE = 5 * 1024 * 1024
+/* Chat video cap — 2026-06 meeting decision (私信留视频但要有大小限制). */
+const MAX_VIDEO_SIZE = 20 * 1024 * 1024
 const MAX_IMAGES = 9
 
 /*
@@ -575,6 +577,70 @@ export function useItems() {
     return { url: urlData.publicUrl, dims: naturalDims }
   }
 
+  /*
+   * Chat video upload — 20MB cap, no re-encoding (chooseVideo already
+   * records compressed on mp; browser-side transcode isn't worth it).
+   * Same items/<uid>/ storage path as images so the RLS path policy
+   * (011) applies unchanged; the 047 MIME trigger is a denylist that
+   * lets video/* through. Chat-only: publish stays image-only.
+   */
+  async function uploadOneVideo(tempFile: string): Promise<{ url: string }> {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) throw new Error('Not authenticated')
+
+    let storagePath = ''
+
+    // #ifdef H5
+    const response = await fetch(tempFile)
+    const blob = await response.blob()
+    if (blob.size > MAX_VIDEO_SIZE) throw new Error('video_too_large')
+    // iOS Safari hands back video/quicktime (.mov); default mp4 otherwise.
+    const contentType = blob.type && blob.type.startsWith('video/') ? blob.type : 'video/mp4'
+    const ext = contentType === 'video/quicktime' ? 'mov' : 'mp4'
+    storagePath = `items/${session.user.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+    const { error: h5Err } = await supabase.storage
+      .from('item-images')
+      .upload(storagePath, blob, { contentType })
+    if (h5Err) throw new Error(`Storage upload failed: ${h5Err.message || 'unknown'}`)
+    // #endif
+
+    // #ifndef H5
+    storagePath = `items/${session.user.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.mp4`
+    const fileInfo = await new Promise<{ size: number } | null>((resolve) => {
+      uni.getFileInfo({
+        filePath: tempFile,
+        success: (info: any) => resolve({ size: info.size }),
+        fail: () => resolve(null),
+      })
+    })
+    if (fileInfo && fileInfo.size > MAX_VIDEO_SIZE) throw new Error('video_too_large')
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+    const uploadUrl = `${supabaseUrl}/storage/v1/object/item-images/${storagePath}`
+    await new Promise<void>((resolve, reject) => {
+      uni.uploadFile({
+        url: uploadUrl,
+        filePath: tempFile,
+        name: 'file',
+        header: {
+          Authorization: `Bearer ${session.access_token}`,
+          'x-upsert': 'false',
+        },
+        success: (res: any) => {
+          if (res.statusCode >= 200 && res.statusCode < 300) resolve()
+          else reject(new Error(`Storage upload failed: HTTP ${res.statusCode} ${res.data || ''}`.trim()))
+        },
+        fail: (err) => reject(new Error(err?.errMsg || 'Storage upload failed (network)')),
+      })
+    })
+    // #endif
+
+    const { data: urlData } = supabase.storage.from('item-images').getPublicUrl(storagePath)
+    if (!urlData?.publicUrl) {
+      throw new Error('Storage upload succeeded but public URL resolution failed')
+    }
+    return { url: urlData.publicUrl }
+  }
+
   async function fetchMyItems(userId: string, opts: { force?: boolean } = {}) {
     if (
       !opts.force &&
@@ -647,6 +713,7 @@ export function useItems() {
     uploadImages,
     uploadImagesWithDims,
     uploadOneImage,
+    uploadOneVideo,
     fetchMyItems,
     deleteItem,
     clearItems,

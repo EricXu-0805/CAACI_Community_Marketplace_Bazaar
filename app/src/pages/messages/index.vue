@@ -54,7 +54,7 @@
               <text class="conv-time">{{ formatTime(conv.last_message_at) }}</text>
             </view>
             <text :class="['conv-preview', { unread: unreadConvIds.has(conv.id) && !isMuted(conv) }]">
-              {{ (conv as any).last_message_type === 'image' ? '[' + t('chat.photo') + ']' : ((conv as any).last_message_preview || (conv.item ? localize(conv.item.title_i18n, conv.item.title) : '')) }}
+              {{ (conv as any).last_message_type === 'image' ? '[' + t('chat.photo') + ']' : (conv as any).last_message_type === 'video' ? '[' + t('chat.video') + ']' : ((conv as any).last_message_preview || (conv.item ? localize(conv.item.title_i18n, conv.item.title) : '')) }}
             </text>
           </view>
           <view v-if="unreadConvIds.has(conv.id) && !isMuted(conv)" class="unread-dot"></view>
