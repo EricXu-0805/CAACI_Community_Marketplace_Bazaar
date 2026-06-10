@@ -21,6 +21,7 @@
         <view class="banner-slide" @click="onTap(b)">
           <image
             :src="b.image_url"
+            :alt="titleOf(b) || 'Banner'"
             class="banner-img"
             mode="aspectFill"
             :lazy-load="i > 0"

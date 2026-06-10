@@ -36,6 +36,19 @@ const VALID_STATUSES: ItemStatus[] = ['active', 'reserved', 'sold', 'deleted']
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 const MAX_IMAGES = 9
 
+/*
+ * SWR cache for fetchMyItems(). profile/index.vue refetches my-listings on
+ * every onShow; this serves the last result for MY_ITEMS_TTL when the user
+ * just tab-switched. Any local mutation (create / update / status flip /
+ * delete) and clearItems() invalidate it, so a freshly published or edited
+ * listing shows immediately rather than after the TTL window.
+ */
+const MY_ITEMS_TTL = 30_000
+let myItemsCache: { userId: string; at: number; data: Item[] } | null = null
+function invalidateMyItems() {
+  myItemsCache = null
+}
+
 export function useItems() {
   const { supabase } = useSupabase()
   const { t } = useI18n()
@@ -231,9 +244,10 @@ export function useItems() {
     if (input.description_i18n) payload.description_i18n = input.description_i18n
     if (input.source_lang) payload.source_lang = input.source_lang
 
-    const { data, error } = await supabase.from('items').insert(payload).select().single()
+    const { data, error } = await supabase.from('items').insert(payload).select(DETAIL_ITEM_FIELDS as any).single()
     if (error) throw error
-    return data as Item
+    invalidateMyItems()
+    return data as unknown as Item
   }
 
   async function updateItem(id: string, updates: Partial<Pick<Item, 'title' | 'description' | 'price' | 'location' | 'images' | 'image_dimensions' | 'title_i18n' | 'description_i18n' | 'source_lang' | 'negotiable' | 'location_verified'>>) {
@@ -295,10 +309,11 @@ export function useItems() {
       .update(updates)
       .eq('id', id)
       .eq('user_id', session.user.id)
-      .select()
+      .select(DETAIL_ITEM_FIELDS as any)
       .single()
     if (error) throw error
-    return data as Item
+    invalidateMyItems()
+    return data as unknown as Item
   }
 
   /*
@@ -560,7 +575,15 @@ export function useItems() {
     return { url: urlData.publicUrl, dims: naturalDims }
   }
 
-  async function fetchMyItems(userId: string) {
+  async function fetchMyItems(userId: string, opts: { force?: boolean } = {}) {
+    if (
+      !opts.force &&
+      myItemsCache &&
+      myItemsCache.userId === userId &&
+      Date.now() - myItemsCache.at < MY_ITEMS_TTL
+    ) {
+      return myItemsCache.data
+    }
     const { data, error } = await supabase
       .from('items')
       .select(DETAIL_ITEM_FIELDS as any)
@@ -568,7 +591,9 @@ export function useItems() {
       .neq('status', 'deleted')
       .order('created_at', { ascending: false })
     if (error) throw error
-    return (data || []) as unknown as Item[]
+    const result = (data || []) as unknown as Item[]
+    myItemsCache = { userId, at: Date.now(), data: result }
+    return result
   }
 
   async function updateItemStatus(id: string, status: ItemStatus) {
@@ -584,6 +609,7 @@ export function useItems() {
       .eq('user_id', session.user.id)
 
     if (error) throw error
+    invalidateMyItems()
   }
 
   async function deleteItem(id: string) {
@@ -599,11 +625,13 @@ export function useItems() {
     if (error) throw error
 
     items.value = items.value.filter(i => i.id !== id)
+    invalidateMyItems()
   }
 
   function clearItems() {
     items.value = []
     hasMore.value = true
+    invalidateMyItems()
   }
 
   return {

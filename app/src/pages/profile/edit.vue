@@ -12,7 +12,7 @@
 
     <view class="form">
       <view class="avatar-section" @click="onChangeAvatar">
-        <image :src="avatarUrl || defaultAvatarSrc" class="avatar-preview" mode="aspectFill" />
+        <image :src="avatarUrl || defaultAvatarSrc" :alt="nickname || 'avatar'" class="avatar-preview" mode="aspectFill" />
         <text class="avatar-hint">{{ t('editProfile.changeAvatar') }}</text>
       </view>
 
@@ -60,6 +60,7 @@ import { useI18n } from '../../composables/useI18n'
 import { useTheme } from '../../composables/useTheme'
 import { useItems } from '../../composables/useItems'
 import { useCampusSpots, type CampusSpot } from '../../composables/useCampusSpots'
+import { friendlyErrorMessage } from '../../utils'
 
 const { t, lang } = useI18n()
 const { isDark } = useTheme()
@@ -144,7 +145,10 @@ async function onSave() {
 
     if (result?.error) {
       console.error('Profile update error:', result.error)
-      uni.showToast({ title: result.error.message || t('profile.markFail'), icon: 'none', duration: 3000 })
+      // friendlyErrorMessage localizes the bio moderation block
+      // ('moderation_block:contact_info' from mig 043) instead of leaking
+      // the raw sentinel to the user.
+      uni.showToast({ title: friendlyErrorMessage(result.error, lang.value as 'en' | 'zh') || t('profile.markFail'), icon: 'none', duration: 3000 })
       return
     }
 
@@ -152,7 +156,7 @@ async function onSave() {
     setTimeout(() => uni.navigateBack(), 1000)
   } catch (err: any) {
     console.error('onSave error:', err)
-    uni.showToast({ title: err?.message || t('profile.markFail'), icon: 'none', duration: 3000 })
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('profile.markFail'), icon: 'none', duration: 3000 })
   } finally {
     clearTimeout(failsafe)
     saving.value = false

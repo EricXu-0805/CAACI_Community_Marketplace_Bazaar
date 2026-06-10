@@ -18,7 +18,7 @@
         @touchmove="postLongPress.onTouchmove"
       >
         <view class="post-head">
-          <image :src="post.profile?.avatar_url || defaultAvatarSrc" class="avatar" mode="aspectFill" @click.stop="goSeller(post.user_id)" />
+          <image :src="post.profile?.avatar_url || defaultAvatarSrc" :alt="post.profile?.nickname || 'avatar'" class="avatar" mode="aspectFill" @click.stop="goSeller(post.user_id)" />
           <view class="head-info">
             <view class="head-name-row">
               <text class="head-name" @click.stop="goSeller(post.user_id)">{{ post.profile?.nickname || t('app.user') }}</text>
@@ -56,6 +56,7 @@
             v-for="(img, i) in post.images"
             :key="i"
             :src="img"
+            :alt="'Post photo'"
             mode="widthFix"
             class="post-img"
             :style="dimsToAspectStyle(effectiveDims(), i)"
@@ -89,6 +90,7 @@
           <view class="stat-btn" role="button" :aria-label="post.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click="onToggleLike">
             <image
               :src="post.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'"
+              alt=""
               class="heart-img"
             />
             <text :class="['stat-num', { active: post.liked_by_me }]">{{ post.like_count }}</text>
@@ -120,6 +122,7 @@
           >
             <image
               :src="thread.parent.profile?.avatar_url || defaultAvatarSrc"
+              :alt="thread.parent.profile?.nickname || 'avatar'"
               class="cs-avatar"
               mode="aspectFill"
               @click="onCommentTap(thread.parent)"
@@ -132,7 +135,7 @@
               <text class="cs-content">{{ thread.parent.content }}</text>
               <view class="cs-actions">
                 <view class="cs-like-btn" role="button" :aria-label="thread.parent.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(thread.parent)">
-                  <image :src="thread.parent.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" class="cs-heart-img" />
+                  <image :src="thread.parent.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                   <text v-if="(thread.parent.like_count ?? 0) > 0" :class="['cs-like-num', { active: thread.parent.liked_by_me }]">{{ thread.parent.like_count }}</text>
                 </view>
                 <text class="cs-reply-btn" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
@@ -152,6 +155,7 @@
             >
               <image
                 :src="child.profile?.avatar_url || defaultAvatarSrc"
+                :alt="child.profile?.nickname || 'avatar'"
                 class="cs-avatar"
                 mode="aspectFill"
                 @click="onCommentTap(child)"
@@ -165,7 +169,7 @@
                 <text class="cs-content">{{ child.content }}</text>
                 <view class="cs-actions">
                   <view class="cs-like-btn" role="button" :aria-label="child.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(child)">
-                    <image :src="child.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" class="cs-heart-img" />
+                    <image :src="child.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                     <text v-if="(child.like_count ?? 0) > 0" :class="['cs-like-num', { active: child.liked_by_me }]">{{ child.like_count }}</text>
                   </view>
                   <text class="cs-reply-btn" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>

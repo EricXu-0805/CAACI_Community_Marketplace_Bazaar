@@ -58,6 +58,7 @@ const RATE_LIMIT_MESSAGES: Record<string, { en: string; zh: string }> = {
   duplicate_message:        { en: 'Duplicate message blocked.',                        zh: '重复消息已拦截' },
   rate_limit_reports_hour:  { en: 'Too many reports recently.',                        zh: '举报太频繁' },
   rate_limit_reports_day:   { en: 'Daily report limit reached.',                       zh: '今日举报已达上限' },
+  rate_limit_currency_day:  { en: 'Daily currency-exchange listing limit reached.',     zh: '今日换汇挂单已达上限' },
   reports_unique_reporter_target: { en: 'You have already reported this.',             zh: '你已举报过这个' },
 }
 
@@ -69,6 +70,18 @@ const MODERATION_MESSAGES: Record<string, { en: string; zh: string }> = {
   suspicious_link:  { en: 'Links are not allowed in this field.',            zh: '此处不允许发送链接' },
   qr_image:         { en: 'Images containing QR codes are not allowed.',     zh: '图片中检测到二维码，不允许发送' },
   spam_pattern:     { en: 'This looks like spam. Please rewrite.',           zh: '疑似垃圾内容，请修改' },
+}
+
+// Content-length / attachment guards thrown by usePlaza + useMessages.
+// These live here (not in the t() tables) because they surface through
+// friendlyErrorMessage() at the catch sites — same as the moderation and
+// rate-limit families above. Previously thrown as raw English strings
+// ('Content too long', etc.) or a stray i18n key, which leaked to zh users.
+const CONTENT_MESSAGES: Record<string, { en: string; zh: string }> = {
+  content_required: { en: 'Please write something first.',    zh: '请先输入内容' },
+  content_too_long: { en: 'Content is too long (max 2000).',  zh: '内容太长（最多 2000 字）' },
+  message_too_long: { en: 'Message is too long (max 2000).',  zh: '消息太长（最多 2000 字）' },
+  attach_item_cap:  { en: 'You can attach up to 3 items.',    zh: '最多只能关联 3 件商品' },
 }
 
 export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string {
@@ -88,6 +101,10 @@ export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string
     const cat = raw.split(':')[1] as keyof typeof MODERATION_MESSAGES
     if (cat && MODERATION_MESSAGES[cat]) return MODERATION_MESSAGES[cat][lang]
     return lang === 'zh' ? '内容未通过审核' : 'Content blocked by moderation'
+  }
+
+  if (CONTENT_MESSAGES[rawMessage]) {
+    return CONTENT_MESSAGES[rawMessage][lang]
   }
 
   for (const key of Object.keys(RATE_LIMIT_MESSAGES)) {
