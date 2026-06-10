@@ -102,26 +102,26 @@
         <view class="action-grid">
           <view class="action-item" @click="goNotifications">
             <view class="action-icon action-icon--brand">
-              <text class="action-emoji">🔔</text>
+              <UIcon name="bell" color="brand" />
             </view>
             <text class="action-label">{{ t('notif.title') }}</text>
             <view v-if="unreadNotifCount > 0" class="action-badge">{{ unreadNotifCount }}</view>
           </view>
           <view class="action-item" @click="goHistory">
             <view class="action-icon action-icon--lavender">
-              <text class="action-emoji">👣</text>
+              <UIcon name="history" color="campus-blue" />
             </view>
             <text class="action-label">{{ t('profile.history') }}</text>
           </view>
           <view class="action-item" @click="goFollowing">
             <view class="action-icon action-icon--sage">
-              <text class="action-emoji">❤️</text>
+              <UIcon name="heart" color="success" />
             </view>
             <text class="action-label">{{ t('nav.following') }}</text>
           </view>
           <view class="action-item" @click="goSavedSearches">
             <view class="action-icon action-icon--amber">
-              <text class="action-emoji">🔍</text>
+              <UIcon name="search" color="warning" />
             </view>
             <text class="action-label">{{ t('savedSearch.title') }}</text>
           </view>
@@ -269,6 +269,7 @@ import { useTheme } from '../../composables/useTheme'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import UBadge from '../../components/UBadge.vue'
+import UIcon from '../../components/UIcon.vue'
 import { useItems } from '../../composables/useItems'
 import { useFavorites } from '../../composables/useFavorites'
 import { useNotifications } from '../../composables/useNotifications'
@@ -880,7 +881,6 @@ function onDeleteItem(id: string) {
 .action-icon--amber    { background: var(--warning-soft); }
 .action-icon--sage     { background: var(--success-soft); }
 .action-icon--lavender { background: var(--campus-blue-soft); }
-.action-emoji { font-size: 22px; line-height: 1; }
 .action-label { font-size: 12px; color: var(--ink-soft); line-height: 1.2; }
 .action-badge {
   position: absolute;
