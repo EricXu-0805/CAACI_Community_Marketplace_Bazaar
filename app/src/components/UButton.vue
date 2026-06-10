@@ -89,9 +89,9 @@ function onClick(evt: Event) {
   -webkit-tap-highlight-color: transparent;
   position: relative;
   transition:
-    transform var(--dur-1, 120ms) var(--ease-std, cubic-bezier(0.4, 0, 0.2, 1)),
+    transform 170ms var(--ease-warm, cubic-bezier(0.2, 0.8, 0.2, 1)),
     background var(--dur-1, 120ms) var(--ease-std, cubic-bezier(0.4, 0, 0.2, 1)),
-    box-shadow var(--dur-1, 120ms) var(--ease-std, cubic-bezier(0.4, 0, 0.2, 1)),
+    box-shadow var(--dur-2, 220ms) var(--ease-warm, cubic-bezier(0.2, 0.8, 0.2, 1)),
     color var(--dur-1, 120ms) var(--ease-std, cubic-bezier(0.4, 0, 0.2, 1)),
     opacity var(--dur-1, 120ms) var(--ease-std, cubic-bezier(0.4, 0, 0.2, 1));
 }
