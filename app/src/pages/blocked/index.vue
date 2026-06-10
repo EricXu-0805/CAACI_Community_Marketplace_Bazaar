@@ -54,19 +54,24 @@ const loading = ref(true)
 
 async function fetchProfiles() {
   loading.value = true
-  await loadBlockedIds()
-  const ids = Array.from(blockedIds.value)
-  if (ids.length === 0) {
-    blockedProfiles.value = []
+  try {
+    await loadBlockedIds()
+    const ids = Array.from(blockedIds.value)
+    if (ids.length === 0) {
+      blockedProfiles.value = []
+      return
+    }
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, nickname, avatar_url, bio')
+      .in('id', ids)
+    if (error) throw error
+    blockedProfiles.value = (data || []) as BlockedProfile[]
+  } catch {
+    uni.showToast({ title: t('error.loadFailed'), icon: 'none', duration: 2500 })
+  } finally {
     loading.value = false
-    return
   }
-  const { data } = await supabase
-    .from('profiles')
-    .select('id, nickname, avatar_url, bio')
-    .in('id', ids)
-  blockedProfiles.value = (data || []) as BlockedProfile[]
-  loading.value = false
 }
 
 onShow(() => { fetchProfiles() })

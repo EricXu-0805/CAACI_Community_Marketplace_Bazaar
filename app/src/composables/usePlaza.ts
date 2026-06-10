@@ -414,11 +414,16 @@ export function usePlaza() {
   }
 
   async function fetchComments(postId: string): Promise<PostComment[]> {
+    // Cap comment load: a viral post could otherwise pull hundreds of
+    // rows + a like-membership query over all of them. Oldest-first up
+    // to COMMENT_PAGE keeps thread structure intact for the common case.
+    const COMMENT_PAGE = 100
     const { data, error } = await supabase
       .from('post_comments')
       .select(`${POST_COMMENT_FIELDS}, profile:profiles!post_comments_user_id_fkey(${PUBLIC_PROFILE_FIELDS})`)
       .eq('post_id', postId)
       .order('created_at', { ascending: true })
+      .limit(COMMENT_PAGE)
     if (error) throw error
     const result = (data || []) as unknown as PostComment[]
 

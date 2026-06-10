@@ -57,9 +57,9 @@ import { useFollow } from '../../composables/useFollow'
 import { useAuth } from '../../composables/useAuth'
 import { matchSpot } from '../../composables/useCampusSpots'
 import type { Item } from '../../types'
-import { formatPrice, thumbUrl } from '../../utils'
+import { formatPrice, thumbUrl, friendlyErrorMessage } from '../../utils'
 
-const { t, localize } = useI18n()
+const { t, localize, lang } = useI18n()
 const { isDark } = useTheme()
 const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
@@ -92,21 +92,31 @@ onMounted(async () => {
     return
   }
   loading.value = true
-  await loadMyFollowing()
-  const rows = await fetchFollowingFeed(0)
-  items.value = rows
-  hasMore.value = rows.length === 20
-  loading.value = false
+  try {
+    await loadMyFollowing()
+    const rows = await fetchFollowingFeed(0)
+    items.value = rows
+    hasMore.value = rows.length === 20
+  } catch (err: any) {
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
+  } finally {
+    loading.value = false
+  }
 })
 
 async function loadMore() {
   if (loading.value || !hasMore.value) return
   loading.value = true
   page.value += 1
-  const rows = await fetchFollowingFeed(page.value)
-  items.value.push(...rows)
-  hasMore.value = rows.length === 20
-  loading.value = false
+  try {
+    const rows = await fetchFollowingFeed(page.value)
+    items.value.push(...rows)
+    hasMore.value = rows.length === 20
+  } catch (err: any) {
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
+  } finally {
+    loading.value = false
+  }
 }
 
 function goBack() { uni.navigateBack() }

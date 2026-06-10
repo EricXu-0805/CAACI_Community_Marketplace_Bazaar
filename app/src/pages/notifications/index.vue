@@ -38,13 +38,17 @@
 import { onShow } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import { useNotifications, type Notification } from '../../composables/useNotifications'
-import { formatTime } from '../../utils'
+import { formatTime, friendlyErrorMessage } from '../../utils'
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 const { notifications, fetchNotifications, markAllRead, markRead, deleteNotification } = useNotifications()
 
-onShow(() => {
-  fetchNotifications()
+onShow(async () => {
+  try {
+    await fetchNotifications()
+  } catch (err: any) {
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
+  }
   /*
    * uni-app preserves uni-page-body scroll position between navigations,
    * so re-entering this page would drop the user halfway down the list.

@@ -127,7 +127,11 @@ onMounted(async () => {
     uni.showToast({ title: t('profile.signInHint'), icon: 'none' })
     return
   }
-  try { await fetchMine() } catch {}
+  try {
+    await fetchMine()
+  } catch (err: any) {
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
+  }
 })
 
 async function onSubmit() {
