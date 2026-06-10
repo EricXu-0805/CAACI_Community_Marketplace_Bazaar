@@ -157,6 +157,11 @@ const zh: Record<string, string> = {
   'detail.moreFromSeller': '卖家的其他商品',
   'detail.safetyTip': '建议在公共场所交易，优先选择校园安全区域，见面验货后再付款。',
   'detail.similar': '类似商品',
+  'detail.soldCount': '已售',
+  'detail.sellerReviews': '卖家评价',
+  'detail.reviewsUnit': '条',
+  'detail.seeAllReviews': '查看全部 {n} 条评价',
+  'detail.newSeller': '新卖家',
 
   'publish.title': '发布商品',
   'publish.addPhoto': '添加图片',

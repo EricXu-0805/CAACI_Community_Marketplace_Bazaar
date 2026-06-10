@@ -104,6 +104,11 @@
             <text class="seller-name">{{ item.profile.nickname }}</text>
             <UBadge v-if="item.profile.is_illini_verified" variant="illini" :title="t('profile.illiniVerified')">Illini</UBadge>
           </view>
+          <view v-if="soldCount > 0 || reviewCount > 0" class="seller-proof">
+            <text v-if="soldCount > 0" class="sp-item"><text class="sp-strong">{{ soldCount }}</text> {{ t('detail.soldCount') }}</text>
+            <text v-if="soldCount > 0 && reviewCount > 0" class="sp-dot">·</text>
+            <text v-if="reviewCount > 0" class="sp-item"><text class="sp-strong">{{ avgRating }}</text> ★ · {{ reviewCount }}</text>
+          </view>
           <text v-if="item.profile.status_text || item.profile.status_emoji" class="seller-status">
             <text v-if="item.profile.status_emoji" class="ss-emoji">{{ item.profile.status_emoji }}</text>
             <text v-if="item.profile.status_text" class="ss-text">{{ item.profile.status_text }}</text>
@@ -121,6 +126,33 @@
           <text class="stat-num">{{ favCount }}</text>
           <text class="stat-label">{{ t('detail.wants') }}</text>
         </view>
+      </view>
+    </view>
+
+    <!-- Seller reviews — social proof -->
+    <view class="section reviews-section" v-if="sellerReviews.length > 0">
+      <view class="reviews-head">
+        <text class="section-label">{{ t('detail.sellerReviews') }}</text>
+        <text class="reviews-meta">{{ avgRating }} ★ · {{ reviewCount }} {{ t('detail.reviewsUnit') }}</text>
+      </view>
+      <view class="reviews-list">
+        <view v-for="r in displayedReviews" :key="r.id" class="review-card">
+          <image :src="r.rater?.avatar_url || defaultAvatarSrc" :alt="r.rater?.nickname || 'avatar'" class="rv-avatar" mode="aspectFill" />
+          <view class="rv-body">
+            <view class="rv-head">
+              <text class="rv-nick">{{ r.rater?.nickname || t('app.user') }}</text>
+              <UBadge v-if="r.rater?.is_illini_verified" variant="illini">Illini</UBadge>
+              <view class="rv-stars">
+                <text v-for="n in 5" :key="n" :class="['rv-star', { on: r.stars >= n }]">★</text>
+              </view>
+              <text class="rv-time">· {{ formatTime(r.created_at) }}</text>
+            </view>
+            <text v-if="r.comment" class="rv-text">{{ r.comment }}</text>
+          </view>
+        </view>
+      </view>
+      <view v-if="reviewCount > displayedReviews.length" class="reviews-more" @click="goSeller(item.user_id)">
+        <text>{{ t('detail.seeAllReviews').replace('{n}', String(reviewCount)) }}</text>
       </view>
     </view>
 
@@ -258,7 +290,7 @@ import { useFavorites } from '../../composables/useFavorites'
 import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
 import { useTheme } from '../../composables/useTheme'
-import type { Item } from '../../types'
+import type { Item, Rating } from '../../types'
 
 import { formatTime, haptic, formatPrice, quickTranslate, thumbUrl, friendlyErrorMessage } from '../../utils'
 import { readNaturalDims } from '../../utils/imgStyle'
@@ -390,12 +422,34 @@ const swiperStyle = computed(() => {
   }
 })
 
-const { submitRating, hasRated } = useRatings()
+const { submitRating, hasRated, fetchForUser } = useRatings()
 const showRating = ref(false)
 const ratingStars = ref(0)
 const ratingComment = ref('')
 const ratingSubmitting = ref(false)
 const alreadyRated = ref(false)
+
+/*
+ * Seller social proof (v5 detail). Reviews + sold-count are read straight
+ * from public data (ratings are public; sold items are listed), so they're
+ * RLS-safe to fetch for any seller. avgRating/reviewCount are derived from
+ * the fetched batch (capped at REVIEW_FETCH) — fine for a campus-scale app.
+ *
+ * Seller reply-rate (the kit's "95% 回复") is deliberately NOT shown: it
+ * needs another user's conversation/message rows, which RLS blocks
+ * client-side. It belongs on a denormalized profile column / RPC — deferred.
+ */
+const REVIEW_FETCH = 50
+const REVIEW_PREVIEW = 6
+const sellerReviews = ref<Rating[]>([])
+const soldCount = ref(0)
+const reviewCount = computed(() => sellerReviews.value.length)
+const avgRating = computed(() => {
+  if (!sellerReviews.value.length) return 0
+  const sum = sellerReviews.value.reduce((acc, r) => acc + (r.stars || 0), 0)
+  return Math.round((sum / sellerReviews.value.length) * 10) / 10
+})
+const displayedReviews = computed(() => sellerReviews.value.slice(0, REVIEW_PREVIEW))
 
 async function openRating() {
   if (!requireAuth()) return
@@ -489,7 +543,7 @@ onLoad(async (options) => {
       && currentUser.value
       && itemData.user_id !== currentUser.value.id
 
-    const [favCountRes, ratedRes, otherItemsRes, simItemsRes] = await Promise.all([
+    const [favCountRes, ratedRes, otherItemsRes, simItemsRes, reviewsRes, soldCountRes] = await Promise.all([
       getFavoriteCount(options.id!),
       needsRated ? hasRated(itemData.user_id, itemData.id) : Promise.resolve(false),
       supabase
@@ -500,11 +554,17 @@ onLoad(async (options) => {
         .from('items').select('id, title, price, images, image_dimensions, user_id')
         .eq('category', itemData.category).eq('status', 'active')
         .neq('id', itemData.id).neq('user_id', itemData.user_id).limit(12),
+      fetchForUser(itemData.user_id, REVIEW_FETCH).catch(() => [] as Rating[]),
+      supabase
+        .from('items').select('id', { count: 'exact', head: true })
+        .eq('user_id', itemData.user_id).eq('status', 'sold'),
     ])
 
     if (!alive) return
     favCount.value = favCountRes
     alreadyRated.value = !!ratedRes
+    sellerReviews.value = reviewsRes || []
+    soldCount.value = soldCountRes?.count || 0
     if (otherItemsRes.data) sellerOtherItems.value = otherItemsRes.data as Item[]
     if (simItemsRes.data) {
       const { blockedIds } = useModeration()
@@ -996,6 +1056,40 @@ async function contactSeller() {
 .stat { display: flex; align-items: baseline; gap: 4px; }
 .stat-num { font-size: 16px; font-weight: 700; color: var(--ink); }
 .stat-label { font-size: 12px; color: var(--text-faint); }
+
+/* Seller social proof — sold count + avg rating, inline under the name. */
+.seller-proof {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 4px;
+  font-size: 12px; color: var(--ink-quiet);
+}
+.sp-item { display: inline-flex; align-items: center; gap: 3px; }
+.sp-strong { font-family: var(--font-serif); font-weight: 600; color: var(--ink); }
+.sp-dot { color: var(--ink-faint); }
+
+/* ========== Seller reviews ========== */
+.reviews-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+.reviews-head .section-label { margin-bottom: 0; }
+.reviews-meta {
+  font-family: var(--font-serif); font-size: 13px; font-weight: 600;
+  color: var(--brand); letter-spacing: -0.01em;
+}
+.reviews-list { display: flex; flex-direction: column; gap: 14px; }
+.review-card { display: flex; gap: 10px; }
+.rv-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-subtle); flex-shrink: 0; }
+.rv-body { flex: 1; min-width: 0; }
+.rv-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rv-nick { font-size: 13px; font-weight: 600; color: var(--ink); }
+.rv-stars { display: inline-flex; gap: 1px; }
+.rv-star { font-size: 11px; color: var(--border-strong); line-height: 1; }
+.rv-star.on { color: var(--warning); }
+.rv-time { font-size: 11px; color: var(--text-faint); }
+.rv-text { display: block; margin-top: 4px; font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+.reviews-more {
+  margin-top: 14px; text-align: center;
+  font-size: 13px; color: var(--brand); font-weight: 500; cursor: pointer;
+  &:active { opacity: 0.7; }
+}
 
 /* ========== Bottom Action Bar ========== */
 .action-bar {

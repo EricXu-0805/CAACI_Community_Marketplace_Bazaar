@@ -157,6 +157,11 @@ const en: Record<string, string> = {
   'detail.moreFromSeller': 'More from this seller',
   'detail.safetyTip': 'Meet in public places. Use campus safe zones. Never wire money before seeing the item.',
   'detail.similar': 'Similar Items',
+  'detail.soldCount': 'sold',
+  'detail.sellerReviews': 'Seller reviews',
+  'detail.reviewsUnit': 'reviews',
+  'detail.seeAllReviews': 'See all {n} reviews',
+  'detail.newSeller': 'New seller',
 
   'publish.title': 'Post Item',
   'publish.addPhoto': 'Add Photo',
