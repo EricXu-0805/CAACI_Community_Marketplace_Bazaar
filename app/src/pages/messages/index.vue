@@ -6,6 +6,20 @@
       <text class="page-title">{{ t('nav.messages') }}</text>
     </view>
 
+    <!-- Filter chips (v5 kit: 全部 / 未读 / 商品) — client-side filter. -->
+    <view v-if="isLoggedIn && conversations.length > 0" class="msg-filters">
+      <view
+        v-for="f in msgFilters"
+        :key="f.key"
+        :class="['mf-chip', { active: msgFilter === f.key }]"
+        role="tab"
+        :aria-selected="msgFilter === f.key"
+        @click="msgFilter = f.key"
+      >
+        <text>{{ f.label }}</text>
+      </view>
+    </view>
+
     <view v-if="!isLoggedIn" class="login-prompt">
       <view class="prompt-icon">
         <view class="pi-bubble"></view>
@@ -23,8 +37,11 @@
     </view>
 
     <view v-else class="conv-list">
+      <view v-if="visibleConversations.length === 0" class="filtered-empty">
+        <text>{{ t('msg.noFiltered') }}</text>
+      </view>
       <view
-        v-for="conv in conversations"
+        v-for="conv in visibleConversations"
         :key="conv.id"
         class="conv-row"
         :class="{ 'is-swiped': (swipeOffsets[conv.id] || 0) < -5 }"
@@ -136,6 +153,22 @@ const { isDark } = useTheme()
 const defaultAvatar = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
+
+// Filter chips (v5 kit): 全部 / 未读 / 商品 — client-side over the loaded list.
+type MsgFilterKey = 'all' | 'unread' | 'items'
+const msgFilter = ref<MsgFilterKey>('all')
+const msgFilters = computed<{ key: MsgFilterKey; label: string }[]>(() => [
+  { key: 'all', label: t('msg.filterAll') },
+  { key: 'unread', label: t('msg.filterUnread') },
+  { key: 'items', label: t('msg.filterItems') },
+])
+const visibleConversations = computed(() => {
+  if (msgFilter.value === 'unread') {
+    return conversations.value.filter(c => unreadConvIds.value.has(c.id) && !isMuted(c))
+  }
+  if (msgFilter.value === 'items') return conversations.value.filter(c => !!c.item)
+  return conversations.value
+})
 
 const SWIPE_OPEN = 210
 const swipeOffsets = reactive<Record<string, number>>({})
@@ -350,6 +383,32 @@ function goLogin() {
 }
 .page-title {
   font-size: 17px; font-weight: 700; color: var(--text-primary);
+}
+
+/* ===== Filter chips (v5): 全部 / 未读 / 商品 ===== */
+.msg-filters {
+  display: flex; gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg-elev-1);
+  border-bottom: 0.5px solid var(--line-hair);
+}
+.mf-chip {
+  height: 30px; padding: 0 14px;
+  display: inline-flex; align-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--surface-alt);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-std), transform var(--dur-1) var(--ease-std);
+  text { font-size: 12.5px; font-weight: 500; color: var(--ink-quiet); line-height: 1; }
+  &:active { transform: scale(0.94); }
+  &.active {
+    background: var(--ink);
+    text { color: var(--ink-inverse); font-weight: 600; }
+  }
+}
+.filtered-empty {
+  padding: 48px 16px; text-align: center;
+  text { font-size: 13px; color: var(--text-muted); }
 }
 
 .login-prompt, .empty {
