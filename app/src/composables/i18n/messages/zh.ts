@@ -370,6 +370,7 @@ const zh: Record<string, string> = {
   'login.signUp': '注册',
   'login.nickname': '昵称',
   'login.email': '邮箱',
+  'login.illiniEmail': 'Illini 认证邮箱 · 可解锁专属徽章',
   'login.password': '密码',
   'login.submitLogin': '登录',
   'login.submitSignup': '注册',

@@ -4,9 +4,7 @@
       <view class="back-arrow"></view>
     </view>
     <view class="header">
-      <view class="logo-mark">
-        <view class="logo-letter">I</view>
-      </view>
+      <image class="logo-mark-img" :src="logoSrc" :alt="t('app.name')" mode="aspectFit" />
       <text class="app-name">{{ t('app.name') }}</text>
       <text class="app-desc">{{ t('app.desc') }}</text>
     </view>
@@ -57,6 +55,10 @@
           spellcheck="false"
           class="form-input"
         />
+        <view v-if="isIlliniEmail" class="illini-hint">
+          <text class="ih-check">✓</text>
+          <text class="ih-text">{{ t('login.illiniEmail') }}</text>
+        </view>
       </view>
 
       <view class="form-group">
@@ -132,14 +134,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useAuth } from '../../composables/useAuth'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
+import { useTheme } from '../../composables/useTheme'
 import { BASE_URL } from '../../config/runtime'
 
 const { t } = useI18n()
 const { signIn, signUp, signInWithWeChat, loading } = useAuth()
+const { isDark } = useTheme()
+
+// v5: theme-flipping 集 brand mark + an Illini-email hint on the signup form.
+const logoSrc = computed(() => (isDark.value ? '/static/logo-mark-dark.svg' : '/static/logo-mark.svg'))
+const isIlliniEmail = computed(() => /@illinois\.edu\s*$/i.test(email.value.trim()))
 
 const mode = ref<'login' | 'signup'>('login')
 const email = ref('')
@@ -436,17 +444,13 @@ async function onSubmit() {
   padding: 72px 0 40px;
   padding-top: calc(72px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
 }
-.logo-mark {
+.logo-mark-img {
   width: 56px; height: 56px; border-radius: 14px;
-  background: var(--accent-primary);
-  display: flex; align-items: center; justify-content: center;
-}
-.logo-letter {
-  font-size: 28px; font-weight: 800; color: #fff;
-  letter-spacing: -1px;
+  box-shadow: var(--shadow-soft);
 }
 .app-name {
-  font-size: 22px; font-weight: 700; color: var(--text-primary);
+  font-family: var(--font-serif);
+  font-size: 24px; font-weight: 600; color: var(--ink);
   margin-top: 16px; letter-spacing: -0.02em;
 }
 .app-desc {
@@ -471,6 +475,16 @@ async function onSubmit() {
 }
 
 .form-group { margin-bottom: 18px; }
+/* Illini-email affordance — sage pill that appears once the address ends
+   in @illinois.edu, hinting at the verified-badge path. */
+.illini-hint {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-top: 8px; padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--success-soft);
+}
+.ih-check { font-size: 11px; font-weight: 800; color: var(--success); line-height: 1; }
+.ih-text { font-size: 11px; font-weight: 500; color: var(--success); line-height: 1; }
 .form-label {
   display: block; font-size: 13px; color: var(--text-muted);
   margin-bottom: 7px; font-weight: 500;
