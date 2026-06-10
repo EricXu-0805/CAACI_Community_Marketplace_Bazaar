@@ -1317,5 +1317,11 @@ async function contactSeller() {
    * above-the-fold on big screens.
    */
   .info-card { border-radius: 0; }
+  /* The action bar is position:fixed full-width; align it under the
+     centered 640px reading column instead of spanning the viewport. */
+  .action-bar {
+    left: 50%; right: auto; transform: translateX(-50%);
+    width: 100%; max-width: 640px;
+  }
 }
 </style>

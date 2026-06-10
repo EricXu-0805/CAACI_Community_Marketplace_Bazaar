@@ -1,6 +1,6 @@
 <template>
-  <view class="page">
-    <DesktopNav current="profile" />
+  <view class="page has-sidebar">
+    <AppSidebar current="profile" />
 
     <!--
       Profile page — campus-market redesign.
@@ -244,7 +244,7 @@ import { onShow, onPullDownRefresh, onShareAppMessage, onShareTimeline } from '@
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useTheme } from '../../composables/useTheme'
-import DesktopNav from '../../components/DesktopNav.vue'
+import AppSidebar from '../../components/AppSidebar.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import UBadge from '../../components/UBadge.vue'
 import UIcon from '../../components/UIcon.vue'
@@ -539,7 +539,13 @@ function onDeleteItem(id: string) {
 }
 @media (min-width: 768px) {
   .page-header { display: none; }
-  .page { padding-bottom: 0; }
+  .page { padding-bottom: 0; max-width: none; margin: 0; }
+  .logged-in-wrap,
+  .login-section {
+    max-width: 980px;
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
 
 .login-section {
