@@ -444,6 +444,8 @@ const zh: Record<string, string> = {
   'plaza.tab.following': '关注 · Following',
   'plaza.tab.recommend': '推荐 · For You',
   'plaza.tab.official': '官方 · Official',
+  'plaza.tab.hot': '热门 · Hot',
+  'plaza.tab.recent': '最新 · New',
   'plaza.pinned': '置顶',
   'plaza.empty': '还没有动态，来发第一条吧！',
   'plaza.post': '发布',

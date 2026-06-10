@@ -106,8 +106,8 @@ export function usePlaza() {
   const { currentUser } = useAuth()
   const { t } = useI18n()
 
-  async function fetchPosts(options: { page?: number; reset?: boolean; search?: string } = {}) {
-    const { page = 0, reset = false, search } = options
+  async function fetchPosts(options: { page?: number; reset?: boolean; search?: string; sort?: 'recent' | 'hot' } = {}) {
+    const { page = 0, reset = false, search, sort = 'recent' } = options
     const requestId = ++latestRequestId
     if (reset) {
       posts.value = []
@@ -115,12 +115,24 @@ export function usePlaza() {
     }
     loading.value = true
     try {
+      // Pinned posts (CAACI 官方 announcements) always lead. Within that,
+      // 热门 ranks by engagement (likes → comments → recency); 最新 is
+      // chronological. PostgREST can't order by an expression, so 热门 is a
+      // likes→comments→recency tie-break ladder — close enough at campus scale.
       let q = supabase
         .from('posts')
         .select(POST_SELECT)
         .eq('status', 'active')
         .order('is_pinned', { ascending: false })
-        .order('created_at', { ascending: false })
+      if (sort === 'hot') {
+        q = q
+          .order('like_count', { ascending: false })
+          .order('comment_count', { ascending: false })
+          .order('created_at', { ascending: false })
+      } else {
+        q = q.order('created_at', { ascending: false })
+      }
+      q = q
         .order('display_order', { foreignTable: 'post_items', ascending: true })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
 

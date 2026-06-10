@@ -444,6 +444,8 @@ const en: Record<string, string> = {
   'plaza.tab.following': '关注 · Following',
   'plaza.tab.recommend': '推荐 · For You',
   'plaza.tab.official': '官方 · Official',
+  'plaza.tab.hot': '热门 · Hot',
+  'plaza.tab.recent': '最新 · New',
   'plaza.pinned': 'Pinned',
   'plaza.empty': 'No posts yet. Be the first!',
   'plaza.post': 'Post',

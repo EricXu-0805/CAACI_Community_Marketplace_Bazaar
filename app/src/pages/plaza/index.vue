@@ -538,25 +538,23 @@ const refreshing = ref(false)
 const pageIdx = ref(0)
 
 /*
- * Visual feed sub-tabs. 推荐 / 官方 filter the already-loaded `posts`
- * client-side (推荐 = all, 官方 = is_official). 关注 loads the current
- * user's followed sellers' active LISTINGS via useFollow.fetchFollowingFeed
- * (marketplace items, not posts — a "what people I follow are selling"
- * view, mirroring pages/following/index.vue). The 活动 (events) tab was
- * removed 2026-06 (no data source; three tabs fit without h-scroll) —
- * official events will be posted as pinned official posts instead.
+ * Feed sub-tabs (v5 kit: 关注 / 热门 / 最新). 热门 and 最新 both show all
+ * posts but差 in server sort — 热门 ranks by engagement, 最新 by recency —
+ * so switching between them re-fetches. 关注 loads the current user's
+ * followed sellers' active LISTINGS via useFollow.fetchFollowingFeed
+ * (marketplace items, not posts). The prior 推荐/官方 split was replaced to
+ * match the v5 design; CAACI 官方 posts still surface inline (pinned-first
+ * + OFFICIAL badge) rather than via a dedicated tab.
  */
-type FeedTabKey = 'recommend' | 'following' | 'official'
-const activeTab = ref<FeedTabKey>('recommend')
+type FeedTabKey = 'following' | 'hot' | 'recent'
+const activeTab = ref<FeedTabKey>('recent')
 const feedTabs = computed<{ key: FeedTabKey; label: string }[]>(() => [
   { key: 'following', label: t('plaza.tab.following') },
-  { key: 'recommend', label: t('plaza.tab.recommend') },
-  { key: 'official', label: t('plaza.tab.official') },
+  { key: 'hot', label: t('plaza.tab.hot') },
+  { key: 'recent', label: t('plaza.tab.recent') },
 ])
-const visiblePosts = computed(() => {
-  if (activeTab.value === 'official') return posts.value.filter((p) => p.is_official)
-  return posts.value
-})
+const feedSort = computed<'recent' | 'hot'>(() => (activeTab.value === 'hot' ? 'hot' : 'recent'))
+const visiblePosts = computed(() => posts.value)
 
 /* 关注 tab — followed sellers' active listings (items, not posts). Lazy-
  * loaded the first time the user opens the tab, then paginated via the
@@ -591,7 +589,13 @@ async function loadFollowing(reset: boolean) {
 }
 
 watch(activeTab, (k) => {
-  if (k === 'following' && !followLoaded.value) loadFollowing(true)
+  if (k === 'following') {
+    if (!followLoaded.value) loadFollowing(true)
+  } else {
+    // 热门 / 最新 differ only by server sort — re-fetch on switch.
+    pageIdx.value = 0
+    fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value })
+  }
 })
 
 /*
@@ -628,18 +632,18 @@ function onSearchInput() {
   if (searchDebounce) clearTimeout(searchDebounce)
   searchDebounce = setTimeout(() => {
     pageIdx.value = 0
-    fetchPosts({ reset: true, search: searchText.value })
+    fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value })
   }, 300)
 }
 function onSearchSubmit() {
   if (searchDebounce) clearTimeout(searchDebounce)
   pageIdx.value = 0
-  fetchPosts({ reset: true, search: searchText.value })
+  fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value })
 }
 function clearSearch() {
   searchText.value = ''
   pageIdx.value = 0
-  fetchPosts({ reset: true })
+  fetchPosts({ reset: true, sort: feedSort.value })
 }
 
 const showComposer = ref(false)
@@ -804,7 +808,7 @@ async function togglePostTranslate(post: Post) {
 
 onMounted(async () => {
   await ensureBlockedLoaded()
-  await fetchPosts({ reset: true })
+  await fetchPosts({ reset: true, sort: feedSort.value })
 })
 
 async function onRefresh() {
@@ -816,7 +820,7 @@ async function onRefresh() {
   pageIdx.value = 0
   const failsafe = setTimeout(() => { refreshing.value = false }, 10000)
   try {
-    await fetchPosts({ reset: true, search: searchText.value })
+    await fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value })
   } finally {
     clearTimeout(failsafe)
     refreshing.value = false
@@ -833,7 +837,7 @@ async function loadMore() {
   }
   if (loading.value || !hasMore.value) return
   pageIdx.value++
-  await fetchPosts({ page: pageIdx.value, search: searchText.value })
+  await fetchPosts({ page: pageIdx.value, sort: feedSort.value, search: searchText.value })
 }
 
 async function onToggleLike(post: Post) {
