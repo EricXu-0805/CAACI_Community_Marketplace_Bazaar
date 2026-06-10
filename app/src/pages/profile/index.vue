@@ -131,22 +131,28 @@
         </view>
       </view>
 
-      <!-- 我发布的 (active + reserved) -->
+      <!-- 我的发布 — 在售 / 已售 标签 (v5 kit; 草稿 deferred per decision) -->
       <view class="section-block">
-        <view class="block-title-row">
-          <text class="block-title">{{ t('profile.myListings') }}</text>
-          <text v-if="listedItems.length > 0" class="block-count">{{ listedItems.length }}</text>
+        <view class="my-tabs">
+          <view :class="['my-tab', { active: myTab === 'active' }]" role="tab" :aria-selected="myTab === 'active'" @click="myTab = 'active'">
+            <text class="my-tab-label">{{ t('profile.tabActive') }}</text>
+            <text v-if="listedItems.length > 0" class="my-tab-count">{{ listedItems.length }}</text>
+          </view>
+          <view :class="['my-tab', { active: myTab === 'sold' }]" role="tab" :aria-selected="myTab === 'sold'" @click="myTab = 'sold'">
+            <text class="my-tab-label">{{ t('profile.tabSold') }}</text>
+            <text v-if="soldItems.length > 0" class="my-tab-count">{{ soldItems.length }}</text>
+          </view>
         </view>
-        <view v-if="listedItems.length === 0" class="empty-mini">
+        <view v-if="currentListings.length === 0" class="empty-mini">
           <UIcon name="tag" size="lg" color="ink-faint" />
-          <text class="empty-mini-text">{{ t('profile.noListings') }}</text>
+          <text class="empty-mini-text">{{ myTab === 'sold' ? t('profile.noSold') : t('profile.noListings') }}</text>
         </view>
         <scroll-view v-else scroll-x class="horz-scroll" :show-scrollbar="false">
           <view class="horz-row">
             <view
-              v-for="item in listedItems"
+              v-for="item in currentListings"
               :key="item.id"
-              class="horz-card"
+              :class="['horz-card', { sold: item.status === 'sold' }]"
               @click="goDetail(item.id)"
               @touchstart="cardLongPress.onTouchstart(item)"
               @touchend="cardLongPress.onTouchend"
@@ -166,37 +172,6 @@
                 <text v-if="item.status !== 'active'" :class="['horz-status', item.status]">
                   {{ t('status.' + item.status) }}
                 </text>
-              </view>
-            </view>
-          </view>
-        </scroll-view>
-      </view>
-
-      <!-- 已售出 -->
-      <view v-if="soldItems.length > 0" class="section-block">
-        <view class="block-title-row">
-          <text class="block-title">{{ t('profile.soldSection') }}</text>
-          <text class="block-count">{{ soldItems.length }}</text>
-        </view>
-        <scroll-view scroll-x class="horz-scroll" :show-scrollbar="false">
-          <view class="horz-row">
-            <view
-              v-for="item in soldItems"
-              :key="item.id"
-              class="horz-card sold"
-              @click="goDetail(item.id)"
-            >
-              <image
-                :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'"
-                :alt="localize(item.title_i18n, item.title)"
-                class="horz-img"
-                mode="aspectFill"
-                lazy-load
-              />
-              <view class="horz-info">
-                <text class="horz-title">{{ localize(item.title_i18n, item.title) }}</text>
-                <text :class="['horz-price', { free: !item.price || item.price === 0 }]">{{ formatPrice(item.price, t('home.free')) }}</text>
-                <text class="horz-status sold">{{ t('status.sold') }}</text>
               </view>
             </view>
           </view>
@@ -355,6 +330,11 @@ function myImgStyleFor(id: string): Record<string, string> {
 
 const listedItems = computed(() => myItems.value.filter(i => i.status !== 'sold'))
 const soldItems = computed(() => myItems.value.filter(i => i.status === 'sold'))
+
+// 我的发布 — 在售 / 已售 sub-tabs (v5 kit). 草稿 (drafts) deferred per
+// decision: there's no draft item status in the schema yet.
+const myTab = ref<'active' | 'sold'>('active')
+const currentListings = computed(() => (myTab.value === 'sold' ? soldItems.value : listedItems.value))
 
 onShareAppMessage(() => {
   const u = currentUser.value
@@ -855,6 +835,28 @@ function onDeleteItem(id: string) {
   margin-bottom: 12px;
 }
 .block-count { font-size: 12px; color: var(--text-muted); }
+
+/* ===== 我的发布 在售/已售 sub-tabs (v5) ===== */
+.my-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+.my-tab {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 14px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-alt);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-std), transform var(--dur-1) var(--ease-std);
+  &:active { transform: scale(0.96); }
+}
+.my-tab.active { background: var(--ink); }
+.my-tab-label { font-size: 13px; font-weight: 500; color: var(--ink-quiet); line-height: 1; }
+.my-tab.active .my-tab-label { color: var(--ink-inverse); font-weight: 600; }
+.my-tab-count {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+  min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--frame); color: var(--ink-quiet); line-height: 1;
+}
+.my-tab.active .my-tab-count { background: rgba(255, 255, 255, 0.22); color: var(--ink-inverse); }
 
 /* ===== Quick actions grid (4-col colored icon buttons) ===== */
 .action-grid {
