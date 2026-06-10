@@ -57,25 +57,70 @@
       </view>
     </view>
 
-    <view class="items-grid">
-      <view v-for="item in sellerItems" :key="item.id" class="grid-item" @click="goDetail(item.id)">
-        <view class="gi-img-wrap">
-          <image :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'" :alt="item.title" class="gi-img" mode="aspectFill" lazy-load />
-          <view v-if="item.location_verified && matchSpot(item.location)?.safe" class="badge-safe-corner" :aria-label="t('pickup.verifiedPickup')">
-            <text class="bsc-check">✓</text>
-            <text class="bsc-label">{{ t('pickup.verifiedPickup') }}</text>
-          </view>
-        </view>
-        <view class="gi-info">
-          <text class="gi-title">{{ localize(item.title_i18n, item.title) }}</text>
-          <text class="gi-price">{{ formatPrice(item.price, t("home.free")) }}</text>
-        </view>
+    <!-- 商品 (default) / 动态 dual tabs — 2026-06 meeting decision: the
+         seller page leads with listings, plaza activity one tap away. -->
+    <view class="seller-tabs">
+      <view
+        v-for="tab in sellerTabs"
+        :key="tab.key"
+        :class="['st-chip', { active: activeTab === tab.key }]"
+        role="button"
+        :aria-pressed="activeTab === tab.key ? 'true' : 'false'"
+        @click="switchTab(tab.key)"
+      >
+        <text class="t-tag st-label">{{ tab.label }}</text>
       </view>
     </view>
 
-    <view v-if="sellerItems.length === 0 && !loading" class="empty">
-      <text>{{ t('seller.noItems') }}</text>
-    </view>
+    <template v-if="activeTab === 'items'">
+      <view class="items-grid">
+        <view v-for="item in sellerItems" :key="item.id" class="grid-item" @click="goDetail(item.id)">
+          <view class="gi-img-wrap">
+            <image :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'" :alt="item.title" class="gi-img" mode="aspectFill" lazy-load />
+            <view v-if="item.location_verified && matchSpot(item.location)?.safe" class="badge-safe-corner" :aria-label="t('pickup.verifiedPickup')">
+              <text class="bsc-check">✓</text>
+              <text class="bsc-label">{{ t('pickup.verifiedPickup') }}</text>
+            </view>
+          </view>
+          <view class="gi-info">
+            <text class="gi-title">{{ localize(item.title_i18n, item.title) }}</text>
+            <text class="gi-price">{{ formatPrice(item.price, t("home.free")) }}</text>
+          </view>
+        </view>
+      </view>
+
+      <view v-if="sellerItems.length === 0 && !loading" class="empty">
+        <text>{{ t('seller.noItems') }}</text>
+      </view>
+    </template>
+
+    <template v-else>
+      <view v-if="postsLoading" class="empty">
+        <text>{{ t('home.loading') }}...</text>
+      </view>
+      <view v-else-if="userPosts.length === 0" class="empty">
+        <text>{{ t('seller.noPosts') }}</text>
+      </view>
+      <view v-else class="posts-list">
+        <view v-for="post in userPosts" :key="post.id" class="sp-card" @click="goPost(post.id)">
+          <text class="sp-content">{{ localize(post.content_i18n, post.content) }}</text>
+          <view v-if="post.images?.length" class="sp-imgs">
+            <image
+              v-for="(img, i) in post.images.slice(0, 3)"
+              :key="i"
+              :src="thumbUrl(img, 'list') || img"
+              class="sp-img"
+              mode="aspectFill"
+              lazy-load
+            />
+            <view v-if="post.images.length > 3" class="sp-img sp-more">
+              <text class="sp-more-text">+{{ post.images.length - 3 }}</text>
+            </view>
+          </view>
+          <text class="sp-meta">{{ formatTime(post.created_at) }} · ♥ {{ post.like_count }} · 💬 {{ post.comment_count }}</text>
+        </view>
+      </view>
+    </template>
   </view>
 </template>
 
@@ -88,9 +133,10 @@ import { useModeration } from '../../composables/useModeration'
 import { useTheme } from '../../composables/useTheme'
 import { useAuth } from '../../composables/useAuth'
 import { useFollow } from '../../composables/useFollow'
+import { usePlaza } from '../../composables/usePlaza'
 import { matchSpot } from '../../composables/useCampusSpots'
-import type { Profile, Item } from '../../types'
-import { formatPrice, thumbUrl } from '../../utils'
+import type { Profile, Item, Post } from '../../types'
+import { formatPrice, formatTime, thumbUrl } from '../../utils'
 import UBadge from '../../components/UBadge.vue'
 
 const { t, lang, localize } = useI18n()
@@ -103,11 +149,49 @@ const { ensureLoaded, isBlocked } = useModeration()
 const { currentUser, requireAuth } = useAuth()
 const { isFollowing, toggleFollow, loadMyFollowing } = useFollow()
 
+const { fetchUserPosts } = usePlaza()
+
 const seller = ref<Profile | null>(null)
 const sellerItems = ref<Item[]>([])
 const soldCount = ref(0)
 const loading = ref(true)
 const blocked = ref(false)
+
+/* 商品 (default) / 动态 tabs. Posts load lazily on first switch so the
+   common path (browsing listings) costs no extra query. ?tab=posts
+   deep-links straight to the 动态 tab (plaza entry uses this). */
+type SellerTabKey = 'items' | 'posts'
+const activeTab = ref<SellerTabKey>('items')
+const sellerTabs = computed<{ key: SellerTabKey; label: string }[]>(() => [
+  { key: 'items', label: t('seller.tabItems') },
+  { key: 'posts', label: t('seller.tabPosts') },
+])
+const sellerId = ref('')
+const userPosts = ref<Post[]>([])
+const postsLoading = ref(false)
+let postsLoaded = false
+
+async function loadPosts() {
+  if (postsLoaded || !sellerId.value) return
+  postsLoading.value = true
+  try {
+    userPosts.value = await fetchUserPosts(sellerId.value)
+    postsLoaded = true
+  } catch {
+    /* leave empty state; tab stays usable and re-tries on next switch */
+  } finally {
+    postsLoading.value = false
+  }
+}
+
+function switchTab(key: SellerTabKey) {
+  activeTab.value = key
+  if (key === 'posts') loadPosts()
+}
+
+function goPost(id: string) {
+  uni.navigateTo({ url: `/pages/post/index?id=${id}` })
+}
 
 const isOwnProfile = computed(() => currentUser.value?.id && seller.value?.id === currentUser.value.id)
 const activeCount = computed(() => sellerItems.value.length)
@@ -157,6 +241,11 @@ const joinLabel = computed(() => {
 onLoad(async (options) => {
   if (!options?.id) return
   const uid = options.id
+  sellerId.value = uid
+  if (options.tab === 'posts') {
+    activeTab.value = 'posts'
+    loadPosts()
+  }
 
   await ensureLoaded()
   if (isBlocked(uid)) {
@@ -222,6 +311,58 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .loc-row { display: flex; align-items: center; gap: 4px; }
 .loc-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-action); }
 .loc-text { font-size: 12px; color: var(--text-faint); }
+
+/* 商品/动态 segmented tabs — same visual language as plaza's .ft-chip. */
+.seller-tabs {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-elev-1);
+  border-bottom: 0.5px solid var(--line-hair);
+}
+.st-chip {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-pill);
+  border: 0.5px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  &.active {
+    background: var(--ink);
+    border-color: var(--ink);
+  }
+}
+.st-label {
+  color: var(--ink-quiet);
+  line-height: 1;
+  white-space: nowrap;
+  .st-chip.active & { color: var(--ink-inverse); }
+}
+
+.posts-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+.sp-card {
+  background: var(--bg-elev-1);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 8px;
+  cursor: pointer;
+}
+.sp-content {
+  font-size: 14px; color: var(--text-primary); line-height: 1.5;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
+}
+.sp-imgs { display: flex; gap: 6px; }
+.sp-img {
+  width: 86px; height: 86px; border-radius: 8px;
+  background: var(--bg-subtle); flex-shrink: 0;
+}
+.sp-more { display: flex; align-items: center; justify-content: center; }
+.sp-more-text { font-size: 14px; color: var(--text-muted); line-height: 1; }
+.sp-meta { font-size: 11px; color: var(--text-faint); }
 
 .follow-btn {
   margin-top: 12px;

@@ -338,6 +338,22 @@ export function usePlaza() {
     return (data || []) as any
   }
 
+  /* Seller-page 动态 tab — one user's active posts, newest first. Single
+     fetch capped at 30: a personal feed rarely exceeds this, and the
+     seller page stays pagination-free. */
+  async function fetchUserPosts(userId: string): Promise<Post[]> {
+    const { data, error } = await supabase
+      .from('posts')
+      .select(POST_SELECT)
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .order('display_order', { foreignTable: 'post_items', ascending: true })
+      .limit(30)
+    if (error) throw error
+    return (data || []) as unknown as Post[]
+  }
+
   async function deletePost(postId: string) {
     const { error } = await supabase
       .from('posts')
@@ -484,5 +500,6 @@ export function usePlaza() {
     createComment,
     deleteComment,
     fetchMyActiveItems,
+    fetchUserPosts,
   }
 }

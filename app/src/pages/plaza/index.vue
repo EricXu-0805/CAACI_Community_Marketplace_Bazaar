@@ -145,10 +145,10 @@
               <view class="pcb-chev"></view>
             </view>
             <view class="post-header">
-              <image :src="post.profile?.avatar_url || defaultAvatarSrc" class="pa-avatar" mode="aspectFill" />
+              <image :src="post.profile?.avatar_url || defaultAvatarSrc" class="pa-avatar" mode="aspectFill" @click.stop="goSeller(post.user_id)" />
               <view class="pa-info">
                 <view class="pa-name-row">
-                  <text class="pa-name">{{ post.profile?.nickname || t('app.user') }}</text>
+                  <text class="pa-name" @click.stop="goSeller(post.user_id)">{{ post.profile?.nickname || t('app.user') }}</text>
                   <UBadge v-if="post.is_official" variant="official">{{ t('plaza.official') }}</UBadge>
                   <UBadge v-else-if="post.profile?.is_illini_verified" variant="illini">Illini</UBadge>
                   <view v-if="post.is_pinned" class="badge-pinned"><text>{{ t('plaza.pinned') }}</text></view>
@@ -694,6 +694,13 @@ function goToAttachedItem(id: string) {
 
 function goToFollowItem(id: string) {
   uni.navigateTo({ url: `/pages/detail/index?id=${id}` })
+}
+
+/* Post author avatar/name → seller page. Always lands on the default
+   商品 tab regardless of entry point (2026-06 meeting decision); the
+   ?tab=posts deep-link exists but is intentionally not used here. */
+function goSeller(userId: string) {
+  uni.navigateTo({ url: `/pages/seller/index?id=${userId}` })
 }
 const { uploadImagesWithDims } = useItems()
 const { translateContentToAll } = useTranslate()

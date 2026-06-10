@@ -379,6 +379,9 @@ const zh: Record<string, string> = {
 
   'seller.listings': '件商品',
   'seller.noItems': '该卖家暂无商品',
+  'seller.noPosts': '还没有发过动态',
+  'seller.tabItems': '商品 · Items',
+  'seller.tabPosts': '动态 · Posts',
   'seller.blockedTitle': '用户已屏蔽',
   'seller.blockedSub': '你已屏蔽该用户。在设置中解除屏蔽以查看其主页。',
   'seller.active': '在售',

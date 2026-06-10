@@ -379,6 +379,9 @@ const en: Record<string, string> = {
 
   'seller.listings': 'listings',
   'seller.noItems': 'No items from this seller',
+  'seller.noPosts': 'No posts yet',
+  'seller.tabItems': '商品 · Items',
+  'seller.tabPosts': '动态 · Posts',
   'seller.blockedTitle': 'User blocked',
   'seller.blockedSub': 'You blocked this user. Unblock from settings to view their profile.',
   'seller.active': 'Active',
