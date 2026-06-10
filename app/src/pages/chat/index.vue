@@ -7,7 +7,8 @@
       </view>
       <view class="ch-info" v-if="itemInfo">
         <text class="ch-name">{{ otherUserName }}</text>
-        <text class="ch-item-title">{{ localize(itemInfo.title_i18n, itemInfo.title) }}</text>
+        <text v-if="headerStatus" :class="['ch-status', { typing: peerTyping }]">{{ headerStatus }}</text>
+        <text v-else class="ch-item-title">{{ localize(itemInfo.title_i18n, itemInfo.title) }}</text>
       </view>
       <text v-else class="ch-name-only">{{ otherUserName || t('nav.messages') }}</text>
       <view class="ch-more" role="button" :aria-label="t('a11y.conversationMore')" @click="onMoreActions">
@@ -265,12 +266,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onUnmounted, nextTick, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useTheme } from '../../composables/useTheme'
 import { useMessages } from '../../composables/useMessages'
 import { useOffers } from '../../composables/useOffers'
+import { usePresence } from '../../composables/usePresence'
 import { useItems } from '../../composables/useItems'
 import { useUnread } from '../../composables/useUnread'
 import { useI18n } from '../../composables/useI18n'
@@ -291,6 +293,7 @@ const { t, lang, localize } = useI18n()
 const { currentUser, requireAuth } = useAuth()
 const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, deleteMessage, fetchConversationDetail, setConversationPinned, setConversationMuted } = useMessages()
 const { offers, fetchOffers, makeOffer, respondToOffer, subscribeToOffers } = useOffers()
+const { startPresence, isOnline, subscribeTyping } = usePresence()
 const { uploadOneImage, uploadOneVideo } = useItems()
 const { refreshUnreadCount } = useUnread()
 const { reportTarget, blockUser } = useModeration()
@@ -341,6 +344,17 @@ const convPinned = ref(false)
 const convMuted = ref(false)
 let unsubscribe: (() => void) | null = null
 let offersUnsub: (() => void) | null = null
+
+// Presence + typing (v5 Phase 7, H5 best-effort).
+const peerTyping = ref(false)
+let typingApi: { sendTyping: () => void; unsubscribe: () => void } | null = null
+let typingClear: ReturnType<typeof setTimeout> | null = null
+const headerStatus = computed(() => {
+  if (peerTyping.value) return t('chat.typing')
+  if (isOnline(otherUserId.value)) return t('chat.onlineReply')
+  return ''
+})
+watch(inputText, (v) => { if (v && typingApi) typingApi.sendTyping() })
 
 /*
  * Currency-exchange scam-intercept modal. Same client-side gate as
@@ -420,12 +434,22 @@ onLoad(async (options) => {
     offersUnsub = subscribeToOffers(options.id, () => {
       fetchOffers(options.id!).then(() => nextTick(() => scrollToBottom())).catch(() => {})
     })
+
+    // Presence + typing (best-effort): peer online label + "正在输入…".
+    startPresence()
+    typingApi = subscribeTyping(options.id, () => {
+      peerTyping.value = true
+      if (typingClear) clearTimeout(typingClear)
+      typingClear = setTimeout(() => { peerTyping.value = false }, 3000)
+    })
   }
 })
 
 onUnmounted(() => {
   if (unsubscribe) unsubscribe()
   if (offersUnsub) offersUnsub()
+  if (typingApi) typingApi.unsubscribe()
+  if (typingClear) clearTimeout(typingClear)
 })
 
 function goBack() {
@@ -1055,6 +1079,12 @@ function scrollToBottom() {
   font-size: 12px; color: var(--text-faint); margin-top: 1px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
 }
+/* Presence/typing subtitle — sage when online, terracotta while typing. */
+.ch-status {
+  font-size: 12px; color: var(--success); margin-top: 1px; display: block;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ch-status.typing { color: var(--brand); }
 .ch-name-only {
   font-size: 16px; font-weight: 600; color: var(--text-primary); flex: 1;
 }
