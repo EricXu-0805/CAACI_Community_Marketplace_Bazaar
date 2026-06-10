@@ -83,7 +83,7 @@
         />
         <view
           class="msg-bubble"
-          v-if="msg.message_type !== 'image'"
+          v-if="msg.message_type !== 'image' && msg.message_type !== 'video'"
           @touchstart="msgLongPress.onTouchstart(msg)"
           @touchend="msgLongPress.onTouchend"
           @touchcancel="msgLongPress.onTouchcancel"
@@ -92,7 +92,7 @@
           <text>{{ msg.content }}</text>
         </view>
         <image
-          v-else
+          v-else-if="msg.message_type === 'image'"
           :src="msg.content"
           alt="Photo"
           class="msg-image"
@@ -103,6 +103,16 @@
           @touchend="msgLongPress.onTouchend"
           @touchcancel="msgLongPress.onTouchcancel"
           @touchmove="msgLongPress.onTouchmove"
+        />
+        <!-- 私信视频 (migration 048) — native controls; no autoplay so a
+             scroll through history doesn't start playback. -->
+        <video
+          v-else
+          :src="msg.content"
+          class="msg-video"
+          controls
+          :show-fullscreen-btn="true"
+          object-fit="contain"
         />
         <image
           v-if="msg.sender_id === currentUser?.id"
@@ -141,6 +151,9 @@
     <view class="input-bar">
       <view class="img-btn" role="button" :aria-label="t('a11y.pickImage')" @click="onSendImage">
         <view class="img-icon"></view>
+      </view>
+      <view class="img-btn" role="button" :aria-label="t('a11y.pickVideo')" @click="onSendVideo">
+        <view class="video-icon"></view>
       </view>
       <view :class="['emoji-btn', { active: emojiOpen }]" role="button" :aria-label="t('a11y.emojiToggle')" @click="toggleEmoji">
         <text class="emoji-btn-glyph">😊</text>
@@ -193,7 +206,7 @@ const { t, lang, localize } = useI18n()
 
 const { currentUser, requireAuth } = useAuth()
 const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, deleteMessage, fetchConversationDetail, setConversationPinned, setConversationMuted } = useMessages()
-const { uploadOneImage } = useItems()
+const { uploadOneImage, uploadOneVideo } = useItems()
 const { refreshUnreadCount } = useUnread()
 const { reportTarget, blockUser } = useModeration()
 const { isDark } = useTheme()
@@ -745,6 +758,45 @@ async function onSendImage() {
   })
 }
 
+async function onSendVideo() {
+  if (!currentUser.value || !conversationId.value) return
+  if (sending.value) return
+  uni.chooseVideo({
+    sourceType: ['album', 'camera'],
+    maxDuration: 60,
+    compressed: true,
+    success: async (res: any) => {
+      const tempPath = res.tempFilePath
+      if (!tempPath) return
+      /* Early reject when the picker reports size (mp does; H5 varies) —
+         saves the user from uploading 19MB before hearing "too large".
+         uploadOneVideo re-checks authoritatively either way. */
+      if (res.size && res.size > 20 * 1024 * 1024) {
+        uni.showToast({ title: t('chat.videoTooLarge'), icon: 'none', duration: 3000 })
+        return
+      }
+      sending.value = true
+      const failsafe = setTimeout(() => { sending.value = false }, 60000)
+      try {
+        const { url } = await uploadOneVideo(tempPath)
+        await sendMessage(conversationId.value, currentUser.value!.id, url, 'video')
+        nextTick(() => scrollToBottom())
+      } catch (err: any) {
+        const raw = err?.message ? `${err.message}` : ''
+        const friendly = raw === 'video_too_large' ? t('chat.videoTooLarge') : null
+        uni.showToast({
+          title: friendly || (raw ? raw.slice(0, 80) : t('chat.videoUploadFailed')),
+          icon: 'none',
+          duration: 3500,
+        })
+      } finally {
+        clearTimeout(failsafe)
+        sending.value = false
+      }
+    },
+  })
+}
+
 function scrollToBottom() {
   if (messages.value.length > 0) {
     scrollTarget.value = `msg-${messages.value[messages.value.length - 1].id}`
@@ -961,6 +1013,13 @@ function scrollToBottom() {
   border-radius: 12px;
   background: var(--bg-inset);
 }
+.msg-video {
+  width: 220px;
+  max-width: 60vw;
+  height: 160px;
+  border-radius: 12px;
+  background: var(--bg-inset);
+}
 .img-btn {
   width: 38px; height: 38px; display: flex;
   align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
@@ -972,6 +1031,16 @@ function scrollToBottom() {
   &::before {
     content: ''; position: absolute; top: 2px; left: 3px;
     width: 4px; height: 4px; border-radius: 50%; border: 1.2px solid var(--text-secondary);
+  }
+}
+/* Camcorder glyph: body + right-pointing lens triangle. */
+.video-icon {
+  width: 15px; height: 14px; border: 1.8px solid var(--text-secondary); border-radius: 3px; position: relative; margin-right: 5px;
+  &::after {
+    content: ''; position: absolute; top: 2px; right: -7px;
+    border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+    border-left: 6px solid var(--text-secondary);
+    transform: rotate(180deg);
   }
 }
 .emoji-btn {

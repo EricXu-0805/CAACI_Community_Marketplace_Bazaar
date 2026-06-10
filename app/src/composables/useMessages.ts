@@ -127,7 +127,7 @@ export function useMessages() {
     invalidateConversations()
   }
 
-  async function sendMessage(conversationId: string, senderId: string, content: string, type: 'text' | 'image' = 'text') {
+  async function sendMessage(conversationId: string, senderId: string, content: string, type: import('../types').MessageType = 'text') {
     if (type === 'text' && content.length > 2000) throw new Error('message_too_long')
 
     if (type === 'text') {
