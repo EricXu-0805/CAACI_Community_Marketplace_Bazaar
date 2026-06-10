@@ -1611,4 +1611,21 @@ button:focus-visible,
   button:active, uni-button:active,
   .u-btn-primary:active, .u-btn-brand:active, .u-btn-ink:active, .u-btn-ghost:active { transform: none; }
 }
+
+/* ============================================================
+ * Adaptive shell contract (iPad + Mac, ≥768px) — adaptive.css.
+ *
+ * Phones unchanged: the bottom CustomTabBar owns nav and the rail
+ * stays display:none. From 768px up, AppSidebar.vue mounts as a
+ * fixed left rail (replacing the old top DesktopNav); any page that
+ * opts in with `.has-sidebar` on its root reserves the rail width
+ * with padding-left, so its content flows in the remaining column
+ * (multi-col feed / two-pane messages / centered reading panes are
+ * handled per-page). One source of truth for the rail width so the
+ * sidebar and the reservation can never drift apart.
+ * ============================================================ */
+:root { --sidebar-w: 240px; }
+@media (min-width: 768px) {
+  .has-sidebar { padding-left: var(--sidebar-w, 240px); box-sizing: border-box; }
+}
 </style>
