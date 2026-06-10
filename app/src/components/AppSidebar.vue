@@ -43,7 +43,7 @@
 
       <view class="asb-foot">
         <view class="asb-post u-press" role="button" :aria-label="t('nav.post')" @click="go('/pages/publish/index')">
-          <UIcon name="plus" size="sm" color="ink-inverse" />
+          <UIcon name="plus" size="sm" color="#fff" />
           <text class="asb-post-label">{{ t('nav.post') }}</text>
         </view>
 
@@ -125,6 +125,7 @@ function toggleTheme() {
     flex-direction: column;
     padding: 18px 12px 16px;
     box-sizing: border-box;
+    overflow-y: auto;  /* short viewports (iPad landscape): rail scrolls, foot never clips */
   }
 
   .asb-brand {
@@ -160,7 +161,7 @@ function toggleTheme() {
   .asb-label { flex: 1; min-width: 0; }
   .asb-badge {
     margin-left: auto; min-width: 18px; height: 18px; border-radius: 999px;
-    background: var(--brand); color: var(--ink-inverse);
+    background: var(--brand); color: #fff;
     font-family: var(--font-mono); font-size: 11px; font-weight: 600;
     display: flex; align-items: center; justify-content: center; padding: 0 5px;
   }

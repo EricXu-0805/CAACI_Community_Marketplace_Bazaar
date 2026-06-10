@@ -611,7 +611,9 @@ function goLogin() {
 
 @media (min-width: 768px) {
   .page-header { display: none; }
-  .page { padding-bottom: 0; }
+  /* Lift the phone-only 480px clamp so the rail + centered list lay out
+     correctly (base .page is max-width:480; margin:0 auto). */
+  .page { padding-bottom: 0; max-width: none; margin: 0; }
   .conv-list { max-width: 720px; margin-left: auto; margin-right: auto; }
   .conv-item {
     border-radius: 8px; margin: 2px 8px;
