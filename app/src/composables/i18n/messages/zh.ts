@@ -291,6 +291,8 @@ const zh: Record<string, string> = {
   'profile.saved': '收藏',
   'profile.sold': '已售',
   'profile.myListings': '我的发布',
+  'profile.tabActive': '在售',
+  'profile.tabSold': '已售',
   'profile.noListings': '还没有发布商品',
   'profile.signOut': '退出登录',
   'notif.title': '通知',

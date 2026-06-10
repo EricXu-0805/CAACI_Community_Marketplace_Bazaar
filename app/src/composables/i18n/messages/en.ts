@@ -291,6 +291,8 @@ const en: Record<string, string> = {
   'profile.saved': 'Saved',
   'profile.sold': 'Sold',
   'profile.myListings': 'My Listings',
+  'profile.tabActive': 'Active',
+  'profile.tabSold': 'Sold',
   'profile.noListings': "You haven't posted anything yet",
   'profile.signOut': 'Sign Out',
   'notif.title': 'Notifications',
