@@ -4,14 +4,36 @@
 
     <view class="mobile-header">
       <!--
-        Language toggle moved to Settings → "Language" (matches the
-        Instagram / WhatsApp pattern). Keeping it in the top-right of
-        every page made the header feel noisy and blocked future 3rd-
-        language expansion (Jp / Kr / zh-Hant). The header is now just
-        brand + search + categories.
+        v5 brand chrome (kit ui_kits/marketplace Chrome). The serif word-
+        mark gets a terracotta 集-mark + mono ILLINI MARKET eyebrow, and
+        the quick theme + 中/EN toggles return to the top-right (Eric's v5
+        design re-adds them after the prior Settings-only stint). Compact
+        pills, so the header stays calm.
       -->
-      <view class="mh-top">
-        <text class="mh-brand">{{ t('app.name') }}</text>
+      <view class="mh-row">
+        <view class="mh-brand">
+          <image class="mh-logo" :src="logoSrc" mode="aspectFit" :alt="t('app.name')" />
+          <view class="mh-wordmark-stack">
+            <text class="mh-wordmark">{{ t('app.name') }}</text>
+            <text class="mh-eyebrow">{{ brandEyebrow }}</text>
+          </view>
+        </view>
+        <view class="mh-actions">
+          <view
+            class="mh-theme u-press"
+            role="button"
+            :aria-label="isDark ? t('a11y.themeLight') : t('a11y.themeDark')"
+            @click="toggleTheme"
+          >
+            <UIcon :name="isDark ? 'moon' : 'sun'" size="xs" color="ink-soft" />
+            <text class="mh-theme-label">{{ themeLabel }}</text>
+          </view>
+          <view class="mh-lang u-press" role="button" :aria-label="t('a11y.langToggle')" @click="toggleLang">
+            <text :class="{ on: lang === 'zh' }">中</text>
+            <text class="sep">|</text>
+            <text :class="{ on: lang === 'en' }">EN</text>
+          </view>
+        </view>
       </view>
       <view class="mh-search">
         <!--
@@ -345,11 +367,25 @@ import CustomTabBar from '../../components/CustomTabBar.vue'
 import UBadge from '../../components/UBadge.vue'
 import UIcon from '../../components/UIcon.vue'
 
-const { t, lang, localize } = useI18n()
-const { isDark } = useTheme()
+const { t, lang, localize, toggleLang } = useI18n()
+const { isDark, setPref } = useTheme()
 const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
+
+// v5 brand chrome — logo flips with theme, eyebrow shows the opposite-language
+// tagline, theme pill labels the active mode. toggleTheme resolves an explicit
+// light/dark pref off the currently-rendered state (covers the auto+OS-dark case).
+const logoSrc = computed(() =>
+  isDark.value ? '/static/logo-mark-dark.svg' : '/static/logo-mark.svg'
+)
+const brandEyebrow = computed(() => (lang.value === 'zh' ? 'ILLINI MARKET' : '香槟集市 · CAACI'))
+const themeLabel = computed(() =>
+  isDark.value ? (lang.value === 'zh' ? '暗' : 'Dk') : (lang.value === 'zh' ? '亮' : 'Lt'),
+)
+function toggleTheme() {
+  setPref(isDark.value ? 'light' : 'dark')
+}
 const { phase: semesterPhase, config: semesterConfig, title: semesterTitle, subtitle: semesterSubtitle } = useSemester()
 
 const semesterDismissed = ref<boolean>(false)
@@ -801,42 +837,67 @@ function goPublish() {
 }
 
 /*
- * Mobile header — canvas background (not white) so the whole top of
- * the app reads as one warm sheet of paper. White card surfaces
- * below (hero, cat-grid, item cards) sit on top and get visual
- * separation from their shadows + hairline borders.
+ * Mobile header — v5 chrome panel. Now a warm-white (--surface) sheet
+ * that, together with the category rail below it, reads as one floating
+ * paper block above the cream feed (kit ui_kits/marketplace .im-chrome).
  */
 .mobile-header {
   flex-shrink: 0;
-  background: var(--canvas);
+  background: var(--surface);
   padding: 0 16px 11px;
   padding-top: var(--mp-status-bar);
   z-index: 50;
 }
-.mh-top {
+.mh-row {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
-  height: var(--mp-navbar-height, 44px);
-  padding-right: var(--mp-navbar-right-pad, 104px);
-  margin-bottom: 8px;
+  min-height: var(--mp-navbar-height, 44px);
+  padding-right: var(--mp-navbar-right-pad, 0px);
+  margin-bottom: 10px;
 }
-/*
- * Brand word-mark — serif masthead per refinement pass. Navy ink
- * on the canvas reads like a bookshop sign; 22px Fraunces gives
- * the weight without needing bold.
- */
-.mh-brand {
+/* Brand lockup — 集-mark + serif wordmark + mono eyebrow. */
+.mh-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.mh-logo {
+  width: 34px; height: 34px; border-radius: 9px;
+  flex-shrink: 0; box-shadow: var(--shadow-soft);
+}
+.mh-wordmark-stack { display: flex; flex-direction: column; gap: 2px; line-height: 1; min-width: 0; }
+.mh-wordmark {
   font-family: var(--font-serif);
-  font-size: 22px;
-  font-weight: 500;
+  font-size: 19px; font-weight: 600;
   color: var(--ink);
-  letter-spacing: 0.02em;
-  line-height: 1.2;
+  letter-spacing: -0.012em;
+  line-height: 1.1;
 }
-/* .mh-right / .mh-lang previously housed the inline language toggle.
-   Language switching moved to Settings → Language, so those rules
-   are intentionally gone. Removing them keeps the header compact. */
+.mh-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 9px; font-weight: 500;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--brand);
+  line-height: 1;
+}
+/* Quick theme + 中/EN toggles. Pills on the inset surface so they read as
+   controls without competing with the brand. */
+.mh-actions { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.mh-theme {
+  height: 32px; padding: 0 11px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-alt); border: 0.5px solid var(--border);
+  display: inline-flex; align-items: center; gap: 5px;
+  cursor: pointer;
+}
+.mh-theme-label { font-size: 11px; font-weight: 600; color: var(--ink); line-height: 1; letter-spacing: 0.04em; }
+.mh-lang {
+  height: 32px; padding: 0 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-alt); border: 0.5px solid var(--border);
+  display: inline-flex; align-items: center; gap: 6px;
+  cursor: pointer;
+  text { font-size: 12px; font-weight: 500; color: var(--ink-quiet); line-height: 1; }
+  .on { color: var(--ink); font-weight: 600; }
+  .sep { opacity: 0.35; font-size: 10px; }
+}
 .mh-search {
   display: flex; align-items: center; gap: 9px;
 }
@@ -896,8 +957,8 @@ function goPublish() {
 .cat-bar {
   flex-shrink: 0;
   padding: 8px 16px 10px;
-  background: var(--canvas);
-  border-bottom: 0.5px solid var(--border);
+  background: var(--surface);
+  border-bottom: 0.5px solid var(--border-hair);
   white-space: nowrap;
 }
 .cat-bar-inner {
@@ -911,16 +972,18 @@ function goPublish() {
   flex-shrink: 0;
   pointer-events: none;
 }
+/* Editorial text-tag rail (kit .im-cat-pill): quiet type, no chrome; the
+   active one becomes an ink stamp. Print, not plastic. */
 .pill {
   display: inline-flex; align-items: center; justify-content: center;
   height: 30px;
-  padding: 0 13px;
+  padding: 0 12px;
   border-radius: var(--radius-pill);
-  font-size: 13px;
-  color: var(--ink);
-  background: var(--surface);
-  border: 0.5px solid var(--border-strong);
-  transition: all 0.15s; cursor: pointer; font-weight: 500;
+  font-size: 12.5px;
+  color: var(--ink-quiet);
+  background: transparent;
+  border: 0;
+  transition: transform 0.15s, color 0.15s; cursor: pointer; font-weight: 500;
   line-height: 1;
   letter-spacing: 0.02em;
   box-sizing: border-box;
@@ -928,14 +991,15 @@ function goPublish() {
   /* Color must live on the <text> child, not just the view — the global
      mp-weixin `text {}` floor in App.vue beats inherited color, which made
      the active pill label invisible (ink-on-ink). */
-  text { color: var(--ink); }
+  text { color: var(--ink-quiet); }
   &.active {
     background: var(--ink);
     color: var(--ink-inverse);
-    border-color: var(--ink);
+    font-weight: 600;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
     text { color: var(--ink-inverse); }
   }
-  &:active { transform: scale(0.96); }
+  &:active { transform: scale(0.93); }
 }
 
 /* ========== Filter Bottom Sheet ========== */
@@ -1015,26 +1079,31 @@ function goPublish() {
  * a ghosted serif "I" arc bleeding off the right edge as the brand
  * accent. Replaces the prior off-system blue→orange gradient.
  */
+/* Semester / move-out banner — terracotta gradient (kit .im-semester-banner).
+   One of only two gradients allowed in the system; cream text, a ghosted
+   serif "I" watermark, and inset paper-edge highlights for depth. */
 .semester-banner {
   position: relative;
   overflow: hidden;
   display: flex; align-items: center; gap: var(--space-3);
-  margin: var(--space-2) var(--space-3) var(--space-1);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--ink);
-  box-shadow: var(--shadow-pop);
+  margin: var(--space-3) var(--space-3) var(--space-1);
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(120deg, #B8432B 0%, #A03A24 100%);
+  color: #FBF8F2;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 -1.5px 0 rgba(0, 0, 0, 0.12) inset,
+    0 6px 16px -8px rgba(160, 58, 36, 0.45);
   cursor: pointer;
 }
-/* Decorative serif "I" arc — the brand accent. Cream-ghosted so it
-   reads as a watermark on the ink fill, not a literal glyph. */
+/* Decorative serif "I" watermark — Illini mark, cream-ghosted on terracotta. */
 .seb-arc {
-  position: absolute; right: -14px; top: -34px;
+  position: absolute; right: -10px; top: -34px;
   font-family: var(--font-serif);
-  font-size: 140px; font-weight: 600; line-height: 1;
-  letter-spacing: -0.08em;
-  color: var(--brand-ghost);
-  opacity: 0.1;
+  font-size: 130px; font-weight: 600; line-height: 1;
+  letter-spacing: -0.05em;
+  color: rgba(255, 255, 255, 0.08);
   pointer-events: none;
 }
 .seb-body {
@@ -1042,30 +1111,29 @@ function goPublish() {
   flex: 1; display: flex; flex-direction: column; gap: 3px;
   min-width: 0;
 }
-/* Mono eyebrow stamp — campus-orange override of the global .t-eyebrow
-   (which defaults to --ink-quiet, unreadable on ink). */
+/* Mono eyebrow stamp — cream override of the global .t-eyebrow (which
+   defaults to --ink-quiet, unreadable on terracotta). */
 .seb-stamp {
-  color: var(--campus-orange);
+  color: rgba(255, 255, 255, 0.92);
   margin-bottom: 2px;
 }
 .seb-title {
   font-family: var(--font-serif);
   font-size: 15px; font-weight: 600;
-  color: var(--ink-inverse);
-  letter-spacing: -0.01em;
+  color: #FBF8F2;
+  letter-spacing: -0.005em;
   line-height: 1.2;
 }
 .seb-sub {
   font-size: 12px;
-  color: var(--ink-inverse);
-  opacity: 0.72;
+  color: rgba(255, 255, 255, 0.85);
   line-height: 1.4;
 }
 .seb-arrow {
   position: relative;
   font-family: var(--font-serif);
-  font-size: 22px; line-height: 1;
-  color: var(--brand-soft);
+  font-size: 24px; line-height: 1;
+  color: rgba(255, 255, 255, 0.85);
   flex-shrink: 0;
 }
 
