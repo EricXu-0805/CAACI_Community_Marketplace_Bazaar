@@ -902,6 +902,16 @@ text {
   color: #F0E8D6;
 }
 
+/* Auto (system) dark must mirror the manual toggle — without this, users
+   on prefers-color-scheme:dark with no manual override got the LIGHT
+   floor (#2A2A2E) on dark backgrounds: every bare <text> unreadable.
+   Root cause of the 2026-06 "黑面 tab 看不清" meeting finding. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) text {
+    color: #F0E8D6;
+  }
+}
+
 input, textarea {
   font-family: inherit;
   letter-spacing: inherit;

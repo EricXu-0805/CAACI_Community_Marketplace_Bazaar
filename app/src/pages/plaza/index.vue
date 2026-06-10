@@ -25,6 +25,23 @@
       </view>
     </view>
 
+    <!-- Feed tabs live OUTSIDE the scroll area (directly under search) so
+         they stay put while the feed scrolls — 闲鱼/xhs pattern. -->
+    <scroll-view class="feed-tabs" scroll-x :show-scrollbar="false">
+      <view class="ft-row">
+        <view
+          v-for="tab in feedTabs"
+          :key="tab.key"
+          :class="['ft-chip', { active: activeTab === tab.key }]"
+          role="button"
+          :aria-pressed="activeTab === tab.key ? 'true' : 'false'"
+          @click="activeTab = tab.key"
+        >
+          <text class="t-tag ft-label">{{ tab.label }}</text>
+        </view>
+      </view>
+    </scroll-view>
+
     <scroll-view
       class="feed"
       scroll-y
@@ -34,21 +51,6 @@
       @scrolltolower="loadMore"
     >
       <PlazaBannerCarousel />
-
-      <scroll-view class="feed-tabs" scroll-x :show-scrollbar="false">
-        <view class="ft-row">
-          <view
-            v-for="tab in feedTabs"
-            :key="tab.key"
-            :class="['ft-chip', { active: activeTab === tab.key }]"
-            role="button"
-            :aria-pressed="activeTab === tab.key ? 'true' : 'false'"
-            @click="activeTab = tab.key"
-          >
-            <text class="t-tag ft-label">{{ tab.label }}</text>
-          </view>
-        </view>
-      </scroll-view>
 
       <template v-if="activeTab === 'following'">
         <view v-if="followLoading && followItems.length === 0" class="loading">
@@ -87,11 +89,6 @@
 
       <view v-else-if="loading && posts.length === 0" class="loading">
         <text>{{ t('home.loading') }}...</text>
-      </view>
-
-      <view v-else-if="tabComingSoon" class="empty">
-        <view class="empty-icon"></view>
-        <text class="empty-text">{{ t('plaza.comingSoon') }}</text>
       </view>
 
       <view v-else-if="visiblePosts.length === 0" class="empty">
@@ -363,7 +360,7 @@
       </view>
 
       <view
-        v-if="activeTab === 'following' ? (!followHasMore && followItems.length > 0) : (!tabComingSoon && !hasMore && visiblePosts.length > 0)"
+        v-if="activeTab === 'following' ? (!followHasMore && followItems.length > 0) : (!hasMore && visiblePosts.length > 0)"
         class="end-tip"
       >
         <text>{{ t('home.endOf') }}</text>
@@ -531,21 +528,18 @@ const pageIdx = ref(0)
  * client-side (推荐 = all, 官方 = is_official). 关注 loads the current
  * user's followed sellers' active LISTINGS via useFollow.fetchFollowingFeed
  * (marketplace items, not posts — a "what people I follow are selling"
- * view, mirroring pages/following/index.vue). 活动 (events) has no data
- * source yet so it still renders a coming-soon shell.
+ * view, mirroring pages/following/index.vue). The 活动 (events) tab was
+ * removed 2026-06 (no data source; three tabs fit without h-scroll) —
+ * official events will be posted as pinned official posts instead.
  */
-type FeedTabKey = 'recommend' | 'following' | 'official' | 'events'
+type FeedTabKey = 'recommend' | 'following' | 'official'
 const activeTab = ref<FeedTabKey>('recommend')
-const COMING_SOON_TABS: ReadonlySet<FeedTabKey> = new Set(['events'])
 const feedTabs = computed<{ key: FeedTabKey; label: string }[]>(() => [
   { key: 'following', label: t('plaza.tab.following') },
   { key: 'recommend', label: t('plaza.tab.recommend') },
   { key: 'official', label: t('plaza.tab.official') },
-  { key: 'events', label: t('plaza.tab.events') },
 ])
-const tabComingSoon = computed(() => COMING_SOON_TABS.has(activeTab.value))
 const visiblePosts = computed(() => {
-  if (tabComingSoon.value) return []
   if (activeTab.value === 'official') return posts.value.filter((p) => p.is_official)
   return posts.value
 })
@@ -1304,18 +1298,26 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   width: 100%;
   white-space: nowrap;
   padding: var(--space-2) 0;
+  /* Sits outside the scroll area now — paint the same canvas as the
+     search bar above so the fixed header reads as one block. */
+  background: var(--canvas);
   border-bottom: 0.5px solid var(--line-hair);
 }
 .ft-row {
-  display: inline-flex;
+  /* Three tabs, equal width, no h-scroll — fills the row like a native
+     segmented control (活动 tab removed 2026-06 so everything fits). */
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
   align-items: center;
   gap: var(--space-2);
   padding: 0 var(--space-4);
 }
 .ft-chip {
-  flex-shrink: 0;
+  flex: 1 1 auto;
+  justify-content: center;
   height: 32px;
-  padding: 0 var(--space-3);
+  padding: 0 var(--space-1);
   border-radius: var(--radius-pill);
   border: 0.5px solid var(--border);
   background: transparent;
@@ -1334,6 +1336,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .ft-label {
   color: var(--ink-quiet);
   line-height: 1;
+  white-space: nowrap;
   .ft-chip.active & { color: var(--ink-inverse); }
 }
 

@@ -33,7 +33,6 @@ function applyToDom(p: ThemePref) {
   } else {
     root.setAttribute('data-theme', p)
   }
-  console.log('[theme-debug] applied data-theme:', root.getAttribute('data-theme') || '(removed → auto)')
   // #endif
 }
 

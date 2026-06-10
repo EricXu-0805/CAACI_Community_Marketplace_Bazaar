@@ -671,18 +671,13 @@ function previewImg(url: string) {
 async function onSendImage() {
   if (!currentUser.value || !conversationId.value) return
   if (sending.value) return
-  console.log('[chat-img-debug] onSendImage tap')
   uni.chooseImage({
     count: 1,
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
     success: async (res) => {
       const tempPath = res.tempFilePaths?.[0]
-      console.log('[chat-img-debug] chooseImage OK, tempPath:', tempPath)
-      if (!tempPath) {
-        console.warn('[chat-img-debug] chooseImage returned no tempFilePaths')
-        return
-      }
+      if (!tempPath) return
       sending.value = true
       const failsafe = setTimeout(() => { sending.value = false }, 30000)
       try {
@@ -701,12 +696,9 @@ async function onSendImage() {
          * below shows what really went wrong.
          */
         const { url } = await uploadOneImage(tempPath, { entryPoint: 'chat' })
-        console.log('[chat-img-debug] uploaded URL:', url)
         await sendMessage(conversationId.value, currentUser.value!.id, url, 'image')
-        console.log('[chat-img-debug] sendMessage OK, url:', url)
         nextTick(() => scrollToBottom())
       } catch (err: any) {
-        console.warn('[chat-img-debug] flow failed:', err)
         /*
          * Surface the underlying error string directly. friendlyErrorMessage
          * was generic-ifying 'Storage upload failed: 413 Payload Too
@@ -733,9 +725,6 @@ async function onSendImage() {
         clearTimeout(failsafe)
         sending.value = false
       }
-    },
-    fail: (err) => {
-      console.warn('[chat-img-debug] chooseImage fail:', err)
     },
   })
 }
