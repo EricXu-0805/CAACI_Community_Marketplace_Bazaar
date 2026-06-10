@@ -26,3 +26,12 @@
 export const BASE_URL =
   (import.meta.env.VITE_BASE_URL as string | undefined)
   || 'https://caaci-community-marketplace-bazaar.vercel.app'
+
+/**
+ * Displayed app version — single source of truth for the settings page.
+ * Human-readable semver (bump on release); the build ref (git SHA or
+ * 'dev', from VITE_RELEASE — see vite.config.ts) is appended at runtime
+ * so a screenshot ties to an exact deploy.
+ */
+export const APP_VERSION = '0.1.0'
+export const BUILD_REF = (import.meta.env.VITE_RELEASE as string | undefined) || 'dev'

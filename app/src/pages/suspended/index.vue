@@ -72,6 +72,7 @@ import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
 import { useSupabase } from '../../composables/useSupabase'
 import { DIALOG_DANGER } from '../../utils/dialogColors'
+import { captureException } from '../../utils/sentry'
 
 const { t, lang } = useI18n()
 const { currentUser, signOut } = useAuth()
@@ -144,7 +145,8 @@ async function loadActiveSuspension() {
     .limit(1)
     .maybeSingle()
   if (error) {
-    console.warn('loadActiveSuspension failed:', error)
+    captureException(error, { tags: { source: 'suspended.loadActiveSuspension' }, level: 'warning' })
+    uni.showToast({ title: t('error.loadFailed'), icon: 'none', duration: 2500 })
     return
   }
   if (data) {
