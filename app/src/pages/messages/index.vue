@@ -6,6 +6,9 @@
       <text class="page-title">{{ t('nav.messages') }}</text>
     </view>
 
+    <!-- Left column: filters + conversation list. Becomes a fixed-width
+         rail in the desktop two-pane; full width on phones. -->
+    <view class="msg-left">
     <!-- Filter chips (v5 kit: 全部 / 未读 / 商品) — client-side filter. -->
     <view v-if="isLoggedIn && conversations.length > 0" class="msg-filters">
       <view
@@ -51,6 +54,7 @@
       >
         <view
           class="conv-item"
+          :class="{ active: conv.id === selectedConvId }"
           :style="{ transform: `translateX(${swipeOffsets[conv.id] || 0}px)` }"
           @click="onItemTap(conv)"
           @longpress="onMoreMenu(conv)"
@@ -108,12 +112,28 @@
       <view class="loading-dot"></view>
       <text>{{ t('msg.loading') }}</text>
     </view>
+    </view><!-- /.msg-left -->
+
+    <!-- Desktop two-pane (≥768px): the selected conversation's thread,
+         embedded. Hidden on phones, where tapping navigates to /chat. -->
+    <view class="msg-thread-pane">
+      <ChatThread
+        v-if="selectedConvId"
+        :key="selectedConvId"
+        :conversation-id="selectedConvId"
+        embedded
+      />
+      <view v-else class="thread-empty">
+        <view class="te-bubble"></view>
+        <text class="te-text">{{ t('msg.selectHint') }}</text>
+      </view>
+    </view>
     <CustomTabBar current="messages" />
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { onShow, onPullDownRefresh, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
@@ -125,6 +145,7 @@ import { formatTime, thumbUrl } from '../../utils'
 import { DIALOG_DANGER } from '../../utils/dialogColors'
 import type { Conversation, Profile } from '../../types'
 import AppSidebar from '../../components/AppSidebar.vue'
+import ChatThread from '../../components/ChatThread.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import { parseStickerToken } from '../../components/stickers/registry'
 
@@ -175,11 +196,39 @@ const visibleConversations = computed(() => {
   return conversations.value
 })
 
+// Desktop two-pane (≥768px): tapping a conversation opens it in the right
+// pane (ChatThread embedded) instead of pushing the chat route. Phones keep
+// navigating. isWide flips on resize so dragging a desktop window across the
+// breakpoint switches behaviour live.
+const selectedConvId = ref('')
+const isWide = ref(false)
+function detectWide() {
+  try { isWide.value = uni.getSystemInfoSync().windowWidth >= 768 } catch {}
+}
+onMounted(() => {
+  detectWide()
+  try {
+    const onResize = (uni as any).onWindowResize
+    if (typeof onResize === 'function') {
+      onResize((res: { size: { windowWidth: number } }) => { isWide.value = res.size.windowWidth >= 768 })
+    }
+  } catch {}
+})
+
+// Dropping below the two-pane breakpoint with a conversation open must clear
+// the selection — otherwise the embedded ChatThread stays mounted (hidden)
+// with live subscriptions, and the next tap navigates to /chat and mounts a
+// SECOND thread that double-pushes into the shared messages ref.
+watch(isWide, (wide) => {
+  if (!wide) selectedConvId.value = ''
+})
+
 const SWIPE_OPEN = 210
 const swipeOffsets = reactive<Record<string, number>>({})
 const touchState = reactive({ startX: 0, startY: 0, id: '' as string, locked: false, dir: '' as 'x' | 'y' | '' })
 
 onShow(() => {
+  detectWide()
   if (currentUser.value) {
     fetchConversations(currentUser.value.id)
     refreshUnreadCount()
@@ -231,6 +280,12 @@ function isMuted(conv: Conversation): boolean {
 }
 
 function goChat(conversationId: string) {
+  if (isWide.value) {
+    // Two-pane: open in the right pane. The :key on ChatThread remounts it
+    // per conversation, so it re-fetches + re-subscribes + marks read.
+    selectedConvId.value = conversationId
+    return
+  }
   uni.navigateTo({ url: `/pages/chat/index?id=${conversationId}` })
 }
 
@@ -609,15 +664,36 @@ function goLogin() {
 }
 @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 
+/* Phones: the thread pane is for the desktop two-pane only. */
+.msg-thread-pane { display: none; }
+
 @media (min-width: 768px) {
   .page-header { display: none; }
-  /* Lift the phone-only 480px clamp so the rail + centered list lay out
-     correctly (base .page is max-width:480; margin:0 auto). */
-  .page { padding-bottom: 0; max-width: none; margin: 0; }
-  .conv-list { max-width: 720px; margin-left: auto; margin-right: auto; }
+  /* Two-pane shell: the sidebar rail (.has-sidebar padding-left) + a flex
+     row of [conversation list | conversation thread]. Lifts the phone-only
+     480px clamp (base .page is max-width:480; margin:0 auto). */
+  .page { padding-bottom: 0; max-width: none; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+  .msg-left {
+    width: 340px; flex: none; height: 100vh; overflow-y: auto;
+    border-right: 1px solid var(--border); box-sizing: border-box;
+  }
+  .conv-list { max-width: none; margin: 0; }
   .conv-item {
     border-radius: 8px; margin: 2px 8px;
     &:hover { background: var(--bg-elev-2); }
+    &.active, &.active:hover { background: var(--brand-soft); }
   }
+  /* Right pane — the embedded ChatThread, or an empty hint. */
+  .msg-thread-pane { display: block; flex: 1; min-width: 0; height: 100vh; }
+  .thread-empty {
+    height: 100%; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px;
+    background: var(--canvas);
+  }
+  .te-bubble {
+    width: 48px; height: 48px; border-radius: 14px 14px 14px 4px;
+    border: 2px solid var(--border-strong); opacity: 0.7;
+  }
+  .te-text { font-size: 14px; color: var(--ink-quiet); }
 }
 </style>
