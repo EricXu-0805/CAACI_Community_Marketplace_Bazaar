@@ -1480,8 +1480,10 @@ function goPublish() {
   .seller-nick { font-size: 12px; }
   .fav-num { font-size: 12px; }
 
-  .filter-sheet { max-width: 480px; left: 50%; transform: translate(-50%, 100%);
-    &.open { transform: translate(-50%, 0); }
+  /* Center the filter sheet within the content column (right of the rail)
+     instead of the viewport, so it doesn't slide under the sidebar. */
+  .filter-sheet { max-width: 480px; left: var(--sidebar-w); right: 0; margin-left: auto; margin-right: auto; transform: translateY(100%);
+    &.open { transform: translateY(0); }
   }
 }
 </style>
