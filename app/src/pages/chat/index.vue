@@ -19,6 +19,7 @@
     <view class="item-card" v-if="itemInfo" @click="goToItem">
       <image
         :src="itemInfo.images?.[0] || '/static/placeholder.svg'"
+        :alt="localize(itemInfo.title_i18n, itemInfo.title)"
         class="ic-img"
         mode="aspectFill"
       />
@@ -64,6 +65,7 @@
       :show-scrollbar="false"
       :scroll-into-view="scrollTarget"
       scroll-with-animation
+      @click="onMessageAreaTap"
     >
       <template v-for="(msg, idx) in messages" :key="msg.id">
         <view v-if="shouldShowTime(idx)" class="time-divider">
@@ -76,6 +78,7 @@
         <image
           v-if="msg.sender_id !== currentUser?.id"
           :src="msg.sender?.avatar_url || defaultAvatar"
+          :alt="msg.sender?.nickname || 'avatar'"
           class="msg-avatar"
         />
         <view
@@ -91,6 +94,7 @@
         <image
           v-else
           :src="msg.content"
+          alt="Photo"
           class="msg-image"
           mode="widthFix"
           lazy-load
@@ -103,6 +107,7 @@
         <image
           v-if="msg.sender_id === currentUser?.id"
           :src="currentUser?.avatar_url || defaultAvatar"
+          :alt="currentUser?.nickname || 'avatar'"
           class="msg-avatar"
         />
       </view>
@@ -340,6 +345,17 @@ async function sendQuickReply(text: string) {
 }
 
 const sending = ref(false)
+
+/*
+ * Tapping the message area dismisses the emoji panel (N#5). A scroll
+ * gesture fires touchmove, not click, so scrolling the history won't
+ * close it; only a discrete tap does. The panel is a sibling of this
+ * scroll-view, so picking emojis (which keeps the panel open by design)
+ * does not bubble here. No-op when already closed.
+ */
+function onMessageAreaTap() {
+  if (emojiOpen.value) emojiOpen.value = false
+}
 
 function toggleEmoji() {
   emojiOpen.value = !emojiOpen.value

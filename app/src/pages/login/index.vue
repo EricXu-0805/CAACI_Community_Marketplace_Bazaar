@@ -71,7 +71,7 @@
             maxlength="72"
           />
           <view class="pw-toggle" role="button" :aria-label="t('a11y.passwordToggle')" @click="showPw = !showPw">
-            <image :src="showPw ? '/static/eye-off.svg' : '/static/eye.svg'" class="pw-toggle-icon" mode="aspectFit" />
+            <image :src="showPw ? '/static/eye-off.svg' : '/static/eye.svg'" alt="" class="pw-toggle-icon" mode="aspectFit" />
           </view>
         </view>
       </view>

@@ -26,11 +26,38 @@ const conversations = ref<Conversation[]>([])
 const messages = ref<Message[]>([])
 const loading = ref(false)
 
+/*
+ * SWR guard for the conversations list. messages/index.vue refetches on
+ * every onShow (tab switch), which was a 500ms-1s round-trip each time
+ * even when nothing changed. We skip the refetch when the same user's
+ * list was loaded within CONVERSATIONS_TTL. Any write that changes the
+ * list (sendMessage / deleteConversation) and clearMessages() invalidate
+ * it; pull-to-refresh passes { force: true }.
+ */
+const CONVERSATIONS_TTL = 30_000
+let conversationsFetchedAt = 0
+let conversationsFetchedFor: string | null = null
+// Exported so useUnread's realtime inbox subscription can invalidate the
+// list when an INCOMING message arrives — without that hook the SWR guard
+// could hide a new message/conversation for up to CONVERSATIONS_TTL.
+export function invalidateConversations() {
+  conversationsFetchedAt = 0
+  conversationsFetchedFor = null
+}
+
 export function useMessages() {
   const { supabase } = useSupabase()
   const { t } = useI18n()
 
-  async function fetchConversations(userId: string) {
+  async function fetchConversations(userId: string, opts: { force?: boolean } = {}) {
+    if (
+      !opts.force &&
+      conversationsFetchedFor === userId &&
+      conversations.value.length > 0 &&
+      Date.now() - conversationsFetchedAt < CONVERSATIONS_TTL
+    ) {
+      return
+    }
     loading.value = true
     try {
       const { data, error } = await supabase
@@ -69,6 +96,8 @@ export function useMessages() {
         }
       }
       conversations.value = convs
+      conversationsFetchedAt = Date.now()
+      conversationsFetchedFor = userId
     } catch (error: any) {
       console.error('Failed to fetch conversations:', error)
       uni.showToast({ title: error?.message || t('error.loadFailed'), icon: 'none', duration: 3000 })
@@ -95,10 +124,11 @@ export function useMessages() {
   function clearMessages() {
     conversations.value = []
     messages.value = []
+    invalidateConversations()
   }
 
   async function sendMessage(conversationId: string, senderId: string, content: string, type: 'text' | 'image' = 'text') {
-    if (type === 'text' && content.length > 2000) throw new Error('Message too long')
+    if (type === 'text' && content.length > 2000) throw new Error('message_too_long')
 
     if (type === 'text') {
       const safety = checkContent(content, { kind: 'message', allowLinks: false })
@@ -116,10 +146,14 @@ export function useMessages() {
         content,
         message_type: type,
       })
-      .select()
+      .select(MESSAGE_FIELDS)
       .single()
 
     if (error) throw error
+
+    // The list's last-message preview + sort order just changed; force a
+    // fresh fetch next time the conversations tab is shown.
+    invalidateConversations()
 
     /*
      * No client-side conversations.last_message_at UPDATE here:
@@ -148,7 +182,7 @@ export function useMessages() {
     const { data, error } = await supabase
       .from('conversations')
       .insert({ item_id: itemId, buyer_id: buyerId, seller_id: sellerId })
-      .select()
+      .select(CONVERSATION_FIELDS)
       .single()
 
     if (error) throw error
@@ -193,6 +227,7 @@ export function useMessages() {
 
     if (error) throw error
     conversations.value = conversations.value.filter(c => c.id !== conversationId)
+    invalidateConversations()
   }
 
   async function fetchConversationDetail(conversationId: string) {
@@ -217,6 +252,9 @@ export function useMessages() {
       .eq('id', conv.id)
     if (error) throw error
     ;(conv as any)[field] = pinned
+    // Pin state drives list sort order; callers re-fetch to re-sort, so the
+    // SWR guard must not short-circuit that fetch.
+    invalidateConversations()
   }
 
   async function setConversationMuted(conv: Conversation, userId: string, muted: boolean) {
@@ -227,6 +265,7 @@ export function useMessages() {
       .eq('id', conv.id)
     if (error) throw error
     ;(conv as any)[field] = muted
+    invalidateConversations()
   }
 
   async function markConversationUnread(conversationId: string, userId: string) {

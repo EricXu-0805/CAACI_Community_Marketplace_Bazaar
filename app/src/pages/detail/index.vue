@@ -17,7 +17,8 @@
       >
         <swiper-item v-for="(img, i) in item.images" :key="i">
           <image
-            :src="img"
+            :src="thumbUrl(img, 'detail')"
+            :alt="displayTitle"
             mode="aspectFit"
             class="swiper-img"
             @load="onHeroImgLoad($event, i)"
@@ -97,7 +98,7 @@
     <!-- Seller Card -->
     <view class="section seller-card" v-if="item.profile">
       <view class="seller-row" @click="goSeller(item.user_id)">
-        <image :src="item.profile.avatar_url || defaultAvatarSrc" class="seller-avatar" mode="aspectFill" />
+        <image :src="item.profile.avatar_url || defaultAvatarSrc" :alt="item.profile.nickname || 'avatar'" class="seller-avatar" mode="aspectFill" />
         <view class="seller-info">
           <view class="seller-name-row">
             <text class="seller-name">{{ item.profile.nickname }}</text>
@@ -158,7 +159,7 @@
     <!-- Action Bar: Buyer -->
     <view class="action-bar" v-if="item.user_id !== currentUser?.id">
       <view class="fav-btn" @click="toggleFavorite">
-        <image :src="isFav ? '/static/heart-filled.svg' : '/static/heart.svg'" class="icon-img" />
+        <image :src="isFav ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="icon-img" />
         <text class="fav-label">{{ isFav ? t('detail.saved') : t('detail.save') }}</text>
       </view>
       <view :class="['fav-btn', { reported: reported }]" @click="onReport">
@@ -177,7 +178,7 @@
     </view>
     <view class="action-bar" v-else>
       <view class="fav-btn" @click="toggleFavorite">
-        <image :src="isFav ? '/static/heart-filled.svg' : '/static/heart.svg'" class="icon-img" />
+        <image :src="isFav ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="icon-img" />
         <text class="fav-label">{{ isFav ? t('detail.saved') : t('detail.save') }}</text>
       </view>
       <view class="fav-btn" @click="goEdit" v-if="item.status === 'active'">

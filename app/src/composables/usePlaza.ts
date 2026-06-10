@@ -24,10 +24,16 @@ const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, is_illini_verified, uid
 // falls back to plain `title`, so this is safe on unmigrated schemas.
 const ATTACHED_ITEM_FIELDS = 'id, title, title_i18n, price, images, image_dimensions, status'
 const POST_COMMENT_FIELDS = 'id, post_id, user_id, content, parent_comment_id, like_count, created_at'
+// Explicit column list rather than `*` — same liability rationale as
+// useMessages.constants: every new posts column would otherwise start
+// shipping down the wire even when no UI consumes it. This enumerates
+// all current posts columns; add here when a new read dependency lands.
+const POST_COLUMNS =
+  'id, user_id, content, images, image_dimensions, content_i18n, source_lang, is_official, is_pinned, like_count, comment_count, status, created_at, updated_at'
 // post_items is mig 041's join table; replaces the single posts.attached_item_id
 // column. Display order is enforced by the .order(..., { foreignTable: 'post_items' })
 // clause on every SELECT below — Supabase doesn't sort nested relations otherwise.
-const POST_SELECT = `*,
+const POST_SELECT = `${POST_COLUMNS},
   profile:profiles!posts_user_id_fkey(${PUBLIC_PROFILE_FIELDS}),
   post_items(
     display_order,
@@ -222,10 +228,10 @@ export function usePlaza() {
     if (!currentUser.value) throw new Error('Not authenticated')
     const trimmed = content.trim()
     if (!trimmed && images.length === 0 && attachedItemIds.length === 0) {
-      throw new Error('Content required')
+      throw new Error('content_required')
     }
-    if (trimmed.length > 2000) throw new Error('Content too long')
-    if (attachedItemIds.length > 3) throw new Error('plaza.attachItemCapExceeded')
+    if (trimmed.length > 2000) throw new Error('content_too_long')
+    if (attachedItemIds.length > 3) throw new Error('attach_item_cap')
 
     if (trimmed) {
       const safety = checkContent(trimmed, { kind: 'post' })
@@ -452,7 +458,7 @@ export function usePlaza() {
   async function createComment(postId: string, content: string, parentId?: string): Promise<PostComment> {
     if (!currentUser.value) throw new Error('Not authenticated')
     const trimmed = content.trim()
-    if (!trimmed) throw new Error('Content required')
+    if (!trimmed) throw new Error('content_required')
 
     const safety = checkContent(trimmed, { kind: 'comment' })
     if (!safety.ok) throw new Error(`moderation_block:${safety.category}:${safety.reason || ''}`)
@@ -485,6 +491,17 @@ export function usePlaza() {
     if (post) post.comment_count = Math.max(0, post.comment_count - 1)
   }
 
+  /*
+   * Release the module-scoped feed so it doesn't survive a page unmount.
+   * Mirrors clearItems()/clearMessages() in useItems/useMessages — the
+   * plaza feed can grow to many posts (each with images + comments) and
+   * was previously retained across navigations for the whole session.
+   */
+  function clearPosts() {
+    posts.value = []
+    hasMore.value = true
+  }
+
   return {
     posts,
     loading,
@@ -501,5 +518,6 @@ export function usePlaza() {
     deleteComment,
     fetchMyActiveItems,
     fetchUserPosts,
+    clearPosts,
   }
 }

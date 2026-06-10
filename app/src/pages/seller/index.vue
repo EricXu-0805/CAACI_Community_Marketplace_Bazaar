@@ -12,7 +12,7 @@
     </view>
 
     <view v-else-if="seller" class="seller-section">
-      <image :src="seller.avatar_url || defaultAvatarSrc" class="avatar" mode="aspectFill" />
+      <image :src="seller.avatar_url || defaultAvatarSrc" :alt="seller.nickname || 'avatar'" class="avatar" mode="aspectFill" />
       <view class="name-row">
         <text class="nickname">{{ seller.nickname }}</text>
         <UBadge v-if="seller.is_illini_verified" variant="illini">Illini</UBadge>

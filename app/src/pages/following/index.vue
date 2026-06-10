@@ -35,7 +35,7 @@
             <text class="card-title">{{ localize(it.title_i18n, it.title) }}</text>
             <text class="card-price">{{ formatPrice(it.price, t('home.free')) }}</text>
             <view class="card-seller" v-if="it.profile">
-              <image :src="it.profile.avatar_url || defaultAvatarSrc" class="cs-avatar" mode="aspectFill" />
+              <image :src="it.profile.avatar_url || defaultAvatarSrc" :alt="it.profile.nickname || 'avatar'" class="cs-avatar" mode="aspectFill" />
               <text class="cs-name">{{ it.profile.nickname }}</text>
             </view>
           </view>
