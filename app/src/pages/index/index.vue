@@ -30,6 +30,7 @@
         </view>
         <view class="filter-btn" role="button" :aria-label="t('a11y.filter')" @click.stop="showFilter = !showFilter">
           <view class="fb-lines"><view></view><view></view><view></view></view>
+          <text class="fb-label">{{ t('home.filter') }}</text>
           <view v-if="activeFilterCount > 0" class="fb-badge">{{ activeFilterCount }}</view>
         </view>
       </view>
@@ -850,13 +851,17 @@ function goPublish() {
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 .filter-btn {
-  position: relative; width: 38px; height: 38px; border-radius: var(--radius-md);
+  /* Labeled pill — the bare decreasing-lines glyph read as decoration,
+     not as a tappable filter entry (2026-06 meeting feedback). */
+  position: relative; height: 38px; padding: 0 11px; gap: 6px;
+  border-radius: var(--radius-md);
   background: var(--surface);
   border: 0.5px solid var(--border);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; cursor: pointer;
   &:active { background: var(--parchment); }
 }
+.fb-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); line-height: 1; }
 .fb-lines {
   display: flex; flex-direction: column; gap: 3px; width: 16px;
   view { height: 1.8px; background: var(--text-secondary); border-radius: 1px; }
@@ -911,10 +916,15 @@ function goPublish() {
   letter-spacing: 0.02em;
   box-sizing: border-box;
   flex-shrink: 0;
+  /* Color must live on the <text> child, not just the view — the global
+     mp-weixin `text {}` floor in App.vue beats inherited color, which made
+     the active pill label invisible (ink-on-ink). */
+  text { color: var(--ink); }
   &.active {
     background: var(--ink);
     color: var(--ink-inverse);
     border-color: var(--ink);
+    text { color: var(--ink-inverse); }
   }
   &:active { transform: scale(0.96); }
 }
@@ -1153,10 +1163,13 @@ function goPublish() {
 }
 .img-count-badge {
   position: absolute; top: 7px; right: 7px;
+  display: inline-flex; align-items: center; justify-content: center;
   padding: 2px 7px; border-radius: 10px;
   background: rgba(0,0,0,0.55); backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  text { color: #fff; font-size: 10px; font-weight: 600; }
+  /* line-height 1 + flex centering — inherited body line-height made the
+     digit sit visibly below the pill's optical center. */
+  text { color: #fff; font-size: 10px; font-weight: 600; line-height: 1; }
 }
 /* Condition pill visual lives in components/UBadge.vue now; the page only
    owns its placement (top-left over the card image). */
