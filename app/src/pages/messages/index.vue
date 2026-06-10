@@ -55,12 +55,15 @@
           @click="onItemTap(conv)"
           @longpress="onMoreMenu(conv)"
         >
-          <image
-            :src="getOtherUser(conv)?.avatar_url || defaultAvatar"
-            :alt="getOtherUser(conv)?.nickname || 'avatar'"
-            class="conv-avatar"
-            mode="aspectFill"
-          />
+          <view class="conv-avatar-wrap">
+            <image
+              :src="getOtherUser(conv)?.avatar_url || defaultAvatar"
+              :alt="getOtherUser(conv)?.nickname || 'avatar'"
+              class="conv-avatar"
+              mode="aspectFill"
+            />
+            <view v-if="isOnline(getOtherUser(conv)?.id)" class="online-dot" :aria-label="t('chat.online')"></view>
+          </view>
           <view class="conv-info">
             <view class="conv-top">
               <view class="conv-name-wrap">
@@ -116,6 +119,7 @@ import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useMessages } from '../../composables/useMessages'
 import { useUnread } from '../../composables/useUnread'
+import { usePresence } from '../../composables/usePresence'
 import { useTheme } from '../../composables/useTheme'
 import { formatTime, thumbUrl } from '../../utils'
 import { DIALOG_DANGER } from '../../utils/dialogColors'
@@ -139,6 +143,7 @@ const {
   clearMessages,
 } = useMessages()
 const { unreadConvIds, refreshUnreadCount } = useUnread()
+const { startPresence, isOnline } = usePresence()
 const { isDark } = useTheme()
 
 /*
@@ -178,6 +183,7 @@ onShow(() => {
   if (currentUser.value) {
     fetchConversations(currentUser.value.id)
     refreshUnreadCount()
+    startPresence()
   }
 })
 
@@ -480,6 +486,15 @@ function goLogin() {
    * contrast against this bg, but the brief pre-load moment was
    * showing as a flat patch in dark). */
   border: 0.5px solid var(--border);
+}
+/* Presence dot (v5 Phase 7) — sage-green, sits over the avatar's bottom-right
+   with a paper-colored ring so it reads as a status pip, not part of the photo. */
+.conv-avatar-wrap { position: relative; flex-shrink: 0; }
+.online-dot {
+  position: absolute; right: 0; bottom: 2px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--success);
+  border: 2px solid var(--bg-elev-1);
 }
 .conv-info { flex: 1; min-width: 0; }
 .conv-top { display: flex; justify-content: space-between; align-items: center; }
