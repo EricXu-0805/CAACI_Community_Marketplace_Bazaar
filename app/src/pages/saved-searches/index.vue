@@ -11,7 +11,7 @@
 
     <scroll-view class="list" scroll-y :scroll-top="scrollTopVal" :scroll-with-animation="false">
       <view v-if="items.length === 0" class="empty">
-        <text class="empty-icon">🔔</text>
+        <UIcon name="bell" size="xl" color="ink-faint" />
         <text class="empty-text">{{ t('savedSearch.empty') }}</text>
       </view>
       <view v-else>
@@ -90,6 +90,7 @@ import { useAuth } from '../../composables/useAuth'
 import { useSavedSearch } from '../../composables/useSavedSearch'
 import { friendlyErrorMessage } from '../../utils'
 import type { ItemCategory } from '../../types'
+import UIcon from '../../components/UIcon.vue'
 
 const { t, lang } = useI18n()
 const { currentUser } = useAuth()
@@ -197,7 +198,6 @@ function goBack() { uni.navigateBack() }
   display: flex; flex-direction: column; align-items: center;
   padding: 80px 40px; gap: 12px; text-align: center;
 }
-.empty-icon { font-size: 48px; }
 .empty-text { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
 
 .ss-card {

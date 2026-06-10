@@ -35,3 +35,7 @@ export const BASE_URL =
  */
 export const APP_VERSION = '0.1.0'
 export const BUILD_REF = (import.meta.env.VITE_RELEASE as string | undefined) || 'dev'
+
+/** Public support contact — shown on the legal page (mailto + copy). */
+export const SUPPORT_EMAIL =
+  (import.meta.env.VITE_SUPPORT_EMAIL as string | undefined) || 'illini.market.help@gmail.com'

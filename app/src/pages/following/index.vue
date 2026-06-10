@@ -7,7 +7,7 @@
 
     <scroll-view class="list" scroll-y :scroll-top="scrollTopVal" :scroll-with-animation="false" @scrolltolower="loadMore">
       <view v-if="items.length === 0 && !loading" class="empty">
-        <text class="empty-icon">👥</text>
+        <UIcon name="user-plus" size="xl" color="ink-faint" />
         <text class="empty-text">{{ t('follow.emptyFeed') }}</text>
       </view>
 
@@ -58,6 +58,7 @@ import { useAuth } from '../../composables/useAuth'
 import { matchSpot } from '../../composables/useCampusSpots'
 import type { Item } from '../../types'
 import { formatPrice, thumbUrl, friendlyErrorMessage } from '../../utils'
+import UIcon from '../../components/UIcon.vue'
 
 const { t, localize, lang } = useI18n()
 const { isDark } = useTheme()
@@ -172,7 +173,6 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   display: flex; flex-direction: column; align-items: center;
   padding: 80px 40px; gap: 12px; text-align: center;
 }
-.empty-icon { font-size: 48px; }
 .empty-text { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
 
 .loading-tip, .end-tip {
