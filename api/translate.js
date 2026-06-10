@@ -15,7 +15,10 @@ export const config = { runtime: 'edge' }
  *   · input empty / too long → 400 with explicit reason.
  *
  * Abuse controls:
- *   · CORS locked to the app's own origins.
+ *   · requires a valid Supabase JWT — CORS alone cannot stop scripted
+ *     callers (curl ignores it), and an open endpoint is an unmetered
+ *     OpenAI proxy. Logged-out visitors degrade to the client-side
+ *     quickTranslate() dictionary, not a broken UI.
  *   · input capped at 4 KB (item descriptions are capped at 3 KB
  *     client-side so 4 KB gives headroom with a little padding).
  *   · output capped at 1200 tokens, which is ~3 KB of CJK.
@@ -44,6 +47,29 @@ function cors(origin) {
 }
 
 const MAX_INPUT_BYTES = 4 * 1024
+
+function env(name, fallback) {
+  return process.env[name] || fallback
+}
+
+const SUPABASE_URL = env('SUPABASE_URL', env('VITE_SUPABASE_URL', ''))
+const ANON_KEY     = env('SUPABASE_ANON_KEY', env('VITE_SUPABASE_ANON_KEY', ''))
+
+/* Validate the caller's Supabase access token. Any authenticated user
+   passes; anonymous/forged tokens get 401 and the client falls back to
+   its static dictionary. ~1 round trip to Supabase per call — fine,
+   translations are click-driven and cached client-side for 30 days. */
+async function verifyUser(bearer) {
+  if (!bearer || !SUPABASE_URL || !ANON_KEY) return false
+  try {
+    const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { apikey: ANON_KEY, Authorization: bearer },
+    })
+    return r.ok
+  } catch {
+    return false
+  }
+}
 
 export default async function handler(request) {
   const origin = request.headers.get('origin') || ''
@@ -74,6 +100,10 @@ export default async function handler(request) {
   }
   if (!target) {
     return new Response(JSON.stringify({ error: 'bad_target' }), { status: 400, headers })
+  }
+
+  if (!(await verifyUser(request.headers.get('authorization') || ''))) {
+    return new Response(JSON.stringify({ error: 'auth_required' }), { status: 401, headers })
   }
 
   const key = process.env.OPENAI_API_KEY

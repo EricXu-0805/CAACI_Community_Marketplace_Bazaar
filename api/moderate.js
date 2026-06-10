@@ -73,14 +73,15 @@ export default async function handler(request) {
     })
 
     if (!r.ok) {
-      let upstreamBody = null
-      try { upstreamBody = await r.text() } catch {}
+      /* Don't reflect the upstream error body to (anonymous) callers —
+         it leaks request-ids/org hints. console.error lands in Vercel
+         function logs, which is where debugging happens anyway. */
+      try { console.error('moderate upstream', r.status, (await r.text()).slice(0, 400)) } catch {}
       return new Response(
         JSON.stringify({
           flagged: false,
           skipped: true,
           reason: `upstream_${r.status}`,
-          debug: upstreamBody ? upstreamBody.slice(0, 400) : null,
         }),
         { status: 200, headers },
       )

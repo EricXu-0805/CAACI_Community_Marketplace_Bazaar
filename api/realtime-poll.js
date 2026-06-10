@@ -17,10 +17,12 @@ export const config = { runtime: 'edge' }
  * network round trips. Gracefully degrades — if this endpoint 5xx's
  * or is absent, useRealtimeFallback stays on direct 3s PostgREST polls.
  *
- * No auth on this endpoint beyond scope/id gating: the Supabase RLS
- * policy on public.messages already restricts visibility to the two
- * participants, and we use anon key + caller-supplied JWT so the RLS
- * evaluates against the real user, not service_role.
+ * Requires an Authorization header: RLS (anon key + caller JWT) already
+ * keeps the data safe, but each request holds an edge invocation up to
+ * 20s and fires ~25 internal PostgREST queries — without the gate that
+ * is a free anonymous amplification vector. The only legitimate caller
+ * is the logged-in mp client, which always attaches its JWT; everyone
+ * else gets 401 and useRealtimeFallback degrades to direct 3s polls.
  */
 
 const MAX_HOLD_MS = 20000
@@ -91,9 +93,9 @@ export default async function handler(request) {
 
   /* Forward the caller's Supabase JWT so PostgREST evaluates RLS as
      the real user — service_role would bypass RLS and leak messages
-     across conversations. If the client omits it, we fall back to
-     anon access (empty result set for private messages). */
+     across conversations. No JWT → 401 (see header comment). */
   const userJwt = request.headers.get('authorization') || ''
+  if (!userJwt) return json({ error: 'auth_required' }, 401)
 
   const deadline = Date.now() + MAX_HOLD_MS
 

@@ -24,9 +24,9 @@
       </view>
       <text v-if="gateError" class="gate-error">{{ gateError }}</text>
       <text class="gate-hint">
-        The key must match the ADMIN_API_KEY env var on Vercel.
-        It is stored in localStorage only — it never touches the Supabase
-        user session.
+        Paste your personal admin token (iam_admin_…), minted via
+        scripts/admin-token-mint.mjs. It is stored in localStorage only —
+        it never touches the Supabase user session.
       </text>
     </view>
 
