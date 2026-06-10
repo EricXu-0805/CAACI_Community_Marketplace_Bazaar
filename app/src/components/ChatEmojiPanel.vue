@@ -9,7 +9,23 @@
       >{{ g.label }}</text>
     </view>
     <scroll-view scroll-y class="ep-grid-wrap">
-      <view class="ep-grid">
+      <!--
+        Essentials group (P3): self-drawn stickers. Tapping one SENDS a
+        standalone sticker message immediately (WeChat sticker-pack
+        semantics) — it does not insert into the text input like the
+        unicode groups below do.
+      -->
+      <view v-if="activeKey === 'stickers'" class="ep-grid ep-grid-stickers">
+        <view
+          v-for="s in STICKER_ORDER"
+          :key="s"
+          class="ep-cell ep-cell-sticker"
+          @click="emit('pickSticker', s)"
+        >
+          <USticker :name="s" :size="38" />
+        </view>
+      </view>
+      <view v-else class="ep-grid">
         <view
           v-for="(e, i) in activeGroup.emojis"
           :key="g_key(e, i)"
@@ -26,11 +42,16 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from '../composables/useI18n'
+import USticker from './USticker.vue'
+import { STICKER_ORDER, type StickerName } from './stickers/registry'
 
 const { t } = useI18n()
 
 const props = defineProps<{ open: boolean }>()
-const emit = defineEmits<{ (e: 'pick', emoji: string): void }>()
+const emit = defineEmits<{
+  (e: 'pick', emoji: string): void
+  (e: 'pickSticker', name: StickerName): void
+}>()
 
 const RECENT_KEY = 'chat_emoji_recent'
 const RECENT_MAX = 16
@@ -121,7 +142,7 @@ const GROUPS = [
   },
 ]
 
-const activeKey = ref<string>('smileys')
+const activeKey = ref<string>('stickers')
 
 const groups = computed(() => {
   const base = GROUPS.map(g => ({
@@ -129,13 +150,11 @@ const groups = computed(() => {
     label: t(g.labelKey),
     emojis: g.emojis,
   }))
+  const head = [{ key: 'stickers', label: t('chat.emojiGroupStickers'), emojis: [] as string[] }]
   if (recent.value.length > 0) {
-    return [
-      { key: 'recent', label: t('chat.emojiGroupRecent'), emojis: recent.value },
-      ...base,
-    ]
+    head.push({ key: 'recent', label: t('chat.emojiGroupRecent'), emojis: recent.value })
   }
-  return base
+  return [...head, ...base]
 })
 
 const activeGroup = computed(() => {
@@ -205,6 +224,10 @@ function g_key(e: string, i: number) {
   gap: 2px;
   padding: 8px 10px 12px;
 }
+.ep-grid-stickers {
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
 .ep-cell {
   display: flex;
   align-items: center;
@@ -213,6 +236,9 @@ function g_key(e: string, i: number) {
   border-radius: 8px;
   cursor: pointer;
   &:active { background: var(--bg-subtle); }
+}
+.ep-cell-sticker {
+  height: 52px;
 }
 .ep-emoji { font-size: 22px; line-height: 1; }
 </style>

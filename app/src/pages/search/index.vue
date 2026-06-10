@@ -53,7 +53,7 @@
             class="cat-tile"
             @click="pickCategory(c.value)"
           >
-            <text class="cat-emoji">{{ c.emoji }}</text>
+            <UIcon :name="c.icon" size="sm" color="ink-soft" />
             <text class="cat-label">{{ c.label }}</text>
           </view>
         </view>
@@ -66,6 +66,7 @@
 import { computed, ref } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import type { ItemCategory } from '../../types'
+import UIcon from '../../components/UIcon.vue'
 
 const { t } = useI18n()
 
@@ -79,18 +80,18 @@ try {
 const MAX_HISTORY = 8
 const STORAGE_KEY = 'searchHistory'
 
-const CATEGORY_META: Record<string, string> = {
-  all: '🏷️',
-  currency_exchange: '💱',
-  electronics: '🎧',
-  furniture: '🛋️',
-  housing: '🏠',
-  clothing: '👕',
-  books: '📚',
-  vehicles: '🚲',
-  daily: '🧺',
-  food: '🍜',
-  other: '✨',
+/* Registry cat-* icons; housing aliases to home-regular per registry note. */
+const CATEGORY_ICON: Record<string, string> = {
+  currency_exchange: 'cat-currency',
+  electronics: 'cat-electronics',
+  furniture: 'cat-furniture',
+  housing: 'home',
+  clothing: 'cat-clothing',
+  books: 'cat-books',
+  vehicles: 'cat-transport',
+  daily: 'cat-daily',
+  food: 'cat-food',
+  other: 'cat-other',
 }
 const catKeys: (ItemCategory | null)[] = [
   'currency_exchange', 'electronics', 'furniture', 'housing', 'clothing',
@@ -99,7 +100,7 @@ const catKeys: (ItemCategory | null)[] = [
 const categories = computed(() => catKeys.map(k => ({
   value: k,
   label: t('cat.' + k),
-  emoji: CATEGORY_META[k || 'other'] || '🏷️',
+  icon: CATEGORY_ICON[k || 'other'] || 'tag',
 })))
 
 function saveToHistory(text: string) {
@@ -294,7 +295,6 @@ function goBack() { uni.navigateBack() }
   transition: background var(--dur-1, 120ms) var(--ease-std, ease);
   &:active { background: var(--frame); }
 }
-.cat-emoji { font-size: 20px; line-height: 1; }
 .cat-label {
   font-size: 11px;
   color: var(--ink);

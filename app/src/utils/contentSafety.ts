@@ -118,11 +118,25 @@ const SENSITIVE_WORDS_NORMALIZED = [
   ...SENSITIVE_WORDS_EN,
 ].map(normalize).filter(Boolean)
 
+/*
+ * Two-tier matching (mirrors DB content_moderation_check, migration 049):
+ * short pure-ASCII words substring-matched against the space-stripped
+ * normalization false-positive everywhere ('meth' ⊂ "method", 'anal' ⊂
+ * "analysis"), so they require word boundaries against the raw text
+ * instead. CJK + longer words keep the obfuscation-resistant substring.
+ */
+const SHORT_LATIN = /^[a-z0-9]{1,4}$/
+
 function hasSensitiveWord(raw: string): { hit: boolean; matched: string[] } {
   const n = normalize(raw)
+  const lower = raw.toLowerCase()
   const matched: string[] = []
   for (const w of SENSITIVE_WORDS_NORMALIZED) {
-    if (n.includes(w)) matched.push(w)
+    if (SHORT_LATIN.test(w)) {
+      if (new RegExp(`\\b${w}\\b`).test(lower)) matched.push(w)
+    } else if (n.includes(w)) {
+      matched.push(w)
+    }
   }
   return { hit: matched.length > 0, matched }
 }

@@ -81,9 +81,21 @@
           :alt="msg.sender?.nickname || 'avatar'"
           class="msg-avatar"
         />
+        <!-- Sticker message: whole body is one [sticker:*] token — bare
+             artwork, no bubble chrome (WeChat sticker semantics). -->
+        <view
+          v-if="stickerOf(msg)"
+          class="msg-sticker"
+          @touchstart="msgLongPress.onTouchstart(msg)"
+          @touchend="msgLongPress.onTouchend"
+          @touchcancel="msgLongPress.onTouchcancel"
+          @touchmove="msgLongPress.onTouchmove"
+        >
+          <USticker :name="stickerOf(msg)!" :size="84" />
+        </view>
         <view
           class="msg-bubble"
-          v-if="msg.message_type !== 'image' && msg.message_type !== 'video'"
+          v-else-if="msg.message_type !== 'image' && msg.message_type !== 'video'"
           @touchstart="msgLongPress.onTouchstart(msg)"
           @touchend="msgLongPress.onTouchend"
           @touchcancel="msgLongPress.onTouchcancel"
@@ -141,10 +153,25 @@
       <view class="rc-bar"></view>
       <view class="rc-body">
         <text class="rc-label">{{ t('chat.replyingTo') }}</text>
-        <text class="rc-text">{{ (replyToMsg.message_type === 'image' ? '[' + t('chat.photo') + ']' : replyToMsg.content).slice(0, 80) }}</text>
+        <text class="rc-text">{{ replyPreview(replyToMsg).slice(0, 80) }}</text>
       </view>
       <view class="rc-x" role="button" :aria-label="t('a11y.close')" @click="replyToMsg = null">
         <view class="rc-x-inner"></view>
+      </view>
+    </view>
+
+    <!-- 键盘联想 (P3): typed keyword tail → emoji quick-insert chips.
+         Appends to the input; never replaces typed text. -->
+    <view v-if="emojiSuggestions.length" class="suggest-row">
+      <view
+        v-for="e in emojiSuggestions"
+        :key="e"
+        class="suggest-chip"
+        role="button"
+        :aria-label="e"
+        @click="applySuggestion(e)"
+      >
+        <text class="suggest-emoji">{{ e }}</text>
       </view>
     </view>
 
@@ -174,7 +201,7 @@
         <UIcon name="arrow-up" size="sm" color="#fff" />
       </view>
     </view>
-    <ChatEmojiPanel :open="emojiOpen" @pick="onPickEmoji" />
+    <ChatEmojiPanel :open="emojiOpen" @pick="onPickEmoji" @pick-sticker="onPickSticker" />
 
     <ScamInterceptModal
       :visible="showScamModal"
@@ -201,6 +228,9 @@ import { DIALOG_DANGER } from '../../utils/dialogColors'
 import type { Item } from '../../types'
 import ChatEmojiPanel from '../../components/ChatEmojiPanel.vue'
 import UIcon from '../../components/UIcon.vue'
+import USticker from '../../components/USticker.vue'
+import { parseStickerToken, stickerToken, type StickerName } from '../../components/stickers/registry'
+import { suggestEmoji } from '../../composables/useEmojiSuggest'
 import ScamInterceptModal from '../../components/ScamInterceptModal.vue'
 
 const { t, lang, localize } = useI18n()
@@ -423,6 +453,45 @@ function onPickEmoji(emoji: string) {
   inputText.value = `${inputText.value}${emoji}`
 }
 
+function stickerOf(msg: any): StickerName | null {
+  if (msg.message_type && msg.message_type !== 'text') return null
+  return parseStickerToken(msg.content || '')
+}
+
+function replyPreview(msg: any): string {
+  if (msg.message_type === 'image') return `[${t('chat.photo')}]`
+  if (msg.message_type === 'video') return `[${t('chat.video')}]`
+  if (stickerOf(msg)) return `[${t('chat.sticker')}]`
+  return msg.content || ''
+}
+
+/* Stickers send immediately on tap (panel stays open) — unlike unicode
+   emoji, which insert into the input via onPickEmoji above. */
+async function onPickSticker(name: StickerName) {
+  if (!currentUser.value || !conversationId.value || sending.value) return
+  sending.value = true
+  try {
+    await sendMessage(conversationId.value, currentUser.value.id, stickerToken(name))
+    markAsRead(conversationId.value, currentUser.value.id)
+    refreshUnreadCount()
+    nextTick(() => scrollToBottom())
+  } catch (error: any) {
+    uni.showToast({
+      title: friendlyErrorMessage(error, lang.value as 'en' | 'zh'),
+      icon: 'none',
+      duration: 2500,
+    })
+  } finally {
+    sending.value = false
+  }
+}
+
+const emojiSuggestions = computed(() => suggestEmoji(inputText.value))
+
+function applySuggestion(emoji: string) {
+  inputText.value = `${inputText.value}${emoji}`
+}
+
 async function retrySend(msg: any) {
   if (!currentUser.value || !conversationId.value) return
   const text = msg?.content
@@ -448,9 +517,7 @@ async function onSend() {
 
   let finalText = text
   if (replyToMsg.value) {
-    const quoted = replyToMsg.value.message_type === 'image'
-      ? `[${t('chat.photo')}]`
-      : (replyToMsg.value.content || '').slice(0, 80)
+    const quoted = replyPreview(replyToMsg.value).slice(0, 80)
     finalText = `> ${quoted}\n${text}`
   }
 
@@ -1021,6 +1088,10 @@ function scrollToBottom() {
   border-radius: 12px;
   background: var(--bg-inset);
 }
+/* Sticker messages float bare — no bubble chrome. */
+.msg-sticker {
+  padding: 2px;
+}
 .img-btn {
   width: 38px; height: 38px; display: flex;
   align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
@@ -1099,6 +1170,21 @@ function scrollToBottom() {
   &::before { transform: rotate(45deg); }
   &::after { transform: rotate(-45deg); }
 }
+
+.suggest-row {
+  display: flex; gap: 8px; padding: 6px 14px;
+  background: var(--bg-elev-1); border-top: 0.5px solid var(--line-hair);
+  max-width: 480px; margin: 0 auto; width: 100%; box-sizing: border-box;
+  overflow-x: auto;
+}
+.suggest-chip {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--bg-subtle);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  &:active { background: var(--bg-inset); }
+}
+.suggest-emoji { font-size: 19px; line-height: 1; }
 
 .input-bar {
   display: flex; align-items: center; padding: 9px 14px;
