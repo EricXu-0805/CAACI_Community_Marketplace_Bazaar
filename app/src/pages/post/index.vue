@@ -18,10 +18,10 @@
         @touchmove="postLongPress.onTouchmove"
       >
         <view class="post-head">
-          <image :src="post.profile?.avatar_url || defaultAvatarSrc" class="avatar" mode="aspectFill" />
+          <image :src="post.profile?.avatar_url || defaultAvatarSrc" class="avatar" mode="aspectFill" @click.stop="goSeller(post.user_id)" />
           <view class="head-info">
             <view class="head-name-row">
-              <text class="head-name">{{ post.profile?.nickname || t('app.user') }}</text>
+              <text class="head-name" @click.stop="goSeller(post.user_id)">{{ post.profile?.nickname || t('app.user') }}</text>
               <UBadge v-if="post.is_official" variant="official">{{ t('plaza.official') }}</UBadge>
               <UBadge v-else-if="post.profile?.is_illini_verified" variant="illini">Illini</UBadge>
               <view v-if="post.is_pinned" class="badge-pinned"><text>{{ t('plaza.pinned') }}</text></view>
@@ -408,6 +408,10 @@ function goBack() { uni.navigateBack({ fail: () => goPlaza() }) }
 function goPlaza() { uni.switchTab({ url: '/pages/plaza/index' }) }
 function goToAttachedItem(id: string) {
   uni.navigateTo({ url: `/pages/detail/index?id=${id}` })
+}
+/* Author avatar/name → seller page (default 商品 tab — meeting decision). */
+function goSeller(userId: string) {
+  uni.navigateTo({ url: `/pages/seller/index?id=${userId}` })
 }
 
 async function onToggleLike() {
