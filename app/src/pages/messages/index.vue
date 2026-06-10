@@ -1,6 +1,6 @@
 <template>
-  <view class="page">
-    <DesktopNav current="messages" />
+  <view class="page has-sidebar">
+    <AppSidebar current="messages" />
 
     <view class="page-header">
       <text class="page-title">{{ t('nav.messages') }}</text>
@@ -124,7 +124,7 @@ import { useTheme } from '../../composables/useTheme'
 import { formatTime, thumbUrl } from '../../utils'
 import { DIALOG_DANGER } from '../../utils/dialogColors'
 import type { Conversation, Profile } from '../../types'
-import DesktopNav from '../../components/DesktopNav.vue'
+import AppSidebar from '../../components/AppSidebar.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import { parseStickerToken } from '../../components/stickers/registry'
 
@@ -611,7 +611,10 @@ function goLogin() {
 
 @media (min-width: 768px) {
   .page-header { display: none; }
-  .page { padding-bottom: 0; }
+  /* Lift the phone-only 480px clamp so the rail + centered list lay out
+     correctly (base .page is max-width:480; margin:0 auto). */
+  .page { padding-bottom: 0; max-width: none; margin: 0; }
+  .conv-list { max-width: 720px; margin-left: auto; margin-right: auto; }
   .conv-item {
     border-radius: 8px; margin: 2px 8px;
     &:hover { background: var(--bg-elev-2); }

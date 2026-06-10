@@ -1,6 +1,6 @@
 <template>
-  <view class="page page-lock">
-    <DesktopNav current="index" />
+  <view class="page page-lock has-sidebar">
+    <AppSidebar current="index" />
 
     <view class="mobile-header">
       <!--
@@ -362,7 +362,7 @@ import type { ItemCategory, ItemCondition, Item } from '../../types'
 import { debounce, formatTime, formatPrice, haptic, thumbUrl } from '../../utils'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
-import DesktopNav from '../../components/DesktopNav.vue'
+import AppSidebar from '../../components/AppSidebar.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import UBadge from '../../components/UBadge.vue'
 import UIcon from '../../components/UIcon.vue'
@@ -568,14 +568,14 @@ function onClearAllFilters() {
 onMounted(async () => {
   try {
     const info = uni.getSystemInfoSync()
-    columnCount.value = info.windowWidth >= 768 ? 3 : 2
+    columnCount.value = info.windowWidth >= 1180 ? 4 : info.windowWidth >= 768 ? 3 : 2
   } catch {}
 
   try {
     const onResize = (uni as any).onWindowResize
     if (typeof onResize === 'function') {
       onResize((res: { size: { windowWidth: number } }) => {
-        columnCount.value = res.size.windowWidth >= 768 ? 3 : 2
+        columnCount.value = res.size.windowWidth >= 1180 ? 4 : res.size.windowWidth >= 768 ? 3 : 2
       })
     }
   } catch {}
@@ -1439,10 +1439,11 @@ function goPublish() {
    DESKTOP >= 768px
    ============================================ */
 @media (min-width: 768px) {
-  .page { max-width: 1120px; margin: 0 auto; }
+  /* Sidebar reserves the left rail (.has-sidebar in App.vue); the feed
+     fills the remaining column instead of centering at 1120px. */
   .mobile-header { display: none; }
 
-  .cat-bar { padding: 10px 24px 12px; }
+  .cat-bar { padding: 20px 24px 12px; }
   .pill { padding: 7px 20px; font-size: 14px; height: 32px; }
 
   .feed { flex: 1; min-height: 0; padding-bottom: 0; }
@@ -1479,8 +1480,10 @@ function goPublish() {
   .seller-nick { font-size: 12px; }
   .fav-num { font-size: 12px; }
 
-  .filter-sheet { max-width: 480px; left: 50%; transform: translate(-50%, 100%);
-    &.open { transform: translate(-50%, 0); }
+  /* Center the filter sheet within the content column (right of the rail)
+     instead of the viewport, so it doesn't slide under the sidebar. */
+  .filter-sheet { max-width: 480px; left: var(--sidebar-w); right: 0; margin-left: auto; margin-right: auto; transform: translateY(100%);
+    &.open { transform: translateY(0); }
   }
 }
 </style>

@@ -1,6 +1,6 @@
 <template>
-  <view class="page">
-    <DesktopNav current="publish" />
+  <view class="page has-sidebar">
+    <AppSidebar current="publish" />
 
     <!--
       Subpage header with back button — mirrors pages/profile/edit.vue
@@ -178,7 +178,7 @@ import { useTranslate } from '../../composables/useTranslate'
 import { friendlyErrorMessage } from '../../utils'
 import { DIALOG_WARN } from '../../utils/dialogColors'
 import type { ItemCategory, ItemCondition } from '../../types'
-import DesktopNav from '../../components/DesktopNav.vue'
+import AppSidebar from '../../components/AppSidebar.vue'
 import PermissionDeniedModal from '../../components/PermissionDeniedModal.vue'
 
 const { t, lang } = useI18n()
@@ -820,6 +820,10 @@ async function onSubmit() {
 }
 
 @media (min-width: 768px) {
-  .submit-bar { bottom: 0; }
+  /* Adaptive shell: rail reserves the left; fill + center the form, and
+     re-center the fixed submit bar under the 720px form column. */
+  .page { max-width: none; margin: 0; }
+  .form { max-width: 720px; margin-left: auto; margin-right: auto; }
+  .submit-bar { bottom: 0; left: var(--sidebar-w); right: 0; width: auto; max-width: 720px; margin-left: auto; margin-right: auto; transform: none; }
 }
 </style>

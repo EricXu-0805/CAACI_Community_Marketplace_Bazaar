@@ -1,6 +1,6 @@
 <template>
-  <view class="page">
-    <DesktopNav current="publish" />
+  <view class="page has-sidebar">
+    <AppSidebar current="publish" />
 
     <!-- Mobile Header -->
     <view class="page-header">
@@ -174,7 +174,7 @@ import { useTranslate } from '../../composables/useTranslate'
 import { friendlyErrorMessage } from '../../utils'
 import { DIALOG_INK, DIALOG_WARN } from '../../utils/dialogColors'
 import type { ItemCategory, ItemCondition } from '../../types'
-import DesktopNav from '../../components/DesktopNav.vue'
+import AppSidebar from '../../components/AppSidebar.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PermissionDeniedModal from '../../components/PermissionDeniedModal.vue'
 import ScamInterceptModal from '../../components/ScamInterceptModal.vue'
@@ -1038,6 +1038,13 @@ async function onSubmit() {
   z-index: 40;
 }
 @media (min-width: 768px) {
-  .submit-bar { bottom: 0; }
+  /* Center the fixed submit bar under the 720px form column: span the
+     area right of the rail, then margin:auto caps it at the form width. */
+  .submit-bar { bottom: 0; left: var(--sidebar-w); right: 0; width: auto; max-width: 720px; margin-left: auto; margin-right: auto; transform: none; }
+  /* The base .page rule centers a 480px column for phone; on desktop the
+     .has-sidebar rail already reserves the left edge via padding-left, so
+     let the page fill the remaining column and center the form instead. */
+  .page { max-width: none; margin: 0; }
+  .form { max-width: 720px; margin-left: auto; margin-right: auto; }
 }
 </style>

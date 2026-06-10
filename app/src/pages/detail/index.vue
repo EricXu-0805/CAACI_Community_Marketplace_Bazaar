@@ -1317,5 +1317,17 @@ async function contactSeller() {
    * above-the-fold on big screens.
    */
   .info-card { border-radius: 0; }
+  /* The action bar is position:fixed full-width; align it under the
+     centered 640px reading column instead of spanning the viewport. */
+  .action-bar {
+    left: 50%; right: auto; transform: translateX(-50%);
+    width: 100%; max-width: 640px;
+  }
+  /* Same for the rating bottom-sheet — keep it aligned to the 640 column. */
+  .rating-sheet {
+    left: 50%; right: auto; width: 100%; max-width: 640px;
+    transform: translateX(-50%) translateY(100%);
+  }
+  .rating-sheet.open { transform: translateX(-50%) translateY(0); }
 }
 </style>

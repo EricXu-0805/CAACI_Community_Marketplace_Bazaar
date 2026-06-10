@@ -1,6 +1,6 @@
 <template>
-  <view class="page page-lock">
-    <DesktopNav current="plaza" />
+  <view class="page page-lock has-sidebar">
+    <AppSidebar current="plaza" />
 
     <view class="page-header">
       <text class="ph-title">{{ t('plaza.title') }}</text>
@@ -500,7 +500,7 @@ import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbU
 import { DIALOG_DANGER } from '../../utils/dialogColors'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
-import DesktopNav from '../../components/DesktopNav.vue'
+import AppSidebar from '../../components/AppSidebar.vue'
 import { BASE_URL } from '../../config/runtime'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PlazaBannerCarousel from '../../components/PlazaBannerCarousel.vue'
@@ -2007,7 +2007,13 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 
 @media (min-width: 768px) {
   .page-header { display: none; }
-  .page { padding-bottom: 0; height: auto; min-height: 100vh; overflow: visible; }
+  /* Drop the base 480px centering — the sidebar rail (.has-sidebar in
+     App.vue) already reserves the left column via padding-left, so
+     centering the whole .page fights the rail. */
+  .page { padding-bottom: 0; height: auto; min-height: 100vh; overflow: visible; max-width: none; margin: 0; }
+  /* Center the whole single column — search, tabs and feed share one
+     640px reading width so the toolbar aligns with the posts. */
+  .search-wrap, .feed-tabs, .feed { max-width: 640px; margin-left: auto; margin-right: auto; }
   .feed { padding-bottom: 0; }
 }
 </style>
