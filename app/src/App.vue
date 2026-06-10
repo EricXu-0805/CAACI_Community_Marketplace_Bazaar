@@ -654,28 +654,28 @@ page,
   --ink-faint:   #B6AE9F;
   --ink-inverse: #F5F0E6;
   --ink-disabled: #C0BCB2;
-  --bg-page:    #F5F0E6;
-  --bg-elev-1:  #FBF8F2;
-  --bg-elev-2:  #F0E9DA;
-  --bg-subtle:  #F0E9DA;
-  --bg-inset:   #E8DFCC;
-  --canvas:        #F5F0E6;
-  --surface:       #FBF8F2;
-  --surface-alt:   #F0E9DA;
-  --parchment:     #F0E9DA;
-  --frame:         #E8DFCC;
-  --surface-rgb: 251, 248, 242;
-  --canvas-rgb:  245, 240, 230;
-  --paper:      #FBF8F2;
-  --paper-2:    #F0E9DA;
-  --paper-3:    #E8DFCC;
+  --bg-page:    #F7F4EE;
+  --bg-elev-1:  #FFFFFF;
+  --bg-elev-2:  #F1ECE2;
+  --bg-subtle:  #F1ECE2;
+  --bg-inset:   #E9E2D4;
+  --canvas:        #F7F4EE;
+  --surface:       #FFFFFF;
+  --surface-alt:   #F1ECE2;
+  --parchment:     #F1ECE2;
+  --frame:         #E9E2D4;
+  --surface-rgb: 255, 255, 255;
+  --canvas-rgb:  247, 244, 238;
+  --paper:      #FFFFFF;
+  --paper-2:    #F1ECE2;
+  --paper-3:    #E9E2D4;
   --line-hair:  rgba(42, 42, 46, 0.06);
   --line-soft:  rgba(42, 42, 46, 0.10);
   --line-bold:  rgba(42, 42, 46, 0.16);
-  --border:        #E8DFCC;
-  --border-strong: #D8CDB3;
+  --border:        #ECE5DA;
+  --border-strong: #DBD2C2;
   --border-hair:   rgba(42, 42, 46, 0.05);
-  --border-warm:   #E8DFCC;
+  --border-warm:   #ECE5DA;
   --brand:          #C74A2F;
   --brand-deep:     #A23A22;
   --brand-soft:     #F5D9CE;
@@ -723,10 +723,10 @@ page,
   --font-hei:   'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
   --font-mono:  'JetBrains Mono', 'SF Mono', Menlo, ui-monospace, monospace;
   --font-sans:  var(--font-hei);
-  --shadow-hair:  0 0 0 1px rgba(42, 42, 46, 0.06);
-  --shadow-soft:  0 1px 2px rgba(42, 42, 46, 0.04), 0 4px 12px rgba(42, 42, 46, 0.04);
-  --shadow-pop:   0 2px 4px rgba(42, 42, 46, 0.05), 0 12px 28px rgba(42, 42, 46, 0.08);
-  --shadow-float: 0 1px 2px rgba(42, 42, 46, 0.06), 0 24px 56px -16px rgba(42, 42, 46, 0.18);
+  --shadow-hair:  0 0 0 1px rgba(54, 40, 28, 0.07);
+  --shadow-soft:  0 1px 2px rgba(54, 40, 28, 0.05), 0 4px 14px rgba(54, 40, 28, 0.07);
+  --shadow-pop:   0 2px 6px rgba(54, 40, 28, 0.06), 0 14px 30px rgba(54, 40, 28, 0.10);
+  --shadow-float: 0 1px 2px rgba(54, 40, 28, 0.08), 0 26px 58px -16px rgba(54, 40, 28, 0.20);
   --shadow-cta:   0 2px 4px rgba(199, 74, 47, 0.15), 0 12px 28px -8px rgba(199, 74, 47, 0.28);
   --shadow-brand: 0 2px 4px rgba(199, 74, 47, 0.15), 0 12px 28px -8px rgba(199, 74, 47, 0.28);
   --shadow-fab:   0 4px 14px rgba(199, 74, 47, 0.30);
@@ -1034,40 +1034,40 @@ button:focus-visible,
    *   surface-alt       — chip / inset / tab bar paper-fabric
    *   frame             — pressed chip / hover
    */
-  --bg-page:    #F5F0E6;   /* canvas - page background */
-  --bg-elev-1:  #FBF8F2;   /* surface - card (warm white) */
-  --bg-elev-2:  #F0E9DA;   /* surface-alt - tab bar + inset bg */
-  --bg-subtle:  #F0E9DA;   /* chip / input / meta bg */
-  --bg-inset:   #E8DFCC;   /* pressed chip / frame */
+  --bg-page:    #F7F4EE;   /* canvas - page background */
+  --bg-elev-1:  #FFFFFF;   /* surface - card (clean warm white) */
+  --bg-elev-2:  #F1ECE2;   /* surface-alt - tab bar + inset bg */
+  --bg-subtle:  #F1ECE2;   /* chip / input / meta bg */
+  --bg-inset:   #E9E2D4;   /* pressed chip / frame */
 
-  --canvas:        #F5F0E6;
-  --surface:       #FBF8F2;
-  --surface-alt:   #F0E9DA;
-  --parchment:     #F0E9DA;   /* alias for tab bar treatment */
-  --frame:         #E8DFCC;
+  --canvas:        #F7F4EE;
+  --surface:       #FFFFFF;
+  --surface-alt:   #F1ECE2;
+  --parchment:     #F1ECE2;   /* alias for tab bar treatment */
+  --frame:         #E9E2D4;
 
   /*
    * Surface + canvas RGB triplets — for rgba() so frosted-glass
    * headers can fade out over the native surface color. Dark-
    * mode block below flips these to dark equivalents.
    */
-  --surface-rgb: 251, 248, 242;
-  --canvas-rgb:  245, 240, 230;
+  --surface-rgb: 255, 255, 255;
+  --canvas-rgb:  247, 244, 238;
 
   /* Legacy paper aliases (back-compat with Phase 1-3 code) */
-  --paper:      #FBF8F2;
-  --paper-2:    #F0E9DA;
-  --paper-3:    #E8DFCC;
+  --paper:      #FFFFFF;
+  --paper-2:    #F1ECE2;
+  --paper-3:    #E9E2D4;
 
   /* ---------- BORDERS (warm beige — paper-edge feel) ---------- */
   --line-hair:  rgba(42, 42, 46, 0.06);
   --line-soft:  rgba(42, 42, 46, 0.10);
   --line-bold:  rgba(42, 42, 46, 0.16);
 
-  --border:        #E8DFCC;
-  --border-strong: #D8CDB3;
+  --border:        #ECE5DA;
+  --border-strong: #DBD2C2;
   --border-hair:   rgba(42, 42, 46, 0.05);
-  --border-warm:   #E8DFCC;   /* same as default; kept for back-compat */
+  --border-warm:   #ECE5DA;   /* same as default; kept for back-compat */
 
   /* ---------- BRAND (terracotta — pottery red) ---------- */
   --brand:          #C74A2F;   /* terracotta — price · CTA · seal */
@@ -1150,13 +1150,13 @@ button:focus-visible,
    * Apple-style 3-layer soft lift, tuned to warm cream canvas.
    * No heavy black drop-shadows — uses ink charcoal at low alpha
    * so the lift reads as "card on paper" instead of "screen". */
-  --shadow-hair:       0 0 0 1px rgba(42, 42, 46, 0.06);
-  --shadow-soft:       0 1px 2px rgba(42, 42, 46, 0.04),
-                       0 4px 12px rgba(42, 42, 46, 0.04);
-  --shadow-pop:        0 2px 4px rgba(42, 42, 46, 0.05),
-                       0 12px 28px rgba(42, 42, 46, 0.08);
-  --shadow-float:      0 1px 2px rgba(42, 42, 46, 0.06),
-                       0 24px 56px -16px rgba(42, 42, 46, 0.18);
+  --shadow-hair:       0 0 0 1px rgba(54, 40, 28, 0.07);
+  --shadow-soft:       0 1px 2px rgba(54, 40, 28, 0.05),
+                       0 4px 14px rgba(54, 40, 28, 0.07);
+  --shadow-pop:        0 2px 6px rgba(54, 40, 28, 0.06),
+                       0 14px 30px rgba(54, 40, 28, 0.10);
+  --shadow-float:      0 1px 2px rgba(54, 40, 28, 0.08),
+                       0 26px 58px -16px rgba(54, 40, 28, 0.20);
   --shadow-cta:        0 2px 4px rgba(199, 74, 47, 0.15),
                        0 12px 28px -8px rgba(199, 74, 47, 0.28);
   --shadow-brand:      var(--shadow-cta);
@@ -1264,32 +1264,32 @@ button:focus-visible,
    * middle anchors. Legacy `--bg-*` aliases mirror the new semantic
    * names so 198+ existing component usages get the visible benefit
    * automatically. */
-  --bg-page:    #15130F;   /* was #1C1A17 — canvas deepens 1 step */
-  --bg-elev-1:  #26231E;
-  --bg-elev-2:  #36322B;   /* was #2E2A23 — chip bg lightens 1 step */
-  --bg-subtle:  #36322B;   /* was #2E2A23 — chip bg lightens 1 step */
-  --bg-inset:   #423D33;   /* was #332F28 — pressed/inset lightens 1 step */
+  --bg-page:    #12100D;   /* graphite — deeper, less chocolate */
+  --bg-elev-1:  #201E1A;
+  --bg-elev-2:  #2C2A25;   /* chip bg — warm-graphite step */
+  --bg-subtle:  #2C2A25;
+  --bg-inset:   #383530;   /* pressed/inset */
 
-  --canvas:     #15130F;   /* was #1C1A17 — canvas deepens 1 step */
-  --surface:    #26231E;
-  --surface-alt: #36322B;  /* was #2E2A23 — chip bg lightens 1 step */
+  --canvas:     #12100D;   /* graphite — deeper, less chocolate */
+  --surface:    #201E1A;
+  --surface-alt: #2C2A25;
   /* P0-3: tab bar reverses depth direction in dark — bar is DEEPER than
    * canvas so it reads as a base shelf instead of a floating panel. */
-  --parchment:  #13110D;   /* was #2E2A23 — now darker than canvas */
-  --frame:      #332F28;
-  --paper:      #26231E;
-  --paper-2:    #36322B;   /* was #2E2A23 — alias of surface-alt */
-  --paper-3:    #423D33;   /* was #332F28 — pressed/inset lightens 1 step */
+  --parchment:  #0D0C0A;   /* now darker than canvas */
+  --frame:      #34312B;
+  --paper:      #201E1A;
+  --paper-2:    #2C2A25;   /* alias of surface-alt */
+  --paper-3:    #383530;   /* pressed/inset */
 
-  --surface-rgb: 38, 35, 30;
-  --canvas-rgb:  21, 19, 15;   /* matches new --canvas #15130F so frosted-glass headers fade without color banding */
+  --surface-rgb: 32, 30, 26;
+  --canvas-rgb:  18, 16, 13;   /* matches new --canvas #12100D so frosted-glass headers fade without color banding */
 
   --line-hair:  rgba(240, 232, 214, 0.08);
   --line-soft:  rgba(240, 232, 214, 0.12);
   --line-bold:  rgba(240, 232, 214, 0.18);
-  --border:        rgba(240, 232, 214, 0.10);
-  --border-strong: rgba(240, 232, 214, 0.20);
-  --border-hair:   rgba(240, 232, 214, 0.06);
+  --border:        rgba(245, 240, 232, 0.12);
+  --border-strong: rgba(245, 240, 232, 0.22);
+  --border-hair:   rgba(245, 240, 232, 0.07);
 
   /* Brand — terracotta lifts to brighter ember on dark ink */
   --brand:       #E06A4A;
@@ -1366,28 +1366,28 @@ button:focus-visible,
     /* P0-1: widened surface ΔE — see [data-theme="dark"] block above for
      * the full rationale. Mirrored here so users who never toggle the
      * manual theme but have OS dark mode get the same ladder. */
-    --bg-page:    #15130F;
-    --bg-elev-1:  #26231E;
-    --bg-elev-2:  #36322B;
-    --bg-subtle:  #36322B;
-    --bg-inset:   #423D33;
+    --bg-page:    #12100D;
+    --bg-elev-1:  #201E1A;
+    --bg-elev-2:  #2C2A25;
+    --bg-subtle:  #2C2A25;
+    --bg-inset:   #383530;
 
-    --canvas:     #15130F;
-    --surface:    #26231E;
-    --surface-alt: #36322B;
+    --canvas:     #12100D;
+    --surface:    #201E1A;
+    --surface-alt: #2C2A25;
     /* P0-3: tab bar reverses depth direction (deeper than canvas). */
-    --parchment:  #13110D;
-    --frame:      #332F28;
-    --paper:      #26231E;
-    --paper-2:    #36322B;
-    --paper-3:    #423D33;
+    --parchment:  #0D0C0A;
+    --frame:      #34312B;
+    --paper:      #201E1A;
+    --paper-2:    #2C2A25;
+    --paper-3:    #383530;
 
-    --surface-rgb: 38, 35, 30;
-    --canvas-rgb:  21, 19, 15;   /* matches new --canvas #15130F */
+    --surface-rgb: 32, 30, 26;
+    --canvas-rgb:  18, 16, 13;   /* matches new --canvas #12100D */
 
     --line-hair:  rgba(240, 232, 214, 0.08);
-    --border:        rgba(240, 232, 214, 0.10);
-    --border-strong: rgba(240, 232, 214, 0.20);
+    --border:        rgba(245, 240, 232, 0.12);
+    --border-strong: rgba(245, 240, 232, 0.22);
 
     --brand:       #E06A4A;
     --brand-deep:  #C45A3A;
@@ -1514,7 +1514,7 @@ button:focus-visible,
   transition: background .15s ease, transform .08s ease;
 }
 .u-btn-primary:active,
-.u-btn-brand:active { background: var(--brand-deep); transform: translateY(1px); }
+.u-btn-brand:active { background: var(--brand-deep); box-shadow: var(--shadow-soft); }
 
 .u-btn-ink {
   background: var(--ink);
@@ -1528,7 +1528,7 @@ button:focus-visible,
   border: 0;
   transition: opacity .15s ease, transform .08s ease;
 }
-.u-btn-ink:active { opacity: 0.85; transform: translateY(1px); }
+.u-btn-ink:active { opacity: 0.9; }
 
 .u-btn-ghost {
   background: var(--paper-2);
@@ -1577,10 +1577,38 @@ button:focus-visible,
 /* ---------- MOTION (transform/opacity only — mp-weixin safe) ---------- */
 @keyframes heart-pop { 0% { transform: scale(1); } 40% { transform: scale(1.32); } 100% { transform: scale(1); } }
 .u-anim-heart-pop { animation: heart-pop var(--dur-2) var(--ease-warm); }
-.u-press { transition: transform var(--dur-1) var(--ease-std); }
-.u-press:active { transform: scale(0.96); }
+
+/* ============================================================
+ * Global tactile press — every button-like surface shrinks a
+ * touch on tap and settles back on the warm curve, so the whole
+ * app feels responsive ("丝滑"). On H5 :active arms on tap (uni
+ * @click attaches the listener that enables it); mp-weixin
+ * ignores :active harmlessly and keeps native hover-class
+ * feedback. transform/opacity only = GPU-cheap + WXSS-safe.
+ * Honors prefers-reduced-motion. The warm settle (ease-warm)
+ * on release is what reads as silky vs. a flat linear snap.
+ * ============================================================ */
+.u-btn, .u-btn-primary, .u-btn-brand, .u-btn-ink, .u-btn-ghost,
+.u-chip, .u-press, .tap,
+[role="button"], button, uni-button {
+  transition:
+    transform 170ms var(--ease-warm, cubic-bezier(0.2, 0.8, 0.2, 1)),
+    box-shadow var(--dur-2, 220ms) var(--ease-warm, cubic-bezier(0.2, 0.8, 0.2, 1)),
+    background var(--dur-1, 120ms) var(--ease-std, ease),
+    opacity var(--dur-1, 120ms) var(--ease-std, ease);
+  -webkit-tap-highlight-color: transparent;
+}
+.u-chip:active, .u-press:active, .tap:active,
+[role="button"]:active, button:active, uni-button:active,
+.u-btn-primary:active, .u-btn-brand:active, .u-btn-ink:active, .u-btn-ghost:active {
+  transform: scale(0.96);
+}
 @media (prefers-reduced-motion: reduce) {
   .u-anim-heart-pop { animation: none; }
-  .u-press, .u-press:active { transition: none; transform: none; }
+  .u-btn, .u-btn-primary, .u-btn-brand, .u-btn-ink, .u-btn-ghost,
+  .u-chip, .u-press, .tap, [role="button"], button, uni-button { transition: none; }
+  .u-chip:active, .u-press:active, .tap:active, [role="button"]:active,
+  button:active, uni-button:active,
+  .u-btn-primary:active, .u-btn-brand:active, .u-btn-ink:active, .u-btn-ghost:active { transform: none; }
 }
 </style>
