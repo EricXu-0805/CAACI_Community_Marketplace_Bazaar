@@ -46,7 +46,10 @@
                 <text class="uid-label">{{ t('profile.uid') }}</text>
                 <text class="uid-value">{{ currentUser.uid }}</text>
               </view>
-              <text class="location">📍 {{ currentUser?.location || 'UIUC' }}</text>
+              <view class="location">
+                <UIcon name="location-pin" size="xs" />
+                <text class="location-text">{{ currentUser?.location || 'UIUC' }}</text>
+              </view>
             </view>
             <text class="user-status" v-if="currentUser?.status_text || currentUser?.status_emoji">
               <text v-if="currentUser?.status_emoji" class="us-emoji">{{ currentUser.status_emoji }}</text>
@@ -246,7 +249,7 @@
         <text class="block-title">{{ t('profile.moreSection') }}</text>
         <view class="list-menu">
           <view class="menu-row" @click="goSettings">
-            <text class="menu-row-icon">⚙️</text>
+            <UIcon name="settings" size="sm" color="ink-soft" />
             <text class="menu-row-text">{{ t('settings.title') }}</text>
             <text class="menu-row-arrow">›</text>
           </view>
@@ -713,7 +716,9 @@ function onDeleteItem(id: string) {
   font-size: 11px; color: var(--ink-inverse); font-weight: 500; letter-spacing: 0.05em;
   font-family: var(--font-mono);
 }
-.location { font-size: 12px; color: rgba(245, 240, 230, 0.72); }
+/* UIcon inherits the rgba cream via currentColor. */
+.location { display: inline-flex; align-items: center; gap: 3px; color: rgba(245, 240, 230, 0.72); }
+.location-text { font-size: 12px; color: rgba(245, 240, 230, 0.72); }
 .user-status { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; }
 .us-emoji { font-size: 14px; line-height: 1; }
 .us-text { font-size: 13px; color: rgba(245, 240, 230, 0.82); line-height: 1.3; }
@@ -1013,7 +1018,6 @@ function onDeleteItem(id: string) {
   -webkit-tap-highlight-color: transparent;
   &:active { opacity: 0.55; }
 }
-.menu-row-icon { font-size: 18px; flex-shrink: 0; }
 .menu-row-text { flex: 1; font-size: 14px; color: var(--text-primary); }
 .menu-row-arrow {
   font-size: 20px; color: var(--text-faint); line-height: 1;

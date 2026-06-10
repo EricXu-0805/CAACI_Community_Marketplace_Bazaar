@@ -54,7 +54,7 @@
               <text class="conv-time">{{ formatTime(conv.last_message_at) }}</text>
             </view>
             <text :class="['conv-preview', { unread: unreadConvIds.has(conv.id) && !isMuted(conv) }]">
-              {{ (conv as any).last_message_type === 'image' ? '[' + t('chat.photo') + ']' : (conv as any).last_message_type === 'video' ? '[' + t('chat.video') + ']' : ((conv as any).last_message_preview || (conv.item ? localize(conv.item.title_i18n, conv.item.title) : '')) }}
+              {{ convPreview(conv) }}
             </text>
           </view>
           <view v-if="unreadConvIds.has(conv.id) && !isMuted(conv)" class="unread-dot"></view>
@@ -105,6 +105,7 @@ import { DIALOG_DANGER } from '../../utils/dialogColors'
 import type { Conversation, Profile } from '../../types'
 import DesktopNav from '../../components/DesktopNav.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
+import { parseStickerToken } from '../../components/stickers/registry'
 
 const { t, localize } = useI18n()
 
@@ -165,6 +166,15 @@ onPullDownRefresh(async () => {
 onUnload(() => {
   clearMessages()
 })
+
+function convPreview(conv: Conversation): string {
+  const type = (conv as any).last_message_type
+  if (type === 'image') return `[${t('chat.photo')}]`
+  if (type === 'video') return `[${t('chat.video')}]`
+  const preview = (conv as any).last_message_preview
+  if (preview && parseStickerToken(preview)) return `[${t('chat.sticker')}]`
+  return preview || (conv.item ? localize(conv.item.title_i18n, conv.item.title) : '')
+}
 
 function getOtherUser(conv: Conversation): Profile | undefined {
   if (!currentUser.value) return undefined

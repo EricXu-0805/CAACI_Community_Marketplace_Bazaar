@@ -436,7 +436,7 @@
             :aria-disabled="chipCapReached ? 'true' : 'false'"
             @click="onAttachBtnClick"
           >
-            <text class="cab-ico">🏷️</text>
+            <UIcon name="tag" size="xs" color="brand" />
             <text class="cab-label">{{ t('plaza.attachItem') }}</text>
           </view>
         </view>
@@ -505,6 +505,7 @@ import { BASE_URL } from '../../config/runtime'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PlazaBannerCarousel from '../../components/PlazaBannerCarousel.vue'
 import UBadge from '../../components/UBadge.vue'
+import UIcon from '../../components/UIcon.vue'
 
 const { t, lang, localize } = useI18n()
 const { isDark } = useTheme()
@@ -1718,7 +1719,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
     &:active { background: var(--bg-subtle); }
   }
 }
-.cab-ico { font-size: 14px; }
 .cab-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
 
 .comp-dock {

@@ -6,6 +6,7 @@ import { subscribeToConversation as subscribeToConversationFallback } from './us
 import { MESSAGE_FIELDS } from './useMessages.constants'
 import type { Conversation, Message } from '../types'
 import { checkContent, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
+import { parseStickerToken } from '../components/stickers/registry'
 
 /*
  * Explicit column lists for the two tables we touch here. SELECT '*'
@@ -130,7 +131,12 @@ export function useMessages() {
   async function sendMessage(conversationId: string, senderId: string, content: string, type: import('../types').MessageType = 'text') {
     if (type === 'text' && content.length > 2000) throw new Error('message_too_long')
 
-    if (type === 'text') {
+    // App-generated sticker tokens skip the prose guards (the DB trigger
+    // whitelists them too, migration 049) — no point spending an OpenAI
+    // moderation call on '[sticker:smile]'.
+    const isSticker = type === 'text' && parseStickerToken(content) !== null
+
+    if (type === 'text' && !isSticker) {
       const safety = checkContent(content, { kind: 'message', allowLinks: false })
       if (!safety.ok) throw new Error(`moderation_block:${safety.category}:${safety.reason || ''}`)
       if (isLocalDuplicate(`msg:${conversationId}`, content)) throw new Error('duplicate_message')
