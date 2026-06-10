@@ -1,5 +1,5 @@
 <template>
-  <view class="chat-thread">
+  <view class="chat-thread" :class="{ embedded }">
     <!-- Header with item context -->
     <view class="chat-header">
       <view v-if="!embedded" class="ch-back" role="button" :aria-label="t('a11y.back')" @click="goBack">
@@ -1049,7 +1049,13 @@ function scrollToBottom() {
   display: flex; flex-direction: column;
   background: var(--bg-subtle);
   overflow: hidden;
+  position: relative;  /* anchor for the embedded offer sheet/mask */
 }
+/* When embedded in the desktop two-pane, confine the offer composer sheet
+   + its backdrop to this pane instead of fixing them to the whole viewport
+   (which would dim the sidebar + conversation list too). */
+.chat-thread.embedded .offer-mask,
+.chat-thread.embedded .offer-sheet { position: absolute; }
 
 /* ========== Chat Header ========== */
 .chat-header {

@@ -133,7 +133,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { onShow, onPullDownRefresh, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
@@ -213,6 +213,14 @@ onMounted(() => {
       onResize((res: { size: { windowWidth: number } }) => { isWide.value = res.size.windowWidth >= 768 })
     }
   } catch {}
+})
+
+// Dropping below the two-pane breakpoint with a conversation open must clear
+// the selection — otherwise the embedded ChatThread stays mounted (hidden)
+// with live subscriptions, and the next tap navigates to /chat and mounts a
+// SECOND thread that double-pushes into the shared messages ref.
+watch(isWide, (wide) => {
+  if (!wide) selectedConvId.value = ''
 })
 
 const SWIPE_OPEN = 210
