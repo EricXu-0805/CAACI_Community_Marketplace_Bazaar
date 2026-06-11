@@ -8,6 +8,16 @@
     </view>
 
     <view class="form">
+      <!-- 出售 / 求购 — a wanted post (migration 054) relaxes price + condition. -->
+      <view class="listing-type-seg">
+        <view :class="['lt-seg', 'u-press', { on: form.listingType === 'sell' }]" @click="form.listingType = 'sell'">
+          <text>{{ t('publish.typeSell') }}</text>
+        </view>
+        <view :class="['lt-seg', 'u-press', { on: form.listingType === 'wanted' }]" @click="form.listingType = 'wanted'">
+          <text>{{ t('publish.typeWanted') }}</text>
+        </view>
+      </view>
+
       <view class="image-section">
         <view class="image-list">
           <view v-for="(img, i) in imageList" :key="i" class="image-item">
@@ -35,7 +45,7 @@
       </view>
 
       <view class="form-group">
-        <input v-model="form.title" :placeholder="t('publish.titlePlaceholder')" maxlength="50" class="form-input title-input" />
+        <input v-model="form.title" :placeholder="form.listingType === 'wanted' ? t('publish.wantedTitlePlaceholder') : t('publish.titlePlaceholder')" maxlength="50" class="form-input title-input" />
         <text class="char-count">{{ form.title.length }}/50</text>
       </view>
 
@@ -45,14 +55,14 @@
       </view>
 
       <view class="form-group row">
-        <text class="label">{{ t('publish.price') }}</text>
+        <text class="label">{{ form.listingType === 'wanted' ? t('publish.budget') : t('publish.price') }}</text>
         <view class="price-input">
           <text class="currency">$</text>
-          <input v-model="form.price" type="digit" placeholder="0.00" class="form-input" />
+          <input v-model="form.price" type="digit" :placeholder="form.listingType === 'wanted' ? t('publish.budgetPlaceholder') : '0.00'" class="form-input" />
         </view>
       </view>
 
-      <view v-if="avgPrice > 0 && form.category" class="price-hint">
+      <view v-if="avgPrice > 0 && form.category && form.listingType !== 'wanted'" class="price-hint">
         <text>{{ t('publish.avgPrice') }}: ${{ avgPrice }}</text>
       </view>
 
@@ -77,8 +87,8 @@
         </view>
       </view>
 
-      <!-- Condition: inline pill selector -->
-      <view class="form-group">
+      <!-- Condition: inline pill selector (sell only — N/A for a wanted post) -->
+      <view v-if="form.listingType !== 'wanted'" class="form-group">
         <view class="field-header" @click="showCond = !showCond">
           <text class="label">{{ t('publish.condition') }}</text>
           <text :class="['field-value', { placeholder: !form.condition }]">
@@ -252,6 +262,7 @@ const form = reactive({
   condition: '' as ItemCondition | '',
   location: '',
   negotiable: false,
+  listingType: 'sell' as 'sell' | 'wanted',
 })
 
 const locationVerified = ref(false)
@@ -593,9 +604,10 @@ async function onSubmit() {
   if (!requireAuth()) return
   // Required-field hard blocks — order matches form visual top-to-bottom flow
   if (!form.title.trim()) { uni.showToast({ title: t('publish.needTitle'), icon: 'none' }); return }
-  if (!form.price || Number(form.price) < 0) { uni.showToast({ title: t('publish.needPrice'), icon: 'none' }); return }
+  // A wanted post relaxes price (budget optional → 0) and condition (N/A).
+  if (form.listingType !== 'wanted' && (!form.price || Number(form.price) < 0)) { uni.showToast({ title: t('publish.needPrice'), icon: 'none' }); return }
   if (!form.category) { uni.showToast({ title: t('publish.needCategory'), icon: 'none' }); return }
-  if (!form.condition) { uni.showToast({ title: t('publish.needCondition'), icon: 'none' }); return }
+  if (form.listingType !== 'wanted' && !form.condition) { uni.showToast({ title: t('publish.needCondition'), icon: 'none' }); return }
   // Soft gating — price advisory uses modal confirm so user must ack but can continue.
   // Mirrors the currency_exchange scam-warning modal below (same uni.showModal style).
   // 100,000 is a soft ceiling; 99% of trips above it are unit/decimal mistakes,
@@ -715,9 +727,12 @@ async function onSubmit() {
     const payload = {
       title: trimmedTitle,
       description: trimmedDesc,
-      price: Number(form.price),
+      // Wanted posts: empty budget → 0 (reads as "open budget"); condition is
+      // N/A so fall back to the column default so the NOT NULL insert succeeds.
+      price: Number(form.price) || 0,
       category: form.category as ItemCategory,
-      condition: form.condition as ItemCondition,
+      condition: (form.condition || 'good') as ItemCondition,
+      listing_type: form.listingType,
       location: form.location || '',
       images,
       image_dimensions: finalDims,
@@ -812,6 +827,21 @@ async function onSubmit() {
 
 /* ========== Form ========== */
 .form { background: var(--bg-elev-1); }
+/* 出售 / 求购 segmented toggle at the top of the form. */
+.listing-type-seg {
+  display: flex; gap: 8px; padding: 14px 16px 0;
+}
+.lt-seg {
+  flex: 1; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--surface-alt); cursor: pointer;
+  text { font-size: 14px; font-weight: 600; color: var(--ink-quiet); }
+  &.on {
+    background: var(--brand-soft);
+    text { color: var(--brand-deep); }
+  }
+}
 .image-section { padding: 16px; }
 .image-list { display: flex; flex-wrap: wrap; gap: 9px; }
 .image-item { position: relative; width: 96px; height: 96px; }

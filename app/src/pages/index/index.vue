@@ -59,6 +59,16 @@
 
     </view>
 
+    <!-- 在售 / 求购 — sell listings vs wanted (ISO) posts (migration 054). -->
+    <view class="feed-mode">
+      <view :class="['fm-seg', 'u-press', { on: listingType === 'sell' }]" @click="setListingType('sell')">
+        <text>{{ t('home.tabOnSale') }}</text>
+      </view>
+      <view :class="['fm-seg', 'u-press', { on: listingType === 'wanted' }]" @click="setListingType('wanted')">
+        <text>{{ t('home.tabWanted') }}</text>
+      </view>
+    </view>
+
     <!--
       Category rail — horizontal pill scroll per marketplace/ kit's
       HomeScreen + refinement pass. The previous 4×3 grid + tall hero
@@ -297,6 +307,7 @@
               <view v-else-if="item.condition === 'defective'" class="card-cond-badge"><UBadge variant="defect">{{ t('condition.defective') }}</UBadge></view>
               <view v-else-if="item.condition === 'new'" class="card-cond-badge"><UBadge variant="new">{{ t('condition.new') }}</UBadge></view>
               <view v-else-if="item.condition === 'like_new'" class="card-cond-badge"><UBadge variant="mint">{{ t('condition.like_new') }}</UBadge></view>
+              <view v-if="item.listing_type === 'wanted' && item.status !== 'sold'" class="card-cond-badge"><UBadge variant="wanted">{{ t('item.wanted') }}</UBadge></view>
               <view v-if="item.images && item.images.length > 1" class="img-count-badge">
                 <text>{{ item.images.length }}</text>
               </view>
@@ -308,8 +319,11 @@
             <view class="card-info">
               <text class="card-title">{{ localizeItemTitle(item) }}</text>
               <view class="card-price-row">
-                <text :class="['card-price', { 'card-price-free': item.price === 0 }]">{{ formatPrice(item.price, t('home.free')) }}</text>
-                <text v-if="item.negotiable" class="obo-tag">OBO</text>
+                <text v-if="item.listing_type === 'wanted'" class="card-price card-price-wanted">{{ item.price > 0 ? t('home.budget') + ' ' + formatPrice(item.price, '') : t('home.openBudget') }}</text>
+                <template v-else>
+                  <text :class="['card-price', { 'card-price-free': item.price === 0 }]">{{ formatPrice(item.price, t('home.free')) }}</text>
+                  <text v-if="item.negotiable" class="obo-tag">OBO</text>
+                </template>
               </view>
               <view class="card-bottom">
                 <view class="card-seller">
@@ -361,8 +375,8 @@
 
       <view v-else-if="!loading && !initialLoading && filteredItems.length === 0" class="empty">
         <view class="empty-bag-icon"></view>
-        <text class="empty-title">{{ searchText ? t('home.noResults') : t('home.emptyTitle') }}</text>
-        <text class="empty-sub">{{ searchText ? t('home.tryOther') : t('home.emptySub') }}</text>
+        <text class="empty-title">{{ searchText ? t('home.noResults') : (listingType === 'wanted' ? t('home.emptyWantedTitle') : t('home.emptyTitle')) }}</text>
+        <text class="empty-sub">{{ searchText ? t('home.tryOther') : (listingType === 'wanted' ? t('home.emptyWantedSub') : t('home.emptySub')) }}</text>
         <view v-if="searchText" class="empty-btn" @click="searchText = ''; onSearch()">{{ t('home.clearSearch') }}</view>
         <view v-else class="empty-btn" @click="goPublish">{{ t('home.postItem') }}</view>
       </view>
@@ -509,6 +523,7 @@ const filterCondition = ref<ItemCondition | ''>('')
 const filterLocation = ref('')
 const filterVerifiedOnly = ref(false)
 const sortBy = ref('latest')
+const listingType = ref<'sell' | 'wanted'>('sell')
 
 const categoryKeys: (ItemCategory | null)[] = [null, 'currency_exchange', 'rideshare', 'electronics', 'furniture', 'housing', 'clothing', 'books', 'vehicles', 'daily', 'food', 'other']
 const categories = computed(() => categoryKeys.map(k => ({
@@ -557,11 +572,25 @@ function getFilterParams() {
     priceMax: filterPriceMax.value ? Number(filterPriceMax.value) : undefined,
     condition: filterCondition.value || undefined,
     sort: sortBy.value,
+    listingType: listingType.value,
   }
+}
+
+function setListingType(t: 'sell' | 'wanted') {
+  if (listingType.value === t) return
+  listingType.value = t
+  currentPage.value = 0
+  scrollToTop()
+  fetchItems({ ...getFilterParams(), reset: true })
 }
 
 const filteredItems = computed(() => {
   let result = [...displayItems.value]
+
+  // Safety net for the 在售/求购 tab — the search RPC doesn't filter by
+  // listing_type, so narrow client-side too (the non-search path already
+  // filters server-side via getFilterParams).
+  result = result.filter(item => (item.listing_type || 'sell') === listingType.value)
 
   if (filterLocation.value) {
     const loc = filterLocation.value.toLowerCase()
@@ -1002,6 +1031,25 @@ function goPublish() {
  * how Xianyu / Taobao / Xiaohongshu handle category navigation on
  * feed pages.
  */
+/* 在售 / 求购 segmented control — compact pill pair on the surface header. */
+.feed-mode {
+  flex-shrink: 0;
+  display: flex; gap: 6px;
+  padding: 4px 16px 8px;
+  background: var(--surface);
+}
+.fm-seg {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 30px; padding: 0 16px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-alt);
+  cursor: pointer;
+  text { font-size: 12.5px; font-weight: 600; color: var(--ink-quiet); letter-spacing: 0.02em; }
+  &.on {
+    background: var(--brand-soft);
+    text { color: var(--brand-deep); }
+  }
+}
 .cat-bar {
   flex-shrink: 0;
   padding: 8px 16px 10px;
@@ -1336,6 +1384,8 @@ function goPublish() {
   font-feature-settings: 'tnum';
 }
 .card-price-free { color: var(--success); }
+/* wanted budget — campus-blue (the wanted/ISO accent), not terracotta. */
+.card-price-wanted { color: var(--campus-blue); font-size: 14px; }
 /* OBO chip — amber-toned warning pill, ivory_academy pattern. */
 .obo-tag {
   font-size: 9px; font-weight: 600;
