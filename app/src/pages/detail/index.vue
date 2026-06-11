@@ -237,7 +237,7 @@
     </view>
   </view>
 
-  <view v-if="showRating" class="sheet-mask" @click="showRating = false"></view>
+  <view v-if="showRating" class="sheet-mask u-mask-in" @click="showRating = false"></view>
   <view :class="['rating-sheet', { open: showRating }]" v-if="item">
     <view class="rs-header">
       <text class="rs-title">{{ t('rating.title') }}</text>
@@ -1183,7 +1183,7 @@ async function contactSeller() {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 1001;
   background: var(--bg-elev-1); border-radius: 18px 18px 0 0;
   padding: 18px 18px calc(24px + env(safe-area-inset-bottom));
-  transform: translateY(100%); transition: transform 0.26s ease;
+  transform: translateY(100%); transition: transform var(--dur-3) var(--ease-warm);
   &.open { transform: translateY(0); }
 }
 .rs-header { display: flex; align-items: center; justify-content: space-between; }

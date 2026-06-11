@@ -124,6 +124,7 @@ const zh: Record<string, string> = {
   'filter.condition': '成色',
   'filter.location': '位置',
   'filter.sort': '排序',
+  'filter.verifiedOnly': '只看认证自取点',
   'filter.apply': '确定',
   'sort.latest': '最新',
   'sort.priceAsc': '价格↑',
