@@ -453,7 +453,7 @@
       </view>
     </view>
 
-    <view v-if="showAttachSheet" class="sheet-mask sheet-mask-over-composer" @click="showAttachSheet = false"></view>
+    <view v-if="showAttachSheet" class="sheet-mask sheet-mask-over-composer u-mask-in" @click="showAttachSheet = false"></view>
     <view :class="['attach-sheet', { open: showAttachSheet }]">
       <view class="as-header">
         <text class="as-title">{{ t('plaza.pickItem') }}</text>
@@ -1778,7 +1778,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .attach-sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 1201;
   max-height: 70vh; background: var(--bg-elev-1); border-radius: 20px 20px 0 0;
-  transform: translateY(100%); transition: transform 0.26s ease;
+  transform: translateY(100%); transition: transform var(--dur-3) var(--ease-warm);
   display: flex; flex-direction: column;
   padding-bottom: env(safe-area-inset-bottom);
   &.open { transform: translateY(0); }

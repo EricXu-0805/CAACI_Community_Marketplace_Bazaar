@@ -242,7 +242,7 @@
     />
 
     <!-- Offer composer (new offer + counter) -->
-    <view v-if="offerSheet.open" class="offer-mask" @click="closeOfferSheet"></view>
+    <view v-if="offerSheet.open" class="offer-mask u-mask-in" @click="closeOfferSheet"></view>
     <view :class="['offer-sheet', { open: offerSheet.open }]">
       <view class="os-handle"></view>
       <text class="os-title">{{ offerSheet.mode === 'counter' ? t('chat.offerCounterTitle') : t('chat.offerTitle') }}</text>

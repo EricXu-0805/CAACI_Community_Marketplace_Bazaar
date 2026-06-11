@@ -120,6 +120,9 @@
         <view v-if="filterLocation" class="afb-chip" @click="showFilter = true">
           <text>{{ filterLocation }}</text>
         </view>
+        <view v-if="filterVerifiedOnly" class="afb-chip" @click="showFilter = true">
+          <text>✓ {{ t('filter.verifiedOnly') }}</text>
+        </view>
         <view v-if="sortBy !== 'latest'" class="afb-chip" @click="showFilter = true">
           <text>{{ t('sort.' + sortBy.replace('price_asc', 'priceAsc').replace('price_desc', 'priceDesc')) }}</text>
         </view>
@@ -130,7 +133,7 @@
     </view>
 
     <!-- Filter Bottom Sheet -->
-    <view v-if="showFilter" class="filter-mask" @click="showFilter = false"></view>
+    <view v-if="showFilter" class="filter-mask u-mask-in" @click="showFilter = false"></view>
     <view :class="['filter-sheet', { open: showFilter }]">
       <view class="fs-header">
         <view class="fs-close" role="button" :aria-label="t('a11y.filterClose')" @click="showFilter = false">
@@ -179,6 +182,18 @@
             @click="filterLocation = filterLocation === loc ? '' : loc"
           >
             <text>{{ loc }}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="fs-section">
+        <text class="fs-label">{{ t('pickup.verifiedPickup') }}</text>
+        <view class="fs-pills">
+          <view
+            :class="['fpill', { active: filterVerifiedOnly }]"
+            @click="filterVerifiedOnly = !filterVerifiedOnly"
+          >
+            <text>{{ (filterVerifiedOnly ? '✓ ' : '') + t('filter.verifiedOnly') }}</text>
           </view>
         </view>
       </view>
@@ -492,6 +507,7 @@ const filterPriceMin = ref('')
 const filterPriceMax = ref('')
 const filterCondition = ref<ItemCondition | ''>('')
 const filterLocation = ref('')
+const filterVerifiedOnly = ref(false)
 const sortBy = ref('latest')
 
 const categoryKeys: (ItemCategory | null)[] = [null, 'currency_exchange', 'rideshare', 'electronics', 'furniture', 'housing', 'clothing', 'books', 'vehicles', 'daily', 'food', 'other']
@@ -526,6 +542,7 @@ const activeFilterCount = computed(() => {
   if (filterPriceMax.value) c++
   if (filterCondition.value) c++
   if (filterLocation.value) c++
+  if (filterVerifiedOnly.value) c++
   if (sortBy.value !== 'latest') c++
   return c
 })
@@ -551,6 +568,14 @@ const filteredItems = computed(() => {
     result = result.filter(item => item.location.toLowerCase().includes(loc))
   }
 
+  // "Verified pickups only" — same predicate the card's safe-pickup badge
+  // uses (location_verified AND a known safe campus spot), so the filter
+  // matches exactly what the user sees badged. Client-side because
+  // matchSpot is a client registry the DB can't replicate.
+  if (filterVerifiedOnly.value) {
+    result = result.filter(item => item.location_verified && matchSpot(item.location)?.safe)
+  }
+
   return result
 })
 
@@ -573,6 +598,7 @@ function resetFilters() {
   filterPriceMax.value = ''
   filterCondition.value = ''
   filterLocation.value = ''
+  filterVerifiedOnly.value = false
   sortBy.value = 'latest'
 }
 
@@ -1039,7 +1065,7 @@ function goPublish() {
   border-radius: 16px 16px 0 0;
   padding: 0 20px 20px;
   transform: translateY(100%);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--dur-3) var(--ease-warm);
   max-height: 70vh;
   overflow-y: auto;
   &.open { transform: translateY(0); }

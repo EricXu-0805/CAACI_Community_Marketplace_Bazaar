@@ -1615,8 +1615,16 @@ button:focus-visible,
   to   { opacity: 1; transform: none; }
 }
 .u-rise { animation: u-rise var(--dur-3, 360ms) var(--ease-warm, ease) backwards; }
+
+/* Sheet backdrop fade-in — masks are v-if'd, so the dim sweeps in on
+   mount (backwards fill = no first-frame flash). Pairs with the warm
+   spring slide-up now shared by every bottom sheet. */
+@keyframes u-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.u-mask-in { animation: u-fade-in var(--dur-2, 220ms) var(--ease-std, ease) backwards; }
+
 @media (prefers-reduced-motion: reduce) {
   .u-rise { animation: none; }
+  .u-mask-in { animation: none; }
 }
 
 /* ============================================================
