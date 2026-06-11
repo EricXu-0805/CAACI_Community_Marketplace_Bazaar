@@ -181,8 +181,8 @@ function goBack() { uni.navigateBack() }
   flex: 1 1 auto;
   min-width: 0;
   display: flex; align-items: center; gap: 8px;
-  background: var(--surface);
-  border: 0.5px solid var(--border);
+  background: var(--surface-alt);
+  border: 0.5px solid var(--border-hair);
   border-radius: var(--radius-md);
   padding: 9px 13px;
   box-sizing: border-box;
@@ -284,7 +284,7 @@ function goBack() { uni.navigateBack() }
 .cat-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 9px;
+  gap: 10px;
 }
 .cat-tile {
   display: flex; flex-direction: column; align-items: center; gap: 4px;

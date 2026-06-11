@@ -18,6 +18,7 @@
     </view>
 
     <view v-if="currentList.length === 0" class="empty">
+      <text class="u-thumb-ph-seal" style="opacity:0.14;font-size:48px">集</text>
       <text>{{ t('history.empty') }}</text>
     </view>
 
@@ -25,11 +26,12 @@
       <view
         v-for="item in history"
         :key="item.id"
-        class="item-row"
+        class="item-row u-rise"
         @click="goDetail(item.id)"
         @longpress="onRemoveOne(item.id, 'item')"
       >
-        <image :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'" :alt="item.title" class="item-img" mode="aspectFill" lazy-load />
+        <image v-if="thumbUrl(item.images?.[0], 'list')" :src="thumbUrl(item.images?.[0], 'list')" :alt="item.title" class="item-img" mode="aspectFill" lazy-load />
+        <view v-else class="item-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
         <view class="item-info">
           <text class="item-title">{{ localize(item.title_i18n, item.title) }}</text>
           <text class="item-price">{{ formatPrice(item.price, t('home.free')) }}</text>
@@ -41,7 +43,7 @@
       <view
         v-for="p in postHistory"
         :key="p.id"
-        class="post-row"
+        class="post-row u-rise"
         @click="goPostDetail(p.id)"
         @longpress="onRemoveOne(p.id, 'post')"
       >

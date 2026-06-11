@@ -76,7 +76,8 @@
       <view class="items-grid">
         <view v-for="item in sellerItems" :key="item.id" class="grid-item" @click="goDetail(item.id)">
           <view class="gi-img-wrap">
-            <image :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'" :alt="item.title" class="gi-img" mode="aspectFill" lazy-load />
+            <image v-if="thumbUrl(item.images?.[0], 'list')" :src="thumbUrl(item.images?.[0], 'list')" :alt="item.title" class="gi-img" mode="aspectFill" lazy-load />
+            <view v-else class="gi-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
             <view v-if="item.location_verified && matchSpot(item.location)?.safe" class="badge-safe-corner" :aria-label="t('pickup.verifiedPickup')">
               <text class="bsc-check">✓</text>
               <text class="bsc-label">{{ t('pickup.verifiedPickup') }}</text>
@@ -90,6 +91,7 @@
       </view>
 
       <view v-if="sellerItems.length === 0 && !loading" class="empty">
+        <text class="u-thumb-ph-seal" style="opacity:0.14;font-size:48px">集</text>
         <text>{{ t('seller.noItems') }}</text>
       </view>
     </template>
@@ -102,7 +104,7 @@
         <text>{{ t('seller.noPosts') }}</text>
       </view>
       <view v-else class="posts-list">
-        <view v-for="post in userPosts" :key="post.id" class="sp-card" @click="goPost(post.id)">
+        <view v-for="post in userPosts" :key="post.id" class="sp-card u-rise" @click="goPost(post.id)">
           <text class="sp-content">{{ localize(post.content_i18n, post.content) }}</text>
           <view v-if="post.images?.length" class="sp-imgs">
             <image
@@ -346,7 +348,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .posts-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
 .sp-card {
   background: var(--bg-elev-1);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   padding: 12px 14px;
   display: flex; flex-direction: column; gap: 8px;
   cursor: pointer;

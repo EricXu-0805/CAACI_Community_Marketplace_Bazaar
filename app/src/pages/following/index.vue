@@ -7,6 +7,7 @@
 
     <scroll-view class="list" scroll-y :scroll-top="scrollTopVal" :scroll-with-animation="false" @scrolltolower="loadMore">
       <view v-if="items.length === 0 && !loading" class="empty">
+        <text class="u-thumb-ph-seal" style="opacity:0.14;font-size:48px">集</text>
         <UIcon name="user-plus" size="xl" color="ink-faint" />
         <text class="empty-text">{{ t('follow.emptyFeed') }}</text>
       </view>
@@ -15,17 +16,19 @@
         <view
           v-for="it in items"
           :key="it.id"
-          class="card"
+          class="card u-rise"
           @click="goDetail(it.id)"
         >
           <view class="card-img-wrap">
             <image
-              :src="thumbUrl(it.images?.[0], 'card') || '/static/placeholder.svg'"
+              v-if="thumbUrl(it.images?.[0], 'card')"
+              :src="thumbUrl(it.images?.[0], 'card')"
               :alt="localize(it.title_i18n, it.title)"
               class="card-img"
               mode="aspectFill"
               lazy-load
             />
+            <view v-else class="card-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
             <view v-if="it.location_verified && matchSpot(it.location)?.safe" class="badge-safe-corner" :aria-label="t('pickup.verifiedPickup')">
               <text class="bsc-check">✓</text>
               <text class="bsc-label">{{ t('pickup.verifiedPickup') }}</text>
@@ -139,11 +142,11 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .list { flex: 1; height: calc(100vh - 56px); }
 
 .grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
   padding: 8px;
 }
 .card {
-  background: var(--bg-elev-1); border-radius: 10px; overflow: hidden;
+  background: var(--bg-elev-1); border-radius: var(--radius-lg); overflow: hidden;
   cursor: pointer;
   &:active { opacity: 0.85; }
 }

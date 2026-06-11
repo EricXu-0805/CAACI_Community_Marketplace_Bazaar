@@ -27,9 +27,9 @@
           />
         </swiper-item>
         <swiper-item v-if="item.images.length === 0">
-          <view class="no-img">
-            <view class="no-img-icon"></view>
-            <text>{{ t('detail.noPhotos') }}</text>
+          <view class="u-thumb-ph u-thumb-ph--fill det-noimg">
+            <text class="u-thumb-ph-seal">集</text>
+            <text class="det-noimg-cap">{{ t('detail.noPhotos') }}</text>
           </view>
         </swiper-item>
       </swiper>
@@ -169,7 +169,8 @@
       <scroll-view scroll-x class="more-scroll">
         <view class="more-list">
           <view v-for="si in sellerOtherItems" :key="si.id" class="more-card" @click="goToOtherItem(si.id)">
-            <image :src="thumbUrl(si.images?.[0], 'list') || '/static/placeholder.svg'" :alt="si.title" class="mc-img" mode="aspectFill" lazy-load />
+            <image v-if="thumbUrl(si.images?.[0], 'list')" :src="thumbUrl(si.images?.[0], 'list')" :alt="si.title" class="mc-img" mode="aspectFill" lazy-load />
+            <view v-else class="mc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
             <text :class="['mc-price', { free: !si.price || si.price === 0 }]">{{ formatPrice(si.price, t("home.free")) }}</text>
           </view>
         </view>
@@ -182,7 +183,8 @@
       <scroll-view scroll-x class="more-scroll">
         <view class="more-list">
           <view v-for="si in similarItems" :key="si.id" class="more-card" @click="goToOtherItem(si.id)">
-            <image :src="thumbUrl(si.images?.[0], 'list') || '/static/placeholder.svg'" :alt="si.title" class="mc-img" mode="aspectFill" lazy-load />
+            <image v-if="thumbUrl(si.images?.[0], 'list')" :src="thumbUrl(si.images?.[0], 'list')" :alt="si.title" class="mc-img" mode="aspectFill" lazy-load />
+            <view v-else class="mc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
             <text :class="['mc-price', { free: !si.price || si.price === 0 }]">{{ formatPrice(si.price, t("home.free")) }}</text>
           </view>
         </view>
@@ -822,25 +824,11 @@ async function contactSeller() {
   background: var(--bg-subtle);
   vertical-align: top;
 }
-.no-img {
-  width: 100%; height: 100%;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: var(--bg-inset); color: var(--ink-quiet); font-size: 14px; gap: 8px;
-}
-.no-img-icon {
-  width: 36px; height: 28px; border: 2px solid var(--text-faint); border-radius: 4px;
-  position: relative;
-  &::before {
-    content: ''; position: absolute; top: 5px; left: 5px;
-    width: 6px; height: 6px; border-radius: 50%; border: 1.5px solid var(--text-faint);
-  }
-  &::after {
-    content: ''; position: absolute; bottom: 4px; left: 4px;
-    width: 0; height: 0;
-    border-left: 8px solid transparent; border-right: 8px solid transparent;
-    border-bottom: 8px solid var(--text-faint);
-  }
-}
+/* Branded gallery placeholder (global .u-thumb-ph) + a small caption so
+   a photoless hero reads as intentional, not still-loading. */
+.det-noimg { flex-direction: column; gap: 10px; }
+.det-noimg .u-thumb-ph-seal { font-size: 64px; }
+.det-noimg-cap { font-size: 12px; color: var(--ink-faint); letter-spacing: 0.04em; }
 
 .img-back, .img-share {
   position: absolute; top: calc(12px + var(--status-bar-height, env(safe-area-inset-top, 0px))); z-index: 10;

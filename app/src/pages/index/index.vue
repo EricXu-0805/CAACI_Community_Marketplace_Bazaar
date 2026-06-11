@@ -242,7 +242,7 @@
           <view
             v-for="item in col"
             :key="item.id"
-            class="card u-press"
+            class="card u-press u-rise"
             @click="goToDetail(item.id)"
             @touchstart="cardLongPress.onTouchstart(item)"
             @touchend="cardLongPress.onTouchend"
@@ -251,13 +251,30 @@
           >
             <view class="card-img-box">
               <img
-                :src="thumbUrl(item.images?.[0], 'card') || '/static/placeholder.svg'"
+                v-if="thumbUrl(item.images?.[0], 'card')"
+                :src="thumbUrl(item.images?.[0], 'card')"
                 :class="['card-img', { 'card-img-sold': item.status === 'sold' }]"
                 :style="dimsToAspectStyle(effectiveDims(item), 0)"
                 :alt="item.title"
                 loading="lazy"
                 @load="onImgLoad($event, item, 0)"
               />
+              <!--
+                Photoless items get a branded, on-palette placeholder
+                instead of the cold gray "No Image" SVG (which read as a
+                broken/unfinished image and was the single biggest
+                vibe-coded tell on the feed). Faded 集 seal on a warm
+                gradient, sized to the same aspect slot a real photo would
+                take so column rhythm stays intact.
+              -->
+              <view
+                v-else
+                class="u-thumb-ph"
+                :style="dimsToAspectStyle(effectiveDims(item), 0)"
+                aria-hidden="true"
+              >
+                <text class="u-thumb-ph-seal">集</text>
+              </view>
               <view v-if="item.status === 'sold'" class="sold-overlay">
                 <text>{{ t('status.sold') }}</text>
               </view>
@@ -874,7 +891,9 @@ function goPublish() {
   font-family: var(--font-mono);
   font-size: 9px; font-weight: 500;
   letter-spacing: 0.22em; text-transform: uppercase;
-  color: var(--brand);
+  /* muted, not terracotta — the eyebrow is a quiet sub-label, not a
+     second accent competing with the seal + active category pill */
+  color: var(--ink-faint);
   line-height: 1;
 }
 /* Quick theme + 中/EN toggles. Pills on the inset surface so they read as
@@ -908,11 +927,14 @@ function goPublish() {
  * an active input field.
  */
 .search-field {
+  /* Inset cream fill, not white — on the white header a white field
+     vanished and read as empty space. The 1-step-deeper surface makes
+     it read as a tappable search slot. */
   flex: 1; display: flex; align-items: center;
-  background: var(--surface);
-  border: 0.5px solid var(--border);
+  background: var(--surface-alt);
+  border: 0.5px solid var(--border-hair);
   border-radius: var(--radius-md);
-  padding: 9px 13px;
+  padding: 10px 13px;
   gap: 8px;
   input {
     flex: 1;
@@ -930,13 +952,13 @@ function goPublish() {
 .filter-btn {
   /* Labeled pill — the bare decreasing-lines glyph read as decoration,
      not as a tappable filter entry (2026-06 meeting feedback). */
-  position: relative; height: 38px; padding: 0 11px; gap: 6px;
+  position: relative; height: 40px; padding: 0 13px; gap: 6px;
   border-radius: var(--radius-md);
-  background: var(--surface);
-  border: 0.5px solid var(--border);
+  background: var(--surface-alt);
+  border: 0.5px solid var(--border-hair);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; cursor: pointer;
-  &:active { background: var(--parchment); }
+  &:active { background: var(--bg-inset); }
 }
 .fb-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); line-height: 1; }
 .fb-badge {
@@ -1194,8 +1216,8 @@ function goPublish() {
 .feed { flex: 1; min-height: 0; padding-bottom: 76px; }
 
 /* ========== Waterfall ========== */
-.waterfall { display: flex; padding: 5px; gap: 5px; padding-bottom: 54px; }
-.wf-col { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.waterfall { display: flex; padding: 10px 10px 54px; gap: 10px; }
+.wf-col { flex: 1; display: flex; flex-direction: column; gap: 10px; }
 
 /* ========== Card ==========
    New visual language: slightly larger radius + soft elevation shadow
@@ -1204,12 +1226,13 @@ function goPublish() {
    cream page background without a muddy halo. */
 .card {
   background: var(--surface);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   border: 0.5px solid var(--border);
   overflow: hidden;
   cursor: pointer;
   box-shadow: var(--shadow-soft);
   transition: transform 0.1s, box-shadow 0.15s;
+  /* one-shot fade+rise entrance via global .u-rise (App.vue) */
   &:active { transform: scale(0.98); }
 }
 /* Xiaohongshu waterfall: each <img> carries an inline aspect-ratio
@@ -1231,6 +1254,9 @@ function goPublish() {
   transition: filter 0.2s;
   &.card-img-sold { filter: grayscale(1) brightness(0.85); }
 }
+/* Photoless tile + card entrance now come from the global v6 primitives
+   (.u-thumb-ph / .u-thumb-ph-seal / .u-rise in App.vue) so every surface
+   stays identical. */
 .sold-overlay {
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%, -50%);
@@ -1265,7 +1291,7 @@ function goPublish() {
 .card-time { font-size: 10px; color: var(--text-faint); margin-left: auto; }
 .old-tag { font-size: 10px; color: var(--text-faint); margin-right: 2px; }
 
-.card-info { padding: 9px 10px 11px; }
+.card-info { padding: 11px 12px 13px; }
 .card-title {
   font-size: 13px; color: var(--text-primary); line-height: 1.35; font-weight: 400;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
