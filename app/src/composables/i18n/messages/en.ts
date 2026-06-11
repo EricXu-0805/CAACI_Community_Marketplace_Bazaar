@@ -124,6 +124,7 @@ const en: Record<string, string> = {
   'filter.condition': 'Condition',
   'filter.location': 'Location',
   'filter.sort': 'Sort',
+  'filter.verifiedOnly': 'Verified pickups only',
   'filter.apply': 'Apply',
   'sort.latest': 'Latest',
   'sort.priceAsc': 'Price ↑',
