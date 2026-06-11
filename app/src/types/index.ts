@@ -86,6 +86,24 @@ export interface Offer {
   updated_at: string
 }
 
+export type MeetupStatus = 'pending' | 'accepted' | 'declined' | 'rescheduled' | 'expired'
+
+export interface Meetup {
+  id: string
+  conversation_id: string
+  item_id: string | null
+  from_user: string
+  to_user: string
+  spot: string
+  meet_at: string
+  status: MeetupStatus
+  parent_meetup_id: string | null
+  note: string | null
+  expires_at: string
+  created_at: string
+  updated_at: string
+}
+
 export interface Post {
   id: string
   user_id: string

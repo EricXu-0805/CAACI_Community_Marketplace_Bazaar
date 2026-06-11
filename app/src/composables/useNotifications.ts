@@ -4,7 +4,7 @@ import { useSupabase } from './useSupabase'
 export interface Notification {
   id: string
   user_id: string
-  type: 'price_drop' | 'system' | 'sold' | 'offer'
+  type: 'price_drop' | 'system' | 'sold' | 'offer' | 'meetup'
   title: string
   body: string
   item_id: string | null
