@@ -182,10 +182,17 @@ begin
 end;
 $$;
 
--- 050/051 discipline: REVOKE from PUBLIC (anon inherits via PUBLIC), grant
--- EXECUTE to authenticated only.
+-- Lock execution to authenticated only. Two REVOKEs are required: PUBLIC
+-- (the implicit default grant) AND anon explicitly — Supabase's default
+-- privileges grant anon an EXPLICIT execute on every new function, which a
+-- REVOKE ... FROM PUBLIC does not remove (verified on the live DB: without
+-- the anon revoke, has_function_privilege('anon', ...) stayed true). Both
+-- RPCs already self-gate on auth.uid(), but anon must not hold EXECUTE on a
+-- SECURITY DEFINER function regardless.
 revoke all on function public.propose_meetup(uuid, text, timestamptz, text) from public;
 revoke all on function public.respond_to_meetup(uuid, text, text, timestamptz, text) from public;
+revoke all on function public.propose_meetup(uuid, text, timestamptz, text) from anon;
+revoke all on function public.respond_to_meetup(uuid, text, text, timestamptz, text) from anon;
 grant execute on function public.propose_meetup(uuid, text, timestamptz, text) to authenticated;
 grant execute on function public.respond_to_meetup(uuid, text, text, timestamptz, text) to authenticated;
 
