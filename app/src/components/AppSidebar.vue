@@ -168,12 +168,18 @@ function toggleTheme() {
 
   .asb-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding-top: 14px; }
   .asb-post {
-    display: flex; align-items: center; justify-content: center; gap: 8px;
+    display: flex; align-items: center; justify-content: center;
     height: 44px; border-radius: 12px; cursor: pointer;
     background: var(--brand); color: var(--ink-inverse);
     font-family: var(--font-hei); font-size: 14px; font-weight: 600;
     box-shadow: var(--shadow-cta);
   }
+  /* Optically center the LABEL, not the icon+label group. A negative left
+     margin equal to (icon width + gap) cancels the icon's contribution to the
+     flex centering, so "发布 / Post" sits dead-center and the + reads as a
+     left adornment. Group-centering left the label visibly right-of-center
+     (the icon's left weight is what read as "not centered"). Width-independent. */
+  .asb-post :deep(.u-icon) { margin-left: -26px; margin-right: 6px; }
   .asb-post-label { color: #fff; }
   .asb-me {
     display: flex; align-items: center; gap: 10px; padding: 4px;
