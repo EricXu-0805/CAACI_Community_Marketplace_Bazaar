@@ -159,6 +159,7 @@ const en: Record<string, string> = {
   'detail.safetyTip': 'Meet in public places. Use campus safe zones. Never wire money before seeing the item.',
   'detail.similar': 'Similar Items',
   'detail.soldCount': 'sold',
+  'detail.replyRate': 'reply rate',
   'detail.sellerReviews': 'Seller reviews',
   'detail.reviewsUnit': 'reviews',
   'detail.seeAllReviews': 'See all {n} reviews',

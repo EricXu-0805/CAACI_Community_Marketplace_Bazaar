@@ -105,10 +105,12 @@
             <text class="seller-name">{{ item.profile.nickname }}</text>
             <UBadge v-if="item.profile.is_illini_verified" variant="illini" :title="t('profile.illiniVerified')">Illini</UBadge>
           </view>
-          <view v-if="soldCount > 0 || reviewCount > 0" class="seller-proof">
+          <view v-if="soldCount > 0 || reviewCount > 0 || showReplyRate" class="seller-proof">
             <text v-if="soldCount > 0" class="sp-item"><text class="sp-strong">{{ soldCount }}</text> {{ t('detail.soldCount') }}</text>
-            <text v-if="soldCount > 0 && reviewCount > 0" class="sp-dot">·</text>
+            <text v-if="soldCount > 0 && (reviewCount > 0 || showReplyRate)" class="sp-dot">·</text>
             <text v-if="reviewCount > 0" class="sp-item"><text class="sp-strong">{{ avgRating }}</text> ★ · {{ reviewCount }}</text>
+            <text v-if="reviewCount > 0 && showReplyRate" class="sp-dot">·</text>
+            <text v-if="showReplyRate" class="sp-item"><text class="sp-strong">{{ sellerResponse.rate }}%</text> {{ t('detail.replyRate') }}</text>
           </view>
           <text v-if="item.profile.status_text || item.profile.status_emoji" class="seller-status">
             <text v-if="item.profile.status_emoji" class="ss-emoji">{{ item.profile.status_emoji }}</text>
@@ -447,6 +449,11 @@ const REVIEW_FETCH = 50
 const REVIEW_PREVIEW = 6
 const sellerReviews = ref<Rating[]>([])
 const soldCount = ref(0)
+// Seller reply-rate — denormalized onto profiles by migration 053 (RLS blocks
+// reading others' messages client-side). Hidden below a small sample so a
+// "100% off 1 chat" can't masquerade as a strong signal.
+const sellerResponse = ref<{ rate: number; sample: number }>({ rate: 0, sample: 0 })
+const showReplyRate = computed(() => sellerResponse.value.sample >= 5)
 const reviewCount = computed(() => sellerReviews.value.length)
 const avgRating = computed(() => {
   if (!sellerReviews.value.length) return 0
@@ -547,7 +554,7 @@ onLoad(async (options) => {
       && currentUser.value
       && itemData.user_id !== currentUser.value.id
 
-    const [favCountRes, ratedRes, otherItemsRes, simItemsRes, reviewsRes, soldCountRes] = await Promise.all([
+    const [favCountRes, ratedRes, otherItemsRes, simItemsRes, reviewsRes, soldCountRes, respRes] = await Promise.all([
       getFavoriteCount(options.id!),
       needsRated ? hasRated(itemData.user_id, itemData.id) : Promise.resolve(false),
       supabase
@@ -562,6 +569,9 @@ onLoad(async (options) => {
       supabase
         .from('items').select('id', { count: 'exact', head: true })
         .eq('user_id', itemData.user_id).eq('status', 'sold'),
+      supabase
+        .from('profiles').select('response_rate, response_sample')
+        .eq('id', itemData.user_id).single(),
     ])
 
     if (!alive) return
@@ -569,6 +579,7 @@ onLoad(async (options) => {
     alreadyRated.value = !!ratedRes
     sellerReviews.value = reviewsRes || []
     soldCount.value = soldCountRes?.count || 0
+    if (respRes.data) sellerResponse.value = { rate: respRes.data.response_rate || 0, sample: respRes.data.response_sample || 0 }
     if (otherItemsRes.data) sellerOtherItems.value = otherItemsRes.data as Item[]
     if (simItemsRes.data) {
       const { blockedIds } = useModeration()
