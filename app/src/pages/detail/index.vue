@@ -57,8 +57,11 @@
 
     <view class="info-card">
       <view class="price-row">
-        <text :class="['price', { free: !item.price || item.price === 0 }]">{{ formatPrice(item.price, t("home.free")) }}</text>
-        <text v-if="item.negotiable" class="obo">OBO</text>
+        <text v-if="item.listing_type === 'wanted'" class="price price-wanted">{{ item.price > 0 ? t('home.budget') + ' ' + formatPrice(item.price, '') : t('home.openBudget') }}</text>
+        <template v-else>
+          <text :class="['price', { free: !item.price || item.price === 0 }]">{{ formatPrice(item.price, t("home.free")) }}</text>
+          <text v-if="item.negotiable" class="obo">OBO</text>
+        </template>
       </view>
       <view class="title-row">
         <text class="title">{{ displayTitle }}</text>
@@ -68,8 +71,9 @@
         </view>
       </view>
       <view class="tags">
+        <text v-if="item.listing_type === 'wanted'" class="tag tag-wanted">{{ t('item.wanted') }}</text>
         <text class="tag">{{ t('cat.' + item.category) }}</text>
-        <text class="tag">{{ t('condition.' + item.condition) }}</text>
+        <text v-if="item.listing_type !== 'wanted'" class="tag">{{ t('condition.' + item.condition) }}</text>
         <view :class="['tag', 'tag-loc', { 'tag-safe': item.location_verified && locationSpot?.safe }]">
           <view class="loc-dot"></view>
           <text>{{ displayLocation }}</text>
@@ -210,7 +214,7 @@
         <text>{{ t('rating.alreadyRated') }}</text>
       </view>
       <view v-else class="chat-btn" @click="contactSeller">
-        <text>{{ t('detail.chat') }}</text>
+        <text>{{ item.listing_type === 'wanted' ? t('detail.haveThis') : t('detail.chat') }}</text>
       </view>
     </view>
     <view class="action-bar" v-else>
@@ -917,6 +921,7 @@ async function contactSeller() {
   font-feature-settings: 'tnum';
 }
 .price.free { color: var(--success); }
+.price-wanted { color: var(--campus-blue); font-size: 22px; }
 /*
  * OBO — "or best offer", ivory_academy puts this in amber (warning
  * tone) because it's a price-open affordance, not a CTA. Small pill,
@@ -952,6 +957,7 @@ async function contactSeller() {
   font-size: 12px; padding: 4px 10px;
   background: var(--bg-subtle); color: var(--text-secondary); border-radius: 6px;
 }
+.tag-wanted { background: var(--campus-blue); color: #fff; font-weight: 700; }
 .tag-loc {
   display: inline-flex; align-items: center; gap: 4px; padding-left: 8px;
 }

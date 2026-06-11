@@ -29,7 +29,7 @@ let latestRequestId = 0
  */
 const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, location, is_illini_verified, status_text, status_emoji'
 const LIST_ITEM_FIELDS =
-  'id, user_id, title, title_i18n, description_i18n, source_lang, price, category, condition, status, location, location_verified, images, image_dimensions, view_count, favorite_count, negotiable, created_at'
+  'id, user_id, title, title_i18n, description_i18n, source_lang, price, category, condition, status, listing_type, location, location_verified, images, image_dimensions, view_count, favorite_count, negotiable, created_at'
 const DETAIL_ITEM_FIELDS = `${LIST_ITEM_FIELDS}, description, updated_at`
 
 const VALID_STATUSES: ItemStatus[] = ['active', 'reserved', 'sold', 'deleted']
@@ -64,9 +64,10 @@ export function useItems() {
     priceMax?: number
     condition?: ItemCondition | null
     sort?: string
+    listingType?: 'sell' | 'wanted'
     reset?: boolean
   } = {}) {
-    const { page = 0, category, search, userId, priceMin, priceMax, condition, sort, reset = false } = options
+    const { page = 0, category, search, userId, priceMin, priceMax, condition, sort, listingType, reset = false } = options
     const requestId = ++latestRequestId
 
     if (reset) {
@@ -135,6 +136,7 @@ export function useItems() {
         q = q.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
 
         if (category) q = q.eq('category', category)
+        if (listingType) q = q.eq('listing_type', listingType)
         if (userId) q = q.eq('user_id', userId)
         if (priceMin !== undefined && priceMin > 0) q = q.gte('price', priceMin)
         if (priceMax !== undefined && priceMax > 0) q = q.lte('price', priceMax)
@@ -202,6 +204,7 @@ export function useItems() {
     source_lang?: string | null
     negotiable?: boolean
     location_verified?: boolean
+    listing_type?: 'sell' | 'wanted'
   }) {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw new Error('Not authenticated')
@@ -245,6 +248,7 @@ export function useItems() {
     if (input.title_i18n) payload.title_i18n = input.title_i18n
     if (input.description_i18n) payload.description_i18n = input.description_i18n
     if (input.source_lang) payload.source_lang = input.source_lang
+    if (input.listing_type === 'wanted') payload.listing_type = 'wanted'
 
     const { data, error } = await supabase.from('items').insert(payload).select(DETAIL_ITEM_FIELDS as any).single()
     if (error) throw error

@@ -44,7 +44,7 @@
       </view>
 
       <view class="form-group">
-        <input v-model="form.title" :placeholder="t('publish.titlePlaceholder')" maxlength="50" class="form-input title-input" />
+        <input v-model="form.title" :placeholder="form.listingType === 'wanted' ? t('publish.wantedTitlePlaceholder') : t('publish.titlePlaceholder')" maxlength="50" class="form-input title-input" />
         <text class="char-count">{{ form.title.length }}/50</text>
       </view>
 
@@ -54,14 +54,14 @@
       </view>
 
       <view class="form-group row">
-        <text class="label">{{ t('publish.price') }}</text>
+        <text class="label">{{ form.listingType === 'wanted' ? t('publish.budget') : t('publish.price') }}</text>
         <view class="price-input">
           <text class="currency">$</text>
-          <input v-model="form.price" type="digit" placeholder="0.00" class="form-input" />
+          <input v-model="form.price" type="digit" :placeholder="form.listingType === 'wanted' ? t('publish.budgetPlaceholder') : '0.00'" class="form-input" />
         </view>
       </view>
 
-      <view v-if="avgPrice > 0 && form.category" class="price-hint">
+      <view v-if="avgPrice > 0 && form.category && form.listingType !== 'wanted'" class="price-hint">
         <text>{{ t('publish.avgPrice') }}: ${{ avgPrice }}</text>
       </view>
 
@@ -86,8 +86,8 @@
         </view>
       </view>
 
-      <!-- Condition: inline pill selector -->
-      <view class="form-group">
+      <!-- Condition: inline pill selector (sell only — N/A for a wanted post) -->
+      <view v-if="form.listingType !== 'wanted'" class="form-group">
         <view class="field-header" @click="showCond = !showCond">
           <text class="label">{{ t('publish.condition') }}</text>
           <text :class="['field-value', { placeholder: !form.condition }]">
@@ -251,6 +251,7 @@ const form = reactive({
   condition: '' as ItemCondition | '',
   location: '',
   negotiable: false,
+  listingType: 'sell' as 'sell' | 'wanted',
 })
 
 const locationVerified = ref(false)
@@ -308,6 +309,7 @@ onLoad(async (options) => {
     form.condition = item.condition
     form.location = item.location
     form.negotiable = item.negotiable ?? false
+    form.listingType = (item.listing_type || 'sell') as 'sell' | 'wanted'
     imageList.value = [...item.images]
     const verifiedOnLoad = !!(item as any).location_verified
     queueMicrotask(() => { locationVerified.value = verifiedOnLoad })
@@ -406,9 +408,9 @@ function onSpotChipTap(spot: CampusSpot) {
 async function onSubmit() {
   if (!requireAuth()) return
   if (!form.title.trim()) { uni.showToast({ title: t('publish.needTitle'), icon: 'none' }); return }
-  if (!form.price || Number(form.price) < 0) { uni.showToast({ title: t('publish.needPrice'), icon: 'none' }); return }
+  if (form.listingType !== 'wanted' && (!form.price || Number(form.price) < 0)) { uni.showToast({ title: t('publish.needPrice'), icon: 'none' }); return }
   if (!form.category) { uni.showToast({ title: t('publish.needCategory'), icon: 'none' }); return }
-  if (!form.condition) { uni.showToast({ title: t('publish.needCondition'), icon: 'none' }); return }
+  if (form.listingType !== 'wanted' && !form.condition) { uni.showToast({ title: t('publish.needCondition'), icon: 'none' }); return }
   if (Number(form.price) > 100000) {
     const confirmed = await new Promise<boolean>((resolve) => {
       uni.showModal({
@@ -496,9 +498,12 @@ async function onSubmit() {
     const payload = {
       title: trimmedTitle,
       description: trimmedDesc,
-      price: Number(form.price),
+      // Wanted post: blanked budget → 0 (open budget); condition N/A → keep the
+      // column default. listing_type is intentionally NOT updated (immutable
+      // once posted — a sell item stays sell and vice versa).
+      price: Number(form.price) || 0,
       category: form.category as ItemCategory,
-      condition: form.condition as ItemCondition,
+      condition: (form.condition || 'good') as ItemCondition,
       location: form.location || '',
       images,
       image_dimensions: finalDims,

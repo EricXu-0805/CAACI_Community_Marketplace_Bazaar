@@ -152,6 +152,7 @@ export interface Item {
   category: ItemCategory
   condition: ItemCondition
   status: ItemStatus
+  listing_type?: 'sell' | 'wanted'
   location: string
   location_verified?: boolean
   images: string[]
