@@ -59,6 +59,7 @@
 
         <view v-else-if="followItems.length === 0" class="empty">
           <view class="empty-icon"></view>
+          <text class="u-thumb-ph-seal" style="opacity:0.14;font-size:48px">集</text>
           <text class="empty-text">{{ isLoggedIn ? t('follow.emptyFeed') : t('profile.signInHint') }}</text>
         </view>
 
@@ -66,15 +67,17 @@
           <view
             v-for="it in followItems"
             :key="it.id"
-            class="follow-card"
+            class="follow-card u-rise"
             @click="goToFollowItem(it.id)"
           >
             <image
-              :src="thumbUrl(it.images?.[0], 'card') || '/static/placeholder.svg'"
+              v-if="thumbUrl(it.images?.[0], 'card')"
+              :src="thumbUrl(it.images?.[0], 'card')"
               class="fc-img"
               mode="aspectFill"
               lazy-load
             />
+            <view v-else class="fc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
             <view class="fc-body">
               <text class="fc-title">{{ localize(it.title_i18n, it.title) }}</text>
               <text class="fc-price">{{ formatPrice(it.price, t('home.free')) }}</text>
@@ -93,12 +96,13 @@
 
       <view v-else-if="visiblePosts.length === 0" class="empty">
         <view class="empty-icon"></view>
+        <text class="u-thumb-ph-seal" style="opacity:0.14;font-size:48px">集</text>
         <text class="empty-text">{{ t('plaza.empty') }}</text>
         <view v-if="isLoggedIn" class="cta-btn" @click="openComposer">{{ t('plaza.write') }}</view>
       </view>
 
       <view v-else class="posts">
-        <view v-for="post in visiblePosts" :key="post.id" class="post-card">
+        <view v-for="post in visiblePosts" :key="post.id" class="post-card u-rise">
           <!--
             Pinned-collapsed surface: when a pinned announcement is in
             its compact state, render a single-line summary that the
@@ -204,12 +208,14 @@
             @click.stop="goToAttachedItem(pi.item.id)"
           >
             <image
-              :src="thumbUrl(pi.item.images?.[0], 'list') || '/static/placeholder.svg'"
+              v-if="thumbUrl(pi.item.images?.[0], 'list')"
+              :src="thumbUrl(pi.item.images?.[0], 'list')"
               class="aic-img"
               mode="aspectFill"
               lazy-load
               :alt="pi.item.title"
             />
+            <view v-else class="aic-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
             <view class="aic-body">
               <text class="aic-title">{{ localize(pi.item.title_i18n, pi.item.title) }}</text>
               <text class="aic-price">${{ pi.item.price }}</text>
@@ -405,11 +411,13 @@
           class="comp-attached"
         >
           <image
-            :src="thumbUrl(it.images?.[0], 'list') || '/static/placeholder.svg'"
+            v-if="thumbUrl(it.images?.[0], 'list')"
+            :src="thumbUrl(it.images?.[0], 'list')"
             :alt="localize(it.title_i18n, it.title)"
             class="ca-img"
             mode="aspectFill"
           />
+          <view v-else class="ca-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
           <view class="ca-body">
             <text class="ca-title">{{ localize(it.title_i18n, it.title) }}</text>
             <text class="ca-price">${{ it.price }}</text>
@@ -462,12 +470,14 @@
           @click="onPickAttachedItem(it)"
         >
           <image
-            :src="thumbUrl(it.images?.[0], 'list') || '/static/placeholder.svg'"
+            v-if="thumbUrl(it.images?.[0], 'list')"
+            :src="thumbUrl(it.images?.[0], 'list')"
             :alt="localize(it.title_i18n, it.title)"
             class="as-img"
             mode="aspectFill"
             lazy-load
           />
+          <view v-else class="as-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
           <view class="as-body">
             <text class="as-title-text">{{ localize(it.title_i18n, it.title) }}</text>
             <text class="as-price">${{ it.price }}</text>
@@ -1281,8 +1291,8 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 }
 .search-bar {
   display: flex; align-items: center; gap: 8px;
-  background: var(--surface);
-  border: 0.5px solid var(--border);
+  background: var(--surface-alt);
+  border: 0.5px solid var(--border-hair);
   border-radius: var(--radius-md);
   padding: 9px 13px;
 }
@@ -1394,13 +1404,13 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .follow-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-2);
+  gap: var(--space-3);
   padding: var(--space-2);
 }
 .follow-card {
   background: var(--surface);
   border: 0.5px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;

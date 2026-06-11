@@ -1579,6 +1579,47 @@ button:focus-visible,
 .u-anim-heart-pop { animation: heart-pop var(--dur-2) var(--ease-warm); }
 
 /* ============================================================
+ * v6 shared primitives — one source of truth so every surface
+ * (feed, detail gallery, plaza mini-card, profile/seller grids,
+ * search) renders photoless items + list entrances identically.
+ * ============================================================ */
+
+/* Branded photoless tile — warm theme-aware wash + a faded 集 seal,
+   sized by the caller (it fills its box / inherits the aspect slot a
+   real photo would take). Replaces the cold gray "No Image" SVG that
+   read as a broken image — the single biggest undesigned tell. */
+.u-thumb-ph {
+  /* width only — height comes from the caller's inline aspect-ratio
+     (feed cards) so the masonry slot is preserved. Fixed-height
+     containers (detail hero, square tiles) add .u-thumb-ph--fill. */
+  width: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(125% 110% at 50% 0%, var(--surface-alt) 0%, var(--frame) 100%);
+}
+.u-thumb-ph--fill { height: 100%; }
+.u-thumb-ph-seal {
+  font-family: var(--font-serif);
+  font-weight: 600; color: var(--brand);
+  opacity: 0.16; line-height: 1;
+  font-size: 42px;
+}
+.u-thumb-ph--sm .u-thumb-ph-seal,
+.u-thumb-ph-seal.sm { font-size: 26px; }
+
+/* One-shot list entrance — fade + rise the first time an element
+   mounts. `backwards` fill (not `both`) applies the from-state before
+   start to avoid a first-frame flash, but does NOT retain the end-
+   state, so it can't outrank an :active press transform afterwards. */
+@keyframes u-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+.u-rise { animation: u-rise var(--dur-3, 360ms) var(--ease-warm, ease) backwards; }
+@media (prefers-reduced-motion: reduce) {
+  .u-rise { animation: none; }
+}
+
+/* ============================================================
  * Global tactile press — every button-like surface shrinks a
  * touch on tap and settles back on the warm curve, so the whole
  * app feels responsive ("丝滑"). On H5 :active arms on tap (uni

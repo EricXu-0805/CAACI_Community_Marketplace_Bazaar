@@ -242,7 +242,7 @@
           <view
             v-for="item in col"
             :key="item.id"
-            class="card u-press"
+            class="card u-press u-rise"
             @click="goToDetail(item.id)"
             @touchstart="cardLongPress.onTouchstart(item)"
             @touchend="cardLongPress.onTouchend"
@@ -269,11 +269,11 @@
               -->
               <view
                 v-else
-                class="card-img-ph"
+                class="u-thumb-ph"
                 :style="dimsToAspectStyle(effectiveDims(item), 0)"
                 aria-hidden="true"
               >
-                <text class="ph-seal">集</text>
+                <text class="u-thumb-ph-seal">集</text>
               </view>
               <view v-if="item.status === 'sold'" class="sold-overlay">
                 <text>{{ t('status.sold') }}</text>
@@ -1232,21 +1232,8 @@ function goPublish() {
   cursor: pointer;
   box-shadow: var(--shadow-soft);
   transition: transform 0.1s, box-shadow 0.15s;
-  /* One-shot entrance: each card fades+rises the first time it mounts.
-     New cards from loadMore/category-switch animate; reused (keyed)
-     cards don't re-run. Guarded by prefers-reduced-motion below.
-     `backwards` (not `both`): applies the from-state before start to
-     avoid a first-frame flash, but does NOT retain the end-state — so
-     the entrance can't outrank the :active press transform afterwards. */
-  animation: card-rise var(--dur-3, 360ms) var(--ease-warm, ease) backwards;
+  /* one-shot fade+rise entrance via global .u-rise (App.vue) */
   &:active { transform: scale(0.98); }
-}
-@keyframes card-rise {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .card { animation: none; }
 }
 /* Xiaohongshu waterfall: each <img> carries an inline aspect-ratio
    driven by items.image_dimensions (migration 014), so the box
@@ -1267,21 +1254,9 @@ function goPublish() {
   transition: filter 0.2s;
   &.card-img-sold { filter: grayscale(1) brightness(0.85); }
 }
-/* Branded photoless state — warm wash + a faded 集 seal, occupying the
-   same aspect slot a photo would. Reads as an intentional placeholder,
-   not a broken image. */
-.card-img-ph {
-  width: 100%;
-  display: flex; align-items: center; justify-content: center;
-  background: radial-gradient(125% 110% at 50% 0%, var(--surface-alt) 0%, var(--frame) 100%);
-}
-.ph-seal {
-  font-family: var(--font-serif);
-  font-size: 42px; font-weight: 600;
-  color: var(--brand);
-  opacity: 0.16;
-  line-height: 1;
-}
+/* Photoless tile + card entrance now come from the global v6 primitives
+   (.u-thumb-ph / .u-thumb-ph-seal / .u-rise in App.vue) so every surface
+   stays identical. */
 .sold-overlay {
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%, -50%);

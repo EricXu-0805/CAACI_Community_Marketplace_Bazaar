@@ -145,6 +145,7 @@
         </view>
         <view v-if="currentListings.length === 0" class="empty-mini">
           <UIcon name="tag" size="lg" color="ink-faint" />
+          <text class="u-thumb-ph-seal" style="opacity:0.14;font-size:48px">集</text>
           <text class="empty-mini-text">{{ myTab === 'sold' ? t('profile.noSold') : t('profile.noListings') }}</text>
         </view>
         <scroll-view v-else scroll-x class="horz-scroll" :show-scrollbar="false">
@@ -160,12 +161,14 @@
               @touchmove="cardLongPress.onTouchmove"
             >
               <image
-                :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'"
+                v-if="thumbUrl(item.images?.[0], 'list')"
+                :src="thumbUrl(item.images?.[0], 'list')"
                 :alt="localize(item.title_i18n, item.title)"
                 class="horz-img"
                 mode="aspectFill"
                 lazy-load
               />
+              <view v-else class="horz-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
               <view class="horz-info">
                 <text class="horz-title">{{ localize(item.title_i18n, item.title) }}</text>
                 <text :class="['horz-price', { free: !item.price || item.price === 0 }]">{{ formatPrice(item.price, t('home.free')) }}</text>
@@ -186,18 +189,20 @@
         </view>
         <view v-if="savedItems.length === 0" class="empty-mini">
           <UIcon name="heart" size="lg" color="ink-faint" />
+          <text class="u-thumb-ph-seal" style="opacity:0.14;font-size:48px">集</text>
           <text class="empty-mini-text">{{ t('profile.noSaved') }}</text>
         </view>
         <view v-else class="fav-grid">
           <view
             v-for="item in savedItems"
             :key="item.id"
-            class="fav-card"
+            class="fav-card u-rise"
             @click="goDetail(item.id)"
           >
             <view class="fav-img-wrap">
               <image
-                :src="thumbUrl(item.images?.[0], 'list') || '/static/placeholder.svg'"
+                v-if="thumbUrl(item.images?.[0], 'list')"
+                :src="thumbUrl(item.images?.[0], 'list')"
                 :alt="localize(item.title_i18n, item.title)"
                 class="fav-img"
                 mode="aspectFit"
@@ -205,6 +210,7 @@
                 @load="onMyImgLoad(item.id, $event)"
                 lazy-load
               />
+              <view v-else class="fav-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
             </view>
             <view class="fav-body">
               <text class="fav-title">{{ localize(item.title_i18n, item.title) }}</text>
@@ -966,7 +972,7 @@ function onDeleteItem(id: string) {
 }
 .fav-card {
   background: var(--bg-elev-1);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: 0 1px 4px rgba(60,40,20,0.05);
   cursor: pointer;
