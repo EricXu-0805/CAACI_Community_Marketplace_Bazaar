@@ -41,11 +41,18 @@
     </view>
 
     <view
-      v-if="itemInfo && itemInfo.negotiable && itemInfo.status === 'active' && currentUser?.id !== itemInfo.user_id"
+      v-if="itemInfo && itemInfo.status === 'active'"
       class="offer-bar"
     >
-      <view class="offer-btn" @click="openOfferSheet">
+      <view
+        v-if="itemInfo.negotiable && currentUser?.id !== itemInfo.user_id"
+        class="offer-btn"
+        @click="openOfferSheet"
+      >
         <text>{{ t('chat.makeOffer') }}</text>
+      </view>
+      <view class="meetup-btn" @click="openMeetupSheet">
+        <text>📍 {{ t('chat.proposeMeetup') }}</text>
       </view>
     </view>
 
@@ -96,6 +103,33 @@
           </view>
           <view v-if="entry.offer.status === 'accepted'" class="deal-line">
             <text>🎉 {{ t('chat.dealReached').replace('{price}', '$' + fmtOfferPrice(entry.offer.price)) }}</text>
+          </view>
+        </template>
+
+        <!-- ===== Meetup entry (structured scheduling, migration 052) ===== -->
+        <template v-else-if="entry.kind === 'meetup'">
+          <view class="offer-entry" :class="{ mine: entry.meetup.from_user === currentUser?.id }">
+            <view class="offer-card meetup-card" :class="'oc-st-' + entry.meetup.status">
+              <view class="oc-head">
+                <text class="oc-eyebrow">📍 {{ entry.meetup.from_user === currentUser?.id ? t('chat.meetupYou') : t('chat.meetupThem') }}</text>
+                <text class="oc-status">{{ meetupStatusLabel(entry.meetup) }}</text>
+              </view>
+              <text class="mc-spot">{{ meetupSpotLabel(entry.meetup) }}</text>
+              <text class="mc-when">{{ fmtMeetupWhen(entry.meetup.meet_at) }}</text>
+              <text v-if="entry.meetup.note" class="oc-note">{{ entry.meetup.note }}</text>
+              <view v-if="entry.meetup.status === 'pending' && meetupIncoming(entry.meetup) && !meetupExpired(entry.meetup)" class="oc-actions">
+                <view class="oc-btn oc-decline" @click="declineMeetup(entry.meetup)"><text>{{ t('chat.meetupDecline') }}</text></view>
+                <view class="oc-btn oc-counter" @click="openReschedule(entry.meetup)"><text>{{ t('chat.meetupReschedule') }}</text></view>
+                <view class="oc-btn oc-accept" @click="acceptMeetup(entry.meetup)"><text>{{ t('chat.meetupAccept') }}</text></view>
+              </view>
+              <text v-else-if="entry.meetup.status === 'pending'" class="oc-meta">
+                {{ meetupExpired(entry.meetup) ? t('chat.meetupExpired') : t('chat.meetupWaiting') }}
+              </text>
+              <text v-if="entry.meetup.status === 'pending' && !meetupExpired(entry.meetup)" class="oc-expiry">{{ t('chat.meetupExpiry') }}</text>
+            </view>
+          </view>
+          <view v-if="entry.meetup.status === 'accepted'" class="deal-line">
+            <text>🤝 {{ t('chat.meetupSet').replace('{spot}', meetupSpotLabel(entry.meetup)).replace('{when}', fmtMeetupWhen(entry.meetup.meet_at)) }}</text>
           </view>
         </template>
 
@@ -262,6 +296,37 @@
       </view>
       <text class="os-expiry-hint">{{ t('chat.offerExpiry') }}</text>
     </view>
+
+    <!-- Meetup composer (propose + reschedule) -->
+    <view v-if="meetupSheet.open" class="offer-mask u-mask-in" @click="closeMeetupSheet"></view>
+    <view :class="['offer-sheet', { open: meetupSheet.open }]">
+      <view class="os-handle"></view>
+      <text class="os-title">{{ meetupSheet.mode === 'reschedule' ? t('chat.meetupRescheduleTitle') : t('chat.meetupTitle') }}</text>
+      <text class="mt-label">{{ t('chat.meetupSpot') }}</text>
+      <scroll-view scroll-x class="os-quick mt-spots">
+        <view
+          v-for="s in safeSpots"
+          :key="s.id"
+          :class="['os-quick-chip', { on: meetupSpotInput === (lang === 'zh' ? s.zh : s.en) }]"
+          @click="meetupSpotInput = (lang === 'zh' ? s.zh : s.en)"
+        >
+          <text>{{ lang === 'zh' ? s.zh : s.en }}</text>
+        </view>
+      </scroll-view>
+      <view class="mt-row">
+        <picker mode="date" :value="meetupDateInput" :start="todayStr" :end="maxDateStr" @change="meetupDateInput = $event.detail.value">
+          <view class="mt-picker"><text>{{ meetupDateInput || t('chat.meetupPickDate') }}</text></view>
+        </picker>
+        <picker mode="time" :value="meetupTimeInput" @change="meetupTimeInput = $event.detail.value">
+          <view class="mt-picker"><text>{{ meetupTimeInput || t('chat.meetupPickTime') }}</text></view>
+        </picker>
+      </view>
+      <input v-model="meetupNoteInput" class="os-note" :placeholder="t('chat.offerNotePh')" maxlength="300" />
+      <view :class="['os-submit', { disabled: !meetupSpotInput || !meetupDateInput || !meetupTimeInput || meetupSubmitting }]" @click="submitMeetupSheet">
+        <text>{{ meetupSheet.mode === 'reschedule' ? t('chat.meetupSendReschedule') : t('chat.meetupSend') }}</text>
+      </view>
+      <text class="os-expiry-hint">{{ t('chat.meetupExpiry') }}</text>
+    </view>
   </view>
 </template>
 
@@ -271,6 +336,8 @@ import { useAuth } from '../composables/useAuth'
 import { useTheme } from '../composables/useTheme'
 import { useMessages } from '../composables/useMessages'
 import { useOffers } from '../composables/useOffers'
+import { useMeetups } from '../composables/useMeetups'
+import { CAMPUS_SPOTS, localizeLocation, matchSpot } from '../composables/useCampusSpots'
 import { usePresence } from '../composables/usePresence'
 import { useItems } from '../composables/useItems'
 import { useUnread } from '../composables/useUnread'
@@ -279,7 +346,7 @@ import { useModeration } from '../composables/useModeration'
 import { useLongPress } from '../composables/useLongPress'
 import { formatPrice, friendlyErrorMessage } from '../utils'
 import { DIALOG_DANGER } from '../utils/dialogColors'
-import type { Item, Offer } from '../types'
+import type { Item, Offer, Meetup } from '../types'
 import ChatEmojiPanel from './ChatEmojiPanel.vue'
 import UIcon from './UIcon.vue'
 import USticker from './USticker.vue'
@@ -294,6 +361,7 @@ const { t, lang, localize } = useI18n()
 const { currentUser, requireAuth } = useAuth()
 const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, deleteMessage, fetchConversationDetail, setConversationPinned, setConversationMuted } = useMessages()
 const { offers, fetchOffers, makeOffer, respondToOffer, subscribeToOffers } = useOffers()
+const { meetups, fetchMeetups, proposeMeetup, respondToMeetup, subscribeToMeetups } = useMeetups()
 const { startPresence, isOnline, subscribeTyping } = usePresence()
 const { uploadOneImage, uploadOneVideo } = useItems()
 const { refreshUnreadCount } = useUnread()
@@ -345,6 +413,7 @@ const convPinned = ref(false)
 const convMuted = ref(false)
 let unsubscribe: (() => void) | null = null
 let offersUnsub: (() => void) | null = null
+let meetupsUnsub: (() => void) | null = null
 
 // Presence + typing (v5 Phase 7, H5 best-effort).
 const peerTyping = ref(false)
@@ -391,6 +460,7 @@ onMounted(async () => {
     conversationId.value = options.id
     await fetchMessages(options.id)
     try { await fetchOffers(options.id) } catch { /* offers are additive — never block the chat */ }
+    try { await fetchMeetups(options.id) } catch { /* meetups are additive — never block the chat */ }
     scrollToBottom()
 
     if (currentUser.value) {
@@ -437,6 +507,11 @@ onMounted(async () => {
       fetchOffers(options.id!).then(() => nextTick(() => scrollToBottom())).catch(() => {})
     })
 
+    // Live meetup cards (same realtime contract as offers).
+    meetupsUnsub = subscribeToMeetups(options.id, () => {
+      fetchMeetups(options.id!).then(() => nextTick(() => scrollToBottom())).catch(() => {})
+    })
+
     // Presence + typing (best-effort): peer online label + "正在输入…".
     startPresence()
     typingApi = subscribeTyping(options.id, () => {
@@ -450,6 +525,7 @@ onMounted(async () => {
 onUnmounted(() => {
   if (unsubscribe) unsubscribe()
   if (offersUnsub) offersUnsub()
+  if (meetupsUnsub) meetupsUnsub()
   if (typingApi) typingApi.unsubscribe()
   if (typingClear) clearTimeout(typingClear)
 })
@@ -770,11 +846,13 @@ function doReport() {
 type TimelineEntry =
   | { kind: 'msg'; key: string; created_at: string; msg: any }
   | { kind: 'offer'; key: string; created_at: string; offer: Offer }
+  | { kind: 'meetup'; key: string; created_at: string; meetup: Meetup }
 
 const timeline = computed<TimelineEntry[]>(() => {
   const out: TimelineEntry[] = []
   for (const m of messages.value) out.push({ kind: 'msg', key: 'm-' + m.id, created_at: m.created_at, msg: m })
   for (const o of offers.value) out.push({ kind: 'offer', key: 'o-' + o.id, created_at: o.created_at, offer: o })
+  for (const mt of meetups.value) out.push({ kind: 'meetup', key: 'mt-' + mt.id, created_at: mt.created_at, meetup: mt })
   out.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
   return out
 })
@@ -851,6 +929,92 @@ async function respondOffer(o: Offer, action: 'accept' | 'decline') {
   try {
     await respondToOffer(o.id, action)
     await fetchOffers(conversationId.value)
+    nextTick(() => scrollToBottom())
+  } catch (err: any) {
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
+  }
+}
+
+// ---- Meetup helpers (structured scheduling, migration 052) ----
+function pad2(n: number): string { return n < 10 ? '0' + n : String(n) }
+function meetupIncoming(m: Meetup): boolean { return m.to_user === currentUser.value?.id }
+function meetupExpired(m: Meetup): boolean { return new Date(m.expires_at).getTime() <= Date.now() }
+function meetupStatusLabel(m: Meetup): string {
+  if (m.status === 'pending' && meetupExpired(m)) return t('chat.meetupStatus.expired')
+  return t('chat.meetupStatus.' + m.status)
+}
+function meetupSpotLabel(m: Meetup): string { return localizeLocation(m.spot, lang.value as 'en' | 'zh') }
+function fmtMeetupWhen(iso: string): string {
+  const d = new Date(iso)
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return `${d.getMonth() + 1}/${d.getDate()} ${time}`
+}
+
+// ---- Meetup composer (propose + reschedule share one bottom sheet) ----
+const safeSpots = computed(() => CAMPUS_SPOTS.filter(s => s.safe))
+const todayStr = computed(() => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}` })
+const maxDateStr = computed(() => { const d = new Date(Date.now() + 89 * 86400000); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}` })
+const meetupSheet = ref<{ open: boolean; mode: 'new' | 'reschedule'; targetId: string }>({ open: false, mode: 'new', targetId: '' })
+const meetupSpotInput = ref('')
+const meetupDateInput = ref('')
+const meetupTimeInput = ref('')
+const meetupNoteInput = ref('')
+const meetupSubmitting = ref(false)
+
+function resetMeetupSheet() {
+  meetupSpotInput.value = ''
+  meetupDateInput.value = ''
+  meetupTimeInput.value = ''
+  meetupNoteInput.value = ''
+}
+function openMeetupSheet() {
+  resetMeetupSheet()
+  // Prefill from the item's pickup location only when it's a known safe spot,
+  // using the localized chip label so the matching chip highlights (a raw
+  // zh-stored value wouldn't match the en chips, and vice versa).
+  const spot = matchSpot(itemInfo.value?.location)
+  if (spot && spot.safe) meetupSpotInput.value = lang.value === 'zh' ? spot.zh : spot.en
+  meetupSheet.value = { open: true, mode: 'new', targetId: '' }
+}
+function openReschedule(m: Meetup) {
+  resetMeetupSheet()
+  meetupSpotInput.value = m.spot
+  meetupSheet.value = { open: true, mode: 'reschedule', targetId: m.id }
+}
+function closeMeetupSheet() { meetupSheet.value.open = false }
+
+function meetupAtIso(): string | null {
+  if (!meetupDateInput.value || !meetupTimeInput.value) return null
+  const dt = new Date(`${meetupDateInput.value}T${meetupTimeInput.value}:00`)
+  if (isNaN(dt.getTime())) return null
+  return dt.toISOString()
+}
+async function submitMeetupSheet() {
+  const iso = meetupAtIso()
+  if (!conversationId.value || !meetupSpotInput.value || !iso || meetupSubmitting.value) return
+  meetupSubmitting.value = true
+  try {
+    if (meetupSheet.value.mode === 'reschedule' && meetupSheet.value.targetId) {
+      await respondToMeetup(meetupSheet.value.targetId, 'reschedule', meetupSpotInput.value, iso, meetupNoteInput.value)
+    } else {
+      await proposeMeetup(conversationId.value, meetupSpotInput.value, iso, meetupNoteInput.value)
+    }
+    await fetchMeetups(conversationId.value)
+    meetupSheet.value.open = false
+    nextTick(() => scrollToBottom())
+  } catch (err: any) {
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
+  } finally {
+    meetupSubmitting.value = false
+  }
+}
+async function acceptMeetup(m: Meetup) { await respondMeetup(m, 'accept') }
+async function declineMeetup(m: Meetup) { await respondMeetup(m, 'decline') }
+async function respondMeetup(m: Meetup, action: 'accept' | 'decline') {
+  if (!conversationId.value) return
+  try {
+    await respondToMeetup(m.id, action)
+    await fetchMeetups(conversationId.value)
     nextTick(() => scrollToBottom())
   } catch (err: any) {
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
@@ -1151,8 +1315,10 @@ function scrollToBottom() {
 }
 .offer-bar {
   padding: 6px 12px 2px;
+  display: flex; gap: 8px;
 }
 .offer-btn {
+  flex: 1;
   display: flex; align-items: center; justify-content: center;
   background: var(--warning-soft); border: 0.5px solid var(--warning);
   border-radius: var(--radius-md); padding: 8px; cursor: pointer;
@@ -1163,6 +1329,16 @@ function scrollToBottom() {
     letter-spacing: 0.02em;
   }
   &:active { background: rgba(212, 146, 60, 0.2); }
+}
+/* Meetup CTA — campus-blue accent so it reads as a distinct action from
+   the amber "make offer". Available to both parties on any active item. */
+.meetup-btn {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--campus-blue-soft); border: 0.5px solid var(--campus-blue);
+  border-radius: var(--radius-md); padding: 8px; cursor: pointer;
+  text { font-size: 13px; font-weight: 600; color: var(--campus-blue); letter-spacing: 0.02em; }
+  &:active { background: rgba(42, 92, 170, 0.16); }
 }
 .quick-replies {
   white-space: nowrap; padding: 8px 12px 4px;
@@ -1284,6 +1460,22 @@ function scrollToBottom() {
   border-radius: var(--radius-pill); background: var(--surface-alt);
   text { font-family: var(--font-mono); font-size: 13px; color: var(--ink-soft); }
   &:active { background: var(--frame); }
+  &.on {
+    background: var(--brand-soft);
+    text { color: var(--brand-deep); }
+  }
+}
+/* Meetup card body (reuses .offer-card / .oc-* shell) + composer pickers. */
+.mc-spot { display: block; font-family: var(--font-serif); font-size: 19px; font-weight: 600; color: var(--campus-blue); letter-spacing: -0.01em; line-height: 1.2; }
+.mc-when { display: block; margin-top: 2px; font-size: 14px; font-weight: 600; color: var(--ink); }
+.mt-label { display: block; margin-top: 6px; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: var(--ink-quiet); letter-spacing: 0.02em; }
+.mt-spots { white-space: nowrap; }
+.mt-spots .os-quick-chip text { font-family: inherit; }
+.mt-row { display: flex; gap: 8px; margin-top: 12px; }
+.mt-picker {
+  flex: 1; height: 44px; display: flex; align-items: center; justify-content: center;
+  background: var(--bg-subtle); border-radius: var(--radius-md);
+  text { font-size: 14px; color: var(--ink); }
 }
 .os-note { margin-top: 12px; padding: 11px 14px; background: var(--bg-subtle); border-radius: var(--radius-md); font-size: 14px; color: var(--ink); width: 100%; box-sizing: border-box; }
 .os-submit {

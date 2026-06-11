@@ -20,10 +20,10 @@
         @longpress="onLongPress(n.id)"
       >
         <view :class="['notif-icon', 'ni-' + n.type]">
-          <text>{{ n.type === 'price_drop' ? '↓' : n.type === 'sold' ? '✓' : n.type === 'offer' ? '$' : '!' }}</text>
+          <text>{{ n.type === 'price_drop' ? '↓' : n.type === 'sold' ? '✓' : n.type === 'offer' ? '$' : n.type === 'meetup' ? '📍' : '!' }}</text>
         </view>
         <view class="notif-content">
-          <text class="notif-type">{{ n.type === 'price_drop' ? t('notif.priceDrop') : n.type === 'sold' ? t('notif.itemSold') : n.type === 'offer' ? t('notif.offer') : t('notif.system') }}</text>
+          <text class="notif-type">{{ n.type === 'price_drop' ? t('notif.priceDrop') : n.type === 'sold' ? t('notif.itemSold') : n.type === 'offer' ? t('notif.offer') : n.type === 'meetup' ? t('notif.meetup') : t('notif.system') }}</text>
           <text class="notif-title">{{ n.title }}</text>
           <text class="notif-body">{{ n.body }}</text>
           <text class="notif-time">{{ formatTime(n.created_at) }}</text>
@@ -138,6 +138,7 @@ function onLongPress(id: string) {
 .ni-sold       { background: var(--success-soft);   color: var(--success); }
 .ni-system     { background: var(--campus-blue-soft); color: var(--campus-blue); }
 .ni-offer      { background: var(--warning-soft);   color: var(--warning); }
+.ni-meetup     { background: var(--campus-blue-soft); color: var(--campus-blue); }
 .notif-content { flex: 1; min-width: 0; }
 .notif-type {
   font-size: 11px; font-weight: 600; color: var(--text-muted); display: block;
