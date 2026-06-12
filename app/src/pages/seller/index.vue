@@ -94,7 +94,7 @@
       </view>
 
       <view v-if="sellerItems.length === 0 && !loading" class="empty">
-        <text class="u-thumb-ph-seal" style="opacity:0.14;font-size:48px">集</text>
+        <UEmptyArt name="bag" />
         <text>{{ t('seller.noItems') }}</text>
       </view>
     </template>
@@ -104,6 +104,7 @@
         <text>{{ t('home.loading') }}...</text>
       </view>
       <view v-else-if="userPosts.length === 0" class="empty">
+        <UEmptyArt name="posts" />
         <text>{{ t('seller.noPosts') }}</text>
       </view>
       <view v-else class="posts-list">
@@ -143,6 +144,7 @@ import { matchSpot } from '../../composables/useCampusSpots'
 import type { Profile, Item, Post } from '../../types'
 import { listingPriceLabel, formatTime, thumbUrl } from '../../utils'
 import UBadge from '../../components/UBadge.vue'
+import UEmptyArt from '../../components/UEmptyArt.vue'
 
 const { t, lang, localize } = useI18n()
 const { isDark } = useTheme()

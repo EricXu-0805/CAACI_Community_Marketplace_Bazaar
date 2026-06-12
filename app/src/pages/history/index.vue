@@ -18,7 +18,7 @@
     </view>
 
     <view v-if="currentList.length === 0" class="empty">
-      <text class="u-thumb-ph-seal" style="opacity:0.14;font-size:48px">集</text>
+      <UEmptyArt name="history" />
       <text>{{ t('history.empty') }}</text>
     </view>
 
@@ -80,6 +80,7 @@ import { useI18n } from '../../composables/useI18n'
 import { useHistory } from '../../composables/useHistory'
 import { useTheme } from '../../composables/useTheme'
 import { listingPriceLabel, thumbUrl } from '../../utils'
+import UEmptyArt from '../../components/UEmptyArt.vue'
 
 const { t, localize } = useI18n()
 const { isDark } = useTheme()

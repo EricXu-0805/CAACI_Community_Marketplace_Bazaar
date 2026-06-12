@@ -391,7 +391,7 @@
       </view>
 
       <view v-else-if="!loading && !initialLoading && filteredItems.length === 0" class="empty">
-        <view class="empty-bag-icon"></view>
+        <UEmptyArt :name="searchText ? 'search' : 'bag'" />
         <text class="empty-title">{{ searchText ? t('home.noResults') : (listingType === 'wanted' ? t('home.emptyWantedTitle') : t('home.emptyTitle')) }}</text>
         <text class="empty-sub">{{ searchText ? t('home.tryOther') : (listingType === 'wanted' ? t('home.emptyWantedSub') : t('home.emptySub')) }}</text>
         <view v-if="searchText" class="empty-btn" @click="searchText = ''; onSearch()">{{ t('home.clearSearch') }}</view>
@@ -429,6 +429,7 @@ import AppSidebar from '../../components/AppSidebar.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import UBadge from '../../components/UBadge.vue'
 import UIcon from '../../components/UIcon.vue'
+import UEmptyArt from '../../components/UEmptyArt.vue'
 
 const { t, lang, localize, toggleLang } = useI18n()
 const { isDark, setPref } = useTheme()
@@ -1476,18 +1477,6 @@ function goPublish() {
     content: '!'; position: absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%);
     font-size: 20px; font-weight: 700; color: var(--border-strong);
-  }
-}
-.empty-bag-icon {
-  width: 36px; height: 40px; border: 2.5px solid var(--border-strong);
-  border-radius: 5px; position: relative; margin-bottom: 6px;
-  &::before {
-    content: ''; position: absolute; top: -10px; left: 5px;
-    width: 22px; height: 12px;
-    border: 2.5px solid var(--border-strong); border-bottom: none;
-    border-radius: 11px 11px 0 0;
-    /* App.vue's `view, text` border-box reset doesn't reach ::before; opt in so 22px is the outer width and the handle centers on the bag body. */
-    box-sizing: border-box;
   }
 }
 .empty-title { font-size: 16px; color: var(--ink); font-weight: 600; }

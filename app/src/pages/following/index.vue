@@ -7,8 +7,7 @@
 
     <scroll-view class="list" scroll-y :scroll-top="scrollTopVal" :scroll-with-animation="false" @scrolltolower="loadMore">
       <view v-if="items.length === 0 && !loading" class="empty">
-        <text class="u-thumb-ph-seal" style="opacity:0.14;font-size:48px">集</text>
-        <UIcon name="user-plus" size="xl" color="ink-faint" />
+        <UEmptyArt name="following" />
         <text class="empty-text">{{ t('follow.emptyFeed') }}</text>
       </view>
 
@@ -64,7 +63,7 @@ import { useAuth } from '../../composables/useAuth'
 import { matchSpot } from '../../composables/useCampusSpots'
 import type { Item } from '../../types'
 import { listingPriceLabel, thumbUrl, friendlyErrorMessage } from '../../utils'
-import UIcon from '../../components/UIcon.vue'
+import UEmptyArt from '../../components/UEmptyArt.vue'
 
 const { t, localize, lang } = useI18n()
 const { isDark } = useTheme()

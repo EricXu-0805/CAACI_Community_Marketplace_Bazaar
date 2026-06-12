@@ -66,8 +66,7 @@
         </view>
 
         <view v-else-if="followItems.length === 0" class="empty">
-          <view class="empty-icon"></view>
-          <text class="u-thumb-ph-seal" style="opacity:0.14;font-size:48px">集</text>
+          <UEmptyArt name="following" />
           <text class="empty-text">{{ isLoggedIn ? t('follow.emptyFeed') : t('profile.signInHint') }}</text>
         </view>
 
@@ -106,8 +105,7 @@
       </view>
 
       <view v-else-if="visiblePosts.length === 0" class="empty">
-        <view class="empty-icon"></view>
-        <text class="u-thumb-ph-seal" style="opacity:0.14;font-size:48px">集</text>
+        <UEmptyArt name="posts" />
         <text class="empty-text">{{ t('plaza.empty') }}</text>
         <view v-if="isLoggedIn" class="cta-btn" @click="openComposer">{{ t('plaza.write') }}</view>
       </view>
@@ -526,6 +524,7 @@ import { BASE_URL } from '../../config/runtime'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PlazaBannerCarousel from '../../components/PlazaBannerCarousel.vue'
 import UBadge from '../../components/UBadge.vue'
+import UEmptyArt from '../../components/UEmptyArt.vue'
 import UIcon from '../../components/UIcon.vue'
 
 const { t, lang, localize } = useI18n()
@@ -1399,11 +1398,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .loading, .empty {
   display: flex; flex-direction: column; align-items: center;
   padding: 80px 16px; gap: 12px; color: var(--text-faint); font-size: 14px;
-}
-.empty-icon {
-  width: 48px; height: 36px; border: 2.5px solid var(--border-strong);
-  border-radius: 18px 18px 18px 4px; position: relative;
-  margin-bottom: 4px;
 }
 .empty-text { font-size: 14px; color: var(--text-muted); }
 .cta-btn {

@@ -32,9 +32,7 @@
     </view>
 
     <view v-else-if="conversations.length === 0 && !loading" class="empty">
-      <view class="empty-icon">
-        <view class="ei-bubble"></view>
-      </view>
+      <UEmptyArt name="messages" />
       <text class="empty-title">{{ t('msg.empty') }}</text>
       <text class="empty-sub">{{ t('msg.emptySub') }}</text>
     </view>
@@ -147,6 +145,7 @@ import type { Conversation, Profile } from '../../types'
 import AppSidebar from '../../components/AppSidebar.vue'
 import ChatThread from '../../components/ChatThread.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
+import UEmptyArt from '../../components/UEmptyArt.vue'
 import { parseStickerToken } from '../../components/stickers/registry'
 
 const { t, localize } = useI18n()
@@ -476,12 +475,12 @@ function goLogin() {
   padding-top: 120px; gap: 10px;
 }
 
-.prompt-icon, .empty-icon {
+.prompt-icon {
   width: 52px; height: 52px;
   display: flex; align-items: center; justify-content: center;
   margin-bottom: 4px;
 }
-.pi-bubble, .ei-bubble {
+.pi-bubble {
   width: 36px; height: 28px; border: 2.5px solid var(--border-strong);
   border-radius: 16px 16px 16px 4px; position: relative;
   &::before {
