@@ -38,6 +38,7 @@
         <view :class="['asb-item', { on: current === 'profile' }]" role="button" :aria-current="current === 'profile' ? 'page' : undefined" @click="go('/pages/profile/index')">
           <UIcon name="profile" size="sm" :weight="current === 'profile' ? 'filled' : 'regular'" :color="current === 'profile' ? 'brand' : 'ink-soft'" />
           <text class="asb-label">{{ t('nav.profile') }}</text>
+          <view v-if="unreadNotifCount > 0" class="asb-dot"></view>
         </view>
       </view>
 
@@ -73,6 +74,7 @@ import { computed } from 'vue'
 import UIcon from './UIcon.vue'
 import { useI18n } from '../composables/useI18n'
 import { useUnread } from '../composables/useUnread'
+import { useNotifications } from '../composables/useNotifications'
 import { useTheme } from '../composables/useTheme'
 import { useAuth } from '../composables/useAuth'
 
@@ -80,6 +82,7 @@ defineProps<{ current: string }>()
 
 const { t, lang, toggleLang } = useI18n()
 const { unreadCount } = useUnread()
+const { unreadNotifCount } = useNotifications()
 const { isDark, setPref } = useTheme()
 const { currentUser } = useAuth()
 
@@ -164,6 +167,10 @@ function toggleTheme() {
     background: var(--brand); color: #fff;
     font-family: var(--font-mono); font-size: 11px; font-weight: 600;
     display: flex; align-items: center; justify-content: center; padding: 0 5px;
+  }
+  .asb-dot {
+    margin-left: auto; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--brand); flex: none;
   }
 
   .asb-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding-top: 14px; }

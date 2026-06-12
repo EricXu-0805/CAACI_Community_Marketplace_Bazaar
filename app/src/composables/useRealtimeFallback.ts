@@ -208,6 +208,69 @@ export function subscribeToConversation(
   })
 }
 
+/*
+ * In-app notification feed (offers, meetups, sold, price-drops, system).
+ * Mirrors subscribeToUserInbox but watches the notifications table instead
+ * of messages, so a user already in the app gets a live toast + red-dot the
+ * moment a row is inserted for them. RLS scopes the table to the owner, so
+ * the user_id filter is just an extra narrowing of the channel.
+ *
+ * No long-poll tier here: the /api/realtime-poll edge route only knows the
+ * 'conversation' and 'inbox' scopes, so mp falls straight through to a direct
+ * PostgREST poll. Notifications are low-frequency, so a 20s tick is plenty.
+ */
+const NOTIFICATION_POLL_FIELDS = 'id, user_id, type, title, body, item_id, is_read, created_at'
+
+export function subscribeToUserNotifications(
+  userId: string,
+  onNew: (row: any) => void,
+): Unsubscribe {
+  const { supabase } = useSupabase()
+
+  if (isRealtimeSupported()) {
+    const channel = supabase
+      .channel(`user-${userId}-notifications`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => onNew(payload.new),
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }
+
+  /* mp: seed the cursor at subscription time so the first tick doesn't replay
+     historical notifications as fresh toasts. */
+  let lastSeen: string = new Date().toISOString()
+
+  return startPoll({
+    intervalMs: 20000,
+    run: async () => {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select(NOTIFICATION_POLL_FIELDS)
+        .eq('user_id', userId)
+        .gt('created_at', lastSeen)
+        .order('created_at', { ascending: true })
+        .limit(25)
+      if (error) throw error
+      return data || []
+    },
+    onSuccess: (rows: any[]) => {
+      if (!rows.length) return
+      for (const row of rows) onNew(row)
+      lastSeen = rows[rows.length - 1].created_at
+    },
+    onError: () => { /* swallow transient errors; next tick retries */ },
+  })
+}
+
 export function subscribeToUserInbox(
   userId: string,
   onNewMessage: (msg: any) => void,
