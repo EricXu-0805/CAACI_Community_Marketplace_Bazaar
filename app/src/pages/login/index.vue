@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <view class="nav-back" role="button" :aria-label="t('a11y.back')" @click="goBack">
-      <view class="back-arrow"></view>
+      <UIcon name="chevron-left" size="xs" color="accent-primary" />
     </view>
     <view class="header">
       <image class="logo-mark-img" :src="logoSrc" :alt="t('app.name')" mode="aspectFit" />
@@ -140,6 +140,7 @@ import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 import { useTheme } from '../../composables/useTheme'
 import { BASE_URL } from '../../config/runtime'
+import UIcon from '../../components/UIcon.vue'
 
 const { t } = useI18n()
 const { signIn, signUp, signInWithWeChat, loading } = useAuth()
@@ -433,12 +434,6 @@ async function onSubmit() {
   cursor: pointer; z-index: 10;
   &:active { background: var(--bg-subtle); }
 }
-.back-arrow {
-  width: 10px; height: 10px;
-  border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary);
-  transform: rotate(45deg); margin-left: 3px;
-}
-
 .header {
   display: flex; flex-direction: column; align-items: center;
   padding: 72px 0 40px;

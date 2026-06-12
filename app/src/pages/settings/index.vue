@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <view class="header">
-      <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><view class="back-arrow"></view></view>
+      <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="brand" /></view>
       <text class="header-title">{{ t('settings.title') }}</text>
     </view>
 
@@ -79,6 +79,7 @@ import { useSupabase } from '../../composables/useSupabase'
 import { useTheme, type ThemePref } from '../../composables/useTheme'
 import { DIALOG_DANGER } from '../../utils/dialogColors'
 import { BASE_URL, APP_VERSION, BUILD_REF } from '../../config/runtime'
+import UIcon from '../../components/UIcon.vue'
 
 const { t, lang, setLang } = useI18n()
 const { isLoggedIn, signOut } = useAuth()
@@ -287,11 +288,6 @@ function onSignOut() {
   border-bottom: 0.5px solid var(--border);
 }
 .back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.back-arrow {
-  width: 9px; height: 9px;
-  border-left: 2px solid var(--brand); border-bottom: 2px solid var(--brand);
-  transform: rotate(45deg); margin-left: 4px;
-}
 .header-title {
   font-family: var(--font-serif);
   font-size: 17px; font-weight: 500;

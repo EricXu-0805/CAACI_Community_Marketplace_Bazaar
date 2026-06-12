@@ -11,7 +11,7 @@
     -->
     <view class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack">
-        <view class="back-arrow"></view>
+        <UIcon name="chevron-left" size="xs" color="accent-primary" />
       </view>
       <text class="header-title">{{ t('publish.editTitle') }}</text>
     </view>
@@ -180,6 +180,7 @@ import { DIALOG_WARN } from '../../utils/dialogColors'
 import type { ItemCategory, ItemCondition } from '../../types'
 import AppSidebar from '../../components/AppSidebar.vue'
 import PermissionDeniedModal from '../../components/PermissionDeniedModal.vue'
+import UIcon from '../../components/UIcon.vue'
 
 const { t, lang } = useI18n()
 const { CAMPUS_SPOTS } = useCampusSpots()
@@ -567,11 +568,6 @@ async function onSubmit() {
 .back-btn {
   width: 32px; height: 32px; display: flex;
   align-items: center; justify-content: center; cursor: pointer;
-}
-.back-arrow {
-  width: 9px; height: 9px;
-  border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary);
-  transform: rotate(45deg); margin-left: 4px;
 }
 .header-title {
   flex: 1; text-align: center; font-size: 17px; font-weight: 600;

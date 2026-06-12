@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <view class="header">
-      <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><view class="back-arrow"></view></view>
+      <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
       <text class="header-title">{{ title }}</text>
     </view>
     <view class="tabs">
@@ -36,6 +36,7 @@ import {
   type LegalDocType,
 } from '../../legal'
 import { SUPPORT_EMAIL } from '../../config/runtime'
+import UIcon from '../../components/UIcon.vue'
 
 const { t, lang } = useI18n()
 const docType = ref<LegalDocType>('terms')
@@ -95,7 +96,6 @@ function onContactEmail() {
   flex-shrink: 0;
 }
 .back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.back-arrow { width: 9px; height: 9px; border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary); transform: rotate(45deg); margin-left: 4px; }
 .header-title { font-size: 17px; font-weight: 600; color: var(--text-primary); }
 
 .tabs {

@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <view class="header">
-      <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><view class="back-arrow"></view></view>
+      <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
       <text class="header-title">{{ t('notif.title') }}</text>
       <text v-if="notifications.length > 0" class="mark-all" @click="onMarkAll">{{ t('notif.markAll') }}</text>
     </view>
@@ -39,6 +39,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import { useNotifications, type Notification } from '../../composables/useNotifications'
 import { formatTime, friendlyErrorMessage } from '../../utils'
+import UIcon from '../../components/UIcon.vue'
 
 const { t, lang } = useI18n()
 const { notifications, fetchNotifications, markAllRead, markRead, deleteNotification } = useNotifications()
@@ -90,7 +91,6 @@ function onLongPress(id: string) {
   background: var(--bg-elev-1); border-bottom: 0.5px solid var(--line-hair);
 }
 .back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.back-arrow { width: 9px; height: 9px; border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary); transform: rotate(45deg); margin-left: 4px; }
 .header-title { font-size: 17px; font-weight: 600; color: var(--text-primary); flex: 1; }
 .mark-all { font-size: 13px; color: var(--brand); cursor: pointer; }
 
