@@ -5,7 +5,18 @@
       <text class="header-title">{{ t('settings.blockedUsers') }}</text>
     </view>
 
-    <view v-if="blockedProfiles.length === 0 && !loading" class="empty">
+    <view v-if="loading && blockedProfiles.length === 0" class="list">
+      <view v-for="n in 6" :key="'bs' + n" class="blk-skel">
+        <view class="bs-avatar u-sk"></view>
+        <view class="bs-info">
+          <view class="bs-line u-sk" style="width: 35%"></view>
+          <view class="bs-line u-sk" style="width: 62%"></view>
+        </view>
+        <view class="bs-pill u-sk"></view>
+      </view>
+    </view>
+
+    <view v-else-if="blockedProfiles.length === 0 && !loading" class="empty">
       <view class="empty-shield"></view>
       <text class="empty-text">{{ t('blocked.empty') }}</text>
       <text class="empty-sub">{{ t('blocked.emptyHint') }}</text>
@@ -122,6 +133,15 @@ function onUnblock(id: string, name: string) {
 .empty-sub { font-size: 13px; color: var(--text-muted); max-width: 260px; line-height: 1.5; }
 
 .list { background: var(--bg-elev-1); margin-top: 7px; }
+.blk-skel {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; border-bottom: 0.5px solid var(--line-hair);
+  &:last-child { border-bottom: none; }
+}
+.bs-avatar { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; }
+.bs-info { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.bs-line { height: 11px; }
+.bs-pill { width: 58px; height: 27px; border-radius: 14px; flex-shrink: 0; }
 .row {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 16px; border-bottom: 0.5px solid var(--line-hair);

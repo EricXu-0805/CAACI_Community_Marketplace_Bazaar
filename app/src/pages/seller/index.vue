@@ -11,6 +11,13 @@
       <text class="blocked-sub">{{ t('seller.blockedSub') }}</text>
     </view>
 
+    <view v-else-if="loading" class="seller-section">
+      <view class="sk-avatar u-sk"></view>
+      <view class="sk-line u-sk" style="width: 96px"></view>
+      <view class="sk-line u-sk" style="width: 200px"></view>
+      <view class="sk-trust u-sk"></view>
+    </view>
+
     <view v-else-if="seller" class="seller-section">
       <image :src="seller.avatar_url || defaultAvatarSrc" :alt="seller.nickname || 'avatar'" class="avatar" mode="aspectFill" />
       <view class="name-row">
@@ -73,7 +80,16 @@
     </view>
 
     <template v-if="activeTab === 'items'">
-      <view class="items-grid">
+      <view v-if="loading" class="items-grid">
+        <view v-for="n in 4" :key="'gs' + n" class="gi-skel">
+          <view class="gi-skel-img u-sk"></view>
+          <view class="gi-info">
+            <view class="sk-line u-sk" style="width: 80%"></view>
+            <view class="sk-line u-sk" style="width: 45%"></view>
+          </view>
+        </view>
+      </view>
+      <view v-else class="items-grid">
         <view v-for="item in sellerItems" :key="item.id" class="grid-item" @click="goDetail(item.id)">
           <view class="gi-img-wrap">
             <image v-if="thumbUrl(item.images?.[0], 'list')" :src="thumbUrl(item.images?.[0], 'list')" :alt="item.title" class="gi-img" mode="aspectFill" lazy-load />
@@ -100,8 +116,12 @@
     </template>
 
     <template v-else>
-      <view v-if="postsLoading" class="empty">
-        <text>{{ t('home.loading') }}...</text>
+      <view v-if="postsLoading" class="posts-list">
+        <view v-for="n in 3" :key="'ps' + n" class="sp-skel">
+          <view class="sk-line u-sk" style="width: 92%"></view>
+          <view class="sk-line u-sk" style="width: 70%"></view>
+          <view class="sk-line u-sk" style="width: 36%"></view>
+        </view>
       </view>
       <view v-else-if="userPosts.length === 0" class="empty">
         <UEmptyArt name="posts" />
@@ -319,6 +339,10 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .loc-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-action); }
 .loc-text { font-size: 12px; color: var(--text-faint); }
 
+.sk-avatar { width: 64px; height: 64px; border-radius: 50%; }
+.sk-line { height: 12px; border-radius: 6px; }
+.sk-trust { width: 100%; height: 58px; border-radius: 10px; margin-top: 14px; }
+
 /* 商品/动态 segmented tabs — same visual language as plaza's .ft-chip. */
 .seller-tabs {
   display: flex;
@@ -351,6 +375,10 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 }
 
 .posts-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+.sp-skel {
+  background: var(--bg-elev-1); border-radius: var(--radius-lg);
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+}
 .sp-card {
   background: var(--bg-elev-1);
   border-radius: var(--radius-lg);
@@ -409,6 +437,11 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   background: var(--bg-elev-1); cursor: pointer;
   &:active { opacity: 0.8; }
 }
+.gi-skel {
+  background: var(--bg-elev-1);
+  .gi-info { display: flex; flex-direction: column; gap: 6px; }
+}
+.gi-skel-img { aspect-ratio: 4 / 5; }
 /* Seller grid deliberately opts OUT of the DB-dims pipeline: individual
    items across a shop look like a storefront only when every tile is
    the same shape. Xiaohongshu profile / Taobao storefront grids all

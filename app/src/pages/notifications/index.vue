@@ -6,7 +6,18 @@
       <text v-if="notifications.length > 0" class="mark-all" @click="onMarkAll">{{ t('notif.markAll') }}</text>
     </view>
 
-    <view v-if="notifications.length === 0" class="empty">
+    <view v-if="loading && notifications.length === 0" class="notif-list">
+      <view v-for="n in 6" :key="'ns' + n" class="notif-skel">
+        <view class="ns-icon u-sk"></view>
+        <view class="ns-info">
+          <view class="ns-line u-sk" style="width: 30%"></view>
+          <view class="ns-line u-sk" style="width: 64%"></view>
+          <view class="ns-line u-sk" style="width: 84%"></view>
+        </view>
+      </view>
+    </view>
+
+    <view v-else-if="notifications.length === 0" class="empty">
       <view class="empty-bell"></view>
       <text class="empty-text">{{ t('notif.empty') }}</text>
     </view>
@@ -35,6 +46,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import { useNotifications, type Notification } from '../../composables/useNotifications'
@@ -43,12 +55,16 @@ import UIcon from '../../components/UIcon.vue'
 
 const { t, lang } = useI18n()
 const { notifications, fetchNotifications, markAllRead, markRead, deleteNotification } = useNotifications()
+const loading = ref(true)
 
 onShow(async () => {
+  loading.value = true
   try {
     await fetchNotifications()
   } catch (err: any) {
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
+  } finally {
+    loading.value = false
   }
   /*
    * uni-app preserves uni-page-body scroll position between navigations,
@@ -121,6 +137,15 @@ function onLongPress(id: string) {
  *   · system     → campus-blue-soft (UIUC navy wash) + campus-blue
  * Unread row + unread dot also shift to the palette.
  */
+.notif-skel {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 16px; background: var(--bg-elev-1);
+  border-bottom: 0.5px solid var(--line-hair);
+}
+.ns-icon { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; }
+.ns-info { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.ns-line { height: 11px; }
+
 .notif-item {
   display: flex; align-items: flex-start; gap: 12px;
   padding: 14px 16px; background: var(--bg-elev-1);
