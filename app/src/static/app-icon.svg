@@ -1,0 +1,16 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ai" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#D2563A"></stop>
+      <stop offset="1" stop-color="#A8381F"></stop>
+    </linearGradient>
+    <radialGradient id="aiHi" cx="0.5" cy="0.32" r="0.7">
+      <stop offset="0" stop-color="#FBF8F2" stop-opacity="0.16"></stop>
+      <stop offset="1" stop-color="#FBF8F2" stop-opacity="0"></stop>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#ai)"></rect>
+  <rect width="512" height="512" fill="url(#aiHi)"></rect>
+  <rect x="96" y="96" width="320" height="320" rx="74" fill="none" stroke="#FBF8F2" stroke-opacity="0.22" stroke-width="6"></rect>
+  <text x="256" y="346" font-family="&#39;Noto Serif SC&#39;, &#39;Songti SC&#39;, &#39;STSong&#39;, SimSun, serif" font-weight="700" font-size="248" fill="#FCFAF5" text-anchor="middle" letter-spacing="-0.02em">集</text>
+</svg>
