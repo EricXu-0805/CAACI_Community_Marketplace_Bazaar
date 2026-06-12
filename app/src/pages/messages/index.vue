@@ -2,7 +2,7 @@
   <view class="page has-sidebar">
     <AppSidebar current="messages" />
 
-    <view class="page-header">
+    <view class="page-header u-glass u-glass--hair-b">
       <text class="page-title">{{ t('nav.messages') }}</text>
     </view>
 
@@ -438,8 +438,7 @@ function goLogin() {
 .page-header {
   padding: 11px 16px;
   padding-top: calc(11px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
-  background: var(--bg-elev-1);
-  border-bottom: 0.5px solid var(--line-hair);
+  /* fill + blur + bottom hairline come from .u-glass + .u-glass--hair-b */
   position: sticky; top: 0; z-index: 50;
 }
 .page-title {

@@ -17,7 +17,7 @@
       Previous 3-tab filter (listed/saved/sold) is gone — the mock
       surfaces everything sequentially so users don't hunt in tabs.
     -->
-    <view class="page-header">
+    <view class="page-header u-glass u-glass--hair-b">
       <text class="ph-title">{{ t('nav.profile') }}</text>
     </view>
 
@@ -530,9 +530,7 @@ function onDeleteItem(id: string) {
 .page-header {
   padding: 11px 16px;
   padding-top: calc(11px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
-  background: rgba(var(--surface-rgb), 0.92);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  /* fill + blur + bottom hairline come from .u-glass + .u-glass--hair-b */
   position: sticky; top: 0; z-index: 50;
 }
 .ph-title { font-size: 17px; font-weight: 700; color: var(--text-primary); }
