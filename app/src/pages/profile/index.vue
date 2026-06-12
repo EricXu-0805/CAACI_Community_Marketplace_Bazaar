@@ -236,7 +236,7 @@
           <view class="menu-row" @click="goSettings">
             <UIcon name="settings" size="sm" color="ink-soft" />
             <text class="menu-row-text">{{ t('settings.title') }}</text>
-            <text class="menu-row-arrow">›</text>
+            <UIcon name="chevron-right" size="sm" color="text-faint" />
           </view>
         </view>
       </view>
@@ -1034,7 +1034,4 @@ function onDeleteItem(id: string) {
   &:active { opacity: 0.55; }
 }
 .menu-row-text { flex: 1; font-size: 14px; color: var(--text-primary); }
-.menu-row-arrow {
-  font-size: 20px; color: var(--text-faint); line-height: 1;
-}
 </style>
