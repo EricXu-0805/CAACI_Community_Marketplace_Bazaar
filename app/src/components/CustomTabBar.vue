@@ -81,12 +81,15 @@
     </view>
     <view :class="['tab', { active: current === 'profile' }]" @click="go('/pages/profile/index')">
       <view v-if="current === 'profile'" class="tab-dot"></view>
-      <!-- #ifdef H5 -->
-      <UIcon name="profile" size="sm" :weight="current === 'profile' ? 'filled' : 'regular'" :color="current === 'profile' ? 'ink' : 'ink-faint'" />
-      <!-- #endif -->
-      <!-- #ifndef H5 -->
-      <view :class="['ico', 'ico-me', { active: current === 'profile' }]"></view>
-      <!-- #endif -->
+      <view class="ico-wrap">
+        <!-- #ifdef H5 -->
+        <UIcon name="profile" size="sm" :weight="current === 'profile' ? 'filled' : 'regular'" :color="current === 'profile' ? 'ink' : 'ink-faint'" />
+        <!-- #endif -->
+        <!-- #ifndef H5 -->
+        <view :class="['ico', 'ico-me', { active: current === 'profile' }]"></view>
+        <!-- #endif -->
+        <view v-if="unreadNotifCount > 0" class="badge-dot-only"></view>
+      </view>
       <text :class="['lbl', { active: current === 'profile' }]">{{ t('nav.profile') }}</text>
     </view>
   </view>
@@ -95,6 +98,7 @@
 <script setup lang="ts">
 import { useI18n } from '../composables/useI18n'
 import { useUnread } from '../composables/useUnread'
+import { useNotifications } from '../composables/useNotifications'
 // #ifdef H5
 import UIcon from './UIcon.vue'
 // #endif
@@ -102,6 +106,7 @@ import UIcon from './UIcon.vue'
 defineProps<{ current: string }>()
 const { t } = useI18n()
 const { unreadCount, hasMutedUnread } = useUnread()
+const { unreadNotifCount } = useNotifications()
 
 function go(url: string) { uni.switchTab({ url }) }
 </script>

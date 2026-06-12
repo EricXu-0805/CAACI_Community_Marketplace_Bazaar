@@ -10,7 +10,10 @@
           <text :class="['nav-link', { active: current === 'messages' }]">{{ t('nav.messages') }}</text>
           <view v-if="unreadCount > 0" class="nav-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</view>
         </view>
-        <text :class="['nav-link', { active: current === 'profile' }]" @click="go('/pages/profile/index')">{{ t('nav.profile') }}</text>
+        <view class="nav-link-wrap" @click="go('/pages/profile/index')">
+          <text :class="['nav-link', { active: current === 'profile' }]">{{ t('nav.profile') }}</text>
+          <view v-if="unreadNotifCount > 0" class="nav-dot"></view>
+        </view>
       </view>
       <view class="desktop-right">
         <text class="lang-btn" @click="toggleLang">{{ t('lang.switch') }}</text>
@@ -26,9 +29,11 @@
 <script setup lang="ts">
 import { useI18n } from '../composables/useI18n'
 import { useUnread } from '../composables/useUnread'
+import { useNotifications } from '../composables/useNotifications'
 defineProps<{ current: string }>()
 const { t, toggleLang } = useI18n()
 const { unreadCount } = useUnread()
+const { unreadNotifCount } = useNotifications()
 function go(url: string) { uni.switchTab({ url }) }
 </script>
 
@@ -52,6 +57,11 @@ function go(url: string) { uni.switchTab({ url }) }
   min-width: 16px; height: 16px; border-radius: 8px;
   background: var(--accent-danger); color: #fff; font-size: 10px; font-weight: 700;
   display: flex; align-items: center; justify-content: center; padding: 0 4px;
+}
+.nav-dot {
+  position: absolute; top: 0; right: -4px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent-danger);
 }
 @media (max-width: 767px) { .desktop-nav { display: none; } }
 </style>
