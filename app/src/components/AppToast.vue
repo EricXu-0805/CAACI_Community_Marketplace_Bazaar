@@ -95,8 +95,15 @@ onUnmounted(() => {
 function onTap(t: ToastItem) {
   try { t.onTap?.() } catch { /* side effect is best-effort */ }
   if (t.route) {
-    if (t.switchTab) uni.switchTab({ url: t.route })
-    else uni.navigateTo({ url: t.route })
+    const url = t.route
+    if (t.switchTab) {
+      uni.switchTab({ url })
+    } else {
+      // navigateTo fails silently once the page stack hits uni-app's depth cap
+      // (e.g. tapping several detail toasts in a row); fall back to redirectTo
+      // so the tap always lands somewhere instead of vanishing into a no-op.
+      uni.navigateTo({ url, fail: () => { uni.redirectTo({ url }) } })
+    }
   }
   dismissToast(t.id)
 }

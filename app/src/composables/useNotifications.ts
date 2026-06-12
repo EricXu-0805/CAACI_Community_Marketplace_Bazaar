@@ -70,7 +70,11 @@ function handleIncoming(row: Notification) {
 }
 
 function startNotificationsListener(userId: string) {
-  if (notifUnsub) return
+  // Replace, don't bail: if currentUser flips identity in a single tick the
+  // watcher may not see the intermediate null, so always tear down any prior
+  // channel before subscribing — otherwise the new user gets an orphaned
+  // channel still scoped to the old uid and receives nothing.
+  if (notifUnsub) stopNotificationsListener()
   notifUnsub = subscribeToUserNotifications(userId, handleIncoming)
 }
 
