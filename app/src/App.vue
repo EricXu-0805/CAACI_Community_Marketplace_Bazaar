@@ -1606,6 +1606,23 @@ button:focus-visible,
 .u-thumb-ph--sm .u-thumb-ph-seal,
 .u-thumb-ph-seal.sm { font-size: 26px; }
 
+/* Inline "求购 / WANTED" listing-type marker for the feed cards that don't use
+   the UBadge image overlay (profile / seller / following / history rows). Solid
+   campus-blue, matching .u-badge--wanted, so a buyer scanning a feed can tell a
+   request from a sale at a glance. Pair with listingPriceLabel() so the price
+   line reads "预算 $X / 面议" instead of "Free". */
+.u-wanted-tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  background: var(--campus-blue);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.45;
+}
+
 /* One-shot list entrance — fade + rise the first time an element
    mounts. `backwards` fill (not `both`) applies the from-state before
    start to avoid a first-frame flash, but does NOT retain the end-

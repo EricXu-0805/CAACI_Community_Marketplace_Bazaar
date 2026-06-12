@@ -177,7 +177,10 @@
           <view v-for="si in sellerOtherItems" :key="si.id" class="more-card" @click="goToOtherItem(si.id)">
             <image v-if="thumbUrl(si.images?.[0], 'list')" :src="thumbUrl(si.images?.[0], 'list')" :alt="si.title" class="mc-img" mode="aspectFill" lazy-load />
             <view v-else class="mc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
-            <text :class="['mc-price', { free: !si.price || si.price === 0 }]">{{ formatPrice(si.price, t("home.free")) }}</text>
+            <view class="mc-price-row">
+              <text v-if="si.listing_type === 'wanted'" class="u-wanted-tag">{{ t('item.wanted') }}</text>
+              <text :class="['mc-price', { free: si.listing_type !== 'wanted' && (!si.price || si.price === 0) }]">{{ listingPriceLabel(si, t) }}</text>
+            </view>
           </view>
         </view>
       </scroll-view>
@@ -191,7 +194,10 @@
           <view v-for="si in similarItems" :key="si.id" class="more-card" @click="goToOtherItem(si.id)">
             <image v-if="thumbUrl(si.images?.[0], 'list')" :src="thumbUrl(si.images?.[0], 'list')" :alt="si.title" class="mc-img" mode="aspectFill" lazy-load />
             <view v-else class="mc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
-            <text :class="['mc-price', { free: !si.price || si.price === 0 }]">{{ formatPrice(si.price, t("home.free")) }}</text>
+            <view class="mc-price-row">
+              <text v-if="si.listing_type === 'wanted'" class="u-wanted-tag">{{ t('item.wanted') }}</text>
+              <text :class="['mc-price', { free: si.listing_type !== 'wanted' && (!si.price || si.price === 0) }]">{{ listingPriceLabel(si, t) }}</text>
+            </view>
           </view>
         </view>
       </scroll-view>
@@ -301,7 +307,7 @@ import { useModeration } from '../../composables/useModeration'
 import { useTheme } from '../../composables/useTheme'
 import type { Item, Rating } from '../../types'
 
-import { formatTime, haptic, formatPrice, quickTranslate, thumbUrl, friendlyErrorMessage } from '../../utils'
+import { formatTime, haptic, formatPrice, listingPriceLabel, quickTranslate, thumbUrl, friendlyErrorMessage } from '../../utils'
 import { readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
 import { matchSpot, localizeLocation } from '../../composables/useCampusSpots'
@@ -562,11 +568,11 @@ onLoad(async (options) => {
       getFavoriteCount(options.id!),
       needsRated ? hasRated(itemData.user_id, itemData.id) : Promise.resolve(false),
       supabase
-        .from('items').select('id, title, price, images, image_dimensions')
+        .from('items').select('id, title, price, images, image_dimensions, listing_type')
         .eq('user_id', itemData.user_id).eq('status', 'active')
         .neq('id', itemData.id).limit(6),
       supabase
-        .from('items').select('id, title, price, images, image_dimensions, user_id')
+        .from('items').select('id, title, price, images, image_dimensions, user_id, listing_type')
         .eq('category', itemData.category).eq('status', 'active')
         .neq('id', itemData.id).neq('user_id', itemData.user_id).limit(12),
       fetchForUser(itemData.user_id, REVIEW_FETCH).catch(() => [] as Rating[]),
@@ -1140,12 +1146,12 @@ async function contactSeller() {
   &:active { opacity: 0.8; }
 }
 .mc-img { width: 100px; height: 100px; border-radius: 8px; background: var(--bg-subtle); }
+.mc-price-row { display: flex; align-items: center; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
 .mc-price {
   font-family: var(--font-serif);
   font-size: 15px; font-weight: 600;
   color: var(--brand);
   letter-spacing: -0.01em;
-  margin-top: 4px;
   display: block;
   line-height: 1;
   font-feature-settings: 'tnum';

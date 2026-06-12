@@ -27,7 +27,8 @@
       <view class="ic-info">
         <text class="ic-title">{{ localize(itemInfo.title_i18n, itemInfo.title) }}</text>
         <view class="ic-bottom">
-          <text class="ic-price">{{ formatPrice(itemInfo.price, t("home.free")) }}</text>
+          <text v-if="itemInfo.listing_type === 'wanted'" class="u-wanted-tag">{{ t('item.wanted') }}</text>
+          <text class="ic-price">{{ listingPriceLabel(itemInfo, t) }}</text>
           <text v-if="itemInfo.status === 'sold'" class="ic-sold">{{ t('status.sold') }}</text>
           <text v-else-if="itemInfo.status === 'reserved'" class="ic-reserved">{{ t('status.reserved') }}</text>
         </view>
@@ -280,7 +281,7 @@
     <view :class="['offer-sheet', { open: offerSheet.open }]">
       <view class="os-handle"></view>
       <text class="os-title">{{ offerSheet.mode === 'counter' ? t('chat.offerCounterTitle') : t('chat.offerTitle') }}</text>
-      <text v-if="itemInfo" class="os-ref">{{ localize(itemInfo.title_i18n, itemInfo.title) }} · {{ t('chat.offerListPrice') }} {{ formatPrice(itemInfo.price, t('home.free')) }}</text>
+      <text v-if="itemInfo" class="os-ref">{{ localize(itemInfo.title_i18n, itemInfo.title) }} · {{ t('chat.offerListPrice') }} {{ listingPriceLabel(itemInfo, t) }}</text>
       <view class="os-input-row">
         <text class="os-dollar">$</text>
         <input v-model="offerPriceInput" type="digit" class="os-input" :placeholder="t('chat.offerPricePh')" />
@@ -344,7 +345,7 @@ import { useUnread } from '../composables/useUnread'
 import { useI18n } from '../composables/useI18n'
 import { useModeration } from '../composables/useModeration'
 import { useLongPress } from '../composables/useLongPress'
-import { formatPrice, friendlyErrorMessage } from '../utils'
+import { listingPriceLabel, friendlyErrorMessage } from '../utils'
 import { DIALOG_DANGER } from '../utils/dialogColors'
 import type { Item, Offer, Meetup } from '../types'
 import ChatEmojiPanel from './ChatEmojiPanel.vue'

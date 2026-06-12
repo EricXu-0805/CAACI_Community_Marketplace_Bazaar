@@ -80,7 +80,10 @@
             <view v-else class="fc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
             <view class="fc-body">
               <text class="fc-title">{{ localize(it.title_i18n, it.title) }}</text>
-              <text class="fc-price">{{ formatPrice(it.price, t('home.free')) }}</text>
+              <view class="fc-price-row">
+                <text v-if="it.listing_type === 'wanted'" class="u-wanted-tag">{{ t('item.wanted') }}</text>
+                <text class="fc-price">{{ listingPriceLabel(it, t) }}</text>
+              </view>
               <view v-if="it.profile" class="fc-seller">
                 <image :src="it.profile.avatar_url || defaultAvatarSrc" class="fc-avatar" mode="aspectFill" />
                 <text class="fc-nick">{{ it.profile.nickname }}</text>
@@ -506,7 +509,7 @@ import { useTranslate } from '../../composables/useTranslate'
 import { useLongPress } from '../../composables/useLongPress'
 import { useKeyboardHeight } from '../../composables/useKeyboardHeight'
 import type { Post, PostComment, Item } from '../../types'
-import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl, formatPrice } from '../../utils'
+import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
 import { DIALOG_DANGER } from '../../utils/dialogColors'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
@@ -1439,6 +1442,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+.fc-price-row { display: flex; align-items: center; gap: 5px; }
 .fc-price {
   color: var(--brand);
   font-size: 15px;

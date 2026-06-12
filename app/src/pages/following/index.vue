@@ -36,7 +36,10 @@
           </view>
           <view class="card-body">
             <text class="card-title">{{ localize(it.title_i18n, it.title) }}</text>
-            <text class="card-price">{{ formatPrice(it.price, t('home.free')) }}</text>
+            <view class="card-price-row">
+              <text v-if="it.listing_type === 'wanted'" class="u-wanted-tag">{{ t('item.wanted') }}</text>
+              <text class="card-price">{{ listingPriceLabel(it, t) }}</text>
+            </view>
             <view class="card-seller" v-if="it.profile">
               <image :src="it.profile.avatar_url || defaultAvatarSrc" :alt="it.profile.nickname || 'avatar'" class="cs-avatar" mode="aspectFill" />
               <text class="cs-name">{{ it.profile.nickname }}</text>
@@ -60,7 +63,7 @@ import { useFollow } from '../../composables/useFollow'
 import { useAuth } from '../../composables/useAuth'
 import { matchSpot } from '../../composables/useCampusSpots'
 import type { Item } from '../../types'
-import { formatPrice, thumbUrl, friendlyErrorMessage } from '../../utils'
+import { listingPriceLabel, thumbUrl, friendlyErrorMessage } from '../../utils'
 import UIcon from '../../components/UIcon.vue'
 
 const { t, localize, lang } = useI18n()
@@ -167,7 +170,8 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   font-size: 13px; color: var(--text-primary); line-height: 1.45; letter-spacing: 0.02em;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.card-price { font-size: 15px; font-weight: 700; color: var(--text-primary); margin-top: 4px; display: block; }
+.card-price-row { display: flex; align-items: center; gap: 5px; margin-top: 4px; }
+.card-price { font-size: 15px; font-weight: 700; color: var(--text-primary); display: block; }
 .card-seller { display: flex; align-items: center; gap: 5px; margin-top: 5px; }
 .cs-avatar { width: 16px; height: 16px; border-radius: 50%; background: var(--bg-subtle); }
 .cs-name { font-size: 11px; color: var(--text-secondary, var(--ink-quiet)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

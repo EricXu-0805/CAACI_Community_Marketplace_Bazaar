@@ -171,7 +171,10 @@
               <view v-else class="horz-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
               <view class="horz-info">
                 <text class="horz-title">{{ localize(item.title_i18n, item.title) }}</text>
-                <text :class="['horz-price', { free: !item.price || item.price === 0 }]">{{ formatPrice(item.price, t('home.free')) }}</text>
+                <view class="horz-price-row">
+                  <text v-if="item.listing_type === 'wanted'" class="u-wanted-tag">{{ t('item.wanted') }}</text>
+                  <text :class="['horz-price', { free: item.listing_type !== 'wanted' && (!item.price || item.price === 0) }]">{{ listingPriceLabel(item, t) }}</text>
+                </view>
                 <text v-if="item.status !== 'active'" :class="['horz-status', item.status]">
                   {{ t('status.' + item.status) }}
                 </text>
@@ -215,7 +218,8 @@
             <view class="fav-body">
               <text class="fav-title">{{ localize(item.title_i18n, item.title) }}</text>
               <view class="fav-meta">
-                <text :class="['fav-price', { free: !item.price || item.price === 0 }]">{{ formatPrice(item.price, t('home.free')) }}</text>
+                <text v-if="item.listing_type === 'wanted'" class="u-wanted-tag">{{ t('item.wanted') }}</text>
+                <text :class="['fav-price', { free: item.listing_type !== 'wanted' && (!item.price || item.price === 0) }]">{{ listingPriceLabel(item, t) }}</text>
                 <text v-if="item.status === 'sold'" class="fav-status sold">{{ t('status.sold') }}</text>
                 <text v-else-if="item.status === 'reserved'" class="fav-status reserved">{{ t('status.reserved') }}</text>
                 <text v-else-if="item.profile" class="fav-seller">{{ item.profile.nickname }}</text>
@@ -259,7 +263,7 @@ import { useFavorites } from '../../composables/useFavorites'
 import { useNotifications } from '../../composables/useNotifications'
 import { useLongPress } from '../../composables/useLongPress'
 import type { Item } from '../../types'
-import { formatPrice, thumbUrl } from '../../utils'
+import { listingPriceLabel, thumbUrl } from '../../utils'
 
 const { t, localize } = useI18n()
 const { isDark } = useTheme()
@@ -944,12 +948,12 @@ function onDeleteItem(id: string) {
    the design system's "price is the only confident number on the
    page" principle. Free items drop to sage (--success) so 免费 / Free
    reads as a positive-state affordance, not a price. */
+.horz-price-row { display: flex; align-items: center; gap: 5px; margin-top: 4px; }
 .horz-price {
   font-family: var(--font-serif);
   font-size: 17px; font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--brand);
-  margin-top: 4px;
   display: block;
   line-height: 1;
   font-feature-settings: 'tnum';
