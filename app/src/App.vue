@@ -1777,4 +1777,18 @@ button:focus-visible,
 @media (min-width: 768px) {
   .has-sidebar { padding-left: var(--sidebar-w, 240px); box-sizing: border-box; }
 }
+
+/* #ifdef H5 */
+/*
+ * uni-app's H5 picker popup ships at z-index 999, which puts it UNDER any
+ * in-app bottom sheet (ChatThread's offer/meetup sheets sit at 1000/1001).
+ * Net effect: opening the meetup time picker from a sheet rendered the
+ * popup dimmed behind the sheet mask, and tapping 完成/取消 hit the mask
+ * instead — closing the whole sheet and eating the picked spot/date.
+ * Pickers are a modal-on-top-of-modal; they must beat every app sheet.
+ * (The popup is teleported to the uni-app root, NOT kept inside the
+ * <uni-picker> element — selector must be the bare class.)
+ */
+.uni-picker-container { z-index: 1100 !important; }
+/* #endif */
 </style>
