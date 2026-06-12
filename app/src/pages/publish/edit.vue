@@ -578,8 +578,6 @@ async function onSubmit() {
   color: var(--text-primary); padding-right: 32px;
 }
 
-@media (min-width: 768px) { .header { display: none; } }
-
 /* ========== Form (verbatim from publish/index.vue) ========== */
 .form { background: var(--bg-elev-1); }
 .image-section { padding: 16px; }
@@ -828,6 +826,9 @@ async function onSubmit() {
   /* Adaptive shell: rail reserves the left; fill + center the form, and
      re-center the fixed submit bar under the 720px form column. */
   .page { max-width: none; margin: 0; }
+  /* Keep the back button reachable on desktop (the sidebar is global nav,
+     not "return to the item you came from") and align it with the form. */
+  .header { max-width: 720px; margin-left: auto; margin-right: auto; }
   .form { max-width: 720px; margin-left: auto; margin-right: auto; }
   .submit-bar { bottom: 0; left: var(--sidebar-w); right: 0; width: auto; max-width: 720px; margin-left: auto; margin-right: auto; transform: none; }
 }

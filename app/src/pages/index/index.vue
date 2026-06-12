@@ -59,6 +59,23 @@
 
     </view>
 
+    <!-- Desktop search + filter. The .mobile-header that holds these on phones
+         is display:none ≥768px, so on Mac/iPad there was no way to search or
+         filter the marketplace. Mirrors .mh-search; desktop-only via CSS. -->
+    <view class="home-desktop-tools">
+      <view class="search-field search-proxy" @click="goToSearch" role="button" :aria-label="t('a11y.search')">
+        <UIcon name="search" size="xs" color="ink-faint" />
+        <text v-if="searchText" class="sf-text">{{ searchText }}</text>
+        <text v-else class="sf-placeholder">{{ t('home.search') }}</text>
+        <view v-if="searchText" class="sf-clear" role="button" :aria-label="t('a11y.searchClear')" @click.stop="onClearSearch">×</view>
+      </view>
+      <view class="filter-btn" role="button" :aria-label="t('a11y.filter')" @click.stop="showFilter = !showFilter">
+        <UIcon name="filter" size="xs" color="text-secondary" />
+        <text class="fb-label">{{ t('home.filter') }}</text>
+        <view v-if="activeFilterCount > 0" class="fb-badge">{{ activeFilterCount }}</view>
+      </view>
+    </view>
+
     <!-- 在售 / 求购 — sell listings vs wanted (ISO) posts (migration 054). -->
     <view class="feed-mode">
       <view :class="['fm-seg', 'u-press', { on: listingType === 'sell' }]" @click="setListingType('sell')">
@@ -975,6 +992,9 @@ function goPublish() {
 .mh-search {
   display: flex; align-items: center; gap: 9px;
 }
+/* Desktop search + filter toolbar — hidden on phones (the mobile-header
+   covers those), revealed at ≥768px where the mobile-header is display:none. */
+.home-desktop-tools { display: none; }
 /*
  * Search field — refinement pattern: white surface, UIUC-blue hairline
  * border, navy text. The previous parchment-bg input blended into the
@@ -1544,6 +1564,14 @@ function goPublish() {
   /* Sidebar reserves the left rail (.has-sidebar in App.vue); the feed
      fills the remaining column instead of centering at 1120px. */
   .mobile-header { display: none; }
+
+  /* Desktop search + filter row sits at the top of the content column,
+     aligned to the same 24px gutter as the cat-bar / waterfall. */
+  .home-desktop-tools {
+    display: flex; align-items: center; gap: 10px;
+    padding: 18px 24px 4px;
+  }
+  .home-desktop-tools .search-field { flex: 1; min-width: 0; }
 
   .cat-bar { padding: 20px 24px 12px; }
   .pill { padding: 7px 20px; font-size: 14px; height: 32px; }
