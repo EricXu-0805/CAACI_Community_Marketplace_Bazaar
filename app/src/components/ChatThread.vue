@@ -1,7 +1,7 @@
 <template>
   <view class="chat-thread" :class="{ embedded }">
     <!-- Header with item context -->
-    <view class="chat-header">
+    <view class="chat-header u-glass u-glass--hair-b">
       <view v-if="!embedded" class="ch-back" role="button" :aria-label="t('a11y.back')" @click="goBack">
         <view class="ch-arrow"></view>
       </view>
@@ -1227,10 +1227,7 @@ function scrollToBottom() {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 16px;
   padding-top: calc(12px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
-  background: rgba(var(--surface-rgb), 0.92);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-bottom: 0.5px solid var(--line-hair);
+  /* fill + blur + bottom hairline come from .u-glass + .u-glass--hair-b */
   z-index: 10;
 }
 .ch-back {

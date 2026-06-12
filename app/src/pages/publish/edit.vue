@@ -147,7 +147,7 @@
       </view>
     </view>
 
-    <view class="submit-bar">
+    <view class="submit-bar u-glass u-glass--hair-t">
       <button class="submit-btn" :disabled="submitting" @click="onSubmit">
         {{ submitting ? t('publish.submitting') : t('publish.update') }}
       </button>
@@ -809,9 +809,7 @@ async function onSubmit() {
   position: fixed; bottom: calc(56px + env(safe-area-inset-bottom, 0px));
   left: 50%; transform: translateX(-50%);
   width: 100%; max-width: 480px; padding: 9px 16px;
-  background: rgba(var(--surface-rgb), 0.92);
-  backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-top: 0.5px solid var(--line-hair);
+  /* fill + blur + top hairline come from .u-glass + .u-glass--hair-t */
   z-index: 40;
 }
 .submit-btn {
