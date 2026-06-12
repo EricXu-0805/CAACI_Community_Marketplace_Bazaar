@@ -34,7 +34,10 @@
         <view v-else class="item-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
         <view class="item-info">
           <text class="item-title">{{ localize(item.title_i18n, item.title) }}</text>
-          <text class="item-price">{{ formatPrice(item.price, t('home.free')) }}</text>
+          <view class="item-price-row">
+            <text v-if="item.listing_type === 'wanted'" class="u-wanted-tag">{{ t('item.wanted') }}</text>
+            <text class="item-price">{{ listingPriceLabel(item, t) }}</text>
+          </view>
         </view>
       </view>
     </view>
@@ -76,7 +79,7 @@ import { ref, computed } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { useHistory } from '../../composables/useHistory'
 import { useTheme } from '../../composables/useTheme'
-import { formatPrice, thumbUrl } from '../../utils'
+import { listingPriceLabel, thumbUrl } from '../../utils'
 
 const { t, localize } = useI18n()
 const { isDark } = useTheme()
@@ -170,6 +173,7 @@ function onClear() {
   font-size: 14px; color: var(--text-primary); line-height: 1.45; letter-spacing: 0.02em;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
+.item-price-row { display: flex; align-items: center; gap: 5px; margin-top: 2px; }
 .item-price { font-size: 15px; font-weight: 700; color: var(--text-primary); }
 
 .post-row {

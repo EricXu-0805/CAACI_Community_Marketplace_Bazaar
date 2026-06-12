@@ -673,6 +673,23 @@ export function formatPrice(price: number, freeLabel = 'Free'): string {
 }
 
 /*
+ * Price label that respects listing_type. A "wanted" post's price is a budget,
+ * so 0 means "open budget / 面议" — never "Free". Sell posts keep plain
+ * formatPrice (0 → the free label). `t` is passed in so utils stays free of any
+ * i18n import. Mirrors the inline branch on the home + detail cards; the other
+ * feeds call this so a budget-0 wanted post never renders as Free.
+ */
+export function listingPriceLabel(
+  item: { price: number; listing_type?: string | null },
+  t: (key: string) => string,
+): string {
+  if (item.listing_type === 'wanted') {
+    return item.price > 0 ? `${t('home.budget')} ${formatPrice(item.price, '')}` : t('home.openBudget')
+  }
+  return formatPrice(item.price, t('home.free'))
+}
+
+/*
  * Client-side image compression — storage budget mitigation.
  *
  * At projected UIUC adoption (~5000 students × ~10 photos/month) raw

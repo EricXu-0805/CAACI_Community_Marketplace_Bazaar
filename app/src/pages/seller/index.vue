@@ -85,7 +85,10 @@
           </view>
           <view class="gi-info">
             <text class="gi-title">{{ localize(item.title_i18n, item.title) }}</text>
-            <text class="gi-price">{{ formatPrice(item.price, t("home.free")) }}</text>
+            <view class="gi-price-row">
+              <text v-if="item.listing_type === 'wanted'" class="u-wanted-tag">{{ t('item.wanted') }}</text>
+              <text class="gi-price">{{ listingPriceLabel(item, t) }}</text>
+            </view>
           </view>
         </view>
       </view>
@@ -138,7 +141,7 @@ import { useFollow } from '../../composables/useFollow'
 import { usePlaza } from '../../composables/usePlaza'
 import { matchSpot } from '../../composables/useCampusSpots'
 import type { Profile, Item, Post } from '../../types'
-import { formatPrice, formatTime, thumbUrl } from '../../utils'
+import { listingPriceLabel, formatTime, thumbUrl } from '../../utils'
 import UBadge from '../../components/UBadge.vue'
 
 const { t, lang, localize } = useI18n()
@@ -268,7 +271,7 @@ onLoad(async (options) => {
   }
   const [profileRes, itemsRes, soldRes] = await Promise.all([
     fetchSellerProfile(),
-    supabase.from('items').select('id, title, price, images, image_dimensions, status, condition, category, created_at').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
+    supabase.from('items').select('id, title, price, images, image_dimensions, status, condition, category, listing_type, created_at').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
     supabase.from('items').select('id', { count: 'estimated', head: true }).eq('user_id', uid).eq('status', 'sold'),
   ])
 
@@ -428,7 +431,8 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   font-size: 13px; color: var(--text-primary); line-height: 1.45; letter-spacing: 0.02em;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.gi-price { font-size: 15px; font-weight: 700; color: var(--text-primary); margin-top: 4px; display: block; }
+.gi-price-row { display: flex; align-items: center; gap: 5px; margin-top: 4px; }
+.gi-price { font-size: 15px; font-weight: 700; color: var(--text-primary); display: block; }
 
 .empty { padding: 60px 16px; text-align: center; color: var(--text-faint); font-size: 14px; }
 

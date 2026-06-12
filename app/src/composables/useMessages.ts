@@ -248,7 +248,7 @@ export function useMessages() {
     const { data, error } = await supabase
       .from('conversations')
       .select(`${CONVERSATION_FIELDS},
-        item:items(id, title, images, price, status, negotiable, user_id, category),
+        item:items(id, title, images, price, status, negotiable, user_id, category, listing_type),
         buyer:profiles!conversations_buyer_id_fkey(id, nickname, avatar_url),
         seller:profiles!conversations_seller_id_fkey(id, nickname, avatar_url)`)
       .eq('id', conversationId)
