@@ -1392,6 +1392,10 @@ button:focus-visible,
     --brand:       #E06A4A;
     --brand-deep:  #C45A3A;
     --brand-soft:  rgba(224, 106, 74, 0.15);
+    --brand-ghost: rgba(224, 106, 74, 0.08);
+    --success-soft: rgba(139, 166, 112, 0.15);
+    --warning-soft: rgba(229, 177, 112, 0.15);
+    --danger-soft:  rgba(224, 102, 102, 0.15);
 
     --campus-blue:      #6A8AC2;
     --campus-blue-soft: rgba(106, 138, 194, 0.15);

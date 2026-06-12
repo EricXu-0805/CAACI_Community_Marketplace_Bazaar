@@ -45,6 +45,7 @@
       </view>
       <view
         :class="['btn-primary', { disabled: submittingAppeal || appealText.trim().length < 10 }]"
+        role="button" :aria-label="t('suspended.submitAppeal')"
         @click="onSubmitAppeal"
       >
         <text>{{ submittingAppeal ? t('suspended.submitting') : t('suspended.submitAppeal') }}</text>
@@ -56,10 +57,10 @@
     </view>
 
     <view class="footer">
-      <view class="btn-ghost" @click="goLegal">
+      <view class="btn-ghost" role="button" :aria-label="t('suspended.viewTerms')" @click="goLegal">
         <text>{{ t('suspended.viewTerms') }}</text>
       </view>
-      <view class="btn-ghost" @click="onSignOut">
+      <view class="btn-ghost" role="button" :aria-label="t('profile.signOut')" @click="onSignOut">
         <text>{{ t('profile.signOut') }}</text>
       </view>
     </view>
@@ -208,12 +209,11 @@ function onSignOut() {
   width: 72px; height: 72px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   margin-bottom: 4px;
-  background: rgba(212, 146, 60, 0.10);
+  background: var(--warning-soft);
 }
-.hero-icon.level-2 { background: rgba(212, 146, 60, 0.12); }
-.hero-icon.level-3 { background: rgba(199,74,47,0.14); }
-.hero-icon.level-4 { background: rgba(181, 51, 51, 0.14); }
-.hero-icon.level-5 { background: rgba(127,29,29,0.15); }
+.hero-icon.level-3 { background: var(--brand-soft); }
+.hero-icon.level-4 { background: var(--danger-soft); }
+.hero-icon.level-5 { background: var(--danger-soft); }
 .hero-icon-inner {
   width: 4px; height: 28px; border-radius: 2px; background: var(--accent-warn);
   position: relative;
@@ -229,10 +229,13 @@ function onSignOut() {
 .hero-badge {
   font-size: 11px; color: var(--accent-action); font-weight: 700;
   letter-spacing: 0.08em; text-transform: uppercase;
-  padding: 3px 10px; border-radius: 10px;
-  background: rgba(199,74,47,0.08);
+  padding: 3px 10px; border-radius: var(--radius-pill);
+  background: var(--brand-ghost);
 }
-.hero-title { font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; text-align: center; }
+.hero-title {
+  font-family: var(--font-serif); font-size: 22px; font-weight: 600;
+  color: var(--text-primary); letter-spacing: -0.02em; text-align: center;
+}
 .hero-sub { font-size: 14px; color: var(--text-secondary); line-height: 1.5; text-align: center; padding: 0 8px; }
 
 .card {
@@ -240,7 +243,7 @@ function onSignOut() {
   padding: 16px; margin-bottom: 12px;
   border: 0.5px solid var(--line-hair);
 }
-.card.notice { background: var(--success-soft); border-color: rgba(93, 124, 74, 0.25); }
+.card.notice { background: var(--success-soft); }
 .card-title { display: block; font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
 .card-body { display: block; font-size: 13px; color: var(--text-secondary); line-height: 1.55; white-space: pre-wrap; }
 
@@ -250,7 +253,7 @@ function onSignOut() {
 
 .appeal-input {
   width: 100%; min-height: 110px;
-  border: 1px solid var(--bg-inset); border-radius: 10px;
+  border: 1px solid var(--line-soft); border-radius: 10px;
   padding: 12px; font-size: 14px; color: var(--text-primary);
   background: var(--bg-page); margin-top: 10px;
   line-height: 1.5;
@@ -266,8 +269,8 @@ function onSignOut() {
 .btn-primary {
   background: var(--accent-primary); color: #fff;
   margin-top: 10px;
+  box-shadow: var(--shadow-cta);
   &.disabled { opacity: 0.3; pointer-events: none; }
-  &:active { opacity: 0.85; }
 }
 .btn-ghost {
   flex: 1;

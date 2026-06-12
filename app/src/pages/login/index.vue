@@ -3,13 +3,13 @@
     <view class="nav-back" role="button" :aria-label="t('a11y.back')" @click="goBack">
       <UIcon name="chevron-left" size="xs" color="accent-primary" />
     </view>
-    <view class="header">
+    <view class="header u-rise">
       <image class="logo-mark-img" :src="logoSrc" :alt="t('app.name')" mode="aspectFit" />
       <text class="app-name">{{ t('app.name') }}</text>
       <text class="app-desc">{{ t('app.desc') }}</text>
     </view>
 
-    <view class="form">
+    <view class="form u-rise">
       <!-- #ifdef MP-WEIXIN -->
       <button class="wx-btn" :disabled="loading" @click="onWeChatLogin">
         <text class="wx-icon">✦</text>
@@ -23,11 +23,11 @@
       <!-- #endif -->
 
       <view class="tab-bar">
-        <view :class="['tab', { active: mode === 'login' }]" @click="mode = 'login'">
+        <view :class="['tab', { active: mode === 'login' }]" role="button" :aria-label="t('login.signIn')" @click="mode = 'login'">
           <text>{{ t('login.signIn') }}</text>
           <view v-if="mode === 'login'" class="tab-line"></view>
         </view>
-        <view :class="['tab', { active: mode === 'signup' }]" @click="mode = 'signup'">
+        <view :class="['tab', { active: mode === 'signup' }]" role="button" :aria-label="t('login.signUp')" @click="mode = 'signup'">
           <text>{{ t('login.signUp') }}</text>
           <view v-if="mode === 'signup'" class="tab-line"></view>
         </view>
@@ -78,9 +78,9 @@
         </view>
       </view>
 
-      <text v-if="mode === 'login'" class="forgot-link" @click="onForgotPassword">{{ t('login.forgot') }}</text>
+      <text v-if="mode === 'login'" class="forgot-link" role="button" :aria-label="t('login.forgot')" @click="onForgotPassword">{{ t('login.forgot') }}</text>
 
-      <view class="agreement-row" v-if="mode === 'signup'" @click="agreed = !agreed">
+      <view class="agreement-row" v-if="mode === 'signup'" role="button" @click="agreed = !agreed">
         <view :class="['agree-check', { on: agreed }]">
           <view v-if="agreed" class="check-mark"></view>
         </view>
@@ -128,7 +128,7 @@
     </view>
 
     <view class="footer">
-      <text class="footer-text">Illini Market</text>
+      <text class="footer-text">{{ t('app.name') }}</text>
     </view>
   </view>
 </template>
@@ -421,7 +421,7 @@ async function onSubmit() {
 
 <style lang="scss" scoped>
 .page {
-  min-height: 100vh; background: var(--bg-elev-1);
+  min-height: 100vh; background: var(--bg-page);
   padding: 0 24px;
   max-width: 400px; margin: 0 auto;
   display: flex; flex-direction: column;
@@ -519,8 +519,9 @@ async function onSubmit() {
   margin-top: 24px; border: none;
   display: flex; align-items: center; justify-content: center;
   letter-spacing: 0.01em;
+  box-shadow: var(--shadow-cta);
   &[disabled] { opacity: 0.35; }
-  &:active { opacity: 0.8; }
+  &:active { background: var(--accent-primary-deep); box-shadow: var(--shadow-soft); }
 }
 
 .wx-btn {
@@ -594,7 +595,7 @@ async function onSubmit() {
   border-radius: 4px; flex-shrink: 0; margin-top: 1px;
   display: flex; align-items: center; justify-content: center;
   transition: all 0.15s;
-  &.on { background: var(--accent-primary); border-color: var(--text-primary); }
+  &.on { background: var(--accent-primary); border-color: var(--accent-primary); }
 }
 .check-mark {
   width: 10px; height: 6px;

@@ -49,7 +49,7 @@
           mode="aspectFill"
         />
         <view class="avatar-actions">
-          <view class="btn-ghost" @click="pickAvatar">
+          <view class="btn-ghost" role="button" :aria-label="avatarUrl ? t('onboarding.changePhoto') : t('onboarding.addPhoto')" @click="pickAvatar">
             <text>{{ avatarUrl ? t('onboarding.changePhoto') : t('onboarding.addPhoto') }}</text>
           </view>
           <text v-if="avatarUrl" class="skip-hint" @click="avatarUrl = ''">{{ t('onboarding.noAvatar') }}</text>
@@ -58,10 +58,10 @@
     </view>
 
     <view class="bottom">
-      <view v-if="step > 1" class="btn-ghost half" @click="prev">
+      <view v-if="step > 1" class="btn-ghost half" role="button" :aria-label="t('onboarding.back')" @click="prev">
         <text>{{ t('onboarding.back') }}</text>
       </view>
-      <view :class="['btn-primary', { half: step > 1, disabled: !canContinue }]" @click="next">
+      <view :class="['btn-primary', { half: step > 1, disabled: !canContinue }]" role="button" :aria-label="step === totalSteps ? t('onboarding.finish') : t('onboarding.next')" @click="next">
         <text>{{ step === totalSteps ? t('onboarding.finish') : t('onboarding.next') }}</text>
       </view>
     </view>
@@ -183,7 +183,7 @@ async function finish() {
 
 <style lang="scss" scoped>
 .page {
-  min-height: 100vh; background: var(--bg-elev-1);
+  min-height: 100vh; background: var(--bg-page);
   display: flex; flex-direction: column;
   padding: 0 24px 24px;
   padding-top: calc(20px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
@@ -202,12 +202,15 @@ async function finish() {
   &.active { background: var(--accent-primary); width: 36px; }
 }
 .step { flex: 1; display: flex; flex-direction: column; gap: 10px; padding-top: 12px; }
-.title { font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
+.title {
+  font-family: var(--font-serif); font-size: 22px; font-weight: 600;
+  color: var(--text-primary); letter-spacing: -0.02em;
+}
 .sub { font-size: 14px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px; }
 .field { display: flex; flex-direction: column; gap: 8px; position: relative; }
 .label { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .input {
-  border: 0; border-bottom: 1.5px solid var(--bg-inset);
+  border: 0; border-bottom: 1.5px solid var(--line-soft);
   padding: 10px 0; font-size: 17px; color: var(--text-primary);
   background: transparent; width: 100%;
 }
@@ -242,8 +245,8 @@ async function finish() {
 }
 .btn-primary {
   background: var(--accent-primary); color: #fff;
+  box-shadow: var(--shadow-cta);
   &.disabled { opacity: 0.3; pointer-events: none; }
-  &:active { opacity: 0.85; }
 }
 .btn-ghost {
   background: var(--bg-subtle); color: var(--text-primary);
