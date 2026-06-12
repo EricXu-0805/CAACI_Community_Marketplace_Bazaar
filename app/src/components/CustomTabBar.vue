@@ -10,7 +10,7 @@
       3. FAB sits on -14px margin with a 3px parchment-colored ring
          so it reads as embedded IN the paper, not glued on top.
   -->
-  <view class="tabbar">
+  <view class="tabbar u-glass">
     <!--
       Icon rendering is split per target (P2b): H5 uses the v3 UIcon
       registry (regular at rest, filled + ink when active). mp-weixin
@@ -128,13 +128,16 @@ function go(url: string) { uni.switchTab({ url }) }
  * Labels use 0.06em letter-spacing to breathe.
  */
 .tabbar {
-  display: none; position: fixed; bottom: 0; left: 50%;
+  display: none; position: fixed; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); left: 50%;
   transform: translateX(-50%);
-  width: 100%; max-width: 480px;
-  height: calc(62px + env(safe-area-inset-bottom, 0px));
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  background: var(--parchment);
-  border-top: 0.5px solid var(--border);
+  width: calc(100% - 28px); max-width: 430px;
+  height: 62px;
+  /* Floating rounded glass pill — content scrolls under + around it, so the
+     blur (from .u-glass) actually has something to refract. Detached from the
+     screen edge by the bottom offset + side insets; the lift shadow comes from
+     .u-glass. */
+  border-radius: 26px;
+  border: 0.5px solid rgba(40, 30, 20, 0.08);
   z-index: 999; align-items: flex-start; justify-content: space-around;
   box-sizing: border-box;
 }
