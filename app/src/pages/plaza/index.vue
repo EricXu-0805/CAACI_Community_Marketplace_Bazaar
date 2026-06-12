@@ -131,7 +131,7 @@
               <text class="pc-title">{{ post.profile?.nickname || t('plaza.pinned') }}</text>
               <text class="pc-meta">{{ formatTime(post.created_at) }} · {{ t('plaza.tapToExpand') }}</text>
             </view>
-            <text class="pc-chev">›</text>
+            <UIcon name="chevron-right" size="sm" color="text-faint" />
           </view>
           <view
             v-else
@@ -232,7 +232,7 @@
               <text class="aic-price">${{ pi.item.price }}</text>
               <text v-if="pi.item.status === 'sold'" class="aic-sold">{{ t('status.sold') }}</text>
             </view>
-            <view class="aic-arrow">›</view>
+            <UIcon name="chevron-right" size="sm" color="text-faint" />
           </view>
 
           <view class="post-actions">
@@ -1545,10 +1545,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   font-size: 12px; color: var(--text-muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.pc-chev {
-  font-size: 18px; color: var(--text-faint); flex-shrink: 0;
-  font-weight: 300;
-}
 .post-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
 .pa-avatar {
   width: 36px; height: 36px; border-radius: 50%;
@@ -1785,7 +1781,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .aic-title { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .aic-price { font-size: 14px; color: var(--accent-action); font-weight: 700; }
 .aic-sold { font-size: 11px; color: var(--text-muted); }
-.aic-arrow { font-size: 22px; color: var(--text-faint); line-height: 1; flex-shrink: 0; }
 
 /* Attach-item picker opens ON TOP of the compose-fullpage (z-index 1100).
    Its mask + sheet must sit above 1100 so users see it without closing

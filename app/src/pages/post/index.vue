@@ -83,7 +83,7 @@
             <text class="aic-price">${{ pi.item.price }}</text>
             <text v-if="pi.item.status === 'sold'" class="aic-sold">{{ t('status.sold') }}</text>
           </view>
-          <view class="aic-arrow">›</view>
+          <UIcon name="chevron-right" size="sm" color="text-faint" />
         </view>
 
         <view class="stats-row">
@@ -243,6 +243,7 @@ import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim, Post, PostComment } from '../../types'
 import { BASE_URL } from '../../config/runtime'
 import UBadge from '../../components/UBadge.vue'
+import UIcon from '../../components/UIcon.vue'
 
 const { t, lang, localize } = useI18n()
 const { isDark } = useTheme()
@@ -735,7 +736,6 @@ async function onSubmitComment() {
 .aic-title { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .aic-price { font-size: 14px; color: var(--accent-action); font-weight: 700; }
 .aic-sold { font-size: 11px; color: var(--text-muted); }
-.aic-arrow { font-size: 22px; color: var(--text-faint); line-height: 1; flex-shrink: 0; }
 
 .stats-row {
   display: flex; gap: 28px; margin-top: 16px;
