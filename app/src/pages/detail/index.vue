@@ -204,7 +204,7 @@
     </view>
 
     <!-- Action Bar: Buyer -->
-    <view class="action-bar" v-if="item.user_id !== currentUser?.id">
+    <view class="action-bar u-glass u-glass--hair-t" v-if="item.user_id !== currentUser?.id">
       <view class="fav-btn" @click="toggleFavorite">
         <image :src="isFav ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="icon-img" />
         <text class="fav-label">{{ isFav ? t('detail.saved') : t('detail.save') }}</text>
@@ -223,7 +223,7 @@
         <text>{{ item.listing_type === 'wanted' ? t('detail.haveThis') : t('detail.chat') }}</text>
       </view>
     </view>
-    <view class="action-bar" v-else>
+    <view class="action-bar u-glass u-glass--hair-t" v-else>
       <view class="fav-btn" @click="toggleFavorite">
         <image :src="isFav ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="icon-img" />
         <text class="fav-label">{{ isFav ? t('detail.saved') : t('detail.save') }}</text>
@@ -1110,11 +1110,8 @@ async function contactSeller() {
   display: flex; align-items: center; gap: 16px;
   padding: 12px 16px;
   padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-  background: rgba(var(--surface-rgb), 0.95);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  box-shadow: 0 -4px 16px rgba(60, 40, 20, 0.06);
-  border-top: 0.5px solid var(--line-hair);
+  /* fill + blur + top hairline now come from .u-glass + .u-glass--hair-t
+     (was rgba(...,0.95) — too opaque to show the photo through) */
   z-index: 100;
   max-width: 640px;
   margin: 0 auto;

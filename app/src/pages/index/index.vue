@@ -144,7 +144,7 @@
 
     <!-- Filter Bottom Sheet -->
     <view v-if="showFilter" class="filter-mask u-mask-in" @click="showFilter = false"></view>
-    <view :class="['filter-sheet', { open: showFilter }]">
+    <view :class="['filter-sheet', 'u-glass', { open: showFilter }]">
       <view class="fs-header">
         <view class="fs-close" role="button" :aria-label="t('a11y.filterClose')" @click="showFilter = false">
           <view class="fs-x"></view>
@@ -1109,8 +1109,8 @@ function goPublish() {
 .filter-sheet {
   position: fixed;
   bottom: 0; left: 0; right: 0; z-index: 1001;
-  background: var(--bg-elev-1);
-  border-radius: 16px 16px 0 0;
+  /* fill + blur come from .u-glass — the feed images refract through the sheet */
+  border-radius: 18px 18px 0 0;
   padding: 0 20px 20px;
   transform: translateY(100%);
   transition: transform var(--dur-3) var(--ease-warm);
@@ -1121,7 +1121,7 @@ function goPublish() {
 .fs-header {
   display: flex; justify-content: space-between; align-items: center;
   padding: 18px 0 14px;
-  position: sticky; top: 0; background: var(--bg-elev-1); z-index: 1;
+  position: sticky; top: 0; background: transparent; z-index: 1;
   gap: 12px;
 }
 .fs-close {

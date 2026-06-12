@@ -1638,27 +1638,27 @@ button:focus-visible,
  * top line (light catching the glass edge); the drop is a soft warm lift. */
 .u-glass {
   /* #ifdef H5 */
-  background: rgba(var(--surface-rgb), 0.68);
-  -webkit-backdrop-filter: saturate(180%) blur(22px);
-  backdrop-filter: saturate(180%) blur(22px);
+  background: rgba(var(--surface-rgb), 0.60);
+  -webkit-backdrop-filter: saturate(195%) blur(28px);
+  backdrop-filter: saturate(195%) blur(28px);
   /* #endif */
   /* #ifndef H5 */
   background: var(--surface);
   /* #endif */
   box-shadow:
-    inset 0 0.75px 0 0 rgba(255, 255, 255, 0.72),
-    0 6px 22px -12px rgba(60, 42, 28, 0.24);
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.85),
+    0 8px 28px -10px rgba(60, 42, 28, 0.28);
 }
 .u-glass--hair-b { border-bottom: 0.5px solid rgba(40, 30, 20, 0.07); }
 .u-glass--hair-t { border-top: 0.5px solid rgba(40, 30, 20, 0.07); }
 
 [data-theme="dark"] .u-glass {
   /* #ifdef H5 */
-  background: rgba(var(--surface-rgb), 0.55);
+  background: rgba(var(--surface-rgb), 0.46);
   /* #endif */
   box-shadow:
-    inset 0 0.75px 0 0 rgba(255, 255, 255, 0.10),
-    0 8px 26px -12px rgba(0, 0, 0, 0.55);
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+    0 10px 30px -10px rgba(0, 0, 0, 0.6);
 }
 [data-theme="dark"] .u-glass--hair-b { border-bottom-color: rgba(245, 240, 232, 0.08); }
 [data-theme="dark"] .u-glass--hair-t { border-top-color: rgba(245, 240, 232, 0.08); }
@@ -1666,11 +1666,11 @@ button:focus-visible,
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .u-glass {
     /* #ifdef H5 */
-    background: rgba(var(--surface-rgb), 0.55);
+    background: rgba(var(--surface-rgb), 0.46);
     /* #endif */
     box-shadow:
-      inset 0 0.75px 0 0 rgba(255, 255, 255, 0.10),
-      0 8px 26px -12px rgba(0, 0, 0, 0.55);
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+      0 10px 30px -10px rgba(0, 0, 0, 0.6);
   }
   :root:not([data-theme="light"]) .u-glass--hair-b { border-bottom-color: rgba(245, 240, 232, 0.08); }
   :root:not([data-theme="light"]) .u-glass--hair-t { border-top-color: rgba(245, 240, 232, 0.08); }
