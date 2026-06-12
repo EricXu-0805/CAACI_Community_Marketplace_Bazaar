@@ -243,6 +243,19 @@ onShow(() => {
   }
 })
 
+// Cold boot directly on this tab (browser refresh / deep link / PWA restore)
+// fires onShow before the Supabase session hydrates: currentUser is still
+// null, the fetch is skipped, and nothing retried — the list sat on "暂无消息"
+// forever while the unread badge (which has its own auth listener) was right.
+// Re-run the onShow work once auth lands.
+watch(currentUser, (u, prev) => {
+  if (u && !prev) {
+    fetchConversations(u.id)
+    refreshUnreadCount()
+    startPresence()
+  }
+})
+
 onPullDownRefresh(async () => {
   try {
     if (currentUser.value) {

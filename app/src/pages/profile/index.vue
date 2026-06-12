@@ -247,7 +247,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { onShow, onPullDownRefresh, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
@@ -365,8 +365,7 @@ onShareTimeline(() => {
   }
 })
 
-onShow(async () => {
-  loadBrowsedCount()
+async function loadMine() {
   if (!currentUser.value) return
   const uid = currentUser.value.id
   try {
@@ -381,6 +380,18 @@ onShow(async () => {
   } catch {
     uni.showToast({ title: t('profile.markFail'), icon: 'none' })
   }
+}
+
+onShow(async () => {
+  loadBrowsedCount()
+  await loadMine()
+})
+
+// Cold boot directly on this tab fires onShow before the session hydrates —
+// currentUser is null, loadMine bails, and the listings/favorites stayed
+// empty until the user left and re-entered the tab. Retry once auth lands.
+watch(currentUser, (u, prev) => {
+  if (u && !prev) loadMine()
 })
 
 /*
