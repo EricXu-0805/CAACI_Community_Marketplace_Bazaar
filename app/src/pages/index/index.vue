@@ -1517,8 +1517,12 @@ function goPublish() {
 .back-top {
   position: fixed; right: 16px; bottom: calc(116px + env(safe-area-inset-bottom, 0px));
   width: 40px; height: 40px; border-radius: 50%;
-  background: rgba(255,255,255,0.9); box-shadow: var(--shadow-pop);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  /* Theme-adaptive warm glass: --surface-rgb flips per theme, so dark mode
+     gets a graphite translucent disc instead of a glaring white one. Keeps
+     the tighter --shadow-pop (a 40px FAB wants a crisp lift, not the diffuse
+     chrome drop). mp-weixin (no backdrop-filter) still reads on the solid. */
+  background: rgba(var(--surface-rgb), 0.72); box-shadow: var(--shadow-pop);
+  backdrop-filter: saturate(180%) blur(16px); -webkit-backdrop-filter: saturate(180%) blur(16px);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; z-index: 100;
   &:active { transform: scale(0.9); }
