@@ -3,7 +3,7 @@ import { useSupabase } from './useSupabase'
 import { useModeration } from './useModeration'
 import { useI18n } from './useI18n'
 import type { Item, ItemCategory, ItemCondition, ItemStatus } from '../types'
-import { compressImage, detectImageMimeType, expandSearch, getImageDimensions } from '../utils'
+import { compressImage, detectImageMimeType, expandSearch, friendlyErrorMessage, getImageDimensions } from '../utils'
 import { checkContent, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
 
 const items = ref<Item[]>([])
@@ -53,7 +53,7 @@ function invalidateMyItems() {
 
 export function useItems() {
   const { supabase } = useSupabase()
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
 
   async function fetchItems(options: {
     page?: number
@@ -166,7 +166,7 @@ export function useItems() {
       }
     } catch (error: any) {
       if (requestId !== latestRequestId) return
-      fetchError.value = error?.message || t('error.loadFailed')
+      fetchError.value = friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('error.loadFailed')
       console.error('Failed to fetch items:', error)
     } finally {
       if (requestId === latestRequestId) {

@@ -466,7 +466,7 @@ async function onSubmit() {
       }
       if (uploaded.length < toUpload.length) {
         uni.showToast({
-          title: `${uploaded.length}/${toUpload.length} images uploaded`,
+          title: t('publish.imagesUploaded', { done: uploaded.length, total: toUpload.length }),
           icon: 'none',
           duration: 4000,
         })

@@ -24,8 +24,8 @@ export function useFavorites() {
     return favoriteIds.value.has(itemId)
   }
 
-  async function toggleFavorite(userId: string, itemId: string): Promise<boolean> {
-    if (loading.value) return isFavorited(itemId)
+  async function toggleFavorite(userId: string, itemId: string): Promise<{ ok: boolean; favorited: boolean }> {
+    if (loading.value) return { ok: false, favorited: isFavorited(itemId) }
     loading.value = true
 
     try {
@@ -37,19 +37,19 @@ export function useFavorites() {
           .eq('item_id', itemId)
         if (error) throw error
         favoriteIds.value.delete(itemId)
-        return false
+        return { ok: true, favorited: false }
       } else {
         const { error } = await supabase
           .from('favorites')
           .insert({ user_id: userId, item_id: itemId })
         if (error && error.code !== '23505') throw error
         favoriteIds.value.add(itemId)
-        return true
+        return { ok: true, favorited: true }
       }
     } catch (error) {
       console.error('Failed to toggle favorite:', error)
       uni.showToast({ title: t('error.actionFailed'), icon: 'none' })
-      return isFavorited(itemId)
+      return { ok: false, favorited: isFavorited(itemId) }
     } finally {
       loading.value = false
     }

@@ -162,7 +162,7 @@ import { useFollow } from '../../composables/useFollow'
 import { usePlaza } from '../../composables/usePlaza'
 import { matchSpot } from '../../composables/useCampusSpots'
 import type { Profile, Item, Post } from '../../types'
-import { listingPriceLabel, formatTime, thumbUrl } from '../../utils'
+import { listingPriceLabel, formatTime, thumbUrl, friendlyErrorMessage } from '../../utils'
 import UBadge from '../../components/UBadge.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
 import UIcon from '../../components/UIcon.vue'
@@ -254,7 +254,7 @@ async function onToggleFollow() {
       duration: 1500,
     })
   } catch (err: any) {
-    uni.showToast({ title: err?.message || t('error.actionFailed'), icon: 'none' })
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('error.actionFailed'), icon: 'none' })
   }
 }
 const joinLabel = computed(() => {
@@ -298,6 +298,9 @@ onLoad(async (options) => {
     supabase.from('items').select('id', { count: 'estimated', head: true }).eq('user_id', uid).eq('status', 'sold'),
   ])
 
+  if (profileRes.error || itemsRes.error) {
+    uni.showToast({ title: friendlyErrorMessage(profileRes.error || itemsRes.error, lang.value as 'en' | 'zh'), icon: 'none' })
+  }
   if (profileRes.data) seller.value = profileRes.data as Profile
   if (itemsRes.data) sellerItems.value = itemsRes.data as Item[]
   soldCount.value = soldRes.count || 0

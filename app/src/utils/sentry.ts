@@ -151,20 +151,6 @@ export function captureException(err: unknown, ctx?: CaptureContext): void {
   }
 }
 
-export function captureMessage(message: string, level: 'info' | 'warning' | 'error' = 'info'): void {
-  // #ifdef H5
-  try {
-    Sentry.captureMessage(message, level)
-    return
-  } catch (telemErr) {
-    console.warn('[sentry] captureMessage failed', telemErr)
-  }
-  // #endif
-  if (level === 'error') console.error('[message]', message)
-  else if (level === 'warning') console.warn('[message]', message)
-  else console.log('[message]', message)
-}
-
 export function addBreadcrumb(crumb: {
   category: string
   message: string

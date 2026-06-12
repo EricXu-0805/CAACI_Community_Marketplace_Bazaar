@@ -73,6 +73,7 @@ import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
 import { useSupabase } from '../../composables/useSupabase'
 import { DIALOG_DANGER } from '../../utils/dialogColors'
+import { friendlyErrorMessage } from '../../utils'
 import { captureException } from '../../utils/sentry'
 
 const { t, lang } = useI18n()
@@ -170,7 +171,8 @@ async function onSubmitAppeal() {
     appealSubmitted.value = true
     uni.showToast({ title: t('suspended.appealSent'), icon: 'success' })
   } catch (e: any) {
-    uni.showToast({ title: e?.message || t('suspended.appealFail'), icon: 'none', duration: 2500 })
+    captureException(e, { tags: { source: 'suspended.onSubmitAppeal' } })
+    uni.showToast({ title: friendlyErrorMessage(e, lang.value as 'en' | 'zh') || t('suspended.appealFail'), icon: 'none', duration: 2500 })
   } finally {
     submittingAppeal.value = false
   }

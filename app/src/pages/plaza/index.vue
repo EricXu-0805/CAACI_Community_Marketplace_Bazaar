@@ -877,7 +877,7 @@ async function onToggleLike(post: Post) {
   try {
     await toggleLike(post)
   } catch (err: any) {
-    uni.showToast({ title: err?.message || t('msg.actionFailed'), icon: 'none' })
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
   }
 }
 
@@ -886,7 +886,7 @@ async function onToggleCommentLike(comment: PostComment) {
   try {
     await toggleCommentLike(comment)
   } catch (err: any) {
-    uni.showToast({ title: err?.message || t('msg.actionFailed'), icon: 'none' })
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
   }
 }
 
@@ -959,7 +959,7 @@ async function onSubmitPost() {
       }
       if (imageUrls.length < expectedImages) {
         uni.showToast({
-          title: `${imageUrls.length}/${expectedImages} images uploaded`,
+          title: t('publish.imagesUploaded', { done: imageUrls.length, total: expectedImages }),
           icon: 'none',
           duration: 4000,
         })
@@ -1031,7 +1031,7 @@ function onDeletePost(post: Post) {
             await deletePost(post.id)
             uni.showToast({ title: t('profile.deleted'), icon: 'success' })
           } catch (err: any) {
-            uni.showToast({ title: err?.message || t('profile.markFail'), icon: 'none' })
+            uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('profile.markFail'), icon: 'none' })
           }
         },
       })
@@ -1186,7 +1186,7 @@ function onCommentLongPress(c: PostComment) {
               await deleteComment(c.id, commentingPost.value.id)
               comments.value = comments.value.filter(x => x.id !== c.id)
             } catch (err: any) {
-              uni.showToast({ title: err?.message || t('msg.actionFailed'), icon: 'none' })
+              uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
             }
           },
         })
@@ -1233,7 +1233,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
         uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
         uni.hideLoading()
-        uni.showToast({ title: err?.message || t('report.failed'), icon: 'none' })
+        uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('report.failed'), icon: 'none' })
       }
     },
   })

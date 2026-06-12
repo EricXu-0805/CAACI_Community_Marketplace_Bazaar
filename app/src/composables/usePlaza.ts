@@ -4,7 +4,7 @@ import { useAuth } from './useAuth'
 import { useModeration } from './useModeration'
 import { useI18n } from './useI18n'
 import type { Post, PostComment } from '../types'
-import { expandSearch } from '../utils'
+import { expandSearch, friendlyErrorMessage } from '../utils'
 import { checkContent, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
 import { addBreadcrumb } from '../utils/sentry'
 
@@ -104,7 +104,7 @@ export function groupCommentsByParent(comments: PostComment[]): CommentThread[] 
 export function usePlaza() {
   const { supabase } = useSupabase()
   const { currentUser } = useAuth()
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
 
   async function fetchPosts(options: { page?: number; reset?: boolean; search?: string; sort?: 'recent' | 'hot' } = {}) {
     const { page = 0, reset = false, search, sort = 'recent' } = options
@@ -175,7 +175,7 @@ export function usePlaza() {
     } catch (err: any) {
       if (requestId !== latestRequestId) return
       console.error('fetchPosts failed:', err)
-      uni.showToast({ title: err?.message || t('error.loadFailed'), icon: 'none', duration: 3000 })
+      uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('error.loadFailed'), icon: 'none', duration: 3000 })
     } finally {
       if (requestId === latestRequestId) {
         loading.value = false

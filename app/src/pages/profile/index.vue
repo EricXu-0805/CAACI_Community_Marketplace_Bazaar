@@ -377,7 +377,7 @@ onShow(async () => {
     ])
     myItems.value = items
     savedItems.value = favItems
-    fetchNotifications()
+    fetchNotifications().catch(() => {})
   } catch {
     uni.showToast({ title: t('profile.markFail'), icon: 'none' })
   }

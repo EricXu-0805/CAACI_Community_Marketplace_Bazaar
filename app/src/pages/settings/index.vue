@@ -77,6 +77,8 @@ import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useSupabase } from '../../composables/useSupabase'
 import { useTheme, type ThemePref } from '../../composables/useTheme'
+import { friendlyErrorMessage } from '../../utils'
+import { captureException } from '../../utils/sentry'
 import { DIALOG_DANGER } from '../../utils/dialogColors'
 import { BASE_URL, APP_VERSION, BUILD_REF } from '../../config/runtime'
 import UIcon from '../../components/UIcon.vue'
@@ -174,7 +176,9 @@ function clearCache() {
         const info = uni.getStorageInfoSync()
         cacheSize.value = `${Math.round(info.currentSize / 1024 * 10) / 10} MB`
         uni.showToast({ title: t('settings.cleared'), icon: 'success' })
-      } catch {}
+      } catch {
+        uni.showToast({ title: t('error.actionFailed'), icon: 'none' })
+      }
     },
   })
 }
@@ -202,13 +206,13 @@ async function onChangePassword() {
       // #ifndef H5
       redirectTo = `${BASE_URL}/#/pages/reset-password/index`
       // #endif
-      console.log('[reset-pw-debug] settings change password — email:', session.user!.email, 'redirectTo:', redirectTo)
+      console.log('[reset-pw-debug] settings change password — redirectTo:', redirectTo)
       const { error } = await supabase.auth.resetPasswordForEmail(session.user!.email!, { redirectTo })
       if (error) {
         console.warn('[reset-pw-debug] settings resetPasswordForEmail error:', error)
         uni.showModal({
           title: t('login.resetFailTitle'),
-          content: error.message,
+          content: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || error.message,
           showCancel: false,
         })
       } else {
@@ -243,9 +247,10 @@ function onDeleteAccount() {
         })
         setTimeout(() => uni.reLaunch({ url: '/pages/welcome/index' }), 1500)
       } catch (err: any) {
+        captureException(err, { tags: { source: 'settings.deleteAccount' } })
         uni.hideLoading()
         uni.showToast({
-          title: err?.message || t('settings.deleteAccountFailed'),
+          title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('settings.deleteAccountFailed'),
           icon: 'none',
           duration: 3000,
         })

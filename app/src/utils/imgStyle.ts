@@ -40,22 +40,6 @@ export function dimsToAspectStyle(
 }
 
 /**
- * Numeric aspect ratio (w / h) for container sizing math — e.g. swiper
- * height calculations where we need a number, not a CSS string.
- *
- * Returns `null` when dimensions are missing so callers can pick a
- * page-specific fallback instead of inheriting a neutral default.
- */
-export function dimsToRatio(
-  dims: ImageDim[] | null | undefined,
-  idx = 0
-): number | null {
-  const d = dims?.[idx]
-  if (!d || !d.w || !d.h) return null
-  return Math.max(0.4, Math.min(d.w / d.h, 2.5))
-}
-
-/**
  * Read the natural pixel size from an image-load event.
  *
  * Used as a render-side safety net when DB-persisted image_dimensions

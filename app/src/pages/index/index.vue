@@ -175,12 +175,12 @@
         <view class="fs-price-row">
           <view class="fs-price-input">
             <text class="fs-dollar">$</text>
-            <input v-model="filterPriceMin" type="digit" placeholder="Min" />
+            <input v-model="filterPriceMin" type="digit" :placeholder="t('filter.priceMin')" />
           </view>
           <text class="fs-dash">—</text>
           <view class="fs-price-input">
             <text class="fs-dollar">$</text>
-            <input v-model="filterPriceMax" type="digit" placeholder="Max" />
+            <input v-model="filterPriceMax" type="digit" :placeholder="t('filter.priceMax')" />
           </view>
         </view>
       </view>
@@ -422,7 +422,7 @@ import { matchSpot } from '../../composables/useCampusSpots'
 import { useLongPress } from '../../composables/useLongPress'
 import type { ItemCategory, ItemCondition, Item } from '../../types'
 
-import { debounce, formatTime, formatPrice, haptic, thumbUrl } from '../../utils'
+import { debounce, formatTime, formatPrice, friendlyErrorMessage, haptic, thumbUrl } from '../../utils'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
 import AppSidebar from '../../components/AppSidebar.vue'
@@ -525,11 +525,6 @@ const selectedCategory = ref<ItemCategory | null>(null)
 const currentPage = ref(0)
 const isRefreshing = ref(false)
 const columnCount = ref(2)
-const banners = computed(() => [
-  { icon: '📦', title: t('banner.sell'), sub: t('banner.sellSub'), color: 'bg-warm', action: () => uni.switchTab({ url: '/pages/publish/index' }) },
-  { icon: '🎓', title: t('banner.grad'), sub: t('banner.gradSub'), color: 'bg-blue', action: () => selectCategory('furniture') },
-  { icon: '💡', title: t('banner.tip'), sub: t('banner.tipSub'), color: 'bg-green', action: () => {} },
-])
 const showBackTop = ref(false)
 const scrollTopVal = ref(0)
 const lastScrollTop = ref(0)
@@ -767,8 +762,9 @@ async function onQuickFav(item: Item) {
     return
   }
   haptic('light')
-  const nowFav = await toggleFavorite(currentUser.value.id, item.id)
-  item.favorite_count = (item.favorite_count || 0) + (nowFav ? 1 : -1)
+  const result = await toggleFavorite(currentUser.value.id, item.id)
+  if (!result.ok) return
+  item.favorite_count = (item.favorite_count || 0) + (result.favorited ? 1 : -1)
 }
 
 /* 1.5s + haptic for the home feed report flow — a thumb resting on a
@@ -834,7 +830,7 @@ function promptReportItem(itemId: string) {
         uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
         uni.hideLoading()
-        uni.showToast({ title: err?.message || t('report.failed'), icon: 'none' })
+        uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('report.failed'), icon: 'none' })
       }
     },
   })
@@ -1487,21 +1483,6 @@ function goPublish() {
   font-size: 14px; font-weight: 600; cursor: pointer;
   &:active { opacity: 0.8; }
 }
-
-.banner-area { padding: 0 16px 8px; }
-.banner-swiper { height: 72px; }
-.banner-card {
-  display: flex; align-items: center; gap: 12px; padding: 14px 16px;
-  border-radius: 12px; height: 68px; cursor: pointer;
-  &:active { opacity: 0.9; }
-}
-.bg-warm { background: var(--warning-soft); }
-.bg-blue { background: var(--campus-blue-soft); }
-.bg-green { background: var(--success-soft); }
-.banner-emoji { font-size: 28px; flex-shrink: 0; }
-.banner-text { flex: 1; }
-.banner-title { font-size: 14px; font-weight: 600; color: var(--text-primary); display: block; }
-.banner-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; display: block; }
 
 .back-top {
   position: fixed; right: 16px; bottom: calc(116px + env(safe-area-inset-bottom, 0px));
