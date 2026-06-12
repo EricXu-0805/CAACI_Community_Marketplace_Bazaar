@@ -1696,6 +1696,22 @@ button:focus-visible,
 }
 .u-rise { animation: u-rise var(--dur-3, 360ms) var(--ease-warm, ease) backwards; }
 
+/* Skeleton placeholder — a warm inset block that gently pulses while content
+   loads. --bg-inset flips per theme, so it reads on light and dark. Pair with
+   a per-list shape (avatar circle, text line) that overrides border-radius. */
+.u-sk {
+  background: var(--bg-inset);
+  border-radius: 6px;
+  animation: u-shimmer 1.5s ease-in-out infinite;
+}
+@keyframes u-shimmer {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .u-sk { animation: none; }
+}
+
 /* Sheet backdrop fade-in — masks are v-if'd, so the dim sweeps in on
    mount (backwards fill = no first-frame flash). Pairs with the warm
    spring slide-up now shared by every bottom sheet. */
