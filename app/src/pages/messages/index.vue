@@ -31,6 +31,16 @@
       <view class="login-btn" @click="goLogin">{{ t('profile.signIn') }}</view>
     </view>
 
+    <view v-else-if="loading && conversations.length === 0" class="conv-list">
+      <view v-for="n in 7" :key="'cs' + n" class="conv-skel">
+        <view class="cs-avatar u-sk"></view>
+        <view class="cs-info">
+          <view class="cs-line u-sk" style="width: 38%"></view>
+          <view class="cs-line u-sk" style="width: 72%"></view>
+        </view>
+      </view>
+    </view>
+
     <view v-else-if="conversations.length === 0 && !loading" class="empty">
       <UEmptyArt name="messages" />
       <text class="empty-title">{{ t('msg.empty') }}</text>
@@ -106,7 +116,7 @@
       </view>
     </view>
 
-    <view v-if="loading" class="loading-tip">
+    <view v-if="loading && conversations.length > 0" class="loading-tip">
       <view class="loading-dot"></view>
       <text>{{ t('msg.loading') }}</text>
     </view>
@@ -518,6 +528,14 @@ function goLogin() {
  *      while staying subtle. Light mode also benefits — --border there
  *      is the same neutral beige, just at higher relative contrast.
  */
+.conv-skel {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+}
+.cs-avatar { width: 50px; height: 50px; border-radius: 50%; flex-shrink: 0; }
+.cs-info { flex: 1; display: flex; flex-direction: column; gap: 9px; }
+.cs-line { height: 11px; }
+
 .conv-row {
   position: relative; overflow: hidden;
   border-bottom: 0.5px solid var(--border);

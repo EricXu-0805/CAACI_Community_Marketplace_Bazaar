@@ -100,8 +100,19 @@
         </view>
       </template>
 
-      <view v-else-if="loading && posts.length === 0" class="loading">
-        <text>{{ t('home.loading') }}...</text>
+      <view v-else-if="loading && posts.length === 0" class="post-skel-list">
+        <view v-for="n in 3" :key="'ps' + n" class="post-skel">
+          <view class="ps-head">
+            <view class="ps-avatar u-sk"></view>
+            <view class="ps-meta">
+              <view class="ps-line u-sk" style="width: 38%"></view>
+              <view class="ps-line u-sk" style="width: 22%; height: 9px"></view>
+            </view>
+          </view>
+          <view class="ps-line u-sk" style="width: 94%"></view>
+          <view class="ps-line u-sk" style="width: 68%"></view>
+          <view class="ps-img u-sk"></view>
+        </view>
       </view>
 
       <view v-else-if="visiblePosts.length === 0" class="empty">
@@ -1466,6 +1477,17 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 }
 
 .posts { padding: 8px 0 20px; }
+.post-skel {
+  background: var(--bg-elev-1); padding: 14px 16px;
+  border-bottom: 0.5px solid var(--line-hair);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.ps-head { display: flex; align-items: center; gap: 10px; }
+.ps-avatar { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; }
+.ps-meta { flex: 1; display: flex; flex-direction: column; gap: 7px; }
+.ps-line { height: 11px; }
+.ps-img { height: 168px; border-radius: 12px; margin-top: 2px; }
+
 .post-card {
   background: var(--bg-elev-1); padding: 14px 16px;
   border-bottom: 0.5px solid var(--line-hair);
