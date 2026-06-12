@@ -1623,6 +1623,69 @@ button:focus-visible,
   line-height: 1.45;
 }
 
+/* ── Liquid-glass chrome ──────────────────────────────────────────────────
+ * Apple-style translucent + blurred surfaces for the app FRAME (tab bar, page
+ * headers, bottom sheets, desktop sidebar) — content refracts through the
+ * chrome instead of hiding behind a flat panel. Stays on the warm palette
+ * because the fill derives from --surface-rgb, which flips per theme.
+ *
+ *   · .u-glass        — the surface (translucent fill + blur + rim-light + lift)
+ *   · .u-glass--hair-t / --hair-b — add a hairline on the top/bottom edge
+ *
+ * H5 only gets the real backdrop blur; mp-weixin (no backdrop-filter) falls
+ * back to the solid --surface so chrome never turns into an unreadable smear.
+ * Reduced-transparency users also get the solid fill. The rim-light is an inset
+ * top line (light catching the glass edge); the drop is a soft warm lift. */
+.u-glass {
+  /* #ifdef H5 */
+  background: rgba(var(--surface-rgb), 0.68);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  backdrop-filter: saturate(180%) blur(22px);
+  /* #endif */
+  /* #ifndef H5 */
+  background: var(--surface);
+  /* #endif */
+  box-shadow:
+    inset 0 0.75px 0 0 rgba(255, 255, 255, 0.72),
+    0 6px 22px -12px rgba(60, 42, 28, 0.24);
+}
+.u-glass--hair-b { border-bottom: 0.5px solid rgba(40, 30, 20, 0.07); }
+.u-glass--hair-t { border-top: 0.5px solid rgba(40, 30, 20, 0.07); }
+
+[data-theme="dark"] .u-glass {
+  /* #ifdef H5 */
+  background: rgba(var(--surface-rgb), 0.55);
+  /* #endif */
+  box-shadow:
+    inset 0 0.75px 0 0 rgba(255, 255, 255, 0.10),
+    0 8px 26px -12px rgba(0, 0, 0, 0.55);
+}
+[data-theme="dark"] .u-glass--hair-b { border-bottom-color: rgba(245, 240, 232, 0.08); }
+[data-theme="dark"] .u-glass--hair-t { border-top-color: rgba(245, 240, 232, 0.08); }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .u-glass {
+    /* #ifdef H5 */
+    background: rgba(var(--surface-rgb), 0.55);
+    /* #endif */
+    box-shadow:
+      inset 0 0.75px 0 0 rgba(255, 255, 255, 0.10),
+      0 8px 26px -12px rgba(0, 0, 0, 0.55);
+  }
+  :root:not([data-theme="light"]) .u-glass--hair-b { border-bottom-color: rgba(245, 240, 232, 0.08); }
+  :root:not([data-theme="light"]) .u-glass--hair-t { border-top-color: rgba(245, 240, 232, 0.08); }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .u-glass {
+    /* #ifdef H5 */
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    /* #endif */
+  }
+}
+
 /* One-shot list entrance — fade + rise the first time an element
    mounts. `backwards` fill (not `both`) applies the from-state before
    start to avoid a first-frame flash, but does NOT retain the end-

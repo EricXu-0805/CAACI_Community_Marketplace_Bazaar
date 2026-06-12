@@ -10,7 +10,7 @@
       3. FAB sits on -14px margin with a 3px parchment-colored ring
          so it reads as embedded IN the paper, not glued on top.
   -->
-  <view class="tabbar">
+  <view class="tabbar u-glass u-glass--hair-t">
     <!--
       Icon rendering is split per target (P2b): H5 uses the v3 UIcon
       registry (regular at rest, filled + ink when active). mp-weixin
@@ -133,8 +133,7 @@ function go(url: string) { uni.switchTab({ url }) }
   width: 100%; max-width: 480px;
   height: calc(62px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  background: var(--parchment);
-  border-top: 0.5px solid var(--border);
+  /* background / top hairline now come from .u-glass + .u-glass--hair-t */
   z-index: 999; align-items: flex-start; justify-content: space-around;
   box-sizing: border-box;
 }

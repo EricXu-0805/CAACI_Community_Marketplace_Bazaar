@@ -2,7 +2,7 @@
   <view class="page page-lock has-sidebar">
     <AppSidebar current="index" />
 
-    <view class="mobile-header">
+    <view class="mobile-header u-glass u-glass--hair-b">
       <!--
         v5 brand chrome (kit ui_kits/marketplace Chrome). The serif word-
         mark gets a terracotta 集-mark + mono ILLINI MARKET eyebrow, and
@@ -915,7 +915,7 @@ function goPublish() {
  */
 .mobile-header {
   flex-shrink: 0;
-  background: var(--surface);
+  /* fill + bottom hairline now come from .u-glass + .u-glass--hair-b */
   padding: 0 16px 11px;
   padding-top: var(--mp-status-bar);
   z-index: 50;

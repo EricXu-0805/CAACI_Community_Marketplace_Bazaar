@@ -11,7 +11,7 @@
     theme/lang toggles, so on desktop every tab page can switch theme/lang
     (most page headers have no toggle of their own).
   -->
-  <view class="app-sidebar">
+  <view class="app-sidebar u-glass">
     <view class="asb-inner">
       <view class="asb-brand u-press" role="button" :aria-label="t('app.name')" @click="go('/pages/index/index')">
         <image class="asb-logo" :src="logoSrc" mode="aspectFit" :alt="t('app.name')" />
@@ -117,8 +117,8 @@ function toggleTheme() {
     left: 0;
     bottom: 0;
     width: var(--sidebar-w, 240px);
-    background: var(--surface);
-    border-right: 1px solid var(--border);
+    /* fill + lift now come from .u-glass; keep the rail's right edge */
+    border-right: 0.5px solid var(--border);
     z-index: 300;
     box-sizing: border-box;
   }
