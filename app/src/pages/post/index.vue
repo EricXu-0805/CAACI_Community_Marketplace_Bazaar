@@ -477,7 +477,7 @@ async function onToggleCommentLike(comment: PostComment) {
   try {
     await toggleCommentLike(comment)
   } catch (err: any) {
-    uni.showToast({ title: err?.message || t('msg.actionFailed'), icon: 'none' })
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
   }
 }
 
@@ -563,7 +563,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
         uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
         uni.hideLoading()
-        uni.showToast({ title: err?.message || t('report.failed'), icon: 'none' })
+        uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('report.failed'), icon: 'none' })
       }
     },
   })

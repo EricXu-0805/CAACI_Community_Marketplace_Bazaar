@@ -52,6 +52,7 @@ import { useI18n } from '../../composables/useI18n'
 import { useSupabase } from '../../composables/useSupabase'
 import { useAuth } from '../../composables/useAuth'
 import { DIALOG_DANGER } from '../../utils/dialogColors'
+import { friendlyErrorMessage } from '../../utils'
 import {
   TERMS_VERSION,
   PRIVACY_VERSION,
@@ -59,7 +60,7 @@ import {
   CURRENT_CONSENT_VERSION,
 } from '../../legal'
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 const { supabase } = useSupabase()
 const { signOut } = useAuth()
 
@@ -83,7 +84,7 @@ async function onAccept() {
     uni.showToast({ title: t('reconsent.saved'), icon: 'success' })
     setTimeout(() => uni.switchTab({ url: '/pages/index/index' }), 800)
   } catch (e: any) {
-    uni.showToast({ title: e?.message || t('reconsent.fail'), icon: 'none', duration: 2500 })
+    uni.showToast({ title: friendlyErrorMessage(e, lang.value as 'en' | 'zh') || t('reconsent.fail'), icon: 'none', duration: 2500 })
   } finally {
     submitting.value = false
   }

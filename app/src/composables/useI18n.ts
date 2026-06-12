@@ -36,6 +36,13 @@ function ensureLangInit() {
       currentLang.value = detectSystemLang()
     }
   } catch {}
+  syncUniLocale(currentLang.value)
+}
+
+/* Keep uni-app's own locale in step — otherwise the built-in chrome
+   (showModal 确定/取消 vs OK/Cancel buttons) ignores the app language. */
+function syncUniLocale(lang: Lang) {
+  try { uni.setLocale(lang === 'zh' ? 'zh-Hans' : 'en') } catch {}
 }
 
 export function useI18n() {
@@ -51,6 +58,7 @@ export function useI18n() {
     if (!SUPPORTED_LANGS.some((l) => l.code === next)) return
     currentLang.value = next
     try { uni.setStorageSync('lang', next) } catch {}
+    syncUniLocale(next)
   }
 
   function toggleLang() {

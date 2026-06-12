@@ -688,7 +688,7 @@ function onReport() {
         uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
         uni.hideLoading()
-        uni.showToast({ title: err?.message || t('report.failed'), icon: 'none' })
+        uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('report.failed'), icon: 'none' })
       }
     },
   })
@@ -751,10 +751,11 @@ async function toggleFavorite() {
   if (!item.value || !currentUser.value) return
 
   haptic('light')
-  const nowFavorited = await doToggleFavorite(currentUser.value.id, item.value.id)
-  isFav.value = nowFavorited
-  favCount.value += nowFavorited ? 1 : -1
-  uni.showToast({ title: nowFavorited ? t('detail.saved') : t('detail.save'), icon: 'none' })
+  const result = await doToggleFavorite(currentUser.value.id, item.value.id)
+  if (!result.ok) return
+  isFav.value = result.favorited
+  favCount.value += result.favorited ? 1 : -1
+  uni.showToast({ title: result.favorited ? t('detail.saved') : t('detail.save'), icon: 'none' })
 }
 
 async function contactSeller() {
@@ -1121,7 +1122,6 @@ async function contactSeller() {
 }
 
 .icon-img { width: 22px; height: 22px; flex-shrink: 0; display: block; }
-.heart-img { width: 22px; height: 22px; }
 
 .fav-label { font-size: 10px; color: var(--text-muted); line-height: 1; }
 .safety-tip {
@@ -1150,14 +1150,6 @@ async function contactSeller() {
 }
 .mc-price.free { color: var(--success); }
 
-.action-btn-small {
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center;
-  min-width: 48px; height: 44px;
-  gap: 3px; padding: 0 6px; cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  &:active { transform: scale(0.92); }
-}
 /*
  * Primary CTA at the bottom of the detail page.
  *

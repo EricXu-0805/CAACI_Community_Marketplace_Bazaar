@@ -75,10 +75,10 @@ import { useAuth } from '../../composables/useAuth'
 import { useTheme } from '../../composables/useTheme'
 import { useSupabase } from '../../composables/useSupabase'
 import { useItems } from '../../composables/useItems'
-import { compressImage } from '../../utils'
+import { compressImage, friendlyErrorMessage } from '../../utils'
 import { CURRENT_CONSENT_VERSION } from '../../legal'
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 const { isDark } = useTheme()
 const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
@@ -139,6 +139,7 @@ async function pickAvatar() {
     const compressed = await compressImage(res.tempFilePaths[0], { entryPoint: 'onboarding' })
     const urls = await uploadImages([compressed], { entryPoint: 'onboarding' })
     if (urls[0]) avatarUrl.value = urls[0]
+    else uni.showToast({ title: t('editProfile.avatarFailed'), icon: 'none', duration: 3000 })
   } catch (e: any) {
     if (e?.errMsg && /cancel/i.test(e.errMsg)) return
     const title = e?.heic === true ? t('heic.unsupported') : t('onboarding.photoFail')
@@ -171,7 +172,7 @@ async function finish() {
     }, 900)
   } catch (e: any) {
     uni.showToast({
-      title: e?.message || t('onboarding.saveFail'),
+      title: friendlyErrorMessage(e, lang.value as 'en' | 'zh') || t('onboarding.saveFail'),
       icon: 'none',
       duration: 2500,
     })

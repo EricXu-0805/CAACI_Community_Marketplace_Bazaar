@@ -29,7 +29,7 @@
           <span class="at-title">{{ t.title }}</span>
           <span v-if="t.body" class="at-sub">{{ t.body }}</span>
         </div>
-        <div class="at-close" role="button" aria-label="dismiss" @click.stop="dismissToast(t.id)">
+        <div class="at-close" role="button" :aria-label="i18nT('a11y.close')" @click.stop="dismissToast(t.id)">
           <span class="at-x"></span>
           <span class="at-x at-x2"></span>
         </div>
@@ -41,8 +41,12 @@
 <script setup lang="ts">
 import { watch, onUnmounted } from 'vue'
 import { useAppToast, type ToastItem, type ToastKind } from '../composables/useAppToast'
+import { useI18n } from '../composables/useI18n'
 
 const { toasts, dismissToast } = useAppToast()
+/* Named i18nT because the v-for loop variable is `t` — the usual name would
+   be shadowed inside the template. */
+const { t: i18nT } = useI18n()
 
 const DURATION = 5200
 const GLYPHS: Record<ToastKind, string> = {

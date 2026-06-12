@@ -422,7 +422,11 @@ function onLogout() {
 }
 
 async function loadStats() {
-  try { stats.value = await apiGet<StatsRow>({ resource: 'stats' }) } catch {}
+  try {
+    stats.value = await apiGet<StatsRow>({ resource: 'stats' })
+  } catch (err: any) {
+    uni.showToast({ title: err?.message || 'Load failed', icon: 'none' })
+  }
 }
 
 async function loadTab(tab: TabId) {

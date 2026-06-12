@@ -30,17 +30,26 @@ export function thumbUrl(
 }
 
 export function formatTime(dateStr: string): string {
+  /* Lang-aware: zh users were seeing "3m ago" on every feed card. Re-runs on
+     lang toggle because the calling components re-render off t() anyway. */
+  let zh = false
+  // #ifdef H5
+  zh = useI18n().lang.value === 'zh'
+  // #endif
+  // #ifndef H5
+  try { zh = uni.getStorageSync('lang') === 'zh' } catch {}
+  // #endif
   const date = new Date(dateStr)
   const now = new Date()
   const diff = now.getTime() - date.getTime()
   const minutes = Math.floor(diff / 60000)
-  if (minutes < 60) return `${minutes}m ago`
+  if (minutes < 1) return zh ? '刚刚' : 'just now'
+  if (minutes < 60) return zh ? `${minutes} 分钟前` : `${minutes}m ago`
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
+  if (hours < 24) return zh ? `${hours} 小时前` : `${hours}h ago`
   const days = Math.floor(hours / 24)
-  if (days < 7) return `${days}d ago`
-  if (days < 30) return `${days}d ago`
-  return date.toLocaleDateString()
+  if (days < 30) return zh ? `${days} 天前` : `${days}d ago`
+  return date.toLocaleDateString(zh ? 'zh-CN' : 'en-US')
 }
 
 const RATE_LIMIT_MESSAGES: Record<string, { en: string; zh: string }> = {
@@ -60,6 +69,28 @@ const RATE_LIMIT_MESSAGES: Record<string, { en: string; zh: string }> = {
   rate_limit_reports_day:   { en: 'Daily report limit reached.',                       zh: '今日举报已达上限' },
   rate_limit_currency_day:  { en: 'Daily currency-exchange listing limit reached.',     zh: '今日换汇挂单已达上限' },
   reports_unique_reporter_target: { en: 'You have already reported this.',             zh: '你已举报过这个' },
+  rate_limit_follows_hour:  { en: 'Following too fast. Try again later.',              zh: '关注太快,稍后再试' },
+  rate_limit_follows_day:   { en: 'Daily follow limit reached.',                       zh: '今日关注已达上限' },
+  saved_searches_limit:     { en: 'Max 20 saved searches. Delete one first.',          zh: '订阅搜索最多 20 条,请先删除一条' },
+}
+
+/* Exact-match table for the offer/meetup RPC errors (migrations 051/052
+   raise plain lowercase English that would otherwise reach users verbatim). */
+const OFFER_MEETUP_MESSAGES: Record<string, { en: string; zh: string }> = {
+  'conversation not found':         { en: 'Conversation not found.',                  zh: '会话不存在' },
+  'not a participant':              { en: 'You are not part of this conversation.',   zh: '你不在这个会话里' },
+  'invalid price':                  { en: 'Please enter a valid price.',              zh: '请输入有效的价格' },
+  'invalid counter price':          { en: 'Please enter a valid counter price.',      zh: '请输入有效的还价' },
+  'offer not found':                { en: 'This offer no longer exists.',             zh: '该报价已不存在' },
+  'offer is no longer pending':     { en: 'This offer was already handled.',          zh: '该报价已被处理' },
+  'offer has expired':              { en: 'This offer has expired.',                  zh: '该报价已过期' },
+  'only the recipient can respond': { en: 'Waiting for the other side to respond.',   zh: '等待对方回应' },
+  'unknown action':                 { en: 'Action not recognized.',                   zh: '未知操作' },
+  'invalid spot':                   { en: 'Please pick a valid meetup spot.',         zh: '请选择有效的面交地点' },
+  'invalid meet time':              { en: 'Please pick a valid meetup time.',         zh: '请选择有效的面交时间' },
+  'meetup not found':               { en: 'This meetup no longer exists.',            zh: '该面交安排已不存在' },
+  'meetup is no longer pending':    { en: 'This meetup was already handled.',         zh: '该面交安排已被处理' },
+  'meetup has expired':             { en: 'This meetup has expired.',                 zh: '该面交安排已过期' },
 }
 
 const MODERATION_MESSAGES: Record<string, { en: string; zh: string }> = {
@@ -107,6 +138,14 @@ export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string
     return CONTENT_MESSAGES[rawMessage][lang]
   }
 
+  if (OFFER_MEETUP_MESSAGES[raw]) {
+    return OFFER_MEETUP_MESSAGES[raw][lang]
+  }
+
+  if (raw === 'invalid_version') {
+    return lang === 'zh' ? '协议版本已更新,请刷新后重试' : 'Terms version changed — please refresh and retry.'
+  }
+
   for (const key of Object.keys(RATE_LIMIT_MESSAGES)) {
     if (raw.includes(key.toLowerCase())) {
       return RATE_LIMIT_MESSAGES[key][lang]
@@ -115,7 +154,7 @@ export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string
   if (raw.includes('duplicate key') || err?.code === '23505') {
     return lang === 'zh' ? '刚刚已提交过,请稍等' : 'Already submitted. Please wait.'
   }
-  if (raw.includes('jwt') || raw.includes('not authenticated')) {
+  if (raw.includes('jwt') || raw.includes('not authenticated') || raw.includes('not_authenticated')) {
     return lang === 'zh' ? '请重新登录' : 'Please sign in again'
   }
   if (err?.code === '23514' && raw.includes('reports_target_type_check')) {
@@ -1124,7 +1163,6 @@ async function compressH5(
   const longEdge = Math.max(origW, origH)
 
   if (longEdge <= maxLongEdge) {
-    console.log(`[compress-debug] H5 skip (≤${maxLongEdge}): ${origW}x${origH}, ${origKB}KB`)
     bitmap.close?.()
     /*
      * For converted HEIC: src is the unrenderable HEIC blob URL, so
@@ -1154,7 +1192,6 @@ async function compressH5(
   const dataUrl = canvas.toDataURL('image/jpeg', quality)
   // toDataURL returns base64; actual byte size ≈ length × 0.75
   const compressedKB = Math.round((dataUrl.length * 0.75) / 1024)
-  console.log(`[compress-debug] H5: ${origW}x${origH} ${origKB}KB → ${targetW}x${targetH} ${compressedKB}KB q${Math.round(quality * 100)}`)
   return dataUrl
 }
 // #endif
@@ -1178,7 +1215,6 @@ function compressMP(src: string, maxLongEdge: number, quality: number): Promise<
         const shortSrc = src.slice(0, 60) + (src.length > 60 ? '…' : '')
 
         if (longEdge > 0 && longEdge <= maxLongEdge) {
-          console.log(`[compress-debug] mp skip (≤${maxLongEdge}): ${w}x${h}`)
           resolve(src)
           return
         }
@@ -1187,7 +1223,6 @@ function compressMP(src: string, maxLongEdge: number, quality: number): Promise<
           src,
           quality: Math.round(quality * 100),
           success: (res) => {
-            console.log(`[compress-debug] mp: ${w}x${h} → max ${maxLongEdge}px q${Math.round(quality * 100)}`)
             resolve(res.tempFilePath)
           },
           fail: (err) => {
@@ -1239,7 +1274,6 @@ export function getImageDimensions(src: string): Promise<{ w: number; h: number 
     img.crossOrigin = 'anonymous'
     img.onload = () => {
       const dims = { w: img.naturalWidth || 0, h: img.naturalHeight || 0 }
-      console.log('[dims-debug] H5 onload:', shortSrc, '→', dims.w, 'x', dims.h)
       resolve(dims)
     }
     img.onerror = (e) => {
@@ -1254,7 +1288,6 @@ export function getImageDimensions(src: string): Promise<{ w: number; h: number 
       src,
       success: (res) => {
         const dims = { w: res.width || 0, h: res.height || 0 }
-        console.log('[dims-debug] mp getImageInfo OK:', shortSrc, '→', dims.w, 'x', dims.h)
         resolve(dims)
       },
       fail: (err) => {

@@ -2,7 +2,7 @@ import { ref, computed } from 'vue'
 import { useSupabase, platformFetch } from './useSupabase'
 import { useModeration } from './useModeration'
 import { deviceFingerprintHash, deviceUASnippet } from '../utils/fingerprint'
-import { addBreadcrumb } from '../utils/sentry'
+import { addBreadcrumb, captureException } from '../utils/sentry'
 import type { Profile } from '../types'
 import { BASE_URL } from '../config/runtime'
 
@@ -52,7 +52,12 @@ export function useAuth() {
     try {
       const { data } = supabase.auth.onAuthStateChange((_event, session) => {
         if (session?.user) {
-          fetchProfile(session.user.id).catch(err => console.warn('fetchProfile failed:', err))
+          fetchProfile(session.user.id).catch(err => {
+            /* A swallowed cold-start failure strands a logged-in user with the
+               whole isLoggedIn UI hidden — keep the error visible in Sentry. */
+            console.warn('fetchProfile failed:', err)
+            captureException(err, { tags: { source: 'fetchProfile-authchange' } })
+          })
           loadBlockedIds()
           recordFingerprint().catch(() => {})
         } else {
@@ -68,7 +73,10 @@ export function useAuth() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
-        fetchProfile(session.user.id).catch(err => console.warn('fetchProfile failed:', err))
+        fetchProfile(session.user.id).catch(err => {
+          console.warn('fetchProfile failed:', err)
+          captureException(err, { tags: { source: 'fetchProfile-init' } })
+        })
         recordFingerprint().catch(() => {})
       }
     } catch (err) {

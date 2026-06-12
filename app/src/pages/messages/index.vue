@@ -147,7 +147,7 @@ import { useMessages } from '../../composables/useMessages'
 import { useUnread } from '../../composables/useUnread'
 import { usePresence } from '../../composables/usePresence'
 import { useTheme } from '../../composables/useTheme'
-import { formatTime, thumbUrl } from '../../utils'
+import { formatTime, thumbUrl, friendlyErrorMessage } from '../../utils'
 import { DIALOG_DANGER } from '../../utils/dialogColors'
 import type { Conversation, Profile } from '../../types'
 import AppSidebar from '../../components/AppSidebar.vue'
@@ -156,7 +156,7 @@ import CustomTabBar from '../../components/CustomTabBar.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
 import { parseStickerToken } from '../../components/stickers/registry'
 
-const { t, localize } = useI18n()
+const { t, lang, localize } = useI18n()
 
 const { currentUser, isLoggedIn } = useAuth()
 const {
@@ -360,7 +360,7 @@ async function togglePin(conv: Conversation) {
     await setConversationPinned(conv, currentUser.value.id, !isPinned(conv))
     await fetchConversations(currentUser.value.id)
   } catch (err: any) {
-    uni.showToast({ title: err?.message || t('msg.actionFailed'), icon: 'none' })
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
   }
 }
 
@@ -370,7 +370,7 @@ async function toggleMute(conv: Conversation) {
     await setConversationMuted(conv, currentUser.value.id, !isMuted(conv))
     await refreshUnreadCount()
   } catch (err: any) {
-    uni.showToast({ title: err?.message || t('msg.actionFailed'), icon: 'none' })
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
   }
 }
 
@@ -385,7 +385,7 @@ async function toggleRead(conv: Conversation) {
     }
     await refreshUnreadCount()
   } catch (err: any) {
-    uni.showToast({ title: err?.message || t('msg.actionFailed'), icon: 'none' })
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
   }
 }
 
@@ -402,7 +402,7 @@ function onDelete(conv: Conversation) {
         uni.showToast({ title: t('msg.deleted'), icon: 'success' })
       } catch (err: any) {
         uni.showToast({
-          title: err?.message || t('msg.deleteFailed'),
+          title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.deleteFailed'),
           icon: 'none',
           duration: 2500,
         })

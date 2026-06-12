@@ -196,7 +196,7 @@ async function onForgotPassword() {
   // #ifndef H5
   redirectTo = `${BASE_URL}/#/pages/reset-password/index`
   // #endif
-  console.log('[reset-pw-debug] sending reset email to:', trimmedEmail, 'redirectTo:', redirectTo)
+  console.log('[reset-pw-debug] sending reset email, redirectTo:', redirectTo)
   const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, { redirectTo })
   if (error) {
     console.warn('[reset-pw-debug] resetPasswordForEmail error:', error)

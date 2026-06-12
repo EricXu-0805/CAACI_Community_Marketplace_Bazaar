@@ -80,19 +80,29 @@ onShow(async () => {
 function goBack() { uni.navigateBack() }
 
 function onTap(n: Notification) {
-  if (!n.is_read) markRead(n.id)
+  if (!n.is_read) markRead(n.id).catch(() => {})
   if (n.item_id) {
     uni.navigateTo({ url: `/pages/detail/index?id=${n.item_id}` })
   }
 }
 
-function onMarkAll() { markAllRead() }
+async function onMarkAll() {
+  try {
+    await markAllRead()
+  } catch (err: any) {
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none' })
+  }
+}
 
 function onLongPress(id: string) {
   uni.showActionSheet({
     itemList: [t('notif.delete')],
     success: (res) => {
-      if (res.tapIndex === 0) deleteNotification(id)
+      if (res.tapIndex === 0) {
+        deleteNotification(id).catch((err: any) => {
+          uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none' })
+        })
+      }
     },
   })
 }

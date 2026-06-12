@@ -84,9 +84,9 @@
         <view class="fs-row fs-row-price">
           <text class="fs-label">{{ t('filter.price') }}</text>
           <view class="fs-price-wrap">
-            <input v-model="form.priceMin" type="number" placeholder="Min" class="fs-price-input" />
+            <input v-model="form.priceMin" type="number" :placeholder="t('filter.priceMin')" class="fs-price-input" />
             <text class="fs-dash">–</text>
-            <input v-model="form.priceMax" type="number" placeholder="Max" class="fs-price-input" />
+            <input v-model="form.priceMax" type="number" :placeholder="t('filter.priceMax')" class="fs-price-input" />
           </view>
         </view>
       </view>
@@ -184,7 +184,7 @@ async function onDelete(id: string) {
         await remove(id)
         uni.showToast({ title: t('profile.deleted'), icon: 'success' })
       } catch (err: any) {
-        uni.showToast({ title: err?.message || t('error.actionFailed'), icon: 'none' })
+        uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('error.actionFailed'), icon: 'none' })
       }
     },
   })

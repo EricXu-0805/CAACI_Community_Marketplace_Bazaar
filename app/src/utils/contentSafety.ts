@@ -197,36 +197,6 @@ export function checkContent(text: string, opts: CheckOptions): SafetyResult {
   return OK
 }
 
-/* ---------- Image QR code detection ----------
-   Lightweight client-side detection via the platform's BarcodeDetector
-   when available (H5 Chrome/Edge), falling back to no-op elsewhere —
-   server-side WeChat-QR scanner will catch what we miss. */
-
-export async function detectQRInImage(fileOrUrl: string | Blob): Promise<boolean> {
-  // #ifdef H5
-  try {
-    const BD = (globalThis as any).BarcodeDetector
-    if (!BD) return false
-    const detector = new BD({ formats: ['qr_code'] })
-    let bitmap: ImageBitmap
-    if (typeof fileOrUrl === 'string') {
-      const res = await fetch(fileOrUrl)
-      const blob = await res.blob()
-      bitmap = await createImageBitmap(blob)
-    } else {
-      bitmap = await createImageBitmap(fileOrUrl)
-    }
-    const codes = await detector.detect(bitmap)
-    return Array.isArray(codes) && codes.length > 0
-  } catch {
-    return false
-  }
-  // #endif
-  // #ifndef H5
-  return false
-  // #endif
-}
-
 /* ---------- Remote AI moderation (OpenAI omni-moderation via /api/moderate) ----------
    Called AFTER local checks pass, as a second-tier gate for nuanced
    violations (harassment, self-harm, sexual, etc) the keyword list

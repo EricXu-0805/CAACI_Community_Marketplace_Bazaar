@@ -347,6 +347,7 @@ import { useModeration } from '../composables/useModeration'
 import { useLongPress } from '../composables/useLongPress'
 import { listingPriceLabel, friendlyErrorMessage } from '../utils'
 import { DIALOG_DANGER } from '../utils/dialogColors'
+import { captureException } from '../utils/sentry'
 import type { Item, Offer, Meetup } from '../types'
 import ChatEmojiPanel from './ChatEmojiPanel.vue'
 import UIcon from './UIcon.vue'
@@ -778,7 +779,7 @@ async function togglePin() {
     convPinned.value = !convPinned.value
     uni.showToast({ title: convPinned.value ? t('msg.pinned') : t('msg.unpin'), icon: 'success' })
   } catch (err: any) {
-    uni.showToast({ title: err?.message || t('msg.actionFailed'), icon: 'none' })
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
   }
 }
 
@@ -790,7 +791,7 @@ async function toggleMute() {
     uni.showToast({ title: convMuted.value ? t('msg.muted') : t('chat.unmute'), icon: 'success' })
     refreshUnreadCount()
   } catch (err: any) {
-    uni.showToast({ title: err?.message || t('msg.actionFailed'), icon: 'none' })
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
   }
 }
 
@@ -807,7 +808,7 @@ function doBlock() {
         uni.showToast({ title: t('block.success'), icon: 'success' })
         setTimeout(() => uni.navigateBack(), 800)
       } catch (err: any) {
-        uni.showToast({ title: err?.message || t('block.failed'), icon: 'none' })
+        uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('block.failed'), icon: 'none' })
       }
     },
   })
@@ -832,7 +833,7 @@ function doReport() {
         uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
         uni.hideLoading()
-        uni.showToast({ title: err?.message || t('report.failed'), icon: 'none' })
+        uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('report.failed'), icon: 'none' })
       }
     },
   })
@@ -918,6 +919,7 @@ async function submitOfferSheet() {
     offerSheet.value.open = false
     nextTick(() => scrollToBottom())
   } catch (err: any) {
+    captureException(err, { tags: { source: 'chat.offer' } })
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
   } finally {
     offerSubmitting.value = false
@@ -932,6 +934,7 @@ async function respondOffer(o: Offer, action: 'accept' | 'decline') {
     await fetchOffers(conversationId.value)
     nextTick(() => scrollToBottom())
   } catch (err: any) {
+    captureException(err, { tags: { source: 'chat.offer' } })
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
   }
 }
@@ -1004,6 +1007,7 @@ async function submitMeetupSheet() {
     meetupSheet.value.open = false
     nextTick(() => scrollToBottom())
   } catch (err: any) {
+    captureException(err, { tags: { source: 'chat.meetup' } })
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
   } finally {
     meetupSubmitting.value = false
@@ -1018,6 +1022,7 @@ async function respondMeetup(m: Meetup, action: 'accept' | 'decline') {
     await fetchMeetups(conversationId.value)
     nextTick(() => scrollToBottom())
   } catch (err: any) {
+    captureException(err, { tags: { source: 'chat.meetup' } })
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
   }
 }

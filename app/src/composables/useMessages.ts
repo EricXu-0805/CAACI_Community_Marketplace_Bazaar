@@ -5,6 +5,7 @@ import { useI18n } from './useI18n'
 import { subscribeToConversation as subscribeToConversationFallback } from './useRealtimeFallback'
 import { MESSAGE_FIELDS } from './useMessages.constants'
 import type { Conversation, Message } from '../types'
+import { friendlyErrorMessage } from '../utils'
 import { checkContent, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
 import { parseStickerToken } from '../components/stickers/registry'
 
@@ -48,7 +49,7 @@ export function invalidateConversations() {
 
 export function useMessages() {
   const { supabase } = useSupabase()
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
 
   async function fetchConversations(userId: string, opts: { force?: boolean } = {}) {
     if (
@@ -101,7 +102,7 @@ export function useMessages() {
       conversationsFetchedFor = userId
     } catch (error: any) {
       console.error('Failed to fetch conversations:', error)
-      uni.showToast({ title: error?.message || t('error.loadFailed'), icon: 'none', duration: 3000 })
+      uni.showToast({ title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('error.loadFailed'), icon: 'none', duration: 3000 })
     } finally {
       loading.value = false
     }
