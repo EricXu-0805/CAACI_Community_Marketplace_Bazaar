@@ -15,10 +15,10 @@
     </view>
 
     <view class="bottom">
-      <view v-if="current < slides.length - 1" class="skip-btn" @click="finish">
+      <view v-if="current < slides.length - 1" class="skip-btn" role="button" :aria-label="t('welcome.skip')" @click="finish">
         <text>{{ t('welcome.skip') }}</text>
       </view>
-      <view v-else class="start-btn" @click="finish">
+      <view v-else class="start-btn" role="button" :aria-label="t('welcome.start')" @click="finish">
         <text>{{ t('welcome.start') }}</text>
       </view>
     </view>
@@ -60,7 +60,7 @@ function finish() {
 
 <style lang="scss" scoped>
 .page {
-  height: 100vh; background: var(--bg-elev-1); display: flex;
+  height: 100vh; height: 100dvh; background: var(--bg-page); display: flex;
   flex-direction: column; max-width: 480px; margin: 0 auto;
 }
 .swiper { flex: 1; }
@@ -68,8 +68,10 @@ function finish() {
   height: 100%; display: flex; flex-direction: column;
   align-items: center; justify-content: center; padding: 0 40px; gap: 16px;
 }
-.slide-icon { font-size: 64px; }
-.slide-title { font-size: 22px; font-weight: 700; color: var(--text-primary); text-align: center; }
+.slide-title {
+  font-family: var(--font-serif); font-size: 22px; font-weight: 600;
+  letter-spacing: -0.02em; color: var(--text-primary); text-align: center;
+}
 .slide-desc { font-size: 14px; color: var(--text-muted); text-align: center; line-height: 1.6; }
 
 .dots { display: flex; justify-content: center; gap: 8px; padding: 16px 0; }
@@ -83,7 +85,7 @@ function finish() {
 }
 .start-btn {
   background: var(--accent-primary); border-radius: 24px; padding: 14px; text-align: center;
+  box-shadow: var(--shadow-cta);
   text { font-size: 15px; font-weight: 600; color: #fff; }
-  &:active { opacity: 0.8; }
 }
 </style>

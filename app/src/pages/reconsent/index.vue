@@ -7,7 +7,7 @@
     </view>
 
     <scroll-view class="body-scroll" scroll-y :show-scrollbar="false">
-      <view class="doc-card" @click="openDoc('terms')">
+      <view class="doc-card" role="button" :aria-label="t('legal.terms')" @click="openDoc('terms')">
         <view class="doc-icon doc-terms"></view>
         <view class="doc-info">
           <text class="doc-name">{{ t('legal.terms') }}</text>
@@ -15,7 +15,7 @@
         </view>
         <view class="doc-chevron"></view>
       </view>
-      <view class="doc-card" @click="openDoc('privacy')">
+      <view class="doc-card" role="button" :aria-label="t('legal.privacy')" @click="openDoc('privacy')">
         <view class="doc-icon doc-privacy"></view>
         <view class="doc-info">
           <text class="doc-name">{{ t('legal.privacy') }}</text>
@@ -23,7 +23,7 @@
         </view>
         <view class="doc-chevron"></view>
       </view>
-      <view class="doc-card" @click="openDoc('guidelines')">
+      <view class="doc-card" role="button" :aria-label="t('legal.guidelines')" @click="openDoc('guidelines')">
         <view class="doc-icon doc-guidelines"></view>
         <view class="doc-info">
           <text class="doc-name">{{ t('legal.guidelines') }}</text>
@@ -36,10 +36,10 @@
     </scroll-view>
 
     <view class="footer">
-      <view class="btn-ghost" @click="onDecline">
+      <view class="btn-ghost" role="button" :aria-label="t('reconsent.decline')" @click="onDecline">
         <text>{{ t('reconsent.decline') }}</text>
       </view>
-      <view :class="['btn-primary', { disabled: submitting }]" @click="onAccept">
+      <view :class="['btn-primary', { disabled: submitting }]" role="button" :aria-label="t('reconsent.accept')" @click="onAccept">
         <text>{{ submitting ? t('reconsent.saving') : t('reconsent.accept') }}</text>
       </view>
     </view>
@@ -107,7 +107,7 @@ function onDecline() {
 .page {
   height: 100vh; height: 100dvh;
   display: flex; flex-direction: column;
-  background: var(--bg-elev-1); max-width: 480px; margin: 0 auto;
+  background: var(--bg-page); max-width: 480px; margin: 0 auto;
 }
 .header {
   padding: 28px 24px 16px;
@@ -116,13 +116,16 @@ function onDecline() {
 }
 .badge {
   align-self: flex-start;
-  padding: 3px 10px; border-radius: 10px;
-  background: rgba(199,74,47,0.08);
+  padding: 3px 10px; border-radius: var(--radius-pill);
+  background: var(--brand-ghost);
   font-size: 11px; color: var(--accent-action); font-weight: 700;
   letter-spacing: 0.04em; text-transform: uppercase;
   margin-bottom: 8px;
 }
-.title { font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
+.title {
+  font-family: var(--font-serif); font-size: 22px; font-weight: 600;
+  color: var(--text-primary); letter-spacing: -0.02em;
+}
 .sub { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
 
 .body-scroll { flex: 1; min-height: 0; padding: 16px 20px; }
@@ -144,7 +147,7 @@ function onDecline() {
   width: 14px; height: 18px; border: 2px solid var(--campus-blue);
   border-radius: 2px;
 }
-.doc-privacy { background: rgba(93, 124, 74, 0.10); }
+.doc-privacy { background: var(--success-soft); }
 .doc-privacy::before {
   content: ''; position: absolute; top: 9px; left: 10px;
   width: 16px; height: 14px; border: 2px solid var(--accent-good);
@@ -155,7 +158,7 @@ function onDecline() {
   width: 10px; height: 10px; border: 2px solid var(--accent-good);
   border-bottom: none; border-radius: 5px 5px 0 0;
 }
-.doc-guidelines { background: rgba(199,74,47,0.1); }
+.doc-guidelines { background: var(--brand-soft); }
 .doc-guidelines::before {
   content: ''; position: absolute; top: 10px; left: 11px;
   width: 14px; height: 16px; border: 2px solid var(--accent-action);
@@ -194,8 +197,8 @@ function onDecline() {
 }
 .btn-primary {
   background: var(--accent-primary); color: #fff;
+  box-shadow: var(--shadow-cta);
   &.disabled { opacity: 0.4; pointer-events: none; }
-  &:active { opacity: 0.85; }
 }
 .btn-ghost {
   background: var(--bg-subtle); color: var(--text-secondary);
