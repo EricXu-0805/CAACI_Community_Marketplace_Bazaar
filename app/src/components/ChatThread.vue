@@ -222,7 +222,7 @@
         <text class="rc-text">{{ replyPreview(replyToMsg).slice(0, 80) }}</text>
       </view>
       <view class="rc-x" role="button" :aria-label="t('a11y.close')" @click="replyToMsg = null">
-        <view class="rc-x-inner"></view>
+        <UIcon name="close" size="xs" color="accent-action" />
       </view>
     </view>
 
@@ -1608,15 +1608,6 @@ function scrollToBottom() {
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; flex-shrink: 0;
   &:active { background: rgba(199,74,47,0.15); }
-}
-.rc-x-inner {
-  width: 11px; height: 11px; position: relative;
-  &::before, &::after {
-    content: ''; position: absolute; top: 50%; left: 0;
-    width: 11px; height: 1.5px; background: var(--accent-action);
-  }
-  &::before { transform: rotate(45deg); }
-  &::after { transform: rotate(-45deg); }
 }
 
 .suggest-row {

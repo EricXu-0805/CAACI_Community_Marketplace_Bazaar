@@ -56,7 +56,7 @@
           class="form-input"
         />
         <view v-if="isIlliniEmail" class="illini-hint">
-          <text class="ih-check">✓</text>
+          <UIcon name="check" size="xs" color="success" />
           <text class="ih-text">{{ t('login.illiniEmail') }}</text>
         </view>
       </view>
@@ -478,7 +478,6 @@ async function onSubmit() {
   border-radius: var(--radius-pill);
   background: var(--success-soft);
 }
-.ih-check { font-size: 11px; font-weight: 800; color: var(--success); line-height: 1; }
 .ih-text { font-size: 11px; font-weight: 500; color: var(--success); line-height: 1; }
 .form-label {
   display: block; font-size: 13px; color: var(--text-muted);
