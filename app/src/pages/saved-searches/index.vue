@@ -10,7 +10,19 @@
     </view>
 
     <scroll-view class="list" scroll-y :scroll-top="scrollTopVal" :scroll-with-animation="false">
-      <view v-if="items.length === 0" class="empty">
+      <view v-if="loading && items.length === 0">
+        <view v-for="n in 5" :key="'sk' + n" class="ss-skel">
+          <view class="ss-skel-main">
+            <view class="ss-skel-line u-sk" style="width: 42%"></view>
+            <view class="ss-skel-chips">
+              <view class="ss-skel-chip u-sk"></view>
+              <view class="ss-skel-chip u-sk"></view>
+            </view>
+          </view>
+          <view class="ss-skel-del u-sk"></view>
+        </view>
+      </view>
+      <view v-else-if="items.length === 0" class="empty">
         <UIcon name="bell" size="xl" color="ink-faint" />
         <text class="empty-text">{{ t('savedSearch.empty') }}</text>
       </view>
@@ -98,6 +110,7 @@ const { items, fetchMine, create, remove } = useSavedSearch()
 
 const showForm = ref(false)
 const submitting = ref(false)
+const loading = ref(false)
 const form = ref<{ keyword: string; category: ItemCategory | null; priceMin: string; priceMax: string }>({
   keyword: '',
   category: null,
@@ -128,10 +141,13 @@ onMounted(async () => {
     uni.showToast({ title: t('profile.signInHint'), icon: 'none' })
     return
   }
+  loading.value = true
   try {
     await fetchMine()
   } catch (err: any) {
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
+  } finally {
+    loading.value = false
   }
 })
 
@@ -204,6 +220,16 @@ function goBack() { uni.navigateBack() }
   background: var(--bg-elev-1); border-radius: 10px;
   padding: 12px 14px; margin-bottom: 8px;
 }
+.ss-skel {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg-elev-1); border-radius: 10px;
+  padding: 12px 14px; margin-bottom: 8px;
+}
+.ss-skel-main { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.ss-skel-line { height: 13px; }
+.ss-skel-chips { display: flex; gap: 6px; }
+.ss-skel-chip { width: 64px; height: 18px; border-radius: 10px; }
+.ss-skel-del { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; }
 .ss-main { flex: 1; display: flex; flex-direction: column; gap: 6px; }
 .ss-kw { font-size: 15px; font-weight: 600; color: var(--text-primary); }
 .ss-meta { display: flex; gap: 6px; flex-wrap: wrap; }

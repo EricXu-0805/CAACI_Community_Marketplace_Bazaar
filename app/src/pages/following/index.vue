@@ -6,7 +6,22 @@
     </view>
 
     <scroll-view class="list" scroll-y :scroll-top="scrollTopVal" :scroll-with-animation="false" @scrolltolower="loadMore">
-      <view v-if="items.length === 0 && !loading" class="empty">
+      <view v-if="loading && items.length === 0" class="grid">
+        <view v-for="n in 4" :key="'fs' + n" class="card-skel">
+          <view class="fs-img u-sk"></view>
+          <view class="fs-body">
+            <view class="fs-line u-sk" style="width: 92%"></view>
+            <view class="fs-line u-sk" style="width: 58%"></view>
+            <view class="fs-line u-sk" style="width: 34%; height: 14px"></view>
+            <view class="fs-seller">
+              <view class="fs-avatar u-sk"></view>
+              <view class="fs-line u-sk" style="width: 42%"></view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view v-else-if="items.length === 0 && !loading" class="empty">
         <UEmptyArt name="following" />
         <text class="empty-text">{{ t('follow.emptyFeed') }}</text>
       </view>
@@ -47,7 +62,7 @@
         </view>
       </view>
 
-      <view v-if="loading" class="loading-tip"><text>{{ t('home.loading') }}</text></view>
+      <view v-if="loading && items.length > 0" class="loading-tip"><text>{{ t('home.loading') }}</text></view>
       <view v-else-if="!hasMore && items.length > 0" class="end-tip"><text>{{ t('home.endOf') }}</text></view>
     </scroll-view>
   </view>
@@ -174,6 +189,13 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .card-seller { display: flex; align-items: center; gap: 5px; margin-top: 5px; }
 .cs-avatar { width: 16px; height: 16px; border-radius: 50%; background: var(--bg-subtle); }
 .cs-name { font-size: 11px; color: var(--text-secondary, var(--ink-quiet)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.card-skel { background: var(--bg-elev-1); border-radius: var(--radius-lg); overflow: hidden; }
+.fs-img { height: 160px; }
+.fs-body { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 7px; }
+.fs-line { height: 11px; }
+.fs-seller { display: flex; align-items: center; gap: 5px; }
+.fs-avatar { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }
 
 .empty {
   display: flex; flex-direction: column; align-items: center;
