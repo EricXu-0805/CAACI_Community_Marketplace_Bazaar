@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <view class="header">
-      <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><view class="back-arrow"></view></view>
+      <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
       <text class="header-title">{{ t('profile.history') }}</text>
       <text v-if="currentList.length > 0" class="clear-btn" @click="onClear">{{ t('filter.reset') }}</text>
     </view>
@@ -81,6 +81,7 @@ import { useHistory } from '../../composables/useHistory'
 import { useTheme } from '../../composables/useTheme'
 import { listingPriceLabel, thumbUrl } from '../../utils'
 import UEmptyArt from '../../components/UEmptyArt.vue'
+import UIcon from '../../components/UIcon.vue'
 
 const { t, localize } = useI18n()
 const { isDark } = useTheme()
@@ -136,7 +137,6 @@ function onClear() {
   background: var(--bg-elev-1); border-bottom: 0.5px solid var(--line-hair);
 }
 .back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.back-arrow { width: 9px; height: 9px; border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary); transform: rotate(45deg); margin-left: 4px; }
 .header-title { flex: 1; font-size: 17px; font-weight: 600; color: var(--text-primary); }
 .clear-btn { font-size: 14px; color: var(--accent-danger); cursor: pointer; }
 

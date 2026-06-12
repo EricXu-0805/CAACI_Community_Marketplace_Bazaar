@@ -38,7 +38,7 @@
       </view>
       <!-- Overlay buttons -->
       <view class="img-back" role="button" :aria-label="t('a11y.back')" @click="goBack">
-        <view class="back-arrow"></view>
+        <UIcon name="chevron-left" size="xs" color="#fff" />
       </view>
       <view class="img-share" role="button" :aria-label="t('a11y.share')" @click="onShare">
         <view class="share-icon"></view>
@@ -863,11 +863,6 @@ async function contactSeller() {
 .img-back { left: 12px; }
 .img-share { right: 12px; }
 
-.back-arrow {
-  width: 10px; height: 10px;
-  border-left: 2px solid #fff; border-bottom: 2px solid #fff;
-  transform: rotate(45deg); margin-left: 3px;
-}
 .share-icon {
   width: 14px; height: 14px; position: relative;
   &::before {
