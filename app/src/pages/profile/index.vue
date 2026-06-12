@@ -144,8 +144,7 @@
           </view>
         </view>
         <view v-if="currentListings.length === 0" class="empty-mini">
-          <UIcon name="tag" size="lg" color="ink-faint" />
-          <text class="u-thumb-ph-seal" style="opacity:0.14;font-size:48px">集</text>
+          <UEmptyArt name="bag" :size="104" />
           <text class="empty-mini-text">{{ myTab === 'sold' ? t('profile.noSold') : t('profile.noListings') }}</text>
         </view>
         <scroll-view v-else scroll-x class="horz-scroll" :show-scrollbar="false">
@@ -191,8 +190,7 @@
           <text v-if="savedItems.length > 0" class="block-count">{{ savedItems.length }}</text>
         </view>
         <view v-if="savedItems.length === 0" class="empty-mini">
-          <UIcon name="heart" size="lg" color="ink-faint" />
-          <text class="u-thumb-ph-seal" style="opacity:0.14;font-size:48px">集</text>
+          <UEmptyArt name="favorites" :size="104" />
           <text class="empty-mini-text">{{ t('profile.noSaved') }}</text>
         </view>
         <view v-else class="fav-grid">
@@ -258,6 +256,7 @@ import AppSidebar from '../../components/AppSidebar.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import UBadge from '../../components/UBadge.vue'
 import UIcon from '../../components/UIcon.vue'
+import UEmptyArt from '../../components/UEmptyArt.vue'
 import { useItems } from '../../composables/useItems'
 import { useFavorites } from '../../composables/useFavorites'
 import { useNotifications } from '../../composables/useNotifications'
