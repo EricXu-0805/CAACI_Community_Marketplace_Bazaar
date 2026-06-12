@@ -23,6 +23,14 @@
         />
         <view v-if="searchText" class="sb-clear" role="button" :aria-label="t('a11y.searchClear')" @click="clearSearch"></view>
       </view>
+      <!-- Desktop-only compose entry: the mobile compose-btn lives in
+           .page-header, which is display:none ≥768px, so on Mac/iPad there was
+           no way to write a post (the sidebar +发布 creates an item, not a
+           post). Sits beside the search bar on the desktop reading column. -->
+      <view v-if="isLoggedIn" class="plaza-compose-d" role="button" :aria-label="t('a11y.compose')" @click="openComposer">
+        <UIcon name="edit" size="sm" color="#fff" />
+        <text class="pcd-label">{{ t('plaza.write') }}</text>
+      </view>
     </view>
 
     <!-- Feed tabs live OUTSIDE the scroll area (directly under search) so
@@ -1292,6 +1300,10 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   background: var(--canvas);
   border-bottom: 0.5px solid var(--border);
 }
+/* Desktop compose button — hidden on mobile (the header compose-btn covers
+   that case); revealed + laid out beside the search bar in the 768 block. */
+.plaza-compose-d { display: none; }
+.pcd-label { font-size: 14px; font-weight: 600; color: #fff; white-space: nowrap; letter-spacing: 0.01em; }
 .search-bar {
   display: flex; align-items: center; gap: 8px;
   background: var(--surface-alt);
@@ -2029,5 +2041,15 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
      640px reading width so the toolbar aligns with the posts. */
   .search-wrap, .feed-tabs, .feed { max-width: 640px; margin-left: auto; margin-right: auto; }
   .feed { padding-bottom: 0; }
+  /* Search bar + compose button share the toolbar row on desktop. */
+  .search-wrap { display: flex; align-items: center; gap: 10px; }
+  .search-bar { flex: 1; min-width: 0; }
+  .plaza-compose-d {
+    display: inline-flex; align-items: center; gap: 7px; flex: none;
+    padding: 9px 16px; border-radius: var(--radius-md);
+    background: var(--brand); cursor: pointer;
+    transition: transform var(--dur-1, 120ms) var(--ease-std, ease), background var(--dur-1, 120ms) var(--ease-std, ease);
+  }
+  .plaza-compose-d:active { transform: scale(0.96); background: var(--brand-deep); }
 }
 </style>

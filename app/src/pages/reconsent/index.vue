@@ -201,4 +201,14 @@ function onDecline() {
   background: var(--bg-subtle); color: var(--text-secondary);
   &:active { background: var(--bg-inset); }
 }
+
+/* Desktop (≥768px): the mobile layout pins the footer to the viewport bottom,
+   which on a tall window leaves a large empty gap between the doc cards and the
+   buttons. Center the whole group instead so it reads as a consent card, and
+   let the footer sit right under the content. */
+@media (min-width: 768px) {
+  .page { justify-content: center; height: auto; min-height: 100dvh; padding: 24px 0; box-sizing: border-box; }
+  .body-scroll { flex: 0 1 auto; }
+  .footer { border-top: none; padding-bottom: 14px; }
+}
 </style>
