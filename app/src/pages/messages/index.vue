@@ -24,9 +24,7 @@
     </view>
 
     <view v-if="!isLoggedIn" class="login-prompt">
-      <view class="prompt-icon">
-        <view class="pi-bubble"></view>
-      </view>
+      <UEmptyArt name="messages" :size="104" />
       <text class="prompt-text">{{ t('msg.signIn') }}</text>
       <view class="login-btn" @click="goLogin">{{ t('profile.signIn') }}</view>
     </view>
@@ -132,7 +130,7 @@
         embedded
       />
       <view v-else class="thread-empty">
-        <view class="te-bubble"></view>
+        <UEmptyArt name="messages" :size="120" />
         <text class="te-text">{{ t('msg.selectHint') }}</text>
       </view>
     </view>
@@ -485,23 +483,6 @@ function goLogin() {
   padding-top: 120px; gap: 10px;
 }
 
-.prompt-icon {
-  width: 52px; height: 52px;
-  display: flex; align-items: center; justify-content: center;
-  margin-bottom: 4px;
-}
-.pi-bubble {
-  width: 36px; height: 28px; border: 2.5px solid var(--border-strong);
-  border-radius: 16px 16px 16px 4px; position: relative;
-  &::before {
-    content: ''; position: absolute; top: 8px; left: 7px;
-    width: 4px; height: 4px; border-radius: 50%; background: var(--border-strong);
-  }
-  &::after {
-    content: ''; position: absolute; top: 8px; left: 15px;
-    width: 4px; height: 4px; border-radius: 50%; background: var(--border-strong);
-  }
-}
 .prompt-text { font-size: 14px; color: var(--text-faint); }
 .empty-title { font-size: 16px; color: var(--text-primary); font-weight: 600; }
 .empty-sub { font-size: 13px; color: var(--text-faint); }
@@ -705,10 +686,6 @@ function goLogin() {
     height: 100%; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 12px;
     background: var(--canvas);
-  }
-  .te-bubble {
-    width: 48px; height: 48px; border-radius: 14px 14px 14px 4px;
-    border: 2px solid var(--border-strong); opacity: 0.7;
   }
   .te-text { font-size: 14px; color: var(--ink-quiet); }
 }

@@ -30,7 +30,7 @@
             </view>
           </view>
           <view v-if="imageList.length < 9" class="image-add" @click="chooseImage">
-            <UIcon name="plus" color="text-faint" />
+            <UIcon name="plus" size="sm" color="text-faint" />
             <text class="add-text">{{ t('publish.addPhoto') }}</text>
             <text class="add-count">{{ imageList.length }}/9</text>
           </view>
@@ -73,7 +73,7 @@
           <text :class="['field-value', { placeholder: !form.category }]">
             {{ form.category ? t('cat.' + form.category) : t('publish.categorySelect') }}
           </text>
-          <view :class="['chevron', { open: showCat }]"></view>
+          <view :class="['chevron', { open: showCat }]"><UIcon name="chevron-right" size="xs" color="text-faint" /></view>
         </view>
         <view v-if="showCat" class="pill-grid">
           <view
@@ -94,7 +94,7 @@
           <text :class="['field-value', { placeholder: !form.condition }]">
             {{ form.condition ? t('condition.' + form.condition) : t('publish.conditionSelect') }}
           </text>
-          <view :class="['chevron', { open: showCond }]"></view>
+          <view :class="['chevron', { open: showCond }]"><UIcon name="chevron-right" size="xs" color="text-faint" /></view>
         </view>
         <view v-if="showCond" class="pill-grid">
           <view
@@ -925,10 +925,9 @@ async function onSubmit() {
   &.placeholder { color: var(--text-faint); }
 }
 .chevron {
-  width: 8px; height: 8px; margin-left: 8px;
-  border-top: 1.5px solid var(--text-faint); border-right: 1.5px solid var(--text-faint);
-  transform: rotate(45deg); transition: transform 0.2s;
-  &.open { transform: rotate(135deg); }
+  display: flex; margin-left: 8px;
+  transition: transform 0.2s;
+  &.open { transform: rotate(90deg); }
 }
 
 .pill-grid {

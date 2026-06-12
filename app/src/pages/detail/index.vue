@@ -279,7 +279,7 @@
   </view>
 
   <view v-else-if="notFound" class="not-found-page has-sidebar">
-    <view class="nf-back" role="button" :aria-label="t('a11y.back')" @click="goBack"><view class="nf-arrow"></view></view>
+    <view class="nf-back" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
     <view class="nf-icon"></view>
     <text class="nf-title">{{ t('detail.notFoundTitle') }}</text>
     <text class="nf-sub">{{ t('detail.notFoundSub') }}</text>
@@ -1294,7 +1294,6 @@ async function contactSeller() {
   display: flex; align-items: center; justify-content: center;
   background: var(--bg-subtle); cursor: pointer;
 }
-.nf-arrow { width: 9px; height: 9px; border-left: 2px solid var(--accent-primary); border-bottom: 2px solid var(--accent-primary); transform: rotate(45deg); margin-left: 3px; }
 .nf-icon {
   width: 60px; height: 60px; border: 3px solid var(--border-strong);
   border-radius: 50%; position: relative; margin-bottom: 8px;
