@@ -3,7 +3,7 @@
     <swiper class="swiper" :current="current" @change="current = $event.detail.current">
       <swiper-item v-for="(slide, i) in slides" :key="i">
         <view class="slide">
-          <view class="slide-icon"><UIcon :name="slide.icon" size="xl" color="brand" /></view>
+          <view class="slide-art"><image :src="slide.img" mode="aspectFit" class="slide-img" /></view>
           <text class="slide-title">{{ slide.title }}</text>
           <text class="slide-desc">{{ slide.desc }}</text>
         </view>
@@ -28,7 +28,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useI18n } from '../../composables/useI18n'
-import UIcon from '../../components/UIcon.vue'
 
 const { t } = useI18n()
 const current = ref(0)
@@ -47,9 +46,9 @@ const current = ref(0)
  * re-run on currentLang changes.
  */
 const slides = computed(() => [
-  { icon: 'tag', title: t('welcome.t1'), desc: t('welcome.d1') },
-  { icon: 'chat-bubble', title: t('welcome.t2'), desc: t('welcome.d2') },
-  { icon: 'shield', title: t('welcome.t3'), desc: t('welcome.d3') },
+  { img: '/static/welcome/discover.png', title: t('welcome.t1'), desc: t('welcome.d1') },
+  { img: '/static/welcome/meetup.png', title: t('welcome.t2'), desc: t('welcome.d2') },
+  { img: '/static/welcome/safe.png', title: t('welcome.t3'), desc: t('welcome.d3') },
 ])
 
 function finish() {
@@ -68,6 +67,14 @@ function finish() {
   height: 100%; display: flex; flex-direction: column;
   align-items: center; justify-content: center; padding: 0 40px; gap: 16px;
 }
+.slide-art {
+  width: 248px; height: 248px;
+  border-radius: 22px; overflow: hidden;
+  background: #f8f3e8;
+  box-shadow: var(--shadow-soft);
+  margin-bottom: 4px;
+}
+.slide-img { width: 100%; height: 100%; display: block; }
 .slide-title {
   font-family: var(--font-serif); font-size: 22px; font-weight: 600;
   letter-spacing: -0.02em; color: var(--text-primary); text-align: center;
