@@ -250,18 +250,24 @@
   </view>
 
   <view v-if="showRating" class="sheet-mask u-mask-in" @click="showRating = false"></view>
-  <view :class="['rating-sheet', { open: showRating }]" v-if="item">
+  <view :class="['rating-sheet', { open: showRating }]" v-if="item" role="dialog" aria-modal="true" :aria-label="t('rating.title')">
     <view class="rs-header">
       <text class="rs-title">{{ t('rating.title') }}</text>
       <view class="rs-close" role="button" :aria-label="t('a11y.close')" @click="showRating = false"><view class="cs-x"></view></view>
     </view>
     <text class="rs-prompt">{{ t('rating.prompt').replace('{name}', item.profile?.nickname || t('app.user')) }}</text>
-    <view class="rs-stars">
+    <view class="rs-stars" role="radiogroup" :aria-label="t('rating.title')">
       <view
         v-for="n in 5"
         :key="n"
         :class="['rs-star', { on: ratingStars >= n }]"
+        role="radio"
+        :aria-checked="ratingStars === n ? 'true' : 'false'"
+        :aria-label="t('rating.starAria', { n })"
+        tabindex="0"
         @click="ratingStars = n"
+        @keydown.enter="ratingStars = n"
+        @keydown.space.prevent="ratingStars = n"
       >★</view>
     </view>
     <textarea
@@ -272,6 +278,9 @@
     />
     <view
       :class="['rs-submit', { disabled: ratingStars === 0 || ratingSubmitting }]"
+      role="button"
+      :aria-disabled="ratingStars === 0 || ratingSubmitting ? 'true' : 'false'"
+      :aria-label="t('rating.submit')"
       @click="onSubmitRating"
     >
       <text>{{ t('rating.submit') }}</text>
