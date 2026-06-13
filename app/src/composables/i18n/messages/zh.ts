@@ -289,6 +289,7 @@ const zh: Record<string, string> = {
   'chat.meetupReschedule': '改约',
   'chat.meetupWaiting': '等待对方确认',
   'chat.meetupExpired': '约见已过期',
+  'chat.meetupPast': '不能选择已经过去的时间',
   'chat.meetupSet': '约定 {spot} · {when} 见 · 校园面交，准时到',
   'chat.meetupTitle': '约个见面',
   'chat.meetupRescheduleTitle': '改个时间地点',
