@@ -910,7 +910,9 @@ const offerSubmitting = ref(false)
 const quickAmounts = computed<number[]>(() => {
   const p = itemInfo.value?.price || 0
   if (!p || p <= 0) return []
-  return [0.9, 0.8, 0.7].map(r => Math.max(1, Math.round(p * r)))
+  // De-dupe: on cheap items (e.g. $1 → [1,1,1], $3 → [3,2,2]) the three
+  // rounded values collide, producing duplicate :key + redundant chips.
+  return [...new Set([0.9, 0.8, 0.7].map(r => Math.max(1, Math.round(p * r))))]
 })
 
 function openOfferSheet() {
@@ -1017,6 +1019,14 @@ function meetupAtIso(): string | null {
 async function submitMeetupSheet() {
   const iso = meetupAtIso()
   if (!conversationId.value || !meetupSpotInput.value || !iso || meetupSubmitting.value) return
+  // The date picker has a today floor but the time picker has none, so today +
+  // an already-past time slips through (the server only rejects > 2h stale).
+  // Block a past meet time client-side with feedback instead of silently
+  // proposing a meetup that renders in the past.
+  if (new Date(iso).getTime() <= Date.now()) {
+    uni.showToast({ title: t('chat.meetupPast'), icon: 'none' })
+    return
+  }
   meetupSubmitting.value = true
   try {
     if (meetupSheet.value.mode === 'reschedule' && meetupSheet.value.targetId) {

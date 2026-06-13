@@ -289,6 +289,7 @@ const en: Record<string, string> = {
   'chat.meetupReschedule': 'Reschedule',
   'chat.meetupWaiting': 'Waiting for confirmation',
   'chat.meetupExpired': 'Meetup expired',
+  'chat.meetupPast': "Can't pick a time in the past",
   'chat.meetupSet': "It's set · {spot} · {when} · meet on campus, be on time",
   'chat.meetupTitle': 'Propose a meetup',
   'chat.meetupRescheduleTitle': 'Suggest a new time/place',

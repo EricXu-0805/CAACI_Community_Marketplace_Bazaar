@@ -16,7 +16,7 @@
         @change="currentImg = $event.detail.current"
         circular
       >
-        <swiper-item v-for="(img, i) in item.images" :key="i">
+        <swiper-item v-for="(img, i) in imgs" :key="i">
           <image
             :src="thumbUrl(img, 'detail')"
             :alt="displayTitle"
@@ -26,7 +26,7 @@
             @click="previewImage(i)"
           />
         </swiper-item>
-        <swiper-item v-if="item.images.length === 0">
+        <swiper-item v-if="imgs.length === 0">
           <view class="u-thumb-ph u-thumb-ph--fill det-noimg">
             <text class="u-thumb-ph-seal">集</text>
             <text class="det-noimg-cap">{{ t('detail.noPhotos') }}</text>
@@ -43,12 +43,12 @@
       <view class="img-share" role="button" :aria-label="t('a11y.share')" @click="onShare">
         <view class="share-icon"></view>
       </view>
-      <view v-if="item.images.length > 1" class="img-counter">
-        <text>{{ currentImg + 1 }}/{{ item.images.length }}</text>
+      <view v-if="imgs.length > 1" class="img-counter">
+        <text>{{ currentImg + 1 }}/{{ imgs.length }}</text>
       </view>
-      <view v-if="item.images.length > 1" class="img-dots">
+      <view v-if="imgs.length > 1" class="img-dots">
         <view
-          v-for="(_, i) in item.images"
+          v-for="(_, i) in imgs"
           :key="i"
           :class="['img-dot', { active: currentImg === i }]"
         ></view>
@@ -341,6 +341,10 @@ const { isFavorited: checkFavorited, toggleFavorite: doToggleFavorite, getFavori
 const { reportTarget } = useModeration()
 
 const item = ref<Item | null>(null)
+// images is a nullable TEXT[] column (DEFAULT '{}' only applies on omitted
+// INSERT, not an explicit NULL), so guard it once — the carousel read
+// item.images.length directly and would throw + white-screen on a null row.
+const imgs = computed<string[]>(() => item.value?.images || [])
 const sellerOtherItems = ref<Item[]>([])
 const similarItems = ref<Item[]>([])
 const isFav = ref(false)
@@ -753,7 +757,7 @@ function onMarkSold() {
 
 function previewImage(index: number) {
   if (!item.value) return
-  uni.previewImage({ urls: item.value.images, current: index })
+  uni.previewImage({ urls: imgs.value, current: index })
 }
 
 async function toggleFavorite() {
