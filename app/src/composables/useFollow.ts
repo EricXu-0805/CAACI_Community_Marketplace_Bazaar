@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 import { useAuth } from './useAuth'
+import { captureException } from '../utils/sentry'
 import type { Item } from '../types'
 
 const following = ref<Set<string>>(new Set())
@@ -26,10 +27,17 @@ export function useFollow() {
       followingLoaded.value = true
       return
     }
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('follows')
       .select('followee_id')
       .eq('follower_id', currentUser.value.id)
+    // A failed load otherwise reads as "you follow no one" (empty feed) with
+    // no signal — capture it and keep the prior set instead of zeroing it.
+    if (error) {
+      console.error('Failed to load following:', error)
+      captureException(error, { tags: { source: 'loadMyFollowing' } })
+      return
+    }
     following.value = new Set((data || []).map((f: { followee_id: string }) => f.followee_id))
     followingLoaded.value = true
   }
