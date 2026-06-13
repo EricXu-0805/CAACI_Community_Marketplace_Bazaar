@@ -97,7 +97,7 @@ async function sbGet(path) {
 async function sbMarkEmailed(ids) {
   if (!ids.length) return
   const inList = `(${ids.map(encodeURIComponent).join(',')})`
-  await fetch(`${SUPABASE_URL}/rest/v1/notifications?id=in.${inList}`, {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/notifications?id=in.${inList}`, {
     method: 'PATCH',
     headers: {
       apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`,
@@ -105,6 +105,11 @@ async function sbMarkEmailed(ids) {
     },
     body: JSON.stringify({ emailed_at: new Date().toISOString() }),
   })
+  // edge fetch only rejects on network errors, not on HTTP 4xx/5xx — without
+  // this check a failed PATCH was swallowed, leaving emailed_at NULL so the
+  // next cron re-sent an identical digest to a real user. Throw so the caller
+  // counts it as a failure instead of falsely reporting success.
+  if (!r.ok) throw new Error(`mark-emailed ${r.status}`)
 }
 
 async function brevoSend(to, subject, html) {
@@ -164,20 +169,28 @@ export default async function handler(req) {
   )
   const emailById = new Map(profiles.filter(p => p.email).map(p => [p.id, p.email]))
 
-  let usersNotified = 0, sentCount = 0
+  let usersNotified = 0, sentCount = 0, sendFailed = 0, markFailed = 0
   for (const uid of userIds) {
     const to = emailById.get(uid)
     const userRows = byUser.get(uid)
     if (!to || !userRows.length) continue
+    let sent = false
     try {
       await brevoSend(to, `香槟集市 · 你有 ${userRows.length} 条新动态`, digestHtml(userRows, false))
+      sent = true
       await sbMarkEmailed(userRows.map(r => r.id))
       usersNotified++; sentCount += userRows.length
     } catch (e) {
-      // one user's failure shouldn't abort the batch; leave their rows un-emailed for the next run
+      // One user's failure shouldn't abort the batch. Distinguish the two
+      // modes so the operator isn't shown a falsely-clean success: a send
+      // failure is safe (no email went out; rows stay un-emailed → retried),
+      // but a mark failure AFTER a successful send means the digest WAS
+      // delivered yet the rows weren't stamped → next run sends a DUPLICATE.
+      if (sent) markFailed++; else sendFailed++
+      console.error(`digest user ${uid}: ${sent ? 'mark-emailed' : 'send'} failed:`, e?.message || e)
     }
   }
-  return json({ mode: 'live', usersNotified, notifications: sentCount })
+  return json({ mode: 'live', usersNotified, notifications: sentCount, sendFailed, markFailed })
   } catch (e) {
     return json({ error: 'internal' }, 500)
   }
