@@ -1,16 +1,19 @@
 <template>
   <view class="admin">
     <view class="admin-header">
-      <text class="admin-title">Moderation Dashboard</text>
+      <text class="admin-title">{{ t('admin.title') }}</text>
       <view v-if="unlocked && currentAdmin" class="admin-whoami">
         <text class="admin-whoami-label">{{ currentAdmin.label }}</text>
         <text v-if="currentAdmin.detail" class="admin-whoami-detail">{{ currentAdmin.detail }}</text>
       </view>
-      <view v-if="unlocked" class="admin-logout" @click="onLogout">Sign out</view>
+      <view class="admin-lang" role="button" :aria-label="t('a11y.langToggle')" @click="toggleLang">
+        <text>{{ lang === 'zh' ? 'EN' : '中' }}</text>
+      </view>
+      <view v-if="unlocked" class="admin-logout" @click="onLogout">{{ t('admin.signOut') }}</view>
     </view>
 
     <view v-if="!unlocked" class="gate">
-      <text class="gate-label">Enter admin API key</text>
+      <text class="gate-label">{{ t('admin.gateLabel') }}</text>
       <input
         v-model="keyInput"
         type="password"
@@ -20,33 +23,29 @@
         @confirm="onUnlock"
       />
       <view :class="['gate-btn', { disabled: !keyInput || checking }]" @click="onUnlock">
-        <text>{{ checking ? 'Checking…' : 'Unlock' }}</text>
+        <text>{{ checking ? t('admin.checking') : t('admin.unlock') }}</text>
       </view>
       <text v-if="gateError" class="gate-error">{{ gateError }}</text>
-      <text class="gate-hint">
-        Paste your personal admin token (iam_admin_…), minted via
-        scripts/admin-token-mint.mjs. It is stored in localStorage only —
-        it never touches the Supabase user session.
-      </text>
+      <text class="gate-hint">{{ t('admin.gateHint') }}</text>
     </view>
 
     <view v-else class="dash">
       <view class="stats-row">
         <view class="stat">
           <text class="stat-n">{{ stats?.active_suspensions ?? '—' }}</text>
-          <text class="stat-l">Active bans</text>
+          <text class="stat-l">{{ t('admin.statActiveBans') }}</text>
         </view>
         <view class="stat">
           <text class="stat-n">{{ stats?.pending_reports ?? '—' }}</text>
-          <text class="stat-l">Pending reports</text>
+          <text class="stat-l">{{ t('admin.statPendingReports') }}</text>
         </view>
         <view class="stat">
           <text class="stat-n">{{ stats?.pending_appeals ?? '—' }}</text>
-          <text class="stat-l">Open appeals</text>
+          <text class="stat-l">{{ t('admin.statOpenAppeals') }}</text>
         </view>
         <view class="stat">
           <text class="stat-n">{{ stats?.shadow_banned ?? '—' }}</text>
-          <text class="stat-l">Shadow-banned</text>
+          <text class="stat-l">{{ t('admin.statShadowBanned') }}</text>
         </view>
       </view>
 
@@ -57,29 +56,29 @@
           :class="['tab', { active: activeTab === tab.id }]"
           @click="setTab(tab.id)"
         >
-          <text>{{ tab.label }}</text>
+          <text>{{ t(tab.labelKey) }}</text>
         </view>
       </view>
 
       <view v-if="loading" class="dash-loading">
-        <text>Loading…</text>
+        <text>{{ t('admin.loading') }}</text>
       </view>
 
       <view v-else-if="activeTab === 'reports'" class="list">
-        <view v-if="reports.length === 0" class="empty"><text>No reports to show.</text></view>
+        <view v-if="reports.length === 0" class="empty"><text>{{ t('admin.emptyReports') }}</text></view>
         <view v-for="r in reports" :key="r.id" class="card">
           <view class="card-head">
             <text class="card-title">{{ r.target_type }} · {{ r.reason }}</text>
             <text :class="['pill', 'pill-' + r.status]">{{ r.status }}</text>
           </view>
-          <text class="card-meta">by {{ r.reporter_nickname || r.reporter_id }}</text>
+          <text class="card-meta">{{ t('admin.reportBy', { name: r.reporter_nickname || r.reporter_id }) }}</text>
           <text v-if="r.note" class="card-note">“{{ r.note }}”</text>
           <text class="card-time">{{ fmtTime(r.created_at) }}</text>
           <view class="card-actions">
-            <view class="mini-btn" @click="openReport(r)">Open</view>
-            <view v-if="r.status === 'pending'" class="mini-btn" @click="updateReport(r.id, 'reviewed')">Mark reviewed</view>
-            <view v-if="r.status !== 'resolved'" class="mini-btn primary" @click="updateReport(r.id, 'resolved')">Resolve</view>
-            <view v-if="r.status !== 'dismissed'" class="mini-btn danger" @click="updateReport(r.id, 'dismissed')">Dismiss</view>
+            <view class="mini-btn" @click="openReport(r)">{{ t('admin.open') }}</view>
+            <view v-if="r.status === 'pending'" class="mini-btn" @click="updateReport(r.id, 'reviewed')">{{ t('admin.markReviewed') }}</view>
+            <view v-if="r.status !== 'resolved'" class="mini-btn primary" @click="updateReport(r.id, 'resolved')">{{ t('admin.resolve') }}</view>
+            <view v-if="r.status !== 'dismissed'" class="mini-btn danger" @click="updateReport(r.id, 'dismissed')">{{ t('admin.dismiss') }}</view>
           </view>
         </view>
       </view>
@@ -89,79 +88,78 @@
           <input
             v-model="suspensionQuery"
             class="search-input"
-            placeholder="Filter by nickname, reason, or id prefix"
+            :placeholder="t('admin.suspFilterPh')"
           />
-          <text v-if="suspensionQuery" class="search-clear" @click="suspensionQuery = ''">Clear</text>
+          <text v-if="suspensionQuery" class="search-clear" @click="suspensionQuery = ''">{{ t('admin.clear') }}</text>
         </view>
         <view v-if="filteredSuspensions.length === 0" class="empty">
-          <text>{{ suspensionQuery ? 'No matches.' : 'No suspensions.' }}</text>
+          <text>{{ suspensionQuery ? t('admin.noMatches') : t('admin.emptySuspensions') }}</text>
         </view>
         <view v-for="s in filteredSuspensions" :key="s.id" class="card">
           <view class="card-head">
             <image :src="s.profile_avatar_url || defaultAvatarSrc" :alt="s.profile_nickname || 'avatar'" class="mini-avatar" mode="aspectFill" />
             <text class="card-title">{{ s.profile_nickname || s.profile_id }}</text>
             <text :class="['pill', 'level-' + s.level]">L{{ s.level }}</text>
-            <text v-if="s.lifted_at" class="pill pill-lifted">lifted</text>
-            <text v-else-if="isExpired(s.ends_at)" class="pill pill-expired">expired</text>
-            <text v-else class="pill pill-active">active</text>
+            <text v-if="s.lifted_at" class="pill pill-lifted">{{ t('admin.pillLifted') }}</text>
+            <text v-else-if="isExpired(s.ends_at)" class="pill pill-expired">{{ t('admin.pillExpired') }}</text>
+            <text v-else class="pill pill-active">{{ t('admin.pillActive') }}</text>
           </view>
           <text class="card-meta">{{ s.reason }}</text>
           <text class="card-time">
-            Started {{ fmtTime(s.started_at) }} · Ends {{ s.ends_at ? fmtTime(s.ends_at) : 'permanent' }}
+            {{ t('admin.startedEnds', { start: fmtTime(s.started_at), end: s.ends_at ? fmtTime(s.ends_at) : t('admin.permanent') }) }}
           </text>
           <text class="card-audit">
-            Issued by <text class="audit-name">{{ s.issued_by_nickname || 'system' }}</text>
-            <text v-if="s.lifted_by_nickname"> · Lifted by <text class="audit-name">{{ s.lifted_by_nickname }}</text></text>
+            {{ t('admin.issuedByName', { name: s.issued_by_nickname || t('admin.system') }) }}<text v-if="s.lifted_by_nickname"> · {{ t('admin.liftedByInline', { name: s.lifted_by_nickname }) }}</text>
           </text>
-          <text v-if="s.has_appeal" class="card-appeal-flag">Appeal filed</text>
+          <text v-if="s.has_appeal" class="card-appeal-flag">{{ t('admin.appealFiled') }}</text>
           <view class="card-actions">
-            <view class="mini-btn" @click="openSuspension(s)">Open</view>
-            <view class="mini-btn" @click="openUser(s.profile_id)">Open profile</view>
-            <view v-if="!s.lifted_at" class="mini-btn primary" @click="onLiftSuspension(s)">Lift</view>
+            <view class="mini-btn" @click="openSuspension(s)">{{ t('admin.open') }}</view>
+            <view class="mini-btn" @click="openUser(s.profile_id)">{{ t('admin.openProfile') }}</view>
+            <view v-if="!s.lifted_at" class="mini-btn primary" @click="onLiftSuspension(s)">{{ t('admin.lift') }}</view>
           </view>
         </view>
       </view>
 
       <view v-else-if="activeTab === 'appeals'" class="list">
-        <view v-if="appeals.length === 0" class="empty"><text>No pending appeals.</text></view>
+        <view v-if="appeals.length === 0" class="empty"><text>{{ t('admin.emptyAppeals') }}</text></view>
         <view v-for="a in appeals" :key="a.id" class="card">
           <view class="card-head">
             <image :src="a.profile_avatar_url || defaultAvatarSrc" :alt="a.profile_nickname || 'avatar'" class="mini-avatar" mode="aspectFill" />
             <text class="card-title">{{ a.profile_nickname || a.profile_id }}</text>
             <text :class="['pill', 'level-' + a.level]">L{{ a.level }}</text>
           </view>
-          <text class="card-meta">Original: {{ a.reason }}</text>
+          <text class="card-meta">{{ t('admin.appealOriginal', { reason: a.reason }) }}</text>
           <text class="card-appeal">“{{ a.appeal_note }}”</text>
           <text class="card-time">
-            Filed {{ fmtTime(a.created_at) }} · Ends {{ a.ends_at ? fmtTime(a.ends_at) : 'permanent' }}
+            {{ t('admin.filedEnds', { filed: fmtTime(a.created_at), end: a.ends_at ? fmtTime(a.ends_at) : t('admin.permanent') }) }}
           </text>
           <view class="card-actions">
-            <view class="mini-btn primary" @click="onLiftSuspension(a)">Lift (accept appeal)</view>
-            <view class="mini-btn" @click="openSuspension(a)">Details</view>
+            <view class="mini-btn primary" @click="onLiftSuspension(a)">{{ t('admin.liftAccept') }}</view>
+            <view class="mini-btn" @click="openSuspension(a)">{{ t('admin.details') }}</view>
           </view>
         </view>
       </view>
 
       <view v-else-if="activeTab === 'warnings'" class="list">
-        <view v-if="warnings.length === 0" class="empty"><text>No flagged profiles.</text></view>
+        <view v-if="warnings.length === 0" class="empty"><text>{{ t('admin.emptyWarnings') }}</text></view>
         <view v-for="w in warnings" :key="w.profile_id" class="card">
           <view class="card-head">
             <image :src="w.avatar_url || defaultAvatarSrc" :alt="w.nickname || 'avatar'" class="mini-avatar" mode="aspectFill" />
             <text class="card-title">{{ w.nickname || w.profile_id }}</text>
-            <text class="pill pill-trust">Trust {{ w.trust_score }}</text>
-            <text v-if="w.shadow_banned" class="pill pill-shadow">shadow</text>
+            <text class="pill pill-trust">{{ t('admin.trust', { score: w.trust_score }) }}</text>
+            <text v-if="w.shadow_banned" class="pill pill-shadow">{{ t('admin.pillShadow') }}</text>
             <text v-if="w.suspension_level > 0" :class="['pill', 'level-' + w.suspension_level]">L{{ w.suspension_level }}</text>
           </view>
-          <text class="card-meta">Warnings: {{ w.warning_count }}</text>
+          <text class="card-meta">{{ t('admin.warningsCount', { n: w.warning_count }) }}</text>
           <view class="card-actions">
-            <view class="mini-btn" @click="openUser(w.profile_id)">Open profile</view>
-            <view class="mini-btn" @click="onBanPrompt(w.profile_id, w.nickname)">Apply ban</view>
+            <view class="mini-btn" @click="openUser(w.profile_id)">{{ t('admin.openProfile') }}</view>
+            <view class="mini-btn" @click="onBanPrompt(w.profile_id, w.nickname)">{{ t('admin.applyBan') }}</view>
           </view>
         </view>
       </view>
 
       <view v-else-if="activeTab === 'audit'" class="list">
-        <view v-if="auditLog.length === 0" class="empty"><text>No audit events yet.</text></view>
+        <view v-if="auditLog.length === 0" class="empty"><text>{{ t('admin.emptyAudit') }}</text></view>
         <view v-for="r in auditLog" :key="r.id" class="audit-row">
           <text :class="['audit-kind', 'kind-' + r.event_kind]">{{ r.event_kind }}</text>
           <text class="audit-msg">{{ fmtAuditEvent(r) }}</text>
@@ -174,42 +172,42 @@
     <view :class="['detail-sheet', { open: detailOpen }]">
       <view class="detail-head">
         <text class="detail-title">{{ detailTitle }}</text>
-          <view class="detail-close" role="button" aria-label="Close" @click="detailOpen = false"><text>×</text></view>
+          <view class="detail-close" role="button" :aria-label="t('a11y.close')" @click="detailOpen = false"><text>×</text></view>
       </view>
       <scroll-view class="detail-body" scroll-y>
-        <view v-if="detailLoading" class="empty"><text>Loading…</text></view>
+        <view v-if="detailLoading" class="empty"><text>{{ t('admin.loading') }}</text></view>
         <view v-else-if="detailKind === 'report' && detailRow">
-          <text class="d-row"><text class="d-key">Reporter: </text>{{ detailRow.reporter_nickname }} ({{ detailRow.reporter_email || '—' }})</text>
-          <text class="d-row"><text class="d-key">Target: </text>{{ detailRow.target_type }} {{ detailRow.target_id }}</text>
-          <text class="d-row"><text class="d-key">Author: </text>{{ detailRow.target_user_nickname || detailRow.target_user_id || '—' }}</text>
+          <text class="d-row"><text class="d-key">{{ t('admin.dReporter') }}</text>{{ detailRow.reporter_nickname }} ({{ detailRow.reporter_email || '—' }})</text>
+          <text class="d-row"><text class="d-key">{{ t('admin.dTarget') }}</text>{{ detailRow.target_type }} {{ detailRow.target_id }}</text>
+          <text class="d-row"><text class="d-key">{{ t('admin.dAuthor') }}</text>{{ detailRow.target_user_nickname || detailRow.target_user_id || '—' }}</text>
           <text v-if="detailRow.target_preview" class="d-row d-preview">“{{ detailRow.target_preview }}”</text>
-          <text class="d-row"><text class="d-key">Reason: </text>{{ detailRow.reason }}</text>
-          <text v-if="detailRow.note" class="d-row"><text class="d-key">Note: </text>{{ detailRow.note }}</text>
-          <text class="d-row"><text class="d-key">Status: </text>{{ detailRow.status }}</text>
-          <text class="d-row"><text class="d-key">Filed: </text>{{ fmtTime(detailRow.created_at) }}</text>
+          <text class="d-row"><text class="d-key">{{ t('admin.dReason') }}</text>{{ detailRow.reason }}</text>
+          <text v-if="detailRow.note" class="d-row"><text class="d-key">{{ t('admin.dNote') }}</text>{{ detailRow.note }}</text>
+          <text class="d-row"><text class="d-key">{{ t('admin.dStatus') }}</text>{{ detailRow.status }}</text>
+          <text class="d-row"><text class="d-key">{{ t('admin.dFiled') }}</text>{{ fmtTime(detailRow.created_at) }}</text>
           <view class="d-actions">
-            <view v-if="canOpenTarget(detailRow)" class="mini-btn" @click="openTarget(detailRow)">Open target</view>
-            <view v-if="detailRow.target_user_id" class="mini-btn" @click="openUser(detailRow.target_user_id)">Open author profile</view>
-            <view v-if="detailRow.target_user_id" class="mini-btn danger" @click="onBanPrompt(detailRow.target_user_id, detailRow.target_user_nickname)">Apply ban to author</view>
+            <view v-if="canOpenTarget(detailRow)" class="mini-btn" @click="openTarget(detailRow)">{{ t('admin.openTarget') }}</view>
+            <view v-if="detailRow.target_user_id" class="mini-btn" @click="openUser(detailRow.target_user_id)">{{ t('admin.openAuthorProfile') }}</view>
+            <view v-if="detailRow.target_user_id" class="mini-btn danger" @click="onBanPrompt(detailRow.target_user_id, detailRow.target_user_nickname)">{{ t('admin.banAuthor') }}</view>
           </view>
         </view>
         <view v-else-if="detailKind === 'suspension' && detailRow">
-          <text class="d-row"><text class="d-key">User: </text>{{ detailRow.profile_nickname }} ({{ detailRow.profile_email || '—' }})</text>
-          <text class="d-row"><text class="d-key">Level: </text>L{{ detailRow.level }}</text>
-          <text class="d-row"><text class="d-key">Category: </text>{{ detailRow.category }}</text>
-          <text class="d-row"><text class="d-key">Reason: </text>{{ detailRow.reason }}</text>
-          <text class="d-row"><text class="d-key">Issued by: </text>{{ detailRow.issued_by_nickname || 'system' }}</text>
-          <text class="d-row"><text class="d-key">Started: </text>{{ fmtTime(detailRow.started_at) }}</text>
-          <text class="d-row"><text class="d-key">Ends: </text>{{ detailRow.ends_at ? fmtTime(detailRow.ends_at) : 'permanent' }}</text>
-          <text class="d-row"><text class="d-key">Trust score: </text>{{ detailRow.profile_trust_score }}</text>
-          <text class="d-row"><text class="d-key">Warnings: </text>{{ detailRow.profile_warning_count }}</text>
-          <text v-if="detailRow.appeal_note" class="d-row d-appeal">Appeal: “{{ detailRow.appeal_note }}”</text>
+          <text class="d-row"><text class="d-key">{{ t('admin.dUser') }}</text>{{ detailRow.profile_nickname }} ({{ detailRow.profile_email || '—' }})</text>
+          <text class="d-row"><text class="d-key">{{ t('admin.dLevel') }}</text>L{{ detailRow.level }}</text>
+          <text class="d-row"><text class="d-key">{{ t('admin.dCategory') }}</text>{{ detailRow.category }}</text>
+          <text class="d-row"><text class="d-key">{{ t('admin.dReason') }}</text>{{ detailRow.reason }}</text>
+          <text class="d-row"><text class="d-key">{{ t('admin.dIssuedBy') }}</text>{{ detailRow.issued_by_nickname || t('admin.system') }}</text>
+          <text class="d-row"><text class="d-key">{{ t('admin.dStarted') }}</text>{{ fmtTime(detailRow.started_at) }}</text>
+          <text class="d-row"><text class="d-key">{{ t('admin.dEnds') }}</text>{{ detailRow.ends_at ? fmtTime(detailRow.ends_at) : t('admin.permanent') }}</text>
+          <text class="d-row"><text class="d-key">{{ t('admin.dTrust') }}</text>{{ detailRow.profile_trust_score }}</text>
+          <text class="d-row"><text class="d-key">{{ t('admin.dWarnings') }}</text>{{ detailRow.profile_warning_count }}</text>
+          <text v-if="detailRow.appeal_note" class="d-row d-appeal">{{ t('admin.dAppeal') }}“{{ detailRow.appeal_note }}”</text>
           <text v-if="detailRow.lifted_at" class="d-row">
-            <text class="d-key">Lifted: </text>{{ fmtTime(detailRow.lifted_at) }} by {{ detailRow.lifted_by_nickname || 'system' }} ({{ detailRow.lift_reason || '—' }})
+            <text class="d-key">{{ t('admin.dLifted') }}</text>{{ fmtTime(detailRow.lifted_at) }} {{ t('admin.byName', { name: detailRow.lifted_by_nickname || t('admin.system') }) }} ({{ detailRow.lift_reason || '—' }})
           </text>
           <view class="d-actions">
-            <view class="mini-btn" @click="openUser(detailRow.profile_id)">Open profile</view>
-            <view v-if="!detailRow.lifted_at" class="mini-btn primary" @click="onLiftSuspension(detailRow)">Lift</view>
+            <view class="mini-btn" @click="openUser(detailRow.profile_id)">{{ t('admin.openProfile') }}</view>
+            <view v-if="!detailRow.lifted_at" class="mini-btn primary" @click="onLiftSuspension(detailRow)">{{ t('admin.lift') }}</view>
           </view>
         </view>
       </scroll-view>
@@ -222,6 +220,9 @@ import { ref, computed, onMounted } from 'vue'
 import { platformFetch } from '../../composables/useSupabase'
 import { BASE_URL } from '../../config/runtime'
 import { useTheme } from '../../composables/useTheme'
+import { useI18n } from '../../composables/useI18n'
+
+const { t, lang, toggleLang } = useI18n()
 
 type TabId = 'reports' | 'suspensions' | 'appeals' | 'warnings' | 'audit'
 
@@ -290,15 +291,15 @@ const currentAdmin = computed(() => {
     const prefix = email.split('@')[0]
     return { label: prefix, detail: email }
   }
-  return { label: 'Admin', detail: '(legacy shared key)' }
+  return { label: t('admin.legacyAdmin'), detail: t('admin.legacyKey') }
 })
 
-const tabList: Array<{ id: TabId; label: string }> = [
-  { id: 'reports',     label: 'Reports' },
-  { id: 'suspensions', label: 'Suspensions' },
-  { id: 'appeals',     label: 'Appeals' },
-  { id: 'warnings',    label: 'Flagged' },
-  { id: 'audit',       label: 'Audit log' },
+const tabList: Array<{ id: TabId; labelKey: string }> = [
+  { id: 'reports',     labelKey: 'admin.tabReports' },
+  { id: 'suspensions', labelKey: 'admin.tabSuspensions' },
+  { id: 'appeals',     labelKey: 'admin.tabAppeals' },
+  { id: 'warnings',    labelKey: 'admin.tabWarnings' },
+  { id: 'audit',       labelKey: 'admin.tabAudit' },
 ]
 const activeTab = ref<TabId>('reports')
 
@@ -336,8 +337,8 @@ const detailLoading = ref(false)
 const detailKind = ref<'report' | 'suspension' | ''>('')
 const detailRow = ref<any>(null)
 const detailTitle = computed(() =>
-  detailKind.value === 'report' ? 'Report detail' :
-  detailKind.value === 'suspension' ? 'Suspension detail' : '')
+  detailKind.value === 'report' ? t('admin.reportDetail') :
+  detailKind.value === 'suspension' ? t('admin.suspensionDetail') : '')
 
 function apiBase(): string {
   // #ifdef H5
@@ -392,8 +393,8 @@ async function onUnlock() {
     await loadStats()
   } catch (err: any) {
     gateError.value = err?.message === 'unauthorized'
-      ? 'Wrong key.'
-      : (err?.message || 'Unlock failed.')
+      ? t('admin.errWrongKey')
+      : (err?.message || t('admin.errUnlockFailed'))
     adminKey.value = ''
   } finally {
     checking.value = false
@@ -425,7 +426,7 @@ async function loadStats() {
   try {
     stats.value = await apiGet<StatsRow>({ resource: 'stats' })
   } catch (err: any) {
-    uni.showToast({ title: err?.message || 'Load failed', icon: 'none' })
+    uni.showToast({ title: err?.message || t('admin.toastLoadFailed'), icon: 'none' })
   }
 }
 
@@ -444,30 +445,30 @@ async function loadTab(tab: TabId) {
       auditLog.value = await apiGet<AuditRow[]>({ resource: 'audit', limit: '200' })
     }
   } catch (err: any) {
-    uni.showToast({ title: err?.message || 'Load failed', icon: 'none' })
+    uni.showToast({ title: err?.message || t('admin.toastLoadFailed'), icon: 'none' })
   } finally {
     loading.value = false
   }
 }
 
 function fmtAuditEvent(r: AuditRow): string {
-  const actor = r.actor_nickname || (r.actor_id ? r.actor_id.slice(0, 8) : 'system')
+  const actor = r.actor_nickname || (r.actor_id ? r.actor_id.slice(0, 8) : t('admin.system'))
   const target = r.target_nickname || (r.target_id ? r.target_id.slice(0, 8) : '—')
   switch (r.event_kind) {
     case 'ban_applied':
-      return `${actor} banned ${target} (L${r.details?.level}): ${r.details?.reason || ''}`
+      return t('admin.auditBanApplied', { actor, target, level: r.details?.level ?? '', reason: r.details?.reason || '' })
     case 'suspension_lifted':
-      return `${actor} lifted suspension on ${target}: ${r.details?.reason || ''}`
+      return t('admin.auditLifted', { actor, target, reason: r.details?.reason || '' })
     case 'report_status_changed':
-      return `${actor} changed report ${r.target_id?.slice(0, 8)} status: ${r.details?.from} → ${r.details?.to}`
+      return t('admin.auditReportStatus', { actor, id: r.target_id?.slice(0, 8) || '', from: r.details?.from ?? '', to: r.details?.to ?? '' })
     case 'actor_blocked':
-      return `${actor} blocked from ${r.details?.table} (L${r.details?.level})`
+      return t('admin.auditActorBlocked', { actor, table: r.details?.table ?? '', level: r.details?.level ?? '' })
     case 'admin_login':
-      return `Admin login`
+      return t('admin.auditLogin')
     case 'admin_unauthorized':
-      return `Unauthorized admin access attempt`
+      return t('admin.auditUnauthorized')
     default:
-      return `${r.event_kind} by ${actor}`
+      return t('admin.auditDefault', { kind: r.event_kind, actor })
   }
 }
 
@@ -479,11 +480,11 @@ async function setTab(id: TabId) {
 async function updateReport(id: string, status: string) {
   try {
     await apiPost({ action: 'update_report_status', report_id: id, status })
-    uni.showToast({ title: 'Updated', icon: 'success' })
+    uni.showToast({ title: t('admin.toastUpdated'), icon: 'success' })
     await loadTab('reports')
     await loadStats()
   } catch (err: any) {
-    uni.showToast({ title: err?.message || 'Update failed', icon: 'none' })
+    uni.showToast({ title: err?.message || t('admin.toastUpdateFailed'), icon: 'none' })
   }
 }
 
@@ -495,7 +496,7 @@ async function openReport(r: ReportRow) {
   try {
     detailRow.value = await apiGet<any>({ resource: 'report', id: r.id })
   } catch (err: any) {
-    uni.showToast({ title: err?.message || 'Load failed', icon: 'none' })
+    uni.showToast({ title: err?.message || t('admin.toastLoadFailed'), icon: 'none' })
   } finally {
     detailLoading.value = false
   }
@@ -509,7 +510,7 @@ async function openSuspension(s: SuspensionRow | AppealRow) {
   try {
     detailRow.value = await apiGet<any>({ resource: 'suspension', id: s.id })
   } catch (err: any) {
-    uni.showToast({ title: err?.message || 'Load failed', icon: 'none' })
+    uni.showToast({ title: err?.message || t('admin.toastLoadFailed'), icon: 'none' })
   } finally {
     detailLoading.value = false
   }
@@ -538,13 +539,13 @@ function openTarget(row: any) {
     uni.navigateTo({ url: `/pages/seller/index?id=${row.target_id}` })
   } else if (row.target_type === 'comment' && row.target_user_id) {
     uni.showToast({
-      title: 'Comment has no standalone page — opening author',
+      title: t('admin.commentNoPage'),
       icon: 'none',
       duration: 2000,
     })
     uni.navigateTo({ url: `/pages/seller/index?id=${row.target_user_id}` })
   } else {
-    uni.showToast({ title: 'Cannot open this target type', icon: 'none' })
+    uni.showToast({ title: t('admin.cannotOpenTarget'), icon: 'none' })
   }
 }
 
@@ -556,20 +557,20 @@ function openUser(userId: string) {
 
 function onLiftSuspension(s: { id: string }) {
   uni.showModal({
-    title: 'Lift suspension?',
+    title: t('admin.liftConfirmTitle'),
     editable: true,
-    placeholderText: 'Lift reason',
+    placeholderText: t('admin.liftReasonPh'),
     success: async (r) => {
       if (!r.confirm) return
-      const reason = (r.content || '').trim() || 'Admin review'
+      const reason = (r.content || '').trim() || t('admin.adminReview')
       try {
         await apiPost({ action: 'lift_suspension', suspension_id: s.id, reason })
-        uni.showToast({ title: 'Lifted', icon: 'success' })
+        uni.showToast({ title: t('admin.toastLifted'), icon: 'success' })
         detailOpen.value = false
         await loadTab(activeTab.value)
         await loadStats()
       } catch (err: any) {
-        uni.showToast({ title: err?.message || 'Lift failed', icon: 'none' })
+        uni.showToast({ title: err?.message || t('admin.toastLiftFailed'), icon: 'none' })
       }
     },
   })
@@ -578,23 +579,23 @@ function onLiftSuspension(s: { id: string }) {
 function onBanPrompt(targetId: string, nickname?: string) {
   uni.showActionSheet({
     itemList: [
-      'L1: Warning (no time limit)',
-      'L2: 72 hour suspension',
-      'L3: 7 day suspension',
-      'L4: 30 day suspension',
-      'L5: Permanent',
+      t('admin.banL1'),
+      t('admin.banL2'),
+      t('admin.banL3'),
+      t('admin.banL4'),
+      t('admin.banL5'),
     ],
     success: (a) => {
       const level = a.tapIndex + 1
       uni.showModal({
-        title: `Ban ${nickname || targetId}?`,
+        title: t('admin.banConfirmTitle', { name: nickname || targetId }),
         editable: true,
-        placeholderText: 'Reason (required, shown to user on appeal)',
+        placeholderText: t('admin.banReasonPh'),
         success: async (r) => {
           if (!r.confirm) return
           const reason = (r.content || '').trim()
           if (!reason) {
-            uni.showToast({ title: 'Reason required', icon: 'none' })
+            uni.showToast({ title: t('admin.reasonRequired'), icon: 'none' })
             return
           }
           try {
@@ -605,12 +606,12 @@ function onBanPrompt(targetId: string, nickname?: string) {
               reason,
               category: 'admin',
             })
-            uni.showToast({ title: 'Ban applied', icon: 'success' })
+            uni.showToast({ title: t('admin.toastBanApplied'), icon: 'success' })
             detailOpen.value = false
             await loadTab(activeTab.value)
             await loadStats()
           } catch (err: any) {
-            uni.showToast({ title: err?.message || 'Ban failed', icon: 'none' })
+            uni.showToast({ title: err?.message || t('admin.toastBanFailed'), icon: 'none' })
           }
         },
       })
@@ -680,6 +681,11 @@ onMounted(async () => {
   font-size: 13px; color: var(--accent-danger); cursor: pointer;
   padding: 6px 10px; border-radius: 6px; flex-shrink: 0;
   &:active { background: var(--danger-soft); }
+}
+.admin-lang {
+  font-size: 13px; font-weight: 600; color: var(--text-secondary); cursor: pointer;
+  padding: 6px 10px; border-radius: 6px; flex-shrink: 0;
+  &:active { background: var(--bg-subtle); }
 }
 
 .gate {
