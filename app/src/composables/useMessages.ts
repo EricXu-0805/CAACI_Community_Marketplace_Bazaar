@@ -27,6 +27,10 @@ export const CONVERSATION_FIELDS =
 const conversations = ref<Conversation[]>([])
 const messages = ref<Message[]>([])
 const loading = ref(false)
+// True when the last conversation-list fetch failed AND we have no list to
+// show — lets the page render a retry surface instead of the empty-inbox
+// illustration (which otherwise presents a load failure as "no messages").
+const conversationsError = ref(false)
 
 /*
  * SWR guard for the conversations list. messages/index.vue refetches on
@@ -61,6 +65,7 @@ export function useMessages() {
       return
     }
     loading.value = true
+    conversationsError.value = false
     try {
       const { data, error } = await supabase
         .from('conversations')
@@ -102,6 +107,9 @@ export function useMessages() {
       conversationsFetchedFor = userId
     } catch (error: any) {
       console.error('Failed to fetch conversations:', error)
+      // Only flag the dedicated error surface when there's no prior list to
+      // fall back on — otherwise keep the stale list visible and just toast.
+      if (conversations.value.length === 0) conversationsError.value = true
       uni.showToast({ title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('error.loadFailed'), icon: 'none', duration: 3000 })
     } finally {
       loading.value = false
@@ -134,6 +142,7 @@ export function useMessages() {
   function clearMessages() {
     conversations.value = []
     messages.value = []
+    conversationsError.value = false
     invalidateConversations()
   }
 
@@ -306,6 +315,7 @@ export function useMessages() {
     conversations,
     messages,
     loading,
+    conversationsError,
     fetchConversations,
     fetchMessages,
     sendMessage,

@@ -39,6 +39,12 @@
       </view>
     </view>
 
+    <view v-else-if="conversationsError && !loading" class="empty">
+      <view class="empty-error-icon"></view>
+      <text class="empty-title">{{ t('error.loadFailed') }}</text>
+      <view class="empty-btn" role="button" :aria-label="t('home.retry')" @click="retryConversations">{{ t('home.retry') }}</view>
+    </view>
+
     <view v-else-if="conversations.length === 0 && !loading" class="empty">
       <UEmptyArt name="messages" />
       <text class="empty-title">{{ t('msg.empty') }}</text>
@@ -162,6 +168,7 @@ const { currentUser, isLoggedIn } = useAuth()
 const {
   conversations,
   loading,
+  conversationsError,
   fetchConversations,
   deleteConversation,
   setConversationPinned,
@@ -255,6 +262,12 @@ watch(currentUser, (u, prev) => {
     startPresence()
   }
 })
+
+async function retryConversations() {
+  if (!currentUser.value) return
+  await fetchConversations(currentUser.value.id, { force: true })
+  await refreshUnreadCount()
+}
 
 onPullDownRefresh(async () => {
   try {
@@ -499,6 +512,21 @@ function goLogin() {
 .prompt-text { font-size: 14px; color: var(--text-faint); }
 .empty-title { font-size: 16px; color: var(--text-primary); font-weight: 600; }
 .empty-sub { font-size: 13px; color: var(--text-faint); }
+.empty-error-icon {
+  width: 40px; height: 40px; border: 2.5px solid var(--border-strong);
+  border-radius: 50%; position: relative; margin-bottom: 6px;
+  &::before {
+    content: '!'; position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 20px; font-weight: 700; color: var(--border-strong);
+  }
+}
+.empty-btn {
+  margin-top: 18px; padding: 11px 32px;
+  background: var(--accent-primary); color: #fff; border-radius: 22px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  &:active { opacity: 0.8; }
+}
 .login-btn {
   margin-top: 12px; padding: 10px 36px;
   background: var(--accent-primary); color: #fff; border-radius: 22px;

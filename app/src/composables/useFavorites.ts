@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 import { useI18n } from './useI18n'
+import { captureException } from '../utils/sentry'
 
 const favoriteIds = ref<Set<string>>(new Set())
 const loading = ref(false)
@@ -10,11 +11,19 @@ export function useFavorites() {
   const { t } = useI18n()
 
   async function loadMyFavorites(userId: string) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('favorites')
       .select('item_id')
       .eq('user_id', userId)
 
+    // Don't let a failed load masquerade as "nothing favorited" silently:
+    // capture it (so it's visible in Sentry/console) and keep the prior set
+    // rather than overwriting it with an empty one.
+    if (error) {
+      console.error('Failed to load favorites:', error)
+      captureException(error, { tags: { source: 'loadMyFavorites' } })
+      return
+    }
     if (data) {
       favoriteIds.value = new Set(data.map((f: { item_id: string }) => f.item_id))
     }
