@@ -14,7 +14,7 @@ export interface Banner {
 const MOCK_BANNERS: Banner[] = [
   {
     id: 'mock-welcome',
-    image_url: '/static/banner-welcome.svg',
+    image_url: '/static/banner-welcome.png',
     target_url: null,
     title: 'Illini Market',
     title_en: 'Welcome to Illini Market',
@@ -23,7 +23,7 @@ const MOCK_BANNERS: Banner[] = [
   },
   {
     id: 'mock-safety',
-    image_url: '/static/banner-safety.svg',
+    image_url: '/static/banner-safety.png',
     target_url: '/pages/legal/index',
     title: 'Safety',
     title_en: 'Trade safely — tips inside',
@@ -32,7 +32,7 @@ const MOCK_BANNERS: Banner[] = [
   },
   {
     id: 'mock-publish',
-    image_url: '/static/banner-publish.svg',
+    image_url: '/static/banner-publish.png',
     target_url: '/pages/publish/index',
     title: 'Publish',
     title_en: 'List your first item',
