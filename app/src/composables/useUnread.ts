@@ -10,6 +10,12 @@ const unreadConvIds = ref<Set<string>>(new Set())
 const hasMutedUnread = ref(false)
 const mutedConvIds = ref<Set<string>>(new Set())
 let inboxUnsub: (() => void) | null = null
+// Register the auth watcher exactly once for the session. useUnread() is
+// called from AppSidebar + CustomTabBar + messages page + every ChatThread
+// mount; without this guard each call stacked another watch(currentUser)
+// (the returned stop handle was never used), so every desktop conversation
+// switch leaked one more watcher firing a redundant refreshUnreadCount.
+let unreadWatchBootstrapped = false
 
 export function useUnread() {
   const { supabase } = useSupabase()
@@ -101,23 +107,25 @@ export function useUnread() {
   }
 
   /*
-   * watch returns its own stopHandle; we tear that down whenever the
-   * currentUser flips identity so the previous user's subscription
-   * doesn't keep ticking against the new user's session. Without
-   * this, signing out + back in as a different user left an orphan
-   * realtime channel ticking on the prior uid.
+   * Identity watcher (session-singleton, see unreadWatchBootstrapped). On an
+   * identity flip we tear down the previous user's inbox subscription so it
+   * doesn't keep ticking against the new user's session; on a present user we
+   * refresh + (re)subscribe. startListening/refreshUnreadCount are idempotent.
    */
-  const stopWatch = watch(currentUser, (u, prev) => {
-    if (prev && (!u || u.id !== prev.id)) {
-      stopListening()
-    }
-    if (u) {
-      refreshUnreadCount()
-      startListening()
-    } else {
-      stopListening()
-    }
-  }, { immediate: true })
+  if (!unreadWatchBootstrapped) {
+    unreadWatchBootstrapped = true
+    watch(currentUser, (u, prev) => {
+      if (prev && (!u || u.id !== prev.id)) {
+        stopListening()
+      }
+      if (u) {
+        refreshUnreadCount()
+        startListening()
+      } else {
+        stopListening()
+      }
+    }, { immediate: true })
+  }
 
   return {
     unreadCount,
@@ -126,6 +134,5 @@ export function useUnread() {
     hasMutedUnread,
     refreshUnreadCount,
     stopListening,
-    stopWatch,
   }
 }

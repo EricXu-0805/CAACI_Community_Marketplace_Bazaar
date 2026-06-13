@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useSupabase } from './useSupabase'
 import { useAuth } from './useAuth'
 
@@ -18,10 +18,29 @@ import { useAuth } from './useAuth'
  */
 const onlineUsers = ref<Set<string>>(new Set())
 let presenceChannel: any = null
+// Register the identity watcher exactly once for the session (mirrors the
+// bootstrapped guard in useNotifications), so reading presence from N
+// components doesn't stack N watchers.
+let presenceWatchBootstrapped = false
 
 export function usePresence() {
   const { supabase } = useSupabase()
   const { currentUser } = useAuth()
+
+  // The presence channel is module-scoped and keyed to a uid, so on sign-out
+  // (currentUser → null) or an account switch the stale channel must be torn
+  // down — otherwise startPresence()'s `if (presenceChannel) return` guard
+  // skips re-subscribing and the next user shows offline to everyone for the
+  // rest of the JS session (uni.reLaunch on H5 is SPA nav, not a hard reload).
+  if (!presenceWatchBootstrapped) {
+    presenceWatchBootstrapped = true
+    watch(currentUser, (u, prev) => {
+      if (prev?.id && u?.id !== prev.id) {
+        stopPresence()
+        if (u) startPresence()
+      }
+    })
+  }
 
   function startPresence() {
     // #ifdef H5

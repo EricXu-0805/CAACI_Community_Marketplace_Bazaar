@@ -416,6 +416,13 @@ const convMuted = ref(false)
 let unsubscribe: (() => void) | null = null
 let offersUnsub: (() => void) | null = null
 let meetupsUnsub: (() => void) | null = null
+// #ifdef H5
+// Re-fetch when the tab is re-foregrounded. Realtime is a known-weak channel
+// and H5 has no polling fallback, so a socket that died (CHANNEL_ERROR / proxy
+// / backgrounded tab) silently stops delivering inserts with no recovery. A
+// foreground heal recovers any window missed while the socket was degraded.
+let onVisible: (() => void) | null = null
+// #endif
 
 // Presence + typing (v5 Phase 7, H5 best-effort).
 const peerTyping = ref(false)
@@ -521,6 +528,17 @@ onMounted(async () => {
       if (typingClear) clearTimeout(typingClear)
       typingClear = setTimeout(() => { peerTyping.value = false }, 3000)
     })
+
+    // #ifdef H5
+    onVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState !== 'visible' || !options.id) return
+      fetchMessages(options.id).then(() => nextTick(() => scrollToBottom())).catch(() => {})
+      fetchOffers(options.id).catch(() => {})
+      fetchMeetups(options.id).catch(() => {})
+      if (currentUser.value) { markAsRead(options.id, currentUser.value.id); refreshUnreadCount() }
+    }
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisible)
+    // #endif
   }
 })
 
@@ -530,6 +548,9 @@ onUnmounted(() => {
   if (meetupsUnsub) meetupsUnsub()
   if (typingApi) typingApi.unsubscribe()
   if (typingClear) clearTimeout(typingClear)
+  // #ifdef H5
+  if (onVisible && typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisible)
+  // #endif
 })
 
 function goBack() {
