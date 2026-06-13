@@ -102,14 +102,18 @@ export function useItems() {
           return
         }
         const rpcRes = await supabase.rpc('search_items_fuzzy', {
-          terms_in:     sanitized,
-          category_in:  category ?? null,
-          condition_in: condition ?? null,
-          price_min_in: priceMin && priceMin > 0 ? priceMin : null,
-          price_max_in: priceMax && priceMax > 0 ? priceMax : null,
-          user_id_in:   userId ?? null,
-          limit_in:     PAGE_SIZE,
-          offset_in:    page * PAGE_SIZE,
+          terms_in:        sanitized,
+          category_in:     category ?? null,
+          condition_in:    condition ?? null,
+          price_min_in:    priceMin && priceMin > 0 ? priceMin : null,
+          price_max_in:    priceMax && priceMax > 0 ? priceMax : null,
+          user_id_in:      userId ?? null,
+          // Filter by sell/wanted server-side (migration 060). Without this the
+          // RPC returned mostly-sell rows the client filtered out, leaving the
+          // wanted-tab search looking empty while hasMore stayed true.
+          listing_type_in: listingType ?? null,
+          limit_in:        PAGE_SIZE,
+          offset_in:       page * PAGE_SIZE,
         })
         if (requestId !== latestRequestId) return
         data = rpcRes.data
