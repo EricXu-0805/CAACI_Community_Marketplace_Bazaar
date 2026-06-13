@@ -451,9 +451,10 @@ const alreadyRated = ref(false)
  * RLS-safe to fetch for any seller. avgRating/reviewCount are derived from
  * the fetched batch (capped at REVIEW_FETCH) — fine for a campus-scale app.
  *
- * Seller reply-rate (the kit's "95% 回复") is deliberately NOT shown: it
- * needs another user's conversation/message rows, which RLS blocks
- * client-side. It belongs on a denormalized profile column / RPC — deferred.
+ * Seller reply-rate (the kit's "95% 回复") IS shown now: computing it needs
+ * another user's conversation/message rows (RLS blocks that client-side), so
+ * migration 053 denormalizes it onto profiles via trigger and exposes it
+ * through the public profiles SELECT grant. See sellerResponse below.
  */
 const REVIEW_FETCH = 50
 const REVIEW_PREVIEW = 6
