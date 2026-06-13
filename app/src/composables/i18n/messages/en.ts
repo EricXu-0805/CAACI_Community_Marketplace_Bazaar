@@ -611,6 +611,7 @@ const en: Record<string, string> = {
   'rating.submitted': 'Thanks for your rating',
   'rating.rateSeller': 'Rate seller',
   'rating.alreadyRated': 'You rated this deal',
+  'rating.starAria': '{n}-star',
 
   'onboarding.s1Title': "Let's get you set up",
   'onboarding.s1Sub': 'Pick a display name. This is what other users will see on your listings and posts.',

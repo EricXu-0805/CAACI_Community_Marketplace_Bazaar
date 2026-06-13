@@ -611,6 +611,7 @@ const zh: Record<string, string> = {
   'rating.submitted': '感谢你的评价',
   'rating.rateSeller': '评价卖家',
   'rating.alreadyRated': '你已评价过这次交易',
+  'rating.starAria': '{n} 星',
 
   'onboarding.s1Title': '来认识一下你',
   'onboarding.s1Sub': '起一个昵称。其他用户在你的商品和帖子里会看到它。',
