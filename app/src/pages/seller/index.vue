@@ -55,7 +55,7 @@
         <view class="trust-divider"></view>
         <view v-if="seller.rating_count && seller.rating_count > 0" class="trust-stat">
           <text class="trust-num">★ {{ (seller.avg_rating ?? 0).toFixed(1) }}</text>
-          <text class="trust-label">{{ seller.rating_count }} {{ t('rating.count') }}</text>
+          <text class="trust-label">{{ seller.rating_count }} {{ tc('rating.count', seller.rating_count) }}</text>
         </view>
         <view v-else class="trust-stat">
           <text class="trust-num">{{ joinLabel }}</text>
@@ -167,7 +167,7 @@ import UBadge from '../../components/UBadge.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
 import UIcon from '../../components/UIcon.vue'
 
-const { t, lang, localize } = useI18n()
+const { t, tc, lang, localize } = useI18n()
 const { isDark } = useTheme()
 const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
