@@ -468,7 +468,7 @@
             <text class="cab-label">{{ t('plaza.attachItem') }}</text>
           </view>
         </view>
-        <text class="comp-count">{{ 2000 - composerText.length }} {{ t('plaza.charsLeft') }}</text>
+        <text class="comp-count">{{ 2000 - composerText.length }} {{ tc('plaza.charsLeft', 2000 - composerText.length) }}</text>
       </view>
       </view>
     </view>
@@ -538,7 +538,7 @@ import UBadge from '../../components/UBadge.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
 import UIcon from '../../components/UIcon.vue'
 
-const { t, lang, localize } = useI18n()
+const { t, tc, lang, localize } = useI18n()
 const { isDark } = useTheme()
 const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'

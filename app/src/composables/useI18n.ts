@@ -54,6 +54,25 @@ export function useI18n() {
     return interpolate(raw, params)
   }
 
+  /*
+   * Count-aware variant of t() for English plural agreement
+   * ("1 item found" vs "2 items found"). A message encodes the two
+   * English forms separated by `|` — singular left, plural right:
+   *   en: 'item found|items found'   → n === 1 picks left, else right
+   *   zh: '件商品'                    → no `|`, returned whole for any n
+   * Chinese (and any form without a `|`) is returned unchanged, so the
+   * caller can pass the count unconditionally and the right form falls
+   * out per language. Interpolation still runs after the form is chosen.
+   */
+  function tc(key: string, n: number, params?: Record<string, string | number>): string {
+    const primary = messages[currentLang.value]?.[key]
+    const fallback = messages[DEFAULT_LANG]?.[key]
+    const raw = primary ?? fallback ?? key
+    const pipe = raw.indexOf('|')
+    const form = pipe === -1 ? raw : n === 1 ? raw.slice(0, pipe) : raw.slice(pipe + 1)
+    return interpolate(form, params)
+  }
+
   function setLang(next: Lang) {
     if (!SUPPORTED_LANGS.some((l) => l.code === next)) return
     currentLang.value = next
@@ -147,5 +166,5 @@ export function useI18n() {
 
   const lang = computed(() => currentLang.value)
 
-  return { t, lang, setLang, toggleLang, localize, useAutoLocalize }
+  return { t, tc, lang, setLang, toggleLang, localize, useAutoLocalize }
 }

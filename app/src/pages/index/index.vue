@@ -277,7 +277,7 @@
       <!-- Real Content -->
       <view v-else>
         <view v-if="searchText || selectedCategory" class="result-count">
-          <text>{{ filteredItems.length }} {{ t('home.results') }}</text>
+          <text>{{ filteredItems.length }} {{ tc('home.results', filteredItems.length) }}</text>
         </view>
         <view class="waterfall">
           <view v-for="(col, ci) in columns" :key="ci" class="wf-col">
@@ -380,7 +380,7 @@
       <!-- End of list -->
       <view v-if="!hasMore && filteredItems.length > 0" class="tip">
         <text class="divider"></text>
-        <text>{{ t('home.endOf') }} · {{ filteredItems.length }} {{ t('home.results') }}</text>
+        <text>{{ t('home.endOf') }} · {{ filteredItems.length }} {{ tc('home.results', filteredItems.length) }}</text>
         <text class="divider"></text>
       </view>
       <!-- Empty -->
@@ -431,7 +431,7 @@ import UBadge from '../../components/UBadge.vue'
 import UIcon from '../../components/UIcon.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
 
-const { t, lang, localize, toggleLang } = useI18n()
+const { t, tc, lang, localize, toggleLang } = useI18n()
 const { isDark, setPref } = useTheme()
 const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'

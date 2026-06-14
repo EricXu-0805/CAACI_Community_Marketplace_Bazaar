@@ -140,7 +140,7 @@
     <view class="section reviews-section" v-if="sellerReviews.length > 0">
       <view class="reviews-head">
         <text class="section-label">{{ t('detail.sellerReviews') }}</text>
-        <text class="reviews-meta">{{ avgRating }} ★ · {{ reviewCount }} {{ t('detail.reviewsUnit') }}</text>
+        <text class="reviews-meta">{{ avgRating }} ★ · {{ reviewCount }} {{ tc('detail.reviewsUnit', reviewCount) }}</text>
       </view>
       <view class="reviews-list">
         <view v-for="r in displayedReviews" :key="r.id" class="review-card">
@@ -327,7 +327,7 @@ import UBadge from '../../components/UBadge.vue'
 import UIcon from '../../components/UIcon.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
 
-const { t, lang, localize } = useI18n()
+const { t, tc, lang, localize } = useI18n()
 const { isDark } = useTheme()
 const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
