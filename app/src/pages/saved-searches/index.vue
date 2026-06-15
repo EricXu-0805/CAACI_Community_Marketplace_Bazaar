@@ -100,7 +100,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
 import { useSavedSearch } from '../../composables/useSavedSearch'
-import { friendlyErrorMessage } from '../../utils'
+import { friendlyErrorMessage, BROWSE_CATEGORIES } from '../../utils'
 import type { ItemCategory } from '../../types'
 import UIcon from '../../components/UIcon.vue'
 
@@ -118,7 +118,7 @@ const form = ref<{ keyword: string; category: ItemCategory | null; priceMin: str
   priceMax: '',
 })
 
-const categoryKeys: (ItemCategory | null)[] = [null, 'electronics', 'furniture', 'books', 'clothing', 'housing', 'daily', 'vehicles', 'food', 'currency_exchange', 'other']
+const categoryKeys: (ItemCategory | null)[] = [null, ...BROWSE_CATEGORIES]
 
 /*
  * uni-app <scroll-view> remembers its last scrollTop between page shows.

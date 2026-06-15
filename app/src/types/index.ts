@@ -122,7 +122,7 @@ export interface Post {
   profile?: Profile
   liked_by_me?: boolean
   post_items?: Array<{
-    item: Pick<Item, 'id' | 'title' | 'title_i18n' | 'price' | 'images' | 'image_dimensions' | 'status'>
+    item: Pick<Item, 'id' | 'title' | 'title_i18n' | 'price' | 'images' | 'image_dimensions' | 'status' | 'listing_type'>
     display_order: number
   }>
 }

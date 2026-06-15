@@ -1,3 +1,4 @@
+import type { ItemCategory } from '../types'
 // #ifdef H5
 import { useI18n } from '../composables/useI18n'
 import { addBreadcrumb } from './sentry'
@@ -5,6 +6,25 @@ import { addBreadcrumb } from './sentry'
 
 const SUPABASE_STORAGE_MARKER = "/storage/v1/object/public/"
 const SUPABASE_RENDER_PATH = "/storage/v1/render/image/public/"
+
+/*
+ * Single source of truth for category ordering. Browse/filter surfaces (home,
+ * search, saved-searches) all share BROWSE_CATEGORIES so none silently drops a
+ * category — search and saved-searches used to omit `rideshare`, so a rideshare
+ * listing could not be filtered or saved-searched. The publish/edit forms use
+ * PUBLISHABLE_CATEGORIES, which keeps its own seller-friendly order (common
+ * goods first) and omits `currency_exchange` on purpose: it is a browse-only
+ * filter + anti-fraud banner, never a category you post into. Both lists must
+ * cover every ItemCategory except the deliberate publish exclusion.
+ */
+export const BROWSE_CATEGORIES: ItemCategory[] = [
+  'currency_exchange', 'rideshare', 'electronics', 'furniture',
+  'housing', 'clothing', 'books', 'vehicles', 'daily', 'food', 'other',
+]
+export const PUBLISHABLE_CATEGORIES: ItemCategory[] = [
+  'furniture', 'electronics', 'clothing', 'books', 'housing',
+  'vehicles', 'rideshare', 'daily', 'food', 'other',
+]
 
 export function thumbUrl(
   url: string | null | undefined,

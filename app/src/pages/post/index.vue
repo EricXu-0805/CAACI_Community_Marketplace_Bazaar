@@ -82,7 +82,7 @@
           <view v-else class="aic-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
           <view class="aic-body">
             <text class="aic-title">{{ localize(pi.item.title_i18n, pi.item.title) }}</text>
-            <text class="aic-price">${{ pi.item.price }}</text>
+            <text class="aic-price">{{ listingPriceLabel(pi.item, t) }}</text>
             <text v-if="pi.item.status === 'sold'" class="aic-sold">{{ t('status.sold') }}</text>
           </view>
           <UIcon name="chevron-right" size="sm" color="text-faint" />
@@ -238,7 +238,7 @@ import { useModeration } from '../../composables/useModeration'
 import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
 import { useLongPress } from '../../composables/useLongPress'
-import { formatTime, friendlyErrorMessage, quickTranslate, thumbUrl } from '../../utils'
+import { formatTime, friendlyErrorMessage, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
 import { DIALOG_DANGER, DIALOG_INK } from '../../utils/dialogColors'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim, Post, PostComment } from '../../types'

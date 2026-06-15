@@ -175,7 +175,7 @@ import { useCampusSpots, type CampusSpot } from '../../composables/useCampusSpot
 import { useLocation } from '../../composables/useLocation'
 import { useItems } from '../../composables/useItems'
 import { useTranslate } from '../../composables/useTranslate'
-import { friendlyErrorMessage } from '../../utils'
+import { friendlyErrorMessage, PUBLISHABLE_CATEGORIES } from '../../utils'
 import { DIALOG_WARN } from '../../utils/dialogColors'
 import type { ItemCategory, ItemCondition } from '../../types'
 import AppSidebar from '../../components/AppSidebar.vue'
@@ -235,7 +235,7 @@ async function scheduleBilingualFill(
 const { supabase } = useSupabase()
 const avgPrice = ref(0)
 
-const categoryKeys: ItemCategory[] = ['furniture', 'electronics', 'clothing', 'books', 'housing', 'vehicles', 'rideshare', 'daily', 'food', 'other']
+const categoryKeys: ItemCategory[] = PUBLISHABLE_CATEGORIES
 const conditionKeys = ['new', 'like_new', 'good', 'fair', 'defective']
 
 const imageList = ref<string[]>([])

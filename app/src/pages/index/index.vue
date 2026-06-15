@@ -421,7 +421,7 @@ import { useSemester } from '../../composables/useSemester'
 import { useLongPress } from '../../composables/useLongPress'
 import type { ItemCategory, ItemCondition, Item } from '../../types'
 
-import { debounce, formatTime, formatPrice, friendlyErrorMessage, haptic, thumbUrl } from '../../utils'
+import { debounce, formatTime, formatPrice, friendlyErrorMessage, haptic, thumbUrl, BROWSE_CATEGORIES } from '../../utils'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
 import AppSidebar from '../../components/AppSidebar.vue'
@@ -537,7 +537,7 @@ const filterVerifiedOnly = ref(false)
 const sortBy = ref('latest')
 const listingType = ref<'sell' | 'wanted'>('sell')
 
-const categoryKeys: (ItemCategory | null)[] = [null, 'currency_exchange', 'rideshare', 'electronics', 'furniture', 'housing', 'clothing', 'books', 'vehicles', 'daily', 'food', 'other']
+const categoryKeys: (ItemCategory | null)[] = [null, ...BROWSE_CATEGORIES]
 const categories = computed(() => categoryKeys.map(k => ({
   value: k,
   label: t(k ? 'cat.pair.' + k : 'cat.pair.all'),

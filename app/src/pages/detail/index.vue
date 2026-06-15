@@ -213,11 +213,14 @@
         <UIcon name="flag" :color="reported ? 'accent-good' : 'text-secondary'" />
         <text class="fav-label">{{ reported ? t('report.thanks') : t('detail.report') }}</text>
       </view>
-      <view v-if="item.status === 'sold' && !alreadyRated" class="chat-btn chat-btn-rate" @click="openRating">
+      <view v-if="item.status === 'sold' && canRate && !alreadyRated" class="chat-btn chat-btn-rate" @click="openRating">
         <text>★ {{ t('rating.rateSeller') }}</text>
       </view>
-      <view v-else-if="item.status === 'sold'" class="chat-btn chat-btn-disabled">
+      <view v-else-if="item.status === 'sold' && alreadyRated" class="chat-btn chat-btn-disabled">
         <text>{{ t('rating.alreadyRated') }}</text>
+      </view>
+      <view v-else-if="item.status === 'sold'" class="chat-btn chat-btn-disabled">
+        <text>{{ t('status.sold') }}</text>
       </view>
       <view v-else class="chat-btn" @click="contactSeller">
         <text>{{ item.listing_type === 'wanted' ? t('detail.haveThis') : t('detail.chat') }}</text>
@@ -456,6 +459,11 @@ const ratingStars = ref(0)
 const ratingComment = ref('')
 const ratingSubmitting = ref(false)
 const alreadyRated = ref(false)
+// Only a buyer who actually messaged this seller about this item can rate
+// (RLS "Participants can rate sold items" enforces the same), so gate the
+// button on a real conversation — otherwise a passer-by taps Rate and hits a
+// bare permission error.
+const canRate = ref(false)
 
 /*
  * Seller social proof (v5 detail). Reviews + sold-count are read straight
@@ -577,9 +585,15 @@ onLoad(async (options) => {
       && currentUser.value
       && itemData.user_id !== currentUser.value.id
 
-    const [favCountRes, ratedRes, otherItemsRes, simItemsRes, reviewsRes, soldCountRes, respRes] = await Promise.all([
+    const [favCountRes, ratedRes, convRes, otherItemsRes, simItemsRes, reviewsRes, soldCountRes, respRes] = await Promise.all([
       getFavoriteCount(options.id!),
       needsRated ? hasRated(itemData.user_id, itemData.id) : Promise.resolve(false),
+      needsRated
+        ? supabase.from('conversations').select('id')
+            .eq('item_id', itemData.id)
+            .or(`buyer_id.eq.${currentUser.value?.id},seller_id.eq.${currentUser.value?.id}`)
+            .limit(1).maybeSingle()
+        : Promise.resolve({ data: null }),
       supabase
         .from('items').select('id, title, price, images, image_dimensions, listing_type')
         .eq('user_id', itemData.user_id).eq('status', 'active')
@@ -600,6 +614,7 @@ onLoad(async (options) => {
     if (!alive) return
     favCount.value = favCountRes
     alreadyRated.value = !!ratedRes
+    canRate.value = !!convRes?.data
     sellerReviews.value = reviewsRes || []
     soldCount.value = soldCountRes?.count || 0
     if (respRes.data) sellerResponse.value = { rate: respRes.data.response_rate || 0, sample: respRes.data.response_sample || 0 }
