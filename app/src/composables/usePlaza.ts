@@ -12,6 +12,10 @@ const posts = ref<Post[]>([])
 const loading = ref(false)
 const hasMore = ref(true)
 const PAGE_SIZE = 20
+// In-flight guard for like/unlike toggles (keyed by post or comment id). A
+// rapid double-tap would otherwise double-apply the optimistic count and
+// desync from the DB. Mirrors the useFavorites loading guard.
+const likeInFlight = new Set<string>()
 
 // Race guard for fetchPosts(): posts/loading/hasMore above are module-scoped,
 // so every consumer of usePlaza() shares one race surface. Mirrors the same
@@ -409,45 +413,57 @@ export function usePlaza() {
 
   async function toggleLike(post: Post) {
     if (!currentUser.value) throw new Error('Not authenticated')
+    if (likeInFlight.has(post.id)) return
+    likeInFlight.add(post.id)
     const uid = currentUser.value.id
-    if (post.liked_by_me) {
-      const { error } = await supabase
-        .from('post_likes')
-        .delete()
-        .eq('post_id', post.id)
-        .eq('user_id', uid)
-      if (error) throw error
-      post.liked_by_me = false
-      post.like_count = Math.max(0, post.like_count - 1)
-    } else {
-      const { error } = await supabase
-        .from('post_likes')
-        .insert({ post_id: post.id, user_id: uid })
-      if (error && error.code !== '23505') throw error
-      post.liked_by_me = true
-      post.like_count = post.like_count + 1
+    try {
+      if (post.liked_by_me) {
+        const { error } = await supabase
+          .from('post_likes')
+          .delete()
+          .eq('post_id', post.id)
+          .eq('user_id', uid)
+        if (error) throw error
+        post.liked_by_me = false
+        post.like_count = Math.max(0, post.like_count - 1)
+      } else {
+        const { error } = await supabase
+          .from('post_likes')
+          .insert({ post_id: post.id, user_id: uid })
+        if (error && error.code !== '23505') throw error
+        post.liked_by_me = true
+        post.like_count = post.like_count + 1
+      }
+    } finally {
+      likeInFlight.delete(post.id)
     }
   }
 
   async function toggleCommentLike(comment: PostComment) {
     if (!currentUser.value) throw new Error('Not authenticated')
+    if (likeInFlight.has(comment.id)) return
+    likeInFlight.add(comment.id)
     const uid = currentUser.value.id
-    if (comment.liked_by_me) {
-      const { error } = await supabase
-        .from('post_comment_likes')
-        .delete()
-        .eq('comment_id', comment.id)
-        .eq('user_id', uid)
-      if (error) throw error
-      comment.liked_by_me = false
-      comment.like_count = Math.max(0, (comment.like_count ?? 0) - 1)
-    } else {
-      const { error } = await supabase
-        .from('post_comment_likes')
-        .insert({ comment_id: comment.id, user_id: uid })
-      if (error && error.code !== '23505') throw error
-      comment.liked_by_me = true
-      comment.like_count = (comment.like_count ?? 0) + 1
+    try {
+      if (comment.liked_by_me) {
+        const { error } = await supabase
+          .from('post_comment_likes')
+          .delete()
+          .eq('comment_id', comment.id)
+          .eq('user_id', uid)
+        if (error) throw error
+        comment.liked_by_me = false
+        comment.like_count = Math.max(0, (comment.like_count ?? 0) - 1)
+      } else {
+        const { error } = await supabase
+          .from('post_comment_likes')
+          .insert({ comment_id: comment.id, user_id: uid })
+        if (error && error.code !== '23505') throw error
+        comment.liked_by_me = true
+        comment.like_count = (comment.like_count ?? 0) + 1
+      }
+    } finally {
+      likeInFlight.delete(comment.id)
     }
   }
 
