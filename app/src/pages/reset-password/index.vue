@@ -47,6 +47,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
+import { passwordValid } from '../../utils'
 
 const { t } = useI18n()
 const { supabase } = useSupabase()
@@ -354,8 +355,8 @@ async function onSave() {
     })
     return
   }
-  if (newPassword.value.length < 8) {
-    uni.showToast({ title: t('login.needPassword'), icon: 'none' })
+  if (!passwordValid(newPassword.value)) {
+    uni.showToast({ title: t('login.needPassword'), icon: 'none', duration: 2500 })
     return
   }
   if (newPassword.value !== confirmPw.value) {
@@ -400,8 +401,8 @@ async function onSave() {
     uni.showToast({ title: t('resetPw.success'), icon: 'success', duration: 2000 })
     setTimeout(() => uni.reLaunch({ url: '/pages/index/index' }), 1500)
   } catch (err: any) {
-    console.warn('[reset-pw-debug] updateUser failed:', err)
-    uni.showToast({ title: err?.message || t('resetPw.fail'), icon: 'none', duration: 3000 })
+    const weak = err?.code === 'weak_password' || Array.isArray(err?.reasons)
+    uni.showToast({ title: weak ? t('login.weakPassword') : (err?.message || t('resetPw.fail')), icon: 'none', duration: 3000 })
   } finally {
     saving.value = false
   }

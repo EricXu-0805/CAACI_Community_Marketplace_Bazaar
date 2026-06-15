@@ -76,6 +76,12 @@
             <image :src="showPw ? '/static/eye-off.svg' : '/static/eye.svg'" alt="" class="pw-toggle-icon" mode="aspectFit" />
           </view>
         </view>
+        <view v-if="mode === 'signup'" class="pw-rules">
+          <view v-for="r in pwRules" :key="r.key" :class="['pw-rule', { ok: r.ok }]">
+            <text class="pw-rule-mark">{{ r.ok ? '✓' : '○' }}</text>
+            <text class="pw-rule-label">{{ t('login.pwRule.' + r.key) }}</text>
+          </view>
+        </view>
       </view>
 
       <text v-if="mode === 'login'" class="forgot-link" role="button" :aria-label="t('login.forgot')" @click="onForgotPassword">{{ t('login.forgot') }}</text>
@@ -140,6 +146,7 @@ import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 import { useTheme } from '../../composables/useTheme'
 import { BASE_URL } from '../../config/runtime'
+import { passwordRules, passwordValid } from '../../utils'
 import UIcon from '../../components/UIcon.vue'
 
 const { t } = useI18n()
@@ -149,6 +156,9 @@ const { isDark } = useTheme()
 // v5: theme-flipping 集 brand mark + an Illini-email hint on the signup form.
 const logoSrc = computed(() => (isDark.value ? '/static/logo-mark-dark.svg' : '/static/logo-mark.svg'))
 const isIlliniEmail = computed(() => /@illinois\.edu\s*$/i.test(email.value.trim()))
+// #1: live password-policy checklist on the signup tab so the user sees which
+// rule fails, instead of a raw English gotrue "weak_password" error.
+const pwRules = computed(() => passwordRules(password.value))
 
 const mode = ref<'login' | 'signup'>('login')
 const email = ref('')
@@ -341,8 +351,8 @@ async function onSubmit() {
     uni.showToast({ title: t('login.needPassword'), icon: 'none' })
     return
   }
-  if (mode.value === 'signup' && password.value.length < 8) {
-    uni.showToast({ title: t('login.needPassword'), icon: 'none' })
+  if (mode.value === 'signup' && !passwordValid(password.value)) {
+    uni.showToast({ title: t('login.needPassword'), icon: 'none', duration: 2500 })
     return
   }
 
@@ -357,7 +367,10 @@ async function onSubmit() {
     }
     const { data, error } = await signUp(email.value.trim(), password.value, nickname.value.trim())
     if (error) {
-      uni.showToast({ title: error.message || t('login.signupFail'), icon: 'none' })
+      // gotrue weak_password (dashboard policy stricter than the client) used
+      // to surface raw English. Map it to the localized policy line.
+      const weak = (error as any).code === 'weak_password' || Array.isArray((error as any).reasons)
+      uni.showToast({ title: weak ? t('login.weakPassword') : (error.message || t('login.signupFail')), icon: 'none', duration: 2500 })
     } else if (data?.user?.identities?.length === 0) {
       uni.showToast({ title: t('login.emailExists'), icon: 'none' })
     } else if (data?.user && !data.session) {
@@ -506,6 +519,14 @@ async function onSubmit() {
   height: 18px;
   display: block;
 }
+.pw-rules {
+  display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 8px;
+}
+.pw-rule { display: flex; align-items: center; gap: 4px; }
+.pw-rule-mark { font-size: 11px; color: var(--text-faint); line-height: 1; }
+.pw-rule-label { font-size: 11px; color: var(--text-muted); }
+.pw-rule.ok .pw-rule-mark { color: var(--success); }
+.pw-rule.ok .pw-rule-label { color: var(--success); }
 
 .forgot-link {
   display: block; text-align: right; font-size: 13px;

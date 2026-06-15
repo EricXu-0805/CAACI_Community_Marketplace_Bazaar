@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 import { useSupabase, platformFetch } from './useSupabase'
 import { useModeration } from './useModeration'
 import { deviceFingerprintHash, deviceUASnippet } from '../utils/fingerprint'
+import { passwordValid } from '../utils'
 import { addBreadcrumb, captureException } from '../utils/sentry'
 import type { Profile } from '../types'
 import { BASE_URL } from '../config/runtime'
@@ -153,7 +154,13 @@ export function useAuth() {
   async function signUp(email: string, password: string, nickname: string) {
     loading.value = true
     try {
-      if (password.length < 8) throw new Error('Password must be at least 8 characters')
+      // Backstop the client password policy (the UI gates first). Tag the
+      // error with the gotrue weak_password code so callers localize it.
+      if (!passwordValid(password)) {
+        const e: any = new Error('Password does not meet the policy')
+        e.code = 'weak_password'
+        throw e
+      }
 
       let emailRedirectTo: string | undefined
       // #ifdef H5
