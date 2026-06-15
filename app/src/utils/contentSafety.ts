@@ -219,12 +219,22 @@ MODERATE_ENDPOINT = `${BASE_URL}/api/moderate`
 export async function remoteModerate(text: string): Promise<{ flagged: boolean; categories: string[] }> {
   if (!text || text.length < 1) return { flagged: false, categories: [] }
   try {
+    /* /api/moderate requires a Supabase JWT (abuse control — it fronts a
+       paid OpenAI proxy). Moderation only ever runs right before an
+       authenticated insert, so the session is present; if it somehow
+       isn't, fail open (allow through) — the server-side trigger layer
+       still runs. */
+    const { platformFetch, useSupabase } = await import('../composables/useSupabase')
+    const { supabase } = useSupabase()
+    const { data: sess } = await supabase.auth.getSession()
+    const jwt = sess.session?.access_token
+    if (!jwt) return { flagged: false, categories: [] }
+
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), 3000)
-    const { platformFetch } = await import('../composables/useSupabase')
     const r = await platformFetch(MODERATE_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
       body: JSON.stringify({ text: text.slice(0, 8000) }),
       signal: ctrl.signal,
     }).finally(() => clearTimeout(timer))

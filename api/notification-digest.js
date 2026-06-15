@@ -264,7 +264,16 @@ export default async function handler(req) {
       console.error(`digest user ${uid}: ${sent ? 'mark-emailed' : 'send'} failed:`, e?.message || e)
     }
   }
-  return json({ mode: 'live', usersNotified, notifications: sentCount, sendFailed, markFailed, meetupReminders })
+  // Surface partial failures as a non-2xx so the Vercel cron run is flagged
+  // instead of falsely logged green — a swallowed 200 here is the silent
+  // failure this whole pipeline is built to avoid. markFailed is the worse of
+  // the two (a delivered digest whose rows weren't stamped → duplicate next
+  // run); sendFailed is safe (rows stay un-emailed and retry). Either is a 500.
+  const failed = sendFailed + markFailed
+  return json(
+    { mode: 'live', usersNotified, notifications: sentCount, sendFailed, markFailed, meetupReminders },
+    failed > 0 ? 500 : 200,
+  )
   } catch (e) {
     return json({ error: 'internal' }, 500)
   }
