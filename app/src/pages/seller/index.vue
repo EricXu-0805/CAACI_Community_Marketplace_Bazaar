@@ -94,7 +94,7 @@
           <view class="gi-img-wrap">
             <image v-if="thumbUrl(item.images?.[0], 'list')" :src="thumbUrl(item.images?.[0], 'list')" :alt="item.title" class="gi-img" mode="aspectFill" lazy-load />
             <view v-else class="gi-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
-            <view v-if="item.location_verified && matchSpot(item.location)?.safe" class="badge-safe-corner" :aria-label="t('pickup.verifiedPickup')">
+            <view v-if="item.location_verified" class="badge-safe-corner" :aria-label="t('pickup.verifiedPickup')">
               <text class="bsc-check">✓</text>
               <text class="bsc-label">{{ t('pickup.verifiedPickup') }}</text>
             </view>
@@ -160,7 +160,6 @@ import { useTheme } from '../../composables/useTheme'
 import { useAuth } from '../../composables/useAuth'
 import { useFollow } from '../../composables/useFollow'
 import { usePlaza } from '../../composables/usePlaza'
-import { matchSpot } from '../../composables/useCampusSpots'
 import type { Profile, Item, Post } from '../../types'
 import { listingPriceLabel, formatTime, thumbUrl, friendlyErrorMessage } from '../../utils'
 import UBadge from '../../components/UBadge.vue'
