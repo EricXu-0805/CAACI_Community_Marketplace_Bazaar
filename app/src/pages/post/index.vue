@@ -203,7 +203,7 @@
       <view class="back-home" @click="goPlaza">{{ t('plaza.backToPlaza') }}</view>
     </view>
 
-    <view v-if="post" class="input-wrapper">
+    <view v-if="post" class="input-wrapper" :style="kbLift">
       <view v-if="replyTo" class="reply-bar">
         <text class="reply-label">{{ t('plaza.replyingTo') }} @{{ replyTo.profile?.nickname || t('app.user') }}</text>
         <view class="reply-x" role="button" :aria-label="t('a11y.close')" @click="replyTo = null">
@@ -216,6 +216,8 @@
           :placeholder="replyTo ? t('plaza.replyHint') : t('plaza.commentHint')"
           class="input"
           confirm-type="send"
+          :adjust-position="false"
+          :cursor-spacing="8"
           @confirm="onSubmitComment"
           maxlength="1000"
         />
@@ -238,6 +240,7 @@ import { useModeration } from '../../composables/useModeration'
 import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
 import { useLongPress } from '../../composables/useLongPress'
+import { useKeyboardHeight } from '../../composables/useKeyboardHeight'
 import { formatTime, friendlyErrorMessage, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
 import { DIALOG_DANGER, DIALOG_INK } from '../../utils/dialogColors'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
@@ -255,6 +258,13 @@ const { currentUser, requireAuth } = useAuth()
 const { fetchPost, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment } = usePlaza()
 const { reportTarget } = useModeration()
 const { addPostToHistory } = useHistory()
+
+// Lift the comment bar above the soft keyboard (mirrors the plaza composer);
+// the comment input sets adjust-position=false so this transform is the only
+// lift source. Page is a fixed-height flex column so the bar otherwise sits
+// behind the iOS keyboard.
+const kb = useKeyboardHeight()
+const kbLift = computed(() => (kb.height.value ? { transform: `translateY(-${kb.height.value}px)` } : undefined))
 
 const post = ref<Post | null>(null)
 const comments = ref<PostComment[]>([])
@@ -840,6 +850,8 @@ async function onSubmitComment() {
 .input-wrapper {
   flex-shrink: 0; background: var(--bg-elev-1);
   border-top: 0.5px solid var(--line-hair);
+  /* Lifted above the soft keyboard via :style translateY (useKeyboardHeight). */
+  transition: transform 0.22s ease-out; will-change: transform;
 }
 .reply-bar {
   display: flex; align-items: center; justify-content: space-between;
