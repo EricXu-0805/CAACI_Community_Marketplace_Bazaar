@@ -6,64 +6,44 @@
     </view>
 
     <scroll-view class="list" scroll-y :scroll-top="scrollTopVal" :scroll-with-animation="false" @scrolltolower="loadMore">
-      <view v-if="loading && items.length === 0" class="grid">
-        <view v-for="n in 4" :key="'fs' + n" class="card-skel">
-          <view class="fs-img u-sk"></view>
-          <view class="fs-body">
-            <view class="fs-line u-sk" style="width: 92%"></view>
-            <view class="fs-line u-sk" style="width: 58%"></view>
-            <view class="fs-line u-sk" style="width: 34%; height: 14px"></view>
-            <view class="fs-seller">
-              <view class="fs-avatar u-sk"></view>
-              <view class="fs-line u-sk" style="width: 42%"></view>
-            </view>
+      <view v-if="loading && people.length === 0" class="people">
+        <view v-for="n in 6" :key="'ps' + n" class="person-row">
+          <view class="pr-avatar u-sk"></view>
+          <view class="pr-info">
+            <view class="pr-line u-sk" style="width: 44%"></view>
+            <view class="pr-line u-sk" style="width: 66%; height: 11px"></view>
           </view>
         </view>
       </view>
 
-      <view v-else-if="items.length === 0 && !loading" class="empty">
+      <view v-else-if="people.length === 0 && !loading" class="empty">
         <UEmptyArt name="following" />
-        <text class="empty-text">{{ t('follow.emptyFeed') }}</text>
+        <text class="empty-text">{{ t('follow.emptyPeople') }}</text>
       </view>
 
-      <view v-else class="grid">
+      <view v-else class="people">
         <view
-          v-for="it in items"
-          :key="it.id"
-          class="card u-rise"
-          @click="goDetail(it.id)"
+          v-for="p in people"
+          :key="p.id"
+          class="person-row u-rise"
+          role="button"
+          @click="goSeller(p.id)"
         >
-          <view class="card-img-wrap">
-            <image
-              v-if="thumbUrl(it.images?.[0], 'card')"
-              :src="thumbUrl(it.images?.[0], 'card')"
-              :alt="localize(it.title_i18n, it.title)"
-              class="card-img"
-              mode="aspectFill"
-              lazy-load
-            />
-            <view v-else class="card-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
-            <view v-if="it.location_verified && matchSpot(it.location)?.safe" class="badge-safe-corner" :aria-label="t('pickup.verifiedPickup')">
-              <text class="bsc-check">✓</text>
-              <text class="bsc-label">{{ t('pickup.verifiedPickup') }}</text>
+          <image :src="p.avatar_url || defaultAvatarSrc" :alt="p.nickname || 'avatar'" class="pr-avatar" mode="aspectFill" />
+          <view class="pr-info">
+            <view class="pr-name-row">
+              <text class="pr-name">{{ p.nickname || t('app.user') }}</text>
+              <UBadge v-if="p.is_illini_verified" variant="illini">Illini</UBadge>
             </view>
+            <text v-if="p.status_text" class="pr-status">{{ p.status_emoji ? p.status_emoji + ' ' : '' }}{{ p.status_text }}</text>
+            <text v-else-if="p.location" class="pr-status">{{ p.location }}</text>
           </view>
-          <view class="card-body">
-            <text class="card-title">{{ localize(it.title_i18n, it.title) }}</text>
-            <view class="card-price-row">
-              <text v-if="it.listing_type === 'wanted'" class="u-wanted-tag">{{ t('item.wanted') }}</text>
-              <text class="card-price">{{ listingPriceLabel(it, t) }}</text>
-            </view>
-            <view class="card-seller" v-if="it.profile">
-              <image :src="it.profile.avatar_url || defaultAvatarSrc" :alt="it.profile.nickname || 'avatar'" class="cs-avatar" mode="aspectFill" />
-              <text class="cs-name">{{ it.profile.nickname }}</text>
-            </view>
-          </view>
+          <UIcon name="chevron-right" size="sm" color="text-faint" />
         </view>
       </view>
 
-      <view v-if="loading && items.length > 0" class="loading-tip"><text>{{ t('home.loading') }}</text></view>
-      <view v-else-if="!hasMore && items.length > 0" class="end-tip"><text>{{ t('home.endOf') }}</text></view>
+      <view v-if="loading && people.length > 0" class="loading-tip"><text>{{ t('home.loading') }}</text></view>
+      <view v-else-if="!hasMore && people.length > 0" class="end-tip"><text>{{ t('home.endOf') }}</text></view>
     </scroll-view>
   </view>
 </template>
@@ -74,22 +54,24 @@ import { onShow } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import { useTheme } from '../../composables/useTheme'
 import { useFollow } from '../../composables/useFollow'
+import type { FollowedProfile } from '../../composables/useFollow'
 import { useAuth } from '../../composables/useAuth'
-import { matchSpot } from '../../composables/useCampusSpots'
-import type { Item } from '../../types'
-import { listingPriceLabel, thumbUrl, friendlyErrorMessage } from '../../utils'
+import { friendlyErrorMessage } from '../../utils'
 import UEmptyArt from '../../components/UEmptyArt.vue'
 import UIcon from '../../components/UIcon.vue'
+import UBadge from '../../components/UBadge.vue'
 
-const { t, localize, lang } = useI18n()
+const PAGE_SIZE = 30
+
+const { t, lang } = useI18n()
 const { isDark } = useTheme()
 const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
 const { currentUser } = useAuth()
-const { fetchFollowingFeed, loadMyFollowing } = useFollow()
+const { fetchFollowingProfiles } = useFollow()
 
-const items = ref<Item[]>([])
+const people = ref<FollowedProfile[]>([])
 const loading = ref(false)
 const hasMore = ref(true)
 const page = ref(0)
@@ -97,7 +79,7 @@ const page = ref(0)
 /*
  * uni-app <scroll-view> keeps its last scrollTop across navigations, so
  * reopening this page from the profile menu would drop the user into the
- * middle of the feed. Drive the scrollTop via a ref and bump it to 0 on
+ * middle of the list. Drive the scrollTop via a ref and bump it to 0 on
  * every onShow. The 1 → 0 two-step is required because assigning the same
  * value twice in a row is a no-op in uni-app H5.
  */
@@ -115,10 +97,9 @@ onMounted(async () => {
   }
   loading.value = true
   try {
-    await loadMyFollowing()
-    const rows = await fetchFollowingFeed(0)
-    items.value = rows
-    hasMore.value = rows.length === 20
+    const rows = await fetchFollowingProfiles(0, PAGE_SIZE)
+    people.value = rows
+    hasMore.value = rows.length === PAGE_SIZE
   } catch (err: any) {
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
   } finally {
@@ -131,9 +112,9 @@ async function loadMore() {
   loading.value = true
   page.value += 1
   try {
-    const rows = await fetchFollowingFeed(page.value)
-    items.value.push(...rows)
-    hasMore.value = rows.length === 20
+    const rows = await fetchFollowingProfiles(page.value, PAGE_SIZE)
+    people.value.push(...rows)
+    hasMore.value = rows.length === PAGE_SIZE
   } catch (err: any) {
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
   } finally {
@@ -142,7 +123,7 @@ async function loadMore() {
 }
 
 function goBack() { uni.navigateBack() }
-function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${id}` }) }
+function goSeller(id: string) { uni.navigateTo({ url: `/pages/seller/index?id=${id}` }) }
 </script>
 
 <style lang="scss" scoped>
@@ -158,44 +139,19 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 
 .list { flex: 1; height: calc(100vh - 56px); }
 
-.grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-  padding: 8px;
+.people { padding: 4px 0; }
+.person-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; cursor: pointer;
+  border-bottom: 0.5px solid var(--line-hair);
+  &:active { background: var(--bg-subtle); }
 }
-.card {
-  background: var(--bg-elev-1); border-radius: var(--radius-lg); overflow: hidden;
-  cursor: pointer;
-  &:active { opacity: 0.85; }
-}
-.card-img-wrap { position: relative; }
-.card-img { width: 100%; height: 160px; }
-.card-body { padding: 8px 10px 10px; }
-
-/* Safe-zone verified pickup badge — matches home feed style. */
-.badge-safe-corner {
-  position: absolute; bottom: 7px; left: 7px;
-  display: inline-flex; align-items: center; gap: 3px;
-  padding: 2px 7px 2px 5px; border-radius: 10px;
-  background: var(--success);
-}
-.bsc-check { font-size: 10px; color: var(--ink-inverse); font-weight: 800; line-height: 1; }
-.bsc-label { font-size: 10px; color: var(--ink-inverse); font-weight: 600; line-height: 1; }
-.card-title {
-  font-size: 13px; color: var(--text-primary); line-height: 1.45; letter-spacing: 0.02em;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
-.card-price-row { display: flex; align-items: center; gap: 5px; margin-top: 4px; }
-.card-price { font-size: 15px; font-weight: 700; color: var(--text-primary); display: block; }
-.card-seller { display: flex; align-items: center; gap: 5px; margin-top: 5px; }
-.cs-avatar { width: 16px; height: 16px; border-radius: 50%; background: var(--bg-subtle); }
-.cs-name { font-size: 11px; color: var(--text-secondary, var(--ink-quiet)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.card-skel { background: var(--bg-elev-1); border-radius: var(--radius-lg); overflow: hidden; }
-.fs-img { height: 160px; }
-.fs-body { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 7px; }
-.fs-line { height: 11px; }
-.fs-seller { display: flex; align-items: center; gap: 5px; }
-.fs-avatar { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }
+.pr-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--bg-subtle); flex-shrink: 0; }
+.pr-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pr-name-row { display: flex; align-items: center; gap: 6px; }
+.pr-name { font-size: 15px; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-status { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-line { height: 13px; border-radius: 6px; }
 
 .empty {
   display: flex; flex-direction: column; align-items: center;

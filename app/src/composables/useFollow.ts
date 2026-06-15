@@ -4,6 +4,16 @@ import { useAuth } from './useAuth'
 import { captureException } from '../utils/sentry'
 import type { Item } from '../types'
 
+export interface FollowedProfile {
+  id: string
+  nickname: string | null
+  avatar_url: string | null
+  location: string | null
+  is_illini_verified: boolean
+  status_text: string | null
+  status_emoji: string | null
+}
+
 const following = ref<Set<string>>(new Set())
 const followingLoaded = ref(false)
 
@@ -91,6 +101,25 @@ export function useFollow() {
     return (data || []) as unknown as Item[]
   }
 
+  /*
+   * The people you follow (not their listings). The 关注 surface shows
+   * followed USERS — fetchFollowingFeed above is the items-from-followed
+   * sellers query that drives the home "Following" feed; this is the
+   * distinct "list of people" query. follows has two FKs to profiles, so
+   * the embed must name the followee FK explicitly.
+   */
+  async function fetchFollowingProfiles(page: number = 0, pageSize: number = 30): Promise<FollowedProfile[]> {
+    if (!currentUser.value) return []
+    const { data, error } = await supabase
+      .from('follows')
+      .select(`created_at, followee:profiles!follows_followee_id_fkey(${PUBLIC_PROFILE_FIELDS})` as any)
+      .eq('follower_id', currentUser.value.id)
+      .order('created_at', { ascending: false })
+      .range(page * pageSize, (page + 1) * pageSize - 1)
+    if (error) throw error
+    return (data || []).map((r: any) => r.followee).filter(Boolean) as FollowedProfile[]
+  }
+
   async function followerCount(userId: string): Promise<number> {
     const { count } = await supabase
       .from('follows')
@@ -111,6 +140,7 @@ export function useFollow() {
     isFollowing,
     toggleFollow,
     fetchFollowingFeed,
+    fetchFollowingProfiles,
     followerCount,
     reset,
   }

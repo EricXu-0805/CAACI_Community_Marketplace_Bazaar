@@ -61,41 +61,33 @@
       <PlazaBannerCarousel />
 
       <template v-if="activeTab === 'following'">
-        <view v-if="followLoading && followItems.length === 0" class="loading">
+        <view v-if="followLoading && followPeople.length === 0" class="loading">
           <text>{{ t('home.loading') }}...</text>
         </view>
 
-        <view v-else-if="followItems.length === 0" class="empty">
+        <view v-else-if="followPeople.length === 0" class="empty">
           <UEmptyArt name="following" />
-          <text class="empty-text">{{ isLoggedIn ? t('follow.emptyFeed') : t('profile.signInHint') }}</text>
+          <text class="empty-text">{{ isLoggedIn ? t('follow.emptyPeople') : t('profile.signInHint') }}</text>
         </view>
 
-        <view v-else class="follow-grid">
+        <view v-else class="follow-people">
           <view
-            v-for="it in followItems"
-            :key="it.id"
-            class="follow-card u-rise"
-            @click="goToFollowItem(it.id)"
+            v-for="p in followPeople"
+            :key="p.id"
+            class="follow-person u-rise"
+            role="button"
+            @click="goToFollowSeller(p.id)"
           >
-            <image
-              v-if="thumbUrl(it.images?.[0], 'card')"
-              :src="thumbUrl(it.images?.[0], 'card')"
-              class="fc-img"
-              mode="aspectFill"
-              lazy-load
-            />
-            <view v-else class="fc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
-            <view class="fc-body">
-              <text class="fc-title">{{ localize(it.title_i18n, it.title) }}</text>
-              <view class="fc-price-row">
-                <text v-if="it.listing_type === 'wanted'" class="u-wanted-tag">{{ t('item.wanted') }}</text>
-                <text class="fc-price">{{ listingPriceLabel(it, t) }}</text>
+            <image :src="p.avatar_url || defaultAvatarSrc" :alt="p.nickname || 'avatar'" class="fp-avatar" mode="aspectFill" />
+            <view class="fp-info">
+              <view class="fp-name-row">
+                <text class="fp-name">{{ p.nickname || t('app.user') }}</text>
+                <UBadge v-if="p.is_illini_verified" variant="illini">Illini</UBadge>
               </view>
-              <view v-if="it.profile" class="fc-seller">
-                <image :src="it.profile.avatar_url || defaultAvatarSrc" class="fc-avatar" mode="aspectFill" />
-                <text class="fc-nick">{{ it.profile.nickname }}</text>
-              </view>
+              <text v-if="p.status_text" class="fp-status">{{ p.status_emoji ? p.status_emoji + ' ' : '' }}{{ p.status_text }}</text>
+              <text v-else-if="p.location" class="fp-status">{{ p.location }}</text>
             </view>
+            <UIcon name="chevron-right" size="sm" color="text-faint" />
           </view>
         </view>
       </template>
@@ -388,7 +380,7 @@
       </view>
 
       <view
-        v-if="activeTab === 'following' ? (!followHasMore && followItems.length > 0) : (!hasMore && visiblePosts.length > 0)"
+        v-if="activeTab === 'following' ? (!followHasMore && followPeople.length > 0) : (!hasMore && visiblePosts.length > 0)"
         class="end-tip"
       >
         <text>{{ t('home.endOf') }}</text>
@@ -518,6 +510,7 @@ import { useAuth } from '../../composables/useAuth'
 import { useTheme } from '../../composables/useTheme'
 import { usePlaza, groupCommentsByParent } from '../../composables/usePlaza'
 import { useFollow } from '../../composables/useFollow'
+import type { FollowedProfile } from '../../composables/useFollow'
 import { useModeration } from '../../composables/useModeration'
 import { useItems } from '../../composables/useItems'
 import { useHistory } from '../../composables/useHistory'
@@ -544,7 +537,7 @@ const defaultAvatarSrc = computed(() =>
 )
 const { currentUser, isLoggedIn, requireAuth } = useAuth()
 const { posts, loading, hasMore, fetchPosts, createPost, updatePostI18n, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, fetchMyActiveItems, clearPosts } = usePlaza()
-const { fetchFollowingFeed, loadMyFollowing } = useFollow()
+const { fetchFollowingProfiles } = useFollow()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
 const kb = useKeyboardHeight()
 
@@ -570,9 +563,9 @@ const pageIdx = ref(0)
 /*
  * Feed sub-tabs (v5 kit: 关注 / 热门 / 最新). 热门 and 最新 both show all
  * posts but差 in server sort — 热门 ranks by engagement, 最新 by recency —
- * so switching between them re-fetches. 关注 loads the current user's
- * followed sellers' active LISTINGS via useFollow.fetchFollowingFeed
- * (marketplace items, not posts). The prior 推荐/官方 split was replaced to
+ * so switching between them re-fetches. 关注 lists the PEOPLE the current
+ * user follows via useFollow.fetchFollowingProfiles (tap → seller page) —
+ * not their listings. The prior 推荐/官方 split was replaced to
  * match the v5 design; CAACI 官方 posts still surface inline (pinned-first
  * + OFFICIAL badge) rather than via a dedicated tab.
  */
@@ -586,12 +579,12 @@ const feedTabs = computed<{ key: FeedTabKey; label: string }[]>(() => [
 const feedSort = computed<'recent' | 'hot'>(() => (activeTab.value === 'hot' ? 'hot' : 'recent'))
 const visiblePosts = computed(() => posts.value)
 
-/* 关注 tab — followed sellers' active listings (items, not posts). Lazy-
- * loaded the first time the user opens the tab, then paginated via the
- * scroll-view's bottom-reach handler. followLoaded gates the one-shot
- * initial fetch; followLoading guards against concurrent loads. */
-const FOLLOW_PAGE_SIZE = 20
-const followItems = ref<Item[]>([])
+/* 关注 tab — the PEOPLE you follow (not their listings). Lazy-loaded the
+ * first time the user opens the tab, then paginated via the scroll-view's
+ * bottom-reach handler. followLoaded gates the one-shot initial fetch;
+ * followLoading guards against concurrent loads. */
+const FOLLOW_PAGE_SIZE = 30
+const followPeople = ref<FollowedProfile[]>([])
 const followLoading = ref(false)
 const followHasMore = ref(true)
 const followPage = ref(0)
@@ -600,17 +593,16 @@ const followLoaded = ref(false)
 async function loadFollowing(reset: boolean) {
   if (followLoading.value) return
   if (!currentUser.value) {
-    followItems.value = []
+    followPeople.value = []
     followLoaded.value = true
     return
   }
   if (reset) followPage.value = 0
   followLoading.value = true
   try {
-    await loadMyFollowing()
-    const rows = await fetchFollowingFeed(followPage.value)
-    if (reset) followItems.value = rows
-    else followItems.value.push(...rows)
+    const rows = await fetchFollowingProfiles(followPage.value, FOLLOW_PAGE_SIZE)
+    if (reset) followPeople.value = rows
+    else followPeople.value.push(...rows)
     followHasMore.value = rows.length === FOLLOW_PAGE_SIZE
     followLoaded.value = true
   } finally {
@@ -740,8 +732,8 @@ function goToAttachedItem(id: string) {
   uni.navigateTo({ url: `/pages/detail/index?id=${id}` })
 }
 
-function goToFollowItem(id: string) {
-  uni.navigateTo({ url: `/pages/detail/index?id=${id}` })
+function goToFollowSeller(id: string) {
+  uni.navigateTo({ url: `/pages/seller/index?id=${id}` })
 }
 
 /* Post author avatar/name → seller page. Always lands on the default
@@ -1420,58 +1412,26 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 /* 关注 tab — 2-col grid of followed sellers' active listings (item
    cards, visually distinct from the post-cards in 推荐/官方). Tokenized
    to ivory_academy v5 — surface card on warm border, terracotta price. */
-.follow-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
-  padding: var(--space-2);
-}
-.follow-card {
-  background: var(--surface);
-  border: 0.5px solid var(--border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  cursor: pointer;
+.follow-people { padding: 4px 0; }
+.follow-person {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; cursor: pointer;
+  border-bottom: 0.5px solid var(--line-hair);
   -webkit-tap-highlight-color: transparent;
-  transition: transform var(--dur-1, 120ms) var(--ease-std, ease);
-  &:active { transform: scale(0.98); }
+  &:active { background: var(--bg-subtle); }
 }
-.fc-img {
-  width: 100%;
-  height: 160px;
-  display: block;
-  background: var(--bg-subtle);
-}
-.fc-body {
-  padding: var(--space-2) var(--space-2) var(--space-3);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.fc-title {
-  color: var(--ink);
-  font-size: 13px;
-  line-height: 1.45;
-  letter-spacing: 0.02em;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.fc-price-row { display: flex; align-items: center; gap: 5px; }
-.fc-price {
-  color: var(--brand);
-  font-size: 15px;
-  font-weight: 700;
-  display: block;
-}
-.fc-seller { display: flex; align-items: center; gap: 5px; }
-.fc-avatar {
-  width: 16px; height: 16px; border-radius: 50%;
+.fp-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
   background: var(--bg-subtle); flex-shrink: 0;
 }
-.fc-nick {
-  font-size: 11px; color: var(--ink-quiet);
+.fp-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.fp-name-row { display: flex; align-items: center; gap: 6px; }
+.fp-name {
+  font-size: 15px; font-weight: 600; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fp-status {
+  font-size: 12px; color: var(--ink-quiet);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
