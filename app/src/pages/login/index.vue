@@ -397,7 +397,16 @@ async function onSubmit() {
   } else {
     const { error } = await signIn(email.value.trim(), password.value)
     if (error) {
-      uni.showToast({ title: error.message || t('login.loginFail'), icon: 'none' })
+      // Map the two common gotrue sign-in errors to localized copy (zh is the
+      // primary audience) — the raw strings are English. Mirrors the signup
+      // branch's weak_password mapping above.
+      const m = (error.message || '').toLowerCase()
+      const title = m.includes('invalid login credentials') || m.includes('invalid_credentials')
+        ? t('login.invalidCredentials')
+        : (m.includes('email not confirmed') || m.includes('email_not_confirmed'))
+          ? t('login.emailNotConfirmed')
+          : (error.message || t('login.loginFail'))
+      uni.showToast({ title, icon: 'none', duration: 2500 })
     } else {
       uni.showToast({ title: t('login.loginOk'), icon: 'success' })
       /*
