@@ -328,7 +328,7 @@
               <view v-if="item.images && item.images.length > 1" class="img-count-badge">
                 <text>{{ item.images.length }}</text>
               </view>
-              <view v-if="item.location_verified && matchSpot(item.location)?.safe" class="badge-safe-corner" :aria-label="t('pickup.verifiedPickup')">
+              <view v-if="item.location_verified" class="badge-safe-corner" :aria-label="t('pickup.verifiedPickup')">
                 <text class="bsc-check">✓</text>
                 <text class="bsc-label">{{ t('pickup.verifiedPickup') }}</text>
               </view>
@@ -418,7 +418,6 @@ import { useTheme } from '../../composables/useTheme'
 import { useFavorites } from '../../composables/useFavorites'
 import { useModeration } from '../../composables/useModeration'
 import { useSemester } from '../../composables/useSemester'
-import { matchSpot } from '../../composables/useCampusSpots'
 import { useLongPress } from '../../composables/useLongPress'
 import type { ItemCategory, ItemCondition, Item } from '../../types'
 
@@ -611,11 +610,10 @@ const filteredItems = computed(() => {
   }
 
   // "Verified pickups only" — same predicate the card's safe-pickup badge
-  // uses (location_verified AND a known safe campus spot), so the filter
-  // matches exactly what the user sees badged. Client-side because
-  // matchSpot is a client registry the DB can't replicate.
+  // uses (#4: any GPS-confirmed location, not just the 10 named safe spots),
+  // so the filter matches exactly what the user sees badged.
   if (filterVerifiedOnly.value) {
-    result = result.filter(item => item.location_verified && matchSpot(item.location)?.safe)
+    result = result.filter(item => item.location_verified)
   }
 
   return result

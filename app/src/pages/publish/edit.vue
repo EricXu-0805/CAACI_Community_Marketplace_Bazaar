@@ -171,7 +171,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
-import { useCampusSpots, matchSpot, type CampusSpot } from '../../composables/useCampusSpots'
+import { useCampusSpots, type CampusSpot } from '../../composables/useCampusSpots'
 import { useLocation } from '../../composables/useLocation'
 import { useItems } from '../../composables/useItems'
 import { useTranslate } from '../../composables/useTranslate'
@@ -394,10 +394,9 @@ async function onDetectLocation() {
     })
     return
   }
-  console.log('[publish-edit-debug] location detected via geolocation:', result.location, 'prevLocation:', form.location)
   form.location = result.location
-  const spot = matchSpot(result.location)
-  locationVerified.value = !!(spot && spot.safe)
+  // #4: any successful GPS fix grants the "verified pickup" badge (see publish).
+  locationVerified.value = true
 }
 
 function onSpotChipTap(spot: CampusSpot) {

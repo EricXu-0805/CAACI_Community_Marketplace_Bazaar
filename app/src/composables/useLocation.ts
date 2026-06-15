@@ -146,24 +146,37 @@ export function useLocation() {
 
   async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
     try {
-      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1`
+      /*
+       * Nominatim's usage policy wants a contact in the request; browsers
+       * can't set User-Agent, so the `email=` query param is the browser-safe
+       * way to identify the client and avoid the 403/block that made every
+       * lookup "geocode_failed" (real-device QA #4). Project email, not a
+       * personal one.
+       */
+      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1&email=newsletter@news.caaciorg.com`
 
       const data: any = await new Promise((resolve, reject) => {
         uni.request({
           url,
           header: { 'Accept-Language': 'en' },
-          success: (res) => resolve(res.data),
+          success: (res) => {
+            // Bot-block / rate-limit / error JSON: anything non-200 or without
+            // an address block is treated as a miss → coarse fallback below.
+            if (res.statusCode && res.statusCode !== 200) { resolve(null); return }
+            resolve(res.data)
+          },
           fail: reject,
         })
       })
 
-      const addr = data.address || {}
+      const addr = (data && data.address) || {}
 
       const building = addr.building || addr.amenity || addr.shop || addr.university || addr.school
       const road = addr.road || addr.street || addr.pedestrian
       const houseNum = addr.house_number
       const neighborhood = addr.neighbourhood || addr.suburb
       const city = addr.city || addr.town || addr.village || addr.hamlet || addr.county
+      const region = addr.state || addr.region || addr.county
 
       const parts: string[] = []
       if (building) parts.push(building)
@@ -173,7 +186,11 @@ export function useLocation() {
       if (city && parts.length < 2) parts.push(city)
 
       const precise = parts.slice(0, 2).join(', ')
-      return precise || city || null
+      // #4: a real coordinate must always resolve to *some* usable label so
+      // "use current location" works anywhere, not just when a fine address
+      // hits. Fall through precise → city → region → a coarse lat,lng so the
+      // detect basically never returns geocode_failed for a valid fix.
+      return precise || city || region || `${lat.toFixed(3)}, ${lng.toFixed(3)}`
     } catch {
       return null
     }

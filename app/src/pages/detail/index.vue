@@ -74,10 +74,10 @@
         <text v-if="item.listing_type === 'wanted'" class="tag tag-wanted">{{ t('item.wanted') }}</text>
         <text class="tag">{{ t('cat.' + item.category) }}</text>
         <text v-if="item.listing_type !== 'wanted'" class="tag">{{ t('condition.' + item.condition) }}</text>
-        <view :class="['tag', 'tag-loc', { 'tag-safe': item.location_verified && locationSpot?.safe }]">
+        <view :class="['tag', 'tag-loc', { 'tag-safe': item.location_verified }]">
           <view class="loc-dot"></view>
           <text>{{ displayLocation }}</text>
-          <text v-if="item.location_verified && locationSpot?.safe" class="safe-badge">{{ t('pickup.verifiedPickup') }}</text>
+          <text v-if="item.location_verified" class="safe-badge">{{ t('pickup.verifiedPickup') }}</text>
         </view>
       </view>
     </view>
@@ -319,7 +319,7 @@ import type { Item, Rating } from '../../types'
 import { formatTime, haptic, formatPrice, listingPriceLabel, quickTranslate, thumbUrl, friendlyErrorMessage } from '../../utils'
 import { readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
-import { matchSpot, localizeLocation } from '../../composables/useCampusSpots'
+import { localizeLocation } from '../../composables/useCampusSpots'
 import { useRatings } from '../../composables/useRatings'
 import { useTranslate } from '../../composables/useTranslate'
 import { computed, onUnmounted, watch } from 'vue'
@@ -378,7 +378,6 @@ const displayDescription = computed(() => {
   return localize(item.value.description_i18n, item.value.description)
 })
 
-const locationSpot = computed(() => matchSpot(item.value?.location))
 const displayLocation = computed(() =>
   localizeLocation(item.value?.location, lang.value as 'en' | 'zh')
 )
