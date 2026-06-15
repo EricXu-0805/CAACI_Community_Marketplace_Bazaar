@@ -163,6 +163,11 @@ export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string
   if (err?.code === '42703') {
     return lang === 'zh' ? '功能即将上线,请刷新后重试' : 'Feature rolling out — please refresh'
   }
+  // RLS denial (e.g. rating a seller you didn't transact with) — gotrue/PostgREST
+  // returns the raw English "new row violates row-level security policy".
+  if (err?.code === '42501' || raw.includes('row-level security') || raw.includes('row level security')) {
+    return lang === 'zh' ? '你没有权限执行此操作' : "You don't have permission to do that"
+  }
   return err?.message || (lang === 'zh' ? '操作失败' : 'Something went wrong')
 }
 
