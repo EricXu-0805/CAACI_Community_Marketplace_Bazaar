@@ -40,6 +40,16 @@ const POST_SELECT = `${POST_COLUMNS},
     item:items(${ATTACHED_ITEM_FIELDS})
   )`
 
+// An attached item that was soft-deleted (e.g. via account deletion,
+// migration 058) comes back as a post_items row whose embedded `item` is
+// null — and the plaza/post templates key on `pi.item.id`, so an unfiltered
+// row throws on render. Drop the orphaned rows; the post and its remaining
+// chips still display. (search_posts_fuzzy already omits post_items.)
+function stripDeletedItems(p: Post): Post {
+  if (p.post_items) p.post_items = p.post_items.filter((pi: any) => pi && pi.item)
+  return p
+}
+
 export interface CommentThread {
   parent: PostComment
   children: PostComment[]
@@ -121,7 +131,13 @@ export function usePlaza() {
         // author nickname, ranked — so a person's name surfaces their posts
         // (#11) and typos/partial words match (#12). The RPC sorts internally
         // (pinned → rank → hot/recent → recency) and omits post_items chips.
+        // Escape literal % / _ (else they act as ILIKE wildcards and a query
+        // like "50% off" or "size_M" matches the whole feed) and cap length —
+        // same sanitization the item search uses (useItems.ts).
         const terms = expandSearch(search)
+          .map(t => t.replace(/[%_]/g, '\\$&').replace(/[.,()]/g, '').slice(0, 100))
+          .filter(Boolean)
+        if (terms.length === 0) { hasMore.value = false; return }
         const res = await supabase.rpc('search_posts_fuzzy', {
           terms_in: terms,
           sort_in: sort,
@@ -158,6 +174,7 @@ export function usePlaza() {
       if (error) throw error
 
       let result = (data || []) as unknown as Post[]
+      result.forEach(stripDeletedItems)
 
       const { blockedIds } = useModeration()
       if (blockedIds.value.size > 0) {
@@ -200,7 +217,7 @@ export function usePlaza() {
       .maybeSingle()
     if (error) throw error
     if (!data) return null
-    const post = data as unknown as Post
+    const post = stripDeletedItems(data as unknown as Post)
     if (currentUser.value) {
       const { data: myLike } = await supabase
         .from('post_likes')
@@ -376,7 +393,9 @@ export function usePlaza() {
       .order('display_order', { foreignTable: 'post_items', ascending: true })
       .limit(30)
     if (error) throw error
-    return (data || []) as unknown as Post[]
+    const result = (data || []) as unknown as Post[]
+    result.forEach(stripDeletedItems)
+    return result
   }
 
   async function deletePost(postId: string) {
