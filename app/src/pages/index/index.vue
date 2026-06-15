@@ -1285,7 +1285,12 @@ function goPublish() {
   padding: 7px 15px; border-radius: 8px;
   font-size: 13px; color: var(--text-secondary); background: var(--bg-subtle);
   cursor: pointer; transition: all 0.15s; font-weight: 500;
-  &.active { background: var(--ink); color: var(--ink-inverse); }
+  /* Color must live on the <text> child, not just the view — the global
+     `text {}` floor in App.vue beats inherited color, which made the
+     active chip label invisible (ink-on-ink) in both themes. Same fix
+     the category `.pill` already carries. */
+  text { color: var(--text-secondary); }
+  &.active { background: var(--ink); color: var(--ink-inverse); text { color: var(--ink-inverse); } }
 }
 /* Even though the sheet wins z-index (1001 > 999 on tabbar), the apply
    button visually coincided with the tabbar row, creating a jarring

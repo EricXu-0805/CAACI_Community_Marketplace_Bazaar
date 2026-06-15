@@ -787,7 +787,8 @@ async function contactSeller() {
       currentUser.value.id,
       item.value.user_id,
     )
-    const prefill = encodeURIComponent(t('chat.prefillInterest').replace('{title}', item.value.title))
+    const prefillKey = item.value.listing_type === 'wanted' ? 'chat.prefillHave' : 'chat.prefillInterest'
+    const prefill = encodeURIComponent(t(prefillKey).replace('{title}', item.value.title))
     uni.navigateTo({ url: `/pages/chat/index?id=${conversation.id}&prefill=${prefill}` })
   } catch (error) {
     uni.showToast({ title: t('detail.chatFail'), icon: 'none' })
