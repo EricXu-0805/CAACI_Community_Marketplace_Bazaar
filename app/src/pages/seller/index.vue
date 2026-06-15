@@ -64,8 +64,17 @@
       </view>
     </view>
 
+    <view v-else-if="loadError" class="load-error">
+      <view class="le-icon"></view>
+      <text class="le-title">{{ t('error.loadFailed') }}</text>
+      <view class="le-retry" role="button" :aria-label="t('home.retry')" @click="retryLoad">
+        <text class="le-retry-label">{{ t('home.retry') }}</text>
+      </view>
+    </view>
+
     <!-- 商品 (default) / 动态 dual tabs — 2026-06 meeting decision: the
          seller page leads with listings, plaza activity one tap away. -->
+    <template v-if="!blocked && !loadError">
     <view class="seller-tabs">
       <view
         v-for="tab in sellerTabs"
@@ -147,6 +156,7 @@
         </view>
       </view>
     </template>
+    </template>
   </view>
 </template>
 
@@ -183,6 +193,7 @@ const sellerItems = ref<Item[]>([])
 const soldCount = ref(0)
 const loading = ref(true)
 const blocked = ref(false)
+const loadError = ref(false)
 
 /* 商品 (default) / 动态 tabs. Posts load lazily on first switch so the
    common path (browsing listings) costs no extra query. ?tab=posts
@@ -265,6 +276,54 @@ const joinLabel = computed(() => {
   return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
 })
 
+async function loadSellerData() {
+  const uid = sellerId.value
+  if (!uid) return
+  loading.value = true
+  loadError.value = false
+
+  const fetchSellerProfile = async () => {
+    const full = 'id, nickname, avatar_url, bio, location, is_illini_verified, created_at, avg_rating, rating_count, status_text, status_emoji'
+    const legacy = 'id, nickname, avatar_url, bio, location, is_illini_verified, created_at, avg_rating, rating_count'
+    const first = await supabase.from('profiles').select(full).eq('id', uid).single()
+    if (first.error?.code === '42703') {
+      console.warn('[seller] profiles.status_* missing — falling back (run migration 021)')
+      return await supabase.from('profiles').select(legacy).eq('id', uid).single()
+    }
+    return first
+  }
+
+  try {
+    const [profileRes, itemsRes, soldRes] = await Promise.all([
+      fetchSellerProfile(),
+      supabase.from('items').select('id, title, price, images, image_dimensions, status, condition, category, listing_type, created_at').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
+      supabase.from('items').select('id', { count: 'estimated', head: true }).eq('user_id', uid).eq('status', 'sold'),
+    ])
+
+    // The page is unusable without the seller profile — surface a retryable
+    // error instead of silently falling through to a "no items" empty state.
+    if (profileRes.error && !profileRes.data) {
+      loadError.value = true
+      return
+    }
+    if (itemsRes.error) {
+      uni.showToast({ title: friendlyErrorMessage(itemsRes.error, lang.value as 'en' | 'zh'), icon: 'none' })
+    }
+    if (profileRes.data) seller.value = profileRes.data as Profile
+    if (itemsRes.data) sellerItems.value = itemsRes.data as Item[]
+    soldCount.value = soldRes.count || 0
+  } catch (err: any) {
+    console.error('[seller] load failed:', err)
+    loadError.value = true
+  } finally {
+    loading.value = false
+  }
+
+  if (!loadError.value && currentUser.value) await loadMyFollowing()
+}
+
+function retryLoad() { loadSellerData() }
+
 onLoad(async (options) => {
   if (!options?.id) return
   const uid = options.id
@@ -281,30 +340,7 @@ onLoad(async (options) => {
     return
   }
 
-  const fetchSellerProfile = async () => {
-    const full = 'id, nickname, avatar_url, bio, location, is_illini_verified, created_at, avg_rating, rating_count, status_text, status_emoji'
-    const legacy = 'id, nickname, avatar_url, bio, location, is_illini_verified, created_at, avg_rating, rating_count'
-    const first = await supabase.from('profiles').select(full).eq('id', uid).single()
-    if (first.error?.code === '42703') {
-      console.warn('[seller] profiles.status_* missing — falling back (run migration 021)')
-      return await supabase.from('profiles').select(legacy).eq('id', uid).single()
-    }
-    return first
-  }
-  const [profileRes, itemsRes, soldRes] = await Promise.all([
-    fetchSellerProfile(),
-    supabase.from('items').select('id, title, price, images, image_dimensions, status, condition, category, listing_type, created_at').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
-    supabase.from('items').select('id', { count: 'estimated', head: true }).eq('user_id', uid).eq('status', 'sold'),
-  ])
-
-  if (profileRes.error || itemsRes.error) {
-    uni.showToast({ title: friendlyErrorMessage(profileRes.error || itemsRes.error, lang.value as 'en' | 'zh'), icon: 'none' })
-  }
-  if (profileRes.data) seller.value = profileRes.data as Profile
-  if (itemsRes.data) sellerItems.value = itemsRes.data as Item[]
-  soldCount.value = soldRes.count || 0
-  loading.value = false
-  if (currentUser.value) await loadMyFollowing()
+  await loadSellerData()
 })
 
 function goBack() { uni.navigateBack() }
@@ -472,6 +508,30 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .gi-price { font-size: 15px; font-weight: 700; color: var(--text-primary); display: block; }
 
 .empty { padding: 60px 16px; text-align: center; color: var(--text-faint); font-size: 14px; }
+
+.load-error {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 80px 40px 40px; gap: 14px; text-align: center;
+}
+.le-icon {
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 2.5px solid var(--border-strong);
+  position: relative;
+  &::before, &::after {
+    content: ''; position: absolute; left: 50%; top: 20%;
+    width: 2.5px; height: 38%; background: var(--border-strong);
+    transform: translateX(-50%);
+  }
+  &::after { top: auto; bottom: 18%; height: 2.5px; width: 2.5px; border-radius: 50%; }
+}
+.le-title { font-size: 14px; color: var(--text-muted); }
+.le-retry {
+  padding: 8px 24px; border-radius: 20px;
+  background: var(--accent-primary); cursor: pointer;
+  transition: transform 0.12s;
+  &:active { transform: scale(0.96); }
+}
+.le-retry-label { font-size: 13px; font-weight: 600; color: #fff; }
 
 .blocked-state {
   display: flex; flex-direction: column; align-items: center;

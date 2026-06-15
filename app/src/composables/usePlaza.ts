@@ -26,7 +26,7 @@ const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, is_illini_verified, uid
 // title_i18n is included so attached-item previews localize too. Supabase
 // returns the column as null on pre-015 databases and localize() silently
 // falls back to plain `title`, so this is safe on unmigrated schemas.
-const ATTACHED_ITEM_FIELDS = 'id, title, title_i18n, price, images, image_dimensions, status'
+const ATTACHED_ITEM_FIELDS = 'id, title, title_i18n, price, images, image_dimensions, status, listing_type'
 const POST_COMMENT_FIELDS = 'id, post_id, user_id, content, parent_comment_id, like_count, created_at'
 // Explicit column list rather than `*` — same liability rationale as
 // useMessages.constants: every new posts column would otherwise start
@@ -359,7 +359,7 @@ export function usePlaza() {
     if (error) console.warn('[usePlaza] updatePostI18n:', error.message)
   }
 
-  async function fetchMyActiveItems(): Promise<Array<Pick<import('../types').Item, 'id' | 'title' | 'price' | 'images' | 'status'>>> {
+  async function fetchMyActiveItems(): Promise<Array<Pick<import('../types').Item, 'id' | 'title' | 'title_i18n' | 'price' | 'images' | 'image_dimensions' | 'status' | 'listing_type'>>> {
     if (!currentUser.value) return []
     const { data } = await supabase
       .from('items')

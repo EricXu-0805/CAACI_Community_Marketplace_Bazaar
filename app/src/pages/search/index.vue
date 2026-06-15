@@ -66,6 +66,7 @@
 import { computed, ref } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import type { ItemCategory } from '../../types'
+import { BROWSE_CATEGORIES } from '../../utils'
 import UIcon from '../../components/UIcon.vue'
 
 const { t } = useI18n()
@@ -89,14 +90,12 @@ const CATEGORY_ICON: Record<string, string> = {
   clothing: 'cat-clothing',
   books: 'cat-books',
   vehicles: 'cat-transport',
+  rideshare: 'cat-transport',
   daily: 'cat-daily',
   food: 'cat-food',
   other: 'cat-other',
 }
-const catKeys: (ItemCategory | null)[] = [
-  'currency_exchange', 'electronics', 'furniture', 'housing', 'clothing',
-  'books', 'vehicles', 'daily', 'food', 'other',
-]
+const catKeys: (ItemCategory | null)[] = [...BROWSE_CATEGORIES]
 const categories = computed(() => catKeys.map(k => ({
   value: k,
   label: t('cat.' + k),
