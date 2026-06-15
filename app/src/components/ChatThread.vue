@@ -514,6 +514,18 @@ onMounted(async () => {
     }
 
     unsubscribe = subscribeToMessages(options.id, (newMsg) => {
+      // Idempotent: a reconnect replay, or our own optimistic push in onSend,
+      // can deliver a row we already hold — never render it twice.
+      if (messages.value.some(m => m.id === newMsg.id)) return
+      // The realtime payload.new carries no sender join, so an incoming peer
+      // message would render with the default avatar. Hydrate from the peer
+      // profile we already resolved (conversationDetail) so it's right on the
+      // first live paint, not only after the foreground-heal refetch.
+      if (currentUser.value && newMsg.sender_id !== currentUser.value.id && !newMsg.sender) {
+        const d = conversationDetail.value
+        const peer = d && (d.buyer_id === currentUser.value.id ? d.seller : d.buyer)
+        if (peer) (newMsg as any).sender = { id: peer.id, nickname: peer.nickname, avatar_url: peer.avatar_url }
+      }
       messages.value.push(newMsg)
       nextTick(() => scrollToBottom())
       if (currentUser.value && newMsg.sender_id !== currentUser.value.id) {
@@ -715,7 +727,13 @@ async function retrySend(msg: any) {
  * from the inner <textarea> to the uni component root we bound on.
  */
 function onComposerKeydown(e: KeyboardEvent) {
-  if (!e || e.key !== 'Enter') return
+  if (!e) return
+  // Let the IME consume the Enter that confirms a candidate — Chinese/JP/KR
+  // users press Enter to pick a pinyin candidate, and the browser fires
+  // keydown with isComposing (legacy keyCode 229) before compositionend.
+  // Without this guard we'd preventDefault + send a half-composed message.
+  if (e.isComposing || (e as any).keyCode === 229) return
+  if (e.key !== 'Enter') return
   if (e.shiftKey || e.ctrlKey || e.metaKey) return
   if (typeof e.preventDefault === 'function') e.preventDefault()
   onSend()
@@ -767,7 +785,12 @@ async function onSend() {
   // #endif
 
   try {
-    await sendMessage(conversationId.value, currentUser.value.id, finalText)
+    const sent = await sendMessage(conversationId.value, currentUser.value.id, finalText)
+    // Show our own message immediately instead of waiting on the realtime
+    // echo — on a dead/flaky H5 socket the echo may never arrive until the
+    // foreground heal. The subscribe callback dedupes by id, so the later
+    // echo (if any) won't double-render.
+    if (sent && !messages.value.some(m => m.id === sent.id)) messages.value.push(sent)
     markAsRead(conversationId.value, currentUser.value.id)
     refreshUnreadCount()
     nextTick(() => {
