@@ -1,0 +1,61 @@
+export const config = { runtime: 'edge' }
+
+/*
+ * /api/unsubscribe?t=<uuid> — one-click email-digest opt-out (QA4 L7).
+ *
+ * The per-user unsubscribe_token (profiles, migration 069) is an unguessable
+ * UUID and IS the authorization — no login needed (standard list-unsubscribe
+ * UX). The token is column-revoked from anon/authenticated, so it only ever
+ * reaches a user via their own digest email's footer link. This endpoint uses
+ * the service-role key (bypasses RLS) to flip email_digest_opt_out=true for the
+ * matching row, then shows a generic confirmation. The response is identical
+ * for a valid, invalid, or already-used token (no user enumeration).
+ */
+
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || ''
+const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function page(titleZh, titleEn, subZh, subEn) {
+  const html = `<!DOCTYPE html>
+<html lang="zh"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${titleEn}</title>
+<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F7F4EE;font-family:-apple-system,'Segoe UI',sans-serif;color:#2A2521}
+.card{max-width:360px;text-align:center;padding:32px 24px}
+.seal{display:inline-block;width:44px;height:44px;line-height:44px;border-radius:11px;background:#C74A2F;color:#fff;font-weight:700;font-size:22px;margin-bottom:16px}
+h1{font-size:19px;margin:0 0 6px}p{font-size:13px;color:#8B8478;line-height:1.6;margin:0}</style>
+</head><body><div class="card"><div class="seal">集</div>
+<h1>${titleZh} · ${titleEn}</h1><p>${subZh}<br>${subEn}</p></div></body></html>`
+  return new Response(html, {
+    status: 200,
+    headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+  })
+}
+
+export default async function handler(req) {
+  const url = new URL(req.url)
+  const token = url.searchParams.get('t') || ''
+
+  // Generic confirmation regardless of outcome — never reveal whether the
+  // token matched a real user.
+  const done = () => page('已退订', "You're unsubscribed",
+    '你将不再收到集市的邮件提醒。', "You won't receive Illini Market email reminders anymore.")
+
+  if (!UUID_RE.test(token) || !SUPABASE_URL || !SERVICE_KEY) return done()
+
+  try {
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/profiles?unsubscribe_token=eq.${encodeURIComponent(token)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`,
+          'Content-Type': 'application/json', Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({ email_digest_opt_out: true }),
+      },
+    )
+  } catch {}
+  return done()
+}

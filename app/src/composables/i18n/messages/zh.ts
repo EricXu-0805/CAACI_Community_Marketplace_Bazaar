@@ -612,6 +612,10 @@ const zh: Record<string, string> = {
   'savedSearch.new': '新建订阅',
   'savedSearch.keyword': '关键词',
   'savedSearch.keywordPh': '如:ECON 101 教材、iPhone 13、桌子',
+  'savedSearch.type': '类型',
+  'savedSearch.type_sell': '在售',
+  'savedSearch.type_wanted': '求购',
+  'savedSearch.type_both': '都要',
   'savedSearch.created': '已订阅',
   'savedSearch.deleteConfirm': '删除这条订阅?',
 

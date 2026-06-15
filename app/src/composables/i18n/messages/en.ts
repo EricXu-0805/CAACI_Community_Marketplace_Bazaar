@@ -612,6 +612,10 @@ const en: Record<string, string> = {
   'savedSearch.new': 'New Saved Search',
   'savedSearch.keyword': 'Keyword',
   'savedSearch.keywordPh': 'e.g. ECON 101 textbook, iPhone 13, desk',
+  'savedSearch.type': 'Type',
+  'savedSearch.type_sell': 'For sale',
+  'savedSearch.type_wanted': 'Wanted',
+  'savedSearch.type_both': 'Both',
   'savedSearch.created': 'Saved',
   'savedSearch.deleteConfirm': 'Delete this saved search?',
 

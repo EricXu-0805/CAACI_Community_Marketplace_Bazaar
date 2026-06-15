@@ -4,6 +4,7 @@ import { useAuth } from './useAuth'
 import { useI18n } from './useI18n'
 import { subscribeToUserInbox } from './useRealtimeFallback'
 import { invalidateConversations } from './useMessages'
+import { useModeration } from './useModeration'
 
 const unreadCount = ref(0)
 const unreadConvIds = ref<Set<string>>(new Set())
@@ -25,6 +26,7 @@ export function useUnread() {
   const { supabase } = useSupabase()
   const { currentUser } = useAuth()
   const { t } = useI18n()
+  const { blockedIds, ensureLoaded } = useModeration()
 
   async function refreshUnreadCount(): Promise<{ mutedSet: Set<string> }> {
     if (!currentUser.value) {
@@ -38,10 +40,18 @@ export function useUnread() {
     const seq = ++unreadSeq
     const uid = currentUser.value.id
     try {
-      const { data: convs } = await supabase
+      const { data: convsRaw } = await supabase
         .from('conversations')
         .select('id, buyer_id, seller_id, is_muted_buyer, is_muted_seller')
         .or(`buyer_id.eq.${uid},seller_id.eq.${uid}`)
+
+      // Drop conversations with a blocked counterparty so their messages don't
+      // inflate the badge (the inbox list already hides them — useMessages.ts).
+      // Keeps the count + list in agreement (B12).
+      await ensureLoaded()
+      const convs = convsRaw && blockedIds.value.size > 0
+        ? convsRaw.filter((c: any) => !blockedIds.value.has(c.buyer_id) && !blockedIds.value.has(c.seller_id))
+        : convsRaw
 
       if (!convs || convs.length === 0) {
         if (seq === unreadSeq) {
@@ -107,7 +117,10 @@ export function useUnread() {
       // messages-tab onShow refetches instead of serving a stale list.
       invalidateConversations()
       const convId = newMsg?.conversation_id
-      if (convId && !mutedSet.has(convId)) {
+      // refreshUnreadCount above already ran ensureLoaded(), so blockedIds is
+      // warm — suppress the toast for a blocked sender (B12).
+      const fromBlocked = newMsg?.sender_id && blockedIds.value.has(newMsg.sender_id)
+      if (convId && !mutedSet.has(convId) && !fromBlocked) {
         uni.showToast({ title: t('msg.newMessage'), icon: 'none', duration: 2000 })
       }
     })

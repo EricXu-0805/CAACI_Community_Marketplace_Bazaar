@@ -58,8 +58,11 @@ function rowHtml(n) {
   </td></tr>`
 }
 
-function digestHtml(rows, isSample) {
+function digestHtml(rows, isSample, unsubToken) {
   const items = rows.map(rowHtml).join('')
+  const unsub = unsubToken
+    ? `不想再收到邮件提醒？<a href="${esc(APP_URL)}/api/unsubscribe?t=${esc(unsubToken)}" style="color:#A39A8C">一键退订 Unsubscribe</a>`
+    : '示例预览 · Sample preview'
   return `<!DOCTYPE html><html><body style="margin:0;background:#F7F4EE;font-family:-apple-system,'Segoe UI',sans-serif">
   <div style="max-width:520px;margin:0 auto;padding:24px 16px">
     <div style="text-align:center;margin-bottom:8px">
@@ -74,8 +77,8 @@ function digestHtml(rows, isSample) {
       <a href="${esc(APP_URL)}" style="display:inline-block;background:#C74A2F;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-weight:600;font-size:15px">打开集市 · Open</a>
     </div>
     <p style="text-align:center;color:#A39A8C;font-size:11px;line-height:1.6;margin-top:24px">
-      香槟集市 · UIUC 校园二手集市<br>
-      在 App 的「设置 · 通知」里管理通知偏好。
+      香槟集市 · UIUC 校园二手集市 · Champaign-Urbana, IL<br>
+      ${unsub}
     </p>
   </div></body></html>`
 }
@@ -238,10 +241,13 @@ export default async function handler(req) {
   const userIds = [...byUser.keys()]
   if (!userIds.length) return json({ mode: 'live', usersNotified: 0, notifications: 0 })
 
+  // email_digest_opt_out=is.false drops users who unsubscribed (L7); their
+  // notification rows stay un-emailed and age out of the 7-day window.
   const profiles = await sbGet(
-    `profiles?id=in.(${userIds.map(encodeURIComponent).join(',')})&select=id,email`
+    `profiles?id=in.(${userIds.map(encodeURIComponent).join(',')})&email_digest_opt_out=is.false&select=id,email,unsubscribe_token`
   )
   const emailById = new Map(profiles.filter(p => p.email).map(p => [p.id, p.email]))
+  const tokenById = new Map(profiles.filter(p => p.email).map(p => [p.id, p.unsubscribe_token]))
 
   let usersNotified = 0, sentCount = 0, sendFailed = 0, markFailed = 0
   for (const uid of userIds) {
@@ -250,7 +256,7 @@ export default async function handler(req) {
     if (!to || !userRows.length) continue
     let sent = false
     try {
-      await brevoSend(to, `香槟集市 · 你有 ${userRows.length} 条新动态`, digestHtml(userRows, false))
+      await brevoSend(to, `香槟集市 · 你有 ${userRows.length} 条新动态`, digestHtml(userRows, false, tokenById.get(uid)))
       sent = true
       await sbMarkEmailed(userRows.map(r => r.id))
       usersNotified++; sentCount += userRows.length

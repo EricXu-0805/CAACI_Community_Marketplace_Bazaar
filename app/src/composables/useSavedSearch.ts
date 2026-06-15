@@ -3,18 +3,21 @@ import { useSupabase } from './useSupabase'
 import { useAuth } from './useAuth'
 import type { ItemCategory } from '../types'
 
+export type SavedSearchListingType = 'sell' | 'wanted' | 'both'
+
 export interface SavedSearch {
   id: string
   user_id: string
   keyword: string
   category: ItemCategory | null
+  listing_type: SavedSearchListingType
   price_min: number | null
   price_max: number | null
   created_at: string
   last_notified_at: string | null
 }
 
-const SAVED_SEARCH_FIELDS = 'id, user_id, keyword, category, price_min, price_max, created_at, last_notified_at'
+const SAVED_SEARCH_FIELDS = 'id, user_id, keyword, category, listing_type, price_min, price_max, created_at, last_notified_at'
 
 const items = ref<SavedSearch[]>([])
 const loaded = ref(false)
@@ -39,6 +42,7 @@ export function useSavedSearch() {
   async function create(input: {
     keyword: string
     category?: ItemCategory | null
+    listingType?: SavedSearchListingType
     priceMin?: number | null
     priceMax?: number | null
   }): Promise<SavedSearch> {
@@ -49,6 +53,7 @@ export function useSavedSearch() {
         user_id: currentUser.value.id,
         keyword: input.keyword.trim(),
         category: input.category ?? null,
+        listing_type: input.listingType ?? 'sell',
         price_min: input.priceMin ?? null,
         price_max: input.priceMax ?? null,
       })
