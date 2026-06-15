@@ -75,6 +75,29 @@ export function useMeetups() {
     return data as Meetup
   }
 
+  /*
+   * Reschedule an ALREADY-ACCEPTED meetup (migration 060). Unlike
+   * respond_to_meetup('reschedule') — which is recipient-only and pending-only
+   * — either participant can change a confirmed time/place. The RPC marks the
+   * accepted record 'rescheduled' and inserts a fresh pending proposal to the
+   * other party, so the change still needs their re-confirmation.
+   */
+  async function rescheduleAccepted(
+    meetupId: string,
+    spot: string,
+    meetAt: string,
+    note?: string,
+  ): Promise<Meetup> {
+    const { data, error } = await supabase.rpc('reschedule_accepted_meetup', {
+      p_meetup_id: meetupId,
+      p_new_spot: spot,
+      p_new_meet_at: meetAt,
+      p_new_note: note ?? null,
+    })
+    if (error) throw error
+    return data as Meetup
+  }
+
   function subscribeToMeetups(conversationId: string, onChange: () => void): () => void {
     // #ifdef H5
     const channel = supabase
@@ -94,5 +117,5 @@ export function useMeetups() {
     // #endif
   }
 
-  return { meetups, fetchMeetups, proposeMeetup, respondToMeetup, subscribeToMeetups }
+  return { meetups, fetchMeetups, proposeMeetup, respondToMeetup, rescheduleAccepted, subscribeToMeetups }
 }

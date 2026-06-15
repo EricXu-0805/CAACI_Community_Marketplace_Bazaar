@@ -52,7 +52,7 @@
       >
         <text>{{ t('chat.makeOffer') }}</text>
       </view>
-      <view class="meetup-btn" @click="openMeetupSheet">
+      <view :class="['meetup-btn', { disabled: hasPendingMeetup }]" @click="openMeetupSheet">
         <text>📍 {{ t('chat.proposeMeetup') }}</text>
       </view>
     </view>
@@ -131,6 +131,7 @@
           </view>
           <view v-if="entry.meetup.status === 'accepted'" class="deal-line">
             <text>🤝 {{ t('chat.meetupSet').replace('{spot}', meetupSpotLabel(entry.meetup)).replace('{when}', fmtMeetupWhen(entry.meetup.meet_at)) }}</text>
+            <text class="deal-reschedule" role="button" @click="openRescheduleAccepted(entry.meetup)">{{ t('chat.meetupReschedule') }}</text>
           </view>
         </template>
 
@@ -307,7 +308,7 @@
     <view v-if="meetupSheet.open" class="offer-mask u-mask-in" @click="closeMeetupSheet"></view>
     <view :class="['offer-sheet', { open: meetupSheet.open }]">
       <view class="os-handle"></view>
-      <text class="os-title">{{ meetupSheet.mode === 'reschedule' ? t('chat.meetupRescheduleTitle') : t('chat.meetupTitle') }}</text>
+      <text class="os-title">{{ meetupSheet.mode !== 'new' ? t('chat.meetupRescheduleTitle') : t('chat.meetupTitle') }}</text>
       <text class="mt-label">{{ t('chat.meetupSpot') }}</text>
       <scroll-view scroll-x class="os-quick mt-spots">
         <view
@@ -334,7 +335,7 @@
       </view>
       <text class="mt-safe-hint">{{ t('chat.meetupSafeHint') }}</text>
       <view :class="['os-submit', { disabled: !meetupSpotInput || !meetupDateInput || !meetupTimeInput || meetupSubmitting }]" @click="submitMeetupSheet">
-        <text>{{ meetupSheet.mode === 'reschedule' ? t('chat.meetupSendReschedule') : t('chat.meetupSend') }}</text>
+        <text>{{ meetupSheet.mode !== 'new' ? t('chat.meetupSendReschedule') : t('chat.meetupSend') }}</text>
       </view>
       <text class="os-expiry-hint">{{ t('chat.meetupExpiry') }}</text>
     </view>
@@ -373,7 +374,7 @@ const { t, lang, localize } = useI18n()
 const { currentUser, requireAuth } = useAuth()
 const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, deleteMessage, fetchConversationDetail, setConversationPinned, setConversationMuted } = useMessages()
 const { offers, fetchOffers, makeOffer, respondToOffer, subscribeToOffers } = useOffers()
-const { meetups, fetchMeetups, proposeMeetup, respondToMeetup, subscribeToMeetups } = useMeetups()
+const { meetups, fetchMeetups, proposeMeetup, respondToMeetup, rescheduleAccepted, subscribeToMeetups } = useMeetups()
 const { startPresence, isOnline, subscribeTyping } = usePresence()
 const { uploadOneImage, uploadOneVideo } = useItems()
 const { refreshUnreadCount } = useUnread()
@@ -1004,7 +1005,12 @@ function fmtMeetupWhen(iso: string): string {
 const safeSpots = computed(() => CAMPUS_SPOTS.filter(s => s.safe))
 const todayStr = computed(() => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}` })
 const maxDateStr = computed(() => { const d = new Date(Date.now() + 89 * 86400000); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}` })
-const meetupSheet = ref<{ open: boolean; mode: 'new' | 'reschedule'; targetId: string }>({ open: false, mode: 'new', targetId: '' })
+const meetupSheet = ref<{ open: boolean; mode: 'new' | 'reschedule' | 'reschedule-accepted'; targetId: string }>({ open: false, mode: 'new', targetId: '' })
+
+// #6c — only one live pending proposal per conversation (DB enforces it too).
+const hasPendingMeetup = computed(() =>
+  meetups.value.some((m) => m.status === 'pending' && new Date(m.expires_at).getTime() > Date.now()),
+)
 const meetupSpotInput = ref('')
 const meetupDateInput = ref('')
 const meetupTimeInput = ref('')
@@ -1018,6 +1024,10 @@ function resetMeetupSheet() {
   meetupNoteInput.value = ''
 }
 function openMeetupSheet() {
+  if (hasPendingMeetup.value) {
+    uni.showToast({ title: t('chat.meetupPendingExists'), icon: 'none' })
+    return
+  }
   resetMeetupSheet()
   // Prefill from the item's pickup location only when it's a known safe spot,
   // using the localized chip label so the matching chip highlights (a raw
@@ -1030,6 +1040,12 @@ function openReschedule(m: Meetup) {
   resetMeetupSheet()
   meetupSpotInput.value = m.spot
   meetupSheet.value = { open: true, mode: 'reschedule', targetId: m.id }
+}
+// #6a — either party reschedules an already-accepted meetup (new RPC).
+function openRescheduleAccepted(m: Meetup) {
+  resetMeetupSheet()
+  meetupSpotInput.value = m.spot
+  meetupSheet.value = { open: true, mode: 'reschedule-accepted', targetId: m.id }
 }
 function closeMeetupSheet() { meetupSheet.value.open = false }
 
@@ -1054,6 +1070,8 @@ async function submitMeetupSheet() {
   try {
     if (meetupSheet.value.mode === 'reschedule' && meetupSheet.value.targetId) {
       await respondToMeetup(meetupSheet.value.targetId, 'reschedule', meetupSpotInput.value, iso, meetupNoteInput.value)
+    } else if (meetupSheet.value.mode === 'reschedule-accepted' && meetupSheet.value.targetId) {
+      await rescheduleAccepted(meetupSheet.value.targetId, meetupSpotInput.value, iso, meetupNoteInput.value)
     } else {
       await proposeMeetup(conversationId.value, meetupSpotInput.value, iso, meetupNoteInput.value)
     }
@@ -1403,6 +1421,7 @@ function scrollToBottom() {
   border-radius: var(--radius-md); padding: 8px; cursor: pointer;
   text { font-size: 13px; font-weight: 600; color: var(--campus-blue); letter-spacing: 0.02em; }
   &:active { background: rgba(42, 92, 170, 0.16); }
+  &.disabled { opacity: 0.45; }
 }
 .quick-replies {
   white-space: nowrap; padding: 8px 12px 4px;
@@ -1498,6 +1517,8 @@ function scrollToBottom() {
 .deal-line {
   text-align: center; margin: 2px 0 12px;
   text { font-size: 12px; font-weight: 600; color: var(--success); background: var(--success-soft); padding: 5px 14px; border-radius: var(--radius-pill); }
+  .deal-reschedule { display: inline-block; margin-left: 8px; color: var(--campus-blue); background: var(--campus-blue-soft); cursor: pointer; }
+  .deal-reschedule:active { opacity: 0.7; }
 }
 
 /* ===== Offer composer sheet ===== */

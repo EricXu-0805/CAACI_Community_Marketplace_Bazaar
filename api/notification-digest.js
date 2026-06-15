@@ -112,6 +112,67 @@ async function sbMarkEmailed(ids) {
   if (!r.ok) throw new Error(`mark-emailed ${r.status}`)
 }
 
+async function sbInsert(path, body) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    method: 'POST',
+    headers: {
+      apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`,
+      'Content-Type': 'application/json', Prefer: 'return=minimal',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!r.ok) throw new Error(`supabase insert ${r.status}`)
+}
+
+async function sbPatch(path, body) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    method: 'PATCH',
+    headers: {
+      apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`,
+      'Content-Type': 'application/json', Prefer: 'return=minimal',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!r.ok) throw new Error(`supabase patch ${r.status}`)
+}
+
+/*
+ * #6e — pre-meetup reminder. Seeds a 'meetup' notification for BOTH parties of
+ * each accepted meetup happening in the next ~24h, then stamps reminded_at so
+ * it fires exactly once. The rows ride the same digest pass below. LIVE-only:
+ * it mutates (inserts + stamps), so it must not run in the repeatable test
+ * mode — same posture as "test mode never marks emailed_at".
+ */
+async function generateMeetupReminders() {
+  const nowIso = new Date().toISOString()
+  const soonIso = new Date(Date.now() + 24 * 3600000).toISOString()
+  const meetups = await sbGet(
+    `meetups?status=eq.accepted&reminded_at=is.null&meet_at=gte.${nowIso}&meet_at=lte.${soonIso}` +
+    `&select=id,item_id,from_user,to_user,spot,meet_at&limit=200`
+  )
+  if (!meetups.length) return 0
+
+  const fmtWhen = (iso) => {
+    try {
+      return new Intl.DateTimeFormat('zh-CN', {
+        timeZone: 'America/Chicago', month: 'numeric', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: false,
+      }).format(new Date(iso))
+    } catch { return iso.slice(5, 16).replace('T', ' ') }
+  }
+
+  const notifs = []
+  for (const m of meetups) {
+    const body = `${m.spot} · ${fmtWhen(m.meet_at)}`
+    notifs.push({ user_id: m.from_user, type: 'meetup', title: '见面提醒 · Meetup reminder', body, item_id: m.item_id })
+    notifs.push({ user_id: m.to_user, type: 'meetup', title: '见面提醒 · Meetup reminder', body, item_id: m.item_id })
+  }
+  await sbInsert('notifications', notifs)
+  const inList = `(${meetups.map(m => encodeURIComponent(m.id)).join(',')})`
+  await sbPatch(`meetups?id=in.${inList}`, { reminded_at: nowIso })
+  return meetups.length
+}
+
 async function brevoSend(to, subject, html) {
   const r = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
@@ -138,6 +199,15 @@ export default async function handler(req) {
   }
 
   try {
+  // #6e — seed pre-meetup reminders before the digest read so they ride this
+  // same pass. LIVE-only (mutates); test mode stays repeatable. A failure here
+  // must not abort the digest.
+  let meetupReminders = 0
+  if (!TEST_EMAIL) {
+    try { meetupReminders = await generateMeetupReminders() }
+    catch (e) { console.error('meetup reminders failed:', e?.message || e) }
+  }
+
   const since = new Date(Date.now() - WINDOW_DAYS * 86400000).toISOString()
   const rows = await sbGet(
     `notifications?emailed_at=is.null&created_at=gte.${since}` +
@@ -190,7 +260,7 @@ export default async function handler(req) {
       console.error(`digest user ${uid}: ${sent ? 'mark-emailed' : 'send'} failed:`, e?.message || e)
     }
   }
-  return json({ mode: 'live', usersNotified, notifications: sentCount, sendFailed, markFailed })
+  return json({ mode: 'live', usersNotified, notifications: sentCount, sendFailed, markFailed, meetupReminders })
   } catch (e) {
     return json({ error: 'internal' }, 500)
   }
