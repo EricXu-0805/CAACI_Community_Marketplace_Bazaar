@@ -31,6 +31,7 @@
           <view class="ss-main">
             <text class="ss-kw">{{ s.keyword }}</text>
             <view class="ss-meta">
+              <text v-if="s.listing_type && s.listing_type !== 'both'" class="ss-chip">{{ t('savedSearch.type_' + s.listing_type) }}</text>
               <text v-if="s.category" class="ss-chip">{{ t('cat.' + s.category) }}</text>
               <text v-if="s.price_min || s.price_max" class="ss-chip">
                 ${{ s.price_min || 0 }}–${{ s.price_max || '∞' }}
@@ -69,6 +70,19 @@
           />
         </view>
         <view class="fs-row">
+          <text class="fs-label">{{ t('savedSearch.type') }}</text>
+          <view class="fs-cats">
+            <view
+              v-for="lt in listingTypeKeys"
+              :key="lt"
+              :class="['fs-chip', { active: form.listingType === lt }]"
+              @click="form.listingType = lt"
+            >
+              <text>{{ t('savedSearch.type_' + lt) }}</text>
+            </view>
+          </view>
+        </view>
+        <view class="fs-row">
           <text class="fs-label">{{ t('filter.category') || t('publish.category') }}</text>
           <view class="fs-cats">
             <view
@@ -99,7 +113,7 @@ import { ref, nextTick, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
-import { useSavedSearch } from '../../composables/useSavedSearch'
+import { useSavedSearch, type SavedSearchListingType } from '../../composables/useSavedSearch'
 import { friendlyErrorMessage, BROWSE_CATEGORIES } from '../../utils'
 import type { ItemCategory } from '../../types'
 import UIcon from '../../components/UIcon.vue'
@@ -111,14 +125,16 @@ const { items, fetchMine, create, remove } = useSavedSearch()
 const showForm = ref(false)
 const submitting = ref(false)
 const loading = ref(false)
-const form = ref<{ keyword: string; category: ItemCategory | null; priceMin: string; priceMax: string }>({
+const form = ref<{ keyword: string; category: ItemCategory | null; listingType: SavedSearchListingType; priceMin: string; priceMax: string }>({
   keyword: '',
   category: null,
+  listingType: 'sell',
   priceMin: '',
   priceMax: '',
 })
 
 const categoryKeys: (ItemCategory | null)[] = [null, ...BROWSE_CATEGORIES]
+const listingTypeKeys: SavedSearchListingType[] = ['sell', 'wanted', 'both']
 
 /*
  * uni-app <scroll-view> remembers its last scrollTop between page shows.
@@ -158,11 +174,12 @@ async function onSubmit() {
     await create({
       keyword: form.value.keyword,
       category: form.value.category,
+      listingType: form.value.listingType,
       priceMin: form.value.priceMin ? Number(form.value.priceMin) : null,
       priceMax: form.value.priceMax ? Number(form.value.priceMax) : null,
     })
     showForm.value = false
-    form.value = { keyword: '', category: null, priceMin: '', priceMax: '' }
+    form.value = { keyword: '', category: null, listingType: 'sell', priceMin: '', priceMax: '' }
     uni.showToast({ title: t('savedSearch.created'), icon: 'success' })
   } catch (err: any) {
     uni.showToast({
