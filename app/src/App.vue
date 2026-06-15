@@ -1393,16 +1393,27 @@ button:focus-visible,
     --canvas-rgb:  18, 16, 13;   /* matches new --canvas #12100D */
 
     --line-hair:  rgba(240, 232, 214, 0.08);
+    --line-soft:  rgba(240, 232, 214, 0.12);
+    --line-bold:  rgba(240, 232, 214, 0.18);
     --border:        rgba(245, 240, 232, 0.12);
     --border-strong: rgba(245, 240, 232, 0.22);
+    --border-hair:   rgba(245, 240, 232, 0.07);
+    --text-disabled: rgba(240, 232, 214, 0.22);
 
     --brand:       #E06A4A;
     --brand-deep:  #C45A3A;
     --brand-soft:  rgba(224, 106, 74, 0.15);
     --brand-ghost: rgba(224, 106, 74, 0.08);
+    --success:      #8BA670;
     --success-soft: rgba(139, 166, 112, 0.15);
+    --warning:      #E5B170;
     --warning-soft: rgba(229, 177, 112, 0.15);
+    --danger:       #E06666;
     --danger-soft:  rgba(224, 102, 102, 0.15);
+    /* Aliases must follow the base trio so var() resolves to the dark values. */
+    --accent-good:   var(--success);
+    --accent-warn:   var(--warning);
+    --accent-danger: var(--danger);
 
     --campus-blue:      #6A8AC2;
     --campus-blue-soft: rgba(106, 138, 194, 0.15);
