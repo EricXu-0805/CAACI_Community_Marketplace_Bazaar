@@ -294,6 +294,8 @@ const en: Record<string, string> = {
   'chat.meetupTitle': 'Propose a meetup',
   'chat.meetupRescheduleTitle': 'Suggest a new time/place',
   'chat.meetupSpot': 'Place',
+  'chat.meetupSpotPh': 'Custom spot (campus recommended)',
+  'chat.meetupSafeHint': 'Meet on campus, in daylight, somewhere busy',
   'chat.meetupPickDate': 'Pick date',
   'chat.meetupPickTime': 'Pick time',
   'chat.meetupSend': 'Send proposal',

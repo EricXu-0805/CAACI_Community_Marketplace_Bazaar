@@ -209,7 +209,25 @@ export function useMessages() {
       .select(CONVERSATION_FIELDS)
       .single()
 
-    if (error) throw error
+    // Two rapid taps of "联系卖家" can race: the second insert hits the
+    // UNIQUE(item_id,buyer_id,seller_id) constraint (23505). That's not a
+    // failure — the conversation now exists, so recover it instead of
+    // surfacing a "failed to start chat" toast. Keeps one chat per (item,
+    // buyer, seller), idempotent under double-tap.
+    if (error) {
+      if ((error as any).code === '23505') {
+        const { data: raced, error: reErr } = await supabase
+          .from('conversations')
+          .select(CONVERSATION_FIELDS)
+          .eq('item_id', itemId)
+          .eq('buyer_id', buyerId)
+          .eq('seller_id', sellerId)
+          .single()
+        if (reErr) throw reErr
+        return raced as Conversation
+      }
+      throw error
+    }
     return data as Conversation
   }
 
