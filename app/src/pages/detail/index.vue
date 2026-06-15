@@ -216,7 +216,7 @@
       <view v-if="item.status === 'sold' && canRate && !alreadyRated" class="chat-btn chat-btn-rate" @click="openRating">
         <text>★ {{ t('rating.rateSeller') }}</text>
       </view>
-      <view v-else-if="item.status === 'sold' && canRate" class="chat-btn chat-btn-disabled">
+      <view v-else-if="item.status === 'sold' && alreadyRated" class="chat-btn chat-btn-disabled">
         <text>{{ t('rating.alreadyRated') }}</text>
       </view>
       <view v-else-if="item.status === 'sold'" class="chat-btn chat-btn-disabled">
