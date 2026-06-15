@@ -237,10 +237,9 @@ export function usePlaza() {
   /*
    * Create a plaza post.
    *
-   * Post-014/015 writes (image_dimensions, content_i18n, source_lang) are
-   * optional and silently retried-without on a 42703 schema error, so
-   * this function works against older databases that haven't applied the
-   * image-dimensions / content-i18n migrations.
+   * Writes image_dimensions / content_i18n / source_lang unconditionally —
+   * every active DB has the 014/015 columns, so the old 42703 retry-without
+   * fallback was retired.
    *
    * content_i18n is seeded with the author's text in `sourceLang` only;
    * the caller is expected to kick off an async translator after this
@@ -293,23 +292,11 @@ export function usePlaza() {
     if (extras.content_i18n) basePayload.content_i18n = extras.content_i18n
     if (extras.source_lang) basePayload.source_lang = extras.source_lang
 
-    const stripNewCols = (p: Record<string, any>) => {
-      delete p.image_dimensions
-      delete p.content_i18n
-      delete p.source_lang
-    }
-    const isMissingNewCol = (err: any): boolean => {
-      const msg = String(err?.message || '')
-      return err?.code === '42703' && /image_dimensions|content_i18n|source_lang/.test(msg)
-    }
-
     /* Step 1: insert post row. POST_SELECT includes post_items but the
-       relation is empty at this point — step 2 backfills it. */
-    let res = await supabase.from('posts').insert(basePayload).select(POST_SELECT).single()
-    if (res.error && isMissingNewCol(res.error)) {
-      stripNewCols(basePayload)
-      res = await supabase.from('posts').insert(basePayload).select(POST_SELECT).single()
-    }
+       relation is empty at this point — step 2 backfills it. The pre-014/015
+       missing-column (42703) retry-without fallback was retired: every active
+       DB has image_dimensions/content_i18n/source_lang, same as useItems. */
+    const res = await supabase.from('posts').insert(basePayload).select(POST_SELECT).single()
     if (res.error) throw res.error
     let post = res.data as unknown as Post
     const newId = post.id
