@@ -8,6 +8,12 @@ export const config = { runtime: 'edge' }
  * not set in the Vercel env, this endpoint short-circuits to
  * `{ flagged: false, skipped: true }` — safe fallback so a missing
  * key never breaks publish flows.
+ *
+ * Abuse control: requires a valid Supabase JWT, same as the translate
+ * proxy. CORS alone cannot stop scripted callers (curl ignores it), and
+ * an open endpoint is an unmetered OpenAI moderations proxy. Moderation
+ * only ever runs right before an authenticated insert, so gating it
+ * costs legitimate callers nothing.
  */
 
 const ALLOWED_ORIGINS = [
@@ -28,6 +34,27 @@ function cors(origin) {
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '600',
     Vary: 'Origin',
+  }
+}
+
+function env(name, fallback) {
+  return process.env[name] || fallback
+}
+
+const SUPABASE_URL = env('SUPABASE_URL', env('VITE_SUPABASE_URL', ''))
+const ANON_KEY     = env('SUPABASE_ANON_KEY', env('VITE_SUPABASE_ANON_KEY', ''))
+
+/* Validate the caller's Supabase access token. Any authenticated user
+   passes; anonymous/forged tokens get 401. ~1 round trip to Supabase. */
+async function verifyUser(bearer) {
+  if (!bearer || !SUPABASE_URL || !ANON_KEY) return false
+  try {
+    const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { apikey: ANON_KEY, Authorization: bearer },
+    })
+    return r.ok
+  } catch {
+    return false
   }
 }
 
@@ -52,6 +79,10 @@ export default async function handler(request) {
   const text = typeof body?.text === 'string' ? body.text.slice(0, 8000) : ''
   if (!text || text.length < 1) {
     return new Response(JSON.stringify({ flagged: false, skipped: true, reason: 'empty' }), { status: 200, headers })
+  }
+
+  if (!(await verifyUser(request.headers.get('authorization') || ''))) {
+    return new Response(JSON.stringify({ error: 'auth_required' }), { status: 401, headers })
   }
 
   const key = process.env.OPENAI_API_KEY
