@@ -167,9 +167,13 @@ async function generateMeetupReminders() {
     notifs.push({ user_id: m.from_user, type: 'meetup', title: '见面提醒 · Meetup reminder', body, item_id: m.item_id })
     notifs.push({ user_id: m.to_user, type: 'meetup', title: '见面提醒 · Meetup reminder', body, item_id: m.item_id })
   }
-  await sbInsert('notifications', notifs)
   const inList = `(${meetups.map(m => encodeURIComponent(m.id)).join(',')})`
+  // Claim-then-act: stamp reminded_at BEFORE inserting the notifications. If a
+  // transient failure splits the two writes, a missed reminder (PATCH ok,
+  // INSERT fails) is far better than a duplicate (INSERT ok, PATCH fails →
+  // both parties re-emailed next cron). Same at-most-once posture as emailed_at.
   await sbPatch(`meetups?id=in.${inList}`, { reminded_at: nowIso })
+  await sbInsert('notifications', notifs)
   return meetups.length
 }
 
