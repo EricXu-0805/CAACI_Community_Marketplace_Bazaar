@@ -3,6 +3,7 @@ import { useSupabase, platformFetch } from './useSupabase'
 import { useModeration } from './useModeration'
 import { deviceFingerprintHash, deviceUASnippet } from '../utils/fingerprint'
 import { passwordValid } from '../utils'
+import { checkContent, remoteModerate } from '../utils/contentSafety'
 import { addBreadcrumb, captureException } from '../utils/sentry'
 import type { Profile } from '../types'
 import { BASE_URL } from '../config/runtime'
@@ -298,6 +299,22 @@ export function useAuth() {
     if (typeof sanitized.status_emoji === 'string') {
       sanitized.status_emoji = sanitizeStatus(sanitized.status_emoji, 8)
       if (!sanitized.status_emoji) sanitized.status_emoji = null
+    }
+    // Nickname moderation (L1): items/posts/comments are screened; nicknames
+    // were not, yet they show on every card/post/comment/chat. Block offensive
+    // terms / contact-info / links (not length — the form + the server trigger
+    // 067 own that). Server trigger is the authoritative gate; this gives
+    // friendly pre-submit feedback. moderation_block:* is localized by
+    // friendlyErrorMessage() at the call site.
+    if (typeof sanitized.nickname === 'string') {
+      const trimmed = sanitized.nickname.trim()
+      const c = checkContent(trimmed, { kind: 'item_title' })
+      if (!c.ok && c.category !== 'too_short' && c.category !== 'too_long') {
+        return { error: new Error(`moderation_block:${c.category}`) }
+      }
+      const ai = await remoteModerate(trimmed)
+      if (ai.flagged) return { error: new Error('moderation_block:sensitive_word') }
+      sanitized.nickname = trimmed
     }
 
     let { error } = await supabase

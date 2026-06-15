@@ -75,7 +75,7 @@
 import { computed, ref } from 'vue'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
-import { useSupabase } from '../../composables/useSupabase'
+import { useSupabase, platformFetch } from '../../composables/useSupabase'
 import { useTheme, type ThemePref } from '../../composables/useTheme'
 import { friendlyErrorMessage } from '../../utils'
 import { captureException } from '../../utils/sentry'
@@ -236,8 +236,27 @@ function onDeleteAccount() {
       if (!res.confirm) return
       uni.showLoading({ title: '...' })
       try {
-        const { error } = await supabase.rpc('delete_my_account')
-        if (error) throw error
+        // Hard delete (B15): a service-role edge function permanently removes
+        // auth.users (cascading all owned rows) + sweeps storage — matching the
+        // "cannot be undone" promise. The endpoint derives the target uid ONLY
+        // from this access token, never from the body.
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) throw new Error('not_authenticated')
+        let endpoint = '/api/auth/delete-account'
+        // #ifdef H5
+        if (typeof window !== 'undefined' && window.location?.origin) {
+          endpoint = window.location.origin + '/api/auth/delete-account'
+        }
+        // #endif
+        // #ifndef H5
+        endpoint = `${BASE_URL}/api/auth/delete-account`
+        // #endif
+        const r = await platformFetch(endpoint, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+          body: '{}',
+        })
+        if (!r.ok) throw new Error('delete_failed')
         await signOut()
         uni.hideLoading()
         uni.showToast({
