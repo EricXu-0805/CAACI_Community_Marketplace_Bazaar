@@ -294,6 +294,8 @@ const zh: Record<string, string> = {
   'chat.meetupTitle': '约个见面',
   'chat.meetupRescheduleTitle': '改个时间地点',
   'chat.meetupSpot': '地点',
+  'chat.meetupSpotPh': '自定义地点（建议校内）',
+  'chat.meetupSafeHint': '建议选校内、白天、人多的地方见面',
   'chat.meetupPickDate': '选日期',
   'chat.meetupPickTime': '选时间',
   'chat.meetupSend': '发送约见',

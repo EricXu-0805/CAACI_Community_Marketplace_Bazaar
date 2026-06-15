@@ -83,7 +83,7 @@
 
         <!-- ===== Offer entry (structured negotiation, migration 051) ===== -->
         <template v-if="entry.kind === 'offer'">
-          <view class="offer-entry" :class="{ mine: entry.offer.from_user === currentUser?.id }">
+          <view :id="entry.key" class="offer-entry" :class="{ mine: entry.offer.from_user === currentUser?.id }">
             <view class="offer-card" :class="'oc-st-' + entry.offer.status">
               <view class="oc-head">
                 <text class="oc-eyebrow">{{ entry.offer.from_user === currentUser?.id ? t('chat.offerYou') : t('chat.offerThem') }}</text>
@@ -109,7 +109,7 @@
 
         <!-- ===== Meetup entry (structured scheduling, migration 052) ===== -->
         <template v-else-if="entry.kind === 'meetup'">
-          <view class="offer-entry" :class="{ mine: entry.meetup.from_user === currentUser?.id }">
+          <view :id="entry.key" class="offer-entry" :class="{ mine: entry.meetup.from_user === currentUser?.id }">
             <view class="offer-card meetup-card" :class="'oc-st-' + entry.meetup.status">
               <view class="oc-head">
                 <text class="oc-eyebrow">📍 {{ entry.meetup.from_user === currentUser?.id ? t('chat.meetupYou') : t('chat.meetupThem') }}</text>
@@ -137,7 +137,7 @@
         <!-- ===== Message entry ===== -->
         <template v-else>
           <view
-            :id="`msg-${entry.msg.id}`"
+            :id="entry.key"
             :class="['msg-row', { mine: entry.msg.sender_id === currentUser?.id }]"
           >
             <image
@@ -242,29 +242,34 @@
     </view>
 
     <view class="input-bar">
-      <view class="img-btn" role="button" :aria-label="t('a11y.pickImage')" @click="onSendImage">
+      <view class="img-btn" role="button" :aria-label="t('a11y.pickImage')" :title="t('a11y.pickImage')" @click="onSendImage">
         <UIcon name="image" size="sm" color="text-secondary" />
       </view>
-      <view class="img-btn" role="button" :aria-label="t('a11y.pickVideo')" @click="onSendVideo">
+      <view class="img-btn" role="button" :aria-label="t('a11y.pickVideo')" :title="t('a11y.pickVideo')" @click="onSendVideo">
         <UIcon name="video" size="sm" color="text-secondary" />
       </view>
-      <view :class="['emoji-btn', { active: emojiOpen }]" role="button" :aria-label="t('a11y.emojiToggle')" @click="toggleEmoji">
+      <view :class="['emoji-btn', { active: emojiOpen }]" role="button" :aria-label="t('a11y.emojiToggle')" :title="t('a11y.emojiToggle')" @click="toggleEmoji">
         <text class="emoji-btn-glyph">😊</text>
       </view>
-      <input
+      <textarea
         ref="chatInputRef"
         v-model="inputText"
         :placeholder="replyToMsg ? t('chat.replyingHint') : t('chat.placeholder')"
         confirm-type="send"
+        :confirm-hold="false"
+        :show-confirm-bar="false"
+        auto-height
+        :maxlength="-1"
         :focus="inputFocused"
         :adjust-position="true"
         @confirm="onSend"
+        @keydown="onComposerKeydown"
         @focus="emojiOpen = false"
         @blur="inputFocused = false"
         class="msg-input"
       />
-      <view :class="['send-btn', { disabled: !inputText.trim() || sending }]" role="button" :aria-label="t('a11y.sendMessage')" @click="onSend">
-        <UIcon name="arrow-up" size="sm" color="#fff" />
+      <view :class="['send-btn', { disabled: !inputText.trim() || sending }]" role="button" :aria-label="t('a11y.sendMessage')" :title="t('a11y.sendMessage')" @click="onSend">
+        <UIcon name="send" size="sm" color="#fff" />
       </view>
     </view>
     <ChatEmojiPanel :open="emojiOpen" @pick="onPickEmoji" @pick-sticker="onPickSticker" />
@@ -314,6 +319,11 @@
           <text>{{ lang === 'zh' ? s.zh : s.en }}</text>
         </view>
       </scroll-view>
+      <!-- Free-text spot (#6d): chips are quick-fills; a custom value just
+           leaves all chips unhighlighted. Kept ABOVE the date/time pickers so
+           neither text field sits under uni's lingering picker overlay (#6b). -->
+      <input v-model="meetupSpotInput" class="os-note mt-spot-input" :placeholder="t('chat.meetupSpotPh')" maxlength="60" />
+      <input v-model="meetupNoteInput" class="os-note" :placeholder="t('chat.offerNotePh')" maxlength="300" />
       <view class="mt-row">
         <picker mode="date" :value="meetupDateInput" :start="todayStr" :end="maxDateStr" @change="meetupDateInput = $event.detail.value">
           <view class="mt-picker"><text>{{ meetupDateInput || t('chat.meetupPickDate') }}</text></view>
@@ -322,7 +332,7 @@
           <view class="mt-picker"><text>{{ meetupTimeInput || t('chat.meetupPickTime') }}</text></view>
         </picker>
       </view>
-      <input v-model="meetupNoteInput" class="os-note" :placeholder="t('chat.offerNotePh')" maxlength="300" />
+      <text class="mt-safe-hint">{{ t('chat.meetupSafeHint') }}</text>
       <view :class="['os-submit', { disabled: !meetupSpotInput || !meetupDateInput || !meetupTimeInput || meetupSubmitting }]" @click="submitMeetupSheet">
         <text>{{ meetupSheet.mode === 'reschedule' ? t('chat.meetupSendReschedule') : t('chat.meetupSend') }}</text>
       </view>
@@ -620,7 +630,7 @@ function onPickEmoji(emoji: string) {
   // #ifdef H5
   try {
     const root = (chatInputRef.value as any)?.$el as HTMLElement | undefined
-    const native = root?.querySelector?.('input') as HTMLInputElement | null
+    const native = root?.querySelector?.('textarea, input') as HTMLTextAreaElement | HTMLInputElement | null
     if (native && typeof native.selectionStart === 'number') {
       const before = inputText.value.slice(0, native.selectionStart)
       const after = inputText.value.slice(native.selectionEnd ?? native.selectionStart)
@@ -697,6 +707,19 @@ async function retrySend(msg: any) {
   }
 }
 
+/*
+ * Physical-keyboard send vs newline (H5 desktop only — mp has no keydown,
+ * so this never fires there). Enter sends; Shift/Ctrl/Cmd+Enter falls
+ * through to the textarea's default newline insert. The keydown bubbles
+ * from the inner <textarea> to the uni component root we bound on.
+ */
+function onComposerKeydown(e: KeyboardEvent) {
+  if (!e || e.key !== 'Enter') return
+  if (e.shiftKey || e.ctrlKey || e.metaKey) return
+  if (typeof e.preventDefault === 'function') e.preventDefault()
+  onSend()
+}
+
 async function onSend() {
   const text = inputText.value.trim()
   if (!text || !currentUser.value || !conversationId.value) return
@@ -737,7 +760,7 @@ async function onSend() {
   // #ifdef H5
   try {
     const root = (chatInputRef.value as any)?.$el as HTMLElement | undefined
-    const native = root?.querySelector?.('input') as HTMLInputElement | null
+    const native = root?.querySelector?.('textarea, input') as HTMLTextAreaElement | HTMLInputElement | null
     native?.focus()
   } catch { /* fall through — :focus toggle below is the mp backup */ }
   // #endif
@@ -1238,9 +1261,16 @@ async function onSendVideo() {
 }
 
 function scrollToBottom() {
-  if (messages.value.length > 0) {
-    scrollTarget.value = `msg-${messages.value[messages.value.length - 1].id}`
-  }
+  const tl = timeline.value
+  if (tl.length === 0) return
+  // Target the true last TIMELINE entry (msg / offer / meetup), not just the
+  // last message — a trailing offer/meetup card sits below the last bubble.
+  // scroll-into-view is edge-triggered: an unchanged bound value is a no-op,
+  // so when a new card arrives while the last message id is unchanged it would
+  // never re-scroll. Toggle through '' to force the transition every call.
+  const last = tl[tl.length - 1].key
+  scrollTarget.value = ''
+  nextTick(() => { scrollTarget.value = last })
 }
 </script>
 
@@ -1511,7 +1541,9 @@ function scrollToBottom() {
   background: var(--bg-subtle); border-radius: var(--radius-md);
   text { font-size: 14px; color: var(--ink); }
 }
-.os-note { margin-top: 12px; padding: 11px 14px; background: var(--bg-subtle); border-radius: var(--radius-md); font-size: 14px; color: var(--ink); width: 100%; box-sizing: border-box; }
+.os-note { position: relative; z-index: 2; margin-top: 12px; padding: 11px 14px; background: var(--bg-subtle); border-radius: var(--radius-md); font-size: 14px; color: var(--ink); width: 100%; box-sizing: border-box; }
+.mt-spot-input { margin-top: 8px; }
+.mt-safe-hint { display: block; margin-top: 10px; font-size: 11px; color: var(--ink-faint); line-height: 1.4; }
 .os-submit {
   margin-top: 16px; height: 48px; border-radius: var(--radius-pill);
   background: var(--brand); display: flex; align-items: center; justify-content: center;
@@ -1667,8 +1699,9 @@ function scrollToBottom() {
   padding-bottom: calc(9px + env(safe-area-inset-bottom));
 }
 .msg-input {
-  flex: 1; height: 40px; background: var(--bg-subtle); border-radius: 20px;
-  padding: 0 16px; font-size: 15px; color: var(--text-primary);
+  flex: 1; min-height: 40px; max-height: 120px; background: var(--bg-subtle);
+  border-radius: 20px; box-sizing: border-box;
+  padding: 9px 16px; line-height: 22px; font-size: 15px; color: var(--text-primary);
 }
 .send-btn {
   width: 40px; height: 40px; background: var(--accent-primary);
