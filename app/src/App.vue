@@ -813,6 +813,13 @@ page,
    ============================================ */
 html, body, uni-app, uni-page, uni-page-wrapper, uni-page-body, #app {
   overscroll-behavior: none;
+  /* Paint the document root so no region ever falls through to the
+     browser-default canvas (black under a dark-mode browser). On desktop
+     the translucent fixed sidebar and short/centered pages would otherwise
+     expose an unpainted band. --canvas is defined on :root and flips per
+     theme ([data-theme=dark] + @media dark), so it resolves correctly here. */
+  background: var(--canvas);
+  min-height: 100%;
 }
 
 /*

@@ -165,7 +165,6 @@
                   <text class="cs-name">{{ child.profile?.nickname || t('app.user') }}</text>
                   <text class="cs-time">{{ formatTime(child.created_at) }}</text>
                 </view>
-                <text v-if="child.reply_to_name" class="cs-reply-ref">@{{ child.reply_to_name }}</text>
                 <text class="cs-content">{{ child.content }}</text>
                 <view class="cs-actions">
                   <view class="cs-like-btn" role="button" :aria-label="child.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(child)">
@@ -815,14 +814,6 @@ async function onSubmitComment() {
   padding: 2px 0;
   &:active { color: var(--text-secondary); }
 }
-.cs-reply-ref {
-  display: block;
-  font-size: 11px;
-  color: var(--accent-action);
-  font-weight: 500;
-  margin-top: 2px;
-}
-
 .cs-item-child {
   padding-left: 48px;
 }

@@ -304,6 +304,7 @@ const zh: Record<string, string> = {
   'chat.qrWhenMeet': '什么时候能见面？',
   'chat.qrMoreDetails': '能多说说细节吗？',
   'chat.prefillInterest': '你好！想问一下你的{title}',
+  'chat.prefillHave': '你好！我有你求购的{title}',
   'chat.copy': '复制',
   'chat.reply': '回复',
   'chat.replyingTo': '回复',

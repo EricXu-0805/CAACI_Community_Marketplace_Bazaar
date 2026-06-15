@@ -304,6 +304,7 @@ const en: Record<string, string> = {
   'chat.qrWhenMeet': 'When can we meet?',
   'chat.qrMoreDetails': 'Could you share more details?',
   'chat.prefillInterest': 'Hi! Interested in your {title}',
+  'chat.prefillHave': "Hi! I have the {title} you're looking for",
   'chat.copy': 'Copy',
   'chat.reply': 'Reply',
   'chat.replyingTo': 'Replying to',
