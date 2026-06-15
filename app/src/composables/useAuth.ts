@@ -259,6 +259,22 @@ export function useAuth() {
       savedMod.useSavedSearch().reset()
       const favMod = await import('./useFavorites')
       favMod.useFavorites().reset()
+      // Clear module-singleton caches so the next account on a shared device
+      // never flashes the previous user's content in the gap before refetch.
+      const itemsMod = await import('./useItems')
+      itemsMod.useItems().clearItems()
+      const msgMod = await import('./useMessages')
+      msgMod.useMessages().clearMessages()
+      const plazaMod = await import('./usePlaza')
+      plazaMod.usePlaza().clearPosts()
+      // Device-global, user-private localStorage. clearHistory/clearPostHistory
+      // also reset their in-memory refs; the rest have no composable owner.
+      const histMod = await import('./useHistory')
+      histMod.useHistory().clearHistory()
+      histMod.useHistory().clearPostHistory()
+      for (const k of ['searchHistory', 'publish_draft_v1', 'pending_search', 'pending_category']) {
+        try { uni.removeStorageSync(k) } catch {}
+      }
     } catch {
     }
     uni.reLaunch({ url: '/pages/index/index' })

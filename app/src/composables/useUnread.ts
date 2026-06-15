@@ -10,6 +10,10 @@ const unreadConvIds = ref<Set<string>>(new Set())
 const hasMutedUnread = ref(false)
 const mutedConvIds = ref<Set<string>>(new Set())
 let inboxUnsub: (() => void) | null = null
+// Last-writer-wins guard: two incoming messages fire two concurrent
+// refreshUnreadCount() calls; without this an earlier-issued (slower) response
+// can land after a later one — or after a markAsRead — and write a stale badge.
+let unreadSeq = 0
 // Register the auth watcher exactly once for the session. useUnread() is
 // called from AppSidebar + CustomTabBar + messages page + every ChatThread
 // mount; without this guard each call stacked another watch(currentUser)
@@ -22,15 +26,16 @@ export function useUnread() {
   const { currentUser } = useAuth()
   const { t } = useI18n()
 
-  async function refreshUnreadCount() {
+  async function refreshUnreadCount(): Promise<{ mutedSet: Set<string> }> {
     if (!currentUser.value) {
       unreadCount.value = 0
       unreadConvIds.value = new Set()
       hasMutedUnread.value = false
       mutedConvIds.value = new Set()
-      return
+      return { mutedSet: new Set() }
     }
 
+    const seq = ++unreadSeq
     const uid = currentUser.value.id
     try {
       const { data: convs } = await supabase
@@ -39,10 +44,13 @@ export function useUnread() {
         .or(`buyer_id.eq.${uid},seller_id.eq.${uid}`)
 
       if (!convs || convs.length === 0) {
-        unreadCount.value = 0
-        unreadConvIds.value = new Set()
-        hasMutedUnread.value = false
-        return
+        if (seq === unreadSeq) {
+          unreadCount.value = 0
+          unreadConvIds.value = new Set()
+          hasMutedUnread.value = false
+          mutedConvIds.value = new Set()
+        }
+        return { mutedSet: new Set() }
       }
 
       const convIds = convs.map((c: any) => c.id)
@@ -51,7 +59,6 @@ export function useUnread() {
         const isMuted = (c.buyer_id === uid && c.is_muted_buyer) || (c.seller_id === uid && c.is_muted_seller)
         if (isMuted) muted.add(c.id)
       }
-      mutedConvIds.value = muted
 
       const { data: unreadMsgs } = await supabase
         .from('messages')
@@ -72,11 +79,17 @@ export function useUnread() {
           count++
         }
       }
-      unreadCount.value = count
-      unreadConvIds.value = unreadSet
-      hasMutedUnread.value = mutedWithUnread
+      // Last-issued refresh wins; a stale earlier response must not clobber it.
+      if (seq === unreadSeq) {
+        mutedConvIds.value = muted
+        unreadCount.value = count
+        unreadConvIds.value = unreadSet
+        hasMutedUnread.value = mutedWithUnread
+      }
+      return { mutedSet: muted }
     } catch {
-      unreadCount.value = 0
+      if (seq === unreadSeq) unreadCount.value = 0
+      return { mutedSet: mutedConvIds.value }
     }
   }
 
@@ -84,14 +97,17 @@ export function useUnread() {
     if (inboxUnsub || !currentUser.value) return
 
     const userId = currentUser.value.id
-    inboxUnsub = subscribeToUserInbox(userId, (newMsg: any) => {
-      refreshUnreadCount()
+    inboxUnsub = subscribeToUserInbox(userId, async (newMsg: any) => {
+      // Decide the toast from the freshly-fetched muted set, not the shared ref:
+      // for a brand-new conversation the ref isn't populated yet, so the old
+      // synchronous check would toast a just-muted thread on its first message.
+      const { mutedSet } = await refreshUnreadCount()
       // A new incoming message changes the conversations list (preview, sort,
       // or a brand-new conversation row); drop the SWR cache so the next
       // messages-tab onShow refetches instead of serving a stale list.
       invalidateConversations()
       const convId = newMsg?.conversation_id
-      if (convId && !mutedConvIds.value.has(convId)) {
+      if (convId && !mutedSet.has(convId)) {
         uni.showToast({ title: t('msg.newMessage'), icon: 'none', duration: 2000 })
       }
     })
