@@ -2041,7 +2041,11 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   /* Drop the base 480px centering — the sidebar rail (.has-sidebar in
      App.vue) already reserves the left column via padding-left, so
      centering the whole .page fights the rail. */
-  .page { padding-bottom: 0; height: auto; min-height: 100vh; overflow: visible; max-width: none; margin: 0; }
+  /* Keep the page viewport-locked on desktop so only the .feed scroll-view
+     scrolls — chrome (toolbar + tabs) stays pinned, matching the home feed.
+     (#8: this block used to opt out with height:auto/overflow:visible, which
+     let the whole document scroll.) */
+  .page { padding-bottom: 0; height: 100dvh; overflow: hidden; max-width: none; margin: 0; }
   /* Center the whole single column — search, tabs and feed share one
      640px reading width so the toolbar aligns with the posts. */
   .search-wrap, .feed-tabs, .feed { max-width: 640px; margin-left: auto; margin-right: auto; }
