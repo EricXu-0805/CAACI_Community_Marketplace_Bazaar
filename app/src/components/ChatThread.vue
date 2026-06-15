@@ -1066,6 +1066,13 @@ function openReschedule(m: Meetup) {
 }
 // #6a — either party reschedules an already-accepted meetup (new RPC).
 function openRescheduleAccepted(m: Meetup) {
+  // Mirror openMeetupSheet + the server-side guard (migration 063): a
+  // reschedule re-enters pending, so block it when a live pending proposal
+  // already exists rather than stacking two — give feedback before the RPC.
+  if (hasPendingMeetup.value) {
+    uni.showToast({ title: t('chat.meetupPendingExists'), icon: 'none' })
+    return
+  }
   resetMeetupSheet()
   meetupSpotInput.value = m.spot
   meetupSheet.value = { open: true, mode: 'reschedule-accepted', targetId: m.id }
