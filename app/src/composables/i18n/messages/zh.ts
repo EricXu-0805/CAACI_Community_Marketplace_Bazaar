@@ -401,6 +401,8 @@ const zh: Record<string, string> = {
   'login.confirmTitle': '请验证邮箱',
   'login.confirmHint': '我们已发送确认链接到你的邮箱，请点击链接激活账号后再回来登录。',
   'login.loginFail': '登录失败',
+  'login.invalidCredentials': '邮箱或密码错误',
+  'login.emailNotConfirmed': '请先验证邮箱后再登录（查收激活邮件）',
   'login.loginOk': '登录成功！',
   'login.forgot': '忘记密码？',
   'login.wechatQuick': '微信一键登录',
