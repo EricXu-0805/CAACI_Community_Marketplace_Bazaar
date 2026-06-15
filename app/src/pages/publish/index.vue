@@ -566,8 +566,11 @@ async function onDetectLocation() {
   form.location = result.location
   // #4: any successful GPS fix grants the "verified pickup" badge — not just
   // the 10 named safe spots (a geocoded street/city rarely matches one, so
-  // real GPS effectively never earned the badge before).
-  locationVerified.value = true
+  // real GPS effectively never earned the badge before). Defer past the
+  // form.location watcher (flush:'pre' microtask) that resets the flag to
+  // false, or it would clobber this — same hazard the edit.vue load path
+  // already works around with queueMicrotask.
+  queueMicrotask(() => { locationVerified.value = true })
 }
 
 /*
