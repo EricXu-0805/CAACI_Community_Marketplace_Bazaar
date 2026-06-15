@@ -65,9 +65,11 @@ export function useItems() {
     condition?: ItemCondition | null
     sort?: string
     listingType?: 'sell' | 'wanted'
+    location?: string
+    verifiedOnly?: boolean
     reset?: boolean
   } = {}) {
-    const { page = 0, category, search, userId, priceMin, priceMax, condition, sort, listingType, reset = false } = options
+    const { page = 0, category, search, userId, priceMin, priceMax, condition, sort, listingType, location, verifiedOnly, reset = false } = options
     const requestId = ++latestRequestId
 
     if (reset) {
@@ -145,6 +147,13 @@ export function useItems() {
         if (priceMin !== undefined && priceMin > 0) q = q.gte('price', priceMin)
         if (priceMax !== undefined && priceMax > 0) q = q.lte('price', priceMax)
         if (condition) q = q.eq('condition', condition)
+        // Filter location / verified-pickup server-side so pagination + hasMore
+        // reflect the filtered set. Client-only filtering over a paginated feed
+        // produced a premature "no results" while hasMore stayed true. (The
+        // search-RPC path has no such params, so filteredItems keeps a client
+        // fallback for search + verified.)
+        if (location) q = q.ilike('location', `%${location}%`)
+        if (verifiedOnly) q = q.eq('location_verified', true)
 
         const res = await q
         if (requestId !== latestRequestId) return
