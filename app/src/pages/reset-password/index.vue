@@ -20,6 +20,15 @@
             <image :src="showNewPw ? '/static/eye-off.svg' : '/static/eye.svg'" alt="" class="pw-toggle-icon" mode="aspectFit" />
           </view>
         </view>
+        <!-- Live password-policy checklist — same component as the signup tab
+             (#106) so the reset flow shows which rule fails instead of bouncing
+             off a server reject on submit. -->
+        <view class="pw-rules">
+          <view v-for="r in pwRules" :key="r.key" :class="['pw-rule', { ok: r.ok }]">
+            <text class="pw-rule-mark">{{ r.ok ? '✓' : '○' }}</text>
+            <text class="pw-rule-label">{{ t('login.pwRule.' + r.key) }}</text>
+          </view>
+        </view>
       </view>
       <view class="form-group">
         <text class="form-label">{{ t('resetPw.confirm') }}</text>
@@ -44,10 +53,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
-import { passwordValid } from '../../utils'
+import { passwordRules, passwordValid } from '../../utils'
 
 const { t } = useI18n()
 const { supabase } = useSupabase()
@@ -55,6 +64,7 @@ const { supabase } = useSupabase()
 const ready = ref(false)
 const errorMsg = ref('')
 const newPassword = ref('')
+const pwRules = computed(() => passwordRules(newPassword.value))
 const confirmPw = ref('')
 const showNewPw = ref(false)
 const showConfirmPw = ref(false)
@@ -465,6 +475,12 @@ function goLogin() {
 .pw-toggle-icon {
   width: 18px; height: 18px; display: block;
 }
+.pw-rules { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+.pw-rule { display: flex; align-items: center; gap: 4px; }
+.pw-rule-mark { font-size: 11px; color: var(--text-faint); line-height: 1; }
+.pw-rule-label { font-size: 11px; color: var(--text-muted); }
+.pw-rule.ok .pw-rule-mark { color: var(--success); }
+.pw-rule.ok .pw-rule-label { color: var(--success); }
 .submit-btn {
   width: 100%; height: 48px;
   background: var(--accent-primary); color: #fff;
