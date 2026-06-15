@@ -1380,3 +1380,22 @@ export async function detectImageMimeType(blob: Blob): Promise<string> {
   }
   return declared || 'application/octet-stream'
 }
+
+/*
+ * Password policy (QA #1). Must mirror the Supabase dashboard Auth policy
+ * (min 8 · lower + upper + digit) so the form never promises less than the
+ * server enforces and the user is told exactly which rule fails — instead of
+ * the raw English gotrue "weak_password" error. Keys map to login.pwRule.*.
+ */
+export type PasswordRuleKey = 'length' | 'lower' | 'upper' | 'digit'
+export function passwordRules(pw: string): { key: PasswordRuleKey; ok: boolean }[] {
+  return [
+    { key: 'length', ok: pw.length >= 8 },
+    { key: 'lower', ok: /[a-z]/.test(pw) },
+    { key: 'upper', ok: /[A-Z]/.test(pw) },
+    { key: 'digit', ok: /\d/.test(pw) },
+  ]
+}
+export function passwordValid(pw: string): boolean {
+  return passwordRules(pw).every((r) => r.ok)
+}
