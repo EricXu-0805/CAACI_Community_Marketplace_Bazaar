@@ -115,37 +115,44 @@ export function usePlaza() {
     }
     loading.value = true
     try {
-      // Pinned posts (CAACI 官方 announcements) always lead. Within that,
-      // 热门 ranks by engagement (likes → comments → recency); 最新 is
-      // chronological. PostgREST can't order by an expression, so 热门 is a
-      // likes→comments→recency tie-break ladder — close enough at campus scale.
-      let q = supabase
-        .from('posts')
-        .select(POST_SELECT)
-        .eq('status', 'active')
-        .order('is_pinned', { ascending: false })
-      if (sort === 'hot') {
-        q = q
-          .order('like_count', { ascending: false })
-          .order('comment_count', { ascending: false })
-          .order('created_at', { ascending: false })
-      } else {
-        q = q.order('created_at', { ascending: false })
-      }
-      q = q
-        .order('display_order', { foreignTable: 'post_items', ascending: true })
-        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
-
+      let data: any, error: any
       if (search && search.trim()) {
+        // Posts fuzzy search (migration 062): trigram match on content OR
+        // author nickname, ranked — so a person's name surfaces their posts
+        // (#11) and typos/partial words match (#12). The RPC sorts internally
+        // (pinned → rank → hot/recent → recency) and omits post_items chips.
         const terms = expandSearch(search)
-        const conditions = terms.map(term => {
-          const s = term.replace(/[%_]/g, '\\$&').replace(/[.,()]/g, '').slice(0, 100)
-          return `content.ilike.%${s}%`
+        const res = await supabase.rpc('search_posts_fuzzy', {
+          terms_in: terms,
+          sort_in: sort,
+          limit_in: PAGE_SIZE,
+          offset_in: page * PAGE_SIZE,
         })
-        q = q.or(conditions.join(','))
+        data = res.data; error = res.error
+      } else {
+        // Pinned posts (CAACI 官方 announcements) always lead. Within that,
+        // 热门 ranks by engagement (likes → comments → recency); 最新 is
+        // chronological. PostgREST can't order by an expression, so 热门 is a
+        // likes→comments→recency tie-break ladder — close enough at campus scale.
+        let q = supabase
+          .from('posts')
+          .select(POST_SELECT)
+          .eq('status', 'active')
+          .order('is_pinned', { ascending: false })
+        if (sort === 'hot') {
+          q = q
+            .order('like_count', { ascending: false })
+            .order('comment_count', { ascending: false })
+            .order('created_at', { ascending: false })
+        } else {
+          q = q.order('created_at', { ascending: false })
+        }
+        q = q
+          .order('display_order', { foreignTable: 'post_items', ascending: true })
+          .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+        const res = await q
+        data = res.data; error = res.error
       }
-
-      const { data, error } = await q
       if (requestId !== latestRequestId) return
 
       if (error) throw error
