@@ -597,6 +597,7 @@ const en: Record<string, string> = {
   'follow.unfollowed': 'Unfollowed',
   'nav.following': 'Following',
   'follow.emptyFeed': "Your following feed is empty — follow sellers to see their new listings here.",
+  'follow.emptyPeople': "You're not following anyone yet — follow sellers to find them here.",
 
   'savedSearch.title': 'Saved Searches',
   'savedSearch.hint': "We'll notify you when a new listing matches your saved search.",

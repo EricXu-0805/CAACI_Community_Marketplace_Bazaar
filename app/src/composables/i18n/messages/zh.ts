@@ -597,6 +597,7 @@ const zh: Record<string, string> = {
   'follow.unfollowed': '已取消关注',
   'nav.following': '关注',
   'follow.emptyFeed': '还没有关注的卖家。关注后,Ta 上新你会第一时间看到。',
+  'follow.emptyPeople': '还没有关注任何人。关注卖家后，可以在这里找到 Ta 们。',
 
   'savedSearch.title': '订阅搜索',
   'savedSearch.hint': '订阅后,新商品只要匹配你的关键词会第一时间通知你。',
