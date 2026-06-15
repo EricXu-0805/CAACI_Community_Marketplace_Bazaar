@@ -401,6 +401,8 @@ const en: Record<string, string> = {
   'login.confirmTitle': 'Check your email',
   'login.confirmHint': 'We sent a confirmation link to your email. Please click the link to activate your account, then come back to sign in.',
   'login.loginFail': 'Sign in failed',
+  'login.invalidCredentials': 'Email or password is incorrect',
+  'login.emailNotConfirmed': 'Please confirm your email before signing in (check your inbox)',
   'login.loginOk': 'Welcome back!',
   'login.forgot': 'Forgot password?',
   'login.wechatQuick': 'Sign in with WeChat',

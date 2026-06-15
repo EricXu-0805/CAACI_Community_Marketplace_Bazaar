@@ -124,7 +124,6 @@ export function useMessages() {
   const MESSAGE_PAGE = 200
 
   async function fetchMessages(conversationId: string) {
-    messages.value = []
     const { data, error } = await supabase
       .from('messages')
       .select(`${MESSAGE_FIELDS}, sender:profiles(id, nickname, avatar_url)`)
@@ -136,7 +135,18 @@ export function useMessages() {
     /* PostgREST embed 'sender:profiles(...)' resolves to a single row via
        the FK, but TS can't narrow that from our template-literal select —
        the as-unknown hop matches the pattern already used by fetchConversations. */
-    messages.value = ((data || []) as unknown as Message[]).reverse()
+    const fetched = ((data || []) as unknown as Message[]).reverse()
+    /* Merge by id instead of blind-assigning. `messages` is a module
+       singleton and the foreground-heal (#95) refetches while the live
+       subscription may push a new row mid-await — a plain reset-then-assign
+       would drop that row until the next heal. Keep only same-conversation
+       rows so navigating to a different thread still clears the old one. */
+    const byId = new Map<string, Message>()
+    for (const m of messages.value) if (m.conversation_id === conversationId) byId.set(m.id, m)
+    for (const m of fetched) byId.set(m.id, m)
+    messages.value = [...byId.values()].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    )
   }
 
   function clearMessages() {

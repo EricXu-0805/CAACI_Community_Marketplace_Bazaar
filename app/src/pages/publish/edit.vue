@@ -396,7 +396,9 @@ async function onDetectLocation() {
   }
   form.location = result.location
   // #4: any successful GPS fix grants the "verified pickup" badge (see publish).
-  locationVerified.value = true
+  // Defer past the form.location watcher that resets the flag — same as the
+  // load path at queueMicrotask above.
+  queueMicrotask(() => { locationVerified.value = true })
 }
 
 function onSpotChipTap(spot: CampusSpot) {

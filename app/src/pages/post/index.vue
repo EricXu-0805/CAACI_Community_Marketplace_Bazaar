@@ -509,6 +509,10 @@ function onCommentLongPress(c: PostComment) {
             try {
               await deleteComment(c.id, post.value.id)
               comments.value = comments.value.filter(x => x.id !== c.id)
+              // Mirror the add path (line ~597) — usePlaza.deleteComment only
+              // decrements the feed-list copy, not this detail page's post ref,
+              // so the header count would otherwise go stale.
+              if (post.value) post.value.comment_count = Math.max(0, (post.value.comment_count || 0) - 1)
             } catch (err: any) {
               uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none' })
             }
