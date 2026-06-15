@@ -72,12 +72,14 @@
           @click.stop="goToAttachedItem(pi.item.id)"
         >
           <image
-            :src="thumbUrl(pi.item.images?.[0], 'list') || '/static/placeholder.svg'"
+            v-if="thumbUrl(pi.item.images?.[0], 'list')"
+            :src="thumbUrl(pi.item.images?.[0], 'list')"
             class="aic-img"
             mode="aspectFill"
             lazy-load
             :alt="pi.item.title"
           />
+          <view v-else class="aic-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
           <view class="aic-body">
             <text class="aic-title">{{ localize(pi.item.title_i18n, pi.item.title) }}</text>
             <text class="aic-price">${{ pi.item.price }}</text>

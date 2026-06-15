@@ -21,7 +21,7 @@ export default async function handler(req) {
   if (id && SUPABASE_URL && SUPABASE_ANON_KEY) {
     try {
       const r = await fetch(
-        `${SUPABASE_URL}/rest/v1/items?id=eq.${encodeURIComponent(id)}&select=id,title,description,price,images&limit=1`,
+        `${SUPABASE_URL}/rest/v1/items?id=eq.${encodeURIComponent(id)}&select=id,title,description,price,images,listing_type&limit=1`,
         { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
       )
       const rows = await r.json()
@@ -29,8 +29,15 @@ export default async function handler(req) {
     } catch {}
   }
 
-  const title = item ? `${item.title} · $${item.price}` : 'Illini Market · 校园二手交易'
-  const desc = item ? (item.description?.slice(0, 160) || `$${item.price} on Illini Market`) : 'UIUC 校园二手交易平台'
+  // Price label: a wanted/ISO post's `price` is a budget (often 0) and a free
+  // sell item is price 0 — neither should render a bare "$0".
+  const priceLabel = !item ? ''
+    : item.listing_type === 'wanted'
+      ? (item.price > 0 ? `求购预算 $${item.price}` : '求购 · 预算面议')
+      : (item.price > 0 ? `$${item.price}` : '免费 Free')
+  const namePrefix = item && item.listing_type === 'wanted' ? '求购 / Looking for: ' : ''
+  const title = item ? `${namePrefix}${item.title} · ${priceLabel}` : 'Illini Market · 校园二手交易'
+  const desc = item ? (item.description?.slice(0, 160) || `${priceLabel} on Illini Market`) : 'UIUC 校园二手交易平台'
   const image = item?.images?.[0] || `${site}/static/placeholder.png`
   const canonical = item ? `${site}/#/pages/detail/index?id=${id}` : site
 
