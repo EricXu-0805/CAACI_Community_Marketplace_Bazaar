@@ -54,6 +54,18 @@ Sentry is fully optional. The app boots and works without DSN. Set the DSN
 on Vercel, and the 3 source-map vars on Vercel, to get full production
 debugging. **None** of these belong in CI — CI builds don't deploy.
 
+### Notification digest cron (`/api/notification-digest`, daily 23:00 UTC per `vercel.json`)
+
+| Var | Vercel | GH Actions | Local `.env` | If missing |
+|---|---|---|---|---|
+| `CRON_SECRET` | ✅ required | ❌ | ❌ | The digest route 401s on **every** run (incl. the Vercel cron) — no emails ever send. Vercel injects this header on scheduled invocations; the route compares it timing-safely. |
+| `BREVO_API_KEY` | ✅ required | ❌ | ❌ | Digest cannot send (Brevo API rejects). |
+| `DIGEST_TEST_EMAIL` | ✅ test-mode | ❌ | ❌ | If set, **every** digest is rerouted to this one address (real users never emailed) — the safe default for staging. |
+| `DIGEST_LIVE` | ✅ `'true'` to go live | ❌ | ❌ | Unset/≠`'true'` **and** no `DIGEST_TEST_EMAIL` → route refuses to send. Real users are emailed only when `DIGEST_LIVE=true` **and** `DIGEST_TEST_EMAIL` is cleared (two deliberate actions). |
+
+The digest is inert by default: it needs `CRON_SECRET` to run at all, and
+either `DIGEST_TEST_EMAIL` (test) or `DIGEST_LIVE=true` (live) to send anything.
+
 ### Auto-injected by Vercel (do nothing)
 
 | Var | Source | Used for |

@@ -25,6 +25,19 @@
     <link rel="apple-touch-icon" href="/static/app-icon-512.png" />
     <link rel="manifest" href="/static/manifest.webmanifest" />
     <title>Illini Market · UIUC 华人二手交易</title>
+    <!-- Open Graph / Twitter card so a base-link share (the root URL, not a
+         /share/:id deep link, which api/share.js already handles) renders a
+         real preview instead of a bare URL. Relative og:image resolves
+         against the page URL, so it survives a domain change. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Illini Market" />
+    <meta property="og:title" content="Illini Market · UIUC 华人二手交易" />
+    <meta property="og:description" content="UIUC campus marketplace — buy, sell, and chat with fellow Illini students. 华人二手交易 + 校园广场" />
+    <meta property="og:image" content="/static/app-icon-512.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Illini Market · UIUC 华人二手交易" />
+    <meta name="twitter:description" content="UIUC campus marketplace — buy, sell, and chat with fellow Illini students. 华人二手交易 + 校园广场" />
+    <meta name="twitter:image" content="/static/app-icon-512.png" />
     <!--preload-links-->
     <!--app-context-->
   </head>
