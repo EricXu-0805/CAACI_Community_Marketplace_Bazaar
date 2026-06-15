@@ -229,7 +229,7 @@
 
     <!-- 键盘联想 (P3): typed keyword tail → emoji quick-insert chips.
          Appends to the input; never replaces typed text. -->
-    <view v-if="emojiSuggestions.length" class="suggest-row">
+    <view v-if="emojiSuggestions.length" class="suggest-row" :style="kbLift">
       <view
         v-for="e in emojiSuggestions"
         :key="e"
@@ -242,7 +242,7 @@
       </view>
     </view>
 
-    <view class="input-bar">
+    <view class="input-bar" :style="kbLift">
       <view class="img-btn" role="button" :aria-label="t('a11y.pickImage')" :title="t('a11y.pickImage')" @click="onSendImage">
         <UIcon name="image" size="sm" color="text-secondary" />
       </view>
@@ -262,7 +262,8 @@
         auto-height
         :maxlength="-1"
         :focus="inputFocused"
-        :adjust-position="true"
+        :adjust-position="false"
+        :cursor-spacing="8"
         @confirm="onSend"
         @keydown="onComposerKeydown"
         @focus="emojiOpen = false"
@@ -284,7 +285,7 @@
 
     <!-- Offer composer (new offer + counter) -->
     <view v-if="offerSheet.open" class="offer-mask u-mask-in" @click="closeOfferSheet"></view>
-    <view :class="['offer-sheet', { open: offerSheet.open }]">
+    <view :class="['offer-sheet', { open: offerSheet.open }]" :style="sheetLift(offerSheet.open)">
       <view class="os-handle"></view>
       <text class="os-title">{{ offerSheet.mode === 'counter' ? t('chat.offerCounterTitle') : t('chat.offerTitle') }}</text>
       <text v-if="itemInfo" class="os-ref">{{ localize(itemInfo.title_i18n, itemInfo.title) }} · {{ t('chat.offerListPrice') }} {{ listingPriceLabel(itemInfo, t) }}</text>
@@ -306,7 +307,7 @@
 
     <!-- Meetup composer (propose + reschedule) -->
     <view v-if="meetupSheet.open" class="offer-mask u-mask-in" @click="closeMeetupSheet"></view>
-    <view :class="['offer-sheet', { open: meetupSheet.open }]">
+    <view :class="['offer-sheet', { open: meetupSheet.open }]" :style="sheetLift(meetupSheet.open)">
       <view class="os-handle"></view>
       <text class="os-title">{{ meetupSheet.mode !== 'new' ? t('chat.meetupRescheduleTitle') : t('chat.meetupTitle') }}</text>
       <text class="mt-label">{{ t('chat.meetupSpot') }}</text>
@@ -356,6 +357,7 @@ import { useUnread } from '../composables/useUnread'
 import { useI18n } from '../composables/useI18n'
 import { useModeration } from '../composables/useModeration'
 import { useLongPress } from '../composables/useLongPress'
+import { useKeyboardHeight } from '../composables/useKeyboardHeight'
 import { listingPriceLabel, friendlyErrorMessage } from '../utils'
 import { DIALOG_DANGER } from '../utils/dialogColors'
 import { captureException } from '../utils/sentry'
@@ -380,6 +382,15 @@ const { uploadOneImage, uploadOneVideo } = useItems()
 const { refreshUnreadCount } = useUnread()
 const { reportTarget, blockUser } = useModeration()
 const { isDark } = useTheme()
+
+// Soft-keyboard avoidance (mirrors the plaza composer): lift the footer +
+// the offer/meetup sheets above the keyboard so their inputs stay visible on
+// iOS H5 (where a bottom-anchored flex child sits behind the keyboard) and
+// mp-weixin. The composer textarea sets adjust-position=false so this transform
+// is the single source of lift — no double-jump on mp.
+const kb = useKeyboardHeight()
+const kbLift = computed(() => (kb.height.value ? { transform: `translateY(-${kb.height.value}px)` } : undefined))
+const sheetLift = (open: boolean) => (open && kb.height.value ? { transform: `translateY(-${kb.height.value}px)` } : undefined)
 
 /*
  * Theme-aware avatar fallback (v3 P1, spec §1.4).
@@ -1734,6 +1745,7 @@ function scrollToBottom() {
   background: var(--bg-elev-1); border-top: 0.5px solid var(--line-hair);
   max-width: 480px; margin: 0 auto; width: 100%; box-sizing: border-box;
   overflow-x: auto;
+  transition: transform 0.22s ease-out; will-change: transform;
 }
 .suggest-chip {
   width: 34px; height: 34px; border-radius: 50%;
@@ -1748,6 +1760,8 @@ function scrollToBottom() {
   display: flex; align-items: center; padding: 9px 14px;
   background: var(--bg-elev-1); border-top: 0.5px solid var(--line-hair); gap: 8px;
   padding-bottom: calc(9px + env(safe-area-inset-bottom));
+  /* Lifted above the soft keyboard via :style translateY (useKeyboardHeight). */
+  transition: transform 0.22s ease-out; will-change: transform;
 }
 .msg-input {
   flex: 1; min-height: 40px; max-height: 120px; background: var(--bg-subtle);
