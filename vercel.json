@@ -8,6 +8,7 @@
   "rewrites": [
     { "source": "/share/:id", "destination": "/api/share?id=:id" },
     { "source": "/share-post/:id", "destination": "/api/share-post?id=:id" },
+    { "source": "/robots.txt", "destination": "/static/robots.txt" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
