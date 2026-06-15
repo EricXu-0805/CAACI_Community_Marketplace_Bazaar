@@ -585,6 +585,8 @@ function getFilterParams() {
     condition: filterCondition.value || undefined,
     sort: sortBy.value,
     listingType: listingType.value,
+    location: filterLocation.value || undefined,
+    verifiedOnly: filterVerifiedOnly.value || undefined,
   }
 }
 
@@ -604,6 +606,9 @@ const filteredItems = computed(() => {
   // filters server-side via getFilterParams).
   result = result.filter(item => (item.listing_type || 'sell') === listingType.value)
 
+  // Location + verified-pickup now filter server-side on the non-search path
+  // (getFilterParams), so these are a no-op there; kept as the fallback for the
+  // search-RPC path, which has no location/verified params.
   if (filterLocation.value) {
     const loc = filterLocation.value.toLowerCase()
     result = result.filter(item => item.location.toLowerCase().includes(loc))
