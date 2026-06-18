@@ -214,6 +214,7 @@
         <input
           v-model="commentText"
           :placeholder="replyTo ? t('plaza.replyHint') : t('plaza.commentHint')"
+          :aria-label="replyTo ? t('plaza.replyHint') : t('plaza.commentHint')"
           class="input"
           confirm-type="send"
           :adjust-position="false"

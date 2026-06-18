@@ -76,6 +76,7 @@
             :key="p.id"
             class="follow-person u-rise"
             role="button"
+            :aria-label="p.nickname || t('app.user')"
             @click="goToFollowSeller(p.id)"
           >
             <image :src="p.avatar_url || defaultAvatarSrc" :alt="p.nickname || 'avatar'" class="fp-avatar" mode="aspectFill" />

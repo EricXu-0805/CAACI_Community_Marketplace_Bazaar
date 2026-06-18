@@ -13,6 +13,7 @@
         <input
           v-model="query"
           :placeholder="t('home.search')"
+          :aria-label="t('home.search')"
           class="sf-input"
           confirm-type="search"
           :focus="true"
