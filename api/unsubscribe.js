@@ -37,15 +37,18 @@ export default async function handler(req) {
   const url = new URL(req.url)
   const token = url.searchParams.get('t') || ''
 
-  // Generic confirmation regardless of outcome — never reveal whether the
-  // token matched a real user.
+  // Generic confirmation regardless of whether the token matched a real user —
+  // never reveal that. But a genuine DB/network failure must NOT masquerade as
+  // success, or the user is told "unsubscribed" while still getting mail.
   const done = () => page('已退订', "You're unsubscribed",
     '你将不再收到集市的邮件提醒。', "You won't receive Illini Market email reminders anymore.")
+  const fail = () => page('退订失败', 'Unsubscribe failed',
+    '请稍后重试，或在 App 设置中关闭邮件提醒。', 'Please try again later, or turn off email reminders in the app settings.')
 
   if (!UUID_RE.test(token) || !SUPABASE_URL || !SERVICE_KEY) return done()
 
   try {
-    await fetch(
+    const res = await fetch(
       `${SUPABASE_URL}/rest/v1/profiles?unsubscribe_token=eq.${encodeURIComponent(token)}`,
       {
         method: 'PATCH',
@@ -56,6 +59,11 @@ export default async function handler(req) {
         body: JSON.stringify({ email_digest_opt_out: true }),
       },
     )
-  } catch {}
+    // return=minimal makes a no-match PATCH still succeed (204, 0 rows updated),
+    // so a non-2xx genuinely signals a real failure — surface it, don't fake success.
+    if (!res.ok) return fail()
+  } catch {
+    return fail()
+  }
   return done()
 }

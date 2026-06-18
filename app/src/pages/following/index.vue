@@ -27,6 +27,7 @@
           :key="p.id"
           class="person-row u-rise"
           role="button"
+          :aria-label="p.nickname || t('app.user')"
           @click="goSeller(p.id)"
         >
           <image :src="p.avatar_url || defaultAvatarSrc" :alt="p.nickname || 'avatar'" class="pr-avatar" mode="aspectFill" />

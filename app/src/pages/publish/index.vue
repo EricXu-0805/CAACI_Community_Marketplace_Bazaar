@@ -58,7 +58,7 @@
         <text class="label">{{ form.listingType === 'wanted' ? t('publish.budget') : t('publish.price') }}</text>
         <view class="price-input">
           <text class="currency">$</text>
-          <input v-model="form.price" type="digit" :placeholder="form.listingType === 'wanted' ? t('publish.budgetPlaceholder') : '0.00'" class="form-input" />
+          <input v-model="form.price" type="digit" :placeholder="form.listingType === 'wanted' ? t('publish.budgetPlaceholder') : '0.00'" :aria-label="form.listingType === 'wanted' ? t('publish.budget') : t('publish.price')" class="form-input" />
         </view>
       </view>
 
@@ -111,7 +111,7 @@
 
       <view class="form-group row">
         <text class="label">{{ t('publish.location') }}</text>
-        <input v-model="form.location" :placeholder="t('publish.locationPlaceholder')" class="form-input flex-input" />
+        <input v-model="form.location" :placeholder="t('publish.locationPlaceholder')" :aria-label="t('publish.location')" class="form-input flex-input" />
       </view>
 
       <scroll-view scroll-x class="spot-row">
