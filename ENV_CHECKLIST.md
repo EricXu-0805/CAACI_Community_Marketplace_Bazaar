@@ -73,6 +73,53 @@ either `DIGEST_TEST_EMAIL` (test) or `DIGEST_LIVE=true` (live) to send anything.
 | `VERCEL_GIT_COMMIT_SHA` | Vercel build env | `VITE_RELEASE` derivation in `vite.config.ts` |
 | `VERCEL_ENV` | Vercel build env | (currently unused; available if needed) |
 
+### Supabase Auth — manual dashboard setup (not env vars)
+
+These live in the Supabase dashboard, not Vercel, so they're easy to forget.
+A wrong Redirect URL silently breaks password reset + OAuth on day 1.
+
+| Setting | Where (Supabase dashboard) | Value |
+|---|---|---|
+| Site URL | Auth → URL Configuration | `https://caaci-community-marketplace-bazaar.vercel.app` |
+| Redirect URLs | Auth → URL Configuration | add `https://caaci-community-marketplace-bazaar.vercel.app/**` |
+| Email confirmation | Auth → Providers → Email | **ON** — signup returns no session until confirmed; the app expects this |
+| Password policy | Auth → Policies | min 8 + upper/lower/digit; **leaked-password (HIBP) OFF** (kept off deliberately — see QA round 2) |
+
+Verify reset works end-to-end before launch (use a `+alias`, never a real user):
+
+```bash
+curl -X POST https://lfhvgprfphyfvhidegum.supabase.co/auth/v1/recover \
+  -H "apikey: <ANON_KEY>" -H "Content-Type: application/json" \
+  -d '{"email":"eric.guoyi.xu+resettest@gmail.com"}'
+# Click the link in the email → should land on the app with ?code= and let you set a new password.
+```
+
+## Pre-launch checklist (Fall 2026 beta)
+
+Before inviting the first cohort. Details for each var are in the tables above.
+
+**Vercel → Environment Variables (Production + Preview):**
+
+- [ ] `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` — required (app white-screens without)
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` — required (admin / account-delete / digest)
+- [ ] `VITE_SENTRY_DSN` + `SENTRY_AUTH_TOKEN` + `SENTRY_ORG` + `SENTRY_PROJECT` — recommended (error visibility + readable stack traces)
+- [ ] `CRON_SECRET` (`openssl rand -base64 32`) + `BREVO_API_KEY` — required only if the digest is running
+- [ ] `OPENAI_API_KEY` — optional (content moderation; safe to skip for a soft launch)
+
+**Supabase dashboard (manual, above):**
+
+- [ ] Site URL + Redirect URLs set, reset-password tested end-to-end
+- [ ] Email confirmation ON, password policy confirmed
+
+**Digest — keep OFF for the beta unless you've prepped it.** Going live later is
+two deliberate actions: clear `DIGEST_TEST_EMAIL`, set `DIGEST_LIVE=true`. Before
+flipping: verify the Brevo sender domain (DKIM/SPF) or mail lands in spam, and
+note the free-plan **300 sends/day** cap. (Digest email is currently zh-primary —
+add per-user locale first; tracked in the launch backlog.)
+
+**After deploy:** run the [Diagnostic](#diagnostic) block — expect app 200, admin 200,
+and Sentry receiving events tagged with the deploy's 7-char SHA.
+
 ## Where to manage
 
 - **Vercel envs**: Project Settings → Environment Variables.

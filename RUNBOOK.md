@@ -220,6 +220,17 @@ commit message.
    → Sentry → Issue → "Ignore" with `Forever`.
 7. If it's real → file a bug, link the Sentry issue, fix per [Hotfix deploy](#hotfix-deploy).
 
+### Creating the alert rule (do this once, before launch)
+
+The "alert just fired" flow above assumes a rule exists. Errors are captured
+without one, but nobody is told — you'd only find them by opening the dashboard.
+
+1. Sentry → Alerts → Create Alert → "Issues".
+2. Add condition: an issue is seen by more than **10 events in 5 minutes** (tune later).
+3. Add a second rule: "A new issue is created" → catches first-seen regressions right after a deploy.
+4. Action: notify your email (free tier supports it). Add Slack/Discord later if you want faster response.
+5. Save. That's the whole ask for a beta — no on-call rota needed.
+
 ### Source maps not working
 
 Symptom: stack traces are minified (`at e (assets/index-DRvVKW3T.js:1:54312)`).
@@ -306,6 +317,37 @@ When a migration is broken in prod, "fix forward" almost always beats
    actively broken).
 
 ---
+
+## Launch operations (beta)
+
+> A campus beta is small. This is the minimum to not get surprised — not an
+> enterprise on-call rota.
+
+### Before you invite the first cohort
+
+- [ ] Run the pre-launch checklist in `ENV_CHECKLIST.md` (env vars + Supabase auth + reset test).
+- [ ] Mint at least one admin token ([Admin token mint](#admin-token-mint)); store it in a password manager.
+- [ ] Create the [Sentry alert rule](#creating-the-alert-rule-do-this-once-before-launch).
+- [ ] Seed the marketplace so the first visitor doesn't hit an empty feed — a dozen real listings across the main categories. An empty market reads as dead.
+
+### Daily during week 1
+
+- [ ] Sentry: any new issue since yesterday? (the alert pings you; this is the backstop.)
+- [ ] Admin dashboard → Reports: clear the abuse/spam queue.
+- [ ] If the digest is live: Vercel → Cron → confirm the 23:00 UTC run was green.
+
+### If it breaks
+
+- App down / bad deploy → [Deploy rollback](#deploy-rollback) (Vercel: promote the last green deploy — alias flip, no rebuild).
+- A user reports a broken account → [user repair](#a-specific-user-reports-their-account-is-broken).
+- Spam spike → suspend via the admin dashboard; the reason lands in `admin_audit_log`.
+
+### Rollout shape
+
+Beta cohort first (a known, friendly group), then widen. There's **no code flag**
+to flip — any signup can use the app, so "beta" is simply how many people you've
+told. Keep it small until week-1 reports are quiet, then widen by one invite batch
+at a time.
 
 ## Updates to this file
 
