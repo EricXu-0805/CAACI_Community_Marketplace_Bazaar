@@ -351,6 +351,7 @@
                     mode="aspectFill"
                   />
                   <text class="seller-nick">{{ item.profile?.nickname || t('app.user') }}</text>
+                  <text v-if="(item.profile?.rating_count || 0) > 0" class="seller-rating">★{{ Number(item.profile?.avg_rating || 0).toFixed(1) }}</text>
                   <text class="card-time">{{ formatTime(item.created_at) }}</text>
                 </view>
                 <view class="card-fav">
@@ -1426,6 +1427,7 @@ function goPublish() {
 .card-seller { display: flex; align-items: center; gap: 5px; flex: 1; min-width: 0; }
 .seller-pic { width: 16px; height: 16px; border-radius: 50%; background: var(--bg-subtle); flex-shrink: 0; }
 .seller-nick { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seller-rating { font-size: 11px; color: var(--brand); font-weight: 600; flex-shrink: 0; }
 .card-fav { display: flex; align-items: center; gap: 4px; flex-shrink: 0; padding: 4px 2px; }
 .heart-img {
   width: 18px; height: 18px; cursor: pointer;
