@@ -612,7 +612,7 @@ onLoad(async (options) => {
     ])
 
     if (!alive) return
-    favCount.value = favCountRes
+    if (favCountRes !== null) favCount.value = favCountRes
     alreadyRated.value = !!ratedRes
     canRate.value = !!convRes?.data
     sellerReviews.value = reviewsRes || []
