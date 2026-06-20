@@ -64,13 +64,18 @@ export function useFavorites() {
     }
   }
 
-  async function getFavoriteCount(itemId: string): Promise<number> {
+  async function getFavoriteCount(itemId: string): Promise<number | null> {
     const { count, error } = await supabase
       .from('favorites')
       .select('*', { count: 'estimated', head: true })
       .eq('item_id', itemId)
 
-    if (error) return 0
+    // null (not 0) on error so the caller can keep the prior count instead of
+    // flashing "0 wants" on a transient hiccup. Mirrors loadMyFavorites' posture.
+    if (error) {
+      captureException(error, { tags: { source: 'getFavoriteCount' } })
+      return null
+    }
     return count || 0
   }
 
