@@ -15,6 +15,9 @@
       </view>
     </view>
     <scroll-view class="content" scroll-y :show-scrollbar="false">
+      <view class="disclaimer">
+        <text class="disclaimer-text">{{ disclaimer }}</text>
+      </view>
       <text class="body">{{ body }}</text>
       <view class="contact-row" @click="onContactEmail">
         <text class="contact-label">{{ t('legal.contactLabel') }}</text>
@@ -59,6 +62,13 @@ const body = computed(() => {
   if (docType.value === 'guidelines') return zh ? GUIDELINES_ZH : GUIDELINES_EN
   return zh ? TERMS_ZH : TERMS_EN
 })
+
+// Operator + liability disclaimer, shown above every legal tab. Page chrome,
+// not part of the consent-versioned terms/privacy bodies, so it never triggers
+// re-consent. Contact email lives in the contact-row below (not duplicated).
+const disclaimer = computed(() => lang.value === 'zh'
+  ? '香槟集市是 Guoyi (Eric) Xu 运营的社区项目，面向 UIUC 学生的点对点二手集市。平台不持有、不寄送、不担保任何商品，也不保证卖家或商品的真实性、品质与安全；交易与线下面交的风险由买卖双方自行承担。'
+  : 'Illini Market is a community project operated by Guoyi (Eric) Xu — a peer-to-peer marketplace for UIUC students. We do not hold, ship, or guarantee any item, and make no warranty as to the authenticity, quality, or safety of any listing or seller. You transact and meet in person at your own risk.')
 
 onLoad((options) => {
   const t = options?.type
@@ -138,6 +148,11 @@ function onContactEmail() {
   -webkit-hyphens: auto;
   hyphens: auto;
 }
+.disclaimer {
+  margin-bottom: 18px; padding: 12px 14px; border-radius: 10px;
+  background: var(--bg-elev-2); border-left: 3px solid var(--accent-primary);
+}
+.disclaimer-text { display: block; font-size: 12.5px; color: var(--text-secondary); line-height: 1.65; }
 .contact-row {
   margin-top: 20px; padding: 16px; border-radius: 12px;
   background: var(--bg-elev-2); cursor: pointer;
