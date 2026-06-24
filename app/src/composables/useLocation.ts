@@ -147,13 +147,22 @@ export function useLocation() {
   async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
     try {
       /*
-       * Nominatim's usage policy wants a contact in the request; browsers
-       * can't set User-Agent, so the `email=` query param is the browser-safe
-       * way to identify the client and avoid the 403/block that made every
-       * lookup "geocode_failed" (real-device QA #4). Project email, not a
-       * personal one.
+       * QA6 #12 — go through our own /api/geocode proxy instead of hitting
+       * Nominatim from the browser. A direct browser call failed three ways:
+       * the CSP connect-src blocks nominatim.openstreetmap.org, Nominatim 403s
+       * requests without a User-Agent (browsers can't set one), and it sends
+       * no CORS header. The proxy is same-origin ('self'), sets a compliant UA
+       * server-side, and returns the raw `address` object so the cascade below
+       * is unchanged. mp-weixin is a deferred target with no same-origin proxy,
+       * so it keeps the direct call (the `email=` param is its best effort).
        */
-      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1&email=newsletter@news.caaciorg.com`
+      let url = ''
+      // #ifdef H5
+      url = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/geocode?lat=${lat}&lon=${lng}`
+      // #endif
+      // #ifndef H5
+      url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1&email=newsletter@news.caaciorg.com`
+      // #endif
 
       const data: any = await new Promise((resolve, reject) => {
         uni.request({
