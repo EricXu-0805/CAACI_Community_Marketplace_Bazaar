@@ -49,6 +49,19 @@ for (const theme of ['light', 'dark'] as const) {
   })
 }
 
+// An expired/invalid email link (signup-confirm or recovery) redirects to
+// `${origin}/#error=...&error_code=otp_expired` with no code. App.vue must
+// rescue the root case to login instead of leaving an unroutable blank screen.
+test('expired auth email link → login, not a blank screen', async ({ page }) => {
+  const errs = attachConsoleCollector(page)
+  await page.addInitScript(() => localStorage.setItem('welcomed', '1'))
+  await page.goto('/#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired', { waitUntil: 'networkidle' })
+  await page.waitForTimeout(1500)
+  expect(page.url(), 'error hash should be cleared').not.toContain('error_code')
+  await expect(page.locator('uni-input input').first(), 'should land on a real page (login inputs)').toBeVisible()
+  expect(errs, 'console errors during error-link recovery').toEqual([])
+})
+
 /**
  * Core logged-in flow — opt-in. Set SMOKE_EMAIL + SMOKE_PASSWORD to run it
  * (kept out of the repo). Exercises the highest-value write surfaces.
