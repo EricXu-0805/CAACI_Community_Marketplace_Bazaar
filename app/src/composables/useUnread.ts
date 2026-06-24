@@ -3,7 +3,7 @@ import { useSupabase } from './useSupabase'
 import { useAuth } from './useAuth'
 import { useI18n } from './useI18n'
 import { subscribeToUserInbox } from './useRealtimeFallback'
-import { invalidateConversations } from './useMessages'
+import { invalidateConversations, applyIncomingMessage } from './useMessages'
 import { useModeration } from './useModeration'
 
 const unreadCount = ref(0)
@@ -116,6 +116,11 @@ export function useUnread() {
       // or a brand-new conversation row); drop the SWR cache so the next
       // messages-tab onShow refetches instead of serving a stale list.
       invalidateConversations()
+      // ...and live-reorder the already-loaded list so the active thread jumps
+      // to the top of its group while the user is looking at it (QA6 #4). A
+      // brand-new conversation (not yet in the list) is covered by the
+      // invalidation + next-onShow refetch above.
+      applyIncomingMessage(newMsg, userId)
       const convId = newMsg?.conversation_id
       // refreshUnreadCount above already ran ensureLoaded(), so blockedIds is
       // warm — suppress the toast for a blocked sender (B12).

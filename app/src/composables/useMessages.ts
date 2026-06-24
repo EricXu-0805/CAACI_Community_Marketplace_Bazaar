@@ -51,6 +51,44 @@ export function invalidateConversations() {
   conversationsFetchedFor = null
 }
 
+/*
+ * Conversation-list ordering: pinned-first, then newest-message-first.
+ * Extracted so the realtime incoming-message path (applyIncomingMessage)
+ * re-sorts with the exact same comparator the initial fetch uses.
+ */
+function sortConversationsInPlace(list: Conversation[], userId: string) {
+  list.sort((a, b) => {
+    const aPinned = (a.buyer_id === userId && a.is_pinned_buyer) || (a.seller_id === userId && a.is_pinned_seller)
+    const bPinned = (b.buyer_id === userId && b.is_pinned_buyer) || (b.seller_id === userId && b.is_pinned_seller)
+    if (aPinned !== bPinned) return aPinned ? -1 : 1
+    return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
+  })
+}
+
+/*
+ * Live-reorder the loaded conversation list when a message arrives over
+ * realtime (QA6 #4 — WeChat-style: the conversation jumps to the top of its
+ * pinned/unpinned group). Called from useUnread's inbox subscription. Only
+ * mutates a conversation already in the list; a brand-new conversation row is
+ * handled by the SWR invalidation + next-onShow refetch. The list is a module
+ * singleton, so this reflects reactively wherever it's rendered. created_at
+ * falls back to now() — the message just arrived, so "now" is the correct sort
+ * key even when the realtime payload omits the timestamp.
+ */
+export function applyIncomingMessage(
+  newMsg: { conversation_id?: string; content?: string; message_type?: string; created_at?: string } | null,
+  userId: string,
+) {
+  if (!newMsg?.conversation_id || !userId) return
+  const conv = conversations.value.find(c => c.id === newMsg.conversation_id) as any
+  if (!conv) return
+  conv.last_message_at = newMsg.created_at || new Date().toISOString()
+  if (typeof newMsg.content === 'string') conv.last_message_preview = newMsg.content
+  if (newMsg.message_type) conv.last_message_type = newMsg.message_type
+  sortConversationsInPlace(conversations.value, userId)
+  conversations.value = [...conversations.value]
+}
+
 export function useMessages() {
   const { supabase } = useSupabase()
   const { t, lang } = useI18n()
@@ -84,24 +122,38 @@ export function useMessages() {
         convs = convs.filter(c => !blockedIds.value.has(c.buyer_id) && !blockedIds.value.has(c.seller_id))
       }
 
-      convs.sort((a, b) => {
-        const aPinned = (a.buyer_id === userId && a.is_pinned_buyer) || (a.seller_id === userId && a.is_pinned_seller)
-        const bPinned = (b.buyer_id === userId && b.is_pinned_buyer) || (b.seller_id === userId && b.is_pinned_seller)
-        if (aPinned !== bPinned) return aPinned ? -1 : 1
-        return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
-      })
       if (convs.length > 0) {
+        /*
+         * Patch each conversation's last-message preview AND timestamp from the
+         * actual newest message (QA6 #3). conversations.last_message_at is
+         * trigger-maintained but was drifting to the FIRST message's time in
+         * the field, so the real message row is the source of truth for both
+         * the displayed "Nd ago" and the sort key. One descending query +
+         * client dedupe (first row per conversation = newest) gets the
+         * timestamp the get_last_messages RPC doesn't return; RLS already
+         * scopes messages to the participant. The 600 cap is a safety bound —
+         * a conversation past it keeps its column value as a fallback.
+         */
         const ids = convs.map(c => c.id)
-        const { data: lastMsgs } = await supabase.rpc('get_last_messages', { conv_ids: ids })
-        if (lastMsgs) {
-          const msgMap = new Map((lastMsgs as any[]).map(m => [m.conversation_id, m]))
-          for (const c of convs) {
-            const lm = msgMap.get(c.id)
-            if (lm) (c as any).last_message_preview = lm.content
-            if (lm) (c as any).last_message_type = lm.message_type
-          }
+        const { data: recent } = await supabase
+          .from('messages')
+          .select('conversation_id, content, message_type, created_at')
+          .in('conversation_id', ids)
+          .order('created_at', { ascending: false })
+          .limit(600)
+        const seen = new Set<string>()
+        const convById = new Map(convs.map(c => [c.id, c]))
+        for (const m of (recent || []) as any[]) {
+          if (seen.has(m.conversation_id)) continue
+          seen.add(m.conversation_id)
+          const c = convById.get(m.conversation_id) as any
+          if (!c) continue
+          c.last_message_preview = m.content
+          c.last_message_type = m.message_type
+          if (m.created_at) c.last_message_at = m.created_at
         }
       }
+      sortConversationsInPlace(convs, userId)
       conversations.value = convs
       conversationsFetchedAt = Date.now()
       conversationsFetchedFor = userId
