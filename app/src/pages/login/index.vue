@@ -145,7 +145,6 @@ import { useAuth } from '../../composables/useAuth'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 import { useTheme } from '../../composables/useTheme'
-import { BASE_URL } from '../../config/runtime'
 import { passwordRules, passwordValid } from '../../utils'
 import UIcon from '../../components/UIcon.vue'
 
@@ -186,49 +185,19 @@ async function onForgotPassword() {
     return
   }
   /*
-   * redirectTo MUST point at the actual reset-password page, not at the
-   * site root. Supabase appends ?code=<pkce> to redirectTo and bounces
-   * the user there after token verify; if the bounce lands on '/' the
-   * user is silently logged in, supabase-js fires PASSWORD_RECOVERY
-   * during that intermediate root-page load (where no recovery
-   * listener is attached yet), and by the time the user manually
-   * navigates to /pages/reset-password the recovery context is gone
-   * — updateUser({password}) then 400s with 'Current password
-   * required'. See evidence in _ai_notes/HOTFIX_2026-04-25.md.
-   *
-   * The hash-route target (/#/pages/reset-password/index) is in the
-   * Supabase Redirect URL allow-list (user-confirmed via dashboard).
+   * QA6 #1: reset now emails a 6-digit code (the PKCE magic link was
+   * pre-fetched by mail scanners and showed "expired" even on an instant
+   * click). Trigger the recovery email, then go to the reset page carrying
+   * the email so the user types the code + new password there. No redirectTo
+   * needed — with the "Reset Password" template switched to {{ .Token }} the
+   * email contains the code, not a link.
    */
-  let redirectTo: string | undefined
-  // #ifdef H5
-  if (typeof window !== 'undefined') redirectTo = `${window.location.origin}/#/pages/reset-password/index`
-  // #endif
-  // #ifndef H5
-  redirectTo = `${BASE_URL}/#/pages/reset-password/index`
-  // #endif
-  console.log('[reset-pw-debug] sending reset email, redirectTo:', redirectTo)
-  const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, { redirectTo })
+  const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail)
   if (error) {
-    console.warn('[reset-pw-debug] resetPasswordForEmail error:', error)
-    uni.showModal({
-      title: t('login.resetFailTitle'),
-      content: error.message,
-      showCancel: false,
-    })
-  } else {
-    console.log('[reset-pw-debug] reset email request OK (delivery is async)')
-    /*
-     * Supabase's resetPasswordForEmail returns success even if the email
-     * is queued (or rate-limited internally). The user should be told
-     * explicitly that this can take a moment AND to check their spam
-     * folder, since we can't see whether the email actually arrived.
-     */
-    uni.showModal({
-      title: t('login.resetSent'),
-      content: t('login.resetHint'),
-      showCancel: false,
-    })
+    uni.showModal({ title: t('login.resetFailTitle'), content: error.message, showCancel: false })
+    return
   }
+  uni.navigateTo({ url: `/pages/reset-password/index?email=${encodeURIComponent(trimmedEmail)}` })
 }
 
 function goLegal(type: string) {
