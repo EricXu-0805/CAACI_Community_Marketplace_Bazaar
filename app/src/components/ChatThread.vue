@@ -272,6 +272,7 @@
       />
       <view :class="['send-btn', { disabled: !inputText.trim() || sending }]" role="button" :aria-label="t('a11y.sendMessage')" :title="t('a11y.sendMessage')" @click="onSend">
         <UIcon name="send" size="sm" color="#fff" />
+        <text class="send-label">{{ t('chat.send') }}</text>
       </view>
     </view>
     <ChatEmojiPanel :open="emojiOpen" @pick="onPickEmoji" @pick-sticker="onPickSticker" />
@@ -1769,11 +1770,14 @@ function scrollToBottom() {
   padding: 9px 16px; line-height: 22px; font-size: 15px; color: var(--text-primary);
 }
 .send-btn {
-  width: 40px; height: 40px; background: var(--accent-primary);
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
+  height: 40px; padding: 0 14px; background: var(--accent-primary);
+  border-radius: 20px;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
   cursor: pointer; flex-shrink: 0;
   &.disabled { opacity: 0.25; pointer-events: none; }
   &:active { opacity: 0.7; }
 }
+/* Labelled pill (QA6 #6): the bare paper-plane icon wasn't obvious as the
+   send action; pairing it with a 发送/Send text makes the affordance clear. */
+.send-label { font-size: 14px; font-weight: 600; color: #fff; line-height: 1; }
 </style>
