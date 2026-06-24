@@ -1702,6 +1702,14 @@ button:focus-visible,
 .u-glass--hair-b { border-bottom: 0.5px solid rgba(40, 30, 20, 0.07); }
 .u-glass--hair-t { border-top: 0.5px solid rgba(40, 30, 20, 0.07); }
 
+/* QA6 #11 — app-wide horizontal-scroll lock. `clip` (not `hidden`) so .page
+   never becomes a scroll container — `hidden` flips overflow-y to `auto` and
+   breaks viewport-relative position:sticky chrome. Pages with fixed-position
+   children (e.g. saved-searches' FAB + sheets) could otherwise be panned
+   sideways, clipping the header. Scoped horizontal scroll-views (the category
+   rail etc.) have their own scroll context and are unaffected. */
+page, .page { overflow-x: clip; }
+
 [data-theme="dark"] .u-glass {
   /* #ifdef H5 */
   background: rgba(var(--surface-rgb), 0.46);

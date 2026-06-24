@@ -1057,7 +1057,9 @@ function goPublish() {
 .feed-mode {
   flex-shrink: 0;
   display: flex; gap: 6px;
-  padding: 4px 16px 8px;
+  /* QA6 #5 — the On sale / Wanted toggle sat too close to the search bar.
+     A little more top breathing room (desktop bumps further, below). */
+  padding: 10px 16px 8px;
   background: var(--surface);
 }
 .fm-seg {
@@ -1314,7 +1316,7 @@ function goPublish() {
 }
 
 /* ========== Feed ========== */
-.feed { flex: 1; min-height: 0; padding-bottom: 76px; }
+.feed { flex: 1; min-height: 0; padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
 
 /* ========== Waterfall ========== */
 .waterfall { display: flex; padding: 10px 10px 54px; gap: 10px; }
@@ -1560,6 +1562,7 @@ function goPublish() {
   }
   .home-desktop-tools .search-field { flex: 1; min-width: 0; }
 
+  .feed-mode { padding-top: 14px; }
   .cat-bar { padding: 20px 24px 12px; }
   .pill { padding: 7px 20px; font-size: 14px; height: 32px; }
 

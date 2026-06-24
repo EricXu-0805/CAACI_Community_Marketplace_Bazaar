@@ -10,7 +10,7 @@
       3. FAB sits on -14px margin with a 3px parchment-colored ring
          so it reads as embedded IN the paper, not glued on top.
   -->
-  <view class="tabbar u-glass">
+  <view class="tabbar">
     <!--
       Icon rendering is split per target (P2b): H5 uses the v3 UIcon
       registry (regular at rest, filled + ink when active). mp-weixin
@@ -128,16 +128,16 @@ function go(url: string) { uni.switchTab({ url }) }
  * Labels use 0.06em letter-spacing to breathe.
  */
 .tabbar {
-  display: none; position: fixed; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); left: 50%;
-  transform: translateX(-50%);
-  width: calc(100% - 28px); max-width: 430px;
-  height: 62px;
-  /* Floating rounded glass pill — content scrolls under + around it, so the
-     blur (from .u-glass) actually has something to refract. Detached from the
-     screen edge by the bottom offset + side insets; the lift shadow comes from
-     .u-glass. */
-  border-radius: 26px;
-  border: 0.5px solid rgba(40, 30, 20, 0.08);
+  /* QA6 #10 — "continent, not island". Was a floating translucent pill
+     (width: calc(100% - 28px) + 26px radius + .u-glass blur): the side gaps
+     and translucency let page content (OBO / 接受买家议价) bleed through
+     while scrolling — the "plastic" feel. Now a solid, opaque bar flush to
+     all three bottom edges, so nothing can leak around or through it. */
+  display: none; position: fixed; bottom: 0; left: 0; right: 0;
+  width: 100%;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--surface);
+  border-top: 0.5px solid var(--border-hair);
   z-index: 999; align-items: flex-start; justify-content: space-around;
   box-sizing: border-box;
 }
