@@ -255,14 +255,19 @@
             </view>
           </view>
 
-          <!-- Inline comments expansion (D1 Strategy B: single-active accordion).
-               @click.stop on root + every interactive child blocks the post-card
-               body's goPostDetail navigation handler (post-tappable @click). -->
-          <view v-if="commentingPost?.id === post.id" class="comments-inline" @click.stop>
-            <view class="ci-count-label">
-              <text>{{ t('plaza.commentCount', { count: comments.length }) }}</text>
+          <!-- Comment sheet (QA6 #7, Zhihu-style). Rendered inside the active
+               post's card but positioned `fixed` as a bottom sheet over a
+               scrim, instead of expanding inline mid-card (the old input that
+               "appeared out of nowhere"). State (comments/replyTo/...) is all
+               page-level so a single block per active post is correct.
+               @click.stop blocks the post-card goPostDetail handler. -->
+          <view v-if="commentingPost?.id === post.id" class="comment-mask u-mask-in" @click.stop="closeComments"></view>
+          <view v-if="commentingPost?.id === post.id" class="comment-sheet" @click.stop :style="{ transform: `translateY(-${kb.height}px)` }">
+            <view class="cmt-header">
+              <text class="cmt-htitle">{{ t('plaza.commentCount', { count: comments.length }) }}</text>
+              <view class="as-close" role="button" :aria-label="t('a11y.close')" @click.stop="closeComments"><view class="cs-x"></view></view>
             </view>
-
+            <scroll-view class="cmt-scroll" scroll-y>
             <view v-if="loadingComments && comments.length === 0" class="ci-loading">
               <text>{{ t('home.loading') }}</text>
             </view>
@@ -347,6 +352,8 @@
                 </view>
               </template>
             </template>
+            <view v-if="!loadingComments && comments.length > 0" class="cmt-end"><text>{{ t('plaza.noMoreComments') }}</text></view>
+            </scroll-view>
 
             <view v-if="replyTo" class="ci-reply-bar">
               <text class="ci-reply-label">{{ t('plaza.replyingTo') }} @{{ replyTo.profile?.nickname || t('app.user') }}</text>
@@ -371,10 +378,6 @@
               <view :class="['ci-send', { disabled: !commentText.trim() || commentSubmitting }]" role="button" :aria-label="t('a11y.sendMessage')" @click.stop="onSubmitComment">
                 <text>{{ replyTo ? t('plaza.reply') : t('plaza.comment') }}</text>
               </view>
-            </view>
-
-            <view class="ci-collapse-link" role="button" :aria-label="t('plaza.collapseComments')" @click.stop="closeComments">
-              <text class="ci-collapse-text">{{ t('plaza.collapseComments') }}</text>
             </view>
           </view>
         </view>
@@ -401,7 +404,7 @@
           v-model="composerText"
           :placeholder="t('plaza.postHint')"
           class="comp-textarea"
-          :adjust-position="true"
+          :adjust-position="false"
           :auto-height="true"
           :focus="composerFocused"
           maxlength="2000"
@@ -1864,22 +1867,31 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   font-weight: 500;
 }
 
-/* Inline comments expansion (P0-3b Strategy B). Renders inside the post-card
-   v-for, conditional on commentingPost?.id === post.id. Negative horizontal
-   margin extends the section to the post-card edges (post-card has padding:
-   14px 16px). Border-top creates a soft separator from post-actions row. */
-.comments-inline {
-  background: var(--bg-elev-1);
-  border-top: 0.5px solid var(--line-hair);
-  margin: 8px -16px 0 -16px;
-  padding-top: 4px;
+/* Comment sheet (QA6 #7) — Zhihu-style bottom sheet. Fixed over a scrim
+   instead of expanding inline mid-card. Flex column: pinned header, scrolling
+   list (flex:1), then reply-bar + input-bar as the footer. Keyboard lift is
+   an inline translateY (useKeyboardHeight); transition makes it smooth. */
+.comment-mask {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); z-index: 1100;
 }
-.ci-count-label {
-  padding: 8px 16px 4px 16px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  font-weight: 500;
+.comment-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1101;
+  max-width: 560px; margin: 0 auto;
+  max-height: 75vh; background: var(--bg-elev-1);
+  border-radius: 20px 20px 0 0;
+  display: flex; flex-direction: column;
+  transition: transform 0.25s ease-out; will-change: transform;
+  padding-bottom: env(safe-area-inset-bottom);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
 }
+.cmt-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 0.5px solid var(--line-hair);
+  flex-shrink: 0;
+}
+.cmt-htitle { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.cmt-scroll { flex: 1; min-height: 0; }
+.cmt-end { text-align: center; color: var(--text-faint); font-size: 12px; padding: 16px 0 18px; }
 .ci-loading,
 .ci-empty {
   padding: 24px 16px;
@@ -1932,19 +1944,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   &:active { opacity: 0.8; }
 }
 
-.ci-collapse-link {
-  padding: 10px 16px;
-  text-align: center;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  border-top: 0.5px solid var(--line-hair);
-  &:active { opacity: 0.6; }
-}
-.ci-collapse-text {
-  font-size: 12px;
-  color: var(--campus-blue);
-  font-weight: 500;
-}
 
 /* N13 — X stroke for the picker close button.
    Mirrored from pages/detail/index.vue (.cs-x at L1134-1142) so the
