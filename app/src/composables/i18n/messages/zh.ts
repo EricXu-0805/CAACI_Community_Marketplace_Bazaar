@@ -537,6 +537,7 @@ const zh: Record<string, string> = {
   'plaza.submit': '发布',
   'plaza.comments': '评论',
   'plaza.noComments': '还没有评论',
+  'plaza.noMoreComments': '没有更多内容',
   'plaza.charsLeft': '字剩余',
   'plaza.attachItem': '挂商品',
   'plaza.pickItem': '选一件你正在售卖的商品',

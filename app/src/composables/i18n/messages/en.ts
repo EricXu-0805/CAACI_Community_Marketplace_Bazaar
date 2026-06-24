@@ -537,6 +537,7 @@ const en: Record<string, string> = {
   'plaza.submit': 'Post',
   'plaza.comments': 'Comments',
   'plaza.noComments': 'No comments yet',
+  'plaza.noMoreComments': 'No more comments',
   'plaza.charsLeft': 'char left|chars left',
   'plaza.attachItem': 'Tag item',
   'plaza.pickItem': 'Pick one of your listings',
