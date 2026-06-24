@@ -1398,7 +1398,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .feed {
   flex: 1;
   min-height: 0;
-  padding-bottom: 76px;
+  padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px));
 }
 
 .loading, .empty {
