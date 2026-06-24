@@ -222,6 +222,34 @@ function extractAuthCodeFromUrl(): void {
   console.log('[reset-pw-debug] entry: location.search=', search)
 
   /*
+   * Expired / invalid email link (signup-confirm OR password recovery):
+   * Supabase redirects to `${origin}/#error=access_denied&error_code=otp_expired
+   * &error_description=...` with NO code. Without this branch the code-probe
+   * below finds nothing and returns, leaving the unroutable `#error=...` hash —
+   * the router can't match it, so the user sees a blank screen. Catch it here:
+   * clear the hash and send them to login with a notice. Error-only and
+   * orthogonal to the PKCE / recovery / OAuth code paths (which all require a
+   * `code`; an error redirect never carries one).
+   */
+  const errInUrl = /[#?&]error_code=/.test(hash) || /[#?&]error_code=/.test(search)
+  const onResetRoute = (hash.split('?')[0] || '').toLowerCase().includes('/pages/reset-password/')
+  // Let the reset-password page render its own tailored "link expired" UI; only
+  // rescue the root/signup-confirm case, which otherwise blanks on `#error=`.
+  if (errInUrl && !onResetRoute) {
+    console.log('[reset-pw-debug] entry: auth error redirect detected, routing to login')
+    try { window.history.replaceState(null, '', window.location.pathname) } catch {}
+    setTimeout(() => {
+      uni.reLaunch({ url: '/pages/login/index' })
+      setTimeout(() => uni.showToast({
+        title: '邮件链接已失效，请重新获取 · Link expired, request a new one',
+        icon: 'none',
+        duration: 3500,
+      }), 300)
+    }, 0)
+    return
+  }
+
+  /*
    * Two locations to probe, in priority order:
    *   1. window.location.search → '?code=xxx' before any '#'.
    *      This is what Supabase actually emits for hash-routed
