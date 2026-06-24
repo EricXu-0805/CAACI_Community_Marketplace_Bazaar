@@ -251,6 +251,7 @@ const zh: Record<string, string> = {
 
   'chat.empty': '开始聊天吧！',
   'chat.placeholder': '输入消息...',
+  'chat.send': '发送',
   'chat.makeOffer': '出个价',
   'chat.online': '在线',
   'chat.onlineReply': '在线 · 通常 1 小时内回复',

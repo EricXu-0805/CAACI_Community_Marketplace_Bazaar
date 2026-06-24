@@ -251,6 +251,7 @@ const en: Record<string, string> = {
 
   'chat.empty': 'Start the conversation!',
   'chat.placeholder': 'Type a message...',
+  'chat.send': 'Send',
   'chat.makeOffer': 'Make an Offer',
   'chat.online': 'Online',
   'chat.onlineReply': 'Online · usually replies in 1h',

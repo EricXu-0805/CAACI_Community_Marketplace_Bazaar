@@ -714,15 +714,24 @@ function goLogin() {
   .msg-left {
     width: 340px; flex: none; height: 100vh; overflow-y: auto;
     border-right: 1px solid var(--border); box-sizing: border-box;
+    /* Keep wheel scroll inside the rail — without this, hitting the top/bottom
+       chains the scroll to the page and drags the whole two-pane view (QA6 #2). */
+    overscroll-behavior: contain;
   }
+  /* Pin the filter chips so only the conversation list scrolls beneath them
+     (QA6 #2). .msg-filters already has an opaque background, so rows don't
+     show through the pinned bar. */
+  .msg-filters { position: sticky; top: 0; z-index: 5; }
   .conv-list { max-width: none; margin: 0; }
   .conv-item {
     border-radius: 8px; margin: 2px 8px;
     &:hover { background: var(--bg-elev-2); }
     &.active, &.active:hover { background: var(--brand-soft); }
   }
-  /* Right pane — the embedded ChatThread, or an empty hint. */
-  .msg-thread-pane { display: block; flex: 1; min-width: 0; height: 100vh; }
+  /* Right pane — the embedded ChatThread, or an empty hint. overflow:hidden so
+     the pane itself never scrolls (ChatThread owns its own message scroll-view);
+     keeps the left rail and right thread scrolling independently (QA6 #2). */
+  .msg-thread-pane { display: block; flex: 1; min-width: 0; height: 100vh; overflow: hidden; }
   .thread-empty {
     height: 100%; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 12px;

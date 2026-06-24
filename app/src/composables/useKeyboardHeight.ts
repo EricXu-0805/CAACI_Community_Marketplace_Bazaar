@@ -131,7 +131,15 @@ export function useKeyboardHeight(opts: UseKeyboardHeightOptions = {}): Keyboard
     // exists at runtime, but vue-tsc strict mode sees the global as
     // possibly-undefined at type level; this guard satisfies both.
     if (typeof window === 'undefined' || !window.visualViewport) return
-    commit(baselineHeight - window.visualViewport.height)
+    const vv = window.visualViewport
+    // baseline - vv.height is the viewport shrink; ALSO subtract vv.offsetTop.
+    // iOS Safari scrolls the visual viewport up when focusing a field near the
+    // bottom — without subtracting that offset the computed inset over-shoots,
+    // and a bottom-anchored bar lifts ABOVE the keyboard leaving a gap (QA6 #8:
+    // the chat composer "jumped to the top"). Cap at baseline so a transient
+    // bad reading can never translate a bar fully offscreen.
+    const inset = baselineHeight - vv.height - (vv.offsetTop || 0)
+    commit(Math.min(inset, baselineHeight))
   }
 
   onMounted(() => {
