@@ -113,3 +113,53 @@ jobs:
 
       - name: Verify dist exists
         run: test -d app/dist/build/mp-weixin && ls -la app/dist/build/mp-weixin | head -10
+
+  smoke:
+    name: Smoke (E2E)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install
+        working-directory: app
+        run: npm ci --legacy-peer-deps
+
+      # The smoke spec spreads the iPhone 13 device profile, whose
+      # defaultBrowserType is webkit — install that engine, not chromium.
+      - name: Install Playwright (webkit)
+        working-directory: app
+        run: npx playwright install --with-deps webkit
+
+      # The page-sweep needs REAL (public) anon creds: with the build jobs'
+      # stub URL the logged-out calls fail with network errors that are NOT in
+      # the spec's IGNORE list, so the sweep would falsely go red. The anon key
+      # is publishable (safe as an Actions secret). The logged-in flow runs only
+      # when SMOKE_EMAIL/SMOKE_PASSWORD secrets are present; until the +smokebot
+      # account is wired it self-skips (test.skip), so this job stays green on
+      # the page-sweep alone. This check is intentionally NOT in the required
+      # set — it's a signal, not a merge gate, so dev-server flakiness can't
+      # block shipping.
+      - name: Smoke (page sweep + opt-in logged-in flow)
+        working-directory: app
+        run: npm run smoke
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+
+      - name: Upload failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-failures
+          path: app/test-results/
+          if-no-files-found: ignore
