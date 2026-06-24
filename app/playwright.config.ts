@@ -12,11 +12,12 @@ for (const k of ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_
 process.env.NO_PROXY = 'localhost,127.0.0.1'
 
 /**
- * Smoke-test harness — a manual regression gate, NOT part of CI.
+ * Smoke-test harness — a manual regression gate AND a (non-required) CI job.
  *
  * Run before/after big changes (and when wiring in the new UI library) to
  * confirm every page still loads with no console errors and the core flow
- * works. CI stays lean (type-check + dual build); this is opt-in:
+ * works. CI runs this too (see .github/workflows/ci.yml `smoke` job) as a
+ * non-blocking signal alongside the required type-check + dual build:
  *
  *   cd app && npm run smoke
  *
