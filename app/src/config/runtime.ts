@@ -14,18 +14,18 @@
  * any runtime, so this works on every build target the same way
  * `VITE_SUPABASE_URL` does (see app/src/composables/useSupabase.ts).
  *
- * The hardcoded fallback is the current prod Vercel deploy: a missing env
- * var never breaks the app — local dev, CI, fresh contributor checkouts
+ * The hardcoded fallback is the prod domain (illinimarket.com): a missing
+ * env var never breaks the app — local dev, CI, fresh contributor checkouts
  * all default to prod-equivalent behavior. Override per environment via
  * the Vercel dashboard, or locally via `app/.env.local`.
  *
- * Future caaciorg.com switch: set `VITE_BASE_URL` in Vercel env (Production
- * + Preview), update `app/.env.example` for parity, and optionally update
- * the fallback below once the migration is permanent.
+ * Prod sets `VITE_BASE_URL=https://illinimarket.com` in the Vercel env
+ * (Production + Preview); the old `*.vercel.app` host still resolves during
+ * the transition. The fallback below is the canonical domain.
  */
 export const BASE_URL =
   (import.meta.env.VITE_BASE_URL as string | undefined)
-  || 'https://caaci-community-marketplace-bazaar.vercel.app'
+  || 'https://illinimarket.com'
 
 /**
  * Displayed app version — single source of truth for the settings page.

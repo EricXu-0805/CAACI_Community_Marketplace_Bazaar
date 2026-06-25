@@ -28,7 +28,7 @@ const BREVO_API_KEY = env('BREVO_API_KEY')
 const CRON_SECRET = env('CRON_SECRET')
 const TEST_EMAIL = env('DIGEST_TEST_EMAIL')
 const LIVE = env('DIGEST_LIVE') === 'true'
-const APP_URL = env('DIGEST_APP_URL', 'https://caaci-community-marketplace-bazaar.vercel.app')
+const APP_URL = env('DIGEST_APP_URL', 'https://illinimarket.com')
 const SENDER = { email: 'newsletter@news.caaciorg.com', name: '香槟集市 Illini Market' }
 const WINDOW_DAYS = 7
 const MAX_ROWS = 40

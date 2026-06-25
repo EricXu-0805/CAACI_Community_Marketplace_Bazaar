@@ -157,7 +157,7 @@ gunzip -c backups/<file>.sql.gz | psql "$SUPABASE_DB_URL"
 1. **Vercel → Deployments** → find a green production deploy from
    ≤ 24 h ago.
 2. ⋯ menu → "Promote to Production".
-3. Within 30 s the alias `caaci-community-marketplace-bazaar.vercel.app`
+3. Within 30 s the alias `illinimarket.com`
    points back at the older bundle. No redeploy needed.
 4. Push a `revert` commit on `main` so the next deploy doesn't re-break:
    ```bash

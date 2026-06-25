@@ -1,6 +1,6 @@
 # 真机测试清单 — 给 Zach
 
-线上: https://caaci-community-marketplace-bazaar.vercel.app
+线上: https://illinimarket.com
 需要: **两个账号**(买家 + 卖家),最好两台真机 / 两个浏览器同时在线。
 登录用 @illinois.edu 邮箱 + Google 登录均可。
 

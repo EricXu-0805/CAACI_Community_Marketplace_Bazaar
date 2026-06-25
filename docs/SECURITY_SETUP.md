@@ -73,12 +73,12 @@ Or Vercel Dashboard → Deployments → "..." on latest → "Redeploy".
 ### Verify it's live
 
 ```bash
-curl -X POST https://caaci-community-marketplace-bazaar.vercel.app/api/moderate \
+curl -X POST https://illinimarket.com/api/moderate \
   -H 'Content-Type: application/json' \
   -d '{"text":"hello world"}'
 # expect: {"flagged":false,"categories":[]}
 
-curl -X POST https://caaci-community-marketplace-bazaar.vercel.app/api/moderate \
+curl -X POST https://illinimarket.com/api/moderate \
   -H 'Content-Type: application/json' \
   -d '{"text":"i want to kill myself"}'
 # expect: {"flagged":true,"categories":["self-harm", ...]}

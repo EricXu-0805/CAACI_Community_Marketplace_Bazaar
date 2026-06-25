@@ -2,7 +2,7 @@
 
 > UIUC 校园二手交易 + 社区广场 · 中英双语 · 专为 Champaign-Urbana 华人学生社区设计
 
-- **线上**: https://caaci-community-marketplace-bazaar.vercel.app
+- **线上**: https://illinimarket.com
 - **GitHub**: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar
 
 ## 产品定位
@@ -135,8 +135,8 @@ build 的精简矩阵);这是手动门。首次需 `npx playwright install webki
 
 - **H5**: 直接 `vercel --prod` (或 git push main 自动部署)。`vercel.json` 已配好 rewrites。
 - **Supabase Auth Redirect URLs** 必须包含生产域名才能收到密码重置邮件:
-  - Site URL: `https://caaci-community-marketplace-bazaar.vercel.app`
-  - Redirect URLs: `https://caaci-community-marketplace-bazaar.vercel.app/**`
+  - Site URL: `https://illinimarket.com`
+  - Redirect URLs: `https://illinimarket.com/**`
 
 ## 安全摘要
 
