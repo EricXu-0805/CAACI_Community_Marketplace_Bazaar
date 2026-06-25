@@ -6,12 +6,23 @@
       <text class="app-desc">{{ t('resetPw.hint') }}</text>
     </view>
 
-    <view v-if="!ready" class="loading">
-      <view class="spinner"></view>
-      <text>{{ t('resetPw.verifying') }}</text>
-    </view>
+    <view class="form">
+      <view class="form-group">
+        <text class="form-label">{{ t('resetPw.email') }}</text>
+        <input v-model="email" :placeholder="t('login.email')" type="text" autocomplete="email" class="form-input" />
+      </view>
 
-    <view v-else-if="ready && !errorMsg" class="form">
+      <view class="form-group">
+        <text class="form-label">{{ t('resetPw.code') }}</text>
+        <UCodeInput v-model="code" :placeholder="t('resetPw.codePlaceholder')" />
+        <view class="code-row">
+          <text class="code-hint">{{ email ? t('resetPw.codeHint', { email }) : t('resetPw.codeHintNoEmail') }}</text>
+          <text :class="['resend', { disabled: resendCooldown > 0 }]" role="button" @click="onResend">
+            {{ resendCooldown > 0 ? t('resetPw.resendIn', { n: resendCooldown }) : t('resetPw.resend') }}
+          </text>
+        </view>
+      </view>
+
       <view class="form-group">
         <text class="form-label">{{ t('resetPw.newPassword') }}</text>
         <view class="pw-wrap">
@@ -21,8 +32,7 @@
           </view>
         </view>
         <!-- Live password-policy checklist — same component as the signup tab
-             (#106) so the reset flow shows which rule fails instead of bouncing
-             off a server reject on submit. -->
+             so the reset flow shows which rule fails before submit. -->
         <view class="pw-rules">
           <view v-for="r in pwRules" :key="r.key" :class="['pw-rule', { ok: r.ok }]">
             <text class="pw-rule-mark">{{ r.ok ? '✓' : '○' }}</text>
@@ -43,384 +53,111 @@
       <button class="submit-btn" :disabled="saving" @click="onSave">
         {{ saving ? t('login.wait') : t('resetPw.save') }}
       </button>
-    </view>
-
-    <view v-else class="error">
-      <text class="error-text">{{ errorMsg }}</text>
-      <view class="back-btn" @click="goLogin">{{ t('resetPw.backLogin') }}</view>
+      <view class="back-link" role="button" @click="goLogin">{{ t('resetPw.backLogin') }}</view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+/*
+ * Password reset via typed 6-digit OTP code (QA6 #1).
+ *
+ * The old PKCE magic-link flow failed: mail scanners pre-fetched the
+ * single-use link, so it showed "expired" even when clicked immediately.
+ * Now the recovery email carries a {{ .Token }} 6-digit code (Supabase
+ * dashboard template change — operator action), the user types it here,
+ * and verifyOtp({ type:'recovery' }) establishes a recovery-scoped session
+ * that updateUser({password}) can write against. No link, no PKCE
+ * exchange, no fragile recovery-context inference.
+ */
+import { ref, computed, onUnmounted } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
-import { passwordRules, passwordValid } from '../../utils'
+import { passwordRules, passwordValid, friendlyErrorMessage } from '../../utils'
+import UCodeInput from '../../components/UCodeInput.vue'
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 const { supabase } = useSupabase()
 
-const ready = ref(false)
-const errorMsg = ref('')
+const email = ref('')
+const code = ref('')
 const newPassword = ref('')
-const pwRules = computed(() => passwordRules(newPassword.value))
 const confirmPw = ref('')
 const showNewPw = ref(false)
 const showConfirmPw = ref(false)
 const saving = ref(false)
-/*
- * isRecovery is the gate that lets onSave call updateUser({password})
- * without Supabase rejecting with "Current password required when
- * setting new password.". That error comes from gotrue's
- * secure_password_change check on a non-recovery session.
- *
- * Two ways to flip this true:
- *   (a) Canonical: supabase.auth.onAuthStateChange fires
- *       'PASSWORD_RECOVERY' (subscribed below). This happens when
- *       supabase-js's internal detectSessionInUrl pipeline consumes
- *       the recovery URL and marks the session as recovery-scoped.
- *   (b) Page-arrival inference fallback: any user landing on
- *       /pages/reset-password/index got here because App.vue's
- *       detectAuthRecoveryAndRoute() routed them — there's no other
- *       entry. So once we have a session AND we're on this page,
- *       it's safe to treat it as recovery even if the event didn't
- *       fire (e.g., supabase-js consumed the URL before our listener
- *       subscribed, since onMounted runs after createClient init).
- *
- * The combination handles both the canonical case (client.detectSessionInUrl
- * worked) and the racy case (we processed the URL ourselves in
- * onMounted's manual exchange path).
- */
-const isRecovery = ref(false)
+const pwRules = computed(() => passwordRules(newPassword.value))
 
-let unsubscribeAuth: (() => void) | null = null
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-onMounted(async () => {
-  console.log('[reset-pw-debug] reset-password page mounted')
+// Prefilled when arriving from login "forgot password" / settings "change
+// password"; editable so a cold visit (or a typo) still works.
+onLoad((options) => {
+  const e = (options as any)?.email
+  if (e) { try { email.value = decodeURIComponent(e) } catch { email.value = String(e) } }
+})
 
-  /*
-   * Subscribe FIRST, before any URL processing or session inspection.
-   * If supabase-js's internal detectSessionInUrl pipeline is still
-   * processing the recovery URL when this listener attaches, we'll
-   * catch its PASSWORD_RECOVERY event. If it already fired (race),
-   * we fall through to the page-arrival inference below.
-   *
-   * The PASSWORD_RECOVERY event is the canonical signal that the
-   * established session was authenticated via a recovery token —
-   * supabase-js guarantees updateUser({password}) called against
-   * this session will not be rejected by gotrue's secure-password-
-   * change check.
-   */
+const resendCooldown = ref(0)
+let cooldownTimer: ReturnType<typeof setInterval> | null = null
+function startCooldown() {
+  resendCooldown.value = 60
+  if (cooldownTimer) clearInterval(cooldownTimer)
+  cooldownTimer = setInterval(() => {
+    resendCooldown.value -= 1
+    if (resendCooldown.value <= 0 && cooldownTimer) { clearInterval(cooldownTimer); cooldownTimer = null }
+  }, 1000)
+}
+onUnmounted(() => { if (cooldownTimer) clearInterval(cooldownTimer) })
+
+async function onResend() {
+  if (resendCooldown.value > 0) return
+  const e = email.value.trim().toLowerCase()
+  if (!EMAIL_RE.test(e)) { uni.showToast({ title: t('login.needEmail'), icon: 'none' }); return }
   try {
-    const sub = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[reset-pw-debug] auth event:', event, 'session?', !!session)
-      if (event === 'PASSWORD_RECOVERY') {
-        console.log('[reset-pw-debug] PASSWORD_RECOVERY received — recovery flow confirmed')
-        isRecovery.value = true
-      }
-    })
-    unsubscribeAuth = () => {
-      try { sub.data.subscription.unsubscribe() } catch {}
-    }
-  } catch (err) {
-    console.warn('[reset-pw-debug] onAuthStateChange wire failed:', err)
-  }
-
-  try {
-    // #ifdef H5
-    /*
-     * URL-extracted PKCE rescue. App.vue's onLaunch
-     * extractAuthCodeFromUrl() runs synchronously before any supabase
-     * code and stashes the PKCE code from EITHER location.search or
-     * location.hash onto window.__pendingAuthCode (search-side is the
-     * common case for hash-routed redirectTo — verified in r3 evidence;
-     * hash-side is the fallback path predicted in r2). Consume that
-     * stash here NOW — after the PASSWORD_RECOVERY listener subscribed
-     * above, so the synchronous event from exchangeCodeForSession's
-     * resolve isn't lost — and exchange the code for a recovery session.
-     *
-     * The existing search/hash manual-exchange paths below are preserved
-     * as fallbacks for shapes the entry extractor doesn't catch (e.g.,
-     * implicit-flow tokens in hash, or anything App.vue's older
-     * detectAuthRecoveryAndRoute stashed).
-     */
-    const pendingCode: string | null =
-      typeof window !== 'undefined' ? ((window as any).__pendingAuthCode || null) : null
-    if (pendingCode) {
-      try { delete (window as any).__pendingAuthCode } catch {}
-      console.log('[reset-pw-debug] entry: consuming __pendingAuthCode (from URL extraction)')
-      try {
-        const { data, error } = await supabase.auth.exchangeCodeForSession(pendingCode)
-        if (error) {
-          console.warn('[reset-pw-debug] entry: exchange failed:', error)
-          errorMsg.value = error.message || t('resetPw.linkInvalid')
-          ready.value = true
-          return
-        }
-        console.log('[reset-pw-debug] entry: exchange OK, session user=', data.session?.user?.id)
-        /*
-         * R4 fix: PKCE flow exchangeCodeForSession() in supabase-js v2
-         * fires SIGNED_IN, never PASSWORD_RECOVERY. PASSWORD_RECOVERY
-         * only fires from supabase-js's own implicit-flow URL parsing
-         * (#access_token=...&type=recovery shape). Our hash-routed
-         * site is forced to PKCE, so the listener-based path that r1
-         * built will NEVER receive the canonical event no matter how
-         * we tune timing — verified empirically across r1, r2, r3.
-         *
-         * URL evidence is sufficient here:
-         *   1. App.vue's entry hook stashed __pendingAuthCode by
-         *      extracting ?code= from window.location.search/hash —
-         *      this code only appears in the URL when Supabase
-         *      bounces a user from a recovery email link.
-         *   2. exchangeCodeForSession just succeeded with that code,
-         *      producing a recovery-scoped session (server-side
-         *      enforced — the code itself is recovery-scoped).
-         *   3. There is no legitimate non-recovery scenario that puts
-         *      a Supabase PKCE code in the URL of this page.
-         *
-         * Therefore: set isRecovery=true and short-circuit. The
-         * legacy fallback paths below (manual search/hash exchange,
-         * getSession check, !isRecovery → linkInvalid) only need to
-         * cover the case where there was NO pending code to begin
-         * with (i.e. a logged-in user navigated here directly, no
-         * recovery URL involved).
-         *
-         * The PASSWORD_RECOVERY event listener above is retained as
-         * a no-op safety net — if Supabase changes behavior in a
-         * future version, or if implicit flow is enabled somewhere,
-         * the listener will set isRecovery from that signal too.
-         * Until then it's a free observability source (logs the
-         * event type for every auth state change).
-         */
-        console.log('[reset-pw-debug] URL evidence + exchange success → treating as recovery flow')
-        isRecovery.value = true
-        ready.value = true
-        return
-      } catch (err: any) {
-        console.warn('[reset-pw-debug] entry: exchange threw:', err)
-        errorMsg.value = err?.message || t('resetPw.linkInvalid')
-        ready.value = true
-        return
-      }
-    }
-    // #endif
-
-    // #ifdef H5
-    /*
-     * Two LEGACY recovery shapes to consume, mirroring what App.vue's
-     * detectAuthRecoveryAndRoute stashed:
-     *
-     *   PKCE  — ?code=<uuid> in window.location.search
-     *           exchange via supabase.auth.exchangeCodeForSession(code)
-     *   IMPL  — #access_token=&refresh_token=&type=recovery in hash
-     *           exchange via supabase.auth.setSession({...})
-     *
-     * Note: as of hotfix r2 the typical PKCE path is the
-     * __pendingAuthCode block above (extracted from hash before
-     * supabase init). The blocks below remain as defense for the
-     * less-common shapes — code in search (clean redirectTo URLs),
-     * implicit-flow tokens, or anything App.vue's older logic stashed.
-     */
-    const stashedSearch: string =
-      typeof window !== 'undefined' ? ((window as any).__authRecoverySearch || '') : ''
-    const stashedHash: string =
-      typeof window !== 'undefined' ? ((window as any).__authRecoveryHash || '') : ''
-
-    let search = typeof window !== 'undefined' ? (window.location.search || '') : ''
-    let hash = typeof window !== 'undefined' ? (window.location.hash || '') : ''
-    if (stashedSearch && !/[?&]code=/.test(search)) search = stashedSearch
-    if (stashedHash && !hash.includes('access_token=') && !hash.includes('error=')) hash = stashedHash
-    console.log('[reset-pw-debug] stashed?', { stashedSearch: !!stashedSearch, stashedHash: !!stashedHash })
-
-    try {
-      delete (window as any).__authRecoverySearch
-      delete (window as any).__authRecoveryHash
-    } catch {}
-
-    if (hash.includes('error=')) {
-      const params = new URLSearchParams(hash.slice(hash.indexOf('?') + 1))
-      const desc = params.get('error_description') || params.get('error')
-      console.warn('[reset-pw-debug] link error param:', desc)
-      errorMsg.value = desc || t('resetPw.linkInvalid')
-      ready.value = true
-      return
-    }
-
-    /*
-     * Fast-path: maybe detectSessionInUrl already turned the recovery
-     * params into a live session. Check first to avoid double-exchange
-     * (which produces "code already used" errors on PKCE).
-     */
-    const earlyCheck = await supabase.auth.getSession()
-    if (earlyCheck.data.session) {
-      console.log('[reset-pw-debug] session already established (detectSessionInUrl)')
-    } else {
-      const codeMatch = search.match(/[?&]code=([^&]+)/)
-      if (codeMatch && codeMatch[1]) {
-        console.log('[reset-pw-debug] exchanging PKCE code')
-        try {
-          await supabase.auth.exchangeCodeForSession(decodeURIComponent(codeMatch[1]))
-        } catch (err: any) {
-          console.warn('[reset-pw-debug] exchangeCodeForSession failed:', err)
-          errorMsg.value = err?.message || t('resetPw.linkInvalid')
-          ready.value = true
-          return
-        }
-      } else if (hash.includes('access_token=')) {
-        console.log('[reset-pw-debug] consuming implicit-flow tokens from hash')
-        const qIdx = hash.indexOf('?')
-        const raw = qIdx >= 0 ? hash.slice(qIdx + 1) : hash.replace(/^#/, '')
-        const params = new URLSearchParams(raw)
-        const access_token = params.get('access_token') || ''
-        const refresh_token = params.get('refresh_token') || ''
-        if (access_token && refresh_token) {
-          try {
-            await supabase.auth.setSession({ access_token, refresh_token })
-          } catch (err: any) {
-            console.warn('[reset-pw-debug] setSession failed:', err)
-            errorMsg.value = err?.message || t('resetPw.linkInvalid')
-            ready.value = true
-            return
-          }
-        }
-      } else {
-        console.warn('[reset-pw-debug] no recovery params found anywhere')
-      }
-    }
-
-    try {
-      const clean = window.location.pathname + '#/pages/reset-password/index'
-      window.history.replaceState(null, '', clean)
-    } catch {}
-    // #endif
-
-    await new Promise((r) => setTimeout(r, 150))
-
-    const { data, error } = await supabase.auth.getSession()
-    if (error || !data.session) {
-      console.warn('[reset-pw-debug] no session after exchange:', error)
-      errorMsg.value = t('resetPw.linkInvalid')
-    } else {
-      console.log('[reset-pw-debug] session ready, user:', data.session.user.id)
-      /*
-       * The earlier page-arrival inference fallback (commit a0b8983) is
-       * REMOVED. Reasoning from the user's verification of P0-3:
-       *
-       *   1. With redirectTo now pointing at /pages/reset-password/index
-       *      directly (login + settings updated in this hotfix), the user
-       *      lands on this page WITH the recovery URL still intact.
-       *      supabase-js's detectSessionInUrl auto-detects, fires
-       *      PASSWORD_RECOVERY, our listener (subscribed in this onMounted
-       *      above) catches it, isRecovery flips true. That is the path
-       *      we trust to set isRecovery — only the canonical event.
-       *
-       *   2. The previous fallback ('session OK + on this page → infer
-       *      recovery') falsely triggered for an already-logged-in user
-       *      who happened to navigate here without a recovery URL. They
-       *      had a regular SIGNED_IN session from localStorage, the
-       *      fallback flipped isRecovery=true, onSave called updateUser,
-       *      and gotrue's secure_password_change check rejected with
-       *      400 'Current password required'. The user saw a confusing
-       *      error and was stuck.
-       *
-       * If PASSWORD_RECOVERY never fires by the time we get here (the
-       * session WAS established but not as recovery), surface a clear
-       * "link invalid / expired" error and the back-to-login button
-       * (rendered by the .error block below). DO NOT call updateUser —
-       * we know it would 400.
-       */
-      if (!isRecovery.value) {
-        console.warn('[reset-pw-debug] session exists but PASSWORD_RECOVERY did not fire — treating as invalid recovery context')
-        errorMsg.value = t('resetPw.linkInvalid')
-      }
-    }
-    ready.value = true
+    const { error } = await supabase.auth.resetPasswordForEmail(e)
+    if (error) throw error
+    uni.showToast({ title: t('resetPw.resent'), icon: 'none' })
+    startCooldown()
   } catch (err: any) {
-    console.warn('[reset-pw-debug] outer catch:', err)
-    errorMsg.value = err?.message || t('resetPw.linkInvalid')
-    ready.value = true
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 3000 })
   }
-})
-
-onUnmounted(() => {
-  if (unsubscribeAuth) unsubscribeAuth()
-})
+}
 
 async function onSave() {
-  if (!isRecovery.value) {
-    /*
-     * Hard gate. With the inference fallback removed (see onMounted
-     * above), reaching this branch means either the recovery URL
-     * never arrived or PASSWORD_RECOVERY never fired — calling
-     * updateUser({password}) would 400 with 'Current password
-     * required'. Tell the user to start over from the email link
-     * and short-circuit.
-     */
-    console.warn('[reset-pw-debug] onSave called outside recovery flow — refusing')
-    uni.showToast({
-          title: t('resetPw.notRecovery'),
-      icon: 'none',
-      duration: 3000,
-    })
-    return
-  }
-  if (!passwordValid(newPassword.value)) {
-    uni.showToast({ title: t('login.needPassword'), icon: 'none', duration: 2500 })
-    return
-  }
-  if (newPassword.value !== confirmPw.value) {
-    uni.showToast({ title: t('resetPw.mismatch'), icon: 'none' })
-    return
-  }
+  const e = email.value.trim().toLowerCase()
+  if (!EMAIL_RE.test(e)) { uni.showToast({ title: t('login.needEmail'), icon: 'none' }); return }
+  if (code.value.trim().length !== 6) { uni.showToast({ title: t('resetPw.needCode'), icon: 'none' }); return }
+  if (!passwordValid(newPassword.value)) { uni.showToast({ title: t('login.needPassword'), icon: 'none', duration: 2500 }); return }
+  if (newPassword.value !== confirmPw.value) { uni.showToast({ title: t('resetPw.mismatch'), icon: 'none' }); return }
   saving.value = true
   try {
-    console.log('[reset-pw-debug] calling updateUser (recovery flow)')
-    const { error } = await supabase.auth.updateUser({ password: newPassword.value })
-    if (error) throw error
-    console.log('[reset-pw-debug] password updated, redirecting to home')
-    /*
-     * Previously: signed out the recovery session and bounced the user
-     * to /pages/login/index to make them re-authenticate with the new
-     * password. That was rejected during user acceptance as redundant —
-     * by this point the user has already (a) proved they own the email
-     * by clicking the recovery link, and (b) typed + confirmed the new
-     * password. Forcing a third "type the password again at the login
-     * page" step adds friction without adding security.
-     *
-     * The recovery session that exchangeCodeForSession built (in
-     * onMounted above) is a fully-valid PKCE session — it's NOT a
-     * short-lived recovery-only token, despite the name. The old
-     * session's password field has been replaced by updateUser's
-     * write, so subsequent server-side calls authenticated by this
-     * session are authenticated against the NEW password, not the old
-     * one. Leaving it active and dropping the user on the home page is
-     * both safe and the canonical Supabase recommendation for the
-     * password-recovery → continue-using-app flow.
-     *
-     * reLaunch (vs navigateTo / switchTab):
-     *   · reLaunch flushes the back-stack so Back can't bounce the
-     *     user back to the reset-password page (which would error out
-     *     with linkInvalid because __pendingAuthCode was already
-     *     consumed).
-     *   · reLaunch supports tabBar destinations like /pages/index/index,
-     *     while navigateTo would reject it.
-     *   · Mirrors the post-login navigation in pages/login/index.vue —
-     *     both auth-success terminals land on home the same way.
-     */
+    const { error: vErr } = await supabase.auth.verifyOtp({ email: e, token: code.value.trim(), type: 'recovery' })
+    if (vErr) {
+      const expired = (vErr as any)?.code === 'otp_expired' || /expired|invalid|token/i.test(vErr.message || '')
+      uni.showToast({ title: expired ? t('resetPw.codeInvalid') : friendlyErrorMessage(vErr, lang.value as 'en' | 'zh'), icon: 'none', duration: 3000 })
+      saving.value = false
+      return
+    }
+    // verifyOtp('recovery') just signed us in with a recovery-scoped session,
+    // so updateUser({password}) writes cleanly (no "current password required").
+    const { error: uErr } = await supabase.auth.updateUser({ password: newPassword.value })
+    if (uErr) {
+      const weak = (uErr as any)?.code === 'weak_password' || Array.isArray((uErr as any)?.reasons)
+      uni.showToast({ title: weak ? t('login.weakPassword') : (uErr.message || t('resetPw.fail')), icon: 'none', duration: 3000 })
+      saving.value = false
+      return
+    }
     uni.showToast({ title: t('resetPw.success'), icon: 'success', duration: 2000 })
+    // reLaunch flushes the back-stack so Back can't return to this page.
     setTimeout(() => uni.reLaunch({ url: '/pages/index/index' }), 1500)
   } catch (err: any) {
-    const weak = err?.code === 'weak_password' || Array.isArray(err?.reasons)
-    uni.showToast({ title: weak ? t('login.weakPassword') : (err?.message || t('resetPw.fail')), icon: 'none', duration: 3000 })
-  } finally {
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('resetPw.fail'), icon: 'none', duration: 3000 })
     saving.value = false
   }
 }
 
-function goLogin() {
-  uni.reLaunch({ url: '/pages/login/index' })
-}
+function goLogin() { uni.reLaunch({ url: '/pages/login/index' }) }
 </script>
 
 <style lang="scss" scoped>
@@ -432,8 +169,8 @@ function goLogin() {
 
 .header {
   display: flex; flex-direction: column; align-items: center;
-  padding: 72px 0 40px;
-  padding-top: calc(72px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
+  padding: 64px 0 32px;
+  padding-top: calc(64px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
 }
 .logo-mark {
   width: 56px; height: 56px; border-radius: 14px;
@@ -444,19 +181,7 @@ function goLogin() {
 .app-name { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-top: 16px; }
 .app-desc { font-size: 13px; color: var(--text-faint); margin-top: 5px; text-align: center; line-height: 1.5; padding: 0 20px; }
 
-.loading {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 14px; padding: 60px 0;
-  text { font-size: 13px; color: var(--text-muted); }
-}
-.spinner {
-  width: 24px; height: 24px;
-  border: 2.5px solid var(--bg-inset); border-top-color: var(--text-primary);
-  border-radius: 50%; animation: spin 0.7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.form { flex: 1; }
+.form { flex: 1; padding-bottom: 40px; }
 .form-group { margin-bottom: 18px; }
 .form-label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 7px; font-weight: 500; }
 .form-input {
@@ -472,15 +197,27 @@ function goLogin() {
   position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
   cursor: pointer; padding: 4px; color: var(--text-muted);
 }
-.pw-toggle-icon {
-  width: 18px; height: 18px; display: block;
+.pw-toggle-icon { width: 18px; height: 18px; display: block; }
+
+.code-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin-top: 8px;
 }
+.code-hint { font-size: 11px; color: var(--text-faint); line-height: 1.4; flex: 1; }
+.resend {
+  font-size: 12px; color: var(--accent-primary); font-weight: 600;
+  cursor: pointer; flex-shrink: 0;
+  &.disabled { color: var(--text-faint); pointer-events: none; }
+  &:active { opacity: 0.7; }
+}
+
 .pw-rules { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
 .pw-rule { display: flex; align-items: center; gap: 4px; }
 .pw-rule-mark { font-size: 11px; color: var(--text-faint); line-height: 1; }
 .pw-rule-label { font-size: 11px; color: var(--text-muted); }
 .pw-rule.ok .pw-rule-mark { color: var(--success); }
 .pw-rule.ok .pw-rule-label { color: var(--success); }
+
 .submit-btn {
   width: 100%; height: 48px;
   background: var(--accent-primary); color: #fff;
@@ -489,15 +226,10 @@ function goLogin() {
   &[disabled] { opacity: 0.35; }
   &:active { opacity: 0.8; }
 }
-
-.error {
-  display: flex; flex-direction: column; align-items: center;
-  padding: 40px 0; gap: 20px;
-}
-.error-text { font-size: 14px; color: var(--accent-danger); text-align: center; line-height: 1.5; }
-.back-btn {
-  padding: 12px 28px; background: var(--accent-primary); color: #fff;
-  border-radius: 22px; font-size: 14px; font-weight: 600; cursor: pointer;
-  &:active { opacity: 0.8; }
+.back-link {
+  margin-top: 18px; text-align: center;
+  font-size: 13px; color: var(--text-muted); font-weight: 500;
+  cursor: pointer;
+  &:active { opacity: 0.7; }
 }
 </style>

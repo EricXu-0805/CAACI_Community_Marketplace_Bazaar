@@ -192,37 +192,20 @@ async function onChangePassword() {
     content: t('settings.changePasswordHint'),
     success: async (res) => {
       if (!res.confirm) return
-      /*
-       * Same redirectTo target as login → 'Forgot password' (login/index.vue):
-       * point at /pages/reset-password directly, not site root. Otherwise the
-       * recovery URL is consumed on the root-page intermediate load and
-       * PASSWORD_RECOVERY is lost before the reset page even mounts. See
-       * the same comment block in login/index.vue for the full diagnosis.
-       */
-      let redirectTo: string | undefined
-      // #ifdef H5
-      if (typeof window !== 'undefined') redirectTo = `${window.location.origin}/#/pages/reset-password/index`
-      // #endif
-      // #ifndef H5
-      redirectTo = `${BASE_URL}/#/pages/reset-password/index`
-      // #endif
-      console.log('[reset-pw-debug] settings change password — redirectTo:', redirectTo)
-      const { error } = await supabase.auth.resetPasswordForEmail(session.user!.email!, { redirectTo })
+      // QA6 #1: emails a 6-digit code (no link — links were pre-fetched and
+      // expired), then opens the reset page pre-filled with this account's
+      // email so the user just types the code + new password.
+      const targetEmail = session.user!.email!
+      const { error } = await supabase.auth.resetPasswordForEmail(targetEmail)
       if (error) {
-        console.warn('[reset-pw-debug] settings resetPasswordForEmail error:', error)
         uni.showModal({
           title: t('login.resetFailTitle'),
           content: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || error.message,
           showCancel: false,
         })
-      } else {
-        console.log('[reset-pw-debug] settings reset email queued OK')
-        uni.showModal({
-          title: t('settings.changePasswordSent'),
-          content: t('login.resetHint'),
-          showCancel: false,
-        })
+        return
       }
+      uni.navigateTo({ url: `/pages/reset-password/index?email=${encodeURIComponent(targetEmail)}` })
     },
   })
 }
