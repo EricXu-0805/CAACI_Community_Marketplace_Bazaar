@@ -22,7 +22,7 @@
       <text class="empty-text">{{ t('notif.empty') }}</text>
     </view>
 
-    <view v-else class="notif-list">
+    <view v-else class="notif-list u-stagger">
       <view
         v-for="n in notifications"
         :key="n.id"

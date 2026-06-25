@@ -1754,6 +1754,33 @@ page, .page { overflow-x: clip; }
 }
 .u-rise { animation: u-rise var(--dur-3, 360ms) var(--ease-warm, ease) backwards; }
 
+/* #ifdef H5 */
+/* Staggered list entrance — put .u-stagger on a container whose direct
+   children are the cards/rows; each one fades + rises in sequence so a
+   list "fans in" instead of popping as one block. The cascade caps at the
+   10th child (later items share the last delay) so long / paginated lists
+   never wait seconds. transform/opacity only = GPU-cheap. H5-only: it leans
+   on the `>` child combinator + :nth-child, which mp-weixin's WXSS handles
+   inconsistently — there the cards simply appear (graceful, build stays
+   green). Appended (load-more) rows animate on mount with their nth-child
+   delay; already-settled rows are untouched. Honors reduced-motion below. */
+.u-stagger > * { animation: u-rise var(--dur-3, 360ms) var(--ease-warm, ease) backwards; }
+.u-stagger > *:nth-child(1)  { animation-delay: 0ms; }
+.u-stagger > *:nth-child(2)  { animation-delay: 36ms; }
+.u-stagger > *:nth-child(3)  { animation-delay: 72ms; }
+.u-stagger > *:nth-child(4)  { animation-delay: 108ms; }
+.u-stagger > *:nth-child(5)  { animation-delay: 144ms; }
+.u-stagger > *:nth-child(6)  { animation-delay: 180ms; }
+.u-stagger > *:nth-child(7)  { animation-delay: 216ms; }
+.u-stagger > *:nth-child(8)  { animation-delay: 252ms; }
+.u-stagger > *:nth-child(9)  { animation-delay: 288ms; }
+.u-stagger > *:nth-child(10) { animation-delay: 324ms; }
+.u-stagger > *:nth-child(n+11) { animation-delay: 360ms; }
+@media (prefers-reduced-motion: reduce) {
+  .u-stagger > * { animation: none; }
+}
+/* #endif */
+
 /* Skeleton placeholder — a warm inset block that gently pulses while content
    loads. --bg-inset flips per theme, so it reads on light and dark. Pair with
    a per-list shape (avatar circle, text line) that overrides border-radius. */

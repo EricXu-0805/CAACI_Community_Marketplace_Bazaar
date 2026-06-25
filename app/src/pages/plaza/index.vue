@@ -70,7 +70,7 @@
           <text class="empty-text">{{ isLoggedIn ? t('follow.emptyPeople') : t('profile.signInHint') }}</text>
         </view>
 
-        <view v-else class="follow-people">
+        <view v-else class="follow-people u-stagger">
           <view
             v-for="p in followPeople"
             :key="p.id"
@@ -114,7 +114,7 @@
         <view v-if="isLoggedIn" class="cta-btn" @click="openComposer">{{ t('plaza.write') }}</view>
       </view>
 
-      <view v-else class="posts">
+      <view v-else class="posts u-stagger" :key="activeTab">
         <view v-for="post in visiblePosts" :key="post.id" class="post-card u-rise">
           <!--
             Pinned-collapsed surface: when a pinned announcement is in
@@ -277,7 +277,7 @@
 
             <template v-for="thread in commentThreads" :key="thread.parent.id">
               <view
-                class="cs-item"
+                class="cs-item u-rise"
                 @touchstart="commentLongPress.onTouchstart(thread.parent)"
                 @touchend="commentLongPress.onTouchend"
                 @touchcancel="commentLongPress.onTouchcancel"

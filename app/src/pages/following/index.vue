@@ -21,7 +21,7 @@
         <text class="empty-text">{{ t('follow.emptyPeople') }}</text>
       </view>
 
-      <view v-else class="people">
+      <view v-else class="people u-stagger">
         <view
           v-for="p in people"
           :key="p.id"

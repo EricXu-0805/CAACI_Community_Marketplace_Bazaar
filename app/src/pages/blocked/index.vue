@@ -22,7 +22,7 @@
       <text class="empty-sub">{{ t('blocked.emptyHint') }}</text>
     </view>
 
-    <view v-else class="list">
+    <view v-else class="list u-stagger">
       <view v-for="p in blockedProfiles" :key="p.id" class="row">
         <image :src="p.avatar_url || defaultAvatarSrc" :alt="p.nickname || 'avatar'" class="avatar" mode="aspectFill" />
         <view class="info">
