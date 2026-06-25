@@ -148,7 +148,7 @@ build 的精简矩阵);这是手动门。首次需 `npx playwright install webki
 - ✅ 换汇分类四处反杀猪盘警告
 - ✅ PKCE 登录 + Supabase fetch 25s 超时(防 Safari 卡登录)
 
-**一键排查日志**: 详见 `docs/audit/SECURITY_AUDIT.md`。
+**一键排查日志**: 详见 `docs/audit/README.md`(审计归档摘要;原始报告见 git 历史)+ `docs/SECURITY_SETUP.md`。
 
 ## 贡献约定
 
@@ -161,7 +161,7 @@ build 的精简矩阵);这是手动门。首次需 `npx playwright install webki
 ## Roadmap
 
 短期(2 周)+ 中期(1 月)+ 长期方向详见:
-- `docs/audit/MASTER_REPORT.md` — 体检整合报告 + 新功能建议 Top 10
+- `docs/audit/README.md` — 审计归档摘要(原始体检报告见 git 历史)
 - `docs/ROADMAP.md` — 原始路线图
 
 ## License
