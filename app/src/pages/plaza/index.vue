@@ -255,131 +255,6 @@
             </view>
           </view>
 
-          <!-- Comment sheet (QA6 #7, Zhihu-style). Rendered inside the active
-               post's card but positioned `fixed` as a bottom sheet over a
-               scrim, instead of expanding inline mid-card (the old input that
-               "appeared out of nowhere"). State (comments/replyTo/...) is all
-               page-level so a single block per active post is correct.
-               @click.stop blocks the post-card goPostDetail handler. -->
-          <view v-if="commentingPost?.id === post.id" class="comment-mask u-mask-in" @click.stop="closeComments"></view>
-          <view v-if="commentingPost?.id === post.id" class="comment-sheet" @click.stop :style="{ transform: `translateY(-${kb.height}px)` }">
-            <view class="cmt-header">
-              <text class="cmt-htitle">{{ t('plaza.commentCount', { count: comments.length }) }}</text>
-              <view class="as-close" role="button" :aria-label="t('a11y.close')" @click.stop="closeComments"><view class="cs-x"></view></view>
-            </view>
-            <scroll-view class="cmt-scroll" scroll-y>
-            <view v-if="loadingComments && comments.length === 0" class="ci-loading">
-              <text>{{ t('home.loading') }}</text>
-            </view>
-            <view v-else-if="comments.length === 0" class="ci-empty">
-              <text>{{ t('plaza.noComments') }}</text>
-            </view>
-
-            <template v-for="thread in commentThreads" :key="thread.parent.id">
-              <view
-                class="cs-item u-rise"
-                @touchstart="commentLongPress.onTouchstart(thread.parent)"
-                @touchend="commentLongPress.onTouchend"
-                @touchcancel="commentLongPress.onTouchcancel"
-                @touchmove="commentLongPress.onTouchmove"
-              >
-                <image
-                  :src="thread.parent.profile?.avatar_url || defaultAvatarSrc"
-                  :alt="thread.parent.profile?.nickname || 'avatar'"
-                  class="cs-avatar"
-                  mode="aspectFill"
-                  @click.stop="onCommentTap(thread.parent)"
-                />
-                <view class="cs-body" @click.stop="onCommentTap(thread.parent)">
-                  <view class="cs-top">
-                    <text class="cs-name">{{ thread.parent.profile?.nickname || t('app.user') }}</text>
-                    <text class="cs-time">{{ formatTime(thread.parent.created_at) }}</text>
-                  </view>
-                  <text class="cs-content">{{ thread.parent.content }}</text>
-                  <view class="cs-actions">
-                    <view class="cs-like-btn" role="button" :aria-label="thread.parent.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(thread.parent)">
-                      <image :src="thread.parent.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
-                      <text v-if="(thread.parent.like_count ?? 0) > 0" :class="['cs-like-num', { active: thread.parent.liked_by_me }]">{{ thread.parent.like_count }}</text>
-                    </view>
-                    <text class="cs-reply-btn" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
-                  </view>
-                </view>
-              </view>
-
-              <template v-if="thread.children.length > 0">
-                <view
-                  v-for="child in (expandedReplies.has(thread.parent.id) ? thread.children : thread.children.slice(0, 3))"
-                  :key="child.id"
-                  class="cs-item cs-item-child"
-                  @touchstart="commentLongPress.onTouchstart(child)"
-                  @touchend="commentLongPress.onTouchend"
-                  @touchcancel="commentLongPress.onTouchcancel"
-                  @touchmove="commentLongPress.onTouchmove"
-                >
-                  <image
-                    :src="child.profile?.avatar_url || defaultAvatarSrc"
-                    :alt="child.profile?.nickname || 'avatar'"
-                    class="cs-avatar"
-                    mode="aspectFill"
-                    @click.stop="onCommentTap(child)"
-                  />
-                  <view class="cs-body" @click.stop="onCommentTap(child)">
-                    <view class="cs-top">
-                      <text class="cs-name">{{ child.profile?.nickname || t('app.user') }}</text>
-                      <text class="cs-time">{{ formatTime(child.created_at) }}</text>
-                    </view>
-                    <text class="cs-content">{{ child.content }}</text>
-                    <view class="cs-actions">
-                      <view class="cs-like-btn" role="button" :aria-label="child.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(child)">
-                        <image :src="child.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
-                        <text v-if="(child.like_count ?? 0) > 0" :class="['cs-like-num', { active: child.liked_by_me }]">{{ child.like_count }}</text>
-                      </view>
-                      <text class="cs-reply-btn" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
-                    </view>
-                  </view>
-                </view>
-
-                <view
-                  v-if="thread.children.length > 3"
-                  class="cs-expand-link cs-item-child"
-                  @click.stop="toggleReplies(thread.parent.id)"
-                >
-                  <text class="cs-expand-text">
-                    {{ expandedReplies.has(thread.parent.id)
-                        ? t('plaza.hideReplies')
-                        : t('plaza.viewMoreReplies', { count: thread.children.length - 3 }) }}
-                  </text>
-                </view>
-              </template>
-            </template>
-            <view v-if="!loadingComments && comments.length > 0" class="cmt-end"><text>{{ t('plaza.noMoreComments') }}</text></view>
-            </scroll-view>
-
-            <view v-if="replyTo" class="ci-reply-bar">
-              <text class="ci-reply-label">{{ t('plaza.replyingTo') }} @{{ replyTo.profile?.nickname || t('app.user') }}</text>
-              <view class="ci-reply-x" role="button" :aria-label="t('a11y.close')" @click.stop="replyTo = null"><view class="ci-rx"></view></view>
-            </view>
-
-            <view class="ci-input-bar">
-              <input
-                v-model="commentText"
-                class="ci-input"
-                :placeholder="replyTo ? t('plaza.replyHint') : t('plaza.commentHint')"
-                confirm-type="send"
-                :focus="inputFocused"
-                :cursor-spacing="0"
-                :adjust-position="false"
-                @focus="inputFocused = true"
-                @blur="inputFocused = false"
-                @confirm="onSubmitComment"
-                @keyup.enter="onSubmitComment"
-                maxlength="1000"
-              />
-              <view :class="['ci-send', { disabled: !commentText.trim() || commentSubmitting }]" role="button" :aria-label="t('a11y.sendMessage')" @click.stop="onSubmitComment">
-                <text>{{ replyTo ? t('plaza.reply') : t('plaza.comment') }}</text>
-              </view>
-            </view>
-          </view>
         </view>
       </view>
 
@@ -390,6 +265,131 @@
         <text>{{ t('home.endOf') }}</text>
       </view>
     </scroll-view>
+
+    <!-- Comment sheet (QA6 #7, r3). HOISTED to the page root (single instance,
+         driven by commentingPost) so its position:fixed anchors to the VIEWPORT.
+         It used to live inside the v-for .post-card.u-rise; a transformed/animated
+         ancestor makes a fixed descendant anchor to IT, not the viewport (iOS
+         Safari) — which oversized the sheet (X clipped above, input below). -->
+    <view v-if="commentingPost" class="comment-mask u-mask-in" @click.stop="closeComments"></view>
+    <view v-if="commentingPost" class="comment-sheet" @click.stop :style="{ transform: `translateY(-${kb.height}px)` }">
+      <view class="cmt-header">
+        <text class="cmt-htitle">{{ t('plaza.commentCount', { count: comments.length }) }}</text>
+        <view class="as-close" role="button" :aria-label="t('a11y.close')" @click.stop="closeComments"><view class="cs-x"></view></view>
+      </view>
+      <scroll-view class="cmt-scroll" scroll-y>
+      <view v-if="loadingComments && comments.length === 0" class="ci-loading">
+        <text>{{ t('home.loading') }}</text>
+      </view>
+      <view v-else-if="comments.length === 0" class="ci-empty">
+        <text>{{ t('plaza.noComments') }}</text>
+      </view>
+
+      <template v-for="thread in commentThreads" :key="thread.parent.id">
+        <view
+          class="cs-item u-rise"
+          @touchstart="commentLongPress.onTouchstart(thread.parent)"
+          @touchend="commentLongPress.onTouchend"
+          @touchcancel="commentLongPress.onTouchcancel"
+          @touchmove="commentLongPress.onTouchmove"
+        >
+          <image
+            :src="thread.parent.profile?.avatar_url || defaultAvatarSrc"
+            :alt="thread.parent.profile?.nickname || 'avatar'"
+            class="cs-avatar"
+            mode="aspectFill"
+            @click.stop="onCommentTap(thread.parent)"
+          />
+          <view class="cs-body" @click.stop="onCommentTap(thread.parent)">
+            <view class="cs-top">
+              <text class="cs-name">{{ thread.parent.profile?.nickname || t('app.user') }}</text>
+              <text class="cs-time">{{ formatTime(thread.parent.created_at) }}</text>
+            </view>
+            <text class="cs-content">{{ thread.parent.content }}</text>
+            <view class="cs-actions">
+              <view class="cs-like-btn" role="button" :aria-label="thread.parent.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(thread.parent)">
+                <image :src="thread.parent.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
+                <text v-if="(thread.parent.like_count ?? 0) > 0" :class="['cs-like-num', { active: thread.parent.liked_by_me }]">{{ thread.parent.like_count }}</text>
+              </view>
+              <text class="cs-reply-btn" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
+            </view>
+          </view>
+        </view>
+
+        <template v-if="thread.children.length > 0">
+          <view
+            v-for="child in (expandedReplies.has(thread.parent.id) ? thread.children : thread.children.slice(0, 3))"
+            :key="child.id"
+            class="cs-item cs-item-child"
+            @touchstart="commentLongPress.onTouchstart(child)"
+            @touchend="commentLongPress.onTouchend"
+            @touchcancel="commentLongPress.onTouchcancel"
+            @touchmove="commentLongPress.onTouchmove"
+          >
+            <image
+              :src="child.profile?.avatar_url || defaultAvatarSrc"
+              :alt="child.profile?.nickname || 'avatar'"
+              class="cs-avatar"
+              mode="aspectFill"
+              @click.stop="onCommentTap(child)"
+            />
+            <view class="cs-body" @click.stop="onCommentTap(child)">
+              <view class="cs-top">
+                <text class="cs-name">{{ child.profile?.nickname || t('app.user') }}</text>
+                <text class="cs-time">{{ formatTime(child.created_at) }}</text>
+              </view>
+              <text class="cs-content">{{ child.content }}</text>
+              <view class="cs-actions">
+                <view class="cs-like-btn" role="button" :aria-label="child.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(child)">
+                  <image :src="child.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
+                  <text v-if="(child.like_count ?? 0) > 0" :class="['cs-like-num', { active: child.liked_by_me }]">{{ child.like_count }}</text>
+                </view>
+                <text class="cs-reply-btn" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
+              </view>
+            </view>
+          </view>
+
+          <view
+            v-if="thread.children.length > 3"
+            class="cs-expand-link cs-item-child"
+            @click.stop="toggleReplies(thread.parent.id)"
+          >
+            <text class="cs-expand-text">
+              {{ expandedReplies.has(thread.parent.id)
+                  ? t('plaza.hideReplies')
+                  : t('plaza.viewMoreReplies', { count: thread.children.length - 3 }) }}
+            </text>
+          </view>
+        </template>
+      </template>
+      <view v-if="!loadingComments && comments.length > 0" class="cmt-end"><text>{{ t('plaza.noMoreComments') }}</text></view>
+      </scroll-view>
+
+      <view v-if="replyTo" class="ci-reply-bar">
+        <text class="ci-reply-label">{{ t('plaza.replyingTo') }} @{{ replyTo.profile?.nickname || t('app.user') }}</text>
+        <view class="ci-reply-x" role="button" :aria-label="t('a11y.close')" @click.stop="replyTo = null"><view class="ci-rx"></view></view>
+      </view>
+
+      <view class="ci-input-bar">
+        <input
+          v-model="commentText"
+          class="ci-input"
+          :placeholder="replyTo ? t('plaza.replyHint') : t('plaza.commentHint')"
+          confirm-type="send"
+          :focus="inputFocused"
+          :cursor-spacing="0"
+          :adjust-position="false"
+          @focus="inputFocused = true"
+          @blur="inputFocused = false"
+          @confirm="onSubmitComment"
+          @keyup.enter="onSubmitComment"
+          maxlength="1000"
+        />
+        <view :class="['ci-send', { disabled: !commentText.trim() || commentSubmitting }]" role="button" :aria-label="t('a11y.sendMessage')" @click.stop="onSubmitComment">
+          <text>{{ replyTo ? t('plaza.reply') : t('plaza.comment') }}</text>
+        </view>
+      </view>
+    </view>
 
     <view v-if="showComposer" class="composer-fullpage">
       <view class="comp-header">

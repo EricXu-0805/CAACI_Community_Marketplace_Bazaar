@@ -284,7 +284,9 @@ function go(url: string) { uni.switchTab({ url }) }
      same baseline as the other 4 tabs — flush in the row, no protrusion, not
      stacked. (Was a 40px button raised -6px above the bar.) */
   margin: -4px 0;
-  box-shadow: var(--shadow-cta);
+  /* No lift shadow (QA6 #9后续): the FAB now sits flush ON the solid bar; a
+     drop shadow made it read as "floating above" with a gap. Flat = tightly
+     attached to the icon continent. */
   transition: transform var(--dur-1, 120ms) var(--ease-std, ease),
               background var(--dur-1, 120ms) var(--ease-std, ease);
 }
