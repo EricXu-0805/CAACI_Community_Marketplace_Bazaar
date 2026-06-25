@@ -276,11 +276,14 @@ function go(url: string) { uni.switchTab({ url }) }
   padding: 10px 0 6px;
 }
 .fab {
-  width: 40px; height: 40px; border-radius: 12px;
+  width: 28px; height: 28px; border-radius: 8px;
   background: var(--brand);
   display: flex; align-items: center; justify-content: center;
-  margin-top: -6px;
-  border: 3px solid var(--parchment);
+  /* QA6 #10 r2 (Eric: 缩小 + 齐平 + 字对齐): a 28px button vertically centered
+     on the 20px icon line via -4px block margins, so the 发布 label sits on the
+     same baseline as the other 4 tabs — flush in the row, no protrusion, not
+     stacked. (Was a 40px button raised -6px above the bar.) */
+  margin: -4px 0;
   box-shadow: var(--shadow-cta);
   transition: transform var(--dur-1, 120ms) var(--ease-std, ease),
               background var(--dur-1, 120ms) var(--ease-std, ease);
@@ -292,21 +295,21 @@ function go(url: string) { uni.switchTab({ url }) }
    the FAB rendering with only one bar — looking like a handbag handle. Plain
    <view> children are guaranteed to survive every uni-app target. */
 .fab-plus {
-  width: 16px; height: 16px;
+  width: 14px; height: 14px;
   position: relative;
 }
 .fab-plus-h, .fab-plus-v {
   position: absolute; background: #fff; border-radius: 1.5px;
 }
 .fab-plus-h {
-  width: 16px; height: 2.5px;
-  top: calc(50% - 1.25px);
+  width: 14px; height: 2.25px;
+  top: calc(50% - 1.125px);
   left: 0;
 }
 .fab-plus-v {
-  width: 2.5px; height: 16px;
+  width: 2.25px; height: 14px;
   top: 0;
-  left: calc(50% - 1.25px);
+  left: calc(50% - 1.125px);
 }
 .fab-lbl {
   margin-top: 4px;

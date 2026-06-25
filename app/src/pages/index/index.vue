@@ -944,7 +944,13 @@ function goPublish() {
   justify-content: space-between;
   align-items: center;
   min-height: var(--mp-navbar-height, 44px);
+  /* QA6 #13: the 104px capsule-button reserve is mp-weixin ONLY. On H5 there's
+     no capsule, so this padding was dead space on the right that shoved the
+     Dk / 中·EN toggles left (Eric: "应该靠右边"). Keep for mp, drop on H5 so
+     space-between anchors the toggles flush right. */
+  /* #ifdef MP-WEIXIN */
   padding-right: var(--mp-navbar-right-pad, 0px);
+  /* #endif */
   margin-bottom: 10px;
 }
 /* Brand lockup — 集-mark + serif wordmark + mono eyebrow. */
@@ -960,6 +966,11 @@ function goPublish() {
   color: var(--ink);
   letter-spacing: -0.012em;
   line-height: 1.1;
+  /* QA6 #13: keep "Illini Market" on ONE line. Without this the flex squeeze
+     (min-width:0 stack) wrapped it to two lines, which read as cramped — and
+     the toggles never looked cleanly anchored right. One line + space-between
+     row = brand left, Dk / 中·EN toggles flush right with breathing room. */
+  white-space: nowrap;
 }
 .mh-eyebrow {
   font-family: var(--font-mono);
