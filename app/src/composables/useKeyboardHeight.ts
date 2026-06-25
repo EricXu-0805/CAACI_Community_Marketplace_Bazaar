@@ -132,13 +132,18 @@ export function useKeyboardHeight(opts: UseKeyboardHeightOptions = {}): Keyboard
     // possibly-undefined at type level; this guard satisfies both.
     if (typeof window === 'undefined' || !window.visualViewport) return
     const vv = window.visualViewport
-    // baseline - vv.height is the viewport shrink; ALSO subtract vv.offsetTop.
-    // iOS Safari scrolls the visual viewport up when focusing a field near the
-    // bottom — without subtracting that offset the computed inset over-shoots,
-    // and a bottom-anchored bar lifts ABOVE the keyboard leaving a gap (QA6 #8:
-    // the chat composer "jumped to the top"). Cap at baseline so a transient
-    // bad reading can never translate a bar fully offscreen.
-    const inset = baselineHeight - vv.height - (vv.offsetTop || 0)
+    // Keyboard height = pure viewport shrink (baseline - vv.height).
+    //
+    // QA6 r2 (#8/#9): an earlier pass also subtracted vv.offsetTop to tame an
+    // over-lift ("jumped to top"). On real iPhones that OVER-corrected the
+    // lift to ~0 — Eric reported the bar "完全不动,被键盘整个盖住". Root cause:
+    // the lifted elements (.input-bar / .comp-bottom-stack) are flex children,
+    // NOT position:fixed, so they do NOT ride iOS's visual-viewport scroll;
+    // they stay at the layout-viewport bottom and need the FULL keyboard height
+    // to clear it. (The original over-lift was the uni textarea's own
+    // adjust-position double-lift, since removed via :adjust-position="false".)
+    // Cap at baseline so a transient bad reading can't translate a bar offscreen.
+    const inset = baselineHeight - vv.height
     commit(Math.min(inset, baselineHeight))
   }
 

@@ -1774,10 +1774,11 @@ function scrollToBottom() {
   border-radius: 20px;
   display: flex; align-items: center; justify-content: center; gap: 5px;
   cursor: pointer; flex-shrink: 0;
-  &.disabled { opacity: 0.25; pointer-events: none; }
+  &.disabled { opacity: 0.45; pointer-events: none; }
   &:active { opacity: 0.7; }
 }
 /* Labelled pill (QA6 #6): the bare paper-plane icon wasn't obvious as the
-   send action; pairing it with a 发送/Send text makes the affordance clear. */
-.send-label { font-size: 14px; font-weight: 600; color: #fff; line-height: 1; }
+   send action; pairing it with a 发送/Send text makes the affordance clear.
+   nowrap so the label never wraps on ultra-narrow viewports. */
+.send-label { font-size: 14px; font-weight: 600; color: #fff; line-height: 1; white-space: nowrap; }
 </style>
