@@ -3,7 +3,7 @@ import { check, fail } from 'k6'
 
 export const SUPABASE_URL = __ENV.SUPABASE_URL || 'https://lfhvgprfphyfvhidegum.supabase.co'
 export const ANON_KEY     = __ENV.SUPABASE_ANON_KEY || ''
-export const APP_ORIGIN   = __ENV.APP_ORIGIN || 'https://caaci-community-marketplace-bazaar.vercel.app'
+export const APP_ORIGIN   = __ENV.APP_ORIGIN || 'https://illinimarket.com'
 
 if (!ANON_KEY) {
   throw new Error('SUPABASE_ANON_KEY env var is required. Export it before running k6.')

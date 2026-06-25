@@ -31,7 +31,7 @@ brew install k6          # macOS
 ```bash
 export SUPABASE_URL="https://<proj>.supabase.co"
 export SUPABASE_ANON_KEY="eyJhbGci..."
-export APP_ORIGIN="https://caaci-community-marketplace-bazaar.vercel.app"
+export APP_ORIGIN="https://illinimarket.com"
 export TEST_ACCOUNTS_FILE="./accounts.txt"
 
 # 1. Publish-path burst

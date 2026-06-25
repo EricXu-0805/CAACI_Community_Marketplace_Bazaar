@@ -42,7 +42,7 @@ then add:
 
 **request 合法域名 (HTTPS only):**
 - `https://lfhvgprfphyfvhidegum.supabase.co`   — Supabase REST + Auth
-- `https://caaci-community-marketplace-bazaar.vercel.app`  — our /api/moderate, /api/translate
+- `https://illinimarket.com`  — our /api/moderate, /api/translate
 
 **socket 合法域名 (WSS only):**
 - `wss://lfhvgprfphyfvhidegum.supabase.co`  — Supabase Realtime
@@ -144,7 +144,7 @@ npm run build:mp-weixin
 - **`BarcodeDetector`** (used for client-side QR code detection in
   moderation). Need to fall back to `wx.scanCode` or server-side detection.
 - **OpenAI moderation from mp**: works via `/api/moderate`, just make
-  sure `caaci-community-marketplace-bazaar.vercel.app` is in the
+  sure `illinimarket.com` is in the
   request allow-list (§2).
 - **Deep links** — use `uni.navigateTo({ url: '/pages/...' })` not
   location-hash routing.
@@ -222,7 +222,7 @@ opening WeChat DevTools. The endpoint has a GET health branch that
 returns a boolean per env var (never leaks values):
 
 ```bash
-curl https://caaci-community-marketplace-bazaar.vercel.app/api/auth/wechat-login
+curl https://illinimarket.com/api/auth/wechat-login
 ```
 
 Expect:
@@ -251,7 +251,7 @@ triggered a new deploy after setting.
 §2 lists the four domain categories. Adding `/api/auth/wechat-login`
 needs:
 
-- **request 合法域名**: `https://caaci-community-marketplace-bazaar.vercel.app`
+- **request 合法域名**: `https://illinimarket.com`
   (already required for /api/moderate and /api/translate)
 
 No new entry needed — the domain is shared with existing endpoints.

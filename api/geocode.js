@@ -19,6 +19,8 @@ export const config = { runtime: 'edge' }
  */
 
 const ALLOWED_ORIGINS = [
+  'https://illinimarket.com',
+  'https://www.illinimarket.com',
   'https://caaci-community-marketplace-bazaar.vercel.app',
   'https://community-marketplace-bazaar.vercel.app',
   'http://localhost:5173',
@@ -61,7 +63,7 @@ export default async function handler(request) {
       headers: {
         // The actual fix — a real User-Agent the browser can't send. Names
         // the app + a contact, per Nominatim's usage policy.
-        'User-Agent': 'IlliniMarket/1.0 (+https://community-marketplace-bazaar.vercel.app; newsletter@news.caaciorg.com)',
+        'User-Agent': 'IlliniMarket/1.0 (+https://illinimarket.com; newsletter@news.caaciorg.com)',
         'Accept-Language': 'en',
       },
       signal: controller.signal,

@@ -17,6 +17,8 @@ export const config = { runtime: 'edge' }
  */
 
 const ALLOWED_ORIGINS = [
+  'https://illinimarket.com',
+  'https://www.illinimarket.com',
   'https://caaci-community-marketplace-bazaar.vercel.app',
   'http://localhost:5173',
   'http://localhost:3000',

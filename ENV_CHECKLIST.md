@@ -80,8 +80,8 @@ A wrong Redirect URL silently breaks password reset + OAuth on day 1.
 
 | Setting | Where (Supabase dashboard) | Value |
 |---|---|---|
-| Site URL | Auth → URL Configuration | `https://caaci-community-marketplace-bazaar.vercel.app` |
-| Redirect URLs | Auth → URL Configuration | add `https://caaci-community-marketplace-bazaar.vercel.app/**` |
+| Site URL | Auth → URL Configuration | `https://illinimarket.com` |
+| Redirect URLs | Auth → URL Configuration | add `https://illinimarket.com/**` |
 | Email confirmation | Auth → Providers → Email | **ON** — signup returns no session until confirmed; the app expects this |
 | Password policy | Auth → Policies | min 8 + upper/lower/digit; **leaked-password (HIBP) OFF** (kept off deliberately — see QA round 2) |
 | Reset-password email | Auth → Email Templates → Reset Password | body uses `{{ .Token }}` (6-digit code, **not** the link) **and** Email OTP length = 6 (Auth → Providers → Email). The app's reset is a typed code (QA6 #138). Leave **Confirm signup** on the link. |
@@ -145,10 +145,10 @@ Quick "is everything wired?" check after a deploy:
 
 ```bash
 # 1. App loads (frontend reaches Supabase)
-curl -I https://caaci-community-marketplace-bazaar.vercel.app
+curl -I https://illinimarket.com
 
 # 2. Admin API responds (uses SUPABASE_SERVICE_ROLE_KEY)
-curl -i https://caaci-community-marketplace-bazaar.vercel.app/api/admin?resource=stats \
+curl -i https://illinimarket.com/api/admin?resource=stats \
   -H "Authorization: Bearer iam_admin_<your_token>"
 # Expect 200 + JSON. 401 = bad token. 500 = service_role unset.
 
