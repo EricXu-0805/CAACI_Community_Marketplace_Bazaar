@@ -323,6 +323,24 @@ When a migration is broken in prod, "fix forward" almost always beats
 > A campus beta is small. This is the minimum to not get surprised — not an
 > enterprise on-call rota.
 
+### Launch day — in order (one page)
+
+The reference sections elsewhere are organized by topic; this is the **sequence**.
+Top to bottom; each step links to its detail.
+
+1. **Env vars** set on Vercel (Production + Preview) per [ENV_CHECKLIST pre-launch](ENV_CHECKLIST.md#pre-launch-checklist-fall-2026-beta). The two `VITE_*` Supabase vars are non-negotiable (white screen without).
+2. **Supabase dashboard** (Auth):
+   - Site URL + Redirect URLs point at the prod origin.
+   - Email confirmation **ON**; password policy min 8 + upper/lower/digit; **leaked-password (HIBP) OFF** (deliberate — QA round 2).
+   - **Reset Password** email template body uses `{{ .Token }}` (the 6-digit code, not the link) **and Email OTP length = 6** (Auth → Providers → Email). The app's reset is a typed code (QA6 #138). Leave the **Confirm signup** template on the link.
+3. **Migrations current** — prod is at the latest migration (064–069 + any 07x). Spot-check intent, e.g. `select has_function_privilege('anon','<fn>(args)','execute');`.
+4. **Admin token** — mint ≥ 1 ([Admin token mint](#admin-token-mint)); store in a password manager.
+5. **Sentry alert rule** — [create it once](#creating-the-alert-rule-do-this-once-before-launch).
+6. **Seed content** — ≥ a dozen real listings across the main categories. An empty market reads as dead.
+7. **Device verification** — run [QA_DEVICE_CHECKLIST](docs/QA_DEVICE_CHECKLIST.md) (esp. §7: QA6 + motion) on a real iPhone / iPad / Mac + two accounts. CI cannot catch keyboard, realtime, or desktop-layout regressions.
+8. **Post-deploy diagnostic** — [ENV_CHECKLIST diagnostic](ENV_CHECKLIST.md#diagnostic): app 200, admin 200, Sentry receiving events tagged with the deploy SHA.
+9. **Invite the first small cohort**, then run the [daily week-1](#daily-during-week-1) loop. Digest stays **OFF** unless prepped (verify sender-domain DKIM, clear `DIGEST_TEST_EMAIL`, set `DIGEST_LIVE=true`).
+
 ### Before you invite the first cohort
 
 - [ ] Run the pre-launch checklist in `ENV_CHECKLIST.md` (env vars + Supabase auth + reset test).

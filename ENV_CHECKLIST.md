@@ -84,6 +84,7 @@ A wrong Redirect URL silently breaks password reset + OAuth on day 1.
 | Redirect URLs | Auth → URL Configuration | add `https://caaci-community-marketplace-bazaar.vercel.app/**` |
 | Email confirmation | Auth → Providers → Email | **ON** — signup returns no session until confirmed; the app expects this |
 | Password policy | Auth → Policies | min 8 + upper/lower/digit; **leaked-password (HIBP) OFF** (kept off deliberately — see QA round 2) |
+| Reset-password email | Auth → Email Templates → Reset Password | body uses `{{ .Token }}` (6-digit code, **not** the link) **and** Email OTP length = 6 (Auth → Providers → Email). The app's reset is a typed code (QA6 #138). Leave **Confirm signup** on the link. |
 
 Verify reset works end-to-end before launch (use a `+alias`, never a real user):
 
@@ -91,7 +92,9 @@ Verify reset works end-to-end before launch (use a `+alias`, never a real user):
 curl -X POST https://lfhvgprfphyfvhidegum.supabase.co/auth/v1/recover \
   -H "apikey: <ANON_KEY>" -H "Content-Type: application/json" \
   -d '{"email":"eric.guoyi.xu+resettest@gmail.com"}'
-# Click the link in the email → should land on the app with ?code= and let you set a new password.
+# You'll receive a 6-digit CODE (not a link). Enter it on the app's reset
+# screen with a new password → should sign you in. (QA6 #138 — verified ✅.
+# Requires the Reset Password template = {{ .Token }} and OTP length = 6.)
 ```
 
 ## Pre-launch checklist (Fall 2026 beta)
@@ -114,8 +117,9 @@ Before inviting the first cohort. Details for each var are in the tables above.
 **Digest — keep OFF for the beta unless you've prepped it.** Going live later is
 two deliberate actions: clear `DIGEST_TEST_EMAIL`, set `DIGEST_LIVE=true`. Before
 flipping: verify the Brevo sender domain (DKIM/SPF) or mail lands in spam, and
-note the free-plan **300 sends/day** cap. (Digest email is currently zh-primary —
-add per-user locale first; tracked in the launch backlog.)
+note the free-plan **300 sends/day** cap. (Digest email is already **bilingual
+inline** — zh primary + en in one message; per-user locale is an optional
+refinement, not a blocker.)
 
 **After deploy:** run the [Diagnostic](#diagnostic) block — expect app 200, admin 200,
 and Sentry receiving events tagged with the deploy's 7-char SHA.
