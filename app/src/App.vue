@@ -553,6 +553,53 @@ onLaunch(() => {
         setTimeout(() => { try { window.location.reload() } catch {} }, 500)
       }
     })
+
+    /*
+     * Proactive "new version available" check. This app has NO service worker,
+     * so an open tab keeps running the bundle it booted with after a deploy —
+     * users (and device QA) end up testing a stale build and report fixes as
+     * "not done". On returning to the foreground we re-fetch index.html
+     * (no-store) and compare the live entry-bundle hash to the one this tab
+     * booted with; a mismatch means a deploy landed → offer a one-tap refresh.
+     * Prompt at most once per distinct deployed hash so it never nags.
+     */
+    if (typeof document !== 'undefined') {
+      const entryHash = (): string | null => {
+        const s = document.querySelector('script[type="module"][src*="/assets/index-"]') as HTMLScriptElement | null
+        const m = s?.src.match(/index-([\w-]+)\.js/)
+        return m ? m[1] : null
+      }
+      const bootHash = entryHash()
+      let prompting = false
+      let promptedHash: string | null = null
+      const checkVersion = async () => {
+        if (!bootHash || prompting) return
+        try {
+          const html = await fetch(`/?_v=${Date.now()}`, { cache: 'no-store' }).then((r) => r.text())
+          const m = html.match(/\/assets\/index-([\w-]+)\.js/)
+          const live = m ? m[1] : null
+          if (live && live !== bootHash && live !== promptedHash) {
+            prompting = true
+            promptedHash = live
+            uni.showModal({
+              title: t('app.updateTitle'),
+              content: t('app.updateAvailable'),
+              confirmText: t('app.updateNow'),
+              cancelText: t('app.updateLater'),
+              success: (res) => {
+                prompting = false
+                if (res.confirm) { try { window.location.reload() } catch {} }
+              },
+              fail: () => { prompting = false },
+            })
+          }
+        } catch {}
+      }
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') checkVersion()
+      })
+      setTimeout(checkVersion, 45000)
+    }
   }
   // #endif
 
