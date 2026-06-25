@@ -710,7 +710,18 @@ function goLogin() {
   /* Two-pane shell: the sidebar rail (.has-sidebar padding-left) + a flex
      row of [conversation list | conversation thread]. Lifts the phone-only
      480px clamp (base .page is max-width:480; margin:0 auto). */
-  .page { padding-bottom: 0; max-width: none; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+  /* QA6 #2 (round 2): pin the two-pane shell to the viewport so the outer
+     uni-page-body can't scroll. .page-lock (App.vue) only locks this <768px;
+     desktop had no lock, so wheeling over the right (non-scrollable) pane
+     chained the scroll to the wrapper and dragged the whole view (top row
+     clipped, filter chips scrolled off). Out-of-flow fixed page → the body
+     has nothing to scroll; only .msg-left scrolls internally. Same proven
+     pattern as .page-lock and the plaza desktop lock. */
+  .page {
+    position: fixed; inset: 0; left: var(--sidebar-w, 240px);
+    padding: 0; margin: 0; max-width: none;
+    display: flex; overflow: hidden;
+  }
   .msg-left {
     width: 340px; flex: none; height: 100vh; overflow-y: auto;
     border-right: 1px solid var(--border); box-sizing: border-box;
