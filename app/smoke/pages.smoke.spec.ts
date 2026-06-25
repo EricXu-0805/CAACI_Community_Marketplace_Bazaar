@@ -72,7 +72,7 @@ const PASSWORD = process.env.SMOKE_PASSWORD
 test.describe('core flow (logged in)', () => {
   test.skip(!EMAIL || !PASSWORD, 'set SMOKE_EMAIL + SMOKE_PASSWORD to run')
 
-  test('login → reach publish + plaza + chat panel', async ({ page }) => {
+  test('login → authenticated page sweep (no console errors)', async ({ page }) => {
     const errs = attachConsoleCollector(page)
     await page.addInitScript(() => localStorage.setItem('welcomed', '1'))
     await page.goto('/#/pages/login/index', { waitUntil: 'networkidle' })
@@ -83,13 +83,20 @@ test.describe('core flow (logged in)', () => {
     await page.locator('uni-button.submit-btn').click()
     await page.waitForTimeout(4500)
 
-    await page.goto('/#/pages/publish/index', { waitUntil: 'networkidle' })
-    await page.waitForTimeout(1500)
-    await expect(page.locator('uni-view.image-add, .submit-bar')).toBeTruthy()
+    // Authenticated sweep — the logged-out sweep at the top can't reach
+    // login-only code paths: realtime subscriptions, auth-gated renders, and
+    // the motion-layer `:key` remounts firing against real data. Read-only;
+    // no writes to prod.
+    const AUTHED = [
+      'pages/index/index', 'pages/plaza/index', 'pages/messages/index',
+      'pages/profile/index', 'pages/notifications/index', 'pages/publish/index',
+    ]
+    for (const route of AUTHED) {
+      await page.goto(`/#/${route}`, { waitUntil: 'networkidle' })
+      await page.waitForTimeout(1800)
+    }
+    await expect(page.locator('uni-view.image-add, .submit-bar').first()).toBeTruthy()
 
-    await page.goto('/#/pages/plaza/index', { waitUntil: 'networkidle' })
-    await page.waitForTimeout(2000)
-
-    expect(errs, 'console errors during core flow').toEqual([])
+    expect(errs, 'console errors during authenticated sweep').toEqual([])
   })
 })
