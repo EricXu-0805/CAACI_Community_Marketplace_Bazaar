@@ -116,7 +116,7 @@
         </view>
         <template v-for="thread in commentThreads" :key="thread.parent.id">
           <view
-            class="cs-item"
+            class="cs-item u-rise"
             @touchstart="commentLongPress.onTouchstart(thread.parent)"
             @touchend="commentLongPress.onTouchend"
             @touchcancel="commentLongPress.onTouchcancel"

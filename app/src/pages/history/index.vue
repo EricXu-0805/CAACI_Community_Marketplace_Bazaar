@@ -22,7 +22,7 @@
       <text>{{ t('history.empty') }}</text>
     </view>
 
-    <view v-else-if="tab === 'items'" class="items">
+    <view v-else-if="tab === 'items'" class="items u-stagger">
       <view
         v-for="item in history"
         :key="item.id"
@@ -42,7 +42,7 @@
       </view>
     </view>
 
-    <view v-else class="items">
+    <view v-else class="items u-stagger">
       <view
         v-for="p in postHistory"
         :key="p.id"

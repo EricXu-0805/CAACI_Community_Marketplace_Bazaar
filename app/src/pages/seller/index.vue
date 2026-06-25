@@ -98,7 +98,7 @@
           </view>
         </view>
       </view>
-      <view v-else class="items-grid">
+      <view v-else class="items-grid u-stagger">
         <view v-for="item in sellerItems" :key="item.id" class="grid-item" @click="goDetail(item.id)">
           <view class="gi-img-wrap">
             <image v-if="thumbUrl(item.images?.[0], 'list')" :src="thumbUrl(item.images?.[0], 'list')" :alt="item.title" class="gi-img" mode="aspectFill" lazy-load />
@@ -136,7 +136,7 @@
         <UEmptyArt name="posts" />
         <text>{{ t('seller.noPosts') }}</text>
       </view>
-      <view v-else class="posts-list">
+      <view v-else class="posts-list u-stagger">
         <view v-for="post in userPosts" :key="post.id" class="sp-card u-rise" @click="goPost(post.id)">
           <text class="sp-content">{{ localize(post.content_i18n, post.content) }}</text>
           <view v-if="post.images?.length" class="sp-imgs">

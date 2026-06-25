@@ -30,7 +30,7 @@
           <text class="sec-title">{{ t('home.recentSearch') }}</text>
           <text class="sec-clear" @click="clearHistory">{{ t('filter.reset') }}</text>
         </view>
-        <view class="chip-row">
+        <view class="chip-row u-stagger">
           <view
             v-for="h in recent"
             :key="h"
@@ -47,7 +47,7 @@
         <view class="sec-header">
           <text class="sec-title">{{ t('home.browseByCategory') }}</text>
         </view>
-        <view class="cat-grid">
+        <view class="cat-grid u-stagger">
           <view
             v-for="c in categories"
             :key="'c'+c.value"

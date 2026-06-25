@@ -279,8 +279,8 @@
         <view v-if="searchText || selectedCategory" class="result-count">
           <text>{{ filteredItems.length }} {{ tc('home.results', filteredItems.length) }}</text>
         </view>
-        <view class="waterfall">
-          <view v-for="(col, ci) in columns" :key="ci" class="wf-col">
+        <view class="waterfall" :key="listingType">
+          <view v-for="(col, ci) in columns" :key="ci" class="wf-col u-stagger">
           <view
             v-for="item in col"
             :key="item.id"

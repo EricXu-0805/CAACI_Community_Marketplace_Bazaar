@@ -51,7 +51,7 @@
       <text class="empty-sub">{{ t('msg.emptySub') }}</text>
     </view>
 
-    <view v-else class="conv-list">
+    <view v-else class="conv-list u-stagger" :key="msgFilter">
       <view v-if="visibleConversations.length === 0" class="filtered-empty">
         <text>{{ t('msg.noFiltered') }}</text>
       </view>

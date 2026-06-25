@@ -142,7 +142,7 @@
         <text class="section-label">{{ t('detail.sellerReviews') }}</text>
         <text class="reviews-meta">{{ avgRating }} ★ · {{ reviewCount }} {{ tc('detail.reviewsUnit', reviewCount) }}</text>
       </view>
-      <view class="reviews-list">
+      <view class="reviews-list u-stagger">
         <view v-for="r in displayedReviews" :key="r.id" class="review-card">
           <image :src="r.rater?.avatar_url || defaultAvatarSrc" :alt="r.rater?.nickname || 'avatar'" class="rv-avatar" mode="aspectFill" />
           <view class="rv-body">
@@ -173,7 +173,7 @@
     <view class="section" v-if="sellerOtherItems.length > 0">
       <text class="section-label">{{ t('detail.moreFromSeller') }}</text>
       <scroll-view scroll-x class="more-scroll">
-        <view class="more-list">
+        <view class="more-list u-stagger">
           <view v-for="si in sellerOtherItems" :key="si.id" class="more-card" @click="goToOtherItem(si.id)">
             <image v-if="thumbUrl(si.images?.[0], 'list')" :src="thumbUrl(si.images?.[0], 'list')" :alt="si.title" class="mc-img" mode="aspectFill" lazy-load />
             <view v-else class="mc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
@@ -190,7 +190,7 @@
     <view class="section" v-if="similarItems.length > 0">
       <text class="section-label">{{ t('detail.similar') }}</text>
       <scroll-view scroll-x class="more-scroll">
-        <view class="more-list">
+        <view class="more-list u-stagger">
           <view v-for="si in similarItems" :key="si.id" class="more-card" @click="goToOtherItem(si.id)">
             <image v-if="thumbUrl(si.images?.[0], 'list')" :src="thumbUrl(si.images?.[0], 'list')" :alt="si.title" class="mc-img" mode="aspectFill" lazy-load />
             <view v-else class="mc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>

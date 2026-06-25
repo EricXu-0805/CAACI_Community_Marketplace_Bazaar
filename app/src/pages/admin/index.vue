@@ -64,7 +64,7 @@
         <text>{{ t('admin.loading') }}</text>
       </view>
 
-      <view v-else-if="activeTab === 'reports'" class="list">
+      <view v-else-if="activeTab === 'reports'" class="list u-stagger">
         <view v-if="reports.length === 0" class="empty"><text>{{ t('admin.emptyReports') }}</text></view>
         <view v-for="r in reports" :key="r.id" class="card">
           <view class="card-head">
@@ -95,7 +95,7 @@
         <view v-if="filteredSuspensions.length === 0" class="empty">
           <text>{{ suspensionQuery ? t('admin.noMatches') : t('admin.emptySuspensions') }}</text>
         </view>
-        <view v-for="s in filteredSuspensions" :key="s.id" class="card">
+        <view v-for="s in filteredSuspensions" :key="s.id" class="card u-rise">
           <view class="card-head">
             <image :src="s.profile_avatar_url || defaultAvatarSrc" :alt="s.profile_nickname || 'avatar'" class="mini-avatar" mode="aspectFill" />
             <text class="card-title">{{ s.profile_nickname || s.profile_id }}</text>
@@ -120,7 +120,7 @@
         </view>
       </view>
 
-      <view v-else-if="activeTab === 'appeals'" class="list">
+      <view v-else-if="activeTab === 'appeals'" class="list u-stagger">
         <view v-if="appeals.length === 0" class="empty"><text>{{ t('admin.emptyAppeals') }}</text></view>
         <view v-for="a in appeals" :key="a.id" class="card">
           <view class="card-head">
@@ -140,7 +140,7 @@
         </view>
       </view>
 
-      <view v-else-if="activeTab === 'warnings'" class="list">
+      <view v-else-if="activeTab === 'warnings'" class="list u-stagger">
         <view v-if="warnings.length === 0" class="empty"><text>{{ t('admin.emptyWarnings') }}</text></view>
         <view v-for="w in warnings" :key="w.profile_id" class="card">
           <view class="card-head">
@@ -158,7 +158,7 @@
         </view>
       </view>
 
-      <view v-else-if="activeTab === 'audit'" class="list">
+      <view v-else-if="activeTab === 'audit'" class="list u-stagger">
         <view v-if="auditLog.length === 0" class="empty"><text>{{ t('admin.emptyAudit') }}</text></view>
         <view v-for="r in auditLog" :key="r.id" class="audit-row">
           <text :class="['audit-kind', 'kind-' + r.event_kind]">{{ r.event_kind }}</text>

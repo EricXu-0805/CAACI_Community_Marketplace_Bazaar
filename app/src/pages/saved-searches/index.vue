@@ -26,7 +26,7 @@
         <UIcon name="bell" size="xl" color="ink-faint" />
         <text class="empty-text">{{ t('savedSearch.empty') }}</text>
       </view>
-      <view v-else>
+      <view v-else class="u-stagger">
         <view v-for="s in items" :key="s.id" class="ss-card">
           <view class="ss-main">
             <text class="ss-kw">{{ s.keyword }}</text>

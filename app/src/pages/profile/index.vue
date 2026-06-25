@@ -148,7 +148,7 @@
           <text class="empty-mini-text">{{ myTab === 'sold' ? t('profile.noSold') : t('profile.noListings') }}</text>
         </view>
         <scroll-view v-else scroll-x class="horz-scroll" :show-scrollbar="false">
-          <view class="horz-row">
+          <view class="horz-row u-stagger" :key="myTab">
             <view
               v-for="item in currentListings"
               :key="item.id"
@@ -193,7 +193,7 @@
           <UEmptyArt name="favorites" :size="104" />
           <text class="empty-mini-text">{{ t('profile.noSaved') }}</text>
         </view>
-        <view v-else class="fav-grid">
+        <view v-else class="fav-grid u-stagger">
           <view
             v-for="item in savedItems"
             :key="item.id"
