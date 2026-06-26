@@ -98,7 +98,7 @@
             <text :class="['stat-num', { active: post.liked_by_me }]">{{ post.like_count }}</text>
           </view>
           <view class="stat-btn">
-            <view class="bubble-ico"></view>
+            <UIcon name="messages" size="sm" color="text-muted" />
             <text class="stat-num">{{ post.comment_count }}</text>
           </view>
           <view class="stat-btn" role="button" :aria-label="t('a11y.share')" @click="onShare">
@@ -759,10 +759,6 @@ async function onSubmitComment() {
 }
 .heart-img { width: 22px; height: 22px; }
 .stat-num { font-size: 13px; color: var(--text-muted); font-weight: 500; &.active { color: var(--accent-danger); } }
-.bubble-ico {
-  width: 20px; height: 16px; border: 1.8px solid var(--text-muted);
-  border-radius: 9px 9px 9px 2px;
-}
 .comments-section { background: var(--bg-elev-1); margin-top: 8px; }
 .cs-header { padding: 14px 16px 8px; border-bottom: 0.5px solid var(--line-hair); }
 .cs-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
