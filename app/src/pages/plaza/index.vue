@@ -251,7 +251,7 @@
               <text class="pa-num">{{ post.comment_count }}</text>
             </view>
             <view class="pa-btn" role="button" :aria-label="t('a11y.share')" @click.stop="onSharePost(post)">
-              <view class="share-ico"></view>
+              <UIcon name="share" size="sm" color="text-muted" />
             </view>
           </view>
 
@@ -1623,21 +1623,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   width: 18px; height: 15px; border: 1.8px solid var(--text-muted);
   border-radius: 8px 8px 8px 2px;
 }
-.share-ico {
-  width: 16px; height: 16px; position: relative;
-  &::before {
-    content: ''; position: absolute; top: 1px; left: 50%;
-    transform: translateX(-50%);
-    width: 0; height: 8px; border-left: 1.8px solid var(--text-muted);
-  }
-  &::after {
-    content: ''; position: absolute; top: 0; left: 50%;
-    transform: translateX(-50%) rotate(45deg);
-    width: 8px; height: 8px;
-    border-left: 1.8px solid var(--text-muted); border-top: 1.8px solid var(--text-muted);
-  }
-}
-
 .end-tip { text-align: center; padding: 24px; font-size: 12px; color: var(--text-faint); }
 
 .composer-fullpage {

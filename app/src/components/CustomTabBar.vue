@@ -276,15 +276,15 @@ function go(url: string) { uni.switchTab({ url }) }
   padding: 10px 0 6px;
 }
 .fab {
-  width: 28px; height: 28px; border-radius: 8px;
+  width: 20px; height: 20px; border-radius: 6px;
   background: var(--brand);
   display: flex; align-items: center; justify-content: center;
-  /* QA6 #10 r2 + r5 (Eric: 字不协调): a 28px button. Pull it UP via margin-top
-     only (not symmetric -4/-4) so its BOTTOM aligns with the 20px icons' bottom
-     — that gives the 发布 label the same ~4px breathing gap the other 4 tabs
-     have, instead of jamming it against the box (gap 0). Label baseline still
-     matches the other 4. (Was a 40px button raised -6px above the bar.) */
-  margin: -8px 0 0;
+  /* QA6 r6 (Eric: "跟其他持平，现在高出来一截"): size + position the FAB to sit
+     EXACTLY in the 20px icon band (margin 0 → top/bottom flush with the other 4
+     tabs' icons), so it neither protrudes above nor jams the 发布 label below.
+     The solid Illini-orange fill keeps it prominent at icon size. (Was 28px
+     raised -8px — that's the protrusion he flagged.) */
+  margin: 0;
   /* No lift shadow (QA6 #9后续): the FAB now sits flush ON the solid bar; a
      drop shadow made it read as "floating above" with a gap. Flat = tightly
      attached to the icon continent. */
@@ -298,21 +298,21 @@ function go(url: string) { uni.switchTab({ url }) }
    the FAB rendering with only one bar — looking like a handbag handle. Plain
    <view> children are guaranteed to survive every uni-app target. */
 .fab-plus {
-  width: 14px; height: 14px;
+  width: 12px; height: 12px;
   position: relative;
 }
 .fab-plus-h, .fab-plus-v {
   position: absolute; background: #fff; border-radius: 1.5px;
 }
 .fab-plus-h {
-  width: 14px; height: 2.25px;
-  top: calc(50% - 1.125px);
+  width: 12px; height: 2px;
+  top: calc(50% - 1px);
   left: 0;
 }
 .fab-plus-v {
-  width: 2.25px; height: 14px;
+  width: 2px; height: 12px;
   top: 0;
-  left: calc(50% - 1.125px);
+  left: calc(50% - 1px);
 }
 .fab-lbl {
   margin-top: 4px;
