@@ -279,11 +279,12 @@ function go(url: string) { uni.switchTab({ url }) }
   width: 28px; height: 28px; border-radius: 8px;
   background: var(--brand);
   display: flex; align-items: center; justify-content: center;
-  /* QA6 #10 r2 (Eric: 缩小 + 齐平 + 字对齐): a 28px button vertically centered
-     on the 20px icon line via -4px block margins, so the 发布 label sits on the
-     same baseline as the other 4 tabs — flush in the row, no protrusion, not
-     stacked. (Was a 40px button raised -6px above the bar.) */
-  margin: -4px 0;
+  /* QA6 #10 r2 + r5 (Eric: 字不协调): a 28px button. Pull it UP via margin-top
+     only (not symmetric -4/-4) so its BOTTOM aligns with the 20px icons' bottom
+     — that gives the 发布 label the same ~4px breathing gap the other 4 tabs
+     have, instead of jamming it against the box (gap 0). Label baseline still
+     matches the other 4. (Was a 40px button raised -6px above the bar.) */
+  margin: -8px 0 0;
   /* No lift shadow (QA6 #9后续): the FAB now sits flush ON the solid bar; a
      drop shadow made it read as "floating above" with a gap. Flat = tightly
      attached to the icon continent. */
