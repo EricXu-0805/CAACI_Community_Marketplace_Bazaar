@@ -1918,5 +1918,50 @@ page, .page { overflow-x: clip; }
  * <uni-picker> element — selector must be the bare class.)
  */
 .uni-picker-container { z-index: 1100 !important; }
+
+/*
+ * QA6 r7 — warm the native H5 action sheet (long-press → 置顶/免打扰/标记已读/
+ * 删除, chat more-actions, report menus). uni ships it bare system-default
+ * (flat rgb(252,252,253) card, 5px radius, 18px black rows, no separators) — Eric:
+ * "太素". Re-skin to the app's bottom-sheet language: rounded elevated cards,
+ * generous rows, hairline separators, themed ink + active state, quieter Cancel.
+ * uni teleports the sheet to the document root (outside page scope) and sets some
+ * inline styles, so this is a GLOBAL block with !important. CSS vars cascade from
+ * :root, so it auto-adapts to dark theme. (mp uses the OS-native sheet — H5 only.)
+ */
+.uni-actionsheet__mask { background: rgba(28, 22, 16, 0.42) !important; }
+.uni-actionsheet__menu,
+.uni-actionsheet__action {
+  background: var(--bg-elev-1) !important;
+  border-radius: 16px !important;
+  overflow: hidden;
+  box-shadow: 0 10px 34px rgba(40, 30, 20, 0.16);
+}
+.uni-actionsheet__action { margin-top: 8px !important; }
+.uni-actionsheet__cell {
+  color: var(--text-primary) !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  padding: 15px 16px !important;
+  position: relative;
+  transition: background 0.12s ease;
+}
+.uni-actionsheet__cell:active { background: var(--paper-2) !important; }
+/* hairline between stacked menu rows (skip the last) */
+.uni-actionsheet__menu .uni-actionsheet__cell:not(:last-child)::after {
+  content: ''; position: absolute; left: 16px; right: 16px; bottom: 0;
+  height: 0.5px; background: var(--line-hair);
+}
+/* optional title row (when an action sheet passes one) reads as a quiet caption */
+.uni-actionsheet__title {
+  color: var(--ink-quiet) !important;
+  font-size: 13px !important;
+  padding: 14px 16px !important;
+}
+/* the Cancel group stands apart — quieter ink, a touch heavier */
+.uni-actionsheet__action .uni-actionsheet__cell {
+  color: var(--ink-quiet) !important;
+  font-weight: 600 !important;
+}
 /* #endif */
 </style>
