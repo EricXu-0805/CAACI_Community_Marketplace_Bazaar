@@ -21,6 +21,11 @@ const PAGES = [
 const IGNORE = [
   /40[13]/, /permission denied/, /auth_required/,
   /Failed to load resource/, /favicon/,
+  // Playwright's bundled Chromium predates `interactive-widget` (Chrome 108+).
+  // It logs this when parsing our viewport meta and then ignores the key — the
+  // exact graceful-degradation fallback we rely on for pre-108 / pre-Safari-17.4
+  // clients. Benign, not a regression. (app/index.html, useKeyboardHeight.ts)
+  /Viewport argument key "interactive-widget" not recognized/,
 ]
 
 function attachConsoleCollector(page: Page): string[] {

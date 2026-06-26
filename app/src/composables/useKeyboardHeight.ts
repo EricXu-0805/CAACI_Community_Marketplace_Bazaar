@@ -1,4 +1,4 @@
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import type { Ref } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
 
@@ -11,15 +11,13 @@ import { onLoad, onUnload } from '@dcloudio/uni-app'
  * caller can apply a transform / padding / fixed-bottom offset.
  *
  * --- H5 path ---
- * Uses window.visualViewport. Listens to BOTH `resize` AND `scroll`
- * events because iOS Safari fires both when the keyboard rises (the
- * visual viewport scrolls up AND shrinks); listening to `resize` alone
- * misses some triggers. Captures `baselineHeight = window.innerHeight`
- * at onMounted (before any keyboard interaction) and computes
- * `baselineHeight - visualViewport.height` per event. Capturing at mount
- * is required for Android Chrome <108 compatibility, where
- * `window.innerHeight` itself shrinks when the keyboard opens (modern
- * Chrome 108+ keeps innerHeight stable; pre-108 mirrors visualViewport).
+ * No JS lift. Keyboard avoidance is handled structurally by the viewport
+ * meta `interactive-widget=resizes-content` (app/index.html), which shrinks
+ * the layout viewport so bottom-anchored bars / fixed sheets reflow above the
+ * keyboard on their own. `height` stays 0 on H5; the per-element translateY
+ * bindings in consumers become no-ops. See the in-body H5 block for the full
+ * rationale (QA6 #8/#9 — a single px formula could not lift both the chat
+ * composer and the post composer correctly; the browser reflow does).
  *
  * --- mp-weixin path ---
  * Uses `uni.onKeyboardHeightChange`, registered via uni-app PAGE
@@ -121,57 +119,30 @@ export function useKeyboardHeight(opts: UseKeyboardHeightOptions = {}): Keyboard
   }
 
   // ============================================================
-  // H5 path — visualViewport
+  // H5 path — interactive-widget=resizes-content (no JS lift)
   // ============================================================
   // #ifdef H5
-  let baselineHeight = 0
-
-  function onResize() {
-    // SSR / older-browser guard. uni-app H5 is SPA so window always
-    // exists at runtime, but vue-tsc strict mode sees the global as
-    // possibly-undefined at type level; this guard satisfies both.
-    if (typeof window === 'undefined' || !window.visualViewport) return
-    const vv = window.visualViewport
-    // Keyboard height = pure viewport shrink (baseline - vv.height).
-    //
-    // QA6 r2 (#8/#9): an earlier pass also subtracted vv.offsetTop to tame an
-    // over-lift ("jumped to top"). On real iPhones that OVER-corrected the
-    // lift to ~0 — Eric reported the bar "完全不动,被键盘整个盖住". Root cause:
-    // the lifted elements (.input-bar / .comp-bottom-stack) are flex children,
-    // NOT position:fixed, so they do NOT ride iOS's visual-viewport scroll;
-    // they stay at the layout-viewport bottom and need the FULL keyboard height
-    // to clear it. (The original over-lift was the uni textarea's own
-    // adjust-position double-lift, since removed via :adjust-position="false".)
-    // Cap at baseline so a transient bad reading can't translate a bar offscreen.
-    const inset = baselineHeight - vv.height
-    commit(Math.min(inset, baselineHeight))
-  }
-
-  onMounted(() => {
-    if (typeof window === 'undefined') return
-    // Capture baseline BEFORE any user interaction can pop the
-    // keyboard, so subtractions are stable across Chrome <108 (where
-    // innerHeight shrinks with the keyboard) and Chrome 108+ /
-    // iOS Safari (where innerHeight stays stable).
-    baselineHeight = window.innerHeight
-    if (window.visualViewport) {
-      // Both events are required on iOS Safari (see top-of-file note).
-      window.visualViewport.addEventListener('resize', onResize)
-      window.visualViewport.addEventListener('scroll', onResize)
-    }
-  })
-
-  onUnmounted(() => {
-    if (typeof window === 'undefined') return
-    if (window.visualViewport) {
-      window.visualViewport.removeEventListener('resize', onResize)
-      window.visualViewport.removeEventListener('scroll', onResize)
-    }
-    if (debounceTimer) {
-      clearTimeout(debounceTimer)
-      debounceTimer = null
-    }
-  })
+  /*
+   * H5 keyboard avoidance is now handled STRUCTURALLY by the viewport meta
+   * `interactive-widget=resizes-content` (app/index.html): the soft keyboard
+   * shrinks the layout viewport itself, so a bottom-anchored flex child (chat
+   * `.input-bar`, plaza `.comp-bottom-stack`, post `.input-wrapper`) or a
+   * `position:fixed; bottom:0` sheet (offer / meetup / comment) reflows to sit
+   * directly above the keyboard with NO transform.
+   *
+   * Applying a translateY lift ON TOP of that reflow double-lifts the bar to
+   * the top of the screen — that was QA6 #8 ("一点就跳到最上面"). The previous
+   * round removed the lift's offsetTop term to fix that, which then
+   * under-corrected the post composer (#9, "被键盘遮住"). A single px formula
+   * could not serve both contexts; the browser-native reflow does, for free.
+   * So H5 reports height 0 — every consumer's translateY binding becomes a
+   * no-op and the keyboard avoidance is deterministic, not a magic number.
+   *
+   * Pre-Safari-17.4 / Chrome <108 fall back to the legacy `resizes-visual`
+   * behaviour (keyboard overlays a fixed bar) — acceptable for a 2026 launch
+   * and strictly no worse than the previously-broken manual lift. `height`
+   * stays 0 here, so no visualViewport listeners are registered.
+   */
   // #endif
 
   // ============================================================

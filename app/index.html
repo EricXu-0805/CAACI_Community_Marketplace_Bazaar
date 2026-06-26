@@ -7,6 +7,13 @@
         CSS.supports('top: constant(a)'))
       document.write(
         '<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0' +
+        // interactive-widget=resizes-content (Safari 17.4+/Chrome 108+): the soft
+        // keyboard shrinks the LAYOUT viewport itself, so bottom-anchored bars and
+        // `position:fixed; bottom:0` sheets reflow to sit above the keyboard with
+        // zero JS. This replaces the per-element translateY lift that double-lifted
+        // the chat composer to the top of the screen (QA6 #8) and still left the
+        // post composer covered (#9). See composables/useKeyboardHeight.ts.
+        ', interactive-widget=resizes-content' +
         (coverSupport ? ', viewport-fit=cover' : '') + '" />')
     </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
