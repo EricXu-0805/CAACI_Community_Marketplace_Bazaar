@@ -247,7 +247,7 @@
               <text :class="['pa-num', { active: post.liked_by_me }]">{{ post.like_count }}</text>
             </view>
             <view class="pa-btn" role="button" :aria-label="t('a11y.comment')" @click.stop="openComments(post)">
-              <view class="bubble-ico"></view>
+              <UIcon name="messages" size="sm" color="text-muted" />
               <text class="pa-num">{{ post.comment_count }}</text>
             </view>
             <view class="pa-btn" role="button" :aria-label="t('a11y.share')" @click.stop="onSharePost(post)">
@@ -1619,10 +1619,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 }
 .pa-num { font-size: 12px; color: var(--text-muted); font-weight: 500; &.active { color: var(--accent-danger); } }
 
-.bubble-ico {
-  width: 18px; height: 15px; border: 1.8px solid var(--text-muted);
-  border-radius: 8px 8px 8px 2px;
-}
 .end-tip { text-align: center; padding: 24px; font-size: 12px; color: var(--text-faint); }
 
 .composer-fullpage {
