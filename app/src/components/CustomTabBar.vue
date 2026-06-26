@@ -54,10 +54,12 @@
         rounded corners that looked like a handbag handle (P2-2).
         SVG strokes are identical across H5 and mp targets.
       -->
-      <view class="fab">
-        <view class="fab-plus">
-          <view class="fab-plus-h"></view>
-          <view class="fab-plus-v"></view>
+      <view class="fab-icon-slot">
+        <view class="fab">
+          <view class="fab-plus">
+            <view class="fab-plus-h"></view>
+            <view class="fab-plus-v"></view>
+          </view>
         </view>
       </view>
       <text class="lbl fab-lbl">{{ t('nav.post') }}</text>
@@ -275,24 +277,32 @@ function go(url: string) { uni.switchTab({ url }) }
   display: flex; flex-direction: column; align-items: center;
   padding: 10px 0 6px;
 }
+/* QA6 r7→r8 — the LABEL must sit level with Home/Plaza/Messages/Profile.
+   Every regular tab's icon lives in a fixed 20px box (.ico-wrap), so its
+   label flows right after a 20px slot. Earlier rounds gave the FAB a 24px
+   in-flow box nudged with margin-top, then chased the offset with pixels —
+   but a headless Chromium and real iOS Safari size the UIcon SVG line-box
+   differently, so "level" in the probe read "higher" on device.
+   Fix: give the FAB the SAME 20px in-flow slot, and let the orange square
+   overflow it upward via absolute bottom-alignment. The label now trails an
+   identical 20px box on all five tabs → level is structural, engine-agnostic. */
+.fab-icon-slot {
+  position: relative;
+  width: 20px; height: 20px;
+}
 .fab {
+  position: absolute; bottom: 0; left: 50%;
+  transform: translateX(-50%);
   width: 24px; height: 24px; border-radius: 7px;
   background: var(--brand);
   display: flex; align-items: center; justify-content: center;
-  /* QA6 r7 (Eric: 20px "小一圈" too small, but label must stay level): a proper
-     24px button BOTTOM-aligned with the 20px icon band — margin-top -4 lifts only
-     the top so the bottom stays at 812 and the 发布 label still lands at 816,
-     level with Home/Plaza. So the LABEL is flush with the others (his ask) while
-     the button reads as a real, full-size action — only +4px above the icon line
-     (half the r5 protrusion he rejected). */
-  margin: -4px 0 0;
-  /* No lift shadow (QA6 #9后续): the FAB now sits flush ON the solid bar; a
-     drop shadow made it read as "floating above" with a gap. Flat = tightly
-     attached to the icon continent. */
+  /* A full-size 24px button (Eric: 20px read "小一圈") bottom-aligned to the
+     20px icon band → it protrudes 4px upward like a real action button while
+     its bottom stays on the icon baseline. No drop shadow: flat = attached. */
   transition: transform var(--dur-1, 120ms) var(--ease-std, ease),
               background var(--dur-1, 120ms) var(--ease-std, ease);
 }
-.fab-slot:active .fab { transform: scale(0.92); background: var(--brand-deep); }
+.fab-slot:active .fab { transform: translateX(-50%) scale(0.92); background: var(--brand-deep); }
 /* + glyph built from two real <view> elements rather than ::before/::after
    pseudo-elements. mp-weixin's wxss stripper sometimes drops pseudo-element
    rules during minification, which on certain Android Chrome builds left
