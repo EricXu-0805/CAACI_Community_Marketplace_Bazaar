@@ -276,15 +276,16 @@ function go(url: string) { uni.switchTab({ url }) }
   padding: 10px 0 6px;
 }
 .fab {
-  width: 20px; height: 20px; border-radius: 6px;
+  width: 24px; height: 24px; border-radius: 7px;
   background: var(--brand);
   display: flex; align-items: center; justify-content: center;
-  /* QA6 r6 (Eric: "跟其他持平，现在高出来一截"): size + position the FAB to sit
-     EXACTLY in the 20px icon band (margin 0 → top/bottom flush with the other 4
-     tabs' icons), so it neither protrudes above nor jams the 发布 label below.
-     The solid Illini-orange fill keeps it prominent at icon size. (Was 28px
-     raised -8px — that's the protrusion he flagged.) */
-  margin: 0;
+  /* QA6 r7 (Eric: 20px "小一圈" too small, but label must stay level): a proper
+     24px button BOTTOM-aligned with the 20px icon band — margin-top -4 lifts only
+     the top so the bottom stays at 812 and the 发布 label still lands at 816,
+     level with Home/Plaza. So the LABEL is flush with the others (his ask) while
+     the button reads as a real, full-size action — only +4px above the icon line
+     (half the r5 protrusion he rejected). */
+  margin: -4px 0 0;
   /* No lift shadow (QA6 #9后续): the FAB now sits flush ON the solid bar; a
      drop shadow made it read as "floating above" with a gap. Flat = tightly
      attached to the icon continent. */
@@ -298,21 +299,21 @@ function go(url: string) { uni.switchTab({ url }) }
    the FAB rendering with only one bar — looking like a handbag handle. Plain
    <view> children are guaranteed to survive every uni-app target. */
 .fab-plus {
-  width: 12px; height: 12px;
+  width: 15px; height: 15px;
   position: relative;
 }
 .fab-plus-h, .fab-plus-v {
   position: absolute; background: #fff; border-radius: 1.5px;
 }
 .fab-plus-h {
-  width: 12px; height: 2px;
-  top: calc(50% - 1px);
+  width: 15px; height: 2.25px;
+  top: calc(50% - 1.125px);
   left: 0;
 }
 .fab-plus-v {
-  width: 2px; height: 12px;
+  width: 2.25px; height: 15px;
   top: 0;
-  left: calc(50% - 1px);
+  left: calc(50% - 1.125px);
 }
 .fab-lbl {
   margin-top: 4px;
