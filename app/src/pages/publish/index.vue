@@ -148,7 +148,7 @@
       </view>
     </view>
 
-    <view class="submit-bar u-glass u-glass--hair-t">
+    <view class="submit-bar">
       <UButton size="lg" block :loading="submitting" @click="onSubmit">
         {{ t('publish.submit') }}
       </UButton>
@@ -751,9 +751,10 @@ async function onSubmit() {
 <style lang="scss" scoped>
 .page {
   min-height: 100vh; background: var(--bg-subtle);
-  /* Clear the fixed submit bar (now at 70px + safe) + the solid tab bar below
-     it; add safe-area so the last field isn't hidden on notch devices. */
-  padding-bottom: calc(134px + env(safe-area-inset-bottom, 0px)); max-width: 480px; margin: 0 auto;
+  /* Clear the solid submit footer (70px) sitting flush on the 62px tab bar +
+     ~14px breathing, plus safe-area so the last field isn't hidden on notch
+     devices. */
+  padding-bottom: calc(146px + env(safe-area-inset-bottom, 0px)); max-width: 480px; margin: 0 auto;
 }
 
 /* ========== Header ========== */
@@ -830,7 +831,7 @@ async function onSubmit() {
 }
 .add-text { font-size: 11px; color: var(--text-faint); }
 .add-count { font-size: 10px; color: var(--text-faint); margin-top: 2px; font-variant-numeric: tabular-nums; }
-.image-tip { font-size: 12px; color: var(--text-faint); margin-top: 8px; }
+.image-tip { font-size: 12px; color: var(--text-faint); margin-top: 12px; display: block; line-height: 1.5; }
 
 /* ========== Upload Progress ========== */
 .upload-bar {
@@ -1009,13 +1010,17 @@ async function onSubmit() {
 
 /* ========== Submit ========== */
 .submit-bar {
-  /* Sit clearly ABOVE the bottom tab bar with an 8px gap (QA6 #10 — the big
-     red 发布 must not stack on the nav row). The tab bar is now a solid
-     62px bar + safe-area chin flush to the bottom, so clear 62+8. */
-  position: fixed; bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  /* QA6 r4 (#9后续/leak): was a translucent .u-glass bar floating 8px above the
+     tab bar — the lower form fields (Location, campus chips, "use current
+     location") bled THROUGH the 60% glass and PEEKED through the 8px gap. Now a
+     SOLID, opaque footer sitting flush on top of the solid 62px tab bar (no gap,
+     no translucency) so nothing leaks. A top hairline keeps the two bars
+     visually distinct; the 9px padding keeps the red CTA off the nav row. */
+  position: fixed; bottom: calc(62px + env(safe-area-inset-bottom, 0px));
   left: 50%; transform: translateX(-50%);
   width: 100%; max-width: 480px; padding: 9px 16px;
-  /* fill + blur + top hairline come from .u-glass + .u-glass--hair-t */
+  background: var(--surface);
+  border-top: 0.5px solid var(--border-hair);
   z-index: 40;
 }
 @media (min-width: 768px) {
