@@ -936,7 +936,9 @@ function goPublish() {
   flex-shrink: 0;
   /* fill + bottom hairline now come from .u-glass + .u-glass--hair-b */
   padding: 0 16px 11px;
-  padding-top: var(--mp-status-bar);
+  /* QA6 r5: +10px below the status-bar inset so the brand lockup isn't jammed
+     right under the notch / Dynamic Island (Eric: "太靠顶部"). */
+  padding-top: calc(var(--mp-status-bar) + 10px);
   z-index: 50;
 }
 .mh-row {

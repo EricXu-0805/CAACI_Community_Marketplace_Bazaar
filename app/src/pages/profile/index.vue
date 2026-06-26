@@ -912,7 +912,11 @@ function onDeleteItem(id: string) {
 .action-icon--amber    { background: var(--warning-soft); }
 .action-icon--sage     { background: var(--success-soft); }
 .action-icon--lavender { background: var(--campus-blue-soft); }
-.action-label { font-size: 12px; color: var(--ink-soft); line-height: 1.2; }
+/* QA6 r5: text-align center so the 2-line labels (Recently Viewed / Saved
+   Searches) center each line under their icon instead of going flush-left
+   (uni <text> defaults to text-align:start → looked misaligned vs the 1-line
+   Notifications / Following). */
+.action-label { font-size: 12px; color: var(--ink-soft); line-height: 1.2; text-align: center; }
 .action-badge {
   position: absolute;
   top: -2px; right: calc(50% - 28px);
@@ -956,7 +960,11 @@ function onDeleteItem(id: string) {
    the design system's "price is the only confident number on the
    page" principle. Free items drop to sage (--success) so 免费 / Free
    reads as a positive-state affordance, not a price. */
-.horz-price-row { display: flex; align-items: center; gap: 5px; margin-top: 4px; }
+/* QA6 r5: flex-wrap so a wanted card's [WANTED] badge + "Budget $12" serif
+   price (together ~135px) wrap to two lines inside the 130px card instead of
+   the price overflowing/colliding with the badge. Mirrors .fav-meta, which
+   already wraps. */
+.horz-price-row { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; row-gap: 3px; margin-top: 4px; }
 .horz-price {
   font-family: var(--font-serif);
   font-size: 17px; font-weight: 600;
