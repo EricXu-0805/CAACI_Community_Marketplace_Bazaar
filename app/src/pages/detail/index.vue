@@ -41,7 +41,7 @@
         <UIcon name="chevron-left" size="xs" color="#fff" />
       </view>
       <view class="img-share" role="button" :aria-label="t('a11y.share')" @click="onShare">
-        <view class="share-icon"></view>
+        <UIcon name="share" size="sm" color="#fff" />
       </view>
       <view v-if="imgs.length > 1" class="img-counter">
         <text>{{ currentImg + 1 }}/{{ imgs.length }}</text>
@@ -892,22 +892,6 @@ async function contactSeller() {
 }
 .img-back { left: 12px; }
 .img-share { right: 12px; }
-
-.share-icon {
-  width: 14px; height: 14px; position: relative;
-  &::before {
-    content: ''; position: absolute; top: 0; left: 50%;
-    width: 2px; height: 9px; background: var(--bg-elev-1);
-    transform: translateX(-50%);
-  }
-  &::after {
-    content: ''; position: absolute; top: 0; left: 50%;
-    width: 8px; height: 8px;
-    border-top: 2px solid #fff; border-right: 2px solid #fff;
-    transform: translateX(-50%) rotate(-45deg);
-    transform-origin: center;
-  }
-}
 
 .img-counter {
   position: absolute; bottom: 12px; right: 12px; z-index: 10;

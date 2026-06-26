@@ -102,7 +102,7 @@
             <text class="stat-num">{{ post.comment_count }}</text>
           </view>
           <view class="stat-btn" role="button" :aria-label="t('a11y.share')" @click="onShare">
-            <view class="share-ico"></view>
+            <UIcon name="share" size="sm" color="text-muted" />
           </view>
         </view>
       </view>
@@ -763,21 +763,6 @@ async function onSubmitComment() {
   width: 20px; height: 16px; border: 1.8px solid var(--text-muted);
   border-radius: 9px 9px 9px 2px;
 }
-.share-ico {
-  width: 18px; height: 18px; position: relative;
-  &::before {
-    content: ''; position: absolute; top: 1px; left: 50%;
-    transform: translateX(-50%);
-    width: 0; height: 9px; border-left: 1.8px solid var(--text-muted);
-  }
-  &::after {
-    content: ''; position: absolute; top: 0; left: 50%;
-    transform: translateX(-50%) rotate(45deg);
-    width: 9px; height: 9px;
-    border-left: 1.8px solid var(--text-muted); border-top: 1.8px solid var(--text-muted);
-  }
-}
-
 .comments-section { background: var(--bg-elev-1); margin-top: 8px; }
 .cs-header { padding: 14px 16px 8px; border-bottom: 0.5px solid var(--line-hair); }
 .cs-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
