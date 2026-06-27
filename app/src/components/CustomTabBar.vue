@@ -62,7 +62,7 @@
           </view>
         </view>
       </view>
-      <text class="lbl fab-lbl">{{ t('nav.post') }}</text>
+      <text class="lbl">{{ t('nav.post') }}</text>
     </view>
     <view :class="['tab', { active: current === 'messages' }]" role="button" :aria-current="current === 'messages' ? 'page' : undefined" :aria-label="t('nav.messages')" @click="go('/pages/messages/index')">
       <view v-if="current === 'messages'" class="tab-dot"></view>
@@ -325,13 +325,13 @@ function go(url: string) { uni.switchTab({ url }) }
   top: 0;
   left: calc(50% - 1.125px);
 }
-.fab-lbl {
-  margin-top: 4px;
-  font-size: 10px;
-  color: var(--ink-quiet);
-  letter-spacing: 0.06em;
-  line-height: 1;
-}
+/* No .fab-lbl overrides — the Post label must be byte-identical to the other
+   four tabs. It earlier set line-height: 1, which kept the box top aligned (so
+   every probe read "level") but rendered the glyph at the very top of a tight
+   10px line box, ~3px above the others whose 10px glyph centers in a normal
+   ~16px line box. That glyph-within-line-box offset is pure CSS — identical in
+   Chrome and Safari — which is why it survived 4 rounds of moving the box and
+   showed up in both browsers. The label just uses .lbl now. */
 
 @media (max-width: 767px) { .tabbar { display: flex; } }
 </style>
