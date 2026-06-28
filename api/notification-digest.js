@@ -3,7 +3,7 @@ export const config = { runtime: 'edge' }
 /*
  * Off-platform notification digest (the biggest retention leak: notifications
  * were in-app only). Reads un-emailed notification rows via the service key,
- * groups per user, sends each user a digest via Brevo, and marks the rows
+ * groups per user, sends each user a digest via Resend, and marks the rows
  * emailed_at so they're never sent twice. Intended to run on a daily Vercel
  * cron (see vercel.json), but is also safe to hit manually for testing.
  *
@@ -17,21 +17,27 @@ export const config = { runtime: 'edge' }
  *     AND clear DIGEST_TEST_EMAIL — two deliberate actions. Default is inert.
  *
  * Env (set in Vercel): SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (already present),
- * BREVO_API_KEY, CRON_SECRET, DIGEST_TEST_EMAIL (test), DIGEST_LIVE ('true' to
- * go live). Sender is the verified Brevo address newsletter@news.caaciorg.com.
+ * RESEND_API_KEY, CRON_SECRET, DIGEST_TEST_EMAIL (test), DIGEST_LIVE ('true' to
+ * go live), DIGEST_FROM (sender on the Resend-verified illinimarket.com domain;
+ * defaults to "Illini Market <noreply@send.illinimarket.com>").
  */
 
 function env(name, fallback = '') { return process.env[name] || fallback }
 const SUPABASE_URL = env('SUPABASE_URL', env('VITE_SUPABASE_URL'))
 const SERVICE_KEY = env('SUPABASE_SERVICE_ROLE_KEY')
-const BREVO_API_KEY = env('BREVO_API_KEY')
+const RESEND_API_KEY = env('RESEND_API_KEY')
 const CRON_SECRET = env('CRON_SECRET')
 const TEST_EMAIL = env('DIGEST_TEST_EMAIL')
 const LIVE = env('DIGEST_LIVE') === 'true'
 const APP_URL = env('DIGEST_APP_URL', 'https://illinimarket.com')
-const SENDER = { email: 'newsletter@news.caaciorg.com', name: '香槟集市 Illini Market' }
+// Resend requires the From address to be on a domain verified in Resend.
+// Eric verifies the send.illinimarket.com subdomain; override via DIGEST_FROM.
+const FROM = env('DIGEST_FROM', 'Illini Market <noreply@send.illinimarket.com>')
 const WINDOW_DAYS = 7
 const MAX_ROWS = 40
+// Unread-message reminder: a chat message unread for at least this long seeds a
+// one-shot 'unread_message' notification that rides this same digest (migration 070).
+const UNREAD_REMINDER_HOURS = 12
 
 function timingSafeEqual(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false
@@ -46,7 +52,7 @@ function esc(s) {
   ))
 }
 
-const TYPE_ICON = { price_drop: '↓', sold: '✓', offer: '$', meetup: '📍', system: '🔔' }
+const TYPE_ICON = { price_drop: '↓', sold: '✓', offer: '$', meetup: '📍', system: '🔔', unread_message: '✉' }
 
 function rowHtml(n) {
   const icon = TYPE_ICON[n.type] || '🔔'
@@ -180,13 +186,67 @@ async function generateMeetupReminders() {
   return meetups.length
 }
 
-async function brevoSend(to, subject, html) {
-  const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+/*
+ * Unread-message reminder (#070). Chat messages never create a notifications
+ * row, so an unread message sat invisible off-platform. This finds messages the
+ * RECIPIENT hasn't read that have been unread for >12h (long enough that they
+ * had a chance to see it in-app), collapses them to ONE 'unread_message'
+ * notification per recipient, and stamps messages.reminded_at so each unread
+ * message reminds at most once. Reading the thread (is_read -> true) before the
+ * cron simply drops it from the query — a since-read message is never reminded.
+ *
+ * Same claim-then-act + LIVE-only posture as generateMeetupReminders: stamp
+ * reminded_at BEFORE inserting the notification so a split write misses a
+ * reminder rather than duplicating one; mutates, so it never runs in test mode.
+ */
+async function generateUnreadMessageReminders() {
+  const cutoffIso = new Date(Date.now() - UNREAD_REMINDER_HOURS * 3600000).toISOString()
+  // Embed the conversation so we can resolve the recipient (the participant who
+  // is NOT the sender) and honor that side's mute flag.
+  const msgs = await sbGet(
+    `messages?is_read=is.false&reminded_at=is.null&created_at=lte.${cutoffIso}` +
+    `&select=id,sender_id,conversation_id,conversations(buyer_id,seller_id,is_muted_buyer,is_muted_seller)` +
+    `&order=created_at.asc&limit=500`
+  )
+  if (!msgs.length) return 0
+
+  // recipientId -> { ids: [messageId], count }. Skip rows whose recipient muted.
+  const byRecipient = new Map()
+  for (const m of msgs) {
+    const c = m.conversations
+    if (!c) continue
+    const recipient = c.buyer_id === m.sender_id ? c.seller_id : c.buyer_id
+    if (!recipient) continue
+    const recipientMuted = recipient === c.buyer_id ? c.is_muted_buyer : c.is_muted_seller
+    if (recipientMuted) continue
+    if (!byRecipient.has(recipient)) byRecipient.set(recipient, { ids: [], count: 0 })
+    const e = byRecipient.get(recipient)
+    e.ids.push(m.id); e.count++
+  }
+  if (!byRecipient.size) return 0
+
+  const allIds = [...byRecipient.values()].flatMap(e => e.ids)
+  // Claim-then-act: stamp reminded_at on every included message FIRST. Clients
+  // can't write reminded_at (064 column lock), so only this digest sets it.
+  await sbPatch(`messages?id=in.(${allIds.map(encodeURIComponent).join(',')})`, { reminded_at: new Date().toISOString() })
+
+  const notifs = [...byRecipient.entries()].map(([recipient, e]) => ({
+    user_id: recipient,
+    type: 'unread_message',
+    title: '未读消息 · Unread messages',
+    body: `你有 ${e.count} 条未读消息 · ${e.count} unread message${e.count > 1 ? 's' : ''}`,
+  }))
+  await sbInsert('notifications', notifs)
+  return notifs.length
+}
+
+async function resendSend(to, subject, html) {
+  const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
-    headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ sender: SENDER, to: [{ email: to }], subject, htmlContent: html }),
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: FROM, to: [to], subject, html }),
   })
-  if (!r.ok) throw new Error(`brevo ${r.status}: ${(await r.text()).slice(0, 200)}`)
+  if (!r.ok) throw new Error(`resend ${r.status}: ${(await r.text()).slice(0, 200)}`)
 }
 
 function json(obj, status = 200) {
@@ -198,7 +258,7 @@ export default async function handler(req) {
   const bearer = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')
   if (!CRON_SECRET || !timingSafeEqual(bearer, CRON_SECRET)) return json({ error: 'unauthorized' }, 401)
   if (!SUPABASE_URL || !SERVICE_KEY) return json({ error: 'supabase env missing' }, 500)
-  if (!BREVO_API_KEY) return json({ error: 'BREVO_API_KEY missing' }, 500)
+  if (!RESEND_API_KEY) return json({ error: 'RESEND_API_KEY missing' }, 500)
 
   // Paranoid send gate.
   if (!TEST_EMAIL && !LIVE) {
@@ -210,9 +270,14 @@ export default async function handler(req) {
   // same pass. LIVE-only (mutates); test mode stays repeatable. A failure here
   // must not abort the digest.
   let meetupReminders = 0
+  let unreadReminders = 0
   if (!TEST_EMAIL) {
     try { meetupReminders = await generateMeetupReminders() }
     catch (e) { console.error('meetup reminders failed:', e?.message || e) }
+    // #070 — seed unread-message reminders into the same pass. Independent of
+    // meetups; a failure here must not abort the digest either.
+    try { unreadReminders = await generateUnreadMessageReminders() }
+    catch (e) { console.error('unread reminders failed:', e?.message || e) }
   }
 
   const since = new Date(Date.now() - WINDOW_DAYS * 86400000).toISOString()
@@ -225,7 +290,7 @@ export default async function handler(req) {
   if (TEST_EMAIL) {
     const sample = rows.length === 0
     const useRows = sample ? SAMPLE_ROWS : rows.slice(0, MAX_ROWS)
-    await brevoSend(TEST_EMAIL, `香槟集市 · ${useRows.length} 条新动态${sample ? '（示例）' : '（测试）'}`, digestHtml(useRows, sample))
+    await resendSend(TEST_EMAIL, `香槟集市 · ${useRows.length} 条新动态${sample ? '（示例）' : '（测试）'}`, digestHtml(useRows, sample))
     // Test mode never marks emailed_at — keeps runs repeatable and never
     // consumes a real user's notification (they'd lose it when you go live).
     return json({ mode: 'test', sentTo: 'DIGEST_TEST_EMAIL', sample, previewed: sample ? 0 : Math.min(rows.length, MAX_ROWS) })
@@ -256,7 +321,7 @@ export default async function handler(req) {
     if (!to || !userRows.length) continue
     let sent = false
     try {
-      await brevoSend(to, `香槟集市 · 你有 ${userRows.length} 条新动态`, digestHtml(userRows, false, tokenById.get(uid)))
+      await resendSend(to, `香槟集市 · 你有 ${userRows.length} 条新动态`, digestHtml(userRows, false, tokenById.get(uid)))
       sent = true
       await sbMarkEmailed(userRows.map(r => r.id))
       usersNotified++; sentCount += userRows.length
@@ -277,7 +342,7 @@ export default async function handler(req) {
   // run); sendFailed is safe (rows stay un-emailed and retry). Either is a 500.
   const failed = sendFailed + markFailed
   return json(
-    { mode: 'live', usersNotified, notifications: sentCount, sendFailed, markFailed, meetupReminders },
+    { mode: 'live', usersNotified, notifications: sentCount, sendFailed, markFailed, meetupReminders, unreadReminders },
     failed > 0 ? 500 : 200,
   )
   } catch (e) {

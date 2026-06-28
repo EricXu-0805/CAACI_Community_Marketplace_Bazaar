@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <view class="header">
-      <view class="logo-mark"><view class="logo-letter">I</view></view>
+      <image class="logo-mark-img" :src="logoSrc" :alt="t('app.name')" mode="aspectFit" />
       <text class="app-name">{{ t('resetPw.title') }}</text>
       <text class="app-desc">{{ t('resetPw.hint') }}</text>
     </view>
@@ -74,11 +74,15 @@ import { ref, computed, onUnmounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
+import { useTheme } from '../../composables/useTheme'
 import { passwordRules, passwordValid, friendlyErrorMessage } from '../../utils'
 import UCodeInput from '../../components/UCodeInput.vue'
 
 const { t, lang } = useI18n()
 const { supabase } = useSupabase()
+const { isDark } = useTheme()
+// Match login's theme-flipping 集 brand mark instead of the old plain "I" box.
+const logoSrc = computed(() => (isDark.value ? '/static/logo-mark-dark.svg' : '/static/logo-mark.svg'))
 
 const email = ref('')
 const code = ref('')
@@ -172,13 +176,15 @@ function goLogin() { uni.reLaunch({ url: '/pages/login/index' }) }
   padding: 64px 0 32px;
   padding-top: calc(64px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
 }
-.logo-mark {
+.logo-mark-img {
   width: 56px; height: 56px; border-radius: 14px;
-  background: var(--accent-primary);
-  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--shadow-soft);
 }
-.logo-letter { font-size: 28px; font-weight: 800; color: #fff; letter-spacing: -1px; }
-.app-name { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-top: 16px; }
+.app-name {
+  font-family: var(--font-serif);
+  font-size: 22px; font-weight: 600; color: var(--text-primary);
+  margin-top: 16px; letter-spacing: -0.02em;
+}
 .app-desc { font-size: 13px; color: var(--text-faint); margin-top: 5px; text-align: center; line-height: 1.5; padding: 0 20px; }
 
 .form { flex: 1; padding-bottom: 40px; }
