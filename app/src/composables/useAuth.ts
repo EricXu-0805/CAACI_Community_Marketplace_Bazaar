@@ -163,21 +163,17 @@ export function useAuth() {
         throw e
       }
 
-      let emailRedirectTo: string | undefined
-      // #ifdef H5
-      if (typeof window !== 'undefined') {
-        emailRedirectTo = `${window.location.origin}/#/pages/index/index`
-      }
-      // #endif
-      // #ifndef H5
-      emailRedirectTo = `${BASE_URL}/#/pages/index/index`
-      // #endif
+      // Email confirmation now uses a 6-digit OTP code (verifyOtp), not a magic
+      // link — so no emailRedirectTo. The login page shows an in-app code panel
+      // after sign-up; the "Confirm signup" Supabase template must render
+      // {{ .Token }}. See supabase/email-templates/README.md. (Mail scanners
+      // pre-fetch single-use links, which made the link flow read "expired" on
+      // an instant click — the same failure that moved password reset to OTP.)
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: { nickname },
-          emailRedirectTo,
         },
       })
       if (error) throw error

@@ -9,7 +9,7 @@
       <text class="app-desc">{{ t('app.desc') }}</text>
     </view>
 
-    <view class="form u-rise">
+    <view v-if="!awaitingConfirm" class="form u-rise">
       <!-- #ifdef MP-WEIXIN -->
       <button class="wx-btn" :disabled="loading" @click="onWeChatLogin">
         <text class="wx-icon">✦</text>
@@ -133,6 +133,30 @@
       <!-- #endif -->
     </view>
 
+    <!-- Email-confirmation OTP panel — shown after sign-up. Supabase emails a
+         {{ .Token }} 6-digit code (no magic link); the user types it here and
+         verifyOtp({type:'signup'}) confirms the email + signs them in. Replaces
+         the old "check your email / click the link" modal. -->
+    <view v-else class="form u-rise">
+      <view class="confirm-head">
+        <text class="confirm-title">{{ t('login.confirmCodeTitle') }}</text>
+        <text class="confirm-sub">{{ t('login.confirmCodeHint', { email: pendingEmail }) }}</text>
+      </view>
+      <view class="form-group">
+        <text class="form-label">{{ t('resetPw.code') }}</text>
+        <UCodeInput v-model="confirmCode" :placeholder="t('resetPw.codePlaceholder')" :autofocus="true" />
+        <view class="code-row">
+          <text :class="['resend', { disabled: confirmCooldown > 0 }]" role="button" @click="onResendSignup">
+            {{ confirmCooldown > 0 ? t('resetPw.resendIn', { n: confirmCooldown }) : t('resetPw.resend') }}
+          </text>
+        </view>
+      </view>
+      <button class="submit-btn" :disabled="verifying" @click="onVerifySignup">
+        {{ verifying ? t('login.wait') : t('login.confirmVerify') }}
+      </button>
+      <view class="back-link" role="button" @click="awaitingConfirm = false">{{ t('login.backToSignup') }}</view>
+    </view>
+
     <view class="footer">
       <text class="footer-text">{{ t('app.name') }}</text>
     </view>
@@ -140,15 +164,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { useAuth } from '../../composables/useAuth'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 import { useTheme } from '../../composables/useTheme'
-import { passwordRules, passwordValid } from '../../utils'
+import { passwordRules, passwordValid, friendlyErrorMessage } from '../../utils'
 import UIcon from '../../components/UIcon.vue'
+import UCodeInput from '../../components/UCodeInput.vue'
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 const { signIn, signUp, signInWithWeChat, loading } = useAuth()
 const { isDark } = useTheme()
 
@@ -167,7 +192,60 @@ const showPw = ref(false)
 const agreed = ref(false)
 const googleLoading = ref(false)
 
+// Signup email-confirmation OTP panel (shown after a successful sign-up that
+// requires email confirmation). The user types the {{ .Token }} code Supabase
+// emailed; verifyOtp({type:'signup'}) confirms + signs them in.
+const awaitingConfirm = ref(false)
+const pendingEmail = ref('')
+const confirmCode = ref('')
+const verifying = ref(false)
+const confirmCooldown = ref(0)
+let confirmTimer: ReturnType<typeof setInterval> | null = null
+function startConfirmCooldown() {
+  confirmCooldown.value = 60
+  if (confirmTimer) clearInterval(confirmTimer)
+  confirmTimer = setInterval(() => {
+    confirmCooldown.value -= 1
+    if (confirmCooldown.value <= 0 && confirmTimer) { clearInterval(confirmTimer); confirmTimer = null }
+  }, 1000)
+}
+onUnmounted(() => { if (confirmTimer) clearInterval(confirmTimer) })
+
 const { supabase } = useSupabase()
+
+async function onVerifySignup() {
+  if (verifying.value) return
+  if (confirmCode.value.trim().length !== 6) { uni.showToast({ title: t('resetPw.needCode'), icon: 'none' }); return }
+  verifying.value = true
+  try {
+    const { error } = await supabase.auth.verifyOtp({ email: pendingEmail.value.trim().toLowerCase(), token: confirmCode.value.trim(), type: 'signup' })
+    if (error) {
+      const expired = (error as any)?.code === 'otp_expired' || /expired|invalid|token/i.test(error.message || '')
+      uni.showToast({ title: expired ? t('resetPw.codeInvalid') : friendlyErrorMessage(error, lang.value as 'en' | 'zh'), icon: 'none', duration: 3000 })
+      verifying.value = false
+      return
+    }
+    // verifyOtp('signup') confirms the email AND returns a session, so the
+    // useAuth onAuthStateChange listener sets currentUser — just go home.
+    uni.showToast({ title: t('login.signupOk'), icon: 'success' })
+    setTimeout(() => uni.reLaunch({ url: '/pages/index/index' }), 800)
+  } catch (err: any) {
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('login.signupFail'), icon: 'none', duration: 3000 })
+    verifying.value = false
+  }
+}
+
+async function onResendSignup() {
+  if (confirmCooldown.value > 0) return
+  try {
+    const { error } = await supabase.auth.resend({ type: 'signup', email: pendingEmail.value.trim().toLowerCase() })
+    if (error) throw error
+    uni.showToast({ title: t('resetPw.resent'), icon: 'none' })
+    startConfirmCooldown()
+  } catch (err: any) {
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('login.signupFail'), icon: 'none', duration: 3000 })
+  }
+}
 
 async function onForgotPassword() {
   const trimmedEmail = email.value.trim().toLowerCase()
@@ -343,11 +421,13 @@ async function onSubmit() {
     } else if (data?.user?.identities?.length === 0) {
       uni.showToast({ title: t('login.emailExists'), icon: 'none' })
     } else if (data?.user && !data.session) {
-      uni.showModal({
-        title: t('login.confirmTitle'),
-        content: t('login.confirmHint'),
-        showCancel: false,
-      })
+      // Email confirmation required → switch to the in-app OTP code panel.
+      // Supabase has just emailed the {{ .Token }} code; start the resend
+      // cooldown so the resend link is disabled for the first 60s.
+      pendingEmail.value = email.value.trim()
+      confirmCode.value = ''
+      awaitingConfirm.value = true
+      startConfirmCooldown()
     } else {
       uni.showToast({ title: t('login.signupOk'), icon: 'success' })
       /*
@@ -604,6 +684,31 @@ async function onSubmit() {
 .agree-text {
   font-size: 12px; color: var(--text-secondary); line-height: 1.5; flex: 1;
   .link { color: var(--text-primary); text-decoration: underline; cursor: pointer; }
+}
+
+/* Email-confirmation OTP panel (post-signup) */
+.confirm-head { margin-bottom: 22px; }
+.confirm-title {
+  display: block; font-family: var(--font-serif);
+  font-size: 20px; font-weight: 600; color: var(--ink); letter-spacing: -0.01em;
+}
+.confirm-sub {
+  display: block; margin-top: 8px;
+  font-size: 13px; color: var(--text-faint); line-height: 1.6;
+}
+.code-row {
+  display: flex; align-items: center; justify-content: flex-end;
+  margin-top: 8px;
+}
+.resend {
+  font-size: 12px; color: var(--accent-primary); font-weight: 600; cursor: pointer;
+  &.disabled { color: var(--text-faint); pointer-events: none; }
+  &:active { opacity: 0.7; }
+}
+.back-link {
+  margin-top: 18px; text-align: center;
+  font-size: 13px; color: var(--text-muted); font-weight: 500; cursor: pointer;
+  &:active { opacity: 0.7; }
 }
 
 .footer {
