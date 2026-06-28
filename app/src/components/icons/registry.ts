@@ -27,7 +27,7 @@ export type IconName =
   | 'coffee' | 'graduation'
   | 'history' | 'user-plus' | 'bookmark' | 'layout-grid'
   | 'edit' | 'flag' | 'location-pin' | 'settings' | 'shield' | 'arrow-up' | 'reserved'
-  | 'cat-currency' | 'cat-electronics' | 'cat-furniture' | 'cat-clothing' | 'cat-books'
+  | 'cat-electronics' | 'cat-furniture' | 'cat-clothing' | 'cat-books'
   | 'cat-transport' | 'cat-daily' | 'cat-food' | 'cat-other'
   | 'forward' | 'send'
   | 'sun' | 'moon'
@@ -96,7 +96,6 @@ export const ICONS: Record<string, string> = {
   'reserved-regular':     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v18l6-4 6 4V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z"/><circle cx="12" cy="8" r="3"/></svg>`,
 
   // Product categories — 9 stroke-only (sublease aliases to home — NOT a separate registry key)
-  'cat-currency-regular':    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h13"/><path d="m13 5 3 3-3 3"/><path d="M21 16H8"/><path d="m11 13-3 3 3 3"/></svg>`,
   'cat-electronics-regular': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M10 6h4"/><path d="M11 19h2"/></svg>`,
   'cat-furniture-regular':   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3H3z"/><path d="M5 12V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v4"/><path d="M5 17v2M19 17v2"/></svg>`,
   'cat-clothing-regular':    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m20 8-4-4-4 2-4-2-4 4 3 3v9h10v-9z"/></svg>`,

@@ -428,14 +428,6 @@ async function onSubmit() {
     if (!confirmed) return
   }
 
-  /*
-   * No currency_exchange scam-warning modal here — the original guard
-   * in publish/index.vue was already gated `!isEdit.value` (don't
-   * re-warn on every edit), and currency_exchange is not selectable
-   * in the pill grid anyway (anomaly F, out of scope). Carrying the
-   * dead guard into this file would just be noise.
-   */
-
   submitting.value = true
   uploadProgress.value = 0
   const failsafe = setTimeout(() => { submitting.value = false }, 60000)
