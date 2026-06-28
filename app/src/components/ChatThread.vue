@@ -36,11 +36,6 @@
       <view class="ic-arrow"></view>
     </view>
 
-    <view v-if="itemInfo?.category === 'currency_exchange'" class="chat-scam">
-      <view class="cs-icon"><view class="cs-excl"></view></view>
-      <text class="cs-text">{{ t('scam.chatWarn') }}</text>
-    </view>
-
     <view
       v-if="itemInfo && itemInfo.status === 'active'"
       class="offer-bar"
@@ -277,13 +272,6 @@
     </view>
     <ChatEmojiPanel :open="emojiOpen" @pick="onPickEmoji" @pick-sticker="onPickSticker" />
 
-    <ScamInterceptModal
-      :visible="showScamModal"
-      @understand="onScamUnderstand"
-      @close="showScamModal = false"
-      @learnMore="onScamLearnMore"
-    />
-
     <!-- Offer composer (new offer + counter) -->
     <view v-if="offerSheet.open" class="offer-mask u-mask-in" @click="closeOfferSheet"></view>
     <view :class="['offer-sheet', { open: offerSheet.open }]" :style="sheetLift(offerSheet.open)">
@@ -368,7 +356,6 @@ import UIcon from './UIcon.vue'
 import USticker from './USticker.vue'
 import { parseStickerToken, stickerToken, type StickerName } from './stickers/registry'
 import { suggestEmoji } from '../composables/useEmojiSuggest'
-import ScamInterceptModal from './ScamInterceptModal.vue'
 
 const props = defineProps<{ conversationId: string; prefill?: string; embedded?: boolean }>()
 
@@ -458,32 +445,6 @@ const headerStatus = computed(() => {
 })
 watch(inputText, (v) => { if (v && typingApi) typingApi.sendTyping() })
 
-/*
- * Currency-exchange scam-intercept modal. Same client-side gate as
- * publish/index.vue: when the chat is about a currency_exchange item we
- * show the rich safety modal once, then remember via a localStorage flag
- * shared with publish. The persistent .chat-scam banner above stays as
- * the always-on reminder; this modal is the one-time teach moment.
- */
-const SCAM_MODAL_SEEN_KEY = 'scam_modal_seen_v1'
-const showScamModal = ref(false)
-
-function maybeShowScamModal() {
-  let seen = ''
-  try { seen = uni.getStorageSync(SCAM_MODAL_SEEN_KEY) } catch { /* private mode — treat as unseen */ }
-  if (!seen) showScamModal.value = true
-}
-
-function onScamUnderstand() {
-  try { uni.setStorageSync(SCAM_MODAL_SEEN_KEY, '1') } catch { /* ignore */ }
-  showScamModal.value = false
-}
-
-function onScamLearnMore() {
-  showScamModal.value = false
-  uni.navigateTo({ url: '/pages/legal/index' })
-}
-
 onMounted(async () => {
   if (!requireAuth()) return
   const options = { id: props.conversationId, prefill: props.prefill }
@@ -510,7 +471,6 @@ onMounted(async () => {
         conversationDetail.value = detail
         if (detail.item) {
           itemInfo.value = detail.item
-          if (detail.item.category === 'currency_exchange') maybeShowScamModal()
         }
         if (currentUser.value) {
           const other = detail.buyer_id === currentUser.value.id ? detail.seller : detail.buyer
@@ -1390,42 +1350,6 @@ function scrollToBottom() {
 }
 .more-dot {
   width: 4px; height: 4px; border-radius: 50%; background: var(--text-muted);
-}
-
-/*
- * Scam-warning banner — follows design-system safety-flow pattern:
- *   warning-soft bg (warm parchment with amber cast) + 3px left-edge
- *   amber border + amber-text body. Replaces hardcoded #FFF4E6 / #8B5000.
- */
-.chat-scam {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 14px;
-  background: var(--warning-soft);
-  border-left: 3px solid var(--warning);
-  border-bottom: 0.5px solid rgba(212, 146, 60, 0.24);
-}
-.cs-icon {
-  width: 16px; height: 16px; border-radius: 50%; background: var(--warning);
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-}
-.cs-excl {
-  width: 1.5px; height: 7px; background: #fff; border-radius: 1px; position: relative;
-}
-.cs-excl::after {
-  content: ''; position: absolute; bottom: -4px; left: -0.75px;
-  width: 3px; height: 2.5px; background: #fff; border-radius: 2px;
-}
-/* Body text pins to --ink-soft (not amber-darkened) so it stays in the
- * readable text range. Amber-on-amber-tint was a legibility hazard
- * that used filter: brightness(0.75) as a workaround — cleaner to
- * just use an ink tone and let the left border + icon carry the
- * "warning" meaning. Matches index .scam-banner and the design-
- * system chat-warn-banner spec. */
-.cs-text {
-  font-size: 12px;
-  color: var(--ink-soft);
-  line-height: 1.6; flex: 1; font-weight: 500;
-  letter-spacing: 0.02em;
 }
 
 .item-card {

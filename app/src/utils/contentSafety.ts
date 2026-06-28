@@ -96,6 +96,12 @@ const SENSITIVE_WORDS_ZH = [
   '赌博', '博彩', '私彩', '菠菜',
   '办证', '发票', '假证', '假币',
   '贷款', '套现', '黑户',
+  // Currency exchange (compliance: unlicensed money transmission / laundering).
+  // Conservative multi-char phrases only — never bare 美元/人民币/dollar, which
+  // would block legit price mentions. Mirror of migration 071's seed.
+  '换汇', '外汇', '汇率', '套汇', '炒汇', '换美元', '换美金', '换美刀', '换人民币', '换rmb', '换软妹币',
+  '兑换美元', '兑换美金', '兑换人民币', '兑换外汇', '美元换人民币', '人民币换美元', '美金换人民币', '人民币换美金',
+  '买美元', '卖美元', '买人民币', '卖人民币', '兑美元', '兑美金', '兑人民币',
   '大麻', '冰毒', '摇头丸', '毒品',
   '枪支', '弹药',
   '办签', '偷渡', '假婚',
@@ -109,6 +115,8 @@ const SENSITIVE_WORDS_EN = [
   'gun sale', 'ammo',
   'fake id', 'ghostwriter', 'contract cheating', 'assignment for you',
   'loan shark', 'cash advance',
+  'currency exchange', 'exchange currency', 'money exchange', 'foreign exchange', 'forex',
+  'buy usd', 'sell usd', 'buy rmb', 'sell rmb',
   'casino', 'betting',
   'fuck you', 'fuck off', 'bitch', 'asshole', 'kill yourself', 'kys',
 ]

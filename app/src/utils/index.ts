@@ -13,12 +13,10 @@ const SUPABASE_RENDER_PATH = "/storage/v1/render/image/public/"
  * category — search and saved-searches used to omit `rideshare`, so a rideshare
  * listing could not be filtered or saved-searched. The publish/edit forms use
  * PUBLISHABLE_CATEGORIES, which keeps its own seller-friendly order (common
- * goods first) and omits `currency_exchange` on purpose: it is a browse-only
- * filter + anti-fraud banner, never a category you post into. Both lists must
- * cover every ItemCategory except the deliberate publish exclusion.
+ * goods first). Both lists must cover every ItemCategory.
  */
 export const BROWSE_CATEGORIES: ItemCategory[] = [
-  'currency_exchange', 'rideshare', 'electronics', 'furniture',
+  'rideshare', 'electronics', 'furniture',
   'housing', 'clothing', 'books', 'vehicles', 'daily', 'food', 'other',
 ]
 export const PUBLISHABLE_CATEGORIES: ItemCategory[] = [
@@ -87,7 +85,6 @@ const RATE_LIMIT_MESSAGES: Record<string, { en: string; zh: string }> = {
   duplicate_message:        { en: 'Duplicate message blocked.',                        zh: '重复消息已拦截' },
   rate_limit_reports_hour:  { en: 'Too many reports recently.',                        zh: '举报太频繁' },
   rate_limit_reports_day:   { en: 'Daily report limit reached.',                       zh: '今日举报已达上限' },
-  rate_limit_currency_day:  { en: 'Daily currency-exchange listing limit reached.',     zh: '今日换汇挂单已达上限' },
   reports_unique_reporter_target: { en: 'You have already reported this.',             zh: '你已举报过这个' },
   rate_limit_follows_hour:  { en: 'Following too fast. Try again later.',              zh: '关注太快,稍后再试' },
   rate_limit_follows_day:   { en: 'Daily follow limit reached.',                       zh: '今日关注已达上限' },
@@ -325,9 +322,6 @@ const SEARCH_SYNONYMS: [string, string[]][] = [
   ['毛绒', ['plush', 'stuffed animal']],
 
   ['团购', ['group buy', 'bulk', 'share']],
-  ['换币', ['exchange', 'currency', 'rmb', 'cny', 'yuan', 'dollar', 'usd']],
-  ['人民币', ['rmb', 'cny', 'yuan', 'chinese yuan']],
-  ['美元', ['usd', 'dollar', 'us dollar', 'cash']],
 
   ['laptop', ['笔记本', '电脑']],
   ['phone', ['手机']],

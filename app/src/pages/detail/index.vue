@@ -82,14 +82,6 @@
       </view>
     </view>
 
-    <view v-if="item.category === 'currency_exchange'" class="scam-card">
-      <view class="sc-head">
-        <view class="sc-icon"><view class="sc-excl"></view></view>
-        <text class="sc-title">{{ t('scam.detailTitle') }}</text>
-      </view>
-      <text class="sc-body">{{ t('scam.detailBody') }}</text>
-    </view>
-
     <view class="section" v-if="item.description">
       <text class="section-label">{{ t('detail.description') }}</text>
       <view class="desc-wrap">
@@ -989,38 +981,6 @@ async function contactSeller() {
 .loc-dot {
   width: 5px; height: 5px; border-radius: 50%;
   background: var(--accent-action); flex-shrink: 0;
-}
-
-.scam-card {
-  margin: 7px 0 0;
-  padding: 12px 14px;
-  background: var(--warning-soft);
-  border-left: 3px solid var(--accent-warn);
-}
-.sc-head {
-  display: flex; align-items: center; gap: 8px; margin-bottom: 5px;
-}
-.sc-icon {
-  width: 20px; height: 20px; border-radius: 50%; background: var(--accent-warn);
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-}
-.sc-excl {
-  width: 2px; height: 10px; background: var(--bg-elev-1); border-radius: 1px; position: relative;
-}
-.sc-excl::after {
-  content: ''; position: absolute; bottom: -5px; left: -1px;
-  width: 4px; height: 3px; background: var(--bg-elev-1); border-radius: 2px;
-}
-.sc-title {
-  font-size: 13px; font-weight: 700;
-  color: var(--warning);
-  filter: brightness(0.75);
-}
-.sc-body {
-  font-size: 12px;
-  color: var(--warning);
-  filter: brightness(0.7);
-  line-height: 1.55; display: block;
 }
 
 /* ========== Sections ========== */

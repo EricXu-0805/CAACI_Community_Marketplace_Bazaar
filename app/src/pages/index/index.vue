@@ -113,14 +113,6 @@
       </view>
     </scroll-view>
 
-    <view v-if="selectedCategory === 'currency_exchange'" class="scam-banner">
-      <view class="sb-icon"><view class="sb-excl"></view></view>
-      <view class="sb-body">
-        <text class="sb-title">{{ t('scam.bannerTitle') }}</text>
-        <text class="sb-text">{{ t('scam.bannerBody') }}</text>
-      </view>
-    </view>
-
     <view
       v-if="showSemesterBanner"
       class="semester-banner u-press"
@@ -1178,32 +1170,6 @@ function goPublish() {
 }
 .fs-title { flex: 1; font-size: 17px; font-weight: 700; color: var(--ink); text-align: center; letter-spacing: -0.01em; }
 .fs-reset { font-size: 14px; color: var(--accent-action); cursor: pointer; flex-shrink: 0; }
-
-.scam-banner {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 10px 14px;
-  background: var(--warning-soft);
-  border-bottom: 0.5px solid var(--warning-soft);
-  border-left: 3px solid var(--warning);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-.sb-icon {
-  flex-shrink: 0; width: 20px; height: 20px;
-  border-radius: 50%; background: var(--warning);
-  display: flex; align-items: center; justify-content: center;
-  margin-top: 1px;
-}
-.sb-excl {
-  width: 2px; height: 10px; background: var(--bg-elev-1); border-radius: 1px;
-  position: relative;
-}
-.sb-excl::after {
-  content: ''; position: absolute; bottom: -5px; left: -1px;
-  width: 4px; height: 3px; background: var(--bg-elev-1); border-radius: 2px;
-}
-.sb-body { flex: 1; display: flex; flex-direction: column; gap: 3px; }
-.sb-title { font-size: 12px; font-weight: 700; color: var(--warning); letter-spacing: 0.01em; }
-.sb-text { font-size: 11px; color: var(--ink-soft); line-height: 1.6; }
 
 /*
  * Semester / move-out banner — kit ink-editorial card (index_v1.html

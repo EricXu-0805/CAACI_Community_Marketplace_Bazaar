@@ -16,7 +16,7 @@
 export type StickerName =
   | 'smile' | 'laugh' | 'love' | 'thumbs-up' | 'thumbs-down' | 'clap'
   | 'pray' | 'cry' | 'surprise' | 'sparkle' | 'fire' | 'question'
-  | 'obo' | 'verified-pickup' | 'currency-warn' | 'study-group'
+  | 'obo' | 'verified-pickup' | 'study-group'
 
 // Palette (token family — keep in sync with App.vue tokens)
 // honey #E8B84B · brown #6B3F1D · terracotta #C74A2F · deep #A33A22
@@ -51,8 +51,6 @@ export const STICKERS: Record<StickerName, string> = {
 
   'verified-pickup': `<svg viewBox="0 0 32 32"><path d="M16 2l3.1 2.3 3.8-.4 1.5 3.5 3.5 1.5-.4 3.8L29.8 16l-2.3 3.1.4 3.8-3.5 1.5-1.5 3.5-3.8-.4L16 29.8l-3.1-2.3-3.8.4-1.5-3.5-3.5-1.5.4-3.8L2.2 16l2.3-3.1-.4-3.8 3.5-1.5 1.5-3.5 3.8.4z" fill="#5D7C4A"/><circle cx="16" cy="16" r="9.5" fill="none" stroke="#FBF6E8" stroke-width="1.4"/><path d="m11.5 16.2 3.2 3.3 6-6.8" fill="none" stroke="#FBF6E8" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
 
-  'currency-warn': `<svg viewBox="0 0 32 32"><path d="M16 3.5a3.1 3.1 0 0 1 2.7 1.6l9.6 16.8a3.1 3.1 0 0 1-2.7 4.6H6.4a3.1 3.1 0 0 1-2.7-4.6L13.3 5.1A3.1 3.1 0 0 1 16 3.5z" fill="#D4923C"/><path d="M19 13.2c-1-1.6-6-1.9-6 .9 0 3 6 2.1 6 5.1 0 2.8-5 2.6-6 1" fill="none" stroke="#13294B" stroke-width="2.1" stroke-linecap="round"/><path d="M16 10.8v11.6" stroke="#13294B" stroke-width="2.1" stroke-linecap="round"/></svg>`,
-
   'study-group': `<svg viewBox="0 0 32 32"><circle cx="8.5" cy="10.5" r="3" fill="#13294B"/><circle cx="23.5" cy="10.5" r="3" fill="#13294B"/><circle cx="16" cy="8" r="3.6" fill="#13294B"/><path d="M3.5 19a5 5 0 0 1 5-4.5 5 5 0 0 1 4.4 2.6M28.5 19a5 5 0 0 0-5-4.5 5 5 0 0 0-4.4 2.6M10.5 18.5a5.5 5.5 0 0 1 11 0" fill="none" stroke="#13294B" stroke-width="2.6" stroke-linecap="round"/><path d="M6 22.5q10-3.4 10 .8 0-4.2 10-.8v6q-10-3.4-10 .8 0-4.2-10-.8z" fill="#D4923C"/><path d="M16 23.3v6" stroke="#A66B1F" stroke-width="1.2"/></svg>`,
 }
 
@@ -60,7 +58,7 @@ export const STICKERS: Record<StickerName, string> = {
 export const STICKER_ORDER: StickerName[] = [
   'smile', 'laugh', 'love', 'thumbs-up', 'thumbs-down', 'clap',
   'pray', 'cry', 'surprise', 'sparkle', 'fire', 'question',
-  'obo', 'verified-pickup', 'currency-warn', 'study-group',
+  'obo', 'verified-pickup', 'study-group',
 ]
 
 const TOKEN_RE = /^\[sticker:([a-z-]+)\]$/

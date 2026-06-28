@@ -11,7 +11,6 @@ export type ItemCategory =
   | 'vehicles'
   | 'daily'
   | 'food'
-  | 'currency_exchange'
   | 'rideshare'
   | 'other'
 

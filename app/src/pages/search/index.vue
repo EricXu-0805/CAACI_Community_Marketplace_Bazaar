@@ -84,7 +84,6 @@ const STORAGE_KEY = 'searchHistory'
 
 /* Registry cat-* icons; housing aliases to home-regular per registry note. */
 const CATEGORY_ICON: Record<string, string> = {
-  currency_exchange: 'cat-currency',
   electronics: 'cat-electronics',
   furniture: 'cat-furniture',
   housing: 'home',
