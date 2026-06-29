@@ -117,7 +117,7 @@ const zh: Record<string, string> = {
   'filter.category': '分类',
   'filter.priceMin': '最低',
   'filter.priceMax': '最高',
-  'filter.verifiedOnly': '只看认证自取点',
+  'filter.verifiedOnly': '只看已共享定位',
   'filter.apply': '确定',
   'sort.latest': '最新',
   'sort.priceAsc': '价格↑',
@@ -591,7 +591,7 @@ const zh: Record<string, string> = {
   'error.loadFailed': '加载失败',
   'error.actionFailed': '操作失败，请重试',
 
-  'pickup.verifiedPickup': '认证地点',
+  'pickup.verifiedPickup': '已共享定位',
 
   'follow.follow': '关注',
   'follow.following': '已关注',

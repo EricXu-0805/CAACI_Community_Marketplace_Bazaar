@@ -117,7 +117,7 @@ const en: Record<string, string> = {
   'filter.category': 'Category',
   'filter.priceMin': 'Min',
   'filter.priceMax': 'Max',
-  'filter.verifiedOnly': 'Verified pickups only',
+  'filter.verifiedOnly': 'Shared location only',
   'filter.apply': 'Apply',
   'sort.latest': 'Latest',
   'sort.priceAsc': 'Price ↑',
@@ -591,7 +591,7 @@ const en: Record<string, string> = {
   'error.loadFailed': 'Failed to load',
   'error.actionFailed': 'Something went wrong. Please try again.',
 
-  'pickup.verifiedPickup': 'Verified Pickup',
+  'pickup.verifiedPickup': 'Location shared',
 
   'follow.follow': 'Follow',
   'follow.following': 'Following',
