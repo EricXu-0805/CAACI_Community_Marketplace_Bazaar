@@ -1611,7 +1611,11 @@ function scrollToBottom() {
   background: var(--bg-subtle); border-radius: var(--radius-md);
   text { font-size: 14px; color: var(--ink); }
 }
-.os-note { position: relative; z-index: 2; margin-top: 12px; padding: 11px 14px; background: var(--bg-subtle); border-radius: var(--radius-md); font-size: 14px; color: var(--ink); width: 100%; box-sizing: border-box; }
+/* QA7-r3 #4: Eric reports tapping the meetup inputs opens no keyboard and the
+   target feels small. Give them a big, unambiguous hit area — taller min-height,
+   more padding, font-size 16px (also stops iOS zoom-on-focus), and a higher
+   stacking than any sibling rail so nothing can shadow the tap. */
+.os-note { position: relative; z-index: 3; margin-top: 12px; min-height: 52px; padding: 16px 14px; background: var(--bg-subtle); border-radius: var(--radius-md); font-size: 16px; color: var(--ink); width: 100%; box-sizing: border-box; }
 .mt-spot-input { margin-top: 8px; }
 .mt-safe-hint { display: block; margin-top: 10px; font-size: 11px; color: var(--ink-faint); line-height: 1.4; }
 .os-submit {

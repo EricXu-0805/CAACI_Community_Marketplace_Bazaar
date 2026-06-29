@@ -1,5 +1,5 @@
 <template>
-  <view class="page page-lock chat-page-wrap">
+  <view class="page page-lock chat-page-wrap" :style="vvStyle">
     <ChatThread v-if="conversationId" :conversation-id="conversationId" :prefill="prefill" />
   </view>
 </template>
@@ -15,7 +15,7 @@
  * ChatThread owns auth-gating, realtime subscriptions, offers and
  * presence — see its onMounted/onUnmounted.
  */
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import ChatThread from '../../components/ChatThread.vue'
 
@@ -28,6 +28,38 @@ onLoad((options) => {
   // original chat page's decodeURIComponent behaviour).
   if (options?.prefill) prefill.value = options.prefill as string
 })
+
+/*
+ * QA7-r3 #3: keyboard avoidance. interactive-widget=resizes-content did NOT
+ * reliably shrink the layout on Eric's iOS Safari — the keyboard left the input
+ * bar floating with a gap and the whole webview pannable. CSS (dvh / inset)
+ * can't be trusted across iOS versions, so drive the fixed page box from
+ * visualViewport directly: pin it to exactly the current visible rect (top =
+ * offsetTop, height = visible height). The input bar (flex bottom) then always
+ * sits on top of the keyboard with nothing below to pan. H5 + phone only;
+ * desktop has no soft keyboard and keeps the CSS dvh height.
+ */
+const vvStyle = ref<Record<string, string> | undefined>(undefined)
+// #ifdef H5
+let vv: any = null
+function syncVV() {
+  if (!vv) return
+  if (window.innerWidth >= 768) { vvStyle.value = undefined; return }
+  vvStyle.value = { top: `${Math.round(vv.offsetTop)}px`, height: `${Math.round(vv.height)}px` }
+}
+onMounted(() => {
+  vv = window.visualViewport
+  if (!vv) return
+  vv.addEventListener('resize', syncVV)
+  vv.addEventListener('scroll', syncVV)
+  syncVV()
+})
+onUnmounted(() => {
+  if (!vv) return
+  vv.removeEventListener('resize', syncVV)
+  vv.removeEventListener('scroll', syncVV)
+})
+// #endif
 </script>
 
 <style scoped>
@@ -36,18 +68,6 @@ onLoad((options) => {
   max-width: 480px; margin: 0 auto;
   display: flex; flex-direction: column;
 }
-/* #ifdef H5 */
-@media (max-width: 767px) {
-  /* QA7-r2 #3: on mobile, .page-lock already pins this fixed inset:0. An
-     explicit height overrides the bottom:0 anchor, so the container couldn't
-     shrink when the soft keyboard opened (interactive-widget=resizes-content
-     shrinks the fixed ICB, but NOT the dvh unit) — the input bar landed under
-     the keyboard and iOS panned the whole webview to reveal it (the gap + the
-     "I can still scroll the bar up" report). Drop the height and let the inset
-     govern; it shrinks with the keyboard, so the bar locks above it. */
-  .chat-page-wrap { height: auto; }
-}
-/* #endif */
 @media (min-width: 768px) {
   /* On desktop the thread reads better a touch wider than the phone cap. */
   .chat-page-wrap { max-width: 720px; }
