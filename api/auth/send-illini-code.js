@@ -75,25 +75,36 @@ function sbREST(path, init = {}) {
 }
 
 function codeEmailHtml(code) {
-  return `<!doctype html><html><body style="margin:0;background:#f7f4ee;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f4ee;padding:32px 0;">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;background:#fff;border-radius:16px;overflow:hidden;">
-        <tr><td style="padding:28px 32px 8px;">
-          <div style="font-size:18px;font-weight:700;color:#1a1a1a;">Illini Market</div>
-        </td></tr>
-        <tr><td style="padding:8px 32px 4px;font-size:15px;color:#333;line-height:1.5;">
-          Use this code to verify your Illinois campus email and earn your <b>Illini</b> badge:
-        </td></tr>
-        <tr><td style="padding:18px 32px;">
-          <div style="font-size:34px;font-weight:800;letter-spacing:10px;color:#13294b;text-align:center;background:#eef1f7;border-radius:12px;padding:16px 0;">${code}</div>
-        </td></tr>
-        <tr><td style="padding:0 32px 28px;font-size:12px;color:#888;line-height:1.5;">
-          The code expires in ${CODE_TTL_MIN} minutes. If you didn't request this, you can ignore this email — your account is unchanged.
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
+  // Matches the house transactional-email style (notification-digest): parchment
+  // ground, the orange 集 brand seal, Georgia serif wordmark, warm text palette,
+  // white card. color-scheme:light pins it so dark mail clients (Apple Mail)
+  // render it as designed instead of auto-inverting it into muddy dark-on-dark.
+  // The code box uses Illini navy — on-brand for the badge being earned.
+  return `<!doctype html><html lang="en"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+</head>
+<body style="margin:0;background:#F7F4EE;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <div style="max-width:480px;margin:0 auto;padding:32px 20px;">
+    <div style="text-align:center;">
+      <span style="display:inline-block;width:44px;height:44px;line-height:44px;border-radius:12px;background:#C74A2F;color:#fff;font-weight:700;font-size:22px;">集</span>
+      <div style="font-family:Georgia,'Times New Roman',serif;font-size:20px;color:#2A2521;margin-top:10px;">Illini Market</div>
+    </div>
+    <div style="background:#fff;border-radius:16px;padding:28px 28px 26px;margin-top:18px;">
+      <div style="font-size:15px;color:#4A443B;line-height:1.55;">
+        Use this code to verify your Illinois campus email and earn your <b style="color:#13294B;">Illini</b> badge:
+      </div>
+      <div style="font-size:32px;font-weight:800;letter-spacing:9px;color:#ffffff;text-align:center;background:#13294B;border-radius:12px;padding:18px 0;margin:18px 0 4px;">${code}</div>
+      <div style="font-size:12px;color:#8B8478;line-height:1.5;margin-top:16px;">
+        The code expires in ${CODE_TTL_MIN} minutes. If you didn't request this, you can ignore this email — your account is unchanged.
+      </div>
+    </div>
+    <div style="text-align:center;color:#A39A8C;font-size:11px;line-height:1.6;margin-top:20px;">
+      Illini Market · UIUC campus marketplace
+    </div>
+  </div>
 </body></html>`
 }
 
