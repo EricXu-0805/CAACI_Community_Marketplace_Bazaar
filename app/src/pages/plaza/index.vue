@@ -1103,28 +1103,60 @@ async function onSubmitComment() {
   if (commentSubmitting.value) return
   commentSubmitting.value = true
   const failsafe = setTimeout(() => { commentSubmitting.value = false }, 15000)
+
+  const me = currentUser.value
+  const postId = commentingPost.value.id
+  const reply = replyTo.value
+  const rawText = commentText.value
+  let text = rawText
+  if (reply) {
+    const name = reply.profile?.nickname || t('app.user')
+    text = `@${name} ${rawText}`
+  }
+  // 单层缩进语义：parent 永远指向顶层祖先。若 replyTo 是子评论，跳一级；
+  // 否则就是它自己。groupCommentsByParent 渲染时也会做 walk-up 防御。
+  const parentId = reply
+    ? (reply.parent_comment_id ?? reply.id)
+    : undefined
+  const replyName = reply ? (reply.profile?.nickname ?? null) : null
+
+  // QA7-r2 #2: optimistic — show the comment instantly. createComment awaits
+  // local + AI (OpenAI) moderation + the insert (~1s), which felt as laggy as
+  // chat did before its optimistic-send fix. Push a temp row now, reconcile to
+  // the real row on success, or remove it + restore the draft on failure. No
+  // realtime echo for comments (the list is fetched on open + pushed here), so
+  // unlike chat there's no echo to dedupe.
+  const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+  comments.value.push({
+    id: tempId,
+    post_id: postId,
+    user_id: me?.id ?? '',
+    content: text,
+    parent_comment_id: parentId ?? null,
+    like_count: 0,
+    created_at: new Date().toISOString(),
+    profile: me ?? undefined,
+    reply_to_name: replyName,
+    liked_by_me: false,
+  })
+  commentText.value = ''
+  replyTo.value = null
+
   try {
-    let text = commentText.value
-    if (replyTo.value) {
-      const name = replyTo.value.profile?.nickname || t('app.user')
-      text = `@${name} ${text}`
-    }
-    // 单层缩进语义：parent 永远指向顶层祖先。若 replyTo 是子评论，跳一级；
-    // 否则就是它自己。groupCommentsByParent 渲染时也会做 walk-up 防御。
-    const parentId = replyTo.value
-      ? (replyTo.value.parent_comment_id ?? replyTo.value.id)
-      : undefined
-    const c = await createComment(commentingPost.value.id, text, parentId)
-    // fetchComments hydrates reply_to_name from DB on next refresh; for the
-    // optimistic push here we mirror the same logic by reading replyTo's nickname.
-    c.reply_to_name = replyTo.value
-      ? (replyTo.value.profile?.nickname ?? null)
-      : null
-    comments.value.push(c)
-    commentText.value = ''
-    replyTo.value = null
+    const c = await createComment(postId, text, parentId)
+    // fetchComments hydrates reply_to_name from DB on next refresh; mirror it
+    // here from the replyTo we captured before clearing.
+    c.reply_to_name = replyName
+    const i = comments.value.findIndex(x => x.id === tempId)
+    if (i !== -1) comments.value.splice(i, 1, c)
+    else comments.value.push(c)
     uni.showToast({ title: t('plaza.commented'), icon: 'success' })
   } catch (err: any) {
+    const i = comments.value.findIndex(x => x.id === tempId)
+    if (i !== -1) comments.value.splice(i, 1)
+    // A moderation/network failure shouldn't lose the draft — restore it.
+    commentText.value = rawText
+    replyTo.value = reply
     uni.showToast({
       title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
       icon: 'none',

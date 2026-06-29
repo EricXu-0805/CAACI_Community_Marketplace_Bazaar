@@ -1557,7 +1557,25 @@ function scrollToBottom() {
   transform: translateY(100%);
   transition: transform var(--dur-3) var(--ease-warm);
   max-width: 480px; margin: 0 auto;
-  &.open { transform: translateY(0); }
+  /* QA7-r2 #4: the meetup sheet (spot + note inputs, then date/time pickers)
+     is tall. As a bottom-anchored fixed sheet with no height bound, tapping an
+     input opened the keyboard, interactive-widget=resizes-content shrank the
+     viewport, and the sheet's top (where the inputs sit) overflowed above the
+     screen with no way to scroll to it — the field appeared unresponsive.
+     max-height:100% resolves against the fixed ICB (which shrinks with the
+     keyboard), so the sheet always fits above it and scrolls internally to
+     keep the focused input in view. */
+  max-height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  /* QA7-r2 #4 (real cause): Eric confirmed tapping the meetup note / custom-spot
+     inputs opens NO keyboard — the tap never reaches the input. On iOS Safari a
+     position:fixed element that keeps a `transform` mis-hit-tests its descendant
+     form controls: they paint where you see them but the tap lands at the
+     untransformed position, so the input looks dead. translateY(0) still keeps a
+     transform layer; settle the OPEN state to `transform: none` (visually
+     identical) so the inputs become tappable. The slide-in still animates
+     none ⇄ translateY(100%). (Desktop WebKit doesn't exhibit this, so it passed
+     the headless probe — it's iOS-only.) */
+  &.open { transform: none; }
 }
 .os-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 0 auto 14px; }
 .os-title { display: block; font-family: var(--font-serif); font-size: 18px; font-weight: 600; color: var(--ink); }
