@@ -254,6 +254,14 @@ async function handleGet(request, auth) {
     return json({ data })
   }
 
+  if (resource === 'reports_grouped') {
+    const pendingOnly = url.searchParams.get('pending') !== '0'
+    const data = await rpc('admin_list_reports_grouped', {
+      limit_in: limit, offset_in: offset, pending_only: pendingOnly,
+    })
+    return json({ data })
+  }
+
   if (resource === 'report') {
     const id = url.searchParams.get('id')
     if (!id) return json({ error: 'missing_id' }, 400)
@@ -368,6 +376,31 @@ async function handlePost(request, auth) {
       }).catch(err => console.warn('[admin] audit report_status_changed failed', err?.message))
     }
     return json({ success: true })
+  }
+
+  if (body.action === 'resolve_target_reports') {
+    if (!body.target_type || !body.target_id || !body.status) {
+      return json({ error: 'missing_args' }, 400)
+    }
+    const data = await rpc('admin_resolve_target_reports', {
+      target_type_in: body.target_type,
+      target_id_in:   body.target_id,
+      status_in:      body.status,
+    })
+    if (auth.adminId) {
+      await rpc('record_audit', {
+        event_kind_in: 'report_status_changed',
+        actor_id_in:   auth.adminId,
+        target_id_in:  body.target_id,
+        details_in: {
+          via: 'edge_admin',
+          bulk: true,
+          target_type: body.target_type,
+          to: body.status,
+        },
+      }).catch(err => console.warn('[admin] audit bulk report_status_changed failed', err?.message))
+    }
+    return json({ data })
   }
 
   if (body.action === 'takedown_content') {

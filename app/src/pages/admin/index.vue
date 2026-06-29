@@ -65,20 +65,19 @@
       </view>
 
       <view v-else-if="activeTab === 'reports'" class="list u-stagger">
-        <view v-if="reports.length === 0" class="empty"><text>{{ t('admin.emptyReports') }}</text></view>
-        <view v-for="r in reports" :key="r.id" class="card">
+        <view v-if="reportGroups.length === 0" class="empty"><text>{{ t('admin.emptyReports') }}</text></view>
+        <view v-for="g in reportGroups" :key="g.target_type + ':' + g.target_id" class="card">
           <view class="card-head">
-            <text class="card-title">{{ r.target_type }} · {{ r.reason }}</text>
-            <text :class="['pill', 'pill-' + r.status]">{{ r.status }}</text>
+            <text class="card-title">{{ g.target_type }} · {{ g.last_reason }}</text>
+            <text class="pill pill-count">{{ t('admin.reportGroupCount', { reports: g.report_count, people: g.reporter_count }) }}</text>
           </view>
-          <text class="card-meta">{{ t('admin.reportBy', { name: r.reporter_nickname || r.reporter_id }) }}</text>
-          <text v-if="r.note" class="card-note">“{{ r.note }}”</text>
-          <text class="card-time">{{ fmtTime(r.created_at) }}</text>
+          <text class="card-meta">{{ t('admin.reportGroupMeta', { pending: g.pending_count, name: g.last_reporter_nickname || '—' }) }}</text>
+          <text v-if="g.last_note" class="card-note">“{{ g.last_note }}”</text>
+          <text class="card-time">{{ t('admin.reportGroupAge', { time: fmtTime(g.first_created_at) }) }}</text>
           <view class="card-actions">
-            <view class="mini-btn" @click="openReport(r)">{{ t('admin.open') }}</view>
-            <view v-if="r.status === 'pending'" class="mini-btn" @click="updateReport(r.id, 'reviewed')">{{ t('admin.markReviewed') }}</view>
-            <view v-if="r.status !== 'resolved'" class="mini-btn primary" @click="updateReport(r.id, 'resolved')">{{ t('admin.resolve') }}</view>
-            <view v-if="r.status !== 'dismissed'" class="mini-btn danger" @click="updateReport(r.id, 'dismissed')">{{ t('admin.dismiss') }}</view>
+            <view class="mini-btn" @click="openReportById(g.last_report_id)">{{ t('admin.open') }}</view>
+            <view v-if="g.pending_count > 0" class="mini-btn primary" @click="resolveTargetReports(g, 'resolved')">{{ t('admin.resolveAll') }}</view>
+            <view v-if="g.pending_count > 0" class="mini-btn danger" @click="resolveTargetReports(g, 'dismissed')">{{ t('admin.dismissAll') }}</view>
           </view>
         </view>
       </view>
@@ -232,6 +231,12 @@ interface ReportRow {
   target_type: string; target_id: string
   reason: string; note: string; status: string; created_at: string
 }
+interface ReportGroup {
+  target_type: string; target_id: string
+  report_count: number; pending_count: number; reporter_count: number
+  last_reason: string; last_note: string; last_reporter_nickname: string; last_status: string
+  first_created_at: string; last_created_at: string; last_report_id: string
+}
 interface SuspensionRow {
   id: string; profile_id: string; profile_nickname: string; profile_avatar_url: string
   level: number; reason: string; category: string
@@ -318,6 +323,7 @@ interface AuditRow {
 const stats = ref<StatsRow | null>(null)
 const loading = ref(false)
 const reports = ref<ReportRow[]>([])
+const reportGroups = ref<ReportGroup[]>([])
 const suspensions = ref<SuspensionRow[]>([])
 const auditLog = ref<AuditRow[]>([])
 const suspensionQuery = ref('')
@@ -417,6 +423,7 @@ function onLogout() {
   whoami.value = null
   stats.value = null
   reports.value = []
+  reportGroups.value = []
   suspensions.value = []
   appeals.value = []
   warnings.value = []
@@ -435,7 +442,7 @@ async function loadTab(tab: TabId) {
   loading.value = true
   try {
     if (tab === 'reports') {
-      reports.value = await apiGet<ReportRow[]>({ resource: 'reports', limit: '100' })
+      reportGroups.value = await apiGet<ReportGroup[]>({ resource: 'reports_grouped', limit: '100' })
     } else if (tab === 'suspensions') {
       suspensions.value = await apiGet<SuspensionRow[]>({ resource: 'suspensions', limit: '100' })
     } else if (tab === 'appeals') {
@@ -480,29 +487,46 @@ async function setTab(id: TabId) {
   await loadTab(id)
 }
 
-async function updateReport(id: string, status: string) {
-  try {
-    await apiPost({ action: 'update_report_status', report_id: id, status })
-    uni.showToast({ title: t('admin.toastUpdated'), icon: 'success' })
-    await loadTab('reports')
-    await loadStats()
-  } catch (err: any) {
-    uni.showToast({ title: err?.message || t('admin.toastUpdateFailed'), icon: 'none' })
-  }
-}
 
-async function openReport(r: ReportRow) {
+async function openReportById(id: string) {
   detailKind.value = 'report'
   detailRow.value = null
   detailLoading.value = true
   detailOpen.value = true
   try {
-    detailRow.value = await apiGet<any>({ resource: 'report', id: r.id })
+    detailRow.value = await apiGet<any>({ resource: 'report', id })
   } catch (err: any) {
     uni.showToast({ title: err?.message || t('admin.toastLoadFailed'), icon: 'none' })
   } finally {
     detailLoading.value = false
   }
+}
+function openReport(r: ReportRow) { return openReportById(r.id) }
+
+/* gaps-2: close ALL pending sibling reports on a target in one action,
+   behind a confirm (it can touch many rows). */
+function resolveTargetReports(g: ReportGroup, status: 'resolved' | 'dismissed') {
+  uni.showModal({
+    title: status === 'resolved' ? t('admin.resolveAllConfirmTitle') : t('admin.dismissAllConfirmTitle'),
+    content: t('admin.resolveAllConfirmBody', { n: g.pending_count }),
+    confirmText: status === 'resolved' ? t('admin.resolve') : t('admin.dismiss'),
+    success: async (r) => {
+      if (!r.confirm) return
+      try {
+        await apiPost({
+          action: 'resolve_target_reports',
+          target_type: g.target_type,
+          target_id: g.target_id,
+          status,
+        })
+        uni.showToast({ title: t('admin.toastUpdated'), icon: 'success' })
+        await loadTab('reports')
+        await loadStats()
+      } catch (err: any) {
+        uni.showToast({ title: err?.message || t('admin.toastUpdateFailed'), icon: 'none' })
+      }
+    },
+  })
 }
 
 async function openSuspension(s: SuspensionRow | AppealRow) {
@@ -849,6 +873,7 @@ onMounted(async () => {
 .pill-expired    { background: var(--bg-subtle); color: var(--text-muted); }
 .pill-shadow     { background: var(--accent-primary); color: #fff; }
 .pill-trust      { background: var(--bg-subtle); color: var(--text-secondary); }
+.pill-count      { background: var(--campus-blue-soft); color: var(--campus-blue); }
 .level-0, .level-1 { background: var(--warning-soft); color: var(--accent-warn); }
 .level-2, .level-3 { background: var(--danger-soft); color: var(--accent-danger); }
 .level-4, .level-5 { background: var(--accent-primary); color: #fff; }
