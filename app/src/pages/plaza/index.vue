@@ -1866,7 +1866,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
      the sheet always sits above the keyboard. Mirrors the working reconsent
      page, whose scroll-view scrolls correctly under a definite-height ancestor.
      overflow:hidden clips to the rounded top + backstops the flex bound. */
-  height: 75dvh; background: var(--bg-elev-1);
+  height: 75dvh; box-sizing: border-box; background: var(--bg-elev-1);
   border-radius: 20px 20px 0 0;
   display: flex; flex-direction: column;
   transition: transform 0.25s ease-out; will-change: transform;

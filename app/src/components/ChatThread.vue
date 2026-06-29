@@ -683,11 +683,26 @@ async function retrySend(msg: any) {
   const text = msg?.content
   if (!text) return
   const idx = messages.value.findIndex(m => m.id === msg.id)
-  if (idx >= 0) messages.value.splice(idx, 1)
+  if (idx < 0) return
+  // Flip the existing bubble back to _pending IN PLACE — never remove it before
+  // the resend resolves, or a second failure would lose the message entirely
+  // (no copy in the composer either, since the content carries the reply quote).
+  messages.value[idx]._failed = false
+  messages.value[idx]._pending = true
   try {
-    await sendMessage(conversationId.value, currentUser.value.id, text, msg.message_type || 'text')
+    const sent = await sendMessage(conversationId.value, currentUser.value.id, text, msg.message_type || 'text')
+    const i = messages.value.findIndex(m => m.id === msg.id)
+    const echoed = sent ? messages.value.some(m => m.id === sent.id) : false
+    if (i >= 0) {
+      if (sent && !echoed) messages.value.splice(i, 1, sent)
+      else messages.value.splice(i, 1)
+    } else if (sent && !echoed) {
+      messages.value.push(sent)
+    }
     nextTick(() => scrollToBottom())
   } catch (err: any) {
+    const i = messages.value.findIndex(m => m.id === msg.id)
+    if (i >= 0) { messages.value[i]._pending = false; messages.value[i]._failed = true }
     uni.showToast({
       title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
       icon: 'none',
