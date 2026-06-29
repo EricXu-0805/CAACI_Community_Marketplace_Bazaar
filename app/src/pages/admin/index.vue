@@ -187,6 +187,7 @@
           <text class="d-row"><text class="d-key">{{ t('admin.dFiled') }}</text>{{ fmtTime(detailRow.created_at) }}</text>
           <view class="d-actions">
             <view v-if="canOpenTarget(detailRow)" class="mini-btn" @click="openTarget(detailRow)">{{ t('admin.openTarget') }}</view>
+            <view v-if="canTakedown(detailRow)" class="mini-btn danger" @click="onTakedownContent(detailRow)">{{ t('admin.takedownContent') }}</view>
             <view v-if="detailRow.target_user_id" class="mini-btn" @click="openUser(detailRow.target_user_id)">{{ t('admin.openAuthorProfile') }}</view>
             <view v-if="detailRow.target_user_id" class="mini-btn danger" @click="onBanPrompt(detailRow.target_user_id, detailRow.target_user_nickname)">{{ t('admin.banAuthor') }}</view>
           </view>
@@ -461,6 +462,8 @@ function fmtAuditEvent(r: AuditRow): string {
       return t('admin.auditLifted', { actor, target, reason: r.details?.reason || '' })
     case 'report_status_changed':
       return t('admin.auditReportStatus', { actor, id: r.target_id?.slice(0, 8) || '', from: r.details?.from ?? '', to: r.details?.to ?? '' })
+    case 'content_takedown':
+      return t('admin.auditTakedown', { actor, type: r.details?.target_type ?? '', target: r.target_id?.slice(0, 8) || '' })
     case 'actor_blocked':
       return t('admin.auditActorBlocked', { actor, table: r.details?.table ?? '', level: r.details?.level ?? '' })
     case 'admin_login':
@@ -547,6 +550,39 @@ function openTarget(row: any) {
   } else {
     uni.showToast({ title: t('admin.cannotOpenTarget'), icon: 'none' })
   }
+}
+
+/* Per-content takedown (gaps-1). Only item/post have a status soft-hide today
+   (comments need a schema change — deferred), so the button is gated to those.
+   Destructive → behind a confirm, like ban/lift. */
+function canTakedown(row: any): boolean {
+  return !!row && !!row.target_id && (row.target_type === 'item' || row.target_type === 'post')
+}
+
+function onTakedownContent(row: any) {
+  uni.showModal({
+    title: t('admin.takedownConfirmTitle'),
+    content: t('admin.takedownConfirmBody'),
+    confirmText: t('admin.takedownConfirm'),
+    confirmColor: '#c0392b',
+    success: async (r) => {
+      if (!r.confirm) return
+      try {
+        await apiPost({
+          action: 'takedown_content',
+          target_type: row.target_type,
+          target_id: row.target_id,
+          reason: 'admin takedown',
+        })
+        uni.showToast({ title: t('admin.toastTakedownDone'), icon: 'success' })
+        detailOpen.value = false
+        await loadTab(activeTab.value)
+        await loadStats()
+      } catch (err: any) {
+        uni.showToast({ title: err?.message || t('admin.toastTakedownFailed'), icon: 'none' })
+      }
+    },
+  })
 }
 
 function openUser(userId: string) {
