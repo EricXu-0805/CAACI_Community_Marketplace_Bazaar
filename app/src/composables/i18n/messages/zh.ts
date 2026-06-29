@@ -117,7 +117,7 @@ const zh: Record<string, string> = {
   'filter.category': '分类',
   'filter.priceMin': '最低',
   'filter.priceMax': '最高',
-  'filter.verifiedOnly': '只看认证自取点',
+  'filter.verifiedOnly': '只看已共享定位',
   'filter.apply': '确定',
   'sort.latest': '最新',
   'sort.priceAsc': '价格↑',
@@ -591,7 +591,7 @@ const zh: Record<string, string> = {
   'error.loadFailed': '加载失败',
   'error.actionFailed': '操作失败，请重试',
 
-  'pickup.verifiedPickup': '认证地点',
+  'pickup.verifiedPickup': '已共享定位',
 
   'follow.follow': '关注',
   'follow.following': '已关注',
@@ -681,7 +681,7 @@ const zh: Record<string, string> = {
   'suspended.submitAppeal':    '提交申诉',
   'suspended.submitting':      '提交中…',
   'suspended.appealSent':      '申诉已收到',
-  'suspended.appealSentBody':  '感谢你的反馈。人工会在 5 个工作日内回复。等待期间你仍可浏览应用。需要补充信息可发邮件至 illini.market.help@gmail.com。',
+  'suspended.appealSentBody':  '感谢你的反馈。人工会在 5 个工作日内回复。等待期间你仍可浏览应用。需要补充信息可发邮件至 help@illinimarket.com。',
   'suspended.appealFail':      '提交失败，请重试',
   'suspended.tooShort':        '申诉内容太短',
   'suspended.viewTerms':       '查看用户协议',

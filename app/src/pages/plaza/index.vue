@@ -1858,12 +1858,21 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .comment-sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 1101;
   max-width: 560px; margin: 0 auto;
-  max-height: 75vh; background: var(--bg-elev-1);
+  /* DEFINITE height (not just max-height): the uni <scroll-view> below carries
+     height:100% (uni's own rule), which only resolves against a parent with a
+     definite height. With max-height alone the list couldn't bound itself, so
+     it grew to full content height and the reply composer overlapped the last
+     comment (and ate its taps). 75dvh tracks the keyboard-shrunk viewport, so
+     the sheet always sits above the keyboard. Mirrors the working reconsent
+     page, whose scroll-view scrolls correctly under a definite-height ancestor.
+     overflow:hidden clips to the rounded top + backstops the flex bound. */
+  height: 75dvh; box-sizing: border-box; background: var(--bg-elev-1);
   border-radius: 20px 20px 0 0;
   display: flex; flex-direction: column;
   transition: transform 0.25s ease-out; will-change: transform;
   padding-bottom: env(safe-area-inset-bottom);
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
 }
 .cmt-header {
   display: flex; align-items: center; justify-content: space-between;

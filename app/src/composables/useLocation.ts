@@ -161,7 +161,7 @@ export function useLocation() {
       url = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/geocode?lat=${lat}&lon=${lng}`
       // #endif
       // #ifndef H5
-      url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1&email=illini.market.help@gmail.com`
+      url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1&email=help@illinimarket.com`
       // #endif
 
       const data: any = await new Promise((resolve, reject) => {

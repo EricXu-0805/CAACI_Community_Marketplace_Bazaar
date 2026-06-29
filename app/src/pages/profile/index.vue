@@ -59,6 +59,7 @@
           </view>
           <view class="edit-btn" role="button" :aria-label="t('a11y.edit')" @click="onEditProfile">
             <view class="edit-icon"></view>
+            <text class="edit-label">{{ t('profile.edit') }}</text>
           </view>
         </view>
 
@@ -729,12 +730,16 @@ function onDeleteItem(id: string) {
 .user-bio { font-size: 13px; color: rgba(245, 240, 230, 0.78); margin-top: 4px; display: block; line-height: 1.4; }
 
 .edit-btn {
-  width: 36px; height: 36px; border-radius: 50%;
+  height: 32px; padding: 0 12px; border-radius: var(--radius-pill);
   background: rgba(245, 240, 230, 0.12);
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: center; gap: 6px;
   cursor: pointer; flex-shrink: 0;
   border: 0.5px solid rgba(245, 240, 230, 0.18);
   &:active { background: rgba(245, 240, 230, 0.22); }
+}
+.edit-label {
+  font-size: 13px; font-weight: 600; color: var(--ink-inverse);
+  opacity: 0.9; line-height: 1; white-space: nowrap;
 }
 .edit-icon {
   width: 14px; height: 14px; position: relative;

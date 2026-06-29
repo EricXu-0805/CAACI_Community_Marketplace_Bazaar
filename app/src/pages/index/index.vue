@@ -343,7 +343,7 @@
                     mode="aspectFill"
                   />
                   <text class="seller-nick">{{ item.profile?.nickname || t('app.user') }}</text>
-                  <view v-if="item.profile?.is_illini_verified" class="seller-illini" role="img" :aria-label="t('profile.illiniVerified')"><text class="si-check">✓</text></view>
+                  <UBadge v-if="item.profile?.is_illini_verified" variant="illini" class="card-illini" :title="t('profile.illiniVerified')">Illini</UBadge>
                   <text v-if="(item.profile?.rating_count || 0) > 0" class="seller-rating">★{{ Number(item.profile?.avg_rating || 0).toFixed(1) }}</text>
                   <text class="card-time">{{ formatTime(item.created_at) }}</text>
                 </view>
@@ -1410,8 +1410,10 @@ function goPublish() {
 .seller-pic { width: 16px; height: 16px; border-radius: 50%; background: var(--bg-subtle); flex-shrink: 0; }
 .seller-nick { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .seller-rating { font-size: 11px; color: var(--brand); font-weight: 600; flex-shrink: 0; }
-.seller-illini { flex-shrink: 0; width: 13px; height: 13px; border-radius: 50%; background: var(--campus-blue); display: inline-flex; align-items: center; justify-content: center; }
-.si-check { font-size: 9px; color: #fff; font-weight: 700; line-height: 1; }
+/* Illini = the one server-truth trust signal (set from an @illinois.edu email,
+   not user-editable). Promoted from a 13px ✓ circle that read as decoration to
+   a labeled blue pill so it's legible at the browsing moment. */
+.card-illini { flex-shrink: 0; }
 .card-fav { display: flex; align-items: center; gap: 4px; flex-shrink: 0; padding: 4px 2px; }
 .heart-img {
   width: 18px; height: 18px; cursor: pointer;

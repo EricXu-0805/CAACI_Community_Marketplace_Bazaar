@@ -23,6 +23,7 @@ Listings, plaza posts, comments, and item descriptions may not include phone num
    · controlled substances, prescription drugs, drug paraphernalia;
    · tobacco or alcohol sold to anyone underage;
    · stolen goods, counterfeits, items infringing trademarks;
+   · currency exchange or money transmission — buying, selling, or exchanging USD, RMB, or any currency for another;
    · academic cheating services — writing essays, taking exams, selling exam answers, "homework helper" schemes;
    · adult content, escort services, sex work solicitation;
    · live animals and animal parts;
@@ -62,5 +63,5 @@ Violations of these Guidelines are treated as violations of the Terms of Service
 If you see something that breaks these Guidelines, tap the "…" menu on any listing, post, comment, or user profile and choose "Report". Reports are reviewed by a human. False or malicious reports are themselves a violation.
 
 14. Feedback.
-These Guidelines evolve. If a rule feels off, write us at illini.market.help@gmail.com and tell us why — we read every message.
+These Guidelines evolve. If a rule feels off, write us at help@illinimarket.com and tell us why — we read every message.
 `
