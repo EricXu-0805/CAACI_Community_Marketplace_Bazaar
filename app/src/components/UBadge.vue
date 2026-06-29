@@ -61,7 +61,10 @@ defineProps<{
 /* post/plaza pills (1px 6px, weight 700, #fff on fill). official = campus-orange
    per D1 (university-identity), matching reconcile's .badge-official recolor. */
 .u-badge--official { background: var(--campus-orange); color: #fff; padding: 1px 6px; font-weight: 700; }
-.u-badge--illini   { background: var(--campus-blue);   color: #fff; padding: 1px 6px; font-weight: 700; }
+/* illini badge leads with a ✓ so it reads explicitly as "verified", not just a
+   campus label (QA7 r2 — Eric: 加一个 verified 更明了). */
+.u-badge--illini   { display: inline-flex; align-items: center; gap: 3px; background: var(--campus-blue); color: #fff; padding: 1px 7px; font-weight: 700; }
+.u-badge--illini::before { content: '✓'; font-size: 9px; font-weight: 800; line-height: 1; }
 /* wanted/ISO tag — solid campus-blue so it reads as a listing-TYPE marker,
    distinct from the frosted condition chips. */
 .u-badge--wanted   { background: var(--campus-blue);   color: #fff; padding: 2px 7px; font-weight: 700; letter-spacing: 0.04em; }

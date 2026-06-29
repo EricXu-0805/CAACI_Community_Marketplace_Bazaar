@@ -180,17 +180,16 @@ function goBack() { uni.navigateBack() }
 .page {
   min-height: 100vh; background: var(--bg-elev-1);
   padding: 0 24px; max-width: 400px; margin: 0 auto;
-  display: flex; flex-direction: column;
+  display: flex; flex-direction: column; justify-content: center;
+  position: relative;
 }
 .header {
   display: flex; flex-direction: column; align-items: center;
-  padding: 56px 0 28px;
-  padding-top: calc(40px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
-  position: relative;
+  padding: 0 0 32px;
 }
 .back {
   position: absolute; left: 0;
-  top: calc(40px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
+  top: calc(16px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
   width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
 .back-arrow {
@@ -209,11 +208,11 @@ function goBack() { uni.navigateBack() }
 }
 .app-desc { font-size: 13px; color: var(--text-faint); margin-top: 6px; text-align: center; line-height: 1.5; padding: 0 12px; }
 
-/* Center the email / code block in the space below the header so the page
-   doesn't read as top-heavy with a large empty bottom (QA7: 不在正中间). The
-   slight upward bias (less bottom padding than the centered offset) keeps it
-   in the optical centre rather than dead-centre. */
-.form { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-bottom: 96px; }
+/* The header + form are centered together as one block (.page
+   justify-content:center) so this sparse one-field form reads as a balanced
+   auth screen, not floating with a gap above it (QA7 r2). Back button is
+   absolute → stays pinned top-left regardless of the centering. */
+.form { width: 100%; }
 .form-group { margin-bottom: 18px; }
 .form-label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 7px; font-weight: 500; }
 .form-input {
