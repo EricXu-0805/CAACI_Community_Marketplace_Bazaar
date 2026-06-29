@@ -816,6 +816,13 @@ const en: Record<string, string> = {
   'admin.toastBanFailed':   'Ban failed',
   'admin.commentNoPage':    'Comment has no standalone page — opening author',
   'admin.cannotOpenTarget': 'Cannot open this target type',
+  'admin.takedownContent':      'Remove content',
+  'admin.takedownConfirmTitle': 'Remove this content?',
+  'admin.takedownConfirmBody':  'This hides the reported content from everyone. You can restore it later by re-activating it.',
+  'admin.takedownConfirm':      'Remove',
+  'admin.toastTakedownDone':    'Content removed',
+  'admin.toastTakedownFailed':  'Removal failed',
+  'admin.auditTakedown':        '{actor} removed {type} {target}',
   'a2hs.title':             'Add to Home Screen',
   'a2hs.body':              'Open fullscreen for a smoother feel — tap Share, then “Add to Home Screen”.',
 }

@@ -816,6 +816,13 @@ const zh: Record<string, string> = {
   'admin.toastBanFailed':   '封禁失败',
   'admin.commentNoPage':    '评论没有独立页面,改为打开作者',
   'admin.cannotOpenTarget': '无法打开该类型的目标',
+  'admin.takedownContent':      '移除内容',
+  'admin.takedownConfirmTitle': '移除该内容?',
+  'admin.takedownConfirmBody':  '将对所有人隐藏被举报的内容,之后可重新激活恢复。',
+  'admin.takedownConfirm':      '移除',
+  'admin.toastTakedownDone':    '内容已移除',
+  'admin.toastTakedownFailed':  '移除失败',
+  'admin.auditTakedown':        '{actor} 移除了 {type} {target}',
   'a2hs.title':             '添加到主屏幕',
   'a2hs.body':              '全屏打开更顺滑 —— 点底部分享按钮,选「添加到主屏幕」。',
 }

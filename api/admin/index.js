@@ -370,6 +370,30 @@ async function handlePost(request, auth) {
     return json({ success: true })
   }
 
+  if (body.action === 'takedown_content') {
+    if (!body.target_type || !body.target_id) {
+      return json({ error: 'missing_args' }, 400)
+    }
+    const data = await rpc('admin_takedown_content', {
+      target_type_in: body.target_type,
+      target_id_in:   body.target_id,
+      reason_in:      body.reason || null,
+    })
+    if (auth.adminId) {
+      await rpc('record_audit', {
+        event_kind_in: 'content_takedown',
+        actor_id_in:   auth.adminId,
+        target_id_in:  body.target_id,
+        details_in: {
+          via: 'edge_admin',
+          target_type: body.target_type,
+          reason: body.reason || null,
+        },
+      }).catch(err => console.warn('[admin] audit content_takedown failed', err?.message))
+    }
+    return json({ data })
+  }
+
   if (body.action === 'revoke_token') {
     if (!body.token_id) return json({ error: 'missing_args' }, 400)
     const r = await fetch(
