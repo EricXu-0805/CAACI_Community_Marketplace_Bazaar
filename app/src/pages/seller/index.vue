@@ -103,9 +103,9 @@
           <view class="gi-img-wrap">
             <image v-if="thumbUrl(item.images?.[0], 'list')" :src="thumbUrl(item.images?.[0], 'list')" :alt="item.title" class="gi-img" mode="aspectFill" lazy-load />
             <view v-else class="gi-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
-            <view v-if="item.location_verified" class="badge-safe-corner" :aria-label="t('pickup.verifiedPickup')">
-              <text class="bsc-check">✓</text>
-              <text class="bsc-label">{{ t('pickup.verifiedPickup') }}</text>
+            <view v-if="pickupBadge(item)" class="badge-safe-corner" :class="{ 'badge-safe-corner--shared': !pickupBadge(item)!.spot }" :aria-label="pickupBadge(item)!.label">
+              <text v-if="pickupBadge(item)!.spot" class="bsc-check">✓</text>
+              <text class="bsc-label">{{ pickupBadge(item)!.label }}</text>
             </view>
           </view>
           <view class="gi-info">
@@ -170,6 +170,7 @@ import { useTheme } from '../../composables/useTheme'
 import { useAuth } from '../../composables/useAuth'
 import { useFollow } from '../../composables/useFollow'
 import { usePlaza } from '../../composables/usePlaza'
+import { pickupTier } from '../../composables/useCampusSpots'
 import type { Profile, Item, Post } from '../../types'
 import { listingPriceLabel, formatTime, thumbUrl, friendlyErrorMessage } from '../../utils'
 import UBadge from '../../components/UBadge.vue'
@@ -187,6 +188,12 @@ const { currentUser, requireAuth } = useAuth()
 const { isFollowing, toggleFollow, loadMyFollowing } = useFollow()
 
 const { fetchUserPosts } = usePlaza()
+
+function pickupBadge(it: Item): { spot: boolean; label: string } | null {
+  const tier = pickupTier(it.location, it.location_verified)
+  if (!tier) return null
+  return { spot: tier === 'spot', label: t(tier === 'spot' ? 'pickup.safeSpot' : 'pickup.verifiedPickup') }
+}
 
 const seller = ref<Profile | null>(null)
 const sellerItems = ref<Item[]>([])
@@ -498,6 +505,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   padding: 2px 7px 2px 5px; border-radius: var(--radius-xs);
   background: var(--success);
 }
+.badge-safe-corner--shared { background: rgba(0, 0, 0, 0.55); padding-left: 7px; }
 .bsc-check { font-size: 10px; color: #fff; font-weight: 800; line-height: 1; }
 .bsc-label { font-size: 10px; color: #fff; font-weight: 600; line-height: 1; }
 .gi-title {

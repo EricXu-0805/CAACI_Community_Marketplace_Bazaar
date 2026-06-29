@@ -74,10 +74,10 @@
         <text v-if="item.listing_type === 'wanted'" class="tag tag-wanted">{{ t('item.wanted') }}</text>
         <text class="tag">{{ t('cat.' + item.category) }}</text>
         <text v-if="item.listing_type !== 'wanted'" class="tag">{{ t('condition.' + item.condition) }}</text>
-        <view :class="['tag', 'tag-loc', { 'tag-safe': item.location_verified }]">
+        <view :class="['tag', 'tag-loc', { 'tag-safe': pickupBadge?.spot }]">
           <view class="loc-dot"></view>
           <text>{{ displayLocation }}</text>
-          <text v-if="item.location_verified" class="safe-badge">{{ t('pickup.verifiedPickup') }}</text>
+          <text v-if="pickupBadge" class="safe-badge" :class="{ 'safe-badge--shared': !pickupBadge.spot }">{{ pickupBadge.label }}</text>
         </view>
       </view>
     </view>
@@ -314,7 +314,7 @@ import type { Item, Rating } from '../../types'
 import { formatTime, haptic, formatPrice, listingPriceLabel, quickTranslate, thumbUrl, friendlyErrorMessage } from '../../utils'
 import { readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
-import { localizeLocation } from '../../composables/useCampusSpots'
+import { localizeLocation, pickupTier } from '../../composables/useCampusSpots'
 import { useRatings } from '../../composables/useRatings'
 import { useTranslate } from '../../composables/useTranslate'
 import { computed, onUnmounted, watch } from 'vue'
@@ -376,6 +376,12 @@ const displayDescription = computed(() => {
 const displayLocation = computed(() =>
   localizeLocation(item.value?.location, lang.value as 'en' | 'zh')
 )
+
+const pickupBadge = computed(() => {
+  const tier = pickupTier(item.value?.location, item.value?.location_verified)
+  if (!tier) return null
+  return { spot: tier === 'spot', label: t(tier === 'spot' ? 'pickup.safeSpot' : 'pickup.verifiedPickup') }
+})
 
 /*
  * Render-side safety net for the hero carousel.
@@ -978,6 +984,8 @@ async function contactSeller() {
   background: var(--accent-good); color: #fff;
   border-radius: 4px;
 }
+/* tier-2: GPS shared but no recognized safe spot — muted, not endorsed-green */
+.safe-badge--shared { background: var(--text-secondary); }
 .loc-dot {
   width: 5px; height: 5px; border-radius: 50%;
   background: var(--accent-action); flex-shrink: 0;

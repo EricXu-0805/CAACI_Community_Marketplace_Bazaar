@@ -55,6 +55,31 @@ export function localizeLocation(
   return lang === 'zh' ? spot.zh : spot.en
 }
 
+export type PickupTier = 'spot' | 'shared'
+
+/*
+ * Two-tier pickup signal, computed at render time from the stored location
+ * string — no DB column, no migration. `item.location` is already returned by
+ * every list/detail/search path.
+ *   'spot'   — the location is a recognized safe campus spot (Illini Union,
+ *              the libraries, …). The strongest honest signal: the meetup is at
+ *              a known public place. Fires on the spot NAME (chip or typed),
+ *              independent of GPS — naming a safe public spot IS the signal,
+ *              and the buyer verifies it by showing up.
+ *   'shared' — no safe-spot match, but the seller shared a real device GPS fix.
+ *   null     — neither; render nothing.
+ * green_st has safe:false, so "Green Street" falls through to 'shared'/null.
+ */
+export function pickupTier(
+  location: string | null | undefined,
+  locationVerified?: boolean | null,
+): PickupTier | null {
+  const spot = matchSpot(location)
+  if (spot && spot.safe) return 'spot'
+  if (locationVerified) return 'shared'
+  return null
+}
+
 export function useCampusSpots() {
-  return { CAMPUS_SPOTS, matchSpot, localizeLocation }
+  return { CAMPUS_SPOTS, matchSpot, localizeLocation, pickupTier }
 }
