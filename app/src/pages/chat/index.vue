@@ -36,6 +36,18 @@ onLoad((options) => {
   max-width: 480px; margin: 0 auto;
   display: flex; flex-direction: column;
 }
+/* #ifdef H5 */
+@media (max-width: 767px) {
+  /* QA7-r2 #3: on mobile, .page-lock already pins this fixed inset:0. An
+     explicit height overrides the bottom:0 anchor, so the container couldn't
+     shrink when the soft keyboard opened (interactive-widget=resizes-content
+     shrinks the fixed ICB, but NOT the dvh unit) — the input bar landed under
+     the keyboard and iOS panned the whole webview to reveal it (the gap + the
+     "I can still scroll the bar up" report). Drop the height and let the inset
+     govern; it shrinks with the keyboard, so the bar locks above it. */
+  .chat-page-wrap { height: auto; }
+}
+/* #endif */
 @media (min-width: 768px) {
   /* On desktop the thread reads better a touch wider than the phone cap. */
   .chat-page-wrap { max-width: 720px; }
