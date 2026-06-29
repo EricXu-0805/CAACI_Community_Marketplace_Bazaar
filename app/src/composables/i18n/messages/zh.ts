@@ -816,6 +816,8 @@ const zh: Record<string, string> = {
   'admin.toastBanFailed':   '封禁失败',
   'admin.commentNoPage':    '评论没有独立页面,改为打开作者',
   'admin.cannotOpenTarget': '无法打开该类型的目标',
+  'a2hs.title':             '添加到主屏幕',
+  'a2hs.body':              '全屏打开更顺滑 —— 点底部分享按钮,选「添加到主屏幕」。',
 }
 
 export default zh

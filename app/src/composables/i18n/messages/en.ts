@@ -816,6 +816,8 @@ const en: Record<string, string> = {
   'admin.toastBanFailed':   'Ban failed',
   'admin.commentNoPage':    'Comment has no standalone page — opening author',
   'admin.cannotOpenTarget': 'Cannot open this target type',
+  'a2hs.title':             'Add to Home Screen',
+  'a2hs.body':              'Open fullscreen for a smoother feel — tap Share, then “Add to Home Screen”.',
 }
 
 export default en

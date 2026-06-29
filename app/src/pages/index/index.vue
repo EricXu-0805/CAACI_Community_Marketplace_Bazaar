@@ -399,6 +399,7 @@
     </view>
 
     <CustomTabBar current="index" />
+    <AddToHomeHint />
   </view>
 </template>
 
@@ -424,6 +425,7 @@ import CustomTabBar from '../../components/CustomTabBar.vue'
 import UBadge from '../../components/UBadge.vue'
 import UIcon from '../../components/UIcon.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
+import AddToHomeHint from '../../components/AddToHomeHint.vue'
 
 const { t, tc, lang, localize, toggleLang } = useI18n()
 const { isDark, setPref } = useTheme()
