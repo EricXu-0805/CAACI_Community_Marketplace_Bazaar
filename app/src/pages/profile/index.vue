@@ -458,12 +458,7 @@ function goEdit(id: string) {
 function onEditProfile() { uni.navigateTo({ url: '/pages/profile/edit' }) }
 
 function onVerifyIllini() {
-  uni.showModal({
-    title: t('profile.verifyTitle'),
-    content: t('profile.verifyHint'),
-    confirmText: t('profile.verifyGotIt'),
-    showCancel: false,
-  })
+  uni.navigateTo({ url: '/pages/illini-verify/index' })
 }
 function goNotifications() { uni.navigateTo({ url: '/pages/notifications/index' }) }
 function goSettings() { uni.navigateTo({ url: '/pages/settings/index' }) }
