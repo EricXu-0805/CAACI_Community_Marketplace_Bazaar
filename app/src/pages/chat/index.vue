@@ -1,5 +1,5 @@
 <template>
-  <view class="page page-lock chat-page-wrap" :style="vvStyle">
+  <view class="page page-lock chat-page-wrap" :class="{ 'kb-up': !!vvStyle }" :style="vvStyle">
     <ChatThread v-if="conversationId" :conversation-id="conversationId" :prefill="prefill" />
     <!-- #ifdef H5 -->
     <view v-if="vvDebug" class="vv-debug">{{ vvDebug }}</view>
@@ -106,6 +106,12 @@ onUnmounted(() => {
      ignored). Paired with the measured `bottom` this does NOT depend on the ICB
      shrinking (which is what made the earlier height:auto attempt fail). */
   .chat-page-wrap { height: auto; }
+  /* When the keyboard is up the box is already lifted onto the keyboard top by
+     the `bottom` inset, so the composer's home-indicator safe-area padding is
+     dead space below it (the cream band Eric saw). Drop it so the input bar
+     sits flush at the visible-viewport bottom. The Safari URL pill + form-
+     accessory bar below that are browser chrome and can't be removed in a tab. */
+  .chat-page-wrap.kb-up :deep(.input-bar) { padding-bottom: 9px; }
 }
 /* #endif */
 @media (min-width: 768px) {

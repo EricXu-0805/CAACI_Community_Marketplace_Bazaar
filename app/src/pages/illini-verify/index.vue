@@ -209,7 +209,11 @@ function goBack() { uni.navigateBack() }
 }
 .app-desc { font-size: 13px; color: var(--text-faint); margin-top: 6px; text-align: center; line-height: 1.5; padding: 0 12px; }
 
-.form { flex: 1; padding-bottom: 40px; }
+/* Center the email / code block in the space below the header so the page
+   doesn't read as top-heavy with a large empty bottom (QA7: 不在正中间). The
+   slight upward bias (less bottom padding than the centered offset) keeps it
+   in the optical centre rather than dead-centre. */
+.form { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-bottom: 96px; }
 .form-group { margin-bottom: 18px; }
 .form-label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 7px; font-weight: 500; }
 .form-input {
