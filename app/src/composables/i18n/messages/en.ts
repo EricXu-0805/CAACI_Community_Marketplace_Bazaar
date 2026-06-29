@@ -247,6 +247,7 @@ const en: Record<string, string> = {
   'illini.err.email_taken': 'That campus email is already linked to another account',
   'illini.err.already_verified': "You're already verified",
   'illini.err.cooldown': 'Please wait a moment before requesting another code',
+  'illini.err.daily_cap': "You've reached today's verification limit — try again tomorrow",
   'illini.err.no_pending': 'Request a code first',
   'illini.err.expired': 'That code expired — request a new one',
   'illini.err.too_many_attempts': 'Too many tries — request a new code',

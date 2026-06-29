@@ -41,6 +41,7 @@ const FROM = env('DIGEST_FROM', 'Illini Market <noreply@send.illinimarket.com>')
 
 const CODE_TTL_MIN = 10
 const RESEND_COOLDOWN_S = 60
+const DAILY_CAP = 8
 const ILLINI_RE = /^[^@\s]+@illinois\.edu$/
 
 /* Validate the caller's Supabase access token → return the user (id, email) or null. */
@@ -113,21 +114,23 @@ export default async function handler(request) {
   if (!ILLINI_RE.test(email)) return new Response(JSON.stringify({ error: 'invalid_email' }), { status: 400, headers })
 
   try {
-    // Already verified? No-op.
+    // Already verified? No-op. (Caller's own row — not a cross-account oracle.)
     const meRows = await sbREST(`profiles?id=eq.${user.id}&select=is_illini_verified`).then((r) => r.json())
     if (meRows?.[0]?.is_illini_verified) return new Response(JSON.stringify({ error: 'already_verified' }), { status: 409, headers })
+    // We deliberately do NOT pre-check whether `email` is taken by another
+    // account here — that was a free enumeration oracle (409 = "this campus
+    // email is a verified member"). One-email-one-account is enforced at verify
+    // time by the unique index (→ email_taken); a wasted send is the acceptable cost.
 
-    // Campus email already tied to a different account?
-    const taken = await sbREST(`profiles?verified_illini_email=eq.${encodeURIComponent(email)}&select=id`).then((r) => r.json())
-    if (Array.isArray(taken) && taken.some((row) => row.id !== user.id)) {
-      return new Response(JSON.stringify({ error: 'email_taken' }), { status: 409, headers })
-    }
-
-    // Resend cooldown.
-    const existing = await sbREST(`illini_verifications?user_id=eq.${user.id}&select=last_sent_at`).then((r) => r.json())
-    const last = existing?.[0]?.last_sent_at
-    if (last && Date.now() - new Date(last).getTime() < RESEND_COOLDOWN_S * 1000) {
+    // Caller's pending row drives the 60s cooldown + per-user daily cap.
+    const existing = (await sbREST(`illini_verifications?user_id=eq.${user.id}&select=last_sent_at,sent_today,sent_date`).then((r) => r.json()))?.[0]
+    const today = new Date().toISOString().slice(0, 10)
+    if (existing?.last_sent_at && Date.now() - new Date(existing.last_sent_at).getTime() < RESEND_COOLDOWN_S * 1000) {
       return new Response(JSON.stringify({ error: 'cooldown' }), { status: 429, headers })
+    }
+    const priorToday = existing?.sent_date === today ? (existing.sent_today || 0) : 0
+    if (priorToday >= DAILY_CAP) {
+      return new Response(JSON.stringify({ error: 'daily_cap' }), { status: 429, headers })
     }
 
     const code = gen6()
@@ -138,7 +141,7 @@ export default async function handler(request) {
     const up = await sbREST('illini_verifications', {
       method: 'POST',
       headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-      body: JSON.stringify({ user_id: user.id, email, code_hash, expires_at, attempts: 0, last_sent_at: nowIso }),
+      body: JSON.stringify({ user_id: user.id, email, code_hash, expires_at, attempts: 0, last_sent_at: nowIso, sent_today: priorToday + 1, sent_date: today }),
     })
     if (!up.ok) {
       try { console.error('illini store', up.status, (await up.text()).slice(0, 200)) } catch {}

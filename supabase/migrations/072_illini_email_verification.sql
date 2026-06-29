@@ -20,6 +20,12 @@ CREATE TABLE IF NOT EXISTS public.illini_verifications (
   expires_at   TIMESTAMPTZ NOT NULL,
   attempts     INT NOT NULL DEFAULT 0,
   last_sent_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- Per-user daily send cap (the resend upsert carries these forward): blunts
+  -- the "email a fresh code to a different @illinois.edu victim every 60s"
+  -- abuse vector and, since each resend = a fresh code, also caps total
+  -- brute-force guesses/day (cap × 5 attempts) on our shared sending domain.
+  sent_today   INT NOT NULL DEFAULT 0,
+  sent_date    DATE,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -43,24 +49,35 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_profiles_verified_illini_email
   WHERE verified_illini_email IS NOT NULL;
 
 -- ---------------------------------------------------------------------------
--- Defense in depth: profiles has a table-wide UPDATE grant to `authenticated`
--- (migration 004), so without this a user could PATCH is_illini_verified /
--- verified_illini_email on their own row via PostgREST and self-grant the badge.
--- This BEFORE UPDATE trigger rejects any change to those two columns unless the
--- caller is a privileged role (service_role / postgres). Runs SECURITY INVOKER
--- (default) so current_user reflects the REAL caller, not the function owner.
--- Unchanged values (IS NOT DISTINCT FROM) pass, so ordinary profile edits that
--- echo the column back are unaffected.
+-- Defense in depth: profiles has table-wide INSERT and UPDATE grants to
+-- `authenticated`, so without this a client could PATCH is_illini_verified /
+-- verified_illini_email on their own row — OR, in the (reachable) window where
+-- handle_new_user silently skipped profile creation (its INSERT is wrapped in
+-- EXCEPTION…RAISE WARNING, e.g. a moderation-tripping signup nickname), INSERT a
+-- fresh row with the badge already set. Both forge the trust signal with no
+-- emailed code. This trigger rejects either columns being set/changed by an
+-- authenticated/anon caller, on BOTH INSERT and UPDATE. Runs SECURITY INVOKER
+-- (default) so current_user is the REAL caller. handle_new_user (SECURITY
+-- DEFINER → runs as the owner, not authenticated/anon) and the service-role
+-- PATCH from verify-illini-code (current_user = service_role) are unaffected,
+-- so legitimate @illinois.edu auto-verify and the real grant still succeed.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.guard_illini_verify_columns()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  IF current_user IN ('authenticated', 'anon')
-     AND (NEW.is_illini_verified   IS DISTINCT FROM OLD.is_illini_verified
-       OR NEW.verified_illini_email IS DISTINCT FROM OLD.verified_illini_email) THEN
-    RAISE EXCEPTION 'illini verification is server-managed and cannot be set by the client';
+  IF current_user IN ('authenticated', 'anon') THEN
+    IF TG_OP = 'INSERT' THEN
+      IF NEW.is_illini_verified IS TRUE OR NEW.verified_illini_email IS NOT NULL THEN
+        RAISE EXCEPTION 'illini verification is server-managed and cannot be set by the client';
+      END IF;
+    ELSIF TG_OP = 'UPDATE' THEN
+      IF NEW.is_illini_verified   IS DISTINCT FROM OLD.is_illini_verified
+        OR NEW.verified_illini_email IS DISTINCT FROM OLD.verified_illini_email THEN
+        RAISE EXCEPTION 'illini verification is server-managed and cannot be set by the client';
+      END IF;
+    END IF;
   END IF;
   RETURN NEW;
 END;
@@ -68,6 +85,6 @@ $$;
 
 DROP TRIGGER IF EXISTS guard_illini_verify_columns ON public.profiles;
 CREATE TRIGGER guard_illini_verify_columns
-  BEFORE UPDATE ON public.profiles
+  BEFORE INSERT OR UPDATE ON public.profiles
   FOR EACH ROW
   EXECUTE FUNCTION public.guard_illini_verify_columns();
