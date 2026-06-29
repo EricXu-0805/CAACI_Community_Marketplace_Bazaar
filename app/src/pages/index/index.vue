@@ -320,9 +320,9 @@
               <view v-if="item.images && item.images.length > 1" class="img-count-badge">
                 <text>{{ item.images.length }}</text>
               </view>
-              <view v-if="item.location_verified" class="badge-safe-corner" :aria-label="t('pickup.verifiedPickup')">
-                <text class="bsc-check">✓</text>
-                <text class="bsc-label">{{ t('pickup.verifiedPickup') }}</text>
+              <view v-if="pickupBadge(item)" class="badge-safe-corner" :class="{ 'badge-safe-corner--shared': !pickupBadge(item)!.spot }" :aria-label="pickupBadge(item)!.label">
+                <text v-if="pickupBadge(item)!.spot" class="bsc-check">✓</text>
+                <text class="bsc-label">{{ pickupBadge(item)!.label }}</text>
               </view>
             </view>
             <view class="card-info">
@@ -413,6 +413,7 @@ import { useFavorites } from '../../composables/useFavorites'
 import { useModeration } from '../../composables/useModeration'
 import { useSemester } from '../../composables/useSemester'
 import { useLongPress } from '../../composables/useLongPress'
+import { pickupTier } from '../../composables/useCampusSpots'
 import type { ItemCategory, ItemCondition, Item } from '../../types'
 
 import { debounce, formatTime, formatPrice, friendlyErrorMessage, haptic, thumbUrl, BROWSE_CATEGORIES } from '../../utils'
@@ -474,6 +475,12 @@ function onSemesterBannerTap() {
 function localizeItemTitle(it: { title: string; title_i18n?: Record<string, string> | null }): string {
   if (!it?.title) return ''
   return localize(it.title_i18n, it.title)
+}
+
+function pickupBadge(it: Item): { spot: boolean; label: string } | null {
+  const tier = pickupTier(it.location, it.location_verified)
+  if (!tier) return null
+  return { spot: tier === 'spot', label: t(tier === 'spot' ? 'pickup.safeSpot' : 'pickup.verifiedPickup') }
 }
 
 const { items, loading, hasMore, fetchError, fetchItems, clearItems } = useItems()
@@ -608,9 +615,10 @@ const filteredItems = computed(() => {
     result = result.filter(item => item.location.toLowerCase().includes(loc))
   }
 
-  // "Verified pickups only" — same predicate the card's safe-pickup badge
-  // uses (#4: any GPS-confirmed location, not just the 10 named safe spots),
-  // so the filter matches exactly what the user sees badged.
+  // "Shared location only" — GPS-confirmed items. Stays GPS-scoped (not the
+  // safe-spot tier) because it also runs server-side via getFilterParams, and
+  // matchSpot() is client-only string logic that can't be replicated in SQL.
+  // A chip-named safe spot without a GPS fix is badged but not caught here.
   if (filterVerifiedOnly.value) {
     result = result.filter(item => item.location_verified)
   }
@@ -1368,6 +1376,8 @@ function goPublish() {
   padding: 2px 7px 2px 5px; border-radius: 10px;
   background: var(--success);
 }
+/* tier-2: GPS shared but no recognized safe spot — muted, no ✓ */
+.badge-safe-corner--shared { background: rgba(0, 0, 0, 0.55); padding-left: 7px; }
 .bsc-check { font-size: 10px; color: var(--ink-inverse); font-weight: 800; line-height: 1; }
 .bsc-label { font-size: 10px; color: var(--ink-inverse); font-weight: 600; line-height: 1; }
 .card-time { font-size: 10px; color: var(--text-faint); margin-left: auto; }

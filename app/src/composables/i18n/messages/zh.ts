@@ -592,6 +592,7 @@ const zh: Record<string, string> = {
   'error.actionFailed': '操作失败，请重试',
 
   'pickup.verifiedPickup': '已共享定位',
+  'pickup.safeSpot': '认证地点',
 
   'follow.follow': '关注',
   'follow.following': '已关注',

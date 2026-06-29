@@ -592,6 +592,7 @@ const en: Record<string, string> = {
   'error.actionFailed': 'Something went wrong. Please try again.',
 
   'pickup.verifiedPickup': 'Location shared',
+  'pickup.safeSpot': 'Safe spot',
 
   'follow.follow': 'Follow',
   'follow.following': 'Following',
