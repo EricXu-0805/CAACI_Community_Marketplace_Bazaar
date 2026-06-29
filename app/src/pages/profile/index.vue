@@ -688,6 +688,21 @@ function onDeleteItem(id: string) {
 .user-info { flex: 1; min-width: 0; }
 .name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 /*
+ * The earned Illini badge sits on the navy user-card, where the default
+ * navy-fill / white-text pill is invisible (QA7: "verify 成功也没什么区别" — the
+ * badge was rendering, just navy-on-navy). Render it here as a high-contrast
+ * ivory chip with navy text + a soft lift so the verification actually reads
+ * as a reward. Only overridden on this dark surface; light-surface usages
+ * (listing cards, posts) keep the standard navy pill.
+ */
+.name-row :deep(.u-badge--illini) {
+  background: #fff;
+  color: var(--campus-blue);
+  padding: 2px 10px;
+  font-size: 11px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.28);
+}
+/*
  * Name + meta on the user card pin to ivory (#F5F0E6) since the
  * card background is pinned to navy. Using var(--canvas) here would
  * flip to dark in dark mode and disappear against the navy panel.
