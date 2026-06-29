@@ -211,6 +211,7 @@
           <text class="d-row"><text class="d-key">{{ t('admin.dTarget') }}</text>{{ detailRow.target_type }} {{ detailRow.target_id }}</text>
           <text class="d-row"><text class="d-key">{{ t('admin.dAuthor') }}</text>{{ detailRow.target_user_nickname || detailRow.target_user_id || '—' }}</text>
           <text v-if="detailRow.target_preview" class="d-row d-preview">“{{ detailRow.target_preview }}”</text>
+          <image v-if="detailRow.target_image" :src="detailRow.target_image" class="d-thumb" mode="aspectFill" @click="previewThumb(detailRow.target_image)" />
           <text class="d-row"><text class="d-key">{{ t('admin.dReason') }}</text>{{ detailRow.reason }}</text>
           <text v-if="detailRow.note" class="d-row"><text class="d-key">{{ t('admin.dNote') }}</text>{{ detailRow.note }}</text>
           <text class="d-row"><text class="d-key">{{ t('admin.dStatus') }}</text>{{ detailRow.status }}</text>
@@ -616,6 +617,11 @@ function canOpenTarget(row: any): boolean {
   return false
 }
 
+function previewThumb(url: string) {
+  if (!url) return
+  uni.previewImage({ urls: [url], current: url })
+}
+
 function openTarget(row: any) {
   detailOpen.value = false
   if (row.target_type === 'item') {
@@ -969,6 +975,7 @@ onMounted(async () => {
 .d-row { display: block; font-size: 13px; color: var(--text-primary); line-height: 1.6; margin-bottom: 6px; }
 .d-key { color: var(--text-secondary); font-weight: 600; }
 .d-preview { background: var(--bg-subtle); padding: 8px 10px; border-radius: 6px; margin: 8px 0; font-style: italic; }
+.d-thumb { width: 120px; height: 120px; border-radius: 8px; margin: 4px 0 10px; background: var(--bg-inset); cursor: pointer; }
 .d-appeal { background: var(--warning-soft); padding: 10px; border-radius: 6px; border-left: 3px solid var(--accent-warn); margin: 10px 0; }
 .d-actions { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
 </style>
