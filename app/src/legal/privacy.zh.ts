@@ -46,7 +46,7 @@ export const PRIVACY_ZH = `隐私政策
 7. 你的权利
    · 在「个人资料」中查看和编辑自己的资料；
    · 在「设置 → 注销账号」中删除账号，此操作不可恢复；
-   · 发送邮件至 illini.market.help@gmail.com 申请导出你的数据副本；
+   · 发送邮件至 help@illinimarket.com 申请导出你的数据副本；
    · 在资料页或聊天页屏蔽其他用户；
    · 从任一商品、帖子、评论或聊天页举报内容或用户。
 加州（CCPA）、欧盟/英国（GDPR）居民可能享有额外权利，请联系我们行使。
@@ -67,5 +67,5 @@ export const PRIVACY_ZH = `隐私政策
 重大变更将在应用内公告，并可能要求重新同意；轻微修订可能不另行通知。上文的「版本号」始终反映当前版本。
 
 13. 联系方式
-提问、数据访问申请、投诉：illini.market.help@gmail.com
+提问、数据访问申请、投诉：help@illinimarket.com
 `

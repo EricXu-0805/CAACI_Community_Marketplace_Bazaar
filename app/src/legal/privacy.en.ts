@@ -48,7 +48,7 @@ Data is stored on Supabase infrastructure (AWS us-east-1). We rely on row-level 
 7. Your Rights.
    · View and edit your profile from the Profile page.
    · Delete your account from Settings → Delete Account. This is permanent.
-   · Request a copy of your data by emailing illini.market.help@gmail.com.
+   · Request a copy of your data by emailing help@illinimarket.com.
    · Block other users from the Profile or Chat screens.
    · Report content or users from any listing, post, comment, or chat.
 California (CCPA) and EEA (GDPR) residents may have additional rights; contact us to exercise them.
@@ -69,5 +69,5 @@ We use automated systems to rate the risk of spam, fraud, or abuse (the "trust s
 Material changes to this policy will be announced in-app and may require renewed consent. Minor clarifications may be made without separate notice. The "Version" header above always reflects the current version.
 
 13. Contact.
-Questions, access requests, or complaints: illini.market.help@gmail.com
+Questions, access requests, or complaints: help@illinimarket.com
 `

@@ -129,7 +129,12 @@ function onDecline() {
 }
 .sub { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
 
-.body-scroll { flex: 1; min-height: 0; padding: 16px 20px; }
+/* box-sizing: a uni <scroll-view> compiles to a <uni-scroll-view> custom
+   element, which the global `view,text,...` border-box reset doesn't cover.
+   Left as content-box, the 20px horizontal padding adds OUTSIDE the stretched
+   flex width (390→430 on a 390px screen), pushing the cards + summary off the
+   right edge. border-box keeps the padding inside the viewport. */
+.body-scroll { flex: 1; min-height: 0; padding: 16px 20px; box-sizing: border-box; }
 .doc-card {
   display: flex; align-items: center; gap: 14px;
   padding: 14px 16px; border-radius: 12px;

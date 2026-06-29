@@ -313,15 +313,19 @@
       <!-- Free-text spot (#6d): chips are quick-fills; a custom value just
            leaves all chips unhighlighted. Kept ABOVE the date/time pickers so
            neither text field sits under uni's lingering picker overlay (#6b). -->
-      <input v-model="meetupSpotInput" class="os-note mt-spot-input" :placeholder="t('chat.meetupSpotPh')" maxlength="60" />
-      <input v-model="meetupNoteInput" class="os-note" :placeholder="t('chat.offerNotePh')" maxlength="300" />
+      <input v-model="meetupSpotInput" class="os-note mt-spot-input" :placeholder="t('chat.meetupSpotPh')" maxlength="60" :adjust-position="false" />
+      <input v-model="meetupNoteInput" class="os-note" :placeholder="t('chat.offerNotePh')" maxlength="300" :adjust-position="false" />
       <view class="mt-row">
-        <picker mode="date" :value="meetupDateInput" :start="todayStr" :end="maxDateStr" @change="meetupDateInput = $event.detail.value">
-          <view class="mt-picker"><text>{{ meetupDateInput || t('chat.meetupPickDate') }}</text></view>
-        </picker>
-        <picker mode="time" :value="meetupTimeInput" @change="meetupTimeInput = $event.detail.value">
-          <view class="mt-picker"><text>{{ meetupTimeInput || t('chat.meetupPickTime') }}</text></view>
-        </picker>
+        <view class="mt-cell">
+          <picker mode="date" :value="meetupDateInput" :start="todayStr" :end="maxDateStr" @change="meetupDateInput = $event.detail.value">
+            <view class="mt-picker"><text>{{ meetupDateInput || t('chat.meetupPickDate') }}</text></view>
+          </picker>
+        </view>
+        <view class="mt-cell">
+          <picker mode="time" :value="meetupTimeInput" @change="meetupTimeInput = $event.detail.value">
+            <view class="mt-picker"><text>{{ meetupTimeInput || t('chat.meetupPickTime') }}</text></view>
+          </picker>
+        </view>
       </view>
       <text class="mt-safe-hint">{{ t('chat.meetupSafeHint') }}</text>
       <view :class="['os-submit', { disabled: !meetupSpotInput || !meetupDateInput || !meetupTimeInput || meetupSubmitting }]" @click="submitMeetupSheet">
@@ -722,11 +726,35 @@ async function onSend() {
     finalText = `> ${quoted}\n${text}`
   }
 
+  const convId = conversationId.value
+  const me = currentUser.value.id
   inputText.value = ''
   const wasReplying = replyToMsg.value
   replyToMsg.value = null
   sending.value = true
   const failsafe = setTimeout(() => { sending.value = false }, 15000)
+
+  /*
+   * Optimistic render — drop the message into the thread IMMEDIATELY as a
+   * _pending bubble, before any await. Local + remote (OpenAI) moderation +
+   * the insert round-trip can take ~1s, and waiting on all of it before
+   * showing anything is exactly what made sending feel laggy. We reconcile
+   * the temp row with the real one on success, flip it to _failed (tap to
+   * retry) on a transient error, or drop it + hand the text back on a content
+   * rejection. The realtime echo dedupes by real id, so no double render.
+   */
+  const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+  messages.value.push({
+    id: tempId,
+    conversation_id: convId,
+    sender_id: me,
+    content: finalText,
+    message_type: 'text',
+    is_read: false,
+    created_at: new Date().toISOString(),
+    _pending: true,
+  })
+  nextTick(() => scrollToBottom())
 
   /*
    * SYNCHRONOUS H5 focus — must happen BEFORE `await sendMessage`,
@@ -757,13 +785,19 @@ async function onSend() {
   // #endif
 
   try {
-    const sent = await sendMessage(conversationId.value, currentUser.value.id, finalText)
-    // Show our own message immediately instead of waiting on the realtime
-    // echo — on a dead/flaky H5 socket the echo may never arrive until the
-    // foreground heal. The subscribe callback dedupes by id, so the later
-    // echo (if any) won't double-render.
-    if (sent && !messages.value.some(m => m.id === sent.id)) messages.value.push(sent)
-    markAsRead(conversationId.value, currentUser.value.id)
+    const sent = await sendMessage(convId, me, finalText)
+    // Reconcile the optimistic temp row with the real one. If the realtime
+    // echo already added the real id (it can land mid-await), just drop the
+    // temp; otherwise swap temp -> real in place. Dedup keeps it single.
+    const idx = messages.value.findIndex(m => m.id === tempId)
+    const echoed = sent ? messages.value.some(m => m.id === sent.id) : false
+    if (idx >= 0) {
+      if (sent && !echoed) messages.value.splice(idx, 1, sent)
+      else messages.value.splice(idx, 1)
+    } else if (sent && !echoed) {
+      messages.value.push(sent)
+    }
+    markAsRead(convId, me)
     refreshUnreadCount()
     nextTick(() => {
       scrollToBottom()
@@ -781,13 +815,24 @@ async function onSend() {
       // #endif
     })
   } catch (error: any) {
+    const reason = String(error?.message || '')
+    const contentRejected = reason.startsWith('moderation_block') || reason === 'duplicate_message' || reason === 'message_too_long'
+    const idx = messages.value.findIndex(m => m.id === tempId)
     uni.showToast({
       title: friendlyErrorMessage(error, lang.value as 'en' | 'zh'),
       icon: 'none',
       duration: 2500,
     })
-    inputText.value = text
-    replyToMsg.value = wasReplying
+    if (contentRejected) {
+      // Content was rejected — remove the bubble and hand the text back to edit.
+      if (idx >= 0) messages.value.splice(idx, 1)
+      inputText.value = text
+      replyToMsg.value = wasReplying
+    } else if (idx >= 0) {
+      // Transient/network failure — keep the bubble, flip it to retryable.
+      messages.value[idx]._pending = false
+      messages.value[idx]._failed = true
+    }
   } finally {
     clearTimeout(failsafe)
     sending.value = false
@@ -1523,8 +1568,13 @@ function scrollToBottom() {
 .mt-spots { white-space: nowrap; }
 .mt-spots .os-quick-chip text { font-family: inherit; }
 .mt-row { display: flex; gap: 8px; margin-top: 12px; }
+/* Each <picker> (uni-picker is display:block) is the flex child; flex:1 must
+   land on it, not the inner .mt-picker view, or the pickers collapse to text
+   width and bunch up on the left. The cell carries the 50/50 split; the inner
+   view fills it. */
+.mt-cell { flex: 1; min-width: 0; }
 .mt-picker {
-  flex: 1; height: 44px; display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 44px; display: flex; align-items: center; justify-content: center;
   background: var(--bg-subtle); border-radius: var(--radius-md);
   text { font-size: 14px; color: var(--ink); }
 }

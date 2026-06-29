@@ -12,12 +12,24 @@
       <text :id="bodyId" class="pdm-body t-body">{{ t('publish.permissionModalBody') }}</text>
 
       <view class="pdm-actions">
+        <!-- "Open Settings" only where it can actually deep-link: mp-weixin's
+             uni.openSetting(). On H5 there is NO API to open browser/OS
+             permission settings, so the button would just dismiss — a
+             "clicked it, nothing happened" trust hit. The body text already
+             gives the manual iOS path, so H5 shows a single honest "Got it". -->
+        <!-- #ifdef MP-WEIXIN -->
         <UButton variant="primary" block class="pdm-btn" @click="onOpenSettings">
           {{ t('publish.permissionModalOpenSettings') }}
         </UButton>
         <UButton variant="ghost" block class="pdm-btn" @click="onDismiss">
           {{ t('publish.permissionModalDismiss') }}
         </UButton>
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
+        <UButton variant="primary" block class="pdm-btn" @click="onDismiss">
+          {{ t('publish.permissionModalDismiss') }}
+        </UButton>
+        <!-- #endif -->
       </view>
     </view>
   </view>

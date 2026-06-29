@@ -54,7 +54,7 @@ export default async function handler(request) {
     return new Response(JSON.stringify({ error: 'bad_coords' }), { status: 400, headers })
   }
 
-  const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=18&addressdetails=1&email=illini.market.help@gmail.com`
+  const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=18&addressdetails=1&email=help@illinimarket.com`
 
   try {
     const controller = new AbortController()
@@ -63,7 +63,7 @@ export default async function handler(request) {
       headers: {
         // The actual fix — a real User-Agent the browser can't send. Names
         // the app + a contact, per Nominatim's usage policy.
-        'User-Agent': 'IlliniMarket/1.0 (+https://illinimarket.com; illini.market.help@gmail.com)',
+        'User-Agent': 'IlliniMarket/1.0 (+https://illinimarket.com; help@illinimarket.com)',
         'Accept-Language': 'en',
       },
       signal: controller.signal,

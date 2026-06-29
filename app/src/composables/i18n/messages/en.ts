@@ -681,7 +681,7 @@ const en: Record<string, string> = {
   'suspended.submitAppeal':    'Submit appeal',
   'suspended.submitting':      'Submitting…',
   'suspended.appealSent':      'Appeal received',
-  'suspended.appealSentBody':  "Thanks — a human reviewer will get back to you within 5 business days. You can continue to read the app while you wait. If you need to add more context, email illini.market.help@gmail.com.",
+  'suspended.appealSentBody':  "Thanks — a human reviewer will get back to you within 5 business days. You can continue to read the app while you wait. If you need to add more context, email help@illinimarket.com.",
   'suspended.appealFail':      "Couldn't submit — try again",
   'suspended.tooShort':        'Appeal is too short',
   'suspended.viewTerms':       'Read the Terms',

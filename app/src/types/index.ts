@@ -192,6 +192,11 @@ export interface Message {
   created_at: string
   // Joined fields
   sender?: Profile
+  // Client-only optimistic-send flags (never persisted). A just-sent message
+  // renders immediately as _pending, then reconciles to the real row on
+  // success or flips to _failed (tap to retry) on a transient error.
+  _pending?: boolean
+  _failed?: boolean
 }
 
 export interface Favorite {

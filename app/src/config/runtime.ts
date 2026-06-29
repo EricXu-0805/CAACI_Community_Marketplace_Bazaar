@@ -38,4 +38,4 @@ export const BUILD_REF = (import.meta.env.VITE_RELEASE as string | undefined) ||
 
 /** Public support contact — shown on the legal page (mailto + copy). */
 export const SUPPORT_EMAIL =
-  (import.meta.env.VITE_SUPPORT_EMAIL as string | undefined) || 'illini.market.help@gmail.com'
+  (import.meta.env.VITE_SUPPORT_EMAIL as string | undefined) || 'help@illinimarket.com'

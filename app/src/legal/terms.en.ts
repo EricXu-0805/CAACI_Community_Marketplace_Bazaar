@@ -51,7 +51,7 @@ By posting listings, messages, plaza posts, comments, images, or other content, 
 The Plaza is a community-discussion feed. See the Community Guidelines (in-app) for specific rules. Plaza posts may be moderated, removed, or rate-limited without notice.
 
 8. Intellectual Property.
-Respect copyrights and trademarks. Do not upload content you do not have the right to share. We will honor valid DMCA takedown notices; send them to illini.market.help@gmail.com.
+Respect copyrights and trademarks. Do not upload content you do not have the right to share. We will honor valid DMCA takedown notices; send them to help@illinimarket.com.
 
 9. Moderation and Enforcement — Ban Ladder.
 We enforce these terms through a graduated system. Each new infraction escalates:
@@ -72,7 +72,7 @@ After a suspension is lifted, your account may be subject to the following for u
 These restrictions ease automatically as your account returns to good standing.
 
 11. Appeals.
-If you believe an enforcement action was made in error, you may appeal by emailing illini.market.help@gmail.com within 7 days of the action. Appeals are reviewed by a human operator. We aim to respond within 5 business days.
+If you believe an enforcement action was made in error, you may appeal by emailing help@illinimarket.com within 7 days of the action. Appeals are reviewed by a human operator. We aim to respond within 5 business days.
 
 12. Termination by You.
 You may delete your account at any time from Settings → Delete Account. Deletion is permanent; some data may be retained in anonymized form for fraud prevention, as described in the Privacy Policy.
@@ -93,5 +93,5 @@ These terms are governed by the laws of the State of Illinois, USA, without rega
 We may update these terms. Material changes will be announced in-app and will require renewed consent before continued use. Minor clarifications may be made without separate notice.
 
 18. Contact.
-Questions or disputes: illini.market.help@gmail.com
+Questions or disputes: help@illinimarket.com
 `

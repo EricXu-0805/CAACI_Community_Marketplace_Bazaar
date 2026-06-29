@@ -681,7 +681,7 @@ const zh: Record<string, string> = {
   'suspended.submitAppeal':    '提交申诉',
   'suspended.submitting':      '提交中…',
   'suspended.appealSent':      '申诉已收到',
-  'suspended.appealSentBody':  '感谢你的反馈。人工会在 5 个工作日内回复。等待期间你仍可浏览应用。需要补充信息可发邮件至 illini.market.help@gmail.com。',
+  'suspended.appealSentBody':  '感谢你的反馈。人工会在 5 个工作日内回复。等待期间你仍可浏览应用。需要补充信息可发邮件至 help@illinimarket.com。',
   'suspended.appealFail':      '提交失败，请重试',
   'suspended.tooShort':        '申诉内容太短',
   'suspended.viewTerms':       '查看用户协议',
