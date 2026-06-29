@@ -95,6 +95,10 @@
 			"style": { "navigationStyle": "custom" }
 		},
 		{
+			"path": "pages/illini-verify/index",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
 			"path": "pages/login/index",
 			"style": {
 				"navigationStyle": "custom"
