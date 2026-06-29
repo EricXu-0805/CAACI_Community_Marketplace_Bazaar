@@ -238,7 +238,8 @@ function goBack() { uni.navigateBack() }
 }
 
 .submit-btn {
-  width: 100%; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 48px; line-height: 1;
   background: var(--accent-primary); color: #fff;
   border-radius: 24px; font-size: 15px; font-weight: 600;
   margin-top: 24px; border: none;
