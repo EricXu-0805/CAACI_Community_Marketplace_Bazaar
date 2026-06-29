@@ -2,7 +2,7 @@
   <view class="page">
     <view class="header">
       <view class="back" role="button" :aria-label="t('a11y.back')" @click="goBack"><view class="back-arrow"></view></view>
-      <view class="hero-badge"><text class="hero-illini">Illini</text></view>
+      <view class="hero-badge"><text class="hero-check">✓</text><text class="hero-illini">Illini</text></view>
       <text class="app-name">{{ t('illini.title') }}</text>
       <text class="app-desc">{{ t('illini.intro') }}</text>
     </view>
@@ -200,6 +200,7 @@ function goBack() { uni.navigateBack() }
   display: inline-flex; align-items: center; padding: 6px 16px;
   background: var(--campus-blue, #13294b); border-radius: var(--radius-pill, 999px);
 }
+.hero-check { font-size: 13px; font-weight: 800; color: #fff; margin-right: 5px; }
 .hero-illini { font-size: 16px; font-weight: 800; color: #fff; letter-spacing: 0.02em; }
 .app-name {
   font-family: var(--font-serif);
@@ -219,8 +220,8 @@ function goBack() { uni.navigateBack() }
   width: 100%; height: 48px;
   background: var(--bg-elev-2); border-radius: 12px;
   padding: 0 16px; font-size: 16px; color: var(--text-primary);
-  border: 1px solid transparent;
-  &:focus { border-color: var(--line-soft); background: var(--bg-elev-1); }
+  border: 1px solid var(--line-soft);
+  &:focus { border-color: var(--accent-primary); background: var(--bg-elev-1); }
 }
 .field-hint { display: block; font-size: 11px; color: var(--text-faint); margin-top: 7px; line-height: 1.4; }
 
