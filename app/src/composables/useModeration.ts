@@ -59,7 +59,10 @@ export function useModeration() {
       reason: reason.slice(0, 50),
       note: note.slice(0, 500),
     })
-    if (error) throw error
+    // 23505 = the unique-pending index (migration 074): this reporter already
+    // has a pending report on this target. Treat as idempotent success (one
+    // report per person per target) rather than surfacing a DB error.
+    if (error && (error as any).code !== '23505') throw error
 
     if (!opts.skipDelay) {
       const floorMs = 5000
