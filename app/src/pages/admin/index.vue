@@ -580,7 +580,7 @@ function openTarget(row: any) {
    (comments need a schema change — deferred), so the button is gated to those.
    Destructive → behind a confirm, like ban/lift. */
 function canTakedown(row: any): boolean {
-  return !!row && !!row.target_id && (row.target_type === 'item' || row.target_type === 'post')
+  return !!row && !!row.target_id && (row.target_type === 'item' || row.target_type === 'post' || row.target_type === 'comment')
 }
 
 function onTakedownContent(row: any) {
