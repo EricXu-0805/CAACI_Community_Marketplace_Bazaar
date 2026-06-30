@@ -46,14 +46,17 @@ function env(name, fallback) {
 
 const SUPABASE_URL = env('SUPABASE_URL', env('VITE_SUPABASE_URL', ''))
 const SERVICE_KEY  = env('SUPABASE_SERVICE_ROLE_KEY', '')
-const SENTRY_DSN   = env('SENTRY_DSN', '')
+// Reuses the project's existing Sentry DSN (the frontend SDK reads the same
+// VITE_SENTRY_DSN). A dedicated SENTRY_DSN wins if ever set; otherwise audit
+// failures land in the same Sentry project as client errors — one dashboard.
+const SENTRY_DSN   = env('SENTRY_DSN', env('VITE_SENTRY_DSN', ''))
 
 /*
  * ADM-SEC-04: audit writes are best-effort (we never break a request when the
  * audit log is unavailable), but that means a security event can vanish into
- * logs. If SENTRY_DSN is set, also emit a Sentry event on an audit-write
- * failure so the gap pages someone. No-op when SENTRY_DSN is unset — safe
- * default, so this ships dark until the env var is added on Vercel.
+ * logs. When a Sentry DSN is present, also emit a Sentry event on an
+ * audit-write failure so the gap pages someone. No-op when no DSN is
+ * configured — safe default.
  */
 async function reportToSentry(message, extra) {
   if (!SENTRY_DSN) return
