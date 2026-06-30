@@ -287,6 +287,13 @@ async function handleGet(request, auth) {
     return json({ data })
   }
 
+  if (resource === 'linked_accounts') {
+    const profileId = url.searchParams.get('profile_id')
+    if (!profileId) return json({ error: 'missing_profile_id' }, 400)
+    const data = await rpc('admin_get_linked_accounts', { profile_id_in: profileId })
+    return json({ data })
+  }
+
   if (resource === 'appeals') {
     const data = await rpc('admin_list_appeals', { limit_in: limit, offset_in: offset })
     return json({ data })
