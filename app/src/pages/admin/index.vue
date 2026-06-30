@@ -108,7 +108,19 @@
           <text class="card-time">{{ t('admin.userTrustLine', { trust: u.trust_score, warns: u.warning_count }) }}</text>
           <view class="card-actions">
             <view class="mini-btn" @click="openUser(u.id)">{{ t('admin.openProfile') }}</view>
+            <view class="mini-btn" @click="loadLinked(u.id)">{{ linkedFor === u.id ? t('admin.linkedHide') : t('admin.linkedShow') }}</view>
             <view class="mini-btn danger" @click="onBanPrompt(u.id, u.nickname)">{{ t('admin.banUser') }}</view>
+          </view>
+          <view v-if="linkedFor === u.id" class="linked-box">
+            <text v-if="linkedLoading" class="linked-empty">{{ t('admin.loading') }}</text>
+            <text v-else-if="linkedAccounts.length === 0" class="linked-empty">{{ t('admin.linkedNone') }}</text>
+            <view v-else v-for="la in linkedAccounts" :key="la.id" class="linked-row">
+              <text class="linked-name">{{ la.nickname || la.id }}</text>
+              <text v-if="la.suspension_level > 0" :class="['pill', 'level-' + la.suspension_level]">L{{ la.suspension_level }}</text>
+              <text v-if="la.shadow_banned" class="pill pill-shadow">{{ t('admin.pillShadow') }}</text>
+              <text class="linked-meta">{{ t('admin.linkedMeta', { devices: la.shared_devices, time: fmtTime(la.last_seen) }) }}</text>
+              <view class="mini-btn danger" @click="onBanPrompt(la.id, la.nickname)">{{ t('admin.banUser') }}</view>
+            </view>
           </view>
         </view>
       </view>
@@ -397,6 +409,30 @@ async function searchUsers() {
   }
 }
 
+interface LinkedRow {
+  id: string; nickname: string; email: string | null; avatar_url: string | null
+  suspension_level: number; shadow_banned: boolean
+  shared_devices: number; last_seen: string | null
+}
+const linkedFor = ref<string | null>(null)
+const linkedAccounts = ref<LinkedRow[]>([])
+const linkedLoading = ref(false)
+
+async function loadLinked(userId: string) {
+  if (linkedFor.value === userId) { linkedFor.value = null; return }
+  linkedFor.value = userId
+  linkedLoading.value = true
+  linkedAccounts.value = []
+  try {
+    linkedAccounts.value = await apiGet<LinkedRow[]>({ resource: 'linked_accounts', profile_id: userId })
+  } catch (err: any) {
+    uni.showToast({ title: err?.message || t('admin.toastLoadFailed'), icon: 'none' })
+    linkedFor.value = null
+  } finally {
+    linkedLoading.value = false
+  }
+}
+
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 const detailKind = ref<'report' | 'suspension' | ''>('')
@@ -488,6 +524,8 @@ function onLogout() {
   userResults.value = []
   userQuery.value = ''
   userSearched.value = false
+  linkedFor.value = null
+  linkedAccounts.value = []
   try { uni.removeStorageSync(STORAGE_KEY) } catch {}
 }
 
@@ -876,6 +914,11 @@ onMounted(async () => {
 .card-audit { font-size: 11px; color: var(--text-muted); }
 .audit-name { color: var(--text-secondary); font-weight: 600; }
 .card-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.linked-box { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 8px; }
+.linked-empty { font-size: 12px; color: var(--text-faint); }
+.linked-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.linked-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.linked-meta { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
 .search-row {
   display: flex; align-items: center; gap: 10px;
