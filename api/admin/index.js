@@ -269,6 +269,12 @@ async function handleGet(request, auth) {
     return json({ data: Array.isArray(data) ? data[0] : data })
   }
 
+  if (resource === 'search_users') {
+    const q = url.searchParams.get('q') || ''
+    const data = await rpc('admin_search_users', { query_in: q, limit_in: limit })
+    return json({ data })
+  }
+
   if (resource === 'appeals') {
     const data = await rpc('admin_list_appeals', { limit_in: limit, offset_in: offset })
     return json({ data })

@@ -82,6 +82,37 @@
         </view>
       </view>
 
+      <view v-else-if="activeTab === 'users'" class="list">
+        <view class="search-row">
+          <input
+            v-model="userQuery"
+            class="search-input"
+            :placeholder="t('admin.userSearchPh')"
+            confirm-type="search"
+            @confirm="searchUsers"
+          />
+          <view :class="['mini-btn', 'primary', { disabled: !userQuery.trim() || userSearching }]" @click="searchUsers">
+            {{ userSearching ? t('admin.checking') : t('admin.search') }}
+          </view>
+        </view>
+        <view v-if="!userSearched" class="empty"><text>{{ t('admin.userSearchHint') }}</text></view>
+        <view v-else-if="userResults.length === 0" class="empty"><text>{{ t('admin.userNoResults') }}</text></view>
+        <view v-for="u in userResults" :key="u.id" class="card u-rise">
+          <view class="card-head">
+            <image :src="u.avatar_url || defaultAvatarSrc" :alt="u.nickname || 'avatar'" class="mini-avatar" mode="aspectFill" />
+            <text class="card-title">{{ u.nickname || u.id }}</text>
+            <text v-if="u.suspension_level > 0" :class="['pill', 'level-' + u.suspension_level]">L{{ u.suspension_level }}</text>
+            <text v-if="u.shadow_banned" class="pill pill-shadow">{{ t('admin.pillShadow') }}</text>
+          </view>
+          <text class="card-meta">{{ u.email || '—' }}</text>
+          <text class="card-time">{{ t('admin.userTrustLine', { trust: u.trust_score, warns: u.warning_count }) }}</text>
+          <view class="card-actions">
+            <view class="mini-btn" @click="openUser(u.id)">{{ t('admin.openProfile') }}</view>
+            <view class="mini-btn danger" @click="onBanPrompt(u.id, u.nickname)">{{ t('admin.banUser') }}</view>
+          </view>
+        </view>
+      </view>
+
       <view v-else-if="activeTab === 'suspensions'" class="list">
         <view class="search-row">
           <input
@@ -224,7 +255,7 @@ import { useI18n } from '../../composables/useI18n'
 
 const { t, lang, toggleLang } = useI18n()
 
-type TabId = 'reports' | 'suspensions' | 'appeals' | 'warnings' | 'audit'
+type TabId = 'reports' | 'users' | 'suspensions' | 'appeals' | 'warnings' | 'audit'
 
 interface ReportRow {
   id: string; reporter_id: string; reporter_nickname: string
@@ -302,6 +333,7 @@ const currentAdmin = computed(() => {
 
 const tabList: Array<{ id: TabId; labelKey: string }> = [
   { id: 'reports',     labelKey: 'admin.tabReports' },
+  { id: 'users',       labelKey: 'admin.tabUsers' },
   { id: 'suspensions', labelKey: 'admin.tabSuspensions' },
   { id: 'appeals',     labelKey: 'admin.tabAppeals' },
   { id: 'warnings',    labelKey: 'admin.tabWarnings' },
@@ -338,6 +370,31 @@ const filteredSuspensions = computed(() => {
 })
 const appeals = ref<AppealRow[]>([])
 const warnings = ref<WarningRow[]>([])
+
+interface UserRow {
+  id: string; nickname: string; email: string | null; avatar_url: string | null
+  trust_score: number; warning_count: number
+  suspension_level: number; suspended_until: string | null; shadow_banned: boolean
+  created_at: string
+}
+const userQuery = ref('')
+const userResults = ref<UserRow[]>([])
+const userSearched = ref(false)
+const userSearching = ref(false)
+
+async function searchUsers() {
+  const q = userQuery.value.trim()
+  if (!q) return
+  userSearching.value = true
+  try {
+    userResults.value = await apiGet<UserRow[]>({ resource: 'search_users', q, limit: '50' })
+    userSearched.value = true
+  } catch (err: any) {
+    uni.showToast({ title: err?.message || t('admin.toastLoadFailed'), icon: 'none' })
+  } finally {
+    userSearching.value = false
+  }
+}
 
 const detailOpen = ref(false)
 const detailLoading = ref(false)
@@ -427,6 +484,9 @@ function onLogout() {
   suspensions.value = []
   appeals.value = []
   warnings.value = []
+  userResults.value = []
+  userQuery.value = ''
+  userSearched.value = false
   try { uni.removeStorageSync(STORAGE_KEY) } catch {}
 }
 
@@ -859,6 +919,7 @@ onMounted(async () => {
   &.primary:active { opacity: 0.85; }
   &.danger { background: var(--danger-soft); color: var(--accent-danger); }
   &.danger:active { background: var(--danger-soft); }
+  &.disabled { opacity: 0.45; pointer-events: none; }
 }
 
 .pill {
