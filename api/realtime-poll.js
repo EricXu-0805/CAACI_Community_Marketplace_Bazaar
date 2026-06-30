@@ -46,6 +46,22 @@ function json(body, status = 200) {
   })
 }
 
+/* ADM-SEC-07: validate the caller's Supabase access token. The presence-only
+   check used to let a forged/expired bearer enter the long-poll hold; a junk
+   token now gets a clean 401 before the loop instead of relying on the first
+   PostgREST fetch to reject it. ~1 round trip, negligible vs the 20s hold. */
+async function verifyUser(bearer) {
+  if (!bearer || !SUPABASE_URL || !ANON_KEY) return false
+  try {
+    const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { apikey: ANON_KEY, Authorization: bearer },
+    })
+    return r.ok
+  } catch {
+    return false
+  }
+}
+
 async function fetchRows(scope, id, since, userJwt) {
   const encId = encodeURIComponent(id)
   let url
@@ -96,6 +112,7 @@ export default async function handler(request) {
      across conversations. No JWT → 401 (see header comment). */
   const userJwt = request.headers.get('authorization') || ''
   if (!userJwt) return json({ error: 'auth_required' }, 401)
+  if (!(await verifyUser(userJwt))) return json({ error: 'auth_required' }, 401)
 
   const deadline = Date.now() + MAX_HOLD_MS
 

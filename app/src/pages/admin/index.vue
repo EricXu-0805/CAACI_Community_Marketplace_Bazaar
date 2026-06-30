@@ -6,6 +6,9 @@
         <text class="admin-whoami-label">{{ currentAdmin.label }}</text>
         <text v-if="currentAdmin.detail" class="admin-whoami-detail">{{ currentAdmin.detail }}</text>
       </view>
+      <view v-if="unlocked" class="admin-refresh" role="button" :aria-label="t('admin.refresh')" :class="{ spinning: loading }" @click="refreshAll">
+        <text>↻</text>
+      </view>
       <view class="admin-lang" role="button" :aria-label="t('a11y.langToggle')" @click="toggleLang">
         <text>{{ lang === 'zh' ? 'EN' : '中' }}</text>
       </view>
@@ -47,6 +50,10 @@
           <text class="stat-n">{{ stats?.shadow_banned ?? '—' }}</text>
           <text class="stat-l">{{ t('admin.statShadowBanned') }}</text>
         </view>
+        <view class="stat">
+          <text :class="['stat-n', { 'stat-warn': (stats?.oldest_pending_hours ?? 0) >= 48 }]">{{ stats?.oldest_pending_hours != null ? stats.oldest_pending_hours + 'h' : '—' }}</text>
+          <text class="stat-l">{{ t('admin.statOldestPending') }}</text>
+        </view>
       </view>
 
       <view class="tabs">
@@ -66,20 +73,36 @@
 
       <view v-else-if="activeTab === 'reports'" class="list u-stagger">
         <view v-if="reportGroups.length === 0" class="empty"><text>{{ t('admin.emptyReports') }}</text></view>
-        <view v-for="g in reportGroups" :key="g.target_type + ':' + g.target_id" class="card">
-          <view class="card-head">
-            <text class="card-title">{{ g.target_type }} · {{ g.last_reason }}</text>
-            <text class="pill pill-count">{{ t('admin.reportGroupCount', { reports: g.report_count, people: g.reporter_count }) }}</text>
+        <template v-else>
+          <view class="bulk-bar">
+            <view class="mini-btn" @click="toggleSelectMode">{{ selectMode ? t('admin.bulkCancel') : t('admin.bulkSelect') }}</view>
+            <template v-if="selectMode && selectedKeys.length">
+              <text class="bulk-count">{{ t('admin.bulkSelected', { n: selectedKeys.length }) }}</text>
+              <view class="mini-btn primary" @click="bulkResolve('resolved')">{{ t('admin.resolveSelected') }}</view>
+              <view class="mini-btn danger" @click="bulkResolve('dismissed')">{{ t('admin.dismissSelected') }}</view>
+            </template>
           </view>
-          <text class="card-meta">{{ t('admin.reportGroupMeta', { pending: g.pending_count, name: g.last_reporter_nickname || '—' }) }}</text>
-          <text v-if="g.last_note" class="card-note">“{{ g.last_note }}”</text>
-          <text class="card-time">{{ t('admin.reportGroupAge', { time: fmtTime(g.first_created_at) }) }}</text>
-          <view class="card-actions">
-            <view class="mini-btn" @click="openReportById(g.last_report_id)">{{ t('admin.open') }}</view>
-            <view v-if="g.pending_count > 0" class="mini-btn primary" @click="resolveTargetReports(g, 'resolved')">{{ t('admin.resolveAll') }}</view>
-            <view v-if="g.pending_count > 0" class="mini-btn danger" @click="resolveTargetReports(g, 'dismissed')">{{ t('admin.dismissAll') }}</view>
+          <view
+            v-for="g in reportGroups"
+            :key="g.target_type + ':' + g.target_id"
+            :class="['card', { 'card-selected': isSelected(g) }]"
+            @click="selectMode && toggleSelect(g)"
+          >
+            <view class="card-head">
+              <text v-if="selectMode" :class="['select-box', { disabled: g.pending_count <= 0 }]">{{ isSelected(g) ? '☑' : '☐' }}</text>
+              <text class="card-title">{{ g.target_type }} · {{ g.last_reason }}</text>
+              <text class="pill pill-count">{{ t('admin.reportGroupCount', { reports: g.report_count, people: g.reporter_count }) }}</text>
+            </view>
+            <text class="card-meta">{{ t('admin.reportGroupMeta', { pending: g.pending_count, name: g.last_reporter_nickname || '—' }) }}</text>
+            <text v-if="g.last_note" class="card-note">“{{ g.last_note }}”</text>
+            <text class="card-time">{{ t('admin.reportGroupAge', { time: fmtTime(g.first_created_at) }) }}</text>
+            <view v-if="!selectMode" class="card-actions">
+              <view class="mini-btn" @click="openReportById(g.last_report_id)">{{ t('admin.open') }}</view>
+              <view v-if="g.pending_count > 0" class="mini-btn primary" @click="resolveTargetReports(g, 'resolved')">{{ t('admin.resolveAll') }}</view>
+              <view v-if="g.pending_count > 0" class="mini-btn danger" @click="resolveTargetReports(g, 'dismissed')">{{ t('admin.dismissAll') }}</view>
+            </view>
           </view>
-        </view>
+        </template>
       </view>
 
       <view v-else-if="activeTab === 'users'" class="list">
@@ -298,6 +321,7 @@ interface WarningRow {
 interface StatsRow {
   active_suspensions: number; pending_reports: number
   pending_appeals: number; shadow_banned: number
+  oldest_pending_hours: number | null
 }
 
 const { isDark } = useTheme()
@@ -518,6 +542,8 @@ function onLogout() {
   stats.value = null
   reports.value = []
   reportGroups.value = []
+  selectMode.value = false
+  selectedKeys.value = []
   suspensions.value = []
   appeals.value = []
   warnings.value = []
@@ -586,6 +612,11 @@ async function setTab(id: TabId) {
   await loadTab(id)
 }
 
+async function refreshAll() {
+  if (loading.value) return
+  await Promise.all([loadTab(activeTab.value), loadStats()])
+}
+
 
 async function openReportById(id: string) {
   detailKind.value = 'report'
@@ -604,6 +635,54 @@ function openReport(r: ReportRow) { return openReportById(r.id) }
 
 /* gaps-2: close ALL pending sibling reports on a target in one action,
    behind a confirm (it can touch many rows). */
+const selectMode = ref(false)
+const selectedKeys = ref<string[]>([])
+function gKey(g: ReportGroup): string { return g.target_type + ':' + g.target_id }
+function isSelected(g: ReportGroup): boolean { return selectedKeys.value.includes(gKey(g)) }
+function toggleSelect(g: ReportGroup) {
+  if (g.pending_count <= 0) return
+  const k = gKey(g)
+  const i = selectedKeys.value.indexOf(k)
+  if (i >= 0) selectedKeys.value.splice(i, 1)
+  else selectedKeys.value.push(k)
+}
+function toggleSelectMode() {
+  selectMode.value = !selectMode.value
+  if (!selectMode.value) selectedKeys.value = []
+}
+
+function bulkResolve(status: 'resolved' | 'dismissed') {
+  const groups = reportGroups.value.filter(g => isSelected(g) && g.pending_count > 0)
+  if (!groups.length) return
+  const total = groups.reduce((s, g) => s + g.pending_count, 0)
+  uni.showModal({
+    title: status === 'resolved' ? t('admin.resolveAllConfirmTitle') : t('admin.dismissAllConfirmTitle'),
+    content: t('admin.bulkConfirmBody', { groups: groups.length, n: total }),
+    confirmText: status === 'resolved' ? t('admin.resolve') : t('admin.dismiss'),
+    success: async (r) => {
+      if (!r.confirm) return
+      uni.showLoading({ title: t('admin.loading'), mask: true })
+      try {
+        await Promise.all(groups.map(g => apiPost({
+          action: 'resolve_target_reports',
+          target_type: g.target_type,
+          target_id: g.target_id,
+          status,
+        })))
+        uni.hideLoading()
+        uni.showToast({ title: t('admin.toastUpdated'), icon: 'success' })
+        selectMode.value = false
+        selectedKeys.value = []
+        await loadTab('reports')
+        await loadStats()
+      } catch (err: any) {
+        uni.hideLoading()
+        uni.showToast({ title: err?.message || t('admin.toastUpdateFailed'), icon: 'none' })
+      }
+    },
+  })
+}
+
 function resolveTargetReports(g: ReportGroup, status: 'resolved' | 'dismissed') {
   uni.showModal({
     title: status === 'resolved' ? t('admin.resolveAllConfirmTitle') : t('admin.dismissAllConfirmTitle'),
@@ -847,6 +926,13 @@ onMounted(async () => {
   padding: 6px 10px; border-radius: 6px; flex-shrink: 0;
   &:active { background: var(--danger-soft); }
 }
+.admin-refresh {
+  font-size: 17px; line-height: 1; color: var(--text-secondary); cursor: pointer;
+  padding: 5px 9px; border-radius: 6px; flex-shrink: 0;
+  &:active { background: var(--bg-subtle); }
+  &.spinning text { display: inline-block; animation: admin-spin 0.7s linear infinite; }
+}
+@keyframes admin-spin { to { transform: rotate(360deg); } }
 .admin-lang {
   font-size: 13px; font-weight: 600; color: var(--text-secondary); cursor: pointer;
   padding: 6px 10px; border-radius: 6px; flex-shrink: 0;
@@ -884,6 +970,7 @@ onMounted(async () => {
   box-shadow: var(--shadow-soft);
 }
 .stat-n { font-size: 22px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.stat-n.stat-warn { color: var(--accent-danger); }
 .stat-l { font-size: 12px; color: var(--text-secondary); }
 
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -919,6 +1006,11 @@ onMounted(async () => {
 .linked-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .linked-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
 .linked-meta { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.bulk-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.bulk-count { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.select-box { font-size: 16px; line-height: 1; color: var(--campus-blue); margin-right: 2px; }
+.select-box.disabled { color: var(--text-faint); }
+.card-selected { outline: 2px solid var(--campus-blue); outline-offset: -1px; }
 
 .search-row {
   display: flex; align-items: center; gap: 10px;
