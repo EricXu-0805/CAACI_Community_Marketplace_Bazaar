@@ -46,6 +46,42 @@ function env(name, fallback) {
 
 const SUPABASE_URL = env('SUPABASE_URL', env('VITE_SUPABASE_URL', ''))
 const SERVICE_KEY  = env('SUPABASE_SERVICE_ROLE_KEY', '')
+const SENTRY_DSN   = env('SENTRY_DSN', '')
+
+/*
+ * ADM-SEC-04: audit writes are best-effort (we never break a request when the
+ * audit log is unavailable), but that means a security event can vanish into
+ * logs. If SENTRY_DSN is set, also emit a Sentry event on an audit-write
+ * failure so the gap pages someone. No-op when SENTRY_DSN is unset — safe
+ * default, so this ships dark until the env var is added on Vercel.
+ */
+async function reportToSentry(message, extra) {
+  if (!SENTRY_DSN) return
+  try {
+    // DSN format: https://<publicKey>@<host>/<projectId>
+    const m = SENTRY_DSN.match(/^https:\/\/([^@]+)@([^/]+)\/(.+)$/)
+    if (!m) return
+    const [, key, host, projectId] = m
+    await fetch(`https://${host}/api/${projectId}/store/?sentry_key=${key}&sentry_version=7`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message,
+        level: 'error',
+        platform: 'javascript',
+        logger: 'api/admin',
+        extra: extra || {},
+      }),
+    })
+  } catch {
+    // A monitoring failure must never affect the request.
+  }
+}
+
+function reportAuditFailure(kind, err) {
+  console.warn(`[admin] audit ${kind} failed`, err?.message)
+  reportToSentry(`admin audit write failed: ${kind}`, { error: err?.message || String(err) })
+}
 
 async function sha256Hex(input) {
   const buf = new TextEncoder().encode(input)
@@ -199,7 +235,7 @@ async function recordAdminLogin(adminId, source) {
     })
   } catch (err) {
     // Audit failures must never break a request. Swallow + warn.
-    console.warn('[admin] record_audit(admin_login) failed', err?.message)
+    reportAuditFailure('admin_login', err)
   }
 }
 
@@ -334,7 +370,7 @@ async function handlePost(request, auth) {
           reason: body.reason,
           category: body.category || 'generic',
         },
-      }).catch(err => console.warn('[admin] audit ban_applied failed', err?.message))
+      }).catch(err => reportAuditFailure('ban_applied', err))
     }
     return json({ data })
   }
@@ -357,7 +393,7 @@ async function handlePost(request, auth) {
           suspension_id: body.suspension_id,
           reason: body.reason,
         },
-      }).catch(err => console.warn('[admin] audit suspension_lifted failed', err?.message))
+      }).catch(err => reportAuditFailure('suspension_lifted', err))
     }
     return json({ success: true })
   }
@@ -379,7 +415,7 @@ async function handlePost(request, auth) {
           via: 'edge_admin',
           to: body.status,
         },
-      }).catch(err => console.warn('[admin] audit report_status_changed failed', err?.message))
+      }).catch(err => reportAuditFailure('report_status_changed', err))
     }
     return json({ success: true })
   }
@@ -404,7 +440,7 @@ async function handlePost(request, auth) {
           target_type: body.target_type,
           to: body.status,
         },
-      }).catch(err => console.warn('[admin] audit bulk report_status_changed failed', err?.message))
+      }).catch(err => reportAuditFailure('report_status_changed_bulk', err))
     }
     return json({ data })
   }
@@ -428,7 +464,7 @@ async function handlePost(request, auth) {
           target_type: body.target_type,
           reason: body.reason || null,
         },
-      }).catch(err => console.warn('[admin] audit content_takedown failed', err?.message))
+      }).catch(err => reportAuditFailure('content_takedown', err))
     }
     return json({ data })
   }
@@ -461,6 +497,23 @@ async function handlePost(request, auth) {
 export default async function handler(request) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204 })
 
+  /*
+   * ADM-SEC-06: per-IP rate limit, ahead of auth so credential-stuffing /
+   * audit-spam / flood is throttled before any token work. 120 req/min is far
+   * above any legitimate admin's burst. Fails OPEN — a rate-store hiccup must
+   * never lock the real admins out.
+   */
+  if (SUPABASE_URL && SERVICE_KEY) {
+    try {
+      const ip = (request.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown'
+      const bucket = 'admin:' + (await sha256Hex(ip))
+      const allowed = await rpc('edge_rate_hit', { bucket_in: bucket, max_in: 120, window_secs_in: 60 })
+      if (allowed === false) return json({ error: 'rate_limited' }, 429)
+    } catch (err) {
+      console.warn('[admin] rate check failed (fail-open)', err?.message)
+    }
+  }
+
   const bearer = readBearer(request)
   const auth = await validateBearer(bearer)
   if (!auth.ok) {
@@ -483,7 +536,9 @@ export default async function handler(request) {
             hash_prefix: presentedHash.slice(0, 8),
           },
         })
-      } catch {}
+      } catch (err) {
+        reportAuditFailure('admin_unauthorized', err)
+      }
     }
     return json({ error: auth.source === 'missing' ? 'unauthorized' : 'unauthorized' }, 401)
   }
