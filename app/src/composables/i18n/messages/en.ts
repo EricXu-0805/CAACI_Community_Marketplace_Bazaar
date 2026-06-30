@@ -728,6 +728,8 @@ const en: Record<string, string> = {
   'admin.statPendingReports': 'Pending reports',
   'admin.statOpenAppeals':  'Open appeals',
   'admin.statShadowBanned': 'Shadow-banned',
+  'admin.statOldestPending': 'Oldest pending',
+  'admin.refresh':          'Refresh',
   'admin.tabReports':       'Reports',
   'admin.tabUsers':         'Users',
   'admin.tabSuspensions':   'Suspensions',
