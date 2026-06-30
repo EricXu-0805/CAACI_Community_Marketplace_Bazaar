@@ -72,6 +72,10 @@
       </view>
 
       <view v-else-if="activeTab === 'reports'" class="list u-stagger">
+        <view class="filter-row">
+          <view :class="['chip', { active: reportPendingOnly }]" @click="setReportFilter(true)">{{ t('admin.reportFilterPending') }}</view>
+          <view :class="['chip', { active: !reportPendingOnly }]" @click="setReportFilter(false)">{{ t('admin.reportFilterAll') }}</view>
+        </view>
         <view v-if="reportGroups.length === 0" class="empty"><text>{{ t('admin.emptyReports') }}</text></view>
         <template v-else>
           <view class="bulk-bar">
@@ -101,6 +105,9 @@
               <view v-if="g.pending_count > 0" class="mini-btn primary" @click="resolveTargetReports(g, 'resolved')">{{ t('admin.resolveAll') }}</view>
               <view v-if="g.pending_count > 0" class="mini-btn danger" @click="resolveTargetReports(g, 'dismissed')">{{ t('admin.dismissAll') }}</view>
             </view>
+          </view>
+          <view v-if="reportHasMore" class="load-more" @click="loadMoreReports">
+            <text>{{ reportLoadingMore ? t('admin.checking') : t('admin.loadMore') }}</text>
           </view>
         </template>
       </view>
@@ -393,6 +400,9 @@ const stats = ref<StatsRow | null>(null)
 const loading = ref(false)
 const reports = ref<ReportRow[]>([])
 const reportGroups = ref<ReportGroup[]>([])
+const reportPendingOnly = ref(true)
+const reportHasMore = ref(false)
+const reportLoadingMore = ref(false)
 const suspensions = ref<SuspensionRow[]>([])
 const auditLog = ref<AuditRow[]>([])
 const suspensionQuery = ref('')
@@ -563,11 +573,56 @@ async function loadStats() {
   }
 }
 
+const REPORTS_PAGE = 50
+
+async function loadReports(reset = true) {
+  if (reset) {
+    reportGroups.value = []
+    reportHasMore.value = false
+  }
+  const offset = reset ? 0 : reportGroups.value.length
+  const page = (await apiGet<ReportGroup[]>({
+    resource: 'reports_grouped',
+    limit: String(REPORTS_PAGE),
+    offset: String(offset),
+    pending: reportPendingOnly.value ? '1' : '0',
+  })) || []
+  reportGroups.value = reset ? page : reportGroups.value.concat(page)
+  reportHasMore.value = page.length === REPORTS_PAGE
+}
+
+async function loadMoreReports() {
+  if (reportLoadingMore.value || !reportHasMore.value) return
+  reportLoadingMore.value = true
+  try {
+    await loadReports(false)
+  } catch (err: any) {
+    uni.showToast({ title: err?.message || t('admin.toastLoadFailed'), icon: 'none' })
+  } finally {
+    reportLoadingMore.value = false
+  }
+}
+
+async function setReportFilter(pendingOnly: boolean) {
+  if (reportPendingOnly.value === pendingOnly) return
+  reportPendingOnly.value = pendingOnly
+  selectMode.value = false
+  selectedKeys.value = []
+  loading.value = true
+  try {
+    await loadReports(true)
+  } catch (err: any) {
+    uni.showToast({ title: err?.message || t('admin.toastLoadFailed'), icon: 'none' })
+  } finally {
+    loading.value = false
+  }
+}
+
 async function loadTab(tab: TabId) {
   loading.value = true
   try {
     if (tab === 'reports') {
-      reportGroups.value = await apiGet<ReportGroup[]>({ resource: 'reports_grouped', limit: '100' })
+      await loadReports(true)
     } else if (tab === 'suspensions') {
       suspensions.value = await apiGet<SuspensionRow[]>({ resource: 'suspensions', limit: '100' })
     } else if (tab === 'appeals') {
@@ -1011,6 +1066,13 @@ onMounted(async () => {
 .select-box { font-size: 16px; line-height: 1; color: var(--campus-blue); margin-right: 2px; }
 .select-box.disabled { color: var(--text-faint); }
 .card-selected { outline: 2px solid var(--campus-blue); outline-offset: -1px; }
+.filter-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.chip {
+  padding: 4px 12px; border-radius: 999px; font-size: 13px;
+  background: var(--bg-elev-1); color: var(--text-secondary);
+}
+.chip.active { background: var(--campus-blue); color: #fff; }
+.load-more { text-align: center; padding: 12px; font-size: 13px; color: var(--campus-blue); font-weight: 600; }
 
 .search-row {
   display: flex; align-items: center; gap: 10px;
