@@ -425,6 +425,17 @@ async function handlePost(request, auth) {
       const detail = await r.json().catch(() => ({}))
       return json({ error: 'revoke_failed', detail }, 500)
     }
+    if (auth.adminId) {
+      await rpc('record_audit', {
+        event_kind_in: 'token_revoked',
+        actor_id_in:   auth.adminId,
+        target_id_in:  null,
+        details_in: {
+          via: 'edge_admin',
+          token_id: body.token_id,
+        },
+      }).catch(err => console.warn('[admin] audit token_revoked failed', err?.message))
+    }
     return json({ success: true })
   }
 
