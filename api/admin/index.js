@@ -9,17 +9,11 @@ export const config = { runtime: 'edge' }
  *   On hit, the admin's identity is propagated into every audit-log
  *   row written by RPCs called from this request.
  *
- *   Backward-compat fallback: if migration 036 has not been applied
- *   yet (admin_tokens table missing → PostgREST 404), or if the
- *   incoming bearer doesn't match any per-admin token but matches
- *   the legacy ADMIN_API_KEY env var, the request is allowed but
- *   audit_log.actor_id is recorded as NULL (same as v1 behaviour).
- *   This preserves uptime during the transition window.
- *
- *   Once at least one per-admin token has been minted AND every
- *   admin's browser has the new token, you can delete the
- *   ADMIN_API_KEY env var; the fallback branch then surfaces a
- *   clear 401 to anyone still on the old shared key.
+ *   No shared-key fallback (ADM-SEC-01): the legacy ADMIN_API_KEY path
+ *   was removed once every admin held a per-admin token. A bearer that
+ *   doesn't resolve via admin_token_validate gets a 401 — there is no
+ *   second chance. Finish the cutover by deleting the ADMIN_API_KEY env
+ *   var (it is no longer read).
  *
  * Why not gate on profiles.is_admin in Supabase instead?
  *   Adding is_admin would require rewriting every RLS policy that
@@ -46,6 +40,45 @@ function env(name, fallback) {
 
 const SUPABASE_URL = env('SUPABASE_URL', env('VITE_SUPABASE_URL', ''))
 const SERVICE_KEY  = env('SUPABASE_SERVICE_ROLE_KEY', '')
+// Reuses the project's existing Sentry DSN (the frontend SDK reads the same
+// VITE_SENTRY_DSN). A dedicated SENTRY_DSN wins if ever set; otherwise audit
+// failures land in the same Sentry project as client errors — one dashboard.
+const SENTRY_DSN   = env('SENTRY_DSN', env('VITE_SENTRY_DSN', ''))
+
+/*
+ * ADM-SEC-04: audit writes are best-effort (we never break a request when the
+ * audit log is unavailable), but that means a security event can vanish into
+ * logs. When a Sentry DSN is present, also emit a Sentry event on an
+ * audit-write failure so the gap pages someone. No-op when no DSN is
+ * configured — safe default.
+ */
+async function reportToSentry(message, extra) {
+  if (!SENTRY_DSN) return
+  try {
+    // DSN format: https://<publicKey>@<host>/<projectId>
+    const m = SENTRY_DSN.match(/^https:\/\/([^@]+)@([^/]+)\/(.+)$/)
+    if (!m) return
+    const [, key, host, projectId] = m
+    await fetch(`https://${host}/api/${projectId}/store/?sentry_key=${key}&sentry_version=7`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message,
+        level: 'error',
+        platform: 'javascript',
+        logger: 'api/admin',
+        extra: extra || {},
+      }),
+    })
+  } catch {
+    // A monitoring failure must never affect the request.
+  }
+}
+
+function reportAuditFailure(kind, err) {
+  console.warn(`[admin] audit ${kind} failed`, err?.message)
+  reportToSentry(`admin audit write failed: ${kind}`, { error: err?.message || String(err) })
+}
 
 async function sha256Hex(input) {
   const buf = new TextEncoder().encode(input)
@@ -56,33 +89,16 @@ async function sha256Hex(input) {
 }
 
 /*
- * Compare two strings in constant time. Defends against a timing
- * side-channel where an attacker can shave off attempts by binary-
- * searching the bearer header. Both strings must be the same length;
- * we early-return false on mismatched length (the length itself is
- * not secret — bearer tokens are fixed-format).
- */
-function timingSafeEqual(a, b) {
-  if (typeof a !== 'string' || typeof b !== 'string') return false
-  if (a.length !== b.length) return false
-  let mismatch = 0
-  for (let i = 0; i < a.length; i++) {
-    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  }
-  return mismatch === 0
-}
-
-/*
  * Validate the bearer token via PostgREST RPC.
  *
  * Returns:
  *   { ok: true,  adminId, adminName, adminEmail, source: 'token' }
- *   { ok: true,  adminId: null, source: 'legacy_shared' }
- *   { ok: false, source: 'missing' | 'invalid' | 'admin_tokens_unavailable' }
+ *   { ok: false, source: 'missing' | 'invalid' }
  *
- * The "legacy_shared" branch is consulted only when the per-admin
- * token lookup misses AND ADMIN_API_KEY env var is set. This is the
- * back-compat path that preserves uptime during the rollout window.
+ * There is NO shared-key fallback: every admin must present a per-admin
+ * iam_admin_ token that resolves via admin_token_validate. The legacy
+ * ADMIN_API_KEY path was removed (ADM-SEC-01) once all admins were on
+ * per-admin tokens; delete the ADMIN_API_KEY env var to finish the cutover.
  */
 async function validateBearer(bearer) {
   if (!bearer) return { ok: false, source: 'missing' }
@@ -103,8 +119,9 @@ async function validateBearer(bearer) {
         },
       )
       if (r.status === 404) {
-        // RPC missing — migration 036 not applied. Skip per-admin
-        // path entirely and fall through to the legacy shared key.
+        // RPC missing — migration 036 not applied. With no shared-key
+        // fallback this falls through to a 401 below; 036 is applied in
+        // prod, so this branch is effectively unreachable.
       } else if (r.ok) {
         const rows = await r.json().catch(() => [])
         const row = Array.isArray(rows) ? rows[0] : rows
@@ -123,11 +140,6 @@ async function validateBearer(bearer) {
     } catch (err) {
       console.warn('[admin] admin_token_validate threw', err?.message)
     }
-  }
-
-  const legacy = env('ADMIN_API_KEY', '')
-  if (legacy && timingSafeEqual(bearer, legacy)) {
-    return { ok: true, adminId: null, source: 'legacy_shared' }
   }
 
   return { ok: false, source: 'invalid' }
@@ -199,7 +211,7 @@ async function recordAdminLogin(adminId, source) {
     })
   } catch (err) {
     // Audit failures must never break a request. Swallow + warn.
-    console.warn('[admin] record_audit(admin_login) failed', err?.message)
+    reportAuditFailure('admin_login', err)
   }
 }
 
@@ -334,7 +346,7 @@ async function handlePost(request, auth) {
           reason: body.reason,
           category: body.category || 'generic',
         },
-      }).catch(err => console.warn('[admin] audit ban_applied failed', err?.message))
+      }).catch(err => reportAuditFailure('ban_applied', err))
     }
     return json({ data })
   }
@@ -357,7 +369,7 @@ async function handlePost(request, auth) {
           suspension_id: body.suspension_id,
           reason: body.reason,
         },
-      }).catch(err => console.warn('[admin] audit suspension_lifted failed', err?.message))
+      }).catch(err => reportAuditFailure('suspension_lifted', err))
     }
     return json({ success: true })
   }
@@ -379,7 +391,7 @@ async function handlePost(request, auth) {
           via: 'edge_admin',
           to: body.status,
         },
-      }).catch(err => console.warn('[admin] audit report_status_changed failed', err?.message))
+      }).catch(err => reportAuditFailure('report_status_changed', err))
     }
     return json({ success: true })
   }
@@ -404,7 +416,7 @@ async function handlePost(request, auth) {
           target_type: body.target_type,
           to: body.status,
         },
-      }).catch(err => console.warn('[admin] audit bulk report_status_changed failed', err?.message))
+      }).catch(err => reportAuditFailure('report_status_changed_bulk', err))
     }
     return json({ data })
   }
@@ -428,7 +440,7 @@ async function handlePost(request, auth) {
           target_type: body.target_type,
           reason: body.reason || null,
         },
-      }).catch(err => console.warn('[admin] audit content_takedown failed', err?.message))
+      }).catch(err => reportAuditFailure('content_takedown', err))
     }
     return json({ data })
   }
@@ -452,6 +464,17 @@ async function handlePost(request, auth) {
       const detail = await r.json().catch(() => ({}))
       return json({ error: 'revoke_failed', detail }, 500)
     }
+    if (auth.adminId) {
+      await rpc('record_audit', {
+        event_kind_in: 'token_revoked',
+        actor_id_in:   auth.adminId,
+        target_id_in:  null,
+        details_in: {
+          via: 'edge_admin',
+          token_id: body.token_id,
+        },
+      }).catch(err => console.warn('[admin] audit token_revoked failed', err?.message))
+    }
     return json({ success: true })
   }
 
@@ -460,6 +483,23 @@ async function handlePost(request, auth) {
 
 export default async function handler(request) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204 })
+
+  /*
+   * ADM-SEC-06: per-IP rate limit, ahead of auth so credential-stuffing /
+   * audit-spam / flood is throttled before any token work. 120 req/min is far
+   * above any legitimate admin's burst. Fails OPEN — a rate-store hiccup must
+   * never lock the real admins out.
+   */
+  if (SUPABASE_URL && SERVICE_KEY) {
+    try {
+      const ip = (request.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown'
+      const bucket = 'admin:' + (await sha256Hex(ip))
+      const allowed = await rpc('edge_rate_hit', { bucket_in: bucket, max_in: 120, window_secs_in: 60 })
+      if (allowed === false) return json({ error: 'rate_limited' }, 429)
+    } catch (err) {
+      console.warn('[admin] rate check failed (fail-open)', err?.message)
+    }
+  }
 
   const bearer = readBearer(request)
   const auth = await validateBearer(bearer)
@@ -483,7 +523,9 @@ export default async function handler(request) {
             hash_prefix: presentedHash.slice(0, 8),
           },
         })
-      } catch {}
+      } catch (err) {
+        reportAuditFailure('admin_unauthorized', err)
+      }
     }
     return json({ error: auth.source === 'missing' ? 'unauthorized' : 'unauthorized' }, 401)
   }

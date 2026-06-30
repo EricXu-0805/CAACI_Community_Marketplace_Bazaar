@@ -63,11 +63,22 @@ const APPLY    = argv.includes('--apply')
 const NAME     = flag('--name')
 const EMAIL    = flag('--email')
 const ADMIN_ID = flag('--admin-id')
+// ADM-SEC-02: tokens expire by default. Pass --expires-days 0 for a
+// non-expiring token (not recommended). Default is 365 days.
+const EXPIRES_DAYS = flag('--expires-days') === null ? 365 : Number(flag('--expires-days'))
 
 if (!NAME || !EMAIL) {
-  console.error('Usage: node scripts/admin-token-mint.mjs --name "<display name>" --email "<email>" [--admin-id <uuid>] [--apply]')
+  console.error('Usage: node scripts/admin-token-mint.mjs --name "<display name>" --email "<email>" [--admin-id <uuid>] [--expires-days <N|0>] [--apply]')
   exit(1)
 }
+
+if (!Number.isInteger(EXPIRES_DAYS) || EXPIRES_DAYS < 0 || EXPIRES_DAYS > 3650) {
+  console.error('--expires-days must be an integer 0-3650 (0 = never expires)')
+  exit(1)
+}
+const expiresAt = EXPIRES_DAYS === 0
+  ? null
+  : new Date(Date.now() + EXPIRES_DAYS * 86400_000).toISOString()
 
 if (NAME.length < 1 || NAME.length > 100) {
   console.error('--name must be 1-100 characters')
@@ -120,6 +131,7 @@ async function insertHash() {
       admin_id:    ADMIN_ID || null,
       admin_name:  NAME,
       admin_email: EMAIL,
+      expires_at:  expiresAt,
     }),
   })
   if (!r.ok) {
@@ -139,6 +151,7 @@ console.log('')
 console.log(`  Admin name:  ${NAME}`)
 console.log(`  Admin email: ${EMAIL}`)
 if (ADMIN_ID) console.log(`  Admin id:    ${ADMIN_ID}`)
+console.log(`  Expires:     ${expiresAt ? `${expiresAt} (${EXPIRES_DAYS} days)` : 'never (--expires-days 0)'}`)
 console.log(`  Hash (hex):  ${hashHex}`)
 console.log('')
 
