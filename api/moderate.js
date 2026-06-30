@@ -78,13 +78,16 @@ export default async function handler(request) {
     return new Response(JSON.stringify({ error: 'bad_json' }), { status: 400, headers })
   }
 
+  // ADM-SEC-07: verify the JWT BEFORE any other work. The empty-text 200
+  // short-circuit used to sit ahead of this check, letting an unauthenticated
+  // caller probe the endpoint for free.
+  if (!(await verifyUser(request.headers.get('authorization') || ''))) {
+    return new Response(JSON.stringify({ error: 'auth_required' }), { status: 401, headers })
+  }
+
   const text = typeof body?.text === 'string' ? body.text.slice(0, 8000) : ''
   if (!text || text.length < 1) {
     return new Response(JSON.stringify({ flagged: false, skipped: true, reason: 'empty' }), { status: 200, headers })
-  }
-
-  if (!(await verifyUser(request.headers.get('authorization') || ''))) {
-    return new Response(JSON.stringify({ error: 'auth_required' }), { status: 401, headers })
   }
 
   const key = process.env.OPENAI_API_KEY
