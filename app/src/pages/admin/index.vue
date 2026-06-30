@@ -6,6 +6,9 @@
         <text class="admin-whoami-label">{{ currentAdmin.label }}</text>
         <text v-if="currentAdmin.detail" class="admin-whoami-detail">{{ currentAdmin.detail }}</text>
       </view>
+      <view v-if="unlocked" class="admin-refresh" role="button" :aria-label="t('admin.refresh')" :class="{ spinning: loading }" @click="refreshAll">
+        <text>↻</text>
+      </view>
       <view class="admin-lang" role="button" :aria-label="t('a11y.langToggle')" @click="toggleLang">
         <text>{{ lang === 'zh' ? 'EN' : '中' }}</text>
       </view>
@@ -46,6 +49,10 @@
         <view class="stat">
           <text class="stat-n">{{ stats?.shadow_banned ?? '—' }}</text>
           <text class="stat-l">{{ t('admin.statShadowBanned') }}</text>
+        </view>
+        <view class="stat">
+          <text :class="['stat-n', { 'stat-warn': (stats?.oldest_pending_hours ?? 0) >= 48 }]">{{ stats?.oldest_pending_hours != null ? stats.oldest_pending_hours + 'h' : '—' }}</text>
+          <text class="stat-l">{{ t('admin.statOldestPending') }}</text>
         </view>
       </view>
 
@@ -286,6 +293,7 @@ interface WarningRow {
 interface StatsRow {
   active_suspensions: number; pending_reports: number
   pending_appeals: number; shadow_banned: number
+  oldest_pending_hours: number | null
 }
 
 const { isDark } = useTheme()
@@ -546,6 +554,11 @@ function fmtAuditEvent(r: AuditRow): string {
 async function setTab(id: TabId) {
   activeTab.value = id
   await loadTab(id)
+}
+
+async function refreshAll() {
+  if (loading.value) return
+  await Promise.all([loadTab(activeTab.value), loadStats()])
 }
 
 
@@ -809,6 +822,13 @@ onMounted(async () => {
   padding: 6px 10px; border-radius: 6px; flex-shrink: 0;
   &:active { background: var(--danger-soft); }
 }
+.admin-refresh {
+  font-size: 17px; line-height: 1; color: var(--text-secondary); cursor: pointer;
+  padding: 5px 9px; border-radius: 6px; flex-shrink: 0;
+  &:active { background: var(--bg-subtle); }
+  &.spinning text { display: inline-block; animation: admin-spin 0.7s linear infinite; }
+}
+@keyframes admin-spin { to { transform: rotate(360deg); } }
 .admin-lang {
   font-size: 13px; font-weight: 600; color: var(--text-secondary); cursor: pointer;
   padding: 6px 10px; border-radius: 6px; flex-shrink: 0;
@@ -846,6 +866,7 @@ onMounted(async () => {
   box-shadow: var(--shadow-soft);
 }
 .stat-n { font-size: 22px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.stat-n.stat-warn { color: var(--accent-danger); }
 .stat-l { font-size: 12px; color: var(--text-secondary); }
 
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; }

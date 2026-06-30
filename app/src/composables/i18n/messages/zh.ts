@@ -728,6 +728,8 @@ const zh: Record<string, string> = {
   'admin.statPendingReports': '待处理举报',
   'admin.statOpenAppeals':  '待处理申诉',
   'admin.statShadowBanned': '影子封禁',
+  'admin.statOldestPending': '最久待处理',
+  'admin.refresh':          '刷新',
   'admin.tabReports':       '举报',
   'admin.tabUsers':         '用户',
   'admin.tabSuspensions':   '封禁',
