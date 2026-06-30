@@ -9,17 +9,11 @@ export const config = { runtime: 'edge' }
  *   On hit, the admin's identity is propagated into every audit-log
  *   row written by RPCs called from this request.
  *
- *   Backward-compat fallback: if migration 036 has not been applied
- *   yet (admin_tokens table missing → PostgREST 404), or if the
- *   incoming bearer doesn't match any per-admin token but matches
- *   the legacy ADMIN_API_KEY env var, the request is allowed but
- *   audit_log.actor_id is recorded as NULL (same as v1 behaviour).
- *   This preserves uptime during the transition window.
- *
- *   Once at least one per-admin token has been minted AND every
- *   admin's browser has the new token, you can delete the
- *   ADMIN_API_KEY env var; the fallback branch then surfaces a
- *   clear 401 to anyone still on the old shared key.
+ *   No shared-key fallback (ADM-SEC-01): the legacy ADMIN_API_KEY path
+ *   was removed once every admin held a per-admin token. A bearer that
+ *   doesn't resolve via admin_token_validate gets a 401 — there is no
+ *   second chance. Finish the cutover by deleting the ADMIN_API_KEY env
+ *   var (it is no longer read).
  *
  * Why not gate on profiles.is_admin in Supabase instead?
  *   Adding is_admin would require rewriting every RLS policy that
@@ -56,33 +50,16 @@ async function sha256Hex(input) {
 }
 
 /*
- * Compare two strings in constant time. Defends against a timing
- * side-channel where an attacker can shave off attempts by binary-
- * searching the bearer header. Both strings must be the same length;
- * we early-return false on mismatched length (the length itself is
- * not secret — bearer tokens are fixed-format).
- */
-function timingSafeEqual(a, b) {
-  if (typeof a !== 'string' || typeof b !== 'string') return false
-  if (a.length !== b.length) return false
-  let mismatch = 0
-  for (let i = 0; i < a.length; i++) {
-    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  }
-  return mismatch === 0
-}
-
-/*
  * Validate the bearer token via PostgREST RPC.
  *
  * Returns:
  *   { ok: true,  adminId, adminName, adminEmail, source: 'token' }
- *   { ok: true,  adminId: null, source: 'legacy_shared' }
- *   { ok: false, source: 'missing' | 'invalid' | 'admin_tokens_unavailable' }
+ *   { ok: false, source: 'missing' | 'invalid' }
  *
- * The "legacy_shared" branch is consulted only when the per-admin
- * token lookup misses AND ADMIN_API_KEY env var is set. This is the
- * back-compat path that preserves uptime during the rollout window.
+ * There is NO shared-key fallback: every admin must present a per-admin
+ * iam_admin_ token that resolves via admin_token_validate. The legacy
+ * ADMIN_API_KEY path was removed (ADM-SEC-01) once all admins were on
+ * per-admin tokens; delete the ADMIN_API_KEY env var to finish the cutover.
  */
 async function validateBearer(bearer) {
   if (!bearer) return { ok: false, source: 'missing' }
@@ -103,8 +80,9 @@ async function validateBearer(bearer) {
         },
       )
       if (r.status === 404) {
-        // RPC missing — migration 036 not applied. Skip per-admin
-        // path entirely and fall through to the legacy shared key.
+        // RPC missing — migration 036 not applied. With no shared-key
+        // fallback this falls through to a 401 below; 036 is applied in
+        // prod, so this branch is effectively unreachable.
       } else if (r.ok) {
         const rows = await r.json().catch(() => [])
         const row = Array.isArray(rows) ? rows[0] : rows
@@ -123,11 +101,6 @@ async function validateBearer(bearer) {
     } catch (err) {
       console.warn('[admin] admin_token_validate threw', err?.message)
     }
-  }
-
-  const legacy = env('ADMIN_API_KEY', '')
-  if (legacy && timingSafeEqual(bearer, legacy)) {
-    return { ok: true, adminId: null, source: 'legacy_shared' }
   }
 
   return { ok: false, source: 'invalid' }
