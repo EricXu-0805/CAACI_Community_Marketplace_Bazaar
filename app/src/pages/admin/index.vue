@@ -17,7 +17,7 @@
       <input
         v-model="keyInput"
         type="password"
-        :placeholder="'ADMIN_API_KEY'"
+        :placeholder="'iam_admin_…'"
         class="gate-input"
         confirm-type="done"
         @confirm="onUnlock"
@@ -713,7 +713,8 @@ onMounted(async () => {
 <style lang="scss" scoped>
 .admin {
   min-height: 100vh; background: var(--bg-subtle);
-  padding: 20px 16px 40px; max-width: 960px; margin: 0 auto;
+  padding: calc(20px + var(--status-bar-height, env(safe-area-inset-top, 0px))) 16px 40px;
+  max-width: 960px; margin: 0 auto;
   font-family: var(--font-hei);
 }
 .admin-header {
