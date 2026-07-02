@@ -200,6 +200,9 @@
           <view v-else-if="entry.msg.sender_id === currentUser?.id && entry.msg._failed" class="msg-status failed" @click="retrySend(entry.msg)">
             <text>{{ t('chat.sendFailed') }}</text>
           </view>
+          <view v-else-if="entry.msg.sender_id === currentUser?.id" :class="['msg-receipt', { read: entry.msg.is_read }]">
+            <text>{{ entry.msg.is_read ? t('chat.read') : t('chat.unread') }}</text>
+          </view>
         </template>
       </template>
 
@@ -507,6 +510,15 @@ onMounted(async () => {
       if (currentUser.value && newMsg.sender_id !== currentUser.value.id) {
         markAsRead(options.id, currentUser.value.id)
         refreshUnreadCount()
+      }
+    }, (updated) => {
+      // Read receipts: the peer's markAsRead flips is_read row-by-row; merge
+      // just that flag by id (idempotent — replays and batch updates are fine).
+      // Never overwrite the whole row: payload.new has no sender join and
+      // would wipe the hydrated avatar.
+      const idx = messages.value.findIndex(m => m.id === updated.id)
+      if (idx >= 0 && messages.value[idx].is_read !== updated.is_read) {
+        messages.value[idx].is_read = updated.is_read
       }
     })
 
@@ -1647,6 +1659,14 @@ function scrollToBottom() {
   width: 32px; height: 32px; border-radius: 50%;
   flex-shrink: 0; background: var(--bg-inset);
   object-fit: cover;
+}
+/* Read receipt under own messages (QA8 #9). Right edge lines up with the
+   bubble: 8px gap + 32px avatar + its 4px margin on .msg-row.mine. */
+.msg-receipt {
+  display: flex; justify-content: flex-end;
+  padding-right: 44px; margin-top: 2px;
+  text { font-size: 11px; color: var(--text-faint); }
+  &.read text { color: var(--text-muted); }
 }
 .msg-bubble {
   max-width: calc(100% - 48px); padding: 10px 14px;
