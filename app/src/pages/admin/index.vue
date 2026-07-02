@@ -1319,7 +1319,7 @@ onMounted(async () => {
 .kind-actor_blocked         { background: var(--warning-soft); color: var(--accent-warn); }
 .kind-admin_login           { background: var(--bg-subtle); color: var(--text-muted); }
 .kind-admin_unauthorized    { background: var(--accent-primary); color: #fff; }
-.audit-msg { flex: 1; color: var(--text-primary); word-break: break-all; }
+.audit-msg { flex: 1; color: var(--text-primary); word-break: normal; overflow-wrap: anywhere; }
 .audit-time {
   flex-shrink: 0; font-size: 10px; color: var(--text-muted);
   font-variant-numeric: tabular-nums;

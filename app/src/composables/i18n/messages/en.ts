@@ -579,6 +579,8 @@ const en: Record<string, string> = {
 
   'chat.sending': 'Sending...',
   'chat.sendFailed': 'Failed - tap to retry',
+  'chat.read': 'Read',
+  'chat.unread': 'Unread',
   'chat.mute': 'Mute notifications',
   'chat.unmute': 'Unmute',
   'chat.emojiGroupRecent': 'Recent',

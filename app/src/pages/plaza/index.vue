@@ -371,18 +371,20 @@
       </view>
 
       <view class="ci-input-bar">
-        <input
+        <textarea
           v-model="commentText"
           class="ci-input"
           :placeholder="replyTo ? t('plaza.replyHint') : t('plaza.commentHint')"
           confirm-type="send"
+          :show-confirm-bar="false"
+          auto-height
           :focus="inputFocused"
           :cursor-spacing="0"
           :adjust-position="false"
           @focus="inputFocused = true"
           @blur="inputFocused = false"
           @confirm="onSubmitComment"
-          @keyup.enter="onSubmitComment"
+          @keydown="onCommentKeydown"
           maxlength="1000"
         />
         <view :class="['ci-send', { disabled: !commentText.trim() || commentSubmitting }]" role="button" :aria-label="t('a11y.sendMessage')" @click.stop="onSubmitComment">
@@ -1097,6 +1099,18 @@ function closeComments() {
 
 const commentSubmitting = ref(false)
 
+function onCommentKeydown(e: KeyboardEvent) {
+  if (!e) return
+  // Same IME guard as ChatThread.onComposerKeydown: Enter that confirms a
+  // pinyin candidate fires keydown with isComposing (legacy keyCode 229) —
+  // sending there would post a half-composed comment.
+  if (e.isComposing || (e as any).keyCode === 229) return
+  if (e.key !== 'Enter') return
+  if (e.shiftKey || e.ctrlKey || e.metaKey) return
+  if (typeof e.preventDefault === 'function') e.preventDefault()
+  onSubmitComment()
+}
+
 async function onSubmitComment() {
   if (!requireAuth()) return
   if (!commentText.value.trim() || !commentingPost.value) return
@@ -1678,6 +1692,8 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   width: 100%; padding: 16px; min-height: 200px;
   font-size: 16px; color: var(--text-primary); line-height: 1.5;
   box-sizing: border-box; background: transparent; border: none;
+  /* Override uni's default `uni-textarea { word-break: break-all }`. */
+  word-break: normal; overflow-wrap: break-word;
 }
 .comp-images {
   display: flex; gap: 8px; padding: 4px 16px 8px;
@@ -1946,14 +1962,22 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 }
 
 .ci-input-bar {
-  display: flex; gap: 8px; align-items: center;
+  /* flex-end: send button stays anchored to the bottom row while the
+     textarea grows (WeChat-style). */
+  display: flex; gap: 8px; align-items: flex-end;
   padding: 8px 16px;
   background: var(--bg-elev-1);
   border-top: 0.5px solid var(--line-hair);
 }
 .ci-input {
-  flex: 1; height: 36px; background: var(--bg-subtle); border-radius: 18px;
-  padding: 0 14px; font-size: 14px; color: var(--text-primary);
+  flex: 1; min-height: 36px;
+  /* Grow up to 4 lines (20px × 4 + 16px padding) then scroll internally.
+     word-break override: uni ships `uni-textarea { word-break: break-all }`
+     which splits English words mid-word; inner textarea inherits. */
+  max-height: 96px; overflow-y: auto;
+  background: var(--bg-subtle); border-radius: 18px; box-sizing: border-box;
+  padding: 8px 14px; line-height: 20px; font-size: 14px; color: var(--text-primary);
+  word-break: normal; overflow-wrap: break-word;
 }
 .ci-send {
   padding: 0 14px; height: 36px; border-radius: 18px;

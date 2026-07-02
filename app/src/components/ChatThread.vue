@@ -200,6 +200,9 @@
           <view v-else-if="entry.msg.sender_id === currentUser?.id && entry.msg._failed" class="msg-status failed" @click="retrySend(entry.msg)">
             <text>{{ t('chat.sendFailed') }}</text>
           </view>
+          <view v-else-if="entry.msg.sender_id === currentUser?.id" :class="['msg-receipt', { read: entry.msg.is_read }]">
+            <text>{{ entry.msg.is_read ? t('chat.read') : t('chat.unread') }}</text>
+          </view>
         </template>
       </template>
 
@@ -507,6 +510,15 @@ onMounted(async () => {
       if (currentUser.value && newMsg.sender_id !== currentUser.value.id) {
         markAsRead(options.id, currentUser.value.id)
         refreshUnreadCount()
+      }
+    }, (updated) => {
+      // Read receipts: the peer's markAsRead flips is_read row-by-row; merge
+      // just that flag by id (idempotent — replays and batch updates are fine).
+      // Never overwrite the whole row: payload.new has no sender join and
+      // would wipe the hydrated avatar.
+      const idx = messages.value.findIndex(m => m.id === updated.id)
+      if (idx >= 0 && messages.value[idx].is_read !== updated.is_read) {
+        messages.value[idx].is_read = updated.is_read
       }
     })
 
@@ -1648,10 +1660,22 @@ function scrollToBottom() {
   flex-shrink: 0; background: var(--bg-inset);
   object-fit: cover;
 }
+/* Read receipt under own messages (QA8 #9). Right edge lines up with the
+   bubble: 8px gap + 32px avatar + its 4px margin on .msg-row.mine. */
+.msg-receipt {
+  display: flex; justify-content: flex-end;
+  padding-right: 44px; margin-top: 2px;
+  text { font-size: 11px; color: var(--text-faint); }
+  &.read text { color: var(--text-muted); }
+}
 .msg-bubble {
   max-width: calc(100% - 48px); padding: 10px 14px;
   background: var(--bg-elev-1); border-radius: 4px 18px 18px 18px;
-  font-size: 15px; line-height: 1.5; word-break: break-all;
+  font-size: 15px; line-height: 1.5;
+  /* Wrap at word boundaries; only break inside a word when it alone
+     exceeds the line (long URLs / unbroken strings). break-all split
+     ordinary English words mid-word ("ca\nn", "fu\nture"). */
+  word-break: normal; overflow-wrap: anywhere;
   box-sizing: border-box;
 }
 .msg-image {
@@ -1769,16 +1793,31 @@ function scrollToBottom() {
 .suggest-emoji { font-size: 19px; line-height: 1; }
 
 .input-bar {
-  display: flex; align-items: center; padding: 9px 14px;
+  /* flex-end (not center): when the textarea grows to multiple lines the
+     icons and send pill stay anchored to the bottom row, WeChat-style. */
+  display: flex; align-items: flex-end; padding: 9px 14px;
   background: var(--bg-elev-1); border-top: 0.5px solid var(--line-hair); gap: 8px;
   padding-bottom: calc(9px + env(safe-area-inset-bottom));
   /* Lifted above the soft keyboard via :style translateY (useKeyboardHeight). */
   transition: transform 0.22s ease-out; will-change: transform;
 }
+.input-bar .img-btn,
+.input-bar .emoji-btn { margin-bottom: 1px; } /* optical center vs 40px input in the single-line state */
 .msg-input {
-  flex: 1; min-height: 40px; max-height: 120px; background: var(--bg-subtle);
+  flex: 1; min-height: 40px;
+  /* Grow with auto-height up to 4 lines (22px × 4 + 18px padding), then
+     scroll internally. overflow-y is the piece that was missing: auto-height
+     sets height:fit-content!important (uni textarea.css), max-height clamps
+     it, and without a scroll container the clipped text visually escaped
+     the box on iOS. */
+  max-height: 106px; overflow-y: auto;
+  background: var(--bg-subtle);
   border-radius: 20px; box-sizing: border-box;
   padding: 9px 16px; line-height: 22px; font-size: 15px; color: var(--text-primary);
+  /* uni-app ships `uni-textarea { word-break: break-all }` — that split
+     English words mid-word while typing. Inner textarea uses word-break:
+     inherit, so overriding on this class cascades in. */
+  word-break: normal; overflow-wrap: break-word;
 }
 .send-btn {
   height: 40px; padding: 0 14px; background: var(--accent-primary);

@@ -579,6 +579,8 @@ const zh: Record<string, string> = {
 
   'chat.sending': '发送中...',
   'chat.sendFailed': '发送失败 - 点击重试',
+  'chat.read': '已读',
+  'chat.unread': '未读',
   'chat.mute': '消息免打扰',
   'chat.unmute': '取消免打扰',
   'chat.emojiGroupRecent': '最近',
