@@ -155,6 +155,67 @@
         </view>
       </view>
 
+      <view v-else-if="activeTab === 'plaza'" class="list">
+        <!-- Banner manager -->
+        <text class="plaza-sec-title">{{ t('admin.plazaBanners') }}</text>
+        <view v-for="b in banners" :key="b.id" class="card">
+          <view class="card-head">
+            <image :src="b.image_url" class="banner-thumb" mode="aspectFill" />
+            <view class="banner-head-info">
+              <text class="card-title">{{ b.title_zh || b.title_en || b.title || '—' }}</text>
+              <text class="card-meta">P{{ b.priority }}<template v-if="b.start_at || b.end_at"> · {{ fmtTime(b.start_at) }} → {{ b.end_at ? fmtTime(b.end_at) : '∞' }}</template></text>
+            </view>
+            <text :class="['pill', b.active ? 'pill-active' : 'pill-expired']">{{ b.active ? t('admin.bannerOn') : t('admin.bannerOff') }}</text>
+          </view>
+          <view class="card-actions">
+            <view class="mini-btn" @click="toggleBannerActive(b)">{{ b.active ? t('admin.bannerDisable') : t('admin.bannerEnable') }}</view>
+            <view class="mini-btn" @click="editBanner(b)">{{ t('admin.bannerEdit') }}</view>
+            <view class="mini-btn danger" @click="deleteBanner(b)">{{ t('admin.bannerDelete') }}</view>
+          </view>
+        </view>
+
+        <!-- Banner create / edit form -->
+        <view class="card banner-form">
+          <text class="card-title">{{ bannerForm.id ? t('admin.bannerEditTitle') : t('admin.bannerNewTitle') }}</text>
+          <view class="bf-img-row">
+            <image v-if="bannerForm.image_url" :src="bannerForm.image_url" class="bf-preview" mode="aspectFill" />
+            <view class="mini-btn primary" @click="onPickBannerImage">
+              {{ bannerUploading ? t('admin.checking') : t('admin.bannerPickImage') }}
+            </view>
+          </view>
+          <input v-model="bannerForm.title_zh" class="bf-input" :placeholder="t('admin.bannerTitleZhPh')" />
+          <input v-model="bannerForm.title_en" class="bf-input" :placeholder="t('admin.bannerTitleEnPh')" />
+          <input v-model="bannerForm.target_url" class="bf-input" :placeholder="t('admin.bannerTargetPh')" />
+          <input v-model="bannerForm.priority" type="number" class="bf-input" :placeholder="t('admin.bannerPriorityPh')" />
+          <view class="card-actions">
+            <view :class="['mini-btn', 'primary', { disabled: bannerSaving || !bannerForm.image_url }]" @click="saveBanner">
+              {{ bannerSaving ? t('admin.checking') : t('admin.bannerSave') }}
+            </view>
+            <view v-if="bannerForm.id" class="mini-btn" @click="resetBannerForm">{{ t('admin.bulkCancel') }}</view>
+          </view>
+        </view>
+
+        <!-- Pin manager -->
+        <text class="plaza-sec-title">{{ t('admin.plazaPins') }}</text>
+        <view v-if="plazaPosts.length === 0" class="empty"><text>{{ t('admin.plazaNoPosts') }}</text></view>
+        <view v-for="p in plazaPosts" :key="p.id" class="card">
+          <view class="card-head">
+            <image v-if="p.thumbnail" :src="p.thumbnail" class="banner-thumb" mode="aspectFill" />
+            <view class="banner-head-info">
+              <text class="card-title">{{ p.author_nickname || p.author_id }}</text>
+              <text class="card-meta">{{ p.content }}</text>
+            </view>
+            <text v-if="p.is_pinned" class="pill pill-pinned">{{ t('admin.pillPinned') }}</text>
+          </view>
+          <text class="card-time">{{ fmtTime(p.created_at) }} · ❤️{{ p.like_count }} 💬{{ p.comment_count }}</text>
+          <view class="card-actions">
+            <view :class="['mini-btn', p.is_pinned ? 'danger' : 'primary']" @click="togglePin(p)">
+              {{ p.is_pinned ? t('admin.unpinPost') : t('admin.pinPost') }}
+            </view>
+          </view>
+        </view>
+      </view>
+
       <view v-else-if="activeTab === 'suspensions'" class="list">
         <view class="search-row">
           <input
@@ -298,7 +359,7 @@ import { useI18n } from '../../composables/useI18n'
 
 const { t, lang, toggleLang } = useI18n()
 
-type TabId = 'reports' | 'users' | 'suspensions' | 'appeals' | 'warnings' | 'audit'
+type TabId = 'reports' | 'users' | 'plaza' | 'suspensions' | 'appeals' | 'warnings' | 'audit'
 
 interface ReportRow {
   id: string; reporter_id: string; reporter_nickname: string
@@ -378,6 +439,7 @@ const currentAdmin = computed(() => {
 const tabList: Array<{ id: TabId; labelKey: string }> = [
   { id: 'reports',     labelKey: 'admin.tabReports' },
   { id: 'users',       labelKey: 'admin.tabUsers' },
+  { id: 'plaza',       labelKey: 'admin.tabPlaza' },
   { id: 'suspensions', labelKey: 'admin.tabSuspensions' },
   { id: 'appeals',     labelKey: 'admin.tabAppeals' },
   { id: 'warnings',    labelKey: 'admin.tabWarnings' },
@@ -451,6 +513,139 @@ interface LinkedRow {
 const linkedFor = ref<string | null>(null)
 const linkedAccounts = ref<LinkedRow[]>([])
 const linkedLoading = ref(false)
+
+/* ---------- plaza tab (QA8 #7 admin half): pins + banners ---------- */
+interface PlazaPostRow {
+  id: string; content: string; author_nickname: string | null; author_id: string
+  is_pinned: boolean; is_official: boolean
+  like_count: number; comment_count: number
+  thumbnail: string | null; created_at: string
+}
+interface BannerRow {
+  id: string; image_url: string; target_url: string | null
+  title: string | null; title_en: string | null; title_zh: string | null
+  priority: number; active: boolean
+  start_at: string | null; end_at: string | null; created_at: string
+}
+const plazaPosts = ref<PlazaPostRow[]>([])
+const banners = ref<BannerRow[]>([])
+const bannerSaving = ref(false)
+const bannerUploading = ref(false)
+const emptyBannerForm = () => ({ id: '', image_url: '', title_zh: '', title_en: '', target_url: '', priority: '0' })
+const bannerForm = ref(emptyBannerForm())
+
+async function loadPlaza() {
+  const [posts, bs] = await Promise.all([
+    apiGet<PlazaPostRow[]>({ resource: 'plaza_posts', limit: '50' }),
+    apiGet<BannerRow[]>({ resource: 'banners' }),
+  ])
+  plazaPosts.value = posts
+  banners.value = bs
+}
+
+async function togglePin(p: PlazaPostRow) {
+  try {
+    await apiPost({ action: 'set_post_pinned', post_id: p.id, pinned: !p.is_pinned })
+    p.is_pinned = !p.is_pinned
+    plazaPosts.value = [...plazaPosts.value].sort((a, b) =>
+      Number(b.is_pinned) - Number(a.is_pinned) || b.created_at.localeCompare(a.created_at))
+  } catch (err: any) {
+    uni.showToast({ title: err?.message || t('admin.toastLoadFailed'), icon: 'none' })
+  }
+}
+
+function editBanner(b: BannerRow) {
+  bannerForm.value = {
+    id: b.id, image_url: b.image_url,
+    title_zh: b.title_zh || '', title_en: b.title_en || '',
+    target_url: b.target_url || '', priority: String(b.priority),
+  }
+}
+
+function resetBannerForm() { bannerForm.value = emptyBannerForm() }
+
+function onPickBannerImage() {
+  // #ifdef H5
+  uni.chooseImage({
+    count: 1,
+    success: async (res) => {
+      const file = (res.tempFiles as File[] | undefined)?.[0]
+      if (!file) return
+      bannerUploading.value = true
+      try {
+        const fd = new FormData()
+        fd.append('file', file)
+        const r = await platformFetch(apiBase(), {
+          method: 'POST',
+          headers: { 'x-admin-key': adminKey.value },
+          body: fd,
+        })
+        if (r.status === 401) { onLogout(); throw new Error('unauthorized') }
+        const json = await r.json().catch(() => ({}))
+        if (!r.ok) throw new Error(json?.error || `http_${r.status}`)
+        bannerForm.value.image_url = json.data?.url || ''
+      } catch (err: any) {
+        uni.showToast({ title: err?.message || t('admin.toastLoadFailed'), icon: 'none' })
+      } finally {
+        bannerUploading.value = false
+      }
+    },
+  })
+  // #endif
+  // #ifndef H5
+  uni.showToast({ title: 'H5 only', icon: 'none' })
+  // #endif
+}
+
+async function saveBanner() {
+  if (bannerSaving.value || !bannerForm.value.image_url) return
+  bannerSaving.value = true
+  try {
+    const f = bannerForm.value
+    await apiPost({
+      action: 'upsert_banner',
+      ...(f.id ? { id: f.id } : {}),
+      image_url: f.image_url,
+      title_zh: f.title_zh || null,
+      title_en: f.title_en || null,
+      target_url: f.target_url || null,
+      priority: parseInt(f.priority, 10) || 0,
+      ...(f.id ? {} : { active: true }),
+    })
+    resetBannerForm()
+    banners.value = await apiGet<BannerRow[]>({ resource: 'banners' })
+    uni.showToast({ title: t('admin.bannerSaved'), icon: 'success' })
+  } catch (err: any) {
+    uni.showToast({ title: err?.message || t('admin.toastLoadFailed'), icon: 'none' })
+  } finally {
+    bannerSaving.value = false
+  }
+}
+
+async function toggleBannerActive(b: BannerRow) {
+  try {
+    await apiPost({ action: 'upsert_banner', id: b.id, active: !b.active })
+    b.active = !b.active
+  } catch (err: any) {
+    uni.showToast({ title: err?.message || t('admin.toastLoadFailed'), icon: 'none' })
+  }
+}
+
+function deleteBanner(b: BannerRow) {
+  uni.showModal({
+    title: t('admin.bannerDelete'),
+    content: t('admin.bannerDeleteBody'),
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        await apiPost({ action: 'delete_banner', id: b.id })
+        banners.value = banners.value.filter(x => x.id !== b.id)
+      } catch (err: any) {
+        uni.showToast({ title: err?.message || t('admin.toastLoadFailed'), icon: 'none' })
+      }
+    },
+  })
+}
 
 async function loadLinked(userId: string) {
   if (linkedFor.value === userId) { linkedFor.value = null; return }
@@ -562,6 +757,9 @@ function onLogout() {
   userSearched.value = false
   linkedFor.value = null
   linkedAccounts.value = []
+  plazaPosts.value = []
+  banners.value = []
+  resetBannerForm()
   try { uni.removeStorageSync(STORAGE_KEY) } catch {}
 }
 
@@ -623,6 +821,8 @@ async function loadTab(tab: TabId) {
   try {
     if (tab === 'reports') {
       await loadReports(true)
+    } else if (tab === 'plaza') {
+      await loadPlaza()
     } else if (tab === 'suspensions') {
       suspensions.value = await apiGet<SuspensionRow[]>({ resource: 'suspensions', limit: '100' })
     } else if (tab === 'appeals') {
@@ -1067,6 +1267,18 @@ onMounted(async () => {
 .select-box.disabled { color: var(--text-faint); }
 .card-selected { outline: 2px solid var(--campus-blue); outline-offset: -1px; }
 .filter-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.plaza-sec-title { font-size: 13px; font-weight: 700; color: var(--text-secondary); margin: 8px 0 2px; }
+.banner-thumb { width: 72px; height: 40px; border-radius: 6px; background: var(--bg-inset); flex-shrink: 0; }
+.banner-head-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.banner-head-info .card-meta { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.banner-form { gap: 8px; }
+.bf-img-row { display: flex; align-items: center; gap: 10px; }
+.bf-preview { width: 120px; height: 60px; border-radius: 8px; background: var(--bg-inset); }
+.bf-input {
+  height: 34px; padding: 0 10px; background: var(--bg-subtle);
+  border-radius: 8px; font-size: 13px; color: var(--text-primary);
+}
+.pill-pinned { background: var(--campus-blue-soft); color: var(--campus-blue); }
 .chip {
   padding: 4px 12px; border-radius: 999px; font-size: 13px;
   background: var(--bg-elev-1); color: var(--text-secondary);
