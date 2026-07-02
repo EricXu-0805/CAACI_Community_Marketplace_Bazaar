@@ -861,6 +861,7 @@ const en: Record<string, string> = {
   'admin.bannerEditTitle':        'Edit banner',
   'admin.bannerNewTitle':         'New banner',
   'admin.bannerPickImage':        'Upload image',
+  'admin.bannerUploadH5Only':     'Banner upload is only available in the web console',
   'admin.bannerTitleZhPh':        'Title (Chinese, optional)',
   'admin.bannerTitleEnPh':        'Title (English, optional)',
   'admin.bannerTargetPh':         'Target URL (optional)',
