@@ -1,6 +1,6 @@
 <template>
   <view class="u-badge" :class="`u-badge--${variant}`">
-    <text><slot /></text>
+    <text class="u-badge-txt"><slot /></text>
   </view>
 </template>
 
@@ -29,6 +29,11 @@ defineProps<{
   font-size: 10px;
   font-weight: 600;
 }
+/* App.vue's global `text { color: … }` element rule beats color INHERITED
+   from the pill view, so the label rendered dark on light theme (求购 read
+   as blue-on-black). Two classes out-specify every global theme block and
+   hand color control back to the variant on the view. */
+.u-badge .u-badge-txt { color: inherit; }
 /* Condition pills over card images — frosted-dark glass (matching the
    image-count badge) with a small semantic-colored status dot. The dot
    carries the meaning so the white label stays legible over any photo

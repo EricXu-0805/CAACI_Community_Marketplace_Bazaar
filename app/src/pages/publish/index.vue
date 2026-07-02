@@ -862,7 +862,7 @@ async function onSubmit() {
 .label { font-size: 15px; color: var(--text-primary); min-width: 64px; flex-shrink: 0; font-weight: 500; padding-right: 8px; }
 .form-input { font-size: 15px; width: 100%; color: var(--text-primary); }
 .title-input { font-size: 17px; font-weight: 600; }
-.form-textarea { width: 100%; height: 110px; font-size: 15px; line-height: 1.6; color: var(--text-primary); }
+.form-textarea { width: 100%; height: 110px; font-size: 15px; line-height: 1.6; color: var(--text-primary); overflow-y: auto; word-break: normal; overflow-wrap: break-word; }
 .price-input {
   display: flex; align-items: center; flex: 1;
   .currency { font-size: 17px; color: var(--text-primary); font-weight: 700; margin-right: 4px; }
