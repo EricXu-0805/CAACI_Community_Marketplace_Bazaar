@@ -1,5 +1,6 @@
 import { ref } from 'vue'
-import { useSupabase } from './useSupabase'
+import { useSupabase, platformFetch } from './useSupabase'
+import { BASE_URL } from '../config/runtime'
 import type { Meetup } from '../types'
 
 /*
@@ -19,9 +20,39 @@ import type { Meetup } from '../types'
 const MEETUP_FIELDS =
   'id, conversation_id, item_id, from_user, to_user, spot, meet_at, status, parent_meetup_id, note, expires_at, created_at, updated_at'
 
+function meetupNotifyBase(): string {
+  // #ifdef H5
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin + '/api/meetup-notify'
+  }
+  // #endif
+  return `${BASE_URL}/api/meetup-notify`
+}
+
 export function useMeetups() {
   const { supabase } = useSupabase()
   const meetups = ref<Meetup[]>([])
+
+  /*
+   * QA8 #8 — instant email to the other party after a meetup action.
+   * Fire-and-forget: the notification ROW (written by the RPC) is the source
+   * of truth and rides the daily digest as fallback, so a failure here is
+   * silently absorbed — the meetup action itself already succeeded.
+   */
+  function notifyMeetupEmail(meetup: Meetup | null | undefined) {
+    const id = meetup?.id
+    if (!id) return
+    ;(async () => {
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
+      if (!jwt) return
+      await platformFetch(meetupNotifyBase(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
+        body: JSON.stringify({ meetup_id: id }),
+      })
+    })().catch(() => { /* digest is the fallback path */ })
+  }
 
   async function fetchMeetups(conversationId: string): Promise<Meetup[]> {
     const { data, error } = await supabase
@@ -54,6 +85,7 @@ export function useMeetups() {
       p_note: note ?? null,
     })
     if (error) throw error
+    notifyMeetupEmail(data as Meetup)
     return data as Meetup
   }
 
@@ -72,6 +104,7 @@ export function useMeetups() {
       p_new_note: newNote ?? null,
     })
     if (error) throw error
+    notifyMeetupEmail(data as Meetup)
     return data as Meetup
   }
 
@@ -95,6 +128,7 @@ export function useMeetups() {
       p_new_note: note ?? null,
     })
     if (error) throw error
+    notifyMeetupEmail(data as Meetup)
     return data as Meetup
   }
 
