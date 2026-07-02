@@ -147,11 +147,12 @@ function startLongPoll(opts: LongPollOptions): Unsubscribe {
 export function subscribeToConversation(
   conversationId: string,
   onNewMessage: (msg: any) => void,
+  onMessageUpdate?: (msg: any) => void,
 ): Unsubscribe {
   const { supabase } = useSupabase()
 
   if (isRealtimeSupported()) {
-    const channel = supabase
+    let channel = supabase
       .channel(`messages:${conversationId}`)
       .on(
         'postgres_changes',
@@ -163,7 +164,22 @@ export function subscribeToConversation(
         },
         (payload) => onNewMessage(payload.new),
       )
-      .subscribe()
+    if (onMessageUpdate) {
+      /* Read receipts: the recipient flips is_read via markAsRead (the only
+         client-writable messages column since m064), and this UPDATE stream
+         is how the sender's open thread sees 未读 turn into 已读 live. */
+      channel = channel.on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => onMessageUpdate(payload.new),
+      )
+    }
+    channel = channel.subscribe()
 
     return () => { supabase.removeChannel(channel) }
   }

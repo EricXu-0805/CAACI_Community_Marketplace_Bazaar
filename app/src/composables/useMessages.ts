@@ -293,11 +293,19 @@ export function useMessages() {
     return data as Conversation
   }
 
-  function subscribeToMessages(conversationId: string, onNewMessage: (msg: Message) => void) {
+  function subscribeToMessages(
+    conversationId: string,
+    onNewMessage: (msg: Message) => void,
+    onMessageUpdate?: (msg: Message) => void,
+  ) {
     /* Platform-aware: H5 uses Supabase Realtime (WebSocket); mp targets
        use polling because their uni.connectSocket doesn't speak the
        Phoenix channel protocol. See useRealtimeFallback for details. */
-    return subscribeToConversationFallback(conversationId, (m) => onNewMessage(m as Message))
+    return subscribeToConversationFallback(
+      conversationId,
+      (m) => onNewMessage(m as Message),
+      onMessageUpdate ? (m) => onMessageUpdate(m as Message) : undefined,
+    )
   }
 
   async function markAsRead(conversationId: string, userId: string) {
