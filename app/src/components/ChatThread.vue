@@ -1651,7 +1651,11 @@ function scrollToBottom() {
 .msg-bubble {
   max-width: calc(100% - 48px); padding: 10px 14px;
   background: var(--bg-elev-1); border-radius: 4px 18px 18px 18px;
-  font-size: 15px; line-height: 1.5; word-break: break-all;
+  font-size: 15px; line-height: 1.5;
+  /* Wrap at word boundaries; only break inside a word when it alone
+     exceeds the line (long URLs / unbroken strings). break-all split
+     ordinary English words mid-word ("ca\nn", "fu\nture"). */
+  word-break: normal; overflow-wrap: anywhere;
   box-sizing: border-box;
 }
 .msg-image {
@@ -1769,16 +1773,31 @@ function scrollToBottom() {
 .suggest-emoji { font-size: 19px; line-height: 1; }
 
 .input-bar {
-  display: flex; align-items: center; padding: 9px 14px;
+  /* flex-end (not center): when the textarea grows to multiple lines the
+     icons and send pill stay anchored to the bottom row, WeChat-style. */
+  display: flex; align-items: flex-end; padding: 9px 14px;
   background: var(--bg-elev-1); border-top: 0.5px solid var(--line-hair); gap: 8px;
   padding-bottom: calc(9px + env(safe-area-inset-bottom));
   /* Lifted above the soft keyboard via :style translateY (useKeyboardHeight). */
   transition: transform 0.22s ease-out; will-change: transform;
 }
+.input-bar .img-btn,
+.input-bar .emoji-btn { margin-bottom: 1px; } /* optical center vs 40px input in the single-line state */
 .msg-input {
-  flex: 1; min-height: 40px; max-height: 120px; background: var(--bg-subtle);
+  flex: 1; min-height: 40px;
+  /* Grow with auto-height up to 4 lines (22px × 4 + 18px padding), then
+     scroll internally. overflow-y is the piece that was missing: auto-height
+     sets height:fit-content!important (uni textarea.css), max-height clamps
+     it, and without a scroll container the clipped text visually escaped
+     the box on iOS. */
+  max-height: 106px; overflow-y: auto;
+  background: var(--bg-subtle);
   border-radius: 20px; box-sizing: border-box;
   padding: 9px 16px; line-height: 22px; font-size: 15px; color: var(--text-primary);
+  /* uni-app ships `uni-textarea { word-break: break-all }` — that split
+     English words mid-word while typing. Inner textarea uses word-break:
+     inherit, so overriding on this class cascades in. */
+  word-break: normal; overflow-wrap: break-word;
 }
 .send-btn {
   height: 40px; padding: 0 14px; background: var(--accent-primary);
