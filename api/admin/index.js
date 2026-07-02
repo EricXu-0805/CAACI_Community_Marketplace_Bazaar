@@ -324,7 +324,70 @@ async function handleGet(request, auth) {
     return json({ data })
   }
 
+  if (resource === 'plaza_posts') {
+    const data = await rpc('admin_list_plaza_posts', { limit_in: limit, offset_in: offset })
+    return json({ data })
+  }
+
+  if (resource === 'banners') {
+    // Full table incl. inactive/scheduled rows — the public banners_live view
+    // only shows what's currently displayable, which is useless for managing.
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/banners?select=id,image_url,target_url,title,title_en,title_zh,priority,active,start_at,end_at,created_at&order=priority.desc,created_at.desc&limit=50`,
+      { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } },
+    )
+    if (!r.ok) return json({ error: 'banners_read_failed' }, 500)
+    return json({ data: await r.json() })
+  }
+
   return json({ error: 'unknown_resource' }, 400)
+}
+
+/*
+ * Banner image upload (QA8 #7 admin half). multipart/form-data with a single
+ * "file" field; stored in the public 'banners' bucket (m083) via the service
+ * key — no client-writable storage policies exist, so this edge function is
+ * the only write path. Returns the public CDN URL to paste into the banner
+ * form. 2MB cap: banners are single marketing images, and edge request
+ * bodies must stay small anyway.
+ */
+const BANNER_MAX_BYTES = 2 * 1024 * 1024
+const BANNER_TYPES = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg' }
+
+async function handleBannerUpload(request, auth) {
+  let form
+  try { form = await request.formData() } catch { return json({ error: 'bad_multipart' }, 400) }
+  const file = form.get('file')
+  if (!file || typeof file.arrayBuffer !== 'function') return json({ error: 'missing_file' }, 400)
+  const ext = BANNER_TYPES[file.type]
+  if (!ext) return json({ error: 'unsupported_type' }, 400)
+  if (file.size > BANNER_MAX_BYTES) return json({ error: 'too_large', max: BANNER_MAX_BYTES }, 400)
+
+  const name = `${crypto.randomUUID()}.${ext}`
+  const bytes = await file.arrayBuffer()
+  const r = await fetch(`${SUPABASE_URL}/storage/v1/object/banners/${name}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${SERVICE_KEY}`,
+      'Content-Type': file.type,
+      'x-upsert': 'false',
+    },
+    body: bytes,
+  })
+  if (!r.ok) {
+    const detail = await r.text().catch(() => '')
+    return json({ error: 'upload_failed', detail: detail.slice(0, 200) }, 500)
+  }
+  const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/banners/${name}`
+  if (auth.adminId) {
+    await rpc('record_audit', {
+      event_kind_in: 'banner_changed',
+      actor_id_in:   auth.adminId,
+      target_id_in:  null,
+      details_in:    { via: 'edge_admin', op: 'image_uploaded', name },
+    }).catch(err => reportAuditFailure('banner_changed', err))
+  }
+  return json({ data: { url: publicUrl } })
 }
 
 async function handlePost(request, auth) {
@@ -452,6 +515,102 @@ async function handlePost(request, auth) {
     return json({ data })
   }
 
+  if (body.action === 'set_post_pinned') {
+    if (!body.post_id || typeof body.pinned !== 'boolean') return json({ error: 'missing_args' }, 400)
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/posts?id=eq.${encodeURIComponent(body.post_id)}&status=eq.active`,
+      {
+        method: 'PATCH',
+        headers: {
+          apikey: SERVICE_KEY,
+          Authorization: `Bearer ${SERVICE_KEY}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation',
+        },
+        body: JSON.stringify({ is_pinned: body.pinned }),
+      },
+    )
+    const rows = r.ok ? await r.json().catch(() => []) : []
+    if (!r.ok) return json({ error: 'pin_failed' }, 500)
+    if (!rows.length) return json({ error: 'post_not_found' }, 404)
+    if (auth.adminId) {
+      await rpc('record_audit', {
+        event_kind_in: 'post_pin_changed',
+        actor_id_in:   auth.adminId,
+        target_id_in:  null,
+        details_in:    { via: 'edge_admin', post_id: body.post_id, pinned: body.pinned },
+      }).catch(err => reportAuditFailure('post_pin_changed', err))
+    }
+    return json({ success: true })
+  }
+
+  if (body.action === 'upsert_banner') {
+    const allowed = {
+      image_url:  typeof body.image_url === 'string' ? body.image_url : undefined,
+      target_url: body.target_url === null || typeof body.target_url === 'string' ? body.target_url : undefined,
+      title_zh:   body.title_zh === null || typeof body.title_zh === 'string' ? body.title_zh : undefined,
+      title_en:   body.title_en === null || typeof body.title_en === 'string' ? body.title_en : undefined,
+      priority:   Number.isInteger(body.priority) ? body.priority : undefined,
+      active:     typeof body.active === 'boolean' ? body.active : undefined,
+      start_at:   body.start_at === null || typeof body.start_at === 'string' ? body.start_at : undefined,
+      end_at:     body.end_at === null || typeof body.end_at === 'string' ? body.end_at : undefined,
+    }
+    const patch = Object.fromEntries(Object.entries(allowed).filter(([, v]) => v !== undefined))
+    const isUpdate = typeof body.id === 'string' && body.id
+    if (!isUpdate && !patch.image_url) return json({ error: 'missing_image_url' }, 400)
+    if (!Object.keys(patch).length) return json({ error: 'missing_args' }, 400)
+
+    const url = isUpdate
+      ? `${SUPABASE_URL}/rest/v1/banners?id=eq.${encodeURIComponent(body.id)}`
+      : `${SUPABASE_URL}/rest/v1/banners`
+    const r = await fetch(url, {
+      method: isUpdate ? 'PATCH' : 'POST',
+      headers: {
+        apikey: SERVICE_KEY,
+        Authorization: `Bearer ${SERVICE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify(patch),
+    })
+    if (!r.ok) return json({ error: 'banner_write_failed' }, 500)
+    const rows = await r.json().catch(() => [])
+    if (auth.adminId) {
+      await rpc('record_audit', {
+        event_kind_in: 'banner_changed',
+        actor_id_in:   auth.adminId,
+        target_id_in:  null,
+        details_in:    { via: 'edge_admin', op: isUpdate ? 'updated' : 'created', banner_id: isUpdate ? body.id : rows[0]?.id },
+      }).catch(err => reportAuditFailure('banner_changed', err))
+    }
+    return json({ data: rows[0] || null })
+  }
+
+  if (body.action === 'delete_banner') {
+    if (!body.id) return json({ error: 'missing_args' }, 400)
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/banners?id=eq.${encodeURIComponent(body.id)}`,
+      {
+        method: 'DELETE',
+        headers: {
+          apikey: SERVICE_KEY,
+          Authorization: `Bearer ${SERVICE_KEY}`,
+          Prefer: 'return=minimal',
+        },
+      },
+    )
+    if (!r.ok) return json({ error: 'banner_delete_failed' }, 500)
+    if (auth.adminId) {
+      await rpc('record_audit', {
+        event_kind_in: 'banner_changed',
+        actor_id_in:   auth.adminId,
+        target_id_in:  null,
+        details_in:    { via: 'edge_admin', op: 'deleted', banner_id: body.id },
+      }).catch(err => reportAuditFailure('banner_changed', err))
+    }
+    return json({ success: true })
+  }
+
   if (body.action === 'revoke_token') {
     if (!body.token_id) return json({ error: 'missing_args' }, 400)
     const r = await fetch(
@@ -543,7 +702,13 @@ export default async function handler(request) {
 
   try {
     if (request.method === 'GET')  return await handleGet(request, auth)
-    if (request.method === 'POST') return await handlePost(request, auth)
+    if (request.method === 'POST') {
+      // Banner image upload is the one non-JSON POST (multipart body) — route
+      // it before handlePost's request.json() would eat the stream.
+      const ctype = request.headers.get('content-type') || ''
+      if (ctype.includes('multipart/form-data')) return await handleBannerUpload(request, auth)
+      return await handlePost(request, auth)
+    }
     return json({ error: 'method_not_allowed' }, 405)
   } catch (err) {
     return json({ error: err?.message || 'internal_error' }, 500)
