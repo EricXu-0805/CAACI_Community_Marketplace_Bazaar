@@ -13,10 +13,15 @@ export function useModeration() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) { blockedIds.value = new Set(); loaded = false; return }
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('blocks')
       .select('blocked_id')
       .eq('blocker_id', session.user.id)
+    // A failed load must NOT mark loaded=true with an empty set — that would
+    // silently disable all block filtering for the whole session (a blocked
+    // harasser's messages/conversations reappear). Leave loaded=false so
+    // ensureLoaded() retries on the next call. (QA8 audit — was `{ data }`.)
+    if (error) { loaded = false; return }
     blockedIds.value = new Set((data || []).map(r => r.blocked_id))
     loaded = true
   }

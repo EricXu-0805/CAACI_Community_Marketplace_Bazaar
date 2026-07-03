@@ -165,7 +165,7 @@
               <text class="card-title">{{ b.title_zh || b.title_en || b.title || '—' }}</text>
               <text class="card-meta">P{{ b.priority }}<template v-if="b.start_at || b.end_at"> · {{ fmtTime(b.start_at) }} → {{ b.end_at ? fmtTime(b.end_at) : '∞' }}</template></text>
             </view>
-            <text :class="['pill', b.active ? 'pill-active' : 'pill-expired']">{{ b.active ? t('admin.bannerOn') : t('admin.bannerOff') }}</text>
+            <text :class="['pill', b.active ? 'pill-on' : 'pill-expired']">{{ b.active ? t('admin.bannerOn') : t('admin.bannerOff') }}</text>
           </view>
           <view class="card-actions">
             <view class="mini-btn" @click="toggleBannerActive(b)">{{ b.active ? t('admin.bannerDisable') : t('admin.bannerEnable') }}</view>
@@ -593,7 +593,7 @@ function onPickBannerImage() {
   })
   // #endif
   // #ifndef H5
-  uni.showToast({ title: 'H5 only', icon: 'none' })
+  uni.showToast({ title: t('admin.bannerUploadH5Only'), icon: 'none' })
   // #endif
 }
 
@@ -1348,6 +1348,9 @@ onMounted(async () => {
 .pill-active     { background: var(--danger-soft); color: var(--accent-danger); }
 .pill-lifted     { background: var(--success-soft); color: var(--accent-good); }
 .pill-expired    { background: var(--bg-subtle); color: var(--text-muted); }
+/* An enabled banner is a healthy state, not a danger like an active ban —
+   green, not the suspensions tab's red pill-active (QA8 audit #26). */
+.pill-on         { background: var(--success-soft); color: var(--accent-good); }
 .pill-shadow     { background: var(--accent-primary); color: #fff; }
 .pill-trust      { background: var(--bg-subtle); color: var(--text-secondary); }
 .pill-count      { background: var(--campus-blue-soft); color: var(--campus-blue); }
