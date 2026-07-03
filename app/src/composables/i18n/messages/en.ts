@@ -330,6 +330,7 @@ const en: Record<string, string> = {
   'chat.meetupSendReschedule': 'Send new time',
   'chat.meetupExpiry': 'Expires in 24h · confirm / decline / reschedule',
   'chat.meetupPendingExists': 'A meetup is already pending — handle it first',
+  'chat.meetupConfirmedExists': 'A meetup is already confirmed — reschedule it instead',
   'chat.qrStillAvailable': 'Is this still available?',
   'chat.qrLowerPrice': 'Could you do a bit lower?',
   'chat.qrWhenMeet': 'When can we meet?',

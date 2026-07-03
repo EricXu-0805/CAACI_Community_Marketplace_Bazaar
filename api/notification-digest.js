@@ -33,6 +33,8 @@ const APP_URL = env('DIGEST_APP_URL', 'https://illinimarket.com')
 // Resend requires the From address to be on a domain verified in Resend.
 // Eric verifies the send.illinimarket.com subdomain; override via DIGEST_FROM.
 const FROM = env('DIGEST_FROM', 'Illini Market <noreply@send.illinimarket.com>')
+// Same Sentry project as client errors + admin audit failures — one dashboard.
+const SENTRY_DSN = env('SENTRY_DSN', env('VITE_SENTRY_DSN', ''))
 const WINDOW_DAYS = 7
 const MAX_ROWS = 40
 // Unread-message reminder: a chat message unread for at least this long seeds a
@@ -50,6 +52,23 @@ function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
   ))
+}
+
+/* Best-effort Sentry alert (same store endpoint + DSN parsing as api/admin).
+   Fires when a live digest run has send/mark failures so the gap pages someone
+   instead of only landing in Vercel logs. No-op without a DSN. */
+async function reportToSentry(message, extra) {
+  if (!SENTRY_DSN) return
+  try {
+    const m = SENTRY_DSN.match(/^https:\/\/([^@]+)@([^/]+)\/(.+)$/)
+    if (!m) return
+    const [, key, host, projectId] = m
+    await fetch(`https://${host}/api/${projectId}/store/?sentry_key=${key}&sentry_version=7`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, level: 'error', platform: 'javascript', logger: 'api/notification-digest', extra: extra || {} }),
+    })
+  } catch { /* a monitoring failure must never affect the run */ }
 }
 
 const TYPE_ICON = { price_drop: '↓', sold: '✓', offer: '$', meetup: '📍', system: '🔔', unread_message: '✉' }
@@ -75,7 +94,7 @@ function digestHtml(rows, isSample, unsubToken) {
       <span style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:10px;background:#C74A2F;color:#fff;font-weight:700;font-size:20px">集</span>
     </div>
     <h1 style="font-family:Georgia,serif;font-size:22px;color:#2A2521;text-align:center;margin:8px 0 2px">香槟集市</h1>
-    <p style="text-align:center;color:#8B8478;font-size:13px;margin:0 0 20px">你有 ${rows.length} 条新动态${isSample ? ' · 示例 Sample' : ''}</p>
+    <p style="text-align:center;color:#8B8478;font-size:13px;margin:0 0 20px">你有 ${rows.length} 条新动态 · You have ${rows.length} update${rows.length === 1 ? '' : 's'}${isSample ? ' · 示例 Sample' : ''}</p>
     <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:16px;padding:4px 16px" cellpadding="0" cellspacing="0">
       <tbody><tr><td style="padding:4px 16px"><table style="width:100%;border-collapse:collapse" cellpadding="0" cellspacing="0"><tbody>${items}</tbody></table></td></tr></tbody>
     </table>
@@ -325,7 +344,7 @@ export default async function handler(req) {
     if (!to || !userRows.length) continue
     let sent = false
     try {
-      await resendSend(to, `香槟集市 · 你有 ${userRows.length} 条新动态`, digestHtml(userRows, false, tokenById.get(uid)))
+      await resendSend(to, `香槟集市 · 你有 ${userRows.length} 条新动态 · ${userRows.length} update${userRows.length === 1 ? '' : 's'}`, digestHtml(userRows, false, tokenById.get(uid)))
       sent = true
       await sbMarkEmailed(userRows.map(r => r.id))
       usersNotified++; sentCount += userRows.length
@@ -345,6 +364,12 @@ export default async function handler(req) {
   // the two (a delivered digest whose rows weren't stamped → duplicate next
   // run); sendFailed is safe (rows stay un-emailed and retry). Either is a 500.
   const failed = sendFailed + markFailed
+  // Page someone on partial failure: the 500 flags the Vercel cron run, but a
+  // Sentry event is what actually alerts (markFailed = a delivered digest whose
+  // rows weren't stamped → duplicate next run; sendFailed = safe, will retry).
+  if (failed > 0) {
+    await reportToSentry(`notification digest: ${failed} failure(s)`, { sendFailed, markFailed, usersNotified, notifications: sentCount })
+  }
   return json(
     { mode: 'live', usersNotified, notifications: sentCount, sendFailed, markFailed, meetupReminders, unreadReminders },
     failed > 0 ? 500 : 200,

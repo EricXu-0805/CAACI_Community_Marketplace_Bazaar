@@ -330,6 +330,7 @@ const zh: Record<string, string> = {
   'chat.meetupSendReschedule': '发送改约',
   'chat.meetupExpiry': '约见有效期 24 小时 · 可确认 / 婉拒 / 改约',
   'chat.meetupPendingExists': '已有一个待确认的约见，先处理它',
+  'chat.meetupConfirmedExists': '已有一个已确认的约见，改约即可',
   'chat.qrStillAvailable': '还在吗？',
   'chat.qrLowerPrice': '价格能便宜点吗？',
   'chat.qrWhenMeet': '什么时候能见面？',
