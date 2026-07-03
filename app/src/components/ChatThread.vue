@@ -47,7 +47,7 @@
       >
         <text>{{ t('chat.makeOffer') }}</text>
       </view>
-      <view :class="['meetup-btn', { disabled: hasPendingMeetup }]" @click="openMeetupSheet">
+      <view :class="['meetup-btn', { disabled: hasPendingMeetup || hasConfirmedMeetup }]" @click="openMeetupSheet">
         <text>📍 {{ t('chat.proposeMeetup') }}</text>
       </view>
     </view>
@@ -1082,6 +1082,12 @@ const meetupSheet = ref<{ open: boolean; mode: 'new' | 'reschedule' | 'reschedul
 const hasPendingMeetup = computed(() =>
   meetups.value.some((m) => m.status === 'pending' && new Date(m.expires_at).getTime() > Date.now()),
 )
+// An upcoming CONFIRMED meetup blocks a fresh proposal (mirrors the m085
+// server guard): the way to change it is the reschedule affordance on the
+// deal line, not a second proposal — otherwise both could end up accepted.
+const hasConfirmedMeetup = computed(() =>
+  meetups.value.some((m) => m.status === 'accepted' && new Date(m.meet_at).getTime() > Date.now()),
+)
 const meetupSpotInput = ref('')
 const meetupDateInput = ref('')
 const meetupTimeInput = ref('')
@@ -1097,6 +1103,10 @@ function resetMeetupSheet() {
 function openMeetupSheet() {
   if (hasPendingMeetup.value) {
     uni.showToast({ title: t('chat.meetupPendingExists'), icon: 'none' })
+    return
+  }
+  if (hasConfirmedMeetup.value) {
+    uni.showToast({ title: t('chat.meetupConfirmedExists'), icon: 'none' })
     return
   }
   resetMeetupSheet()
