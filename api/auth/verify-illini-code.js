@@ -58,6 +58,27 @@ function sbREST(path, init = {}) {
   })
 }
 
+/* Per-user attempt cap via edge_rate_hit (m082). The in-row `attempts` counter
+   is a racy read-check-then-write — parallel bursts all read the same stale
+   value and pass, so it climbs ~1 per burst regardless of width. This hard-caps
+   guesses at 10/hour per account against a 6-digit (1M) code space, making
+   brute-force infeasible even if the row counter is defeated. Fail-open to
+   match the other edge limiters. (QA8 audit #11.) */
+async function rateHit(userId) {
+  if (!SUPABASE_URL || !SERVICE_KEY) return true
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/edge_rate_hit`, {
+      method: 'POST',
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bucket_in: `illini-verify:${userId}`, max_in: 10, window_secs_in: 3600 }),
+    })
+    if (!r.ok) return true
+    return (await r.json()) !== false
+  } catch {
+    return true
+  }
+}
+
 export default async function handler(request) {
   const origin = request.headers.get('origin') || ''
   const headers = { 'Content-Type': 'application/json', ...cors(origin) }
@@ -68,6 +89,8 @@ export default async function handler(request) {
 
   const user = await getUser(request.headers.get('authorization') || '')
   if (!user || !user.id) return new Response(JSON.stringify({ error: 'auth_required' }), { status: 401, headers })
+
+  if (!(await rateHit(user.id))) return new Response(JSON.stringify({ error: 'too_many_attempts' }), { status: 429, headers })
 
   let body
   try { body = await request.json() } catch { return new Response(JSON.stringify({ error: 'bad_json' }), { status: 400, headers }) }

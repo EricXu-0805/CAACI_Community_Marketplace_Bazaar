@@ -458,7 +458,11 @@ onMounted(async () => {
 
   if (options?.id) {
     conversationId.value = options.id
-    await fetchMessages(options.id)
+    // A failed history fetch must not abort the rest of setup (markAsRead, the
+    // realtime subscription, header/detail): the subscription still fills in
+    // new messages and the user gets a retry affordance instead of a silently
+    // blank thread. (QA8 audit — was an unguarded await that killed the hook.)
+    try { await fetchMessages(options.id) } catch { uni.showToast({ title: t('chat.fail'), icon: 'none' }) }
     try { await fetchOffers(options.id) } catch { /* offers are additive — never block the chat */ }
     try { await fetchMeetups(options.id) } catch { /* meetups are additive — never block the chat */ }
     scrollToBottom()
@@ -1660,14 +1664,16 @@ function scrollToBottom() {
   flex-shrink: 0; background: var(--bg-inset);
   object-fit: cover;
 }
-/* Read receipt under own messages (QA8 #9). Right edge lines up with the
-   bubble: 8px gap + 32px avatar + its 4px margin on .msg-row.mine. */
-.msg-receipt {
+/* Read receipt + send-status rows under own messages. Right edge lines up
+   with the bubble: 8px gap + 32px avatar + its 4px margin on .msg-row.mine.
+   Both use --text-muted (AA-legible at 11px; --text-faint was 2.0:1). */
+.msg-receipt,
+.msg-status {
   display: flex; justify-content: flex-end;
   padding-right: 44px; margin-top: 2px;
-  text { font-size: 11px; color: var(--text-faint); }
-  &.read text { color: var(--text-muted); }
+  text { font-size: 11px; color: var(--text-muted); }
 }
+.msg-status.failed text { color: var(--accent-danger); }
 .msg-bubble {
   max-width: calc(100% - 48px); padding: 10px 14px;
   background: var(--bg-elev-1); border-radius: 4px 18px 18px 18px;

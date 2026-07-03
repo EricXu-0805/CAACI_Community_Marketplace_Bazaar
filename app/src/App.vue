@@ -761,6 +761,7 @@ page,
   --campus-blue-surface: #13294B;
   --campus-orange:    #FF5F05;
   --campus-orange-deep: #B33D00;
+  --campus-orange-surface: #B33D00;
   --campus-orange-soft: #FFF1E6;
   --accent-primary:      #C74A2F;
   --accent-primary-soft: #F5D9CE;
@@ -1170,6 +1171,7 @@ button:focus-visible,
   --campus-blue-surface: #13294B;
   --campus-orange:    #FF5F05;   /* canonical Illini Orange */
   --campus-orange-deep: #B33D00; /* Altgeld — AA on light gray */
+  --campus-orange-surface: #B33D00; /* stable fill: white text stays AA in both themes */
   --campus-orange-soft: #FFF1E6;
 
   /* Legacy accent names map to brand so existing pages cascade.
@@ -1386,6 +1388,7 @@ button:focus-visible,
   --campus-blue-surface: #13294B;
   --campus-orange:    #FF7B33;
   --campus-orange-deep: #FF9560;
+  --campus-orange-surface: #B33D00; /* stable fill: white text stays AA in both themes */
   --campus-orange-soft: rgba(255, 123, 51, 0.15);
   /* P1-2: campus chip surface for dark — keeps navy aesthetic without
    * the chip graying out into the warm dark canvas. */
@@ -1712,7 +1715,7 @@ button:focus-visible,
   display: inline-block;
   padding: 2px 6px;
   border-radius: var(--radius-xs);
-  background: var(--campus-blue);
+  background: var(--campus-blue-surface);
   color: #fff;
   font-size: 10px;
   font-weight: 700;

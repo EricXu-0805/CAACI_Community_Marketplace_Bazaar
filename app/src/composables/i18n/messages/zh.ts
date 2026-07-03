@@ -861,6 +861,7 @@ const zh: Record<string, string> = {
   'admin.bannerEditTitle':        '编辑 Banner',
   'admin.bannerNewTitle':         '新建 Banner',
   'admin.bannerPickImage':        '选图上传',
+  'admin.bannerUploadH5Only':     '横幅上传仅在网页后台可用',
   'admin.bannerTitleZhPh':        '标题（中文，可选）',
   'admin.bannerTitleEnPh':        '标题（英文，可选）',
   'admin.bannerTargetPh':         '跳转链接（可选）',

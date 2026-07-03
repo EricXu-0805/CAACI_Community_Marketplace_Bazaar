@@ -38,7 +38,7 @@ export default async function handler(req) {
   const namePrefix = item && item.listing_type === 'wanted' ? '求购 / Looking for: ' : ''
   const title = item ? `${namePrefix}${item.title} · ${priceLabel}` : 'Illini Market · 校园二手交易'
   const desc = item ? (item.description?.slice(0, 160) || `${priceLabel} on Illini Market`) : 'UIUC 校园二手交易平台'
-  const image = item?.images?.[0] || `${site}/static/placeholder.png`
+  const image = item?.images?.[0] || `${site}/static/app-icon-512.png`
   const canonical = item ? `${site}/#/pages/detail/index?id=${id}` : site
 
   const html = `<!DOCTYPE html>

@@ -40,10 +40,15 @@ export function useUnread() {
     const seq = ++unreadSeq
     const uid = currentUser.value.id
     try {
-      const { data: convsRaw } = await supabase
+      const { data: convsRaw, error: convErr } = await supabase
         .from('conversations')
         .select('id, buyer_id, seller_id, is_muted_buyer, is_muted_seller')
         .or(`buyer_id.eq.${uid},seller_id.eq.${uid}`)
+
+      // A query error must NOT be read as "zero unread" — that silently clears
+      // the badge on a transient failure and shows unread messages as read.
+      // Keep the prior count and let the next refresh retry. (QA8 audit.)
+      if (convErr) return { mutedSet: mutedConvIds.value }
 
       // Drop conversations with a blocked counterparty so their messages don't
       // inflate the badge (the inbox list already hides them — useMessages.ts).
@@ -70,13 +75,16 @@ export function useUnread() {
         if (isMuted) muted.add(c.id)
       }
 
-      const { data: unreadMsgs } = await supabase
+      const { data: unreadMsgs, error: msgErr } = await supabase
         .from('messages')
         .select('conversation_id')
         .neq('sender_id', uid)
         .eq('is_read', false)
         .in('conversation_id', convIds)
         .limit(500)
+
+      // Same posture: don't zero the badge on a failed unread query.
+      if (msgErr) return { mutedSet: muted }
 
       const unreadSet = new Set<string>((unreadMsgs || []).map((m: any) => m.conversation_id))
 
@@ -98,7 +106,8 @@ export function useUnread() {
       }
       return { mutedSet: muted }
     } catch {
-      if (seq === unreadSeq) unreadCount.value = 0
+      // Keep the last known count on a transient failure rather than masking
+      // unread as read by zeroing the badge. (QA8 audit.)
       return { mutedSet: mutedConvIds.value }
     }
   }
