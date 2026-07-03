@@ -311,8 +311,12 @@ export default async function handler(req) {
   const profiles = await sbGet(
     `profiles?id=in.(${userIds.map(encodeURIComponent).join(',')})&email_digest_opt_out=is.false&select=id,email,unsubscribe_token`
   )
-  const emailById = new Map(profiles.filter(p => p.email).map(p => [p.id, p.email]))
-  const tokenById = new Map(profiles.filter(p => p.email).map(p => [p.id, p.unsubscribe_token]))
+  // WeChat-login users carry a synthetic wx_<openid>@wechat.placeholder email
+  // (wechat-login.js) that hard-bounces at Resend — exclude them here so their
+  // rows simply age out instead of generating daily bounces. (QA8 audit #29.)
+  const mailable = profiles.filter(p => p.email && !p.email.endsWith('@wechat.placeholder'))
+  const emailById = new Map(mailable.map(p => [p.id, p.email]))
+  const tokenById = new Map(mailable.map(p => [p.id, p.unsubscribe_token]))
 
   let usersNotified = 0, sentCount = 0, sendFailed = 0, markFailed = 0
   for (const uid of userIds) {
