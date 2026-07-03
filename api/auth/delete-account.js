@@ -113,9 +113,8 @@ export default async function handler(req) {
   const body = await req.json().catch(() => ({}))
   if (body && body.user_id && body.user_id !== uid) return json({ error: 'forbidden' }, 403)
 
-  // (B) Sweep things with NO FK to auth.users BEFORE the cascade removes the
-  //     profile (and with it the wechat_openid mapping). Best-effort.
-  try { await sweepStorage(uid) } catch (e) { console.error('[delete-account] storage sweep failed', e?.message) }
+  // (B) Sweep the wechat_password_map BEFORE the cascade removes the profile
+  //     row it reads. Best-effort.
   try { await sweepWechatPassword(uid) } catch (e) { console.error('[delete-account] wechat sweep failed', e?.message) }
 
   // (C) Hard delete the auth user (permanent — no should_soft_delete). This
@@ -128,5 +127,12 @@ export default async function handler(req) {
     console.error('[delete-account] admin delete failed', del.status)
     return json({ error: 'delete_failed' }, 500)
   }
+
+  // (D) Only after the account is actually gone, purge its listing images. The
+  //     storage path is derived purely from uid (no profile row needed), so
+  //     running it AFTER the delete means a failed hard-delete never leaves a
+  //     live account with permanently broken listing images. (QA8 audit #19.)
+  try { await sweepStorage(uid) } catch (e) { console.error('[delete-account] storage sweep failed', e?.message) }
+
   return json({ success: true })
 }

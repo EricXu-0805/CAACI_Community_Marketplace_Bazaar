@@ -32,7 +32,7 @@ export default async function handler(req) {
   const firstLine = (post?.content || '').split('\n')[0].slice(0, 60) || 'Illini Market · 校园广场'
   const title = post ? `${firstLine} — ${post.profile?.nickname || '用户'}` : 'Illini Market · 校园广场'
   const desc = post ? (post.content?.slice(0, 160) || 'A post on Illini Market') : 'UIUC 校园广场 · Plaza'
-  const image = post?.images?.[0] || `${site}/static/placeholder.png`
+  const image = post?.images?.[0] || `${site}/static/app-icon-512.png`
   const canonical = post ? `${site}/#/pages/post/index?id=${id}` : site
 
   const html = `<!DOCTYPE html>

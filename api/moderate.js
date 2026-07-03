@@ -45,18 +45,44 @@ function env(name, fallback) {
 
 const SUPABASE_URL = env('SUPABASE_URL', env('VITE_SUPABASE_URL', ''))
 const ANON_KEY     = env('SUPABASE_ANON_KEY', env('VITE_SUPABASE_ANON_KEY', ''))
+const SERVICE_KEY  = env('SUPABASE_SERVICE_ROLE_KEY', '')
 
-/* Validate the caller's Supabase access token. Any authenticated user
-   passes; anonymous/forged tokens get 401. ~1 round trip to Supabase. */
+// Per-user call cap: JWT-gating alone left this an unmetered OpenAI proxy.
+// 300/hour is well above real use (moderation runs pre-insert on titles /
+// posts / comments / messages) yet bounds a runaway account. (QA8 audit #13.)
+const RATE_MAX = 300
+const RATE_WINDOW_SECS = 3600
+
+/* Validate the caller's Supabase access token and return the user id (or
+   null). Anonymous/forged tokens get 401. ~1 round trip to Supabase. */
 async function verifyUser(bearer) {
-  if (!bearer || !SUPABASE_URL || !ANON_KEY) return false
+  if (!bearer || !SUPABASE_URL || !ANON_KEY) return null
   try {
     const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: { apikey: ANON_KEY, Authorization: bearer },
     })
-    return r.ok
+    if (!r.ok) return null
+    const u = await r.json()
+    return u?.id || null
   } catch {
-    return false
+    return null
+  }
+}
+
+/* Per-user rate limit via edge_rate_hit (m082). Fail-open, matching the other
+   edge limiters — a broken limiter must not block publishes. */
+async function rateHit(bucket) {
+  if (!SUPABASE_URL || !SERVICE_KEY) return true
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/edge_rate_hit`, {
+      method: 'POST',
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bucket_in: bucket, max_in: RATE_MAX, window_secs_in: RATE_WINDOW_SECS }),
+    })
+    if (!r.ok) return true
+    return (await r.json()) !== false
+  } catch {
+    return true
   }
 }
 
@@ -81,8 +107,12 @@ export default async function handler(request) {
   // ADM-SEC-07: verify the JWT BEFORE any other work. The empty-text 200
   // short-circuit used to sit ahead of this check, letting an unauthenticated
   // caller probe the endpoint for free.
-  if (!(await verifyUser(request.headers.get('authorization') || ''))) {
+  const userId = await verifyUser(request.headers.get('authorization') || '')
+  if (!userId) {
     return new Response(JSON.stringify({ error: 'auth_required' }), { status: 401, headers })
+  }
+  if (!(await rateHit(`moderate:${userId}`))) {
+    return new Response(JSON.stringify({ error: 'rate_limited' }), { status: 429, headers })
   }
 
   const text = typeof body?.text === 'string' ? body.text.slice(0, 8000) : ''
