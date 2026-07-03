@@ -11,36 +11,6 @@ export interface Banner {
   priority: number
 }
 
-const MOCK_BANNERS: Banner[] = [
-  {
-    id: 'mock-welcome',
-    image_url: '/static/banner-welcome.png',
-    target_url: null,
-    title: 'Illini Market',
-    title_en: 'Welcome to Illini Market',
-    title_zh: '欢迎来到 Illini 集市',
-    priority: 100,
-  },
-  {
-    id: 'mock-safety',
-    image_url: '/static/banner-safety.png',
-    target_url: '/pages/legal/index',
-    title: 'Safety',
-    title_en: 'Trade safely — tips inside',
-    title_zh: '安全交易小贴士',
-    priority: 90,
-  },
-  {
-    id: 'mock-publish',
-    image_url: '/static/banner-publish.png',
-    target_url: '/pages/publish/index',
-    title: 'Publish',
-    title_en: 'List your first item',
-    title_zh: '发布你的第一件闲置',
-    priority: 80,
-  },
-]
-
 export function useBanners() {
   const banners = ref<Banner[]>([])
   const loading = ref(false)
@@ -53,13 +23,13 @@ export function useBanners() {
         .from('banners_live')
         .select('id, image_url, target_url, title, title_en, title_zh, priority')
 
-      if (error || !data || data.length === 0) {
-        banners.value = MOCK_BANNERS
-        return
-      }
-      banners.value = data as Banner[]
+      // banners_live is the single source of truth now that admins manage
+      // banners from the console (#183). Empty → no carousel (the carousel
+      // hides on length 0); an error → also empty, never a stale mock set
+      // that would override an intentional "no banners" state. (QA8 audit.)
+      banners.value = error || !data ? [] : (data as Banner[])
     } catch {
-      banners.value = MOCK_BANNERS
+      banners.value = []
     } finally {
       loading.value = false
     }
