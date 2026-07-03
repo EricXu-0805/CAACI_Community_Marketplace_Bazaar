@@ -112,12 +112,12 @@ function fmtWhen(iso) {
  *   rescheduled→ follow the child pending row (parent_meetup_id) instead
  */
 const KIND = {
-  pending: { recipient: 'to_user', title: '新的见面提议 · Meetup proposed', verb: '向你发起了见面提议' },
-  accepted: { recipient: 'from_user', title: '约见已确认 · Meetup confirmed', verb: '确认了你的见面提议' },
-  declined: { recipient: 'from_user', title: '约见被婉拒 · Meetup declined', verb: '婉拒了你的见面提议' },
+  pending: { recipient: 'to_user', title: '新的见面提议 · Meetup proposed', verb: '向你发起了见面提议', verbEn: 'proposed a meetup with you' },
+  accepted: { recipient: 'from_user', title: '约见已确认 · Meetup confirmed', verb: '确认了你的见面提议', verbEn: 'confirmed your meetup' },
+  declined: { recipient: 'from_user', title: '约见被婉拒 · Meetup declined', verb: '婉拒了你的见面提议', verbEn: 'declined your meetup' },
 }
 
-function mailHtml({ actorName, verb, spot, whenLabel, note, itemTitle, unsubToken }) {
+function mailHtml({ actorName, verb, verbEn, spot, whenLabel, note, itemTitle, unsubToken }) {
   const unsub = unsubToken
     ? `不想再收到邮件提醒？<a href="${esc(APP_URL)}/api/unsubscribe?t=${esc(unsubToken)}" style="color:#A39A8C">一键退订 Unsubscribe</a>`
     : ''
@@ -127,11 +127,11 @@ function mailHtml({ actorName, verb, spot, whenLabel, note, itemTitle, unsubToke
       <span style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:10px;background:#C74A2F;color:#fff;font-weight:700;font-size:20px">集</span>
     </div>
     <h1 style="font-family:Georgia,serif;font-size:22px;color:#2A2521;text-align:center;margin:8px 0 2px">香槟集市</h1>
-    <p style="text-align:center;color:#8B8478;font-size:13px;margin:0 0 20px">${esc(actorName)} ${esc(verb)}</p>
+    <p style="text-align:center;color:#8B8478;font-size:13px;margin:0 0 20px">${esc(actorName)} ${esc(verb)}<br><span style="color:#A39A8C">${esc(actorName)} ${esc(verbEn || verb)}</span></p>
     <div style="background:#fff;border-radius:16px;padding:18px 20px">
-      ${itemTitle ? `<div style="font-size:13px;color:#8B8478;margin-bottom:8px">关于 · ${esc(itemTitle)}</div>` : ''}
+      ${itemTitle ? `<div style="font-size:13px;color:#8B8478;margin-bottom:8px">关于 · Re: ${esc(itemTitle)}</div>` : ''}
       <div style="font-size:16px;font-weight:600;color:#2A2521">📍 ${esc(spot)}</div>
-      <div style="font-size:14px;color:#6B6459;margin-top:4px">🕐 ${esc(whenLabel)}（美中时间）</div>
+      <div style="font-size:14px;color:#6B6459;margin-top:4px">🕐 ${esc(whenLabel)}（美中时间 · US Central）</div>
       ${note ? `<div style="font-size:13px;color:#6B6459;margin-top:8px;font-style:italic">“${esc(note)}”</div>` : ''}
     </div>
     <div style="text-align:center;margin:24px 0">
@@ -207,6 +207,9 @@ export default async function handler(req) {
     const recipient = profiles.find(p => p.id === recipientId)
     const actor = profiles.find(p => p.id === actorId)
     if (!recipient?.email) return json({ skipped: 'no_email' })
+    // WeChat-login users have a synthetic wx_<openid>@wechat.placeholder email
+    // (wechat-login.js) that would hard-bounce at Resend — never send there.
+    if (recipient.email.endsWith('@wechat.placeholder')) return json({ skipped: 'wechat_placeholder' })
     if (recipient.email_digest_opt_out) return json({ skipped: 'opted_out' })
 
     let itemTitle = ''
@@ -220,6 +223,7 @@ export default async function handler(req) {
     const html = mailHtml({
       actorName: actor?.nickname || '对方',
       verb: kind.verb,
+      verbEn: kind.verbEn,
       spot: meetup.spot,
       whenLabel: fmtWhen(meetup.meet_at),
       note: meetup.note,
@@ -229,16 +233,22 @@ export default async function handler(req) {
     const to = TEST_EMAIL || recipient.email
     await resendSend(to, `香槟集市 · ${kind.title}`, html)
 
-    // Stamp the recipient's fresh meetup notification rows so the daily digest
-    // doesn't re-deliver what we just sent. Test mode never stamps (same
-    // repeatable-test posture as the digest).
+    // Stamp ONLY the single notification row this email corresponds to — the
+    // recipient's newest un-emailed meetup notification for this item — so the
+    // daily digest doesn't re-deliver it. The old filter matched EVERY recent
+    // meetup notification for the recipient, silently marking an unrelated
+    // proposal (from a different sender) as emailed without a mail being sent.
+    // (QA8 audit #3/#18.) Test mode never stamps (repeatable-test posture).
     if (!TEST_EMAIL) {
       const sinceIso = new Date(Date.now() - 10 * 60000).toISOString()
       try {
-        await sbPatch(
-          `notifications?user_id=eq.${encodeURIComponent(recipientId)}&type=eq.meetup&emailed_at=is.null&created_at=gte.${sinceIso}`,
-          { emailed_at: new Date().toISOString() },
+        const itemFilter = meetup.item_id ? `&item_id=eq.${encodeURIComponent(meetup.item_id)}` : ''
+        const rows = await sbGet(
+          `notifications?user_id=eq.${encodeURIComponent(recipientId)}&type=eq.meetup&emailed_at=is.null&created_at=gte.${sinceIso}${itemFilter}&select=id&order=created_at.desc&limit=1`,
         )
+        if (rows[0]?.id) {
+          await sbPatch(`notifications?id=eq.${encodeURIComponent(rows[0].id)}`, { emailed_at: new Date().toISOString() })
+        }
       } catch (e) {
         // Worst case the digest re-mentions this meetup tomorrow — never fail
         // the request over the stamp.
