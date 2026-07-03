@@ -626,6 +626,16 @@ function onDeleteItem(id: string) {
   padding: 22px 18px 0;
   box-shadow: var(--shadow-pop);
   overflow: hidden;
+  /*
+   * This panel is pinned navy in BOTH themes (light: --campus-blue-surface,
+   * dark: --user-card-grad-dark), so its text must stay ivory in both. The
+   * global --ink-inverse means "text on an inverse surface" and correctly
+   * flips to near-black in dark mode (dark-mode ink panels are light) — which
+   * rendered the nickname / uid / edit / stat numbers black-on-navy here. Pin
+   * it to fixed ivory for this subtree so every descendant that reads
+   * --ink-inverse stays legible. Light mode is unchanged (already #F5F0E6).
+   */
+  --ink-inverse: #F5F0E6;
   color: var(--ink-inverse);
   /* decorative Illini-orange arc top-right — seal-like, low opacity */
   &::before {
