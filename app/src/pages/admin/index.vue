@@ -165,7 +165,10 @@
               <text class="card-title">{{ b.title_zh || b.title_en || b.title || '—' }}</text>
               <text class="card-meta">P{{ b.priority }}<template v-if="b.start_at || b.end_at"> · {{ fmtTime(b.start_at) }} → {{ b.end_at ? fmtTime(b.end_at) : '∞' }}</template></text>
             </view>
-            <text :class="['pill', b.active ? 'pill-on' : 'pill-expired']">{{ b.active ? t('admin.bannerOn') : t('admin.bannerOff') }}</text>
+            <view class="banner-pills">
+              <text v-if="b.is_default" class="pill pill-default">{{ t('admin.bannerDefaultBadge') }}</text>
+              <text :class="['pill', b.active ? 'pill-on' : 'pill-expired']">{{ b.active ? t('admin.bannerOn') : t('admin.bannerOff') }}</text>
+            </view>
           </view>
           <view class="card-actions">
             <view class="mini-btn" @click="toggleBannerActive(b)">{{ b.active ? t('admin.bannerDisable') : t('admin.bannerEnable') }}</view>
@@ -187,6 +190,33 @@
           <input v-model="bannerForm.title_en" class="bf-input" :placeholder="t('admin.bannerTitleEnPh')" />
           <input v-model="bannerForm.target_url" class="bf-input" :placeholder="t('admin.bannerTargetPh')" />
           <input v-model="bannerForm.priority" type="number" class="bf-input" :placeholder="t('admin.bannerPriorityPh')" />
+          <view class="bf-sched">
+            <view class="bf-sched-cell">
+              <text class="bf-label">{{ t('admin.bannerStartLabel') }}</text>
+              <view class="bf-sched-pick">
+                <picker class="bf-picker" mode="date" :value="bannerForm.start_at" @change="bannerForm.start_at = $event.detail.value">
+                  <view class="bf-input bf-pick"><text>{{ bannerForm.start_at || t('admin.bannerPickDate') }}</text></view>
+                </picker>
+                <text v-if="bannerForm.start_at" class="bf-clear" @click="bannerForm.start_at = ''">{{ t('admin.bannerClear') }}</text>
+              </view>
+            </view>
+            <view class="bf-sched-cell">
+              <text class="bf-label">{{ t('admin.bannerEndLabel') }}</text>
+              <view class="bf-sched-pick">
+                <picker class="bf-picker" mode="date" :value="bannerForm.end_at" @change="bannerForm.end_at = $event.detail.value">
+                  <view class="bf-input bf-pick"><text>{{ bannerForm.end_at || t('admin.bannerPickDate') }}</text></view>
+                </picker>
+                <text v-if="bannerForm.end_at" class="bf-clear" @click="bannerForm.end_at = ''">{{ t('admin.bannerClear') }}</text>
+              </view>
+            </view>
+          </view>
+          <view class="bf-default-row" @click="bannerForm.is_default = !bannerForm.is_default">
+            <view :class="['bf-check', { on: bannerForm.is_default }]"><text v-if="bannerForm.is_default" class="bf-check-tick">✓</text></view>
+            <view class="bf-default-txt">
+              <text class="bf-default-label">{{ t('admin.bannerDefault') }}</text>
+              <text class="bf-default-hint">{{ t('admin.bannerDefaultHint') }}</text>
+            </view>
+          </view>
           <view class="card-actions">
             <view :class="['mini-btn', 'primary', { disabled: bannerSaving || !bannerForm.image_url }]" @click="saveBanner">
               {{ bannerSaving ? t('admin.checking') : t('admin.bannerSave') }}
@@ -524,14 +554,14 @@ interface PlazaPostRow {
 interface BannerRow {
   id: string; image_url: string; target_url: string | null
   title: string | null; title_en: string | null; title_zh: string | null
-  priority: number; active: boolean
+  priority: number; active: boolean; is_default: boolean
   start_at: string | null; end_at: string | null; created_at: string
 }
 const plazaPosts = ref<PlazaPostRow[]>([])
 const banners = ref<BannerRow[]>([])
 const bannerSaving = ref(false)
 const bannerUploading = ref(false)
-const emptyBannerForm = () => ({ id: '', image_url: '', title_zh: '', title_en: '', target_url: '', priority: '0' })
+const emptyBannerForm = () => ({ id: '', image_url: '', title_zh: '', title_en: '', target_url: '', priority: '0', start_at: '', end_at: '', is_default: false })
 const bannerForm = ref(emptyBannerForm())
 
 async function loadPlaza() {
@@ -559,6 +589,11 @@ function editBanner(b: BannerRow) {
     id: b.id, image_url: b.image_url,
     title_zh: b.title_zh || '', title_en: b.title_en || '',
     target_url: b.target_url || '', priority: String(b.priority),
+    // timestamptz → date-only for the <picker mode="date"> value; round-trips
+    // back through saveBanner's start/end-of-day expansion.
+    start_at: b.start_at ? b.start_at.slice(0, 10) : '',
+    end_at: b.end_at ? b.end_at.slice(0, 10) : '',
+    is_default: !!b.is_default,
   }
 }
 
@@ -610,6 +645,11 @@ async function saveBanner() {
       title_en: f.title_en || null,
       target_url: f.target_url || null,
       priority: parseInt(f.priority, 10) || 0,
+      // Day-granularity window: start-of-day → end-of-day (UTC). A few hours of
+      // tz skew is immaterial for a marketing banner; empty clears the bound.
+      start_at: f.start_at ? `${f.start_at}T00:00:00Z` : null,
+      end_at: f.end_at ? `${f.end_at}T23:59:59Z` : null,
+      is_default: f.is_default,
       ...(f.id ? {} : { active: true }),
     })
     resetBannerForm()
@@ -1278,6 +1318,26 @@ onMounted(async () => {
   height: 34px; padding: 0 10px; background: var(--bg-subtle);
   border-radius: 8px; font-size: 13px; color: var(--text-primary);
 }
+.banner-pills { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.bf-sched { display: flex; gap: 10px; }
+.bf-sched-cell { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.bf-label { font-size: 12px; color: var(--text-secondary); }
+.bf-sched-pick { display: flex; align-items: center; gap: 8px; }
+.bf-picker { flex: 1; min-width: 0; }
+.bf-pick { display: flex; align-items: center; }
+.bf-clear { font-size: 12px; color: var(--campus-blue); flex-shrink: 0; }
+.bf-default-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+.bf-check {
+  width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+  border: 1.5px solid var(--border-strong); background: var(--bg-subtle);
+  display: flex; align-items: center; justify-content: center;
+}
+.bf-check.on { background: var(--accent-good); border-color: var(--accent-good); }
+.bf-check-tick { color: #fff; font-size: 14px; font-weight: 700; }
+.bf-default-txt { display: flex; flex-direction: column; min-width: 0; }
+.bf-default-label { font-size: 13px; color: var(--text-primary); font-weight: 600; }
+.bf-default-hint { font-size: 12px; color: var(--text-secondary); }
+.pill-default { background: var(--campus-blue-soft); color: var(--campus-blue); }
 .pill-pinned { background: var(--campus-blue-soft); color: var(--campus-blue); }
 .chip {
   padding: 4px 12px; border-radius: 999px; font-size: 13px;
