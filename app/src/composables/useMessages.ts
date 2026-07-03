@@ -6,7 +6,7 @@ import { subscribeToConversation as subscribeToConversationFallback } from './us
 import { MESSAGE_FIELDS } from './useMessages.constants'
 import type { Conversation, Message } from '../types'
 import { friendlyErrorMessage } from '../utils'
-import { checkContent, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
+import { checkContent, isLocalDuplicate, clearLocalDuplicate, remoteModerate } from '../utils/contentSafety'
 import { parseStickerToken } from '../components/stickers/registry'
 
 /*
@@ -220,37 +220,51 @@ export function useMessages() {
       const safety = checkContent(content, { kind: 'message', allowLinks: false })
       if (!safety.ok) throw new Error(`moderation_block:${safety.category}:${safety.reason || ''}`)
       if (isLocalDuplicate(`msg:${conversationId}`, content)) throw new Error('duplicate_message')
-      const ai = await remoteModerate(content)
-      if (ai.flagged) throw new Error(`moderation_block:sensitive_word:ai(${ai.categories.join(',')})`)
     }
 
-    const { data, error } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: conversationId,
-        sender_id: senderId,
-        content,
-        message_type: type,
-      })
-      .select(MESSAGE_FIELDS)
-      .single()
+    try {
+      // Remote (OpenAI) moderation runs after the local dupe hold is taken; if
+      // it — or the insert below — fails, the catch releases that hold so a
+      // failed send stays retryable (see clearLocalDuplicate).
+      if (type === 'text' && !isSticker) {
+        const ai = await remoteModerate(content)
+        if (ai.flagged) throw new Error(`moderation_block:sensitive_word:ai(${ai.categories.join(',')})`)
+      }
 
-    if (error) throw error
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          sender_id: senderId,
+          content,
+          message_type: type,
+        })
+        .select(MESSAGE_FIELDS)
+        .single()
 
-    // The list's last-message preview + sort order just changed; force a
-    // fresh fetch next time the conversations tab is shown.
-    invalidateConversations()
+      if (error) throw error
 
-    /*
-     * No client-side conversations.last_message_at UPDATE here:
-     * migration 003 installed the bump_conversation_last_message
-     * trigger on messages AFTER INSERT, so the server keeps it in
-     * sync. Doing it from the client too was a redundant RTT and
-     * a race (client clock skew vs trigger NOW() — whoever lands
-     * second wins, which on a slow phone could be the client and
-     * give wrong sort order in the conversations list).
-     */
-    return data as Message
+      // The list's last-message preview + sort order just changed; force a
+      // fresh fetch next time the conversations tab is shown.
+      invalidateConversations()
+
+      /*
+       * No client-side conversations.last_message_at UPDATE here:
+       * migration 003 installed the bump_conversation_last_message
+       * trigger on messages AFTER INSERT, so the server keeps it in
+       * sync. Doing it from the client too was a redundant RTT and
+       * a race (client clock skew vs trigger NOW() — whoever lands
+       * second wins, which on a slow phone could be the client and
+       * give wrong sort order in the conversations list).
+       */
+      return data as Message
+    } catch (err) {
+      // The message never landed — release the dupe hold taken above so the
+      // user can tap "retry" on the exact same text without it being misread
+      // as a duplicate. A message only counts as a duplicate once it sends.
+      if (type === 'text' && !isSticker) clearLocalDuplicate(`msg:${conversationId}`, content)
+      throw err
+    }
   }
 
   async function getOrCreateConversation(itemId: string, buyerId: string, sellerId: string) {
