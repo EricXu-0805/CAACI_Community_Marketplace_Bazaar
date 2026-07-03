@@ -333,7 +333,7 @@ async function handleGet(request, auth) {
     // Full table incl. inactive/scheduled rows — the public banners_live view
     // only shows what's currently displayable, which is useless for managing.
     const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/banners?select=id,image_url,target_url,title,title_en,title_zh,priority,active,start_at,end_at,created_at&order=priority.desc,created_at.desc&limit=50`,
+      `${SUPABASE_URL}/rest/v1/banners?select=id,image_url,target_url,title,title_en,title_zh,priority,active,is_default,start_at,end_at,created_at&order=priority.desc,created_at.desc&limit=50`,
       { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } },
     )
     if (!r.ok) return json({ error: 'banners_read_failed' }, 500)
@@ -552,6 +552,7 @@ async function handlePost(request, auth) {
       title_en:   body.title_en === null || typeof body.title_en === 'string' ? body.title_en : undefined,
       priority:   Number.isInteger(body.priority) ? body.priority : undefined,
       active:     typeof body.active === 'boolean' ? body.active : undefined,
+      is_default: typeof body.is_default === 'boolean' ? body.is_default : undefined,
       start_at:   body.start_at === null || typeof body.start_at === 'string' ? body.start_at : undefined,
       end_at:     body.end_at === null || typeof body.end_at === 'string' ? body.end_at : undefined,
     }
