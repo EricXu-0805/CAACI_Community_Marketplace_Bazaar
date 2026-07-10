@@ -138,6 +138,11 @@ echo ""
 echo "${BOLD}[2/3]${RESET} npm run build:h5 (this is the one Vercel runs)"
 export VITE_SUPABASE_URL="${VITE_SUPABASE_URL:-https://pre-push-stub.supabase.co}"
 export VITE_SUPABASE_ANON_KEY="${VITE_SUPABASE_ANON_KEY:-pre-push-stub-anon-key}"
+# Gate builds go to a throwaway dir, NEVER dist/build/*. They bake the stub
+# env above into the bundle, and dist/build/mp-weixin is the artifact
+# imported into WeChat DevTools — a push was silently replacing it with a
+# stub-URL bundle (request:fail on every API call; mp activation round).
+export UNI_OUTPUT_DIR="/tmp/pre-push-gate/h5"
 if npm run build:h5 >/tmp/pre-push-build-h5.log 2>&1; then
   echo "  ${GREEN}✓${RESET} build:h5 passed"
 else
@@ -154,6 +159,7 @@ fi
 # ──────────────────────────────────────────────────────────────────
 echo ""
 echo "${BOLD}[3/3]${RESET} npm run build:mp-weixin (Vercel never runs this — last line of defense)"
+export UNI_OUTPUT_DIR="/tmp/pre-push-gate/mp-weixin"
 if npm run build:mp-weixin >/tmp/pre-push-build-mp.log 2>&1; then
   echo "  ${GREEN}✓${RESET} build:mp-weixin passed"
 else
