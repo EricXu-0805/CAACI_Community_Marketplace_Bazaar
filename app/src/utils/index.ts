@@ -3,6 +3,9 @@ import type { ItemCategory } from '../types'
 import { useI18n } from '../composables/useI18n'
 import { addBreadcrumb } from './sentry'
 // #endif
+// #ifndef H5
+import { detectSystemLang } from '../composables/i18n/detect'
+// #endif
 
 const SUPABASE_STORAGE_MARKER = "/storage/v1/object/public/"
 const SUPABASE_RENDER_PATH = "/storage/v1/render/image/public/"
@@ -55,7 +58,13 @@ export function formatTime(dateStr: string): string {
   zh = useI18n().lang.value === 'zh'
   // #endif
   // #ifndef H5
-  try { zh = uni.getStorageSync('lang') === 'zh' } catch {}
+  /* Mirror useI18n's resolution (saved pref → system locale): the storage-
+     only read left fresh zh-locale installs with an all-Chinese UI but
+     English timestamps until they toggled language once. */
+  try {
+    const saved = uni.getStorageSync('lang')
+    zh = saved ? saved === 'zh' : detectSystemLang() === 'zh'
+  } catch {}
   // #endif
   const date = new Date(dateStr)
   const now = new Date()

@@ -478,7 +478,7 @@ function markAsSold(id: string) {
   uni.showModal({
     title: t('profile.markSoldTitle'),
     content: t('profile.markSoldHint'),
-    confirmText: t('profile.markSold'),
+    confirmText: t('profile.markSoldConfirm'),
     success: async (res) => {
       if (!res.confirm) return
       try {

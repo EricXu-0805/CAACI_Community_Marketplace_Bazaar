@@ -40,9 +40,18 @@
       <view class="img-back" role="button" :aria-label="t('a11y.back')" @click="goBack">
         <UIcon name="chevron-left" size="xs" color="#fff" />
       </view>
+      <!-- #ifdef H5 -->
       <view class="img-share" role="button" :aria-label="t('a11y.share')" @click="onShare">
         <UIcon name="share" size="sm" color="#fff" />
       </view>
+      <!-- #endif -->
+      <!-- #ifndef H5 -->
+      <!-- WeChat has no imperative API to open the forward sheet from a tap;
+           only open-type="share" can trigger onShareAppMessage in-page. -->
+      <button class="img-share img-share-btn" open-type="share" :aria-label="t('a11y.share')">
+        <UIcon name="share" size="sm" color="#fff" />
+      </button>
+      <!-- #endif -->
       <view v-if="imgs.length > 1" class="img-counter">
         <text>{{ currentImg + 1 }}/{{ imgs.length }}</text>
       </view>
@@ -684,9 +693,7 @@ function onShare() {
     uni.showToast({ title: t('detail.linkCopied'), icon: 'success' })
   }
   // #endif
-  // #ifndef H5
-  uni.showShareMenu?.({ withShareTicket: true })
-  // #endif
+  /* mp: the share circle is a <button open-type="share"> — no JS path. */
 }
 
 const reported = ref(false)
@@ -753,7 +760,7 @@ function onMarkSold() {
   uni.showModal({
     title: t('profile.markSoldTitle'),
     content: t('profile.markSoldHint'),
-    confirmText: t('profile.markSold'),
+    confirmText: t('profile.markSoldConfirm'),
     success: async (res) => {
       if (!res.confirm) return
       try {
@@ -894,6 +901,13 @@ async function contactSeller() {
 /* the capsule owns the top-right band (status bar → +44px); drop the
    share circle below it so it stays tappable */
 .img-share { top: calc(var(--mp-status-bar, 25px) + 48px); }
+/* native <button> reset so the share circle keeps the overlay look */
+.img-share-btn {
+  padding: 0;
+  margin: 0;
+  line-height: normal;
+  border: none;
+}
 /* #endif */
 
 .img-counter {

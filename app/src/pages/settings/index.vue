@@ -11,11 +11,15 @@
         <text class="mi-value">{{ currentLangLabel }}</text>
         <view class="mi-arrow"></view>
       </view>
+      <!-- #ifdef H5 -->
+      <!-- mp has no dark mode yet — the picker would toast a choice that
+           visibly changes nothing. Hidden until mp dark ships. -->
       <view class="menu-item" @click="onPickTheme">
         <text class="mi-label">{{ t('settings.appearance') }}</text>
         <text class="mi-value">{{ currentThemeLabel }}</text>
         <view class="mi-arrow"></view>
       </view>
+      <!-- #endif -->
     </view>
 
     <view class="section">

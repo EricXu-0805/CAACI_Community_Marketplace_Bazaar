@@ -109,9 +109,18 @@ if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
  * default for new users and those users will only see dark when the
  * OS does — checking `pref === 'dark'` would miss that case entirely.
  */
-const isDark = computed(() =>
-  pref.value === 'dark' || (pref.value === 'auto' && systemDark.value)
-)
+const isDark = computed(() => {
+  // #ifndef H5
+  /* mp has no dark mode: applyToDom is H5-only and the WXSS dark token
+     blocks can never match. Pin false so isDark-driven assets (dark logo,
+     dark default avatars) can't desync onto a permanently-light canvas —
+     e.g. a user who picked 'dark' on H5 with the same account/storage. */
+  return false
+  // #endif
+  // #ifdef H5
+  return pref.value === 'dark' || (pref.value === 'auto' && systemDark.value)
+  // #endif
+})
 
 export function useTheme() {
   return { pref, setPref, isDark }

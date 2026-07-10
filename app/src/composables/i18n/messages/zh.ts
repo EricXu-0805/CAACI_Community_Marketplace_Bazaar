@@ -376,6 +376,8 @@ const zh: Record<string, string> = {
   'notif.meetup': '见面约定',
   'profile.edit': '编辑',
   'profile.markSold': '标记已售',
+  'profile.markSoldConfirm': '标记已售',
+  'profile.signOutConfirm': '退出登录',
   'profile.markSoldTitle': '确认标为已售？',
   'profile.markSoldHint': '此商品将从首页下架，收藏者会收到通知。',
   'profile.markedSold': '已标记为售出',
