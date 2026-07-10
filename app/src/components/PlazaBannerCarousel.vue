@@ -46,7 +46,7 @@ interface Props {
 withDefaults(defineProps<Props>(), { interval: 5000 })
 
 const { banners, loading, fetchBanners } = useBanners()
-const { lang } = useI18n()
+const { lang, t } = useI18n()
 
 onMounted(fetchBanners)
 
@@ -61,6 +61,14 @@ function onTap(b: Banner) {
   if (/^https?:\/\//i.test(url)) {
     // #ifdef H5
     if (typeof window !== 'undefined') window.open(url, '_blank')
+    // #endif
+    // #ifndef H5
+    /* mp can't open external URLs (webview needs the domain whitelisted in
+       the MP console) — copy the link so the tap isn't silently dead. */
+    uni.setClipboardData({
+      data: url,
+      success: () => uni.showToast({ title: t('detail.linkCopied'), icon: 'success' }),
+    })
     // #endif
     return
   }

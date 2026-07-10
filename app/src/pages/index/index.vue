@@ -19,6 +19,9 @@
           </view>
         </view>
         <view class="mh-actions">
+          <!-- #ifdef H5 -->
+          <!-- mp has no dark mode (WXSS drops the [data-theme] token blocks);
+               hide the toggle there until it ships instead of half-flipping. -->
           <view
             class="mh-theme u-press"
             role="button"
@@ -28,6 +31,7 @@
             <UIcon :name="isDark ? 'moon' : 'sun'" size="xs" color="ink-soft" />
             <text class="mh-theme-label">{{ themeLabel }}</text>
           </view>
+          <!-- #endif -->
           <view class="mh-lang u-press" role="button" :aria-label="t('a11y.langToggle')" @click="toggleLang">
             <text :class="{ on: lang === 'zh' }">中</text>
             <text class="sep">|</text>
@@ -421,6 +425,9 @@ import type { ItemCategory, ItemCondition, Item } from '../../types'
 
 import { debounce, formatTime, formatPrice, friendlyErrorMessage, haptic, thumbUrl, BROWSE_CATEGORIES } from '../../utils'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
+// #ifndef H5
+import { BASE_URL } from '../../config/runtime'
+// #endif
 import type { ImageDim } from '../../types'
 import AppSidebar from '../../components/AppSidebar.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
@@ -808,7 +815,10 @@ function onCardLongPress(item: Item) {
         }
         // #endif
         // #ifndef H5
-        uni.showToast({ title: t('detail.linkCopied'), icon: 'success' })
+        uni.setClipboardData({
+          data: `${BASE_URL}/share/${item.id}`,
+          success: () => uni.showToast({ title: t('detail.linkCopied'), icon: 'success' }),
+        })
         // #endif
       } else if (res.tapIndex === 2 && !isMine) {
         promptReportItem(item.id)

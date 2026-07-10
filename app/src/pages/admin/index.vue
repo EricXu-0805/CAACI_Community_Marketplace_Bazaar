@@ -20,6 +20,7 @@
       <input
         v-model="keyInput"
         type="password"
+        :password="true"
         :placeholder="'iam_admin_…'"
         class="gate-input"
         confirm-type="done"

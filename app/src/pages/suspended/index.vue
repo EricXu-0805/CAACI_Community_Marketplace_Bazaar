@@ -186,7 +186,7 @@ function onSignOut() {
   uni.showModal({
     title: t('profile.signOut'),
     content: t('suspended.signOutHint'),
-    confirmText: t('profile.signOut'),
+    confirmText: t('profile.signOutConfirm'),
     cancelText: t('reconsent.goBack'),
     confirmColor: DIALOG_DANGER,
     success: (r) => { if (r.confirm) signOut() },

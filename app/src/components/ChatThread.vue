@@ -255,7 +255,7 @@
         v-model="inputText"
         :placeholder="replyToMsg ? t('chat.replyingHint') : t('chat.placeholder')"
         confirm-type="send"
-        :confirm-hold="false"
+        :confirm-hold="true"
         :show-confirm-bar="false"
         auto-height
         :maxlength="-1"
@@ -1077,8 +1077,9 @@ function meetupStatusLabel(m: Meetup): string {
 function meetupSpotLabel(m: Meetup): string { return localizeLocation(m.spot, lang.value as 'en' | 'zh') }
 function fmtMeetupWhen(iso: string): string {
   const d = new Date(iso)
-  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  return `${d.getMonth() + 1}/${d.getDate()} ${time}`
+  /* pad2 instead of toLocaleTimeString: WeChat mp on iOS runs JSC without
+     full Intl — locale options can be ignored, yielding HH:MM:SS strings. */
+  return `${d.getMonth() + 1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`
 }
 
 // ---- Meetup composer (propose + reschedule share one bottom sheet) ----
@@ -1202,7 +1203,8 @@ function formatChatTime(dateStr: string): string {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const yesterday = new Date(today.getTime() - 86400000)
   const msgDay = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  /* pad2 for the same Intl-less-JSC reason as fmtMeetupWhen. */
+  const time = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`
 
   if (msgDay.getTime() === today.getTime()) return time
   if (msgDay.getTime() === yesterday.getTime()) return `${t('chat.yesterday')} ${time}`
