@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import type { Ref } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
 
@@ -162,19 +162,42 @@ export function useKeyboardHeight(opts: UseKeyboardHeightOptions = {}): Keyboard
     commit(next)
   }
 
-  // Page lifecycle (NOT Vue lifecycle) — required on mp-weixin.
-  onLoad(() => {
+  /*
+   * Dual registration with an idempotence guard:
+   *
+   *   · Pages (plaza / post composers): onLoad fires first — earliest
+   *     possible registration, never misses the first keyboard event.
+   *   · Components (ChatThread): the mp runtime only invokes ON_LOAD on
+   *     the page vm, so a component-scoped onLoad NEVER fires — with the
+   *     page-lifecycle-only registration the chat composer's kb.height
+   *     stayed 0 forever and the keyboard covered the composer (mp parity
+   *     audit P0). Vue onMounted is the working fallback there:
+   *     uni.onKeyboardHeightChange is a global API, not page-bound.
+   *
+   * When the caller IS a page both hooks fire; `registered` makes the
+   * second a no-op, and both unhooks funnel through the same idempotent
+   * unregister (same fn reference — required for native cleanup).
+   */
+  let registered = false
+  function register() {
+    if (registered) return
+    registered = true
     uni.onKeyboardHeightChange(handler)
-  })
-
-  onUnload(() => {
-    // Same fn reference as on...; required for native cleanup.
+  }
+  function unregister() {
+    if (!registered) return
+    registered = false
     uni.offKeyboardHeightChange(handler)
     if (debounceTimer) {
       clearTimeout(debounceTimer)
       debounceTimer = null
     }
-  })
+  }
+
+  onLoad(register)
+  onMounted(register)
+  onUnload(unregister)
+  onUnmounted(unregister)
   // #endif
 
   return { height, isOpen }

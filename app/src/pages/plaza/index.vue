@@ -272,7 +272,7 @@
          ancestor makes a fixed descendant anchor to IT, not the viewport (iOS
          Safari) — which oversized the sheet (X clipped above, input below). -->
     <view v-if="commentingPost" class="comment-mask u-mask-in" @click.stop="closeComments"></view>
-    <view v-if="commentingPost" class="comment-sheet" @click.stop :style="{ transform: `translateY(-${kb.height}px)` }">
+    <view v-if="commentingPost" class="comment-sheet" @click.stop :style="kbLift">
       <view class="cmt-header">
         <text class="cmt-htitle">{{ t('plaza.commentCount', { count: comments.length }) }}</text>
         <view class="as-close" role="button" :aria-label="t('a11y.close')" @click.stop="closeComments"><view class="cs-x"></view></view>
@@ -420,7 +420,7 @@
           </view>
         </view>
       </view>
-      <view class="comp-bottom-stack" :style="{ transform: `translateY(-${kb.height}px)` }">
+      <view class="comp-bottom-stack" :style="kbLift">
       <view v-if="composerAttachedItems.length > 0" class="comp-dock">
         <view
           v-for="it in composerAttachedItems"
@@ -546,6 +546,14 @@ const { posts, loading, hasMore, fetchPosts, createPost, updatePostI18n, deleteP
 const { fetchFollowingProfiles } = useFollow()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
 const kb = useKeyboardHeight()
+/*
+ * kb.height is a nested Ref in a plain object — Vue templates only unwrap
+ * top-level refs, so `${kb.height}` inside an inline template literal
+ * stringified the RefImpl to "[object Object]" and the lift style was
+ * silently dropped (mp keyboard covered the comment box / composer tools).
+ * post/index.vue:268 already used the computed form; mirror it.
+ */
+const kbLift = computed(() => (kb.height.value ? { transform: `translateY(-${kb.height.value}px)` } : undefined))
 
 onShareAppMessage(() => ({
   title: '校园广场 · Illini Market',
