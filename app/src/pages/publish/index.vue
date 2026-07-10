@@ -533,8 +533,9 @@ async function onDetectLocation() {
   // real GPS effectively never earned the badge before). Defer past the
   // form.location watcher (flush:'pre' microtask) that resets the flag to
   // false, or it would clobber this — same hazard the edit.vue load path
-  // already works around with queueMicrotask.
-  queueMicrotask(() => { locationVerified.value = true })
+  // already works around the same way. (Promise.resolve().then, not
+  // queueMicrotask — not guaranteed on the WeChat mp logic layer.)
+  Promise.resolve().then(() => { locationVerified.value = true })
 }
 
 /*

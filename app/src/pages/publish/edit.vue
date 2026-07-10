@@ -313,7 +313,7 @@ onLoad(async (options) => {
     form.listingType = (item.listing_type || 'sell') as 'sell' | 'wanted'
     imageList.value = [...item.images]
     const verifiedOnLoad = !!(item as any).location_verified
-    queueMicrotask(() => { locationVerified.value = verifiedOnLoad })
+    Promise.resolve().then(() => { locationVerified.value = verifiedOnLoad })
   } catch (err) {
     console.error('[publish-edit] fetch item failed:', err)
     uni.showToast({
@@ -397,8 +397,9 @@ async function onDetectLocation() {
   form.location = result.location
   // #4: any successful GPS fix grants the "verified pickup" badge (see publish).
   // Defer past the form.location watcher that resets the flag — same as the
-  // load path at queueMicrotask above.
-  queueMicrotask(() => { locationVerified.value = true })
+  // load path above. (Promise.resolve().then, not queueMicrotask — the latter
+  // is not guaranteed on the WeChat mp logic layer and threw inside onLoad.)
+  Promise.resolve().then(() => { locationVerified.value = true })
 }
 
 function onSpotChipTap(spot: CampusSpot) {

@@ -93,7 +93,7 @@ interface LongPollOptions {
      going dark. Previously the fallback tier was only chosen at subscribe
      time, so a breaker trip on an already-open chat/inbox stopped delivery
      for the rest of the session. */
-  onCircuitOpen?: () => void
+  onCircuitOpen?: (cursor: string | null) => void
 }
 
 function startLongPoll(opts: LongPollOptions): Unsubscribe {
@@ -101,14 +101,21 @@ function startLongPoll(opts: LongPollOptions): Unsubscribe {
   let alive = true
   let ctrl: AbortController | null = null
   /* Seed the cursor at subscribe time: the first request must only ask for
-     rows NEWER than now. A `since`-less request returns the OLDEST rows and
-     the loop chain-pages the entire history — on the inbox scope that fires a
-     '新消息' toast + unread refresh per historical message. */
-  let sinceCursor: string | null = new Date().toISOString()
+     rows NEWER than now — a `since`-less request returns the OLDEST rows and
+     the loop chain-pages the entire history (on the inbox scope that fires a
+     '新消息' toast per historical message). 'now' is a sentinel the edge
+     resolves to ITS clock: seeding from the device clock skipped every row
+     created inside the client's clock-skew window (fast phone clock → rows
+     between server-now and client-now never matched created_at > cursor).
+     Every subsequent cursor value comes back from the server (next_since /
+     row created_at), so the chain stays on the server clock throughout. */
+  let sinceCursor: string | null = 'now'
 
   function tripCircuit() {
     alive = false
-    opts.onCircuitOpen?.()
+    /* Hand the direct tier our cursor so it doesn't re-seed from the device
+       clock; null if we never completed a request (sentinel unresolved). */
+    opts.onCircuitOpen?.(sinceCursor === 'now' ? null : sinceCursor)
   }
 
   async function tick(): Promise<void> {
@@ -134,8 +141,13 @@ function startLongPoll(opts: LongPollOptions): Unsubscribe {
       clearTimeout(abortTimer)
 
       if (!r.ok) {
-        longPollStrikes++
+        /* alive check FIRST: teardown aborts the in-flight 20s hold, and that
+           client-initiated abort must not count as a strike — two quick chat
+           exits were reaching the limit and permanently downgrading every
+           later chat (and the session inbox) to the slow direct tier. The
+           breaker is for a broken edge deploy, not for navigation. */
         if (!alive) return
+        longPollStrikes++
         if (!longPollEnabled()) { tripCircuit(); return }
         setTimeout(tick, 1000)
         return
@@ -155,8 +167,8 @@ function startLongPoll(opts: LongPollOptions): Unsubscribe {
       }
       if (alive) setTimeout(tick, 50)
     } catch {
+      if (!alive) return // teardown abort lands here — not a strike (see above)
       longPollStrikes++
-      if (!alive) return
       if (longPollEnabled()) setTimeout(tick, 1500)
       else tripCircuit()
     }
@@ -170,21 +182,51 @@ function startLongPoll(opts: LongPollOptions): Unsubscribe {
   return () => { alive = false; ctrl?.abort() }
 }
 
+/*
+ * Server-clock cursor seeding for the direct poll tiers.
+ *
+ * Seeding from the device clock (`new Date().toISOString()`) silently drops
+ * every row created inside the client's clock-skew window: a phone whose
+ * clock runs N minutes fast never matches `created_at > cursor` for rows
+ * stamped between server-now and client-now. So the first tick is a SEED
+ * tick: fetch the newest row's created_at (server clock) and process
+ * nothing. States:
+ *   null  → not seeded yet (first tick seeds)
+ *   ''    → table was empty at seed time; next tick takes everything it
+ *           finds (those rows are genuinely new — nothing existed before)
+ *   ISO   → normal cursor; every later value comes from row created_at
+ * A live handoff from the long-poll tier passes its current (already
+ * server-clock) cursor via initialCursor and skips the seed tick.
+ */
+
 /* Direct PostgREST poll of a conversation's messages — the mp fallback when
-   long-poll is absent or has tripped the breaker. Cursor seeded at now: the
-   existing history is already loaded via fetchMessages, so we only need rows
-   created after subscribe (a null cursor would replay the last 50). */
-function directConversationPoll(conversationId: string, onNewMessage: (msg: any) => void): Unsubscribe {
+   long-poll is absent or has tripped the breaker. */
+function directConversationPoll(
+  conversationId: string,
+  onNewMessage: (msg: any) => void,
+  initialCursor?: string | null,
+): Unsubscribe {
   const { supabase } = useSupabase()
-  let lastSeen: string = new Date().toISOString()
+  let lastSeen: string | null = initialCursor ?? null
   return startPoll({
     intervalMs: 3000,
     run: async () => {
-      const { data, error } = await supabase
+      if (lastSeen === null) {
+        const { data, error } = await supabase
+          .from('messages')
+          .select('created_at')
+          .eq('conversation_id', conversationId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+        if (error) throw error
+        lastSeen = data?.[0]?.created_at ?? ''
+        return []
+      }
+      const q = supabase
         .from('messages')
         .select(MESSAGE_FIELDS)
         .eq('conversation_id', conversationId)
-        .gt('created_at', lastSeen)
+      const { data, error } = await (lastSeen ? q.gt('created_at', lastSeen) : q)
         .order('created_at', { ascending: true })
         .limit(50)
       if (error) throw error
@@ -199,20 +241,33 @@ function directConversationPoll(conversationId: string, onNewMessage: (msg: any)
   })
 }
 
-/* Direct PostgREST poll of the user's incoming messages (inbox scope). Cursor
-   seeded at now so the first tick doesn't replay the user's oldest messages
-   as fresh toasts. */
-function directInboxPoll(userId: string, onNewMessage: (msg: any) => void): Unsubscribe {
+/* Direct PostgREST poll of the user's incoming messages (inbox scope). */
+function directInboxPoll(
+  userId: string,
+  onNewMessage: (msg: any) => void,
+  initialCursor?: string | null,
+): Unsubscribe {
   const { supabase } = useSupabase()
-  let lastSeen: string = new Date().toISOString()
+  let lastSeen: string | null = initialCursor ?? null
   return startPoll({
     intervalMs: 10000,
     run: async () => {
-      const { data, error } = await supabase
+      if (lastSeen === null) {
+        const { data, error } = await supabase
+          .from('messages')
+          .select('created_at')
+          .neq('sender_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+        if (error) throw error
+        lastSeen = data?.[0]?.created_at ?? ''
+        return []
+      }
+      const q = supabase
         .from('messages')
         .select('id, conversation_id, sender_id, created_at')
         .neq('sender_id', userId)
-        .gt('created_at', lastSeen)
+      const { data, error } = await (lastSeen ? q.gt('created_at', lastSeen) : q)
         .order('created_at', { ascending: true })
         .limit(25)
       if (error) throw error
@@ -281,10 +336,10 @@ export function subscribeToConversation(
         scope: 'conversation',
         id: conversationId,
         onRows: (rows) => { for (const r of rows) onNewMessage(r) },
-        onCircuitOpen: () => {
+        onCircuitOpen: (cursor) => {
           if (swapped) return
           swapped = true
-          convUnsub = directConversationPoll(conversationId, onNewMessage)
+          convUnsub = directConversationPoll(conversationId, onNewMessage, cursor)
         },
       })
     : directConversationPoll(conversationId, onNewMessage)
@@ -329,18 +384,30 @@ export function subscribeToUserNotifications(
     return () => { supabase.removeChannel(channel) }
   }
 
-  /* mp: seed the cursor at subscription time so the first tick doesn't replay
-     historical notifications as fresh toasts. */
-  let lastSeen: string = new Date().toISOString()
+  /* mp: lazy server-clock seed (see the direct-poll comment above) so the
+     first tick neither replays history as fresh toasts nor — on a device
+     with a fast clock — skips rows created in the skew window. */
+  let lastSeen: string | null = null
 
   return startPoll({
     intervalMs: 20000,
     run: async () => {
-      const { data, error } = await supabase
+      if (lastSeen === null) {
+        const { data, error } = await supabase
+          .from('notifications')
+          .select('created_at')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+        if (error) throw error
+        lastSeen = data?.[0]?.created_at ?? ''
+        return []
+      }
+      const q = supabase
         .from('notifications')
         .select(NOTIFICATION_POLL_FIELDS)
         .eq('user_id', userId)
-        .gt('created_at', lastSeen)
+      const { data, error } = await (lastSeen ? q.gt('created_at', lastSeen) : q)
         .order('created_at', { ascending: true })
         .limit(25)
       if (error) throw error
@@ -389,10 +456,10 @@ export function subscribeToUserInbox(
         scope: 'inbox',
         id: userId,
         onRows: (rows) => { for (const r of rows) onNewMessage(r) },
-        onCircuitOpen: () => {
+        onCircuitOpen: (cursor) => {
           if (swapped) return
           swapped = true
-          inboxUnsub = directInboxPoll(userId, onNewMessage)
+          inboxUnsub = directInboxPoll(userId, onNewMessage, cursor)
         },
       })
     : directInboxPoll(userId, onNewMessage)

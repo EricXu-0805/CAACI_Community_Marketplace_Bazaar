@@ -29,11 +29,15 @@ interface UniRequestTask {
   abort?: () => void
 }
 
+// #ifdef MP-WEIXIN || MP-QQ || MP-BAIDU || MP-ALIPAY || MP-TOUTIAO
+import { BASE_URL } from '../config/runtime'
+// #endif
+
 export function makeMpFetch(): typeof fetch {
   // #ifdef MP-WEIXIN || MP-QQ || MP-BAIDU || MP-ALIPAY || MP-TOUTIAO
   const impl = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const url = typeof input === 'string' ? input : (input as Request).url
-    const method = (init?.method || 'GET').toUpperCase() as any
+    let url = typeof input === 'string' ? input : (input as Request).url
+    let method = (init?.method || 'GET').toUpperCase() as any
     const headers: Record<string, string> = {}
 
     if (init?.headers) {
@@ -43,6 +47,23 @@ export function makeMpFetch(): typeof fetch {
       } else {
         Object.assign(headers, h)
       }
+    }
+
+    /*
+     * wx.request's method whitelist has no PATCH (DevTools tolerates it,
+     * real devices fail the call) — but supabase-js sends every .update()
+     * as PATCH. Tunnel PostgREST PATCHes through our same-origin edge
+     * proxy as POST; api/db-proxy.js re-issues them as a real PATCH with
+     * these same caller headers, so RLS semantics are identical to a
+     * direct call. Only /rest/v1/ is ever PATCHed by supabase-js (GoTrue
+     * uses PUT), so anything else falls through untouched.
+     */
+    const restIdx = url.indexOf('/rest/v1/')
+    if (method === 'PATCH' && restIdx > -1) {
+      headers['x-mp-method'] = 'PATCH'
+      headers['x-mp-path'] = url.slice(restIdx)
+      url = `${BASE_URL}/api/db-proxy`
+      method = 'POST'
     }
 
     let body: any = init?.body
@@ -92,7 +113,7 @@ export function makeMpFetch(): typeof fetch {
               try { return Promise.resolve(JSON.parse(rawBody)) }
               catch (e) { return Promise.reject(e) }
             },
-            arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+            arrayBuffer: () => Promise.reject(new Error('arrayBuffer not supported on mp')),
             blob: () => Promise.reject(new Error('blob not supported on mp')),
             formData: () => Promise.reject(new Error('formData not supported on mp')),
           } as unknown as Response

@@ -101,6 +101,11 @@ export default async function handler(request) {
   const scope = url.searchParams.get('scope') || ''
   const id = url.searchParams.get('id') || ''
   let since = url.searchParams.get('since') || ''
+  // 'now' sentinel: the client asks THIS server to stamp the initial cursor.
+  // Seeding from the device clock skipped rows created inside the client's
+  // clock-skew window; the resolved value flows back via next_since so the
+  // whole cursor chain stays on server time.
+  if (since === 'now') since = new Date().toISOString()
 
   if (scope !== 'conversation' && scope !== 'inbox') {
     return json({ error: 'bad_scope' }, 400)

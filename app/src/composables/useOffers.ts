@@ -72,7 +72,14 @@ export function useOffers() {
     }
     // #endif
     // #ifndef H5
-    return () => {}
+    /* mp can't speak the Phoenix channel, and offer RPCs write no messages
+       row, so the chat's message poll can't carry these events either — a
+       no-op here meant two users negotiating on mp never saw each other's
+       offer appear or change state until they re-entered the chat. Poll
+       instead: onChange() is a cheap idempotent refetch of one conversation's
+       offers, so an 8s interval is plenty for a bargaining flow. */
+    const timer = setInterval(() => { try { onChange() } catch { /* refetch errors surface in the caller */ } }, 8000)
+    return () => clearInterval(timer)
     // #endif
   }
 

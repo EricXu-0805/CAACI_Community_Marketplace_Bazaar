@@ -147,7 +147,12 @@ export function useMeetups() {
     }
     // #endif
     // #ifndef H5
-    return () => {}
+    /* Same rationale as subscribeToOffers' mp branch: meetup RPCs write no
+       messages row, so without this poll an mp user waiting in-chat never
+       saw the counterparty's confirm/reschedule. onChange() refetch is
+       cheap and idempotent. */
+    const timer = setInterval(() => { try { onChange() } catch { /* refetch errors surface in the caller */ } }, 8000)
+    return () => clearInterval(timer)
     // #endif
   }
 

@@ -526,14 +526,23 @@ onMounted(async () => {
       }
     })
 
-    // Live offer cards (H5 realtime; mp degrades to the onLoad fetch).
+    // Live offer cards (H5 realtime; mp polls every 8s). The reveal-scroll
+    // only fires when the refetched set actually changed: an H5 event always
+    // means a change, but the mp interval ticks unconditionally and must not
+    // yank the reader to the bottom every 8 seconds.
     offersUnsub = subscribeToOffers(options.id, () => {
-      fetchOffers(options.id!).then(() => nextTick(() => scrollToBottom())).catch(() => {})
+      const before = JSON.stringify(offers.value)
+      fetchOffers(options.id!).then(() => {
+        if (JSON.stringify(offers.value) !== before) nextTick(() => scrollToBottom())
+      }).catch(() => {})
     })
 
-    // Live meetup cards (same realtime contract as offers).
+    // Live meetup cards (same contract as offers).
     meetupsUnsub = subscribeToMeetups(options.id, () => {
-      fetchMeetups(options.id!).then(() => nextTick(() => scrollToBottom())).catch(() => {})
+      const before = JSON.stringify(meetups.value)
+      fetchMeetups(options.id!).then(() => {
+        if (JSON.stringify(meetups.value) !== before) nextTick(() => scrollToBottom())
+      }).catch(() => {})
     })
 
     // Presence + typing (best-effort): peer online label + "正在输入…".
