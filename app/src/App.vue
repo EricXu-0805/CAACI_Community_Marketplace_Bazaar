@@ -1862,9 +1862,10 @@ page, .page { overflow-x: clip; }
  * Global tactile press — every button-like surface shrinks a
  * touch on tap and settles back on the warm curve, so the whole
  * app feels responsive ("丝滑"). On H5 :active arms on tap (uni
- * @click attaches the listener that enables it); mp-weixin
- * ignores :active harmlessly and keeps native hover-class
- * feedback. transform/opacity only = GPU-cheap + WXSS-safe.
+ * @click attaches the listener that enables it); on mp-weixin
+ * :active never fires on view components — the press there is
+ * hover-class="u-mp-pressed" (see the #ifndef H5 block below).
+ * transform/opacity only = GPU-cheap + WXSS-safe.
  * Honors prefers-reduced-motion. The warm settle (ease-warm)
  * on release is what reads as silky vs. a flat linear snap.
  * ============================================================ */
@@ -1891,6 +1892,25 @@ page, .page { overflow-x: clip; }
   button:active, uni-button:active,
   .u-btn-primary:active, .u-btn-brand:active, .u-btn-ink:active, .u-btn-ghost:active { transform: none; }
 }
+
+/* #ifndef H5 */
+/* mp press: :active never fires on view components — WeChat's pressed-state
+   mechanism is hover-class. Components opt in with hover-class="u-mp-pressed"
+   (UButton root, CustomTabBar tabs). The base transition rule above contains
+   [role="button"], an attribute selector WXSS rejects — and one invalid
+   selector drops the WHOLE rule — so mp gets its own WXSS-safe copy here.
+   Also strip the native <button> hairline WeChat draws via ::after on the
+   4 form pages. */
+.u-btn, .u-chip, .u-press, .tap, .tab, button {
+  transition: transform 170ms var(--ease-warm, cubic-bezier(0.2, 0.8, 0.2, 1));
+}
+.u-mp-pressed {
+  transform: scale(0.96);
+}
+button::after {
+  border: none;
+}
+/* #endif */
 
 /* ============================================================
  * Adaptive shell contract (iPad + Mac, ≥768px) — adaptive.css.

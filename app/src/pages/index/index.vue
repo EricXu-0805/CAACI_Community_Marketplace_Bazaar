@@ -291,6 +291,8 @@
                 :style="dimsToAspectStyle(effectiveDims(item), 0)"
                 :alt="item.title"
                 loading="lazy"
+                lazy-load
+                mode="aspectFit"
                 @load="onImgLoad($event, item, 0)"
               />
               <!--
