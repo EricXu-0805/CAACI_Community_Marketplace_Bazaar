@@ -1327,7 +1327,11 @@ function goPublish() {
 
 /* ========== Waterfall ========== */
 .waterfall { display: flex; padding: 10px 10px 54px; gap: 10px; }
-.wf-col { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+/* min-width:0 — flex items floor at min-width:auto (= content size), and on
+   mp the <image> wrapper's content width kept both columns at full viewport
+   width, pushing column 2 off-screen. H5's engine sized the raw <img>
+   differently so it never showed there. */
+.wf-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 
 /* ========== Card ==========
    New visual language: slightly larger radius + soft elevation shadow
