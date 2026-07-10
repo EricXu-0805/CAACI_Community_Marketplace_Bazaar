@@ -1818,11 +1818,11 @@ page, .page { overflow-x: clip; }
    children are the cards/rows; each one fades + rises in sequence so a
    list "fans in" instead of popping as one block. The cascade caps at the
    10th child (later items share the last delay) so long / paginated lists
-   never wait seconds. transform/opacity only = GPU-cheap. H5-only: it leans
-   on the `>` child combinator + :nth-child, which mp-weixin's WXSS handles
-   inconsistently — there the cards simply appear (graceful, build stays
-   green). Appended (load-more) rows animate on mount with their nth-child
-   delay; already-settled rows are untouched. Honors reduced-motion below. */
+   never wait seconds. transform/opacity only = GPU-cheap. The H5 block uses
+   the universal selector; WXSS rejects `*`, so the mp twin below targets
+   `> view` instead — every stagger container's direct children are views.
+   Appended (load-more) rows animate on mount with their nth-child delay;
+   already-settled rows are untouched. Honors reduced-motion below. */
 .u-stagger > * { animation: u-rise var(--dur-3, 360ms) var(--ease-warm, ease) backwards; }
 .u-stagger > *:nth-child(1)  { animation-delay: 0ms; }
 .u-stagger > *:nth-child(2)  { animation-delay: 36ms; }
@@ -1837,6 +1837,23 @@ page, .page { overflow-x: clip; }
 .u-stagger > *:nth-child(n+11) { animation-delay: 360ms; }
 @media (prefers-reduced-motion: reduce) {
   .u-stagger > * { animation: none; }
+}
+/* #endif */
+/* #ifndef H5 */
+.u-stagger > view { animation: u-rise var(--dur-3, 360ms) var(--ease-warm, ease) backwards; }
+.u-stagger > view:nth-child(1)  { animation-delay: 0ms; }
+.u-stagger > view:nth-child(2)  { animation-delay: 36ms; }
+.u-stagger > view:nth-child(3)  { animation-delay: 72ms; }
+.u-stagger > view:nth-child(4)  { animation-delay: 108ms; }
+.u-stagger > view:nth-child(5)  { animation-delay: 144ms; }
+.u-stagger > view:nth-child(6)  { animation-delay: 180ms; }
+.u-stagger > view:nth-child(7)  { animation-delay: 216ms; }
+.u-stagger > view:nth-child(8)  { animation-delay: 252ms; }
+.u-stagger > view:nth-child(9)  { animation-delay: 288ms; }
+.u-stagger > view:nth-child(10) { animation-delay: 324ms; }
+.u-stagger > view:nth-child(n+11) { animation-delay: 360ms; }
+@media (prefers-reduced-motion: reduce) {
+  .u-stagger > view { animation: none; }
 }
 /* #endif */
 
