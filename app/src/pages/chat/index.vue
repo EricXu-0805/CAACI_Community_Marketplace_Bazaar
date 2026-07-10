@@ -1,5 +1,8 @@
 <template>
   <view class="page page-lock chat-page-wrap" :class="{ 'kb-up': !!vvStyle }" :style="vvStyle">
+    <!-- #ifndef H5 -->
+    <AppToast />
+    <!-- #endif -->
     <ChatThread v-if="conversationId" :conversation-id="conversationId" :prefill="prefill" />
     <!-- #ifdef H5 -->
     <view v-if="vvDebug" class="vv-debug">{{ vvDebug }}</view>
@@ -8,6 +11,9 @@
 </template>
 
 <script setup lang="ts">
+// #ifndef H5
+import AppToast from '../../components/AppToast.vue'
+// #endif
 /*
  * Thin route wrapper. The entire chat experience lives in
  * components/ChatThread.vue so it can be reused two ways:

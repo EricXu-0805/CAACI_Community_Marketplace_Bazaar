@@ -1,5 +1,8 @@
 <template>
   <view class="page has-sidebar">
+    <!-- #ifndef H5 -->
+    <AppToast />
+    <!-- #endif -->
     <AppSidebar current="publish" />
 
     <!--
@@ -166,6 +169,9 @@
 </template>
 
 <script setup lang="ts">
+// #ifndef H5
+import AppToast from '../../components/AppToast.vue'
+// #endif
 import { ref, reactive, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'

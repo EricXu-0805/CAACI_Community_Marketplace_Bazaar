@@ -1,5 +1,8 @@
 <template>
   <view class="page has-sidebar">
+    <!-- #ifndef H5 -->
+    <AppToast />
+    <!-- #endif -->
     <AppSidebar current="publish" />
 
     <!-- Mobile Header -->
@@ -164,6 +167,9 @@
 </template>
 
 <script setup lang="ts">
+// #ifndef H5
+import AppToast from '../../components/AppToast.vue'
+// #endif
 import { ref, reactive, computed, onUnmounted } from 'vue'
 import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { watch } from 'vue'

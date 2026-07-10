@@ -14,8 +14,11 @@ import { ref, createApp } from 'vue'
  * Vue app instances. Design tokens + data-theme live on <html>, so the
  * body-mounted banner inherits light/dark styling for free.
  *
- * On mp-weixin there is no DOM to mount into, so pushToast degrades to the
- * native uni.showToast — same path messages already use.
+ * On mp-weixin there is no DOM to mount into, so high-dwell pages include
+ * <AppToast /> directly (same per-page pattern as CustomTabBar) and register
+ * as hosts; the module-level ref keeps the stack consistent across pages.
+ * When no host page is mounted, pushToast falls back to the native
+ * uni.showToast so the notification is never silently swallowed.
  */
 
 export type ToastKind = 'offer' | 'meetup' | 'sold' | 'price_drop' | 'system' | 'message'
@@ -53,14 +56,40 @@ function ensureMounted() {
 }
 // #endif
 
+// #ifndef H5
+/* Host bookkeeping: the banner only renders on pages that include
+   <AppToast />. Track how many are mounted so pushToast can fall back to the
+   native toast when none is (rare pages like legal/settings). */
+let bannerHosts = 0
+export function registerToastHost(): () => void {
+  bannerHosts++
+  let released = false
+  return () => {
+    if (released) return
+    released = true
+    bannerHosts--
+  }
+}
+// #endif
+
 export function pushToast(item: ToastInput): void {
-  // #ifdef H5
+  // #ifndef H5
+  if (bannerHosts === 0) {
+    uni.showToast({ title: item.title, icon: 'none', duration: 2500 })
+    return
+  }
+  // #endif
   const id = `toast-${++seq}`
   toasts.value = [{ ...item, id }, ...toasts.value].slice(0, MAX_VISIBLE)
+  // #ifdef H5
   ensureMounted()
   // #endif
   // #ifndef H5
-  uni.showToast({ title: item.title, icon: 'none', duration: 2500 })
+  /* Backstop expiry: the component's timers die with the page on navigation;
+     this keeps a stale banner from resurfacing on the next host page. Runs
+     slightly after the component's own 5200ms dismiss — a no-op when that
+     already fired. */
+  setTimeout(() => dismissToast(id), 5600)
   // #endif
 }
 

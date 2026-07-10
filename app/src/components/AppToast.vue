@@ -1,16 +1,20 @@
 <!--
   AppToast — the in-app notification banner.
 
-  H5-only by construction: useAppToast mounts this onto a body-level <div>
-  through a standalone createApp() (see useAppToast.ts for why App.vue can't
-  host it). Because the mount is a separate Vue app instance, uni-app's global
-  <view>/<text> components are NOT registered here — so this template uses raw
-  HTML elements, which is correct and renders identically on H5.
+  H5: useAppToast mounts this onto a body-level <div> through a standalone
+  createApp() (see useAppToast.ts for why App.vue can't host it). Because
+  that mount is a separate Vue app instance, uni-app's global <view>/<text>
+  components are NOT registered there — so the H5 template uses raw HTML
+  elements. Styling rides the theme tokens on <html data-theme>.
 
-  Styling rides the theme tokens on <html data-theme>, so the banner flips
-  light/dark with the rest of the app for free.
+  mp: no DOM to mount into — high-dwell pages include this component
+  directly (CustomTabBar pattern) and it registers as a toast host; the
+  module-level toasts ref keeps the stack consistent across pages. Same
+  classes, so both templates share the styles below. No transition-group
+  on mp — entrance rides the .at-card keyframe instead.
 -->
 <template>
+  <!-- #ifdef H5 -->
   <div class="at-wrap" aria-live="polite">
     <transition-group name="at">
       <div
@@ -36,14 +40,44 @@
       </div>
     </transition-group>
   </div>
+  <!-- #endif -->
+  <!-- #ifndef H5 -->
+  <view class="at-wrap">
+    <view
+      v-for="t in toasts"
+      :key="t.id"
+      class="at-card at-card-mp"
+      role="button"
+      @click="onTap(t)"
+    >
+      <view class="at-icon" :class="'k-' + t.kind"><text>{{ glyph(t.kind) }}</text></view>
+      <view class="at-text">
+        <text class="at-title">{{ t.title }}</text>
+        <text v-if="t.body" class="at-sub">{{ t.body }}</text>
+      </view>
+      <view class="at-close" role="button" :aria-label="i18nT('a11y.close')" @click.stop="dismissToast(t.id)">
+        <view class="at-x"></view>
+        <view class="at-x at-x2"></view>
+      </view>
+    </view>
+  </view>
+  <!-- #endif -->
 </template>
 
 <script setup lang="ts">
 import { watch, onUnmounted } from 'vue'
 import { useAppToast, type ToastItem, type ToastKind } from '../composables/useAppToast'
+// #ifndef H5
+import { registerToastHost } from '../composables/useAppToast'
+// #endif
 import { useI18n } from '../composables/useI18n'
 
 const { toasts, dismissToast } = useAppToast()
+
+// #ifndef H5
+const unregisterHost = registerToastHost()
+onUnmounted(unregisterHost)
+// #endif
 /* Named i18nT because the v-for loop variable is `t` — the usual name would
    be shadowed inside the template. */
 const { t: i18nT } = useI18n()
@@ -205,4 +239,20 @@ function onTap(t: ToastItem) {
   .at-enter-active, .at-leave-active, .at-move, .at-card { transition: none; }
   .at-enter-from { transform: none; }
 }
+
+/* #ifndef H5 */
+.at-wrap {
+  /* below the WeChat status bar + capsule band, not the H5 safe-area inset */
+  top: calc(var(--mp-status-bar, 25px) + 6px);
+  /* plain calc first: older webview kernels without min() keep a sane width */
+  width: calc(100vw - 24px);
+  width: min(440px, calc(100vw - 24px));
+}
+/* no transition-group on mp — entrance rides a keyframe instead */
+.at-card-mp { animation: at-in 360ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes at-in {
+  from { opacity: 0; transform: translateY(-14px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+/* #endif */
 </style>

@@ -1,5 +1,8 @@
 <template>
   <view class="page page-lock has-sidebar">
+    <!-- #ifndef H5 -->
+    <AppToast />
+    <!-- #endif -->
     <AppSidebar current="plaza" />
 
     <view class="page-header">
@@ -510,6 +513,9 @@
 </template>
 
 <script setup lang="ts">
+// #ifndef H5
+import AppToast from '../../components/AppToast.vue'
+// #endif
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
 
@@ -1928,7 +1934,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
      the sheet always sits above the keyboard. Mirrors the working reconsent
      page, whose scroll-view scrolls correctly under a definite-height ancestor.
      overflow:hidden clips to the rounded top + backstops the flex bound. */
-  height: 75dvh; box-sizing: border-box; background: var(--bg-elev-1);
+  height: 75vh; height: 75dvh; box-sizing: border-box; background: var(--bg-elev-1);
   border-radius: 20px 20px 0 0;
   display: flex; flex-direction: column;
   transition: transform 0.25s ease-out; will-change: transform;

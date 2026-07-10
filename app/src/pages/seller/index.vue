@@ -1,5 +1,8 @@
 <template>
   <view class="page">
+    <!-- #ifndef H5 -->
+    <AppToast />
+    <!-- #endif -->
     <view class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
       <text class="header-title">{{ seller?.nickname || t('app.user') }}</text>
@@ -161,6 +164,9 @@
 </template>
 
 <script setup lang="ts">
+// #ifndef H5
+import AppToast from '../../components/AppToast.vue'
+// #endif
 import { ref, computed } from 'vue'
 import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { useSupabase } from '../../composables/useSupabase'

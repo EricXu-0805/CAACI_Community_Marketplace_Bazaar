@@ -1,5 +1,8 @@
 <template>
   <AppSidebar current="" />
+    <!-- #ifndef H5 -->
+    <AppToast />
+    <!-- #endif -->
   <view class="page has-sidebar" v-if="item">
     <!-- Image Carousel -->
     <view :class="['img-area', { 'is-sold': item.status === 'sold' }]">
@@ -307,6 +310,9 @@
 </template>
 
 <script setup lang="ts">
+// #ifndef H5
+import AppToast from '../../components/AppToast.vue'
+// #endif
 import { ref } from 'vue'
 import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { useItems } from '../../composables/useItems'
