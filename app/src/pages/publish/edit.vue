@@ -555,7 +555,7 @@ async function onSubmit() {
 */
 .header {
   display: flex; align-items: center; padding: 12px 16px;
-  padding-top: calc(12px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
+  padding-top: calc(12px + var(--mp-status-bar, env(safe-area-inset-top, 0px)));
   background: var(--bg-elev-1); border-bottom: 0.5px solid var(--line-hair);
   position: sticky; top: 0; z-index: 50;
 }

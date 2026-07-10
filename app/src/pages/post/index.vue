@@ -638,7 +638,11 @@ async function onSubmitComment() {
 .header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 11px 14px;
-  padding-top: calc(11px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
+  padding-top: calc(11px + var(--mp-status-bar, env(safe-area-inset-top, 0px)));
+  /* #ifdef MP-WEIXIN */
+  /* keep the owner more-menu out from under the native capsule */
+  padding-right: var(--mp-navbar-right-pad, 0px);
+  /* #endif */
   background: var(--bg-elev-1);
   border-bottom: 0.5px solid var(--line-hair);
   flex-shrink: 0;

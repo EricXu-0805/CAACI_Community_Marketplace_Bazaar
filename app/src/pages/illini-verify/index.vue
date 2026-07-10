@@ -189,7 +189,7 @@ function goBack() { uni.navigateBack() }
 }
 .back {
   position: absolute; left: 0;
-  top: calc(16px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
+  top: calc(16px + var(--mp-status-bar, env(safe-area-inset-top, 0px)));
   width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
 .back-arrow {

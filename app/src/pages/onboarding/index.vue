@@ -187,7 +187,7 @@ async function finish() {
   min-height: 100vh; background: var(--bg-page);
   display: flex; flex-direction: column;
   padding: 0 24px 24px;
-  padding-top: calc(20px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
+  padding-top: calc(20px + var(--mp-status-bar, env(safe-area-inset-top, 0px)));
   padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   max-width: 480px; margin: 0 auto;
 }

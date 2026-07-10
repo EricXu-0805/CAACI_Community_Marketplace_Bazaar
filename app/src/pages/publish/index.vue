@@ -761,7 +761,7 @@ async function onSubmit() {
 /* ========== Header ========== */
 .page-header {
   padding: 11px 16px;
-  padding-top: calc(11px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
+  padding-top: calc(11px + var(--mp-status-bar, env(safe-area-inset-top, 0px)));
   /* fill + blur + bottom hairline come from .u-glass + .u-glass--hair-b */
   position: sticky; top: 0; z-index: 50;
 }

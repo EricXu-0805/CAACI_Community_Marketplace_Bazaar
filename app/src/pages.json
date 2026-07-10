@@ -140,34 +140,34 @@
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
 		"navigationBarTitleText": "Illini Market",
-		"navigationBarBackgroundColor": "#FFFFFF",
-		"backgroundColor": "#F2F2F7"
+		"navigationBarBackgroundColor": "#F7F4EE",
+		"backgroundColor": "#F7F4EE"
 	},
 	"tabBar": {
-		"color": "#8e8e93",
+		"color": "#8A8478",
 		"selectedColor": "#2A2A2E",
-		"borderStyle": "black",
-		"backgroundColor": "#FFFFFF",
+		"borderStyle": "white",
+		"backgroundColor": "#F6F0DF",
 		"list": [
 			{
 				"pagePath": "pages/index/index",
-				"text": "Home"
+				"text": "首页"
 			},
 			{
 				"pagePath": "pages/plaza/index",
-				"text": "Plaza"
+				"text": "广场"
 			},
 			{
 				"pagePath": "pages/publish/index",
-				"text": "Post"
+				"text": "发布"
 			},
 			{
 				"pagePath": "pages/messages/index",
-				"text": "Messages"
+				"text": "消息"
 			},
 			{
 				"pagePath": "pages/profile/index",
-				"text": "Profile"
+				"text": "我的"
 			}
 		]
 	}

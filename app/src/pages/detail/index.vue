@@ -880,7 +880,7 @@ async function contactSeller() {
 .det-noimg-cap { font-size: 12px; color: var(--ink-faint); letter-spacing: 0.04em; }
 
 .img-back, .img-share {
-  position: absolute; top: calc(12px + var(--status-bar-height, env(safe-area-inset-top, 0px))); z-index: 10;
+  position: absolute; top: calc(12px + var(--mp-status-bar, env(safe-area-inset-top, 0px))); z-index: 10;
   width: 36px; height: 36px; border-radius: 50%;
   background: rgba(0,0,0,0.3); backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -890,6 +890,11 @@ async function contactSeller() {
 }
 .img-back { left: 12px; }
 .img-share { right: 12px; }
+/* #ifdef MP-WEIXIN */
+/* the capsule owns the top-right band (status bar → +44px); drop the
+   share circle below it so it stays tappable */
+.img-share { top: calc(var(--mp-status-bar, 25px) + 48px); }
+/* #endif */
 
 .img-counter {
   position: absolute; bottom: 12px; right: 12px; z-index: 10;
@@ -1262,7 +1267,7 @@ async function contactSeller() {
   background: var(--bg-elev-1);
 }
 .nf-back {
-  position: absolute; top: calc(14px + var(--status-bar-height, env(safe-area-inset-top, 0px))); left: 14px;
+  position: absolute; top: calc(14px + var(--mp-status-bar, env(safe-area-inset-top, 0px))); left: 14px;
   width: 36px; height: 36px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   background: var(--bg-subtle); cursor: pointer;

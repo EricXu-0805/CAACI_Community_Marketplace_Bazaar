@@ -1305,7 +1305,11 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .page-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 11px 16px;
-  padding-top: calc(11px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
+  padding-top: calc(11px + var(--mp-status-bar, env(safe-area-inset-top, 0px)));
+  /* #ifdef MP-WEIXIN */
+  /* keep the compose button out from under the native capsule */
+  padding-right: var(--mp-navbar-right-pad, 0px);
+  /* #endif */
   background: var(--canvas);
   border-bottom: 0.5px solid var(--border);
   z-index: 20;

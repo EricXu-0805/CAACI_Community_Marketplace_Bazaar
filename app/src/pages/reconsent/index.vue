@@ -112,7 +112,7 @@ function onDecline() {
 }
 .header {
   padding: 28px 24px 16px;
-  padding-top: calc(28px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
+  padding-top: calc(28px + var(--mp-status-bar, env(safe-area-inset-top, 0px)));
   display: flex; flex-direction: column; gap: 6px;
 }
 .badge {
