@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { BASE_URL } from '../config/runtime'
 
 /*
  * Result type for detectLocation().
@@ -153,15 +154,16 @@ export function useLocation() {
        * requests without a User-Agent (browsers can't set one), and it sends
        * no CORS header. The proxy is same-origin ('self'), sets a compliant UA
        * server-side, and returns the raw `address` object so the cascade below
-       * is unchanged. mp-weixin is a deferred target with no same-origin proxy,
-       * so it keeps the direct call (the `email=` param is its best effort).
+       * is unchanged. mp-weixin uses the same proxy via BASE_URL: a direct
+       * Nominatim call would add another domain to the WeChat allow-list and
+       * OSM is not reliably reachable from mainland networks anyway.
        */
       let url = ''
       // #ifdef H5
       url = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/geocode?lat=${lat}&lon=${lng}`
       // #endif
       // #ifndef H5
-      url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1&email=help@illinimarket.com`
+      url = `${BASE_URL}/api/geocode?lat=${lat}&lon=${lng}`
       // #endif
 
       const data: any = await new Promise((resolve, reject) => {
