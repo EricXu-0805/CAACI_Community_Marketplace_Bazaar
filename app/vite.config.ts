@@ -111,6 +111,15 @@ function chunkFileNamesForNodeModules(): Plugin {
     name: "override-chunk-filenames-for-node-modules",
     enforce: "post",
     config() {
+      /*
+       * H5-only. On mp-* targets uni-mp-vite owns the output layout: page
+       * chunks MUST land at their pages/<page>.js paths for WeChat to
+       * resolve app.json's pages list. This post-enforce override was
+       * winning that write on mp too, renaming every page entry into
+       * assets/<base64-of-vue-path>.js — the bundle built exit-0 but could
+       * never boot ("未找到 pages/index/index.js").
+       */
+      if (isMpBuild) return {};
       return {
         build: {
           rollupOptions: {
@@ -189,17 +198,21 @@ export default defineConfig({
     reportCompressedSize: false,
     chunkSizeWarningLimit: 600,
     sourcemap: sentryEnabled ? "hidden" : false,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (!id.includes("node_modules")) return;
-          if (id.includes("@supabase")) return "supabase";
-          if (id.includes("/vue/") || id.includes("@vue/")) return "vue";
-          if (id.includes("@dcloudio")) return "uni";
-          if (id.includes("/heic-to/")) return "heic-to";
+    // mp-* builds get NO custom rollup output: uni-mp-vite's own chunking
+    // (common/vendor.js + per-page entry files) is load-bearing for WeChat.
+    rollupOptions: isMpBuild
+      ? {}
+      : {
+          output: {
+            manualChunks(id) {
+              if (!id.includes("node_modules")) return;
+              if (id.includes("@supabase")) return "supabase";
+              if (id.includes("/vue/") || id.includes("@vue/")) return "vue";
+              if (id.includes("@dcloudio")) return "uni";
+              if (id.includes("/heic-to/")) return "heic-to";
+            },
+          },
         },
-      },
-    },
   },
   esbuild: {
     /*
