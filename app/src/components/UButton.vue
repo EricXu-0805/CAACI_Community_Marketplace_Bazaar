@@ -13,10 +13,17 @@
     role="button"
     :aria-disabled="disabled || loading"
     :tabindex="disabled || loading ? -1 : 0"
+    :hover-class="disabled || loading ? 'none' : 'u-mp-pressed'"
+    :hover-stay-time="80"
     @click="onClick"
   >
+    <!-- #ifdef H5 -->
     <view v-if="loading" class="u-btn-spinner" v-html="spinnerSvg"></view>
-    <view v-else class="u-btn-content"><slot></slot></view>
+    <!-- #endif -->
+    <!-- #ifndef H5 -->
+    <view v-if="loading" class="u-btn-spinner"><view class="u-btn-spinner-ring"></view></view>
+    <!-- #endif -->
+    <view v-if="!loading" class="u-btn-content"><slot></slot></view>
   </view>
 </template>
 
@@ -185,6 +192,15 @@ function onClick(evt: Event) {
   width: 100%;
   height: 100%;
   display: block;
+}
+/* mp: rich-text drops <svg>, so the spinner is a pure-CSS ring instead. */
+.u-btn-spinner-ring {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border: 2.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
 }
 @keyframes u-btn-spin {
   from { transform: rotate(0); }

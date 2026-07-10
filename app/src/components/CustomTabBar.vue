@@ -14,13 +14,12 @@
     <!--
       Icon rendering is split per target (P2b): H5 uses the v3 UIcon
       registry (regular at rest, filled + ink when active). mp-weixin
-      keeps the CSS-drawn icons below because UIcon injects SVG via
-      v-html, which compiles to <rich-text> on mp — and WeChat's
-      rich-text tag whitelist drops <svg>, rendering nothing. Same
-      limitation applies to every UIcon surface on mp; tracked as an
-      mp-launch work item.
+      keeps the CSS-drawn icons below: UIcon's mp mask path (batch 2)
+      is simulator-verified but the tab bar is the one surface that
+      must never go blank on a device, so it stays on CSS until the
+      mask icons survive real-device QA.
     -->
-    <view :class="['tab', { active: current === 'index' }]" role="button" :aria-current="current === 'index' ? 'page' : undefined" :aria-label="t('nav.home')" @click="go('/pages/index/index')">
+    <view :class="['tab', { active: current === 'index' }]" role="button" hover-class="u-mp-pressed" :hover-stay-time="80" :aria-current="current === 'index' ? 'page' : undefined" :aria-label="t('nav.home')" @click="go('/pages/index/index')">
       <view v-if="current === 'index'" class="tab-dot"></view>
       <!-- #ifdef H5 -->
       <UIcon name="home" size="sm" :weight="current === 'index' ? 'filled' : 'regular'" :color="current === 'index' ? 'ink' : 'ink-faint'" />
@@ -30,7 +29,7 @@
       <!-- #endif -->
       <text :class="['lbl', { active: current === 'index' }]">{{ t('nav.home') }}</text>
     </view>
-    <view :class="['tab', { active: current === 'plaza' }]" role="button" :aria-current="current === 'plaza' ? 'page' : undefined" :aria-label="t('nav.plaza')" @click="go('/pages/plaza/index')">
+    <view :class="['tab', { active: current === 'plaza' }]" role="button" hover-class="u-mp-pressed" :hover-stay-time="80" :aria-current="current === 'plaza' ? 'page' : undefined" :aria-label="t('nav.plaza')" @click="go('/pages/plaza/index')">
       <view v-if="current === 'plaza'" class="tab-dot"></view>
       <!-- #ifdef H5 -->
       <UIcon name="plaza" size="sm" :weight="current === 'plaza' ? 'filled' : 'regular'" :color="current === 'plaza' ? 'ink' : 'ink-faint'" />
@@ -47,7 +46,7 @@
       bar reads as one horizontal row instead of "4 tabs + a stray
       orange button sticking out".
     -->
-    <view class="tab fab-slot" role="button" :aria-label="t('nav.post')" @click="go('/pages/publish/index')">
+    <view class="tab fab-slot" role="button" hover-class="u-mp-pressed" :hover-stay-time="80" :aria-label="t('nav.post')" @click="go('/pages/publish/index')">
       <!--
         Inline SVG + glyph. Replaces the pseudo-element bars previously
         used here, which on some Android Chrome builds rendered with
@@ -64,7 +63,7 @@
       </view>
       <text class="lbl">{{ t('nav.post') }}</text>
     </view>
-    <view :class="['tab', { active: current === 'messages' }]" role="button" :aria-current="current === 'messages' ? 'page' : undefined" :aria-label="t('nav.messages')" @click="go('/pages/messages/index')">
+    <view :class="['tab', { active: current === 'messages' }]" role="button" hover-class="u-mp-pressed" :hover-stay-time="80" :aria-current="current === 'messages' ? 'page' : undefined" :aria-label="t('nav.messages')" @click="go('/pages/messages/index')">
       <view v-if="current === 'messages'" class="tab-dot"></view>
       <view class="ico-wrap">
         <!-- #ifdef H5 -->
@@ -81,7 +80,7 @@
       </view>
       <text :class="['lbl', { active: current === 'messages' }]">{{ t('nav.messages') }}</text>
     </view>
-    <view :class="['tab', { active: current === 'profile' }]" role="button" :aria-current="current === 'profile' ? 'page' : undefined" :aria-label="t('nav.profile')" @click="go('/pages/profile/index')">
+    <view :class="['tab', { active: current === 'profile' }]" role="button" hover-class="u-mp-pressed" :hover-stay-time="80" :aria-current="current === 'profile' ? 'page' : undefined" :aria-label="t('nav.profile')" @click="go('/pages/profile/index')">
       <view v-if="current === 'profile'" class="tab-dot"></view>
       <view class="ico-wrap">
         <!-- #ifdef H5 -->

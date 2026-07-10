@@ -1,7 +1,12 @@
 <template>
+  <!-- #ifdef H5 -->
   <view class="u-icon" :style="iconStyle">
     <view v-if="iconHTML" class="u-icon-svg" v-html="iconHTML"></view>
   </view>
+  <!-- #endif -->
+  <!-- #ifndef H5 -->
+  <view class="u-icon" :style="maskStyle"></view>
+  <!-- #endif -->
 </template>
 
 <script setup lang="ts">
@@ -41,13 +46,38 @@ const iconHTML = computed(() => {
   return ICONS[key] || ICONS[`${props.name}-regular`] || ''
 })
 
+const resolvedColor = computed(() =>
+  props.color.startsWith('#') || props.color === 'currentColor'
+    ? props.color
+    : `var(--${props.color})`,
+)
+
 const iconStyle = computed(() => ({
   width: `${SIZES[props.size]}px`,
   height: `${SIZES[props.size]}px`,
-  color: props.color.startsWith('#') || props.color === 'currentColor'
-    ? props.color
-    : `var(--${props.color})`,
+  color: resolvedColor.value,
 }))
+
+/*
+ * mp path: WeChat compiles v-html to <rich-text>, whose tag whitelist drops
+ * <svg> — every icon renders blank. Instead paint the glyph as a CSS mask
+ * over background-color. Inside a standalone SVG image currentColor falls
+ * back to opaque black, which is exactly what a mask needs; background-color
+ * then carries ALL the existing color semantics (currentColor inheritance,
+ * var(--token), hex) unchanged. Built as a style STRING so the -webkit-
+ * prefixed keys survive Vue's style-object normalization.
+ */
+const maskStyle = computed(() => {
+  const size = `${SIZES[props.size]}px`
+  const svg = iconHTML.value
+  if (!svg) return `width:${size};height:${size}`
+  const uri = `url("data:image/svg+xml,${encodeURIComponent(
+    svg.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" '),
+  )}")`
+  return `width:${size};height:${size};background-color:${resolvedColor.value};`
+    + `-webkit-mask-image:${uri};-webkit-mask-size:100% 100%;-webkit-mask-repeat:no-repeat;`
+    + `mask-image:${uri};mask-size:100% 100%;mask-repeat:no-repeat`
+})
 </script>
 
 <style scoped>

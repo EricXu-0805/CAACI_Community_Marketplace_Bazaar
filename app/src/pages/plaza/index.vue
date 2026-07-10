@@ -208,6 +208,8 @@
                 class="post-image"
                 :style="dimsToAspectStyle(effectiveDims(post), i)"
                 loading="lazy"
+                lazy-load
+                mode="aspectFit"
                 @load="onImgLoad($event, post, i)"
                 @click.stop="previewImage(post.images, i)"
               />
