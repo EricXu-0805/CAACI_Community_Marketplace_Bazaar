@@ -1,5 +1,8 @@
 <template>
   <view class="page page-lock has-sidebar">
+    <!-- #ifndef H5 -->
+    <AppToast />
+    <!-- #endif -->
     <AppSidebar current="index" />
 
     <view class="mobile-header u-glass u-glass--hair-b">
@@ -410,6 +413,9 @@
 </template>
 
 <script setup lang="ts">
+// #ifndef H5
+import AppToast from '../../components/AppToast.vue'
+// #endif
 import { ref, computed, onMounted } from 'vue'
 import { onShow, onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
 import { useItems } from '../../composables/useItems'

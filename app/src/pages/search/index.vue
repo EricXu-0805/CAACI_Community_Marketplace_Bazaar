@@ -1,5 +1,8 @@
 <template>
   <view class="page">
+    <!-- #ifndef H5 -->
+    <AppToast />
+    <!-- #endif -->
     <!--
       Search page — refinement-pass layout (moved here from the
       home dropdown). Focused input + cancel, recent searches,
@@ -64,6 +67,9 @@
 </template>
 
 <script setup lang="ts">
+// #ifndef H5
+import AppToast from '../../components/AppToast.vue'
+// #endif
 import { computed, ref } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import type { ItemCategory } from '../../types'

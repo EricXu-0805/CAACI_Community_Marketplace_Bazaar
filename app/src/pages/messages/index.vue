@@ -1,5 +1,8 @@
 <template>
   <view class="page has-sidebar">
+    <!-- #ifndef H5 -->
+    <AppToast />
+    <!-- #endif -->
     <AppSidebar current="messages" />
 
     <view class="page-header u-glass u-glass--hair-b">
@@ -145,6 +148,9 @@
 </template>
 
 <script setup lang="ts">
+// #ifndef H5
+import AppToast from '../../components/AppToast.vue'
+// #endif
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { onShow, onPullDownRefresh, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'

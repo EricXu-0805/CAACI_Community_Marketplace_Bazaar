@@ -1,5 +1,8 @@
 <template>
   <view class="page">
+    <!-- #ifndef H5 -->
+    <AppToast />
+    <!-- #endif -->
     <view class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
       <text class="header-title">{{ t('notif.title') }}</text>
@@ -46,6 +49,9 @@
 </template>
 
 <script setup lang="ts">
+// #ifndef H5
+import AppToast from '../../components/AppToast.vue'
+// #endif
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
