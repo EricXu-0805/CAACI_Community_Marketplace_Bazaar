@@ -290,7 +290,7 @@ function onSignOut() {
 .header {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 16px;
-  padding-top: calc(12px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
+  padding-top: calc(12px + var(--mp-status-bar, env(safe-area-inset-top, 0px)));
   background: var(--canvas);
   border-bottom: 0.5px solid var(--border);
 }

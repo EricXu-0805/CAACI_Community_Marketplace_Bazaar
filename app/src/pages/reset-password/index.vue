@@ -174,7 +174,7 @@ function goLogin() { uni.reLaunch({ url: '/pages/login/index' }) }
 .header {
   display: flex; flex-direction: column; align-items: center;
   padding: 64px 0 32px;
-  padding-top: calc(64px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
+  padding-top: calc(64px + var(--mp-status-bar, env(safe-area-inset-top, 0px)));
 }
 .logo-mark-img {
   width: 56px; height: 56px; border-radius: 14px;

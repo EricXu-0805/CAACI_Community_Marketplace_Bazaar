@@ -169,7 +169,11 @@ function goBack() { uni.navigateBack() }
 .page-header {
   display: flex; align-items: center; gap: 10px;
   padding: 8px 16px;
-  padding-top: calc(10px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
+  padding-top: calc(10px + var(--mp-status-bar, env(safe-area-inset-top, 0px)));
+  /* #ifdef MP-WEIXIN */
+  /* keep the cancel button out from under the native capsule */
+  padding-right: var(--mp-navbar-right-pad, 0px);
+  /* #endif */
   background: var(--canvas);
   border-bottom: 0.5px solid var(--border);
   box-sizing: border-box;

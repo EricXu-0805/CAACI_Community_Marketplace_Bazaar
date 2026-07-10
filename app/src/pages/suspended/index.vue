@@ -200,7 +200,7 @@ function onSignOut() {
   display: flex; flex-direction: column;
   background: var(--bg-page);
   padding: 0 20px;
-  padding-top: calc(28px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
+  padding-top: calc(28px + var(--mp-status-bar, env(safe-area-inset-top, 0px)));
   padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   max-width: 480px; margin: 0 auto;
   overflow-y: auto;

@@ -103,11 +103,25 @@ import { useNotifications } from '../composables/useNotifications'
 // #ifdef H5
 import UIcon from './UIcon.vue'
 // #endif
+// #ifdef MP-WEIXIN
+import { onMounted } from 'vue'
+// #endif
 
 defineProps<{ current: string }>()
 const { t } = useI18n()
 const { unreadCount, hasMutedUnread } = useUnread()
 const { unreadNotifCount } = useNotifications()
+
+// #ifdef MP-WEIXIN
+/* onLaunch's single hideTabBar silently fails ('not TabBar page') when the
+   app cold-starts on a share-card deep link (detail/post/seller) — the
+   native bar then stacks under this component all session. This component
+   mounts inside every tab page, so re-hiding here is the idempotent
+   backstop; fail() swallows the already-hidden no-op error. */
+onMounted(() => {
+  uni.hideTabBar({ animation: false, fail: () => {} })
+})
+// #endif
 
 function go(url: string) { uni.switchTab({ url }) }
 </script>

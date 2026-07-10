@@ -10,7 +10,11 @@
     Carries brand + primary nav (with unread badge) + Post CTA + me-card +
     theme/lang toggles, so on desktop every tab page can switch theme/lang
     (most page headers have no toggle of their own).
+
+    H5-only via #ifdef: WeChat on iPad can exceed the 768px breakpoint,
+    which would render this H5-designed rail in an untested mp context.
   -->
+  <!-- #ifdef H5 -->
   <view class="app-sidebar u-glass">
     <view class="asb-inner">
       <view class="asb-brand u-press" role="button" :aria-label="t('app.name')" @click="go('/pages/index/index')">
@@ -67,6 +71,7 @@
       </view>
     </view>
   </view>
+  <!-- #endif -->
 </template>
 
 <script setup lang="ts">

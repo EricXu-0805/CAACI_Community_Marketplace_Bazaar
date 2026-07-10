@@ -1407,7 +1407,11 @@ function scrollToBottom() {
 .chat-header {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 16px;
-  padding-top: calc(12px + var(--status-bar-height, env(safe-area-inset-top, 0px)));
+  padding-top: calc(12px + var(--mp-status-bar, env(safe-area-inset-top, 0px)));
+  /* #ifdef MP-WEIXIN */
+  /* keep the ⋯ conversation menu out from under the native capsule */
+  padding-right: var(--mp-navbar-right-pad, 0px);
+  /* #endif */
   /* fill + blur + bottom hairline come from .u-glass + .u-glass--hair-b */
   z-index: 10;
 }

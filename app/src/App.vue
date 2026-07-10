@@ -862,6 +862,15 @@ page,
   --mp-status-bar:        var(--status-bar-height, env(safe-area-inset-top, 0px));
   --mp-navbar-height:     44px;   /* capsule 32 + 12 padding */
   --mp-navbar-right-pad:  104px;  /* capsule 87 + 7 right + 10 breath */
+  /* #ifdef MP-WEIXIN */
+  /* uni injects a FIXED page{--status-bar-height:25px} literal into the
+     compiled app.wxss (no runtime setter), so the chain above resolves to
+     25px on EVERY device — real WeChat status bars run 44-59px on notched
+     phones and headers underlap the clock. env(safe-area-inset-top) is
+     live in the WeChat webview; max() keeps the 25px floor on rectangular
+     screens where the inset reports 0. */
+  --mp-status-bar:        max(env(safe-area-inset-top, 25px), 25px);
+  /* #endif */
 
   background-color: var(--canvas);
   font-family:
@@ -1924,10 +1933,14 @@ button::after {
  * handled per-page). One source of truth for the rail width so the
  * sidebar and the reservation can never drift apart.
  * ============================================================ */
+/* #ifdef H5 */
+/* H5-only: WXSS drops :root so the 240px FALLBACK applied on mp — WeChat
+   on iPad exceeds 768px and tab pages grew a dead left band. */
 :root { --sidebar-w: 240px; }
 @media (min-width: 768px) {
   .has-sidebar { padding-left: var(--sidebar-w, 240px); box-sizing: border-box; }
 }
+/* #endif */
 
 /* #ifdef H5 */
 /*
