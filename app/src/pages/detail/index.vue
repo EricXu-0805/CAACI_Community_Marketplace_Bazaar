@@ -3,7 +3,7 @@
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
-  <view class="page has-sidebar" v-if="item">
+  <view class="page has-sidebar" v-if="item" :style="mpChrome">
     <!-- Image Carousel -->
     <view :class="['img-area', { 'is-sold': item.status === 'sold' }]">
       <!--
@@ -294,7 +294,7 @@
     </view>
   </view>
 
-  <view v-else-if="notFound" class="not-found-page has-sidebar">
+  <view v-else-if="notFound" class="not-found-page has-sidebar" :style="mpChrome">
     <view class="nf-back" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
     <view class="nf-icon"></view>
     <text class="nf-title">{{ t('detail.notFoundTitle') }}</text>
@@ -303,13 +303,15 @@
   </view>
 
   <!-- Loading state -->
-  <view v-else class="loading-page has-sidebar">
+  <view v-else class="loading-page has-sidebar" :style="mpChrome">
     <view class="loading-spinner"></view>
     <text class="loading-text">{{ t('home.loading') }}</text>
   </view>
 </template>
 
 <script setup lang="ts">
+import { mpChromeVars } from '../../composables/useMpChrome'
+const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif

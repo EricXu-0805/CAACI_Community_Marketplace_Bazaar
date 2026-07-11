@@ -1,5 +1,5 @@
 <template>
-  <view class="page page-lock chat-page-wrap" :class="{ 'kb-up': !!vvStyle }" :style="vvStyle">
+  <view class="page page-lock chat-page-wrap" :class="{ 'kb-up': !!vvStyle }" :style="[vvStyle, mpChrome]">
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
@@ -11,6 +11,8 @@
 </template>
 
 <script setup lang="ts">
+import { mpChromeVars } from '../../composables/useMpChrome'
+const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif

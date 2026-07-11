@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page" :style="mpChrome">
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
@@ -49,6 +49,8 @@
 </template>
 
 <script setup lang="ts">
+import { mpChromeVars } from '../../composables/useMpChrome'
+const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif

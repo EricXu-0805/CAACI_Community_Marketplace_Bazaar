@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page" :style="mpChrome">
     <view class="hero">
       <view :class="['hero-icon', levelClass]"><view class="hero-icon-inner"></view></view>
       <text class="hero-badge">{{ t('suspended.badge') }} · L{{ level }}</text>
@@ -68,6 +68,8 @@
 </template>
 
 <script setup lang="ts">
+import { mpChromeVars } from '../../composables/useMpChrome'
+const mpChrome = mpChromeVars()
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
