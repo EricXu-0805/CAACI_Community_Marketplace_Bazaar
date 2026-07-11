@@ -216,6 +216,9 @@ async function finish() {
   border: 0; border-bottom: 1.5px solid var(--line-soft);
   padding: 10px 0; font-size: 17px; color: var(--text-primary);
   background: transparent; width: 100%;
+  /* mp <input> ignores padding-based sizing and clipped the glyphs at the
+     underline; explicit box + line height renders identically on H5 */
+  height: 44px; line-height: 24px; box-sizing: border-box;
 }
 .count { font-size: 11px; color: var(--text-faint); align-self: flex-end; }
 
