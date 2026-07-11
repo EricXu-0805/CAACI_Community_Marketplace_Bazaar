@@ -12,31 +12,18 @@
   -->
   <view class="tabbar">
     <!--
-      Icon rendering is split per target (P2b): H5 uses the v3 UIcon
-      registry (regular at rest, filled + ink when active). mp-weixin
-      keeps the CSS-drawn icons below: UIcon's mp mask path (batch 2)
-      is simulator-verified but the tab bar is the one surface that
-      must never go blank on a device, so it stays on CSS until the
-      mask icons survive real-device QA.
+      One icon path for both targets: the v3 UIcon registry (regular at
+      rest, filled + ink when active). UIcon's mp mask rendering passed
+      real-device QA (2026-07-11), replacing the interim CSS-drawn icons.
     -->
     <view :class="['tab', { active: current === 'index' }]" role="button" hover-class="u-mp-pressed" :hover-stay-time="80" :aria-current="current === 'index' ? 'page' : undefined" :aria-label="t('nav.home')" @click="go('/pages/index/index')">
       <view v-if="current === 'index'" class="tab-dot"></view>
-      <!-- #ifdef H5 -->
       <UIcon name="home" size="sm" :weight="current === 'index' ? 'filled' : 'regular'" :color="current === 'index' ? 'ink' : 'ink-faint'" />
-      <!-- #endif -->
-      <!-- #ifndef H5 -->
-      <view :class="['ico', 'ico-home', { active: current === 'index' }]"></view>
-      <!-- #endif -->
       <text :class="['lbl', { active: current === 'index' }]">{{ t('nav.home') }}</text>
     </view>
     <view :class="['tab', { active: current === 'plaza' }]" role="button" hover-class="u-mp-pressed" :hover-stay-time="80" :aria-current="current === 'plaza' ? 'page' : undefined" :aria-label="t('nav.plaza')" @click="go('/pages/plaza/index')">
       <view v-if="current === 'plaza'" class="tab-dot"></view>
-      <!-- #ifdef H5 -->
       <UIcon name="plaza" size="sm" :weight="current === 'plaza' ? 'filled' : 'regular'" :color="current === 'plaza' ? 'ink' : 'ink-faint'" />
-      <!-- #endif -->
-      <!-- #ifndef H5 -->
-      <view :class="['ico', 'ico-plaza', { active: current === 'plaza' }]"></view>
-      <!-- #endif -->
       <text :class="['lbl', { active: current === 'plaza' }]">{{ t('nav.plaza') }}</text>
     </view>
     <!--
@@ -66,12 +53,7 @@
     <view :class="['tab', { active: current === 'messages' }]" role="button" hover-class="u-mp-pressed" :hover-stay-time="80" :aria-current="current === 'messages' ? 'page' : undefined" :aria-label="t('nav.messages')" @click="go('/pages/messages/index')">
       <view v-if="current === 'messages'" class="tab-dot"></view>
       <view class="ico-wrap">
-        <!-- #ifdef H5 -->
         <UIcon name="messages" size="sm" :weight="current === 'messages' ? 'filled' : 'regular'" :color="current === 'messages' ? 'ink' : 'ink-faint'" />
-        <!-- #endif -->
-        <!-- #ifndef H5 -->
-        <view :class="['ico', 'ico-msg', { active: current === 'messages' }]"></view>
-        <!-- #endif -->
         <view v-if="unreadCount > 0" class="badge-dot">
           <text v-if="unreadCount <= 99" class="badge-count">{{ unreadCount }}</text>
           <text v-else class="badge-count">99+</text>
@@ -83,12 +65,7 @@
     <view :class="['tab', { active: current === 'profile' }]" role="button" hover-class="u-mp-pressed" :hover-stay-time="80" :aria-current="current === 'profile' ? 'page' : undefined" :aria-label="t('nav.profile')" @click="go('/pages/profile/index')">
       <view v-if="current === 'profile'" class="tab-dot"></view>
       <view class="ico-wrap">
-        <!-- #ifdef H5 -->
         <UIcon name="profile" size="sm" :weight="current === 'profile' ? 'filled' : 'regular'" :color="current === 'profile' ? 'ink' : 'ink-faint'" />
-        <!-- #endif -->
-        <!-- #ifndef H5 -->
-        <view :class="['ico', 'ico-me', { active: current === 'profile' }]"></view>
-        <!-- #endif -->
         <view v-if="unreadNotifCount > 0" class="badge-dot-only"></view>
       </view>
       <text :class="['lbl', { active: current === 'profile' }]">{{ t('nav.profile') }}</text>
@@ -100,9 +77,7 @@
 import { useI18n } from '../composables/useI18n'
 import { useUnread } from '../composables/useUnread'
 import { useNotifications } from '../composables/useNotifications'
-// #ifdef H5
 import UIcon from './UIcon.vue'
-// #endif
 // #ifdef MP-WEIXIN
 import { onMounted } from 'vue'
 // #endif
@@ -197,57 +172,7 @@ function go(url: string) { uni.switchTab({ url }) }
  * shifts stroke from ink-faint → ink (navy), NOT to brand — the
  * orange is carried by the .tab-dot above. Keeps the bar from
  * looking "lit up" in 3 places when only 1 tab is selected.
- *
- * CSS-drawn variants are mp-only — H5 renders registry UIcons
- * (see template note).
  */
-/* #ifndef H5 */
-.ico { width: 20px; height: 20px; position: relative; }
-
-.ico-home::before {
-  content: ''; position: absolute; bottom: 0; left: 2px; right: 2px; height: 10px;
-  border: 1.6px solid var(--ink-faint); border-top: none; border-radius: 0 0 3px 3px;
-}
-.ico-home::after {
-  content: ''; position: absolute; top: 2px; left: 50%; transform: translateX(-50%);
-  width: 0; height: 0;
-  border-left: 7px solid transparent; border-right: 7px solid transparent;
-  border-bottom: 7px solid var(--ink-faint);
-}
-.ico-home.active::before { border-color: var(--ink); }
-.ico-home.active::after { border-bottom-color: var(--ink); }
-
-.ico-plaza::before {
-  content: ''; position: absolute; top: 3px; left: 1px;
-  width: 18px; height: 14px; border: 1.6px solid var(--ink-faint); border-radius: 3px;
-}
-.ico-plaza::after {
-  content: ''; position: absolute; bottom: 5px; left: 6px;
-  width: 8px; height: 1.5px; background: var(--ink-faint); border-radius: 1px;
-  box-shadow: 0 -4px 0 -0.5px var(--ink-faint);
-}
-.ico-plaza.active::before { border-color: var(--ink); }
-.ico-plaza.active::after { background: var(--ink); box-shadow: 0 -4px 0 -0.5px var(--ink); }
-
-.ico-msg::before {
-  content: ''; position: absolute; top: 2px; left: 1px;
-  width: 18px; height: 14px;
-  border: 1.6px solid var(--ink-faint); border-radius: 8px 8px 8px 2px;
-}
-.ico-msg.active::before { border-color: var(--ink); }
-
-.ico-me::before {
-  content: ''; position: absolute; top: 1px; left: 6px;
-  width: 8px; height: 8px; border: 1.6px solid var(--ink-faint); border-radius: 50%;
-}
-.ico-me::after {
-  content: ''; position: absolute; bottom: 0; left: 1px;
-  width: 18px; height: 8px;
-  border: 1.6px solid var(--ink-faint); border-radius: 9px 9px 0 0; border-bottom: none;
-}
-.ico-me.active::before, .ico-me.active::after { border-color: var(--ink); }
-/* #endif */
-
 .badge-dot {
   position: absolute; top: -4px; right: -8px;
   min-width: 15px; height: 15px; border-radius: 999px;
