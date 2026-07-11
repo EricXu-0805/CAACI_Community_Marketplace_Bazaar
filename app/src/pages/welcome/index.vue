@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page" :style="mpChrome">
     <swiper class="swiper" :current="current" @change="current = $event.detail.current">
       <swiper-item v-for="(slide, i) in slides" :key="i">
         <view class="slide">
@@ -26,6 +26,8 @@
 </template>
 
 <script setup lang="ts">
+import { mpChromeVars } from '../../composables/useMpChrome'
+const mpChrome = mpChromeVars()
 import { ref, computed } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 

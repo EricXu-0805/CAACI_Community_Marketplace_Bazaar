@@ -1,5 +1,5 @@
 <template>
-  <view class="page page-lock has-sidebar">
+  <view class="page page-lock has-sidebar" :style="mpChrome">
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
@@ -413,6 +413,8 @@
 </template>
 
 <script setup lang="ts">
+import { mpChromeVars } from '../../composables/useMpChrome'
+const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif
@@ -959,6 +961,12 @@ function goPublish() {
   /* QA6 r5: +10px below the status-bar inset so the brand lockup isn't jammed
      right under the notch / Dynamic Island (Eric: "太靠顶部"). */
   padding-top: calc(var(--mp-status-bar) + 10px);
+  /* #ifdef MP-WEIXIN */
+  /* The capsule pill sits at statusBar+4 with a 32px height; the brand row
+     must CENTER on that line or the 中|EN pill and the capsule read as two
+     misaligned pills (Eric device round 2). +4 replaces the H5 +10. */
+  padding-top: calc(var(--mp-status-bar) + 4px);
+  /* #endif */
   z-index: 50;
 }
 .mh-row {
@@ -972,6 +980,8 @@ function goPublish() {
      space-between anchors the toggles flush right. */
   /* #ifdef MP-WEIXIN */
   padding-right: var(--mp-navbar-right-pad, 0px);
+  /* capsule-height row so its vertical center matches the capsule's */
+  min-height: 32px;
   /* #endif */
   margin-bottom: 10px;
 }

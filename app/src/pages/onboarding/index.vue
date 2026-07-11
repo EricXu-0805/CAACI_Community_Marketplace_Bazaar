@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page" :style="mpChrome">
     <view class="progress">
       <view
         v-for="n in totalSteps"
@@ -69,6 +69,8 @@
 </template>
 
 <script setup lang="ts">
+import { mpChromeVars } from '../../composables/useMpChrome'
+const mpChrome = mpChromeVars()
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'

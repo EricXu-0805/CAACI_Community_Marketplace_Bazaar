@@ -42,7 +42,7 @@
   </div>
   <!-- #endif -->
   <!-- #ifndef H5 -->
-  <view class="at-wrap">
+  <view class="at-wrap" :style="mpChrome">
     <view
       v-for="t in toasts"
       :key="t.id"
@@ -69,6 +69,7 @@ import { watch, onUnmounted } from 'vue'
 import { useAppToast, type ToastItem, type ToastKind } from '../composables/useAppToast'
 // #ifndef H5
 import { registerToastHost } from '../composables/useAppToast'
+import { mpChromeVars } from '../composables/useMpChrome'
 // #endif
 import { useI18n } from '../composables/useI18n'
 
@@ -77,6 +78,9 @@ const { toasts, dismissToast } = useAppToast()
 // #ifndef H5
 const unregisterHost = registerToastHost()
 onUnmounted(unregisterHost)
+/* self-sufficient chrome vars: on some pages (e.g. detail) this component is
+   a SIBLING of the styled page root, so it can't inherit them */
+const mpChrome = mpChromeVars()
 // #endif
 /* Named i18nT because the v-for loop variable is `t` — the usual name would
    be shadowed inside the template. */

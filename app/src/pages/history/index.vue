@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page" :style="mpChrome">
     <view class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
       <text class="header-title">{{ t('profile.history') }}</text>
@@ -75,6 +75,8 @@
 </template>
 
 <script setup lang="ts">
+import { mpChromeVars } from '../../composables/useMpChrome'
+const mpChrome = mpChromeVars()
 import { ref, computed } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { useHistory } from '../../composables/useHistory'
