@@ -47,12 +47,12 @@
       </view>
 
       <view class="form-group">
-        <input v-model="form.title" :placeholder="form.listingType === 'wanted' ? t('publish.wantedTitlePlaceholder') : t('publish.titlePlaceholder')" maxlength="50" class="form-input title-input" />
+        <input v-model="form.title" :placeholder="form.listingType === 'wanted' ? t('publish.wantedTitlePlaceholder') : t('publish.titlePlaceholder')" maxlength="50" class="form-input title-input" @focus="onFieldFocus" @blur="onFieldBlur" />
         <text class="char-count">{{ form.title.length }}/50</text>
       </view>
 
       <view class="form-group">
-        <textarea v-model="form.description" :placeholder="t('publish.descPlaceholder')" maxlength="500" class="form-textarea" />
+        <textarea v-model="form.description" :placeholder="t('publish.descPlaceholder')" maxlength="500" class="form-textarea" @focus="onFieldFocus" @blur="onFieldBlur" />
         <text class="char-count">{{ form.description.length }}/500</text>
       </view>
 
@@ -60,7 +60,7 @@
         <text class="label">{{ form.listingType === 'wanted' ? t('publish.budget') : t('publish.price') }}</text>
         <view class="price-input">
           <text class="currency">$</text>
-          <input v-model="form.price" type="digit" :placeholder="form.listingType === 'wanted' ? t('publish.budgetPlaceholder') : '0.00'" class="form-input" />
+          <input v-model="form.price" type="digit" :placeholder="form.listingType === 'wanted' ? t('publish.budgetPlaceholder') : '0.00'" class="form-input" @focus="onFieldFocus" @blur="onFieldBlur" />
         </view>
       </view>
 
@@ -113,7 +113,7 @@
 
       <view class="form-group row">
         <text class="label">{{ t('publish.location') }}</text>
-        <input v-model="form.location" :placeholder="t('publish.locationPlaceholder')" class="form-input flex-input" />
+        <input v-model="form.location" :placeholder="t('publish.locationPlaceholder')" class="form-input flex-input" @focus="onFieldFocus" @blur="onFieldBlur" />
       </view>
 
       <scroll-view scroll-x class="spot-row">
@@ -150,7 +150,7 @@
       </view>
     </view>
 
-    <view class="submit-bar u-glass u-glass--hair-t">
+    <view v-show="!typing" class="submit-bar u-glass u-glass--hair-t">
       <button class="submit-btn" :disabled="submitting" @click="onSubmit">
         {{ submitting ? t('publish.submitting') : t('publish.update') }}
       </button>
@@ -251,6 +251,28 @@ const showCat = ref(false)
 const showCond = ref(false)
 const submitting = ref(false)
 const uploadProgress = ref(0)
+
+/* Same phone-viewport bar hiding as publish/index — with the keyboard
+   open the fixed save bar wedges in right above it. */
+const typing = ref(false)
+let typingT: ReturnType<typeof setTimeout> | null = null
+function isPhoneViewport(): boolean {
+  // #ifdef H5
+  return typeof window !== 'undefined' && window.innerWidth < 768
+  // #endif
+  // #ifndef H5
+  return true
+  // #endif
+}
+function onFieldFocus() {
+  if (!isPhoneViewport()) return
+  if (typingT) clearTimeout(typingT)
+  typing.value = true
+}
+function onFieldBlur() {
+  if (typingT) clearTimeout(typingT)
+  typingT = setTimeout(() => { typing.value = false }, 120)
+}
 
 const form = reactive({
   title: '',

@@ -10,7 +10,9 @@
       3. FAB sits on -14px margin with a 3px parchment-colored ring
          so it reads as embedded IN the paper, not glued on top.
   -->
-  <view class="tabbar">
+  <!-- class, not v-show: uni compiles v-show to the WXML `hidden` attribute,
+       which loses to .tabbar's own display:flex rule on mp -->
+  <view :class="['tabbar', { 'tabbar-hidden': hidden }]">
     <!--
       One icon path for both targets: the v3 UIcon registry (regular at
       rest, filled + ink when active). UIcon's mp mask rendering passed
@@ -82,7 +84,10 @@ import UIcon from './UIcon.vue'
 import { onMounted } from 'vue'
 // #endif
 
-defineProps<{ current: string }>()
+/* `hidden` exists because v-show on the component TAG doesn't reach the mp
+   build (uni doesn't forward it to a custom component's root) — pages that
+   need to hide the bar (publish while typing) pass the prop instead. */
+defineProps<{ current: string; hidden?: boolean }>()
 const { t } = useI18n()
 const { unreadCount, hasMutedUnread } = useUnread()
 const { unreadNotifCount } = useNotifications()
@@ -272,4 +277,6 @@ function go(url: string) { uni.switchTab({ url }) }
    showed up in both browsers. The label just uses .lbl now. */
 
 @media (max-width: 767px) { .tabbar { display: flex; } }
+/* after the media rule so it wins the cascade at every width */
+.tabbar.tabbar-hidden { display: none; }
 </style>
