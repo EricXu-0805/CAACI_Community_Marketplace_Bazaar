@@ -40,6 +40,7 @@
             "postcss": true
         },
         "usingComponents": true,
+        "__usePrivacyCheck__": true,
         "requiredPrivateInfos": [
             "getLocation"
         ],
