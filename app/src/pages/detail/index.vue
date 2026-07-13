@@ -334,7 +334,7 @@ import type { ImageDim } from '../../types'
 import { localizeLocation, pickupTier } from '../../composables/useCampusSpots'
 import { useRatings } from '../../composables/useRatings'
 import { useTranslate } from '../../composables/useTranslate'
-import { computed, onUnmounted, watch } from 'vue'
+import { computed, onUnmounted, watch, nextTick, getCurrentInstance } from 'vue'
 import UBadge from '../../components/UBadge.vue'
 import UIcon from '../../components/UIcon.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
@@ -459,13 +459,37 @@ function bestAspect(dims: ImageDim[] | null): number | null {
   return Math.max(0.4, Math.min(maxRatio, 2.5))
 }
 
+/*
+ * Concrete px height, not CSS negotiation. The old aspect-ratio +
+ * max-height:70vh combo hit a WebKit quirk on tall images: the box gets
+ * clamped to 70vh, but uni-swiper's internal height:100% chain resolves
+ * against the UNCLAMPED aspect height — the extra image height painted
+ * out the bottom (overflow:visible) and bled below the info card
+ * (Eric device report 07-13). Measuring the container and doing the
+ * min() in JS gives every engine (and the mp swiper, which prefers
+ * concrete heights anyway) the same number.
+ */
+const heroBoxW = ref(0)
+const winH = ref(0)
+const instance = getCurrentInstance()
+
+function measureHero() {
+  try { winH.value = uni.getSystemInfoSync().windowHeight } catch { /* keep 0 */ }
+  uni.createSelectorQuery().in(instance?.proxy)
+    .select('.img-area')
+    .boundingClientRect((rect) => {
+      const r = rect as UniApp.NodeInfo | null
+      if (r && r.width) heroBoxW.value = r.width
+    })
+    .exec()
+}
+
 const swiperStyle = computed(() => {
   const ratio = bestAspect(effectiveDims()) ?? (4 / 5)
-  return {
-    aspectRatio: String(ratio),
-    maxHeight: '70vh',
-    height: 'auto',
+  if (!heroBoxW.value || !winH.value) {
+    return { aspectRatio: String(ratio), maxHeight: '70vh', height: 'auto' }
   }
+  return { height: `${Math.round(Math.min(heroBoxW.value / ratio, winH.value * 0.7))}px` }
 })
 
 const { submitRating, hasRated, fetchForUser } = useRatings()
@@ -584,6 +608,13 @@ watch(lang, async () => {
 let alive = true
 onUnmounted(() => { alive = false })
 
+// #ifdef H5
+/* Desktop window resize / rotation changes the hero column width. */
+const onHeroResize = () => measureHero()
+if (typeof window !== 'undefined') window.addEventListener('resize', onHeroResize)
+onUnmounted(() => { if (typeof window !== 'undefined') window.removeEventListener('resize', onHeroResize) })
+// #endif
+
 onLoad(async (options) => {
   if (!options?.id) return
   try {
@@ -593,6 +624,8 @@ onLoad(async (options) => {
     ])
     if (!alive) return
     item.value = itemData
+    /* .img-area only exists once item renders; measure right after. */
+    nextTick(() => measureHero())
     addToHistory(itemData)
     isFav.value = checkFavorited(options.id!)
 
@@ -880,6 +913,10 @@ async function contactSeller() {
   width: 100%;
   background: var(--bg-subtle);
   vertical-align: top;
+  /* backstop: while the pre-measure aspect-ratio fallback is up, WebKit
+     resolves the inner height:100% chain against the unclamped aspect
+     height — clip it instead of letting it bleed below the info card */
+  overflow: hidden;
 }
 .swiper-img {
   display: block;

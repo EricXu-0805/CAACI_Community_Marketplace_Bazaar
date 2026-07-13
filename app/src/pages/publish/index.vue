@@ -48,12 +48,12 @@
       </view>
 
       <view class="form-group">
-        <input v-model="form.title" :placeholder="form.listingType === 'wanted' ? t('publish.wantedTitlePlaceholder') : t('publish.titlePlaceholder')" :aria-label="form.listingType === 'wanted' ? t('publish.wantedTitlePlaceholder') : t('publish.titlePlaceholder')" maxlength="50" class="form-input title-input" />
+        <input v-model="form.title" :placeholder="form.listingType === 'wanted' ? t('publish.wantedTitlePlaceholder') : t('publish.titlePlaceholder')" :aria-label="form.listingType === 'wanted' ? t('publish.wantedTitlePlaceholder') : t('publish.titlePlaceholder')" maxlength="50" class="form-input title-input" @focus="onFieldFocus" @blur="onFieldBlur" />
         <text class="char-count">{{ form.title.length }}/50</text>
       </view>
 
       <view class="form-group">
-        <textarea v-model="form.description" :placeholder="t('publish.descPlaceholder')" :aria-label="t('publish.descPlaceholder')" maxlength="500" class="form-textarea" />
+        <textarea v-model="form.description" :placeholder="t('publish.descPlaceholder')" :aria-label="t('publish.descPlaceholder')" maxlength="500" class="form-textarea" @focus="onFieldFocus" @blur="onFieldBlur" />
         <text class="char-count">{{ form.description.length }}/500</text>
       </view>
 
@@ -61,7 +61,7 @@
         <text class="label">{{ form.listingType === 'wanted' ? t('publish.budget') : t('publish.price') }}</text>
         <view class="price-input">
           <text class="currency">$</text>
-          <input v-model="form.price" type="digit" :placeholder="form.listingType === 'wanted' ? t('publish.budgetPlaceholder') : '0.00'" :aria-label="form.listingType === 'wanted' ? t('publish.budget') : t('publish.price')" class="form-input" />
+          <input v-model="form.price" type="digit" :placeholder="form.listingType === 'wanted' ? t('publish.budgetPlaceholder') : '0.00'" :aria-label="form.listingType === 'wanted' ? t('publish.budget') : t('publish.price')" class="form-input" @focus="onFieldFocus" @blur="onFieldBlur" />
         </view>
       </view>
 
@@ -114,7 +114,7 @@
 
       <view class="form-group row">
         <text class="label">{{ t('publish.location') }}</text>
-        <input v-model="form.location" :placeholder="t('publish.locationPlaceholder')" :aria-label="t('publish.location')" class="form-input flex-input" />
+        <input v-model="form.location" :placeholder="t('publish.locationPlaceholder')" :aria-label="t('publish.location')" class="form-input flex-input" @focus="onFieldFocus" @blur="onFieldBlur" />
       </view>
 
       <scroll-view scroll-x class="spot-row">
@@ -151,13 +151,13 @@
       </view>
     </view>
 
-    <view class="submit-bar">
+    <view v-show="!typing" class="submit-bar">
       <UButton size="lg" block :loading="submitting" @click="onSubmit">
         {{ t('publish.submit') }}
       </UButton>
     </view>
 
-    <CustomTabBar current="publish" />
+    <CustomTabBar current="publish" :hidden="typing" />
 
     <PermissionDeniedModal
       :visible="permissionModalVisible"
@@ -253,6 +253,35 @@ const showCat = ref(false)
 const showCond = ref(false)
 const submitting = ref(false)
 const uploadProgress = ref(0)
+
+/*
+ * While a text field has focus on a PHONE viewport, hide the fixed
+ * submit bar + tab bar. With the keyboard open both bars land right
+ * above it (H5 interactive-widget shrinks the layout viewport; mp's
+ * adjust-position pushes the page) and wedge the form into a sliver —
+ * Eric device report 07-13. Desktop has no on-screen keyboard, so ≥768px
+ * viewports keep the bars. 120ms blur grace stops the bars flashing
+ * when focus hops between fields.
+ */
+const typing = ref(false)
+let typingT: ReturnType<typeof setTimeout> | null = null
+function isPhoneViewport(): boolean {
+  // #ifdef H5
+  return typeof window !== 'undefined' && window.innerWidth < 768
+  // #endif
+  // #ifndef H5
+  return true
+  // #endif
+}
+function onFieldFocus() {
+  if (!isPhoneViewport()) return
+  if (typingT) clearTimeout(typingT)
+  typing.value = true
+}
+function onFieldBlur() {
+  if (typingT) clearTimeout(typingT)
+  typingT = setTimeout(() => { typing.value = false }, 120)
+}
 
 const form = reactive({
   title: '',
