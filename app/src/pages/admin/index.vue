@@ -1,5 +1,5 @@
 <template>
-  <view class="admin" :style="mpChrome">
+  <view class="admin" :class="mpThemeClass" :style="mpChrome">
     <view class="admin-header">
       <text class="admin-title">{{ t('admin.title') }}</text>
       <view v-if="unlocked && currentAdmin" class="admin-whoami">
@@ -382,7 +382,7 @@
 </template>
 
 <script setup lang="ts">
-import { mpChromeVars } from '../../composables/useMpChrome'
+import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { ref, computed, onMounted } from 'vue'
 import { platformFetch } from '../../composables/useSupabase'

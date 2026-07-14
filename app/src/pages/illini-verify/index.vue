@@ -1,5 +1,5 @@
 <template>
-  <view class="page" :style="mpChrome">
+  <view class="page" :class="mpThemeClass" :style="mpChrome">
     <view class="header">
       <view class="back" role="button" :aria-label="t('a11y.back')" @click="goBack"><view class="back-arrow"></view></view>
       <view class="hero-badge"><text class="hero-check">✓</text><text class="hero-illini">Illini</text></view>
@@ -50,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { mpChromeVars } from '../../composables/useMpChrome'
+import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 /*
  * Illini one-tap verification (for accounts created with a non-@illinois.edu

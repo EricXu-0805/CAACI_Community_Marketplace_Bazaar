@@ -1,5 +1,5 @@
 <template>
-  <view class="page" :style="mpChrome">
+  <view class="page" :class="mpThemeClass" :style="mpChrome">
     <view class="header">
       <text class="badge">{{ t('reconsent.badge') }}</text>
       <text class="title">{{ t('reconsent.title') }}</text>
@@ -47,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { mpChromeVars } from '../../composables/useMpChrome'
+import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { ref } from 'vue'
 import { useI18n } from '../../composables/useI18n'

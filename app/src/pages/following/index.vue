@@ -1,5 +1,5 @@
 <template>
-  <view class="page" :style="mpChrome">
+  <view class="page" :class="mpThemeClass" :style="mpChrome">
     <view class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
       <text class="header-title">{{ t('nav.following') }}</text>
@@ -50,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { mpChromeVars } from '../../composables/useMpChrome'
+import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { ref, computed, nextTick, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
