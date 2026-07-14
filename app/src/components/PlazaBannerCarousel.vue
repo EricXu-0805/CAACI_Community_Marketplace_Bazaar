@@ -139,6 +139,22 @@ function onTap(b: Banner) {
     );
   }
 }
+/* #ifdef MP-WEIXIN */
+/* mp follows system dark (manifest darkmode:true); WXSS can't match the
+   :root:not([data-theme]) guard above, so mirror on the bare class. */
+@media (prefers-color-scheme: dark) {
+  .banner-slide::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      rgba(var(--canvas-rgb), 0.35),
+      rgba(var(--canvas-rgb), 0.1)
+    );
+  }
+}
+/* #endif */
 
 .banner-img {
   width: 100%;

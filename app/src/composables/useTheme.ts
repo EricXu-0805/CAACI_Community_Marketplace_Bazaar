@@ -72,16 +72,15 @@ function setPref(p: ThemePref) {
 }
 
 /*
- * System dark-mode signal — drives the `auto` branch of isDark.
+ * System dark-mode signal — drives the `auto` branch of isDark (H5) and
+ * the whole of isDark on mp (which follows the system theme).
  *
- * Read once at module load, then kept in sync via the matchMedia
- * `change` event so the dark-only avatar SVG (and any future
- * theme-aware asset) flips live when the user toggles macOS / Windows
- * dark mode without a page reload. Only meaningful on H5 — mp-weixin
- * has no window.matchMedia, so systemDark stays false there (mp
- * dark-mode support is deferred to v3.5 per the v3 spec §CC-1, so
- * mp users will simply always see the light-mode default avatar
- * regardless of OS pref).
+ * H5: read once from matchMedia, then kept live via its `change` event so
+ * theme-aware assets flip when the user toggles macOS / Windows dark mode
+ * without a reload. mp-weixin: read from getSystemInfoSync().theme + kept
+ * live via uni.onThemeChange (matchMedia doesn't exist there). Both feed
+ * the same reactive so the WXSS @media dark canvas and the JS-picked dark
+ * assets move together.
  */
 const systemDark = ref(false)
 // #ifdef H5
@@ -93,6 +92,23 @@ if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
       systemDark.value = e.matches
     })
   }
+}
+// #endif
+// #ifdef MP-WEIXIN
+/*
+ * mp dark mode follows the WeChat / system theme (manifest darkmode:true).
+ * getSystemInfoSync().theme is the initial value; onThemeChange keeps it
+ * live when the user flips the system/WeChat setting while the mp is open.
+ * The WXSS @media (prefers-color-scheme: dark) block in App.vue repaints
+ * the canvas in lockstep, so isDark-driven assets stay in sync.
+ */
+try {
+  systemDark.value = uni.getSystemInfoSync().theme === 'dark'
+} catch {}
+if (typeof uni.onThemeChange === 'function') {
+  uni.onThemeChange((res) => {
+    systemDark.value = res.theme === 'dark'
+  })
 }
 // #endif
 
@@ -111,11 +127,13 @@ if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
  */
 const isDark = computed(() => {
   // #ifndef H5
-  /* mp has no dark mode: applyToDom is H5-only and the WXSS dark token
-     blocks can never match. Pin false so isDark-driven assets (dark logo,
-     dark default avatars) can't desync onto a permanently-light canvas —
-     e.g. a user who picked 'dark' on H5 with the same account/storage. */
-  return false
+  /* mp follows the WeChat / system theme (manifest darkmode:true; no in-app
+     toggle). systemDark is fed by getSystemInfoSync().theme + onThemeChange
+     above and moves in lockstep with the WXSS @media dark canvas, so
+     isDark-driven assets (dark logo, dark default avatars) stay in sync.
+     Other non-H5 targets never wire onThemeChange, so systemDark stays false
+     there — a safe light default. */
+  return systemDark.value
   // #endif
   // #ifdef H5
   return pref.value === 'dark' || (pref.value === 'auto' && systemDark.value)

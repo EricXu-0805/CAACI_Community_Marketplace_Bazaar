@@ -12,8 +12,9 @@
         <view class="mi-arrow"></view>
       </view>
       <!-- #ifdef H5 -->
-      <!-- mp has no dark mode yet — the picker would toast a choice that
-           visibly changes nothing. Hidden until mp dark ships. -->
+      <!-- mp follows the WeChat / system theme (manifest darkmode:true), with
+           no in-app override by design — so the manual light/dark/auto picker
+           is H5-only. -->
       <view class="menu-item" @click="onPickTheme">
         <text class="mi-label">{{ t('settings.appearance') }}</text>
         <text class="mi-value">{{ currentThemeLabel }}</text>

@@ -23,8 +23,9 @@
         </view>
         <view class="mh-actions">
           <!-- #ifdef H5 -->
-          <!-- mp has no dark mode (WXSS drops the [data-theme] token blocks);
-               hide the toggle there until it ships instead of half-flipping. -->
+          <!-- mp follows the WeChat / system theme (manifest darkmode:true)
+               with no in-app override by design, so the manual toggle is
+               H5-only. -->
           <view
             class="mh-theme u-press"
             role="button"
