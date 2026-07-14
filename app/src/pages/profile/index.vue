@@ -694,6 +694,13 @@ function onDeleteItem(id: string) {
     background: var(--user-card-grad-dark);
   }
 }
+/* #ifdef MP-WEIXIN */
+/* mp follows system dark (manifest darkmode:true); WXSS can't match the
+   :root:not([data-theme]) guard above, so mirror on the bare class. */
+@media (prefers-color-scheme: dark) {
+  .user-card { background: var(--user-card-grad-dark); }
+}
+/* #endif */
 
 .user-row { display: flex; align-items: center; gap: 14px; }
 .avatar-big {
