@@ -96,11 +96,12 @@ if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
 // #endif
 // #ifdef MP-WEIXIN
 /*
- * mp dark mode follows the WeChat / system theme (manifest darkmode:true).
- * getSystemInfoSync().theme is the initial value; onThemeChange keeps it
- * live when the user flips the system/WeChat setting while the mp is open.
- * The WXSS @media (prefers-color-scheme: dark) block in App.vue repaints
- * the canvas in lockstep, so isDark-driven assets stay in sync.
+ * mp reads the WeChat / system theme so pref='auto' (the default) can
+ * follow it. getSystemInfoSync().theme is the initial value; onThemeChange
+ * keeps it live when the user flips the system/WeChat setting while the mp
+ * is open. A manual pick in Settings overrides this via pref. Either way
+ * the resolved isDark drives mpThemeClass → the .theme-dark class on the
+ * page root, so canvas + JS-picked assets flip together.
  */
 try {
   systemDark.value = uni.getSystemInfoSync().theme === 'dark'
@@ -125,21 +126,35 @@ if (typeof uni.onThemeChange === 'function') {
  * default for new users and those users will only see dark when the
  * OS does — checking `pref === 'dark'` would miss that case entirely.
  */
-const isDark = computed(() => {
-  // #ifndef H5
-  /* mp follows the WeChat / system theme (manifest darkmode:true; no in-app
-     toggle). systemDark is fed by getSystemInfoSync().theme + onThemeChange
-     above and moves in lockstep with the WXSS @media dark canvas, so
-     isDark-driven assets (dark logo, dark default avatars) stay in sync.
-     Other non-H5 targets never wire onThemeChange, so systemDark stays false
-     there — a safe light default. */
-  return systemDark.value
+const isDark = computed(
+  () => pref.value === 'dark' || (pref.value === 'auto' && systemDark.value),
+)
+
+/*
+ * mp theme class — bound as :class on every page root (via the global mixin
+ * in main.ts). H5 flips theme through html[data-theme] + the CSS token
+ * blocks; WXSS has no documentElement and understands neither :root nor
+ * :not([attr]), so mp drives the flip with a plain `.theme-dark` class on
+ * the page root whose token block lives in App.vue (#ifdef MP-WEIXIN).
+ *
+ * Empty string on H5 (the data-theme path already handles it) and whenever
+ * the resolved theme is light (the base `page {}` tokens are the light
+ * floor). Reactive: flips live when the user picks a theme in Settings or
+ * when the system theme changes (onThemeChange).
+ */
+const mpThemeClass = computed(() => {
+  // #ifdef MP-WEIXIN
+  return isDark.value ? 'theme-dark' : ''
   // #endif
-  // #ifdef H5
-  return pref.value === 'dark' || (pref.value === 'auto' && systemDark.value)
+  // #ifndef MP-WEIXIN
+  return ''
   // #endif
 })
 
 export function useTheme() {
-  return { pref, setPref, isDark }
+  return { pref, setPref, isDark, mpThemeClass }
 }
+
+/* Standalone export for the global mixin (main.ts) so every page template
+   gets `mpThemeClass` without a per-page import. */
+export { mpThemeClass }

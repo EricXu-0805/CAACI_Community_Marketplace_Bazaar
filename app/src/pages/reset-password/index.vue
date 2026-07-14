@@ -1,5 +1,5 @@
 <template>
-  <view class="page" :style="mpChrome">
+  <view class="page" :class="mpThemeClass" :style="mpChrome">
     <view class="header">
       <image class="logo-mark-img" :src="logoSrc" :alt="t('app.name')" mode="aspectFit" />
       <text class="app-name">{{ t('resetPw.title') }}</text>
@@ -59,7 +59,7 @@
 </template>
 
 <script setup lang="ts">
-import { mpChromeVars } from '../../composables/useMpChrome'
+import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 /*
  * Password reset via typed 6-digit OTP code (QA6 #1).

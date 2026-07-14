@@ -1,5 +1,5 @@
 <template>
-  <view class="page has-sidebar" :style="mpChrome">
+  <view class="page has-sidebar" :class="mpThemeClass" :style="mpChrome">
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
@@ -251,7 +251,7 @@
 </template>
 
 <script setup lang="ts">
-import { mpChromeVars } from '../../composables/useMpChrome'
+import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
@@ -695,11 +695,9 @@ function onDeleteItem(id: string) {
   }
 }
 /* #ifdef MP-WEIXIN */
-/* mp follows system dark (manifest darkmode:true); WXSS can't match the
-   :root:not([data-theme]) guard above, so mirror on the bare class. */
-@media (prefers-color-scheme: dark) {
-  .user-card { background: var(--user-card-grad-dark); }
-}
+/* mp flips via the .theme-dark class on the page root (see App.vue); WXSS
+   can't match the H5 [data-theme] / :root:not(...) guards above. */
+.theme-dark .user-card { background: var(--user-card-grad-dark); }
 /* #endif */
 
 .user-row { display: flex; align-items: center; gap: 14px; }

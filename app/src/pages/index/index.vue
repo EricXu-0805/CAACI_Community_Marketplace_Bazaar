@@ -1,5 +1,5 @@
 <template>
-  <view class="page page-lock has-sidebar" :style="mpChrome">
+  <view class="page page-lock has-sidebar" :class="mpThemeClass" :style="mpChrome">
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
@@ -23,9 +23,9 @@
         </view>
         <view class="mh-actions">
           <!-- #ifdef H5 -->
-          <!-- mp follows the WeChat / system theme (manifest darkmode:true)
-               with no in-app override by design, so the manual toggle is
-               H5-only. -->
+          <!-- Home-page quick theme toggle is H5-only (Eric's call). mp still
+               has the auto+manual appearance picker in Settings; it just
+               doesn't get this header shortcut. -->
           <view
             class="mh-theme u-press"
             role="button"
@@ -414,7 +414,7 @@
 </template>
 
 <script setup lang="ts">
-import { mpChromeVars } from '../../composables/useMpChrome'
+import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'

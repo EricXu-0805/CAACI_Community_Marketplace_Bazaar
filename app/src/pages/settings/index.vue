@@ -1,5 +1,5 @@
 <template>
-  <view class="page" :style="mpChrome">
+  <view class="page" :class="mpThemeClass" :style="mpChrome">
     <view class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="brand" /></view>
       <text class="header-title">{{ t('settings.title') }}</text>
@@ -11,16 +11,16 @@
         <text class="mi-value">{{ currentLangLabel }}</text>
         <view class="mi-arrow"></view>
       </view>
-      <!-- #ifdef H5 -->
-      <!-- mp follows the WeChat / system theme (manifest darkmode:true), with
-           no in-app override by design — so the manual light/dark/auto picker
-           is H5-only. -->
+      <!-- Appearance picker (auto / light / dark) — both platforms. Default
+           'auto' follows the system theme; a manual pick overrides it and
+           persists. mp flips via the .theme-dark class on the page root
+           (see App.vue + useTheme mpThemeClass); H5 via html[data-theme].
+           The home-page quick toggle stays H5-only (Eric's call). -->
       <view class="menu-item" @click="onPickTheme">
         <text class="mi-label">{{ t('settings.appearance') }}</text>
         <text class="mi-value">{{ currentThemeLabel }}</text>
         <view class="mi-arrow"></view>
       </view>
-      <!-- #endif -->
     </view>
 
     <view class="section">
@@ -77,7 +77,7 @@
 </template>
 
 <script setup lang="ts">
-import { mpChromeVars } from '../../composables/useMpChrome'
+import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { computed, ref } from 'vue'
 import { useAuth } from '../../composables/useAuth'

@@ -12,6 +12,11 @@
  * var(--mp-navbar-right-pad, ...) usages resolve to real values via CSS
  * variable inheritance. Returns '' on H5 (harmless empty style).
  */
+/* Re-exported so page roots can pull both the chrome vars and the reactive
+   theme class from one import. mpThemeClass drives :class on the page root
+   ('theme-dark' on mp when dark, '' otherwise) — see useTheme + App.vue. */
+export { mpThemeClass } from './useTheme'
+
 let cached: string | null = null
 
 export function mpChromeVars(): string {

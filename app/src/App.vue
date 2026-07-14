@@ -1796,110 +1796,106 @@ page, .page { overflow-x: clip; }
 /* #ifdef MP-WEIXIN */
 /*
  * ============================================================
- * mp-weixin dark mode — follows the WeChat / system dark setting.
+ * mp-weixin dark mode — auto (follow system) + manual override.
  *
- * Enabled by manifest.json "darkmode": true, which activates
- * @media (prefers-color-scheme: dark) inside WXSS and lets the mp
- * render dark when the device / WeChat theme is dark. Eric's call
- * (2026-07): mp follows the system theme, no in-app toggle (mp
- * convention; the Dk/Lt pill stays #ifdef H5-hidden).
- *
- * H5 drives dark via [data-theme] + :root:not([data-theme="light"])
- * guards above; WXSS understands neither :root nor :not([attr]), and
- * one invalid selector in a list drops the WHOLE rule — so mp needs
- * its own block keyed on `page` + bare element/class selectors.
- * Scoped #ifdef MP-WEIXIN so these unguarded `page`/`text`/`.u-glass`
- * rules can't leak onto H5 and override a user's manual LIGHT choice
- * when their OS is dark. Values mirror the [data-theme="dark"] block
- * verbatim.
+ * Eric's call (2026-07): default follows the WeChat / system theme,
+ * plus a manual light/dark/auto picker in Settings (no home-page
+ * toggle). H5 flips via html[data-theme] + the CSS token blocks;
+ * WXSS has no documentElement and understands neither :root nor
+ * :not([attr]) (and one invalid selector in a list drops the whole
+ * rule), so mp drives the flip with a plain `.theme-dark` class on
+ * the page root — bound via :class="mpThemeClass" (global mixin in
+ * main.ts), which resolves to 'theme-dark' whenever useTheme's isDark
+ * is true (pref='dark', or pref='auto' + system dark). The class sets
+ * the dark tokens on the root <view>; they shadow the inherited light
+ * `page {}` tokens and cascade to all descendants. Scoped #ifdef
+ * MP-WEIXIN. Values mirror the [data-theme="dark"] block verbatim.
  * ============================================================ */
-@media (prefers-color-scheme: dark) {
-  page {
-    --ink:         #F0E8D6;
-    --ink-soft:    rgba(240, 232, 214, 0.72);
-    --ink-quiet:   rgba(240, 232, 214, 0.52);
-    --ink-faint:   rgba(240, 232, 214, 0.32);
-    --ink-inverse: #1C1A17;
-    --ink-placeholder: rgba(240, 232, 214, 0.62);
-    --ink-strong:      rgba(240, 232, 214, 0.92);
+.theme-dark {
+  --ink:         #F0E8D6;
+  --ink-soft:    rgba(240, 232, 214, 0.72);
+  --ink-quiet:   rgba(240, 232, 214, 0.52);
+  --ink-faint:   rgba(240, 232, 214, 0.32);
+  --ink-inverse: #1C1A17;
+  --ink-placeholder: rgba(240, 232, 214, 0.62);
+  --ink-strong:      rgba(240, 232, 214, 0.92);
 
-    --text-primary:   var(--ink);
-    --text-secondary: var(--ink-soft);
-    --text-tertiary:  var(--ink-soft);
-    --text-muted:     var(--ink-quiet);
-    --text-faint:     var(--ink-faint);
-    --text-disabled:  rgba(240, 232, 214, 0.22);
+  --text-primary:   var(--ink);
+  --text-secondary: var(--ink-soft);
+  --text-tertiary:  var(--ink-soft);
+  --text-muted:     var(--ink-quiet);
+  --text-faint:     var(--ink-faint);
+  --text-disabled:  rgba(240, 232, 214, 0.22);
 
-    --bg-page:    #12100D;
-    --bg-elev-1:  #201E1A;
-    --bg-elev-2:  #2C2A25;
-    --bg-subtle:  #2C2A25;
-    --bg-inset:   #383530;
+  --bg-page:    #12100D;
+  --bg-elev-1:  #201E1A;
+  --bg-elev-2:  #2C2A25;
+  --bg-subtle:  #2C2A25;
+  --bg-inset:   #383530;
 
-    --canvas:     #12100D;
-    --surface:    #201E1A;
-    --surface-alt: #2C2A25;
-    --parchment:  #0D0C0A;
-    --frame:      #34312B;
-    --paper:      #201E1A;
-    --paper-2:    #2C2A25;
-    --paper-3:    #383530;
+  --canvas:     #12100D;
+  --surface:    #201E1A;
+  --surface-alt: #2C2A25;
+  --parchment:  #0D0C0A;
+  --frame:      #34312B;
+  --paper:      #201E1A;
+  --paper-2:    #2C2A25;
+  --paper-3:    #383530;
 
-    --surface-rgb: 32, 30, 26;
-    --canvas-rgb:  18, 16, 13;
+  --surface-rgb: 32, 30, 26;
+  --canvas-rgb:  18, 16, 13;
 
-    --line-hair:  rgba(240, 232, 214, 0.08);
-    --line-soft:  rgba(240, 232, 214, 0.12);
-    --line-bold:  rgba(240, 232, 214, 0.18);
-    --border:        rgba(245, 240, 232, 0.12);
-    --border-strong: rgba(245, 240, 232, 0.22);
-    --border-hair:   rgba(245, 240, 232, 0.07);
+  --line-hair:  rgba(240, 232, 214, 0.08);
+  --line-soft:  rgba(240, 232, 214, 0.12);
+  --line-bold:  rgba(240, 232, 214, 0.18);
+  --border:        rgba(245, 240, 232, 0.12);
+  --border-strong: rgba(245, 240, 232, 0.22);
+  --border-hair:   rgba(245, 240, 232, 0.07);
 
-    --brand:       #E06A4A;
-    --brand-deep:  #C45A3A;
-    --brand-soft:  rgba(224, 106, 74, 0.15);
-    --brand-ghost: rgba(224, 106, 74, 0.08);
+  --brand:       #E06A4A;
+  --brand-deep:  #C45A3A;
+  --brand-soft:  rgba(224, 106, 74, 0.15);
+  --brand-ghost: rgba(224, 106, 74, 0.08);
 
-    --campus-blue:      #6A8AC2;
-    --campus-blue-soft: rgba(106, 138, 194, 0.15);
-    --campus-blue-deep: #4A6BA0;
-    --campus-blue-surface: #13294B;
-    --campus-orange:    #FF7B33;
-    --campus-orange-deep: #FF9560;
-    --campus-orange-surface: #B33D00;
-    --campus-orange-soft: rgba(255, 123, 51, 0.15);
-    --campus-blue-chip-bg:     rgba(19, 41, 75, 0.45);
-    --campus-blue-chip-border: rgba(106, 138, 194, 0.3);
-    --user-card-grad-dark:     linear-gradient(135deg, #1A2540, #2C3E5C);
+  --campus-blue:      #6A8AC2;
+  --campus-blue-soft: rgba(106, 138, 194, 0.15);
+  --campus-blue-deep: #4A6BA0;
+  --campus-blue-surface: #13294B;
+  --campus-orange:    #FF7B33;
+  --campus-orange-deep: #FF9560;
+  --campus-orange-surface: #B33D00;
+  --campus-orange-soft: rgba(255, 123, 51, 0.15);
+  --campus-blue-chip-bg:     rgba(19, 41, 75, 0.45);
+  --campus-blue-chip-border: rgba(106, 138, 194, 0.3);
+  --user-card-grad-dark:     linear-gradient(135deg, #1A2540, #2C3E5C);
 
-    --success:      #8BA670;
-    --success-soft: rgba(139, 166, 112, 0.15);
-    --warning:      #E5B170;
-    --warning-soft: rgba(229, 177, 112, 0.15);
-    --danger:       #E06666;
-    --danger-soft:  rgba(224, 102, 102, 0.15);
+  --success:      #8BA670;
+  --success-soft: rgba(139, 166, 112, 0.15);
+  --warning:      #E5B170;
+  --warning-soft: rgba(229, 177, 112, 0.15);
+  --danger:       #E06666;
+  --danger-soft:  rgba(224, 102, 102, 0.15);
 
-    --accent-good:   var(--success);
-    --accent-warn:   var(--warning);
-    --accent-danger: var(--danger);
+  --accent-good:   var(--success);
+  --accent-warn:   var(--warning);
+  --accent-danger: var(--danger);
 
-    --shadow-hair: inset 0 0 0 0.5px rgba(240, 232, 214, 0.06);
-    --shadow-soft: 0 1px 2px rgba(8, 6, 4, 0.6),  0 4px 12px rgba(8, 6, 4, 0.5);
-    --shadow-pop:  0 2px 4px rgba(8, 6, 4, 0.7),  0 12px 28px rgba(8, 6, 4, 0.55);
-    --shadow-float:0 1px 2px rgba(8, 6, 4, 0.7),  0 24px 56px -16px rgba(8, 6, 4, 0.7);
-    --shadow-cta:  0 2px 4px rgba(224, 106, 74, 0.25), 0 12px 28px -8px rgba(224, 106, 74, 0.4);
-  }
-  text {
-    color: #F0E8D6;
-  }
-  .u-glass {
-    box-shadow:
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
-      0 10px 30px -10px rgba(0, 0, 0, 0.6);
-  }
-  .u-glass--hair-b { border-bottom-color: rgba(245, 240, 232, 0.08); }
-  .u-glass--hair-t { border-top-color: rgba(245, 240, 232, 0.08); }
+  --shadow-hair: inset 0 0 0 0.5px rgba(240, 232, 214, 0.06);
+  --shadow-soft: 0 1px 2px rgba(8, 6, 4, 0.6),  0 4px 12px rgba(8, 6, 4, 0.5);
+  --shadow-pop:  0 2px 4px rgba(8, 6, 4, 0.7),  0 12px 28px rgba(8, 6, 4, 0.55);
+  --shadow-float:0 1px 2px rgba(8, 6, 4, 0.7),  0 24px 56px -16px rgba(8, 6, 4, 0.7);
+  --shadow-cta:  0 2px 4px rgba(224, 106, 74, 0.25), 0 12px 28px -8px rgba(224, 106, 74, 0.4);
 }
+.theme-dark text {
+  color: #F0E8D6;
+}
+.theme-dark .u-glass {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+    0 10px 30px -10px rgba(0, 0, 0, 0.6);
+}
+.theme-dark .u-glass--hair-b { border-bottom-color: rgba(245, 240, 232, 0.08); }
+.theme-dark .u-glass--hair-t { border-top-color: rgba(245, 240, 232, 0.08); }
 /* #endif */
 
 @media (prefers-reduced-transparency: reduce) {
