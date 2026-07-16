@@ -5,6 +5,7 @@ import { useI18n } from './useI18n'
 import type { Item, ItemCategory, ItemCondition, ItemStatus } from '../types'
 import { compressImage, detectImageMimeType, expandSearch, friendlyErrorMessage, getImageDimensions } from '../utils'
 import { checkContent, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
+import { mpTextGate, mpImageCheck } from './useWechatSecCheck'
 
 const items = ref<Item[]>([])
 const loading = ref(false)
@@ -242,6 +243,8 @@ export function useItems() {
     }
     const ai = await remoteModerate(`${input.title}\n${input.description}`)
     if (ai.flagged) throw new Error(`moderation_block:sensitive_word:ai(${ai.categories.join(',')})`)
+    /* mp store review: WeChat's own classifier (no-op on H5). */
+    await mpTextGate(`${input.title}\n${input.description}`, 3)
 
     const payload: Record<string, any> = {
       user_id: session.user.id,
@@ -320,6 +323,8 @@ export function useItems() {
       if (aiInput.length > 0) {
         const ai = await remoteModerate(aiInput)
         if (ai.flagged) throw new Error(`moderation_block:sensitive_word:ai(${ai.categories.join(',')})`)
+        /* mp store review: WeChat's own classifier (no-op on H5). */
+        await mpTextGate(aiInput, 3)
       }
     }
 
@@ -466,6 +471,8 @@ export function useItems() {
             .getPublicUrl(storagePath)
           urls.push(urlData.publicUrl)
           dims.push(naturalDims)
+          /* mp store review: async WeChat image check (no-op on H5). */
+          mpImageCheck(storagePath)
           console.log('[upload-debug] pushed URL:', urlData.publicUrl)
         } else {
           console.warn('[upload-debug] skipping file due to upload error:', filePath)
@@ -590,6 +597,8 @@ export function useItems() {
     if (!urlData?.publicUrl) {
       throw new Error('Storage upload succeeded but public URL resolution failed')
     }
+    /* mp store review: async WeChat image check (no-op on H5). */
+    mpImageCheck(storagePath)
     console.log('[upload-debug] uploadOneImage DONE:', urlData.publicUrl)
     return { url: urlData.publicUrl, dims: naturalDims }
   }

@@ -7,6 +7,7 @@ import { MESSAGE_FIELDS } from './useMessages.constants'
 import type { Conversation, Message } from '../types'
 import { friendlyErrorMessage } from '../utils'
 import { checkContent, isLocalDuplicate, clearLocalDuplicate, remoteModerate } from '../utils/contentSafety'
+import { mpTextGate } from './useWechatSecCheck'
 import { parseStickerToken } from '../components/stickers/registry'
 
 /*
@@ -229,6 +230,8 @@ export function useMessages() {
       if (type === 'text' && !isSticker) {
         const ai = await remoteModerate(content)
         if (ai.flagged) throw new Error(`moderation_block:sensitive_word:ai(${ai.categories.join(',')})`)
+        /* mp store review: WeChat's own classifier (no-op on H5). */
+        await mpTextGate(content, 4)
       }
 
       const { data, error } = await supabase
