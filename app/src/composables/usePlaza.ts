@@ -6,6 +6,7 @@ import { useI18n } from './useI18n'
 import type { Post, PostComment } from '../types'
 import { expandSearch, friendlyErrorMessage } from '../utils'
 import { checkContent, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
+import { mpTextGate } from './useWechatSecCheck'
 import { addBreadcrumb } from '../utils/sentry'
 
 const posts = ref<Post[]>([])
@@ -278,6 +279,8 @@ export function usePlaza() {
       if (isLocalDuplicate('post', trimmed)) throw new Error('duplicate_post')
       const ai = await remoteModerate(trimmed)
       if (ai.flagged) throw new Error(`moderation_block:sensitive_word:ai(${ai.categories.join(',')})`)
+      /* mp store review: WeChat's own classifier (no-op on H5). */
+      await mpTextGate(trimmed, 3)
     }
 
     const payloadContent = trimmed || ' '
@@ -511,6 +514,8 @@ export function usePlaza() {
     if (isLocalDuplicate(`comment:${postId}`, trimmed)) throw new Error('duplicate_comment')
     const aiComment = await remoteModerate(trimmed)
     if (aiComment.flagged) throw new Error(`moderation_block:sensitive_word:ai(${aiComment.categories.join(',')})`)
+    /* mp store review: WeChat's own classifier (no-op on H5). */
+    await mpTextGate(trimmed, 2)
     const { data, error } = await supabase
       .from('post_comments')
       .insert({

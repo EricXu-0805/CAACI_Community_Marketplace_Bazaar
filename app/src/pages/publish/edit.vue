@@ -128,6 +128,13 @@
         </view>
       </scroll-view>
 
+      <!-- #ifdef H5 -->
+      <!-- H5-only: on mp this button would need uni.getLocation, whose
+           console 接口申请 is category-gated (individual subjects are
+           effectively never approved) — so the mp build drops the button
+           (manual location input + spot chips remain) and the manifest
+           declares no location APIs at all, keeping that whole review
+           risk class off the table. -->
       <view
         class="locate-btn"
         :class="{ 'locate-btn--detecting': detectingLoc }"
@@ -140,6 +147,7 @@
         <image v-else class="locate-btn-icon" src="/static/locate.svg" alt="" mode="aspectFit" />
         <text class="locate-btn-text">{{ detectingLoc ? t('publish.detectingLocation') : t('publish.useCurrentLocation') }}</text>
       </view>
+      <!-- #endif -->
 
       <view class="form-group row toggle-row" @click="form.negotiable = !form.negotiable">
         <text class="label">{{ t('publish.obo') }}</text>

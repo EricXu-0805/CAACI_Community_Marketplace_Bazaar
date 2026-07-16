@@ -41,15 +41,7 @@
             "postcss": true
         },
         "usingComponents": true,
-        "__usePrivacyCheck__": true,
-        "requiredPrivateInfos": [
-            "getLocation"
-        ],
-        "permission": {
-            "scope.userLocation": {
-                "desc": "Used to show listings and meetup spots near you."
-            }
-        }
+        "__usePrivacyCheck__": true
     },
     "uniStatistics": {
         "enable": false
