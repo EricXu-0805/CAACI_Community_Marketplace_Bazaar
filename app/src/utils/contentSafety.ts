@@ -52,18 +52,19 @@ const MAX_MESSAGE = 4000
 
 /* ---------- 2. Contact-info regex ---------- */
 
-/* Homoglyph / obfuscation folding — collapse common evasion tricks
-   (full-width digits, spaces, hyphens, zero-width chars, and the
-   well-known "V" substitution for 微信) into canonical ASCII. */
+/* Homoglyph / obfuscation folding — collapse common evasion tricks into
+   canonical ASCII. Kept in lockstep with the DB content_moderation_normalize
+   (migration 089): NFKC folds full-width digits/letters/＠/． to ASCII in
+   one step, then a wide invisible-formatting set (soft hyphen, word joiner,
+   variation selectors, …) that would otherwise split keywords invisibly is
+   stripped, then whitespace/punct, then lowercase. */
 function normalize(s: string): string {
   if (!s) return ''
-  let out = s
-    .replace(/[\u200B-\u200F\uFEFF]/g, '')
+  return s
+    .normalize('NFKC')
+    .replace(/[\u00AD\u034F\u061C\u180E\u200B-\u200F\u2060-\u2064\u206A-\u206F\uFEFF\uFE00-\uFE0F]/g, '')
     .replace(/[　\s\-_.+,。，、]/g, '')
     .toLowerCase()
-  out = out.replace(/[０-９]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 0xFEE0))
-  out = out.replace(/[Ａ-Ｚａ-ｚ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
-  return out
 }
 
 const CN_MOBILE = /(?<![0-9])1[3-9]\d{9}(?![0-9])/
