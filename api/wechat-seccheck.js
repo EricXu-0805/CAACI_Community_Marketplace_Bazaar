@@ -203,8 +203,13 @@ export default async function handler(request) {
       })
       const data = await r.json()
       if (!data?.trace_id) return json({ ok: true, degraded: true, openid })
-      /* Record trace → object so the push callback can act on the verdict. */
-      await fetch(`${SUPABASE_URL}/rest/v1/wechat_media_checks`, {
+      /* Record trace → object so the push callback can act on the verdict.
+         A dropped mapping is a silent hole — WeChat later pushes a risky
+         verdict keyed only by trace_id and the callback can't find the
+         object to take down — so log a failed insert loudly. Still return
+         ok:true: WeChat already accepted the submit and a bookkeeping miss
+         must not fail the caller's upload. */
+      const mapRes = await fetch(`${SUPABASE_URL}/rest/v1/wechat_media_checks`, {
         method: 'POST',
         headers: {
           apikey: SUPABASE_SERVICE,
@@ -214,6 +219,9 @@ export default async function handler(request) {
         },
         body: JSON.stringify({ trace_id: data.trace_id, bucket, storage_path: storagePath, user_id: userId }),
       })
+      if (!mapRes.ok) {
+        console.error(`wechat-seccheck: media_check mapping insert failed (${mapRes.status}) for trace_id ${data.trace_id}; a risky verdict for ${bucket}/${storagePath} will not be actionable`)
+      }
       return json({ ok: true, trace_id: data.trace_id, openid })
     }
 
