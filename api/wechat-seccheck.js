@@ -84,7 +84,7 @@ async function rateLimited(userId) {
         Authorization: `Bearer ${SUPABASE_SERVICE}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ bucket_in: `seccheck:${userId}`, limit_in: 600, window_seconds_in: 3600 }),
+      body: JSON.stringify({ bucket_in: `seccheck:${userId}`, max_in: 600, window_secs_in: 3600 }),
     })
     if (!r.ok) return false
     return (await r.json()) === false
