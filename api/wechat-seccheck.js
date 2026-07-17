@@ -189,13 +189,24 @@ export default async function handler(request) {
 
     if (body.kind === 'image') {
       const mediaUrl = String(body.media_url || '')
-      const bucket = String(body.bucket || 'item-images')
-      const storagePath = String(body.storage_path || '')
+      const PUBLIC_PREFIX = `${SUPABASE_URL}/storage/v1/object/public/`
       /* Only submit our own storage objects — this endpoint must not become
          an open proxy for checking (and thus fetching) arbitrary URLs. */
-      if (!mediaUrl.startsWith(`${SUPABASE_URL}/storage/v1/object/public/`) || !storagePath) {
+      if (!mediaUrl.startsWith(PUBLIC_PREFIX)) {
         return json({ error: 'bad_media_url' }, 400)
       }
+      /* Derive bucket + path FROM the validated URL — never from the body.
+         The callback deletes whatever object we record here with the service
+         key, so trusting a body-supplied bucket/storage_path decoupled from
+         the scanned media_url would be an arbitrary cross-user storage-delete
+         primitive. */
+      const rel = mediaUrl.slice(PUBLIC_PREFIX.length).split('?')[0].split('#')[0]
+      const slash = rel.indexOf('/')
+      if (slash <= 0 || slash === rel.length - 1) {
+        return json({ error: 'bad_media_url' }, 400)
+      }
+      const bucket = rel.slice(0, slash)
+      const storagePath = rel.slice(slash + 1)
       const r = await fetch(`https://api.weixin.qq.com/wxa/media_check_async?access_token=${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

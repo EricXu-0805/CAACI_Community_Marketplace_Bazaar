@@ -76,8 +76,13 @@ export default async function handler(request) {
         const r = await fetch(`${q}&select=bucket,storage_path`, { headers: svcHeaders })
         const rows = r.ok ? await r.json() : []
         if (rows?.[0]) {
+          /* seccheck derives bucket/path from a validated own-storage URL, so
+             these are already ours; encode each segment (keeping / separators)
+             as defense-in-depth against a malformed stored path. */
+          const bkt = encodeURIComponent(String(rows[0].bucket))
+          const path = String(rows[0].storage_path).split('/').map(encodeURIComponent).join('/')
           await fetch(
-            `${SUPABASE_URL}/storage/v1/object/${rows[0].bucket}/${rows[0].storage_path}`,
+            `${SUPABASE_URL}/storage/v1/object/${bkt}/${path}`,
             { method: 'DELETE', headers: svcHeaders },
           )
         }
