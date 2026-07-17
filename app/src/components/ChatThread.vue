@@ -452,6 +452,14 @@ const headerStatus = computed(() => {
 })
 watch(inputText, (v) => { if (v && typingApi) typingApi.sendTyping() })
 
+// Guards the async onMounted: an unmount mid-await (desktop two-pane switching
+// conversations before the first fetch resolves, or mobile open-then-back) runs
+// onUnmounted as a no-op because the subscription refs are still null, then the
+// resumed body would wire channels + a visibilitychange listener onto a dead
+// instance. Those leak and — via the shared `messages` singleton — bleed this
+// conversation into whatever thread is open next.
+let mounted = true
+
 onMounted(async () => {
   if (!requireAuth()) return
   const options = { id: props.conversationId, prefill: props.prefill }
@@ -496,10 +504,26 @@ onMounted(async () => {
       uni.showToast({ title: t('chat.fail'), icon: 'none' })
     }
 
+    // Torn down during the awaits above? Bail before wiring any subscription
+    // or listener (see `mounted` above).
+    if (!mounted) return
+
     unsubscribe = subscribeToMessages(options.id, (newMsg) => {
       // Idempotent: a reconnect replay, or our own optimistic push in onSend,
       // can deliver a row we already hold — never render it twice.
       if (messages.value.some(m => m.id === newMsg.id)) return
+      // Our own echo: if onSend's insert response was lost, the optimistic
+      // bubble is still here (id=temp-…, maybe _failed). Heal it in place by
+      // sender+content+near-time instead of rendering a second copy — and the
+      // heal clears _failed, so there's no stale retry left to double-send.
+      if (currentUser.value && newMsg.sender_id === currentUser.value.id) {
+        const echoTs = new Date(newMsg.created_at as any).getTime()
+        const tIdx = messages.value.findIndex(m =>
+          typeof m.id === 'string' && m.id.startsWith('temp-') &&
+          (m._pending || m._failed) && m.content === newMsg.content &&
+          Math.abs(new Date(m.created_at as any).getTime() - echoTs) < 120000)
+        if (tIdx >= 0) { messages.value.splice(tIdx, 1, newMsg); return }
+      }
       // The realtime payload.new carries no sender join, so an incoming peer
       // message would render with the default avatar. Hydrate from the peer
       // profile we already resolved (conversationDetail) so it's right on the
@@ -567,6 +591,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  mounted = false
   if (unsubscribe) unsubscribe()
   if (offersUnsub) offersUnsub()
   if (meetupsUnsub) meetupsUnsub()
