@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 /*
  * Theme preference (light / dark / auto).
@@ -150,6 +150,31 @@ const mpThemeClass = computed(() => {
   return ''
   // #endif
 })
+
+/*
+ * WeChat native window background — the layer behind pull-to-refresh and the
+ * overscroll rubber-band. The `.theme-dark` class only repaints descendants of
+ * the page <view>, and pages.json globalStyle.backgroundColor is a fixed light
+ * value, so in dark mode that native band flashes light on pull/overscroll.
+ * setBackgroundColor is per-page, so this is re-applied both here (on every
+ * theme change, for the current page) and from a global onShow mixin (main.ts,
+ * for page navigations). Driven by isDark so it honors the manual Settings
+ * override, not just the system theme (which is why theme.json won't do).
+ */
+export function applyMpNativeBg() {
+  // #ifdef MP-WEIXIN
+  const bg = isDark.value ? '#12100D' : '#F7F4EE'
+  try {
+    uni.setBackgroundColor({ backgroundColor: bg, backgroundColorTop: bg, backgroundColorBottom: bg })
+  } catch {}
+  try {
+    uni.setBackgroundTextStyle({ textStyle: isDark.value ? 'light' : 'dark' })
+  } catch {}
+  // #endif
+}
+// #ifdef MP-WEIXIN
+watch(isDark, () => applyMpNativeBg())
+// #endif
 
 export function useTheme() {
   return { pref, setPref, isDark, mpThemeClass }

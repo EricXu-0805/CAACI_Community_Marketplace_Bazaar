@@ -42,7 +42,12 @@ function currentPageIsNotifications(): boolean {
 async function markReadById(id: string) {
   const { supabase } = useSupabase()
   try {
-    await supabase.from('notifications').update({ is_read: true }).eq('id', id)
+    // supabase-js resolves with { error } and does NOT throw on an RLS/HTTP
+    // failure, so a bare await can't observe a failed write. Gate the local
+    // badge decrement on a clean write — otherwise the badge drops while the
+    // row is still unread server-side (until the next fetch re-inflates it).
+    const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', id)
+    if (error) return
     const n = notifications.value.find(x => x.id === id)
     if (n && !n.is_read) {
       n.is_read = true
