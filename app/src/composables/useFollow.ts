@@ -1,8 +1,15 @@
 import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 import { useAuth } from './useAuth'
+import { useModeration } from './useModeration'
 import { captureException } from '../utils/sentry'
 import type { Item } from '../types'
+import {
+  captureAccountRequest,
+  getActiveAccountId,
+  isAccountRequestCurrent,
+  onAccountTransition,
+} from './accountScope'
 
 export interface FollowedProfile {
   id: string
@@ -17,6 +24,13 @@ export interface FollowedProfile {
 const following = ref<Set<string>>(new Set())
 const followingLoaded = ref(false)
 
+function resetFollowingState() {
+  following.value = new Set()
+  followingLoaded.value = false
+}
+
+onAccountTransition(resetFollowingState)
+
 /*
  * Keep in sync with useItems.ts. Both composables render the same card
  * UI; if you add a new column here, add it there too. The legacy
@@ -30,26 +44,37 @@ const LIST_ITEM_FIELDS =
 export function useFollow() {
   const { supabase } = useSupabase()
   const { currentUser } = useAuth()
+  const moderation = useModeration()
+
+  async function requireModerationSnapshot() {
+    const gate = await moderation.ensureLoaded()
+    if (!gate.ok) throw new Error('moderation_gate_unavailable')
+  }
 
   async function loadMyFollowing() {
     if (!currentUser.value) {
-      following.value = new Set()
-      followingLoaded.value = true
+      if (!getActiveAccountId()) resetFollowingState()
       return
     }
+    const uid = currentUser.value.id
+    const token = captureAccountRequest(uid)
+    if (!isAccountRequestCurrent(token)) return
     const { data, error } = await supabase
       .from('follows')
       .select('followee_id')
-      .eq('follower_id', currentUser.value.id)
+      .eq('follower_id', uid)
     // A failed load otherwise reads as "you follow no one" (empty feed) with
     // no signal — capture it and keep the prior set instead of zeroing it.
     if (error) {
-      console.error('Failed to load following:', error)
+      if (!isAccountRequestCurrent(token)) return
+      console.error('[follow] load failed')
       captureException(error, { tags: { source: 'loadMyFollowing' } })
       return
     }
-    following.value = new Set((data || []).map((f: { followee_id: string }) => f.followee_id))
-    followingLoaded.value = true
+    if (isAccountRequestCurrent(token)) {
+      following.value = new Set((data || []).map((f: { followee_id: string }) => f.followee_id))
+      followingLoaded.value = true
+    }
   }
 
   function isFollowing(sellerId: string): boolean {
@@ -58,20 +83,28 @@ export function useFollow() {
 
   async function toggleFollow(sellerId: string): Promise<boolean> {
     if (!currentUser.value) throw new Error('Not authenticated')
-    if (sellerId === currentUser.value.id) throw new Error('Cannot follow yourself')
+    const uid = currentUser.value.id
+    const token = captureAccountRequest(uid)
+    if (!isAccountRequestCurrent(token)) throw new Error('Authentication changed')
+    if (sellerId === uid) throw new Error('Cannot follow yourself')
+    await requireModerationSnapshot()
+    if (!isAccountRequestCurrent(token)) throw new Error('Authentication changed')
+    if (moderation.blockedIds.value.has(sellerId)) throw new Error('moderation_gate_unavailable')
     if (isFollowing(sellerId)) {
       const { error } = await supabase
         .from('follows')
         .delete()
-        .eq('follower_id', currentUser.value.id)
+        .eq('follower_id', uid)
         .eq('followee_id', sellerId)
+      if (!isAccountRequestCurrent(token)) return false
       if (error) throw error
       following.value.delete(sellerId)
       return false
     } else {
       const { error } = await supabase
         .from('follows')
-        .insert({ follower_id: currentUser.value.id, followee_id: sellerId })
+        .insert({ follower_id: uid, followee_id: sellerId })
+      if (!isAccountRequestCurrent(token)) return false
       if (error && error.code !== '23505') throw error
       following.value.add(sellerId)
       return true
@@ -80,11 +113,18 @@ export function useFollow() {
 
   async function fetchFollowingFeed(page: number = 0, pageSize: number = 20): Promise<Item[]> {
     if (!currentUser.value) return []
+    const uid = currentUser.value.id
+    const token = captureAccountRequest(uid)
+    if (!isAccountRequestCurrent(token)) return []
+    await requireModerationSnapshot()
+    if (!isAccountRequestCurrent(token)) return []
     if (following.value.size === 0) {
       if (!followingLoaded.value) await loadMyFollowing()
+      if (!isAccountRequestCurrent(token)) return []
       if (following.value.size === 0) return []
     }
-    const ids = Array.from(following.value)
+    const ids = Array.from(following.value).filter(id => !moderation.blockedIds.value.has(id))
+    if (ids.length === 0) return []
     /*
      * Cast select() to any — same TS2590 union-complexity workaround
      * documented in useItems.ts. Type assertion at the return boundary
@@ -97,6 +137,7 @@ export function useFollow() {
       .eq('status', 'active')
       .order('created_at', { ascending: false })
       .range(page * pageSize, (page + 1) * pageSize - 1)
+    if (!isAccountRequestCurrent(token)) return []
     if (error) throw error
     return (data || []) as unknown as Item[]
   }
@@ -110,27 +151,38 @@ export function useFollow() {
    */
   async function fetchFollowingProfiles(page: number = 0, pageSize: number = 30): Promise<FollowedProfile[]> {
     if (!currentUser.value) return []
-    const { data, error } = await supabase
+    const uid = currentUser.value.id
+    const token = captureAccountRequest(uid)
+    if (!isAccountRequestCurrent(token)) return []
+    await requireModerationSnapshot()
+    if (!isAccountRequestCurrent(token)) return []
+    let query = supabase
       .from('follows')
-      .select(`created_at, followee:profiles!follows_followee_id_fkey(${PUBLIC_PROFILE_FIELDS})` as any)
-      .eq('follower_id', currentUser.value.id)
+      .select(`created_at, followee_id, followee:profiles!follows_followee_id_fkey(${PUBLIC_PROFILE_FIELDS})` as any)
+      .eq('follower_id', uid)
       .order('created_at', { ascending: false })
       .range(page * pageSize, (page + 1) * pageSize - 1)
+    if (moderation.blockedIds.value.size > 0) {
+      query = query.not('followee_id', 'in', `(${Array.from(moderation.blockedIds.value).join(',')})`)
+    }
+    const { data, error } = await query
+    if (!isAccountRequestCurrent(token)) return []
     if (error) throw error
-    return (data || []).map((r: any) => r.followee).filter(Boolean) as FollowedProfile[]
+    return (data || [])
+      .map((r: any) => r.followee)
+      .filter((profile: FollowedProfile | null) => !!profile && !moderation.blockedIds.value.has(profile.id)) as FollowedProfile[]
   }
 
   async function followerCount(userId: string): Promise<number> {
     const { count } = await supabase
       .from('follows')
-      .select('*', { count: 'estimated', head: true })
+      .select('followee_id', { count: 'estimated', head: true })
       .eq('followee_id', userId)
     return count || 0
   }
 
   function reset() {
-    following.value = new Set()
-    followingLoaded.value = false
+    resetFollowingState()
   }
 
   return {

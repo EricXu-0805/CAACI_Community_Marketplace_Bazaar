@@ -1,8 +1,9 @@
 import path from "node:path";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import type { Plugin } from "vite";
 import uni from "@dcloudio/vite-plugin-uni";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
+import { localDevServerBoundary } from "./dev-server-boundary.mjs";
 
 /*
  * VITE_RELEASE auto-derivation order:
@@ -21,6 +22,8 @@ const RELEASE_TAG =
   process.env.VITE_RELEASE
   || (process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7))
   || 'dev';
+const DEPLOY_ENV_TAG = process.env.VERCEL_ENV?.trim().toLowerCase()
+  || (process.env.CI === 'true' ? 'ci' : 'local');
 
 /*
  * Sentry source-map upload gate.
@@ -37,12 +40,14 @@ const RELEASE_TAG =
  * @sentry/vite-plugin to upload the .map files to Sentry, then delete
  * them from the build output so Vercel never serves them.
  *
- * The plugin is gated on SENTRY_AUTH_TOKEN being present:
- *   · Local dev: token absent → plugin skipped, build is fast, no
- *     source maps generated (sourcemap option still in effect but
- *     plugin won't upload anything)
- *   · Vercel production deploys: token present in env → plugin runs,
- *     uploads to Sentry, deletes .map files post-upload
+ * The plugin is gated on both credentials and a deployment identity:
+ *   · Local dev and `vercel build`: no Vercel commit SHA → plugin skipped,
+ *     even if Vercel CLI downloaded preview credentials. This keeps a local
+ *     verification build from mutating the external Sentry project.
+ *   · Vercel production/preview deploys: token + auto-injected commit SHA →
+ *     plugin runs, uploads to Sentry, deletes .map files post-upload
+ *   · An intentional manual upload must opt in with
+ *     SENTRY_UPLOAD_SOURCEMAPS=true and an explicit VITE_RELEASE.
  *   · CI (GitHub Actions): we deliberately do NOT pass the token, so
  *     CI builds stay fast and don't pollute Sentry releases. Vercel
  *     is the source of truth for what's deployed.
@@ -55,11 +60,208 @@ const RELEASE_TAG =
  *      upload them under the same release as H5 and pollute the data
  */
 const isMpBuild = (process.env.UNI_PLATFORM || "").startsWith("mp-");
+const hasManualSentryUploadIdentity =
+  process.env.SENTRY_UPLOAD_SOURCEMAPS === "true"
+  && !!process.env.VITE_RELEASE?.trim();
+const hasSentryUploadIdentity =
+  !!process.env.VERCEL_GIT_COMMIT_SHA
+  || hasManualSentryUploadIdentity;
 const sentryEnabled =
   !isMpBuild
+  && hasSentryUploadIdentity
   && !!process.env.SENTRY_AUTH_TOKEN
   && !!process.env.SENTRY_ORG
   && !!process.env.SENTRY_PROJECT;
+
+/*
+ * Fail the build before a privileged Supabase key can be inlined into a
+ * browser or mini-program bundle. Vite intentionally exposes every VITE_*
+ * value to client code, so a typo here is a credential leak, not merely a
+ * runtime configuration error. Never include the value in the error message.
+ */
+function isPrivilegedSupabaseKey(value: string): boolean {
+  const candidate = value.trim();
+  if (/^sb_secret_/.test(candidate)) return true;
+
+  const parts = candidate.split(".");
+  if (parts.length !== 3) return false;
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
+    return payload?.role === "service_role";
+  } catch {
+    return false;
+  }
+}
+
+function rejectPrivilegedSupabaseKeyInPublicEnv(): Plugin {
+  return {
+    name: "reject-privileged-supabase-key-in-public-env",
+    enforce: "pre",
+    config(_config, configEnv) {
+      const loaded = {
+        ...loadEnv(configEnv.mode, __dirname, ""),
+        ...process.env,
+      };
+      for (const name of ["VITE_SUPABASE_PUBLISHABLE_KEY", "VITE_SUPABASE_ANON_KEY"]) {
+        const value = loaded[name];
+        if (typeof value === "string" && isPrivilegedSupabaseKey(value)) {
+          throw new Error(
+            `[supabase-key-guard] ${name} contains a privileged Supabase key; use only a publishable or legacy anon key in VITE_* variables`,
+          );
+        }
+      }
+    },
+  };
+}
+
+function normalizeBuildAppOrigin(raw: unknown): string {
+  const value = String(raw || '').trim();
+  const match = /^(https?):\/\/(localhost|127\.0\.0\.1|\[::1\]|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?::([0-9]{1,5}))?\/?$/i.exec(value);
+  if (!match) return '';
+  const protocol = match[1].toLowerCase();
+  const hostname = match[2].toLowerCase();
+  const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(hostname);
+  if (protocol !== 'https' && !(protocol === 'http' && loopback)) return '';
+  const port = match[3] || '';
+  if (port && (Number(port) < 1 || Number(port) > 65535)) return '';
+  const defaultPort = (protocol === 'https' && port === '443')
+    || (protocol === 'http' && port === '80');
+  return `${protocol}://${hostname}${port && !defaultPort ? `:${Number(port)}` : ''}`;
+}
+
+const SUPABASE_PROJECT_REF_RE = /^[a-z0-9]{20}$/;
+const VERCEL_DEPLOY_ENVIRONMENTS = new Set(['production', 'preview', 'development']);
+
+function buildSupabaseProject(raw: unknown): { origin: string; projectRef: string } | null {
+  try {
+    const url = new URL(String(raw || '').trim());
+    const match = /^([a-z0-9]{20})\.supabase\.co$/.exec(url.hostname);
+    if (
+      url.protocol !== 'https:'
+      || url.port
+      || url.username
+      || url.password
+      || url.search
+      || url.hash
+      || (url.pathname !== '/' && url.pathname !== '')
+      || !match
+    ) return null;
+    return { origin: url.origin, projectRef: match[1] };
+  } catch {
+    return null;
+  }
+}
+
+function deploymentConfigurationBoundary(): Plugin {
+  let manifest = {
+    schema: 1,
+    environment: DEPLOY_ENV_TAG,
+    deployable: false,
+    projectRef: '',
+    appOrigin: '',
+    release: RELEASE_TAG,
+    commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 40) || '',
+  };
+
+  return {
+    name: 'deployment-configuration-boundary',
+    enforce: 'pre',
+    config(_config, configEnv) {
+      const loaded = {
+        ...loadEnv(configEnv.mode, __dirname, ''),
+        ...process.env,
+      };
+      const actualEnvironment = String(loaded.VERCEL_ENV || '').trim().toLowerCase();
+      const expectedEnvironment = String(loaded.DEPLOYMENT_EXPECTED_VERCEL_ENV || '').trim().toLowerCase();
+      const vercelIdentityPresent = loaded.VERCEL === '1'
+        || !!actualEnvironment
+        || !!String(loaded.VERCEL_URL || '').trim();
+      const environment = actualEnvironment || (loaded.CI === 'true' ? 'ci' : 'local');
+      const project = buildSupabaseProject(loaded.VITE_SUPABASE_URL);
+      const appOrigin = normalizeBuildAppOrigin(loaded.DEPLOYMENT_APP_ORIGIN);
+
+      if (vercelIdentityPresent) {
+        if (!VERCEL_DEPLOY_ENVIRONMENTS.has(actualEnvironment)) {
+          throw new Error('[deployment-boundary] VERCEL_ENV is missing or unsupported');
+        }
+        if (expectedEnvironment !== actualEnvironment) {
+          throw new Error('[deployment-boundary] DEPLOYMENT_EXPECTED_VERCEL_ENV does not match VERCEL_ENV');
+        }
+        if (actualEnvironment !== 'development' && loaded.VERCEL !== '1') {
+          throw new Error('[deployment-boundary] Vercel deployment identity is incomplete');
+        }
+
+        const expectedProjectRef = String(loaded.SUPABASE_EXPECTED_PROJECT_REF || '').trim().toLowerCase();
+        if (!SUPABASE_PROJECT_REF_RE.test(expectedProjectRef)) {
+          throw new Error('[deployment-boundary] SUPABASE_EXPECTED_PROJECT_REF is missing or invalid');
+        }
+        if (!project || project.projectRef !== expectedProjectRef) {
+          throw new Error('[deployment-boundary] VITE_SUPABASE_URL does not match the expected project ref');
+        }
+        if (!appOrigin || (actualEnvironment !== 'development' && !appOrigin.startsWith('https://'))) {
+          throw new Error('[deployment-boundary] DEPLOYMENT_APP_ORIGIN must be the exact deployment origin');
+        }
+        if (actualEnvironment === 'preview') {
+          const vercelHost = String(loaded.VERCEL_URL || '').trim().toLowerCase();
+          if (!vercelHost || vercelHost.includes('/') || new URL(appOrigin).host.toLowerCase() !== vercelHost) {
+            throw new Error('[deployment-boundary] Preview app origin does not match VERCEL_URL');
+          }
+        }
+      }
+
+      manifest = {
+        schema: 1,
+        environment,
+        deployable: vercelIdentityPresent
+          && ['production', 'preview'].includes(actualEnvironment)
+          && !!String(loaded.VERCEL_GIT_COMMIT_SHA || '').trim(),
+        projectRef: project?.projectRef || '',
+        appOrigin,
+        release: RELEASE_TAG,
+        commit: String(loaded.VERCEL_GIT_COMMIT_SHA || '').trim().slice(0, 40),
+      };
+
+      return {
+        define: {
+          'import.meta.env.VITE_DEPLOY_ENV': JSON.stringify(environment),
+        },
+      };
+    },
+    generateBundle() {
+      if (isMpBuild) return;
+      this.emitFile({
+        type: 'asset',
+        fileName: 'deployment-manifest.json',
+        source: `${JSON.stringify(manifest, null, 2)}\n`,
+      });
+    },
+  };
+}
+
+/*
+ * A mini-program has no window.location fallback. Reject an artifact that
+ * would compile every first-party API/share/recovery URL to the empty string;
+ * CI and pre-push provide explicit non-production origins for this reason.
+ * H5 remains same-origin at runtime and deliberately does not require this.
+ */
+function requireMpAppOrigin(): Plugin {
+  return {
+    name: 'require-mp-app-origin',
+    enforce: 'pre',
+    config(_config, configEnv) {
+      if (!isMpBuild) return;
+      const loaded = {
+        ...loadEnv(configEnv.mode, __dirname, ''),
+        ...process.env,
+      };
+      if (!normalizeBuildAppOrigin(loaded.VITE_BASE_URL)) {
+        throw new Error(
+          '[app-origin-guard] VITE_BASE_URL must be an exact HTTPS origin (or loopback HTTP for local emulators) for mp builds',
+        );
+      }
+    },
+  };
+}
 
 /*
  * Rewrites every `new URL(` and `new URLSearchParams(` reference inside
@@ -169,6 +371,10 @@ function mpWebApiGlobalThisRewrite(): Plugin {
 
 export default defineConfig({
   plugins: [
+    localDevServerBoundary(),
+    deploymentConfigurationBoundary(),
+    rejectPrivilegedSupabaseKeyInPublicEnv(),
+    requireMpAppOrigin(),
     mpWebApiGlobalThisRewrite(),
     uni(),
     chunkFileNamesForNodeModules(),
@@ -190,6 +396,17 @@ export default defineConfig({
   ],
   define: {
     'import.meta.env.VITE_RELEASE': JSON.stringify(RELEASE_TAG),
+    'import.meta.env.VITE_DEPLOY_ENV': JSON.stringify(DEPLOY_ENV_TAG),
+  },
+  server: {
+    // The Uni plugin still pins vulnerable Vite 5.2.8. Never expose that
+    // development server on a LAN interface, silently move to another port,
+    // or grant arbitrary browser origins readable access.
+    host: "127.0.0.1",
+    strictPort: true,
+    cors: {
+      origin: /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d{1,5})?$/i,
+    },
   },
   build: {
     target: "es2017",

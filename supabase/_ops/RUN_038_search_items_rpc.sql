@@ -1,7 +1,20 @@
 -- =========================================================
+-- DEPRECATED OPERATOR BUNDLE — retained only as historical recovery evidence.
+-- Do not execute this file. Its contracts predate the timestamped 2026-07
+-- hardening chain and can overwrite current least-privilege functions.
+-- Follow RUNBOOK.md and the matching PRECHECK/migration/VERIFY/REGRESSION files.
+\set ON_ERROR_STOP on
+DO $deprecated_operator_bundle$
+BEGIN
+  RAISE EXCEPTION
+    'deprecated_operator_bundle: use the reviewed timestamped migration chain';
+END
+$deprecated_operator_bundle$;
+
+-- =========================================================
 -- RUN 038: search_items_fuzzy RPC (Oracle P1 #18)
 -- =========================================================
--- Paste this ENTIRE file into Supabase SQL Editor and run ONCE.
+-- Historical instructions below are retained for incident archaeology only.
 --
 -- Replaces the OR-of-ILIKEs home-feed search path with a server-side
 -- RPC that uses the gin_trgm_ops indexes from migration 007. Ranks
@@ -130,4 +143,5 @@ NOTIFY pgrst, 'reload schema';
 --   );
 --   -- Expect: BitmapIndexScan on idx_items_title_trgm and/or
 --   -- idx_items_description_trgm somewhere in the plan.
+-- =========================================================
 -- =========================================================

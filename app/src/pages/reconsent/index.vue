@@ -1,9 +1,9 @@
 <template>
   <view class="page" :class="mpThemeClass" :style="mpChrome">
     <view class="header">
-      <text class="badge">{{ t('reconsent.badge') }}</text>
-      <text class="title">{{ t('reconsent.title') }}</text>
-      <text class="sub">{{ t('reconsent.sub') }}</text>
+      <text class="badge">{{ t(firstConsent ? 'reconsent.firstBadge' : 'reconsent.badge') }}</text>
+      <text class="title">{{ t(firstConsent ? 'reconsent.firstTitle' : 'reconsent.title') }}</text>
+      <text class="sub">{{ t(firstConsent ? 'reconsent.firstSub' : 'reconsent.sub') }}</text>
     </view>
 
     <scroll-view class="body-scroll" scroll-y :show-scrollbar="false">
@@ -32,7 +32,7 @@
         <view class="doc-chevron"></view>
       </view>
 
-      <text class="summary">{{ t('reconsent.summary') }}</text>
+      <text class="summary">{{ t(firstConsent ? 'reconsent.firstSummary' : 'reconsent.summary') }}</text>
     </scroll-view>
 
     <view class="footer">
@@ -49,12 +49,17 @@
 <script setup lang="ts">
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
-import { ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { useSupabase } from '../../composables/useSupabase'
 import { useAuth } from '../../composables/useAuth'
 import { DIALOG_DANGER } from '../../utils/dialogColors'
 import { friendlyErrorMessage } from '../../utils'
+import {
+  captureActiveAccountRequest,
+  isAccountRequestCurrent,
+  onAccountTransition,
+} from '../../composables/accountScope'
 import {
   TERMS_VERSION,
   PRIVACY_VERSION,
@@ -64,12 +69,36 @@ import {
 
 const { t, lang } = useI18n()
 const { supabase } = useSupabase()
-const { signOut } = useAuth()
+const { currentUser, signOut, refreshProfile, awaitAuthReady, requireAuth } = useAuth()
+let pageMounted = true
+
+// New accounts intentionally start at tos_version='0' and use this same
+// durable consent surface. Keep their first-time copy distinct from the
+// genuinely updated-terms copy shown to returning users.
+const firstConsent = computed(() => !currentUser.value?.tos_version || currentUser.value.tos_version === '0')
+
+onMounted(async () => {
+  const state = await awaitAuthReady()
+  if (!pageMounted) return
+  if (state === 'anonymous') requireAuth()
+})
 
 const termsVersion = TERMS_VERSION
 const privacyVersion = PRIVACY_VERSION
 const guidelinesVersion = GUIDELINES_VERSION
 const submitting = ref(false)
+let consentSubmitEpoch = 0
+const stopAccountTransitionListener = onAccountTransition(() => {
+  consentSubmitEpoch += 1
+  submitting.value = false
+})
+
+onUnmounted(() => {
+  pageMounted = false
+  consentSubmitEpoch += 1
+  submitting.value = false
+  stopAccountTransitionListener()
+})
 
 function openDoc(type: string) {
   uni.navigateTo({ url: `/pages/legal/index?type=${type}` })
@@ -77,30 +106,62 @@ function openDoc(type: string) {
 
 async function onAccept() {
   if (submitting.value) return
+  const state = await awaitAuthReady()
+  if (!pageMounted) return
+  if (submitting.value) return
+  if (state === 'anonymous') {
+    requireAuth()
+    return
+  }
+  const accountToken = captureActiveAccountRequest()
+  if (!accountToken || !isAccountRequestCurrent(accountToken)) {
+    requireAuth()
+    return
+  }
+  const submitEpoch = ++consentSubmitEpoch
   submitting.value = true
   try {
     const { error } = await supabase.rpc('record_consent', {
       version_in: CURRENT_CONSENT_VERSION,
+      expected_user_id_in: accountToken.userId,
     })
+    if (!pageMounted || submitEpoch !== consentSubmitEpoch || !isAccountRequestCurrent(accountToken)) return
     if (error) throw error
+    // Keep the in-memory profile authoritative before leaving this page.
+    // Otherwise the global route gate still sees the previous tos_version and
+    // correctly sends the user straight back here.
+    // Do not synthesize gate fields locally when the secure self-profile RPC is
+    // unavailable. The consent write committed, but suspension/TOS must be
+    // re-read together before navigation can safely resume.
+    await refreshProfile()
+    if (!pageMounted || submitEpoch !== consentSubmitEpoch || !isAccountRequestCurrent(accountToken)) return
     uni.showToast({ title: t('reconsent.saved'), icon: 'success' })
-    setTimeout(() => uni.switchTab({ url: '/pages/index/index' }), 800)
+    setTimeout(() => {
+      if (pageMounted && submitEpoch === consentSubmitEpoch && isAccountRequestCurrent(accountToken)) {
+        uni.switchTab({ url: '/pages/index/index' })
+      }
+    }, 800)
   } catch (e: any) {
+    if (submitEpoch !== consentSubmitEpoch || !isAccountRequestCurrent(accountToken)) return
     uni.showToast({ title: friendlyErrorMessage(e, lang.value as 'en' | 'zh') || t('reconsent.fail'), icon: 'none', duration: 2500 })
   } finally {
-    submitting.value = false
+    if (submitEpoch === consentSubmitEpoch) submitting.value = false
   }
 }
 
 function onDecline() {
+  const accountToken = captureActiveAccountRequest()
+  if (!accountToken || !isAccountRequestCurrent(accountToken)) return
   uni.showModal({
     title: t('reconsent.declineTitle'),
-    content: t('reconsent.declineHint'),
+    content: t(firstConsent.value ? 'reconsent.firstDeclineHint' : 'reconsent.declineHint'),
     confirmText: t('reconsent.signOut'),
     cancelText: t('reconsent.goBack'),
     confirmColor: DIALOG_DANGER,
     success: (r) => {
-      if (r.confirm) signOut()
+      // The native modal may outlive this account in another H5 tab. Never
+      // let A's delayed confirmation sign out whichever account is current.
+      if (r.confirm && pageMounted && isAccountRequestCurrent(accountToken)) void signOut()
     },
   })
 }
@@ -190,7 +251,7 @@ function onDecline() {
   display: block; margin-top: 12px; padding: 14px;
   background: var(--warning-soft); border-left: 3px solid var(--accent-warn);
   border-radius: 8px;
-  font-size: 13px; color: var(--accent-warn); line-height: 1.55;
+  font-size: 13px; color: var(--warning-text); line-height: 1.55;
 }
 
 .footer {

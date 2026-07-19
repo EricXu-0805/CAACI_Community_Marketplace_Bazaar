@@ -22,6 +22,11 @@
           <view class="ss-skel-del u-sk"></view>
         </view>
       </view>
+      <view v-else-if="loadError && items.length === 0" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
+        <UIcon name="bell" size="xl" color="ink-faint" />
+        <text class="empty-text">{{ t('error.loadFailed') }}</text>
+        <view class="retry-btn" role="button" :aria-label="t('home.retry')" @click="loadSavedSearchesForCurrentAccount">{{ t('home.retry') }}</view>
+      </view>
       <view v-else-if="items.length === 0" class="empty">
         <UIcon name="bell" size="xl" color="ink-faint" />
         <text class="empty-text">{{ t('savedSearch.empty') }}</text>
@@ -45,17 +50,34 @@
       </view>
     </scroll-view>
 
-    <view class="fab" role="button" :aria-label="t('a11y.addSavedSearch')" @click="showForm = true">
+    <view class="fab" role="button" :aria-label="t('a11y.addSavedSearch')" @click="openForm">
       <text class="fab-plus">+</text>
     </view>
 
-    <view v-if="showForm" class="sheet-mask" @click="showForm = false"></view>
-    <view :class="['form-sheet', { open: showForm }]">
+    <view v-if="showForm" class="sheet-mask" @click="closeForm()"></view>
+    <view
+      v-if="showForm"
+      ref="formDialogEl"
+      class="form-sheet open"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="saved-search-form-title"
+      tabindex="-1"
+      @keydown="onFormDialogKeydown"
+    >
       <view class="fs-header">
-        <text class="fs-cancel" @click="showForm = false">{{ t('plaza.cancel') }}</text>
-        <text class="fs-title">{{ t('savedSearch.new') }}</text>
+        <text
+          class="fs-cancel"
+          role="button"
+          :aria-label="t('plaza.cancel')"
+          @click="closeForm()"
+        >{{ t('plaza.cancel') }}</text>
+        <text id="saved-search-form-title" class="fs-title">{{ t('savedSearch.new') }}</text>
         <text
           :class="['fs-save', { disabled: !form.keyword.trim() || submitting }]"
+          role="button"
+          :aria-label="t('editProfile.save')"
+          :aria-disabled="!form.keyword.trim() || submitting"
           @click="onSubmit"
         >{{ t('editProfile.save') }}</text>
       </view>
@@ -65,6 +87,7 @@
           <input
             v-model="form.keyword"
             :placeholder="t('savedSearch.keywordPh')"
+            :aria-label="t('savedSearch.keyword')"
             class="fs-input"
             maxlength="60"
           />
@@ -76,6 +99,9 @@
               v-for="lt in listingTypeKeys"
               :key="lt"
               :class="['fs-chip', { active: form.listingType === lt }]"
+              role="button"
+              :aria-label="t('savedSearch.type_' + lt)"
+              :aria-pressed="form.listingType === lt"
               @click="form.listingType = lt"
             >
               <text>{{ t('savedSearch.type_' + lt) }}</text>
@@ -89,6 +115,9 @@
               v-for="c in categoryKeys"
               :key="c || 'any'"
               :class="['fs-chip', { active: form.category === c }]"
+              role="button"
+              :aria-label="c ? t('cat.' + c) : t('cat.all')"
+              :aria-pressed="form.category === c"
               @click="form.category = c as any"
             >
               <text>{{ c ? t('cat.' + c) : t('cat.all') }}</text>
@@ -98,9 +127,9 @@
         <view class="fs-row fs-row-price">
           <text class="fs-label">{{ t('filter.price') }}</text>
           <view class="fs-price-wrap">
-            <input v-model="form.priceMin" type="number" :placeholder="t('filter.priceMin')" class="fs-price-input" />
+            <input v-model="form.priceMin" type="number" :placeholder="t('filter.priceMin')" :aria-label="t('filter.priceMin')" class="fs-price-input" />
             <text class="fs-dash">–</text>
-            <input v-model="form.priceMax" type="number" :placeholder="t('filter.priceMax')" class="fs-price-input" />
+            <input v-model="form.priceMax" type="number" :placeholder="t('filter.priceMax')" :aria-label="t('filter.priceMax')" class="fs-price-input" />
           </view>
         </view>
       </view>
@@ -111,28 +140,133 @@
 <script setup lang="ts">
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
-import { ref, nextTick, onMounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { ref, nextTick, watch, onUnmounted } from 'vue'
+import { onShow, onHide } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
 import { useSavedSearch, type SavedSearchListingType } from '../../composables/useSavedSearch'
-import { friendlyErrorMessage, BROWSE_CATEGORIES } from '../../utils'
+import { friendlyErrorMessage, BROWSE_CATEGORIES, navigateBackOr } from '../../utils'
 import type { ItemCategory } from '../../types'
 import UIcon from '../../components/UIcon.vue'
+import {
+  captureAccountRequest,
+  isAccountRequestCurrent,
+  onAccountTransition,
+} from '../../composables/accountScope'
 
 const { t, lang } = useI18n()
-const { currentUser } = useAuth()
+const { currentUser, requireAuth, awaitAuthReady } = useAuth()
 const { items, fetchMine, create, remove } = useSavedSearch()
 
 const showForm = ref(false)
+const formDialogEl = ref<HTMLElement | null>(null)
 const submitting = ref(false)
 const loading = ref(false)
+const loadError = ref(false)
 const form = ref<{ keyword: string; category: ItemCategory | null; listingType: SavedSearchListingType; priceMin: string; priceMax: string }>({
   keyword: '',
   category: null,
   listingType: 'sell',
   priceMin: '',
   priceMax: '',
+})
+const emptyForm = () => ({
+  keyword: '',
+  category: null as ItemCategory | null,
+  listingType: 'sell' as SavedSearchListingType,
+  priceMin: '',
+  priceMax: '',
+})
+let pageVisible = false
+let pageEpoch = 0
+let formDialogOpener: HTMLElement | null = null
+let formDialogFocusEpoch = 0
+
+function openForm() {
+  if (showForm.value) return
+  if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+    formDialogOpener = document.activeElement
+  }
+  const focusEpoch = ++formDialogFocusEpoch
+  showForm.value = true
+  nextTick(() => {
+    if (focusEpoch !== formDialogFocusEpoch || !showForm.value || typeof document === 'undefined') return
+    const dialog = formDialogEl.value
+    const firstInput = dialog?.querySelector<HTMLElement>('input:not([disabled])')
+    ;(firstInput || dialog)?.focus()
+  })
+}
+
+function closeForm(restoreFocus = true) {
+  if (!showForm.value) {
+    // Account transitions / page hides must also cancel a restore that was
+    // queued by a just-closed previous-account dialog.
+    if (!restoreFocus) {
+      formDialogOpener = null
+      formDialogFocusEpoch += 1
+    }
+    return
+  }
+  const target = formDialogOpener
+  formDialogOpener = null
+  const focusEpoch = ++formDialogFocusEpoch
+  showForm.value = false
+  if (!restoreFocus) return
+  nextTick(() => {
+    if (focusEpoch !== formDialogFocusEpoch || showForm.value || !target || typeof document === 'undefined') return
+    if (document.contains(target)) target.focus()
+  })
+}
+
+function onFormDialogKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    event.stopPropagation()
+    closeForm()
+    return
+  }
+  if (event.key !== 'Tab' || typeof document === 'undefined') return
+  const dialog = event.currentTarget as HTMLElement | null
+  if (!dialog) return
+  const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+    'input:not([disabled]), textarea:not([disabled]), [role="button"]:not([aria-disabled="true"]), [tabindex]:not([tabindex="-1"])',
+  )).filter(element => element.getAttribute('aria-hidden') !== 'true')
+  if (focusable.length === 0) {
+    event.preventDefault()
+    dialog.focus()
+    return
+  }
+  const current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  const index = current ? focusable.indexOf(current) : -1
+  if (event.shiftKey && index <= 0) {
+    event.preventDefault()
+    focusable[focusable.length - 1].focus()
+  } else if (!event.shiftKey && (index === -1 || index === focusable.length - 1)) {
+    event.preventDefault()
+    focusable[0].focus()
+  }
+}
+
+function resetSavedSearchPrivateState() {
+  pageEpoch += 1
+  closeForm(false)
+  submitting.value = false
+  loading.value = false
+  loadError.value = false
+  form.value = emptyForm()
+}
+
+const stopAccountTransitionListener = onAccountTransition(resetSavedSearchPrivateState)
+onUnmounted(() => {
+  pageVisible = false
+  pageEpoch += 1
+  submitting.value = false
+  loading.value = false
+  loadError.value = false
+  closeForm(false)
+  stopAccountTransitionListener()
+  formDialogFocusEpoch += 1
+  formDialogOpener = null
 })
 
 const categoryKeys: (ItemCategory | null)[] = [null, ...BROWSE_CATEGORIES]
@@ -152,64 +286,124 @@ function resetScroll() {
   nextTick(() => { scrollTopVal.value = 0 })
 }
 
-onShow(() => { resetScroll() })
-
-onMounted(async () => {
-  if (!currentUser.value) {
-    uni.showToast({ title: t('profile.signInHint'), icon: 'none' })
+async function loadSavedSearchesForCurrentAccount() {
+  const requestEpoch = ++pageEpoch
+  const state = await awaitAuthReady()
+  if (requestEpoch !== pageEpoch || !pageVisible) return
+  if (!requireAuth()) {
+    if (state === 'authenticated' && !currentUser.value) {
+      uni.showToast({ title: t('error.loadFailed'), icon: 'none' })
+    }
     return
   }
+  const userId = currentUser.value?.id
+  if (!userId) return
+  const accountToken = captureAccountRequest(userId)
+  if (!isAccountRequestCurrent(accountToken)) return
+  loadError.value = false
   loading.value = true
   try {
     await fetchMine()
   } catch (err: any) {
+    if (requestEpoch !== pageEpoch || !isAccountRequestCurrent(accountToken) || !pageVisible) return
+    loadError.value = true
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
   } finally {
-    loading.value = false
+    if (requestEpoch === pageEpoch && isAccountRequestCurrent(accountToken)) loading.value = false
   }
+}
+
+onShow(() => {
+  pageVisible = true
+  resetScroll()
+  void loadSavedSearchesForCurrentAccount()
+})
+
+onHide(() => {
+  pageVisible = false
+  pageEpoch += 1
+  loading.value = false
+  loadError.value = false
+  closeForm(false)
+})
+
+watch(() => currentUser.value?.id ?? null, (userId, previousUserId) => {
+  if (userId === previousUserId || !pageVisible) return
+  if (userId) void loadSavedSearchesForCurrentAccount()
+  else requireAuth()
 })
 
 async function onSubmit() {
   if (!form.value.keyword.trim() || submitting.value) return
+  await awaitAuthReady()
+  if (submitting.value) return
+  if (!requireAuth() || !currentUser.value) return
+  const submitAccountToken = captureAccountRequest(currentUser.value.id)
+  const submitEpoch = pageEpoch
+  if (!isAccountRequestCurrent(submitAccountToken)) return
+  // uni-app's number input is typed as a string here, but some runtimes emit
+  // a number. Normalize both shapes before validating so a platform-specific
+  // model value cannot bypass or crash the guard.
+  const priceMinRaw = String(form.value.priceMin ?? '').trim()
+  const priceMaxRaw = String(form.value.priceMax ?? '').trim()
+  const priceMin = priceMinRaw === '' ? null : Number(priceMinRaw)
+  const priceMax = priceMaxRaw === '' ? null : Number(priceMaxRaw)
+  if ((priceMin !== null && (!Number.isFinite(priceMin) || priceMin < 0))
+    || (priceMax !== null && (!Number.isFinite(priceMax) || priceMax < 0))) {
+    uni.showToast({ title: t('savedSearch.invalidPrice'), icon: 'none', duration: 2500 })
+    return
+  }
+  if (priceMin !== null && priceMax !== null && priceMin > priceMax) {
+    uni.showToast({ title: t('savedSearch.invalidPriceRange'), icon: 'none', duration: 2500 })
+    return
+  }
   submitting.value = true
   try {
     await create({
       keyword: form.value.keyword,
       category: form.value.category,
       listingType: form.value.listingType,
-      priceMin: form.value.priceMin ? Number(form.value.priceMin) : null,
-      priceMax: form.value.priceMax ? Number(form.value.priceMax) : null,
+      priceMin,
+      priceMax,
     })
-    showForm.value = false
-    form.value = { keyword: '', category: null, listingType: 'sell', priceMin: '', priceMax: '' }
+    if (submitEpoch !== pageEpoch || !isAccountRequestCurrent(submitAccountToken)) return
+    closeForm()
+    form.value = emptyForm()
     uni.showToast({ title: t('savedSearch.created'), icon: 'success' })
   } catch (err: any) {
+    if (submitEpoch !== pageEpoch || !isAccountRequestCurrent(submitAccountToken)) return
     uni.showToast({
       title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
       icon: 'none',
       duration: 2500,
     })
   } finally {
-    submitting.value = false
+    if (submitEpoch === pageEpoch && isAccountRequestCurrent(submitAccountToken)) submitting.value = false
   }
 }
 
 async function onDelete(id: string) {
+  const userId = currentUser.value?.id
+  if (!userId) return
+  const dialogAccountToken = captureAccountRequest(userId)
+  const dialogEpoch = pageEpoch
   uni.showModal({
     title: t('savedSearch.deleteConfirm'),
     success: async (res) => {
-      if (!res.confirm) return
+      if (!res.confirm || dialogEpoch !== pageEpoch || !isAccountRequestCurrent(dialogAccountToken)) return
       try {
         await remove(id)
+        if (dialogEpoch !== pageEpoch || !isAccountRequestCurrent(dialogAccountToken)) return
         uni.showToast({ title: t('profile.deleted'), icon: 'success' })
       } catch (err: any) {
+        if (dialogEpoch !== pageEpoch || !isAccountRequestCurrent(dialogAccountToken)) return
         uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('error.actionFailed'), icon: 'none' })
       }
     },
   })
 }
 
-function goBack() { uni.navigateBack() }
+function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/profile/index' })) }
 </script>
 
 <style lang="scss" scoped>
@@ -233,6 +427,11 @@ function goBack() { uni.navigateBack() }
   padding: 80px 40px; gap: 12px; text-align: center;
 }
 .empty-text { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+.retry-btn {
+  min-height: 44px; padding: 0 20px; border-radius: var(--radius-pill);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-primary); color: #fff; font-size: 14px; font-weight: 600;
+}
 
 .ss-card {
   display: flex; align-items: center; gap: 12px;
@@ -304,6 +503,7 @@ function goBack() { uni.navigateBack() }
 .fs-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .fs-label { font-size: 12px; color: var(--text-secondary, var(--ink-quiet)); }
 .fs-input {
+  height: 40px; box-sizing: border-box;
   padding: 10px 12px; border-radius: 8px;
   background: var(--bg-subtle); font-size: 14px;
 }
@@ -317,6 +517,7 @@ function goBack() { uni.navigateBack() }
 .fs-row-price { }
 .fs-price-wrap { display: flex; align-items: center; gap: 8px; }
 .fs-price-input {
+  height: 40px; box-sizing: border-box;
   flex: 1; padding: 10px 12px; border-radius: 8px;
   background: var(--bg-subtle); font-size: 14px;
 }

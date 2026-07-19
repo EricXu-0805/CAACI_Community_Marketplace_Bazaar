@@ -19,6 +19,7 @@
         <input
           v-model="searchText"
           :placeholder="t('plaza.searchPlaceholder')"
+          :aria-label="t('plaza.searchPlaceholder')"
           class="sb-input"
           confirm-type="search"
           @input="onSearchInput"
@@ -39,14 +40,17 @@
     <!-- Feed tabs live OUTSIDE the scroll area (directly under search) so
          they stay put while the feed scrolls — 闲鱼/xhs pattern. -->
     <scroll-view class="feed-tabs" scroll-x :show-scrollbar="false">
-      <view class="ft-row">
+      <view class="ft-row" role="tablist" :aria-label="t('plaza.title')">
         <view
           v-for="tab in feedTabs"
           :key="tab.key"
           :class="['ft-chip', { active: activeTab === tab.key }]"
-          role="button"
-          :aria-pressed="activeTab === tab.key ? 'true' : 'false'"
+          role="tab"
+          :tabindex="activeTab === tab.key ? 0 : -1"
+          :aria-selected="activeTab === tab.key ? 'true' : 'false'"
+          aria-controls="plaza-feed-panel"
           @click="activeTab = tab.key"
+          @keydown="onFeedTabKeydown($event, tab.key)"
         >
           <text class="t-tag ft-label">{{ tab.label }}</text>
         </view>
@@ -54,7 +58,9 @@
     </scroll-view>
 
     <scroll-view
+      id="plaza-feed-panel"
       class="feed"
+      role="tabpanel"
       scroll-y
       refresher-enabled
       :refresher-triggered="refreshing"
@@ -68,9 +74,16 @@
           <text>{{ t('home.loading') }}...</text>
         </view>
 
+        <view v-else-if="followError" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
+          <UEmptyArt name="following" />
+          <text class="empty-text">{{ followError }}</text>
+          <view class="cta-btn" role="button" @click="loadFollowing(true)">{{ t('home.retry') }}</view>
+        </view>
+
         <view v-else-if="followPeople.length === 0" class="empty">
           <UEmptyArt name="following" />
-          <text class="empty-text">{{ isLoggedIn ? t('follow.emptyPeople') : t('profile.signInHint') }}</text>
+          <text class="empty-text">{{ isLoggedIn ? t('follow.emptyPeople') : t('follow.signInHint') }}</text>
+          <view v-if="!isLoggedIn" class="cta-btn" role="button" @click="goToLogin">{{ t('login.signIn') }}</view>
         </view>
 
         <view v-else class="follow-people u-stagger">
@@ -82,7 +95,7 @@
             :aria-label="p.nickname || t('app.user')"
             @click="goToFollowSeller(p.id)"
           >
-            <image :src="p.avatar_url || defaultAvatarSrc" :alt="p.nickname || 'avatar'" class="fp-avatar" mode="aspectFill" />
+            <UAvatar :src="p.avatar_url" :owner="p.id" :fallback="defaultAvatarSrc" :alt="p.nickname || 'avatar'" class="fp-avatar" lazy />
             <view class="fp-info">
               <view class="fp-name-row">
                 <text class="fp-name">{{ p.nickname || t('app.user') }}</text>
@@ -111,10 +124,16 @@
         </view>
       </view>
 
+      <view v-else-if="fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
+        <UEmptyArt name="posts" />
+        <text class="empty-text">{{ fetchError }}</text>
+        <view class="cta-btn" role="button" @click="onRefresh">{{ t('home.retry') }}</view>
+      </view>
+
       <view v-else-if="visiblePosts.length === 0" class="empty">
         <UEmptyArt name="posts" />
         <text class="empty-text">{{ t('plaza.empty') }}</text>
-        <view v-if="isLoggedIn" class="cta-btn" @click="openComposer">{{ t('plaza.write') }}</view>
+        <view v-if="isLoggedIn" class="cta-btn" role="button" @click="openComposer">{{ t('plaza.write') }}</view>
       </view>
 
       <view v-else class="posts u-stagger" :key="activeTab">
@@ -129,9 +148,11 @@
           <view
             v-if="post.is_pinned && !pinnedExpanded.has(post.id)"
             class="pinned-collapsed"
+            role="button"
+            :aria-label="t('plaza.tapToExpand')"
             @click="pinnedExpanded.add(post.id)"
           >
-            <text class="pc-icon">📌</text>
+            <UIcon name="bookmark" size="sm" color="campus-blue" />
             <view class="pc-body">
               <text class="pc-title">{{ post.profile?.nickname || t('plaza.pinned') }}</text>
               <text class="pc-meta">{{ formatTime(post.created_at) }} · {{ t('plaza.tapToExpand') }}</text>
@@ -141,7 +162,12 @@
           <view
             v-else
             :class="['post-tappable', { 'pinned-expanded': post.is_pinned && pinnedExpanded.has(post.id) }]"
+            :role="post.is_pinned && pinnedExpanded.has(post.id) ? 'group' : 'button'"
+            :tabindex="post.is_pinned && pinnedExpanded.has(post.id) ? -1 : undefined"
+            :aria-label="post.content || (post.profile?.nickname || t('app.user'))"
+            :aria-keyshortcuts="post.is_pinned && pinnedExpanded.has(post.id) ? undefined : 'Shift+F10'"
             @click="goPostDetail(post)"
+            @keydown="onPostCardKeydown($event, post)"
             @touchstart="postLongPress.onTouchstart(post)"
             @touchend="postLongPress.onTouchend"
             @touchcancel="postLongPress.onTouchcancel"
@@ -165,10 +191,10 @@
               <view class="pcb-chev"></view>
             </view>
             <view class="post-header">
-              <image :src="post.profile?.avatar_url || defaultAvatarSrc" :alt="post.profile?.nickname || 'avatar'" class="pa-avatar" mode="aspectFill" @click.stop="goSeller(post.user_id)" />
+              <UAvatar :src="post.profile?.avatar_url" :owner="post.user_id" :fallback="defaultAvatarSrc" :alt="post.profile?.nickname || 'avatar'" class="pa-avatar" role="button" lazy @click.stop="goSeller(post.user_id)" />
               <view class="pa-info">
                 <view class="pa-name-row">
-                  <text class="pa-name" @click.stop="goSeller(post.user_id)">{{ post.profile?.nickname || t('app.user') }}</text>
+                  <text class="pa-name" role="button" @click.stop="goSeller(post.user_id)">{{ post.profile?.nickname || t('app.user') }}</text>
                   <UBadge v-if="post.is_official" variant="official">{{ t('plaza.official') }}</UBadge>
                   <UBadge v-else-if="post.profile?.is_illini_verified" variant="illini">Illini</UBadge>
                   <view v-if="post.is_pinned" class="badge-pinned"><text>{{ t('plaza.pinned') }}</text></view>
@@ -208,7 +234,9 @@
                 v-for="(img, i) in post.images"
                 :key="i"
                 :src="thumbUrl(img, 'card')"
+                :alt="t('a11y.previewImage')"
                 class="post-image"
+                role="button"
                 :style="dimsToAspectStyle(effectiveDims(post), i)"
                 loading="lazy"
                 lazy-load
@@ -223,6 +251,8 @@
             v-for="pi in (post.post_items || [])"
             :key="pi.item.id"
             class="attached-item-card"
+            role="button"
+            :aria-label="localize(pi.item.title_i18n, pi.item.title)"
             @click.stop="goToAttachedItem(pi.item.id)"
           >
             <image
@@ -243,7 +273,7 @@
           </view>
 
           <view class="post-actions">
-            <view class="pa-btn" role="button" :aria-label="post.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleLike(post)">
+            <view class="pa-btn" role="button" :aria-label="post.liked_by_me ? t('a11y.unlike') : t('a11y.like')" :aria-pressed="post.liked_by_me ? 'true' : 'false'" @click.stop="onToggleLike(post)">
               <image
                 :src="post.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'"
                 alt=""
@@ -277,14 +307,29 @@
          ancestor makes a fixed descendant anchor to IT, not the viewport (iOS
          Safari) — which oversized the sheet (X clipped above, input below). -->
     <view v-if="commentingPost" class="comment-mask u-mask-in" @click.stop="closeComments"></view>
-    <view v-if="commentingPost" class="comment-sheet" @click.stop :style="kbLift">
+    <view
+      v-if="commentingPost"
+      ref="commentSheetEl"
+      class="comment-sheet"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="plaza-comments-title"
+      tabindex="-1"
+      @click.stop
+      @keydown="onCommentDialogKeydown"
+      :style="kbLift"
+    >
       <view class="cmt-header">
-        <text class="cmt-htitle">{{ t('plaza.commentCount', { count: comments.length }) }}</text>
-        <view class="as-close" role="button" :aria-label="t('a11y.close')" @click.stop="closeComments"><view class="cs-x"></view></view>
+        <text id="plaza-comments-title" class="cmt-htitle">{{ t('plaza.commentCount', { count: comments.length }) }}</text>
+        <view class="as-close" role="button" tabindex="0" :aria-label="t('a11y.close')" @click.stop="closeComments"><view class="cs-x"></view></view>
       </view>
       <scroll-view class="cmt-scroll" scroll-y>
       <view v-if="loadingComments && comments.length === 0" class="ci-loading">
         <text>{{ t('home.loading') }}</text>
+      </view>
+      <view v-else-if="commentsError" class="ci-empty ci-error" role="alert" aria-live="assertive">
+        <text>{{ t('error.loadFailed') }}</text>
+        <view class="ci-retry" role="button" tabindex="0" @click.stop="retryComments">{{ t('home.retry') }}</view>
       </view>
       <view v-else-if="comments.length === 0" class="ci-empty">
         <text>{{ t('plaza.noComments') }}</text>
@@ -293,30 +338,36 @@
       <template v-for="thread in commentThreads" :key="thread.parent.id">
         <view
           class="cs-item u-rise"
+          role="group"
+          tabindex="0"
+          :aria-label="thread.parent.content"
+          aria-keyshortcuts="Shift+F10"
+          @keydown="onCommentKeyboardMenu($event, thread.parent)"
           @touchstart="commentLongPress.onTouchstart(thread.parent)"
           @touchend="commentLongPress.onTouchend"
           @touchcancel="commentLongPress.onTouchcancel"
           @touchmove="commentLongPress.onTouchmove"
         >
-          <image
-            :src="thread.parent.profile?.avatar_url || defaultAvatarSrc"
+          <UAvatar
+            :src="thread.parent.profile?.avatar_url"
+            :owner="thread.parent.user_id"
+            :fallback="defaultAvatarSrc"
             :alt="thread.parent.profile?.nickname || 'avatar'"
             class="cs-avatar"
-            mode="aspectFill"
-            @click.stop="onCommentTap(thread.parent)"
+            lazy
           />
-          <view class="cs-body" @click.stop="onCommentTap(thread.parent)">
+          <view class="cs-body">
             <view class="cs-top">
               <text class="cs-name">{{ thread.parent.profile?.nickname || t('app.user') }}</text>
               <text class="cs-time">{{ formatTime(thread.parent.created_at) }}</text>
             </view>
             <text class="cs-content">{{ thread.parent.content }}</text>
             <view class="cs-actions">
-              <view class="cs-like-btn" role="button" :aria-label="thread.parent.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(thread.parent)">
+              <view class="cs-like-btn" role="button" :aria-label="thread.parent.liked_by_me ? t('a11y.unlike') : t('a11y.like')" :aria-pressed="thread.parent.liked_by_me ? 'true' : 'false'" @click.stop="onToggleCommentLike(thread.parent)">
                 <image :src="thread.parent.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                 <text v-if="(thread.parent.like_count ?? 0) > 0" :class="['cs-like-num', { active: thread.parent.liked_by_me }]">{{ thread.parent.like_count }}</text>
               </view>
-              <text class="cs-reply-btn" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
+              <text class="cs-reply-btn" role="button" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
             </view>
           </view>
         </view>
@@ -326,30 +377,36 @@
             v-for="child in (expandedReplies.has(thread.parent.id) ? thread.children : thread.children.slice(0, 3))"
             :key="child.id"
             class="cs-item cs-item-child"
+            role="group"
+            tabindex="0"
+            :aria-label="child.content"
+            aria-keyshortcuts="Shift+F10"
+            @keydown="onCommentKeyboardMenu($event, child)"
             @touchstart="commentLongPress.onTouchstart(child)"
             @touchend="commentLongPress.onTouchend"
             @touchcancel="commentLongPress.onTouchcancel"
             @touchmove="commentLongPress.onTouchmove"
           >
-            <image
-              :src="child.profile?.avatar_url || defaultAvatarSrc"
+            <UAvatar
+              :src="child.profile?.avatar_url"
+              :owner="child.user_id"
+              :fallback="defaultAvatarSrc"
               :alt="child.profile?.nickname || 'avatar'"
               class="cs-avatar"
-              mode="aspectFill"
-              @click.stop="onCommentTap(child)"
+              lazy
             />
-            <view class="cs-body" @click.stop="onCommentTap(child)">
+            <view class="cs-body">
               <view class="cs-top">
                 <text class="cs-name">{{ child.profile?.nickname || t('app.user') }}</text>
                 <text class="cs-time">{{ formatTime(child.created_at) }}</text>
               </view>
               <text class="cs-content">{{ child.content }}</text>
               <view class="cs-actions">
-                <view class="cs-like-btn" role="button" :aria-label="child.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(child)">
+                <view class="cs-like-btn" role="button" :aria-label="child.liked_by_me ? t('a11y.unlike') : t('a11y.like')" :aria-pressed="child.liked_by_me ? 'true' : 'false'" @click.stop="onToggleCommentLike(child)">
                   <image :src="child.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                   <text v-if="(child.like_count ?? 0) > 0" :class="['cs-like-num', { active: child.liked_by_me }]">{{ child.like_count }}</text>
                 </view>
-                <text class="cs-reply-btn" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
+                <text class="cs-reply-btn" role="button" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
               </view>
             </view>
           </view>
@@ -357,6 +414,7 @@
           <view
             v-if="thread.children.length > 3"
             class="cs-expand-link cs-item-child"
+            role="button"
             @click.stop="toggleReplies(thread.parent.id)"
           >
             <text class="cs-expand-text">
@@ -380,6 +438,7 @@
           v-model="commentText"
           class="ci-input"
           :placeholder="replyTo ? t('plaza.replyHint') : t('plaza.commentHint')"
+          :aria-label="replyTo ? t('plaza.replyHint') : t('plaza.commentHint')"
           confirm-type="send"
           :show-confirm-bar="false"
           auto-height
@@ -392,17 +451,37 @@
           @keydown="onCommentKeydown"
           maxlength="1000"
         />
-        <view :class="['ci-send', { disabled: !commentText.trim() || commentSubmitting }]" role="button" :aria-label="t('a11y.sendMessage')" @click.stop="onSubmitComment">
+        <view
+          :class="['ci-send', { disabled: !commentText.trim() || commentSubmitting }]"
+          role="button"
+          :aria-label="t('a11y.sendMessage')"
+          :aria-disabled="!commentText.trim() || commentSubmitting ? 'true' : 'false'"
+          @click.stop="onSubmitComment"
+        >
           <text>{{ replyTo ? t('plaza.reply') : t('plaza.comment') }}</text>
         </view>
       </view>
     </view>
 
-    <view v-if="showComposer" class="composer-fullpage">
+    <view
+      v-if="showComposer"
+      ref="composerDialogEl"
+      class="composer-fullpage"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="plaza-composer-title"
+      tabindex="-1"
+      @keydown="onComposerDialogKeydown"
+    >
       <view class="comp-header">
-        <text class="comp-cancel" @click="onComposerCancel">{{ t('plaza.cancel') }}</text>
-        <text class="comp-title">{{ t('plaza.write') }}</text>
-        <text :class="['comp-submit', { disabled: (!composerText.trim() && composerImages.length === 0) || submitting }]" @click="onSubmitPost">
+        <text class="comp-cancel" role="button" @click="onComposerCancel">{{ t('plaza.cancel') }}</text>
+        <text id="plaza-composer-title" class="comp-title">{{ t('plaza.write') }}</text>
+        <text
+          :class="['comp-submit', { disabled: (!composerText.trim() && composerImages.length === 0 && composerAttachedItems.length === 0) || submitting }]"
+          role="button"
+          :aria-disabled="(!composerText.trim() && composerImages.length === 0 && composerAttachedItems.length === 0) || submitting ? 'true' : 'false'"
+          @click="onSubmitPost"
+        >
           {{ submitting ? t('login.wait') : t('plaza.submit') }}
         </text>
       </view>
@@ -410,6 +489,7 @@
         <textarea
           v-model="composerText"
           :placeholder="t('plaza.postHint')"
+          :aria-label="t('plaza.postHint')"
           class="comp-textarea"
           :adjust-position="false"
           :auto-height="true"
@@ -476,10 +556,19 @@
     </view>
 
     <view v-if="showAttachSheet" class="sheet-mask sheet-mask-over-composer u-mask-in" @click="showAttachSheet = false"></view>
-    <view :class="['attach-sheet', { open: showAttachSheet }]">
+    <view
+      v-if="showAttachSheet"
+      ref="attachDialogEl"
+      class="attach-sheet open"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="plaza-attach-title"
+      tabindex="-1"
+      @keydown="onAttachDialogKeydown"
+    >
       <view class="as-header">
-        <text class="as-title">{{ t('plaza.pickItem') }}</text>
-        <view class="as-close" role="button" :aria-label="t('a11y.close')" @click="showAttachSheet = false"><view class="cs-x"></view></view>
+        <text id="plaza-attach-title" class="as-title">{{ t('plaza.pickItem') }}</text>
+        <view class="as-close" role="button" tabindex="0" :aria-label="t('a11y.close')" @click="showAttachSheet = false"><view class="cs-x"></view></view>
       </view>
       <scroll-view class="as-list" scroll-y>
         <view v-if="availableActiveItems.length === 0" class="as-empty">
@@ -489,6 +578,8 @@
           v-for="it in availableActiveItems"
           :key="it.id"
           class="as-item"
+          role="button"
+          :aria-label="localize(it.title_i18n, it.title)"
           @click="onPickAttachedItem(it)"
         >
           <image
@@ -518,7 +609,7 @@ const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
 
 import { useI18n } from '../../composables/useI18n'
@@ -528,11 +619,12 @@ import { usePlaza, groupCommentsByParent } from '../../composables/usePlaza'
 import { useFollow } from '../../composables/useFollow'
 import type { FollowedProfile } from '../../composables/useFollow'
 import { useModeration } from '../../composables/useModeration'
-import { useItems } from '../../composables/useItems'
+import { useItems, type UploadAccountToken, type UploadBatchResult } from '../../composables/useItems'
 import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
 import { useLongPress } from '../../composables/useLongPress'
 import { useKeyboardHeight } from '../../composables/useKeyboardHeight'
+import { createOwnedLoading } from '../../composables/ownedLoading'
 import type { Post, PostComment, Item } from '../../types'
 import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
 import { DIALOG_DANGER } from '../../utils/dialogColors'
@@ -542,17 +634,30 @@ import AppSidebar from '../../components/AppSidebar.vue'
 import { BASE_URL } from '../../config/runtime'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PlazaBannerCarousel from '../../components/PlazaBannerCarousel.vue'
+import UAvatar from '../../components/UAvatar.vue'
 import UBadge from '../../components/UBadge.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
 import UIcon from '../../components/UIcon.vue'
+import { captureException } from '../../utils/sentry'
+import {
+  mutationCommitState,
+  mutationOutcomeError,
+  shouldCompensateMutationFailure,
+} from '../../api/mutationCommit'
+import {
+  captureAccountRequest,
+  isAccountRequestCurrent,
+  onAccountTransition,
+  type AccountRequestToken,
+} from '../../composables/accountScope'
 
 const { t, tc, lang, localize } = useI18n()
 const { isDark } = useTheme()
 const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
-const { currentUser, isLoggedIn, requireAuth } = useAuth()
-const { posts, loading, hasMore, fetchPosts, createPost, updatePostI18n, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, fetchMyActiveItems, clearPosts } = usePlaza()
+const { currentUser, isLoggedIn, requireAuth, awaitAuthReady } = useAuth()
+const { posts, loading, hasMore, fetchError, fetchPosts, createPost, updatePostI18n, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, fetchMyActiveItems, clearPosts } = usePlaza()
 const { fetchFollowingProfiles } = useFollow()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
 const kb = useKeyboardHeight()
@@ -583,6 +688,8 @@ onUnload(() => {
 
 const refreshing = ref(false)
 const pageIdx = ref(0)
+let plazaAccountEpoch = 0
+const reportLoading = createOwnedLoading()
 
 /*
  * Feed sub-tabs (v5 kit: 关注 / 热门 / 最新). 热门 and 最新 both show all
@@ -603,6 +710,20 @@ const feedTabs = computed<{ key: FeedTabKey; label: string }[]>(() => [
 const feedSort = computed<'recent' | 'hot'>(() => (activeTab.value === 'hot' ? 'hot' : 'recent'))
 const visiblePosts = computed(() => posts.value)
 
+function onFeedTabKeydown(event: KeyboardEvent, current: FeedTabKey) {
+  const order: FeedTabKey[] = ['following', 'hot', 'recent']
+  let nextIndex = order.indexOf(current)
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (nextIndex + 1) % order.length
+  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (nextIndex - 1 + order.length) % order.length
+  else if (event.key === 'Home') nextIndex = 0
+  else if (event.key === 'End') nextIndex = order.length - 1
+  else return
+  event.preventDefault()
+  const tabList = (event.currentTarget as HTMLElement | null)?.parentElement
+  activeTab.value = order[nextIndex]
+  nextTick(() => tabList?.querySelectorAll<HTMLElement>('[role="tab"]')[nextIndex]?.focus())
+}
+
 /* 关注 tab — the PEOPLE you follow (not their listings). Lazy-loaded the
  * first time the user opens the tab, then paginated via the scroll-view's
  * bottom-reach handler. followLoaded gates the one-shot initial fetch;
@@ -613,24 +734,37 @@ const followLoading = ref(false)
 const followHasMore = ref(true)
 const followPage = ref(0)
 const followLoaded = ref(false)
+const followError = ref('')
 
 async function loadFollowing(reset: boolean) {
   if (followLoading.value) return
+  await awaitAuthReady()
+  const requestEpoch = plazaAccountEpoch
   if (!currentUser.value) {
     followPeople.value = []
+    followError.value = ''
     followLoaded.value = true
     return
   }
+  const accountToken = captureAccountRequest(currentUser.value.id)
+  if (!isAccountRequestCurrent(accountToken)) return
   if (reset) followPage.value = 0
   followLoading.value = true
+  followError.value = ''
   try {
     const rows = await fetchFollowingProfiles(followPage.value, FOLLOW_PAGE_SIZE)
+    if (requestEpoch !== plazaAccountEpoch || !isAccountRequestCurrent(accountToken)) return
     if (reset) followPeople.value = rows
     else followPeople.value.push(...rows)
     followHasMore.value = rows.length === FOLLOW_PAGE_SIZE
     followLoaded.value = true
+  } catch (error: any) {
+    if (requestEpoch !== plazaAccountEpoch || !isAccountRequestCurrent(accountToken)) return
+    if (reset) followPeople.value = []
+    followError.value = friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('error.loadFailed')
+    uni.showToast({ title: followError.value, icon: 'none', duration: 2500 })
   } finally {
-    followLoading.value = false
+    if (requestEpoch === plazaAccountEpoch && isAccountRequestCurrent(accountToken)) followLoading.value = false
   }
 }
 
@@ -642,6 +776,24 @@ watch(activeTab, (k) => {
     pageIdx.value = 0
     fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value })
   }
+})
+
+// The page-local following result is account-scoped. If auth hydrates after
+// the tab was opened (or the account changes without destroying this tab),
+// invalidate the anonymous/previous-account snapshot and reload in place.
+watch(currentUser, (u, prev) => {
+  if (u?.id === prev?.id) return
+  // A tab page can survive account switches. Never carry A's in-progress
+  // composer or comment draft into B's session.
+  if (showComposer.value) onComposerCancel()
+  if (commentingPost.value || commentText.value) closeComments()
+  followLoaded.value = false
+  followPeople.value = []
+  followError.value = ''
+  followPage.value = 0
+  followHasMore.value = true
+  if (activeTab.value === 'following') void loadFollowing(true)
+  else void reloadPlazaForCurrentAccount()
 })
 
 /*
@@ -693,16 +845,20 @@ function clearSearch() {
 }
 
 const showComposer = ref(false)
+const composerDialogEl = ref<HTMLElement | null>(null)
 const composerText = ref('')
 const composerImages = ref<string[]>([])
 const composerFocused = ref(false)
 const submitting = ref(false)
+let composerAccountToken: AccountRequestToken | null = null
+let composerSessionId = 0
 
 type AttachableItem = NonNullable<Post['post_items']>[number]['item']
 const MAX_CHIPS = 3
 const composerAttachedItems = ref<AttachableItem[]>([])
 const chipCapReached = computed(() => composerAttachedItems.value.length >= MAX_CHIPS)
 const showAttachSheet = ref(false)
+const attachDialogEl = ref<HTMLElement | null>(null)
 const myActiveItems = ref<AttachableItem[]>([])
 /* Picker hides items already attached to this composer session, so the
    user can't pick the same item twice (matches the (post_id, item_id)
@@ -713,11 +869,102 @@ const availableActiveItems = computed(() =>
   ),
 )
 
+let composerDialogOpener: HTMLElement | null = null
+let attachDialogOpener: HTMLElement | null = null
+let commentDialogOpener: HTMLElement | null = null
+
+function activeElement(): HTMLElement | null {
+  if (typeof document === 'undefined') return null
+  return document.activeElement instanceof HTMLElement ? document.activeElement : null
+}
+
+function focusDialog(dialog: HTMLElement | null, preferredSelector?: string) {
+  if (!dialog || typeof dialog.querySelector !== 'function') return
+  const preferred = preferredSelector
+    ? dialog.querySelector<HTMLElement>(preferredSelector)
+    : null
+  const fallback = dialog.querySelector<HTMLElement>(
+    '[role="button"]:not([aria-disabled="true"]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+  )
+  ;(preferred || fallback || dialog).focus()
+}
+
+function restoreDialogFocus(opener: HTMLElement | null) {
+  if (!opener || typeof opener.focus !== 'function') return
+  nextTick(() => opener.focus())
+}
+
+function handleDialogKeydown(event: KeyboardEvent, close: () => void) {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    event.stopPropagation()
+    close()
+    return
+  }
+  if (event.key !== 'Tab') return
+  const dialog = event.currentTarget as HTMLElement | null
+  if (!dialog || typeof dialog.querySelectorAll !== 'function') return
+  const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+    '[role="button"]:not([aria-disabled="true"]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+  )).filter(el => el.getAttribute('aria-hidden') !== 'true')
+  if (focusable.length === 0) {
+    event.preventDefault()
+    dialog.focus()
+    return
+  }
+  const current = activeElement()
+  const index = current ? focusable.indexOf(current) : -1
+  if (event.shiftKey && (index <= 0)) {
+    event.preventDefault()
+    focusable[focusable.length - 1].focus()
+  } else if (!event.shiftKey && (index === -1 || index === focusable.length - 1)) {
+    event.preventDefault()
+    focusable[0].focus()
+  }
+}
+
+function onCommentDialogKeydown(event: KeyboardEvent) {
+  handleDialogKeydown(event, closeComments)
+}
+
+function onComposerDialogKeydown(event: KeyboardEvent) {
+  handleDialogKeydown(event, onComposerCancel)
+}
+
+function onAttachDialogKeydown(event: KeyboardEvent) {
+  handleDialogKeydown(event, () => { showAttachSheet.value = false })
+}
+
+watch(showComposer, (open) => {
+  if (open) nextTick(() => focusDialog(composerDialogEl.value, 'textarea'))
+  else restoreDialogFocus(composerDialogOpener)
+})
+
+watch(showAttachSheet, (open) => {
+  if (open) nextTick(() => focusDialog(attachDialogEl.value))
+  else if (showComposer.value) restoreDialogFocus(attachDialogOpener)
+})
+
 async function onOpenAttachSheet() {
-  if (!requireAuth()) return
+  await awaitAuthReady()
+  if (!requireAuth() || !currentUser.value) return
+  const pickerAccountToken = composerAccountToken
+    || captureAccountRequest(currentUser.value.id)
+  const pickerEpoch = plazaAccountEpoch
+  const pickerSessionId = composerSessionId
+  const pickerIsCurrent = () => (
+    pickerEpoch === plazaAccountEpoch
+    && pickerSessionId === composerSessionId
+    && showComposer.value
+    && isAccountRequestCurrent(pickerAccountToken)
+  )
+  if (!pickerIsCurrent()) return
+  attachDialogOpener = activeElement()
   showAttachSheet.value = true
   if (myActiveItems.value.length === 0) {
-    myActiveItems.value = await fetchMyActiveItems() as AttachableItem[]
+    const rows = await fetchMyActiveItems() as AttachableItem[]
+    if (!pickerIsCurrent()) return
+    myActiveItems.value = rows
   }
 }
 
@@ -760,17 +1007,26 @@ function goToFollowSeller(id: string) {
   uni.navigateTo({ url: `/pages/seller/index?id=${id}` })
 }
 
+function goToLogin() {
+  uni.navigateTo({ url: '/pages/login/index' })
+}
+
 /* Post author avatar/name → seller page. Always lands on the default
    商品 tab regardless of entry point (2026-06 meeting decision); the
    ?tab=posts deep-link exists but is intentionally not used here. */
 function goSeller(userId: string) {
   uni.navigateTo({ url: `/pages/seller/index?id=${userId}` })
 }
-const { uploadImagesWithDims } = useItems()
+const { uploadImagesWithDims, removeOwnedItemImages } = useItems()
 const { translateContentToAll } = useTranslate()
 const { addPostToHistory } = useHistory()
 
-function openComposer() {
+async function openComposer() {
+  await awaitAuthReady()
+  if (!requireAuth() || !currentUser.value) return
+  composerDialogOpener = activeElement()
+  composerSessionId += 1
+  composerAccountToken = captureAccountRequest(currentUser.value.id)
   // N14 layer 3 — baseline reset before show. Defends against any
   // stale composer state surviving from a prior session via a path
   // that bypassed onComposerCancel (tab keep-alive, system back,
@@ -790,14 +1046,22 @@ function openComposer() {
 }
 
 const commentingPost = ref<Post | null>(null)
+const commentSheetEl = ref<HTMLElement | null>(null)
 const comments = ref<PostComment[]>([])
 const loadingComments = ref(false)
+const commentsError = ref(false)
 const commentText = ref('')
 const replyTo = ref<PostComment | null>(null)
+const commentSubmitting = ref(false)
 // Sheet 打开时 input 不应自动 focus（避免键盘挡评论列表）。
 // inputFocused 由用户显式动作驱动：tap 输入框 / tap 评论 / tap "回复" / tap 长按菜单"回复"。
 // 关闭 sheet / 切评论 reset 回 false，保证下次打开时键盘不会自动起。
 const inputFocused = ref(false)
+
+watch(commentingPost, (openPost) => {
+  if (openPost) nextTick(() => focusDialog(commentSheetEl.value))
+  else restoreDialogFocus(commentDialogOpener)
+})
 
 // Per-thread expand state. Stores top-level comment ids whose >3 replies
 // are unfolded. Replaced (not mutated) on toggle so Vue's Set reactivity
@@ -833,6 +1097,61 @@ const translatingId = ref('')
 const pinnedExpanded = reactive(new Set<string>())
 const { translate: translateText, getCached } = useTranslate()
 
+function resetPlazaAccountState() {
+  plazaAccountEpoch += 1
+  onComposerCancel()
+  closeComments()
+  myActiveItems.value = []
+  searchText.value = ''
+  if (searchDebounce) clearTimeout(searchDebounce)
+  searchDebounce = null
+  followPeople.value = []
+  followLoading.value = false
+  followLoaded.value = false
+  followError.value = ''
+  followPage.value = 0
+  followHasMore.value = true
+  refreshing.value = false
+  submitting.value = false
+  commentSubmitting.value = false
+  translatingId.value = ''
+  for (const id of Object.keys(translations)) delete translations[id]
+  reportLoading.cancel()
+  clearPosts()
+}
+
+const stopAccountTransitionListener = onAccountTransition(resetPlazaAccountState)
+onUnmounted(() => {
+  reportLoading.cancel()
+  stopAccountTransitionListener()
+})
+
+async function reloadPlazaForCurrentAccount() {
+  const requestEpoch = plazaAccountEpoch
+  await awaitAuthReady()
+  if (requestEpoch !== plazaAccountEpoch) return
+
+  const userId = currentUser.value?.id
+  const accountToken = userId ? captureAccountRequest(userId) : null
+  if (accountToken && !isAccountRequestCurrent(accountToken)) return
+  if (accountToken) {
+    const moderationGate = await ensureBlockedLoaded()
+    if (
+      requestEpoch !== plazaAccountEpoch
+      || !isAccountRequestCurrent(accountToken)
+    ) return
+    if (!moderationGate.ok) {
+      clearPosts()
+      fetchError.value = friendlyErrorMessage(
+        new Error('moderation_gate_unavailable'),
+        lang.value as 'en' | 'zh',
+      )
+      return
+    }
+  }
+  await fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value })
+}
+
 async function togglePostTranslate(post: Post) {
   if (!post.content) return
   if (translations[post.id]) {
@@ -852,10 +1171,7 @@ async function togglePostTranslate(post: Post) {
   }
 }
 
-onMounted(async () => {
-  await ensureBlockedLoaded()
-  await fetchPosts({ reset: true, sort: feedSort.value })
-})
+onMounted(() => { void reloadPlazaForCurrentAccount() })
 
 async function onRefresh() {
   if (refreshing.value) return
@@ -887,6 +1203,7 @@ async function loadMore() {
 }
 
 async function onToggleLike(post: Post) {
+  await awaitAuthReady()
   if (!requireAuth()) return
   addPostToHistory(post)
   try {
@@ -897,6 +1214,7 @@ async function onToggleLike(post: Post) {
 }
 
 async function onToggleCommentLike(comment: PostComment) {
+  await awaitAuthReady()
   if (!requireAuth()) return
   try {
     await toggleCommentLike(comment)
@@ -906,11 +1224,13 @@ async function onToggleCommentLike(comment: PostComment) {
 }
 
 function onComposerCancel() {
+  composerSessionId += 1
   composerFocused.value = false
   showComposer.value = false
   composerText.value = ''
   composerImages.value = []
   composerAttachedItems.value = []
+  composerAccountToken = null
   // N14 layer 1 — close any orphan picker sheet so a sheet that was
   // mounted on top of the composer doesn't survive cancel and accept
   // a row tap that would silently mutate the next composer session.
@@ -918,17 +1238,36 @@ function onComposerCancel() {
 }
 
 function onComposerPickImage() {
+  const pickerSessionId = composerSessionId
+  const pickerAccountToken = composerAccountToken
+  const pickerIsCurrent = () => !!(
+    showComposer.value
+    && pickerAccountToken
+    && composerAccountToken
+    && pickerSessionId === composerSessionId
+    && pickerAccountToken.userId === composerAccountToken.userId
+    && pickerAccountToken.generation === composerAccountToken.generation
+    && isAccountRequestCurrent(pickerAccountToken)
+  )
+  if (!pickerIsCurrent()) return
+
   uni.chooseImage({
     count: 4 - composerImages.value.length,
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
     success: async (res: any) => {
-      const paths: string[] = res.tempFilePaths || []
+      if (!pickerIsCurrent()) return
+      const paths: string[] = Array.isArray(res.tempFilePaths)
+        ? res.tempFilePaths
+        : res.tempFilePaths ? [res.tempFilePaths] : []
       for (const p of paths) {
+        if (!pickerIsCurrent() || composerImages.value.length >= 4) return
         try {
           const c = await compressImage(p, { entryPoint: 'plaza' })
+          if (!pickerIsCurrent() || composerImages.value.length >= 4) return
           composerImages.value.push(c)
         } catch (err: any) {
+          if (!pickerIsCurrent() || composerImages.value.length >= 4) return
           if (err?.heic === true) {
             uni.showToast({ title: t('heic.unsupported'), icon: 'none', duration: 3500 })
             continue
@@ -945,30 +1284,49 @@ function removeComposerImage(idx: number) {
 }
 
 async function onSubmitPost() {
+  await awaitAuthReady()
   if (!requireAuth()) return
-  if (!composerText.value.trim() && composerImages.value.length === 0) {
+  if (
+    !composerText.value.trim()
+    && composerImages.value.length === 0
+    && composerAttachedItems.value.length === 0
+  ) {
     uni.showToast({ title: t('plaza.needContent'), icon: 'none' })
     return
   }
   if (submitting.value) return
+  if (!composerAccountToken || !isAccountRequestCurrent(composerAccountToken)) {
+    uni.showToast({ title: t('msg.actionFailed'), icon: 'none' })
+    return
+  }
+  const submitAccountToken = composerAccountToken
   submitting.value = true
-  const failsafe = setTimeout(() => { submitting.value = false }, 30000)
+  let imageUrls: string[] = []
+  let uploadAccountToken: UploadAccountToken | null = null
   try {
-    let imageUrls: string[] = []
     let imageDims: Array<{ w: number; h: number }> = []
     const expectedImages = composerImages.value.length
-    console.log('[plaza-debug] onSubmitPost expectedImages:', expectedImages)
     if (expectedImages > 0) {
-      let up: { urls: string[]; dims: Array<{ w: number; h: number }> }
+      let up: UploadBatchResult
       try {
-        up = await uploadImagesWithDims(composerImages.value, { entryPoint: 'plaza' })
+        up = await uploadImagesWithDims(composerImages.value, {
+          entryPoint: 'plaza',
+          accountToken: submitAccountToken,
+        })
       } catch (upErr: any) {
         if (upErr?.heic === true) throw new Error(t('heic.unsupported'))
         throw upErr
       }
       imageUrls = up.urls
       imageDims = up.dims
-      console.log('[plaza-debug] uploaded:', imageUrls.length, '/', expectedImages)
+      uploadAccountToken = up.accountToken
+      if (
+        up.accountToken.userId !== submitAccountToken.userId
+        || up.accountToken.generation !== submitAccountToken.generation
+        || !isAccountRequestCurrent(submitAccountToken)
+      ) {
+        throw mutationOutcomeError(new Error('Account changed during post upload'), 'not_committed')
+      }
       if (imageUrls.length === 0) {
         throw new Error(t('plaza.uploadFailed'))
       }
@@ -992,12 +1350,15 @@ async function onSubmitPost() {
         image_dimensions: imageDims,
         content_i18n: trimmed ? { [sourceLang]: trimmed } : null,
         source_lang: sourceLang,
+        accountToken: submitAccountToken,
       },
     )
 
     composerText.value = ''
     composerImages.value = []
     composerAttachedItems.value = []
+    composerSessionId += 1
+    composerAccountToken = null
     showComposer.value = false
 
     if (result.partial) {
@@ -1015,37 +1376,69 @@ async function onSubmitPost() {
     if (trimmed && result.id) {
       translateContentToAll(trimmed, sourceLang as any)
         .then((map) => {
-          if (Object.keys(map).length > 1) updatePostI18n(result.id, map)
+          if (Object.keys(map).length > 1) updatePostI18n(result.id, map, submitAccountToken)
         })
-        .catch((err) => console.warn('[plaza] bilingual fill skipped:', err))
+        .catch(() => console.warn('[plaza] bilingual fill skipped'))
     }
   } catch (err: any) {
+    if (imageUrls.length > 0 && uploadAccountToken) {
+      if (shouldCompensateMutationFailure(err)) {
+        try {
+          await removeOwnedItemImages(imageUrls, {
+            ownerUserId: uploadAccountToken.userId,
+            telemetrySource: 'plaza.create_compensation',
+          })
+        } catch (cleanupError) {
+          captureException(cleanupError, {
+            tags: { source: 'plaza.create_compensation', orphan_risk: 'true' },
+            level: 'warning',
+          })
+        }
+      } else if (mutationCommitState(err) === 'unknown') {
+        // The post may already reference these URLs. Keep them and make the
+        // orphan-vs-committed ambiguity observable rather than breaking media.
+        captureException(err, {
+          tags: { source: 'plaza.create_commit_unknown', orphan_risk: 'true' },
+          extra: { objectCount: imageUrls.length },
+          level: 'warning',
+        })
+      }
+    }
+    if (!isAccountRequestCurrent(submitAccountToken)) return
     uni.showToast({
       title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
       icon: 'none',
       duration: 2500,
     })
   } finally {
-    clearTimeout(failsafe)
-    submitting.value = false
+    if (isAccountRequestCurrent(submitAccountToken)) submitting.value = false
   }
 }
 
 function onDeletePost(post: Post) {
+  if (!currentUser.value) return
+  const accountToken = captureAccountRequest(currentUser.value.id)
+  const actionEpoch = plazaAccountEpoch
+  const actionIsCurrent = () => (
+    actionEpoch === plazaAccountEpoch
+    && isAccountRequestCurrent(accountToken)
+  )
   uni.showActionSheet({
     itemList: [t('plaza.delete')],
     itemColor: DIALOG_DANGER,
     success: (res) => {
-      if (res.tapIndex !== 0) return
+      if (res.tapIndex !== 0 || !actionIsCurrent()) return
       uni.showModal({
         title: t('plaza.deleteConfirm'),
         confirmColor: DIALOG_DANGER,
         success: async (r) => {
-          if (!r.confirm) return
+          if (!r.confirm || !actionIsCurrent()) return
           try {
             await deletePost(post.id)
+            if (!actionIsCurrent()) return
             uni.showToast({ title: t('profile.deleted'), icon: 'success' })
           } catch (err: any) {
+            if (!actionIsCurrent()) return
             uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('profile.markFail'), icon: 'none' })
           }
         },
@@ -1094,28 +1487,66 @@ async function openComments(post: Post) {
     closeComments()
     return
   }
+  await awaitAuthReady()
+  commentDialogOpener = activeElement()
   commentingPost.value = post
   inputFocused.value = false
   addPostToHistory(post)
   comments.value = []
+  commentsError.value = false
+  await loadCommentSheet(post)
+}
+
+async function loadCommentSheet(post: Post) {
+  const requestEpoch = plazaAccountEpoch
+  const accountToken = currentUser.value
+    ? captureAccountRequest(currentUser.value.id)
+    : null
   loadingComments.value = true
+  commentsError.value = false
   try {
-    comments.value = await fetchComments(post.id)
-  } catch {} finally {
-    loadingComments.value = false
+    const rows = await fetchComments(post.id)
+    if (
+      requestEpoch !== plazaAccountEpoch
+      || commentingPost.value?.id !== post.id
+      || (accountToken && !isAccountRequestCurrent(accountToken))
+    ) return
+    comments.value = rows
+    commentsError.value = false
+  } catch {
+    if (
+      requestEpoch === plazaAccountEpoch
+      && commentingPost.value?.id === post.id
+      && (!accountToken || isAccountRequestCurrent(accountToken))
+    ) {
+      comments.value = []
+      commentsError.value = true
+    }
+  } finally {
+    if (
+      requestEpoch === plazaAccountEpoch
+      && commentingPost.value?.id === post.id
+      && (!accountToken || isAccountRequestCurrent(accountToken))
+    ) loadingComments.value = false
   }
+}
+
+function retryComments() {
+  const post = commentingPost.value
+  if (!post || loadingComments.value) return
+  void loadCommentSheet(post)
 }
 
 function closeComments() {
   commentingPost.value = null
   comments.value = []
+  loadingComments.value = false
+  commentsError.value = false
   commentText.value = ''
   replyTo.value = null
   inputFocused.value = false
   expandedReplies.value = new Set()
 }
-
-const commentSubmitting = ref(false)
 
 function onCommentKeydown(e: KeyboardEvent) {
   if (!e) return
@@ -1130,13 +1561,14 @@ function onCommentKeydown(e: KeyboardEvent) {
 }
 
 async function onSubmitComment() {
-  if (!requireAuth()) return
+  await awaitAuthReady()
+  if (!requireAuth() || !currentUser.value) return
   if (!commentText.value.trim() || !commentingPost.value) return
   if (commentSubmitting.value) return
   commentSubmitting.value = true
-  const failsafe = setTimeout(() => { commentSubmitting.value = false }, 15000)
 
   const me = currentUser.value
+  const commentAccountToken = captureAccountRequest(me.id)
   const postId = commentingPost.value.id
   const reply = replyTo.value
   const rawText = commentText.value
@@ -1176,6 +1608,7 @@ async function onSubmitComment() {
 
   try {
     const c = await createComment(postId, text, parentId)
+    if (!isAccountRequestCurrent(commentAccountToken)) return
     // fetchComments hydrates reply_to_name from DB on next refresh; mirror it
     // here from the replyTo we captured before clearing.
     c.reply_to_name = replyName
@@ -1184,6 +1617,7 @@ async function onSubmitComment() {
     else comments.value.push(c)
     uni.showToast({ title: t('plaza.commented'), icon: 'success' })
   } catch (err: any) {
+    if (!isAccountRequestCurrent(commentAccountToken)) return
     const i = comments.value.findIndex(x => x.id === tempId)
     if (i !== -1) comments.value.splice(i, 1)
     // A moderation/network failure shouldn't lose the draft — restore it.
@@ -1195,15 +1629,15 @@ async function onSubmitComment() {
       duration: 2500,
     })
   } finally {
-    clearTimeout(failsafe)
-    commentSubmitting.value = false
+    if (isAccountRequestCurrent(commentAccountToken)) commentSubmitting.value = false
   }
 }
 
-// cs-avatar 也绑同 handler — 当前没用户主页页面，tap 头像 fallback 到回复，
-// 避免 silent dead-zone。未来用户主页 ready 后改 cs-avatar @click 跳主页。
-function onCommentTap(c: PostComment) {
-  if (!currentUser.value) return
+// Reply is an explicit action instead of overloading the avatar/body click.
+// This keeps comment reading and keyboard action semantics unambiguous.
+async function onCommentTap(c: PostComment) {
+  await awaitAuthReady()
+  if (!requireAuth() || !currentUser.value) return
   replyTo.value = c
   inputFocused.value = true
 }
@@ -1219,9 +1653,33 @@ function onCommentTap(c: PostComment) {
 const postLongPress = useLongPress<[any]>((post) => onPostLongPress(post), 1500)
 const commentLongPress = useLongPress<[PostComment]>((c) => onCommentLongPress(c), 1500)
 
-function onCommentLongPress(c: PostComment) {
-  if (!currentUser.value) return
+function onPostCardKeydown(event: KeyboardEvent, post: Post) {
+  if (event.currentTarget !== event.target) return
+  if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
+  event.preventDefault()
+  event.stopPropagation()
+  void onPostLongPress(post)
+}
+
+function onCommentKeyboardMenu(event: KeyboardEvent, comment: PostComment) {
+  if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
+  event.preventDefault()
+  event.stopPropagation()
+  void onCommentLongPress(comment)
+}
+
+async function onCommentLongPress(c: PostComment) {
+  await awaitAuthReady()
+  if (!requireAuth() || !currentUser.value) return
   const isMine = c.user_id === currentUser.value.id
+  const accountToken = captureAccountRequest(currentUser.value.id)
+  const actionEpoch = plazaAccountEpoch
+  const actionPostId = commentingPost.value?.id || ''
+  const actionIsCurrent = () => (
+    actionEpoch === plazaAccountEpoch
+    && isAccountRequestCurrent(accountToken)
+    && commentingPost.value?.id === actionPostId
+  )
   // Owner: 回复 / 删除（删除带二次确认 modal）
   // Non-owner: 回复 / 举报评论 / 举报用户 — 三选一拆开是因为举报评论内容
   // 和举报用户是不同的 moderation queue case (评论可能炒人 vs 用户多次违规)。
@@ -1232,6 +1690,7 @@ function onCommentLongPress(c: PostComment) {
   uni.showActionSheet({
     itemList: items,
     success: (res) => {
+      if (!actionIsCurrent()) return
       if (res.tapIndex === 0) {
         replyTo.value = c
         inputFocused.value = true
@@ -1240,11 +1699,13 @@ function onCommentLongPress(c: PostComment) {
           title: t('plaza.commentDeleteConfirm'),
           confirmColor: DIALOG_DANGER,
           success: async (r) => {
-            if (!r.confirm || !commentingPost.value) return
+            if (!r.confirm || !actionIsCurrent()) return
             try {
-              await deleteComment(c.id, commentingPost.value.id)
+              await deleteComment(c.id, actionPostId)
+              if (!actionIsCurrent()) return
               comments.value = comments.value.filter(x => x.id !== c.id)
             } catch (err: any) {
+              if (!actionIsCurrent()) return
               uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
             }
           },
@@ -1262,15 +1723,16 @@ function promptReportUser(userId: string) {
   promptReport('user', userId)
 }
 
-function onPostLongPress(post: any) {
-  if (!currentUser.value) {
-    uni.navigateTo({ url: '/pages/login/index' })
-    return
-  }
+async function onPostLongPress(post: any) {
+  await awaitAuthReady()
+  if (!requireAuth() || !currentUser.value) return
   if (post.user_id === currentUser.value.id) return
+  const accountToken = captureAccountRequest(currentUser.value.id)
+  const actionEpoch = plazaAccountEpoch
   uni.showActionSheet({
     itemList: [t('report.reportPost'), t('report.reportUser')],
     success: (res) => {
+      if (actionEpoch !== plazaAccountEpoch || !isAccountRequestCurrent(accountToken)) return
       if (res.tapIndex === 0) promptReport('post', post.id)
       else if (res.tapIndex === 1) promptReport('user', post.user_id)
     },
@@ -1278,20 +1740,27 @@ function onPostLongPress(post: any) {
 }
 
 function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId: string) {
+  if (!currentUser.value) return
+  const accountToken = captureAccountRequest(currentUser.value.id)
+  const actionEpoch = plazaAccountEpoch
+  const actionIsCurrent = () => actionEpoch === plazaAccountEpoch && isAccountRequestCurrent(accountToken)
   const reasons = targetType === 'user'
     ? [t('report.reasonSpam'), t('report.reasonAbuse'), t('report.reasonMisleading'), t('report.reasonOther')]
     : [t('report.reasonSpam'), t('report.reasonProhibited'), t('report.reasonMisleading'), t('report.reasonOther')]
   uni.showActionSheet({
     itemList: reasons,
     success: async (res) => {
+      if (!actionIsCurrent()) return
       const reason = reasons[res.tapIndex]
-      uni.showLoading({ title: t('report.submitting') || t('login.wait'), mask: true })
+      const loadingOwner = reportLoading.show(t('report.submitting') || t('login.wait'))
       try {
         await reportTarget(targetType, targetId, reason)
-        uni.hideLoading()
+        reportLoading.hide(loadingOwner)
+        if (!actionIsCurrent()) return
         uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
-        uni.hideLoading()
+        reportLoading.hide(loadingOwner)
+        if (!actionIsCurrent()) return
         uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('report.failed'), icon: 'none' })
       }
     },
@@ -1471,7 +1940,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 
 .loading, .empty {
   display: flex; flex-direction: column; align-items: center;
-  padding: 80px 16px; gap: 12px; color: var(--text-faint); font-size: 14px;
+  padding: 80px 16px; gap: 12px; color: var(--text-subtle); font-size: 14px;
 }
 .empty-text { font-size: 14px; color: var(--text-muted); }
 .cta-btn {
@@ -1578,7 +2047,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   padding: 4px 0;
   &:active { opacity: 0.7; }
 }
-.pc-icon { font-size: 20px; line-height: 1; flex-shrink: 0; }
 .pc-body {
   flex: 1 1 auto; min-width: 0;
   display: flex; flex-direction: column; gap: 2px;
@@ -1600,7 +2068,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .pa-info { flex: 1; min-width: 0; }
 .pa-name-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .pa-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-.pa-time { font-size: 11px; color: var(--text-faint); margin-top: 2px; display: block; }
+.pa-time { font-size: 11px; color: var(--text-subtle); margin-top: 2px; display: block; }
 .post-more {
   display: flex; gap: 3px; padding: 6px; cursor: pointer;
   &:active { opacity: 0.5; }
@@ -1614,9 +2082,9 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
  * a feed of mixed posts and know "what kind of thing" each is at
  * a glance. */
 .badge-pinned {
-  background: var(--warning-soft); color: var(--warning);
+  background: var(--warning-soft); color: var(--warning-text);
   padding: 1px 6px; border-radius: 4px;
-  text { font-size: 10px; font-weight: 600; color: var(--warning); letter-spacing: 0.02em; }
+  text { font-size: 10px; font-weight: 600; color: var(--warning-text); letter-spacing: 0.02em; }
 }
 
 .post-content-wrap { position: relative; padding-right: 40px; }
@@ -1687,7 +2155,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 }
 .pa-num { font-size: 12px; color: var(--text-muted); font-weight: 500; &.active { color: var(--accent-danger); } }
 
-.end-tip { text-align: center; padding: 24px; font-size: 12px; color: var(--text-faint); }
+.end-tip { text-align: center; padding: 24px; font-size: 12px; color: var(--text-subtle); }
 
 .composer-fullpage {
   position: fixed; inset: 0; z-index: 1100;
@@ -1762,7 +2230,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
     width: 4px; height: 4px; border-radius: 50%; border: 1.4px solid var(--text-secondary);
   }
 }
-.comp-count { font-size: 12px; color: var(--text-faint); }
+.comp-count { font-size: 12px; color: var(--text-subtle); }
 
 .comp-attach-btn {
   display: flex; align-items: center; gap: 4px;
@@ -1862,7 +2330,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .cs-body { flex: 1; min-width: 0; }
 .cs-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .cs-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
-.cs-time { font-size: 11px; color: var(--text-faint); }
+.cs-time { font-size: 11px; color: var(--text-subtle); }
 .cs-content { font-size: 14px; color: var(--text-primary); line-height: 1.45; margin-top: 2px; display: block; word-break: break-word; }
 .cs-actions {
   display: flex;
@@ -1887,14 +2355,14 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 }
 .cs-like-num {
   font-size: 11px;
-  color: var(--text-faint);
+  color: var(--text-subtle);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   &.active { color: var(--accent-danger); }
 }
 .cs-reply-btn {
   font-size: 12px;
-  color: var(--text-faint);
+  color: var(--text-subtle);
   font-weight: 500;
   cursor: pointer;
   padding: 2px 0;
@@ -1951,13 +2419,19 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 }
 .cmt-htitle { font-size: 15px; font-weight: 600; color: var(--text-primary); }
 .cmt-scroll { flex: 1; min-height: 0; }
-.cmt-end { text-align: center; color: var(--text-faint); font-size: 12px; padding: 16px 0 18px; }
+.cmt-end { text-align: center; color: var(--text-subtle); font-size: 12px; padding: 16px 0 18px; }
 .ci-loading,
 .ci-empty {
   padding: 24px 16px;
   text-align: center;
-  color: var(--text-faint);
+  color: var(--text-subtle);
   font-size: 13px;
+}
+.ci-error { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.ci-retry {
+  min-height: 44px; padding: 0 18px; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--accent-action); color: var(--ink-inverse); font-weight: 650;
 }
 
 .ci-reply-bar {

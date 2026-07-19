@@ -1,7 +1,20 @@
 -- =========================================================
+-- DEPRECATED OPERATOR BUNDLE — retained only as historical recovery evidence.
+-- Do not execute this file. Its contracts predate the timestamped 2026-07
+-- hardening chain and can overwrite current least-privilege functions.
+-- Follow RUNBOOK.md and the matching PRECHECK/migration/VERIFY/REGRESSION files.
+\set ON_ERROR_STOP on
+DO $deprecated_operator_bundle$
+BEGIN
+  RAISE EXCEPTION
+    'deprecated_operator_bundle: use the reviewed timestamped migration chain';
+END
+$deprecated_operator_bundle$;
+
+-- =========================================================
 -- RUN PENDING MIGRATIONS (bundle)
 -- =========================================================
--- Paste this ENTIRE file into Supabase SQL Editor and run ONCE.
+-- Historical instructions below are retained for incident archaeology only.
 --
 -- This bundles migrations 020 + 021 (both previously needed manual
 -- application). Every statement is idempotent (IF NOT EXISTS / IF NOT EXISTS
@@ -81,4 +94,5 @@ COMMIT;
 -- Verification — both SELECTs should succeed (return 0 or more rows):
 --   SELECT COUNT(*) AS verified_items FROM public.items WHERE location_verified = TRUE;
 --   SELECT id, status_text, status_emoji FROM public.profiles WHERE status_text IS NOT NULL LIMIT 1;
+-- =========================================================
 -- =========================================================

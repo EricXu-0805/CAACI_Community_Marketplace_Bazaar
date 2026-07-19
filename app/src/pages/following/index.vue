@@ -16,6 +16,12 @@
         </view>
       </view>
 
+      <view v-else-if="loadError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
+        <UEmptyArt name="following" />
+        <text class="empty-text">{{ t('error.loadFailed') }}</text>
+        <view class="retry-btn" role="button" :aria-label="t('home.retry')" @click="retryLoad">{{ t('home.retry') }}</view>
+      </view>
+
       <view v-else-if="people.length === 0 && !loading" class="empty">
         <UEmptyArt name="following" />
         <text class="empty-text">{{ t('follow.emptyPeople') }}</text>
@@ -30,7 +36,7 @@
           :aria-label="p.nickname || t('app.user')"
           @click="goSeller(p.id)"
         >
-          <image :src="p.avatar_url || defaultAvatarSrc" :alt="p.nickname || 'avatar'" class="pr-avatar" mode="aspectFill" />
+          <UAvatar :src="p.avatar_url" :owner="p.id" :fallback="defaultAvatarSrc" :alt="p.nickname || 'avatar'" class="pr-avatar" lazy />
           <view class="pr-info">
             <view class="pr-name-row">
               <text class="pr-name">{{ p.nickname || t('app.user') }}</text>
@@ -52,14 +58,16 @@
 <script setup lang="ts">
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
-import { ref, computed, nextTick, onMounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { ref, computed, nextTick, onMounted, watch } from 'vue'
+import { onShow, onUnload } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import { useTheme } from '../../composables/useTheme'
 import { useFollow } from '../../composables/useFollow'
 import type { FollowedProfile } from '../../composables/useFollow'
 import { useAuth } from '../../composables/useAuth'
-import { friendlyErrorMessage } from '../../utils'
+import { friendlyErrorMessage, navigateBackOr } from '../../utils'
+import { createAccountPageScope } from '../../composables/accountPageScope'
+import UAvatar from '../../components/UAvatar.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
 import UIcon from '../../components/UIcon.vue'
 import UBadge from '../../components/UBadge.vue'
@@ -71,13 +79,27 @@ const { isDark } = useTheme()
 const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
-const { currentUser } = useAuth()
+const { currentUser, requireAuth, awaitAuthReady } = useAuth()
 const { fetchFollowingProfiles } = useFollow()
 
 const people = ref<FollowedProfile[]>([])
 const loading = ref(false)
 const hasMore = ref(true)
 const page = ref(0)
+const loadError = ref(false)
+let followingPageAlive = true
+
+function clearFollowingPageState() {
+  people.value = []
+  loading.value = false
+  hasMore.value = true
+  page.value = 0
+  loadError.value = false
+}
+
+const followingPageScope = createAccountPageScope(() => {
+  clearFollowingPageState()
+})
 
 /*
  * uni-app <scroll-view> keeps its last scrollTop across navigations, so
@@ -93,39 +115,95 @@ function resetScroll() {
 }
 onShow(() => { resetScroll() })
 
-onMounted(async () => {
-  if (!currentUser.value) {
-    uni.showToast({ title: t('profile.signInHint'), icon: 'none' })
-    return
-  }
+async function loadInitialForUser(userId: string): Promise<boolean> {
+  const request = followingPageScope.begin(userId)
+  if (!request) return false
   loading.value = true
+  loadError.value = false
   try {
     const rows = await fetchFollowingProfiles(0, PAGE_SIZE)
+    if (!followingPageScope.isCurrent(request)) return false
     people.value = rows
+    page.value = 0
     hasMore.value = rows.length === PAGE_SIZE
+    return true
   } catch (err: any) {
+    if (!followingPageScope.isCurrent(request)) return false
+    people.value = []
+    loadError.value = true
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
+    return false
   } finally {
-    loading.value = false
-  }
-})
-
-async function loadMore() {
-  if (loading.value || !hasMore.value) return
-  loading.value = true
-  page.value += 1
-  try {
-    const rows = await fetchFollowingProfiles(page.value, PAGE_SIZE)
-    people.value.push(...rows)
-    hasMore.value = rows.length === PAGE_SIZE
-  } catch (err: any) {
-    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
-  } finally {
-    loading.value = false
+    if (followingPageScope.isCurrent(request)) loading.value = false
   }
 }
 
-function goBack() { uni.navigateBack() }
+async function loadInitial(): Promise<boolean> {
+  const state = await awaitAuthReady()
+  if (!followingPageAlive) return false
+  const userId = currentUser.value?.id
+  if (!userId) {
+    followingPageScope.invalidate()
+    clearFollowingPageState()
+    // An established session can briefly lack a profile after a transient
+    // profile fetch failure. Do not call that "signed out" or send it to the
+    // login page; surface a retryable load failure instead.
+    if (state === 'authenticated') {
+      uni.showToast({ title: t('error.loadFailed'), icon: 'none' })
+    } else {
+      requireAuth()
+    }
+    return false
+  }
+  return loadInitialForUser(userId)
+}
+
+onMounted(() => { void loadInitial() })
+
+function retryLoad() { void loadInitial() }
+
+async function loadMore() {
+  if (loading.value || !hasMore.value) return
+  const userId = currentUser.value?.id
+  if (!userId) {
+    followingPageScope.invalidate()
+    clearFollowingPageState()
+    return
+  }
+  const request = followingPageScope.begin(userId)
+  if (!request) return
+  const nextPage = page.value + 1
+  loading.value = true
+  loadError.value = false
+  try {
+    const rows = await fetchFollowingProfiles(nextPage, PAGE_SIZE)
+    if (!followingPageScope.isCurrent(request)) return
+    people.value.push(...rows)
+    page.value = nextPage
+    hasMore.value = rows.length === PAGE_SIZE
+  } catch (err: any) {
+    if (!followingPageScope.isCurrent(request)) return
+    loadError.value = true
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
+  } finally {
+    if (followingPageScope.isCurrent(request)) loading.value = false
+  }
+}
+
+watch(() => currentUser.value?.id || null, (uid, previousUid) => {
+  if (uid === previousUid) return
+  followingPageScope.invalidate()
+  clearFollowingPageState()
+  if (uid) void loadInitialForUser(uid)
+})
+
+onUnload(() => {
+  followingPageAlive = false
+  clearFollowingPageState()
+  followingPageScope.dispose()
+})
+
+function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/profile/index' })) }
 function goSeller(id: string) { uni.navigateTo({ url: `/pages/seller/index?id=${id}` }) }
 </script>
 
@@ -161,8 +239,9 @@ function goSeller(id: string) { uni.navigateTo({ url: `/pages/seller/index?id=${
   padding: 80px 40px; gap: 12px; text-align: center;
 }
 .empty-text { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+.retry-btn { padding: 8px 18px; border-radius: 18px; background: var(--accent-primary); color: #fff; cursor: pointer; }
 
 .loading-tip, .end-tip {
-  text-align: center; padding: 16px; font-size: 12px; color: var(--text-faint);
+  text-align: center; padding: 16px; font-size: 12px; color: var(--text-subtle);
 }
 </style>

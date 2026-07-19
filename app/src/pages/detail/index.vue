@@ -16,18 +16,22 @@
         class="img-swiper"
         :style="swiperStyle"
         :current="currentImg"
-        @change="currentImg = $event.detail.current"
+        @change="onGalleryChange"
         circular
       >
         <swiper-item v-for="(img, i) in imgs" :key="i">
           <image
+            v-if="galleryImageReady(i)"
             :src="thumbUrl(img, 'detail')"
             :alt="displayTitle"
             mode="aspectFit"
             class="swiper-img"
+            role="button"
+            :aria-label="t('a11y.previewImage')"
             @load="onHeroImgLoad($event, i)"
             @click="previewImage(i)"
           />
+          <view v-else class="swiper-img gallery-deferred" aria-hidden="true"></view>
         </swiper-item>
         <swiper-item v-if="imgs.length === 0">
           <view class="u-thumb-ph u-thumb-ph--fill det-noimg">
@@ -98,7 +102,14 @@
       <text class="section-label">{{ t('detail.description') }}</text>
       <view class="desc-wrap">
         <text :class="['desc-text', { clamped: !descExpanded }]">{{ displayDescription }}</text>
-        <text v-if="item.description.length > 100" class="expand-btn" @click="descExpanded = !descExpanded">
+        <text
+          v-if="item.description.length > 100"
+          class="expand-btn"
+          role="button"
+          :aria-label="descExpanded ? t('detail.showLess') : t('detail.showMore')"
+          :aria-expanded="descExpanded ? 'true' : 'false'"
+          @click="descExpanded = !descExpanded"
+        >
           {{ descExpanded ? t('detail.showLess') : t('detail.showMore') }}
         </text>
       </view>
@@ -106,8 +117,8 @@
 
     <!-- Seller Card -->
     <view class="section seller-card" v-if="item.profile">
-      <view class="seller-row" @click="goSeller(item.user_id)">
-        <image :src="item.profile.avatar_url || defaultAvatarSrc" :alt="item.profile.nickname || 'avatar'" class="seller-avatar" mode="aspectFill" />
+      <view class="seller-row" role="button" :aria-label="item.profile.nickname" @click="goSeller(item.user_id)">
+        <UAvatar :src="item.profile.avatar_url" :owner="item.user_id" :fallback="defaultAvatarSrc" :alt="item.profile.nickname || 'avatar'" class="seller-avatar" />
         <view class="seller-info">
           <view class="seller-name-row">
             <text class="seller-name">{{ item.profile.nickname }}</text>
@@ -116,7 +127,7 @@
           <view v-if="soldCount > 0 || reviewCount > 0 || showReplyRate" class="seller-proof">
             <text v-if="soldCount > 0" class="sp-item"><text class="sp-strong">{{ soldCount }}</text> {{ t('detail.soldCount') }}</text>
             <text v-if="soldCount > 0 && (reviewCount > 0 || showReplyRate)" class="sp-dot">·</text>
-            <text v-if="reviewCount > 0" class="sp-item"><text class="sp-strong">{{ avgRating }}</text> ★ · {{ reviewCount }}</text>
+            <text v-if="reviewCount > 0" class="sp-item"><text class="sp-strong">{{ avgRating }}/5</text> · {{ reviewCount }}</text>
             <text v-if="reviewCount > 0 && showReplyRate" class="sp-dot">·</text>
             <text v-if="showReplyRate" class="sp-item"><text class="sp-strong">{{ sellerResponse.rate }}%</text> {{ t('detail.replyRate') }}</text>
           </view>
@@ -144,32 +155,36 @@
     <view class="section reviews-section" v-if="sellerReviews.length > 0">
       <view class="reviews-head">
         <text class="section-label">{{ t('detail.sellerReviews') }}</text>
-        <text class="reviews-meta">{{ avgRating }} ★ · {{ reviewCount }} {{ tc('detail.reviewsUnit', reviewCount) }}</text>
+        <text class="reviews-meta">{{ avgRating }}/5 · {{ reviewCount }} {{ tc('detail.reviewsUnit', reviewCount) }}</text>
       </view>
       <view class="reviews-list u-stagger">
         <view v-for="r in displayedReviews" :key="r.id" class="review-card">
-          <image :src="r.rater?.avatar_url || defaultAvatarSrc" :alt="r.rater?.nickname || 'avatar'" class="rv-avatar" mode="aspectFill" />
+          <UAvatar :src="r.rater?.avatar_url" :owner="r.rater_id" :fallback="defaultAvatarSrc" :alt="r.rater?.nickname || 'avatar'" class="rv-avatar" lazy />
           <view class="rv-body">
             <view class="rv-head">
               <text class="rv-nick">{{ r.rater?.nickname || t('app.user') }}</text>
               <UBadge v-if="r.rater?.is_illini_verified" variant="illini">Illini</UBadge>
-              <view class="rv-stars">
-                <text v-for="n in 5" :key="n" :class="['rv-star', { on: r.stars >= n }]">★</text>
-              </view>
+              <text class="rv-stars">{{ r.stars }}/5</text>
               <text class="rv-time">· {{ formatTime(r.created_at) }}</text>
             </view>
             <text v-if="r.comment" class="rv-text">{{ r.comment }}</text>
           </view>
         </view>
       </view>
-      <view v-if="reviewCount > displayedReviews.length" class="reviews-more" @click="goSeller(item.user_id)">
+      <view
+        v-if="reviewCount > displayedReviews.length"
+        class="reviews-more"
+        role="button"
+        :aria-label="t('detail.seeAllReviews').replace('{n}', String(reviewCount))"
+        @click="goSeller(item.user_id)"
+      >
         <text>{{ t('detail.seeAllReviews').replace('{n}', String(reviewCount)) }}</text>
       </view>
     </view>
 
     <!-- Safety tip -->
     <view class="safety-tip">
-      <text class="st-icon">🛡</text>
+      <UIcon name="shield" size="xs" color="text-muted" />
       <text class="st-text">{{ t('detail.safetyTip') }}</text>
     </view>
 
@@ -178,7 +193,7 @@
       <text class="section-label">{{ t('detail.moreFromSeller') }}</text>
       <scroll-view scroll-x class="more-scroll">
         <view class="more-list u-stagger">
-          <view v-for="si in sellerOtherItems" :key="si.id" class="more-card" @click="goToOtherItem(si.id)">
+          <view v-for="si in sellerOtherItems" :key="si.id" class="more-card" role="button" :aria-label="si.title" @click="goToOtherItem(si.id)">
             <image v-if="thumbUrl(si.images?.[0], 'list')" :src="thumbUrl(si.images?.[0], 'list')" :alt="si.title" class="mc-img" mode="aspectFill" lazy-load />
             <view v-else class="mc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
             <view class="mc-price-row">
@@ -195,7 +210,7 @@
       <text class="section-label">{{ t('detail.similar') }}</text>
       <scroll-view scroll-x class="more-scroll">
         <view class="more-list u-stagger">
-          <view v-for="si in similarItems" :key="si.id" class="more-card" @click="goToOtherItem(si.id)">
+          <view v-for="si in similarItems" :key="si.id" class="more-card" role="button" :aria-label="si.title" @click="goToOtherItem(si.id)">
             <image v-if="thumbUrl(si.images?.[0], 'list')" :src="thumbUrl(si.images?.[0], 'list')" :alt="si.title" class="mc-img" mode="aspectFill" lazy-load />
             <view v-else class="mc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
             <view class="mc-price-row">
@@ -209,60 +224,73 @@
 
     <!-- Action Bar: Buyer -->
     <view class="action-bar u-glass u-glass--hair-t" v-if="item.user_id !== currentUser?.id">
-      <view class="fav-btn" @click="toggleFavorite">
+      <view class="fav-btn" role="button" :aria-label="isFav ? t('detail.saved') : t('detail.save')" @click="toggleFavorite">
         <image :src="isFav ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="icon-img" />
         <text class="fav-label">{{ isFav ? t('detail.saved') : t('detail.save') }}</text>
       </view>
-      <view class="fav-btn" @click="onReport">
+      <view class="fav-btn" role="button" :aria-label="reported ? t('report.thanks') : t('detail.report')" @click="onReport">
         <UIcon name="flag" :color="reported ? 'accent-good' : 'text-secondary'" />
         <text class="fav-label">{{ reported ? t('report.thanks') : t('detail.report') }}</text>
       </view>
-      <view v-if="item.status === 'sold' && canRate && !alreadyRated" class="chat-btn chat-btn-rate" @click="openRating">
-        <text>★ {{ t('rating.rateSeller') }}</text>
+      <view v-if="item.status === 'sold' && canRate && !alreadyRated" class="chat-btn chat-btn-rate" role="button" :aria-label="t('rating.rateCounterparty')" @click="openRating">
+        <text>{{ t('rating.rateCounterparty') }}</text>
       </view>
-      <view v-else-if="item.status === 'sold' && alreadyRated" class="chat-btn chat-btn-disabled">
+      <view v-else-if="item.status === 'sold' && alreadyRated" class="chat-btn chat-btn-disabled" aria-disabled="true">
         <text>{{ t('rating.alreadyRated') }}</text>
       </view>
-      <view v-else-if="item.status === 'sold'" class="chat-btn chat-btn-disabled">
+      <view v-else-if="item.status === 'sold'" class="chat-btn chat-btn-disabled" aria-disabled="true">
         <text>{{ t('status.sold') }}</text>
       </view>
-      <view v-else class="chat-btn" @click="contactSeller">
+      <view v-else :class="['chat-btn', { disabled: contactingSeller }]" role="button" :aria-disabled="contactingSeller ? 'true' : 'false'" :aria-label="item.listing_type === 'wanted' ? t('detail.haveThis') : t('detail.chat')" @click="contactSeller">
         <text>{{ item.listing_type === 'wanted' ? t('detail.haveThis') : t('detail.chat') }}</text>
       </view>
     </view>
     <view class="action-bar u-glass u-glass--hair-t" v-else>
-      <view class="fav-btn" @click="toggleFavorite">
+      <view class="fav-btn" role="button" :aria-label="isFav ? t('detail.saved') : t('detail.save')" @click="toggleFavorite">
         <image :src="isFav ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="icon-img" />
         <text class="fav-label">{{ isFav ? t('detail.saved') : t('detail.save') }}</text>
       </view>
-      <view class="fav-btn" @click="goEdit" v-if="item.status === 'active'">
+      <view class="fav-btn" role="button" :aria-label="t('profile.edit')" @click="goEdit" v-if="item.status === 'active'">
         <UIcon name="edit" color="text-secondary" />
         <text class="fav-label">{{ t('profile.edit') }}</text>
       </view>
-      <view class="fav-btn" @click="onMarkReserved" v-if="item.status === 'active'">
+      <view class="fav-btn" role="button" :aria-label="t('detail.reserve')" @click="onMarkReserved" v-if="item.status === 'active'">
         <UIcon name="reserved" color="text-secondary" />
         <text class="fav-label">{{ t('detail.reserve') }}</text>
       </view>
-      <view class="fav-btn" @click="onUnreserve" v-if="item.status === 'reserved'">
+      <view class="fav-btn" role="button" :aria-label="t('detail.unreserve')" @click="onUnreserve" v-if="item.status === 'reserved'">
         <UIcon name="reserved" color="accent-warn" />
         <text class="fav-label">{{ t('detail.unreserve') }}</text>
       </view>
-      <view v-if="item.status === 'sold'" class="chat-btn chat-btn-disabled">
+      <view v-if="item.status === 'sold' && canRate && !alreadyRated" class="chat-btn chat-btn-rate" role="button" :aria-label="t('rating.rateCounterparty')" @click="openRating">
+        <text>{{ t('rating.rateCounterparty') }}</text>
+      </view>
+      <view v-else-if="item.status === 'sold' && alreadyRated" class="chat-btn chat-btn-disabled" aria-disabled="true">
+        <text>{{ t('rating.alreadyRated') }}</text>
+      </view>
+      <view v-else-if="item.status === 'sold'" class="chat-btn chat-btn-disabled" aria-disabled="true">
         <text>{{ t('status.sold') }}</text>
       </view>
-      <view v-else class="chat-btn chat-btn-confirm" @click="onMarkSold">
+      <view v-else class="chat-btn chat-btn-confirm" role="button" :aria-label="t('profile.markSold')" @click="onMarkSold">
         <text>{{ t('profile.markSold') }}</text>
       </view>
     </view>
   </view>
 
-  <view v-if="showRating" class="sheet-mask u-mask-in" @click="showRating = false"></view>
-  <view :class="['rating-sheet', { open: showRating }]" v-if="item" role="dialog" aria-modal="true" :aria-label="t('rating.title')">
+  <view v-if="showRating" class="sheet-mask u-mask-in" @click="closeRating"></view>
+  <view
+    v-if="item && showRating"
+    class="rating-sheet open"
+    role="dialog"
+    aria-modal="true"
+    :aria-label="t('rating.title')"
+    @keydown="onRatingDialogKeydown"
+  >
     <view class="rs-header">
       <text class="rs-title">{{ t('rating.title') }}</text>
-      <view class="rs-close" role="button" :aria-label="t('a11y.close')" @click="showRating = false"><view class="cs-x"></view></view>
+      <view class="rs-close" role="button" tabindex="0" :aria-label="t('a11y.close')" @click="closeRating"><UIcon name="close" size="xs" color="currentColor" aria-hidden="true" /></view>
     </view>
-    <text class="rs-prompt">{{ t('rating.prompt').replace('{name}', item.profile?.nickname || t('app.user')) }}</text>
+    <text class="rs-prompt">{{ t('rating.prompt').replace('{name}', ratingTargetName || t('app.user')) }}</text>
     <view class="rs-stars" role="radiogroup" :aria-label="t('rating.title')">
       <view
         v-for="n in 5"
@@ -271,15 +299,15 @@
         role="radio"
         :aria-checked="ratingStars === n ? 'true' : 'false'"
         :aria-label="t('rating.starAria', { n })"
-        tabindex="0"
-        @click="ratingStars = n"
-        @keydown.enter="ratingStars = n"
-        @keydown.space.prevent="ratingStars = n"
-      >★</view>
+        :tabindex="ratingStars === n || (ratingStars === 0 && n === 1) ? 0 : -1"
+        @click="selectRatingStar(n)"
+        @keydown="onRatingStarKeydown($event, n)"
+      >{{ n }}</view>
     </view>
     <textarea
       v-model="ratingComment"
       :placeholder="t('rating.commentPh')"
+      :aria-label="t('rating.commentPh')"
       maxlength="500"
       class="rs-textarea"
     />
@@ -294,12 +322,20 @@
     </view>
   </view>
 
+  <view v-else-if="loadError" class="not-found-page has-sidebar" :class="mpThemeClass" :style="mpChrome" role="alert" aria-live="assertive">
+    <view class="nf-back" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
+    <view class="nf-icon"></view>
+    <text class="nf-title">{{ t('error.loadFailed') }}</text>
+    <text class="nf-sub">{{ t('error.actionFailed') }}</text>
+    <view class="nf-btn" role="button" :aria-label="t('home.retry')" @click="loadDetailForCurrentAccount">{{ t('home.retry') }}</view>
+  </view>
+
   <view v-else-if="notFound" class="not-found-page has-sidebar" :class="mpThemeClass" :style="mpChrome">
     <view class="nf-back" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
     <view class="nf-icon"></view>
     <text class="nf-title">{{ t('detail.notFoundTitle') }}</text>
     <text class="nf-sub">{{ t('detail.notFoundSub') }}</text>
-    <view class="nf-btn" @click="goHome">{{ t('detail.backHome') }}</view>
+    <view class="nf-btn" role="button" :aria-label="t('detail.backHome')" @click="goHome">{{ t('detail.backHome') }}</view>
   </view>
 
   <!-- Loading state -->
@@ -310,6 +346,12 @@
 </template>
 
 <script setup lang="ts">
+// uni-app forwards the `?id=` route query as a component attribute on H5.
+// This page intentionally has multiple root nodes (sidebar, toast, and the
+// mutually exclusive content/error/loading roots), so Vue cannot inherit that
+// attribute and otherwise emits a warning on every detail navigation.
+defineOptions({ inheritAttrs: false })
+
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 // #ifndef H5
@@ -328,29 +370,37 @@ import { useModeration } from '../../composables/useModeration'
 import { useTheme } from '../../composables/useTheme'
 import type { Item, Rating } from '../../types'
 
-import { formatTime, haptic, formatPrice, listingPriceLabel, quickTranslate, thumbUrl, friendlyErrorMessage } from '../../utils'
+import { formatTime, haptic, formatPrice, listingPriceLabel, navigateBackOr, quickTranslate, thumbUrl, friendlyErrorMessage } from '../../utils'
 import { readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
 import { localizeLocation, pickupTier } from '../../composables/useCampusSpots'
 import { useRatings } from '../../composables/useRatings'
+import { createOwnedLoading } from '../../composables/ownedLoading'
 import { useTranslate } from '../../composables/useTranslate'
 import { computed, onUnmounted, watch, nextTick, getCurrentInstance } from 'vue'
 import UBadge from '../../components/UBadge.vue'
+import UAvatar from '../../components/UAvatar.vue'
 import UIcon from '../../components/UIcon.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
+import {
+  captureAccountRequest,
+  isAccountRequestCurrent,
+  onAccountTransition,
+  type AccountRequestToken,
+} from '../../composables/accountScope'
 
 const { t, tc, lang, localize } = useI18n()
 const { isDark } = useTheme()
 const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
-const { fetchItem, updateItemStatus } = useItems()
+const { fetchItem, updateItemStatus, fetchItemSaleCandidates, markItemSold } = useItems()
 const { addToHistory } = useHistory()
 const { supabase } = useSupabase()
-const { currentUser, requireAuth } = useAuth()
+const { currentUser, requireAuth, awaitAuthReady } = useAuth()
 const { getOrCreateConversation } = useMessages()
-const { isFavorited: checkFavorited, toggleFavorite: doToggleFavorite, getFavoriteCount, loadMyFavorites } = useFavorites()
-const { reportTarget } = useModeration()
+const { isFavorited: checkFavorited, toggleFavorite: doToggleFavorite, loadMyFavorites } = useFavorites()
+const { reportTarget, ensureLoaded: ensureBlockedLoaded, blockedIds } = useModeration()
 
 const item = ref<Item | null>(null)
 // images is a nullable TEXT[] column (DEFAULT '{}' only applies on omitted
@@ -362,9 +412,49 @@ const similarItems = ref<Item[]>([])
 const isFav = ref(false)
 const favCount = ref(0)
 const currentImg = ref(0)
+const galleryReadyIndexes = ref<number[]>([])
 const descExpanded = ref(false)
 const notFound = ref(false)
+const loadError = ref(false)
 const translated = ref(false)
+const detailItemId = ref('')
+let detailLoadEpoch = 0
+const reportLoading = createOwnedLoading()
+const contactingSeller = ref(false)
+let contactSellerOperationEpoch = 0
+
+function neighboringGalleryIndexes(index: number, length: number): number[] {
+  if (length <= 0) return []
+  if (length <= 3) return Array.from({ length }, (_, i) => i)
+  return [
+    (index - 1 + length) % length,
+    index % length,
+    (index + 1) % length,
+  ]
+}
+
+function prepareGalleryNeighbors(index: number) {
+  const length = imgs.value.length
+  const next = new Set(galleryReadyIndexes.value)
+  for (const candidate of neighboringGalleryIndexes(index, length)) next.add(candidate)
+  galleryReadyIndexes.value = [...next].sort((a, b) => a - b)
+}
+
+function galleryImageReady(index: number): boolean {
+  return galleryReadyIndexes.value.includes(index)
+}
+
+function onGalleryChange(event: any) {
+  const next = Number(event?.detail?.current)
+  if (!Number.isInteger(next) || next < 0 || next >= imgs.value.length) return
+  currentImg.value = next
+  prepareGalleryNeighbors(next)
+}
+
+watch(() => imgs.value.length, (length) => {
+  currentImg.value = 0
+  galleryReadyIndexes.value = neighboringGalleryIndexes(0, length)
+}, { immediate: true })
 
 /*
  * Two layers of content localization are in play:
@@ -492,17 +582,19 @@ const swiperStyle = computed(() => {
   return { height: `${Math.round(Math.min(heroBoxW.value / ratio, winH.value * 0.7))}px` }
 })
 
-const { submitRating, hasRated, fetchForUser } = useRatings()
+const { submitRating, getEligibility, fetchForUser } = useRatings()
 const showRating = ref(false)
 const ratingStars = ref(0)
 const ratingComment = ref('')
 const ratingSubmitting = ref(false)
 const alreadyRated = ref(false)
-// Only a buyer who actually messaged this seller about this item can rate
-// (RLS "Participants can rate sold items" enforces the same), so gate the
-// button on a real conversation — otherwise a passer-by taps Rate and hits a
-// bare permission error.
+const ratingTargetId = ref('')
+const ratingTargetName = ref('')
+let ratingReturnFocus: HTMLElement | null = null
+// The server returns a counterparty only to the two parties in the exact deal
+// selected by the item owner. Merely having another conversation is not enough.
 const canRate = ref(false)
+const reported = ref(false)
 
 /*
  * Seller social proof (v5 detail). Reviews + sold-count are read straight
@@ -533,35 +625,99 @@ const avgRating = computed(() => {
 const displayedReviews = computed(() => sellerReviews.value.slice(0, REVIEW_PREVIEW))
 
 async function openRating() {
+  await awaitAuthReady()
   if (!requireAuth()) return
-  if (!item.value || !currentUser.value) return
-  if (item.value.user_id === currentUser.value.id) return
+  if (!item.value || !currentUser.value || !canRate.value || !ratingTargetId.value) return
+  if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+    ratingReturnFocus = document.activeElement
+  }
   showRating.value = true
   ratingStars.value = 0
   ratingComment.value = ''
+  nextTick(() => {
+    if (typeof document === 'undefined') return
+    document.querySelector<HTMLElement>('.rating-sheet .rs-close')?.focus()
+  })
+}
+
+function closeRating() {
+  showRating.value = false
+  const target = ratingReturnFocus
+  ratingReturnFocus = null
+  nextTick(() => target?.focus())
+}
+
+function selectRatingStar(stars: number, moveFocus = false) {
+  ratingStars.value = stars
+  if (!moveFocus) return
+  nextTick(() => {
+    if (typeof document === 'undefined') return
+    document.querySelectorAll<HTMLElement>('.rating-sheet [role="radio"]')[stars - 1]?.focus()
+  })
+}
+
+function onRatingStarKeydown(event: KeyboardEvent, current: number) {
+  let next = current
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = current === 5 ? 1 : current + 1
+  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = current === 1 ? 5 : current - 1
+  else if (event.key === 'Home') next = 1
+  else if (event.key === 'End') next = 5
+  else if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return
+  event.preventDefault()
+  selectRatingStar(next, true)
+}
+
+function onRatingDialogKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    closeRating()
+    return
+  }
+  if (event.key !== 'Tab' || typeof document === 'undefined') return
+  const dialog = event.currentTarget as HTMLElement | null
+  if (!dialog) return
+  const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+    'textarea, [role="button"]:not([aria-disabled="true"]), [role="radio"]:not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])',
+  )).filter(element => !element.hasAttribute('disabled'))
+  if (focusable.length === 0) return
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
 }
 
 async function onSubmitRating() {
-  if (!item.value || ratingStars.value === 0 || ratingSubmitting.value) return
+  if (!item.value || !currentUser.value || !ratingTargetId.value || ratingStars.value === 0 || ratingSubmitting.value) return
+  const accountToken = captureAccountRequest(currentUser.value.id)
+  const actionEpoch = detailLoadEpoch
+  const itemId = item.value.id
   ratingSubmitting.value = true
   try {
     await submitRating({
-      rateeId: item.value.user_id,
+      rateeId: ratingTargetId.value,
       itemId: item.value.id,
       stars: ratingStars.value,
       comment: ratingComment.value,
+      accountToken,
     })
+    if (actionEpoch !== detailLoadEpoch || !isAccountRequestCurrent(accountToken) || item.value?.id !== itemId) return
     alreadyRated.value = true
-    showRating.value = false
+    closeRating()
     uni.showToast({ title: t('rating.submitted'), icon: 'success' })
   } catch (err: any) {
+    if (actionEpoch !== detailLoadEpoch || !isAccountRequestCurrent(accountToken)) return
     uni.showToast({
       title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
       icon: 'none',
       duration: 2500,
     })
   } finally {
-    ratingSubmitting.value = false
+    if (actionEpoch === detailLoadEpoch && isAccountRequestCurrent(accountToken)) ratingSubmitting.value = false
   }
 }
 
@@ -606,7 +762,51 @@ watch(lang, async () => {
 })
 
 let alive = true
-onUnmounted(() => { alive = false })
+function detailRequestIsCurrent(accountToken: AccountRequestToken | null, requestEpoch: number): boolean {
+  return alive
+    && requestEpoch === detailLoadEpoch
+    && (!accountToken || isAccountRequestCurrent(accountToken))
+}
+
+function resetDetailAccountState() {
+  detailLoadEpoch += 1
+  contactSellerOperationEpoch += 1
+  contactingSeller.value = false
+  item.value = null
+  sellerOtherItems.value = []
+  similarItems.value = []
+  sellerReviews.value = []
+  isFav.value = false
+  favCount.value = 0
+  alreadyRated.value = false
+  canRate.value = false
+  ratingTargetId.value = ''
+  ratingTargetName.value = ''
+  showRating.value = false
+  ratingStars.value = 0
+  ratingComment.value = ''
+  ratingSubmitting.value = false
+  reported.value = false
+  notFound.value = false
+  loadError.value = false
+  translated.value = false
+  translatedTitle.value = ''
+  translatedDesc.value = ''
+  measuredDims.value = []
+  reportLoading.cancel()
+}
+
+const stopAccountTransitionListener = onAccountTransition(() => {
+  resetDetailAccountState()
+  void Promise.resolve().then(() => loadDetailForCurrentAccount())
+})
+
+onUnmounted(() => {
+  alive = false
+  detailLoadEpoch += 1
+  reportLoading.cancel()
+  stopAccountTransitionListener()
+})
 
 // #ifdef H5
 /* Desktop window resize / rotation changes the hero column width. */
@@ -615,33 +815,59 @@ if (typeof window !== 'undefined') window.addEventListener('resize', onHeroResiz
 onUnmounted(() => { if (typeof window !== 'undefined') window.removeEventListener('resize', onHeroResize) })
 // #endif
 
-onLoad(async (options) => {
-  if (!options?.id) return
+async function loadDetailForCurrentAccount() {
+  const id = detailItemId.value
+  if (!id) {
+    loadError.value = false
+    notFound.value = true
+    return
+  }
+  const requestEpoch = ++detailLoadEpoch
+  item.value = null
+  notFound.value = false
+  loadError.value = false
   try {
-    const [, itemData] = await Promise.all([
-      currentUser.value ? loadMyFavorites(currentUser.value.id) : Promise.resolve(),
-      fetchItem(options.id!),
+    // Favorite/rating membership is account-scoped. A hard-refresh deep link
+    // used to run these conditionals against the pre-hydration null profile
+    // and never repair the missing private state for the rest of the visit.
+    await awaitAuthReady()
+    if (!alive || requestEpoch !== detailLoadEpoch) return
+    const accountToken = currentUser.value
+      ? captureAccountRequest(currentUser.value.id)
+      : null
+    if (accountToken && !isAccountRequestCurrent(accountToken)) return
+    const [, itemData, moderationGate] = await Promise.all([
+      accountToken ? loadMyFavorites(accountToken.userId) : Promise.resolve(),
+      fetchItem(id),
+      accountToken ? ensureBlockedLoaded() : Promise.resolve(null),
     ])
-    if (!alive) return
+    if (!detailRequestIsCurrent(accountToken, requestEpoch)) return
+    if (moderationGate && !moderationGate.ok) throw new Error('moderation_gate_unavailable')
+    if (blockedIds.value.has(itemData.user_id)) {
+      notFound.value = true
+      return
+    }
     item.value = itemData
     /* .img-area only exists once item renders; measure right after. */
     nextTick(() => measureHero())
     addToHistory(itemData)
-    isFav.value = checkFavorited(options.id!)
+    isFav.value = checkFavorited(id)
+    // favorites SELECT is own-row RLS, so a direct COUNT would report only
+    // this viewer's 0/1 membership. The listing counter is the public,
+    // trigger-maintained aggregate intended for display.
+    favCount.value = Math.max(0, itemData.favorite_count || 0)
 
-    const needsRated = itemData.status === 'sold'
-      && currentUser.value
-      && itemData.user_id !== currentUser.value.id
+    const needsRatingEligibility = itemData.status === 'sold' && !!accountToken
 
-    const [favCountRes, ratedRes, convRes, otherItemsRes, simItemsRes, reviewsRes, soldCountRes, respRes] = await Promise.all([
-      getFavoriteCount(options.id!),
-      needsRated ? hasRated(itemData.user_id, itemData.id) : Promise.resolve(false),
-      needsRated
-        ? supabase.from('conversations').select('id')
-            .eq('item_id', itemData.id)
-            .or(`buyer_id.eq.${currentUser.value?.id},seller_id.eq.${currentUser.value?.id}`)
-            .limit(1).maybeSingle()
-        : Promise.resolve({ data: null }),
+    const [ratingEligibility, otherItemsRes, simItemsRes, reviewsRes, soldCountRes, respRes] = await Promise.all([
+      needsRatingEligibility
+        ? getEligibility(itemData.id, accountToken!).catch(() => ({
+            eligible: false,
+            ratee_id: null,
+            ratee_nickname: null,
+            already_rated: false,
+          }))
+        : Promise.resolve({ eligible: false, ratee_id: null, ratee_nickname: null, already_rated: false }),
       supabase
         .from('items').select('id, title, price, images, image_dimensions, listing_type')
         .eq('user_id', itemData.user_id).eq('status', 'active')
@@ -659,24 +885,39 @@ onLoad(async (options) => {
         .eq('id', itemData.user_id).single(),
     ])
 
-    if (!alive) return
-    if (favCountRes !== null) favCount.value = favCountRes
-    alreadyRated.value = !!ratedRes
-    canRate.value = !!convRes?.data
+    if (!detailRequestIsCurrent(accountToken, requestEpoch)) return
+    alreadyRated.value = ratingEligibility.already_rated
+    canRate.value = ratingEligibility.eligible && !!ratingEligibility.ratee_id
+    ratingTargetId.value = ratingEligibility.ratee_id || ''
+    ratingTargetName.value = ratingEligibility.ratee_nickname || ''
     sellerReviews.value = reviewsRes || []
     soldCount.value = soldCountRes?.count || 0
     if (respRes.data) sellerResponse.value = { rate: respRes.data.response_rate || 0, sample: respRes.data.response_sample || 0 }
     if (otherItemsRes.data) sellerOtherItems.value = otherItemsRes.data as Item[]
     if (simItemsRes.data) {
-      const { blockedIds } = useModeration()
       similarItems.value = (simItemsRes.data as Item[])
         .filter(i => !blockedIds.value.has(i.user_id))
         .slice(0, 6)
     }
   } catch (error: any) {
-    console.error('Detail load error:', error)
-    if (alive) notFound.value = true
+    const accountToken = currentUser.value
+      ? captureAccountRequest(currentUser.value.id)
+      : null
+    if (!detailRequestIsCurrent(accountToken, requestEpoch)) return
+    console.error('[detail] load failed')
+    if (!alive) return
+    if (error?.code === 'PGRST116') notFound.value = true
+    else loadError.value = true
   }
+}
+
+onLoad((options) => {
+  if (!options?.id) {
+    notFound.value = true
+    return
+  }
+  detailItemId.value = options.id
+  void loadDetailForCurrentAccount()
 })
 
 /*
@@ -690,7 +931,7 @@ onLoad(async (options) => {
 onShareAppMessage(() => {
   const it = item.value
   if (!it) return { title: 'Illini Market · UIUC 校园二手交易', path: '/pages/index/index' }
-  const priceLabel = it.price && it.price > 0 ? `$${it.price}` : t('home.free')
+  const priceLabel = listingPriceLabel(it, t)
   return {
     title: `${priceLabel} · ${it.title}`,
     path: `/pages/detail/index?id=${it.id}`,
@@ -701,7 +942,7 @@ onShareAppMessage(() => {
 onShareTimeline(() => {
   const it = item.value
   if (!it) return { title: 'Illini Market · UIUC 校园二手交易' }
-  const priceLabel = it.price && it.price > 0 ? `$${it.price}` : t('home.free')
+  const priceLabel = listingPriceLabel(it, t)
   return {
     title: `${priceLabel} · ${it.title}`,
     query: `id=${it.id}`,
@@ -709,7 +950,7 @@ onShareTimeline(() => {
   }
 })
 
-function goBack() { uni.navigateBack({ fail: () => uni.switchTab({ url: '/pages/index/index' }) }) }
+function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/index/index' })) }
 function goHome() { uni.switchTab({ url: '/pages/index/index' }) }
 
 function goToOtherItem(id: string) {
@@ -725,9 +966,9 @@ function onShare() {
   // #ifdef H5
   const shareUrl = `${window.location.origin}/share/${item.value.id}`
   if (navigator.share) {
-    navigator.share({ title: item.value.title, text: `$${item.value.price} - ${item.value.title}`, url: shareUrl })
+    navigator.share({ title: item.value.title, text: `${listingPriceLabel(item.value, t)} - ${item.value.title}`, url: shareUrl })
       .catch((err: any) => {
-        if (err?.name !== 'AbortError') console.warn('[share] failed:', err)
+        if (err?.name !== 'AbortError') console.warn('[share] failed')
       })
   } else {
     uni.setClipboardData({ data: shareUrl })
@@ -737,12 +978,18 @@ function onShare() {
   /* mp: the share circle is a <button open-type="share"> — no JS path. */
 }
 
-const reported = ref(false)
-
-function onReport() {
+async function onReport() {
   if (!item.value || reported.value) return
-  if (!requireAuth()) return
+  await awaitAuthReady()
+  if (!requireAuth() || !currentUser.value) return
   const targetId = item.value.id
+  const accountToken = captureAccountRequest(currentUser.value.id)
+  const actionEpoch = detailLoadEpoch
+  const actionIsCurrent = () => (
+    actionEpoch === detailLoadEpoch
+    && isAccountRequestCurrent(accountToken)
+    && item.value?.id === targetId
+  )
   const reasons = [
     t('report.reasonSpam'),
     t('report.reasonProhibited'),
@@ -752,16 +999,18 @@ function onReport() {
   uni.showActionSheet({
     itemList: reasons,
     success: async (res) => {
+      if (!actionIsCurrent()) return
       const reason = reasons[res.tapIndex]
-      // The 5–10s pacing lives inside reportTarget() so every call site gets it.
-      uni.showLoading({ title: t('report.submitting') || t('login.wait'), mask: true })
+      const loadingOwner = reportLoading.show(t('report.submitting') || t('login.wait'))
       try {
         await reportTarget('item', targetId, reason)
+        reportLoading.hide(loadingOwner)
+        if (!actionIsCurrent()) return
         reported.value = true
-        uni.hideLoading()
         uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
-        uni.hideLoading()
+        reportLoading.hide(loadingOwner)
+        if (!actionIsCurrent()) return
         uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('report.failed'), icon: 'none' })
       }
     },
@@ -773,46 +1022,106 @@ function goEdit() {
   uni.navigateTo({ url: `/pages/publish/edit?id=${item.value.id}` })
 }
 
-async function onMarkReserved() {
-  if (!item.value) return
+async function updateOwnedItemStatus(nextStatus: 'reserved' | 'active', successKey: string) {
+  await awaitAuthReady()
+  if (!item.value || !currentUser.value || item.value.user_id !== currentUser.value.id) return
+  const itemId = item.value.id
+  const accountToken = captureAccountRequest(currentUser.value.id)
+  const actionEpoch = detailLoadEpoch
+  const actionIsCurrent = () => (
+    actionEpoch === detailLoadEpoch
+    && isAccountRequestCurrent(accountToken)
+    && item.value?.id === itemId
+  )
   try {
-    await updateItemStatus(item.value.id, 'reserved')
-    item.value.status = 'reserved'
-    uni.showToast({ title: t('detail.reserved'), icon: 'success' })
+    await updateItemStatus(itemId, nextStatus)
+    if (!actionIsCurrent()) return
+    if (item.value) item.value.status = nextStatus
+    uni.showToast({ title: t(successKey), icon: 'success' })
   } catch {
+    if (!actionIsCurrent()) return
     uni.showToast({ title: t('profile.markFail'), icon: 'none' })
   }
 }
 
-async function onUnreserve() {
-  if (!item.value) return
-  try {
-    await updateItemStatus(item.value.id, 'active')
-    item.value.status = 'active'
-    uni.showToast({ title: t('detail.unreserved'), icon: 'success' })
-  } catch {
-    uni.showToast({ title: t('profile.markFail'), icon: 'none' })
-  }
+function onMarkReserved() {
+  return updateOwnedItemStatus('reserved', 'detail.reserved')
 }
 
-function onMarkSold() {
-  if (!item.value) return
+function onUnreserve() {
+  return updateOwnedItemStatus('active', 'detail.unreserved')
+}
+
+async function onMarkSold() {
+  if (!item.value || !currentUser.value) return
   const id = item.value.id
-  uni.showModal({
-    title: t('profile.markSoldTitle'),
-    content: t('profile.markSoldHint'),
-    confirmText: t('profile.markSoldConfirm'),
-    success: async (res) => {
-      if (!res.confirm) return
-      try {
-        await updateItemStatus(id, 'sold')
-        if (item.value) item.value.status = 'sold'
+  const accountToken = captureAccountRequest(currentUser.value.id)
+  const actionEpoch = detailLoadEpoch
+  const actionIsCurrent = () => (
+    actionEpoch === detailLoadEpoch
+    && isAccountRequestCurrent(accountToken)
+    && item.value?.id === id
+  )
+  try {
+    const candidates = await fetchItemSaleCandidates(id, { accountToken })
+    if (!actionIsCurrent()) return
+    if (candidates.length === 0) {
+      // A lost response can hide a committed sale. Re-read the authoritative
+      // row before telling the owner to accept an offer that was already used.
+      const refreshed = await fetchItem(id, { incrementView: false })
+      if (!actionIsCurrent()) return
+      if (refreshed.status === 'sold') {
+        item.value = refreshed
         uni.showToast({ title: t('profile.markedSold'), icon: 'success' })
-      } catch {
-        uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+        return
       }
-    },
-  })
+      uni.showModal({ title: t('profile.saleOfferRequiredTitle'), content: t('profile.saleOfferRequired'), showCancel: false })
+      return
+    }
+    if (candidates.length > 6) {
+      uni.showModal({
+        title: t('profile.chooseAcceptedOffer'),
+        content: t('profile.tooManyAcceptedOffers'),
+        confirmText: t('profile.openMessages'),
+        success: (res) => { if (res.confirm && actionIsCurrent()) uni.switchTab({ url: '/pages/messages/index' }) },
+      })
+      return
+    }
+    const confirmCandidate = (candidate: typeof candidates[number]) => {
+      if (!actionIsCurrent()) return
+      uni.showModal({
+        title: t('profile.markSoldTitle'),
+        content: t('profile.confirmDealWith')
+          .replace('{name}', candidate.counterparty_name || t('app.user'))
+          .replace('{price}', formatPrice(candidate.agreed_price, t('home.free'))),
+        confirmText: t('profile.markSoldConfirm'),
+        success: async (res) => {
+          if (!res.confirm || !actionIsCurrent()) return
+          try {
+            await markItemSold(id, candidate.offer_id, { accountToken })
+            if (!actionIsCurrent()) return
+            if (item.value) item.value.status = 'sold'
+            uni.showToast({ title: t('profile.markedSold'), icon: 'success' })
+          } catch {
+            if (actionIsCurrent()) uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+          }
+        },
+      })
+    }
+    if (candidates.length === 1) {
+      confirmCandidate(candidates[0])
+      return
+    }
+    uni.showActionSheet({
+      itemList: candidates.map(candidate => `${candidate.counterparty_name} · ${formatPrice(candidate.agreed_price, t('home.free'))}`),
+      success: (res) => {
+        const candidate = candidates[res.tapIndex]
+        if (candidate) confirmCandidate(candidate)
+      },
+    })
+  } catch {
+    if (actionIsCurrent()) uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+  }
 }
 
 function previewImage(index: number) {
@@ -821,6 +1130,7 @@ function previewImage(index: number) {
 }
 
 async function toggleFavorite() {
+  await awaitAuthReady()
   if (!requireAuth()) return
   if (!item.value || !currentUser.value) return
 
@@ -828,30 +1138,53 @@ async function toggleFavorite() {
   const result = await doToggleFavorite(currentUser.value.id, item.value.id)
   if (!result.ok) return
   isFav.value = result.favorited
-  favCount.value += result.favorited ? 1 : -1
+  favCount.value = Math.max(0, favCount.value + (result.favorited ? 1 : -1))
   uni.showToast({ title: result.favorited ? t('detail.saved') : t('detail.save'), icon: 'none' })
 }
 
 async function contactSeller() {
-  if (!requireAuth()) return
-  if (!item.value || !currentUser.value) return
-
-  if (item.value.user_id === currentUser.value.id) {
-    uni.showToast({ title: t('detail.ownItem'), icon: 'none' })
-    return
-  }
-
+  if (contactingSeller.value) return
+  const operationEpoch = ++contactSellerOperationEpoch
+  const entryDetailEpoch = detailLoadEpoch
+  const operationIsCurrent = () => (
+    operationEpoch === contactSellerOperationEpoch
+    && entryDetailEpoch === detailLoadEpoch
+    && alive
+  )
+  let actionIsCurrent = operationIsCurrent
+  contactingSeller.value = true
   try {
-    const conversation = await getOrCreateConversation(
-      item.value.id,
-      currentUser.value.id,
-      item.value.user_id,
+    await awaitAuthReady()
+    if (!operationIsCurrent() || !requireAuth()) return
+    if (!item.value || !currentUser.value) return
+
+    const itemId = item.value.id
+    const sellerId = item.value.user_id
+    const buyerId = currentUser.value.id
+    const listingType = item.value.listing_type
+    const itemTitle = item.value.title
+    const accountToken = captureAccountRequest(buyerId)
+    actionIsCurrent = () => (
+      operationIsCurrent()
+      && isAccountRequestCurrent(accountToken)
+      && item.value?.id === itemId
     )
-    const prefillKey = item.value.listing_type === 'wanted' ? 'chat.prefillHave' : 'chat.prefillInterest'
-    const prefill = encodeURIComponent(t(prefillKey).replace('{title}', item.value.title))
+
+    if (sellerId === buyerId) {
+      uni.showToast({ title: t('detail.ownItem'), icon: 'none' })
+      return
+    }
+
+    const conversation = await getOrCreateConversation(itemId, buyerId, sellerId)
+    if (!actionIsCurrent()) return
+    const prefillKey = listingType === 'wanted' ? 'chat.prefillHave' : 'chat.prefillInterest'
+    const prefill = encodeURIComponent(t(prefillKey).replace('{title}', itemTitle))
     uni.navigateTo({ url: `/pages/chat/index?id=${conversation.id}&prefill=${prefill}` })
   } catch (error) {
+    if (!actionIsCurrent()) return
     uni.showToast({ title: t('detail.chatFail'), icon: 'none' })
+  } finally {
+    if (operationEpoch === contactSellerOperationEpoch) contactingSeller.value = false
   }
 }
 
@@ -929,7 +1262,7 @@ async function contactSeller() {
    a photoless hero reads as intentional, not still-loading. */
 .det-noimg { flex-direction: column; gap: 10px; }
 .det-noimg .u-thumb-ph-seal { font-size: 64px; }
-.det-noimg-cap { font-size: 12px; color: var(--ink-faint); letter-spacing: 0.04em; }
+.det-noimg-cap { font-size: 12px; color: var(--text-subtle); letter-spacing: 0.04em; }
 
 .img-back, .img-share {
   position: absolute; top: calc(12px + var(--mp-status-bar, env(safe-area-inset-top, 0px))); z-index: 10;
@@ -956,14 +1289,16 @@ async function contactSeller() {
 /* #endif */
 
 .img-counter {
-  position: absolute; bottom: 12px; right: 12px; z-index: 10;
+  /* The info card overlaps the hero by 14px. Keep gallery chrome above that
+     seam so the badge never appears to sit on the card's rounded corner. */
+  position: absolute; bottom: 24px; right: 12px; z-index: 10;
   padding: 3px 10px; border-radius: 10px;
   background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   color: #fff; font-size: 12px; font-weight: 500;
 }
 .img-dots {
-  position: absolute; bottom: 12px; left: 0; right: 0;
+  position: absolute; bottom: 24px; left: 0; right: 0;
   display: flex; justify-content: center; gap: 5px; z-index: 10;
 }
 .img-dot {
@@ -1007,7 +1342,7 @@ async function contactSeller() {
  */
 .obo {
   font-size: 10px; font-weight: 600;
-  color: var(--warning);
+  color: var(--warning-text);
   border: 0.5px solid var(--warning);
   padding: 2px 5px;
   border-radius: var(--radius-xs);
@@ -1093,7 +1428,7 @@ async function contactSeller() {
 .seller-name-row { display: flex; align-items: center; gap: 6px; }
 .seller-name { font-size: 15px; font-weight: 600; color: var(--ink); }
 /* illini badge → components/UBadge.vue (variant illini). */
-.seller-meta { font-size: 12px; color: var(--text-faint); margin-top: 3px; }
+.seller-meta { font-size: 12px; color: var(--text-subtle); margin-top: 3px; }
 .seller-status {
   display: inline-flex; align-items: center; gap: 4px;
   margin-top: 3px;
@@ -1109,7 +1444,7 @@ async function contactSeller() {
 }
 .stat { display: flex; align-items: baseline; gap: 4px; }
 .stat-num { font-size: 16px; font-weight: 700; color: var(--ink); }
-.stat-label { font-size: 12px; color: var(--text-faint); }
+.stat-label { font-size: 12px; color: var(--text-subtle); }
 
 /* Seller social proof — sold count + avg rating, inline under the name. */
 .seller-proof {
@@ -1119,7 +1454,7 @@ async function contactSeller() {
 }
 .sp-item { display: inline-flex; align-items: center; gap: 3px; }
 .sp-strong { font-family: var(--font-serif); font-weight: 600; color: var(--ink); }
-.sp-dot { color: var(--ink-faint); }
+.sp-dot { color: var(--text-subtle); }
 
 /* ========== Seller reviews ========== */
 .reviews-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
@@ -1134,10 +1469,8 @@ async function contactSeller() {
 .rv-body { flex: 1; min-width: 0; }
 .rv-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .rv-nick { font-size: 13px; font-weight: 600; color: var(--ink); }
-.rv-stars { display: inline-flex; gap: 1px; }
-.rv-star { font-size: 11px; color: var(--border-strong); line-height: 1; }
-.rv-star.on { color: var(--warning); }
-.rv-time { font-size: 11px; color: var(--text-faint); }
+.rv-stars { font-size: 11px; color: var(--warning-text); font-weight: 700; }
+.rv-time { font-size: 11px; color: var(--text-subtle); }
 .rv-text { display: block; margin-top: 4px; font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
 .reviews-more {
   margin-top: 14px; text-align: center;
@@ -1173,7 +1506,6 @@ async function contactSeller() {
   display: flex; align-items: center; gap: 8px;
   padding: 10px 16px; background: var(--bg-elev-2); margin-top: 7px;
 }
-.st-icon { font-size: 14px; flex-shrink: 0; }
 .st-text { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
 
 .more-scroll { white-space: nowrap; }
@@ -1224,7 +1556,7 @@ async function contactSeller() {
   box-shadow: 0 6px 14px rgba(93, 124, 74, 0.28);
 }
 .chat-btn-rate {
-  background: var(--warning); color: #fff;
+  background: var(--warning-surface); color: #fff;
   box-shadow: 0 6px 14px rgba(212, 146, 60, 0.28);
 }
 
@@ -1258,9 +1590,12 @@ async function contactSeller() {
   display: flex; justify-content: center; gap: 8px; padding: 14px 0;
 }
 .rs-star {
-  font-size: 38px; line-height: 1; color: var(--border-strong);
+  width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; line-height: 1; color: var(--text-secondary);
+  background: var(--paper-2); border: 1px solid var(--border);
   cursor: pointer;
-  &.on { color: var(--warning); }
+  &.on { color: #fff; background: var(--warning-surface); border-color: var(--warning-surface); }
   &:active { transform: scale(0.9); }
 }
 .rs-textarea {
@@ -1317,7 +1652,7 @@ async function contactSeller() {
   border-radius: 50%; animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-.loading-text { font-size: 13px; color: var(--text-faint); }
+.loading-text { font-size: 13px; color: var(--text-subtle); }
 
 .not-found-page {
   display: flex; flex-direction: column;

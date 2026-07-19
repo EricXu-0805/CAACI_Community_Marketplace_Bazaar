@@ -1,4 +1,5 @@
 import { ref, createApp } from 'vue'
+import { onAccountTransition } from './accountScope'
 
 /*
  * App-wide toast banner.
@@ -98,6 +99,15 @@ export function dismissToast(id: string): void {
   if (i !== -1) toasts.value.splice(i, 1)
 }
 
+export function clearToasts(): void {
+  toasts.value = []
+  // The mini-program fallback uses a native toast outside Vue's reactive
+  // stack. Hide it too so an A notification cannot remain visible to B.
+  try { uni.hideToast() } catch {}
+}
+
+onAccountTransition(clearToasts)
+
 export function useAppToast() {
-  return { toasts, pushToast, dismissToast }
+  return { toasts, pushToast, dismissToast, clearToasts }
 }

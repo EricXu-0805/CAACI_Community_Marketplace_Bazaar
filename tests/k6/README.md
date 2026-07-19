@@ -30,8 +30,11 @@ brew install k6          # macOS
 
 ```bash
 export SUPABASE_URL="https://<proj>.supabase.co"
-export SUPABASE_ANON_KEY="eyJhbGci..."
-export APP_ORIGIN="https://illinimarket.com"
+export SUPABASE_PUBLISHABLE_KEY="sb_publishable_..."
+# Temporary fallback while testing a project that still uses legacy JWT keys:
+# export SUPABASE_ANON_KEY="eyJhbGci..."
+export APP_ORIGIN="https://<staging-app-host>"
+export K6_TARGET_ENV="staging"
 export TEST_ACCOUNTS_FILE="./accounts.txt"
 
 # 1. Publish-path burst
@@ -46,6 +49,11 @@ TARGET_PROFILE_ID="<uuid>" k6 run tests/k6/report_abuse.js
 # 4. Moderate endpoint stress
 k6 run tests/k6/moderate_endpoint.js
 ```
+
+There are deliberately no production URL defaults. Every run must name its
+target environment. `K6_TARGET_ENV=production` is additionally blocked unless
+an approved maintenance plan explicitly supplies
+`K6_ALLOW_PRODUCTION_LOAD_TESTS=I_UNDERSTAND_THIS_WILL_LOAD_PRODUCTION`.
 
 ## What each test asserts
 

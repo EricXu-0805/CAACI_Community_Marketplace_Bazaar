@@ -12,18 +12,13 @@
     ]"
     role="button"
     :aria-disabled="disabled || loading"
+    :aria-busy="loading ? 'true' : 'false'"
     :tabindex="disabled || loading ? -1 : 0"
     :hover-class="disabled || loading ? 'none' : 'u-mp-pressed'"
     :hover-stay-time="80"
     @click="onClick"
   >
-    <!-- #ifdef H5 -->
-    <view v-if="loading" class="u-btn-spinner" v-html="spinnerSvg"></view>
-    <!-- #endif -->
-    <!-- #ifndef H5 -->
-    <view v-if="loading" class="u-btn-spinner"><view class="u-btn-spinner-ring"></view></view>
-    <!-- #endif -->
-    <view v-if="!loading" class="u-btn-content"><slot></slot></view>
+    <view class="u-btn-content"><slot></slot></view>
   </view>
 </template>
 
@@ -48,12 +43,11 @@
  *   lg  — 52px height, padding 24px horizontal, font 16, radius-lg (not pill)
  *
  * States: default → hover (≥768px only) → active (scale 0.97) → disabled → loading
- * Loading replaces slot with an inline spinner; pointer-events: none.
+ * Loading keeps the stable action label visible, sets aria-busy and disables
+ * activation. This avoids a layout shift and preserves an accessible name.
  *
  * Motion: all transitions use prod motion tokens (--dur-1 / --ease-std) per SPEC.
  */
-import { computed } from 'vue'
-
 const props = withDefaults(defineProps<{
   variant?: 'primary' | 'secondary' | 'ghost' | 'campus' | 'danger'
   size?: 'sm' | 'md' | 'lg'
@@ -71,9 +65,6 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   (e: 'click', evt: Event): void
 }>()
-
-// Inline SVG spinner — currentColor stroke, 14×14, animates via CSS keyframes
-const spinnerSvg = computed(() => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.4-8.6"/></svg>`)
 
 function onClick(evt: Event) {
   if (props.disabled || props.loading) return
@@ -181,30 +172,7 @@ function onClick(evt: Event) {
 .u-btn.is-loading {
   pointer-events: none;
   cursor: not-allowed;
-}
-.u-btn-spinner {
-  width: 14px;
-  height: 14px;
-  display: inline-flex;
-  animation: u-btn-spin 0.8s linear infinite;
-}
-.u-btn-spinner :deep(svg) {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-/* mp: rich-text drops <svg>, so the spinner is a pure-CSS ring instead. */
-.u-btn-spinner-ring {
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-  border: 2.5px solid currentColor;
-  border-top-color: transparent;
-  border-radius: 50%;
-}
-@keyframes u-btn-spin {
-  from { transform: rotate(0); }
-  to   { transform: rotate(360deg); }
+  opacity: 0.72;
 }
 
 /* ===== Hover (desktop only, ≥768px with hover capability) ===== */

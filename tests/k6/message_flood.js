@@ -15,7 +15,7 @@ import { supabaseInsert, supabaseSignIn, randomString, loadTestAccounts } from '
  * on a listing in the app once.
  *
  * Usage:
- *   SUPABASE_ANON_KEY=... TEST_ACCOUNTS_FILE=./accounts.txt \
+ *   SUPABASE_PUBLISHABLE_KEY=sb_publishable_... TEST_ACCOUNTS_FILE=./accounts.txt \
  *   CONVERSATION_ID=<uuid> k6 run tests/k6/message_flood.js
  */
 

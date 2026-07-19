@@ -1,12 +1,14 @@
 <template>
   <!-- #ifdef H5 -->
   <view v-if="show" class="a2hs">
-    <view class="a2hs-icon">集</view>
+    <image class="a2hs-icon" src="/static/logo-mark.svg" :alt="t('app.name')" mode="aspectFit" />
     <view class="a2hs-text">
       <text class="a2hs-title">{{ t('a2hs.title') }}</text>
       <text class="a2hs-body">{{ t('a2hs.body') }}</text>
     </view>
-    <view class="a2hs-close" role="button" :aria-label="t('a11y.close')" @click="dismiss">✕</view>
+    <view class="a2hs-close" role="button" tabindex="0" :aria-label="t('a11y.close')" @click="dismiss" @keydown.enter.prevent="dismiss" @keydown.space.prevent="dismiss">
+      <UIcon name="close" size="xs" color="currentColor" aria-hidden="true" />
+    </view>
   </view>
   <!-- #endif -->
 </template>
@@ -25,6 +27,7 @@
  */
 import { ref, onMounted } from 'vue'
 import { useI18n } from '../composables/useI18n'
+import UIcon from './UIcon.vue'
 
 const { t } = useI18n()
 const show = ref(false)
@@ -77,16 +80,14 @@ function dismiss() {
   to { opacity: 1; transform: none; }
 }
 .a2hs-icon {
-  width: 38px; height: 38px; line-height: 38px; text-align: center;
-  border-radius: 10px; background: var(--campus-orange, #C74A2F);
-  color: #fff; font-weight: 700; font-size: 19px; flex-shrink: 0;
+  width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
 }
 .a2hs-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .a2hs-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .a2hs-body { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
 .a2hs-close {
-  width: 28px; height: 28px; line-height: 28px; text-align: center;
-  color: var(--text-faint); font-size: 15px; flex-shrink: 0; cursor: pointer;
+  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+  color: var(--text-subtle); flex-shrink: 0; cursor: pointer;
 }
 .a2hs-close:active { opacity: 0.6; }
 /* #endif */

@@ -16,6 +16,14 @@
       </view>
     </view>
 
+    <view v-else-if="loadError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
+      <view class="empty-shield"></view>
+      <text class="empty-text">{{ t('error.loadFailed') }}</text>
+      <view class="unblock-btn" role="button" :aria-label="t('home.retry')" @click="fetchProfiles">
+        <text>{{ t('home.retry') }}</text>
+      </view>
+    </view>
+
     <view v-else-if="blockedProfiles.length === 0 && !loading" class="empty">
       <view class="empty-shield"></view>
       <text class="empty-text">{{ t('blocked.empty') }}</text>
@@ -24,12 +32,17 @@
 
     <view v-else class="list u-stagger">
       <view v-for="p in blockedProfiles" :key="p.id" class="row">
-        <image :src="p.avatar_url || defaultAvatarSrc" :alt="p.nickname || 'avatar'" class="avatar" mode="aspectFill" />
+        <UAvatar :src="p.avatar_url" :owner="p.id" :fallback="defaultAvatarSrc" :alt="p.nickname || 'avatar'" class="avatar" lazy />
         <view class="info">
           <text class="nickname">{{ p.nickname }}</text>
           <text v-if="p.bio" class="bio">{{ p.bio }}</text>
         </view>
-        <view class="unblock-btn" @click="onUnblock(p.id, p.nickname)">
+        <view
+          class="unblock-btn"
+          role="button"
+          :aria-label="t('blocked.unblock') + ': ' + p.nickname"
+          @click="onUnblock(p.id, p.nickname)"
+        >
           <text>{{ t('blocked.unblock') }}</text>
         </view>
       </view>
@@ -40,12 +53,16 @@
 <script setup lang="ts">
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
-import { ref, computed } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { ref, computed, watch } from 'vue'
+import { onShow, onUnload } from '@dcloudio/uni-app'
 import { useSupabase } from '../../composables/useSupabase'
+import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
 import { useTheme } from '../../composables/useTheme'
+import { createAccountPageScope } from '../../composables/accountPageScope'
+import { navigateBackOr } from '../../utils'
+import UAvatar from '../../components/UAvatar.vue'
 import UIcon from '../../components/UIcon.vue'
 
 interface BlockedProfile {
@@ -61,49 +78,119 @@ const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
 const { supabase } = useSupabase()
+const { currentUser, awaitAuthReady, requireAuth } = useAuth()
 const { blockedIds, loadBlockedIds, unblockUser } = useModeration()
 
 const blockedProfiles = ref<BlockedProfile[]>([])
 const loading = ref(true)
+const loadError = ref(false)
+let blockedPageAlive = true
 
-async function fetchProfiles() {
+function clearBlockedPageState() {
+  blockedProfiles.value = []
+  loading.value = false
+  loadError.value = false
+}
+
+const blockedPageScope = createAccountPageScope(() => {
+  clearBlockedPageState()
+})
+// Modal mutations are concurrent with list refreshes; keep their epoch separate
+// so opening an action sheet cannot strand the list's loading finalizer.
+const blockedActionScope = createAccountPageScope(() => {})
+
+async function fetchProfilesForUser(userId: string): Promise<boolean> {
+  const request = blockedPageScope.begin(userId)
+  if (!request) return false
   loading.value = true
+  loadError.value = false
   try {
-    await loadBlockedIds()
+    const result = await loadBlockedIds()
+    if (!blockedPageScope.isCurrent(request)) return false
+    if (!result.ok) throw result.error || new Error(result.reason)
+    if (result.userId !== userId) return false
     const ids = Array.from(blockedIds.value)
     if (ids.length === 0) {
       blockedProfiles.value = []
-      return
+      return true
     }
     const { data, error } = await supabase
       .from('profiles')
       .select('id, nickname, avatar_url, bio')
       .in('id', ids)
     if (error) throw error
+    if (!blockedPageScope.isCurrent(request)) return false
     blockedProfiles.value = (data || []) as BlockedProfile[]
+    return true
   } catch {
+    if (!blockedPageScope.isCurrent(request)) return false
+    blockedProfiles.value = []
+    loadError.value = true
     uni.showToast({ title: t('error.loadFailed'), icon: 'none', duration: 2500 })
+    return false
   } finally {
-    loading.value = false
+    if (blockedPageScope.isCurrent(request)) loading.value = false
   }
 }
 
-onShow(() => { fetchProfiles() })
+function fetchProfiles(): Promise<boolean> {
+  const userId = currentUser.value?.id
+  return userId ? fetchProfilesForUser(userId) : Promise.resolve(false)
+}
 
-function goBack() { uni.navigateBack() }
+onShow(async () => {
+  const state = await awaitAuthReady()
+  if (!blockedPageAlive) return
+  if (state === 'anonymous') {
+    blockedPageScope.invalidate()
+    clearBlockedPageState()
+    requireAuth()
+    return
+  }
+  const uid = currentUser.value?.id
+  if (!uid) {
+    blockedPageScope.invalidate()
+    clearBlockedPageState()
+    return
+  }
+  await fetchProfilesForUser(uid)
+})
+
+watch(() => currentUser.value?.id || null, (uid, previousUid) => {
+  if (uid === previousUid) return
+  blockedPageScope.invalidate()
+  clearBlockedPageState()
+  if (uid) void fetchProfilesForUser(uid)
+})
+
+onUnload(() => {
+  blockedPageAlive = false
+  clearBlockedPageState()
+  blockedPageScope.dispose()
+  blockedActionScope.dispose()
+})
+
+function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/profile/index' })) }
 
 function onUnblock(id: string, name: string) {
+  const ownerId = currentUser.value?.id
+  if (!ownerId) return
+  const request = blockedActionScope.begin(ownerId)
+  if (!request) return
   uni.showModal({
     title: t('blocked.unblockConfirm'),
     content: t('blocked.unblockHint', { name }),
     success: async (res) => {
-      if (!res.confirm) return
+      if (!res.confirm || !blockedActionScope.isCurrent(request)) return
       try {
         await unblockUser(id)
+        if (!blockedActionScope.isCurrent(request)) return
         blockedProfiles.value = blockedProfiles.value.filter(p => p.id !== id)
         uni.showToast({ title: t('blocked.unblocked'), icon: 'success' })
       } catch {
-        uni.showToast({ title: t('blocked.unblockFailed'), icon: 'none' })
+        if (blockedActionScope.isCurrent(request)) {
+          uni.showToast({ title: t('blocked.unblockFailed'), icon: 'none' })
+        }
       }
     },
   })

@@ -3,7 +3,21 @@ import { quickTranslate } from '../utils'
 import { platformFetch, useSupabase } from './useSupabase'
 import { addBreadcrumb } from '../utils/sentry'
 import { SUPPORTED_LANGS, type Lang as AppLang } from './useI18n'
+import { clearAutoLocalizeCache, fullTextCacheKey } from './i18n/translate'
 import { BASE_URL } from '../config/runtime'
+import {
+  captureAccountRequest,
+  getActiveAccountId,
+  isAccountRequestCurrent,
+} from './accountScope'
+import {
+  readAccountPrivateStorage,
+  registerAccountPrivateStateHydrate,
+  registerAccountPrivateStateReset,
+  removeAccountPrivateStorage,
+  writeAccountPrivateStorage,
+} from '../api/accountLocalPrivacy'
+import { readBoundedJson } from '../api/responseBody'
 
 /*
  * Target-language type for this composable's translation API.
@@ -23,11 +37,19 @@ interface CachedEntry {
   translated: string
   target: Lang
   at: number
+  lastUsedAt?: number
 }
 
-const CACHE_STORAGE_KEY = 'translate_cache_v1'
+interface TranslationResult {
+  text: string
+  verified: boolean
+}
+
+export const TRANSLATE_CACHE_STORAGE_KEY = 'translate_cache_v2'
+const LEGACY_TRANSLATE_CACHE_STORAGE_KEYS = ['translate_cache_v1'] as const
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000
 const CACHE_MAX_ENTRIES = 500
+const MAX_TRANSLATION_RESPONSE_BYTES = 64 * 1024
 
 let endpoint = '/api/translate'
 try {
@@ -43,57 +65,114 @@ endpoint = `${BASE_URL}/api/translate`
 
 const mem = new Map<string, CachedEntry>()
 let loadedFromDisk = false
+let translateCacheGeneration = 0
+const activeTranslateControllers = new Set<AbortController>()
+
+function setLru(key: string, value: CachedEntry) {
+  mem.delete(key)
+  mem.set(key, value)
+  while (mem.size > CACHE_MAX_ENTRIES) {
+    const oldest = mem.keys().next().value as string | undefined
+    if (!oldest) break
+    mem.delete(oldest)
+  }
+}
 
 function loadDisk() {
   if (loadedFromDisk) return
+  const stored = readAccountPrivateStorage<unknown>(TRANSLATE_CACHE_STORAGE_KEY, '')
+  // Owner reconciliation has not completed (or cleanup is unresolved). Keep
+  // this retryable so the post-reconciliation hydrator can safely load it.
+  if (!stored.allowed) return
   loadedFromDisk = true
   try {
-    const raw = uni.getStorageSync(CACHE_STORAGE_KEY)
+    const raw = stored.value
     if (typeof raw !== 'string' || !raw) return
     const parsed = JSON.parse(raw) as Record<string, CachedEntry>
     const now = Date.now()
-    Object.entries(parsed).forEach(([k, v]) => {
-      if (v && now - v.at < CACHE_TTL_MS) mem.set(k, v)
-    })
+    Object.entries(parsed)
+      .filter(([, v]) => v && typeof v.translated === 'string' && now - v.at < CACHE_TTL_MS)
+      .sort((a, b) => (a[1].lastUsedAt || a[1].at) - (b[1].lastUsedAt || b[1].at))
+      .forEach(([k, v]) => setLru(k, v))
   } catch {}
 }
 
 function persistDisk() {
-  try {
-    if (mem.size > CACHE_MAX_ENTRIES) {
-      const entries = Array.from(mem.entries()).sort((a, b) => b[1].at - a[1].at)
-      mem.clear()
-      entries.slice(0, CACHE_MAX_ENTRIES).forEach(([k, v]) => mem.set(k, v))
-    }
-    const obj: Record<string, CachedEntry> = {}
-    mem.forEach((v, k) => { obj[k] = v })
-    uni.setStorageSync(CACHE_STORAGE_KEY, JSON.stringify(obj))
-  } catch {}
+  const obj: Record<string, CachedEntry> = {}
+  mem.forEach((v, k) => { obj[k] = v })
+  writeAccountPrivateStorage(TRANSLATE_CACHE_STORAGE_KEY, JSON.stringify(obj))
 }
 
 function cacheKey(text: string, target: Lang): string {
-  return `${target}:${text.length}:${text.slice(0, 200)}`
+  return fullTextCacheKey(text, target)
 }
+
+/* One authoritative clear entrypoint for settings/logout tooling. It removes
+   both persistent publish-time translations and the reactive auto-localize
+   cache, including in-flight requests, so stale in-memory values cannot
+   immediately repopulate UI after storage alone was cleared. */
+function resetTranslationMemory() {
+  translateCacheGeneration++
+  for (const ctrl of activeTranslateControllers) ctrl.abort()
+  activeTranslateControllers.clear()
+  mem.clear()
+  loadedFromDisk = false
+  clearAutoLocalizeCache()
+}
+
+export function clearTranslationCache() {
+  resetTranslationMemory()
+  let removed = removeAccountPrivateStorage(TRANSLATE_CACHE_STORAGE_KEY)
+  for (const key of LEGACY_TRANSLATE_CACHE_STORAGE_KEYS) {
+    removed = removeAccountPrivateStorage(key) && removed
+  }
+  // A verified removal means the empty disk state is already hydrated. If the
+  // owner gate denied it, leave loading retryable for the next reconciliation.
+  loadedFromDisk = removed
+}
+
+// Translation results can contain unpublished listing/post copy and are stored
+// in a process-wide singleton plus device storage.  Clear them on every
+// authoritative identity transition (including a direct A -> B setSession)
+// rather than relying only on the explicit sign-out path. Persistent values
+// are erased by accountLocalPrivacy only when ownership actually changes;
+// same-owner cold starts retain and safely rehydrate their cache.
+registerAccountPrivateStateReset(resetTranslationMemory)
+registerAccountPrivateStateHydrate(loadDisk)
 
 export function useTranslate() {
   loadDisk()
   const pending = ref(false)
+  let pendingRequests = 0
 
   function getCached(text: string, target: Lang): string | null {
-    const hit = mem.get(cacheKey(text, target))
+    // Disk entries are account-owned. During cold-start authority is still
+    // null even if the backing storage contains a prior user's cache; callers
+    // must not render a hit until useAuth has reconciled that owner.
+    if (!getActiveAccountId()) return null
+    loadDisk()
+    const key = cacheKey(text, target)
+    const hit = mem.get(key)
     if (!hit) return null
     if (Date.now() - hit.at > CACHE_TTL_MS) {
-      mem.delete(cacheKey(text, target))
+      mem.delete(key)
       return null
     }
+    hit.lastUsedAt = Date.now()
+    setLru(key, hit)
     return hit.translated
   }
 
-  async function translate(text: string, target: Lang): Promise<string> {
-    if (!text || !text.trim()) return text
-    const cached = getCached(text, target)
-    if (cached) return cached
+  async function translateResult(text: string, target: Lang): Promise<TranslationResult> {
+    if (!text || !text.trim()) return { text, verified: true }
+    const entryUserId = getActiveAccountId()
+    if (!entryUserId) return { text: quickTranslate(text, target), verified: false }
+    const accountToken = captureAccountRequest(entryUserId)
+    if (!isAccountRequestCurrent(accountToken)) {
+      return { text: quickTranslate(text, target), verified: false }
+    }
 
+    pendingRequests += 1
     pending.value = true
     try {
       /* /api/translate requires a Supabase JWT (abuse control — the
@@ -101,20 +180,52 @@ export function useTranslate() {
          round trip entirely and get the static dictionary. */
       const { supabase } = useSupabase()
       const { data: sess } = await supabase.auth.getSession()
-      const jwt = sess.session?.access_token
-      if (!jwt) return quickTranslate(text, target)
+      const session = sess.session
+      const jwt = session?.access_token
+      if (!jwt || !session?.user) return { text: quickTranslate(text, target), verified: false }
+      if (
+        session.user.id !== accountToken.userId
+        || !isAccountRequestCurrent(accountToken)
+      ) {
+        return { text: quickTranslate(text, target), verified: false }
+      }
+
+      // Translation cache entries can contain unpublished copy and are owned
+      // by the authenticated storage owner. Never expose a disk/memory hit
+      // before the session has been bound to the active account generation.
+      const cached = getCached(text, target)
+      if (cached) return { text: cached, verified: true }
 
       const ctrl = new AbortController()
+      const cacheGeneration = translateCacheGeneration
+      activeTranslateControllers.add(ctrl)
       const timer = setTimeout(() => ctrl.abort(), 8000)
-      const r = await platformFetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
-        body: JSON.stringify({ text, target }),
-        signal: ctrl.signal,
-      }).finally(() => clearTimeout(timer))
+      let json: any
+      try {
+        const r = await platformFetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
+          body: JSON.stringify({ text, target }),
+          signal: ctrl.signal,
+        })
 
-      if (!r.ok) return quickTranslate(text, target)
-      const json = await r.json()
+        if (!isAccountRequestCurrent(accountToken)) {
+          return { text: quickTranslate(text, target), verified: false }
+        }
+        if (!r.ok) return { text: quickTranslate(text, target), verified: false }
+        json = await readBoundedJson(r, {
+          maxBytes: MAX_TRANSLATION_RESPONSE_BYTES,
+          timeoutMs: 8000,
+        })
+        if (!isAccountRequestCurrent(accountToken)) {
+          return { text: quickTranslate(text, target), verified: false }
+        }
+      } finally {
+        // Keep both the caller signal and its total 8 s budget active until
+        // the JSON body has been consumed, not merely until headers arrive.
+        clearTimeout(timer)
+        activeTranslateControllers.delete(ctrl)
+      }
 
       /*
        * Surface server-side skip reasons in Sentry as breadcrumbs (NOT
@@ -141,16 +252,32 @@ export function useTranslate() {
       }
 
       const translated = typeof json?.translated === 'string' ? json.translated.trim() : ''
-      if (!translated) return quickTranslate(text, target)
+      if (!translated) return { text: quickTranslate(text, target), verified: false }
 
-      mem.set(cacheKey(text, target), { translated, target, at: Date.now() })
-      persistDisk()
-      return translated
+      // A settings-triggered clear may abort this request after the upstream
+      // already responded. Return the useful result to its caller, but never
+      // let the stale completion repopulate the just-cleared cache.
+      if (
+        cacheGeneration === translateCacheGeneration
+        && isAccountRequestCurrent(accountToken)
+      ) {
+        const now = Date.now()
+        setLru(cacheKey(text, target), { translated, target, at: now, lastUsedAt: now })
+        persistDisk()
+      }
+      return isAccountRequestCurrent(accountToken)
+        ? { text: translated, verified: true }
+        : { text: quickTranslate(text, target), verified: false }
     } catch {
-      return quickTranslate(text, target)
+      return { text: quickTranslate(text, target), verified: false }
     } finally {
-      pending.value = false
+      pendingRequests = Math.max(0, pendingRequests - 1)
+      pending.value = pendingRequests > 0
     }
+  }
+
+  async function translate(text: string, target: Lang): Promise<string> {
+    return (await translateResult(text, target)).text
   }
 
   /*
@@ -183,8 +310,11 @@ export function useTranslate() {
     await Promise.all(
       targets.map(async (target) => {
         try {
-          const translated = await translate(text, target)
-          if (translated && translated !== text) map[target] = translated
+          // Publish-time persistence is stricter than the on-screen helper:
+          // dictionary fallback is useful for immediate display, but it is not
+          // a verified full translation and must never become durable i18n data.
+          const result = await translateResult(text, target)
+          if (result.verified && result.text && result.text !== text) map[target] = result.text
         } catch { /* swallow: partial map is fine */ }
       }),
     )
@@ -218,6 +348,7 @@ export function useTranslate() {
     pending,
     translateContentToAll,
     translateItemContent,
+    clearCache: clearTranslationCache,
     SUPPORTED_LANGS,
   }
 }

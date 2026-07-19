@@ -1,3 +1,5 @@
+import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from './_deployment-boundary.js'
+
 export const config = { runtime: 'edge' }
 
 /*
@@ -9,31 +11,34 @@ export const config = { runtime: 'edge' }
  * the porn/politics vocabulary reviewers actually test with — WeChat's own
  * free classifiers do. mp clients call this endpoint:
  *
- *   POST { kind: 'text',  content, scene, openid? | js_code? }
+ *   POST { kind: 'text',  content, scene, js_code? }
  *     → msg_sec_check v2 (synchronous verdict; caller blocks the insert
  *       when suggest === 'risky')
- *   POST { kind: 'image', media_url, bucket, storage_path, openid? | js_code? }
+ *   POST { kind: 'image', media_url, bucket, storage_path, js_code? }
  *     → media_check_async v2 (async; trace_id → storage mapping recorded in
  *       wechat_media_checks (m087) so /api/wechat-callback can take a
  *       violating object down when WeChat pushes the verdict)
  *
  * openid: msg_sec_check v2 requires the openid of a user who opened the mp
- * within 2h. WeChat-login users have profiles.wechat_openid; email-login
- * users pass a fresh wx.login js_code instead and we exchange it here
- * (jscode2session — same call wechat-login makes, no IP whitelist). The
- * resolved openid is echoed back so the client can cache it.
+ * within 2h. The current JWT user's profiles.wechat_openid is authoritative.
+ * Only when that trusted binding is null do email-login users' fresh wx.login
+ * js_code values get exchanged here (jscode2session — same call wechat-login
+ * makes, no IP whitelist). Client-supplied openid values are never trusted,
+ * and the stable identifier is never echoed back to browser storage.
  *
- * Fail-open by design: if WeChat's API errors or credentials are missing,
- * content still goes through ({ ok:true, degraded:true }) — the DB keyword
- * trigger remains the floor, and a broken third-party API must not take
- * down posting. At review time the API works or nothing does.
+ * A fully disabled integration (both WeChat credentials absent) returns an
+ * explicit not_configured degradation. Once either credential is configured,
+ * the boundary is fail-closed: partial config, timeout, redirect, non-2xx,
+ * malformed provider JSON, unknown verdict, or missing media trace all return
+ * non-2xx and the client blocks the write / cleans the candidate upload.
  *
  * ⚠ Ops prerequisite: fetching access_token (stable_token) honors the mp
  * console IP whitelist. Vercel egress IPs are dynamic, so the whitelist
  * switch must be OFF (公众平台 → 开发管理 → 开发设置 → IP白名单).
  *
  * Env: WECHAT_APPID / WECHAT_APPSECRET (same as /api/auth/wechat-login),
- *      SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY / SUPABASE_ANON_KEY.
+ *      SUPABASE_URL / SUPABASE_SECRET_KEY / SUPABASE_PUBLISHABLE_KEY.
+ *      Legacy service-role / anon variable names remain rolling fallbacks.
  */
 
 function env(name, fallback) {
@@ -43,53 +48,156 @@ function env(name, fallback) {
 const WECHAT_APPID     = env('WECHAT_APPID', '')
 const WECHAT_APPSECRET = env('WECHAT_APPSECRET', '')
 const SUPABASE_URL     = env('SUPABASE_URL', env('VITE_SUPABASE_URL', ''))
-const SUPABASE_SERVICE = env('SUPABASE_SERVICE_ROLE_KEY', '')
-const SUPABASE_ANON    = env('SUPABASE_ANON_KEY', env('VITE_SUPABASE_ANON_KEY', ''))
+const SUPABASE_SERVICE = env('SUPABASE_SECRET_KEY', env('SUPABASE_SERVICE_ROLE_KEY', ''))
+const SUPABASE_ANON = env(
+  'SUPABASE_PUBLISHABLE_KEY',
+  env('SUPABASE_ANON_KEY', env('VITE_SUPABASE_PUBLISHABLE_KEY', env('VITE_SUPABASE_ANON_KEY', ''))),
+)
+
+const MAX_REQUEST_BYTES = 16 * 1024
+const MAX_PROVIDER_BYTES = 32 * 1024
+const MAX_SUPABASE_BYTES = 16 * 1024
+const SUPABASE_TIMEOUT_MS = 5_000
+const WECHAT_TIMEOUT_MS = 5_000
+const STREAM_TIMEOUT_MS = 5_000
+const MAX_TEXT_CHARS = 2_500
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function supabaseHeaders(key, authorization = '', extra = {}) {
+  const headers = { apikey: key, ...extra }
+  if (authorization) headers.Authorization = authorization
+  else if (!/^sb_(?:publishable|secret)_/.test(key)) headers.Authorization = `Bearer ${key}`
+  return headers
+}
+
+function responseHeaders() {
+  return {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'no-referrer',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  }
+}
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
+    headers: responseHeaders(),
   })
 }
 
-async function verifyUser(bearer) {
-  if (!bearer || !bearer.startsWith('Bearer ')) return null
+async function readBoundedText(stream, declaredLength, maxBytes) {
+  if (declaredLength != null) {
+    if (!/^\d+$/.test(declaredLength)) throw new Error('bad_length')
+    if (Number(declaredLength) > maxBytes) throw new Error('body_too_large')
+  }
+  if (!stream) throw new Error('bad_json')
+  const reader = stream.getReader()
+  const decoder = new TextDecoder()
+  let total = 0
+  let text = ''
+  let timer
+  const consume = (async () => {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      total += value.byteLength
+      if (total > maxBytes) {
+        void reader.cancel().catch(() => {})
+        throw new Error('body_too_large')
+      }
+      text += decoder.decode(value, { stream: true })
+    }
+    return text + decoder.decode()
+  })()
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      void reader.cancel().catch(() => {})
+      reject(new Error('body_timeout'))
+    }, STREAM_TIMEOUT_MS)
+  })
   try {
-    const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { apikey: SUPABASE_ANON, Authorization: bearer },
+    return await Promise.race([consume, timeout])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function readJsonBody(request) {
+  const raw = await readBoundedText(
+    request.body,
+    request.headers.get('content-length'),
+    MAX_REQUEST_BYTES,
+  )
+  let body
+  try { body = JSON.parse(raw) } catch { throw new Error('bad_json') }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('bad_json')
+  return body
+}
+
+async function readJsonResponse(response, maxBytes) {
+  const raw = await readBoundedText(
+    response.body,
+    response.headers.get('content-length'),
+    maxBytes,
+  )
+  const value = JSON.parse(raw)
+  if (value == null) throw new Error('invalid_upstream_json')
+  return value
+}
+
+async function fetchWithTimeout(input, init, timeoutMs) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(input, {
+      ...(init || {}),
+      signal: controller.signal,
+      redirect: 'error',
     })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function verifyUser(bearer) {
+  if (!/^Bearer\s+[^\s]+$/i.test(bearer || '') || !SUPABASE_URL || !SUPABASE_ANON) return null
+  try {
+    const r = await fetchWithTimeout(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: supabaseHeaders(SUPABASE_ANON, bearer),
+    }, SUPABASE_TIMEOUT_MS)
     if (!r.ok) return null
-    const u = await r.json()
-    return u?.id || null
+    const u = await readJsonResponse(r, MAX_SUPABASE_BYTES)
+    return UUID_RE.test(u?.id || '') ? u.id : null
   } catch {
     return null
   }
 }
 
-/* Per-user rate limit via edge_rate_hit (m082). Fail-open, matching the
-   other edge limiters — a broken limiter must not block publishes. Ceiling
-   is generous (chat sends one check per message). */
-async function rateLimited(userId) {
+/* Per-user rate limit via edge_rate_hit (m082). The classifier itself may
+   degrade safely, but an unavailable counter must not expose a high-volume
+   authenticated proxy to WeChat. Returns true/false for allowed/exhausted,
+   null when the limiter cannot be trusted. */
+async function rateAllowed(userId) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE) return null
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/edge_rate_hit`, {
+    const r = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/edge_rate_hit`, {
       method: 'POST',
-      headers: {
-        apikey: SUPABASE_SERVICE,
-        Authorization: `Bearer ${SUPABASE_SERVICE}`,
+      headers: supabaseHeaders(SUPABASE_SERVICE, '', {
         'Content-Type': 'application/json',
-      },
+      }),
       body: JSON.stringify({ bucket_in: `seccheck:${userId}`, max_in: 600, window_secs_in: 3600 }),
-    })
-    if (!r.ok) return false
-    return (await r.json()) === false
+    }, SUPABASE_TIMEOUT_MS)
+    if (!r.ok) return null
+    const decision = await readJsonResponse(r, MAX_SUPABASE_BYTES).catch(() => null)
+    if (decision === true) return true
+    if (decision === false) return false
+    return null
   } catch {
-    return false
+    return null
   }
 }
 
@@ -103,141 +211,222 @@ let tokenCache = { token: '', expiresAt: 0 }
 
 async function getAccessToken() {
   if (tokenCache.token && Date.now() < tokenCache.expiresAt) return tokenCache.token
-  const r = await fetch('https://api.weixin.qq.com/cgi-bin/stable_token', {
+  const r = await fetchWithTimeout('https://api.weixin.qq.com/cgi-bin/stable_token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ grant_type: 'client_credential', appid: WECHAT_APPID, secret: WECHAT_APPSECRET }),
-  })
-  const data = await r.json()
-  if (!data?.access_token) throw new Error(`stable_token failed: ${data?.errcode} ${data?.errmsg}`)
+  }, WECHAT_TIMEOUT_MS)
+  if (!r.ok) throw new Error('stable_token_unavailable')
+  const data = await readJsonResponse(r, MAX_PROVIDER_BYTES)
+  if (
+    !data || typeof data !== 'object' || Array.isArray(data)
+    || typeof data.access_token !== 'string'
+    || data.access_token.length < 16 || data.access_token.length > 4096
+    || !Number.isInteger(data.expires_in)
+    || data.expires_in < 600 || data.expires_in > 86_400
+  ) throw new Error('stable_token_invalid')
   tokenCache = { token: data.access_token, expiresAt: Date.now() + (data.expires_in - 300) * 1000 }
   return tokenCache.token
 }
 
+function validWechatIdentifier(value) {
+  return typeof value === 'string' && /^[A-Za-z0-9_-]{4,128}$/.test(value)
+}
+
+function validJsCode(value) {
+  return typeof value === 'string' && /^[A-Za-z0-9_-]{4,256}$/.test(value)
+}
+
 async function resolveOpenid(body, userId) {
-  if (body.openid && typeof body.openid === 'string') return body.openid
-  if (body.js_code && typeof body.js_code === 'string') {
-    const r = await fetch(
-      `https://api.weixin.qq.com/sns/jscode2session?appid=${WECHAT_APPID}&secret=${WECHAT_APPSECRET}&js_code=${encodeURIComponent(body.js_code)}&grant_type=authorization_code`,
-    )
-    const data = await r.json()
-    if (data?.openid) return data.openid
+  /* Resolve the authenticated account first. A profile lookup outage must not
+     fall through to attacker-controlled request identity: that would recreate
+     the A -> B shared-device association this boundary exists to prevent. */
+  const profileResponse = await fetchWithTimeout(
+    `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=wechat_openid&limit=1`,
+    { headers: supabaseHeaders(SUPABASE_SERVICE) },
+    SUPABASE_TIMEOUT_MS,
+  )
+  if (!profileResponse.ok) throw new Error('profile_identity_unavailable')
+  const rows = await readJsonResponse(profileResponse, MAX_SUPABASE_BYTES)
+  if (!Array.isArray(rows) || rows.length !== 1) throw new Error('profile_identity_unavailable')
+
+  const boundOpenid = rows[0]?.wechat_openid
+  if (boundOpenid != null) {
+    if (!validWechatIdentifier(boundOpenid)) throw new Error('profile_identity_invalid')
+    return boundOpenid
   }
-  /* WeChat-login users: openid was bound onto their profile at sign-in. */
-  try {
-    const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=wechat_openid`,
-      { headers: { apikey: SUPABASE_SERVICE, Authorization: `Bearer ${SUPABASE_SERVICE}` } },
-    )
-    if (r.ok) {
-      const rows = await r.json()
-      if (rows?.[0]?.wechat_openid) return rows[0].wechat_openid
-    }
-  } catch { /* fall through */ }
-  return null
+
+  /* An unbound email account may use only a fresh one-time wx.login code.
+     Legacy body.openid is deliberately ignored, even when present. */
+  if (!validJsCode(body.js_code)) throw new Error('fresh_wechat_code_required')
+  const r = await fetchWithTimeout(
+    `https://api.weixin.qq.com/sns/jscode2session?appid=${WECHAT_APPID}&secret=${WECHAT_APPSECRET}&js_code=${encodeURIComponent(body.js_code)}&grant_type=authorization_code`,
+    undefined,
+    WECHAT_TIMEOUT_MS,
+  )
+  if (!r.ok) throw new Error('wechat_identity_exchange_unavailable')
+  const data = await readJsonResponse(r, MAX_PROVIDER_BYTES)
+  if (data?.errcode || !validWechatIdentifier(data?.openid)) {
+    throw new Error('wechat_identity_exchange_failed')
+  }
+  return data.openid
+}
+
+function configuredState() {
+  if (!WECHAT_APPID && !WECHAT_APPSECRET) return 'disabled'
+  if (!WECHAT_APPID || !WECHAT_APPSECRET) return 'invalid'
+  return 'configured'
+}
+
+function validTraceId(value) {
+  return typeof value === 'string' && /^[A-Za-z0-9_-]{4,128}$/.test(value)
+}
+
+function textVerdict(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null
+  if (data.errcode === 87014) return { ok: false, suggest: 'risky' }
+  if (data.errcode !== 0) return null
+  if (!data.result || typeof data.result !== 'object' || Array.isArray(data.result)) return null
+  const suggest = data.result.suggest
+  if (!['pass', 'review', 'risky'].includes(suggest)) return null
+  if (suggest === 'pass') return { ok: true, suggest }
+  const label = Number.isSafeInteger(data.result.label) && data.result.label >= 0
+    ? data.result.label
+    : 0
+  return { ok: false, suggest, label }
+}
+
+async function callWechatJson(url, init) {
+  const response = await fetchWithTimeout(url, init, WECHAT_TIMEOUT_MS)
+  if (!response.ok) throw new Error('wechat_provider_non_2xx')
+  return await readJsonResponse(response, MAX_PROVIDER_BYTES)
 }
 
 export default async function handler(request) {
+  const deploymentError = deploymentBoundaryResponse(evaluateDeploymentBoundary({ supabaseUrl: SUPABASE_URL }))
+  if (deploymentError) return deploymentError
   if (request.method === 'OPTIONS') return json({}, 200)
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405)
-  if (!WECHAT_APPID || !WECHAT_APPSECRET) return json({ ok: true, degraded: true })
 
   const userId = await verifyUser(request.headers.get('authorization'))
   if (!userId) return json({ error: 'unauthorized' }, 401)
-  if (await rateLimited(userId)) return json({ error: 'rate_limited' }, 429)
+  const integrationState = configuredState()
+  if (integrationState === 'disabled') {
+    return json({ ok: true, degraded: true, reason: 'not_configured' })
+  }
+  if (integrationState === 'invalid') {
+    return json({ error: 'wechat_misconfigured' }, 503)
+  }
+  const allowed = await rateAllowed(userId)
+  if (allowed === null) return json({ error: 'rate_limit_unavailable' }, 503)
+  if (!allowed) return json({ error: 'rate_limited' }, 429)
 
   let body
   try {
-    body = await request.json()
-  } catch {
-    return json({ error: 'bad_json' }, 400)
+    body = await readJsonBody(request)
+  } catch (error) {
+    if (error?.message === 'body_timeout') return json({ error: 'body_timeout' }, 408)
+    return json(
+      { error: error?.message === 'body_too_large' ? 'body_too_large' : 'bad_json' },
+      error?.message === 'body_too_large' ? 413 : 400,
+    )
+  }
+
+  if (body.kind !== 'text' && body.kind !== 'image') {
+    return json({ error: 'bad_kind' }, 400)
+  }
+
+  let content = ''
+  let media = null
+  if (body.kind === 'text') {
+    if (typeof body.content !== 'string') return json({ error: 'bad_content' }, 400)
+    if (body.content.length > MAX_TEXT_CHARS) return json({ error: 'content_too_large' }, 400)
+    content = body.content
+    if (!content.trim()) return json({ ok: true, suggest: 'pass' })
+  } else {
+    if (typeof body.media_url !== 'string') return json({ error: 'bad_media_url' }, 400)
+    const mediaUrl = body.media_url
+    const ownPrefix = `${SUPABASE_URL}/storage/v1/object/public/item-images/items/${userId}/`
+    if (!mediaUrl.startsWith(ownPrefix)) return json({ error: 'bad_media_url' }, 400)
+    const fileName = mediaUrl.slice(ownPrefix.length).split('?')[0].split('#')[0]
+    if (!fileName || !/^[A-Za-z0-9._-]+$/.test(fileName) || fileName.includes('..')) {
+      return json({ error: 'bad_media_url' }, 400)
+    }
+    media = {
+      mediaUrl,
+      bucket: 'item-images',
+      storagePath: `items/${userId}/${fileName}`,
+    }
   }
 
   let openid
   try {
     openid = await resolveOpenid(body, userId)
   } catch {
-    openid = null
+    return json({ error: 'wechat_identity_unavailable' }, 503)
   }
-  /* No openid resolvable (e.g. H5 caller) — WeChat check impossible; the
-     DB keyword trigger remains the moderation floor. */
-  if (!openid) return json({ ok: true, degraded: true })
 
   try {
     const token = await getAccessToken()
 
     if (body.kind === 'text') {
-      const content = String(body.content || '').slice(0, 2500)
-      if (!content.trim()) return json({ ok: true, openid })
       const scene = [1, 2, 3, 4].includes(body.scene) ? body.scene : 3
-      const r = await fetch(`https://api.weixin.qq.com/wxa/msg_sec_check?access_token=${token}`, {
+      const data = await callWechatJson(`https://api.weixin.qq.com/wxa/msg_sec_check?access_token=${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ version: 2, openid, scene, content }),
       })
-      const data = await r.json()
-      /* v2 verdict lives in result.suggest; legacy errcode 87014 = risky. */
-      const suggest = data?.result?.suggest || (data?.errcode === 87014 ? 'risky' : 'pass')
-      if (data?.errcode && data.errcode !== 0 && data.errcode !== 87014) {
-        return json({ ok: true, degraded: true, openid })
-      }
-      if (suggest === 'risky') {
-        return json({ ok: false, suggest, label: data?.result?.label || 0, openid })
-      }
-      return json({ ok: true, suggest, openid })
+      const verdict = textVerdict(data)
+      if (!verdict) throw new Error('wechat_verdict_invalid')
+      return json(verdict)
     }
 
     if (body.kind === 'image') {
-      const mediaUrl = String(body.media_url || '')
-      const PUBLIC_PREFIX = `${SUPABASE_URL}/storage/v1/object/public/`
-      /* Only submit our own storage objects — this endpoint must not become
-         an open proxy for checking (and thus fetching) arbitrary URLs. */
-      if (!mediaUrl.startsWith(PUBLIC_PREFIX)) {
-        return json({ error: 'bad_media_url' }, 400)
-      }
-      /* Derive bucket + path FROM the validated URL — never from the body.
-         The callback deletes whatever object we record here with the service
-         key, so trusting a body-supplied bucket/storage_path decoupled from
-         the scanned media_url would be an arbitrary cross-user storage-delete
-         primitive. */
-      const rel = mediaUrl.slice(PUBLIC_PREFIX.length).split('?')[0].split('#')[0]
-      const slash = rel.indexOf('/')
-      if (slash <= 0 || slash === rel.length - 1) {
-        return json({ error: 'bad_media_url' }, 400)
-      }
-      const bucket = rel.slice(0, slash)
-      const storagePath = rel.slice(slash + 1)
-      const r = await fetch(`https://api.weixin.qq.com/wxa/media_check_async?access_token=${token}`, {
+      const data = await callWechatJson(`https://api.weixin.qq.com/wxa/media_check_async?access_token=${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ version: 2, openid, scene: 1, media_type: 2, media_url: mediaUrl }),
+        body: JSON.stringify({
+          version: 2,
+          openid,
+          scene: 1,
+          media_type: 2,
+          media_url: media.mediaUrl,
+        }),
       })
-      const data = await r.json()
-      if (!data?.trace_id) return json({ ok: true, degraded: true, openid })
-      /* Record trace → object so the push callback can act on the verdict.
-         A dropped mapping is a silent hole — WeChat later pushes a risky
-         verdict keyed only by trace_id and the callback can't find the
-         object to take down — so log a failed insert loudly. Still return
-         ok:true: WeChat already accepted the submit and a bookkeeping miss
-         must not fail the caller's upload. */
-      const mapRes = await fetch(`${SUPABASE_URL}/rest/v1/wechat_media_checks`, {
-        method: 'POST',
-        headers: {
-          apikey: SUPABASE_SERVICE,
-          Authorization: `Bearer ${SUPABASE_SERVICE}`,
-          'Content-Type': 'application/json',
-          Prefer: 'resolution=ignore-duplicates',
-        },
-        body: JSON.stringify({ trace_id: data.trace_id, bucket, storage_path: storagePath, user_id: userId }),
-      })
-      if (!mapRes.ok) {
-        console.error(`wechat-seccheck: media_check mapping insert failed (${mapRes.status}) for trace_id ${data.trace_id}; a risky verdict for ${bucket}/${storagePath} will not be actionable`)
+      if (!data || typeof data !== 'object' || Array.isArray(data)
+        || data.errcode !== 0 || !validTraceId(data.trace_id)) {
+        throw new Error('wechat_media_response_invalid')
       }
-      return json({ ok: true, trace_id: data.trace_id, openid })
+      /* Record trace → object so the push callback can act on the verdict.
+         A dropped mapping is a silent moderation hole: WeChat later pushes a
+         risky verdict keyed only by trace_id. Do not acknowledge a submission
+         whose durable handoff could not be recorded; the caller can retry. */
+      let mapRes
+      try {
+        mapRes = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/wechat_media_checks`, {
+          method: 'POST',
+          headers: supabaseHeaders(SUPABASE_SERVICE, '', {
+            'Content-Type': 'application/json',
+            Prefer: 'resolution=ignore-duplicates',
+          }),
+          body: JSON.stringify({
+            trace_id: data.trace_id,
+            bucket: media.bucket,
+            storage_path: media.storagePath,
+            user_id: userId,
+          }),
+        }, SUPABASE_TIMEOUT_MS)
+      } catch {
+        console.error(`wechat-seccheck: media_check mapping insert failed for trace_id ${data.trace_id}`)
+        return json({ error: 'media_mapping_unavailable' }, 503)
+      }
+      if (!mapRes.ok) {
+        console.error(`wechat-seccheck: media_check mapping insert failed (${mapRes.status}) for trace_id ${data.trace_id}`)
+        return json({ error: 'media_mapping_unavailable' }, 503)
+      }
+      return json({ ok: true, trace_id: data.trace_id })
     }
-
-    return json({ error: 'bad_kind' }, 400)
   } catch {
-    return json({ ok: true, degraded: true, openid })
+    return json({ error: 'wechat_provider_unavailable' }, 503)
   }
 }

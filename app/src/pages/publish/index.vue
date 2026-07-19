@@ -6,17 +6,34 @@
     <AppSidebar current="publish" />
 
     <!-- Mobile Header -->
-    <view class="page-header u-glass u-glass--hair-b">
+    <view v-if="publishReady" class="page-header u-glass u-glass--hair-b">
       <text class="ph-title">{{ t('publish.title') }}</text>
     </view>
 
-    <view class="form">
+    <view v-if="!publishReady" class="auth-check" role="status" aria-live="polite">
+      <view class="auth-check-spinner"></view>
+      <text class="auth-check-text">{{ t('login.wait') }}</text>
+    </view>
+
+    <view v-if="publishReady" class="form">
       <!-- 出售 / 求购 — a wanted post (migration 054) relaxes price + condition. -->
-      <view class="listing-type-seg">
-        <view :class="['lt-seg', 'u-press', { on: form.listingType === 'sell' }]" @click="form.listingType = 'sell'">
+      <view class="listing-type-seg" role="group" :aria-label="t('publish.title')">
+        <view
+          :class="['lt-seg', 'u-press', { on: form.listingType === 'sell' }]"
+          role="button"
+          :aria-label="t('publish.typeSell')"
+          :aria-pressed="form.listingType === 'sell' ? 'true' : 'false'"
+          @click="form.listingType = 'sell'"
+        >
           <text>{{ t('publish.typeSell') }}</text>
         </view>
-        <view :class="['lt-seg', 'u-press', { on: form.listingType === 'wanted' }]" @click="form.listingType = 'wanted'">
+        <view
+          :class="['lt-seg', 'u-press', { on: form.listingType === 'wanted' }]"
+          role="button"
+          :aria-label="t('publish.typeWanted')"
+          :aria-pressed="form.listingType === 'wanted' ? 'true' : 'false'"
+          @click="form.listingType = 'wanted'"
+        >
           <text>{{ t('publish.typeWanted') }}</text>
         </view>
       </view>
@@ -26,13 +43,13 @@
           <view v-for="(img, i) in imageList" :key="i" class="image-item">
             <image :src="img" alt="Photo" mode="aspectFill" class="preview-image" />
             <view class="remove-btn" role="button" :aria-label="t('a11y.delete')" @click="removeImage(i)">
-              <view class="remove-x"></view>
+              <UIcon name="close" size="xs" color="#FFFFFF" aria-hidden="true" />
             </view>
             <view v-if="i === 0" class="cover-tag">
               <text>{{ t('publish.cover') }}</text>
             </view>
           </view>
-          <view v-if="imageList.length < 9" class="image-add" @click="chooseImage">
+          <view v-if="imageList.length < 9" class="image-add" role="button" :aria-label="t('publish.addPhoto')" @click="chooseImage">
             <UIcon name="plus" size="sm" color="text-faint" />
             <text class="add-text">{{ t('publish.addPhoto') }}</text>
             <text class="add-count">{{ imageList.length }}/9</text>
@@ -71,43 +88,65 @@
 
       <!-- Category: inline pill selector -->
       <view class="form-group">
-        <view class="field-header" @click="showCat = !showCat">
+        <view
+          class="field-header"
+          role="button"
+          :aria-label="t('publish.category')"
+          :aria-expanded="showCat ? 'true' : 'false'"
+          aria-controls="publish-category-options"
+          @click="showCat = !showCat"
+        >
           <text class="label">{{ t('publish.category') }}</text>
           <text :class="['field-value', { placeholder: !form.category }]">
             {{ form.category ? t('cat.' + form.category) : t('publish.categorySelect') }}
           </text>
           <view :class="['chevron', { open: showCat }]"><UIcon name="chevron-right" size="xs" color="text-faint" /></view>
         </view>
-        <view v-if="showCat" class="pill-grid">
+        <view v-if="showCat" id="publish-category-options" class="pill-grid">
           <view
             v-for="cat in categoryKeys"
             :key="cat"
             :class="['sel-pill', { active: form.category === cat }]"
+            role="button"
+            :aria-label="t('cat.' + cat)"
+            :aria-pressed="form.category === cat ? 'true' : 'false'"
             @click="onCategoryTap(cat)"
           >
             <text>{{ t('cat.' + cat) }}</text>
+            <UIcon v-if="form.category === cat" class="sel-pill-clear" name="close" size="xs" color="currentColor" aria-hidden="true" />
           </view>
         </view>
       </view>
 
       <!-- Condition: inline pill selector (sell only — N/A for a wanted post) -->
       <view v-if="form.listingType !== 'wanted'" class="form-group">
-        <view class="field-header" @click="showCond = !showCond">
+        <view
+          class="field-header"
+          role="button"
+          :aria-label="t('publish.condition')"
+          :aria-expanded="showCond ? 'true' : 'false'"
+          aria-controls="publish-condition-options"
+          @click="showCond = !showCond"
+        >
           <text class="label">{{ t('publish.condition') }}</text>
           <text :class="['field-value', { placeholder: !form.condition }]">
             {{ form.condition ? t('condition.' + form.condition) : t('publish.conditionSelect') }}
           </text>
           <view :class="['chevron', { open: showCond }]"><UIcon name="chevron-right" size="xs" color="text-faint" /></view>
         </view>
-        <view v-if="showCond" class="pill-grid">
+        <view v-if="showCond" id="publish-condition-options" class="pill-grid">
           <view
             v-for="cond in conditionKeys"
             :key="cond"
             :class="['sel-pill cond-pill', { active: form.condition === cond }]"
+            role="button"
+            :aria-label="t('condition.' + cond)"
+            :aria-pressed="form.condition === cond ? 'true' : 'false'"
             @click="onConditionTap(cond)"
           >
             <text class="cp-name">{{ t('condition.' + cond) }}</text>
             <text class="cp-hint">{{ t('condition.' + cond + '_hint') }}</text>
+            <UIcon v-if="form.condition === cond" class="sel-pill-clear" name="close" size="xs" color="currentColor" aria-hidden="true" />
           </view>
         </view>
       </view>
@@ -123,6 +162,9 @@
           :key="spot.id"
           class="spot-chip"
           :class="{ active: form.location === spotLabel(spot) }"
+          role="button"
+          :aria-label="spotLabel(spot)"
+          :aria-pressed="form.location === spotLabel(spot) ? 'true' : 'false'"
           @click="onSpotChipTap(spot)"
         >
           {{ spotLabel(spot) }}
@@ -148,9 +190,16 @@
         <image v-else class="locate-btn-icon" src="/static/locate.svg" alt="" mode="aspectFit" />
         <text class="locate-btn-text">{{ detectingLoc ? t('publish.detectingLocation') : t('publish.useCurrentLocation') }}</text>
       </view>
+      <OsmAttribution />
       <!-- #endif -->
 
-      <view class="form-group row toggle-row" @click="form.negotiable = !form.negotiable">
+      <view
+        class="form-group row toggle-row"
+        role="button"
+        :aria-label="t('publish.obo')"
+        :aria-pressed="form.negotiable ? 'true' : 'false'"
+        @click="form.negotiable = !form.negotiable"
+      >
         <text class="label">{{ t('publish.obo') }}</text>
         <text class="toggle-hint">{{ t('publish.oboHint') }}</text>
         <view :class="['toggle', { on: form.negotiable }]">
@@ -159,15 +208,16 @@
       </view>
     </view>
 
-    <view v-show="!typing" class="submit-bar">
+    <view v-show="publishReady && !typing" class="submit-bar">
       <UButton size="lg" block :loading="submitting" @click="onSubmit">
         {{ t('publish.submit') }}
       </UButton>
     </view>
 
-    <CustomTabBar current="publish" :hidden="typing" />
+    <CustomTabBar v-if="publishReady" current="publish" :hidden="typing" />
 
     <PermissionDeniedModal
+      v-if="publishReady"
       :visible="permissionModalVisible"
       @close="permissionModalVisible = false"
     />
@@ -181,23 +231,37 @@ const mpChrome = mpChromeVars()
 import AppToast from '../../components/AppToast.vue'
 // #endif
 import { ref, reactive, computed, onUnmounted } from 'vue'
-import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { watch } from 'vue'
 import { useAuth } from '../../composables/useAuth'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 import { useCampusSpots, type CampusSpot } from '../../composables/useCampusSpots'
 import { useLocation } from '../../composables/useLocation'
-import { useItems } from '../../composables/useItems'
+import { useItems, type UploadAccountToken } from '../../composables/useItems'
 import { useTranslate } from '../../composables/useTranslate'
+import { mutationCommitState, mutationOutcomeError, shouldCompensateMutationFailure } from '../../api/mutationCommit'
 import { friendlyErrorMessage, PUBLISHABLE_CATEGORIES } from '../../utils'
 import { DIALOG_INK, DIALOG_WARN } from '../../utils/dialogColors'
+import { captureException } from '../../utils/sentry'
 import type { ItemCategory, ItemCondition } from '../../types'
 import AppSidebar from '../../components/AppSidebar.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PermissionDeniedModal from '../../components/PermissionDeniedModal.vue'
 import UIcon from '../../components/UIcon.vue'
+import OsmAttribution from '../../components/OsmAttribution.vue'
 import UButton from '../../components/UButton.vue'
+import {
+  captureAccountRequest,
+  isAccountRequestCurrent,
+  onAccountTransition,
+  type AccountRequestToken,
+} from '../../composables/accountScope'
+import {
+  readAccountPrivateStorage,
+  removeAccountPrivateStorage,
+  writeAccountPrivateStorage,
+} from '../../api/accountLocalPrivacy'
 
 const { t, lang } = useI18n()
 const { CAMPUS_SPOTS } = useCampusSpots()
@@ -206,8 +270,8 @@ function spotLabel(spot: CampusSpot) {
   return lang.value === 'zh' ? spot.zh : spot.en
 }
 const { detectLocation, detecting: detectingLoc } = useLocation()
-const { requireAuth } = useAuth()
-const { createItem, updateItem, fetchItem, uploadImagesWithDims, fetchItems } = useItems()
+const { currentUser, requireAuth, awaitAuthReady } = useAuth()
+const { createItem, updateItem, fetchItem, uploadImagesWithDims, removeOwnedItemImages, fetchItems } = useItems()
 const { translateItemContent } = useTranslate()
 
 /*
@@ -228,6 +292,8 @@ async function scheduleBilingualFill(
   title: string,
   description: string,
   sourceLang: string,
+  expectedUpdatedAt: string,
+  accountToken: UploadAccountToken,
 ) {
   try {
     if (!title && !description) return
@@ -244,14 +310,15 @@ async function scheduleBilingualFill(
     await updateItem(itemId, {
       title_i18n: Object.keys(title_i18n).length ? title_i18n : null,
       description_i18n: Object.keys(description_i18n).length ? description_i18n : null,
-    })
+    }, { expectedUpdatedAt, accountToken })
   } catch (err) {
-    console.warn('[publish] bilingual fill skipped:', err)
+    console.warn('[publish] bilingual fill skipped')
   }
 }
 
 const { supabase } = useSupabase()
 const avgPrice = ref(0)
+let avgPriceRequestId = 0
 
 const categoryKeys: ItemCategory[] = PUBLISHABLE_CATEGORIES
 const conditionKeys = ['new', 'like_new', 'good', 'fair', 'defective']
@@ -260,7 +327,9 @@ const imageList = ref<string[]>([])
 const showCat = ref(false)
 const showCond = ref(false)
 const submitting = ref(false)
+let submitEntryLocked = false
 const uploadProgress = ref(0)
+const publishReady = ref(false)
 
 /*
  * While a text field has focus on a PHONE viewport, hide the fixed
@@ -302,11 +371,6 @@ const form = reactive({
   listingType: 'sell' as 'sell' | 'wanted',
 })
 
-const locationVerified = ref(false)
-watch(() => form.location, () => {
-  locationVerified.value = false
-})
-
 /*
  * Phase 1b: permission_denied now opens a modal (LocationPermission
  * DeniedModal) instead of a fleeting toast. The modal teaches users
@@ -341,8 +405,10 @@ function onConditionTap(cond: string) {
  */
 
 watch(() => form.category, async (cat) => {
+  const requestId = ++avgPriceRequestId
   if (!cat) { avgPrice.value = 0; return }
   const { data } = await supabase.from('items').select('price').eq('category', cat).eq('status', 'active').limit(50)
+  if (requestId !== avgPriceRequestId) return
   if (data && data.length > 0) {
     avgPrice.value = Math.round(data.reduce((s: number, i: any) => s + Number(i.price), 0) / data.length)
   } else { avgPrice.value = 0 }
@@ -363,30 +429,32 @@ const isDirty = computed(() => {
     form.price.trim().length > 0 ||
     form.category !== '' ||
     form.condition !== '' ||
+    form.location.trim().length > 0 ||
     form.negotiable !== false ||
+    form.listingType !== 'sell' ||
     imageList.value.length > 0
   )
 })
 
 function saveDraft() {
-  try {
-    uni.setStorageSync(DRAFT_KEY, {
-      form: { ...form },
-      images: [...imageList.value],
-      savedAt: Date.now(),
-    })
-  } catch { /* storage full / private mode — ignore */ }
+  writeAccountPrivateStorage(DRAFT_KEY, {
+    form: { ...form },
+    images: [...imageList.value],
+    savedAt: Date.now(),
+  })
 }
 
 function clearDraft() {
-  try { uni.removeStorageSync(DRAFT_KEY) } catch { /* ignore */ }
+  removeAccountPrivateStorage(DRAFT_KEY)
 }
 
 type PublishDraft = { form: Record<string, any>; images: string[]; savedAt: number }
 
 function loadDraft(): PublishDraft | null {
   try {
-    const raw = uni.getStorageSync(DRAFT_KEY)
+    const stored = readAccountPrivateStorage<unknown>(DRAFT_KEY, null)
+    if (!stored.allowed) return null
+    const raw = stored.value
     if (!raw || typeof raw !== 'object') return null
     return raw as PublishDraft
   } catch { return null }
@@ -417,10 +485,15 @@ function resetForm() {
   form.condition = ''
   form.location = ''
   form.negotiable = false
+  form.listingType = 'sell'
+  showCat.value = false
+  showCond.value = false
   imageList.value = []
 }
 
 function promptSaveDraft(onDecided: () => void) {
+  const promptShowVersion = publishShowVersion
+  const promptAccountToken = publishPageAccountToken
   uni.showModal({
     title: t('publish.draftPromptTitle'),
     content: t('publish.draftPromptBody'),
@@ -428,6 +501,14 @@ function promptSaveDraft(onDecided: () => void) {
     cancelText: t('publish.draftDiscard'),
     confirmColor: DIALOG_INK,
     success: (r) => {
+      if (
+        promptShowVersion !== publishShowVersion
+        || !promptAccountToken
+        || !isAccountRequestCurrent(promptAccountToken)
+      ) {
+        pendingTabUrl = ''
+        return
+      }
       if (r.confirm) {
         saveDraft()
         resetForm()
@@ -458,6 +539,10 @@ function promptSaveDraft(onDecided: () => void) {
    interceptor to this page's lifetime so other pages don't inherit it. */
 let switchTabInterceptor: { invoke: (args: any) => boolean } | null = null
 let pendingTabUrl = ''
+const removeScopedInterceptor = uni.removeInterceptor as unknown as (
+  method: string,
+  interceptor: { invoke: (args: any) => boolean },
+) => void
 
 function installTabGuard() {
   if (switchTabInterceptor) return
@@ -482,14 +567,90 @@ function installTabGuard() {
 
 function removeTabGuard() {
   if (switchTabInterceptor) {
-    uni.removeInterceptor('switchTab')
+    // Passing only the method removes every interceptor registered for that
+    // navigation API, including App.vue's consent/suspension gate. Remove this
+    // page's exact handler so the global fail-closed gate remains installed.
+    removeScopedInterceptor('switchTab', switchTabInterceptor)
     switchTabInterceptor = null
   }
 }
 
-onShow(() => {
+let publishShowVersion = 0
+let publishPageAccountToken: AccountRequestToken | null = null
+let publishVisible = false
+let publishOperationEpoch = 0
+let publishPageMounted = true
+
+function resetPublishMemoryState() {
+  publishShowVersion += 1
+  publishOperationEpoch += 1
+  publishReady.value = false
+  publishPageAccountToken = null
+  submitEntryLocked = false
+  submitting.value = false
+  uploadProgress.value = 0
+  permissionModalVisible.value = false
+  pendingTabUrl = ''
+  avgPriceRequestId += 1
+  avgPrice.value = 0
+  if (typingT) {
+    clearTimeout(typingT)
+    typingT = null
+  }
+  typing.value = false
+  removeTabGuard()
+  resetForm()
+}
+
+const stopAccountTransitionListener = onAccountTransition((transition) => {
+  // This runs inside transitionAccount(), before useAuth publishes the next
+  // profile. Hide and erase A's mounted refs synchronously, then only re-open
+  // the still-visible tab after B/anonymous auth and durable storage ownership
+  // have settled.
+  resetPublishMemoryState()
+  if (publishVisible && transition.userId) {
+    void Promise.resolve().then(() => {
+      if (publishPageMounted && publishVisible) return preparePublishPage()
+    })
+  }
+})
+
+async function preparePublishPage() {
+  const showVersion = ++publishShowVersion
+  publishReady.value = false
+  removeTabGuard()
+
+  // A null profile during app startup is not proof of an anonymous session.
+  // Wait for the shared auth handshake before deciding whether to open login,
+  // and keep the editable form hidden until that decision is authoritative.
+  const state = await awaitAuthReady()
+  if (showVersion !== publishShowVersion) return
+  if (state !== 'authenticated') {
+    requireAuth()
+    return
+  }
+  if (!requireAuth() || !currentUser.value) return
+
+  const nextAccountToken = captureAccountRequest(currentUser.value.id)
+  if (
+    publishPageAccountToken
+    && (
+      publishPageAccountToken.userId !== nextAccountToken.userId
+      || publishPageAccountToken.generation !== nextAccountToken.generation
+    )
+  ) {
+    // The tab instance survives account switches; never submit the previous
+    // account's in-memory form under the new session. accountLocalPrivacy owns
+    // persistent A -> B cleanup; this page only clears mounted refs here.
+    resetForm()
+  }
+  publishPageAccountToken = nextAccountToken
+
+  publishReady.value = true
   const draft = loadDraft()
   if (draft && !isDirty.value) {
+    const draftShowVersion = showVersion
+    const draftAccountToken = nextAccountToken
     uni.showModal({
       title: t('publish.draftRestoreTitle'),
       content: t('publish.draftRestoreBody'),
@@ -497,19 +658,69 @@ onShow(() => {
       cancelText: t('publish.draftDiscard'),
       confirmColor: DIALOG_INK,
       success: (r) => {
+        if (
+          draftShowVersion !== publishShowVersion
+          || !isAccountRequestCurrent(draftAccountToken)
+        ) return
         if (r.confirm) applyDraft(draft)
         else if (r.cancel) clearDraft()
       },
     })
   }
   installTabGuard()
+}
+
+function leavePublishPage() {
+  publishShowVersion += 1
+  publishReady.value = false
+  removeTabGuard()
+}
+
+function destroyPublishPage() {
+  if (!publishPageMounted) return
+  publishPageMounted = false
+  publishVisible = false
+  // Preserve a deliberately saved local draft, but synchronously erase the
+  // mounted page's private refs and invalidate in-flight submit/navigation.
+  publishShowVersion += 1
+  publishOperationEpoch += 1
+  publishReady.value = false
+  publishPageAccountToken = null
+  submitEntryLocked = false
+  submitting.value = false
+  uploadProgress.value = 0
+  permissionModalVisible.value = false
+  pendingTabUrl = ''
+  avgPriceRequestId += 1
+  avgPrice.value = 0
+  if (typingT) {
+    clearTimeout(typingT)
+    typingT = null
+  }
+  typing.value = false
+  removeTabGuard()
+  resetForm()
+  stopAccountTransitionListener()
+}
+
+onShow(() => {
+  if (!publishPageMounted) return
+  publishVisible = true
+  void preparePublishPage()
 })
 
-onHide(() => { removeTabGuard() })
-onUnload(() => { removeTabGuard() })
-onUnmounted(() => { removeTabGuard() })
+onHide(() => {
+  publishVisible = false
+  leavePublishPage()
+})
+onUnload(() => {
+  destroyPublishPage()
+})
+onUnmounted(destroyPublishPage)
 
 function chooseImage() {
+  const pickerAccountToken = publishPageAccountToken
+  if (!pickerAccountToken || !isAccountRequestCurrent(pickerAccountToken)) return
   const remaining = MAX_IMAGES_PUBLISH - imageList.value.length
   if (remaining <= 0) {
     uni.showToast({ title: t('publish.imageMaxReached'), icon: 'none' })
@@ -520,11 +731,18 @@ function chooseImage() {
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
     success: (res) => {
+      if (
+        !publishReady.value
+        || publishPageAccountToken !== pickerAccountToken
+        || !isAccountRequestCurrent(pickerAccountToken)
+      ) return
       /* On H5 the `count` hint is advisory — the underlying <input
          type="file" multiple> lets users pick unlimited files. Enforce
          the cap here and surface it to the user (WeChat-style) instead
          of silently truncating. */
-      const picked = res.tempFilePaths || []
+      const picked = Array.isArray(res.tempFilePaths)
+        ? res.tempFilePaths
+        : res.tempFilePaths ? [res.tempFilePaths] : []
       const accepted = picked.slice(0, remaining)
       const dropped = picked.length - accepted.length
       imageList.value.push(...accepted)
@@ -544,9 +762,16 @@ function removeImage(index: number) {
 }
 
 async function onDetectLocation() {
+  const locationAccountToken = publishPageAccountToken
+  if (!locationAccountToken || !isAccountRequestCurrent(locationAccountToken)) return
   const result = await detectLocation()
+  if (
+    !publishReady.value
+    || publishPageAccountToken !== locationAccountToken
+    || !isAccountRequestCurrent(locationAccountToken)
+  ) return
   if (!result.ok) {
-    console.warn('[publish-debug] location detect failed:', result.reason)
+    console.warn('[publish] location detect failed')
     /*
      * Phase 1b dispatch: permission_denied → modal (teach the
      * Settings path), other reasons → toast (retryable or rare
@@ -573,59 +798,52 @@ async function onDetectLocation() {
     return
   }
   form.location = result.location
-  // #4: any successful GPS fix grants the "verified pickup" badge — not just
-  // the 10 named safe spots (a geocoded street/city rarely matches one, so
-  // real GPS effectively never earned the badge before). Defer past the
-  // form.location watcher (flush:'pre' microtask) that resets the flag to
-  // false, or it would clobber this — same hazard the edit.vue load path
-  // already works around the same way. (Promise.resolve().then, not
-  // queueMicrotask — not guaranteed on the WeChat mp logic layer.)
-  Promise.resolve().then(() => { locationVerified.value = true })
 }
 
-/*
- * Trace shim around the spot-chip tap path.
- *
- * Investigating user-reported "selected location but the listing
- * details show empty/UIUC default" — static analysis finds no
- * obvious cause: chip click sets form.location, payload includes it,
- * createItem inserts it, detail page reads it. Logging the actual
- * values seen at runtime is the cheapest way to isolate which
- * link in that chain is breaking. Three possibilities the trace
- * will distinguish:
- *
- *   1. Chip @click never fires → the log line below is missing
- *      from the user's console paste; problem is event binding.
- *   2. Chip fires but assignment doesn't stick → log shows the
- *      label being assigned, but the submit-time form.location log
- *      shows empty (the field's clean default); problem is reactivity.
- *   3. Assignment sticks all the way to payload but DB write loses
- *      it → submit + payload logs show the right value but the
- *      createItem-result log shows location empty / default;
- *      problem is server-side (RLS column projection, trigger).
- *
- * The function name `onSpotChipTap` (vs an inline expression in the
- * template) also gives the user a single point to add a breakpoint
- * to from devtools without re-reading template diff.
- */
 function onSpotChipTap(spot: CampusSpot) {
   const label = spotLabel(spot)
-  console.log('[publish-debug] spot chip tapped:', { id: spot.id, label, prevLocation: form.location })
   form.location = label
 }
 
 async function onSubmit() {
+  // Acquire before the first await (including auth readiness and the high-price
+  // confirmation modal). Two rapid taps must never enter parallel upload or
+  // create flows while the visible submitting state is still false.
+  if (submitEntryLocked) return
+  submitEntryLocked = true
+  const operationEpoch = ++publishOperationEpoch
+  const operationShowVersion = publishShowVersion
+  const entryAccountToken = publishPageAccountToken
+  const operationStillCurrent = () => (
+    operationEpoch === publishOperationEpoch
+    && operationShowVersion === publishShowVersion
+    && publishPageMounted
+    && publishVisible
+    && publishReady.value
+    && entryAccountToken !== null
+    && publishPageAccountToken === entryAccountToken
+    && isAccountRequestCurrent(entryAccountToken)
+  )
+  try {
+  await awaitAuthReady()
+  if (!operationStillCurrent()) return
   if (!requireAuth()) return
   // Required-field hard blocks — order matches form visual top-to-bottom flow
   if (!form.title.trim()) { uni.showToast({ title: t('publish.needTitle'), icon: 'none' }); return }
   // A wanted post relaxes price (budget optional → 0) and condition (N/A).
-  if (form.listingType !== 'wanted' && (!form.price || Number(form.price) < 0)) { uni.showToast({ title: t('publish.needPrice'), icon: 'none' }); return }
+  const rawPrice = form.price.trim()
+  const price = rawPrice === '' && form.listingType === 'wanted'
+    ? 0
+    : /^\d+(?:\.\d{1,2})?$/.test(rawPrice)
+      ? Number(rawPrice)
+      : Number.NaN
+  if (!Number.isFinite(price) || price < 0) { uni.showToast({ title: t('publish.needPrice'), icon: 'none' }); return }
   if (!form.category) { uni.showToast({ title: t('publish.needCategory'), icon: 'none' }); return }
   if (form.listingType !== 'wanted' && !form.condition) { uni.showToast({ title: t('publish.needCondition'), icon: 'none' }); return }
   // Soft gating — price advisory uses modal confirm so user must ack but can continue.
   // 100,000 is a soft ceiling; 99% of trips above it are unit/decimal mistakes,
   // and user actively confirming is cheap insurance.
-  if (Number(form.price) > 100000) {
+  if (price > 100000) {
     const confirmed = await new Promise<boolean>((resolve) => {
       uni.showModal({
         title: t('publish.priceTooHigh'),
@@ -637,12 +855,20 @@ async function onSubmit() {
         fail: () => resolve(false),
       })
     })
-    if (!confirmed) return
+    if (!confirmed || !operationStillCurrent()) return
   }
+
+  if (!operationStillCurrent() || !entryAccountToken) {
+    uni.showToast({ title: t('publish.fail'), icon: 'none' })
+    return
+  }
+  const submitAccountToken = entryAccountToken
 
   submitting.value = true
   uploadProgress.value = 0
-  const failsafe = setTimeout(() => { submitting.value = false }, 60000)
+  let uploadedForCleanup: string[] = []
+  let uploadAccountToken: UploadAccountToken | null = null
+  let itemCreated = false
   try {
     const existing: string[] = []
     const toUpload: string[] = []
@@ -650,22 +876,30 @@ async function onSubmit() {
       if (img.startsWith('http')) existing.push(img)
       else toUpload.push(img)
     }
-    console.log('[publish-debug] images split — existing:', existing.length, 'toUpload:', toUpload.length)
-
     let uploaded: string[] = []
     let uploadedDims: Array<{ w: number; h: number }> = []
     if (toUpload.length > 0) {
       try {
-        const res = await uploadImagesWithDims(toUpload, { entryPoint: 'publish' })
+        const res = await uploadImagesWithDims(toUpload, {
+          entryPoint: 'publish',
+          accountToken: submitAccountToken,
+        })
         uploaded = res.urls
+        uploadedForCleanup = [...res.urls]
         uploadedDims = res.dims
+        uploadAccountToken = res.accountToken
+        if (
+          res.accountToken.userId !== submitAccountToken.userId
+          || res.accountToken.generation !== submitAccountToken.generation
+          || !isAccountRequestCurrent(submitAccountToken)
+        ) {
+          throw mutationOutcomeError(new Error('Account changed during item upload'), 'not_committed')
+        }
       } catch (upErr: any) {
-        console.warn('[publish-debug] upload threw:', upErr)
         if (upErr?.heic === true) throw new Error(t('heic.unsupported'))
         throw new Error(upErr?.message || t('publish.uploadFailed'))
       }
       uploadProgress.value = 100
-      console.log('[publish-debug] uploaded:', uploaded.length, '/', toUpload.length)
       if (uploaded.length === 0) {
         throw new Error(t('publish.uploadFailed'))
       }
@@ -673,6 +907,9 @@ async function onSubmit() {
          swallowed. uploadImagesWithDims() catches per-file errors and skips
          them, so uploaded.length < toUpload.length means some images were lost. */
       if (uploaded.length < toUpload.length) {
+        if (!operationStillCurrent()) {
+          throw mutationOutcomeError(new Error('Account changed during item upload'), 'not_committed')
+        }
         uni.showToast({
           title: t('publish.imagesUploaded', { done: uploaded.length, total: toUpload.length }),
           icon: 'none',
@@ -702,32 +939,12 @@ async function onSubmit() {
     // did they think in while writing this listing".
     const sourceLang = lang.value
 
-    /*
-     * Diagnostic snapshot of the form state at submit time. Pairs
-     * with the spot-chip + detect-location traces above to isolate
-     * the "user picked a location but it didn't persist" report.
-     * Truncates verbose fields (title/description/images URLs) so
-     * the log line stays readable when pasted from the user's H5
-     * devtools console.
-     */
-    console.log('[publish-debug] submit prep — form snapshot:', {
-      title: trimmedTitle.slice(0, 40),
-      category: form.category,
-      condition: form.condition,
-      price: form.price,
-      location: form.location,
-      locationVerified: locationVerified.value,
-      negotiable: form.negotiable,
-      imagesCount: imageList.value.length,
-      sourceLang,
-    })
-
     const payload = {
       title: trimmedTitle,
       description: trimmedDesc,
       // Wanted posts: empty budget → 0 (reads as "open budget"); condition is
       // N/A so fall back to the column default so the NOT NULL insert succeeds.
-      price: Number(form.price) || 0,
+      price,
       category: form.category as ItemCategory,
       condition: (form.condition || 'good') as ItemCondition,
       listing_type: form.listingType,
@@ -740,36 +957,52 @@ async function onSubmit() {
       description_i18n: trimmedDesc ? { [sourceLang]: trimmedDesc } : null,
       source_lang: sourceLang,
       negotiable: form.negotiable,
-      location_verified: locationVerified.value,
     }
 
-    /*
-     * Same trace, post-payload-construction. Compare the location
-     * value here against the form.location above — if they diverge,
-     * the `|| ''` fallback was hit (form.location was falsy at
-     * submit time despite the user appearing to have selected one).
-     * Post-Phase-1b: empty string is the honest default; the old
-     * 'UIUC' sentinel masked unfilled-location submissions.
-     */
-    console.log('[publish-debug] submit prep — payload location field:', {
-      payloadLocation: payload.location,
-      payloadLocationVerified: payload.location_verified,
-      finalImagesCount: payload.images.length,
+    const newItem = await createItem(payload, {
+      accountToken: submitAccountToken,
     })
-
-    const newItem = await createItem(payload)
-    console.log('[publish-debug] createItem returned — DB row location:', newItem?.location, 'id:', newItem?.id)
+    if (!operationStillCurrent()) {
+      throw mutationOutcomeError(new Error('Account changed after item create'), 'committed')
+    }
+    itemCreated = true
     uploadProgress.value = 0
-    form.title = ''; form.description = ''; form.price = ''
-    form.category = ''; form.condition = ''; form.location = ''
-    form.negotiable = false; imageList.value = []
+    resetForm()
     clearDraft()
     uni.showToast({ title: t('publish.success'), icon: 'success' })
-    scheduleBilingualFill(newItem.id, trimmedTitle, trimmedDesc, sourceLang)
+    scheduleBilingualFill(
+      newItem.id,
+      trimmedTitle,
+      trimmedDesc,
+      sourceLang,
+      newItem.updated_at,
+      submitAccountToken,
+    )
     setTimeout(() => {
-      uni.navigateTo({ url: `/pages/detail/index?id=${newItem.id}` })
+      if (operationStillCurrent()) {
+        uni.navigateTo({ url: `/pages/detail/index?id=${newItem.id}` })
+      }
     }, 1000)
   } catch (error: any) {
+    if (!itemCreated && shouldCompensateMutationFailure(error) && uploadedForCleanup.length > 0) {
+      try {
+        await removeOwnedItemImages(uploadedForCleanup, {
+          ownerUserId: uploadAccountToken?.userId,
+          telemetrySource: 'publish.upload_cleanup',
+        })
+      } catch (cleanupError) {
+        captureException(cleanupError, { tags: { source: 'publish.upload_cleanup' }, level: 'warning' })
+      }
+    } else if (!itemCreated && mutationCommitState(error) === 'unknown' && uploadedForCleanup.length > 0) {
+      // The request may have committed before its response was lost. Deleting
+      // now could break the authoritative row, so retain for reconciliation/GC.
+      captureException(error, {
+        tags: { source: 'publish.create_commit_unknown', orphan_risk: 'true' },
+        extra: { objectCount: uploadedForCleanup.length },
+        level: 'warning',
+      })
+    }
+    if (!operationStillCurrent()) return
     // Backend createItem/updateItem in useItems.ts throw 'Invalid price' when
     // input.price > 1,000,000 (the hard cap, defense-in-depth above the 100k
     // soft ceiling enforced by the modal earlier in onSubmit). Translate to a
@@ -780,16 +1013,20 @@ async function onSubmit() {
       uni.showToast({ title: t('publish.priceExceedsLimit'), icon: 'none', duration: 3000 })
       return
     }
-    console.error('Publish error:', error)
+    captureException(error, { tags: { source: 'publish.create' }, level: 'error' })
     uni.showToast({
       title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('publish.fail'),
       icon: 'none',
       duration: 3000,
     })
   } finally {
-    clearTimeout(failsafe)
-    submitting.value = false
-    uploadProgress.value = 0
+    if (operationEpoch === publishOperationEpoch) {
+      submitting.value = false
+      uploadProgress.value = 0
+    }
+  }
+  } finally {
+    if (operationEpoch === publishOperationEpoch) submitEntryLocked = false
   }
 }
 </script>
@@ -802,6 +1039,18 @@ async function onSubmit() {
      devices. */
   padding-bottom: calc(146px + env(safe-area-inset-bottom, 0px)); max-width: 480px; margin: 0 auto;
 }
+
+.auth-check {
+  min-height: calc(100vh - 146px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; color: var(--text-subtle);
+}
+.auth-check-spinner {
+  width: 20px; height: 20px;
+  border: 2px solid var(--line-soft); border-top-color: var(--accent-primary);
+  border-radius: 50%; animation: spin 0.7s linear infinite;
+}
+.auth-check-text { font-size: 13px; color: var(--text-subtle); }
 
 /* ========== Header ========== */
 .page-header {
@@ -846,18 +1095,9 @@ async function onSubmit() {
 .preview-image { width: 100%; height: 100%; border-radius: 9px; object-fit: cover; }
 .remove-btn {
   position: absolute; top: -5px; right: -5px;
-  width: 20px; height: 20px; background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);
+  width: 32px; height: 32px; background: rgba(0,0,0,0.62); backdrop-filter: blur(4px);
   border-radius: 50%; display: flex; align-items: center; justify-content: center;
   cursor: pointer;
-}
-.remove-x {
-  width: 10px; height: 10px; position: relative;
-  &::before, &::after {
-    content: ''; position: absolute; top: 50%; left: 0;
-    width: 10px; height: 1.5px; background: var(--bg-elev-1); border-radius: 1px;
-  }
-  &::before { transform: rotate(45deg); }
-  &::after { transform: rotate(-45deg); }
 }
 .cover-tag {
   position: absolute; bottom: 0; left: 0; right: 0;
@@ -875,9 +1115,9 @@ async function onSubmit() {
   transition: background var(--dur-1, 120ms) var(--ease-std, ease);
   &:active { background: var(--paper-2); }
 }
-.add-text { font-size: 11px; color: var(--text-faint); }
-.add-count { font-size: 10px; color: var(--text-faint); margin-top: 2px; font-variant-numeric: tabular-nums; }
-.image-tip { font-size: 12px; color: var(--text-faint); margin-top: 12px; display: block; line-height: 1.5; }
+.add-text { font-size: 11px; color: var(--text-subtle); }
+.add-count { font-size: 10px; color: var(--text-subtle); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.image-tip { font-size: 12px; color: var(--text-subtle); margin-top: 12px; display: block; line-height: 1.5; }
 
 /* ========== Upload Progress ========== */
 .upload-bar {
@@ -914,7 +1154,7 @@ async function onSubmit() {
   .currency { font-size: 17px; color: var(--text-primary); font-weight: 700; margin-right: 4px; }
 }
 .flex-input { flex: 1; }
-.char-count { display: block; text-align: right; font-size: 11px; color: var(--text-faint); margin-top: 4px; }
+.char-count { display: block; text-align: right; font-size: 11px; color: var(--text-subtle); margin-top: 4px; }
 .price-hint { padding: 0 16px 8px; font-size: 12px; color: var(--text-muted); }
 
 .field-header {
@@ -923,7 +1163,7 @@ async function onSubmit() {
 }
 .field-value {
   flex: 1; text-align: right; font-size: 15px; color: var(--text-primary);
-  &.placeholder { color: var(--text-faint); }
+  &.placeholder { color: var(--text-subtle); }
 }
 .chevron {
   display: flex; margin-left: 8px;
@@ -943,24 +1183,11 @@ async function onSubmit() {
   position: relative;
   &.active {
     background: var(--accent-primary); color: #fff;
-    /* × hint: tells the user "tap again to deselect". Pure CSS, no
-       icon dep. Only renders on active state so the inactive pill
-       layout stays unchanged. */
     padding-right: 26px;
-    &::after {
-      content: '×';
-      position: absolute;
-      right: 9px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 14px;
-      line-height: 1;
-      color: rgba(255, 255, 255, 0.65);
-      font-weight: 400;
-    }
   }
   &:active { transform: scale(0.96); }
 }
+.sel-pill-clear { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); opacity: 0.72; }
 .cond-pill {
   display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
   padding: 8px 14px;
@@ -995,7 +1222,9 @@ async function onSubmit() {
   justify-content: flex-start;
   gap: 8px;
   padding: 12px 14px;
-  margin-top: 10px;
+  /* Align this secondary action with the 16px form gutter. A full-bleed
+     outlined control looked accidentally clipped on narrow Safari screens. */
+  margin: 10px 16px 0;
   background: var(--bg-subtle);
   border: 1px solid var(--border-strong, var(--bg-inset));
   border-radius: 10px;
@@ -1039,7 +1268,7 @@ async function onSubmit() {
 
 /* ========== Toggle ========== */
 .toggle-row { cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.toggle-hint { flex: 1; font-size: 13px; color: var(--text-faint); text-align: right; margin-right: 10px; }
+.toggle-hint { flex: 1; font-size: 13px; color: var(--text-subtle); text-align: right; margin-right: 10px; }
 .toggle {
   width: 44px; height: 26px; border-radius: 13px;
   background: var(--border-strong);

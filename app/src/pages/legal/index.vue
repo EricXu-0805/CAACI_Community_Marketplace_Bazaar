@@ -4,22 +4,27 @@
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
       <text class="header-title">{{ title }}</text>
     </view>
-    <view class="tabs">
+    <view class="tabs" role="tablist" :aria-label="t('legal.terms')">
       <view
         v-for="tab in tabs"
         :key="tab.type"
         :class="['tab', { active: docType === tab.type }]"
+        role="tab"
+        :tabindex="docType === tab.type ? 0 : -1"
+        :aria-selected="docType === tab.type ? 'true' : 'false'"
+        aria-controls="legal-document-panel"
         @click="docType = tab.type"
+        @keydown="onLegalTabKeydown($event, tab.type)"
       >
         <text>{{ tab.label }}</text>
       </view>
     </view>
-    <scroll-view class="content" scroll-y :show-scrollbar="false">
+    <scroll-view id="legal-document-panel" class="content" scroll-y :show-scrollbar="false" role="tabpanel">
       <view class="disclaimer">
         <text class="disclaimer-text">{{ disclaimer }}</text>
       </view>
       <text class="body">{{ body }}</text>
-      <view class="contact-row" @click="onContactEmail">
+      <view class="contact-row" role="button" :aria-label="t('legal.contactLabel') + ': ' + contactEmail" @click="onContactEmail">
         <text class="contact-label">{{ t('legal.contactLabel') }}</text>
         <text class="contact-email">{{ contactEmail }}</text>
         <text class="contact-hint">{{ t('legal.contactHint') }}</text>
@@ -31,7 +36,7 @@
 <script setup lang="ts">
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import {
@@ -41,6 +46,7 @@ import {
   type LegalDocType,
 } from '../../legal'
 import { SUPPORT_EMAIL } from '../../config/runtime'
+import { navigateBackOr } from '../../utils'
 import UIcon from '../../components/UIcon.vue'
 
 const { t, lang } = useI18n()
@@ -52,6 +58,20 @@ const tabs = computed(() => [
   { type: 'privacy' as LegalDocType,    label: t('legal.privacy') },
   { type: 'guidelines' as LegalDocType, label: t('legal.guidelines') },
 ])
+
+function onLegalTabKeydown(event: KeyboardEvent, current: LegalDocType) {
+  const order: LegalDocType[] = ['terms', 'privacy', 'guidelines']
+  let nextIndex = order.indexOf(current)
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (nextIndex + 1) % order.length
+  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (nextIndex - 1 + order.length) % order.length
+  else if (event.key === 'Home') nextIndex = 0
+  else if (event.key === 'End') nextIndex = order.length - 1
+  else return
+  event.preventDefault()
+  const tabList = (event.currentTarget as HTMLElement | null)?.parentElement
+  docType.value = order[nextIndex]
+  nextTick(() => tabList?.querySelectorAll<HTMLElement>('[role="tab"]')[nextIndex]?.focus())
+}
 
 const title = computed(() => {
   const tab = tabs.value.find(x => x.type === docType.value)
@@ -65,12 +85,12 @@ const body = computed(() => {
   return zh ? TERMS_ZH : TERMS_EN
 })
 
-// Operator + liability disclaimer, shown above every legal tab. Page chrome,
-// not part of the consent-versioned terms/privacy bodies, so it never triggers
-// re-consent. Contact email lives in the contact-row below (not duplicated).
+// Short, redundant summary shown above every tab. The material operator and
+// liability language also lives in the versioned Terms, so it is covered by
+// the consent bundle rather than relying on unversioned page chrome.
 const disclaimer = computed(() => lang.value === 'zh'
-  ? '香槟集市是 Guoyi (Eric) Xu 运营的社区项目，面向 UIUC 学生的点对点二手集市。平台不持有、不寄送、不担保任何商品，也不保证卖家或商品的真实性、品质与安全；交易与线下面交的风险由买卖双方自行承担。'
-  : 'Illini Market is a community project operated by Guoyi (Eric) Xu — a peer-to-peer marketplace for UIUC students. We do not hold, ship, or guarantee any item, and make no warranty as to the authenticity, quality, or safety of any listing or seller. You transact and meet in person at your own risk.')
+  ? '香槟集市是 Guoyi (Eric) Xu 运营的社区项目，面向 UIUC 社区的点对点二手集市。平台不持有、不寄送、不担保任何商品，也不保证卖家或商品的真实性、品质与安全；交易与线下面交的风险由买卖双方自行承担。'
+  : 'Illini Market is a community project operated by Guoyi (Eric) Xu — a peer-to-peer marketplace for the UIUC community. We do not hold, ship, or guarantee any item, and make no warranty as to the authenticity, quality, or safety of any listing or seller. You transact and meet in person at your own risk.')
 
 onLoad((options) => {
   const t = options?.type
@@ -79,7 +99,7 @@ onLoad((options) => {
   }
 })
 
-function goBack() { uni.navigateBack() }
+function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/index/index' })) }
 
 function onContactEmail() {
   // #ifdef H5
@@ -162,5 +182,5 @@ function onContactEmail() {
 }
 .contact-label { display: block; font-size: 12px; color: var(--text-muted); font-weight: 600; }
 .contact-email { display: block; font-size: 15px; color: var(--text-primary); font-weight: 600; margin-top: 4px; text-decoration: underline; }
-.contact-hint { display: block; font-size: 11px; color: var(--text-faint); margin-top: 6px; line-height: 1.5; }
+.contact-hint { display: block; font-size: 11px; color: var(--text-subtle); margin-top: 6px; line-height: 1.5; }
 </style>

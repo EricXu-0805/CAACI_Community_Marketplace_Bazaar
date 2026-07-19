@@ -7,7 +7,7 @@
  * - Filled: fill: currentColor, no stroke (multi-tone detail = evenodd knockout
  *   so it reads as the background, never a hard-coded color — tints anywhere)
  *
- * 45 icon names, 54 total SVG variants. Some have regular + filled weight pair
+ * 46 icon names, 55 total SVG variants. Some have regular + filled weight pair
  * (tab bar, content actions). Others stroke-only (utility, categories, etc).
  *
  * Aliases note: the search-page sublease category chip should use
@@ -22,7 +22,7 @@
 export type IconName =
   | 'home' | 'plaza' | 'messages' | 'profile'
   | 'heart' | 'chat-bubble' | 'bell' | 'tag' | 'lightbulb'
-  | 'back' | 'share' | 'image' | 'video' | 'search' | 'filter' | 'plus' | 'close' | 'check'
+  | 'back' | 'share' | 'image' | 'video' | 'search' | 'filter' | 'plus' | 'close' | 'check' | 'refresh'
   | 'more-horizontal' | 'more-vertical' | 'chevron-right' | 'chevron-left'
   | 'coffee' | 'graduation'
   | 'history' | 'user-plus' | 'bookmark' | 'layout-grid'
@@ -70,6 +70,7 @@ export const ICONS: Record<string, string> = {
   'plus-regular':            `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.6v14.8"/><path d="M4.6 12h14.8"/></svg>`,
   'close-regular':           `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`,
   'check-regular':           `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>`,
+  'refresh-regular':         `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.9-4"/><path d="M4 3v4h4"/><path d="M4 13a8 8 0 0 0 14.9 4"/><path d="M20 21v-4h-4"/></svg>`,
   'more-horizontal-regular': `<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>`,
   'more-vertical-regular':   `<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>`,
   'chevron-right-regular':   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>`,

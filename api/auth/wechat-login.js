@@ -1,298 +1,371 @@
+import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from '../_deployment-boundary.js'
+
 export const config = { runtime: 'edge' }
 
 /*
  * /api/auth/wechat-login — mp-weixin silent sign-in endpoint.
  *
- * Architecture (v3, 2025-12 — wechat_password_map era):
+ * Passwordless custom-provider flow (v4):
  *
- *   1. Client calls wx.login() → js_code
- *   2. POST { js_code, nickname?, avatar_url? } here
- *   3. We call api.weixin.qq.com/sns/jscode2session with AppSecret
- *      (server-only) → openid [+ unionid]
- *   4. Resolve the user's GoTrue password:
- *        a. Look up wechat_password_map[openid]. If found, use it.
- *        b. Otherwise generate a fresh 32-byte random hex password,
- *           call admin.updateUserById to set it on auth.users (or
- *           admin.createUser if the row doesn't exist yet), then
- *           UPSERT into wechat_password_map for next time.
- *        c. Transitional fallback: if migration 035 has not been
- *           applied (table missing → 404 from PostgREST), and the
- *           legacy WECHAT_USER_PASSWORD_SALT env var IS set, derive
- *           the password via HMAC like v2 used to. This branch will
- *           be removed once the wechat_password_map table is
- *           guaranteed-present in every environment.
- *   5. POST /auth/v1/token?grant_type=password → real GoTrue session
- *      with access_token AND refresh_token.
- *   6. PATCH /rest/v1/profiles?id=eq.<user_id> using service_role to
- *      bind wechat_openid + wechat_unionid onto the freshly-created
- *      profile row, fill nickname/avatar if the trigger defaulted
- *      them.
- *   7. Return the session body verbatim to the client.
+ *   1. The mini program obtains a single-use js_code with wx.login().
+ *   2. This endpoint applies a fail-closed atomic network limit before
+ *      contacting WeChat. Limiter keys are HMAC-pseudonymized; raw IPs and
+ *      js_codes are never written to the limiter table.
+ *   3. WeChat exchanges js_code for openid/unionid server-side, followed by a
+ *      second fail-closed limit on the pseudonymized identity.
+ *   4. Supabase Admin generate_link(type=magiclink) creates or reuses the
+ *      deterministic placeholder-email user and returns a one-time token hash.
+ *   5. /auth/v1/verify exchanges that token hash for a real access/refresh
+ *      session. No email is sent and this endpoint creates, retrieves and
+ *      returns no reusable plaintext password.
+ *   6. The service role binds the verified WeChat identity to the same profile
+ *      id before the session is returned.
  *
- * Why per-user random passwords instead of HMAC(openid, SALT):
- *   · Single-secret blast radius: a leaked SALT lets an attacker
- *     compute every user's plaintext password from their (non-secret)
- *     openid. Per-user random passwords cap the damage at one user.
- *   · Rotatable: rotating SALT in v2 invalidated EVERY existing
- *     user. Rotating one row in wechat_password_map invalidates
- *     exactly that user — they can re-login and get a fresh password.
- *   · Defense in depth: the password row in postgres is plaintext
- *     (not bcrypt) so we can pass it to GoTrue's signInWithPassword
- *     unchanged. Mitigations: RLS deny-all on wechat_password_map,
- *     no anon/authenticated grants, service_role-only access. A DB
- *     dump still requires the WeChat AppSecret + email mapping to
- *     be useful to an attacker.
+ * This is the server-side custom-provider flow implemented by the installed
+ * @supabase/auth-js client: admin.generateLink() calls /admin/generate_link,
+ * and verifyOtp({ token_hash, type }) calls /verify. Existing password-era
+ * WeChat users keep the same deterministic email, so they transition on their
+ * next login without reading or mutating public.wechat_password_map.
+ * Deployment cleanup must separately rotate legacy Auth passwords and purge
+ * that historical table; switching this endpoint alone cannot invalidate
+ * credentials exposed by an old database dump or backup.
  *
- * Environment variables REQUIRED on Vercel (production + preview):
- *
- *   WECHAT_APPID                — mp.weixin.qq.com · 开发设置
- *   WECHAT_APPSECRET            — ditto (NEVER commit, NEVER expose)
- *   SUPABASE_URL                — https://<ref>.supabase.co
- *   SUPABASE_SERVICE_ROLE_KEY   — Dashboard · API Keys · service_role
- *   SUPABASE_ANON_KEY           — Dashboard · API Keys · anon
- *
- * Env var TRANSITIONAL (drop after all active users have migrated):
- *
- *   WECHAT_USER_PASSWORD_SALT   — only consulted when the new
- *                                 wechat_password_map table is
- *                                 unreachable (e.g. migration 035
- *                                 not yet applied). Once you confirm
- *                                 every active user has a row in
- *                                 wechat_password_map you can delete
- *                                 the env var; the lookup branch
- *                                 will then surface a clear error
- *                                 to anyone who never re-logged.
+ * Required server-only environment variables:
+ *   WECHAT_APPID, WECHAT_APPSECRET, SUPABASE_URL,
+ *   SUPABASE_SECRET_KEY, SUPABASE_PUBLISHABLE_KEY
+ * Legacy SUPABASE_SERVICE_ROLE_KEY / SUPABASE_ANON_KEY remain rolling fallbacks.
  */
 
-function env(name, fallback) {
-  return process.env[name] || fallback
+const MAX_BODY_BYTES = 2 * 1024
+const RATE_WINDOW_SECONDS = 10 * 60
+const RATE_IP_MAX = 30
+const RATE_IDENTITY_MAX = 20
+const UPSTREAM_TIMEOUT_MS = 8_000
+const UPSTREAM_RESPONSE_MAX_BYTES = 256 * 1024
+const REQUEST_BODY_TIMEOUT_MS = 5_000
+const VERIFY_ATTEMPTS = 2
+const AUTH_API_VERSION = '2024-01-01'
+
+function env(name, fallback = '') {
+  return String(process.env[name] || fallback).trim()
 }
 
-const WECHAT_APPID     = env('WECHAT_APPID', '')
-const WECHAT_APPSECRET = env('WECHAT_APPSECRET', '')
-const SUPABASE_URL     = env('SUPABASE_URL', env('VITE_SUPABASE_URL', ''))
-const SUPABASE_SERVICE = env('SUPABASE_SERVICE_ROLE_KEY', '')
-const SUPABASE_ANON    = env('SUPABASE_ANON_KEY', env('VITE_SUPABASE_ANON_KEY', ''))
-const PASSWORD_SALT    = env('WECHAT_USER_PASSWORD_SALT', '')
+const WECHAT_APPID = env('WECHAT_APPID')
+const WECHAT_APPSECRET = env('WECHAT_APPSECRET')
+const SUPABASE_URL_RAW = env('SUPABASE_URL', env('VITE_SUPABASE_URL'))
+const SUPABASE_SERVICE = env('SUPABASE_SECRET_KEY', env('SUPABASE_SERVICE_ROLE_KEY'))
+const SUPABASE_ANON = env(
+  'SUPABASE_PUBLISHABLE_KEY',
+  env('SUPABASE_ANON_KEY', env('VITE_SUPABASE_PUBLISHABLE_KEY', env('VITE_SUPABASE_ANON_KEY'))),
+)
 
-function json(body, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-store',
+function normalizedSupabaseOrigin(raw) {
+  try {
+    const url = new URL(raw)
+    const localHttp = url.protocol === 'http:'
+      && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
+    if (url.protocol !== 'https:' && !localHttp) return ''
+    if (url.username || url.password || url.search || url.hash) return ''
+    if (url.pathname !== '/' && url.pathname !== '') return ''
+    return url.origin
+  } catch {
+    return ''
+  }
+}
+
+const SUPABASE_URL = normalizedSupabaseOrigin(SUPABASE_URL_RAW)
+
+function supabaseHeaders(key, authorization = '', extra = {}) {
+  const headers = { apikey: key, ...extra }
+  if (authorization) headers.Authorization = authorization
+  else if (!/^sb_(?:publishable|secret)_/.test(key)) headers.Authorization = `Bearer ${key}`
+  return headers
+}
+
+function json(body, status = 200, requestId = '') {
+  const headers = {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+  }
+  if (requestId) headers['X-Request-Id'] = requestId
+  return new Response(JSON.stringify(body), { status, headers })
+}
+
+function requestId() {
+  try { return crypto.randomUUID() } catch { return 'wechat-login' }
+}
+
+function endpointError(code, stage, status = 500, upstreamCode = '') {
+  const error = new Error(code)
+  error.stage = stage
+  error.status = status
+  error.upstreamCode = upstreamCode
+  return error
+}
+
+function safeCode(value, fallback = '') {
+  const text = typeof value === 'string' ? value : String(value || '')
+  return /^[a-zA-Z0-9_.-]{1,80}$/.test(text) ? text : fallback
+}
+
+function logFailure(id, error) {
+  // Deliberately exclude URLs, request bodies, openids, emails, tokens and
+  // upstream response bodies. The request id is enough to correlate stages.
+  try {
+    console.error('[wechat-login] request failed', {
+      request_id: id,
+      stage: safeCode(error?.stage, 'unknown'),
+      code: safeCode(error?.message, 'unexpected_failure'),
+      upstream_code: safeCode(error?.upstreamCode),
+      upstream_status: Number.isInteger(error?.upstreamStatus)
+        ? error.upstreamStatus
+        : undefined,
+    })
+  } catch {}
+}
+
+function transportError(code) {
+  const error = new Error(code)
+  error.code = code
+  return error
+}
+
+async function readBoundedStream(
+  stream,
+  maxBytes,
+  timeoutMs,
+  { timeoutCode, tooLargeCode, onTimeout } = {},
+) {
+  if (!stream) return new Uint8Array()
+  const reader = stream.getReader()
+  const chunks = []
+  let total = 0
+  let timer = null
+  try {
+    return await Promise.race([
+      (async () => {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          if (!(value instanceof Uint8Array)) throw transportError('invalid_body_stream')
+          total += value.byteLength
+          if (total > maxBytes) {
+            try { await reader.cancel() } catch {}
+            throw transportError(tooLargeCode)
+          }
+          chunks.push(value)
+        }
+        const bytes = new Uint8Array(total)
+        let offset = 0
+        for (const chunk of chunks) {
+          bytes.set(chunk, offset)
+          offset += chunk.byteLength
+        }
+        return bytes
+      })(),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          try { onTimeout?.() } catch {}
+          try { void reader.cancel().catch(() => {}) } catch {}
+          reject(transportError(timeoutCode))
+        }, Math.max(1, timeoutMs))
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
+function contentLength(headers, invalidCode) {
+  const raw = headers.get('content-length')
+  if (raw == null || raw === '') return null
+  if (!/^\d+$/.test(raw)) throw transportError(invalidCode)
+  const value = Number(raw)
+  if (!Number.isSafeInteger(value)) throw transportError(invalidCode)
+  return value
+}
+
+async function fetchWithTimeout(url, init = {}) {
+  const controller = new AbortController()
+  const startedAt = Date.now()
+  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS)
+  let response
+  try {
+    // Every destination is fixed by configuration/code. Refuse redirects so a
+    // compromised or misconfigured upstream cannot bounce secret-bearing
+    // headers (or WeChat's AppSecret query) to another origin.
+    response = await fetch(url, {
+      ...init,
+      cache: 'no-store',
+      redirect: 'error',
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (controller.signal.aborted || error?.name === 'AbortError') {
+      throw transportError('upstream_timeout')
+    }
+    throw error
+  } finally {
+    clearTimeout(timer)
+  }
+
+  if (response.redirected || (response.status >= 300 && response.status < 400)) {
+    try { await response.body?.cancel() } catch {}
+    throw transportError('upstream_redirect')
+  }
+  const declared = contentLength(response.headers, 'upstream_response_invalid')
+  if (declared != null && declared > UPSTREAM_RESPONSE_MAX_BYTES) {
+    try { await response.body?.cancel() } catch {}
+    throw transportError('upstream_response_too_large')
+  }
+
+  const remainingMs = UPSTREAM_TIMEOUT_MS - (Date.now() - startedAt)
+  if (remainingMs <= 0) {
+    controller.abort()
+    try { await response.body?.cancel() } catch {}
+    throw transportError('upstream_timeout')
+  }
+  const bytes = await readBoundedStream(
+    response.body,
+    UPSTREAM_RESPONSE_MAX_BYTES,
+    remainingMs,
+    {
+      timeoutCode: 'upstream_timeout',
+      tooLargeCode: 'upstream_response_too_large',
+      onTimeout: () => controller.abort(),
     },
+  )
+  return new Response(bytes.byteLength ? bytes : null, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
   })
 }
 
-async function hmacHex(message, secret) {
-  const enc = new TextEncoder()
+async function hmacHex(label, value) {
+  const encoder = new TextEncoder()
   const key = await crypto.subtle.importKey(
     'raw',
-    enc.encode(secret),
+    encoder.encode(SUPABASE_SERVICE),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign'],
   )
-  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message))
-  return Array.from(new Uint8Array(sig))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('')
-}
-
-function randomHex(byteLen = 32) {
-  const buf = new Uint8Array(byteLen)
-  crypto.getRandomValues(buf)
-  return Array.from(buf)
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('')
-}
-
-async function exchangeCodeForOpenid(jsCode) {
-  const url = 'https://api.weixin.qq.com/sns/jscode2session'
-    + `?appid=${encodeURIComponent(WECHAT_APPID)}`
-    + `&secret=${encodeURIComponent(WECHAT_APPSECRET)}`
-    + `&js_code=${encodeURIComponent(jsCode)}`
-    + '&grant_type=authorization_code'
-  const r = await fetch(url)
-  if (!r.ok) throw new Error(`wechat_http_${r.status}`)
-  const body = await r.json()
-  if (body.errcode) {
-    const err = new Error('wechat_exchange_failed')
-    err.wxErrcode = body.errcode
-    err.wxErrmsg  = body.errmsg
-    throw err
-  }
-  if (!body.openid) throw new Error('wechat_no_openid')
-  return { openid: body.openid, unionid: body.unionid || null }
-}
-
-function emailFor(openid) {
-  return `wx_${openid}@wechat.placeholder`
-}
-
-/*
- * Fetch the stored auth password for an openid from
- * public.wechat_password_map (migration 035). Returns:
- *   { password: string }            — found, use this
- *   { password: null }              — not found, caller must mint+store
- *   { password: null, missing: true } — table doesn't exist yet
- *                                       (migration 035 unapplied);
- *                                       caller may fall back to HMAC
- *
- * service_role bypasses RLS; the table denies anon/authenticated entirely.
- */
-async function lookupStoredPassword(openid) {
-  const url = `${SUPABASE_URL}/rest/v1/wechat_password_map`
-    + `?select=password&openid=eq.${encodeURIComponent(openid)}&limit=1`
-  const r = await fetch(url, {
-    headers: {
-      apikey: SUPABASE_SERVICE,
-      Authorization: `Bearer ${SUPABASE_SERVICE}`,
-      Accept: 'application/json',
-    },
-  })
-  if (r.status === 404) return { password: null, missing: true }
-  if (!r.ok) {
-    const detail = await r.json().catch(() => ({}))
-    const err = new Error('wechat_password_lookup_failed')
-    err.detail = detail
-    err.status = r.status
-    throw err
-  }
-  const rows = await r.json().catch(() => [])
-  const password = Array.isArray(rows) && rows[0]?.password ? rows[0].password : null
-  return { password }
-}
-
-async function storePassword(openid, password) {
-  const url = `${SUPABASE_URL}/rest/v1/wechat_password_map`
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: {
-      apikey: SUPABASE_SERVICE,
-      Authorization: `Bearer ${SUPABASE_SERVICE}`,
-      'Content-Type': 'application/json',
-      'Prefer': 'resolution=merge-duplicates,return=minimal',
-    },
-    body: JSON.stringify({ openid, password }),
-  })
-  if (!r.ok) {
-    const detail = await r.json().catch(() => ({}))
-    const err = new Error('wechat_password_store_failed')
-    err.detail = detail
-    err.status = r.status
-    throw err
-  }
-}
-
-async function adminLookupUserByEmail(email) {
-  const url = `${SUPABASE_URL}/auth/v1/admin/users?email=${encodeURIComponent(email)}`
-  const r = await fetch(url, {
-    headers: {
-      apikey: SUPABASE_SERVICE,
-      Authorization: `Bearer ${SUPABASE_SERVICE}`,
-    },
-  })
-  if (!r.ok) {
-    const detail = await r.json().catch(() => ({}))
-    const err = new Error('admin_lookup_failed')
-    err.detail = detail
-    err.status = r.status
-    throw err
-  }
-  const body = await r.json().catch(() => ({}))
-  const user = Array.isArray(body?.users) ? body.users[0] : null
-  return user || null
-}
-
-async function adminUpdateUserPassword(userId, password) {
-  const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
-    method: 'PUT',
-    headers: {
-      apikey: SUPABASE_SERVICE,
-      Authorization: `Bearer ${SUPABASE_SERVICE}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ password }),
-  })
-  if (!r.ok) {
-    const detail = await r.json().catch(() => ({}))
-    const err = new Error('admin_update_user_failed')
-    err.detail = detail
-    err.status = r.status
-    throw err
-  }
-}
-
-/*
- * Idempotent createOrUpdate: try create with the given password. If
- * the user already exists, look them up and PUT the password onto the
- * existing row. Returns nothing on success; throws on hard failure.
- *
- * On the 422 "already exists" branch we MUST update the password,
- * not swallow — the caller is about to call signInWithPassword with
- * `password`, which will fail unless we sync auth.users.
- */
-async function adminUpsertUserWithPassword(email, password, nickname) {
-  const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
-    method: 'POST',
-    headers: {
-      apikey: SUPABASE_SERVICE,
-      Authorization: `Bearer ${SUPABASE_SERVICE}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { provider: 'wechat', nickname: nickname || 'WeChat User' },
-    }),
-  })
-  if (r.ok) return
-
-  const detail = await r.json().catch(() => ({}))
-  const msg = JSON.stringify(detail || {}).toLowerCase()
-  const alreadyExists = (r.status === 422 || r.status === 400) && (
-    msg.includes('already been registered')
-    || msg.includes('email_exists')
-    || msg.includes('already exists')
-    || msg.includes('user already registered')
-    || msg.includes('duplicate key')
+  const signature = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    encoder.encode(`${label}\u0000${value}`),
   )
-  if (!alreadyExists) {
-    const err = new Error('admin_create_user_failed')
-    err.detail = detail
-    err.status = r.status
-    throw err
-  }
-
-  const existing = await adminLookupUserByEmail(email)
-  if (!existing?.id) {
-    const err = new Error('admin_user_exists_but_lookup_empty')
-    err.detail = { lookup_email: email }
-    throw err
-  }
-  await adminUpdateUserPassword(existing.id, password)
+  return Array.from(new Uint8Array(signature))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
 }
 
-async function signInWithPassword(email, password) {
-  const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-    method: 'POST',
-    headers: {
-      apikey: SUPABASE_ANON,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ email, password }),
-  })
-  const body = await r.json().catch(() => ({}))
-  if (!r.ok) {
-    const err = new Error('signin_failed')
-    err.detail = body
-    err.status = r.status
-    throw err
+function clientNetworkIdentifier(request) {
+  // Vercel overwrites its forwarding headers at the managed edge. Deployments
+  // behind a different proxy must verify equivalent header-rewrite behavior.
+  const candidate = request.headers.get('x-vercel-forwarded-for')
+    || request.headers.get('x-real-ip')
+    || (request.headers.get('x-forwarded-for') || '').split(',')[0]
+    || 'unknown'
+  return candidate.trim().slice(0, 128) || 'unknown'
+}
+
+async function rateHit(bucket, max) {
+  try {
+    const response = await fetchWithTimeout(
+      `${SUPABASE_URL}/rest/v1/rpc/edge_rate_hit`,
+      {
+        method: 'POST',
+        headers: supabaseHeaders(SUPABASE_SERVICE, '', {
+          'Content-Type': 'application/json',
+        }),
+        body: JSON.stringify({
+          bucket_in: bucket,
+          max_in: max,
+          window_secs_in: RATE_WINDOW_SECONDS,
+        }),
+      },
+    )
+    if (!response.ok) return null
+    const decision = await response.json().catch(() => null)
+    if (decision === true) return true
+    if (decision === false) return false
+    return null
+  } catch {
+    return null
   }
-  return body
+}
+
+async function enforceNetworkRateLimit(request) {
+  // Do not create one persistent limiter row per js_code: codes are
+  // high-cardinality and WeChat already makes them single-use. A network
+  // bucket bounds pre-exchange work without turning random input into an
+  // unbounded edge_rate_limits storage-amplification primitive.
+  let networkKey
+  try {
+    networkKey = await hmacHex('network', clientNetworkIdentifier(request))
+  } catch {
+    throw endpointError('rate_limit_unavailable', 'rate_limit', 503)
+  }
+
+  const networkAllowed = await rateHit(`wechat-login:network:${networkKey}`, RATE_IP_MAX)
+  if (networkAllowed === null) throw endpointError('rate_limit_unavailable', 'rate_limit', 503)
+  if (networkAllowed === false) throw endpointError('rate_limited', 'rate_limit', 429)
+}
+
+async function enforceIdentityRateLimit(openid) {
+  let identityKey
+  try {
+    identityKey = await hmacHex('openid', openid)
+  } catch {
+    throw endpointError('rate_limit_unavailable', 'rate_limit', 503)
+  }
+  const allowed = await rateHit(
+    `wechat-login:identity:${identityKey}`,
+    RATE_IDENTITY_MAX,
+  )
+  if (allowed === null) throw endpointError('rate_limit_unavailable', 'rate_limit', 503)
+  if (allowed === false) throw endpointError('rate_limited', 'rate_limit', 429)
+}
+
+async function parseRequestBody(request) {
+  let declared
+  try {
+    declared = contentLength(request.headers, 'invalid_content_length')
+  } catch {
+    throw endpointError('bad_json', 'input', 400)
+  }
+  if (declared != null && declared > MAX_BODY_BYTES) {
+    try { await request.body?.cancel() } catch {}
+    throw endpointError('body_too_large', 'input', 413)
+  }
+  let bytes
+  try {
+    bytes = await readBoundedStream(
+      request.body,
+      MAX_BODY_BYTES,
+      REQUEST_BODY_TIMEOUT_MS,
+      {
+        timeoutCode: 'request_body_timeout',
+        tooLargeCode: 'body_too_large',
+      },
+    )
+  } catch (error) {
+    if (error?.code === 'body_too_large') {
+      throw endpointError('body_too_large', 'input', 413)
+    }
+    if (error?.code === 'request_body_timeout') {
+      throw endpointError('request_timeout', 'input', 408)
+    }
+    throw endpointError('bad_json', 'input', 400)
+  }
+  try {
+    return JSON.parse(new TextDecoder().decode(bytes))
+  } catch {
+    throw endpointError('bad_json', 'input', 400)
+  }
 }
 
 function sanitizeNickname(raw) {
@@ -305,154 +378,457 @@ function sanitizeNickname(raw) {
     .slice(0, 40)
 }
 
-function sanitizeAvatarUrl(raw) {
-  if (typeof raw !== 'string') return ''
-  const trimmed = raw.trim().slice(0, 500)
-  if (!/^https?:\/\//i.test(trimmed)) return ''
-  return trimmed
+function validWechatIdentifier(value) {
+  return typeof value === 'string'
+    && /^[A-Za-z0-9_-]{4,128}$/.test(value)
 }
 
-async function bindWechatIdentityOnProfile(userId, openid, unionid, nickname, avatar) {
-  const patch = { wechat_openid: openid }
-  if (unionid) patch.wechat_unionid = unionid
-  const cleanNickname = sanitizeNickname(nickname)
-  if (cleanNickname) patch.nickname = cleanNickname
-  const cleanAvatar = sanitizeAvatarUrl(avatar)
-  if (cleanAvatar) patch.avatar_url = cleanAvatar
+async function exchangeCodeForIdentity(jsCode) {
+  const url = new URL('https://api.weixin.qq.com/sns/jscode2session')
+  url.searchParams.set('appid', WECHAT_APPID)
+  url.searchParams.set('secret', WECHAT_APPSECRET)
+  url.searchParams.set('js_code', jsCode)
+  url.searchParams.set('grant_type', 'authorization_code')
 
-  const r = await fetch(
-    `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
-    {
-      method: 'PATCH',
-      headers: {
-        apikey: SUPABASE_SERVICE,
-        Authorization: `Bearer ${SUPABASE_SERVICE}`,
-        'Content-Type': 'application/json',
-        Prefer: 'return=minimal',
-      },
-      body: JSON.stringify(patch),
-    },
-  )
-  if (!r.ok) {
-    const detail = await r.json().catch(() => ({}))
-    const err = new Error('bind_wechat_identity_failed')
-    err.detail = detail
-    err.status = r.status
-    throw err
-  }
-}
-
-/*
- * Resolve the GoTrue password for `openid`. Three paths:
- *
- *   1. wechat_password_map has a row → use it (steady state).
- *   2. Table reachable but no row → mint random 32-byte hex,
- *      sync auth.users via admin upsert, persist to map, return.
- *   3. Table missing (migration 035 not applied) AND
- *      WECHAT_USER_PASSWORD_SALT env var present → fall back to
- *      HMAC for backward compat. We do NOT attempt to migrate
- *      this user yet — once the migration runs, their next login
- *      hits path 2 and they're upgraded automatically.
- *
- * Returns the resolved password string.
- */
-async function resolvePassword(openid, email, nickname) {
-  const looked = await lookupStoredPassword(openid).catch(err => {
-    if (err?.status === 404) return { password: null, missing: true }
-    throw err
-  })
-
-  if (looked.password) {
-    return looked.password
+  let response
+  try {
+    response = await fetchWithTimeout(url.toString())
+  } catch {
+    throw endpointError('wechat_exchange_unavailable', 'wechat_exchange', 502)
   }
 
-  if (looked.missing) {
-    if (!PASSWORD_SALT) {
-      const err = new Error('password_storage_unavailable')
-      err.detail = { hint: 'Apply supabase/migrations/035_wechat_password_map.sql, or set WECHAT_USER_PASSWORD_SALT during transition.' }
-      throw err
+  let body
+  try { body = await response.json() } catch {
+    throw endpointError('wechat_exchange_unavailable', 'wechat_exchange', 502)
+  }
+  if (!response.ok) {
+    const error = endpointError('wechat_exchange_unavailable', 'wechat_exchange', 502)
+    error.upstreamStatus = response.status
+    throw error
+  }
+  if (body?.errcode) {
+    if (body.errcode === 45011) {
+      throw endpointError('wechat_rate_limited', 'wechat_exchange', 429, '45011')
     }
-    return await hmacHex(openid, PASSWORD_SALT)
+    if (body.errcode === 40029 || body.errcode === 40163) {
+      throw endpointError('wechat_code_rejected', 'wechat_exchange', 401, String(body.errcode))
+    }
+    throw endpointError(
+      'wechat_exchange_failed',
+      'wechat_exchange',
+      502,
+      safeCode(body.errcode),
+    )
+  }
+  if (!validWechatIdentifier(body?.openid)) {
+    throw endpointError('wechat_identity_invalid', 'wechat_exchange', 502)
+  }
+  if (body?.unionid != null && !validWechatIdentifier(body.unionid)) {
+    throw endpointError('wechat_identity_invalid', 'wechat_exchange', 502)
+  }
+  return { openid: body.openid, unionid: body.unionid || null }
+}
+
+function emailFor(openid) {
+  return `wx_${openid}@wechat.placeholder`
+}
+
+function authResponseCode(body) {
+  return safeCode(body?.code || body?.error_code || body?.error)
+}
+
+function validUserId(value) {
+  return typeof value === 'string'
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}
+
+async function generateMagicLink(email, nickname) {
+  let response
+  try {
+    response = await fetchWithTimeout(`${SUPABASE_URL}/auth/v1/admin/generate_link`, {
+      method: 'POST',
+      headers: supabaseHeaders(SUPABASE_SERVICE, '', {
+        'Content-Type': 'application/json',
+        'X-Supabase-Api-Version': AUTH_API_VERSION,
+      }),
+      body: JSON.stringify({
+        type: 'magiclink',
+        email,
+        data: {
+          provider: 'wechat',
+          ...(nickname ? { nickname } : {}),
+        },
+      }),
+    })
+  } catch {
+    throw endpointError('auth_generate_link_unavailable', 'auth_generate_link', 503)
   }
 
-  const fresh = randomHex(32)
-  await adminUpsertUserWithPassword(email, fresh, nickname)
-  await storePassword(openid, fresh)
-  return fresh
+  const body = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const error = endpointError(
+      'auth_generate_link_failed',
+      'auth_generate_link',
+      response.status >= 500 ? 503 : 500,
+      authResponseCode(body),
+    )
+    error.upstreamStatus = response.status
+    throw error
+  }
+
+  const tokenHash = typeof body?.hashed_token === 'string' ? body.hashed_token : ''
+  const verificationType = body?.verification_type
+  const userId = body?.id
+  const returnedEmail = typeof body?.email === 'string' ? body.email.toLowerCase() : ''
+  if (
+    !/^[A-Za-z0-9_-]{16,2048}$/.test(tokenHash)
+    || verificationType !== 'magiclink'
+    || !validUserId(userId)
+    || returnedEmail !== email.toLowerCase()
+  ) {
+    throw endpointError('auth_generate_link_malformed', 'auth_generate_link', 502)
+  }
+  return { tokenHash, verificationType, userId }
+}
+
+async function readProfileForBinding(userId) {
+  let response
+  try {
+    response = await fetchWithTimeout(
+      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`
+        + '&select=id,wechat_openid,wechat_unionid,nickname&limit=2',
+      {
+        headers: supabaseHeaders(SUPABASE_SERVICE),
+      },
+    )
+  } catch {
+    throw endpointError('profile_read_unavailable', 'profile_bind', 503)
+  }
+
+  const body = await response.json().catch(() => null)
+  if (!response.ok) {
+    const error = endpointError(
+      'profile_read_failed',
+      'profile_bind',
+      response.status >= 500 ? 503 : 500,
+      authResponseCode(body),
+    )
+    error.upstreamStatus = response.status
+    throw error
+  }
+  if (
+    !Array.isArray(body)
+    || body.length !== 1
+    || body[0]?.id !== userId
+    || !Object.hasOwn(body[0], 'wechat_openid')
+    || !Object.hasOwn(body[0], 'wechat_unionid')
+  ) {
+    throw endpointError('profile_bind_missing', 'profile_bind', 503)
+  }
+  return body[0]
+}
+
+function ensureIdentityCompatible(profile, openid, unionid) {
+  if (profile.wechat_openid != null && profile.wechat_openid !== openid) {
+    throw endpointError('profile_identity_conflict', 'profile_bind', 500)
+  }
+  if (unionid && profile.wechat_unionid != null && profile.wechat_unionid !== unionid) {
+    throw endpointError('profile_identity_conflict', 'profile_bind', 500)
+  }
+}
+
+function profileHasBoundIdentity(profile, openid, unionid) {
+  return profile.wechat_openid === openid
+    && (!unionid || profile.wechat_unionid === unionid)
+}
+
+async function bindWechatIdentityOnProfile(userId, openid, unionid, nickname) {
+  const before = await readProfileForBinding(userId)
+  ensureIdentityCompatible(before, openid, unionid)
+
+  const patch = {}
+  if (before.wechat_openid == null) patch.wechat_openid = openid
+  if (unionid && before.wechat_unionid == null) patch.wechat_unionid = unionid
+
+  // WeChat login is an identity operation, not an alternate profile editor.
+  // Only seed optional display fields during the first identity bind.
+  if (before.wechat_openid == null) {
+    if (nickname && (!before.nickname || before.nickname === '用户')) patch.nickname = nickname
+  }
+  if (Object.keys(patch).length === 0) return
+
+  const url = new URL(`${SUPABASE_URL}/rest/v1/profiles`)
+  url.searchParams.set('id', `eq.${userId}`)
+  url.searchParams.set(
+    'wechat_openid',
+    before.wechat_openid == null ? 'is.null' : `eq.${before.wechat_openid}`,
+  )
+  if (unionid) {
+    url.searchParams.set(
+      'wechat_unionid',
+      before.wechat_unionid == null ? 'is.null' : `eq.${before.wechat_unionid}`,
+    )
+  }
+  url.searchParams.set('select', 'id,wechat_openid,wechat_unionid')
+
+  let response
+  try {
+    response = await fetchWithTimeout(url.toString(), {
+      method: 'PATCH',
+      headers: supabaseHeaders(SUPABASE_SERVICE, '', {
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      }),
+      body: JSON.stringify(patch),
+    })
+  } catch {
+    throw endpointError('profile_bind_unavailable', 'profile_bind', 503)
+  }
+
+  const body = await response.json().catch(() => null)
+  if (!response.ok) {
+    const error = endpointError(
+      'profile_bind_failed',
+      'profile_bind',
+      response.status >= 500 ? 503 : 500,
+      authResponseCode(body),
+    )
+    error.upstreamStatus = response.status
+    throw error
+  }
+  if (
+    Array.isArray(body)
+    && body.length === 1
+    && body[0]?.id === userId
+    && profileHasBoundIdentity(body[0], openid, unionid)
+  ) {
+    return
+  }
+  if (!Array.isArray(body) || body.length !== 0) {
+    throw endpointError('profile_bind_malformed', 'profile_bind', 503)
+  }
+
+  // Another concurrent login may have won the compare-and-set. Treat that as
+  // success only after an authoritative read proves it bound the same identity.
+  const after = await readProfileForBinding(userId)
+  ensureIdentityCompatible(after, openid, unionid)
+  if (!profileHasBoundIdentity(after, openid, unionid)) {
+    throw endpointError('profile_bind_conflict', 'profile_bind', 500)
+  }
+}
+
+function retryableOtpConflict(error) {
+  return error?.stage === 'auth_verify'
+    && error?.upstreamCode === 'otp_expired'
+    && [400, 401, 403].includes(error?.upstreamStatus)
+}
+
+function retryableGenerateConflict(error) {
+  return error?.stage === 'auth_generate_link'
+    && ['conflict', 'email_exists', 'user_already_exists'].includes(error?.upstreamCode)
+    && [400, 409, 422].includes(error?.upstreamStatus)
+}
+
+async function verifyMagicLink(link, expectedEmail) {
+  let response
+  try {
+    response = await fetchWithTimeout(`${SUPABASE_URL}/auth/v1/verify`, {
+      method: 'POST',
+      headers: supabaseHeaders(SUPABASE_ANON, '', {
+        'Content-Type': 'application/json',
+        'X-Supabase-Api-Version': AUTH_API_VERSION,
+      }),
+      body: JSON.stringify({
+        token_hash: link.tokenHash,
+        type: link.verificationType,
+      }),
+    })
+  } catch {
+    throw endpointError('auth_verify_unavailable', 'auth_verify', 503)
+  }
+
+  const body = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const error = endpointError(
+      'auth_verify_failed',
+      'auth_verify',
+      response.status >= 500 ? 503 : 500,
+      authResponseCode(body),
+    )
+    error.upstreamStatus = response.status
+    throw error
+  }
+
+  const returnedEmail = typeof body?.user?.email === 'string'
+    ? body.user.email.toLowerCase()
+    : ''
+  if (
+    typeof body?.access_token !== 'string'
+    || body.access_token.length < 16
+    || body.access_token.length > 16_384
+    || typeof body?.refresh_token !== 'string'
+    || body.refresh_token.length < 16
+    || body.refresh_token.length > 16_384
+    || body?.token_type !== 'bearer'
+    || !Number.isFinite(body?.expires_in)
+    || body.expires_in <= 0
+    || !validUserId(body?.user?.id)
+    || body.user.id !== link.userId
+    || returnedEmail !== expectedEmail.toLowerCase()
+  ) {
+    throw endpointError('auth_verify_malformed', 'auth_verify', 502)
+  }
+  return body
+}
+
+async function retryPause() {
+  const random = new Uint8Array(1)
+  crypto.getRandomValues(random)
+  await new Promise((resolve) => setTimeout(resolve, 35 + (random[0] % 31)))
+}
+
+async function createPasswordlessSession(identity, nickname) {
+  const email = emailFor(identity.openid)
+  let lastError
+  for (let attempt = 0; attempt < VERIFY_ATTEMPTS; attempt += 1) {
+    let link
+    try {
+      link = await generateMagicLink(email, nickname)
+    } catch (error) {
+      lastError = error
+      if (attempt + 1 >= VERIFY_ATTEMPTS || !retryableGenerateConflict(error)) throw error
+      // A concurrent first request can win the placeholder-user INSERT before
+      // this request's generate_link transaction observes it. Retry only the
+      // exact Auth conflict codes; unrelated 4xx responses remain fail-closed.
+      await retryPause()
+      continue
+    }
+    await bindWechatIdentityOnProfile(
+      link.userId,
+      identity.openid,
+      identity.unionid,
+      nickname,
+    )
+    try {
+      return await verifyMagicLink(link, email)
+    } catch (error) {
+      lastError = error
+      if (attempt + 1 >= VERIFY_ATTEMPTS || !retryableOtpConflict(error)) throw error
+      // Concurrent first-login requests can invalidate the earlier one-time
+      // token. Wait briefly for the winner, then generate one fresh token. No
+      // password or auth.users credential is mutated, so retries cannot leave
+      // the account and a side table out of sync.
+      await retryPause()
+    }
+  }
+  throw lastError || endpointError('auth_verify_failed', 'auth_verify', 500)
+}
+
+function sessionForClient(session) {
+  // Allowlist the established Supabase session fields instead of forwarding
+  // arbitrary future GoTrue response properties.
+  return {
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+    token_type: session.token_type || 'bearer',
+    expires_in: session.expires_in,
+    ...(Number.isFinite(session.expires_at) ? { expires_at: session.expires_at } : {}),
+    user: session.user,
+  }
+}
+
+function rateLimitFailureResponse(error, id) {
+  const limited = error?.message === 'rate_limited' && error?.status === 429
+  if (!limited) logFailure(id, error)
+  return json(
+    { error: limited ? 'rate_limited' : 'rate_limit_unavailable' },
+    limited ? 429 : 503,
+    id,
+  )
+}
+
+function inputFailureResponse(error, id) {
+  if (error?.message === 'body_too_large' && error?.status === 413) {
+    return json({ error: 'body_too_large' }, 413, id)
+  }
+  if (error?.message === 'request_timeout' && error?.status === 408) {
+    return json({ error: 'request_timeout' }, 408, id)
+  }
+  return json({ error: 'bad_json' }, 400, id)
+}
+
+function wechatFailureResponse(error, id) {
+  const allowed = new Map([
+    ['wechat_rate_limited', 429],
+    ['wechat_code_rejected', 401],
+    ['wechat_exchange_failed', 502],
+    ['wechat_exchange_unavailable', 502],
+    ['wechat_identity_invalid', 502],
+  ])
+  const status = allowed.get(error?.message)
+  if (status === error?.status) return json({ error: error.message }, status, id)
+  return json({ error: 'wechat_exchange_unavailable' }, 502, id)
 }
 
 export default async function handler(request) {
-  if (request.method === 'OPTIONS') return new Response(null, { status: 204 })
-
-  if (request.method === 'GET') {
-    return json({
-      endpoint: 'wechat-login',
-      version: 'v3-wechat_password_map',
-      configured: {
-        WECHAT_APPID:              !!WECHAT_APPID,
-        WECHAT_APPSECRET:          !!WECHAT_APPSECRET,
-        SUPABASE_URL:              !!SUPABASE_URL,
-        SUPABASE_SERVICE_ROLE_KEY: !!SUPABASE_SERVICE,
-        SUPABASE_ANON_KEY:         !!SUPABASE_ANON,
-        WECHAT_USER_PASSWORD_SALT: !!PASSWORD_SALT,
-      },
-      ready: !!(
-        WECHAT_APPID && WECHAT_APPSECRET
-        && SUPABASE_URL && SUPABASE_SERVICE && SUPABASE_ANON
-      ),
+  const deploymentError = deploymentBoundaryResponse(evaluateDeploymentBoundary({ supabaseUrl: SUPABASE_URL }))
+  if (deploymentError) return deploymentError
+  const id = requestId()
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: { Allow: 'POST, OPTIONS', 'Cache-Control': 'no-store', 'X-Request-Id': id },
     })
   }
+  if (request.method !== 'POST') {
+    return json({ error: 'method_not_allowed' }, 405, id)
+  }
 
-  if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405)
-
-  if (!WECHAT_APPID || !WECHAT_APPSECRET) return json({ error: 'wechat_not_configured' }, 503)
-  if (!SUPABASE_URL || !SUPABASE_SERVICE || !SUPABASE_ANON) return json({ error: 'supabase_not_configured' }, 503)
+  if (!WECHAT_APPID || !WECHAT_APPSECRET) {
+    return json({ error: 'wechat_not_configured' }, 503, id)
+  }
+  if (!SUPABASE_URL || !SUPABASE_SERVICE || !SUPABASE_ANON) {
+    return json({ error: 'supabase_not_configured' }, 503, id)
+  }
 
   let body
-  try { body = await request.json() } catch { return json({ error: 'bad_json' }, 400) }
+  try {
+    body = await parseRequestBody(request)
+  } catch (error) {
+    return inputFailureResponse(error, id)
+  }
 
-  const jsCode   = typeof body?.js_code === 'string' ? body.js_code.trim() : ''
+  const jsCode = typeof body?.js_code === 'string' ? body.js_code.trim() : ''
   const nickname = sanitizeNickname(body?.nickname)
-  const avatar   = sanitizeAvatarUrl(body?.avatar_url)
-
-  if (!jsCode || jsCode.length > 256) return json({ error: 'bad_js_code' }, 400)
-
-  let openid, unionid
-  try {
-    ({ openid, unionid } = await exchangeCodeForOpenid(jsCode))
-  } catch (err) {
-    return json({ error: err.message, wxErrcode: err.wxErrcode }, 400)
+  if (!jsCode || jsCode.length > 256 || /[\u0000-\u001F\u007F]/.test(jsCode)) {
+    return json({ error: 'bad_js_code' }, 400, id)
   }
 
-  const email = emailFor(openid)
-
-  let session
   try {
-    const password = await resolvePassword(openid, email, nickname)
-    session = await signInWithPassword(email, password)
-    if (!session?.user?.id) throw new Error('signin_no_user_id')
-    await bindWechatIdentityOnProfile(session.user.id, openid, unionid, nickname, avatar)
-  } catch (err) {
-    /*
-     * Log detailed error server-side (visible in Vercel function logs)
-     * but return ONLY a generic opaque error code to the client. This
-     * avoids leaking:
-     *   · account enumeration (different error per "email exists" vs
-     *     "invalid credentials" vs "create failed")
-     *   · fingerprinting of our Supabase version + auth flow
-     *   · probing for storage/migration state via differential errors
-     * Client gets a stable "login_failed" it can surface generically;
-     * ops can pull the real error from function logs by correlating
-     * on the timestamp.
-     */
-    console.error('[wechat-login] auth path failed', {
-      openid_suffix: openid?.slice(-6),
-      message: err?.message,
-      detail: err?.detail,
-      status: err?.status,
-    })
-    return json({ error: 'login_failed' }, 500)
+    await enforceNetworkRateLimit(request)
+  } catch (error) {
+    return rateLimitFailureResponse(error, id)
   }
 
-  return json(session)
+  let identity
+  try {
+    identity = await exchangeCodeForIdentity(jsCode)
+  } catch (error) {
+    logFailure(id, error)
+    return wechatFailureResponse(error, id)
+  }
+
+  try {
+    await enforceIdentityRateLimit(identity.openid)
+  } catch (error) {
+    return rateLimitFailureResponse(error, id)
+  }
+
+  try {
+    const session = await createPasswordlessSession(identity, nickname)
+    return json(sessionForClient(session), 200, id)
+  } catch (error) {
+    logFailure(id, error)
+    return json({ error: 'login_failed' }, error.status === 503 ? 503 : 500, id)
+  }
 }

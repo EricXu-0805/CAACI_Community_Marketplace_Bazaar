@@ -6,7 +6,14 @@
     <view class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
       <text class="header-title">{{ t('notif.title') }}</text>
-      <text v-if="notifications.length > 0" class="mark-all" @click="onMarkAll">{{ t('notif.markAll') }}</text>
+      <text
+        v-if="notifications.length > 0"
+        :class="['mark-all', { disabled: markingAll }]"
+        role="button"
+        :aria-label="t('notif.markAll')"
+        :aria-disabled="markingAll ? 'true' : 'false'"
+        @click="onMarkAll"
+      >{{ t('notif.markAll') }}</text>
     </view>
 
     <view v-if="loading && notifications.length === 0" class="notif-list">
@@ -20,8 +27,14 @@
       </view>
     </view>
 
+    <view v-else-if="loadError && notifications.length === 0" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
+      <UIcon name="bell" size="xl" color="text-faint" />
+      <text class="empty-text">{{ t('error.loadFailed') }}</text>
+      <view class="retry-btn" role="button" :aria-label="t('home.retry')" @click="loadCurrentNotifications">{{ t('home.retry') }}</view>
+    </view>
+
     <view v-else-if="notifications.length === 0" class="empty">
-      <view class="empty-bell"></view>
+      <UIcon name="bell" size="xl" color="text-faint" />
       <text class="empty-text">{{ t('notif.empty') }}</text>
     </view>
 
@@ -30,16 +43,20 @@
         v-for="n in notifications"
         :key="n.id"
         :class="['notif-item', { unread: !n.is_read }]"
+        role="button"
+        :aria-label="notificationAriaLabel(n)"
+        aria-keyshortcuts="Shift+F10 Delete"
         @click="onTap(n)"
+        @keydown="onNotificationKeydown($event, n.id)"
         @longpress="onLongPress(n.id)"
       >
         <view :class="['notif-icon', 'ni-' + n.type]">
-          <text>{{ n.type === 'price_drop' ? '↓' : n.type === 'sold' ? '✓' : n.type === 'offer' ? '$' : n.type === 'meetup' ? '📍' : '!' }}</text>
+          <UIcon :name="notificationIcon(n.type)" size="xs" color="currentColor" />
         </view>
         <view class="notif-content">
-          <text class="notif-type">{{ n.type === 'price_drop' ? t('notif.priceDrop') : n.type === 'sold' ? t('notif.itemSold') : n.type === 'offer' ? t('notif.offer') : n.type === 'meetup' ? t('notif.meetup') : t('notif.system') }}</text>
+          <text class="notif-type">{{ t(notificationTypeLabelKey(n.type)) }}</text>
           <text class="notif-title">{{ n.title }}</text>
-          <text class="notif-body">{{ n.body }}</text>
+          <text class="notif-body">{{ notificationBodyText(n, t) }}</text>
           <text class="notif-time">{{ formatTime(n.created_at) }}</text>
         </view>
         <view v-if="!n.is_read" class="notif-dot"></view>
@@ -54,26 +71,56 @@ const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif
-import { ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { ref, onUnmounted } from 'vue'
+import { onShow, onHide } from '@dcloudio/uni-app'
+import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
-import { useNotifications, type Notification } from '../../composables/useNotifications'
-import { formatTime, friendlyErrorMessage } from '../../utils'
+import {
+  notificationBodyText,
+  notificationDestination,
+  notificationIcon,
+  notificationTypeLabelKey,
+  useNotifications,
+  type Notification,
+} from '../../composables/useNotifications'
+import { formatTime, friendlyErrorMessage, navigateBackOr } from '../../utils'
+import {
+  captureActiveAccountRequest,
+  isAccountRequestCurrent,
+  onAccountTransition,
+} from '../../composables/accountScope'
 import UIcon from '../../components/UIcon.vue'
 
 const { t, lang } = useI18n()
+const { awaitAuthReady, requireAuth } = useAuth()
 const { notifications, fetchNotifications, markAllRead, markRead, deleteNotification } = useNotifications()
 const loading = ref(true)
+const loadError = ref(false)
+const markingAll = ref(false)
+let pageVisible = false
+let pageLoadEpoch = 0
+let markAllEpoch = 0
 
-onShow(async () => {
+async function loadCurrentNotifications() {
+  const requestEpoch = ++pageLoadEpoch
+  loadError.value = false
   loading.value = true
   try {
+    const state = await awaitAuthReady()
+    if (!pageVisible || requestEpoch !== pageLoadEpoch) return
+    if (state === 'anonymous') {
+      requireAuth()
+      return
+    }
     await fetchNotifications()
   } catch (err: any) {
+    if (!pageVisible || requestEpoch !== pageLoadEpoch) return
+    loadError.value = true
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
   } finally {
-    loading.value = false
+    if (pageVisible && requestEpoch === pageLoadEpoch) loading.value = false
   }
+  if (!pageVisible || requestEpoch !== pageLoadEpoch) return
   /*
    * uni-app preserves uni-page-body scroll position between navigations,
    * so re-entering this page would drop the user halfway down the list.
@@ -83,31 +130,96 @@ onShow(async () => {
   try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }) } catch {}
   // #endif
   try { uni.pageScrollTo({ scrollTop: 0, duration: 0 }) } catch {}
+}
+
+onShow(() => {
+  pageVisible = true
+  void loadCurrentNotifications()
 })
 
-function goBack() { uni.navigateBack() }
+onHide(() => {
+  pageVisible = false
+  pageLoadEpoch += 1
+  markAllEpoch += 1
+  loading.value = false
+  loadError.value = false
+  markingAll.value = false
+})
+
+const stopAccountTransitionListener = onAccountTransition(() => {
+  pageLoadEpoch += 1
+  markAllEpoch += 1
+  loading.value = false
+  loadError.value = false
+  markingAll.value = false
+  if (pageVisible) void Promise.resolve().then(loadCurrentNotifications)
+})
+onUnmounted(() => {
+  pageVisible = false
+  pageLoadEpoch += 1
+  markAllEpoch += 1
+  loading.value = false
+  loadError.value = false
+  markingAll.value = false
+  stopAccountTransitionListener()
+})
+
+function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/profile/index' })) }
+
+function notificationAriaLabel(n: Notification): string {
+  return [
+    t(notificationTypeLabelKey(n.type)),
+    n.title,
+    notificationBodyText(n, t),
+  ].filter(Boolean).join('. ')
+}
+
+function onNotificationKeydown(event: KeyboardEvent, id: string) {
+  if (event.key !== 'Delete' && event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
+  event.preventDefault()
+  event.stopPropagation()
+  onLongPress(id)
+}
 
 function onTap(n: Notification) {
   if (!n.is_read) markRead(n.id).catch(() => {})
-  if (n.item_id) {
-    uni.navigateTo({ url: `/pages/detail/index?id=${n.item_id}` })
-  }
+  const destination = notificationDestination(n)
+  if (destination.url === '/pages/notifications/index') return
+  if (destination.switchTab) uni.switchTab({ url: destination.url })
+  else uni.navigateTo({ url: destination.url })
 }
 
 async function onMarkAll() {
+  if (markingAll.value) return
+  const accountToken = captureActiveAccountRequest()
+  if (!accountToken || !isAccountRequestCurrent(accountToken)) return
+  const operationEpoch = ++markAllEpoch
+  markingAll.value = true
   try {
     await markAllRead()
   } catch (err: any) {
+    if (operationEpoch !== markAllEpoch || !isAccountRequestCurrent(accountToken)) return
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none' })
+  } finally {
+    if (operationEpoch === markAllEpoch && isAccountRequestCurrent(accountToken)) markingAll.value = false
   }
 }
 
 function onLongPress(id: string) {
+  const accountToken = captureActiveAccountRequest()
+  if (!accountToken || !isAccountRequestCurrent(accountToken)) return
+  const actionEpoch = pageLoadEpoch
   uni.showActionSheet({
     itemList: [t('notif.delete')],
     success: (res) => {
-      if (res.tapIndex === 0) {
+      if (
+        res.tapIndex === 0
+        && pageVisible
+        && actionEpoch === pageLoadEpoch
+        && isAccountRequestCurrent(accountToken)
+      ) {
         deleteNotification(id).catch((err: any) => {
+          if (!pageVisible || actionEpoch !== pageLoadEpoch || !isAccountRequestCurrent(accountToken)) return
           uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none' })
         })
       }
@@ -131,20 +243,12 @@ function onLongPress(id: string) {
 .empty {
   display: flex; flex-direction: column; align-items: center; padding-top: 120px; gap: 12px;
 }
-.empty-bell {
-  width: 44px; height: 44px; border: 2.5px solid var(--border-strong); border-radius: 50%;
-  position: relative;
-  &::before {
-    content: ''; position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
-    width: 18px; height: 13px; border: 2px solid var(--border-strong);
-    border-radius: 10px 10px 0 0; border-bottom: none;
-  }
-  &::after {
-    content: ''; position: absolute; bottom: 7px; left: 50%; transform: translateX(-50%);
-    width: 6px; height: 3px; border-radius: 0 0 3px 3px; background: var(--border-strong);
-  }
+.empty-text { font-size: 14px; color: var(--text-subtle); }
+.retry-btn {
+  min-height: 44px; padding: 0 20px; border-radius: var(--radius-pill);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-primary); color: #fff; font-size: 14px; font-weight: 600;
 }
-.empty-text { font-size: 14px; color: var(--text-faint); }
 
 /*
  * Notification icon tints — refitted from Material Design
@@ -180,8 +284,9 @@ function onLongPress(id: string) {
 .ni-price_drop { background: var(--brand-soft);     color: var(--brand-deep); }
 .ni-sold       { background: var(--success-soft);   color: var(--success); }
 .ni-system     { background: var(--campus-blue-soft); color: var(--campus-blue); }
-.ni-offer      { background: var(--warning-soft);   color: var(--warning); }
+.ni-offer      { background: var(--warning-soft);   color: var(--warning-text); }
 .ni-meetup     { background: var(--campus-blue-soft); color: var(--campus-blue); }
+.ni-unread_message { background: var(--campus-blue-soft); color: var(--campus-blue); }
 .notif-content { flex: 1; min-width: 0; }
 .notif-type {
   font-size: 11px; font-weight: 600; color: var(--text-muted); display: block;
@@ -192,7 +297,7 @@ function onLongPress(id: string) {
   font-size: 13px; color: var(--text-secondary); margin-top: 3px; display: block;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.notif-time { font-size: 11px; color: var(--text-faint); margin-top: 4px; display: block; }
+.notif-time { font-size: 11px; color: var(--text-subtle); margin-top: 4px; display: block; }
 .notif-dot {
   width: 8px; height: 8px; border-radius: 50%; background: var(--brand);
   flex-shrink: 0; margin-top: 6px;

@@ -1,12 +1,33 @@
 import http from 'k6/http'
 import { check, fail } from 'k6'
 
-export const SUPABASE_URL = __ENV.SUPABASE_URL || 'https://lfhvgprfphyfvhidegum.supabase.co'
-export const ANON_KEY     = __ENV.SUPABASE_ANON_KEY || ''
-export const APP_ORIGIN   = __ENV.APP_ORIGIN || 'https://illinimarket.com'
+export const SUPABASE_URL = (__ENV.SUPABASE_URL || '').replace(/\/+$/, '')
+export const ANON_KEY     = __ENV.SUPABASE_PUBLISHABLE_KEY || __ENV.SUPABASE_ANON_KEY || ''
+export const APP_ORIGIN   = (__ENV.APP_ORIGIN || '').replace(/\/+$/, '')
+
+const TARGET_ENV = (__ENV.K6_TARGET_ENV || '').trim().toLowerCase()
+const PRODUCTION_CONFIRMATION = 'I_UNDERSTAND_THIS_WILL_LOAD_PRODUCTION'
+
+if (!SUPABASE_URL) {
+  throw new Error('SUPABASE_URL is required before running k6; there is deliberately no production default.')
+}
+
+if (!APP_ORIGIN) {
+  throw new Error('APP_ORIGIN is required before running k6; there is deliberately no production default.')
+}
+
+if (!['local', 'staging', 'production'].includes(TARGET_ENV)) {
+  throw new Error('K6_TARGET_ENV must be explicitly set to local, staging, or production.')
+}
+
+if (TARGET_ENV === 'production' && __ENV.K6_ALLOW_PRODUCTION_LOAD_TESTS !== PRODUCTION_CONFIRMATION) {
+  throw new Error(
+    `Production load tests are blocked. Set K6_ALLOW_PRODUCTION_LOAD_TESTS=${PRODUCTION_CONFIRMATION} only after an approved maintenance plan.`,
+  )
+}
 
 if (!ANON_KEY) {
-  throw new Error('SUPABASE_ANON_KEY env var is required. Export it before running k6.')
+  throw new Error('SUPABASE_PUBLISHABLE_KEY or SUPABASE_ANON_KEY is required before running k6.')
 }
 
 const TEST_ACCOUNTS_FILE = __ENV.TEST_ACCOUNTS_FILE || ''
@@ -58,7 +79,11 @@ export function supabaseRpc(fnName, args, jwt) {
     {
       headers: {
         apikey: ANON_KEY,
-        Authorization: jwt ? `Bearer ${jwt}` : `Bearer ${ANON_KEY}`,
+        ...(jwt
+          ? { Authorization: `Bearer ${jwt}` }
+          : !/^sb_publishable_/.test(ANON_KEY)
+            ? { Authorization: `Bearer ${ANON_KEY}` }
+            : {}),
         'Content-Type': 'application/json',
       },
       tags: { op: `rpc_${fnName}` },

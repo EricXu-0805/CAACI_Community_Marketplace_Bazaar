@@ -1,11 +1,17 @@
 <template>
   <view v-if="open" class="emoji-panel">
-    <view class="ep-tabs">
+    <view class="ep-tabs" role="tablist">
       <text
         v-for="g in groups"
         :key="g.key"
         :class="['ep-tab', { active: activeKey === g.key }]"
+        role="tab"
+        :tabindex="activeKey === g.key ? 0 : -1"
+        :aria-selected="activeKey === g.key"
+        :aria-label="g.label"
+        :title="g.label"
         @click="activeKey = g.key"
+        @keydown="onTabKeydown($event, g.key)"
       >{{ g.label }}</text>
     </view>
     <scroll-view scroll-y class="ep-grid-wrap">
@@ -20,6 +26,9 @@
           v-for="s in STICKER_ORDER"
           :key="s"
           class="ep-cell ep-cell-sticker"
+          role="button"
+          :aria-label="stickerAriaLabel(s)"
+          :title="stickerAriaLabel(s)"
           @click="emit('pickSticker', s)"
         >
           <USticker :name="s" :size="38" />
@@ -30,6 +39,9 @@
           v-for="(e, i) in activeGroup.emojis"
           :key="g_key(e, i)"
           class="ep-cell"
+          role="button"
+          :aria-label="e"
+          :title="e"
           @click="pick(e)"
         >
           <text class="ep-emoji">{{ e }}</text>
@@ -40,10 +52,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import USticker from './USticker.vue'
 import { STICKER_ORDER, type StickerName } from './stickers/registry'
+import {
+  readAccountPrivateStorage,
+  registerAccountPrivateStateHydrate,
+  registerAccountPrivateStateReset,
+  writeAccountPrivateStorage,
+} from '../api/accountLocalPrivacy'
 
 const { t } = useI18n()
 
@@ -58,17 +76,27 @@ const RECENT_MAX = 16
 
 function loadRecent(): string[] {
   try {
-    const raw = uni.getStorageSync(RECENT_KEY)
+    const stored = readAccountPrivateStorage<unknown>(RECENT_KEY, [])
+    if (!stored.allowed) return []
+    const raw = typeof stored.value === 'string'
+      ? JSON.parse(stored.value)
+      : stored.value
     if (Array.isArray(raw)) return raw.filter(x => typeof x === 'string').slice(0, RECENT_MAX)
-    if (typeof raw === 'string' && raw) return JSON.parse(raw) as string[]
   } catch {}
   return []
 }
 function saveRecent(list: string[]) {
-  try { uni.setStorageSync(RECENT_KEY, list.slice(0, RECENT_MAX)) } catch {}
+  writeAccountPrivateStorage(RECENT_KEY, list.slice(0, RECENT_MAX))
 }
 
 const recent = ref<string[]>(loadRecent())
+const stopRecentReset = registerAccountPrivateStateReset(() => { recent.value = [] })
+const stopRecentHydrate = registerAccountPrivateStateHydrate(() => { recent.value = loadRecent() })
+
+onUnmounted(() => {
+  stopRecentReset()
+  stopRecentHydrate()
+})
 
 const GROUPS = [
   {
@@ -172,8 +200,35 @@ function pick(emoji: string) {
   emit('pick', emoji)
 }
 
+function onTabKeydown(event: KeyboardEvent, key: string) {
+  const keys = groups.value.map(group => group.key)
+  const index = keys.indexOf(key)
+  if (index < 0) return
+
+  let nextIndex = index
+  if (event.key === 'ArrowRight') nextIndex = (index + 1) % keys.length
+  else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + keys.length) % keys.length
+  else if (event.key === 'Home') nextIndex = 0
+  else if (event.key === 'End') nextIndex = keys.length - 1
+  else if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+    event.preventDefault()
+    activeKey.value = key
+    return
+  } else return
+
+  event.preventDefault()
+  activeKey.value = keys[nextIndex]
+  const tabList = (event.currentTarget as HTMLElement | null)?.parentElement
+  const tabs = tabList?.querySelectorAll<HTMLElement>('[role="tab"]')
+  tabs?.[nextIndex]?.focus()
+}
+
 function g_key(e: string, i: number) {
   return `${e}_${i}`
+}
+
+function stickerAriaLabel(name: StickerName): string {
+  return `${t('chat.sticker')}: ${name.replace(/-/g, ' ')}`
 }
 </script>
 

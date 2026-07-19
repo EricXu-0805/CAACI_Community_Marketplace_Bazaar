@@ -1,7 +1,20 @@
 -- =========================================================
+-- DEPRECATED OPERATOR BUNDLE — retained only as historical recovery evidence.
+-- Do not execute this file. Its contracts predate the timestamped 2026-07
+-- hardening chain and can overwrite current least-privilege functions.
+-- Follow RUNBOOK.md and the matching PRECHECK/migration/VERIFY/REGRESSION files.
+\set ON_ERROR_STOP on
+DO $deprecated_operator_bundle$
+BEGIN
+  RAISE EXCEPTION
+    'deprecated_operator_bundle: use the reviewed timestamped migration chain';
+END
+$deprecated_operator_bundle$;
+
+-- =========================================================
 -- RUN ADMIN MIGRATION (029 bundle + PostgREST reload)
 -- =========================================================
--- Paste this ENTIRE file into Supabase SQL Editor and run ONCE.
+-- Historical instructions below are retained for incident archaeology only.
 --
 -- Enables the /api/admin/* edge routes and the in-app moderation
 -- dashboard at /pages/admin/index. Creates 9 admin_* RPCs that the
@@ -327,9 +340,11 @@ NOTIFY pgrst, 'reload schema';
 -- Vercel env vars required for /api/admin/*:
 --   ADMIN_API_KEY                (pick a long random string)
 --   SUPABASE_URL                 (same as VITE_SUPABASE_URL)
---   SUPABASE_SERVICE_ROLE_KEY    (from Supabase dashboard → Settings → API)
+--   SUPABASE_SECRET_KEY          (named key from Settings → API Keys)
+--   SUPABASE_SERVICE_ROLE_KEY    (temporary legacy fallback only)
 --
 -- After setting those on Vercel, visit
 --   https://<your-domain>/#/pages/admin/index
 -- and paste ADMIN_API_KEY into the gate to unlock.
+-- =========================================================
 -- =========================================================

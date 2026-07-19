@@ -56,9 +56,9 @@
           <UIcon name="search" size="xs" color="ink-faint" />
           <text v-if="searchText" class="sf-text">{{ searchText }}</text>
           <text v-else class="sf-placeholder">{{ t('home.search') }}</text>
-          <view v-if="searchText" class="sf-clear" role="button" :aria-label="t('a11y.searchClear')" @click.stop="onClearSearch">×</view>
+          <view v-if="searchText" class="sf-clear" role="button" :aria-label="t('a11y.searchClear')" @click.stop="onClearSearch"><UIcon name="close" size="xs" color="currentColor" aria-hidden="true" /></view>
         </view>
-        <view class="filter-btn" role="button" :aria-label="t('a11y.filter')" @click.stop="showFilter = !showFilter">
+        <view class="filter-btn" role="button" :aria-label="t('a11y.filter')" @click.stop="openFilterSheet">
           <UIcon name="filter" size="xs" color="text-secondary" />
           <text class="fb-label">{{ t('home.filter') }}</text>
           <view v-if="activeFilterCount > 0" class="fb-badge">{{ activeFilterCount }}</view>
@@ -75,9 +75,9 @@
         <UIcon name="search" size="xs" color="ink-faint" />
         <text v-if="searchText" class="sf-text">{{ searchText }}</text>
         <text v-else class="sf-placeholder">{{ t('home.search') }}</text>
-        <view v-if="searchText" class="sf-clear" role="button" :aria-label="t('a11y.searchClear')" @click.stop="onClearSearch">×</view>
+        <view v-if="searchText" class="sf-clear" role="button" :aria-label="t('a11y.searchClear')" @click.stop="onClearSearch"><UIcon name="close" size="xs" color="currentColor" aria-hidden="true" /></view>
       </view>
-      <view class="filter-btn" role="button" :aria-label="t('a11y.filter')" @click.stop="showFilter = !showFilter">
+      <view class="filter-btn" role="button" :aria-label="t('a11y.filter')" @click.stop="openFilterSheet">
         <UIcon name="filter" size="xs" color="text-secondary" />
         <text class="fb-label">{{ t('home.filter') }}</text>
         <view v-if="activeFilterCount > 0" class="fb-badge">{{ activeFilterCount }}</view>
@@ -85,11 +85,25 @@
     </view>
 
     <!-- 在售 / 求购 — sell listings vs wanted (ISO) posts (migration 054). -->
-    <view class="feed-mode">
-      <view :class="['fm-seg', 'u-press', { on: listingType === 'sell' }]" @click="setListingType('sell')">
+    <view class="feed-mode" role="tablist" :aria-label="t('home.tabOnSale') + ' / ' + t('home.tabWanted')">
+      <view
+        :class="['fm-seg', 'u-press', { on: listingType === 'sell' }]"
+        role="tab"
+        :tabindex="listingType === 'sell' ? 0 : -1"
+        :aria-selected="listingType === 'sell' ? 'true' : 'false'"
+        @click="setListingType('sell')"
+        @keydown="onFeedModeKeydown($event, 'sell')"
+      >
         <text>{{ t('home.tabOnSale') }}</text>
       </view>
-      <view :class="['fm-seg', 'u-press', { on: listingType === 'wanted' }]" @click="setListingType('wanted')">
+      <view
+        :class="['fm-seg', 'u-press', { on: listingType === 'wanted' }]"
+        role="tab"
+        :tabindex="listingType === 'wanted' ? 0 : -1"
+        :aria-selected="listingType === 'wanted' ? 'true' : 'false'"
+        @click="setListingType('wanted')"
+        @keydown="onFeedModeKeydown($event, 'wanted')"
+      >
         <text>{{ t('home.tabWanted') }}</text>
       </view>
     </view>
@@ -106,6 +120,9 @@
           v-for="cat in categories"
           :key="'c'+cat.value"
           :class="['pill', 'u-press', { active: selectedCategory === cat.value }]"
+          role="button"
+          :aria-label="cat.label"
+          :aria-pressed="selectedCategory === cat.value ? 'true' : 'false'"
           @click="selectCategory(cat.value)"
         >
           <text>{{ cat.label }}</text>
@@ -124,46 +141,52 @@
     <view
       v-if="showSemesterBanner"
       class="semester-banner u-press"
+      role="button"
+      :aria-label="semesterTitle(lang as 'en' | 'zh')"
       @click="onSemesterBannerTap"
     >
-      <text class="seb-arc" aria-hidden="true">I</text>
+      <image class="seb-arc" src="/static/logo-mark.svg" alt="" aria-hidden="true" mode="aspectFit" />
       <view class="seb-body">
         <text class="seb-stamp t-eyebrow">{{ t('app.name') }}</text>
         <text class="seb-title">{{ semesterTitle(lang as 'en' | 'zh') }}</text>
         <text class="seb-sub">{{ semesterSubtitle(lang as 'en' | 'zh') }}</text>
       </view>
-      <text class="seb-arrow">›</text>
+      <UIcon class="seb-arrow" name="chevron-right" size="sm" color="currentColor" aria-hidden="true" />
     </view>
 
     <!-- Active filter summary bar (shows when filters are applied, even if sheet closed) -->
     <view v-if="activeFilterCount > 0 && !showFilter" class="active-filter-bar">
       <scroll-view scroll-x class="afb-scroll">
-        <view v-if="filterPriceMin || filterPriceMax" class="afb-chip" @click="showFilter = true">
-          <text>${{ filterPriceMin || '0' }}–${{ filterPriceMax || '∞' }}</text>
+        <view v-if="filterPriceMin || filterPriceMax" class="afb-chip" role="button" :aria-label="priceRangeLabel" @click="openFilterSheet">
+          <text>{{ priceRangeLabel }}</text>
         </view>
-        <view v-if="filterCondition" class="afb-chip" @click="showFilter = true">
+        <view v-if="filterCondition" class="afb-chip" role="button" :aria-label="t('condition.' + filterCondition)" @click="openFilterSheet">
           <text>{{ t('condition.' + filterCondition) }}</text>
         </view>
-        <view v-if="filterLocation" class="afb-chip" @click="showFilter = true">
+        <view v-if="filterLocation" class="afb-chip" role="button" :aria-label="filterLocation" @click="openFilterSheet">
           <text>{{ filterLocation }}</text>
         </view>
-        <view v-if="filterVerifiedOnly" class="afb-chip" @click="showFilter = true">
-          <text>✓ {{ t('filter.verifiedOnly') }}</text>
-        </view>
-        <view v-if="sortBy !== 'latest'" class="afb-chip" @click="showFilter = true">
+        <view v-if="sortBy !== 'latest'" class="afb-chip" role="button" :aria-label="t('sort.' + sortBy.replace('price_asc', 'priceAsc').replace('price_desc', 'priceDesc'))" @click="openFilterSheet">
           <text>{{ t('sort.' + sortBy.replace('price_asc', 'priceAsc').replace('price_desc', 'priceDesc')) }}</text>
         </view>
       </scroll-view>
-      <view class="afb-clear" @click="onClearAllFilters">
+      <view class="afb-clear" role="button" :aria-label="t('home.clearFilters')" @click="onClearAllFilters">
         <text>{{ t('home.clearFilters') }}</text>
       </view>
     </view>
 
     <!-- Filter Bottom Sheet -->
-    <view v-if="showFilter" class="filter-mask u-mask-in" @click="showFilter = false"></view>
-    <view :class="['filter-sheet', 'u-glass', { open: showFilter }]">
+    <view v-if="showFilter" class="filter-mask u-mask-in" @click="cancelFilterEdit"></view>
+    <view
+      v-if="showFilter"
+      class="filter-sheet u-glass open"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="t('filter.title')"
+      @keydown="onFilterDialogKeydown"
+    >
       <view class="fs-header">
-        <view class="fs-close" role="button" :aria-label="t('a11y.filterClose')" @click="showFilter = false">
+        <view class="fs-close" role="button" tabindex="0" :aria-label="t('a11y.filterClose')" @click="cancelFilterEdit">
           <view class="fs-x"></view>
         </view>
         <text class="fs-title">{{ t('filter.title') }}</text>
@@ -173,16 +196,31 @@
       <view class="fs-section">
         <text class="fs-label">{{ t('filter.price') }}</text>
         <view class="fs-price-row">
-          <view class="fs-price-input">
+          <view :class="['fs-price-input', { invalid: !!priceFilterError }]">
             <text class="fs-dollar">$</text>
-            <input v-model="filterPriceMin" type="digit" :placeholder="t('filter.priceMin')" />
+            <input
+              v-model="filterPriceMin"
+              type="digit"
+              :placeholder="t('filter.priceMin')"
+              :aria-label="t('filter.priceMin')"
+              :aria-invalid="priceFilterError ? 'true' : 'false'"
+              :aria-describedby="priceFilterError ? 'home-price-filter-error' : undefined"
+            />
           </view>
           <text class="fs-dash">—</text>
-          <view class="fs-price-input">
+          <view :class="['fs-price-input', { invalid: !!priceFilterError }]">
             <text class="fs-dollar">$</text>
-            <input v-model="filterPriceMax" type="digit" :placeholder="t('filter.priceMax')" />
+            <input
+              v-model="filterPriceMax"
+              type="digit"
+              :placeholder="t('filter.priceMax')"
+              :aria-label="t('filter.priceMax')"
+              :aria-invalid="priceFilterError ? 'true' : 'false'"
+              :aria-describedby="priceFilterError ? 'home-price-filter-error' : undefined"
+            />
           </view>
         </view>
+        <text v-if="priceFilterError" id="home-price-filter-error" class="fs-error" role="alert">{{ t(priceFilterError) }}</text>
       </view>
 
       <view class="fs-section">
@@ -192,6 +230,9 @@
             v-for="(label, key) in conditionOpts"
             :key="key"
             :class="['fpill', { active: filterCondition === key }]"
+            role="button"
+            :aria-label="label"
+            :aria-pressed="filterCondition === key ? 'true' : 'false'"
             @click="filterCondition = filterCondition === key ? '' : (key as ItemCondition)"
           >
             <text>{{ label }}</text>
@@ -206,21 +247,12 @@
             v-for="loc in locationOpts"
             :key="loc"
             :class="['fpill', { active: filterLocation === loc }]"
+            role="button"
+            :aria-label="loc"
+            :aria-pressed="filterLocation === loc ? 'true' : 'false'"
             @click="filterLocation = filterLocation === loc ? '' : loc"
           >
             <text>{{ loc }}</text>
-          </view>
-        </view>
-      </view>
-
-      <view class="fs-section">
-        <text class="fs-label">{{ t('pickup.verifiedPickup') }}</text>
-        <view class="fs-pills">
-          <view
-            :class="['fpill', { active: filterVerifiedOnly }]"
-            @click="filterVerifiedOnly = !filterVerifiedOnly"
-          >
-            <text>{{ (filterVerifiedOnly ? '✓ ' : '') + t('filter.verifiedOnly') }}</text>
           </view>
         </view>
       </view>
@@ -232,6 +264,9 @@
             v-for="s in sortOpts"
             :key="s.value"
             :class="['fpill', { active: sortBy === s.value }]"
+            role="button"
+            :aria-label="s.label"
+            :aria-pressed="sortBy === s.value ? 'true' : 'false'"
             @click="sortBy = s.value"
           >
             <text>{{ s.label }}</text>
@@ -240,7 +275,12 @@
       </view>
 
       <view class="fs-footer">
-        <view class="fs-apply" @click="applyFilters">
+        <view
+          :class="['fs-apply', { disabled: !!priceFilterError }]"
+          role="button"
+          :aria-disabled="priceFilterError ? 'true' : 'false'"
+          @click="applyFilters"
+        >
           <text>{{ t('filter.apply') }}</text>
         </view>
       </view>
@@ -285,7 +325,11 @@
             v-for="item in col"
             :key="item.id"
             class="card u-press u-rise"
+            role="button"
+            tabindex="0"
+            :aria-label="localizeItemTitle(item)"
             @click="goToDetail(item.id)"
+            @keydown.self="onItemCardKeydown($event, item.id)"
             @touchstart="cardLongPress.onTouchstart(item)"
             @touchend="cardLongPress.onTouchend"
             @touchcancel="cardLongPress.onTouchcancel"
@@ -308,13 +352,14 @@
                 instead of the cold gray "No Image" SVG (which read as a
                 broken/unfinished image and was the single biggest
                 vibe-coded tell on the feed). Faded 集 seal on a warm
-                gradient, sized to the same aspect slot a real photo would
-                take so column rhythm stays intact.
+                gradient. A compact 3:2 slot keeps text-first sell/wanted
+                listings dense instead of spending a full portrait tile on
+                decorative empty media.
               -->
               <view
                 v-else
                 class="u-thumb-ph"
-                :style="dimsToAspectStyle(effectiveDims(item), 0)"
+                :style="dimsToAspectStyle(null, 0, '3/2')"
                 aria-hidden="true"
               >
                 <text class="u-thumb-ph-seal">集</text>
@@ -331,7 +376,7 @@
                 <text>{{ item.images.length }}</text>
               </view>
               <view v-if="pickupBadge(item)" class="badge-safe-corner" :class="{ 'badge-safe-corner--shared': !pickupBadge(item)!.spot }" :aria-label="pickupBadge(item)!.label">
-                <text v-if="pickupBadge(item)!.spot" class="bsc-check">✓</text>
+                <UIcon v-if="pickupBadge(item)!.spot" class="bsc-check" name="check" size="xs" color="currentColor" aria-hidden="true" />
                 <text class="bsc-label">{{ pickupBadge(item)!.label }}</text>
               </view>
             </view>
@@ -345,29 +390,33 @@
                 </template>
               </view>
               <view class="card-bottom">
-                <view class="card-seller">
-                  <image
-                    :src="item.profile?.avatar_url || defaultAvatarSrc"
+                <view :class="['card-seller', { 'card-seller--verified': item.profile?.is_illini_verified }]">
+                  <UAvatar
+                    :src="item.profile?.avatar_url"
+                    :owner="item.user_id"
+                    :fallback="defaultAvatarSrc"
                     :alt="item.profile?.nickname || 'avatar'"
                     class="seller-pic"
-                    mode="aspectFill"
+                    lazy
                   />
                   <text class="seller-nick">{{ item.profile?.nickname || t('app.user') }}</text>
                   <UBadge v-if="item.profile?.is_illini_verified" variant="illini" class="card-illini" :title="t('profile.illiniVerified')">Illini</UBadge>
-                  <text v-if="(item.profile?.rating_count || 0) > 0" class="seller-rating">★{{ Number(item.profile?.avg_rating || 0).toFixed(1) }}</text>
-                  <text class="card-time">{{ formatTime(item.created_at) }}</text>
+                  <text v-if="(item.profile?.rating_count || 0) > 0" class="seller-rating">{{ Number(item.profile?.avg_rating || 0).toFixed(1) }}/5</text>
                 </view>
                 <view class="card-fav">
+                  <text class="card-time">{{ formatTime(item.created_at) }}</text>
                   <text v-if="isOldItem(item.created_at)" class="old-tag">{{ t('home.oldListing') }}</text>
                   <image
                     :src="isFavorited(item.id) ? '/static/heart-filled.svg' : '/static/heart.svg'"
                     alt=""
                     :class="['heart-img', { 'u-anim-heart-pop': isFavorited(item.id) }]"
                     role="button"
+                    tabindex="0"
                     :aria-label="isFavorited(item.id) ? t('a11y.unfavorite') : t('a11y.favorite')"
                     @click.stop="onQuickFav(item)"
+                    @keydown="onQuickFavoriteKeydown($event, item)"
                   />
-                  <text class="fav-num">{{ item.favorite_count || 0 }}</text>
+                  <text v-if="(item.favorite_count || 0) > 0" class="fav-num">{{ item.favorite_count }}</text>
                 </view>
               </view>
             </view>
@@ -388,18 +437,18 @@
         <text class="divider"></text>
       </view>
       <!-- Empty -->
-      <view v-if="fetchError && !loading" class="empty">
-        <view class="empty-error-icon"></view>
+      <view v-if="fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
+        <UIcon name="shield" size="lg" color="ink-soft" />
         <text class="empty-sub">{{ fetchError }}</text>
-        <view class="empty-btn" @click="onRefresh">{{ t('home.retry') }}</view>
+        <view class="empty-btn" role="button" :aria-label="t('home.retry')" @click="onRefresh">{{ t('home.retry') }}</view>
       </view>
 
       <view v-else-if="!loading && !initialLoading && filteredItems.length === 0" class="empty">
         <UEmptyArt :name="searchText ? 'search' : 'bag'" />
         <text class="empty-title">{{ searchText ? t('home.noResults') : (listingType === 'wanted' ? t('home.emptyWantedTitle') : t('home.emptyTitle')) }}</text>
         <text class="empty-sub">{{ searchText ? t('home.tryOther') : (listingType === 'wanted' ? t('home.emptyWantedSub') : t('home.emptySub')) }}</text>
-        <view v-if="searchText" class="empty-btn" @click="searchText = ''; onSearch()">{{ t('home.clearSearch') }}</view>
-        <view v-else class="empty-btn" @click="goPublish">{{ t('home.postItem') }}</view>
+        <view v-if="searchText" class="empty-btn" role="button" :aria-label="t('home.clearSearch')" @click="searchText = ''; onSearch()">{{ t('home.clearSearch') }}</view>
+        <view v-else class="empty-btn" role="button" :aria-label="t('home.postItem')" @click="goPublish">{{ t('home.postItem') }}</view>
       </view>
     </scroll-view>
 
@@ -419,8 +468,8 @@ const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif
-import { ref, computed, onMounted } from 'vue'
-import { onShow, onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { onShow, onHide, onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
 import { useItems } from '../../composables/useItems'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
@@ -429,10 +478,11 @@ import { useFavorites } from '../../composables/useFavorites'
 import { useModeration } from '../../composables/useModeration'
 import { useSemester } from '../../composables/useSemester'
 import { useLongPress } from '../../composables/useLongPress'
+import { createOwnedLoading } from '../../composables/ownedLoading'
 import { pickupTier } from '../../composables/useCampusSpots'
 import type { ItemCategory, ItemCondition, Item } from '../../types'
 
-import { debounce, formatTime, formatPrice, friendlyErrorMessage, haptic, thumbUrl, BROWSE_CATEGORIES } from '../../utils'
+import { debounce, formatTime, formatPrice, listingPriceLabel, friendlyErrorMessage, haptic, thumbUrl, BROWSE_CATEGORIES } from '../../utils'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 // #ifndef H5
 import { BASE_URL } from '../../config/runtime'
@@ -441,9 +491,20 @@ import type { ImageDim } from '../../types'
 import AppSidebar from '../../components/AppSidebar.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import UBadge from '../../components/UBadge.vue'
+import UAvatar from '../../components/UAvatar.vue'
 import UIcon from '../../components/UIcon.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
 import AddToHomeHint from '../../components/AddToHomeHint.vue'
+import {
+  captureAccountRequest,
+  isAccountRequestCurrent,
+  onAccountTransition,
+} from '../../composables/accountScope'
+import {
+  readAccountPrivateStorage,
+  removeAccountPrivateStorage,
+  writeAccountPrivateStorage,
+} from '../../api/accountLocalPrivacy'
 
 const { t, tc, lang, localize, toggleLang } = useI18n()
 const { isDark, setPref } = useTheme()
@@ -459,7 +520,7 @@ const logoSrc = computed(() =>
 )
 const brandEyebrow = computed(() => (lang.value === 'zh' ? 'ILLINI MARKET' : '香槟集市 · CAACI'))
 const themeLabel = computed(() =>
-  isDark.value ? (lang.value === 'zh' ? '暗' : 'Dk') : (lang.value === 'zh' ? '亮' : 'Lt'),
+  isDark.value ? (lang.value === 'zh' ? '暗' : 'Dark') : (lang.value === 'zh' ? '亮' : 'Light'),
 )
 function toggleTheme() {
   setPref(isDark.value ? 'light' : 'dark')
@@ -504,11 +565,13 @@ function pickupBadge(it: Item): { spot: boolean; label: string } | null {
 }
 
 const { items, loading, hasMore, fetchError, fetchItems, clearItems } = useItems()
-const { currentUser } = useAuth()
+const { currentUser, requireAuth, awaitAuthReady } = useAuth()
 const { isFavorited, toggleFavorite, loadMyFavorites } = useFavorites()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
 
 const initialLoading = ref(true)
+let homeAccountEpoch = 0
+const reportLoading = createOwnedLoading()
 
 /*
  * Render-side safety net for image dims.
@@ -548,15 +611,121 @@ const columnCount = ref(2)
 const showBackTop = ref(false)
 const scrollTopVal = ref(0)
 const lastScrollTop = ref(0)
+let scrollResetTimer: ReturnType<typeof setTimeout> | undefined
+let scrollRestoreTimer: ReturnType<typeof setTimeout> | undefined
+let scrollRestoreResetTimer: ReturnType<typeof setTimeout> | undefined
+let homeShowEpoch = 0
+let homeVisible = false
 
 const showFilter = ref(false)
 const filterPriceMin = ref('')
 const filterPriceMax = ref('')
 const filterCondition = ref<ItemCondition | ''>('')
 const filterLocation = ref('')
-const filterVerifiedOnly = ref(false)
 const sortBy = ref('latest')
 const listingType = ref<'sell' | 'wanted'>('sell')
+
+const MAX_FILTER_PRICE = 1_000_000
+type FilterSnapshot = {
+  priceMin: string
+  priceMax: string
+  condition: ItemCondition | ''
+  location: string
+  sort: string
+}
+let filterSnapshot: FilterSnapshot | null = null
+let filterReturnFocus: HTMLElement | null = null
+
+/*
+ * The filter sheet is an edit draft. Closing it through the mask / X restores
+ * the last applied values; otherwise a half-typed or invalid range leaked into
+ * the summary chip even though the user never tapped Apply.
+ */
+function openFilterSheet() {
+  if (!showFilter.value) {
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      filterReturnFocus = document.activeElement
+    }
+    filterSnapshot = {
+      priceMin: filterPriceMin.value,
+      priceMax: filterPriceMax.value,
+      condition: filterCondition.value,
+      location: filterLocation.value,
+      sort: sortBy.value,
+    }
+  }
+  showFilter.value = true
+  nextTick(() => {
+    if (typeof document === 'undefined') return
+    document.querySelector<HTMLElement>('.filter-sheet .fs-close')?.focus()
+  })
+}
+
+function restoreFilterTriggerFocus() {
+  const target = filterReturnFocus
+  filterReturnFocus = null
+  nextTick(() => target?.focus())
+}
+
+function cancelFilterEdit() {
+  if (filterSnapshot) {
+    filterPriceMin.value = filterSnapshot.priceMin
+    filterPriceMax.value = filterSnapshot.priceMax
+    filterCondition.value = filterSnapshot.condition
+    filterLocation.value = filterSnapshot.location
+    sortBy.value = filterSnapshot.sort
+  }
+  filterSnapshot = null
+  showFilter.value = false
+  restoreFilterTriggerFocus()
+}
+
+function onFilterDialogKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    cancelFilterEdit()
+    return
+  }
+  if (event.key !== 'Tab' || typeof document === 'undefined') return
+  const dialog = event.currentTarget as HTMLElement | null
+  if (!dialog) return
+  const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+    'input, [role="button"]:not([aria-disabled="true"]), [tabindex]:not([tabindex="-1"])',
+  )).filter(element => !element.hasAttribute('disabled'))
+  if (focusable.length === 0) return
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+
+function validFilterPrice(raw: string): boolean {
+  if (!raw) return true
+  // Allow a trailing decimal point while the user is mid-entry; Apply
+  // canonicalizes it to the numeric value ("10." → "10").
+  if (!/^\d+(?:\.\d{0,2})?$/.test(raw)) return false
+  const value = Number(raw)
+  return Number.isFinite(value) && value >= 0 && value <= MAX_FILTER_PRICE
+}
+
+const priceFilterError = computed(() => {
+  const minRaw = filterPriceMin.value.trim()
+  const maxRaw = filterPriceMax.value.trim()
+  if (!validFilterPrice(minRaw) || !validFilterPrice(maxRaw)) return 'filter.priceInvalid'
+  if (minRaw && maxRaw && Number(minRaw) > Number(maxRaw)) return 'filter.priceRangeInvalid'
+  return ''
+})
+
+const priceRangeLabel = computed(() => {
+  const min = filterPriceMin.value ? formatPrice(Number(filterPriceMin.value), '') : '$0'
+  const max = filterPriceMax.value ? formatPrice(Number(filterPriceMax.value), '') : '∞'
+  return `${min}–${max}`
+})
 
 const categoryKeys: (ItemCategory | null)[] = [null, ...BROWSE_CATEGORIES]
 const categories = computed(() => categoryKeys.map(k => ({
@@ -590,7 +759,6 @@ const activeFilterCount = computed(() => {
   if (filterPriceMax.value) c++
   if (filterCondition.value) c++
   if (filterLocation.value) c++
-  if (filterVerifiedOnly.value) c++
   if (sortBy.value !== 'latest') c++
   return c
 })
@@ -607,7 +775,6 @@ function getFilterParams() {
     sort: sortBy.value,
     listingType: listingType.value,
     location: filterLocation.value || undefined,
-    verifiedOnly: filterVerifiedOnly.value || undefined,
   }
 }
 
@@ -619,6 +786,26 @@ function setListingType(t: 'sell' | 'wanted') {
   fetchItems({ ...getFilterParams(), reset: true })
 }
 
+function onFeedModeKeydown(event: KeyboardEvent, current: 'sell' | 'wanted') {
+  const modes: Array<'sell' | 'wanted'> = ['sell', 'wanted']
+  const index = modes.indexOf(current)
+  let nextIndex = index
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % modes.length
+  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index - 1 + modes.length) % modes.length
+  else if (event.key === 'Home') nextIndex = 0
+  else if (event.key === 'End') nextIndex = modes.length - 1
+  else if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+    event.preventDefault()
+    setListingType(current)
+    return
+  } else return
+
+  event.preventDefault()
+  setListingType(modes[nextIndex])
+  const tabList = (event.currentTarget as HTMLElement | null)?.parentElement
+  nextTick(() => tabList?.querySelectorAll<HTMLElement>('[role="tab"]')[nextIndex]?.focus())
+}
+
 const filteredItems = computed(() => {
   let result = [...displayItems.value]
 
@@ -627,20 +814,11 @@ const filteredItems = computed(() => {
   // filters server-side via getFilterParams).
   result = result.filter(item => (item.listing_type || 'sell') === listingType.value)
 
-  // Location + verified-pickup now filter server-side on the non-search path
-  // (getFilterParams), so these are a no-op there; kept as the fallback for the
-  // search-RPC path, which has no location/verified params.
+  // Location is filtered server-side on both the regular query and search RPC.
+  // Keep this client pass as a defensive fallback for older backend versions.
   if (filterLocation.value) {
     const loc = filterLocation.value.toLowerCase()
     result = result.filter(item => item.location.toLowerCase().includes(loc))
-  }
-
-  // "Shared location only" — GPS-confirmed items. Stays GPS-scoped (not the
-  // safe-spot tier) because it also runs server-side via getFilterParams, and
-  // matchSpot() is client-only string logic that can't be replicated in SQL.
-  // A chip-named safe spot without a GPS fix is badged but not caught here.
-  if (filterVerifiedOnly.value) {
-    result = result.filter(item => item.location_verified)
   }
 
   return result
@@ -654,8 +832,35 @@ const columns = computed(() => {
   return cols
 })
 
+const handleWindowResize = (res: { size: { windowWidth: number } }) => {
+  // At 768–959px the 240px sidebar leaves only 528–719px of content. Three
+  // waterfall columns make titles, seller metadata, and badges collide, so
+  // keep two columns until each of three cards can retain a useful width.
+  columnCount.value = res.size.windowWidth >= 1180 ? 4 : res.size.windowWidth >= 960 ? 3 : 2
+}
+let windowResizeRegistered = false
+
+function clearScrollTimers() {
+  if (scrollResetTimer !== undefined) clearTimeout(scrollResetTimer)
+  if (scrollRestoreTimer !== undefined) clearTimeout(scrollRestoreTimer)
+  if (scrollRestoreResetTimer !== undefined) clearTimeout(scrollRestoreResetTimer)
+  scrollResetTimer = undefined
+  scrollRestoreTimer = undefined
+  scrollRestoreResetTimer = undefined
+}
+
 function applyFilters() {
+  if (priceFilterError.value) {
+    uni.showToast({ title: t(priceFilterError.value), icon: 'none' })
+    return
+  }
+  // Store canonical values so chips and requests never carry leading zeros or
+  // incidental decimal formatting (e.g. "00100.00" → "100").
+  if (filterPriceMin.value) filterPriceMin.value = String(Number(filterPriceMin.value))
+  if (filterPriceMax.value) filterPriceMax.value = String(Number(filterPriceMax.value))
+  filterSnapshot = null
   showFilter.value = false
+  restoreFilterTriggerFocus()
   currentPage.value = 0
   fetchItems({ ...getFilterParams(), reset: true })
 }
@@ -665,7 +870,6 @@ function resetFilters() {
   filterPriceMax.value = ''
   filterCondition.value = ''
   filterLocation.value = ''
-  filterVerifiedOnly.value = false
   sortBy.value = 'latest'
 }
 
@@ -675,48 +879,98 @@ function onClearAllFilters() {
   fetchItems({ ...getFilterParams(), reset: true })
 }
 
+function resetHomeAccountState() {
+  homeAccountEpoch += 1
+  clearItems()
+  initialLoading.value = true
+  measuredDims.value = {}
+  searchText.value = ''
+  selectedCategory.value = null
+  currentPage.value = 0
+  isRefreshing.value = false
+  showFilter.value = false
+  filterSnapshot = null
+  resetFilters()
+  listingType.value = 'sell'
+  reportLoading.cancel()
+}
+
+const stopAccountTransitionListener = onAccountTransition(() => {
+  resetHomeAccountState()
+  // useAuth updates currentUser immediately after the transition callback on
+  // sign-out, and later after profile hydration on sign-in. Enter the next
+  // microtask so reloadHomeForCurrentAccount observes the new authority.
+  void Promise.resolve().then(() => reloadHomeForCurrentAccount())
+})
+onUnmounted(() => {
+  reportLoading.cancel()
+  stopAccountTransitionListener()
+})
+
+async function reloadHomeForCurrentAccount() {
+  const requestEpoch = homeAccountEpoch
+  await awaitAuthReady()
+  if (requestEpoch !== homeAccountEpoch) return
+
+  const userId = currentUser.value?.id
+  const accountToken = userId ? captureAccountRequest(userId) : null
+  if (accountToken && !isAccountRequestCurrent(accountToken)) return
+
+  if (accountToken) {
+    const favReady = loadMyFavorites(accountToken.userId)
+    const moderationGate = await ensureBlockedLoaded()
+    if (requestEpoch !== homeAccountEpoch || !isAccountRequestCurrent(accountToken)) return
+    if (!moderationGate.ok) {
+      clearItems()
+      fetchError.value = friendlyErrorMessage(
+        new Error('moderation_gate_unavailable'),
+        lang.value as 'en' | 'zh',
+      )
+      await favReady.catch(() => undefined)
+      if (requestEpoch === homeAccountEpoch && isAccountRequestCurrent(accountToken)) initialLoading.value = false
+      return
+    }
+    await Promise.all([
+      fetchItems({ ...getFilterParams(), reset: true }),
+      favReady,
+    ])
+    if (requestEpoch !== homeAccountEpoch || !isAccountRequestCurrent(accountToken)) return
+  } else {
+    await fetchItems({ ...getFilterParams(), reset: true })
+    if (requestEpoch !== homeAccountEpoch) return
+  }
+  initialLoading.value = false
+}
+
 onMounted(async () => {
   try {
     const info = uni.getSystemInfoSync()
-    columnCount.value = info.windowWidth >= 1180 ? 4 : info.windowWidth >= 768 ? 3 : 2
+    columnCount.value = info.windowWidth >= 1180 ? 4 : info.windowWidth >= 960 ? 3 : 2
   } catch {}
 
   try {
     const onResize = (uni as any).onWindowResize
     if (typeof onResize === 'function') {
-      onResize((res: { size: { windowWidth: number } }) => {
-        columnCount.value = res.size.windowWidth >= 1180 ? 4 : res.size.windowWidth >= 768 ? 3 : 2
-      })
+      onResize(handleWindowResize)
+      windowResizeRegistered = true
     }
   } catch {}
 
-  if (currentUser.value) {
-    /*
-     * fetchItems() filters out blocked sellers by reading
-     * useModeration().blockedIds AFTER its query resolves, and nothing
-     * re-filters the feed reactively — so blocked IDs MUST be loaded
-     * before fetchItems runs, or a blocked seller's item can slip onto
-     * the first paint and persist until the next fetch. Hence blocked is
-     * still a gate. Favorites only drive heart-icon state and are
-     * independent of the feed query, so we start them in parallel and let
-     * them overlap fetchItems instead of serially blocking on them.
-     */
-    const favReady = loadMyFavorites(currentUser.value.id)
-    await ensureBlockedLoaded()
-    await Promise.all([
-      fetchItems({ ...getFilterParams(), reset: true }),
-      favReady,
-    ])
-  } else {
-    await fetchItems({ ...getFilterParams(), reset: true })
-  }
-  initialLoading.value = false
+  await reloadHomeForCurrentAccount()
 })
 
 // Release the module-scoped feed on page unload (safety net — the home tab
 // rarely unloads during normal use, but this stops the items[] array from
 // outliving the page when it does).
 onUnload(() => {
+  homeVisible = false
+  homeShowEpoch += 1
+  clearScrollTimers()
+  if (windowResizeRegistered) {
+    const offResize = (uni as any).offWindowResize
+    if (typeof offResize === 'function') offResize(handleWindowResize)
+    windowResizeRegistered = false
+  }
   clearItems()
 })
 
@@ -743,17 +997,21 @@ function goToSearch() {
 
 function consumePendingSearch() {
   try {
-    const ps = uni.getStorageSync('pending_search')
+    const pendingSearch = readAccountPrivateStorage<unknown>('pending_search', '')
+    const ps = pendingSearch.allowed && typeof pendingSearch.value === 'string'
+      ? pendingSearch.value
+      : ''
     if (ps) {
-      uni.removeStorageSync('pending_search')
+      removeAccountPrivateStorage('pending_search')
       searchText.value = ps
       onSearch()
       return
     }
-    const pc = uni.getStorageSync('pending_category')
-    if (pc !== '' && pc !== undefined && pc !== null) {
-      uni.removeStorageSync('pending_category')
-      selectCategory(pc || null)
+    const pendingCategory = readAccountPrivateStorage<unknown>('pending_category', null)
+    const pc = pendingCategory.allowed ? pendingCategory.value : null
+    if (typeof pc === 'string' && pc) {
+      removeAccountPrivateStorage('pending_category')
+      selectCategory(pc as ItemCategory)
     }
   } catch {}
 }
@@ -768,10 +1026,15 @@ const SEARCH_HISTORY_MAX = 8
 function saveSearch(text: string) {
   if (!text.trim()) return
   try {
-    const raw = uni.getStorageSync('searchHistory') || '[]'
-    const list: string[] = JSON.parse(raw)
+    const stored = readAccountPrivateStorage<unknown>('searchHistory', '[]')
+    if (!stored.allowed) return
+    const raw = stored.value
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+    const list: string[] = Array.isArray(parsed)
+      ? parsed.filter(value => typeof value === 'string')
+      : []
     const next = [text, ...list.filter((s) => s !== text)].slice(0, SEARCH_HISTORY_MAX)
-    uni.setStorageSync('searchHistory', JSON.stringify(next))
+    writeAccountPrivateStorage('searchHistory', JSON.stringify(next))
   } catch {}
 }
 
@@ -782,14 +1045,31 @@ const debouncedFetch = debounce(() => {
 }, 300)
 
 async function onQuickFav(item: Item) {
-  if (!currentUser.value) {
-    uni.navigateTo({ url: '/pages/login/index' })
-    return
-  }
+  await awaitAuthReady()
+  if (!requireAuth() || !currentUser.value) return
+  const accountToken = captureAccountRequest(currentUser.value.id)
+  const actionEpoch = homeAccountEpoch
   haptic('light')
-  const result = await toggleFavorite(currentUser.value.id, item.id)
-  if (!result.ok) return
+  const result = await toggleFavorite(accountToken.userId, item.id)
+  if (!result.ok || actionEpoch !== homeAccountEpoch || !isAccountRequestCurrent(accountToken)) return
   item.favorite_count = (item.favorite_count || 0) + (result.favorited ? 1 : -1)
+}
+
+function onItemCardKeydown(event: KeyboardEvent, itemId: string) {
+  if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return
+  event.preventDefault()
+  event.stopPropagation()
+  goToDetail(itemId)
+}
+
+function onQuickFavoriteKeydown(event: KeyboardEvent, item: Item) {
+  if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return
+  // The favorite is nested inside the card. Consume both activation keys so
+  // the delegated role-button shim and the card handler cannot also open the
+  // item detail after toggling the heart.
+  event.preventDefault()
+  event.stopPropagation()
+  void onQuickFav(item)
 }
 
 /* 1.5s + haptic for the home feed report flow — a thumb resting on a
@@ -800,7 +1080,16 @@ async function onQuickFav(item: Item) {
    responsive enough that holding doesn't feel like waiting. */
 const cardLongPress = useLongPress<[Item]>((item) => onCardLongPress(item), 1500)
 
-function onCardLongPress(item: Item) {
+async function onCardLongPress(item: Item) {
+  await awaitAuthReady()
+  const actionEpoch = homeAccountEpoch
+  const accountToken = currentUser.value
+    ? captureAccountRequest(currentUser.value.id)
+    : null
+  const actionIsCurrent = () => (
+    actionEpoch === homeAccountEpoch
+    && (!accountToken || isAccountRequestCurrent(accountToken))
+  )
   const favLabel = isFavorited(item.id) ? t('home.unsave') : t('detail.save')
   const isMine = currentUser.value?.id && item.user_id === currentUser.value.id
   const actions: string[] = [favLabel, t('home.shareItem')]
@@ -808,15 +1097,16 @@ function onCardLongPress(item: Item) {
   uni.showActionSheet({
     itemList: actions,
     success: async (res) => {
+      if (!actionIsCurrent()) return
       if (res.tapIndex === 0) {
         await onQuickFav(item)
       } else if (res.tapIndex === 1) {
         // #ifdef H5
         const url = `${window.location.origin}/share/${item.id}`
         if (navigator.share) {
-          navigator.share({ title: item.title, text: `$${item.price} - ${item.title}`, url })
+          navigator.share({ title: item.title, text: `${listingPriceLabel(item, t)} - ${item.title}`, url })
             .catch((err: any) => {
-              if (err?.name !== 'AbortError') console.warn('[share] failed:', err)
+              if (err?.name !== 'AbortError') console.warn('[share] failed')
             })
         } else {
           uni.setClipboardData({ data: url })
@@ -836,11 +1126,12 @@ function onCardLongPress(item: Item) {
   })
 }
 
-function promptReportItem(itemId: string) {
-  if (!currentUser.value) {
-    uni.navigateTo({ url: '/pages/login/index' })
-    return
-  }
+async function promptReportItem(itemId: string) {
+  await awaitAuthReady()
+  if (!requireAuth() || !currentUser.value) return
+  const accountToken = captureAccountRequest(currentUser.value.id)
+  const actionEpoch = homeAccountEpoch
+  const actionIsCurrent = () => actionEpoch === homeAccountEpoch && isAccountRequestCurrent(accountToken)
   const reasons = [
     t('report.reasonSpam'),
     t('report.reasonProhibited'),
@@ -850,14 +1141,17 @@ function promptReportItem(itemId: string) {
   uni.showActionSheet({
     itemList: reasons,
     success: async (res) => {
+      if (!actionIsCurrent()) return
       const reason = reasons[res.tapIndex]
-      uni.showLoading({ title: t('report.submitting') || t('login.wait'), mask: true })
+      const loadingOwner = reportLoading.show(t('report.submitting') || t('login.wait'))
       try {
         await reportTarget('item', itemId, reason)
-        uni.hideLoading()
+        reportLoading.hide(loadingOwner)
+        if (!actionIsCurrent()) return
         uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
-        uni.hideLoading()
+        reportLoading.hide(loadingOwner)
+        if (!actionIsCurrent()) return
         uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('report.failed'), icon: 'none' })
       }
     },
@@ -884,19 +1178,41 @@ function onScroll(e: any) {
 }
 
 function scrollToTop() {
+  clearScrollTimers()
   scrollTopVal.value = 1
-  setTimeout(() => { scrollTopVal.value = 0 }, 50)
+  scrollResetTimer = setTimeout(() => {
+    scrollResetTimer = undefined
+    scrollTopVal.value = 0
+  }, 50)
 }
 
-onShow(() => {
+onShow(async () => {
+  homeVisible = true
+  const showEpoch = ++homeShowEpoch
+  clearScrollTimers()
+  // pending_search/category and searchHistory are account-owned storage. Wait
+  // until useAuth has erased or adopted them for the current authority before
+  // copying either value into mounted refs.
+  await awaitAuthReady()
+  if (!homeVisible || showEpoch !== homeShowEpoch) return
   consumePendingSearch()
   if (lastScrollTop.value > 0) {
     const saved = lastScrollTop.value
-    setTimeout(() => {
+    scrollRestoreTimer = setTimeout(() => {
+      scrollRestoreTimer = undefined
       scrollTopVal.value = saved
-      setTimeout(() => { scrollTopVal.value = 0 }, 100)
+      scrollRestoreResetTimer = setTimeout(() => {
+        scrollRestoreResetTimer = undefined
+        scrollTopVal.value = 0
+      }, 100)
     }, 50)
   }
+})
+
+onHide(() => {
+  homeVisible = false
+  homeShowEpoch += 1
+  clearScrollTimers()
 })
 
 onShareAppMessage(() => ({
@@ -916,14 +1232,17 @@ function loadMore() {
 
 async function onRefresh() {
   if (isRefreshing.value) return
+  const refreshEpoch = homeAccountEpoch
   isRefreshing.value = true
   currentPage.value = 0
-  const failsafe = setTimeout(() => { isRefreshing.value = false }, 10000)
+  const failsafe = setTimeout(() => {
+    if (refreshEpoch === homeAccountEpoch) isRefreshing.value = false
+  }, 10000)
   try {
     await fetchItems({ ...getFilterParams(), reset: true })
   } finally {
     clearTimeout(failsafe)
-    isRefreshing.value = false
+    if (refreshEpoch === homeAccountEpoch) isRefreshing.value = false
   }
 }
 
@@ -1011,7 +1330,7 @@ function goPublish() {
   letter-spacing: 0.22em; text-transform: uppercase;
   /* muted, not terracotta — the eyebrow is a quiet sub-label, not a
      second accent competing with the seal + active category pill */
-  color: var(--ink-faint);
+  color: var(--text-subtle);
   line-height: 1;
 }
 /* Quick theme + 中/EN toggles. Pills on the inset surface so they read as
@@ -1235,13 +1554,11 @@ function goPublish() {
     0 6px 16px -8px rgba(160, 58, 36, 0.45);
   cursor: pointer;
 }
-/* Decorative serif "I" watermark — Illini mark, cream-ghosted on terracotta. */
+/* Existing brand asset, cream-ghosted on terracotta. */
 .seb-arc {
-  position: absolute; right: -10px; top: -34px;
-  font-family: var(--font-serif);
-  font-size: 130px; font-weight: 600; line-height: 1;
-  letter-spacing: -0.05em;
-  color: rgba(255, 255, 255, 0.08);
+  position: absolute; right: -12px; top: -24px;
+  width: 112px; height: 112px;
+  opacity: 0.1;
   pointer-events: none;
 }
 .seb-body {
@@ -1269,8 +1586,6 @@ function goPublish() {
 }
 .seb-arrow {
   position: relative;
-  font-family: var(--font-serif);
-  font-size: 24px; line-height: 1;
   color: rgba(255, 255, 255, 0.85);
   flex-shrink: 0;
 }
@@ -1301,10 +1616,16 @@ function goPublish() {
 .fs-price-input {
   flex: 1; display: flex; align-items: center;
   background: var(--bg-subtle); border-radius: 10px; padding: 10px 12px; gap: 4px;
+  border: 1px solid transparent;
   input { flex: 1; font-size: 15px; color: var(--ink); background: transparent; font-family: var(--font-serif); letter-spacing: -0.01em; }
+  &.invalid { border-color: var(--danger); }
 }
 .fs-dollar { font-size: 15px; color: var(--ink-quiet); font-weight: 600; }
 .fs-dash { color: var(--ink-faint); font-size: 16px; }
+.fs-error {
+  display: block; margin-top: 8px;
+  color: var(--danger); font-size: 12px; line-height: 1.4;
+}
 .fs-pills { display: flex; flex-wrap: wrap; gap: 8px; }
 .fpill {
   padding: 7px 15px; border-radius: 8px;
@@ -1331,6 +1652,7 @@ function goPublish() {
   text-align: center; cursor: pointer;
   box-shadow: var(--shadow-cta);
   &:active { opacity: 0.85; }
+  &.disabled { opacity: 0.48; box-shadow: none; }
 }
 
 /* ========== Feed ========== */
@@ -1411,18 +1733,21 @@ function goPublish() {
   padding: 2px 7px 2px 5px; border-radius: 10px;
   background: var(--success);
 }
-/* tier-2: GPS shared but no recognized safe spot — muted, no ✓ */
+/* tier-2: GPS shared but no recognized safe spot — muted, no verified icon */
 .badge-safe-corner--shared { background: rgba(0, 0, 0, 0.55); padding-left: 7px; }
-.bsc-check { font-size: 10px; color: var(--ink-inverse); font-weight: 800; line-height: 1; }
+.bsc-check { width: 10px !important; height: 10px !important; color: var(--ink-inverse); }
 .bsc-label { font-size: 10px; color: var(--ink-inverse); font-weight: 600; line-height: 1; }
-.card-time { font-size: 10px; color: var(--text-faint); margin-left: auto; }
-.old-tag { font-size: 10px; color: var(--text-faint); margin-right: 2px; }
+.card-time {
+  font-size: 10px; color: var(--text-subtle);
+  flex-shrink: 0; white-space: nowrap;
+}
+.old-tag { font-size: 10px; color: var(--text-subtle); margin-right: 2px; }
 
 .card-info { padding: 11px 12px 13px; }
 .card-title {
   font-size: 13px; color: var(--text-primary); line-height: 1.35; font-weight: 400;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  overflow: hidden; word-break: break-all;
+  overflow: hidden; word-break: normal; overflow-wrap: break-word;
 }
 .card-price-row { display: flex; align-items: baseline; gap: 4px; margin-top: 5px; }
 /* Waterfall card price in Fraunces serif + terracotta — matches the
@@ -1442,7 +1767,7 @@ function goPublish() {
 /* OBO chip — amber-toned warning pill, ivory_academy pattern. */
 .obo-tag {
   font-size: 9px; font-weight: 600;
-  color: var(--warning);
+  color: var(--warning-text);
   background: var(--warning-soft);
   padding: 1px 4px;
   border-radius: var(--radius-xs);
@@ -1450,22 +1775,45 @@ function goPublish() {
   text-transform: uppercase;
 }
 
-.card-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 7px; }
-.card-seller { display: flex; align-items: center; gap: 5px; flex: 1; min-width: 0; }
+.card-bottom { display: flex; align-items: center; gap: 5px; margin-top: 7px; min-width: 0; }
+.card-seller {
+  display: flex; align-items: center; gap: 5px;
+  flex: 1 1 auto; min-width: 0; overflow: hidden;
+}
 .seller-pic { width: 16px; height: 16px; border-radius: 50%; background: var(--bg-subtle); flex-shrink: 0; }
-.seller-nick { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.seller-rating { font-size: 11px; color: var(--brand); font-weight: 600; flex-shrink: 0; }
+.seller-nick {
+  flex: 1 1 auto; min-width: 0;
+  font-size: 11px; color: var(--text-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.seller-rating {
+  flex: 0 1 auto; min-width: 0;
+  font-size: 11px; color: var(--brand); font-weight: 600;
+  overflow: hidden; white-space: nowrap;
+}
 /* Illini = the one server-truth trust signal (set from an @illinois.edu email,
    not user-editable). Promoted from a 13px ✓ circle that read as decoration to
    a labeled blue pill so it's legible at the browsing moment. */
 .card-illini { flex-shrink: 0; }
-.card-fav { display: flex; align-items: center; gap: 4px; flex-shrink: 0; padding: 4px 2px; }
+.card-fav {
+  display: flex; align-items: center; gap: 4px;
+  flex: 0 0 auto; min-width: 0; padding: 4px 2px;
+}
 .heart-img {
   width: 18px; height: 18px; cursor: pointer;
   transition: transform 0.15s;
   &:active { transform: scale(1.25); }
 }
-.fav-num { font-size: 10px; color: var(--text-faint); }
+.fav-num { font-size: 10px; color: var(--text-subtle); }
+
+@media (max-width: 479px) {
+  /* The date already communicates age on narrow waterfall cards; dropping
+     the redundant "Old" label keeps the fixed date+heart group collision-free. */
+  .old-tag { display: none; }
+  /* The trust badge outranks a repeated seller name in a 2-column card. The
+     avatar still identifies the seller; the full nickname remains on detail. */
+  .card-seller--verified .seller-nick { display: none; }
+}
 
 /* ========== Skeleton ========== */
 .skeleton-card { pointer-events: none; }
@@ -1506,15 +1854,6 @@ function goPublish() {
 
 .empty {
   display: flex; flex-direction: column; align-items: center; padding-top: 80px; gap: 8px;
-}
-.empty-error-icon {
-  width: 40px; height: 40px; border: 2.5px solid var(--border-strong);
-  border-radius: 50%; position: relative; margin-bottom: 6px;
-  &::before {
-    content: '!'; position: absolute; top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 20px; font-weight: 700; color: var(--border-strong);
-  }
 }
 .empty-title { font-size: 16px; color: var(--ink); font-weight: 600; }
 .empty-sub { font-size: 13px; color: var(--ink-quiet); text-align: center; padding: 0 32px; }

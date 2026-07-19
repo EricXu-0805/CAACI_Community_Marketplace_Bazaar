@@ -1,16 +1,36 @@
 <template>
   <view class="page" :class="mpThemeClass" :style="mpChrome">
-    <swiper class="swiper" :current="current" @change="current = $event.detail.current">
-      <swiper-item v-for="(slide, i) in slides" :key="i">
+    <swiper
+      class="swiper focusable"
+      :current="current"
+      role="region"
+      aria-roledescription="carousel"
+      :aria-label="t('welcome.carouselLabel')"
+      aria-describedby="welcome-carousel-instructions"
+      aria-keyshortcuts="ArrowLeft ArrowRight"
+      tabindex="0"
+      @change="onSlideChange"
+      @keydown="onCarouselKeydown"
+    >
+      <swiper-item
+        v-for="(slide, i) in slides"
+        :key="i"
+        role="group"
+        aria-roledescription="slide"
+        :aria-label="t('welcome.slidePosition', { current: i + 1, total: slides.length })"
+        :aria-hidden="current === i ? 'false' : 'true'"
+      >
         <view class="slide">
-          <view class="slide-art"><image :src="slide.img" mode="aspectFit" class="slide-img" /></view>
+          <view class="slide-art"><image :src="slide.img" alt="" mode="aspectFit" class="slide-img" /></view>
           <text class="slide-title">{{ slide.title }}</text>
           <text class="slide-desc">{{ slide.desc }}</text>
         </view>
       </swiper-item>
     </swiper>
+    <text id="welcome-carousel-instructions" class="sr-only">{{ t('welcome.carouselHint') }}</text>
+    <text class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ currentSlideStatus }}</text>
 
-    <view class="dots">
+    <view class="dots" aria-hidden="true">
       <view v-for="(_, i) in slides" :key="i" :class="['dot', { active: current === i }]"></view>
     </view>
 
@@ -52,6 +72,34 @@ const slides = computed(() => [
   { img: '/static/welcome/meetup.png', title: t('welcome.t2'), desc: t('welcome.d2') },
   { img: '/static/welcome/safe.png', title: t('welcome.t3'), desc: t('welcome.d3') },
 ])
+const currentSlideStatus = computed(() => {
+  const slide = slides.value[current.value] || slides.value[0]
+  return t('welcome.slideStatus', {
+    current: current.value + 1,
+    total: slides.value.length,
+    title: slide?.title || '',
+  })
+})
+
+function setCurrentSlide(next: number) {
+  current.value = Math.max(0, Math.min(slides.value.length - 1, next))
+}
+
+function onSlideChange(event: { detail?: { current?: number } }) {
+  const next = Number(event.detail?.current)
+  if (Number.isInteger(next)) setCurrentSlide(next)
+}
+
+function onCarouselKeydown(event: KeyboardEvent) {
+  let next = current.value
+  if (event.key === 'ArrowLeft') next -= 1
+  else if (event.key === 'ArrowRight') next += 1
+  else if (event.key === 'Home') next = 0
+  else if (event.key === 'End') next = slides.value.length - 1
+  else return
+  event.preventDefault()
+  setCurrentSlide(next)
+}
 
 function finish() {
   try { uni.setStorageSync('welcomed', '1') } catch {}

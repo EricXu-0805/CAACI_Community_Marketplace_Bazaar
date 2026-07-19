@@ -22,12 +22,21 @@ process.env.NO_PROXY = 'localhost,127.0.0.1'
  *   cd app && npm run smoke
  *
  * Auto-starts the H5 dev server on :5173 (reuses one if already running).
- * The logged-in flow is gated on SMOKE_EMAIL / SMOKE_PASSWORD env vars so
- * no credentials live in the repo — without them, only the logged-out
- * sweep runs.
+ * The logged-in flow is gated on SMOKE_EMAIL / SMOKE_PASSWORD plus
+ * SMOKE_ACCOUNT_IS_SYNTHETIC=true and SMOKE_DATASET_IS_SYNTHETIC=true, plus an
+ * exact protected staging project ref and expected synthetic user UUID. CI
+ * fails configuration mismatches and verifies the authenticated session UUID;
+ * credentials do not live in the repo. CI also disables every browser artifact; local runs keep
+ * failure screenshots for interactive debugging.
  */
+const isCi = process.env.CI === 'true'
+
 export default defineConfig({
   testDir: './smoke',
+  // Keep deterministic node:test boundary suites out of Playwright. Without
+  // this, Playwright imports *.test.mjs, causing their tests to execute once as
+  // module side effects and again as malformed Playwright cases.
+  testMatch: '**/*.spec.ts',
   timeout: 60_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
@@ -37,7 +46,9 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:5173',
     ...devices['iPhone 13'],
-    screenshot: 'only-on-failure',
+    screenshot: isCi ? 'off' : 'only-on-failure',
+    trace: 'off',
+    video: 'off',
   },
   webServer: {
     command: 'npm run dev:h5',

@@ -1,205 +1,114 @@
-# 开发路线图 (ROADMAP)
+# Illini Market 发布路线图
 
-> 最后更新：2026-04-19 (late v2 session)
-> 状态：规划中
+> 最后更新：2026-07-19
+> 当前阶段：未部署 release candidate → staging/production readiness
+> 原则：以可复查证据关闭门禁，不以文件存在、测试小计或文档勾选冒充上线。
 
----
+## 当前状态
 
-## 总体阶段规划
+核心 H5/微信小程序、Supabase 数据模型、Vercel Edge API 和管理员后台已经存在。
+2026-07 全项目审计把大量身份、RLS/ACL、Storage、Realtime、管理员、邮件、
+注销、可访问性和依赖缺陷修成候选链，但生产仍是旧 schema/bundle，migration
+ledger 也有历史漂移。
 
-```
-Phase 0          Phase 1           Phase 2           Phase 3
-规划 & 设计   →   MVP 开发      →   试运行 & 迭代  →   正式上线 & 扩展
-(当前)           小程序 + Web       内测 + 反馈       App + 商户体系
-```
+因此目前不是“规划期”，也不是“正式上线”：它是需要严格上线演练的 release
+candidate。
 
----
+## R0：本地 release candidate（本轮）
 
-## Phase 0：规划 & 设计（当前）
+- [x] Node 22、npm 10、CI/pre-push/runtime 基线；
+- [x] 全部页面/账号异步状态、A→B/匿名隔离和恢复/重签/停权门禁；
+- [x] 公共写入 ACL + RLS + 列权限 + trigger/RPC；
+- [x] 双向 block、证据快照、archive、durable 注销；
+- [x] 精确成交归属与双方评分；
+- [x] 公开图片/Storage quota/owner path 与 private Realtime；
+- [x] per-admin role/capability、原子 mutation/audit/idempotency、banner saga；
+- [x] notification attribution、原子 reminder、email claim/lease；
+- [x] Sentry/client/server log privacy boundary；
+- [x] 真实本地 type-check、H5/mp/Vercel build、deterministic tests、两套 PG16 replay
+  和应用内浏览器旅程（最终数字与限制写入当次审计报告）；
+- [ ] 软件许可证负责人决定 `heic-to` LGPL 合规路径；
+- [ ] DCloud 官方支持安全 Vite line 后完成协调升级。
 
-### 产品规划
-- [x] 核心功能模块确认（4 Tab 结构）
-- [x] 会员体系框架设计
-- [x] 商户合作体系初步规划
-- [x] 多端部署策略确定
-- [ ] 详细 UI/UX 设计稿
-- [ ] 用户流程图 (User Flow)
-- [ ] 数据库模型设计
+上面的 `[x]` 指工作树证据，不代表 production 已部署。
 
-### 技术选型
-- [ ] 前端框架选型（考虑小程序 + Web 跨端）
-- [ ] 后端技术栈确定
-- [ ] 数据库选型
-- [ ] 云服务 & 部署方案
-- [ ] 第三方服务选型（推送、短信、对象存储等）
+## R1：staging 放行门禁
 
-### 基础设施
-- [ ] 域名注册
-- [ ] 微信小程序账号申请
-- [ ] 开发环境搭建
-- [ ] CI/CD 流水线搭建
+负责人需要在与生产等价、可丢弃的环境完成：
 
----
+1. 导入 production-like ledger/schema/storage metadata，跑全部只读 PRECHECK；
+2. 按 runbook 顺序部署完整候选链，跑 VERIFY、事务内 REGRESSION、候选重入和
+   schema/grant/policy/function diff；
+3. additive 配置 publishable/secret key，保留 legacy client compatibility；
+4. 两个真实测试账号覆盖注册、验证、reconsent、发布、搜索、收藏、关注、帖子、
+   评论、block、消息、offer、meetup、成交、评分、通知、archive、换号和注销；
+5. operator/security/owner 三角色后台覆盖错误 token、过期/撤销、举报、停权、
+   申诉、banner、required audit 回滚和 owner recovery；
+6. Resend test → live canary、OpenAI moderation/translation、Nominatim、Sentry、
+   WeChat login/seccheck/callback、Realtime websocket/fallback 故障注入；
+7. iPhone Safari、Android Chrome、微信 iOS/Android 真机，含弱网、后台恢复、
+   HEIC、键盘、VoiceOver/TalkBack/微信读屏；
+8. 验证 help/support、rights request、appeal、unsubscribe 和事故值班渠道真的有人
+   接收和处理。
 
-## Phase 1：MVP 开发
+任一核心步骤只有模拟 fixture、静态测试或浏览器截图时，状态必须写“部分验证”，
+不能升级为 pass。
 
-### 微信小程序 (P0)
-- [ ] 项目初始化 & 基础架构
-- [ ] 用户注册/登录（手机号 + 邮箱）
-- [ ] Tab 1: 二手交易 — 发布 & 浏览 & 搜索
-- [ ] Tab 2: 社区论坛 — 发帖 & 回复（官方区 + 用户区）
-- [ ] Tab 3: 私信 — 基础聊天功能
-- [ ] Tab 4: 个人中心 — 基础资料 & 发布管理
-- [ ] 基础内容审核（关键词过滤）
+## R2：生产迁移与受限 beta
 
-### Web 网站 (P0)
-- [ ] 响应式布局（手机端 ≈ 小程序，桌面端顶部导航）
-- [ ] 与小程序共享后端 API
-- [ ] 核心功能对齐小程序
+生产写操作必须另获明确授权：
 
-### 后端服务
-- [ ] 用户系统（注册、登录、鉴权）
-- [ ] 商品 CRUD API
-- [ ] 帖子 CRUD API
-- [ ] 私信/即时通讯服务
-- [ ] 图片上传 & 对象存储
-- [ ] 搜索 & 筛选服务
+1. 冻结非必要变更；导出 ledger、schema、grants、policies、functions、Auth 统计
+   与 Storage bytes，完成数据库和对象备份/恢复演练；
+2. 先跑生产只读 PRECHECK；漂移不明即停；
+3. 按 runbook 分阶段部署 API/H5/mp 与 migration，WeChat legacy credential 退役
+   先 dry-run、再授权 apply，不能跳过 guard；
+4. 每阶段立即跑 VERIFY、最小 anon/A/B/admin canary，监控 401/403/409/429/5xx、
+   Realtime、Storage、cron、Sentry、database advisor 和慢查询；
+5. 验证 rollback/forward-fix；不要对有真实用户写入的新 schema 做盲目 down
+   migration；
+6. 安全注销或管理员路径验收后，再处理上轮 disposable 测试账号残留；不得直接
+   篡改 Supabase Auth/Storage 内部表；
+7. 只有连续观察窗稳定且运营支持 ready，才逐步扩大 beta。
 
----
+## R3：beta 稳定化
 
-## Phase 2：试运行 & 迭代
+- 建立每周权限/drift/advisor/依赖/cron/支持工单复盘；
+- 给头像、商品、广场、举报 evidence 和历史行建立引用感知媒体 GC；
+- 将 provider delivery、email backlog、account-deletion pending、banner GC、
+  admin audit failure 变成可告警指标；
+- 把 optional authenticated smoke 升级为有受管 staging secrets 的 required
+  journey，同时避免 fork PR 获得 secrets；
+- 拆分 `ChatThread`、admin、home、plaza、publish/detail 等大型 SFC，并生成/更新
+  Supabase Database types；
+- 用真实流量数据做索引/查询优化，不用破坏性 k6 默认指向生产。
 
-### 功能完善
-- [ ] 会员卡系统（等级、认证、coupon）
-- [ ] 华协账户关联
-- [ ] 官方信息频道内容管理后台
-- [ ] 本地新闻自动爬取 Agent
-- [ ] 通知推送系统
-- [ ] 搜索算法优化
+## R4：产品扩展（需要新决策）
 
-### 安全加固
-- [ ] CAPTCHA 人机验证
-- [ ] 内容审核系统上线
-- [ ] 网络安全套餐接入
-- [ ] 用户数据加密 & 隔离
+以下不是当前 release 延期项，而是独立产品项目：
 
-### 运营准备
-- [ ] 用户反馈收集机制
-- [ ] 数据埋点 & 分析
-- [ ] 运营后台开发
-- [ ] 免责声明 & 用户协议
+- CAACI/Illini 会员、coupon、商户合作和收费；
+- 平台支付、托管、物流或交易保障；
+- 用户自定义 sticker、聊天媒体或群聊；
+- 更强搜索/推荐、官方内容和活动；
+- 原生 iOS/Android、Apple Wallet；
+- 独立管理员域、短时 WebAuthn/session、双人审批等更强治理。
 
----
+每项必须先明确用户价值、运营 owner、数据来源、滥用模型、支持/恢复路径、合规
+义务和可逆发布方案，再进入实现。
 
-## Phase 3：正式上线 & 扩展
+## 持续技术债队列
 
-### iOS App (P1)
-- [ ] 原生 App 开发 / 混合方案
-- [ ] Apple Store 申请 & 审核
-- [ ] Apple Wallet 会员卡集成
+| 优先级 | 项目 | 关闭条件 |
+|---|---|---|
+| P0 release | production ledger/schema drift | 有备份、staging rehearsal、生产 PRECHECK/VERIFY 和签字证据 |
+| P0 release | 真实 provider/双账号/管理员/真机 | 完整 journey 证据；失败重试和恢复也通过 |
+| P0 release | support/rights/appeal 值班 | 地址、SLA 表述、owner、演练与 audit trail 全部真实 |
+| P1 supply chain | DCloud + Vite | 官方兼容版本、clean install、双端/真机回归、full audit 无未评审 high |
+| P1 legal | HEIC decoder LGPL | counsel-approved 合规包或替换/移除并完成 HEIC 矩阵 |
+| P1 performance | CJK fonts / HEIC / large SFC | 按真实 waterfall/interaction 指标优化，无视觉/多端回归 |
+| P1 ops | cross-reference media GC | 私有引用 ledger、lease、dry-run、恢复与误删保护 |
+| P2 product | 会员/商户/支付等 | 新 PRD、threat model、运营 owner 和阶段性验收 |
 
-### 商户体系
-- [ ] 商户入驻流程
-- [ ] 广告投放系统
-- [ ] 商户管理后台
-- [ ] 收费标准 & 合作协议
-
-### 华协官网优化
-- [ ] Server 重建
-- [ ] Newsletter 功能
-- [ ] 捐款模块优化
-- [ ] 微信公众号内容同步
-- [ ] 平台入口 Tab 添加
-
-### 增长 & 变现
-- [ ] 用户增长策略执行
-- [ ] 商家精细化投流工具
-- [ ] 活动合作系统
-- [ ] 会员定价方案上线
-
----
-
-## 里程碑时间线
-
-| 里程碑 | 目标 | 预计时间 |
-|--------|------|---------|
-| M0: 规划完成 | 技术选型、设计稿、数据模型完成 | TBD |
-| M1: MVP 上线 | 小程序 + Web 核心功能可用 | TBD |
-| M2: 内测 | 小范围用户测试 | TBD |
-| M3: 公测 | 华协社区内推广 | TBD |
-| M4: 商户上线 | 商户合作体系启动 | TBD |
-| M5: App 上架 | iOS App 上架 Apple Store | TBD |
-
----
-
-## Backlog：2026-Q2 想法池（未排期）
-
-> 来源：session 转录、用户反馈。排期前需要 PM 过滤 + 细化。每一项都不是小活，实现前要拆 ticket + 独立 branch。
-
-### 表情包系统 (M)
-- [ ] 内置表情包:聊天输入框旁加表情 icon,弹出面板
-- [ ] 一两套 DIY 主题(奶龙之类的梗图)
-- [ ] 用户自定义:允许上传自己的小表情,以某个人为主角
-- **风险**:内容审核(谁都能上传梗图 → 可能涉版权/低俗),需审核流程
-- **依赖**:chat 的 message 字段要支持 emoji/image 混合
-
-### 帖子搜索 + 模糊匹配完善 (M)
-- [ ] 帖子(Plaza posts)的搜索框 —— 目前只有商品能搜
-- [ ] 商品搜索的模糊匹配:typo-tolerant(trigram index 已有,效果没达到预期)
-- [ ] 中英互转搜索:搜 "book" 也能命中中文标题 "书籍",反之亦然
-- [ ] 关联搜索:搜 "iphone" 带出 "apple / 苹果 / 手机 / phone"
-- **依赖**:已有 migration 007(trigram),可能需要 008+ 加 synonyms 表
-
-### 用户状态 (S)
-- [ ] profile 加 "status" 字段(类似微信个性签名/状态)
-- [ ] 头像旁显示 emoji + 短句 ("🎓 期末ing")
-- [ ] 可空,可自行清除
-
-### 分享深链 + 卡片预览 (L)
-- [ ] 商品和帖子都生成短链(/share/:id)
-- [ ] 微信里转发时展示卡片(og:image + 微信 SDK 的 wx.updateAppMessageShareData)
-- [ ] B 站/微信风格:标题 + 缩略图 + 价格,不是裸链接
-- **依赖**:需要 server-side render `og:` meta 或 H5 page meta;微信分享必须走 JS-SDK 签名
-- **风险**:微信 JS-SDK 需要公众号 appId 和 secret,华协侧要配合
-
-### 小 bug / 打磨
-- [x] 2026-04-18 卖家主页 stats 间距(未售/已售/加入时间文字挤在一起)→ 已修
-- [x] 2026-04-18 已预定状态不能取消 → 已加 "取消预定" 按钮
-- [x] 2026-04-18 安全地点 verified badge → 已加(geo 验证 v1)
-- [x] 2026-04-19 Safe-zone 3 态 → `location_verified` 字段,只认 geo 验证
-- [x] 2026-04-19 首页滚动卡顿 → aspect-ratio 3:4 预留空间
-- [x] 2026-04-19 Profile 页加取消预留入口
-- [x] 2026-04-19 用户状态(WeChat 式)→ 已上线
-- [x] 2026-04-19 Plaza 帖子分享卡片(OG meta)→ 已上线
-- [x] 2026-04-19 Plaza 帖子搜索 + 中英互转 → 已上线
-- [x] 2026-04-19 (late) 表情包 v1 内置 emoji 面板 → 已上线(6 分类 ~200 emoji + Recent)
-- [x] 2026-04-19 (late) Schema fallback 硬化:migration 未跑时降级而非 500
-- [x] 2026-04-19 (late) Chat retrySend 未定义 bug / Plaza 举报缺 reason 崩溃 → 修
-- [x] 2026-04-19 (late) SEARCH_SYNONYMS 140 → 330 对(含品牌/外设/电器/母婴/UIUC)
-- [x] 2026-04-19 (late) useI18n.t() 支持 {param} 插值
-- [x] 2026-04-19 (late) 项目 TypeScript 错误 18 → 0
-- [x] 2026-04-19 (late) migration 021 补 GRANT (status_text/emoji 之前对 anon 隐藏)
-- [x] 2026-04-19 (late v2) 首页 xhs 风瀑布流 (naturalWidth 驱动 aspect-ratio)
-- [x] 2026-04-19 (late v2) Plaza 单图帖 widthFix,多图 grid 按数量分类
-- [x] 2026-04-19 (late v2) 商品详情页显示卖家 status chip
-- [x] 2026-04-19 (late v2) 长按商品 / 长按帖子 → 举报菜单 + migration 022
-- [x] 2026-04-19 (late v2) Emoji tap-to-send WeChat 式,按钮透明度占位
-- [x] 2026-04-19 (late v2) friendlyErrorMessage 兜底 23514/42703
-- [x] 2026-04-19 (late v2) Vercel Canceled 事故 fix (关 Require Verified Commits toggle)
-
-### 下一 session 候选
-- [ ] **表情包 v2 — sticker PNG**(奶龙等梗图)
-  - 建 `supabase/storage/stickers/` bucket + public read policy
-  - 准备 5-10 张 PNG 放进去(版权预先审核)
-  - `messages.message_type` 增 `'sticker'` 枚举值,或约定 `content = "sticker://<key>"`
-  - chat 渲染 img tag,面板追加 "贴纸" 分类
-- [ ] **表情包 v3 — 用户 DIY 自上传**(需举报/版权审核流先定好再做)
-- [ ] OG meta → 微信 JS-SDK 卡片(需要华协公众号 appId/secret)
-- [ ] 拆分大文件 `pages/index` (1110 LOC) / `pages/plaza` (998) / `pages/detail` (878) → 独立 PR
-- [ ] 集成 CI(GitHub Actions 跑 `type-check` + `build:h5`)防回归
-
-### 技术债 / 后续优化
-- [ ] 大文件拆分:home / plaza / chat / detail 各 ~4000 LOC,需拆 components
-- [ ] TypeScript 4.9 → 5.x 升级(独立 PR)
-- [ ] @dcloudio/core 4080 → 5000 升级(alpha,需回归)
-- [ ] vue 3.4 → 3.5(之前 markRaw 有 edge case,再等等)
+最终权威状态见最新 [`docs/audit/`](./audit/) 报告和
+[`RUNBOOK.md`](../RUNBOOK.md)，不是旧 session 记录。

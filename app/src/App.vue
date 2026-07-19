@@ -1,35 +1,46 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { onLaunch } from "@dcloudio/uni-app"
+import { onLaunch, onShow } from "@dcloudio/uni-app"
 import { useAuth } from "./composables/useAuth"
 import { useI18n } from "./composables/useI18n"
 import { useTheme } from "./composables/useTheme"
 import { CURRENT_CONSENT_VERSION } from './legal'
 import { captureException } from './utils/sentry'
+import { isSuspensionActive } from './utils/suspension'
+import { platformFetch } from './composables/useSupabase'
+import { readBoundedText } from './api/responseBody'
 
 /*
- * Self-hosted webfonts.
+ * Self-hosted brand webfont.
  *
- * These used to come from fonts.googleapis.com at runtime — one remote
+ * Fraunces used to come from fonts.googleapis.com at runtime — one remote
  * origin, blocking critical-path CSS, no SRI, and a third-party cookie
- * dependency that the CSP had to special-case. Fontsource ships the
- * same faces as npm packages with @font-face + unicode-range + woff2,
- * Vite bundles the CSS, and the font files land on our own origin so:
+ * dependency that the CSP had to special-case. Fontsource ships the face
+ * with @font-face + unicode-range + woff2, Vite bundles the CSS, and the
+ * font files land on our own origin so:
  *   · no 3rd-party DNS/TLS handshake before first paint
  *   · CSP frame-src/connect-src no longer needs googleapis.com
  *   · fonts are cacheable under our own asset-hash rules
- * font-display: swap is baked into each face, so the system fallback
- * renders immediately and Fraunces / Noto swap in once decoded.
+ * font-display: swap is baked into the face, so the system fallback renders
+ * immediately and Fraunces swaps in once decoded. Dynamic Chinese content
+ * intentionally stays on the device's native CJK families: shipping both
+ * complete Noto Sans SC and Noto Serif SC produced 201 WOFF2 shards (11 MB)
+ * and made user-generated glyph coverage an unbounded mobile cost.
  *
  * H5-only: mini-program platforms ignore @font-face webfonts anyway.
  */
 // #ifdef H5
 import '@fontsource-variable/fraunces/opsz.css'
-import '@fontsource-variable/noto-sans-sc/wght.css'
-import '@fontsource-variable/noto-serif-sc/wght.css'
 // #endif
 
-const { init, currentUser } = useAuth()
+const {
+  init,
+  currentUser,
+  authState,
+  profileLoadState,
+  ensureProfileReady,
+  refreshProfile,
+} = useAuth()
 const { t } = useI18n()
 useTheme()
 
@@ -83,16 +94,13 @@ const oauthCallbackInFlight = ref(false)
  * READ the ToS and Privacy on those screens, and so the routing step
  * of the gate itself doesn't fight with auth / password-reset flows.
  */
-const GATE_EXEMPT_PAGES = [
-  'pages/onboarding/index',
-  'pages/reconsent/index',
-  'pages/suspended/index',
+const GATE_READING_PAGES = new Set([
   'pages/legal/index',
-  'pages/login/index',
+  // A recovery-scoped session is established before the password update.
+  // Do not interrupt that critical flow; the navigation interceptor below
+  // applies the pending gate to whichever route it tries to open next.
   'pages/reset-password/index',
-  'pages/welcome/index',
-  'pages/settings/index',
-]
+])
 
 function currentPagePath(): string {
   try {
@@ -104,36 +112,102 @@ function currentPagePath(): string {
   }
 }
 
-function isSuspensionActive(u: { suspension_level?: number; suspended_until?: string | null }): boolean {
-  if (!u.suspension_level || u.suspension_level < 2) return false
-  if (!u.suspended_until) return true
-  const ends = Date.parse(u.suspended_until)
-  if (Number.isNaN(ends)) return true
-  return ends > Date.now()
-}
-
-function enforceConsentGate() {
+function requiredGatePath(): string | null {
+  if (authState.value === 'authenticated' && profileLoadState.value !== 'ready') {
+    return '/pages/profile-recovery/index'
+  }
   const u = currentUser.value
-  if (!u) return
-  const here = currentPagePath()
-  if (GATE_EXEMPT_PAGES.some(p => here === p)) return
-
+  if (!u) return null
   if (isSuspensionActive(u)) {
-    uni.reLaunch({ url: '/pages/suspended/index' })
-    return
+    return '/pages/suspended/index'
   }
   // O1 (2026-05-20): onboarding branch removed. New users (tos_version='0'
   // < CURRENT_CONSENT_VERSION per migration 032 default) fall through to
   // the reconsent check below — which is the canonical legal-consent surface.
   // See docs/memory/o1_onboarding_removed.md.
   if (!u.tos_version || u.tos_version < CURRENT_CONSENT_VERSION) {
-    uni.reLaunch({ url: '/pages/reconsent/index' })
+    return '/pages/reconsent/index'
   }
+  return null
 }
 
-watch(currentUser, () => {
+function pathFromUrl(url?: string): string {
+  return String(url || '').replace(/^\//, '').split(/[?#]/, 1)[0]
+}
+
+function gateDestinationAllowed(target: string, destination: string): boolean {
+  const path = pathFromUrl(destination)
+  return path === pathFromUrl(target) || GATE_READING_PAGES.has(path)
+}
+
+function enforceConsentGate() {
+  const target = requiredGatePath()
+  if (!target) return
+  const here = currentPagePath()
+  if (gateDestinationAllowed(target, here)) return
+  uni.reLaunch({ url: target })
+}
+
+watch([currentUser, authState, profileLoadState], () => {
   setTimeout(enforceConsentGate, 100)
 })
+
+// App.onShow covers foreground/resume transitions.  Route changes inside an
+// already-running app do not fire it, so navigation APIs are intercepted too:
+// this closes the old race where currentUser resolved on exempt /login and the
+// later reLaunch('/home') happened without another currentUser change.
+onShow(() => {
+  if (authState.value === 'authenticated') {
+    const profileTask = profileLoadState.value === 'ready'
+      ? refreshProfile()
+      : ensureProfileReady()
+    void profileTask.catch((error) => {
+      captureException(error, { tags: { source: 'app-profile-foreground-refresh' }, level: 'warning' })
+    }).finally(() => setTimeout(enforceConsentGate, 0))
+    return
+  }
+  setTimeout(enforceConsentGate, 0)
+})
+
+let gateInterceptorsInstalled = false
+function installGateNavigationInterceptors() {
+  if (gateInterceptorsInstalled || typeof uni.addInterceptor !== 'function') return
+  gateInterceptorsInstalled = true
+
+  for (const api of ['navigateTo', 'redirectTo', 'reLaunch']) {
+    uni.addInterceptor(api, {
+      invoke(args: { url?: string }) {
+        const target = requiredGatePath()
+        if (!target || gateDestinationAllowed(target, args?.url || '')) return
+        // Mutating the intercepted destination avoids a nested navigation and
+        // works across H5 and mini-program implementations.
+        if (args) args.url = target
+      },
+    })
+  }
+
+  uni.addInterceptor('switchTab', {
+    invoke(args: { url?: string }) {
+      const target = requiredGatePath()
+      if (!target || gateDestinationAllowed(target, args?.url || '')) return
+      // Gate pages are not tabBar entries, so rewriting switchTab.url would be
+      // rejected by uni-app. Cancel it and reLaunch with the correct primitive.
+      setTimeout(() => uni.reLaunch({ url: target }), 0)
+      return false
+    },
+  })
+
+  uni.addInterceptor('navigateBack', {
+    invoke() {
+      const target = requiredGatePath()
+      if (!target) return
+      // Legal/recovery pages may sit above an unrestricted page in the stack.
+      // Cancel the pop and replace the stack with the required gate instead.
+      setTimeout(() => uni.reLaunch({ url: target }), 0)
+      return false
+    },
+  })
+}
 
 /*
  * OAuth-callback overlay dismissal.
@@ -218,8 +292,6 @@ function extractAuthCodeFromUrl(): void {
   if (typeof window === 'undefined') return
   const hash = window.location.hash || ''
   const search = window.location.search || ''
-  console.log('[reset-pw-debug] entry: location.hash=', hash)
-  console.log('[reset-pw-debug] entry: location.search=', search)
 
   /*
    * Expired / invalid email link (signup-confirm OR password recovery):
@@ -236,7 +308,6 @@ function extractAuthCodeFromUrl(): void {
   // Let the reset-password page render its own tailored "link expired" UI; only
   // rescue the root/signup-confirm case, which otherwise blanks on `#error=`.
   if (errInUrl && !onResetRoute) {
-    console.log('[reset-pw-debug] entry: auth error redirect detected, routing to login')
     try { window.history.replaceState(null, '', window.location.pathname) } catch {}
     setTimeout(() => {
       uni.reLaunch({ url: '/pages/login/index' })
@@ -280,7 +351,6 @@ function extractAuthCodeFromUrl(): void {
   }
 
   if (!code || !foundIn) {
-    console.log('[reset-pw-debug] entry: no ?code= in either search or hash, skipping extraction')
     return
   }
 
@@ -313,22 +383,17 @@ function extractAuthCodeFromUrl(): void {
   const hashRoute = (hash.split('?')[0] || '').toLowerCase()
   const isRecoveryRoute = hashRoute.includes('/pages/reset-password/')
   if (!isRecoveryRoute) {
-    console.log(
-      `[reset-pw-debug] entry: ?code= present in ${foundIn} but hash route is ${hashRoute || '(empty)'} — not recovery, leaving code in URL for supabase-js detectSessionInUrl (likely OAuth callback)`,
-    )
     /*
      * Affordance flag for the OAuth-callback overlay. Read in onLaunch
      * after this function returns to decide whether to raise a
      * uni.showLoading modal during the PKCE-exchange + fetchProfile
      * window. `(window as any)` because we don't extend the global
-     * Window interface for a single internal flag; leading semicolon
-     * defends against ASI on the preceding console.log expression.
+     * Window interface for a single internal flag; the leading semicolon
+     * makes the assignment safe after the preceding block.
      */
     ;(window as any).__oauthInFlight = true
     return
   }
-
-  console.log(`[reset-pw-debug] entry: detected recovery ?code= in ${foundIn}, extracting code=${code.slice(0, 8)}...`)
 
   ;(window as any).__pendingAuthCode = code
 
@@ -365,10 +430,9 @@ function extractAuthCodeFromUrl(): void {
     }
 
     const newUrl = window.location.pathname + newSearch + newHash
-    console.log(`[reset-pw-debug] entry: rewriting URL to clear code from ${foundIn} →`, newUrl)
     window.history.replaceState({}, '', newUrl)
-  } catch (err) {
-    console.warn('[reset-pw-debug] entry: history.replaceState failed (continuing — code already stashed):', err)
+  } catch {
+    console.warn('[auth] URL cleanup failed; recovery code remains stashed in memory')
   }
   // #endif
 }
@@ -448,7 +512,228 @@ function detectAuthRecoveryAndRoute(): boolean {
   // #endif
 }
 
+// #ifdef H5
+let roleButtonA11yInstalled = false
+const AUTO_TABINDEX_ATTR = 'data-auto-role-tabindex'
+const AUTO_UNI_BUTTON_ROLE_ATTR = 'data-auto-uni-button-role'
+const AUTO_ARIA_DISABLED_ATTR = 'data-auto-role-aria-disabled'
+const UNI_FORM_CONTROL_SELECTOR = 'uni-input, uni-textarea'
+const AUTO_NATIVE_LABEL_ATTR = 'data-auto-native-aria-label'
+const AUTO_NATIVE_LABELLEDBY_ATTR = 'data-auto-native-aria-labelledby'
+const NATIVE_KEYBOARD_INTERACTIVE_SELECTOR = [
+  'button',
+  'input',
+  'select',
+  'textarea',
+  'a[href]',
+  'summary',
+  'video[controls]',
+  'audio[controls]',
+  '[contenteditable]:not([contenteditable="false"])',
+].join(', ')
+
+function roleButtonDisabled(el: HTMLElement): boolean {
+  return el.hasAttribute('disabled')
+    || (!el.hasAttribute(AUTO_ARIA_DISABLED_ATTR) && el.getAttribute('aria-disabled') === 'true')
+    || el.getAttribute('data-disabled') === 'true'
+    || el.classList.contains('disabled')
+    || el.classList.contains('is-disabled')
+}
+
+function syncRoleButtonFocusability(el: HTMLElement) {
+  const isUniButton = el.matches('uni-button')
+  if (isUniButton && !el.hasAttribute('role')) {
+    // uni-app compiles a Vue <button> to a non-native <uni-button> custom
+    // element on H5. Browsers otherwise expose it as an unfocusable generic
+    // (tabIndex=-1), so the login/verification/edit submit controls disappear
+    // from both keyboard navigation and the accessibility tree.
+    el.setAttribute('role', 'button')
+    el.setAttribute(AUTO_UNI_BUTTON_ROLE_ATTR, '')
+  }
+
+  const isRoleButton = el.getAttribute('role') === 'button'
+  const disabled = roleButtonDisabled(el)
+  if (isRoleButton) {
+    // Generic uni-app <view role="button"> controls often express their
+    // disabled state only through a `.disabled` / `.is-disabled` class. Mirror
+    // that state into ARIA as well as removing the automatic tab stop, so AT
+    // does not announce an inert control as enabled. Author-provided ARIA is
+    // preserved; the private marker only owns attributes that this shim added.
+    if (disabled && (!el.hasAttribute('aria-disabled') || el.hasAttribute(AUTO_ARIA_DISABLED_ATTR))) {
+      // Avoid writing the same observed attribute value again: doing so can
+      // enqueue another MutationObserver record and create a microtask loop.
+      if (el.getAttribute('aria-disabled') !== 'true') el.setAttribute('aria-disabled', 'true')
+      el.setAttribute(AUTO_ARIA_DISABLED_ATTR, '')
+    } else if (!disabled && el.hasAttribute(AUTO_ARIA_DISABLED_ATTR)) {
+      el.removeAttribute(AUTO_ARIA_DISABLED_ATTR)
+      el.removeAttribute('aria-disabled')
+    }
+  } else if (el.hasAttribute(AUTO_ARIA_DISABLED_ATTR)) {
+    el.removeAttribute(AUTO_ARIA_DISABLED_ATTR)
+    el.removeAttribute('aria-disabled')
+  }
+
+  const nativeInteractive = el.matches('button, input, select, textarea, a[href], summary')
+
+  if (!isRoleButton || nativeInteractive || disabled) {
+    if (el.hasAttribute(AUTO_TABINDEX_ATTR)) {
+      el.removeAttribute(AUTO_TABINDEX_ATTR)
+      el.removeAttribute('tabindex')
+    }
+    return
+  }
+
+  if (!el.hasAttribute('tabindex')) {
+    el.setAttribute('tabindex', '0')
+    el.setAttribute(AUTO_TABINDEX_ATTR, '')
+  } else if (el.hasAttribute(AUTO_TABINDEX_ATTR) && el.getAttribute('tabindex') !== '0') {
+    // An author-provided tabindex always wins over the automatic default.
+    el.removeAttribute(AUTO_TABINDEX_ATTR)
+  }
+}
+
+function scanRoleButtons(root: ParentNode | HTMLElement) {
+  if (root instanceof HTMLElement) syncRoleButtonFocusability(root)
+  root.querySelectorAll<HTMLElement>('[role="button"], uni-button').forEach(syncRoleButtonFocusability)
+}
+
+function transferUniFormControlName(
+  host: HTMLElement,
+  sourceAttr: 'aria-label' | 'aria-labelledby',
+  cacheAttr: string,
+) {
+  const nativeControl = host.querySelector<HTMLElement>('input, textarea')
+  if (!nativeControl) return
+
+  const currentValue = host.getAttribute(sourceAttr)?.trim()
+  if (currentValue) {
+    host.setAttribute(cacheAttr, currentValue)
+    nativeControl.setAttribute(sourceAttr, currentValue)
+
+    // uni-app places accessibility attributes on its custom-element wrapper
+    // instead of the actual H5 form control. Keeping the name on both nodes
+    // produces a named generic wrapper and can make getByLabel/AT navigation
+    // ambiguous, so retain the value in a private cache and expose it only on
+    // the native input/textarea. Vue will re-add the wrapper attribute when a
+    // bound value (for example the active language) changes; the observer then
+    // transfers the new value again.
+    host.removeAttribute(sourceAttr)
+    return
+  }
+
+  const cachedValue = host.getAttribute(cacheAttr)?.trim()
+  if (cachedValue && nativeControl.getAttribute(sourceAttr) !== cachedValue) {
+    nativeControl.setAttribute(sourceAttr, cachedValue)
+  }
+}
+
+function mirrorUniFormControlState(
+  host: HTMLElement,
+  stateAttr: 'aria-describedby' | 'aria-invalid',
+) {
+  const nativeControl = host.querySelector<HTMLElement>('input, textarea')
+  if (!nativeControl) return
+  const value = host.getAttribute(stateAttr)
+  if (value === null) nativeControl.removeAttribute(stateAttr)
+  else if (nativeControl.getAttribute(stateAttr) !== value) nativeControl.setAttribute(stateAttr, value)
+}
+
+function syncUniFormControlName(host: HTMLElement) {
+  if (!host.matches(UNI_FORM_CONTROL_SELECTOR)) return
+  transferUniFormControlName(host, 'aria-label', AUTO_NATIVE_LABEL_ATTR)
+  transferUniFormControlName(host, 'aria-labelledby', AUTO_NATIVE_LABELLEDBY_ATTR)
+  // Unlike accessible names, these state/relationship attributes remain on
+  // the wrapper so Vue can remove them authoritatively when validation clears.
+  // Mirror each current value to the inner native H5 control on every observed
+  // change; otherwise aria-invalid/describedby would stop at <uni-input>.
+  mirrorUniFormControlState(host, 'aria-describedby')
+  mirrorUniFormControlState(host, 'aria-invalid')
+}
+
+function scanUniFormControlNames(root: ParentNode | HTMLElement) {
+  if (root instanceof HTMLElement) {
+    const host = root.matches(UNI_FORM_CONTROL_SELECTOR)
+      ? root
+      : root.closest<HTMLElement>(UNI_FORM_CONTROL_SELECTOR)
+    if (host) syncUniFormControlName(host)
+  }
+  root.querySelectorAll<HTMLElement>(UNI_FORM_CONTROL_SELECTOR).forEach(syncUniFormControlName)
+}
+
+function installRoleButtonKeyboardAccess() {
+  if (roleButtonA11yInstalled || typeof document === 'undefined') return
+  roleButtonA11yInstalled = true
+
+  scanRoleButtons(document)
+  scanUniFormControlNames(document)
+  const observer = new MutationObserver((records) => {
+    for (const record of records) {
+      if (record.type === 'attributes') {
+        const target = record.target as HTMLElement
+        syncRoleButtonFocusability(target)
+        const formHost = target.matches(UNI_FORM_CONTROL_SELECTOR)
+          ? target
+          : target.closest<HTMLElement>(UNI_FORM_CONTROL_SELECTOR)
+        if (formHost) syncUniFormControlName(formHost)
+        continue
+      }
+      const mutationTarget = record.target
+      if (mutationTarget instanceof HTMLElement) {
+        const formHost = mutationTarget.matches(UNI_FORM_CONTROL_SELECTOR)
+          ? mutationTarget
+          : mutationTarget.closest<HTMLElement>(UNI_FORM_CONTROL_SELECTOR)
+        if (formHost) syncUniFormControlName(formHost)
+      }
+      record.addedNodes.forEach((node) => {
+        if (node instanceof HTMLElement) {
+          scanRoleButtons(node)
+          scanUniFormControlNames(node)
+        }
+      })
+    }
+  })
+  observer.observe(document.documentElement, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: [
+      'role',
+      'disabled',
+      'aria-disabled',
+      'data-disabled',
+      'class',
+      'tabindex',
+      'aria-label',
+      'aria-labelledby',
+      'aria-describedby',
+      'aria-invalid',
+    ],
+  })
+
+  // Event delegation keeps dynamically-rendered uni-view nodes keyboard
+  // operable without one listener per component. Native controls retain their
+  // browser behaviour and disabled role buttons are inert.
+  document.addEventListener('keydown', (event) => {
+    if (event.defaultPrevented || event.repeat) return
+    if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return
+    const origin = event.target
+    if (!(origin instanceof HTMLElement) || origin.isContentEditable) return
+    // Never synthesize a click for an event originating inside a native
+    // interactive descendant. In particular, Space on <video controls> must
+    // remain play/pause instead of bubbling to a role=button message row.
+    if (origin.closest(NATIVE_KEYBOARD_INTERACTIVE_SELECTOR)) return
+    const button = origin.closest<HTMLElement>('[role="button"]')
+    if (!button || roleButtonDisabled(button)) return
+    if (event.key !== 'Enter') event.preventDefault()
+    button.click()
+  })
+}
+// #endif
+
 onLaunch(() => {
+  // #ifdef H5
+  installRoleButtonKeyboardAccess()
+  // #endif
   /*
    * SYNCHRONOUS hash-PKCE-code rescue — must run BEFORE the setTimeout
    * below kicks off useSupabase() / createClient(). Once supabase-js
@@ -465,8 +750,8 @@ onLaunch(() => {
    */
   try {
     extractAuthCodeFromUrl()
-  } catch (err) {
-    console.warn('[reset-pw-debug] entry: extractAuthCodeFromUrl threw (non-fatal):', err)
+  } catch {
+    console.warn('[auth] Recovery URL parsing failed')
   }
 
   /*
@@ -492,8 +777,8 @@ onLaunch(() => {
     oauthCallbackInFlight.value = true
     try {
       uni.showLoading({ title: t('login.signingIn'), mask: true })
-    } catch (err) {
-      console.warn('[oauth-debug] showLoading failed (non-fatal):', err)
+    } catch {
+      console.warn('[auth] Sign-in loading indicator failed')
     }
     setTimeout(() => {
       if (oauthCallbackInFlight.value) {
@@ -514,12 +799,10 @@ onLaunch(() => {
    * only debugging surface we have once the app reaches a real device.
    */
   uni.onError?.((err: any) => {
-    console.error('[onError]', err)
     captureException(err, { tags: { source: 'uni.onError' }, level: 'error' })
   })
   uni.onUnhandledRejection?.((e: any) => {
     const reason = e?.reason || e
-    console.error('[onUnhandledRejection]', reason)
     captureException(reason, { tags: { source: 'uni.onUnhandledRejection' }, level: 'error' })
   })
 
@@ -575,7 +858,12 @@ onLaunch(() => {
       const checkVersion = async () => {
         if (!bootHash || prompting) return
         try {
-          const html = await fetch(`/?_v=${Date.now()}`, { cache: 'no-store' }).then((r) => r.text())
+          const response = await platformFetch(`/?_v=${Date.now()}`, { cache: 'no-store' })
+          if (!response.ok) return
+          const html = await readBoundedText(response, {
+            maxBytes: 1024 * 1024,
+            timeoutMs: 10_000,
+          })
           const m = html.match(/\/assets\/index-([\w-]+)\.js/)
           const live = m ? m[1] : null
           if (live && live !== bootHash && live !== promptedHash) {
@@ -635,10 +923,12 @@ onLaunch(() => {
    * gets logged to console instead of silently killing the boot.
    */
   setTimeout(() => {
+    installGateNavigationInterceptors()
     try {
-      init()
+      void init().catch((err) => {
+        captureException(err, { tags: { source: 'onLaunch.init' }, level: 'error' })
+      })
     } catch (err) {
-      console.error('[onLaunch] init failed:', err)
       captureException(err, { tags: { source: 'onLaunch.init' }, level: 'error' })
     }
     try {
@@ -647,7 +937,6 @@ onLaunch(() => {
         uni.reLaunch({ url: '/pages/welcome/index' })
       }
     } catch (err) {
-      console.error('[onLaunch] welcome routing failed:', err)
       captureException(err, { tags: { source: 'onLaunch.welcomeRouting' }, level: 'error' })
     }
 
@@ -663,8 +952,8 @@ onLaunch(() => {
     // #ifdef MP-WEIXIN
     try {
       uni.hideTabBar({ animation: false })
-    } catch (err) {
-      console.warn('[onLaunch] hideTabBar failed:', err)
+    } catch {
+      console.warn('[onLaunch] hideTabBar failed')
     }
     // #endif
   }, 0)
@@ -676,23 +965,22 @@ onLaunch(() => {
  * ============================================================
  * Illini Market · 米白书院 (Ivory Academy) type + color system.
  *
- * Fonts load on H5 only (Google Fonts CDN). WeChat / Alipay /
- * Baidu mini-program builds ignore the @import and fall through
- * to the system stack — PingFang SC stays the Chinese rendering
- * path there until we self-host woff2 files under /static/fonts.
+ * The Fraunces brand face loads on H5 only from a bundled WOFF2. WeChat /
+ * Alipay / Baidu mini-program builds and all Chinese glyphs use the native
+ * system families, keeping dynamic marketplace text out of the font payload.
  *
  * Stack philosophy:
- *   · Display + prices + brand word-marks → Fraunces (EN) + Noto
- *     Serif SC (中文). Scholarly, bookshop-on-Green-Street feel.
- *   · UI body + meta + chips → Noto Sans SC for CN screen clarity
- *     at 11-13px (衬线在这个字号糊), Source Serif 4 / system for EN.
+ *   · Display + prices + brand word-marks → Fraunces Variable (Latin) +
+ *     the platform's Songti/serif family for Chinese.
+ *   · UI body + meta + chips → platform sans families (PingFang SC /
+ *     Microsoft YaHei / native Noto CJK) for small-screen clarity.
  *   · display=swap so we never block LCP behind webfonts; a system
  *     fallback renders immediately and swaps once Fraunces loads.
  * ============================================================ */
 /*
- * Google Fonts @import removed — webfonts are now self-hosted via
- * @fontsource packages imported in <script setup> above. Vite
- * inlines the @font-face declarations + woff2 assets onto our own
+ * Google Fonts @import removed — the brand webfont is self-hosted via the
+ * @fontsource package imported in <script setup> above. Vite inlines the
+ * @font-face declarations + WOFF2 assets onto our own
  * origin so there's no fonts.googleapis.com round-trip before first
  * paint, and the CSP no longer has to whitelist Google Fonts CDNs.
  */
@@ -722,6 +1010,7 @@ page,
   --text-tertiary:  #6B6557;
   --text-muted:     #6B6459;
   --text-faint:     #B6AE9F;
+  --text-subtle:    #6B6459;
   --text-disabled:  #C0BCB2;
   --ink:         #2A2A2E;
   --ink-soft:    #57524B;
@@ -774,6 +1063,8 @@ page,
   --success:      #5D7C4A;
   --success-soft: #E4EADA;
   --warning:      #D4923C;
+  --warning-text: #8A5A13;
+  --warning-surface: #8A5A13;
   --warning-soft: #F5E4CB;
   --danger:       #B53333;
   --danger-soft:  #F0D4D4;
@@ -795,8 +1086,8 @@ page,
   --font-weight-medium:  500;
   --font-weight-semi:    600;
   --font-weight-bold:    700;
-  --font-serif: 'Fraunces', 'Noto Serif SC', 'Songti SC', Georgia, 'Times New Roman', serif;
-  --font-hei:   'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+  --font-serif: 'Fraunces Variable', 'Songti SC', 'STSong', 'SimSun', 'Noto Serif CJK SC', Georgia, 'Times New Roman', serif;
+  --font-hei:   -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Helvetica Neue', sans-serif;
   --font-mono:  'JetBrains Mono', 'SF Mono', Menlo, ui-monospace, monospace;
   --font-sans:  var(--font-hei);
   --shadow-hair:  0 0 0 1px rgba(54, 40, 28, 0.07);
@@ -1018,6 +1309,19 @@ button:focus-visible,
   border-radius: 4px;
 }
 
+/* #ifdef H5 */
+/* The runtime shim makes every custom role=button keyboard-focusable. Give
+   those auto-added tab stops the same visible focus affordance as native
+   controls. Keep attribute selectors out of WXSS, where one unsupported
+   selector can invalidate the complete rule. */
+[role="button"]:focus-visible,
+uni-button:focus-visible {
+  outline: 2px solid var(--brand) !important;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* #endif */
+
 .hit-target {
   position: relative;
 }
@@ -1109,6 +1413,7 @@ button:focus-visible,
   --text-tertiary:  #6B6557;
   --text-muted:     #6B6459;   /* ink-quiet — meta · stone */
   --text-faint:     #B6AE9F;   /* ink-faint — scaffolding */
+  --text-subtle:    #6B6459;   /* readable secondary copy — AA on every light surface */
   --text-disabled:  #C0BCB2;
 
   /* ---------- NEW SEMANTIC NAMES (prefer these going forward) ---------- */
@@ -1201,6 +1506,8 @@ button:focus-visible,
   --success:      #5D7C4A;
   --success-soft: #E4EADA;
   --warning:      #D4923C;
+  --warning-text: #8A5A13;   /* AA foreground on white, canvas, inset and warning-soft */
+  --warning-surface: #8A5A13; /* stable fill for white labels in both themes */
   --warning-soft: #F5E4CB;
   --danger:       #B53333;
   --danger-soft:  #F0D4D4;
@@ -1231,10 +1538,11 @@ button:focus-visible,
 
   /* ---------- TYPE FAMILIES ---------- */
   --font-serif:
-    'Fraunces', 'Noto Serif SC', 'Songti SC', Georgia, 'Times New Roman', serif;
+    'Fraunces Variable', 'Songti SC', 'STSong', 'SimSun', 'Noto Serif CJK SC',
+    Georgia, 'Times New Roman', serif;
   --font-hei:
-    'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC',
-    'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+    -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei',
+    'Noto Sans CJK SC', 'Helvetica Neue', sans-serif;
   --font-mono:
     'JetBrains Mono', 'SF Mono', Menlo, ui-monospace, monospace;
   --font-sans:  var(--font-hei);
@@ -1349,6 +1657,7 @@ button:focus-visible,
   --text-tertiary:  var(--ink-soft);
   --text-muted:     var(--ink-quiet);
   --text-faint:     var(--ink-faint);
+  --text-subtle:    rgba(240, 232, 214, 0.60);
   --text-disabled:  rgba(240, 232, 214, 0.22);
 
   /* P0-1: Surface ladder — widened ΔE so cards/chips/pressed states lift
@@ -1411,6 +1720,8 @@ button:focus-visible,
   --success:      #8BA670;
   --success-soft: rgba(139, 166, 112, 0.15);
   --warning:      #E5B170;
+  --warning-text: #E5B170;
+  --warning-surface: #8A5A13;
   --warning-soft: rgba(229, 177, 112, 0.15);
   --danger:       #E06666;
   --danger-soft:  rgba(224, 102, 102, 0.15);
@@ -1456,6 +1767,7 @@ button:focus-visible,
     --text-tertiary:  var(--ink-soft);
     --text-muted:     var(--ink-quiet);
     --text-faint:     var(--ink-faint);
+    --text-subtle:    rgba(240, 232, 214, 0.60);
 
     /* P0-1: widened surface ΔE — see [data-theme="dark"] block above for
      * the full rationale. Mirrored here so users who never toggle the
@@ -1494,6 +1806,8 @@ button:focus-visible,
     --success:      #8BA670;
     --success-soft: rgba(139, 166, 112, 0.15);
     --warning:      #E5B170;
+    --warning-text: #E5B170;
+    --warning-surface: #8A5A13;
     --warning-soft: rgba(229, 177, 112, 0.15);
     --danger:       #E06666;
     --danger-soft:  rgba(224, 102, 102, 0.15);
@@ -1679,7 +1993,7 @@ button:focus-visible,
 }
 .u-chip.warn {
   background: var(--warning-soft);
-  color: var(--warning);
+  color: var(--warning-text);
   border-color: transparent;
 }
 
@@ -1825,6 +2139,7 @@ page, .page { overflow-x: clip; }
   --text-tertiary:  var(--ink-soft);
   --text-muted:     var(--ink-quiet);
   --text-faint:     var(--ink-faint);
+  --text-subtle:    rgba(240, 232, 214, 0.60);
   --text-disabled:  rgba(240, 232, 214, 0.22);
 
   --bg-page:    #12100D;
@@ -1872,6 +2187,8 @@ page, .page { overflow-x: clip; }
   --success:      #8BA670;
   --success-soft: rgba(139, 166, 112, 0.15);
   --warning:      #E5B170;
+  --warning-text: #E5B170;
+  --warning-surface: #8A5A13;
   --warning-soft: rgba(229, 177, 112, 0.15);
   --danger:       #E06666;
   --danger-soft:  rgba(224, 102, 102, 0.15);

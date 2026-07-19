@@ -1,12 +1,15 @@
 <template>
   <view v-if="visible" class="pdm-mask" @click="onMaskClick">
     <view
+      ref="dialogEl"
       class="pdm-panel"
       role="dialog"
       aria-modal="true"
       :aria-labelledby="titleId"
       :aria-describedby="bodyId"
+      tabindex="-1"
       @click.stop
+      @keydown="onDialogKeydown"
     >
       <text :id="titleId" class="pdm-title t-h2">{{ t('publish.permissionModalTitle') }}</text>
       <text :id="bodyId" class="pdm-body t-body">{{ t('publish.permissionModalBody') }}</text>
@@ -36,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, onUnmounted } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import UButton from './UButton.vue'
 
@@ -59,6 +62,9 @@ const emit = defineEmits<{
 const uid = Math.random().toString(36).slice(2, 6)
 const titleId = computed(() => `pdm-title-${uid}`)
 const bodyId = computed(() => `pdm-body-${uid}`)
+const dialogEl = ref<HTMLElement | null>(null)
+let dialogOpener: HTMLElement | null = null
+let dialogFocusEpoch = 0
 
 function onMaskClick() {
   emit('close')
@@ -95,15 +101,51 @@ function onOpenSettings() {
   emit('close')
 }
 
-/*
- * H5 ESC-to-close. mp-weixin has no document keyboard model so
- * this is wrapped in a typeof-document guard and a runtime check
- * — same defensive pattern as useLocation's navigator.permissions
- * preflight (added in PR #23 Phase 1a).
- */
-function onKeydown(e: KeyboardEvent) {
+function focusDialog(epoch: number) {
+  nextTick(() => {
+    if (epoch !== dialogFocusEpoch || !props.visible || typeof document === 'undefined') return
+    const dialog = dialogEl.value
+    if (!dialog) return
+    const first = dialog.querySelector<HTMLElement>(
+      '[role="button"]:not([aria-disabled="true"]), button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )
+    ;(first || dialog).focus()
+  })
+}
+
+function restoreDialogFocus(epoch: number, target: HTMLElement | null) {
+  nextTick(() => {
+    if (epoch !== dialogFocusEpoch || props.visible || !target || typeof document === 'undefined') return
+    if (document.contains(target)) target.focus()
+  })
+}
+
+function onDialogKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') {
+    e.preventDefault()
+    e.stopPropagation()
     emit('close')
+    return
+  }
+  if (e.key !== 'Tab' || typeof document === 'undefined') return
+  const dialog = e.currentTarget as HTMLElement | null
+  if (!dialog) return
+  const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+    '[role="button"]:not([aria-disabled="true"]), button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+  )).filter(element => element.getAttribute('aria-hidden') !== 'true')
+  if (focusable.length === 0) {
+    e.preventDefault()
+    dialog.focus()
+    return
+  }
+  const current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  const index = current ? focusable.indexOf(current) : -1
+  if (e.shiftKey && index <= 0) {
+    e.preventDefault()
+    focusable[focusable.length - 1].focus()
+  } else if (!e.shiftKey && (index === -1 || index === focusable.length - 1)) {
+    e.preventDefault()
+    focusable[0].focus()
   }
 }
 
@@ -111,19 +153,18 @@ watch(
   () => props.visible,
   (next) => {
     if (typeof document === 'undefined') return
+    const epoch = ++dialogFocusEpoch
     if (next) {
-      document.addEventListener('keydown', onKeydown)
+      dialogOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null
+      focusDialog(epoch)
     } else {
-      document.removeEventListener('keydown', onKeydown)
+      const target = dialogOpener
+      dialogOpener = null
+      restoreDialogFocus(epoch, target)
     }
   },
+  { immediate: true },
 )
-
-onUnmounted(() => {
-  if (typeof document !== 'undefined') {
-    document.removeEventListener('keydown', onKeydown)
-  }
-})
 </script>
 
 <style lang="scss" scoped>

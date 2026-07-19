@@ -1,4 +1,5 @@
 import type { ItemCategory } from '../types'
+import { safeItemMediaUrl } from './publicResource'
 // #ifdef H5
 import { useI18n } from '../composables/useI18n'
 import { addBreadcrumb } from './sentry'
@@ -27,13 +28,32 @@ export const PUBLISHABLE_CATEGORIES: ItemCategory[] = [
   'vehicles', 'rideshare', 'daily', 'food', 'other',
 ]
 
+/**
+ * Return to the previous in-app page when one exists, otherwise use an
+ * explicit safe destination. uni-app's H5 navigateBack implementation calls
+ * router.go(-1) and reports success even when the current page is the only
+ * in-app history entry, so a `fail` callback cannot repair hard-entry links.
+ */
+export function navigateBackOr(fallback: () => void): void {
+  let hasPreviousPage = false
+  try {
+    hasPreviousPage = getCurrentPages().length > 1
+  } catch {}
+
+  if (hasPreviousPage) {
+    uni.navigateBack()
+    return
+  }
+  fallback()
+}
+
 export function thumbUrl(
   url: string | null | undefined,
   size: "list" | "card" | "detail" | "avatar" = "list",
 ): string {
-  if (!url) return ""
-  if (!url.includes(SUPABASE_STORAGE_MARKER)) return url
-  const rendered = url.replace(SUPABASE_STORAGE_MARKER, SUPABASE_RENDER_PATH)
+  const safeUrl = safeItemMediaUrl(url)
+  if (!safeUrl) return ""
+  const rendered = safeUrl.replace(SUPABASE_STORAGE_MARKER, SUPABASE_RENDER_PATH)
   // Supabase image-transform defaults to resize=cover. With ONLY a width
   // param (no height), cover treats the original image's height as the
   // target height and crops width down to 640 — producing a tall vertical
@@ -139,12 +159,28 @@ const CONTENT_MESSAGES: Record<string, { en: string; zh: string }> = {
   content_too_long: { en: 'Content is too long (max 2000).',  zh: '内容太长（最多 2000 字）' },
   message_too_long: { en: 'Message is too long (max 2000).',  zh: '消息太长（最多 2000 字）' },
   attach_item_cap:  { en: 'You can attach up to 3 items.',    zh: '最多只能关联 3 件商品' },
+  moderation_gate_unavailable: {
+    en: 'Safety settings could not be loaded. Please retry.',
+    zh: '安全设置加载失败，请重试',
+  },
 }
 
 export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string {
   if (!err) return ''
   const rawMessage = String(err?.message || err?.code || err || '')
   const raw = rawMessage.toLowerCase()
+
+  if (err?.code === 'SEARCH_SCHEMA_UNAVAILABLE' || err?.code === 'SEARCH_LEGACY_FILTER_LIMIT') {
+    return lang === 'zh'
+      ? '搜索服务正在升级，请稍后重试'
+      : 'Search is being upgraded. Please try again shortly.'
+  }
+
+  if (err?.code === 'PGRST202' && raw.includes('archive_conversation')) {
+    return lang === 'zh'
+      ? '对话归档功能正在升级，请稍后重试'
+      : 'Conversation archiving is being upgraded. Please try again shortly.'
+  }
 
   if (raw.startsWith('suspension_active:')) {
     const parts = rawMessage.split(':')
@@ -736,7 +772,10 @@ export function quickTranslate(text: string, targetLang: 'en' | 'zh'): string {
 
 export function formatPrice(price: number, freeLabel = 'Free'): string {
   if (price === 0) return freeLabel
-  return '$' + (Number.isInteger(price) ? price.toString() : price.toFixed(2))
+  const raw = Number.isInteger(price) ? price.toString() : price.toFixed(2)
+  const [whole, decimal] = raw.split('.')
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return '$' + grouped + (decimal ? `.${decimal}` : '')
 }
 
 /*
@@ -958,7 +997,10 @@ async function looksLikeHeic(blob: Blob): Promise<boolean> {
  * Error) — caller wraps in errorToShortString to normalize.
  */
 async function heicToJpegBlob(blob: Blob): Promise<Blob> {
-  const { heicTo } = await import('heic-to')
+  // The CSP build uses libheif's no-unsafe-eval bundle. Keeping the dynamic
+  // import preserves lazy loading while allowing production script-src to
+  // stay free of 'unsafe-eval'. worker-src already permits its blob worker.
+  const { heicTo } = await import('heic-to/csp')
   return heicTo({ blob, type: 'image/jpeg', quality: 0.92 })
 }
 
@@ -1026,9 +1068,8 @@ function tryShowHeicLoading(): void {
      */
     const { t } = useI18n()
     uni.showLoading({ title: t('heic.converting'), mask: true })
-  } catch (err) {
+  } catch {
     /* showLoading failure is non-fatal; conversion still proceeds */
-    console.warn('[compress-debug] showLoading failed', err)
     heicLoadingShownByUs = false
   }
 }
@@ -1045,16 +1086,13 @@ async function compressH5(
   quality: number,
   entryPoint?: string,
 ): Promise<string> {
-  const shortSrc = src.slice(0, 60) + (src.length > 60 ? '…' : '')
   let origBlob: Blob
   try {
     const resp = await fetch(src)
     origBlob = await resp.blob()
-  } catch (err) {
-    console.warn('[compress-debug] H5 fetch failed for', shortSrc, err)
+  } catch {
     return src
   }
-  const origKB = Math.round(origBlob.size / 1024)
 
   /*
    * HEIC detection runs BEFORE createImageBitmap so we can route HEIC
@@ -1173,8 +1211,7 @@ async function compressH5(
   if (!bitmap) {
     try {
       bitmap = await createImageBitmap(workingBlob, { imageOrientation: 'from-image' as 'none' })
-    } catch (err) {
-      console.warn('[compress-debug] H5 createImageBitmap failed for', shortSrc, err)
+    } catch {
       /*
        * Post-conversion bitmap failure on a HEIC: workingBlob holds
        * valid JPEG bytes from heic-to; return as data URL so the
@@ -1219,7 +1256,6 @@ async function compressH5(
 
   const dataUrl = canvas.toDataURL('image/jpeg', quality)
   // toDataURL returns base64; actual byte size ≈ length × 0.75
-  const compressedKB = Math.round((dataUrl.length * 0.75) / 1024)
   return dataUrl
 }
 // #endif
@@ -1240,8 +1276,6 @@ function compressMP(src: string, maxLongEdge: number, quality: number): Promise<
         const w = info.width || 0
         const h = info.height || 0
         const longEdge = Math.max(w, h)
-        const shortSrc = src.slice(0, 60) + (src.length > 60 ? '…' : '')
-
         if (longEdge > 0 && longEdge <= maxLongEdge) {
           resolve(src)
           return
@@ -1253,8 +1287,7 @@ function compressMP(src: string, maxLongEdge: number, quality: number): Promise<
           success: (res) => {
             resolve(res.tempFilePath)
           },
-          fail: (err) => {
-            console.warn('[compress-debug] mp compress fail for', shortSrc, err)
+          fail: () => {
             resolve(src)
           },
         }
@@ -1265,9 +1298,7 @@ function compressMP(src: string, maxLongEdge: number, quality: number): Promise<
         }
         uni.compressImage(opts)
       },
-      fail: (err) => {
-        const shortSrc = src.slice(0, 60) + (src.length > 60 ? '…' : '')
-        console.warn('[compress-debug] mp getImageInfo fail for', shortSrc, err)
+      fail: () => {
         uni.compressImage({
           src,
           quality: Math.round(quality * 100),
@@ -1295,8 +1326,6 @@ function compressMP(src: string, maxLongEdge: number, quality: number): Promise<
 export function getImageDimensions(src: string): Promise<{ w: number; h: number }> {
   return new Promise((resolve) => {
     if (!src) return resolve({ w: 0, h: 0 })
-    const shortSrc = src.slice(0, 60) + (src.length > 60 ? '…' : '')
-
     // #ifdef H5
     const img = new Image()
     img.crossOrigin = 'anonymous'
@@ -1304,8 +1333,7 @@ export function getImageDimensions(src: string): Promise<{ w: number; h: number 
       const dims = { w: img.naturalWidth || 0, h: img.naturalHeight || 0 }
       resolve(dims)
     }
-    img.onerror = (e) => {
-      console.warn('[dims-debug] H5 onerror for:', shortSrc, e)
+    img.onerror = () => {
       resolve({ w: 0, h: 0 })
     }
     img.src = src
@@ -1318,8 +1346,7 @@ export function getImageDimensions(src: string): Promise<{ w: number; h: number 
         const dims = { w: res.width || 0, h: res.height || 0 }
         resolve(dims)
       },
-      fail: (err) => {
-        console.warn('[dims-debug] mp getImageInfo fail:', shortSrc, err)
+      fail: () => {
         resolve({ w: 0, h: 0 })
       },
     })

@@ -1,14 +1,18 @@
 {
-  "buildCommand": "cd app && npm install && npm run build:h5",
+  "buildCommand": "cd app && npm ci --legacy-peer-deps && npm run build:h5",
   "outputDirectory": "app/dist/build/h5",
   "framework": null,
   "crons": [
-    { "path": "/api/notification-digest", "schedule": "0 23 * * *" }
+    { "path": "/api/notification-digest", "schedule": "0 23 * * *" },
+    { "path": "/api/data-retention", "schedule": "17 * * * *" },
+    { "path": "/api/banner-upload-gc", "schedule": "37 * * * *" },
+    { "path": "/api/auth/delete-account", "schedule": "*/10 * * * *" }
   ],
   "rewrites": [
     { "source": "/share/:id", "destination": "/api/share?id=:id" },
     { "source": "/share-post/:id", "destination": "/api/share-post?id=:id" },
     { "source": "/robots.txt", "destination": "/static/robots.txt" },
+    { "source": "/api/:path*", "destination": "/api/404.js" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
@@ -17,13 +21,19 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; worker-src 'self' blob:; img-src 'self' data: blob: https:; font-src 'self' data: https://cdn.jsdelivr.net; connect-src 'self' data: blob: https://*.supabase.co wss://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; img-src 'self' data: blob: https://*.supabase.co; media-src 'self' blob: https://*.supabase.co; font-src 'self' data:; connect-src 'self' data: blob: https://*.supabase.co wss://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
         },
         { "key": "X-Frame-Options", "value": "DENY" },
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "Permissions-Policy", "value": "camera=(self), microphone=(), geolocation=(self), payment=()" },
         { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
       ]
     },
     {

@@ -19,29 +19,44 @@
  *
  * Usage:
  *   export SUPABASE_URL=https://<project>.supabase.co
- *   export SUPABASE_SERVICE_ROLE_KEY=<service_role_key_from_dashboard>
+ *   export SUPABASE_SECRET_KEY=<sb_secret_key_from_dashboard>
  *   node scripts/backfill-image-dimensions.mjs          # dry-run first (no writes)
  *   node scripts/backfill-image-dimensions.mjs --apply  # actually write
  *
- * Get the service role key from:
- *   Supabase Dashboard → Project Settings → API → service_role (secret)
+ * Create a named secret key in:
+ *   Supabase Dashboard → Project Settings → API Keys → Secret keys
+ * A legacy service_role key remains a temporary fallback during migration.
  * Do NOT commit it. Export in shell only for the duration of this run.
  */
 
+import {
+  fetchBounded,
+  normalizeStorageObjectUrl,
+  normalizeSupabaseOrigin,
+} from './http-boundary.mjs'
+
 const SUPABASE_URL = process.env.SUPABASE_URL
-const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY
+const SERVICE_ROLE = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
 const APPLY = process.argv.includes('--apply')
 
 if (!SUPABASE_URL || !SERVICE_ROLE) {
-  console.error('Missing env: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
-  console.error('Dashboard → Project Settings → API → service_role (secret)')
+  console.error('Missing env: SUPABASE_URL or SUPABASE_SECRET_KEY/SUPABASE_SERVICE_ROLE_KEY')
+  console.error('Dashboard → Project Settings → API Keys → secret (preferred) or legacy service_role')
   process.exit(1)
 }
 
-const REST = `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1`
+const SUPABASE_ORIGIN = normalizeSupabaseOrigin(SUPABASE_URL)
+if (!SUPABASE_ORIGIN) {
+  console.error('SUPABASE_URL must be an HTTPS origin (loopback HTTP is allowed for local rehearsal)')
+  process.exit(1)
+}
+
+const REST = `${SUPABASE_ORIGIN}/rest/v1`
 const HEADERS = {
   apikey: SERVICE_ROLE,
-  Authorization: `Bearer ${SERVICE_ROLE}`,
+  ...(!/^sb_secret_/.test(SERVICE_ROLE)
+    ? { Authorization: `Bearer ${SERVICE_ROLE}` }
+    : {}),
   'Content-Type': 'application/json',
   Prefer: 'return=representation',
 }
@@ -127,17 +142,27 @@ function parseWebp(buf) {
 }
 
 async function fetchDims(url) {
+  const safeUrl = normalizeStorageObjectUrl(url, SUPABASE_ORIGIN)
+  if (!safeUrl) return { error: 'disallowed_storage_url', w: 0, h: 0 }
   try {
-    const res = await fetch(url, { headers: { Range: 'bytes=0-65535' } })
+    const res = await fetchBounded(
+      fetch,
+      safeUrl,
+      { headers: { Range: 'bytes=0-65535' } },
+      { timeoutMs: 10_000, maxBytes: 65_536 },
+    )
     if (!res.ok && res.status !== 206) {
       return { error: `HTTP ${res.status}`, w: 0, h: 0 }
     }
-    const buf = Buffer.from(await res.arrayBuffer())
+    const buf = Buffer.from(res.bytes)
     const dim = parseJpeg(buf) || parsePng(buf) || parseWebp(buf)
     if (!dim) return { error: 'unparseable', w: 0, h: 0 }
     return dim
   } catch (e) {
-    return { error: String(e), w: 0, h: 0 }
+    const code = ['request_timeout', 'response_too_large', 'response_malformed'].includes(e?.message)
+      ? e.message
+      : 'request_failed'
+    return { error: code, w: 0, h: 0 }
   }
 }
 
@@ -146,21 +171,44 @@ async function fetchDims(url) {
 // ---------------------------------------------------------------------
 
 async function fetchRows(table) {
-  const url = `${REST}/${table}?select=id,images,image_dimensions&image_dimensions=eq.%5B%5D`
-  const res = await fetch(url, { headers: HEADERS })
-  if (!res.ok) throw new Error(`GET ${table} → ${res.status}: ${await res.text()}`)
-  return await res.json()
+  const rows = []
+  const pageSize = 500
+  for (let offset = 0; ; offset += pageSize) {
+    const url = new URL(`${REST}/${table}`)
+    url.searchParams.set('select', 'id,images,image_dimensions')
+    url.searchParams.set('image_dimensions', 'eq.[]')
+    url.searchParams.set('order', 'id.asc')
+    url.searchParams.set('limit', String(pageSize))
+    url.searchParams.set('offset', String(offset))
+    const res = await fetchBounded(fetch, url, { headers: HEADERS }, {
+      timeoutMs: 15_000,
+      maxBytes: 8 * 1024 * 1024,
+    })
+    if (!res.ok) throw new Error(`GET ${table} → ${res.status}: ${await res.text()}`)
+    const page = await res.json()
+    if (!Array.isArray(page)) throw new Error(`GET ${table} → malformed response`)
+    rows.push(...page)
+    if (page.length < pageSize) break
+  }
+  return rows
 }
 
 async function updateRow(table, id, dims) {
   const url = `${REST}/${table}?id=eq.${id}`
-  const res = await fetch(url, {
-    method: 'PATCH',
-    headers: HEADERS,
-    body: JSON.stringify({ image_dimensions: dims }),
-  })
+  const res = await fetchBounded(fetch, url, {
+    method: 'PATCH', headers: HEADERS, body: JSON.stringify({ image_dimensions: dims }),
+  }, { timeoutMs: 15_000, maxBytes: 1024 * 1024 })
   if (!res.ok) throw new Error(`PATCH ${table}/${id} → ${res.status}: ${await res.text()}`)
   return await res.json()
+}
+
+function imageLogLabel(raw) {
+  try {
+    const path = new URL(raw).pathname
+    return path.slice(Math.max(0, path.length - 40))
+  } catch {
+    return '(invalid URL)'
+  }
 }
 
 // ---------------------------------------------------------------------
@@ -185,7 +233,7 @@ async function processTable(table) {
     for (const url of images) {
       const d = await fetchDims(url)
       if (d.error) {
-        console.warn(`  [${row.id}] image ${url.slice(-40)} → ${d.error}`)
+        console.warn(`  [${row.id}] image ${imageLogLabel(url)} → ${d.error}`)
         dims.push({ w: 0, h: 0 })
       } else {
         dims.push({ w: d.w, h: d.h })

@@ -68,7 +68,7 @@ export interface ImageDim {
   h: number
 }
 
-export type OfferStatus = 'pending' | 'accepted' | 'declined' | 'countered' | 'expired'
+export type OfferStatus = 'pending' | 'accepted' | 'declined' | 'countered' | 'expired' | 'cancelled'
 
 export interface Offer {
   id: string
@@ -83,6 +83,24 @@ export interface Offer {
   expires_at: string
   created_at: string
   updated_at: string
+}
+
+/** Minimum private attribution data returned only to the current item owner. */
+export interface ItemSaleCandidate {
+  offer_id: string
+  conversation_id: string
+  counterparty_id: string
+  counterparty_name: string
+  agreed_price: number
+  accepted_at: string
+}
+
+/** Guarded per-account answer; non-parties receive eligible=false and no identity. */
+export interface TransactionRatingEligibility {
+  eligible: boolean
+  ratee_id: string | null
+  ratee_nickname: string | null
+  already_rated: boolean
 }
 
 export type MeetupStatus = 'pending' | 'accepted' | 'declined' | 'rescheduled' | 'expired'
@@ -206,5 +224,4 @@ export interface Favorite {
   created_at: string
   item?: Item
 }
-
 
