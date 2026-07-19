@@ -200,8 +200,44 @@ test('release indexes and deterministic admin pagination stay version ordered', 
     assert.ok(current > previous, `release sequence is not version ordered at ${version}`)
     previous = current
   }
-  assert.match(release, /current 31-migration audit/)
-  assert.match(release, /90\s+historical \+ 31 candidate migrations/)
+  assert.match(release, /current 35-migration audit/)
+  assert.match(release, /90\s+historical \+ 35 candidate migrations/)
+  assert.match(release, /18160000\/19151729[\s\S]{0,80}partial-ledger repairs/)
+  assert.match(release, /18250000\/19170019[\s\S]{0,40}partial-ledger repairs/)
+  assert.ok(
+    release.lastIndexOf('20260719151729')
+      > release.lastIndexOf('20260719083511'),
+    'normal clean-ledger sequence must place the later Plaza ACL repair after the FK tail',
+  )
+  assert.ok(
+    release.lastIndexOf('20260719164126')
+      > release.lastIndexOf('20260719151729'),
+    'managed Realtime policy reconciliation must follow the Plaza ACL repair',
+  )
+  assert.ok(
+    release.lastIndexOf('20260719170019')
+      > release.lastIndexOf('20260719164126'),
+    'meetups ACL reconciliation must follow the managed Realtime repair',
+  )
+  assert.ok(
+    release.lastIndexOf('20260719174928')
+      > release.lastIndexOf('20260719170019'),
+    'trigger-only function ACL reconciliation must remain the literal final migration',
+  )
+  assert.match(
+    release,
+    /PRECHECK_20260719164126_reconcile_managed_realtime_authorization_contract\.sql/,
+  )
+  assert.match(release, /does\s+not GRANT or REVOKE the Supabase-owned/)
+  assert.match(
+    release,
+    /PRECHECK_20260719170019_reconcile_meetups_acl_boundary\.sql/,
+  )
+  assert.match(
+    release,
+    /PRECHECK_20260719174928_reconcile_trigger_only_function_acl\.sql/,
+  )
+  assert.match(release, /does not apply or record `19164126`/)
   assert.match(
     release,
     /\(cd supabase\/migrations && shasum -a 256 -c manifest\.sha256\)/,

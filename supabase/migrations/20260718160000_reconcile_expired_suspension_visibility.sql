@@ -12,6 +12,8 @@ DECLARE
   relation_name text;
   function_signature text;
   item_view_columns text[];
+  item_view_dependents text[];
+  rebuild_legacy_item_view boolean := false;
 BEGIN
   FOREACH relation_name IN ARRAY ARRAY[
     'public.profiles',
@@ -100,9 +102,20 @@ BEGIN
     AND attribute.attnum > 0
     AND NOT attribute.attisdropped;
 
-  -- Migration 027 captured item.* before migration 054 appended listing_type.
-  -- A replay has the second shape below.  Refuse any other projection drift.
-  IF item_view_columns IS DISTINCT FROM ARRAY[
+  -- Some legacy environments created migration 027's SELECT item.* view
+  -- before the image/i18n columns were appended to public.items. PostgreSQL
+  -- cannot insert those columns before the existing favorite/location fields
+  -- with CREATE OR REPLACE VIEW, so that one exact legacy shape needs a
+  -- guarded drop/recreate. Refuse every other projection drift.
+  rebuild_legacy_item_view := item_view_columns = ARRAY[
+       'id', 'user_id', 'title', 'description', 'price', 'category',
+       'condition', 'status', 'location', 'images', 'view_count',
+       'created_at', 'updated_at', 'negotiable', 'favorite_count',
+       'location_verified'
+     ]::text[];
+
+  IF NOT rebuild_legacy_item_view
+     AND item_view_columns IS DISTINCT FROM ARRAY[
        'id', 'user_id', 'title', 'description', 'price', 'category',
        'condition', 'status', 'location', 'images', 'view_count',
        'created_at', 'updated_at', 'negotiable', 'image_dimensions',
@@ -120,6 +133,33 @@ BEGIN
       'suspension_visibility_items_visible_shape_mismatch: %',
       item_view_columns
       USING ERRCODE = '55000';
+  END IF;
+
+  IF rebuild_legacy_item_view THEN
+    -- Only the view's own composite row type and _RETURN rule are internal
+    -- dependencies. Any other object must be reviewed explicitly; DROP VIEW
+    -- below intentionally omits CASCADE as a second fail-closed boundary.
+    SELECT pg_catalog.array_agg(
+             pg_catalog.pg_describe_object(
+               dependency.classid,
+               dependency.objid,
+               dependency.objsubid
+             )
+             ORDER BY dependency.classid, dependency.objid,
+                      dependency.objsubid
+           )
+    INTO item_view_dependents
+    FROM pg_catalog.pg_depend AS dependency
+    WHERE dependency.refclassid = 'pg_catalog.pg_class'::pg_catalog.regclass
+      AND dependency.refobjid = 'public.items_visible'::pg_catalog.regclass
+      AND dependency.deptype <> 'i';
+
+    IF pg_catalog.cardinality(item_view_dependents) > 0 THEN
+      RAISE EXCEPTION
+        'suspension_visibility_items_visible_has_dependents: %',
+        item_view_dependents
+        USING ERRCODE = '2BP01';
+    END IF;
   END IF;
 
   IF EXISTS (
@@ -225,6 +265,10 @@ BEGIN
     RAISE EXCEPTION
       'suspension_visibility_unexpected_helper_overload'
       USING ERRCODE = '55000';
+  END IF;
+
+  IF rebuild_legacy_item_view THEN
+    DROP VIEW public.items_visible;
   END IF;
 END
 $guard$;
@@ -435,10 +479,10 @@ CREATE POLICY "No updates to post_items"
   WITH CHECK (false);
 
 -- Privileged callers can bypass base-table RLS, so the views must repeat both
--- the lifecycle predicate and the moderation predicate.  Keep the projection
--- explicit: the original view captured the then-current items columns, while
--- listing_type was added later and is now selected by api/share.js.  Appending
--- that one required column is deliberate; future base-table columns must not
+-- the lifecycle predicate and the moderation predicate. Keep the projection
+-- explicit. The guard may have dropped only the exact dependency-free legacy
+-- projection that cannot be widened in-place; every other accepted shape is
+-- replaced without changing its OID. Future base-table columns must not
 -- silently expand this public API contract.
 CREATE OR REPLACE VIEW public.items_visible
 WITH (security_invoker = true, security_barrier = true)

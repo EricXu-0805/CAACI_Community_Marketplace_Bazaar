@@ -20,6 +20,7 @@ function forbiddenName(file) {
     || /(?:^|\/)\.env(?:\.|$)/.test(file)
     || /\.(?:pem|key)$/i.test(file)
     || /(?:^|\/)(?:id_rsa|id_ed25519)(?:$|\.)/i.test(file)
+    || /(?:heic-to|libheif)/i.test(file)
 }
 
 function containsPrivilegedMaterial(text) {
@@ -34,6 +35,10 @@ function containsPrivilegedMaterial(text) {
   return false
 }
 
+function containsRemovedDecoderMaterial(text) {
+  return /(?:heic-to|libheif)/i.test(text)
+}
+
 export async function verifyBuildArtifact(root, expectedEnvironment = 'none') {
   const files = await walk(root)
   const forbidden = files.find(forbiddenName)
@@ -44,6 +49,9 @@ export async function verifyBuildArtifact(root, expectedEnvironment = 'none') {
     if (bytes.includes(0)) continue
     if (containsPrivilegedMaterial(bytes.toString('utf8'))) {
       throw new Error(`build_artifact_invalid: privileged material in ${file}`)
+    }
+    if (containsRemovedDecoderMaterial(bytes.toString('utf8'))) {
+      throw new Error(`build_artifact_invalid: removed HEIC decoder material in ${file}`)
     }
   }
 

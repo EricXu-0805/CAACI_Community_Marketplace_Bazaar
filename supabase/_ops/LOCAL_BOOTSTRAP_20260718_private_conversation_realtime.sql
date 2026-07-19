@@ -14,6 +14,17 @@ BEGIN
   ) THEN
     CREATE ROLE authenticated NOLOGIN;
   END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'service_role'
+  ) THEN
+    CREATE ROLE service_role NOLOGIN BYPASSRLS;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_roles
+    WHERE rolname = 'supabase_realtime_admin'
+  ) THEN
+    CREATE ROLE supabase_realtime_admin NOLOGIN;
+  END IF;
 END;
 $roles$;
 
@@ -41,9 +52,14 @@ AS $function$
   SELECT NULLIF(pg_catalog.current_setting('realtime.topic', true), '')
 $function$;
 
-GRANT USAGE ON SCHEMA realtime TO anon, authenticated;
--- Start deliberately over-privileged so the migration/VERIFY pair proves that
--- DELETE/TRUNCATE/REFERENCES/TRIGGER drift is removed as well as UPDATE.
-GRANT ALL ON realtime.messages TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION realtime.topic() TO anon, authenticated;
+ALTER TABLE realtime.messages OWNER TO supabase_realtime_admin;
+GRANT USAGE ON SCHEMA realtime TO anon, authenticated, service_role;
+-- Mirror the hosted managed-owner baseline observed in production. The later
+-- forward reconciliation accepts these owner-issued, non-grantable S/I/U ACLs
+-- and owns only the two RLS policies.
+SET ROLE supabase_realtime_admin;
+GRANT SELECT, INSERT, UPDATE ON realtime.messages
+  TO anon, authenticated, service_role;
+RESET ROLE;
+GRANT EXECUTE ON FUNCTION realtime.topic() TO anon, authenticated, service_role;
 ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY;

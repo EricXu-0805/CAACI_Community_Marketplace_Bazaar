@@ -194,6 +194,17 @@ const { t, lang } = useI18n()
 const { signIn, signUp, signInWithWeChat, loading } = useAuth()
 const { isDark } = useTheme()
 
+function localizedPasswordPolicyError(error: unknown) {
+  const policyError = error as { message?: unknown; reasons?: unknown }
+  const reasons = Array.isArray(policyError?.reasons) ? policyError.reasons : []
+  const detail = [...reasons, policyError?.message]
+    .map((reason) => String(reason || '').toLowerCase())
+    .join(' ')
+  return /pwned|leak|breach|compromis/.test(detail)
+    ? t('login.leakedPasswordRejected')
+    : t('login.weakPassword')
+}
+
 // v5: theme-flipping 集 brand mark + an Illini-email hint on the signup form.
 const logoSrc = computed(() => (isDark.value ? '/static/logo-mark-dark.svg' : '/static/logo-mark.svg'))
 const isIlliniEmail = computed(() => /@illinois\.edu\s*$/i.test(email.value.trim()))
@@ -545,7 +556,7 @@ async function onSubmit() {
       // gotrue weak_password (dashboard policy stricter than the client) used
       // to surface raw English. Map it to the localized policy line.
       const weak = (error as any).code === 'weak_password' || Array.isArray((error as any).reasons)
-      uni.showToast({ title: weak ? t('login.weakPassword') : (error.message || t('login.signupFail')), icon: 'none', duration: 2500 })
+      uni.showToast({ title: weak ? localizedPasswordPolicyError(error) : (error.message || t('login.signupFail')), icon: 'none', duration: 2500 })
     } else if (data?.user?.identities?.length === 0) {
       uni.showToast({ title: t('login.emailExists'), icon: 'none' })
     } else if (data?.user && !data.session) {
@@ -567,19 +578,40 @@ async function onSubmit() {
       scheduleHomeRedirect(1200)
     }
   } else {
-    const { error } = await signIn(submittedEmail, submittedPassword)
+    const { data, error } = await signIn(submittedEmail, submittedPassword)
     if (!mounted) return
     if (error) {
       // Map the two common gotrue sign-in errors to localized copy (zh is the
-      // primary audience) — the raw strings are English. Mirrors the signup
-      // branch's weak_password mapping above.
+      // primary audience) — the raw strings are English. HIBP leaked-password
+      // Some provider/config variants can also return a password-policy error
+      // here, so keep that response on the same localized path as signup/reset.
       const m = (error.message || '').toLowerCase()
-      const title = m.includes('invalid login credentials') || m.includes('invalid_credentials')
-        ? t('login.invalidCredentials')
-        : (m.includes('email not confirmed') || m.includes('email_not_confirmed'))
-          ? t('login.emailNotConfirmed')
-          : (error.message || t('login.loginFail'))
+      const weak = (error as any).code === 'weak_password' || Array.isArray((error as any).reasons)
+      const title = weak
+        ? localizedPasswordPolicyError(error)
+        : m.includes('invalid login credentials') || m.includes('invalid_credentials')
+          ? t('login.invalidCredentials')
+          : (m.includes('email not confirmed') || m.includes('email_not_confirmed'))
+            ? t('login.emailNotConfirmed')
+            : (error.message || t('login.loginFail'))
       uni.showToast({ title, icon: 'none', duration: 2500 })
+    } else if (data?.weakPassword) {
+      // Supabase intentionally permits an existing account to sign in with a
+      // now-known leaked password, but returns this structured warning. Keep
+      // the session usable while making the next safe action unmistakable.
+      uni.showModal({
+        title: t('login.weakPasswordWarningTitle'),
+        content: t('login.weakPasswordWarningHint'),
+        showCancel: false,
+        success: () => {
+          if (mounted) scheduleHomeRedirect(0)
+        },
+        fail: () => {
+          if (!mounted) return
+          uni.showToast({ title: localizedPasswordPolicyError(data.weakPassword), icon: 'none', duration: 2500 })
+          scheduleHomeRedirect(2500)
+        },
+      })
     } else {
       uni.showToast({ title: t('login.loginOk'), icon: 'success' })
       /*

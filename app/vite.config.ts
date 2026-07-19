@@ -286,12 +286,9 @@ function requireMpAppOrigin(): Plugin {
  * relative-to-src prefix to every chunk's [name]. For in-src chunks
  * that produces the existing project convention
  * (`composables-useFavorites.<hash>.js`, `pages-publish-index.<hash>.js`).
- * For node_modules content the relative path begins with `../`,
- * yielding a chunk filename like `..-node_modules-heic-to-dist-heic-to.<hash>.js`
- * — whose leading `..-` is an invalid ES module specifier prefix that
- * the browser's module resolver rejects when the chunk is dynamic-
- * imported (witnessed for heic-to in commit f4adfb8 — see
- * _ai_notes/HEIC_VITE_CHUNK_DIAGNOSIS.md §10).
+ * For node_modules content the relative path begins with `../`, which can
+ * yield a chunk filename whose leading `..-` is an invalid ES module
+ * specifier prefix when a dependency is dynamically imported.
  *
  * Why a Vite plugin (not user-config rollupOptions): Vite merges plugin
  * `config` hook returns ON TOP of user config, so chunkFileNames set in
@@ -306,7 +303,7 @@ function requireMpAppOrigin(): Plugin {
  * browser caches stay valid for existing users) and only diverges when
  * dirname starts with `..` — i.e. node_modules content. Those chunks
  * become `assets/[name].[hash].js`, where `[name]` is whatever
- * manualChunks() set it to (`heic-to`, `supabase`, etc.).
+ * manualChunks() set it to (for example, `supabase`).
  */
 function chunkFileNamesForNodeModules(): Plugin {
   return {
@@ -426,7 +423,6 @@ export default defineConfig({
               if (id.includes("@supabase")) return "supabase";
               if (id.includes("/vue/") || id.includes("@vue/")) return "vue";
               if (id.includes("@dcloudio")) return "uni";
-              if (id.includes("/heic-to/")) return "heic-to";
             },
           },
         },

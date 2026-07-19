@@ -12,9 +12,7 @@ const reviewedMissingMetadata = new Map([
   ['node_modules/qrcode-terminal', { version: '0.12.0', evidence: 'app/node_modules/qrcode-terminal/LICENSE', marker: 'Apache License' }],
 ])
 
-const reviewedCopyleft = new Map([
-  ['node_modules/heic-to', { version: '1.4.2', license: 'LGPL-3.0' }],
-])
+const reviewedCopyleft = new Map()
 
 test('every locked package has license metadata or exact bundled evidence', async () => {
   const missing = []
@@ -45,11 +43,14 @@ test('new copyleft or source-available licenses require an explicit review', () 
   assert.deepEqual(found, [], `unreviewed restricted-license package: ${found.join(', ')}`)
 })
 
-test('the known LGPL H5 decoder remains a visible release gate', async () => {
+test('the removed H5 decoder stays absent from the production graph and current inventory', async () => {
+  const packageJson = JSON.parse(await readFile(new URL('app/package.json', root), 'utf8'))
   const notice = await readFile(new URL('THIRD_PARTY_NOTICES.md', root), 'utf8')
   const triage = await readFile(new URL('docs/NPM_DEPENDENCY_TRIAGE.md', root), 'utf8')
-  assert.match(notice, /heic-to` 1\.4\.2/)
-  assert.match(notice, /software-license gate remains open/)
-  assert.match(triage, /LGPL-3\.0/)
-  assert.match(triage, /qualified counsel/)
+  assert.equal(packageJson.dependencies?.['heic-to'], undefined)
+  assert.equal(packages['node_modules/heic-to'], undefined)
+  assert.doesNotMatch(notice, /heic-to|LGPL-3\.0/)
+  assert.doesNotMatch(triage, /heic-to|LGPL-3\.0/)
+  assert.match(notice, /no package\s+declaring a copyleft or source-available license/)
+  assert.match(triage, /no\s+dependency declaring a copyleft or source-available license/)
 })

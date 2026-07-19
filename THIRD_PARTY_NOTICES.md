@@ -6,30 +6,17 @@ authoritative version and license inventory; this file records the exceptional
 items that need an explicit release decision instead of silently treating an
 `npm audit` result as a license review.
 
-## HEIC conversion
+## Current copyleft boundary
 
-The H5 image pipeline dynamically loads `heic-to` 1.4.2 when a browser cannot
-decode an HEIC/HEIF image natively.
+The current release-candidate production-dependency graph contains no package
+declaring a copyleft or source-available license. The former H5 fallback decoder was removed on
+2026-07-19; HEIC now uses only browser-native decoding and fails closed with an
+explicit unsupported-format message where native decoding is unavailable.
 
-- Project: <https://github.com/hoppergee/heic-to>
-- Declared license: GNU Lesser General Public License v3.0 (`LGPL-3.0`)
-- Upstream license text: <https://github.com/hoppergee/heic-to/blob/v1.4.2/LICENSE>
-- Upstream source for the locked release:
-  <https://github.com/hoppergee/heic-to/tree/v1.4.2>
-
-The package is currently unmodified and emitted as an on-demand H5 chunk. A
-link and notice alone are not a legal conclusion about the obligations for a
-particular distribution. Before a public production distribution, the release
-owner must choose and document one of these paths:
-
-1. confirm with qualified counsel that the planned delivery, source offer,
-   relinking/replacement mechanism, license copies, and installation
-   information satisfy the LGPL/GPL terms; or
-2. replace/remove the decoder and re-run HEIC behavior, bundle-size, H5,
-   mini-program, browser, and real-device tests.
-
-Until that decision is recorded, dependency security gates may pass but the
-software-license gate remains open.
+The deterministic license boundary test rejects any newly introduced
+AGPL/GPL/LGPL/SSPL/BUSL/MPL/EPL/CDDL package until it receives an explicit
+review. This is dependency-inventory and change-control evidence, not a legal
+conclusion about any future distribution.
 
 ## Packages without a package.json `license` field
 

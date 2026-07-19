@@ -162,6 +162,43 @@ test('password recovery never displays raw provider update errors', () => {
   assert.doesNotMatch(updateFailure, /uErr as any\)\?\.message/)
 })
 
+test('leaked-password sign-in failures stay on the localized password-policy path', () => {
+  const submitStart = loginSource.indexOf('async function onSubmit')
+  const submit = loginSource.slice(
+    submitStart,
+    loginSource.indexOf('\n</script>', submitStart),
+  )
+
+  assert.match(submit, /error as any\)\.code === 'weak_password'/)
+  assert.match(submit, /Array\.isArray\(\(error as any\)\.reasons\)/)
+  assert.match(submit, /weak\s*\?\s*localizedPasswordPolicyError\(error\)/)
+  assert.match(loginSource, /pwned\|leak\|breach\|compromis/)
+  assert.match(loginSource, /t\('login\.leakedPasswordRejected'\)/)
+  assert.match(resetPasswordSource, /localizedPasswordPolicyError\(uErr\)/)
+  assert.match(enMessagesSource, /'login\.leakedPasswordRejected': 'This password appeared in a known breach\./)
+  assert.match(zhMessagesSource, /'login\.leakedPasswordRejected': '这个密码出现在已知泄漏记录中/)
+})
+
+test('successful leaked-password sign-in warns before continuing to the app', () => {
+  const submitStart = loginSource.indexOf('async function onSubmit')
+  const submit = loginSource.slice(
+    submitStart,
+    loginSource.indexOf('\n</script>', submitStart),
+  )
+
+  assert.match(submit, /const \{ data, error \} = await signIn/)
+  assert.match(submit, /else if \(data\?\.weakPassword\)/)
+  assert.match(submit, /uni\.showModal\(\{[\s\S]*?showCancel:\s*false/)
+  assert.match(submit, /t\('login\.weakPasswordWarningTitle'\)/)
+  assert.match(submit, /t\('login\.weakPasswordWarningHint'\)/)
+  assert.match(submit, /success:[\s\S]*?scheduleHomeRedirect\(0\)/)
+  assert.match(submit, /fail:[\s\S]*?localizedPasswordPolicyError\(data\.weakPassword\)/)
+  assert.match(enMessagesSource, /'login\.weakPasswordWarningTitle'/)
+  assert.match(enMessagesSource, /known leak/)
+  assert.match(zhMessagesSource, /'login\.weakPasswordWarningTitle'/)
+  assert.match(zhMessagesSource, /已知泄漏记录/)
+})
+
 test('first account consent is not mislabeled as an updated agreement', () => {
   assert.match(reconsentSource, /const firstConsent = computed\(\(\) => !currentUser\.value\?\.tos_version \|\| currentUser\.value\.tos_version === '0'\)/)
   assert.match(reconsentSource, /firstConsent \? 'reconsent\.firstBadge' : 'reconsent\.badge'/)

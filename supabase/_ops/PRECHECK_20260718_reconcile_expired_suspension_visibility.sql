@@ -11,6 +11,8 @@ DECLARE
   relation_name text;
   function_signature text;
   item_view_columns text[];
+  item_view_dependents text[];
+  rebuild_legacy_item_view boolean := false;
 BEGIN
   FOREACH relation_name IN ARRAY ARRAY[
     'public.profiles',
@@ -93,7 +95,15 @@ BEGIN
     AND attribute.attnum > 0
     AND NOT attribute.attisdropped;
 
-  IF item_view_columns IS DISTINCT FROM ARRAY[
+  rebuild_legacy_item_view := item_view_columns = ARRAY[
+       'id', 'user_id', 'title', 'description', 'price', 'category',
+       'condition', 'status', 'location', 'images', 'view_count',
+       'created_at', 'updated_at', 'negotiable', 'favorite_count',
+       'location_verified'
+     ]::text[];
+
+  IF NOT rebuild_legacy_item_view
+     AND item_view_columns IS DISTINCT FROM ARRAY[
        'id', 'user_id', 'title', 'description', 'price', 'category',
        'condition', 'status', 'location', 'images', 'view_count',
        'created_at', 'updated_at', 'negotiable', 'image_dimensions',
@@ -110,6 +120,30 @@ BEGIN
     RAISE EXCEPTION
       'precheck_failed: items_visible unexpected projection %',
       item_view_columns;
+  END IF;
+
+  IF rebuild_legacy_item_view THEN
+    SELECT pg_catalog.array_agg(
+             pg_catalog.pg_describe_object(
+               dependency.classid,
+               dependency.objid,
+               dependency.objsubid
+             )
+             ORDER BY dependency.classid, dependency.objid,
+                      dependency.objsubid
+           )
+    INTO item_view_dependents
+    FROM pg_catalog.pg_depend AS dependency
+    WHERE dependency.refclassid = 'pg_catalog.pg_class'::pg_catalog.regclass
+      AND dependency.refobjid = 'public.items_visible'::pg_catalog.regclass
+      AND dependency.deptype <> 'i';
+
+    IF pg_catalog.cardinality(item_view_dependents) > 0 THEN
+      RAISE EXCEPTION
+        'precheck_failed: legacy items_visible has dependents %',
+        item_view_dependents
+        USING ERRCODE = '2BP01';
+    END IF;
   END IF;
 
   IF EXISTS (

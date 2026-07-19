@@ -150,12 +150,29 @@ $blocked_pair$;
 RESET ROLE;
 SET LOCAL ROLE anon;
 DO $anonymous$
+DECLARE
+  visible_count integer;
 BEGIN
-  BEGIN
-    PERFORM 1 FROM realtime.messages LIMIT 1;
-    RAISE EXCEPTION 'regression_failed: anon retained realtime.messages SELECT';
-  EXCEPTION WHEN insufficient_privilege THEN NULL;
-  END;
+  -- Hosted Supabase keeps owner-issued base S/I/U on this managed table. With
+  -- no anon policy, RLS must still expose zero rows. A local fixture that has
+  -- already removed the managed base grant may deny SELECT earlier; both paths
+  -- preserve the same application authorization boundary.
+  IF pg_catalog.has_table_privilege(
+    'anon', 'realtime.messages', 'SELECT'
+  ) THEN
+    SELECT pg_catalog.count(*) INTO visible_count FROM realtime.messages;
+    IF visible_count <> 0 THEN
+      RAISE EXCEPTION
+        'regression_failed: anon received managed Realtime rows';
+    END IF;
+  ELSE
+    BEGIN
+      PERFORM 1 FROM realtime.messages LIMIT 1;
+      RAISE EXCEPTION
+        'regression_failed: anon without base grant read realtime.messages';
+    EXCEPTION WHEN insufficient_privilege THEN NULL;
+    END;
+  END IF;
 END;
 $anonymous$;
 

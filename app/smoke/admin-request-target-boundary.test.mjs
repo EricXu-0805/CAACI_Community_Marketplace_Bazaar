@@ -309,6 +309,58 @@ test('outcome recovery is owner-only, comprehensive, and blocks transport before
   assert.match(journalBoundary, /admin_idempotency_unavailable[\s\S]*?lockAdminAfterUnknownOutcome\(owner\)/)
 })
 
+test('strict outcome recovery replaces stale pagination with authoritative first pages', () => {
+  const strict = source.slice(
+    source.indexOf('async function strictReloadAdminState'),
+    source.indexOf('\nasync function finishAdminRecovery'),
+  )
+  assert.doesNotMatch(strict, /limit: '200'/)
+  assert.doesNotMatch(strict, /reportHasMore\.value = false/)
+  assert.match(strict, /limit: String\(REPORTS_PAGE \+ 1\)/)
+  assert.match(strict, /limit: String\(ADMIN_LIST_PAGE \+ 1\)/)
+  assert.match(strict, /limit: String\(PLAZA_PAGE \+ 1\)/)
+  assert.match(strict, /pending: pendingOnly \? '1' : '0'/)
+  assert.match(strict, /invalidateAdminRequest\(scope\)/)
+  assert.match(strict, /reportLoadingMore\.value = false/)
+  assert.match(strict, /resetListLoadingMore\(\)/)
+  assert.match(strict, /resetPlazaLoadingMore\(\)/)
+  assert.match(strict, /applyReportsFirstPage\(nextReports\)/)
+  for (const [tab, rows] of [
+    ['suspensions', 'nextSuspensions'],
+    ['appeals', 'nextAppeals'],
+    ['warnings', 'nextWarnings'],
+    ['audit', 'nextAudit'],
+  ]) assert.match(strict, new RegExp(`applyAdminListFirstPage\\('${tab}', ${rows}\\)`))
+  assert.match(strict, /applyPlazaFirstPages\(nextPosts, nextBanners\)/)
+  assert.match(strict, /for \(const tab of refreshedTabs\) completeTabRead\(tab\)/)
+  assert.match(strict, /statsReadState\.value = \{[\s\S]*?phase: 'ready',[\s\S]*?stale: false/)
+
+  const reports = source.slice(
+    source.indexOf('function applyReportsFirstPage'),
+    source.indexOf('\nasync function loadReports'),
+  )
+  assert.match(reports, /reportOffset\.value = visible\.length/)
+  assert.match(reports, /reportHasMore\.value = page\.length > REPORTS_PAGE/)
+  assert.doesNotMatch(reports, /reportOffset\.value \+/)
+
+  const lists = source.slice(
+    source.indexOf('function applyAdminListFirstPage'),
+    source.indexOf('\nasync function loadPagedAdminTab'),
+  )
+  assert.match(lists, /\[tab\]: visible\.length/)
+  assert.match(lists, /\[tab\]: page\.length > ADMIN_LIST_PAGE/)
+  assert.doesNotMatch(lists, /listOffsets\.value\[tab\] \+/)
+
+  const plaza = source.slice(
+    source.indexOf('function applyPlazaFirstPages'),
+    source.indexOf('\nasync function loadPlaza'),
+  )
+  assert.match(plaza, /posts: Math\.min\(posts\.length, PLAZA_PAGE\)/)
+  assert.match(plaza, /banners: Math\.min\(bs\.length, PLAZA_PAGE\)/)
+  assert.match(plaza, /plazaPostsHasMore\.value = posts\.length > PLAZA_PAGE/)
+  assert.match(plaza, /bannerHasMore\.value = bs\.length > PLAZA_PAGE/)
+})
+
 test('banner upload retries retain one file-scoped key and rebuild multipart bodies safely', () => {
   const upload = source.slice(
     source.indexOf('async function uploadBannerFile'),

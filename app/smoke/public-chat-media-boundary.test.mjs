@@ -5,6 +5,8 @@ import test from 'node:test'
 const thread = readFileSync(new URL('../src/components/ChatThread.vue', import.meta.url), 'utf8')
 const messages = readFileSync(new URL('../src/composables/useMessages.ts', import.meta.url), 'utf8')
 const resources = readFileSync(new URL('../src/utils/publicResource.ts', import.meta.url), 'utf8')
+const stickerRegistry = readFileSync(new URL('../src/components/stickers/registry.ts', import.meta.url), 'utf8')
+const stickerComponent = readFileSync(new URL('../src/components/USticker.vue', import.meta.url), 'utf8')
 const csp = JSON.parse(readFileSync(new URL('../../vercel.json', import.meta.url), 'utf8'))
 
 test('public listing storage is not presented as private chat media', () => {
@@ -24,6 +26,13 @@ test('composer retains emoji/stickers without fake glyph controls', () => {
   assert.match(thread, /stickerToken\(name\)/)
   assert.match(thread, /<UIcon name="more-horizontal"/)
   assert.equal(thread.includes('emoji-btn-glyph'), false)
+})
+
+test('sticker tokens and the raw-HTML renderer reject inherited object keys', () => {
+  assert.match(stickerRegistry, /Object\.prototype\.hasOwnProperty\.call\(STICKERS, value\)/)
+  assert.match(stickerRegistry, /if \(m && isStickerName\(m\[1\]\)\) return m\[1\]/)
+  assert.doesNotMatch(stickerRegistry, /m\[1\] in STICKERS/)
+  assert.match(stickerComponent, /isStickerName\(props\.name\) \? STICKERS\[props\.name\] : ''/)
 })
 
 test('CSP supports environment-specific Supabase hosts while app code pins the compiled origin', () => {

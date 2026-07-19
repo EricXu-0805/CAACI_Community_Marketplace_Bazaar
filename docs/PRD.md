@@ -2,8 +2,9 @@
 
 > 版本：Release Candidate 2026-07
 > 最后更新：2026-07-19
-> 状态：核心产品已实现；代码/候选数据库链尚未部署，正式 beta 仍受
-> staging、生产迁移、真实账号/provider/真机和运营门禁约束。
+> 状态：核心产品已实现；生产数据库已按精确 ledger 应用候选链 34/35，稳定
+> 应用 bundle 仍是旧版本。正式 beta 仍受 matching canary、WeChat 密钥与凭据
+> 退役、HIBP、首位 Owner、真实账号/provider/真机和运营门禁约束。
 
 ## 1. 产品定位
 
@@ -150,7 +151,7 @@ provider 配置改变，必须先评估是否触发新 consent version。
 |---|---|
 | 安全 | anon/A/B/suspended/reconsent/admin/service-role 权限矩阵；生产 secrets 不进客户端；所有外部请求有认证、限流、总超时、响应上限和重定向策略 |
 | 可靠性 | async 操作可取消/幂等/可恢复；账号切换 fail-closed；数据库迁移可重放；cron backlog 可观测 |
-| 性能 | 首屏不加载 HEIC decoder；图片有尺寸/缩略图/lazy load；字体使用 unicode-range + immutable hash；无不必要全表/全对象扫描 |
+| 性能 | H5 只用浏览器原生 HEIC 解码、无内置 decoder；图片有尺寸/缩略图/lazy load；字体使用 unicode-range + immutable hash；无不必要全表/全对象扫描 |
 | 可访问性 | 手机/桌面、light/dark、键盘、焦点、role/name、dialog Escape/restore；VoiceOver/TalkBack/微信读屏为真机门禁 |
 | 国际化 | 中英文 key 完全对齐；错误、管理员、法律和恢复流程不能只翻译 happy path |
 | 运维 | Node 22 deterministic CI、production dependency audit、两库 PG replay、Vercel build、staging provider canary、监控和可回滚发布 |

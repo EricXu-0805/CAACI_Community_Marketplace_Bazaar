@@ -570,7 +570,7 @@ When a migration is broken in prod, "fix forward" almost always beats
 
 ## 2026-07 candidate release sequence
 
-> This is the reviewed operational order for the current 31-migration audit
+> This is the reviewed operational order for the current 35-migration audit
 > candidate. It is **not** authorization to change production. Stop before the
 > first mutating step unless the release owner has approved the exact target,
 > backup/rollback point, migration hashes, and operator.
@@ -579,7 +579,9 @@ When a migration is broken in prod, "fix forward" almost always beats
 > `20260718240000` through `20260718280000` tranche-coded filenames are legacy
 > exceptions, not examples to copy or rename. Product tranches below coordinate
 > matching API/client releases; they never authorize applying a later-version
-> SQL file ahead of an earlier pending migration.
+> SQL file ahead of an earlier pending migration, except for the explicit
+> 18160000/19151729 and 18250000/19170019 partial-ledger repairs documented in
+> steps 7 and 11.
 
 1. Freeze unrelated changes. Export the production migration ledger and exact
    schema/grants/policies/functions, resolve the known drift, back up database
@@ -592,7 +594,7 @@ When a migration is broken in prod, "fix forward" almost always beats
    ```
 
 2. In two independent fresh PostgreSQL 16 environments, replay all 90
-   historical + 31 candidate migrations and every applicable
+   historical + 35 candidate migrations and every applicable
    PRECHECK/VERIFY/rolled-back REGRESSION file, then compare normalized schema
    outputs. Re-run only the tail fixes that explicitly declare themselves
    re-entrant and require a zero schema diff before/after that pass; first-time
@@ -638,6 +640,18 @@ When a migration is broken in prod, "fix forward" almost always beats
    remains, then verify anon/A/B/suspended/admin visibility and writes,
    including natural expiry and early lift. Never broaden retention to legal,
    moderation or audit data as an incident shortcut.
+
+   One narrowly reviewed partial-ledger exception exists for a production
+   database that has already recorded `18160000` but whose matching VERIFY is
+   stopped only by historical PUBLIC/anon/authenticated ACL drift on
+   `public.posts` or `public.post_items`. After the 19151729 PRECHECK proves the
+   exact expected 18160000 RLS/policy shape, a ledger-aware executor may apply
+   and record `20260719151729_reconcile_plaza_base_table_acl.sql` immediately,
+   then rerun both its VERIFY and the 18160000 VERIFY. This does not mark any
+   intervening lower version as applied: every missing version must still be
+   installed and recorded explicitly. Do not use a max-version-only runner for
+   this case. After 18280000, rerun the 19151729 VERIFY to prove the broad ACL
+   reconciliation converged on the same Plaza contract.
 8. Apply the administrator foundation in timestamp order:
 
    - `20260718170000` required actor attribution;
@@ -648,6 +662,13 @@ When a migration is broken in prod, "fix forward" almost always beats
    Exercise role denials, required-audit rollback, owner recovery, banner
    attach/detach/GC and exact managed image URLs. New or changed banners cannot
    use arbitrary HTTPS images; unchanged historical rows are compatibility-only.
+   `18190000` intentionally backfills every historical token to `operator`;
+   never infer an elevated role from cached name/email or from recent use. If
+   no reviewed owner exists, the first exact token/profile promotion is an
+   external break-glass operation with its own case and second reviewer. After
+   the lifecycle API is live, use that verified owner to mint and independently
+   exercise a second recoverable owner before declaring the administrator
+   backend operational.
 9. Deploy the product-integrity tranche with the matching client/API build:
 
    - `20260718210000` exact deal-attributed ratings;
@@ -663,13 +684,30 @@ When a migration is broken in prod, "fix forward" almost always beats
     teardown, reconnect and polling fallback. Realtime “public access” is a
     dashboard setting, not a migration: turn it off only after every supported
     shipped client has migrated or been retired, then repeat the A/B/
-    nonparticipant matrix. Do not strand an old mini-program build to make an
+    nonparticipant matrix. Supabase owns `realtime.messages` and may retain its
+    owner-issued, non-grantable S/I/U base ACL for API roles; application
+    authorization comes from the exact authenticated SELECT/INSERT policies.
+    Do not attempt to GRANT/REVOKE that managed table to make an app-level ACL
+    assertion green, and do not strand an old mini-program build to make an
     advisor green.
 11. Deploy the email-delivery tranche and its routes together:
 
     - `20260718250000` exact meetup event/notification attribution;
     - `20260718260000` atomic meetup + unread reminder seeding;
     - `20260718270000` shared immediate/digest claim, lease and provider key.
+
+    A second narrowly reviewed partial-ledger exception exists for a production
+    database that has recorded and verified `18250000`, but whose `18260000`
+    PRECHECK stops only because historical table ACLs still make
+    `public.meetups.reminded_at` client-mutable. Run
+    `PRECHECK_20260719170019_reconcile_meetups_acl_boundary.sql`; if it proves
+    the exact current meetup policy/RPC prerequisites, apply and record the
+    exact `20260719170019` migration immediately, run its VERIFY, then rerun the
+    `18260000` PRECHECK. This exception does not apply or record `19164126`, nor
+    does it mark any other intervening lower version as applied. After
+    `18280000`, rerun the `19170019` VERIFY to prove the broad ACL tail retained
+    the same 13-column authenticated read, RPC-only write and service CRUD
+    contract.
 
     Run synthetic test mode first; it must contain only synthetic content.
     Then run a one-recipient live canary with an approved address, verified
@@ -695,7 +733,19 @@ When a migration is broken in prod, "fix forward" almost always beats
       administrator RPC that previously ended on a non-unique business field;
     - `20260719083511` full FK indexes for report, token and suspension history
       that an earlier verifier had incorrectly treated as covered by unrelated
-      business-predicate partial indexes.
+      business-predicate partial indexes;
+    - `20260719151729` narrowly scoped Plaza base-table ACL reconciliation. If
+      the reviewed 18160000 partial-ledger exception already recorded it, do
+      not replay it here; rerun its VERIFY instead;
+    - `20260719164126` final managed Realtime Authorization reconciliation. It
+      rebuilds only the two exact authenticated policies and deliberately does
+      not GRANT or REVOKE the Supabase-owned `realtime.messages` table;
+    - `20260719170019` exact meetup table ACL reconciliation. If the reviewed
+      18250000/18260000 partial-ledger exception already recorded it, do not
+      replay it here; confirm its exact ledger row and rerun its VERIFY;
+    - `20260719174928` final trigger-only function ACL reconciliation. It
+      preserves the currency-exchange write guard as a trigger while denying
+      direct API-role execution and pins the function to `pg_catalog`.
 
     Run `PRECHECK_20260719_admin_token_lifecycle_rpc.sql` before `19010000`.
     After `19010000` is recorded, run the distinct
@@ -738,10 +788,50 @@ When a migration is broken in prod, "fix forward" almost always beats
     shape mismatch, or any conflicting same-named index is a stop condition.
     Prebuild the exact named index concurrently only through an approved
     maintenance path; otherwise apply `19083511` with its bounded lock/statement
-    deadlines. Run its matching VERIFY as the authoritative release-tail FK
-    gate. It accepts a partial index only when a single nullable FK column's
+    deadlines. Run its matching VERIFY as the authoritative FK-tail gate. It
+    accepts a partial index only when a single nullable FK column's
     entire predicate is exactly that same column `IS NOT NULL`; status,
     revocation, lift or other business predicates do not count as FK coverage.
+
+    Next, either apply 19151729 in normal version order or, for the reviewed
+    partial-ledger case, confirm its exact ledger row. Run
+    `VERIFY_20260719151729_reconcile_plaza_base_table_acl.sql` after 18280000
+    in both cases. The migration must preserve `service_role`, reject inherited
+    or grant-option application-role drift, and match the exact Plaza policy
+    contract; a same-named policy is not sufficient.
+
+    Finally run
+    `PRECHECK_20260719164126_reconcile_managed_realtime_authorization_contract.sql`,
+    apply `20260719164126` in normal version order, and run its matching VERIFY.
+    The accepted hosted baseline is owner-issued, non-grantable S/I/U with no
+    column ACL or parent-role inheritance. PUBLIC, another grantor, grant
+    option, DELETE/TRUNCATE/REFERENCES/TRIGGER, or PostgreSQL 17 MAINTAIN is a
+    stop condition. The policy dependency gate must also retain authenticated
+    SELECT on `conversations.id/buyer_id/seller_id`, USAGE on
+    `public/auth/private/realtime`, and EXECUTE on `auth.uid()`,
+    `realtime.topic()` and `private.current_user_can_access_pair(uuid,uuid)`;
+    an exact policy expression without those effective grants is not usable.
+    Exercise the rollback-only regression only in disposable local/staging
+    PostgreSQL, never production.
+
+    Finally run
+    `PRECHECK_20260719170019_reconcile_meetups_acl_boundary.sql`. Apply
+    `20260719170019` in normal order, or confirm its exact ledger row if the
+    reviewed reminder-state exception already installed it. Its VERIFY must
+    prove anon/PUBLIC have no table or column access, authenticated can select
+    only the 13 reviewed client columns and cannot directly write or read
+    `reminded_at`, service_role has CRUD without grant option, and the three
+    authenticated meetup RPCs plus RLS policy remain intact. PostgreSQL 17
+    MAINTAIN, inherited ACLs, another grantor or column drift are stop
+    conditions. Never run its rollback-only REGRESSION in production.
+
+    Last, run
+    `PRECHECK_20260719174928_reconcile_trigger_only_function_acl.sql`, apply
+    `20260719174928` in normal order, and run its matching VERIFY. The VERIFY
+    must prove the exact BEFORE ROW INSERT/UPDATE trigger, guarded `category`
+    column, function body/identity, SECURITY INVOKER posture, `pg_catalog`
+    search path and effective ACL provenance. Exercise the rollback-only
+    REGRESSION only in disposable local/staging PostgreSQL, never production.
 
     Exercise token expiry/revocation, owner-only issuance from authoritative
     profile snapshots, case/approval/idempotency replay, outcome-unknown

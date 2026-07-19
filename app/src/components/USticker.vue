@@ -16,7 +16,7 @@
  * their palette in both themes.
  */
 import { computed } from 'vue'
-import { STICKERS, type StickerName } from './stickers/registry'
+import { STICKERS, isStickerName, type StickerName } from './stickers/registry'
 
 const props = withDefaults(defineProps<{
   name: StickerName
@@ -25,7 +25,10 @@ const props = withDefaults(defineProps<{
   size: 32,
 })
 
-const svg = computed(() => STICKERS[props.name] || '')
+// Runtime data can still bypass TypeScript (for example, a persisted chat
+// token). Use an own-property check so names such as "constructor" never read
+// through Object.prototype and reach the v-html sink.
+const svg = computed(() => isStickerName(props.name) ? STICKERS[props.name] : '')
 
 /*
  * mp path: v-html → <rich-text> whose whitelist drops <svg>, so stickers

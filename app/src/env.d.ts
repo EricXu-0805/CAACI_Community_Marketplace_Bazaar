@@ -21,10 +21,3 @@ declare module '*.vue' {
   const component: DefineComponent<{}, {}, any>
   export default component
 }
-
-// heic-to publishes this subpath and its own declaration, but this project is
-// intentionally still on TypeScript 4.9/node resolution for uni-app, which
-// does not follow the package's conditional `exports.types` entry.
-declare module 'heic-to/csp' {
-  export { heicTo, isHeic } from 'heic-to'
-}

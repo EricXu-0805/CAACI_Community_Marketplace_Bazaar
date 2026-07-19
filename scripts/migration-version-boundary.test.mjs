@@ -8,13 +8,13 @@ const MIGRATION_MANIFEST = new URL(
   '../supabase/migrations/manifest.sha256',
   import.meta.url,
 )
-const FROZEN_THROUGH_VERSION = '20260719083511'
+const FROZEN_THROUGH_VERSION = '20260719174928'
 const FROZEN_LEGACY_FILENAME_DIGEST =
   '5fce4fe8af5334f8a39a8aacc9cd7a5198ea97f4e946d826da66250aebd456bc'
 const FROZEN_TIMESTAMP_FILENAME_DIGEST =
-  '646afe15e791b73b4d2145f6d00d4545e3373edfd692b8b0eb42da45304fd3c7'
+  '8a72fed57c6814f1bba6b0219e3379e369843afe79fe8f3fd7985945bc48bec2'
 const FROZEN_MIGRATION_ENTRY_DIGEST =
-  '23da2ce7d2784cbc87a7900e84948e42c26956c008a1f563e8cd4e8ef4ac09b6'
+  '9954521f47729bf1b7c445bec9dedd87b49e564a64a71442fc43d03c2e058aa5'
 // These five already-frozen filenames used tranche numbers 24-28 in the hour
 // slot before the repository adopted real UTC timestamps. Their exact names
 // and bytes remain immutable; every later migration must pass the UTC parser.

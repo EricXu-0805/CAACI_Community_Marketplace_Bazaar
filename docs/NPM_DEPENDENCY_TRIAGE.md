@@ -163,22 +163,16 @@ the safe transitive patches above are already applied.
 
 ## Software-license boundary
 
-The 2026-07-19 lockfile inventory covers 683 package entries. Three legacy
+The 2026-07-19 lockfile inventory covers the full locked package graph. Three legacy
 transitives omit a `package.json` license field, but their bundled files provide
 exact MIT (`dom-walk`, `exif-parser`) or Apache-2.0 (`qrcode-terminal`)
-evidence. The one declared copyleft dependency is the production H5 decoder
-`heic-to@1.4.2` under `LGPL-3.0`.
-
-`heic-to` is unmodified and dynamically loaded only after native HEIC decoding
-fails, but those implementation facts are not themselves a legal conclusion.
-`THIRD_PARTY_NOTICES.md` records the locked source and license links. Public
-distribution remains gated until qualified counsel confirms the required
-license copies, source/relinking or replacement mechanism and installation
-information, or the decoder is removed/replaced and the real HEIC/device
-matrix is repeated.
+evidence. The release-candidate production-dependency graph now has no
+dependency declaring a copyleft or source-available license. The former H5
+fallback decoder was removed; H5 keeps native HEIC decoding and rejects
+unsupported browsers explicitly instead of uploading original HEIC bytes or
+distributing a decoder.
 
 `scripts/license-boundary.test.mjs` makes this inventory drift visible: a new
 missing SPDX field or a new copyleft/source-available license fails the
 deterministic boundary suite until it receives an exact version review. This
-is a change-control guard, not legal advice and not an assertion that the
-current LGPL distribution obligations are already satisfied.
+is a change-control guard, not legal advice.

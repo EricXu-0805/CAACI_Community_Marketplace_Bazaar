@@ -99,6 +99,21 @@ BEGIN
     RAISE EXCEPTION 'migration_blocked: realtime.messages column drift';
   END IF;
 
+  -- Hosted Supabase owns realtime.messages with its managed Realtime role.
+  -- The application migration must not try to ALTER that managed table as
+  -- postgres. Realtime Authorization already requires RLS, so fail closed if
+  -- the platform invariant is ever absent instead of attempting owner-only
+  -- remediation here.
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_class AS relation
+    WHERE relation.oid = pg_catalog.to_regclass('realtime.messages')
+      AND relation.relrowsecurity
+  ) THEN
+    RAISE EXCEPTION
+      'migration_blocked: realtime.messages RLS is disabled; managed-schema owner intervention required';
+  END IF;
+
   -- Permissive policies are ORed together. An unknown existing policy could
   -- bypass the participant predicate, so stop instead of silently stacking a
   -- restrictive policy beside it. Re-running this migration is still safe.
@@ -117,8 +132,6 @@ BEGIN
   END IF;
 END;
 $migration_gate$;
-
-ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY;
 
 -- Public channels bypass Realtime Authorization at the service layer until
 -- the Dashboard release gate is closed. At the database layer, anon receives

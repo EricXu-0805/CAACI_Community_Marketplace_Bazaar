@@ -1536,6 +1536,17 @@ function resetPlazaLoadingMore() {
   plazaLoadingMore.value = false
 }
 
+function applyPlazaFirstPages(posts: PlazaPostRow[], bs: BannerRow[]) {
+  plazaPosts.value = posts.slice(0, PLAZA_PAGE)
+  banners.value = bs.slice(0, PLAZA_PAGE)
+  plazaOffsets.value = {
+    posts: Math.min(posts.length, PLAZA_PAGE),
+    banners: Math.min(bs.length, PLAZA_PAGE),
+  }
+  plazaPostsHasMore.value = posts.length > PLAZA_PAGE
+  bannerHasMore.value = bs.length > PLAZA_PAGE
+}
+
 async function loadPlaza(owner = captureAdminSessionOwner()) {
   if (!owner) return
   const request = beginAdminRequest('plaza', owner)
@@ -1548,14 +1559,7 @@ async function loadPlaza(owner = captureAdminSessionOwner()) {
       apiGet<BannerRow[]>({ resource: 'banners', limit: String(PLAZA_PAGE + 1), offset: '0' }, request),
     ])
     if (!isAdminRequestCurrent(request)) return
-    plazaPosts.value = posts.slice(0, PLAZA_PAGE)
-    banners.value = bs.slice(0, PLAZA_PAGE)
-    plazaOffsets.value = {
-      posts: Math.min(posts.length, PLAZA_PAGE),
-      banners: Math.min(bs.length, PLAZA_PAGE),
-    }
-    plazaPostsHasMore.value = posts.length > PLAZA_PAGE
-    bannerHasMore.value = bs.length > PLAZA_PAGE
+    applyPlazaFirstPages(posts, bs)
     completeTabRead('plaza')
   } catch (err) {
     if (isAdminRequestCurrent(request)) failTabRead('plaza')
@@ -2360,6 +2364,29 @@ async function reconcileAdminOutcomeJournal(owner: AdminSessionOwner) {
 
 async function strictReloadAdminState(owner: AdminSessionOwner) {
   if (whoami.value?.role === 'owner') {
+    const pendingOnly = reportPendingOnly.value
+    const pagedTabs: PagedAdminTab[] = ['suspensions', 'appeals', 'warnings', 'audit']
+    const refreshedTabs: TabId[] = ['reports', 'plaza', ...pagedTabs, 'tokens']
+    for (const scope of ['reports', 'tab-load', 'plaza', 'stats', 'tokens'] as AdminRequestScope[]) {
+      invalidateAdminRequest(scope)
+    }
+    loading.value = false
+    reportLoadingMore.value = false
+    resetListLoadingMore()
+    resetPlazaLoadingMore()
+    for (const tab of refreshedTabs) beginTabRead(tab)
+    statsReadState.value = { ...statsReadState.value, loading: true }
+    const failStrictRead = () => {
+      if (!isAdminSessionOwnerCurrent(owner)) return
+      for (const tab of refreshedTabs) failTabRead(tab)
+      const previous = statsReadState.value
+      statsReadState.value = {
+        ...previous,
+        phase: previous.phase === 'ready' ? 'ready' : 'error',
+        loading: false,
+        stale: previous.phase === 'ready',
+      }
+    }
     const [
       nextStats,
       nextReports,
@@ -2373,30 +2400,40 @@ async function strictReloadAdminState(owner: AdminSessionOwner) {
     ] = await Promise.all([
       apiGet<StatsRow>({ resource: 'stats' }, owner),
       apiGet<ReportGroup[]>({
-        resource: 'reports_grouped', limit: '200', offset: '0', pending: '0',
+        resource: 'reports_grouped',
+        limit: String(REPORTS_PAGE + 1),
+        offset: '0',
+        pending: pendingOnly ? '1' : '0',
       }, owner),
-      apiGet<SuspensionRow[]>({ resource: 'suspensions', limit: '200', offset: '0' }, owner),
-      apiGet<AppealRow[]>({ resource: 'appeals', limit: '200', offset: '0' }, owner),
-      apiGet<WarningRow[]>({ resource: 'warnings', limit: '200', offset: '0' }, owner),
-      apiGet<AuditRow[]>({ resource: 'audit', limit: '200', offset: '0' }, owner),
-      apiGet<PlazaPostRow[]>({ resource: 'plaza_posts', limit: '200', offset: '0' }, owner),
-      apiGet<BannerRow[]>({ resource: 'banners' }, owner),
+      apiGet<SuspensionRow[]>({ resource: 'suspensions', limit: String(ADMIN_LIST_PAGE + 1), offset: '0' }, owner),
+      apiGet<AppealRow[]>({ resource: 'appeals', limit: String(ADMIN_LIST_PAGE + 1), offset: '0' }, owner),
+      apiGet<WarningRow[]>({ resource: 'warnings', limit: String(ADMIN_LIST_PAGE + 1), offset: '0' }, owner),
+      apiGet<AuditRow[]>({ resource: 'audit', limit: String(ADMIN_LIST_PAGE + 1), offset: '0' }, owner),
+      apiGet<PlazaPostRow[]>({ resource: 'plaza_posts', limit: String(PLAZA_PAGE + 1), offset: '0' }, owner),
+      apiGet<BannerRow[]>({ resource: 'banners', limit: String(PLAZA_PAGE + 1), offset: '0' }, owner),
       apiGet<AdminTokenInventory>({ resource: 'tokens' }, owner),
-    ])
+    ]).catch((err) => {
+      failStrictRead()
+      throw err
+    })
     if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
+    if (reportPendingOnly.value !== pendingOnly) {
+      failStrictRead()
+      throw new Error('admin_read_stale')
+    }
     stats.value = nextStats
-    reportGroups.value = reportPendingOnly.value
-      ? nextReports.filter(group => group.pending_count > 0)
-      : nextReports
-    reportHasMore.value = false
-    suspensions.value = nextSuspensions
-    appeals.value = nextAppeals
-    warnings.value = nextWarnings
-    auditLog.value = nextAudit
-    plazaPosts.value = nextPosts
-    banners.value = nextBanners
+    statsReadState.value = {
+      phase: 'ready', loading: false, stale: false, updatedAt: new Date().toISOString(),
+    }
+    applyReportsFirstPage(nextReports)
+    applyAdminListFirstPage('suspensions', nextSuspensions)
+    applyAdminListFirstPage('appeals', nextAppeals)
+    applyAdminListFirstPage('warnings', nextWarnings)
+    applyAdminListFirstPage('audit', nextAudit)
+    applyPlazaFirstPages(nextPosts, nextBanners)
     adminTokens.value = Array.isArray(nextInventory?.tokens) ? nextInventory.tokens : []
     ownerRecovery.value = nextInventory?.owner_recovery || null
+    for (const tab of refreshedTabs) completeTabRead(tab)
     return
   }
   await Promise.all([
@@ -2696,6 +2733,13 @@ async function loadStats(
 const REPORTS_PAGE = 50
 const reportOffset = ref(0)
 
+function applyReportsFirstPage(page: ReportGroup[]) {
+  const visible = page.slice(0, REPORTS_PAGE)
+  reportGroups.value = visible
+  reportOffset.value = visible.length
+  reportHasMore.value = page.length > REPORTS_PAGE
+}
+
 async function loadReports(
   reset = true,
   request = beginAdminRequest('reports'),
@@ -2714,11 +2758,13 @@ async function loadReports(
     }, request)) || []
     if (!isAdminRequestCurrent(request) || reportPendingOnly.value !== pendingOnly) return
     const visible = page.slice(0, REPORTS_PAGE)
-    reportGroups.value = reset
-      ? visible
-      : appendUniqueBy(reportGroups.value, visible, row => `${row.target_type}:${row.target_id}`)
-    reportOffset.value = offset + visible.length
-    reportHasMore.value = page.length > REPORTS_PAGE
+    if (reset) {
+      applyReportsFirstPage(page)
+    } else {
+      reportGroups.value = appendUniqueBy(reportGroups.value, visible, row => `${row.target_type}:${row.target_id}`)
+      reportOffset.value = offset + visible.length
+      reportHasMore.value = page.length > REPORTS_PAGE
+    }
     completeTabRead('reports')
   } catch (err) {
     if (isAdminRequestCurrent(request) && reportPendingOnly.value === pendingOnly) failTabRead('reports')
@@ -2790,6 +2836,13 @@ function resetListLoadingMore() {
   listLoadingMore.value = false
 }
 
+function applyAdminListFirstPage(tab: PagedAdminTab, page: any[]) {
+  const visible = page.slice(0, ADMIN_LIST_PAGE)
+  applyAdminListRows(tab, visible)
+  listOffsets.value = { ...listOffsets.value, [tab]: visible.length }
+  listHasMore.value = { ...listHasMore.value, [tab]: page.length > ADMIN_LIST_PAGE }
+}
+
 async function loadPagedAdminTab(
   tab: PagedAdminTab,
   reset: boolean,
@@ -2806,14 +2859,16 @@ async function loadPagedAdminTab(
     }, request)
     if (!isAdminRequestCurrent(request)) return
     const visible = page.slice(0, ADMIN_LIST_PAGE)
-    applyAdminListRows(tab, reset
-      ? visible
-      : appendUniqueBy(current, visible, row => adminListKey(tab, row)))
-    listOffsets.value = {
-      ...listOffsets.value,
-      [tab]: (reset ? 0 : listOffsets.value[tab]) + visible.length,
+    if (reset) {
+      applyAdminListFirstPage(tab, page)
+    } else {
+      applyAdminListRows(tab, appendUniqueBy(current, visible, row => adminListKey(tab, row)))
+      listOffsets.value = {
+        ...listOffsets.value,
+        [tab]: listOffsets.value[tab] + visible.length,
+      }
+      listHasMore.value = { ...listHasMore.value, [tab]: page.length > ADMIN_LIST_PAGE }
     }
-    listHasMore.value = { ...listHasMore.value, [tab]: page.length > ADMIN_LIST_PAGE }
     completeTabRead(tab)
   } catch (err) {
     if (isAdminRequestCurrent(request)) failTabRead(tab)

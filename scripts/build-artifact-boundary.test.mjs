@@ -33,6 +33,8 @@ for (const [label, relative, content] of [
   ['environment file', '.env.production', 'VALUE=secret'],
   ['private key', 'assets/recovery.pem', '-----BEGIN PRIVATE KEY-----'],
   ['opaque Supabase secret', 'assets/app.js', `const value="sb_secret_${'a'.repeat(32)}"`],
+  ['removed HEIC decoder filename', 'assets/heic-to.js', 'const decoder=true'],
+  ['removed HEIC decoder material', 'assets/app.js', 'const decoder="libheif"'],
 ]) {
   test(`artifact verifier rejects ${label}`, async () => {
     const root = await artifact()

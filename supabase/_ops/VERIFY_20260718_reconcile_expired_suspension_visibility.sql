@@ -23,6 +23,7 @@ DECLARE
   policy_expression text;
   policy_check_expression text;
   actual_view_columns text[];
+  item_view_dependents text[];
 BEGIN
   IF state_helper IS NULL OR visibility_helper IS NULL THEN
     RAISE EXCEPTION 'verify_failed: canonical moderation helpers missing';
@@ -416,6 +417,27 @@ BEGIN
   ]::text[] THEN
     RAISE EXCEPTION
       'verify_failed: items_visible projection drifted: %', actual_view_columns;
+  END IF;
+
+  SELECT pg_catalog.array_agg(
+           pg_catalog.pg_describe_object(
+             dependency.classid,
+             dependency.objid,
+             dependency.objsubid
+           )
+           ORDER BY dependency.classid, dependency.objid,
+                    dependency.objsubid
+         )
+  INTO item_view_dependents
+  FROM pg_catalog.pg_depend AS dependency
+  WHERE dependency.refclassid = 'pg_catalog.pg_class'::pg_catalog.regclass
+    AND dependency.refobjid = 'public.items_visible'::pg_catalog.regclass
+    AND dependency.deptype <> 'i';
+
+  IF pg_catalog.cardinality(item_view_dependents) > 0 THEN
+    RAISE EXCEPTION
+      'verify_failed: unexpected items_visible dependents %',
+      item_view_dependents;
   END IF;
 
   IF NOT pg_catalog.has_table_privilege(

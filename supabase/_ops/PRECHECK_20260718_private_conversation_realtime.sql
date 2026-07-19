@@ -10,6 +10,9 @@ DO $precheck$
 DECLARE
   unexpected_policies text;
   source_table text;
+  owner_oid oid;
+  owner_name text;
+  maintain_mismatch_count integer := 0;
 BEGIN
   IF pg_catalog.to_regclass('realtime.messages') IS NULL
      OR pg_catalog.to_regclass('public.conversations') IS NULL
@@ -49,7 +52,8 @@ BEGIN
     WHERE relation.oid = pg_catalog.to_regclass('realtime.messages')
       AND relation.relrowsecurity
   ) THEN
-    RAISE EXCEPTION 'precheck_failed: realtime.messages RLS is disabled';
+    RAISE EXCEPTION
+      'precheck_failed: realtime.messages RLS is disabled; managed-schema owner intervention required';
   END IF;
 
   IF NOT pg_catalog.has_table_privilege(
@@ -58,6 +62,119 @@ BEGIN
     'authenticated', 'realtime.messages', 'INSERT'
   ) THEN
     RAISE EXCEPTION 'precheck_failed: authenticated Realtime base grants are missing';
+  END IF;
+
+  SELECT relation.relowner, owner_role.rolname
+    INTO STRICT owner_oid, owner_name
+  FROM pg_catalog.pg_class AS relation
+  JOIN pg_catalog.pg_roles AS owner_role
+    ON owner_role.oid = relation.relowner
+  WHERE relation.oid = pg_catalog.to_regclass('realtime.messages');
+
+  IF owner_name NOT IN ('supabase_admin', 'supabase_realtime_admin') THEN
+    RAISE EXCEPTION 'precheck_failed: unexpected managed Realtime owner %',
+      owner_name;
+  END IF;
+
+  -- Hosted Realtime owns the base ACL. Accept its non-grantable owner-issued
+  -- S/I/U contract, while failing closed on identity bypass, PUBLIC/column
+  -- grants, unknown grantors, inheritance, and privileges outside RLS.
+  IF EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_roles AS api_role
+    WHERE api_role.rolname IN ('anon', 'authenticated')
+      AND (
+        api_role.rolsuper
+        OR api_role.rolbypassrls
+        OR api_role.oid = owner_oid
+        OR pg_catalog.pg_has_role(api_role.oid, owner_oid, 'MEMBER')
+        OR pg_catalog.pg_has_role(api_role.oid, owner_oid, 'USAGE')
+      )
+  ) THEN
+    RAISE EXCEPTION
+      'precheck_failed: anon/authenticated bypass managed Realtime RLS';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_class AS relation
+    CROSS JOIN LATERAL pg_catalog.aclexplode(relation.relacl) AS acl
+    LEFT JOIN pg_catalog.pg_roles AS grantee ON grantee.oid = acl.grantee
+    WHERE relation.oid = pg_catalog.to_regclass('realtime.messages')
+      AND (
+        acl.grantee = 0
+        OR (
+          grantee.rolname IN ('anon', 'authenticated', 'service_role')
+          AND (
+            acl.grantor <> owner_oid
+            OR acl.is_grantable
+            OR acl.privilege_type NOT IN ('SELECT', 'INSERT', 'UPDATE')
+          )
+        )
+      )
+  ) THEN
+    RAISE EXCEPTION
+      'precheck_failed: managed realtime.messages direct ACL provenance drift';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_attribute AS attribute
+    WHERE attribute.attrelid = pg_catalog.to_regclass('realtime.messages')
+      AND attribute.attnum > 0
+      AND NOT attribute.attisdropped
+      AND attribute.attacl IS NOT NULL
+      AND pg_catalog.cardinality(attribute.attacl) > 0
+  ) THEN
+    RAISE EXCEPTION
+      'precheck_failed: managed realtime.messages column ACL drift';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM (VALUES ('anon'), ('authenticated'), ('service_role'))
+      AS api(role_name)
+    JOIN pg_catalog.pg_roles AS api_role ON api_role.rolname = api.role_name
+    CROSS JOIN pg_catalog.pg_class AS relation
+    CROSS JOIN LATERAL pg_catalog.aclexplode(relation.relacl) AS acl
+    WHERE relation.oid = pg_catalog.to_regclass('realtime.messages')
+      AND acl.grantee <> 0
+      AND acl.grantee <> api_role.oid
+      AND pg_catalog.pg_has_role(api_role.oid, acl.grantee, 'MEMBER')
+  ) THEN
+    RAISE EXCEPTION 'precheck_failed: inherited realtime.messages ACL drift';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM (VALUES ('anon'), ('authenticated'), ('service_role'))
+      AS api(role_name)
+    CROSS JOIN (VALUES
+      ('DELETE'), ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')
+    ) AS denied(privilege_type)
+    WHERE pg_catalog.has_table_privilege(
+      api.role_name, 'realtime.messages', denied.privilege_type
+    )
+  ) THEN
+    RAISE EXCEPTION
+      'precheck_failed: dangerous effective realtime.messages ACL drift';
+  END IF;
+
+  IF pg_catalog.current_setting('server_version_num')::integer >= 170000 THEN
+    EXECUTE $maintain$
+      SELECT pg_catalog.count(*)::integer
+      FROM (VALUES ('anon'), ('authenticated'), ('service_role'))
+        AS api(role_name)
+      WHERE pg_catalog.has_table_privilege(
+        api.role_name, 'realtime.messages', 'MAINTAIN'
+      )
+    $maintain$
+    INTO maintain_mismatch_count;
+    IF maintain_mismatch_count <> 0 THEN
+      RAISE EXCEPTION
+        'precheck_failed: realtime.messages MAINTAIN ACL drift %',
+        maintain_mismatch_count;
+    END IF;
   END IF;
   IF NOT pg_catalog.has_table_privilege(
        'authenticated', 'public.conversations', 'SELECT'

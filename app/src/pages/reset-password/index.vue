@@ -91,6 +91,17 @@ import UIcon from '../../components/UIcon.vue'
 const { t, lang } = useI18n()
 const { supabase } = useSupabase()
 const { isDark } = useTheme()
+
+function localizedPasswordPolicyError(error: unknown) {
+  const policyError = error as { message?: unknown; reasons?: unknown }
+  const reasons = Array.isArray(policyError?.reasons) ? policyError.reasons : []
+  const detail = [...reasons, policyError?.message]
+    .map((reason) => String(reason || '').toLowerCase())
+    .join(' ')
+  return /pwned|leak|breach|compromis/.test(detail)
+    ? t('login.leakedPasswordRejected')
+    : t('login.weakPassword')
+}
 // Match login's theme-flipping 集 brand mark instead of the old plain "I" box.
 const logoSrc = computed(() => (isDark.value ? '/static/logo-mark-dark.svg' : '/static/logo-mark.svg'))
 
@@ -210,7 +221,7 @@ async function onSave() {
       const identityChanged = (uErr as any)?.code === RECOVERY_IDENTITY_MISMATCH
       if (mounted) uni.showToast({
         title: weak
-          ? t('login.weakPassword')
+          ? localizedPasswordPolicyError(uErr)
           : (identityChanged
               ? t('resetPw.fail')
               : (friendlyErrorMessage(uErr, lang.value as 'en' | 'zh') || t('resetPw.fail'))),
