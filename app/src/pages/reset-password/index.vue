@@ -50,7 +50,7 @@
         </view>
       </view>
 
-      <button class="submit-btn" :disabled="saving || resending" @click="onSave">
+      <button :class="['submit-btn', { disabled: saving || resending }]" :disabled="saving || resending" @click="onSave">
         {{ saving ? t('login.wait') : t('resetPw.save') }}
       </button>
       <view :class="['back-link', { disabled: saving || resending }]" role="button" @click="goLogin">{{ t('resetPw.backLogin') }}</view>
@@ -317,7 +317,7 @@ function goLogin() {
   background: var(--accent-primary); color: #fff;
   border-radius: 24px; font-size: 15px; font-weight: 600;
   margin-top: 24px; border: none;
-  &[disabled] { opacity: 0.35; }
+  &.disabled { opacity: 0.35; }
   &:active { opacity: 0.8; }
 }
 .back-link {

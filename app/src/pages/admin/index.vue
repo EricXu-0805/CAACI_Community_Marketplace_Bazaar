@@ -33,7 +33,7 @@
         @keyup.enter.stop.prevent="onUnlock"
       />
       <view :class="['gate-btn', { disabled: !adminTokenFormatValid || checking }]" role="button" :tabindex="!adminTokenFormatValid || checking ? -1 : 0" :aria-disabled="!adminTokenFormatValid || checking ? 'true' : 'false'" @click="onUnlock">
-        <text>{{ checking ? t('admin.checking') : t('admin.unlock') }}</text>
+        <text class="gate-btn-label">{{ checking ? t('admin.checking') : t('admin.unlock') }}</text>
       </view>
       <text v-if="gateError" class="gate-error" role="alert">{{ gateError }}</text>
       <text class="gate-hint">{{ t('admin.gateHint') }}</text>
@@ -154,7 +154,7 @@
           @click="setTab(tab.id)"
           @keydown="onAdminTabKeydown($event, tab.id)"
         >
-          <text>{{ t(tab.labelKey) }}</text>
+          <text class="tab-label">{{ t(tab.labelKey) }}</text>
         </view>
       </view>
 
@@ -3957,12 +3957,14 @@ function isExpired(endsAt: string | null): boolean {
   max-width: 960px; margin: 0 auto;
   font-family: var(--font-hei);
 }
+/* #ifdef H5 */
 .admin [role='button']:focus-visible,
 .admin [role='tab']:focus-visible,
 .admin [role='checkbox']:focus-visible {
   outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }
+/* #endif */
 .admin-header {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 18px;
@@ -4018,7 +4020,7 @@ function isExpired(endsAt: string | null): boolean {
   height: 42px; border-radius: 8px; background: var(--accent-primary);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
-  text { color: #fff; font-size: 15px; font-weight: 600; }
+  .gate-btn-label { color: #fff; font-size: 15px; font-weight: 600; }
   &.disabled { opacity: 0.4; pointer-events: none; }
   &:active { opacity: 0.85; }
 }
@@ -4067,8 +4069,8 @@ function isExpired(endsAt: string | null): boolean {
 .tab {
   padding: 8px 14px; border-radius: 18px;
   background: var(--bg-elev-1); cursor: pointer;
-  text { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
-  &.active { background: var(--accent-primary); text { color: #fff; } }
+  .tab-label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+  &.active { background: var(--accent-primary); .tab-label { color: #fff; } }
 }
 
 .dash-loading { padding: 40px 0; text-align: center; color: var(--text-muted); }

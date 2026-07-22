@@ -16,7 +16,7 @@
         @click="docType = tab.type"
         @keydown="onLegalTabKeydown($event, tab.type)"
       >
-        <text>{{ tab.label }}</text>
+        <text class="tab-label">{{ tab.label }}</text>
       </view>
     </view>
     <scroll-view id="legal-document-panel" class="content" scroll-y :show-scrollbar="false" role="tabpanel">
@@ -140,11 +140,11 @@ function onContactEmail() {
   flex: 1; text-align: center;
   padding: 8px 6px; border-radius: 8px;
   background: var(--bg-subtle); cursor: pointer;
-  text { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+  .tab-label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
   &:active { background: var(--bg-inset); }
   &.active {
     background: var(--accent-primary);
-    text { color: #fff; }
+    .tab-label { color: #fff; }
   }
 }
 

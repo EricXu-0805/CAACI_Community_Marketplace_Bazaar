@@ -37,9 +37,9 @@
           </view>
           <!-- #endif -->
           <view class="mh-lang u-press" role="button" :aria-label="t('a11y.langToggle')" @click="toggleLang">
-            <text :class="{ on: lang === 'zh' }">中</text>
-            <text class="sep">|</text>
-            <text :class="{ on: lang === 'en' }">EN</text>
+            <text :class="['mh-lang-label', { on: lang === 'zh' }]">中</text>
+            <text class="mh-lang-label sep">|</text>
+            <text :class="['mh-lang-label', { on: lang === 'en' }]">EN</text>
           </view>
         </view>
       </view>
@@ -94,7 +94,7 @@
         @click="setListingType('sell')"
         @keydown="onFeedModeKeydown($event, 'sell')"
       >
-        <text>{{ t('home.tabOnSale') }}</text>
+        <text class="fm-seg-label">{{ t('home.tabOnSale') }}</text>
       </view>
       <view
         :class="['fm-seg', 'u-press', { on: listingType === 'wanted' }]"
@@ -104,7 +104,7 @@
         @click="setListingType('wanted')"
         @keydown="onFeedModeKeydown($event, 'wanted')"
       >
-        <text>{{ t('home.tabWanted') }}</text>
+        <text class="fm-seg-label">{{ t('home.tabWanted') }}</text>
       </view>
     </view>
 
@@ -125,7 +125,7 @@
           :aria-pressed="selectedCategory === cat.value ? 'true' : 'false'"
           @click="selectCategory(cat.value)"
         >
-          <text>{{ cat.label }}</text>
+          <text class="pill-label">{{ cat.label }}</text>
         </view>
         <!--
           Trailing transparent spacer — gives the last pill room to
@@ -158,20 +158,20 @@
     <view v-if="activeFilterCount > 0 && !showFilter" class="active-filter-bar">
       <scroll-view scroll-x class="afb-scroll">
         <view v-if="filterPriceMin || filterPriceMax" class="afb-chip" role="button" :aria-label="priceRangeLabel" @click="openFilterSheet">
-          <text>{{ priceRangeLabel }}</text>
+          <text class="afb-chip-label">{{ priceRangeLabel }}</text>
         </view>
         <view v-if="filterCondition" class="afb-chip" role="button" :aria-label="t('condition.' + filterCondition)" @click="openFilterSheet">
-          <text>{{ t('condition.' + filterCondition) }}</text>
+          <text class="afb-chip-label">{{ t('condition.' + filterCondition) }}</text>
         </view>
         <view v-if="filterLocation" class="afb-chip" role="button" :aria-label="filterLocation" @click="openFilterSheet">
-          <text>{{ filterLocation }}</text>
+          <text class="afb-chip-label">{{ filterLocation }}</text>
         </view>
         <view v-if="sortBy !== 'latest'" class="afb-chip" role="button" :aria-label="t('sort.' + sortBy.replace('price_asc', 'priceAsc').replace('price_desc', 'priceDesc'))" @click="openFilterSheet">
-          <text>{{ t('sort.' + sortBy.replace('price_asc', 'priceAsc').replace('price_desc', 'priceDesc')) }}</text>
+          <text class="afb-chip-label">{{ t('sort.' + sortBy.replace('price_asc', 'priceAsc').replace('price_desc', 'priceDesc')) }}</text>
         </view>
       </scroll-view>
       <view class="afb-clear" role="button" :aria-label="t('home.clearFilters')" @click="onClearAllFilters">
-        <text>{{ t('home.clearFilters') }}</text>
+        <text class="afb-clear-label">{{ t('home.clearFilters') }}</text>
       </view>
     </view>
 
@@ -199,6 +199,7 @@
           <view :class="['fs-price-input', { invalid: !!priceFilterError }]">
             <text class="fs-dollar">$</text>
             <input
+              class="fs-price-field"
               v-model="filterPriceMin"
               type="digit"
               :placeholder="t('filter.priceMin')"
@@ -211,6 +212,7 @@
           <view :class="['fs-price-input', { invalid: !!priceFilterError }]">
             <text class="fs-dollar">$</text>
             <input
+              class="fs-price-field"
               v-model="filterPriceMax"
               type="digit"
               :placeholder="t('filter.priceMax')"
@@ -235,7 +237,7 @@
             :aria-pressed="filterCondition === key ? 'true' : 'false'"
             @click="filterCondition = filterCondition === key ? '' : (key as ItemCondition)"
           >
-            <text>{{ label }}</text>
+            <text class="fpill-label">{{ label }}</text>
           </view>
         </view>
       </view>
@@ -252,7 +254,7 @@
             :aria-pressed="filterLocation === loc ? 'true' : 'false'"
             @click="filterLocation = filterLocation === loc ? '' : loc"
           >
-            <text>{{ loc }}</text>
+            <text class="fpill-label">{{ loc }}</text>
           </view>
         </view>
       </view>
@@ -269,7 +271,7 @@
             :aria-pressed="sortBy === s.value ? 'true' : 'false'"
             @click="sortBy = s.value"
           >
-            <text>{{ s.label }}</text>
+            <text class="fpill-label">{{ s.label }}</text>
           </view>
         </view>
       </view>
@@ -365,7 +367,7 @@
                 <text class="u-thumb-ph-seal">集</text>
               </view>
               <view v-if="item.status === 'sold'" class="sold-overlay">
-                <text>{{ t('status.sold') }}</text>
+                <text class="sold-overlay-label">{{ t('status.sold') }}</text>
               </view>
               <view v-else-if="item.status === 'reserved'" class="card-cond-badge"><UBadge variant="reserved">{{ t('status.reserved') }}</UBadge></view>
               <view v-else-if="item.condition === 'defective'" class="card-cond-badge"><UBadge variant="defect">{{ t('condition.defective') }}</UBadge></view>
@@ -373,7 +375,7 @@
               <view v-else-if="item.condition === 'like_new'" class="card-cond-badge"><UBadge variant="mint">{{ t('condition.like_new') }}</UBadge></view>
               <view v-if="item.listing_type === 'wanted' && item.status !== 'sold'" class="card-cond-badge"><UBadge variant="wanted">{{ t('item.wanted') }}</UBadge></view>
               <view v-if="item.images && item.images.length > 1" class="img-count-badge">
-                <text>{{ item.images.length }}</text>
+                <text class="img-count-label">{{ item.images.length }}</text>
               </view>
               <view v-if="pickupBadge(item)" class="badge-safe-corner" :class="{ 'badge-safe-corner--shared': !pickupBadge(item)!.spot }" :aria-label="pickupBadge(item)!.label">
                 <UIcon v-if="pickupBadge(item)!.spot" class="bsc-check" name="check" size="xs" color="currentColor" aria-hidden="true" />
@@ -427,7 +429,7 @@
 
       <!-- Loading more -->
       <view v-if="loading && !initialLoading" class="tip">
-        <view class="dots"><text>·</text><text>·</text><text>·</text></view>
+        <view class="dots"><text class="dot">·</text><text class="dot dot-2">·</text><text class="dot dot-3">·</text></view>
         <text>{{ t('home.loading') }}</text>
       </view>
       <!-- End of list -->
@@ -1350,7 +1352,7 @@ function goPublish() {
   background: var(--surface-alt); border: 0.5px solid var(--border);
   display: inline-flex; align-items: center; gap: 6px;
   cursor: pointer;
-  text { font-size: 12px; font-weight: 500; color: var(--ink-quiet); line-height: 1; }
+  .mh-lang-label { font-size: 12px; font-weight: 500; color: var(--ink-quiet); line-height: 1; }
   .on { color: var(--ink); font-weight: 600; }
   .sep { opacity: 0.35; font-size: 10px; }
 }
@@ -1376,13 +1378,6 @@ function goPublish() {
   border-radius: var(--radius-md);
   padding: 10px 13px;
   gap: 8px;
-  input {
-    flex: 1;
-    font-size: 13px;
-    color: var(--ink);
-    background: transparent;
-    letter-spacing: 0.02em;
-  }
 }
 .sf-clear {
   width: 18px; height: 18px; border-radius: 50%; background: var(--ink-faint);
@@ -1431,10 +1426,10 @@ function goPublish() {
   border-radius: var(--radius-pill);
   background: var(--surface-alt);
   cursor: pointer;
-  text { font-size: 12.5px; font-weight: 600; color: var(--ink-quiet); letter-spacing: 0.02em; }
+  .fm-seg-label { font-size: 12.5px; font-weight: 600; color: var(--ink-quiet); letter-spacing: 0.02em; }
   &.on {
     background: var(--brand-soft);
-    text { color: var(--brand-deep); }
+    .fm-seg-label { color: var(--brand-deep); }
   }
 }
 .cat-bar {
@@ -1474,13 +1469,13 @@ function goPublish() {
   /* Color must live on the <text> child, not just the view — the global
      mp-weixin `text {}` floor in App.vue beats inherited color, which made
      the active pill label invisible (ink-on-ink). */
-  text { color: var(--ink-quiet); }
+  .pill-label { color: var(--ink-quiet); }
   &.active {
     background: var(--ink);
     color: var(--ink-inverse);
     font-weight: 600;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
-    text { color: var(--ink-inverse); }
+    .pill-label { color: var(--ink-inverse); }
   }
   &:active { transform: scale(0.93); }
 }
@@ -1601,13 +1596,13 @@ function goPublish() {
   display: inline-flex; align-items: center;
   padding: 5px 11px; margin-right: 6px; border-radius: 14px;
   background: rgba(199,74,47,0.08); cursor: pointer;
-  text { font-size: 12px; color: var(--accent-action); font-weight: 500; }
+  .afb-chip-label { font-size: 12px; color: var(--accent-action); font-weight: 500; }
   &:active { background: rgba(199,74,47,0.16); }
 }
 .afb-clear {
   padding: 5px 10px; border-radius: 14px;
   background: var(--bg-subtle); cursor: pointer; flex-shrink: 0;
-  text { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+  .afb-clear-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
   &:active { background: var(--bg-inset); }
 }
 .fs-section { margin-bottom: 18px; }
@@ -1617,7 +1612,7 @@ function goPublish() {
   flex: 1; display: flex; align-items: center;
   background: var(--bg-subtle); border-radius: 10px; padding: 10px 12px; gap: 4px;
   border: 1px solid transparent;
-  input { flex: 1; font-size: 15px; color: var(--ink); background: transparent; font-family: var(--font-serif); letter-spacing: -0.01em; }
+  .fs-price-field { flex: 1; font-size: 15px; color: var(--ink); background: transparent; font-family: var(--font-serif); letter-spacing: -0.01em; }
   &.invalid { border-color: var(--danger); }
 }
 .fs-dollar { font-size: 15px; color: var(--ink-quiet); font-weight: 600; }
@@ -1635,8 +1630,8 @@ function goPublish() {
      `text {}` floor in App.vue beats inherited color, which made the
      active chip label invisible (ink-on-ink) in both themes. Same fix
      the category `.pill` already carries. */
-  text { color: var(--text-secondary); }
-  &.active { background: var(--ink); color: var(--ink-inverse); text { color: var(--ink-inverse); } }
+  .fpill-label { color: var(--text-secondary); }
+  &.active { background: var(--ink); color: var(--ink-inverse); .fpill-label { color: var(--ink-inverse); } }
 }
 /* Even though the sheet wins z-index (1001 > 999 on tabbar), the apply
    button visually coincided with the tabbar row, creating a jarring
@@ -1709,7 +1704,7 @@ function goPublish() {
   transform: translate(-50%, -50%);
   padding: 6px 14px; border-radius: 6px;
   background: rgba(0,0,0,0.6);
-  text { color: #fff; font-size: 13px; font-weight: 700; letter-spacing: 1px; }
+  .sold-overlay-label { color: #fff; font-size: 13px; font-weight: 700; letter-spacing: 1px; }
 }
 .img-count-badge {
   position: absolute; top: 7px; right: 7px;
@@ -1719,7 +1714,7 @@ function goPublish() {
   -webkit-backdrop-filter: blur(6px);
   /* line-height 1 + flex centering — inherited body line-height made the
      digit sit visibly below the pill's optical center. */
-  text { color: #fff; font-size: 10px; font-weight: 600; line-height: 1; }
+  .img-count-label { color: #fff; font-size: 10px; font-weight: 600; line-height: 1; }
 }
 /* Condition pill visual lives in components/UBadge.vue now; the page only
    owns its placement (top-left over the card image). */
@@ -1843,10 +1838,10 @@ function goPublish() {
 }
 .dots {
   display: flex; gap: 2px;
-  text {
+  .dot {
     animation: blink 1.4s infinite both; font-size: 20px; color: var(--accent-action);
-    &:nth-child(2) { animation-delay: 0.2s; }
-    &:nth-child(3) { animation-delay: 0.4s; }
+    &.dot-2 { animation-delay: 0.2s; }
+    &.dot-3 { animation-delay: 0.4s; }
   }
 }
 @keyframes blink { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }

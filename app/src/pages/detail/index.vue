@@ -82,8 +82,8 @@
       <view class="title-row">
         <text class="title">{{ displayTitle }}</text>
         <view :class="['translate-btn', { loading: translatePending }]" role="button" :aria-label="t('a11y.translate')" @click="toggleTranslate">
-          <text v-if="!translatePending">{{ translated ? 'A文' : '文A' }}</text>
-          <text v-else>···</text>
+          <text v-if="!translatePending" class="translate-btn-label">{{ translated ? 'A文' : '文A' }}</text>
+          <text v-else class="translate-btn-label">···</text>
         </view>
       </view>
       <view class="tags">
@@ -236,10 +236,10 @@
         <text>{{ t('rating.rateCounterparty') }}</text>
       </view>
       <view v-else-if="item.status === 'sold' && alreadyRated" class="chat-btn chat-btn-disabled" aria-disabled="true">
-        <text>{{ t('rating.alreadyRated') }}</text>
+        <text class="chat-btn-disabled-label">{{ t('rating.alreadyRated') }}</text>
       </view>
       <view v-else-if="item.status === 'sold'" class="chat-btn chat-btn-disabled" aria-disabled="true">
-        <text>{{ t('status.sold') }}</text>
+        <text class="chat-btn-disabled-label">{{ t('status.sold') }}</text>
       </view>
       <view v-else :class="['chat-btn', { disabled: contactingSeller }]" role="button" :aria-disabled="contactingSeller ? 'true' : 'false'" :aria-label="item.listing_type === 'wanted' ? t('detail.haveThis') : t('detail.chat')" @click="contactSeller">
         <text>{{ item.listing_type === 'wanted' ? t('detail.haveThis') : t('detail.chat') }}</text>
@@ -266,10 +266,10 @@
         <text>{{ t('rating.rateCounterparty') }}</text>
       </view>
       <view v-else-if="item.status === 'sold' && alreadyRated" class="chat-btn chat-btn-disabled" aria-disabled="true">
-        <text>{{ t('rating.alreadyRated') }}</text>
+        <text class="chat-btn-disabled-label">{{ t('rating.alreadyRated') }}</text>
       </view>
       <view v-else-if="item.status === 'sold'" class="chat-btn chat-btn-disabled" aria-disabled="true">
-        <text>{{ t('status.sold') }}</text>
+        <text class="chat-btn-disabled-label">{{ t('status.sold') }}</text>
       </view>
       <view v-else class="chat-btn chat-btn-confirm" role="button" :aria-label="t('profile.markSold')" @click="onMarkSold">
         <text>{{ t('profile.markSold') }}</text>
@@ -1361,7 +1361,7 @@ async function contactSeller() {
 .translate-btn {
   flex-shrink: 0; padding: 4px 8px;
   background: var(--bg-subtle); border-radius: 6px; cursor: pointer;
-  text { font-size: 11px; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.02em; }
+  .translate-btn-label { font-size: 11px; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.02em; }
   &:active { background: var(--bg-inset); }
 }
 .tags { display: flex; gap: 6px; margin-top: 11px; flex-wrap: wrap; }
@@ -1637,7 +1637,7 @@ async function contactSeller() {
   opacity: 0.55;
   cursor: not-allowed;
   pointer-events: none;
-  text { color: var(--ink-soft); }
+  .chat-btn-disabled-label { color: var(--ink-soft); }
 }
 
 /* ========== Loading ========== */
