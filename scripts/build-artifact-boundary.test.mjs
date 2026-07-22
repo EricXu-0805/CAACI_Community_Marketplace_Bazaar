@@ -35,6 +35,7 @@ for (const [label, relative, content] of [
   ['opaque Supabase secret', 'assets/app.js', `const value="sb_secret_${'a'.repeat(32)}"`],
   ['removed HEIC decoder filename', 'assets/heic-to.js', 'const decoder=true'],
   ['removed HEIC decoder material', 'assets/app.js', 'const decoder="libheif"'],
+  ['CSP-blocked remote UI asset', 'assets/uni.css', 'body:after{background:url(https://cdn.dcloud.net.cn/img/shadow-grey.png)}'],
 ]) {
   test(`artifact verifier rejects ${label}`, async () => {
     const root = await artifact()

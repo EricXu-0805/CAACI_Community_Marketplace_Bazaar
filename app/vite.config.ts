@@ -359,6 +359,38 @@ function chunkFileNamesForNodeModules(): Plugin {
   };
 }
 
+/*
+ * uni-h5 injects a hidden `body::after` animation whose only purpose is to
+ * preload DCloud's remote `shadow-grey.png`. The app does not use uni's page
+ * head shadow, and our production CSP intentionally allows images only from
+ * this origin, data/blob URLs, and the configured Supabase project. Leaving
+ * the preload in place therefore creates a production-only CSP error three
+ * seconds after every page load.
+ *
+ * Keep the CSP strict and remove only the hidden preload request after
+ * uni-h5's own transform has appended it. This does not alter any visible
+ * component or mini-program output.
+ */
+function removeUniH5RemoteShadowPreload(): Plugin {
+  const remotePreload = 'url(https://cdn.dcloud.net.cn/img/shadow-grey.png)';
+  return {
+    name: 'remove-uni-h5-remote-shadow-preload',
+    apply: 'build',
+    enforce: 'post',
+    generateBundle(_options, bundle) {
+      if (isMpBuild) return;
+      for (const output of Object.values(bundle)) {
+        if (output.type !== 'asset' || !output.fileName.endsWith('.css')) continue;
+        const source = typeof output.source === 'string'
+          ? output.source
+          : Buffer.from(output.source).toString('utf8');
+        if (!source.includes('shadow-preload') || !source.includes(remotePreload)) continue;
+        output.source = source.replaceAll(remotePreload, 'none');
+      }
+    },
+  };
+}
+
 function mpWebApiGlobalThisRewrite(): Plugin {
   const APIS = ["URL", "URLSearchParams", "Headers", "AbortController", "AbortSignal"];
   const constructorRe = new RegExp(
@@ -390,6 +422,7 @@ export default defineConfig({
     requireMpAppOrigin(),
     mpWebApiGlobalThisRewrite(),
     uni(),
+    removeUniH5RemoteShadowPreload(),
     chunkFileNamesForNodeModules(),
     ...(sentryEnabled
       ? [
