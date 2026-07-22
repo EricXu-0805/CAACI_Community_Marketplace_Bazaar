@@ -85,11 +85,12 @@ Vercel Edge API
 | 012 | `rate_limiting_and_dedupe.sql` | 5 张表 BEFORE INSERT 触发器(硬性限流 + 短窗口去重) |
 | 013 | `security_patches.sql` | 审计补丁:notifications INSERT deny / conv flag 隔离 / 归一化去重 |
 | 014–089 | `supabase/migrations/` | 图片尺寸、Plaza、审核、管理、offer/meetup、通知、微信等后续能力（历史上 014/015 各有重复版本，见审计） |
-| 20260717–19… | `supabase/migrations/` + `_ops/` | 本轮公共写入、双向屏蔽、证据/注销、停权/admin、成交评分、FK、Storage、private Realtime、邮件 attribution/claim、Data API 精确 ACL、管理员令牌生命周期、确定性分页、真实 FK 与 ACL 尾部等 **35 条候选修复**；生产数据库已按精确 ledger 应用 34/35，密码式微信凭据退役迁移仍需匹配的 passwordless canary |
+| 20260717–22… | `supabase/migrations/` + `_ops/` | 本轮公共写入、双向屏蔽、证据/注销、停权/admin、成交评分、FK、Storage、private Realtime、邮件 attribution/claim、Data API 精确 ACL、管理员令牌生命周期、确定性分页、真实 FK 与 ACL 尾部等 **38 条候选修复**；合并前生产数据库已按精确 ledger 应用 34/38，三条管理员生产 tail 完成后为 37/38，仅密码式微信凭据退役仍需匹配的 passwordless canary |
 
-仓库当前共有 90 条历史迁移与 35 条候选迁移（合计 125 条）。生产 ledger
-已逐条核对为 34/35，仅 `20260718140000_retire_wechat_password_credentials.sql`
-尚未应用；应用 bundle 仍需从最终提交生成并验收。不要在任何现有环境直接盲跑
+仓库当前共有 132 个 migration SQL 文件，其中本轮 release candidate 为 38 条。
+合并前生产 ledger 已逐条核对为 34/38；依次完成 145042、152000、161200 三条
+生产 tail 后为 37/38，仅 `20260718140000_retire_wechat_password_credentials.sql`
+仍待匹配的 passwordless canary。应用 bundle 仍需从最终提交生成并验收。不要在任何现有环境直接盲跑
 `db push`。先读最新 [`docs/audit/`](docs/audit/) 报告，按 PRECHECK →
 备份/staging → migration → VERIFY/REGRESSION/canary 的顺序执行。
 
@@ -155,10 +156,10 @@ CI 已有 smoke job，但当前仍不是 branch protection 的 required check。
 
 ## 部署
 
-- **当前应用工作树仍是未部署的 release candidate**：生产发布已获明确授权，数据库已
-  应用 34/35；仍须从最终提交生成全新 canary，关闭 WeChat secret、HIBP、Owner 和真实
+- **当前应用工作树仍是未部署的 release candidate**：生产发布已获明确授权；合并前数据库为
+  34/38，三条生产 tail 完成后为 37/38，届时仅微信凭据退役仍待。仍须从最终提交生成全新 canary，关闭 WeChat secret、HIBP、Owner 和真实
   用户端/管理员端回归门后，才能提升为稳定应用。
-- 当前 35 条候选迁移存在 API/旧客户端/WeChat 凭据/Storage/Realtime/cron/admin token 的顺序依赖；按
+- 当前 38 条候选迁移存在 API/旧客户端/WeChat 凭据/Storage/Realtime/cron/admin token 的顺序依赖；按
   [RUNBOOK 的候选发布顺序](RUNBOOK.md#2026-07-candidate-release-sequence) 执行，不要把目录排序直接等同于生产发布方案。
 - **H5**: 直接 `vercel --prod` (或 git push main 自动部署)。`vercel.json` 已配好 rewrites。
 - **Supabase Auth Redirect URLs** 必须包含生产域名才能收到密码重置邮件:
@@ -169,7 +170,7 @@ CI 已有 smoke job，但当前仍不是 branch protection 的 required check。
 
 - RLS、精确 Storage 路径、限流/去重、PKCE 和安全提示等基础已经存在；
 - 2026-07 候选新增了跨账号、状态机、迁移和管理员边界回归；
-- 生产数据库已有 34/35 候选迁移；候选应用修复及回归脚本仍须以最终 canary 和稳定部署的真实证据为准；
+- 合并前生产数据库已有 34/38 候选迁移；三条生产 tail 完成后为 37/38，仅微信凭据退役仍待；候选应用修复及回归脚本仍须以最终 canary 和稳定部署的真实证据为准；
 - 当前发布边界和审计使用规则见 [审计索引](docs/audit/README.md)。
 
 **排查入口**: 先读 `docs/audit/README.md` 和 `RUNBOOK.md`；`docs/SECURITY_SETUP.md`

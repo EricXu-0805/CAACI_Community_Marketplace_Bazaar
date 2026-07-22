@@ -16,6 +16,7 @@
             v-model="email"
             :placeholder="t('illini.emailPlaceholder')"
             :aria-label="t('illini.emailLabel')"
+            :disabled="flowBusy"
             type="text"
             autocomplete="email"
             class="form-input"
@@ -24,7 +25,7 @@
           />
           <text class="field-hint">{{ t('illini.emailHint') }}</text>
         </view>
-        <button :class="['submit-btn', { disabled: sending }]" :disabled="sending" @click="onSendCode">
+        <button :class="['submit-btn', { disabled: flowBusy }]" :disabled="flowBusy" @click="onSendCode">
           {{ sending ? t('login.wait') : t('illini.sendCode') }}
         </button>
       </template>
@@ -33,18 +34,28 @@
       <template v-else>
         <view class="form-group">
           <text class="form-label">{{ t('illini.codeLabel') }}</text>
-          <UCodeInput v-model="code" :placeholder="t('resetPw.codePlaceholder')" :aria-label="t('illini.codeLabel')" :autofocus="true" />
+          <UCodeInput v-model="code" :placeholder="t('resetPw.codePlaceholder')" :aria-label="t('illini.codeLabel')" :autofocus="true" :disabled="flowBusy" />
           <view class="code-row">
-            <text class="code-hint">{{ t('illini.codeHint', { email }) }}</text>
-            <text :class="['resend', { disabled: resendCooldown > 0 || sending }]" role="button" @click="onResend">
+            <text class="code-hint">{{ t('illini.codeHint', { email: verificationEmail }) }}</text>
+            <text
+              :class="['resend', { disabled: resendCooldown > 0 || flowBusy }]"
+              role="button"
+              :aria-disabled="resendCooldown > 0 || flowBusy ? 'true' : 'false'"
+              @click="onResend"
+            >
               {{ resendCooldown > 0 ? t('resetPw.resendIn', { n: resendCooldown }) : t('resetPw.resend') }}
             </text>
           </view>
         </view>
-        <button :class="['submit-btn', { disabled: verifying }]" :disabled="verifying" @click="onVerify">
+        <button :class="['submit-btn', { disabled: flowBusy }]" :disabled="flowBusy" @click="onVerify">
           {{ verifying ? t('login.wait') : t('illini.verify') }}
         </button>
-        <view class="back-link" role="button" @click="step = 'email'">{{ t('illini.changeEmail') }}</view>
+        <view
+          :class="['back-link', { disabled: flowBusy }]"
+          role="button"
+          :aria-disabled="flowBusy ? 'true' : 'false'"
+          @click="onChangeEmail"
+        >{{ t('illini.changeEmail') }}</view>
       </template>
     </view>
   </view>
@@ -61,7 +72,7 @@ const mpChrome = mpChromeVars()
  * login email is unchanged. @illinois.edu signups are auto-verified and never
  * see this page (the profile prompt is hidden when already verified).
  */
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { useSupabase, platformFetch } from '../../composables/useSupabase'
 import { readBoundedJson } from '../../api/responseBody'
@@ -108,9 +119,13 @@ verifyEndpoint = `${BASE_URL}/api/auth/verify-illini-code`
 
 const step = ref<'email' | 'code'>('email')
 const email = ref('')
+// The code screen must describe and resend to the exact normalized address
+// accepted by the successful send request, not a still-editable form value.
+const verificationEmail = ref('')
 const code = ref('')
 const sending = ref(false)
 const verifying = ref(false)
+const flowBusy = computed(() => sending.value || verifying.value)
 
 const resendCooldown = ref(0)
 let cooldownTimer: ReturnType<typeof setInterval> | null = null
@@ -124,6 +139,7 @@ function resetVerificationPrivateState() {
   pageEpoch += 1
   step.value = 'email'
   email.value = ''
+  verificationEmail.value = ''
   code.value = ''
   sending.value = false
   verifying.value = false
@@ -162,6 +178,10 @@ function flowIsCurrent(accountToken: AccountRequestToken, requestEpoch: number):
     && currentUser.value?.id === accountToken.userId
 }
 
+function normalizeIlliniEmail(rawEmail: string): string {
+  return rawEmail.trim().toLowerCase()
+}
+
 async function authHeader(accountToken: AccountRequestToken): Promise<Record<string, string> | null> {
   const { data } = await supabase.auth.getSession()
   if (!isAccountRequestCurrent(accountToken) || data.session?.user.id !== accountToken.userId) return null
@@ -175,7 +195,7 @@ async function sendCode(
   requestEpoch: number,
   rawEmail: string,
 ): Promise<boolean> {
-  const e = rawEmail.trim().toLowerCase()
+  const e = normalizeIlliniEmail(rawEmail)
   if (!ILLINI_RE.test(e)) { errToast('invalid_email'); return false }
   let headers: Record<string, string> | null
   try {
@@ -202,18 +222,20 @@ async function sendCode(
 }
 
 async function onSendCode() {
-  if (sending.value) return
+  if (flowBusy.value) return
   const entryEpoch = pageEpoch
+  const emailSnapshot = normalizeIlliniEmail(email.value)
   sending.value = true
   try {
     await awaitAuthReady()
     if (entryEpoch !== pageEpoch || !requireAuth() || !currentUser.value) return
     const accountToken = captureAccountRequest(currentUser.value.id)
     const requestEpoch = entryEpoch
-    const emailSnapshot = email.value
     if (!flowIsCurrent(accountToken, requestEpoch)) return
     if (await sendCode(accountToken, requestEpoch, emailSnapshot)) {
       if (!flowIsCurrent(accountToken, requestEpoch)) return
+      verificationEmail.value = emailSnapshot
+      email.value = emailSnapshot
       step.value = 'code'
       startCooldown()
       uni.showToast({ title: t('illini.codeSent'), icon: 'none' })
@@ -224,15 +246,15 @@ async function onSendCode() {
 }
 
 async function onResend() {
-  if (resendCooldown.value > 0 || sending.value) return
+  if (resendCooldown.value > 0 || flowBusy.value) return
   const entryEpoch = pageEpoch
+  const emailSnapshot = verificationEmail.value
   sending.value = true
   try {
     await awaitAuthReady()
     if (entryEpoch !== pageEpoch || !requireAuth() || !currentUser.value) return
     const accountToken = captureAccountRequest(currentUser.value.id)
     const requestEpoch = entryEpoch
-    const emailSnapshot = email.value
     if (await sendCode(accountToken, requestEpoch, emailSnapshot)) {
       if (!flowIsCurrent(accountToken, requestEpoch)) return
       startCooldown()
@@ -244,7 +266,7 @@ async function onResend() {
 }
 
 async function onVerify() {
-  if (verifying.value) return
+  if (flowBusy.value) return
   if (code.value.trim().length !== 6) { uni.showToast({ title: t('resetPw.needCode'), icon: 'none' }); return }
   const entryEpoch = pageEpoch
   verifying.value = true
@@ -276,6 +298,19 @@ async function onVerify() {
   } finally {
     if (entryEpoch === pageEpoch) verifying.value = false
   }
+}
+
+function onChangeEmail() {
+  if (flowBusy.value) return
+  // A new address is a new verification intent. Invalidate every continuation
+  // and countdown belonging to the prior address before showing the form.
+  pageEpoch += 1
+  email.value = verificationEmail.value || normalizeIlliniEmail(email.value)
+  verificationEmail.value = ''
+  code.value = ''
+  step.value = 'email'
+  stopCooldown()
+  uni.hideToast()
 }
 
 function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/profile/index' })) }

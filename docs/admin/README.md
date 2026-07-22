@@ -30,11 +30,17 @@ supabase/migrations/20260718190000_admin_token_capabilities.sql
 supabase/migrations/20260718200000_recoverable_banner_uploads.sql
 supabase/migrations/20260719010000_admin_token_lifecycle_rpc.sql
 supabase/migrations/20260719020000_admin_owner_recovery_concurrency.sql
+supabase/migrations/20260720035037_harden_admin_appeal_decisions_and_session_metadata.sql
+supabase/migrations/20260722145042_harden_last_active_owner_revoke.sql
+supabase/migrations/20260722152000_harden_admin_invalid_auth_amplification.sql
+supabase/migrations/20260722161200_protect_admin_owner_presentation_signal.sql
 ```
 
 Later admin features also depend on their ordered migrations (073, 075, 077,
-078, 080, 081, 083, and the timestamped suspension-expiry reconciliation
-candidate). This list explains ownership; it is not a production
+078, 080, 081, and 083). The final three `20260722` administrator migrations
+must be run in the displayed order: 145042 PRECHECK → migration → VERIFY,
+then the corresponding 152000 sequence, then the 161200 sequence. This list
+explains ownership; it is not a production
 copy/paste runbook. Follow the comprehensive audit's PRECHECK/backup/staging/
 VERIFY release path for production.
 
@@ -92,7 +98,11 @@ the exact operation with the exact original owner `ADMIN_TOKEN` (the ledger is
 scoped to that actor token) using
 `--resume-file /absolute/private/path/admin-token-recovery.json --apply`, without
 repeating or changing issuance flags. A different issuer or any 409 keeps the
-manifest. If the original owner token has expired or been revoked, a currently
+manifest. Even a successful replay must pass the CLI's immediate authoritative
+hash reconciliation: only the same attached, unrevoked, unexpired token ID is
+reported as vaultable; missing, mismatched, inactive, detached, or unavailable
+state exits nonzero and keeps the manifest. If the original owner token has
+expired or been revoked, a currently
 authorized replacement owner must run the read-only
 `--reconcile-file /absolute/private/path/admin-token-recovery.json` mode. It
 compares only the manifest token hash with authoritative token lifecycle state,

@@ -784,6 +784,7 @@ const zh: Record<string, string> = {
   'admin.errUnlockFailed':  '解锁失败。',
   'admin.errTokenExpired':  '该管理员令牌已过期，请使用新的有效令牌。',
   'admin.sessionExpired':   '管理员令牌已到期，后台已锁定并清除敏感数据。',
+  'admin.sessionInvalidated': '管理员会话已失效（令牌可能已撤销或过期），后台已锁定并清除敏感数据。',
   'admin.errCapabilityDenied': '当前管理员角色无权执行此操作。',
   'admin.toastMutationConflict': '管理员安全规则已阻止该操作，请刷新当前状态后再重试。',
   'admin.role.operator':    '内容审核员',

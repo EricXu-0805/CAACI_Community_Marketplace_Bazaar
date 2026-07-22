@@ -786,6 +786,7 @@ const en: Record<string, string> = {
   'admin.errUnlockFailed':  'Unlock failed.',
   'admin.errTokenExpired':  'This admin token has expired. Use a new valid token.',
   'admin.sessionExpired':   'The admin token expired. The dashboard was locked and sensitive data was cleared.',
+  'admin.sessionInvalidated': 'The admin session is no longer valid (the token may have been revoked or expired). The dashboard was locked and sensitive data was cleared.',
   'admin.errCapabilityDenied': 'Your admin role does not allow this action.',
   'admin.toastMutationConflict': 'Operation blocked by an admin safety rule. Refresh the current state before retrying.',
   'admin.role.operator':    'Moderation operator',

@@ -831,6 +831,7 @@ const ADMIN_CONTROL_OR_BIDI_PATTERN = /[\u0000-\u001F\u007F-\u009F\u061C\u200E\u
 // again instead of treating a truncated timer as the real expiry.
 const MAX_ADMIN_TIMER_DELAY_MS = 2_147_000_000
 const ADMIN_TOKEN_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const ADMIN_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const ADMIN_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/
 
 type AdminRole = 'operator' | 'security_admin' | 'owner'
@@ -859,24 +860,28 @@ interface ReportRow {
 interface ReportGroup {
   target_type: string; target_id: string
   report_count: number; pending_count: number; reporter_count: number
-  last_reason: string; last_note: string; last_reporter_nickname: string; last_status: string
+  last_reason: string; last_note: string | null; last_reporter_nickname: string; last_status: string
   first_created_at: string; last_created_at: string; last_report_id: string
 }
 interface SuspensionRow {
-  id: string; profile_id: string; profile_nickname: string; profile_avatar_url: string
+  id: string; profile_id: string; profile_nickname: string; profile_avatar_url: string | null
   level: number; reason: string; category: string
   started_at: string; ends_at: string | null; lifted_at: string | null
   has_appeal: boolean; appeal_note: string | null; created_at: string
   issued_by: string | null; issued_by_nickname: string | null
   lifted_by: string | null; lifted_by_nickname: string | null
 }
-interface AppealRow extends SuspensionRow {
+interface AppealRow {
+  id: string; profile_id: string; profile_nickname: string; profile_avatar_url: string | null
+  level: number; reason: string; ends_at: string | null; appeal_note: string
+  created_at: string; issued_by: string | null; issued_by_nickname: string | null
+  lifted_at: string | null; lifted_by: string | null; lifted_by_nickname: string | null
   appeal_submitted_at: string | null
-  review_status?: AppealReviewStatus | null
-  reviewed_at?: string | null
+  review_status: AppealReviewStatus
+  reviewed_at: string | null
 }
 interface WarningRow {
-  profile_id: string; nickname: string; avatar_url: string
+  profile_id: string; nickname: string; avatar_url: string | null
   trust_score: number; warning_count: number; shadow_banned: boolean
   suspension_level: number; suspended_until: string | null
 }
@@ -1038,6 +1043,20 @@ function lockAdminAfterUnknownOutcome(owner: AdminSessionOwner): never {
   throw new AdminSessionChangedError()
 }
 
+function lockAdminAfterAuthorizationLoss(owner: AdminSessionOwner): never {
+  // A 401 received after a session was already unlocked means the credential
+  // was revoked, expired, or otherwise became invalid. Clear every privileged
+  // snapshot and explain the lock instead of silently returning to the gate.
+  if (onLogout(owner)) {
+    uni.showToast({
+      title: t('admin.sessionInvalidated'),
+      icon: 'none',
+      duration: 4000,
+    })
+  }
+  throw new AdminSessionChangedError()
+}
+
 async function runAdminJournalStep<T>(
   owner: AdminSessionOwner,
   operation: () => Promise<T>,
@@ -1065,17 +1084,17 @@ function canonicalAdminMutation(value: unknown): string {
  * Logged-in-admin display in the dashboard header.
  *
  * Source: GET /api/admin?resource=whoami after successful unlock.
- * Per-admin tokens (migration 036) carry an admin_name + admin_email
- * from when they were minted; the legacy shared-key path returns nulls
- * because there's no identity attached to the shared key. Display rules:
+ * Token identities are mandatory and the exact whoami response is validated
+ * before any privileged dashboard state is displayed. Display rules retain
+ * defensive fallbacks for an already-rendered snapshot:
  *   1. profiles.nickname (passed as admin_name) — preferred
- *   2. email prefix (before the @) — fallback when name missing
- *   3. literal '管理员' / 'Admin' — when both missing (legacy key)
+ *   2. email prefix (before the @) — fallback
+ *   3. literal '管理员' / 'Admin' — final defensive label
  */
 interface WhoAmI {
   admin_id: string
-  admin_name: string | null
-  admin_email: string | null
+  admin_name: string
+  admin_email: string
   role: AdminRole
   capabilities: string[]
   source: 'token'
@@ -1185,8 +1204,8 @@ function isStrictWhoAmI(value: unknown): value is WhoAmI {
   if (new Set(row.capabilities).size !== row.capabilities.length) return false
   if (typeof row.token_id !== 'string' || !ADMIN_TOKEN_ID_PATTERN.test(row.token_id)) return false
   if (typeof row.admin_id !== 'string' || !ADMIN_TOKEN_ID_PATTERN.test(row.admin_id)) return false
-  if (row.admin_name !== null && typeof row.admin_name !== 'string') return false
-  if (row.admin_email !== null && typeof row.admin_email !== 'string') return false
+  if (!isBoundedAdminIdentity(row.admin_name, 100)) return false
+  if (!isBoundedAdminIdentity(row.admin_email, 200, true)) return false
   if (row.source !== 'token' || !isAdminIsoTimestamp(row.server_now)) return false
   const serverNow = Date.parse(row.server_now)
   if (row.expires_at === null) return true
@@ -1366,8 +1385,8 @@ interface AuditRow {
 interface AdminTokenRow {
   id: string
   admin_id: string | null
-  admin_name: string | null
-  admin_email: string | null
+  admin_name: string
+  admin_email: string
   role: AdminRole
   created_at: string
   last_used_at: string | null
@@ -1387,6 +1406,292 @@ interface OwnerRecoveryHealth {
 interface AdminTokenInventory {
   tokens: AdminTokenRow[]
   owner_recovery: OwnerRecoveryHealth
+}
+
+function hasExactAdminKeys(value: unknown, expected: readonly string[]): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const actual = Object.keys(value).sort()
+  const sortedExpected = [...expected].sort()
+  return actual.length === sortedExpected.length
+    && actual.every((key, index) => key === sortedExpected[index])
+}
+
+function isBoundedAdminIdentity(
+  value: unknown,
+  maxLength: number,
+  requireEmailShape = false,
+): value is string {
+  if (typeof value !== 'string') return false
+  const length = Array.from(value).length
+  return length >= 1
+    && length <= maxLength
+    && !ADMIN_CONTROL_OR_BIDI_PATTERN.test(value)
+    && (!requireEmailShape || (length >= 3 && value.includes('@')))
+}
+
+function isNullableAdminTimestamp(value: unknown): value is string | null {
+  return value === null || isAdminIsoTimestamp(value)
+}
+
+function isStrictAdminTokenRow(value: unknown): value is AdminTokenRow {
+  if (!hasExactAdminKeys(value, [
+    'id', 'admin_id', 'admin_name', 'admin_email', 'role',
+    'created_at', 'last_used_at', 'expires_at', 'revoked_at',
+  ])) return false
+  return typeof value.id === 'string'
+    && ADMIN_TOKEN_ID_PATTERN.test(value.id)
+    && (
+      (typeof value.admin_id === 'string' && ADMIN_TOKEN_ID_PATTERN.test(value.admin_id))
+      || (value.admin_id === null && value.revoked_at !== null)
+    )
+    && isBoundedAdminIdentity(value.admin_name, 100)
+    && isBoundedAdminIdentity(value.admin_email, 200, true)
+    && isAdminRole(value.role)
+    && isAdminIsoTimestamp(value.created_at)
+    && isNullableAdminTimestamp(value.last_used_at)
+    && isNullableAdminTimestamp(value.expires_at)
+    && isNullableAdminTimestamp(value.revoked_at)
+}
+
+function isStrictOwnerRecoveryHealth(value: unknown): value is OwnerRecoveryHealth {
+  if (!hasExactAdminKeys(value, [
+    'active_owner_tokens', 'unverified_owner_tokens', 'expiring_owner_tokens',
+    'non_expiring_owner_tokens', 'nearest_owner_expiry', 'status',
+  ])) return false
+  for (const key of [
+    'active_owner_tokens', 'unverified_owner_tokens', 'expiring_owner_tokens',
+    'non_expiring_owner_tokens',
+  ] as const) {
+    if (!Number.isSafeInteger(value[key]) || (value[key] as number) < 0) return false
+  }
+  return (value.nearest_owner_expiry === null || isAdminIsoTimestamp(value.nearest_owner_expiry))
+    && (value.status === 'healthy' || value.status === 'warning' || value.status === 'critical')
+    && (value.non_expiring_owner_tokens as number) <= (value.active_owner_tokens as number)
+}
+
+function isStrictAdminTokenInventory(value: unknown): value is AdminTokenInventory {
+  if (!hasExactAdminKeys(value, ['tokens', 'owner_recovery'])) return false
+  return Array.isArray(value.tokens)
+    && value.tokens.every(isStrictAdminTokenRow)
+    && isStrictOwnerRecoveryHealth(value.owner_recovery)
+}
+
+function isAdminUuid(value: unknown): value is string {
+  return typeof value === 'string' && ADMIN_UUID_PATTERN.test(value)
+}
+
+function isNullableAdminUuid(value: unknown): value is string | null {
+  return value === null || isAdminUuid(value)
+}
+
+function isNullableAdminString(value: unknown): value is string | null {
+  return value === null || typeof value === 'string'
+}
+
+function isAdminSafeInteger(value: unknown, min = 0, max = Number.MAX_SAFE_INTEGER): value is number {
+  return Number.isSafeInteger(value) && (value as number) >= min && (value as number) <= max
+}
+
+function isAdminPlainObject(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+function isStrictAdminRows<T>(value: unknown, guard: (row: unknown) => row is T): value is T[] {
+  return Array.isArray(value) && value.every(guard)
+}
+
+function isStrictReportGroup(value: unknown): value is ReportGroup {
+  if (!hasExactAdminKeys(value, [
+    'target_type', 'target_id', 'report_count', 'pending_count', 'reporter_count',
+    'last_reason', 'last_note', 'last_reporter_nickname', 'last_status',
+    'first_created_at', 'last_created_at', 'last_report_id',
+  ])) return false
+  return ['item', 'user', 'message', 'post', 'comment'].includes(String(value.target_type))
+    && isAdminUuid(value.target_id)
+    && isAdminSafeInteger(value.report_count, 1)
+    && isAdminSafeInteger(value.pending_count, 0, value.report_count as number)
+    && isAdminSafeInteger(value.reporter_count, 1, value.report_count as number)
+    && typeof value.last_reason === 'string'
+    && isNullableAdminString(value.last_note)
+    && typeof value.last_reporter_nickname === 'string'
+    && ['pending', 'reviewed', 'resolved', 'dismissed'].includes(String(value.last_status))
+    && isAdminIsoTimestamp(value.first_created_at)
+    && isAdminIsoTimestamp(value.last_created_at)
+    && isAdminUuid(value.last_report_id)
+}
+
+function isStrictSuspensionRow(value: unknown): value is SuspensionRow {
+  if (!hasExactAdminKeys(value, [
+    'id', 'profile_id', 'profile_nickname', 'profile_avatar_url', 'level', 'reason',
+    'category', 'started_at', 'ends_at', 'lifted_at', 'appeal_note', 'has_appeal',
+    'created_at', 'issued_by', 'issued_by_nickname', 'lifted_by', 'lifted_by_nickname',
+  ])) return false
+  return isAdminUuid(value.id)
+    && isAdminUuid(value.profile_id)
+    && typeof value.profile_nickname === 'string'
+    && isNullableAdminString(value.profile_avatar_url)
+    && isAdminSafeInteger(value.level, 1, 5)
+    && typeof value.reason === 'string'
+    && typeof value.category === 'string'
+    && isAdminIsoTimestamp(value.started_at)
+    && isNullableAdminTimestamp(value.ends_at)
+    && isNullableAdminTimestamp(value.lifted_at)
+    && isNullableAdminString(value.appeal_note)
+    && typeof value.has_appeal === 'boolean'
+    && value.has_appeal === (value.appeal_note !== null)
+    && isAdminIsoTimestamp(value.created_at)
+    && isNullableAdminUuid(value.issued_by)
+    && isNullableAdminString(value.issued_by_nickname)
+    && isNullableAdminUuid(value.lifted_by)
+    && isNullableAdminString(value.lifted_by_nickname)
+}
+
+function isStrictAppealRow(value: unknown): value is AppealRow {
+  if (!hasExactAdminKeys(value, [
+    'id', 'profile_id', 'profile_nickname', 'profile_avatar_url', 'level', 'reason',
+    'ends_at', 'appeal_note', 'appeal_submitted_at', 'created_at', 'issued_by',
+    'issued_by_nickname', 'lifted_at', 'lifted_by', 'lifted_by_nickname',
+    'review_status', 'reviewed_at',
+  ])) return false
+  const reviewTimestampValid = value.review_status === 'pending'
+    ? value.reviewed_at === null
+    : value.review_status === 'more_information_required'
+      && isAdminIsoTimestamp(value.reviewed_at)
+  return isAdminUuid(value.id)
+    && isAdminUuid(value.profile_id)
+    && typeof value.profile_nickname === 'string'
+    && isNullableAdminString(value.profile_avatar_url)
+    && isAdminSafeInteger(value.level, 1, 5)
+    && typeof value.reason === 'string'
+    && isNullableAdminTimestamp(value.ends_at)
+    && typeof value.appeal_note === 'string'
+    && isNullableAdminTimestamp(value.appeal_submitted_at)
+    && isAdminIsoTimestamp(value.created_at)
+    && isNullableAdminUuid(value.issued_by)
+    && isNullableAdminString(value.issued_by_nickname)
+    && isNullableAdminTimestamp(value.lifted_at)
+    && isNullableAdminUuid(value.lifted_by)
+    && isNullableAdminString(value.lifted_by_nickname)
+    && reviewTimestampValid
+}
+
+function isStrictWarningRow(value: unknown): value is WarningRow {
+  if (!hasExactAdminKeys(value, [
+    'profile_id', 'nickname', 'avatar_url', 'trust_score', 'warning_count',
+    'shadow_banned', 'suspension_level', 'suspended_until',
+  ])) return false
+  return isAdminUuid(value.profile_id)
+    && typeof value.nickname === 'string'
+    && isNullableAdminString(value.avatar_url)
+    && isAdminSafeInteger(value.trust_score, 0, 100)
+    && isAdminSafeInteger(value.warning_count)
+    && typeof value.shadow_banned === 'boolean'
+    && isAdminSafeInteger(value.suspension_level, 0, 5)
+    && isNullableAdminTimestamp(value.suspended_until)
+}
+
+function isStrictAuditRow(value: unknown): value is AuditRow {
+  if (!hasExactAdminKeys(value, [
+    'id', 'event_kind', 'actor_id', 'actor_nickname', 'target_id',
+    'target_nickname', 'details', 'created_at',
+  ])) return false
+  return isAdminSafeInteger(value.id, 1)
+    && typeof value.event_kind === 'string'
+    && isNullableAdminUuid(value.actor_id)
+    && isNullableAdminString(value.actor_nickname)
+    && isNullableAdminUuid(value.target_id)
+    && isNullableAdminString(value.target_nickname)
+    && isAdminPlainObject(value.details)
+    && isAdminIsoTimestamp(value.created_at)
+}
+
+function isStrictPlazaPostRow(value: unknown): value is PlazaPostRow {
+  if (!hasExactAdminKeys(value, [
+    'id', 'content', 'author_nickname', 'author_id', 'is_pinned', 'is_official',
+    'like_count', 'comment_count', 'thumbnail', 'created_at',
+  ])) return false
+  return isAdminUuid(value.id)
+    && typeof value.content === 'string'
+    && typeof value.author_nickname === 'string'
+    && isAdminUuid(value.author_id)
+    && typeof value.is_pinned === 'boolean'
+    && typeof value.is_official === 'boolean'
+    && isAdminSafeInteger(value.like_count)
+    && isAdminSafeInteger(value.comment_count)
+    && isNullableAdminString(value.thumbnail)
+    && isAdminIsoTimestamp(value.created_at)
+}
+
+function isStrictBannerRow(value: unknown): value is BannerRow {
+  if (!hasExactAdminKeys(value, [
+    'id', 'image_url', 'target_url', 'title', 'title_en', 'title_zh', 'priority',
+    'active', 'is_default', 'start_at', 'end_at', 'created_at',
+  ])) return false
+  return isAdminUuid(value.id)
+    && typeof value.image_url === 'string'
+    && isNullableAdminString(value.target_url)
+    && isNullableAdminString(value.title)
+    && isNullableAdminString(value.title_en)
+    && isNullableAdminString(value.title_zh)
+    && isAdminSafeInteger(value.priority, -10_000, 10_000)
+    && typeof value.active === 'boolean'
+    && typeof value.is_default === 'boolean'
+    && isNullableAdminTimestamp(value.start_at)
+    && isNullableAdminTimestamp(value.end_at)
+    && isAdminIsoTimestamp(value.created_at)
+}
+
+function isStrictUserRow(value: unknown): value is UserRow {
+  if (!hasExactAdminKeys(value, [
+    'id', 'nickname', 'email', 'avatar_url', 'trust_score', 'warning_count',
+    'suspension_level', 'suspended_until', 'shadow_banned', 'created_at',
+  ])) return false
+  return isAdminUuid(value.id)
+    && typeof value.nickname === 'string'
+    && isNullableAdminString(value.email)
+    && isNullableAdminString(value.avatar_url)
+    && isAdminSafeInteger(value.trust_score, 0, 100)
+    && isAdminSafeInteger(value.warning_count)
+    && isAdminSafeInteger(value.suspension_level, 0, 5)
+    && isNullableAdminTimestamp(value.suspended_until)
+    && typeof value.shadow_banned === 'boolean'
+    && isAdminIsoTimestamp(value.created_at)
+}
+
+function isStrictLinkedRow(value: unknown): value is LinkedRow {
+  if (!hasExactAdminKeys(value, [
+    'id', 'nickname', 'email', 'avatar_url', 'suspension_level', 'shadow_banned',
+    'shared_devices', 'last_seen',
+  ])) return false
+  return isAdminUuid(value.id)
+    && typeof value.nickname === 'string'
+    && isNullableAdminString(value.email)
+    && isNullableAdminString(value.avatar_url)
+    && isAdminSafeInteger(value.suspension_level, 0, 5)
+    && typeof value.shadow_banned === 'boolean'
+    && isAdminSafeInteger(value.shared_devices, 1)
+    && isAdminIsoTimestamp(value.last_seen)
+}
+
+function isStrictPagedAdminRows(tab: PagedAdminTab, value: unknown): value is any[] {
+  if (tab === 'suspensions') return isStrictAdminRows(value, isStrictSuspensionRow)
+  if (tab === 'appeals') return isStrictAdminRows(value, isStrictAppealRow)
+  if (tab === 'warnings') return isStrictAdminRows(value, isStrictWarningRow)
+  return isStrictAdminRows(value, isStrictAuditRow)
+}
+
+function isStrictAdminStats(value: unknown): value is StatsRow {
+  if (!hasExactAdminKeys(value, [
+    'active_suspensions', 'pending_reports', 'pending_appeals', 'shadow_banned',
+    'oldest_pending_hours',
+  ])) return false
+  for (const key of [
+    'active_suspensions', 'pending_reports', 'pending_appeals', 'shadow_banned',
+  ] as const) {
+    if (!isAdminSafeInteger(value[key])) return false
+  }
+  return value.oldest_pending_hours === null
+    || isAdminSafeInteger(value.oldest_pending_hours)
 }
 
 type AdminTokenStatus = 'active' | 'expired' | 'revoked'
@@ -1537,6 +1842,7 @@ const userQueryTooShort = computed(() => !!userQuery.value.trim() && !userQueryV
 
 function onUserQueryInput() {
   invalidateAdminRequest('search-users')
+  invalidateAdminRequest('linked-accounts')
   // Superseding the request means its guarded finally block can no longer
   // clear this shared flag. Clear it with the invalidation so a changed query
   // never leaves the search button permanently busy.
@@ -1545,6 +1851,9 @@ function onUserQueryInput() {
   userSearched.value = false
   userSearchError.value = false
   appliedUserQuery.value = ''
+  linkedFor.value = null
+  linkedAccounts.value = []
+  linkedLoading.value = false
 }
 
 async function searchUsers() {
@@ -1564,8 +1873,9 @@ async function searchUsers() {
   appliedUserQuery.value = q
   try {
     const rows = await apiGet<UserRow[]>({ resource: 'search_users', q, limit: '50' }, request)
+    if (!isStrictAdminRows(rows, isStrictUserRow)) throw new Error('admin_response_invalid')
     if (requestCanApply()) {
-      userResults.value = rows.slice(0, USER_SEARCH_LIMIT)
+      userResults.value = rows.slice(0, USER_SEARCH_LIMIT) as UserRow[]
       userSearched.value = true
       userSearchError.value = false
     }
@@ -1584,7 +1894,7 @@ async function searchUsers() {
 interface LinkedRow {
   id: string; nickname: string; email: string | null; avatar_url: string | null
   suspension_level: number; shadow_banned: boolean
-  shared_devices: number; last_seen: string | null
+  shared_devices: number; last_seen: string
 }
 const linkedFor = ref<string | null>(null)
 const linkedAccounts = ref<LinkedRow[]>([])
@@ -1592,7 +1902,7 @@ const linkedLoading = ref(false)
 
 /* ---------- plaza tab (QA8 #7 admin half): pins + banners ---------- */
 interface PlazaPostRow {
-  id: string; content: string; author_nickname: string | null; author_id: string
+  id: string; content: string; author_nickname: string; author_id: string
   is_pinned: boolean; is_official: boolean
   like_count: number; comment_count: number
   thumbnail: string | null; created_at: string
@@ -1704,8 +2014,7 @@ async function uploadBannerFileLocked(
       if (sawOutcomeUnknown) return lockAdminAfterUnknownOutcome(request)
       await runAdminJournalStep(request, () => releaseAdminIdempotencyKey(journalHandle))
       await runAdminJournalStep(request, () => consumeResolvedAdminIdempotencyKey(journalHandle))
-      onLogout(request)
-      throw new Error('unauthorized')
+      return lockAdminAfterAuthorizationLoss(request)
     }
 
     let payload: any
@@ -1806,6 +2115,10 @@ async function loadPlaza(owner = captureAdminSessionOwner()) {
       apiGet<BannerRow[]>({ resource: 'banners', limit: String(PLAZA_PAGE + 1), offset: '0' }, request),
     ])
     if (!isAdminRequestCurrent(request)) return
+    if (
+      !isStrictAdminRows(posts, isStrictPlazaPostRow)
+      || !isStrictAdminRows(bs, isStrictBannerRow)
+    ) throw new Error('admin_response_invalid')
     applyPlazaFirstPages(posts, bs)
     completeTabRead('plaza')
   } catch (err) {
@@ -1832,6 +2145,7 @@ async function loadMorePlaza(kind: 'posts' | 'banners') {
         offset: String(plazaOffsets.value.posts),
       }, request)
       if (!isAdminRequestCurrent(request)) return
+      if (!isStrictAdminRows(rows, isStrictPlazaPostRow)) throw new Error('admin_response_invalid')
       const visible = rows.slice(0, PLAZA_PAGE)
       plazaOffsets.value = { ...plazaOffsets.value, posts: plazaOffsets.value.posts + visible.length }
       plazaPosts.value = appendUniqueBy(plazaPosts.value, visible, row => row.id)
@@ -1843,6 +2157,7 @@ async function loadMorePlaza(kind: 'posts' | 'banners') {
         offset: String(plazaOffsets.value.banners),
       }, request)
       if (!isAdminRequestCurrent(request)) return
+      if (!isStrictAdminRows(rows, isStrictBannerRow)) throw new Error('admin_response_invalid')
       const visible = rows.slice(0, PLAZA_PAGE)
       plazaOffsets.value = { ...plazaOffsets.value, banners: plazaOffsets.value.banners + visible.length }
       banners.value = appendUniqueBy(banners.value, visible, row => row.id)
@@ -1866,9 +2181,10 @@ async function loadTokens(owner = captureAdminSessionOwner()) {
   beginTabRead('tokens')
   try {
     const inventory = await apiGet<AdminTokenInventory>({ resource: 'tokens' }, request)
+    if (!isStrictAdminTokenInventory(inventory)) throw new Error('admin_response_invalid')
     if (isAdminRequestCurrent(request)) {
-      adminTokens.value = Array.isArray(inventory?.tokens) ? inventory.tokens : []
-      ownerRecovery.value = inventory?.owner_recovery || null
+      adminTokens.value = inventory.tokens
+      ownerRecovery.value = inventory.owner_recovery
       completeTabRead('tokens')
     }
   } catch (err) {
@@ -2024,6 +2340,15 @@ async function togglePin(p: PlazaPostRow) {
   })
 }
 
+function adminPrefersReducedMotion(): boolean {
+  // #ifdef H5
+  return typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  // #endif
+  return false
+}
+
 function editBanner(b: BannerRow) {
   if (plazaWriteBusy.value) return
   invalidateAdminRequest('banner-upload')
@@ -2039,10 +2364,11 @@ function editBanner(b: BannerRow) {
     is_default: !!b.is_default,
   }
   nextTick(() => {
-    try { uni.pageScrollTo({ selector: '.banner-form', duration: 250 }) } catch {}
+    const reduceMotion = adminPrefersReducedMotion()
+    try { uni.pageScrollTo({ selector: '.banner-form', duration: reduceMotion ? 0 : 250 }) } catch {}
     setTimeout(() => {
       const form = bannerFormEl.value
-      form?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+      form?.scrollIntoView?.({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
       const first = form?.querySelector<HTMLInputElement>('input')
       ;(first || form)?.focus?.()
     }, 0)
@@ -2224,6 +2550,7 @@ async function loadLinked(userId: string) {
   linkedAccounts.value = []
   try {
     const rows = await apiGet<LinkedRow[]>({ resource: 'linked_accounts', profile_id: userId }, request)
+    if (!isStrictAdminRows(rows, isStrictLinkedRow)) throw new Error('admin_response_invalid')
     if (requestIsCurrent()) linkedAccounts.value = rows
   } catch (err: any) {
     if (requestIsCurrent()) {
@@ -2234,6 +2561,55 @@ async function loadLinked(userId: string) {
     }
   } finally {
     if (requestIsCurrent()) linkedLoading.value = false
+  }
+}
+
+async function reloadAppliedUserReviewState(owner: AdminSessionOwner) {
+  const query = appliedUserQuery.value.trim()
+  if (!query) return
+
+  const linkedTarget = linkedFor.value
+  const searchRequest = beginAdminRequest('search-users', owner)
+  if (!searchRequest) throw new AdminSessionChangedError()
+  const linkedRequest = linkedTarget
+    ? beginAdminRequest('linked-accounts', owner)
+    : null
+  if (linkedTarget && !linkedRequest) throw new AdminSessionChangedError()
+
+  const searchIsCurrent = () => isAdminRequestCurrent(searchRequest)
+    && appliedUserQuery.value.trim() === query
+  const linkedIsCurrent = () => !!linkedRequest
+    && isAdminRequestCurrent(linkedRequest)
+    && linkedFor.value === linkedTarget
+
+  userSearching.value = true
+  userSearchError.value = false
+  if (linkedRequest) linkedLoading.value = true
+
+  try {
+    const [rows, linkedRows] = await Promise.all([
+      apiGet<UserRow[]>({ resource: 'search_users', q: query, limit: '50' }, searchRequest),
+      linkedRequest && linkedTarget
+        ? apiGet<LinkedRow[]>({ resource: 'linked_accounts', profile_id: linkedTarget }, linkedRequest)
+        : Promise.resolve<LinkedRow[] | null>(null),
+    ])
+    if (!searchIsCurrent()) throw new AdminSessionChangedError()
+    if (!isStrictAdminRows(rows, isStrictUserRow)) throw new Error('admin_response_invalid')
+    if (linkedRequest) {
+      if (!linkedIsCurrent()) throw new AdminSessionChangedError()
+      if (!isStrictAdminRows(linkedRows, isStrictLinkedRow)) throw new Error('admin_response_invalid')
+    }
+
+    userResults.value = rows.slice(0, USER_SEARCH_LIMIT) as UserRow[]
+    userSearched.value = true
+    userSearchError.value = false
+    if (linkedRequest) linkedAccounts.value = linkedRows as LinkedRow[]
+  } catch (err) {
+    if (searchIsCurrent()) userSearchError.value = true
+    throw err
+  } finally {
+    if (searchIsCurrent()) userSearching.value = false
+    if (linkedIsCurrent()) linkedLoading.value = false
   }
 }
 
@@ -2332,6 +2708,12 @@ async function readAdminJson<T = any>(response: Response): Promise<T> {
   }
 }
 
+function isStrictAdminDataEnvelope(value: unknown): value is { data: unknown } {
+  return hasExactAdminKeys(value, ['data'])
+    && value.data !== null
+    && value.data !== undefined
+}
+
 async function apiGet<T>(
   params: Record<string, string>,
   owner: AdminSessionOwner = requireAdminSessionOwner(false),
@@ -2353,7 +2735,7 @@ async function apiGet<T>(
   if (!isAdminReadOwnerCurrent(owner)) throw new AdminSessionChangedError()
   updateAdminServerClock(r)
   if (r.status === 401) {
-    if (unlocked.value) onLogout(owner)
+    if (unlocked.value) return lockAdminAfterAuthorizationLoss(owner)
     throw new Error('unauthorized')
   }
   let json: any
@@ -2365,6 +2747,7 @@ async function apiGet<T>(
   }
   if (!isAdminReadOwnerCurrent(owner)) throw new AdminSessionChangedError()
   if (!r.ok) throw new Error(json?.error || `http_${r.status}`)
+  if (!isStrictAdminDataEnvelope(json)) throw new Error('admin_response_invalid')
   return json.data as T
 }
 
@@ -2566,8 +2949,7 @@ async function apiPostLocked<T>(
       if (sawOutcomeUnknown) return lockAdminAfterUnknownOutcome(owner)
       await runAdminJournalStep(owner, () => releaseAdminIdempotencyKey(journalHandle))
       await runAdminJournalStep(owner, () => consumeResolvedAdminIdempotencyKey(journalHandle))
-      if (unlocked.value) onLogout(owner)
-      throw new Error('unauthorized')
+      return lockAdminAfterAuthorizationLoss(owner)
     }
 
     let json: any
@@ -2654,9 +3036,16 @@ async function reconcileAdminOutcomeJournal(owner: AdminSessionOwner) {
 async function strictReloadAdminState(owner: AdminSessionOwner) {
   if (whoami.value?.role === 'owner') {
     const pendingOnly = reportPendingOnly.value
+    const refreshUserReview = !!appliedUserQuery.value.trim()
     const pagedTabs: PagedAdminTab[] = ['suspensions', 'appeals', 'warnings', 'audit']
-    const refreshedTabs: TabId[] = ['reports', 'plaza', ...pagedTabs, 'tokens']
-    for (const scope of ['reports', 'tab-load', 'plaza', 'stats', 'tokens'] as AdminRequestScope[]) {
+    const refreshedTabs: TabId[] = [
+      'reports', 'plaza', ...pagedTabs, 'tokens',
+      ...(refreshUserReview ? ['users' as const] : []),
+    ]
+    for (const scope of [
+      'reports', 'tab-load', 'plaza', 'stats', 'tokens',
+      ...(refreshUserReview ? ['search-users', 'linked-accounts'] as const : []),
+    ] as AdminRequestScope[]) {
       invalidateAdminRequest(scope)
     }
     loading.value = false
@@ -2674,6 +3063,14 @@ async function strictReloadAdminState(owner: AdminSessionOwner) {
         phase: previous.phase === 'ready' ? 'ready' : 'error',
         loading: false,
         stale: previous.phase === 'ready',
+      }
+    }
+    if (refreshUserReview) {
+      try {
+        await reloadAppliedUserReviewState(owner)
+      } catch (err) {
+        failStrictRead()
+        throw err
       }
     }
     const [
@@ -2710,6 +3107,20 @@ async function strictReloadAdminState(owner: AdminSessionOwner) {
       failStrictRead()
       throw new Error('admin_read_stale')
     }
+    if (
+      !isStrictAdminStats(nextStats)
+      || !isStrictAdminRows(nextReports, isStrictReportGroup)
+      || !isStrictAdminRows(nextSuspensions, isStrictSuspensionRow)
+      || !isStrictAdminRows(nextAppeals, isStrictAppealRow)
+      || !isStrictAdminRows(nextWarnings, isStrictWarningRow)
+      || !isStrictAdminRows(nextAudit, isStrictAuditRow)
+      || !isStrictAdminRows(nextPosts, isStrictPlazaPostRow)
+      || !isStrictAdminRows(nextBanners, isStrictBannerRow)
+      || !isStrictAdminTokenInventory(nextInventory)
+    ) {
+      failStrictRead()
+      throw new Error('admin_response_invalid')
+    }
     stats.value = nextStats
     statsReadState.value = {
       phase: 'ready', loading: false, stale: false, updatedAt: new Date().toISOString(),
@@ -2720,8 +3131,8 @@ async function strictReloadAdminState(owner: AdminSessionOwner) {
     applyAdminListFirstPage('warnings', nextWarnings)
     applyAdminListFirstPage('audit', nextAudit)
     applyPlazaFirstPages(nextPosts, nextBanners)
-    adminTokens.value = Array.isArray(nextInventory?.tokens) ? nextInventory.tokens : []
-    ownerRecovery.value = nextInventory?.owner_recovery || null
+    adminTokens.value = nextInventory.tokens
+    ownerRecovery.value = nextInventory.owner_recovery
     for (const tab of refreshedTabs) completeTabRead(tab)
     return
   }
@@ -2969,6 +3380,7 @@ function onLogout(expectedOwner?: AdminSessionOwner): boolean {
   adminSessionEpoch += 1
   adminUnlockAttemptEpoch += 1
   adminKey.value = ''
+  keyInput.value = ''
   unlocked.value = false
   checking.value = false
   try { uni.hideLoading() } catch {}
@@ -2977,6 +3389,9 @@ function onLogout(expectedOwner?: AdminSessionOwner): boolean {
 }
 
 function lockAdminSessionOnLeave() {
+  // Clear a token even if it was only pasted into the gate and never
+  // submitted. That value otherwise survives H5 background/foreground cycles.
+  keyInput.value = ''
   if (unlocked.value || adminKey.value) onLogout()
 }
 
@@ -3013,6 +3428,7 @@ async function loadStats(
   statsReadState.value = { ...statsReadState.value, loading: true }
   try {
     const nextStats = await apiGet<StatsRow>({ resource: 'stats' }, request)
+    if (!isStrictAdminStats(nextStats)) throw new Error('admin_response_invalid')
     if (isAdminRequestCurrent(request)) {
       stats.value = nextStats
       statsReadState.value = {
@@ -3061,6 +3477,7 @@ async function loadReports(
       pending: pendingOnly ? '1' : '0',
     }, request)) || []
     if (!isAdminRequestCurrent(request) || reportPendingOnly.value !== pendingOnly) return
+    if (!isStrictAdminRows(page, isStrictReportGroup)) throw new Error('admin_response_invalid')
     const visible = page.slice(0, REPORTS_PAGE)
     if (reset) {
       applyReportsFirstPage(page)
@@ -3162,6 +3579,7 @@ async function loadPagedAdminTab(
       offset: String(reset ? 0 : listOffsets.value[tab]),
     }, request)
     if (!isAdminRequestCurrent(request)) return
+    if (!isStrictPagedAdminRows(tab, page)) throw new Error('admin_response_invalid')
     const visible = page.slice(0, ADMIN_LIST_PAGE)
     if (reset) {
       applyAdminListFirstPage(tab, page)
@@ -3220,6 +3638,7 @@ async function loadTab(
     } else if (tab === 'tokens') {
       await loadTokens(tabRequest)
     } else if (tab === 'users') {
+      await reloadAppliedUserReviewState(tabRequest)
       if (isAdminRequestCurrent(tabRequest)) completeTabRead('users')
     }
   } catch (err: any) {
@@ -3233,10 +3652,11 @@ async function loadTab(
   }
 }
 
-type SafeAuditField = 'token_id' | 'case_id' | 'approval_ref' | 'op' | 'decision' | 'reason'
+type SafeAuditField = 'token_id' | 'admin_token_id' | 'case_id' | 'approval_ref' | 'op' | 'decision' | 'reason'
 
 const auditFieldLabels: Record<SafeAuditField, string> = {
   token_id: 'admin.auditFieldTokenId',
+  admin_token_id: 'admin.auditFieldTokenId',
   case_id: 'admin.auditFieldCaseId',
   approval_ref: 'admin.auditFieldApprovalRef',
   op: 'admin.auditFieldOperation',
@@ -3395,7 +3815,10 @@ function fmtAuditEvent(r: AuditRow): string {
         auditEvidence(details, ['reason', 'case_id', 'approval_ref']),
       )
     case 'admin_login':
-      return t('admin.auditLogin')
+      return withAuditEvidence(
+        t('admin.auditLogin'),
+        auditEvidence(details, ['admin_token_id']),
+      )
     case 'admin_unauthorized':
       return t('admin.auditUnauthorized')
     default:
@@ -4309,6 +4732,13 @@ function isExpired(endsAt: string | null): boolean {
 .d-thumb { width: 120px; height: 120px; border-radius: 8px; margin: 4px 0 10px; background: var(--bg-inset); cursor: pointer; }
 .d-appeal { background: var(--warning-soft); padding: 10px; border-radius: 6px; border-left: 3px solid var(--accent-warn); margin: 10px 0; }
 .d-actions { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* #ifdef H5 */
+@media (prefers-reduced-motion: reduce) {
+  .admin-refresh.spinning .admin-refresh-icon { animation: none; transform: none; }
+  .detail-sheet { transition: none; }
+}
+/* #endif */
 
 @media (max-width: 600px) {
   .admin { padding-left: 12px; padding-right: 12px; }

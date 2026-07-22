@@ -24,11 +24,20 @@ You only need to do this once per Vercel project.
    `20260718200000_recoverable_banner_uploads.sql`, followed by
    `20260719010000_admin_token_lifecycle_rpc.sql` and the forward-only
    `20260719020000_admin_owner_recovery_concurrency.sql`, then
-   `20260720035037_harden_admin_appeal_decisions_and_session_metadata.sql`;
+   `20260720035037_harden_admin_appeal_decisions_and_session_metadata.sql`,
+   `20260722145042_harden_last_active_owner_revoke.sql`, and
+   `20260722152000_harden_admin_invalid_auth_amplification.sql`, followed by
+   `20260722161200_protect_admin_owner_presentation_signal.sql`;
    later dashboard features also use 073, 075, 077, 078, 080, 081, and 083.
    For the existing production project, first reconcile its ledger and actual
    schema, then use the comprehensive audit's PRECHECK → backup/staging →
    migration → VERIFY path. Do not replay individual files from this list.
+
+   The three final `20260722` migrations are one ordered release tail. Run the 145042
+   PRECHECK, apply 145042, and run its VERIFY before running the 152000
+   PRECHECK, migration, and VERIFY. Then run the 161200 PRECHECK, migration,
+   and VERIFY. The later prechecks intentionally require their recorded
+   predecessors and must not be run out of order.
 
    The actor migration intentionally stops if any historical `admin_tokens`
    row has `admin_id IS NULL`. Do not guess an identity from mutable
@@ -122,7 +131,13 @@ You only need to do this once per Vercel project.
 
    Use the exact original owner `ADMIN_TOKEN`; the ledger is scoped to that
    actor token, so a replacement token is rejected locally while the manifest
-   remains intact. If that original token has expired or been revoked, retrieve
+   remains intact. A successful replay is not accepted as lifecycle proof by
+   itself: the CLI immediately reconciles the manifest hash against the
+   authoritative token row and reports vault success only when the same token ID
+   is still attached, unrevoked, and unexpired. A missing, mismatched, revoked,
+   expired, detached, or unavailable reconciliation exits nonzero and retains
+   the manifest with an explicit do-not-vault instruction. If that original
+   token has expired or been revoked, retrieve
    a currently authorized replacement owner token and run the read-only:
 
    ```bash

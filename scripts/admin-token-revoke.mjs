@@ -16,12 +16,13 @@
  *
  * Apply (email is intentionally forbidden because it is a cached snapshot):
  *   node scripts/admin-token-revoke.mjs --id <token-row-uuid> \
- *     --case-id SEC-2026-001 --approval-ref change-1234 --apply
+ *     --case-id SEC-2026-001 --approval-ref change-1234 \
+ *     --idempotency-key <case-recorded-uuid> --apply
  *   node scripts/admin-token-revoke.mjs --admin-id <profiles-uuid> \
- *     --case-id SEC-2026-001 --approval-ref change-1234 --apply
+ *     --case-id SEC-2026-001 --approval-ref change-1234 \
+ *     --idempotency-key <case-recorded-uuid> --apply
  */
 
-import crypto from 'node:crypto'
 import { argv, env, exit } from 'node:process'
 import { fetchBounded, normalizeSupabaseOrigin } from './http-boundary.mjs'
 
@@ -115,6 +116,9 @@ if (APPLY) {
     ) {
       fail(`${name} is required for --apply and must be 1-160 characters`)
     }
+  }
+  if (!IDEMPOTENCY_KEY_RAW) {
+    fail('--idempotency-key is required for --apply and must be the UUID recorded in the approved case')
   }
 }
 
@@ -267,9 +271,6 @@ if (EMAIL) {
 }
 
 if (!revocableTargets.length) {
-  if (APPLY && !IDEMPOTENCY_KEY_RAW) {
-    fail('Matched token(s) are already revoked; replay requires the original explicit --idempotency-key', 2)
-  }
   if (APPLY) {
     console.log('Inventory shows no unrevoked row; replaying only to reconcile the explicit Idempotency-Key.')
   }
@@ -279,7 +280,7 @@ if (!APPLY) {
   exit(0)
 }
 
-const idempotencyKey = (IDEMPOTENCY_KEY_RAW || crypto.randomUUID()).toLowerCase()
+const idempotencyKey = IDEMPOTENCY_KEY_RAW.toLowerCase()
 const body = ID
   ? {
       action: 'revoke_token',

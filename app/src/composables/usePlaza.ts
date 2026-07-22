@@ -343,7 +343,7 @@ export function usePlaza() {
       if (trimmed) {
         const safety = checkContent(trimmed, { kind: 'post' })
         if (!safety.ok) throw new Error(`moderation_block:${safety.category}:${safety.reason || ''}`)
-        if (isLocalDuplicate('post', trimmed)) throw new Error('duplicate_post')
+        if (isLocalDuplicate(accountToken, 'post', trimmed)) throw new Error('duplicate_post')
         duplicateHeld = true
         const ai = await remoteModerate(trimmed, accountToken)
         if (ai.flagged) throw new Error(`moderation_block:sensitive_word:ai(${ai.categories.join(',')})`)
@@ -452,7 +452,7 @@ export function usePlaza() {
       // Keep the duplicate hold for unknown/committed outcomes so a retry
       // cannot create a second post while realtime/history catches up.
       if (duplicateHeld && shouldCompensateMutationFailure(tagged)) {
-        clearLocalDuplicate('post', trimmed)
+        clearLocalDuplicate(accountToken, 'post', trimmed)
       }
       throw tagged
     }
@@ -649,7 +649,7 @@ export function usePlaza() {
     const safety = checkContent(trimmed, { kind: 'comment' })
     if (!safety.ok) throw new Error(`moderation_block:${safety.category}:${safety.reason || ''}`)
     const duplicateKind = `comment:${postId}`
-    if (isLocalDuplicate(duplicateKind, trimmed)) throw new Error('duplicate_comment')
+    if (isLocalDuplicate(accountToken, duplicateKind, trimmed)) throw new Error('duplicate_comment')
     let mutationStarted = false
     let committed = false
     const assertAccountCurrent = (afterCommit = false) => {
@@ -710,7 +710,7 @@ export function usePlaza() {
       // real row. Keep the local duplicate hold in those states so retry cannot
       // create a second comment while history/realtime catches up.
       if (shouldCompensateMutationFailure(tagged)) {
-        clearLocalDuplicate(duplicateKind, trimmed)
+        clearLocalDuplicate(accountToken, duplicateKind, trimmed)
       }
       throw tagged
     }

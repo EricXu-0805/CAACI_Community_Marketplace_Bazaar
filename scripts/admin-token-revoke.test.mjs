@@ -171,6 +171,12 @@ test('revoke validates one authoritative selector and governance inputs before n
     [['--email', 'old-alice@example.edu', '--apply'], /dry-run only/],
     [['--id', TOKEN_ID_A, '--apply'], /--case-id is required/],
     [['--id', TOKEN_ID_A, '--case-id', 'x', '--apply'], /--approval-ref is required/],
+    [[
+      '--id', TOKEN_ID_A,
+      '--case-id', 'x',
+      '--approval-ref', 'y',
+      '--apply',
+    ], /--idempotency-key is required for --apply/],
     [['--id', TOKEN_ID_A, '--idempotency-key', 'bad'], /--idempotency-key must be a UUID/],
     [['--id', TOKEN_ID_A, '--id', TOKEN_ID_B], /Duplicate argument: --id/],
     [['--id', TOKEN_ID_A, '--case-id', 'bad\nref', '--approval-ref', 'y', '--apply'], /--case-id is required/],
@@ -417,6 +423,8 @@ test('revoke source has no service-key, direct PostgREST PATCH, or email apply p
   assert.doesNotMatch(source, /method:\s*['"]PATCH['"]/)
   assert.match(source, /Authorization: `Bearer \$\{ADMIN_TOKEN\}`/)
   assert.match(source, /'Idempotency-Key': idempotencyKey/)
+  assert.doesNotMatch(source, /randomUUID/)
+  assert.match(source, /--idempotency-key is required for --apply/)
   assert.match(source, /action: 'revoke_admin_tokens'/)
   assert.match(source, /EMAIL && APPLY[\s\S]*dry-run only/)
 })

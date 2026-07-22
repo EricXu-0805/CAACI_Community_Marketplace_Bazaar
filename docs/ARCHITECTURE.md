@@ -1,9 +1,9 @@
 # Illini Market 技术架构
 
-> 最后更新：2026-07-19
-> 仓库状态：数据库已进入生产 34/35、应用尚待 matching canary 的 release candidate
-> 生产边界：已应用迁移与仓库当前 SQL/ledger 逐字一致；仅 WeChat 密码凭据退役
-> 迁移 `18140000` 待 passwordless canary。候选 API、H5 和小程序文件存在于
+> 最后更新：2026-07-23
+> 仓库状态：合并前数据库进入生产 34/38；三条生产 tail 完成后为 37/38，应用仍是待 matching canary 的 release candidate
+> 生产边界：已应用迁移与对应仓库 SQL/ledger 逐字一致；完成 145042、152000、
+> 161200 后仅 WeChat 密码凭据退役迁移 `18140000` 待 passwordless canary。候选 API、H5 和小程序文件存在于
 > 工作树不代表稳定应用已经上线。
 
 ## 系统总览

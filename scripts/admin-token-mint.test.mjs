@@ -16,6 +16,7 @@ const VALID_ADMIN_ID = '11111111-1111-4111-8111-111111111111'
 const IDEMPOTENCY_KEY = '22222222-2222-4222-8222-222222222222'
 const ADMIN_TOKEN = `iam_admin_${'a'.repeat(43)}`
 const OTHER_OWNER_TOKEN = `iam_admin_${'z'.repeat(43)}`
+const RECONCILIATION_SERVER_NOW = new Date().toISOString()
 const BASE_ARGS = [
   '--admin-id', VALID_ADMIN_ID,
   '--case-id', 'SEC-2026-001',
@@ -85,7 +86,9 @@ async function withMockAdmin(options, fn) {
       }
       if (request.method === 'GET' && url.pathname === '/api/admin' && url.searchParams.get('resource') === 'token_reconciliation') {
         response.statusCode = options.reconcileStatus || 200
-        response.end(JSON.stringify(options.reconcileBody || { data: { found: false } }))
+        response.end(JSON.stringify(options.reconcileBody || {
+          data: { found: false, server_now: RECONCILIATION_SERVER_NOW },
+        }))
         return
       }
       if (request.method === 'POST' && url.pathname === '/api/admin') {
@@ -343,6 +346,7 @@ test('response loss preserves a recovery manifest and resume replays the identic
   await withTempDir(async directory => {
     const outputFile = join(directory, 'outcome-unknown.json')
     let originalPosts
+    let recovery
     await withMockAdmin({ dropIssueResponses: 2 }, async (origin, requests) => {
       const result = await runMint([
         ...BASE_ARGS,
@@ -353,7 +357,7 @@ test('response loss preserves a recovery manifest and resume replays the identic
       assert.equal(result.code, 3)
       assert.match(result.stderr, /outcome unknown/)
       assert.match(result.stderr, /--resume-file/)
-      const recovery = JSON.parse(await readFile(outputFile, 'utf8'))
+      recovery = JSON.parse(await readFile(outputFile, 'utf8'))
       assert.match(recovery.token, /^iam_admin_[A-Za-z0-9_-]{43}$/)
       assert.equal((await stat(outputFile)).mode & 0o777, 0o600)
       originalPosts = requests.filter(request => request.method === 'POST')
@@ -364,17 +368,164 @@ test('response loss preserves a recovery manifest and resume replays the identic
       assert.doesNotMatch(`${result.stdout}${result.stderr}`, new RegExp(recovery.token))
     })
 
-    await withMockAdmin({}, async (origin, requests) => {
+    await withMockAdmin({
+      reconcileBody: {
+        data: {
+          found: true,
+          token_id: '33333333-3333-4333-8333-333333333333',
+          admin_id: recovery.admin_id,
+          role: recovery.role,
+          expires_at: recovery.expires_at,
+          revoked_at: null,
+          server_now: RECONCILIATION_SERVER_NOW,
+        },
+      },
+    }, async (origin, requests) => {
       const result = await runMint(['--resume-file', outputFile, '--apply'], origin)
       assert.equal(result.code, 0, result.stderr)
       const resumedPost = requests.find(request => request.method === 'POST')
       assert.deepEqual(resumedPost.body, originalPosts[0].body)
       assert.equal(resumedPost.headers['idempotency-key'], IDEMPOTENCY_KEY)
+      assert.deepEqual(requests.map(request => [request.method, request.search]), [
+        ['GET', '?resource=whoami'],
+        ['POST', ''],
+        ['GET', '?resource=token_reconciliation'],
+      ])
+      assert.equal(requests[2].headers['x-admin-token-hash'], recovery.token_hash)
+      assert.match(result.stdout, /active token state confirmed/)
       assert.ok(await stat(outputFile))
-      const recovery = JSON.parse(await readFile(outputFile, 'utf8'))
+      recovery = JSON.parse(await readFile(outputFile, 'utf8'))
       assert.doesNotMatch(`${result.stdout}${result.stderr}`, new RegExp(recovery.token))
     })
   })
+})
+
+test('resume refuses revoked, expired, or detached replay results before vault success', async () => {
+  for (const lifecycle of ['revoked', 'expired', 'detached']) {
+    await withTempDir(async directory => {
+      const manifestPath = join(directory, `${lifecycle}-resume.json`)
+      const token = `iam_admin_${lifecycle[0].repeat(43)}`
+      const now = Date.now()
+      const createdAt = new Date(
+        lifecycle === 'expired' ? now - 91 * 86_400_000 : now - 86_400_000,
+      ).toISOString()
+      const expiresAt = new Date(
+        lifecycle === 'expired' ? now - 86_400_000 : now + 89 * 86_400_000,
+      ).toISOString()
+      const manifest = {
+        kind: 'iam_admin_token_issue_recovery',
+        version: 2,
+        created_at: createdAt,
+        issuer_token_hash: crypto.createHash('sha256').update(ADMIN_TOKEN).digest('hex'),
+        issuer_admin_id: VALID_ADMIN_ID,
+        idempotency_key: IDEMPOTENCY_KEY,
+        admin_id: VALID_ADMIN_ID,
+        role: 'operator',
+        expires_at: expiresAt,
+        case_id: 'SEC-2026-STALE-RESUME',
+        approval_ref: 'change-stale-resume',
+        token,
+        token_hash: crypto.createHash('sha256').update(token).digest('hex'),
+      }
+      await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 })
+      const revokedAt = lifecycle === 'expired' ? null : new Date(now - 60_000).toISOString()
+
+      await withMockAdmin({
+        reconcileBody: {
+          data: {
+            found: true,
+            token_id: '33333333-3333-4333-8333-333333333333',
+            admin_id: lifecycle === 'detached' ? null : manifest.admin_id,
+            role: manifest.role,
+            expires_at: manifest.expires_at,
+            revoked_at: revokedAt,
+            server_now: new Date(now).toISOString(),
+          },
+        },
+      }, async (origin, requests) => {
+        const result = await runMint(['--resume-file', manifestPath, '--apply'], origin)
+        assert.equal(result.code, 3, `${lifecycle}: ${result.stderr}`)
+        assert.match(result.stderr, new RegExp(lifecycle === 'detached' ? 'detached and revoked' : lifecycle))
+        assert.match(result.stderr, /must not be vaulted/)
+        assert.doesNotMatch(result.stdout, /Import the manifest token into the approved vault/)
+        assert.deepEqual(requests.map(request => [request.method, request.search]), [
+          ['GET', '?resource=whoami'],
+          ['POST', ''],
+          ['GET', '?resource=token_reconciliation'],
+        ])
+        assert.equal(requests[2].headers['x-admin-token-hash'], manifest.token_hash)
+        assert.ok(await stat(manifestPath))
+        assert.doesNotMatch(`${result.stdout}${result.stderr}`, new RegExp(manifest.token))
+      })
+    })
+  }
+})
+
+test('reconciliation lifecycle follows database time when the operator clock is skewed', async () => {
+  const hostNow = Date.now()
+  for (const fixture of [
+    {
+      name: 'operator-behind-database',
+      createdAt: new Date(hostNow - 86_400_000).toISOString(),
+      expiresAt: new Date(hostNow + 86_400_000).toISOString(),
+      serverNow: new Date(hostNow + 2 * 86_400_000).toISOString(),
+      expected: 'expired',
+      vaultable: false,
+    },
+    {
+      name: 'operator-ahead-of-database',
+      createdAt: new Date(hostNow - 3 * 86_400_000).toISOString(),
+      expiresAt: new Date(hostNow - 86_400_000).toISOString(),
+      serverNow: new Date(hostNow - 2 * 86_400_000).toISOString(),
+      expected: 'active',
+      vaultable: true,
+    },
+  ]) {
+    await withTempDir(async directory => {
+      const manifestPath = join(directory, `${fixture.name}.json`)
+      const validToken = `iam_admin_${(fixture.vaultable ? 'v' : 'x').repeat(43)}`
+      const manifest = {
+        kind: 'iam_admin_token_issue_recovery',
+        version: 2,
+        created_at: fixture.createdAt,
+        issuer_token_hash: crypto.createHash('sha256').update(ADMIN_TOKEN).digest('hex'),
+        issuer_admin_id: VALID_ADMIN_ID,
+        idempotency_key: IDEMPOTENCY_KEY,
+        admin_id: VALID_ADMIN_ID,
+        role: 'operator',
+        expires_at: fixture.expiresAt,
+        case_id: 'SEC-2026-CLOCK-SKEW',
+        approval_ref: 'change-clock-skew',
+        token: validToken,
+        token_hash: crypto.createHash('sha256').update(validToken).digest('hex'),
+      }
+      await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 })
+
+      await withMockAdmin({
+        reconcileBody: {
+          data: {
+            found: true,
+            token_id: '33333333-3333-4333-8333-333333333333',
+            admin_id: manifest.admin_id,
+            role: manifest.role,
+            expires_at: manifest.expires_at,
+            revoked_at: null,
+            server_now: fixture.serverNow,
+          },
+        },
+      }, async origin => {
+        const result = await runMint(['--reconcile-file', manifestPath], origin, OTHER_OWNER_TOKEN)
+        assert.equal(result.code, 0, `${fixture.name}: ${result.stderr}`)
+        assert.match(result.stdout, new RegExp(`Lifecycle state: ${fixture.expected}`))
+        if (fixture.vaultable) {
+          assert.match(result.stdout, /Import the manifest token into the approved vault/)
+        } else {
+          assert.match(result.stdout, /Do not import this credential into a vault/)
+        }
+        assert.doesNotMatch(`${result.stdout}${result.stderr}`, new RegExp(validToken))
+      })
+    })
+  }
 })
 
 test('a definitive retry rejection cannot erase plaintext after an earlier outcome-unknown dispatch', async () => {
@@ -426,6 +577,7 @@ test('a replacement owner reconciles a response-lost manifest by authoritative t
           role: recovery.role,
           expires_at: recovery.expires_at,
           revoked_at: null,
+          server_now: RECONCILIATION_SERVER_NOW,
         },
       },
     }, async (origin, requests) => {
@@ -471,6 +623,7 @@ test('replacement-owner reconciliation recognizes detached revocation evidence w
           role: recovery.role,
           expires_at: recovery.expires_at,
           revoked_at: revokedAt,
+          server_now: RECONCILIATION_SERVER_NOW,
         },
       },
     }, async origin => {
@@ -503,6 +656,7 @@ test('reconciliation retains the manifest on no match or mismatched 2xx metadata
     const recovery = JSON.parse(await readFile(outputFile, 'utf8'))
     for (const reconcileBody of [
       { data: { found: false } },
+      { data: { found: false, server_now: RECONCILIATION_SERVER_NOW } },
       {
         data: {
           found: true,
@@ -511,6 +665,7 @@ test('reconciliation retains the manifest on no match or mismatched 2xx metadata
           role: recovery.role,
           expires_at: recovery.expires_at,
           revoked_at: null,
+          server_now: RECONCILIATION_SERVER_NOW,
         },
       },
     ]) {
@@ -646,6 +801,12 @@ test('mint source has no service-key/direct-table path and never logs plaintext'
   assert.match(source, /await handle\.sync\(\)[\s\S]*?await syncParentDirectory\(path\)/)
   assert.ok(source.indexOf('await syncParentDirectory(path)') < source.indexOf('result = await issueToken(manifest)'))
   assert.match(source, /--resume-file/)
+  const lifecycle = source.slice(
+    source.indexOf('function reconciledLifecycleState'),
+    source.indexOf('\nlet manifest'),
+  )
+  assert.match(lifecycle, /Date\.parse\(reconciled\.serverNow\)/)
+  assert.doesNotMatch(lifecycle, /Date\.now\(\)/)
   assert.doesNotMatch(source, /console\.(?:log|error|warn)\(\s*plaintext(?:\s*[,)]|\.)/)
   assert.ok(source.indexOf('await preflight()') < source.indexOf('crypto.randomBytes(32)'))
 })

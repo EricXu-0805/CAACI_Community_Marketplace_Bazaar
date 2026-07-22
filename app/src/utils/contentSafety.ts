@@ -300,12 +300,21 @@ export async function remoteModerate(
 const recentSubmissions = new Map<string, number>()
 const DUP_WINDOW_MS = 30_000
 
-function dupKey(kind: string, text: string): string {
-  return `${kind}::${normalize(text).slice(0, 256)}`
+function dupKey(accountToken: AccountRequestToken, kind: string, text: string): string {
+  // This registry lives for the lifetime of the JS bundle, which can span
+  // sign-out and a different user's sign-in. Bind each hold to both identity
+  // and auth generation so neither A -> B nor a replacement session for A can
+  // inherit another session's duplicate window.
+  return JSON.stringify([
+    accountToken.userId,
+    accountToken.generation,
+    kind,
+    normalize(text).slice(0, 256),
+  ])
 }
 
-export function isLocalDuplicate(kind: string, text: string): boolean {
-  const key = dupKey(kind, text)
+export function isLocalDuplicate(accountToken: AccountRequestToken, kind: string, text: string): boolean {
+  const key = dupKey(accountToken, kind, text)
   const now = Date.now()
   for (const [k, ts] of recentSubmissions) {
     if (now - ts > DUP_WINDOW_MS) recentSubmissions.delete(k)
@@ -320,6 +329,6 @@ export function isLocalDuplicate(kind: string, text: string): boolean {
 // records on attempt to stop an accidental rapid double-tap, but a message
 // that failed to send must stay retryable — otherwise tapping "retry" within
 // the 30s window is wrongly blocked as a duplicate even though nothing landed.
-export function clearLocalDuplicate(kind: string, text: string): void {
-  recentSubmissions.delete(dupKey(kind, text))
+export function clearLocalDuplicate(accountToken: AccountRequestToken, kind: string, text: string): void {
+  recentSubmissions.delete(dupKey(accountToken, kind, text))
 }

@@ -1,9 +1,10 @@
 # Illini Market 产品需求文档
 
 > 版本：Release Candidate 2026-07
-> 最后更新：2026-07-19
-> 状态：核心产品已实现；生产数据库已按精确 ledger 应用候选链 34/35，稳定
-> 应用 bundle 仍是旧版本。正式 beta 仍受 matching canary、WeChat 密钥与凭据
+> 最后更新：2026-07-23
+> 状态：核心产品已实现；合并前生产数据库已按精确 ledger 应用候选链 34/38；
+> 145042、152000、161200 三条生产 tail 完成后为 37/38，仅微信密码凭据退役
+> 仍待匹配的 passwordless canary。稳定应用 bundle 仍是旧版本。正式 beta 仍受 matching canary、WeChat 密钥与凭据
 > 退役、HIBP、首位 Owner、真实账号/provider/真机和运营门禁约束。
 
 ## 1. 产品定位

@@ -445,7 +445,7 @@ export function useItems() {
       if (!descCheck.ok) throw new Error(`moderation_block:${descCheck.category}:${descCheck.reason || ''}`)
     }
     const duplicateText = `${input.title}::${input.description}`
-    if (isLocalDuplicate('item', duplicateText)) {
+    if (isLocalDuplicate(accountToken, 'item', duplicateText)) {
       throw new Error('duplicate_item')
     }
     let mutationStarted = false
@@ -508,7 +508,7 @@ export function useItems() {
       // A stale completion can be a real committed insert for A. Keep the
       // duplicate hold in that case; only failed inserts should be retryable.
       if (shouldCompensateMutationFailure(tagged)) {
-        clearLocalDuplicate('item', duplicateText)
+        clearLocalDuplicate(accountToken, 'item', duplicateText)
       }
       throw tagged
     }

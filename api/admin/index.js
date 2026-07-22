@@ -17,7 +17,7 @@ export const config = { runtime: 'edge' }
  *
  *   No shared-key fallback (ADM-SEC-01): the legacy ADMIN_API_KEY path
  *   was removed once every admin held a per-admin token. A bearer that
- *   doesn't resolve via admin_token_authorization gets a 401 — there is no
+ *   doesn't resolve via admin_token_authorization_v2 gets a 401 — there is no
  *   second chance. Finish the cutover by deleting the ADMIN_API_KEY env
  *   var (it is no longer read).
  *
@@ -51,6 +51,8 @@ const SENTRY_TIMEOUT_MS = 2000
 const UPSTREAM_RESPONSE_MAX_BYTES = 2 * 1024 * 1024
 const ADMIN_JSON_MAX_BYTES = 64 * 1024
 const REQUEST_BODY_TIMEOUT_MS = 5000
+const ADMIN_UNAUTHORIZED_AUDIT_MAX = 1
+const ADMIN_UNAUTHORIZED_AUDIT_WINDOW_SECS = 60 * 60
 const ADMIN_BEARER_PATTERN = /^iam_admin_[A-Za-z0-9_-]{43}$/
 const UNSAFE_ADMIN_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/u
 
@@ -288,7 +290,7 @@ async function hmacHex(label, value) {
  *   { ok: false, source: 'missing' | 'invalid' | 'unavailable' }
  *
  * There is NO shared-key fallback: every admin must present a per-admin
- * iam_admin_ token that resolves via admin_token_authorization. The legacy
+ * iam_admin_ token that resolves via admin_token_authorization_v2. The legacy
  * ADMIN_API_KEY path was removed (ADM-SEC-01) once all admins were on
  * per-admin tokens; delete the ADMIN_API_KEY env var to finish the cutover.
  */
@@ -328,8 +330,8 @@ async function validateBearer(bearer) {
       ])
       && isUuid(row.token_id)
       && isUuid(row.admin_id)
-      && isBoundedNullableIdentity(row.admin_name, 100, false)
-      && isBoundedNullableIdentity(row.admin_email, 200, true)
+      && isBoundedAdminIdentity(row.admin_name, 100, false)
+      && isBoundedAdminIdentity(row.admin_email, 200, true)
       && ADMIN_ROLES.has(row.role)
       && isNullableTimestamp(row.expires_at)
       && isIsoTimestamp(row.server_now)
@@ -366,13 +368,16 @@ async function validateBearer(bearer) {
   return { ok: false, source: 'invalid' }
 }
 
-function isBoundedNullableIdentity(value, maxLength, requireEmailShape) {
-  if (value === null) return true
-  return typeof value === 'string'
-    && value.length >= 1
-    && value.length <= maxLength
+function isBoundedAdminIdentity(value, maxLength, requireEmailShape) {
+  if (typeof value !== 'string') return false
+  // PostgreSQL length(text) counts Unicode code points, while JavaScript's
+  // string.length counts UTF-16 code units. Iterate code points so the Edge
+  // contract and admin_token_identity_safe() accept the same astral text.
+  const characterLength = Array.from(value).length
+  return characterLength >= 1
+    && characterLength <= maxLength
     && !hasUnsafeAdminText(value)
-    && (!requireEmailShape || (value.length >= 3 && value.includes('@')))
+    && (!requireEmailShape || (characterLength >= 3 && value.includes('@')))
 }
 
 function hasExactRoleCapabilities(role, capabilities) {
@@ -641,8 +646,12 @@ function roleCanRead(role, resource) {
   return false
 }
 
-function ownerRecoveryHealth(tokens) {
-  const now = Date.now()
+function ownerRecoveryHealth(tokens, serverNow) {
+  // Use the timestamp from the same database authorization snapshot that
+  // admitted this request. Recovery mutations are decided with the database
+  // clock, so a skewed Edge host clock must not produce contradictory health.
+  const now = Date.parse(serverNow)
+  if (!Number.isFinite(now)) throw codedError('admin_upstream_malformed')
   const minimumRecoveryHorizon = now + 24 * 60 * 60 * 1000
   const activeOwnerTokens = tokens.filter(token => {
     if (token?.role !== 'owner' || !token?.admin_id || token?.revoked_at) return false
@@ -959,13 +968,19 @@ async function executeBannerUploadStage(fn, args, { allowedStatuses, expectedObj
 
 async function recordAdminLogin(auth) {
   if (!SUPABASE_URL || !SERVICE_KEY) return
-  if (!auth?.adminId) return
+  if (!auth?.adminId || !auth?.tokenId) return
   try {
     await rpc('record_audit', {
       event_kind_in: 'admin_login',
       actor_id_in:   auth.adminId,
       target_id_in:  null,
-      details_in:    { auth_source: auth.source, role: auth.role },
+      details_in: {
+        auth_source: auth.source,
+        role: auth.role,
+        // Login telemetry does not run inside the idempotent mutation GUC
+        // context, so retain the validated token identifier explicitly.
+        admin_token_id: auth.tokenId,
+      },
     })
   } catch (err) {
     // A login event is telemetry, not a business mutation. Keep unlock usable
@@ -988,8 +1003,8 @@ async function handleGet(request, auth) {
     /*
      * Returns the current admin's identity so the dashboard can show
      * "logged in as <name>" in its header. Pulled from the auth result
-     * we already computed in checkAuth — no extra DB roundtrip. Legacy
-     * shared-key sessions return null fields (no per-admin identity).
+     * we already computed in checkAuth — no extra DB roundtrip. Every
+     * supported session is bound to one per-admin token identity.
      */
     return json({
       data: {
@@ -1113,8 +1128,8 @@ async function handleGet(request, auth) {
         isUuid(row.admin_id)
         || (row.admin_id === null && row.revoked_at !== null)
       )
-      || !isBoundedNullableIdentity(row.admin_name, 100, false)
-      || !isBoundedNullableIdentity(row.admin_email, 200, true)
+      || !isBoundedAdminIdentity(row.admin_name, 100, false)
+      || !isBoundedAdminIdentity(row.admin_email, 200, true)
       || !ADMIN_ROLES.has(row.role)
       || !isIsoTimestamp(row.created_at)
       || !isNullableTimestamp(row.last_used_at)
@@ -1124,7 +1139,7 @@ async function handleGet(request, auth) {
     return json({
       data: {
         tokens: data,
-        owner_recovery: ownerRecoveryHealth(data),
+        owner_recovery: ownerRecoveryHealth(data, auth.serverNow),
       },
     })
   }
@@ -1142,7 +1157,9 @@ async function handleGet(request, auth) {
       throw codedError('admin_upstream_failed')
     }
     if (!Array.isArray(rows) || rows.length > 1) throw codedError('admin_upstream_malformed')
-    if (rows.length === 0) return json({ data: { found: false } })
+    if (rows.length === 0) {
+      return json({ data: { found: false, server_now: auth.serverNow } })
+    }
     const row = rows[0]
     if (
       !hasExactKeys(row, ['id', 'admin_id', 'role', 'expires_at', 'revoked_at'])
@@ -1163,6 +1180,7 @@ async function handleGet(request, auth) {
         role: row.role,
         expires_at: row.expires_at,
         revoked_at: row.revoked_at,
+        server_now: auth.serverNow,
       },
     })
   }
@@ -1619,7 +1637,13 @@ async function handlePost(request, auth) {
     if (!ADMIN_ROLES.has(body.role)) return json({ error: 'invalid_role' }, 400)
     if (!isIsoTimestamp(body.expires_at)) return json({ error: 'invalid_expiry' }, 400)
     const expiresAt = Date.parse(body.expires_at)
-    if (expiresAt <= Date.now() || expiresAt > Date.now() + 365 * 24 * 60 * 60 * 1000) {
+    const authorizationTime = Date.parse(auth.serverNow)
+    if (
+      !Number.isFinite(authorizationTime)
+      || expiresAt <= authorizationTime
+      || expiresAt > authorizationTime + 365 * 24 * 60 * 60 * 1000
+      || (body.role === 'owner' && expiresAt < authorizationTime + 24 * 60 * 60 * 1000)
+    ) {
       return json({ error: 'invalid_expiry' }, 400)
     }
     if (!isAuditEvidence(body.case_id)) return json({ error: 'invalid_case_id' }, 400)
@@ -1674,13 +1698,15 @@ export default async function handler(request) {
    * response fails closed before authorization/audit RPCs so an outage cannot
    * be turned into an unbounded database-call amplifier.
    */
+  let networkFingerprint = ''
   if (SUPABASE_URL && SERVICE_KEY) {
     try {
       const forwarded = request.headers.get('x-vercel-forwarded-for')
         || request.headers.get('x-forwarded-for')
         || ''
       const ip = forwarded.split(',')[0].trim() || 'unknown'
-      const bucket = 'admin:network:' + (await hmacHex('admin-rate-network', ip))
+      networkFingerprint = await hmacHex('admin-rate-network', ip)
+      const bucket = 'admin:network:' + networkFingerprint
       const allowed = await rpc('edge_rate_hit', { bucket_in: bucket, max_in: 120, window_secs_in: 60 })
       if (allowed === false) return json({ error: 'rate_limited' }, 429)
       if (allowed !== true) return json({ error: 'rate_limit_unavailable' }, 503)
@@ -1702,20 +1728,41 @@ export default async function handler(request) {
      * presented bearer) so the audit log itself doesn't become a
      * leak vector.
      */
-    if (bearer && SUPABASE_URL && SERVICE_KEY) {
+    if (bearer && SUPABASE_URL && SERVICE_KEY && networkFingerprint) {
+      let auditAllowed = false
       try {
-        const presentedHash = await sha256Hex(bearer)
-        await rpc('record_audit', {
-          event_kind_in: 'admin_unauthorized',
-          actor_id_in:   null,
-          target_id_in:  null,
-          details_in: {
-            source: auth.source,
-            hash_prefix: presentedHash.slice(0, 8),
-          },
+        // Persistent admin audit evidence is deliberately sampled at most once
+        // per trusted network fingerprint per hour. The high-volume counters
+        // stay in the retention-bounded edge_rate_limits table; a random-token
+        // flood cannot grow the immutable admin audit ledger on every request.
+        // A limiter outage/malformed response fails closed for the optional
+        // audit append and never turns an invalid credential into a 5xx.
+        auditAllowed = await rpc('edge_rate_hit', {
+          bucket_in: `admin:unauthorized-audit:${networkFingerprint}`,
+          max_in: ADMIN_UNAUTHORIZED_AUDIT_MAX,
+          window_secs_in: ADMIN_UNAUTHORIZED_AUDIT_WINDOW_SECS,
         })
-      } catch (err) {
-        await reportAuditFailure('admin_unauthorized', err)
+      } catch {
+        // Optional telemetry must not create a second outage/amplification
+        // path. The authentication decision remains the same fail-closed 401.
+      }
+      if (auditAllowed === true) {
+        try {
+          const presentedHash = await sha256Hex(bearer)
+          await rpc('record_audit', {
+            event_kind_in: 'admin_unauthorized',
+            actor_id_in:   null,
+            target_id_in:  null,
+            details_in: {
+              source: auth.source,
+              hash_prefix: presentedHash.slice(0, 8),
+              audit_max_per_network: ADMIN_UNAUTHORIZED_AUDIT_MAX,
+              audit_window_secs: ADMIN_UNAUTHORIZED_AUDIT_WINDOW_SECS,
+            },
+          })
+        } catch (err) {
+          await reportAuditFailure('admin_unauthorized', err)
+        }
       }
     }
     return json({ error: auth.source === 'missing' ? 'unauthorized' : 'unauthorized' }, 401)

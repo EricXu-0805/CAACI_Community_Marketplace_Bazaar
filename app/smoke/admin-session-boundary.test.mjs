@@ -166,13 +166,55 @@ test('admin unlock removes the submitted secret and presents only localized erro
 test('leaving or backgrounding the admin page always locks the in-memory session', async () => {
   const admin = await readFile(new URL('src/pages/admin/index.vue', appRoot), 'utf8')
 
-  assert.match(admin, /function lockAdminSessionOnLeave\(\) \{\s*if \(unlocked\.value \|\| adminKey\.value\) onLogout\(\)/)
+  const logout = admin.slice(
+    admin.indexOf('function onLogout'),
+    admin.indexOf('\nfunction lockAdminSessionOnLeave'),
+  )
+  const leave = admin.slice(
+    admin.indexOf('function lockAdminSessionOnLeave'),
+    admin.indexOf('\nfunction onAdminVisibilityChange'),
+  )
+  assert.match(logout, /adminKey\.value = ''\s+keyInput\.value = ''/)
+  assert.match(leave, /keyInput\.value = ''[\s\S]*?if \(unlocked\.value \|\| adminKey\.value\) onLogout\(\)/)
   assert.match(admin, /onHide\(lockAdminSessionOnLeave\)/)
   assert.match(admin, /onUnload\(lockAdminSessionOnLeave\)/)
   assert.match(admin, /document\.visibilityState === 'hidden'[^]*?lockAdminSessionOnLeave\(\)/)
   assert.match(admin, /document\.addEventListener\('visibilitychange', onAdminVisibilityChange\)/)
   assert.match(admin, /document\.removeEventListener\('visibilitychange', onAdminVisibilityChange\)/)
   assert.match(admin, /onUnmounted\(\(\) => \{[^]*?lockAdminSessionOnLeave\(\)/)
+})
+
+test('an authenticated 401 locks once with an explicit localized explanation', async () => {
+  const [admin, zh, en] = await Promise.all([
+    readFile(new URL('src/pages/admin/index.vue', appRoot), 'utf8'),
+    readFile(new URL('src/composables/i18n/messages/zh.ts', appRoot), 'utf8'),
+    readFile(new URL('src/composables/i18n/messages/en.ts', appRoot), 'utf8'),
+  ])
+  const loss = admin.slice(
+    admin.indexOf('function lockAdminAfterAuthorizationLoss'),
+    admin.indexOf('\nasync function runAdminJournalStep'),
+  )
+  const get = admin.slice(
+    admin.indexOf('async function apiGet<T>'),
+    admin.indexOf('\ntype AdminMutationJournalHandle'),
+  )
+  const post = admin.slice(
+    admin.indexOf('async function apiPostLocked<T>'),
+    admin.indexOf('\ntype AdminIdempotencyOutcomeStatus'),
+  )
+  const upload = admin.slice(
+    admin.indexOf('async function uploadBannerFileLocked'),
+    admin.indexOf('\nconst PLAZA_PAGE'),
+  )
+
+  assert.match(loss, /if \(onLogout\(owner\)\)[\s\S]*?t\('admin\.sessionInvalidated'\)[\s\S]*?throw new AdminSessionChangedError\(\)/)
+  assert.match(get, /if \(r\.status === 401\) \{\s+if \(unlocked\.value\) return lockAdminAfterAuthorizationLoss\(owner\)\s+throw new Error\('unauthorized'\)/)
+  for (const transport of [post, upload]) {
+    assert.match(transport, /status === 401\)[\s\S]*?if \(sawOutcomeUnknown\) return lockAdminAfterUnknownOutcome/)
+    assert.match(transport, /consumeResolvedAdminIdempotencyKey\(journalHandle\)[\s\S]*?return lockAdminAfterAuthorizationLoss/)
+  }
+  assert.match(zh, /'admin\.sessionInvalidated':\s*'[^']+'/)
+  assert.match(en, /'admin\.sessionInvalidated':\s*'[^']+'/)
 })
 
 test('chat keyboard diagnostics require both a DEV build and the explicit debug query', async () => {

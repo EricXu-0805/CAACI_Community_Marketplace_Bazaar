@@ -22,7 +22,7 @@ test('appeal cards expose three reasoned decisions and keep information requests
   assert.match(source, /appealDecisionIds\.includes\(a\.id\)/)
   assert.match(source, /type AppealReviewStatus = 'pending' \| 'more_information_required'/)
   assert.match(source, /appeal_submitted_at: string \| null/)
-  assert.match(source, /review_status\?: AppealReviewStatus \| null/)
+  assert.match(source, /review_status: AppealReviewStatus/)
   assert.match(source, /appealMoreInfoRequestedAt\(a\)/)
   assert.match(source, /admin\.appealManualContact/)
   assert.match(source, /filed: a\.appeal_submitted_at \? fmtTime\(a\.appeal_submitted_at\) : t\('admin\.appealFiledTimeUnknown'\)/)
@@ -43,9 +43,11 @@ test('appeal cards expose three reasoned decisions and keep information requests
 })
 
 test('whoami rejects missing, null, or extra session metadata and uses database time', () => {
-  assert.match(source, /interface WhoAmI[\s\S]*?token_id: string[\s\S]*?expires_at: string \| null[\s\S]*?server_now: string/)
+  assert.match(source, /interface WhoAmI[\s\S]*?admin_name: string[\s\S]*?admin_email: string[\s\S]*?token_id: string[\s\S]*?expires_at: string \| null[\s\S]*?server_now: string/)
   const validator = functionBlock('isStrictWhoAmI', 'isAdminRole')
   assert.match(validator, /ADMIN_TOKEN_ID_PATTERN\.test\(row\.token_id\)/)
+  assert.match(validator, /isBoundedAdminIdentity\(row\.admin_name, 100\)/)
+  assert.match(validator, /isBoundedAdminIdentity\(row\.admin_email, 200, true\)/)
   assert.match(validator, /Object\.keys\(row\)\.sort\(\)/)
   assert.match(validator, /actual\.length !== expected\.length/)
   assert.match(validator, /actual\.some\(\(key, index\) => key !== expected\[index\]\)/)
@@ -116,9 +118,10 @@ test('audit rendering is event-specific and only exposes bounded allowlisted fie
   for (const kind of ['token_issued', 'token_revoked', 'post_pin_changed', 'banner_changed', 'appeal_decided', 'appeal_more_information_requested']) {
     assert.match(audit, new RegExp(`case '${kind}'`))
   }
-  for (const field of ['token_id', 'case_id', 'approval_ref', 'op', 'decision', 'reason']) {
+  for (const field of ['token_id', 'admin_token_id', 'case_id', 'approval_ref', 'op', 'decision', 'reason']) {
     assert.match(audit, new RegExp(`['"]${field}['"]`))
   }
+  assert.match(audit, /case 'admin_login':[\s\S]*?auditEvidence\(details, \['admin_token_id'\]\)/)
   assert.doesNotMatch(audit, /JSON\.stringify\(r\.details|JSON\.stringify\(details/)
 })
 

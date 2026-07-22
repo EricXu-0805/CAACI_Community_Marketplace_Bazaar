@@ -220,6 +220,65 @@ test('stale notification failures are silent and auth-waiting forms acquire a si
   }
 })
 
+test('Illini verification binds one normalized email to a mutually exclusive flow', () => {
+  const illini = source('src/pages/illini-verify/index.vue')
+  assert.match(illini, /const verificationEmail = ref\(''\)/)
+  assert.match(illini, /const flowBusy = computed\(\(\) => sending\.value \|\| verifying\.value\)/)
+  assert.match(illini, /v-model="email"[^>]*:disabled="flowBusy"/)
+  assert.match(illini, /v-model="code"[^>]*:disabled="flowBusy"/)
+  assert.match(illini, /illini\.codeHint', \{ email: verificationEmail \}/)
+  assert.match(illini, /resendCooldown > 0 \|\| flowBusy/)
+  assert.match(illini, /@click="onChangeEmail"/)
+
+  const send = functionBlock(illini, 'async function onSendCode()', 'async function onResend()')
+  assert.match(send, /if \(flowBusy\.value\) return/)
+  assert.ok(send.indexOf('const emailSnapshot = normalizeIlliniEmail(email.value)') < send.indexOf('sending.value = true'))
+  assert.match(send, /verificationEmail\.value = emailSnapshot[^]*?email\.value = emailSnapshot[^]*?step\.value = 'code'/)
+
+  const resend = functionBlock(illini, 'async function onResend()', 'async function onVerify()')
+  assert.match(resend, /resendCooldown\.value > 0 \|\| flowBusy\.value/)
+  assert.ok(resend.indexOf('const emailSnapshot = verificationEmail.value') < resend.indexOf('sending.value = true'))
+
+  const verify = functionBlock(illini, 'async function onVerify()', 'function onChangeEmail()')
+  assert.match(verify, /if \(flowBusy\.value\) return/)
+
+  const changeEmail = functionBlock(illini, 'function onChangeEmail()', 'function goBack()')
+  assert.match(changeEmail, /if \(flowBusy\.value\) return/)
+  assert.ok(changeEmail.indexOf('pageEpoch += 1') < changeEmail.indexOf("step.value = 'email'"))
+  assert.match(changeEmail, /verificationEmail\.value = ''[^]*?code\.value = ''[^]*?stopCooldown\(\)/)
+})
+
+test('local duplicate holds are isolated by account identity and session generation', async () => {
+  const contentSafety = source('src/utils/contentSafety.ts')
+  const normalizeBlock = functionBlock(contentSafety, 'function normalize', 'const CN_MOBILE')
+  const duplicateStart = contentSafety.indexOf('const recentSubmissions')
+  assert.ok(duplicateStart >= 0)
+  const duplicateModule = await import(compiledDataUrl(`${normalizeBlock}\n${contentSafety.slice(duplicateStart)}`))
+  const accountA = { userId: 'account-a', generation: 4 }
+  const accountB = { userId: 'account-b', generation: 5 }
+  const replacementSessionA = { userId: 'account-a', generation: 6 }
+
+  assert.equal(duplicateModule.isLocalDuplicate(accountA, 'post', 'same post'), false)
+  assert.equal(duplicateModule.isLocalDuplicate(accountA, 'post', 'same post'), true)
+  assert.equal(duplicateModule.isLocalDuplicate(accountB, 'post', 'same post'), false)
+  assert.equal(duplicateModule.isLocalDuplicate(replacementSessionA, 'post', 'same post'), false)
+
+  duplicateModule.clearLocalDuplicate(accountB, 'post', 'same post')
+  assert.equal(duplicateModule.isLocalDuplicate(accountB, 'post', 'same post'), false)
+  assert.equal(duplicateModule.isLocalDuplicate(accountA, 'post', 'same post'), true)
+
+  for (const path of [
+    'src/composables/useItems.ts',
+    'src/composables/usePlaza.ts',
+    'src/composables/useMessages.ts',
+  ]) {
+    const consumer = source(path)
+    for (const call of consumer.match(/(?:isLocalDuplicate|clearLocalDuplicate)\([^\n]+/g) || []) {
+      assert.match(call, /LocalDuplicate\(accountToken, /, `${path} scopes ${call}`)
+    }
+  }
+})
+
 test('polling, offer, moderation and view-count continuations retain their entry owner', () => {
   const realtime = source('src/composables/useRealtimeFallback.ts')
   const longPoll = functionBlock(realtime, 'function startLongPoll', 'function directConversationPoll')

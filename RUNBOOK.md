@@ -137,9 +137,13 @@ node scripts/admin-token-mint.mjs \
 Do not add identity/role/case/expiry flags on resume: the manifest owns the
 immutable request. Resume also requires the exact original owner `ADMIN_TOKEN`
 because the database idempotency ledger is scoped to that actor token; a
-replacement owner token fails closed and leaves the manifest intact. After a
-confirmed success, import its token into the
-approved vault and securely remove the local manifest.
+replacement owner token fails closed and leaves the manifest intact. A replay
+2xx is followed immediately by authoritative reconciliation of the manifest
+hash. Only the same attached, unrevoked, unexpired token ID is a confirmed
+success; missing, mismatched, inactive, detached, or unavailable state exits
+nonzero, retains the manifest, and must not be vaulted. After active-state
+confirmation, import its token into the approved vault and securely remove the
+local manifest.
 
 The token starts with `iam_admin_`, but that prefix is **not** an automatic
 GitHub secret-scanning guarantee. Configure a custom secret pattern for
@@ -834,7 +838,15 @@ event if the original worker subsequently fails.
     - `20260722081141` future-function default-privilege hardening plus the
       retirement of only the three stale authenticated overloads for
       onboarding, consent and appeals. The expected-account replacements must
-      already be the only supported client calls before this migration runs.
+      already be the only supported client calls before this migration runs;
+    - `20260722145042` last-active-owner continuity and identity-safety
+      reconciliation across issue, authorization, inventory, exact/batch
+      revoke and direct table mutation;
+    - `20260722152000` indexed read-only negative authorization probe so random
+      invalid bearer traffic does not acquire the global administrator locks;
+    - `20260722161200` forward-only trigger reconciliation that prevents a
+      direct `last_used_at`-only write from clearing the final recoverable
+      owner's presentation signal.
 
     Run `PRECHECK_20260719_admin_token_lifecycle_rpc.sql` before `19010000`.
     After `19010000` is recorded, run the distinct
@@ -853,6 +865,16 @@ event if the original worker subsequently fails.
     recording. If the approved executor cannot preserve those settings, stop;
     drain the sessions reported by the precheck and use a reviewed maintenance
     path rather than allowing the table lock to wait without a deadline.
+
+    Before `145042`, run
+    `PRECHECK_20260722145042_harden_last_active_owner_revoke.sql`; after apply,
+    run its VERIFY. Only then run the 152000 PRECHECK, migration, and VERIFY.
+    The second precheck deliberately requires the first migration's canonical
+    identity predicate. After 152000 VERIFY, run
+    `PRECHECK_20260722161200_protect_admin_owner_presentation_signal.sql`, apply
+    161200, and run its VERIFY. All three matching rollback-only REGRESSION
+    scripts belong on an isolated staging/local database and must never run
+    against production.
 
     Before `19030000`, run its PRECHECK. A missing target index on a relation
     above 64 MiB is a stop condition: prebuild the exact index concurrently in

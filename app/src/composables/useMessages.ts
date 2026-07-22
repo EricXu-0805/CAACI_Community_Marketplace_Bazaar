@@ -353,7 +353,7 @@ export function useMessages() {
         const safety = checkContent(content, { kind: 'message', allowLinks: false })
         if (!safety.ok) throw new Error(`moderation_block:${safety.category}:${safety.reason || ''}`)
         if (!options?.isRetry) {
-          if (isLocalDuplicate(`msg:${conversationId}`, content)) throw new Error('duplicate_message')
+          if (isLocalDuplicate(accountToken, `msg:${conversationId}`, content)) throw new Error('duplicate_message')
           duplicateHeld = true
         }
       }
@@ -466,7 +466,7 @@ export function useMessages() {
       // Unknown transport outcomes may already be committed; keep the hold so
       // realtime/history can reconcile instead of encouraging a duplicate.
       if (duplicateHeld && shouldCompensateMutationFailure(tagged)) {
-        clearLocalDuplicate(`msg:${conversationId}`, content)
+        clearLocalDuplicate(accountToken, `msg:${conversationId}`, content)
       }
       throw tagged
     }

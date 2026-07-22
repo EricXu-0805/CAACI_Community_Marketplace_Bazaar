@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
+import ts from '../node_modules/typescript/lib/typescript.js'
 
 const source = await readFile(
   new URL('../src/pages/admin/index.vue', import.meta.url),
@@ -81,6 +82,37 @@ test('search, linked accounts, detail and uploads use latest-request ownership',
   assert.match(source, /function closeDetail[\s\S]*?invalidateAdminRequest\('detail'\)/)
   assert.match(source, /function editBanner[\s\S]*?invalidateAdminRequest\('banner-upload'\)/)
   assert.match(source, /function resetBannerForm[\s\S]*?invalidateAdminRequest\('banner-upload'\)/)
+})
+
+test('users refresh re-reads the applied query and any expanded linked accounts', () => {
+  const refresh = source.slice(
+    source.indexOf('async function reloadAppliedUserReviewState'),
+    source.indexOf('\nconst detailOpen'),
+  )
+  const loadTab = source.slice(
+    source.indexOf('async function loadTab'),
+    source.indexOf('\ntype SafeAuditField'),
+  )
+  const ban = source.slice(
+    source.indexOf('function onBanPrompt'),
+    source.indexOf('\nfunction fmtTime'),
+  )
+  const queryReset = source.slice(
+    source.indexOf('function onUserQueryInput'),
+    source.indexOf('\nasync function searchUsers'),
+  )
+
+  assert.match(refresh, /const query = appliedUserQuery\.value\.trim\(\)/)
+  assert.match(refresh, /const linkedTarget = linkedFor\.value/)
+  assert.match(refresh, /beginAdminRequest\('search-users', owner\)/)
+  assert.match(refresh, /beginAdminRequest\('linked-accounts', owner\)/)
+  assert.match(refresh, /resource: 'search_users'[\s\S]*?resource: 'linked_accounts'/)
+  assert.match(refresh, /appliedUserQuery\.value\.trim\(\) === query/)
+  assert.match(refresh, /linkedFor\.value === linkedTarget/)
+  assert.match(refresh, /throw new Error\('admin_response_invalid'\)/)
+  assert.match(loadTab, /tab === 'users'[\s\S]*?await reloadAppliedUserReviewState\(tabRequest\)[\s\S]*?completeTabRead\('users'\)/)
+  assert.match(ban, /await Promise\.all\(\[loadTab\(activeTab\.value, owner, true\), loadStats\(owner, true\)\]\)/)
+  assert.match(queryReset, /invalidateAdminRequest\('linked-accounts'\)[\s\S]*?linkedFor\.value = null[\s\S]*?linkedAccounts\.value = \[\]/)
 })
 
 test('report detail exposes one destructive takedown action', () => {
@@ -171,6 +203,37 @@ test('mobile admin controls meet the local touch and wrapping contract', () => {
   assert.match(source, /\.mini-btn,[\s\S]*?min-height: 44px;/)
   assert.match(source, /\.detail-close \{ width: 44px; height: 44px; \}/)
   assert.match(source, /class="dash-loading" role="status" aria-live="polite"/)
+})
+
+test('admin motion respects the live reduced-motion preference', () => {
+  const preference = source.slice(
+    source.indexOf('function adminPrefersReducedMotion'),
+    source.indexOf('\nfunction editBanner'),
+  )
+  const edit = source.slice(
+    source.indexOf('function editBanner'),
+    source.indexOf('\nfunction resetBannerForm'),
+  )
+
+  assert.match(preference, /typeof window !== 'undefined'/)
+  assert.match(preference, /typeof window\.matchMedia === 'function'/)
+  assert.match(preference, /window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches/)
+  assert.match(edit, /const reduceMotion = adminPrefersReducedMotion\(\)/)
+  assert.match(edit, /duration: reduceMotion \? 0 : 250/)
+  assert.match(edit, /behavior: reduceMotion \? 'auto' : 'smooth'/)
+  assert.match(source, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.admin-refresh\.spinning \.admin-refresh-icon \{ animation: none;[\s\S]*?\.detail-sheet \{ transition: none;/)
+
+  const javascript = ts.transpileModule(preference, {
+    compilerOptions: { module: ts.ModuleKind.None, target: ts.ScriptTarget.ES2022 },
+  }).outputText
+  const readPreference = Function(
+    'window',
+    `${javascript}; return adminPrefersReducedMotion()`,
+  )
+  assert.equal(readPreference(undefined), false)
+  assert.equal(readPreference({}), false)
+  assert.equal(readPreference({ matchMedia: () => ({ matches: false }) }), false)
+  assert.equal(readPreference({ matchMedia: () => ({ matches: true }) }), true)
 })
 
 test('admin mutation retries retain one idempotency key until a definitive result', () => {

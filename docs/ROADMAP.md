@@ -1,16 +1,17 @@
 # Illini Market 发布路线图
 
-> 最后更新：2026-07-19
-> 当前阶段：生产数据库已应用 34/35 → matching-bundle canary/production readiness
+> 最后更新：2026-07-23
+> 当前阶段：合并前生产数据库 34/38 → 三条生产 tail 后 37/38 → matching-bundle canary/production readiness
 > 原则：以可复查证据关闭门禁，不以文件存在、测试小计或文档勾选冒充上线。
 
 ## 当前状态
 
 核心 H5/微信小程序、Supabase 数据模型、Vercel Edge API 和管理员后台已经存在。
 2026-07 全项目审计把大量身份、RLS/ACL、Storage、Realtime、管理员、邮件、
-注销、可访问性和依赖缺陷修成候选链。生产数据库已经按精确 SQL 与 ledger
-原子应用 34/35，当前文件与已应用 statements 逐字一致；稳定 H5/API bundle
-仍是旧版本，唯一待应用的 `18140000` 必须等 passwordless WeChat canary 成功。
+注销、可访问性和依赖缺陷修成 38 条候选链。合并前生产数据库已经按精确 SQL
+与 ledger 原子应用 34/38；按顺序完成 145042、152000、161200 三条生产 tail
+后为 37/38，届时仅 `18140000` 仍须等待 passwordless WeChat canary。稳定
+H5/API bundle 仍是旧版本。
 
 因此目前不是“规划期”，也不是“正式上线”：它是需要严格上线演练的 release
 candidate。
@@ -31,7 +32,8 @@ candidate。
 - [x] 移除 H5 LGPL fallback decoder；保留原生 HEIC 解码并在不支持的浏览器明确拒绝；
 - [ ] DCloud 官方支持安全 Vite line 后完成协调升级。
 
-上面的 `[x]` 指候选和本地证据；其中数据库已部署 34/35，不代表 matching
+上面的 `[x]` 指候选和本地证据；合并前数据库为 34/38，三条生产 tail 完成后
+为 37/38，且仅微信凭据退役仍待；这不代表 matching
 H5/API/微信小程序 bundle、provider、管理员 Owner 或真实设备门已经关闭。
 
 ## R1：staging 放行门禁

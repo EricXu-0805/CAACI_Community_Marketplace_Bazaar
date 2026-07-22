@@ -18,8 +18,10 @@ const ADMIN_B = `iam_admin_${'b'.repeat(43)}`
 const VALID_ID = '11111111-1111-4111-8111-111111111111'
 const IDEMPOTENCY_KEY = '22222222-2222-4222-8222-222222222222'
 const AUTH_SERVER_NOW = '2026-07-20T00:00:00Z'
+const AUTH_ONE_HOUR_LATER = '2026-07-20T01:00:00Z'
+const AUTH_TWENTY_THREE_HOURS_LATER = '2026-07-20T23:00:00Z'
 const ISSUE_EXPIRY = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-const RECOVERY_TOO_SOON_EXPIRY = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+const RECOVERY_TOO_SOON_EXPIRY = new Date(Date.parse(AUTH_SERVER_NOW) + 60 * 60 * 1000).toISOString()
 const MANAGED_BANNER_URL = `https://supabase.test/storage/v1/object/public/banners/managed/${VALID_ID}/${IDEMPOTENCY_KEY}/${'a'.repeat(64)}.png`
 
 function tokenInventoryRow(overrides = {}) {
@@ -67,7 +69,7 @@ const ROLE_CAPABILITIES = {
   ],
 }
 
-function authenticatedFetch(calls, business = null, role = 'owner') {
+function authenticatedFetch(calls, business = null, role = 'owner', authOverrides = {}) {
   return async (input, init = {}) => {
     const url = new URL(input instanceof Request ? input.url : String(input))
     calls.push({ url, init })
@@ -84,6 +86,7 @@ function authenticatedFetch(calls, business = null, role = 'owner') {
         expires_at: null,
         server_now: AUTH_SERVER_NOW,
         capabilities: ROLE_CAPABILITIES[role],
+        ...authOverrides,
       }]), { status: 200, headers: { 'Content-Type': 'application/json' } })
     }
     if (url.pathname === '/rest/v1/rpc/record_audit') {
@@ -198,6 +201,9 @@ test('malformed authorization 2xx rows fail closed before privileged reads', asy
     { ...valid, capabilities: [...valid.capabilities, 'unknown_action'] },
     { ...valid, capabilities: [...valid.capabilities, valid.capabilities[0]] },
     { ...valid, capabilities: valid.capabilities.slice(1) },
+    { ...valid, admin_name: null },
+    { ...valid, admin_email: null },
+    { ...valid, admin_name: '😀'.repeat(101) },
     { ...valid, admin_email: 'bad\u202e@example.com' },
     { ...valid, expires_at: AUTH_SERVER_NOW },
     { ...valid, expires_at: '2026-07-19T23:59:59Z' },
@@ -222,6 +228,23 @@ test('malformed authorization 2xx rows fail closed before privileged reads', asy
     assert.deepEqual(await response.json(), { error: 'auth_unavailable' })
     assert.equal(calls.some(call => call.url.pathname === '/rest/v1/rpc/admin_dashboard_stats'), false)
   }
+})
+
+test('authorization identity length matches PostgreSQL Unicode code-point semantics', async () => {
+  const adminName = '😀'.repeat(100)
+  const calls = []
+  globalThis.fetch = authenticatedFetch(calls, null, 'owner', { admin_name: adminName })
+  const handler = await loadHandler()
+  const response = await handler(new Request('https://app.test/api/admin?resource=whoami', {
+    headers: { Authorization: `Bearer ${ADMIN_A}` },
+  }))
+
+  assert.equal(response.status, 200)
+  assert.equal((await response.json()).data.admin_name, adminName)
+  assert.equal(
+    calls.filter(call => call.url.pathname === '/rest/v1/rpc/admin_token_authorization_v2').length,
+    1,
+  )
 })
 
 test('malformed admin reads are rejected before a data-bearing RPC', async () => {
@@ -263,6 +286,7 @@ test('destructive mutations enforce ids, enums and bounded values before RPC exe
     [{ action: 'revoke_token', token_id: VALID_ID, case_id: 'CASE-\u202e1', approval_ref: 'APP-1' }, 'invalid_case_id'],
     [{ action: 'revoke_admin_tokens', admin_id: VALID_ID, case_id: 'CASE-1' }, 'invalid_approval_ref'],
     [{ action: 'issue_token', token_hash: 'not-a-hash', admin_id: VALID_ID, role: 'operator', expires_at: ISSUE_EXPIRY, case_id: 'CASE-1', approval_ref: 'APP-1' }, 'invalid_token_hash'],
+    [{ action: 'issue_token', token_hash: 'a'.repeat(64), admin_id: VALID_ID, role: 'owner', expires_at: AUTH_TWENTY_THREE_HOURS_LATER, case_id: 'CASE-1', approval_ref: 'APP-1' }, 'invalid_expiry'],
     [{ action: 'resolve_target_reports', target_type: 'database', target_id: VALID_ID, status: 'resolved' }, 'invalid_target_type'],
     [{ action: 'takedown_content', target_type: 'message', target_id: VALID_ID }, 'invalid_target_type'],
     [{ action: 'takedown_content', target_type: 'post', target_id: VALID_ID }, 'missing_args'],
@@ -366,6 +390,31 @@ test('valid bounded mutations still reach their intended provider contract', asy
   assert.deepEqual(await response.json(), { data: { ok: true, affected: 1 } })
 })
 
+test('token issuance expiry validation uses the authorization database clock', async () => {
+  const body = {
+    action: 'issue_token',
+    token_hash: 'a'.repeat(64),
+    admin_id: VALID_ID,
+    role: 'operator',
+    expires_at: AUTH_ONE_HOUR_LATER,
+    case_id: 'CASE-CLOCK',
+    approval_ref: 'APP-CLOCK',
+  }
+  const calls = []
+  globalThis.fetch = authenticatedFetch(calls, async (url) => {
+    assert.equal(url.pathname, '/rest/v1/rpc/admin_execute_mutation')
+    return new Response(JSON.stringify(validMutationResult(body)), { status: 200 })
+  })
+  const handler = await loadHandler()
+  const response = await handler(adminPost(body))
+
+  assert.equal(response.status, 200)
+  assert.equal(
+    calls.filter(call => call.url.pathname === '/rest/v1/rpc/admin_execute_mutation').length,
+    1,
+  )
+})
+
 test('all twelve JSON write actions use the one atomic mutation RPC', async () => {
   const bodies = [
     { action: 'apply_ban', target_id: VALID_ID, level: 1, reason: 'x' },
@@ -436,7 +485,18 @@ test('admin_login audit is emitted for the unlock identity probe, not every requ
   assert.equal(identity.expires_at, null)
   assert.equal(identity.server_now, AUTH_SERVER_NOW)
   assert.deepEqual(identity.capabilities, ROLE_CAPABILITIES.owner)
-  assert.equal(whoamiCalls.filter(call => call.url.pathname === '/rest/v1/rpc/record_audit').length, 1)
+  const loginAudits = whoamiCalls.filter(call => call.url.pathname === '/rest/v1/rpc/record_audit')
+  assert.equal(loginAudits.length, 1)
+  assert.deepEqual(JSON.parse(loginAudits[0].init.body), {
+    event_kind_in: 'admin_login',
+    actor_id_in: VALID_ID,
+    target_id_in: null,
+    details_in: {
+      auth_source: 'token',
+      role: 'owner',
+      admin_token_id: VALID_ID,
+    },
+  })
 })
 
 test('appeals and role-scoped audit reads use only their versioned projections', async () => {
@@ -668,6 +728,8 @@ test('token inventory validates and projects every provider row before returning
     { not: 'an array' },
     [tokenInventoryRow({ token_hash: 'f'.repeat(64) })],
     [tokenInventoryRow({ admin_id: null })],
+    [tokenInventoryRow({ admin_name: null })],
+    [tokenInventoryRow({ admin_email: null })],
     [tokenInventoryRow({ created_at: 'not-a-timestamp' })],
   ]) {
     const calls = []
@@ -715,9 +777,34 @@ test('replacement owner can reconcile one token hash without receiving the hash 
       role: 'operator',
       expires_at: ISSUE_EXPIRY,
       revoked_at: null,
+      server_now: AUTH_SERVER_NOW,
     },
   })
   assert.equal(JSON.stringify(responseBody).includes(tokenHash), false)
+})
+
+test('missing token reconciliation still carries the authoritative database clock', async () => {
+  const calls = []
+  globalThis.fetch = authenticatedFetch(
+    calls,
+    async () => new Response('[]', { status: 200 }),
+    'owner',
+  )
+  const handler = await loadHandler()
+  const response = await handler(new Request(
+    'https://app.test/api/admin?resource=token_reconciliation',
+    {
+      headers: {
+        Authorization: `Bearer ${ADMIN_A}`,
+        'X-Admin-Token-Hash': 'f'.repeat(64),
+      },
+    },
+  ))
+
+  assert.equal(response.status, 200)
+  assert.deepEqual(await response.json(), {
+    data: { found: false, server_now: AUTH_SERVER_NOW },
+  })
 })
 
 test('replacement owner reconciliation preserves a detached revoked token as authoritative evidence', async () => {
@@ -753,6 +840,7 @@ test('replacement owner reconciliation preserves a detached revoked token as aut
       role: 'operator',
       expires_at: ISSUE_EXPIRY,
       revoked_at: revokedAt,
+      server_now: AUTH_SERVER_NOW,
     },
   })
 })

@@ -46,6 +46,13 @@ The lifecycle database contract is
 `supabase/migrations/20260719010000_admin_token_lifecycle_rpc.sql` followed by
 the forward-only recovery/concurrency reconciliation in
 `supabase/migrations/20260719020000_admin_owner_recovery_concurrency.sql`,
+the appeal/session hardening in
+`supabase/migrations/20260720035037_harden_admin_appeal_decisions_and_session_metadata.sql`,
+and the ordered owner-identity plus invalid-authorization hardening in
+`supabase/migrations/20260722145042_harden_last_active_owner_revoke.sql` and
+`supabase/migrations/20260722152000_harden_admin_invalid_auth_amplification.sql`,
+plus the forward-only presentation-signal trigger repair in
+`supabase/migrations/20260722161200_protect_admin_owner_presentation_signal.sql`,
 layered after the actor, atomic-mutation, capability, and banner-saga migrations. The
 older split-endpoint/SQL snippets below remain design history, not an operator
 deployment recipe.
@@ -256,7 +263,8 @@ REVOKE ALL ON FUNCTION public.admin_get_profile_suspensions(uuid) FROM PUBLIC;
 > `app/src/pages/admin/index.vue`. The split endpoint snippets below are retained
 > only as historical design context; do not copy them into a deployment. The
 > live route hashes the presented `iam_admin_...` token and validates it through
-> `admin_token_authorization`, which returns an exact role/capability projection
+> `admin_token_authorization_v2`, which returns the exact identity, database
+> clock, expiry, role, and capability projection
 > only for a live, profile-backed administrator. There is no shared
 > environment-key fallback. The older `admin_token_validate` RPC remains only
 > for rolling database compatibility and must not be reconnected to the API.
@@ -278,7 +286,7 @@ const supabase = createClient(
 
 async function checkAuth(request) {
   const auth = request.headers.get('authorization')?.replace('Bearer ', '')
-  // Current code hashes this token and calls admin_token_authorization.
+  // Current code hashes this token and calls admin_token_authorization_v2.
   if (!(await validatePerAdminToken(auth))) {
     throw new Error('Unauthorized')
   }
@@ -358,7 +366,7 @@ const supabase = createClient(
 
 async function checkAuth(request) {
   const auth = request.headers.get('authorization')?.replace('Bearer ', '')
-  // Current code hashes this token and calls admin_token_authorization.
+  // Current code hashes this token and calls admin_token_authorization_v2.
   if (!(await validatePerAdminToken(auth))) {
     throw new Error('Unauthorized')
   }
@@ -455,8 +463,12 @@ After an outcome-unknown or 409 response, use the exact original owner
 `--resume-file /absolute/private/path/token-recovery.json --apply`; do not
 repeat/change issuance flags or generate another key. The manifest binds an
 irreversible issuer-token fingerprint and rejects a replacement issuer without
-deleting the only plaintext. After confirmed success,
-vault the credential and securely remove the local manifest.
+deleting the only plaintext. A replay 2xx is followed by authoritative hash
+reconciliation; only the same attached, unrevoked, unexpired token ID is a
+confirmed success. Any missing, mismatched, inactive, detached, or unavailable
+state exits nonzero, retains the manifest, and must not be vaulted. After that
+active-state confirmation, vault the credential and securely remove the local
+manifest.
 
 Revocation inventories active/expired/revoked separately and calls audited,
 atomic lifecycle actions through `/api/admin`. Email is a cached snapshot and
@@ -646,7 +658,7 @@ onMounted(() => {
 ## Security Checklist
 
 - ✅ All admin functions use `SECURITY DEFINER` with `REVOKE ALL FROM PUBLIC`
-- ✅ `/api/admin` authorizes a hashed per-admin bearer through `admin_token_authorization` with exact role/capabilities and a live profile; no shared-key fallback
+- ✅ `/api/admin` authorizes a hashed per-admin bearer through `admin_token_authorization_v2` with exact identity/clock/expiry/role/capabilities and a live profile; no shared-key fallback
 - ✅ Service role key never exposed to client
 - ✅ Admin pages keep the per-admin token in page memory only, never browser storage
 - ✅ Candidate admin/token mutations commit business state, actor attribution,

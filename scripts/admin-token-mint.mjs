@@ -47,6 +47,7 @@ const ADMIN_TOKEN = env.ADMIN_TOKEN
 const TOKEN_PATTERN = /^iam_admin_[A-Za-z0-9_-]{43}$/
 const HASH_PATTERN = /^[0-9a-f]{64}$/
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/
 const ROLES = new Set(['operator', 'security_admin', 'owner'])
 const MANIFEST_KIND = 'iam_admin_token_issue_recovery'
 const MANIFEST_VERSION = 2
@@ -94,6 +95,15 @@ function boundedReference(name, value) {
     fail(`${name} is required and must be 1-160 characters`)
   }
   return value.trim()
+}
+
+function parseStrictTimestamp(value) {
+  if (
+    typeof value !== 'string'
+    || value.length > 64
+    || !ISO_TIMESTAMP_PATTERN.test(value)
+  ) return Number.NaN
+  return Date.parse(value)
 }
 
 if (!API_ORIGIN_RAW || !ADMIN_TOKEN) fail('Missing env: ADMIN_API_ORIGIN or ADMIN_TOKEN')
@@ -496,12 +506,18 @@ async function reconcileIssuedToken(manifest) {
     || typeof data !== 'object'
     || Array.isArray(data)
   ) throw new LifecycleError('admin_reconciliation_malformed')
-  if (data.found === false && Object.keys(data).join(',') === 'found') return null
-  const revokedAtValid = data.revoked_at !== null
-    && Number.isFinite(Date.parse(data.revoked_at))
-  const detached = data.admin_id === null
+  const serverNow = parseStrictTimestamp(data.server_now)
   if (
-    Object.keys(data).sort().join(',') !== 'admin_id,expires_at,found,revoked_at,role,token_id'
+    data.found === false
+    && Object.keys(data).sort().join(',') === 'found,server_now'
+    && Number.isFinite(serverNow)
+  ) return null
+  const revokedAtValid = data.revoked_at !== null
+    && Number.isFinite(parseStrictTimestamp(data.revoked_at))
+  const detached = data.admin_id === null
+  const expiresAt = parseStrictTimestamp(data.expires_at)
+  if (
+    Object.keys(data).sort().join(',') !== 'admin_id,expires_at,found,revoked_at,role,server_now,token_id'
     || data.found !== true
     || !UUID_PATTERN.test(data.token_id || '')
     || !(
@@ -509,9 +525,10 @@ async function reconcileIssuedToken(manifest) {
       || (detached && revokedAtValid)
     )
     || data.role !== manifest.role
-    || !Number.isFinite(Date.parse(data.expires_at))
-    || Date.parse(data.expires_at) !== Date.parse(manifest.expires_at)
-    || (data.revoked_at !== null && !Number.isFinite(Date.parse(data.revoked_at)))
+    || !Number.isFinite(expiresAt)
+    || expiresAt !== Date.parse(manifest.expires_at)
+    || !Number.isFinite(serverNow)
+    || (data.revoked_at !== null && !Number.isFinite(parseStrictTimestamp(data.revoked_at)))
   ) throw new LifecycleError('admin_reconciliation_malformed')
   return {
     tokenId: data.token_id.toLowerCase(),
@@ -519,6 +536,21 @@ async function reconcileIssuedToken(manifest) {
     detached,
     expiresAt: data.expires_at,
     revokedAt: data.revoked_at,
+    serverNow: data.server_now,
+  }
+}
+
+function reconciledLifecycleState(reconciled) {
+  const expired = Date.parse(reconciled.expiresAt) <= Date.parse(reconciled.serverNow)
+  return {
+    unusable: reconciled.detached || !!reconciled.revokedAt || expired,
+    label: reconciled.detached
+      ? 'detached and revoked after target-account deletion'
+      : reconciled.revokedAt
+        ? 'revoked'
+        : expired
+          ? 'expired'
+          : 'active',
   }
 }
 
@@ -603,17 +635,9 @@ if (RECONCILE) {
       exit(3)
     }
     console.log(`  Reconciled token id: ${reconciled.tokenId}`)
-    const expired = Date.parse(reconciled.expiresAt) <= Date.now()
-    const unusable = reconciled.detached || !!reconciled.revokedAt || expired
-    const lifecycleState = reconciled.detached
-      ? 'detached and revoked after target-account deletion'
-      : reconciled.revokedAt
-        ? 'revoked'
-        : expired
-          ? 'expired'
-          : 'active'
-    console.log(`  Lifecycle state: ${lifecycleState}`)
-    if (unusable) {
+    const lifecycle = reconciledLifecycleState(reconciled)
+    console.log(`  Lifecycle state: ${lifecycle.label}`)
+    if (lifecycle.unusable) {
       console.log('Authoritative hash reconciliation succeeded: issuance committed, but this credential is unusable. Do not import this credential into a vault. Record the token id under the case, then securely remove the local manifest after evidence review.')
     } else {
       console.log('Authoritative hash reconciliation succeeded. Import the manifest token into the approved vault, then securely remove the local manifest under the case record.')
@@ -681,6 +705,26 @@ if (issuanceError) {
     exit(4)
   }
   fail(`Issuance rejected; recovery manifest removed: ${issuanceError.message}`, 3)
+}
+
+if (RESUME) {
+  let reconciled
+  try {
+    reconciled = await reconcileIssuedToken(manifest)
+  } catch (error) {
+    fail(`Resume replay succeeded, but authoritative reconciliation failed; manifest retained and must not be vaulted: ${error.message}`, 3)
+  }
+  if (!reconciled) {
+    fail('Resume replay succeeded, but no authoritative token row matches the manifest; manifest retained and must not be vaulted.', 3)
+  }
+  if (reconciled.tokenId !== issuedId) {
+    fail('Resume replay and authoritative reconciliation returned different token ids; manifest retained and must not be vaulted.', 3)
+  }
+  const lifecycle = reconciledLifecycleState(reconciled)
+  if (lifecycle.unusable) {
+    fail(`Resume replay confirmed a ${lifecycle.label} credential; manifest retained for case evidence and must not be vaulted.`, 3)
+  }
+  console.log('  Resume reconciliation: active token state confirmed by authoritative hash lookup.')
 }
 
 console.log(`Issued admin token id: ${issuedId}`)

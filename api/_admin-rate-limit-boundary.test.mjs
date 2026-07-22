@@ -135,7 +135,7 @@ test('admin limiter stores a trusted-header, service-secret HMAC rather than an 
   }))
 
   assert.equal(response.status, 401)
-  assert.equal(limiterBodies.length, 1)
+  assert.equal(limiterBodies.length, 2)
   const expected = createHmac('sha256', 'service-key')
     .update('admin-rate-network:v1\u0000203.0.113.20')
     .digest('hex')
@@ -145,6 +145,55 @@ test('admin limiter stores a trusted-header, service-secret HMAC rather than an 
     limiterBodies[0].bucket_in,
     `admin:network:${createHash('sha256').update('203.0.113.20').digest('hex')}`,
   )
+  assert.deepEqual(limiterBodies[1], {
+    bucket_in: `admin:unauthorized-audit:${expected}`,
+    max_in: 1,
+    window_secs_in: 3600,
+  })
+  assert.doesNotMatch(limiterBodies[1].bucket_in, /203\.0\.113\.20|198\.51\.100\.77/)
+})
+
+test('unauthorized audit sampling fails closed without changing the 401 decision', async () => {
+  for (const auditLimiter of [
+    () => new Response('false', { status: 200 }),
+    () => new Response('null', { status: 200 }),
+    () => new Response('{"error":"down"}', { status: 503 }),
+    () => { throw new Error('audit limiter down') },
+  ]) {
+    const paths = []
+    let limiterCalls = 0
+    globalThis.fetch = async (input) => {
+      const url = new URL(input instanceof Request ? input.url : String(input))
+      paths.push(url.pathname)
+      if (url.pathname === '/rest/v1/rpc/edge_rate_hit') {
+        limiterCalls++
+        if (limiterCalls === 1) return new Response('true', { status: 200 })
+        return auditLimiter()
+      }
+      if (url.pathname === '/rest/v1/rpc/admin_token_authorization_v2') {
+        return new Response('[]', { status: 200 })
+      }
+      if (url.pathname === '/rest/v1/rpc/record_audit') {
+        throw new Error('suppressed unauthorized audit must not append')
+      }
+      throw new Error(`unexpected fetch ${url}`)
+    }
+    const handler = await loadHandler()
+    const response = await handler(new Request('https://app.test/api/admin', {
+      headers: {
+        Authorization: `Bearer ${ADMIN_TOKEN}`,
+        'x-vercel-forwarded-for': '203.0.113.20',
+      },
+    }))
+
+    assert.equal(response.status, 401)
+    assert.deepEqual(await response.json(), { error: 'unauthorized' })
+    assert.deepEqual(paths, [
+      '/rest/v1/rpc/edge_rate_hit',
+      '/rest/v1/rpc/admin_token_authorization_v2',
+      '/rest/v1/rpc/edge_rate_hit',
+    ])
+  }
 })
 
 test('admin trims deployment environment values before using secrets in headers and HMACs', async () => {
