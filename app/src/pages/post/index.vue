@@ -32,7 +32,7 @@
               <text class="head-name" role="button" @click.stop="goSeller(post.user_id)">{{ post.profile?.nickname || t('app.user') }}</text>
               <UBadge v-if="post.is_official" variant="official">{{ t('plaza.official') }}</UBadge>
               <UBadge v-else-if="post.profile?.is_illini_verified" variant="illini">Illini</UBadge>
-              <view v-if="post.is_pinned" class="badge-pinned"><text>{{ t('plaza.pinned') }}</text></view>
+              <view v-if="post.is_pinned" class="badge-pinned"><text class="badge-pinned-label">{{ t('plaza.pinned') }}</text></view>
             </view>
             <text class="head-time">{{ formatTime(post.created_at) }}</text>
           </view>
@@ -47,8 +47,8 @@
             :aria-label="t('a11y.translate')"
             @click.stop="toggleTranslate"
           >
-            <text v-if="!translatePending">{{ translated ? 'A文' : '文A' }}</text>
-            <text v-else>···</text>
+            <text v-if="!translatePending" class="translate-btn-label">{{ translated ? 'A文' : '文A' }}</text>
+            <text v-else class="translate-btn-label">···</text>
           </view>
         </view>
 
@@ -254,7 +254,7 @@
           :aria-disabled="!commentText.trim() || submitting ? 'true' : 'false'"
           @click="onSubmitComment"
         >
-          <text>{{ replyTo ? t('plaza.reply') : t('plaza.comment') }}</text>
+          <text class="send-btn-label">{{ replyTo ? t('plaza.reply') : t('plaza.comment') }}</text>
         </view>
       </view>
     </view>
@@ -821,7 +821,7 @@ async function onSubmitComment() {
 .badge-pinned {
   background: var(--warning-soft); color: var(--warning-text);
   padding: 1px 6px; border-radius: 4px;
-  text { font-size: 10px; font-weight: 600; color: var(--warning-text); letter-spacing: 0.02em; }
+  .badge-pinned-label { font-size: 10px; font-weight: 600; color: var(--warning-text); letter-spacing: 0.02em; }
 }
 
 .content-wrap { position: relative; padding-right: 44px; }
@@ -835,7 +835,7 @@ async function onSubmitComment() {
   background: var(--bg-subtle); padding: 0 8px;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
-  text { font-size: 11px; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.3px; }
+  .translate-btn-label { font-size: 11px; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.3px; }
   &:active { background: var(--bg-inset); }
   &.loading { opacity: 0.7; pointer-events: none; }
 }
@@ -1006,7 +1006,7 @@ async function onSubmitComment() {
   padding: 0 18px; height: 40px; border-radius: 20px;
   background: var(--accent-primary); color: #fff;
   display: flex; align-items: center; cursor: pointer;
-  text { font-size: 13px; color: #fff; font-weight: 600; }
+  .send-btn-label { font-size: 13px; color: #fff; font-weight: 600; }
   &.disabled { opacity: 0.3; pointer-events: none; }
 }
 </style>

@@ -60,11 +60,13 @@ const bgStyle = computed(() => {
   height: 100%;
   display: block;
 }
+/* #ifdef H5 */
 .u-sticker-svg :deep(svg) {
   width: 100%;
   height: 100%;
   display: block;
 }
+/* #endif */
 .u-sticker-img {
   width: 100%;
   height: 100%;

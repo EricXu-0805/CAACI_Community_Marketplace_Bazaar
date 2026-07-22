@@ -12,7 +12,7 @@
         :aria-disabled="saving ? 'true' : 'false'"
         @click="onSave"
       >
-        <text :class="{ disabled: saving }">{{ saving ? t('login.wait') : t('editProfile.save') }}</text>
+        <text :class="['save-btn-label', { disabled: saving }]">{{ saving ? t('login.wait') : t('editProfile.save') }}</text>
       </view>
     </view>
 
@@ -409,7 +409,7 @@ async function onSave() {
 .header-title { flex: 1; text-align: center; font-size: 17px; font-weight: 600; color: var(--text-primary); }
 .save-btn {
   cursor: pointer;
-  text { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+  .save-btn-label { font-size: 15px; font-weight: 600; color: var(--text-primary); }
   .disabled { opacity: 0.3; }
 }
 

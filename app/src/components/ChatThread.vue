@@ -28,10 +28,10 @@
           :aria-label="t('home.retry')"
           @click="retryConversationAccess"
         >
-          <text>{{ t('home.retry') }}</text>
+          <text class="cu-action-label cu-retry-label">{{ t('home.retry') }}</text>
         </view>
         <view class="cu-back" role="button" :aria-label="t('a11y.back')" @click="goBack">
-          <text>{{ t('a11y.back') }}</text>
+          <text class="cu-action-label cu-back-label">{{ t('a11y.back') }}</text>
         </view>
       </view>
     </view>
@@ -72,7 +72,7 @@
         :aria-label="t('chat.makeOffer')"
         @click="openOfferSheet"
       >
-        <text>{{ t('chat.makeOffer') }}</text>
+        <text class="offer-btn-label">{{ t('chat.makeOffer') }}</text>
       </view>
       <view
         :class="['meetup-btn', { disabled: hasPendingMeetup || hasConfirmedMeetup }]"
@@ -82,7 +82,7 @@
       @click="openMeetupSheet"
     >
         <UIcon name="location-pin" size="xs" color="campus-blue" />
-        <text>{{ t('chat.proposeMeetup') }}</text>
+        <text class="meetup-btn-label">{{ t('chat.proposeMeetup') }}</text>
       </view>
     </view>
 
@@ -107,7 +107,7 @@
     >
       <template v-for="(entry, idx) in timeline" :key="entry.key">
         <view v-if="shouldShowTimeAt(idx)" class="time-divider">
-          <text>{{ formatChatTime(entry.created_at) }}</text>
+          <text class="time-divider-label">{{ formatChatTime(entry.created_at) }}</text>
         </view>
 
         <!-- ===== Offer entry (structured negotiation, migration 051) ===== -->
@@ -115,15 +115,15 @@
           <view :id="entry.key" class="offer-entry" :class="{ mine: entry.offer.from_user === currentUser?.id }">
             <view class="offer-card" :class="'oc-st-' + entry.offer.status">
               <view class="oc-head">
-                <text class="oc-eyebrow">{{ entry.offer.from_user === currentUser?.id ? t('chat.offerYou') : t('chat.offerThem') }}</text>
+                <text class="oc-eyebrow oc-eyebrow-label">{{ entry.offer.from_user === currentUser?.id ? t('chat.offerYou') : t('chat.offerThem') }}</text>
                 <text class="oc-status">{{ offerStatusLabel(entry.offer) }}</text>
               </view>
               <text class="oc-price">${{ fmtOfferPrice(entry.offer.price) }}</text>
               <text v-if="entry.offer.note" class="oc-note">{{ entry.offer.note }}</text>
               <view v-if="entry.offer.status === 'pending' && offerIncoming(entry.offer) && !offerExpired(entry.offer) && itemAllowsTransaction" class="oc-actions">
-                <view class="oc-btn oc-decline" role="button" :aria-label="t('chat.offerDecline')" @click="declineOffer(entry.offer)"><text>{{ t('chat.offerDecline') }}</text></view>
-                <view class="oc-btn oc-counter" role="button" :aria-label="t('chat.offerCounter')" @click="openCounter(entry.offer)"><text>{{ t('chat.offerCounter') }}</text></view>
-                <view class="oc-btn oc-accept" role="button" :aria-label="t('chat.offerAccept')" @click="acceptOffer(entry.offer)"><text>{{ t('chat.offerAccept') }}</text></view>
+                <view class="oc-btn oc-decline" role="button" :aria-label="t('chat.offerDecline')" @click="declineOffer(entry.offer)"><text class="oc-btn-label">{{ t('chat.offerDecline') }}</text></view>
+                <view class="oc-btn oc-counter" role="button" :aria-label="t('chat.offerCounter')" @click="openCounter(entry.offer)"><text class="oc-btn-label">{{ t('chat.offerCounter') }}</text></view>
+                <view class="oc-btn oc-accept" role="button" :aria-label="t('chat.offerAccept')" @click="acceptOffer(entry.offer)"><text class="oc-btn-label">{{ t('chat.offerAccept') }}</text></view>
               </view>
               <text v-else-if="entry.offer.status === 'pending' && !offerExpired(entry.offer) && !itemAllowsTransaction" class="oc-meta">{{ t('chat.itemClosed') }}</text>
               <text v-else-if="entry.offer.status === 'pending'" class="oc-meta">
@@ -135,7 +135,7 @@
           <view v-if="entry.offer.status === 'accepted'" class="deal-line">
             <view class="deal-pill">
               <UIcon name="check" size="xs" color="success" />
-              <text>{{ t('chat.dealReached').replace('{price}', '$' + fmtOfferPrice(entry.offer.price)) }}</text>
+              <text class="deal-pill-label">{{ t('chat.dealReached').replace('{price}', '$' + fmtOfferPrice(entry.offer.price)) }}</text>
             </view>
             <text
               v-if="itemInfo && currentUser?.id === itemInfo.user_id && (itemInfo.status === 'active' || itemInfo.status === 'reserved')"
@@ -154,7 +154,7 @@
               <view class="oc-head">
                 <view class="oc-eyebrow">
                   <UIcon name="location-pin" size="xs" color="ink-quiet" />
-                  <text>{{ entry.meetup.from_user === currentUser?.id ? t('chat.meetupYou') : t('chat.meetupThem') }}</text>
+                  <text class="oc-eyebrow-label">{{ entry.meetup.from_user === currentUser?.id ? t('chat.meetupYou') : t('chat.meetupThem') }}</text>
                 </view>
                 <text class="oc-status">{{ meetupStatusLabel(entry.meetup) }}</text>
               </view>
@@ -162,9 +162,9 @@
               <text class="mc-when">{{ fmtMeetupWhen(entry.meetup.meet_at) }}</text>
               <text v-if="entry.meetup.note" class="oc-note">{{ entry.meetup.note }}</text>
               <view v-if="entry.meetup.status === 'pending' && meetupIncoming(entry.meetup) && !meetupExpired(entry.meetup) && itemAllowsTransaction" class="oc-actions">
-                <view class="oc-btn oc-decline" role="button" :aria-label="t('chat.meetupDecline')" @click="declineMeetup(entry.meetup)"><text>{{ t('chat.meetupDecline') }}</text></view>
-                <view class="oc-btn oc-counter" role="button" :aria-label="t('chat.meetupReschedule')" @click="openReschedule(entry.meetup)"><text>{{ t('chat.meetupReschedule') }}</text></view>
-                <view class="oc-btn oc-accept" role="button" :aria-label="t('chat.meetupAccept')" @click="acceptMeetup(entry.meetup)"><text>{{ t('chat.meetupAccept') }}</text></view>
+                <view class="oc-btn oc-decline" role="button" :aria-label="t('chat.meetupDecline')" @click="declineMeetup(entry.meetup)"><text class="oc-btn-label">{{ t('chat.meetupDecline') }}</text></view>
+                <view class="oc-btn oc-counter" role="button" :aria-label="t('chat.meetupReschedule')" @click="openReschedule(entry.meetup)"><text class="oc-btn-label">{{ t('chat.meetupReschedule') }}</text></view>
+                <view class="oc-btn oc-accept" role="button" :aria-label="t('chat.meetupAccept')" @click="acceptMeetup(entry.meetup)"><text class="oc-btn-label">{{ t('chat.meetupAccept') }}</text></view>
               </view>
               <text v-else-if="entry.meetup.status === 'pending' && !meetupExpired(entry.meetup) && !itemAllowsTransaction" class="oc-meta">{{ t('chat.itemClosed') }}</text>
               <text v-else-if="entry.meetup.status === 'pending'" class="oc-meta">
@@ -176,7 +176,7 @@
           <view v-if="entry.meetup.status === 'accepted'" class="deal-line">
             <view class="deal-pill">
               <UIcon name="check" size="xs" color="success" />
-              <text>{{ t('chat.meetupSet').replace('{spot}', meetupSpotLabel(entry.meetup)).replace('{when}', fmtMeetupWhen(entry.meetup.meet_at)) }}</text>
+              <text class="deal-pill-label">{{ t('chat.meetupSet').replace('{spot}', meetupSpotLabel(entry.meetup)).replace('{when}', fmtMeetupWhen(entry.meetup.meet_at)) }}</text>
             </view>
             <text v-if="itemAllowsTransaction" class="deal-reschedule" role="button" :aria-label="t('chat.meetupReschedule')" @click="openRescheduleAccepted(entry.meetup)">{{ t('chat.meetupReschedule') }}</text>
           </view>
@@ -247,13 +247,13 @@
             />
           </view>
           <view v-if="entry.msg.sender_id === currentUser?.id && entry.msg._pending" class="msg-status pending">
-            <text>{{ t('chat.sending') }}</text>
+            <text class="msg-state-label">{{ t('chat.sending') }}</text>
           </view>
           <view v-else-if="entry.msg.sender_id === currentUser?.id && entry.msg._failed" class="msg-status failed" role="button" aria-live="assertive" aria-atomic="true" :aria-label="t('chat.sendFailed')" @click="retrySend(entry.msg)">
-            <text>{{ t('chat.sendFailed') }}</text>
+            <text class="msg-state-label">{{ t('chat.sendFailed') }}</text>
           </view>
           <view v-else-if="entry.msg.sender_id === currentUser?.id" :class="['msg-receipt', { read: entry.msg.is_read }]">
-            <text>{{ entry.msg.is_read ? t('chat.read') : t('chat.unread') }}</text>
+            <text class="msg-state-label">{{ entry.msg.is_read ? t('chat.read') : t('chat.unread') }}</text>
           </view>
         </template>
       </template>
@@ -345,7 +345,7 @@
       </view>
       <scroll-view v-if="quickAmounts.length" scroll-x class="os-quick">
         <view v-for="a in quickAmounts" :key="a" class="os-quick-chip" role="button" :aria-label="'$' + a" :aria-pressed="offerPriceInput === String(a) ? 'true' : 'false'" @click="offerPriceInput = String(a)">
-          <text>${{ a }}</text>
+          <text class="os-quick-chip-label">${{ a }}</text>
         </view>
       </scroll-view>
       <input v-model="offerNoteInput" class="os-note" :placeholder="t('chat.offerNotePh')" :aria-label="t('chat.offerNotePh')" maxlength="300" />
@@ -356,7 +356,7 @@
         :aria-disabled="!Number(offerPriceInput) || offerSubmitting"
         @click="submitOfferSheet"
       >
-        <text>{{ offerSheet.mode === 'counter' ? t('chat.offerSendCounter') : t('chat.offerSend') }}</text>
+        <text class="os-submit-label">{{ offerSheet.mode === 'counter' ? t('chat.offerSendCounter') : t('chat.offerSend') }}</text>
       </view>
       <text class="os-expiry-hint">{{ t('chat.offerExpiry') }}</text>
     </view>
@@ -388,7 +388,7 @@
           :aria-pressed="meetupSpotInput === (lang === 'zh' ? s.zh : s.en) ? 'true' : 'false'"
           @click="meetupSpotInput = (lang === 'zh' ? s.zh : s.en)"
         >
-          <text>{{ lang === 'zh' ? s.zh : s.en }}</text>
+          <text class="os-quick-chip-label">{{ lang === 'zh' ? s.zh : s.en }}</text>
         </view>
       </scroll-view>
       <!-- Free-text spot (#6d): chips are quick-fills; a custom value just
@@ -399,12 +399,12 @@
       <view class="mt-row">
         <view class="mt-cell">
           <picker mode="date" :value="meetupDateInput" :start="todayStr" :end="maxDateStr" @change="meetupDateInput = $event.detail.value">
-            <view class="mt-picker" role="button" :aria-label="t('chat.meetupPickDate')"><text>{{ meetupDateInput || t('chat.meetupPickDate') }}</text></view>
+            <view class="mt-picker" role="button" :aria-label="t('chat.meetupPickDate')"><text class="mt-picker-label">{{ meetupDateInput || t('chat.meetupPickDate') }}</text></view>
           </picker>
         </view>
         <view class="mt-cell">
           <picker mode="time" :value="meetupTimeInput" @change="meetupTimeInput = $event.detail.value">
-            <view class="mt-picker" role="button" :aria-label="t('chat.meetupPickTime')"><text>{{ meetupTimeInput || t('chat.meetupPickTime') }}</text></view>
+            <view class="mt-picker" role="button" :aria-label="t('chat.meetupPickTime')"><text class="mt-picker-label">{{ meetupTimeInput || t('chat.meetupPickTime') }}</text></view>
           </picker>
         </view>
       </view>
@@ -416,7 +416,7 @@
         :aria-disabled="!meetupSpotInput || !meetupDateInput || !meetupTimeInput || meetupSubmitting"
         @click="submitMeetupSheet"
       >
-        <text>{{ meetupSheet.mode !== 'new' ? t('chat.meetupSendReschedule') : t('chat.meetupSend') }}</text>
+        <text class="os-submit-label">{{ meetupSheet.mode !== 'new' ? t('chat.meetupSendReschedule') : t('chat.meetupSend') }}</text>
       </view>
       <text class="os-expiry-hint">{{ t('chat.meetupExpiry') }}</text>
     </view>
@@ -1995,7 +1995,7 @@ function scrollToBottom() {
   display: flex; align-items: center; justify-content: center;
   background: var(--warning-soft); border: 0.5px solid var(--warning-text);
   border-radius: var(--radius-md); padding: 8px; cursor: pointer;
-  text {
+  .offer-btn-label {
     font-size: 13px; font-weight: 600;
     color: var(--warning-text);
     letter-spacing: 0.02em;
@@ -2009,7 +2009,7 @@ function scrollToBottom() {
   display: flex; align-items: center; justify-content: center; gap: 5px;
   background: var(--campus-blue-soft); border: 0.5px solid var(--campus-blue);
   border-radius: var(--radius-md); padding: 8px; cursor: pointer;
-  text { font-size: 13px; font-weight: 600; color: var(--campus-blue); letter-spacing: 0.02em; }
+  .meetup-btn-label { font-size: 13px; font-weight: 600; color: var(--campus-blue); letter-spacing: 0.02em; }
   &:active { background: rgba(42, 92, 170, 0.16); }
   &.disabled { opacity: 0.45; }
 }
@@ -2087,7 +2087,7 @@ function scrollToBottom() {
   display: inline-flex; align-items: center; gap: 3px;
   font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em;
   text-transform: uppercase; color: var(--ink-quiet);
-  text { font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; }
+  .oc-eyebrow-label { font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; }
 }
 .oc-status { font-size: 11px; font-weight: 600; color: var(--ink-quiet); }
 .oc-st-accepted .oc-status { color: var(--success); }
@@ -2102,12 +2102,12 @@ function scrollToBottom() {
 .oc-btn {
   flex: 1; height: 32px; border-radius: var(--radius-pill);
   display: flex; align-items: center; justify-content: center; cursor: pointer;
-  text { font-size: 12px; font-weight: 600; }
+  .oc-btn-label { font-size: 12px; font-weight: 600; }
   &:active { transform: scale(0.96); }
 }
-.oc-accept { background: var(--brand); text { color: #fff; } }
-.oc-decline { background: var(--surface-alt); text { color: var(--ink-soft); } }
-.oc-counter { background: var(--surface-alt); text { color: var(--ink); } }
+.oc-accept { background: var(--brand); .oc-btn-label { color: #fff; } }
+.oc-decline { background: var(--surface-alt); .oc-btn-label { color: var(--ink-soft); } }
+.oc-counter { background: var(--surface-alt); .oc-btn-label { color: var(--ink); } }
 
 .deal-line {
   display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -2116,7 +2116,7 @@ function scrollToBottom() {
     display: inline-flex; align-items: center; gap: 4px;
     color: var(--success); background: var(--success-soft);
     padding: 5px 12px; border-radius: var(--radius-pill);
-    text { font-size: 12px; font-weight: 600; color: inherit; }
+    .deal-pill-label { font-size: 12px; font-weight: 600; color: inherit; }
   }
   .deal-reschedule {
     display: inline-block; color: var(--campus-blue); background: var(--campus-blue-soft);
@@ -2177,11 +2177,11 @@ function scrollToBottom() {
 .os-quick-chip {
   display: inline-flex; align-items: center; height: 30px; padding: 0 14px; margin-right: 8px;
   border-radius: var(--radius-pill); background: var(--surface-alt);
-  text { font-family: var(--font-mono); font-size: 13px; color: var(--ink-soft); }
+  .os-quick-chip-label { font-family: var(--font-mono); font-size: 13px; color: var(--ink-soft); }
   &:active { background: var(--frame); }
   &.on {
     background: var(--brand-soft);
-    text { color: var(--brand-deep); }
+    .os-quick-chip-label { color: var(--brand-deep); }
   }
 }
 /* Meetup card body (reuses .offer-card / .oc-* shell) + composer pickers. */
@@ -2189,7 +2189,7 @@ function scrollToBottom() {
 .mc-when { display: block; margin-top: 2px; font-size: 14px; font-weight: 600; color: var(--ink); }
 .mt-label { display: block; margin-top: 6px; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: var(--ink-quiet); letter-spacing: 0.02em; }
 .mt-spots { white-space: nowrap; }
-.mt-spots .os-quick-chip text { font-family: inherit; }
+.mt-spots .os-quick-chip-label { font-family: inherit; }
 .mt-row { display: flex; gap: 8px; margin-top: 12px; }
 /* Each <picker> (uni-picker is display:block) is the flex child; flex:1 must
    land on it, not the inner .mt-picker view, or the pickers collapse to text
@@ -2199,7 +2199,7 @@ function scrollToBottom() {
 .mt-picker {
   width: 100%; height: 44px; display: flex; align-items: center; justify-content: center;
   background: var(--bg-subtle); border-radius: var(--radius-md);
-  text { font-size: 14px; color: var(--ink); }
+  .mt-picker-label { font-size: 14px; color: var(--ink); }
 }
 /* QA7-r3 #4: Eric reports tapping the meetup inputs opens no keyboard and the
    target feels small. Give them a big, unambiguous hit area — taller min-height,
@@ -2212,7 +2212,7 @@ function scrollToBottom() {
   margin-top: 16px; height: 48px; border-radius: var(--radius-pill);
   background: var(--brand); display: flex; align-items: center; justify-content: center;
   box-shadow: var(--shadow-cta); cursor: pointer;
-  text { font-size: 15px; font-weight: 600; color: #fff; }
+  .os-submit-label { font-size: 15px; font-weight: 600; color: #fff; }
   &:active { opacity: 0.85; }
   &.disabled { background: var(--ink-faint); box-shadow: none; pointer-events: none; }
 }
@@ -2220,7 +2220,7 @@ function scrollToBottom() {
 
 .time-divider {
   text-align: center; padding: 12px 0 6px;
-  text { font-size: 11px; color: var(--text-subtle); background: var(--bg-subtle); padding: 2px 10px; border-radius: 8px; }
+  .time-divider-label { font-size: 11px; color: var(--text-subtle); background: var(--bg-subtle); padding: 2px 10px; border-radius: 8px; }
 }
 .msg-row {
   display: flex; align-items: flex-end; margin-bottom: 9px; gap: 8px;
@@ -2245,9 +2245,9 @@ function scrollToBottom() {
 .msg-status {
   display: flex; justify-content: flex-end;
   padding-right: 44px; margin-top: 2px;
-  text { font-size: 11px; color: var(--text-muted); }
+  .msg-state-label { font-size: 11px; color: var(--text-muted); }
 }
-.msg-status.failed text { color: var(--accent-danger); }
+.msg-status.failed .msg-state-label { color: var(--accent-danger); }
 .msg-bubble {
   max-width: calc(100% - 48px); padding: 10px 14px;
   background: var(--bg-elev-1); border-radius: 4px 18px 18px 18px;
@@ -2384,6 +2384,6 @@ function scrollToBottom() {
   background: var(--accent-primary); color: #fff; cursor: pointer;
 }
 .cu-back { background: var(--bg-subtle); }
-.cu-retry text { color: #fff; font-size: 14px; font-weight: 600; }
-.cu-back text { color: var(--text-secondary); font-size: 14px; font-weight: 600; }
+.cu-retry-label { color: #fff; font-size: 14px; font-weight: 600; }
+.cu-back-label { color: var(--text-secondary); font-size: 14px; font-weight: 600; }
 </style>

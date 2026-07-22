@@ -24,7 +24,7 @@
           />
           <text class="field-hint">{{ t('illini.emailHint') }}</text>
         </view>
-        <button class="submit-btn" :disabled="sending" @click="onSendCode">
+        <button :class="['submit-btn', { disabled: sending }]" :disabled="sending" @click="onSendCode">
           {{ sending ? t('login.wait') : t('illini.sendCode') }}
         </button>
       </template>
@@ -41,7 +41,7 @@
             </text>
           </view>
         </view>
-        <button class="submit-btn" :disabled="verifying" @click="onVerify">
+        <button :class="['submit-btn', { disabled: verifying }]" :disabled="verifying" @click="onVerify">
           {{ verifying ? t('login.wait') : t('illini.verify') }}
         </button>
         <view class="back-link" role="button" @click="step = 'email'">{{ t('illini.changeEmail') }}</view>
@@ -348,7 +348,7 @@ function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/profile/in
   background: var(--accent-primary); color: #fff;
   border-radius: 24px; font-size: 15px; font-weight: 600;
   margin-top: 24px; border: none;
-  &[disabled] { opacity: 0.35; }
+  &.disabled { opacity: 0.35; }
   &:active { opacity: 0.8; }
 }
 .back-link {

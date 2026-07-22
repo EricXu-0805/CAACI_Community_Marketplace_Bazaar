@@ -951,7 +951,12 @@ onLaunch(() => {
      */
     // #ifdef MP-WEIXIN
     try {
-      uni.hideTabBar({ animation: false })
+      // Cold starts can land on a non-tab page (welcome, detail, recovery).
+      // WeChat reports that case asynchronously, so a synchronous try/catch
+      // cannot consume it. Keep the launch call idempotent and explicitly
+      // absorb the expected non-TabBar failure; CustomTabBar retries from an
+      // actual tab page once one mounts.
+      uni.hideTabBar({ animation: false, fail: () => {} })
     } catch {
       console.warn('[onLaunch] hideTabBar failed')
     }

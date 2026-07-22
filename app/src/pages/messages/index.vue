@@ -24,7 +24,7 @@
         @click="msgFilter = f.key"
         @keydown="onMessageFilterKeydown($event, f.key)"
       >
-        <text>{{ f.label }}</text>
+        <text class="mf-chip-label">{{ f.label }}</text>
       </view>
     </view>
 
@@ -72,7 +72,7 @@
 
     <view v-else class="conv-list u-stagger" :key="msgFilter">
       <view v-if="visibleConversations.length === 0" class="filtered-empty">
-        <text>{{ t('msg.noFiltered') }}</text>
+        <text class="filtered-empty-label">{{ t('msg.noFiltered') }}</text>
       </view>
       <view
         v-for="conv in visibleConversations"
@@ -144,7 +144,7 @@
             @click="togglePin(conv)"
             @keydown="onSwipeActionKeydown($event, conv, 'pin')"
           >
-            <text>{{ isPinned(conv) ? t('msg.unpin') : t('msg.pin') }}</text>
+            <text class="swipe-act-label">{{ isPinned(conv) ? t('msg.unpin') : t('msg.pin') }}</text>
           </view>
           <view
             class="swipe-act act-read"
@@ -155,7 +155,7 @@
             @click="toggleRead(conv)"
             @keydown="onSwipeActionKeydown($event, conv, 'read')"
           >
-            <text>{{ unreadConvIds.has(conv.id) ? t('msg.markRead') : t('msg.markUnread') }}</text>
+            <text class="swipe-act-label">{{ unreadConvIds.has(conv.id) ? t('msg.markRead') : t('msg.markUnread') }}</text>
           </view>
           <view
             class="swipe-act act-archive"
@@ -166,7 +166,7 @@
             @click="onArchive(conv)"
             @keydown="onSwipeActionKeydown($event, conv, 'archive')"
           >
-            <text>{{ t('msg.archive') }}</text>
+            <text class="swipe-act-label">{{ t('msg.archive') }}</text>
           </view>
         </view>
       </view>
@@ -679,16 +679,16 @@ function goLogin() {
   background: var(--surface-alt);
   cursor: pointer;
   transition: background var(--dur-1) var(--ease-std), transform var(--dur-1) var(--ease-std);
-  text { font-size: 12.5px; font-weight: 500; color: var(--ink-quiet); line-height: 1; }
+  .mf-chip-label { font-size: 12.5px; font-weight: 500; color: var(--ink-quiet); line-height: 1; }
   &:active { transform: scale(0.94); }
   &.active {
     background: var(--ink);
-    text { color: var(--ink-inverse); font-weight: 600; }
+    .mf-chip-label { color: var(--ink-inverse); font-weight: 600; }
   }
 }
 .filtered-empty {
   padding: 48px 16px; text-align: center;
-  text { font-size: 13px; color: var(--text-muted); }
+  .filtered-empty-label { font-size: 13px; color: var(--text-muted); }
 }
 
 .login-prompt, .empty {
@@ -856,7 +856,7 @@ function goLogin() {
 .swipe-act {
   display: flex; align-items: center; justify-content: center;
   width: 70px; padding: 0 10px; cursor: pointer;
-  text { font-size: 13px; color: #fff; font-weight: 600; text-align: center; }
+  .swipe-act-label { font-size: 13px; color: #fff; font-weight: 600; text-align: center; }
 }
 .act-read { background: var(--brand); }
 .act-archive { background: var(--accent-ink); }

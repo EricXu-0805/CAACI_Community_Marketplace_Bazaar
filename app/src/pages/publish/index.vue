@@ -25,7 +25,7 @@
           :aria-pressed="form.listingType === 'sell' ? 'true' : 'false'"
           @click="form.listingType = 'sell'"
         >
-          <text>{{ t('publish.typeSell') }}</text>
+          <text class="lt-seg-label">{{ t('publish.typeSell') }}</text>
         </view>
         <view
           :class="['lt-seg', 'u-press', { on: form.listingType === 'wanted' }]"
@@ -34,7 +34,7 @@
           :aria-pressed="form.listingType === 'wanted' ? 'true' : 'false'"
           @click="form.listingType = 'wanted'"
         >
-          <text>{{ t('publish.typeWanted') }}</text>
+          <text class="lt-seg-label">{{ t('publish.typeWanted') }}</text>
         </view>
       </view>
 
@@ -46,7 +46,7 @@
               <UIcon name="close" size="xs" color="#FFFFFF" aria-hidden="true" />
             </view>
             <view v-if="i === 0" class="cover-tag">
-              <text>{{ t('publish.cover') }}</text>
+              <text class="cover-tag-label">{{ t('publish.cover') }}</text>
             </view>
           </view>
           <view v-if="imageList.length < 9" class="image-add" role="button" :aria-label="t('publish.addPhoto')" @click="chooseImage">
@@ -1065,10 +1065,12 @@ async function onSubmit() {
  * profile/index.vue. Pure cream-on-charcoal hits ~14:1 contrast on
  * the deepened dark canvas; --ink-strong (0.92α) drops to ~12:1
  * while staying above AA. Light unchanged. */
+/* #ifdef H5 */
 [data-theme="dark"] .ph-title { color: var(--ink-strong); }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .ph-title { color: var(--ink-strong); }
 }
+/* #endif */
 
 @media (min-width: 768px) { .page-header { display: none; } }
 
@@ -1083,10 +1085,10 @@ async function onSubmit() {
   display: flex; align-items: center; justify-content: center;
   border-radius: var(--radius-md);
   background: var(--surface-alt); cursor: pointer;
-  text { font-size: 14px; font-weight: 600; color: var(--ink-quiet); }
+  .lt-seg-label { font-size: 14px; font-weight: 600; color: var(--ink-quiet); }
   &.on {
     background: var(--brand-soft);
-    text { color: var(--brand-deep); }
+    .lt-seg-label { color: var(--brand-deep); }
   }
 }
 .image-section { padding: 16px; }
@@ -1103,7 +1105,7 @@ async function onSubmit() {
   position: absolute; bottom: 0; left: 0; right: 0;
   background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
   border-radius: 0 0 9px 9px; text-align: center; padding: 2px 0;
-  text { font-size: 10px; color: #fff; font-weight: 500; }
+  .cover-tag-label { font-size: 10px; color: #fff; font-weight: 500; }
 }
 .image-add {
   width: 96px; height: 96px;

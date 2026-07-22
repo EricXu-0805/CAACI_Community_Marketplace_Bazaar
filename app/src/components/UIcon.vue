@@ -92,9 +92,11 @@ const maskStyle = computed(() => {
   height: 100%;
   display: block;
 }
+/* #ifdef H5 */
 .u-icon-svg :deep(svg) {
   width: 100%;
   height: 100%;
   display: block;
 }
+/* #endif */
 </style>

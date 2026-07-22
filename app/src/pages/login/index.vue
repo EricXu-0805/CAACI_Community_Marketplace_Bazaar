@@ -11,7 +11,7 @@
 
     <view v-if="!awaitingConfirm" class="form u-rise">
       <!-- #ifdef MP-WEIXIN -->
-      <button class="wx-btn" :disabled="formBusy" @click="onWeChatLogin">
+      <button :class="['wx-btn', { disabled: formBusy }]" :disabled="formBusy" @click="onWeChatLogin">
         <text class="wx-icon">✦</text>
         <text>{{ loading ? t('login.wait') : t('login.wechatQuick') }}</text>
       </button>
@@ -24,11 +24,11 @@
 
       <view class="tab-bar">
         <view :class="['tab', { active: mode === 'login', disabled: formBusy }]" role="button" :aria-label="t('login.signIn')" @click="setMode('login')">
-          <text>{{ t('login.signIn') }}</text>
+          <text class="tab-label">{{ t('login.signIn') }}</text>
           <view v-if="mode === 'login'" class="tab-line"></view>
         </view>
         <view :class="['tab', { active: mode === 'signup', disabled: formBusy }]" role="button" :aria-label="t('login.signUp')" @click="setMode('signup')">
-          <text>{{ t('login.signUp') }}</text>
+          <text class="tab-label">{{ t('login.signUp') }}</text>
           <view v-if="mode === 'signup'" class="tab-line"></view>
         </view>
       </view>
@@ -115,7 +115,7 @@
         </view>
       </view>
 
-      <button class="submit-btn" :disabled="formBusy" @click="onSubmit">
+      <button :class="['submit-btn', { disabled: formBusy }]" :disabled="formBusy" @click="onSubmit">
         {{ loading ? t('login.wait') : (mode === 'login' ? t('login.submitLogin') : t('login.submitSignup')) }}
       </button>
 
@@ -139,7 +139,7 @@
         <text class="or-text">{{ t('login.orContinue') }}</text>
         <view class="or-line"></view>
       </view>
-      <button class="google-btn" :disabled="formBusy" @click="onSignInWithGoogle">
+      <button :class="['google-btn', { disabled: formBusy }]" :disabled="formBusy" @click="onSignInWithGoogle">
         <view class="g-icon-circle">
           <text class="g-icon-letter">G</text>
         </view>
@@ -166,7 +166,7 @@
           </text>
         </view>
       </view>
-      <button class="submit-btn" :disabled="verifying || confirmResending" @click="onVerifySignup">
+      <button :class="['submit-btn', { disabled: verifying || confirmResending }]" :disabled="verifying || confirmResending" @click="onVerifySignup">
         {{ verifying ? t('login.wait') : t('login.confirmVerify') }}
       </button>
       <view :class="['back-link', { disabled: verifying || confirmResending }]" role="button" @click="leaveSignupConfirmation">{{ t('login.backToSignup') }}</view>
@@ -689,8 +689,8 @@ async function onSubmit() {
 }
 .tab {
   position: relative; padding-bottom: 12px; cursor: pointer;
-  text { font-size: 16px; color: var(--text-subtle); font-weight: 500; }
-  &.active text { color: var(--text-primary); font-weight: 600; }
+  .tab-label { font-size: 16px; color: var(--text-subtle); font-weight: 500; }
+  &.active .tab-label { color: var(--text-primary); font-weight: 600; }
   &.disabled { opacity: 0.45; pointer-events: none; }
 }
 .tab-line {
@@ -757,7 +757,7 @@ async function onSubmit() {
   display: flex; align-items: center; justify-content: center;
   letter-spacing: 0.01em;
   box-shadow: var(--shadow-cta);
-  &[disabled] { opacity: 0.35; }
+  &.disabled { opacity: 0.35; }
   &:active { background: var(--accent-primary-deep); box-shadow: var(--shadow-soft); }
 }
 
@@ -768,7 +768,7 @@ async function onSubmit() {
   margin-top: 8px; border: none;
   display: flex; align-items: center; justify-content: center;
   gap: 8px; letter-spacing: 0.01em;
-  &[disabled] { opacity: 0.45; }
+  &.disabled { opacity: 0.45; }
   &:active { opacity: 0.85; }
 }
 .wx-icon {
@@ -794,7 +794,7 @@ async function onSubmit() {
   display: flex; align-items: center; justify-content: center;
   gap: 10px; letter-spacing: 0.01em;
   padding: 0 16px;
-  &[disabled] { opacity: 0.45; }
+  &.disabled { opacity: 0.45; }
   &:active { background: var(--bg-subtle); transform: translateY(1px); }
 }
 .g-icon-circle {

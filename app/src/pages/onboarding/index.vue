@@ -45,7 +45,7 @@
           @click="campus = opt"
           @keydown="onCampusKeydown($event, index)"
         >
-          <text>{{ opt }}</text>
+          <text class="chip-label">{{ opt }}</text>
         </view>
       </view>
     </view>
@@ -415,10 +415,10 @@ async function finish() {
   padding: 10px 16px; border-radius: 18px;
   background: var(--bg-subtle); border: 1px solid transparent;
   cursor: pointer;
-  text { font-size: 14px; color: var(--text-secondary); font-weight: 500; }
+  .chip-label { font-size: 14px; color: var(--text-secondary); font-weight: 500; }
   &.on {
     background: var(--ink); border-color: var(--ink);
-    text { color: var(--ink-inverse); }
+    .chip-label { color: var(--ink-inverse); }
   }
   &:active { transform: scale(0.96); }
 }

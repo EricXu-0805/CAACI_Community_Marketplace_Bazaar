@@ -134,6 +134,7 @@ function onTap(b: Banner) {
  * future canvas color updates without a hardcoded hex sync drift.
  * Light mode untouched — banner images render at full saturation.
  */
+/* #ifdef H5 */
 [data-theme="dark"] .banner-slide::after {
   content: '';
   position: absolute;
@@ -156,6 +157,7 @@ function onTap(b: Banner) {
     );
   }
 }
+/* #endif */
 /* #ifdef MP-WEIXIN */
 /* mp flips via the .theme-dark class on the page root (see App.vue); WXSS
    can't match the H5 [data-theme] / :root:not(...) guards above. The

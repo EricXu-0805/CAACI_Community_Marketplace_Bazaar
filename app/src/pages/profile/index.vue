@@ -44,8 +44,8 @@
     <view v-else-if="isLoggedIn" class="logged-in-wrap">
       <!-- User card -->
       <view class="user-card">
-        <view class="user-card-bg"></view>
-        <view class="user-row">
+        <view class="user-card-bg user-card-layer"></view>
+        <view class="user-row user-card-layer">
           <UAvatar :src="currentUser?.avatar_url" :owner="currentUser?.id" :fallback="defaultAvatarSrc" :alt="currentUser?.nickname || 'avatar'" class="avatar-big" />
           <view class="user-info">
             <view class="name-row">
@@ -75,7 +75,7 @@
         </view>
 
         <!-- 4-stat strip -->
-        <view class="stats-row">
+        <view class="stats-row user-card-layer">
           <view class="stat-item">
             <text class="stat-num">{{ listedItems.length }}</text>
             <text class="stat-label">{{ t('profile.listed') }}</text>
@@ -787,10 +787,12 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
  * Drop to --ink-strong (0.92α) for a more comfortable ~12:1 while
  * staying well above AA. Scoped-style specificity beats the App.vue
  * global rule, so the override has to live per-page. Light unchanged. */
+/* #ifdef H5 */
 [data-theme="dark"] .ph-title { color: var(--ink-strong); }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .ph-title { color: var(--ink-strong); }
 }
+/* #endif */
 @media (min-width: 768px) {
   .page-header { display: none; }
   .page { padding-bottom: 0; max-width: none; margin: 0; }
@@ -889,13 +891,10 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
   }
   /*
    * All direct children must stack above the terracotta arc ::before.
-   * We use `view` instead of `*` because WXSS rejects the universal
-   * selector + scope-attribute combo that Vue scoped CSS produces
-   * (`*.data-v-xxxxx` fails to parse on WeChat lib 3.15.x). Every
-   * direct child of .user-card in the template is a <view>, so this
-   * covers the same set without the compat footgun.
+   * Every direct layer carries an explicit class because component WXSS
+   * rejects both universal and tag-name selectors.
    */
-  & > view { position: relative; z-index: 1; }
+  & > .user-card-layer { position: relative; z-index: 1; }
 }
 .user-card-bg { display: none; }
 
@@ -918,6 +917,7 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
  *
  * Light mode is unchanged.
  */
+/* #ifdef H5 */
 [data-theme="dark"] .user-card {
   background: var(--user-card-grad-dark);
 }
@@ -926,6 +926,7 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
     background: var(--user-card-grad-dark);
   }
 }
+/* #endif */
 /* #ifdef MP-WEIXIN */
 /* mp flips via the .theme-dark class on the page root (see App.vue); WXSS
    can't match the H5 [data-theme] / :root:not(...) guards above. */

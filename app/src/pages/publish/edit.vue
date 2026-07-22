@@ -32,7 +32,7 @@
               <UIcon name="close" size="xs" color="#FFFFFF" aria-hidden="true" />
             </view>
             <view v-if="i === 0" class="cover-tag">
-              <text>{{ t('publish.cover') }}</text>
+              <text class="cover-tag-label">{{ t('publish.cover') }}</text>
             </view>
           </view>
           <view v-if="imageList.length < 9" class="image-add" role="button" :aria-label="t('publish.addPhoto')" @click="chooseImage">
@@ -195,7 +195,7 @@
     </view>
 
     <view v-show="editReady && !typing" class="submit-bar u-glass u-glass--hair-t">
-      <button class="submit-btn" :disabled="submitting" @click="onSubmit">
+      <button :class="['submit-btn', { disabled: submitting }]" :disabled="submitting" @click="onSubmit">
         {{ submitting ? t('publish.submitting') : t('publish.update') }}
       </button>
     </view>
@@ -1013,7 +1013,7 @@ async function onSubmit() {
   position: absolute; bottom: 0; left: 0; right: 0;
   background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
   border-radius: 0 0 9px 9px; text-align: center; padding: 2px 0;
-  text { font-size: 10px; color: #fff; font-weight: 500; }
+  .cover-tag-label { font-size: 10px; color: #fff; font-weight: 500; }
 }
 .image-add {
   width: 96px; height: 96px;
@@ -1209,7 +1209,7 @@ async function onSubmit() {
   width: 100%; height: 46px; background: var(--accent-primary); color: #fff;
   border-radius: 23px; font-size: 15px; font-weight: 600;
   display: flex; align-items: center; justify-content: center; border: none;
-  &[disabled] { opacity: 0.3; }
+  &.disabled { opacity: 0.3; }
   &:active { opacity: 0.8; }
 }
 

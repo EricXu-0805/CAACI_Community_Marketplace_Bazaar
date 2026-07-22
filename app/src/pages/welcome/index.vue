@@ -36,10 +36,10 @@
 
     <view class="bottom">
       <view v-if="current < slides.length - 1" class="skip-btn" role="button" :aria-label="t('welcome.skip')" @click="finish">
-        <text>{{ t('welcome.skip') }}</text>
+        <text class="skip-btn-label">{{ t('welcome.skip') }}</text>
       </view>
       <view v-else class="start-btn" role="button" :aria-label="t('welcome.start')" @click="finish">
-        <text>{{ t('welcome.start') }}</text>
+        <text class="start-btn-label">{{ t('welcome.start') }}</text>
       </view>
     </view>
   </view>
@@ -138,11 +138,11 @@ function finish() {
 .bottom { padding: 16px 24px 40px; }
 .skip-btn {
   text-align: center; padding: 14px;
-  text { font-size: 15px; color: var(--text-muted); }
+  .skip-btn-label { font-size: 15px; color: var(--text-muted); }
 }
 .start-btn {
   background: var(--accent-primary); border-radius: 24px; padding: 14px; text-align: center;
   box-shadow: var(--shadow-cta);
-  text { font-size: 15px; font-weight: 600; color: #fff; }
+  .start-btn-label { font-size: 15px; font-weight: 600; color: #fff; }
 }
 </style>

@@ -20,7 +20,7 @@
       <view class="empty-shield"></view>
       <text class="empty-text">{{ t('error.loadFailed') }}</text>
       <view class="unblock-btn" role="button" :aria-label="t('home.retry')" @click="fetchProfiles">
-        <text>{{ t('home.retry') }}</text>
+        <text class="unblock-btn-label">{{ t('home.retry') }}</text>
       </view>
     </view>
 
@@ -43,7 +43,7 @@
           :aria-label="t('blocked.unblock') + ': ' + p.nickname"
           @click="onUnblock(p.id, p.nickname)"
         >
-          <text>{{ t('blocked.unblock') }}</text>
+          <text class="unblock-btn-label">{{ t('blocked.unblock') }}</text>
         </view>
       </view>
     </view>
@@ -246,7 +246,7 @@ function onUnblock(id: string, name: string) {
 .unblock-btn {
   padding: 6px 14px; border-radius: 14px;
   background: var(--bg-subtle); cursor: pointer;
-  text { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+  .unblock-btn-label { font-size: 13px; font-weight: 500; color: var(--text-primary); }
   &:active { background: var(--bg-inset); }
 }
 </style>
