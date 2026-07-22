@@ -147,6 +147,45 @@ test('admin limiter stores a trusted-header, service-secret HMAC rather than an 
   )
 })
 
+test('admin trims deployment environment values before using secrets in headers and HMACs', async () => {
+  const calls = []
+  globalThis.fetch = async (input, init = {}) => {
+    const url = new URL(input instanceof Request ? input.url : String(input))
+    calls.push({ url, init })
+    if (url.pathname === '/rest/v1/rpc/edge_rate_hit') {
+      return new Response('true', { status: 200 })
+    }
+    if (url.pathname === '/rest/v1/rpc/admin_token_authorization_v2') {
+      return new Response('[]', { status: 200 })
+    }
+    if (url.pathname === '/rest/v1/rpc/record_audit') {
+      return new Response('null', { status: 200 })
+    }
+    throw new Error(`unexpected fetch ${url}`)
+  }
+  const handler = await loadHandler({
+    SUPABASE_URL: '  https://supabase.test\n',
+    SUPABASE_SECRET_KEY: '  service-key\n',
+  })
+
+  const response = await handler(new Request('https://app.test/api/admin', {
+    headers: {
+      Authorization: `Bearer ${ADMIN_TOKEN}`,
+      'x-vercel-forwarded-for': '203.0.113.20',
+    },
+  }))
+
+  assert.equal(response.status, 401)
+  const limiter = calls.find(call => call.url.pathname === '/rest/v1/rpc/edge_rate_hit')
+  assert.ok(limiter)
+  assert.equal(limiter.url.origin, 'https://supabase.test')
+  assert.equal(limiter.init.headers.apikey, 'service-key')
+  const expected = createHmac('sha256', 'service-key')
+    .update('admin-rate-network:v1\u0000203.0.113.20')
+    .digest('hex')
+  assert.equal(JSON.parse(limiter.init.body).bucket_in, `admin:network:${expected}`)
+})
+
 test('malformed admin credentials are rejected before rate, auth, or audit providers', async () => {
   const calls = []
   globalThis.fetch = async (input) => {

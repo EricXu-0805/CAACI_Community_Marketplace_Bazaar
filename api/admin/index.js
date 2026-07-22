@@ -40,7 +40,7 @@ export const config = { runtime: 'edge' }
  */
 
 function env(name, fallback) {
-  return process.env[name] || fallback
+  return String(process.env[name] || fallback || '').trim()
 }
 
 const SUPABASE_URL = env('SUPABASE_URL', env('VITE_SUPABASE_URL', ''))
