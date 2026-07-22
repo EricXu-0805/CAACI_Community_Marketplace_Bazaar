@@ -472,7 +472,7 @@ test('Illini upstream deadlines abort hangs, reject redirects, and keep errors s
   assert.deepEqual(await sendResponse.json(), { error: 'send_failed' })
   assert.equal(resendAborted, true)
   assert.ok(redirects.length > 0)
-  assert.ok(redirects.every(value => value === 'error'))
+  assert.ok(redirects.every(value => value === 'manual'))
 })
 
 test('Illini handlers never log upstream response bodies', async () => {

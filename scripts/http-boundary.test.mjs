@@ -55,8 +55,23 @@ test('bounded fetch parses small JSON and forces no-store plus redirect rejectio
 
   assert.deepEqual(await result.json(), { ok: true })
   assert.equal(observedInit.cache, 'no-store')
-  assert.equal(observedInit.redirect, 'error')
+  assert.equal(observedInit.redirect, 'manual')
   assert.ok(observedInit.signal instanceof AbortSignal)
+})
+
+test('bounded fetch exposes no redirect response or second-hop request', async () => {
+  let calls = 0
+  await assert.rejects(
+    fetchBounded(async () => {
+      calls += 1
+      return new Response(null, {
+        status: 307,
+        headers: { Location: 'https://redirect.test/secret-sink' },
+      })
+    }, 'https://project.supabase.co/rest/v1/test'),
+    /upstream_redirect/,
+  )
+  assert.equal(calls, 1)
 })
 
 test('declared and streamed oversized bodies fail closed and cancel the reader', async () => {

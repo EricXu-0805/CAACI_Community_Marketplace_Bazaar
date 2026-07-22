@@ -127,7 +127,7 @@ async function fetchWithTimeout(input, init = {}) {
     return await fetch(input, {
       ...init,
       signal: controller.signal,
-      redirect: 'error',
+      redirect: 'manual',
     })
   } catch {
     throw new Error(controller.signal.aborted ? 'upstream_timeout' : 'upstream_network_error')

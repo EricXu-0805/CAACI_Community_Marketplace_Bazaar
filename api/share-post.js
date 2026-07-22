@@ -65,7 +65,7 @@ async function readPublicRows(path) {
       headers: supabaseHeaders(SUPABASE_ANON_KEY, '', {
         Accept: 'application/json',
       }),
-      redirect: 'error',
+      redirect: 'manual',
       signal: controller.signal,
     })
     if (!response.ok || response.redirected) {

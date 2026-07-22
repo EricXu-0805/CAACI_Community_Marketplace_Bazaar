@@ -113,9 +113,14 @@ export async function fetchBounded(
     const response = await fetchImpl(input, {
       ...init,
       cache: 'no-store',
-      redirect: 'error',
+      redirect: 'manual',
       signal: controller.signal,
     })
+    if (response.type === 'opaqueredirect' || response.status === 0
+        || response.redirected || (response.status >= 300 && response.status < 400)) {
+      try { await response.body?.cancel() } catch {}
+      throw new Error('upstream_redirect')
+    }
     const bytes = await readBoundedBytes(response, maxBytes)
     const decoder = new TextDecoder()
     return {

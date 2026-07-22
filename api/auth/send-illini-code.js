@@ -134,7 +134,7 @@ async function fetchWithTimeout(input, init = {}, timeoutMs = SUPABASE_TIMEOUT_M
     return await fetch(input, {
       ...init,
       signal: controller.signal,
-      redirect: 'error',
+      redirect: 'manual',
     })
   } finally {
     clearTimeout(timer)

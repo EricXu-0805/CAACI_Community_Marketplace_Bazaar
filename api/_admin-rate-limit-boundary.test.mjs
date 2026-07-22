@@ -165,7 +165,8 @@ test('admin trims deployment environment values before using secrets in headers 
   }
   const handler = await loadHandler({
     SUPABASE_URL: '  https://supabase.test\n',
-    SUPABASE_SECRET_KEY: '  service-key\n',
+    SUPABASE_SECRET_KEY: '  sb_secret_fake\n',
+    SUPABASE_SERVICE_ROLE_KEY: 'legacy-must-not-win',
   })
 
   const response = await handler(new Request('https://app.test/api/admin', {
@@ -179,8 +180,51 @@ test('admin trims deployment environment values before using secrets in headers 
   const limiter = calls.find(call => call.url.pathname === '/rest/v1/rpc/edge_rate_hit')
   assert.ok(limiter)
   assert.equal(limiter.url.origin, 'https://supabase.test')
-  assert.equal(limiter.init.headers.apikey, 'service-key')
-  const expected = createHmac('sha256', 'service-key')
+  assert.equal(limiter.init.headers.apikey, 'sb_secret_fake')
+  assert.equal(limiter.init.headers.Authorization, undefined)
+  const expected = createHmac('sha256', 'sb_secret_fake')
+    .update('admin-rate-network:v1\u0000203.0.113.20')
+    .digest('hex')
+  assert.equal(JSON.parse(limiter.init.body).bucket_in, `admin:network:${expected}`)
+})
+
+test('admin falls back after trimming whitespace-only primary environment values', async () => {
+  const calls = []
+  globalThis.fetch = async (input, init = {}) => {
+    const url = new URL(input instanceof Request ? input.url : String(input))
+    calls.push({ url, init })
+    if (url.pathname === '/rest/v1/rpc/edge_rate_hit') {
+      return new Response('true', { status: 200 })
+    }
+    if (url.pathname === '/rest/v1/rpc/admin_token_authorization_v2') {
+      return new Response('[]', { status: 200 })
+    }
+    if (url.pathname === '/rest/v1/rpc/record_audit') {
+      return new Response('null', { status: 200 })
+    }
+    throw new Error(`unexpected fetch ${url}`)
+  }
+  const handler = await loadHandler({
+    SUPABASE_URL: ' \n',
+    VITE_SUPABASE_URL: '  https://supabase.test\n',
+    SUPABASE_SECRET_KEY: ' \n',
+    SUPABASE_SERVICE_ROLE_KEY: '  legacy-fallback\n',
+  })
+
+  const response = await handler(new Request('https://app.test/api/admin', {
+    headers: {
+      Authorization: `Bearer ${ADMIN_TOKEN}`,
+      'x-vercel-forwarded-for': '203.0.113.20',
+    },
+  }))
+
+  assert.equal(response.status, 401)
+  const limiter = calls.find(call => call.url.pathname === '/rest/v1/rpc/edge_rate_hit')
+  assert.ok(limiter)
+  assert.equal(limiter.url.origin, 'https://supabase.test')
+  assert.equal(limiter.init.headers.apikey, 'legacy-fallback')
+  assert.equal(limiter.init.headers.Authorization, 'Bearer legacy-fallback')
+  const expected = createHmac('sha256', 'legacy-fallback')
     .update('admin-rate-network:v1\u0000203.0.113.20')
     .digest('hex')
   assert.equal(JSON.parse(limiter.init.body).bucket_in, `admin:network:${expected}`)
@@ -214,6 +258,8 @@ test('admin rate-store failures fail closed before token authorization or audit'
     () => new Response('{"error":"down"}', { status: 503 }),
     () => new Response('null', { status: 200 }),
     () => new Response('{}', { status: 200 }),
+    () => new Response('not-json', { status: 200 }),
+    () => new Response('[]', { status: 200 }),
   ]
   const originalWarn = console.warn
   console.warn = () => {}
@@ -237,6 +283,56 @@ test('admin rate-store failures fail closed before token authorization or audit'
   } finally {
     console.warn = originalWarn
   }
+})
+
+test('admin rate-store denial returns 429 without token authorization or audit', async () => {
+  const paths = []
+  globalThis.fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : String(input))
+    paths.push(url.pathname)
+    if (url.pathname === '/rest/v1/rpc/edge_rate_hit') {
+      return new Response('false', { status: 200 })
+    }
+    throw new Error(`unexpected provider call ${url.pathname}`)
+  }
+  const handler = await loadHandler()
+  const response = await handler(new Request('https://app.test/api/admin?resource=whoami', {
+    headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+  }))
+
+  assert.equal(response.status, 429)
+  assert.deepEqual(await response.json(), { error: 'rate_limited' })
+  assert.deepEqual(paths, ['/rest/v1/rpc/edge_rate_hit'])
+})
+
+test('admin rejects limiter redirects without following them', async () => {
+  const calls = []
+  let redirectBodyCancelled = false
+  globalThis.fetch = async (input, init = {}) => {
+    const url = new URL(input instanceof Request ? input.url : String(input))
+    calls.push({ url, init })
+    return new Response(new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('redirect body must not be consumed'))
+      },
+      cancel() {
+        redirectBodyCancelled = true
+      },
+    }), {
+      status: 307,
+      headers: { Location: 'https://redirect.test/limiter' },
+    })
+  }
+  const handler = await loadHandler()
+  const response = await handler(new Request('https://app.test/api/admin?resource=whoami', {
+    headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+  }))
+
+  assert.equal(response.status, 503)
+  assert.deepEqual(await response.json(), { error: 'rate_limit_unavailable' })
+  assert.deepEqual(calls.map(call => call.url.pathname), ['/rest/v1/rpc/edge_rate_hit'])
+  assert.equal(calls[0].init.redirect, 'manual')
+  assert.equal(redirectBodyCancelled, true)
 })
 
 async function authenticatedAdminFetch(calls) {
@@ -600,7 +696,7 @@ test('malformed admin pagination falls back to bounded numeric RPC arguments', a
 
   assert.equal(response.status, 200)
   assert.deepEqual(rpcBodies, [{ limit_in: 50, offset_in: 0, active_only_in: false }])
-  assert.equal(calls.every(call => call.init.redirect === 'error'), true)
+  assert.equal(calls.every(call => call.init.redirect === 'manual'), true)
   assert.equal(calls.every(call => call.init.signal instanceof AbortSignal), true)
 })
 
@@ -694,6 +790,72 @@ test('admin authentication outages are 503, never false invalid-token 401s', asy
   } finally {
     console.warn = originalWarn
   }
+})
+
+test('admin rejects authorization redirects without following or auditing them', async () => {
+  const calls = []
+  globalThis.fetch = async (input, init = {}) => {
+    const url = new URL(input instanceof Request ? input.url : String(input))
+    calls.push({ url, init })
+    if (url.pathname === '/rest/v1/rpc/edge_rate_hit') {
+      return new Response('true', { status: 200 })
+    }
+    if (url.pathname === '/rest/v1/rpc/admin_token_authorization_v2') {
+      return new Response('', {
+        status: 307,
+        headers: { Location: 'https://redirect.test/auth' },
+      })
+    }
+    throw new Error(`unexpected fetch ${url}`)
+  }
+  const handler = await loadHandler()
+  const response = await handler(new Request('https://app.test/api/admin?resource=whoami', {
+    headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+  }))
+
+  assert.equal(response.status, 503)
+  assert.deepEqual(await response.json(), { error: 'auth_unavailable' })
+  assert.deepEqual(calls.map(call => call.url.pathname), [
+    '/rest/v1/rpc/edge_rate_hit',
+    '/rest/v1/rpc/admin_token_authorization_v2',
+  ])
+  assert.equal(calls.every(call => call.init.redirect === 'manual'), true)
+})
+
+test('admin reports destructive mutation redirects as outcome unknown without following them', async () => {
+  const calls = []
+  const baseFetch = await authenticatedAdminFetch(calls)
+  globalThis.fetch = async (input, init = {}) => {
+    const url = new URL(input instanceof Request ? input.url : String(input))
+    if (url.pathname === '/rest/v1/rpc/admin_execute_mutation') {
+      calls.push({ url, init })
+      return new Response('', {
+        status: 307,
+        headers: { Location: 'https://redirect.test/mutation' },
+      })
+    }
+    return baseFetch(input, init)
+  }
+  const handler = await loadHandler()
+  const response = await handler(new Request('https://app.test/api/admin', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${ADMIN_TOKEN}`,
+      'Content-Type': 'application/json',
+      'Idempotency-Key': BANNER_UPLOAD_KEY,
+    },
+    body: JSON.stringify({
+      action: 'set_post_pinned',
+      post_id: '11111111-1111-4111-8111-111111111111',
+      pinned: true,
+    }),
+  }))
+
+  assert.equal(response.status, 503)
+  assert.deepEqual(await response.json(), { error: 'admin_outcome_unknown' })
+  assert.equal(calls.filter(call => call.url.pathname === '/rest/v1/rpc/admin_execute_mutation').length, 1)
+  assert.equal(calls.some(call => call.url.hostname === 'redirect.test'), false)
+  assert.equal(calls.every(call => call.init.redirect === 'manual'), true)
 })
 
 test('admin deadline includes a stalled response body and cancels its stream', async () => {

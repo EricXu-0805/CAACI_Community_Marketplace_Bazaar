@@ -114,7 +114,7 @@ test('callback authenticates, validates and canonicalizes before durable claim',
   assert.match(callback, /encryptType !== 'aes'/)
   assert.match(callback, /constantTimeEqual\(appId, WECHAT_APPID\)/)
   assert.match(callback, /MAX_CALLBACK_BYTES = 32 \* 1024/)
-  assert.match(callback, /signal: controller\.signal,[\s\S]*redirect: 'error'/)
+  assert.match(callback, /signal: controller\.signal,[\s\S]*redirect: 'manual'/)
   assert.match(callback, /function retryableFailure[\s\S]*plain\('retry', 503, \{ 'Retry-After': '2' \}\)/)
   assert.match(callback, /claimState === 'completed'\) return plain\('success', 200\)/)
   assert.match(callback, /callbackRpc\('complete_wechat_callback_receipt'/)

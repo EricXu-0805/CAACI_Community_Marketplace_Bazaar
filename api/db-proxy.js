@@ -84,7 +84,13 @@ async function fetchWithTimeout(input, init) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS)
   try {
-    return await fetch(input, { ...init, signal: controller.signal, redirect: 'error' })
+    const response = await fetch(input, { ...init, signal: controller.signal, redirect: 'manual' })
+    if (response.type === 'opaqueredirect' || response.status === 0
+        || response.redirected || (response.status >= 300 && response.status < 400)) {
+      try { await response.body?.cancel() } catch {}
+      throw new Error('upstream_redirect')
+    }
+    return response
   } finally {
     clearTimeout(timer)
   }

@@ -113,10 +113,11 @@ async function serviceCall(url, init, timeoutMs) {
   try {
     const response = await fetch(url, {
       ...init,
-      redirect: 'error',
+      redirect: 'manual',
       signal: controller.signal,
     })
-    if (response.redirected || (response.status >= 300 && response.status < 400)) {
+    if (response.type === 'opaqueredirect' || response.status === 0
+        || response.redirected || (response.status >= 300 && response.status < 400)) {
       throw new Error('provider_redirect')
     }
     const rawLength = response.headers.get('content-length')

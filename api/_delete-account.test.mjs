@@ -973,5 +973,5 @@ test('a hanging Storage call is aborted and leaves the durable saga retryable', 
   assert.equal(harness.job.last_error, 'upstream_timeout')
   assert.equal(harness.job.last_error.includes('private'), false)
   assert.ok(redirects.length > 0)
-  assert.ok(redirects.every(value => value === 'error'))
+  assert.ok(redirects.every(value => value === 'manual'))
 })

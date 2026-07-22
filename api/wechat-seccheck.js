@@ -163,7 +163,7 @@ async function fetchWithTimeout(input, init, timeoutMs) {
     return await fetch(input, {
       ...(init || {}),
       signal: controller.signal,
-      redirect: 'error',
+      redirect: 'manual',
     })
   } finally {
     clearTimeout(timer)

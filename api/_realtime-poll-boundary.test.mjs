@@ -304,7 +304,7 @@ test('auth and poll upstream deadlines abort hangs and expose only stable errors
   assert.deepEqual(await bodyTimeout.json(), { error: 'fetch_error' })
   assert.equal(bodyCancelled, true)
   assert.ok(redirects.length >= 3)
-  assert.ok(redirects.every(value => value === 'error'))
+  assert.ok(redirects.every(value => value === 'manual'))
 })
 
 for (const [responseKind, limiterResponse] of malformedLimiterResponses) {

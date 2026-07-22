@@ -138,7 +138,7 @@ async function runRetentionBatch(url, timeoutMs) {
       }),
       body: '{}',
       signal: controller.signal,
-      redirect: 'error',
+      redirect: 'manual',
     })
 
     if (!response.ok) {

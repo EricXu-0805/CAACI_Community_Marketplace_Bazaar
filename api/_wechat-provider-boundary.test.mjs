@@ -319,7 +319,7 @@ test('configured provider timeout is aborted and fails closed', async () => {
   globalThis.fetch = async (input, init = {}) => {
     const url = new URL(input instanceof Request ? input.url : String(input))
     if (url.pathname === '/wxa/msg_sec_check') {
-      assert.equal(init.redirect, 'error')
+      assert.equal(init.redirect, 'manual')
       return await new Promise((_, reject) => {
         init.signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true })
       })
@@ -556,7 +556,7 @@ test('callback upstream timeout is aborted, redirect-disabled, and keeps the eve
     const url = new URL(input instanceof Request ? input.url : String(input))
     if (url.pathname.endsWith('/rpc/claim_wechat_callback_receipt')) return json('claimed')
     if (url.pathname.endsWith('/rpc/release_wechat_callback_receipt')) return json(true)
-    assert.equal(init.redirect, 'error')
+    assert.equal(init.redirect, 'manual')
     return await new Promise((_, reject) => {
       init.signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true })
     })
@@ -698,8 +698,8 @@ test('all WeChat and callback upstreams use the bounded redirect-safe fetch help
   const sec = await readFile(new URL('wechat-seccheck.js', API_ROOT), 'utf8')
   const callback = await readFile(new URL('wechat-callback.js', API_ROOT), 'utf8')
 
-  assert.match(sec, /signal: controller\.signal,[\s\S]*redirect: 'error'/)
-  assert.match(callback, /signal: controller\.signal,[\s\S]*redirect: 'error'/)
+  assert.match(sec, /signal: controller\.signal,[\s\S]*redirect: 'manual'/)
+  assert.match(callback, /signal: controller\.signal,[\s\S]*redirect: 'manual'/)
   assert.equal((sec.match(/\bfetch\(/g) || []).length, 1)
   assert.equal((callback.match(/\bfetch\(/g) || []).length, 1)
   assert.match(sec, /MAX_REQUEST_BYTES = 16 \* 1024/)

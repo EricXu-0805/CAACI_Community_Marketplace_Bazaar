@@ -179,7 +179,7 @@ test('calls only the no-argument retention RPC with service credentials', async 
   assert.equal(calls[0].url.search, '')
   assert.equal(calls[0].init.method, 'POST')
   assert.equal(calls[0].init.body, '{}')
-  assert.equal(calls[0].init.redirect, 'error')
+  assert.equal(calls[0].init.redirect, 'manual')
   assert.equal(calls[0].headers.get('apikey'), SERVICE_KEY)
   assert.equal(calls[0].headers.get('authorization'), `Bearer ${SERVICE_KEY}`)
   assert.equal(calls[0].headers.get('content-type'), 'application/json')

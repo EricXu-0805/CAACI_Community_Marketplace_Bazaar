@@ -42,10 +42,11 @@ async function fetchWithTimeout(input, init, timeoutMs) {
   const operation = (async () => {
     const response = await fetch(input, {
       ...(init || {}),
-      redirect: 'error',
+      redirect: 'manual',
       signal: controller.signal,
     })
-    if (response.redirected || (response.status >= 300 && response.status < 400)) {
+    if (response.type === 'opaqueredirect' || response.status === 0
+        || response.redirected || (response.status >= 300 && response.status < 400)) {
       await response.body?.cancel().catch(() => {})
       throw new Error('upstream_redirect')
     }

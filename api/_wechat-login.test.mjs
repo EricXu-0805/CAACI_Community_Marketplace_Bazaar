@@ -352,7 +352,7 @@ test('wechat-login passwordless and abuse boundaries', async (t) => {
     assert.equal(calls.some((call) => call.url.pathname.includes('wechat_password_map')), false)
     assert.equal(calls.some((call) => call.url.searchParams.get('grant_type') === 'password'), false)
     assert.equal(calls.some((call) => JSON.stringify(call.body || {}).includes('legacy-secret-must-be-ignored')), false)
-    assert.equal(calls.every((call) => call.redirect === 'error'), true)
+    assert.equal(calls.every((call) => call.redirect === 'manual'), true)
     assert.equal(calls.every((call) => call.cache === 'no-store'), true)
     assert.equal(logs.length, 0)
   })

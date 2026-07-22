@@ -69,8 +69,30 @@ test('mp PATCH proxy pins the canonical PostgREST path and forwards the caller b
   assert.equal(calls[0].init.headers.authorization, 'Bearer caller-jwt')
   assert.equal(calls[0].init.headers.apikey, 'anon-key')
   assert.ok(calls[0].init.signal instanceof AbortSignal)
-  assert.equal(calls[0].init.redirect, 'error')
+  assert.equal(calls[0].init.redirect, 'manual')
   assert.equal(response.headers.get('content-range'), '0-0/*')
+})
+
+test('mp PATCH proxy rejects a manual upstream redirect without a second hop', async () => {
+  const calls = []
+  globalThis.fetch = async (input, init) => {
+    calls.push({ url: String(input), init })
+    return new Response(null, {
+      status: 307,
+      headers: { Location: 'https://redirect.test/secret-sink' },
+    })
+  }
+  const { default: handler } = await load('db-proxy.js', {
+    SUPABASE_URL: 'https://project.supabase.co',
+    SUPABASE_ANON_KEY: 'anon-key',
+  })
+
+  const response = await handler(proxyRequest('/rest/v1/profiles?id=eq.abc'))
+
+  assert.equal(response.status, 502)
+  assert.deepEqual(await response.json(), { error: 'upstream_unreachable' })
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].init.redirect, 'manual')
 })
 
 test('mp PATCH proxy rejects oversized, malformed, and non-JSON bodies before upstream work', async () => {

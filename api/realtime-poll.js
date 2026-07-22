@@ -117,7 +117,7 @@ async function fetchJsonWithTimeout(input, init, maxBytes) {
     const response = await fetch(input, {
       ...(init || {}),
       signal: controller.signal,
-      redirect: 'error',
+      redirect: 'manual',
     })
     // Callers need only the status for non-2xx responses. Do not wait for an
     // attacker- or proxy-controlled error body before failing closed.

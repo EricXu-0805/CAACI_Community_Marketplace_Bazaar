@@ -39,8 +39,9 @@ export const config = { runtime: 'edge' }
  *   independently.
  */
 
-function env(name, fallback) {
-  return String(process.env[name] || fallback || '').trim()
+function env(name, fallback = '') {
+  const primary = String(process.env[name] || '').trim()
+  return primary || String(fallback || '').trim()
 }
 
 const SUPABASE_URL = env('SUPABASE_URL', env('VITE_SUPABASE_URL', ''))
@@ -150,10 +151,17 @@ async function adminFetch(input, init = {}, options = {}) {
   try {
     const response = await fetch(input, {
       ...init,
-      redirect: 'error',
+      // Vercel's Edge runtime throws a bare TypeError for the error redirect mode,
+      // even when the upstream returns 200. Manual mode preserves the same
+      // fail-closed policy while keeping the response observable below.
+      redirect: 'manual',
       signal: controller.signal,
     })
-    if (response.redirected || (response.status >= 300 && response.status < 400)) {
+    if (response.type === 'opaqueredirect'
+        || response.status === 0
+        || response.redirected
+        || (response.status >= 300 && response.status < 400)) {
+      try { await response.body?.cancel() } catch {}
       throw codedError('admin_upstream_redirect')
     }
     const length = declaredContentLength(response.headers)
