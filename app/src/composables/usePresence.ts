@@ -1,109 +1,155 @@
-import { ref, watch } from 'vue'
+import { ref, type Ref } from 'vue'
+import { startPrivateRealtimeChannel } from '../api/privateRealtime'
 import { useSupabase } from './useSupabase'
-import { useAuth } from './useAuth'
 
 /*
- * Online presence + typing indicators (v5 Phase 7).
+ * Conversation-scoped Presence + typing.
  *
- * Two independent realtime surfaces, both H5-only and strictly best-effort
- * (mp-weixin can't speak the Phoenix channel protocol; realtime is a known
- * weak link per the project notes). Everything degrades silently to "no
- * dot / no typing" — presence never blocks or errors a screen.
- *
- *   · Presence — one shared `online-users` channel keyed by user id. The
- *     messages list and chat header read `onlineUsers` to show a green dot
- *     / "在线" label. Module-scoped so a single channel serves the session.
- *   · Typing — a per-conversation broadcast channel; the chat input pings
- *     it (throttled) and the peer shows a transient "正在输入…".
+ * There is deliberately no process-wide user-directory room. Opening a chat
+ * reveals only whether that conversation's expected counterpart is currently
+ * in the same private `conversation:<uuid>` channel. Typing uses Broadcast on
+ * that same channel. Both features remain H5-only and best-effort; an auth,
+ * RLS, socket, account-switch, or payload failure degrades to offline/no typing
+ * and never opens a public channel.
  */
-const onlineUsers = ref<Set<string>>(new Set())
-let presenceChannel: any = null
-// Register the identity watcher exactly once for the session (mirrors the
-// bootstrapped guard in useNotifications), so reading presence from N
-// components doesn't stack N watchers.
-let presenceWatchBootstrapped = false
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+export interface ConversationPresenceApi {
+  peerOnline: Ref<boolean>
+  sendTyping: () => void
+  unsubscribe: () => void
+}
+
+function inactivePresence(): ConversationPresenceApi {
+  return {
+    peerOnline: ref(false),
+    sendTyping: () => {},
+    unsubscribe: () => {},
+  }
+}
 
 export function usePresence() {
   const { supabase } = useSupabase()
-  const { currentUser } = useAuth()
 
-  // The presence channel is module-scoped and keyed to a uid, so on sign-out
-  // (currentUser → null) or an account switch the stale channel must be torn
-  // down — otherwise startPresence()'s `if (presenceChannel) return` guard
-  // skips re-subscribing and the next user shows offline to everyone for the
-  // rest of the JS session (uni.reLaunch on H5 is SPA nav, not a hard reload).
-  if (!presenceWatchBootstrapped) {
-    presenceWatchBootstrapped = true
-    watch(currentUser, (u, prev) => {
-      if (prev?.id && u?.id !== prev.id) {
-        stopPresence()
-        if (u) startPresence()
-      }
-    })
-  }
-
-  function startPresence() {
-    // #ifdef H5
-    if (presenceChannel || !currentUser.value) return
-    const uid = currentUser.value.id
-    presenceChannel = supabase.channel('online-users', { config: { presence: { key: uid } } })
-    presenceChannel
-      .on('presence', { event: 'sync' }, () => {
-        try {
-          const state = presenceChannel.presenceState()
-          onlineUsers.value = new Set(Object.keys(state))
-        } catch { /* ignore malformed state */ }
-      })
-      .subscribe((status: string) => {
-        if (status === 'SUBSCRIBED') {
-          try { presenceChannel.track({ online_at: Date.now() }) } catch { /* ignore */ }
-        }
-      })
-    // #endif
-  }
-
-  function stopPresence() {
-    // #ifdef H5
-    if (presenceChannel) {
-      try { supabase.removeChannel(presenceChannel) } catch { /* already gone */ }
-      presenceChannel = null
-      onlineUsers.value = new Set()
-    }
-    // #endif
-  }
-
-  function isOnline(userId: string | undefined | null): boolean {
-    return !!userId && onlineUsers.value.has(userId)
-  }
-
-  function subscribeTyping(
+  function subscribeConversationPresence(
     conversationId: string,
-    onPeerTyping: (userId: string) => void,
-  ): { sendTyping: () => void; unsubscribe: () => void } {
+    expectedPeerId: string,
+    onPeerTyping: () => void,
+    onPeerOnline: (online: boolean) => void = () => {},
+  ): ConversationPresenceApi {
     // #ifdef H5
-    const ch = supabase.channel(`typing:${conversationId}`)
-    ch.on('broadcast', { event: 'typing' }, (payload: any) => {
-      const uid = payload?.payload?.user_id
-      if (uid && uid !== currentUser.value?.id) onPeerTyping(uid)
-    }).subscribe()
-    let lastSent = 0
-    function sendTyping() {
-      const now = Date.now()
-      if (now - lastSent < 1500) return // throttle — one ping per 1.5s
-      lastSent = now
-      try {
-        ch.send({ type: 'broadcast', event: 'typing', payload: { user_id: currentUser.value?.id } })
-      } catch { /* best-effort */ }
+    if (!UUID_RE.test(conversationId) || !UUID_RE.test(expectedPeerId)) {
+      return inactivePresence()
     }
+
+    const peerOnline = ref(false)
+    let channel: any = null
+    let ownUserId = ''
+    let isCurrentAccount = () => false
+    let subscribed = false
+    let lastSentAt = 0
+    const setPeerOnline = (online: boolean) => {
+      if (peerOnline.value === online) return
+      peerOnline.value = online
+      try { onPeerOnline(online) } catch { /* presentation callback is isolated */ }
+    }
+
+    const unsubscribe = startPrivateRealtimeChannel({
+      supabase,
+      topic: `conversation:${conversationId.toLowerCase()}`,
+      config: (context) => ({
+        presence: { key: context.userId },
+        broadcast: { self: false, ack: true },
+      }),
+      configure: (privateChannel, context) => {
+        // Bind the Presence key only after the session/account guard has been
+        // established; a caller cannot supply a peer or third-party key.
+        ownUserId = context.userId
+        isCurrentAccount = context.isCurrent
+        channel = privateChannel
+        return privateChannel
+          .on('presence', { event: 'sync' }, () => {
+            if (!context.isCurrent()) return
+            try {
+              const state = privateChannel.presenceState() as Record<string, unknown>
+              const peerEntries = state?.[expectedPeerId]
+              setPeerOnline(Array.isArray(peerEntries) && peerEntries.some(entry => (
+                !!entry
+                && typeof entry === 'object'
+                && (entry as { user_id?: unknown }).user_id === expectedPeerId
+              )))
+            } catch {
+              setPeerOnline(false)
+            }
+          })
+          .on('broadcast', { event: 'typing' }, (message: any) => {
+            if (!context.isCurrent()) return
+            const payload = message?.payload
+            if (
+              payload?.conversation_id !== conversationId
+              || payload?.user_id !== expectedPeerId
+            ) return
+            try { onPeerTyping() } catch { /* presentation callback is isolated */ }
+          })
+      },
+      onStatus: (status) => {
+        if (status === 'SUBSCRIBED' && channel) {
+          subscribed = true
+          try {
+            void Promise.resolve(channel.track({
+              user_id: ownUserId,
+              online_at: Date.now(),
+            })).catch(() => { setPeerOnline(false) })
+          } catch {
+            setPeerOnline(false)
+          }
+          return
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          subscribed = false
+          setPeerOnline(false)
+        }
+      },
+      onClose: () => {
+        subscribed = false
+        channel = null
+        ownUserId = ''
+        isCurrentAccount = () => false
+        setPeerOnline(false)
+      },
+    })
+
     return {
-      sendTyping,
-      unsubscribe: () => { try { supabase.removeChannel(ch) } catch { /* already gone */ } },
+      peerOnline,
+      sendTyping: () => {
+        if (!subscribed || !channel || !isCurrentAccount()) return
+        const now = Date.now()
+        if (now - lastSentAt < 1500) return
+        lastSentAt = now
+        try {
+          void Promise.resolve(channel.send({
+            type: 'broadcast',
+            event: 'typing',
+            payload: {
+              conversation_id: conversationId,
+              user_id: ownUserId,
+            },
+          })).catch(() => {})
+        } catch { /* typing is best-effort */ }
+      },
+      unsubscribe: () => {
+        subscribed = false
+        setPeerOnline(false)
+        channel = null
+        ownUserId = ''
+        unsubscribe()
+      },
     }
     // #endif
     // #ifndef H5
-    return { sendTyping: () => {}, unsubscribe: () => {} }
+    return inactivePresence()
     // #endif
   }
 
-  return { onlineUsers, startPresence, stopPresence, isOnline, subscribeTyping }
+  return { subscribeConversationPresence }
 }

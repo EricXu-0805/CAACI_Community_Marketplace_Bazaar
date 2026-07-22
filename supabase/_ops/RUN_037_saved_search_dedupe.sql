@@ -1,7 +1,20 @@
 -- =========================================================
+-- DEPRECATED OPERATOR BUNDLE — retained only as historical recovery evidence.
+-- Do not execute this file. Its contracts predate the timestamped 2026-07
+-- hardening chain and can overwrite current least-privilege functions.
+-- Follow RUNBOOK.md and the matching PRECHECK/migration/VERIFY/REGRESSION files.
+\set ON_ERROR_STOP on
+DO $deprecated_operator_bundle$
+BEGIN
+  RAISE EXCEPTION
+    'deprecated_operator_bundle: use the reviewed timestamped migration chain';
+END
+$deprecated_operator_bundle$;
+
+-- =========================================================
 -- RUN 037: saved_search dedupe (Oracle P0 #8)
 -- =========================================================
--- Paste this ENTIRE file into Supabase SQL Editor and run ONCE.
+-- Historical instructions below are retained for incident archaeology only.
 --
 -- Stops "5 saved searches all match → 5 push notifications" spam by:
 --   1. Deleting pre-existing duplicate rows in notifications (keeping
@@ -97,4 +110,5 @@ NOTIFY pgrst, 'reload schema';
 --
 --   SELECT indexname FROM pg_indexes WHERE indexname='notifications_saved_search_unique_per_item';
 --   -- Expect: 1 row
+-- =========================================================
 -- =========================================================

@@ -2,7 +2,7 @@
   <view class="page" :class="mpThemeClass" :style="mpChrome">
     <view class="header">
       <view class="back" role="button" :aria-label="t('a11y.back')" @click="goBack"><view class="back-arrow"></view></view>
-      <view class="hero-badge"><text class="hero-check">✓</text><text class="hero-illini">Illini</text></view>
+      <view class="hero-badge"><UIcon name="check" size="xs" color="#FFFFFF" aria-hidden="true" /><text class="hero-illini">Illini</text></view>
       <text class="app-name">{{ t('illini.title') }}</text>
       <text class="app-desc">{{ t('illini.intro') }}</text>
     </view>
@@ -15,6 +15,7 @@
           <input
             v-model="email"
             :placeholder="t('illini.emailPlaceholder')"
+            :aria-label="t('illini.emailLabel')"
             type="text"
             autocomplete="email"
             class="form-input"
@@ -32,10 +33,10 @@
       <template v-else>
         <view class="form-group">
           <text class="form-label">{{ t('illini.codeLabel') }}</text>
-          <UCodeInput v-model="code" :placeholder="t('resetPw.codePlaceholder')" :autofocus="true" />
+          <UCodeInput v-model="code" :placeholder="t('resetPw.codePlaceholder')" :aria-label="t('illini.codeLabel')" :autofocus="true" />
           <view class="code-row">
             <text class="code-hint">{{ t('illini.codeHint', { email }) }}</text>
-            <text :class="['resend', { disabled: resendCooldown > 0 }]" role="button" @click="onResend">
+            <text :class="['resend', { disabled: resendCooldown > 0 || sending }]" role="button" @click="onResend">
               {{ resendCooldown > 0 ? t('resetPw.resendIn', { n: resendCooldown }) : t('resetPw.resend') }}
             </text>
           </view>
@@ -60,18 +61,35 @@ const mpChrome = mpChromeVars()
  * login email is unchanged. @illinois.edu signups are auto-verified and never
  * see this page (the profile prompt is hidden when already verified).
  */
-import { ref, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { useSupabase, platformFetch } from '../../composables/useSupabase'
+import { readBoundedJson } from '../../api/responseBody'
 import { useAuth } from '../../composables/useAuth'
 import { BASE_URL } from '../../config/runtime'
+import { navigateBackOr } from '../../utils'
 import UCodeInput from '../../components/UCodeInput.vue'
+import UIcon from '../../components/UIcon.vue'
+import {
+  captureAccountRequest,
+  isAccountRequestCurrent,
+  onAccountTransition,
+  type AccountRequestToken,
+} from '../../composables/accountScope'
 
 const { t, lang } = useI18n()
 const { supabase } = useSupabase()
-const { currentUser } = useAuth()
+const { currentUser, awaitAuthReady, requireAuth } = useAuth()
+let pageMounted = true
+
+onMounted(async () => {
+  const state = await awaitAuthReady()
+  if (!pageMounted) return
+  if (state === 'anonymous') requireAuth()
+})
 
 const ILLINI_RE = /^[^@\s]+@illinois\.edu$/
+const MAX_ILLINI_RESPONSE_BYTES = 64 * 1024
 
 let sendEndpoint = '/api/auth/send-illini-code'
 let verifyEndpoint = '/api/auth/verify-illini-code'
@@ -96,6 +114,23 @@ const verifying = ref(false)
 
 const resendCooldown = ref(0)
 let cooldownTimer: ReturnType<typeof setInterval> | null = null
+let pageEpoch = 0
+function stopCooldown() {
+  if (cooldownTimer) clearInterval(cooldownTimer)
+  cooldownTimer = null
+  resendCooldown.value = 0
+}
+function resetVerificationPrivateState() {
+  pageEpoch += 1
+  step.value = 'email'
+  email.value = ''
+  code.value = ''
+  sending.value = false
+  verifying.value = false
+  stopCooldown()
+}
+const stopAccountTransitionListener = onAccountTransition(resetVerificationPrivateState)
+
 function startCooldown() {
   resendCooldown.value = 60
   if (cooldownTimer) clearInterval(cooldownTimer)
@@ -104,7 +139,14 @@ function startCooldown() {
     if (resendCooldown.value <= 0 && cooldownTimer) { clearInterval(cooldownTimer); cooldownTimer = null }
   }, 1000)
 }
-onUnmounted(() => { if (cooldownTimer) clearInterval(cooldownTimer) })
+onUnmounted(() => {
+  pageMounted = false
+  pageEpoch += 1
+  sending.value = false
+  verifying.value = false
+  stopCooldown()
+  stopAccountTransitionListener()
+})
 
 function errToast(errCode: string) {
   const key = `illini.err.${errCode}`
@@ -113,69 +155,130 @@ function errToast(errCode: string) {
   uni.showToast({ title: msg === key ? t('illini.err.generic') : msg, icon: 'none', duration: 2800 })
 }
 
-async function authHeader(): Promise<Record<string, string> | null> {
+function flowIsCurrent(accountToken: AccountRequestToken, requestEpoch: number): boolean {
+  return pageMounted
+    && requestEpoch === pageEpoch
+    && isAccountRequestCurrent(accountToken)
+    && currentUser.value?.id === accountToken.userId
+}
+
+async function authHeader(accountToken: AccountRequestToken): Promise<Record<string, string> | null> {
   const { data } = await supabase.auth.getSession()
+  if (!isAccountRequestCurrent(accountToken) || data.session?.user.id !== accountToken.userId) return null
   const jwt = data.session?.access_token
   if (!jwt) return null
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` }
 }
 
-async function sendCode(): Promise<boolean> {
-  const e = email.value.trim().toLowerCase()
+async function sendCode(
+  accountToken: AccountRequestToken,
+  requestEpoch: number,
+  rawEmail: string,
+): Promise<boolean> {
+  const e = rawEmail.trim().toLowerCase()
   if (!ILLINI_RE.test(e)) { errToast('invalid_email'); return false }
-  const headers = await authHeader()
+  let headers: Record<string, string> | null
+  try {
+    headers = await authHeader(accountToken)
+  } catch {
+    if (flowIsCurrent(accountToken, requestEpoch)) errToast('network')
+    return false
+  }
+  if (!flowIsCurrent(accountToken, requestEpoch)) return false
   if (!headers) { errToast('auth_required'); return false }
   try {
     const r = await platformFetch(sendEndpoint, { method: 'POST', headers, body: JSON.stringify({ email: e }) })
-    const j = await r.json().catch(() => ({}))
+    const j = await readBoundedJson<any>(r, {
+      maxBytes: MAX_ILLINI_RESPONSE_BYTES,
+      timeoutMs: 10_000,
+    }).catch(() => ({}))
+    if (!flowIsCurrent(accountToken, requestEpoch)) return false
     if (!r.ok || !j?.ok) { errToast(j?.error || 'generic'); return false }
     return true
   } catch {
-    errToast('network'); return false
+    if (flowIsCurrent(accountToken, requestEpoch)) errToast('network')
+    return false
   }
 }
 
 async function onSendCode() {
   if (sending.value) return
+  const entryEpoch = pageEpoch
   sending.value = true
   try {
-    if (await sendCode()) {
+    await awaitAuthReady()
+    if (entryEpoch !== pageEpoch || !requireAuth() || !currentUser.value) return
+    const accountToken = captureAccountRequest(currentUser.value.id)
+    const requestEpoch = entryEpoch
+    const emailSnapshot = email.value
+    if (!flowIsCurrent(accountToken, requestEpoch)) return
+    if (await sendCode(accountToken, requestEpoch, emailSnapshot)) {
+      if (!flowIsCurrent(accountToken, requestEpoch)) return
       step.value = 'code'
       startCooldown()
       uni.showToast({ title: t('illini.codeSent'), icon: 'none' })
     }
-  } finally { sending.value = false }
+  } finally {
+    if (entryEpoch === pageEpoch) sending.value = false
+  }
 }
 
 async function onResend() {
-  if (resendCooldown.value > 0) return
-  if (await sendCode()) {
-    startCooldown()
-    uni.showToast({ title: t('resetPw.resent'), icon: 'none' })
+  if (resendCooldown.value > 0 || sending.value) return
+  const entryEpoch = pageEpoch
+  sending.value = true
+  try {
+    await awaitAuthReady()
+    if (entryEpoch !== pageEpoch || !requireAuth() || !currentUser.value) return
+    const accountToken = captureAccountRequest(currentUser.value.id)
+    const requestEpoch = entryEpoch
+    const emailSnapshot = email.value
+    if (await sendCode(accountToken, requestEpoch, emailSnapshot)) {
+      if (!flowIsCurrent(accountToken, requestEpoch)) return
+      startCooldown()
+      uni.showToast({ title: t('resetPw.resent'), icon: 'none' })
+    }
+  } finally {
+    if (entryEpoch === pageEpoch) sending.value = false
   }
 }
 
 async function onVerify() {
   if (verifying.value) return
   if (code.value.trim().length !== 6) { uni.showToast({ title: t('resetPw.needCode'), icon: 'none' }); return }
-  const headers = await authHeader()
-  if (!headers) { errToast('auth_required'); return }
+  const entryEpoch = pageEpoch
   verifying.value = true
   try {
-    const r = await platformFetch(verifyEndpoint, { method: 'POST', headers, body: JSON.stringify({ code: code.value.trim() }) })
-    const j = await r.json().catch(() => ({}))
+    await awaitAuthReady()
+    if (entryEpoch !== pageEpoch || !requireAuth() || !currentUser.value) return
+    const accountToken = captureAccountRequest(currentUser.value.id)
+    const requestEpoch = entryEpoch
+    const codeSnapshot = code.value.trim()
+    const headers = await authHeader(accountToken)
+    if (!flowIsCurrent(accountToken, requestEpoch)) return
+    if (!headers) { errToast('auth_required'); return }
+    const r = await platformFetch(verifyEndpoint, { method: 'POST', headers, body: JSON.stringify({ code: codeSnapshot }) })
+    const j = await readBoundedJson<any>(r, {
+      maxBytes: MAX_ILLINI_RESPONSE_BYTES,
+      timeoutMs: 10_000,
+    }).catch(() => ({}))
+    if (!flowIsCurrent(accountToken, requestEpoch)) return
     if (!r.ok || !j?.verified) { errToast(j?.error || 'generic'); return }
     // Server already flipped the badge; reflect it locally so the profile
     // updates without a refetch (currentUser is reactive).
-    if (currentUser.value) currentUser.value.is_illini_verified = true
+    if (currentUser.value?.id === accountToken.userId) currentUser.value.is_illini_verified = true
     uni.showToast({ title: t('illini.success'), icon: 'success', duration: 1800 })
-    setTimeout(() => uni.navigateBack(), 1500)
+    setTimeout(() => {
+      if (flowIsCurrent(accountToken, requestEpoch)) goBack()
+    }, 1500)
   } catch {
-    errToast('network')
-  } finally { verifying.value = false }
+    if (entryEpoch === pageEpoch) errToast('network')
+  } finally {
+    if (entryEpoch === pageEpoch) verifying.value = false
+  }
 }
 
-function goBack() { uni.navigateBack() }
+function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/profile/index' })) }
 </script>
 
 <style lang="scss" scoped>
@@ -202,14 +305,14 @@ function goBack() { uni.navigateBack() }
   display: inline-flex; align-items: center; padding: 6px 16px;
   background: var(--campus-blue, #13294b); border-radius: var(--radius-pill, 999px);
 }
-.hero-check { font-size: 13px; font-weight: 800; color: #fff; margin-right: 5px; }
+.hero-badge :deep(.u-icon) { width: 13px !important; height: 13px !important; margin-right: 5px; }
 .hero-illini { font-size: 16px; font-weight: 800; color: #fff; letter-spacing: 0.02em; }
 .app-name {
   font-family: var(--font-serif);
   font-size: 22px; font-weight: 600; color: var(--text-primary);
   margin-top: 16px; letter-spacing: -0.02em;
 }
-.app-desc { font-size: 13px; color: var(--text-faint); margin-top: 6px; text-align: center; line-height: 1.5; padding: 0 12px; }
+.app-desc { font-size: 13px; color: var(--text-subtle); margin-top: 6px; text-align: center; line-height: 1.5; padding: 0 12px; }
 
 /* The header + form are centered together as one block (.page
    justify-content:center) so this sparse one-field form reads as a balanced
@@ -225,13 +328,13 @@ function goBack() { uni.navigateBack() }
   border: 1px solid var(--line-soft);
   &:focus { border-color: var(--accent-primary); background: var(--bg-elev-1); }
 }
-.field-hint { display: block; font-size: 11px; color: var(--text-faint); margin-top: 7px; line-height: 1.4; }
+.field-hint { display: block; font-size: 11px; color: var(--text-subtle); margin-top: 7px; line-height: 1.4; }
 
 .code-row {
   display: flex; align-items: center; justify-content: space-between;
   gap: 10px; margin-top: 8px;
 }
-.code-hint { font-size: 11px; color: var(--text-faint); line-height: 1.4; flex: 1; }
+.code-hint { font-size: 11px; color: var(--text-subtle); line-height: 1.4; flex: 1; }
 .resend {
   font-size: 12px; color: var(--accent-primary); font-weight: 600;
   cursor: pointer; flex-shrink: 0;

@@ -1,131 +1,98 @@
-# Security setup — activation checklist
+# Security setup — historical context and current release gates
 
-Two things ship in this PR that need manual activation in Supabase / Vercel.
-Skip either and the app still works (safe fallback), but the second-tier
-moderation won't actually fire.
+> **Do not use this file as a production paste-run checklist.** It originally
+> described the one-off activation of historical migrations 023–027. The live
+> project state must be reconciled against the current migration ledger before
+> every release. The 2026-07 candidate adds a reviewed timestamped tail; a file
+> existing in Git is not deployment evidence. Start with [`audit/README.md`](audit/README.md),
+> [`../RUNBOOK.md`](../RUNBOOK.md), and [`../ENV_CHECKLIST.md`](../ENV_CHECKLIST.md).
 
----
+## 1. Current database deployment discipline
 
-## 1. Run the five new Supabase migrations
+Never paste historical migrations into the production SQL Editor, run a blind
+`supabase db push`, or drop triggers as an ad-hoc rollback. A migration filename
+in the repository is not evidence that production has the same definition.
 
-Paste each into **Supabase Dashboard → SQL Editor**, in order:
+For an existing environment, use the release sequence in `RUNBOOK.md`:
 
-1. `supabase/migrations/023_banners.sql` — creates `banners` table + `banners_live` view, seeds two rows.
-2. `supabase/migrations/024_content_moderation.sql` — creates `moderation_keywords` table + BEFORE INSERT triggers on `posts`, `post_comments`, `items`, `messages`. Seeds ~40 baseline terms.
-3. `supabase/migrations/025_content_moderation_lexicon.sql` — bulk inserts ~2,382 terms sourced from `konsheng/Sensitive-lexicon` (MIT). Political buckets filtered out.
-4. `supabase/migrations/026_profile_consent.sql` — adds `tos_version`, `consented_at`, `onboarded_at`, `campus_area` columns on `profiles`; exposes `record_consent()` and `mark_onboarded()` RPCs used by the onboarding wizard and the re-consent screen.
-5. `supabase/migrations/027_trust_and_suspensions.sql` — Security C: adds `trust_score`, `shadow_banned`, `suspension_level`, `suspended_until`, `last_fp_hash`, `warning_count` on `profiles`; creates `suspensions` history table, `device_fingerprints` table, `compute_trust_score()` / `recompute_trust_score()` / `apply_ban_level()` / `lift_suspension()` / `submit_appeal()` / `record_fingerprint()` RPCs; adds BEFORE INSERT `enforce_actor` triggers on `posts`/`post_comments`/`items`/`messages` that block writes for users with active suspension; exposes `items_visible` / `posts_visible` views that filter shadow-banned authors (except for the author themselves).
+1. inventory the migration ledger and exact live object/grant/policy definitions;
+2. run the matching read-only `supabase/_ops/PRECHECK_*.sql` files;
+3. take a tested backup and rehearse the full ordered chain in isolated staging;
+4. apply only the reviewed unique timestamped candidate migrations;
+5. run every matching VERIFY and rollback-transaction REGRESSION bundle;
+6. canary API/client compatibility and observe auth, Realtime, Storage, cron,
+   provider and admin audit behavior before any production window.
 
-**Verify:**
-```sql
-SELECT count(*) FROM public.moderation_keywords WHERE active = true;
--- expect ~2400
-SELECT count(*) FROM public.banners_live;
--- expect >= 2
-SELECT column_name FROM information_schema.columns
- WHERE table_schema='public' AND table_name='profiles'
-   AND column_name IN ('tos_version','onboarded_at','campus_area');
--- expect 3 rows
-```
+Rollback is a reviewed release decision: prefer a forward fix or a proven
+backup restore plan. Do not use a partial `DROP TRIGGER` recipe that leaves
+schema, grants, functions and clients in mutually inconsistent generations.
 
-**Rollback if needed:**
-```sql
-DROP TRIGGER moderate_posts ON public.posts;
-DROP TRIGGER moderate_post_comments ON public.post_comments;
-DROP TRIGGER moderate_items ON public.items;
-DROP TRIGGER moderate_messages ON public.messages;
-```
+Historical migrations 023–027 introduced banners, keyword moderation, consent,
+trust/suspension fields and their first RPC/trigger versions. Those names are
+useful provenance only. Later migrations supersede several definitions, so
+their present behavior must be verified from the current candidate and live
+catalog rather than from this historical description.
 
----
+## 2. OpenAI moderation configuration
 
-## 2. Add OpenAI API key to Vercel (optional but recommended)
+`/api/moderate` is an authenticated, rate-limited server route. With no
+`OPENAI_API_KEY`, the optional provider layer is explicitly disabled; once
+configured, provider timeout, malformed output and service failures fail closed
+so the client can retry. The database keyword/ACL/RLS boundaries remain the
+authoritative write guard.
 
-The `/api/moderate` endpoint proxies text through OpenAI's
-`omni-moderation-latest` model to catch harassment / self-harm / sexual
-content the keyword list can't catch. **It's free** (no per-call cost),
-but needs an API key.
+Provisioning rules:
 
-### Get a key
+- create least-privilege, separately revocable server keys per environment;
+  keep the production key in Production scope only, use a staging-only key in
+  a trusted branch/custom Preview environment, and give arbitrary PR previews
+  no provider key; never expose it through `VITE_*`;
+- confirm current provider pricing, quota, data handling and incident ownership
+  in the provider console instead of relying on an old “free” claim;
+- use the normal reviewed staging deployment workflow. Do not create an empty
+  commit or push merely to trigger an unreviewed production redeploy;
+- verify first with a dedicated staging user JWT and benign fixtures. Do not
+  probe production or send sensitive test text without authorization.
 
-1. Go to <https://platform.openai.com/api-keys>
-2. "Create new secret key"
-3. Name it `caaci-moderation`, scope = "restricted", permission = "Moderation"
-   only (not full access — safer)
-4. Copy the `sk-...` string
-
-### Add to Vercel
-
-1. <https://vercel.com/ericxu-0805s-projects/caaci-community-marketplace-bazaar/settings/environment-variables>
-2. "Add new"
-3. Name: `OPENAI_API_KEY`
-4. Value: paste the `sk-...`
-5. Environment: tick **Production** AND **Preview**
-6. Save
-
-### Redeploy
+Example staging contract check (use a disposable staging account and keep the
+token out of shell history/log artifacts):
 
 ```bash
-git commit --allow-empty -m "chore: trigger redeploy to pick up OPENAI_API_KEY" && git push
-```
-
-Or Vercel Dashboard → Deployments → "..." on latest → "Redeploy".
-
-### Verify it's live
-
-```bash
-curl -X POST https://illinimarket.com/api/moderate \
+curl -i -X POST "$STAGING_ORIGIN/api/moderate" \
+  -H "Authorization: Bearer $STAGING_USER_JWT" \
   -H 'Content-Type: application/json' \
-  -d '{"text":"hello world"}'
-# expect: {"flagged":false,"categories":[]}
-
-curl -X POST https://illinimarket.com/api/moderate \
-  -H 'Content-Type: application/json' \
-  -d '{"text":"i want to kill myself"}'
-# expect: {"flagged":true,"categories":["self-harm", ...]}
+  --data '{"text":"campus marketplace test"}'
 ```
 
-If you get `{"skipped":true,"reason":"no_key"}` the env var didn't
-propagate — redeploy and re-check.
+Expected success is a bounded documented JSON contract. `401/403` means the
+caller identity/authorization is invalid; a stable `503`/retryable response is
+not permission to bypass moderation or write directly to Supabase.
 
----
+## 3. Moderation layers and failure boundaries
 
-## 3. Moderation layers — what does what
+| Layer | Where | Boundary |
+|---|---|---|
+| Length/contact/local keyword | client | fast user feedback; never a trust boundary by itself |
+| Duplicate/session checks | client | reduces accidental replay; server/database still enforce writes |
+| OpenAI moderation | authenticated Vercel route | optional when unconfigured; fail-closed once configured |
+| Database keyword/actor triggers | Supabase | authoritative content/actor enforcement |
+| ACL + RLS + RPC ownership | Supabase | prevents direct Data API bypass and cross-account writes |
 
-When a user hits "Publish" on a post / item / comment / message:
+Provider health must be observed independently. A green client response does
+not prove symbolication, alert routing, quota, or the database trigger layer.
 
-| Layer | Where | What it catches | Fails open? |
-|---|---|---|---|
-| 1. Length | client | empty / too long | no — hard block |
-| 2. Contact regex | client | phone, WeChat, QQ, email | no — hard block |
-| 3. Sensitive-word (local) | client | ~40 baseline terms, homoglyph-folded | no — hard block |
-| 4. Local duplicate | client memory | same text within 30 s | no — hard block |
-| 5. OpenAI moderation | Vercel edge | harassment / self-harm / sexual / violence / hate | **yes** (3 s timeout → allow) |
-| 6. Keyword trigger | Supabase | ~2,400 lexicon terms + contact regex | no — hard block |
+## 4. Keyword and policy changes
 
-Layers 1–4 run in the browser (fast, removes obvious garbage without
-spending quota). Layer 5 runs on Vercel edge. Layer 6 is the final
-trust boundary; **even if someone bypasses the app and hits Supabase
-directly via a leaked anon key, they still trip this trigger.**
+Treat moderation lexicon edits as production data/config changes:
 
----
+- propose the exact term/category/severity delta with an owner and false-positive
+  review;
+- apply and test it in staging with bilingual allow/block fixtures;
+- deploy through an audited admin/migration path with a reversible change record;
+- verify counts and behavior without copying user content into logs;
+- monitor appeals/false positives and deactivate through the same controlled
+  path. Do not run casual production `INSERT`/`UPDATE` statements from this doc.
 
-## 4. Adding / removing keywords later
-
-```sql
--- Add a term (case-insensitive; stored as-given)
-INSERT INTO public.moderation_keywords (keyword, category, severity)
-VALUES ('specific-scam-phrase', 'scam', 3);
-
--- Deactivate without losing history
-UPDATE public.moderation_keywords
-SET active = false
-WHERE keyword = 'word-that-false-positives';
-
--- List recent adds
-SELECT keyword, category, severity, created_at
-FROM public.moderation_keywords
-ORDER BY created_at DESC
-LIMIT 50;
-```
-
-No code deploy needed — triggers re-read the table on every write.
+The current release decision, production Advisor snapshot, provider gates and
+administrator role matrix live in the dated audit, not in historical setup
+notes.

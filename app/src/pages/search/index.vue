@@ -12,7 +12,7 @@
     -->
     <view class="page-header">
       <view class="search-field">
-        <view class="sf-icon"></view>
+        <UIcon name="search" size="xs" color="text-faint" aria-hidden="true" />
         <input
           v-model="query"
           :placeholder="t('home.search')"
@@ -22,22 +22,24 @@
           :focus="true"
           @confirm="onSubmit"
         />
-        <view v-if="query" class="sf-clear" role="button" :aria-label="t('a11y.searchClear')" @click="query = ''">×</view>
+        <view v-if="query" class="sf-clear" role="button" :aria-label="t('a11y.searchClear')" @click="query = ''"><UIcon name="close" size="xs" color="currentColor" aria-hidden="true" /></view>
       </view>
-      <text class="cancel-btn" @click="goBack">{{ t('filter.cancel') }}</text>
+      <text class="cancel-btn" role="button" @click="goBack">{{ t('filter.cancel') }}</text>
     </view>
 
     <scroll-view class="body" scroll-y :show-scrollbar="false">
       <view v-if="recent.length > 0" class="section">
         <view class="sec-header">
           <text class="sec-title">{{ t('home.recentSearch') }}</text>
-          <text class="sec-clear" @click="clearHistory">{{ t('filter.reset') }}</text>
+          <text class="sec-clear" role="button" @click="clearHistory">{{ t('filter.reset') }}</text>
         </view>
         <view class="chip-row u-stagger">
           <view
             v-for="h in recent"
             :key="h"
             class="chip"
+            role="button"
+            :aria-label="h"
             @click="pick(h)"
           >
             <text class="chip-text">{{ h }}</text>
@@ -55,6 +57,8 @@
             v-for="c in categories"
             :key="'c'+c.value"
             class="cat-tile"
+            role="button"
+            :aria-label="c.label"
             @click="pickCategory(c.value)"
           >
             <UIcon :name="c.icon" size="sm" color="ink-soft" />
@@ -72,20 +76,60 @@ const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from '../../composables/useI18n'
+import { useAuth } from '../../composables/useAuth'
 import type { ItemCategory } from '../../types'
-import { BROWSE_CATEGORIES } from '../../utils'
+import { BROWSE_CATEGORIES, navigateBackOr } from '../../utils'
 import UIcon from '../../components/UIcon.vue'
+import { onAccountTransition } from '../../composables/accountScope'
+import {
+  readAccountPrivateStorage,
+  removeAccountPrivateStorage,
+  writeAccountPrivateStorage,
+} from '../../api/accountLocalPrivacy'
 
 const { t } = useI18n()
+const { awaitAuthReady } = useAuth()
 
 const query = ref('')
 const recent = ref<string[]>([])
+let pageMounted = true
 
-try {
-  recent.value = JSON.parse(uni.getStorageSync('searchHistory') || '[]')
-} catch {}
+const stopAccountTransitionListener = onAccountTransition(() => {
+  // accountLocalPrivacy erases the durable keys immediately after the
+  // authoritative transition. Clear the already-mounted refs synchronously so
+  // the old owner's query/history cannot survive until Vue remounts this page.
+  query.value = ''
+  recent.value = []
+})
+onMounted(async () => {
+  // Do not render device-persisted search history until useAuth has reconciled
+  // its owner marker with the authoritative session.  This closes the cold
+  // start window where account A's history could flash on an anonymous or B
+  // page before the transition listener ran.
+  await awaitAuthReady()
+  if (!pageMounted) return
+  try {
+    const stored = readAccountPrivateStorage<unknown>('searchHistory', '[]')
+    if (!stored.allowed) {
+      recent.value = []
+      return
+    }
+    const parsed = typeof stored.value === 'string'
+      ? JSON.parse(stored.value)
+      : stored.value
+    recent.value = Array.isArray(parsed)
+      ? parsed.filter(value => typeof value === 'string').slice(0, 8)
+      : []
+  } catch {
+    recent.value = []
+  }
+})
+onUnmounted(() => {
+  pageMounted = false
+  stopAccountTransitionListener()
+})
 
 const MAX_HISTORY = 8
 const STORAGE_KEY = 'searchHistory'
@@ -114,18 +158,16 @@ function saveToHistory(text: string) {
   const trimmed = text.trim()
   if (!trimmed) return
   recent.value = [trimmed, ...recent.value.filter(s => s !== trimmed)].slice(0, MAX_HISTORY)
-  try { uni.setStorageSync(STORAGE_KEY, JSON.stringify(recent.value)) } catch {}
+  writeAccountPrivateStorage(STORAGE_KEY, JSON.stringify(recent.value))
 }
 
 function onSubmit() {
   const text = query.value.trim()
   if (!text) return
   saveToHistory(text)
-  try {
-    uni.setStorageSync('pending_search', text)
-    uni.removeStorageSync('pending_category')
-  } catch {}
-  uni.navigateBack()
+  writeAccountPrivateStorage('pending_search', text)
+  removeAccountPrivateStorage('pending_category')
+  goBack()
 }
 
 function pick(text: string) {
@@ -134,24 +176,22 @@ function pick(text: string) {
 }
 
 function pickCategory(cat: ItemCategory | null) {
-  try {
-    uni.setStorageSync('pending_category', cat || '')
-    uni.removeStorageSync('pending_search')
-  } catch {}
-  uni.navigateBack()
+  writeAccountPrivateStorage('pending_category', cat || '')
+  removeAccountPrivateStorage('pending_search')
+  goBack()
 }
 
 function removeOne(text: string) {
   recent.value = recent.value.filter(s => s !== text)
-  try { uni.setStorageSync(STORAGE_KEY, JSON.stringify(recent.value)) } catch {}
+  writeAccountPrivateStorage(STORAGE_KEY, JSON.stringify(recent.value))
 }
 
 function clearHistory() {
   recent.value = []
-  try { uni.removeStorageSync(STORAGE_KEY) } catch {}
+  removeAccountPrivateStorage(STORAGE_KEY)
 }
 
-function goBack() { uni.navigateBack() }
+function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/index/index' })) }
 </script>
 
 <style lang="scss" scoped>
@@ -197,15 +237,6 @@ function goBack() { uni.navigateBack() }
   border-radius: var(--radius-md);
   padding: 9px 13px;
   box-sizing: border-box;
-}
-.sf-icon {
-  width: 14px; height: 14px; flex-shrink: 0;
-  border: 1.6px solid var(--ink-faint); border-radius: 50%; position: relative;
-}
-.sf-icon::after {
-  content: ''; position: absolute; right: -4px; bottom: -4px;
-  width: 5px; height: 1.6px; background: var(--ink-faint);
-  transform: rotate(45deg); transform-origin: left center;
 }
 .sf-input {
   flex: 1 1 auto;

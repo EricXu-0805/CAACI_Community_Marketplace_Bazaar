@@ -2,20 +2,9 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <script>
-      var coverSupport = 'CSS' in window && typeof CSS.supports === 'function' && (CSS.supports('top: env(a)') ||
-        CSS.supports('top: constant(a)'))
-      document.write(
-        '<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0' +
-        // interactive-widget=resizes-content (Safari 17.4+/Chrome 108+): the soft
-        // keyboard shrinks the LAYOUT viewport itself, so bottom-anchored bars and
-        // `position:fixed; bottom:0` sheets reflow to sit above the keyboard with
-        // zero JS. This replaces the per-element translateY lift that double-lifted
-        // the chat composer to the top of the screen (QA6 #8) and still left the
-        // post composer covered (#9). See composables/useKeyboardHeight.ts.
-        ', interactive-widget=resizes-content' +
-        (coverSupport ? ', viewport-fit=cover' : '') + '" />')
-    </script>
+    <!-- Unknown viewport keys are ignored by older browsers, so this static
+         declaration preserves the fallback without document.write/inline JS. -->
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Illini Market" />
@@ -24,9 +13,10 @@
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#12100D" />
     <meta name="description" content="UIUC campus marketplace — buy, sell, and chat with fellow Illini students. 华人二手交易 + 校园广场" />
     <meta name="format-detection" content="telephone=no" />
-    <meta http-equiv="x-dns-prefetch-control" content="on" />
-    <link rel="dns-prefetch" href="https://lfhvgprfphyfvhidegum.supabase.co" />
-    <link rel="preconnect" href="https://lfhvgprfphyfvhidegum.supabase.co" crossorigin />
+    <!-- Do not hard-code resource hints to a particular Supabase project.
+         Preview, staging, and migrated deployments may intentionally use a
+         different VITE_SUPABASE_URL; an old preconnect would both waste a
+         connection and leak visit timing to the wrong environment. -->
     <link rel="icon" type="image/svg+xml" href="/static/app-icon.svg" />
     <link rel="icon" type="image/png" sizes="192x192" href="/static/app-icon-192.png" />
     <link rel="apple-touch-icon" href="/static/app-icon-512.png" />

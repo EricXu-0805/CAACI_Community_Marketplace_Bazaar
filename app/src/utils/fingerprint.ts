@@ -1,8 +1,10 @@
 /*
  * Client device fingerprint.
  *
- * Produces a stable-enough hash per browser/device for abuse-detection
- * signals only. This is NOT a PII identifier — it exists to detect:
+ * Produces a stable-enough, pseudonymous hash per app/browser installation
+ * for abuse-review signals only. It is personal-data-adjacent and must never
+ * be treated as proof that two accounts belong to the same person. It helps
+ * reviewers notice:
  *   · one person operating multiple accounts to evade a ban
  *   · one device rotating through burner accounts to spam
  *
@@ -15,45 +17,49 @@
  *       - timezone offset
  *       - language / platform
  *       - persistent localStorage salt (per-install random)
- *   · Two users on the same campus-issued laptop with the same Chrome
- *     will collide. That's intentional — we want shared family
- *     devices to NOT trip as ban-evasion. The localStorage salt
- *     differentiates distinct installs on the same hardware class.
+ *   · Clearing app/browser storage, private browsing, changing browsers, or
+ *     reinstalling creates a new identifier. Multiple people can also share
+ *     one installation. The signal is therefore neither a physical-device ID
+ *     nor a safe basis for automatic enforcement.
  *   · The raw signal is hashed SHA-256 before it ever leaves the
  *     device. Server only ever sees the hex digest.
+ *   · If secure randomness, durable storage, or SHA-256 is unavailable, the
+ *     function returns null and records nothing. A weak/colliding fallback is
+ *     worse than a missing advisory signal.
  */
 
 const SALT_KEY = 'device_salt_v1'
 
-function randomSalt(): string {
+function secureRandomSalt(): string | null {
   const bytes = new Uint8Array(16)
   try {
-    (globalThis as any).crypto?.getRandomValues?.(bytes)
-  } catch {}
-  let fallback = false
-  if (bytes.every((b) => b === 0)) fallback = true
-  if (fallback) {
-    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256)
-  }
+    const cryptoApi = (globalThis as any).crypto
+    if (!cryptoApi || typeof cryptoApi.getRandomValues !== 'function') return null
+    cryptoApi.getRandomValues(bytes)
+  } catch { return null }
+  if (bytes.every((byte) => byte === 0)) return null
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-function getOrCreateSalt(): string {
+function getOrCreateSalt(): string | null {
   try {
     const existing = uni.getStorageSync(SALT_KEY)
-    if (typeof existing === 'string' && existing.length === 32) return existing
-    const fresh = randomSalt()
+    if (typeof existing === 'string' && /^[0-9a-f]{32}$/.test(existing)) return existing
+    const fresh = secureRandomSalt()
+    if (!fresh) return null
     uni.setStorageSync(SALT_KEY, fresh)
-    return fresh
+    // A storage engine that acknowledges but drops writes would otherwise
+    // generate a different hash on every launch and pollute the abuse table.
+    return uni.getStorageSync(SALT_KEY) === fresh ? fresh : null
   } catch {
-    return 'nosalt'
+    return null
   }
 }
 
-function collectSignal(): string {
+function collectSignal(salt: string): string {
   const parts: string[] = []
   parts.push('v1')
-  parts.push(getOrCreateSalt())
+  parts.push(salt)
 
   // #ifdef H5
   try {
@@ -102,25 +108,10 @@ async function sha256HexWebCrypto(s: string): Promise<string | null> {
   }
 }
 
-function fnv1aHex(s: string): string {
-  let h1 = 0x811c9dc5 >>> 0
-  let h2 = 0x12345678 >>> 0
-  for (let i = 0; i < s.length; i++) {
-    const c = s.charCodeAt(i)
-    h1 ^= c
-    h1 = (h1 + ((h1 << 1) + (h1 << 4) + (h1 << 7) + (h1 << 8) + (h1 << 24))) >>> 0
-    h2 ^= c
-    h2 = (h2 + ((h2 << 2) + (h2 << 3) + (h2 << 5) + (h2 << 11) + (h2 << 20))) >>> 0
-  }
-  const pad = (n: number) => n.toString(16).padStart(8, '0')
-  return (pad(h1) + pad(h2) + pad(h1 ^ h2) + pad((h1 + h2) >>> 0)).padEnd(32, '0')
-}
-
-export async function deviceFingerprintHash(): Promise<string> {
-  const signal = collectSignal()
-  const web = await sha256HexWebCrypto(signal)
-  if (web) return web
-  return fnv1aHex(signal)
+export async function deviceFingerprintHash(): Promise<string | null> {
+  const salt = getOrCreateSalt()
+  if (!salt) return null
+  return sha256HexWebCrypto(collectSignal(salt))
 }
 
 export function deviceUASnippet(): string {

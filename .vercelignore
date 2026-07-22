@@ -1,0 +1,79 @@
+# Test sources must never be uploaded with a release artifact. API tests also
+# use a leading underscore because Vercel's local zero-config builder does not
+# apply .vercelignore before discovering Functions.
+api/**/*.test.mjs
+api/_test-module-loader.mjs
+app/smoke/**
+app/test-results/**
+app/playwright-report/**
+app/blob-report/**
+app/coverage/**
+coverage/**
+scripts/**/*.test.mjs
+tests/**
+
+# Local credentials, linked CLI state, and IDE-only configuration must never be
+# sent to Vercel's build source. Deployment environments provide their own
+# reviewed variables.
+.env
+.env*
+.env.local
+.env.*.local
+app/.env
+app/.env*
+app/.env.local
+app/.env.*.local
+project.config.json
+project.private.config.json
+supabase/.temp/**
+
+# Browser evidence and agent/operator scratch can contain account details,
+# private messages, screenshots, or machine-local state.
+output/**
+app/output/**
+_ai_notes/**
+.gstack/**
+.remember/**
+backups/**
+*.dump
+*.dump.gz
+*.log
+*_AUDIT.md
+*_AUDIT_*.md
+*_AUDIT.txt
+*_AUDIT_*.txt
+*_SUMMARY.md
+*_SUMMARY.txt
+*_REPORT.md
+*_REPORT.txt
+*_FIXES.md
+AUDIT_*.md
+AUDIT_*.txt
+DESIGN_TOKENS_*.md
+DESIGN_TOKEN_*.md
+DESIGN_SYSTEM_*.md
+DARK_MODE_*.md
+DARK_MODE_*.txt
+IMAGE_ANALYSIS_*.md
+IMAGE_RENDERING_*.md
+IMAGE_RENDERING_*.txt
+PERFORMANCE_*.md
+PERFORMANCE_*.txt
+UI_*.md
+EXPLORATION_*.md
+
+# These sources are useful for review and local verification but are not inputs
+# to the H5 build or self-contained API entrypoints.
+docs/**
+supabase/**
+scripts/**
+.github/**
+.githooks/**
+
+# Defense in depth: plaintext administrator recovery manifests must live in an
+# approved private vault directory outside every source checkout/worktree.
+.iam-admin-token-recovery/**
+**/.iam-admin-token-recovery/**
+iam-admin-token-recovery*.json
+**/iam-admin-token-recovery*.json
+**/*admin-token-recovery*.json

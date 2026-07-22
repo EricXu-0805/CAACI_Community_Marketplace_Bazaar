@@ -53,7 +53,7 @@
         </view>
 
         <view class="asb-me u-press" role="button" :aria-label="t('nav.profile')" @click="go('/pages/profile/index')">
-          <image class="asb-ava" :src="avatarSrc" mode="aspectFill" :alt="meName" />
+          <UAvatar class="asb-ava" :src="currentUser?.avatar_url" :owner="currentUser?.id" :fallback="defaultAvatarSrc" :alt="meName" />
           <text class="asb-me-nm">{{ meName }}</text>
         </view>
 
@@ -76,6 +76,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import UAvatar from './UAvatar.vue'
 import UIcon from './UIcon.vue'
 import { useI18n } from '../composables/useI18n'
 import { useUnread } from '../composables/useUnread'
@@ -96,8 +97,8 @@ const brandEyebrow = computed(() => (lang.value === 'zh' ? 'ILLINI MARKET' : '�
 const themeLabel = computed(() =>
   isDark.value ? (lang.value === 'zh' ? '暗' : 'Dark') : (lang.value === 'zh' ? '亮' : 'Light'),
 )
-const avatarSrc = computed(() =>
-  currentUser.value?.avatar_url || (isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'),
+const defaultAvatarSrc = computed(() =>
+  isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg',
 )
 const meName = computed(() => currentUser.value?.nickname || t('nav.profile'))
 
@@ -216,9 +217,9 @@ function toggleTheme() {
   }
   .asb-pill:hover { background: var(--bg-inset); }
   .asb-pill-tx { color: var(--ink-soft); }
-  .asb-lang { color: var(--ink-faint); }
+  .asb-lang { color: var(--text-subtle); }
   .asb-lang.on { color: var(--ink); font-weight: 600; }
-  .asb-lang-sep { color: var(--ink-faint); }
+  .asb-lang-sep { color: var(--text-subtle); }
 
   /* Mac (wide) — tighten the rail a touch to match the kit's 232px. */
   @media (min-width: 1180px) {

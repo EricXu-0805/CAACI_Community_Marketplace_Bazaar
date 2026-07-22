@@ -129,6 +129,10 @@
 			"style": { "navigationStyle": "custom" }
 		},
 		{
+			"path": "pages/profile-recovery/index",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
 			"path": "pages/suspended/index",
 			"style": { "navigationStyle": "custom" }
 		},

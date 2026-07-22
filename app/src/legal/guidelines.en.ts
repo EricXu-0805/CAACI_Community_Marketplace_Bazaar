@@ -63,5 +63,5 @@ Violations of these Guidelines are treated as violations of the Terms of Service
 If you see something that breaks these Guidelines, tap the "…" menu on any listing, post, comment, or user profile and choose "Report". Reports are reviewed by a human. False or malicious reports are themselves a violation.
 
 14. Feedback.
-These Guidelines evolve. If a rule feels off, write us at help@illinimarket.com and tell us why — we read every message.
+These Guidelines evolve. If a rule feels off, write to help@illinimarket.com. We review submissions as operational capacity allows; this address is not an emergency service and no response time is guaranteed.
 `

@@ -1,7 +1,14 @@
 import { ref } from 'vue'
 import { useSupabase, platformFetch } from './useSupabase'
+import {
+  captureActiveAccountRequest,
+  isAccountRequestCurrent,
+  type AccountRequestToken,
+} from './accountScope'
 import { BASE_URL } from '../config/runtime'
 import type { Meetup } from '../types'
+import { readBoundedText } from '../api/responseBody'
+import { startPrivateRealtimeChannel } from '../api/privateRealtime'
 
 /*
  * Structured meetup scheduling (migration 052). Mirrors useOffers: all writes
@@ -32,6 +39,17 @@ function meetupNotifyBase(): string {
 export function useMeetups() {
   const { supabase } = useSupabase()
   const meetups = ref<Meetup[]>([])
+  let latestFetchId = 0
+  let latestAppliedFetchId = 0
+  let activeFetchConversationId: string | null = null
+  let activeFetchEpoch = 0
+
+  function resetMeetups() {
+    activeFetchEpoch += 1
+    activeFetchConversationId = null
+    latestAppliedFetchId = 0
+    meetups.value = []
+  }
 
   /*
    * QA8 #8 — instant email to the other party after a meetup action.
@@ -39,35 +57,60 @@ export function useMeetups() {
    * of truth and rides the daily digest as fallback, so a failure here is
    * silently absorbed — the meetup action itself already succeeded.
    */
-  function notifyMeetupEmail(meetup: Meetup | null | undefined) {
+  function notifyMeetupEmail(
+    meetup: Meetup | null | undefined,
+    accountToken: AccountRequestToken,
+  ) {
     const id = meetup?.id
-    if (!id) return
+    if (!id || !isAccountRequestCurrent(accountToken)) return
     ;(async () => {
       const { data: sess } = await supabase.auth.getSession()
+      if (
+        !isAccountRequestCurrent(accountToken)
+        || sess.session?.user.id !== accountToken.userId
+      ) return
       const jwt = sess.session?.access_token
       if (!jwt) return
-      await platformFetch(meetupNotifyBase(), {
+      const response = await platformFetch(meetupNotifyBase(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
         body: JSON.stringify({ meetup_id: id }),
       })
+      // Consume the acknowledgement so a stalled response cannot retain a
+      // connection/body indefinitely. Delivery remains best-effort; the
+      // durable notification row and digest are still the source of truth.
+      await readBoundedText(response, { maxBytes: 64 * 1024, timeoutMs: 10_000 })
     })().catch(() => { /* digest is the fallback path */ })
   }
 
   async function fetchMeetups(conversationId: string): Promise<Meetup[]> {
+    if (activeFetchConversationId !== conversationId) {
+      activeFetchConversationId = conversationId
+      activeFetchEpoch += 1
+      latestAppliedFetchId = 0
+    }
+    const requestEpoch = activeFetchEpoch
+    const requestId = ++latestFetchId
     const { data, error } = await supabase
       .from('meetups')
       .select(MEETUP_FIELDS)
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true })
+    if (
+      requestEpoch !== activeFetchEpoch ||
+      activeFetchConversationId !== conversationId ||
+      requestId < latestAppliedFetchId
+    ) return meetups.value
     if (error) {
       // 42P01 = undefined_table (migration not applied yet) → degrade to empty.
       if ((error as { code?: string }).code === '42P01') {
+        latestAppliedFetchId = requestId
         meetups.value = []
         return meetups.value
       }
       throw error
     }
+    latestAppliedFetchId = requestId
     meetups.value = (data || []) as Meetup[]
     return meetups.value
   }
@@ -78,14 +121,18 @@ export function useMeetups() {
     meetAt: string,
     note?: string,
   ): Promise<Meetup> {
+    const accountToken = captureActiveAccountRequest()
+    if (!accountToken) throw new Error('Not authenticated')
     const { data, error } = await supabase.rpc('propose_meetup', {
       p_conversation_id: conversationId,
       p_spot: spot,
       p_meet_at: meetAt,
+      expected_user_id_in: accountToken.userId,
       p_note: note ?? null,
     })
+    if (!isAccountRequestCurrent(accountToken)) throw new Error('Account changed during meetup proposal')
     if (error) throw error
-    notifyMeetupEmail(data as Meetup)
+    notifyMeetupEmail(data as Meetup, accountToken)
     return data as Meetup
   }
 
@@ -96,15 +143,19 @@ export function useMeetups() {
     newMeetAt?: string,
     newNote?: string,
   ): Promise<Meetup> {
+    const accountToken = captureActiveAccountRequest()
+    if (!accountToken) throw new Error('Not authenticated')
     const { data, error } = await supabase.rpc('respond_to_meetup', {
       p_meetup_id: meetupId,
       p_action: action,
+      expected_user_id_in: accountToken.userId,
       p_new_spot: newSpot ?? null,
       p_new_meet_at: newMeetAt ?? null,
       p_new_note: newNote ?? null,
     })
+    if (!isAccountRequestCurrent(accountToken)) throw new Error('Account changed during meetup response')
     if (error) throw error
-    notifyMeetupEmail(data as Meetup)
+    notifyMeetupEmail(data as Meetup, accountToken)
     return data as Meetup
   }
 
@@ -121,40 +172,65 @@ export function useMeetups() {
     meetAt: string,
     note?: string,
   ): Promise<Meetup> {
+    const accountToken = captureActiveAccountRequest()
+    if (!accountToken) throw new Error('Not authenticated')
     const { data, error } = await supabase.rpc('reschedule_accepted_meetup', {
       p_meetup_id: meetupId,
       p_new_spot: spot,
       p_new_meet_at: meetAt,
+      expected_user_id_in: accountToken.userId,
       p_new_note: note ?? null,
     })
+    if (!isAccountRequestCurrent(accountToken)) throw new Error('Account changed during meetup reschedule')
     if (error) throw error
-    notifyMeetupEmail(data as Meetup)
+    notifyMeetupEmail(data as Meetup, accountToken)
     return data as Meetup
   }
 
-  function subscribeToMeetups(conversationId: string, onChange: () => void): () => void {
+  function subscribeToMeetups(
+    conversationId: string,
+    onChange: () => void,
+    onReady?: () => void,
+  ): () => void {
     // #ifdef H5
-    const channel = supabase
-      .channel(`meetups:${conversationId}`)
-      .on(
+    // H5 exposes a real readiness barrier; ChatThread uses it for an
+    // authoritative post-SUBSCRIBED snapshot.
+    let readySent = false
+    return startPrivateRealtimeChannel({
+      supabase,
+      topic: `meetups:${conversationId}`,
+      configure: (privateChannel) => privateChannel.on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'meetups', filter: `conversation_id=eq.${conversationId}` },
         () => onChange(),
-      )
-      .subscribe()
-    return () => {
-      try { supabase.removeChannel(channel) } catch { /* already torn down */ }
-    }
+      ),
+      onStatus: (status) => {
+        if (status === 'SUBSCRIBED' && !readySent) {
+          readySent = true
+          onReady?.()
+        }
+      },
+    })
     // #endif
     // #ifndef H5
     /* Same rationale as subscribeToOffers' mp branch: meetup RPCs write no
        messages row, so without this poll an mp user waiting in-chat never
        saw the counterparty's confirm/reschedule. onChange() refetch is
-       cheap and idempotent. */
+       cheap and idempotent. This is a recurring full snapshot, not a cursor
+       handshake; because ChatThread installs it before the initial snapshot,
+       a concurrent change is recovered by a later 8s tick. */
     const timer = setInterval(() => { try { onChange() } catch { /* refetch errors surface in the caller */ } }, 8000)
     return () => clearInterval(timer)
     // #endif
   }
 
-  return { meetups, fetchMeetups, proposeMeetup, respondToMeetup, rescheduleAccepted, subscribeToMeetups }
+  return {
+    meetups,
+    fetchMeetups,
+    resetMeetups,
+    proposeMeetup,
+    respondToMeetup,
+    rescheduleAccepted,
+    subscribeToMeetups,
+  }
 }

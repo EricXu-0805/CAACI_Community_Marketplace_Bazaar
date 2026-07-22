@@ -26,18 +26,49 @@ import AppToast from '../../components/AppToast.vue'
  * ChatThread owns auth-gating, realtime subscriptions, offers and
  * presence — see its onMounted/onUnmounted.
  */
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import ChatThread from '../../components/ChatThread.vue'
+import { useAuth } from '../../composables/useAuth'
 
 const conversationId = ref('')
 const prefill = ref('')
+const { currentUser, awaitAuthReady } = useAuth()
+let routeMounted = false
 
 onLoad((options) => {
   if (options?.id) conversationId.value = options.id as string
   // prefill stays URL-encoded here; ChatThread decodes it (preserves the
   // original chat page's decodeURIComponent behaviour).
   if (options?.prefill) prefill.value = options.prefill as string
+})
+
+// A bare /chat URL has no thread to render. Waiting for the shared auth
+// handshake avoids sending a signed-in cold start to login, while the mounted
+// guard prevents a late handshake from navigating after this page was left.
+onMounted(() => {
+  routeMounted = true
+  if (conversationId.value) return
+  void (async () => {
+    const state = await awaitAuthReady()
+    if (!routeMounted || conversationId.value) return
+    uni.reLaunch({
+      url: state === 'authenticated' ? '/pages/messages/index' : '/pages/login/index',
+    })
+  })()
+})
+
+onUnmounted(() => {
+  routeMounted = false
+})
+
+// A pushed mobile chat otherwise survives sign-out with its component-local
+// conversation detail still rendered. Unmount immediately and leave the old
+// route whenever the authenticated identity changes.
+watch(() => currentUser.value?.id ?? null, (userId, previousUserId) => {
+  if (!previousUserId || userId === previousUserId) return
+  conversationId.value = ''
+  uni.reLaunch({ url: userId ? '/pages/messages/index' : '/pages/login/index' })
 })
 
 /*
@@ -78,14 +109,14 @@ function syncVV() {
   const visibleBottom = Math.round(vv.offsetTop + vv.height)
   const occluded = Math.max(0, Math.min(lay - visibleBottom, lay - 1))
   vvStyle.value = occluded > 0 ? { bottom: `${occluded}px` } : undefined
-  // Diagnostic readout. Off by default; flip on with ?kbdebug in the URL so it
-  // works on the production build too (import.meta.env.DEV is false there).
+  // Diagnostic readout. It is intentionally unavailable in production; add
+  // ?kbdebug only while running a DEV build.
   if (dbg) {
     vvDebug.value = `cH${lay} iH${Math.round(window.innerHeight)} vvH${Math.round(vv.height)} oT${Math.round(vv.offsetTop)} occ${occluded}`
   }
 }
 onMounted(() => {
-  try { dbg = import.meta.env.DEV || window.location.href.indexOf('kbdebug') !== -1 } catch {}
+  try { dbg = import.meta.env.DEV && new URL(window.location.href).searchParams.has('kbdebug') } catch { dbg = false }
   vv = window.visualViewport
   if (!vv) return
   vv.addEventListener('resize', syncVV)

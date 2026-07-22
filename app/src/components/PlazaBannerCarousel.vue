@@ -18,10 +18,19 @@
         v-for="(b, i) in banners"
         :key="b.id"
       >
-        <view class="banner-slide" @click="onTap(b)">
+        <view
+          class="banner-slide"
+          :role="b.target_url ? 'button' : undefined"
+          :tabindex="b.target_url ? 0 : undefined"
+          :aria-label="b.target_url ? (titleOf(b) || t('admin.plazaBanners')) : undefined"
+          @click="onTap(b)"
+          @keydown.enter.prevent="onTap(b)"
+          @keydown.space.prevent="onTap(b)"
+        >
           <image
             :src="b.image_url"
-            :alt="titleOf(b) || 'Banner'"
+            :alt="b.target_url ? '' : (titleOf(b) || t('admin.plazaBanners'))"
+            :aria-hidden="b.target_url ? 'true' : undefined"
             class="banner-img"
             mode="aspectFill"
             :lazy-load="i > 0"
@@ -58,9 +67,12 @@ function titleOf(b: Banner): string {
 function onTap(b: Banner) {
   const url = b.target_url
   if (!url) return
-  if (/^https?:\/\//i.test(url)) {
+  if (/^https:\/\//i.test(url)) {
     // #ifdef H5
-    if (typeof window !== 'undefined') window.open(url, '_blank')
+    if (typeof window !== 'undefined') {
+      const opened = window.open(url, '_blank', 'noopener,noreferrer')
+      if (opened) opened.opener = null
+    }
     // #endif
     // #ifndef H5
     /* mp can't open external URLs (webview needs the domain whitelisted in
@@ -72,6 +84,10 @@ function onTap(b: Banner) {
     // #endif
     return
   }
+  // The admin API accepts only HTTPS links or canonical uni-app routes. Keep a
+  // client-side guard too because historical/directly-written rows may predate
+  // that validation.
+  if (!url.startsWith('/pages/') || /[\\#]/.test(url) || /(?:^|\/)\.\.(?:\/|$)/.test(url)) return
   uni.navigateTo({ url }).catch(() => {
     uni.switchTab({ url }).catch(() => {})
   })
@@ -102,6 +118,7 @@ function onTap(b: Banner) {
   height: 100%;
   cursor: pointer;
   &:active { opacity: 0.9; }
+  &:focus-visible { outline: 3px solid var(--brand); outline-offset: -3px; }
 }
 
 /*

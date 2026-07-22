@@ -1,24 +1,49 @@
 import { ref } from 'vue'
 import type { Item, Post } from '../types'
+import {
+  readAccountPrivateStorage,
+  registerAccountPrivateStateHydrate,
+  registerAccountPrivateStateReset,
+  removeAccountPrivateStorage,
+  writeAccountPrivateStorage,
+} from '../api/accountLocalPrivacy'
 
 const MAX_HISTORY = 30
 const history = ref<Item[]>([])
 const postHistory = ref<Post[]>([])
 
-try {
-  const saved = uni.getStorageSync('viewHistory')
-  if (saved) history.value = JSON.parse(saved)
-  const savedPosts = uni.getStorageSync('postViewHistory')
-  if (savedPosts) postHistory.value = JSON.parse(savedPosts)
-} catch {}
+function parseHistory<T>(raw: unknown): T[] {
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+    return Array.isArray(parsed) ? parsed.slice(0, MAX_HISTORY) as T[] : []
+  } catch {
+    return []
+  }
+}
+
+function hydrateHistoryMemory() {
+  const saved = readAccountPrivateStorage<unknown>('viewHistory', '')
+  const savedPosts = readAccountPrivateStorage<unknown>('postViewHistory', '')
+  history.value = saved.allowed ? parseHistory<Item>(saved.value) : []
+  postHistory.value = savedPosts.allowed ? parseHistory<Post>(savedPosts.value) : []
+}
 
 function save() {
-  try { uni.setStorageSync('viewHistory', JSON.stringify(history.value)) } catch {}
+  writeAccountPrivateStorage('viewHistory', JSON.stringify(history.value))
 }
 
 function savePosts() {
-  try { uni.setStorageSync('postViewHistory', JSON.stringify(postHistory.value)) } catch {}
+  writeAccountPrivateStorage('postViewHistory', JSON.stringify(postHistory.value))
 }
+
+function resetHistoryMemory() {
+  history.value = []
+  postHistory.value = []
+}
+
+hydrateHistoryMemory()
+registerAccountPrivateStateReset(resetHistoryMemory)
+registerAccountPrivateStateHydrate(hydrateHistoryMemory)
 
 export function useHistory() {
   function addToHistory(item: Item) {
@@ -33,7 +58,7 @@ export function useHistory() {
 
   function clearHistory() {
     history.value = []
-    try { uni.removeStorageSync('viewHistory') } catch {}
+    removeAccountPrivateStorage('viewHistory')
   }
 
   function addPostToHistory(post: Post) {
@@ -48,7 +73,7 @@ export function useHistory() {
 
   function clearPostHistory() {
     postHistory.value = []
-    try { uni.removeStorageSync('postViewHistory') } catch {}
+    removeAccountPrivateStorage('postViewHistory')
   }
 
   return {

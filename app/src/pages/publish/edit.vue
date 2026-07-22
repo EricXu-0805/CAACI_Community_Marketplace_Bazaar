@@ -12,26 +12,30 @@
       the Hybrid header decision: thumb-reachable + matches the
       new-publish flow's muscle memory. No top-bar Save action.
     -->
-    <view class="header">
+    <view v-if="editReady" class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack">
         <UIcon name="chevron-left" size="xs" color="accent-primary" />
       </view>
       <text class="header-title">{{ t('publish.editTitle') }}</text>
     </view>
 
-    <view class="form">
+    <view v-if="!editReady" class="auth-check" role="status" aria-live="polite">
+      <text>{{ t('login.wait') }}</text>
+    </view>
+
+    <view v-if="editReady" class="form">
       <view class="image-section">
         <view class="image-list">
           <view v-for="(img, i) in imageList" :key="i" class="image-item">
             <image :src="img" :alt="form.title || 'Item photo'" mode="aspectFill" class="preview-image" />
             <view class="remove-btn" role="button" :aria-label="t('a11y.delete')" @click="removeImage(i)">
-              <view class="remove-x"></view>
+              <UIcon name="close" size="xs" color="#FFFFFF" aria-hidden="true" />
             </view>
             <view v-if="i === 0" class="cover-tag">
               <text>{{ t('publish.cover') }}</text>
             </view>
           </view>
-          <view v-if="imageList.length < 9" class="image-add" @click="chooseImage">
+          <view v-if="imageList.length < 9" class="image-add" role="button" :aria-label="t('publish.addPhoto')" @click="chooseImage">
             <UIcon name="plus" size="sm" color="text-faint" />
             <text class="add-text">{{ t('publish.addPhoto') }}</text>
             <text class="add-count">{{ imageList.length }}/9</text>
@@ -47,12 +51,12 @@
       </view>
 
       <view class="form-group">
-        <input v-model="form.title" :placeholder="form.listingType === 'wanted' ? t('publish.wantedTitlePlaceholder') : t('publish.titlePlaceholder')" maxlength="50" class="form-input title-input" @focus="onFieldFocus" @blur="onFieldBlur" />
+        <input v-model="form.title" :placeholder="form.listingType === 'wanted' ? t('publish.wantedTitlePlaceholder') : t('publish.titlePlaceholder')" :aria-label="form.listingType === 'wanted' ? t('publish.wantedTitlePlaceholder') : t('publish.titlePlaceholder')" maxlength="50" class="form-input title-input" @focus="onFieldFocus" @blur="onFieldBlur" />
         <text class="char-count">{{ form.title.length }}/50</text>
       </view>
 
       <view class="form-group">
-        <textarea v-model="form.description" :placeholder="t('publish.descPlaceholder')" maxlength="500" class="form-textarea" @focus="onFieldFocus" @blur="onFieldBlur" />
+        <textarea v-model="form.description" :placeholder="t('publish.descPlaceholder')" :aria-label="t('publish.descPlaceholder')" maxlength="500" class="form-textarea" @focus="onFieldFocus" @blur="onFieldBlur" />
         <text class="char-count">{{ form.description.length }}/500</text>
       </view>
 
@@ -60,7 +64,7 @@
         <text class="label">{{ form.listingType === 'wanted' ? t('publish.budget') : t('publish.price') }}</text>
         <view class="price-input">
           <text class="currency">$</text>
-          <input v-model="form.price" type="digit" :placeholder="form.listingType === 'wanted' ? t('publish.budgetPlaceholder') : '0.00'" class="form-input" @focus="onFieldFocus" @blur="onFieldBlur" />
+          <input v-model="form.price" type="digit" :placeholder="form.listingType === 'wanted' ? t('publish.budgetPlaceholder') : '0.00'" :aria-label="form.listingType === 'wanted' ? t('publish.budget') : t('publish.price')" class="form-input" @focus="onFieldFocus" @blur="onFieldBlur" />
         </view>
       </view>
 
@@ -70,50 +74,72 @@
 
       <!-- Category: inline pill selector -->
       <view class="form-group">
-        <view class="field-header" @click="showCat = !showCat">
+        <view
+          class="field-header"
+          role="button"
+          :aria-label="t('publish.category')"
+          :aria-expanded="showCat ? 'true' : 'false'"
+          aria-controls="edit-category-options"
+          @click="showCat = !showCat"
+        >
           <text class="label">{{ t('publish.category') }}</text>
           <text :class="['field-value', { placeholder: !form.category }]">
             {{ form.category ? t('cat.' + form.category) : t('publish.categorySelect') }}
           </text>
           <view :class="['chevron', { open: showCat }]"><UIcon name="chevron-right" size="xs" color="text-faint" /></view>
         </view>
-        <view v-if="showCat" class="pill-grid">
+        <view v-if="showCat" id="edit-category-options" class="pill-grid">
           <view
             v-for="cat in categoryKeys"
             :key="cat"
             :class="['sel-pill', { active: form.category === cat }]"
+            role="button"
+            :aria-label="t('cat.' + cat)"
+            :aria-pressed="form.category === cat ? 'true' : 'false'"
             @click="onCategoryTap(cat)"
           >
             <text>{{ t('cat.' + cat) }}</text>
+            <UIcon v-if="form.category === cat" class="sel-pill-clear" name="close" size="xs" color="currentColor" aria-hidden="true" />
           </view>
         </view>
       </view>
 
       <!-- Condition: inline pill selector (sell only — N/A for a wanted post) -->
       <view v-if="form.listingType !== 'wanted'" class="form-group">
-        <view class="field-header" @click="showCond = !showCond">
+        <view
+          class="field-header"
+          role="button"
+          :aria-label="t('publish.condition')"
+          :aria-expanded="showCond ? 'true' : 'false'"
+          aria-controls="edit-condition-options"
+          @click="showCond = !showCond"
+        >
           <text class="label">{{ t('publish.condition') }}</text>
           <text :class="['field-value', { placeholder: !form.condition }]">
             {{ form.condition ? t('condition.' + form.condition) : t('publish.conditionSelect') }}
           </text>
           <view :class="['chevron', { open: showCond }]"><UIcon name="chevron-right" size="xs" color="text-faint" /></view>
         </view>
-        <view v-if="showCond" class="pill-grid">
+        <view v-if="showCond" id="edit-condition-options" class="pill-grid">
           <view
             v-for="cond in conditionKeys"
             :key="cond"
             :class="['sel-pill cond-pill', { active: form.condition === cond }]"
+            role="button"
+            :aria-label="t('condition.' + cond)"
+            :aria-pressed="form.condition === cond ? 'true' : 'false'"
             @click="onConditionTap(cond)"
           >
             <text class="cp-name">{{ t('condition.' + cond) }}</text>
             <text class="cp-hint">{{ t('condition.' + cond + '_hint') }}</text>
+            <UIcon v-if="form.condition === cond" class="sel-pill-clear" name="close" size="xs" color="currentColor" aria-hidden="true" />
           </view>
         </view>
       </view>
 
       <view class="form-group row">
         <text class="label">{{ t('publish.location') }}</text>
-        <input v-model="form.location" :placeholder="t('publish.locationPlaceholder')" class="form-input flex-input" @focus="onFieldFocus" @blur="onFieldBlur" />
+        <input v-model="form.location" :placeholder="t('publish.locationPlaceholder')" :aria-label="t('publish.location')" class="form-input flex-input" @focus="onFieldFocus" @blur="onFieldBlur" />
       </view>
 
       <scroll-view scroll-x class="spot-row">
@@ -122,6 +148,9 @@
           :key="spot.id"
           class="spot-chip"
           :class="{ active: form.location === spotLabel(spot) }"
+          role="button"
+          :aria-label="spotLabel(spot)"
+          :aria-pressed="form.location === spotLabel(spot) ? 'true' : 'false'"
           @click="onSpotChipTap(spot)"
         >
           {{ spotLabel(spot) }}
@@ -147,9 +176,16 @@
         <image v-else class="locate-btn-icon" src="/static/locate.svg" alt="" mode="aspectFit" />
         <text class="locate-btn-text">{{ detectingLoc ? t('publish.detectingLocation') : t('publish.useCurrentLocation') }}</text>
       </view>
+      <OsmAttribution />
       <!-- #endif -->
 
-      <view class="form-group row toggle-row" @click="form.negotiable = !form.negotiable">
+      <view
+        class="form-group row toggle-row"
+        role="button"
+        :aria-label="t('publish.obo')"
+        :aria-pressed="form.negotiable ? 'true' : 'false'"
+        @click="form.negotiable = !form.negotiable"
+      >
         <text class="label">{{ t('publish.obo') }}</text>
         <text class="toggle-hint">{{ t('publish.oboHint') }}</text>
         <view :class="['toggle', { on: form.negotiable }]">
@@ -158,7 +194,7 @@
       </view>
     </view>
 
-    <view v-show="!typing" class="submit-bar u-glass u-glass--hair-t">
+    <view v-show="editReady && !typing" class="submit-bar u-glass u-glass--hair-t">
       <button class="submit-btn" :disabled="submitting" @click="onSubmit">
         {{ submitting ? t('publish.submitting') : t('publish.update') }}
       </button>
@@ -170,6 +206,7 @@
     -->
 
     <PermissionDeniedModal
+      v-if="editReady"
       :visible="permissionModalVisible"
       @close="permissionModalVisible = false"
     />
@@ -182,21 +219,31 @@ const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif
-import { ref, reactive, watch } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { ref, reactive, watch, onUnmounted } from 'vue'
+import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 import { useCampusSpots, type CampusSpot } from '../../composables/useCampusSpots'
 import { useLocation } from '../../composables/useLocation'
-import { useItems } from '../../composables/useItems'
+import { useItems, type UploadAccountToken } from '../../composables/useItems'
 import { useTranslate } from '../../composables/useTranslate'
-import { friendlyErrorMessage, PUBLISHABLE_CATEGORIES } from '../../utils'
+import { mutationCommitState, mutationOutcomeError, shouldCompensateMutationFailure } from '../../api/mutationCommit'
+import { friendlyErrorMessage, navigateBackOr, PUBLISHABLE_CATEGORIES } from '../../utils'
 import { DIALOG_WARN } from '../../utils/dialogColors'
-import type { ItemCategory, ItemCondition } from '../../types'
+import { captureException } from '../../utils/sentry'
+import type { Item, ItemCategory, ItemCondition } from '../../types'
+import type { ImageDim } from '../../types'
 import AppSidebar from '../../components/AppSidebar.vue'
 import PermissionDeniedModal from '../../components/PermissionDeniedModal.vue'
 import UIcon from '../../components/UIcon.vue'
+import OsmAttribution from '../../components/OsmAttribution.vue'
+import {
+  captureAccountRequest,
+  isAccountRequestCurrent,
+  onAccountTransition,
+  type AccountRequestToken,
+} from '../../composables/accountScope'
 
 const { t, lang } = useI18n()
 const { CAMPUS_SPOTS } = useCampusSpots()
@@ -205,13 +252,93 @@ function spotLabel(spot: CampusSpot) {
   return lang.value === 'zh' ? spot.zh : spot.en
 }
 const { detectLocation, detecting: detectingLoc } = useLocation()
-const { requireAuth } = useAuth()
-const { updateItem, fetchItem, uploadImagesWithDims } = useItems()
+const { currentUser, requireAuth, awaitAuthReady } = useAuth()
+const { updateItem, fetchItem, uploadImagesWithDims, removeOwnedItemImages } = useItems()
 const { translateItemContent } = useTranslate()
 
 const editId = ref('')
+const loadedUpdatedAt = ref('')
+const loadedEditableSnapshot = ref('')
+let editPageAccountToken: AccountRequestToken | null = null
+const editReady = ref(false)
+let routeEditId = ''
+let editPageMounted = true
+let editPageVisible = false
+let editPrepareEpoch = 0
+let editOperationEpoch = 0
+let editNavigationEpoch = 0
+let editPageDestroyed = false
+let editLoadToastOwned = false
+let editLoadToastEpoch = 0
 
-function goBack() { uni.navigateBack() }
+function showOwnedEditLoadToast(title: string, duration = 2000) {
+  if (!editPageMounted || !editPageVisible) return
+  const toastEpoch = ++editLoadToastEpoch
+  editLoadToastOwned = true
+  uni.showToast({ title, icon: 'none', duration })
+  // Natural expiry releases ownership only; it must never issue a late
+  // hideToast that could dismiss a newer page's toast.
+  setTimeout(() => {
+    if (toastEpoch === editLoadToastEpoch) editLoadToastOwned = false
+  }, duration)
+}
+
+function hideOwnedEditLoadToast() {
+  if (!editLoadToastOwned) return
+  editLoadToastOwned = false
+  editLoadToastEpoch += 1
+  try { uni.hideToast() } catch {}
+}
+
+function editableSnapshot(item: Pick<Item,
+  'title' | 'description' | 'price' | 'category' | 'condition' | 'location' |
+  'images' | 'image_dimensions' | 'negotiable' | 'listing_type'
+>): string {
+  return JSON.stringify({
+    title: item.title,
+    description: item.description,
+    price: Number(item.price),
+    category: item.category,
+    condition: item.condition,
+    location: item.location || '',
+    images: item.images || [],
+    image_dimensions: item.image_dimensions || [],
+    negotiable: item.negotiable ?? false,
+    listing_type: item.listing_type || 'sell',
+  })
+}
+
+async function commitEditWithCompatibleRetry(
+  updates: Parameters<typeof updateItem>[1],
+  accountToken?: UploadAccountToken,
+) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await updateItem(
+        editId.value,
+        updates,
+        { expectedUpdatedAt: loadedUpdatedAt.value, accountToken },
+      )
+    } catch (error: any) {
+      if (error?.message !== 'item_edit_conflict' || attempt === 2) throw error
+      const current = await fetchItem(editId.value, { incrementView: false })
+      if (!accountToken || !isAccountRequestCurrent(accountToken)) {
+        throw mutationOutcomeError(new Error('Account changed during edit retry'), 'not_committed')
+      }
+      if (current.status === 'sold' || current.status === 'deleted') {
+        throw new Error('item_not_editable')
+      }
+      // Ignore version bumps caused only by async i18n enrichment, counters,
+      // or other non-editable metadata. Any user-editable field difference is
+      // a real concurrent edit and remains fail-closed.
+      if (editableSnapshot(current) !== loadedEditableSnapshot.value) throw error
+      loadedUpdatedAt.value = current.updated_at
+    }
+  }
+  throw new Error('item_edit_conflict')
+}
+
+function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/profile/index' })) }
 
 /*
  * Fire-and-forget bilingual filler — same pattern as publish/index.vue.
@@ -227,6 +354,8 @@ async function scheduleBilingualFill(
   title: string,
   description: string,
   sourceLang: string,
+  expectedUpdatedAt: string,
+  accountToken: UploadAccountToken,
 ) {
   try {
     if (!title && !description) return
@@ -242,22 +371,28 @@ async function scheduleBilingualFill(
     await updateItem(itemId, {
       title_i18n: Object.keys(title_i18n).length ? title_i18n : null,
       description_i18n: Object.keys(description_i18n).length ? description_i18n : null,
-    })
+    }, { expectedUpdatedAt, accountToken })
   } catch (err) {
-    console.warn('[publish-edit] bilingual fill skipped:', err)
+    console.warn('[publish-edit] bilingual fill skipped')
   }
 }
 
 const { supabase } = useSupabase()
 const avgPrice = ref(0)
+let avgPriceRequestId = 0
 
 const categoryKeys: ItemCategory[] = PUBLISHABLE_CATEGORIES
 const conditionKeys = ['new', 'like_new', 'good', 'fair', 'defective']
 
 const imageList = ref<string[]>([])
+const originalImageUrls = ref<string[]>([])
+// Keep dimensions index-aligned with imageList. `{ w: 0, h: 0 }` is an
+// explicit unknown slot that render helpers already treat as a fallback.
+const imageDimensions = ref<ImageDim[]>([])
 const showCat = ref(false)
 const showCond = ref(false)
 const submitting = ref(false)
+let submitEntryLocked = false
 const uploadProgress = ref(0)
 
 /* Same phone-viewport bar hiding as publish/index — with the keyboard
@@ -293,11 +428,6 @@ const form = reactive({
   listingType: 'sell' as 'sell' | 'wanted',
 })
 
-const locationVerified = ref(false)
-watch(() => form.location, () => {
-  locationVerified.value = false
-})
-
 /*
  * Phase 1b: permission_denied now opens a modal (LocationPermission
  * DeniedModal) instead of a fleeting toast. The modal teaches users
@@ -328,19 +458,89 @@ function onConditionTap(cond: string) {
  * and profile, both of which always pass an id. A bare URL means a
  * hand-crafted attempt or a stale deep link; same UX response works.
  */
-onLoad(async (options) => {
-  if (!options?.id) {
-    uni.showToast({
-      title: t('publish.editFetchFailed'),
-      icon: 'none',
-      duration: 2000,
-    })
-    setTimeout(() => uni.navigateBack(), 1500)
+function resetEditForm() {
+  form.title = ''
+  form.description = ''
+  form.price = ''
+  form.category = ''
+  form.condition = ''
+  form.location = ''
+  form.negotiable = false
+  form.listingType = 'sell'
+  imageList.value = []
+  originalImageUrls.value = []
+  imageDimensions.value = []
+  loadedUpdatedAt.value = ''
+  loadedEditableSnapshot.value = ''
+  showCat.value = false
+  showCond.value = false
+}
+
+function resetEditPrivateState() {
+  editPrepareEpoch += 1
+  editOperationEpoch += 1
+  editReady.value = false
+  editPageAccountToken = null
+  editId.value = ''
+  submitEntryLocked = false
+  submitting.value = false
+  uploadProgress.value = 0
+  permissionModalVisible.value = false
+  avgPriceRequestId += 1
+  avgPrice.value = 0
+  if (typingT) {
+    clearTimeout(typingT)
+    typingT = null
+  }
+  typing.value = false
+  resetEditForm()
+}
+
+async function prepareEditPage(itemId: string) {
+  const prepareEpoch = ++editPrepareEpoch
+  const navigationEpoch = editNavigationEpoch
+  const prepareStillVisible = () => (
+    editPageMounted
+    && editPageVisible
+    && prepareEpoch === editPrepareEpoch
+    && navigationEpoch === editNavigationEpoch
+  )
+  editReady.value = false
+  const state = await awaitAuthReady()
+  if (!prepareStillVisible()) return
+  if (!requireAuth() || !currentUser.value) {
+    if (state === 'authenticated' && prepareStillVisible()) {
+      showOwnedEditLoadToast(t('error.loadFailed'), 1500)
+      setTimeout(() => {
+        if (prepareStillVisible()) goBack()
+      }, 1200)
+    }
     return
   }
-  editId.value = options.id
+  const accountToken = captureAccountRequest(currentUser.value.id)
+  if (!isAccountRequestCurrent(accountToken)) return
+  editPageAccountToken = accountToken
+  editId.value = itemId
   try {
-    const item = await fetchItem(options.id)
+    const item = await fetchItem(itemId, { incrementView: false })
+    if (
+      !prepareStillVisible()
+      || editPageAccountToken !== accountToken
+      || !isAccountRequestCurrent(accountToken)
+      || item.user_id !== accountToken.userId
+    ) return
+    if (item.status === 'sold' || item.status === 'deleted') {
+      showOwnedEditLoadToast(t('publish.itemNotEditable'))
+      setTimeout(() => {
+        if (
+          prepareStillVisible()
+          && isAccountRequestCurrent(accountToken)
+        ) {
+          goBack()
+        }
+      }, 1500)
+      return
+    }
     form.title = item.title
     form.description = item.description
     form.price = String(item.price)
@@ -350,23 +550,95 @@ onLoad(async (options) => {
     form.negotiable = item.negotiable ?? false
     form.listingType = (item.listing_type || 'sell') as 'sell' | 'wanted'
     imageList.value = [...item.images]
-    const verifiedOnLoad = !!(item as any).location_verified
-    Promise.resolve().then(() => { locationVerified.value = verifiedOnLoad })
-  } catch (err) {
-    console.error('[publish-edit] fetch item failed:', err)
-    uni.showToast({
-      title: t('publish.editFetchFailed'),
-      icon: 'none',
-      duration: 2000,
+    originalImageUrls.value = [...item.images]
+    loadedUpdatedAt.value = item.updated_at
+    loadedEditableSnapshot.value = editableSnapshot(item)
+    imageDimensions.value = item.images.map((_, index) => {
+      const dim = item.image_dimensions?.[index]
+      return dim && dim.w > 0 && dim.h > 0 ? dim : { w: 0, h: 0 }
     })
-    setTimeout(() => uni.navigateBack(), 1500)
-    return
+    editReady.value = true
+  } catch (err) {
+    if (
+      !prepareStillVisible()
+      || !isAccountRequestCurrent(accountToken)
+    ) return
+    console.error('[publish-edit] fetch item failed')
+    showOwnedEditLoadToast(t('publish.editFetchFailed'))
+    setTimeout(() => {
+      if (
+        prepareStillVisible()
+        && isAccountRequestCurrent(accountToken)
+      ) {
+        goBack()
+      }
+    }, 1500)
+  }
+}
+
+const stopAccountTransitionListener = onAccountTransition((transition) => {
+  resetEditPrivateState()
+  if (transition.userId && editPageVisible && routeEditId) {
+    void Promise.resolve().then(() => {
+      if (editPageMounted && editPageVisible && routeEditId) return prepareEditPage(routeEditId)
+    })
   }
 })
 
+function destroyEditPage() {
+  if (editPageDestroyed) return
+  editPageDestroyed = true
+  // uni-app can defer Vue unmount after the native page has already left the
+  // stack. Invalidate every pending fetch/timer in onUnload itself so an old
+  // edit page cannot navigateBack from whatever route is now visible.
+  editPageMounted = false
+  editPageVisible = false
+  editNavigationEpoch += 1
+  hideOwnedEditLoadToast()
+  routeEditId = ''
+  resetEditPrivateState()
+  stopAccountTransitionListener()
+}
+
+onLoad((options) => {
+  routeEditId = typeof options?.id === 'string' ? options.id : ''
+})
+
+onShow(() => {
+  if (!editPageMounted) return
+  editPageVisible = true
+  if (!routeEditId) {
+    const invalidRouteEpoch = editPrepareEpoch
+    const invalidRouteNavigationEpoch = editNavigationEpoch
+    showOwnedEditLoadToast(t('publish.editFetchFailed'))
+    setTimeout(() => {
+      if (
+        editPageMounted
+        && editPageVisible
+        && invalidRouteEpoch === editPrepareEpoch
+        && invalidRouteNavigationEpoch === editNavigationEpoch
+        && !routeEditId
+      ) goBack()
+    }, 1500)
+    return
+  }
+  if (!editReady.value) void prepareEditPage(routeEditId)
+})
+
+onHide(() => {
+  editPageVisible = false
+  editNavigationEpoch += 1
+  hideOwnedEditLoadToast()
+})
+onUnload(destroyEditPage)
+
+onUnmounted(destroyEditPage)
+
 watch(() => form.category, async (cat) => {
+  const requestId = ++avgPriceRequestId
   if (!cat) { avgPrice.value = 0; return }
   const { data } = await supabase.from('items').select('price').eq('category', cat).eq('status', 'active').limit(50)
+  if (requestId !== avgPriceRequestId) return
   if (data && data.length > 0) {
     avgPrice.value = Math.round(data.reduce((s: number, i: any) => s + Number(i.price), 0) / data.length)
   } else { avgPrice.value = 0 }
@@ -375,6 +647,12 @@ watch(() => form.category, async (cat) => {
 const MAX_IMAGES_PUBLISH = 9
 
 function chooseImage() {
+  const pickerAccountToken = editPageAccountToken
+  if (
+    !editReady.value
+    || !pickerAccountToken
+    || !isAccountRequestCurrent(pickerAccountToken)
+  ) return
   const remaining = MAX_IMAGES_PUBLISH - imageList.value.length
   if (remaining <= 0) {
     uni.showToast({ title: t('publish.imageMaxReached'), icon: 'none' })
@@ -385,10 +663,18 @@ function chooseImage() {
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
     success: (res) => {
-      const picked = res.tempFilePaths || []
+      if (
+        !editReady.value
+        || editPageAccountToken !== pickerAccountToken
+        || !isAccountRequestCurrent(pickerAccountToken)
+      ) return
+      const picked = Array.isArray(res.tempFilePaths)
+        ? res.tempFilePaths
+        : res.tempFilePaths ? [res.tempFilePaths] : []
       const accepted = picked.slice(0, remaining)
       const dropped = picked.length - accepted.length
       imageList.value.push(...accepted)
+      imageDimensions.value.push(...accepted.map(() => ({ w: 0, h: 0 })))
       if (dropped > 0) {
         uni.showToast({
           title: t('publish.imageDropped').replace('{n}', String(dropped)),
@@ -402,12 +688,24 @@ function chooseImage() {
 
 function removeImage(index: number) {
   imageList.value.splice(index, 1)
+  imageDimensions.value.splice(index, 1)
 }
 
 async function onDetectLocation() {
+  const locationAccountToken = editPageAccountToken
+  if (
+    !editReady.value
+    || !locationAccountToken
+    || !isAccountRequestCurrent(locationAccountToken)
+  ) return
   const result = await detectLocation()
+  if (
+    !editReady.value
+    || editPageAccountToken !== locationAccountToken
+    || !isAccountRequestCurrent(locationAccountToken)
+  ) return
   if (!result.ok) {
-    console.warn('[publish-edit-debug] location detect failed:', result.reason)
+    console.warn('[publish-edit] location detect failed')
     /*
      * Phase 1b dispatch: permission_denied → modal (teach the
      * Settings path), other reasons → toast. Mirrors publish/index.vue
@@ -433,26 +731,46 @@ async function onDetectLocation() {
     return
   }
   form.location = result.location
-  // #4: any successful GPS fix grants the "verified pickup" badge (see publish).
-  // Defer past the form.location watcher that resets the flag — same as the
-  // load path above. (Promise.resolve().then, not queueMicrotask — the latter
-  // is not guaranteed on the WeChat mp logic layer and threw inside onLoad.)
-  Promise.resolve().then(() => { locationVerified.value = true })
 }
 
 function onSpotChipTap(spot: CampusSpot) {
   const label = spotLabel(spot)
-  console.log('[publish-edit-debug] spot chip tapped:', { id: spot.id, label, prevLocation: form.location })
   form.location = label
 }
 
 async function onSubmit() {
+  // Lock before auth readiness and the high-price confirmation modal so
+  // rapid clicks cannot launch two edit/upload transactions in parallel.
+  if (submitEntryLocked) return
+  submitEntryLocked = true
+  const operationEpoch = ++editOperationEpoch
+  const operationNavigationEpoch = editNavigationEpoch
+  const entryAccountToken = editPageAccountToken
+  const operationStillCurrent = () => (
+    operationEpoch === editOperationEpoch
+    && operationNavigationEpoch === editNavigationEpoch
+    && editPageMounted
+    && editPageVisible
+    && editReady.value
+    && entryAccountToken !== null
+    && editPageAccountToken === entryAccountToken
+    && isAccountRequestCurrent(entryAccountToken)
+  )
+  try {
+  await awaitAuthReady()
+  if (!operationStillCurrent()) return
   if (!requireAuth()) return
   if (!form.title.trim()) { uni.showToast({ title: t('publish.needTitle'), icon: 'none' }); return }
-  if (form.listingType !== 'wanted' && (!form.price || Number(form.price) < 0)) { uni.showToast({ title: t('publish.needPrice'), icon: 'none' }); return }
+  const rawPrice = form.price.trim()
+  const price = rawPrice === '' && form.listingType === 'wanted'
+    ? 0
+    : /^\d+(?:\.\d{1,2})?$/.test(rawPrice)
+      ? Number(rawPrice)
+      : Number.NaN
+  if (!Number.isFinite(price) || price < 0) { uni.showToast({ title: t('publish.needPrice'), icon: 'none' }); return }
   if (!form.category) { uni.showToast({ title: t('publish.needCategory'), icon: 'none' }); return }
   if (form.listingType !== 'wanted' && !form.condition) { uni.showToast({ title: t('publish.needCondition'), icon: 'none' }); return }
-  if (Number(form.price) > 100000) {
+  if (price > 100000) {
     const confirmed = await new Promise<boolean>((resolve) => {
       uni.showModal({
         title: t('publish.priceTooHigh'),
@@ -464,39 +782,63 @@ async function onSubmit() {
         fail: () => resolve(false),
       })
     })
-    if (!confirmed) return
+    if (!confirmed || !operationStillCurrent()) return
   }
+
+  if (!operationStillCurrent() || !entryAccountToken) {
+    uni.showToast({ title: t('publish.fail'), icon: 'none' })
+    return
+  }
+  const submitAccountToken = entryAccountToken
 
   submitting.value = true
   uploadProgress.value = 0
-  const failsafe = setTimeout(() => { submitting.value = false }, 60000)
+  let uploadedForCleanup: string[] = []
+  let uploadAccountToken: UploadAccountToken | null = null
+  let updateCommitted = false
   try {
     const existing: string[] = []
+    const existingDims: ImageDim[] = []
     const toUpload: string[] = []
-    for (const img of imageList.value) {
-      if (img.startsWith('http')) existing.push(img)
+    for (const [index, img] of imageList.value.entries()) {
+      if (img.startsWith('http')) {
+        existing.push(img)
+        const dim = imageDimensions.value[index]
+        existingDims.push(dim && dim.w > 0 && dim.h > 0 ? dim : { w: 0, h: 0 })
+      }
       else toUpload.push(img)
     }
-    console.log('[publish-edit-debug] images split — existing:', existing.length, 'toUpload:', toUpload.length)
-
     let uploaded: string[] = []
     let uploadedDims: Array<{ w: number; h: number }> = []
     if (toUpload.length > 0) {
       try {
-        const res = await uploadImagesWithDims(toUpload, { entryPoint: 'publish' })
+        const res = await uploadImagesWithDims(toUpload, {
+          entryPoint: 'publish',
+          accountToken: submitAccountToken,
+        })
         uploaded = res.urls
+        uploadedForCleanup = [...res.urls]
         uploadedDims = res.dims
+        uploadAccountToken = res.accountToken
+        if (
+          res.accountToken.userId !== submitAccountToken.userId
+          || res.accountToken.generation !== submitAccountToken.generation
+          || !isAccountRequestCurrent(submitAccountToken)
+        ) {
+          throw mutationOutcomeError(new Error('Account changed during item edit upload'), 'not_committed')
+        }
       } catch (upErr: any) {
-        console.warn('[publish-edit-debug] upload threw:', upErr)
         if (upErr?.heic === true) throw new Error(t('heic.unsupported'))
         throw new Error(upErr?.message || t('publish.uploadFailed'))
       }
       uploadProgress.value = 100
-      console.log('[publish-edit-debug] uploaded:', uploaded.length, '/', toUpload.length)
       if (uploaded.length === 0) {
         throw new Error(t('publish.uploadFailed'))
       }
       if (uploaded.length < toUpload.length) {
+        if (!operationStillCurrent()) {
+          throw mutationOutcomeError(new Error('Account changed during item edit upload'), 'not_committed')
+        }
         uni.showToast({
           title: t('publish.imagesUploaded', { done: uploaded.length, total: toUpload.length }),
           icon: 'none',
@@ -506,27 +848,11 @@ async function onSubmit() {
     }
 
     const images = [...existing, ...uploaded]
-    const existingDims: Array<{ w: number; h: number } | null> = existing.map(() => null)
-    const finalDims = [...existingDims, ...uploadedDims].filter(
-      (d): d is { w: number; h: number } => !!d && d.w > 0 && d.h > 0,
-    )
+    const finalDims: ImageDim[] = [...existingDims, ...uploadedDims]
 
     const trimmedTitle = form.title.trim()
     const trimmedDesc = form.description.trim()
     const sourceLang = lang.value
-
-    console.log('[publish-edit-debug] submit prep — form snapshot:', {
-      editId: editId.value,
-      title: trimmedTitle.slice(0, 40),
-      category: form.category,
-      condition: form.condition,
-      price: form.price,
-      location: form.location,
-      locationVerified: locationVerified.value,
-      negotiable: form.negotiable,
-      imagesCount: imageList.value.length,
-      sourceLang,
-    })
 
     const payload = {
       title: trimmedTitle,
@@ -534,7 +860,7 @@ async function onSubmit() {
       // Wanted post: blanked budget → 0 (open budget); condition N/A → keep the
       // column default. listing_type is intentionally NOT updated (immutable
       // once posted — a sell item stays sell and vice versa).
-      price: Number(form.price) || 0,
+      price,
       category: form.category as ItemCategory,
       condition: (form.condition || 'good') as ItemCondition,
       location: form.location || '',
@@ -544,35 +870,99 @@ async function onSubmit() {
       description_i18n: trimmedDesc ? { [sourceLang]: trimmedDesc } : null,
       source_lang: sourceLang,
       negotiable: form.negotiable,
-      location_verified: locationVerified.value,
     }
 
-    console.log('[publish-edit-debug] submit prep — payload location field:', {
-      payloadLocation: payload.location,
-      payloadLocationVerified: payload.location_verified,
-      finalImagesCount: payload.images.length,
-    })
-
-    const updated = await updateItem(editId.value, { ...payload })
-    console.log('[publish-edit-debug] updateItem returned — DB row location:', updated?.location, 'id:', updated?.id)
+    const updatedItem = await commitEditWithCompatibleRetry(
+      { ...payload },
+      submitAccountToken,
+    )
+    if (!operationStillCurrent()) {
+      throw mutationOutcomeError(new Error('Account changed after item edit'), 'committed')
+    }
+    updateCommitted = true
+    loadedUpdatedAt.value = updatedItem.updated_at
+    const removedImages = originalImageUrls.value.filter(url => !images.includes(url))
+    // Commit the uploaded URLs/dimensions as the new local baseline before
+    // re-enabling Save in finally. Without this, a fast second click during
+    // the delayed navigateBack window re-uploaded the same temp file and left
+    // the first object orphaned.
+    imageList.value = [...images]
+    imageDimensions.value = [...finalDims]
+    originalImageUrls.value = [...images]
+    loadedEditableSnapshot.value = editableSnapshot(updatedItem)
+    if (removedImages.length > 0) {
+      try {
+        await removeOwnedItemImages(removedImages, {
+          ownerUserId: updatedItem.user_id,
+          telemetrySource: 'publish.edit_removed_image_cleanup',
+        })
+      } catch (cleanupError) {
+        captureException(cleanupError, { tags: { source: 'publish.edit_removed_image_cleanup' }, level: 'warning' })
+      }
+    }
+    if (!operationStillCurrent()) return
     uni.showToast({ title: t('publish.updated'), icon: 'success' })
-    scheduleBilingualFill(editId.value, trimmedTitle, trimmedDesc, sourceLang)
-    setTimeout(() => uni.navigateBack(), 1500)
+    scheduleBilingualFill(
+      editId.value,
+      trimmedTitle,
+      trimmedDesc,
+      sourceLang,
+      updatedItem.updated_at,
+      submitAccountToken,
+    )
+    // Keep both locks held through the success acknowledgement. Releasing in
+    // finally while a detached timer was pending allowed a second Save to race
+    // the first bilingual fill and surface a false edit conflict.
+    await new Promise<void>((resolve) => setTimeout(resolve, 1500))
+    if (operationStillCurrent()) goBack()
   } catch (error: any) {
+    if (!updateCommitted && shouldCompensateMutationFailure(error) && uploadedForCleanup.length > 0) {
+      try {
+        await removeOwnedItemImages(uploadedForCleanup, {
+          ownerUserId: uploadAccountToken?.userId,
+          telemetrySource: 'publish.edit_upload_cleanup',
+        })
+      } catch (cleanupError) {
+        captureException(cleanupError, { tags: { source: 'publish.edit_upload_cleanup' }, level: 'warning' })
+      }
+    } else if (!updateCommitted && mutationCommitState(error) === 'unknown' && uploadedForCleanup.length > 0) {
+      captureException(error, {
+        tags: { source: 'publish.edit_commit_unknown', orphan_risk: 'true' },
+        extra: { objectCount: uploadedForCleanup.length },
+        level: 'warning',
+      })
+    }
+    if (!operationStillCurrent()) return
     if (error?.message === 'Invalid price') {
       uni.showToast({ title: t('publish.priceExceedsLimit'), icon: 'none', duration: 3000 })
       return
     }
-    console.error('Publish-edit error:', error)
+    if (error?.message === 'item_edit_conflict') {
+      uni.showToast({ title: t('publish.editConflict'), icon: 'none', duration: 3000 })
+      await new Promise<void>((resolve) => setTimeout(resolve, 1800))
+      if (operationStillCurrent()) goBack()
+      return
+    }
+    if (error?.message === 'item_not_editable') {
+      uni.showToast({ title: t('publish.itemNotEditable'), icon: 'none', duration: 3000 })
+      await new Promise<void>((resolve) => setTimeout(resolve, 1800))
+      if (operationStillCurrent()) goBack()
+      return
+    }
+    captureException(error, { tags: { source: 'publish.edit' }, level: 'error' })
     uni.showToast({
       title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('publish.fail'),
       icon: 'none',
       duration: 3000,
     })
   } finally {
-    clearTimeout(failsafe)
-    submitting.value = false
-    uploadProgress.value = 0
+    if (operationEpoch === editOperationEpoch) {
+      submitting.value = false
+      uploadProgress.value = 0
+    }
+  }
+  } finally {
+    if (operationEpoch === editOperationEpoch) submitEntryLocked = false
   }
 }
 </script>
@@ -582,6 +972,7 @@ async function onSubmit() {
   min-height: 100vh; background: var(--bg-subtle);
   padding-bottom: calc(72px + 62px); max-width: 480px; margin: 0 auto;
 }
+.auth-check { min-height: 60vh; display: flex; align-items: center; justify-content: center; color: var(--text-subtle); }
 
 /*
   ========== Header (subpage style with back button) ==========
@@ -614,18 +1005,9 @@ async function onSubmit() {
 .preview-image { width: 100%; height: 100%; border-radius: 9px; object-fit: cover; }
 .remove-btn {
   position: absolute; top: -5px; right: -5px;
-  width: 20px; height: 20px; background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);
+  width: 32px; height: 32px; background: rgba(0,0,0,0.62); backdrop-filter: blur(4px);
   border-radius: 50%; display: flex; align-items: center; justify-content: center;
   cursor: pointer;
-}
-.remove-x {
-  width: 10px; height: 10px; position: relative;
-  &::before, &::after {
-    content: ''; position: absolute; top: 50%; left: 0;
-    width: 10px; height: 1.5px; background: var(--bg-elev-1); border-radius: 1px;
-  }
-  &::before { transform: rotate(45deg); }
-  &::after { transform: rotate(-45deg); }
 }
 .cover-tag {
   position: absolute; bottom: 0; left: 0; right: 0;
@@ -643,9 +1025,9 @@ async function onSubmit() {
   transition: background var(--dur-1, 120ms) var(--ease-std, ease);
   &:active { background: var(--paper-2); }
 }
-.add-text { font-size: 11px; color: var(--text-faint); }
-.add-count { font-size: 10px; color: var(--text-faint); margin-top: 2px; font-variant-numeric: tabular-nums; }
-.image-tip { font-size: 12px; color: var(--text-faint); margin-top: 8px; }
+.add-text { font-size: 11px; color: var(--text-subtle); }
+.add-count { font-size: 10px; color: var(--text-subtle); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.image-tip { font-size: 12px; color: var(--text-subtle); margin-top: 8px; }
 
 /* ========== Upload Progress ========== */
 .upload-bar {
@@ -678,7 +1060,7 @@ async function onSubmit() {
   .currency { font-size: 17px; color: var(--text-primary); font-weight: 700; margin-right: 4px; }
 }
 .flex-input { flex: 1; }
-.char-count { display: block; text-align: right; font-size: 11px; color: var(--text-faint); margin-top: 4px; }
+.char-count { display: block; text-align: right; font-size: 11px; color: var(--text-subtle); margin-top: 4px; }
 .price-hint { padding: 0 16px 8px; font-size: 12px; color: var(--text-muted); }
 
 .field-header {
@@ -687,7 +1069,7 @@ async function onSubmit() {
 }
 .field-value {
   flex: 1; text-align: right; font-size: 15px; color: var(--text-primary);
-  &.placeholder { color: var(--text-faint); }
+  &.placeholder { color: var(--text-subtle); }
 }
 .chevron {
   display: flex; margin-left: 8px;
@@ -708,20 +1090,10 @@ async function onSubmit() {
   &.active {
     background: var(--accent-primary); color: #fff;
     padding-right: 26px;
-    &::after {
-      content: '×';
-      position: absolute;
-      right: 9px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 14px;
-      line-height: 1;
-      color: rgba(255, 255, 255, 0.65);
-      font-weight: 400;
-    }
   }
   &:active { transform: scale(0.96); }
 }
+.sel-pill-clear { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); opacity: 0.72; }
 .cond-pill {
   display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
   padding: 8px 14px;
@@ -756,7 +1128,9 @@ async function onSubmit() {
   justify-content: flex-start;
   gap: 8px;
   padding: 12px 14px;
-  margin-top: 10px;
+  /* Keep the edit flow visually identical to new-publish and off the
+     viewport edge on narrow Safari screens. */
+  margin: 10px 16px 0;
   background: var(--bg-subtle);
   border: 1px solid var(--border-strong, var(--bg-inset));
   border-radius: 10px;
@@ -800,7 +1174,7 @@ async function onSubmit() {
 
 /* ========== Toggle ========== */
 .toggle-row { cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.toggle-hint { flex: 1; font-size: 13px; color: var(--text-faint); text-align: right; margin-right: 10px; }
+.toggle-hint { flex: 1; font-size: 13px; color: var(--text-subtle); text-align: right; margin-right: 10px; }
 .toggle {
   width: 44px; height: 26px; border-radius: 13px;
   background: var(--border-strong);

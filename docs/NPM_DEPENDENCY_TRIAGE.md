@@ -1,189 +1,178 @@
 # npm audit triage
 
-> Generated: 2025-04-25 (against `app/package-lock.json` as of commit `ce661d7`).
-> Maintainer: regenerate when uni-app or Vite ships a major version. Quick
-> "is this stale?" check: rerun `cd app && npm audit` and compare totals
-> with the [Numbers](#numbers) section.
+> Refreshed: 2026-07-18 against the current `app/package-lock.json`, after
+> applying only compatibility-checked transitive overrides. Re-run the two
+> audit commands below before relying on these numbers; registry advisories
+> can change without a repository change.
 
-`npm audit` reports **54 advisories** (4 low / 16 moderate / 34 high).
-After triage, **0 ship to production** and none are reasonably exploitable
-for this app's threat model. This doc explains why, so future
-maintainers don't waste a session chasing each advisory.
+> Release boundary: this is the local release-candidate lockfile snapshot. The
+> overrides and the CI workflow changes are not proof of a production deploy or
+> a remote CI run; verify the deployed build hash and CI run URL at release time.
 
-## Numbers
+## Current numbers
 
-```
-                  total   low   moderate   high   critical
-all advisories       54     4         16     34          0
-production-only      41     0         11     30          0
-```
+| Snapshot | Total | Low | Moderate | High | Critical |
+|---|---:|---:|---:|---:|---:|
+| Before this hardening pass | 68 | 35 | 21 | 12 | 0 |
+| Before, `--omit=dev` | 43 | 22 | 13 | 8 | 0 |
+| **Current full tree** | **2** | **0** | **1** | **1** | **0** |
+| **Current `--omit=dev`** | **0** | **0** | **0** | **0** | **0** |
 
-`production-only` = `npm audit --omit=dev`.
+Commands used:
 
-The `production-only` count (41) is misleading. **All 41 are pulled in
-transitively through `@dcloudio/*` packages** (uni-app's monorepo).
-@dcloudio depends on `@dcloudio/uni-cli-shared`, which depends on Vite,
-esbuild, postcss, jimp, jpeg-js, express — all build-time tools.
-
-Why does npm think these are production deps? Because uni-app's package
-authors mark @dcloudio/uni-cli-shared as a regular `dependency`, not a
-`devDependency`. They probably do this so `npm install` (without `--prod`)
-fetches everything you need to run `uni build` after deployment, even
-though *Vercel* never does that — Vercel runs `uni build` once during
-its own build step, then serves only `dist/build/h5/`.
-
-What actually ships to the browser bundle? Look in `app/dist/build/h5/`
-after a successful build. Roughly:
-- `assets/index-<hash>.js` — our code, minified, plus tree-shaken slices
-  of vue, @sentry/vue, supabase-js
-- `assets/supabase-<hash>.js` — supabase-js bundle
-- `assets/vue-<hash>.js` — vue runtime
-- `assets/uni-<hash>.js` — uni-app's H5 runtime helpers
-- HTML + CSS + static assets
-
-Notably absent: vite, esbuild, postcss, jimp, jpeg-js, express,
-path-to-regexp, qs, body-parser, cookie, send, serve-static, vue-i18n,
-vue-template-compiler. **None of the 41 "production" advisories cross
-this boundary.**
-
-## Triage by category
-
-### Build-time tooling (Vite + esbuild + postcss + sass + vue-tsc)
-
-```
-[moderate] vite             — 12 advisories about server.fs.deny bypass in DEV server
-[moderate] esbuild          — DEV server arbitrary fetch
-[moderate] postcss          — XSS via unescaped </style> when stringifying CSS
-[moderate] vue-template-compiler — XSS in template compiler output
-[moderate] vue-tsc / @vue/language-core — same as above
+```bash
+cd app
+npm audit
+npm audit --omit=dev
 ```
 
-**Threat model:** the Vite dev server (`npm run dev:h5`) serves files from
-the project root with `server.fs.deny` controlling which files leak. The
-bypasses listed allow a malicious page in the same browser to fetch
-`.env`, `node_modules`, etc. from the dev server.
+The full-tree command still exits non-zero because the pinned Vite development
+toolchain remains. `npm audit --omit=dev` now exits zero. Do not turn that
+production-labelled result into a claim that every build-time risk is closed.
+The important changes are:
 
-**Why we don't care:** the dev server only listens on `localhost:5173`
-and only runs when a developer types `npm run dev:h5`. Production
-(Vercel) serves prebuilt static files from a CDN; there's no `server.fs.deny`
-to bypass because there's no dev server.
+- no critical finding in either view;
+- the production-labelled view has no remaining finding;
+- the one remaining high finding in the full tree is the direct Vite 5.2.8
+  development/build dependency; the one moderate node is its direct
+  `@dcloudio/vite-plugin-uni` dependent.
 
-**When to revisit:** if we ever expose `npm run dev` over a tunnel
-(ngrok, Tailscale Funnel) — then a remote attacker could exploit the
-bypass. Rotate Vite to a clean version first.
+`npm audit` counts affected dependency nodes, not user-reachable exploits. The
+numbers are still useful as an upgrade signal, but severity and reachability
+must be evaluated separately.
 
-### Image processing (jimp, jpeg-js, phin)
+## What changed in this pass
 
-```
-[high] jpeg-js     — Infinite loop / uncontrolled resource consumption
-[moderate] jimp    — depends on jpeg-js
-[moderate] phin    — leaks headers across redirects
-```
+`app/package.json` now pins compatible patched transitives through `overrides`:
 
-**Threat model:** parsing a malicious JPEG triggers an infinite loop or
-exhausts memory. Phin (HTTP client used by jimp) leaks Authorization
-headers when redirected to a different host.
+- adm-zip 0.6.0 (CVE-2026-39244 allocation bound; DCloud's used
+  `addLocalFile` / `writeZip` / `extractAllTo` paths passed both builds);
+- Babel core/SystemJS transform 7.29.7;
+- Intlify core/compiler/shared 9.14.5 and vue-devtools 9.14.1;
+- Express 4.22.2;
+- esbuild 0.25.12 (clears the development-server cross-origin advisory that
+  had also caused 27 duplicate DCloud/uni-app nodes in `--omit=dev`);
+- form-data 3.0.5;
+- jpeg-js 0.4.4 and phin 3.7.1;
+- postcss 8.5.10;
+- brace-expansion 5.0.6;
+- js-yaml 3.15.0;
+- the affected ws 8.18.0 node is overridden to 8.21.1.
 
-**Why we don't care:** jimp is only invoked at build time by uni-app to
-generate icon PNGs and manifest assets. The input is our static assets,
-which we control. No user-uploaded image ever passes through jimp in
-this app — image uploads from users go straight to Supabase Storage,
-which has its own server-side image processor.
+The type-checking toolchain was also moved together to TypeScript 5.9.3,
+`vue-tsc` 3.3.7 and `@vue/tsconfig` 0.9.1. That removes the vulnerable Vue 2
+template-compiler chain. It also immediately caught a real runtime bug that
+the previous checker missed: onboarding passed a block-scoped `accountToken`
+before its declaration during avatar upload. The call now passes the captured
+`submitAccountToken`, and the upgraded checker passes.
 
-**When to revisit:** if we ever add server-side image generation
-(thumbnail generation, OG image rendering on /api). Replace jimp with
-sharp (different vuln profile) or rely on a cloud transformer (Cloudinary,
-imgix).
+The lockfile was regenerated with those exact overrides. The compatibility
+gate is not just `npm install`: type-check, H5 build, mp-weixin build, and the
+API/client boundary tests must all pass together after any override change.
 
-### Express + connect deps (path-to-regexp, qs, body-parser, cookie, send, serve-static)
+We deliberately did **not** run `npm audit fix --force`. npm's proposed DCloud
+downgrades/major changes do not preserve this project's uni-app contract.
 
-```
-[high] express          — composite of 5 below
-[high] path-to-regexp   — ReDoS via multiple route params
-[moderate] qs           — DoS via arrayLimit bypass
-[low] body-parser       — depends on qs
-[low] cookie            — accepts out-of-bounds chars
-[low] send              — template injection in error responses
-[low] serve-static      — depends on send
-```
+## Why the production-labelled view used to report build tools
 
-**Threat model:** typical web-server vulnerabilities — ReDoS, DoS, XSS
-in error pages. Bites if any of these handle live HTTP traffic.
+Here, npm's “production” classification does not mean “executed in the
+browser after deployment.” Several `@dcloudio/*` packages declare their CLI
+and compiler toolchain as regular dependencies so a consumer can run
+`uni build`. That graph includes bundlers, compilers, image tooling, and local
+development-server packages.
 
-**Why we don't care:** express is pulled in by `@dcloudio/uni-cli-shared`
-for the local dev server only. Production traffic goes through Vercel
-edge runtimes (no express), Vercel's static asset serving (no express),
-and Supabase RPC (PostgREST, no express). The express stack is a
-build-time transitive dep that never serves real traffic.
+Vercel executes that graph during the build, then serves
+`app/dist/build/h5/` as static output. The browser bundle contains application
+code plus selected Vue, uni-app runtime, Supabase, and Sentry code; it does not
+ship the Node Express server, Vite dev server, or image-build CLI as a server
+process.
 
-**When to revisit:** if we ever write a Node.js server that uses express
-(we don't — `/api/*` are Vercel edge functions, no express).
+This boundary reduces runtime reachability, but it does **not** make the
+findings irrelevant:
 
-### Vue I18n (@intlify/*)
+- build systems process trusted repository inputs and therefore remain part of
+  the software supply chain;
+- a developer who exposes `npm run dev:h5` through a tunnel changes the threat
+  model and may expose Vite/esbuild development-server issues;
+- adding server-side image processing or Express routes would make previously
+  build-only packages runtime-reachable;
+- a future uni-app/DCloud upgrade can add, remove, or reclassify the same nodes.
 
-```
-[high] @intlify/core-base   — Prototype pollution in handleFlatJson;
-                              DOM XSS through tag attributes
-[high] @intlify/message-compiler / message-resolver / runtime / vue-devtools
-```
+## Remaining full-tree high finding: Vite
 
-**Threat model:** vue-i18n templates that render translation strings as
-v-html or as attribute values can execute attacker JS if the translation
-data contains crafted strings.
+The current direct Vite version is 5.2.8. The live 2026-07-18 audit reports it
+as the only high entry in the full dependency tree. The current official
+DCloud `vue3` tag still declares the exact peer `vite: 5.2.8`; merely moving to
+the latest 5.4.x also does not clear the current advisory range.
 
-**Why we don't care:** we don't import vue-i18n. uni-app uses @intlify
-internally for its own i18n (e.g., for the locale selector in the H5
-runtime), but the strings flowing into that path are the framework's
-own static dictionaries — never user input.
+An isolated Vite 6.4.3 experiment was performed rather than guessed: H5,
+mp-weixin, the upgraded type-checker, and a zero-finding npm audit all passed.
+It was deliberately not adopted because `npm ls vite` then reports an invalid
+dependency graph: the Uni plugin requires exactly 5.2.8, while its Vue/legacy
+plugins require Vite 5 ranges. Passing two builds is not enough evidence to
+override all of those vendor compatibility contracts.
 
-**Independent verification:** `rg "v-i18n|i18n-t|@intlify|vue-i18n" app/src/`
-should return zero matches. If it ever doesn't, this advisory becomes
-real and we need to bump @intlify or sanitize the translation pipeline.
+Treat the Vite/DCloud upgrade as a separate migration:
 
-### Other (uni-app monorepo internal advisories)
+1. choose a DCloud release that officially supports a non-affected Vite line;
+2. install from a clean lockfile on Node 22;
+3. run type-check, H5 and mp-weixin builds;
+4. run all boundary and browser smoke tests;
+5. compare generated H5/mp assets and real-device behaviour before merging.
 
-About 20 more advisories on `@dcloudio/uni-*` themselves. All of these
-are "uni-app pulls in [vulnerable thing]" — same root cause as the
-categories above.
+Until then, the candidate adds an executable boundary rather than relying on
+operator memory alone:
 
-## Remediation options
+- Vite binds to `127.0.0.1` with `strictPort`;
+- the first development middleware rejects non-loopback hosts, cross-site
+  `Origin`/`Referer`/`Sec-Fetch-Site`, and all `__open-in-editor` requests;
+- CORS is limited to loopback origins;
+- deterministic tests cover the policy; a live temporary server returned 200
+  for same-origin and 403 for both a cross-site request and the editor route.
 
-| Option | Effort | Impact |
-|---|---|---|
-| **Accept & document** (current state) | 0 | None. Document why, monitor |
-| Bump @dcloudio/uni-app major | High | Risk of build regressions; probably 1-2 days of fixing polyfill issues like the URL/Headers shim we just shipped |
-| Eject @dcloudio for raw Vue + custom mp wrapper | Massive | Loses uni-app's value prop |
-| Patch vulnerable transitives via npm `overrides` | Medium | Easy to break uni-app at runtime; compatibility is fragile |
+Do not expose it via ngrok, public tunnels, or shared untrusted networks. These
+controls reduce reachability; they do not relabel Vite 5.2.8 as patched.
 
-**Decision: accept & document** until uni-app ships a major version
-bump that updates Vite/esbuild/etc. Re-triage at that point.
+## Operational controls
 
-## What about Dependabot / Snyk?
+- Use the repository's exact Node 22 baseline (`.nvmrc`; package engine
+  `22.x`). Node 20 is past both upstream EOL and Supabase client support.
+- Install deterministically with `npm ci --legacy-peer-deps`; this is the same
+  install mode used by CI and `vercel.json`.
+- Review every direct dependency addition in the PR diff.
+- Re-run both audit views whenever `app/package-lock.json`, DCloud, Vite, or a
+  direct dependency changes.
+- Never silence a new critical/high finding solely by updating this document.
+  Either patch it or record a concrete reachability analysis and owner.
 
-Dependabot has been deferred. If enabled today, it would file ~25 PRs
-proposing `npm install path-to-regexp@latest` etc., each of which would
-break uni-app's build (uni-app pins exact versions of its transitives).
-Each PR would then need to be closed with a "won't fix" comment.
+## CI policy
 
-The right tool for this codebase is something that distinguishes
-runtime from build-time — Snyk does this with its "production code"
-filter, GitHub's native security scanning does not. If we move to a
-codebase that ships server-side runtime, the calculus flips.
+The candidate CI boundary job now runs
+`npm audit --omit=dev --audit-level=moderate` after its deterministic install.
+That gate is clean on this lockfile and will fail on any newly classified
+production dependency advisory. The full-tree Vite exception is not silently
+suppressed: it remains documented here and is constrained by the tested local
+server boundary until DCloud publishes a compatible fixed line.
 
-## CI gating
+Continue to track advisory IDs and affected ranges, require review for any
+baseline change, and refresh the live result even when dependencies did not
+change.
 
-We **do not** fail CI on `npm audit`. Reason: every PR would be red
-because of advisories we've already triaged. Instead:
-- New direct dependency? Manual review during PR.
-- New transitive? Caught when uni-app or Vite gets bumped, both of
-  which require manual decisions.
-- Suspicious dep introduced via supply-chain attack? Caught at code
-  review (the new file/dep is visible in the PR diff) and by GitHub's
-  built-in `Used by` warnings.
+The next required dependency project is the coordinated DCloud/Vite upgrade;
+the safe transitive patches above are already applied.
 
-If we ever want CI to gate on audits, the approach is:
-1. Snapshot today's audit output into `.audit-baseline.json`.
-2. CI step: rerun audit, fail only on advisories not in the baseline.
-3. PR-time bump to baseline = explicit acknowledgement.
+## Software-license boundary
 
-(Tracking issue: not yet filed — open one if anyone wants to pursue.)
+The 2026-07-19 lockfile inventory covers the full locked package graph. Three legacy
+transitives omit a `package.json` license field, but their bundled files provide
+exact MIT (`dom-walk`, `exif-parser`) or Apache-2.0 (`qrcode-terminal`)
+evidence. The release-candidate production-dependency graph now has no
+dependency declaring a copyleft or source-available license. The former H5
+fallback decoder was removed; H5 keeps native HEIC decoding and rejects
+unsupported browsers explicitly instead of uploading original HEIC bytes or
+distributing a decoder.
+
+`scripts/license-boundary.test.mjs` makes this inventory drift visible: a new
+missing SPDX field or a new copyleft/source-available license fails the
+deterministic boundary suite until it receives an exact version review. This
+is a change-control guard, not legal advice.

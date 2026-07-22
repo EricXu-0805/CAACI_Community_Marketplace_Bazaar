@@ -1,7 +1,6 @@
 <template>
   <view class="u-empty-art" :style="artStyle">
-    <image v-if="useImage" :src="imgSrc" mode="aspectFit" class="u-empty-img" />
-    <view v-else-if="artHTML" class="u-empty-art-svg" v-html="artHTML"></view>
+    <image v-if="hasImg" :src="imgSrc" alt="" aria-hidden="true" mode="aspectFill" class="u-empty-img" />
   </view>
 </template>
 
@@ -12,20 +11,14 @@
  *   <UEmptyArt name="favorites" />
  *   <UEmptyArt name="bag" :size="120" />
  *
- * Two render paths, chosen so each surface gets the best-looking art:
- *   · H5 light + mp-weixin → the hand-drawn PNG in static/empty/ (cream
- *     ground blends into the light canvas; on mp this is the FIRST time
- *     empties show art at all — the inline-SVG path below compiles to an
- *     empty rich-text node on mini-program).
- *   · H5 dark → the inline currentColor line-art (registry.ts), which
- *     adapts to the graphite canvas. A cream-ground raster would sit on
- *     dark as a bright block, so dark deliberately keeps the vector.
+ * Uses the project's hand-drawn raster assets on every platform and theme.
+ * Besides compiling reliably on mini-programs, this avoids injecting raw SVG
+ * markup into the page. In dark mode the warm paper ground intentionally reads
+ * as a small illustrated card rather than a transparent line drawing.
  *
  * Unknown name → renders nothing (safe default, no error).
  */
 import { computed } from 'vue'
-import { ILLUSTRATIONS } from './illustrations/registry'
-import { useTheme } from '../composables/useTheme'
 
 const props = withDefaults(defineProps<{
   name: string
@@ -36,22 +29,9 @@ const props = withDefaults(defineProps<{
   color: 'var(--text-muted)',
 })
 
-const { isDark } = useTheme()
-
 const PNG_SET = new Set(['bag', 'search', 'messages', 'favorites', 'posts', 'following', 'history'])
 const hasImg = computed(() => PNG_SET.has(props.name))
 const imgSrc = computed(() => `/static/empty/${props.name}.png`)
-
-const useImage = computed(() => {
-  if (!hasImg.value) return false
-  let v = true
-  // #ifdef H5
-  v = !isDark.value
-  // #endif
-  return v
-})
-
-const artHTML = computed(() => ILLUSTRATIONS[props.name] || '')
 const artStyle = computed(() => ({
   width: `${props.size}px`,
   height: `${props.size}px`,
@@ -68,11 +48,6 @@ const artStyle = computed(() => ({
 .u-empty-img {
   width: 100%;
   height: 100%;
-}
-.u-empty-art-svg,
-.u-empty-art-svg :deep(svg) {
-  width: 100%;
-  height: 100%;
-  display: block;
+  border-radius: 18%;
 }
 </style>

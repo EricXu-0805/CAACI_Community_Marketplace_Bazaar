@@ -13,7 +13,7 @@ import { supabaseInsert, supabaseSignIn, randomString, loadTestAccounts } from '
  *   3. No 500s, no connection resets.
  *
  * Usage:
- *   SUPABASE_ANON_KEY=... TEST_ACCOUNTS_FILE=./accounts.txt \
+ *   SUPABASE_PUBLISHABLE_KEY=sb_publishable_... TEST_ACCOUNTS_FILE=./accounts.txt \
  *   k6 run tests/k6/publish_spam.js
  *
  * accounts.txt is one email:password per line. Create ~10 throwaway

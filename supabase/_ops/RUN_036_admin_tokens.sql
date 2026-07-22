@@ -1,7 +1,20 @@
 -- =========================================================
+-- DEPRECATED OPERATOR BUNDLE — retained only as historical recovery evidence.
+-- Do not execute this file. Its contracts predate the timestamped 2026-07
+-- hardening chain and can overwrite current least-privilege functions.
+-- Follow RUNBOOK.md and the matching PRECHECK/migration/VERIFY/REGRESSION files.
+\set ON_ERROR_STOP on
+DO $deprecated_operator_bundle$
+BEGIN
+  RAISE EXCEPTION
+    'deprecated_operator_bundle: use the reviewed timestamped migration chain';
+END
+$deprecated_operator_bundle$;
+
+-- =========================================================
 -- RUN 036: admin_tokens (per-admin bearer tokens)
 -- =========================================================
--- Paste this ENTIRE file into Supabase SQL Editor and run ONCE.
+-- Historical instructions below are retained for incident archaeology only.
 --
 -- Replaces the single shared ADMIN_API_KEY env var with per-admin
 -- bearer tokens. Each admin gets their own token; SHA-256 hashes
@@ -10,10 +23,12 @@
 -- After applying:
 --   1. Mint a token per admin via:
 --        export SUPABASE_URL=https://<project>.supabase.co
---        export SUPABASE_SERVICE_ROLE_KEY=<service_role>
+--        export SUPABASE_SECRET_KEY=<sb_secret_named_key>
 --        node scripts/admin-token-mint.mjs --name "Alice" \
 --             --email "alice@example.edu" --apply
 --      Save the printed plaintext (only shown once).
+--      The script retains SUPABASE_SERVICE_ROLE_KEY only as a temporary
+--      legacy migration fallback.
 --   2. Each admin pastes their token into the dashboard's first-
 --      visit prompt (replacing the old shared key).
 --   3. After every admin has switched, delete the ADMIN_API_KEY env
@@ -134,4 +149,5 @@ NOTIFY pgrst, 'reload schema';
 --   SELECT proname FROM pg_proc WHERE proname IN
 --     ('admin_token_validate', 'admin_token_list');
 --   -- Expect: 2 rows.
+-- =========================================================
 -- =========================================================

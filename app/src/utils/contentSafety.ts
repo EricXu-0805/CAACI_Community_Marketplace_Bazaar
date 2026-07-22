@@ -20,6 +20,13 @@
  */
 
 import { BASE_URL } from '../config/runtime'
+import { readBoundedJson } from '../api/responseBody'
+import {
+  captureAccountRequest,
+  getActiveAccountId,
+  isAccountRequestCurrent,
+  type AccountRequestToken,
+} from '../composables/accountScope'
 
 export type SafetyCategory =
   | 'ok'
@@ -209,11 +216,14 @@ export function checkContent(text: string, opts: CheckOptions): SafetyResult {
 /* ---------- Remote AI moderation (OpenAI omni-moderation via /api/moderate) ----------
    Called AFTER local checks pass, as a second-tier gate for nuanced
    violations (harassment, self-harm, sexual, etc) the keyword list
-   can't catch. Safe fallback: if the endpoint is unreachable or the
-   key is not configured, we allow the content through — layer-3
-   server-side triggers still run regardless. */
+   can't catch. A deployment with no provider key explicitly disables this
+   optional layer and relies on the server-side keyword triggers. Once the
+   provider is configured, a network/provider/malformed-response failure is a
+   failed prerequisite and blocks the write rather than reporting a false
+   clean result. */
 
 let MODERATE_ENDPOINT = '/api/moderate'
+const MAX_MODERATION_RESPONSE_BYTES = 64 * 1024
 // #ifdef H5
 try {
   if (typeof window !== 'undefined' && window.location?.origin) {
@@ -225,37 +235,64 @@ try {
 MODERATE_ENDPOINT = `${BASE_URL}/api/moderate`
 // #endif
 
-export async function remoteModerate(text: string): Promise<{ flagged: boolean; categories: string[] }> {
+export async function remoteModerate(
+  text: string,
+  expectedAccountToken?: AccountRequestToken,
+): Promise<{ flagged: boolean; categories: string[] }> {
   if (!text || text.length < 1) return { flagged: false, categories: [] }
-  try {
-    /* /api/moderate requires a Supabase JWT (abuse control — it fronts a
-       paid OpenAI proxy). Moderation only ever runs right before an
-       authenticated insert, so the session is present; if it somehow
-       isn't, fail open (allow through) — the server-side trigger layer
-       still runs. */
-    const { platformFetch, useSupabase } = await import('../composables/useSupabase')
-    const { supabase } = useSupabase()
-    const { data: sess } = await supabase.auth.getSession()
-    const jwt = sess.session?.access_token
-    if (!jwt) return { flagged: false, categories: [] }
+  /* /api/moderate requires a Supabase JWT. Every caller invokes this directly
+     before an authenticated mutation, so a missing session is an auth-boundary
+     failure, not a reason to skip moderation. */
+  const entryUserId = getActiveAccountId()
+  const accountToken = expectedAccountToken
+    || (entryUserId ? captureAccountRequest(entryUserId) : null)
+  if (!accountToken || !isAccountRequestCurrent(accountToken)) throw new Error('moderation_unavailable')
+  const { platformFetch, useSupabase } = await import('../composables/useSupabase')
+  if (!isAccountRequestCurrent(accountToken)) throw new Error('moderation_unavailable')
+  const { supabase } = useSupabase()
+  const { data: sess, error: sessionError } = await supabase.auth.getSession()
+  const jwt = sess.session?.access_token
+  if (
+    sessionError
+    || !jwt
+    || sess.session?.user.id !== accountToken.userId
+    || !isAccountRequestCurrent(accountToken)
+  ) throw new Error('moderation_unavailable')
 
-    const ctrl = new AbortController()
-    const timer = setTimeout(() => ctrl.abort(), 3000)
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), 3500)
+  let j: any
+  try {
+    if (!isAccountRequestCurrent(accountToken)) throw new Error('moderation_unavailable')
     const r = await platformFetch(MODERATE_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
-      body: JSON.stringify({ text: text.slice(0, 8000) }),
+      body: JSON.stringify({ text }),
       signal: ctrl.signal,
-    }).finally(() => clearTimeout(timer))
-    if (!r.ok) return { flagged: false, categories: [] }
-    const j = await r.json()
-    return {
-      flagged: !!j.flagged,
-      categories: Array.isArray(j.categories) ? j.categories : [],
-    }
-  } catch {
+    })
+    if (!isAccountRequestCurrent(accountToken)) throw new Error('moderation_unavailable')
+    if (!r.ok) throw new Error('moderation_unavailable')
+    j = await readBoundedJson(r, {
+      maxBytes: MAX_MODERATION_RESPONSE_BYTES,
+      // The caller's 3.5 s controller remains active through this read; this
+      // secondary bound also covers injected/non-platform fetch responses.
+      timeoutMs: 3500,
+    })
+    if (!isAccountRequestCurrent(accountToken)) throw new Error('moderation_unavailable')
+  } catch { throw new Error('moderation_unavailable') } finally {
+    clearTimeout(timer)
+  }
+  if (j?.skipped === true && j?.reason === 'no_key') {
     return { flagged: false, categories: [] }
   }
+  if (
+    typeof j?.flagged !== 'boolean'
+    || !Array.isArray(j?.categories)
+    || j.categories.some((category: unknown) => typeof category !== 'string')
+  ) {
+    throw new Error('moderation_unavailable')
+  }
+  return { flagged: j.flagged, categories: j.categories }
 }
 
 /* ---------- Duplicate-within-session detection ---------- */

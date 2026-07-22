@@ -24,28 +24,36 @@
       <text class="ph-title">{{ t('nav.profile') }}</text>
     </view>
 
-    <view v-if="!isLoggedIn" class="login-section">
+    <view v-if="authState === 'initializing'" class="login-section">
+      <view class="avatar-placeholder">
+        <view class="ap-head"></view>
+        <view class="ap-body"></view>
+      </view>
+      <text class="login-hint">{{ t('home.loading') }}</text>
+    </view>
+
+    <view v-else-if="authState === 'anonymous'" class="login-section">
       <view class="avatar-placeholder">
         <view class="ap-head"></view>
         <view class="ap-body"></view>
       </view>
       <text class="login-hint">{{ t('profile.signInHint') }}</text>
-      <view class="login-btn" @click="goLogin">{{ t('profile.signIn') }}</view>
+      <view class="login-btn" role="button" :aria-label="t('profile.signIn')" @click="goLogin">{{ t('profile.signIn') }}</view>
     </view>
 
-    <view v-else class="logged-in-wrap">
+    <view v-else-if="isLoggedIn" class="logged-in-wrap">
       <!-- User card -->
       <view class="user-card">
         <view class="user-card-bg"></view>
         <view class="user-row">
-          <image :src="currentUser?.avatar_url || defaultAvatarSrc" :alt="currentUser?.nickname || 'avatar'" class="avatar-big" mode="aspectFill" />
+          <UAvatar :src="currentUser?.avatar_url" :owner="currentUser?.id" :fallback="defaultAvatarSrc" :alt="currentUser?.nickname || 'avatar'" class="avatar-big" />
           <view class="user-info">
             <view class="name-row">
               <text class="nickname">{{ currentUser?.nickname }}</text>
               <UBadge v-if="currentUser?.is_illini_verified" variant="illini">Illini</UBadge>
             </view>
             <view class="user-meta-row">
-              <view v-if="currentUser?.uid" class="uid-row" @click.stop="copyUid">
+              <view v-if="currentUser?.uid" class="uid-row" role="button" :aria-label="t('profile.uid')" @click.stop="copyUid">
                 <text class="uid-label">{{ t('profile.uid') }}</text>
                 <text class="uid-value">{{ currentUser.uid }}</text>
               </view>
@@ -83,7 +91,7 @@
             <text class="stat-label">{{ t('profile.sold') }}</text>
           </view>
           <view class="stat-divider"></view>
-          <view class="stat-item" @click="goHistory">
+          <view class="stat-item" role="button" :aria-label="t('profile.browsed')" @click="goHistory">
             <text class="stat-num">{{ totalBrowsed }}</text>
             <text class="stat-label">{{ t('profile.browsed') }}</text>
           </view>
@@ -91,13 +99,13 @@
       </view>
 
       <!-- Illini verify prompt -->
-      <view v-if="!currentUser?.is_illini_verified" class="verify-prompt" @click="onVerifyIllini">
-        <view class="vp-icon">✓</view>
+      <view v-if="!currentUser?.is_illini_verified" class="verify-prompt" role="button" :aria-label="t('profile.verifyTitle')" @click="onVerifyIllini">
+        <view class="vp-icon"><UIcon name="check" size="sm" color="currentColor" aria-hidden="true" /></view>
         <view class="vp-text">
           <text class="vp-title">{{ t('profile.verifyTitle') }}</text>
           <text class="vp-sub">{{ t('profile.verifySub') }}</text>
         </view>
-        <view class="vp-arrow"></view>
+        <UIcon class="vp-arrow" name="chevron-right" size="xs" color="campus-blue" aria-hidden="true" />
       </view>
 
       <!-- Quick actions grid —
@@ -107,26 +115,26 @@
       <view class="section-block">
         <text class="block-title">{{ t('profile.quickActions') }}</text>
         <view class="action-grid">
-          <view class="action-item" @click="goNotifications">
+          <view class="action-item" role="button" :aria-label="t('notif.title')" @click="goNotifications">
             <view class="action-icon action-icon--brand">
               <UIcon name="bell" color="brand" />
             </view>
             <text class="action-label">{{ t('notif.title') }}</text>
             <view v-if="unreadNotifCount > 0" class="action-badge">{{ unreadNotifCount }}</view>
           </view>
-          <view class="action-item" @click="goHistory">
+          <view class="action-item" role="button" :aria-label="t('profile.history')" @click="goHistory">
             <view class="action-icon action-icon--lavender">
               <UIcon name="history" color="campus-blue" />
             </view>
             <text class="action-label">{{ t('profile.history') }}</text>
           </view>
-          <view class="action-item" @click="goFollowing">
+          <view class="action-item" role="button" :aria-label="t('nav.following')" @click="goFollowing">
             <view class="action-icon action-icon--sage">
               <UIcon name="heart" color="success" />
             </view>
             <text class="action-label">{{ t('nav.following') }}</text>
           </view>
-          <view class="action-item" @click="goSavedSearches">
+          <view class="action-item" role="button" :aria-label="t('savedSearch.title')" @click="goSavedSearches">
             <view class="action-icon action-icon--amber">
               <UIcon name="search" color="warning" />
             </view>
@@ -137,32 +145,67 @@
 
       <!-- 我的发布 — 在售 / 已售 标签 (v5 kit; 草稿 deferred per decision) -->
       <view class="section-block">
-        <view class="my-tabs">
-          <view :class="['my-tab', { active: myTab === 'active' }]" role="tab" :aria-selected="myTab === 'active'" @click="myTab = 'active'">
+        <view class="my-tabs" role="tablist" :aria-label="t('profile.listed')">
+          <view
+            :class="['my-tab', { active: myTab === 'active' }]"
+            role="tab"
+            :tabindex="myTab === 'active' ? 0 : -1"
+            :aria-selected="myTab === 'active' ? 'true' : 'false'"
+            aria-controls="profile-listings-panel"
+            @click="myTab = 'active'"
+            @keydown="onMyTabKeydown($event, 'active')"
+          >
             <text class="my-tab-label">{{ t('profile.tabActive') }}</text>
             <text v-if="listedItems.length > 0" class="my-tab-count">{{ listedItems.length }}</text>
           </view>
-          <view :class="['my-tab', { active: myTab === 'sold' }]" role="tab" :aria-selected="myTab === 'sold'" @click="myTab = 'sold'">
+          <view
+            :class="['my-tab', { active: myTab === 'sold' }]"
+            role="tab"
+            :tabindex="myTab === 'sold' ? 0 : -1"
+            :aria-selected="myTab === 'sold' ? 'true' : 'false'"
+            aria-controls="profile-listings-panel"
+            @click="myTab = 'sold'"
+            @keydown="onMyTabKeydown($event, 'sold')"
+          >
             <text class="my-tab-label">{{ t('profile.tabSold') }}</text>
             <text v-if="soldItems.length > 0" class="my-tab-count">{{ soldItems.length }}</text>
           </view>
         </view>
-        <view v-if="currentListings.length === 0" class="empty-mini">
+        <view v-if="currentListings.length === 0" id="profile-listings-panel" class="empty-mini" role="tabpanel">
           <UEmptyArt name="bag" :size="104" />
           <text class="empty-mini-text">{{ myTab === 'sold' ? t('profile.noSold') : t('profile.noListings') }}</text>
         </view>
-        <scroll-view v-else scroll-x class="horz-scroll" :show-scrollbar="false">
+        <scroll-view v-else id="profile-listings-panel" scroll-x class="horz-scroll" :show-scrollbar="false" role="tabpanel">
           <view class="horz-row u-stagger" :key="myTab">
             <view
               v-for="item in currentListings"
               :key="item.id"
               :class="['horz-card', { sold: item.status === 'sold' }]"
+              role="button"
+              :aria-label="localize(item.title_i18n, item.title)"
               @click="goDetail(item.id)"
               @touchstart="cardLongPress.onTouchstart(item)"
               @touchend="cardLongPress.onTouchend"
               @touchcancel="cardLongPress.onTouchcancel"
               @touchmove="cardLongPress.onTouchmove"
             >
+              <view
+                class="horz-more"
+                role="button"
+                tabindex="0"
+                :aria-label="t('a11y.more') + ': ' + localize(item.title_i18n, item.title)"
+                :aria-haspopup="item.status === 'sold' ? undefined : 'menu'"
+                :title="t('a11y.more') + ': ' + localize(item.title_i18n, item.title)"
+                @click.stop="onCardLongPress(item)"
+                @keydown.enter.stop.prevent="onCardLongPress(item)"
+                @keydown.space.stop.prevent="onCardLongPress(item)"
+                @touchstart.stop
+                @touchend.stop
+                @touchcancel.stop
+                @touchmove.stop
+              >
+                <UIcon name="more-horizontal" size="xs" color="currentColor" />
+              </view>
               <image
                 v-if="thumbUrl(item.images?.[0], 'list')"
                 :src="thumbUrl(item.images?.[0], 'list')"
@@ -202,6 +245,8 @@
             v-for="item in savedItems"
             :key="item.id"
             class="fav-card u-rise"
+            role="button"
+            :aria-label="localize(item.title_i18n, item.title)"
             @click="goDetail(item.id)"
           >
             <view class="fav-img-wrap">
@@ -235,7 +280,7 @@
       <view class="section-block">
         <text class="block-title">{{ t('profile.moreSection') }}</text>
         <view class="list-menu">
-          <view class="menu-row" @click="goSettings">
+          <view class="menu-row" role="button" :aria-label="t('settings.title')" @click="goSettings">
             <UIcon name="settings" size="sm" color="ink-soft" />
             <text class="menu-row-text">{{ t('settings.title') }}</text>
             <UIcon name="chevron-right" size="sm" color="text-faint" />
@@ -256,13 +301,14 @@ const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif
-import { ref, computed, watch } from 'vue'
-import { onShow, onPullDownRefresh, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
+import { ref, computed, nextTick, watch } from 'vue'
+import { onShow, onHide, onPullDownRefresh, onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useTheme } from '../../composables/useTheme'
 import AppSidebar from '../../components/AppSidebar.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
+import UAvatar from '../../components/UAvatar.vue'
 import UBadge from '../../components/UBadge.vue'
 import UIcon from '../../components/UIcon.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
@@ -271,15 +317,28 @@ import { useFavorites } from '../../composables/useFavorites'
 import { useNotifications } from '../../composables/useNotifications'
 import { useLongPress } from '../../composables/useLongPress'
 import type { Item } from '../../types'
-import { listingPriceLabel, thumbUrl } from '../../utils'
+import { formatPrice, listingPriceLabel, thumbUrl } from '../../utils'
+import { safeAvatarThumbUrl } from '../../utils/publicResource'
+import {
+  createAccountPageScope,
+  type AccountPageRequest,
+} from '../../composables/accountPageScope'
+import { readAccountPrivateStorage } from '../../api/accountLocalPrivacy'
 
 const { t, localize } = useI18n()
 const { isDark } = useTheme()
 const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
-const { currentUser, isLoggedIn } = useAuth()
-const { items: homeItems, fetchMyItems, updateItemStatus, deleteItem } = useItems()
+const { currentUser, isLoggedIn, authState, awaitAuthReady } = useAuth()
+const {
+  items: homeItems,
+  fetchMyItems,
+  updateItemStatus,
+  fetchItemSaleCandidates,
+  markItemSold,
+  deleteItem,
+} = useItems()
 const { loadMyFavorites, fetchMyFavoriteItems } = useFavorites()
 const { unreadNotifCount, fetchNotifications } = useNotifications()
 
@@ -305,9 +364,11 @@ const totalBrowsed = ref(0)
  */
 function loadBrowsedCount() {
   let total = 0
-  for (const key of ['viewHistory', 'postViewHistory']) {
+  for (const key of ['viewHistory', 'postViewHistory'] as const) {
     try {
-      const raw = uni.getStorageSync(key)
+      const stored = readAccountPrivateStorage<unknown>(key, '')
+      if (!stored.allowed) continue
+      const raw = stored.value
       if (typeof raw === 'string' && raw) {
         const arr = JSON.parse(raw)
         if (Array.isArray(arr)) total += arr.length
@@ -354,13 +415,56 @@ const soldItems = computed(() => myItems.value.filter(i => i.status === 'sold'))
 const myTab = ref<'active' | 'sold'>('active')
 const currentListings = computed(() => (myTab.value === 'sold' ? soldItems.value : listedItems.value))
 
+function clearProfilePrivateState() {
+  myItems.value = []
+  savedItems.value = []
+  totalBrowsed.value = 0
+  itemImgAspect.value = {}
+  myTab.value = 'active'
+}
+
+const profilePageScope = createAccountPageScope(() => {
+  // This callback runs synchronously inside transitionAccount(). The previous
+  // account's refs are gone before Vue can render the newly-adopted identity.
+  clearProfilePrivateState()
+})
+const profileActionScope = createAccountPageScope(() => {})
+let profilePageVisible = false
+let profileShowEpoch = 0
+
+function beginOwnedItemAction(item: Item): AccountPageRequest | null {
+  const uid = currentUser.value?.id
+  if (!uid || item.user_id !== uid) return null
+  return profileActionScope.begin(uid)
+}
+
+function onMyTabKeydown(event: KeyboardEvent, current: 'active' | 'sold') {
+  const keys: Array<'active' | 'sold'> = ['active', 'sold']
+  const index = keys.indexOf(current)
+  let nextIndex = index
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % keys.length
+  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index - 1 + keys.length) % keys.length
+  else if (event.key === 'Home') nextIndex = 0
+  else if (event.key === 'End') nextIndex = keys.length - 1
+  else if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+    event.preventDefault()
+    myTab.value = current
+    return
+  } else return
+
+  event.preventDefault()
+  myTab.value = keys[nextIndex]
+  const tabList = (event.currentTarget as HTMLElement | null)?.parentElement
+  nextTick(() => tabList?.querySelectorAll<HTMLElement>('[role="tab"]')[nextIndex]?.focus())
+}
+
 onShareAppMessage(() => {
   const u = currentUser.value
   if (!u) return { title: 'Illini Market · UIUC 校园二手交易', path: '/pages/index/index' }
   return {
     title: `${u.nickname || '我'} 的 Illini Market 主页`,
     path: `/pages/seller/index?id=${u.id}`,
-    imageUrl: u.avatar_url || '',
+    imageUrl: safeAvatarThumbUrl(u.avatar_url, u.id) || defaultAvatarSrc.value,
   }
 })
 
@@ -370,37 +474,82 @@ onShareTimeline(() => {
   return {
     title: `${u.nickname || '我'} 的 Illini Market 主页`,
     query: `id=${u.id}`,
-    imageUrl: u.avatar_url || '',
+    imageUrl: safeAvatarThumbUrl(u.avatar_url, u.id) || defaultAvatarSrc.value,
   }
 })
 
-async function loadMine() {
-  if (!currentUser.value) return
-  const uid = currentUser.value.id
+async function loadMine(
+  uid: string,
+  options: { forceItems?: boolean; showError?: boolean } = {},
+): Promise<boolean> {
+  const request = profilePageScope.begin(uid)
+  if (!request) return false
   try {
     const [items, _favs, favItems] = await Promise.all([
-      fetchMyItems(uid),
+      fetchMyItems(uid, {
+        force: options.forceItems,
+        accountToken: request.accountToken,
+      }),
       loadMyFavorites(uid),
       fetchMyFavoriteItems(uid),
     ])
+    if (!profilePageScope.isCurrent(request)) return false
     myItems.value = items
     savedItems.value = favItems
-    fetchNotifications().catch(() => {})
+    void fetchNotifications().catch(() => {})
+    return true
   } catch {
-    uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+    if (!profilePageScope.isCurrent(request)) return false
+    if (options.showError !== false) {
+      uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+    }
+    return false
   }
 }
 
 onShow(async () => {
+  profilePageVisible = true
+  const showEpoch = ++profileShowEpoch
+  // A tab cold-start can fire onShow before the persisted session/profile has
+  // been restored. Waiting avoids both a false sign-in prompt and the old
+  // one-shot loadMine() early return.
+  await awaitAuthReady()
+  if (!profilePageVisible || showEpoch !== profileShowEpoch) return
+  const uid = currentUser.value?.id
+  if (!uid) {
+    profilePageScope.invalidate()
+    clearProfilePrivateState()
+    return
+  }
   loadBrowsedCount()
-  await loadMine()
+  await loadMine(uid)
 })
 
-// Cold boot directly on this tab fires onShow before the session hydrates —
-// currentUser is null, loadMine bails, and the listings/favorites stayed
-// empty until the user left and re-entered the tab. Retry once auth lands.
-watch(currentUser, (u, prev) => {
-  if (u && !prev) loadMine()
+onHide(() => {
+  profilePageVisible = false
+  profileShowEpoch += 1
+  profilePageScope.invalidate()
+  profileActionScope.invalidate()
+})
+
+// A tab page survives cross-tab auth changes. The authoritative account-scope
+// listener above already erased A synchronously; this watcher starts B's load
+// only after B's gate-bearing profile is ready.
+watch(() => currentUser.value?.id || null, (uid, previousUid) => {
+  if (uid === previousUid) return
+  profilePageScope.invalidate()
+  clearProfilePrivateState()
+  if (!uid) return
+  loadBrowsedCount()
+  void loadMine(uid)
+})
+
+onUnload(() => {
+  profilePageVisible = false
+  profileShowEpoch += 1
+  clearProfilePrivateState()
+  profilePageScope.dispose()
+  profileActionScope.dispose()
 })
 
 /*
@@ -415,18 +564,34 @@ watch(currentUser, (u, prev) => {
 const cardLongPress = useLongPress<[Item]>((item) => onCardLongPress(item), 3000)
 
 function onCardLongPress(item: Item) {
+  if (item.status === 'sold') {
+    uni.showToast({
+      title: t('profile.soldItemProtected'),
+      icon: 'none',
+      duration: 2500,
+    })
+    return
+  }
+
+  const actionRequest = beginOwnedItemAction(item)
+  if (!actionRequest) return
+
   const actions: Array<{ label: string; run: () => void | Promise<void> }> = []
   if (item.status === 'active') {
-    actions.push({ label: t('profile.edit'), run: () => goEdit(item.id) })
-    actions.push({ label: t('profile.markSold'), run: () => markAsSold(item.id) })
+    actions.push({ label: t('profile.edit'), run: () => {
+      if (profileActionScope.isCurrent(actionRequest)) goEdit(item.id)
+    } })
+    actions.push({ label: t('profile.markSold'), run: () => markAsSold(item.id, actionRequest) })
   } else if (item.status === 'reserved') {
-    actions.push({ label: t('detail.unreserve'), run: () => unreserveItem(item.id) })
+    actions.push({ label: t('profile.markSold'), run: () => markAsSold(item.id, actionRequest) })
+    actions.push({ label: t('detail.unreserve'), run: () => unreserveItem(item.id, actionRequest) })
   }
-  actions.push({ label: t('profile.delete'), run: () => onDeleteItem(item.id) })
+  actions.push({ label: t('profile.delete'), run: () => onDeleteItem(item.id, actionRequest) })
 
   uni.showActionSheet({
     itemList: actions.map(a => a.label),
     success: (res) => {
+      if (!profileActionScope.isCurrent(actionRequest)) return
       const picked = actions[res.tapIndex]
       if (picked) picked.run()
     },
@@ -434,16 +599,22 @@ function onCardLongPress(item: Item) {
 }
 
 onPullDownRefresh(async () => {
-  if (currentUser.value) {
-    const uid = currentUser.value.id
-    const [items, , favItems] = await Promise.all([
-      // Explicit refresh bypasses the my-items SWR TTL guard.
-      fetchMyItems(uid, { force: true }), loadMyFavorites(uid), fetchMyFavoriteItems(uid),
-    ])
-    myItems.value = items
-    savedItems.value = favItems
+  try {
+    const uid = currentUser.value?.id
+    if (!uid) return
+    loadBrowsedCount()
+    // Explicit refresh bypasses the my-items SWR TTL guard. loadMine owns the
+    // account token + page epoch, so a late pull from A cannot clear/replace B.
+    const loaded = await loadMine(uid, { forceItems: true, showError: false })
+    if (!loaded && currentUser.value?.id === uid) {
+      uni.showToast({ title: t('error.loadFailed'), icon: 'none' })
+    }
+  } catch (error) {
+    console.warn('[profile] refresh failed')
+    uni.showToast({ title: t('error.loadFailed'), icon: 'none' })
+  } finally {
+    uni.stopPullDownRefresh()
   }
-  uni.stopPullDownRefresh()
 })
 
 function formatJoinDate(dateStr: string): string {
@@ -482,53 +653,114 @@ function copyUid() {
   })
 }
 
-function markAsSold(id: string) {
-  uni.showModal({
-    title: t('profile.markSoldTitle'),
-    content: t('profile.markSoldHint'),
-    confirmText: t('profile.markSoldConfirm'),
-    success: async (res) => {
-      if (!res.confirm) return
-      try {
-        await updateItemStatus(id, 'sold')
-        homeItems.value = homeItems.value.filter(i => i.id !== id)
-        if (currentUser.value) {
-          myItems.value = await fetchMyItems(currentUser.value.id)
-        }
-        uni.showToast({ title: t('profile.markedSold'), icon: 'success' })
-      } catch {
-        uni.showToast({ title: t('profile.markFail'), icon: 'none' })
-      }
-    },
-  })
-}
-
-async function unreserveItem(id: string) {
+async function markAsSold(id: string, actionRequest: AccountPageRequest) {
+  if (!profileActionScope.isCurrent(actionRequest)) return
+  const isCurrent = () => profileActionScope.isCurrent(actionRequest)
   try {
-    await updateItemStatus(id, 'active')
-    if (currentUser.value) {
-      myItems.value = await fetchMyItems(currentUser.value.id)
+    const candidates = await fetchItemSaleCandidates(id, {
+      accountToken: actionRequest.accountToken,
+    })
+    if (!isCurrent()) return
+    if (candidates.length === 0) {
+      // If the RPC response was lost after commit, the next candidate lookup
+      // is intentionally empty because the item is terminal. Refresh once and
+      // surface the committed outcome instead of asking for another offer.
+      const uid = actionRequest.accountToken.userId
+      if (await loadMine(uid, { forceItems: true }) && isCurrent()) {
+        if (myItems.value.some(item => item.id === id && item.status === 'sold')) {
+          uni.showToast({ title: t('profile.markedSold'), icon: 'success' })
+          return
+        }
+      }
+      if (!isCurrent()) return
+      uni.showModal({ title: t('profile.saleOfferRequiredTitle'), content: t('profile.saleOfferRequired'), showCancel: false })
+      return
     }
-    uni.showToast({ title: t('detail.unreserved'), icon: 'success' })
+    if (candidates.length > 6) {
+      uni.showModal({
+        title: t('profile.chooseAcceptedOffer'),
+        content: t('profile.tooManyAcceptedOffers'),
+        confirmText: t('profile.openMessages'),
+        success: (res) => { if (res.confirm && isCurrent()) uni.switchTab({ url: '/pages/messages/index' }) },
+      })
+      return
+    }
+    const confirmCandidate = (candidate: typeof candidates[number]) => {
+      if (!isCurrent()) return
+      uni.showModal({
+        title: t('profile.markSoldTitle'),
+        content: t('profile.confirmDealWith')
+          .replace('{name}', candidate.counterparty_name || t('app.user'))
+          .replace('{price}', formatPrice(candidate.agreed_price, t('home.free'))),
+        confirmText: t('profile.markSoldConfirm'),
+        success: async (res) => {
+          if (!res.confirm || !isCurrent()) return
+          const uid = actionRequest.accountToken.userId
+          try {
+            await markItemSold(id, candidate.offer_id, {
+              accountToken: actionRequest.accountToken,
+            })
+            if (!isCurrent()) return
+            homeItems.value = homeItems.value.filter(i => i.id !== id)
+            if (!await loadMine(uid, { forceItems: true })) return
+            if (!isCurrent()) return
+            uni.showToast({ title: t('profile.markedSold'), icon: 'success' })
+          } catch {
+            if (isCurrent()) uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+          }
+        },
+      })
+    }
+    if (candidates.length === 1) {
+      confirmCandidate(candidates[0])
+      return
+    }
+    uni.showActionSheet({
+      itemList: candidates.map(candidate => `${candidate.counterparty_name} · ${formatPrice(candidate.agreed_price, t('home.free'))}`),
+      success: (res) => {
+        const candidate = candidates[res.tapIndex]
+        if (candidate) confirmCandidate(candidate)
+      },
+    })
   } catch {
-    uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+    if (isCurrent()) uni.showToast({ title: t('profile.markFail'), icon: 'none' })
   }
 }
 
-function onDeleteItem(id: string) {
+async function unreserveItem(id: string, actionRequest: AccountPageRequest) {
+  if (!profileActionScope.isCurrent(actionRequest)) return
+  const uid = actionRequest.accountToken.userId
+  try {
+    await updateItemStatus(id, 'active')
+    if (!profileActionScope.isCurrent(actionRequest)) return
+    if (!await loadMine(uid, { forceItems: true })) return
+    if (!profileActionScope.isCurrent(actionRequest)) return
+    uni.showToast({ title: t('detail.unreserved'), icon: 'success' })
+  } catch {
+    if (profileActionScope.isCurrent(actionRequest)) {
+      uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+    }
+  }
+}
+
+function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
+  if (!profileActionScope.isCurrent(actionRequest)) return
   uni.showModal({
     title: t('profile.deleteTitle'),
     content: t('profile.deleteConfirm'),
     success: async (res) => {
-      if (!res.confirm) return
+      if (!res.confirm || !profileActionScope.isCurrent(actionRequest)) return
+      const uid = actionRequest.accountToken.userId
       try {
         await deleteItem(id)
-        if (currentUser.value) {
-          myItems.value = await fetchMyItems(currentUser.value.id)
-        }
+        if (!profileActionScope.isCurrent(actionRequest)) return
+        if (!await loadMine(uid, { forceItems: true })) return
+        if (!profileActionScope.isCurrent(actionRequest)) return
         uni.showToast({ title: t('profile.deleted'), icon: 'success' })
       } catch {
-        uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+        if (profileActionScope.isCurrent(actionRequest)) {
+          uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+        }
       }
     },
   })
@@ -590,7 +822,7 @@ function onDeleteItem(id: string) {
   border: 2.5px solid var(--text-faint); border-bottom: none;
 }
 
-.login-hint { color: var(--text-faint); font-size: 14px; }
+.login-hint { color: var(--text-subtle); font-size: 14px; }
 .login-btn {
   margin-top: 4px; padding: 10px 36px;
   background: var(--accent-primary); color: #fff; border-radius: 22px;
@@ -858,12 +1090,7 @@ function onDeleteItem(id: string) {
 .vp-text { flex: 1; min-width: 0; }
 .vp-title { font-size: 13px; font-weight: 600; color: var(--campus-blue); display: block; }
 .vp-sub { font-size: 11px; color: var(--ink-soft); margin-top: 2px; display: block; }
-.vp-arrow {
-  width: 6px; height: 6px; flex-shrink: 0;
-  border-top: 1.5px solid var(--campus-blue);
-  border-right: 1.5px solid var(--campus-blue);
-  transform: rotate(45deg);
-}
+.vp-arrow { flex-shrink: 0; }
 
 /* ===== Section blocks (shared wrapper for quick-actions / horz / fav / more) ===== */
 .section-block {
@@ -970,6 +1197,7 @@ function onDeleteItem(id: string) {
 .horz-row { display: inline-flex; gap: 10px; padding: 0 4px 4px; }
 .horz-card {
   width: 130px; flex-shrink: 0;
+  position: relative;
   background: var(--bg-elev-1);
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -978,6 +1206,29 @@ function onDeleteItem(id: string) {
   transition: transform 0.15s;
   &:active { transform: scale(0.97); }
   &.sold { opacity: 0.85; }
+}
+.horz-more {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: rgba(31, 29, 27, 0.74);
+  border: 0.5px solid rgba(255, 255, 255, 0.34);
+  box-shadow: 0 1px 4px rgba(31, 29, 27, 0.2);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  &:active { background: rgba(31, 29, 27, 0.9); }
+  &:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
 }
 .horz-img {
   width: 130px; height: 130px;
@@ -1017,7 +1268,7 @@ function onDeleteItem(id: string) {
   font-size: 10px; padding: 1px 6px; border-radius: 4px;
   margin-top: 4px; align-self: flex-start;
   display: inline-block;
-  &.reserved { color: var(--accent-warn); background: rgba(212, 146, 60, 0.10); }
+  &.reserved { color: var(--warning-text); background: var(--warning-soft); }
   &.sold { color: var(--text-muted); background: var(--bg-subtle); }
 }
 
@@ -1065,10 +1316,10 @@ function onDeleteItem(id: string) {
   font-feature-settings: 'tnum';
 }
 .fav-price.free { color: var(--success); }
-.fav-seller { font-size: 10px; color: var(--text-faint); }
+.fav-seller { font-size: 10px; color: var(--text-subtle); }
 .fav-status {
   font-size: 10px; padding: 1px 6px; border-radius: 4px;
-  &.reserved { color: var(--accent-warn); background: rgba(212, 146, 60, 0.10); }
+  &.reserved { color: var(--warning-text); background: var(--warning-soft); }
   &.sold { color: var(--text-muted); background: var(--bg-subtle); }
 }
 

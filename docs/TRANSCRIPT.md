@@ -4,6 +4,12 @@
 > 参与人：创始团队成员 A & B
 > 说明：以下为语音转文字原文，保留口语化表达
 
+> **历史输入，不是当前需求或上线承诺。** 对话中的 CAACI 会员、coupon、
+> 商户投流、自动新闻、聊天媒体、技术工具和数据访问设想有些已被改写或明确移出
+> 当前 release。产品范围以 [`PRD.md`](./PRD.md)，技术/安全边界以
+> [`ARCHITECTURE.md`](./ARCHITECTURE.md)，发布状态以最新
+> [`audit/`](./audit/) 报告为准。
+
 ---
 
 听的。就是我后面不是会在这上面部署 OpenClaw 吗，然后这上面的逻辑是这样的，就是主体用 OpenClaw 是用我那个 OpenRouter 的 key，然后那个我在里面也装 OpenClaw，然后 OpenClaw 可以操作 OpenCode 去做去做任何所有的项目上的东西。

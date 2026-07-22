@@ -1,7 +1,20 @@
 -- =========================================================
+-- DEPRECATED OPERATOR BUNDLE — retained only as historical recovery evidence.
+-- Do not execute this file. Its contracts predate the timestamped 2026-07
+-- hardening chain and can overwrite current least-privilege functions.
+-- Follow RUNBOOK.md and the matching PRECHECK/migration/VERIFY/REGRESSION files.
+\set ON_ERROR_STOP on
+DO $deprecated_operator_bundle$
+BEGIN
+  RAISE EXCEPTION
+    'deprecated_operator_bundle: use the reviewed timestamped migration chain';
+END
+$deprecated_operator_bundle$;
+
+-- =========================================================
 -- RUN AUDIT LOG MIGRATION (031 bundle + PostgREST reload)
 -- =========================================================
--- Paste this ENTIRE file into Supabase SQL Editor and run ONCE.
+-- Historical instructions below are retained for incident archaeology only.
 --
 -- Adds admin_audit_log table + record_audit() helper, and rewrites
 -- apply_ban_level / lift_suspension / admin_update_report_status /
@@ -311,3 +324,4 @@ GRANT EXECUTE ON FUNCTION public.admin_list_audit_log(integer, integer, text) TO
 COMMIT;
 
 NOTIFY pgrst, 'reload schema';
+-- =========================================================

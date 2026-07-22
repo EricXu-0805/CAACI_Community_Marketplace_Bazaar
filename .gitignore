@@ -9,9 +9,10 @@ build/
 out/
 
 # Environment variables
-.env
-.env.local
-.env.*.local
+.env*
+!.env.example
+app/.env*
+!app/.env.example
 
 # IDE
 .vscode/
@@ -28,13 +29,36 @@ Thumbs.db
 *.log
 npm-debug.log*
 
+# Database/export backups can contain credentials, private messages, emails,
+# and other production data. They belong only in the approved encrypted
+# backup store, never in the repository.
+backups/
+*.dump
+*.dump.gz
+
 # Testing
 coverage/
+app/test-results/
+app/playwright-report/
+app/blob-report/
+.playwright-cli/
+# Browser and end-to-end audit captures can contain account data and
+# production-like content. Keep the local evidence, but never commit it.
+output/
 
 # Misc
 *.tgz
 .cache/
 .vercel
+
+# Administrator token recovery manifests contain one-time plaintext bearer
+# credentials. The CLI also rejects every source checkout/Git worktree, while
+# these patterns provide defense in depth against accidental staging.
+.iam-admin-token-recovery/
+**/.iam-admin-token-recovery/**
+iam-admin-token-recovery*.json
+**/iam-admin-token-recovery*.json
+**/*admin-token-recovery*.json
 
 # WeChat mini-program IDE local config
 project.config.json
@@ -85,10 +109,15 @@ EXPLORATION_*.md
 # silently dropped. Whitelist explicitly (parallels docs/memory/ above):
 !docs/audit/
 !docs/audit/**
-
-# Local env files
-app/.env
-.env
+# Dated audit screenshots remain local evidence. They can contain real listing
+# photos, account state, or synthetic credentials and must never be published.
+docs/audit/evidence/
+# Current release-security reports contain deployment-gap and production-state
+# detail. Keep them in the private local handoff until the corresponding fixes
+# are deployed and a disclosure review explicitly approves publication.
+docs/audit/2026-07-17-comprehensive-project-audit.md
+docs/audit/2026-07-18-supabase-api-key-compatibility.md
+docs/audit/2026-07-19-release-candidate-audit.md
 
 # Supabase CLI runtime state — contains pooler-url with embedded DB
 # password and linked-project.json. Must NOT be committed.

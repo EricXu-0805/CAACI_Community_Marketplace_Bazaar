@@ -1,5 +1,12 @@
 # WeChat mini-program build — activation checklist
 
+> **Release-candidate boundary (2026-07-19):** the repository can build an
+> `mp-weixin` artifact, but this candidate has not been deployed to the current
+> production schema or validated in WeChat DevTools/on a physical phone with the
+> real domain allow-list, AppID secrets, Supabase keys, Storage, long-poll, or
+> moderation providers. “Implemented” below means code/build coverage, not a
+> production or real-device pass.
+
 This app is built on uni-app, so `npm run build:mp-weixin` produces
 a WeChat mp bundle at `app/dist/build/mp-weixin/`. But: shipping that
 to WeChat's app review is a real amount of work. This doc captures
@@ -9,14 +16,14 @@ everything that is required beyond the code, in order.
 
 | Piece | Status | Notes |
 |---|---|---|
-| REST calls (auth, items, posts, messages, rpc) | Working via `mpFetch` shim | `app/src/utils/mpFetch.ts` |
-| `uni.request` timeout + abort | Working | 25 s timeout, AbortSignal wired |
-| Image upload (`chooseImage`, compress, upload) | Working | needs `requiredPrivateInfos` (already in manifest) |
-| File picker (`chooseMedia`) | Working | ditto |
-| Supabase Realtime (chat websocket) | Server-long-poll on mp (~1s latency); direct-poll fallback | See §3 — `useRealtimeFallback.ts` 3-tier strategy |
+| REST calls (auth, items, posts, messages, rpc) | Candidate implementation; real provider pending | `app/src/utils/mpFetch.ts` |
+| `uni.request` timeout + abort | Candidate boundary-tested | 25 s timeout, AbortSignal wired; real weak-network test pending |
+| Image upload (`chooseImage`, compress, upload) | Candidate implementation; real Storage/device pending | needs `requiredPrivateInfos` (already in manifest) |
+| File picker (`chooseMedia`) | Candidate implementation; real device pending | ditto |
+| Supabase Realtime (chat websocket) | Candidate long-poll/direct-poll fallback; real latency pending | See §3 — `useRealtimeFallback.ts` 3-tier strategy |
 | Deep-linking via `#/...` routes | Replace with `uni.navigateTo` only | no `window.location.hash` on mp |
 | `fetch`/`WebSocket`/`navigator` | Use uni.* | `mpFetch` handles fetch; see §3 for WebSocket |
-| OpenAI proxies (`/api/moderate`, `/api/translate`) | Work — hosted on Vercel, reachable via uni.request | needs domain allow-list |
+| OpenAI proxies (`/api/moderate`, `/api/translate`) | Candidate authenticated routes; provider/allow-list pending | needs domain allow-list and real user JWT |
 
 ## 1. Register a WeChat mini-program
 
@@ -64,7 +71,10 @@ WebSocket. WeChat mp has `wx.connectSocket` but it **does not round-trip
 cleanly** through Phoenix's handshake. Symptom: the channel subscribes,
 but `broadcast` and `postgres_changes` events never fire.
 
-**Resolved** by a 3-tier strategy in `app/src/composables/useRealtimeFallback.ts`:
+**Implemented in the candidate** by a 3-tier strategy in
+`app/src/composables/useRealtimeFallback.ts`. The latency figures are design
+targets; validate them with the migrated staging schema, real credentials and a
+physical phone before calling this resolved:
 
 | Platform | Path | Latency |
 |---|---|---|
@@ -73,20 +83,24 @@ but `broadcast` and `postgres_changes` events never fire.
 | mp + long-poll 5xx'd | Direct PostgREST `GET /rest/v1/messages` every 3 s | 3 s |
 
 Long-poll protocol:
-1. Client opens `GET /api/realtime-poll?scope=conversation&id=X&since=TS`
+1. Client opens `GET /api/realtime-poll?scope=conversation&id=X&since=CURSOR`
    with its Supabase JWT in the Authorization header.
 2. Edge function (`api/realtime-poll.js`) tight-polls Supabase every
    800 ms internally, held up to 20 s (under Vercel's 25 s edge cap).
-3. Returns `{rows:[…], next_since: "ISO"}` on first hit, or
+3. Returns `{rows:[…], next_since: "ISO|UUID"}` on first hit, or
    `{rows:[]}` on timeout.
 4. Client immediately re-opens with the new cursor.
 
 Security:
-- Forwards the caller's JWT, does NOT use service_role — RLS on
-  `public.messages` evaluates against the real user, so a participant
-  in conversation A cannot long-poll conversation B.
-- `SUPABASE_ANON_KEY` + `SUPABASE_URL` are the only env vars needed
-  for this route (service_role stays exclusive to `/api/admin`).
+- Message reads forward the caller's JWT with the publishable key; they never
+  use privileged credentials. RLS on `public.messages` therefore evaluates
+  against the real user, so a participant in conversation A cannot long-poll
+  conversation B.
+- The separate amplification limiter is a privileged RPC and uses
+  `SUPABASE_SECRET_KEY` (temporary legacy `SUPABASE_SERVICE_ROLE_KEY`
+  fallback). The route also needs `SUPABASE_PUBLISHABLE_KEY` (temporary legacy
+  `SUPABASE_ANON_KEY` fallback) and `SUPABASE_URL`. An unavailable limiter
+  fails closed before polling messages.
 
 Circuit breaker: if long-poll returns 5xx / throws / aborts twice in a
 row the client falls back to direct 3s PostgREST polling for the rest
@@ -96,18 +110,20 @@ Call sites (platform-agnostic):
 - `useMessages.subscribeToMessages()`
 - `useUnread.startListening()`
 
-Cursor strategy: remember the last row's `created_at`, ask for rows
-newer than it. `created_at` is a monotonic server clock, simpler and
-safer than tracking uuids.
+Cursor strategy: use the lexicographic `(created_at,id)` key of the last row.
+The composite cursor prevents rows from being lost when more than one page has
+the same server timestamp. Timestamp-only cursors remain accepted during a
+rolling upgrade; the first successful response advances them to `ISO|UUID`.
 
 ## 4. Page-to-tabBar mismatch
 
-`pages.json` declares a `tabBar` but `pages/plaza/index.vue` and
-`pages/publish/index.vue` in that tabBar rely on features not
-available on mp:
+`pages.json` declares a `tabBar`; the Plaza and Publish routes use only the
+cross-platform subset currently supported by the release candidate:
 
-- **Plaza**: works; just make sure any `<video>` tags have posters
-  because mp video autoplay requires user interaction.
+- **Plaza**: public posts are text plus up to four canonical local images.
+  Public chat is text-only until a private chat-media bucket and signed-delivery
+  path exist. Do not re-introduce public video/media URLs as a Mini Program
+  workaround; the database write boundary rejects them.
 - **Publish**: `uni.chooseImage` works. Image compression in
   `utils/index.ts::compressImage` already has the correct dual
   branch — H5 uses canvas + toDataURL, non-H5 uses `uni.compressImage`
@@ -143,9 +159,10 @@ npm run build:mp-weixin
 - **Service workers / push notifications** — use `wx.subscribeMessage` instead.
 - **`BarcodeDetector`** (used for client-side QR code detection in
   moderation). Need to fall back to `wx.scanCode` or server-side detection.
-- **OpenAI moderation from mp**: works via `/api/moderate`, just make
-  sure `illinimarket.com` is in the
-  request allow-list (§2).
+- **OpenAI moderation from mp**: the candidate calls the authenticated
+  `/api/moderate` route. It still needs `illinimarket.com` in the request
+  allow-list, a real user JWT, provider configuration, and DevTools/phone
+  verification (§2).
 - **Deep links** — use `uni.navigateTo({ url: '/pages/...' })` not
   location-hash routing.
 
@@ -162,89 +179,116 @@ npm run build:mp-weixin
       covers this — point the mp privacy section at /pages/legal)
 - [ ] Operator info / ICP beian filed (required for any mp used
       by people in mainland China)
-- [ ] §8 below: WECHAT_APPSECRET + WECHAT_USER_PASSWORD_SALT +
-      SUPABASE_ANON_KEY env vars set on Vercel (required for
-      wx.login to function at all)
+- [ ] §8 below: WECHAT_APPID + WECHAT_APPSECRET + SUPABASE_URL +
+      SUPABASE_SECRET_KEY + SUPABASE_PUBLISHABLE_KEY set on Vercel (keep the
+      legacy service_role/anon aliases only during the rolling migration;
+      required for wx.login to function at all). Before enabling image async,
+      also provision WECHAT_PUSH_TOKEN + WECHAT_ENCODING_AES_KEY and complete
+      the encrypted provider canary below
 
 Allow ~3–5 business days for WeChat's first review.
 
 ## 8. wx.login silent sign-in — deployment guide
 
-Scaffolding: migration 034 (`034_wechat_auth_support.sql`) + edge route
+Scaffolding: migration 034 (`034_wechat_auth_support.sql`) + the atomic
+`edge_rate_hit` migration + edge route
 (`api/auth/wechat-login.js`) + front-end (`composables/useAuth.ts`
-`signInWithWeChat()`, button in `pages/login/index.vue`). Landing the
-code is not enough — you must also provision three secrets and apply
-the migration. Do these in order; skipping §8.1 makes §8.2 return 503.
+`signInWithWeChat()`, button in `pages/login/index.vue`). The current route is
+passwordless: it never derives, stores, retrieves, or submits a reusable
+plaintext password. Landing the code is not enough — provision the server
+configuration and apply the database prerequisites first.
 
-### 8.1 Apply migration 034
+### 8.1 Apply the database prerequisites
 
-Supabase SQL Editor:
-
-```sql
--- From repo root:
---   supabase/migrations/034_wechat_auth_support.sql
--- Or via CLI:
-supabase db push
-```
+Do **not** run a blind `supabase db push` on the existing project. Its migration
+ledger and live objects are known to have drifted, and the repository retains
+historical 014/015 version collisions. A new environment applies the complete
+ordered migration history through the reviewed bootstrap path. An existing
+environment must first inventory the ledger and exact definitions, run the
+release PRECHECKs, rehearse in staging, and then apply only the reviewed unique
+timestamped migration tail followed by VERIFY/REGRESSION. Migration 034 and the
+atomic `edge_rate_hit` capability are prerequisites, but a filename in the
+repository is not proof that the matching production definition is current.
 
 This is additive only:
 - `profiles.wechat_unionid TEXT UNIQUE` column (used by the edge route)
-- `public.upsert_wechat_user(openid, unionid, nickname, avatar)` RPC
-  (currently UNUSED by the v2 edge route — it was designed for a JWT
-  signing path that has been replaced. Column remains useful; the RPC
-  stays as dead code until 035 cleans it up or repurposes it for
-  account linking.)
+- `public.edge_rate_hit(text, integer, integer)`, executable only by
+  `service_role`, for atomic pre-WeChat and post-openid abuse limits
+- profile RLS/grants that keep `wechat_openid` and `wechat_unionid` out of
+  public profile reads
 
-### 8.2 Provision four env vars on Vercel
+`upsert_wechat_user` is a historical RPC and is not used by the current route.
+Do not grant it to browser roles as a shortcut around the route's identity
+checks.
 
-Project Settings → Environment Variables → add for **Production + Preview**:
+### 8.2 Provision login/text vars; keep media async off by default
+
+Project Settings → Environment Variables: Production gets production values
+only. A trusted, allowlisted Preview gets a separate staging WeChat app,
+staging Supabase project, and separately revocable staging secrets. Never expose
+production `WECHAT_APPSECRET` or a production Supabase secret key to arbitrary
+branch/PR Preview code; untrusted previews must run without privileged routes.
 
 | Name | Value source | Guard-rails |
 |---|---|---|
 | `WECHAT_APPID` | mp.weixin.qq.com → 开发管理 → 开发设置 → AppID | Same value already in `src/manifest.json` — OK to bundle either side. |
-| `WECHAT_APPSECRET` | same page, click "重置" to reveal a fresh secret, save immediately | **SERVER ONLY.** Each "重置" click rotates the secret; any previous deployment using the old one breaks. |
-| `SUPABASE_ANON_KEY` | Supabase Dashboard → Settings → API Keys → `anon` public | Same key the browser uses. Safe to also be in `VITE_SUPABASE_ANON_KEY`, but edge route needs a non-VITE alias. |
-| `WECHAT_USER_PASSWORD_SALT` | **generate locally**: `openssl rand -base64 32` | **SERVER ONLY.** Feeds an HMAC-SHA256 that derives each WeChat user's auth.users password from their openid. Do NOT rotate — every existing WeChat user's stored password would become unreachable, forcing a re-link migration. |
+| `WECHAT_APPSECRET` | Read the environment-specific approved value from the team's access-controlled secret manager | **SERVER ONLY.** Production and staging use different apps/secrets. Do not click “重置” during ordinary setup. Reset only in an approved, coordinated rotation window that updates that environment's consumers and verifies rollback/recovery; every reset invalidates the previous value. |
+| `WECHAT_PUSH_TOKEN` | mp.weixin.qq.com → 开发管理 → 开发设置 → 消息推送配置 → Token | **SERVER ONLY.** Use a separate random value per environment. It authenticates both the GET handshake and the encrypted POST `msg_signature`; never log or browser-prefix it. |
+| `WECHAT_ENCODING_AES_KEY` | The exact 43-character EncodingAESKey in the matching environment's 消息推送配置 | **SERVER ONLY.** Do not regenerate or rotate it independently of the WeChat console. The callback Base64-decodes it to a 32-byte AES key and verifies the decrypted trailing AppID. |
+| `SUPABASE_PUBLISHABLE_KEY` | Supabase Dashboard → Settings → API Keys → publishable key | Public component key used by the route. The app uses the same value in `VITE_SUPABASE_PUBLISHABLE_KEY`. `SUPABASE_ANON_KEY` remains a rolling fallback for old deployments. |
+| `SUPABASE_URL` | Supabase project URL | Server alias; must be an HTTPS origin with no path/query/credentials. |
+| `SUPABASE_SECRET_KEY` | The matching environment's Supabase project → Settings → API Keys → a named secret key | **SERVER ONLY.** Production scope points only to production; trusted Preview points only to isolated staging. Used for Auth generate-link and conditional identity binding; sent in `apikey` only. `SUPABASE_SERVICE_ROLE_KEY` remains the same-environment rolling legacy fallback. Complete the real-provider matrix before disabling it. |
 
-`SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_URL` are assumed already
-set (other admin endpoints use them). We deliberately do NOT require
-`SUPABASE_JWT_SECRET` — the v2 architecture uses Supabase's Admin API
-+ `signInWithPassword` to obtain a real GoTrue session instead of
-minting JWTs ourselves. This sidesteps the entire HS256-vs-ES256
-signing-key migration story (see §8.6 for the reasoning).
+`WECHAT_MEDIA_ASYNC_ENABLED` is a separate, optional production gate. Leave it
+absent or anything other than the exact string `true` until the console is in
+**安全模式** and the real-provider canary below passes. This blocks only image `media_check_async` enqueueing with
+`wechat_media_async_disabled`, and makes callback POST return 503 before body,
+database or Storage work; it does not disable the signed GET handshake,
+wx.login or synchronous text checks that still require `WECHAT_APPSECRET`.
+When the flag is `true`, image enqueue additionally requires a valid AppID,
+push token and EncodingAESKey; a missing/malformed value returns
+`wechat_media_async_misconfigured` before calling WeChat. The callback accepts
+only `encrypt_type=aes`, verifies `msg_signature`, decrypts JSON or XML
+`Encrypt` with AES-256-CBC/K=32 PKCS#7, and compares the decrypted trailing AppID
+before any database or Storage work. A plaintext POST, or a compatibility-mode
+envelope carrying extra plaintext event fields, is 403 with no side effect. Set
+the flag to `true` only after a real-provider retry canary proves the deployed
+environment and cross-signature idempotency. Never remove `WECHAT_APPSECRET` as
+a workaround for callback risk.
 
-After setting, redeploy (push an empty commit or hit "Redeploy" in
-Vercel dashboard). Env-var changes do not propagate to running
-functions until next deploy.
+Protocol source: WeChat's official [消息推送](https://developers.weixin.qq.com/miniprogram/dev/framework/server-ability/message-push.html)
+and [多媒体内容安全识别](https://developers.weixin.qq.com/miniprogram/dev/server/API/sec-center/sec-check/api_mediacheckasync.html)
+documentation. In the console choose 安全模式, not 明文模式 or 兼容模式; choose
+the JSON or XML body format you will exercise in the environment canary.
 
-**Verify the env vars actually reached the edge function** without
-opening WeChat DevTools. The endpoint has a GET health branch that
-returns a boolean per env var (never leaks values):
+`VITE_*` values are not a substitute for the server-only service key. We do
+not require `SUPABASE_JWT_SECRET` or `WECHAT_USER_PASSWORD_SALT`. The route
+asks GoTrue to generate a one-time magic-link token hash, exchanges that hash
+at `/auth/v1/verify`, and returns only the resulting bounded session fields.
+GoTrue remains the sole JWT issuer.
+
+Do not paste `sb_publishable_...` into the legacy anon variable or
+`sb_secret_...` into the legacy service-role variable as a shortcut. New
+component keys are not drop-in JWT replacements; use the new variable names
+and the reviewed header semantics, then keep old and new deployments additive
+until the real-provider/client matrix passes.
+
+After setting the staging variables, include them in the next reviewed staging
+deployment and run the provider matrix before any production window. Do not
+push an empty commit or click an ad-hoc production “Redeploy” merely to pick up
+configuration; environment changes do not affect an already-running deployment,
+so configuration and artifact promotion must stay in the same approved release.
+
+The route deliberately has no unauthenticated configuration/readiness oracle:
 
 ```bash
-curl https://illinimarket.com/api/auth/wechat-login
+curl -i https://illinimarket.com/api/auth/wechat-login
 ```
 
-Expect:
-
-```json
-{
-  "endpoint": "wechat-login",
-  "configured": {
-    "WECHAT_APPID": true,
-    "WECHAT_APPSECRET": true,
-    "SUPABASE_URL": true,
-    "SUPABASE_SERVICE_ROLE_KEY": true,
-    "SUPABASE_ANON_KEY": true,
-    "WECHAT_USER_PASSWORD_SALT": true
-  },
-  "ready": true
-}
-```
-
-Any `false` means that var did not land on the deploy. Double-check
-it's set on both Production + Preview environments and that you
-triggered a new deploy after setting.
+Expect `405 method_not_allowed`. Verify readiness with a temporary WeChat
+preview account and server logs keyed by the non-sensitive `X-Request-Id`.
+Logs intentionally omit js_code, openid, unionid, email, token, upstream URL,
+and response body.
 
 ### 8.3 Add domain to mp.weixin.qq.com allow-list
 
@@ -270,20 +314,18 @@ Expected happy path:
 2. Edge function exchanges code → openid (if AppSecret is wrong or
    code is fake, you'll see `wechat_exchange_failed` and a `wxErrcode`
    — look it up in the [WeChat error code table][wxerr])
-3. Admin API creates (or reuses) a hidden `wx_<openid>@wechat.placeholder`
-   auth.users row; signInWithPassword returns a real GoTrue session;
-   service_role PATCH binds wechat_openid on profiles
-4. Page reLaunches to home; in Supabase table editor, look for a row
+3. Admin `generate_link(type=magiclink)` creates or reuses the hidden
+   `wx_<openid>@wechat.placeholder` Auth user; `/auth/v1/verify` exchanges the
+   one-time token hash for a GoTrue session; no email is sent
+4. A compare-and-set profile update binds the openid/unionid only if the row is
+   still unbound; a conflicting identity fails closed instead of overwriting it
+5. Page reLaunches to home; in Supabase table editor, look for a row
    in profiles with `wechat_openid = o<something>` matching the
    DevTools openid
 
 [wxerr]: https://developers.weixin.qq.com/miniprogram/dev/framework/server-ability/backend-api.html
 
-### 8.5 Known limitations of the current skeleton
-
-The Phase 3 skeleton is deliberately narrow — enough to sign users
-in, not enough to handle every edge case. Before inviting real
-users, expand:
+### 8.5 Current limits and required real-device checks
 
 - **No account linking.** An email user who later signs in with
   WeChat will get a SEPARATE profile row. No UX to merge them
@@ -292,26 +334,24 @@ users, expand:
   to this account" that sends the js_code along with the current
   email session JWT, and have the edge function merge if and only
   if the email session matches.
-- **No replay protection.** WeChat's `jscode2session` single-uses
-  the code, which is the main guard, but we should still throttle
-  per-IP at the edge.
 - **No user profile fetch from WeChat.** We accept `nickname` and
   `avatar_url` from the client, but the client has to call
   `wx.getUserProfile` first and pass them in. The current login
   button does not do this — it just wx.logins for openid. Add
   nickname/avatar capture to the button if you want prefilled
   profiles.
-- **No unionid cross-app logic.** If you ever ship a second
-  mp-weixin app with the same open-platform account, link the
-  two by unionid in a separate migration 035.
-- **WECHAT_USER_PASSWORD_SALT is not rotatable.** Every WeChat
-  user's auth.users password is HMAC(openid, SALT). Rotating SALT
-  invalidates every WeChat user's login. If compromised, the
-  response is: (a) set new SALT, (b) run a migration that resets
-  every `wx_*@wechat.placeholder` user's password in auth.users
-  to the new HMAC, (c) tell users to relog. Not trivial.
+- **Placeholder email compatibility.** Existing identities keep the historical
+  `wx_<openid>@wechat.placeholder` mapping. Email normalization means two
+  openids differing only by case would collide; the route rejects identity
+  mismatches, and the retirement script blocks on such a collision.
+- **A simulator is not acceptance evidence.** Before enabling production,
+  use a temporary real mini-program account to test first login, repeat login,
+  two simultaneous first-login requests, expired/replayed js_code, logout and
+  relogin, and a pre-bound conflicting profile. Confirm no identity overwrite.
+- **Rate limits are fail-closed.** A missing/broken `edge_rate_hit` returns 503
+  before WeChat or GoTrue. This is intentional, not a fallback-login failure.
 
-### 8.6 Why v2 instead of minting our own JWT
+### 8.6 Why GoTrue issues the session
 
 The v1 skeleton (commit 5b7223a, superseded by b6ea34a cleanup)
 signed its own HS256 JWTs using the project's JWT secret. That
@@ -330,11 +370,51 @@ problem:
    Legacy key in the dashboard instantly kills every HS256-minted
    token. That's a loaded footgun.
 
-The v2 Admin API approach bypasses the entire signing problem:
-GoTrue itself issues the session token, signs it with whatever key
-is current, and gives us back `{ access_token, refresh_token, user }`.
+The current passwordless Admin generate-link + verify approach bypasses the
+entire signing problem: GoTrue itself issues the session token, signs it with
+whatever key is current, and gives us back `{ access_token, refresh_token,
+user }`.
 We never hold a signing key. Works the same on HS256, ES256, or any
 future algorithm Supabase introduces.
 
 Citations: <https://supabase.com/docs/guides/auth/signing-keys>,
 <https://supabase.com/docs/guides/auth/jwts#using-custom-or-third-party-jwts>.
+
+### 8.7 Retire credentials from an upgraded password-era deployment
+
+Fresh deployments can skip this section. If production ever ran migration 035
+and the password-based WeChat route, switching code does **not** invalidate the
+old plaintext map or the corresponding Auth passwords. Use this order:
+
+1. Deploy the passwordless route first. In Preview, complete the real-account
+   checks from §8.5 and confirm the old route is no longer receiving traffic.
+2. Inventory only (the default is non-mutating):
+
+   ```bash
+   export SUPABASE_URL=https://<project>.supabase.co
+   export SUPABASE_SECRET_KEY=<sb-secret-key>
+   node scripts/retire-wechat-passwords.mjs
+   ```
+
+3. Review counts and backups/incident implications. Then explicitly rotate
+   every matching Auth password and remove every legacy map row:
+
+   ```bash
+   node scripts/retire-wechat-passwords.mjs \
+     --apply --confirm RETIRE_WECHAT_PASSWORDS
+   ```
+
+   The script never selects the plaintext password column. It inventories the
+   entire map and Auth roster, blocks case collisions or profile/Auth identity
+   mismatches, rotates all matching users before the first map deletion, and
+   verifies the map is empty. A failed rotation stops all deletion.
+
+4. Apply `20260718140000_retire_wechat_password_credentials.sql` and its VERIFY
+   script. The migration refuses to run while any map row remains, revokes
+   legacy SELECT/INSERT/UPDATE and RPC EXECUTE access, but retains service-role
+   DELETE compatibility for the account-deletion saga. Drop the table/functions
+   only after that saga no longer references them.
+
+Do this first with a disposable project/account. Password rotation may affect
+existing sessions or trigger security notifications depending on current Auth
+settings; verify those effects before touching the full roster.

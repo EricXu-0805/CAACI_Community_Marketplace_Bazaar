@@ -22,7 +22,7 @@
     </view>
 
     <view v-else-if="seller" class="seller-section">
-      <image :src="seller.avatar_url || defaultAvatarSrc" :alt="seller.nickname || 'avatar'" class="avatar" mode="aspectFill" />
+      <UAvatar :src="seller.avatar_url" :owner="seller.id" :fallback="defaultAvatarSrc" :alt="seller.nickname || 'avatar'" class="avatar" />
       <view class="name-row">
         <text class="nickname">{{ seller.nickname }}</text>
         <UBadge v-if="seller.is_illini_verified" variant="illini">Illini</UBadge>
@@ -39,7 +39,11 @@
 
       <view
         v-if="!isOwnProfile"
-        :class="['follow-btn', { following: isFollowing(seller.id) }]"
+        :class="['follow-btn', { following: isFollowing(seller.id), disabled: followingActionActive }]"
+        role="button"
+        :aria-label="isFollowing(seller.id) ? t('follow.following') : t('follow.follow')"
+        :aria-pressed="isFollowing(seller.id) ? 'true' : 'false'"
+        :aria-disabled="followingActionActive ? 'true' : 'false'"
         @click="onToggleFollow"
       >
         <text>{{ isFollowing(seller.id) ? t('follow.following') : t('follow.follow') }}</text>
@@ -57,7 +61,7 @@
         </view>
         <view class="trust-divider"></view>
         <view v-if="seller.rating_count && seller.rating_count > 0" class="trust-stat">
-          <text class="trust-num">★ {{ (seller.avg_rating ?? 0).toFixed(1) }}</text>
+          <text class="trust-num">{{ (seller.avg_rating ?? 0).toFixed(1) }}/5</text>
           <text class="trust-label">{{ seller.rating_count }} {{ tc('rating.count', seller.rating_count) }}</text>
         </view>
         <view v-else class="trust-stat">
@@ -67,7 +71,7 @@
       </view>
     </view>
 
-    <view v-else-if="loadError" class="load-error">
+    <view v-else-if="loadError" class="load-error" role="alert" aria-live="assertive" aria-atomic="true">
       <view class="le-icon"></view>
       <text class="le-title">{{ t('error.loadFailed') }}</text>
       <view class="le-retry" role="button" :aria-label="t('home.retry')" @click="retryLoad">
@@ -78,20 +82,23 @@
     <!-- 商品 (default) / 动态 dual tabs — 2026-06 meeting decision: the
          seller page leads with listings, plaza activity one tap away. -->
     <template v-if="!blocked && !loadError">
-    <view class="seller-tabs">
+    <view class="seller-tabs" role="tablist" :aria-label="seller?.nickname || t('app.user')">
       <view
         v-for="tab in sellerTabs"
         :key="tab.key"
         :class="['st-chip', { active: activeTab === tab.key }]"
-        role="button"
-        :aria-pressed="activeTab === tab.key ? 'true' : 'false'"
+        role="tab"
+        :tabindex="activeTab === tab.key ? 0 : -1"
+        :aria-selected="activeTab === tab.key ? 'true' : 'false'"
+        :aria-controls="'seller-' + tab.key + '-panel'"
         @click="switchTab(tab.key)"
+        @keydown="onSellerTabKeydown($event, tab.key)"
       >
         <text class="t-tag st-label">{{ tab.label }}</text>
       </view>
     </view>
 
-    <template v-if="activeTab === 'items'">
+    <view v-if="activeTab === 'items'" id="seller-items-panel" role="tabpanel">
       <view v-if="loading" class="items-grid">
         <view v-for="n in 4" :key="'gs' + n" class="gi-skel">
           <view class="gi-skel-img u-sk"></view>
@@ -102,12 +109,19 @@
         </view>
       </view>
       <view v-else class="items-grid u-stagger">
-        <view v-for="item in sellerItems" :key="item.id" class="grid-item" @click="goDetail(item.id)">
+        <view
+          v-for="item in sellerItems"
+          :key="item.id"
+          class="grid-item"
+          role="button"
+          :aria-label="localize(item.title_i18n, item.title)"
+          @click="goDetail(item.id)"
+        >
           <view class="gi-img-wrap">
             <image v-if="thumbUrl(item.images?.[0], 'list')" :src="thumbUrl(item.images?.[0], 'list')" :alt="item.title" class="gi-img" mode="aspectFill" lazy-load />
             <view v-else class="gi-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
             <view v-if="pickupBadge(item)" class="badge-safe-corner" :class="{ 'badge-safe-corner--shared': !pickupBadge(item)!.spot }" :aria-label="pickupBadge(item)!.label">
-              <text v-if="pickupBadge(item)!.spot" class="bsc-check">✓</text>
+              <UIcon v-if="pickupBadge(item)!.spot" name="check" size="xs" color="#fff" />
               <text class="bsc-label">{{ pickupBadge(item)!.label }}</text>
             </view>
           </view>
@@ -125,9 +139,9 @@
         <UEmptyArt name="bag" />
         <text>{{ t('seller.noItems') }}</text>
       </view>
-    </template>
+    </view>
 
-    <template v-else>
+    <view v-else id="seller-posts-panel" role="tabpanel">
       <view v-if="postsLoading" class="posts-list">
         <view v-for="n in 3" :key="'ps' + n" class="sp-skel">
           <view class="sk-line u-sk" style="width: 92%"></view>
@@ -135,18 +149,26 @@
           <view class="sk-line u-sk" style="width: 36%"></view>
         </view>
       </view>
+      <view v-else-if="postsError" class="load-error" role="alert" aria-live="assertive" aria-atomic="true">
+        <view class="le-icon"></view>
+        <text class="le-title">{{ t('error.loadFailed') }}</text>
+        <view class="le-retry" role="button" :aria-label="t('home.retry')" @click="retryPosts">
+          <text class="le-retry-label">{{ t('home.retry') }}</text>
+        </view>
+      </view>
       <view v-else-if="userPosts.length === 0" class="empty">
         <UEmptyArt name="posts" />
         <text>{{ t('seller.noPosts') }}</text>
       </view>
       <view v-else class="posts-list u-stagger">
-        <view v-for="post in userPosts" :key="post.id" class="sp-card u-rise" @click="goPost(post.id)">
+        <view v-for="post in userPosts" :key="post.id" class="sp-card u-rise" role="button" :aria-label="localize(post.content_i18n, post.content)" @click="goPost(post.id)">
           <text class="sp-content">{{ localize(post.content_i18n, post.content) }}</text>
           <view v-if="post.images?.length" class="sp-imgs">
             <image
               v-for="(img, i) in post.images.slice(0, 3)"
               :key="i"
-              :src="thumbUrl(img, 'list') || img"
+              :src="thumbUrl(img, 'list')"
+              :alt="localize(post.content_i18n, post.content)"
               class="sp-img"
               mode="aspectFill"
               lazy-load
@@ -155,10 +177,16 @@
               <text class="sp-more-text">+{{ post.images.length - 3 }}</text>
             </view>
           </view>
-          <text class="sp-meta">{{ formatTime(post.created_at) }} · ♥ {{ post.like_count }} · 💬 {{ post.comment_count }}</text>
+          <view class="sp-meta">
+            <text>{{ formatTime(post.created_at) }}</text>
+            <text>·</text>
+            <view class="sp-stat"><UIcon name="heart" size="xs" color="text-faint" /><text>{{ post.like_count }}</text></view>
+            <text>·</text>
+            <view class="sp-stat"><UIcon name="chat-bubble" size="xs" color="text-faint" /><text>{{ post.comment_count }}</text></view>
+          </view>
         </view>
       </view>
-    </template>
+    </view>
     </template>
   </view>
 </template>
@@ -169,7 +197,7 @@ const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick, onUnmounted } from 'vue'
 import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
@@ -180,10 +208,18 @@ import { useFollow } from '../../composables/useFollow'
 import { usePlaza } from '../../composables/usePlaza'
 import { pickupTier } from '../../composables/useCampusSpots'
 import type { Profile, Item, Post } from '../../types'
-import { listingPriceLabel, formatTime, thumbUrl, friendlyErrorMessage } from '../../utils'
+import { listingPriceLabel, formatTime, thumbUrl, friendlyErrorMessage, navigateBackOr } from '../../utils'
+import { safeAvatarThumbUrl, sanitizeItemResources, sanitizeProfileResource } from '../../utils/publicResource'
+import UAvatar from '../../components/UAvatar.vue'
 import UBadge from '../../components/UBadge.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
 import UIcon from '../../components/UIcon.vue'
+import {
+  captureAccountRequest,
+  isAccountRequestCurrent,
+  onAccountTransition,
+  type AccountRequestToken,
+} from '../../composables/accountScope'
 
 const { t, tc, lang, localize } = useI18n()
 const { isDark } = useTheme()
@@ -192,7 +228,7 @@ const defaultAvatarSrc = computed(() =>
 )
 const { supabase } = useSupabase()
 const { ensureLoaded, isBlocked } = useModeration()
-const { currentUser, requireAuth } = useAuth()
+const { currentUser, requireAuth, awaitAuthReady } = useAuth()
 const { isFollowing, toggleFollow, loadMyFollowing } = useFollow()
 
 const { fetchUserPosts } = usePlaza()
@@ -209,6 +245,10 @@ const soldCount = ref(0)
 const loading = ref(true)
 const blocked = ref(false)
 const loadError = ref(false)
+let sellerLoadEpoch = 0
+let sellerPageMounted = true
+const followingActionActive = ref(false)
+let followingActionEpoch = 0
 
 /* 商品 (default) / 动态 tabs. Posts load lazily on first switch so the
    common path (browsing listings) costs no extra query. ?tab=posts
@@ -222,24 +262,51 @@ const sellerTabs = computed<{ key: SellerTabKey; label: string }[]>(() => [
 const sellerId = ref('')
 const userPosts = ref<Post[]>([])
 const postsLoading = ref(false)
+const postsError = ref(false)
 let postsLoaded = false
 
 async function loadPosts() {
   if (postsLoaded || !sellerId.value) return
+  const requestEpoch = sellerLoadEpoch
+  const accountToken = currentUser.value
+    ? captureAccountRequest(currentUser.value.id)
+    : null
+  postsError.value = false
   postsLoading.value = true
   try {
-    userPosts.value = await fetchUserPosts(sellerId.value)
+    const rows = await fetchUserPosts(sellerId.value)
+    if (!sellerRequestIsCurrent(accountToken, requestEpoch)) return
+    userPosts.value = rows
     postsLoaded = true
   } catch {
-    /* leave empty state; tab stays usable and re-tries on next switch */
+    if (sellerRequestIsCurrent(accountToken, requestEpoch)) postsError.value = true
   } finally {
-    postsLoading.value = false
+    if (sellerRequestIsCurrent(accountToken, requestEpoch)) postsLoading.value = false
   }
+}
+
+function retryPosts() {
+  postsLoaded = false
+  void loadPosts()
 }
 
 function switchTab(key: SellerTabKey) {
   activeTab.value = key
   if (key === 'posts') loadPosts()
+}
+
+function onSellerTabKeydown(event: KeyboardEvent, current: SellerTabKey) {
+  const order: SellerTabKey[] = ['items', 'posts']
+  let nextIndex = order.indexOf(current)
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (nextIndex + 1) % order.length
+  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (nextIndex - 1 + order.length) % order.length
+  else if (event.key === 'Home') nextIndex = 0
+  else if (event.key === 'End') nextIndex = order.length - 1
+  else return
+  event.preventDefault()
+  const tabList = (event.currentTarget as HTMLElement | null)?.parentElement
+  switchTab(order[nextIndex])
+  nextTick(() => tabList?.querySelectorAll<HTMLElement>('[role="tab"]')[nextIndex]?.focus())
 }
 
 function goPost(id: string) {
@@ -255,7 +322,7 @@ onShareAppMessage(() => {
   return {
     title: `${s.nickname || '商家'} 的 Illini Market 主页`,
     path: `/pages/seller/index?id=${s.id}`,
-    imageUrl: s.avatar_url || '',
+    imageUrl: safeAvatarThumbUrl(s.avatar_url, s.id) || defaultAvatarSrc.value,
   }
 })
 
@@ -265,21 +332,43 @@ onShareTimeline(() => {
   return {
     title: `${s.nickname || '商家'} 的 Illini Market 主页`,
     query: `id=${s.id}`,
-    imageUrl: s.avatar_url || '',
+    imageUrl: safeAvatarThumbUrl(s.avatar_url, s.id) || defaultAvatarSrc.value,
   }
 })
 
 async function onToggleFollow() {
-  if (!requireAuth() || !seller.value) return
+  if (followingActionActive.value) return
+  const operationEpoch = ++followingActionEpoch
+  const entryLoadEpoch = sellerLoadEpoch
+  const operationIsCurrent = () => (
+    sellerPageMounted
+    && operationEpoch === followingActionEpoch
+    && entryLoadEpoch === sellerLoadEpoch
+  )
+  let actionIsCurrent = operationIsCurrent
+  followingActionActive.value = true
   try {
-    const nowFollowing = await toggleFollow(seller.value.id)
+    await awaitAuthReady()
+    if (!operationIsCurrent() || !requireAuth() || !seller.value || !currentUser.value) return
+    const targetSellerId = seller.value.id
+    const accountToken = captureAccountRequest(currentUser.value.id)
+    actionIsCurrent = () => (
+      operationIsCurrent()
+      && isAccountRequestCurrent(accountToken)
+      && seller.value?.id === targetSellerId
+    )
+    const nowFollowing = await toggleFollow(targetSellerId)
+    if (!actionIsCurrent()) return
     uni.showToast({
       title: t(nowFollowing ? 'follow.followed' : 'follow.unfollowed'),
       icon: 'none',
       duration: 1500,
     })
   } catch (err: any) {
+    if (!actionIsCurrent()) return
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('error.actionFailed'), icon: 'none' })
+  } finally {
+    if (operationEpoch === followingActionEpoch) followingActionActive.value = false
   }
 }
 const joinLabel = computed(() => {
@@ -291,7 +380,13 @@ const joinLabel = computed(() => {
   return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
 })
 
-async function loadSellerData() {
+function sellerRequestIsCurrent(accountToken: AccountRequestToken | null, requestEpoch: number): boolean {
+  return sellerPageMounted
+    && requestEpoch === sellerLoadEpoch
+    && (!accountToken || isAccountRequestCurrent(accountToken))
+}
+
+async function loadSellerData(accountToken: AccountRequestToken | null, requestEpoch: number) {
   const uid = sellerId.value
   if (!uid) return
   loading.value = true
@@ -311,9 +406,10 @@ async function loadSellerData() {
   try {
     const [profileRes, itemsRes, soldRes] = await Promise.all([
       fetchSellerProfile(),
-      supabase.from('items').select('id, title, price, images, image_dimensions, status, listing_type, location_verified, created_at').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
+      supabase.from('items').select('id, user_id, title, price, images, image_dimensions, status, listing_type, location_verified, created_at').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
       supabase.from('items').select('id', { count: 'estimated', head: true }).eq('user_id', uid).eq('status', 'sold'),
     ])
+    if (!sellerRequestIsCurrent(accountToken, requestEpoch)) return
 
     // The page is unusable without the seller profile — surface a retryable
     // error instead of silently falling through to a "no items" empty state.
@@ -324,20 +420,83 @@ async function loadSellerData() {
     if (itemsRes.error) {
       uni.showToast({ title: friendlyErrorMessage(itemsRes.error, lang.value as 'en' | 'zh'), icon: 'none' })
     }
-    if (profileRes.data) seller.value = profileRes.data as Profile
-    if (itemsRes.data) sellerItems.value = itemsRes.data as Item[]
+    if (profileRes.data) seller.value = sanitizeProfileResource(profileRes.data as Profile)
+    if (itemsRes.data) sellerItems.value = (itemsRes.data as Item[]).map(sanitizeItemResources)
     soldCount.value = soldRes.count || 0
   } catch (err: any) {
-    console.error('[seller] load failed:', err)
+    if (!sellerRequestIsCurrent(accountToken, requestEpoch)) return
+    console.error('[seller] load failed')
     loadError.value = true
   } finally {
-    loading.value = false
+    if (sellerRequestIsCurrent(accountToken, requestEpoch)) loading.value = false
   }
 
-  if (!loadError.value && currentUser.value) await loadMyFollowing()
+  if (!loadError.value && accountToken && sellerRequestIsCurrent(accountToken, requestEpoch)) {
+    await loadMyFollowing()
+  }
 }
 
-function retryLoad() { loadSellerData() }
+async function loadSellerWithModerationGate() {
+  const requestEpoch = ++sellerLoadEpoch
+  loading.value = true
+  loadError.value = false
+  blocked.value = false
+  seller.value = null
+  sellerItems.value = []
+  soldCount.value = 0
+  userPosts.value = []
+  postsLoaded = false
+  postsLoading.value = false
+  postsError.value = false
+  await awaitAuthReady()
+  if (requestEpoch !== sellerLoadEpoch) return
+  const accountToken = currentUser.value
+    ? captureAccountRequest(currentUser.value.id)
+    : null
+  if (accountToken && !isAccountRequestCurrent(accountToken)) return
+  if (currentUser.value) {
+    const gate = await ensureLoaded()
+    if (!sellerRequestIsCurrent(accountToken, requestEpoch)) return
+    if (!gate.ok) {
+      loadError.value = true
+      loading.value = false
+      return
+    }
+  }
+  if (isBlocked(sellerId.value)) {
+    blocked.value = true
+    loading.value = false
+    return
+  }
+  await loadSellerData(accountToken, requestEpoch)
+  if (!sellerRequestIsCurrent(accountToken, requestEpoch)) return
+  if (!loadError.value && !blocked.value && activeTab.value === 'posts') await loadPosts()
+}
+
+const stopAccountTransitionListener = onAccountTransition(() => {
+  sellerLoadEpoch += 1
+  followingActionEpoch += 1
+  followingActionActive.value = false
+  loading.value = true
+  loadError.value = false
+  blocked.value = false
+  seller.value = null
+  sellerItems.value = []
+  userPosts.value = []
+  postsLoaded = false
+  postsLoading.value = false
+  postsError.value = false
+  void Promise.resolve().then(() => loadSellerWithModerationGate())
+})
+onUnmounted(() => {
+  sellerPageMounted = false
+  sellerLoadEpoch += 1
+  followingActionEpoch += 1
+  followingActionActive.value = false
+  stopAccountTransitionListener()
+})
+
+function retryLoad() { void loadSellerWithModerationGate() }
 
 onLoad(async (options) => {
   if (!options?.id) return
@@ -345,20 +504,15 @@ onLoad(async (options) => {
   sellerId.value = uid
   if (options.tab === 'posts') {
     activeTab.value = 'posts'
-    loadPosts()
   }
 
-  await ensureLoaded()
-  if (isBlocked(uid)) {
-    blocked.value = true
-    loading.value = false
-    return
-  }
-
-  await loadSellerData()
+  // Block and following state are account-scoped. Resolve the persisted
+  // session before deciding whether this seller is blocked or followed.
+  await awaitAuthReady()
+  await loadSellerWithModerationGate()
 })
 
-function goBack() { uni.navigateBack() }
+function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/index/index' })) }
 function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${id}` }) }
 </script>
 
@@ -390,7 +544,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .us-text { font-size: 12px; color: var(--campus-blue); line-height: 1.45; }
 .loc-row { display: flex; align-items: center; gap: 4px; }
 .loc-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-action); }
-.loc-text { font-size: 12px; color: var(--text-faint); }
+.loc-text { font-size: 12px; color: var(--text-subtle); }
 
 .sk-avatar { width: 64px; height: 64px; border-radius: 50%; }
 .sk-line { height: 12px; border-radius: 6px; }
@@ -450,7 +604,11 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 }
 .sp-more { display: flex; align-items: center; justify-content: center; }
 .sp-more-text { font-size: 14px; color: var(--text-muted); line-height: 1; }
-.sp-meta { font-size: 11px; color: var(--text-faint); }
+.sp-meta {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--text-subtle);
+}
+.sp-stat { display: inline-flex; align-items: center; gap: 2px; }
 
 .follow-btn {
   margin-top: 12px;
@@ -484,7 +642,11 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 
 .items-grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
-  background: var(--border); margin-top: 7px;
+  /* A divider-colored grid background painted an empty second-column tile
+     whenever a seller had an odd number of listings, which looked like a
+     broken/skeleton product card. Keep the narrow gap without inventing a
+     phantom card in the unused grid cell. */
+  background: transparent; margin-top: 7px;
 }
 .grid-item {
   background: var(--bg-elev-1); cursor: pointer;
@@ -514,7 +676,6 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   background: var(--success);
 }
 .badge-safe-corner--shared { background: rgba(0, 0, 0, 0.55); padding-left: 7px; }
-.bsc-check { font-size: 10px; color: #fff; font-weight: 800; line-height: 1; }
 .bsc-label { font-size: 10px; color: #fff; font-weight: 600; line-height: 1; }
 .gi-title {
   font-size: 13px; color: var(--text-primary); line-height: 1.45; letter-spacing: 0.02em;
@@ -523,7 +684,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .gi-price-row { display: flex; align-items: center; gap: 5px; margin-top: 4px; }
 .gi-price { font-size: 15px; font-weight: 700; color: var(--text-primary); display: block; }
 
-.empty { padding: 60px 16px; text-align: center; color: var(--text-faint); font-size: 14px; }
+.empty { padding: 60px 16px; text-align: center; color: var(--text-subtle); font-size: 14px; }
 
 .load-error {
   display: flex; flex-direction: column; align-items: center;

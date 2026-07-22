@@ -24,18 +24,18 @@
         role="button"
         tabindex="0"
         @click="onTap(t)"
-        @keydown.enter="onTap(t)"
+        @keydown.enter.stop.prevent="onTap(t)"
+        @keydown.space.stop.prevent="onTap(t)"
         @mouseenter="pause(t.id)"
         @mouseleave="resume(t.id)"
       >
-        <div class="at-icon" :class="'k-' + t.kind"><span>{{ glyph(t.kind) }}</span></div>
+        <div class="at-icon" :class="'k-' + t.kind"><UIcon :name="iconName(t.kind)" size="sm" color="currentColor" aria-hidden="true" /></div>
         <div class="at-text">
           <span class="at-title">{{ t.title }}</span>
           <span v-if="t.body" class="at-sub">{{ t.body }}</span>
         </div>
-        <div class="at-close" role="button" :aria-label="i18nT('a11y.close')" @click.stop="dismissToast(t.id)">
-          <span class="at-x"></span>
-          <span class="at-x at-x2"></span>
+        <div class="at-close" role="button" tabindex="0" :aria-label="i18nT('a11y.close')" @click.stop="dismissToast(t.id)" @keydown.enter.stop.prevent="dismissToast(t.id)" @keydown.space.stop.prevent="dismissToast(t.id)">
+          <UIcon name="close" size="xs" color="currentColor" aria-hidden="true" />
         </div>
       </div>
     </transition-group>
@@ -50,14 +50,13 @@
       role="button"
       @click="onTap(t)"
     >
-      <view class="at-icon" :class="'k-' + t.kind"><text>{{ glyph(t.kind) }}</text></view>
+      <view class="at-icon" :class="'k-' + t.kind"><UIcon :name="iconName(t.kind)" size="sm" color="currentColor" aria-hidden="true" /></view>
       <view class="at-text">
         <text class="at-title">{{ t.title }}</text>
         <text v-if="t.body" class="at-sub">{{ t.body }}</text>
       </view>
       <view class="at-close" role="button" :aria-label="i18nT('a11y.close')" @click.stop="dismissToast(t.id)">
-        <view class="at-x"></view>
-        <view class="at-x at-x2"></view>
+        <UIcon name="close" size="xs" color="currentColor" aria-hidden="true" />
       </view>
     </view>
   </view>
@@ -72,6 +71,7 @@ import { registerToastHost } from '../composables/useAppToast'
 import { mpChromeVars } from '../composables/useMpChrome'
 // #endif
 import { useI18n } from '../composables/useI18n'
+import UIcon from './UIcon.vue'
 
 const { toasts, dismissToast } = useAppToast()
 
@@ -87,15 +87,15 @@ const mpChrome = mpChromeVars()
 const { t: i18nT } = useI18n()
 
 const DURATION = 5200
-const GLYPHS: Record<ToastKind, string> = {
-  offer: '$',
-  meetup: '\u{1F4CD}',
-  sold: '✓',
-  price_drop: '↓',
-  system: '\u{1F514}',
-  message: '\u{1F4AC}',
+const TOAST_ICONS: Record<ToastKind, string> = {
+  offer: 'tag',
+  meetup: 'location-pin',
+  sold: 'check',
+  price_drop: 'tag',
+  system: 'bell',
+  message: 'chat-bubble',
 }
-function glyph(k: ToastKind) { return GLYPHS[k] || GLYPHS.system }
+function iconName(k: ToastKind) { return TOAST_ICONS[k] || TOAST_ICONS.system }
 
 /*
  * Per-toast auto-dismiss. The store can prepend a new toast at any time, so we
@@ -217,20 +217,13 @@ function onTap(t: ToastItem) {
 
 .at-close {
   flex: none;
-  width: 26px; height: 26px;
+  width: 44px; height: 44px;
   border-radius: 50%;
   position: relative;
   display: flex; align-items: center; justify-content: center;
   margin-right: 2px;
 }
 .at-close:active { background: var(--bg-subtle, rgba(0, 0, 0, 0.05)); }
-.at-x {
-  position: absolute;
-  width: 12px; height: 1.6px; border-radius: 1px;
-  background: var(--ink-quiet, #8B8478);
-  transform: rotate(45deg);
-}
-.at-x2 { transform: rotate(-45deg); }
 
 /* Spring entrance from the top; leave fades up. */
 .at-enter-active { transition: transform var(--dur-3, 360ms) var(--ease-warm, cubic-bezier(0.2, 0.8, 0.2, 1)), opacity var(--dur-3, 360ms) ease; }

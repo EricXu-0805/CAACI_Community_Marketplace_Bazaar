@@ -1,12 +1,12 @@
-export const TERMS_VERSION = '2026-04-20'
+export const TERMS_VERSION = '2026-07-18'
 
 export const TERMS_EN = `Terms of Service
 
-Effective date: April 20, 2026
+Effective date: July 18, 2026
 Version: ${TERMS_VERSION}
 
 1. Eligibility.
-Illini Market is a peer-to-peer marketplace and community for UIUC and the Champaign-Urbana area. You must be 18 or older to use the service. By creating an account, you represent that you are a student, alumnus, faculty member, or local community member with a genuine connection to UIUC.
+Illini Market is a community project operated by Guoyi (Eric) Xu and is a peer-to-peer marketplace for UIUC and the Champaign-Urbana area. You must be 18 or older to use the service. By creating an account, you represent that you are a student, alumnus, faculty member, or local community member with a genuine connection to UIUC.
 
 2. Accounts.
 You are responsible for all activity under your account. You agree not to:
@@ -54,28 +54,23 @@ The Plaza is a community-discussion feed. See the Community Guidelines (in-app) 
 Respect copyrights and trademarks. Do not upload content you do not have the right to share. We will honor valid DMCA takedown notices; send them to help@illinimarket.com.
 
 9. Moderation and Enforcement — Ban Ladder.
-We enforce these terms through a graduated system. Each new infraction escalates:
-   · Level 0 — Content action: the specific post, comment, message, or listing is removed or hidden. No account-level sanction. You may appeal within 7 days.
-   · Level 1 — Written warning: recorded on your account. Further infractions escalate faster.
+We enforce these terms through a graduated system. Each new infraction may escalate:
+   · Level 0 — Content action: a listing, Plaza post, or comment is removed or hidden. A reported message may be retained as moderation evidence and can lead to an account action, but the current service does not selectively hide that message from an existing conversation. No account-level sanction is inherent in Level 0. You may request human review under Section 11.
+   · Level 1 — Account warning: recorded in moderation history; we may notify you through an available channel. Further infractions escalate faster.
    · Level 2 — Temporary suspension (72 hours): you cannot post, message, or list during this period; existing content remains visible.
-   · Level 3 — Extended suspension (7 days): as Level 2, plus reduced trust score and lower feed distribution when the suspension lifts.
-   · Level 4 — Extended suspension (30 days): as Level 3. Any infraction during or immediately after this level will typically result in permanent termination.
-   · Level 5 — Permanent termination: account is closed. Continued use of the service via a new account is prohibited and will also be terminated.
+   · Level 3 — Extended suspension (7 days): as Level 2, plus a lower trust score used to prioritize moderation review.
+   · Level 4 — Extended suspension (30 days): as Level 3; existing public content may also be hidden. A further severe infraction may result in permanent termination.
+   · Level 5 — Permanent termination: access is permanently restricted. Continued use of the service via a new account is prohibited and may also be terminated.
 Severe violations (e.g., threats of violence, illegal-goods listings, sexual content involving minors, doxxing, coordinated fraud) may skip directly to Level 4 or Level 5 at our sole discretion. Law-enforcement cooperation may also apply.
 
-10. Post-Suspension Restrictions.
-After a suspension is lifted, your account may be subject to the following for up to 30 days:
-   · reduced daily post / listing / message limits;
-   · reduced feed distribution (shadow-limit);
-   · mandatory review for new listings above a price threshold;
-   · inability to initiate conversations with users you have not previously transacted with.
-These restrictions ease automatically as your account returns to good standing.
+10. After a Suspension.
+When a suspension ends or is lifted, normal write access returns unless another active action remains. A prior suspension may continue to lower the trust score used for moderation prioritization and may affect escalation for up to 180 days. The current service does not automatically impose post-suspension feed suppression, reduced daily limits, high-price review, or new-conversation restrictions.
 
 11. Appeals.
-If you believe an enforcement action was made in error, you may appeal by emailing help@illinimarket.com within 7 days of the action. Appeals are reviewed by a human operator. We aim to respond within 5 business days.
+If you believe an enforcement action was made in error, use the in-app appeal form when it is available for the active action, or email help@illinimarket.com. Appeals are reviewed by a human operator. We aim, but do not guarantee, to respond within 5 business days.
 
 12. Termination by You.
-You may delete your account at any time from Settings → Delete Account. Deletion is permanent; some data may be retained in anonymized form for fraud prevention, as described in the Privacy Policy.
+You may delete your account at any time from Settings → Delete Account. Deletion is permanent; limited deletion tombstone, moderation, enforcement, and audit records may be retained as described in the Privacy Policy.
 
 13. Termination by Us.
 We may suspend or terminate accounts for repeated or severe violations of these terms, by operation of the ban ladder above, or if required by law.

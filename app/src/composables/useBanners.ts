@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
+import { safeManagedBannerUrl } from '../utils/publicResource'
 
 export interface Banner {
   id: string
@@ -27,7 +28,12 @@ export function useBanners() {
       // banners from the console (#183). Empty → no carousel (the carousel
       // hides on length 0); an error → also empty, never a stale mock set
       // that would override an intentional "no banners" state. (QA8 audit.)
-      banners.value = error || !data ? [] : (data as Banner[])
+      banners.value = error || !data
+        ? []
+        : (data as Banner[]).flatMap((banner) => {
+            const imageUrl = safeManagedBannerUrl(banner.image_url)
+            return imageUrl ? [{ ...banner, image_url: imageUrl }] : []
+          })
     } catch {
       banners.value = []
     } finally {

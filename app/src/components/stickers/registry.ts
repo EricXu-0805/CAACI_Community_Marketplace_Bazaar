@@ -63,10 +63,14 @@ export const STICKER_ORDER: StickerName[] = [
 
 const TOKEN_RE = /^\[sticker:([a-z-]+)\]$/
 
+export function isStickerName(value: string): value is StickerName {
+  return Object.prototype.hasOwnProperty.call(STICKERS, value)
+}
+
 /** Parse a message body; returns the sticker name if the WHOLE body is one sticker token. */
 export function parseStickerToken(content: string): StickerName | null {
   const m = TOKEN_RE.exec(content.trim())
-  if (m && m[1] in STICKERS) return m[1] as StickerName
+  if (m && isStickerName(m[1])) return m[1]
   return null
 }
 

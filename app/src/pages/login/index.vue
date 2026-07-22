@@ -1,6 +1,6 @@
 <template>
   <view class="page" :class="mpThemeClass" :style="mpChrome">
-    <view class="nav-back" role="button" :aria-label="t('a11y.back')" @click="goBack">
+    <view :class="['nav-back', { disabled: formBusy || verifying || confirmResending }]" role="button" :aria-label="t('a11y.back')" @click="goBack">
       <UIcon name="chevron-left" size="xs" color="accent-primary" />
     </view>
     <view class="header u-rise">
@@ -11,7 +11,7 @@
 
     <view v-if="!awaitingConfirm" class="form u-rise">
       <!-- #ifdef MP-WEIXIN -->
-      <button class="wx-btn" :disabled="loading" @click="onWeChatLogin">
+      <button class="wx-btn" :disabled="formBusy" @click="onWeChatLogin">
         <text class="wx-icon">✦</text>
         <text>{{ loading ? t('login.wait') : t('login.wechatQuick') }}</text>
       </button>
@@ -23,11 +23,11 @@
       <!-- #endif -->
 
       <view class="tab-bar">
-        <view :class="['tab', { active: mode === 'login' }]" role="button" :aria-label="t('login.signIn')" @click="mode = 'login'">
+        <view :class="['tab', { active: mode === 'login', disabled: formBusy }]" role="button" :aria-label="t('login.signIn')" @click="setMode('login')">
           <text>{{ t('login.signIn') }}</text>
           <view v-if="mode === 'login'" class="tab-line"></view>
         </view>
-        <view :class="['tab', { active: mode === 'signup' }]" role="button" :aria-label="t('login.signUp')" @click="mode = 'signup'">
+        <view :class="['tab', { active: mode === 'signup', disabled: formBusy }]" role="button" :aria-label="t('login.signUp')" @click="setMode('signup')">
           <text>{{ t('login.signUp') }}</text>
           <view v-if="mode === 'signup'" class="tab-line"></view>
         </view>
@@ -38,6 +38,8 @@
         <input
           v-model="nickname"
           :placeholder="t('login.nickname')"
+          :aria-label="t('login.nickname')"
+          :disabled="formBusy"
           class="form-input"
           autocomplete="nickname"
           maxlength="40"
@@ -49,10 +51,12 @@
         <input
           v-model="email"
           :placeholder="t('login.email')"
+          :aria-label="t('login.email')"
           type="email"
           inputmode="email"
           autocomplete="email"
           spellcheck="false"
+          :disabled="formBusy"
           class="form-input"
         />
         <view v-if="isIlliniEmail" class="illini-hint">
@@ -67,8 +71,10 @@
           <input
             v-model="password"
             :placeholder="t('login.password')"
+            :aria-label="t('login.password')"
             :password="!showPw"
             :autocomplete="mode === 'signup' ? 'new-password' : 'current-password'"
+            :disabled="formBusy"
             class="form-input pw-input"
             maxlength="72"
           />
@@ -78,29 +84,38 @@
         </view>
         <view v-if="mode === 'signup'" class="pw-rules">
           <view v-for="r in pwRules" :key="r.key" :class="['pw-rule', { ok: r.ok }]">
-            <text class="pw-rule-mark">{{ r.ok ? '✓' : '○' }}</text>
+            <UIcon class="pw-rule-mark" :name="r.ok ? 'check' : 'close'" size="xs" :color="r.ok ? 'success' : 'text-faint'" aria-hidden="true" />
             <text class="pw-rule-label">{{ t('login.pwRule.' + r.key) }}</text>
           </view>
         </view>
       </view>
 
-      <text v-if="mode === 'login'" class="forgot-link" role="button" :aria-label="t('login.forgot')" @click="onForgotPassword">{{ t('login.forgot') }}</text>
+      <text v-if="mode === 'login'" :class="['forgot-link', { disabled: formBusy }]" role="button" :aria-label="t('login.forgot')" @click="onForgotPassword">{{ t('login.forgot') }}</text>
 
-      <view class="agreement-row" v-if="mode === 'signup'" role="button" @click="agreed = !agreed">
-        <view :class="['agree-check', { on: agreed }]">
-          <view v-if="agreed" class="check-mark"></view>
+      <view v-if="mode === 'signup'" class="agreement-row">
+        <view
+          class="agreement-toggle"
+          role="checkbox"
+          tabindex="0"
+          :aria-label="agreementAriaLabel"
+          :aria-checked="agreed ? 'true' : 'false'"
+          @click="toggleAgreement"
+          @keydown="onAgreementKeydown"
+        >
+          <view :class="['agree-check', { on: agreed }]">
+            <view v-if="agreed" class="check-mark"></view>
+          </view>
         </view>
-        <text class="agree-text">
-          <text>{{ t('login.agreePrefix') }}</text>
-          <text class="link" @click.stop="goLegal('terms')">{{ t('legal.terms') }}</text>
-          <text>, </text>
-          <text class="link" @click.stop="goLegal('privacy')">{{ t('legal.privacy') }}</text>
-          <text>{{ t('login.agreeAnd') }}</text>
-          <text class="link" @click.stop="goLegal('guidelines')">{{ t('legal.guidelines') }}</text>
-        </text>
+        <view class="agree-text">
+          <text class="agree-part">{{ t('login.agreePrefix') }}</text>
+          <text class="agree-part link" role="link" tabindex="0" :aria-label="t('legal.terms')" @click="goLegal('terms')" @keydown="onLegalKeydown($event, 'terms')">{{ t('legal.terms') }},</text>
+          <text class="agree-part link" role="link" tabindex="0" :aria-label="t('legal.privacy')" @click="goLegal('privacy')" @keydown="onLegalKeydown($event, 'privacy')">{{ t('legal.privacy') }},</text>
+          <text class="agree-part">{{ t('login.agreeAnd') }}</text>
+          <text class="agree-part link" role="link" tabindex="0" :aria-label="t('legal.guidelines')" @click="goLegal('guidelines')" @keydown="onLegalKeydown($event, 'guidelines')">{{ t('legal.guidelines') }}</text>
+        </view>
       </view>
 
-      <button class="submit-btn" :disabled="loading" @click="onSubmit">
+      <button class="submit-btn" :disabled="formBusy" @click="onSubmit">
         {{ loading ? t('login.wait') : (mode === 'login' ? t('login.submitLogin') : t('login.submitSignup')) }}
       </button>
 
@@ -124,7 +139,7 @@
         <text class="or-text">{{ t('login.orContinue') }}</text>
         <view class="or-line"></view>
       </view>
-      <button class="google-btn" :disabled="loading || googleLoading" @click="onSignInWithGoogle">
+      <button class="google-btn" :disabled="formBusy" @click="onSignInWithGoogle">
         <view class="g-icon-circle">
           <text class="g-icon-letter">G</text>
         </view>
@@ -144,17 +159,17 @@
       </view>
       <view class="form-group">
         <text class="form-label">{{ t('resetPw.code') }}</text>
-        <UCodeInput v-model="confirmCode" :placeholder="t('resetPw.codePlaceholder')" :autofocus="true" />
+        <UCodeInput v-model="confirmCode" :placeholder="t('resetPw.codePlaceholder')" :aria-label="t('resetPw.code')" :autofocus="true" :disabled="verifying || confirmResending" />
         <view class="code-row">
-          <text :class="['resend', { disabled: confirmCooldown > 0 }]" role="button" @click="onResendSignup">
+          <text :class="['resend', { disabled: confirmCooldown > 0 || verifying || confirmResending }]" role="button" @click="onResendSignup">
             {{ confirmCooldown > 0 ? t('resetPw.resendIn', { n: confirmCooldown }) : t('resetPw.resend') }}
           </text>
         </view>
       </view>
-      <button class="submit-btn" :disabled="verifying" @click="onVerifySignup">
+      <button class="submit-btn" :disabled="verifying || confirmResending" @click="onVerifySignup">
         {{ verifying ? t('login.wait') : t('login.confirmVerify') }}
       </button>
-      <view class="back-link" role="button" @click="awaitingConfirm = false">{{ t('login.backToSignup') }}</view>
+      <view :class="['back-link', { disabled: verifying || confirmResending }]" role="button" @click="leaveSignupConfirmation">{{ t('login.backToSignup') }}</view>
     </view>
 
     <view class="footer">
@@ -168,10 +183,10 @@ import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { ref, computed, onUnmounted } from 'vue'
 import { useAuth } from '../../composables/useAuth'
-import { useSupabase } from '../../composables/useSupabase'
+import { useSupabase, prepareSupabaseAuthPersistence } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 import { useTheme } from '../../composables/useTheme'
-import { passwordRules, passwordValid, friendlyErrorMessage } from '../../utils'
+import { passwordRules, passwordValid, friendlyErrorMessage, navigateBackOr } from '../../utils'
 import UIcon from '../../components/UIcon.vue'
 import UCodeInput from '../../components/UCodeInput.vue'
 
@@ -179,9 +194,27 @@ const { t, lang } = useI18n()
 const { signIn, signUp, signInWithWeChat, loading } = useAuth()
 const { isDark } = useTheme()
 
+function localizedPasswordPolicyError(error: unknown) {
+  const policyError = error as { message?: unknown; reasons?: unknown }
+  const reasons = Array.isArray(policyError?.reasons) ? policyError.reasons : []
+  const detail = [...reasons, policyError?.message]
+    .map((reason) => String(reason || '').toLowerCase())
+    .join(' ')
+  return /pwned|leak|breach|compromis/.test(detail)
+    ? t('login.leakedPasswordRejected')
+    : t('login.weakPassword')
+}
+
 // v5: theme-flipping 集 brand mark + an Illini-email hint on the signup form.
 const logoSrc = computed(() => (isDark.value ? '/static/logo-mark-dark.svg' : '/static/logo-mark.svg'))
 const isIlliniEmail = computed(() => /@illinois\.edu\s*$/i.test(email.value.trim()))
+const agreementAriaLabel = computed(() => [
+  t('login.agreePrefix'),
+  t('legal.terms'),
+  t('legal.privacy'),
+  t('login.agreeAnd'),
+  t('legal.guidelines'),
+].join(' '))
 // #1: live password-policy checklist on the signup tab so the user sees which
 // rule fails, instead of a raw English gotrue "weak_password" error.
 const pwRules = computed(() => passwordRules(password.value))
@@ -193,6 +226,51 @@ const nickname = ref('')
 const showPw = ref(false)
 const agreed = ref(false)
 const googleLoading = ref(false)
+const forgotLoading = ref(false)
+const authRedirecting = ref(false)
+let authRedirectTimer: ReturnType<typeof setTimeout> | null = null
+let mounted = true
+const formBusy = computed(() => loading.value || googleLoading.value || forgotLoading.value || authRedirecting.value)
+
+function scheduleHomeRedirect(delay: number) {
+  authRedirecting.value = true
+  if (authRedirectTimer) clearTimeout(authRedirectTimer)
+  authRedirectTimer = setTimeout(() => {
+    authRedirectTimer = null
+    if (mounted) uni.reLaunch({ url: '/pages/index/index' })
+  }, delay)
+}
+
+function setMode(nextMode: 'login' | 'signup') {
+  if (mode.value === nextMode || formBusy.value) return
+  uni.hideToast()
+  mode.value = nextMode
+  // Passwords, visibility, and signup consent are credentials for one flow,
+  // not shared defaults for a different sign-in/signup operation.
+  password.value = ''
+  showPw.value = false
+  if (nextMode === 'login') {
+    nickname.value = ''
+    agreed.value = false
+  }
+}
+
+function toggleAgreement() {
+  if (formBusy.value) return
+  agreed.value = !agreed.value
+}
+
+function onAgreementKeydown(event: any) {
+  if (event?.key !== 'Enter' && event?.key !== ' ') return
+  event.preventDefault?.()
+  toggleAgreement()
+}
+
+function onLegalKeydown(event: any, type: string) {
+  if (event?.key !== 'Enter' && event?.key !== ' ') return
+  event.preventDefault?.()
+  goLegal(type)
+}
 
 // Signup email-confirmation OTP panel (shown after a successful sign-up that
 // requires email confirmation). The user types the {{ .Token }} code Supabase
@@ -201,8 +279,15 @@ const awaitingConfirm = ref(false)
 const pendingEmail = ref('')
 const confirmCode = ref('')
 const verifying = ref(false)
+const confirmResending = ref(false)
 const confirmCooldown = ref(0)
 let confirmTimer: ReturnType<typeof setInterval> | null = null
+let confirmRedirectTimer: ReturnType<typeof setTimeout> | null = null
+function clearConfirmCooldown() {
+  if (confirmTimer) clearInterval(confirmTimer)
+  confirmTimer = null
+  confirmCooldown.value = 0
+}
 function startConfirmCooldown() {
   confirmCooldown.value = 60
   if (confirmTimer) clearInterval(confirmTimer)
@@ -211,45 +296,79 @@ function startConfirmCooldown() {
     if (confirmCooldown.value <= 0 && confirmTimer) { clearInterval(confirmTimer); confirmTimer = null }
   }, 1000)
 }
-onUnmounted(() => { if (confirmTimer) clearInterval(confirmTimer) })
+function startSignupConfirmation(submittedEmail: string) {
+  pendingEmail.value = submittedEmail
+  confirmCode.value = ''
+  verifying.value = false
+  confirmResending.value = false
+  awaitingConfirm.value = true
+  startConfirmCooldown()
+}
+function leaveSignupConfirmation() {
+  if (verifying.value || confirmResending.value) return
+  uni.hideToast()
+  awaitingConfirm.value = false
+  pendingEmail.value = ''
+  confirmCode.value = ''
+  clearConfirmCooldown()
+}
+onUnmounted(() => {
+  mounted = false
+  clearConfirmCooldown()
+  if (confirmRedirectTimer) clearTimeout(confirmRedirectTimer)
+  if (authRedirectTimer) clearTimeout(authRedirectTimer)
+})
 
 const { supabase } = useSupabase()
 
 async function onVerifySignup() {
-  if (verifying.value) return
-  if (confirmCode.value.trim().length !== 6) { uni.showToast({ title: t('resetPw.needCode'), icon: 'none' }); return }
+  if (verifying.value || confirmResending.value) return
+  const submittedEmail = pendingEmail.value.trim().toLowerCase()
+  const submittedCode = confirmCode.value.trim()
+  if (submittedCode.length !== 6) { uni.showToast({ title: t('resetPw.needCode'), icon: 'none' }); return }
   verifying.value = true
   try {
-    const { error } = await supabase.auth.verifyOtp({ email: pendingEmail.value.trim().toLowerCase(), token: confirmCode.value.trim(), type: 'signup' })
+    await prepareSupabaseAuthPersistence()
+    const { error } = await supabase.auth.verifyOtp({ email: submittedEmail, token: submittedCode, type: 'signup' })
     if (error) {
       const expired = (error as any)?.code === 'otp_expired' || /expired|invalid|token/i.test(error.message || '')
-      uni.showToast({ title: expired ? t('resetPw.codeInvalid') : friendlyErrorMessage(error, lang.value as 'en' | 'zh'), icon: 'none', duration: 3000 })
+      if (mounted) uni.showToast({ title: expired ? t('resetPw.codeInvalid') : friendlyErrorMessage(error, lang.value as 'en' | 'zh'), icon: 'none', duration: 3000 })
       verifying.value = false
       return
     }
     // verifyOtp('signup') confirms the email AND returns a session, so the
     // useAuth onAuthStateChange listener sets currentUser — just go home.
+    if (!mounted) return
     uni.showToast({ title: t('login.signupOk'), icon: 'success' })
-    setTimeout(() => uni.reLaunch({ url: '/pages/index/index' }), 800)
+    confirmRedirectTimer = setTimeout(() => {
+      confirmRedirectTimer = null
+      if (mounted) uni.reLaunch({ url: '/pages/index/index' })
+    }, 800)
   } catch (err: any) {
-    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('login.signupFail'), icon: 'none', duration: 3000 })
+    if (mounted) uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('login.signupFail'), icon: 'none', duration: 3000 })
     verifying.value = false
   }
 }
 
 async function onResendSignup() {
-  if (confirmCooldown.value > 0) return
+  if (confirmCooldown.value > 0 || verifying.value || confirmResending.value) return
+  const submittedEmail = pendingEmail.value.trim().toLowerCase()
+  confirmResending.value = true
   try {
-    const { error } = await supabase.auth.resend({ type: 'signup', email: pendingEmail.value.trim().toLowerCase() })
+    const { error } = await supabase.auth.resend({ type: 'signup', email: submittedEmail })
     if (error) throw error
+    if (!mounted) return
     uni.showToast({ title: t('resetPw.resent'), icon: 'none' })
     startConfirmCooldown()
   } catch (err: any) {
-    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('login.signupFail'), icon: 'none', duration: 3000 })
+    if (mounted) uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('login.signupFail'), icon: 'none', duration: 3000 })
+  } finally {
+    confirmResending.value = false
   }
 }
 
 async function onForgotPassword() {
+  if (formBusy.value) return
   const trimmedEmail = email.value.trim().toLowerCase()
   if (!trimmedEmail) {
     uni.showToast({ title: t('login.needEmail'), icon: 'none' })
@@ -272,20 +391,32 @@ async function onForgotPassword() {
    * needed — with the "Reset Password" template switched to {{ .Token }} the
    * email contains the code, not a link.
    */
-  const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail)
-  if (error) {
-    uni.showModal({ title: t('login.resetFailTitle'), content: error.message, showCancel: false })
-    return
+  forgotLoading.value = true
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail)
+    if (error) throw error
+    if (mounted) uni.navigateTo({ url: `/pages/reset-password/index?email=${encodeURIComponent(trimmedEmail)}` })
+  } catch (error) {
+    if (mounted) {
+      uni.showModal({
+        title: t('login.resetFailTitle'),
+        content: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('error.actionFailed'),
+        showCancel: false,
+      })
+    }
+  } finally {
+    forgotLoading.value = false
   }
-  uni.navigateTo({ url: `/pages/reset-password/index?email=${encodeURIComponent(trimmedEmail)}` })
 }
 
 function goLegal(type: string) {
+  if (formBusy.value) return
   uni.navigateTo({ url: `/pages/legal/index?type=${type}` })
 }
 
 function goBack() {
-  uni.navigateBack({ fail: () => uni.switchTab({ url: '/pages/index/index' }) })
+  if (formBusy.value || verifying.value || confirmResending.value) return
+  navigateBackOr(() => uni.switchTab({ url: '/pages/index/index' }))
 }
 
 /*
@@ -329,19 +460,19 @@ function goBack() {
  * exit — there's no Google in those environments.
  */
 async function onSignInWithGoogle() {
-  if (loading.value || googleLoading.value) return
+  if (formBusy.value) return
   // #ifdef H5
   if (typeof window === 'undefined') return
   googleLoading.value = true
   const redirectTo = `${window.location.origin}/`
-  console.log('[oauth-debug] starting Google sign-in, redirectTo:', redirectTo)
   try {
+    await prepareSupabaseAuthPersistence()
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo },
     })
     if (error) {
-      console.warn('[oauth-debug] signInWithOAuth error:', error)
+      console.warn('[auth] Google sign-in request failed')
       googleLoading.value = false
       uni.showToast({
         title: error.message ? `${t('login.googleFail')}: ${error.message}` : t('login.googleFail'),
@@ -360,9 +491,8 @@ async function onSignInWithGoogle() {
      * away to Google before any reset matters; on return the page
      * re-mounts fresh with googleLoading reset to its initial false.
      */
-    console.log('[oauth-debug] OAuth flow initiated, awaiting Google redirect')
   } catch (err: any) {
-    console.warn('[oauth-debug] signInWithOAuth threw:', err)
+    console.warn('[auth] Google sign-in request failed')
     googleLoading.value = false
     uni.showToast({
       title: err?.message ? `${t('login.googleFail')}: ${err.message}` : t('login.googleFail'),
@@ -377,8 +507,9 @@ async function onSignInWithGoogle() {
 }
 
 async function onWeChatLogin() {
-  if (loading.value) return
+  if (formBusy.value) return
   const { error } = await signInWithWeChat()
+  if (!mounted) return
   if (error) {
     uni.showToast({
       title: error?.message ? `${t('login.wechatFail')}: ${error.message}` : t('login.wechatFail'),
@@ -388,25 +519,30 @@ async function onWeChatLogin() {
     return
   }
   uni.showToast({ title: t('login.loginOk'), icon: 'success' })
-  setTimeout(() => uni.reLaunch({ url: '/pages/index/index' }), 800)
+  scheduleHomeRedirect(800)
 }
 
 async function onSubmit() {
-  if (!email.value.trim()) {
+  if (formBusy.value) return
+  const submittedMode = mode.value
+  const submittedEmail = email.value.trim().toLowerCase()
+  const submittedPassword = password.value
+  const submittedNickname = nickname.value.trim()
+  if (!submittedEmail) {
     uni.showToast({ title: t('login.needEmail'), icon: 'none' })
     return
   }
-  if (!password.value) {
+  if (!submittedPassword) {
     uni.showToast({ title: t('login.needPassword'), icon: 'none' })
     return
   }
-  if (mode.value === 'signup' && !passwordValid(password.value)) {
+  if (submittedMode === 'signup' && !passwordValid(submittedPassword)) {
     uni.showToast({ title: t('login.needPassword'), icon: 'none', duration: 2500 })
     return
   }
 
-  if (mode.value === 'signup') {
-    if (!nickname.value.trim()) {
+  if (submittedMode === 'signup') {
+    if (!submittedNickname) {
       uni.showToast({ title: t('login.needNickname'), icon: 'none' })
       return
     }
@@ -414,22 +550,20 @@ async function onSubmit() {
       uni.showToast({ title: t('login.agreeRequired'), icon: 'none', duration: 2500 })
       return
     }
-    const { data, error } = await signUp(email.value.trim(), password.value, nickname.value.trim())
+    const { data, error } = await signUp(submittedEmail, submittedPassword, submittedNickname)
+    if (!mounted) return
     if (error) {
       // gotrue weak_password (dashboard policy stricter than the client) used
       // to surface raw English. Map it to the localized policy line.
       const weak = (error as any).code === 'weak_password' || Array.isArray((error as any).reasons)
-      uni.showToast({ title: weak ? t('login.weakPassword') : (error.message || t('login.signupFail')), icon: 'none', duration: 2500 })
+      uni.showToast({ title: weak ? localizedPasswordPolicyError(error) : (error.message || t('login.signupFail')), icon: 'none', duration: 2500 })
     } else if (data?.user?.identities?.length === 0) {
       uni.showToast({ title: t('login.emailExists'), icon: 'none' })
     } else if (data?.user && !data.session) {
       // Email confirmation required → switch to the in-app OTP code panel.
       // Supabase has just emailed the {{ .Token }} code; start the resend
       // cooldown so the resend link is disabled for the first 60s.
-      pendingEmail.value = email.value.trim()
-      confirmCode.value = ''
-      awaitingConfirm.value = true
-      startConfirmCooldown()
+      startSignupConfirmation(submittedEmail)
     } else {
       uni.showToast({ title: t('login.signupOk'), icon: 'success' })
       /*
@@ -441,27 +575,47 @@ async function onSubmit() {
        * gone (redundant / dead-data / editable post-signup). See
        * docs/memory/o1_onboarding_removed.md.
        */
-      setTimeout(() => {
-        uni.reLaunch({ url: '/pages/index/index' })
-      }, 1200)
+      scheduleHomeRedirect(1200)
     }
   } else {
-    const { error } = await signIn(email.value.trim(), password.value)
+    const { data, error } = await signIn(submittedEmail, submittedPassword)
+    if (!mounted) return
     if (error) {
       // Map the two common gotrue sign-in errors to localized copy (zh is the
-      // primary audience) — the raw strings are English. Mirrors the signup
-      // branch's weak_password mapping above.
+      // primary audience) — the raw strings are English. HIBP leaked-password
+      // Some provider/config variants can also return a password-policy error
+      // here, so keep that response on the same localized path as signup/reset.
       const m = (error.message || '').toLowerCase()
-      const title = m.includes('invalid login credentials') || m.includes('invalid_credentials')
-        ? t('login.invalidCredentials')
-        : (m.includes('email not confirmed') || m.includes('email_not_confirmed'))
-          ? t('login.emailNotConfirmed')
-          : (error.message || t('login.loginFail'))
+      const weak = (error as any).code === 'weak_password' || Array.isArray((error as any).reasons)
+      const title = weak
+        ? localizedPasswordPolicyError(error)
+        : m.includes('invalid login credentials') || m.includes('invalid_credentials')
+          ? t('login.invalidCredentials')
+          : (m.includes('email not confirmed') || m.includes('email_not_confirmed'))
+            ? t('login.emailNotConfirmed')
+            : (error.message || t('login.loginFail'))
       uni.showToast({ title, icon: 'none', duration: 2500 })
+    } else if (data?.weakPassword) {
+      // Supabase intentionally permits an existing account to sign in with a
+      // now-known leaked password, but returns this structured warning. Keep
+      // the session usable while making the next safe action unmistakable.
+      uni.showModal({
+        title: t('login.weakPasswordWarningTitle'),
+        content: t('login.weakPasswordWarningHint'),
+        showCancel: false,
+        success: () => {
+          if (mounted) scheduleHomeRedirect(0)
+        },
+        fail: () => {
+          if (!mounted) return
+          uni.showToast({ title: localizedPasswordPolicyError(data.weakPassword), icon: 'none', duration: 2500 })
+          scheduleHomeRedirect(2500)
+        },
+      })
     } else {
       uni.showToast({ title: t('login.loginOk'), icon: 'success' })
       /*
-       * Replaced uni.navigateBack() with reLaunch to /pages/index/index.
+       * Replaced implicit back navigation with reLaunch to /pages/index/index.
        *
        * Why navigateBack failed: when users land on the login page from
        * /pages/welcome/index.vue (the very first launch path) OR from a
@@ -485,8 +639,8 @@ async function onSubmit() {
        *
        * 800ms (matched to the WeChat-login path) lets the success
        * toast register visually before the page swap.
-       */
-      setTimeout(() => uni.reLaunch({ url: '/pages/index/index' }), 800)
+      */
+      scheduleHomeRedirect(800)
     }
   }
 }
@@ -505,6 +659,7 @@ async function onSubmit() {
   width: 36px; height: 36px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; z-index: 10;
+  &.disabled { opacity: 0.35; pointer-events: none; }
   &:active { background: var(--bg-subtle); }
 }
 .header {
@@ -522,7 +677,7 @@ async function onSubmit() {
   margin-top: 16px; letter-spacing: -0.02em;
 }
 .app-desc {
-  font-size: 13px; color: var(--text-faint); margin-top: 5px;
+  font-size: 13px; color: var(--text-subtle); margin-top: 5px;
   letter-spacing: 0.01em;
 }
 
@@ -534,8 +689,9 @@ async function onSubmit() {
 }
 .tab {
   position: relative; padding-bottom: 12px; cursor: pointer;
-  text { font-size: 16px; color: var(--text-faint); font-weight: 500; }
+  text { font-size: 16px; color: var(--text-subtle); font-weight: 500; }
   &.active text { color: var(--text-primary); font-weight: 600; }
+  &.disabled { opacity: 0.45; pointer-events: none; }
 }
 .tab-line {
   position: absolute; bottom: -1px; left: 0; right: 0;
@@ -583,14 +739,14 @@ async function onSubmit() {
   display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 8px;
 }
 .pw-rule { display: flex; align-items: center; gap: 4px; }
-.pw-rule-mark { font-size: 11px; color: var(--text-faint); line-height: 1; }
+.pw-rule-mark { width: 11px !important; height: 11px !important; }
 .pw-rule-label { font-size: 11px; color: var(--text-muted); }
-.pw-rule.ok .pw-rule-mark { color: var(--success); }
 .pw-rule.ok .pw-rule-label { color: var(--success); }
 
 .forgot-link {
   display: block; text-align: right; font-size: 13px;
   color: var(--text-muted); margin-top: 8px; cursor: pointer;
+  &.disabled { color: var(--text-faint); pointer-events: none; }
   &:active { color: var(--text-primary); }
 }
 .submit-btn {
@@ -668,12 +824,18 @@ async function onSubmit() {
 
 .agreement-row {
   display: flex; align-items: flex-start; gap: 9px;
-  margin-top: 18px; padding: 4px 2px; cursor: pointer;
+  margin-top: 18px; padding: 4px 2px;
   -webkit-tap-highlight-color: transparent;
+}
+.agreement-toggle {
+  width: 32px; height: 32px; margin: -6px -7px -6px -7px;
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; cursor: pointer;
+  &:focus { outline: 2px solid var(--accent-primary); outline-offset: 1px; }
 }
 .agree-check {
   width: 18px; height: 18px; border: 1.5px solid var(--text-faint);
-  border-radius: 4px; flex-shrink: 0; margin-top: 1px;
+  border-radius: 4px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   transition: all 0.15s;
   &.on { background: var(--accent-primary); border-color: var(--accent-primary); }
@@ -684,9 +846,15 @@ async function onSubmit() {
   transform: rotate(-45deg); margin-top: -2px;
 }
 .agree-text {
-  font-size: 12px; color: var(--text-secondary); line-height: 1.5; flex: 1;
-  .link { color: var(--text-primary); text-decoration: underline; cursor: pointer; }
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  column-gap: 4px; row-gap: 1px; flex: 1;
+  font-size: 12px; color: var(--text-secondary); line-height: 1.5;
+  .link {
+    color: var(--text-primary); text-decoration: underline; cursor: pointer;
+    &:focus { outline: 2px solid var(--accent-primary); outline-offset: 1px; border-radius: 2px; }
+  }
 }
+.agree-part { white-space: nowrap; }
 
 /* Email-confirmation OTP panel (post-signup) */
 .confirm-head { margin-bottom: 22px; }
@@ -696,7 +864,7 @@ async function onSubmit() {
 }
 .confirm-sub {
   display: block; margin-top: 8px;
-  font-size: 13px; color: var(--text-faint); line-height: 1.6;
+  font-size: 13px; color: var(--text-subtle); line-height: 1.6;
 }
 .code-row {
   display: flex; align-items: center; justify-content: flex-end;
@@ -710,6 +878,7 @@ async function onSubmit() {
 .back-link {
   margin-top: 18px; text-align: center;
   font-size: 13px; color: var(--text-muted); font-weight: 500; cursor: pointer;
+  &.disabled { color: var(--text-faint); pointer-events: none; }
   &:active { opacity: 0.7; }
 }
 
@@ -717,7 +886,7 @@ async function onSubmit() {
   padding: 24px 0; text-align: center;
 }
 .footer-text {
-  font-size: 11px; color: var(--ink-faint);
+  font-size: 11px; color: var(--text-subtle);
   letter-spacing: 0.05em; font-weight: 500;
 }
 </style>

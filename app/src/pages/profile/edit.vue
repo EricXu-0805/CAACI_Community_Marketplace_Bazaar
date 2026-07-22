@@ -1,49 +1,63 @@
 <template>
   <view class="page" :class="mpThemeClass" :style="mpChrome">
-    <view class="header">
+    <view v-if="profileEditReady" class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack">
         <UIcon name="chevron-left" size="xs" color="accent-primary" />
       </view>
       <text class="header-title">{{ t('editProfile.title') }}</text>
-      <view class="save-btn" @click="onSave">
+      <view
+        class="save-btn"
+        role="button"
+        :aria-label="t('editProfile.save')"
+        :aria-disabled="saving ? 'true' : 'false'"
+        @click="onSave"
+      >
         <text :class="{ disabled: saving }">{{ saving ? t('login.wait') : t('editProfile.save') }}</text>
       </view>
     </view>
 
-    <view class="form">
-      <view class="avatar-section" @click="onChangeAvatar">
+    <view v-if="!profileEditReady" class="auth-check" role="status" aria-live="polite">
+      <text>{{ t('login.wait') }}</text>
+    </view>
+
+    <view v-if="profileEditReady" class="form">
+      <view class="avatar-section" role="button" :aria-label="t('editProfile.changeAvatar')" @click="onChangeAvatar">
         <image :src="avatarUrl || defaultAvatarSrc" :alt="nickname || 'avatar'" class="avatar-preview" mode="aspectFill" />
         <text class="avatar-hint">{{ t('editProfile.changeAvatar') }}</text>
       </view>
 
       <view class="form-group">
         <text class="label">{{ t('login.nickname') }}</text>
-        <input v-model="nickname" :placeholder="t('login.nickname')" class="form-input" maxlength="30" />
+        <input v-model="nickname" :placeholder="t('login.nickname')" :aria-label="t('login.nickname')" class="form-input" maxlength="30" />
       </view>
 
       <view class="form-group">
         <text class="label">{{ t('editProfile.status') }}</text>
         <view class="status-row">
-          <input v-model="statusEmoji" placeholder="🎓" class="form-input status-emoji" maxlength="4" />
-          <input v-model="statusText" :placeholder="t('editProfile.statusPlaceholder')" class="form-input status-text" maxlength="60" />
+          <input v-model="statusEmoji" placeholder="🎓" :aria-label="t('editProfile.status')" class="form-input status-emoji" maxlength="4" />
+          <input v-model="statusText" :placeholder="t('editProfile.statusPlaceholder')" :aria-label="t('editProfile.statusPlaceholder')" class="form-input status-text" maxlength="60" />
         </view>
       </view>
 
       <view class="form-group">
         <text class="label">{{ t('editProfile.bio') }}</text>
-        <textarea v-model="bio" :placeholder="t('editProfile.bioPlaceholder')" class="form-textarea" maxlength="200" />
+        <textarea v-model="bio" :placeholder="t('editProfile.bioPlaceholder')" :aria-label="t('editProfile.bio')" class="form-textarea" maxlength="200" />
       </view>
 
       <view class="form-group">
         <text class="label">{{ t('publish.location') }}</text>
-        <input v-model="location" placeholder="UIUC" class="form-input" maxlength="50" />
-        <scroll-view scroll-x class="spot-row">
+        <input v-model="location" placeholder="UIUC" :aria-label="t('publish.location')" class="form-input" maxlength="50" />
+        <scroll-view scroll-x class="spot-row" role="radiogroup" :aria-label="t('publish.location')">
           <view
-            v-for="spot in CAMPUS_SPOTS"
+            v-for="(spot, index) in CAMPUS_SPOTS"
             :key="spot.id"
             class="spot-chip"
             :class="{ active: location === spotLabel(spot) }"
+            role="radio"
+            :tabindex="location === spotLabel(spot) || (!CAMPUS_SPOTS.some(option => location === spotLabel(option)) && index === 0) ? 0 : -1"
+            :aria-checked="location === spotLabel(spot) ? 'true' : 'false'"
             @click="location = spotLabel(spot)"
+            @keydown="onSpotKeydown($event, index)"
           >
             {{ spotLabel(spot) }}
           </view>
@@ -56,13 +70,26 @@
 <script setup lang="ts">
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted, nextTick } from 'vue'
+import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useTheme } from '../../composables/useTheme'
-import { useItems } from '../../composables/useItems'
+import { useItems, type UploadAccountToken } from '../../composables/useItems'
 import { useCampusSpots, type CampusSpot } from '../../composables/useCampusSpots'
-import { friendlyErrorMessage } from '../../utils'
+import { friendlyErrorMessage, navigateBackOr } from '../../utils'
+import { captureException } from '../../utils/sentry'
+import {
+  mutationCommitState,
+  mutationOutcomeError,
+  shouldCompensateMutationFailure,
+} from '../../api/mutationCommit'
+import {
+  captureAccountRequest,
+  isAccountRequestCurrent,
+  onAccountTransition,
+  type AccountRequestToken,
+} from '../../composables/accountScope'
 import UIcon from '../../components/UIcon.vue'
 
 const { t, lang } = useI18n()
@@ -70,66 +97,249 @@ const { isDark } = useTheme()
 const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
-const { currentUser, updateProfile } = useAuth()
-const { uploadImages } = useItems()
+const { currentUser, updateProfile, requireAuth, awaitAuthReady } = useAuth()
+const { uploadImages, removeOwnedItemImages } = useItems()
 const { CAMPUS_SPOTS } = useCampusSpots()
 
 function spotLabel(spot: CampusSpot) {
   return lang.value === 'zh' ? spot.zh : spot.en
 }
 
-const nickname = ref(currentUser.value?.nickname || '')
-const bio = ref(currentUser.value?.bio || '')
-const location = ref(currentUser.value?.location || 'UIUC')
-const avatarUrl = ref(currentUser.value?.avatar_url || '')
-const statusText = ref(currentUser.value?.status_text || '')
-const statusEmoji = ref(currentUser.value?.status_emoji || '')
-const saving = ref(false)
+function onSpotKeydown(event: KeyboardEvent, currentIndex: number) {
+  let nextIndex = currentIndex
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % CAMPUS_SPOTS.length
+  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + CAMPUS_SPOTS.length) % CAMPUS_SPOTS.length
+  else if (event.key === 'Home') nextIndex = 0
+  else if (event.key === 'End') nextIndex = CAMPUS_SPOTS.length - 1
+  else return
+  event.preventDefault()
+  const radioGroup = (event.currentTarget as HTMLElement | null)?.parentElement
+  location.value = spotLabel(CAMPUS_SPOTS[nextIndex])
+  nextTick(() => radioGroup?.querySelectorAll<HTMLElement>('[role="radio"]')[nextIndex]?.focus())
+}
 
-function goBack() { uni.navigateBack() }
+const nickname = ref('')
+const bio = ref('')
+const location = ref('')
+const avatarUrl = ref('')
+const statusText = ref('')
+const statusEmoji = ref('')
+const saving = ref(false)
+const profileEditReady = ref(false)
+let pageAccountToken: AccountRequestToken | null = null
+let profileEditMounted = true
+let profileEditVisible = false
+let profileEditEpoch = 0
+let saveOperationEpoch = 0
+let saveEntryLocked = false
+let profileEditNavigationEpoch = 0
+let profileEditDestroyed = false
+
+function hydrateFormFromProfile() {
+  const profile = currentUser.value
+  if (!profile) return
+  nickname.value = profile.nickname || ''
+  bio.value = profile.bio || ''
+  location.value = profile.location || 'UIUC'
+  avatarUrl.value = profile.avatar_url || ''
+  statusText.value = profile.status_text || ''
+  statusEmoji.value = profile.status_emoji || ''
+}
+
+function resetProfilePrivateState() {
+  profileEditEpoch += 1
+  saveOperationEpoch += 1
+  profileEditReady.value = false
+  pageAccountToken = null
+  saveEntryLocked = false
+  saving.value = false
+  nickname.value = ''
+  bio.value = ''
+  location.value = ''
+  avatarUrl.value = ''
+  statusText.value = ''
+  statusEmoji.value = ''
+}
+
+async function prepareProfileEditPage() {
+  const prepareEpoch = ++profileEditEpoch
+  const navigationEpoch = profileEditNavigationEpoch
+  profileEditReady.value = false
+  // setup() runs before persisted auth/profile hydration on a hard refresh.
+  // Initializing refs directly from currentUser therefore produced a blank
+  // form that never repaired itself. Hydrate only after auth is authoritative.
+  await awaitAuthReady()
+  if (
+    !profileEditMounted
+    || !profileEditVisible
+    || prepareEpoch !== profileEditEpoch
+    || navigationEpoch !== profileEditNavigationEpoch
+  ) return
+  if (!requireAuth()) return
+  if (!currentUser.value) return
+  const accountToken = captureAccountRequest(currentUser.value.id)
+  if (!isAccountRequestCurrent(accountToken)) return
+  pageAccountToken = accountToken
+  hydrateFormFromProfile()
+  profileEditReady.value = true
+}
+
+const stopAccountTransitionListener = onAccountTransition((transition) => {
+  resetProfilePrivateState()
+  if (!transition.userId || !profileEditVisible) return
+  void Promise.resolve().then(() => {
+    if (profileEditMounted && profileEditVisible) return prepareProfileEditPage()
+  })
+})
+
+function destroyProfileEditPage() {
+  if (profileEditDestroyed) return
+  profileEditDestroyed = true
+  // onUnload is the page-stack boundary; Vue's unmount hook can run later.
+  // Close the render gate and invalidate all A-owned callbacks immediately.
+  profileEditMounted = false
+  profileEditVisible = false
+  profileEditNavigationEpoch += 1
+  resetProfilePrivateState()
+  stopAccountTransitionListener()
+}
+
+onShow(() => {
+  if (!profileEditMounted) return
+  profileEditVisible = true
+  if (!profileEditReady.value) void prepareProfileEditPage()
+})
+
+onHide(() => {
+  profileEditVisible = false
+  profileEditNavigationEpoch += 1
+})
+onUnload(destroyProfileEditPage)
+
+onUnmounted(destroyProfileEditPage)
+
+function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/profile/index' })) }
 
 function onChangeAvatar() {
+  const pickerAccountToken = pageAccountToken
+  if (
+    !profileEditReady.value
+    || !pickerAccountToken
+    || !isAccountRequestCurrent(pickerAccountToken)
+  ) return
   uni.chooseImage({
     count: 1,
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
     success: async (res) => {
+      if (
+        !profileEditReady.value
+        || pageAccountToken !== pickerAccountToken
+        || !isAccountRequestCurrent(pickerAccountToken)
+      ) return
       const tempPath = res.tempFilePaths[0]
       avatarUrl.value = tempPath
     },
   })
 }
 
-function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`${label} timed out`)), ms)
-    p.then(v => { clearTimeout(timer); resolve(v) }, e => { clearTimeout(timer); reject(e) })
-  })
+async function handleUploadedAvatarFailure(
+  error: unknown,
+  uploadedUrl: string,
+  accountToken: UploadAccountToken | null,
+): Promise<void> {
+  if (!uploadedUrl || !accountToken) return
+  if (shouldCompensateMutationFailure(error)) {
+    try {
+      await removeOwnedItemImages([uploadedUrl], {
+        ownerUserId: accountToken.userId,
+        telemetrySource: 'profile.update_compensation',
+      })
+    } catch (cleanupError) {
+      captureException(cleanupError, {
+        tags: { source: 'profile.update_compensation', orphan_risk: 'true' },
+        level: 'warning',
+      })
+    }
+  } else if (mutationCommitState(error) === 'unknown') {
+    // Deleting on a response-lost/5xx outcome could break an avatar already
+    // referenced by the profile row. Retain it and surface the ambiguity.
+    captureException(error, {
+      tags: { source: 'profile.update_commit_unknown', orphan_risk: 'true' },
+      extra: { objectCount: 1 },
+      level: 'warning',
+    })
+  }
 }
 
 async function onSave() {
+  if (saveEntryLocked) return
+  saveEntryLocked = true
+  const operationEpoch = ++saveOperationEpoch
+  const operationNavigationEpoch = profileEditNavigationEpoch
+  const entryAccountToken = pageAccountToken
+  const operationStillCurrent = () => (
+    operationEpoch === saveOperationEpoch
+    && operationNavigationEpoch === profileEditNavigationEpoch
+    && profileEditMounted
+    && profileEditVisible
+    && profileEditReady.value
+    && entryAccountToken !== null
+    && pageAccountToken === entryAccountToken
+    && isAccountRequestCurrent(entryAccountToken)
+  )
+  try {
+  await awaitAuthReady()
+  if (!operationStillCurrent()) return
+  if (!requireAuth()) return
   if (!nickname.value.trim()) {
     uni.showToast({ title: t('login.needNickname'), icon: 'none' })
     return
   }
   if (saving.value) return
+  if (!operationStillCurrent() || !entryAccountToken) {
+    uni.showToast({ title: t('profile.markFail'), icon: 'none', duration: 3000 })
+    return
+  }
 
   saving.value = true
-  const failsafe = setTimeout(() => { saving.value = false }, 20000)
+  const submitAccountToken = entryAccountToken
+  let uploadedAvatarUrl = ''
+  let uploadAccountToken: UploadAccountToken | null = null
+  let profileMutationStarted = false
 
   try {
     let finalAvatar = avatarUrl.value
     if (finalAvatar && !finalAvatar.startsWith('http')) {
       try {
-        const urls = await withTimeout(uploadImages([finalAvatar], { entryPoint: 'profile' }), 15000, 'avatar upload')
+        const { urls, accountToken } = await uploadImages([finalAvatar], {
+          entryPoint: 'profile',
+          accountToken: submitAccountToken,
+        })
+        uploadAccountToken = accountToken
+        uploadedAvatarUrl = urls[0] || ''
+        if (
+          accountToken.userId !== submitAccountToken.userId
+          || accountToken.generation !== submitAccountToken.generation
+          || !isAccountRequestCurrent(submitAccountToken)
+        ) {
+          throw mutationOutcomeError(new Error('Account changed during avatar upload'), 'not_committed')
+        }
         if (urls.length > 0) {
           finalAvatar = urls[0]
         } else {
+          if (!operationStillCurrent()) {
+            throw mutationOutcomeError(new Error('Account changed during avatar upload'), 'not_committed')
+          }
           uni.showToast({ title: t('editProfile.avatarFailed'), icon: 'none', duration: 3000 })
           finalAvatar = currentUser.value?.avatar_url || ''
         }
       } catch (uploadErr: any) {
-        console.error('Avatar upload error:', uploadErr)
+        await handleUploadedAvatarFailure(uploadErr, uploadedAvatarUrl, uploadAccountToken)
+        uploadedAvatarUrl = ''
+        uploadAccountToken = null
+        if (!operationStillCurrent()) throw uploadErr
+        console.error('[profile-edit] avatar upload failed')
         const title = uploadErr?.heic === true ? t('heic.unsupported')
           : (uploadErr?.message || t('editProfile.avatarFailed'))
         uni.showToast({ title, icon: 'none', duration: 3000 })
@@ -137,17 +347,23 @@ async function onSave() {
       }
     }
 
-    const result = await withTimeout(updateProfile({
-      nickname: nickname.value.trim(),
-      bio: bio.value.trim(),
-      location: location.value.trim() || 'UIUC',
-      avatar_url: finalAvatar,
-      status_text: statusText.value.trim() || null,
-      status_emoji: statusEmoji.value.trim() || null,
-    }), 10000, 'profile update')
+    profileMutationStarted = true
+    const result = await updateProfile(
+      {
+        nickname: nickname.value.trim(),
+        bio: bio.value.trim(),
+        location: location.value.trim() || 'UIUC',
+        avatar_url: finalAvatar,
+        status_text: statusText.value.trim() || null,
+        status_emoji: statusEmoji.value.trim() || null,
+      },
+      { accountToken: submitAccountToken },
+    )
 
     if (result?.error) {
-      console.error('Profile update error:', result.error)
+      await handleUploadedAvatarFailure(result.error, uploadedAvatarUrl, uploadAccountToken)
+      if (!operationStillCurrent()) return
+      console.error('[profile-edit] update failed')
       // friendlyErrorMessage localizes the bio moderation block
       // ('moderation_block:contact_info' from mig 043) instead of leaking
       // the raw sentinel to the user.
@@ -155,20 +371,31 @@ async function onSave() {
       return
     }
 
+    if (!operationStillCurrent()) return
     uni.showToast({ title: t('editProfile.saved'), icon: 'success' })
-    setTimeout(() => uni.navigateBack(), 1000)
+    setTimeout(() => {
+      if (operationStillCurrent()) goBack()
+    }, 1000)
   } catch (err: any) {
-    console.error('onSave error:', err)
-    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('profile.markFail'), icon: 'none', duration: 3000 })
+    const outcome = mutationCommitState(err) || !profileMutationStarted
+      ? err
+      : mutationOutcomeError(err, 'unknown')
+    await handleUploadedAvatarFailure(outcome, uploadedAvatarUrl, uploadAccountToken)
+    if (!operationStillCurrent()) return
+    console.error('[profile-edit] save failed')
+    uni.showToast({ title: friendlyErrorMessage(outcome, lang.value as 'en' | 'zh') || t('profile.markFail'), icon: 'none', duration: 3000 })
   } finally {
-    clearTimeout(failsafe)
-    saving.value = false
+    if (operationEpoch === saveOperationEpoch) saving.value = false
+  }
+  } finally {
+    if (operationEpoch === saveOperationEpoch) saveEntryLocked = false
   }
 }
 </script>
 
 <style lang="scss" scoped>
 .page { min-height: 100vh; background: var(--bg-subtle); max-width: 480px; margin: 0 auto; }
+.auth-check { min-height: 60vh; display: flex; align-items: center; justify-content: center; color: var(--text-subtle); }
 
 .header {
   display: flex; align-items: center; padding: 12px 16px;

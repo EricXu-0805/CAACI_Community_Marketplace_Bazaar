@@ -1,7 +1,20 @@
 -- =========================================================
+-- DEPRECATED OPERATOR BUNDLE — retained only as historical recovery evidence.
+-- Do not execute this file. Its contracts predate the timestamped 2026-07
+-- hardening chain and can overwrite current least-privilege functions.
+-- Follow RUNBOOK.md and the matching PRECHECK/migration/VERIFY/REGRESSION files.
+\set ON_ERROR_STOP on
+DO $deprecated_operator_bundle$
+BEGIN
+  RAISE EXCEPTION
+    'deprecated_operator_bundle: use the reviewed timestamped migration chain';
+END
+$deprecated_operator_bundle$;
+
+-- =========================================================
 -- RUN 035: wechat_password_map (per-user rotatable WeChat passwords)
 -- =========================================================
--- Paste this ENTIRE file into Supabase SQL Editor and run ONCE.
+-- Historical instructions below are retained for incident archaeology only.
 --
 -- Replaces the WECHAT_USER_PASSWORD_SALT-derived HMAC password
 -- scheme (single-secret, un-rotatable) with a per-user random
@@ -108,4 +121,5 @@ NOTIFY pgrst, 'reload schema';
 --   SELECT proname FROM pg_proc WHERE proname IN
 --     ('wechat_password_lookup', 'wechat_password_store');
 --   -- Expect: 2 rows.
+-- =========================================================
 -- =========================================================

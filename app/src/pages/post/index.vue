@@ -15,16 +15,21 @@
     <scroll-view v-if="post" class="body" scroll-y>
       <view
         class="post-card"
+        role="group"
+        tabindex="0"
+        :aria-label="displayContent"
+        aria-keyshortcuts="Shift+F10"
+        @keydown="onPostKeyboardMenu"
         @touchstart="postLongPress.onTouchstart()"
         @touchend="postLongPress.onTouchend"
         @touchcancel="postLongPress.onTouchcancel"
         @touchmove="postLongPress.onTouchmove"
       >
         <view class="post-head">
-          <image :src="post.profile?.avatar_url || defaultAvatarSrc" :alt="post.profile?.nickname || 'avatar'" class="avatar" mode="aspectFill" @click.stop="goSeller(post.user_id)" />
+          <UAvatar :src="post.profile?.avatar_url" :owner="post.user_id" :fallback="defaultAvatarSrc" :alt="post.profile?.nickname || 'avatar'" class="avatar" role="button" @click.stop="goSeller(post.user_id)" />
           <view class="head-info">
             <view class="head-name-row">
-              <text class="head-name" @click.stop="goSeller(post.user_id)">{{ post.profile?.nickname || t('app.user') }}</text>
+              <text class="head-name" role="button" @click.stop="goSeller(post.user_id)">{{ post.profile?.nickname || t('app.user') }}</text>
               <UBadge v-if="post.is_official" variant="official">{{ t('plaza.official') }}</UBadge>
               <UBadge v-else-if="post.profile?.is_illini_verified" variant="illini">Illini</UBadge>
               <view v-if="post.is_pinned" class="badge-pinned"><text>{{ t('plaza.pinned') }}</text></view>
@@ -62,6 +67,8 @@
             :alt="'Post photo'"
             mode="widthFix"
             class="post-img"
+            role="button"
+            :aria-label="t('a11y.previewImage')"
             :style="dimsToAspectStyle(effectiveDims(), i)"
             @load="onImgLoad($event, i)"
             @click="previewImage(post.images, i)"
@@ -72,6 +79,8 @@
           v-for="pi in (post.post_items || [])"
           :key="pi.item.id"
           class="attached-item-card"
+          role="button"
+          :aria-label="localize(pi.item.title_i18n, pi.item.title)"
           @click.stop="goToAttachedItem(pi.item.id)"
         >
           <image
@@ -92,7 +101,7 @@
         </view>
 
         <view class="stats-row">
-          <view class="stat-btn" role="button" :aria-label="post.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click="onToggleLike">
+          <view class="stat-btn" role="button" :aria-label="post.liked_by_me ? t('a11y.unlike') : t('a11y.like')" :aria-pressed="post.liked_by_me ? 'true' : 'false'" @click="onToggleLike">
             <image
               :src="post.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'"
               alt=""
@@ -120,30 +129,36 @@
         <template v-for="thread in commentThreads" :key="thread.parent.id">
           <view
             class="cs-item u-rise"
+            role="group"
+            tabindex="0"
+            :aria-label="thread.parent.content"
+            aria-keyshortcuts="Shift+F10"
+            @keydown="onCommentKeyboardMenu($event, thread.parent)"
             @touchstart="commentLongPress.onTouchstart(thread.parent)"
             @touchend="commentLongPress.onTouchend"
             @touchcancel="commentLongPress.onTouchcancel"
             @touchmove="commentLongPress.onTouchmove"
           >
-            <image
-              :src="thread.parent.profile?.avatar_url || defaultAvatarSrc"
+            <UAvatar
+              :src="thread.parent.profile?.avatar_url"
+              :owner="thread.parent.user_id"
+              :fallback="defaultAvatarSrc"
               :alt="thread.parent.profile?.nickname || 'avatar'"
               class="cs-avatar"
-              mode="aspectFill"
-              @click="onCommentTap(thread.parent)"
+              lazy
             />
-            <view class="cs-body" @click="onCommentTap(thread.parent)">
+            <view class="cs-body">
               <view class="cs-top">
                 <text class="cs-name">{{ thread.parent.profile?.nickname || t('app.user') }}</text>
                 <text class="cs-time">{{ formatTime(thread.parent.created_at) }}</text>
               </view>
               <text class="cs-content">{{ thread.parent.content }}</text>
               <view class="cs-actions">
-                <view class="cs-like-btn" role="button" :aria-label="thread.parent.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(thread.parent)">
+                <view class="cs-like-btn" role="button" :aria-label="thread.parent.liked_by_me ? t('a11y.unlike') : t('a11y.like')" :aria-pressed="thread.parent.liked_by_me ? 'true' : 'false'" @click.stop="onToggleCommentLike(thread.parent)">
                   <image :src="thread.parent.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                   <text v-if="(thread.parent.like_count ?? 0) > 0" :class="['cs-like-num', { active: thread.parent.liked_by_me }]">{{ thread.parent.like_count }}</text>
                 </view>
-                <text class="cs-reply-btn" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
+                <text class="cs-reply-btn" role="button" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
               </view>
             </view>
           </view>
@@ -153,30 +168,36 @@
               v-for="child in (expandedReplies.has(thread.parent.id) ? thread.children : thread.children.slice(0, 3))"
               :key="child.id"
               class="cs-item cs-item-child"
+              role="group"
+              tabindex="0"
+              :aria-label="child.content"
+              aria-keyshortcuts="Shift+F10"
+              @keydown="onCommentKeyboardMenu($event, child)"
               @touchstart="commentLongPress.onTouchstart(child)"
               @touchend="commentLongPress.onTouchend"
               @touchcancel="commentLongPress.onTouchcancel"
               @touchmove="commentLongPress.onTouchmove"
             >
-              <image
-                :src="child.profile?.avatar_url || defaultAvatarSrc"
+              <UAvatar
+                :src="child.profile?.avatar_url"
+                :owner="child.user_id"
+                :fallback="defaultAvatarSrc"
                 :alt="child.profile?.nickname || 'avatar'"
                 class="cs-avatar"
-                mode="aspectFill"
-                @click="onCommentTap(child)"
+                lazy
               />
-              <view class="cs-body" @click="onCommentTap(child)">
+              <view class="cs-body">
                 <view class="cs-top">
                   <text class="cs-name">{{ child.profile?.nickname || t('app.user') }}</text>
                   <text class="cs-time">{{ formatTime(child.created_at) }}</text>
                 </view>
                 <text class="cs-content">{{ child.content }}</text>
                 <view class="cs-actions">
-                  <view class="cs-like-btn" role="button" :aria-label="child.liked_by_me ? t('a11y.unlike') : t('a11y.like')" @click.stop="onToggleCommentLike(child)">
+                  <view class="cs-like-btn" role="button" :aria-label="child.liked_by_me ? t('a11y.unlike') : t('a11y.like')" :aria-pressed="child.liked_by_me ? 'true' : 'false'" @click.stop="onToggleCommentLike(child)">
                     <image :src="child.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                     <text v-if="(child.like_count ?? 0) > 0" :class="['cs-like-num', { active: child.liked_by_me }]">{{ child.like_count }}</text>
                   </view>
-                  <text class="cs-reply-btn" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
+                  <text class="cs-reply-btn" role="button" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
                 </view>
               </view>
             </view>
@@ -184,6 +205,7 @@
             <view
               v-if="thread.children.length > 3"
               class="cs-expand-link cs-item-child"
+              role="button"
               @click="toggleReplies(thread.parent.id)"
             >
               <text class="cs-expand-text">
@@ -203,7 +225,7 @@
 
     <view v-else class="not-found">
       <text>{{ t('plaza.notFound') }}</text>
-      <view class="back-home" @click="goPlaza">{{ t('plaza.backToPlaza') }}</view>
+      <view class="back-home" role="button" @click="goPlaza">{{ t('plaza.backToPlaza') }}</view>
     </view>
 
     <view v-if="post" class="input-wrapper" :style="kbLift">
@@ -225,7 +247,13 @@
           @confirm="onSubmitComment"
           maxlength="1000"
         />
-        <view :class="['send-btn', { disabled: !commentText.trim() || submitting }]" @click="onSubmitComment">
+        <view
+          :class="['send-btn', { disabled: !commentText.trim() || submitting }]"
+          role="button"
+          :aria-label="replyTo ? t('plaza.reply') : t('plaza.comment')"
+          :aria-disabled="!commentText.trim() || submitting ? 'true' : 'false'"
+          @click="onSubmitComment"
+        >
           <text>{{ replyTo ? t('plaza.reply') : t('plaza.comment') }}</text>
         </view>
       </view>
@@ -239,7 +267,7 @@ const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { onLoad, onUnload, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
@@ -250,12 +278,19 @@ import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
 import { useLongPress } from '../../composables/useLongPress'
 import { useKeyboardHeight } from '../../composables/useKeyboardHeight'
-import { formatTime, friendlyErrorMessage, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
+import { createOwnedLoading } from '../../composables/ownedLoading'
+import {
+  captureAccountRequest,
+  isAccountRequestCurrent,
+  onAccountTransition,
+} from '../../composables/accountScope'
+import { formatTime, friendlyErrorMessage, navigateBackOr, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
 import { DIALOG_DANGER, DIALOG_INK } from '../../utils/dialogColors'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim, Post, PostComment } from '../../types'
 import { BASE_URL } from '../../config/runtime'
 import UBadge from '../../components/UBadge.vue'
+import UAvatar from '../../components/UAvatar.vue'
 import UIcon from '../../components/UIcon.vue'
 
 const { t, lang, localize } = useI18n()
@@ -263,7 +298,7 @@ const { isDark } = useTheme()
 const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
-const { currentUser, requireAuth } = useAuth()
+const { currentUser, requireAuth, awaitAuthReady } = useAuth()
 const { fetchPost, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment } = usePlaza()
 const { reportTarget } = useModeration()
 const { addPostToHistory } = useHistory()
@@ -282,6 +317,38 @@ const loadingComments = ref(false)
 const commentText = ref('')
 const replyTo = ref<PostComment | null>(null)
 const submitting = ref(false)
+let postLoadEpoch = 0
+const reportLoading = createOwnedLoading()
+let pageMounted = true
+
+function resetPostAccountState() {
+  postLoadEpoch += 1
+  commentText.value = ''
+  replyTo.value = null
+  submitting.value = false
+  translated.value = false
+  translatedContent.value = ''
+  if (post.value) post.value.liked_by_me = false
+  comments.value = comments.value.map(comment => ({ ...comment, liked_by_me: false }))
+  reportLoading.cancel()
+}
+
+const stopAccountTransitionListener = onAccountTransition(resetPostAccountState)
+onUnmounted(() => {
+  pageMounted = false
+  postLoadEpoch += 1
+  reportLoading.cancel()
+  stopAccountTransitionListener()
+})
+
+watch(() => currentUser.value?.id ?? null, (userId, previousUserId) => {
+  if (userId === previousUserId) return
+  // This route can survive an auth event long enough for the next profile to
+  // render. Never expose the previous account's in-progress comment draft.
+  commentText.value = ''
+  replyTo.value = null
+  if (postId.value) void loadPostForCurrentAccount()
+})
 
 // Per-thread expand state. Stores top-level comment ids whose >3 replies
 // are unfolded. Replaced (not mutated) on toggle so Vue's Set reactivity
@@ -400,38 +467,50 @@ onShareTimeline(() => {
   }
 })
 
-onMounted(async () => {
+onMounted(() => {
+  void loadPostForCurrentAccount()
+})
+
+async function loadPostForCurrentAccount() {
   if (!postId.value) {
     loading.value = false
     return
   }
+  const requestEpoch = ++postLoadEpoch
+  loading.value = true
+  loadingComments.value = true
   try {
+    // fetchPost/fetchComments annotate liked_by_me from currentUser. Wait for
+    // session hydration so a cold deep link does not permanently render every
+    // like as belonging to an anonymous viewer.
+    await awaitAuthReady()
+    if (!pageMounted || requestEpoch !== postLoadEpoch) return
     const p = await fetchPost(postId.value)
+    if (!pageMounted || requestEpoch !== postLoadEpoch) return
     if (p) {
       post.value = p
       addPostToHistory(p)
-      loadComments()
+      try {
+        const rows = await fetchComments(postId.value)
+        if (!pageMounted || requestEpoch !== postLoadEpoch) return
+        comments.value = rows
+      } catch (err: any) {
+        if (!pageMounted || requestEpoch !== postLoadEpoch) return
+        uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
+      }
     }
   } catch (err: any) {
+    if (!pageMounted || requestEpoch !== postLoadEpoch) return
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none' })
   } finally {
-    loading.value = false
-  }
-})
-
-async function loadComments() {
-  if (!postId.value) return
-  loadingComments.value = true
-  try {
-    comments.value = await fetchComments(postId.value)
-  } catch (err: any) {
-    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
-  } finally {
-    loadingComments.value = false
+    if (pageMounted && requestEpoch === postLoadEpoch) {
+      loading.value = false
+      loadingComments.value = false
+    }
   }
 }
 
-function goBack() { uni.navigateBack({ fail: () => goPlaza() }) }
+function goBack() { navigateBackOr(goPlaza) }
 function goPlaza() { uni.switchTab({ url: '/pages/plaza/index' }) }
 function goToAttachedItem(id: string) {
   uni.navigateTo({ url: `/pages/detail/index?id=${id}` })
@@ -442,6 +521,7 @@ function goSeller(userId: string) {
 }
 
 async function onToggleLike() {
+  await awaitAuthReady()
   if (!requireAuth() || !post.value) return
   try {
     await toggleLike(post.value)
@@ -470,29 +550,41 @@ function previewImage(urls: string[], idx: number) {
 }
 
 function onDelete() {
-  if (!post.value) return
+  if (!post.value || !currentUser.value) return
+  const postId = post.value.id
+  const actionEpoch = postLoadEpoch
+  const accountToken = captureAccountRequest(currentUser.value.id)
+  const actionIsCurrent = () => (
+    actionEpoch === postLoadEpoch
+    && isAccountRequestCurrent(accountToken)
+    && post.value?.id === postId
+  )
   uni.showModal({
     title: t('plaza.deleteConfirm'),
     confirmColor: DIALOG_DANGER,
     success: async (r) => {
-      if (!r.confirm || !post.value) return
+      if (!r.confirm || !actionIsCurrent()) return
       try {
-        await deletePost(post.value.id)
+        await deletePost(postId)
+        if (!actionIsCurrent()) return
         uni.showToast({ title: t('profile.deleted'), icon: 'success' })
-        setTimeout(() => goBack(), 800)
+        setTimeout(() => { if (actionIsCurrent()) goBack() }, 800)
       } catch (err: any) {
+        if (!actionIsCurrent()) return
         uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none' })
       }
     },
   })
 }
 
-function onCommentTap(c: PostComment) {
-  if (!currentUser.value) return
+async function onCommentTap(c: PostComment) {
+  await awaitAuthReady()
+  if (!requireAuth() || !currentUser.value) return
   replyTo.value = c
 }
 
 async function onToggleCommentLike(comment: PostComment) {
+  await awaitAuthReady()
   if (!requireAuth()) return
   try {
     await toggleCommentLike(comment)
@@ -511,9 +603,32 @@ async function onToggleCommentLike(comment: PostComment) {
 const postLongPress = useLongPress<[]>(() => onPostLongPress(), 1500)
 const commentLongPress = useLongPress<[PostComment]>((c) => onCommentLongPress(c), 1500)
 
-function onCommentLongPress(c: PostComment) {
-  if (!currentUser.value) return
+function onPostKeyboardMenu(event: KeyboardEvent) {
+  if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
+  event.preventDefault()
+  event.stopPropagation()
+  void onPostLongPress()
+}
+
+function onCommentKeyboardMenu(event: KeyboardEvent, comment: PostComment) {
+  if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
+  event.preventDefault()
+  event.stopPropagation()
+  void onCommentLongPress(comment)
+}
+
+async function onCommentLongPress(c: PostComment) {
+  await awaitAuthReady()
+  if (!requireAuth() || !currentUser.value) return
   const isMine = c.user_id === currentUser.value.id
+  const accountToken = captureAccountRequest(currentUser.value.id)
+  const actionEpoch = postLoadEpoch
+  const actionPostId = post.value?.id || ''
+  const actionIsCurrent = () => (
+    actionEpoch === postLoadEpoch
+    && isAccountRequestCurrent(accountToken)
+    && post.value?.id === actionPostId
+  )
   const items = isMine
     ? [t('plaza.delete')]
     : [t('plaza.reply'), t('plaza.reportComment'), t('plaza.reportUser')]
@@ -521,20 +636,23 @@ function onCommentLongPress(c: PostComment) {
     itemList: items,
     itemColor: isMine ? DIALOG_DANGER : DIALOG_INK,
     success: (res) => {
+      if (!actionIsCurrent()) return
       if (isMine && res.tapIndex === 0) {
         uni.showModal({
           title: t('plaza.commentDeleteConfirm'),
           confirmColor: DIALOG_DANGER,
           success: async (r) => {
-            if (!r.confirm || !post.value) return
+            if (!r.confirm || !actionIsCurrent()) return
             try {
-              await deleteComment(c.id, post.value.id)
+              await deleteComment(c.id, actionPostId)
+              if (!actionIsCurrent()) return
               comments.value = comments.value.filter(x => x.id !== c.id)
               // Mirror the add path (line ~597) — usePlaza.deleteComment only
               // decrements the feed-list copy, not this detail page's post ref,
               // so the header count would otherwise go stale.
               if (post.value) post.value.comment_count = Math.max(0, (post.value.comment_count || 0) - 1)
             } catch (err: any) {
+              if (!actionIsCurrent()) return
               uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none' })
             }
           },
@@ -554,18 +672,19 @@ function promptReportUser(userId: string) {
   promptReport('user', userId)
 }
 
-function onPostLongPress() {
+async function onPostLongPress() {
   if (!post.value) return
-  if (!currentUser.value) {
-    uni.navigateTo({ url: '/pages/login/index' })
-    return
-  }
+  await awaitAuthReady()
+  if (!requireAuth() || !currentUser.value) return
   if (post.value.user_id === currentUser.value.id) return
   const postId = post.value.id
   const userId = post.value.user_id
+  const accountToken = captureAccountRequest(currentUser.value.id)
+  const actionEpoch = postLoadEpoch
   uni.showActionSheet({
     itemList: [t('report.reportPost'), t('report.reportUser')],
     success: (res) => {
+      if (actionEpoch !== postLoadEpoch || !isAccountRequestCurrent(accountToken) || post.value?.id !== postId) return
       if (res.tapIndex === 0) promptReport('post', postId)
       else if (res.tapIndex === 1) promptReport('user', userId)
     },
@@ -573,20 +692,27 @@ function onPostLongPress() {
 }
 
 function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId: string) {
+  if (!currentUser.value) return
+  const accountToken = captureAccountRequest(currentUser.value.id)
+  const actionEpoch = postLoadEpoch
+  const actionIsCurrent = () => actionEpoch === postLoadEpoch && isAccountRequestCurrent(accountToken)
   const reasons = targetType === 'user'
     ? [t('report.reasonSpam'), t('report.reasonAbuse'), t('report.reasonMisleading'), t('report.reasonOther')]
     : [t('report.reasonSpam'), t('report.reasonProhibited'), t('report.reasonMisleading'), t('report.reasonOther')]
   uni.showActionSheet({
     itemList: reasons,
     success: async (res) => {
+      if (!actionIsCurrent()) return
       const reason = reasons[res.tapIndex]
-      uni.showLoading({ title: t('report.submitting') || t('login.wait'), mask: true })
+      const loadingOwner = reportLoading.show(t('report.submitting') || t('login.wait'))
       try {
         await reportTarget(targetType, targetId, reason)
-        uni.hideLoading()
+        reportLoading.hide(loadingOwner)
+        if (!actionIsCurrent()) return
         uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
-        uni.hideLoading()
+        reportLoading.hide(loadingOwner)
+        if (!actionIsCurrent()) return
         uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('report.failed'), icon: 'none' })
       }
     },
@@ -594,11 +720,12 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 }
 
 async function onSubmitComment() {
-  if (!requireAuth()) return
+  await awaitAuthReady()
+  if (!requireAuth() || !currentUser.value) return
   if (!commentText.value.trim() || !post.value) return
   if (submitting.value) return
+  const commentAccountToken = captureAccountRequest(currentUser.value.id)
   submitting.value = true
-  const failsafe = setTimeout(() => { submitting.value = false }, 15000)
   try {
     let text = commentText.value
     if (replyTo.value) {
@@ -611,6 +738,7 @@ async function onSubmitComment() {
       ? (replyTo.value.parent_comment_id ?? replyTo.value.id)
       : undefined
     const c = await createComment(post.value.id, text, parentId)
+    if (!isAccountRequestCurrent(commentAccountToken)) return
     // fetchComments hydrates reply_to_name from DB on next refresh; for the
     // optimistic push here we mirror the same logic by reading replyTo's nickname.
     c.reply_to_name = replyTo.value
@@ -622,14 +750,14 @@ async function onSubmitComment() {
     if (post.value) post.value.comment_count = (post.value.comment_count || 0) + 1
     uni.showToast({ title: t('plaza.commented'), icon: 'success' })
   } catch (err: any) {
+    if (!isAccountRequestCurrent(commentAccountToken)) return
     uni.showToast({
       title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
       icon: 'none',
       duration: 2500,
     })
   } finally {
-    clearTimeout(failsafe)
-    submitting.value = false
+    if (isAccountRequestCurrent(commentAccountToken)) submitting.value = false
   }
 }
 </script>
@@ -670,7 +798,7 @@ async function onSubmitComment() {
 .body { flex: 1; min-height: 0; }
 
 .loading, .not-found {
-  padding: 80px 16px; text-align: center; color: var(--text-faint); font-size: 14px;
+  padding: 80px 16px; text-align: center; color: var(--text-subtle); font-size: 14px;
   display: flex; flex-direction: column; align-items: center; gap: 14px;
 }
 .back-home {
@@ -687,13 +815,13 @@ async function onSubmitComment() {
 .head-info { flex: 1; min-width: 0; }
 .head-name-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .head-name { font-size: 15px; font-weight: 600; color: var(--text-primary); }
-.head-time { font-size: 11px; color: var(--text-faint); display: block; margin-top: 2px; }
+.head-time { font-size: 11px; color: var(--text-subtle); display: block; margin-top: 2px; }
 
 /* official + illini badges → components/UBadge.vue (variants official/illini). */
 .badge-pinned {
-  background: var(--warning-soft); color: var(--warning);
+  background: var(--warning-soft); color: var(--warning-text);
   padding: 1px 6px; border-radius: 4px;
-  text { font-size: 10px; font-weight: 600; color: var(--warning); letter-spacing: 0.02em; }
+  text { font-size: 10px; font-weight: 600; color: var(--warning-text); letter-spacing: 0.02em; }
 }
 
 .content-wrap { position: relative; padding-right: 44px; }
@@ -774,7 +902,7 @@ async function onSubmitComment() {
 .comments-section { background: var(--bg-elev-1); margin-top: 8px; }
 .cs-header { padding: 14px 16px 8px; border-bottom: 0.5px solid var(--line-hair); }
 .cs-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
-.cs-empty { padding: 40px 16px; text-align: center; color: var(--text-faint); font-size: 13px; }
+.cs-empty { padding: 40px 16px; text-align: center; color: var(--text-subtle); font-size: 13px; }
 .cs-item {
   display: flex; gap: 10px; padding: 12px 16px;
   border-bottom: 0.5px solid var(--line-hair);
@@ -783,7 +911,7 @@ async function onSubmitComment() {
 .cs-body { flex: 1; min-width: 0; }
 .cs-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .cs-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
-.cs-time { font-size: 11px; color: var(--text-faint); }
+.cs-time { font-size: 11px; color: var(--text-subtle); }
 .cs-content {
   font-size: 14px; color: var(--text-primary); line-height: 1.5;
   margin-top: 2px; display: block; word-break: break-word;
@@ -811,14 +939,14 @@ async function onSubmitComment() {
 }
 .cs-like-num {
   font-size: 11px;
-  color: var(--text-faint);
+  color: var(--text-subtle);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   &.active { color: var(--accent-danger); }
 }
 .cs-reply-btn {
   font-size: 12px;
-  color: var(--text-faint);
+  color: var(--text-subtle);
   font-weight: 500;
   cursor: pointer;
   padding: 2px 0;

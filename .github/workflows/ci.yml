@@ -4,13 +4,14 @@ name: CI
 # on every push and on pull requests targeting main, so PRs get a green
 # check before merging and direct pushes to main still get a signal.
 #
-# Three independent jobs in a matrix:
+# Independent verification jobs:
 #   typecheck   — vue-tsc --noEmit  (catches TS errors before deploy)
 #   build-h5    — `uni build`        (matches Vercel's build command)
 #   build-mp    — `uni build -p mp-weixin` (catches mp-only regressions
 #                                            since Vercel never builds it)
+#   boundaries  — deterministic API/security/account-race regression tests
 #
-# All three run in parallel against the same node_modules cache.
+# The deterministic jobs run in parallel against the same npm cache.
 # build-mp is the one that catches the URL/Headers/AbortController
 # polyfill regressions we hit this session — Vercel deploys would have
 # silently shipped a broken mp build because Vercel only runs the H5
@@ -31,7 +32,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
 
 jobs:
   typecheck:
@@ -55,6 +56,32 @@ jobs:
       - name: vue-tsc --noEmit
         working-directory: app
         run: npm run type-check
+
+  boundary-tests:
+    name: Boundary regressions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install
+        working-directory: app
+        run: npm ci --legacy-peer-deps
+
+      - name: Audit production dependencies
+        working-directory: app
+        run: npm audit --omit=dev --audit-level=moderate
+
+      - name: API and client boundary tests
+        working-directory: app
+        run: node --test ../api/*.test.mjs ../scripts/*.test.mjs smoke/*.test.mjs
 
   build-h5:
     name: Build H5
@@ -81,10 +108,15 @@ jobs:
           # Stub values — the build only needs the strings to exist;
           # Vercel injects the real values at deploy time.
           VITE_SUPABASE_URL: https://ci-stub.supabase.co
-          VITE_SUPABASE_ANON_KEY: ci-stub-anon-key
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci-stub-key
+          VITE_BASE_URL: https://ci-app-stub.invalid
 
       - name: Verify dist exists
         run: test -d app/dist/build/h5 && ls -la app/dist/build/h5 | head -10
+
+      - name: Verify H5 artifact boundary
+        working-directory: app
+        run: node ../scripts/verify-build-artifact.mjs dist/build/h5 ci
 
   build-mp-weixin:
     name: Build mp-weixin
@@ -109,13 +141,18 @@ jobs:
         run: npm run build:mp-weixin
         env:
           VITE_SUPABASE_URL: https://ci-stub.supabase.co
-          VITE_SUPABASE_ANON_KEY: ci-stub-anon-key
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci-stub-key
+          VITE_BASE_URL: https://ci-app-stub.invalid
 
       - name: Verify dist exists
         run: test -d app/dist/build/mp-weixin && ls -la app/dist/build/mp-weixin | head -10
 
-  smoke:
-    name: Smoke (E2E)
+      - name: Verify mp-weixin artifact boundary
+        working-directory: app
+        run: node ../scripts/verify-build-artifact.mjs dist/build/mp-weixin none
+
+  public-smoke:
+    name: Smoke (public page sweep)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -132,34 +169,124 @@ jobs:
         working-directory: app
         run: npm ci --legacy-peer-deps
 
+      # Fork pull requests do not receive repository values. Detect the
+      # minimum public credential pair inside a shell step (GitHub does not
+      # allow direct `secrets.*` references in an `if:` expression), then skip
+      # the external smoke signal cleanly when it is unavailable.
+      - name: Detect smoke configuration
+        id: smoke-config
+        shell: bash
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          if [[ -n "$VITE_SUPABASE_URL" && ( -n "$VITE_SUPABASE_PUBLISHABLE_KEY" || -n "$VITE_SUPABASE_ANON_KEY" ) ]]; then
+            echo "can_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "can_run=false" >> "$GITHUB_OUTPUT"
+            echo "Smoke skipped: public Supabase CI credentials are unavailable (expected on forks)."
+          fi
+
       # The smoke spec spreads the iPhone 13 device profile, whose
       # defaultBrowserType is webkit — install that engine, not chromium.
       - name: Install Playwright (webkit)
+        if: steps.smoke-config.outputs.can_run == 'true'
         working-directory: app
         run: npx playwright install --with-deps webkit
 
-      # The page-sweep needs REAL (public) anon creds: with the build jobs'
+      # The page-sweep needs REAL public Supabase values: with the build jobs'
       # stub URL the logged-out calls fail with network errors that are NOT in
-      # the spec's IGNORE list, so the sweep would falsely go red. The anon key
-      # is publishable (safe as an Actions secret). The logged-in flow runs only
-      # when SMOKE_EMAIL/SMOKE_PASSWORD secrets are present; until the +smokebot
-      # account is wired it self-skips (test.skip), so this job stays green on
-      # the page-sweep alone. This check is intentionally NOT in the required
+      # the spec's IGNORE list, so the sweep would falsely go red. Prefer the
+      # publishable key (safe to expose to this public build); the legacy anon
+      # value remains only as a rolling fallback. This PR-capable job never
+      # receives an account credential or privileged secret, including for a
+      # same-repository pull request. This check is intentionally NOT in the required
       # set — it's a signal, not a merge gate, so dev-server flakiness can't
       # block shipping.
-      - name: Smoke (page sweep + opt-in logged-in flow)
+      - name: Smoke (logged-out page sweep only)
+        id: smoke-run
+        if: steps.smoke-config.outputs.can_run == 'true'
         working-directory: app
         run: npm run smoke
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+  authenticated-smoke:
+    name: Smoke (protected staging account)
+    # Never execute PR-controlled code with account credentials. These secrets
+    # must exist only in the protected `staging-smoke` GitHub Environment, not
+    # as repository secrets. Manual dispatch is likewise restricted to main.
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    environment: staging-smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout reviewed main commit
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install
+        working-directory: app
+        run: npm ci --legacy-peer-deps
+
+      - name: Detect protected synthetic smoke configuration
+        shell: bash
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
           SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+          SMOKE_ACCOUNT_IS_SYNTHETIC: ${{ secrets.SMOKE_ACCOUNT_IS_SYNTHETIC }}
+          SMOKE_DATASET_IS_SYNTHETIC: ${{ secrets.SMOKE_DATASET_IS_SYNTHETIC }}
+          SMOKE_EXPECTED_SUPABASE_PROJECT_REF: ${{ vars.SMOKE_EXPECTED_SUPABASE_PROJECT_REF }}
+          SMOKE_EXPECTED_USER_ID: ${{ vars.SMOKE_EXPECTED_USER_ID }}
+        run: |
+          if [[ ! "$SMOKE_EXPECTED_SUPABASE_PROJECT_REF" =~ ^[a-z0-9]{20}$ ]]; then
+            echo "Protected smoke misconfigured: expected staging project ref is missing or invalid."
+            exit 1
+          fi
+          if [[ "$VITE_SUPABASE_URL" != "https://${SMOKE_EXPECTED_SUPABASE_PROJECT_REF}.supabase.co" ]]; then
+            echo "Protected smoke refused: Supabase URL does not match the reviewed staging project ref."
+            exit 1
+          fi
+          if [[ -z "$VITE_SUPABASE_PUBLISHABLE_KEY" && -z "$VITE_SUPABASE_ANON_KEY" ]]; then
+            echo "Protected smoke misconfigured: public Supabase key missing."
+            exit 1
+          fi
+          if [[ -z "$SMOKE_EMAIL" || -z "$SMOKE_PASSWORD" \
+            || "$SMOKE_ACCOUNT_IS_SYNTHETIC" != "true" \
+            || "$SMOKE_DATASET_IS_SYNTHETIC" != "true" \
+            || ! "$SMOKE_EXPECTED_USER_ID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; then
+            echo "Protected smoke misconfigured: exact synthetic account/dataset contract is incomplete."
+            exit 1
+          fi
 
-      - name: Upload failure screenshots
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: smoke-failures
-          path: app/test-results/
-          if-no-files-found: ignore
+      - name: Install Playwright (webkit)
+        working-directory: app
+        run: npx playwright install --with-deps webkit
+
+      - name: Smoke (synthetic authenticated flow)
+        working-directory: app
+        run: npm run smoke
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+          # No screenshots, traces, video, or uploaded browser artifacts.
+          SMOKE_ACCOUNT_IS_SYNTHETIC: ${{ secrets.SMOKE_ACCOUNT_IS_SYNTHETIC }}
+          SMOKE_DATASET_IS_SYNTHETIC: ${{ secrets.SMOKE_DATASET_IS_SYNTHETIC }}
+          SMOKE_EXPECTED_SUPABASE_PROJECT_REF: ${{ vars.SMOKE_EXPECTED_SUPABASE_PROJECT_REF }}
+          SMOKE_EXPECTED_USER_ID: ${{ vars.SMOKE_EXPECTED_USER_ID }}

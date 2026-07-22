@@ -1,25 +1,26 @@
 #!/usr/bin/env bash
-# Pre-push hook — runs the same checks GitHub Actions runs, locally,
-# before the push leaves your machine. Catches type errors and build
-# breaks within ~30s instead of 1-2 minutes after CI fails.
+# Pre-push hook — mirrors the deterministic local GitHub Actions gates before
+# the push leaves your machine. Network-dependent npm audit and opt-in browser
+# smoke remain CI/release checks; boundary tests, type-check and both builds run
+# here whenever the changed-file class can affect them.
 #
 # Bypass when needed (hotfix, reverting, etc.):
 #   git push --no-verify
 #
-# Why type-check + build:h5 + build:mp-weixin (matches CI exactly):
+# Why boundary tests + type-check + build:h5 + build:mp-weixin:
+#   · node:test protects API, migration, auth and account-race contracts
 #   · vue-tsc catches ~80% of issues in 5s
 #   · build:h5 catches Vite/dynamic-import problems (~25s)
 #   · build:mp-weixin catches mp-specific regressions like the
 #     URL/Headers polyfill bugs we hit before — Vercel never builds
 #     mp so this is the only pre-push gate for the WeChat mini-program
 #
-# Smart skip (added 2025-04-25):
-#   When the diff between remote and local heads contains ONLY files
-#   that can't break the build (docs, migrations, scripts, edge
-#   functions, etc.), the type-check + builds are skipped and the
-#   push goes through in <1s. The allow-list is conservative — anything
-#   touching app/src, vite.config.ts, package.json, or vercel.json
-#   triggers the full check.
+# Changed-file classification:
+#   · prose-only changes skip every local gate;
+#   · API/scripts/migrations/tests/workflow/hook/edge-config changes run the
+#     deterministic boundary suite, but do not waste time rebuilding clients;
+#   · runtime client/dependency/asset changes run boundaries + type-check +
+#     H5 + mp-weixin builds.
 
 set -e
 
@@ -53,32 +54,50 @@ fi
 ZERO_SHA="0000000000000000000000000000000000000000"
 DEFAULT_BRANCH="origin/main"
 
-is_buildable() {
-  # Returns 0 (truthy) if the path needs the full build check.
-  # Returns 1 (falsy) for paths that are safe to skip.
+needs_boundary_tests() {
+  # Only prose/legal metadata is unable to affect an executable contract.
   case "$1" in
     _ai_notes/*)                  return 1 ;;
     docs/*)                       return 1 ;;
-    .github/*)                    return 1 ;;
+    .gitignore|LICENSE|.gitattributes) return 1 ;;
+    *.md|*.txt)                   return 1 ;;
+    *)                            return 0 ;;
+  esac
+}
+
+needs_client_builds() {
+  # API/SQL/test/CI changes are executable, but cannot change a compiled H5 or
+  # mini-program bundle. Unknown paths deliberately fall through to builds.
+  case "$1" in
+    _ai_notes/*|docs/*)           return 1 ;;
+    .github/*|.githooks/*)        return 1 ;;
     .gitignore|LICENSE|.gitattributes) return 1 ;;
     supabase/migrations/*.sql)    return 1 ;;
     supabase/email-templates/*)   return 1 ;;
     supabase/_ops/*)              return 1 ;;
     api/*)                        return 1 ;;
     scripts/*.mjs|scripts/*.sh)   return 1 ;;
+    app/smoke/*)                  return 1 ;;
+    tests/*)                      return 1 ;;
+    vercel.json)                  return 1 ;;
     *.md|*.txt)                   return 1 ;;
     project.config.json|project.private.config.json) return 1 ;;
     *)                            return 0 ;;
   esac
 }
 
-determine_skip() {
+RUN_BOUNDARIES=1
+RUN_BUILDS=1
+
+classify_changes() {
   if [ ! -t 0 ]; then
     local stdin_data
     stdin_data="$(cat)"
     if [ -z "$stdin_data" ]; then
-      return 1
+      return
     fi
+    RUN_BOUNDARIES=0
+    RUN_BUILDS=0
     while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
       [ -z "$local_sha" ] && continue
       [ "$local_sha" = "$ZERO_SHA" ] && continue
@@ -87,85 +106,129 @@ determine_skip() {
         if git rev-parse --verify --quiet "$DEFAULT_BRANCH" >/dev/null; then
           range="$DEFAULT_BRANCH..$local_sha"
         else
-          return 1
+          RUN_BOUNDARIES=1
+          RUN_BUILDS=1
+          return
         fi
       else
         range="$remote_sha..$local_sha"
       fi
       local files
-      files="$(git diff --name-only "$range" 2>/dev/null)" || return 1
+      if ! files="$(git diff --name-only "$range" 2>/dev/null)"; then
+        RUN_BOUNDARIES=1
+        RUN_BUILDS=1
+        return
+      fi
       while IFS= read -r f; do
         [ -z "$f" ] && continue
-        if is_buildable "$f"; then
-          return 1
-        fi
+        if needs_boundary_tests "$f"; then RUN_BOUNDARIES=1; fi
+        if needs_client_builds "$f"; then RUN_BUILDS=1; fi
       done <<< "$files"
     done <<< "$stdin_data"
-    return 0
   fi
-  return 1
 }
 
-if determine_skip; then
-  echo "${YELLOW}[pre-push]${RESET} only docs/migrations/scripts/api changed — skipping type-check + builds"
+classify_changes
+
+if [ "$RUN_BOUNDARIES" -eq 0 ] && [ "$RUN_BUILDS" -eq 0 ]; then
+  echo "${YELLOW}[pre-push]${RESET} prose-only change — skipping executable gates"
   exit 0
 fi
 
 cd "$APP_DIR"
 
-echo "${BOLD}[pre-push]${RESET} running pre-push checks (~30s, --no-verify to bypass)"
+PRE_PUSH_TMP="$(mktemp -d /tmp/illini-pre-push.XXXXXX)"
+trap 'rm -rf "$PRE_PUSH_TMP"' EXIT
+
+echo "${BOLD}[pre-push]${RESET} running applicable deterministic gates (--no-verify to bypass)"
 echo ""
 
 # ──────────────────────────────────────────────────────────────────
-# 1. Type check
+# 1. API / SQL / client boundary tests
 # ──────────────────────────────────────────────────────────────────
-echo "${BOLD}[1/3]${RESET} vue-tsc --noEmit"
-if npm run type-check >/tmp/pre-push-typecheck.log 2>&1; then
+if [ "$RUN_BOUNDARIES" -eq 1 ]; then
+  echo "${BOLD}[boundary]${RESET} node --test api/scripts/client contracts"
+  if node --test ../api/*.test.mjs ../scripts/*.test.mjs smoke/*.test.mjs >"$PRE_PUSH_TMP/boundaries.log" 2>&1; then
+    echo "  ${GREEN}✓${RESET} boundary tests passed"
+  else
+    echo "  ${RED}✗${RESET} boundary tests FAILED"
+    echo ""
+    tail -40 "$PRE_PUSH_TMP/boundaries.log"
+    echo ""
+    echo "${YELLOW}Push blocked.${RESET} Fix the boundary regression above, or bypass with: ${BOLD}git push --no-verify${RESET}"
+    exit 1
+  fi
+fi
+
+if [ "$RUN_BUILDS" -eq 0 ]; then
+  echo "${GREEN}${BOLD}[pre-push] applicable checks passed — pushing.${RESET}"
+  exit 0
+fi
+
+# ──────────────────────────────────────────────────────────────────
+# 2. Type check
+# ──────────────────────────────────────────────────────────────────
+echo ""
+echo "${BOLD}[typecheck]${RESET} vue-tsc --noEmit"
+if npm run type-check >"$PRE_PUSH_TMP/typecheck.log" 2>&1; then
   echo "  ${GREEN}✓${RESET} type-check passed"
 else
   echo "  ${RED}✗${RESET} type-check FAILED"
   echo ""
-  cat /tmp/pre-push-typecheck.log | tail -30
+  tail -30 "$PRE_PUSH_TMP/typecheck.log"
   echo ""
   echo "${YELLOW}Push blocked.${RESET} Fix the type errors above, or bypass with: ${BOLD}git push --no-verify${RESET}"
   exit 1
 fi
 
 # ──────────────────────────────────────────────────────────────────
-# 2. H5 build (matches Vercel's deploy command)
+# 3. H5 build (matches Vercel's deploy command)
 # ──────────────────────────────────────────────────────────────────
 echo ""
-echo "${BOLD}[2/3]${RESET} npm run build:h5 (this is the one Vercel runs)"
+echo "${BOLD}[build-h5]${RESET} npm run build:h5 (this is the one Vercel runs)"
 export VITE_SUPABASE_URL="${VITE_SUPABASE_URL:-https://pre-push-stub.supabase.co}"
-export VITE_SUPABASE_ANON_KEY="${VITE_SUPABASE_ANON_KEY:-pre-push-stub-anon-key}"
+export VITE_SUPABASE_PUBLISHABLE_KEY="${VITE_SUPABASE_PUBLISHABLE_KEY:-sb_publishable_pre-push-stub-key}"
+export VITE_BASE_URL="${VITE_BASE_URL:-https://pre-push-app-stub.invalid}"
 # Gate builds go to a throwaway dir, NEVER dist/build/*. They bake the stub
 # env above into the bundle, and dist/build/mp-weixin is the artifact
 # imported into WeChat DevTools — a push was silently replacing it with a
 # stub-URL bundle (request:fail on every API call; mp activation round).
-export UNI_OUTPUT_DIR="/tmp/pre-push-gate/h5"
-if npm run build:h5 >/tmp/pre-push-build-h5.log 2>&1; then
-  echo "  ${GREEN}✓${RESET} build:h5 passed"
+export UNI_OUTPUT_DIR="$PRE_PUSH_TMP/h5"
+if npm run build:h5 >"$PRE_PUSH_TMP/build-h5.log" 2>&1; then
+  if node ../scripts/verify-build-artifact.mjs "$PRE_PUSH_TMP/h5" local >>"$PRE_PUSH_TMP/build-h5.log" 2>&1; then
+    echo "  ${GREEN}✓${RESET} build:h5 + artifact boundary passed"
+  else
+    echo "  ${RED}✗${RESET} H5 artifact boundary FAILED"
+    tail -30 "$PRE_PUSH_TMP/build-h5.log"
+    exit 1
+  fi
 else
   echo "  ${RED}✗${RESET} build:h5 FAILED"
   echo ""
-  cat /tmp/pre-push-build-h5.log | tail -30
+  tail -30 "$PRE_PUSH_TMP/build-h5.log"
   echo ""
   echo "${YELLOW}Push blocked.${RESET} Fix the build errors above, or bypass with: ${BOLD}git push --no-verify${RESET}"
   exit 1
 fi
 
 # ──────────────────────────────────────────────────────────────────
-# 3. mp-weixin build (only gate for WeChat regressions)
+# 4. mp-weixin build (only gate for WeChat regressions)
 # ──────────────────────────────────────────────────────────────────
 echo ""
-echo "${BOLD}[3/3]${RESET} npm run build:mp-weixin (Vercel never runs this — last line of defense)"
-export UNI_OUTPUT_DIR="/tmp/pre-push-gate/mp-weixin"
-if npm run build:mp-weixin >/tmp/pre-push-build-mp.log 2>&1; then
-  echo "  ${GREEN}✓${RESET} build:mp-weixin passed"
+echo "${BOLD}[build-mp]${RESET} npm run build:mp-weixin (Vercel never runs this — last line of defense)"
+export UNI_OUTPUT_DIR="$PRE_PUSH_TMP/mp-weixin"
+if npm run build:mp-weixin >"$PRE_PUSH_TMP/build-mp.log" 2>&1; then
+  if node ../scripts/verify-build-artifact.mjs "$PRE_PUSH_TMP/mp-weixin" none >>"$PRE_PUSH_TMP/build-mp.log" 2>&1; then
+    echo "  ${GREEN}✓${RESET} build:mp-weixin + artifact boundary passed"
+  else
+    echo "  ${RED}✗${RESET} mp-weixin artifact boundary FAILED"
+    tail -30 "$PRE_PUSH_TMP/build-mp.log"
+    exit 1
+  fi
 else
   echo "  ${RED}✗${RESET} build:mp-weixin FAILED"
   echo ""
-  cat /tmp/pre-push-build-mp.log | tail -30
+  tail -30 "$PRE_PUSH_TMP/build-mp.log"
   echo ""
   echo "${YELLOW}Push blocked.${RESET} Fix the build errors above, or bypass with: ${BOLD}git push --no-verify${RESET}"
   exit 1

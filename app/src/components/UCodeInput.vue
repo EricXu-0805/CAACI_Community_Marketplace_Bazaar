@@ -5,7 +5,9 @@
     type="number"
     :maxlength="6"
     :placeholder="placeholder"
+    :aria-label="ariaLabel || placeholder"
     :focus="autofocus"
+    :disabled="disabled"
     @input="onInput"
   />
 </template>
@@ -21,7 +23,13 @@
  * on some platforms). Shared by reset-password (and reusable for signup-
  * confirm later).
  */
-defineProps<{ modelValue: string; placeholder?: string; autofocus?: boolean }>()
+defineProps<{
+  modelValue: string
+  placeholder?: string
+  ariaLabel?: string
+  autofocus?: boolean
+  disabled?: boolean
+}>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: string): void }>()
 
 function onInput(e: any) {

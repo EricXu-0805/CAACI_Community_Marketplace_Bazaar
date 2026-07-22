@@ -11,13 +11,38 @@
         <text v-else class="ch-item-title">{{ localize(itemInfo.title_i18n, itemInfo.title) }}</text>
       </view>
       <text v-else class="ch-name-only">{{ otherUserName || t('nav.messages') }}</text>
-      <view class="ch-more" role="button" :aria-label="t('a11y.conversationMore')" @click="onMoreActions">
+      <view v-if="conversationAccessReady && !conversationUnavailable" class="ch-more" role="button" :aria-label="t('a11y.conversationMore')" @click="onMoreActions">
         <view class="more-dot"></view><view class="more-dot"></view><view class="more-dot"></view>
       </view>
     </view>
 
+    <view v-if="conversationUnavailable" class="chat-unavailable">
+      <text class="cu-title">{{ blockedByCurrentUser ? t('seller.blockedTitle') : t('chat.unavailableTitle') }}</text>
+      <text v-if="blockedByCurrentUser" class="cu-sub">{{ t('seller.blockedSub') }}</text>
+      <text v-else-if="moderationAccessFailed" class="cu-sub" role="alert" aria-live="assertive" aria-atomic="true">{{ t('chat.accessCheckFailed') }}</text>
+      <view class="cu-actions">
+        <view
+          v-if="moderationAccessFailed"
+          class="cu-retry"
+          role="button"
+          :aria-label="t('home.retry')"
+          @click="retryConversationAccess"
+        >
+          <text>{{ t('home.retry') }}</text>
+        </view>
+        <view class="cu-back" role="button" :aria-label="t('a11y.back')" @click="goBack">
+          <text>{{ t('a11y.back') }}</text>
+        </view>
+      </view>
+    </view>
+
+    <view v-else-if="!conversationAccessReady" class="chat-unavailable">
+      <text class="cu-sub">{{ t('msg.loading') }}</text>
+    </view>
+
+    <template v-else>
     <!-- Item Context Card -->
-    <view class="item-card" v-if="itemInfo" @click="goToItem">
+    <view class="item-card" v-if="itemInfo" role="button" :aria-label="localize(itemInfo.title_i18n, itemInfo.title)" @click="goToItem">
       <image
         :src="itemInfo.images?.[0] || '/static/placeholder.svg'"
         :alt="localize(itemInfo.title_i18n, itemInfo.title)"
@@ -37,18 +62,27 @@
     </view>
 
     <view
-      v-if="itemInfo && itemInfo.status === 'active'"
+      v-if="itemInfo && (itemInfo.status === 'active' || itemInfo.status === 'reserved')"
       class="offer-bar"
     >
       <view
-        v-if="itemInfo.negotiable && currentUser?.id !== itemInfo.user_id"
+        v-if="itemInfo.status === 'active' && itemInfo.negotiable && currentUser?.id !== itemInfo.user_id"
         class="offer-btn"
+        role="button"
+        :aria-label="t('chat.makeOffer')"
         @click="openOfferSheet"
       >
         <text>{{ t('chat.makeOffer') }}</text>
       </view>
-      <view :class="['meetup-btn', { disabled: hasPendingMeetup || hasConfirmedMeetup }]" @click="openMeetupSheet">
-        <text>📍 {{ t('chat.proposeMeetup') }}</text>
+      <view
+        :class="['meetup-btn', { disabled: hasPendingMeetup || hasConfirmedMeetup }]"
+        role="button"
+        :aria-label="t('chat.proposeMeetup')"
+      :aria-disabled="hasPendingMeetup || hasConfirmedMeetup"
+      @click="openMeetupSheet"
+    >
+        <UIcon name="location-pin" size="xs" color="campus-blue" />
+        <text>{{ t('chat.proposeMeetup') }}</text>
       </view>
     </view>
 
@@ -57,10 +91,10 @@
       scroll-x
       class="quick-replies"
     >
-      <view class="qr-chip" @click="sendQuickReply(t('chat.qrStillAvailable'))">{{ t('chat.qrStillAvailable') }}</view>
-      <view class="qr-chip" @click="sendQuickReply(t('chat.qrLowerPrice'))">{{ t('chat.qrLowerPrice') }}</view>
-      <view class="qr-chip" @click="sendQuickReply(t('chat.qrWhenMeet'))">{{ t('chat.qrWhenMeet') }}</view>
-      <view class="qr-chip" @click="sendQuickReply(t('chat.qrMoreDetails'))">{{ t('chat.qrMoreDetails') }}</view>
+      <view class="qr-chip" role="button" :aria-label="t('chat.qrStillAvailable')" @click="sendQuickReply(t('chat.qrStillAvailable'))">{{ t('chat.qrStillAvailable') }}</view>
+      <view class="qr-chip" role="button" :aria-label="t('chat.qrLowerPrice')" @click="sendQuickReply(t('chat.qrLowerPrice'))">{{ t('chat.qrLowerPrice') }}</view>
+      <view class="qr-chip" role="button" :aria-label="t('chat.qrWhenMeet')" @click="sendQuickReply(t('chat.qrWhenMeet'))">{{ t('chat.qrWhenMeet') }}</view>
+      <view class="qr-chip" role="button" :aria-label="t('chat.qrMoreDetails')" @click="sendQuickReply(t('chat.qrMoreDetails'))">{{ t('chat.qrMoreDetails') }}</view>
     </scroll-view>
 
     <scroll-view
@@ -86,11 +120,12 @@
               </view>
               <text class="oc-price">${{ fmtOfferPrice(entry.offer.price) }}</text>
               <text v-if="entry.offer.note" class="oc-note">{{ entry.offer.note }}</text>
-              <view v-if="entry.offer.status === 'pending' && offerIncoming(entry.offer) && !offerExpired(entry.offer)" class="oc-actions">
-                <view class="oc-btn oc-decline" @click="declineOffer(entry.offer)"><text>{{ t('chat.offerDecline') }}</text></view>
-                <view class="oc-btn oc-counter" @click="openCounter(entry.offer)"><text>{{ t('chat.offerCounter') }}</text></view>
-                <view class="oc-btn oc-accept" @click="acceptOffer(entry.offer)"><text>{{ t('chat.offerAccept') }}</text></view>
+              <view v-if="entry.offer.status === 'pending' && offerIncoming(entry.offer) && !offerExpired(entry.offer) && itemAllowsTransaction" class="oc-actions">
+                <view class="oc-btn oc-decline" role="button" :aria-label="t('chat.offerDecline')" @click="declineOffer(entry.offer)"><text>{{ t('chat.offerDecline') }}</text></view>
+                <view class="oc-btn oc-counter" role="button" :aria-label="t('chat.offerCounter')" @click="openCounter(entry.offer)"><text>{{ t('chat.offerCounter') }}</text></view>
+                <view class="oc-btn oc-accept" role="button" :aria-label="t('chat.offerAccept')" @click="acceptOffer(entry.offer)"><text>{{ t('chat.offerAccept') }}</text></view>
               </view>
+              <text v-else-if="entry.offer.status === 'pending' && !offerExpired(entry.offer) && !itemAllowsTransaction" class="oc-meta">{{ t('chat.itemClosed') }}</text>
               <text v-else-if="entry.offer.status === 'pending'" class="oc-meta">
                 {{ offerExpired(entry.offer) ? t('chat.offerExpired') : t('chat.offerWaiting') }}
               </text>
@@ -98,7 +133,17 @@
             </view>
           </view>
           <view v-if="entry.offer.status === 'accepted'" class="deal-line">
-            <text>🎉 {{ t('chat.dealReached').replace('{price}', '$' + fmtOfferPrice(entry.offer.price)) }}</text>
+            <view class="deal-pill">
+              <UIcon name="check" size="xs" color="success" />
+              <text>{{ t('chat.dealReached').replace('{price}', '$' + fmtOfferPrice(entry.offer.price)) }}</text>
+            </view>
+            <text
+              v-if="itemInfo && currentUser?.id === itemInfo.user_id && (itemInfo.status === 'active' || itemInfo.status === 'reserved')"
+              class="deal-confirm"
+              role="button"
+              :aria-label="t('chat.confirmSoldWithOffer')"
+              @click="confirmAcceptedOfferSale(entry.offer)"
+            >{{ t('chat.confirmSoldWithOffer') }}</text>
           </view>
         </template>
 
@@ -107,17 +152,21 @@
           <view :id="entry.key" class="offer-entry" :class="{ mine: entry.meetup.from_user === currentUser?.id }">
             <view class="offer-card meetup-card" :class="'oc-st-' + entry.meetup.status">
               <view class="oc-head">
-                <text class="oc-eyebrow">📍 {{ entry.meetup.from_user === currentUser?.id ? t('chat.meetupYou') : t('chat.meetupThem') }}</text>
+                <view class="oc-eyebrow">
+                  <UIcon name="location-pin" size="xs" color="ink-quiet" />
+                  <text>{{ entry.meetup.from_user === currentUser?.id ? t('chat.meetupYou') : t('chat.meetupThem') }}</text>
+                </view>
                 <text class="oc-status">{{ meetupStatusLabel(entry.meetup) }}</text>
               </view>
               <text class="mc-spot">{{ meetupSpotLabel(entry.meetup) }}</text>
               <text class="mc-when">{{ fmtMeetupWhen(entry.meetup.meet_at) }}</text>
               <text v-if="entry.meetup.note" class="oc-note">{{ entry.meetup.note }}</text>
-              <view v-if="entry.meetup.status === 'pending' && meetupIncoming(entry.meetup) && !meetupExpired(entry.meetup)" class="oc-actions">
-                <view class="oc-btn oc-decline" @click="declineMeetup(entry.meetup)"><text>{{ t('chat.meetupDecline') }}</text></view>
-                <view class="oc-btn oc-counter" @click="openReschedule(entry.meetup)"><text>{{ t('chat.meetupReschedule') }}</text></view>
-                <view class="oc-btn oc-accept" @click="acceptMeetup(entry.meetup)"><text>{{ t('chat.meetupAccept') }}</text></view>
+              <view v-if="entry.meetup.status === 'pending' && meetupIncoming(entry.meetup) && !meetupExpired(entry.meetup) && itemAllowsTransaction" class="oc-actions">
+                <view class="oc-btn oc-decline" role="button" :aria-label="t('chat.meetupDecline')" @click="declineMeetup(entry.meetup)"><text>{{ t('chat.meetupDecline') }}</text></view>
+                <view class="oc-btn oc-counter" role="button" :aria-label="t('chat.meetupReschedule')" @click="openReschedule(entry.meetup)"><text>{{ t('chat.meetupReschedule') }}</text></view>
+                <view class="oc-btn oc-accept" role="button" :aria-label="t('chat.meetupAccept')" @click="acceptMeetup(entry.meetup)"><text>{{ t('chat.meetupAccept') }}</text></view>
               </view>
+              <text v-else-if="entry.meetup.status === 'pending' && !meetupExpired(entry.meetup) && !itemAllowsTransaction" class="oc-meta">{{ t('chat.itemClosed') }}</text>
               <text v-else-if="entry.meetup.status === 'pending'" class="oc-meta">
                 {{ meetupExpired(entry.meetup) ? t('chat.meetupExpired') : t('chat.meetupWaiting') }}
               </text>
@@ -125,8 +174,11 @@
             </view>
           </view>
           <view v-if="entry.meetup.status === 'accepted'" class="deal-line">
-            <text>🤝 {{ t('chat.meetupSet').replace('{spot}', meetupSpotLabel(entry.meetup)).replace('{when}', fmtMeetupWhen(entry.meetup.meet_at)) }}</text>
-            <text class="deal-reschedule" role="button" @click="openRescheduleAccepted(entry.meetup)">{{ t('chat.meetupReschedule') }}</text>
+            <view class="deal-pill">
+              <UIcon name="check" size="xs" color="success" />
+              <text>{{ t('chat.meetupSet').replace('{spot}', meetupSpotLabel(entry.meetup)).replace('{when}', fmtMeetupWhen(entry.meetup.meet_at)) }}</text>
+            </view>
+            <text v-if="itemAllowsTransaction" class="deal-reschedule" role="button" :aria-label="t('chat.meetupReschedule')" @click="openRescheduleAccepted(entry.meetup)">{{ t('chat.meetupReschedule') }}</text>
           </view>
         </template>
 
@@ -135,12 +187,19 @@
           <view
             :id="entry.key"
             :class="['msg-row', { mine: entry.msg.sender_id === currentUser?.id }]"
+            role="button"
+            tabindex="0"
+            :aria-label="t('chat.messageActions')"
+            @keydown.self="onMessageKeydown($event, entry.msg)"
           >
-            <image
+            <UAvatar
               v-if="entry.msg.sender_id !== currentUser?.id"
-              :src="entry.msg.sender?.avatar_url || defaultAvatar"
+              :src="entry.msg.sender?.avatar_url"
+              :owner="entry.msg.sender_id"
+              :fallback="defaultAvatar"
               :alt="entry.msg.sender?.nickname || 'avatar'"
               class="msg-avatar"
+              lazy
             />
             <!-- Sticker message: whole body is one [sticker:*] token — bare
                  artwork, no bubble chrome (WeChat sticker semantics). -->
@@ -151,6 +210,7 @@
               @touchend="msgLongPress.onTouchend"
               @touchcancel="msgLongPress.onTouchcancel"
               @touchmove="msgLongPress.onTouchmove"
+              @contextmenu.prevent="onMsgLongPress(entry.msg)"
             >
               <USticker :name="stickerOf(entry.msg)!" :size="84" />
             </view>
@@ -161,43 +221,35 @@
               @touchend="msgLongPress.onTouchend"
               @touchcancel="msgLongPress.onTouchcancel"
               @touchmove="msgLongPress.onTouchmove"
+              @contextmenu.prevent="onMsgLongPress(entry.msg)"
             >
               <text>{{ entry.msg.content }}</text>
             </view>
-            <image
-              v-else-if="entry.msg.message_type === 'image'"
-              :src="entry.msg.content"
-              alt="Photo"
-              class="msg-image"
-              mode="widthFix"
-              lazy-load
-              @click="previewImg(entry.msg.content)"
+            <view
+              v-else
+              class="msg-bubble msg-media-unavailable"
               @touchstart="msgLongPress.onTouchstart(entry.msg)"
               @touchend="msgLongPress.onTouchend"
               @touchcancel="msgLongPress.onTouchcancel"
               @touchmove="msgLongPress.onTouchmove"
-            />
-            <!-- 私信视频 (migration 048) — native controls; no autoplay so a
-                 scroll through history doesn't start playback. -->
-            <video
-              v-else
-              :src="entry.msg.content"
-              class="msg-video"
-              controls
-              :show-fullscreen-btn="true"
-              object-fit="contain"
-            />
-            <image
+              @contextmenu.prevent="onMsgLongPress(entry.msg)"
+            >
+              <text>{{ t('chat.mediaUnavailable') }}</text>
+            </view>
+            <UAvatar
               v-if="entry.msg.sender_id === currentUser?.id"
-              :src="currentUser?.avatar_url || defaultAvatar"
+              :src="currentUser?.avatar_url"
+              :owner="currentUser?.id"
+              :fallback="defaultAvatar"
               :alt="currentUser?.nickname || 'avatar'"
               class="msg-avatar"
+              lazy
             />
           </view>
           <view v-if="entry.msg.sender_id === currentUser?.id && entry.msg._pending" class="msg-status pending">
             <text>{{ t('chat.sending') }}</text>
           </view>
-          <view v-else-if="entry.msg.sender_id === currentUser?.id && entry.msg._failed" class="msg-status failed" @click="retrySend(entry.msg)">
+          <view v-else-if="entry.msg.sender_id === currentUser?.id && entry.msg._failed" class="msg-status failed" role="button" aria-live="assertive" aria-atomic="true" :aria-label="t('chat.sendFailed')" @click="retrySend(entry.msg)">
             <text>{{ t('chat.sendFailed') }}</text>
           </view>
           <view v-else-if="entry.msg.sender_id === currentUser?.id" :class="['msg-receipt', { read: entry.msg.is_read }]">
@@ -241,19 +293,14 @@
     </view>
 
     <view class="input-bar" :style="kbLift">
-      <view class="img-btn" role="button" :aria-label="t('a11y.pickImage')" :title="t('a11y.pickImage')" @click="onSendImage">
-        <UIcon name="image" size="sm" color="text-secondary" />
-      </view>
-      <view class="img-btn" role="button" :aria-label="t('a11y.pickVideo')" :title="t('a11y.pickVideo')" @click="onSendVideo">
-        <UIcon name="video" size="sm" color="text-secondary" />
-      </view>
       <view :class="['emoji-btn', { active: emojiOpen }]" role="button" :aria-label="t('a11y.emojiToggle')" :title="t('a11y.emojiToggle')" @click="toggleEmoji">
-        <text class="emoji-btn-glyph">😊</text>
+        <UIcon name="more-horizontal" size="sm" :color="emojiOpen ? '#fff' : 'text-secondary'" />
       </view>
       <textarea
         ref="chatInputRef"
         v-model="inputText"
         :placeholder="replyToMsg ? t('chat.replyingHint') : t('chat.placeholder')"
+        :aria-label="replyToMsg ? t('chat.replyingHint') : t('chat.placeholder')"
         confirm-type="send"
         :confirm-hold="true"
         :show-confirm-bar="false"
@@ -277,21 +324,38 @@
 
     <!-- Offer composer (new offer + counter) -->
     <view v-if="offerSheet.open" class="offer-mask u-mask-in" @click="closeOfferSheet"></view>
-    <view :class="['offer-sheet', { open: offerSheet.open }]" :style="sheetLift(offerSheet.open)">
+    <view
+      v-if="offerSheet.open"
+      class="offer-sheet open"
+      :style="sheetLift(true)"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="offerSheet.mode === 'counter' ? t('chat.offerCounterTitle') : t('chat.offerTitle')"
+      @keydown="onComposerSheetKeydown($event, 'offer')"
+    >
       <view class="os-handle"></view>
-      <text class="os-title">{{ offerSheet.mode === 'counter' ? t('chat.offerCounterTitle') : t('chat.offerTitle') }}</text>
+      <view class="os-title-row">
+        <text class="os-title">{{ offerSheet.mode === 'counter' ? t('chat.offerCounterTitle') : t('chat.offerTitle') }}</text>
+        <view class="os-close" role="button" tabindex="0" :aria-label="t('a11y.close')" @click="closeOfferSheet"><UIcon name="close" size="xs" color="text-secondary" /></view>
+      </view>
       <text v-if="itemInfo" class="os-ref">{{ localize(itemInfo.title_i18n, itemInfo.title) }} · {{ t('chat.offerListPrice') }} {{ listingPriceLabel(itemInfo, t) }}</text>
       <view class="os-input-row">
         <text class="os-dollar">$</text>
-        <input v-model="offerPriceInput" type="digit" class="os-input" :placeholder="t('chat.offerPricePh')" />
+        <input v-model="offerPriceInput" type="digit" class="os-input" :placeholder="t('chat.offerPricePh')" :aria-label="t('chat.offerPricePh')" />
       </view>
       <scroll-view v-if="quickAmounts.length" scroll-x class="os-quick">
-        <view v-for="a in quickAmounts" :key="a" class="os-quick-chip" @click="offerPriceInput = String(a)">
+        <view v-for="a in quickAmounts" :key="a" class="os-quick-chip" role="button" :aria-label="'$' + a" :aria-pressed="offerPriceInput === String(a) ? 'true' : 'false'" @click="offerPriceInput = String(a)">
           <text>${{ a }}</text>
         </view>
       </scroll-view>
-      <input v-model="offerNoteInput" class="os-note" :placeholder="t('chat.offerNotePh')" maxlength="300" />
-      <view :class="['os-submit', { disabled: !Number(offerPriceInput) || offerSubmitting }]" @click="submitOfferSheet">
+      <input v-model="offerNoteInput" class="os-note" :placeholder="t('chat.offerNotePh')" :aria-label="t('chat.offerNotePh')" maxlength="300" />
+      <view
+        :class="['os-submit', { disabled: !Number(offerPriceInput) || offerSubmitting }]"
+        role="button"
+        :aria-label="offerSheet.mode === 'counter' ? t('chat.offerSendCounter') : t('chat.offerSend')"
+        :aria-disabled="!Number(offerPriceInput) || offerSubmitting"
+        @click="submitOfferSheet"
+      >
         <text>{{ offerSheet.mode === 'counter' ? t('chat.offerSendCounter') : t('chat.offerSend') }}</text>
       </view>
       <text class="os-expiry-hint">{{ t('chat.offerExpiry') }}</text>
@@ -299,15 +363,29 @@
 
     <!-- Meetup composer (propose + reschedule) -->
     <view v-if="meetupSheet.open" class="offer-mask u-mask-in" @click="closeMeetupSheet"></view>
-    <view :class="['offer-sheet', { open: meetupSheet.open }]" :style="sheetLift(meetupSheet.open)">
+    <view
+      v-if="meetupSheet.open"
+      class="offer-sheet open"
+      :style="sheetLift(true)"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="meetupSheet.mode !== 'new' ? t('chat.meetupRescheduleTitle') : t('chat.meetupTitle')"
+      @keydown="onComposerSheetKeydown($event, 'meetup')"
+    >
       <view class="os-handle"></view>
-      <text class="os-title">{{ meetupSheet.mode !== 'new' ? t('chat.meetupRescheduleTitle') : t('chat.meetupTitle') }}</text>
+      <view class="os-title-row">
+        <text class="os-title">{{ meetupSheet.mode !== 'new' ? t('chat.meetupRescheduleTitle') : t('chat.meetupTitle') }}</text>
+        <view class="os-close" role="button" tabindex="0" :aria-label="t('a11y.close')" @click="closeMeetupSheet"><UIcon name="close" size="xs" color="text-secondary" /></view>
+      </view>
       <text class="mt-label">{{ t('chat.meetupSpot') }}</text>
       <scroll-view scroll-x class="os-quick mt-spots">
         <view
           v-for="s in safeSpots"
           :key="s.id"
           :class="['os-quick-chip', { on: meetupSpotInput === (lang === 'zh' ? s.zh : s.en) }]"
+          role="button"
+          :aria-label="lang === 'zh' ? s.zh : s.en"
+          :aria-pressed="meetupSpotInput === (lang === 'zh' ? s.zh : s.en) ? 'true' : 'false'"
           @click="meetupSpotInput = (lang === 'zh' ? s.zh : s.en)"
         >
           <text>{{ lang === 'zh' ? s.zh : s.en }}</text>
@@ -316,26 +394,33 @@
       <!-- Free-text spot (#6d): chips are quick-fills; a custom value just
            leaves all chips unhighlighted. Kept ABOVE the date/time pickers so
            neither text field sits under uni's lingering picker overlay (#6b). -->
-      <input v-model="meetupSpotInput" class="os-note mt-spot-input" :placeholder="t('chat.meetupSpotPh')" maxlength="60" :adjust-position="false" />
-      <input v-model="meetupNoteInput" class="os-note" :placeholder="t('chat.offerNotePh')" maxlength="300" :adjust-position="false" />
+      <input v-model="meetupSpotInput" class="os-note mt-spot-input" :placeholder="t('chat.meetupSpotPh')" :aria-label="t('chat.meetupSpotPh')" maxlength="60" :adjust-position="false" />
+      <input v-model="meetupNoteInput" class="os-note" :placeholder="t('chat.offerNotePh')" :aria-label="t('chat.offerNotePh')" maxlength="300" :adjust-position="false" />
       <view class="mt-row">
         <view class="mt-cell">
           <picker mode="date" :value="meetupDateInput" :start="todayStr" :end="maxDateStr" @change="meetupDateInput = $event.detail.value">
-            <view class="mt-picker"><text>{{ meetupDateInput || t('chat.meetupPickDate') }}</text></view>
+            <view class="mt-picker" role="button" :aria-label="t('chat.meetupPickDate')"><text>{{ meetupDateInput || t('chat.meetupPickDate') }}</text></view>
           </picker>
         </view>
         <view class="mt-cell">
           <picker mode="time" :value="meetupTimeInput" @change="meetupTimeInput = $event.detail.value">
-            <view class="mt-picker"><text>{{ meetupTimeInput || t('chat.meetupPickTime') }}</text></view>
+            <view class="mt-picker" role="button" :aria-label="t('chat.meetupPickTime')"><text>{{ meetupTimeInput || t('chat.meetupPickTime') }}</text></view>
           </picker>
         </view>
       </view>
       <text class="mt-safe-hint">{{ t('chat.meetupSafeHint') }}</text>
-      <view :class="['os-submit', { disabled: !meetupSpotInput || !meetupDateInput || !meetupTimeInput || meetupSubmitting }]" @click="submitMeetupSheet">
+      <view
+        :class="['os-submit', { disabled: !meetupSpotInput || !meetupDateInput || !meetupTimeInput || meetupSubmitting }]"
+        role="button"
+        :aria-label="meetupSheet.mode !== 'new' ? t('chat.meetupSendReschedule') : t('chat.meetupSend')"
+        :aria-disabled="!meetupSpotInput || !meetupDateInput || !meetupTimeInput || meetupSubmitting"
+        @click="submitMeetupSheet"
+      >
         <text>{{ meetupSheet.mode !== 'new' ? t('chat.meetupSendReschedule') : t('chat.meetupSend') }}</text>
       </view>
       <text class="os-expiry-hint">{{ t('chat.meetupExpiry') }}</text>
     </view>
+    </template>
   </view>
 </template>
 
@@ -343,7 +428,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useAuth } from '../composables/useAuth'
 import { useTheme } from '../composables/useTheme'
-import { useMessages } from '../composables/useMessages'
+import { createClientMessageId, useMessages } from '../composables/useMessages'
 import { useOffers } from '../composables/useOffers'
 import { useMeetups } from '../composables/useMeetups'
 import { CAMPUS_SPOTS, localizeLocation, matchSpot } from '../composables/useCampusSpots'
@@ -354,11 +439,21 @@ import { useI18n } from '../composables/useI18n'
 import { useModeration } from '../composables/useModeration'
 import { useLongPress } from '../composables/useLongPress'
 import { useKeyboardHeight } from '../composables/useKeyboardHeight'
-import { listingPriceLabel, friendlyErrorMessage } from '../utils'
+import { createOwnedLoading } from '../composables/ownedLoading'
+import { listingPriceLabel, friendlyErrorMessage, navigateBackOr } from '../utils'
 import { DIALOG_DANGER } from '../utils/dialogColors'
 import { captureException } from '../utils/sentry'
-import type { Item, Offer, Meetup } from '../types'
+import {
+  mutationOutcomeError,
+} from '../api/mutationCommit'
+import {
+  captureActiveAccountRequest,
+  isAccountRequestCurrent,
+  onAccountTransition,
+} from '../composables/accountScope'
+import type { Item, Offer, Meetup, Message } from '../types'
 import ChatEmojiPanel from './ChatEmojiPanel.vue'
+import UAvatar from './UAvatar.vue'
 import UIcon from './UIcon.vue'
 import USticker from './USticker.vue'
 import { parseStickerToken, stickerToken, type StickerName } from './stickers/registry'
@@ -368,14 +463,19 @@ const props = defineProps<{ conversationId: string; prefill?: string; embedded?:
 
 const { t, lang, localize } = useI18n()
 
-const { currentUser, requireAuth } = useAuth()
-const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, deleteMessage, fetchConversationDetail, setConversationPinned, setConversationMuted } = useMessages()
-const { offers, fetchOffers, makeOffer, respondToOffer, subscribeToOffers } = useOffers()
-const { meetups, fetchMeetups, proposeMeetup, respondToMeetup, rescheduleAccepted, subscribeToMeetups } = useMeetups()
-const { startPresence, isOnline, subscribeTyping } = usePresence()
-const { uploadOneImage, uploadOneVideo } = useItems()
+const { currentUser, requireAuth, awaitAuthReady } = useAuth()
+const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, fetchConversationDetail, setConversationPinned, setConversationMuted } = useMessages()
+const { offers, fetchOffers, resetOffers, makeOffer, respondToOffer, subscribeToOffers } = useOffers()
+const { meetups, fetchMeetups, resetMeetups, proposeMeetup, respondToMeetup, rescheduleAccepted, subscribeToMeetups } = useMeetups()
+const { subscribeConversationPresence } = usePresence()
+const { markItemSold } = useItems()
 const { refreshUnreadCount } = useUnread()
-const { reportTarget, blockUser } = useModeration()
+const {
+  reportTarget,
+  blockUser,
+  ensureLoaded: ensureBlocksLoaded,
+  isBlocked,
+} = useModeration()
 const { isDark } = useTheme()
 
 // Soft-keyboard avoidance (mirrors the plaza composer): lift the footer +
@@ -428,11 +528,21 @@ const itemInfo = ref<Item | null>(null)
 const otherUserName = ref('')
 const otherUserId = ref('')
 const conversationDetail = ref<any>(null)
+const conversationUnavailable = ref(false)
+const blockedByCurrentUser = ref(false)
+const moderationAccessFailed = ref(false)
+// Keep every composer/action path absent until both the server row and the
+// local outgoing-block snapshot have been checked. This closes the small deep-
+// link window where a fast tap could send before the asynchronous guard ended.
+const conversationAccessReady = ref(false)
+let conversationSetupStarted = false
 const convPinned = ref(false)
 const convMuted = ref(false)
 let unsubscribe: (() => void) | null = null
 let offersUnsub: (() => void) | null = null
 let meetupsUnsub: (() => void) | null = null
+let threadEpoch = 0
+const reportLoading = createOwnedLoading()
 // #ifdef H5
 // Re-fetch when the tab is re-foregrounded. Realtime is a known-weak channel
 // and H5 has no polling fallback, so a socket that died (CHANNEL_ERROR / proxy
@@ -443,167 +553,522 @@ let onVisible: (() => void) | null = null
 
 // Presence + typing (v5 Phase 7, H5 best-effort).
 const peerTyping = ref(false)
+const peerOnline = ref(false)
 let typingApi: { sendTyping: () => void; unsubscribe: () => void } | null = null
 let typingClear: ReturnType<typeof setTimeout> | null = null
 const headerStatus = computed(() => {
   if (peerTyping.value) return t('chat.typing')
-  if (isOnline(otherUserId.value)) return t('chat.onlineReply')
+  if (peerOnline.value) return t('chat.onlineReply')
   return ''
 })
 watch(inputText, (v) => { if (v && typingApi) typingApi.sendTyping() })
 
 // Guards the async onMounted: an unmount mid-await (desktop two-pane switching
-// conversations before the first fetch resolves, or mobile open-then-back) runs
-// onUnmounted as a no-op because the subscription refs are still null, then the
-// resumed body would wire channels + a visibilitychange listener onto a dead
-// instance. Those leak and — via the shared `messages` singleton — bleed this
-// conversation into whatever thread is open next.
+// conversations before the first fetch resolves, or mobile open-then-back)
+// tears down the early message subscription, then prevents the resumed body
+// from wiring offers/presence/visibility listeners onto a dead instance.
 let mounted = true
 
-onMounted(async () => {
-  if (!requireAuth()) return
+function teardownThreadSubscriptions() {
+  if (unsubscribe) { unsubscribe(); unsubscribe = null }
+  if (offersUnsub) { offersUnsub(); offersUnsub = null }
+  if (meetupsUnsub) { meetupsUnsub(); meetupsUnsub = null }
+  if (typingApi) { typingApi.unsubscribe(); typingApi = null }
+  if (typingClear) { clearTimeout(typingClear); typingClear = null }
+  // #ifdef H5
+  if (onVisible && typeof document !== 'undefined') {
+    document.removeEventListener('visibilitychange', onVisible)
+    onVisible = null
+  }
+  // #endif
+}
+
+function resetThreadPrivateState() {
+  // The render gate is first on purpose: no old item/message/peer frame may be
+  // painted while the rest of the synchronous cleanup runs.
+  conversationAccessReady.value = false
+  threadEpoch += 1
+  reportLoading.cancel()
+  conversationSetupStarted = false
+  teardownThreadSubscriptions()
+  resetOffers()
+  resetMeetups()
+  messages.value = []
+  conversationId.value = ''
+  itemInfo.value = null
+  otherUserName.value = ''
+  otherUserId.value = ''
+  conversationDetail.value = null
+  conversationUnavailable.value = false
+  blockedByCurrentUser.value = false
+  moderationAccessFailed.value = false
+  convPinned.value = false
+  convMuted.value = false
+  peerTyping.value = false
+  peerOnline.value = false
+  inputText.value = ''
+  inputFocused.value = false
+  replyToMsg.value = null
+  scrollTarget.value = ''
+  emojiOpen.value = false
+  sending.value = false
+  offerSheet.value = { open: false, mode: 'new', targetId: '' }
+  offerPriceInput.value = ''
+  offerNoteInput.value = ''
+  offerSubmitting.value = false
+  meetupSheet.value = { open: false, mode: 'new', targetId: '' }
+  resetMeetupSheet()
+  meetupSubmitting.value = false
+  composerSheetReturnFocus = null
+  try { uni.hideKeyboard?.() } catch {}
+}
+
+function isThreadEpochCurrent(expectedEpoch: number): boolean {
+  return mounted
+    && expectedEpoch === threadEpoch
+    && conversationAccessReady.value
+    && !conversationUnavailable.value
+    && !!conversationId.value
+    && !!currentUser.value
+}
+
+const stopAccountTransitionListener = onAccountTransition((transition) => {
+  resetThreadPrivateState()
+  if (!transition.userId) return
+  const expectedEpoch = threadEpoch
+  void Promise.resolve().then(async () => {
+    await awaitAuthReady()
+    if (!mounted || expectedEpoch !== threadEpoch || currentUser.value?.id !== transition.userId) return
+    if (!requireAuth()) return
+    await openConversationBehindModerationGate()
+  }).catch((error) => reportBackgroundFailure('chat.accountTransitionReinitialize', error))
+})
+
+function reportBackgroundFailure(source: string, error: unknown) {
+  captureException(error, { tags: { source }, level: 'warning' })
+}
+
+/* Read receipts and the badge are best-effort follow-up work. A transient
+   UPDATE/count failure must never abort chat setup or produce an unhandled
+   rejection that can terminate a uni-app event callback. */
+function refreshReadState(convId: string, userId: string) {
+  void markAsRead(convId, userId)
+    .catch((error) => {
+      reportBackgroundFailure('chat.markAsRead', error)
+    })
+    // Count after the UPDATE settles so a fast count query cannot re-read the
+    // just-opened conversation as unread. A failed receipt is still non-fatal.
+    .then(() => refreshUnreadCount())
+    .catch((error) => {
+      reportBackgroundFailure('chat.refreshUnreadCount', error)
+    })
+}
+
+function createOptimisticMessage(
+  convId: string,
+  senderId: string,
+  content: string,
+): string {
+  // This is both the optimistic key and the eventual database primary key.
+  // Reusing it across retries makes a response-lost send idempotent.
+  const tempId = createClientMessageId()
+  if (!mounted || conversationId.value !== convId) return tempId
+  messages.value.push({
+    id: tempId,
+    conversation_id: convId,
+    sender_id: senderId,
+    content,
+    message_type: 'text',
+    is_read: false,
+    created_at: new Date().toISOString(),
+    _pending: true,
+  })
+  nextTick(() => scrollToBottom())
+  return tempId
+}
+
+function reconcileSentMessage(sent: Message, tempId?: string) {
+  const realIndex = messages.value.findIndex(
+    m => m.id === sent.id && m.conversation_id === sent.conversation_id,
+  )
+  const tempIndex = tempId
+    ? messages.value.findIndex(m => m.id === tempId && m.conversation_id === sent.conversation_id)
+    : -1
+  const canAppend = mounted && conversationId.value === sent.conversation_id
+
+  // A successful insert may resolve just after the thread unmounts. Replace a
+  // surviving optimistic bubble even then; otherwise reopening the same
+  // module-scoped timeline shows both the server row and an undeletable ghost.
+  // Never append into an inactive/different conversation when no local row
+  // remains — that would leak the old thread into the current singleton.
+  if (realIndex < 0 && tempIndex < 0 && !canAppend) return
+
+  if (realIndex >= 0 && tempIndex === realIndex) {
+    // Client-allocated ids deliberately make the optimistic and authoritative
+    // row the same identity. Replace once; do not remove the just-reconciled
+    // row as a leftover temp bubble.
+    messages.value.splice(realIndex, 1, { ...messages.value[realIndex], ...sent, _pending: false, _failed: false })
+  } else if (realIndex >= 0) {
+    messages.value.splice(realIndex, 1, { ...messages.value[realIndex], ...sent, _pending: false, _failed: false })
+    const leftoverTemp = tempId ? messages.value.findIndex(m => m.id === tempId) : -1
+    if (leftoverTemp >= 0) messages.value.splice(leftoverTemp, 1)
+  } else if (tempIndex >= 0) {
+    messages.value.splice(tempIndex, 1, sent)
+  } else if (canAppend) {
+    messages.value.push(sent)
+  }
+
+  messages.value.sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+  )
+}
+
+function failOptimisticMessage(tempId: string, error: unknown) {
+  const idx = messages.value.findIndex(m => m.id === tempId)
+  if (idx < 0) return
+  const reason = String((error as any)?.message || '')
+  const permanent = reason.startsWith('moderation_block') || reason === 'duplicate_message' || reason === 'message_too_long'
+  if (permanent) {
+    messages.value.splice(idx, 1)
+  } else {
+    messages.value[idx]._pending = false
+    messages.value[idx]._failed = true
+  }
+}
+
+function onMessageKeydown(event: KeyboardEvent, msg: Message) {
+  const openActions = event.key === 'Enter'
+    || event.key === ' '
+    || event.key === 'Spacebar'
+    || (event.key === 'F10' && event.shiftKey)
+  if (!openActions) return
+  event.preventDefault()
+  event.stopPropagation()
+  onMsgLongPress(msg)
+}
+
+/* Shared local-echo path for quick replies and stickers.
+   Every send paints before the database round-trip, then reconciles by the
+   authoritative row id. A realtime echo racing the insert response is folded
+   into the same row by reconcileSentMessage. */
+async function sendWithLocalEcho(
+  convId: string,
+  senderId: string,
+  content: string,
+): Promise<Message> {
+  const tempId = createOptimisticMessage(convId, senderId, content)
+  let messageCommitted = false
+  try {
+    const sent = await sendMessage(convId, senderId, content, 'text', { messageId: tempId })
+    messageCommitted = true
+    if (currentUser.value?.id !== senderId) {
+      throw mutationOutcomeError(new Error('Account changed after message send'), 'committed')
+    }
+    reconcileSentMessage(sent, tempId)
+    refreshReadState(convId, senderId)
+    nextTick(() => scrollToBottom())
+    return sent
+  } catch (error) {
+    if (messageCommitted) {
+      // UI reconciliation failed after the authoritative insert returned.
+      throw mutationOutcomeError(error, 'committed')
+    }
+    failOptimisticMessage(tempId, error)
+    throw error
+  }
+}
+
+function applyIncomingMessage(expectedConversationId: string, newMsg: Message) {
+  if (
+    !mounted ||
+    conversationId.value !== expectedConversationId ||
+    newMsg.conversation_id !== expectedConversationId
+  ) return
+
+  // Idempotent under reconnect replay and insert-response/realtime races.
+  const existingIndex = messages.value.findIndex(m => m.id === newMsg.id)
+  if (existingIndex >= 0) {
+    // Realtime may beat the insert response. When the ids match, promote the
+    // optimistic/failed bubble to the authoritative row instead of ignoring
+    // it and leaving a permanent "failed" state.
+    if (messages.value[existingIndex]._pending || messages.value[existingIndex]._failed) {
+      messages.value.splice(existingIndex, 1, newMsg)
+    }
+    return
+  }
+
+  // If the insert response was lost, heal its optimistic row using the
+  // sender/content/time tuple instead of leaving a duplicate retry bubble.
+  if (currentUser.value && newMsg.sender_id === currentUser.value.id) {
+    const echoTs = new Date(newMsg.created_at as any).getTime()
+    const tempIndex = messages.value.findIndex(m =>
+      (m._pending || m._failed) && m.content === newMsg.content &&
+      m.message_type === newMsg.message_type &&
+      Math.abs(new Date(m.created_at as any).getTime() - echoTs) < 120000)
+    if (tempIndex >= 0) {
+      messages.value.splice(tempIndex, 1, newMsg)
+      return
+    }
+  }
+
+  // Realtime rows do not carry the sender join. Hydrate from the already
+  // loaded counterpart when available; the history reconciliation below will
+  // also replace the row with its joined version.
+  if (currentUser.value && newMsg.sender_id !== currentUser.value.id && !newMsg.sender) {
+    const detail = conversationDetail.value
+    const peer = detail && (detail.buyer_id === currentUser.value.id ? detail.seller : detail.buyer)
+    if (peer) (newMsg as any).sender = { id: peer.id, nickname: peer.nickname, avatar_url: peer.avatar_url }
+  }
+
+  messages.value.push(newMsg)
+  nextTick(() => scrollToBottom())
+  if (currentUser.value && newMsg.sender_id !== currentUser.value.id) {
+    refreshReadState(expectedConversationId, currentUser.value.id)
+  }
+}
+
+function applyMessageUpdate(expectedConversationId: string, updated: Message) {
+  if (
+    !mounted ||
+    conversationId.value !== expectedConversationId ||
+    updated.conversation_id !== expectedConversationId
+  ) return
+  const idx = messages.value.findIndex(m => m.id === updated.id)
+  if (idx >= 0 && messages.value[idx].is_read !== updated.is_read) {
+    messages.value[idx].is_read = updated.is_read
+  }
+}
+
+async function initializeConversationAfterGate() {
   const options = { id: props.conversationId, prefill: props.prefill }
+  const setupAccountToken = captureActiveAccountRequest()
+  const setupThreadEpoch = threadEpoch
+
+  // The component can remain mounted while auth restoration/account switching
+  // invalidates work already in flight. Every subscription-ready reconciliation
+  // must still belong to this exact mount, thread and account before it can
+  // touch the module-singleton timeline.
+  if (!setupAccountToken) {
+    conversationUnavailable.value = true
+    return
+  }
+  const isCurrentThreadSetup = () => (
+    mounted &&
+    setupThreadEpoch === threadEpoch &&
+    conversationId.value === options.id &&
+    currentUser.value?.id === setupAccountToken.userId &&
+    isAccountRequestCurrent(setupAccountToken)
+  )
 
   if (options?.id) {
     conversationId.value = options.id
-    // A failed history fetch must not abort the rest of setup (markAsRead, the
-    // realtime subscription, header/detail): the subscription still fills in
-    // new messages and the user gets a retry affordance instead of a silently
-    // blank thread. (QA8 audit — was an unguarded await that killed the hook.)
-    try { await fetchMessages(options.id) } catch { uni.showToast({ title: t('chat.fail'), icon: 'none' }) }
+
+    // Resolve the peer before opening any realtime/presence channel. This is
+    // intentionally client-side as well as DB-backed: until the new migration
+    // is deployed, a deep link to a user *we* blocked is still readable under
+    // the historical policies. The local block snapshot therefore closes the
+    // composer immediately without relying on a new server column or response.
+    try {
+      const detail = await fetchConversationDetail(options.id)
+      if (!isCurrentThreadSetup()) return
+      if (!detail || !currentUser.value) {
+        conversationUnavailable.value = true
+        return
+      }
+
+      conversationDetail.value = detail
+      if (detail.item) itemInfo.value = detail.item
+      const other = detail.buyer_id === currentUser.value.id ? detail.seller : detail.buyer
+      otherUserName.value = other?.nickname || t('app.user')
+      otherUserId.value = other?.id || ''
+      const isBuyer = detail.buyer_id === currentUser.value.id
+      convPinned.value = isBuyer ? !!detail.is_pinned_buyer : !!detail.is_pinned_seller
+      convMuted.value = isBuyer ? !!detail.is_muted_buyer : !!detail.is_muted_seller
+
+      if (otherUserId.value && isBlocked(otherUserId.value)) {
+        blockedByCurrentUser.value = true
+        conversationUnavailable.value = true
+        return
+      }
+
+      conversationAccessReady.value = true
+    } catch (error: any) {
+      if (!isCurrentThreadSetup()) return
+      // After the DB migration this is also the safe result when the other
+      // participant blocked us. Keep the reason generic so block direction is
+      // not disclosed; in every case the composer and subscriptions stay off.
+      conversationUnavailable.value = true
+      const terminalAccessFailure = error?.code === 'PGRST116' || error?.code === '42501'
+      if (!terminalAccessFailure) {
+        // Transport/schema failures are retryable. Reset the setup latch so
+        // the existing generic Retry control can run the complete block gate
+        // and detail lookup again instead of permanently locking the deep link.
+        moderationAccessFailed.value = true
+        conversationSetupStarted = false
+        reportBackgroundFailure('chat.fetchConversationDetail', error)
+      }
+      uni.showToast({ title: t('chat.unavailableTitle'), icon: 'none' })
+      return
+    }
+
+    /* Subscribe before taking any snapshots. The message ready callback is an
+       authoritative barrier after H5 SUBSCRIBED or after the mp message cursor
+       is seeded. Offer/meetup ready callbacks are H5-only; their mp tiers are
+       recurring full snapshots installed before the initial full snapshot, so
+       overlap converges on a later tick without pretending there is a cursor
+       handshake. Request/epoch guards make concurrent snapshots latest-wins. */
+    unsubscribe = subscribeToMessages(
+      options.id,
+      (newMsg) => applyIncomingMessage(options.id!, newMsg),
+      (updated) => applyMessageUpdate(options.id!, updated),
+      () => {
+        if (!isCurrentThreadSetup()) return
+        void fetchMessages(options.id).then(() => {
+          if (isCurrentThreadSetup()) nextTick(() => scrollToBottom())
+        }).catch(() => { /* the initial/live paths remain available */ })
+      },
+    )
+
+    const reconcileOffersFromSubscription = () => {
+      if (!isCurrentThreadSetup()) return
+      const before = JSON.stringify(offers.value)
+      void fetchOffers(options.id).then(() => {
+        if (!isCurrentThreadSetup()) return
+        if (JSON.stringify(offers.value) !== before) nextTick(() => scrollToBottom())
+      }).catch(() => {})
+    }
+    offersUnsub = subscribeToOffers(
+      options.id,
+      reconcileOffersFromSubscription,
+      reconcileOffersFromSubscription,
+    )
+
+    const reconcileMeetupsFromSubscription = () => {
+      if (!isCurrentThreadSetup()) return
+      const before = JSON.stringify(meetups.value)
+      void fetchMeetups(options.id).then(() => {
+        if (!isCurrentThreadSetup()) return
+        if (JSON.stringify(meetups.value) !== before) nextTick(() => scrollToBottom())
+      }).catch(() => {})
+    }
+    meetupsUnsub = subscribeToMeetups(
+      options.id,
+      reconcileMeetupsFromSubscription,
+      reconcileMeetupsFromSubscription,
+    )
+
+    // A failed history fetch must not abort the rest of setup; the live feed
+    // remains active and foreground reconciliation can retry later.
+    try {
+      await fetchMessages(options.id)
+    } catch {
+      if (isCurrentThreadSetup()) uni.showToast({ title: t('chat.fail'), icon: 'none' })
+    }
     try { await fetchOffers(options.id) } catch { /* offers are additive — never block the chat */ }
     try { await fetchMeetups(options.id) } catch { /* meetups are additive — never block the chat */ }
+    if (!isCurrentThreadSetup()) return
     scrollToBottom()
 
-    if (currentUser.value) {
-      await markAsRead(options.id, currentUser.value.id)
-      refreshUnreadCount()
-    }
+    if (currentUser.value) refreshReadState(options.id, currentUser.value.id)
 
     if (options.prefill && messages.value.length === 0) {
       try { inputText.value = decodeURIComponent(options.prefill as string) } catch {}
     }
 
-    try {
-      const detail = await fetchConversationDetail(options.id)
-      if (detail) {
-        conversationDetail.value = detail
-        if (detail.item) {
-          itemInfo.value = detail.item
-        }
-        if (currentUser.value) {
-          const other = detail.buyer_id === currentUser.value.id ? detail.seller : detail.buyer
-          otherUserName.value = other?.nickname || t('app.user')
-          otherUserId.value = other?.id || ''
-          const isBuyer = detail.buyer_id === currentUser.value.id
-          convPinned.value = isBuyer ? !!detail.is_pinned_buyer : !!detail.is_pinned_seller
-          convMuted.value = isBuyer ? !!detail.is_muted_buyer : !!detail.is_muted_seller
-        }
-      }
-    } catch {
-      uni.showToast({ title: t('chat.fail'), icon: 'none' })
-    }
+    // Torn down during the awaits above? The early subscription was already
+    // removed by onUnmounted; do not wire the remaining listeners.
+    if (!isCurrentThreadSetup()) return
 
-    // Torn down during the awaits above? Bail before wiring any subscription
-    // or listener (see `mounted` above).
-    if (!mounted) return
-
-    unsubscribe = subscribeToMessages(options.id, (newMsg) => {
-      // Idempotent: a reconnect replay, or our own optimistic push in onSend,
-      // can deliver a row we already hold — never render it twice.
-      if (messages.value.some(m => m.id === newMsg.id)) return
-      // Our own echo: if onSend's insert response was lost, the optimistic
-      // bubble is still here (id=temp-…, maybe _failed). Heal it in place by
-      // sender+content+near-time instead of rendering a second copy — and the
-      // heal clears _failed, so there's no stale retry left to double-send.
-      if (currentUser.value && newMsg.sender_id === currentUser.value.id) {
-        const echoTs = new Date(newMsg.created_at as any).getTime()
-        const tIdx = messages.value.findIndex(m =>
-          typeof m.id === 'string' && m.id.startsWith('temp-') &&
-          (m._pending || m._failed) && m.content === newMsg.content &&
-          Math.abs(new Date(m.created_at as any).getTime() - echoTs) < 120000)
-        if (tIdx >= 0) { messages.value.splice(tIdx, 1, newMsg); return }
-      }
-      // The realtime payload.new carries no sender join, so an incoming peer
-      // message would render with the default avatar. Hydrate from the peer
-      // profile we already resolved (conversationDetail) so it's right on the
-      // first live paint, not only after the foreground-heal refetch.
-      if (currentUser.value && newMsg.sender_id !== currentUser.value.id && !newMsg.sender) {
-        const d = conversationDetail.value
-        const peer = d && (d.buyer_id === currentUser.value.id ? d.seller : d.buyer)
-        if (peer) (newMsg as any).sender = { id: peer.id, nickname: peer.nickname, avatar_url: peer.avatar_url }
-      }
-      messages.value.push(newMsg)
-      nextTick(() => scrollToBottom())
-      if (currentUser.value && newMsg.sender_id !== currentUser.value.id) {
-        markAsRead(options.id, currentUser.value.id)
-        refreshUnreadCount()
-      }
-    }, (updated) => {
-      // Read receipts: the peer's markAsRead flips is_read row-by-row; merge
-      // just that flag by id (idempotent — replays and batch updates are fine).
-      // Never overwrite the whole row: payload.new has no sender join and
-      // would wipe the hydrated avatar.
-      const idx = messages.value.findIndex(m => m.id === updated.id)
-      if (idx >= 0 && messages.value[idx].is_read !== updated.is_read) {
-        messages.value[idx].is_read = updated.is_read
-      }
-    })
-
-    // Live offer cards (H5 realtime; mp polls every 8s). The reveal-scroll
-    // only fires when the refetched set actually changed: an H5 event always
-    // means a change, but the mp interval ticks unconditionally and must not
-    // yank the reader to the bottom every 8 seconds.
-    offersUnsub = subscribeToOffers(options.id, () => {
-      const before = JSON.stringify(offers.value)
-      fetchOffers(options.id!).then(() => {
-        if (JSON.stringify(offers.value) !== before) nextTick(() => scrollToBottom())
-      }).catch(() => {})
-    })
-
-    // Live meetup cards (same contract as offers).
-    meetupsUnsub = subscribeToMeetups(options.id, () => {
-      const before = JSON.stringify(meetups.value)
-      fetchMeetups(options.id!).then(() => {
-        if (JSON.stringify(meetups.value) !== before) nextTick(() => scrollToBottom())
-      }).catch(() => {})
-    })
-
-    // Presence + typing (best-effort): peer online label + "正在输入…".
-    startPresence()
-    typingApi = subscribeTyping(options.id, () => {
+    // Presence + typing share one conversation-scoped private channel. Only
+    // this resolved counterpart UUID is accepted from Presence/Broadcast.
+    typingApi = subscribeConversationPresence(options.id, otherUserId.value, () => {
+      if (!isCurrentThreadSetup()) return
       peerTyping.value = true
       if (typingClear) clearTimeout(typingClear)
-      typingClear = setTimeout(() => { peerTyping.value = false }, 3000)
+      typingClear = setTimeout(() => {
+        if (isCurrentThreadSetup()) peerTyping.value = false
+      }, 3000)
+    }, (online) => {
+      if (isCurrentThreadSetup()) peerOnline.value = online
     })
 
     // #ifdef H5
     onVisible = () => {
-      if (typeof document === 'undefined' || document.visibilityState !== 'visible' || !options.id) return
-      fetchMessages(options.id).then(() => nextTick(() => scrollToBottom())).catch(() => {})
+      if (
+        !isCurrentThreadSetup() ||
+        typeof document === 'undefined' ||
+        document.visibilityState !== 'visible' ||
+        !options.id
+      ) return
+      fetchMessages(options.id).then(() => {
+        if (isCurrentThreadSetup()) nextTick(() => scrollToBottom())
+      }).catch(() => {})
       fetchOffers(options.id).catch(() => {})
       fetchMeetups(options.id).catch(() => {})
-      if (currentUser.value) { markAsRead(options.id, currentUser.value.id); refreshUnreadCount() }
+      if (currentUser.value) refreshReadState(options.id, currentUser.value.id)
     }
     if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisible)
     // #endif
   }
+}
+
+async function openConversationBehindModerationGate() {
+  if (!mounted || conversationSetupStarted) return
+  const gateEpoch = threadEpoch
+
+  // A missing block snapshot is a security prerequisite failure, not an empty
+  // block list. Hide every composer/action while the check is pending and keep
+  // the generic unavailable state until an explicit retry succeeds.
+  moderationAccessFailed.value = false
+  conversationUnavailable.value = false
+  conversationAccessReady.value = false
+  const blockLoadResult = await ensureBlocksLoaded()
+  if (!mounted || gateEpoch !== threadEpoch) return
+
+  if (!blockLoadResult.ok) {
+    moderationAccessFailed.value = true
+    conversationUnavailable.value = true
+    if (blockLoadResult.reason === 'load_failed' && blockLoadResult.error) {
+      reportBackgroundFailure('chat.loadBlockedIds', blockLoadResult.error)
+    }
+    return
+  }
+
+  conversationSetupStarted = true
+  await initializeConversationAfterGate()
+}
+
+async function retryConversationAccess() {
+  // Preserve the deep-link auth contract on retry too: never turn a temporary
+  // anonymous/auth-initializing state into an access error or an open composer.
+  await awaitAuthReady()
+  if (!mounted) return
+  if (!requireAuth()) return
+  await openConversationBehindModerationGate()
+}
+
+onMounted(async () => {
+  // A deep link / hard refresh can mount the thread before App.onLaunch has
+  // finished restoring the Supabase session. `requireAuth()` deliberately
+  // does not redirect while auth is initializing, so wait for the
+  // authoritative session state before attempting the block gate.
+  await awaitAuthReady()
+  if (!mounted) return
+  if (!requireAuth()) return
+  await openConversationBehindModerationGate()
 })
 
 onUnmounted(() => {
   mounted = false
-  if (unsubscribe) unsubscribe()
-  if (offersUnsub) offersUnsub()
-  if (meetupsUnsub) meetupsUnsub()
-  if (typingApi) typingApi.unsubscribe()
-  if (typingClear) clearTimeout(typingClear)
-  // #ifdef H5
-  if (onVisible && typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisible)
-  // #endif
+  reportLoading.cancel()
+  stopAccountTransitionListener()
+  teardownThreadSubscriptions()
+  resetOffers()
+  resetMeetups()
 })
 
 function goBack() {
-  uni.navigateBack()
+  navigateBackOr(() => uni.switchTab({ url: '/pages/messages/index' }))
 }
 
 function goToItem() {
@@ -614,13 +1079,15 @@ function goToItem() {
 
 async function sendQuickReply(text: string) {
   if (!currentUser.value || !conversationId.value) return
+  const actionEpoch = threadEpoch
+  const convId = conversationId.value
+  const senderId = currentUser.value.id
   try {
-    await sendMessage(conversationId.value, currentUser.value.id, text)
-    markAsRead(conversationId.value, currentUser.value.id)
-    refreshUnreadCount()
-    nextTick(() => scrollToBottom())
+    await sendWithLocalEcho(convId, senderId, text)
   } catch {
-    uni.showToast({ title: t('chat.fail'), icon: 'none' })
+    if (isThreadEpochCurrent(actionEpoch)) {
+      uni.showToast({ title: t('chat.fail'), icon: 'none' })
+    }
   }
 }
 
@@ -695,8 +1162,9 @@ function stickerOf(msg: any): StickerName | null {
 }
 
 function replyPreview(msg: any): string {
-  if (msg.message_type === 'image') return `[${t('chat.photo')}]`
-  if (msg.message_type === 'video') return `[${t('chat.video')}]`
+  if (msg.message_type === 'image' || msg.message_type === 'video') {
+    return `[${t('chat.mediaUnavailable')}]`
+  }
   if (stickerOf(msg)) return `[${t('chat.sticker')}]`
   return msg.content || ''
 }
@@ -705,20 +1173,21 @@ function replyPreview(msg: any): string {
    emoji, which insert into the input via onPickEmoji above. */
 async function onPickSticker(name: StickerName) {
   if (!currentUser.value || !conversationId.value || sending.value) return
+  const actionEpoch = threadEpoch
+  const convId = conversationId.value
+  const senderId = currentUser.value.id
   sending.value = true
   try {
-    await sendMessage(conversationId.value, currentUser.value.id, stickerToken(name))
-    markAsRead(conversationId.value, currentUser.value.id)
-    refreshUnreadCount()
-    nextTick(() => scrollToBottom())
+    await sendWithLocalEcho(convId, senderId, stickerToken(name))
   } catch (error: any) {
+    if (!isThreadEpochCurrent(actionEpoch)) return
     uni.showToast({
       title: friendlyErrorMessage(error, lang.value as 'en' | 'zh'),
       icon: 'none',
       duration: 2500,
     })
   } finally {
-    sending.value = false
+    if (actionEpoch === threadEpoch) sending.value = false
   }
 }
 
@@ -730,6 +1199,10 @@ function applySuggestion(emoji: string) {
 
 async function retrySend(msg: any) {
   if (!currentUser.value || !conversationId.value) return
+  if (msg?.message_type !== 'text') return
+  const actionEpoch = threadEpoch
+  const convId = conversationId.value
+  const senderId = currentUser.value.id
   const text = msg?.content
   if (!text) return
   const idx = messages.value.findIndex(m => m.id === msg.id)
@@ -740,17 +1213,16 @@ async function retrySend(msg: any) {
   messages.value[idx]._failed = false
   messages.value[idx]._pending = true
   try {
-    const sent = await sendMessage(conversationId.value, currentUser.value.id, text, msg.message_type || 'text')
-    const i = messages.value.findIndex(m => m.id === msg.id)
-    const echoed = sent ? messages.value.some(m => m.id === sent.id) : false
-    if (i >= 0) {
-      if (sent && !echoed) messages.value.splice(i, 1, sent)
-      else messages.value.splice(i, 1)
-    } else if (sent && !echoed) {
-      messages.value.push(sent)
-    }
+    const sent = await sendMessage(convId, senderId, text, 'text', {
+      messageId: msg.id,
+      isRetry: true,
+    })
+    if (!isThreadEpochCurrent(actionEpoch)) return
+    reconcileSentMessage(sent, msg.id)
+    refreshReadState(convId, senderId)
     nextTick(() => scrollToBottom())
   } catch (err: any) {
+    if (!isThreadEpochCurrent(actionEpoch)) return
     const i = messages.value.findIndex(m => m.id === msg.id)
     if (i >= 0) { messages.value[i]._pending = false; messages.value[i]._failed = true }
     uni.showToast({
@@ -777,13 +1249,16 @@ function onComposerKeydown(e: KeyboardEvent) {
   if (e.key !== 'Enter') return
   if (e.shiftKey || e.ctrlKey || e.metaKey) return
   if (typeof e.preventDefault === 'function') e.preventDefault()
-  onSend()
+  void onSend().catch((error) => {
+    reportBackgroundFailure('chat.onSend', error)
+  })
 }
 
 async function onSend() {
   const text = inputText.value.trim()
   if (!text || !currentUser.value || !conversationId.value) return
   if (sending.value) return
+  const actionEpoch = threadEpoch
 
   let finalText = text
   if (replyToMsg.value) {
@@ -797,7 +1272,6 @@ async function onSend() {
   const wasReplying = replyToMsg.value
   replyToMsg.value = null
   sending.value = true
-  const failsafe = setTimeout(() => { sending.value = false }, 15000)
 
   /*
    * Optimistic render — drop the message into the thread IMMEDIATELY as a
@@ -808,18 +1282,7 @@ async function onSend() {
    * retry) on a transient error, or drop it + hand the text back on a content
    * rejection. The realtime echo dedupes by real id, so no double render.
    */
-  const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-  messages.value.push({
-    id: tempId,
-    conversation_id: convId,
-    sender_id: me,
-    content: finalText,
-    message_type: 'text',
-    is_read: false,
-    created_at: new Date().toISOString(),
-    _pending: true,
-  })
-  nextTick(() => scrollToBottom())
+  const tempId = createOptimisticMessage(convId, me, finalText)
 
   /*
    * SYNCHRONOUS H5 focus — must happen BEFORE `await sendMessage`,
@@ -850,20 +1313,10 @@ async function onSend() {
   // #endif
 
   try {
-    const sent = await sendMessage(convId, me, finalText)
-    // Reconcile the optimistic temp row with the real one. If the realtime
-    // echo already added the real id (it can land mid-await), just drop the
-    // temp; otherwise swap temp -> real in place. Dedup keeps it single.
-    const idx = messages.value.findIndex(m => m.id === tempId)
-    const echoed = sent ? messages.value.some(m => m.id === sent.id) : false
-    if (idx >= 0) {
-      if (sent && !echoed) messages.value.splice(idx, 1, sent)
-      else messages.value.splice(idx, 1)
-    } else if (sent && !echoed) {
-      messages.value.push(sent)
-    }
-    markAsRead(convId, me)
-    refreshUnreadCount()
+    const sent = await sendMessage(convId, me, finalText, 'text', { messageId: tempId })
+    if (!isThreadEpochCurrent(actionEpoch)) return
+    reconcileSentMessage(sent, tempId)
+    refreshReadState(convId, me)
     nextTick(() => {
       scrollToBottom()
       /*
@@ -880,9 +1333,9 @@ async function onSend() {
       // #endif
     })
   } catch (error: any) {
+    if (!isThreadEpochCurrent(actionEpoch)) return
     const reason = String(error?.message || '')
     const contentRejected = reason.startsWith('moderation_block') || reason === 'duplicate_message' || reason === 'message_too_long'
-    const idx = messages.value.findIndex(m => m.id === tempId)
     uni.showToast({
       title: friendlyErrorMessage(error, lang.value as 'en' | 'zh'),
       icon: 'none',
@@ -890,22 +1343,21 @@ async function onSend() {
     })
     if (contentRejected) {
       // Content was rejected — remove the bubble and hand the text back to edit.
-      if (idx >= 0) messages.value.splice(idx, 1)
+      failOptimisticMessage(tempId, error)
       inputText.value = text
       replyToMsg.value = wasReplying
-    } else if (idx >= 0) {
+    } else {
       // Transient/network failure — keep the bubble, flip it to retryable.
-      messages.value[idx]._pending = false
-      messages.value[idx]._failed = true
+      failOptimisticMessage(tempId, error)
     }
   } finally {
-    clearTimeout(failsafe)
-    sending.value = false
+    if (actionEpoch === threadEpoch) sending.value = false
   }
 }
 
 
 function onMoreActions() {
+  const actionEpoch = threadEpoch
   uni.showActionSheet({
     itemList: [
       convMuted.value ? t('chat.unmute') : t('chat.mute'),
@@ -914,6 +1366,7 @@ function onMoreActions() {
       t('detail.report'),
     ],
     success: (res) => {
+      if (!isThreadEpochCurrent(actionEpoch)) return
       if (res.tapIndex === 0) toggleMute()
       else if (res.tapIndex === 1) togglePin()
       else if (res.tapIndex === 2) doBlock()
@@ -924,48 +1377,75 @@ function onMoreActions() {
 
 async function togglePin() {
   if (!conversationDetail.value || !currentUser.value) return
+  const actionEpoch = threadEpoch
+  const detail = conversationDetail.value
+  const userId = currentUser.value.id
   try {
-    await setConversationPinned(conversationDetail.value, currentUser.value.id, !convPinned.value)
+    await setConversationPinned(detail, userId, !convPinned.value)
+    if (!isThreadEpochCurrent(actionEpoch)) return
     convPinned.value = !convPinned.value
     uni.showToast({ title: convPinned.value ? t('msg.pinned') : t('msg.unpin'), icon: 'success' })
   } catch (err: any) {
+    if (!isThreadEpochCurrent(actionEpoch)) return
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
   }
 }
 
 async function toggleMute() {
   if (!conversationDetail.value || !currentUser.value) return
+  const actionEpoch = threadEpoch
+  const detail = conversationDetail.value
+  const userId = currentUser.value.id
   try {
-    await setConversationMuted(conversationDetail.value, currentUser.value.id, !convMuted.value)
+    await setConversationMuted(detail, userId, !convMuted.value)
+    if (!isThreadEpochCurrent(actionEpoch)) return
     convMuted.value = !convMuted.value
     uni.showToast({ title: convMuted.value ? t('msg.muted') : t('chat.unmute'), icon: 'success' })
-    refreshUnreadCount()
+    void refreshUnreadCount().catch((error) => {
+      reportBackgroundFailure('chat.refreshUnreadCount', error)
+    })
   } catch (err: any) {
+    if (!isThreadEpochCurrent(actionEpoch)) return
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
   }
 }
 
 function doBlock() {
   if (!otherUserId.value) return
+  const actionEpoch = threadEpoch
+  const targetUserId = otherUserId.value
   uni.showModal({
     title: t('block.confirm'),
     content: t('block.hint'),
     confirmColor: DIALOG_DANGER,
     success: async (r) => {
-      if (!r.confirm) return
+      if (!r.confirm || !isThreadEpochCurrent(actionEpoch)) return
       try {
-        await blockUser(otherUserId.value)
+        await blockUser(targetUserId)
+        if (!isThreadEpochCurrent(actionEpoch)) return
+        blockedByCurrentUser.value = true
+        conversationUnavailable.value = true
+        conversationAccessReady.value = false
+        if (unsubscribe) { unsubscribe(); unsubscribe = null }
+        if (offersUnsub) { offersUnsub(); offersUnsub = null }
+        if (meetupsUnsub) { meetupsUnsub(); meetupsUnsub = null }
+        if (typingApi) { typingApi.unsubscribe(); typingApi = null }
         uni.showToast({ title: t('block.success'), icon: 'success' })
-        setTimeout(() => uni.navigateBack(), 800)
+        setTimeout(() => {
+          if (mounted && actionEpoch === threadEpoch) goBack()
+        }, 800)
       } catch (err: any) {
+        if (!isThreadEpochCurrent(actionEpoch)) return
         uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('block.failed'), icon: 'none' })
       }
     },
   })
 }
 
-function doReport() {
-  if (!otherUserId.value) return
+function doReport(targetType: 'user' | 'message' = 'user', targetId?: string) {
+  const resolvedTargetId = targetId || (targetType === 'user' ? otherUserId.value : '')
+  if (!resolvedTargetId) return
+  const actionEpoch = threadEpoch
   const reasons = [
     t('report.reasonSpam'),
     t('report.reasonAbuse'),
@@ -975,14 +1455,17 @@ function doReport() {
   uni.showActionSheet({
     itemList: reasons,
     success: async (res) => {
+      if (!isThreadEpochCurrent(actionEpoch)) return
       const reason = reasons[res.tapIndex]
-      uni.showLoading({ title: t('report.submitting') || t('login.wait'), mask: true })
+      const loadingOwner = reportLoading.show(t('report.submitting') || t('login.wait'))
       try {
-        await reportTarget('user', otherUserId.value, reason)
-        uni.hideLoading()
+        await reportTarget(targetType, resolvedTargetId, reason)
+        reportLoading.hide(loadingOwner)
+        if (!isThreadEpochCurrent(actionEpoch)) return
         uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
-        uni.hideLoading()
+        reportLoading.hide(loadingOwner)
+        if (!isThreadEpochCurrent(actionEpoch)) return
         uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('report.failed'), icon: 'none' })
       }
     },
@@ -1031,7 +1514,90 @@ function offerStatusLabel(o: Offer): string {
   return t('chat.offerStatus.' + o.status)
 }
 
+function confirmAcceptedOfferSale(offer: Offer) {
+  if (!itemInfo.value || !currentUser.value || offer.status !== 'accepted') return
+  const accountToken = captureActiveAccountRequest()
+  if (!accountToken || accountToken.userId !== itemInfo.value.user_id) return
+  const actionEpoch = threadEpoch
+  const itemId = itemInfo.value.id
+  const isCurrent = () => (
+    isThreadEpochCurrent(actionEpoch)
+    && isAccountRequestCurrent(accountToken)
+    && itemInfo.value?.id === itemId
+  )
+  uni.showModal({
+    title: t('profile.markSoldTitle'),
+    content: t('profile.confirmDealWith')
+      .replace('{name}', otherUserName.value || t('app.user'))
+      .replace('{price}', '$' + fmtOfferPrice(offer.price)),
+    confirmText: t('profile.markSoldConfirm'),
+    success: async (res) => {
+      if (!res.confirm || !isCurrent()) return
+      try {
+        await markItemSold(itemId, offer.id, { accountToken })
+        if (!isCurrent()) return
+        if (itemInfo.value) itemInfo.value.status = 'sold'
+        await fetchOffers(conversationId.value)
+        if (isCurrent()) uni.showToast({ title: t('profile.markedSold'), icon: 'success' })
+      } catch (error: any) {
+        if (!isCurrent()) return
+        uni.showToast({
+          title: friendlyErrorMessage(error, lang.value as 'en' | 'zh'),
+          icon: 'none',
+          duration: 2500,
+        })
+      }
+    },
+  })
+}
+
 // ---- Offer composer (new offer + counter share one bottom sheet) ----
+let composerSheetReturnFocus: HTMLElement | null = null
+
+function rememberComposerSheetFocus() {
+  if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+    composerSheetReturnFocus = document.activeElement
+  }
+}
+
+function focusComposerSheetClose() {
+  nextTick(() => {
+    if (typeof document === 'undefined') return
+    document.querySelector<HTMLElement>('.offer-sheet .os-close')?.focus()
+  })
+}
+
+function restoreComposerSheetFocus() {
+  const target = composerSheetReturnFocus
+  composerSheetReturnFocus = null
+  nextTick(() => target?.focus())
+}
+
+function onComposerSheetKeydown(event: KeyboardEvent, kind: 'offer' | 'meetup') {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    if (kind === 'offer') closeOfferSheet()
+    else closeMeetupSheet()
+    return
+  }
+  if (event.key !== 'Tab' || typeof document === 'undefined') return
+  const dialog = event.currentTarget as HTMLElement | null
+  if (!dialog) return
+  const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+    'input, textarea, [role="button"]:not([aria-disabled="true"]), [tabindex]:not([tabindex="-1"])',
+  )).filter(element => !element.hasAttribute('disabled'))
+  if (focusable.length === 0) return
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+
 const offerSheet = ref<{ open: boolean; mode: 'new' | 'counter'; targetId: string }>({ open: false, mode: 'new', targetId: '' })
 const offerPriceInput = ref('')
 const offerNoteInput = ref('')
@@ -1045,21 +1611,28 @@ const quickAmounts = computed<number[]>(() => {
 })
 
 function openOfferSheet() {
+  rememberComposerSheetFocus()
   offerPriceInput.value = ''
   offerNoteInput.value = ''
   offerSheet.value = { open: true, mode: 'new', targetId: '' }
+  focusComposerSheetClose()
 }
 function openCounter(o: Offer) {
+  rememberComposerSheetFocus()
   offerPriceInput.value = ''
   offerNoteInput.value = ''
   offerSheet.value = { open: true, mode: 'counter', targetId: o.id }
+  focusComposerSheetClose()
 }
 function closeOfferSheet() {
   offerSheet.value.open = false
+  restoreComposerSheetFocus()
 }
 async function submitOfferSheet() {
   const price = Number(offerPriceInput.value)
   if (!conversationId.value || !price || price <= 0 || offerSubmitting.value) return
+  const actionEpoch = threadEpoch
+  const actionConversationId = conversationId.value
   offerSubmitting.value = true
   try {
     if (offerSheet.value.mode === 'counter' && offerSheet.value.targetId) {
@@ -1067,25 +1640,33 @@ async function submitOfferSheet() {
     } else {
       await makeOffer(conversationId.value, price, offerNoteInput.value)
     }
-    await fetchOffers(conversationId.value)
-    offerSheet.value.open = false
+    if (!isThreadEpochCurrent(actionEpoch)) return
+    await fetchOffers(actionConversationId)
+    if (!isThreadEpochCurrent(actionEpoch)) return
+    closeOfferSheet()
     nextTick(() => scrollToBottom())
   } catch (err: any) {
+    if (!isThreadEpochCurrent(actionEpoch)) return
     captureException(err, { tags: { source: 'chat.offer' } })
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
   } finally {
-    offerSubmitting.value = false
+    if (actionEpoch === threadEpoch) offerSubmitting.value = false
   }
 }
 async function acceptOffer(o: Offer) { await respondOffer(o, 'accept') }
 async function declineOffer(o: Offer) { await respondOffer(o, 'decline') }
 async function respondOffer(o: Offer, action: 'accept' | 'decline') {
   if (!conversationId.value) return
+  const actionEpoch = threadEpoch
+  const actionConversationId = conversationId.value
   try {
     await respondToOffer(o.id, action)
-    await fetchOffers(conversationId.value)
+    if (!isThreadEpochCurrent(actionEpoch)) return
+    await fetchOffers(actionConversationId)
+    if (!isThreadEpochCurrent(actionEpoch)) return
     nextTick(() => scrollToBottom())
   } catch (err: any) {
+    if (!isThreadEpochCurrent(actionEpoch)) return
     captureException(err, { tags: { source: 'chat.offer' } })
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
   }
@@ -1123,6 +1704,9 @@ const hasPendingMeetup = computed(() =>
 const hasConfirmedMeetup = computed(() =>
   meetups.value.some((m) => m.status === 'accepted' && new Date(m.meet_at).getTime() > Date.now()),
 )
+const itemAllowsTransaction = computed(() =>
+  itemInfo.value?.status === 'active' || itemInfo.value?.status === 'reserved',
+)
 const meetupSpotInput = ref('')
 const meetupDateInput = ref('')
 const meetupTimeInput = ref('')
@@ -1144,6 +1728,7 @@ function openMeetupSheet() {
     uni.showToast({ title: t('chat.meetupConfirmedExists'), icon: 'none' })
     return
   }
+  rememberComposerSheetFocus()
   resetMeetupSheet()
   // Prefill from the item's pickup location only when it's a known safe spot,
   // using the localized chip label so the matching chip highlights (a raw
@@ -1151,11 +1736,14 @@ function openMeetupSheet() {
   const spot = matchSpot(itemInfo.value?.location)
   if (spot && spot.safe) meetupSpotInput.value = lang.value === 'zh' ? spot.zh : spot.en
   meetupSheet.value = { open: true, mode: 'new', targetId: '' }
+  focusComposerSheetClose()
 }
 function openReschedule(m: Meetup) {
+  rememberComposerSheetFocus()
   resetMeetupSheet()
   meetupSpotInput.value = m.spot
   meetupSheet.value = { open: true, mode: 'reschedule', targetId: m.id }
+  focusComposerSheetClose()
 }
 // #6a — either party reschedules an already-accepted meetup (new RPC).
 function openRescheduleAccepted(m: Meetup) {
@@ -1166,11 +1754,16 @@ function openRescheduleAccepted(m: Meetup) {
     uni.showToast({ title: t('chat.meetupPendingExists'), icon: 'none' })
     return
   }
+  rememberComposerSheetFocus()
   resetMeetupSheet()
   meetupSpotInput.value = m.spot
   meetupSheet.value = { open: true, mode: 'reschedule-accepted', targetId: m.id }
+  focusComposerSheetClose()
 }
-function closeMeetupSheet() { meetupSheet.value.open = false }
+function closeMeetupSheet() {
+  meetupSheet.value.open = false
+  restoreComposerSheetFocus()
+}
 
 function meetupAtIso(): string | null {
   if (!meetupDateInput.value || !meetupTimeInput.value) return null
@@ -1181,6 +1774,8 @@ function meetupAtIso(): string | null {
 async function submitMeetupSheet() {
   const iso = meetupAtIso()
   if (!conversationId.value || !meetupSpotInput.value || !iso || meetupSubmitting.value) return
+  const actionEpoch = threadEpoch
+  const actionConversationId = conversationId.value
   // The date picker has a today floor but the time picker has none, so today +
   // an already-past time slips through (the server only rejects > 2h stale).
   // Block a past meet time client-side with feedback instead of silently
@@ -1198,25 +1793,33 @@ async function submitMeetupSheet() {
     } else {
       await proposeMeetup(conversationId.value, meetupSpotInput.value, iso, meetupNoteInput.value)
     }
-    await fetchMeetups(conversationId.value)
-    meetupSheet.value.open = false
+    if (!isThreadEpochCurrent(actionEpoch)) return
+    await fetchMeetups(actionConversationId)
+    if (!isThreadEpochCurrent(actionEpoch)) return
+    closeMeetupSheet()
     nextTick(() => scrollToBottom())
   } catch (err: any) {
+    if (!isThreadEpochCurrent(actionEpoch)) return
     captureException(err, { tags: { source: 'chat.meetup' } })
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
   } finally {
-    meetupSubmitting.value = false
+    if (actionEpoch === threadEpoch) meetupSubmitting.value = false
   }
 }
 async function acceptMeetup(m: Meetup) { await respondMeetup(m, 'accept') }
 async function declineMeetup(m: Meetup) { await respondMeetup(m, 'decline') }
 async function respondMeetup(m: Meetup, action: 'accept' | 'decline') {
   if (!conversationId.value) return
+  const actionEpoch = threadEpoch
+  const actionConversationId = conversationId.value
   try {
     await respondToMeetup(m.id, action)
-    await fetchMeetups(conversationId.value)
+    if (!isThreadEpochCurrent(actionEpoch)) return
+    await fetchMeetups(actionConversationId)
+    if (!isThreadEpochCurrent(actionEpoch)) return
     nextTick(() => scrollToBottom())
   } catch (err: any) {
+    if (!isThreadEpochCurrent(actionEpoch)) return
     captureException(err, { tags: { source: 'chat.meetup' } })
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
   }
@@ -1245,26 +1848,29 @@ function formatChatTime(dateStr: string): string {
 const msgLongPress = useLongPress<[any]>((msg) => onMsgLongPress(msg), 1500)
 
 function onMsgLongPress(msg: any) {
+  const actionEpoch = threadEpoch
+  if (!isThreadEpochCurrent(actionEpoch)) return
   const isMine = msg.sender_id === currentUser.value?.id
-  const isText = msg.message_type !== 'image'
+  const isText = msg.message_type === 'text'
+  const isFailedTemp = msg._failed === true
 
   /*
    * Action ordering for non-mine messages: reply → copy (text only) → report.
-   * Report goes LAST so a finger sliding through the sheet doesn't blast
-   * the destructive option first. For mine messages we keep delete-only
-   * (you don't report your own messages and copying your own message
-   * isn't a common workflow — keep the sheet short).
+   * Report goes LAST so a finger sliding through the sheet does not trigger it
+   * accidentally. Committed messages are immutable moderation evidence; only
+   * a definitely failed local optimistic bubble can be discarded.
    */
   const actions: string[] = []
   if (!isMine) actions.push(t('chat.reply'))
   if (isText) actions.push(t('chat.copy'))
   if (!isMine) actions.push(t('detail.report'))
-  if (isMine) actions.push(t('chat.deleteMsg'))
+  if (isMine && isFailedTemp) actions.push(t('chat.discardFailed'))
   if (actions.length === 0) return
 
   uni.showActionSheet({
     itemList: actions,
     success: (res) => {
+      if (!isThreadEpochCurrent(actionEpoch)) return
       const action = actions[res.tapIndex]
       if (action === t('chat.reply')) {
         replyToMsg.value = msg
@@ -1273,130 +1879,23 @@ function onMsgLongPress(msg: any) {
         uni.setClipboardData({ data: msg.content })
         uni.showToast({ title: t('chat.copied'), icon: 'success' })
       } else if (action === t('detail.report')) {
-        /* Re-uses the same reason sheet + reportTarget pipeline as the
-           header's "more → Report" action. In a 1:1 chat, the message
-           sender (when !isMine) is by definition otherUserId, so we
-           don't need to thread msg.sender_id through. */
-        doReport()
-      } else if (action === t('chat.deleteMsg')) {
-        uni.showModal({
-          title: t('chat.deleteMsgTitle'),
-          content: t('chat.deleteMsgHint'),
-          confirmColor: DIALOG_DANGER,
-          success: async (r) => {
-            if (!r.confirm) return
-            try {
-              await deleteMessage(msg.id)
-              uni.showToast({ title: t('chat.deleted'), icon: 'success' })
-            } catch {
-              uni.showToast({ title: t('chat.fail'), icon: 'none' })
-            }
-          },
-        })
-      }
-    },
-  })
-}
-
-function previewImg(url: string) {
-  uni.previewImage({ urls: [url], current: url })
-}
-
-async function onSendImage() {
-  if (!currentUser.value || !conversationId.value) return
-  if (sending.value) return
-  uni.chooseImage({
-    count: 1,
-    sizeType: ['compressed'],
-    sourceType: ['album', 'camera'],
-    success: async (res) => {
-      const tempPath = res.tempFilePaths?.[0]
-      if (!tempPath) return
-      sending.value = true
-      const failsafe = setTimeout(() => { sending.value = false }, 30000)
-      try {
+        // A bubble report must preserve the concrete message id so moderation
+        // can review the reported content. The header action still reports the
+        // account itself.
+        doReport('message', msg.id)
+      } else if (action === t('chat.discardFailed')) {
         /*
-         * uploadOneImage (added in batch #2) replaces the previous
-         * compressImage(...) → uploadImages([compressed]) chain. The
-         * old chain pre-compressed the photo into a data:URL and then
-         * uploadImages re-compressed it inside uploadImagesWithDims —
-         * a wasted pass on H5 and a quality loss for mp. Worse,
-         * uploadImagesWithDims's per-file error handler swallowed
-         * Supabase storage failures and returned an empty urls array,
-         * which surfaced to the user as a generic 'imageUploadFailed'
-         * toast with no actionable diagnostic. uploadOneImage throws
-         * with the actual underlying error message (RLS violation,
-         * 413 payload too large, network error, etc.) so the toast
-         * below shows what really went wrong.
+         * A failed optimistic row may represent a not-yet-committed send or an
+         * unknown transport outcome. Discard only the local bubble; never
+         * mutate durable history here. Re-check the live flags because realtime/retry
+         * may have promoted the same client UUID while the sheet was open.
          */
-        const { url } = await uploadOneImage(tempPath, { entryPoint: 'chat' })
-        await sendMessage(conversationId.value, currentUser.value!.id, url, 'image')
-        nextTick(() => scrollToBottom())
-      } catch (err: any) {
-        /*
-         * Surface the underlying error string directly. friendlyErrorMessage
-         * was generic-ifying 'Storage upload failed: 413 Payload Too
-         * Large' and 'new row violates row-level security policy …'
-         * into a vague 'something went wrong' toast that left users
-         * with no path forward. The Supabase error string is plain
-         * English and tells the user whether to retry, pick a smaller
-         * file, or report the bug. Capped at 80 chars so a long
-         * stack-trace-style error doesn't overflow the toast.
-         *
-         * HEIC errors get a dedicated translated toast — the raw
-         * heic-to error string ('Can\'t convert canvas to blob.') is
-         * meaningless to end users.
-         */
-        const heicMsg = err?.heic === true ? t('heic.unsupported') : null
-        const raw = err?.message ? `${err.message}` : ''
-        const fallback = t('chat.imageUploadFailed')
-        uni.showToast({
-          title: heicMsg || (raw ? raw.slice(0, 80) : fallback),
-          icon: 'none',
-          duration: 3500,
-        })
-      } finally {
-        clearTimeout(failsafe)
-        sending.value = false
-      }
-    },
-  })
-}
-
-async function onSendVideo() {
-  if (!currentUser.value || !conversationId.value) return
-  if (sending.value) return
-  uni.chooseVideo({
-    sourceType: ['album', 'camera'],
-    maxDuration: 60,
-    compressed: true,
-    success: async (res: any) => {
-      const tempPath = res.tempFilePath
-      if (!tempPath) return
-      /* Early reject when the picker reports size (mp does; H5 varies) —
-         saves the user from uploading 19MB before hearing "too large".
-         uploadOneVideo re-checks authoritatively either way. */
-      if (res.size && res.size > 20 * 1024 * 1024) {
-        uni.showToast({ title: t('chat.videoTooLarge'), icon: 'none', duration: 3000 })
-        return
-      }
-      sending.value = true
-      const failsafe = setTimeout(() => { sending.value = false }, 60000)
-      try {
-        const { url } = await uploadOneVideo(tempPath)
-        await sendMessage(conversationId.value, currentUser.value!.id, url, 'video')
-        nextTick(() => scrollToBottom())
-      } catch (err: any) {
-        const raw = err?.message ? `${err.message}` : ''
-        const friendly = raw === 'video_too_large' ? t('chat.videoTooLarge') : null
-        uni.showToast({
-          title: friendly || (raw ? raw.slice(0, 80) : t('chat.videoUploadFailed')),
-          icon: 'none',
-          duration: 3500,
-        })
-      } finally {
-        clearTimeout(failsafe)
-        sending.value = false
+        const index = messages.value.findIndex((candidate: any) => candidate.id === msg.id)
+        const live = index >= 0 ? messages.value[index] : null
+        if (live?._failed === true) {
+          messages.value.splice(index, 1)
+          uni.showToast({ title: t('chat.discarded'), icon: 'none' })
+        }
       }
     },
   })
@@ -1458,7 +1957,7 @@ function scrollToBottom() {
   font-size: 16px; font-weight: 600; color: var(--text-primary); display: block;
 }
 .ch-item-title {
-  font-size: 12px; color: var(--text-faint); margin-top: 1px;
+  font-size: 12px; color: var(--text-subtle); margin-top: 1px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
 }
 /* Presence/typing subtitle — sage when online, terracotta while typing. */
@@ -1494,12 +1993,11 @@ function scrollToBottom() {
 .offer-btn {
   flex: 1;
   display: flex; align-items: center; justify-content: center;
-  background: var(--warning-soft); border: 0.5px solid var(--warning);
+  background: var(--warning-soft); border: 0.5px solid var(--warning-text);
   border-radius: var(--radius-md); padding: 8px; cursor: pointer;
   text {
     font-size: 13px; font-weight: 600;
-    color: var(--warning);
-    filter: brightness(0.75);
+    color: var(--warning-text);
     letter-spacing: 0.02em;
   }
   &:active { background: rgba(212, 146, 60, 0.2); }
@@ -1508,7 +2006,7 @@ function scrollToBottom() {
    the amber "make offer". Available to both parties on any active item. */
 .meetup-btn {
   flex: 1;
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
   background: var(--campus-blue-soft); border: 0.5px solid var(--campus-blue);
   border-radius: var(--radius-md); padding: 8px; cursor: pointer;
   text { font-size: 13px; font-weight: 600; color: var(--campus-blue); letter-spacing: 0.02em; }
@@ -1537,7 +2035,7 @@ function scrollToBottom() {
 .ic-bottom { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
 .ic-price { font-size: 14px; font-weight: 700; color: var(--text-primary); }
 .ic-sold { font-size: 11px; color: var(--accent-danger); font-weight: 600; }
-.ic-reserved { font-size: 11px; color: var(--accent-warn); font-weight: 600; }
+.ic-reserved { font-size: 11px; color: var(--warning-text); font-weight: 600; }
 .ic-arrow {
   width: 7px; height: 7px;
   border-top: 1.5px solid var(--text-faint); border-right: 1.5px solid var(--text-faint);
@@ -1585,16 +2083,21 @@ function scrollToBottom() {
 }
 .offer-entry.mine .offer-card { background: var(--brand-ghost); border-color: var(--brand-soft); }
 .oc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-.oc-eyebrow { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-quiet); }
+.oc-eyebrow {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--ink-quiet);
+  text { font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; }
+}
 .oc-status { font-size: 11px; font-weight: 600; color: var(--ink-quiet); }
 .oc-st-accepted .oc-status { color: var(--success); }
-.oc-st-declined .oc-status, .oc-st-expired .oc-status { color: var(--ink-faint); }
-.oc-st-countered .oc-status { color: var(--warning); }
+.oc-st-declined .oc-status, .oc-st-expired .oc-status, .oc-st-cancelled .oc-status { color: var(--text-subtle); }
+.oc-st-countered .oc-status { color: var(--warning-text); }
 .oc-price { display: block; font-family: var(--font-serif); font-size: 26px; font-weight: 600; color: var(--brand); letter-spacing: -0.02em; line-height: 1.1; }
-.oc-st-declined .oc-price, .oc-st-expired .oc-price, .oc-st-countered .oc-price { color: var(--ink-quiet); text-decoration: line-through; }
+.oc-st-declined .oc-price, .oc-st-expired .oc-price, .oc-st-countered .oc-price, .oc-st-cancelled .oc-price { color: var(--ink-quiet); text-decoration: line-through; }
 .oc-note { display: block; margin-top: 4px; font-size: 12px; color: var(--ink-soft); line-height: 1.5; }
 .oc-meta { display: block; margin-top: 8px; font-size: 12px; color: var(--ink-quiet); }
-.oc-expiry { display: block; margin-top: 6px; font-size: 10px; color: var(--ink-faint); }
+.oc-expiry { display: block; margin-top: 6px; font-size: 10px; color: var(--text-subtle); }
 .oc-actions { display: flex; gap: 6px; margin-top: 10px; }
 .oc-btn {
   flex: 1; height: 32px; border-radius: var(--radius-pill);
@@ -1607,10 +2110,25 @@ function scrollToBottom() {
 .oc-counter { background: var(--surface-alt); text { color: var(--ink); } }
 
 .deal-line {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
   text-align: center; margin: 2px 0 12px;
-  text { font-size: 12px; font-weight: 600; color: var(--success); background: var(--success-soft); padding: 5px 14px; border-radius: var(--radius-pill); }
-  .deal-reschedule { display: inline-block; margin-left: 8px; color: var(--campus-blue); background: var(--campus-blue-soft); cursor: pointer; }
-  .deal-reschedule:active { opacity: 0.7; }
+  .deal-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    color: var(--success); background: var(--success-soft);
+    padding: 5px 12px; border-radius: var(--radius-pill);
+    text { font-size: 12px; font-weight: 600; color: inherit; }
+  }
+  .deal-reschedule {
+    display: inline-block; color: var(--campus-blue); background: var(--campus-blue-soft);
+    padding: 5px 10px; border-radius: var(--radius-pill); cursor: pointer;
+    font-size: 12px; font-weight: 600;
+  }
+  .deal-confirm {
+    display: inline-block; color: #fff; background: var(--brand);
+    padding: 5px 10px; border-radius: var(--radius-pill); cursor: pointer;
+    font-size: 12px; font-weight: 600;
+  }
+  .deal-reschedule:active, .deal-confirm:active { opacity: 0.7; }
 }
 
 /* ===== Offer composer sheet ===== */
@@ -1644,7 +2162,13 @@ function scrollToBottom() {
   &.open { transform: none; }
 }
 .os-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 0 auto 14px; }
+.os-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .os-title { display: block; font-family: var(--font-serif); font-size: 18px; font-weight: 600; color: var(--ink); }
+.os-close {
+  width: 36px; height: 36px; flex: 0 0 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-subtle); cursor: pointer;
+}
 .os-ref { display: block; margin-top: 4px; font-size: 12px; color: var(--ink-quiet); }
 .os-input-row { display: flex; align-items: center; gap: 6px; margin-top: 16px; padding: 12px 14px; background: var(--bg-subtle); border-radius: var(--radius-md); }
 .os-dollar { font-family: var(--font-serif); font-size: 22px; font-weight: 600; color: var(--brand); }
@@ -1683,7 +2207,7 @@ function scrollToBottom() {
    stacking than any sibling rail so nothing can shadow the tap. */
 .os-note { position: relative; z-index: 3; margin-top: 12px; min-height: 52px; padding: 16px 14px; background: var(--bg-subtle); border-radius: var(--radius-md); font-size: 16px; color: var(--ink); width: 100%; box-sizing: border-box; }
 .mt-spot-input { margin-top: 8px; }
-.mt-safe-hint { display: block; margin-top: 10px; font-size: 11px; color: var(--ink-faint); line-height: 1.4; }
+.mt-safe-hint { display: block; margin-top: 10px; font-size: 11px; color: var(--text-subtle); line-height: 1.4; }
 .os-submit {
   margin-top: 16px; height: 48px; border-radius: var(--radius-pill);
   background: var(--brand); display: flex; align-items: center; justify-content: center;
@@ -1692,11 +2216,11 @@ function scrollToBottom() {
   &:active { opacity: 0.85; }
   &.disabled { background: var(--ink-faint); box-shadow: none; pointer-events: none; }
 }
-.os-expiry-hint { display: block; text-align: center; margin-top: 10px; font-size: 11px; color: var(--ink-faint); }
+.os-expiry-hint { display: block; text-align: center; margin-top: 10px; font-size: 11px; color: var(--text-subtle); }
 
 .time-divider {
   text-align: center; padding: 12px 0 6px;
-  text { font-size: 11px; color: var(--text-faint); background: var(--bg-subtle); padding: 2px 10px; border-radius: 8px; }
+  text { font-size: 11px; color: var(--text-subtle); background: var(--bg-subtle); padding: 2px 10px; border-radius: 8px; }
 }
 .msg-row {
   display: flex; align-items: flex-end; margin-bottom: 9px; gap: 8px;
@@ -1734,39 +2258,10 @@ function scrollToBottom() {
   word-break: normal; overflow-wrap: anywhere;
   box-sizing: border-box;
 }
-.msg-image {
-  /* widthFix handles the common case (natural-ratio photo in a 200px
-     bubble). The max-height: 60vh cap is the belt: a 1:5 full-phone
-     screenshot used to blow past an entire viewport inside the thread
-     and push every earlier message off-screen. Clamped to 60% of the
-     viewport's height it fills the bubble prominently without hijacking
-     the scroll. object-fit: contain is the braces — once max-height
-     clamps the box, contain keeps the screenshot letterboxed instead
-     of stretched. */
-  max-width: 200px;
-  max-height: 60vh;
-  height: auto;
-  display: block;
-  object-fit: contain;
-  border-radius: 12px;
-  background: var(--bg-inset);
-}
-.msg-video {
-  width: 220px;
-  max-width: 60vw;
-  height: 160px;
-  border-radius: 12px;
-  background: var(--bg-inset);
-}
+.msg-media-unavailable { color: var(--text-muted); font-style: italic; }
 /* Sticker messages float bare — no bubble chrome. */
 .msg-sticker {
   padding: 2px;
-}
-.img-btn {
-  width: 38px; height: 38px; display: flex;
-  align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
-  background: var(--bg-subtle); border-radius: 50%;
-  &:active { background: var(--bg-inset); }
 }
 .emoji-btn {
   width: 38px; height: 38px; display: flex;
@@ -1774,23 +2269,11 @@ function scrollToBottom() {
   background: var(--bg-subtle); border-radius: 50%;
   &:active { background: var(--bg-inset); }
   &.active { background: var(--accent-primary); }
-  &.active .emoji-btn-glyph { opacity: 1; filter: none; }
-}
-.emoji-btn-glyph {
-  font-size: 20px; line-height: 1;
-  /* Inactive opacity raised from 0.45 → 0.78 so the button is
-     legible at rest. The grayscale filter softened from 0.6 → 0.2
-     so the smiley still reads as colourful, just dimmed. The
-     .active rule above resets to opacity 1 + no filter when the
-     panel is open. */
-  opacity: 0.78;
-  filter: grayscale(0.2);
-  transition: opacity 0.15s, filter 0.15s;
 }
 
 .empty-chat {
   display: flex; flex-direction: column; align-items: center;
-  padding-top: 80px; gap: 10px; color: var(--text-faint); font-size: 14px;
+  padding-top: 80px; gap: 10px; color: var(--text-subtle); font-size: 14px;
 }
 /* CSS Wave Icon */
 .ec-icon { margin-bottom: 4px; }
@@ -1887,4 +2370,20 @@ function scrollToBottom() {
    send action; pairing it with a 发送/Send text makes the affordance clear.
    nowrap so the label never wraps on ultra-narrow viewports. */
 .send-label { font-size: 14px; font-weight: 600; color: #fff; line-height: 1; white-space: nowrap; }
+
+.chat-unavailable {
+  flex: 1; min-height: 0; padding: 48px 28px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; background: var(--bg-page);
+}
+.cu-title { font-size: 17px; font-weight: 650; color: var(--text-primary); }
+.cu-sub { max-width: 300px; margin-top: 8px; font-size: 13px; line-height: 1.55; color: var(--text-muted); }
+.cu-actions { display: flex; align-items: center; gap: 10px; margin-top: 20px; }
+.cu-retry, .cu-back {
+  padding: 10px 18px; border-radius: 999px;
+  background: var(--accent-primary); color: #fff; cursor: pointer;
+}
+.cu-back { background: var(--bg-subtle); }
+.cu-retry text { color: #fff; font-size: 14px; font-weight: 600; }
+.cu-back text { color: var(--text-secondary); font-size: 14px; font-weight: 600; }
 </style>

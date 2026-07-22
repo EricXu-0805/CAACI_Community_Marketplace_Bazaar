@@ -3,7 +3,7 @@ import type { Lang } from './i18n/types'
 import { DEFAULT_LANG, SUPPORTED_LANGS, coerceLang } from './i18n/types'
 import { detectSystemLang } from './i18n/detect'
 import { messages } from './i18n/messages'
-import { autoKey, autoLocalizeCache, scheduleAutoTranslate } from './i18n/translate'
+import { getAutoLocalized, scheduleAutoTranslate } from './i18n/translate'
 import { detectsAsForeign, interpolate } from './i18n/format'
 
 export type { Lang } from './i18n/types'
@@ -113,11 +113,11 @@ export function useI18n() {
      * — async publish translation still in flight, or a legacy pre-015
      * row), check the session cache. If a background fetch has
      * completed, render its result; otherwise schedule the fetch and
-     * show the original in the meantime. Because `autoLocalizeCache`
-     * is a ref, the template re-renders the instant the fetch lands.
+     * show the original in the meantime. The shared cache is reactive, so the
+     * template re-renders the instant the fetch lands.
      */
-    const cached = autoLocalizeCache.value[autoKey(text, currentLang.value)]
-    if (cached) return cached
+    const cached = getAutoLocalized(text, currentLang.value)
+    if (cached !== undefined) return cached
     if (currentLang.value !== DEFAULT_LANG || detectsAsForeign(text, currentLang.value)) {
       scheduleAutoTranslate(text, currentLang.value)
     }
@@ -156,8 +156,8 @@ export function useI18n() {
         if (hit && hit.trim()) return hit
       }
       if (!original) return ''
-      const cached = autoLocalizeCache.value[autoKey(original, target)]
-      if (cached) return cached
+      const cached = getAutoLocalized(original, target)
+      if (cached !== undefined) return cached
       scheduleAutoTranslate(original, target)
       return original
     })

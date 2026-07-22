@@ -13,26 +13,35 @@
          rail in the desktop two-pane; full width on phones. -->
     <view class="msg-left">
     <!-- Filter chips (v5 kit: 全部 / 未读 / 商品) — client-side filter. -->
-    <view v-if="isLoggedIn && conversations.length > 0" class="msg-filters">
+    <view v-if="isLoggedIn && conversations.length > 0" class="msg-filters" role="tablist" :aria-label="t('nav.messages')">
       <view
         v-for="f in msgFilters"
         :key="f.key"
         :class="['mf-chip', { active: msgFilter === f.key }]"
         role="tab"
-        :aria-selected="msgFilter === f.key"
+        :tabindex="msgFilter === f.key ? 0 : -1"
+        :aria-selected="msgFilter === f.key ? 'true' : 'false'"
         @click="msgFilter = f.key"
+        @keydown="onMessageFilterKeydown($event, f.key)"
       >
         <text>{{ f.label }}</text>
       </view>
     </view>
 
-    <view v-if="!isLoggedIn" class="login-prompt">
+    <view v-if="authState === 'anonymous'" class="login-prompt">
       <UEmptyArt name="messages" :size="104" />
       <text class="prompt-text">{{ t('msg.signIn') }}</text>
-      <view class="login-btn" @click="goLogin">{{ t('profile.signIn') }}</view>
+      <view
+        class="login-btn"
+        role="button"
+        tabindex="0"
+        :aria-label="t('profile.signIn')"
+        @click="goLogin"
+        @keydown="onPageActionKeydown($event, 'login')"
+      >{{ t('profile.signIn') }}</view>
     </view>
 
-    <view v-else-if="loading && conversations.length === 0" class="conv-list">
+    <view v-else-if="authState === 'initializing' || (loading && conversations.length === 0)" class="conv-list">
       <view v-for="n in 7" :key="'cs' + n" class="conv-skel">
         <view class="cs-avatar u-sk"></view>
         <view class="cs-info">
@@ -42,10 +51,17 @@
       </view>
     </view>
 
-    <view v-else-if="conversationsError && !loading" class="empty">
-      <view class="empty-error-icon"></view>
+    <view v-else-if="conversationsError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
+      <UIcon name="shield" size="lg" color="text-faint" />
       <text class="empty-title">{{ t('error.loadFailed') }}</text>
-      <view class="empty-btn" role="button" :aria-label="t('home.retry')" @click="retryConversations">{{ t('home.retry') }}</view>
+      <view
+        class="empty-btn"
+        role="button"
+        tabindex="0"
+        :aria-label="t('home.retry')"
+        @click="retryConversations"
+        @keydown="onPageActionKeydown($event, 'retry')"
+      >{{ t('home.retry') }}</view>
     </view>
 
     <view v-else-if="conversations.length === 0 && !loading" class="empty">
@@ -71,17 +87,26 @@
           class="conv-item"
           :class="{ active: conv.id === selectedConvId }"
           :style="{ transform: `translateX(${swipeOffsets[conv.id] || 0}px)` }"
+          role="button"
+          tabindex="0"
+          aria-keyshortcuts="Shift+F10"
+          :aria-label="getOtherUser(conv)?.nickname || t('app.user')"
+          :aria-current="conv.id === selectedConvId ? 'true' : undefined"
+          @focus="closeAllSwipes()"
           @click="onItemTap(conv)"
           @longpress="onMoreMenu(conv)"
+          @contextmenu.prevent="onMoreMenu(conv)"
+          @keydown="onConversationKeydown($event, conv)"
         >
           <view class="conv-avatar-wrap">
-            <image
-              :src="getOtherUser(conv)?.avatar_url || defaultAvatar"
+            <UAvatar
+              :src="getOtherUser(conv)?.avatar_url"
+              :owner="getOtherUser(conv)?.id"
+              :fallback="defaultAvatar"
               :alt="getOtherUser(conv)?.nickname || 'avatar'"
               class="conv-avatar"
-              mode="aspectFill"
+              lazy
             />
-            <view v-if="isOnline(getOtherUser(conv)?.id)" class="online-dot" :aria-label="t('chat.online')"></view>
           </view>
           <view class="conv-info">
             <view class="conv-top">
@@ -107,17 +132,41 @@
 
         <!-- Swipe-left reveals all actions on the right, in a single
              consistent direction. Pin sits first so it stays reachable
-             even at a partial swipe; delete is farthest from the thumb
-             so it's harder to trigger by accident. -->
+             even at a partial swipe; archive is farthest from the thumb
+             so it is harder to trigger by accident. -->
         <view class="swipe-actions right">
-          <view class="swipe-act act-pin" @click="togglePin(conv)">
+          <view
+            class="swipe-act act-pin"
+            role="button"
+            tabindex="0"
+            :aria-label="isPinned(conv) ? t('msg.unpin') : t('msg.pin')"
+            @focus="openSwipeForKeyboard(conv.id)"
+            @click="togglePin(conv)"
+            @keydown="onSwipeActionKeydown($event, conv, 'pin')"
+          >
             <text>{{ isPinned(conv) ? t('msg.unpin') : t('msg.pin') }}</text>
           </view>
-          <view class="swipe-act act-read" @click="toggleRead(conv)">
+          <view
+            class="swipe-act act-read"
+            role="button"
+            tabindex="0"
+            :aria-label="unreadConvIds.has(conv.id) ? t('msg.markRead') : t('msg.markUnread')"
+            @focus="openSwipeForKeyboard(conv.id)"
+            @click="toggleRead(conv)"
+            @keydown="onSwipeActionKeydown($event, conv, 'read')"
+          >
             <text>{{ unreadConvIds.has(conv.id) ? t('msg.markRead') : t('msg.markUnread') }}</text>
           </view>
-          <view class="swipe-act act-delete" @click="onDelete(conv)">
-            <text>{{ t('profile.delete') }}</text>
+          <view
+            class="swipe-act act-archive"
+            role="button"
+            tabindex="0"
+            :aria-label="t('msg.archiveConv')"
+            @focus="openSwipeForKeyboard(conv.id)"
+            @click="onArchive(conv)"
+            @keydown="onSwipeActionKeydown($event, conv, 'archive')"
+          >
+            <text>{{ t('msg.archive') }}</text>
           </view>
         </view>
       </view>
@@ -133,12 +182,16 @@
          embedded. Hidden on phones, where tapping navigates to /chat. -->
     <view class="msg-thread-pane">
       <ChatThread
-        v-if="selectedConvId"
+        v-if="authState === 'authenticated' && selectedConvId"
         :key="selectedConvId"
         :conversation-id="selectedConvId"
         embedded
       />
-      <view v-else class="thread-empty">
+      <view v-else-if="authState === 'anonymous'" class="thread-empty">
+        <UEmptyArt name="messages" :size="120" />
+        <text class="te-text">{{ t('msg.signIn') }}</text>
+      </view>
+      <view v-else-if="authState === 'authenticated'" class="thread-empty">
         <UEmptyArt name="messages" :size="120" />
         <text class="te-text">{{ t('msg.selectHint') }}</text>
       </view>
@@ -153,32 +206,38 @@ const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, nextTick, onMounted, watch } from 'vue'
 import { onShow, onPullDownRefresh, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useMessages } from '../../composables/useMessages'
 import { useUnread } from '../../composables/useUnread'
-import { usePresence } from '../../composables/usePresence'
 import { useTheme } from '../../composables/useTheme'
+import {
+  captureActiveAccountRequest,
+  isAccountRequestCurrent,
+  type AccountRequestToken,
+} from '../../composables/accountScope'
 import { formatTime, thumbUrl, friendlyErrorMessage } from '../../utils'
-import { DIALOG_DANGER } from '../../utils/dialogColors'
+import { DIALOG_INK } from '../../utils/dialogColors'
 import type { Conversation, Profile } from '../../types'
 import AppSidebar from '../../components/AppSidebar.vue'
 import ChatThread from '../../components/ChatThread.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
+import UAvatar from '../../components/UAvatar.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
+import UIcon from '../../components/UIcon.vue'
 import { parseStickerToken } from '../../components/stickers/registry'
 
 const { t, lang, localize } = useI18n()
 
-const { currentUser, isLoggedIn } = useAuth()
+const { currentUser, isLoggedIn, authState, awaitAuthReady } = useAuth()
 const {
   conversations,
   loading,
   conversationsError,
   fetchConversations,
-  deleteConversation,
+  archiveConversation,
   setConversationPinned,
   setConversationMuted,
   markAsRead,
@@ -186,7 +245,6 @@ const {
   clearMessages,
 } = useMessages()
 const { unreadConvIds, refreshUnreadCount } = useUnread()
-const { startPresence, isOnline } = usePresence()
 const { isDark } = useTheme()
 
 /*
@@ -218,6 +276,27 @@ const visibleConversations = computed(() => {
   return conversations.value
 })
 
+function onMessageFilterKeydown(event: KeyboardEvent, current: MsgFilterKey) {
+  const keys = msgFilters.value.map(filter => filter.key)
+  const index = keys.indexOf(current)
+  if (index < 0) return
+  let nextIndex = index
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % keys.length
+  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index - 1 + keys.length) % keys.length
+  else if (event.key === 'Home') nextIndex = 0
+  else if (event.key === 'End') nextIndex = keys.length - 1
+  else if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+    event.preventDefault()
+    msgFilter.value = current
+    return
+  } else return
+
+  event.preventDefault()
+  msgFilter.value = keys[nextIndex]
+  const tabList = (event.currentTarget as HTMLElement | null)?.parentElement
+  nextTick(() => tabList?.querySelectorAll<HTMLElement>('[role="tab"]')[nextIndex]?.focus())
+}
+
 // Desktop two-pane (≥768px): tapping a conversation opens it in the right
 // pane (ChatThread embedded) instead of pushing the chat route. Phones keep
 // navigating. isWide flips on resize so dragging a desktop window across the
@@ -227,12 +306,19 @@ const isWide = ref(false)
 function detectWide() {
   try { isWide.value = uni.getSystemInfoSync().windowWidth >= 768 } catch {}
 }
+const handleWindowResize = (res: { size: { windowWidth: number } }) => {
+  isWide.value = res.size.windowWidth >= 768
+}
+let windowResizeRegistered = false
+let messagesPageAlive = true
+let messagesPageEpoch = 0
 onMounted(() => {
   detectWide()
   try {
     const onResize = (uni as any).onWindowResize
     if (typeof onResize === 'function') {
-      onResize((res: { size: { windowWidth: number } }) => { isWide.value = res.size.windowWidth >= 768 })
+      onResize(handleWindowResize)
+      windowResizeRegistered = true
     }
   } catch {}
 })
@@ -249,25 +335,71 @@ const SWIPE_OPEN = 210
 const swipeOffsets = reactive<Record<string, number>>({})
 const touchState = reactive({ startX: 0, startY: 0, id: '' as string, locked: false, dir: '' as 'x' | 'y' | '' })
 
-onShow(() => {
+function openSwipeForKeyboard(id: string) {
+  closeAllSwipes(id)
+  swipeOffsets[id] = -SWIPE_OPEN
+}
+
+function keyboardActivation(event: KeyboardEvent): boolean {
+  if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return false
+  event.preventDefault()
+  event.stopPropagation()
+  return true
+}
+
+function onPageActionKeydown(event: KeyboardEvent, action: 'login' | 'retry') {
+  if (!keyboardActivation(event)) return
+  if (action === 'login') goLogin()
+  else void retryConversations()
+}
+
+function onConversationKeydown(event: KeyboardEvent, conv: Conversation) {
+  if (keyboardActivation(event)) {
+    onItemTap(conv)
+    return
+  }
+  if (event.key !== 'ContextMenu' && !(event.key === 'F10' && event.shiftKey)) return
+  event.preventDefault()
+  event.stopPropagation()
+  onMoreMenu(conv)
+}
+
+function onSwipeActionKeydown(
+  event: KeyboardEvent,
+  conv: Conversation,
+  action: 'pin' | 'read' | 'archive',
+) {
+  if (!keyboardActivation(event)) return
+  if (action === 'pin') void togglePin(conv)
+  else if (action === 'read') void toggleRead(conv)
+  else onArchive(conv)
+}
+
+onShow(async () => {
+  const showEpoch = messagesPageEpoch
   detectWide()
+  // onShow may run before App.onLaunch finishes hydrating the persisted
+  // session. Wait instead of rendering the anonymous prompt and permanently
+  // skipping the inbox fetch for an already signed-in user.
+  await awaitAuthReady()
+  if (!messagesPageAlive || showEpoch !== messagesPageEpoch) return
   if (currentUser.value) {
     fetchConversations(currentUser.value.id)
     refreshUnreadCount()
-    startPresence()
   }
 })
 
-// Cold boot directly on this tab (browser refresh / deep link / PWA restore)
-// fires onShow before the Supabase session hydrates: currentUser is still
-// null, the fetch is skipped, and nothing retried — the list sat on "暂无消息"
-// forever while the unread badge (which has its own auth listener) was right.
-// Re-run the onShow work once auth lands.
-watch(currentUser, (u, prev) => {
-  if (u && !prev) {
-    fetchConversations(u.id)
+// Re-run once auth lands, and synchronously tear down the desktop thread when
+// the identity changes. useMessages clears its singleton at the same account
+// transition; clearing the component-local selection here ensures A's
+// ChatThread (detail, offers and subscriptions) is unmounted before B renders.
+watch(() => currentUser.value?.id ?? null, (userId, previousUserId) => {
+  if (userId === previousUserId) return
+  selectedConvId.value = ''
+  closeAllSwipes()
+  if (userId) {
+    fetchConversations(userId)
     refreshUnreadCount()
-    startPresence()
   }
 })
 
@@ -293,6 +425,15 @@ onPullDownRefresh(async () => {
 // list doesn't outlive the page. (Tab pages rarely unload, so this is a
 // safety net rather than a hot path.)
 onUnload(() => {
+  messagesPageAlive = false
+  messagesPageEpoch += 1
+  selectedConvId.value = ''
+  closeAllSwipes()
+  if (windowResizeRegistered) {
+    const offResize = (uni as any).offWindowResize
+    if (typeof offResize === 'function') offResize(handleWindowResize)
+    windowResizeRegistered = false
+  }
   clearMessages()
 })
 
@@ -387,56 +528,91 @@ function onTouchEnd(id: string) {
   touchState.id = ''
 }
 
-async function togglePin(conv: Conversation) {
-  if (!currentUser.value) return
+function conversationActionToken(conv: Conversation): AccountRequestToken | null {
+  if (!messagesPageAlive) return null
+  const token = captureActiveAccountRequest()
+  if (!token || !isAccountRequestCurrent(token)) return null
+  if (conv.buyer_id !== token.userId && conv.seller_id !== token.userId) return null
+  return token
+}
+
+async function togglePin(
+  conv: Conversation,
+  accountToken = conversationActionToken(conv),
+) {
+  if (!accountToken || !isAccountRequestCurrent(accountToken)) return
   closeSwipe(conv.id)
   try {
-    await setConversationPinned(conv, currentUser.value.id, !isPinned(conv))
-    await fetchConversations(currentUser.value.id)
+    const pinned = conv.buyer_id === accountToken.userId
+      ? !!conv.is_pinned_buyer
+      : !!conv.is_pinned_seller
+    await setConversationPinned(conv, accountToken.userId, !pinned)
+    if (!isAccountRequestCurrent(accountToken)) return
+    await fetchConversations(accountToken.userId)
   } catch (err: any) {
+    if (!isAccountRequestCurrent(accountToken)) return
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
   }
 }
 
-async function toggleMute(conv: Conversation) {
-  if (!currentUser.value) return
+async function toggleMute(
+  conv: Conversation,
+  accountToken = conversationActionToken(conv),
+) {
+  if (!accountToken || !isAccountRequestCurrent(accountToken)) return
   try {
-    await setConversationMuted(conv, currentUser.value.id, !isMuted(conv))
+    const muted = conv.buyer_id === accountToken.userId
+      ? !!conv.is_muted_buyer
+      : !!conv.is_muted_seller
+    await setConversationMuted(conv, accountToken.userId, !muted)
+    if (!isAccountRequestCurrent(accountToken)) return
     await refreshUnreadCount()
   } catch (err: any) {
+    if (!isAccountRequestCurrent(accountToken)) return
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
   }
 }
 
-async function toggleRead(conv: Conversation) {
-  if (!currentUser.value) return
+async function toggleRead(
+  conv: Conversation,
+  accountToken = conversationActionToken(conv),
+) {
+  if (!accountToken || !isAccountRequestCurrent(accountToken)) return
   closeSwipe(conv.id)
   try {
     if (unreadConvIds.value.has(conv.id)) {
-      await markAsRead(conv.id, currentUser.value.id)
+      await markAsRead(conv.id, accountToken.userId)
     } else {
-      await markConversationUnread(conv.id, currentUser.value.id)
+      await markConversationUnread(conv.id, accountToken.userId)
     }
+    if (!isAccountRequestCurrent(accountToken)) return
     await refreshUnreadCount()
   } catch (err: any) {
+    if (!isAccountRequestCurrent(accountToken)) return
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
   }
 }
 
-function onDelete(conv: Conversation) {
+function onArchive(
+  conv: Conversation,
+  accountToken = conversationActionToken(conv),
+) {
+  if (!accountToken || !isAccountRequestCurrent(accountToken)) return
   closeSwipe(conv.id)
   uni.showModal({
-    title: t('msg.deleteTitle'),
-    content: t('msg.deleteHint'),
-    confirmColor: DIALOG_DANGER,
+    title: t('msg.archiveTitle'),
+    content: t('msg.archiveHint'),
+    confirmColor: DIALOG_INK,
     success: async (r) => {
-      if (!r.confirm) return
+      if (!r.confirm || !isAccountRequestCurrent(accountToken)) return
       try {
-        await deleteConversation(conv.id)
-        uni.showToast({ title: t('msg.deleted'), icon: 'success' })
+        await archiveConversation(conv.id)
+        if (!isAccountRequestCurrent(accountToken)) return
+        uni.showToast({ title: t('msg.archived'), icon: 'success' })
       } catch (err: any) {
+        if (!isAccountRequestCurrent(accountToken)) return
         uni.showToast({
-          title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.deleteFailed'),
+          title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.archiveFailed'),
           icon: 'none',
           duration: 2500,
         })
@@ -446,19 +622,22 @@ function onDelete(conv: Conversation) {
 }
 
 function onMoreMenu(conv: Conversation) {
+  const accountToken = conversationActionToken(conv)
+  if (!accountToken) return
   const items = [
     isPinned(conv) ? t('msg.unpin') : t('msg.pin'),
     isMuted(conv) ? t('msg.unmute') : t('msg.mute'),
     unreadConvIds.value.has(conv.id) ? t('msg.markRead') : t('msg.markUnread'),
-    t('msg.deleteConv'),
+    t('msg.archiveConv'),
   ]
   uni.showActionSheet({
     itemList: items,
     success: (res) => {
-      if (res.tapIndex === 0) togglePin(conv)
-      else if (res.tapIndex === 1) toggleMute(conv)
-      else if (res.tapIndex === 2) toggleRead(conv)
-      else if (res.tapIndex === 3) onDelete(conv)
+      if (!isAccountRequestCurrent(accountToken)) return
+      if (res.tapIndex === 0) void togglePin(conv, accountToken)
+      else if (res.tapIndex === 1) void toggleMute(conv, accountToken)
+      else if (res.tapIndex === 2) void toggleRead(conv, accountToken)
+      else if (res.tapIndex === 3) onArchive(conv, accountToken)
     },
   })
 }
@@ -517,18 +696,9 @@ function goLogin() {
   padding-top: 120px; gap: 10px;
 }
 
-.prompt-text { font-size: 14px; color: var(--text-faint); }
+.prompt-text { font-size: 14px; color: var(--text-subtle); }
 .empty-title { font-size: 16px; color: var(--text-primary); font-weight: 600; }
-.empty-sub { font-size: 13px; color: var(--text-faint); }
-.empty-error-icon {
-  width: 40px; height: 40px; border: 2.5px solid var(--border-strong);
-  border-radius: 50%; position: relative; margin-bottom: 6px;
-  &::before {
-    content: '!'; position: absolute; top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 20px; font-weight: 700; color: var(--border-strong);
-  }
-}
+.empty-sub { font-size: 13px; color: var(--text-subtle); }
 .empty-btn {
   margin-top: 18px; padding: 11px 32px;
   background: var(--accent-primary); color: #fff; border-radius: 22px;
@@ -588,15 +758,7 @@ function goLogin() {
    * showing as a flat patch in dark). */
   border: 0.5px solid var(--border);
 }
-/* Presence dot (v5 Phase 7) — sage-green, sits over the avatar's bottom-right
-   with a paper-colored ring so it reads as a status pip, not part of the photo. */
 .conv-avatar-wrap { position: relative; flex-shrink: 0; }
-.online-dot {
-  position: absolute; right: 0; bottom: 2px;
-  width: 12px; height: 12px; border-radius: 50%;
-  background: var(--success);
-  border: 2px solid var(--bg-elev-1);
-}
 .conv-info { flex: 1; min-width: 0; }
 .conv-top { display: flex; justify-content: space-between; align-items: center; }
 .conv-name-wrap { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -609,11 +771,11 @@ function goLogin() {
   width: 10px; height: 10px; position: relative; flex-shrink: 0;
   &::before {
     content: ''; position: absolute; top: 0; left: 3px;
-    width: 4px; height: 6px; background: var(--accent-warn); border-radius: 1px;
+    width: 4px; height: 6px; background: var(--warning-text); border-radius: 1px;
   }
   &::after {
     content: ''; position: absolute; bottom: 0; left: 0;
-    width: 10px; height: 2px; background: var(--accent-warn); border-radius: 1px;
+    width: 10px; height: 2px; background: var(--warning-text); border-radius: 1px;
   }
 }
 .mute-badge {
@@ -638,9 +800,9 @@ function goLogin() {
   width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint);
   flex-shrink: 0; margin-left: 4px;
 }
-.conv-time { font-size: 12px; color: var(--text-faint); flex-shrink: 0; margin-left: 6px; }
+.conv-time { font-size: 12px; color: var(--text-subtle); flex-shrink: 0; margin-left: 6px; }
 .conv-preview {
-  font-size: 13px; color: var(--text-faint); margin-top: 4px;
+  font-size: 13px; color: var(--text-subtle); margin-top: 4px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
   &.unread { color: var(--text-primary); font-weight: 600; }
 }
@@ -654,7 +816,7 @@ function goLogin() {
   font-size: 8px; font-weight: 700; padding: 1px 4px;
   border-radius: 3px; color: #fff;
   &.sold { background: var(--accent-danger); }
-  &.reserved { background: var(--accent-warn); }
+  &.reserved { background: var(--warning-surface); }
 }
 
 /*
@@ -697,12 +859,12 @@ function goLogin() {
   text { font-size: 13px; color: #fff; font-weight: 600; text-align: center; }
 }
 .act-read { background: var(--brand); }
-.act-delete { background: var(--accent-danger); }
-.act-pin { background: var(--accent-warn); }
+.act-archive { background: var(--accent-ink); }
+.act-pin { background: var(--warning-surface); }
 
 .loading-tip {
   display: flex; align-items: center; justify-content: center;
-  padding: 32px; gap: 8px; color: var(--text-faint); font-size: 13px;
+  padding: 32px; gap: 8px; color: var(--text-subtle); font-size: 13px;
 }
 .loading-dot {
   width: 5px; height: 5px; border-radius: 50%;

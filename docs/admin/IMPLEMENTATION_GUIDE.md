@@ -4,19 +4,19 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Admin Dashboard (Separate App)            │
-│                  (Next.js / Vue / React)                     │
+│                 Admin Dashboard (uni-app / Vue page)         │
+│                  app/src/pages/admin/index.vue               │
 └────────────────────────┬────────────────────────────────────┘
-                         │ ADMIN_API_KEY header
+                         │ Bearer iam_admin_<per-admin token>
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              Vercel API Routes (/api/admin/*)                │
-│         (Uses SUPABASE_SERVICE_ROLE_KEY)                     │
+│                Unified Vercel route (/api/admin)             │
+│          (Uses SUPABASE_SECRET_KEY)                          │
 └────────────────────────┬────────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                  Supabase (service_role)                     │
+│       Supabase (server-only privileged API-key access)      │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │ RPC Functions:                                       │   │
 │  │ - admin_list_suspensions()                           │   │
@@ -34,6 +34,21 @@
 │  └──────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+The dashboard and regular token lifecycle CLIs cross the same authenticated
+`/api/admin` boundary with `Authorization: Bearer iam_admin_...`. The deployed
+route owns its server-side Supabase credential; `admin-token-mint.mjs` and
+`admin-token-revoke.mjs` never accept that credential and never write tables
+directly. Initial owner bootstrap is a separate, externally controlled
+break-glass gate, not a hidden regular-script path.
+
+The lifecycle database contract is
+`supabase/migrations/20260719010000_admin_token_lifecycle_rpc.sql` followed by
+the forward-only recovery/concurrency reconciliation in
+`supabase/migrations/20260719020000_admin_owner_recovery_concurrency.sql`,
+layered after the actor, atomic-mutation, capability, and banner-saga migrations. The
+older split-endpoint/SQL snippets below remain design history, not an operator
+deployment recipe.
 
 ## Step 1: Create Admin RPC Functions
 
@@ -235,7 +250,21 @@ $$;
 REVOKE ALL ON FUNCTION public.admin_get_profile_suspensions(uuid) FROM PUBLIC;
 ```
 
-## Step 2: Create API Endpoints
+## Step 2: API authentication model
+
+> **Current implementation:** use the unified `api/admin/index.js` route and
+> `app/src/pages/admin/index.vue`. The split endpoint snippets below are retained
+> only as historical design context; do not copy them into a deployment. The
+> live route hashes the presented `iam_admin_...` token and validates it through
+> `admin_token_authorization`, which returns an exact role/capability projection
+> only for a live, profile-backed administrator. There is no shared
+> environment-key fallback. The older `admin_token_validate` RPC remains only
+> for rolling database compatibility and must not be reconnected to the API.
+> Candidate UI and lifecycle tooling send `Authorization: Bearer`; the
+> `x-admin-key` header is retained only for temporary backward compatibility
+> and must not be copied into new clients.
+
+### Historical split-endpoint sketch (retired)
 
 **File**: `api/admin/suspensions.js`
 
@@ -244,19 +273,20 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-function checkAuth(request) {
+async function checkAuth(request) {
   const auth = request.headers.get('authorization')?.replace('Bearer ', '')
-  if (auth !== process.env.ADMIN_API_KEY) {
+  // Current code hashes this token and calls admin_token_authorization.
+  if (!(await validatePerAdminToken(auth))) {
     throw new Error('Unauthorized')
   }
 }
 
 export default async function handler(request) {
   try {
-    checkAuth(request)
+    await checkAuth(request)
 
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
@@ -323,19 +353,20 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-function checkAuth(request) {
+async function checkAuth(request) {
   const auth = request.headers.get('authorization')?.replace('Bearer ', '')
-  if (auth !== process.env.ADMIN_API_KEY) {
+  // Current code hashes this token and calls admin_token_authorization.
+  if (!(await validatePerAdminToken(auth))) {
     throw new Error('Unauthorized')
   }
 }
 
 export default async function handler(request) {
   try {
-    checkAuth(request)
+    await checkAuth(request)
 
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
@@ -390,10 +421,72 @@ export default async function handler(request) {
 Add to `.env.local` (Vercel):
 
 ```
-ADMIN_API_KEY=your-secret-admin-key-here
 SUPABASE_URL=https://lfhvgprfphyfvhidegum.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+SUPABASE_SECRET_KEY=sb_secret_your-named-key-here
 ```
+
+`SUPABASE_SERVICE_ROLE_KEY` is accepted only as a temporary legacy fallback.
+
+Admin plaintext tokens are not Vercel application variables. For a regular
+lifecycle operation, the trusted operator shell uses only:
+
+```bash
+ADMIN_API_ORIGIN=https://staging.example.edu
+ADMIN_TOKEN="<existing-owner-or-security-admin-token-from-vault>"
+```
+
+`ADMIN_API_ORIGIN` must identify the exact approved target. `ADMIN_TOKEN` is
+retrieved temporarily from the approved vault and must not be stored in `.env`,
+CI, shell startup files, command arguments, or browser storage. Issuance
+requires an existing **owner**; revocation requires `security_admin` or owner.
+The CLIs deliberately have no `SUPABASE_SECRET_KEY` /
+`SUPABASE_SERVICE_ROLE_KEY` fallback.
+
+Issuance accepts authoritative `admin_id`, role, case ID, approval reference,
+and idempotency. Expiry defaults to 90 days: operator/security-admin accept
+1–365 days, while owner accepts 2–365 whole days and the database independently
+requires more than 24 hours of remaining recovery life. The server derives the immutable
+name/email snapshot from `public.profiles`; caller-supplied name/email is
+rejected. Apply never prints plaintext: it creates a mode-`0600` recovery/output
+JSON manifest at an absolute, exclusively created path. The manifest contains
+the credential plus immutable request/idempotency fields and is itself a secret.
+After an outcome-unknown or 409 response, use the exact original owner
+`ADMIN_TOKEN` with
+`--resume-file /absolute/private/path/token-recovery.json --apply`; do not
+repeat/change issuance flags or generate another key. The manifest binds an
+irreversible issuer-token fingerprint and rejects a replacement issuer without
+deleting the only plaintext. After confirmed success,
+vault the credential and securely remove the local manifest.
+
+Revocation inventories active/expired/revoked separately and calls audited,
+atomic lifecycle actions through `/api/admin`. Email is a cached snapshot and
+is case-insensitive dry-run discovery only; matches spanning multiple admin IDs
+are warned for separate review. Apply must select an exact token ID or authoritative
+admin ID and include case/approval plus a case-recorded idempotency key. Admin-ID
+apply revokes active and expired unrevoked rows. Inventory is current
+state, not audit history; lifecycle evidence is the `token_issued` /
+`token_revoked` audit entry plus the approved external case record.
+
+Rehearse against controlled staging with disposable tokens. Production issue
+or revoke needs production-scoped approval, verified origin/caller/target, and
+an independent reviewer when privileged access or owner continuity is affected.
+If no owner token exists, stop and use the separately governed external
+bootstrap/break-glass process. Never reintroduce a service-key/direct-table
+operator bypass.
+
+Store each issued token in an approved vault and paste it into the dashboard
+gate for one in-memory page session. The API ignores the retired shared-key
+variable. The `iam_admin_` prefix is not automatically covered by GitHub:
+configure a custom `iam_admin_[A-Za-z0-9_-]{43}` secret pattern, verify scanning
+and push protection in repository settings, and test it with a synthetic value.
+
+The dashboard's durable idempotency journal contains only an opaque intent hash,
+UUID key, and timestamps. It acknowledges a 2xx only after the UI or an
+authoritative GET has applied the result. A crash, refresh failure, or uncertain
+transport preserves the receipt and blocks unrelated writes. Only a verified
+owner can perform the read-only recovery GET; no recovery path re-sends a POST.
+Owner recovery health requires an attached active profile, a non-null
+`last_used_at`, and at least 24 hours remaining (or no expiry).
 
 ## Step 4: Admin Dashboard Component Example
 
@@ -447,12 +540,13 @@ import { ref, onMounted } from 'vue'
 const activeTab = ref('suspensions')
 const suspensions = ref([])
 const reports = ref([])
-const adminKey = 'your-admin-api-key'
+// Supplied by the operator for this page session only; never persist it.
+const adminToken = ref('')
 
 async function fetchSuspensions() {
   const res = await fetch(
     `/api/admin/suspensions?action=list&limit=50&offset=0`,
-    { headers: { Authorization: `Bearer ${adminKey}` } }
+    { headers: { Authorization: `Bearer ${adminToken.value}` } }
   )
   const { data } = await res.json()
   suspensions.value = data
@@ -461,7 +555,7 @@ async function fetchSuspensions() {
 async function fetchReports() {
   const res = await fetch(
     `/api/admin/reports?action=list&limit=50&offset=0`,
-    { headers: { Authorization: `Bearer ${adminKey}` } }
+    { headers: { Authorization: `Bearer ${adminToken.value}` } }
   )
   const { data } = await res.json()
   reports.value = data
@@ -471,7 +565,7 @@ async function liftSuspension(suspensionId: string) {
   const res = await fetch(`/api/admin/suspensions`, {
     method: 'POST',
     headers: { 
-      Authorization: `Bearer ${adminKey}`,
+      Authorization: `Bearer ${adminToken.value}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
@@ -489,7 +583,7 @@ async function updateReportStatus(reportId: string, status: string) {
   const res = await fetch(`/api/admin/reports`, {
     method: 'POST',
     headers: { 
-      Authorization: `Bearer ${adminKey}`,
+      Authorization: `Bearer ${adminToken.value}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
@@ -552,9 +646,14 @@ onMounted(() => {
 ## Security Checklist
 
 - ✅ All admin functions use `SECURITY DEFINER` with `REVOKE ALL FROM PUBLIC`
-- ✅ API endpoints check `ADMIN_API_KEY` header
+- ✅ `/api/admin` authorizes a hashed per-admin bearer through `admin_token_authorization` with exact role/capabilities and a live profile; no shared-key fallback
 - ✅ Service role key never exposed to client
-- ✅ Admin pages gated by API key, not client-side flag
-- ✅ All mutations logged via `issued_by`, `lifted_by` fields
+- ✅ Admin pages keep the per-admin token in page memory only, never browser storage
+- ✅ Candidate admin/token mutations commit business state, actor attribution,
+  case/approval metadata, idempotency result, and required `admin_audit_log`
+  evidence atomically
+- ✅ Token inventory separates active/expired/revoked and is not represented as
+  audit history
+- ✅ Regular lifecycle CLIs use `/api/admin`; no Supabase key or direct-table
+  issue/revoke path
 - ✅ RLS policies prevent direct table access (except via RPC)
-
