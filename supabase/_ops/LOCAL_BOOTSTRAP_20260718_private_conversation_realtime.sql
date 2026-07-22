@@ -53,7 +53,11 @@ AS $function$
 $function$;
 
 ALTER TABLE realtime.messages OWNER TO supabase_realtime_admin;
-GRANT USAGE ON SCHEMA realtime TO anon, authenticated, service_role;
+-- An existing Supabase PG17 image owns `realtime` with `supabase_admin`.
+-- The managed table owner still needs schema traversal after SET ROLE in
+-- order to issue the hosted-parity grants and enable RLS below.
+GRANT USAGE ON SCHEMA realtime
+  TO anon, authenticated, service_role, supabase_realtime_admin;
 -- Mirror the hosted managed-owner baseline observed in production. The later
 -- forward reconciliation accepts these owner-issued, non-grantable S/I/U ACLs
 -- and owns only the two RLS policies.

@@ -22,13 +22,6 @@ DECLARE
     'get_my_profile()profile(suspension_level)';
   profile_pg17_alias CONSTANT text :=
     'get_my_profile()profile(id,phone,email,wechat_openid,nickname,avatar_url,bio,location,created_at,updated_at,is_illini_verified,uid,avg_rating,rating_count,status_text,status_emoji,trust_score,shadow_banned,suspension_level,suspended_until,last_fp_hash,last_fp_seen_at,warning_count,tos_version,consented_at,onboarded_at,campus_area,wechat_unionid,response_rate,response_sample,email_digest_opt_out,unsubscribe_token,verified_illini_email)';
-  -- A canonical fresh replay adds consent/campus columns before the later
-  -- trust/suspension columns, while an older hosted project can expose the
-  -- same composite row type in the order above. PostgreSQL 17 prints the full
-  -- composite alias in policy expressions, so normalize both valid physical
-  -- layouts before comparing the semantic predicate.
-  profile_pg17_replay_alias CONSTANT text :=
-    'get_my_profile()profile(id,phone,email,wechat_openid,nickname,avatar_url,bio,location,created_at,updated_at,is_illini_verified,uid,avg_rating,rating_count,status_text,status_emoji,tos_version,consented_at,onboarded_at,campus_area,trust_score,shadow_banned,suspension_level,suspended_until,last_fp_hash,last_fp_seen_at,warning_count,wechat_unionid,response_rate,response_sample,email_digest_opt_out,unsubscribe_token,verified_illini_email)';
   profile_canonical_alias CONSTANT text := 'get_my_profile()profile';
 BEGIN
   IF EXISTS (
@@ -204,18 +197,14 @@ BEGIN
       )) AS using_expression,
       pg_catalog.replace(
         pg_catalog.replace(
-          pg_catalog.replace(
-            pg_catalog.lower(pg_catalog.regexp_replace(
-              pg_catalog.pg_get_expr(policy.polwithcheck, policy.polrelid),
-              '[[:space:]]+', '', 'g'
-            )),
-            profile_short_alias,
-            profile_canonical_alias
-          ),
-          profile_pg17_alias,
+          pg_catalog.lower(pg_catalog.regexp_replace(
+            pg_catalog.pg_get_expr(policy.polwithcheck, policy.polrelid),
+            '[[:space:]]+', '', 'g'
+          )),
+          profile_short_alias,
           profile_canonical_alias
         ),
-        profile_pg17_replay_alias,
+        profile_pg17_alias,
         profile_canonical_alias
       ) AS check_expression
     FROM pg_catalog.pg_policy AS policy
@@ -421,8 +410,6 @@ DECLARE
     'get_my_profile()profile(suspension_level)';
   profile_pg17_alias CONSTANT text :=
     'get_my_profile()profile(id,phone,email,wechat_openid,nickname,avatar_url,bio,location,created_at,updated_at,is_illini_verified,uid,avg_rating,rating_count,status_text,status_emoji,trust_score,shadow_banned,suspension_level,suspended_until,last_fp_hash,last_fp_seen_at,warning_count,tos_version,consented_at,onboarded_at,campus_area,wechat_unionid,response_rate,response_sample,email_digest_opt_out,unsubscribe_token,verified_illini_email)';
-  profile_pg17_replay_alias CONSTANT text :=
-    'get_my_profile()profile(id,phone,email,wechat_openid,nickname,avatar_url,bio,location,created_at,updated_at,is_illini_verified,uid,avg_rating,rating_count,status_text,status_emoji,tos_version,consented_at,onboarded_at,campus_area,trust_score,shadow_banned,suspension_level,suspended_until,last_fp_hash,last_fp_seen_at,warning_count,wechat_unionid,response_rate,response_sample,email_digest_opt_out,unsubscribe_token,verified_illini_email)';
   profile_canonical_alias CONSTANT text := 'get_my_profile()profile';
 BEGIN
   -- Exact policy shape. IS DISTINCT FROM makes every unexpected NULL fail.
@@ -469,18 +456,14 @@ BEGIN
       )) AS using_expression,
       pg_catalog.replace(
         pg_catalog.replace(
-          pg_catalog.replace(
-            pg_catalog.lower(pg_catalog.regexp_replace(
-              pg_catalog.pg_get_expr(policy.polwithcheck, policy.polrelid),
-              '[[:space:]]+', '', 'g'
-            )),
-            profile_short_alias,
-            profile_canonical_alias
-          ),
-          profile_pg17_alias,
+          pg_catalog.lower(pg_catalog.regexp_replace(
+            pg_catalog.pg_get_expr(policy.polwithcheck, policy.polrelid),
+            '[[:space:]]+', '', 'g'
+          )),
+          profile_short_alias,
           profile_canonical_alias
         ),
-        profile_pg17_replay_alias,
+        profile_pg17_alias,
         profile_canonical_alias
       ) AS check_expression
     FROM pg_catalog.pg_policy AS policy

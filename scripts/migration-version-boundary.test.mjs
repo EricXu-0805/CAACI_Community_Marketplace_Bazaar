@@ -10,11 +10,25 @@ const MIGRATION_MANIFEST = new URL(
 )
 const FROZEN_THROUGH_VERSION = '20260719174928'
 const FROZEN_LEGACY_FILENAME_DIGEST =
-  '5fce4fe8af5334f8a39a8aacc9cd7a5198ea97f4e946d826da66250aebd456bc'
+  '6a0f6cafca3534c99c5298b0e972b2f032240220b731916133c700096d0ea515'
 const FROZEN_TIMESTAMP_FILENAME_DIGEST =
   '8a72fed57c6814f1bba6b0219e3379e369843afe79fe8f3fd7985945bc48bec2'
 const FROZEN_MIGRATION_ENTRY_DIGEST =
-  '9954521f47729bf1b7c445bec9dedd87b49e564a64a71442fc43d03c2e058aa5'
+  'df743ae34921941ad7d9ec61854c50eebf34c3956ac628637f1dab4c75a90d58'
+// These two historical-byte repairs are exceptional and independently pinned:
+// 014 removes an impossible migration-version collision for clean branches;
+// 19151729 accepts the equivalent PG17 composite-row deparser order discovered
+// by the official clean replay. Forward migrations converge hosted databases.
+const REVIEWED_FROZEN_REPAIRS = new Map([
+  [
+    '014_condition_defective.sql',
+    '687e51a5cf4785e515a6cc5b099b47623092123e97b6a7790490e6b82165d0aa',
+  ],
+  [
+    '20260719151729_reconcile_plaza_base_table_acl.sql',
+    '38b6d8f5591723bb5bb39d0c19827e0cc7c87d3b6ebc6cc09726734e75a3a583',
+  ],
+])
 // These five already-frozen filenames used tranche numbers 24-28 in the hour
 // slot before the repository adopted real UTC timestamps. Their exact names
 // and bytes remain immutable; every later migration must pass the UTC parser.
@@ -25,10 +39,46 @@ const FROZEN_NON_UTC_VERSION_ALLOWLIST = new Set([
   '20260718270000',
   '20260718280000',
 ])
-const LEGACY_DUPLICATE_ALLOWLIST = new Map([
-  ['014', ['014_condition_defective.sql', '014_image_dimensions.sql']],
-  ['015', ['015_content_i18n.sql', '015_plaza_item_tag.sql']],
+const FORENSIC_ARCHIVES = new Map([
+  [
+    '014_image_dimensions.sql.frozen',
+    'e9ca084686661d2842981e66298a6cb3dab9c4bc2e0a7947a4fc896526ff3002',
+  ],
+  [
+    '015_plaza_item_tag.sql.frozen',
+    'fca3f3941ee49f3041fb0a50a1a564199326b41caffbb8681d9bacea0c4df114',
+  ],
 ])
+const FORENSIC_DIR = new URL(
+  '../supabase/_ops/forensics/legacy-version-collisions/',
+  import.meta.url,
+)
+const REVIEWED_HISTORY_ARCHIVES = new Map([
+  [
+    '014_condition_defective.sql.pre-collision-repair.frozen',
+    '3786a03b60787aa1b3a8642f6656d4b6971a174a7afa3339c5f009a631595a29',
+  ],
+  [
+    '20260719151729_reconcile_plaza_base_table_acl.sql.pre-pg17-replay-repair.frozen',
+    '2232d8b5c9739974db2a667e175880f59dde89d301c4a7a58362d83b1dd96620',
+  ],
+])
+const REVIEWED_HISTORY_DIR = new URL(
+  '../supabase/_ops/forensics/reviewed-history-repairs/',
+  import.meta.url,
+)
+const CANONICAL_014 = new URL(
+  '../supabase/migrations/014_condition_defective.sql',
+  import.meta.url,
+)
+const CANONICAL_015 = new URL(
+  '../supabase/migrations/015_content_i18n.sql',
+  import.meta.url,
+)
+const LEGACY_RECONCILIATION = new URL(
+  '../supabase/migrations/20260722033904_reconcile_legacy_migration_versions.sql',
+  import.meta.url,
+)
 const LEGACY_NAME = /^(\d{3})_[a-z0-9]+(?:_[a-z0-9]+)*\.sql$/
 const TIMESTAMP_NAME = /^(\d{14})_[a-z0-9]+(?:_[a-z0-9]+)*\.sql$/
 
@@ -85,7 +135,7 @@ async function parseManifest() {
   return entries
 }
 
-test('migration versions are unique except for the two documented legacy collisions', async () => {
+test('every migration version is unique', async () => {
   const files = await migrationFiles()
 
   const byVersion = new Map()
@@ -101,11 +151,8 @@ test('migration versions are unique except for the two documented legacy collisi
     .filter(([, names]) => names.length > 1)
     .map(([version, names]) => [version, names.sort()])
 
-  assert.deepEqual(
-    collisions,
-    [...LEGACY_DUPLICATE_ALLOWLIST],
-    'a new duplicate migration version was introduced; use a unique 14-digit UTC timestamp',
-  )
+  assert.deepEqual(collisions, [],
+    'a duplicate migration version was introduced; use a unique 14-digit UTC timestamp')
 })
 
 test('legacy names are frozen and every forward migration uses a real 14-digit UTC version', async () => {
@@ -180,6 +227,11 @@ test('migration SHA-256 manifest exactly guards every current SQL byte sequence'
     `migration bytes at or before ${FROZEN_THROUGH_VERSION} are frozen; restore them and add a later forward migration`,
   )
 
+  for (const [file, expectedHash] of REVIEWED_FROZEN_REPAIRS) {
+    const entry = entries.find(candidate => candidate.file === file)
+    assert.equal(entry?.hash, expectedHash, `${file}: reviewed repair hash drifted`)
+  }
+
   for (const entry of entries) {
     const bytes = await readFile(new URL(entry.file, MIGRATIONS_DIR))
     assert.equal(
@@ -190,17 +242,54 @@ test('migration SHA-256 manifest exactly guards every current SQL byte sequence'
   }
 })
 
-test('legacy duplicate versions stay explicitly documented without rewriting history', async () => {
-  const operationsReadme = await readFile(
-    new URL('../supabase/_ops/README.md', import.meta.url),
-    'utf8',
-  )
-  for (const [version, names] of LEGACY_DUPLICATE_ALLOWLIST) {
-    assert.match(operationsReadme, new RegExp(`DB-01[^]*${version}`, 'i'))
-    for (const name of names) {
-      assert.match(operationsReadme, new RegExp(name.replace('.', '\\.')))
-    }
+test('repaired legacy collisions preserve forensic bytes and require guarded forward convergence', async () => {
+  const [operationsReadme, canonical014, canonical015, reconciliation] =
+    await Promise.all([
+      readFile(new URL('../supabase/_ops/README.md', import.meta.url), 'utf8'),
+      readFile(CANONICAL_014, 'utf8'),
+      readFile(CANONICAL_015, 'utf8'),
+      readFile(LEGACY_RECONCILIATION, 'utf8'),
+    ])
+
+  for (const [archive, expectedHash] of FORENSIC_ARCHIVES) {
+    const bytes = await readFile(new URL(archive, FORENSIC_DIR))
+    assert.equal(sha256(bytes), expectedHash, `${archive}: forensic bytes drifted`)
+    assert.match(operationsReadme, new RegExp(archive.replace('.', '\\.')))
   }
-  assert.match(operationsReadme, /不要直接重命名已经上线的文件/)
+
+  assert.match(canonical014, /ADD COLUMN IF NOT EXISTS image_dimensions jsonb/)
+  assert.match(canonical015, /ADD COLUMN IF NOT EXISTS title_i18n jsonb/)
+  assert.match(reconciliation, /^BEGIN;$/m)
+  assert.match(reconciliation, /^SET LOCAL lock_timeout = '5s';$/m)
+  assert.equal(reconciliation.trimEnd().endsWith('COMMIT;'), true)
+  assert.match(reconciliation, /ALTER TYPE public\.item_condition ADD VALUE IF NOT EXISTS 'defective'/)
+  assert.match(reconciliation, /ADD COLUMN IF NOT EXISTS image_dimensions jsonb/)
+  assert.match(reconciliation, /ADD COLUMN IF NOT EXISTS title_i18n jsonb/)
+  assert.match(reconciliation, /post_items_oid oid := pg_catalog\.to_regclass\('public\.post_items'\)/)
+  assert.match(reconciliation, /IF post_items_oid IS NULL THEN/)
+  assert.match(reconciliation, /INSERT INTO public\.post_items \(post_id, item_id, display_order\)/)
+  assert.match(reconciliation, /inserted_count IS DISTINCT FROM missing_before_count/)
+  assert.match(reconciliation, /legacy attachment equivalence proof failed/)
+  assert.match(reconciliation, /DROP COLUMN IF EXISTS attached_item_id/)
   assert.match(operationsReadme, /唯一的 14 位时间戳迁移/)
+  assert.match(operationsReadme, /不要把取证副本移回 `migrations\/`/)
+})
+
+test('reviewed historical repairs retain the prior bytes and document ledger byte divergence', async () => {
+  const [operationsReadme, runbook] = await Promise.all([
+    readFile(new URL('../supabase/_ops/README.md', import.meta.url), 'utf8'),
+    readFile(new URL('../RUNBOOK.md', import.meta.url), 'utf8'),
+  ])
+
+  for (const [archive, expectedHash] of REVIEWED_HISTORY_ARCHIVES) {
+    const bytes = await readFile(new URL(archive, REVIEWED_HISTORY_DIR))
+    assert.equal(sha256(bytes), expectedHash, `${archive}: reviewed history bytes drifted`)
+    assert.match(operationsReadme, new RegExp(archive.replaceAll('.', '\\.')))
+  }
+
+  for (const source of [operationsReadme, runbook]) {
+    assert.match(source, /schema-convergent but byte-divergent/)
+    assert.match(source, /ledger does not\s+store SQL content hashes/i)
+    assert.match(source, /manifest[^\n]*current replay bytes/i)
+  }
 })

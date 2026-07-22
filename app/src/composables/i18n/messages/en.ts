@@ -847,6 +847,8 @@ const en: Record<string, string> = {
   'admin.tokenCreated':     'Created {time}',
   'admin.tokenLastUsed':    'Last used {time}',
   'admin.tokenExpires':     'Expires {time}',
+  'admin.currentToken':     'Current session',
+  'admin.currentTokenProtected': 'Current token cannot be revoked',
   'admin.revokeToken':      'Revoke token',
   'admin.revokeTokenBody':  'Target:\n{target}\nImpact: revokes this credential. Your current token and the final verified active owner token cannot be revoked; expired tokens are still recorded as revoked.',
   'admin.revokeEvidenceTitle': 'Revocation evidence',

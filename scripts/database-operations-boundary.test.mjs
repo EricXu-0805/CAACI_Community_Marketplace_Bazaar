@@ -193,6 +193,13 @@ test('release indexes and deterministic admin pagination stay version ordered', 
     '20260719030000',
     '20260719082600',
     '20260719083511',
+    '20260719151729',
+    '20260719164126',
+    '20260719170019',
+    '20260719174928',
+    '20260720035037',
+    '20260722024000',
+    '20260722033904',
   ]
   let previous = -1
   for (const version of orderedVersions) {
@@ -200,8 +207,8 @@ test('release indexes and deterministic admin pagination stay version ordered', 
     assert.ok(current > previous, `release sequence is not version ordered at ${version}`)
     previous = current
   }
-  assert.match(release, /current 35-migration audit/)
-  assert.match(release, /90\s+historical \+ 35 candidate migrations/)
+  assert.match(release, /current 38-migration audit/)
+  assert.match(release, /88\s+historical \+ 38 candidate migrations/)
   assert.match(release, /18160000\/19151729[\s\S]{0,80}partial-ledger repairs/)
   assert.match(release, /18250000\/19170019[\s\S]{0,40}partial-ledger repairs/)
   assert.ok(
@@ -222,7 +229,22 @@ test('release indexes and deterministic admin pagination stay version ordered', 
   assert.ok(
     release.lastIndexOf('20260719174928')
       > release.lastIndexOf('20260719170019'),
-    'trigger-only function ACL reconciliation must remain the literal final migration',
+    'trigger-only function ACL reconciliation must follow the meetup repair',
+  )
+  assert.ok(
+    release.indexOf('20260720035037')
+      > release.indexOf('20260719174928'),
+    'appeal hardening must follow the 19-series ACL tail',
+  )
+  assert.ok(
+    release.indexOf('20260722024000')
+      > release.indexOf('20260720035037'),
+    'WeChat callback replay hardening must follow appeal hardening',
+  )
+  assert.ok(
+    release.indexOf('20260722033904')
+      > release.indexOf('20260722024000'),
+    'legacy collision reconciliation must remain the final migration',
   )
   assert.match(
     release,
@@ -292,4 +314,22 @@ test('release indexes and deterministic admin pagination stay version ordered', 
   assert.match(fullFkVerify, /single_column_name/)
   assert.match(fullFkVerify, /%I is not null/)
   assert.match(fullFkVerify, /lack a safe leading btree index at the real release tail/)
+})
+
+test('destructive clean-replay bootstrap requires an explicit disposable-session marker', async () => {
+  const bootstrap = await readFile(
+    new URL('../supabase/_ops/LOCAL_BOOTSTRAP_20260722_full_clean_supabase_base.sql', import.meta.url),
+    'utf8',
+  )
+  assert.match(bootstrap, /LOCAL\/ISOLATED POSTGRESQL ONLY/)
+  assert.match(
+    bootstrap,
+    /current_setting\('caaci\.local_bootstrap', true\)[\s\S]*IS DISTINCT FROM '20260722-disposable-pg17'/,
+  )
+  assert.match(bootstrap, /local bootstrap requires explicit disposable-session marker/)
+  assert.ok(
+    bootstrap.indexOf("current_setting('caaci.local_bootstrap', true)")
+      < bootstrap.indexOf('ALTER TABLE auth.users'),
+    'local-only marker must fail before any hosted-compatible object mutation',
+  )
 })

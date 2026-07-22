@@ -192,7 +192,7 @@ BEGIN
           THEN '收到一次警告 · You received a warning'
           ELSE '账号已被限制 · Your account was restricted'
         END,
-        pg_catalog.coalesce(NEW.reason, '')
+        coalesce(NEW.reason, '')
       );
     END IF;
   ELSIF TG_OP = 'UPDATE'
@@ -674,7 +674,7 @@ REVOKE ALL ON FUNCTION public.lift_suspension(uuid, text)
 CREATE OR REPLACE FUNCTION public.admin_takedown_content(
   target_type_in text,
   target_id_in uuid,
-  reason_in text
+  reason_in text DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE plpgsql

@@ -571,9 +571,78 @@ When a migration is broken in prod, "fix forward" almost always beats
 5. PR + merge as a normal commit (no need for hotfix path unless prod is
    actively broken).
 
+## WeChat callback replay hardening rollout
+
+> When: shipping `20260722024000_harden_wechat_callback_replay.sql` and the
+> matching `/api/wechat-callback` build. This is a database-first rollout. Do
+> not publish the API merely because its Node tests pass.
+
+> **Production gate:** the callback now accepts only WeChat 安全模式 POST:
+> `msg_signature` authenticates Token + timestamp + nonce + `Encrypt`, then the
+> receiver performs AES-256-CBC/K=32 PKCS#7 decryption and verifies the trailing
+> AppID before any database or Storage operation. JSON and XML encrypted
+> envelopes/events are supported; plaintext POSTs and compatibility-mode
+> envelopes carrying extra plaintext event fields fail without side effects.
+> Event-level idempotency remains defense in
+> depth, not a substitute for this body authentication. Keep
+> `media_check_async` disabled in production until the exact deployed build and
+> environment pass a real WeChat provider retry canary.
+> `WECHAT_MEDIA_ASYNC_ENABLED` is the independent fail-closed switch and must
+> remain absent/false until that canary passes. `WECHAT_APPID`,
+> `WECHAT_PUSH_TOKEN`, and the exact 43-character `WECHAT_ENCODING_AES_KEY` are
+> mandatory before the flag can enable image enqueue. `WECHAT_APPSECRET` must
+> still be present for WeChat login and synchronous text moderation; do not
+> remove it as a workaround for callback risk. When the flag is absent, image
+> enqueue returns 503 and callback POST returns 503 before reading a body or
+> touching database/Storage; the signed GET configuration handshake remains
+> available.
+
+1. Confirm the exact target, backup/restore point, operator approval and
+   migration ledger. Every lower migration, including `20260720035037`, must
+   already be reconciled; do not use a max-version shortcut.
+2. Run
+   `PRECHECK_20260722024000_harden_wechat_callback_replay.sql`. It is read-only.
+   Any missing `wechat_media_checks` key/RLS contract, object-name collision or
+   pre-existing ledger row is a stop condition.
+3. Apply the exact manifest-pinned `20260722024000` file through the approved
+   ledger-aware executor. Then run its read-only VERIFY. VERIFY must prove the
+   deny-all/RLS receipt table, event-key/canonical-payload SHA-256 fields, strict
+   five-minute-past/one-minute-future first-delivery window, exact retention
+   indexes, and service-role-only claim/complete/release RPCs.
+4. Wait for the PostgREST schema reload and confirm all three RPC signatures
+   are visible to the service role before publishing the API. If the API is
+   deployed first, valid POST callbacks safely return 503, but WeChat delivery
+   is interrupted; roll the API back until the database gate is ready.
+5. Run
+   `REGRESSION_20260722024000_harden_wechat_callback_replay.sql` only in a
+   disposable local/staging PostgreSQL 16/17 database. It must end in ROLLBACK
+   and prove past/future no-write rejection, same-trace/different-verdict
+   conflict, equivalent concurrent delivery, active lease, completion replay,
+   zero-row DB-first mapping compatibility and rollback-atomic media cleanup.
+   Never run this synthetic regression in production.
+6. Deploy the matching callback API at an exact reviewed SHA. In isolated
+   staging, use a disposable media object and a real WeChat callback canary:
+   configure the matching AppID/Token/EncodingAESKey in **安全模式** (never 明文
+   or 兼容), then prove `msg_signature`, encrypted `Encrypt`, AES/AppID
+   verification and the selected JSON/XML format,
+   then one pass/review or risky verdict and a provider retry using a changed
+   timestamp/nonce/signature. JSON key reordering must remain the same event;
+   the completed retry must return 200 without a second Storage deletion or
+   mapping side effect, while a different verdict for the same trace_id must
+   conflict. Confirm logs contain only stable error codes, never a trace_id,
+   raw signature, decrypted payload or request body.
+
+If the API needs rollback after the database migration, use only a reviewed
+event-key-aware bridge build. **Do not roll back to the legacy callback** that
+identifies receipts by query signature/body bytes or deletes mappings outside
+the completion transaction. The additive table/RPC migration may remain
+installed; do not drop its ledger or replay history. A currently processing
+duplicate returns retryable 503 by design—acknowledging it early could lose the
+event if the original worker subsequently fails.
+
 ## 2026-07 candidate release sequence
 
-> This is the reviewed operational order for the current 35-migration audit
+> This is the reviewed operational order for the current 38-migration audit
 > candidate. It is **not** authorization to change production. Stop before the
 > first mutating step unless the release owner has approved the exact target,
 > backup/rollback point, migration hashes, and operator.
@@ -596,8 +665,8 @@ When a migration is broken in prod, "fix forward" almost always beats
    (cd supabase/migrations && shasum -a 256 -c manifest.sha256)
    ```
 
-2. In two independent fresh PostgreSQL 16 environments, replay all 90
-   historical + 35 candidate migrations and every applicable
+2. In two independent fresh PostgreSQL 17 environments, replay all 88
+   historical + 38 candidate migrations and every applicable
    PRECHECK/VERIFY/rolled-back REGRESSION file, then compare normalized schema
    outputs. Re-run only the tail fixes that explicitly declare themselves
    re-entrant and require a zero schema diff before/after that pass; first-time
@@ -746,9 +815,16 @@ When a migration is broken in prod, "fix forward" almost always beats
     - `20260719170019` exact meetup table ACL reconciliation. If the reviewed
       18250000/18260000 partial-ledger exception already recorded it, do not
       replay it here; confirm its exact ledger row and rerun its VERIFY;
-    - `20260719174928` final trigger-only function ACL reconciliation. It
+    - `20260719174928` trigger-only function ACL reconciliation. It
       preserves the currency-exchange write guard as a trigger while denying
-      direct API-role execution and pins the function to `pg_catalog`.
+      direct API-role execution and pins the function to `pg_catalog`;
+    - `20260720035037` admin appeal-decision and session-metadata hardening;
+    - `20260722024000` WeChat callback timestamp/replay claim hardening;
+    - `20260722033904` final legacy 014/015 version-collision reconciliation.
+      Its read-only precheck sizes any backfill and validates JSON/i18n plus
+      legacy linkage. If the old single-item column remains, the migration
+      copies only missing same-owner pairs through migration 041's FK/cap
+      contract and proves pair equivalence before retiring the old objects.
 
     Run `PRECHECK_20260719_admin_token_lifecycle_rpc.sql` before `19010000`.
     After `19010000` is recorded, run the distinct
@@ -828,13 +904,38 @@ When a migration is broken in prod, "fix forward" almost always beats
     MAINTAIN, inherited ACLs, another grantor or column drift are stop
     conditions. Never run its rollback-only REGRESSION in production.
 
-    Last, run
+    Next, run
     `PRECHECK_20260719174928_reconcile_trigger_only_function_acl.sql`, apply
     `20260719174928` in normal order, and run its matching VERIFY. The VERIFY
     must prove the exact BEFORE ROW INSERT/UPDATE trigger, guarded `category`
     column, function body/identity, SECURITY INVOKER posture, `pg_catalog`
     search path and effective ACL provenance. Exercise the rollback-only
     REGRESSION only in disposable local/staging PostgreSQL, never production.
+
+    Continue in strict ledger order with the 20035037 appeal hardening and its
+    PRECHECK/VERIFY, then the separately documented 22024000 WeChat callback
+    sequence. Last, run the read-only
+    `PRECHECK_20260722033904_reconcile_legacy_migration_versions.sql`. Treat
+    missing-item, cross-owner, cap, invalid JSON/i18n, unexpected NULL volume,
+    table size, lock-window, or ledger findings as stop conditions. After a
+    production-like rehearsal, apply the exact
+    `20260722033904_reconcile_legacy_migration_versions.sql`, then run
+    `VERIFY_20260722033904_reconcile_legacy_migration_versions.sql`. Confirm there is
+    exactly one migration file for every numeric version, the manifest passes,
+    version 014 has both `defective` and the two `image_dimensions` columns,
+    version 015 has the five i18n columns, `public.post_items` exists, and the
+    obsolete `posts.attached_item_id`, ownership trigger/function and index do
+    not exist. Preserve the exported precheck counts as change evidence. Do not
+    infer linkage migration from the replacement table's existence alone. Do
+    not repair the production 014/015 ledger names: their canonical
+    `condition_defective` / `content_i18n` rows are already correct.
+
+    Record explicitly that hosted state is schema-convergent but byte-divergent
+    from the two pre-repair repository snapshots archived under
+    `_ops/forensics/reviewed-history-repairs/`. The Supabase ledger does not
+    store SQL content hashes, so a version row proves neither historical byte
+    sequence. The manifest protects current replay bytes only; keep PRECHECK,
+    VERIFY and the exported schema evidence with the release record.
 
     Exercise token expiry/revocation, owner-only issuance from authoritative
     profile snapshots, case/approval/idempotency replay, outcome-unknown

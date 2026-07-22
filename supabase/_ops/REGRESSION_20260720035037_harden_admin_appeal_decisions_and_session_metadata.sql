@@ -190,7 +190,10 @@ UPDATE public.profiles
 
 INSERT INTO public.posts (id, user_id, content, status) VALUES (
   'a2050000-0000-4000-8000-000000000401',
-  'a2050000-0000-4000-8000-000000000005',
+  -- This fixture must belong to a currently unrestricted profile so the
+  -- production actor-enforcement trigger permits setup. Profile 0008 has only
+  -- a lifted historical row and a future-dated restriction in this scenario.
+  'a2050000-0000-4000-8000-000000000008',
   'Bridge-compatible takedown fixture',
   'active'
 );
@@ -204,10 +207,11 @@ DECLARE
   v2_payload jsonb;
   v2_keys text[];
 BEGIN
-  SELECT authorization.capabilities,
-         pg_catalog.to_jsonb(authorization)
+  SELECT authorization_row.capabilities,
+         pg_catalog.to_jsonb(authorization_row)
     INTO STRICT v1_capabilities, v1_payload
-    FROM public.admin_token_authorization(pg_catalog.repeat('b', 64)) AS authorization;
+    FROM public.admin_token_authorization(pg_catalog.repeat('b', 64))
+      AS authorization_row;
   SELECT pg_catalog.array_agg(key ORDER BY key) INTO v1_keys
     FROM pg_catalog.jsonb_object_keys(v1_payload) AS keys(key);
   IF 'decide_appeal' = ANY(v1_capabilities) THEN
@@ -532,37 +536,26 @@ VALUES (
 );
 
 DO $direct_helpers_remain_private$
-DECLARE
-  bridge_suspension_id uuid := (
-    SELECT (result ->> 'data')::uuid
-      FROM appeal_regression_results
-     WHERE label = 'bridge_apply_ban'
-  );
 BEGIN
-  BEGIN
-    PERFORM public.apply_ban_level(
-      'a2050000-0000-4000-8000-000000000005',
-      1, 'direct bypass', 'regression', NULL
-    );
-    RAISE EXCEPTION 'service_role directly executed apply_ban_level';
-  EXCEPTION WHEN insufficient_privilege THEN NULL;
-  END;
-
-  BEGIN
-    PERFORM public.lift_suspension(bridge_suspension_id, 'direct bypass');
-    RAISE EXCEPTION 'service_role directly executed lift_suspension';
-  EXCEPTION WHEN insufficient_privilege THEN NULL;
-  END;
-
-  BEGIN
-    PERFORM public.admin_takedown_content(
-      'post',
-      'a2050000-0000-4000-8000-000000000401',
-      'direct bypass'
-    );
-    RAISE EXCEPTION 'service_role directly executed admin_takedown_content';
-  EXCEPTION WHEN insufficient_privilege THEN NULL;
-  END;
+  -- The Supabase PG17.6.1.104 local image currently crashes its backend on a
+  -- denied function call (even for a trivial temporary function). Verify the
+  -- effective catalog privilege without invoking the known image-level crash;
+  -- the bridge calls above still exercise the authorized service path.
+  IF pg_catalog.has_function_privilege(
+       'service_role',
+       'public.apply_ban_level(uuid,smallint,text,text,integer)',
+       'EXECUTE'
+     )
+     OR pg_catalog.has_function_privilege(
+       'service_role', 'public.lift_suspension(uuid,text)', 'EXECUTE'
+     )
+     OR pg_catalog.has_function_privilege(
+       'service_role',
+       'public.admin_takedown_content(text,uuid,text)',
+       'EXECUTE'
+     ) THEN
+    RAISE EXCEPTION 'service_role retained direct helper execution';
+  END IF;
 END;
 $direct_helpers_remain_private$;
 
@@ -806,11 +799,11 @@ DO $direct_apply_ban_text_boundary$
 BEGIN
   BEGIN
     PERFORM public.apply_ban_level(
-      'a2050000-0000-4000-8000-000000000005',
-      1,
+      'a2050000-0000-4000-8000-000000000005'::uuid,
+      1::smallint,
       U&'unsafe\200Freason',
       'regression',
-      NULL
+      NULL::integer
     );
     RAISE EXCEPTION 'direct apply-ban helper accepted bidi text';
   EXCEPTION WHEN invalid_parameter_value THEN

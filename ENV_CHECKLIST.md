@@ -9,7 +9,7 @@ missing. Sorted by criticality.
   `SUPABASE_SECRET_KEY` (preferred; legacy fallback
   `SUPABASE_SERVICE_ROLE_KEY`), `SENTRY_AUTH_TOKEN`, `CRON_SECRET`,
   `RESEND_API_KEY`, `OPENAI_API_KEY`, `WECHAT_APPSECRET`,
-  `WECHAT_PUSH_TOKEN`, and any future RPC secret. The retired shared
+  `WECHAT_PUSH_TOKEN`, `WECHAT_ENCODING_AES_KEY`, and any future RPC secret. The retired shared
   `ADMIN_API_KEY` is not read by the current API and should be unset.
 - **Vercel + local `.env`**: VITE-prefixed public build configuration.
   `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (preferred; legacy
@@ -225,7 +225,9 @@ unbounded delete.
 | `OPENAI_API_KEY` | ✅ optional | ❌ | ⚠️ shell-only | Remote moderation/translation provider is skipped; local/database safety layers remain. |
 | `WECHAT_APPID` | ✅ for mp login/security | ❌ | ⚠️ shell-only | WeChat login returns 503; media classifier degrades after authentication. |
 | `WECHAT_APPSECRET` | ✅ for mp login/security | ❌ | ⚠️ shell-only | Same; server-only and never browser-prefixed. |
-| `WECHAT_PUSH_TOKEN` | ✅ for callback | ❌ | ⚠️ shell-only | `/api/wechat-callback` cannot authenticate WeChat push callbacks. |
+| `WECHAT_PUSH_TOKEN` | ✅ for callback | ❌ | ⚠️ shell-only | Security-mode POST and the signed GET handshake remain unavailable. Keep it server-only. |
+| `WECHAT_ENCODING_AES_KEY` | ✅ for encrypted callback | ❌ | ⚠️ shell-only | Image enqueue remains fail-closed even if `WECHAT_MEDIA_ASYNC_ENABLED=true`; use the exact 43-character key from the matching WeChat app. |
+| `WECHAT_MEDIA_ASYNC_ENABLED` | ✅ only after staging canary | ❌ | ⚠️ shell-only | Exact `true` enables image enqueue only when AppID, push token and EncodingAESKey are also valid; otherwise image moderation remains fail-closed. |
 
 The full WeChat provisioning and rotation constraints live in
 [`docs/WECHAT_MP_SETUP.md`](docs/WECHAT_MP_SETUP.md). In particular, do not
@@ -282,19 +284,24 @@ environment's exact origin/project):**
 
 **Privileged server variables (strictly environment-scoped):**
 
-- [ ] Production: `SUPABASE_SECRET_KEY`, legacy `SUPABASE_SERVICE_ROLE_KEY` fallback, `CRON_SECRET`, `RESEND_API_KEY`, `SENTRY_AUTH_TOKEN`, `OPENAI_API_KEY`, and `WECHAT_APPSECRET` exist **only** in Production scope and point to production resources
+- [ ] Production required core/provider credentials: `SUPABASE_SECRET_KEY`, legacy `SUPABASE_SERVICE_ROLE_KEY` fallback, `CRON_SECRET`, `RESEND_API_KEY`, `SENTRY_AUTH_TOKEN`, `WECHAT_APPSECRET`, `WECHAT_PUSH_TOKEN`, and `WECHAT_ENCODING_AES_KEY` use production values that exist **only** in Production scope and point to production resources
+- [ ] Production optional provider credential: `OPENAI_API_KEY` is environment-specific and may be omitted for a soft launch; if present, its production value exists **only** in Production scope
 - [ ] Trusted Preview/staging: use a separate staging Supabase project and separately revocable staging provider keys; restrict them to an allowlisted reviewed branch/custom environment. An untrusted or arbitrary-branch Preview receives no privileged variables
 - [ ] Deployment gate is green: Vite refuses tier/project/origin drift; all 19 Supabase-backed Functions return 503 before upstream work on drift; the deployed project has 20 runtime Functions in total including the non-Supabase custom 404 boundary; `deployment-manifest.json` records a non-secret artifact identity
 - [ ] `SENTRY_ORG` + `SENTRY_PROJECT` accompany the environment-specific Sentry credentials when source maps are intentionally published
 - [ ] `DIGEST_FROM` is a verified test sender in staging and the reviewed production sender in Production; Resend is also used by meetup mail and Illini verification
 - [ ] Apply + verify `20260717194646_account_deletion_jobs.sql`, including its restrictive Storage tombstone policies; the same `CRON_SECRET` authorizes its 10-minute recovery cron
 - [ ] Apply + verify `20260718150000_ephemeral_data_retention.sql`; confirm the hourly `/api/data-retention` cron returns 200 (a 503 backlog/error is not green)
-- [ ] `OPENAI_API_KEY` — optional and environment-specific (content moderation; safe to skip for a soft launch)
 - [ ] For the 2026-07-20 release, WeChat is a production gate: `WECHAT_APPID`,
-  environment-specific `WECHAT_APPSECRET`, and `WECHAT_PUSH_TOKEN` must be
-  present in their reviewed scopes; `WECHAT_APPSECRET` must be Sensitive and
-  Production-only. Create a new exact-commit Production deployment after the
-  variable is saved—an older deployment cannot prove the new environment
+  environment-specific `WECHAT_APPSECRET`, `WECHAT_PUSH_TOKEN`, and
+  `WECHAT_ENCODING_AES_KEY` must be present in their reviewed scopes. Production
+  values for the three secrets must be Sensitive and Production-only. If a
+  trusted Preview runs a provider canary, it must use a separate staging WeChat
+  app and separate values scoped only to that reviewed Preview; never copy the
+  Production values into Preview. Keep
+  `WECHAT_MEDIA_ASYNC_ENABLED` absent/false until a real encrypted callback and
+  retry canary succeeds. Create a new exact-commit Production deployment after
+  variables are saved—an older deployment cannot prove the new environment
   snapshot—and complete the legacy-password retirement runbook in
   `docs/WECHAT_MP_SETUP.md` only after the provider canary succeeds.
 

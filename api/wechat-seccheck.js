@@ -37,6 +37,10 @@ export const config = { runtime: 'edge' }
  * switch must be OFF (公众平台 → 开发管理 → 开发设置 → IP白名单).
  *
  * Env: WECHAT_APPID / WECHAT_APPSECRET (same as /api/auth/wechat-login),
+ *      WECHAT_MEDIA_ASYNC_ENABLED must be exactly "true" to enqueue images.
+ *      WECHAT_PUSH_TOKEN / WECHAT_ENCODING_AES_KEY must also form a valid
+ *      security-mode callback configuration. Set the flag only after a
+ *      real-provider encrypted callback and retry canary.
  *      SUPABASE_URL / SUPABASE_SECRET_KEY / SUPABASE_PUBLISHABLE_KEY.
  *      Legacy service-role / anon variable names remain rolling fallbacks.
  */
@@ -47,6 +51,9 @@ function env(name, fallback) {
 
 const WECHAT_APPID     = env('WECHAT_APPID', '')
 const WECHAT_APPSECRET = env('WECHAT_APPSECRET', '')
+const WECHAT_PUSH_TOKEN = env('WECHAT_PUSH_TOKEN', '')
+const WECHAT_ENCODING_AES_KEY = env('WECHAT_ENCODING_AES_KEY', '')
+const WECHAT_MEDIA_ASYNC_ENABLED = process.env.WECHAT_MEDIA_ASYNC_ENABLED === 'true'
 const SUPABASE_URL     = env('SUPABASE_URL', env('VITE_SUPABASE_URL', ''))
 const SUPABASE_SERVICE = env('SUPABASE_SECRET_KEY', env('SUPABASE_SERVICE_ROLE_KEY', ''))
 const SUPABASE_ANON = env(
@@ -278,6 +285,21 @@ function configuredState() {
   return 'configured'
 }
 
+function secureMediaCallbackConfigured() {
+  let aesKeyValid = false
+  try {
+    const decoded = atob(`${WECHAT_ENCODING_AES_KEY}=`)
+    aesKeyValid = /^[A-Za-z0-9+/]{43}$/.test(WECHAT_ENCODING_AES_KEY)
+      && decoded.length === 32
+      && btoa(decoded) === `${WECHAT_ENCODING_AES_KEY}=`
+  } catch {}
+  return /^wx[0-9a-f]{16}$/i.test(WECHAT_APPID)
+    && WECHAT_PUSH_TOKEN.length >= 1
+    && WECHAT_PUSH_TOKEN.length <= 256
+    && !/[\u0000-\u001f\u007f]/.test(WECHAT_PUSH_TOKEN)
+    && aesKeyValid
+}
+
 function validTraceId(value) {
   return typeof value === 'string' && /^[A-Za-z0-9_-]{4,128}$/.test(value)
 }
@@ -334,6 +356,14 @@ export default async function handler(request) {
 
   if (body.kind !== 'text' && body.kind !== 'image') {
     return json({ error: 'bad_kind' }, 400)
+  }
+  /* AppSecret also powers login and synchronous text moderation. Keep those
+     available while media async remains fail-closed by default. */
+  if (body.kind === 'image' && !WECHAT_MEDIA_ASYNC_ENABLED) {
+    return json({ error: 'wechat_media_async_disabled' }, 503)
+  }
+  if (body.kind === 'image' && !secureMediaCallbackConfigured()) {
+    return json({ error: 'wechat_media_async_misconfigured' }, 503)
   }
 
   let content = ''
@@ -417,11 +447,11 @@ export default async function handler(request) {
           }),
         }, SUPABASE_TIMEOUT_MS)
       } catch {
-        console.error(`wechat-seccheck: media_check mapping insert failed for trace_id ${data.trace_id}`)
+        console.error('wechat-seccheck: media_check mapping insert failed')
         return json({ error: 'media_mapping_unavailable' }, 503)
       }
       if (!mapRes.ok) {
-        console.error(`wechat-seccheck: media_check mapping insert failed (${mapRes.status}) for trace_id ${data.trace_id}`)
+        console.error(`wechat-seccheck: media_check mapping insert failed (${mapRes.status})`)
         return json({ error: 'media_mapping_unavailable' }, 503)
       }
       return json({ ok: true, trace_id: data.trace_id })

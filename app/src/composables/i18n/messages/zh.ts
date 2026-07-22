@@ -845,6 +845,8 @@ const zh: Record<string, string> = {
   'admin.tokenCreated':     '创建于 {time}',
   'admin.tokenLastUsed':    '最近使用 {time}',
   'admin.tokenExpires':     '到期时间 {time}',
+  'admin.currentToken':     '当前会话',
+  'admin.currentTokenProtected': '当前令牌不可撤销',
   'admin.revokeToken':      '撤销令牌',
   'admin.revokeTokenBody':  '目标：\n{target}\n影响：撤销该凭据。当前令牌和最后一个已验证且生效的所有者令牌不能被撤销；已过期令牌仍会留下撤销审计。',
   'admin.revokeEvidenceTitle': '撤销证据',

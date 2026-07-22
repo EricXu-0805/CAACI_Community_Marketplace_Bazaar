@@ -118,7 +118,13 @@ test('appeal lifecycle migration preserves the atomic bridge and versioned auth 
   assert.match(migration, /REVOKE ALL ON FUNCTION public\.apply_ban_level\([\s\S]*service_role/)
   assert.match(migration, /REVOKE ALL ON FUNCTION public\.lift_suspension\(uuid, text\)[\s\S]*service_role/)
   assert.match(migration, /REVOKE ALL ON FUNCTION public\.admin_takedown_content\(text, uuid, text\)[\s\S]*service_role/)
+  assert.match(
+    migration,
+    /CREATE OR REPLACE FUNCTION public\.admin_takedown_content\(\s*target_type_in text,\s*target_id_in uuid,\s*reason_in text DEFAULT NULL/,
+  )
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.notify_suspension_change\(\)/)
+  assert.match(migration, /coalesce\(NEW\.reason, ''\)/)
+  assert.doesNotMatch(migration, /pg_catalog\.coalesce\(/)
   assert.match(migration, /another_restriction_active[\s\S]*suspension\.level >= 2/)
   assert.match(migration, /Another account restriction remains active/)
   assert.match(migration, /OLD\.ends_at > notification_time/)
@@ -218,17 +224,39 @@ test('appeal lifecycle ships fail-fast ops gates, rollback-only behavior, and a 
     assert.match(source, /^SET LOCAL statement_timeout = '2min';$/m)
     assert.equal(source.trimEnd().endsWith('ROLLBACK;'), true)
   }
+  assert.match(
+    precheck,
+    /ARRAY\['search_path=public'\]::text\[\][\s\S]*routine\.oid = audit_list_oid/,
+  )
+  assert.doesNotMatch(
+    precheck,
+    /'service_role', notify_suspension_oid, 'EXECUTE'/,
+  )
+  assert.match(precheck, /'anon', notify_suspension_oid, 'EXECUTE'/)
+  assert.match(precheck, /'authenticated', notify_suspension_oid, 'EXECUTE'/)
   assert.doesNotMatch(regression, /^COMMIT;$/m)
   assert.equal(regression.trimEnd().endsWith('ROLLBACK;'), true)
   assert.match(regression, /more_info_second_key/)
+  assert.match(regression, /AS authorization_row/)
+  assert.doesNotMatch(regression, /AS authorization;/)
   assert.match(regression, /bridge_apply_ban_replay/)
   assert.match(regression, /overlapping_apply_state/)
+  assert.match(
+    regression,
+    /000000000401'[\s\S]*000000000008'[\s\S]*Bridge-compatible takedown fixture/,
+  )
   assert.match(regression, /single_restriction_lift_notification/)
   assert.match(regression, /Another account restriction remains active/)
   assert.match(regression, /future restriction must not notify early/)
   assert.match(regression, /inconsistent_appeal_audit_fails_closed/)
   assert.match(regression, /authoritative_appeal_filing_time/)
   assert.match(regression, /direct_helpers_remain_private/)
+  assert.match(
+    regression,
+    /has_function_privilege\([\s\S]*public\.apply_ban_level\(uuid,smallint,text,text,integer\)[\s\S]*public\.lift_suspension\(uuid,text\)[\s\S]*public\.admin_takedown_content\(text,uuid,text\)/,
+  )
+  assert.match(regression, /1::smallint/)
+  assert.match(regression, /NULL::integer/)
   assert.match(regression, /CASE-PRIVATE-205/)
   assert.match(regression, /admin_search_users\('%m', 50\)/)
 

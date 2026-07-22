@@ -89,9 +89,10 @@ BEGIN
          FROM pg_catalog.pg_proc AS routine
         WHERE routine.oid = notify_suspension_oid
      )
-     OR pg_catalog.has_function_privilege(
-       'service_role', notify_suspension_oid, 'EXECUTE'
-     )
+     -- Supabase-managed postgres default privileges may leave an explicit
+     -- service_role EXECUTE grant on this trigger helper. The migration below
+     -- revokes it atomically; precheck must not require its own repair to have
+     -- happened already. Browser roles remain a hard failure here.
      OR pg_catalog.has_function_privilege('anon', notify_suspension_oid, 'EXECUTE')
      OR pg_catalog.has_function_privilege(
        'authenticated', notify_suspension_oid, 'EXECUTE'
@@ -113,7 +114,7 @@ BEGIN
     SELECT 1
       FROM pg_catalog.pg_proc AS routine
      WHERE routine.oid IN (
-       wrapper_oid, authorization_oid, appeals_oid, audit_list_oid,
+       wrapper_oid, authorization_oid, appeals_oid,
        apply_ban_oid, capability_assert_oid, legacy_submit_oid,
        intent_submit_oid
      )
@@ -124,6 +125,18 @@ BEGIN
          OR pg_catalog.pg_get_userbyid(routine.proowner) <> 'postgres'
        )
   )
+     -- 19082600 is frozen with search_path=public. This migration replaces
+     -- the legacy audit RPC with a pg_catalog-pinned projection, so accept
+     -- only that exact predecessor configuration instead of demanding the
+     -- post-migration repair before the migration can start.
+     OR NOT (
+       SELECT routine.prosecdef
+              AND routine.proconfig IS NOT DISTINCT FROM
+                  ARRAY['search_path=public']::text[]
+              AND pg_catalog.pg_get_userbyid(routine.proowner) = 'postgres'
+         FROM pg_catalog.pg_proc AS routine
+        WHERE routine.oid = audit_list_oid
+     )
      OR NOT pg_catalog.has_function_privilege(
        'service_role', wrapper_oid, 'EXECUTE'
      )

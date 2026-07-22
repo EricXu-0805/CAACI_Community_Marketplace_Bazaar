@@ -182,7 +182,9 @@ npm run build:mp-weixin
 - [ ] §8 below: WECHAT_APPID + WECHAT_APPSECRET + SUPABASE_URL +
       SUPABASE_SECRET_KEY + SUPABASE_PUBLISHABLE_KEY set on Vercel (keep the
       legacy service_role/anon aliases only during the rolling migration;
-      required for wx.login to function at all)
+      required for wx.login to function at all). Before enabling image async,
+      also provision WECHAT_PUSH_TOKEN + WECHAT_ENCODING_AES_KEY and complete
+      the encrypted provider canary below
 
 Allow ~3–5 business days for WeChat's first review.
 
@@ -219,7 +221,7 @@ This is additive only:
 Do not grant it to browser roles as a shortcut around the route's identity
 checks.
 
-### 8.2 Provision five environment-scoped vars on Vercel
+### 8.2 Provision login/text vars; keep media async off by default
 
 Project Settings → Environment Variables: Production gets production values
 only. A trusted, allowlisted Preview gets a separate staging WeChat app,
@@ -231,9 +233,33 @@ branch/PR Preview code; untrusted previews must run without privileged routes.
 |---|---|---|
 | `WECHAT_APPID` | mp.weixin.qq.com → 开发管理 → 开发设置 → AppID | Same value already in `src/manifest.json` — OK to bundle either side. |
 | `WECHAT_APPSECRET` | Read the environment-specific approved value from the team's access-controlled secret manager | **SERVER ONLY.** Production and staging use different apps/secrets. Do not click “重置” during ordinary setup. Reset only in an approved, coordinated rotation window that updates that environment's consumers and verifies rollback/recovery; every reset invalidates the previous value. |
+| `WECHAT_PUSH_TOKEN` | mp.weixin.qq.com → 开发管理 → 开发设置 → 消息推送配置 → Token | **SERVER ONLY.** Use a separate random value per environment. It authenticates both the GET handshake and the encrypted POST `msg_signature`; never log or browser-prefix it. |
+| `WECHAT_ENCODING_AES_KEY` | The exact 43-character EncodingAESKey in the matching environment's 消息推送配置 | **SERVER ONLY.** Do not regenerate or rotate it independently of the WeChat console. The callback Base64-decodes it to a 32-byte AES key and verifies the decrypted trailing AppID. |
 | `SUPABASE_PUBLISHABLE_KEY` | Supabase Dashboard → Settings → API Keys → publishable key | Public component key used by the route. The app uses the same value in `VITE_SUPABASE_PUBLISHABLE_KEY`. `SUPABASE_ANON_KEY` remains a rolling fallback for old deployments. |
 | `SUPABASE_URL` | Supabase project URL | Server alias; must be an HTTPS origin with no path/query/credentials. |
 | `SUPABASE_SECRET_KEY` | The matching environment's Supabase project → Settings → API Keys → a named secret key | **SERVER ONLY.** Production scope points only to production; trusted Preview points only to isolated staging. Used for Auth generate-link and conditional identity binding; sent in `apikey` only. `SUPABASE_SERVICE_ROLE_KEY` remains the same-environment rolling legacy fallback. Complete the real-provider matrix before disabling it. |
+
+`WECHAT_MEDIA_ASYNC_ENABLED` is a separate, optional production gate. Leave it
+absent or anything other than the exact string `true` until the console is in
+**安全模式** and the real-provider canary below passes. This blocks only image `media_check_async` enqueueing with
+`wechat_media_async_disabled`, and makes callback POST return 503 before body,
+database or Storage work; it does not disable the signed GET handshake,
+wx.login or synchronous text checks that still require `WECHAT_APPSECRET`.
+When the flag is `true`, image enqueue additionally requires a valid AppID,
+push token and EncodingAESKey; a missing/malformed value returns
+`wechat_media_async_misconfigured` before calling WeChat. The callback accepts
+only `encrypt_type=aes`, verifies `msg_signature`, decrypts JSON or XML
+`Encrypt` with AES-256-CBC/K=32 PKCS#7, and compares the decrypted trailing AppID
+before any database or Storage work. A plaintext POST, or a compatibility-mode
+envelope carrying extra plaintext event fields, is 403 with no side effect. Set
+the flag to `true` only after a real-provider retry canary proves the deployed
+environment and cross-signature idempotency. Never remove `WECHAT_APPSECRET` as
+a workaround for callback risk.
+
+Protocol source: WeChat's official [消息推送](https://developers.weixin.qq.com/miniprogram/dev/framework/server-ability/message-push.html)
+and [多媒体内容安全识别](https://developers.weixin.qq.com/miniprogram/dev/server/API/sec-center/sec-check/api_mediacheckasync.html)
+documentation. In the console choose 安全模式, not 明文模式 or 兼容模式; choose
+the JSON or XML body format you will exercise in the environment canary.
 
 `VITE_*` values are not a substitute for the server-only service key. We do
 not require `SUPABASE_JWT_SECRET` or `WECHAT_USER_PASSWORD_SALT`. The route

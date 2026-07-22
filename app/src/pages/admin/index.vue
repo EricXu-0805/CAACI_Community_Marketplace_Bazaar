@@ -216,8 +216,8 @@
             <text class="card-time">{{ t('admin.reportGroupAge', { time: fmtTime(g.first_created_at) }) }}</text>
             <view v-if="!selectMode" class="card-actions">
               <view class="mini-btn" role="button" tabindex="0" @click="openReportById(g.last_report_id)">{{ t('admin.open') }}</view>
-              <view v-if="g.pending_count > 0" class="mini-btn primary" role="button" tabindex="0" @click="resolveTargetReports(g, 'resolved')">{{ t('admin.resolveAll') }}</view>
-              <view v-if="g.pending_count > 0" class="mini-btn danger" role="button" tabindex="0" @click="resolveTargetReports(g, 'dismissed')">{{ t('admin.dismissAll') }}</view>
+              <view v-if="g.pending_count > 0" :class="['mini-btn', 'primary', { disabled: reportMutationBusy(g) }]" role="button" :tabindex="reportMutationBusy(g) ? -1 : 0" :aria-disabled="reportMutationBusy(g) ? 'true' : 'false'" @click="resolveTargetReports(g, 'resolved')">{{ t('admin.resolveAll') }}</view>
+              <view v-if="g.pending_count > 0" :class="['mini-btn', 'danger', { disabled: reportMutationBusy(g) }]" role="button" :tabindex="reportMutationBusy(g) ? -1 : 0" :aria-disabled="reportMutationBusy(g) ? 'true' : 'false'" @click="resolveTargetReports(g, 'dismissed')">{{ t('admin.dismissAll') }}</view>
             </view>
           </view>
           <view v-if="reportHasMore" class="load-more" role="button" :tabindex="reportLoadingMore ? -1 : 0" :aria-disabled="reportLoadingMore ? 'true' : 'false'" @click="loadMoreReports">
@@ -281,7 +281,7 @@
           <view class="card-actions">
             <view class="mini-btn" role="button" tabindex="0" @click="openUser(u.id)">{{ t('admin.openProfile') }}</view>
             <view class="mini-btn" role="button" tabindex="0" @click="loadLinked(u.id)">{{ linkedFor === u.id ? t('admin.linkedHide') : t('admin.linkedShow') }}</view>
-            <view class="mini-btn danger" role="button" tabindex="0" @click="onBanPrompt(u.id, u.nickname)">{{ t('admin.banUser') }}</view>
+            <view :class="['mini-btn', 'danger', { disabled: banMutationBusy(u.id) }]" role="button" :tabindex="banMutationBusy(u.id) ? -1 : 0" :aria-disabled="banMutationBusy(u.id) ? 'true' : 'false'" @click="onBanPrompt(u.id, u.nickname)">{{ t('admin.banUser') }}</view>
           </view>
           <view v-if="linkedFor === u.id" class="linked-box">
             <text v-if="linkedLoading" class="linked-empty" role="status" aria-live="polite">{{ t('admin.loading') }}</text>
@@ -291,7 +291,7 @@
               <text v-if="la.suspension_level > 0" :class="['pill', 'level-' + la.suspension_level]">L{{ la.suspension_level }}</text>
               <text v-if="la.shadow_banned" class="pill pill-shadow">{{ t('admin.pillShadow') }}</text>
               <text class="linked-meta">{{ t('admin.linkedMeta', { devices: la.shared_devices, time: fmtTime(la.last_seen) }) }}</text>
-              <view class="mini-btn danger" role="button" tabindex="0" @click="onBanPrompt(la.id, la.nickname)">{{ t('admin.banUser') }}</view>
+              <view :class="['mini-btn', 'danger', { disabled: banMutationBusy(la.id) }]" role="button" :tabindex="banMutationBusy(la.id) ? -1 : 0" :aria-disabled="banMutationBusy(la.id) ? 'true' : 'false'" @click="onBanPrompt(la.id, la.nickname)">{{ t('admin.banUser') }}</view>
             </view>
           </view>
         </view>
@@ -461,7 +461,7 @@
           <view class="card-actions">
             <view class="mini-btn" role="button" tabindex="0" @click="openSuspension(s)">{{ t('admin.open') }}</view>
             <view class="mini-btn" role="button" tabindex="0" @click="openUser(s.profile_id)">{{ t('admin.openProfile') }}</view>
-            <view v-if="!s.lifted_at && !isExpired(s.ends_at)" class="mini-btn primary" role="button" tabindex="0" @click="onLiftSuspension(s)">{{ t('admin.lift') }}</view>
+            <view v-if="!s.lifted_at && !isExpired(s.ends_at)" :class="['mini-btn', 'primary', { disabled: liftMutationBusy(s) }]" role="button" :tabindex="liftMutationBusy(s) ? -1 : 0" :aria-disabled="liftMutationBusy(s) ? 'true' : 'false'" @click="onLiftSuspension(s)">{{ t('admin.lift') }}</view>
           </view>
         </view>
         <view v-if="listHasMore.suspensions" class="load-more" role="button" :tabindex="listLoadingMore ? -1 : 0" :aria-disabled="listLoadingMore ? 'true' : 'false'" @click="loadMoreAdminList('suspensions')">
@@ -540,7 +540,7 @@
           <text class="card-meta">{{ t('admin.warningsCount', { n: w.warning_count }) }}</text>
           <view class="card-actions">
             <view class="mini-btn" role="button" tabindex="0" @click="openUser(w.profile_id)">{{ t('admin.openProfile') }}</view>
-            <view class="mini-btn" role="button" tabindex="0" @click="onBanPrompt(w.profile_id, w.nickname)">{{ t('admin.applyBan') }}</view>
+            <view :class="['mini-btn', { disabled: banMutationBusy(w.profile_id) }]" role="button" :tabindex="banMutationBusy(w.profile_id) ? -1 : 0" :aria-disabled="banMutationBusy(w.profile_id) ? 'true' : 'false'" @click="onBanPrompt(w.profile_id, w.nickname)">{{ t('admin.applyBan') }}</view>
           </view>
         </view>
         <view v-if="listHasMore.warnings" class="load-more" role="button" :tabindex="listLoadingMore ? -1 : 0" :aria-disabled="listLoadingMore ? 'true' : 'false'" @click="loadMoreAdminList('warnings')">
@@ -590,6 +590,9 @@
             <text :class="['pill', tokenStatus(token) === 'active' ? 'pill-active' : 'pill-expired']">
               {{ t('admin.tokenStatus.' + tokenStatus(token)) }}
             </text>
+            <text v-if="isCurrentAdminToken(token)" class="pill pill-active">
+              {{ t('admin.currentToken') }}
+            </text>
             <text
               v-if="token.role === 'owner' && tokenStatus(token) === 'active' && !token.last_used_at"
               class="pill pill-expired"
@@ -616,15 +619,15 @@
           <view v-if="tokenStatus(token) !== 'revoked'" class="card-actions">
             <view
               :id="`admin-token-revoke-${token.id}`"
-              :class="['mini-btn', 'danger', { disabled: tokenMutationIds.includes(token.id) || !tokenActionsReady }]"
+              :class="['mini-btn', 'danger', { disabled: isCurrentAdminToken(token) || tokenMutationIds.includes(token.id) || !tokenActionsReady }]"
               role="button"
-              :tabindex="tokenMutationIds.includes(token.id) || !tokenActionsReady ? -1 : 0"
-              :aria-disabled="tokenMutationIds.includes(token.id) || !tokenActionsReady ? 'true' : 'false'"
+              :tabindex="isCurrentAdminToken(token) || tokenMutationIds.includes(token.id) || !tokenActionsReady ? -1 : 0"
+              :aria-disabled="isCurrentAdminToken(token) || tokenMutationIds.includes(token.id) || !tokenActionsReady ? 'true' : 'false'"
               :aria-expanded="tokenRevokeTarget?.id === token.id ? 'true' : 'false'"
               :aria-controls="`admin-token-revoke-panel-${token.id}`"
               @click="openTokenRevoke(token, $event)"
             >
-              {{ t('admin.revokeToken') }}
+              {{ isCurrentAdminToken(token) ? t('admin.currentTokenProtected') : t('admin.revokeToken') }}
             </view>
           </view>
           <view
@@ -761,9 +764,9 @@
           <text class="d-row"><text class="d-key">{{ t('admin.dFiled') }}</text>{{ fmtTime(detailRow.created_at) }}</text>
           <view class="d-actions">
             <view v-if="canOpenTarget(detailRow)" class="mini-btn" role="button" tabindex="0" @click="openTarget(detailRow)">{{ t('admin.openTarget') }}</view>
-            <view v-if="canTakedown(detailRow)" class="mini-btn danger" role="button" tabindex="0" @click="onTakedownContent(detailRow)">{{ t('admin.takedownContent') }}</view>
+            <view v-if="canTakedown(detailRow)" :class="['mini-btn', 'danger', { disabled: takedownMutationBusy(detailRow) }]" role="button" :tabindex="takedownMutationBusy(detailRow) ? -1 : 0" :aria-disabled="takedownMutationBusy(detailRow) ? 'true' : 'false'" @click="onTakedownContent(detailRow)">{{ t('admin.takedownContent') }}</view>
             <view v-if="detailRow.target_user_id" class="mini-btn" role="button" tabindex="0" @click="openUser(detailRow.target_user_id)">{{ t('admin.openAuthorProfile') }}</view>
-            <view v-if="detailRow.target_user_id" class="mini-btn danger" role="button" tabindex="0" @click="onBanPrompt(detailRow.target_user_id, detailRow.target_user_nickname)">{{ t('admin.banAuthor') }}</view>
+            <view v-if="detailRow.target_user_id" :class="['mini-btn', 'danger', { disabled: banMutationBusy(detailRow.target_user_id) }]" role="button" :tabindex="banMutationBusy(detailRow.target_user_id) ? -1 : 0" :aria-disabled="banMutationBusy(detailRow.target_user_id) ? 'true' : 'false'" @click="onBanPrompt(detailRow.target_user_id, detailRow.target_user_nickname)">{{ t('admin.banAuthor') }}</view>
           </view>
         </view>
         <view v-else-if="detailKind === 'suspension' && detailRow">
@@ -782,7 +785,7 @@
           </text>
           <view class="d-actions">
             <view class="mini-btn" role="button" tabindex="0" @click="openUser(detailRow.profile_id)">{{ t('admin.openProfile') }}</view>
-            <view v-if="!detailRow.lifted_at && !isExpired(detailRow.ends_at)" class="mini-btn primary" role="button" tabindex="0" @click="onLiftSuspension(detailRow)">{{ t('admin.lift') }}</view>
+            <view v-if="!detailRow.lifted_at && !isExpired(detailRow.ends_at)" :class="['mini-btn', 'primary', { disabled: liftMutationBusy(detailRow) }]" role="button" :tabindex="liftMutationBusy(detailRow) ? -1 : 0" :aria-disabled="liftMutationBusy(detailRow) ? 'true' : 'false'" @click="onLiftSuspension(detailRow)">{{ t('admin.lift') }}</view>
           </view>
         </view>
       </scroll-view>
@@ -1390,8 +1393,12 @@ type AdminTokenStatus = 'active' | 'expired' | 'revoked'
 
 function tokenStatus(token: AdminTokenRow): AdminTokenStatus {
   if (token.revoked_at) return 'revoked'
-  if (token.expires_at && Date.parse(token.expires_at) <= Date.now()) return 'expired'
+  if (token.expires_at && Date.parse(token.expires_at) <= adminClockNow()) return 'expired'
   return 'active'
+}
+
+function isCurrentAdminToken(token: AdminTokenRow): boolean {
+  return whoami.value?.token_id === token.id
 }
 
 const stats = ref<StatsRow | null>(null)
@@ -1442,6 +1449,58 @@ const filteredSuspensions = computed(() => {
 })
 const appeals = ref<AppealRow[]>([])
 const appealDecisionIds = ref<string[]>([])
+const moderationMutationKeys = ref<string[]>([])
+
+function moderationMutationKey(action: string, ...targetParts: Array<string | null | undefined>): string {
+  return JSON.stringify([action, ...targetParts.map(part => part || '')])
+}
+
+function reportMutationKey(g: Pick<ReportGroup, 'target_type' | 'target_id'>): string {
+  return moderationMutationKey('resolve_target_reports', g.target_type, g.target_id)
+}
+
+function takedownMutationKey(row: any): string {
+  return moderationMutationKey('takedown_content', row?.target_type, row?.target_id)
+}
+
+function liftMutationKey(s: { id: string }): string {
+  return moderationMutationKey('lift_suspension', s.id)
+}
+
+function banMutationKey(targetId: string): string {
+  return moderationMutationKey('apply_ban', targetId)
+}
+
+function moderationMutationBusy(key: string): boolean {
+  return moderationMutationKeys.value.includes(key)
+}
+
+function beginModerationMutation(key: string): boolean {
+  if (moderationMutationBusy(key)) return false
+  moderationMutationKeys.value = [...moderationMutationKeys.value, key]
+  return true
+}
+
+function endModerationMutation(key: string) {
+  moderationMutationKeys.value = moderationMutationKeys.value.filter(value => value !== key)
+}
+
+function reportMutationBusy(g: Pick<ReportGroup, 'target_type' | 'target_id'>): boolean {
+  return moderationMutationBusy(reportMutationKey(g))
+}
+
+function takedownMutationBusy(row: any): boolean {
+  return moderationMutationBusy(takedownMutationKey(row))
+}
+
+function liftMutationBusy(s: { id: string }): boolean {
+  return moderationMutationBusy(liftMutationKey(s))
+}
+
+function banMutationBusy(targetId: string): boolean {
+  return moderationMutationBusy(banMutationKey(targetId))
+}
+
 const warnings = ref<WarningRow[]>([])
 const listHasMore = ref<Record<PagedAdminTab, boolean>>({
   suspensions: false,
@@ -1849,7 +1908,7 @@ function cancelTokenRevoke(restoreFocus = true) {
 
 function openTokenRevoke(token: AdminTokenRow, event?: Event) {
   const owner = captureAdminSessionOwner()
-  if (!owner || !canReadTokens.value || !tokenActionsReady.value || tokenStatus(token) === 'revoked') return
+  if (!owner || !canReadTokens.value || !tokenActionsReady.value || isCurrentAdminToken(token) || tokenStatus(token) === 'revoked') return
   const eventTarget = event?.currentTarget as HTMLElement | null | undefined
   tokenRevokeOpener = typeof eventTarget?.focus === 'function'
     ? eventTarget
@@ -1886,7 +1945,7 @@ function focusInvalidTokenRevokeEvidence(field: 'case' | 'approval') {
 async function confirmTokenRevoke() {
   const token = tokenRevokeTarget.value
   const owner = tokenRevokeOwner
-  if (!token || !owner || !isAdminSessionOwnerCurrent(owner) || tokenStatus(token) === 'revoked') {
+  if (!token || !owner || !isAdminSessionOwnerCurrent(owner) || isCurrentAdminToken(token) || tokenStatus(token) === 'revoked') {
     cancelTokenRevoke()
     return
   }
@@ -2858,6 +2917,7 @@ function resetAdminPrivateState() {
   suspensions.value = []
   appeals.value = []
   appealDecisionIds.value = []
+  moderationMutationKeys.value = []
   warnings.value = []
   auditLog.value = []
   listOffsets.value = { suspensions: 0, appeals: 0, warnings: 0, audit: 0 }
@@ -3484,7 +3544,8 @@ function bulkResolve(status: 'resolved' | 'dismissed') {
 
 function resolveTargetReports(g: ReportGroup, status: 'resolved' | 'dismissed') {
   const owner = captureAdminSessionOwner()
-  if (!owner) return
+  const mutationKey = reportMutationKey(g)
+  if (!owner || moderationMutationBusy(mutationKey)) return
   uni.showModal({
     title: status === 'resolved' ? t('admin.resolveAllConfirmTitle') : t('admin.dismissAllConfirmTitle'),
     content: t('admin.resolveAllConfirmBody', {
@@ -3493,7 +3554,7 @@ function resolveTargetReports(g: ReportGroup, status: 'resolved' | 'dismissed') 
     }),
     confirmText: status === 'resolved' ? t('admin.resolve') : t('admin.dismiss'),
     success: async (r) => {
-      if (!r.confirm || !isAdminSessionOwnerCurrent(owner)) return
+      if (!r.confirm || !isAdminSessionOwnerCurrent(owner) || !beginModerationMutation(mutationKey)) return
       try {
         await apiPost({
           action: 'resolve_target_reports',
@@ -3510,6 +3571,8 @@ function resolveTargetReports(g: ReportGroup, status: 'resolved' | 'dismissed') 
         }
       } catch (err: any) {
         showAdminRequestError(err, t('admin.toastUpdateFailed'))
+      } finally {
+        if (isAdminSessionOwnerCurrent(owner)) endModerationMutation(mutationKey)
       }
     },
   })
@@ -3725,7 +3788,8 @@ function canTakedown(row: any): boolean {
 
 function onTakedownContent(row: any) {
   const owner = captureAdminSessionOwner()
-  if (!owner) return
+  const mutationKey = takedownMutationKey(row)
+  if (!owner || moderationMutationBusy(mutationKey)) return
   uni.showModal({
     title: t('admin.takedownConfirmTitle'),
     content: t('admin.takedownConfirmBody', {
@@ -3737,9 +3801,10 @@ function onTakedownContent(row: any) {
     confirmText: t('admin.takedownConfirm'),
     confirmColor: '#c0392b',
     success: async (r) => {
-      if (!r.confirm || !isAdminSessionOwnerCurrent(owner)) return
+      if (!r.confirm || !isAdminSessionOwnerCurrent(owner) || moderationMutationBusy(mutationKey)) return
       const reason = moderationReasonOrNotify(r.content)
       if (reason === null) return
+      if (!beginModerationMutation(mutationKey)) return
       try {
         await apiPost({
           action: 'takedown_content',
@@ -3757,6 +3822,8 @@ function onTakedownContent(row: any) {
         }
       } catch (err: any) {
         showAdminRequestError(err, t('admin.toastTakedownFailed'))
+      } finally {
+        if (isAdminSessionOwnerCurrent(owner)) endModerationMutation(mutationKey)
       }
     },
   })
@@ -3775,7 +3842,8 @@ function onLiftSuspension(s: {
   ends_at?: string | null
 }) {
   const owner = captureAdminSessionOwner()
-  if (!owner || (s.ends_at && isExpired(s.ends_at))) return
+  const mutationKey = liftMutationKey(s)
+  if (!owner || moderationMutationBusy(mutationKey) || (s.ends_at && isExpired(s.ends_at))) return
   const target = adminSuspensionTarget(s.profile_nickname, s.profile_id || '—', s.id)
   uni.showModal({
     title: t('admin.liftConfirmTitle'),
@@ -3784,9 +3852,10 @@ function onLiftSuspension(s: {
     placeholderText: t('admin.liftReasonPh'),
     confirmText: t('admin.liftConfirm'),
     success: async (r) => {
-      if (!r.confirm || !isAdminSessionOwnerCurrent(owner)) return
+      if (!r.confirm || !isAdminSessionOwnerCurrent(owner) || moderationMutationBusy(mutationKey)) return
       const reason = moderationReasonOrNotify(r.content)
       if (reason === null) return
+      if (!beginModerationMutation(mutationKey)) return
       try {
         await apiPost(
           { action: 'lift_suspension', suspension_id: s.id, reason },
@@ -3803,6 +3872,8 @@ function onLiftSuspension(s: {
         }
       } catch (err: any) {
         showAdminRequestError(err, t('admin.toastLiftFailed'))
+      } finally {
+        if (isAdminSessionOwnerCurrent(owner)) endModerationMutation(mutationKey)
       }
     },
   })
@@ -3810,7 +3881,8 @@ function onLiftSuspension(s: {
 
 function onBanPrompt(targetId: string, nickname?: string) {
   const owner = captureAdminSessionOwner()
-  if (!owner) return
+  const mutationKey = banMutationKey(targetId)
+  if (!owner || moderationMutationBusy(mutationKey)) return
   uni.showActionSheet({
     itemList: [
       t('admin.banL1'),
@@ -3832,9 +3904,10 @@ function onBanPrompt(targetId: string, nickname?: string) {
         editable: true,
         placeholderText: t('admin.banReasonPh'),
         success: async (r) => {
-          if (!r.confirm || !isAdminSessionOwnerCurrent(owner)) return
+          if (!r.confirm || !isAdminSessionOwnerCurrent(owner) || moderationMutationBusy(mutationKey)) return
           const reason = moderationReasonOrNotify(r.content)
           if (reason === null) return
+          if (!beginModerationMutation(mutationKey)) return
           try {
             await apiPost({
               action: 'apply_ban',
@@ -3853,6 +3926,8 @@ function onBanPrompt(targetId: string, nickname?: string) {
             }
           } catch (err: any) {
             showAdminRequestError(err, t('admin.toastBanFailed'))
+          } finally {
+            if (isAdminSessionOwnerCurrent(owner)) endModerationMutation(mutationKey)
           }
         },
       })

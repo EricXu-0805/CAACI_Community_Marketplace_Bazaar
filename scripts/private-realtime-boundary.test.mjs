@@ -86,6 +86,10 @@ test('operations bundle separates read-only gates from rolled-back behavior', as
   assert.match(regression, /anon received managed Realtime rows/)
   assert.match(bootstrap, /LOCAL\/ISOLATED POSTGRESQL ONLY/)
   assert.match(bootstrap, /CREATE OR REPLACE FUNCTION realtime\.topic\(\)/)
+  assert.match(
+    bootstrap,
+    /GRANT USAGE ON SCHEMA realtime[\s\S]*supabase_realtime_admin/,
+  )
 })
 
 test('forward reconciliation owns exact policies but never rewrites managed table ACLs', async () => {

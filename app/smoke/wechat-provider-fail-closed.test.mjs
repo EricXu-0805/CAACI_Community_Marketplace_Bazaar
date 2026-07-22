@@ -99,15 +99,25 @@ test('server rejects prefixes and malformed configured-provider success payloads
   assert.match(server, /return json\(\{ error: 'wechat_provider_unavailable' \}, 503\)/)
 })
 
-test('callback is authenticated before bounded parsing and preserves retry responses', () => {
+test('callback authenticates, validates and canonicalizes before durable claim', () => {
   const callback = source('../api/wechat-callback.js')
-  const auth = callback.indexOf('await validSignature(url.searchParams)')
-  const parse = callback.indexOf('await readJsonBody(request)')
+  const auth = callback.indexOf('const secureQuery = encryptedQuery(url.searchParams)')
+  const bodyRead = callback.indexOf('bodyBytes = await readBoundedBytes(')
+  const decrypt = callback.indexOf('const plaintext = await decryptSecurityModeMessage(')
+  const validate = callback.indexOf("event.Event !== 'wxa_media_check'")
+  const payloadHash = callback.indexOf('payloadHash: await sha256Hex(')
+  const claim = callback.indexOf("callbackRpc('claim_wechat_callback_receipt'")
+  const parse = callback.indexOf('const event = parseMediaEvent(plaintext)')
 
-  assert.ok(auth >= 0 && parse > auth)
+  assert.ok(auth >= 0 && bodyRead > auth && decrypt > bodyRead && parse > decrypt
+    && validate > parse && payloadHash > validate && claim > payloadHash)
+  assert.match(callback, /encryptType !== 'aes'/)
+  assert.match(callback, /constantTimeEqual\(appId, WECHAT_APPID\)/)
   assert.match(callback, /MAX_CALLBACK_BYTES = 32 \* 1024/)
   assert.match(callback, /signal: controller\.signal,[\s\S]*redirect: 'error'/)
-  assert.match(callback, /function retryableFailure[\s\S]*plain\('retry', 503\)/)
+  assert.match(callback, /function retryableFailure[\s\S]*plain\('retry', 503, \{ 'Retry-After': '2' \}\)/)
+  assert.match(callback, /claimState === 'completed'\) return plain\('success', 200\)/)
+  assert.match(callback, /callbackRpc\('complete_wechat_callback_receipt'/)
   assert.match(callback, /Content-Security-Policy/)
   assert.match(callback, /X-Content-Type-Options/)
   assert.match(callback, /Cache-Control': 'no-store'/)
