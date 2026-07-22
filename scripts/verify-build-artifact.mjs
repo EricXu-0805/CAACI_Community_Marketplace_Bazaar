@@ -39,6 +39,10 @@ function containsRemovedDecoderMaterial(text) {
   return /(?:heic-to|libheif)/i.test(text)
 }
 
+function containsBlockedRemoteUiAsset(text) {
+  return /https:\/\/(?:cdn(?:\d+)?\.dcloud\.net\.cn|cdn\.dcimg\.net)\/(?:[^/]+\/)*img\/shadow-[a-z0-9_-]+\.png/i.test(text)
+}
+
 export async function verifyBuildArtifact(root, expectedEnvironment = 'none') {
   const files = await walk(root)
   const forbidden = files.find(forbiddenName)
@@ -47,11 +51,15 @@ export async function verifyBuildArtifact(root, expectedEnvironment = 'none') {
   for (const file of files) {
     const bytes = await readFile(path.join(root, file))
     if (bytes.includes(0)) continue
-    if (containsPrivilegedMaterial(bytes.toString('utf8'))) {
+    const text = bytes.toString('utf8')
+    if (containsPrivilegedMaterial(text)) {
       throw new Error(`build_artifact_invalid: privileged material in ${file}`)
     }
-    if (containsRemovedDecoderMaterial(bytes.toString('utf8'))) {
+    if (containsRemovedDecoderMaterial(text)) {
       throw new Error(`build_artifact_invalid: removed HEIC decoder material in ${file}`)
+    }
+    if (containsBlockedRemoteUiAsset(text)) {
+      throw new Error(`build_artifact_invalid: CSP-blocked remote UI asset in ${file}`)
     }
   }
 
