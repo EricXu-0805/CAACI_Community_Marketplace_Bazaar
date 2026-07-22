@@ -55,7 +55,6 @@ const reviewedPreview = {
   VERCEL_URL: 'reviewed-preview.vercel.app',
   VERCEL_GIT_COMMIT_SHA: COMMIT,
   DEPLOYMENT_EXPECTED_VERCEL_ENV: 'preview',
-  DEPLOYMENT_APP_ORIGIN: 'https://reviewed-preview.vercel.app',
   SUPABASE_EXPECTED_PROJECT_REF: PROJECT_REF,
   VITE_SUPABASE_URL: PROJECT_URL,
 }
@@ -70,7 +69,7 @@ test('local and CI builds are explicitly marked non-deployable', async () => {
   assert.equal(ci.manifest.deployable, false)
 })
 
-test('reviewed Preview configuration emits an attested deployable manifest', async () => {
+test('reviewed Preview derives its dynamic origin and emits an attested deployable manifest', async () => {
   const result = await probe(reviewedPreview)
   assert.equal(result.ok, true)
   assert.equal(result.environment, 'preview')
@@ -85,11 +84,41 @@ test('reviewed Preview configuration emits an attested deployable manifest', asy
   })
 })
 
+test('an explicit Preview origin is accepted only when it matches the dynamic Vercel host', async () => {
+  const result = await probe({
+    ...reviewedPreview,
+    DEPLOYMENT_APP_ORIGIN: 'https://reviewed-preview.vercel.app',
+  })
+  assert.equal(result.ok, true)
+  assert.equal(result.manifest.appOrigin, 'https://reviewed-preview.vercel.app')
+})
+
+test('Production still requires an explicit reviewed app origin', async () => {
+  const production = {
+    ...reviewedPreview,
+    VERCEL_ENV: 'production',
+    VERCEL_URL: 'caaci-production-build.vercel.app',
+    DEPLOYMENT_EXPECTED_VERCEL_ENV: 'production',
+  }
+  const missing = await probe(production)
+  assert.equal(missing.ok, false)
+  assert.match(missing.error, /DEPLOYMENT_APP_ORIGIN/)
+
+  const reviewed = await probe({
+    ...production,
+    DEPLOYMENT_APP_ORIGIN: 'https://illinimarket.com',
+  })
+  assert.equal(reviewed.ok, true)
+  assert.equal(reviewed.manifest.appOrigin, 'https://illinimarket.com')
+})
+
 for (const [label, env] of [
   ['missing expected tier', { ...reviewedPreview, DEPLOYMENT_EXPECTED_VERCEL_ENV: '' }],
   ['attacker Supabase origin', { ...reviewedPreview, VITE_SUPABASE_URL: 'https://attacker.example' }],
   ['wrong Supabase project', { ...reviewedPreview, VITE_SUPABASE_URL: 'https://zzzzzzzzzzzzzzzzzzzz.supabase.co' }],
   ['production app origin in Preview', { ...reviewedPreview, DEPLOYMENT_APP_ORIGIN: 'https://illinimarket.com' }],
+  ['invalid explicit app origin in Preview', { ...reviewedPreview, DEPLOYMENT_APP_ORIGIN: 'not-an-origin' }],
+  ['malformed dynamic Preview host', { ...reviewedPreview, VERCEL_URL: 'https://attacker.example/path' }],
   ['missing Vercel identity', { ...reviewedPreview, VERCEL: '', VERCEL_ENV: '' }],
 ]) {
   test(`deployment build fails closed for ${label}`, async () => {

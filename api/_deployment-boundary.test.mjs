@@ -50,7 +50,6 @@ function reviewedPreview(overrides = {}) {
     VERCEL_ENV: 'preview',
     VERCEL_URL: 'reviewed-preview.vercel.app',
     DEPLOYMENT_EXPECTED_VERCEL_ENV: 'preview',
-    DEPLOYMENT_APP_ORIGIN: APP_ORIGIN,
     SUPABASE_EXPECTED_PROJECT_REF: PROJECT_REF,
     SUPABASE_URL: PROJECT_URL,
     VITE_SUPABASE_URL: PROJECT_URL,
@@ -149,6 +148,46 @@ test('a test-runner marker cannot bypass a real Vercel deployment identity', () 
     },
   })
   assert.deepEqual(result, { ok: false, code: 'supabase_project_mismatch' })
+})
+
+test('Preview derives only the current Vercel origin while Production still requires an explicit origin', () => {
+  const preview = evaluateDeploymentBoundary({
+    supabaseUrl: PROJECT_URL,
+    env: reviewedPreview(),
+  })
+  assert.equal(preview.ok, true)
+  assert.equal(preview.appOrigin, APP_ORIGIN)
+
+  const malformedPreview = evaluateDeploymentBoundary({
+    supabaseUrl: PROJECT_URL,
+    env: reviewedPreview({ VERCEL_URL: 'https://attacker.example/path' }),
+  })
+  assert.deepEqual(malformedPreview, { ok: false, code: 'app_origin_missing' })
+
+  const invalidExplicitPreview = evaluateDeploymentBoundary({
+    supabaseUrl: PROJECT_URL,
+    env: reviewedPreview({ DEPLOYMENT_APP_ORIGIN: 'not-an-origin' }),
+  })
+  assert.deepEqual(invalidExplicitPreview, { ok: false, code: 'app_origin_missing' })
+
+  const production = {
+    ...reviewedPreview(),
+    VERCEL_ENV: 'production',
+    VERCEL_URL: 'caaci-production-build.vercel.app',
+    DEPLOYMENT_EXPECTED_VERCEL_ENV: 'production',
+  }
+  const missingProductionOrigin = evaluateDeploymentBoundary({
+    supabaseUrl: PROJECT_URL,
+    env: production,
+  })
+  assert.deepEqual(missingProductionOrigin, { ok: false, code: 'app_origin_missing' })
+
+  const reviewedProduction = evaluateDeploymentBoundary({
+    supabaseUrl: PROJECT_URL,
+    env: { ...production, DEPLOYMENT_APP_ORIGIN: 'https://illinimarket.com' },
+  })
+  assert.equal(reviewedProduction.ok, true)
+  assert.equal(reviewedProduction.appOrigin, 'https://illinimarket.com')
 })
 
 test('reviewed Preview share stays in Preview and is explicitly non-indexable', async () => {

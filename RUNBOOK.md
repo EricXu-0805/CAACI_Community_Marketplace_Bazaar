@@ -485,11 +485,14 @@ deploy would still ship the unwanted Function bundle.
 
 The H5 build also emits `deployment-manifest.json` with only non-secret tier,
 project-ref, app-origin, release, and commit evidence. Production/Preview builds
-fail before output when `DEPLOYMENT_EXPECTED_VERCEL_ENV`,
-`SUPABASE_EXPECTED_PROJECT_REF`, or `DEPLOYMENT_APP_ORIGIN` disagrees with the
-auto-injected Vercel identity. `scripts/verify-prebuilt-deployment.mjs` requires
-that manifest to be deployable and exact; merely passing the Function inventory
-test does not make a stub or stale artifact a release candidate.
+fail before output when `DEPLOYMENT_EXPECTED_VERCEL_ENV` or
+`SUPABASE_EXPECTED_PROJECT_REF` disagrees with the auto-injected Vercel identity.
+Production additionally requires an explicit exact `DEPLOYMENT_APP_ORIGIN`.
+Preview derives its unique current origin from auto-injected `VERCEL_URL`; an
+optional explicit Preview origin must match it exactly. The prebuilt verifier
+still requires the operator to provide the exact reviewed artifact origin.
+Merely passing the Function inventory test does not make a stub or stale
+artifact a release candidate.
 
 ## Privileged Supabase key incident / rotation
 

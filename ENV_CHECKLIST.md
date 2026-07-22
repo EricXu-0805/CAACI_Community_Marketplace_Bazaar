@@ -16,10 +16,12 @@ missing. Sorted by criticality.
   fallback `VITE_SUPABASE_ANON_KEY`), optional
   `VITE_SENTRY_DSN`, `VITE_BASE_URL`, and `VITE_SUPPORT_EMAIL`.
 - **Every trusted Vercel deployment (non-secret assertions)**:
-  `DEPLOYMENT_EXPECTED_VERCEL_ENV`, `SUPABASE_EXPECTED_PROJECT_REF`, and
-  `DEPLOYMENT_APP_ORIGIN`. They must be scoped with the matching environment;
-  missing or contradictory values stop the build and make every Supabase-backed
-  Function return 503 before it can send a key or bearer upstream.
+  `DEPLOYMENT_EXPECTED_VERCEL_ENV` and `SUPABASE_EXPECTED_PROJECT_REF`; Production
+  also requires `DEPLOYMENT_APP_ORIGIN`. Preview derives its unique current
+  origin from auto-injected `VERCEL_URL`; an optional explicit Preview origin
+  must match it exactly. Missing or contradictory values stop the build and make
+  every Supabase-backed Function return 503 before it can send a key or bearer
+  upstream.
 - **GitHub Actions**: build jobs use publishable-key Supabase stubs; the smoke
   job reads `VITE_SUPABASE_URL` plus `VITE_SUPABASE_PUBLISHABLE_KEY` (preferred)
   or `VITE_SUPABASE_ANON_KEY` (legacy fallback) from Actions secrets and
@@ -61,8 +63,8 @@ missing. Sorted by criticality.
 | `SUPABASE_ANON_KEY` | ⚠️ legacy fallback | ❌ | ⚠️ optional fallback | Server functions use it only when `SUPABASE_PUBLISHABLE_KEY` is absent. |
 | `DEPLOYMENT_EXPECTED_VERCEL_ENV` | ✅ required, exact tier | ❌ | ❌ except `vercel dev` rehearsal | Operator assertion (`production`, `preview`, or `development`) must equal auto-injected `VERCEL_ENV`; prevents a credential set copied into the wrong tier from silently running. |
 | `SUPABASE_EXPECTED_PROJECT_REF` | ✅ required, exact 20-char ref | ❌ | ⚠️ for `vercel dev` | Both `SUPABASE_URL` and `VITE_SUPABASE_URL` must resolve exactly to `https://<this-ref>.supabase.co`; arbitrary HTTPS hosts and wrong Supabase projects fail before upstream work/build output. |
-| `DEPLOYMENT_APP_ORIGIN` | ✅ required, exact origin | ❌ | ⚠️ for local API/share rehearsal | Canonical deployment origin. Preview must exactly match auto-injected `VERCEL_URL`; share/email URLs use it and Preview share responses are `noindex`. No path/query/credentials. |
-| `SHARE_SITE_URL` | ❌ legacy alias | ❌ | ⚠️ local compatibility only | Legacy local/test alias for share-card URLs. Hosted deployments always require and prefer `DEPLOYMENT_APP_ORIGIN`; this variable cannot bypass the deployment boundary. |
+| `DEPLOYMENT_APP_ORIGIN` | ✅ Production required; Preview optional | ❌ | ⚠️ for local API/share rehearsal | Production canonical origin. Preview derives the exact current origin from auto-injected `VERCEL_URL`; if this variable is set in Preview it must match that host exactly. Share responses use the validated origin and Preview remains `noindex`. No path/query/credentials. |
+| `SHARE_SITE_URL` | ❌ legacy alias | ❌ | ⚠️ local compatibility only | Legacy local/test alias for share-card URLs. Hosted deployments use the validated deployment origin; this variable cannot bypass the deployment boundary. |
 | `VITE_BASE_URL` | ✅ required for non-H5 artifacts | ✅ non-production stub (build) | ✅ required for non-H5 | Exact HTTPS origin for mp API/share/reset URLs. Missing/malformed values stop the mp build before an artifact is emitted and never fall back to production; H5 stays on `window.location.origin`. |
 | `VITE_SUPPORT_EMAIL` | ✅ optional | ❌ | ⚠️ optional | Legal-page contact falls back to `help@illinimarket.com`. |
 | `NOMINATIM_BASE_URL` | ✅ optional | ❌ | ⚠️ optional | Reverse geocoding uses the public Nominatim endpoint by default. Set an HTTPS Nominatim-compatible endpoint to switch providers without a client release. |
@@ -236,7 +238,7 @@ rotate an in-use legacy password salt without a migration plan.
 | `VERCEL` | Vercel build/runtime | Required platform-identity marker for hosted Production/Preview Functions. |
 | `VERCEL_GIT_COMMIT_SHA` | Vercel build env | `VITE_RELEASE` derivation in `vite.config.ts` |
 | `VERCEL_ENV` | Vercel build/runtime | Compared with `DEPLOYMENT_EXPECTED_VERCEL_ENV`; also tags client/server Sentry events as `production`, `preview`, or `development`. |
-| `VERCEL_URL` | Vercel build/runtime | Preview host must equal `DEPLOYMENT_APP_ORIGIN`; missing/mismatch fails closed. |
+| `VERCEL_URL` | Vercel build/runtime | Source of the exact dynamic Preview origin. A malformed value, or a mismatch with an optional explicit `DEPLOYMENT_APP_ORIGIN`, fails closed. |
 
 ### Supabase Auth — manual dashboard setup (not env vars)
 
@@ -273,7 +275,7 @@ Before inviting the first cohort. Details for each var are in the tables above.
 environment's exact origin/project):**
 
 - [ ] `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` — preferred current pair; keep `VITE_SUPABASE_ANON_KEY` only as the tested rolling fallback for old clients
-- [ ] `DEPLOYMENT_EXPECTED_VERCEL_ENV`, `SUPABASE_EXPECTED_PROJECT_REF`, `DEPLOYMENT_APP_ORIGIN` — exact tier/project/origin assertions; set them separately in Production and only the reviewed trusted Preview environment
+- [ ] `DEPLOYMENT_EXPECTED_VERCEL_ENV`, `SUPABASE_EXPECTED_PROJECT_REF` — exact tier/project assertions; set them separately in Production and only the reviewed trusted Preview environment. Production also requires exact `DEPLOYMENT_APP_ORIGIN`; Preview normally uses auto-injected `VERCEL_URL` and only needs an explicit origin when deliberately pinning it to that same host
 - [ ] `VITE_BASE_URL` — set the exact environment origin for every non-H5 Preview/Production artifact; the mp build must exit non-zero when it is absent/malformed, while H5 remains same-origin
 - [ ] `SUPABASE_PUBLISHABLE_KEY` — use the same environment's public project; keep legacy `SUPABASE_ANON_KEY` only as that environment's rolling fallback
 - [ ] `VITE_SENTRY_DSN` — use an environment-specific public DSN when error visibility is enabled

@@ -129,6 +129,18 @@ function normalizeBuildAppOrigin(raw: unknown): string {
   return `${protocol}://${hostname}${port && !defaultPort ? `:${Number(port)}` : ''}`;
 }
 
+function vercelPreviewOrigin(raw: unknown): string {
+  const host = String(raw || '').trim().toLowerCase();
+  if (!host) return '';
+  const origin = normalizeBuildAppOrigin(`https://${host}`);
+  if (!origin) return '';
+  try {
+    return new URL(origin).host.toLowerCase() === host ? origin : '';
+  } catch {
+    return '';
+  }
+}
+
 const SUPABASE_PROJECT_REF_RE = /^[a-z0-9]{20}$/;
 const VERCEL_DEPLOY_ENVIRONMENTS = new Set(['production', 'preview', 'development']);
 
@@ -178,7 +190,12 @@ function deploymentConfigurationBoundary(): Plugin {
         || !!String(loaded.VERCEL_URL || '').trim();
       const environment = actualEnvironment || (loaded.CI === 'true' ? 'ci' : 'local');
       const project = buildSupabaseProject(loaded.VITE_SUPABASE_URL);
-      const appOrigin = normalizeBuildAppOrigin(loaded.DEPLOYMENT_APP_ORIGIN);
+      const appOriginRaw = String(loaded.DEPLOYMENT_APP_ORIGIN || '').trim();
+      const explicitAppOrigin = normalizeBuildAppOrigin(appOriginRaw);
+      const previewOrigin = actualEnvironment === 'preview'
+        ? vercelPreviewOrigin(loaded.VERCEL_URL)
+        : '';
+      const appOrigin = explicitAppOrigin || (!appOriginRaw ? previewOrigin : '');
 
       if (vercelIdentityPresent) {
         if (!VERCEL_DEPLOY_ENVIRONMENTS.has(actualEnvironment)) {
@@ -202,8 +219,7 @@ function deploymentConfigurationBoundary(): Plugin {
           throw new Error('[deployment-boundary] DEPLOYMENT_APP_ORIGIN must be the exact deployment origin');
         }
         if (actualEnvironment === 'preview') {
-          const vercelHost = String(loaded.VERCEL_URL || '').trim().toLowerCase();
-          if (!vercelHost || vercelHost.includes('/') || new URL(appOrigin).host.toLowerCase() !== vercelHost) {
+          if (!previewOrigin || appOrigin !== previewOrigin) {
             throw new Error('[deployment-boundary] Preview app origin does not match VERCEL_URL');
           }
         }

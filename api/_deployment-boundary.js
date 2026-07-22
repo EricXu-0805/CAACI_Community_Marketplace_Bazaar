@@ -18,6 +18,18 @@ function normalizeOrigin(raw, { allowLoopbackHttp = false } = {}) {
   }
 }
 
+function vercelPreviewOrigin(raw) {
+  const host = String(raw || '').trim().toLowerCase()
+  if (!host) return ''
+  const origin = normalizeOrigin(`https://${host}`)
+  if (!origin) return ''
+  try {
+    return new URL(origin).host.toLowerCase() === host ? origin : ''
+  } catch {
+    return ''
+  }
+}
+
 function supabaseProject(raw) {
   const origin = normalizeOrigin(raw)
   if (!origin) return null
@@ -42,10 +54,11 @@ function localResult(env, appOriginRaw) {
  * Bind every server-side Supabase request to one reviewed deployment identity.
  *
  * A Vercel environment name by itself is not an authorization boundary: a
- * production secret can be accidentally scoped to Preview. The expected tier,
- * exact Supabase project ref and exact public app origin are therefore separate
- * operator-owned assertions and all three must agree with the auto-injected
- * Vercel identity before a handler performs any upstream work.
+ * production secret can be accidentally scoped to Preview. The expected tier
+ * and exact Supabase project ref are therefore separate operator-owned
+ * assertions. Production also requires an explicit canonical origin; Preview
+ * binds to the unique current origin supplied by VERCEL_URL. Every value must
+ * agree before a handler performs any upstream work.
  */
 export function evaluateDeploymentBoundary({
   supabaseUrl,
@@ -94,14 +107,18 @@ export function evaluateDeploymentBoundary({
   }
 
   const allowLoopbackHttp = actualEnvironment === 'development'
-  const appOrigin = normalizeOrigin(value(env, 'DEPLOYMENT_APP_ORIGIN'), { allowLoopbackHttp })
+  const appOriginRaw = value(env, 'DEPLOYMENT_APP_ORIGIN')
+  const explicitAppOrigin = normalizeOrigin(appOriginRaw, { allowLoopbackHttp })
+  const previewOrigin = actualEnvironment === 'preview'
+    ? vercelPreviewOrigin(value(env, 'VERCEL_URL'))
+    : ''
+  const appOrigin = explicitAppOrigin || (!appOriginRaw ? previewOrigin : '')
   if (!appOrigin) {
     return Object.freeze({ ok: false, code: 'app_origin_missing' })
   }
 
   if (actualEnvironment === 'preview') {
-    const vercelHost = value(env, 'VERCEL_URL').toLowerCase()
-    if (!vercelHost || vercelHost.includes('/') || new URL(appOrigin).host.toLowerCase() !== vercelHost) {
+    if (!previewOrigin || appOrigin !== previewOrigin) {
       return Object.freeze({ ok: false, code: 'preview_origin_mismatch' })
     }
   }
