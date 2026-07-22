@@ -28,8 +28,15 @@ VERIFY remain the authoritative FK tail, but they are no longer the literal
 last migration: 19151729 is a later, narrowly scoped Plaza ACL reconciliation,
 followed by 19164126's managed Realtime Authorization policy reconciliation,
 19170019's exact meetup ACL reconciliation, and 19174928's trigger-only
-function ACL reconciliation. On a clean ledger, keep normal version order and
-run all four after 19083511.
+function ACL reconciliation. The later strict tail is 20035037 appeal/session
+hardening, 22024000 WeChat replay protection, 22033904 legacy convergence,
+22080918 exact auth-RLS initplan optimization, 22081137 in-place `pg_trgm`
+relocation, and 22081141 authenticated-function surface hardening. On a clean
+ledger, keep normal version order. The three newest REGRESSION files remain
+rollback-only local/staging evidence; the `pg_trgm` migration must preserve the
+four existing GIN index OIDs, and the function-surface VERIFY pins the 18
+intentional authenticated SECURITY DEFINER RPCs rather than weakening their
+underlying table/RLS boundaries to silence an advisor.
 The first reviewed exception is a production database already stopped after
 18160000 by the exact Plaza ACL drift documented in the root `RUNBOOK.md`:
 there, a ledger-aware executor may record the exact missing 19151729 repair

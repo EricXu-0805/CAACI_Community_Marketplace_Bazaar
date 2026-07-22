@@ -642,7 +642,7 @@ event if the original worker subsequently fails.
 
 ## 2026-07 candidate release sequence
 
-> This is the reviewed operational order for the current 38-migration audit
+> This is the reviewed operational order for the current 41-migration audit
 > candidate. It is **not** authorization to change production. Stop before the
 > first mutating step unless the release owner has approved the exact target,
 > backup/rollback point, migration hashes, and operator.
@@ -666,7 +666,7 @@ event if the original worker subsequently fails.
    ```
 
 2. In two independent fresh PostgreSQL 17 environments, replay all 88
-   historical + 38 candidate migrations and every applicable
+   historical + 41 candidate migrations and every applicable
    PRECHECK/VERIFY/rolled-back REGRESSION file, then compare normalized schema
    outputs. Re-run only the tail fixes that explicitly declare themselves
    re-entrant and require a zero schema diff before/after that pass; first-time
@@ -820,11 +820,21 @@ event if the original worker subsequently fails.
       direct API-role execution and pins the function to `pg_catalog`;
     - `20260720035037` admin appeal-decision and session-metadata hardening;
     - `20260722024000` WeChat callback timestamp/replay claim hardening;
-    - `20260722033904` final legacy 014/015 version-collision reconciliation.
+    - `20260722033904` legacy 014/015 version-collision reconciliation.
       Its read-only precheck sizes any backfill and validates JSON/i18n plus
       legacy linkage. If the old single-item column remains, the migration
       copies only missing same-owner pairs through migration 041's FK/cap
-      contract and proves pair equivalence before retiring the old objects.
+      contract and proves pair equivalence before retiring the old objects;
+    - `20260722080918` exact 31-policy `auth.uid()` initplan optimization. It
+      preserves every policy command, role and business expression while
+      caching only row-independent identity calls once per statement;
+    - `20260722081137` in-place `pg_trgm` relocation from API-exposed `public`
+      to `extensions`, with both invoker search RPC paths fixed first and all
+      four existing GIN trigram indexes preserved by OID dependency;
+    - `20260722081141` future-function default-privilege hardening plus the
+      retirement of only the three stale authenticated overloads for
+      onboarding, consent and appeals. The expected-account replacements must
+      already be the only supported client calls before this migration runs.
 
     Run `PRECHECK_20260719_admin_token_lifecycle_rpc.sql` before `19010000`.
     After `19010000` is recorded, run the distinct
@@ -937,6 +947,39 @@ event if the original worker subsequently fails.
     sequence. The manifest protects current replay bytes only; keep PRECHECK,
     VERIFY and the exported schema evidence with the release record.
 
+    Continue in strict order with
+    `PRECHECK_20260722080918_optimize_auth_rls_initplans.sql`, migration
+    `20260722080918`, and its VERIFY. The exact 31-policy set, 26 PUBLIC/five
+    authenticated role split, commands, and normalized expressions must remain
+    unchanged except for `(SELECT auth.uid())`; any target drift is a stop
+    condition. Run its real-role REGRESSION only in disposable local/staging.
+
+    Then run `PRECHECK_20260722081137_relocate_pg_trgm_to_extensions.sql`,
+    apply `20260722081137`, and run its VERIFY. Supabase may retain
+    `supabase_admin` as the managed extension owner; lack of role membership is
+    not itself a failure because the supported relocatable-extension path is
+    enforced by the exact `ALTER EXTENSION` operation. Stop unless `pg_trgm` is
+    relocatable, the target schema is `extensions`, both search RPCs are
+    SECURITY INVOKER with the fixed path, and all four trigram GIN indexes are
+    valid/ready. Execute both searches and the index regression only in
+    disposable local/staging, never production.
+
+    Last, run
+    `PRECHECK_20260722081141_harden_authenticated_function_surface.sql`, apply
+    `20260722081141`, and run its VERIFY. The shipped client must already use
+    the expected-user/expected-suspension signatures, or the release owner must
+    have separately confirmed there are no supported users to preserve. The
+    global PUBLIC default revoke and public-schema anon/authenticated/
+    service_role revoke are both required; a schema-only revoke cannot undo
+    PostgreSQL's global function default. The 18 remaining authenticated
+    SECURITY DEFINER RPC warnings are an intentional, exact allowlist: each is
+    postgres-owned, fixed to `pg_catalog`, authenticated-only and required to
+    cross a reviewed table/RLS boundary. Preserve the VERIFY evidence and
+    suppress those advisor findings only against that exact allowlist; do not
+    convert them to invoker or broaden direct table grants merely to make the
+    advisor green. Run the future-function ACL probe only in disposable
+    local/staging, never production.
+
     Exercise token expiry/revocation, owner-only issuance from authoritative
     profile snapshots, case/approval/idempotency replay, outcome-unknown
     recovery, direct token-write concurrency and the three-role allow/deny
@@ -948,8 +991,9 @@ event if the original worker subsequently fails.
     through the observation window.
 15. Clean prior disposable audit accounts and their objects only through the
     verified durable deletion/admin path. Do not edit Supabase Auth or Storage
-    internal tables directly. Disable legacy keys, old Realtime public access
-    or guarded RPC overloads only in a later release after adoption is proven.
+    internal tables directly. Disable legacy keys, old Realtime public access,
+    or any guarded RPC overload not explicitly retired by `20260722081141`
+    only in a later release after adoption is proven.
 
 ---
 

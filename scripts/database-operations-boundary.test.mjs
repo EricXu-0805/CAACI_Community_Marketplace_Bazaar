@@ -200,6 +200,9 @@ test('release indexes and deterministic admin pagination stay version ordered', 
     '20260720035037',
     '20260722024000',
     '20260722033904',
+    '20260722080918',
+    '20260722081137',
+    '20260722081141',
   ]
   let previous = -1
   for (const version of orderedVersions) {
@@ -207,8 +210,8 @@ test('release indexes and deterministic admin pagination stay version ordered', 
     assert.ok(current > previous, `release sequence is not version ordered at ${version}`)
     previous = current
   }
-  assert.match(release, /current 38-migration audit/)
-  assert.match(release, /88\s+historical \+ 38 candidate migrations/)
+  assert.match(release, /current 41-migration audit/)
+  assert.match(release, /88\s+historical \+ 41 candidate migrations/)
   assert.match(release, /18160000\/19151729[\s\S]{0,80}partial-ledger repairs/)
   assert.match(release, /18250000\/19170019[\s\S]{0,40}partial-ledger repairs/)
   assert.ok(
@@ -244,7 +247,22 @@ test('release indexes and deterministic admin pagination stay version ordered', 
   assert.ok(
     release.indexOf('20260722033904')
       > release.indexOf('20260722024000'),
-    'legacy collision reconciliation must remain the final migration',
+    'legacy collision reconciliation must follow WeChat replay hardening',
+  )
+  assert.ok(
+    release.indexOf('20260722080918')
+      > release.indexOf('20260722033904'),
+    'auth RLS initplan optimization must follow legacy convergence',
+  )
+  assert.ok(
+    release.indexOf('20260722081137')
+      > release.indexOf('20260722080918'),
+    'pg_trgm relocation must follow the auth RLS optimization',
+  )
+  assert.ok(
+    release.indexOf('20260722081141')
+      > release.indexOf('20260722081137'),
+    'authenticated function hardening must remain the final migration',
   )
   assert.match(
     release,
