@@ -74,7 +74,7 @@
     "@vue/tsconfig": "0.9.1",
     "sass": "^1.99.0",
     "typescript": "5.9.3",
-    "vite": "5.2.8",
+    "vite": "6.4.3",
     "vue-tsc": "3.3.7"
   },
   "overrides": {
@@ -85,7 +85,7 @@
     "@intlify/message-compiler": "9.14.5",
     "@intlify/shared": "9.14.5",
     "@intlify/vue-devtools": "9.14.1",
-    "brace-expansion": "5.0.6",
+    "brace-expansion": "5.0.7",
     "express": "4.22.2",
     "esbuild": "0.25.12",
     "form-data": "3.0.5",
