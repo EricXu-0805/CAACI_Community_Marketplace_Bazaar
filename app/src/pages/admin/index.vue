@@ -233,14 +233,24 @@
             class="search-input"
             :placeholder="t('admin.userSearchPh')"
             :aria-label="t('admin.userSearchPh')"
+            :aria-invalid="userQueryTooShort ? 'true' : 'false'"
+            :aria-describedby="userQueryTooShort ? 'admin-user-search-validation' : undefined"
             confirm-type="search"
             @input="onUserQueryInput"
             @confirm="searchUsers"
           />
-          <view :class="['mini-btn', 'primary', { disabled: !userQuery.trim() || userSearching }]" role="button" :tabindex="!userQuery.trim() || userSearching ? -1 : 0" :aria-disabled="!userQuery.trim() || userSearching ? 'true' : 'false'" @click="searchUsers">
+          <view :class="['mini-btn', 'primary', { disabled: !userQueryValid || userSearching }]" role="button" :tabindex="!userQueryValid || userSearching ? -1 : 0" :aria-disabled="!userQueryValid || userSearching ? 'true' : 'false'" @click="searchUsers">
             {{ userSearching ? t('admin.checking') : t('admin.search') }}
           </view>
         </view>
+        <text
+          v-if="userQueryTooShort"
+          id="admin-user-search-validation"
+          class="search-validation"
+          role="alert"
+        >
+          {{ t('admin.userSearchTooShort') }}
+        </text>
         <view v-if="userSearchError" class="admin-read-state admin-read-error" role="alert" aria-live="assertive">
           <view class="admin-read-copy">
             <text class="admin-read-title">{{ t('admin.userSearchFailedTitle') }}</text>
@@ -251,6 +261,14 @@
         <view v-else-if="!userSearched" class="empty"><text>{{ t('admin.userSearchHint') }}</text></view>
         <view v-else-if="userResults.length === 0" class="empty"><text>{{ t('admin.userNoResults') }}</text></view>
         <template v-else>
+        <view
+          v-if="userResults.length >= USER_SEARCH_LIMIT"
+          class="admin-search-limit"
+          role="status"
+          aria-live="polite"
+        >
+          <text>{{ t('admin.userSearchLimit', { n: USER_SEARCH_LIMIT }) }}</text>
+        </view>
         <view v-for="u in userResults" :key="u.id" class="card u-rise">
           <view class="card-head">
             <UAvatar :src="u.avatar_url" :owner="u.id" :fallback="defaultAvatarSrc" :alt="u.nickname || 'avatar'" class="mini-avatar" lazy />
@@ -458,16 +476,49 @@
             <UAvatar :src="a.profile_avatar_url" :owner="a.profile_id" :fallback="defaultAvatarSrc" :alt="a.profile_nickname || 'avatar'" class="mini-avatar" lazy />
             <text class="card-title">{{ a.profile_nickname || a.profile_id }}</text>
             <text :class="['pill', 'level-' + a.level]">L{{ a.level }}</text>
-            <text v-if="isExpired(a.ends_at)" class="pill pill-expired">{{ t('admin.pillExpired') }}</text>
+            <text v-if="a.lifted_at" class="pill pill-lifted">{{ t('admin.pillLifted') }}</text>
+            <text v-else-if="isExpired(a.ends_at)" class="pill pill-expired">{{ t('admin.pillExpired') }}</text>
             <text v-else class="pill pill-active">{{ t('admin.pillActive') }}</text>
           </view>
           <text class="card-meta">{{ t('admin.appealOriginal', { reason: a.reason }) }}</text>
           <text class="card-appeal">“{{ a.appeal_note }}”</text>
+          <view v-if="appealMoreInfoRequestedAt(a)" class="card-more-info" role="status">
+            <text class="card-more-info-title">
+              {{ t('admin.appealMoreInfoPending', { time: fmtTime(appealMoreInfoRequestedAt(a)) }) }}
+            </text>
+            <text>{{ t('admin.appealManualContact') }}</text>
+          </view>
           <text class="card-time">
-            {{ t('admin.filedEnds', { filed: fmtTime(a.created_at), end: a.ends_at ? fmtTime(a.ends_at) : t('admin.permanent') }) }}
+            {{ t('admin.filedEnds', { filed: a.appeal_submitted_at ? fmtTime(a.appeal_submitted_at) : t('admin.appealFiledTimeUnknown'), end: a.ends_at ? fmtTime(a.ends_at) : t('admin.permanent') }) }}
           </text>
           <view class="card-actions">
-            <view v-if="!isExpired(a.ends_at)" class="mini-btn primary" role="button" tabindex="0" @click="onLiftSuspension(a)">{{ t('admin.liftAccept') }}</view>
+            <view
+              :class="['mini-btn', 'primary', { disabled: appealDecisionIds.includes(a.id) }]"
+              role="button"
+              :tabindex="appealDecisionIds.includes(a.id) ? -1 : 0"
+              :aria-disabled="appealDecisionIds.includes(a.id) ? 'true' : 'false'"
+              @click="onDecideAppeal(a, 'accepted')"
+            >
+              {{ appealCanLift(a) ? t('admin.appealAccept') : t('admin.appealAcceptInactive') }}
+            </view>
+            <view
+              :class="['mini-btn', 'danger', { disabled: appealDecisionIds.includes(a.id) }]"
+              role="button"
+              :tabindex="appealDecisionIds.includes(a.id) ? -1 : 0"
+              :aria-disabled="appealDecisionIds.includes(a.id) ? 'true' : 'false'"
+              @click="onDecideAppeal(a, 'denied')"
+            >
+              {{ t('admin.appealDeny') }}
+            </view>
+            <view
+              :class="['mini-btn', { disabled: appealDecisionIds.includes(a.id) }]"
+              role="button"
+              :tabindex="appealDecisionIds.includes(a.id) ? -1 : 0"
+              :aria-disabled="appealDecisionIds.includes(a.id) ? 'true' : 'false'"
+              @click="onDecideAppeal(a, 'more_information_required')"
+            >
+              {{ t('admin.appealMoreInfo') }}
+            </view>
             <view class="mini-btn" role="button" tabindex="0" @click="openSuspension(a)">{{ t('admin.details') }}</view>
           </view>
         </view>
@@ -599,7 +650,7 @@
               </text>
             </view>
             <text class="token-revoke-hint">
-              {{ t('admin.revokeTokenBody', { name: token.admin_name || token.admin_email || token.id }) }}
+              {{ t('admin.revokeTokenBody', { target: adminTokenTarget(token) }) }}
             </text>
             <text class="token-revoke-hint">{{ t('admin.revokeEvidenceHint') }}</text>
             <label class="token-revoke-field">
@@ -768,10 +819,22 @@ import { campusDateBounds, campusDateFromIso } from '../../utils/campusTime'
 const { t, lang, toggleLang } = useI18n()
 
 const MAX_ADMIN_RESPONSE_BYTES = 2 * 1024 * 1024
+const USER_SEARCH_LIMIT = 50
+const MAX_ADMIN_REASON_CHARS = 1000
+const MAX_AUDIT_FIELD_CHARS = 160
+const ADMIN_CONTROL_OR_BIDI_PATTERN = /[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/u
+// Browsers clamp or overflow longer timer delays. A token may be valid for
+// months, so wake at the platform-safe ceiling and calculate the remainder
+// again instead of treating a truncated timer as the real expiry.
+const MAX_ADMIN_TIMER_DELAY_MS = 2_147_000_000
+const ADMIN_TOKEN_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const ADMIN_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/
 
 type AdminRole = 'operator' | 'security_admin' | 'owner'
 type TabId = 'reports' | 'users' | 'plaza' | 'suspensions' | 'appeals' | 'warnings' | 'audit' | 'tokens'
 type PagedAdminTab = 'suspensions' | 'appeals' | 'warnings' | 'audit'
+type AppealDecision = 'accepted' | 'denied' | 'more_information_required'
+type AppealReviewStatus = 'pending' | 'more_information_required'
 type AdminReadPhase = 'idle' | 'ready' | 'error'
 
 interface AdminReadState {
@@ -804,7 +867,11 @@ interface SuspensionRow {
   issued_by: string | null; issued_by_nickname: string | null
   lifted_by: string | null; lifted_by_nickname: string | null
 }
-interface AppealRow extends SuspensionRow { /* same shape */ }
+interface AppealRow extends SuspensionRow {
+  appeal_submitted_at: string | null
+  review_status?: AppealReviewStatus | null
+  reviewed_at?: string | null
+}
 interface WarningRow {
   profile_id: string; nickname: string; avatar_url: string
   trust_score: number; warning_count: number; shadow_banned: boolean
@@ -925,12 +992,14 @@ function showAdminRequestError(err: unknown, fallback: string) {
   const message = err instanceof Error ? err.message : ''
   const localized = message === 'admin_previous_outcome_reconciled' ? t('admin.toastPreviousOutcomeReconciled')
     : message === 'admin_outcome_unknown' ? t('admin.toastOutcomeUnknown')
-    : message === 'admin_idempotency_unavailable' ? t('admin.toastOutcomeUnknown')
-    : message === 'admin_reconciliation_required' ? t('admin.outcomeRecoveryBlocked')
-    : message === 'admin_read_stale' ? t('admin.readWriteBlocked')
-    : message === 'admin_capability_denied' ? t('admin.errCapabilityDenied')
-      : message === 'admin_mutation_conflict' ? t('admin.toastMutationConflict')
-        : fallback
+      : message === 'admin_idempotency_unavailable' ? t('admin.toastOutcomeUnknown')
+        : message === 'admin_reconciliation_required' ? t('admin.outcomeRecoveryBlocked')
+          : message === 'admin_read_stale' ? t('admin.readWriteBlocked')
+            : message === 'admin_capability_denied' ? t('admin.errCapabilityDenied')
+              : message === 'appeal_already_decided' ? t('admin.appealAlreadyDecided')
+                : message === 'self_appeal_decision_forbidden' ? t('admin.appealSelfDecisionForbidden')
+                  : message === 'admin_mutation_conflict' ? t('admin.toastMutationConflict')
+                    : fallback
   uni.showToast({
     title: localized,
     icon: 'none',
@@ -1001,14 +1070,127 @@ function canonicalAdminMutation(value: unknown): string {
  *   3. literal '管理员' / 'Admin' — when both missing (legacy key)
  */
 interface WhoAmI {
-  admin_id: string | null
+  admin_id: string
   admin_name: string | null
   admin_email: string | null
-  role: AdminRole | null
+  role: AdminRole
   capabilities: string[]
-  source: string | null
+  source: 'token'
+  token_id: string
+  expires_at: string | null
+  server_now: string
 }
 const whoami = ref<WhoAmI | null>(null)
+let adminTokenExpiryTimer: ReturnType<typeof setTimeout> | null = null
+let adminServerClockBaseMs: number | null = null
+let adminWallClockBaseMs: number | null = null
+let adminMonotonicClockBaseMs: number | null = null
+let adminServerClockSource: 'none' | 'http' | 'database' = 'none'
+
+function readAdminMonotonicClock(): number | null {
+  if (typeof performance === 'undefined' || typeof performance.now !== 'function') return null
+  const value = performance.now()
+  return Number.isFinite(value) ? value : null
+}
+
+function seedAdminServerClock(serverNow: number, source: 'http' | 'database') {
+  adminServerClockBaseMs = serverNow
+  adminWallClockBaseMs = Date.now()
+  adminMonotonicClockBaseMs = readAdminMonotonicClock()
+  adminServerClockSource = source
+}
+
+function updateAdminServerClock(response: Response) {
+  if (adminServerClockSource === 'database') return
+  const header = response.headers?.get?.('date') || ''
+  const serverNow = Date.parse(header)
+  if (Number.isFinite(serverNow)) {
+    seedAdminServerClock(serverNow, 'http')
+  }
+}
+
+function useAuthoritativeAdminClock(serverNow: string) {
+  seedAdminServerClock(Date.parse(serverNow), 'database')
+}
+
+function isAdminIsoTimestamp(value: unknown): value is string {
+  return typeof value === 'string'
+    && value.length <= 64
+    && ADMIN_ISO_TIMESTAMP_PATTERN.test(value)
+    && Number.isFinite(Date.parse(value))
+}
+
+function adminClockNow(): number {
+  if (adminServerClockBaseMs === null || adminWallClockBaseMs === null) return Date.now()
+  const wallElapsed = Math.max(0, Date.now() - adminWallClockBaseMs)
+  const monotonicNow = readAdminMonotonicClock()
+  const monotonicElapsed = monotonicNow !== null && adminMonotonicClockBaseMs !== null
+    ? Math.max(0, monotonicNow - adminMonotonicClockBaseMs)
+    : 0
+  return adminServerClockBaseMs + Math.max(wallElapsed, monotonicElapsed)
+}
+
+function clearAdminTokenExpiryTimer() {
+  if (adminTokenExpiryTimer !== null) clearTimeout(adminTokenExpiryTimer)
+  adminTokenExpiryTimer = null
+}
+
+function scheduleAdminTokenExpiry(
+  owner: AdminSessionOwner,
+  tokenId: string,
+  expiresAt: string | null,
+) {
+  clearAdminTokenExpiryTimer()
+  if (!expiresAt) return
+  const deadline = Date.parse(expiresAt)
+  if (!Number.isFinite(deadline)) {
+    if (isAdminSessionOwnerCurrent(owner, false)) onLogout(owner)
+    return
+  }
+
+  const armNextExpiryCheck = () => {
+    if (!isAdminSessionOwnerCurrent(owner) || whoami.value?.token_id !== tokenId) {
+      clearAdminTokenExpiryTimer()
+      return
+    }
+    const remaining = deadline - adminClockNow()
+    if (remaining <= 0) {
+      if (onLogout(owner)) {
+        uni.showToast({ title: t('admin.sessionExpired'), icon: 'none', duration: 4000 })
+      }
+      return
+    }
+    adminTokenExpiryTimer = setTimeout(
+      armNextExpiryCheck,
+      Math.min(remaining, MAX_ADMIN_TIMER_DELAY_MS),
+    )
+  }
+
+  armNextExpiryCheck()
+}
+
+function isStrictWhoAmI(value: unknown): value is WhoAmI {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const row = value as Record<string, unknown>
+  const expected = [
+    'admin_email', 'admin_id', 'admin_name', 'capabilities', 'expires_at',
+    'role', 'server_now', 'source', 'token_id',
+  ]
+  const actual = Object.keys(row).sort()
+  if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])) return false
+  if (!isAdminRole(row.role) || !Array.isArray(row.capabilities) || row.capabilities.some(v => typeof v !== 'string')) return false
+  if (new Set(row.capabilities).size !== row.capabilities.length) return false
+  if (typeof row.token_id !== 'string' || !ADMIN_TOKEN_ID_PATTERN.test(row.token_id)) return false
+  if (typeof row.admin_id !== 'string' || !ADMIN_TOKEN_ID_PATTERN.test(row.admin_id)) return false
+  if (row.admin_name !== null && typeof row.admin_name !== 'string') return false
+  if (row.admin_email !== null && typeof row.admin_email !== 'string') return false
+  if (row.source !== 'token' || !isAdminIsoTimestamp(row.server_now)) return false
+  const serverNow = Date.parse(row.server_now)
+  if (row.expires_at === null) return true
+  if (!isAdminIsoTimestamp(row.expires_at)) return false
+  const expiresAt = Date.parse(row.expires_at)
+  return Number.isFinite(expiresAt) && expiresAt > serverNow
+}
 
 function isAdminRole(value: unknown): value is AdminRole {
   return value === 'operator' || value === 'security_admin' || value === 'owner'
@@ -1259,6 +1441,7 @@ const filteredSuspensions = computed(() => {
   })
 })
 const appeals = ref<AppealRow[]>([])
+const appealDecisionIds = ref<string[]>([])
 const warnings = ref<WarningRow[]>([])
 const listHasMore = ref<Record<PagedAdminTab, boolean>>({
   suspensions: false,
@@ -1287,6 +1470,11 @@ const userSearched = ref(false)
 const userSearching = ref(false)
 const userSearchError = ref(false)
 const appliedUserQuery = ref('')
+const userQueryValid = computed(() => {
+  const query = userQuery.value.trim()
+  return ADMIN_TOKEN_ID_PATTERN.test(query) || Array.from(query).length >= 2
+})
+const userQueryTooShort = computed(() => !!userQuery.value.trim() && !userQueryValid.value)
 
 function onUserQueryInput() {
   invalidateAdminRequest('search-users')
@@ -1302,7 +1490,7 @@ function onUserQueryInput() {
 
 async function searchUsers() {
   const q = userQuery.value.trim()
-  if (!q) return
+  if (!userQueryValid.value) return
   const request = beginAdminRequest('search-users')
   if (!request) return
   // Editing the query while a request is in flight makes that response stale,
@@ -1318,7 +1506,7 @@ async function searchUsers() {
   try {
     const rows = await apiGet<UserRow[]>({ resource: 'search_users', q, limit: '50' }, request)
     if (requestCanApply()) {
-      userResults.value = rows
+      userResults.value = rows.slice(0, USER_SEARCH_LIMIT)
       userSearched.value = true
       userSearchError.value = false
     }
@@ -1633,7 +1821,7 @@ async function loadTokens(owner = captureAdminSessionOwner()) {
 function isSafeAuditEvidence(value: string): boolean {
   return value.trim().length > 0
     && value.length <= 200
-    && !/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u.test(value)
+    && !ADMIN_CONTROL_OR_BIDI_PATTERN.test(value)
 }
 
 function restoreTokenRevokeFocus(opener: HTMLElement | null) {
@@ -1740,27 +1928,41 @@ async function togglePin(p: PlazaPostRow) {
   const owner = captureAdminSessionOwner()
   if (!owner || plazaWriteBusy.value) return
   const desiredPinned = !p.is_pinned
-  pinMutationIds.value = [...pinMutationIds.value, p.id]
-  try {
-    await apiPost(
-      { action: 'set_post_pinned', post_id: p.id, pinned: desiredPinned },
-      owner,
-      async () => {
-        if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
-        await loadPlaza(owner)
-        if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
-      },
-    )
-  } catch (err: any) {
-    showAdminRequestError(err, t('admin.toastLoadFailed'))
-    if (isAdminSessionOwnerCurrent(owner)) {
-      try { await loadPlaza(owner) } catch {}
-    }
-  } finally {
-    if (isAdminSessionOwnerCurrent(owner)) {
-      pinMutationIds.value = pinMutationIds.value.filter(id => id !== p.id)
-    }
-  }
+  const postId = p.id
+  const target = adminPostTarget(p)
+  uni.showModal({
+    title: desiredPinned ? t('admin.pinPostConfirmTitle') : t('admin.unpinPostConfirmTitle'),
+    content: t('admin.plazaChangeConfirmBody', {
+      target,
+      impact: desiredPinned ? t('admin.pinPostImpact') : t('admin.unpinPostImpact'),
+    }),
+    confirmText: desiredPinned ? t('admin.pinPost') : t('admin.unpinPost'),
+    confirmColor: desiredPinned ? '#527A45' : '#c0392b',
+    success: async (res) => {
+      if (!res.confirm || !isAdminSessionOwnerCurrent(owner) || plazaWriteBusy.value) return
+      pinMutationIds.value = [...pinMutationIds.value, postId]
+      try {
+        await apiPost(
+          { action: 'set_post_pinned', post_id: postId, pinned: desiredPinned },
+          owner,
+          async () => {
+            if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
+            await loadPlaza(owner)
+            if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
+          },
+        )
+      } catch (err: any) {
+        showAdminRequestError(err, t('admin.toastLoadFailed'))
+        if (isAdminSessionOwnerCurrent(owner)) {
+          try { await loadPlaza(owner) } catch {}
+        }
+      } finally {
+        if (isAdminSessionOwnerCurrent(owner)) {
+          pinMutationIds.value = pinMutationIds.value.filter(id => id !== postId)
+        }
+      }
+    },
+  })
 }
 
 function editBanner(b: BannerRow) {
@@ -1876,40 +2078,22 @@ async function toggleBannerActive(b: BannerRow) {
   const owner = captureAdminSessionOwner()
   if (!owner || plazaWriteBusy.value) return
   const desiredActive = !b.active
-  bannerMutationIds.value = [...bannerMutationIds.value, b.id]
-  try {
-    await apiPost(
-      { action: 'upsert_banner', id: b.id, active: desiredActive },
-      owner,
-      async () => {
-        if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
-        await loadPlaza(owner)
-        if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
-      },
-    )
-  } catch (err: any) {
-    showAdminRequestError(err, t('admin.toastLoadFailed'))
-    if (isAdminSessionOwnerCurrent(owner)) {
-      try { await loadPlaza(owner) } catch {}
-    }
-  } finally {
-    if (isAdminSessionOwnerCurrent(owner)) {
-      bannerMutationIds.value = bannerMutationIds.value.filter(id => id !== b.id)
-    }
-  }
-}
-
-function deleteBanner(b: BannerRow) {
-  const owner = captureAdminSessionOwner()
-  if (!owner || plazaWriteBusy.value) return
+  const bannerId = b.id
+  const target = adminBannerTarget(b)
   uni.showModal({
-    title: t('admin.bannerDelete'),
-    content: t('admin.bannerDeleteBody'),
+    title: desiredActive ? t('admin.bannerEnableConfirmTitle') : t('admin.bannerDisableConfirmTitle'),
+    content: t('admin.plazaChangeConfirmBody', {
+      target,
+      impact: desiredActive ? t('admin.bannerEnableImpact') : t('admin.bannerDisableImpact'),
+    }),
+    confirmText: desiredActive ? t('admin.bannerEnable') : t('admin.bannerDisable'),
+    confirmColor: desiredActive ? '#527A45' : '#c0392b',
     success: async (res) => {
-      if (!res.confirm || !isAdminSessionOwnerCurrent(owner)) return
+      if (!res.confirm || !isAdminSessionOwnerCurrent(owner) || plazaWriteBusy.value) return
+      bannerMutationIds.value = [...bannerMutationIds.value, bannerId]
       try {
         await apiPost(
-          { action: 'delete_banner', id: b.id },
+          { action: 'upsert_banner', id: bannerId, active: desiredActive },
           owner,
           async () => {
             if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
@@ -1919,6 +2103,47 @@ function deleteBanner(b: BannerRow) {
         )
       } catch (err: any) {
         showAdminRequestError(err, t('admin.toastLoadFailed'))
+        if (isAdminSessionOwnerCurrent(owner)) {
+          try { await loadPlaza(owner) } catch {}
+        }
+      } finally {
+        if (isAdminSessionOwnerCurrent(owner)) {
+          bannerMutationIds.value = bannerMutationIds.value.filter(id => id !== bannerId)
+        }
+      }
+    },
+  })
+}
+
+function deleteBanner(b: BannerRow) {
+  const owner = captureAdminSessionOwner()
+  if (!owner || plazaWriteBusy.value) return
+  const bannerId = b.id
+  const target = adminBannerTarget(b)
+  uni.showModal({
+    title: t('admin.bannerDelete'),
+    content: t('admin.bannerDeleteBody', { target }),
+    confirmText: t('admin.bannerDelete'),
+    confirmColor: '#c0392b',
+    success: async (res) => {
+      if (!res.confirm || !isAdminSessionOwnerCurrent(owner) || plazaWriteBusy.value) return
+      bannerMutationIds.value = [...bannerMutationIds.value, bannerId]
+      try {
+        await apiPost(
+          { action: 'delete_banner', id: bannerId },
+          owner,
+          async () => {
+            if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
+            await loadPlaza(owner)
+            if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
+          },
+        )
+      } catch (err: any) {
+        showAdminRequestError(err, t('admin.toastLoadFailed'))
+      } finally {
+        if (isAdminSessionOwnerCurrent(owner)) {
+          bannerMutationIds.value = bannerMutationIds.value.filter(id => id !== bannerId)
+        }
       }
     },
   })
@@ -2067,6 +2292,7 @@ async function apiGet<T>(
     throw err
   }
   if (!isAdminReadOwnerCurrent(owner)) throw new AdminSessionChangedError()
+  updateAdminServerClock(r)
   if (r.status === 401) {
     if (unlocked.value) onLogout(owner)
     throw new Error('unauthorized')
@@ -2103,11 +2329,13 @@ const DEFINITIVE_ADMIN_NO_COMMIT_ERRORS = new Set([
   'body_too_large',
   'content_length_required',
   'invalid_active',
+  'invalid_args',
   'invalid_approval_ref',
   'invalid_case_id',
   'invalid_category',
   'invalid_content_length',
   'invalid_default',
+  'invalid_decision',
   'invalid_expiry',
   'invalid_hours',
   'invalid_id',
@@ -2131,6 +2359,8 @@ const DEFINITIVE_ADMIN_NO_COMMIT_ERRORS = new Set([
   'missing_image_url',
   'rate_limited',
   'request_timeout',
+  'appeal_already_decided',
+  'self_appeal_decision_forbidden',
   'too_large',
   'unknown_action',
   'unsupported_type',
@@ -2543,14 +2773,20 @@ async function onUnlock() {
   try {
     const identity = await apiGet<WhoAmI>({ resource: 'whoami' }, owner)
     if (!isAdminSessionOwnerCurrent(owner, false)) return
-    if (!isAdminRole(identity?.role) || !Array.isArray(identity?.capabilities)) {
+    if (!isStrictWhoAmI(identity)) {
       throw new Error('invalid_admin_authorization')
+    }
+    useAuthoritativeAdminClock(identity.server_now)
+    if (identity.expires_at) {
+      const expiry = Date.parse(identity.expires_at)
+      if (!Number.isFinite(expiry) || expiry <= adminClockNow()) throw new Error('admin_token_expired')
     }
     whoami.value = identity
     const firstAllowedTab = tabList.value[0]?.id
     if (!firstAllowedTab) throw new Error('admin_capability_denied')
     if (!tabList.value.some(tab => tab.id === activeTab.value)) activeTab.value = firstAllowedTab
     unlocked.value = true
+    scheduleAdminTokenExpiry(owner, identity.token_id, identity.expires_at)
     adminWritesReady.value = false
     adminRecoveryError.value = false
     try {
@@ -2574,7 +2810,9 @@ async function onUnlock() {
     if (!isAdminSessionOwnerCurrent(owner, false)) return
     gateError.value = err?.message === 'unauthorized'
       ? t('admin.errWrongKey')
-      : t('admin.errUnlockFailed')
+      : err?.message === 'admin_token_expired'
+        ? t('admin.errTokenExpired')
+        : t('admin.errUnlockFailed')
     adminSessionEpoch += 1
     adminKey.value = ''
     unlocked.value = false
@@ -2586,6 +2824,11 @@ async function onUnlock() {
 
 function resetAdminPrivateState() {
   invalidateAllAdminRequests()
+  clearAdminTokenExpiryTimer()
+  adminServerClockBaseMs = null
+  adminWallClockBaseMs = null
+  adminMonotonicClockBaseMs = null
+  adminServerClockSource = 'none'
   adminWritesReady.value = false
   adminRecoveryResolvedCount.value = 0
   adminRecoveryUnknownCount.value = 0
@@ -2614,6 +2857,7 @@ function resetAdminPrivateState() {
   bulkResolving.value = false
   suspensions.value = []
   appeals.value = []
+  appealDecisionIds.value = []
   warnings.value = []
   auditLog.value = []
   listOffsets.value = { suspensions: 0, appeals: 0, warnings: 0, audit: 0 }
@@ -2929,26 +3173,173 @@ async function loadTab(
   }
 }
 
+type SafeAuditField = 'token_id' | 'case_id' | 'approval_ref' | 'op' | 'decision' | 'reason'
+
+const auditFieldLabels: Record<SafeAuditField, string> = {
+  token_id: 'admin.auditFieldTokenId',
+  case_id: 'admin.auditFieldCaseId',
+  approval_ref: 'admin.auditFieldApprovalRef',
+  op: 'admin.auditFieldOperation',
+  decision: 'admin.auditFieldDecision',
+  reason: 'admin.auditFieldReason',
+}
+
+function boundedAuditField(value: unknown): string | null {
+  let raw = ''
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    raw = String(value)
+  } else if (Array.isArray(value)) {
+    raw = value
+      .slice(0, 3)
+      .filter(part => typeof part === 'string' || typeof part === 'number' || typeof part === 'boolean')
+      .map(String)
+      .join(', ')
+  } else {
+    return null
+  }
+  const normalized = raw
+    .replace(/[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!normalized) return null
+  const characters = Array.from(normalized)
+  return characters.length > MAX_AUDIT_FIELD_CHARS
+    ? `${characters.slice(0, MAX_AUDIT_FIELD_CHARS).join('')}…`
+    : normalized
+}
+
+function moderationReasonOrNotify(value: unknown): string | null {
+  const reason = typeof value === 'string' ? value.trim() : ''
+  if (!reason) {
+    uni.showToast({ title: t('admin.reasonRequired'), icon: 'none' })
+    return null
+  }
+  if (reason.length > MAX_ADMIN_REASON_CHARS) {
+    uni.showToast({ title: t('admin.reasonTooLong', { n: MAX_ADMIN_REASON_CHARS }), icon: 'none' })
+    return null
+  }
+  if (ADMIN_CONTROL_OR_BIDI_PATTERN.test(reason)) {
+    uni.showToast({ title: t('admin.reasonUnsafeCharacters'), icon: 'none', duration: 4000 })
+    return null
+  }
+  return reason
+}
+
+function auditDetails(r: AuditRow): Record<string, unknown> {
+  return r.details && typeof r.details === 'object' && !Array.isArray(r.details)
+    ? r.details
+    : {}
+}
+
+function auditEvidence(
+  details: Record<string, unknown>,
+  fields: SafeAuditField[],
+): string {
+  return fields.flatMap((field) => {
+    if (!Object.prototype.hasOwnProperty.call(details, field)) return []
+    const value = boundedAuditField(details[field])
+    return value ? [`${t(auditFieldLabels[field])}: ${value}`] : []
+  }).join(' · ')
+}
+
+function withAuditEvidence(summary: string, evidence: string): string {
+  return evidence ? `${summary} · ${evidence}` : summary
+}
+
 function fmtAuditEvent(r: AuditRow): string {
-  const actor = r.actor_nickname || (r.actor_id ? r.actor_id.slice(0, 8) : t('admin.system'))
-  const target = r.target_nickname || (r.target_id ? r.target_id.slice(0, 8) : '—')
+  const actor = boundedAuditField(r.actor_nickname)
+    || boundedAuditField(r.actor_id)?.slice(0, 8)
+    || t('admin.system')
+  const target = boundedAuditField(r.target_nickname)
+    || boundedAuditField(r.target_id)?.slice(0, 8)
+    || '—'
+  const details = auditDetails(r)
   switch (r.event_kind) {
     case 'ban_applied':
-      return t('admin.auditBanApplied', { actor, target, level: r.details?.level ?? '', reason: r.details?.reason || '' })
+      return t('admin.auditBanApplied', {
+        actor,
+        target,
+        level: boundedAuditField(details.level) || '—',
+        reason: boundedAuditField(details.reason) || '—',
+      })
     case 'suspension_lifted':
-      return t('admin.auditLifted', { actor, target, reason: r.details?.reason || '' })
+      return t('admin.auditLifted', { actor, target, reason: boundedAuditField(details.reason) || '—' })
     case 'report_status_changed':
-      return t('admin.auditReportStatus', { actor, id: r.target_id?.slice(0, 8) || '', from: r.details?.from ?? '', to: r.details?.to ?? '' })
+      return t('admin.auditReportStatus', {
+        actor,
+        id: boundedAuditField(r.target_id)?.slice(0, 8) || '—',
+        from: boundedAuditField(details.from) || '—',
+        to: boundedAuditField(details.to) || '—',
+      })
     case 'content_takedown':
-      return t('admin.auditTakedown', { actor, type: r.details?.target_type ?? '', target: r.target_id?.slice(0, 8) || '' })
+      return withAuditEvidence(t('admin.auditTakedown', {
+        actor,
+        type: boundedAuditField(details.target_type) || '—',
+        target: boundedAuditField(r.target_id)?.slice(0, 8) || '—',
+      }), auditEvidence(details, ['reason']))
     case 'actor_blocked':
-      return t('admin.auditActorBlocked', { actor, table: r.details?.table ?? '', level: r.details?.level ?? '' })
+      return t('admin.auditActorBlocked', {
+        actor,
+        table: boundedAuditField(details.table) || '—',
+        level: boundedAuditField(details.level) || '—',
+      })
+    case 'token_issued':
+      return withAuditEvidence(
+        t('admin.auditTokenIssued', { actor, target }),
+        auditEvidence(details, ['token_id', 'case_id', 'approval_ref']),
+      )
+    case 'token_revoked': {
+      const tokenDetails = Object.prototype.hasOwnProperty.call(details, 'token_id')
+        ? details
+        : { ...details, token_id: details.token_ids }
+      return withAuditEvidence(
+        t('admin.auditTokenRevoked', { actor, target }),
+        auditEvidence(tokenDetails, ['token_id', 'case_id', 'approval_ref']),
+      )
+    }
+    case 'post_pin_changed': {
+      const operationDetails = Object.prototype.hasOwnProperty.call(details, 'op')
+        ? details
+        : {
+            ...details,
+            op: details.pinned === true
+              ? t('admin.auditOperationPinned')
+              : details.pinned === false
+                ? t('admin.auditOperationUnpinned')
+                : undefined,
+          }
+      return withAuditEvidence(
+        t('admin.auditPostPinChanged', {
+          actor,
+          target: boundedAuditField(details.post_id) || target,
+        }),
+        auditEvidence(operationDetails, ['op']),
+      )
+    }
+    case 'banner_changed':
+      return withAuditEvidence(
+        t('admin.auditBannerChanged', {
+          actor,
+          target: boundedAuditField(details.banner_id) || target,
+        }),
+        auditEvidence(details, ['op']),
+      )
+    case 'appeal_decided':
+      return withAuditEvidence(
+        t('admin.auditAppealDecided', { actor, target }),
+        auditEvidence(details, ['decision', 'reason', 'case_id', 'approval_ref']),
+      )
+    case 'appeal_more_information_requested':
+      return withAuditEvidence(
+        t('admin.auditAppealMoreInformationRequested', { actor, target }),
+        auditEvidence(details, ['reason', 'case_id', 'approval_ref']),
+      )
     case 'admin_login':
       return t('admin.auditLogin')
     case 'admin_unauthorized':
       return t('admin.auditUnauthorized')
     default:
-      return t('admin.auditDefault', { kind: r.event_kind, actor })
+      return t('admin.auditDefault', { kind: boundedAuditField(r.event_kind) || '—', actor })
   }
 }
 
@@ -3045,9 +3436,13 @@ function bulkResolve(status: 'resolved' | 'dismissed') {
   const groups = reportGroups.value.filter(g => isSelected(g) && g.pending_count > 0)
   if (!groups.length) return
   const total = groups.reduce((s, g) => s + g.pending_count, 0)
+  const previewGroups = groups.slice(0, 3)
+  const remainingGroups = groups.length - previewGroups.length
+  const targets = previewGroups.map(adminReportTarget).join('\n\n')
+  const more = remainingGroups > 0 ? t('admin.confirmMoreTargets', { n: remainingGroups }) : ''
   uni.showModal({
     title: status === 'resolved' ? t('admin.resolveAllConfirmTitle') : t('admin.dismissAllConfirmTitle'),
-    content: t('admin.bulkConfirmBody', { groups: groups.length, n: total }),
+    content: t('admin.bulkConfirmBody', { groups: groups.length, n: total, targets, more }),
     confirmText: status === 'resolved' ? t('admin.resolve') : t('admin.dismiss'),
     success: async (r) => {
       if (!r.confirm || !isAdminSessionOwnerCurrent(owner) || bulkResolving.value) return
@@ -3092,7 +3487,10 @@ function resolveTargetReports(g: ReportGroup, status: 'resolved' | 'dismissed') 
   if (!owner) return
   uni.showModal({
     title: status === 'resolved' ? t('admin.resolveAllConfirmTitle') : t('admin.dismissAllConfirmTitle'),
-    content: t('admin.resolveAllConfirmBody', { n: g.pending_count }),
+    content: t('admin.resolveAllConfirmBody', {
+      n: g.pending_count,
+      target: adminReportTarget(g),
+    }),
     confirmText: status === 'resolved' ? t('admin.resolve') : t('admin.dismiss'),
     success: async (r) => {
       if (!r.confirm || !isAdminSessionOwnerCurrent(owner)) return
@@ -3119,6 +3517,165 @@ function resolveTargetReports(g: ReportGroup, status: 'resolved' | 'dismissed') 
 
 async function openSuspension(s: SuspensionRow | AppealRow) {
   await loadAdminDetail('suspension', s.id)
+}
+
+function adminProfileTarget(nickname: string | null | undefined, profileId: string): string {
+  return t('admin.profileTarget', {
+    name: boundedAuditField(nickname) || '—',
+    profileId: boundedAuditField(profileId) || '—',
+  })
+}
+
+function adminTokenTarget(token: AdminTokenRow): string {
+  return t('admin.tokenTarget', {
+    name: boundedAuditField(token.admin_name || token.admin_email) || '—',
+    tokenId: boundedAuditField(token.id) || '—',
+    adminId: boundedAuditField(token.admin_id) || t('admin.tokenAdminDetached'),
+  })
+}
+
+function adminBannerTarget(banner: BannerRow): string {
+  return t('admin.bannerTarget', {
+    title: boundedAuditField(banner.title_zh || banner.title_en || banner.title) || '—',
+    bannerId: boundedAuditField(banner.id) || '—',
+  })
+}
+
+function adminPostTarget(post: PlazaPostRow): string {
+  return t('admin.postTarget', {
+    excerpt: boundedAuditField(post.content) || '—',
+    postId: boundedAuditField(post.id) || '—',
+  })
+}
+
+function adminReportTarget(report: Pick<ReportGroup, 'target_type' | 'target_id'>): string {
+  return t('admin.reportTarget', {
+    type: boundedAuditField(report.target_type) || '—',
+    targetId: boundedAuditField(report.target_id) || '—',
+  })
+}
+
+function adminSuspensionTarget(
+  nickname: string | null | undefined,
+  profileId: string,
+  suspensionId: string,
+): string {
+  return t('admin.suspensionTarget', {
+    profile: adminProfileTarget(nickname, profileId),
+    suspensionId: boundedAuditField(suspensionId) || '—',
+  })
+}
+
+function appealDecisionTarget(a: AppealRow): string {
+  return adminSuspensionTarget(a.profile_nickname, a.profile_id, a.id)
+}
+
+function appealCanLift(a: AppealRow): boolean {
+  return !a.lifted_at && !isExpired(a.ends_at)
+}
+
+function appealMoreInfoRequestedAt(a: AppealRow): string | null {
+  return a.review_status === 'more_information_required' ? a.reviewed_at || null : null
+}
+
+async function refreshAppealDecisionState(owner: AdminSessionOwner) {
+  await loadTab('appeals', owner, true)
+  if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
+  const suspensionsRequest = beginAdminRequest('tab-load', owner)
+  if (!suspensionsRequest) throw new AdminSessionChangedError()
+  await loadPagedAdminTab('suspensions', true, suspensionsRequest)
+  if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
+  const auditRequest = beginAdminRequest('tab-load', owner)
+  if (!auditRequest) throw new AdminSessionChangedError()
+  await loadPagedAdminTab('audit', true, auditRequest)
+  if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
+  await loadStats(owner, true)
+  if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
+}
+
+function onDecideAppeal(a: AppealRow, decision: AppealDecision) {
+  const owner = captureAdminSessionOwner()
+  if (!owner || appealDecisionIds.value.includes(a.id)) return
+  const canLift = appealCanLift(a)
+  uni.showModal({
+    title: decision === 'accepted'
+      ? t('admin.appealAcceptConfirmTitle')
+      : decision === 'denied'
+        ? t('admin.appealDenyConfirmTitle')
+        : t('admin.appealMoreInfoConfirmTitle'),
+    content: decision === 'accepted'
+      ? t(canLift ? 'admin.appealAcceptConfirmBody' : 'admin.appealAcceptInactiveConfirmBody', {
+          target: appealDecisionTarget(a),
+        })
+      : decision === 'denied'
+        ? t(canLift ? 'admin.appealDenyConfirmBody' : 'admin.appealDenyInactiveConfirmBody', {
+            target: appealDecisionTarget(a),
+          })
+        : t('admin.appealMoreInfoConfirmBody', { target: appealDecisionTarget(a) }),
+    editable: true,
+    placeholderText: t('admin.appealDecisionReasonPh'),
+    confirmText: decision === 'accepted'
+      ? t('admin.appealAcceptConfirm')
+      : decision === 'denied'
+        ? t('admin.appealDenyConfirm')
+        : t('admin.appealMoreInfoConfirm'),
+    confirmColor: decision === 'accepted'
+      ? '#527A45'
+      : decision === 'denied'
+        ? '#c0392b'
+        : '#4A6178',
+    success: async (r) => {
+      if (!r.confirm || !isAdminSessionOwnerCurrent(owner) || appealDecisionIds.value.includes(a.id)) return
+      const reason = moderationReasonOrNotify(r.content)
+      if (reason === null) return
+      appealDecisionIds.value = [...appealDecisionIds.value, a.id]
+      try {
+        await apiPost(
+          {
+            action: 'decide_appeal',
+            suspension_id: a.id,
+            decision,
+            reason,
+          },
+          owner,
+          async () => {
+            if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
+            closeDetail()
+            await refreshAppealDecisionState(owner)
+          },
+        )
+        if (isAdminSessionOwnerCurrent(owner)) {
+          uni.showToast({
+            title: decision === 'accepted'
+              ? t('admin.appealAccepted')
+              : decision === 'denied'
+                ? t('admin.appealDenied')
+                : t('admin.appealMoreInfoSaved'),
+            icon: decision === 'more_information_required' ? 'none' : 'success',
+            duration: decision === 'more_information_required' ? 5000 : 2000,
+          })
+        }
+      } catch (err) {
+        if (!isAdminSessionOwnerCurrent(owner)) return
+        if (err instanceof Error && err.message === 'appeal_already_decided') {
+          try {
+            await refreshAppealDecisionState(owner)
+            if (isAdminSessionOwnerCurrent(owner)) {
+              uni.showToast({ title: t('admin.appealAlreadyDecided'), icon: 'none', duration: 4000 })
+            }
+          } catch (refreshError) {
+            showAdminRequestError(refreshError, t('admin.appealAlreadyDecidedRefreshFailed'))
+          }
+        } else {
+          showAdminRequestError(err, t('admin.appealDecisionFailed'))
+        }
+      } finally {
+        if (isAdminSessionOwnerCurrent(owner)) {
+          appealDecisionIds.value = appealDecisionIds.value.filter(id => id !== a.id)
+        }
+      }
+    },
+  })
 }
 
 /* Open-target navigation from report detail. Map each target_type to the
@@ -3171,17 +3728,24 @@ function onTakedownContent(row: any) {
   if (!owner) return
   uni.showModal({
     title: t('admin.takedownConfirmTitle'),
-    content: t('admin.takedownConfirmBody'),
+    content: t('admin.takedownConfirmBody', {
+      type: boundedAuditField(row.target_type) || '—',
+      id: boundedAuditField(row.target_id) || '—',
+    }),
+    editable: true,
+    placeholderText: t('admin.takedownReasonPh'),
     confirmText: t('admin.takedownConfirm'),
     confirmColor: '#c0392b',
     success: async (r) => {
       if (!r.confirm || !isAdminSessionOwnerCurrent(owner)) return
+      const reason = moderationReasonOrNotify(r.content)
+      if (reason === null) return
       try {
         await apiPost({
           action: 'takedown_content',
           target_type: row.target_type,
           target_id: row.target_id,
-          reason: 'admin takedown',
+          reason,
         }, owner, async () => {
           if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
           closeDetail()
@@ -3204,16 +3768,25 @@ function openUser(userId: string) {
   uni.navigateTo({ url: `/pages/seller/index?id=${userId}` })
 }
 
-function onLiftSuspension(s: { id: string }) {
+function onLiftSuspension(s: {
+  id: string
+  profile_id?: string
+  profile_nickname?: string | null
+  ends_at?: string | null
+}) {
   const owner = captureAdminSessionOwner()
-  if (!owner) return
+  if (!owner || (s.ends_at && isExpired(s.ends_at))) return
+  const target = adminSuspensionTarget(s.profile_nickname, s.profile_id || '—', s.id)
   uni.showModal({
     title: t('admin.liftConfirmTitle'),
+    content: t('admin.liftConfirmBody', { target }),
     editable: true,
     placeholderText: t('admin.liftReasonPh'),
+    confirmText: t('admin.liftConfirm'),
     success: async (r) => {
       if (!r.confirm || !isAdminSessionOwnerCurrent(owner)) return
-      const reason = (r.content || '').trim() || t('admin.adminReview')
+      const reason = moderationReasonOrNotify(r.content)
+      if (reason === null) return
       try {
         await apiPost(
           { action: 'lift_suspension', suspension_id: s.id, reason },
@@ -3249,17 +3822,19 @@ function onBanPrompt(targetId: string, nickname?: string) {
     success: (a) => {
       if (!isAdminSessionOwnerCurrent(owner)) return
       const level = a.tapIndex + 1
+      const target = adminProfileTarget(nickname, targetId)
       uni.showModal({
-        title: t('admin.banConfirmTitle', { name: nickname || targetId }),
+        title: t('admin.banConfirmTitle'),
+        content: t('admin.banConfirmBody', {
+          target,
+          impact: t(`admin.banL${level}`),
+        }),
         editable: true,
         placeholderText: t('admin.banReasonPh'),
         success: async (r) => {
           if (!r.confirm || !isAdminSessionOwnerCurrent(owner)) return
-          const reason = (r.content || '').trim()
-          if (!reason) {
-            uni.showToast({ title: t('admin.reasonRequired'), icon: 'none' })
-            return
-          }
+          const reason = moderationReasonOrNotify(r.content)
+          if (reason === null) return
           try {
             await apiPost({
               action: 'apply_ban',
@@ -3295,7 +3870,7 @@ function fmtTime(iso: string | null | undefined): string {
 function isExpired(endsAt: string | null): boolean {
   if (!endsAt) return false
   const t = new Date(endsAt).getTime()
-  return !isNaN(t) && t < Date.now()
+  return !isNaN(t) && t <= adminClockNow()
 }
 
 </script>
@@ -3437,6 +4012,13 @@ function isExpired(endsAt: string | null): boolean {
 .card-note { font-size: 13px; color: var(--text-primary); font-style: italic; }
 .card-appeal { font-size: 13px; color: var(--text-primary); background: var(--warning-soft); padding: 8px 10px; border-radius: 6px; border-left: 3px solid var(--accent-warn); }
 .card-appeal-flag { font-size: 11px; color: var(--accent-warn); font-weight: 600; }
+.card-more-info {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 9px 10px; border-radius: 6px;
+  background: var(--campus-blue-soft); color: var(--text-primary);
+  font-size: 12px; line-height: 1.45;
+}
+.card-more-info-title { font-weight: 700; }
 .card-time { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .card-stats { display: flex; align-items: center; gap: 5px; }
 .card-stat { display: inline-flex; align-items: center; gap: 2px; }
@@ -3531,6 +4113,16 @@ function isExpired(endsAt: string | null): boolean {
   font-size: 12px; color: var(--text-secondary); cursor: pointer;
   padding: 4px 8px;
   &:active { opacity: 0.6; }
+}
+.search-validation { color: var(--accent-danger); font-size: 12px; line-height: 1.4; }
+.admin-search-limit {
+  padding: 10px 12px;
+  border: 1px solid var(--accent-warn);
+  border-radius: 8px;
+  background: var(--warning-soft);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .audit-row {

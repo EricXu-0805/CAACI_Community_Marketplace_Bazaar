@@ -158,7 +158,8 @@ test('admin unlock removes the submitted secret and presents only localized erro
   assert.match(gateInput, /autocorrect="off"/)
   assert.match(gateInput, /spellcheck="false"/)
   assert.match(unlock, /adminKey\.value = candidate\s*\/\/[^]*?keyInput\.value = ''\s*unlocked\.value = false/)
-  assert.match(unlock, /err\?\.message === 'unauthorized'\s*\? t\('admin\.errWrongKey'\)\s*: t\('admin\.errUnlockFailed'\)/)
+  assert.match(unlock, /err\?\.message === 'unauthorized'\s*\? t\('admin\.errWrongKey'\)/)
+  assert.match(unlock, /err\?\.message === 'admin_token_expired'\s*\? t\('admin\.errTokenExpired'\)\s*: t\('admin\.errUnlockFailed'\)/)
   assert.doesNotMatch(unlock, /err\?\.message \|\| t\('admin\.errUnlockFailed'\)/)
 })
 

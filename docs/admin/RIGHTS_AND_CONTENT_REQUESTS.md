@@ -133,9 +133,18 @@ identity status, and data scope have been recorded.
 
 ## Enforcement appeals
 
-The app can accept one appeal note for the current suspension and the dashboard
-can lift an action, but it does not yet provide a structured denial status or
-guaranteed decision notification.
+> Production availability gate: while the compatibility bridge is serving,
+> including any final-to-bridge rollback window, administrators may preserve
+> and review the queue but must not submit appeal mutations. Resume the
+> three-outcome workflow only after migration `20260720035037` VERIFY, the
+> exact final Edge deployment, and a real positive administrator/audit check
+> all succeed.
+
+The app accepts one in-app appeal note per suspension. The dashboard records
+accepted, denied, and more-information-required review events; accepted and
+denied are terminal, while a request for more information remains in the queue
+for a later terminal decision. Decision recording does not provide a
+guaranteed user notification or delivery receipt.
 
 For every appeal:
 
@@ -144,14 +153,28 @@ For every appeal:
    later be deleted.
 2. Use an operator who was not the subject of the complaint and, for severe or
    permanent actions, prefer a second-person review.
-3. Record `accepted`, `denied`, or `more information required`, the rationale,
+3. The reviewer must not be the appealed suspension's subject. The database
+   enforces this for both structured decisions and direct lift actions; transfer
+   the case instead of attempting a workaround.
+4. Record `accepted`, `denied`, or `more information required`, the rationale,
    effective time, and whether the suspension remains active.
-4. For acceptance, use the dashboard lift action with a specific reason and
-   verify the audit event and restored effective visibility.
-5. For denial or a request for more information, leave the enforcement state
-   unchanged, record the decision in the restricted case log, and reply through
-   the verified support channel. Do not treat an untouched appeal row as proof
-   that the user was notified.
+5. For acceptance, use the dashboard's **Accept** action with a specific reason
+   and verify the audit event and restored effective visibility when the action
+   was still active. An expired action remains expired; acceptance must not
+   manufacture a lift.
+6. For denial or a request for more information, leave the enforcement state
+   unchanged and verify the restricted audit event. A more-information request
+   is non-terminal and must remain visible in the queue.
+7. For every outcome, reply through the verified support channel and record the
+   delivery result in the approved case log. Neither a decision row nor removal
+   from the pending queue proves that the user was notified. Accepting a still-
+   active action triggers the existing in-app account-restriction-lifted notice
+   only when no other active L2+ suspension continues to restrict that profile.
+   If an overlapping restriction remains, the automatic notice instead says
+   only that one action was lifted and another restriction is still active.
+   Neither notice is a structured appeal decision or a verified delivery
+   receipt; denial, more-information, and already-inactive acceptance still
+   have no equivalent automatic decision notice.
 
 ## Copyright and other content complaints
 

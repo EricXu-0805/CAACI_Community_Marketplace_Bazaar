@@ -101,8 +101,11 @@ test('.vercelignore keeps tests and local private context out of uploaded deploy
   }
 })
 
-test('unknown API paths use a stable JSON 404 before the SPA fallback', async () => {
+test('unknown API and missing asset paths use a stable JSON 404 before the SPA fallback', async () => {
   const vercelConfig = JSON.parse(await readFile(path.join(projectRoot, 'vercel.json'), 'utf8'))
+  const assetFallbackIndex = vercelConfig.rewrites.findIndex(rule => (
+    rule.source === '/assets/:path*' && rule.destination === '/api/404.js'
+  ))
   const apiFallbackIndex = vercelConfig.rewrites.findIndex(rule => (
     rule.source === '/api/:path*' && rule.destination === '/api/404.js'
   ))
@@ -110,8 +113,10 @@ test('unknown API paths use a stable JSON 404 before the SPA fallback', async ()
     rule.source === '/(.*)' && rule.destination === '/index.html'
   ))
 
+  assert.ok(assetFallbackIndex >= 0, 'missing the asset 404 rewrite')
   assert.ok(apiFallbackIndex >= 0, 'missing the custom API 404 rewrite')
   assert.ok(spaFallbackIndex >= 0, 'missing the SPA history fallback')
+  assert.ok(assetFallbackIndex < spaFallbackIndex, 'SPA fallback would swallow missing asset paths')
   assert.ok(apiFallbackIndex < spaFallbackIndex, 'SPA fallback would swallow unknown API paths')
 
   const source = await readFile(path.join(apiRoot, '404.js'), 'utf8')
@@ -148,15 +153,29 @@ test('an existing local Vercel Build Output exactly matches runtime API sources'
   assert.deepEqual(functions.sort(), expectedFunctions, 'runtime source and Function artifact inventory drifted')
 
   const outputConfig = JSON.parse(await readFile(outputConfigPath, 'utf8'))
-  const apiFallbackIndex = outputConfig.routes.findIndex(route => (
-    route.dest?.startsWith('/api/404.js') && route.check === true
-  ))
+  const assetFallbackIndex = outputConfig.routes.findIndex(route => {
+    if (!route.dest?.startsWith('/api/404.js') || route.check !== true || !route.src) return false
+    const pattern = new RegExp(route.src)
+    return pattern.test('/assets/missing.js') && !pattern.test('/api/does-not-exist')
+  })
+  const apiFallbackIndex = outputConfig.routes.findIndex(route => {
+    if (!route.dest?.startsWith('/api/404.js') || route.check !== true || !route.src) return false
+    const pattern = new RegExp(route.src)
+    return pattern.test('/api/does-not-exist') && !pattern.test('/assets/missing.js')
+  })
   const spaFallbackIndex = outputConfig.routes.findIndex(route => (
     route.dest === '/index.html' && route.check === true
   ))
+  assert.ok(assetFallbackIndex >= 0, 'built artifact is missing the asset 404 route')
   assert.ok(apiFallbackIndex >= 0, 'built artifact is missing the custom API 404 route')
   assert.ok(spaFallbackIndex >= 0, 'built artifact is missing the SPA fallback route')
+  assert.ok(assetFallbackIndex < spaFallbackIndex, 'built SPA fallback would swallow missing asset paths')
   assert.ok(apiFallbackIndex < spaFallbackIndex, 'built SPA fallback would swallow unknown API paths')
+
+  const assetFallbackRoute = outputConfig.routes[assetFallbackIndex]
+  const assetFallbackPattern = new RegExp(assetFallbackRoute.src)
+  assert.equal(assetFallbackPattern.test('/assets/missing.js'), true, 'built fallback must cover missing assets')
+  assert.equal(assetFallbackPattern.test('/assets/index.js.map'), true, 'built fallback must cover missing source maps')
 
   const apiFallbackRoute = outputConfig.routes[apiFallbackIndex]
   const apiFallbackPattern = new RegExp(apiFallbackRoute.src)

@@ -17,6 +17,7 @@ const ADMIN_A = `iam_admin_${'a'.repeat(43)}`
 const ADMIN_B = `iam_admin_${'b'.repeat(43)}`
 const VALID_ID = '11111111-1111-4111-8111-111111111111'
 const IDEMPOTENCY_KEY = '22222222-2222-4222-8222-222222222222'
+const AUTH_SERVER_NOW = '2026-07-20T00:00:00Z'
 const ISSUE_EXPIRY = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 const RECOVERY_TOO_SOON_EXPIRY = new Date(Date.now() + 60 * 60 * 1000).toISOString()
 const MANAGED_BANNER_URL = `https://supabase.test/storage/v1/object/public/banners/managed/${VALID_ID}/${IDEMPOTENCY_KEY}/${'a'.repeat(64)}.png`
@@ -57,10 +58,10 @@ async function loadHandler() {
 }
 
 const ROLE_CAPABILITIES = {
-  operator: ['apply_ban', 'lift_suspension', 'update_report_status', 'resolve_target_reports', 'takedown_content'],
+  operator: ['apply_ban', 'lift_suspension', 'decide_appeal', 'update_report_status', 'resolve_target_reports', 'takedown_content'],
   security_admin: ['revoke_admin_tokens', 'revoke_token'],
   owner: [
-    'apply_ban', 'lift_suspension', 'update_report_status', 'resolve_target_reports',
+    'apply_ban', 'lift_suspension', 'decide_appeal', 'update_report_status', 'resolve_target_reports',
     'takedown_content', 'set_post_pinned', 'upsert_banner', 'delete_banner',
     'upload_banner', 'issue_token', 'revoke_admin_tokens', 'revoke_token',
   ],
@@ -73,12 +74,15 @@ function authenticatedFetch(calls, business = null, role = 'owner') {
     if (url.pathname === '/rest/v1/rpc/edge_rate_hit') {
       return new Response('true', { status: 200 })
     }
-    if (url.pathname === '/rest/v1/rpc/admin_token_authorization') {
+    if (url.pathname === '/rest/v1/rpc/admin_token_authorization_v2') {
       return new Response(JSON.stringify([{
+        token_id: VALID_ID,
         admin_id: VALID_ID,
         admin_name: 'Admin',
         admin_email: 'admin@example.com',
         role,
+        expires_at: null,
+        server_now: AUTH_SERVER_NOW,
         capabilities: ROLE_CAPABILITIES[role],
       }]), { status: 200, headers: { 'Content-Type': 'application/json' } })
     }
@@ -105,6 +109,15 @@ function adminPost(body, headers = {}) {
 
 function validMutationResult(body) {
   if (body.action === 'apply_ban') return { data: VALID_ID }
+  if (body.action === 'decide_appeal') {
+    return { data: {
+      suspension_id: body.suspension_id,
+      decision: body.decision,
+      terminal: body.decision !== 'more_information_required',
+      lifted_now: body.decision === 'accepted',
+      remains_active: body.decision !== 'accepted',
+    } }
+  }
   if (body.action === 'resolve_target_reports' || body.action === 'takedown_content') {
     return { data: { ok: true, affected: 1 } }
   }
@@ -163,16 +176,19 @@ test('Authorization requires a Bearer scheme and conflicting credential channels
 
     assert.equal(response.status, 401)
     assert.deepEqual(await response.json(), { error: 'unauthorized' })
-    assert.equal(calls.some(call => call.url.pathname === '/rest/v1/rpc/admin_token_authorization'), false)
+    assert.equal(calls.some(call => call.url.pathname === '/rest/v1/rpc/admin_token_authorization_v2'), false)
   }
 })
 
 test('malformed authorization 2xx rows fail closed before privileged reads', async () => {
   const valid = {
+    token_id: VALID_ID,
     admin_id: VALID_ID,
     admin_name: 'Admin',
     admin_email: 'admin@example.com',
     role: 'owner',
+    expires_at: null,
+    server_now: AUTH_SERVER_NOW,
     capabilities: ROLE_CAPABILITIES.owner,
   }
   const fixtures = [
@@ -183,6 +199,8 @@ test('malformed authorization 2xx rows fail closed before privileged reads', asy
     { ...valid, capabilities: [...valid.capabilities, valid.capabilities[0]] },
     { ...valid, capabilities: valid.capabilities.slice(1) },
     { ...valid, admin_email: 'bad\u202e@example.com' },
+    { ...valid, expires_at: AUTH_SERVER_NOW },
+    { ...valid, expires_at: '2026-07-19T23:59:59Z' },
   ]
   for (const fixture of fixtures) {
     const calls = []
@@ -190,7 +208,7 @@ test('malformed authorization 2xx rows fail closed before privileged reads', asy
       const url = new URL(input instanceof Request ? input.url : String(input))
       calls.push({ url, init })
       if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return new Response('true', { status: 200 })
-      if (url.pathname === '/rest/v1/rpc/admin_token_authorization') {
+      if (url.pathname === '/rest/v1/rpc/admin_token_authorization_v2') {
         const body = Array.isArray(fixture) ? fixture : [fixture]
         return new Response(JSON.stringify(body), { status: 200 })
       }
@@ -212,6 +230,7 @@ test('malformed admin reads are rejected before a data-bearing RPC', async () =>
     ['resource=suspension&id=not-a-uuid', 'invalid_id'],
     ['resource=linked_accounts&profile_id=not-a-uuid', 'invalid_id'],
     ['resource=search_users&q=', 'invalid_query'],
+    ['resource=search_users&q=a', 'invalid_query'],
     ['resource=reports&status=deleted', 'invalid_status'],
   ]) {
     const calls = []
@@ -231,6 +250,13 @@ test('destructive mutations enforce ids, enums and bounded values before RPC exe
     [{ action: 'apply_ban', target_id: VALID_ID, level: -1, reason: 'x' }, 'invalid_level'],
     [{ action: 'apply_ban', target_id: VALID_ID, level: 4, reason: 'x', hours: -1 }, 'invalid_hours'],
     [{ action: 'apply_ban', target_id: VALID_ID, level: 4, reason: { text: 'x' } }, 'invalid_reason'],
+    [{ action: 'apply_ban', target_id: VALID_ID, level: 4, reason: 'bad\u0085reason' }, 'invalid_reason'],
+    [{ action: 'apply_ban', target_id: VALID_ID, level: 4, reason: 'bad\u061creason' }, 'invalid_reason'],
+    [{ action: 'apply_ban', target_id: VALID_ID, level: 4, reason: 'bad\u200ereason' }, 'invalid_reason'],
+    [{ action: 'apply_ban', target_id: VALID_ID, level: 4, reason: 'bad\u200freason' }, 'invalid_reason'],
+    [{ action: 'apply_ban', target_id: VALID_ID, level: 4, reason: 'x', category: 'bad\u061ccategory' }, 'invalid_category'],
+    [{ action: 'apply_ban', target_id: VALID_ID, level: 4, reason: 'x', category: 'bad\u200ecategory' }, 'invalid_category'],
+    [{ action: 'apply_ban', target_id: VALID_ID, level: 4, reason: 'x', category: 'bad\u200fcategory' }, 'invalid_category'],
     [{ action: 'resolve_target_reports', target_type: 'user', target_id: VALID_ID, status: 'pending' }, 'invalid_status'],
     [{ action: 'revoke_token', token_id: VALID_ID }, 'invalid_case_id'],
     [{ action: 'revoke_token', token_id: VALID_ID, case_id: 'CASE-1' }, 'invalid_approval_ref'],
@@ -239,6 +265,13 @@ test('destructive mutations enforce ids, enums and bounded values before RPC exe
     [{ action: 'issue_token', token_hash: 'not-a-hash', admin_id: VALID_ID, role: 'operator', expires_at: ISSUE_EXPIRY, case_id: 'CASE-1', approval_ref: 'APP-1' }, 'invalid_token_hash'],
     [{ action: 'resolve_target_reports', target_type: 'database', target_id: VALID_ID, status: 'resolved' }, 'invalid_target_type'],
     [{ action: 'takedown_content', target_type: 'message', target_id: VALID_ID }, 'invalid_target_type'],
+    [{ action: 'takedown_content', target_type: 'post', target_id: VALID_ID }, 'missing_args'],
+    [{ action: 'lift_suspension', suspension_id: VALID_ID }, 'missing_args'],
+    [{ action: 'lift_suspension', suspension_id: VALID_ID, reason: 'bad\u202ereason' }, 'invalid_reason'],
+    [{ action: 'decide_appeal', suspension_id: VALID_ID, decision: 'approved', reason: 'x' }, 'invalid_decision'],
+    [{ action: 'decide_appeal', suspension_id: VALID_ID, decision: 'denied' }, 'invalid_args'],
+    [{ action: 'decide_appeal', suspension_id: VALID_ID, decision: 'denied', reason: 'x', extra: true }, 'invalid_args'],
+    [{ action: 'decide_appeal', suspension_id: VALID_ID, decision: 'denied', reason: 'bad\nreason' }, 'invalid_reason'],
     [{ action: 'set_post_pinned', post_id: 'not-a-uuid', pinned: true }, 'invalid_id'],
     [{ action: 'delete_banner', id: 'not-a-uuid' }, 'invalid_id'],
   ]
@@ -333,10 +366,11 @@ test('valid bounded mutations still reach their intended provider contract', asy
   assert.deepEqual(await response.json(), { data: { ok: true, affected: 1 } })
 })
 
-test('all eleven JSON write actions use the one atomic mutation RPC', async () => {
+test('all twelve JSON write actions use the one atomic mutation RPC', async () => {
   const bodies = [
     { action: 'apply_ban', target_id: VALID_ID, level: 1, reason: 'x' },
     { action: 'lift_suspension', suspension_id: VALID_ID, reason: 'x' },
+    { action: 'decide_appeal', suspension_id: VALID_ID, decision: 'denied', reason: 'x' },
     { action: 'update_report_status', report_id: VALID_ID, status: 'resolved' },
     { action: 'resolve_target_reports', target_type: 'user', target_id: VALID_ID, status: 'resolved' },
     { action: 'takedown_content', target_type: 'post', target_id: VALID_ID, reason: 'x' },
@@ -368,7 +402,7 @@ test('all eleven JSON write actions use the one atomic mutation RPC', async () =
       .map(call => call.url.pathname)
       .filter(path => ![
         '/rest/v1/rpc/edge_rate_hit',
-        '/rest/v1/rpc/admin_token_authorization',
+        '/rest/v1/rpc/admin_token_authorization_v2',
       ].includes(path))
     assert.deepEqual(businessPaths, ['/rest/v1/rpc/admin_execute_mutation'], body.action)
   }
@@ -398,8 +432,45 @@ test('admin_login audit is emitted for the unlock identity probe, not every requ
   assert.equal(whoami.status, 200)
   const identity = (await whoami.json()).data
   assert.equal(identity.role, 'owner')
+  assert.equal(identity.token_id, VALID_ID)
+  assert.equal(identity.expires_at, null)
+  assert.equal(identity.server_now, AUTH_SERVER_NOW)
   assert.deepEqual(identity.capabilities, ROLE_CAPABILITIES.owner)
   assert.equal(whoamiCalls.filter(call => call.url.pathname === '/rest/v1/rpc/record_audit').length, 1)
+})
+
+test('appeals and role-scoped audit reads use only their versioned projections', async () => {
+  for (const [role, resource, expectedPath] of [
+    ['operator', 'appeals', '/rest/v1/rpc/admin_list_appeals_v2'],
+    ['operator', 'audit', '/rest/v1/rpc/admin_list_moderation_audit_log'],
+    ['owner', 'audit', '/rest/v1/rpc/admin_list_owner_audit_log'],
+  ]) {
+    const calls = []
+    globalThis.fetch = authenticatedFetch(calls, async (url, init) => {
+      assert.equal(url.pathname, expectedPath)
+      const payload = JSON.parse(init.body)
+      if (resource === 'appeals') {
+        assert.deepEqual(payload, { limit_in: 50, offset_in: 0 })
+      } else {
+        assert.deepEqual(payload, { limit_in: 50, offset_in: 0, kind_filter: null })
+      }
+      return new Response('[]', {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }, role)
+    const handler = await loadHandler()
+    const response = await handler(new Request(
+      `https://app.test/api/admin?resource=${resource}`,
+      { headers: { Authorization: `Bearer ${ADMIN_A}` } },
+    ))
+    assert.equal(response.status, 200, `${role}:${resource}`)
+    assert.deepEqual(await response.json(), { data: [] }, `${role}:${resource}`)
+    assert.equal(
+      calls.some(call => call.url.pathname === '/rest/v1/rpc/admin_list_audit_log'),
+      false,
+    )
+  }
 })
 
 test('role matrix denies reads and writes before a provider business call', async () => {
@@ -442,7 +513,7 @@ test('role matrix denies reads and writes before a provider business call', asyn
     assert.deepEqual(await response.json(), { error: 'admin_capability_denied' }, role)
     const businessCalls = calls.filter(call => ![
       '/rest/v1/rpc/edge_rate_hit',
-      '/rest/v1/rpc/admin_token_authorization',
+      '/rest/v1/rpc/admin_token_authorization_v2',
     ].includes(call.url.pathname))
     assert.deepEqual(businessCalls, [], role)
   }
@@ -789,7 +860,7 @@ test('migration-owned absence, revoke and managed-upload sentinels map to stable
     [{ action: 'lift_suspension', suspension_id: VALID_ID, reason: 'x' }, 'suspension_not_active', 404, 'admin_mutation_not_found'],
     [{ action: 'update_report_status', report_id: VALID_ID, status: 'resolved' }, 'report_not_found', 404, 'admin_mutation_not_found'],
     [{ action: 'resolve_target_reports', target_type: 'user', target_id: VALID_ID, status: 'resolved' }, 'report_group_not_found', 404, 'admin_mutation_not_found'],
-    [{ action: 'takedown_content', target_type: 'post', target_id: VALID_ID }, 'content_not_found', 404, 'admin_mutation_not_found'],
+    [{ action: 'takedown_content', target_type: 'post', target_id: VALID_ID, reason: 'confirmed policy violation' }, 'content_not_found', 404, 'admin_mutation_not_found'],
     [{ action: 'set_post_pinned', post_id: VALID_ID, pinned: true }, 'post_not_found', 404, 'admin_mutation_not_found'],
     [{ action: 'delete_banner', id: VALID_ID }, 'banner_not_found', 404, 'admin_mutation_not_found'],
     [{ action: 'issue_token', token_hash: 'b'.repeat(64), admin_id: VALID_ID, role: 'operator', expires_at: ISSUE_EXPIRY, case_id: 'CASE-11', approval_ref: 'APP-11' }, 'admin_profile_not_found', 404, 'admin_mutation_not_found'],
@@ -862,6 +933,55 @@ test('malformed or action-mismatched 2xx mutation results remain outcome-unknown
     [{ action: 'set_post_pinned', post_id: VALID_ID, pinned: true }, { success: false }],
     [{ action: 'apply_ban', target_id: VALID_ID, level: 1, reason: 'x' }, { data: 'not-a-uuid' }],
     [{ action: 'resolve_target_reports', target_type: 'user', target_id: VALID_ID, status: 'resolved' }, { data: { ok: true, affected: 0 } }],
+    [{
+      action: 'decide_appeal', suspension_id: VALID_ID,
+      decision: 'accepted', reason: 'x',
+    }, { data: {
+      suspension_id: VALID_ID, decision: 'accepted', terminal: false,
+      lifted_now: true, remains_active: false,
+    } }],
+    [{
+      action: 'decide_appeal', suspension_id: VALID_ID,
+      decision: 'accepted', reason: 'x',
+    }, { data: {
+      suspension_id: VALID_ID, decision: 'accepted', terminal: true,
+      lifted_now: false, remains_active: true,
+    } }],
+    [{
+      action: 'decide_appeal', suspension_id: VALID_ID,
+      decision: 'denied', reason: 'x',
+    }, { data: {
+      suspension_id: VALID_ID, decision: 'denied', terminal: true,
+      lifted_now: true, remains_active: false,
+    } }],
+    [{
+      action: 'decide_appeal', suspension_id: VALID_ID,
+      decision: 'more_information_required', reason: 'x',
+    }, { data: {
+      suspension_id: VALID_ID, decision: 'more_information_required', terminal: false,
+      lifted_now: true, remains_active: false,
+    } }],
+    [{
+      action: 'decide_appeal', suspension_id: VALID_ID,
+      decision: 'denied', reason: 'x',
+    }, { data: {
+      suspension_id: IDEMPOTENCY_KEY, decision: 'denied', terminal: true,
+      lifted_now: false, remains_active: true,
+    } }],
+    [{
+      action: 'decide_appeal', suspension_id: VALID_ID,
+      decision: 'denied', reason: 'x',
+    }, { data: {
+      suspension_id: VALID_ID, decision: 'accepted', terminal: true,
+      lifted_now: false, remains_active: false,
+    } }],
+    [{
+      action: 'decide_appeal', suspension_id: VALID_ID,
+      decision: 'denied', reason: 'x',
+    }, { data: {
+      suspension_id: VALID_ID, decision: 'denied', terminal: true,
+      lifted_now: false, remains_active: true, unexpected: true,
+    } }],
     [bannerBody, { data: { id: IDEMPOTENCY_KEY, active: true } }],
     [bannerBody, bannerWithProviderDrift],
     [{
@@ -942,5 +1062,32 @@ test('capability denial is 403 and arbitrary provider messages remain opaque', a
     const result = await response.json()
     assert.deepEqual(result, { error })
     assert.doesNotMatch(JSON.stringify(result), /user@example|secret-policy/)
+  }
+})
+
+test('appeal lifecycle sentinels map to stable definitive HTTP outcomes', async () => {
+  for (const [providerMessage, status, error] of [
+    ['self_appeal_decision_forbidden', 403, 'self_appeal_decision_forbidden'],
+    ['appeal_already_decided', 409, 'appeal_already_decided'],
+    ['appeal_not_found', 404, 'admin_mutation_not_found'],
+    ['appeal_lift_conflict', 409, 'admin_mutation_conflict'],
+  ]) {
+    const calls = []
+    globalThis.fetch = authenticatedFetch(calls, async (url) => {
+      assert.equal(url.pathname, '/rest/v1/rpc/admin_execute_mutation')
+      return new Response(JSON.stringify({ code: 'P0001', message: providerMessage }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+    const handler = await loadHandler()
+    const response = await handler(adminPost({
+      action: 'decide_appeal',
+      suspension_id: VALID_ID,
+      decision: 'denied',
+      reason: 'reviewed evidence',
+    }))
+    assert.equal(response.status, status, providerMessage)
+    assert.deepEqual(await response.json(), { error }, providerMessage)
   }
 })

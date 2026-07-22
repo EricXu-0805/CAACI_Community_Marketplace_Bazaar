@@ -23,11 +23,12 @@ You only need to do this once per Vercel project.
    `20260718190000_admin_token_capabilities.sql`, and
    `20260718200000_recoverable_banner_uploads.sql`, followed by
    `20260719010000_admin_token_lifecycle_rpc.sql` and the forward-only
-   `20260719020000_admin_owner_recovery_concurrency.sql`; later dashboard features
-   also use 073, 075, 077, 078, 080, 081, and 083. For the existing production
-   project, first reconcile its ledger and actual schema, then use the
-   comprehensive audit's PRECHECK → backup/staging → migration → VERIFY path.
-   Do not replay individual files from this list.
+   `20260719020000_admin_owner_recovery_concurrency.sql`, then
+   `20260720035037_harden_admin_appeal_decisions_and_session_metadata.sql`;
+   later dashboard features also use 073, 075, 077, 078, 080, 081, and 083.
+   For the existing production project, first reconcile its ledger and actual
+   schema, then use the comprehensive audit's PRECHECK → backup/staging →
+   migration → VERIFY path. Do not replay individual files from this list.
 
    The actor migration intentionally stops if any historical `admin_tokens`
    row has `admin_id IS NULL`. Do not guess an identity from mutable
@@ -42,12 +43,33 @@ You only need to do this once per Vercel project.
    - `SUPABASE_SECRET_KEY` — from Supabase → Settings → API Keys → a named secret key
    - `CRON_SECRET` — Vercel Cron bearer secret; also protects hourly abandoned
      banner-upload garbage collection at `/api/banner-upload-gc`
+   - `WECHAT_APPSECRET` — Production-only and Sensitive; paste it directly in
+     the Vercel console and never place it in chat, source control, build logs,
+     or a command line
    - keep an already-deployed `SUPABASE_SERVICE_ROLE_KEY` only as a temporary
      rolling fallback until the provider/client matrix is green; a new
      deployment should not create a dependency on it
 
-3. **Redeploy** (Deployments → latest → ⋯ → Redeploy). Edge functions
-   don't pick up env changes without a redeploy.
+3. **For the 2026-07-20 production rollout, deploy bridge → database → final
+   Edge in that exact order.** First create a new Production deployment of
+   bridge commit `eaeaee9410044c1b07e7922eebd77fffd04d7f72` after the Production
+   environment variables are complete, then verify its deployment identity,
+   token authorization, reads, and a reversible non-appeal atomic write. The
+   bridge uses v1 token authorization plus the atomic mutation dispatcher and
+   is compatible with both the pre- and post-migration schemas.
+
+   Pause appeal decisions before the bridge serves production. Next run the
+   reviewed `20260720035037` PRECHECK, confirm the backup and rollback evidence,
+   apply the migration atomically, and run VERIFY while the bridge remains in
+   service. Then deploy and verify the final build that calls
+   `admin_token_authorization_v2`, `admin_list_appeals_v2`, and the versioned
+   audit RPCs. Environment-variable changes also require a new deployment.
+
+   Once the database advances, `0091b0e` is permanently incompatible with the
+   hardened helper ACL and is not a permitted application rollback target.
+   Roll back only to the verified bridge; keep appeals paused for the entire
+   time the bridge is serving because its old appeal action can lift
+   enforcement without recording a terminal structured appeal decision.
 
 4. Mint a unique role-scoped token for each administrator from a trusted shell.
    The regular CLI calls the audited `/api/admin` lifecycle boundary and never
@@ -237,31 +259,65 @@ Write it as if the banned user will read it — because they will.
 | **L4** | 30 days | Serious abuse, confirmed scam with victim, CSAM-adjacent, repeat L3. Triggers shadow-ban. Shared device fingerprints are only advisory candidates for manual review; they are never automatic proof or an automatic sanction. |
 | **L5** | Permanent | CSAM, doxing, credible threats, admin compromise, multi-strike L4. Triggers shadow-ban. No automatic lift; any linked-account action requires separate evidence and a separate audited decision. |
 
-### 3. Lift a suspension (handle appeals)
+### 3. Decide an appeal
+
+> Availability gate: do not perform any appeal mutation while the production
+> bridge is serving, including after a rollback from the final build to that
+> bridge. Keep the queue and external case log intact. Enable the actions only
+> after `20260720035037` VERIFY succeeds, the exact reviewed final Edge
+> deployment is live, and a real administrator has verified the positive
+> decision plus restricted-audit flow in that deployment.
 
 Appeals show up in the **Appeals** tab. Each card shows the original
-ban reason, the user's appeal text, and issued-by info.
+ban reason, the user's appeal text, issued-by info, whether the underlying
+action is still active, the authoritative filing time when available, and
+whether more information was already requested. Historical appeals that
+predate the filing-time column are explicitly labelled unknown and sort ahead
+of known FIFO timestamps; never substitute the suspension creation time.
 
-Click **Lift (accept appeal)** on a card to open a reason prompt.
-Your lift-reason is also written to the audit log. Be specific:
+The dashboard supports three reviewed outcomes:
+
+- **Accept** — records the terminal decision and lifts the action only when it
+  is still active. Accepting an already expired or already lifted action records
+  the decision without recreating or fabricating a lift. When another active
+  L2+ suspension still restricts the same profile, the remaining restriction
+  stays authoritative; the user receives only the truthful “one action was
+  lifted; another restriction remains active” state notice, never the false
+  “account restriction lifted” notice.
+- **Deny** — records a terminal decision and leaves the enforcement state
+  unchanged.
+- **More information required** — records a non-terminal request and keeps the
+  appeal in the queue so a later reviewer can accept or deny it.
+
+Every action opens a required reason prompt. The reason is written to the
+restricted audit ledger. Be specific, factual, and do not copy unrelated PII:
 
 - Good: `First-time offender, apologized, agreed to re-read guidelines`
 - Good: `False positive — reporter bulk-reporting competitor listings`
 - Bad: `ok` / `fixed` / blank
 
 An appeal can remain in the evidence/review queue after its underlying action
-expires. The dashboard labels that card **expired** and removes the Lift action:
-public visibility/write access has already returned automatically (unless a
-different action is active). Continue the approved case-review/support process;
-do not create a fake lift event just to close a cache.
+expires. Public visibility/write access has already returned automatically
+(unless a different action is active). Continue the approved case-review and
+support process; never create a fake lift event merely to clear the queue.
 
-The release-candidate dashboard has no structured "deny appeal" action, decision status,
-or automatic user notification. Do **not** treat silence as a complete case:
-record the decision and reviewer in the approved case log, reply through the
-verified support channel, and leave the suspension active. The user can submit
-only one in-app appeal per suspension. This manual bridge must be retired once
-the appeal lifecycle migration/UI is available. Follow
-`RIGHTS_AND_CONTENT_REQUESTS.md` for identity, case-log, second-review, and
+The database rejects an administrator deciding or lifting an action against
+their own profile. Transfer that case to another administrator. If the case
+raises concern about the administrator's privileged access, handle token
+revocation as a separate owner/security action; marketplace suspension and
+administrator authorization are intentionally different controls.
+
+The structured decision is **not** a delivery receipt. The app still does not
+guarantee an automatic decision notification, and the user can submit only one
+in-app appeal per suspension. Accepting a still-active action also triggers the
+existing generic in-app **restriction lifted** notification; that message is
+not a structured appeal outcome and has no verified support-channel delivery
+receipt. Denial, more-information, and acceptance of an already inactive action
+do not gain an equivalent automatic decision notice from this workflow. After
+every outcome, reply through the verified support channel, record delivery in
+the approved case log, and do not close the support case until delivery is
+confirmed. Follow
+`RIGHTS_AND_CONTENT_REQUESTS.md` for identity, second-review, case-log, and
 delivery controls.
 
 ### 4. Monitor flagged users proactively
@@ -353,7 +409,8 @@ Three causes in order of likelihood:
    confirm a known token row's lifecycle state, but cannot validate mistyped
    plaintext.
 2. Migration 036 or the later token hardening migrations are absent/drifted,
-   so `admin_token_authorization` cannot resolve the role/capabilities.
+   especially `20260720035037`, so `admin_token_authorization_v2` cannot return
+   the exact token ID, expiry, database time, role, and capability contract.
 3. `SUPABASE_URL` / `SUPABASE_SECRET_KEY` (and legacy service-role fallback) is missing from the deployed
    API. Fix the server environment and redeploy; `ADMIN_API_KEY` is ignored.
 

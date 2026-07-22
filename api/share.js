@@ -118,14 +118,17 @@ function responseHeaders(boundary) {
   return headers
 }
 
-export default async function handler(req) {
-  const boundary = evaluateDeploymentBoundary({ supabaseUrl: SUPABASE_URL })
+async function responseForRequest(req, boundary) {
   const deploymentError = deploymentBoundaryResponse(boundary)
   if (deploymentError) return deploymentError
-  if (req.method !== 'GET') {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
     return new Response('Method Not Allowed', {
       status: 405,
-      headers: { ...responseHeaders(boundary), allow: 'GET' },
+      headers: {
+        ...responseHeaders(boundary),
+        allow: 'GET, HEAD',
+        'cache-control': 'no-store, max-age=0',
+      },
     })
   }
   const url = new URL(req.url)
@@ -182,5 +185,16 @@ export default async function handler(req) {
   return new Response(html, {
     status: 200,
     headers: responseHeaders(boundary),
+  })
+}
+
+export default async function handler(req) {
+  const boundary = evaluateDeploymentBoundary({ supabaseUrl: SUPABASE_URL })
+  const response = await responseForRequest(req, boundary)
+  if (req.method !== 'HEAD') return response
+  return new Response(null, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
   })
 }

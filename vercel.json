@@ -12,6 +12,7 @@
     { "source": "/share/:id", "destination": "/api/share?id=:id" },
     { "source": "/share-post/:id", "destination": "/api/share-post?id=:id" },
     { "source": "/robots.txt", "destination": "/static/robots.txt" },
+    { "source": "/assets/:path*", "destination": "/api/404.js" },
     { "source": "/api/:path*", "destination": "/api/404.js" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],

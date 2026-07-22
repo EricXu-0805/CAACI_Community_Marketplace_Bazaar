@@ -282,13 +282,19 @@ environment's exact origin/project):**
 
 - [ ] Production: `SUPABASE_SECRET_KEY`, legacy `SUPABASE_SERVICE_ROLE_KEY` fallback, `CRON_SECRET`, `RESEND_API_KEY`, `SENTRY_AUTH_TOKEN`, `OPENAI_API_KEY`, and `WECHAT_APPSECRET` exist **only** in Production scope and point to production resources
 - [ ] Trusted Preview/staging: use a separate staging Supabase project and separately revocable staging provider keys; restrict them to an allowlisted reviewed branch/custom environment. An untrusted or arbitrary-branch Preview receives no privileged variables
-- [ ] Deployment gate is green: Vite refuses tier/project/origin drift; all 19 Supabase-backed Functions return 503 before upstream work on drift; `deployment-manifest.json` records a non-secret artifact identity
+- [ ] Deployment gate is green: Vite refuses tier/project/origin drift; all 19 Supabase-backed Functions return 503 before upstream work on drift; the deployed project has 20 runtime Functions in total including the non-Supabase custom 404 boundary; `deployment-manifest.json` records a non-secret artifact identity
 - [ ] `SENTRY_ORG` + `SENTRY_PROJECT` accompany the environment-specific Sentry credentials when source maps are intentionally published
 - [ ] `DIGEST_FROM` is a verified test sender in staging and the reviewed production sender in Production; Resend is also used by meetup mail and Illini verification
 - [ ] Apply + verify `20260717194646_account_deletion_jobs.sql`, including its restrictive Storage tombstone policies; the same `CRON_SECRET` authorizes its 10-minute recovery cron
 - [ ] Apply + verify `20260718150000_ephemeral_data_retention.sql`; confirm the hourly `/api/data-retention` cron returns 200 (a 503 backlog/error is not green)
 - [ ] `OPENAI_API_KEY` — optional and environment-specific (content moderation; safe to skip for a soft launch)
-- [ ] If enabling WeChat: `WECHAT_APPID`, environment-specific `WECHAT_APPSECRET`, `WECHAT_PUSH_TOKEN`; verify against staging first and complete the legacy-password retirement runbook in `docs/WECHAT_MP_SETUP.md`
+- [ ] For the 2026-07-20 release, WeChat is a production gate: `WECHAT_APPID`,
+  environment-specific `WECHAT_APPSECRET`, and `WECHAT_PUSH_TOKEN` must be
+  present in their reviewed scopes; `WECHAT_APPSECRET` must be Sensitive and
+  Production-only. Create a new exact-commit Production deployment after the
+  variable is saved—an older deployment cannot prove the new environment
+  snapshot—and complete the legacy-password retirement runbook in
+  `docs/WECHAT_MP_SETUP.md` only after the provider canary succeeds.
 
 **Supabase dashboard (manual, above):**
 
@@ -352,7 +358,9 @@ curl -I https://illinimarket.com
 #    the operator supplies only the per-admin Bearer.
 curl -i https://illinimarket.com/api/admin?resource=stats \
   -H "Authorization: Bearer iam_admin_<your_token>"
-# Expect 200 + JSON. 401 = bad token. 500 = privileged Supabase key unset.
+# Expect 200 + JSON. 401 is limited to malformed or authoritatively invalid
+# credentials. Missing privileged configuration, unavailable v2 auth RPCs, or
+# other authentication-upstream failures return retryable 503 auth_unavailable.
 
 # 3. Sentry receiving events (use the dashboard, look for events from this 7-char SHA)
 git rev-parse --short=7 HEAD

@@ -374,13 +374,13 @@ export function useItems() {
       .single()
     if (error) throw error
 
-    if (options.incrementView !== false) {
-      // The hardened counter records one view per authenticated account. Avoid
-      // intentionally calling a denied RPC for anonymous detail readers.
+    if (options.incrementView !== false && viewAccountToken) {
+      // Anonymous detail reads are public, but the hardened counter records one
+      // view per authenticated account. Skip the entire session/RPC branch when
+      // there was no active account at entry instead of issuing a denied call.
       void supabase.auth.getSession().then(({ data: { session } }) => {
         if (
           !session?.user
-          || !viewAccountToken
           || session.user.id !== viewAccountToken.userId
           || !isAccountRequestCurrent(viewAccountToken)
         ) return

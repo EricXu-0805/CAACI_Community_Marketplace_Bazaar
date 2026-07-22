@@ -171,7 +171,13 @@ test('Preview share origin mismatch returns 503 before rendering or upstream wor
     DEPLOYMENT_APP_ORIGIN: 'https://illinimarket.com',
     SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test',
   }))
-  const response = await handler(new Request(`${APP_ORIGIN}/share-post?id=invalid`))
+  const url = `${APP_ORIGIN}/share-post?id=invalid`
+  const response = await handler(new Request(url))
+  const headResponse = await handler(new Request(url, { method: 'HEAD' }))
   assert.equal(response.status, 503)
+  assert.equal(headResponse.status, response.status)
+  assert.equal(headResponse.headers.get('content-type'), response.headers.get('content-type'))
+  assert.equal(headResponse.headers.get('cache-control'), response.headers.get('cache-control'))
+  assert.equal(await headResponse.text(), '')
   assert.equal(calls, 0)
 })

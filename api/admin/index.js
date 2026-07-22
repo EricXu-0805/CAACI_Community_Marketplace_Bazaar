@@ -7,7 +7,8 @@ export const config = { runtime: 'edge' }
  *
  * Auth model (v2, post-036):
  *   Bearer token per admin (Authorization: Bearer iam_admin_<random>).
- *   The token is SHA-256 hashed and matched against admin_tokens.
+ *   The token is SHA-256 hashed and matched against admin_tokens through the
+ *   versioned admin_token_authorization_v2 projection.
  *   On hit, JSON writes pass the token digest into admin_execute_mutation,
  *   which revalidates it and commits the business change, actor/token/key
  *   audit row, and idempotency result in one database transaction. Login,
@@ -50,6 +51,11 @@ const UPSTREAM_RESPONSE_MAX_BYTES = 2 * 1024 * 1024
 const ADMIN_JSON_MAX_BYTES = 64 * 1024
 const REQUEST_BODY_TIMEOUT_MS = 5000
 const ADMIN_BEARER_PATTERN = /^iam_admin_[A-Za-z0-9_-]{43}$/
+const UNSAFE_ADMIN_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/u
+
+function hasUnsafeAdminText(value) {
+  return UNSAFE_ADMIN_TEXT_PATTERN.test(value)
+}
 
 function supabaseHeaders(key, authorization = '', extra = {}) {
   const headers = { apikey: key, ...extra }
@@ -285,7 +291,7 @@ async function validateBearer(bearer) {
   try {
     const tokenHash = await sha256Hex(bearer)
     const { response: r, text } = await adminFetch(
-      `${SUPABASE_URL}/rest/v1/rpc/admin_token_authorization`,
+      `${SUPABASE_URL}/rest/v1/rpc/admin_token_authorization_v2`,
       {
         method: 'POST',
         headers: supabaseHeaders(SERVICE_KEY, '', {
@@ -308,19 +314,32 @@ async function validateBearer(bearer) {
     const row = rows[0]
     const capabilities = row?.capabilities
     if (
-      hasExactKeys(row, ['admin_id', 'admin_name', 'admin_email', 'role', 'capabilities'])
+      hasExactKeys(row, [
+        'token_id', 'admin_id', 'admin_name', 'admin_email', 'role',
+        'expires_at', 'server_now', 'capabilities',
+      ])
+      && isUuid(row.token_id)
       && isUuid(row.admin_id)
       && isBoundedNullableIdentity(row.admin_name, 100, false)
       && isBoundedNullableIdentity(row.admin_email, 200, true)
       && ADMIN_ROLES.has(row.role)
+      && isNullableTimestamp(row.expires_at)
+      && isIsoTimestamp(row.server_now)
+      && (
+        row.expires_at === null
+        || Date.parse(row.expires_at) > Date.parse(row.server_now)
+      )
       && hasExactRoleCapabilities(row.role, capabilities)
     ) {
       return {
         ok: true,
         adminId:    row.admin_id,
+        tokenId:    row.token_id,
         adminName:  row.admin_name,
         adminEmail: row.admin_email,
         role:        row.role,
+        expiresAt:  row.expires_at,
+        serverNow:  row.server_now,
         capabilities,
         // Retain only the one-way digest after the initial validation. The
         // atomic mutation RPC re-checks this exact token while holding its
@@ -344,7 +363,7 @@ function isBoundedNullableIdentity(value, maxLength, requireEmailShape) {
   return typeof value === 'string'
     && value.length >= 1
     && value.length <= maxLength
-    && !/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u.test(value)
+    && !hasUnsafeAdminText(value)
     && (!requireEmailShape || (value.length >= 3 && value.includes('@')))
 }
 
@@ -448,6 +467,24 @@ function isExpectedAdminMutationResult(action, payload, result) {
     return hasExactKeys(result, ['success']) && result.success === true
   }
 
+  if (action === 'decide_appeal') {
+    const data = result.data
+    return hasExactKeys(result, ['data'])
+      && hasExactKeys(data, [
+        'suspension_id', 'decision', 'terminal', 'lifted_now', 'remains_active',
+      ])
+      && isUuid(data.suspension_id)
+      && data.suspension_id.toLowerCase() === payload.suspension_id?.toLowerCase()
+      && data.decision === payload.decision
+      && typeof data.terminal === 'boolean'
+      && data.terminal === new Set(['accepted', 'denied']).has(payload.decision)
+      && typeof data.lifted_now === 'boolean'
+      && typeof data.remains_active === 'boolean'
+      && !(data.lifted_now && data.remains_active)
+      && (payload.decision !== 'accepted' || data.remains_active === false)
+      && (payload.decision === 'accepted' || data.lifted_now === false)
+  }
+
   if (action === 'resolve_target_reports' || action === 'takedown_content') {
     return hasExactKeys(result, ['data'])
       && hasExactKeys(result.data, ['ok', 'affected'])
@@ -533,10 +570,14 @@ const REPORT_STATUSES = new Set(['pending', 'reviewed', 'resolved', 'dismissed']
 const BULK_REPORT_STATUSES = new Set(['reviewed', 'resolved', 'dismissed'])
 const REPORT_TARGET_TYPES = new Set(['item', 'user', 'message', 'post', 'comment'])
 const TAKEDOWN_TARGET_TYPES = new Set(['item', 'post', 'comment'])
+const APPEAL_DECISIONS = new Set([
+  'accepted', 'denied', 'more_information_required',
+])
 const ADMIN_ROLES = new Set(['operator', 'security_admin', 'owner'])
 const MODERATION_ACTIONS = new Set([
   'apply_ban',
   'lift_suspension',
+  'decide_appeal',
   'update_report_status',
   'resolve_target_reports',
   'takedown_content',
@@ -650,7 +691,29 @@ function isBoundedString(value, maxLength, { allowEmpty = false } = {}) {
 
 function isAuditEvidence(value) {
   return isBoundedString(value, 200)
-    && !/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u.test(value)
+    && !hasUnsafeAdminText(value)
+}
+
+function isModerationReason(value) {
+  return isBoundedString(value, 1000)
+    && !hasUnsafeAdminText(value)
+}
+
+function normalizedModerationReason(value) {
+  return value.trim()
+}
+
+function isModerationCategory(value) {
+  return isBoundedString(value, 80) && !hasUnsafeAdminText(value)
+}
+
+function isAdminSearchQuery(value) {
+  if (typeof value !== 'string') return false
+  const normalized = value.trim()
+  if (isUuid(normalized)) return true
+  return normalized.length >= 2
+    && normalized.length <= 200
+    && !hasUnsafeAdminText(normalized)
 }
 
 function isNullableBoundedString(value, maxLength) {
@@ -793,6 +856,7 @@ async function executeAdminMutation(request, auth, body) {
       'admin_token_hash_conflict',
       'admin_token_batch_conflict',
       'admin_account_deletion_in_progress',
+      'appeal_lift_conflict',
     ]).has(message)) throw codedError('admin_mutation_conflict')
     if (message === 'admin_mutation_invalid'
         || message === 'admin_mutation_invalid_payload'
@@ -801,7 +865,14 @@ async function executeAdminMutation(request, auth, body) {
         || message === 'admin_upload_required') {
       throw codedError('admin_mutation_invalid')
     }
-    if (message === 'admin_capability_denied') throw codedError('admin_capability_denied')
+    if (message === 'admin_capability_denied'
+        || message === 'self_appeal_decision_forbidden') {
+      throw codedError(message)
+    }
+    if (message === 'appeal_already_decided') {
+      throw codedError('appeal_already_decided')
+    }
+    if (message === 'appeal_not_found') throw codedError('admin_mutation_not_found')
     if (message === 'last_active_owner_token') throw codedError('admin_mutation_conflict')
     if (message === 'idempotency_incomplete') throw codedError('admin_outcome_unknown')
     if (r.status >= 500) throw codedError('admin_outcome_unknown')
@@ -915,9 +986,12 @@ async function handleGet(request, auth) {
     return json({
       data: {
         admin_id:    auth?.adminId    || null,
+        token_id:    auth?.tokenId    || null,
         admin_name:  auth?.adminName  || null,
         admin_email: auth?.adminEmail || null,
         role:        auth?.role       || null,
+        expires_at:  auth?.expiresAt  ?? null,
+        server_now:  auth?.serverNow  || null,
         capabilities: Array.isArray(auth?.capabilities) ? auth.capabilities : [],
         source:      auth?.source     || null,
       },
@@ -976,8 +1050,8 @@ async function handleGet(request, auth) {
 
   if (resource === 'search_users') {
     const q = url.searchParams.get('q') || ''
-    if (!isBoundedString(q, 200)) return json({ error: 'invalid_query' }, 400)
-    const data = await rpc('admin_search_users', { query_in: q, limit_in: limit })
+    if (!isAdminSearchQuery(q)) return json({ error: 'invalid_query' }, 400)
+    const data = await rpc('admin_search_users', { query_in: q.trim(), limit_in: limit })
     return json({ data })
   }
 
@@ -990,7 +1064,7 @@ async function handleGet(request, auth) {
   }
 
   if (resource === 'appeals') {
-    const data = await rpc('admin_list_appeals', { limit_in: limit, offset_in: offset })
+    const data = await rpc('admin_list_appeals_v2', { limit_in: limit, offset_in: offset })
     return json({ data })
   }
 
@@ -1010,7 +1084,10 @@ async function handleGet(request, auth) {
   if (resource === 'audit') {
     const kind = url.searchParams.get('kind')
     if (kind && !isBoundedString(kind, 80)) return json({ error: 'invalid_kind' }, 400)
-    const data = await rpc('admin_list_audit_log', {
+    const fn = auth?.role === 'owner'
+      ? 'admin_list_owner_audit_log'
+      : 'admin_list_moderation_audit_log'
+    const data = await rpc(fn, {
       limit_in: limit, offset_in: offset, kind_filter: kind || null,
     })
     return json({ data })
@@ -1362,14 +1439,21 @@ async function handlePost(request, auth) {
     if (!Number.isInteger(body.level) || body.level < 0 || body.level > 5) {
       return json({ error: 'invalid_level' }, 400)
     }
-    if (!isBoundedString(body.reason, 1000)) return json({ error: 'invalid_reason' }, 400)
-    if (body.category != null && !isBoundedString(body.category, 80)) {
+    if (!isModerationReason(body.reason)) return json({ error: 'invalid_reason' }, 400)
+    if (body.category != null && !isModerationCategory(body.category)) {
       return json({ error: 'invalid_category' }, 400)
     }
     if (body.hours != null && (
       !Number.isInteger(body.hours) || body.hours < 1 || body.hours > 87_600
     )) return json({ error: 'invalid_hours' }, 400)
-    return json(await executeAdminMutation(request, auth, body))
+    return json(await executeAdminMutation(request, auth, {
+      action: body.action,
+      target_id: body.target_id,
+      level: body.level,
+      reason: normalizedModerationReason(body.reason),
+      ...(body.category != null ? { category: body.category.trim() } : {}),
+      ...(body.hours != null ? { hours: body.hours } : {}),
+    }))
   }
 
   if (body.action === 'lift_suspension') {
@@ -1377,8 +1461,29 @@ async function handlePost(request, auth) {
       return json({ error: 'missing_args' }, 400)
     }
     if (!isUuid(body.suspension_id)) return json({ error: 'invalid_id' }, 400)
-    if (!isBoundedString(body.reason, 1000)) return json({ error: 'invalid_reason' }, 400)
-    return json(await executeAdminMutation(request, auth, body))
+    if (!isModerationReason(body.reason)) return json({ error: 'invalid_reason' }, 400)
+    return json(await executeAdminMutation(request, auth, {
+      action: body.action,
+      suspension_id: body.suspension_id,
+      reason: normalizedModerationReason(body.reason),
+    }))
+  }
+
+  if (body.action === 'decide_appeal') {
+    if (!hasExactKeys(body, ['action', 'suspension_id', 'decision', 'reason'])) {
+      return json({ error: 'invalid_args' }, 400)
+    }
+    if (!isUuid(body.suspension_id)) return json({ error: 'invalid_id' }, 400)
+    if (!APPEAL_DECISIONS.has(body.decision)) {
+      return json({ error: 'invalid_decision' }, 400)
+    }
+    if (!isModerationReason(body.reason)) return json({ error: 'invalid_reason' }, 400)
+    return json(await executeAdminMutation(request, auth, {
+      action: body.action,
+      suspension_id: body.suspension_id,
+      decision: body.decision,
+      reason: normalizedModerationReason(body.reason),
+    }))
   }
 
   if (body.action === 'update_report_status') {
@@ -1406,10 +1511,14 @@ async function handlePost(request, auth) {
     }
     if (!TAKEDOWN_TARGET_TYPES.has(body.target_type)) return json({ error: 'invalid_target_type' }, 400)
     if (!isUuid(body.target_id)) return json({ error: 'invalid_id' }, 400)
-    if (body.reason != null && !isBoundedString(body.reason, 1000)) {
-      return json({ error: 'invalid_reason' }, 400)
-    }
-    return json(await executeAdminMutation(request, auth, body))
+    if (!body.reason) return json({ error: 'missing_args' }, 400)
+    if (!isModerationReason(body.reason)) return json({ error: 'invalid_reason' }, 400)
+    return json(await executeAdminMutation(request, auth, {
+      action: body.action,
+      target_type: body.target_type,
+      target_id: body.target_id,
+      reason: normalizedModerationReason(body.reason),
+    }))
   }
 
   if (body.action === 'set_post_pinned') {
@@ -1627,8 +1736,11 @@ export default async function handler(request) {
     const error = stableErrorCode(err)
     const status = error === 'invalid_idempotency_key' || error === 'admin_mutation_invalid' ? 400
       : error === 'admin_token_inactive' ? 401
-        : error === 'admin_capability_denied' ? 403
-          : error === 'idempotency_conflict' || error === 'admin_mutation_conflict' ? 409
+        : error === 'admin_capability_denied'
+          || error === 'self_appeal_decision_forbidden' ? 403
+          : error === 'idempotency_conflict'
+            || error === 'admin_mutation_conflict'
+            || error === 'appeal_already_decided' ? 409
           : error === 'admin_mutation_not_found' ? 404
             : error === 'admin_outcome_unknown' ? 503
               : 500

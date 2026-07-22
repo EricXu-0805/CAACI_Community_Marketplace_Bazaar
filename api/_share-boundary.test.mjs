@@ -46,11 +46,32 @@ function json(value, status = 200) {
 
 function assertHardenedHtml(response, html) {
   assert.equal(response.status, 200)
+  assertHardenedHeaders(response)
+  assert.doesNotMatch(html, /https:\/\/attacker\.example/)
+}
+
+function assertHardenedHeaders(response) {
   assert.match(response.headers.get('content-security-policy') || '', /default-src 'none'/)
   assert.equal(response.headers.get('x-content-type-options'), 'nosniff')
   assert.equal(response.headers.get('x-frame-options'), 'DENY')
   assert.equal(response.headers.get('referrer-policy'), 'no-referrer')
-  assert.doesNotMatch(html, /https:\/\/attacker\.example/)
+}
+
+async function assertHeadMatchesGet(getResponse, headResponse) {
+  assert.equal(headResponse.status, getResponse.status)
+  assert.equal(headResponse.statusText, getResponse.statusText)
+  for (const name of [
+    'cache-control',
+    'content-security-policy',
+    'content-type',
+    'referrer-policy',
+    'x-content-type-options',
+    'x-frame-options',
+    'x-robots-tag',
+  ]) {
+    assert.equal(headResponse.headers.get(name), getResponse.headers.get(name), `${name} drifted`)
+  }
+  assert.equal(await headResponse.text(), '')
 }
 
 test('item share reads the visibility view, escapes content, pins canonical origin, and rejects image schemes', async () => {
@@ -69,13 +90,16 @@ test('item share reads the visibility view, escapes content, pins canonical orig
     }])
   }
   const { default: handler } = await load('share.js')
+  const requestUrl = `https://attacker.example/api/share?id=${ITEM_ID}`
 
-  const response = await handler(new Request(`https://attacker.example/api/share?id=${ITEM_ID}`))
+  const response = await handler(new Request(requestUrl))
   const html = await response.text()
+  const headResponse = await handler(new Request(requestUrl, { method: 'HEAD' }))
 
   assertHardenedHtml(response, html)
-  assert.equal(calls.length, 1)
-  assert.equal(calls[0].searchParams.get('id'), `eq.${ITEM_ID}`)
+  await assertHeadMatchesGet(response, headResponse)
+  assert.equal(calls.length, 2)
+  for (const call of calls) assert.equal(call.searchParams.get('id'), `eq.${ITEM_ID}`)
   assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/)
   assert.match(html, /&lt;img src=x onerror=alert\(2\)&gt;/)
   assert.doesNotMatch(html, /<script|javascript:/i)
@@ -102,12 +126,17 @@ test('post share uses posts_visible before a separate public author lookup', asy
     throw new Error(`unexpected fetch ${url}`)
   }
   const { default: handler } = await load('share-post.js')
+  const requestUrl = `https://attacker.example/api/share-post?id=${POST_ID}`
 
-  const response = await handler(new Request(`https://attacker.example/api/share-post?id=${POST_ID}`))
+  const response = await handler(new Request(requestUrl))
   const html = await response.text()
+  const headResponse = await handler(new Request(requestUrl, { method: 'HEAD' }))
 
   assertHardenedHtml(response, html)
+  await assertHeadMatchesGet(response, headResponse)
   assert.deepEqual(calls.map(call => call.pathname), [
+    '/rest/v1/posts_visible',
+    '/rest/v1/profiles',
     '/rest/v1/posts_visible',
     '/rest/v1/profiles',
   ])
@@ -118,12 +147,39 @@ test('post share uses posts_visible before a separate public author lookup', asy
 })
 
 for (const endpoint of ['share.js', 'share-post.js']) {
-  test(`${endpoint} rejects non-GET requests before database work`, async () => {
+  const route = endpoint === 'share.js' ? 'share' : 'share-post'
+  const id = endpoint === 'share.js' ? ITEM_ID : POST_ID
+
+  test(`${endpoint} keeps missing-id HEAD status and headers aligned with GET`, async () => {
+    globalThis.fetch = async () => { throw new Error('must not fetch') }
+    const { default: handler } = await load(endpoint)
+    const url = `https://illinimarket.com/api/${route}`
+    const getResponse = await handler(new Request(url))
+    const headResponse = await handler(new Request(url, { method: 'HEAD' }))
+    await assertHeadMatchesGet(getResponse, headResponse)
+  })
+
+  test(`${endpoint} keeps missing-resource HEAD status and headers aligned with GET`, async () => {
+    let calls = 0
+    globalThis.fetch = async () => {
+      calls += 1
+      return json([])
+    }
+    const { default: handler } = await load(endpoint)
+    const url = `https://illinimarket.com/api/${route}?id=${id}`
+    const getResponse = await handler(new Request(url))
+    const headResponse = await handler(new Request(url, { method: 'HEAD' }))
+    await assertHeadMatchesGet(getResponse, headResponse)
+    assert.equal(calls, 2)
+  })
+
+  test(`${endpoint} rejects unsupported methods before database work`, async () => {
     globalThis.fetch = async () => { throw new Error('must not fetch') }
     const { default: handler } = await load(endpoint)
     const response = await handler(new Request('https://illinimarket.com/api/share', { method: 'POST' }))
     assert.equal(response.status, 405)
-    assert.equal(response.headers.get('allow'), 'GET')
+    assert.equal(response.headers.get('allow'), 'GET, HEAD')
+    assert.equal(response.headers.get('cache-control'), 'no-store, max-age=0')
   })
 }
 

@@ -15,6 +15,7 @@ const originalEnv = new Map(ENV_KEYS.map(key => [key, process.env[key]]))
 const originalFetch = globalThis.fetch
 let importNonce = 0
 const ADMIN_TOKEN = `iam_admin_${'a'.repeat(43)}`
+const AUTH_SERVER_NOW = '2026-07-20T00:00:00Z'
 const BANNER_UPLOAD_KEY = '22222222-2222-4222-8222-222222222222'
 const MANAGED_BANNER_URL = `https://supabase.test/storage/v1/object/public/banners/managed/11111111-1111-4111-8111-111111111111/${BANNER_UPLOAD_KEY}/${'a'.repeat(64)}.png`
 
@@ -69,13 +70,16 @@ test('admin audit monitoring sends only a stable error code, never a PostgREST m
       if (url.pathname === '/rest/v1/rpc/edge_rate_hit') {
         return new Response('true', { status: 200 })
       }
-      if (url.pathname === '/rest/v1/rpc/admin_token_authorization') {
+      if (url.pathname === '/rest/v1/rpc/admin_token_authorization_v2') {
         return new Response(JSON.stringify([{
+          token_id: '11111111-1111-4111-8111-111111111111',
           admin_id: '11111111-1111-4111-8111-111111111111',
           admin_name: 'Admin',
           admin_email: 'admin@example.com',
           role: 'owner',
-          capabilities: ['apply_ban', 'lift_suspension', 'update_report_status', 'resolve_target_reports', 'takedown_content', 'set_post_pinned', 'upsert_banner', 'delete_banner', 'upload_banner', 'revoke_token', 'issue_token', 'revoke_admin_tokens'],
+          expires_at: null,
+          server_now: AUTH_SERVER_NOW,
+          capabilities: ['apply_ban', 'lift_suspension', 'decide_appeal', 'update_report_status', 'resolve_target_reports', 'takedown_content', 'set_post_pinned', 'upsert_banner', 'delete_banner', 'upload_banner', 'revoke_token', 'issue_token', 'revoke_admin_tokens'],
         }]), { status: 200, headers: { 'Content-Type': 'application/json' } })
       }
       if (url.pathname === '/rest/v1/rpc/record_audit') {
@@ -112,7 +116,7 @@ test('admin limiter stores a trusted-header, service-secret HMAC rather than an 
       limiterBodies.push(JSON.parse(init.body))
       return new Response('true', { status: 200 })
     }
-    if (url.pathname === '/rest/v1/rpc/admin_token_authorization') {
+    if (url.pathname === '/rest/v1/rpc/admin_token_authorization_v2') {
       return new Response('[]', { status: 200 })
     }
     if (url.pathname === '/rest/v1/rpc/record_audit') {
@@ -203,13 +207,16 @@ async function authenticatedAdminFetch(calls) {
     if (url.pathname === '/rest/v1/rpc/edge_rate_hit') {
       return new Response('true', { status: 200 })
     }
-    if (url.pathname === '/rest/v1/rpc/admin_token_authorization') {
+    if (url.pathname === '/rest/v1/rpc/admin_token_authorization_v2') {
       return new Response(JSON.stringify([{
+        token_id: '11111111-1111-4111-8111-111111111111',
         admin_id: '11111111-1111-4111-8111-111111111111',
         admin_name: 'Admin',
         admin_email: 'admin@example.com',
         role: 'owner',
-        capabilities: ['apply_ban', 'lift_suspension', 'update_report_status', 'resolve_target_reports', 'takedown_content', 'set_post_pinned', 'upsert_banner', 'delete_banner', 'upload_banner', 'revoke_token', 'issue_token', 'revoke_admin_tokens'],
+        expires_at: null,
+        server_now: AUTH_SERVER_NOW,
+        capabilities: ['apply_ban', 'lift_suspension', 'decide_appeal', 'update_report_status', 'resolve_target_reports', 'takedown_content', 'set_post_pinned', 'upsert_banner', 'delete_banner', 'upload_banner', 'revoke_token', 'issue_token', 'revoke_admin_tokens'],
       }]), { status: 200, headers: { 'Content-Type': 'application/json' } })
     }
     if (url.pathname === '/rest/v1/rpc/record_audit') {
@@ -631,7 +638,7 @@ test('admin authentication outages are 503, never false invalid-token 401s', asy
       if (url.pathname === '/rest/v1/rpc/edge_rate_hit') {
         return new Response('true', { status: 200 })
       }
-      if (url.pathname === '/rest/v1/rpc/admin_token_authorization') {
+      if (url.pathname === '/rest/v1/rpc/admin_token_authorization_v2') {
         return new Response('{"message":"provider private detail"}', { status: 503 })
       }
       throw new Error(`unexpected fetch ${url}`)
