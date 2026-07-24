@@ -810,12 +810,21 @@ event if the original worker subsequently fails.
    and set its absolute path in `SUPABASE_DB_SSLROOTCERT`. Do not obtain or
    trust that certificate from the database connection it is meant to verify.
 
+   > **Disarmed / incomplete (2026-07-24):** the executor still carries ~10
+   > unfilled `PENDING_` hash pins + an empty CA fingerprint, and
+   > `manifest.sha256` is one entry short of the migration directory, so it
+   > fails closed and cannot run until those are completed. Parked to the Dec
+   > WeChat-activation window. Full pin list + completion recipe:
+   > `docs/audit/WECHAT_RETIREMENT_STATUS.md`.
+
    ```bash
    node scripts/wechat-retirement-migration-executor.mjs \
      --project-ref lfhvgprfphyfvhidegum
    node scripts/wechat-retirement-migration-executor.mjs \
      --project-ref lfhvgprfphyfvhidegum \
-     --apply --confirm APPLY_WECHAT_RETIREMENT_20260718140000
+     --apply \
+     --confirm APPLY_WECHAT_RETIREMENT_CONVERGENCE_20260722194923 \
+     --confirm-privileged-freeze PRIVILEGED_DDL_ACL_FREEZE_ACTIVE
    ```
 
    The retirement migration has already been ledger-recorded in staging, so the
@@ -838,7 +847,11 @@ event if the original worker subsequently fails.
    None of the 108 historical files contains its old schema SQL: if ledger
    drift ever makes one pending, its guard raises
    `unexpected_non_target_migration_execution` instead of replaying history.
-   Both dry runs must list only `20260718140000`.
+   The executor is now a **two-target** design (the guarded retirement
+   `20260718140000` plus the convergence `20260722194923`), so both dry runs
+   must list **both** versions — not only `20260718140000`. Exact file/identity
+   counts (110-file projection once the manifest is regenerated to 133) are
+   pinned by the digests listed in `docs/audit/WECHAT_RETIREMENT_STATUS.md`.
 
    The CLI runs `RESET ALL` before each migration, so URL/`PGOPTIONS` startup
    limits are defense in depth, not the proof for target execution. The guarded
