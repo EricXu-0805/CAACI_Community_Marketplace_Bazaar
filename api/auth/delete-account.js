@@ -50,6 +50,7 @@ const JOB_SELECT = [
 ].join(',')
 const JOB_FIELDS = Object.freeze(JOB_SELECT.split(','))
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const WECHAT_OPENID_PATTERN = /^[A-Za-z0-9_-]{4,128}$/
 const STAGE_RANK = Object.freeze({
   requested: 0,
   storage_deleted: 1,
@@ -521,7 +522,35 @@ async function sweepWechatPassword(openid) {
       body: JSON.stringify({ openid_in: openid }),
     },
   )
-  if (!response.ok) throw await responseError('wechat_delete_failed', response)
+  if (response.ok) return
+
+  const rpcError = await responseError('wechat_delete_failed', response)
+  // Production can run the passwordless application briefly before the
+  // retirement migration creates the exact-delete RPC. In that one explicit
+  // pre-migration state, retain the historical service-role DELETE path so an
+  // already-auth-deleted account can finish its durable cleanup. No other RPC
+  // error may downgrade to the broader table capability.
+  if (
+    rpcError.status !== 404 ||
+    !['PGRST202', '42883'].includes(rpcError.remoteCode)
+  ) {
+    throw rpcError
+  }
+  // The RPC accepts arbitrary text as a bound SQL argument. The temporary
+  // compatibility path instead embeds the value in PostgREST filter syntax,
+  // so apply the narrower legacy identity alphabet only at this boundary.
+  if (!WECHAT_OPENID_PATTERN.test(openid)) {
+    throw new Error('wechat_legacy_openid_invalid')
+  }
+  const legacyUrl = new URL(`${SUPABASE_URL}/rest/v1/wechat_password_map`)
+  legacyUrl.searchParams.set('openid', `eq.${openid}`)
+  const legacyResponse = await fetchWithTimeout(legacyUrl, {
+    method: 'DELETE',
+    headers: serviceHeaders({ Prefer: 'return=minimal' }),
+  })
+  if (!legacyResponse.ok) {
+    throw await responseError('wechat_legacy_delete_failed', legacyResponse)
+  }
 }
 
 async function resumeJob(initialJob, { prepared = false } = {}) {

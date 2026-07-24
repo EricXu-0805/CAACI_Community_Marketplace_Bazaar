@@ -590,9 +590,10 @@ test('callback bounds a stalled Supabase response body and keeps the event retry
 })
 
 test('callback handshake rejects timestamps outside the strict past and future windows', async () => {
+  const now = 1714112445
+  Date.now = () => now * 1000
   globalThis.fetch = async () => { throw new Error('handshake must not fetch') }
   const { default: handler } = await loadApi('wechat-callback.js', callbackEnv())
-  const now = Math.floor(Date.now() / 1000)
 
   const stale = await handler(await callbackRequest('push-token', {}, {
     method: 'GET',
@@ -607,6 +608,20 @@ test('callback handshake rejects timestamps outside the strict past and future w
     timestamp: String(now + 61),
   }))
   assert.equal(future.status, 403)
+
+  const oldestAccepted = await handler(await callbackRequest('push-token', {}, {
+    method: 'GET',
+    echostr: 'challenge-oldest',
+    timestamp: String(now - 300),
+  }))
+  assert.equal(oldestAccepted.status, 200)
+
+  const newestAccepted = await handler(await callbackRequest('push-token', {}, {
+    method: 'GET',
+    echostr: 'challenge-newest',
+    timestamp: String(now + 60),
+  }))
+  assert.equal(newestAccepted.status, 200)
 
   const current = await handler(await callbackRequest('push-token', {}, {
     method: 'GET',

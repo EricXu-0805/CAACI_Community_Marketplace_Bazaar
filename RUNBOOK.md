@@ -277,6 +277,12 @@ agreement; you'll lose every row created since the backup point.
    tail whose VERIFY/REGRESSION set passed in staging.
 4. Reconcile Storage objects separately; the database restore restores only
    their metadata.
+5. If the restore point predates the accepted WeChat credential-retirement
+   receipt, keep WeChat login and all account lifecycle traffic closed. A
+   restored GoTrue password hash can revive a mapless HMAC-era credential even
+   when the restored map is empty. Drain the password-era fleet again, rerun
+   the digest-bound inventory/rotation, guarded migration, VERIFY and provider/
+   session regression, then reopen access only on a new accepted receipt.
 
 ### Restore from a manual logical dump (last resort)
 
@@ -294,6 +300,9 @@ Storage metadata, grants, extensions, and managed schemas inconsistent.
    explicit maintenance window and rollback point. Do not point the app at the
    recovered target until Auth/Storage identity and object consistency are
    proven.
+5. Apply the same pre-retirement-backup rule above: a recovered target that
+   predates WeChat credential retirement stays closed until the entire drain,
+   digest-bound rotation, guarded migration and VERIFY sequence is repeated.
 
 ## Ephemeral data retention
 
@@ -356,6 +365,14 @@ exceeding capacity and require a reviewed capacity/schema change.
 ## Deploy rollback
 
 ### Production is broken because of the latest deploy
+
+> **Post-WeChat-retirement boundary:** after legacy WeChat passwords are
+> rotated, never promote or roll back to a deployment older than the reviewed
+> passwordless cutover (`7fb25c3957b14004c861200f3499267ad5163699`). Vercel
+> instant rollback reuses the old build and its old environment snapshot. Use
+> only a recorded passwordless-safe deployment/SHA, or fix forward from current
+> `main`. A password-era rollback invalidates the retirement receipt and
+> requires closing WeChat/account traffic and repeating the whole retirement.
 
 1. **Vercel → Deployments** → find a green production deploy from
    ≤ 24 h ago.
@@ -646,7 +663,7 @@ event if the original worker subsequently fails.
 
 ## 2026-07 candidate release sequence
 
-> This is the reviewed operational order for the current 41-migration audit
+> This is the reviewed operational order for the current 38-migration audit
 > candidate. It is **not** authorization to change production. Stop before the
 > first mutating step unless the release owner has approved the exact target,
 > backup/rollback point, migration hashes, and operator.
@@ -669,8 +686,8 @@ event if the original worker subsequently fails.
    (cd supabase/migrations && shasum -a 256 -c manifest.sha256)
    ```
 
-2. In two independent fresh PostgreSQL 17 environments, replay all 88
-   historical + 41 candidate migrations and every applicable
+2. In two independent fresh PostgreSQL 17 environments, replay all 94
+   historical + 38 candidate migrations (all 132 repository SQL files) and every applicable
    PRECHECK/VERIFY/rolled-back REGRESSION file, then compare normalized schema
    outputs. Re-run only the tail fixes that explicitly declare themselves
    re-entrant and require a zero schema diff before/after that pass; first-time
@@ -699,18 +716,179 @@ event if the original worker subsequently fails.
    Non-H5 builds also require a valid `VITE_BASE_URL`. Do not paste an opaque
    key into an old variable, revoke a legacy key, expose a secret through
    `VITE_*`, or let preview email links default to production.
-6. Deploy the reviewed passwordless WeChat route and wait for in-flight legacy
-   requests to drain. Dry-run `scripts/retire-wechat-passwords.mjs`; with a
-   separate apply approval, run it for real. Verify the map is empty, run the
-   retirement PRECHECK, and only then apply
-   `20260718140000_retire_wechat_password_credentials.sql`. Stop if any
-   account still depends on a password credential.
+6. Deploy the reviewed passwordless WeChat route and prove the exact Production
+   deployment with the real-provider first/repeat/concurrent-login matrix.
+   Before calling the old fleet drained, enable Vercel **Standard Protection**
+   with Vercel Authentication, prove there are no protection exceptions or
+   leaked automation-bypass links, inventory every reachable retained URL or
+   alias (generated, branch, author, and custom/Production), and verify an
+   unauthenticated request with no cookie or bypass token cannot reach any
+   password-era `/api/auth/wechat-login`. A new production alias does not stop
+   an old generated URL: it remains directly reachable for its retention
+   lifetime unless protected or deleted. Record the last passwordless-safe
+   deployment ID/SHA and prohibit rollback to anything before
+   `7fb25c3957b14004c861200f3499267ad5163699`. Then wait for every reachable
+   password-era instance and in-flight request to drain. Create a
+   separate, short-lived named Supabase secret for this operation; keep it only
+   in the operator shell/vault and revoke it after the post-migration VERIFY.
+   Dry-run `scripts/retire-wechat-passwords.mjs`, retain its redacted counts,
+   obtain a separate apply approval, then run it for real. Stop on any orphan,
+   case collision, identity mismatch, failed password rotation, unknown result,
+   remaining map row, or evidence that an account still depends on a password.
+
+   An empty legacy map is not proof that password-era credentials are gone.
+   Earlier HMAC fallback users can retain a valid placeholder Auth password
+   without ever having a map row, and deleting `WECHAT_USER_PASSWORD_SALT`
+   does not invalidate a password already stored by GoTrue. The inventory must
+   therefore reconcile all three sets—map rows, WeChat-bound profiles, and
+   `wx_<openid>@wechat.placeholder` Auth users—and the apply receipt must rotate
+   every matching profile/Auth pair, including mapless pairs. Any mapless or
+   map-backed one-sided identity is an orphan and stops every mutation. Remove
+   the salt only after the password-era fleet is drained, all rotations and
+   map deletions succeed, the migration VERIFY is green, and provider/session
+   regression is accepted.
+
+   "Matching" is deliberately conservative: every placeholder Auth account
+   that still pairs with a WeChat-bound profile is rotated, whether or not its
+   individual origin can be proven HMAC-era. In current GoTrue, an Admin
+   password update clears that user's confirmation/recovery/email-change/
+   phone-change/reauthentication one-time tokens and revokes all refresh
+   sessions. Already-issued access JWTs remain usable until their own expiry.
+   Treat this as an affected-account maintenance window: warn that a fresh
+   passwordless sign-in may be required, and canary the old access JWT, rejected
+   refresh, first/repeat passwordless sign-in, and expected notification
+   behavior before reopening traffic.
+
+   The apply path repeats the complete map/profile/Auth inventory after all
+   password rotations and again after map cleanup. Any identity-set change stops
+   the operation, so an in-flight mapless HMAC login cannot be reported as a
+   clean retirement receipt. This is a point-in-time safety check, not a fleet
+   drain mechanism: keep all password-era instances drained and move directly
+   from the stable receipt to PRECHECK and the guarded migration.
+
+   Retain the dry run's non-identifying `Inventory SHA-256` receipt and pass it
+   back through `--expected-inventory-sha256`; apply refuses if any reviewed
+   map, WeChat profile, or Auth identity changed. Map/profile scans use keyset
+   pagination plus `Prefer: count=exact`; every page requires a valid exact
+   `Content-Range`, so a configured PostgREST `max_rows` below the requested
+   page size cannot silently truncate the inventory. Every Auth scan requires a consistent `x-total-count` and two
+   identical complete user sets. Still freeze account creation/deletion and
+   WeChat identity binding for the whole retirement window: repeated snapshots
+   detect churn but are not a database transaction across Auth and PostgREST.
+
+   A backup or point-in-time restore taken before this rotation can reintroduce
+   the old GoTrue password hash and/or plaintext map. After any such restore,
+   keep WeChat login and account lifecycle traffic disabled, treat the prior
+   retirement receipt as invalid, and rerun inventory, rotation, migration and
+   VERIFY before reopening access.
 
    ```bash
-   node scripts/retire-wechat-passwords.mjs
    node scripts/retire-wechat-passwords.mjs \
-     --apply --confirm RETIRE_WECHAT_PASSWORDS
+     --project-ref lfhvgprfphyfvhidegum
+   node scripts/retire-wechat-passwords.mjs \
+     --project-ref lfhvgprfphyfvhidegum \
+     --apply --confirm RETIRE_WECHAT_PASSWORDS \
+     --expected-inventory-sha256 <reviewed-dry-run-sha256>
    ```
+
+   This script is deliberately Production-specific: it accepts only
+   `https://lfhvgprfphyfvhidegum.supabase.co`, the exact project ref above, and
+   a short-lived named `sb_secret_...` API key in `SUPABASE_SECRET_KEY`. It
+   rejects the legacy service-role JWT. That API key is not the Vercel runtime
+   key and is not the database password. Revoke only this operation-specific
+   named key after the post-migration VERIFY; do not rotate the database
+   password as a substitute.
+
+   When the map-empty receipt and the strengthened read-only
+   `PRECHECK_20260718_retire_wechat_password_credentials.sql` are both green,
+   use the dedicated ledger-aware executor. Its safe default is an exact
+   one-migration Supabase CLI dry run; apply requires the second confirmation:
+   load `SUPABASE_DB_PASSWORD` from the approved operator vault into that shell
+   only, never a command argument, file, transcript, or chat. Download the
+   project CA certificate from Supabase Database Settings over the authenticated
+   dashboard, keep the single-certificate file non-writable by group/others,
+   and set its absolute path in `SUPABASE_DB_SSLROOTCERT`. Do not obtain or
+   trust that certificate from the database connection it is meant to verify.
+
+   ```bash
+   node scripts/wechat-retirement-migration-executor.mjs \
+     --project-ref lfhvgprfphyfvhidegum
+   node scripts/wechat-retirement-migration-executor.mjs \
+     --project-ref lfhvgprfphyfvhidegum \
+     --apply --confirm APPLY_WECHAT_RETIREMENT_20260718140000
+   ```
+
+   The retirement migration has already been ledger-recorded in staging, so the
+   repository source and manifest stay immutable
+   (`f2e365...a2a32`). Production executes a reviewed derivative: the executor
+   removes the source's single outer `BEGIN`/`COMMIT` to create the normalized
+   body (`b5f07a...58044`), then prepends a Production ledger/timeout fence to
+   create the guarded execution (`49bb04...c7d54`). This makes the target DDL
+   and the CLI's appended migration-ledger INSERT one implicit transaction;
+   never copy the derivative back into `supabase/migrations/`, and never use
+   `migration repair` to make staging and Production statement receipts match.
+
+   Supabase CLI 2.95.4 compares history by version and rejects remote versions
+   missing locally even with `--include-all`. The executor therefore validates
+   all 132 immutable repository entries, but constructs a separate, pinned
+   109-file Production projection: 108 exact live `version|name` identities as
+   execution-deny guards plus the one normalized/guarded target. It deliberately
+   omits 51 local-only non-target histories, maps 26 canonical identities to
+   their reviewed hosted timestamps, and includes two hosted-only identities.
+   None of the 108 historical files contains its old schema SQL: if ledger
+   drift ever makes one pending, its guard raises
+   `unexpected_non_target_migration_execution` instead of replaying history.
+   Both dry runs must list only `20260718140000`.
+
+   The CLI runs `RESET ALL` before each migration, so URL/`PGOPTIONS` startup
+   limits are defense in depth, not the proof for target execution. The guarded
+   target itself first executes `SET LOCAL lock_timeout='5s'` and
+   `SET LOCAL statement_timeout='2min'`, then takes `SHARE ROW EXCLUSIVE` on
+   `supabase_migrations.schema_migrations`. A `FULL OUTER JOIN` must prove the
+   exact 108-row `version|name` snapshot before the first target DDL. That lock
+   blocks concurrent ledger INSERT/UPDATE/DELETE until the target and the CLI's
+   own ledger INSERT commit together. Any missing, extra, or renamed row stops
+   before the credential table is changed.
+
+   The connection remains fixed to the reviewed session-pooler authority and
+   uses `sslmode=verify-full` with the operator-supplied project CA. The executor
+   pins the CA fingerprint, Homebrew CLI 2.95.4 path/SHA-256, 108-row ledger
+   identity digest, guarded target digest, and full 109-file execution-set
+   digest; it passes a minimal child environment, redacts the database password,
+   performs a second exact dry run immediately before apply, rechecks local
+   artifacts again, and enforces a three-minute process deadline.
+
+   Before Production apply, retain a disposable-Postgres failure-injection
+   receipt from this exact CLI binary proving (a) a forced final ledger-INSERT
+   failure rolls back the target schema and (b) a conflicting ledger/table lock
+   stops within five seconds. Use a separate reviewed rehearsal harness; the
+   Production-bound executor and credential-retirement script must not be
+   loosened to accept a disposable target. Printed hashes or fake-CLI tests are
+   not substitutes. The repository harness creates and destroys only its own
+   fresh OS-temporary cluster and requires an explicit local-only confirmation:
+
+   ```bash
+   node scripts/wechat-retirement-postgres-rehearsal.mjs \
+     --confirm LOCAL_DISPOSABLE_POSTGRES_ONLY
+   ```
+
+   Retain its JSON receipt, including the exact CLI hash, actual PostgreSQL
+   version, rollback result, measured lock timeout and 19-statement ledger row.
+   Stop on any snapshot drift or unknown outcome. Do not
+   substitute Dashboard SQL, raw `psql`, `migration repair`, or a hosted
+   `apply_migration` call.
+
+   Run the read-only retirement VERIFY immediately afterward. It must find the
+   exact CLI ledger pair `20260718140000|retire_wechat_password_credentials`,
+   a non-null 19-statement guarded receipt in the exact semantic order with no
+   outer transaction controls, and an extracted 108-row identity set that
+   exactly matches the post-apply predecessor ledger. It must also prove an
+   empty map, DELETE-only/non-grantable table compatibility and non-grantable
+   exact RPC execution. Then revoke the operation-specific named API key and deploy
+   removal of the temporary direct-table fallback in `api/auth/delete-account.js`;
+   after the migration the worker must use only the SECURITY DEFINER exact-delete
+   RPC. Decommission the empty table and all three RPCs together in a later
+   forward migration after that worker dependency is gone.
 7. Apply `20260718150000` retention and `20260718160000` suspension visibility.
    Run both VERIFY files. Manually invoke `/api/data-retention` until no backlog
    remains, then verify anon/A/B/suspended/admin visibility and writes,

@@ -9,7 +9,6 @@ const ADMIN_BEARER_SCRIPTS = [
 ]
 const DATABASE_MAINTENANCE_SCRIPTS = [
   'backfill-image-dimensions.mjs',
-  'retire-wechat-passwords.mjs',
 ]
 
 test('admin credential lifecycle scripts cannot bypass the audited bearer API', async () => {
@@ -19,6 +18,14 @@ test('admin credential lifecycle scripts cannot bypass the audited bearer API', 
     assert.doesNotMatch(source, /SUPABASE_SECRET_KEY/, `${file} regained direct secret-key access`)
     assert.doesNotMatch(source, /SUPABASE_SERVICE_ROLE_KEY/, `${file} regained direct service-role access`)
   }
+})
+
+test('Production credential retirement accepts only a named secret key', async () => {
+  const source = await readFile(new URL('retire-wechat-passwords.mjs', ROOT), 'utf8')
+  assert.match(source, /SUPABASE_SECRET_KEY/)
+  assert.doesNotMatch(source, /SUPABASE_SERVICE_ROLE_KEY/)
+  assert.match(source, /NAMED_SECRET_RE/)
+  assert.match(source, /!\/\^sb_secret_\/\.test\(/)
 })
 
 test('database maintenance scripts prefer named secret keys and keep legacy fallback explicit', async () => {

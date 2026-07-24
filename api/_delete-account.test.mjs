@@ -116,6 +116,8 @@ function createHarness({
   authDeleteStatuses = [],
   storageObjectsAddedOnAuthDelete = [],
   wechatDeleteStatuses = [],
+  wechatRpcMissing = false,
+  wechatLegacyDeleteStatuses = [],
   checkpointFailures = {},
 } = {}) {
   const calls = []
@@ -243,7 +245,20 @@ function createHarness({
     }
 
     if (url.pathname === '/rest/v1/rpc/delete_wechat_password_credential' && method === 'POST') {
-      return empty(wechatDeleteStatuses.length ? wechatDeleteStatuses.shift() : 204)
+      if (wechatRpcMissing) {
+        return json({ code: 'PGRST202', message: 'function missing' }, 404)
+      }
+      const outcome = wechatDeleteStatuses.length ? wechatDeleteStatuses.shift() : 204
+      if (typeof outcome === 'object') {
+        return json({ code: outcome.code || '', message: 'simulated RPC error' }, outcome.status)
+      }
+      return empty(outcome)
+    }
+
+    if (url.pathname === '/rest/v1/wechat_password_map' && method === 'DELETE') {
+      return empty(
+        wechatLegacyDeleteStatuses.length ? wechatLegacyDeleteStatuses.shift() : 204,
+      )
     }
 
     throw new Error(`unexpected fetch ${method} ${url}`)
@@ -325,6 +340,136 @@ test('a valid Auth user without a profile can complete deletion with a null WeCh
     call.url.pathname === `/auth/v1/admin/users/${USER_ID}` && call.method === 'DELETE'
   )), true)
 })
+
+test('pre-retirement RPC absence uses one exact legacy row delete and completes the saga', async () => {
+  const harness = createHarness({ wechatRpcMissing: true })
+  globalThis.fetch = harness.fetch
+  const { default: handler } = await loadApi()
+
+  const response = await handler(deleteRequest())
+  assert.equal(response.status, 200)
+  assert.deepEqual(await response.json(), { success: true, status: 'completed' })
+  const rpcCall = harness.calls.find(call => (
+    call.url.pathname === '/rest/v1/rpc/delete_wechat_password_credential'
+  ))
+  const legacyCall = harness.calls.find(call => (
+    call.url.pathname === '/rest/v1/wechat_password_map'
+  ))
+  assert.ok(rpcCall)
+  assert.ok(legacyCall)
+  assert.equal(legacyCall.method, 'DELETE')
+  assert.equal(legacyCall.url.searchParams.get('openid'), 'eq.wx-test')
+  assert.equal(legacyCall.prefer, 'return=minimal')
+})
+
+test('RPC 404/42883 undefined_function uses one exact legacy row delete and completes the saga', async () => {
+  const harness = createHarness({
+    wechatDeleteStatuses: [{ status: 404, code: '42883' }],
+  })
+  globalThis.fetch = harness.fetch
+  const { default: handler } = await loadApi()
+
+  const response = await handler(deleteRequest())
+  assert.equal(response.status, 200)
+  assert.deepEqual(await response.json(), { success: true, status: 'completed' })
+  assert.equal(harness.job.stage, 'completed')
+
+  const rpcCalls = harness.calls.filter(call => (
+    call.url.pathname === '/rest/v1/rpc/delete_wechat_password_credential'
+  ))
+  const legacyCalls = harness.calls.filter(call => (
+    call.url.pathname === '/rest/v1/wechat_password_map'
+  ))
+  assert.equal(rpcCalls.length, 1)
+  assert.deepEqual(rpcCalls[0].body, { openid_in: 'wx-test' })
+  assert.equal(rpcCalls[0].url.search, '')
+  assert.equal(legacyCalls.length, 1)
+  assert.equal(legacyCalls[0].method, 'DELETE')
+  assert.equal(legacyCalls[0].url.searchParams.get('openid'), 'eq.wx-test')
+  assert.equal(legacyCalls[0].prefer, 'return=minimal')
+})
+
+test('malformed durable WeChat identity cannot reach the legacy PostgREST delete filter', async () => {
+  console.error = () => {}
+  const harness = createHarness({
+    initialJob: jobRow('auth_deleted', { wechat_openid: 'wx-test,openid=neq.safe' }),
+    wechatRpcMissing: true,
+  })
+  globalThis.fetch = harness.fetch
+  const { default: handler } = await loadApi()
+
+  const response = await handler(cronRequest())
+  assert.equal(response.status, 503)
+  assert.deepEqual(await response.json(), {
+    success: false,
+    error: 'deletion_jobs_pending',
+    processed: 1,
+    completed: 0,
+    pending: 1,
+  })
+  assert.equal(harness.calls.filter(call => (
+    call.url.pathname === '/rest/v1/rpc/delete_wechat_password_credential'
+  )).length, 1)
+  assert.equal(harness.calls.some(call => (
+    call.url.pathname === '/rest/v1/wechat_password_map'
+  )), false)
+  assert.equal(harness.job.stage, 'auth_deleted')
+  assert.equal(harness.job.last_error, 'wechat_legacy_openid_invalid')
+})
+
+test('failed pre-retirement legacy delete leaves the auth-deleted saga retryable', async () => {
+  console.error = () => {}
+  const harness = createHarness({
+    initialJob: jobRow('auth_deleted'),
+    wechatRpcMissing: true,
+    wechatLegacyDeleteStatuses: [500, 204],
+  })
+  globalThis.fetch = harness.fetch
+  const { default: handler } = await loadApi()
+
+  const first = await handler(cronRequest())
+  assert.equal(first.status, 503)
+  assert.equal(harness.job.stage, 'auth_deleted')
+  assert.match(harness.job.last_error, /^wechat_legacy_delete_failed:500/)
+
+  const second = await handler(cronRequest())
+  assert.equal(second.status, 200)
+  assert.equal(harness.job.stage, 'completed')
+  assert.equal(harness.calls.filter(call => (
+    call.url.pathname === '/rest/v1/wechat_password_map'
+  )).length, 2)
+})
+
+for (const outcome of [
+  { status: 404, code: 'PGRST301' },
+  { status: 500, code: 'PGRST202' },
+  { status: 500, code: '42883' },
+]) {
+  test(`RPC ${outcome.status}/${outcome.code} never downgrades to legacy table delete`, async () => {
+    console.error = () => {}
+    const harness = createHarness({
+      initialJob: jobRow('auth_deleted'),
+      wechatDeleteStatuses: [outcome],
+    })
+    globalThis.fetch = harness.fetch
+    const { default: handler } = await loadApi()
+
+    const response = await handler(cronRequest())
+    assert.equal(response.status, 503)
+    assert.deepEqual(await response.json(), {
+      success: false,
+      error: 'deletion_jobs_pending',
+      processed: 1,
+      completed: 0,
+      pending: 1,
+    })
+    assert.equal(harness.calls.some(call => (
+      call.url.pathname === '/rest/v1/wechat_password_map'
+    )), false)
+    assert.equal(harness.job.stage, 'auth_deleted')
+    assert.match(harness.job.last_error, new RegExp(`^wechat_delete_failed:${outcome.status}:${outcome.code}`))
+  })
+}
 
 test('returns 503 before every destructive call when the jobs migration is absent', async () => {
   console.error = () => {}

@@ -1,8 +1,52 @@
 -- Transactional malicious/compatibility regression. Always rolls back.
+-- NEVER run against production. Use only an isolated disposable database after
+-- the retirement migration has been applied and its read-only VERIFY is green.
 
 \set ON_ERROR_STOP on
 
 BEGIN;
+SET LOCAL search_path = pg_catalog;
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '2min';
+
+DO $regression_preflight$
+DECLARE
+  migration_record_count bigint := 0;
+  migration_collision_count bigint := 0;
+BEGIN
+  IF current_user <> 'postgres' THEN
+    RAISE EXCEPTION
+      'regression_failed: retirement regression requires postgres, got %',
+      current_user;
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.wechat_password_map LIMIT 1) THEN
+    RAISE EXCEPTION
+      'regression_failed: retired credential map must be empty before fixtures';
+  END IF;
+  EXECUTE
+    'SELECT count(*)
+       FROM supabase_migrations.schema_migrations
+      WHERE version = $1 AND name IN ($2, $3)'
+    INTO migration_record_count
+    USING
+      '20260718140000',
+      'retire_wechat_password_credentials',
+      '20260718140000_retire_wechat_password_credentials';
+  EXECUTE
+    'SELECT count(*)
+       FROM supabase_migrations.schema_migrations
+      WHERE version = $1 OR name IN ($2, $3)'
+    INTO migration_collision_count
+    USING
+      '20260718140000',
+      'retire_wechat_password_credentials',
+      '20260718140000_retire_wechat_password_credentials';
+  IF migration_record_count <> 1 OR migration_collision_count <> 1 THEN
+    RAISE EXCEPTION
+      'regression_failed: exact retirement migration ledger row missing';
+  END IF;
+END;
+$regression_preflight$;
 
 INSERT INTO public.wechat_password_map (openid, password)
 VALUES

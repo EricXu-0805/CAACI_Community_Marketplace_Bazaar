@@ -261,8 +261,11 @@ and [多媒体内容安全识别](https://developers.weixin.qq.com/miniprogram/d
 documentation. In the console choose 安全模式, not 明文模式 or 兼容模式; choose
 the JSON or XML body format you will exercise in the environment canary.
 
-`VITE_*` values are not a substitute for the server-only service key. We do
-not require `SUPABASE_JWT_SECRET` or `WECHAT_USER_PASSWORD_SALT`. The route
+`VITE_*` values are not a substitute for the server-only service key. The
+passwordless route does not require `SUPABASE_JWT_SECRET` or
+`WECHAT_USER_PASSWORD_SALT`. Do not infer that removing the salt retires an
+old credential: GoTrue passwords created by the historical HMAC fallback stay
+valid until explicitly rotated. The route
 asks GoTrue to generate a one-time magic-link token hash, exchanges that hash
 at `/auth/v1/verify`, and returns only the resulting bounded session fields.
 GoTrue remains the sole JWT issuer.
@@ -290,6 +293,43 @@ preview account and server logs keyed by the non-sensitive `X-Request-Id`.
 Logs intentionally omit js_code, openid, unionid, email, token, upstream URL,
 and response body.
 
+After saving a new Production secret snapshot and creating a new deployment,
+the following **negative canaries** can narrow configuration faults without a
+real mini-program account. They do not replace the real-device matrix below:
+
+```bash
+# A deliberately invalid, non-sensitive code must reach WeChat but must never
+# reach GoTrue/profile creation. This consumes one network limiter hit.
+curl -i -X POST https://illinimarket.com/api/auth/wechat-login \
+  -H 'Content-Type: application/json' \
+  --data '{"js_code":"release-canary-invalid-code"}'
+
+# Keep WECHAT_MEDIA_ASYNC_ENABLED absent/false at this stage. The callback must
+# refuse POST before reading the body or reaching Supabase/Storage.
+curl -i -X POST https://illinimarket.com/api/wechat-callback \
+  -H 'Content-Type: application/json' \
+  --data '{}'
+```
+
+For the login probe, a correctly injected AppID/AppSecret pair that WeChat can
+use to classify the fake code returns `401 {"error":"wechat_code_rejected"}`.
+`503 wechat_not_configured` means the deployed snapshot is still missing a
+credential; `502 wechat_exchange_failed` means WeChat returned another stable
+provider/configuration failure; `503 rate_limit_unavailable` or `429
+rate_limited` is a limiter failure, not credential evidence. The response's
+`X-Request-Id` is the only correlation value safe to carry into logs.
+
+For the callback probe, the expected closed-gate response is `503` with body
+`media async disabled` and `Retry-After: 60`. Only in an approved staging or
+production enablement window, after setting `WECHAT_MEDIA_ASYNC_ENABLED=true`,
+the same unsigned POST becomes a structural probe: `403 forbidden` proves the
+deployed AppID, push token and EncodingAESKey pass local shape checks and the
+request reached signature verification; `503 retry` means that combined
+security-mode configuration is missing or malformed. Neither result proves the
+push token or AES key matches the WeChat console. A successful console-save
+signed GET handshake proves the exact push token without a device; only a real
+encrypted provider callback proves the exact EncodingAESKey and trailing AppID.
+
 ### 8.3 Add domain to mp.weixin.qq.com allow-list
 
 §2 lists the four domain categories. Adding `/api/auth/wechat-login`
@@ -311,9 +351,11 @@ npm run build:mp-weixin
 
 Expected happy path:
 1. Click "微信一键登录" → DevTools simulates wx.login and returns a code
-2. Edge function exchanges code → openid (if AppSecret is wrong or
-   code is fake, you'll see `wechat_exchange_failed` and a `wxErrcode`
-   — look it up in the [WeChat error code table][wxerr])
+2. Edge function exchanges code → openid. A fake, expired or replayed code is
+   returned as `wechat_code_rejected`; a wrong AppSecret or another provider
+   failure is returned as `wechat_exchange_failed`. Provider error details are
+   intentionally not returned to the client; correlate the non-sensitive
+   `X-Request-Id` with server logs and use the [WeChat error code table][wxerr].
 3. Admin `generate_link(type=magiclink)` creates or reuses the hidden
    `wx_<openid>@wechat.placeholder` Auth user; `/auth/v1/verify` exchanges the
    one-time token hash for a GoTrue session; no email is sent
@@ -334,12 +376,12 @@ Expected happy path:
   to this account" that sends the js_code along with the current
   email session JWT, and have the edge function merge if and only
   if the email session matches.
-- **No user profile fetch from WeChat.** We accept `nickname` and
-  `avatar_url` from the client, but the client has to call
-  `wx.getUserProfile` first and pass them in. The current login
-  button does not do this — it just wx.logins for openid. Add
-  nickname/avatar capture to the button if you want prefilled
-  profiles.
+- **No user profile fetch from WeChat.** The server can sanitize an optional
+  nickname during the first identity bind, but the current login button sends
+  only `js_code`. The route deliberately ignores client-supplied `avatar_url`
+  instead of treating an arbitrary URL as trusted profile media. A future
+  nickname/avatar flow needs explicit consent plus a reviewed upload and
+  validation path; do not merely forward `wx.getUserProfile` fields.
 - **Placeholder email compatibility.** Existing identities keep the historical
   `wx_<openid>@wechat.placeholder` mapping. Email normalization means two
   openids differing only by case would collide; the route rejects identity
@@ -386,14 +428,24 @@ Fresh deployments can skip this section. If production ever ran migration 035
 and the password-based WeChat route, switching code does **not** invalidate the
 old plaintext map or the corresponding Auth passwords. Use this order:
 
-1. Deploy the passwordless route first. In Preview, complete the real-account
-   checks from §8.5 and confirm the old route is no longer receiving traffic.
+1. Deploy the passwordless route first. Complete the Preview checks from §8.5,
+   then prove the exact Production deployment with the real provider and wait
+   for every password-era instance/in-flight request to drain. Enable Vercel
+   Standard Protection with Vercel Authentication, remove protection exceptions,
+   and inventory every reachable retained URL or alias: generated, branch,
+   author, and custom/Production. The Production alias moving is not a drain:
+   those Vercel URLs keep old builds reachable. Prove a request with no login
+   cookie or automation-bypass token cannot reach a password-era login route. Record a
+   passwordless-safe deployment/SHA; after retirement never promote anything
+   older than cutover commit
+   `7fb25c3957b14004c861200f3499267ad5163699`.
 2. Inventory only (the default is non-mutating):
 
    ```bash
-   export SUPABASE_URL=https://<project>.supabase.co
-   export SUPABASE_SECRET_KEY=<sb-secret-key>
-   node scripts/retire-wechat-passwords.mjs
+   export SUPABASE_URL=https://lfhvgprfphyfvhidegum.supabase.co
+   export SUPABASE_SECRET_KEY=<operation-specific-short-lived-sb_secret_key>
+   node scripts/retire-wechat-passwords.mjs \
+     --project-ref lfhvgprfphyfvhidegum
    ```
 
 3. Review counts and backups/incident implications. Then explicitly rotate
@@ -401,20 +453,59 @@ old plaintext map or the corresponding Auth passwords. Use this order:
 
    ```bash
    node scripts/retire-wechat-passwords.mjs \
-     --apply --confirm RETIRE_WECHAT_PASSWORDS
+     --project-ref lfhvgprfphyfvhidegum \
+     --apply --confirm RETIRE_WECHAT_PASSWORDS \
+     --expected-inventory-sha256 <reviewed-dry-run-sha256>
    ```
 
    The script never selects the plaintext password column. It inventories the
-   entire map and Auth roster, blocks case collisions or profile/Auth identity
-   mismatches, rotates all matching users before the first map deletion, and
-   verifies the map is empty. A failed rotation stops all deletion.
+   entire map, WeChat-bound profile set, and Auth roster; blocks case
+   collisions, one-sided identities or profile/Auth mismatches; rotates every
+   matching placeholder user before the first map deletion; and verifies the
+   map is empty. This includes HMAC-era users with no map row. A failed
+   rotation or any mapless/map-backed orphan stops all mutation. Map emptiness
+   alone is not retirement evidence, and removing `WECHAT_USER_PASSWORD_SALT`
+   does not invalidate a password already stored by GoTrue. Remove the salt
+   only after the password-era fleet has drained, every matching password is
+   rotated, VERIFY is green, and the provider/session regression is accepted.
+   The apply script repeats all three inventories after rotation and after
+   cleanup and aborts on any identity-set change; this detects an in-flight
+   mapless HMAC login but does not replace the required old-fleet drain.
+   Apply also requires the exact non-identifying SHA-256 printed by the reviewed
+   dry run. Map/profile inventories use keyset pagination with exact
+   `Content-Range` counts, including when PostgREST returns fewer rows than the
+   requested limit; each Auth inventory validates `x-total-count` and requires
+   two identical full scans. Freeze all
+   account creation/deletion and WeChat identity binding until VERIFY finishes,
+   because these cross-service snapshots are intentionally fail-closed but not
+   a single database transaction.
+   Any backup or point-in-time restore from before rotation can resurrect the
+   old Auth password hash or map; keep access closed and repeat the entire
+   retirement sequence before accepting a restored Production database.
+   Rotation is intentionally conservative: every matching placeholder Auth
+   account paired with a WeChat profile is changed, even when its individual
+   origin cannot be proven HMAC-era. Current GoTrue Admin password updates clear
+   the user's outstanding one-time tokens and refresh sessions; an existing
+   access JWT can remain valid until its own expiry. Use a maintenance window
+   and canary the old access JWT, rejected refresh, fresh passwordless login,
+   repeat login, and expected notification behavior before reopening traffic.
 
-4. Apply `20260718140000_retire_wechat_password_credentials.sql` and its VERIFY
-   script. The migration refuses to run while any map row remains, revokes
-   legacy SELECT/INSERT/UPDATE and RPC EXECUTE access, but retains service-role
-   DELETE compatibility for the account-deletion saga. Drop the table/functions
-   only after that saga no longer references them.
+4. Follow root `RUNBOOK.md` step 6 exactly: run the read-only PRECHECK, use only
+   `scripts/wechat-retirement-migration-executor.mjs` for its two exact dry-run/
+   apply commands, then run the strengthened read-only VERIFY. Do not directly
+   apply the source SQL, use Dashboard SQL, or repair the ledger. The executor
+   is Production-specific and pins the project, TLS CA, CLI, exact 108-row
+   ledger snapshot, 109-file guard projection, normalized/guarded target hashes,
+   transaction-local timeouts and atomic ledger fence.
+5. Revoke the operation-specific named API key after VERIFY and deploy removal
+   of the temporary pre-migration direct-table fallback. The account-deletion
+   saga then uses only the SECURITY DEFINER exact-delete RPC. Drop the empty
+   table and all three RPCs together only after that worker no longer depends
+   on them.
 
-Do this first with a disposable project/account. Password rotation may affect
-existing sessions or trigger security notifications depending on current Auth
-settings; verify those effects before touching the full roster.
+The short-lived named API key above is not the Vercel runtime key and is not
+`SUPABASE_DB_PASSWORD`; do not reuse or rotate one as a substitute for another.
+Password/session effects and the exact CLI's ledger-insert rollback plus
+five-second lock-contention behavior must first be proven with a separate,
+reviewed disposable rehearsal harness. Do not weaken the Production-bound
+scripts to make that rehearsal possible.
