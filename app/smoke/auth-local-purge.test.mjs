@@ -75,6 +75,12 @@ function boundaryState(values, controller) {
   return JSON.parse(serialized)
 }
 
+function persistedAuthValue(values, storageKey) {
+  const envelope = JSON.parse(values.get(storageKey))
+  assert.equal(envelope.tag, 'caaci-auth-value-v2')
+  return JSON.parse(envelope.value)
+}
+
 function authClient(storage, storageKey, fetcher) {
   return createClient('https://local-purge-test.supabase.co', 'anon-test-key', {
     auth: {
@@ -157,6 +163,86 @@ for (const failure of ['network', '5xx']) {
     await freshClient.auth.stopAutoRefresh()
   })
 }
+
+test('OAuth provider credentials are stripped on writes and filtered from legacy reads without stale rollback', async () => {
+  const persistence = await loadAuthPersistence()
+  const storageKey = 'sb-local-oauth-provider-token-auth-token'
+  const providerSession = JSON.stringify({
+    ...JSON.parse(serializedSession()),
+    provider_token: 'google-access-token-must-not-persist',
+    provider_refresh_token: 'google-refresh-token-must-not-persist',
+  })
+  const { values, backing } = memoryBacking()
+  const controller = persistence.createFailClosedAuthStorage(backing, storageKey)
+
+  await controller.storage.setItem(storageKey, providerSession)
+  const written = persistedAuthValue(values, storageKey)
+  assert.equal(written.provider_token, undefined)
+  assert.equal(written.provider_refresh_token, undefined)
+  assert.equal(typeof written.access_token, 'string')
+  assert.equal(typeof written.refresh_token, 'string')
+
+  // Model a session written by the previous bundle under the current durable
+  // generation. Reads filter it from the running Auth client but deliberately
+  // do not rewrite from a stale snapshot.
+  const generation = JSON.parse(values.get(storageKey)).generation
+  values.set(storageKey, JSON.stringify({
+    tag: 'caaci-auth-value-v2',
+    generation,
+    value: providerSession,
+  }))
+  const scrubbedRead = JSON.parse(await controller.storage.getItem(storageKey))
+  assert.equal(scrubbedRead.provider_token, undefined)
+  assert.equal(scrubbedRead.provider_refresh_token, undefined)
+  assert.equal(persistedAuthValue(values, storageKey).provider_token, 'google-access-token-must-not-persist')
+  assert.equal(persistedAuthValue(values, storageKey).provider_refresh_token, 'google-refresh-token-must-not-persist')
+
+  await controller.storage.setItem(storageKey, providerSession)
+  assert.equal(persistedAuthValue(values, storageKey).provider_token, undefined)
+  assert.equal(persistedAuthValue(values, storageKey).provider_refresh_token, undefined)
+})
+
+test('a provider-token-filtering read cannot overwrite a concurrent refreshed session', async () => {
+  const persistence = await loadAuthPersistence()
+  const storageKey = 'sb-local-oauth-read-race-auth-token'
+  const oldSession = JSON.stringify({
+    ...JSON.parse(serializedSession('11111111-1111-4111-8111-111111111111')),
+    provider_token: 'legacy-google-token',
+  })
+  const refreshedSession = serializedSession('22222222-2222-4222-8222-222222222222')
+  const oldEnvelope = JSON.stringify({
+    tag: 'caaci-auth-value-v2',
+    generation: 'legacy-unversioned',
+    value: oldSession,
+  })
+  const values = new Map([[storageKey, oldEnvelope]])
+  let releaseStaleRead
+  const staleReadGate = new Promise(resolve => { releaseStaleRead = resolve })
+  let staleReadCaptured = false
+  const backing = {
+    async getItem(key) {
+      const captured = values.get(key) ?? null
+      if (key === storageKey && !staleReadCaptured) {
+        staleReadCaptured = true
+        await staleReadGate
+      }
+      return captured
+    },
+    setItem: (key, value) => { values.set(key, value) },
+    removeItem: key => { values.delete(key) },
+  }
+  const reader = persistence.createFailClosedAuthStorage(backing, storageKey)
+  const writer = persistence.createFailClosedAuthStorage(backing, storageKey)
+  const staleRead = reader.storage.getItem(storageKey)
+  while (!staleReadCaptured) await Promise.resolve()
+
+  await writer.storage.setItem(storageKey, refreshedSession)
+  releaseStaleRead()
+  const filtered = JSON.parse(await staleRead)
+  assert.equal(filtered.provider_token, undefined)
+  assert.equal(JSON.parse(await writer.storage.getItem(storageKey)).user.id, '22222222-2222-4222-8222-222222222222')
+  assert.equal(persistedAuthValue(values, storageKey).user.id, '22222222-2222-4222-8222-222222222222')
+})
 
 test('a storage write already in flight cannot resurrect a blocked auth key', async () => {
   const persistence = await loadAuthPersistence()

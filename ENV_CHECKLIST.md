@@ -223,8 +223,9 @@ unbounded delete.
 | Var | Vercel | GH Actions | Local | If missing |
 |---|---|---|---|---|
 | `OPENAI_API_KEY` | ✅ optional | ❌ | ⚠️ shell-only | Remote moderation/translation provider is skipped; local/database safety layers remain. |
-| `WECHAT_APPID` | ✅ for mp login/security | ❌ | ⚠️ shell-only | WeChat login returns 503; media classifier degrades after authentication. |
-| `WECHAT_APPSECRET` | ✅ for mp login/security | ❌ | ⚠️ shell-only | Same; server-only and never browser-prefixed. |
+| `WECHAT_LOGIN_ENABLED` | ❌ first release; future reviewed re-enable only | ❌ | ⚠️ shell-only | Exact `true` is the independent server-side identity-login gate. Missing/false keeps `/api/auth/wechat-login` at 404 even when content-safety credentials are configured. Never couple it to the media gate. |
+| `WECHAT_APPID` | ✅ for mp safety/future login | ❌ | ⚠️ shell-only | First-release login remains email/password and the independent login flag keeps the dormant API at 404. Only after a future `WECHAT_LOGIN_ENABLED=true` activation does a missing AppID/secret pair return 503. |
+| `WECHAT_APPSECRET` | ✅ for mp safety/future login | ❌ | ⚠️ shell-only | Same; server-only and never browser-prefixed. It is not a first-release authentication credential while the route flag and UI are disabled. |
 | `WECHAT_PUSH_TOKEN` | ✅ for callback | ❌ | ⚠️ shell-only | Security-mode POST and the signed GET handshake remain unavailable. Keep it server-only. |
 | `WECHAT_ENCODING_AES_KEY` | ✅ for encrypted callback | ❌ | ⚠️ shell-only | Image enqueue remains fail-closed even if `WECHAT_MEDIA_ASYNC_ENABLED=true`; use the exact 43-character key from the matching WeChat app. |
 | `WECHAT_MEDIA_ASYNC_ENABLED` | ✅ only after staging canary | ❌ | ⚠️ shell-only | Exact `true` enables image enqueue only when AppID, push token and EncodingAESKey are also valid; otherwise image moderation remains fail-closed. |
@@ -252,6 +253,7 @@ A wrong Redirect URL silently breaks password reset + OAuth on day 1.
 | Site URL | Auth → URL Configuration | `https://illinimarket.com` |
 | Redirect URLs | Auth → URL Configuration | add `https://illinimarket.com/**` |
 | Email confirmation | Auth → Providers → Email | **ON** — signup returns no session until confirmed; the app expects this |
+| Google provider | Auth → Providers → Google | H5 only. Use the matching Google Cloud client ID/secret, the Supabase callback URL, and environment-specific Site URL/redirect allow-list; do not expose it in the mini-program |
 | Password policy | Auth → Policies | At least 8 characters + upper/lower/digit/symbol. Current production leaked-password (HIBP) protection is **OFF** and Security Advisor reports it; on Pro or above enable it before launch rather than treating the finding as accepted. |
 | Reset-password email | Auth → Email Templates → Reset Password | body uses `{{ .Token }}` (6-digit code, **not** the link) **and** Email OTP length = 6 (Auth → Providers → Email). The app's reset is a typed code (QA6 #138). Leave **Confirm signup** on the link. |
 
@@ -292,23 +294,25 @@ environment's exact origin/project):**
 - [ ] `DIGEST_FROM` is a verified test sender in staging and the reviewed production sender in Production; Resend is also used by meetup mail and Illini verification
 - [ ] Apply + verify `20260717194646_account_deletion_jobs.sql`, including its restrictive Storage tombstone policies; the same `CRON_SECRET` authorizes its 10-minute recovery cron
 - [ ] Apply + verify `20260718150000_ephemeral_data_retention.sql`; confirm the hourly `/api/data-retention` cron returns 200 (a 503 backlog/error is not green)
-- [ ] For the 2026-07-20 release, WeChat is a production gate: `WECHAT_APPID`,
+- [ ] First-release auth keeps WeChat quick login hidden and its login provider
+  fail-closed: `WECHAT_LOGIN_ENABLED` is absent/false, and a direct POST to the
+  dormant route returns 404 without contacting WeChat or Supabase. If微信内容
+  安全/callback is enabled, `WECHAT_APPID`, the
   environment-specific `WECHAT_APPSECRET`, `WECHAT_PUSH_TOKEN`, and
-  `WECHAT_ENCODING_AES_KEY` must be present in their reviewed scopes. Production
-  values for the three secrets must be Sensitive and Production-only. If a
-  trusted Preview runs a provider canary, it must use a separate staging WeChat
-  app and separate values scoped only to that reviewed Preview; never copy the
-  Production values into Preview. Keep
+  `WECHAT_ENCODING_AES_KEY` must still be present in reviewed scopes. Production
+  values for the three secrets must be Sensitive and Production-only. A trusted
+  Preview uses a separate staging WeChat app; never copy Production values into
+  Preview. Keep
   `WECHAT_MEDIA_ASYNC_ENABLED` absent/false until a real encrypted callback and
-  retry canary succeeds. Create a new exact-commit Production deployment after
-  variables are saved—an older deployment cannot prove the new environment
-  snapshot—and complete the legacy-password retirement runbook in
-  `docs/WECHAT_MP_SETUP.md` only after the provider canary succeeds.
+  retry canary succeeds. Legacy-password retirement and微信登录 provider canary
+  are required before any future re-enable, not as proof that the hidden first-
+  release button works.
 
 **Supabase dashboard (manual, above):**
 
 - [ ] Site URL + Redirect URLs set, reset-password tested end-to-end
 - [ ] Email confirmation ON; strong password policy confirmed; leaked-password protection enabled when the plan supports it
+- [ ] H5 Google provider/callback/origin configured and tested with two owned QA accounts; mini-program build contains no Google or WeChat login button
 
 **Digest — keep OFF for the beta unless you've prepped it.** Going live later is
 three deliberate actions: clear `DIGEST_TEST_EMAIL`, set `DIGEST_LIVE=true`, and

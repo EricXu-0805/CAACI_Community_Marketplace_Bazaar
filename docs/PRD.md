@@ -1,11 +1,13 @@
 # Illini Market 产品需求文档
 
-> 版本：Release Candidate 2026-07
-> 最后更新：2026-07-23
-> 状态：核心产品已实现；合并前生产数据库已按精确 ledger 应用候选链 34/38；
-> 145042、152000、161200 三条生产 tail 完成后为 37/38，仅微信密码凭据退役
-> 仍待匹配的 passwordless canary。稳定应用 bundle 仍是旧版本。正式 beta 仍受 matching canary、WeChat 密钥与凭据
-> 退役、HIBP、首位 Owner、真实账号/provider/真机和运营门禁约束。
+> 版本：Release Candidate 2026-08
+> 最后更新：2026-08-01
+> 状态：首版认证矩阵已收敛为 H5 邮箱/密码 + Google、小程序邮箱/密码；
+> 微信快捷登录入口隐藏，兼容后端不删除且不得在未完成独立 canary 前重新开放。
+> 稳定应用仍须从精确提交生成，并通过 staging Realtime、Google/email provider、
+> H5/小程序真机、首位 Owner、运营支持与生产发布门禁。
+> 历史数据库证据为 2026-07 合并前 34/38、三条 tail 后 37/38；这只是基线，
+> 不能替代本轮新增隐私 consent 迁移与生产环境的重新只读核对。
 
 ## 1. 产品定位
 
@@ -52,7 +54,14 @@ Illini Market 是面向 UIUC / Champaign–Urbana 社区的中英双语校园二
 
 ### 4.1 认证、同意与账号隔离
 
-- Email/password 与已配置的微信 passwordless provider；
+- H5 提供 Email/password 与 Google OAuth；微信小程序首版只提供
+  Email/password，不显示微信快捷登录或 Google 按钮；
+- `auth.users.id` 是唯一账号 ID。Email、Google 与未来可能启用的微信都只是
+  登录方式；同一已验证邮箱的 Google identity 可能由 Supabase 自动关联到既有
+  email/password 账号并共用同一 ID。首版不提供手动绑定、合并、拆分或解除身份
+  的入口；
+- 现有微信 passwordless API、旧账号注销和凭据退役代码仅作为兼容/未来迁移
+  能力保留。重新开放前必须完成独立 provider、冲突、找回和真实账号 canary；
 - onboarding 在完整 profile、当前 consent 和账号 intent 都满足后完成；
 - Illinois 邮箱验证码通过原子 RPC 生成/消费，不能因并发重复使用；
 - recovery code 只绑定发起恢复的 session，URL token/code 会尽快从地址栏

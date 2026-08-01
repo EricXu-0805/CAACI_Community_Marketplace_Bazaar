@@ -1008,7 +1008,7 @@ function goToFollowSeller(id: string) {
 }
 
 function goToLogin() {
-  uni.navigateTo({ url: '/pages/login/index' })
+  requireAuth('/pages/plaza/index')
 }
 
 /* Post author avatar/name → seller page. Always lands on the default

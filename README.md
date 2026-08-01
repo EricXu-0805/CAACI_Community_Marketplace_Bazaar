@@ -85,12 +85,14 @@ Vercel Edge API
 | 012 | `rate_limiting_and_dedupe.sql` | 5 张表 BEFORE INSERT 触发器(硬性限流 + 短窗口去重) |
 | 013 | `security_patches.sql` | 审计补丁:notifications INSERT deny / conv flag 隔离 / 归一化去重 |
 | 014–089 | `supabase/migrations/` | 图片尺寸、Plaza、审核、管理、offer/meetup、通知、微信等后续能力（历史上 014/015 各有重复版本，见审计） |
-| 20260717–22… | `supabase/migrations/` + `_ops/` | 本轮公共写入、双向屏蔽、证据/注销、停权/admin、成交评分、FK、Storage、private Realtime、邮件 attribution/claim、Data API 精确 ACL、管理员令牌生命周期、确定性分页、真实 FK 与 ACL 尾部等 **38 条候选修复**；合并前生产数据库已按精确 ledger 应用 34/38，三条管理员生产 tail 完成后为 37/38，仅密码式微信凭据退役仍需匹配的 passwordless canary |
+| 20260717–22… | `supabase/migrations/` + `_ops/` | 公共写入、双向屏蔽、证据/注销、停权/admin、成交评分、FK、Storage、private Realtime、邮件 attribution/claim、Data API 精确 ACL、管理员令牌生命周期、确定性分页、真实 FK 与 ACL 尾部等候选修复；微信密码凭据退役保留为未来重新开放微信身份前的独立兼容门 |
 
-仓库当前共有 132 个 migration SQL 文件，其中本轮 release candidate 为 38 条。
+仓库当前共有 133 个 migration SQL 文件，其中 2026-07 release candidate 为 38 条，
+另有 2026-08-01 首版认证隐私披露的前向 consent 迁移。
 合并前生产 ledger 已逐条核对为 34/38；依次完成 145042、152000、161200 三条
-生产 tail 后为 37/38，仅 `20260718140000_retire_wechat_password_credentials.sql`
-仍待匹配的 passwordless canary。应用 bundle 仍需从最终提交生成并验收。不要在任何现有环境直接盲跑
+生产 tail 后为 37/38；`20260718140000_retire_wechat_password_credentials.sql`
+仍待匹配的 passwordless canary，但首版隐藏微信登录并保持 provider fail-closed，
+因此该迁移只在未来重新开放微信身份前执行。应用 bundle 仍需从最终提交生成并验收。不要在任何现有环境直接盲跑
 `db push`。先读最新 [`docs/audit/`](docs/audit/) 报告，按 PRECHECK →
 备份/staging → migration → VERIFY/REGRESSION/canary 的顺序执行。
 
@@ -156,9 +158,11 @@ CI 已有 smoke job，但当前仍不是 branch protection 的 required check。
 
 ## 部署
 
-- **当前应用工作树仍是未部署的 release candidate**：生产发布已获明确授权；合并前数据库为
-  34/38，三条生产 tail 完成后为 37/38，届时仅微信凭据退役仍待。仍须从最终提交生成全新 canary，关闭 WeChat secret、HIBP、Owner 和真实
-  用户端/管理员端回归门后，才能提升为稳定应用。
+- **当前应用工作树仍是未部署的 release candidate**：首版 H5 使用邮箱/密码 +
+  Google，小程序使用邮箱/密码；微信快捷登录隐藏，兼容后端保留且 provider 默认
+  由独立 server-only `WECHAT_LOGIN_ENABLED` 开关 fail-closed；首版保持缺失/false，
+  内容安全凭据不能隐式启用身份登录。仍须从最终提交生成全新 canary，关闭 Google/email provider、HIBP、
+  Owner、Hosted Realtime 和真实用户端/管理员端回归门后，才能提升为稳定应用。
 - 当前 38 条候选迁移存在 API/旧客户端/WeChat 凭据/Storage/Realtime/cron/admin token 的顺序依赖；按
   [RUNBOOK 的候选发布顺序](RUNBOOK.md#2026-07-candidate-release-sequence) 执行，不要把目录排序直接等同于生产发布方案。
 - **H5**: 直接 `vercel --prod` (或 git push main 自动部署)。`vercel.json` 已配好 rewrites。

@@ -6,6 +6,7 @@ import { inlineDeploymentBoundaryImport } from './_test-module-loader.mjs'
 
 const MODULE_URL = new URL('./auth/wechat-login.js', import.meta.url)
 const ENV_KEYS = [
+  'WECHAT_LOGIN_ENABLED',
   'WECHAT_APPID',
   'WECHAT_APPSECRET',
   'SUPABASE_URL',
@@ -20,6 +21,7 @@ const ENV_KEYS = [
 ]
 const ORIGINAL_ENV = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]))
 const BASE_ENV = {
+  WECHAT_LOGIN_ENABLED: 'true',
   WECHAT_APPID: 'wx-test-appid',
   WECHAT_APPSECRET: 'wx-test-appsecret',
   SUPABASE_URL: 'https://project.supabase.co',
@@ -159,6 +161,20 @@ test('wechat-login passwordless and abuse boundaries', async (t) => {
     assert.equal(unsafeResult.status, 503)
     assert.deepEqual(await unsafeResult.json(), { error: 'supabase_not_configured' })
     assert.equal(fetches, 0)
+  })
+
+  await t.test('stays disabled by exact-value default even when content-safety WeChat credentials exist', async () => {
+    for (const disabledValue of [null, 'false', '1', 'TRUE', ' true ']) {
+      let fetches = 0
+      globalThis.fetch = async () => { fetches += 1; throw new Error('must not fetch') }
+
+      const handler = await loadHandler({ WECHAT_LOGIN_ENABLED: disabledValue })
+      // Malformed JSON proves the policy gate runs before body parsing.
+      const result = await handler(request('{'))
+      assert.equal(result.status, 404)
+      assert.deepEqual(await result.json(), { error: 'wechat_login_disabled' })
+      assert.equal(fetches, 0)
+    }
   })
 
   await t.test('exposes no environment readiness oracle and rejects oversized or malformed input locally', async () => {

@@ -330,7 +330,7 @@ const { isDark } = useTheme()
 const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
-const { currentUser, isLoggedIn, authState, awaitAuthReady } = useAuth()
+const { currentUser, isLoggedIn, authState, awaitAuthReady, requireAuth } = useAuth()
 const {
   items: homeItems,
   fetchMyItems,
@@ -623,7 +623,7 @@ function formatJoinDate(dateStr: string): string {
 }
 
 function goLogin() {
-  uni.navigateTo({ url: '/pages/login/index' })
+  requireAuth('/pages/profile/index')
 }
 
 function goDetail(id: string) {

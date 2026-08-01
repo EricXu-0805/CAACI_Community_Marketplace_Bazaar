@@ -49,10 +49,20 @@
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { ref, computed } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
+import { consumeWelcomeReturnIntent } from '../../api/navigationIntent'
 
 const { t } = useI18n()
 const current = ref(0)
+let returnIntentNonce = ''
+let invalidReturnTarget = false
+let finished = false
+
+onLoad((options) => {
+  returnIntentNonce = typeof options?.intent === 'string' ? options.intent : ''
+  invalidReturnTarget = options?.invalidReturn === '1'
+})
 
 /*
  * Reactive: was a plain array literal which called t() once at setup
@@ -102,8 +112,22 @@ function onCarouselKeydown(event: KeyboardEvent) {
 }
 
 function finish() {
+  if (finished) return
+  finished = true
   try { uni.setStorageSync('welcomed', '1') } catch {}
+  const destination = consumeWelcomeReturnIntent(returnIntentNonce)
+  if (destination) {
+    uni.reLaunch({ url: destination })
+    return
+  }
   uni.reLaunch({ url: '/pages/index/index' })
+  if (returnIntentNonce || invalidReturnTarget) {
+    setTimeout(() => uni.showToast({
+      title: t('navigation.returnUnavailable'),
+      icon: 'none',
+      duration: 3000,
+    }), 250)
+  }
 }
 </script>
 

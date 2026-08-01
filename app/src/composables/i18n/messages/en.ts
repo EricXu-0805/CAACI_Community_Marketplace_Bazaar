@@ -477,6 +477,7 @@ const en: Record<string, string> = {
   'login.backToSignup': 'Back',
   'login.loginFail': 'Sign in failed',
   'login.invalidCredentials': 'Email or password is incorrect',
+  'navigation.returnUnavailable': 'That destination is unavailable. We brought you home.',
   'login.emailNotConfirmed': 'Please confirm your email before signing in (check your inbox)',
   'login.loginOk': 'Welcome back!',
   'login.forgot': 'Forgot password?',

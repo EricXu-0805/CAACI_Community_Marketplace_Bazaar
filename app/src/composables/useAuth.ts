@@ -30,6 +30,11 @@ import {
 } from '../api/mutationCommit'
 import { reconcileAccountPrivateStorage } from '../api/accountLocalPrivacy'
 import { readBoundedJsonResponse } from '../api/boundedJson'
+import {
+  buildLoginRoute,
+  loginReturnRouteFromPage,
+  stageLoginReturnIntent,
+} from '../api/navigationIntent'
 
 const currentUser = ref<Profile | null>(null)
 const isLoggedIn = computed(() => !!currentUser.value)
@@ -770,13 +775,29 @@ export function useAuth() {
     }
   }
 
-  function requireAuth() {
+  function requireAuth(returnTarget?: string) {
     // During hydration, null profile does not mean anonymous.  Callers that can
     // await should use awaitAuthReady(); synchronous guards must not send a
     // known in-flight session to the login page.
     if (authState.value === 'initializing') return false
     if (authState.value === 'anonymous') {
-      uni.navigateTo({ url: '/pages/login/index' })
+      let currentTarget: string | null = returnTarget || null
+      if (!currentTarget) {
+        try {
+          const pages = getCurrentPages() as unknown[]
+          currentTarget = loginReturnRouteFromPage(pages[pages.length - 1])
+        } catch {}
+      }
+      const nonce = currentTarget
+        ? stageLoginReturnIntent(
+            currentTarget,
+            {
+              userId: getActiveAccountId(),
+              identityGeneration: captureAccountIdentityGeneration(),
+            },
+          )
+        : null
+      uni.navigateTo({ url: buildLoginRoute(nonce) })
       return false
     }
     // A public profile projection is not enough to evaluate suspension/TOS.

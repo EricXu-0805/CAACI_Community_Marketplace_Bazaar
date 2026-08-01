@@ -475,6 +475,7 @@ const zh: Record<string, string> = {
   'login.backToSignup': '返回',
   'login.loginFail': '登录失败',
   'login.invalidCredentials': '邮箱或密码错误',
+  'navigation.returnUnavailable': '原目标已失效，已安全返回首页',
   'login.emailNotConfirmed': '请先验证邮箱后再登录（查收激活邮件）',
   'login.loginOk': '登录成功！',
   'login.forgot': '忘记密码？',
