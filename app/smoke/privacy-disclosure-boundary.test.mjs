@@ -57,7 +57,7 @@ test('versioned privacy copy discloses active data paths and retention limits in
 
 test('material privacy version is accepted only by the matching forward migration', async () => {
   const migration = await readFile(
-    new URL('../../supabase/migrations/20260801074614_advance_privacy_consent_for_first_release_auth_matrix.sql', import.meta.url),
+    new URL('../../supabase/migrations/20260801082650_advance_privacy_consent_for_first_release_auth_matrix.sql', import.meta.url),
     'utf8',
   )
 

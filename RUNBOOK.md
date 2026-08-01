@@ -1014,7 +1014,7 @@ event if the original worker subsequently fails.
 
     - **Expand first:** after exact-target PRECHECK and isolated staging replay,
       apply and verify
-      `20260801074614_advance_privacy_consent_for_first_release_auth_matrix.sql`.
+      `20260801082650_advance_privacy_consent_for_first_release_auth_matrix.sql`.
       During this bounded rolling window, the RPC accepts only exact 2026-07-18
       and 2026-08-01; an old client cannot downgrade or refresh an 08-01 row.
     - **Deploy second:** publish the matching H5/mp/legal/re-consent bundle from

@@ -50,7 +50,7 @@ test('runbook reflects the deployed account and admin-token fields', async () =>
   assert.doesNotMatch(source, /SELECT id, email, status, ban_level/)
   assert.match(source, /dashboard keeps it only in page memory/)
   assert.doesNotMatch(source, /admin_token.*localStorage/)
-  assert.match(source, /Expand first:[\s\S]*20260801074614[\s\S]*Deploy second:[\s\S]*Contract later:/)
+  assert.match(source, /Expand first:[\s\S]*20260801082650[\s\S]*Deploy second:[\s\S]*Contract later:/)
   assert.match(source, /old client cannot downgrade or refresh an 08-01 row/)
   assert.match(source, /Do\s+not put that contraction in the same migration batch/)
 })

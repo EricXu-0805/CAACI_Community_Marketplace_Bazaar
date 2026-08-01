@@ -87,7 +87,7 @@ Vercel Edge API
 | 014–089 | `supabase/migrations/` | 图片尺寸、Plaza、审核、管理、offer/meetup、通知、微信等后续能力（历史上 014/015 各有重复版本，见审计） |
 | 20260717–22… | `supabase/migrations/` + `_ops/` | 公共写入、双向屏蔽、证据/注销、停权/admin、成交评分、FK、Storage、private Realtime、邮件 attribution/claim、Data API 精确 ACL、管理员令牌生命周期、确定性分页、真实 FK 与 ACL 尾部等候选修复；微信密码凭据退役保留为未来重新开放微信身份前的独立兼容门 |
 
-仓库当前共有 133 个 migration SQL 文件，其中 2026-07 release candidate 为 38 条，
+仓库当前共有 134 个 migration SQL 文件，其中 2026-07 release candidate 为 38 条，
 另有 2026-08-01 首版认证隐私披露的前向 consent 迁移。
 合并前生产 ledger 已逐条核对为 34/38；依次完成 145042、152000、161200 三条
 生产 tail 后为 37/38；`20260718140000_retire_wechat_password_credentials.sql`
