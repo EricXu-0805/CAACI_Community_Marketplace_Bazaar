@@ -39,7 +39,9 @@
     "build:quickapp-webview-union": "uni build -p quickapp-webview-union",
     "type-check": "vue-tsc --noEmit",
     "prepare": "cd .. && git config core.hooksPath .githooks 2>/dev/null || true",
-    "smoke": "playwright test"
+    "smoke": "playwright test",
+    "smoke:hosted-realtime-sql-local": "bash ../supabase/_ops/hosted_realtime_canary/run-local-regression.sh",
+    "smoke:hosted-realtime": "node e2e/hosted/safe-launcher.mjs"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-4080420251103001",
