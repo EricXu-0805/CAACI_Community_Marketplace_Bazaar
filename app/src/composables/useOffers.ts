@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 import { captureActiveAccountRequest, isAccountRequestCurrent } from './accountScope'
-import { startPrivateRealtimeChannel } from '../api/privateRealtime'
+import { subscribeToSnapshotChanges } from './useRealtimeFallback'
 import type { Offer } from '../types'
 
 /*
@@ -98,42 +98,17 @@ export function useOffers() {
 
   function subscribeToOffers(
     conversationId: string,
-    onChange: () => void,
-    onReady?: () => void,
+    onChange: () => void | Promise<void>,
+    onReady?: () => void | Promise<void>,
   ): () => void {
-    // #ifdef H5
-    // H5 exposes a real readiness barrier; ChatThread uses it for an
-    // authoritative post-SUBSCRIBED snapshot.
-    let readySent = false
-    return startPrivateRealtimeChannel({
-      supabase,
+    return subscribeToSnapshotChanges({
       topic: `offers:${conversationId}`,
-      configure: (privateChannel) => privateChannel.on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'offers', filter: `conversation_id=eq.${conversationId}` },
-        () => onChange(),
-      ),
-      onStatus: (status) => {
-        if (status === 'SUBSCRIBED' && !readySent) {
-          readySent = true
-          onReady?.()
-        }
-      },
+      table: 'offers',
+      filter: `conversation_id=eq.${conversationId}`,
+      intervalMs: 8000,
+      onChange,
+      onReady,
     })
-    // #endif
-    // #ifndef H5
-    /* mp can't speak the Phoenix channel, and offer RPCs write no messages
-       row, so the chat's message poll can't carry these events either — a
-       no-op here meant two users negotiating on mp never saw each other's
-       offer appear or change state until they re-entered the chat. Poll
-       instead: onChange() is a cheap idempotent refetch of one conversation's
-       offers, so an 8s interval is plenty for a bargaining flow. This tier
-       has no cursor handshake: ChatThread installs the recurring full-snapshot
-       poll before its initial full snapshot, so any overlap converges on a
-       later tick instead of leaving a permanent gap. */
-    const timer = setInterval(() => { try { onChange() } catch { /* refetch errors surface in the caller */ } }, 8000)
-    return () => clearInterval(timer)
-    // #endif
   }
 
   return { offers, fetchOffers, resetOffers, makeOffer, respondToOffer, subscribeToOffers }

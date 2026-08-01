@@ -15,6 +15,7 @@ import {
   preferredSupabasePublicKey,
   withSupabaseApiKeySemantics,
 } from '../utils/supabaseKeys'
+import { installRealtimeAuthSerialization } from '../api/privateRealtime'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || ''
 const SUPABASE_PUBLIC_KEY = preferredSupabasePublicKey(
@@ -169,7 +170,7 @@ export function failClosedSupabaseSignOut(): Promise<FailClosedSignOutResult> {
 
 export function useSupabase() {
   if (!supabase) {
-    supabase = createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY, {
+    const sharedClient = createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
@@ -182,6 +183,12 @@ export function useSupabase() {
         fetch: platformFetch,
       },
     })
+    // Install before createClient's asynchronous Auth initialization can emit
+    // SIGNED_IN/TOKEN_REFRESHED or any channel can connect. RealtimeClient
+    // otherwise applies concurrent setAuth calls in completion order, allowing
+    // a slow old-account callback to overwrite a newer account's token.
+    installRealtimeAuthSerialization(sharedClient.realtime)
+    supabase = sharedClient
   }
 
   return { supabase }

@@ -25,6 +25,7 @@ import {
 } from './accountScope'
 import { createClientMessageId } from '../api/clientMessageId'
 import { fetchArchivedConversationIds } from '../api/conversationArchive'
+import { readAllAscendingKeyset } from '../api/paginatedRead'
 import {
   sanitizeConversationResources,
   sanitizeMessageResources,
@@ -60,12 +61,18 @@ const loading = ref(false)
 let activeMessagesConversationId: string | null = null
 let latestMessagesRequestId = 0
 let latestConversationsRequestId = 0
+let latestMessageLiveVersion = 0
+let latestConversationLiveVersion = 0
+const messageLiveVersionById = new Map<string, number>()
+const conversationLiveVersionById = new Map<string, number>()
+const conversationInboxDeliveryVersionById = new Map<string, number>()
 
 function activateMessagesConversation(conversationId: string) {
   if (activeMessagesConversationId === conversationId) return
   activeMessagesConversationId = conversationId
   latestMessagesRequestId++
   messages.value = []
+  messageLiveVersionById.clear()
 }
 // True when the last conversation-list fetch failed AND we have no list to
 // show — lets the page render a retry surface instead of the empty-inbox
@@ -98,6 +105,11 @@ function resetMessageState() {
   activeMessagesConversationId = null
   latestMessagesRequestId++
   latestConversationsRequestId++
+  latestMessageLiveVersion = 0
+  latestConversationLiveVersion = 0
+  messageLiveVersionById.clear()
+  conversationLiveVersionById.clear()
+  conversationInboxDeliveryVersionById.clear()
   conversationsError.value = false
   invalidateConversations()
 }
@@ -117,7 +129,9 @@ function sortConversationsInPlace(list: Conversation[], userId: string) {
     const aPinned = (a.buyer_id === userId && a.is_pinned_buyer) || (a.seller_id === userId && a.is_pinned_seller)
     const bPinned = (b.buyer_id === userId && b.is_pinned_buyer) || (b.seller_id === userId && b.is_pinned_seller)
     if (aPinned !== bPinned) return aPinned ? -1 : 1
-    return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
+    const newestFirst = new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
+    if (Number.isFinite(newestFirst) && newestFirst !== 0) return newestFirst
+    return a.id.localeCompare(b.id)
   })
 }
 
@@ -134,15 +148,34 @@ function sortConversationsInPlace(list: Conversation[], userId: string) {
 export function applyIncomingMessage(
   newMsg: { conversation_id?: string; content?: string; message_type?: string; created_at?: string } | null,
   userId: string,
+  deliveryVersion?: number,
 ): boolean {
   if (!newMsg?.conversation_id || !userId || getActiveAccountId() !== userId) return false
   const conv = conversations.value.find(c => c.id === newMsg.conversation_id) as any
+  if (typeof deliveryVersion === 'number') {
+    const lastDeliveryVersion = conversationInboxDeliveryVersionById.get(
+      newMsg.conversation_id,
+    ) || 0
+    if (deliveryVersion <= lastDeliveryVersion) return !!conv
+    // Record delivery order even when the row is not loaded yet. A newer
+    // callback may finish its badge/moderation work before an older callback;
+    // once an authoritative fetch restores the row, that older continuation
+    // must not roll the preview backward.
+    conversationInboxDeliveryVersionById.set(
+      newMsg.conversation_id,
+      deliveryVersion,
+    )
+  }
   if (!conv) return false
   conv.last_message_at = newMsg.created_at || new Date().toISOString()
   if (typeof newMsg.content === 'string') {
     conv.last_message_preview = newMsg.message_type === 'text' ? newMsg.content : ''
   }
   if (newMsg.message_type) conv.last_message_type = newMsg.message_type
+  conversationLiveVersionById.set(
+    conv.id,
+    ++latestConversationLiveVersion,
+  )
   sortConversationsInPlace(conversations.value, userId)
   conversations.value = [...conversations.value]
   return true
@@ -152,9 +185,18 @@ export function useMessages() {
   const { supabase } = useSupabase()
   const { t, lang } = useI18n()
 
-  async function fetchConversations(userId: string, opts: { force?: boolean } = {}) {
+  async function fetchConversations(
+    userId: string,
+    opts: { force?: boolean; silent?: boolean } = {},
+  ): Promise<boolean> {
     const requestToken = captureAccountRequest(userId)
-    if (!isAccountRequestCurrent(requestToken)) return
+    if (!isAccountRequestCurrent(requestToken)) return false
+    const requestId = ++latestConversationsRequestId
+    const ownerIsCurrent = () => (
+      isAccountRequestCurrent(requestToken)
+      && requestId === latestConversationsRequestId
+    )
+    const liveVersionAtStart = latestConversationLiveVersion
 
     // The inbox owns this dependency instead of assuming App.onLaunch already
     // won the race. On a cold start the conversation query used to resolve
@@ -163,15 +205,18 @@ export function useMessages() {
     // apply it to both the cached and network paths below.
     const { blockedIds, ensureLoaded: ensureBlockedLoaded } = useModeration()
     const moderationGate = await ensureBlockedLoaded()
-    if (!isAccountRequestCurrent(requestToken)) return
+    if (!ownerIsCurrent()) return false
     if (!moderationGate.ok) {
       // A stale inbox can contain a now-blocked peer, so do not preserve it
       // when the authoritative block snapshot is unavailable.
       conversations.value = []
       conversationsError.value = true
+      loading.value = false
       invalidateConversations()
-      uni.showToast({ title: t('error.loadFailed'), icon: 'none', duration: 3000 })
-      return
+      if (!opts.silent) {
+        uni.showToast({ title: t('error.loadFailed'), icon: 'none', duration: 3000 })
+      }
+      return false
     }
 
     if (
@@ -186,26 +231,63 @@ export function useMessages() {
             && !blockedIds.value.has(conversation.seller_id),
         )
       }
-      return
+      loading.value = false
+      return true
     }
-    const requestId = ++latestConversationsRequestId
     loading.value = true
     conversationsError.value = false
     try {
-      const { data, error } = await supabase
-        .from('conversations')
-        .select(`${CONVERSATION_FIELDS},
-          item:items(id, user_id, title, images, image_dimensions, price, status, category),
-          buyer:profiles!conversations_buyer_id_fkey(id, nickname, avatar_url, is_illini_verified),
-          seller:profiles!conversations_seller_id_fkey(id, nickname, avatar_url, is_illini_verified)`)
-        .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`)
-        .order('last_message_at', { ascending: false })
-
-      if (!isAccountRequestCurrent(requestToken) || requestId !== latestConversationsRequestId) return
-      if (error) throw error
+      const data = await readAllAscendingKeyset<any>({
+        isOwnerCurrent: ownerIsCurrent,
+        keyOf: row => row?.id,
+        fetchPage: (afterId, requestedRows) => {
+          let query = supabase
+            .from('conversations')
+            .select(`${CONVERSATION_FIELDS},
+              latest_messages:messages(id, content, message_type, created_at),
+              item:items(id, user_id, title, images, image_dimensions, price, status, category),
+              buyer:profiles!conversations_buyer_id_fkey(id, nickname, avatar_url, is_illini_verified),
+              seller:profiles!conversations_seller_id_fkey(id, nickname, avatar_url, is_illini_verified)`)
+            .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`)
+          if (afterId) query = query.gt('id', afterId)
+          return query
+            .order('id', { ascending: true })
+            .limit(requestedRows)
+            // One deterministic child row per parent. This avoids both a
+            // giant `.in()` URL for large inboxes and a global message cap
+            // where one hot thread could starve every other preview.
+            .order('created_at', {
+              ascending: false,
+              referencedTable: 'latest_messages',
+            })
+            .order('id', {
+              ascending: false,
+              referencedTable: 'latest_messages',
+            })
+            .limit(1, { referencedTable: 'latest_messages' })
+        },
+      })
+      if (data === null || !ownerIsCurrent()) return false
 
       let convs = ((data || []) as unknown as Conversation[])
         .map(sanitizeConversationResources)
+      for (const conversation of convs as any[]) {
+        const latest = Array.isArray(conversation.latest_messages)
+          ? conversation.latest_messages[0]
+          : null
+        delete conversation.latest_messages
+        if (!latest || typeof latest !== 'object') continue
+        conversation.last_message_preview = latest.message_type === 'text'
+          && typeof latest.content === 'string'
+          ? latest.content
+          : ''
+        if (typeof latest.message_type === 'string') {
+          conversation.last_message_type = latest.message_type
+        }
+        if (typeof latest.created_at === 'string' && latest.created_at) {
+          conversation.last_message_at = latest.created_at
+        }
+      }
       if (blockedIds.value.size > 0) {
         convs = convs.filter(c => !blockedIds.value.has(c.buyer_id) && !blockedIds.value.has(c.seller_id))
       }
@@ -213,54 +295,40 @@ export function useMessages() {
       // Archiving is per participant. The separate relation keeps the base
       // conversation schema compatible during rollout; only a confirmed
       // missing-relation error is treated as the pre-migration empty state.
-      const archivedIds = await fetchArchivedConversationIds(supabase, userId)
-      if (!isAccountRequestCurrent(requestToken) || requestId !== latestConversationsRequestId) return
+      const archivedIds = await fetchArchivedConversationIds(supabase, userId, {
+        isOwnerCurrent: ownerIsCurrent,
+      })
+      if (archivedIds === null || !ownerIsCurrent()) return false
       if (archivedIds.size > 0) convs = convs.filter(c => !archivedIds.has(c.id))
 
-      if (convs.length > 0) {
-        /*
-         * Patch each conversation's last-message preview AND timestamp from the
-         * actual newest message (QA6 #3). conversations.last_message_at is
-         * trigger-maintained but was drifting to the FIRST message's time in
-         * the field, so the real message row is the source of truth for both
-         * the displayed "Nd ago" and the sort key. One descending query +
-         * client dedupe (first row per conversation = newest) gets the
-         * timestamp the get_last_messages RPC doesn't return; RLS already
-         * scopes messages to the participant. The 600 cap is a safety bound —
-         * a conversation past it keeps its column value as a fallback.
-         */
-        const ids = convs.map(c => c.id)
-        const { data: recent } = await supabase
-          .from('messages')
-          .select('conversation_id, content, message_type, created_at')
-          .in('conversation_id', ids)
-          .order('created_at', { ascending: false })
-          .limit(600)
-        if (!isAccountRequestCurrent(requestToken) || requestId !== latestConversationsRequestId) return
-        const seen = new Set<string>()
-        const convById = new Map(convs.map(c => [c.id, c]))
-        for (const m of (recent || []) as any[]) {
-          if (seen.has(m.conversation_id)) continue
-          seen.add(m.conversation_id)
-          const c = convById.get(m.conversation_id) as any
-          if (!c) continue
-          c.last_message_preview = m.message_type === 'text' ? m.content : ''
-          c.last_message_type = m.message_type
-          if (m.created_at) c.last_message_at = m.created_at
-        }
+      if (!isAccountRequestCurrent(requestToken) || requestId !== latestConversationsRequestId) return false
+      const currentById = new Map(conversations.value.map(c => [c.id, c]))
+      for (const conversation of convs as any[]) {
+        if (
+          (conversationLiveVersionById.get(conversation.id) || 0)
+          <= liveVersionAtStart
+        ) continue
+        const live = currentById.get(conversation.id) as any
+        if (!live) continue
+        conversation.last_message_at = live.last_message_at
+        conversation.last_message_preview = live.last_message_preview
+        conversation.last_message_type = live.last_message_type
       }
-      if (!isAccountRequestCurrent(requestToken) || requestId !== latestConversationsRequestId) return
       sortConversationsInPlace(convs, userId)
       conversations.value = convs
       conversationsFetchedAt = Date.now()
       conversationsFetchedFor = userId
+      return true
     } catch (error: any) {
-      if (!isAccountRequestCurrent(requestToken) || requestId !== latestConversationsRequestId) return
+      if (!isAccountRequestCurrent(requestToken) || requestId !== latestConversationsRequestId) return false
       console.error('[messages] fetch conversations failed')
       // Only flag the dedicated error surface when there's no prior list to
       // fall back on — otherwise keep the stale list visible and just toast.
       if (conversations.value.length === 0) conversationsError.value = true
-      uni.showToast({ title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('error.loadFailed'), icon: 'none', duration: 3000 })
+      if (!opts.silent) {
+        uni.showToast({ title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('error.loadFailed'), icon: 'none', duration: 3000 })
+      }
+      return false
     } finally {
       if (isAccountRequestCurrent(requestToken) && requestId === latestConversationsRequestId) {
         loading.value = false
@@ -275,10 +343,11 @@ export function useMessages() {
   // a marketplace chat; a "load earlier" affordance can come later).
   const MESSAGE_PAGE = 200
 
-  async function fetchMessages(conversationId: string) {
+  async function fetchMessages(conversationId: string): Promise<boolean> {
     const accountToken = captureActiveAccountRequest()
-    if (!accountToken) return
+    if (!accountToken) return false
     activateMessagesConversation(conversationId)
+    const liveVersionAtStart = latestMessageLiveVersion
     const requestId = ++latestMessagesRequestId
     const { data, error } = await supabase
       .from('messages')
@@ -294,7 +363,7 @@ export function useMessages() {
       requestId !== latestMessagesRequestId ||
       activeMessagesConversationId !== conversationId ||
       !isAccountRequestCurrent(accountToken)
-    ) return
+    ) return false
     if (error) throw error
     /* PostgREST embed 'sender:profiles(...)' resolves to a single row via
        the FK, but TS can't narrow that from our template-literal select —
@@ -309,10 +378,17 @@ export function useMessages() {
        rows so navigating to a different thread still clears the old one. */
     const byId = new Map<string, Message>()
     for (const m of messages.value) if (m.conversation_id === conversationId) byId.set(m.id, m)
-    for (const m of fetched) byId.set(m.id, m)
+    for (const m of fetched) {
+      if (
+        byId.has(m.id)
+        && (messageLiveVersionById.get(m.id) || 0) > liveVersionAtStart
+      ) continue
+      byId.set(m.id, m)
+    }
     messages.value = [...byId.values()].sort(
       (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
     )
+    return true
   }
 
   function clearMessages() {
@@ -552,7 +628,8 @@ export function useMessages() {
     conversationId: string,
     onNewMessage: (msg: Message) => void,
     onMessageUpdate?: (msg: Message) => void,
-    onReady?: () => void,
+    onReady?: () => void | Promise<void>,
+    onReconcile?: () => void | Promise<void>,
   ) {
     const accountToken = captureActiveAccountRequest()
     if (!accountToken) return () => {}
@@ -573,6 +650,7 @@ export function useMessages() {
           !isAccountRequestCurrent(accountToken) ||
           msg.conversation_id !== conversationId
         ) return
+        messageLiveVersionById.set(msg.id, ++latestMessageLiveVersion)
         onNewMessage(msg)
       },
       onMessageUpdate ? (m) => {
@@ -582,6 +660,7 @@ export function useMessages() {
           !isAccountRequestCurrent(accountToken) ||
           msg.conversation_id !== conversationId
         ) return
+        messageLiveVersionById.set(msg.id, ++latestMessageLiveVersion)
         onMessageUpdate(msg)
       } : undefined,
       onReady ? () => {
@@ -589,7 +668,14 @@ export function useMessages() {
           activeMessagesConversationId !== conversationId ||
           !isAccountRequestCurrent(accountToken)
         ) return
-        onReady()
+        return onReady()
+      } : undefined,
+      onReconcile ? () => {
+        if (
+          activeMessagesConversationId !== conversationId ||
+          !isAccountRequestCurrent(accountToken)
+        ) return
+        return onReconcile()
       } : undefined,
     )
   }
@@ -672,7 +758,7 @@ export function useMessages() {
   async function markConversationUnread(conversationId: string, userId: string) {
     const accountToken = captureAccountRequest(userId)
     if (!isAccountRequestCurrent(accountToken)) return
-    const { data: lastMsg } = await supabase
+    const { data: lastMsg, error: lookupError } = await supabase
       .from('messages')
       .select('id')
       .eq('conversation_id', conversationId)
@@ -682,6 +768,7 @@ export function useMessages() {
       .maybeSingle()
 
     if (!isAccountRequestCurrent(accountToken)) return
+    if (lookupError) throw lookupError
     if (lastMsg) {
       const { error } = await supabase
         .from('messages')

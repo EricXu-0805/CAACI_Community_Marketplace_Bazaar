@@ -1,3 +1,5 @@
+import { readAllAscendingKeyset } from './paginatedRead'
+
 type SupabaseLike = {
   from: (relation: string) => any
 }
@@ -21,16 +23,29 @@ export function isConversationArchiveSchemaMissing(error: any): boolean {
 export async function fetchArchivedConversationIds(
   supabase: SupabaseLike,
   userId: string,
-): Promise<Set<string>> {
-  const { data, error } = await supabase
-    .from('conversation_archives')
-    .select('conversation_id')
-    .eq('user_id', userId)
-
-  if (error) {
+  options: { isOwnerCurrent?: () => boolean } = {},
+): Promise<Set<string> | null> {
+  try {
+    const rows = await readAllAscendingKeyset<any>({
+      isOwnerCurrent: options.isOwnerCurrent || (() => true),
+      keyOf: row => row?.conversation_id,
+      fetchPage: (afterConversationId, requestedRows) => {
+        let query = supabase
+          .from('conversation_archives')
+          .select('conversation_id')
+          .eq('user_id', userId)
+        if (afterConversationId) {
+          query = query.gt('conversation_id', afterConversationId)
+        }
+        return query
+          .order('conversation_id', { ascending: true })
+          .limit(requestedRows)
+      },
+    })
+    if (rows === null) return null
+    return new Set<string>(rows.map(row => row.conversation_id))
+  } catch (error: any) {
     if (isConversationArchiveSchemaMissing(error)) return new Set()
     throw error
   }
-
-  return new Set<string>((data || []).map((row: any) => row.conversation_id))
 }

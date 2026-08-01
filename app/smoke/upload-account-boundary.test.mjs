@@ -329,7 +329,10 @@ test('chat history is archived per participant and never hard-deleted by the cli
   const notifications = source('src/composables/useNotifications.ts')
 
   assert.match(messages, /supabase\.rpc\('archive_conversation'/)
-  assert.match(messages, /fetchArchivedConversationIds\(supabase, userId\)/)
+  assert.match(
+    messages,
+    /fetchArchivedConversationIds\(supabase, userId,\s*\{\s*isOwnerCurrent: ownerIsCurrent,\s*\}\)/,
+  )
   assert.doesNotMatch(messages, /\.from\('conversations'\)[\s\S]{0,120}\.delete\(\)/)
   assert.doesNotMatch(messages, /\.from\('messages'\)[\s\S]{0,120}\.delete\(\)/)
   assert.match(inbox, /archiveConversation\(conv\.id\)/)
@@ -339,32 +342,45 @@ test('chat history is archived per participant and never hard-deleted by the cli
   assert.match(archives, /detail\.includes\('conversation_archives'\)/)
 
   const unread = source('src/composables/useUnread.ts')
-  assert.match(unread, /const updatedExistingRow = applyIncomingMessage\(newMsg, userId\)/)
-  assert.match(unread, /if \(!updatedExistingRow\)[\s\S]*?fetchConversations\(userId, \{ force: true \}\)/)
-  assert.match(unread, /subscribeToUserInbox\([\s\S]*?\(\) => \{[\s\S]*?refreshUnreadCount\(\)[\s\S]*?fetchConversations\(userId, \{ force: true \}\)/)
+  assert.match(
+    unread,
+    /const updatedExistingRow = applyIncomingMessage\(\s*newMsg,\s*userId,\s*deliveryVersion,\s*\)/,
+  )
+  assert.match(
+    unread,
+    /if \(!updatedExistingRow\)[\s\S]*?conversationLiveVersion \+= 1[\s\S]*?queueConversationRefresh\(\)/,
+  )
+  assert.match(unread, /const reconcileInboxFromSubscription = \(\) => \{[\s\S]*?refreshUnreadCount\(\)[\s\S]*?runConversationRefresh\(\)/)
+  assert.match(unread, /subscribeToUserInbox\([\s\S]*?reconcileInboxFromSubscription,\s*reconcileInboxFromSubscription,/)
   assert.match(notifications, /row\.conversation_id[\s\S]*row\.type !== 'offer'[\s\S]*row\.type !== 'meetup'/)
   assert.match(notifications, /invalidateConversations\(\)[\s\S]*?fetchConversations\(userId, \{ force: true \}\)/)
   const incoming = notifications.indexOf('function handleIncoming(row: Notification)')
-  const restore = notifications.indexOf('restoreInboxForStructuredActivity(row)', incoming)
+  const restore = notifications.indexOf('restoreInboxForStructuredActivity(incoming)', incoming)
   const dedupe = notifications.indexOf('notifications.value.some', incoming)
   assert.ok(incoming >= 0 && incoming < restore && restore < dedupe,
     'structured archive restore must happen before notification de-duplication')
   assert.match(notifications, /for \(const row of listRows\) restoreInboxForStructuredActivity\(row\)/)
-  assert.match(notifications, /startNotificationsListener\(u\.id, \(\) => \{[\s\S]*?fetchNotifications\(\)/)
+  assert.match(notifications, /startNotificationsListener\(u\.id, \(isListenerCurrent\) => \{[\s\S]*?fetchNotifications\(isListenerCurrent\)/)
   assert.match(notifications, /const requestId = \+\+latestNotificationFetchId/)
   assert.match(notifications, /requestId !== latestNotificationFetchId/)
-  assert.match(notifications, /notificationLiveGeneration \+= 1/)
-  const liveSnapshotGuard = notifications.indexOf('liveGenerationAtStart !== notificationLiveGeneration')
-  const snapshotAssignment = notifications.indexOf('notifications.value = listRows', liveSnapshotGuard)
-  assert.ok(liveSnapshotGuard >= 0 && liveSnapshotGuard < snapshotAssignment,
-    'an HTTP snapshot can overwrite a newer realtime notification')
+  assert.match(notifications, /notificationStateGeneration \+= 1/)
+  const stateSnapshotGuard = notifications.indexOf('stateGenerationAtStart !== notificationStateGeneration')
+  const snapshotAssignment = notifications.indexOf('notifications.value = listRows', stateSnapshotGuard)
+  assert.ok(stateSnapshotGuard >= 0 && stateSnapshotGuard < snapshotAssignment,
+    'an HTTP snapshot can overwrite a newer notification mutation')
 
   const realtime = source('src/composables/useRealtimeFallback.ts')
-  assert.match(realtime, /subscribeToUserNotifications\([\s\S]*onReady\?: \(\) => void/)
-  assert.match(realtime, /status === 'SUBSCRIBED'[\s\S]*onReady\?\.\(\)/)
-  assert.match(realtime, /\.from\('notifications'\)[\s\S]*?\.select\('id, created_at'\)[\s\S]*?messageCursorFromRow\(data\[0\]\)[\s\S]*?lastSeen = \{ createdAt: '', id: null \}[\s\S]*?onReady\?\.\(\)/)
-  assert.match(realtime, /subscribeToUserInbox\([\s\S]*onReady\?: \(\) => void/)
-  assert.match(realtime, /scope: 'inbox'[\s\S]*onReady,/)
+  assert.match(
+    realtime,
+    /export function subscribeToUserNotifications\([\s\S]{0,240}?onReady\?: ReconcileCallback,[\s\S]{0,80}?onReconcile\?: ReconcileCallback,/,
+  )
+  assert.match(realtime, /status === 'SUBSCRIBED'\) markReady\(\)/)
+  assert.match(realtime, /\.from\('notifications'\)[\s\S]*?\.select\('id, created_at'\)[\s\S]*?messageCursorFromRow\(data\[0\]\)[\s\S]*?lastSeen = \{ createdAt: '', id: null \}[\s\S]*?await onReady\?\.\(\)/)
+  assert.match(
+    realtime,
+    /export function subscribeToUserInbox\([\s\S]{0,240}?onReady\?: ReconcileCallback,[\s\S]{0,80}?onReconcile\?: ReconcileCallback,/,
+  )
+  assert.match(realtime, /scope: 'inbox',[\s\S]{0,240}?onReady: markReady,[\s\S]{0,80}?onReconcile,/)
 })
 
 test('a committed chat response cannot repopulate the next account singleton', () => {

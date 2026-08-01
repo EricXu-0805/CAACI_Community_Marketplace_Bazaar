@@ -13,6 +13,8 @@ import { useSupabase } from './useSupabase'
  * and never opens a public channel.
  */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const PRESENCE_TRACK_RETRY_LIMIT = 3
+const PRESENCE_TRACK_RETRY_MS = 1500
 
 export interface ConversationPresenceApi {
   peerOnline: Ref<boolean>
@@ -47,11 +49,96 @@ export function usePresence() {
     let ownUserId = ''
     let isCurrentAccount = () => false
     let subscribed = false
+    let trackReady = false
+    let trackGeneration = 0
+    let trackAttempts = 0
+    let trackRetryTimer: ReturnType<typeof setTimeout> | null = null
     let lastSentAt = 0
     const setPeerOnline = (online: boolean) => {
       if (peerOnline.value === online) return
       peerOnline.value = online
       try { onPeerOnline(online) } catch { /* presentation callback is isolated */ }
+    }
+    const clearTrackRetry = () => {
+      if (!trackRetryTimer) return
+      clearTimeout(trackRetryTimer)
+      trackRetryTimer = null
+    }
+    const syncPeerFromState = (trackedChannel: any) => {
+      try {
+        const state = trackedChannel.presenceState() as Record<string, unknown>
+        const peerEntries = state?.[expectedPeerId]
+        setPeerOnline(Array.isArray(peerEntries) && peerEntries.some(entry => (
+          !!entry
+          && typeof entry === 'object'
+          && (entry as { user_id?: unknown }).user_id === expectedPeerId
+        )))
+      } catch {
+        setPeerOnline(false)
+      }
+    }
+    const invalidateTrack = () => {
+      clearTrackRetry()
+      trackGeneration += 1
+      trackAttempts = 0
+      trackReady = false
+      setPeerOnline(false)
+    }
+    const attemptTrack = () => {
+      if (
+        !subscribed
+        || trackReady
+        || !channel
+        || !isCurrentAccount()
+        || trackAttempts >= PRESENCE_TRACK_RETRY_LIMIT
+      ) return
+
+      clearTrackRetry()
+      const trackedChannel = channel
+      const trackedAccountIsCurrent = isCurrentAccount
+      const generation = ++trackGeneration
+      trackAttempts += 1
+      const isCurrentTrack = () => (
+        subscribed
+        && channel === trackedChannel
+        && generation === trackGeneration
+        && trackedAccountIsCurrent()
+      )
+      const failCurrentTrack = () => {
+        if (!isCurrentTrack()) return
+        trackReady = false
+        setPeerOnline(false)
+        if (trackAttempts >= PRESENCE_TRACK_RETRY_LIMIT) return
+        trackRetryTimer = setTimeout(() => {
+          trackRetryTimer = null
+          if (isCurrentTrack()) attemptTrack()
+        }, PRESENCE_TRACK_RETRY_MS)
+      }
+
+      let result: unknown
+      try {
+        result = trackedChannel.track({
+          user_id: ownUserId,
+          online_at: Date.now(),
+        })
+      } catch {
+        failCurrentTrack()
+        return
+      }
+      void Promise.resolve(result).then(
+        (response) => {
+          if (!isCurrentTrack()) return
+          // RealtimeChannel.track() resolves transport failures as the string
+          // statuses "timed out" or "error"; it does not reject them.
+          if (response !== 'ok') {
+            failCurrentTrack()
+            return
+          }
+          trackReady = true
+          syncPeerFromState(trackedChannel)
+        },
+        failCurrentTrack,
+      )
     }
 
     const unsubscribe = startPrivateRealtimeChannel({
@@ -69,21 +156,11 @@ export function usePresence() {
         channel = privateChannel
         return privateChannel
           .on('presence', { event: 'sync' }, () => {
-            if (!context.isCurrent()) return
-            try {
-              const state = privateChannel.presenceState() as Record<string, unknown>
-              const peerEntries = state?.[expectedPeerId]
-              setPeerOnline(Array.isArray(peerEntries) && peerEntries.some(entry => (
-                !!entry
-                && typeof entry === 'object'
-                && (entry as { user_id?: unknown }).user_id === expectedPeerId
-              )))
-            } catch {
-              setPeerOnline(false)
-            }
+            if (!context.isCurrent() || !subscribed || !trackReady) return
+            syncPeerFromState(privateChannel)
           })
           .on('broadcast', { event: 'typing' }, (message: any) => {
-            if (!context.isCurrent()) return
+            if (!context.isCurrent() || !subscribed || !trackReady) return
             const payload = message?.payload
             if (
               payload?.conversation_id !== conversationId
@@ -93,36 +170,31 @@ export function usePresence() {
           })
       },
       onStatus: (status) => {
-        if (status === 'SUBSCRIBED' && channel) {
+        if (status === 'SUBSCRIBED' && channel && !subscribed) {
           subscribed = true
-          try {
-            void Promise.resolve(channel.track({
-              user_id: ownUserId,
-              online_at: Date.now(),
-            })).catch(() => { setPeerOnline(false) })
-          } catch {
-            setPeerOnline(false)
-          }
+          trackAttempts = 0
+          trackReady = false
+          attemptTrack()
           return
         }
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           subscribed = false
-          setPeerOnline(false)
+          invalidateTrack()
         }
       },
       onClose: () => {
         subscribed = false
+        invalidateTrack()
         channel = null
         ownUserId = ''
         isCurrentAccount = () => false
-        setPeerOnline(false)
       },
     })
 
     return {
       peerOnline,
       sendTyping: () => {
-        if (!subscribed || !channel || !isCurrentAccount()) return
+        if (!subscribed || !trackReady || !channel || !isCurrentAccount()) return
         const now = Date.now()
         if (now - lastSentAt < 1500) return
         lastSentAt = now
@@ -139,7 +211,7 @@ export function usePresence() {
       },
       unsubscribe: () => {
         subscribed = false
-        setPeerOnline(false)
+        invalidateTrack()
         channel = null
         ownUserId = ''
         unsubscribe()
