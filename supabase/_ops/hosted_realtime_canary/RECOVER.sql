@@ -199,15 +199,11 @@ BEGIN
        FROM private.hosted_realtime_canary_runs AS run
        WHERE run.status IN ('active', 'quarantined')
      )
-     OR EXISTS (
-       SELECT 1
-       FROM auth.sessions AS session
-       WHERE session.user_id IN (
-         v_config.actor_a_id,
-         v_config.actor_b_id,
-         v_config.actor_c_id
-       )
-     )
+     OR private.hosted_realtime_canary_fixture_session_count(
+       v_config.actor_a_id,
+       v_config.actor_b_id,
+       v_config.actor_c_id
+     ) <> 0
      OR EXISTS (
        SELECT 1
        FROM private.hosted_realtime_canary_writes AS write

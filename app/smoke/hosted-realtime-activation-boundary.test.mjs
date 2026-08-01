@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -17,6 +18,18 @@ function source(relativePath) {
 
 function activationSource(name) {
   return readFileSync(resolve(OPS_ROOT, name), 'utf8')
+}
+
+function sqlFunctionBody(sql, functionName) {
+  const declaration = `CREATE FUNCTION\n  private.${functionName}`
+  const declarationIndex = sql.indexOf(declaration)
+  assert.ok(declarationIndex >= 0, `missing ${functionName} declaration`)
+  const bodyMarker = 'AS $function$'
+  const bodyIndex = sql.indexOf(bodyMarker, declarationIndex)
+  assert.ok(bodyIndex >= 0, `missing ${functionName} body`)
+  const endIndex = sql.indexOf('$function$;', bodyIndex + bodyMarker.length)
+  assert.ok(endIndex >= 0, `missing ${functionName} body terminator`)
+  return sql.slice(bodyIndex + bodyMarker.length, endIndex)
 }
 
 test('hosted activation remains staging-only and outside migration history', () => {
@@ -82,6 +95,70 @@ test('activation SQL installs a least-privilege run and write ledger', () => {
     activation,
     /FROM auth\.users[\s\S]{0,300}FOR UPDATE/i,
   )
+})
+
+test('managed Auth access is confined to postgres-owned scalar helpers', () => {
+  const activation = activationSource('ACTIVATE.sql')
+  const verifyBody = activationSource('VERIFY_BODY.sql')
+  const rollback = activationSource('ROLLBACK.sql')
+  const bootstrap = activationSource('LOCAL_BOOTSTRAP.sql')
+  const regression = activationSource('LOCAL_REGRESSION.sql')
+  const runner = activationSource('run-local-regression.sh')
+
+  assert.doesNotMatch(activation, /CREATE OR REPLACE FUNCTION/)
+  assert.match(
+    activationSource('PRECHECK.sql'),
+    /procedure\.proname LIKE 'hosted_realtime_canary_%'/,
+  )
+  assert.match(
+    activation,
+    /hosted_realtime_canary_auth_context[\s\S]*RETURNS TABLE\(actor_id uuid, session_id uuid, canary_role text\)[\s\S]*SECURITY DEFINER[\s\S]*SET search_path = pg_catalog/,
+  )
+  assert.match(
+    activation,
+    /hosted_realtime_canary_fixture_session_count[\s\S]*RETURNS integer[\s\S]*SECURITY DEFINER[\s\S]*SET search_path = pg_catalog/,
+  )
+  for (const signature of [
+    'private.hosted_realtime_canary_auth_context(text, text)',
+    'private.hosted_realtime_canary_fixture_session_count(uuid, uuid, uuid)',
+  ]) {
+    const escaped = signature.replace(/[().]/g, '\\$&')
+    assert.match(
+      activation,
+      new RegExp(`ALTER FUNCTION\\s+${escaped}[\\s\\S]*OWNER TO postgres`),
+    )
+    assert.match(rollback, new RegExp(`DROP FUNCTION\\s+${escaped}`))
+  }
+  assert.doesNotMatch(
+    activation,
+    /GRANT USAGE ON SCHEMA auth[\s\S]{0,120}caaci_hosted_realtime_executor/i,
+  )
+  assert.doesNotMatch(
+    activation,
+    /GRANT SELECT ON (?:TABLE )?auth\.(?:users|sessions|identities)[\s\S]{0,180}caaci_hosted_realtime_executor/i,
+  )
+  assert.match(verifyBody, /verify_managed_auth_acl_failed/)
+  assert.match(verifyBody, /verify_auth_helper_acl_failed/)
+  assert.match(verifyBody, /verify_auth_helper_definition_failed/)
+  assert.match(verifyBody, /aclexplode\(procedure\.proacl\)/)
+  for (const helper of [
+    'hosted_realtime_canary_auth_context',
+    'hosted_realtime_canary_fixture_session_count',
+  ]) {
+    const bodyMd5 = createHash('md5')
+      .update(sqlFunctionBody(activation, helper))
+      .digest('hex')
+    assert.match(verifyBody, new RegExp(bodyMd5))
+  }
+
+  assert.match(bootstrap, /ALTER SCHEMA auth OWNER TO supabase_admin/)
+  assert.match(
+    bootstrap,
+    /GRANT SELECT ON TABLE auth\.users, auth\.sessions, auth\.identities[\s\S]*TO postgres;/,
+  )
+  assert.match(runner, /REVOKE supabase_admin FROM postgres/)
+  assert.match(regression, /local_hosted_auth_owner_boundary_failed/)
+  assert.match(regression, /local_auth_helper_boundary_failed/)
 })
 
 test('activation pins the hosted operator and role-switch contract', () => {

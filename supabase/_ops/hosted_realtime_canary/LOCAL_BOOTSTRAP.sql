@@ -386,8 +386,16 @@ CREATE TRIGGER moderate_messages
   BEFORE INSERT ON public.messages
   FOR EACH ROW EXECUTE FUNCTION public.local_passthrough_trigger();
 CREATE TRIGGER trg_chat_block_boundary
-  BEFORE INSERT OR UPDATE ON public.messages
+  BEFORE INSERT ON public.messages
   FOR EACH ROW EXECUTE FUNCTION public.local_passthrough_trigger();
+CREATE TRIGGER trg_chat_block_boundary_update
+  BEFORE UPDATE ON public.messages
+  FOR EACH ROW
+  WHEN (
+    (pg_catalog.to_jsonb(NEW) - 'reminded_at') IS DISTINCT FROM
+    (pg_catalog.to_jsonb(OLD) - 'reminded_at')
+  )
+  EXECUTE FUNCTION public.local_passthrough_trigger();
 CREATE TRIGGER trg_clear_archives_message_insert
   AFTER INSERT ON public.messages
   FOR EACH ROW
@@ -459,6 +467,56 @@ INSERT INTO public.conversations (
     pg_catalog.statement_timestamp() - interval '1 day'
   );
 
-GRANT USAGE ON SCHEMA public, auth TO anon, authenticated, service_role;
+-- Reproduce the hosted managed-Auth ownership boundary. The runner granted a
+-- temporary SET path solely for these ownership transfers and revokes it
+-- before LOCAL_REGRESSION.sql starts.
+GRANT CREATE ON DATABASE caaci_hosted_realtime_regression
+  TO supabase_admin;
+GRANT USAGE, CREATE ON SCHEMA auth TO supabase_admin;
+ALTER TABLE auth.identities OWNER TO supabase_admin;
+ALTER TABLE auth.sessions OWNER TO supabase_admin;
+ALTER TABLE auth.users OWNER TO supabase_admin;
+ALTER FUNCTION auth.uid() OWNER TO supabase_admin;
+ALTER FUNCTION auth.jwt() OWNER TO supabase_admin;
+ALTER SCHEMA auth OWNER TO supabase_admin;
+REVOKE CREATE ON DATABASE caaci_hosted_realtime_regression
+  FROM supabase_admin;
+
+SET ROLE supabase_admin;
+CREATE FUNCTION auth.local_canary_set_session(
+  p_session_id uuid,
+  p_user_id uuid,
+  p_present boolean
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $local_canary_set_session$
+BEGIN
+  IF p_present THEN
+    INSERT INTO auth.sessions (id, user_id)
+    VALUES (p_session_id, p_user_id)
+    ON CONFLICT (id) DO UPDATE
+    SET user_id = EXCLUDED.user_id;
+  ELSE
+    DELETE FROM auth.sessions
+    WHERE id = p_session_id
+      AND user_id = p_user_id;
+  END IF;
+END
+$local_canary_set_session$;
+REVOKE ALL ON FUNCTION auth.local_canary_set_session(uuid, uuid, boolean)
+  FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION auth.local_canary_set_session(uuid, uuid, boolean)
+  TO postgres;
+GRANT USAGE ON SCHEMA auth TO postgres;
+GRANT SELECT ON TABLE auth.users, auth.sessions, auth.identities
+  TO postgres;
+GRANT EXECUTE ON FUNCTION auth.uid(), auth.jwt() TO postgres;
+GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION auth.uid(), auth.jwt()
   TO anon, authenticated, service_role;
+RESET ROLE;
+
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;

@@ -1,8 +1,8 @@
 \set ON_ERROR_STOP on
 
--- Fresh disposable local PostgreSQL cluster only. This script intentionally
--- creates roles/schemas and exercises activation/cleanup/recovery/rollback.
-\ir LOCAL_BOOTSTRAP.sql
+-- Fresh disposable local PostgreSQL cluster only. The runner applies
+-- LOCAL_BOOTSTRAP.sql first, removes the temporary supabase_admin membership,
+-- then invokes this lifecycle regression as the ordinary hosted operator.
 
 \set project_ref abcdefghijklmnopqrst
 \set dataset_lineage local-fixture-v1
@@ -50,6 +50,42 @@ SELECT pg_catalog.encode(
   'hex'
 ) AS fixture_manifest_sha256
 \gset
+
+DO $assert_hosted_auth_owner_boundary$
+BEGIN
+  IF (
+       SELECT owner.rolname
+       FROM pg_catalog.pg_namespace AS namespace
+       JOIN pg_catalog.pg_roles AS owner ON owner.oid = namespace.nspowner
+       WHERE namespace.nspname = 'auth'
+     ) <> 'supabase_admin'
+     OR pg_catalog.pg_has_role('postgres', 'supabase_admin', 'MEMBER')
+     OR pg_catalog.pg_has_role('postgres', 'supabase_admin', 'SET')
+     OR NOT pg_catalog.has_schema_privilege('postgres', 'auth', 'USAGE')
+     OR pg_catalog.has_schema_privilege(
+       'postgres', 'auth', 'USAGE WITH GRANT OPTION'
+     )
+     OR pg_catalog.has_schema_privilege('postgres', 'auth', 'CREATE')
+     OR EXISTS (
+       SELECT 1
+       FROM (VALUES ('users'), ('sessions'), ('identities'))
+         AS managed(relation_name)
+       JOIN pg_catalog.pg_namespace AS namespace
+         ON namespace.nspname = 'auth'
+       JOIN pg_catalog.pg_class AS relation
+         ON relation.relnamespace = namespace.oid
+        AND relation.relname = managed.relation_name
+       WHERE NOT pg_catalog.has_table_privilege(
+         'postgres', relation.oid, 'SELECT'
+       )
+          OR pg_catalog.has_table_privilege(
+            'postgres', relation.oid, 'SELECT WITH GRANT OPTION'
+          )
+     ) THEN
+    RAISE EXCEPTION 'local_hosted_auth_owner_boundary_failed';
+  END IF;
+END
+$assert_hosted_auth_owner_boundary$;
 
 -- Exercise the managed Broadcast/Presence policies behaviorally with the same
 -- JSON claim shape consumed by this disposable fixture. A may join AB; C may
@@ -131,12 +167,95 @@ DROP POLICY local_managed_realtime_conversation_read
 
 -- Normal one-shot run.
 \ir ACTIVATE.sql
+DO $assert_auth_helper_boundary$
+BEGIN
+  IF pg_catalog.has_schema_privilege(
+       'caaci_hosted_realtime_executor', 'auth', 'USAGE'
+     )
+     OR EXISTS (
+       SELECT 1
+       FROM (VALUES ('auth.users'), ('auth.sessions'), ('auth.identities'))
+         AS managed(relation_name)
+       JOIN pg_catalog.pg_namespace namespace
+         ON namespace.nspname = pg_catalog.split_part(managed.relation_name, '.', 1)
+       JOIN pg_catalog.pg_class relation
+         ON relation.relnamespace = namespace.oid
+        AND relation.relname = pg_catalog.split_part(managed.relation_name, '.', 2)
+       CROSS JOIN (VALUES
+         ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'),
+         ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')
+       ) AS privilege(privilege_name)
+       WHERE pg_catalog.has_table_privilege(
+         'caaci_hosted_realtime_executor',
+         relation.oid,
+         privilege.privilege_name
+       )
+     )
+     OR EXISTS (
+       SELECT 1
+       FROM (VALUES ('anon'), ('authenticated'), ('service_role'))
+         AS api(role_name)
+       CROSS JOIN (VALUES
+         ('private.hosted_realtime_canary_auth_context(text,text)'),
+         ('private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid)')
+       ) AS helper(signature)
+       WHERE pg_catalog.has_function_privilege(
+         api.role_name, helper.signature, 'EXECUTE'
+       )
+     )
+     OR NOT pg_catalog.has_function_privilege(
+       'caaci_hosted_realtime_executor',
+       'private.hosted_realtime_canary_auth_context(text,text)',
+       'EXECUTE'
+     )
+     OR NOT pg_catalog.has_function_privilege(
+       'caaci_hosted_realtime_executor',
+       'private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid)',
+       'EXECUTE'
+     ) THEN
+    RAISE EXCEPTION 'local_auth_helper_boundary_failed';
+  END IF;
+END
+$assert_auth_helper_boundary$;
+SET ROLE caaci_hosted_realtime_executor;
+DO $expect_direct_auth_denied$
+BEGIN
+  BEGIN
+    PERFORM auth.uid();
+    RAISE EXCEPTION 'local_direct_auth_function_was_not_denied';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    PERFORM 1 FROM auth.sessions LIMIT 1;
+    RAISE EXCEPTION 'local_direct_auth_table_was_not_denied';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+END
+$expect_direct_auth_denied$;
+DO $expect_invalid_fixture_set_denied$
+BEGIN
+  BEGIN
+    PERFORM private.hosted_realtime_canary_fixture_session_count(
+      '11111111-1111-4111-8111-111111111111'::uuid,
+      '11111111-1111-4111-8111-111111111111'::uuid,
+      '33333333-3333-4333-8333-333333333333'::uuid
+    );
+    RAISE EXCEPTION 'local_duplicate_fixture_set_was_not_denied';
+  EXCEPTION WHEN SQLSTATE '22023' THEN
+    IF SQLERRM <> 'hosted_realtime_canary_fixture_actor_invalid' THEN
+      RAISE;
+    END IF;
+  END;
+END
+$expect_invalid_fixture_set_denied$;
+RESET ROLE;
 SELECT private.hosted_realtime_canary_ttl_cleanup();
 \ir VERIFY.sql
 
-INSERT INTO auth.sessions (id, user_id) VALUES (
+SELECT auth.local_canary_set_session(
   '77777777-7777-4777-8777-777777777777',
-  :'actor_a_id'::uuid
+  :'actor_a_id'::uuid,
+  true
 );
 SELECT pg_catalog.set_config(
   'request.jwt.claims',
@@ -226,14 +345,15 @@ SELECT * FROM public.hosted_realtime_canary_insert_message(
 );
 RESET ROLE;
 
-INSERT INTO auth.sessions (id, user_id) VALUES
-  (
+SELECT auth.local_canary_set_session(
     '77777777-7777-4777-8777-777777777778',
-    :'actor_b_id'::uuid
-  ),
-  (
+    :'actor_b_id'::uuid,
+    true
+  );
+SELECT auth.local_canary_set_session(
     '77777777-7777-4777-8777-777777777779',
-    :'actor_c_id'::uuid
+    :'actor_c_id'::uuid,
+    true
   );
 SELECT pg_catalog.set_config(
   'request.jwt.claims',
@@ -396,11 +516,20 @@ RESET ROLE;
 
 -- These DELETEs represent the ordinary Auth API revokes performed by the
 -- local harness. Activation/recovery SQL itself never writes managed Auth.
-DELETE FROM auth.sessions
-WHERE id IN (
+SELECT auth.local_canary_set_session(
   '77777777-7777-4777-8777-777777777777',
+  :'actor_a_id'::uuid,
+  false
+);
+SELECT auth.local_canary_set_session(
   '77777777-7777-4777-8777-777777777778',
-  '77777777-7777-4777-8777-777777777779'
+  :'actor_b_id'::uuid,
+  false
+);
+SELECT auth.local_canary_set_session(
+  '77777777-7777-4777-8777-777777777779',
+  :'actor_c_id'::uuid,
+  false
 );
 \ir VERIFY.sql
 \ir ROLLBACK.sql
@@ -414,9 +543,10 @@ SELECT (
 \ir ACTIVATE.sql
 SELECT private.hosted_realtime_canary_ttl_cleanup();
 
-INSERT INTO auth.sessions (id, user_id) VALUES (
+SELECT auth.local_canary_set_session(
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-  :'actor_a_id'::uuid
+  :'actor_a_id'::uuid,
+  true
 );
 SELECT pg_catalog.set_config(
   'request.jwt.claims',
@@ -477,8 +607,11 @@ END
 $local_assert$;
 RESET ROLE;
 
-DELETE FROM auth.sessions
-WHERE id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+SELECT auth.local_canary_set_session(
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  :'actor_a_id'::uuid,
+  false
+);
 SET ROLE caaci_hosted_realtime_executor;
 UPDATE private.hosted_realtime_canary_runs
 SET cleaned_at = pg_catalog.statement_timestamp() - interval '8 minutes'

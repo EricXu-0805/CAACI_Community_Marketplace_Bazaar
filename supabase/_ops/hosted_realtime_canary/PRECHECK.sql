@@ -116,6 +116,7 @@ DECLARE
     'enforce_actor_messages',
     'moderate_messages',
     'trg_chat_block_boundary',
+    'trg_chat_block_boundary_update',
     'trg_clear_archives_message_insert',
     'trg_messages_response',
     'trg_rl_messages_before_insert'
@@ -188,6 +189,14 @@ BEGIN
        'public.hosted_realtime_canary_environment()'
      ) IS NOT NULL
      OR EXISTS (
+       SELECT 1
+       FROM pg_catalog.pg_proc AS procedure
+       JOIN pg_catalog.pg_namespace AS namespace
+         ON namespace.oid = procedure.pronamespace
+       WHERE procedure.proname LIKE 'hosted_realtime_canary_%'
+         AND namespace.nspname IN ('private', 'public')
+     )
+     OR EXISTS (
        SELECT 1 FROM pg_catalog.pg_roles
        WHERE rolname = 'caaci_hosted_realtime_executor'
      ) THEN
@@ -251,7 +260,7 @@ BEGIN
        'postgres', 'private', 'CREATE WITH GRANT OPTION'
      )
      OR NOT pg_catalog.has_schema_privilege(
-       'postgres', 'auth', 'USAGE WITH GRANT OPTION'
+       'postgres', 'auth', 'USAGE'
      )
      OR NOT pg_catalog.has_schema_privilege(
        'postgres', 'extensions', 'USAGE'
@@ -266,8 +275,14 @@ BEGIN
        WHERE NOT pg_catalog.has_table_privilege(
          'postgres',
          managed.relation_name,
-         'SELECT WITH GRANT OPTION'
+         'SELECT'
        )
+     )
+     OR NOT pg_catalog.has_function_privilege(
+       'postgres', 'auth.uid()', 'EXECUTE'
+     )
+     OR NOT pg_catalog.has_function_privilege(
+       'postgres', 'auth.jwt()', 'EXECUTE'
      )
      OR NOT EXISTS (
        SELECT 1

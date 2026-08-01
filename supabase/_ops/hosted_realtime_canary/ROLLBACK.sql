@@ -139,15 +139,11 @@ BEGIN
          'active', 'recovery_required', 'quarantined'
        )
      )
-     OR EXISTS (
-       SELECT 1
-       FROM auth.sessions AS session
-       WHERE session.user_id IN (
-         v_config.actor_a_id,
-         v_config.actor_b_id,
-         v_config.actor_c_id
-       )
-     )
+     OR private.hosted_realtime_canary_fixture_session_count(
+       v_config.actor_a_id,
+       v_config.actor_b_id,
+       v_config.actor_c_id
+     ) <> 0
      OR (
        SELECT pg_catalog.count(*)
        FROM pg_catalog.pg_proc AS procedure
@@ -155,7 +151,7 @@ BEGIN
          ON namespace.oid = procedure.pronamespace
        WHERE procedure.proname LIKE 'hosted_realtime_canary_%'
          AND namespace.nspname IN ('private', 'public')
-     ) <> 10
+     ) <> 12
      OR (
        SELECT pg_catalog.count(*)
        FROM pg_catalog.pg_class AS relation
@@ -267,6 +263,20 @@ DROP FUNCTION
   private.hosted_realtime_canary_actor_authorized(uuid, text);
 DROP FUNCTION private.hosted_realtime_canary_residue_count(boolean);
 
+RESET ROLE;
+
+REVOKE ALL ON FUNCTION
+  private.hosted_realtime_canary_auth_context(text, text)
+FROM caaci_hosted_realtime_executor;
+REVOKE ALL ON FUNCTION
+  private.hosted_realtime_canary_fixture_session_count(uuid, uuid, uuid)
+FROM caaci_hosted_realtime_executor;
+DROP FUNCTION private.hosted_realtime_canary_auth_context(text, text);
+DROP FUNCTION
+  private.hosted_realtime_canary_fixture_session_count(uuid, uuid, uuid);
+
+SET LOCAL ROLE caaci_hosted_realtime_executor;
+
 DROP POLICY hosted_realtime_canary_executor_writes
   ON private.hosted_realtime_canary_writes;
 DROP POLICY hosted_realtime_canary_executor_profile_baselines
@@ -284,9 +294,6 @@ DROP TABLE private.hosted_realtime_canary_environment_config;
 RESET ROLE;
 
 REVOKE SELECT ON TABLE
-  auth.users,
-  auth.sessions,
-  auth.identities,
   public.profiles,
   public.conversations,
   public.messages,
@@ -303,9 +310,6 @@ REVOKE EXECUTE ON FUNCTION public.recompute_seller_response(uuid)
   FROM caaci_hosted_realtime_executor;
 REVOKE USAGE, CREATE ON SCHEMA public, private
   FROM caaci_hosted_realtime_executor;
-REVOKE USAGE ON SCHEMA auth
-  FROM caaci_hosted_realtime_executor;
-
 DROP ROLE caaci_hosted_realtime_executor;
 
 DO $rollback_verify$

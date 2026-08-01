@@ -25,6 +25,9 @@ schemas and must never be run against Supabase or any shared database.
   and profile-timestamp baseline verification, and a no-archive invariant;
 - a five-minute database TTL recovery job;
 - fail-closed Auth-session observation for the three disposable accounts;
+- two postgres-owned, private `SECURITY DEFINER` Auth adapters that return only
+  validated synthetic request context or a three-actor session count; the
+  NOLOGIN executor receives no `auth` schema or managed-table access;
 - a mandatory read-only check of the exact managed `realtime.messages`
   owner/RLS/policy/grant catalog before activation;
 - read-only PRECHECK/VERIFY, an explicit RECOVER operation, and a fail-closed
@@ -37,6 +40,14 @@ Each activation is one-shot: cleanup closes write admission before deleting
 rows. The final anonymous sentinel can still prove zero residue, but another
 run requires clean rollback, a fresh PRECHECK/provider proof, and a new
 activation review.
+
+Hosted Supabase owns the `auth` schema with a managed role. The ordinary
+`postgres` operator can read the required Auth catalog but cannot delegate
+schema `USAGE`, so activation must not grant `auth` access to the executor. The
+two private Auth adapters remain owned by `postgres`, fix `search_path` to
+`pg_catalog`, revoke API/PUBLIC execution, and expose no email, metadata, JWT,
+token, identity row, or session list. All other package functions remain owned
+by the NOLOGIN executor and can reach managed Auth only through those adapters.
 
 ## Inputs
 

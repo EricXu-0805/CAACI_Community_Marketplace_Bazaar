@@ -175,7 +175,7 @@ fi
   -h "$cluster_socket" \
   -U caaci_bootstrap \
   -d postgres \
-  -c "CREATE ROLE service_role NOLOGIN BYPASSRLS;" >/dev/null
+  -c "CREATE ROLE service_role NOLOGIN BYPASSRLS; CREATE ROLE supabase_admin NOLOGIN;" >/dev/null
 
 "$psql_bin" \
   -X \
@@ -183,7 +183,7 @@ fi
   -h "$cluster_socket" \
   -U caaci_bootstrap \
   -d postgres \
-  -c "CREATE ROLE postgres LOGIN NOSUPERUSER CREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS INHERIT;" >/dev/null
+  -c "CREATE ROLE postgres LOGIN NOSUPERUSER CREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS INHERIT; GRANT supabase_admin TO postgres WITH INHERIT FALSE, SET TRUE;" >/dev/null
 
 "$psql_bin" \
   -X \
@@ -287,6 +287,31 @@ source_manifest_before="$(compute_source_manifest_sha256)"
   echo "[LOCAL-PG] preflight=pass"
   echo "[LOCAL-PG] source_manifest_before=$source_manifest_before"
 } >"$regression_log"
+
+if ! "$psql_bin" \
+  -X \
+  -v ON_ERROR_STOP=1 \
+  -h "$cluster_socket" \
+  -U postgres \
+  -d caaci_hosted_realtime_regression \
+  -f "$script_dir/LOCAL_BOOTSTRAP.sql" >>"$regression_log" 2>&1
+then
+  echo "[LOCAL-PG] Bootstrap failed; final output follows" >&2
+  tail -n 240 "$regression_log" >&2
+  exit 1
+fi
+
+if ! "$psql_bin" \
+  -X \
+  -v ON_ERROR_STOP=1 \
+  -h "$cluster_socket" \
+  -U caaci_bootstrap \
+  -d caaci_hosted_realtime_regression \
+  -c "REVOKE supabase_admin FROM postgres;" >>"$regression_log" 2>&1
+then
+  echo "[LOCAL-PG] Auth-owner membership revoke failed" >&2
+  exit 1
+fi
 
 if ! "$psql_bin" \
   -X \

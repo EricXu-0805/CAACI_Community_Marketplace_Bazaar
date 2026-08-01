@@ -187,7 +187,7 @@ BEGIN
      OR NOT pg_catalog.has_schema_privilege(
        'caaci_hosted_realtime_executor', 'private', 'USAGE'
      )
-     OR NOT pg_catalog.has_schema_privilege(
+     OR pg_catalog.has_schema_privilege(
        'caaci_hosted_realtime_executor', 'auth', 'USAGE'
      )
      OR pg_catalog.has_schema_privilege(
@@ -220,7 +220,9 @@ BEGIN
 
   v_expected := ARRAY[
     'private.hosted_realtime_canary_actor_authorized(uuid,text)',
+    'private.hosted_realtime_canary_auth_context(text,text)',
     'private.hosted_realtime_canary_cleanup_run(uuid,text)',
+    'private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid)',
     'private.hosted_realtime_canary_message_mutation_guard()',
     'private.hosted_realtime_canary_residue_count(boolean)',
     'private.hosted_realtime_canary_restore_profile_timestamp()',
@@ -254,13 +256,98 @@ BEGIN
     WHERE procedure.proname LIKE 'hosted_realtime_canary_%'
       AND namespace.nspname IN ('private', 'public')
       AND (
-        owner.rolname <> 'caaci_hosted_realtime_executor'
+        owner.rolname <> CASE
+          WHEN procedure.oid IN (
+            'private.hosted_realtime_canary_auth_context(text,text)'::pg_catalog.regprocedure,
+            'private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid)'::pg_catalog.regprocedure
+          ) THEN 'postgres'
+          ELSE 'caaci_hosted_realtime_executor'
+        END
         OR NOT procedure.prosecdef
         OR procedure.proconfig IS DISTINCT FROM
           ARRAY['search_path=pg_catalog']::text[]
+        OR (
+          procedure.oid =
+            'private.hosted_realtime_canary_auth_context(text,text)'::pg_catalog.regprocedure
+          AND pg_catalog.pg_get_function_result(procedure.oid)
+            IS DISTINCT FROM
+              'TABLE(actor_id uuid, session_id uuid, canary_role text)'
+        )
+        OR (
+          procedure.oid =
+            'private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid)'::pg_catalog.regprocedure
+          AND pg_catalog.pg_get_function_result(procedure.oid)
+            IS DISTINCT FROM 'integer'
+        )
       )
   ) THEN
     RAISE EXCEPTION 'verify_function_security_failed'
+      USING ERRCODE = '55000';
+  END IF;
+
+  -- The two postgres-owned adapters are the only bridge into managed Auth.
+  -- Pin their executable body and complete ACL, not just their names/owners,
+  -- so a later data-oracle expansion or extra role grant fails verification.
+  IF EXISTS (
+    SELECT 1
+    FROM (VALUES
+      (
+        'private.hosted_realtime_canary_auth_context(text,text)',
+        true,
+        'record',
+        '3a8e23c85928f8e812f07cdfc7ff139f'
+      ),
+      (
+        'private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid)',
+        false,
+        'integer',
+        'e3758b2417db46e217e84832a367ae40'
+      )
+    ) AS expected(signature, returns_set, return_type, body_md5)
+    LEFT JOIN pg_catalog.pg_proc AS procedure
+      ON procedure.oid = pg_catalog.to_regprocedure(expected.signature)
+    LEFT JOIN pg_catalog.pg_language AS language
+      ON language.oid = procedure.prolang
+    WHERE procedure.oid IS NULL
+       OR language.lanname <> 'plpgsql'
+       OR procedure.provolatile <> 's'
+       OR procedure.prokind <> 'f'
+       OR procedure.proretset IS DISTINCT FROM expected.returns_set
+       OR procedure.prorettype IS DISTINCT FROM
+            pg_catalog.to_regtype(expected.return_type)
+       OR procedure.proleakproof
+       OR procedure.proisstrict
+       OR procedure.proparallel <> 'u'
+       OR pg_catalog.md5(procedure.prosrc) <> expected.body_md5
+       OR procedure.proacl IS NULL
+       OR (
+         SELECT pg_catalog.count(*)
+         FROM pg_catalog.aclexplode(procedure.proacl)
+       ) <> 2
+       OR (
+         SELECT pg_catalog.count(*)
+         FROM pg_catalog.aclexplode(procedure.proacl) AS acl
+         WHERE acl.grantee = pg_catalog.to_regrole('postgres')
+       ) <> 1
+       OR (
+         SELECT pg_catalog.count(*)
+         FROM pg_catalog.aclexplode(procedure.proacl) AS acl
+         WHERE acl.grantee =
+                 pg_catalog.to_regrole('caaci_hosted_realtime_executor')
+       ) <> 1
+       OR EXISTS (
+         SELECT 1
+         FROM pg_catalog.aclexplode(procedure.proacl) AS acl
+         WHERE acl.grantee NOT IN (
+                 pg_catalog.to_regrole('postgres'),
+                 pg_catalog.to_regrole('caaci_hosted_realtime_executor')
+               )
+            OR acl.grantor <> pg_catalog.to_regrole('postgres')
+            OR acl.privilege_type <> 'EXECUTE'
+            OR acl.is_grantable
+       )
+  ) THEN
+    RAISE EXCEPTION 'verify_auth_helper_definition_failed'
       USING ERRCODE = '55000';
   END IF;
 
@@ -297,34 +384,24 @@ BEGIN
     RAISE EXCEPTION 'verify_rpc_acl_failed' USING ERRCODE = '55000';
   END IF;
 
-  IF NOT pg_catalog.has_table_privilege(
-       'caaci_hosted_realtime_executor', 'auth.users', 'SELECT'
-     )
-     OR NOT pg_catalog.has_table_privilege(
-       'caaci_hosted_realtime_executor', 'auth.identities', 'SELECT'
-     )
-     OR NOT pg_catalog.has_table_privilege(
-       'caaci_hosted_realtime_executor', 'auth.sessions', 'SELECT'
-     )
-     OR EXISTS (
+  IF EXISTS (
        SELECT 1
-       FROM (VALUES ('auth.users'), ('auth.identities'), ('auth.sessions'))
-         AS managed(relation)
+       FROM (VALUES ('users'), ('identities'), ('sessions'))
+         AS managed(relation_name)
+       JOIN pg_catalog.pg_namespace AS namespace
+         ON namespace.nspname = 'auth'
+       JOIN pg_catalog.pg_class AS relation
+         ON relation.relnamespace = namespace.oid
+        AND relation.relname = managed.relation_name
+       CROSS JOIN (VALUES
+         ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'),
+         ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')
+       ) AS privilege(privilege_name)
        WHERE pg_catalog.has_table_privilege(
          'caaci_hosted_realtime_executor',
-         managed.relation,
-         'INSERT'
+         relation.oid,
+         privilege.privilege_name
        )
-          OR pg_catalog.has_table_privilege(
-            'caaci_hosted_realtime_executor',
-            managed.relation,
-            'UPDATE'
-          )
-          OR pg_catalog.has_table_privilege(
-            'caaci_hosted_realtime_executor',
-            managed.relation,
-            'DELETE'
-          )
      ) THEN
     RAISE EXCEPTION 'verify_managed_auth_acl_failed'
       USING ERRCODE = '55000';
@@ -418,7 +495,9 @@ BEGIN
     ) AS api(role_name)
     CROSS JOIN (VALUES
       ('private.hosted_realtime_canary_actor_authorized(uuid,text)'),
+      ('private.hosted_realtime_canary_auth_context(text,text)'),
       ('private.hosted_realtime_canary_cleanup_run(uuid,text)'),
+      ('private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid)'),
       ('private.hosted_realtime_canary_message_mutation_guard()'),
       ('private.hosted_realtime_canary_residue_count(boolean)'),
       ('private.hosted_realtime_canary_restore_profile_timestamp()'),
@@ -431,6 +510,20 @@ BEGIN
     )
   ) THEN
     RAISE EXCEPTION 'verify_private_api_acl_failed'
+      USING ERRCODE = '55000';
+  END IF;
+
+  IF NOT pg_catalog.has_function_privilege(
+       'caaci_hosted_realtime_executor',
+       'private.hosted_realtime_canary_auth_context(text,text)',
+       'EXECUTE'
+     )
+     OR NOT pg_catalog.has_function_privilege(
+       'caaci_hosted_realtime_executor',
+       'private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid)',
+       'EXECUTE'
+     ) THEN
+    RAISE EXCEPTION 'verify_auth_helper_acl_failed'
       USING ERRCODE = '55000';
   END IF;
 
@@ -484,6 +577,7 @@ BEGIN
     'enforce_actor_messages',
     'moderate_messages',
     'trg_chat_block_boundary',
+    'trg_chat_block_boundary_update',
     'trg_clear_archives_message_insert',
     'trg_messages_response',
     'trg_rl_messages_before_insert'

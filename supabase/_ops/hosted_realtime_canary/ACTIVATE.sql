@@ -733,12 +733,9 @@ FROM PUBLIC, anon, authenticated, service_role;
 
 RESET ROLE;
 
-GRANT USAGE ON SCHEMA public, private, auth
+GRANT USAGE ON SCHEMA public, private
   TO caaci_hosted_realtime_executor;
 GRANT SELECT ON TABLE
-  auth.users,
-  auth.sessions,
-  auth.identities,
   public.profiles,
   public.conversations,
   public.messages,
@@ -754,7 +751,162 @@ GRANT UPDATE (last_message_at) ON TABLE public.conversations
 GRANT EXECUTE ON FUNCTION public.recompute_seller_response(uuid)
   TO caaci_hosted_realtime_executor;
 
-CREATE OR REPLACE FUNCTION private.hosted_realtime_canary_residue_count(
+-- The hosted postgres operator can read managed Auth but cannot delegate
+-- auth-schema USAGE. Keep that boundary permanent: the NOLOGIN executor sees
+-- only a validated synthetic request context and an aggregate fixture-session
+-- count, never managed Auth rows, email addresses, metadata, or tokens.
+CREATE FUNCTION
+  private.hosted_realtime_canary_auth_context(
+    p_project_ref text,
+    p_dataset_lineage text
+  )
+RETURNS TABLE(actor_id uuid, session_id uuid, canary_role text)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $function$
+DECLARE
+  v_jwt jsonb;
+  v_actor uuid;
+  v_session uuid;
+  v_role text;
+BEGIN
+  IF p_project_ref IS NULL
+     OR p_project_ref !~ '^[a-z0-9]{20}$'
+     OR p_project_ref = 'lfhvgprfphyfvhidegum'
+     OR p_dataset_lineage IS NULL
+     OR p_dataset_lineage !~ '^[a-z0-9][a-z0-9._-]{7,79}$' THEN
+    RETURN;
+  END IF;
+
+  BEGIN
+    v_jwt := auth.jwt();
+    v_actor := auth.uid();
+    v_session := nullif(v_jwt->>'session_id', '')::uuid;
+  EXCEPTION WHEN invalid_text_representation THEN
+    RETURN;
+  END;
+  v_role := v_jwt->'app_metadata'->>'caaci_canary_role';
+
+  IF v_actor IS NULL
+     OR v_session IS NULL
+     OR v_role NOT IN ('member-a', 'member-b', 'member-c')
+     OR v_jwt->>'sub' IS DISTINCT FROM v_actor::text
+     OR v_jwt->>'aud' IS DISTINCT FROM 'authenticated'
+     OR v_jwt->>'iss' IS DISTINCT FROM
+          'https://' || p_project_ref || '.supabase.co/auth/v1'
+     OR (CASE
+          WHEN v_jwt->>'exp' ~ '^[0-9]{10,12}$' THEN
+            (v_jwt->>'exp')::bigint <=
+              extract(epoch FROM pg_catalog.statement_timestamp())::bigint
+          ELSE true
+        END)
+     OR v_jwt->'app_metadata'->'caaci_hosted_canary'
+          IS DISTINCT FROM 'true'::jsonb
+     OR v_jwt->'app_metadata'->>'caaci_dataset_lineage'
+          IS DISTINCT FROM p_dataset_lineage
+     OR NOT EXISTS (
+       SELECT 1
+       FROM auth.users AS user_row
+       WHERE user_row.id = v_actor
+         AND (
+           user_row.banned_until IS NULL
+           OR user_row.banned_until <= pg_catalog.statement_timestamp()
+         )
+         AND user_row.raw_app_meta_data->'caaci_hosted_canary'
+           IS NOT DISTINCT FROM 'true'::jsonb
+         AND user_row.raw_app_meta_data->>'caaci_dataset_lineage'
+           IS NOT DISTINCT FROM p_dataset_lineage
+         AND user_row.raw_app_meta_data->>'caaci_canary_role'
+           IS NOT DISTINCT FROM v_role
+         AND lower(user_row.email) ~
+           '^[^@[:space:]]+@[^@[:space:]]+\.invalid$'
+     )
+     OR (
+       SELECT pg_catalog.count(*)
+       FROM auth.identities AS identity
+       WHERE identity.user_id = v_actor
+         AND identity.provider = 'email'
+     ) <> 1
+     OR EXISTS (
+       SELECT 1
+       FROM auth.identities AS identity
+       WHERE identity.user_id = v_actor
+         AND identity.provider <> 'email'
+     )
+     OR NOT EXISTS (
+       SELECT 1
+       FROM auth.sessions AS session
+       WHERE session.id = v_session
+         AND session.user_id = v_actor
+     ) THEN
+    RETURN;
+  END IF;
+
+  RETURN QUERY SELECT v_actor, v_session, v_role;
+END
+$function$;
+
+REVOKE ALL ON FUNCTION
+  private.hosted_realtime_canary_auth_context(text, text)
+FROM PUBLIC, anon, authenticated, service_role,
+  caaci_hosted_realtime_executor;
+GRANT EXECUTE ON FUNCTION
+  private.hosted_realtime_canary_auth_context(text, text)
+TO caaci_hosted_realtime_executor;
+ALTER FUNCTION private.hosted_realtime_canary_auth_context(text, text)
+  OWNER TO postgres;
+
+CREATE FUNCTION
+  private.hosted_realtime_canary_fixture_session_count(
+    p_actor_a uuid,
+    p_actor_b uuid,
+    p_actor_c uuid
+  )
+RETURNS integer
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $function$
+DECLARE
+  v_count integer;
+BEGIN
+  IF p_actor_a IS NULL
+     OR p_actor_b IS NULL
+     OR p_actor_c IS NULL
+     OR pg_catalog.cardinality(ARRAY[
+       p_actor_a, p_actor_b, p_actor_c
+     ]::uuid[]) <> (
+       SELECT pg_catalog.count(DISTINCT actor)
+       FROM pg_catalog.unnest(ARRAY[
+         p_actor_a, p_actor_b, p_actor_c
+       ]::uuid[]) AS actor
+     ) THEN
+    RAISE EXCEPTION 'hosted_realtime_canary_fixture_actor_invalid'
+      USING ERRCODE = '22023';
+  END IF;
+
+  SELECT pg_catalog.count(*)::integer INTO v_count
+  FROM auth.sessions AS session
+  WHERE session.user_id IN (p_actor_a, p_actor_b, p_actor_c);
+  RETURN v_count;
+END
+$function$;
+
+REVOKE ALL ON FUNCTION
+  private.hosted_realtime_canary_fixture_session_count(uuid, uuid, uuid)
+FROM PUBLIC, anon, authenticated, service_role,
+  caaci_hosted_realtime_executor;
+GRANT EXECUTE ON FUNCTION
+  private.hosted_realtime_canary_fixture_session_count(uuid, uuid, uuid)
+TO caaci_hosted_realtime_executor;
+ALTER FUNCTION
+  private.hosted_realtime_canary_fixture_session_count(uuid, uuid, uuid)
+  OWNER TO postgres;
+
+CREATE FUNCTION private.hosted_realtime_canary_residue_count(
   p_ignore_auth_sessions boolean
 )
 RETURNS integer
@@ -821,14 +973,14 @@ BEGIN
     );
 
   IF NOT p_ignore_auth_sessions THEN
-    SELECT v_count + pg_catalog.count(*)::integer INTO v_count
-    FROM auth.sessions AS session
-    WHERE session.user_id IN (
-      v_config.actor_a_id,
-      v_config.actor_b_id,
-      v_config.actor_c_id
-    )
-      AND NOT v_has_active;
+    IF NOT v_has_active THEN
+      v_count := v_count
+        + private.hosted_realtime_canary_fixture_session_count(
+            v_config.actor_a_id,
+            v_config.actor_b_id,
+            v_config.actor_c_id
+          );
+    END IF;
   END IF;
 
   IF v_config.session_quarantine_until IS NOT NULL
@@ -892,7 +1044,7 @@ REVOKE ALL ON FUNCTION
 ALTER FUNCTION private.hosted_realtime_canary_residue_count(boolean)
   OWNER TO caaci_hosted_realtime_executor;
 
-CREATE OR REPLACE FUNCTION
+CREATE FUNCTION
   private.hosted_realtime_canary_actor_authorized(
     p_actor uuid,
     p_expected_role text
@@ -905,26 +1057,7 @@ SET search_path = pg_catalog
 AS $function$
   SELECT
     p_actor IS NOT NULL
-    AND p_actor = auth.uid()
     AND p_expected_role IN ('member-a', 'member-b', 'member-c')
-    AND auth.jwt()->>'sub' = p_actor::text
-    AND auth.jwt()->>'aud' = 'authenticated'
-    AND auth.jwt()->>'iss' =
-      'https://' || config.project_ref || '.supabase.co/auth/v1'
-    AND CASE
-      WHEN auth.jwt()->>'exp' ~ '^[0-9]{10,12}$' THEN
-        (auth.jwt()->>'exp')::bigint >
-          extract(
-            epoch FROM pg_catalog.statement_timestamp()
-          )::bigint
-      ELSE false
-    END
-    AND auth.jwt()->'app_metadata'->'caaci_hosted_canary'
-      IS NOT DISTINCT FROM 'true'::jsonb
-    AND auth.jwt()->'app_metadata'->>'caaci_dataset_lineage' =
-      config.dataset_lineage
-    AND auth.jwt()->'app_metadata'->>'caaci_canary_role' =
-      p_expected_role
     AND CASE p_expected_role
       WHEN 'member-a' THEN p_actor = config.actor_a_id
       WHEN 'member-b' THEN p_actor = config.actor_b_id
@@ -933,38 +1066,12 @@ AS $function$
     END
     AND EXISTS (
       SELECT 1
-      FROM auth.users AS user_row
-      WHERE user_row.id = p_actor
-        AND (
-          user_row.banned_until IS NULL
-          OR user_row.banned_until <= pg_catalog.statement_timestamp()
-        )
-        AND user_row.raw_app_meta_data->'caaci_hosted_canary'
-          IS NOT DISTINCT FROM 'true'::jsonb
-        AND user_row.raw_app_meta_data->>'caaci_dataset_lineage' =
-          config.dataset_lineage
-        AND user_row.raw_app_meta_data->>'caaci_canary_role' =
-          p_expected_role
-        AND lower(user_row.email) ~
-          '^[^@[:space:]]+@[^@[:space:]]+\.invalid$'
-    )
-    AND (
-      SELECT pg_catalog.count(*)
-      FROM auth.identities AS identity
-      WHERE identity.user_id = p_actor
-        AND identity.provider = 'email'
-    ) = 1
-    AND NOT EXISTS (
-      SELECT 1
-      FROM auth.identities AS identity
-      WHERE identity.user_id = p_actor
-        AND identity.provider <> 'email'
-    )
-    AND EXISTS (
-      SELECT 1
-      FROM auth.sessions AS session
-      WHERE session.id::text = auth.jwt()->>'session_id'
-        AND session.user_id = p_actor
+      FROM private.hosted_realtime_canary_auth_context(
+        config.project_ref,
+        config.dataset_lineage
+      ) AS context
+      WHERE context.actor_id = p_actor
+        AND context.canary_role = p_expected_role
     )
     AND EXISTS (
       SELECT 1
@@ -985,7 +1092,7 @@ ALTER FUNCTION
   private.hosted_realtime_canary_actor_authorized(uuid, text)
   OWNER TO caaci_hosted_realtime_executor;
 
-CREATE OR REPLACE FUNCTION
+CREATE FUNCTION
   private.hosted_realtime_canary_message_mutation_guard()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -1096,7 +1203,7 @@ ALTER FUNCTION private.hosted_realtime_canary_message_mutation_guard()
 -- alphabetic BEFORE UPDATE trigger restores the captured synthetic-fixture
 -- timestamp after the ordinary trigger has run. It cannot bypass a response
 -- metric mismatch; cleanup verifies those values independently.
-CREATE OR REPLACE FUNCTION
+CREATE FUNCTION
   private.hosted_realtime_canary_restore_profile_timestamp()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -1232,7 +1339,7 @@ CREATE POLICY hosted_realtime_canary_executor_conversation_restore
     )
   );
 
-CREATE OR REPLACE FUNCTION
+CREATE FUNCTION
   private.hosted_realtime_canary_cleanup_run(
     p_run_id uuid,
     p_reason text
@@ -1412,7 +1519,7 @@ FROM PUBLIC, anon, authenticated, service_role;
 ALTER FUNCTION private.hosted_realtime_canary_cleanup_run(uuid, text)
   OWNER TO caaci_hosted_realtime_executor;
 
-CREATE OR REPLACE FUNCTION public.hosted_realtime_canary_environment()
+CREATE FUNCTION public.hosted_realtime_canary_environment()
 RETURNS TABLE(
   sentinel_id uuid,
   project_ref text,
@@ -1484,7 +1591,7 @@ GRANT EXECUTE ON FUNCTION public.hosted_realtime_canary_environment()
 ALTER FUNCTION public.hosted_realtime_canary_environment()
   OWNER TO caaci_hosted_realtime_executor;
 
-CREATE OR REPLACE FUNCTION public.hosted_realtime_canary_begin_run(
+CREATE FUNCTION public.hosted_realtime_canary_begin_run(
   p_run_id uuid
 )
 RETURNS TABLE(run_id uuid, lease_expires_at timestamptz)
@@ -1494,7 +1601,7 @@ SET search_path = pg_catalog
 AS $function$
 DECLARE
   v_config private.hosted_realtime_canary_environment_config%ROWTYPE;
-  v_actor uuid := auth.uid();
+  v_actor uuid;
   v_session_id uuid;
   v_lease timestamptz;
 BEGIN
@@ -1508,14 +1615,12 @@ BEGIN
   FROM private.hosted_realtime_canary_environment_config AS config
   WHERE config.singleton
   FOR UPDATE;
-  BEGIN
-    v_session_id := nullif(
-      auth.jwt()->>'session_id',
-      ''
-    )::uuid;
-  EXCEPTION WHEN invalid_text_representation THEN
-    v_session_id := NULL;
-  END;
+  SELECT context.actor_id, context.session_id
+    INTO v_actor, v_session_id
+  FROM private.hosted_realtime_canary_auth_context(
+    v_config.project_ref,
+    v_config.dataset_lineage
+  ) AS context;
   IF p_run_id IS NULL
      OR NOT v_config.admission_open
      OR v_config.expires_at <= pg_catalog.statement_timestamp()
@@ -1533,20 +1638,11 @@ BEGIN
        v_actor,
        'member-a'
      )
-     OR (
-       SELECT pg_catalog.count(*)
-       FROM auth.sessions AS session
-       WHERE session.user_id IN (
-         v_config.actor_a_id,
-         v_config.actor_b_id,
-         v_config.actor_c_id
-       )
-     ) <> 1
-     OR NOT EXISTS (
-       SELECT 1 FROM auth.sessions AS session
-       WHERE session.id = v_session_id
-         AND session.user_id = v_actor
-     ) THEN
+     OR private.hosted_realtime_canary_fixture_session_count(
+       v_config.actor_a_id,
+       v_config.actor_b_id,
+       v_config.actor_c_id
+     ) <> 1 THEN
     RAISE EXCEPTION 'hosted_realtime_canary_begin_denied'
       USING ERRCODE = '42501';
   END IF;
@@ -1580,7 +1676,7 @@ GRANT EXECUTE ON FUNCTION public.hosted_realtime_canary_begin_run(uuid)
 ALTER FUNCTION public.hosted_realtime_canary_begin_run(uuid)
   OWNER TO caaci_hosted_realtime_executor;
 
-CREATE OR REPLACE FUNCTION public.hosted_realtime_canary_insert_message(
+CREATE FUNCTION public.hosted_realtime_canary_insert_message(
   p_run_id uuid,
   p_id uuid,
   p_conversation_id uuid,
@@ -1594,7 +1690,7 @@ AS $function$
 DECLARE
   v_config private.hosted_realtime_canary_environment_config%ROWTYPE;
   v_run private.hosted_realtime_canary_runs%ROWTYPE;
-  v_actor uuid := auth.uid();
+  v_actor uuid;
   v_role text;
   v_quota integer;
   v_existing integer;
@@ -1603,6 +1699,11 @@ BEGIN
   SELECT config.* INTO STRICT v_config
   FROM private.hosted_realtime_canary_environment_config AS config
   WHERE config.singleton;
+  SELECT context.actor_id INTO v_actor
+  FROM private.hosted_realtime_canary_auth_context(
+    v_config.project_ref,
+    v_config.dataset_lineage
+  ) AS context;
   SELECT run.* INTO v_run
   FROM private.hosted_realtime_canary_runs AS run
   WHERE run.run_id = p_run_id
@@ -1721,7 +1822,7 @@ ALTER FUNCTION public.hosted_realtime_canary_insert_message(
   uuid, uuid, uuid, text
 ) OWNER TO caaci_hosted_realtime_executor;
 
-CREATE OR REPLACE FUNCTION public.hosted_realtime_canary_cleanup(
+CREATE FUNCTION public.hosted_realtime_canary_cleanup(
   p_run_id uuid,
   p_message_ids uuid[]
 )
@@ -1733,7 +1834,8 @@ AS $function$
 DECLARE
   v_config private.hosted_realtime_canary_environment_config%ROWTYPE;
   v_run private.hosted_realtime_canary_runs%ROWTYPE;
-  v_actor uuid := auth.uid();
+  v_actor uuid;
+  v_session_id uuid;
   v_supplied uuid[];
   v_ledger uuid[];
   v_result record;
@@ -1741,6 +1843,12 @@ BEGIN
   SELECT config.* INTO STRICT v_config
   FROM private.hosted_realtime_canary_environment_config AS config
   WHERE config.singleton;
+  SELECT context.actor_id, context.session_id
+    INTO v_actor, v_session_id
+  FROM private.hosted_realtime_canary_auth_context(
+    v_config.project_ref,
+    v_config.dataset_lineage
+  ) AS context;
   SELECT run.* INTO v_run
   FROM private.hosted_realtime_canary_runs AS run
   WHERE run.run_id = p_run_id
@@ -1765,8 +1873,7 @@ BEGIN
 
   IF v_actor IS DISTINCT FROM v_config.actor_a_id
      OR v_run.coordinator_id <> v_actor
-     OR (auth.jwt()->>'session_id') IS DISTINCT FROM
-          v_run.coordinator_session_id::text
+     OR v_session_id IS DISTINCT FROM v_run.coordinator_session_id
      OR v_run.status <> 'active'
      OR NOT private.hosted_realtime_canary_actor_authorized(
        v_actor,
@@ -1814,7 +1921,7 @@ GRANT EXECUTE ON FUNCTION public.hosted_realtime_canary_cleanup(uuid, uuid[])
 ALTER FUNCTION public.hosted_realtime_canary_cleanup(uuid, uuid[])
   OWNER TO caaci_hosted_realtime_executor;
 
-CREATE OR REPLACE FUNCTION
+CREATE FUNCTION
   private.hosted_realtime_canary_ttl_cleanup()
 RETURNS integer
 LANGUAGE plpgsql
