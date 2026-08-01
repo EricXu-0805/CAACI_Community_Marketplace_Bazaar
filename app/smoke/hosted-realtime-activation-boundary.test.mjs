@@ -120,7 +120,7 @@ test('managed Auth access is confined to postgres-owned scalar helpers', () => {
   )
   for (const signature of [
     'private.hosted_realtime_canary_auth_context(text, text)',
-    'private.hosted_realtime_canary_fixture_session_count(uuid, uuid, uuid)',
+    'private.hosted_realtime_canary_fixture_session_count(uuid, uuid, uuid, text)',
   ]) {
     const escaped = signature.replace(/[().]/g, '\\$&')
     assert.match(
@@ -159,6 +159,19 @@ test('managed Auth access is confined to postgres-owned scalar helpers', () => {
   assert.match(runner, /REVOKE supabase_admin FROM postgres/)
   assert.match(regression, /local_hosted_auth_owner_boundary_failed/)
   assert.match(regression, /local_auth_helper_boundary_failed/)
+  assert.match(regression, /local_unbound_fixture_set_was_not_denied/)
+  assert.match(activation, /fixture_session_binding_sha256_base64url/)
+  assert.match(activation, /SET application_name FROM CURRENT/)
+  assert.match(activation, /caaci-hosted-session-fixture-v1/)
+  for (const actor of ['a', 'b', 'c']) {
+    assert.match(
+      activation,
+      new RegExp(`:'actor_${actor}_id'::uuid::text`),
+    )
+  }
+  assert.match(regression, /\\set actor_a_id AAAAAAAA-/)
+  assert.match(verifyBody, /application_name=/)
+  assert.match(verifyBody, /fixture_session_binding_sha256_base64url/)
 })
 
 test('activation pins the hosted operator and role-switch contract', () => {
@@ -217,6 +230,25 @@ test('activation pins the hosted operator and role-switch contract', () => {
     verifyBody,
     /has_schema_privilege\([\s\S]*'caaci_hosted_realtime_executor', 'public', 'CREATE'[\s\S]*has_schema_privilege\([\s\S]*'caaci_hosted_realtime_executor', 'private', 'CREATE'/,
   )
+  assert.match(verifyBody, /verify_executor_schema_boundary_failed/)
+  assert.match(verifyBody, /verify_private_table_acl_provenance_failed/)
+  assert.match(
+    verifyBody,
+    /pg_attribute AS attribute[\s\S]*attribute\.attacl IS NOT NULL/,
+  )
+  assert.match(verifyBody, /has_any_column_privilege/)
+  assert.match(
+    verifyBody,
+    /aclexplode\([\s\S]*COALESCE\([\s\S]*relation\.relacl,[\s\S]*acldefault\('r', relation\.relowner\)[\s\S]*EXCEPT[\s\S]*acldefault\([\s\S]*'r',[\s\S]*to_regrole\('caaci_hosted_realtime_executor'\)/,
+  )
+  assert.match(
+    verifyBody,
+    /CROSS JOIN LATERAL \([\s\S]*aclexplode\([\s\S]*acldefault\('r', relation\.relowner\)[\s\S]*privilege_type AS privilege_name/,
+  )
+  assert.doesNotMatch(
+    verifyBody,
+    /has_table_privilege\(\s*'postgres',[\s\S]{0,240}hosted_realtime_canary_/,
+  )
   assert.match(verifyBody, /verify_public_rls_boundary_failed/)
   assert.match(verifyBody, /NOT relation\.relrowsecurity/)
   assert.match(verifyBody, /verify_private_api_acl_failed/)
@@ -274,7 +306,7 @@ test('local SQL runner is isolated, non-superuser, and self-cleaning', () => {
   assert.match(runner, /if \(\( \$# != 0 \)\)/)
   assert.match(runner, /PGHOST PGHOSTADDR PGPORT/)
   assert.match(runner, /unset "\$ambient_name"/)
-  assert.match(runner, /requires PostgreSQL 16\.x/)
+  assert.match(runner, /requires PostgreSQL 16\.x or 17\.x/)
   assert.match(
     runner,
     /mktemp -d \/private\/tmp\/caaci-hosted-pg-local\.XXXXXX/,
@@ -286,6 +318,27 @@ test('local SQL runner is isolated, non-superuser, and self-cleaning', () => {
   assert.match(
     runner,
     /CREATE ROLE postgres LOGIN NOSUPERUSER CREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS INHERIT/,
+  )
+  assert.match(
+    runner,
+    /GRANT pg_read_all_data TO postgres WITH INHERIT TRUE, SET TRUE/,
+  )
+  assert.match(
+    runner,
+    /pg_has_role\(\s*'postgres', 'pg_read_all_data', 'USAGE'/,
+  )
+  assert.match(runner, /GRANT pg_maintain TO postgres WITH ADMIN TRUE/)
+  assert.match(
+    activationSource('LOCAL_REGRESSION.sql'),
+    /GRANT SELECT \(provider_disable_proof_sha256\)[\s\S]*TO authenticated/,
+  )
+  assert.match(
+    activationSource('LOCAL_REGRESSION.sql'),
+    /GRANT pg_maintain TO authenticated[\s\S]*verify_private_api_acl_failed/,
+  )
+  assert.match(
+    activationSource('LOCAL_EXPECT_VERIFY_FAILURE.sql'),
+    /local_verify_current_sqlstate[\s\S]*SQLSTATE[\s\S]*LAST_ERROR_SQLSTATE[\s\S]*LAST_ERROR_MESSAGE[\s\S]*expected_verify_failure_message/,
   )
   assert.match(runner, /-U postgres/)
   assert.match(runner, /-f "\$script_dir\/LOCAL_REGRESSION\.sql"/)
@@ -311,7 +364,7 @@ test('local SQL runner is isolated, non-superuser, and self-cleaning', () => {
   assert.ok(
     runner.lastIndexOf('if ! stop_and_remove_cluster') <
       runner.lastIndexOf(
-        'echo "[LOCAL-PG] PASS PostgreSQL 16 isolated non-superuser regression"',
+        'echo "[LOCAL-PG] PASS PostgreSQL $postgres_major isolated non-superuser regression"',
       ),
   )
   assert.match(

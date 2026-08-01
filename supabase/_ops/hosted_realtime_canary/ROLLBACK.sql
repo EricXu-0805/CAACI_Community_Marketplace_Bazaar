@@ -142,7 +142,8 @@ BEGIN
      OR private.hosted_realtime_canary_fixture_session_count(
        v_config.actor_a_id,
        v_config.actor_b_id,
-       v_config.actor_c_id
+       v_config.actor_c_id,
+       v_config.dataset_lineage
      ) <> 0
      OR (
        SELECT pg_catalog.count(*)
@@ -269,11 +270,11 @@ REVOKE ALL ON FUNCTION
   private.hosted_realtime_canary_auth_context(text, text)
 FROM caaci_hosted_realtime_executor;
 REVOKE ALL ON FUNCTION
-  private.hosted_realtime_canary_fixture_session_count(uuid, uuid, uuid)
+  private.hosted_realtime_canary_fixture_session_count(uuid, uuid, uuid, text)
 FROM caaci_hosted_realtime_executor;
 DROP FUNCTION private.hosted_realtime_canary_auth_context(text, text);
 DROP FUNCTION
-  private.hosted_realtime_canary_fixture_session_count(uuid, uuid, uuid);
+  private.hosted_realtime_canary_fixture_session_count(uuid, uuid, uuid, text);
 
 SET LOCAL ROLE caaci_hosted_realtime_executor;
 

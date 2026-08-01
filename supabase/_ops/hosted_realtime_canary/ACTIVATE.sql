@@ -38,6 +38,34 @@ SELECT
     'caaci.activation_actor_c_id', :'actor_c_id', true
   ),
   pg_catalog.set_config(
+    'caaci.activation_fixture_session_binding_sha256_base64url',
+    pg_catalog.rtrim(
+      pg_catalog.translate(
+        pg_catalog.encode(
+          extensions.digest(
+            pg_catalog.convert_to(
+              pg_catalog.concat_ws(
+                E'\037',
+                'caaci-hosted-session-fixture-v1',
+                lower(:'dataset_lineage'),
+                :'actor_a_id'::uuid::text,
+                :'actor_b_id'::uuid::text,
+                :'actor_c_id'::uuid::text
+              ),
+              'UTF8'
+            ),
+            'sha256'
+          ),
+          'base64'
+        ),
+        '+/',
+        '-_'
+      ),
+      '='
+    ),
+    true
+  ),
+  pg_catalog.set_config(
     'caaci.activation_conversation_ab_id',
     :'conversation_ab_id',
     true
@@ -402,6 +430,11 @@ CREATE TABLE private.hosted_realtime_canary_environment_config (
     CHECK (dataset_lineage ~ '^[a-z0-9][a-z0-9._-]{7,79}$'),
   fixture_manifest_sha256 text NOT NULL
     CHECK (fixture_manifest_sha256 ~ '^[0-9a-f]{64}$'),
+  fixture_session_binding_sha256_base64url text NOT NULL UNIQUE
+    CHECK (
+      fixture_session_binding_sha256_base64url ~
+        '^[0-9A-Za-z_-]{43}$'
+    ),
   fixture_revision integer NOT NULL CHECK (fixture_revision > 0),
   actor_a_id uuid NOT NULL,
   actor_b_id uuid NOT NULL,
@@ -521,6 +554,7 @@ INSERT INTO private.hosted_realtime_canary_environment_config (
   project_ref,
   dataset_lineage,
   fixture_manifest_sha256,
+  fixture_session_binding_sha256_base64url,
   fixture_revision,
   actor_a_id,
   actor_b_id,
@@ -540,6 +574,9 @@ SELECT
   lower(:'project_ref'),
   lower(:'dataset_lineage'),
   lower(:'fixture_manifest_sha256'),
+  pg_catalog.current_setting(
+    'caaci.activation_fixture_session_binding_sha256_base64url'
+  ),
   :'fixture_revision'::integer,
   :'actor_a_id'::uuid,
   :'actor_b_id'::uuid,
@@ -862,7 +899,8 @@ CREATE FUNCTION
   private.hosted_realtime_canary_fixture_session_count(
     p_actor_a uuid,
     p_actor_b uuid,
-    p_actor_c uuid
+    p_actor_c uuid,
+    p_dataset_lineage text
   )
 RETURNS integer
 LANGUAGE plpgsql
@@ -871,11 +909,41 @@ SECURITY DEFINER
 SET search_path = pg_catalog
 AS $function$
 DECLARE
+  v_fixture_binding constant text := pg_catalog.current_setting(
+    'application_name'
+  );
   v_count integer;
 BEGIN
   IF p_actor_a IS NULL
      OR p_actor_b IS NULL
      OR p_actor_c IS NULL
+     OR p_dataset_lineage IS NULL
+     OR p_dataset_lineage !~ '^[a-z0-9][a-z0-9._-]{7,79}$'
+     OR v_fixture_binding !~ '^[0-9A-Za-z_-]{43}$'
+     OR v_fixture_binding IS DISTINCT FROM pg_catalog.rtrim(
+       pg_catalog.translate(
+         pg_catalog.encode(
+           extensions.digest(
+             pg_catalog.convert_to(
+               pg_catalog.concat_ws(
+                 E'\037',
+                 'caaci-hosted-session-fixture-v1',
+                 p_dataset_lineage,
+                 p_actor_a::text,
+                 p_actor_b::text,
+                 p_actor_c::text
+               ),
+               'UTF8'
+             ),
+             'sha256'
+           ),
+           'base64'
+         ),
+         '+/',
+         '-_'
+       ),
+       '='
+     )
      OR pg_catalog.cardinality(ARRAY[
        p_actor_a, p_actor_b, p_actor_c
      ]::uuid[]) <> (
@@ -888,6 +956,39 @@ BEGIN
       USING ERRCODE = '22023';
   END IF;
 
+  IF (
+       SELECT pg_catalog.count(*)
+       FROM (VALUES
+         (p_actor_a, 'member-a'),
+         (p_actor_b, 'member-b'),
+         (p_actor_c, 'member-c')
+       ) AS expected(actor_id, canary_role)
+       JOIN auth.users AS user_row ON user_row.id = expected.actor_id
+       WHERE user_row.raw_app_meta_data->'caaci_hosted_canary'
+               IS NOT DISTINCT FROM 'true'::jsonb
+         AND user_row.raw_app_meta_data->>'caaci_dataset_lineage'
+               IS NOT DISTINCT FROM p_dataset_lineage
+         AND user_row.raw_app_meta_data->>'caaci_canary_role'
+               IS NOT DISTINCT FROM expected.canary_role
+         AND lower(user_row.email) ~
+               '^[^@[:space:]]+@[^@[:space:]]+\.invalid$'
+         AND (
+           SELECT pg_catalog.count(*)
+           FROM auth.identities AS identity
+           WHERE identity.user_id = expected.actor_id
+             AND identity.provider = 'email'
+         ) = 1
+         AND NOT EXISTS (
+           SELECT 1
+           FROM auth.identities AS identity
+           WHERE identity.user_id = expected.actor_id
+             AND identity.provider <> 'email'
+         )
+     ) <> 3 THEN
+    RAISE EXCEPTION 'hosted_realtime_canary_fixture_contract_invalid'
+      USING ERRCODE = '55000';
+  END IF;
+
   SELECT pg_catalog.count(*)::integer INTO v_count
   FROM auth.sessions AS session
   WHERE session.user_id IN (p_actor_a, p_actor_b, p_actor_c);
@@ -896,15 +997,37 @@ END
 $function$;
 
 REVOKE ALL ON FUNCTION
-  private.hosted_realtime_canary_fixture_session_count(uuid, uuid, uuid)
+  private.hosted_realtime_canary_fixture_session_count(uuid, uuid, uuid, text)
 FROM PUBLIC, anon, authenticated, service_role,
   caaci_hosted_realtime_executor;
 GRANT EXECUTE ON FUNCTION
-  private.hosted_realtime_canary_fixture_session_count(uuid, uuid, uuid)
+  private.hosted_realtime_canary_fixture_session_count(uuid, uuid, uuid, text)
 TO caaci_hosted_realtime_executor;
 ALTER FUNCTION
-  private.hosted_realtime_canary_fixture_session_count(uuid, uuid, uuid)
+  private.hosted_realtime_canary_fixture_session_count(uuid, uuid, uuid, text)
   OWNER TO postgres;
+SELECT pg_catalog.set_config(
+  'caaci.activation_previous_application_name',
+  pg_catalog.current_setting('application_name'),
+  true
+);
+SELECT pg_catalog.set_config(
+  'application_name',
+  pg_catalog.current_setting(
+    'caaci.activation_fixture_session_binding_sha256_base64url'
+  ),
+  true
+);
+ALTER FUNCTION
+  private.hosted_realtime_canary_fixture_session_count(uuid, uuid, uuid, text)
+  SET application_name FROM CURRENT;
+SELECT pg_catalog.set_config(
+  'application_name',
+  pg_catalog.current_setting(
+    'caaci.activation_previous_application_name'
+  ),
+  true
+);
 
 CREATE FUNCTION private.hosted_realtime_canary_residue_count(
   p_ignore_auth_sessions boolean
@@ -978,7 +1101,8 @@ BEGIN
         + private.hosted_realtime_canary_fixture_session_count(
             v_config.actor_a_id,
             v_config.actor_b_id,
-            v_config.actor_c_id
+            v_config.actor_c_id,
+            v_config.dataset_lineage
           );
     END IF;
   END IF;
@@ -1641,7 +1765,8 @@ BEGIN
      OR private.hosted_realtime_canary_fixture_session_count(
        v_config.actor_a_id,
        v_config.actor_b_id,
-       v_config.actor_c_id
+       v_config.actor_c_id,
+       v_config.dataset_lineage
      ) <> 1 THEN
     RAISE EXCEPTION 'hosted_realtime_canary_begin_denied'
       USING ERRCODE = '42501';

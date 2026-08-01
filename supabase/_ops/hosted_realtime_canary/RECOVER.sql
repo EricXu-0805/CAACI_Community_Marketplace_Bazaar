@@ -202,7 +202,8 @@ BEGIN
      OR private.hosted_realtime_canary_fixture_session_count(
        v_config.actor_a_id,
        v_config.actor_b_id,
-       v_config.actor_c_id
+       v_config.actor_c_id,
+       v_config.dataset_lineage
      ) <> 0
      OR EXISTS (
        SELECT 1

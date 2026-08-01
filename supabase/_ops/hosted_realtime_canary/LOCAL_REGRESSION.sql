@@ -8,9 +8,9 @@
 \set dataset_lineage local-fixture-v1
 \set sentinel_id 66666666-6666-4666-8666-666666666666
 \set fixture_revision 1
-\set actor_a_id 11111111-1111-4111-8111-111111111111
-\set actor_b_id 22222222-2222-4222-8222-222222222222
-\set actor_c_id 33333333-3333-4333-8333-333333333333
+\set actor_a_id aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1
+\set actor_b_id bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2
+\set actor_c_id cccccccc-cccc-4ccc-8ccc-ccccccccccc3
 \set conversation_ab_id 44444444-4444-4444-8444-444444444444
 \set conversation_ac_id 55555555-5555-4555-8555-555555555555
 \set provider_disable_proof_sha256 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -165,8 +165,15 @@ ROLLBACK;
 DROP POLICY local_managed_realtime_conversation_read
   ON public.conversations;
 
--- Normal one-shot run.
+-- Exercise ACTIVATE with equivalent upper-case UUID text. The installed config
+-- stores UUID values, while the helper binding must hash their canonical text.
+\set actor_a_id AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAA1
+\set actor_b_id BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBB2
+\set actor_c_id CCCCCCCC-CCCC-4CCC-8CCC-CCCCCCCCCCC3
 \ir ACTIVATE.sql
+\set actor_a_id aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1
+\set actor_b_id bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2
+\set actor_c_id cccccccc-cccc-4ccc-8ccc-ccccccccccc3
 DO $assert_auth_helper_boundary$
 BEGIN
   IF pg_catalog.has_schema_privilege(
@@ -181,10 +188,12 @@ BEGIN
        JOIN pg_catalog.pg_class relation
          ON relation.relnamespace = namespace.oid
         AND relation.relname = pg_catalog.split_part(managed.relation_name, '.', 2)
-       CROSS JOIN (VALUES
-         ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'),
-         ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')
-       ) AS privilege(privilege_name)
+       CROSS JOIN LATERAL (
+         SELECT DISTINCT acl.privilege_type AS privilege_name
+         FROM pg_catalog.aclexplode(
+           pg_catalog.acldefault('r', relation.relowner)
+         ) AS acl
+       ) AS privilege
        WHERE pg_catalog.has_table_privilege(
          'caaci_hosted_realtime_executor',
          relation.oid,
@@ -197,7 +206,7 @@ BEGIN
          AS api(role_name)
        CROSS JOIN (VALUES
          ('private.hosted_realtime_canary_auth_context(text,text)'),
-         ('private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid)')
+         ('private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid,text)')
        ) AS helper(signature)
        WHERE pg_catalog.has_function_privilege(
          api.role_name, helper.signature, 'EXECUTE'
@@ -210,7 +219,7 @@ BEGIN
      )
      OR NOT pg_catalog.has_function_privilege(
        'caaci_hosted_realtime_executor',
-       'private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid)',
+       'private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid,text)',
        'EXECUTE'
      ) THEN
     RAISE EXCEPTION 'local_auth_helper_boundary_failed';
@@ -236,11 +245,25 @@ DO $expect_invalid_fixture_set_denied$
 BEGIN
   BEGIN
     PERFORM private.hosted_realtime_canary_fixture_session_count(
-      '11111111-1111-4111-8111-111111111111'::uuid,
-      '11111111-1111-4111-8111-111111111111'::uuid,
-      '33333333-3333-4333-8333-333333333333'::uuid
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1'::uuid,
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1'::uuid,
+      'cccccccc-cccc-4ccc-8ccc-ccccccccccc3'::uuid,
+      'local-fixture-v1'
     );
     RAISE EXCEPTION 'local_duplicate_fixture_set_was_not_denied';
+  EXCEPTION WHEN SQLSTATE '22023' THEN
+    IF SQLERRM <> 'hosted_realtime_canary_fixture_actor_invalid' THEN
+      RAISE;
+    END IF;
+  END;
+  BEGIN
+    PERFORM private.hosted_realtime_canary_fixture_session_count(
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid,
+      'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'::uuid,
+      'cccccccc-cccc-4ccc-8ccc-cccccccccccc'::uuid,
+      'local-fixture-v1'
+    );
+    RAISE EXCEPTION 'local_unbound_fixture_set_was_not_denied';
   EXCEPTION WHEN SQLSTATE '22023' THEN
     IF SQLERRM <> 'hosted_realtime_canary_fixture_actor_invalid' THEN
       RAISE;
@@ -251,6 +274,64 @@ $expect_invalid_fixture_set_denied$;
 RESET ROLE;
 SELECT private.hosted_realtime_canary_ttl_cleanup();
 \ir VERIFY.sql
+
+-- The hosted operator already inherits pg_read_all_data in this regression.
+-- An additional package ACL therefore does not change its effective SELECT
+-- result, but it must still be rejected as package-owned privilege leakage.
+DO $assert_trusted_operator_read_baseline$
+BEGIN
+  IF NOT pg_catalog.has_table_privilege(
+    'postgres',
+    'private.hosted_realtime_canary_environment_config',
+    'SELECT'
+  ) THEN
+    RAISE EXCEPTION 'local_trusted_operator_read_baseline_missing';
+  END IF;
+END
+$assert_trusted_operator_read_baseline$;
+
+BEGIN;
+SET LOCAL ROLE caaci_hosted_realtime_executor;
+GRANT SELECT ON TABLE
+  private.hosted_realtime_canary_environment_config
+TO postgres;
+RESET ROLE;
+\set expected_verify_failure_message verify_private_table_acl_provenance_failed
+\ir LOCAL_EXPECT_VERIFY_FAILURE.sql
+\ir VERIFY.sql
+
+BEGIN;
+SET LOCAL ROLE caaci_hosted_realtime_executor;
+GRANT SELECT (provider_disable_proof_sha256) ON TABLE
+  private.hosted_realtime_canary_environment_config
+TO postgres;
+RESET ROLE;
+\set expected_verify_failure_message verify_private_table_acl_provenance_failed
+\ir LOCAL_EXPECT_VERIFY_FAILURE.sql
+\ir VERIFY.sql
+
+BEGIN;
+SET LOCAL ROLE caaci_hosted_realtime_executor;
+GRANT SELECT (provider_disable_proof_sha256) ON TABLE
+  private.hosted_realtime_canary_environment_config
+TO authenticated;
+RESET ROLE;
+\set expected_verify_failure_message verify_private_table_acl_provenance_failed
+\ir LOCAL_EXPECT_VERIFY_FAILURE.sql
+\ir VERIFY.sql
+
+SELECT (
+  pg_catalog.current_setting('server_version_num')::integer >= 170000
+) AS local_pg17
+\gset
+\if :local_pg17
+  BEGIN;
+  GRANT pg_maintain TO authenticated
+    WITH INHERIT TRUE, SET TRUE;
+  \set expected_verify_failure_message verify_private_api_acl_failed
+  \ir LOCAL_EXPECT_VERIFY_FAILURE.sql
+  \ir VERIFY.sql
+\endif
 
 SELECT auth.local_canary_set_session(
   '77777777-7777-4777-8777-777777777777',

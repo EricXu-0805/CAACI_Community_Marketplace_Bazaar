@@ -43,8 +43,8 @@ postgres_major="$(
   printf '%s\n' "$postgres_version" |
     sed -E 's/.*PostgreSQL\)? ([0-9]+)(\.[0-9]+)*.*$/\1/'
 )"
-if [[ "$postgres_major" != "16" ]]; then
-  echo "[LOCAL-PG] This reproducibility runner requires PostgreSQL 16.x" >&2
+if [[ "$postgres_major" != "16" && "$postgres_major" != "17" ]]; then
+  echo "[LOCAL-PG] This reproducibility runner requires PostgreSQL 16.x or 17.x" >&2
   exit 1
 fi
 
@@ -119,7 +119,8 @@ compute_source_manifest_sha256() {
       ../VERIFY_20260719164126_reconcile_managed_realtime_authorization_contract.sql \
       ACTIVATE.sql PRECHECK.sql VERIFY.sql VERIFY_BODY.sql \
       VERIFY_CRON_BODY.sql RECOVER.sql ROLLBACK.sql \
-      LOCAL_BOOTSTRAP.sql LOCAL_REGRESSION.sql run-local-regression.sh
+      LOCAL_BOOTSTRAP.sql LOCAL_EXPECT_VERIFY_FAILURE.sql \
+      LOCAL_REGRESSION.sql run-local-regression.sh
     do
       printf '%s\n' "$source_file"
       shasum -a 256 "$script_dir/$source_file" | awk '{ print $1 }'
@@ -129,7 +130,8 @@ compute_source_manifest_sha256() {
       ../VERIFY_20260719164126_reconcile_managed_realtime_authorization_contract.sql \
       ACTIVATE.sql PRECHECK.sql VERIFY.sql VERIFY_BODY.sql \
       VERIFY_CRON_BODY.sql RECOVER.sql ROLLBACK.sql \
-      LOCAL_BOOTSTRAP.sql LOCAL_REGRESSION.sql run-local-regression.sh
+      LOCAL_BOOTSTRAP.sql LOCAL_EXPECT_VERIFY_FAILURE.sql \
+      LOCAL_REGRESSION.sql run-local-regression.sh
     do
       printf '%s\n' "$source_file"
       sha256sum "$script_dir/$source_file" | awk '{ print $1 }'
@@ -183,7 +185,17 @@ fi
   -h "$cluster_socket" \
   -U caaci_bootstrap \
   -d postgres \
-  -c "CREATE ROLE postgres LOGIN NOSUPERUSER CREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS INHERIT; GRANT supabase_admin TO postgres WITH INHERIT FALSE, SET TRUE;" >/dev/null
+  -c "CREATE ROLE postgres LOGIN NOSUPERUSER CREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS INHERIT; GRANT supabase_admin TO postgres WITH INHERIT FALSE, SET TRUE; GRANT pg_read_all_data TO postgres WITH INHERIT TRUE, SET TRUE;" >/dev/null
+
+if [[ "$postgres_major" == "17" ]]; then
+  "$psql_bin" \
+    -X \
+    -v ON_ERROR_STOP=1 \
+    -h "$cluster_socket" \
+    -U caaci_bootstrap \
+    -d postgres \
+    -c "GRANT pg_maintain TO postgres WITH ADMIN TRUE, INHERIT FALSE, SET FALSE;" >/dev/null
+fi
 
 "$psql_bin" \
   -X \
@@ -224,6 +236,23 @@ operator_contract="$(
          AND NOT role.rolbypassrls
          AND role.rolinherit
          AND pg_catalog.current_setting('createrole_self_grant') = ''
+         AND pg_catalog.pg_has_role(
+           'postgres', 'pg_read_all_data', 'USAGE'
+         )
+         AND CASE
+           WHEN pg_catalog.current_setting(
+             'server_version_num'
+           )::integer < 170000 THEN true
+           ELSE pg_catalog.pg_has_role(
+             'postgres', 'pg_maintain', 'MEMBER'
+           )
+             AND NOT pg_catalog.pg_has_role(
+               'postgres', 'pg_maintain', 'USAGE'
+             )
+             AND NOT pg_catalog.pg_has_role(
+               'postgres', 'pg_maintain', 'SET'
+             )
+         END
          AND (
            SELECT database_owner.rolname = 'postgres'
            FROM pg_catalog.pg_database AS database
@@ -284,6 +313,10 @@ source_manifest_before="$(compute_source_manifest_sha256)"
   echo "[LOCAL-PG] server=$postgres_version"
   echo "[LOCAL-PG] endpoint=isolated-unix-socket"
   echo "[LOCAL-PG] operator=postgres LOGIN NOSUPERUSER CREATEROLE"
+  echo "[LOCAL-PG] trusted_operator_baseline=pg_read_all_data inherited"
+  if [[ "$postgres_major" == "17" ]]; then
+    echo "[LOCAL-PG] pg17_maintain_negative=enabled"
+  fi
   echo "[LOCAL-PG] preflight=pass"
   echo "[LOCAL-PG] source_manifest_before=$source_manifest_before"
 } >"$regression_log"
@@ -441,8 +474,8 @@ if ! stop_and_remove_cluster; then
 fi
 
 echo "[LOCAL-PG] cluster_cleanup=pass" >>"$regression_log"
-echo "[LOCAL-PG] PASS PostgreSQL 16 isolated non-superuser regression" \
+echo "[LOCAL-PG] PASS PostgreSQL $postgres_major isolated non-superuser regression" \
   >>"$regression_log"
 echo "[LOCAL-PG] source_manifest_sha256=$source_manifest_sha256"
-echo "[LOCAL-PG] PASS PostgreSQL 16 isolated non-superuser regression"
+echo "[LOCAL-PG] PASS PostgreSQL $postgres_major isolated non-superuser regression"
 echo "[LOCAL-PG] evidence_log=$regression_log"

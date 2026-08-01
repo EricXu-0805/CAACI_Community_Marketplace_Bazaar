@@ -5,9 +5,13 @@ the hosted Realtime canary. It is deliberately outside migration history and
 must not be copied into `supabase/migrations`, production, normal CI, or a
 shared development database.
 
-Nothing in this directory has been applied to a remote project. The public
-target allowlist remains empty until all of the following are independently
-verified and Eric explicitly approves the exact target and synthetic writes.
+One explicitly approved A-01 attempt entered a remote staging transaction on
+2026-08-01. Its in-transaction VERIFY failed closed before COMMIT, PostgreSQL
+rolled the whole transaction back, and an immediate read-only census plus a
+fresh PRECHECK found zero package objects, jobs, memberships or write residue.
+The repaired source in this directory has not been retried remotely. The prior
+approval is consumed, the public target allowlist remains empty, and A-02 stays
+blocked until a new Gate 0 and a new exact A-01 approval exist.
 
 `LOCAL_BOOTSTRAP.sql` and `LOCAL_REGRESSION.sql` are destructive fixtures for a
 brand-new disposable local PostgreSQL cluster only. They create stub Auth/cron
@@ -48,6 +52,12 @@ two private Auth adapters remain owned by `postgres`, fix `search_path` to
 `pg_catalog`, revoke API/PUBLIC execution, and expose no email, metadata, JWT,
 token, identity row, or session list. All other package functions remain owned
 by the NOLOGIN executor and can reach managed Auth only through those adapters.
+The session-count adapter is bound by a SHA-256 digest in its function
+configuration to the exact A/B/C IDs and dataset lineage, and VERIFY pins that
+configuration to the server-owned environment record. It also revalidates the
+three role markers, synthetic metadata, `.invalid` email shape and email-only
+identities before counting. Arbitrary distinct user IDs therefore cannot turn
+it into an Auth-session oracle.
 
 ## Inputs
 
@@ -104,27 +114,44 @@ used only for ownership transfer and is revoked before activation commits.
 VERIFY, RECOVER, and ROLLBACK all reject unexpected role edges or inherited
 executor access.
 
-`LOCAL_REGRESSION.sql` has been exercised from a separate connection whose
-actual session user is a PostgreSQL 16 non-superuser `postgres` with
-CREATEROLE. That regression covers canonical managed-Realtime verification,
-activation, normal cleanup, abnormal lease expiry, recovery, standalone
-verification, and rollback. Its local cron catalog is still a stub and its
-heartbeat is invoked manually; the pass therefore proves the local SQL and
-permission model only. It does not prove the hosted operator capabilities,
-the real pg_cron worker, a hosted heartbeat, or any staging/production
-readiness.
+The hosted `postgres` operator may separately inherit trusted platform access,
+such as `pg_read_all_data`. VERIFY does not mistake that pre-existing operator
+baseline for an inherited executor grant. Instead, it compares each private
+package table's ACL with the exact default ACL of its NOLOGIN owner in both
+directions and rejects every explicit column ACL. A direct grant to `postgres`,
+an API role, PUBLIC, or any other grantee therefore still fails closed.
+Effective API and managed-Auth checks derive the complete table-privilege
+vocabulary from PostgreSQL's catalog, so PostgreSQL 17 `MAINTAIN` is included
+without hard-coding a server-version list.
+
+`LOCAL_REGRESSION.sql` has been exercised from separate PostgreSQL 16 and 17
+connections whose actual session user is a non-superuser `postgres` with
+CREATEROLE and inherited `pg_read_all_data`. This simulates the hosted failure's
+relevant inherited platform-read topology without claiming every hosted role
+edge is locally identical. The regression proves that direct table and column
+package grants are rejected even though the operator already has effective
+read access. On PostgreSQL 17 it additionally grants `authenticated` inherited
+`pg_maintain` inside a rolled-back negative test and proves effective
+`MAINTAIN` is rejected.
+
+Both versions cover canonical managed-Realtime verification, activation,
+normal cleanup, abnormal lease expiry, recovery, standalone verification and
+rollback with final residue zero. The local cron catalog is still a stub and
+its heartbeat is invoked manually. These passes therefore prove the local SQL
+and permission model only; they do not prove the real pg_cron worker, a hosted
+heartbeat, or any staging/production readiness.
 
 From `app/`, `npm run smoke:hosted-realtime-sql-local` reproduces this evidence
-in a fresh isolated PostgreSQL 16.x cluster. The runner accepts no database URL
-or credential, disables TCP listening, uses a bootstrap superuser only to
-initialize the isolated cluster, roles and database, and runs the regression
-through a separate LOGIN + CREATEROLE + NOSUPERUSER role named `postgres`. It
-verifies the fresh database owner and role settings before destructive
-bootstrap, prints a source-manifest SHA-256, verifies rollback residue, and
-removes only its guarded `/private/tmp` cluster on exit. For runs that reach
-SQL execution, the complete synthetic regression transcript remains in the
-unique `/private/tmp` evidence log printed on success or failure; it contains
-no hosted credential.
+in a fresh isolated PostgreSQL 16.x or 17.x cluster, selected by the `initdb`
+first on `PATH`. The runner accepts no database URL or credential, disables TCP
+listening, uses a bootstrap superuser only to initialize the isolated cluster,
+roles and database, and runs the regression through a separate LOGIN +
+CREATEROLE + NOSUPERUSER role named `postgres`. It verifies the fresh database
+owner and role settings before destructive bootstrap, prints a source-manifest
+SHA-256, verifies rollback residue, and removes only its guarded `/private/tmp`
+cluster on exit. For runs that reach SQL execution, the complete synthetic
+regression transcript remains in the unique `/private/tmp` evidence log printed
+on success or failure; it contains no hosted credential.
 
 ## Required order
 

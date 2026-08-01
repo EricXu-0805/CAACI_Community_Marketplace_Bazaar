@@ -195,26 +195,8 @@ BEGIN
      )
      OR pg_catalog.has_schema_privilege(
        'caaci_hosted_realtime_executor', 'private', 'CREATE'
-     )
-     OR EXISTS (
-       SELECT 1
-       FROM (VALUES
-         ('private.hosted_realtime_canary_environment_config'),
-         ('private.hosted_realtime_canary_runs'),
-         ('private.hosted_realtime_canary_writes'),
-         ('private.hosted_realtime_canary_profile_baselines')
-       ) AS private_relation(relation_name)
-       CROSS JOIN (VALUES
-         ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'),
-         ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')
-       ) AS privilege(privilege_name)
-       WHERE pg_catalog.has_table_privilege(
-         'postgres',
-         private_relation.relation_name,
-         privilege.privilege_name
-       )
      ) THEN
-    RAISE EXCEPTION 'verify_executor_privilege_boundary_failed'
+    RAISE EXCEPTION 'verify_executor_schema_boundary_failed'
       USING ERRCODE = '55000';
   END IF;
 
@@ -222,7 +204,7 @@ BEGIN
     'private.hosted_realtime_canary_actor_authorized(uuid,text)',
     'private.hosted_realtime_canary_auth_context(text,text)',
     'private.hosted_realtime_canary_cleanup_run(uuid,text)',
-    'private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid)',
+    'private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid,text)',
     'private.hosted_realtime_canary_message_mutation_guard()',
     'private.hosted_realtime_canary_residue_count(boolean)',
     'private.hosted_realtime_canary_restore_profile_timestamp()',
@@ -259,13 +241,21 @@ BEGIN
         owner.rolname <> CASE
           WHEN procedure.oid IN (
             'private.hosted_realtime_canary_auth_context(text,text)'::pg_catalog.regprocedure,
-            'private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid)'::pg_catalog.regprocedure
+            'private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid,text)'::pg_catalog.regprocedure
           ) THEN 'postgres'
           ELSE 'caaci_hosted_realtime_executor'
         END
         OR NOT procedure.prosecdef
-        OR procedure.proconfig IS DISTINCT FROM
-          ARRAY['search_path=pg_catalog']::text[]
+        OR procedure.proconfig IS DISTINCT FROM CASE
+          WHEN procedure.oid =
+            'private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid,text)'::pg_catalog.regprocedure
+          THEN ARRAY[
+            'search_path=pg_catalog',
+            'application_name=' ||
+              v_config.fixture_session_binding_sha256_base64url
+          ]::text[]
+          ELSE ARRAY['search_path=pg_catalog']::text[]
+        END
         OR (
           procedure.oid =
             'private.hosted_realtime_canary_auth_context(text,text)'::pg_catalog.regprocedure
@@ -275,7 +265,7 @@ BEGIN
         )
         OR (
           procedure.oid =
-            'private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid)'::pg_catalog.regprocedure
+            'private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid,text)'::pg_catalog.regprocedure
           AND pg_catalog.pg_get_function_result(procedure.oid)
             IS DISTINCT FROM 'integer'
         )
@@ -298,10 +288,10 @@ BEGIN
         '3a8e23c85928f8e812f07cdfc7ff139f'
       ),
       (
-        'private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid)',
+        'private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid,text)',
         false,
         'integer',
-        'e3758b2417db46e217e84832a367ae40'
+        '3c958f3b8871a873050e2d7fc3f31cbe'
       )
     ) AS expected(signature, returns_set, return_type, body_md5)
     LEFT JOIN pg_catalog.pg_proc AS procedure
@@ -393,10 +383,12 @@ BEGIN
        JOIN pg_catalog.pg_class AS relation
          ON relation.relnamespace = namespace.oid
         AND relation.relname = managed.relation_name
-       CROSS JOIN (VALUES
-         ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'),
-         ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')
-       ) AS privilege(privilege_name)
+       CROSS JOIN LATERAL (
+         SELECT DISTINCT acl.privilege_type AS privilege_name
+         FROM pg_catalog.aclexplode(
+           pg_catalog.acldefault('r', relation.relowner)
+         ) AS acl
+       ) AS privilege
        WHERE pg_catalog.has_table_privilege(
          'caaci_hosted_realtime_executor',
          relation.oid,
@@ -460,6 +452,92 @@ BEGIN
       USING ERRCODE = '55000';
   END IF;
 
+  -- Hosted Supabase may give its trusted postgres operator inherited
+  -- platform-wide read access (for example through pg_read_all_data). That is
+  -- not a package grant and must not be confused with inherited executor
+  -- privileges. Prove instead that every package table has exactly the
+  -- owner's default ACL: no direct postgres/API/PUBLIC grant and no grant
+  -- option added by this activation.
+  IF EXISTS (
+    SELECT 1
+    FROM (VALUES
+      ('hosted_realtime_canary_environment_config'),
+      ('hosted_realtime_canary_runs'),
+      ('hosted_realtime_canary_writes'),
+      ('hosted_realtime_canary_profile_baselines')
+    ) AS expected(relation_name)
+    LEFT JOIN pg_catalog.pg_namespace AS namespace
+      ON namespace.nspname = 'private'
+    LEFT JOIN pg_catalog.pg_class AS relation
+      ON relation.relnamespace = namespace.oid
+     AND relation.relname = expected.relation_name
+     AND relation.relkind = 'r'
+    WHERE relation.oid IS NULL
+       OR relation.relowner IS DISTINCT FROM
+            pg_catalog.to_regrole('caaci_hosted_realtime_executor')
+       OR EXISTS (
+         SELECT 1
+         FROM pg_catalog.pg_attribute AS attribute
+         WHERE attribute.attrelid = relation.oid
+           AND attribute.attnum > 0
+           AND NOT attribute.attisdropped
+           AND attribute.attacl IS NOT NULL
+       )
+       OR EXISTS (
+         SELECT
+           acl.grantor,
+           acl.grantee,
+           acl.privilege_type,
+           acl.is_grantable
+         FROM pg_catalog.aclexplode(
+           COALESCE(
+             relation.relacl,
+             pg_catalog.acldefault('r', relation.relowner)
+           )
+         ) AS acl
+         EXCEPT
+         SELECT
+           expected_acl.grantor,
+           expected_acl.grantee,
+           expected_acl.privilege_type,
+           expected_acl.is_grantable
+         FROM pg_catalog.aclexplode(
+           pg_catalog.acldefault(
+             'r',
+             pg_catalog.to_regrole('caaci_hosted_realtime_executor')
+           )
+         ) AS expected_acl
+       )
+       OR EXISTS (
+         SELECT
+           expected_acl.grantor,
+           expected_acl.grantee,
+           expected_acl.privilege_type,
+           expected_acl.is_grantable
+         FROM pg_catalog.aclexplode(
+           pg_catalog.acldefault(
+             'r',
+             pg_catalog.to_regrole('caaci_hosted_realtime_executor')
+           )
+         ) AS expected_acl
+         EXCEPT
+         SELECT
+           acl.grantor,
+           acl.grantee,
+           acl.privilege_type,
+           acl.is_grantable
+         FROM pg_catalog.aclexplode(
+           COALESCE(
+             relation.relacl,
+             pg_catalog.acldefault('r', relation.relowner)
+           )
+         ) AS acl
+       )
+  ) THEN
+    RAISE EXCEPTION 'verify_private_table_acl_provenance_failed'
+      USING ERRCODE = '55000';
+  END IF;
+
   -- Effective privilege checks include PUBLIC and indirect memberships. This
   -- catches a permissive default ACL or a later role edge even when the
   -- explicit activation REVOKE statements are still present in source.
@@ -471,19 +549,50 @@ BEGIN
       ('service_role')
     ) AS api(role_name)
     CROSS JOIN (VALUES
-      ('private.hosted_realtime_canary_environment_config'),
-      ('private.hosted_realtime_canary_runs'),
-      ('private.hosted_realtime_canary_writes'),
-      ('private.hosted_realtime_canary_profile_baselines')
+      ('hosted_realtime_canary_environment_config'),
+      ('hosted_realtime_canary_runs'),
+      ('hosted_realtime_canary_writes'),
+      ('hosted_realtime_canary_profile_baselines')
     ) AS private_relation(relation_name)
-    CROSS JOIN (VALUES
-      ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'),
-      ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')
-    ) AS privilege(privilege_name)
+    JOIN pg_catalog.pg_namespace AS namespace
+      ON namespace.nspname = 'private'
+    JOIN pg_catalog.pg_class AS relation
+      ON relation.relnamespace = namespace.oid
+     AND relation.relname = private_relation.relation_name
+    CROSS JOIN LATERAL (
+      SELECT DISTINCT acl.privilege_type AS privilege_name
+      FROM pg_catalog.aclexplode(
+        pg_catalog.acldefault('r', relation.relowner)
+      ) AS acl
+    ) AS privilege
     WHERE pg_catalog.has_table_privilege(
       api.role_name,
-      private_relation.relation_name,
+      relation.oid,
       privilege.privilege_name
+    )
+  )
+  OR EXISTS (
+    SELECT 1
+    FROM (VALUES
+      ('anon'),
+      ('authenticated'),
+      ('service_role')
+    ) AS api(role_name)
+    CROSS JOIN (VALUES
+      ('hosted_realtime_canary_environment_config'),
+      ('hosted_realtime_canary_runs'),
+      ('hosted_realtime_canary_writes'),
+      ('hosted_realtime_canary_profile_baselines')
+    ) AS private_relation(relation_name)
+    JOIN pg_catalog.pg_namespace AS namespace
+      ON namespace.nspname = 'private'
+    JOIN pg_catalog.pg_class AS relation
+      ON relation.relnamespace = namespace.oid
+     AND relation.relname = private_relation.relation_name
+    WHERE pg_catalog.has_any_column_privilege(
+      api.role_name,
+      relation.oid,
+      'SELECT, INSERT, UPDATE, REFERENCES'
     )
   )
   OR EXISTS (
@@ -497,7 +606,7 @@ BEGIN
       ('private.hosted_realtime_canary_actor_authorized(uuid,text)'),
       ('private.hosted_realtime_canary_auth_context(text,text)'),
       ('private.hosted_realtime_canary_cleanup_run(uuid,text)'),
-      ('private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid)'),
+      ('private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid,text)'),
       ('private.hosted_realtime_canary_message_mutation_guard()'),
       ('private.hosted_realtime_canary_residue_count(boolean)'),
       ('private.hosted_realtime_canary_restore_profile_timestamp()'),
@@ -520,7 +629,7 @@ BEGIN
      )
      OR NOT pg_catalog.has_function_privilege(
        'caaci_hosted_realtime_executor',
-       'private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid)',
+       'private.hosted_realtime_canary_fixture_session_count(uuid,uuid,uuid,text)',
        'EXECUTE'
      ) THEN
     RAISE EXCEPTION 'verify_auth_helper_acl_failed'
