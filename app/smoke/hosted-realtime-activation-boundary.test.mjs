@@ -61,9 +61,14 @@ test('hosted activation remains staging-only and outside migration history', () 
   assert.match(targets, /providerProofExpiresAt/)
   assert.match(activation, /lfhvgprfphyfvhidegum/)
   assert.match(activation, /activation_refused_known_production_project/)
+  // Migration history deploys to production, so no part of the staging-only
+  // package may live there. Matching only `hosted_realtime_canary` was too
+  // narrow: `20260801082937_enable_pg_cron_for_hosted_realtime_activation.sql`
+  // carried the canary's pg_cron prerequisite into migration history and
+  // passed this guard on the strength of one different word.
   assert.doesNotMatch(
     source('supabase/migrations/manifest.sha256'),
-    /hosted_realtime_canary/i,
+    /hosted_realtime/i,
   )
 })
 
