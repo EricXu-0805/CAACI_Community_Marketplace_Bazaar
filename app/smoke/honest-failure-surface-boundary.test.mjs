@@ -109,3 +109,54 @@ test('the moderation console is not compiled into the consumer Mini Program', as
     /\/\/ #ifdef H5[\s\S]{0,600}?"path": "pages\/admin\/index"[\s\S]{0,200}?\/\/ #endif/,
   )
 })
+
+test('a pending email confirmation survives a reload without storing the code', async () => {
+  const login = await read('src/pages/login/index.vue')
+
+  // The panel used to be page-memory only: a refresh dropped the user back on
+  // the signup form holding a code with nowhere to type it.
+  assert.match(login, /const PENDING_CONFIRM_KEY = 'signup-pending-confirm'/)
+  assert.match(login, /function restoreSignupConfirmation\(\)/)
+  assert.match(login, /else restoreSignupConfirmation\(\)/)
+
+  // The code is the credential and this is shared-device storage. Only the
+  // address and the deadlines may be written.
+  const write = login.slice(
+    login.indexOf('function writePendingConfirm'),
+    login.indexOf('function clearPendingConfirm'),
+  )
+  assert.doesNotMatch(write, /confirmCode/)
+  assert.match(
+    login,
+    /writePendingConfirm\(\{\s*\n\s*email: submittedEmail,\s*\n\s*expiresAt:[\s\S]{0,80}?cooldownUntil: 0,/,
+  )
+
+  // Absolute deadlines, so reloading cannot reset the resend cooldown, and a
+  // stale record cannot reopen the panel forever.
+  assert.match(login, /const PENDING_CONFIRM_TTL_MS = 60 \* 60 \* 1000/)
+  assert.match(login, /Date\.now\(\) >= parsed\.expiresAt/)
+  assert.match(login, /runConfirmCooldown\(Math\.max\(0, Math\.ceil\(\(pending\.cooldownUntil - Date\.now\(\)\) \/ 1000\)\)\)/)
+
+  // Confirming or leaving must retire the record.
+  assert.match(login, /clearPendingConfirm\(\)\s*\n\s*clearConfirmCooldown\(\)/)
+  assert.match(login, /if \(currentUser\.value\) clearPendingConfirm\(\)/)
+})
+
+test('an identity with no reachable mailbox is not offered email recovery', async () => {
+  const utils = await read('src/utils/index.ts')
+  const settings = await read('src/pages/settings/index.vue')
+
+  // WeChat sign-in provisions wx_<openid>@wechat.placeholder. The server
+  // already refuses to mail it (api/notification-digest.js, api/meetup-notify.js);
+  // the client has to agree, or "change password" reports success and delivers
+  // a code to an address the user cannot open.
+  assert.match(utils, /export function isPlaceholderEmail\(email: string \| null \| undefined\): boolean/)
+  assert.match(utils, /endsWith\("@wechat\.placeholder"\)/)
+
+  assert.match(settings, /isPlaceholderEmail/)
+  assert.match(settings, /const canRecoverByEmail = computed\(\s*\n\s*\(\) => isLoggedIn\.value && !isPlaceholderEmail\(currentUser\.value\?\.email\),/)
+  assert.match(settings, /v-if="canRecoverByEmail"/)
+  // Defence in depth: the handler refuses too, so a stale render or a
+  // keyboard activation racing the profile load cannot send into the void.
+  assert.match(settings, /if \(isPlaceholderEmail\(targetEmail\)\) \{[\s\S]{0,300}?settings\.passwordUnavailableWechat/)
+})

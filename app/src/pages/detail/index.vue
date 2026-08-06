@@ -1686,11 +1686,12 @@ async function contactSeller() {
 
 /* ========== Desktop ========== */
 @media (min-width: 768px) {
-  /* Sidebar rail (.has-sidebar) reserves the left via padding-left; the
-     page box is rail + 640 reading column, centered, so the content sits
-     in a 640 column right of the rail (box-sizing:border-box from
-     .has-sidebar makes max-width include the padding). */
-  .page { max-width: calc(640px + var(--sidebar-w, 240px)); margin: 0 auto; }
+  /* The rail is position:fixed at the viewport edge, so centering a box that
+     *includes* the rail reservation parked 240px of dead space between the
+     rail and the content and pushed the column off-centre. Hug the rail
+     instead — the same "fill the remaining column" contract the home, plaza
+     and messages shells already use. */
+  .page { max-width: calc(760px + var(--sidebar-w, 240px)); margin: 0; }
   /*
    * Don't hard-set height here either. The inline :style aspect-ratio
    * handles it, and the 70vh cap keeps the hero from eating the whole
@@ -1708,5 +1709,58 @@ async function contactSeller() {
     margin-left: auto; margin-right: auto; transform: translateY(100%);
   }
   .rating-sheet.open { transform: translateY(0); }
+}
+
+/*
+ * Wide desktop: stop rendering a phone column on a 1440 screen. The gallery
+ * takes the freed width and stays put while the buyer reads, and everything
+ * they decide with — price, condition, seller, reviews, safety note — sits in
+ * one right-hand column beside it rather than below the fold.
+ *
+ * The split is CSS-only: every child is assigned to column 2 and the gallery
+ * is pulled into column 1, so a section that renders conditionally (no
+ * description, no reviews, no related items) cannot shift the layout.
+ */
+@media (min-width: 1100px) {
+  .page {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 400px;
+    column-gap: 24px;
+    align-items: start;
+    /* Cap the whole thing: an uncapped 1fr made the gallery 1232px on a 1920
+       screen, which just letterboxes a phone photo across half a monitor. */
+    --detail-shell: calc(1180px + var(--sidebar-w, 240px));
+    max-width: var(--detail-shell);
+    padding-right: 24px;
+    padding-bottom: 32px;
+  }
+  /* Column 2 is the decision column and must pack tight. Grid rows are shared
+     across columns, so any second item placed in column 1 pairs with a
+     column-2 row and stretches it — moving the description here opened a
+     ~500px hole under the price card. Letting the gallery span every row
+     instead means each row is sized by its column-2 item alone. */
+  .page > * { grid-column: 2; min-width: 0; }
+  .img-area {
+    grid-column: 1;
+    grid-row: 1 / span 99;
+    position: sticky;
+    top: 0;
+    align-self: start;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .info-card { border-radius: 14px; }
+
+  /* The CTA is out of flow, so it cannot inherit column 2's position. Track
+     the same capped shell the grid uses, otherwise it drifts to the viewport
+     edge on any screen wider than the cap. */
+  .action-bar,
+  .rating-sheet {
+    left: auto;
+    right: max(24px, calc(100vw - var(--detail-shell) + 24px));
+    width: 400px; max-width: none;
+    margin: 0;
+  }
+  .action-bar { border-radius: 14px 14px 0 0; }
 }
 </style>

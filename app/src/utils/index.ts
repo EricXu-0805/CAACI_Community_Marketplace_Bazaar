@@ -1335,3 +1335,15 @@ export function passwordRules(pw: string): { key: PasswordRuleKey; ok: boolean }
 export function passwordValid(pw: string): boolean {
   return passwordRules(pw).every((r) => r.ok)
 }
+
+/*
+ * WeChat sign-in provisions `wx_<openid>@wechat.placeholder` so Auth has an
+ * email column to key on. Nobody can open that mailbox. The server already
+ * refuses to send digests or meetup mail there; the client has to make the
+ * same distinction, because an account-recovery entry that mails a code to an
+ * unreachable address looks like it worked and strands the user.
+ */
+export function isPlaceholderEmail(email: string | null | undefined): boolean {
+  return typeof email === "string"
+    && email.toLowerCase().endsWith("@wechat.placeholder")
+}

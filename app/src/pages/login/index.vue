@@ -339,6 +339,10 @@ onLoad((options) => {
   }
   // #endif
   if (oauthReturnExpected && currentUser.value) scheduleHomeRedirect(0, currentUser.value.id)
+  // Reopen the code panel the user left. An already-signed-in visitor has
+  // nothing left to confirm, so drop the record rather than restore it.
+  if (currentUser.value) clearPendingConfirm()
+  else restoreSignupConfirmation()
 })
 
 watch(currentUser, (user) => {
@@ -389,18 +393,70 @@ const verifying = ref(false)
 const confirmResending = ref(false)
 const confirmCooldown = ref(0)
 let confirmTimer: ReturnType<typeof setInterval> | null = null
+
+/*
+ * The pending-confirmation panel used to live only in page memory, so a
+ * refresh — or following the "check your inbox" instruction on a phone and
+ * coming back — dropped the user on the signup form holding a code with
+ * nowhere to type it, and the resend cooldown restarted from zero.
+ *
+ * Only the address and the two deadlines are persisted. The code itself is
+ * never written down: it is the credential, and this is shared-device
+ * storage. Deadlines are absolute so a reload cannot shorten the cooldown.
+ */
+const PENDING_CONFIRM_KEY = 'signup-pending-confirm'
+const PENDING_CONFIRM_TTL_MS = 60 * 60 * 1000
+
+type PendingConfirm = { email: string; expiresAt: number; cooldownUntil: number }
+
+function readPendingConfirm(): PendingConfirm | null {
+  try {
+    const raw = uni.getStorageSync(PENDING_CONFIRM_KEY)
+    if (!raw) return null
+    const parsed = (typeof raw === 'string' ? JSON.parse(raw) : raw) as Partial<PendingConfirm>
+    if (typeof parsed?.email !== 'string' || !parsed.email) return null
+    if (typeof parsed.expiresAt !== 'number' || Date.now() >= parsed.expiresAt) return null
+    return {
+      email: parsed.email,
+      expiresAt: parsed.expiresAt,
+      cooldownUntil: typeof parsed.cooldownUntil === 'number' ? parsed.cooldownUntil : 0,
+    }
+  } catch {
+    return null
+  }
+}
+
+function writePendingConfirm(next: PendingConfirm) {
+  try { uni.setStorageSync(PENDING_CONFIRM_KEY, JSON.stringify(next)) } catch {}
+}
+
+function clearPendingConfirm() {
+  try { uni.removeStorageSync(PENDING_CONFIRM_KEY) } catch {}
+}
+
+function patchPendingCooldown(cooldownUntil: number) {
+  const current = readPendingConfirm()
+  if (current) writePendingConfirm({ ...current, cooldownUntil })
+}
+
 function clearConfirmCooldown() {
   if (confirmTimer) clearInterval(confirmTimer)
   confirmTimer = null
   confirmCooldown.value = 0
 }
-function startConfirmCooldown() {
-  confirmCooldown.value = 60
-  if (confirmTimer) clearInterval(confirmTimer)
+function runConfirmCooldown(seconds: number) {
+  clearConfirmCooldown()
+  if (seconds <= 0) return
+  confirmCooldown.value = seconds
   confirmTimer = setInterval(() => {
     confirmCooldown.value -= 1
     if (confirmCooldown.value <= 0 && confirmTimer) { clearInterval(confirmTimer); confirmTimer = null }
   }, 1000)
+}
+function startConfirmCooldown() {
+  const cooldownUntil = Date.now() + 60_000
+  patchPendingCooldown(cooldownUntil)
+  runConfirmCooldown(60)
 }
 function startSignupConfirmation(submittedEmail: string) {
   pendingEmail.value = submittedEmail
@@ -408,7 +464,24 @@ function startSignupConfirmation(submittedEmail: string) {
   verifying.value = false
   confirmResending.value = false
   awaitingConfirm.value = true
+  writePendingConfirm({
+    email: submittedEmail,
+    expiresAt: Date.now() + PENDING_CONFIRM_TTL_MS,
+    cooldownUntil: 0,
+  })
   startConfirmCooldown()
+}
+function restoreSignupConfirmation() {
+  const pending = readPendingConfirm()
+  if (!pending) {
+    // Also sweeps an entry that sat past its TTL.
+    clearPendingConfirm()
+    return
+  }
+  pendingEmail.value = pending.email
+  confirmCode.value = ''
+  awaitingConfirm.value = true
+  runConfirmCooldown(Math.max(0, Math.ceil((pending.cooldownUntil - Date.now()) / 1000)))
 }
 function leaveSignupConfirmation() {
   if (verifying.value || confirmResending.value) return
@@ -416,6 +489,7 @@ function leaveSignupConfirmation() {
   awaitingConfirm.value = false
   pendingEmail.value = ''
   confirmCode.value = ''
+  clearPendingConfirm()
   clearConfirmCooldown()
 }
 onUnmounted(() => {
@@ -443,6 +517,10 @@ async function onVerifySignup() {
     }
     // verifyOtp('signup') confirms the email AND returns a session, so the
     // useAuth onAuthStateChange listener sets currentUser — just go home.
+    // Confirmed: the pending record has served its purpose and must not
+    // reopen the panel on the next visit.
+    clearPendingConfirm()
+    clearConfirmCooldown()
     if (!mounted) return
     uni.showToast({ title: t('login.signupOk'), icon: 'success' })
     scheduleHomeRedirect(800, data?.session?.user?.id)

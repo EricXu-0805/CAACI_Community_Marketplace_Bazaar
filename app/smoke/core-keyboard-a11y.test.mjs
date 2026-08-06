@@ -361,3 +361,12 @@ test('long-press-only moderation and history actions have keyboard alternatives'
     'function onHistoryCardKeydown(event: KeyboardEvent',
   ])
 })
+
+test('a tappable avatar carries an accessible name, not just alt', () => {
+  const avatar = source('src/components/UAvatar.vue')
+  // uni renders <image> as a custom <uni-image> element. `alt` only names a
+  // real <img>, so callers passing role="button" through (plaza, chat, detail)
+  // produced buttons the screen reader announced with no label at all.
+  assert.match(avatar, /:aria-label="interactiveLabel"/)
+  assert.match(avatar, /const interactiveLabel = computed\(\(\) => props\.alt \|\| undefined\)/)
+})
