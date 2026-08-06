@@ -647,6 +647,8 @@ const en: Record<string, string> = {
   'profile.browsed': 'Viewed',
   'profile.quickActions': 'Quick Actions',
   'profile.savedSection': 'My Favorites',
+  'profile.myItemsTitle': 'My Items',
+  'profile.seeAll': 'See all',
   'profile.moreSection': 'More',
 
   'publish.imageOptional': 'Images optional — text-only posts are fine',

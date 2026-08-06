@@ -61,6 +61,10 @@
 			"style": { "navigationStyle": "custom" }
 		},
 		{
+			"path": "pages/my-items/index",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
 			"path": "pages/legal/index",
 			"style": { "navigationStyle": "custom" }
 		},

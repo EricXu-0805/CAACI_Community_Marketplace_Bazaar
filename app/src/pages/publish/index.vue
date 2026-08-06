@@ -1200,15 +1200,23 @@ async function onSubmit() {
 .cond-pill.active .cp-hint { color: rgba(255,255,255,0.8); }
 
 /* ========== Location ========== */
+/*
+ * The chip rail is a scroll-view, so it sits outside .form-group and lost
+ * that row's 16px gutter — the first chip ran flush into the screen edge.
+ * Padding-left restores the gutter; the trailing gutter comes from the last
+ * chip's own margin, because a scroll container's padding-right is not
+ * guaranteed to survive overflow in every engine.
+ */
 .spot-row {
   white-space: nowrap;
-  padding: 0 0 8px 0;
+  padding: 0 0 8px 16px;
   margin-top: 4px;
 }
 .spot-chip {
   display: inline-block;
   padding: 6px 12px;
   margin-right: 8px;
+  &:last-child { margin-right: 16px; }
   background: var(--bg-subtle);
   color: var(--text-primary);
   font-size: 13px;

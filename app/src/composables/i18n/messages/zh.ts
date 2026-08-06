@@ -645,6 +645,8 @@ const zh: Record<string, string> = {
   'profile.browsed': '浏览过',
   'profile.quickActions': '快捷入口',
   'profile.savedSection': '我的收藏',
+  'profile.myItemsTitle': '我的物品',
+  'profile.seeAll': '查看全部',
   'profile.moreSection': '更多',
 
   'publish.imageOptional': '图片可选 - 不上传也可以发布',

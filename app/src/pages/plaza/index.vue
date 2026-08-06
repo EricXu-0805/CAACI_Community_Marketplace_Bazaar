@@ -225,10 +225,12 @@
               :class="['post-images', `pi-n${Math.min(post.images.length, 4)}`]"
             >
               <!--
-                Each slot reserves its exact aspect ratio from the DB-persisted
-                post.image_dimensions (migration 014). Unknown slots fall back
-                to 4/5 via dimsToAspectStyle's default; clamp [0.4, 2.5] stops
-                freak panoramas from stretching a cell.
+                A single-image post reserves its exact aspect ratio from the
+                DB-persisted post.image_dimensions (migration 014). Unknown
+                slots fall back to 4/5 via dimsToAspectStyle's default; clamp
+                [0.4, 2.5] stops freak panoramas from stretching the cell.
+                Multi-image posts take the uniform grid slot instead — see
+                postTileStyle() and the .pi-n2/3/4 rules.
               -->
               <img
                 v-for="(img, i) in post.images"
@@ -237,10 +239,10 @@
                 :alt="t('a11y.previewImage')"
                 class="post-image"
                 role="button"
-                :style="dimsToAspectStyle(effectiveDims(post), i)"
+                :style="postTileStyle(post, i)"
                 loading="lazy"
                 lazy-load
-                mode="aspectFit"
+                :mode="post.images.length > 1 ? 'aspectFill' : 'aspectFit'"
                 @load="onImgLoad($event, post, i)"
                 @click.stop="previewImage(post.images, i)"
               />
@@ -812,6 +814,18 @@ function effectiveDims(post: Post): ImageDim[] | null {
     return fromDb
   }
   return measuredDims.value[post.id] || null
+}
+
+/*
+ * A multi-image post renders into a fixed grid, and a grid row is as tall as
+ * its tallest cell. Giving each tile its own aspect ratio therefore leaves a
+ * dead band under every shorter tile in the row — the ragged look reported on
+ * 2026-08-06. Multi-image posts drop the per-image ratio and take the uniform
+ * square slot from CSS; single-image posts keep their true shape.
+ */
+function postTileStyle(post: Post, idx: number): Record<string, string> {
+  if ((post?.images?.length || 0) > 1) return {}
+  return dimsToAspectStyle(effectiveDims(post), idx)
 }
 
 function onImgLoad(e: any, post: Post, idx: number) {
@@ -2125,6 +2139,20 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .post-images.pi-n3 { grid-template-columns: 1fr 1fr 1fr; }
 .post-images.pi-n4 { grid-template-columns: 1fr 1fr; }
 /*
+ * Uniform tile for every multi-image grid. `cover` is correct HERE and only
+ * here: the tile is one cell of a fixed grid, so `contain` cannot avoid
+ * cropping — it just moves the loss from the photo to a dead letterbox band,
+ * and the band is what made rows look broken. Tapping opens the full-size
+ * preview, so nothing is unreachable. The single-image branch (.pi-n1) still
+ * uses `contain` with the real aspect ratio.
+ */
+.post-images.pi-n2 .post-image,
+.post-images.pi-n3 .post-image,
+.post-images.pi-n4 .post-image {
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+/*
  * Default grid tile: aspect-ratio and object-fit are overridden by the
  * per-image inline style produced by postImgStyleFor() once the first
  * image in the post reports its natural dimensions. 4/5 portrait is the
@@ -2268,8 +2296,16 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   &:active { opacity: 0.7; }
 }
 
+/*
+ * Aligns with the post body, not the avatar. The old `0 14px 0 54px` indented
+ * this card past the avatar column, but the text and the image grid above it
+ * are NOT indented — they start at the card's own 16px padding — so the item
+ * card sat alone, pushed 54px in on the left and 14px short on the right.
+ * Zero side margin puts it in the same column as everything above it, which
+ * is what the post-detail copy at pages/post/index.vue already does.
+ */
 .attached-item-card {
-  margin: 8px 14px 0 54px;
+  margin: 10px 0 0 0;
   display: flex; align-items: center; gap: 10px;
   padding: 8px; border: 1px solid var(--border); border-radius: 10px;
   background: var(--bg-subtle);

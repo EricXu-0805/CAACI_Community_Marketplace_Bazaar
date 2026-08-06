@@ -1104,15 +1104,17 @@ async function onSubmit() {
 .cond-pill.active .cp-hint { color: rgba(255,255,255,0.8); }
 
 /* ========== Location ========== */
+/* Gutter parity with pages/publish/index.vue — see the note there. */
 .spot-row {
   white-space: nowrap;
-  padding: 0 0 8px 0;
+  padding: 0 0 8px 16px;
   margin-top: 4px;
 }
 .spot-chip {
   display: inline-block;
   padding: 6px 12px;
   margin-right: 8px;
+  &:last-child { margin-right: 16px; }
   background: var(--bg-subtle);
   color: var(--text-primary);
   font-size: 13px;
