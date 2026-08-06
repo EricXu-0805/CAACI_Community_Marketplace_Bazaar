@@ -114,8 +114,13 @@ test('campus-spot chips keep the form gutter on both listing flows', async () =>
   for (const rel of ['src/pages/publish/index.vue', 'src/pages/publish/edit.vue']) {
     const source = await read(rel)
     // The rail is a scroll-view outside .form-group, so it has to restore that
-    // row's 16px gutter itself.
-    assert.match(source, /\.spot-row \{[\s\S]{0,160}?padding: 0 0 8px 16px;/)
+    // row's 16px gutter itself. scroll-view is NOT covered by the global
+    // `view { box-sizing: border-box }` rule, so without this the leading
+    // gutter adds to 100% and the rail renders 16px wider than the screen —
+    // measured 406px on a 390px viewport. An ancestor clips the overhang,
+    // which silently eats the trailing gutter below.
+    assert.match(source, /\.spot-row \{[\s\S]{0,400}?box-sizing: border-box;/)
+    assert.match(source, /\.spot-row \{[\s\S]{0,400}?padding: 0 0 8px 16px;/)
     // A scroll container's trailing padding is not honoured everywhere, so the
     // last chip carries the closing gutter.
     assert.match(source, /&:last-child \{ margin-right: 16px; \}/)

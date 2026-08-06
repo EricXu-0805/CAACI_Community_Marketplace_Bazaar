@@ -1223,6 +1223,11 @@ async function onSubmit() {
  */
 .spot-row {
   white-space: nowrap;
+  // scroll-view is not covered by the global `view { box-sizing: border-box }`
+  // rule, so the leading gutter would otherwise add to 100% and make the rail
+  // 16px wider than the screen — an overhang an ancestor clips, taking the
+  // last chip's trailing gutter with it.
+  box-sizing: border-box;
   padding: 0 0 8px 16px;
   margin-top: 4px;
 }
