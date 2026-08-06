@@ -155,6 +155,10 @@ on success or failure; it contains no hosted credential.
 
 ## Required order
 
+0. `pg_cron` must already exist on the exact approved staging project. If it
+   does not, run `STAGING_PREREQ_enable_pg_cron.sql` there first. It is a
+   prerequisite of this package, not migration history — production has no
+   pg_cron extension and must not acquire one, since it never runs the TTL job.
 1. Independently verify the immutable Preview, exact project, fixture manifest,
    provider proof, three accounts and two conversations.
 2. The first database actions must remain read-only. Run the repository-level

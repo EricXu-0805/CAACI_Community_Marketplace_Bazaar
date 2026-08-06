@@ -195,6 +195,21 @@ test('legacy names are frozen and every forward migration uses a real 14-digit U
   )
 })
 
+test('migration history never enables pg_cron', async () => {
+  // Only the staging-only hosted Realtime canary needs a cron worker, and its
+  // prerequisite lives in supabase/_ops/hosted_realtime_canary/. A migration
+  // that enables the extension would install it on production too — and grant
+  // broad privileges on the cron schema — for a job production never runs.
+  for (const file of await migrationFiles()) {
+    const source = await readFile(new URL(file, MIGRATIONS_DIR), 'utf8')
+    assert.doesNotMatch(
+      source,
+      /create\s+extension[^;]*\bpg_cron\b/i,
+      `${file}: pg_cron is a staging-only canary prerequisite, not migration history`,
+    )
+  }
+})
+
 test('migration SHA-256 manifest exactly guards every current SQL byte sequence', async () => {
   const [files, entries] = await Promise.all([
     migrationFiles(),
