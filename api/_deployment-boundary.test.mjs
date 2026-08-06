@@ -90,7 +90,7 @@ test('strict project parser accepts only one exact Supabase project origin', () 
 
 test('every Supabase-backed runtime entrypoint applies the shared gate at handler entry', async () => {
   const files = await runtimeSources()
-  assert.equal(files.length, 19)
+  assert.equal(files.length, 20)
   for (const file of files) {
     const source = await readFile(new URL(file, API_ROOT), 'utf8')
     assert.match(source, /from ['"](?:\.\.\/|\.\/)_deployment-boundary\.js['"]/, `${file} lacks shared deployment boundary`)

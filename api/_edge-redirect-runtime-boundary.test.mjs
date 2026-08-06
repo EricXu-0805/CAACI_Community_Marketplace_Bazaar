@@ -20,6 +20,7 @@ const EXPECTED_EDGE_FILES = [
   'moderate.js',
   'notification-digest.js',
   'realtime-poll.js',
+  'resend-webhook.js',
   'share-post.js',
   'share.js',
   'translate.js',
