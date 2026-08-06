@@ -9,6 +9,8 @@ const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const source = relativePath => readFileSync(resolve(appRoot, relativePath), 'utf8')
 
 let runtimeSequence = 0
+/* Telemetry emitted by the module under test since the last loadWithRuntime. */
+const capturedTelemetry = []
 
 async function readAllAscendingKeysetForTest(options) {
   const rows = []
@@ -35,6 +37,7 @@ async function readAllAscendingKeysetForTest(options) {
 
 async function loadWithRuntime(relativePath, replacements, runtime, transform = value => value) {
   const runtimeKey = `__chat_realtime_smoke_${++runtimeSequence}`
+  capturedTelemetry.length = 0
   const defaultAccountToken = {
     userId: '11111111-1111-4111-8111-111111111111',
     generation: 1,
@@ -92,6 +95,11 @@ async function loadWithRuntime(relativePath, replacements, runtime, transform = 
     onAccountTransition: () => () => {},
     readAllAscendingKeyset: readAllAscendingKeysetForTest,
     subscribeToSnapshotChanges: () => () => {},
+    // Fallback takeovers report to Sentry. Record them per load so a test can
+    // assert the degradation was announced, not just that polling took over.
+    captureException: (error, context) => {
+      capturedTelemetry.push({ message: error?.message, source: context?.tags?.source })
+    },
     ...runtime,
   }
   let input = transform(source(relativePath))
@@ -123,6 +131,10 @@ async function loadWithRuntime(relativePath, replacements, runtime, transform = 
     .replace(
       /import \{\s*captureActiveAccountRequest,\s*isAccountRequestCurrent,\s*onAccountTransition,\s*\} from '\.\/accountScope'/,
       'const { captureActiveAccountRequest, isAccountRequestCurrent, onAccountTransition } = globalThis.__RUNTIME_KEY__',
+    )
+    .replace(
+      "import { captureException } from '../utils/sentry'",
+      'const { captureException } = globalThis.__RUNTIME_KEY__',
     )
   for (const [from, to] of replacements) input = input.replace(from, to.replaceAll('__RUNTIME_KEY__', runtimeKey))
   input = input.replaceAll('__RUNTIME_KEY__', runtimeKey)
@@ -524,6 +536,14 @@ for (const failedStatus of ['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED']) {
 
       assert.equal(harness.removeCount(), 1)
       assert.equal(queryCount, 1, 'fallback must own one cold seed')
+      // Polling keeps the feature working, which is exactly why the takeover
+      // has to announce itself: otherwise Realtime can be broken in production
+      // for days and the only symptom is latency nobody attributes.
+      assert.deepEqual(
+        capturedTelemetry,
+        [{ message: 'realtime_fallback_takeover', source: 'realtime.fallback.conversation' }],
+        'the handoff must report exactly once, tagged with its surface',
+      )
       assert.ok(
         harness.events.findIndex(event => event.type === 'remove')
           < harness.events.findIndex(event => event.type === 'poll'),
