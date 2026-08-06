@@ -88,7 +88,10 @@ test('grid thumbnails fill a square slot instead of letterboxing', async () => {
 })
 
 test('the my-items page is routable and account-scoped', async () => {
-  const pages = JSON.parse(await read('src/pages.json'))
+  // pages.json carries uni-app conditional-compilation comments, so it is not
+  // strict JSON — strip the `//` directives before parsing.
+  const pagesRaw = await read('src/pages.json')
+  const pages = JSON.parse(pagesRaw.replace(/^\s*\/\/.*$/gm, ''))
   const myItems = await read('src/pages/my-items/index.vue')
 
   assert.ok(

@@ -140,10 +140,17 @@
 			"path": "pages/suspended/index",
 			"style": { "navigationStyle": "custom" }
 		},
+		// #ifdef H5
+		// Moderation console — H5 only. Nothing in the app links to it; an
+		// operator reaches it by typing the URL, which a Mini Program cannot
+		// do, so on mp the route was 140KB of unreachable admin surface that
+		// still had to pass WeChat review as undeclared functionality. Server
+		// authorization is unchanged and remains the real control.
 		{
 			"path": "pages/admin/index",
 			"style": { "navigationStyle": "custom", "navigationBarTitleText": "Moderation" }
 		}
+		// #endif
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",

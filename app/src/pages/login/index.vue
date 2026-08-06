@@ -21,6 +21,14 @@
         </view>
       </view>
 
+      <!--
+        Field errors live next to their field and stay there. A toast was the
+        old feedback for every validation and sign-in failure: it floats away
+        from the input it describes, disappears on a timer, and a screen
+        reader never ties it to anything. Each message below is bound through
+        aria-describedby + aria-invalid, announced via role="alert", and
+        cleared the moment the user edits that field.
+      -->
       <view v-if="mode === 'signup'" class="form-group">
         <text class="form-label">{{ t('login.nickname') }}</text>
         <input
@@ -28,10 +36,14 @@
           :placeholder="t('login.nickname')"
           :aria-label="t('login.nickname')"
           :disabled="formBusy"
-          class="form-input"
+          :class="['form-input', { 'form-input--invalid': nicknameError }]"
           autocomplete="nickname"
           maxlength="40"
+          :aria-invalid="nicknameError ? 'true' : 'false'"
+          :aria-describedby="nicknameError ? 'login-nickname-error' : undefined"
+          @input="nicknameError = ''"
         />
+        <text v-if="nicknameError" id="login-nickname-error" class="field-error" role="alert">{{ nicknameError }}</text>
       </view>
 
       <view class="form-group">
@@ -45,8 +57,12 @@
           autocomplete="email"
           spellcheck="false"
           :disabled="formBusy"
-          class="form-input"
+          :class="['form-input', { 'form-input--invalid': emailError }]"
+          :aria-invalid="emailError ? 'true' : 'false'"
+          :aria-describedby="emailError ? 'login-email-error' : undefined"
+          @input="emailError = ''"
         />
+        <text v-if="emailError" id="login-email-error" class="field-error" role="alert">{{ emailError }}</text>
         <view v-if="isIlliniEmail" class="illini-hint">
           <UIcon name="check" size="xs" color="success" />
           <text class="ih-text">{{ t('login.illiniEmail') }}</text>
@@ -63,13 +79,17 @@
             :password="!showPw"
             :autocomplete="mode === 'signup' ? 'new-password' : 'current-password'"
             :disabled="formBusy"
-            class="form-input pw-input"
+            :class="['form-input pw-input', { 'form-input--invalid': passwordError }]"
             maxlength="72"
+            :aria-invalid="passwordError ? 'true' : 'false'"
+            :aria-describedby="passwordError ? 'login-password-error' : undefined"
+            @input="passwordError = ''"
           />
           <view class="pw-toggle" role="button" :aria-label="t('a11y.passwordToggle')" @click="showPw = !showPw">
             <image :src="showPw ? '/static/eye-off.svg' : '/static/eye.svg'" alt="" class="pw-toggle-icon" mode="aspectFit" />
           </view>
         </view>
+        <text v-if="passwordError" id="login-password-error" class="field-error" role="alert">{{ passwordError }}</text>
         <view v-if="mode === 'signup'" class="pw-rules">
           <view v-for="r in pwRules" :key="r.key" :class="['pw-rule', { ok: r.ok }]">
             <UIcon class="pw-rule-mark" :name="r.ok ? 'check' : 'close'" size="xs" :color="r.ok ? 'success' : 'text-faint'" aria-hidden="true" />
@@ -102,6 +122,11 @@
           <text class="agree-part link" role="link" tabindex="0" :aria-label="t('legal.guidelines')" @click="goLegal('guidelines')" @keydown="onLegalKeydown($event, 'guidelines')">{{ t('legal.guidelines') }}</text>
         </view>
       </view>
+
+      <!-- Whatever cannot be attributed to one field (provider outage, agreement
+           not ticked, an unmapped gotrue code) still needs a stable home above
+           the button rather than a toast that vanishes. -->
+      <text v-if="formError" class="form-error" role="alert">{{ formError }}</text>
 
       <button :class="['submit-btn', { disabled: formBusy }]" :disabled="formBusy" @click="onSubmit">
         {{ loading ? t('login.wait') : (mode === 'login' ? t('login.submitLogin') : t('login.submitSignup')) }}
@@ -170,7 +195,7 @@
 <script setup lang="ts">
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
-import { ref, computed, onUnmounted, watch } from 'vue'
+import { ref, computed, nextTick, onUnmounted, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useSupabase, prepareSupabaseAuthPersistence } from '../../composables/useSupabase'
@@ -230,6 +255,37 @@ const password = ref('')
 const nickname = ref('')
 const showPw = ref(false)
 const agreed = ref(false)
+/*
+ * Field-level errors. These replace the toasts that used to carry every
+ * validation and auth failure: a toast is not adjacent to the field it
+ * describes, is gone before a slower reader finishes it, and is invisible to
+ * assistive tech. Server errors are attributed to a field whenever the code
+ * identifies one (email already registered → email; bad credentials or weak
+ * password → password) and fall back to formError otherwise.
+ */
+const emailError = ref('')
+const passwordError = ref('')
+const nicknameError = ref('')
+const formError = ref('')
+
+function clearFormErrors() {
+  emailError.value = ''
+  passwordError.value = ''
+  nicknameError.value = ''
+  formError.value = ''
+}
+
+// H5 can move focus to the offending input; mp-weixin has no DOM handle, so
+// the visible + announced message is the whole affordance there.
+function focusField(id: 'login-email-error' | 'login-password-error' | 'login-nickname-error') {
+  // #ifdef H5
+  if (typeof document === 'undefined') return
+  nextTick(() => {
+    const described = document.querySelector<HTMLElement>(`[aria-describedby="${id}"]`)
+    described?.focus?.()
+  })
+  // #endif
+}
 const googleLoading = ref(false)
 const forgotLoading = ref(false)
 const authRedirecting = ref(false)
@@ -293,6 +349,8 @@ watch(currentUser, (user) => {
 function setMode(nextMode: 'login' | 'signup') {
   if (mode.value === nextMode || formBusy.value) return
   uni.hideToast()
+  // A sign-in failure must not follow the user into the sign-up form.
+  clearFormErrors()
   mode.value = nextMode
   // Passwords, visibility, and signup consent are credentials for one flow,
   // not shared defaults for a different sign-in/signup operation.
@@ -518,13 +576,13 @@ async function onSignInWithGoogle() {
       options: { redirectTo },
     })
     if (error) {
+      // The raw gotrue string here is English implementation detail
+      // ("Unsupported provider: provider is not enabled"). Log it, show the
+      // user a stable sentence, and keep it in the form-level slot so it does
+      // not evaporate before it is read.
       console.warn('[auth] Google sign-in request failed')
       googleLoading.value = false
-      uni.showToast({
-        title: error.message ? `${t('login.googleFail')}: ${error.message}` : t('login.googleFail'),
-        icon: 'none',
-        duration: 3000,
-      })
+      formError.value = friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('login.googleFail')
       return
     }
     /*
@@ -558,26 +616,35 @@ async function onSubmit() {
   const submittedEmail = email.value.trim().toLowerCase()
   const submittedPassword = password.value
   const submittedNickname = nickname.value.trim()
-  if (!submittedEmail) {
-    uni.showToast({ title: t('login.needEmail'), icon: 'none' })
+  clearFormErrors()
+  if (!submittedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(submittedEmail)) {
+    emailError.value = t('login.needEmail')
+    focusField('login-email-error')
     return
   }
   if (!submittedPassword) {
-    uni.showToast({ title: t('login.needPassword'), icon: 'none' })
+    // An empty box is not a policy violation. Telling a returning user to
+    // "use 8+ characters with upper & lower case and a number" when they
+    // simply have not typed yet is wrong advice — the policy line belongs
+    // only to sign-up, where it is actionable.
+    passwordError.value = t('login.enterPassword')
+    focusField('login-password-error')
     return
   }
   if (submittedMode === 'signup' && !passwordValid(submittedPassword)) {
-    uni.showToast({ title: t('login.needPassword'), icon: 'none', duration: 2500 })
+    passwordError.value = t('login.needPassword')
+    focusField('login-password-error')
     return
   }
 
   if (submittedMode === 'signup') {
     if (!submittedNickname) {
-      uni.showToast({ title: t('login.needNickname'), icon: 'none' })
+      nicknameError.value = t('login.needNickname')
+      focusField('login-nickname-error')
       return
     }
     if (!agreed.value) {
-      uni.showToast({ title: t('login.agreeRequired'), icon: 'none', duration: 2500 })
+      formError.value = t('login.agreeRequired')
       return
     }
     const { data, error } = await signUp(submittedEmail, submittedPassword, submittedNickname)
@@ -586,9 +653,15 @@ async function onSubmit() {
       // gotrue weak_password (dashboard policy stricter than the client) used
       // to surface raw English. Map it to the localized policy line.
       const weak = (error as any).code === 'weak_password' || Array.isArray((error as any).reasons)
-      uni.showToast({ title: weak ? localizedPasswordPolicyError(error) : (error.message || t('login.signupFail')), icon: 'none', duration: 2500 })
+      if (weak) {
+        passwordError.value = localizedPasswordPolicyError(error)
+        focusField('login-password-error')
+      } else {
+        formError.value = friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('login.signupFail')
+      }
     } else if (data?.user?.identities?.length === 0) {
-      uni.showToast({ title: t('login.emailExists'), icon: 'none' })
+      emailError.value = t('login.emailExists')
+      focusField('login-email-error')
     } else if (data?.user && !data.session) {
       // Email confirmation required → switch to the in-app OTP code panel.
       // Supabase has just emailed the {{ .Token }} code; start the resend
@@ -617,14 +690,21 @@ async function onSubmit() {
       // here, so keep that response on the same localized path as signup/reset.
       const m = (error.message || '').toLowerCase()
       const weak = (error as any).code === 'weak_password' || Array.isArray((error as any).reasons)
-      const title = weak
-        ? localizedPasswordPolicyError(error)
-        : m.includes('invalid login credentials') || m.includes('invalid_credentials')
-          ? t('login.invalidCredentials')
-          : (m.includes('email not confirmed') || m.includes('email_not_confirmed'))
-            ? t('login.emailNotConfirmed')
-            : (error.message || t('login.loginFail'))
-      uni.showToast({ title, icon: 'none', duration: 2500 })
+      if (weak) {
+        passwordError.value = localizedPasswordPolicyError(error)
+        focusField('login-password-error')
+      } else if (m.includes('invalid login credentials') || m.includes('invalid_credentials')) {
+        // gotrue deliberately will not say which half was wrong, so the message
+        // belongs on the field the user can act on without leaking whether the
+        // address exists.
+        passwordError.value = t('login.invalidCredentials')
+        focusField('login-password-error')
+      } else if (m.includes('email not confirmed') || m.includes('email_not_confirmed')) {
+        emailError.value = t('login.emailNotConfirmed')
+        focusField('login-email-error')
+      } else {
+        formError.value = friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('login.loginFail')
+      }
     } else if (data?.weakPassword) {
       // Supabase intentionally permits an existing account to sign in with a
       // now-known leaked password, but returns this structured warning. Keep
@@ -752,6 +832,27 @@ async function onSubmit() {
     border-color: var(--line-soft);
     background: var(--bg-elev-1);
   }
+}
+/* The border is the only non-textual cue, so it never carries the message
+   alone — every invalid field also renders its own .field-error line. A class
+   rather than [aria-invalid=true]: WXSS rejects attribute selectors, and this
+   component compiles for mp-weixin too. */
+.form-input--invalid {
+  border-color: var(--danger, var(--accent-danger));
+}
+.field-error {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--danger, var(--accent-danger));
+}
+.form-error {
+  display: block;
+  margin: 4px 0 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--danger, var(--accent-danger));
 }
 .pw-wrap { position: relative; }
 .pw-input { padding-right: 44px; }

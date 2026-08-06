@@ -794,6 +794,9 @@ async function onSubmit() {
   submitting.value = true
   uploadProgress.value = 0
   let uploadedForCleanup: string[] = []
+  // See pages/publish/index.vue: the shortfall has to reach the terminal
+  // message, or the success toast becomes the user's last word.
+  let partialUpload: { done: number; total: number } | null = null
   let uploadAccountToken: UploadAccountToken | null = null
   let updateCommitted = false
   try {
@@ -839,11 +842,7 @@ async function onSubmit() {
         if (!operationStillCurrent()) {
           throw mutationOutcomeError(new Error('Account changed during item edit upload'), 'not_committed')
         }
-        uni.showToast({
-          title: t('publish.imagesUploaded', { done: uploaded.length, total: toUpload.length }),
-          icon: 'none',
-          duration: 4000,
-        })
+        partialUpload = { done: uploaded.length, total: toUpload.length }
       }
     }
 
@@ -901,7 +900,15 @@ async function onSubmit() {
       }
     }
     if (!operationStillCurrent()) return
-    uni.showToast({ title: t('publish.updated'), icon: 'success' })
+    if (partialUpload) {
+      uni.showToast({
+        title: t('publish.updatedPartial', partialUpload),
+        icon: 'none',
+        duration: 4000,
+      })
+    } else {
+      uni.showToast({ title: t('publish.updated'), icon: 'success' })
+    }
     scheduleBilingualFill(
       editId.value,
       trimmedTitle,

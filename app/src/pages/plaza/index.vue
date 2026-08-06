@@ -1317,6 +1317,7 @@ async function onSubmitPost() {
   submitting.value = true
   let imageUrls: string[] = []
   let uploadAccountToken: UploadAccountToken | null = null
+  let partialUpload: { done: number; total: number } | null = null
   try {
     let imageDims: Array<{ w: number; h: number }> = []
     const expectedImages = composerImages.value.length
@@ -1345,11 +1346,9 @@ async function onSubmitPost() {
         throw new Error(t('plaza.uploadFailed'))
       }
       if (imageUrls.length < expectedImages) {
-        uni.showToast({
-          title: t('publish.imagesUploaded', { done: imageUrls.length, total: expectedImages }),
-          icon: 'none',
-          duration: 4000,
-        })
+        // Carried to the terminal message — a warning fired here is replaced
+        // by the "posted" toast seconds later. See pages/publish/index.vue.
+        partialUpload = { done: imageUrls.length, total: expectedImages }
       }
     }
 
@@ -1382,7 +1381,11 @@ async function onSubmitPost() {
          from createPost itself. */
       uni.showToast({ title: t('plaza.partialPublish'), icon: 'none', duration: 4000 })
     } else {
-      uni.showToast({ title: t('plaza.posted'), icon: 'success' })
+      if (partialUpload) {
+        uni.showToast({ title: t('plaza.postedPartial', partialUpload), icon: 'none', duration: 4000 })
+      } else {
+        uni.showToast({ title: t('plaza.posted'), icon: 'success' })
+      }
     }
 
     // Fire-and-forget bilingual fill. Same strategy as the item publish

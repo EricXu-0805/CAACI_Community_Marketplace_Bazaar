@@ -223,6 +223,18 @@
       <text>{{ t('home.loading') }}</text>
     </view>
 
+    <!--
+      A failed fetch is not a missing post. Reporting "this post does not
+      exist" after a dropped connection or a 500 tells the user their content
+      is gone and leaves them no way back in; the only honest options are to
+      name the failure and offer a retry. See pages/detail/index.vue for the
+      same three-state split.
+    -->
+    <view v-else-if="loadError" class="not-found" role="alert" aria-live="assertive">
+      <text>{{ t('error.loadFailed') }}</text>
+      <view class="back-home" role="button" :aria-label="t('home.retry')" @click="loadPostForCurrentAccount">{{ t('home.retry') }}</view>
+    </view>
+
     <view v-else class="not-found">
       <text>{{ t('plaza.notFound') }}</text>
       <view class="back-home" role="button" @click="goPlaza">{{ t('plaza.backToPlaza') }}</view>
@@ -314,6 +326,9 @@ const post = ref<Post | null>(null)
 const comments = ref<PostComment[]>([])
 const loading = ref(true)
 const loadingComments = ref(false)
+// Distinct from "post is null": a transport failure must not render as a
+// missing post. Only the catch in loadPostForCurrentAccount sets this.
+const loadError = ref(false)
 const commentText = ref('')
 const replyTo = ref<PostComment | null>(null)
 const submitting = ref(false)
@@ -479,6 +494,7 @@ async function loadPostForCurrentAccount() {
   const requestEpoch = ++postLoadEpoch
   loading.value = true
   loadingComments.value = true
+  loadError.value = false
   try {
     // fetchPost/fetchComments annotate liked_by_me from currentUser. Wait for
     // session hydration so a cold deep link does not permanently render every
@@ -501,6 +517,10 @@ async function loadPostForCurrentAccount() {
     }
   } catch (err: any) {
     if (!pageMounted || requestEpoch !== postLoadEpoch) return
+    // Only a transport/server failure lands here — fetchPost resolves to null
+    // for a genuinely missing row. Keeping the two apart is what stops the
+    // page from claiming the post was deleted when the network dropped.
+    loadError.value = true
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none' })
   } finally {
     if (pageMounted && requestEpoch === postLoadEpoch) {
