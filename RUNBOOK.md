@@ -377,6 +377,47 @@ Migrations don't auto-rollback. You have two choices:
 2. **Restore from backup:** see above. Loses any data written between the
    broken migration and now.
 
+## Schema-coupled release order
+
+> When: a PR changes a frontend constant that the database validates —
+> the consent bundle version is the one that has already burned us.
+
+Merging to `main` deploys the frontend and nothing else: no CI step applies
+`supabase/migrations` to production. A PR that ships a new constant and its
+migration together therefore lands *half* of itself.
+
+**2026-08-06.** #221 advanced the consent bundle to `2026-08-01`. Its migration
+`20260801082650` stayed unapplied, so production's `record_consent` still
+accepted `2026-07-18` only. Every signed-in user was routed to the re-consent
+screen, every acceptance came back `22023 invalid_version`, and there was no way
+out of the loop — existing users and new signups alike. It stayed broken until
+the migration was applied by hand.
+
+So, for any schema-coupled change: apply the migration to production
+**before** merging the frontend that depends on it. Expand first, deploy
+second. Both halves being in the same PR is not the problem; the order is.
+
+1. Apply the migration to production (Dashboard → SQL Editor, or the Supabase
+   MCP `apply_migration`). It must be backward compatible — the currently
+   deployed frontend still sends the old value.
+2. Verify production accepts both the old and the new value:
+
+   ```sql
+   SELECT pg_get_functiondef(p.oid)
+   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'public' AND p.proname = 'record_consent';
+   ```
+   The CASE must list the version the frontend is about to send.
+3. Only then merge. Vercel deploys the frontend ~2 min later.
+4. If you merged first and users are locked out, this is a production outage:
+   apply the migration immediately — that alone restores service, no redeploy
+   or revert needed.
+
+`scripts/consent-version-deploy-order-boundary.test.mjs` pins the half CI can
+see (the constant must already be accepted by the newest `record_consent` in
+the repo). It cannot prove the migration reached production. That part is this
+runbook and the operator.
+
 ## Hotfix deploy
 
 > When: prod is broken and you need to deploy a fix without going through
