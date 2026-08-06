@@ -20,7 +20,7 @@ const PAGES = [
   'pages/illini-verify/index', 'pages/login/index', 'pages/following/index',
   'pages/saved-searches/index', 'pages/search/index', 'pages/onboarding/index',
   'pages/reconsent/index', 'pages/profile-recovery/index',
-  'pages/suspended/index', 'pages/admin/index',
+  'pages/suspended/index', 'pages/admin/index', 'pages/my-items/index',
 ]
 
 // Console noise that is expected and not a regression.
@@ -110,8 +110,12 @@ test('authenticated smoke identity evidence supports the v2 envelope without exp
 })
 
 test('smoke route list stays in sync with pages.json', () => {
+  // pages.json carries uni-app conditional-compilation directives (`// #ifdef`),
+  // so it is JSON with comments, not strict JSON. Strip the directive lines —
+  // the platform-gated routes they wrap still have to be swept on H5.
   const configured = JSON.parse(
-    readFileSync(resolve(process.cwd(), 'src/pages.json'), 'utf8'),
+    readFileSync(resolve(process.cwd(), 'src/pages.json'), 'utf8')
+      .replace(/^\s*\/\/.*$/gm, ''),
   ).pages.map((page: { path: string }) => page.path)
   expect([...PAGES].sort()).toEqual([...configured].sort())
 })
