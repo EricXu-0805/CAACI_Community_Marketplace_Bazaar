@@ -10,7 +10,7 @@ const documentPaths = [
   'docs/ARCHITECTURE.md',
 ]
 
-test('current release documents distinguish pre-tail 34/38 from post-tail 37/38', async () => {
+test('current release documents preserve the historical 34/38 to 37/38 baseline without treating it as current proof', async () => {
   const documents = await Promise.all(
     documentPaths.map(async path => [path, await readFile(new URL(path, root), 'utf8')]),
   )
@@ -22,7 +22,7 @@ test('current release documents distinguish pre-tail 34/38 from post-tail 37/38'
     assert.match(
       source,
       /(?:微信|WeChat)[^\n]*(?:退役|retirement)|(?:退役|retirement)[^\n]*(?:微信|WeChat)/i,
-      `${path} no longer identifies WeChat credential retirement as the final gate`,
+      `${path} no longer identifies the WeChat credential-retirement boundary`,
     )
   }
 })
@@ -34,7 +34,7 @@ test('README migration inventory matches the repository and names all three prod
   ])
   const sqlCount = migrationEntries.filter(name => name.endsWith('.sql')).length
 
-  assert.equal(sqlCount, 132)
+  assert.equal(sqlCount, 134)
   assert.match(readme, new RegExp(`仓库当前共有 ${sqlCount} 个 migration SQL 文件`))
   assert.match(readme, /38 条候选/)
   assert.match(readme, /145042、152000、161200 三条/)

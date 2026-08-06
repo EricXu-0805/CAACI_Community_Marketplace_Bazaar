@@ -6,9 +6,9 @@
     <!--
       Search page — refinement-pass layout (moved here from the
       home dropdown). Focused input + cancel, recent searches,
-      category browse grid. On submit we hand the query back to
-      the home feed via a pending_search storage key that
-      home's onShow() consumes and clears.
+      category browse grid. On submit we hand the latest typed intent back to
+      the home feed through a one-shot runtime channel that home's onShow()
+      consumes.
     -->
     <view class="page-header">
       <view class="search-field">
@@ -82,12 +82,17 @@ import { useAuth } from '../../composables/useAuth'
 import type { ItemCategory } from '../../types'
 import { BROWSE_CATEGORIES, navigateBackOr } from '../../utils'
 import UIcon from '../../components/UIcon.vue'
-import { onAccountTransition } from '../../composables/accountScope'
+import {
+  captureAccountIdentityGeneration,
+  getActiveAccountId,
+  onAccountTransition,
+} from '../../composables/accountScope'
 import {
   readAccountPrivateStorage,
   removeAccountPrivateStorage,
   writeAccountPrivateStorage,
 } from '../../api/accountLocalPrivacy'
+import { stageHomeNavigationIntent } from '../../api/navigationIntent'
 
 const { t } = useI18n()
 const { awaitAuthReady } = useAuth()
@@ -165,7 +170,16 @@ function onSubmit() {
   const text = query.value.trim()
   if (!text) return
   saveToHistory(text)
-  writeAccountPrivateStorage('pending_search', text)
+  stageHomeNavigationIntent(
+    { kind: 'query', query: text },
+    {
+      userId: getActiveAccountId(),
+      identityGeneration: captureAccountIdentityGeneration(),
+    },
+  )
+  // Old builds persisted these handoff keys. They are cleanup-only now:
+  // current navigation state lives in the typed runtime channel above.
+  removeAccountPrivateStorage('pending_search')
   removeAccountPrivateStorage('pending_category')
   goBack()
 }
@@ -176,7 +190,15 @@ function pick(text: string) {
 }
 
 function pickCategory(cat: ItemCategory | null) {
-  writeAccountPrivateStorage('pending_category', cat || '')
+  if (!cat) return
+  stageHomeNavigationIntent(
+    { kind: 'category', category: cat },
+    {
+      userId: getActiveAccountId(),
+      identityGeneration: captureAccountIdentityGeneration(),
+    },
+  )
+  removeAccountPrivateStorage('pending_category')
   removeAccountPrivateStorage('pending_search')
   goBack()
 }

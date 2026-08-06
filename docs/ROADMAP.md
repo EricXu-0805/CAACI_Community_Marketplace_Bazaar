@@ -1,17 +1,19 @@
 # Illini Market 发布路线图
 
-> 最后更新：2026-07-23
-> 当前阶段：合并前生产数据库 34/38 → 三条生产 tail 后 37/38 → matching-bundle canary/production readiness
+> 最后更新：2026-08-01
+> 当前阶段：首版认证收口 + Batch 01/02 immutable commit → staging/Hosted canary → production readiness
 > 原则：以可复查证据关闭门禁，不以文件存在、测试小计或文档勾选冒充上线。
+> 历史数据库基线仍记录为 2026-07 合并前 34/38、三条 tail 后 37/38；
+> 本轮新迁移与当前生产状态必须重新审计，不沿用旧数字冒充现状。
 
 ## 当前状态
 
 核心 H5/微信小程序、Supabase 数据模型、Vercel Edge API 和管理员后台已经存在。
-2026-07 全项目审计把大量身份、RLS/ACL、Storage、Realtime、管理员、邮件、
-注销、可访问性和依赖缺陷修成 38 条候选链。合并前生产数据库已经按精确 SQL
-与 ledger 原子应用 34/38；按顺序完成 145042、152000、161200 三条生产 tail
-后为 37/38，届时仅 `18140000` 仍须等待 passwordless WeChat canary。稳定
-H5/API bundle 仍是旧版本。
+2026-07 全项目审计形成了身份、RLS/ACL、Storage、Realtime、管理员、邮件、
+注销、可访问性和依赖修复链。2026-08-01 又把首版认证拍板为：H5 邮箱/密码 +
+Google，小程序邮箱/密码，隐藏微信快捷登录。`18140000` 与微信 provider canary
+转为“重新开放微信身份前”的兼容/安全门，不再冒充首版用户可见功能门。
+稳定 H5/API/小程序 bundle 仍须从最终精确提交生成并验收。
 
 因此目前不是“规划期”，也不是“正式上线”：它是需要严格上线演练的 release
 candidate。
@@ -48,8 +50,9 @@ H5/API/微信小程序 bundle、provider、管理员 Owner 或真实设备门已
    评论、block、消息、offer、meetup、成交、评分、通知、archive、换号和注销；
 5. operator/security/owner 三角色后台覆盖错误 token、过期/撤销、举报、停权、
    申诉、banner、required audit 回滚和 owner recovery；
-6. Resend test → live canary、OpenAI moderation/translation、Nominatim、Sentry、
-   WeChat login/seccheck/callback、Realtime websocket/fallback 故障注入；
+6. Resend test → live canary、Google OAuth、OpenAI moderation/translation、
+   Nominatim、Sentry、微信内容安全/callback、Realtime websocket/fallback 故障注入；
+   微信身份登录、绑定与历史账号合并移入后续独立项目；
 7. iPhone Safari、Android Chrome、微信 iOS/Android 真机，含弱网、后台恢复、
    HEIC、键盘、VoiceOver/TalkBack/微信读屏；
 8. 验证 help/support、rights request、appeal、unsubscribe 和事故值班渠道真的有人
@@ -65,8 +68,9 @@ H5/API/微信小程序 bundle、provider、管理员 Owner 或真实设备门已
 1. 冻结非必要变更；导出 ledger、schema、grants、policies、functions、Auth 统计
    与 Storage bytes，完成数据库和对象备份/恢复演练；
 2. 先跑生产只读 PRECHECK；漂移不明即停；
-3. 按 runbook 分阶段部署 API/H5/mp 与 migration，WeChat legacy credential 退役
-   先 dry-run、再授权 apply，不能跳过 guard；
+3. 按 runbook 分阶段部署 API/H5/mp 与 migration；首版保持微信登录入口隐藏且
+   provider fail-closed。只有未来重新开放微信身份时，才按独立 runbook 对 legacy
+   credential 退役先 dry-run、再授权 apply，不能跳过 guard；
 4. 每阶段立即跑 VERIFY、最小 anon/A/B/admin canary，监控 401/403/409/429/5xx、
    Realtime、Storage、cron、Sentry、database advisor 和慢查询；
 5. 验证 rollback/forward-fix；不要对有真实用户写入的新 schema 做盲目 down

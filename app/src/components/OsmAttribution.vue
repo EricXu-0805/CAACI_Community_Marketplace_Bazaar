@@ -38,11 +38,19 @@ function openAttribution() {
 </script>
 
 <style lang="scss" scoped>
+/*
+ * Required credit, not a feature. ODbL makes this non-optional wherever a
+ * reverse-geocoded string is shown, and smoke/osm-attribution-boundary keeps
+ * it wired into both listing flows — so it stays, but it reads as a caption
+ * rather than a call to action: it inherits the 16px form gutter of the
+ * control it credits, and drops the always-on underline that made it look
+ * like a stray link stranded at the screen edge.
+ */
 .osm-attribution {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
-  margin-top: 4px;
+  min-height: 24px;
+  margin: 2px 16px 0;
   padding: 2px 0;
   cursor: pointer;
   outline: none;
@@ -55,10 +63,17 @@ function openAttribution() {
 }
 
 .osm-attribution__text {
-  color: var(--text-subtle);
-  font-size: 11px;
+  color: var(--text-faint, var(--text-subtle));
+  font-size: 10px;
   line-height: 1.4;
-  text-decoration: underline;
+  text-decoration: none;
   text-underline-offset: 2px;
+}
+
+/* Underline on demand keeps the link discoverable for anyone who reaches for
+   it — pointer hover, keyboard focus — without it shouting at rest. */
+.osm-attribution:hover .osm-attribution__text,
+.osm-attribution:focus-visible .osm-attribution__text {
+  text-decoration: underline;
 }
 </style>

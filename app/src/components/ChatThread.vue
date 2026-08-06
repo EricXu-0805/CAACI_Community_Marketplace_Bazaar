@@ -911,49 +911,58 @@ async function initializeConversationAfterGate() {
       return
     }
 
-    /* Subscribe before taking any snapshots. The message ready callback is an
-       authoritative barrier after H5 SUBSCRIBED or after the mp message cursor
-       is seeded. Offer/meetup ready callbacks are H5-only; their mp tiers are
+    /* Subscribe before taking any snapshots. The message reconciliation
+       callback is an authoritative barrier after H5 SUBSCRIBED or after the mp
+       message cursor is seeded, and repeats while a direct-poll tier owns the
+       degraded transport so UPDATE-only state and failed snapshots converge.
+       Offer/meetup ready callbacks are H5-only; their mp tiers are
        recurring full snapshots installed before the initial full snapshot, so
        overlap converges on a later tick without pretending there is a cursor
        handshake. Request/epoch guards make concurrent snapshots latest-wins. */
+    const reconcileMessagesFromSubscription = () => {
+      if (!isCurrentThreadSetup()) return
+      return fetchMessages(options.id).then((reconciled) => {
+        if (!reconciled && isCurrentThreadSetup()) {
+          throw new Error('message_reconcile_failed')
+        }
+        if (isCurrentThreadSetup()) nextTick(() => scrollToBottom())
+      })
+    }
     unsubscribe = subscribeToMessages(
       options.id,
       (newMsg) => applyIncomingMessage(options.id!, newMsg),
       (updated) => applyMessageUpdate(options.id!, updated),
-      () => {
-        if (!isCurrentThreadSetup()) return
-        void fetchMessages(options.id).then(() => {
-          if (isCurrentThreadSetup()) nextTick(() => scrollToBottom())
-        }).catch(() => { /* the initial/live paths remain available */ })
-      },
+      reconcileMessagesFromSubscription,
+      reconcileMessagesFromSubscription,
     )
 
     const reconcileOffersFromSubscription = () => {
       if (!isCurrentThreadSetup()) return
       const before = JSON.stringify(offers.value)
-      void fetchOffers(options.id).then(() => {
+      return fetchOffers(options.id).then(() => {
         if (!isCurrentThreadSetup()) return
         if (JSON.stringify(offers.value) !== before) nextTick(() => scrollToBottom())
-      }).catch(() => {})
+      })
     }
+    const refreshOffersFromChange = () => reconcileOffersFromSubscription()
     offersUnsub = subscribeToOffers(
       options.id,
-      reconcileOffersFromSubscription,
+      refreshOffersFromChange,
       reconcileOffersFromSubscription,
     )
 
     const reconcileMeetupsFromSubscription = () => {
       if (!isCurrentThreadSetup()) return
       const before = JSON.stringify(meetups.value)
-      void fetchMeetups(options.id).then(() => {
+      return fetchMeetups(options.id).then(() => {
         if (!isCurrentThreadSetup()) return
         if (JSON.stringify(meetups.value) !== before) nextTick(() => scrollToBottom())
-      }).catch(() => {})
+      })
     }
+    const refreshMeetupsFromChange = () => reconcileMeetupsFromSubscription()
     meetupsUnsub = subscribeToMeetups(
       options.id,
-      reconcileMeetupsFromSubscription,
+      refreshMeetupsFromChange,
       reconcileMeetupsFromSubscription,
     )
 
@@ -1015,6 +1024,11 @@ async function initializeConversationAfterGate() {
 async function openConversationBehindModerationGate() {
   if (!mounted || conversationSetupStarted) return
   const gateEpoch = threadEpoch
+  // Claim this epoch's setup before the first await. Cold-start auth recovery
+  // can resume both onMounted and the account-transition reinitializer against
+  // the same block-load flight; without this synchronous latch both continuations
+  // install their own realtime owners and the later assignments orphan the first.
+  conversationSetupStarted = true
 
   // A missing block snapshot is a security prerequisite failure, not an empty
   // block list. Hide every composer/action while the check is pending and keep
@@ -1022,10 +1036,26 @@ async function openConversationBehindModerationGate() {
   moderationAccessFailed.value = false
   conversationUnavailable.value = false
   conversationAccessReady.value = false
-  const blockLoadResult = await ensureBlocksLoaded()
+  let blockLoadResult
+  try {
+    blockLoadResult = await ensureBlocksLoaded()
+  } catch (error) {
+    if (!mounted || gateEpoch !== threadEpoch) return
+    // The normal moderation path returns a typed failure, but an unexpected
+    // synchronous/async exception must still reopen the explicit Retry path.
+    // Otherwise this pre-await latch would leave the thread loading forever.
+    conversationSetupStarted = false
+    moderationAccessFailed.value = true
+    conversationUnavailable.value = true
+    reportBackgroundFailure('chat.loadBlockedIds', error)
+    return
+  }
   if (!mounted || gateEpoch !== threadEpoch) return
 
   if (!blockLoadResult.ok) {
+    // Only the owner of the still-current epoch may reopen the explicit Retry
+    // path. An older account's continuation must never unlock a newer setup.
+    conversationSetupStarted = false
     moderationAccessFailed.value = true
     conversationUnavailable.value = true
     if (blockLoadResult.reason === 'load_failed' && blockLoadResult.error) {
@@ -1034,8 +1064,16 @@ async function openConversationBehindModerationGate() {
     return
   }
 
-  conversationSetupStarted = true
-  await initializeConversationAfterGate()
+  try {
+    await initializeConversationAfterGate()
+  } catch (error) {
+    if (!mounted || gateEpoch !== threadEpoch) return
+    teardownThreadSubscriptions()
+    conversationSetupStarted = false
+    moderationAccessFailed.value = true
+    conversationUnavailable.value = true
+    reportBackgroundFailure('chat.initializeConversation', error)
+  }
 }
 
 async function retryConversationAccess() {

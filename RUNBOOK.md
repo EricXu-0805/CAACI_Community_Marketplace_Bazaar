@@ -595,8 +595,11 @@ When a migration is broken in prod, "fix forward" almost always beats
 > remain absent/false until that canary passes. `WECHAT_APPID`,
 > `WECHAT_PUSH_TOKEN`, and the exact 43-character `WECHAT_ENCODING_AES_KEY` are
 > mandatory before the flag can enable image enqueue. `WECHAT_APPSECRET` must
-> still be present for WeChat login and synchronous text moderation; do not
-> remove it as a workaround for callback risk. When the flag is absent, image
+> still be present for synchronous text moderation; do not remove it as a
+> workaround for callback risk. Identity login has a separate exact-string
+> `WECHAT_LOGIN_ENABLED=true` gate. Keep it absent/false for the first release,
+> so shared content-safety credentials cannot make the dormant login route
+> reachable. When the media flag is absent, image
 > enqueue returns 503 and callback POST returns 503 before reading a body or
 > touching database/Storage; the signed GET configuration handshake remains
 > available.
@@ -1006,11 +1009,25 @@ event if the original worker subsequently fails.
     profile snapshots, case/approval/idempotency replay, outcome-unknown
     recovery, direct token-write concurrency and the three-role allow/deny
     matrix before publishing the administrator UI/API.
-14. Publish the matching H5/mp/legal/re-consent bundle only after the backend
-    facts it describes exist. Run the complete browser, two-account,
-    administrator, provider and real-device matrix and monitor 401/403/409/
-    429/5xx, Auth refresh, Realtime, Storage, cron, Sentry and Supabase Advisors
-    through the observation window.
+14. Roll the 2026-08-01 privacy version in three explicit phases; never publish
+    the new legal/re-consent bundle before its backend acceptance exists:
+
+    - **Expand first:** after exact-target PRECHECK and isolated staging replay,
+      apply and verify
+      `20260801082650_advance_privacy_consent_for_first_release_auth_matrix.sql`.
+      During this bounded rolling window, the RPC accepts only exact 2026-07-18
+      and 2026-08-01; an old client cannot downgrade or refresh an 08-01 row.
+    - **Deploy second:** publish the matching H5/mp/legal/re-consent bundle from
+      one immutable commit. Verify old/new bundle × old/new consent, new account,
+      re-consent, account switch and rollback paths before promotion.
+    - **Contract later:** only after the release owner proves the old bundle is
+      no longer served or supported (including the mini-program minimum-version
+      boundary), add a new forward migration that accepts only 2026-08-01. Do
+      not put that contraction in the same migration batch as the expansion.
+
+    Then run the complete browser, two-account, administrator, provider and
+    real-device matrix and monitor 401/403/409/429/5xx, Auth refresh, Realtime,
+    Storage, cron, Sentry and Supabase Advisors through the observation window.
 15. Clean prior disposable audit accounts and their objects only through the
     verified durable deletion/admin path. Do not edit Supabase Auth or Storage
     internal tables directly. Disable legacy keys, old Realtime public access,

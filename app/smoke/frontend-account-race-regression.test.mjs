@@ -185,10 +185,10 @@ test('account-bound external side effects cannot cross the A to B handoff', () =
 
 test('stale notification failures are silent and auth-waiting forms acquire a single-entry lock', () => {
   const notifications = source('src/composables/useNotifications.ts')
-  const fetchBlock = functionBlock(notifications, 'async function fetchNotifications()', 'async function markAllRead()')
+  const fetchBlock = functionBlock(notifications, 'async function fetchNotifications(', 'async function markAllRead()')
   assert.match(fetchBlock, /Promise\.all\([^]*?\.catch\(error => \{[^]*?!isAccountRequestCurrent\(token\)[^]*?return null[^]*?throw error/)
   assert.ok(
-    fetchBlock.indexOf('if (!isAccountRequestCurrent(token) || requestId !== latestNotificationFetchId) return')
+    fetchBlock.indexOf('requestId !== latestNotificationFetchId')
       < fetchBlock.indexOf('if (countResult.error) throw countResult.error'),
   )
 
@@ -283,9 +283,9 @@ test('polling, offer, moderation and view-count continuations retain their entry
   const realtime = source('src/composables/useRealtimeFallback.ts')
   const longPoll = functionBlock(realtime, 'function startLongPoll', 'function directConversationPoll')
   const sessionRead = longPoll.indexOf('await supabase.auth.getSession()')
-  const aliveBarrier = longPoll.indexOf('if (!alive) return', sessionRead)
-  const controllerCreation = longPoll.indexOf('ctrl = new AbortController()', sessionRead)
-  assert.ok(sessionRead >= 0 && sessionRead < aliveBarrier && aliveBarrier < controllerCreation)
+  const ownerBarrier = longPoll.indexOf('if (!isCurrent()) return', sessionRead)
+  const controllerCreation = longPoll.indexOf('new AbortController()', sessionRead)
+  assert.ok(sessionRead >= 0 && sessionRead < ownerBarrier && ownerBarrier < controllerCreation)
 
   const offers = source('src/composables/useOffers.ts')
   assert.match(offers, /await supabase\.rpc\('make_offer'[^]*?if \(!isAccountRequestCurrent\(accountToken\)\) throw/)

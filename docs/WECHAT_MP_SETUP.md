@@ -190,13 +190,23 @@ Allow ~3–5 business days for WeChat's first review.
 
 ## 8. wx.login silent sign-in — deployment guide
 
+> **首版状态（2026-08-01）**：本节是兼容与未来激活手册，不是当前发布步骤。
+> 首版小程序只显示邮箱/密码，微信快捷登录入口隐藏；H5 的 Google OAuth 也不
+> 出现在小程序。保留现有 API、旧账号注销和凭据退役代码，但在完成身份冲突、
+> 找回、provider 与真机 canary 前不得重新暴露按钮或启用生产微信登录。
+> `WECHAT_LOGIN_ENABLED` 必须保持缺失/false；即使内容安全共用了 AppID/secret，
+> 直接 POST 登录路由也只返回 404，不能据此激活身份登录。
+
 Scaffolding: migration 034 (`034_wechat_auth_support.sql`) + the atomic
 `edge_rate_hit` migration + edge route
 (`api/auth/wechat-login.js`) + front-end (`composables/useAuth.ts`
 `signInWithWeChat()`, button in `pages/login/index.vue`). The current route is
 passwordless: it never derives, stores, retrieves, or submits a reusable
 plaintext password. Landing the code is not enough — provision the server
-configuration and apply the database prerequisites first.
+configuration and apply the database prerequisites first. Future activation
+also requires the independent server-only `WECHAT_LOGIN_ENABLED=true`; do not
+reuse `WECHAT_MEDIA_ASYNC_ENABLED` or infer login readiness from shared
+content-safety credentials.
 
 ### 8.1 Apply the database prerequisites
 
@@ -231,6 +241,7 @@ branch/PR Preview code; untrusted previews must run without privileged routes.
 
 | Name | Value source | Guard-rails |
 |---|---|---|
+| `WECHAT_LOGIN_ENABLED` | Deliberate release approval, not a provider credential | **SERVER ONLY, non-secret.** Keep absent/false in the first release. Only the exact string `true` enables the dormant identity route after its own staging/provider/account-recovery canary. Never reuse the media switch. |
 | `WECHAT_APPID` | mp.weixin.qq.com → 开发管理 → 开发设置 → AppID | Same value already in `src/manifest.json` — OK to bundle either side. |
 | `WECHAT_APPSECRET` | Read the environment-specific approved value from the team's access-controlled secret manager | **SERVER ONLY.** Production and staging use different apps/secrets. Do not click “重置” during ordinary setup. Reset only in an approved, coordinated rotation window that updates that environment's consumers and verifies rollback/recovery; every reset invalidates the previous value. |
 | `WECHAT_PUSH_TOKEN` | mp.weixin.qq.com → 开发管理 → 开发设置 → 消息推送配置 → Token | **SERVER ONLY.** Use a separate random value per environment. It authenticates both the GET handshake and the encrypted POST `msg_signature`; never log or browser-prefix it. |
@@ -300,16 +311,18 @@ needs:
 
 No new entry needed — the domain is shared with existing endpoints.
 
-### 8.4 Test in WeChat DevTools
+### 8.4 Future activation test in WeChat DevTools
 
 ```bash
 npm run build:mp-weixin
 # DevTools → Import project → app/dist/build/mp-weixin/
 # 详情 → 本地设置 → 勾 "不校验合法域名" (dev only)
-# Click login page → "微信一键登录" button
+# Current first-release acceptance: login page has email/password and no
+# WeChat/Google button. The steps below apply only to a separately approved
+# future build that deliberately re-enables WeChat identity.
 ```
 
-Expected happy path:
+Future re-enable happy path:
 1. Click "微信一键登录" → DevTools simulates wx.login and returns a code
 2. Edge function exchanges code → openid (if AppSecret is wrong or
    code is fake, you'll see `wechat_exchange_failed` and a `wxErrcode`

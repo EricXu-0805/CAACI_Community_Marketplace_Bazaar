@@ -159,6 +159,34 @@ function unwrapAuthValue(raw: string | null, generation: string): string | null 
   return generation === LEGACY_GENERATION ? raw : null
 }
 
+/**
+ * Supabase Auth can include short-lived OAuth provider credentials on the
+ * top-level session returned immediately after a redirect. Illini Market does
+ * not call Google APIs, so those credentials must never enter durable app
+ * storage. Keep Supabase's own access/refresh tokens and the user payload
+ * intact; only the two documented top-level provider fields are removed.
+ */
+function stripOAuthProviderTokens(
+  key: string,
+  storageKey: string,
+  value: string,
+): string {
+  if (key !== storageKey) return value
+  try {
+    const parsed = JSON.parse(value) as Record<string, unknown> | null
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') return value
+    if (
+      !Object.prototype.hasOwnProperty.call(parsed, 'provider_token') &&
+      !Object.prototype.hasOwnProperty.call(parsed, 'provider_refresh_token')
+    ) return value
+    delete parsed.provider_token
+    delete parsed.provider_refresh_token
+    return JSON.stringify(parsed)
+  } catch {
+    return value
+  }
+}
+
 function authKeySet(storageKey: string): Set<string> {
   return new Set([
     storageKey,
@@ -417,7 +445,14 @@ export function createFailClosedAuthStorage(
           durableGeneration,
         )
         if (!stillAllowed) return null
-        return unwrapAuthValue(rawValue, durableGeneration)
+        const unwrappedValue = unwrapAuthValue(rawValue, durableGeneration)
+        if (!unwrappedValue) return null
+        // Never rewrite from an ordinary read. Another tab can refresh the
+        // same generation between our read and write; a read-side scrub would
+        // then roll the newer Supabase access/refresh session back. Filtering
+        // protects the running client, while the next real session write uses
+        // the sanitizer below and removes the legacy provider fields durably.
+        return stripOAuthProviderTokens(key, storageKey, unwrappedValue)
       })
     },
 
@@ -430,7 +465,8 @@ export function createFailClosedAuthStorage(
         if (!durableGeneration) {
           throw new Error('supabase_auth_persistence_blocked')
         }
-        const encodedValue = wrapAuthValue(durableGeneration, value)
+        const sanitizedValue = stripOAuthProviderTokens(key, storageKey, value)
+        const encodedValue = wrapAuthValue(durableGeneration, sanitizedValue)
         await backing.setItem(key, encodedValue)
         // Re-read the shared durable generation after the physical write. A
         // logout/new login in another tab may have happened while an async

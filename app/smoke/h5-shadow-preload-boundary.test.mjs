@@ -6,7 +6,12 @@ import test from 'node:test'
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const viteConfig = readFileSync(resolve(appRoot, 'vite.config.ts'), 'utf8')
-const pages = JSON.parse(readFileSync(resolve(appRoot, 'src/pages.json'), 'utf8'))
+// pages.json carries uni-app conditional-compilation directives (`// #ifdef`),
+// so it is JSON with comments, not strict JSON. Strip the directive lines
+// before parsing — the platform-gated routes they wrap are still present.
+const pages = JSON.parse(
+  readFileSync(resolve(appRoot, 'src/pages.json'), 'utf8').replace(/^\s*\/\/.*$/gm, ''),
+)
 const blockedUrl = 'https://cdn.dcloud.net.cn/img/shadow-grey.png'
 
 test('H5 build removes uni remote shadow preload instead of weakening CSP', () => {

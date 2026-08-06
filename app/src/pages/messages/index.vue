@@ -231,7 +231,7 @@ import { parseStickerToken } from '../../components/stickers/registry'
 
 const { t, lang, localize } = useI18n()
 
-const { currentUser, isLoggedIn, authState, awaitAuthReady } = useAuth()
+const { currentUser, isLoggedIn, authState, awaitAuthReady, requireAuth } = useAuth()
 const {
   conversations,
   loading,
@@ -643,7 +643,7 @@ function onMoreMenu(conv: Conversation) {
 }
 
 function goLogin() {
-  uni.navigateTo({ url: '/pages/login/index' })
+  requireAuth('/pages/messages/index')
 }
 </script>
 

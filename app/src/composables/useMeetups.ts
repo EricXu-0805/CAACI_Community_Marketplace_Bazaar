@@ -8,7 +8,7 @@ import {
 import { BASE_URL } from '../config/runtime'
 import type { Meetup } from '../types'
 import { readBoundedText } from '../api/responseBody'
-import { startPrivateRealtimeChannel } from '../api/privateRealtime'
+import { subscribeToSnapshotChanges } from './useRealtimeFallback'
 
 /*
  * Structured meetup scheduling (migration 052). Mirrors useOffers: all writes
@@ -189,39 +189,17 @@ export function useMeetups() {
 
   function subscribeToMeetups(
     conversationId: string,
-    onChange: () => void,
-    onReady?: () => void,
+    onChange: () => void | Promise<void>,
+    onReady?: () => void | Promise<void>,
   ): () => void {
-    // #ifdef H5
-    // H5 exposes a real readiness barrier; ChatThread uses it for an
-    // authoritative post-SUBSCRIBED snapshot.
-    let readySent = false
-    return startPrivateRealtimeChannel({
-      supabase,
+    return subscribeToSnapshotChanges({
       topic: `meetups:${conversationId}`,
-      configure: (privateChannel) => privateChannel.on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'meetups', filter: `conversation_id=eq.${conversationId}` },
-        () => onChange(),
-      ),
-      onStatus: (status) => {
-        if (status === 'SUBSCRIBED' && !readySent) {
-          readySent = true
-          onReady?.()
-        }
-      },
+      table: 'meetups',
+      filter: `conversation_id=eq.${conversationId}`,
+      intervalMs: 8000,
+      onChange,
+      onReady,
     })
-    // #endif
-    // #ifndef H5
-    /* Same rationale as subscribeToOffers' mp branch: meetup RPCs write no
-       messages row, so without this poll an mp user waiting in-chat never
-       saw the counterparty's confirm/reschedule. onChange() refetch is
-       cheap and idempotent. This is a recurring full snapshot, not a cursor
-       handshake; because ChatThread installs it before the initial snapshot,
-       a concurrent change is recovered by a later 8s tick. */
-    const timer = setInterval(() => { try { onChange() } catch { /* refetch errors surface in the caller */ } }, 8000)
-    return () => clearInterval(timer)
-    // #endif
   }
 
   return {

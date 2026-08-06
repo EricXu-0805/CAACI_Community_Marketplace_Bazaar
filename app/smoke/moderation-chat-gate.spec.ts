@@ -41,13 +41,36 @@ test('chat never renders actions before moderation succeeds and retry rechecks a
   const gate = chat.slice(gateStart, gateEnd)
   expect(gateStart).toBeGreaterThan(-1)
   expect(gate).toContain('conversationAccessReady.value = false')
-  expect(gate).toContain('const blockLoadResult = await ensureBlocksLoaded()')
+  expect(gate).toContain('blockLoadResult = await ensureBlocksLoaded()')
   expect(gate).toContain('if (!blockLoadResult.ok)')
   expect(gate).toContain('moderationAccessFailed.value = true')
-  expect(gate.indexOf('if (!blockLoadResult.ok)'))
-    .toBeLessThan(gate.indexOf('conversationSetupStarted = true'))
+
+  // The setup latch is now claimed synchronously, before the first await, so a
+  // cold-start recovery and an account-transition reinitializer racing the same
+  // block-load cannot both install realtime owners. That inverts the ordering
+  // this test used to pin, so the safety moves to the release side: the gate
+  // must still decide access before initializing, and every failure exit must
+  // clear the latch — otherwise the thread loads forever with no way back.
   expect(gate.indexOf('conversationSetupStarted = true'))
+    .toBeLessThan(gate.indexOf('blockLoadResult = await ensureBlocksLoaded()'))
+  expect(gate.indexOf('blockLoadResult = await ensureBlocksLoaded()'))
+    .toBeLessThan(gate.indexOf('if (!blockLoadResult.ok)'))
+  expect(gate.indexOf('if (!blockLoadResult.ok)'))
     .toBeLessThan(gate.indexOf('await initializeConversationAfterGate()'))
+
+  // A typed failure and a thrown exception are separate exits. Both reopen the
+  // explicit Retry path; neither may leave the latch claimed.
+  const thrownExit = gate.slice(
+    gate.indexOf('} catch (error) {'), gate.indexOf('if (!blockLoadResult.ok)'),
+  )
+  const typedExit = gate.slice(
+    gate.indexOf('if (!blockLoadResult.ok)'), gate.indexOf('await initializeConversationAfterGate()'),
+  )
+  for (const exit of [thrownExit, typedExit]) {
+    expect(exit).toContain('conversationSetupStarted = false')
+    expect(exit).toContain('moderationAccessFailed.value = true')
+    expect(exit).toContain('conversationUnavailable.value = true')
+  }
 
   const initializeStart = chat.indexOf('async function initializeConversationAfterGate()')
   const initializeEnd = chat.indexOf('\nasync function openConversationBehindModerationGate()', initializeStart)

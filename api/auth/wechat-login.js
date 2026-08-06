@@ -30,8 +30,9 @@ export const config = { runtime: 'edge' }
  * that historical table; switching this endpoint alone cannot invalidate
  * credentials exposed by an old database dump or backup.
  *
- * Required server-only environment variables:
- *   WECHAT_APPID, WECHAT_APPSECRET, SUPABASE_URL,
+ * Required server-only environment variables after the separately reviewed
+ * provider is deliberately enabled:
+ *   WECHAT_LOGIN_ENABLED=true, WECHAT_APPID, WECHAT_APPSECRET, SUPABASE_URL,
  *   SUPABASE_SECRET_KEY, SUPABASE_PUBLISHABLE_KEY
  * Legacy SUPABASE_SERVICE_ROLE_KEY / SUPABASE_ANON_KEY remain rolling fallbacks.
  */
@@ -52,6 +53,10 @@ function env(name, fallback = '') {
 
 const WECHAT_APPID = env('WECHAT_APPID')
 const WECHAT_APPSECRET = env('WECHAT_APPSECRET')
+// AppID/secret are also used by mini-program content safety. They must never
+// implicitly activate identity login; only this independent exact-value gate
+// can make the dormant route reachable.
+const WECHAT_LOGIN_ENABLED = process.env.WECHAT_LOGIN_ENABLED === 'true'
 const SUPABASE_URL_RAW = env('SUPABASE_URL', env('VITE_SUPABASE_URL'))
 const SUPABASE_SERVICE = env('SUPABASE_SECRET_KEY', env('SUPABASE_SERVICE_ROLE_KEY'))
 const SUPABASE_ANON = env(
@@ -785,6 +790,9 @@ export default async function handler(request) {
     return json({ error: 'method_not_allowed' }, 405, id)
   }
 
+  if (!WECHAT_LOGIN_ENABLED) {
+    return json({ error: 'wechat_login_disabled' }, 404, id)
+  }
   if (!WECHAT_APPID || !WECHAT_APPSECRET) {
     return json({ error: 'wechat_not_configured' }, 503, id)
   }

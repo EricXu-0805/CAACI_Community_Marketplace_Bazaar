@@ -4,6 +4,8 @@
 api/**/*.test.mjs
 api/_test-module-loader.mjs
 app/smoke/**
+app/e2e/**
+app/playwright.hosted-realtime.config.ts
 app/test-results/**
 app/playwright-report/**
 app/blob-report/**

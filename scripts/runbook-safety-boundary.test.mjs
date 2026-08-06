@@ -50,6 +50,9 @@ test('runbook reflects the deployed account and admin-token fields', async () =>
   assert.doesNotMatch(source, /SELECT id, email, status, ban_level/)
   assert.match(source, /dashboard keeps it only in page memory/)
   assert.doesNotMatch(source, /admin_token.*localStorage/)
+  assert.match(source, /Expand first:[\s\S]*20260801082650[\s\S]*Deploy second:[\s\S]*Contract later:/)
+  assert.match(source, /old client cannot downgrade or refresh an 08-01 row/)
+  assert.match(source, /Do\s+not put that contraction in the same migration batch/)
 })
 
 test('environment and WeChat docs do not treat new Supabase keys as drop-in JWTs', async () => {
@@ -63,6 +66,13 @@ test('environment and WeChat docs do not treat new Supabase keys as drop-in JWTs
     assert.match(source, /not (?:a )?drop-in replacement|Do not substitute|Do not paste/i)
   }
   assert.match(environment, /leaked-password protection enabled/)
+  for (const source of [environment, wechat]) {
+    assert.match(source, /WECHAT_LOGIN_ENABLED/)
+    assert.match(source, /exact (?:string )?`?true`?|精确(?:字符串)? `true`/i)
+    assert.match(source, /WECHAT_MEDIA_ASYNC_ENABLED/)
+  }
+  assert.match(environment, /WECHAT_LOGIN_ENABLED` is absent\/false/)
+  assert.match(wechat, /WECHAT_LOGIN_ENABLED` 必须保持缺失\/false/)
 })
 
 test('runbook internal heading links resolve', async () => {

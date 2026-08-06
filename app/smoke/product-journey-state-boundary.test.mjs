@@ -171,7 +171,10 @@ test('leaked-password sign-in failures stay on the localized password-policy pat
 
   assert.match(submit, /error as any\)\.code === 'weak_password'/)
   assert.match(submit, /Array\.isArray\(\(error as any\)\.reasons\)/)
-  assert.match(submit, /weak\s*\?\s*localizedPasswordPolicyError\(error\)/)
+  // The rule is "a weak-password rejection is shown as the localized policy
+  // line", not "it is written as a ternary". Field-level errors moved this to
+  // an if/else so the message can also be attached to the password input.
+  assert.match(submit, /if \(weak\) \{\s*\n\s*passwordError\.value = localizedPasswordPolicyError\(error\)/)
   assert.match(loginSource, /pwned\|leak\|breach\|compromis/)
   assert.match(loginSource, /t\('login\.leakedPasswordRejected'\)/)
   assert.match(resetPasswordSource, /localizedPasswordPolicyError\(uErr\)/)
@@ -191,7 +194,7 @@ test('successful leaked-password sign-in warns before continuing to the app', ()
   assert.match(submit, /uni\.showModal\(\{[\s\S]*?showCancel:\s*false/)
   assert.match(submit, /t\('login\.weakPasswordWarningTitle'\)/)
   assert.match(submit, /t\('login\.weakPasswordWarningHint'\)/)
-  assert.match(submit, /success:[\s\S]*?scheduleHomeRedirect\(0\)/)
+  assert.match(submit, /success:[\s\S]*?scheduleHomeRedirect\(0,\s*data\?\.session\?\.user\?\.id\)/)
   assert.match(submit, /fail:[\s\S]*?localizedPasswordPolicyError\(data\.weakPassword\)/)
   assert.match(enMessagesSource, /'login\.weakPasswordWarningTitle'/)
   assert.match(enMessagesSource, /known leak/)

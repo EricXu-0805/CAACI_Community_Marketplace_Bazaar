@@ -867,6 +867,9 @@ async function onSubmit() {
   submitting.value = true
   uploadProgress.value = 0
   let uploadedForCleanup: string[] = []
+  // Set only when some images were dropped, so the terminal message can say
+  // "published, N of M photos" instead of a flat success.
+  let partialUpload: { done: number; total: number } | null = null
   let uploadAccountToken: UploadAccountToken | null = null
   let itemCreated = false
   try {
@@ -905,16 +908,17 @@ async function onSubmit() {
       }
       /* Diagnostic: surface partial upload failures that would otherwise be
          swallowed. uploadImagesWithDims() catches per-file errors and skips
-         them, so uploaded.length < toUpload.length means some images were lost. */
+         them, so uploaded.length < toUpload.length means some images were lost.
+
+         The count is carried to the terminal message rather than shown here.
+         A warning toast fired at this point is replaced by the success toast
+         a moment later, so the user's last word was "published" even though
+         some of their photos never made it. */
       if (uploaded.length < toUpload.length) {
         if (!operationStillCurrent()) {
           throw mutationOutcomeError(new Error('Account changed during item upload'), 'not_committed')
         }
-        uni.showToast({
-          title: t('publish.imagesUploaded', { done: uploaded.length, total: toUpload.length }),
-          icon: 'none',
-          duration: 4000,
-        })
+        partialUpload = { done: uploaded.length, total: toUpload.length }
       }
     }
 
@@ -969,7 +973,17 @@ async function onSubmit() {
     uploadProgress.value = 0
     resetForm()
     clearDraft()
-    uni.showToast({ title: t('publish.success'), icon: 'success' })
+    if (partialUpload) {
+      // The listing exists, so this is not a failure — but it is not a clean
+      // success either, and the count has to survive as the last thing said.
+      uni.showToast({
+        title: t('publish.successPartial', partialUpload),
+        icon: 'none',
+        duration: 4000,
+      })
+    } else {
+      uni.showToast({ title: t('publish.success'), icon: 'success' })
+    }
     scheduleBilingualFill(
       newItem.id,
       trimmedTitle,
@@ -1200,15 +1214,28 @@ async function onSubmit() {
 .cond-pill.active .cp-hint { color: rgba(255,255,255,0.8); }
 
 /* ========== Location ========== */
+/*
+ * The chip rail is a scroll-view, so it sits outside .form-group and lost
+ * that row's 16px gutter — the first chip ran flush into the screen edge.
+ * Padding-left restores the gutter; the trailing gutter comes from the last
+ * chip's own margin, because a scroll container's padding-right is not
+ * guaranteed to survive overflow in every engine.
+ */
 .spot-row {
   white-space: nowrap;
-  padding: 0 0 8px 0;
+  // scroll-view is not covered by the global `view { box-sizing: border-box }`
+  // rule, so the leading gutter would otherwise add to 100% and make the rail
+  // 16px wider than the screen — an overhang an ancestor clips, taking the
+  // last chip's trailing gutter with it.
+  box-sizing: border-box;
+  padding: 0 0 8px 16px;
   margin-top: 4px;
 }
 .spot-chip {
   display: inline-block;
   padding: 6px 12px;
   margin-right: 8px;
+  &:last-child { margin-right: 16px; }
   background: var(--bg-subtle);
   color: var(--text-primary);
   font-size: 13px;

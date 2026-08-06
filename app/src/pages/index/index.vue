@@ -498,7 +498,9 @@ import UIcon from '../../components/UIcon.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
 import AddToHomeHint from '../../components/AddToHomeHint.vue'
 import {
+  captureAccountIdentityGeneration,
   captureAccountRequest,
+  getActiveAccountId,
   isAccountRequestCurrent,
   onAccountTransition,
 } from '../../composables/accountScope'
@@ -507,6 +509,7 @@ import {
   removeAccountPrivateStorage,
   writeAccountPrivateStorage,
 } from '../../api/accountLocalPrivacy'
+import { consumeHomeNavigationIntent } from '../../api/navigationIntent'
 
 const { t, tc, lang, localize, toggleLang } = useI18n()
 const { isDark, setPref } = useTheme()
@@ -989,9 +992,9 @@ function selectCategory(category: ItemCategory | null) {
  *
  * Home's search field is now a PROXY — tapping it navigateTo()'s
  * the search page, which handles recent + browse-by-category +
- * live input. The search page hands results back via two storage
- * keys (pending_search | pending_category) that we consume on
- * onShow below.
+ * live input. The search page hands the latest typed runtime intent back to
+ * onShow below. Search history remains account-private durable data; the
+ * one-shot navigation intent does not.
  */
 function goToSearch() {
   uni.navigateTo({ url: '/pages/search/index' })
@@ -999,21 +1002,22 @@ function goToSearch() {
 
 function consumePendingSearch() {
   try {
-    const pendingSearch = readAccountPrivateStorage<unknown>('pending_search', '')
-    const ps = pendingSearch.allowed && typeof pendingSearch.value === 'string'
-      ? pendingSearch.value
-      : ''
-    if (ps) {
-      removeAccountPrivateStorage('pending_search')
-      searchText.value = ps
+    // Cleanup only for stale keys written by older app versions.
+    removeAccountPrivateStorage('pending_search')
+    removeAccountPrivateStorage('pending_category')
+    const intent = consumeHomeNavigationIntent({
+      userId: getActiveAccountId(),
+      identityGeneration: captureAccountIdentityGeneration(),
+    })
+    if (intent?.kind === 'query') {
+      selectedCategory.value = null
+      searchText.value = intent.query
       onSearch()
       return
     }
-    const pendingCategory = readAccountPrivateStorage<unknown>('pending_category', null)
-    const pc = pendingCategory.allowed ? pendingCategory.value : null
-    if (typeof pc === 'string' && pc) {
-      removeAccountPrivateStorage('pending_category')
-      selectCategory(pc as ItemCategory)
+    if (intent?.kind === 'category') {
+      searchText.value = ''
+      selectCategory(intent.category as ItemCategory)
     }
   } catch {}
 }
@@ -1192,9 +1196,9 @@ onShow(async () => {
   homeVisible = true
   const showEpoch = ++homeShowEpoch
   clearScrollTimers()
-  // pending_search/category and searchHistory are account-owned storage. Wait
-  // until useAuth has erased or adopted them for the current authority before
-  // copying either value into mounted refs.
+  // Wait for the authoritative account generation before consuming the
+  // owner-bound runtime intent. Search history remains separately protected by
+  // account-private storage.
   await awaitAuthReady()
   if (!homeVisible || showEpoch !== homeShowEpoch) return
   consumePendingSearch()

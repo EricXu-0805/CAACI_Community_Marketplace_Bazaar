@@ -794,6 +794,9 @@ async function onSubmit() {
   submitting.value = true
   uploadProgress.value = 0
   let uploadedForCleanup: string[] = []
+  // See pages/publish/index.vue: the shortfall has to reach the terminal
+  // message, or the success toast becomes the user's last word.
+  let partialUpload: { done: number; total: number } | null = null
   let uploadAccountToken: UploadAccountToken | null = null
   let updateCommitted = false
   try {
@@ -839,11 +842,7 @@ async function onSubmit() {
         if (!operationStillCurrent()) {
           throw mutationOutcomeError(new Error('Account changed during item edit upload'), 'not_committed')
         }
-        uni.showToast({
-          title: t('publish.imagesUploaded', { done: uploaded.length, total: toUpload.length }),
-          icon: 'none',
-          duration: 4000,
-        })
+        partialUpload = { done: uploaded.length, total: toUpload.length }
       }
     }
 
@@ -901,7 +900,15 @@ async function onSubmit() {
       }
     }
     if (!operationStillCurrent()) return
-    uni.showToast({ title: t('publish.updated'), icon: 'success' })
+    if (partialUpload) {
+      uni.showToast({
+        title: t('publish.updatedPartial', partialUpload),
+        icon: 'none',
+        duration: 4000,
+      })
+    } else {
+      uni.showToast({ title: t('publish.updated'), icon: 'success' })
+    }
     scheduleBilingualFill(
       editId.value,
       trimmedTitle,
@@ -1104,15 +1111,22 @@ async function onSubmit() {
 .cond-pill.active .cp-hint { color: rgba(255,255,255,0.8); }
 
 /* ========== Location ========== */
+/* Gutter parity with pages/publish/index.vue — see the note there. */
 .spot-row {
   white-space: nowrap;
-  padding: 0 0 8px 0;
+  // scroll-view is not covered by the global `view { box-sizing: border-box }`
+  // rule, so the leading gutter would otherwise add to 100% and make the rail
+  // 16px wider than the screen — an overhang an ancestor clips, taking the
+  // last chip's trailing gutter with it.
+  box-sizing: border-box;
+  padding: 0 0 8px 16px;
   margin-top: 4px;
 }
 .spot-chip {
   display: inline-block;
   padding: 6px 12px;
   margin-right: 8px;
+  &:last-child { margin-right: 16px; }
   background: var(--bg-subtle);
   color: var(--text-primary);
   font-size: 13px;

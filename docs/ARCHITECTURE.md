@@ -1,10 +1,12 @@
 # Illini Market 技术架构
 
-> 最后更新：2026-07-23
-> 仓库状态：合并前数据库进入生产 34/38；三条生产 tail 完成后为 37/38，应用仍是待 matching canary 的 release candidate
-> 生产边界：已应用迁移与对应仓库 SQL/ledger 逐字一致；完成 145042、152000、
-> 161200 后仅 WeChat 密码凭据退役迁移 `18140000` 待 passwordless canary。候选 API、H5 和小程序文件存在于
-> 工作树不代表稳定应用已经上线。
+> 最后更新：2026-08-01
+> 仓库状态：首版认证已收敛，Batch 01/02 仍待 immutable commit、staging 和 Hosted 验收。
+> 认证边界：H5 为邮箱/密码 + Google；微信小程序为邮箱/密码。微信快捷登录
+> 隐藏，兼容 API/数据清理仍保留；候选文件存在于工作树不代表稳定应用已上线。
+> 数据库历史基线为 2026-07 合并前 34/38、三条 tail 后 37/38；本轮新增
+> privacy consent 迁移后必须重新做 ledger/schema 核对，旧数字不是当前证明。
+> 微信凭据退役仍是未来重新开放微信身份前的独立兼容/安全边界。
 
 ## 系统总览
 
@@ -55,6 +57,7 @@ flowchart LR
 | 边界 | 设计 |
 |---|---|
 | 普通用户 | Supabase session JWT；所有浏览器/小程序直连表和 Storage 操作同时受 table ACL、RLS、列权限、约束/trigger 或 account-bound RPC 限制 |
+| 登录方式 | `auth.users.id` 是唯一账号 ID；首版 H5 暴露 email/password + Google，小程序只暴露 email/password。没有手动身份绑定/合并 UI；微信兼容路径不仅从 UI 隐藏，也由 server-only `WECHAT_LOGIN_ENABLED`（首版缺失/false，仅 exact `true` 启用）拒绝直接调用 |
 | 管理员 | 与普通用户 session 分离；每位管理员持有独立 `iam_admin_...` bearer，签发 CLI 绝不 stdout、只创建 `0600` recovery/output；数据库仅保存 SHA-256 hash、从权威 profile 派生的 identity snapshot、角色、actor、到期、case/approval、撤销和幂等/审计状态 |
 | 服务端 | `SUPABASE_SECRET_KEY` 优先，legacy service-role key 仅作滚动兼容；opaque secret key 只进入 `apikey`，不能伪装成 JWT |
 | 外部 provider | 只从受限 Edge route 调用；方法、origin、认证、限流、总超时、响应字节、重定向和稳定错误均 fail-closed |

@@ -9,6 +9,17 @@ import { captureException } from './utils/sentry'
 import { isSuspensionActive } from './utils/suspension'
 import { platformFetch } from './composables/useSupabase'
 import { readBoundedText } from './api/responseBody'
+import {
+  canonicalReturnRoute,
+  consumeActiveAuthorizedLoginReturnIntent,
+  peekActiveAuthorizedLoginReturnIntent,
+  stageWelcomeReturnIntent,
+  welcomeRouteFromLaunch,
+} from './api/navigationIntent'
+import {
+  captureAccountIdentityGeneration,
+  getActiveAccountId,
+} from './composables/accountScope'
 
 /*
  * Self-hosted brand webfont.
@@ -101,6 +112,18 @@ const GATE_READING_PAGES = new Set([
   // applies the pending gate to whichever route it tries to open next.
   'pages/reset-password/index',
 ])
+const RETURN_RESUME_GATE_PAGES = new Set([
+  'pages/profile-recovery/index',
+  'pages/suspended/index',
+  'pages/reconsent/index',
+])
+
+function navigationIntentOwner() {
+  return {
+    userId: getActiveAccountId(),
+    identityGeneration: captureAccountIdentityGeneration(),
+  }
+}
 
 function currentPagePath(): string {
   try {
@@ -149,7 +172,18 @@ function enforceConsentGate() {
 }
 
 watch([currentUser, authState, profileLoadState], () => {
-  setTimeout(enforceConsentGate, 100)
+  setTimeout(() => {
+    const target = requiredGatePath()
+    if (target) {
+      enforceConsentGate()
+      return
+    }
+    // A login return remains pending while profile recovery, suspension, or
+    // re-consent owns navigation. Once that gate clears, resume atomically.
+    if (!RETURN_RESUME_GATE_PAGES.has(currentPagePath())) return
+    const destination = consumeActiveAuthorizedLoginReturnIntent(navigationIntentOwner())
+    if (destination) uni.reLaunch({ url: destination })
+  }, 100)
 })
 
 // App.onShow covers foreground/resume transitions.  Route changes inside an
@@ -178,7 +212,16 @@ function installGateNavigationInterceptors() {
     uni.addInterceptor(api, {
       invoke(args: { url?: string }) {
         const target = requiredGatePath()
-        if (!target || gateDestinationAllowed(target, args?.url || '')) return
+        if (!target) {
+          const pending = peekActiveAuthorizedLoginReturnIntent(navigationIntentOwner())
+          if (!pending) return
+          const leavingGate = RETURN_RESUME_GATE_PAGES.has(currentPagePath())
+          if (!leavingGate && pending !== args?.url) return
+          const destination = consumeActiveAuthorizedLoginReturnIntent(navigationIntentOwner())
+          if (destination && args) args.url = destination
+          return
+        }
+        if (gateDestinationAllowed(target, args?.url || '')) return
         // Mutating the intercepted destination avoids a nested navigation and
         // works across H5 and mini-program implementations.
         if (args) args.url = target
@@ -189,7 +232,16 @@ function installGateNavigationInterceptors() {
   uni.addInterceptor('switchTab', {
     invoke(args: { url?: string }) {
       const target = requiredGatePath()
-      if (!target || gateDestinationAllowed(target, args?.url || '')) return
+      if (!target) {
+        if (!RETURN_RESUME_GATE_PAGES.has(currentPagePath())) return
+        const destination = consumeActiveAuthorizedLoginReturnIntent(navigationIntentOwner())
+        if (!destination) return
+        // The pending target may not be a tab page. Cancel this switchTab and
+        // resume with the route-agnostic primitive.
+        setTimeout(() => uni.reLaunch({ url: destination }), 0)
+        return false
+      }
+      if (gateDestinationAllowed(target, args?.url || '')) return
       // Gate pages are not tabBar entries, so rewriting switchTab.url would be
       // rejected by uni-app. Cancel it and reLaunch with the correct primitive.
       setTimeout(() => uni.reLaunch({ url: target }), 0)
@@ -730,7 +782,32 @@ function installRoleButtonKeyboardAccess() {
 }
 // #endif
 
-onLaunch(() => {
+onLaunch((launchOptions) => {
+  // Capture the original descriptor before any welcome reLaunch can replace
+  // uni-app's launch options. H5 hash routing is authoritative when present.
+  let launchHash = ''
+  // #ifdef H5
+  try { launchHash = typeof window !== 'undefined' ? window.location.hash : '' } catch {}
+  // #endif
+  const welcomeReturnRoute = welcomeRouteFromLaunch(launchOptions, launchHash)
+  const canonicalWelcomeReturn = canonicalReturnRoute(welcomeReturnRoute)
+  const launchRoutePath = (() => {
+    const hashPath = launchHash.startsWith('#/')
+      ? launchHash.slice(1).split(/[?#]/, 1)[0]
+      : ''
+    const optionPath = typeof launchOptions?.path === 'string'
+      ? `/${launchOptions.path.replace(/^\//, '')}`
+      : ''
+    return hashPath || optionPath
+  })()
+  const welcomeRoutingExempt = new Set([
+    '/pages/reset-password/index',
+    '/pages/profile-recovery/index',
+    '/pages/suspended/index',
+    '/pages/reconsent/index',
+    '/pages/login/index',
+    '/pages/welcome/index',
+  ]).has(launchRoutePath)
   // #ifdef H5
   installRoleButtonKeyboardAccess()
   // #endif
@@ -933,8 +1010,21 @@ onLaunch(() => {
     }
     try {
       const routedToReset = detectAuthRecoveryAndRoute()
-      if (!routedToReset && !uni.getStorageSync('welcomed')) {
-        uni.reLaunch({ url: '/pages/welcome/index' })
+      if (!routedToReset && !welcomeRoutingExempt && !uni.getStorageSync('welcomed')) {
+        const welcomeIntent = welcomeReturnRoute
+          ? stageWelcomeReturnIntent(welcomeReturnRoute)
+          : null
+        const invalidReturn = !canonicalWelcomeReturn
+          && !!launchRoutePath
+          && launchRoutePath !== '/'
+          && launchRoutePath !== '/pages/index/index'
+        const params = [
+          welcomeIntent ? `intent=${encodeURIComponent(welcomeIntent)}` : '',
+          invalidReturn ? 'invalidReturn=1' : '',
+        ].filter(Boolean)
+        uni.reLaunch({
+          url: `/pages/welcome/index${params.length ? `?${params.join('&')}` : ''}`,
+        })
       }
     } catch (err) {
       captureException(err, { tags: { source: 'onLaunch.welcomeRouting' }, level: 'error' })

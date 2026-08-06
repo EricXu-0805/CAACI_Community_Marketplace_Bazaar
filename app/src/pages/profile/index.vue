@@ -74,19 +74,21 @@
           </view>
         </view>
 
-        <!-- 4-stat strip -->
+        <!-- 4-stat strip. Every stat opens the matching full list: the rails
+             below are horizontal, so without this a user with many listings
+             had to swipe blindly instead of scanning a grid. -->
         <view class="stats-row user-card-layer">
-          <view class="stat-item">
+          <view class="stat-item" role="button" :aria-label="t('profile.listed')" @click="goMyItems('listed')">
             <text class="stat-num">{{ listedItems.length }}</text>
             <text class="stat-label">{{ t('profile.listed') }}</text>
           </view>
           <view class="stat-divider"></view>
-          <view class="stat-item">
+          <view class="stat-item" role="button" :aria-label="t('profile.saved')" @click="goMyItems('saved')">
             <text class="stat-num">{{ savedItems.length }}</text>
             <text class="stat-label">{{ t('profile.saved') }}</text>
           </view>
           <view class="stat-divider"></view>
-          <view class="stat-item">
+          <view class="stat-item" role="button" :aria-label="t('profile.sold')" @click="goMyItems('sold')">
             <text class="stat-num">{{ soldItems.length }}</text>
             <text class="stat-label">{{ t('profile.sold') }}</text>
           </view>
@@ -170,6 +172,18 @@
             <text class="my-tab-label">{{ t('profile.tabSold') }}</text>
             <text v-if="soldItems.length > 0" class="my-tab-count">{{ soldItems.length }}</text>
           </view>
+          <!-- The rail below only scrolls sideways, so give the active tab a
+               way out to the full grid instead of making users swipe. -->
+          <view
+            v-if="currentListings.length > 0"
+            class="see-all"
+            role="button"
+            :aria-label="t('profile.seeAll')"
+            @click="goMyItems(myTab === 'sold' ? 'sold' : 'listed')"
+          >
+            <text class="see-all-label">{{ t('profile.seeAll') }}</text>
+            <UIcon name="chevron-right" size="xs" color="text-faint" />
+          </view>
         </view>
         <view v-if="currentListings.length === 0" id="profile-listings-panel" class="empty-mini" role="tabpanel">
           <UEmptyArt name="bag" :size="104" />
@@ -232,9 +246,18 @@
 
       <!-- 我收藏的 -->
       <view class="section-block">
-        <view class="block-title-row">
+        <view
+          class="block-title-row"
+          :class="{ tappable: savedItems.length > 0 }"
+          :role="savedItems.length > 0 ? 'button' : undefined"
+          :aria-label="savedItems.length > 0 ? t('profile.seeAll') : undefined"
+          @click="savedItems.length > 0 && goMyItems('saved')"
+        >
           <text class="block-title">{{ t('profile.savedSection') }}</text>
-          <text v-if="savedItems.length > 0" class="block-count">{{ savedItems.length }}</text>
+          <view v-if="savedItems.length > 0" class="btr-right">
+            <text class="block-count">{{ savedItems.length }}</text>
+            <UIcon name="chevron-right" size="xs" color="text-faint" />
+          </view>
         </view>
         <view v-if="savedItems.length === 0" class="empty-mini">
           <UEmptyArt name="favorites" :size="104" />
@@ -255,9 +278,7 @@
                 :src="thumbUrl(item.images?.[0], 'list')"
                 :alt="localize(item.title_i18n, item.title)"
                 class="fav-img"
-                mode="aspectFit"
-                :style="myImgStyleFor(item.id)"
-                @load="onMyImgLoad(item.id, $event)"
+                mode="aspectFill"
                 lazy-load
               />
               <view v-else class="fav-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
@@ -330,7 +351,7 @@ const { isDark } = useTheme()
 const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
-const { currentUser, isLoggedIn, authState, awaitAuthReady } = useAuth()
+const { currentUser, isLoggedIn, authState, awaitAuthReady, requireAuth } = useAuth()
 const {
   items: homeItems,
   fetchMyItems,
@@ -380,33 +401,6 @@ function loadBrowsedCount() {
   totalBrowsed.value = total
 }
 
-/*
- * Per-item cover-image aspect map. Populated by @load on the <image>
- * elements; keyed by item.id so listed/saved/sold tabs share the same
- * cache (same item appears in multiple tabs). Without this, the 2-col
- * cards would need a hard aspect-ratio guess and the "plate turns into
- * oval" symptom comes right back. Once we have a DB-backed
- * image_dimensions column (see migration proposal) we can skip the
- * @load wait entirely.
- */
-const itemImgAspect = ref<Record<string, number>>({})
-
-function onMyImgLoad(id: string, ev: any) {
-  const d = ev?.detail || {}
-  const w = d.width || ev?.target?.naturalWidth || 0
-  const h = d.height || ev?.target?.naturalHeight || 0
-  if (w > 0 && h > 0) {
-    itemImgAspect.value = { ...itemImgAspect.value, [id]: w / h }
-  }
-}
-
-function myImgStyleFor(id: string): Record<string, string> {
-  const r = itemImgAspect.value[id]
-  if (!r) return {}
-  const clamped = Math.max(0.6, Math.min(r, 1.6))
-  return { 'aspect-ratio': String(clamped) }
-}
-
 const listedItems = computed(() => myItems.value.filter(i => i.status !== 'sold'))
 const soldItems = computed(() => myItems.value.filter(i => i.status === 'sold'))
 
@@ -419,7 +413,6 @@ function clearProfilePrivateState() {
   myItems.value = []
   savedItems.value = []
   totalBrowsed.value = 0
-  itemImgAspect.value = {}
   myTab.value = 'active'
 }
 
@@ -623,7 +616,7 @@ function formatJoinDate(dateStr: string): string {
 }
 
 function goLogin() {
-  uni.navigateTo({ url: '/pages/login/index' })
+  requireAuth('/pages/profile/index')
 }
 
 function goDetail(id: string) {
@@ -642,6 +635,9 @@ function onVerifyIllini() {
 function goNotifications() { uni.navigateTo({ url: '/pages/notifications/index' }) }
 function goSettings() { uni.navigateTo({ url: '/pages/settings/index' }) }
 function goHistory() { uni.navigateTo({ url: '/pages/history/index' }) }
+function goMyItems(tab: 'listed' | 'sold' | 'saved') {
+  uni.navigateTo({ url: `/pages/my-items/index?tab=${tab}` })
+}
 function goFollowing() { uni.navigateTo({ url: '/pages/following/index' }) }
 function goSavedSearches() { uni.navigateTo({ url: '/pages/saved-searches/index' }) }
 
@@ -1123,8 +1119,24 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
 .block-title-row {
   display: flex; align-items: baseline; justify-content: space-between;
   margin-bottom: 12px;
+  &.tappable {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    &:active { opacity: 0.6; }
+  }
 }
+.btr-right { display: flex; align-items: center; gap: 2px; }
 .block-count { font-size: 12px; color: var(--text-muted); }
+
+.see-all {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 1px;
+  padding: 6px 2px 6px 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  &:active { opacity: 0.6; }
+}
+.see-all-label { font-size: 12px; color: var(--text-muted); }
 
 /* ===== 我的发布 在售/已售 sub-tabs (v5) ===== */
 .my-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
@@ -1289,16 +1301,25 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
   transition: transform 0.15s;
   &:active { transform: scale(0.98); }
 }
+/*
+ * Square, filled tile. The slot is a fixed cell of a 2-column grid, so
+ * `contain` could never show the whole photo AND fill the cell — it just
+ * traded the crop for a beige letterbox band, which is what made the grid
+ * look empty. `cover` on a square keeps landscape and portrait thumbs
+ * equally legible; the real photo is one tap away on the detail page.
+ * mode="aspectFill" is the half that mp-weixin honours (WXSS object-fit
+ * does not apply to <image>); object-fit is the half H5 honours.
+ */
 .fav-img-wrap {
   width: 100%;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 1 / 1;
   background: var(--bg-subtle);
   overflow: hidden;
 }
 .fav-img {
   width: 100%; height: 100%;
   display: block;
-  object-fit: contain;
+  object-fit: cover;
   background: var(--bg-subtle);
 }
 .fav-body { padding: 8px 10px 10px; }
