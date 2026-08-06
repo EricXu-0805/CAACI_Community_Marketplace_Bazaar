@@ -98,6 +98,37 @@ test('the effective consent version passes the release allowlist constraint', as
   }
 })
 
+test('both consent write paths report failures to telemetry', async () => {
+  // The consent gate has no bypass, so a rejected version locks the entire
+  // signed-in app for every account at once. Before this pin both call sites
+  // answered with a toast and nothing else, which is why 08-06 ran for hours
+  // undetected. The tags below are what an alert rule can key on.
+  const sites = [
+    ['reconsent/index.vue', 'reconsent.record_consent'],
+    ['onboarding/index.vue', 'onboarding.record_consent'],
+  ]
+  for (const [page, source] of sites) {
+    const vue = await readFile(new URL(`../app/src/pages/${page}`, import.meta.url), 'utf8')
+    assert.match(
+      vue,
+      /import \{ captureException \} from ['"][^'"]*utils\/sentry['"]/,
+      `${page} must import captureException`,
+    )
+    assert.match(
+      vue,
+      new RegExp(`captureException\\([^)]*source: '${source.replace('.', '\\.')}'`),
+      `${page} must report record_consent failures as ${source}`,
+    )
+  }
+
+  // beforeSend rebuilds event.tags from an allowlist, so a tag the alert rule
+  // needs is only delivered if safeEventTags keeps it. Dropping `source` there
+  // would silence every rule above without touching the pages.
+  const sentry = await readFile(new URL('../app/src/utils/sentry.ts', import.meta.url), 'utf8')
+  assert.match(sentry, /const source = stableToken\(tags\.source/)
+  assert.match(sentry, /if \(source\) clean\.source = source/)
+})
+
 test('RUNBOOK still carries the schema-coupled release order rule', async () => {
   const source = await readFile(RUNBOOK, 'utf8')
   assert.match(source, /## Schema-coupled release order/)
