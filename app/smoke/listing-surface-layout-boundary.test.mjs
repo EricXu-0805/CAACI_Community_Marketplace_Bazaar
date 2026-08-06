@@ -140,3 +140,32 @@ test('OpenStreetMap credit stays present but reads as a caption', async () => {
     /\.osm-attribution:hover \.osm-attribution__text,\s*\n\.osm-attribution:focus-visible \.osm-attribution__text \{\s*\n\s*text-decoration: underline;/,
   )
 })
+
+test('the desktop detail page uses the width instead of centring a phone column', async () => {
+  const detail = await read('src/pages/detail/index.vue')
+
+  // The rail is position:fixed at the viewport edge, so a centred box that
+  // *included* the rail reservation parked ~240px of dead space between the
+  // rail and the content. Hug the rail like the other desktop shells.
+  assert.match(detail, /\.page \{ max-width: calc\(760px \+ var\(--sidebar-w, 240px\)\); margin: 0; \}/)
+  assert.doesNotMatch(detail, /max-width: calc\(640px \+ var\(--sidebar-w, 240px\)\); margin: 0 auto;/)
+
+  // Wide desktop splits into a reading column and a decision column.
+  assert.match(detail, /@media \(min-width: 1100px\)/)
+  assert.match(detail, /grid-template-columns: minmax\(0, 1fr\) 400px;/)
+  assert.match(detail, /\.page > \* \{ grid-column: 2; min-width: 0; \}/)
+
+  // Grid rows are shared between columns, so a second item in column 1 pairs
+  // with a column-2 row and stretches it — that opened a ~500px hole under the
+  // price card. The gallery spanning every row is what keeps column 2 packed.
+  assert.match(detail, /\.img-area \{\s*\n\s*grid-column: 1;\s*\n\s*grid-row: 1 \/ span 99;/)
+
+  // An uncapped 1fr made the gallery 1232px on a 1920 screen. The fixed CTA is
+  // out of flow and cannot inherit column 2, so it tracks the same cap.
+  assert.match(detail, /--detail-shell: calc\(1180px \+ var\(--sidebar-w, 240px\)\);/)
+  assert.match(detail, /max-width: var\(--detail-shell\);/)
+  assert.match(
+    detail,
+    /right: max\(24px, calc\(100vw - var\(--detail-shell\) \+ 24px\)\);/,
+  )
+})

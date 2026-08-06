@@ -558,6 +558,7 @@ const zh: Record<string, string> = {
   'blocked.unblockFailed': '解除失败，请重试',
   'settings.changePasswordTitle': '重置密码',
   'settings.changePasswordHint': '将发送重置链接到你的邮箱',
+  'settings.passwordUnavailableWechat': '当前账号用微信登录，没有可接收验证码的邮箱。绑定邮箱后即可设置密码。',
   'settings.changePasswordSent': '重置邮件已发送',
   'settings.signOutTitle': '退出登录？',
   'settings.signOutHint': '退出后需要重新登录。',

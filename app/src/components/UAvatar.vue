@@ -4,6 +4,7 @@
     class="u-avatar-image"
     :src="resolvedSrc"
     :alt="alt"
+    :aria-label="interactiveLabel"
     mode="aspectFill"
     :lazy-load="lazy"
     :loading="lazy ? 'lazy' : 'eager'"
@@ -38,6 +39,15 @@ const props = withDefaults(defineProps<{
 })
 
 const remoteFailed = ref(false)
+/*
+ * uni renders <image> as a custom <uni-image> element, so `alt` sits on a tag
+ * where it carries no accessible-name semantics — it only names a real <img>.
+ * Callers that make the avatar tappable pass role="button" through, and those
+ * announced as an unlabelled "button". Mirror alt into aria-label, which does
+ * name a custom element; a decorative avatar has no alt and stays unnamed.
+ */
+const interactiveLabel = computed(() => props.alt || undefined)
+
 const remoteSrc = computed(() => safeAvatarThumbUrl(props.src, props.owner))
 const resolvedSrc = computed(() => (
   remoteFailed.value ? props.fallback : (remoteSrc.value || props.fallback)

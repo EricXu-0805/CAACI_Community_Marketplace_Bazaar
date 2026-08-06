@@ -560,6 +560,7 @@ const en: Record<string, string> = {
   'blocked.unblockFailed': 'Failed to unblock. Try again.',
   'settings.changePasswordTitle': 'Reset Password',
   'settings.changePasswordHint': 'We will send a reset link to your email.',
+  'settings.passwordUnavailableWechat': 'This account signs in with WeChat and has no mailbox to receive a code. Link an email address to set a password.',
   'settings.changePasswordSent': 'Reset email sent!',
   'settings.signOutTitle': 'Sign out?',
   'settings.signOutHint': 'You will need to sign in again.',

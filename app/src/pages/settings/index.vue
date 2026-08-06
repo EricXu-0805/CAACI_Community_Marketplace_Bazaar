@@ -97,6 +97,7 @@
         <view class="mi-arrow"></view>
       </view>
       <view
+        v-if="canRecoverByEmail"
         class="menu-item"
         role="button"
         tabindex="0"
@@ -150,7 +151,7 @@ import { useSupabase, platformFetch } from '../../composables/useSupabase'
 import { useTheme, type ThemePref } from '../../composables/useTheme'
 import { useHistory } from '../../composables/useHistory'
 import { clearTranslationCache } from '../../composables/useTranslate'
-import { friendlyErrorMessage, navigateBackOr } from '../../utils'
+import { friendlyErrorMessage, isPlaceholderEmail, navigateBackOr } from '../../utils'
 import { captureException } from '../../utils/sentry'
 import { DIALOG_DANGER } from '../../utils/dialogColors'
 import { BASE_URL, APP_VERSION, BUILD_REF } from '../../config/runtime'
@@ -167,7 +168,16 @@ import { removeAccountPrivateStorage } from '../../api/accountLocalPrivacy'
 import UIcon from '../../components/UIcon.vue'
 
 const { t, lang, setLang } = useI18n()
-const { isLoggedIn, signOut } = useAuth()
+const { isLoggedIn, currentUser, signOut } = useAuth()
+
+/*
+ * A WeChat-provisioned identity has no mailbox anyone can open, so every
+ * email-based recovery entry is a dead end for it. Hide those entries rather
+ * than let the user send a code into the void and wait for it.
+ */
+const canRecoverByEmail = computed(
+  () => isLoggedIn.value && !isPlaceholderEmail(currentUser.value?.email),
+)
 const { supabase } = useSupabase()
 const { pref: themePref, setPref: setThemePref } = useTheme()
 const { clearHistory, clearPostHistory } = useHistory()
@@ -332,6 +342,19 @@ async function onChangePassword() {
     return
   }
   const targetEmail = session.user.email
+
+  // The menu entry is already hidden for these identities; this also covers a
+  // stale render or a keyboard activation racing the profile load. Sending the
+  // code would report success and deliver nowhere.
+  if (isPlaceholderEmail(targetEmail)) {
+    releaseFlow()
+    uni.showModal({
+      title: t('settings.changePasswordTitle'),
+      content: t('settings.passwordUnavailableWechat'),
+      showCancel: false,
+    })
+    return
+  }
 
   uni.showModal({
     title: t('settings.changePasswordTitle'),
