@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createHash, createHmac } from 'node:crypto'
 import { afterEach, test } from 'node:test'
 import { readFile } from 'node:fs/promises'
-import { inlineDeploymentBoundaryImport } from './_test-module-loader.mjs'
+import { inlineSharedApiImports } from './_test-module-loader.mjs'
 
 const API_URL = new URL('./admin/index.js', import.meta.url)
 const ENV_KEYS = [
@@ -36,7 +36,7 @@ async function loadHandler(extraEnv = {}, transformSource = source => source) {
     ...extraEnv,
   })
   const source = transformSource(await readFile(API_URL, 'utf8'))
-  const encoded = Buffer.from(inlineDeploymentBoundaryImport(source)).toString('base64')
+  const encoded = Buffer.from(inlineSharedApiImports(source)).toString('base64')
   return (await import(`data:text/javascript;base64,${encoded}#admin-rate-${importNonce++}`)).default
 }
 

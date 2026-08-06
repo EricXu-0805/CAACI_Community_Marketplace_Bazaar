@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import { readFile } from 'node:fs/promises'
-import { inlineDeploymentBoundaryImport } from './_test-module-loader.mjs'
+import { inlineSharedApiImports } from './_test-module-loader.mjs'
 
 const API_ROOT = new URL('./', import.meta.url)
 const USER_A = '11111111-1111-4111-8111-111111111111'
@@ -37,7 +37,7 @@ async function loadApi(filename, env = {}) {
   for (const key of ENV_KEYS) delete process.env[key]
   Object.assign(process.env, env)
   const source = await readFile(new URL(filename, API_ROOT), 'utf8')
-  const encoded = Buffer.from(inlineDeploymentBoundaryImport(source)).toString('base64')
+  const encoded = Buffer.from(inlineSharedApiImports(source)).toString('base64')
   return import(`data:text/javascript;base64,${encoded}#external-hardening-${nonce++}`)
 }
 

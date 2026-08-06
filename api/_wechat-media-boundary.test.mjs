@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import { readFile } from 'node:fs/promises'
-import { inlineDeploymentBoundaryImport } from './_test-module-loader.mjs'
+import { inlineSharedApiImports } from './_test-module-loader.mjs'
 import {
   TEST_WECHAT_APP_ID,
   TEST_WECHAT_ENCODING_AES_KEY,
@@ -40,7 +40,7 @@ async function loadApi(file, env) {
   for (const key of ENV_KEYS) delete process.env[key]
   Object.assign(process.env, env)
   const source = await readFile(new URL(file, API_ROOT), 'utf8')
-  return import(`data:text/javascript;base64,${Buffer.from(inlineDeploymentBoundaryImport(source)).toString('base64')}#wechat-media-${importNonce++}`)
+  return import(`data:text/javascript;base64,${Buffer.from(inlineSharedApiImports(source)).toString('base64')}#wechat-media-${importNonce++}`)
 }
 
 function json(data, status = 200) {

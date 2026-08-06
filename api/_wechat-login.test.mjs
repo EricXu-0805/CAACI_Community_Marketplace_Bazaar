@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { readFile } from 'node:fs/promises'
-import { inlineDeploymentBoundaryImport } from './_test-module-loader.mjs'
+import { inlineSharedApiImports } from './_test-module-loader.mjs'
 
 const MODULE_URL = new URL('./auth/wechat-login.js', import.meta.url)
 const ENV_KEYS = [
@@ -50,7 +50,7 @@ async function loadHandler(overrides = {}, transformSource = source => source) {
   }
   importSequence += 1
   const source = transformSource(await readFile(MODULE_URL, 'utf8'))
-  const encoded = Buffer.from(inlineDeploymentBoundaryImport(source)).toString('base64')
+  const encoded = Buffer.from(inlineSharedApiImports(source)).toString('base64')
   return (await import(`data:text/javascript;base64,${encoded}#wechat-login-${importSequence}`)).default
 }
 

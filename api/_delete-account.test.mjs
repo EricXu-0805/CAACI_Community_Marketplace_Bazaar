@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import { readFile } from 'node:fs/promises'
-import { inlineDeploymentBoundaryImport } from './_test-module-loader.mjs'
+import { inlineSharedApiImports } from './_test-module-loader.mjs'
 
 const API_ROOT = new URL('./', import.meta.url)
 const USER_ID = '11111111-1111-4111-8111-111111111111'
@@ -12,6 +12,9 @@ const ENV_KEYS = [
   'SUPABASE_URL', 'VITE_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY',
   'SUPABASE_SECRET_KEY', 'SUPABASE_PUBLISHABLE_KEY', 'VITE_SUPABASE_PUBLISHABLE_KEY',
   'SUPABASE_ANON_KEY', 'VITE_SUPABASE_ANON_KEY', 'CRON_SECRET',
+  // Without these the failure paths would POST to a developer's real Sentry
+  // and break the fetch-call assertions below.
+  'SENTRY_DSN', 'VITE_SENTRY_DSN',
 ]
 const originalEnv = new Map(ENV_KEYS.map(key => [key, process.env[key]]))
 const originalFetch = globalThis.fetch
@@ -37,7 +40,7 @@ async function loadApi({ cronSecret = CRON_SECRET, transform = source => source 
     ...(cronSecret ? { CRON_SECRET: cronSecret } : {}),
   })
   const source = transform(await readFile(new URL('auth/delete-account.js', API_ROOT), 'utf8'))
-  const encoded = Buffer.from(inlineDeploymentBoundaryImport(source)).toString('base64')
+  const encoded = Buffer.from(inlineSharedApiImports(source)).toString('base64')
   return import(`data:text/javascript;base64,${encoded}#delete-account-test-${importNonce++}`)
 }
 
@@ -720,6 +723,33 @@ test('cron fails visibly and stays retryable when a deletion job remains pending
   })
   assert.equal(harness.job.stage, 'storage_deleted')
   assert.match(harness.job.last_error, /^auth_delete_failed:500/)
+})
+
+test('a stranded deletion job alerts instead of only returning 503 to a scheduler that never retries', async () => {
+  console.error = () => {}
+  const harness = createHarness({
+    initialJob: jobRow('storage_deleted'),
+    authDeleteStatuses: [500],
+  })
+  const sentryEvents = []
+  globalThis.fetch = async (input, init = {}) => {
+    const url = requestUrl(input)
+    if (url.hostname === 'o99.ingest.sentry.io') {
+      sentryEvents.push(JSON.parse(String(init.body || '{}')))
+      return json({})
+    }
+    return harness.fetch(input, init)
+  }
+  const { default: handler } = await loadApi()
+  process.env.SENTRY_DSN = 'https://publickey123@o99.ingest.sentry.io/4507'
+
+  const response = await handler(cronRequest())
+  assert.equal(response.status, 503)
+  // One alert for the run, not one per job: resumeJob already logs each stage.
+  assert.equal(sentryEvents.length, 1)
+  assert.equal(sentryEvents[0].logger, 'api/auth/delete-account')
+  assert.equal(sentryEvents[0].level, 'error')
+  assert.deepEqual(sentryEvents[0].extra, { processed: 1, completed: 0, pending: 1 })
 })
 
 test('post-Auth sweep closes the upload race and stays auth_deleted until Storage is empty', async () => {

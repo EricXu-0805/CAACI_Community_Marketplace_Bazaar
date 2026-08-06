@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import { readFile } from 'node:fs/promises'
-import { inlineDeploymentBoundaryImport } from './_test-module-loader.mjs'
+import { inlineSharedApiImports } from './_test-module-loader.mjs'
 
 const API_ROOT = new URL('./', import.meta.url)
 const CRON_SECRET = 'cron-test-secret'
@@ -10,6 +10,9 @@ const SERVICE_KEY = 'service-test-key'
 const ENV_KEYS = [
   'SUPABASE_URL', 'VITE_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'CRON_SECRET',
   'SUPABASE_SECRET_KEY', 'SUPABASE_PUBLISHABLE_KEY', 'VITE_SUPABASE_PUBLISHABLE_KEY',
+  // Without these the failure paths would POST to a developer's real Sentry
+  // and break the fetch-call assertions below.
+  'SENTRY_DSN', 'VITE_SENTRY_DSN',
 ]
 const originalEnv = new Map(ENV_KEYS.map(key => [key, process.env[key]]))
 const originalFetch = globalThis.fetch
@@ -41,7 +44,7 @@ async function loadApi(overrides = {}) {
     ...overrides,
   })
   const source = await readFile(new URL('data-retention.js', API_ROOT), 'utf8')
-  const encoded = Buffer.from(inlineDeploymentBoundaryImport(source)).toString('base64')
+  const encoded = Buffer.from(inlineSharedApiImports(source)).toString('base64')
   return import(`data:text/javascript;base64,${encoded}#data-retention-test-${importNonce++}`)
 }
 
