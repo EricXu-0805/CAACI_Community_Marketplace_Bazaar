@@ -418,6 +418,35 @@ see (the constant must already be accepted by the newest `record_consent` in
 the repo). It cannot prove the migration reached production. That part is this
 runbook and the operator.
 
+### Checking whether production actually matches the repo
+
+**Do not answer this from `supabase_migrations.schema_migrations`.** That ledger
+is incomplete here: migrations applied through the Management API
+`/database/query` endpoint execute but write no ledger row. On 2026-08-06
+production's ledger held 109 versions against 133 repo files, yet
+`guard_moderation_status`, `admin_search_users` and `admin_takedown_content` —
+from three of the "missing" migrations — were all live. A ledger diff reports
+drift that isn't there and hides drift that is.
+
+Compare objects instead:
+
+```bash
+node scripts/schema-drift-probe.mjs
+```
+
+It prints one read-only `SELECT` listing every function, trigger, table, view,
+index, policy and constraint the repository declares. Paste it into the
+Supabase SQL editor for the target project. **An empty result is the pass
+condition**; any row is an object the repo expects and the database does not
+have.
+
+The 2026-08-06 run against production returned exactly one row,
+`delete_wechat_password_credential`, which is expected — see the `IGNORED` map
+in that script for why and for when the exemption should be removed.
+
+It compares existence, not shape: an object that exists but whose body, columns
+or grants have drifted still reads as present.
+
 ## Hotfix deploy
 
 > When: prod is broken and you need to deploy a fix without going through
