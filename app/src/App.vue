@@ -1091,6 +1091,21 @@ function installRoleButtonKeyboardAccess() {
     ],
   })
 
+  /*
+   * The observer above batches its records, so a control can take focus in the
+   * same frame it was rendered — before its name has been mirrored from the
+   * <uni-input> wrapper onto the inner native control. A screen reader reads
+   * the name at exactly that moment, and gets nothing. Reproduced on the admin
+   * gate, whose input carries :aria-label in the source and still arrived
+   * nameless when Tab reached it first.
+   *
+   * Capture phase, so the name is in place before any focus handler or
+   * assistive technology can read it.
+   */
+  document.addEventListener('focusin', (event) => {
+    if (event.target instanceof HTMLElement) scanUniFormControlNames(event.target)
+  }, true)
+
   // Event delegation keeps dynamically-rendered uni-view nodes keyboard
   // operable without one listener per component. Native controls retain their
   // browser behaviour and disabled role buttons are inert.
@@ -1747,6 +1762,25 @@ button:focus-visible,
    selector can invalidate the complete rule. */
 [role="button"]:focus-visible,
 uni-button:focus-visible {
+  outline: 2px solid var(--brand) !important;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/*
+ * The rule above this block reads `input:focus-visible, textarea:focus-visible`
+ * in the source and ships as `uni-input:focus-visible, uni-textarea:...`: the
+ * H5 compiler rewrites bare element selectors to uni's custom-element names,
+ * the same transform that turns <view> into <uni-view>. But focus lands on the
+ * real <input> uni nests INSIDE that wrapper, and :focus-visible does not
+ * propagate to ancestors the way :focus-within does — so no text field in the
+ * web build had a focus ring at all. Measured: every one computed
+ * `outline: none`, which is the initial value, not an override.
+ *
+ * Class selectors survive the rewrite, so target uni's inner nodes by class.
+ */
+.uni-input-input:focus-visible,
+.uni-textarea-textarea:focus-visible {
   outline: 2px solid var(--brand) !important;
   outline-offset: 2px;
   border-radius: 4px;

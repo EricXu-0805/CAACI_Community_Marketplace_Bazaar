@@ -57,7 +57,16 @@ type Stop = {
   h: number
   opacity: number
   ariaHidden: boolean
+  focusPaint: string
+  blurPaint: string
 }
+
+// Properties a focus indicator can plausibly use. Comparing the focused and
+// unfocused computed values is the only reliable test here: the rule that was
+// supposed to draw the ring can be present in the source and still never match,
+// and reading the stylesheet would report it as covered.
+const PAINT = ['outlineStyle', 'outlineWidth', 'outlineColor', 'boxShadow',
+  'backgroundColor', 'borderColor', 'filter', 'textDecorationLine'] as const
 
 /**
  * Chromium exposes the computed name only through the accessibility domain.
@@ -90,10 +99,20 @@ async function axOfFocused(client: CDPSession): Promise<{ role: string; name: st
 }
 
 async function describeFocused(page: Page) {
-  return page.evaluate(() => {
+  return page.evaluate((paintProps: readonly string[]) => {
     const el = document.activeElement as HTMLElement | null
     if (!el || el === document.body) return null
     const rect = el.getBoundingClientRect()
+    const paintOf = () => {
+      const style = getComputedStyle(el) as unknown as Record<string, string>
+      return paintProps.map(p => style[p]).join('|')
+    }
+    // Focus arrived by Tab, so :focus-visible is live. Drop focus, re-read, put
+    // it back: any difference is what a sighted keyboard user sees.
+    const focusPaint = paintOf()
+    el.blur()
+    const blurPaint = paintOf()
+    el.focus()
     // Opacity is multiplicative up the tree: a parent at 0 makes the child
     // invisible however opaque the child's own rule is.
     let opacity = 1
@@ -110,10 +129,11 @@ async function describeFocused(page: Page) {
       w: Math.round(rect.width), h: Math.round(rect.height),
       opacity: Number(opacity.toFixed(3)),
       ariaHidden: hidden,
+      focusPaint, blurPaint,
       signature: `${el.tagName}.${el.getAttribute('class') || ''}#${el.id || ''}`
         + `@${Math.round(rect.x)},${Math.round(rect.y)}`,
     }
-  })
+  }, PAINT)
 }
 
 async function walk(page: Page, route: string): Promise<Stop[]> {
@@ -166,6 +186,9 @@ test.describe('keyboard journey', () => {
       const silent = stops.filter(s => !s.name.trim() && !isScrollContainer(s))
       const invisible = stops.filter(s => s.opacity === 0 || s.w < 2 || s.h < 2)
       const hiddenFromReader = stops.filter(s => s.ariaHidden)
+      // WCAG 2.4.7. A scroll container is a browser-supplied stop with nothing
+      // to indicate; every authored control must show where focus is.
+      const noFocusRing = stops.filter(s => s.focusPaint === s.blurPaint && !isScrollContainer(s))
 
       const show = (list: Stop[]) => list
         .map(s => `#${s.index} <${s.tag} class="${s.cls}"> role=${s.role || '-'} `
@@ -177,6 +200,8 @@ test.describe('keyboard journey', () => {
       expect(invisible, `focusable but not visible on ${route}:\n${show(invisible)}`)
         .toEqual([])
       expect(hiddenFromReader, `aria-hidden but focusable on ${route}:\n${show(hiddenFromReader)}`)
+        .toEqual([])
+      expect(noFocusRing, `focused but nothing changes visually on ${route}:\n${show(noFocusRing)}`)
         .toEqual([])
     })
   }
