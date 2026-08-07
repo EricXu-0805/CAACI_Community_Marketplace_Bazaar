@@ -73,27 +73,41 @@ async function snapshotOf(page: Page, route: string): Promise<string> {
   return page.locator('body').ariaSnapshot()
 }
 
-test.describe('accessibility tree', () => {
-  test('every operable control arrives with a name', async ({ page }) => {
-    test.setTimeout(300_000)
-    const report: string[] = []
-    for (const route of PAGES) {
-      const nameless = namelessControls(await snapshotOf(page, route))
-      for (const item of nameless) report.push(`${route}  ${item.role}  ${item.context}`)
-    }
-    expect(report, `nameless controls:\n${report.join('\n')}`).toEqual([])
-  })
+// Both sides of the 768px breakpoint. Several pages hide `.page-header` on
+// desktop and let AppSidebar carry navigation, so a heading that exists on a
+// phone can be absent on a Mac — `display:none` removes a node from the
+// accessibility tree entirely. A single-viewport sweep reports those pages as
+// passing.
+const VIEWPORTS = [
+  { label: 'phone', width: 390, height: 844 },
+  { label: 'desktop', width: 1280, height: 900 },
+]
 
-  test('every page exposes a heading to navigate by', async ({ page }) => {
-    test.setTimeout(300_000)
-    // Screen-reader users move by heading, not by scrolling. A page built
-    // entirely from styled <view> has no headings at all, so the only way
-    // through it is linear.
-    const headless: string[] = []
-    for (const route of PAGES) {
-      const snapshot = await snapshotOf(page, route)
-      if (!/^\s*- heading\b/m.test(snapshot)) headless.push(route)
-    }
-    expect(headless, `pages with no heading:\n${headless.join('\n')}`).toEqual([])
+for (const vp of VIEWPORTS) {
+  test.describe(`accessibility tree (${vp.label})`, () => {
+    test.use({ viewport: { width: vp.width, height: vp.height } })
+
+    test('every operable control arrives with a name', async ({ page }) => {
+      test.setTimeout(300_000)
+      const report: string[] = []
+      for (const route of PAGES) {
+        const nameless = namelessControls(await snapshotOf(page, route))
+        for (const item of nameless) report.push(`${route}  ${item.role}  ${item.context}`)
+      }
+      expect(report, `nameless controls:\n${report.join('\n')}`).toEqual([])
+    })
+
+    test('every page exposes a heading to navigate by', async ({ page }) => {
+      test.setTimeout(300_000)
+      // Screen-reader users move by heading, not by scrolling. A page built
+      // entirely from styled <view> has no headings at all, so the only way
+      // through it is linear.
+      const headless: string[] = []
+      for (const route of PAGES) {
+        const snapshot = await snapshotOf(page, route)
+        if (!/^\s*- heading\b/m.test(snapshot)) headless.push(route)
+      }
+      expect(headless, `pages with no heading:\n${headless.join('\n')}`).toEqual([])
+    })
   })
-})
+}

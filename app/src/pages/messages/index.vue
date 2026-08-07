@@ -5,8 +5,13 @@
     <!-- #endif -->
     <AppSidebar current="messages" />
 
+    <!-- .page-header is display:none at >=768px, and display:none drops the
+         node from the accessibility tree — so the heading has to live outside
+         it or Mac/iPad get no heading at all. -->
+    <text class="sr-only" role="heading" aria-level="1">{{ t('nav.messages') }}</text>
+
     <view class="page-header u-glass u-glass--hair-b">
-      <text class="page-title" role="heading" aria-level="1">{{ t('nav.messages') }}</text>
+      <text class="page-title">{{ t('nav.messages') }}</text>
     </view>
 
     <!-- Left column: filters + conversation list. Becomes a fixed-width

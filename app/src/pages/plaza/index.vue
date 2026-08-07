@@ -5,8 +5,13 @@
     <!-- #endif -->
     <AppSidebar current="plaza" />
 
+    <!-- .page-header is display:none at >=768px, and display:none drops the
+         node from the accessibility tree — so the heading has to live outside
+         it or Mac/iPad get no heading at all. -->
+    <text class="sr-only" role="heading" aria-level="1">{{ t('plaza.title') }}</text>
+
     <view class="page-header">
-      <text class="ph-title" role="heading" aria-level="1">{{ t('plaza.title') }}</text>
+      <text class="ph-title">{{ t('plaza.title') }}</text>
       <view class="compose-btn" role="button" :aria-label="t('a11y.compose')" @click="openComposer" v-if="isLoggedIn">
         <view class="cb-pen"></view>
         <text class="cb-label">{{ t('plaza.write') }}</text>

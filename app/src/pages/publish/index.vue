@@ -5,9 +5,14 @@
     <!-- #endif -->
     <AppSidebar current="publish" />
 
+    <!-- .page-header is display:none at >=768px, and display:none drops the
+         node from the accessibility tree — so the heading has to live outside
+         it or Mac/iPad get no heading at all. -->
+    <text class="sr-only" role="heading" aria-level="1">{{ t('publish.title') }}</text>
+
     <!-- Mobile Header -->
     <view v-if="publishReady" class="page-header u-glass u-glass--hair-b">
-      <text class="ph-title" role="heading" aria-level="1">{{ t('publish.title') }}</text>
+      <text class="ph-title">{{ t('publish.title') }}</text>
     </view>
 
     <view v-if="!publishReady" class="auth-check" role="status" aria-live="polite">
