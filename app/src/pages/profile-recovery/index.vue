@@ -4,7 +4,7 @@
       <view class="status-copy" role="status" aria-live="polite">
         <view class="shield" aria-hidden="true"><UIcon name="shield" size="xl" color="brand" /></view>
         <text class="badge">{{ t('auth.profileUnavailableBadge') }}</text>
-        <text class="title">{{ t('auth.profileUnavailableTitle') }}</text>
+        <text class="title" role="heading" aria-level="1">{{ t('auth.profileUnavailableTitle') }}</text>
         <text class="body">{{ t('auth.profileUnavailableBody') }}</text>
       </view>
 

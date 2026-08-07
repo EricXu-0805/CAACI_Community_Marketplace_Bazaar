@@ -1,5 +1,6 @@
 <template>
   <view class="page" :class="mpThemeClass" :style="mpChrome">
+    <text class="sr-only" role="heading" aria-level="1">{{ t('a11y.search') }}</text>
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->

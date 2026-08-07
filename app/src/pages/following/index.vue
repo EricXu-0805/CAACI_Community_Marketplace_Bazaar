@@ -2,7 +2,7 @@
   <view class="page" :class="mpThemeClass" :style="mpChrome">
     <view class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
-      <text class="header-title">{{ t('nav.following') }}</text>
+      <text class="header-title" role="heading" aria-level="1">{{ t('nav.following') }}</text>
     </view>
 
     <scroll-view class="list" scroll-y :scroll-top="scrollTopVal" :scroll-with-animation="false" @scrolltolower="loadMore">

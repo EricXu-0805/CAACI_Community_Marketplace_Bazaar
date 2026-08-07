@@ -5,7 +5,7 @@
     </view>
     <view class="header u-rise">
       <image class="logo-mark-img" :src="logoSrc" :alt="t('app.name')" mode="aspectFit" />
-      <text class="app-name">{{ t('app.name') }}</text>
+      <text class="app-name" role="heading" aria-level="1">{{ t('app.name') }}</text>
       <text class="app-desc">{{ t('app.desc') }}</text>
     </view>
 

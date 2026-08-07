@@ -16,9 +16,12 @@
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack">
         <UIcon name="chevron-left" size="xs" color="accent-primary" />
       </view>
-      <text class="header-title">{{ t('publish.editTitle') }}</text>
+      <text class="header-title" role="heading" aria-level="1">{{ t('publish.editTitle') }}</text>
     </view>
 
+    <!-- Outside the live region: a heading announced as part of a status
+         update would be read on every change instead of sitting in the rotor. -->
+    <text v-if="!editReady" class="sr-only" role="heading" aria-level="1">{{ t('publish.editTitle') }}</text>
     <view v-if="!editReady" class="auth-check" role="status" aria-live="polite">
       <text>{{ t('login.wait') }}</text>
     </view>

@@ -80,7 +80,7 @@
         </template>
       </view>
       <view class="title-row">
-        <text class="title">{{ displayTitle }}</text>
+        <text class="title" role="heading" aria-level="1">{{ displayTitle }}</text>
         <view :class="['translate-btn', { loading: translatePending }]" role="button" :aria-label="t('a11y.translate')" @click="toggleTranslate">
           <text v-if="!translatePending" class="translate-btn-label">{{ translated ? 'A文' : '文A' }}</text>
           <text v-else class="translate-btn-label">···</text>
@@ -325,7 +325,7 @@
   <view v-else-if="loadError" class="not-found-page has-sidebar" :class="mpThemeClass" :style="mpChrome" role="alert" aria-live="assertive">
     <view class="nf-back" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
     <view class="nf-icon"></view>
-    <text class="nf-title">{{ t('error.loadFailed') }}</text>
+    <text class="nf-title" role="heading" aria-level="1">{{ t('error.loadFailed') }}</text>
     <text class="nf-sub">{{ t('error.actionFailed') }}</text>
     <view class="nf-btn" role="button" :aria-label="t('home.retry')" @click="loadDetailForCurrentAccount">{{ t('home.retry') }}</view>
   </view>
@@ -333,7 +333,7 @@
   <view v-else-if="notFound" class="not-found-page has-sidebar" :class="mpThemeClass" :style="mpChrome">
     <view class="nf-back" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
     <view class="nf-icon"></view>
-    <text class="nf-title">{{ t('detail.notFoundTitle') }}</text>
+    <text class="nf-title" role="heading" aria-level="1">{{ t('detail.notFoundTitle') }}</text>
     <text class="nf-sub">{{ t('detail.notFoundSub') }}</text>
     <view class="nf-btn" role="button" :aria-label="t('detail.backHome')" @click="goHome">{{ t('detail.backHome') }}</view>
   </view>
@@ -341,7 +341,7 @@
   <!-- Loading state -->
   <view v-else class="loading-page has-sidebar" :class="mpThemeClass" :style="mpChrome">
     <view class="loading-spinner"></view>
-    <text class="loading-text">{{ t('home.loading') }}</text>
+    <text class="loading-text" role="heading" aria-level="1">{{ t('home.loading') }}</text>
   </view>
 </template>
 

@@ -6,7 +6,7 @@
     <AppSidebar current="plaza" />
 
     <view class="page-header">
-      <text class="ph-title">{{ t('plaza.title') }}</text>
+      <text class="ph-title" role="heading" aria-level="1">{{ t('plaza.title') }}</text>
       <view class="compose-btn" role="button" :aria-label="t('a11y.compose')" @click="openComposer" v-if="isLoggedIn">
         <view class="cb-pen"></view>
         <text class="cb-label">{{ t('plaza.write') }}</text>

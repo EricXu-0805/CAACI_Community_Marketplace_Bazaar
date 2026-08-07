@@ -7,7 +7,7 @@
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack">
         <UIcon name="chevron-left" size="xs" color="accent-primary" />
       </view>
-      <text class="header-title">{{ t('profile.myItemsTitle') }}</text>
+      <text class="header-title" role="heading" aria-level="1">{{ t('profile.myItemsTitle') }}</text>
     </view>
 
     <view class="tabs" role="tablist" :aria-label="t('profile.myItemsTitle')">

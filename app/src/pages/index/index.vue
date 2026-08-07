@@ -1,5 +1,6 @@
 <template>
   <view class="page page-lock has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <text class="sr-only" role="heading" aria-level="1">{{ t('nav.home') }}</text>
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->

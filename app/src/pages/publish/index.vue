@@ -7,7 +7,7 @@
 
     <!-- Mobile Header -->
     <view v-if="publishReady" class="page-header u-glass u-glass--hair-b">
-      <text class="ph-title">{{ t('publish.title') }}</text>
+      <text class="ph-title" role="heading" aria-level="1">{{ t('publish.title') }}</text>
     </view>
 
     <view v-if="!publishReady" class="auth-check" role="status" aria-live="polite">

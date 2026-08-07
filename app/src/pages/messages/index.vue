@@ -6,7 +6,7 @@
     <AppSidebar current="messages" />
 
     <view class="page-header u-glass u-glass--hair-b">
-      <text class="page-title">{{ t('nav.messages') }}</text>
+      <text class="page-title" role="heading" aria-level="1">{{ t('nav.messages') }}</text>
     </view>
 
     <!-- Left column: filters + conversation list. Becomes a fixed-width

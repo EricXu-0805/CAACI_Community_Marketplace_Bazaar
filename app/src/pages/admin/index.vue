@@ -1,7 +1,7 @@
 <template>
   <view class="admin" :class="mpThemeClass" :style="mpChrome" @keydown="onAdminKeyboardAction">
     <view class="admin-header">
-      <text class="admin-title">{{ t('admin.title') }}</text>
+      <text class="admin-title" role="heading" aria-level="1">{{ t('admin.title') }}</text>
       <view v-if="unlocked && currentAdmin" class="admin-whoami">
         <text class="admin-whoami-label">{{ currentAdmin.label }}</text>
         <text v-if="currentAdmin.detail" class="admin-whoami-detail">{{ currentAdmin.detail }}</text>

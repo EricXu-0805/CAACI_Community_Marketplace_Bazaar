@@ -21,7 +21,7 @@
       surfaces everything sequentially so users don't hunt in tabs.
     -->
     <view class="page-header u-glass u-glass--hair-b">
-      <text class="ph-title">{{ t('nav.profile') }}</text>
+      <text class="ph-title" role="heading" aria-level="1">{{ t('nav.profile') }}</text>
     </view>
 
     <view v-if="authState === 'initializing'" class="login-section">

@@ -5,7 +5,7 @@
     <!-- #endif -->
     <view class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
-      <text class="header-title">{{ seller?.nickname || t('app.user') }}</text>
+      <text class="header-title" role="heading" aria-level="1">{{ seller?.nickname || t('app.user') }}</text>
     </view>
 
     <view v-if="blocked" class="blocked-state">
