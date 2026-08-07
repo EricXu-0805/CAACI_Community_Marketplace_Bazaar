@@ -8,6 +8,7 @@ import {
   isAccountRequestCurrent,
   onAccountTransition,
 } from './accountScope'
+import { captureException } from '../utils/sentry'
 
 /*
  * Realtime abstraction with three tiers:
@@ -464,6 +465,17 @@ function startPoll<T>(opts: PollOptions<T>): Unsubscribe {
 }
 
 interface StickyTransportOptions<Handoff> {
+  /*
+   * Which subscription fell back, reported as the Sentry `source` tag. The
+   * degradation is invisible by design — polling keeps the feature working —
+   * so without this the only signal that Realtime is failing in production is
+   * a user noticing latency. Production logged 76 user-topic Unauthorized
+   * events in 24 hours before the fallback existed and nothing surfaced it.
+   *
+   * This counts takeovers, not a rate: there is no denominator here, because
+   * a successful subscription emits nothing. Read it as volume and trend.
+   */
+  telemetryScope: 'conversation' | 'notifications' | 'inbox' | 'snapshot'
   onReady?: ReconcileCallback
   startPrimary: (
     onFailure: (handoff: Handoff) => void,
@@ -546,6 +558,12 @@ function startStickyTransport<Handoff>(
       return
     }
     switched = true
+    // Once per transport: `switched` already makes the handoff sticky, so a
+    // flapping connection cannot turn this into a reporting loop.
+    captureException(new Error('realtime_fallback_takeover'), {
+      tags: { source: `realtime.fallback.${options.telemetryScope}` },
+      level: 'warning',
+    })
     const stopPrimary = activeUnsubscribe
     activeUnsubscribe = () => {}
     stopPrimary()
@@ -1024,6 +1042,7 @@ export function subscribeToConversation(
     (deliverInsert, recoverDeliveryFailure) => {
       if (isRealtimeSupported()) {
         return startStickyTransport<void>({
+          telemetryScope: 'conversation',
           onReady,
           startPrimary: (onFailure, markReady) => (
             startPostgresChangesRealtimeChannel({
@@ -1098,6 +1117,7 @@ export function subscribeToConversation(
          UPDATE-only state (notably read receipts) converges without reopening. */
       if (longPollEnabled()) {
         return startStickyTransport<string | null>({
+          telemetryScope: 'conversation',
           onReady,
           startPrimary: (onFailure, markReady) => startLongPoll({
             scope: 'conversation',
@@ -1214,6 +1234,7 @@ export function subscribeToUserNotifications(
     (deliverInsert, recoverDeliveryFailure) => {
       if (isRealtimeSupported()) {
         return startStickyTransport<void>({
+          telemetryScope: 'notifications',
           onReady,
           startPrimary: (onFailure, markReady) => (
             startPostgresChangesRealtimeChannel({
@@ -1266,6 +1287,7 @@ export function subscribeToUserInbox(
     (deliverInsert, recoverDeliveryFailure) => {
       if (isRealtimeSupported()) {
         return startStickyTransport<void>({
+          telemetryScope: 'inbox',
           onReady,
           startPrimary: (onFailure, markReady) => (
             startPostgresChangesRealtimeChannel({
@@ -1311,6 +1333,7 @@ export function subscribeToUserInbox(
          dot) does not silently stop after two transient failures. */
       if (longPollEnabled()) {
         return startStickyTransport<string | null>({
+          telemetryScope: 'inbox',
           onReady,
           startPrimary: (onFailure, markReady) => startLongPoll({
             scope: 'inbox',
@@ -1454,6 +1477,7 @@ export function subscribeToSnapshotChanges(
     }
 
     const transportStop = startStickyTransport<void>({
+      telemetryScope: 'snapshot',
       onReady: options.onReady,
       startPrimary: (onFailure, markReady) => (
         startPostgresChangesRealtimeChannel({

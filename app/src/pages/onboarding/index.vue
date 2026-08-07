@@ -339,9 +339,16 @@ async function finish() {
       })
       consentErr = response.error
     } catch (consentError) {
+      captureException(consentError, { tags: { source: 'onboarding.record_consent' } })
       throw mutationOutcomeError(consentError, 'committed')
     }
-    if (consentErr) throw mutationOutcomeError(consentErr, 'committed')
+    // Same reasoning as the reconsent page: record_consent rejecting a version
+    // is a fleet-wide condition, not a per-user one, and it blocks every new
+    // signup from finishing. It must reach telemetry, not just a toast.
+    if (consentErr) {
+      captureException(consentErr, { tags: { source: 'onboarding.record_consent' } })
+      throw mutationOutcomeError(consentErr, 'committed')
+    }
     if (submitEpoch !== pageEpoch || !isAccountRequestCurrent(accountToken)) {
       throw mutationOutcomeError(new Error('Account changed after consent save'), 'committed')
     }
