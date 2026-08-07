@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import { readFile } from 'node:fs/promises'
-import { inlineDeploymentBoundaryImport } from './_test-module-loader.mjs'
+import { inlineSharedApiImports } from './_test-module-loader.mjs'
 
 const API_URL = new URL('./banner-upload-gc.js', import.meta.url)
 const CRON_SECRET = 'banner-gc-cron-secret'
@@ -10,6 +10,9 @@ const SERVICE_KEY = 'banner-gc-service-key'
 const ENV_KEYS = [
   'SUPABASE_URL', 'VITE_SUPABASE_URL', 'SUPABASE_SECRET_KEY',
   'SUPABASE_SERVICE_ROLE_KEY', 'CRON_SECRET',
+  // Without these the failure paths would POST to a developer's real Sentry
+  // and break the fetch-call assertions below.
+  'SENTRY_DSN', 'VITE_SENTRY_DSN',
 ]
 const originalEnv = new Map(ENV_KEYS.map(key => [key, process.env[key]]))
 const originalFetch = globalThis.fetch
@@ -37,7 +40,7 @@ async function loadHandler(overrides = {}) {
     ...overrides,
   })
   const source = await readFile(API_URL, 'utf8')
-  const encoded = Buffer.from(inlineDeploymentBoundaryImport(source)).toString('base64')
+  const encoded = Buffer.from(inlineSharedApiImports(source)).toString('base64')
   return (await import(`data:text/javascript;base64,${encoded}#banner-gc-${importNonce++}`)).default
 }
 

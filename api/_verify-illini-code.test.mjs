@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createHash, createHmac } from 'node:crypto'
 import { afterEach, test } from 'node:test'
 import { readFile } from 'node:fs/promises'
-import { inlineDeploymentBoundaryImport } from './_test-module-loader.mjs'
+import { inlineSharedApiImports } from './_test-module-loader.mjs'
 
 const API_URL = new URL('./auth/verify-illini-code.js', import.meta.url)
 const SEND_API_URL = new URL('./auth/send-illini-code.js', import.meta.url)
@@ -48,7 +48,7 @@ async function loadHandler(env = supabaseEnv, apiUrl = API_URL, transform = sour
   for (const key of ENV_KEYS) delete process.env[key]
   Object.assign(process.env, env)
   const source = transform(await readFile(apiUrl, 'utf8'))
-  const encoded = Buffer.from(inlineDeploymentBoundaryImport(source)).toString('base64')
+  const encoded = Buffer.from(inlineSharedApiImports(source)).toString('base64')
   return (await import(`data:text/javascript;base64,${encoded}#illini-${importNonce++}`)).default
 }
 

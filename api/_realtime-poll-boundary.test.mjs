@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import { readFile } from 'node:fs/promises'
-import { inlineDeploymentBoundaryImport } from './_test-module-loader.mjs'
+import { inlineSharedApiImports } from './_test-module-loader.mjs'
 
 const API_ROOT = new URL('./', import.meta.url)
 const USER_A = '11111111-1111-4111-8111-111111111111'
@@ -34,7 +34,7 @@ async function loadApi(transform = source => source) {
     SUPABASE_SERVICE_ROLE_KEY: 'service-key',
   })
   const source = await readFile(new URL('realtime-poll.js', API_ROOT), 'utf8')
-  return import(`data:text/javascript;base64,${Buffer.from(inlineDeploymentBoundaryImport(transform(source))).toString('base64')}#realtime-poll-${importNonce++}`)
+  return import(`data:text/javascript;base64,${Buffer.from(inlineSharedApiImports(transform(source))).toString('base64')}#realtime-poll-${importNonce++}`)
 }
 
 function json(data, status = 200) {

@@ -1,4 +1,5 @@
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from './_deployment-boundary.js'
+import { reportToSentry } from './_sentry-report.js'
 
 export const config = { runtime: 'edge' }
 
@@ -243,6 +244,7 @@ export default async function handler(request) {
       ? String(error.message)
       : 'banner_gc_unavailable'
     console.error('[banner-upload-gc] sweep failed', stable)
+    await reportToSentry('api/banner-upload-gc', 'banner-upload-gc: sweep failed', { code: stable, batches })
     return retryable({
       success: false,
       error: 'banner_gc_unavailable',
@@ -253,6 +255,12 @@ export default async function handler(request) {
 
   if (hasMore) {
     console.error('[banner-upload-gc] eligible backlog remains after capped batches')
+    await reportToSentry(
+      'api/banner-upload-gc',
+      'banner-upload-gc: backlog remains after capped batches',
+      { batches, deleted },
+      'warning',
+    )
     return retryable({
       success: false,
       error: 'banner_gc_backlog_pending',

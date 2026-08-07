@@ -4,7 +4,7 @@ import { readdir, readFile } from 'node:fs/promises'
 import { afterEach, test } from 'node:test'
 import {
   deploymentBoundaryModuleUrl,
-  inlineDeploymentBoundaryImport,
+  inlineSharedApiImports,
 } from './_test-module-loader.mjs'
 
 const { deploymentBoundaryInternals, evaluateDeploymentBoundary } = await import(deploymentBoundaryModuleUrl)
@@ -59,7 +59,7 @@ function reviewedPreview(overrides = {}) {
 
 async function loadApi(relativePath, env) {
   setEnv(env)
-  const source = inlineDeploymentBoundaryImport(await readFile(new URL(relativePath, API_ROOT), 'utf8'))
+  const source = inlineSharedApiImports(await readFile(new URL(relativePath, API_ROOT), 'utf8'))
   return import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}#deployment-${nonce++}`)
 }
 
@@ -90,7 +90,7 @@ test('strict project parser accepts only one exact Supabase project origin', () 
 
 test('every Supabase-backed runtime entrypoint applies the shared gate at handler entry', async () => {
   const files = await runtimeSources()
-  assert.equal(files.length, 19)
+  assert.equal(files.length, 20)
   for (const file of files) {
     const source = await readFile(new URL(file, API_ROOT), 'utf8')
     assert.match(source, /from ['"](?:\.\.\/|\.\/)_deployment-boundary\.js['"]/, `${file} lacks shared deployment boundary`)

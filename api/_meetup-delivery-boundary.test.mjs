@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import { readFile } from 'node:fs/promises'
-import { inlineDeploymentBoundaryImport } from './_test-module-loader.mjs'
+import { inlineSharedApiImports } from './_test-module-loader.mjs'
 
 const API_ROOT = new URL('./', import.meta.url)
 const BUYER_A = '11111111-1111-4111-8111-111111111111'
@@ -53,7 +53,7 @@ async function loadHandler() {
     MEETUP_APP_URL: 'https://app.test',
   })
   const source = await readFile(new URL('meetup-notify.js', API_ROOT), 'utf8')
-  const encoded = Buffer.from(inlineDeploymentBoundaryImport(source)).toString('base64')
+  const encoded = Buffer.from(inlineSharedApiImports(source)).toString('base64')
   return (await import(`data:text/javascript;base64,${encoded}#meetup-delivery-${nonce++}`)).default
 }
 

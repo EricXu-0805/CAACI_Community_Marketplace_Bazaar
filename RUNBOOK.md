@@ -504,6 +504,49 @@ without one, but nobody is told — you'd only find them by opening the dashboar
 4. Action: notify your email (free tier supports it). Add Slack/Discord later if you want faster response.
 5. Save. That's the whole ask for a beta — no on-call rota needed.
 
+### Server-side alerts and what they actually mean
+
+Client errors are only half of what Sentry carries. These come from Vercel
+functions, where nobody is watching a screen — the `logger` tag says which.
+
+| logger | message | what is actually broken | first action |
+|---|---|---|---|
+| `api/data-retention` | sweep failed | the hourly deletion the privacy policy promises is not running | [Ephemeral data retention](#ephemeral-data-retention) |
+| `api/data-retention` | backlog remains after capped batches | one run hit its batch cap — self-corrects unless the count keeps climbing | watch the count for a few hours |
+| `api/banner-upload-gc` | sweep failed | orphaned managed uploads are accumulating in Storage | check the Storage bucket size |
+| `api/auth/delete-account` | deletion jobs left pending | someone asked to be deleted and is still in the database | `account_deletion_jobs` → find the stuck stage |
+| `api/auth/delete-account` | job store unavailable | the deletion worker cannot read its queue at all | check `SUPABASE_SECRET_KEY` and the table |
+| `api/resend-webhook` | hard bounced / marked as spam | mail is failing after Resend accepted it | see below |
+| `api/notification-digest` | any | the nightly digest run had send or mark failures | check the digest run's Vercel log |
+
+**The repeat count is the signal, not the single event.** Sentry groups these by
+message, so a cron that has failed every hour for a week is one issue with a
+count of 168 — that is what distinguishes a stalled sweep from an upstream blip.
+An alert firing once and never again usually needs nothing.
+
+**Bounces and complaints are a launch risk, not a per-user annoyance.** Mail
+providers score the sending domain on those rates, and the same domain carries
+the `.edu` verification codes people need to sign in. A reputation slide shows
+up first as "new users never receive their code."
+
+### Enabling delivery alerts (Resend webhook)
+
+`/api/resend-webhook` is inert until it has a secret — it returns 503 and
+reports nothing. To turn it on:
+
+1. Resend → Webhooks → Add endpoint → `https://illinimarket.com/api/resend-webhook`.
+2. Select at least `email.bounced`, `email.complained`, `email.failed`,
+   `email.suppressed`, `email.delivery_delayed`. Selecting the rest is harmless:
+   delivered/opened/clicked are acknowledged and dropped so they cannot bury
+   the five that matter.
+3. Copy the signing secret (`whsec_...`) → Vercel → Settings → Environment
+   Variables → `RESEND_WEBHOOK_SECRET`, **Production only**. Redeploy.
+4. Verify with Resend's "Send test event": a delivered event should return 200
+   and create no Sentry issue; a bounced one should create exactly one.
+
+Rotating the secret is safe to do live — Svix signs with every currently-valid
+key during the overlap window, and the handler accepts any of them.
+
 ### Source maps not working
 
 Symptom: stack traces are minified (`at e (assets/index-DRvVKW3T.js:1:54312)`).

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import { readFile } from 'node:fs/promises'
 import { createHash, createHmac } from 'node:crypto'
-import { inlineDeploymentBoundaryImport } from './_test-module-loader.mjs'
+import { inlineSharedApiImports } from './_test-module-loader.mjs'
 
 const API_ROOT = new URL('./', import.meta.url)
 const originalFetch = globalThis.fetch
@@ -28,7 +28,7 @@ async function load(relativePath, env) {
   for (const key of trackedEnv) delete process.env[key]
   Object.assign(process.env, env)
   const source = await readFile(new URL(relativePath, API_ROOT), 'utf8')
-  return import(`data:text/javascript;base64,${Buffer.from(inlineDeploymentBoundaryImport(source)).toString('base64')}#boundary-${nonce++}`)
+  return import(`data:text/javascript;base64,${Buffer.from(inlineSharedApiImports(source)).toString('base64')}#boundary-${nonce++}`)
 }
 
 function proxyRequest(path, overrides = {}) {

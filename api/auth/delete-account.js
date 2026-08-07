@@ -1,4 +1,5 @@
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from '../_deployment-boundary.js'
+import { reportToSentry } from '../_sentry-report.js'
 
 export const config = { runtime: 'edge' }
 
@@ -677,6 +678,11 @@ async function handleCron(req) {
     jobs = await loadPendingJobs()
   } catch (error) {
     console.error('[delete-account] cron job store unavailable', safeErrorCode(error))
+    await reportToSentry(
+      'api/auth/delete-account',
+      'delete-account cron: job store unavailable',
+      { code: safeErrorCode(error) },
+    )
     return json({ error: 'delete_unavailable' }, 503)
   }
 
@@ -692,6 +698,13 @@ async function handleCron(req) {
     // though at least one irreversible deletion saga still needs recovery.
     // Keep the response machine-readable and retryable while failing the run.
     console.error('[delete-account] cron left deletion jobs pending', { processed: jobs.length, completed, pending })
+    // One alert per run, not per job: resumeJob already logs each stage, and a
+    // user whose deletion is stuck is an obligation we owe, not a blip.
+    await reportToSentry(
+      'api/auth/delete-account',
+      'delete-account cron: deletion jobs left pending',
+      { processed: jobs.length, completed, pending },
+    )
     return json(
       { success: false, error: 'deletion_jobs_pending', processed: jobs.length, completed, pending },
       503,

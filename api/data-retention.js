@@ -1,4 +1,5 @@
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from './_deployment-boundary.js'
+import { reportToSentry } from './_sentry-report.js'
 
 export const config = { runtime: 'edge' }
 
@@ -202,6 +203,7 @@ export default async function handler(req) {
       ? String(error.message)
       : 'rpc_unavailable'
     console.error('[data-retention] sweep failed', code)
+    await reportToSentry('api/data-retention', 'data-retention: sweep failed', { code, batches })
     return retryable({
       success: false,
       error: 'retention_unavailable',
@@ -212,6 +214,14 @@ export default async function handler(req) {
 
   if (hasMore) {
     console.error('[data-retention] eligible backlog remains after capped batches')
+    // Warning, not error: one capped run self-corrects on the next tick. A
+    // backlog that never clears is what the repeat count exposes.
+    await reportToSentry(
+      'api/data-retention',
+      'data-retention: backlog remains after capped batches',
+      { batches, deleted },
+      'warning',
+    )
     return retryable({
       success: false,
       error: 'retention_backlog_pending',

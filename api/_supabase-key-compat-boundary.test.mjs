@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import { readdir, readFile } from 'node:fs/promises'
-import { inlineDeploymentBoundaryImport } from './_test-module-loader.mjs'
+import { inlineSharedApiImports } from './_test-module-loader.mjs'
 
 const API_ROOT = new URL('./', import.meta.url)
 const ENV_KEYS = [
@@ -30,7 +30,7 @@ async function loadApi(relativePath, env) {
   Object.assign(process.env, env)
   const source = await readFile(new URL(relativePath, API_ROOT), 'utf8')
   return import(
-    `data:text/javascript;base64,${Buffer.from(inlineDeploymentBoundaryImport(source)).toString('base64')}#supabase-key-${nonce++}`
+    `data:text/javascript;base64,${Buffer.from(inlineSharedApiImports(source)).toString('base64')}#supabase-key-${nonce++}`
   )
 }
 
