@@ -540,9 +540,20 @@ reports nothing. To turn it on:
    delivered/opened/clicked are acknowledged and dropped so they cannot bury
    the five that matter.
 3. Copy the signing secret (`whsec_...`) → Vercel → Settings → Environment
-   Variables → `RESEND_WEBHOOK_SECRET`, **Production only**. Redeploy.
-4. Verify with Resend's "Send test event": a delivered event should return 200
-   and create no Sentry issue; a bounced one should create exactly one.
+   Variables → `RESEND_WEBHOOK_SECRET`, **Production only**. Then redeploy —
+   a Vercel function reads the env snapshot taken at deploy time, so the
+   variable does nothing until a new deployment exists.
+4. Confirm the secret is actually bound before trusting the endpoint. An
+   unsigned POST answers 503 while it is missing and 401 once it is present:
+
+   ```sh
+   curl -sL -X POST -H 'Content-Type: application/json' -d '{}' \
+     https://illinimarket.com/api/resend-webhook
+   # before: {"error":"not_configured"}   after: {"error":"unauthorized"}
+   ```
+
+5. Verify end to end with Resend's "Send test event": a delivered event should
+   return 200 and create no Sentry issue; a bounced one should create exactly one.
 
 Rotating the secret is safe to do live — Svix signs with every currently-valid
 key during the overlap window, and the handler accepts any of them.
