@@ -174,9 +174,13 @@ test.describe('framework surfaces enhanced in App.vue', () => {
     expect(await focusedText(), 'Tab wraps inside the dialog').toBe('Cancel')
 
     await page.keyboard.press('Escape')
-    await page.waitForTimeout(600)
-    expect(confirmed, 'Escape declines rather than confirms').toBe(false)
-    expect(await host.evaluate(el => getComputedStyle(el).display)).toBe('none')
+    await expect.poll(() => confirmed, { timeout: 10_000 }).toBe(false)
+    // Polled for the same reason as the rest of this test: 600ms was enough
+    // for uni to tear the dialog down locally and not on the runner, where the
+    // decline had already been recorded while `display` was still `block`.
+    await expect
+      .poll(() => host.evaluate(el => getComputedStyle(el).display), { timeout: 10_000 })
+      .toBe('none')
   })
 })
 
