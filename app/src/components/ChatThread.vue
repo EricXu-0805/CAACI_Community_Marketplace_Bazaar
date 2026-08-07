@@ -2143,7 +2143,7 @@ function scrollToBottom() {
   .oc-btn-label { font-size: 12px; font-weight: 600; }
   &:active { transform: scale(0.96); }
 }
-.oc-accept { background: var(--brand); .oc-btn-label { color: #fff; } }
+.oc-accept { background: var(--brand); .oc-btn-label { color: var(--ink-inverse); } }
 .oc-decline { background: var(--surface-alt); .oc-btn-label { color: var(--ink-soft); } }
 .oc-counter { background: var(--surface-alt); .oc-btn-label { color: var(--ink); } }
 
@@ -2219,7 +2219,7 @@ function scrollToBottom() {
   &:active { background: var(--frame); }
   &.on {
     background: var(--brand-soft);
-    .os-quick-chip-label { color: var(--brand-deep); }
+    .os-quick-chip-label { color: var(--brand-on-soft); }
   }
 }
 /* Meetup card body (reuses .offer-card / .oc-* shell) + composer pickers. */
@@ -2250,7 +2250,7 @@ function scrollToBottom() {
   margin-top: 16px; height: 48px; border-radius: var(--radius-pill);
   background: var(--brand); display: flex; align-items: center; justify-content: center;
   box-shadow: var(--shadow-cta); cursor: pointer;
-  .os-submit-label { font-size: 15px; font-weight: 600; color: #fff; }
+  .os-submit-label { font-size: 15px; font-weight: 600; color: var(--ink-inverse); }
   &:active { opacity: 0.85; }
   &.disabled { background: var(--ink-faint); box-shadow: none; pointer-events: none; }
 }

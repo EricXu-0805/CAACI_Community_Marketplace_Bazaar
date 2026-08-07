@@ -144,7 +144,7 @@ function onContactEmail() {
   &:active { background: var(--bg-inset); }
   &.active {
     background: var(--accent-primary);
-    .tab-label { color: #fff; }
+    .tab-label { color: var(--ink-inverse); }
   }
 }
 

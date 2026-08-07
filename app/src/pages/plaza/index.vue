@@ -1969,7 +1969,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .empty-text { font-size: 14px; color: var(--text-muted); }
 .cta-btn {
   margin-top: 8px; padding: 10px 28px;
-  background: var(--accent-primary); color: #fff; border-radius: 22px;
+  background: var(--accent-primary); color: var(--ink-inverse); border-radius: 22px;
   font-size: 14px; font-weight: 600; cursor: pointer;
   &:active { opacity: 0.85; }
 }
@@ -2523,11 +2523,11 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 }
 .ci-send {
   padding: 0 14px; height: 36px; border-radius: 18px;
-  background: var(--accent-primary); color: #fff;
+  background: var(--accent-primary); color: var(--ink-inverse);
   display: flex; align-items: center;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  .ci-send-label { font-size: 13px; color: #fff; font-weight: 600; }
+  .ci-send-label { font-size: 13px; color: var(--ink-inverse); font-weight: 600; }
   &.disabled { opacity: 0.3; pointer-events: none; }
   &:active { opacity: 0.8; }
 }

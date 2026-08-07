@@ -55,7 +55,9 @@ defineProps<{
   display: inline-flex; align-items: center; gap: 5px;
   padding: 3px 8px 3px 7px;
   border-radius: var(--radius-pill);
-  background: rgba(22, 17, 12, 0.52);
+  /* 0.52 left white at 3.77:1 over a light photo. 0.60 clears 4.5:1 against
+     the worst case (pure white) without changing the frosted-dark look. */
+  background: rgba(22, 17, 12, 0.60);
   backdrop-filter: blur(8px) saturate(140%);
   -webkit-backdrop-filter: blur(8px) saturate(140%);
   color: #fff;

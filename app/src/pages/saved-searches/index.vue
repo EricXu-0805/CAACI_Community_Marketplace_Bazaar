@@ -474,13 +474,13 @@ function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/profile/in
 .fab {
   position: fixed; right: 20px; bottom: calc(20px + env(safe-area-inset-bottom));
   width: 52px; height: 52px; border-radius: 50%;
-  background: var(--accent-primary); color: #fff;
+  background: var(--accent-primary); color: var(--ink-inverse);
   display: flex; align-items: center; justify-content: center;
   box-shadow: var(--shadow-pop);
   cursor: pointer; z-index: 10;
   &:active { transform: scale(0.96); }
 }
-.fab-plus { color: #fff; font-size: 28px; line-height: 1; }
+.fab-plus { color: var(--ink-inverse); font-size: 28px; line-height: 1; }
 
 .sheet-mask {
   position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000;

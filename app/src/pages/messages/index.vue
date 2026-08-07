@@ -706,13 +706,13 @@ function goLogin() {
 .empty-sub { font-size: 13px; color: var(--text-subtle); }
 .empty-btn {
   margin-top: 18px; padding: 11px 32px;
-  background: var(--accent-primary); color: #fff; border-radius: 22px;
+  background: var(--accent-primary); color: var(--ink-inverse); border-radius: 22px;
   font-size: 14px; font-weight: 600; cursor: pointer;
   &:active { opacity: 0.8; }
 }
 .login-btn {
   margin-top: 12px; padding: 10px 36px;
-  background: var(--accent-primary); color: #fff; border-radius: 22px;
+  background: var(--accent-primary); color: var(--ink-inverse); border-radius: 22px;
   font-size: 14px; font-weight: 600; cursor: pointer;
   &:active { opacity: 0.8; }
 }

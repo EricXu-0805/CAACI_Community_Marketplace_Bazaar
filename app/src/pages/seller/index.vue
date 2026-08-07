@@ -613,7 +613,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .follow-btn {
   margin-top: 12px;
   padding: 8px 22px; border-radius: 20px;
-  background: var(--accent-primary); color: #fff;
+  background: var(--accent-primary); color: var(--ink-inverse);
   font-size: 13px; font-weight: 600;
   cursor: pointer;
   transition: all 0.12s;

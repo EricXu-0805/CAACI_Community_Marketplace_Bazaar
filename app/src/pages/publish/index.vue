@@ -1107,7 +1107,7 @@ async function onSubmit() {
   .lt-seg-label { font-size: 14px; font-weight: 600; color: var(--ink-quiet); }
   &.on {
     background: var(--brand-soft);
-    .lt-seg-label { color: var(--brand-deep); }
+    .lt-seg-label { color: var(--brand-on-soft); }
   }
 }
 .image-section { padding: 16px; }
@@ -1122,7 +1122,7 @@ async function onSubmit() {
 }
 .cover-tag {
   position: absolute; bottom: 0; left: 0; right: 0;
-  background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+  background: rgba(0,0,0,0.60); backdrop-filter: blur(4px);
   border-radius: 0 0 9px 9px; text-align: center; padding: 2px 0;
   .cover-tag-label { font-size: 10px; color: #fff; font-weight: 500; }
 }

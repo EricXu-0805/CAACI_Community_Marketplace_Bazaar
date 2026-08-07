@@ -4443,7 +4443,7 @@ function isExpired(endsAt: string | null): boolean {
   height: 42px; border-radius: 8px; background: var(--accent-primary);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
-  .gate-btn-label { color: #fff; font-size: 15px; font-weight: 600; }
+  .gate-btn-label { color: var(--ink-inverse); font-size: 15px; font-weight: 600; }
   &.disabled { opacity: 0.4; pointer-events: none; }
   &:active { opacity: 0.85; }
 }
@@ -4493,7 +4493,7 @@ function isExpired(endsAt: string | null): boolean {
   padding: 8px 14px; border-radius: 18px;
   background: var(--bg-elev-1); cursor: pointer;
   .tab-label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
-  &.active { background: var(--accent-primary); .tab-label { color: #fff; } }
+  &.active { background: var(--accent-primary); .tab-label { color: var(--ink-inverse); } }
 }
 
 .dash-loading { padding: 40px 0; text-align: center; color: var(--text-muted); }

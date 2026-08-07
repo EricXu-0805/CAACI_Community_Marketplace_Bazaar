@@ -1293,7 +1293,7 @@ async function contactSeller() {
      seam so the badge never appears to sit on the card's rounded corner. */
   position: absolute; bottom: 24px; right: 12px; z-index: 10;
   padding: 3px 10px; border-radius: 10px;
-  background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+  background: rgba(0,0,0,0.60); backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   color: #fff; font-size: 12px; font-weight: 500;
 }
@@ -1380,7 +1380,7 @@ async function contactSeller() {
 .safe-badge {
   font-size: 10px; font-weight: 600;
   margin-left: 6px; padding: 2px 6px;
-  background: var(--accent-good); color: #fff;
+  background: var(--accent-good); color: var(--ink-inverse);
   border-radius: 4px;
 }
 /* tier-2: GPS shared but no recognized safe spot — muted, not endorsed-green */
@@ -1540,7 +1540,7 @@ async function contactSeller() {
 .chat-btn {
   flex: 1; height: 44px;
   background: var(--brand);
-  color: #fff;
+  color: var(--ink-inverse);
   border-radius: var(--radius-pill);
   font-size: 15px; font-weight: 600;
   letter-spacing: 0.02em;
@@ -1607,7 +1607,7 @@ async function contactSeller() {
 }
 .rs-submit {
   margin-top: 14px; padding: 13px; border-radius: 12px;
-  background: var(--accent-primary); color: #fff;
+  background: var(--accent-primary); color: var(--ink-inverse);
   text-align: center; font-size: 15px; font-weight: 600;
   cursor: pointer;
   &.disabled { background: var(--text-faint); pointer-events: none; }
@@ -1679,7 +1679,7 @@ async function contactSeller() {
 .nf-sub { font-size: 14px; color: var(--text-muted); line-height: 1.5; max-width: 280px; }
 .nf-btn {
   margin-top: 20px; padding: 12px 28px; background: var(--accent-primary);
-  color: #fff; border-radius: 22px; font-size: 14px; font-weight: 600;
+  color: var(--ink-inverse); border-radius: 22px; font-size: 14px; font-weight: 600;
   cursor: pointer;
   &:active { opacity: 0.8; }
 }

@@ -1021,7 +1021,7 @@ async function onSubmit() {
 }
 .cover-tag {
   position: absolute; bottom: 0; left: 0; right: 0;
-  background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+  background: rgba(0,0,0,0.60); backdrop-filter: blur(4px);
   border-radius: 0 0 9px 9px; text-align: center; padding: 2px 0;
   .cover-tag-label { font-size: 10px; color: #fff; font-weight: 500; }
 }
@@ -1223,7 +1223,7 @@ async function onSubmit() {
   z-index: 40;
 }
 .submit-btn {
-  width: 100%; height: 46px; background: var(--accent-primary); color: #fff;
+  width: 100%; height: 46px; background: var(--accent-primary); color: var(--ink-inverse);
   border-radius: 23px; font-size: 15px; font-weight: 600;
   display: flex; align-items: center; justify-content: center; border: none;
   &.disabled { opacity: 0.3; }
