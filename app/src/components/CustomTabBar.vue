@@ -80,8 +80,9 @@ import { useI18n } from '../composables/useI18n'
 import { useUnread } from '../composables/useUnread'
 import { useNotifications } from '../composables/useNotifications'
 import UIcon from './UIcon.vue'
+import { computed } from 'vue'
 // #ifdef MP-WEIXIN
-import { computed, onMounted } from 'vue'
+import { onMounted } from 'vue'
 // #endif
 
 /* `hidden` exists because v-show on the component TAG doesn't reach the mp
