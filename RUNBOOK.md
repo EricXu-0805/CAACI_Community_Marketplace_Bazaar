@@ -534,7 +534,10 @@ up first as "new users never receive their code."
 `/api/resend-webhook` is inert until it has a secret — it returns 503 and
 reports nothing. To turn it on:
 
-1. Resend → Webhooks → Add endpoint → `https://illinimarket.com/api/resend-webhook`.
+1. Resend → Webhooks → Add endpoint → `https://www.illinimarket.com/api/resend-webhook`.
+   Use `www`, not the apex: `illinimarket.com` answers 308 and redirects there,
+   and a signed webhook POST that has to survive a redirect is one receiver
+   behaviour change away from silently delivering nothing.
 2. Select at least `email.bounced`, `email.complained`, `email.failed`,
    `email.suppressed`, `email.delivery_delayed`. Selecting the rest is harmless:
    delivered/opened/clicked are acknowledged and dropped so they cannot bury
@@ -547,8 +550,8 @@ reports nothing. To turn it on:
    unsigned POST answers 503 while it is missing and 401 once it is present:
 
    ```sh
-   curl -sL -X POST -H 'Content-Type: application/json' -d '{}' \
-     https://illinimarket.com/api/resend-webhook
+   curl -s -X POST -H 'Content-Type: application/json' -d '{}' \
+     https://www.illinimarket.com/api/resend-webhook
    # before: {"error":"not_configured"}   after: {"error":"unauthorized"}
    ```
 
