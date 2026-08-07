@@ -66,6 +66,7 @@ import {
   GUIDELINES_VERSION,
   CURRENT_CONSENT_VERSION,
 } from '../../legal'
+import { captureException } from '../../utils/sentry'
 
 const { t, lang } = useI18n()
 const { supabase } = useSupabase()
@@ -142,6 +143,12 @@ async function onAccept() {
       }
     }, 800)
   } catch (e: any) {
+    // This gate has no bypass: a user who cannot record consent cannot reach any
+    // signed-in surface. A failure here is therefore never one user's bad luck —
+    // if record_consent rejects the version the frontend sends, it rejects it for
+    // everyone. Report it before the toast so an alert can fire on the tag; on
+    // 2026-08-06 exactly this failure ran for hours with no signal at all.
+    captureException(e, { tags: { source: 'reconsent.record_consent' } })
     if (submitEpoch !== consentSubmitEpoch || !isAccountRequestCurrent(accountToken)) return
     uni.showToast({ title: friendlyErrorMessage(e, lang.value as 'en' | 'zh') || t('reconsent.fail'), icon: 'none', duration: 2500 })
   } finally {
