@@ -929,6 +929,116 @@ function installActionSheetKeyboardAccess() {
   })
 }
 
+/*
+ * Same framework gap as the action sheet above, on the surface that guards the
+ * destructive actions: `uni.showModal` is what 48 call sites use to confirm
+ * signing out, deleting an account, banning a user, discarding a draft.
+ *
+ * uni renders it as plain <div class="uni-modal__btn"> with no role and
+ * tabindex -1, and moves focus nowhere. Verified in a browser: a keyboard user
+ * cannot reach either button, and a screen reader is not told a dialog opened —
+ * it hears nothing while the page behind it silently stops responding.
+ *
+ * The host element is reused rather than removed: uni toggles `display`, so
+ * "open" is a computed-style question, not a presence one.
+ */
+const MODAL_HOST = 'uni-modal'
+const MODAL_BTN = '.uni-modal__btn'
+let modalA11yInstalled = false
+let modalLabelSeq = 0
+
+function enhanceModal(host: HTMLElement, restoreTo: HTMLElement | null) {
+  const buttons = Array.from(host.querySelectorAll<HTMLElement>(MODAL_BTN))
+  if (!buttons.length) return
+  host.setAttribute('role', 'dialog')
+  host.setAttribute('aria-modal', 'true')
+
+  const title = host.querySelector<HTMLElement>('.uni-modal__title')
+  const body = host.querySelector<HTMLElement>('.uni-modal__bd')
+  for (const [node, attr] of [[title, 'aria-labelledby'], [body, 'aria-describedby']] as const) {
+    if (!node) continue
+    if (!node.id) node.id = `uni-modal-a11y-${++modalLabelSeq}`
+    host.setAttribute(attr, node.id)
+  }
+
+  buttons.forEach((button) => {
+    button.setAttribute('role', 'button')
+    button.setAttribute('tabindex', '0')
+  })
+
+  // APG puts initial focus on the least destructive action, and every one of
+  // these dialogs is a confirmation: landing on the primary button would let a
+  // stray Enter confirm a deletion the user has not heard yet. An `editable`
+  // modal owns its own input, and a one-button modal has nothing safer.
+  const cancel = host.querySelector<HTMLElement>('.uni-modal__btn_default')
+  const initial = host.querySelector<HTMLElement>('input') || cancel || buttons[0]
+  let focusAttempts = 0
+  const claimFocus = () => {
+    if (!host.isConnected || document.activeElement === initial) return
+    if (document.activeElement instanceof HTMLElement && host.contains(document.activeElement)) return
+    initial.focus()
+    if (document.activeElement !== initial && ++focusAttempts < 10) requestAnimationFrame(claimFocus)
+  }
+  requestAnimationFrame(claimFocus)
+
+  const onKeydown = (event: KeyboardEvent) => {
+    const index = buttons.indexOf(document.activeElement as HTMLElement)
+    // Escape declines. With no cancel button there is nothing to decline to,
+    // and synthesising a click on the primary would report a confirmation the
+    // user never gave, so Escape does nothing there.
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      cancel?.click()
+      return
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      if (index < 0) return
+      event.preventDefault()
+      buttons[index].click()
+      return
+    }
+    if (event.key === 'Tab') {
+      event.preventDefault()
+      const step = event.shiftKey ? -1 : 1
+      const from = index < 0 ? (step > 0 ? -1 : 0) : index
+      buttons[(from + step + buttons.length) % buttons.length]?.focus()
+    }
+  }
+  host.addEventListener('keydown', onKeydown)
+
+  const teardown = new MutationObserver(() => {
+    if (host.isConnected && getComputedStyle(host).display !== 'none') return
+    teardown.disconnect()
+    host.removeEventListener('keydown', onKeydown)
+    host.removeAttribute('aria-modal')
+    restoreTo?.focus?.()
+  })
+  teardown.observe(document.body, {
+    childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'],
+  })
+}
+
+function installModalKeyboardAccess() {
+  if (modalA11yInstalled || typeof document === 'undefined') return
+  modalA11yInstalled = true
+
+  const enhanced = new WeakSet<HTMLElement>()
+  const sweep = () => {
+    document.querySelectorAll<HTMLElement>(MODAL_HOST).forEach((host) => {
+      if (getComputedStyle(host).display === 'none') { enhanced.delete(host); return }
+      if (enhanced.has(host)) return
+      enhanced.add(host)
+      const restoreTo = document.activeElement instanceof HTMLElement && document.activeElement !== document.body
+        ? document.activeElement
+        : null
+      enhanceModal(host, restoreTo)
+    })
+  }
+  new MutationObserver(sweep).observe(document.body, {
+    childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'],
+  })
+}
+
 function installRoleButtonKeyboardAccess() {
   if (roleButtonA11yInstalled || typeof document === 'undefined') return
   roleButtonA11yInstalled = true
@@ -1029,6 +1139,7 @@ onLaunch((launchOptions) => {
   installRoleButtonKeyboardAccess()
   installToastAnnouncer()
   installActionSheetKeyboardAccess()
+  installModalKeyboardAccess()
   installDocumentTitleSync()
   // #endif
   /*

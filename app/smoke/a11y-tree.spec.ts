@@ -127,6 +127,50 @@ test.describe('framework surfaces enhanced in App.vue', () => {
     await page.waitForTimeout(600)
     await expect(page.locator('.uni-actionsheet_toggle')).toHaveCount(0)
   })
+
+  test('uni.showModal is operable from the keyboard', async ({ page }) => {
+    test.setTimeout(120_000)
+    // 48 call sites, and they are the destructive ones: sign out, delete
+    // account, ban, discard draft. uni renders both buttons as plain <div>
+    // with tabindex -1, so the confirmation could not be reached, declined,
+    // or heard.
+    await page.addInitScript(() => { localStorage.setItem('welcomed', '1'); localStorage.setItem('lang', 'en') })
+    await page.goto('/#/pages/index/index', { waitUntil: 'networkidle' })
+    await page.waitForTimeout(400)
+    let confirmed: boolean | null = null
+    await page.exposeFunction('recordModalResult', (value: boolean) => { confirmed = value })
+    // Not returned, for the same reason as the action sheet above.
+    await page.evaluate(() => {
+      (window as any).uni.showModal({
+        title: 'Sign out', content: 'Are you sure?',
+        success: (res: { confirm: boolean }) => (window as any).recordModalResult(res.confirm),
+      })
+    })
+    await page.waitForTimeout(700)
+
+    const host = page.locator('uni-modal')
+    expect(await host.getAttribute('role')).toBe('dialog')
+    expect(await host.getAttribute('aria-modal')).toBe('true')
+    // The dialog must name itself; `aria-modal` on an unnamed container is
+    // announced as a bare "dialog".
+    const labelledBy = await host.getAttribute('aria-labelledby')
+    expect(labelledBy, 'dialog is labelled by its title').toBeTruthy()
+    expect(await page.locator(`#${labelledBy}`).textContent()).toBe('Sign out')
+
+    const focusedText = () => page.evaluate(() => (document.activeElement?.textContent || '').trim())
+    // Initial focus is the least destructive action, so a stray Enter cannot
+    // confirm something the user has not heard yet.
+    expect(await focusedText()).toBe('Cancel')
+    await page.keyboard.press('Tab')
+    expect(await focusedText()).toBe('OK')
+    await page.keyboard.press('Tab')
+    expect(await focusedText(), 'Tab wraps inside the dialog').toBe('Cancel')
+
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(600)
+    expect(confirmed, 'Escape declines rather than confirms').toBe(false)
+    expect(await host.evaluate(el => getComputedStyle(el).display)).toBe('none')
+  })
 })
 
 for (const vp of VIEWPORTS) {

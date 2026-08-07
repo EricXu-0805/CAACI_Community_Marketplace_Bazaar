@@ -272,6 +272,30 @@ test.describe('core flow (logged in)', () => {
     }
     await expect(page.locator('uni-view.image-add, .submit-bar').first()).toBeVisible()
 
+    /*
+     * Sign out, because a Supabase session is server-side state that closing
+     * the browser does not release. This test signed in and never signed out,
+     * so every push to main left another live session on the staging project:
+     * 14 of them by 2026-08-07, the oldest dating to 2026-07-22. That is also
+     * a contract problem for the hosted-canary activation review, which
+     * expects the project to hold the three fixture accounts and nothing else.
+     *
+     * Driving the real settings control rather than clearing storage is the
+     * point: local-only cleanup would leave the row behind, and this path has
+     * regressed before.
+     */
+    await page.goto('/#/pages/settings/index', { waitUntil: 'networkidle' })
+    await page.waitForTimeout(600)
+    // Label, not position — the delete-account item sits directly below and
+    // shares its styling. Both languages, because this test does not pin one.
+    await page.locator('[role="button"][aria-label="Sign Out"], [role="button"][aria-label="退出登录"]')
+      .first().click()
+    await expect(page.locator('uni-modal .uni-modal__btn_primary')).toBeVisible()
+    await page.locator('uni-modal .uni-modal__btn_primary').click()
+    await expect
+      .poll(() => page.evaluate(reviewedSessionUserId), { timeout: 15_000 })
+      .toBe('')
+
     expect(errs, 'console errors during authenticated sweep').toEqual([])
   })
 })
