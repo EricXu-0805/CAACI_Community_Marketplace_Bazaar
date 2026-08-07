@@ -57,7 +57,7 @@
           <UIcon name="search" size="xs" color="ink-faint" />
           <text v-if="searchText" class="sf-text">{{ searchText }}</text>
           <text v-else class="sf-placeholder">{{ t('home.search') }}</text>
-          <view v-if="searchText" class="sf-clear" role="button" :aria-label="t('a11y.searchClear')" @click.stop="onClearSearch"><UIcon name="close" size="xs" color="currentColor" aria-hidden="true" /></view>
+          <view v-if="searchText" class="sf-clear hit-target" role="button" :aria-label="t('a11y.searchClear')" @click.stop="onClearSearch"><UIcon name="close" size="xs" color="currentColor" aria-hidden="true" /></view>
         </view>
         <view class="filter-btn" role="button" :aria-label="t('a11y.filter')" @click.stop="openFilterSheet">
           <UIcon name="filter" size="xs" color="text-secondary" />
@@ -76,7 +76,7 @@
         <UIcon name="search" size="xs" color="ink-faint" />
         <text v-if="searchText" class="sf-text">{{ searchText }}</text>
         <text v-else class="sf-placeholder">{{ t('home.search') }}</text>
-        <view v-if="searchText" class="sf-clear" role="button" :aria-label="t('a11y.searchClear')" @click.stop="onClearSearch"><UIcon name="close" size="xs" color="currentColor" aria-hidden="true" /></view>
+        <view v-if="searchText" class="sf-clear hit-target" role="button" :aria-label="t('a11y.searchClear')" @click.stop="onClearSearch"><UIcon name="close" size="xs" color="currentColor" aria-hidden="true" /></view>
       </view>
       <view class="filter-btn" role="button" :aria-label="t('a11y.filter')" @click.stop="openFilterSheet">
         <UIcon name="filter" size="xs" color="text-secondary" />

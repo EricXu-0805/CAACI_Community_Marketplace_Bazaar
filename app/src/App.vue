@@ -1795,15 +1795,31 @@ uni-button:focus-visible {
 }
 /* #endif */
 
+/*
+ * Enlarges a control's hit area without changing what it looks like, for the
+ * WCAG 2.5.8 minimum of 24x24. Needed where a small control sits INSIDE a
+ * larger one with a different action — the delete x on a recent-search chip
+ * that also runs the search, the overflow menu on a post card that also opens
+ * the post — because there the 24px spacing exception cannot apply and a near
+ * miss performs the wrong action.
+ *
+ * Centred rather than `inset: -8px` with min-width/min-height: those grow only
+ * right and down from the inset box, so a 12x12 control ended up with its
+ * enlarged area offset from the glyph the user is aiming at.
+ */
 .hit-target {
   position: relative;
 }
 .hit-target::after {
   content: '';
   position: absolute;
-  inset: -8px;
-  min-width: 44px;
-  min-height: 44px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  min-width: 24px;
+  min-height: 24px;
 }
 
 .sr-only {
