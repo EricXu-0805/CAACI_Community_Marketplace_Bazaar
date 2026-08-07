@@ -1590,26 +1590,28 @@ view, text, input, button, textarea { box-sizing: border-box; }
  * H5 is unaffected — browsers inherit color from <html> / <body> /
  * .page just fine, and the hex matches --ink so no visual divergence.
  */
+/*
+ * The colour half of this floor is mp-only. On H5 it was actively harmful:
+ * inheritance loses to ANY matching rule regardless of specificity, so
+ * `text { color: … }` overrode the colour set on every coloured container.
+ * A bare `<text>` inside a brand-filled button — "Chat with Seller",
+ * "Follow", the my-items tab — rendered #2A2A2E on terracotta (2.69:1) in
+ * light and cream on terracotta (2.36:1) in dark, no matter what the button
+ * asked for. H5 has `.page { color: var(--ink) }` to inherit from, which is
+ * both correct for ordinary text and correct inside a coloured parent.
+ * The font stack stays global; only the colour is gated.
+ */
 text {
-  color: #2A2A2E;
   font-family: 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC',
     -apple-system, BlinkMacSystemFont, 'Helvetica Neue',
     'Microsoft YaHei', system-ui, sans-serif;
 }
 
-[data-theme="dark"] text {
-  color: #F0E8D6;
+/* #ifndef H5 */
+text {
+  color: #2A2A2E;
 }
-
-/* Auto (system) dark must mirror the manual toggle — without this, users
-   on prefers-color-scheme:dark with no manual override got the LIGHT
-   floor (#2A2A2E) on dark backgrounds: every bare <text> unreadable.
-   Root cause of the 2026-06 "黑面 tab 看不清" meeting finding. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) text {
-    color: #F0E8D6;
-  }
-}
+/* #endif */
 
 input, textarea {
   font-family: inherit;
@@ -1667,10 +1669,14 @@ uni-button:focus-visible {
  * on --bg-subtle in light, 3.63:1 in dark. Placeholder text is text, so 1.4.3
  * applies to it; it is also the only label many of these fields have.
  */
-.input-placeholder,
-.textarea-placeholder,
-.uni-input-placeholder,
-.uni-textarea-placeholder {
+/* Selectors are doubled for specificity: uni ships
+   `.uni-textarea-placeholder { color: grey }` at the same specificity but
+   later in the cascade, so a single class loses to it and the textarea
+   placeholders stayed at #808080 while the input ones were fixed. */
+.input-placeholder.input-placeholder,
+.textarea-placeholder.textarea-placeholder,
+.uni-input-placeholder.uni-input-placeholder,
+.uni-textarea-placeholder.uni-textarea-placeholder {
   color: var(--text-muted);
 }
 

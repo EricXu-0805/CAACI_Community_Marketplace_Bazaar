@@ -954,7 +954,10 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
  */
 .name-row :deep(.u-badge--illini) {
   background: #fff;
-  color: var(--campus-blue);
+  /* The fill is a fixed white, so the text cannot follow the theme:
+     --campus-blue lightens to #6A8AC2 in dark and lands at 3.48:1 here.
+     Pinned to the navy the light theme uses (14.5:1 on white). */
+  color: #13294B;
   padding: 2px 10px;
   font-size: 11px;
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.28);
