@@ -235,7 +235,8 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   -webkit-tap-highlight-color: transparent;
   transition: background 0.15s, color 0.15s;
   &.active { background: var(--accent-primary); color: var(--ink-inverse); }
-  &.active .tab-count { color: #fff; opacity: 0.85; }
+  /* On the brand-filled active tab: white is 2.88:1 there in dark. */
+  &.active .tab-count { color: var(--ink-inverse); opacity: 0.85; }
 }
 .tab-count { font-size: 11px; color: var(--text-muted); }
 

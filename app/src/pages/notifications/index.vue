@@ -294,7 +294,8 @@ function onLongPress(id: string) {
 .ni-unread_message { background: var(--campus-blue-soft); color: var(--campus-blue); }
 .notif-content { flex: 1; min-width: 0; }
 .notif-type {
-  font-size: 11px; font-weight: 600; color: var(--text-muted); display: block;
+  /* --text-muted lands at 4.04:1 on the tinted unread row in dark. */
+  font-size: 11px; font-weight: 600; color: var(--text-secondary); display: block;
   text-transform: uppercase; letter-spacing: 0.3px;
 }
 .notif-title { font-size: 14px; font-weight: 600; color: var(--text-primary); display: block; margin-top: 2px; }

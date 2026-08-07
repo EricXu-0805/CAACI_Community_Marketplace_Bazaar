@@ -62,8 +62,10 @@ function openAttribution() {
   border-radius: 2px;
 }
 
+/* --text-faint is a border/dot step, not a text step: it reads 2.2:1 in light
+   and 2.6:1 in dark. This credit is mandatory text, not decoration. */
 .osm-attribution__text {
-  color: var(--text-faint, var(--text-subtle));
+  color: var(--text-tertiary, var(--text-subtle));
   font-size: 10px;
   line-height: 1.4;
   text-decoration: none;
