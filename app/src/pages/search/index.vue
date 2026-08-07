@@ -44,7 +44,7 @@
             @click="pick(h)"
           >
             <text class="chip-text">{{ h }}</text>
-            <view class="chip-x" role="button" :aria-label="t('a11y.delete')" @click.stop="removeOne(h)"></view>
+            <view class="chip-x hit-target" role="button" :aria-label="t('a11y.delete')" @click.stop="removeOne(h)"></view>
           </view>
         </view>
       </view>

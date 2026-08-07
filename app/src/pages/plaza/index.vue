@@ -206,7 +206,7 @@
                 </view>
                 <text class="pa-time">{{ formatTime(post.created_at) }}</text>
               </view>
-              <view v-if="post.user_id === currentUser?.id" class="post-more" role="button" :aria-label="t('a11y.more')" @click.stop="onDeletePost(post)">
+              <view v-if="post.user_id === currentUser?.id" class="post-more hit-target" role="button" :aria-label="t('a11y.more')" @click.stop="onDeletePost(post)">
                 <view class="pm-dot"></view><view class="pm-dot"></view><view class="pm-dot"></view>
               </view>
             </view>
@@ -215,7 +215,7 @@
               <text class="post-content">{{ translations[post.id] ? translations[post.id] : post.content }}</text>
               <view
                 v-if="post.content && post.content.trim().length > 0"
-                :class="['pc-translate', { loading: translatingId === post.id }]"
+                :class="['pc-translate', 'hit-target', { loading: translatingId === post.id }]"
                 role="button"
                 :aria-label="t('a11y.translate')"
                 @click.stop="togglePostTranslate(post)"

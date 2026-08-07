@@ -1091,6 +1091,21 @@ function installRoleButtonKeyboardAccess() {
     ],
   })
 
+  /*
+   * The observer above batches its records, so a control can take focus in the
+   * same frame it was rendered — before its name has been mirrored from the
+   * <uni-input> wrapper onto the inner native control. A screen reader reads
+   * the name at exactly that moment, and gets nothing. Reproduced on the admin
+   * gate, whose input carries :aria-label in the source and still arrived
+   * nameless when Tab reached it first.
+   *
+   * Capture phase, so the name is in place before any focus handler or
+   * assistive technology can read it.
+   */
+  document.addEventListener('focusin', (event) => {
+    if (event.target instanceof HTMLElement) scanUniFormControlNames(event.target)
+  }, true)
+
   // Event delegation keeps dynamically-rendered uni-view nodes keyboard
   // operable without one listener per component. Native controls retain their
   // browser behaviour and disabled role buttons are inert.
@@ -1751,17 +1766,60 @@ uni-button:focus-visible {
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+/*
+ * The rule above this block reads `input:focus-visible, textarea:focus-visible`
+ * in the source and ships as `uni-input:focus-visible, uni-textarea:...`: the
+ * H5 compiler rewrites bare element selectors to uni's custom-element names,
+ * the same transform that turns <view> into <uni-view>. But focus lands on the
+ * real <input> uni nests INSIDE that wrapper, and :focus-visible does not
+ * propagate to ancestors the way :focus-within does — so no text field in the
+ * web build had a focus ring at all. Measured: every one computed
+ * `outline: none`, which is the initial value, not an override.
+ *
+ * Class selectors survive the rewrite, so target uni's inner nodes by class.
+ */
+.uni-input-input:focus-visible,
+.uni-textarea-textarea:focus-visible {
+  outline: 2px solid var(--brand) !important;
+  /* Inset, not the +2px used everywhere else. uni sizes the inner control to
+     fill its wrapper exactly, and that wrapper clips: `uni-input` is
+     `overflow: hidden` and `.uni-textarea-wrapper` is `overflow-y: hidden`,
+     which computes overflow-x to auto, so it clips on both axes. An outward
+     ring lands entirely in the clipped region and paints nothing — verified by
+     screenshotting a focused search field and seeing bare background. An
+     element's own overflow never clips its own outline, so drawing inside the
+     box always survives. */
+  outline-offset: -2px;
+  border-radius: 4px;
+}
 /* #endif */
 
+/*
+ * Enlarges a control's hit area without changing what it looks like, for the
+ * WCAG 2.5.8 minimum of 24x24. Needed where a small control sits INSIDE a
+ * larger one with a different action — the delete x on a recent-search chip
+ * that also runs the search, the overflow menu on a post card that also opens
+ * the post — because there the 24px spacing exception cannot apply and a near
+ * miss performs the wrong action.
+ *
+ * Centred rather than `inset: -8px` with min-width/min-height: those grow only
+ * right and down from the inset box, so a 12x12 control ended up with its
+ * enlarged area offset from the glyph the user is aiming at.
+ */
 .hit-target {
   position: relative;
 }
 .hit-target::after {
   content: '';
   position: absolute;
-  inset: -8px;
-  min-width: 44px;
-  min-height: 44px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  min-width: 24px;
+  min-height: 24px;
 }
 
 .sr-only {
