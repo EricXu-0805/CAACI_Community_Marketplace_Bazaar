@@ -31,7 +31,12 @@ test('public smoke skips missing configuration while account smoke is protected 
   const ci = await source('.github/workflows/ci.yml')
 
   assert.match(ci, /id: smoke-config[\s\S]*can_run=false/)
-  assert.match(ci, /Install Playwright \(webkit\)[\s\S]*if: steps\.smoke-config\.outputs\.can_run == 'true'/)
+  // The invariant is the gate, not the engine list: a fork PR without the
+  // public credentials must not spend minutes downloading browsers for a job
+  // that will skip. Which engines get installed is free to change — the
+  // keyboard-journey sweep added Chromium — so match any engine list and bind
+  // the nearest `if:`.
+  assert.match(ci, /Install Playwright \([^)]*\)[\s\S]*?if: steps\.smoke-config\.outputs\.can_run == 'true'/)
   assert.match(ci, /name: Smoke \(logged-out page sweep only\)[\s\S]*id: smoke-run/)
   const publicJob = ci.slice(ci.indexOf('  public-smoke:'), ci.indexOf('  authenticated-smoke:'))
   assert.doesNotMatch(publicJob, /SMOKE_EMAIL|SMOKE_PASSWORD/)

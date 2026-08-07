@@ -113,11 +113,19 @@ test.describe('framework surfaces enhanced in App.vue', () => {
     // Deliberately not returned: showActionSheet's promise settles only when
     // the sheet is dismissed, so returning it makes evaluate() wait forever.
     await page.evaluate(() => { (window as any).uni.showActionSheet({ itemList: ['Alpha', 'Beta', 'Gamma'] }) })
-    await page.waitForTimeout(700)
+
+    // Assert the enhancer ran before asserting what it did. When only the
+    // focus assertion failed, "focus is on <body>" could not tell apart an
+    // enhancer that never fired from one that fired and lost the race, and
+    // <body>.textContent is the whole page, which reads like neither.
+    const sheet = page.locator('uni-actionsheet')
+    await expect.poll(() => sheet.getAttribute('aria-modal'), { timeout: 10_000 }).toBe('true')
 
     const focusedText = () => page.evaluate(() => (document.activeElement?.textContent || '').trim())
-    expect(await focusedText()).toBe('Alpha')
-    expect(await page.locator('uni-actionsheet').getAttribute('aria-modal')).toBe('true')
+    // Poll rather than sleep: how long uni takes to make the sheet focusable
+    // varies with machine load, and a fixed 700ms passed on a laptop while
+    // failing on every CI run.
+    await expect.poll(focusedText, { timeout: 10_000 }).toBe('Alpha')
     await page.keyboard.press('ArrowDown')
     expect(await focusedText()).toBe('Beta')
     // Tab must stay inside a modal rather than walking into the page behind it.
@@ -146,10 +154,8 @@ test.describe('framework surfaces enhanced in App.vue', () => {
         success: (res: { confirm: boolean }) => (window as any).recordModalResult(res.confirm),
       })
     })
-    await page.waitForTimeout(700)
-
     const host = page.locator('uni-modal')
-    expect(await host.getAttribute('role')).toBe('dialog')
+    await expect.poll(() => host.getAttribute('role'), { timeout: 10_000 }).toBe('dialog')
     expect(await host.getAttribute('aria-modal')).toBe('true')
     // The dialog must name itself; `aria-modal` on an unnamed container is
     // announced as a bare "dialog".
@@ -159,8 +165,9 @@ test.describe('framework surfaces enhanced in App.vue', () => {
 
     const focusedText = () => page.evaluate(() => (document.activeElement?.textContent || '').trim())
     // Initial focus is the least destructive action, so a stray Enter cannot
-    // confirm something the user has not heard yet.
-    expect(await focusedText()).toBe('Cancel')
+    // confirm something the user has not heard yet. Polled for the same reason
+    // as the action sheet above.
+    await expect.poll(focusedText, { timeout: 10_000 }).toBe('Cancel')
     await page.keyboard.press('Tab')
     expect(await focusedText()).toBe('OK')
     await page.keyboard.press('Tab')

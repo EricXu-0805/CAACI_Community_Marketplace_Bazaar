@@ -188,12 +188,15 @@ jobs:
             echo "Smoke skipped: public Supabase CI credentials are unavailable (expected on forks)."
           fi
 
-      # The smoke spec spreads the iPhone 13 device profile, whose
-      # defaultBrowserType is webkit — install that engine, not chromium.
-      - name: Install Playwright (webkit)
+      # Most specs spread the iPhone 13 device profile, whose
+      # defaultBrowserType is webkit. smoke/a11y-keyboard-journey.spec.ts is
+      # the exception: it reads each tab stop's computed accessible name
+      # through CDP, which only Chromium exposes, so it pins a Chromium phone
+      # and fails at launch without that engine present.
+      - name: Install Playwright (webkit + chromium)
         if: steps.smoke-config.outputs.can_run == 'true'
         working-directory: app
-        run: npx playwright install --with-deps webkit
+        run: npx playwright install --with-deps webkit chromium
 
       # The page-sweep needs REAL public Supabase values: with the build jobs'
       # stub URL the logged-out calls fail with network errors that are NOT in
@@ -272,9 +275,11 @@ jobs:
             exit 1
           fi
 
-      - name: Install Playwright (webkit)
+      # This job runs the same `npm run smoke`, so it needs Chromium for the
+      # CDP-based keyboard-journey sweep too.
+      - name: Install Playwright (webkit + chromium)
         working-directory: app
-        run: npx playwright install --with-deps webkit
+        run: npx playwright install --with-deps webkit chromium
 
       - name: Smoke (synthetic authenticated flow)
         working-directory: app

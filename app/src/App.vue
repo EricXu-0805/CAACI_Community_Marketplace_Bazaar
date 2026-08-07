@@ -850,6 +850,26 @@ const SHEET_HOST = 'uni-actionsheet'
 const SHEET_CELL = '.uni-actionsheet__cell'
 let actionSheetA11yInstalled = false
 
+/*
+ * An enhancer runs the instant the framework toggles a surface open, which is
+ * at least a frame before that surface is focusable: focus() there is a no-op
+ * and leaves the user on <body>. This retried across a fixed ten frames, which
+ * was enough on a desktop and not enough on a loaded CI runner — the surface
+ * became focusable after the budget had already run out, and the keyboard
+ * never entered the dialog. Retry to a wall-clock deadline instead, and stop
+ * early if the surface closes or something else legitimately takes focus.
+ */
+function claimInitialFocus(host: HTMLElement, target: HTMLElement, isOpen: () => boolean) {
+  const deadline = Date.now() + 2000
+  const attempt = () => {
+    if (!isOpen() || document.activeElement === target) return
+    if (document.activeElement instanceof HTMLElement && host.contains(document.activeElement)) return
+    target.focus()
+    if (document.activeElement !== target && Date.now() < deadline) requestAnimationFrame(attempt)
+  }
+  requestAnimationFrame(attempt)
+}
+
 function enhanceActionSheet(host: HTMLElement, restoreTo: HTMLElement | null) {
   const cells = Array.from(host.querySelectorAll<HTMLElement>(SHEET_CELL))
   if (!cells.length) return
@@ -861,18 +881,7 @@ function enhanceActionSheet(host: HTMLElement, restoreTo: HTMLElement | null) {
     cell.setAttribute('role', 'menuitem')
     cell.setAttribute('tabindex', '0')
   })
-  // The enhancer runs the instant the toggle class lands, which is a frame
-  // before the sheet is actually focusable — focus() there is a no-op and
-  // leaves the user on <body>. Retry across a few frames and stop as soon as
-  // it takes, or if something else has legitimately claimed focus.
-  let focusAttempts = 0
-  const claimFocus = () => {
-    if (!host.isConnected || document.activeElement === cells[0]) return
-    if (document.activeElement instanceof HTMLElement && host.contains(document.activeElement)) return
-    cells[0].focus()
-    if (document.activeElement !== cells[0] && ++focusAttempts < 10) requestAnimationFrame(claimFocus)
-  }
-  requestAnimationFrame(claimFocus)
+  claimInitialFocus(host, cells[0], () => host.isConnected && !!host.querySelector('.uni-actionsheet_toggle'))
 
   const cancel = host.querySelector<HTMLElement>('.uni-actionsheet__action ' + SHEET_CELL)
   const onKeydown = (event: KeyboardEvent) => {
@@ -972,14 +981,7 @@ function enhanceModal(host: HTMLElement, restoreTo: HTMLElement | null) {
   // modal owns its own input, and a one-button modal has nothing safer.
   const cancel = host.querySelector<HTMLElement>('.uni-modal__btn_default')
   const initial = host.querySelector<HTMLElement>('input') || cancel || buttons[0]
-  let focusAttempts = 0
-  const claimFocus = () => {
-    if (!host.isConnected || document.activeElement === initial) return
-    if (document.activeElement instanceof HTMLElement && host.contains(document.activeElement)) return
-    initial.focus()
-    if (document.activeElement !== initial && ++focusAttempts < 10) requestAnimationFrame(claimFocus)
-  }
-  requestAnimationFrame(claimFocus)
+  claimInitialFocus(host, initial, () => host.isConnected && getComputedStyle(host).display !== 'none')
 
   const onKeydown = (event: KeyboardEvent) => {
     const index = buttons.indexOf(document.activeElement as HTMLElement)
