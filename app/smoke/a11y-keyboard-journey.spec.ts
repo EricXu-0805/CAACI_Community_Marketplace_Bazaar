@@ -208,6 +208,56 @@ test.describe('keyboard journey', () => {
 })
 
 /*
+ * Comparing computed style focused against unfocused proves a rule matched.
+ * It does not prove anything was painted. uni sizes its inner <input> to fill
+ * `uni-input`, which is `overflow: hidden`, and its inner <textarea> to fill
+ * `.uni-textarea-wrapper`, which clips on both axes — so an outward focus ring
+ * computes correctly and lands entirely in the clipped region. The paint check
+ * in the journey above reported those fields as covered while a screenshot
+ * showed bare background.
+ *
+ * So compare pixels. Text-entry elements always match :focus-visible, even on
+ * programmatic focus, so this does not have to tab its way there.
+ */
+test.describe('text fields paint a focus ring', () => {
+  for (const route of ['pages/search/index', 'pages/login/index', 'pages/plaza/index']) {
+    test(`${route} — the ring is visible, not just computed`, async ({ page }) => {
+      await page.addInitScript(() => {
+        localStorage.setItem('welcomed', '1')
+        localStorage.setItem('lang', 'en')
+      })
+      await page.goto(`/#/${route}`, { waitUntil: 'networkidle' })
+      await page.waitForTimeout(500)
+
+      const fields = page.locator('.uni-input-input, .uni-textarea-textarea')
+      const count = await fields.count()
+      expect(count, `no text field on ${route} to check`).toBeGreaterThan(0)
+
+      const unpainted: string[] = []
+      for (let i = 0; i < count; i++) {
+        const field = fields.nth(i)
+        const box = await field.boundingBox()
+        if (!box || box.width < 2 || box.height < 2) continue
+        const clip = {
+          x: Math.max(0, box.x - 6), y: Math.max(0, box.y - 6),
+          width: box.width + 12, height: box.height + 12,
+        }
+        await field.evaluate(el => (el as HTMLElement).blur())
+        const before = await page.screenshot({ clip })
+        await field.evaluate(el => (el as HTMLElement).focus())
+        const after = await page.screenshot({ clip })
+        await field.evaluate(el => (el as HTMLElement).blur())
+        if (before.equals(after)) {
+          unpainted.push(`${await field.getAttribute('class')} at ${Math.round(box.x)},${Math.round(box.y)}`)
+        }
+      }
+      expect(unpainted, `focused text fields that paint no ring on ${route}:\n${unpainted.join('\n')}`)
+        .toEqual([])
+    })
+  }
+})
+
+/*
  * A component whose `setup()` throws is not a broken component — it is an
  * absent one. Vue swallows the error into the app's errorHandler, both builds
  * succeed, the type-check succeeds, and every assertion about what IS on the

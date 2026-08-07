@@ -1782,7 +1782,15 @@ uni-button:focus-visible {
 .uni-input-input:focus-visible,
 .uni-textarea-textarea:focus-visible {
   outline: 2px solid var(--brand) !important;
-  outline-offset: 2px;
+  /* Inset, not the +2px used everywhere else. uni sizes the inner control to
+     fill its wrapper exactly, and that wrapper clips: `uni-input` is
+     `overflow: hidden` and `.uni-textarea-wrapper` is `overflow-y: hidden`,
+     which computes overflow-x to auto, so it clips on both axes. An outward
+     ring lands entirely in the clipped region and paints nothing — verified by
+     screenshotting a focused search field and seeing bare background. An
+     element's own overflow never clips its own outline, so drawing inside the
+     box always survives. */
+  outline-offset: -2px;
   border-radius: 4px;
 }
 /* #endif */
