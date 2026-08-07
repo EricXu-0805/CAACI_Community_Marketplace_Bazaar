@@ -5,7 +5,7 @@
     <!-- #endif -->
     <view class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
-      <text class="header-title">{{ t('plaza.title') }}</text>
+      <text class="header-title" role="heading" aria-level="1">{{ t('plaza.title') }}</text>
       <view v-if="post && currentUser?.id === post.user_id" class="more-btn" role="button" :aria-label="t('a11y.more')" @click="onDelete">
         <view class="mb-dot"></view><view class="mb-dot"></view><view class="mb-dot"></view>
       </view>

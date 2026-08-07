@@ -15,7 +15,7 @@
     </view>
 
     <view v-if="step === 1" class="step">
-      <text class="title">{{ t('onboarding.s1Title') }}</text>
+      <text class="title" role="heading" aria-level="1">{{ t('onboarding.s1Title') }}</text>
       <text class="sub">{{ t('onboarding.s1Sub') }}</text>
       <view class="field">
         <text class="label">{{ t('login.nickname') }}</text>
@@ -32,7 +32,7 @@
     </view>
 
     <view v-else-if="step === 2" class="step">
-      <text class="title">{{ t('onboarding.s2Title') }}</text>
+      <text class="title" role="heading" aria-level="1">{{ t('onboarding.s2Title') }}</text>
       <text class="sub">{{ t('onboarding.s2Sub') }}</text>
       <view class="chips" role="radiogroup" :aria-label="t('onboarding.s2Title')">
         <view
@@ -51,7 +51,7 @@
     </view>
 
     <view v-else-if="step === 3" class="step">
-      <text class="title">{{ t('onboarding.s3Title') }}</text>
+      <text class="title" role="heading" aria-level="1">{{ t('onboarding.s3Title') }}</text>
       <text class="sub">{{ t('onboarding.s3Sub') }}</text>
       <view class="avatar-row">
         <image

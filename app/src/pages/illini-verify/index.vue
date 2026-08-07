@@ -3,7 +3,7 @@
     <view class="header">
       <view class="back" role="button" :aria-label="t('a11y.back')" @click="goBack"><view class="back-arrow"></view></view>
       <view class="hero-badge"><UIcon name="check" size="xs" color="#FFFFFF" aria-hidden="true" /><text class="hero-illini">Illini</text></view>
-      <text class="app-name">{{ t('illini.title') }}</text>
+      <text class="app-name" role="heading" aria-level="1">{{ t('illini.title') }}</text>
       <text class="app-desc">{{ t('illini.intro') }}</text>
     </view>
 

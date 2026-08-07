@@ -2,7 +2,7 @@
   <view class="page" :class="mpThemeClass" :style="mpChrome">
     <view class="header">
       <image class="logo-mark-img" :src="logoSrc" :alt="t('app.name')" mode="aspectFit" />
-      <text class="app-name">{{ t('resetPw.title') }}</text>
+      <text class="app-name" role="heading" aria-level="1">{{ t('resetPw.title') }}</text>
       <text class="app-desc">{{ t('resetPw.hint') }}</text>
     </view>
 

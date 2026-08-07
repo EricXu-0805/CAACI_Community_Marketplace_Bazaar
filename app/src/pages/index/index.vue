@@ -1,5 +1,6 @@
 <template>
   <view class="page page-lock has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <text class="sr-only" role="heading" aria-level="1">{{ t('nav.home') }}</text>
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
@@ -1403,7 +1404,7 @@ function goPublish() {
 .fb-badge {
   position: absolute; top: 1px; right: 1px;
   width: 15px; height: 15px; border-radius: 50%;
-  background: var(--accent-action); color: #fff; font-size: 9px; font-weight: 600;
+  background: var(--accent-action); color: var(--ink-inverse); font-size: 9px; font-weight: 600;
   display: flex; align-items: center; justify-content: center;
 }
 

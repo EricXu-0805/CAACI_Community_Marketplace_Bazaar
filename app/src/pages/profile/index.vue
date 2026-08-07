@@ -20,6 +20,11 @@
       Previous 3-tab filter (listed/saved/sold) is gone — the mock
       surfaces everything sequentially so users don't hunt in tabs.
     -->
+    <!-- .page-header is display:none at >=768px, and display:none drops the
+         node from the accessibility tree — so the heading has to live outside
+         it or Mac/iPad get no heading at all. -->
+    <text class="sr-only" role="heading" aria-level="1">{{ t('nav.profile') }}</text>
+
     <view class="page-header u-glass u-glass--hair-b">
       <text class="ph-title">{{ t('nav.profile') }}</text>
     </view>

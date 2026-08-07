@@ -3,7 +3,7 @@
     <view class="hero">
       <view :class="['hero-icon', levelClass]"><UIcon name="shield" size="xl" color="currentColor" /></view>
       <text class="hero-badge">{{ t('suspended.badge') }} · L{{ level }}</text>
-      <text class="hero-title">{{ titleText }}</text>
+      <text class="hero-title" role="heading" aria-level="1">{{ titleText }}</text>
       <text class="hero-sub">{{ subText }}</text>
     </view>
 

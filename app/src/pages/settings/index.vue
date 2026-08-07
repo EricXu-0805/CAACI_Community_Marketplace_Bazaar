@@ -2,7 +2,7 @@
   <view class="page" :class="mpThemeClass" :style="mpChrome">
     <view class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="brand" /></view>
-      <text class="header-title">{{ t('settings.title') }}</text>
+      <text class="header-title" role="heading" aria-level="1">{{ t('settings.title') }}</text>
     </view>
 
     <view class="section">

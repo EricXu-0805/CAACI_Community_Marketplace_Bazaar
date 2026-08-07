@@ -4,7 +4,7 @@
       <view class="status-copy" role="status" aria-live="polite">
         <view class="shield" aria-hidden="true"><UIcon name="shield" size="xl" color="brand" /></view>
         <text class="badge">{{ t('auth.profileUnavailableBadge') }}</text>
-        <text class="title">{{ t('auth.profileUnavailableTitle') }}</text>
+        <text class="title" role="heading" aria-level="1">{{ t('auth.profileUnavailableTitle') }}</text>
         <text class="body">{{ t('auth.profileUnavailableBody') }}</text>
       </view>
 
@@ -324,7 +324,7 @@ onUnmounted(() => {
   font-size: 15px;
   font-weight: 700;
 }
-.primary { color: #fff; background: var(--brand); }
+.primary { color: var(--ink-inverse); background: var(--brand); }
 .primary.disabled, .secondary.disabled, .danger-action.disabled { opacity: .55; cursor: default; }
 .secondary { margin-top: 10px; color: var(--text-muted); background: var(--paper-2); }
 .privacy-option { display: block; margin-top: 22px; color: var(--text-muted); font-size: 12px; line-height: 1.55; }

@@ -109,7 +109,7 @@ function onClick(evt: Event) {
 /* ===== Variants ===== */
 .u-btn-primary {
   background: var(--brand);
-  color: #fff;
+  color: var(--ink-inverse);
   box-shadow: var(--shadow-cta);
 }
 .u-btn-primary:active:not(.is-disabled):not(.is-loading) {
@@ -150,7 +150,7 @@ function onClick(evt: Event) {
 
 .u-btn-danger {
   background: var(--danger);
-  color: #fff;
+  color: var(--ink-inverse);
   box-shadow: var(--shadow-soft);
 }
 .u-btn-danger:active:not(.is-disabled):not(.is-loading) {

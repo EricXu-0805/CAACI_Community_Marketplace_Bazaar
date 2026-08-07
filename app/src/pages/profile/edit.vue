@@ -4,7 +4,7 @@
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack">
         <UIcon name="chevron-left" size="xs" color="accent-primary" />
       </view>
-      <text class="header-title">{{ t('editProfile.title') }}</text>
+      <text class="header-title" role="heading" aria-level="1">{{ t('editProfile.title') }}</text>
       <view
         class="save-btn"
         role="button"
@@ -449,6 +449,6 @@ async function onSave() {
   background: var(--bg-subtle); color: var(--text-primary); font-size: 13px;
   border-radius: 14px; cursor: pointer;
   &:active { background: var(--bg-inset); }
-  &.active { background: var(--accent-primary); color: #fff; }
+  &.active { background: var(--accent-primary); color: var(--ink-inverse); }
 }
 </style>

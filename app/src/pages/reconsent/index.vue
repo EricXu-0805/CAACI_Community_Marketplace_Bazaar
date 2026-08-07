@@ -2,7 +2,7 @@
   <view class="page" :class="mpThemeClass" :style="mpChrome">
     <view class="header">
       <text class="badge">{{ t(firstConsent ? 'reconsent.firstBadge' : 'reconsent.badge') }}</text>
-      <text class="title">{{ t(firstConsent ? 'reconsent.firstTitle' : 'reconsent.title') }}</text>
+      <text class="title" role="heading" aria-level="1">{{ t(firstConsent ? 'reconsent.firstTitle' : 'reconsent.title') }}</text>
       <text class="sub">{{ t(firstConsent ? 'reconsent.firstSub' : 'reconsent.sub') }}</text>
     </view>
 

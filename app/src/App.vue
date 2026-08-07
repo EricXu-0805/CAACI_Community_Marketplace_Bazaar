@@ -1135,10 +1135,11 @@ page,
   --border-strong: #DBD2C2;
   --border-hair:   rgba(42, 42, 46, 0.05);
   --border-warm:   #ECE5DA;
-  --brand:          #C74A2F;
+  --brand:          #B9452C;
   --brand-deep:     #A23A22;
   --brand-soft:     #F5D9CE;
   --brand-ghost:    #FBEAE2;
+  --brand-on-soft:  #A23A22;
   --campus-blue:      #13294B;
   --campus-blue-soft: #E5EAF2;
   --campus-blue-deep: #0A1A33;
@@ -1155,7 +1156,7 @@ page,
   --accent-good:         #5D7C4A;
   --accent-warn:         #D4923C;
   --accent-danger:       #B53333;
-  --success:      #5D7C4A;
+  --success:      #567345;
   --success-soft: #E4EADA;
   --warning:      #D4923C;
   --warning-text: #8A5A13;
@@ -1562,10 +1563,14 @@ uni-button:focus-visible {
   --border-warm:   #ECE5DA;   /* same as default; kept for back-compat */
 
   /* ---------- BRAND (terracotta — pottery red) ---------- */
-  --brand:          #C74A2F;   /* terracotta — price · CTA · seal */
+  --brand:          #B9452C;   /* terracotta — price · CTA · seal */
   --brand-deep:     #A23A22;   /* hover / pressed */
   --brand-soft:     #F5D9CE;   /* chip bg · soft fill */
   --brand-ghost:    #FBEAE2;   /* hover tint on white */
+  /* Brand text sitting on --brand-soft. Light mode needs a deeper step:
+   * --brand itself reaches only 3.97:1 on that tint, and darkening it far
+   * enough would collapse it into --brand-deep. Dark mode needs no split. */
+  --brand-on-soft:  #A23A22;
 
   /* ---------- UIUC Campus accents (verified · official · academic seal)
    * Use ONLY when surface is genuinely about university identity:
@@ -1598,7 +1603,7 @@ uni-button:focus-visible {
   --accent-danger:       #B53333;   /* vermilion — destructive */
 
   /* Explicit success / warn / danger pairs (soft bg + foreground) */
-  --success:      #5D7C4A;
+  --success:      #567345;
   --success-soft: #E4EADA;
   --warning:      #D4923C;
   --warning-text: #8A5A13;   /* AA foreground on white, canvas, inset and warning-soft */
@@ -1735,7 +1740,7 @@ uni-button:focus-visible {
 [data-theme="dark"] .page {
   --ink:         #F0E8D6;
   --ink-soft:    rgba(240, 232, 214, 0.72);
-  --ink-quiet:   rgba(240, 232, 214, 0.52);
+  --ink-quiet:   rgba(240, 232, 214, 0.54);
   --ink-faint:   rgba(240, 232, 214, 0.32);
   --ink-inverse: #1C1A17;
   /* P1-1: AA-contrast placeholder text (splits --ink-quiet into two roles
@@ -1789,10 +1794,11 @@ uni-button:focus-visible {
   --border-hair:   rgba(245, 240, 232, 0.07);
 
   /* Brand — terracotta lifts to brighter ember on dark ink */
-  --brand:       #E06A4A;
+  --brand:       #E47B5F;
   --brand-deep:  #C45A3A;
-  --brand-soft:  rgba(224, 106, 74, 0.15);
-  --brand-ghost: rgba(224, 106, 74, 0.08);
+  --brand-soft:  rgba(228, 123, 95, 0.15);
+  --brand-ghost: rgba(228, 123, 95, 0.08);
+  --brand-on-soft: var(--brand);
 
   /* Campus accents — UIUC navy lifts so verified pill stays legible */
   --campus-blue:      #6A8AC2;
@@ -1818,7 +1824,7 @@ uni-button:focus-visible {
   --warning-text: #E5B170;
   --warning-surface: #8A5A13;
   --warning-soft: rgba(229, 177, 112, 0.15);
-  --danger:       #E06666;
+  --danger:       #E16D6D;
   --danger-soft:  rgba(224, 102, 102, 0.15);
 
   --accent-good:   var(--success);
@@ -1850,7 +1856,7 @@ uni-button:focus-visible {
   :root:not([data-theme="light"]) .page {
     --ink:         #F0E8D6;
     --ink-soft:    rgba(240, 232, 214, 0.72);
-    --ink-quiet:   rgba(240, 232, 214, 0.52);
+    --ink-quiet:   rgba(240, 232, 214, 0.54);
     --ink-faint:   rgba(240, 232, 214, 0.32);
     --ink-inverse: #1C1A17;
     /* P1-1 + P2-2: mirror of [data-theme="dark"] — see commentary there. */
@@ -1894,17 +1900,18 @@ uni-button:focus-visible {
     --border-hair:   rgba(245, 240, 232, 0.07);
     --text-disabled: rgba(240, 232, 214, 0.22);
 
-    --brand:       #E06A4A;
+    --brand:       #E47B5F;
     --brand-deep:  #C45A3A;
-    --brand-soft:  rgba(224, 106, 74, 0.15);
-    --brand-ghost: rgba(224, 106, 74, 0.08);
+    --brand-soft:  rgba(228, 123, 95, 0.15);
+    --brand-ghost: rgba(228, 123, 95, 0.08);
+    --brand-on-soft: var(--brand);
     --success:      #8BA670;
     --success-soft: rgba(139, 166, 112, 0.15);
     --warning:      #E5B170;
     --warning-text: #E5B170;
     --warning-surface: #8A5A13;
     --warning-soft: rgba(229, 177, 112, 0.15);
-    --danger:       #E06666;
+    --danger:       #E16D6D;
     --danger-soft:  rgba(224, 102, 102, 0.15);
     /* Aliases must follow the base trio so var() resolves to the dark values. */
     --accent-good:   var(--success);
@@ -2020,7 +2027,7 @@ uni-button:focus-visible {
 .u-btn-primary,
 .u-btn-brand {
   background: var(--brand);
-  color: #fff;
+  color: var(--ink-inverse);
   padding: 12px 18px;
   border-radius: var(--radius-pill);
   font-size: 15px;
@@ -2223,7 +2230,7 @@ page, .page { overflow-x: clip; }
 .theme-dark {
   --ink:         #F0E8D6;
   --ink-soft:    rgba(240, 232, 214, 0.72);
-  --ink-quiet:   rgba(240, 232, 214, 0.52);
+  --ink-quiet:   rgba(240, 232, 214, 0.54);
   --ink-faint:   rgba(240, 232, 214, 0.32);
   --ink-inverse: #1C1A17;
   --ink-placeholder: rgba(240, 232, 214, 0.62);
@@ -2262,10 +2269,11 @@ page, .page { overflow-x: clip; }
   --border-strong: rgba(245, 240, 232, 0.22);
   --border-hair:   rgba(245, 240, 232, 0.07);
 
-  --brand:       #E06A4A;
+  --brand:       #E47B5F;
   --brand-deep:  #C45A3A;
-  --brand-soft:  rgba(224, 106, 74, 0.15);
-  --brand-ghost: rgba(224, 106, 74, 0.08);
+  --brand-soft:  rgba(228, 123, 95, 0.15);
+  --brand-ghost: rgba(228, 123, 95, 0.08);
+  --brand-on-soft: var(--brand);
 
   --campus-blue:      #6A8AC2;
   --campus-blue-soft: rgba(106, 138, 194, 0.15);
@@ -2285,7 +2293,7 @@ page, .page { overflow-x: clip; }
   --warning-text: #E5B170;
   --warning-surface: #8A5A13;
   --warning-soft: rgba(229, 177, 112, 0.15);
-  --danger:       #E06666;
+  --danger:       #E16D6D;
   --danger-soft:  rgba(224, 102, 102, 0.15);
 
   --accent-good:   var(--success);

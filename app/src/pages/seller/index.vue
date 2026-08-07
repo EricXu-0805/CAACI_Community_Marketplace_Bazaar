@@ -5,7 +5,7 @@
     <!-- #endif -->
     <view class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
-      <text class="header-title">{{ seller?.nickname || t('app.user') }}</text>
+      <text class="header-title" role="heading" aria-level="1">{{ seller?.nickname || t('app.user') }}</text>
     </view>
 
     <view v-if="blocked" class="blocked-state">
@@ -121,7 +121,7 @@
             <image v-if="thumbUrl(item.images?.[0], 'list')" :src="thumbUrl(item.images?.[0], 'list')" :alt="item.title" class="gi-img" mode="aspectFill" lazy-load />
             <view v-else class="gi-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
             <view v-if="pickupBadge(item)" class="badge-safe-corner" :class="{ 'badge-safe-corner--shared': !pickupBadge(item)!.spot }" :aria-label="pickupBadge(item)!.label">
-              <UIcon v-if="pickupBadge(item)!.spot" name="check" size="xs" color="#fff" />
+              <UIcon v-if="pickupBadge(item)!.spot" name="check" size="xs" color="ink-inverse" />
               <text class="bsc-label">{{ pickupBadge(item)!.label }}</text>
             </view>
           </view>
@@ -676,7 +676,10 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   background: var(--success);
 }
 .badge-safe-corner--shared { background: rgba(0, 0, 0, 0.55); padding-left: 7px; }
-.bsc-label { font-size: 10px; color: #fff; font-weight: 600; line-height: 1; }
+/* The shared variant sits on a black scrim, not on --success, so it keeps
+   white rather than inverting with the theme. */
+.badge-safe-corner--shared .bsc-label { color: #fff; }
+.bsc-label { font-size: 10px; color: var(--ink-inverse); font-weight: 600; line-height: 1; }
 .gi-title {
   font-size: 13px; color: var(--text-primary); line-height: 1.45; letter-spacing: 0.02em;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;

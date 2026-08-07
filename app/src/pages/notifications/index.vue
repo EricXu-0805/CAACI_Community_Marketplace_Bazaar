@@ -5,7 +5,7 @@
     <!-- #endif -->
     <view class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
-      <text class="header-title">{{ t('notif.title') }}</text>
+      <text class="header-title" role="heading" aria-level="1">{{ t('notif.title') }}</text>
       <text
         v-if="notifications.length > 0"
         :class="['mark-all', { disabled: markingAll }]"
@@ -247,7 +247,7 @@ function onLongPress(id: string) {
 .retry-btn {
   min-height: 44px; padding: 0 20px; border-radius: var(--radius-pill);
   display: flex; align-items: center; justify-content: center;
-  background: var(--accent-primary); color: #fff; font-size: 14px; font-weight: 600;
+  background: var(--accent-primary); color: var(--ink-inverse); font-size: 14px; font-weight: 600;
 }
 
 /*

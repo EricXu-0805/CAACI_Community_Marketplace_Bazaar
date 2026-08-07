@@ -2,7 +2,7 @@
   <view class="page" :class="mpThemeClass" :style="mpChrome">
     <view class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
-      <text class="header-title">{{ t('profile.history') }}</text>
+      <text class="header-title" role="heading" aria-level="1">{{ t('profile.history') }}</text>
       <text v-if="historyReady && currentList.length > 0" class="clear-btn" role="button" @click="onClear">{{ t('filter.reset') }}</text>
     </view>
 
@@ -271,7 +271,7 @@ function onClear() {
 .post-top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
 .post-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
 .post-official {
-  background: var(--accent-action); color: #fff;
+  background: var(--accent-action); color: var(--ink-inverse);
   padding: 1px 6px; border-radius: 4px;
   font-size: 10px; font-weight: 700;
 }

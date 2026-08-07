@@ -48,7 +48,7 @@
 
       <view class="asb-foot">
         <view class="asb-post u-press" role="button" :aria-label="t('nav.post')" @click="go('/pages/publish/index')">
-          <UIcon name="plus" size="sm" color="#fff" />
+          <UIcon name="plus" size="sm" color="ink-inverse" />
           <text class="asb-post-label">{{ t('nav.post') }}</text>
         </view>
 
@@ -166,11 +166,11 @@ function toggleTheme() {
     box-sizing: border-box;
   }
   .asb-item:hover:not(.on) { background: var(--surface-alt); }
-  .asb-item.on { background: var(--brand-soft); color: var(--brand); font-weight: 600; }
+  .asb-item.on { background: var(--brand-soft); color: var(--brand-on-soft); font-weight: 600; }
   .asb-label { flex: 1; min-width: 0; }
   .asb-badge {
     margin-left: auto; min-width: 18px; height: 18px; border-radius: 999px;
-    background: var(--brand); color: #fff;
+    background: var(--brand); color: var(--ink-inverse);
     font-family: var(--font-mono); font-size: 11px; font-weight: 600;
     display: flex; align-items: center; justify-content: center; padding: 0 5px;
   }

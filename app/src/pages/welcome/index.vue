@@ -1,5 +1,6 @@
 <template>
   <view class="page" :class="mpThemeClass" :style="mpChrome">
+    <text class="sr-only" role="heading" aria-level="1">{{ t('app.name') }}</text>
     <swiper
       class="swiper focusable"
       :current="current"

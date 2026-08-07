@@ -98,6 +98,76 @@ The proof must still be valid for at least one hour and at most 24 hours when
 activation runs. The activation itself expires after 72 hours. Refreshing or
 changing the proof requires rollback and a new review.
 
+### Producing the provider proof
+
+The 2026-08-01 attempt stalled here: the contract above says what the proof must
+establish but not what to write down, so there was nothing to hash and nothing
+for a second person to check. The record is therefore fixed in shape.
+
+Write exactly these lines to a file, UTF-8, LF endings, one trailing newline,
+no other content. Every `<>` is replaced by an observed value, never by a guess:
+
+```text
+caaci-hosted-canary-provider-proof-v1
+observed_at: <UTC ISO-8601, when the checks below were performed>
+expires_at: <UTC ISO-8601, at least 1h and at most 24h after activation will run>
+project_ref: <20-char staging ref>
+project_name: <exact name shown in the Supabase dashboard>
+no_production_data: <yes|no> — <what was counted, and where>
+no_provider_side_effects: <yes|no> — <SMTP/webhook/OAuth state observed>
+accounts_disposable_password_only: <yes|no> — <the three account ids and their providers>
+access_token_lifetime_seconds: <integer, as configured in Auth settings>
+reviewer: <the person who observed all of the above>
+```
+
+Where each line is observed — none of it is visible from SQL, which is why a
+database Boolean cannot stand in for it:
+
+| line | where |
+| --- | --- |
+| `project_ref`, `project_name` | Supabase → Project Settings → General |
+| `no_production_data` | Table editor / SQL editor: row counts on `profiles`, `items`, `conversations`, `messages` are the fixture rows only |
+| `no_provider_side_effects` | Auth → Emails (custom SMTP off or pointed at a sink), Auth → Providers (no OAuth provider enabled), Database → Webhooks (none), Edge Functions (none deployed that send) |
+| `accounts_disposable_password_only` | Auth → Users: exactly the three fixture accounts, each `email` provider, no real address |
+| `access_token_lifetime_seconds` | Auth → Sessions → Access token (JWT) expiry. `ACTIVATE.sql` rejects anything outside 300–3600 |
+
+Then:
+
+```sh
+shasum -a 256 provider-proof.txt      # -> provider_disable_proof_sha256
+```
+
+`ACTIVATE.sql` only sees that digest and the expiry, so the digest is worth
+exactly as much as the review behind it. An executor who writes the record and
+also runs the activation has proved nothing to anyone.
+
+The same digest and `expires_at` are later copied verbatim into
+`app/e2e/hosted/approved-targets.ts` (step 7). The anonymous sentinel returns
+both and the harness compares them before any password is sent.
+
+`approval_reference` is a separate 8–200 character string with no control
+characters. It must name what was approved, so that a later reader can tell
+which review a row came from — for example
+`A-01 <project_ref> proof <first 12 hex of digest> manifest <first 12 hex of manifest> approved <UTC date> by Guoyi (Eric) Xu`.
+
+`fixture_manifest_sha256` is not an independent assertion: `ACTIVATE.sql`
+recomputes it from `project_ref`, `dataset_lineage`, the sentinel id, the
+revision and the five UUIDs, and raises `activation_fixture_manifest_mismatch`
+on any disagreement. A wrong value fails closed, so it can simply be computed:
+
+```sh
+python3 - <<'EOF'
+import hashlib
+fields = [
+  'caaci-hosted-fixture-v1', '<project_ref>', '<dataset_lineage>',
+  '<sentinel_id>', '<fixture_revision>',
+  'member-a', '<actor_a_id>', 'member-b', '<actor_b_id>', 'member-c', '<actor_c_id>',
+  'ab', '<conversation_ab_id>', 'ac', '<conversation_ac_id>',
+]
+print(hashlib.sha256('\x1f'.join(fields).encode()).hexdigest())
+EOF
+```
+
 ## Hosted operator contract and local evidence
 
 This package intentionally targets PostgreSQL 16 or newer and a real hosted

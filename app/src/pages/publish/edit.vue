@@ -16,9 +16,12 @@
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack">
         <UIcon name="chevron-left" size="xs" color="accent-primary" />
       </view>
-      <text class="header-title">{{ t('publish.editTitle') }}</text>
+      <text class="header-title" role="heading" aria-level="1">{{ t('publish.editTitle') }}</text>
     </view>
 
+    <!-- Outside the live region: a heading announced as part of a status
+         update would be read on every change instead of sitting in the rotor. -->
+    <text v-if="!editReady" class="sr-only" role="heading" aria-level="1">{{ t('publish.editTitle') }}</text>
     <view v-if="!editReady" class="auth-check" role="status" aria-live="polite">
       <text>{{ t('login.wait') }}</text>
     </view>
@@ -1095,7 +1098,7 @@ async function onSubmit() {
   transition: all 0.12s; font-weight: 500;
   position: relative;
   &.active {
-    background: var(--accent-primary); color: #fff;
+    background: var(--accent-primary); color: var(--ink-inverse);
     padding-right: 26px;
   }
   &:active { transform: scale(0.96); }
@@ -1134,7 +1137,7 @@ async function onSubmit() {
   cursor: pointer;
   transition: background 0.15s;
   &:active { background: var(--bg-inset); }
-  &.active { background: var(--accent-primary); color: #fff; }
+  &.active { background: var(--accent-primary); color: var(--ink-inverse); }
 }
 .locate-btn {
   display: flex;

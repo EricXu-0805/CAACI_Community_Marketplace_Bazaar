@@ -1,5 +1,6 @@
 <template>
   <view class="page page-lock chat-page-wrap" :class="[mpThemeClass, { 'kb-up': !!vvStyle }]" :style="[vvStyle, mpChrome]">
+    <text class="sr-only" role="heading" aria-level="1">{{ t('nav.messages') }}</text>
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
@@ -30,9 +31,11 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import ChatThread from '../../components/ChatThread.vue'
 import { useAuth } from '../../composables/useAuth'
+import { useI18n } from '../../composables/useI18n'
 
 const conversationId = ref('')
 const prefill = ref('')
+const { t } = useI18n()
 const { currentUser, awaitAuthReady } = useAuth()
 let routeMounted = false
 

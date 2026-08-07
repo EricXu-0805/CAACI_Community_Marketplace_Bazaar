@@ -5,6 +5,11 @@
     <!-- #endif -->
     <AppSidebar current="plaza" />
 
+    <!-- .page-header is display:none at >=768px, and display:none drops the
+         node from the accessibility tree — so the heading has to live outside
+         it or Mac/iPad get no heading at all. -->
+    <text class="sr-only" role="heading" aria-level="1">{{ t('plaza.title') }}</text>
+
     <view class="page-header">
       <text class="ph-title">{{ t('plaza.title') }}</text>
       <view class="compose-btn" role="button" :aria-label="t('a11y.compose')" @click="openComposer" v-if="isLoggedIn">
@@ -32,7 +37,7 @@
            no way to write a post (the sidebar +发布 creates an item, not a
            post). Sits beside the search bar on the desktop reading column. -->
       <view v-if="isLoggedIn" class="plaza-compose-d" role="button" :aria-label="t('a11y.compose')" @click="openComposer">
-        <UIcon name="edit" size="sm" color="#fff" />
+        <UIcon name="edit" size="sm" color="ink-inverse" />
         <text class="pcd-label">{{ t('plaza.write') }}</text>
       </view>
     </view>
