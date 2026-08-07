@@ -26,6 +26,7 @@
         role="tab"
         :tabindex="msgFilter === f.key ? 0 : -1"
         :aria-selected="msgFilter === f.key ? 'true' : 'false'"
+        aria-controls="msg-conv-panel"
         @click="msgFilter = f.key"
         @keydown="onMessageFilterKeydown($event, f.key)"
       >
@@ -75,8 +76,10 @@
       <text class="empty-sub">{{ t('msg.emptySub') }}</text>
     </view>
 
-    <view v-else class="conv-list u-stagger" :key="msgFilter">
-      <view v-if="visibleConversations.length === 0" class="filtered-empty">
+    <view v-else id="msg-conv-panel" role="tabpanel" class="conv-list u-stagger" :key="msgFilter">
+      <!-- Switching a filter reshuffles this list with no other feedback, so
+           the empty result has to announce itself. -->
+      <view v-if="visibleConversations.length === 0" class="filtered-empty" role="status" aria-live="polite">
         <text class="filtered-empty-label">{{ t('msg.noFiltered') }}</text>
       </view>
       <view
@@ -95,7 +98,7 @@
           role="button"
           tabindex="0"
           aria-keyshortcuts="Shift+F10"
-          :aria-label="getOtherUser(conv)?.nickname || t('app.user')"
+          :aria-label="conversationAriaLabel(conv)"
           :aria-current="conv.id === selectedConvId ? 'true' : undefined"
           @focus="closeAllSwipes()"
           @click="onItemTap(conv)"
@@ -454,6 +457,24 @@ function convPreview(conv: Conversation): string {
 function getOtherUser(conv: Conversation): Profile | undefined {
   if (!currentUser.value) return undefined
   return conv.buyer_id === currentUser.value.id ? conv.seller : conv.buyer
+}
+
+/*
+ * aria-label on the row overrides every descendant, so the name has to carry
+ * everything the row shows. It previously carried only the nickname, which
+ * dropped the preview, the timestamp, and the pinned/muted/unread markers —
+ * all of which are text-free <view>s with no other accessible representation.
+ */
+function conversationAriaLabel(conv: Conversation): string {
+  const unread = unreadConvIds.value.has(conv.id)
+  return [
+    unread && !isMuted(conv) ? t('a11y.unread') : '',
+    getOtherUser(conv)?.nickname || t('app.user'),
+    isPinned(conv) ? t('msg.pinned') : '',
+    isMuted(conv) ? t('msg.muted') : '',
+    convPreview(conv),
+    formatTime(conv.last_message_at),
+  ].filter(Boolean).join('. ')
 }
 
 function isPinned(conv: Conversation): boolean {
@@ -851,19 +872,31 @@ function goLogin() {
   position: absolute; top: 0; bottom: 0;
   display: flex;
   z-index: 0;
-  visibility: hidden;
+  /* opacity, not visibility. A visibility:hidden element cannot receive
+     focus, which made the keyboard path here circular: the buttons only
+     become visible via @focus, and @focus can never fire while they are
+     hidden. opacity:0 paints nothing either — so the colour leak this rule
+     exists to prevent stays fixed — but keeps them focusable.
+     pointer-events is off at rest so a tap near the row edge still lands on
+     .conv-item; focus is unaffected by it. */
+  opacity: 0;
+  pointer-events: none;
 }
 .conv-row.is-swiped .swipe-actions {
-  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
 }
 .swipe-actions.right { right: 0; }
 .swipe-actions.left { left: 0; }
 .swipe-act {
   display: flex; align-items: center; justify-content: center;
   width: 70px; padding: 0 10px; cursor: pointer;
+  /* White is right for the two theme-independent fills below (--accent-ink
+     14.3:1, --warning-surface 5.9:1). Only .act-read follows the theme. */
   .swipe-act-label { font-size: 13px; color: #fff; font-weight: 600; text-align: center; }
 }
-.act-read { background: var(--brand); }
+/* --brand is the light colour in dark mode, where white lands at 2.88:1. */
+.act-read { background: var(--brand); .swipe-act-label { color: var(--ink-inverse); } }
 .act-archive { background: var(--accent-ink); }
 .act-pin { background: var(--warning-surface); }
 

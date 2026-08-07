@@ -15,7 +15,7 @@
     which would render this H5-designed rail in an untested mp context.
   -->
   <!-- #ifdef H5 -->
-  <view class="app-sidebar u-glass">
+  <view class="app-sidebar u-glass" role="navigation" :aria-label="t('a11y.primaryNav')">
     <view class="asb-inner">
       <view class="asb-brand u-press" role="button" :aria-label="t('app.name')" @click="go('/pages/index/index')">
         <image class="asb-logo" :src="logoSrc" mode="aspectFit" :alt="t('app.name')" />
@@ -34,14 +34,15 @@
           <UIcon name="plaza" size="sm" :weight="current === 'plaza' ? 'filled' : 'regular'" :color="current === 'plaza' ? 'brand' : 'ink-soft'" />
           <text class="asb-label">{{ t('nav.plaza') }}</text>
         </view>
-        <view :class="['asb-item', { on: current === 'messages' }]" role="button" :aria-current="current === 'messages' ? 'page' : undefined" @click="go('/pages/messages/index')">
+        <view :class="['asb-item', { on: current === 'messages' }]" role="button" :aria-label="messagesLabel" :aria-current="current === 'messages' ? 'page' : undefined" @click="go('/pages/messages/index')">
           <UIcon name="messages" size="sm" :weight="current === 'messages' ? 'filled' : 'regular'" :color="current === 'messages' ? 'brand' : 'ink-soft'" />
           <text class="asb-label">{{ t('nav.messages') }}</text>
           <view v-if="unreadCount > 0" class="asb-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</view>
         </view>
-        <view :class="['asb-item', { on: current === 'profile' }]" role="button" :aria-current="current === 'profile' ? 'page' : undefined" @click="go('/pages/profile/index')">
+        <view :class="['asb-item', { on: current === 'profile' }]" role="button" :aria-label="profileLabel" :aria-current="current === 'profile' ? 'page' : undefined" @click="go('/pages/profile/index')">
           <UIcon name="profile" size="sm" :weight="current === 'profile' ? 'filled' : 'regular'" :color="current === 'profile' ? 'brand' : 'ink-soft'" />
           <text class="asb-label">{{ t('nav.profile') }}</text>
+          <!-- Unlabelled dot: the state it carries rides in the item's own name. -->
           <view v-if="unreadNotifCount > 0" class="asb-dot"></view>
         </view>
       </view>
@@ -86,7 +87,7 @@ import { useAuth } from '../composables/useAuth'
 
 defineProps<{ current: string }>()
 
-const { t, lang, toggleLang } = useI18n()
+const { t, tc, lang, toggleLang } = useI18n()
 const { unreadCount } = useUnread()
 const { unreadNotifCount } = useNotifications()
 const { isDark, setPref } = useTheme()
@@ -101,6 +102,16 @@ const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg',
 )
 const meName = computed(() => currentUser.value?.nickname || t('nav.profile'))
+// Mirrors CustomTabBar: the badge and the dot are text-free <view>s, so the
+// state they carry only reaches a screen reader through the item's own name.
+const messagesLabel = computed(() =>
+  unreadCount.value > 0
+    ? `${t('nav.messages')}, ${unreadCount.value} ${tc('a11y.unreadCount', unreadCount.value)}`
+    : t('nav.messages'),
+)
+const profileLabel = computed(() =>
+  unreadNotifCount.value > 0 ? `${t('nav.profile')}, ${t('a11y.unreadNotifications')}` : t('nav.profile'),
+)
 
 function go(url: string) {
   // The 5 shell destinations are all tabBar pages.

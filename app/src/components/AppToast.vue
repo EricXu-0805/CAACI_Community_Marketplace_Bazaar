@@ -28,6 +28,8 @@
         @keydown.space.stop.prevent="onTap(t)"
         @mouseenter="pause(t.id)"
         @mouseleave="resume(t.id)"
+        @focusin="pause(t.id)"
+        @focusout="resume(t.id)"
       >
         <div class="at-icon" :class="'k-' + t.kind"><UIcon :name="iconName(t.kind)" size="sm" color="currentColor" aria-hidden="true" /></div>
         <div class="at-text">
@@ -42,7 +44,7 @@
   </div>
   <!-- #endif -->
   <!-- #ifndef H5 -->
-  <view class="at-wrap" :style="mpChrome">
+  <view class="at-wrap" :style="mpChrome" aria-live="polite" aria-atomic="false">
     <view
       v-for="t in toasts"
       :key="t.id"

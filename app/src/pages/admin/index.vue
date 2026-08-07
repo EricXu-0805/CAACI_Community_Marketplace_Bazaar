@@ -757,7 +757,10 @@
           <text class="d-row"><text class="d-key">{{ t('admin.dTarget') }}</text>{{ detailRow.target_type }} {{ detailRow.target_id }}</text>
           <text class="d-row"><text class="d-key">{{ t('admin.dAuthor') }}</text>{{ detailRow.target_user_nickname || detailRow.target_user_id || '—' }}</text>
           <text v-if="detailRow.target_preview" class="d-row d-preview">“{{ detailRow.target_preview }}”</text>
-          <image v-if="detailRow.target_image" :src="detailRow.target_image" :alt="t('a11y.previewImage')" class="d-thumb" mode="aspectFill" role="button" tabindex="0" @click="previewThumb(detailRow.target_image)" />
+          <!-- uni compiles <image> to a custom element, so alt is not an
+               accessible name; role="button" then has nothing to fall back to.
+               Mirrored into aria-label exactly as UAvatar does. -->
+          <image v-if="detailRow.target_image" :src="detailRow.target_image" :alt="t('a11y.previewImage')" :aria-label="t('a11y.previewImage')" class="d-thumb" mode="aspectFill" role="button" tabindex="0" @click="previewThumb(detailRow.target_image)" />
           <text class="d-row"><text class="d-key">{{ t('admin.dReason') }}</text>{{ detailRow.reason }}</text>
           <text v-if="detailRow.note" class="d-row"><text class="d-key">{{ t('admin.dNote') }}</text>{{ detailRow.note }}</text>
           <text class="d-row"><text class="d-key">{{ t('admin.dStatus') }}</text>{{ detailRow.status }}</text>

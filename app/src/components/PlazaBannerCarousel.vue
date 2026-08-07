@@ -4,24 +4,47 @@
   </view>
 
   <view v-else-if="banners.length > 0" class="banner-wrap">
+    <!--
+      Auto-advancing content needs a pause mechanism (2.2.2) and a keyboard
+      equivalent: nothing here handled arrow keys, and every slide's link
+      stayed in the tab order whether or not it was the visible one, so a
+      keyboard user could focus a banner that had already scrolled away.
+      Autoplay stops while the carousel is hovered or holds focus.
+    -->
     <swiper
       class="banner-swiper"
-      :autoplay="banners.length > 1"
+      :autoplay="banners.length > 1 && !paused"
       :interval="interval"
       :duration="450"
       :circular="banners.length > 1"
       :indicator-dots="banners.length > 1"
       indicator-color="rgba(255,255,255,0.45)"
       indicator-active-color="#ffffff"
+      role="region"
+      aria-roledescription="carousel"
+      :aria-label="t('admin.plazaBanners')"
+      aria-keyshortcuts="ArrowLeft ArrowRight"
+      tabindex="0"
+      :current="current"
+      @change="onSlideChange"
+      @keydown="onCarouselKeydown"
+      @mouseenter="paused = true"
+      @mouseleave="paused = false"
+      @focusin="paused = true"
+      @focusout="paused = false"
     >
       <swiper-item
         v-for="(b, i) in banners"
         :key="b.id"
+        role="group"
+        aria-roledescription="slide"
+        :aria-label="t('welcome.slidePosition', { current: i + 1, total: banners.length })"
+        :aria-hidden="current === i ? 'false' : 'true'"
       >
         <view
           class="banner-slide"
           :role="b.target_url ? 'button' : undefined"
-          :tabindex="b.target_url ? 0 : undefined"
+          :tabindex="b.target_url && current === i ? 0 : undefined"
           :aria-label="b.target_url ? (titleOf(b) || t('admin.plazaBanners')) : undefined"
           @click="onTap(b)"
           @keydown.enter.prevent="onTap(b)"
@@ -45,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useBanners, type Banner } from '../composables/useBanners'
 import { useI18n } from '../composables/useI18n'
 
@@ -56,6 +79,27 @@ withDefaults(defineProps<Props>(), { interval: 5000 })
 
 const { banners, loading, fetchBanners } = useBanners()
 const { lang, t } = useI18n()
+
+const current = ref(0)
+const paused = ref(false)
+
+function onSlideChange(event: any) {
+  const next = Number(event?.detail?.current)
+  if (Number.isInteger(next) && next >= 0 && next < banners.value.length) current.value = next
+}
+
+function onCarouselKeydown(event: KeyboardEvent) {
+  const total = banners.value.length
+  if (total < 2) return
+  let next = current.value
+  if (event.key === 'ArrowLeft') next -= 1
+  else if (event.key === 'ArrowRight') next += 1
+  else if (event.key === 'Home') next = 0
+  else if (event.key === 'End') next = total - 1
+  else return
+  event.preventDefault()
+  current.value = (next + total) % total
+}
 
 onMounted(fetchBanners)
 
