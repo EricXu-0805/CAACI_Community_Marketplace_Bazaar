@@ -167,10 +167,15 @@ onUnmounted(() => {
 function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/profile/index' })) }
 
 function notificationAriaLabel(n: Notification): string {
+  // aria-label wins over content, so anything left out here is unreachable —
+  // which is what happened to the unread state (a text-free .notif-dot) and
+  // the timestamp.
   return [
+    n.is_read ? '' : t('a11y.unread'),
     t(notificationTypeLabelKey(n.type)),
     n.title,
     notificationBodyText(n, t),
+    formatTime(n.created_at),
   ].filter(Boolean).join('. ')
 }
 

@@ -83,6 +83,52 @@ const VIEWPORTS = [
   { label: 'desktop', width: 1280, height: 900 },
 ]
 
+/*
+ * Two framework surfaces the app cannot fix at the call site, so they are
+ * enhanced centrally in App.vue. Both are asserted against the real DOM
+ * because both were verified to be broken there while the source looked fine:
+ * uni-app renders its toast and its action sheet itself.
+ */
+test.describe('framework surfaces enhanced in App.vue', () => {
+  test('uni.showToast reaches a live region', async ({ page }) => {
+    test.setTimeout(120_000)
+    // 239 call sites; uni's <uni-toast> carries no role and no aria-live, so
+    // every "Saved" / "Failed to send" was announced to nobody.
+    await page.addInitScript(() => { localStorage.setItem('welcomed', '1'); localStorage.setItem('lang', 'en') })
+    await page.goto('/#/pages/index/index', { waitUntil: 'networkidle' })
+    await page.waitForTimeout(500)
+    const region = page.locator('div[role="status"][aria-live="polite"]')
+    await expect(region).toHaveCount(1)
+    await page.evaluate(() => (window as any).uni.showToast({ title: 'Link copied!', icon: 'none' }))
+    await expect(region).toHaveText('Link copied!')
+  })
+
+  test('uni.showActionSheet is operable from the keyboard', async ({ page }) => {
+    test.setTimeout(120_000)
+    // The destination of every Shift+F10 handler in the app. uni renders the
+    // options as plain <div>: no role, no tabindex, focus left on <body>.
+    await page.addInitScript(() => { localStorage.setItem('welcomed', '1'); localStorage.setItem('lang', 'en') })
+    await page.goto('/#/pages/index/index', { waitUntil: 'networkidle' })
+    await page.waitForTimeout(400)
+    // Deliberately not returned: showActionSheet's promise settles only when
+    // the sheet is dismissed, so returning it makes evaluate() wait forever.
+    await page.evaluate(() => { (window as any).uni.showActionSheet({ itemList: ['Alpha', 'Beta', 'Gamma'] }) })
+    await page.waitForTimeout(700)
+
+    const focusedText = () => page.evaluate(() => (document.activeElement?.textContent || '').trim())
+    expect(await focusedText()).toBe('Alpha')
+    expect(await page.locator('uni-actionsheet').getAttribute('aria-modal')).toBe('true')
+    await page.keyboard.press('ArrowDown')
+    expect(await focusedText()).toBe('Beta')
+    // Tab must stay inside a modal rather than walking into the page behind it.
+    await page.keyboard.press('Tab')
+    expect(await focusedText()).toBe('Gamma')
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(600)
+    await expect(page.locator('.uni-actionsheet_toggle')).toHaveCount(0)
+  })
+})
+
 for (const vp of VIEWPORTS) {
   test.describe(`accessibility tree (${vp.label})`, () => {
     test.use({ viewport: { width: vp.width, height: vp.height } })
@@ -95,6 +141,26 @@ for (const vp of VIEWPORTS) {
         for (const item of nameless) report.push(`${route}  ${item.role}  ${item.context}`)
       }
       expect(report, `nameless controls:\n${report.join('\n')}`).toEqual([])
+    })
+
+    test('routes do not all share one document title', async ({ page }) => {
+      test.setTimeout(300_000)
+      // document.title is the first thing announced on navigation and the
+      // label of every tab and history entry (2.4.2). 28 of 29 routes used to
+      // fall through to globalStyle's "Illini Market".
+      const titles = new Map<string, string>()
+      for (const route of PAGES) {
+        await snapshotOf(page, route)
+        titles.set(route, await page.title())
+      }
+      const generic = [...titles.entries()].filter(([, title]) => title === 'Illini Market')
+      // detail, seller and legal title themselves from data the page owns, and
+      // welcome legitimately is the app name. Everything else must be distinct.
+      expect(generic.length, `routes still titled only "Illini Market":\n${generic.map(([r]) => r).join('\n')}`)
+        .toBeLessThanOrEqual(4)
+      // Logged out, many routes legitimately land on the sign-in page and
+      // share its title, so the ceiling here is well below 29.
+      expect(new Set(titles.values()).size).toBeGreaterThan(10)
     })
 
     test('every page exposes a heading to navigate by', async ({ page }) => {

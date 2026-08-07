@@ -12,14 +12,33 @@
         contract). Capped at 70vh. aspectFit letterboxes non-hero
         slides inside the frame instead of cropping.
       -->
+      <!--
+        currentImg was only ever written by the swiper's own touch @change, so
+        the gallery had no keyboard path at all — the dots are decorative and
+        nothing handled arrow keys. Same carousel contract as
+        pages/welcome/index.vue.
+      -->
       <swiper
         class="img-swiper"
         :style="swiperStyle"
         :current="currentImg"
+        role="region"
+        aria-roledescription="carousel"
+        :aria-label="t('a11y.previewImage')"
+        aria-keyshortcuts="ArrowLeft ArrowRight"
+        tabindex="0"
         @change="onGalleryChange"
+        @keydown="onGalleryKeydown"
         circular
       >
-        <swiper-item v-for="(img, i) in imgs" :key="i">
+        <swiper-item
+          v-for="(img, i) in imgs"
+          :key="i"
+          role="group"
+          aria-roledescription="slide"
+          :aria-label="t('welcome.slidePosition', { current: i + 1, total: imgs.length })"
+          :aria-hidden="currentImg === i ? 'false' : 'true'"
+        >
           <image
             v-if="galleryImageReady(i)"
             :src="thumbUrl(img, 'detail')"
@@ -442,6 +461,21 @@ function prepareGalleryNeighbors(index: number) {
 
 function galleryImageReady(index: number): boolean {
   return galleryReadyIndexes.value.includes(index)
+}
+
+function onGalleryKeydown(event: KeyboardEvent) {
+  const total = imgs.value.length
+  if (total < 2) return
+  let next = currentImg.value
+  if (event.key === 'ArrowLeft') next -= 1
+  else if (event.key === 'ArrowRight') next += 1
+  else if (event.key === 'Home') next = 0
+  else if (event.key === 'End') next = total - 1
+  else return
+  event.preventDefault()
+  // circular, matching the swiper's own wrap-around
+  currentImg.value = (next + total) % total
+  prepareGalleryNeighbors(currentImg.value)
 }
 
 function onGalleryChange(event: any) {
@@ -1267,11 +1301,13 @@ async function contactSeller() {
 .img-back, .img-share {
   position: absolute; top: calc(12px + var(--mp-status-bar, env(safe-area-inset-top, 0px))); z-index: 10;
   width: 36px; height: 36px; border-radius: 50%;
-  background: rgba(0,0,0,0.3); backdrop-filter: blur(8px);
+  /* 0.3 left the white glyph at 2.12:1 over a bright listing photo, under the
+     3:1 that 1.4.11 asks of a graphical control. 0.5 gives 3.95:1. */
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
-  &:active { background: rgba(0,0,0,0.5); }
+  &:active { background: rgba(0,0,0,0.65); }
 }
 .img-back { left: 12px; }
 .img-share { right: 12px; }

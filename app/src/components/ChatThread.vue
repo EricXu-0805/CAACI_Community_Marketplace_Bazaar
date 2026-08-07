@@ -97,12 +97,22 @@
       <view class="qr-chip" role="button" :aria-label="t('chat.qrMoreDetails')" @click="sendQuickReply(t('chat.qrMoreDetails'))">{{ t('chat.qrMoreDetails') }}</view>
     </scroll-view>
 
+    <!--
+      role="log" is the transcript role: it announces additions only, which is
+      what a chat needs. aria-live stays off until the history has painted —
+      a live region announces its initial population too, so switching it on
+      up front would read the entire back-catalogue aloud on open.
+    -->
     <scroll-view
       class="message-list"
       scroll-y
       :show-scrollbar="false"
       :scroll-into-view="scrollTarget"
       scroll-with-animation
+      role="log"
+      :aria-live="transcriptLive ? 'polite' : 'off'"
+      aria-relevant="additions"
+      :aria-label="t('a11y.transcript')"
       @click="onMessageAreaTap"
     >
       <template v-for="(entry, idx) in timeline" :key="entry.key">
@@ -189,7 +199,7 @@
             :class="['msg-row', { mine: entry.msg.sender_id === currentUser?.id }]"
             role="button"
             tabindex="0"
-            :aria-label="t('chat.messageActions')"
+            aria-keyshortcuts="Shift+F10"
             @keydown.self="onMessageKeydown($event, entry.msg)"
           >
             <UAvatar
@@ -293,8 +303,8 @@
     </view>
 
     <view class="input-bar" :style="kbLift">
-      <view :class="['emoji-btn', { active: emojiOpen }]" role="button" :aria-label="t('a11y.emojiToggle')" :title="t('a11y.emojiToggle')" @click="toggleEmoji">
-        <UIcon name="more-horizontal" size="sm" :color="emojiOpen ? '#fff' : 'text-secondary'" />
+      <view :class="['emoji-btn', { active: emojiOpen }]" role="button" :aria-label="t('a11y.emojiToggle')" :aria-expanded="emojiOpen ? 'true' : 'false'" aria-controls="chat-emoji-panel" :title="t('a11y.emojiToggle')" @click="toggleEmoji">
+        <UIcon name="more-horizontal" size="sm" :color="emojiOpen ? 'ink-inverse' : 'text-secondary'" />
       </view>
       <textarea
         ref="chatInputRef"
@@ -468,6 +478,7 @@ const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, f
 const { offers, fetchOffers, resetOffers, makeOffer, respondToOffer, subscribeToOffers } = useOffers()
 const { meetups, fetchMeetups, resetMeetups, proposeMeetup, respondToMeetup, rescheduleAccepted, subscribeToMeetups } = useMeetups()
 const { subscribeConversationPresence } = usePresence()
+const transcriptLive = ref(false)
 const { markItemSold } = useItems()
 const { refreshUnreadCount } = useUnread()
 const {
@@ -587,6 +598,7 @@ function resetThreadPrivateState() {
   // The render gate is first on purpose: no old item/message/peer frame may be
   // painted while the rest of the synchronous cleanup runs.
   conversationAccessReady.value = false
+  transcriptLive.value = false
   threadEpoch += 1
   reportLoading.cancel()
   conversationSetupStarted = false
@@ -977,6 +989,9 @@ async function initializeConversationAfterGate() {
     try { await fetchMeetups(options.id) } catch { /* meetups are additive — never block the chat */ }
     if (!isCurrentThreadSetup()) return
     scrollToBottom()
+    // The back-catalogue has painted by now, so anything appended from here is
+    // genuinely new and worth announcing.
+    nextTick(() => { if (isCurrentThreadSetup()) transcriptLive.value = true })
 
     if (currentUser.value) refreshReadState(options.id, currentUser.value.id)
 

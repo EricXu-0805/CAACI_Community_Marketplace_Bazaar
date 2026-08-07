@@ -1,6 +1,6 @@
 <template>
-  <view v-if="open" class="emoji-panel">
-    <view class="ep-tabs" role="tablist">
+  <view v-if="open" id="chat-emoji-panel" class="emoji-panel">
+    <view class="ep-tabs" role="tablist" :aria-label="t('a11y.emojiToggle')">
       <text
         v-for="g in groups"
         :key="g.key"
@@ -8,6 +8,7 @@
         role="tab"
         :tabindex="activeKey === g.key ? 0 : -1"
         :aria-selected="activeKey === g.key"
+        :aria-controls="'ep-panel-' + g.key"
         :aria-label="g.label"
         :title="g.label"
         @click="activeKey = g.key"
@@ -21,7 +22,7 @@
         semantics) — it does not insert into the text input like the
         unicode groups below do.
       -->
-      <view v-if="activeKey === 'stickers'" class="ep-grid ep-grid-stickers">
+      <view v-if="activeKey === 'stickers'" id="ep-panel-stickers" role="tabpanel" class="ep-grid ep-grid-stickers">
         <view
           v-for="s in STICKER_ORDER"
           :key="s"
@@ -34,7 +35,7 @@
           <USticker :name="s" :size="38" />
         </view>
       </view>
-      <view v-else class="ep-grid">
+      <view v-else :id="'ep-panel-' + activeKey" role="tabpanel" class="ep-grid">
         <view
           v-for="(e, i) in activeGroup.emojis"
           :key="g_key(e, i)"

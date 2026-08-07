@@ -712,6 +712,223 @@ function scanUniFormControlNames(root: ParentNode | HTMLElement) {
   root.querySelectorAll<HTMLElement>(UNI_FORM_CONTROL_SELECTOR).forEach(syncUniFormControlName)
 }
 
+/*
+ * uni.showToast is the app's dominant async-feedback channel — 239 call sites
+ * across 30 files — and uni-app's H5 toast renders as <uni-toast> with no
+ * role, no aria-live and no ARIA of any kind. Every "Saved", "Failed to send"
+ * and "Link copied" reached nobody using a screen reader.
+ *
+ * Announcing centrally through an interceptor rather than at the call sites:
+ * one place to be right, and it cannot drift as new toasts are added.
+ * mp-weixin is deliberately excluded — there uni.showToast calls through to
+ * wx.showToast, which the platform announces itself.
+ */
+let toastAnnouncerInstalled = false
+function installToastAnnouncer() {
+  if (toastAnnouncerInstalled || typeof document === 'undefined') return
+  if (typeof uni.addInterceptor !== 'function') return
+  toastAnnouncerInstalled = true
+
+  const region = document.createElement('div')
+  region.className = 'sr-only'
+  region.setAttribute('role', 'status')
+  region.setAttribute('aria-live', 'polite')
+  region.setAttribute('aria-atomic', 'true')
+  document.body.appendChild(region)
+
+  let clearTimer: ReturnType<typeof setTimeout> | undefined
+  uni.addInterceptor('showToast', {
+    invoke(args: { title?: string; icon?: string }) {
+      const message = String(args?.title || '').trim()
+      if (!message) return
+      // Repeating the same string is a no-op for a live region, and a failed
+      // retry that says the same thing twice is exactly when the user most
+      // needs to hear it. Blanking first forces the second announcement.
+      region.textContent = ''
+      clearTimeout(clearTimer)
+      setTimeout(() => { region.textContent = message }, 50)
+      clearTimer = setTimeout(() => { region.textContent = '' }, 5_000)
+    },
+  })
+}
+
+/*
+ * Page titles (2.4.2). 28 of 29 routes fell through to globalStyle's
+ * "Illini Market", so document.title — the first thing announced on every
+ * navigation, and the label of every browser tab and history entry — was
+ * identical everywhere.
+ *
+ * Driven here rather than through pages.json because that file is static and
+ * this app ships in two languages; a title baked at build time would be wrong
+ * for half the users. Routes whose title is data (a listing, a seller, the
+ * legal document being viewed) are deliberately absent: a generic label would
+ * be no more useful than the one they already have, and the real title is only
+ * known to the page.
+ */
+const PAGE_TITLE_KEYS: Record<string, string> = {
+  '/pages/index/index': 'nav.home',
+  '/pages/plaza/index': 'plaza.title',
+  '/pages/post/index': 'plaza.title',
+  '/pages/publish/index': 'publish.title',
+  '/pages/publish/edit': 'publish.editTitle',
+  '/pages/messages/index': 'nav.messages',
+  '/pages/chat/index': 'nav.messages',
+  '/pages/profile/index': 'nav.profile',
+  '/pages/profile/edit': 'editProfile.title',
+  '/pages/history/index': 'profile.history',
+  '/pages/my-items/index': 'profile.myItemsTitle',
+  '/pages/following/index': 'nav.following',
+  '/pages/saved-searches/index': 'savedSearch.title',
+  '/pages/search/index': 'a11y.search',
+  '/pages/settings/index': 'settings.title',
+  '/pages/blocked/index': 'settings.blockedUsers',
+  '/pages/notifications/index': 'notif.title',
+  '/pages/login/index': 'login.signIn',
+  '/pages/reset-password/index': 'resetPw.title',
+  '/pages/illini-verify/index': 'illini.title',
+  '/pages/onboarding/index': 'onboarding.s1Title',
+  '/pages/reconsent/index': 'reconsent.title',
+  '/pages/profile-recovery/index': 'auth.profileUnavailableTitle',
+  '/pages/admin/index': 'admin.title',
+  '/pages/welcome/index': 'app.name',
+}
+
+function syncDocumentTitle() {
+  if (typeof document === 'undefined') return
+  /*
+   * The hash, not getCurrentPages(). uni writes the title during page setup,
+   * at which point getCurrentPages() can still report the page being left —
+   * which titled the detail page "Profile" and the seller page "Settings".
+   * The hash is already the destination by then.
+   */
+  let path = ''
+  try {
+    path = (window.location.hash || '').replace(/^#/, '').split('?')[0]
+  } catch { /* non-browser */ }
+  if (!path) path = '/' + currentPagePath().replace(/^\//, '')
+  if (path === '/') return
+
+  const name = t('app.name')
+  const key = PAGE_TITLE_KEYS[path]
+  // A route with no static title of its own must still be reset: hash
+  // navigation does not reload the document, so without this it keeps
+  // whatever the previous page set.
+  const next = key ? (t(key) === name ? name : `${t(key)} · ${name}`) : name
+  if (document.title !== next) document.title = next
+}
+
+function installDocumentTitleSync() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return
+  const schedule = () => setTimeout(syncDocumentTitle, 0)
+
+  /*
+   * Watching <title> rather than the route. uni-app's own useDocumentTitle
+   * writes the static pages.json title during every page render, so hooking
+   * navigation means racing it — and hashchange does not fire at all on a
+   * cold load, which left 17 routes still reading "Illini Market". Reacting to
+   * its write instead is ordering-independent. syncDocumentTitle is a no-op
+   * once the title already matches, so this settles after one correction.
+   */
+  const titleEl = document.querySelector('title')
+  if (titleEl) new MutationObserver(schedule).observe(titleEl, { childList: true, characterData: true, subtree: true })
+  window.addEventListener('hashchange', schedule)
+  schedule()
+}
+
+/*
+ * uni.showActionSheet is the app's contextual menu — 22 call sites, and the
+ * only destination of every Shift+F10 handler in the app. uni-app renders it
+ * as plain <div class="uni-actionsheet__cell"> with no role, no tabindex, and
+ * no focus move, verified in a browser: the options cannot be reached by
+ * keyboard at all and a screen reader is told nothing opened.
+ *
+ * Enhancing it here rather than replacing it: the sheet is created by the
+ * framework, so there is no call site to fix, and the same 22 callers keep
+ * working unchanged.
+ */
+const SHEET_HOST = 'uni-actionsheet'
+const SHEET_CELL = '.uni-actionsheet__cell'
+let actionSheetA11yInstalled = false
+
+function enhanceActionSheet(host: HTMLElement, restoreTo: HTMLElement | null) {
+  const cells = Array.from(host.querySelectorAll<HTMLElement>(SHEET_CELL))
+  if (!cells.length) return
+  host.setAttribute('role', 'dialog')
+  host.setAttribute('aria-modal', 'true')
+  const menu = host.querySelector<HTMLElement>('.uni-actionsheet__menu')
+  if (menu && !menu.getAttribute('role')) menu.setAttribute('role', 'menu')
+  cells.forEach((cell) => {
+    cell.setAttribute('role', 'menuitem')
+    cell.setAttribute('tabindex', '0')
+  })
+  // The enhancer runs the instant the toggle class lands, which is a frame
+  // before the sheet is actually focusable — focus() there is a no-op and
+  // leaves the user on <body>. Retry across a few frames and stop as soon as
+  // it takes, or if something else has legitimately claimed focus.
+  let focusAttempts = 0
+  const claimFocus = () => {
+    if (!host.isConnected || document.activeElement === cells[0]) return
+    if (document.activeElement instanceof HTMLElement && host.contains(document.activeElement)) return
+    cells[0].focus()
+    if (document.activeElement !== cells[0] && ++focusAttempts < 10) requestAnimationFrame(claimFocus)
+  }
+  requestAnimationFrame(claimFocus)
+
+  const cancel = host.querySelector<HTMLElement>('.uni-actionsheet__action ' + SHEET_CELL)
+  const onKeydown = (event: KeyboardEvent) => {
+    const index = cells.indexOf(document.activeElement as HTMLElement)
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      ;(cancel || host.querySelector<HTMLElement>('.uni-actionsheet__mask'))?.click()
+      return
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault()
+      const step = event.key === 'ArrowDown' ? 1 : -1
+      cells[(index + step + cells.length) % cells.length]?.focus()
+      return
+    }
+    // A modal has to keep focus inside it; without this, Tab walks straight
+    // out into the page still rendered behind the sheet.
+    if (event.key === 'Tab') {
+      event.preventDefault()
+      const step = event.shiftKey ? -1 : 1
+      cells[(index + step + cells.length) % cells.length]?.focus()
+    }
+  }
+  host.addEventListener('keydown', onKeydown)
+
+  const teardown = new MutationObserver(() => {
+    if (host.isConnected && host.querySelector('.uni-actionsheet_toggle')) return
+    teardown.disconnect()
+    host.removeEventListener('keydown', onKeydown)
+    restoreTo?.focus?.()
+  })
+  teardown.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] })
+}
+
+function installActionSheetKeyboardAccess() {
+  if (actionSheetA11yInstalled || typeof document === 'undefined') return
+  actionSheetA11yInstalled = true
+
+  const enhanced = new WeakSet<HTMLElement>()
+  const sweep = () => {
+    document.querySelectorAll<HTMLElement>(SHEET_HOST).forEach((host) => {
+      const open = !!host.querySelector('.uni-actionsheet_toggle')
+      if (!open) { enhanced.delete(host); return }
+      if (enhanced.has(host)) return
+      enhanced.add(host)
+      const restoreTo = document.activeElement instanceof HTMLElement && document.activeElement !== document.body
+        ? document.activeElement
+        : null
+      enhanceActionSheet(host, restoreTo)
+    })
+  }
+  new MutationObserver(sweep).observe(document.body, {
+    childList: true, subtree: true, attributes: true, attributeFilter: ['class'],
+  })
+}
+
 function installRoleButtonKeyboardAccess() {
   if (roleButtonA11yInstalled || typeof document === 'undefined') return
   roleButtonA11yInstalled = true
@@ -810,6 +1027,9 @@ onLaunch((launchOptions) => {
   ]).has(launchRoutePath)
   // #ifdef H5
   installRoleButtonKeyboardAccess()
+  installToastAnnouncer()
+  installActionSheetKeyboardAccess()
+  installDocumentTitleSync()
   // #endif
   /*
    * SYNCHRONOUS hash-PKCE-code rescue — must run BEFORE the setTimeout

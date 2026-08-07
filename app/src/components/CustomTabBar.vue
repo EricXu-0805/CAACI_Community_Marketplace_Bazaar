@@ -12,7 +12,7 @@
   -->
   <!-- class, not v-show: uni compiles v-show to the WXML `hidden` attribute,
        which loses to .tabbar's own display:flex rule on mp -->
-  <view :class="['tabbar', { 'tabbar-hidden': hidden }]">
+  <view :class="['tabbar', { 'tabbar-hidden': hidden }]" role="navigation" :aria-label="t('a11y.primaryNav')">
     <!--
       One icon path for both targets: the v3 UIcon registry (regular at
       rest, filled + ink when active). UIcon's mp mask rendering passed
@@ -52,7 +52,7 @@
       </view>
       <text class="lbl">{{ t('nav.post') }}</text>
     </view>
-    <view :class="['tab', { active: current === 'messages' }]" role="button" hover-class="u-mp-pressed" :hover-stay-time="80" :aria-current="current === 'messages' ? 'page' : undefined" :aria-label="t('nav.messages')" @click="go('/pages/messages/index')">
+    <view :class="['tab', { active: current === 'messages' }]" role="button" hover-class="u-mp-pressed" :hover-stay-time="80" :aria-current="current === 'messages' ? 'page' : undefined" :aria-label="messagesTabLabel" @click="go('/pages/messages/index')">
       <view v-if="current === 'messages'" class="tab-dot"></view>
       <view class="ico-wrap">
         <UIcon name="messages" size="sm" :weight="current === 'messages' ? 'filled' : 'regular'" :color="current === 'messages' ? 'ink' : 'ink-faint'" />
@@ -64,7 +64,7 @@
       </view>
       <text :class="['lbl', { active: current === 'messages' }]">{{ t('nav.messages') }}</text>
     </view>
-    <view :class="['tab', { active: current === 'profile' }]" role="button" hover-class="u-mp-pressed" :hover-stay-time="80" :aria-current="current === 'profile' ? 'page' : undefined" :aria-label="t('nav.profile')" @click="go('/pages/profile/index')">
+    <view :class="['tab', { active: current === 'profile' }]" role="button" hover-class="u-mp-pressed" :hover-stay-time="80" :aria-current="current === 'profile' ? 'page' : undefined" :aria-label="profileTabLabel" @click="go('/pages/profile/index')">
       <view v-if="current === 'profile'" class="tab-dot"></view>
       <view class="ico-wrap">
         <UIcon name="profile" size="sm" :weight="current === 'profile' ? 'filled' : 'regular'" :color="current === 'profile' ? 'ink' : 'ink-faint'" />
@@ -81,16 +81,31 @@ import { useUnread } from '../composables/useUnread'
 import { useNotifications } from '../composables/useNotifications'
 import UIcon from './UIcon.vue'
 // #ifdef MP-WEIXIN
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 // #endif
 
 /* `hidden` exists because v-show on the component TAG doesn't reach the mp
    build (uni doesn't forward it to a custom component's root) — pages that
    need to hide the bar (publish while typing) pass the prop instead. */
 defineProps<{ current: string; hidden?: boolean }>()
-const { t } = useI18n()
+const { t, tc } = useI18n()
 const { unreadCount, hasMutedUnread } = useUnread()
 const { unreadNotifCount } = useNotifications()
+
+/*
+ * The badge is a styled <view> with no text (or text the parent's aria-label
+ * overrides), so the count has to be folded into the tab's own name. Without
+ * this the tab announces a bare "Messages" whether there are 0 or 99 waiting.
+ */
+const messagesTabLabel = computed(() => {
+  if (unreadCount.value > 0) {
+    return `${t('nav.messages')}, ${unreadCount.value} ${tc('a11y.unreadCount', unreadCount.value)}`
+  }
+  return hasMutedUnread.value ? `${t('nav.messages')}, ${t('a11y.unread')}` : t('nav.messages')
+})
+const profileTabLabel = computed(() =>
+  unreadNotifCount.value > 0 ? `${t('nav.profile')}, ${t('a11y.unreadNotifications')}` : t('nav.profile'),
+)
 
 // #ifdef MP-WEIXIN
 /* onLaunch's single hideTabBar silently fails ('not TabBar page') when the

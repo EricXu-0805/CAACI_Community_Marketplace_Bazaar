@@ -204,9 +204,52 @@ test('residual page click targets expose an explicit keyboard semantic', () => {
 test('linked plaza banners are keyboard reachable without focusing decorative banners', () => {
   const banner = source('src/components/PlazaBannerCarousel.vue')
   assert.match(banner, /:role="b\.target_url \? 'button' : undefined"/)
-  assert.match(banner, /:tabindex="b\.target_url \? 0 : undefined"/)
+  // Also gated on being the visible slide: a link on a banner that has already
+  // rotated out of view is a tab stop pointing at something nobody can see.
+  assert.match(banner, /:tabindex="b\.target_url && current === i \? 0 : undefined"/)
   assert.match(banner, /@keydown\.enter\.prevent="onTap\(b\)"/)
   assert.match(banner, /@keydown\.space\.prevent="onTap\(b\)"/)
+})
+
+test('the plaza banner carousel can be driven and paused from the keyboard', () => {
+  // Auto-advancing content needs both a pause mechanism (2.2.2) and a
+  // keyboard equivalent for the gesture that drives it.
+  const banner = source('src/components/PlazaBannerCarousel.vue')
+  assert.match(banner, /:autoplay="banners\.length > 1 && !paused"/)
+  assert.match(banner, /aria-roledescription="carousel"/)
+  assert.match(banner, /aria-keyshortcuts="ArrowLeft ArrowRight"/)
+  assert.match(banner, /@keydown="onCarouselKeydown"/)
+  assert.match(banner, /@focusin="paused = true"/)
+  assert.match(banner, /@mouseenter="paused = true"/)
+  assert.match(banner, /:aria-hidden="current === i \? 'false' : 'true'"/)
+})
+
+test('the listing gallery can be driven from the keyboard', () => {
+  // currentImg used to be written only by the swiper's own touch @change,
+  // which left the gallery with no keyboard path at all.
+  const detail = source('src/pages/detail/index.vue')
+  assert.match(detail, /aria-roledescription="carousel"/)
+  assert.match(detail, /aria-keyshortcuts="ArrowLeft ArrowRight"/)
+  assert.match(detail, /@keydown="onGalleryKeydown"/)
+  assert.match(detail, /function onGalleryKeydown\(event: KeyboardEvent\)/)
+})
+
+test('swipe actions stay focusable at rest', () => {
+  /*
+   * visibility:hidden removes an element from the tab order, which made the
+   * keyboard path here circular: the actions are revealed by @focus, and
+   * @focus can never fire while they are hidden. opacity:0 paints nothing
+   * either — which is what that rule exists for — but stays focusable.
+   */
+  const messages = source('src/pages/messages/index.vue')
+  const open = messages.indexOf('.swipe-actions {')
+  assert.ok(open > 0, '.swipe-actions rule not found')
+  // Comments out first — the one on this rule explains why visibility:hidden
+  // is wrong, and would otherwise match the assertion against it.
+  const rule = messages.slice(open, messages.indexOf('\n}', open)).replace(/\/\*[\s\S]*?\*\//g, '')
+  assert.doesNotMatch(rule, /visibility:\s*hidden/)
+  assert.match(rule, /opacity:\s*0/)
+  assert.match(messages, /@focus="openSwipeForKeyboard\(conv\.id\)"/)
 })
 
 test('history, legal, seller and admin tabs use roving tab semantics', () => {

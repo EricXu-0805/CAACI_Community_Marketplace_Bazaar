@@ -319,7 +319,9 @@
 
       <!-- Real Content -->
       <view v-else>
-        <view v-if="searchText || selectedCategory" class="result-count">
+        <!-- The only feedback that a search or a category tap changed the
+             feed. Without a live region the list silently reshuffles. -->
+        <view v-if="searchText || selectedCategory" class="result-count" role="status" aria-live="polite" aria-atomic="true">
           <text>{{ filteredItems.length }} {{ tc('home.results', filteredItems.length) }}</text>
         </view>
         <view class="waterfall" :key="listingType">

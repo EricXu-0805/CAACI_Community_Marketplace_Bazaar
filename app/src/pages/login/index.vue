@@ -10,12 +10,31 @@
     </view>
 
     <view v-if="!awaitingConfirm" class="form u-rise">
-      <view class="tab-bar">
-        <view :class="['tab', { active: mode === 'login', disabled: formBusy }]" role="button" :aria-label="t('login.signIn')" @click="setMode('login')">
+      <!-- These two swap the whole form, which is a tab pattern, not two
+           buttons. As plain buttons the selected mode was carried only by a
+           class, so nothing announced which one was active. -->
+      <view class="tab-bar" role="tablist" :aria-label="t('app.name')">
+        <view
+          :class="['tab', { active: mode === 'login', disabled: formBusy }]"
+          role="tab"
+          :tabindex="mode === 'login' ? 0 : -1"
+          :aria-selected="mode === 'login' ? 'true' : 'false'"
+          :aria-label="t('login.signIn')"
+          @click="setMode('login')"
+          @keydown="onModeTabKeydown($event, 'login')"
+        >
           <text class="tab-label">{{ t('login.signIn') }}</text>
           <view v-if="mode === 'login'" class="tab-line"></view>
         </view>
-        <view :class="['tab', { active: mode === 'signup', disabled: formBusy }]" role="button" :aria-label="t('login.signUp')" @click="setMode('signup')">
+        <view
+          :class="['tab', { active: mode === 'signup', disabled: formBusy }]"
+          role="tab"
+          :tabindex="mode === 'signup' ? 0 : -1"
+          :aria-selected="mode === 'signup' ? 'true' : 'false'"
+          :aria-label="t('login.signUp')"
+          @click="setMode('signup')"
+          @keydown="onModeTabKeydown($event, 'signup')"
+        >
           <text class="tab-label">{{ t('login.signUp') }}</text>
           <view v-if="mode === 'signup'" class="tab-line"></view>
         </view>
@@ -349,6 +368,28 @@ watch(currentUser, (user) => {
   if (!user || !oauthReturnExpected || authRedirecting.value) return
   scheduleHomeRedirect(0, user.id)
 })
+
+/* Roving-tabindex arrow navigation, matching the filter tablist in
+   pages/messages/index.vue. */
+function onModeTabKeydown(event: KeyboardEvent, current: 'login' | 'signup') {
+  const keys: Array<'login' | 'signup'> = ['login', 'signup']
+  const index = keys.indexOf(current)
+  let nextIndex = index
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % keys.length
+  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index - 1 + keys.length) % keys.length
+  else if (event.key === 'Home') nextIndex = 0
+  else if (event.key === 'End') nextIndex = keys.length - 1
+  else if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+    event.preventDefault()
+    setMode(current)
+    return
+  } else return
+
+  event.preventDefault()
+  setMode(keys[nextIndex])
+  const tabList = (event.currentTarget as HTMLElement | null)?.parentElement
+  nextTick(() => tabList?.querySelectorAll<HTMLElement>('[role="tab"]')[nextIndex]?.focus())
+}
 
 function setMode(nextMode: 'login' | 'signup') {
   if (mode.value === nextMode || formBusy.value) return
