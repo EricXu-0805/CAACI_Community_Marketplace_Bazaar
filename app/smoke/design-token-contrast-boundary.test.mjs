@@ -143,6 +143,50 @@ test('the light mirror declares every token :root does', () => {
   }
 })
 
+/*
+ * Alias tokens must resolve to their base in EVERY theme block.
+ *
+ * --accent-primary and --accent-action held a literal copy of the brand and
+ * were declared in no dark block at all, so all 85 call sites painted the
+ * light brand on a dark page — and after --brand was corrected for AA, they
+ * silently kept the old failing value in light mode too. A copied value is
+ * indistinguishable from an alias until the base moves.
+ */
+const ALIASES = [
+  ['--accent-primary', '--brand'],
+  ['--accent-primary-soft', '--brand-soft'],
+  ['--accent-primary-deep', '--brand-deep'],
+  ['--accent-action', '--brand'],
+  ['--accent-good', '--success'],
+  ['--accent-warn', '--warning'],
+  ['--accent-danger', '--danger'],
+]
+
+// A dark block overrides only what it declares; every other token keeps the
+// light value from the same element's light rule. Merge to get what the
+// browser actually computes.
+function effective(darkBlock) {
+  return { tokens: new Map([...LIGHT_PAGE.tokens, ...darkBlock.tokens]) }
+}
+
+test('accent aliases resolve to their base token in every theme', () => {
+  const contexts = [
+    ['light', LIGHT_PAGE],
+    ['dark [data-theme]', effective(DARK_ATTR)],
+    ['dark media query', effective(DARK_MEDIA)],
+    ['dark .theme-dark', effective(DARK_CLASS)],
+  ]
+  for (const [label, block] of contexts) {
+    for (const [alias, base] of ALIASES) {
+      assert.equal(
+        resolve1(block.tokens, alias),
+        resolve1(block.tokens, base),
+        `${label}: ${alias} is ${resolve1(block.tokens, alias)} but ${base} is ${resolve1(block.tokens, base)} — an alias holding a copy stops tracking the moment the base moves`,
+      )
+    }
+  }
+})
+
 const SURFACES = ['--canvas', '--surface', '--surface-alt', '--bg-subtle']
 const BODY_TEXT = ['--text-primary', '--text-secondary', '--text-tertiary', '--text-muted', '--text-subtle']
 const ACCENT_TEXT = ['--brand', '--success', '--danger']
@@ -170,6 +214,26 @@ for (const [themeName, block] of [['light', LIGHT_ROOT], ['dark', DARK_ATTR]]) {
     }
   })
 
+  test(`${themeName}: --brand-deep is never the text colour on --brand-soft`, () => {
+    // --brand-deep is a fill/border step, not a text-on-tint step: in dark it
+    // reads 3.07:1 on --brand-soft. --brand-on-soft exists for this pairing.
+    const chip = rgb(block, '--brand-soft', '--surface')
+    const ratio = contrast(rgb(block, '--brand-deep'), chip)
+    if (ratio >= 4.5) return // if the palette ever makes it safe, stop asserting
+    const offenders = []
+    const BG = /background(-color)?:\s*[^;]*var\(--brand-soft\)/
+    const FG = /color:\s*var\(--brand-deep\)/
+    for (const file of vueFiles(srcRoot)) {
+      const source = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '))
+      for (const rule of cssRules(source)) {
+        if (BG.test(rule.own) && FG.test(rule.full)) {
+          offenders.push(`${relative(appRoot, file)}:${source.slice(0, rule.index).split('\n').length} ${rule.selector}`)
+        }
+      }
+    }
+    assert.deepEqual(offenders, [], `use var(--brand-on-soft); --brand-deep is ${ratio.toFixed(2)}:1 there in ${themeName}`)
+  })
+
   test(`${themeName}: the selected sidebar item clears 4.5:1 on its own tint`, () => {
     // --brand itself only reaches 3.97:1 on --brand-soft in light mode, which
     // is why --brand-on-soft exists rather than a darker --brand.
@@ -191,25 +255,91 @@ function vueFiles(dir) {
 
 /*
  * Rules whose fill is genuinely theme-independent, so white is correct in both
- * themes. Each is a dark surface that does not come from the palette.
+ * themes. Keyed by "file selector", not by file: an exemption covering a whole
+ * file also hides every unrelated defect in it, which is how detail's .nf-btn
+ * ("Browse more items", 2.88:1 in dark) stayed invisible while the file was
+ * exempted for two photo-scrim buttons.
  */
-const WHITE_ON_FIXED_DARK = new Set([
-  'src/pages/detail/index.vue',   // .img-back / .img-share sit on a photo scrim
-  'src/pages/seller/index.vue',   // .badge-safe-corner--shared sits on rgba(0,0,0,.55)
-  'src/pages/admin/index.vue',    // .select-box is --campus-blue, 3.48:1 for a glyph (1.4.11)
-])
+const WHITE_ON_FIXED_DARK = new Set([])
+
+/*
+ * Every rule, with its own declarations separated from its nested blocks.
+ *
+ * A naive /\{[^{}]*\}/ matches only innermost braces, so any rule containing a
+ * nested SCSS block — nearly every button, they all carry `&:active` — is
+ * invisible to it. That blind spot hid `background: var(--accent-primary);
+ * color: #fff` on the primary CTA of 22 pages, including "Sign In".
+ *
+ * The white can also sit one level in (`&.active { background: brand;
+ * .label { color: #fff } }`), so the fill is matched against a rule's own
+ * declarations while the white is matched against the whole block.
+ */
+function cssRules(source) {
+  const out = []
+  for (let i = 0; i < source.length; i++) {
+    if (source[i] !== '{') continue
+    let depth = 1
+    let own = ''
+    let j = i + 1
+    while (j < source.length && depth > 0) {
+      const c = source[j]
+      if (c === '{') depth++
+      else if (c === '}') depth--
+      else if (depth === 1) own += c
+      if (depth === 1 && c === '}') own += ';' // end of a nested block
+      j++
+    }
+    const head = source.slice(0, i)
+    const start = Math.max(head.lastIndexOf('}'), head.lastIndexOf('{'), head.lastIndexOf(';'))
+    out.push({
+      selector: head.slice(start + 1).trim().replace(/\s+/g, ' '),
+      own,
+      full: source.slice(i, j),
+      index: i,
+    })
+  }
+  return out
+}
+
+test('a fixed dark scrim carrying white text clears 4.5:1 over any photo', () => {
+  // These badges sit on user-uploaded images, so the backdrop is unknowable
+  // and the scrim has to carry the contrast on its own. Pure white is the
+  // worst case a photo can present. At the original 0.45 alpha the condition
+  // and cover-photo pills read at 3.36:1 over a bright image.
+  const SCRIM = /background(-color)?:\s*rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/
+  const LITERAL_WHITE = /color:\s*(#fff\b|#ffffff\b|white\b)/i
+  const failures = []
+  for (const file of vueFiles(srcRoot)) {
+    const rel = relative(appRoot, file)
+    const source = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '))
+    for (const rule of cssRules(source)) {
+      const scrim = SCRIM.exec(rule.own)
+      if (!scrim || !LITERAL_WHITE.test(rule.full)) continue
+      const alpha = Number(scrim[5])
+      const over = [2, 3, 4].map(i => Math.round(Number(scrim[i]) * alpha + 255 * (1 - alpha)))
+      const ratio = contrast([255, 255, 255], over)
+      if (ratio < 4.5) {
+        const line = source.slice(0, rule.index).split('\n').length
+        failures.push(`${rel}:${line} ${rule.selector} — ${ratio.toFixed(2)}:1 over a white photo`)
+      }
+    }
+  }
+  assert.deepEqual(failures, [], 'raise the scrim alpha; the photo underneath cannot be relied on')
+})
 
 test('no rule pairs a literal white with a brand-family fill', () => {
-  const BRAND_FILL = /background(-color)?:\s*[^;]*var\(--(brand|danger|success|accent-action|accent-primary)\)/
+  const BRAND_FILL = /background(-color)?:\s*[^;]*var\(--(brand|danger|success|accent-action|accent-primary|accent-danger|accent-good)\)/
   const LITERAL_WHITE = /color:\s*(#fff\b|#ffffff\b|white\b)/i
   const offenders = []
   for (const file of vueFiles(srcRoot)) {
     const rel = relative(appRoot, file)
-    if (WHITE_ON_FIXED_DARK.has(rel)) continue
-    const source = readFileSync(file, 'utf8')
-    for (const rule of source.matchAll(/\{[^{}]*\}/g)) {
-      if (BRAND_FILL.test(rule[0]) && LITERAL_WHITE.test(rule[0])) {
-        offenders.push(`${rel}:${source.slice(0, rule.index).split('\n').length}`)
+    // Comments are blanked rather than removed so reported line numbers stay
+    // true to the file.
+    const source = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '))
+    for (const rule of cssRules(source)) {
+      if (WHITE_ON_FIXED_DARK.has(`${rel} ${rule.selector}`)) continue
+      if (BRAND_FILL.test(rule.own) && LITERAL_WHITE.test(rule.full)) {
+        offenders.push(`${rel}:${source.slice(0, rule.index).split('\n').length}  ${rule.selector}`)
       }
     }
   }

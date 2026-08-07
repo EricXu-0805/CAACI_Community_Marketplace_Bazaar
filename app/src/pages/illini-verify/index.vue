@@ -380,7 +380,7 @@ function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/profile/in
 .submit-btn {
   display: flex; align-items: center; justify-content: center;
   width: 100%; height: 48px; line-height: 1;
-  background: var(--accent-primary); color: #fff;
+  background: var(--accent-primary); color: var(--ink-inverse);
   border-radius: 24px; font-size: 15px; font-weight: 600;
   margin-top: 24px; border: none;
   &.disabled { opacity: 0.35; }

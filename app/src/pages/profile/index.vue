@@ -828,7 +828,7 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
 .login-hint { color: var(--text-subtle); font-size: 14px; }
 .login-btn {
   margin-top: 4px; padding: 10px 36px;
-  background: var(--accent-primary); color: #fff; border-radius: 22px;
+  background: var(--accent-primary); color: var(--ink-inverse); border-radius: 22px;
   font-size: 14px; font-weight: 600; cursor: pointer;
   &:active { opacity: 0.8; }
 }
@@ -1206,7 +1206,7 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
   min-width: 16px; height: 16px; padding: 0 4px;
   border-radius: 8px;
   background: var(--accent-danger);
-  color: #fff; font-size: 10px; font-weight: 700;
+  color: var(--ink-inverse); font-size: 10px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
 }
 

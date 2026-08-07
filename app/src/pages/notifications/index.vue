@@ -281,7 +281,7 @@ function onLongPress(id: string) {
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; font-size: 14px; font-weight: 700;
 }
-.ni-price_drop { background: var(--brand-soft);     color: var(--brand-deep); }
+.ni-price_drop { background: var(--brand-soft);     color: var(--brand-on-soft); }
 .ni-sold       { background: var(--success-soft);   color: var(--success); }
 .ni-system     { background: var(--campus-blue-soft); color: var(--campus-blue); }
 .ni-offer      { background: var(--warning-soft);   color: var(--warning-text); }

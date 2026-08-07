@@ -822,7 +822,7 @@ async function onSubmitComment() {
   display: flex; flex-direction: column; align-items: center; gap: 14px;
 }
 .back-home {
-  padding: 10px 28px; background: var(--accent-primary); color: #fff;
+  padding: 10px 28px; background: var(--accent-primary); color: var(--ink-inverse);
   border-radius: 22px; font-size: 14px; font-weight: 600; cursor: pointer;
   &:active { opacity: 0.85; }
 }
@@ -1024,9 +1024,9 @@ async function onSubmitComment() {
 }
 .send-btn {
   padding: 0 18px; height: 40px; border-radius: 20px;
-  background: var(--accent-primary); color: #fff;
+  background: var(--accent-primary); color: var(--ink-inverse);
   display: flex; align-items: center; cursor: pointer;
-  .send-btn-label { font-size: 13px; color: #fff; font-weight: 600; }
+  .send-btn-label { font-size: 13px; color: var(--ink-inverse); font-weight: 600; }
   &.disabled { opacity: 0.3; pointer-events: none; }
 }
 </style>

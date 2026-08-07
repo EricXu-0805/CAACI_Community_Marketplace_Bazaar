@@ -1434,7 +1434,7 @@ function goPublish() {
   .fm-seg-label { font-size: 12.5px; font-weight: 600; color: var(--ink-quiet); letter-spacing: 0.02em; }
   &.on {
     background: var(--brand-soft);
-    .fm-seg-label { color: var(--brand-deep); }
+    .fm-seg-label { color: var(--brand-on-soft); }
   }
 }
 .cat-bar {
@@ -1648,7 +1648,7 @@ function goPublish() {
 }
 .fs-apply {
   width: 100%; padding: 14px; border-radius: var(--radius-pill);
-  background: var(--accent-primary); color: #fff; font-size: 15px; font-weight: 600;
+  background: var(--accent-primary); color: var(--ink-inverse); font-size: 15px; font-weight: 600;
   text-align: center; cursor: pointer;
   box-shadow: var(--shadow-cta);
   &:active { opacity: 0.85; }
@@ -1859,7 +1859,7 @@ function goPublish() {
 .empty-sub { font-size: 13px; color: var(--ink-quiet); text-align: center; padding: 0 32px; }
 .empty-btn {
   margin-top: 18px; padding: 11px 32px;
-  background: var(--accent-primary); color: #fff; border-radius: 22px;
+  background: var(--accent-primary); color: var(--ink-inverse); border-radius: 22px;
   font-size: 14px; font-weight: 600; cursor: pointer;
   &:active { opacity: 0.8; }
 }

@@ -1148,14 +1148,14 @@ page,
   --campus-orange-deep: #B33D00;
   --campus-orange-surface: #B33D00;
   --campus-orange-soft: #FFF1E6;
-  --accent-primary:      #C74A2F;
-  --accent-primary-soft: #F5D9CE;
-  --accent-primary-deep: #A03A24;
-  --accent-action:       #C74A2F;
+  --accent-primary:      var(--brand);
+  --accent-primary-soft: var(--brand-soft);
+  --accent-primary-deep: var(--brand-deep);
+  --accent-action:       var(--brand);
   --accent-ink:          #2A2A2E;
-  --accent-good:         #5D7C4A;
-  --accent-warn:         #D4923C;
-  --accent-danger:       #B53333;
+  --accent-good:         var(--success);
+  --accent-warn:         var(--warning);
+  --accent-danger:       var(--danger);
   --success:      #567345;
   --success-soft: #E4EADA;
   --warning:      #D4923C;
@@ -1442,6 +1442,19 @@ uni-button:focus-visible {
 }
 
 /*
+ * uni-app renders a placeholder as its own element and never themes it, so
+ * all 51 placeholders in the app sat at the engine default #808080 — 3.35:1
+ * on --bg-subtle in light, 3.63:1 in dark. Placeholder text is text, so 1.4.3
+ * applies to it; it is also the only label many of these fields have.
+ */
+.input-placeholder,
+.textarea-placeholder,
+.uni-input-placeholder,
+.uni-textarea-placeholder {
+  color: var(--text-muted);
+}
+
+/*
  * ============================================================
  * Design tokens — Hybrid v5 (米白书院 commerce + UIUC accent)
  *
@@ -1598,9 +1611,9 @@ uni-button:focus-visible {
   --accent-primary-deep: var(--brand-deep);
   --accent-action:       var(--brand);
   --accent-ink:          var(--ink);
-  --accent-good:         #5D7C4A;   /* sage olive — verified · free price */
-  --accent-warn:         #D4923C;   /* amber — currency exchange warning */
-  --accent-danger:       #B53333;   /* vermilion — destructive */
+  --accent-good:         var(--success);   /* sage olive — verified · free price */
+  --accent-warn:         var(--warning);   /* amber — currency exchange warning */
+  --accent-danger:       var(--danger);    /* vermilion — destructive */
 
   /* Explicit success / warn / danger pairs (soft bg + foreground) */
   --success:      #567345;
@@ -1827,6 +1840,10 @@ uni-button:focus-visible {
   --danger:       #E16D6D;
   --danger-soft:  rgba(224, 102, 102, 0.15);
 
+  --accent-primary:      var(--brand);
+  --accent-primary-soft: var(--brand-soft);
+  --accent-primary-deep: var(--brand-deep);
+  --accent-action:       var(--brand);
   --accent-good:   var(--success);
   --accent-warn:   var(--warning);
   --accent-danger: var(--danger);
@@ -1913,7 +1930,13 @@ uni-button:focus-visible {
     --warning-soft: rgba(229, 177, 112, 0.15);
     --danger:       #E16D6D;
     --danger-soft:  rgba(224, 102, 102, 0.15);
-    /* Aliases must follow the base trio so var() resolves to the dark values. */
+    /* Aliases must follow their base token so var() resolves to the dark
+       values. --accent-primary/-action were omitted here for months, so all
+       85 call sites painted the light brand on a dark page. */
+    --accent-primary:      var(--brand);
+    --accent-primary-soft: var(--brand-soft);
+    --accent-primary-deep: var(--brand-deep);
+    --accent-action:       var(--brand);
     --accent-good:   var(--success);
     --accent-warn:   var(--warning);
     --accent-danger: var(--danger);
@@ -2090,7 +2113,7 @@ uni-button:focus-visible {
 }
 .u-chip.brand {
   background: var(--brand-soft);
-  color: var(--brand-deep);
+  color: var(--brand-on-soft);
   border-color: transparent;
 }
 .u-chip.warn {
@@ -2296,6 +2319,10 @@ page, .page { overflow-x: clip; }
   --danger:       #E16D6D;
   --danger-soft:  rgba(224, 102, 102, 0.15);
 
+  --accent-primary:      var(--brand);
+  --accent-primary-soft: var(--brand-soft);
+  --accent-primary-deep: var(--brand-deep);
+  --accent-action:       var(--brand);
   --accent-good:   var(--success);
   --accent-warn:   var(--warning);
   --accent-danger: var(--danger);

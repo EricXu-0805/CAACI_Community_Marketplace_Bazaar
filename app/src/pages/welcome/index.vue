@@ -168,6 +168,6 @@ function finish() {
 .start-btn {
   background: var(--accent-primary); border-radius: 24px; padding: 14px; text-align: center;
   box-shadow: var(--shadow-cta);
-  .start-btn-label { font-size: 15px; font-weight: 600; color: #fff; }
+  .start-btn-label { font-size: 15px; font-weight: 600; color: var(--ink-inverse); }
 }
 </style>

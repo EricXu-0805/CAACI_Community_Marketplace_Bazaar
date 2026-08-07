@@ -558,7 +558,7 @@ function onSignOut() {
   cursor: pointer;
 }
 .btn-primary {
-  background: var(--accent-primary); color: #fff;
+  background: var(--accent-primary); color: var(--ink-inverse);
   margin-top: 10px;
   box-shadow: var(--shadow-cta);
   &.disabled { opacity: 0.3; pointer-events: none; }

@@ -960,7 +960,7 @@ async function onSubmit() {
 }
 .submit-btn {
   width: 100%; height: 48px;
-  background: var(--accent-primary); color: #fff;
+  background: var(--accent-primary); color: var(--ink-inverse);
   border-radius: 24px; font-size: 15px; font-weight: 600;
   margin-top: 24px; border: none;
   display: flex; align-items: center; justify-content: center;
