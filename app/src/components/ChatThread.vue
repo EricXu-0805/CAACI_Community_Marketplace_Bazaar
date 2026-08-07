@@ -316,7 +316,7 @@
         class="msg-input"
       />
       <view :class="['send-btn', { disabled: !inputText.trim() || sending }]" role="button" :aria-label="t('a11y.sendMessage')" :title="t('a11y.sendMessage')" @click="onSend">
-        <UIcon name="send" size="sm" color="#fff" />
+        <UIcon name="send" size="sm" color="ink-inverse" />
         <text class="send-label">{{ t('chat.send') }}</text>
       </view>
     </view>
@@ -2162,7 +2162,7 @@ function scrollToBottom() {
     font-size: 12px; font-weight: 600;
   }
   .deal-confirm {
-    display: inline-block; color: #fff; background: var(--brand);
+    display: inline-block; color: var(--ink-inverse); background: var(--brand);
     padding: 5px 10px; border-radius: var(--radius-pill); cursor: pointer;
     font-size: 12px; font-weight: 600;
   }
@@ -2266,7 +2266,7 @@ function scrollToBottom() {
   &.mine {
     justify-content: flex-end;
     .msg-bubble {
-      background: var(--accent-primary); color: #fff;
+      background: var(--accent-primary); color: var(--ink-inverse);
       border-radius: 18px 18px 4px 18px;
     }
   }
@@ -2407,7 +2407,7 @@ function scrollToBottom() {
 /* Labelled pill (QA6 #6): the bare paper-plane icon wasn't obvious as the
    send action; pairing it with a 发送/Send text makes the affordance clear.
    nowrap so the label never wraps on ultra-narrow viewports. */
-.send-label { font-size: 14px; font-weight: 600; color: #fff; line-height: 1; white-space: nowrap; }
+.send-label { font-size: 14px; font-weight: 600; color: var(--ink-inverse); line-height: 1; white-space: nowrap; }
 
 .chat-unavailable {
   flex: 1; min-height: 0; padding: 48px 28px;
@@ -2419,7 +2419,7 @@ function scrollToBottom() {
 .cu-actions { display: flex; align-items: center; gap: 10px; margin-top: 20px; }
 .cu-retry, .cu-back {
   padding: 10px 18px; border-radius: 999px;
-  background: var(--accent-primary); color: #fff; cursor: pointer;
+  background: var(--accent-primary); color: var(--ink-inverse); cursor: pointer;
 }
 .cu-back { background: var(--bg-subtle); }
 .cu-retry-label { color: #fff; font-size: 14px; font-weight: 600; }

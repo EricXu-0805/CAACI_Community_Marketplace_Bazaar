@@ -271,7 +271,7 @@ function onClear() {
 .post-top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
 .post-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
 .post-official {
-  background: var(--accent-action); color: #fff;
+  background: var(--accent-action); color: var(--ink-inverse);
   padding: 1px 6px; border-radius: 4px;
   font-size: 10px; font-weight: 700;
 }

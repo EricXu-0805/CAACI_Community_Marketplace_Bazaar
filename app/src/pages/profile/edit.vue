@@ -449,6 +449,6 @@ async function onSave() {
   background: var(--bg-subtle); color: var(--text-primary); font-size: 13px;
   border-radius: 14px; cursor: pointer;
   &:active { background: var(--bg-inset); }
-  &.active { background: var(--accent-primary); color: #fff; }
+  &.active { background: var(--accent-primary); color: var(--ink-inverse); }
 }
 </style>

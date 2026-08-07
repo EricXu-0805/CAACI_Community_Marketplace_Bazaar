@@ -324,7 +324,7 @@ onUnmounted(() => {
   font-size: 15px;
   font-weight: 700;
 }
-.primary { color: #fff; background: var(--brand); }
+.primary { color: var(--ink-inverse); background: var(--brand); }
 .primary.disabled, .secondary.disabled, .danger-action.disabled { opacity: .55; cursor: default; }
 .secondary { margin-top: 10px; color: var(--text-muted); background: var(--paper-2); }
 .privacy-option { display: block; margin-top: 22px; color: var(--text-muted); font-size: 12px; line-height: 1.55; }

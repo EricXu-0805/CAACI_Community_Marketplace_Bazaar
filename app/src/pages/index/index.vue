@@ -1403,7 +1403,7 @@ function goPublish() {
 .fb-badge {
   position: absolute; top: 1px; right: 1px;
   width: 15px; height: 15px; border-radius: 50%;
-  background: var(--accent-action); color: #fff; font-size: 9px; font-weight: 600;
+  background: var(--accent-action); color: var(--ink-inverse); font-size: 9px; font-weight: 600;
   display: flex; align-items: center; justify-content: center;
 }
 

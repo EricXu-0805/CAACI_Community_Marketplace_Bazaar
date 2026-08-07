@@ -239,7 +239,7 @@ function goSeller(id: string) { uni.navigateTo({ url: `/pages/seller/index?id=${
   padding: 80px 40px; gap: 12px; text-align: center;
 }
 .empty-text { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
-.retry-btn { padding: 8px 18px; border-radius: 18px; background: var(--accent-primary); color: #fff; cursor: pointer; }
+.retry-btn { padding: 8px 18px; border-radius: 18px; background: var(--accent-primary); color: var(--ink-inverse); cursor: pointer; }
 
 .loading-tip, .end-tip {
   text-align: center; padding: 16px; font-size: 12px; color: var(--text-subtle);

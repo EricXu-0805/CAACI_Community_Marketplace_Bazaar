@@ -1552,7 +1552,7 @@ async function contactSeller() {
   &:active { background: var(--brand-deep); transform: translateY(1px); }
 }
 .chat-btn-confirm {
-  background: var(--success); color: #fff;
+  background: var(--success); color: var(--ink-inverse);
   box-shadow: 0 6px 14px rgba(93, 124, 74, 0.28);
 }
 .chat-btn-rate {

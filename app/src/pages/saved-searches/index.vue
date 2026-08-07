@@ -430,7 +430,7 @@ function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/profile/in
 .retry-btn {
   min-height: 44px; padding: 0 20px; border-radius: var(--radius-pill);
   display: flex; align-items: center; justify-content: center;
-  background: var(--accent-primary); color: #fff; font-size: 14px; font-weight: 600;
+  background: var(--accent-primary); color: var(--ink-inverse); font-size: 14px; font-weight: 600;
 }
 
 .ss-card {

@@ -1198,7 +1198,7 @@ async function onSubmit() {
   transition: all 0.12s; font-weight: 500;
   position: relative;
   &.active {
-    background: var(--accent-primary); color: #fff;
+    background: var(--accent-primary); color: var(--ink-inverse);
     padding-right: 26px;
   }
   &:active { transform: scale(0.96); }
@@ -1243,7 +1243,7 @@ async function onSubmit() {
   cursor: pointer;
   transition: background 0.15s;
   &:active { background: var(--bg-inset); }
-  &.active { background: var(--accent-primary); color: #fff; }
+  &.active { background: var(--accent-primary); color: var(--ink-inverse); }
 }
 .locate-btn {
   display: flex;

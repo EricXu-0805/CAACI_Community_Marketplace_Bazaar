@@ -234,7 +234,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   font-size: 13px; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: background 0.15s, color 0.15s;
-  &.active { background: var(--accent-primary); color: #fff; }
+  &.active { background: var(--accent-primary); color: var(--ink-inverse); }
   &.active .tab-count { color: #fff; opacity: 0.85; }
 }
 .tab-count { font-size: 11px; color: var(--text-muted); }

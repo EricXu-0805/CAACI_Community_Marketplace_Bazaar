@@ -4641,7 +4641,7 @@ function isExpired(endsAt: string | null): boolean {
 .kind-report_status_changed { background: var(--campus-blue-soft); color: var(--campus-blue); }
 .kind-actor_blocked         { background: var(--warning-soft); color: var(--accent-warn); }
 .kind-admin_login           { background: var(--bg-subtle); color: var(--text-muted); }
-.kind-admin_unauthorized    { background: var(--accent-primary); color: #fff; }
+.kind-admin_unauthorized    { background: var(--accent-primary); color: var(--ink-inverse); }
 .audit-msg { flex: 1; color: var(--text-primary); word-break: normal; overflow-wrap: anywhere; }
 .audit-time {
   flex-shrink: 0; font-size: 10px; color: var(--text-muted);
@@ -4653,7 +4653,7 @@ function isExpired(endsAt: string | null): boolean {
   background: var(--bg-subtle); cursor: pointer;
   font-size: 12px; color: var(--text-primary); font-weight: 500;
   &:active { background: var(--bg-inset); }
-  &.primary { background: var(--accent-primary); color: #fff; }
+  &.primary { background: var(--accent-primary); color: var(--ink-inverse); }
   &.primary:active { opacity: 0.85; }
   &.danger { background: var(--danger-soft); color: var(--accent-danger); }
   &.danger:active { background: var(--danger-soft); }
@@ -4674,7 +4674,7 @@ function isExpired(endsAt: string | null): boolean {
 /* An enabled banner is a healthy state, not a danger like an active ban —
    green, not the suspensions tab's red pill-active (QA8 audit #26). */
 .pill-on         { background: var(--success-soft); color: var(--accent-good); }
-.pill-shadow     { background: var(--accent-primary); color: #fff; }
+.pill-shadow     { background: var(--accent-primary); color: var(--ink-inverse); }
 .pill-trust      { background: var(--bg-subtle); color: var(--text-secondary); }
 .token-role-operator { background: var(--campus-blue-soft); color: var(--campus-blue); }
 .token-role-security_admin { background: var(--warning-soft); color: var(--accent-warn); }
@@ -4697,7 +4697,7 @@ function isExpired(endsAt: string | null): boolean {
 .pill-count      { background: var(--campus-blue-soft); color: var(--campus-blue); }
 .level-0, .level-1 { background: var(--warning-soft); color: var(--accent-warn); }
 .level-2, .level-3 { background: var(--danger-soft); color: var(--accent-danger); }
-.level-4, .level-5 { background: var(--accent-primary); color: #fff; }
+.level-4, .level-5 { background: var(--accent-primary); color: var(--ink-inverse); }
 
 .detail-mask {
   position: fixed; inset: 0; z-index: 900;
