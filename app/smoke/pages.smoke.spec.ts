@@ -284,6 +284,21 @@ test.describe('core flow (logged in)', () => {
      * point: local-only cleanup would leave the row behind, and this path has
      * regressed before.
      */
+    /*
+     * Local purge is authoritative, so the UI reports a successful sign-out
+     * whatever the server answers — which is why the staging project kept
+     * gaining a session per run even after this test started signing out.
+     * Record the revoke call itself: without its status there is no way to
+     * tell a request the server rejected from one it accepted and ignored.
+     */
+    const revokeCalls: Array<{ target: string; status: number }> = []
+    page.on('response', (res) => {
+      const url = new URL(res.url())
+      if (url.pathname.endsWith('/auth/v1/logout')) {
+        revokeCalls.push({ target: `${url.pathname}${url.search}`, status: res.status() })
+      }
+    })
+
     await page.goto('/#/pages/settings/index', { waitUntil: 'networkidle' })
     await page.waitForTimeout(600)
     // Label, not position — the delete-account item sits directly below and
@@ -295,6 +310,14 @@ test.describe('core flow (logged in)', () => {
     await expect
       .poll(() => page.evaluate(reviewedSessionUserId), { timeout: 15_000 })
       .toBe('')
+
+    // The revoke is best-effort and races a 5s cap, so give it its own wait
+    // rather than reading whatever had arrived by the time storage cleared.
+    await expect.poll(() => revokeCalls.length, { timeout: 10_000 }).toBeGreaterThan(0)
+    expect(
+      revokeCalls.filter(call => call.status >= 400),
+      `sign-out revoke rejected: ${JSON.stringify(revokeCalls)}`,
+    ).toEqual([])
 
     expect(errs, 'console errors during authenticated sweep').toEqual([])
   })

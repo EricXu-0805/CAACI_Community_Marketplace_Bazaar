@@ -9,7 +9,7 @@ import { useModeration } from './useModeration'
 import { deviceFingerprintHash, deviceUASnippet } from '../utils/fingerprint'
 import { passwordValid } from '../utils'
 import { checkContent, remoteModerate } from '../utils/contentSafety'
-import { addBreadcrumb, captureException } from '../utils/sentry'
+import { addBreadcrumb, captureAuthFailure, captureException } from '../utils/sentry'
 import { safeAvatarUrl, sanitizeProfileResource } from '../utils/publicResource'
 import type { Profile } from '../types'
 import { BASE_URL } from '../config/runtime'
@@ -473,6 +473,7 @@ export function useAuth() {
       }
       return { data, error: null }
     } catch (error: any) {
+      captureAuthFailure(error, 'auth-signup')
       return { data: null, error }
     } finally {
       loading.value = false
@@ -496,6 +497,7 @@ export function useAuth() {
       }
       return { data, error: null }
     } catch (error: any) {
+      captureAuthFailure(error, 'auth-signin')
       return { data: null, error }
     } finally {
       loading.value = false
@@ -584,8 +586,23 @@ export function useAuth() {
       // the next launch. The helper then invokes tokenless local signOut to
       // preserve the normal SIGNED_OUT subscriber event and purges once more.
       const result = await failClosedSupabaseSignOut()
+      /*
+       * Local purge is authoritative for this device, so both branches below
+       * still leave the user signed out here — and both leave the server-side
+       * session alive, which is the whole point of reporting them. A refresh
+       * token that was copied off the device stays usable until it expires.
+       * Staging sessions kept accumulating one per CI run with nothing but a
+       * console.warn to say so.
+       */
       if (result.remoteRevokeError) {
         console.warn('[auth] remote session revoke failed after local purge')
+        captureException(result.remoteRevokeError, { tags: { source: 'auth-remote-revoke' } })
+      }
+      if (previousUserId && !result.accessTokenFound) {
+        console.warn('[auth] no access token to revoke at sign-out')
+        captureException(new Error('auth_logout_access_token_missing'), {
+          tags: { source: 'auth-remote-revoke-skipped' },
+        })
       }
       if (result.storageClearFallbackUsed) {
         addBreadcrumb({

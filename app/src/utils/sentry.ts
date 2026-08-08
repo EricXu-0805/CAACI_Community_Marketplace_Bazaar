@@ -408,6 +408,40 @@ export function captureException(err: unknown, ctx?: CaptureContext): void {
   console.error('[error]', safeErrorSummary(err))
 }
 
+/*
+ * Failures on the way to a session are the ones nobody sees. Every sign-in,
+ * sign-up, OTP and password-reset call site turns its error into a toast and
+ * returns, so a provider outage looks exactly like a user typing the wrong
+ * password — from the outside, and from Sentry.
+ *
+ * Only failures the user cannot act on are worth an event. The codes below are
+ * the ones the user fixes by retrying differently; everything else (transport
+ * errors, provider 5xx, disabled providers, send-rate and quota rejections)
+ * gets captured. Rate limits stay on the reported side deliberately: a
+ * collapsed sending domain first shows up as "new users never receive their
+ * code", which is otherwise invisible from the client.
+ */
+const USER_CORRECTABLE_AUTH_CODES = new Set([
+  'email_address_invalid',
+  'email_exists',
+  'email_not_confirmed',
+  'invalid_credentials',
+  'otp_expired',
+  'same_password',
+  'session_expired',
+  'session_not_found',
+  'user_already_exists',
+  'user_banned',
+  'validation_failed',
+  'weak_password',
+])
+
+export function captureAuthFailure(err: unknown, source: string): void {
+  const code = safeErrorCode(err)
+  if (code && USER_CORRECTABLE_AUTH_CODES.has(code)) return
+  captureException(err, { tags: { source } })
+}
+
 export function addBreadcrumb(crumb: {
   category: string
   message: string

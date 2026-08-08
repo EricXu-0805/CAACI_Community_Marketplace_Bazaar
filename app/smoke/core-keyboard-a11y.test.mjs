@@ -215,13 +215,42 @@ test('the plaza banner carousel can be driven and paused from the keyboard', () 
   // Auto-advancing content needs both a pause mechanism (2.2.2) and a
   // keyboard equivalent for the gesture that drives it.
   const banner = source('src/components/PlazaBannerCarousel.vue')
-  assert.match(banner, /:autoplay="banners\.length > 1 && !paused"/)
+  assert.match(banner, /:autoplay="autoplay"/)
   assert.match(banner, /aria-roledescription="carousel"/)
   assert.match(banner, /aria-keyshortcuts="ArrowLeft ArrowRight"/)
   assert.match(banner, /@keydown="onCarouselKeydown"/)
-  assert.match(banner, /@focusin="paused = true"/)
-  assert.match(banner, /@mouseenter="paused = true"/)
+  assert.match(banner, /@focusin="holdingFocus = true"/)
+  assert.match(banner, /@mouseenter="hovering = true"/)
   assert.match(banner, /:aria-hidden="current === i \? 'false' : 'true'"/)
+})
+
+test('the plaza banner carousel can also be paused without a pointer', () => {
+  /*
+   * Hover and focus were the only way to stop this, and neither exists on a
+   * phone — which is nearly all of the traffic. The explicit toggle is the
+   * mechanism 2.2.2 actually asks for, and it has to be sticky: a pointer
+   * leaving the carousel must not restart what the reader stopped.
+   */
+  const banner = source('src/components/PlazaBannerCarousel.vue')
+  const toggle = banner.slice(banner.indexOf('class="banner-toggle"'), banner.indexOf('</view>', banner.indexOf('class="banner-toggle"')))
+  assert.match(toggle, /role="button"/)
+  assert.match(toggle, /tabindex="0"/)
+  assert.match(toggle, /:aria-pressed="stopped \? 'true' : 'false'"/)
+  assert.match(toggle, /:aria-label="stopped \? t\('a11y\.carouselPlay'\) : t\('a11y\.carouselPause'\)"/)
+  assert.match(toggle, /@click\.stop="stopped = !stopped"/)
+  assert.match(toggle, /@keydown\.enter\.stop\.prevent="stopped = !stopped"/)
+  assert.match(toggle, /@keydown\.space\.stop\.prevent="stopped = !stopped"/)
+
+  // Nested inside a slide that is itself a target with a different action, so
+  // the WCAG 2.5.8 spacing exception cannot apply to it.
+  const style = banner.slice(banner.indexOf('.banner-toggle {'))
+  assert.match(style, /width: (2[4-9]|[3-9]\d)px;/)
+  assert.match(style, /height: (2[4-9]|[3-9]\d)px;/)
+
+  // The OS preference is the other half: swiper autoplay is a prop, so no
+  // stylesheet can stop it.
+  assert.match(banner, /window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\)/)
+  assert.match(banner, /&& !stopped\.value\n\s*&& !reduceMotion\.value/)
 })
 
 test('the listing gallery can be driven from the keyboard', () => {

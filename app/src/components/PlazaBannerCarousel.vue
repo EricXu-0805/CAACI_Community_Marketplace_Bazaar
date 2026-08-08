@@ -9,11 +9,15 @@
       equivalent: nothing here handled arrow keys, and every slide's link
       stayed in the tab order whether or not it was the visible one, so a
       keyboard user could focus a banner that had already scrolled away.
-      Autoplay stops while the carousel is hovered or holds focus.
+
+      Hover and focus are not a pause mechanism on a phone, which is where
+      almost all of this traffic is — hence the explicit toggle below, the
+      only control a touch user has. It is sticky: leaving the carousel does
+      not restart something the reader deliberately stopped.
     -->
     <swiper
       class="banner-swiper"
-      :autoplay="banners.length > 1 && !paused"
+      :autoplay="autoplay"
       :interval="interval"
       :duration="450"
       :circular="banners.length > 1"
@@ -28,10 +32,10 @@
       :current="current"
       @change="onSlideChange"
       @keydown="onCarouselKeydown"
-      @mouseenter="paused = true"
-      @mouseleave="paused = false"
-      @focusin="paused = true"
-      @focusout="paused = false"
+      @mouseenter="hovering = true"
+      @mouseleave="hovering = false"
+      @focusin="holdingFocus = true"
+      @focusout="holdingFocus = false"
     >
       <swiper-item
         v-for="(b, i) in banners"
@@ -64,11 +68,24 @@
         </view>
       </swiper-item>
     </swiper>
+    <view
+      v-if="banners.length > 1"
+      class="banner-toggle"
+      role="button"
+      tabindex="0"
+      :aria-label="stopped ? t('a11y.carouselPlay') : t('a11y.carouselPause')"
+      :aria-pressed="stopped ? 'true' : 'false'"
+      @click.stop="stopped = !stopped"
+      @keydown.enter.stop.prevent="stopped = !stopped"
+      @keydown.space.stop.prevent="stopped = !stopped"
+    >
+      <view :class="['bt-glyph', stopped ? 'is-play' : 'is-pause']"></view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useBanners, type Banner } from '../composables/useBanners'
 import { useI18n } from '../composables/useI18n'
 
@@ -81,7 +98,28 @@ const { banners, loading, fetchBanners } = useBanners()
 const { lang, t } = useI18n()
 
 const current = ref(0)
-const paused = ref(false)
+const hovering = ref(false)
+const holdingFocus = ref(false)
+/** The reader's own choice, and the OS-level one. Neither is undone by a pointer leaving. */
+const stopped = ref(false)
+const reduceMotion = ref(false)
+
+const autoplay = computed(() => banners.value.length > 1
+  && !stopped.value
+  && !reduceMotion.value
+  && !hovering.value
+  && !holdingFocus.value)
+
+// #ifdef H5
+onMounted(() => {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+  const query = window.matchMedia('(prefers-reduced-motion: reduce)')
+  reduceMotion.value = query.matches
+  const onPreferenceChange = (event: MediaQueryListEvent) => { reduceMotion.value = event.matches }
+  query.addEventListener('change', onPreferenceChange)
+  onUnmounted(() => query.removeEventListener('change', onPreferenceChange))
+})
+// #endif
 
 function onSlideChange(event: any) {
   const next = Number(event?.detail?.current)
@@ -143,6 +181,55 @@ function onTap(b: Banner) {
   padding: 8px 16px 4px;
   width: 100%;
   box-sizing: border-box;
+  position: relative;
+}
+
+/*
+ * The pause control. Top-right because the indicator dots own the bottom
+ * centre. 28px so it clears the 24px minimum on its own — it sits inside a
+ * slide that is itself a target with a different action, which is exactly the
+ * arrangement WCAG's spacing exception does not cover.
+ */
+.banner-toggle {
+  position: absolute;
+  top: 14px;
+  right: 22px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  &:active { opacity: 0.75; }
+  &:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+}
+.bt-glyph {
+  position: relative;
+  width: 10px;
+  height: 11px;
+}
+.bt-glyph.is-pause::before,
+.bt-glyph.is-pause::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 3px;
+  height: 11px;
+  background: #fff;
+  border-radius: 1px;
+}
+.bt-glyph.is-pause::before { left: 1px; }
+.bt-glyph.is-pause::after { right: 1px; }
+.bt-glyph.is-play::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 2px;
+  border-left: 9px solid #fff;
+  border-top: 5.5px solid transparent;
+  border-bottom: 5.5px solid transparent;
 }
 
 /* 5:2 aspect ratio, derived dynamically from viewport width.
