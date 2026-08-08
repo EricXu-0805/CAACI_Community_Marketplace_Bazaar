@@ -85,6 +85,7 @@ import {
 import { useI18n } from '../../composables/useI18n'
 import { useTheme } from '../../composables/useTheme'
 import { passwordRules, passwordValid, friendlyErrorMessage } from '../../utils'
+import { captureAuthFailure } from '../../utils/sentry'
 import UCodeInput from '../../components/UCodeInput.vue'
 import UIcon from '../../components/UIcon.vue'
 
@@ -176,6 +177,7 @@ async function onResend() {
     uni.showToast({ title: t('resetPw.resent'), icon: 'none' })
     startCooldown()
   } catch (err: any) {
+    captureAuthFailure(err, 'reset-resend')
     if (mounted) uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 3000 })
   } finally {
     resending.value = false
@@ -200,6 +202,7 @@ async function onSave() {
     const recoveryClient = createEphemeralSupabaseClient()
     const { data: verification, error: vErr } = await recoveryClient.auth.verifyOtp({ email: e, token: submittedCode, type: 'recovery' })
     if (vErr) {
+      captureAuthFailure(vErr, 'reset-verify-otp')
       const expired = (vErr as any)?.code === 'otp_expired' || /expired|invalid|token/i.test(vErr.message || '')
       if (mounted) uni.showToast({ title: expired ? t('resetPw.codeInvalid') : friendlyErrorMessage(vErr, lang.value as 'en' | 'zh'), icon: 'none', duration: 3000 })
       saving.value = false
@@ -217,6 +220,7 @@ async function onSave() {
       submittedPassword,
     )
     if (uErr) {
+      captureAuthFailure(uErr, 'reset-update-password')
       const weak = (uErr as any)?.code === 'weak_password' || Array.isArray((uErr as any)?.reasons)
       const identityChanged = (uErr as any)?.code === RECOVERY_IDENTITY_MISMATCH
       if (mounted) uni.showToast({
@@ -241,6 +245,7 @@ async function onSave() {
       if (mounted) uni.reLaunch({ url: '/pages/login/index' })
     }, 1500)
   } catch (err: any) {
+    captureAuthFailure(err, 'reset-save')
     if (mounted) uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('resetPw.fail'), icon: 'none', duration: 3000 })
     saving.value = false
   }

@@ -221,6 +221,7 @@ import { useSupabase, prepareSupabaseAuthPersistence } from '../../composables/u
 import { useI18n } from '../../composables/useI18n'
 import { useTheme } from '../../composables/useTheme'
 import { passwordRules, passwordValid, friendlyErrorMessage, navigateBackOr } from '../../utils'
+import { captureAuthFailure } from '../../utils/sentry'
 import UIcon from '../../components/UIcon.vue'
 import UCodeInput from '../../components/UCodeInput.vue'
 import {
@@ -551,6 +552,7 @@ async function onVerifySignup() {
     await prepareSupabaseAuthPersistence()
     const { data, error } = await supabase.auth.verifyOtp({ email: submittedEmail, token: submittedCode, type: 'signup' })
     if (error) {
+      captureAuthFailure(error, 'login-verify-otp')
       const expired = (error as any)?.code === 'otp_expired' || /expired|invalid|token/i.test(error.message || '')
       if (mounted) uni.showToast({ title: expired ? t('resetPw.codeInvalid') : friendlyErrorMessage(error, lang.value as 'en' | 'zh'), icon: 'none', duration: 3000 })
       verifying.value = false
@@ -566,6 +568,7 @@ async function onVerifySignup() {
     uni.showToast({ title: t('login.signupOk'), icon: 'success' })
     scheduleHomeRedirect(800, data?.session?.user?.id)
   } catch (err: any) {
+    captureAuthFailure(err, 'login-verify-otp')
     if (mounted) uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('login.signupFail'), icon: 'none', duration: 3000 })
     verifying.value = false
   }
@@ -582,6 +585,7 @@ async function onResendSignup() {
     uni.showToast({ title: t('resetPw.resent'), icon: 'none' })
     startConfirmCooldown()
   } catch (err: any) {
+    captureAuthFailure(err, 'login-resend-otp')
     if (mounted) uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('login.signupFail'), icon: 'none', duration: 3000 })
   } finally {
     confirmResending.value = false
@@ -618,6 +622,7 @@ async function onForgotPassword() {
     if (error) throw error
     if (mounted) uni.navigateTo({ url: `/pages/reset-password/index?email=${encodeURIComponent(trimmedEmail)}` })
   } catch (error) {
+    captureAuthFailure(error, 'login-reset-request')
     if (mounted) {
       uni.showModal({
         title: t('login.resetFailTitle'),
@@ -700,6 +705,7 @@ async function onSignInWithGoogle() {
       // user a stable sentence, and keep it in the form-level slot so it does
       // not evaporate before it is read.
       console.warn('[auth] Google sign-in request failed')
+      captureAuthFailure(error, 'login-oauth-google')
       googleLoading.value = false
       formError.value = friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('login.googleFail')
       return
@@ -716,6 +722,7 @@ async function onSignInWithGoogle() {
      */
   } catch (err: any) {
     console.warn('[auth] Google sign-in request failed')
+    captureAuthFailure(err, 'login-oauth-google')
     googleLoading.value = false
     uni.showToast({
       title: err?.message ? `${t('login.googleFail')}: ${err.message}` : t('login.googleFail'),
