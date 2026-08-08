@@ -23,7 +23,7 @@
           :focus="true"
           @confirm="onSubmit"
         />
-        <view v-if="query" class="sf-clear" role="button" :aria-label="t('a11y.searchClear')" @click="query = ''"><UIcon name="close" size="xs" color="currentColor" aria-hidden="true" /></view>
+        <view v-if="query" class="sf-clear hit-target" role="button" :aria-label="t('a11y.searchClear')" @click="query = ''"><UIcon name="close" size="xs" color="currentColor" aria-hidden="true" /></view>
       </view>
       <text class="cancel-btn" role="button" @click="goBack">{{ t('filter.cancel') }}</text>
     </view>
