@@ -27,6 +27,8 @@ const zh: Record<string, string> = {
   'a11y.transcript': '对话记录',
   'a11y.resultCount': '{n} 个结果',
   'a11y.carousel': '轮播',
+  'a11y.carouselPause': '暂停横幅轮播',
+  'a11y.carouselPlay': '继续横幅轮播',
   'a11y.pickImage': '添加图片',
   'a11y.pickVideo': '发送视频',
   'a11y.emojiToggle': '插入表情',

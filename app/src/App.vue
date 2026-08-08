@@ -2965,5 +2965,36 @@ button::after {
   color: var(--ink-quiet) !important;
   font-weight: 600 !important;
 }
+
+/* ============================================================
+ * Reduced motion, for everything the named guards above miss.
+ *
+ * Those guards name our own primitives (.u-rise, .u-sk, .u-stagger)
+ * at class specificity. A page's scoped rule compiles to
+ * `.spinner[data-v-1a2b3c]`, which outranks them — so the loading
+ * spinners, the home shimmer, the typing blink and every entrance
+ * keyframe declared inside an SFC kept animating for a user who
+ * asked the OS to stop. `*` plus !important is the only thing that
+ * wins against an attribute selector we do not control.
+ *
+ * 0.01ms rather than `none`: animations and transitions still fire
+ * their events and still apply their fill state, so anything that
+ * waits on transitionend or animates in from opacity 0 lands where
+ * it should — instantly. iteration-count: 1 is what actually stops
+ * the infinite ones.
+ *
+ * Inside the H5 block already: WeChat has no API that reports this
+ * preference, so there is nothing for mp to honour.
+ * ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 /* #endif */
 </style>
