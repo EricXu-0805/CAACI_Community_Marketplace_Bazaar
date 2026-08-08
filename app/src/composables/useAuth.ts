@@ -310,9 +310,17 @@ export function useAuth() {
       const hash = await deviceFingerprintHash()
       const ua   = deviceUASnippet()
       if (!hash || !/^[0-9a-f]{64}$/.test(hash)) return
-      await supabase.rpc('record_fingerprint', { fp_hash_in: hash, ua_snippet_in: ua })
+      // supabase.rpc resolves with { error } rather than throwing, so the catch
+      // below never saw a server-side failure. record_fingerprint returned 500
+      // on every sign-in for any profile at the 20-hash cap and nothing said so.
+      const { error } = await supabase.rpc('record_fingerprint', { fp_hash_in: hash, ua_snippet_in: ua })
+      if (error) {
+        console.warn('[auth] fingerprint record rejected')
+        captureException(error, { tags: { source: 'auth-record-fingerprint' } })
+      }
     } catch (err) {
       console.warn('[auth] fingerprint record failed')
+      captureException(err, { tags: { source: 'auth-record-fingerprint' } })
     }
   }
 

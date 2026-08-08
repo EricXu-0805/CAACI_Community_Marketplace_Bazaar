@@ -87,7 +87,7 @@ Vercel Edge API
 | 014–089 | `supabase/migrations/` | 图片尺寸、Plaza、审核、管理、offer/meetup、通知、微信等后续能力（历史上 014/015 各有重复版本，见审计） |
 | 20260717–22… | `supabase/migrations/` + `_ops/` | 公共写入、双向屏蔽、证据/注销、停权/admin、成交评分、FK、Storage、private Realtime、邮件 attribution/claim、Data API 精确 ACL、管理员令牌生命周期、确定性分页、真实 FK 与 ACL 尾部等候选修复；微信密码凭据退役保留为未来重新开放微信身份前的独立兼容门 |
 
-仓库当前共有 133 个 migration SQL 文件，其中 2026-07 release candidate 为 38 条，
+仓库当前共有 134 个 migration SQL 文件，其中 2026-07 release candidate 为 38 条，
 另有 2026-08-01 首版认证隐私披露的前向 consent 迁移。托管 Realtime canary 的
 pg_cron 前置脚本已移出迁移历史，改放 `_ops/hosted_realtime_canary/`——它只在
 获批的 staging 项目上执行，生产不装 pg_cron。
