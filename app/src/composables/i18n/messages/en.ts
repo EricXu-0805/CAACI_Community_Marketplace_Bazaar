@@ -27,6 +27,8 @@ const en: Record<string, string> = {
   'a11y.transcript': 'Conversation',
   'a11y.resultCount': '{n} result|{n} results',
   'a11y.carousel': 'carousel',
+  'a11y.carouselPause': 'Pause the banner carousel',
+  'a11y.carouselPlay': 'Resume the banner carousel',
   'a11y.pickImage': 'Attach image',
   'a11y.pickVideo': 'Send video',
   'a11y.emojiToggle': 'Insert emoji',
