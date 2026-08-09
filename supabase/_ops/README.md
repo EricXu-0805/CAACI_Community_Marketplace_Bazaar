@@ -69,6 +69,34 @@ shortcut.
 `LOCAL_BOOTSTRAP_*` files are fixtures for disposable local PostgreSQL replay
 only. They must never be run against staging or production.
 
+## 20260808040313 bounded fingerprint eviction
+
+`PRECHECK_20260808040313_evict_oldest_device_fingerprint_instead_of_failing.sql`,
+the matching `VERIFY` and `REGRESSION`, and
+`LOCAL_BOOTSTRAP_20260808040313_device_fingerprint_eviction.sql` are the
+reviewed gate for replacing the obsolete 21st-hash error with deterministic
+least-recently-seen eviction. The forward migration is intentionally
+function-only and refuses any target that already has more than 20 rows for a
+profile. It never authorizes bulk cleanup of historical fingerprint data.
+
+Run the rollback-only REGRESSION only after the new function is installed on a
+disposable local PostgreSQL database. It proves 20 -> 20 replacement,
+five-minute deduplication, invalid/unauthenticated rejection, over-cap
+fail-closed behavior, profile isolation, and zero Auth-session creation. It is
+not a deployment rollback: its `bigserial` `nextval()` calls are not undone by
+`ROLLBACK`, so it is forbidden on hosted staging and production.
+The script also refuses to start unless the local connection was opened with
+`PGOPTIONS='-c caaci.local_fingerprint_regression=20260808040313-disposable-fingerprint-regression'`.
+
+The staging database gate is narrower: run the read-only PRECHECK, apply the
+exact migration once through the official ledger-aware migrations endpoint,
+then run the read-only VERIFY and compare the pre/post fingerprint, profile,
+and Auth-session counts plus row-set digests. The migration itself must change
+no existing row. Protected-account smoke is a separate, later gate because it
+will intentionally invoke the new function. Production over-cap cleanup and
+any Auth-session retention operation are also separate changes with separate
+approval; none may be inferred from a successful staging migration.
+
 ## DB-01 repaired legacy duplicate versions
 
 The historical inventory had two version collisions:

@@ -1155,7 +1155,61 @@ event if the original worker subsequently fails.
     Then run the complete browser, two-account, administrator, provider and
     real-device matrix and monitor 401/403/409/429/5xx, Auth refresh, Realtime,
     Storage, cron, Sentry and Supabase Advisors through the observation window.
-15. Clean prior disposable audit accounts and their objects only through the
+15. Release `20260808040313` as two separate staging gates before considering
+    production. DB239-S1 is function installation only; DB239-S2 is the later
+    protected-account behavior smoke. Never combine them with historical-data
+    cleanup or Auth-session retention work.
+
+    For DB239-S1, the only approved hosted target is the disposable
+    `staging-smoke` project ref `hygkwxugskijadgfisji`. Freeze one remote
+    candidate commit and a Gate 0 artifact containing the exact SHA-256 of the
+    PRECHECK, migration and VERIFY. Pause protected smoke and any browser that
+    may call `record_fingerprint`. Immediately before apply, run
+    `PRECHECK_20260808040313_evict_oldest_device_fingerprint_instead_of_failing.sql`
+    through a read-only connection and stop unless the reviewed staging census
+    still shows the target migration absent, the exact predecessor function and
+    ACL, zero over-cap profiles, 20 fingerprint rows on one synthetic profile,
+    four Auth users and 20 Auth-session rows. Preserve the returned fingerprint,
+    profile and Auth-session row-set digests.
+
+    Apply the exact timestamped migration once through Supabase's official
+    ledger-aware migrations endpoint using the exact name
+    `20260808040313_evict_oldest_device_fingerprint_instead_of_failing`. Do not
+    use raw `psql`, `db push`, dashboard SQL or a hand-written ledger row. The
+    migration acquires a bounded table lock and replaces only
+    `public.record_fingerprint(text,text)` plus its owner, ACL and comment. It
+    must perform zero DML against existing fingerprints, profiles, Auth users or
+    Auth sessions. Any target with more than 20 fingerprints for one profile is
+    an expected fail-closed result and requires a different data operation.
+
+    After a successful endpoint response, use an independent read-only
+    connection to run the exact VERIFY. Require one valid hosted ledger row,
+    target function MD5 `2dad1c8a6d06046f5588f571cfb4cd3e`, exact owner/
+    SECURITY DEFINER/search-path/ACL/comment, no overload, zero over-cap
+    profiles, and pre/post equality of all three counts and row-set digests.
+    Stop at DB239-S1; do not run the full SQL REGRESSION on hosted databases
+    because its rolled-back inserts still advance a `bigserial` sequence.
+
+    Supabase's
+    [official migrations endpoint](https://supabase.com/docs/guides/integrations/supabase-for-platforms#make-database-changes)
+    promises transactional rollback on migration failure. If it returns an
+    explicit failure, only run a fresh read-only census and stop; the approval
+    is consumed and there is no retry.
+    If the response is lost or ambiguous, determine the ledger/function/data
+    state read-only and stop. If the endpoint reports success but VERIFY fails,
+    do not delete or edit the ledger and do not automatically restore the old
+    function. Preserve evidence, design a state-specific RECOVER package, and
+    obtain a new exact approval. DB239-S2 may run the protected staging smoke
+    only under its own approval after DB239-S1 independently verifies.
+
+    Production project ref `lfhvgprfphyfvhidegum` is out of scope for DB239-S1.
+    Its known over-cap profile must make this migration fail before function
+    replacement. The 168-to-20 fingerprint retention decision and the retained
+    staging/production Auth sessions are two independent future operations;
+    never delete either merely to make smoke green. Direct service-role writes
+    to `device_fingerprints` are also forbidden during this gate because they
+    do not participate in the RPC's per-profile advisory lock.
+16. Clean prior disposable audit accounts and their objects only through the
     verified durable deletion/admin path. Do not edit Supabase Auth or Storage
     internal tables directly. Disable legacy keys, old Realtime public access,
     or any guarded RPC overload not explicitly retired by `20260722081141`
