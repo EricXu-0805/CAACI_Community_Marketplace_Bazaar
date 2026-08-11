@@ -29,6 +29,28 @@
  */
 
 const SALT_KEY = 'device_salt_v1'
+const EXPECTED_FINGERPRINT_DEFERRALS = new Set([
+  'fingerprint_busy',
+  'fingerprint_write_deferred',
+  'fingerprint_rate_limited',
+])
+
+/**
+ * The database uses PT429 only for bounded, expected deferrals.  Match the
+ * complete response shape and an exact frozen message token so a different
+ * database failure can never be accidentally suppressed as rate limiting.
+ */
+export function isExpectedFingerprintDeferral(response: unknown): boolean {
+  if (!response || typeof response !== 'object') return false
+  const candidate = response as Record<string, unknown>
+  if (candidate.status !== 429) return false
+  const error = candidate.error
+  if (!error || typeof error !== 'object') return false
+  const errorRecord = error as Record<string, unknown>
+  return errorRecord.code === 'PT429'
+    && typeof errorRecord.message === 'string'
+    && EXPECTED_FINGERPRINT_DEFERRALS.has(errorRecord.message)
+}
 
 function secureRandomSalt(): string | null {
   const bytes = new Uint8Array(16)

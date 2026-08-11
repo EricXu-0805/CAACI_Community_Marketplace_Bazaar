@@ -210,7 +210,7 @@ test('release indexes and deterministic admin pagination stay version ordered', 
     assert.ok(current > previous, `release sequence is not version ordered at ${version}`)
     previous = current
   }
-  assert.match(release, /current 41-migration audit/)
+  assert.match(release, /historical 41-migration[\s\S]{0,20}2026-07 audit/)
   assert.match(release, /88\s+historical \+ 41 candidate migrations/)
   assert.match(release, /18160000\/19151729[\s\S]{0,80}partial-ledger repairs/)
   assert.match(release, /18250000\/19170019[\s\S]{0,40}partial-ledger repairs/)

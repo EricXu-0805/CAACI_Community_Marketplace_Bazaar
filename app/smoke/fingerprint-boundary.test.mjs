@@ -130,3 +130,32 @@ test('source contains no weak collision-prone fallback or shared nosalt identity
   assert.doesNotMatch(fingerprintSource, /fnv1a/i)
   assert.doesNotMatch(fingerprintSource, /['"]nosalt['"]/);
 })
+
+test('only exact PT429 fingerprint deferrals are classified as expected', async () => {
+  const module = await compileFingerprintModule()
+  const expectedMessages = [
+    'fingerprint_busy',
+    'fingerprint_write_deferred',
+    'fingerprint_rate_limited',
+  ]
+  for (const message of expectedMessages) {
+    assert.equal(module.isExpectedFingerprintDeferral({
+      status: 429,
+      error: { code: 'PT429', message, details: null, hint: null },
+    }), true)
+  }
+
+  for (const candidate of [
+    null,
+    'PT429',
+    {},
+    { status: 500, error: { code: 'PT429', message: 'fingerprint_busy' } },
+    { status: 429, error: { code: 'P0001', message: 'fingerprint_busy' } },
+    { status: 429, error: { code: 'PT429', message: 'unknown_reason' } },
+    { status: 429, error: { code: 'PT429', message: ' fingerprint_busy' } },
+    { status: 429, error: { code: 'PT429', message: 'FINGERPRINT_BUSY' } },
+    { status: 429, error: { details: 'fingerprint_busy' } },
+  ]) {
+    assert.equal(module.isExpectedFingerprintDeferral(candidate), false)
+  }
+})

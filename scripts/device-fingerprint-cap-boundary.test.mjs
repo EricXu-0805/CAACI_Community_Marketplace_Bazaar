@@ -13,6 +13,16 @@ const REGRESSION = 'supabase/_ops/REGRESSION_20260808040313_evict_oldest_device_
 const LOCAL_BOOTSTRAP = 'supabase/_ops/LOCAL_BOOTSTRAP_20260808040313_device_fingerprint_eviction.sql'
 const OLD_REGRESSION = 'supabase/_ops/REGRESSION_20260718_harden_device_fingerprint_signal.sql'
 const OLD_VERIFY = 'supabase/_ops/VERIFY_20260718_harden_device_fingerprint_signal.sql'
+const BRIDGE_MIGRATION = 'supabase/migrations/20260811140018_bound_device_fingerprint_churn.sql'
+const LIMITER_MIGRATION = 'supabase/migrations/20260811143207_install_device_fingerprint_churn_limiter.sql'
+const BRIDGE_PRECHECK = 'supabase/_ops/PRECHECK_20260811140018_bound_device_fingerprint_churn.sql'
+const BRIDGE_VERIFY = 'supabase/_ops/VERIFY_20260811140018_bound_device_fingerprint_churn.sql'
+const BRIDGE_REGRESSION = 'supabase/_ops/REGRESSION_20260811140018_bound_device_fingerprint_churn.sql'
+const BRIDGE_BOOTSTRAP = 'supabase/_ops/LOCAL_BOOTSTRAP_20260811140018_device_fingerprint_churn.sql'
+const LIMITER_PRECHECK = 'supabase/_ops/PRECHECK_20260811143207_install_device_fingerprint_churn_limiter.sql'
+const LIMITER_VERIFY = 'supabase/_ops/VERIFY_20260811143207_install_device_fingerprint_churn_limiter.sql'
+const LIMITER_REGRESSION = 'supabase/_ops/REGRESSION_20260811143207_install_device_fingerprint_churn_limiter.sql'
+const LIMITER_BOOTSTRAP = 'supabase/_ops/LOCAL_BOOTSTRAP_20260811143207_device_fingerprint_churn_limiter.sql'
 
 const [
   capMigration,
@@ -25,6 +35,17 @@ const [
   oldVerify,
   runbook,
   useAuth,
+  fingerprintUtil,
+  bridgeMigration,
+  limiterMigration,
+  bridgePrecheck,
+  bridgeVerify,
+  bridgeRegression,
+  bridgeBootstrap,
+  limiterPrecheck,
+  limiterVerify,
+  limiterRegression,
+  limiterBootstrap,
 ] = await Promise.all([
   source(CAP_MIGRATION),
   source(EVICT_MIGRATION),
@@ -36,6 +57,17 @@ const [
   source(OLD_VERIFY),
   source('RUNBOOK.md'),
   source('app/src/composables/useAuth.ts'),
+  source('app/src/utils/fingerprint.ts'),
+  source(BRIDGE_MIGRATION),
+  source(LIMITER_MIGRATION),
+  source(BRIDGE_PRECHECK),
+  source(BRIDGE_VERIFY),
+  source(BRIDGE_REGRESSION),
+  source(BRIDGE_BOOTSTRAP),
+  source(LIMITER_PRECHECK),
+  source(LIMITER_VERIFY),
+  source(LIMITER_REGRESSION),
+  source(LIMITER_BOOTSTRAP),
 ])
 
 /**
@@ -156,7 +188,11 @@ test('the runbook keeps staging apply, smoke, production cleanup, and sessions s
   assert.match(runbook, /official[\s\S]*ledger-aware migrations endpoint/)
   assert.match(runbook, /pre\/post equality of all three counts and row-set digests/)
   assert.match(runbook, /do not automatically restore the old[\s\S]*obtain a new exact approval/)
-  assert.match(runbook, /Production project ref `lfhvgprfphyfvhidegum` is out of scope/)
+  assert.match(runbook, /At the time of DB239-S1 approval[\s\S]*`lfhvgprfphyfvhidegum` was out of scope/)
+  assert.match(runbook, /20260811140018_bound_device_fingerprint_churn\.sql[\s\S]*Wait at least 65 seconds/)
+  assert.match(runbook, /PRECHECK_20260811143207_install_device_fingerprint_churn_limiter\.sql[\s\S]*twice,[\s\S]*five seconds apart/)
+  assert.match(runbook, /active_rpc_rows = 0[\s\S]*matching_advisory_rows = 0/)
+  assert.match(runbook, /Hosted REGRESSION and[\s\S]*LOCAL_BOOTSTRAP are forbidden/)
 })
 
 test('a rejected fingerprint write is reported, not dropped on the floor', () => {
@@ -164,7 +200,102 @@ test('a rejected fingerprint write is reported, not dropped on the floor', () =>
   const body = useAuth.slice(start, useAuth.indexOf('\n  async function', start + 1))
   // supabase.rpc resolves with { error }; it does not throw. Awaiting it bare
   // meant the surrounding try/catch never saw a server-side failure at all.
-  assert.match(body, /const \{ error \} = await supabase\.rpc\('record_fingerprint'/)
-  assert.match(body, /if \(error\)[\s\S]*captureException\(error, \{ tags: \{ source: 'auth-record-fingerprint' \} \}\)/)
+  assert.match(body, /const response = await supabase[\s\S]*\.rpc\('record_fingerprint'/)
+  assert.match(body, /\.retry\(false\)/)
+  assert.match(body, /isExpectedFingerprintDeferral\(response\)/)
+  assert.match(body, /if \(response\.error\)[\s\S]*captureException\(response\.error, \{ tags: \{ source: 'auth-record-fingerprint' \} \}\)/)
   assert.match(body, /catch \(err\)[\s\S]*captureException\(err, \{ tags: \{ source: 'auth-record-fingerprint' \} \}\)/)
+  assert.doesNotMatch(useAuth, /await recordFingerprint\(/)
+
+  for (const message of [
+    'fingerprint_busy',
+    'fingerprint_write_deferred',
+    'fingerprint_rate_limited',
+  ]) {
+    assert.match(fingerprintUtil, new RegExp(`'${message}'`))
+  }
+  assert.match(fingerprintUtil, /candidate\.status !== 429/)
+  assert.match(fingerprintUtil, /errorRecord\.code === 'PT429'/)
+})
+
+test('the forward fix uses an atomic write-quiescence bridge before the limiter', () => {
+  assert.doesNotMatch(bridgeMigration, /^BEGIN;$/m)
+  assert.doesNotMatch(bridgeMigration, /^COMMIT;$/m)
+  assert.match(bridgeMigration, /SET LOCAL lock_timeout = '5s'/)
+  assert.match(bridgeMigration, /CREATE TABLE private\.device_fingerprint_churn_cutover/)
+  assert.match(bridgeMigration, /bridge_installed_at timestamptz NOT NULL/)
+
+  const bridgeBody = recordFingerprintBody(bridgeMigration)
+  assert.match(bridgeBody, /pg_try_advisory_xact_lock/)
+  assert.doesNotMatch(bridgeBody, /(?<!try_)pg_advisory_xact_lock\s*\(/)
+  assert.match(bridgeBody, /fingerprint_busy/)
+  assert.match(bridgeBody, /fingerprint_write_deferred/)
+  assert.doesNotMatch(bridgeBody, /\b(?:INSERT INTO|UPDATE|DELETE FROM)\b/)
+  assert.match(bridgeMigration, /36b7cda577e25ba6fb36c46a7557b496/)
+  assert.match(bridgeMigration, /REVOKE ALL ON TABLE private\.device_fingerprint_churn_cutover/)
+  assert.match(bridgeMigration, /ALTER TABLE private\.device_fingerprint_churn_cutover FORCE ROW LEVEL SECURITY/)
+  assert.match(bridgeMigration, /role\.rolsuper OR role\.rolbypassrls/)
+  assert.match(bridgeMigration, /namespace\.nspowner = pg_catalog\.to_regrole\('postgres'\)::oid/)
+  assert.match(bridgeMigration, /pg_catalog\.pg_publication AS publication[\s\S]*publication\.puballtables/)
+  assert.match(bridgeMigration, /pg_catalog\.pg_publication_namespace AS publication_namespace/)
+  assert.match(bridgeMigration, /migration_postcheck_failed: fingerprint mutation\/constraint\/RLS surface drifted/)
+})
+
+test('the final limiter is fail-fast, bounded, deterministic, and sequence-stable at cap', () => {
+  assert.doesNotMatch(limiterMigration, /^BEGIN;$/m)
+  assert.doesNotMatch(limiterMigration, /^COMMIT;$/m)
+  assert.doesNotMatch(limiterMigration, /LOCK TABLE public\.device_fingerprints/)
+  assert.match(limiterMigration, /36b7cda577e25ba6fb36c46a7557b496/)
+  assert.match(limiterMigration, /bridge_installed_at <= pg_catalog\.clock_timestamp\(\)[\s\S]*bridge_installed_at <=[\s\S]*interval '65 seconds'/)
+  assert.match(limiterMigration, /bridge_installed_at <=[\s\S]*interval '65 seconds'/)
+  assert.match(limiterMigration, /NOT EXISTS \(SELECT 1 FROM auth\.users\)[\s\S]*NOT EXISTS \(SELECT 1 FROM auth\.identities\)[\s\S]*NOT EXISTS \(SELECT 1 FROM auth\.sessions\)[\s\S]*NOT EXISTS \(SELECT 1 FROM auth\.refresh_tokens\)[\s\S]*NOT EXISTS \(SELECT 1 FROM public\.profiles\)[\s\S]*NOT EXISTS \(SELECT 1 FROM public\.device_fingerprints\)/)
+  assert.match(limiterMigration, /pg_stat_activity[\s\S]*record_fingerprint/)
+  assert.match(limiterMigration, /pg_locks[\s\S]*hashtextextended/)
+  assert.match(limiterMigration, /CREATE TABLE private\.device_fingerprint_rate_limits/)
+  assert.match(limiterMigration, /cardinality\(accepted_new_hash_at\) BETWEEN 0 AND 5/)
+  assert.match(limiterMigration, /pg_try_advisory_xact_lock/)
+  assert.doesNotMatch(recordFingerprintBody(limiterMigration), /(?<!try_)pg_advisory_xact_lock\s*\(/)
+  assert.doesNotMatch(recordFingerprintBody(limiterMigration), /DELETE FROM/)
+  assert.doesNotMatch(recordFingerprintBody(limiterMigration), /\bUNION\b/)
+  assert.match(limiterMigration, /FOR NO KEY UPDATE NOWAIT/)
+  assert.match(limiterMigration, /FOR UPDATE NOWAIT/)
+  assert.match(limiterMigration, /IF NOT FOUND THEN[\s\S]*RETURN;/)
+  assert.match(limiterMigration, /ELSIF unique_hash_count = 20 THEN[\s\S]*ORDER BY fingerprint\.last_seen ASC, fingerprint\.id ASC[\s\S]*SET fp_hash = cleaned_hash,[\s\S]*first_seen = observed_at,[\s\S]*seen_count = 1,[\s\S]*ua_snippet = cleaned_ua/)
+  assert.match(limiterMigration, /236e5532c22d63f9a0336e38fc381c82/)
+  assert.match(limiterMigration, /DROP TABLE private\.device_fingerprint_churn_cutover/)
+
+  const firstRowLock = limiterMigration.indexOf('FOR NO KEY UPDATE NOWAIT')
+  assert.ok(limiterMigration.indexOf("MESSAGE = 'fingerprint_write_deferred'") < firstRowLock)
+  assert.ok(limiterMigration.indexOf("MESSAGE = 'fingerprint_rate_limited'") < firstRowLock)
+})
+
+test('both forward migrations have fail-closed local and read-only companions', () => {
+  for (const companion of [bridgePrecheck, bridgeVerify, limiterPrecheck, limiterVerify]) {
+    assert.match(companion, /\\set ON_ERROR_STOP on[\s\S]*BEGIN;[\s\S]*SET TRANSACTION READ ONLY;[\s\S]*ROLLBACK;/)
+  }
+  assert.match(bridgeVerify, /36b7cda577e25ba6fb36c46a7557b496/)
+  assert.match(bridgeVerify, /active_rpc_rows/)
+  assert.match(bridgeVerify, /matching_advisory_rows/)
+  for (const bridgeBoundary of [bridgePrecheck, bridgeVerify]) {
+    assert.match(bridgeBoundary, /pg_catalog\.pg_publication_rel/)
+    assert.match(bridgeBoundary, /pg_catalog\.pg_publication AS publication[\s\S]*publication\.puballtables/)
+    assert.match(bridgeBoundary, /pg_catalog\.pg_publication_namespace AS publication_namespace/)
+  }
+  assert.match(limiterPrecheck, /Run twice at least five seconds apart/)
+  assert.match(limiterPrecheck, /bridge_age_seconds/)
+  assert.doesNotMatch(limiterPrecheck, /NOT EXISTS \(SELECT 1 FROM auth\.users\)/)
+  assert.match(limiterVerify, /236e5532c22d63f9a0336e38fc381c82/)
+  assert.match(limiterVerify, /single-use cutover gate still exists/)
+
+  assert.match(bridgeRegression, /20260811140018-disposable-fingerprint-bridge/)
+  assert.match(bridgeRegression, /bridge accepted a new physical write/)
+  assert.match(limiterRegression, /20260811143207-disposable-fingerprint-churn/)
+  assert.match(limiterRegression, /same-timestamp events lost multiplicity/)
+  assert.match(limiterRegression, /at-cap in-place replacement drifted/)
+  assert.match(limiterRegression, /19-to-20 insert did not advance sequence exactly once/)
+  assert.match(limiterBootstrap, /BEGIN;[\s\S]*20260811140018_bound_device_fingerprint_churn\.sql[\s\S]*COMMIT;/)
+  assert.match(limiterBootstrap, /CREATE TABLE IF NOT EXISTS auth\.identities[\s\S]*CREATE TABLE IF NOT EXISTS auth\.refresh_tokens/)
+  assert.match(limiterBootstrap, /COMMIT;[\s\S]*BEGIN;[\s\S]*20260811143207_install_device_fingerprint_churn_limiter\.sql[\s\S]*ROLLBACK;[\s\S]*interval '2 minutes'/)
+  assert.match(bridgeBootstrap, /20260811140018-disposable-fingerprint/)
+  assert.match(bridgeBootstrap, /20260808040313_evict_oldest_device_fingerprint_instead_of_failing\.sql/)
 })

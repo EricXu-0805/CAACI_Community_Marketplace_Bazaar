@@ -86,9 +86,14 @@ Vercel Edge API
 | 013 | `security_patches.sql` | 审计补丁:notifications INSERT deny / conv flag 隔离 / 归一化去重 |
 | 014–089 | `supabase/migrations/` | 图片尺寸、Plaza、审核、管理、offer/meetup、通知、微信等后续能力（历史上 014/015 各有重复版本，见审计） |
 | 20260717–22… | `supabase/migrations/` + `_ops/` | 公共写入、双向屏蔽、证据/注销、停权/admin、成交评分、FK、Storage、private Realtime、邮件 attribution/claim、Data API 精确 ACL、管理员令牌生命周期、确定性分页、真实 FK 与 ACL 尾部等候选修复；微信密码凭据退役保留为未来重新开放微信身份前的独立兼容门 |
+| 20260801–11… | `supabase/migrations/` + `_ops/` | 首版认证隐私 consent、指纹上限 LRU 修复，以及必须按顺序执行的写入暂停桥与有界 churn limiter |
 
-仓库当前共有 134 个 migration SQL 文件，其中 2026-07 release candidate 为 38 条，
-另有 2026-08-01 首版认证隐私披露的前向 consent 迁移。托管 Realtime canary 的
+仓库当前共有 136 个 migration SQL 文件：88 条三位数历史迁移、41 条 2026-07
+审计候选、3 条后续 2026-07 production tail，以及 4 条 2026-08 前向迁移。
+生产 ledger 的 34/38 → 37/38 和“38 条候选”是当时发布追踪的历史口径，
+不是当前文件数或当前托管环境证明。4 条 2026-08 迁移分别为 08-01 consent、
+08-08 fingerprint eviction、`20260811140018` quiescence bridge，以及必须在
+排空证明后执行的 `20260811143207` final limiter。托管 Realtime canary 的
 pg_cron 前置脚本已移出迁移历史，改放 `_ops/hosted_realtime_canary/`——它只在
 获批的 staging 项目上执行，生产不装 pg_cron。
 合并前生产 ledger 已逐条核对为 34/38；依次完成 145042、152000、161200 三条
@@ -165,7 +170,7 @@ CI 已有 smoke job，但当前仍不是 branch protection 的 required check。
   由独立 server-only `WECHAT_LOGIN_ENABLED` 开关 fail-closed；首版保持缺失/false，
   内容安全凭据不能隐式启用身份登录。仍须从最终提交生成全新 canary，关闭 Google/email provider、HIBP、
   Owner、Hosted Realtime 和真实用户端/管理员端回归门后，才能提升为稳定应用。
-- 当前 38 条候选迁移存在 API/旧客户端/WeChat 凭据/Storage/Realtime/cron/admin token 的顺序依赖；按
+- 历史 2026-07 的 38 条生产候选迁移存在 API/旧客户端/WeChat 凭据/Storage/Realtime/cron/admin token 的顺序依赖；按
   [RUNBOOK 的候选发布顺序](RUNBOOK.md#2026-07-candidate-release-sequence) 执行，不要把目录排序直接等同于生产发布方案。
 - **H5**: 直接 `vercel --prod` (或 git push main 自动部署)。`vercel.json` 已配好 rewrites。
 - **Supabase Auth Redirect URLs** 必须包含生产域名才能收到密码重置邮件:
@@ -176,7 +181,7 @@ CI 已有 smoke job，但当前仍不是 branch protection 的 required check。
 
 - RLS、精确 Storage 路径、限流/去重、PKCE 和安全提示等基础已经存在；
 - 2026-07 候选新增了跨账号、状态机、迁移和管理员边界回归；
-- 合并前生产数据库已有 34/38 候选迁移；三条生产 tail 完成后为 37/38，仅微信凭据退役仍待；候选应用修复及回归脚本仍须以最终 canary 和稳定部署的真实证据为准；
+- 历史发布证据为合并前生产数据库已有 34/38 候选迁移、三条 production tail 完成后为 37/38，仅微信凭据退役仍待；候选应用修复及回归脚本仍须以最终 canary 和稳定部署的真实证据为准；
 - 当前发布边界和审计使用规则见 [审计索引](docs/audit/README.md)。
 
 **排查入口**: 先读 `docs/audit/README.md` 和 `RUNBOOK.md`；`docs/SECURITY_SETUP.md`

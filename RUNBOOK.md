@@ -776,8 +776,9 @@ event if the original worker subsequently fails.
 
 ## 2026-07 candidate release sequence
 
-> This is the reviewed operational order for the current 41-migration audit
-> candidate. It is **not** authorization to change production. Stop before the
+> This is the reviewed operational order for the historical 41-migration
+> 2026-07 audit candidate. Later forward-release steps are outside that
+> denominator. It is **not** authorization to change production. Stop before the
 > first mutating step unless the release owner has approved the exact target,
 > backup/rollback point, migration hashes, and operator.
 > Migration SQL always follows its unique, increasing 14-digit version order.
@@ -799,8 +800,8 @@ event if the original worker subsequently fails.
    (cd supabase/migrations && shasum -a 256 -c manifest.sha256)
    ```
 
-2. In two independent fresh PostgreSQL 17 environments, replay all 88
-   historical + 41 candidate migrations and every applicable
+2. For the historical 2026-07 base gate, in two independent fresh PostgreSQL
+   17 environments, replay all 88 historical + 41 candidate migrations and every applicable
    PRECHECK/VERIFY/rolled-back REGRESSION file, then compare normalized schema
    outputs. Re-run only the tail fixes that explicitly declare themselves
    re-entrant and require a zero schema diff before/after that pass; first-time
@@ -1155,7 +1156,7 @@ event if the original worker subsequently fails.
     Then run the complete browser, two-account, administrator, provider and
     real-device matrix and monitor 401/403/409/429/5xx, Auth refresh, Realtime,
     Storage, cron, Sentry and Supabase Advisors through the observation window.
-15. Release `20260808040313` as two separate staging gates before considering
+15. Historical DB239-S1/S2 approval record: release `20260808040313` as two separate staging gates before considering
     production. DB239-S1 is function installation only; DB239-S2 is the later
     protected-account behavior smoke. Never combine them with historical-data
     cleanup or Auth-session retention work.
@@ -1202,14 +1203,61 @@ event if the original worker subsequently fails.
     obtain a new exact approval. DB239-S2 may run the protected staging smoke
     only under its own approval after DB239-S1 independently verifies.
 
-    Production project ref `lfhvgprfphyfvhidegum` is out of scope for DB239-S1.
-    Its known over-cap profile must make this migration fail before function
-    replacement. The 168-to-20 fingerprint retention decision and the retained
-    staging/production Auth sessions are two independent future operations;
-    never delete either merely to make smoke green. Direct service-role writes
-    to `device_fingerprints` are also forbidden during this gate because they
-    do not participate in the RPC's per-profile advisory lock.
-16. Clean prior disposable audit accounts and their objects only through the
+    At the time of DB239-S1 approval, production project ref
+    `lfhvgprfphyfvhidegum` was out of scope and known over-cap. This paragraph is
+    retained as historical scope evidence, not current production state. The
+    168-to-20 retention decision and Auth-session governance remained separate;
+    neither could be changed merely to make smoke green. Direct service-role
+    writes were also forbidden because they did not participate in the RPC's
+    per-profile advisory lock.
+16. Release the DB239 fingerprint-churn forward fix only as two distinct,
+    ledger-aware migrations. Staging and production each need their own exact
+    approval; passing one target never authorizes the other.
+
+    First pause browser fingerprint calls plus all service/admin direct writes
+    to fingerprints or the related profile pointer. Run
+    `PRECHECK_20260811140018_bound_device_fingerprint_churn.sql` read-only, then
+    apply `20260811140018_bound_device_fingerprint_churn.sql` once through the
+    official ledger-aware endpoint. Never use raw `psql`, autocommit fragments,
+    `db push`, or a hand-written ledger row. Run its independent VERIFY before
+    continuing. While this temporary bridge is installed, recent same-hash
+    calls remain no-op and would-be physical writes intentionally return 429;
+    do not run protected smoke.
+
+    Wait at least 65 seconds after bridge commit. Run
+    `PRECHECK_20260811143207_install_device_fingerprint_churn_limiter.sql` twice,
+    at least five seconds apart. Both snapshots must report
+    `bridge_age_seconds >= 65`, `active_rpc_rows = 0`, and
+    `matching_advisory_rows = 0`; keep direct writes paused throughout. Apply
+    `20260811143207_install_device_fingerprint_churn_limiter.sql` once through
+    the official endpoint, then run its independent VERIFY. Require bridge MD5
+    `36b7cda577e25ba6fb36c46a7557b496` before final apply, final MD5
+    `236e5532c22d63f9a0336e38fc381c82` after it, exact ledger identities, bounded
+    private limiter shape/ACL, zero over-cap profiles, unchanged protected data
+    digests, and absence of the single-use cutover table.
+
+    The embedded final migration has one exact-empty data-plane fast path,
+    intended so a newly-created Preview database can apply the full migration
+    history sequentially. It may bypass bridge age only when the bridge time is
+    not in the future and Auth users, identities, sessions, refresh tokens,
+    profiles, and fingerprints are all exactly empty. Supabase seeds only after
+    migration replay and this repository has no seed file. The SQL proves the
+    empty state, not Preview provenance; an existing or used branch does not
+    qualify merely by name. The hosted companion PRECHECK has no such path, so
+    any target with a row in one of those six tables must use the real
+    65-second wait and both five-second-separated drain snapshots.
+
+    Final behavior is fail-fast, not queued: exact PT429 deferrals are not
+    retried; at most one physical write/profile/five minutes and five new
+    hashes/rolling 24 hours are accepted; 20-to-20 rewrites the deterministic
+    LRU row in place without advancing the sequence. Hosted REGRESSION and
+    LOCAL_BOOTSTRAP are forbidden. After staging VERIFY, run only the reviewed
+    fast-429 canary before resuming normal smoke. Production gets census/VERIFY,
+    never a burst test. Any explicit failure or ambiguous response means
+    read-only classification and stop—no retry, ledger edit, or automatic
+    rollback. If either function body changes before freeze, update every MD5,
+    migration manifest entry, and approval artifact before proceeding.
+17. Clean prior disposable audit accounts and their objects only through the
     verified durable deletion/admin path. Do not edit Supabase Auth or Storage
     internal tables directly. Disable legacy keys, old Realtime public access,
     or any guarded RPC overload not explicitly retired by `20260722081141`

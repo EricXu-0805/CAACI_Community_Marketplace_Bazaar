@@ -6,7 +6,11 @@ import {
   failClosedSupabaseSignOut,
 } from './useSupabase'
 import { useModeration } from './useModeration'
-import { deviceFingerprintHash, deviceUASnippet } from '../utils/fingerprint'
+import {
+  deviceFingerprintHash,
+  deviceUASnippet,
+  isExpectedFingerprintDeferral,
+} from '../utils/fingerprint'
 import { passwordValid } from '../utils'
 import { checkContent, remoteModerate } from '../utils/contentSafety'
 import { addBreadcrumb, captureAuthFailure, captureException } from '../utils/sentry'
@@ -313,10 +317,23 @@ export function useAuth() {
       // supabase.rpc resolves with { error } rather than throwing, so the catch
       // below never saw a server-side failure. record_fingerprint returned 500
       // on every sign-in for any profile at the 20-hash cap and nothing said so.
-      const { error } = await supabase.rpc('record_fingerprint', { fp_hash_in: hash, ua_snippet_in: ua })
-      if (error) {
+      const response = await supabase
+        .rpc('record_fingerprint', {
+          fp_hash_in: hash,
+          ua_snippet_in: ua,
+        })
+        .retry(false)
+      if (response.error && isExpectedFingerprintDeferral(response)) {
+        addBreadcrumb({
+          category: 'auth',
+          message: 'fingerprint_write_deferred',
+          level: 'info',
+        })
+        return
+      }
+      if (response.error) {
         console.warn('[auth] fingerprint record rejected')
-        captureException(error, { tags: { source: 'auth-record-fingerprint' } })
+        captureException(response.error, { tags: { source: 'auth-record-fingerprint' } })
       }
     } catch (err) {
       console.warn('[auth] fingerprint record failed')
