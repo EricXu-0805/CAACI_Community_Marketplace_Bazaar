@@ -1223,27 +1223,49 @@ event if the original worker subsequently fails.
     ledger-aware migrations. Staging and production each need their own exact
     approval; passing one target never authorizes the other.
 
-    First pause browser fingerprint calls plus all service/admin direct writes
-    to fingerprints or the related profile pointer. Run
-    `PRECHECK_20260811140018_bound_device_fingerprint_churn.sql` read-only, then
-    apply `20260811140018_bound_device_fingerprint_churn.sql` once through the
-    official ledger-aware endpoint. Never use raw `psql`, autocommit fragments,
-    `db push`, or a hand-written ledger row. Run its independent VERIFY before
-    continuing. While this temporary bridge is installed, recent same-hash
-    calls remain no-op and would-be physical writes intentionally return 429;
-    do not run protected smoke.
+    First stop every operator-controlled browser/smoke fingerprint call and
+    freeze every known service/admin script or Dashboard operation that can
+    write fingerprints or the related profile pointer. This is an operational
+    freeze, not a claim that an already-distributed browser or mini-program can
+    be remotely recalled before cutover. Bind the sole operator, credential
+    inventory and frozen writers in the target-specific approval artifact.
+
+    Run `PRECHECK_20260811140018_bound_device_fingerprint_churn.sql` read-only
+    immediately before apply, preserve its protected-data digests and sequence,
+    and take a separate pre-apply snapshot with `active_rpc_rows = 0` and
+    `matching_advisory_rows = 0`. Then apply
+    `20260811140018_bound_device_fingerprint_churn.sql` once through the official
+    ledger-aware endpoint. Never use raw `psql`, autocommit fragments, `db push`,
+    or a hand-written ledger row. The bridge commit—not the operational freeze
+    attestation—is the authoritative server-side pause point for authenticated
+    RPC physical writes. A predecessor call that raced before that commit may
+    still finish its previously valid write; the independent bridge VERIFY must
+    therefore reproduce the fresh protected-data digests and sequence exactly.
+    Any drift, failure or ambiguous response requires immediate HOLD and
+    read-only ledger/function classification. If the bridge committed, preserve
+    it as the safe HOLD state; do not retry, roll it back or continue to the
+    final migration.
+
+    While this temporary bridge is installed, recent same-hash calls remain
+    no-op and would-be physical writes intentionally return 429. Keep the known
+    service/admin direct-write freeze in force and do not run protected smoke.
 
     Wait at least 65 seconds after bridge commit. Run
     `PRECHECK_20260811143207_install_device_fingerprint_churn_limiter.sql` twice,
     at least five seconds apart. Both snapshots must report
     `bridge_age_seconds >= 65`, `active_rpc_rows = 0`, and
-    `matching_advisory_rows = 0`; keep direct writes paused throughout. Apply
+    `matching_advisory_rows = 0`. Both snapshots must also reproduce the fresh
+    fingerprint, profile and Auth-session digests plus fingerprint sequence;
+    keep the known direct writers frozen throughout. Apply
     `20260811143207_install_device_fingerprint_churn_limiter.sql` once through
     the official endpoint, then run its independent VERIFY. Require bridge MD5
     `36b7cda577e25ba6fb36c46a7557b496` before final apply, final MD5
     `236e5532c22d63f9a0336e38fc381c82` after it, exact ledger identities, bounded
     private limiter shape/ACL, zero over-cap profiles, unchanged protected data
-    digests, and absence of the single-use cutover table.
+    digests and sequence, and absence of the single-use cutover table. Only
+    after this independent VERIFY may the operator-controlled callers and
+    direct writers resume. A normal login, profile timestamp change or other
+    apparently benign digest drift is still a HOLD, not a waiver.
 
     The embedded final migration has one exact-empty data-plane fast path,
     intended so a newly-created Preview database can apply the full migration
