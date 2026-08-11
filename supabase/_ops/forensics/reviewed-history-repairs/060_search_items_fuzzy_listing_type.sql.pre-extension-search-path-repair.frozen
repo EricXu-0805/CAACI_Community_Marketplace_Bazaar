@@ -57,7 +57,7 @@ RETURNS TABLE (
 )
 LANGUAGE sql
 STABLE
-SET search_path = pg_catalog, public, extensions
+SET search_path = public
 AS $$
   SELECT
     i.id, i.user_id, i.title, i.title_i18n,

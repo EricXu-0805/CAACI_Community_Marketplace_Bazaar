@@ -2,6 +2,12 @@
   "buildCommand": "cd app && npm ci --legacy-peer-deps && npm run build:h5",
   "outputDirectory": "app/dist/build/h5",
   "framework": null,
+  "git": {
+    "deploymentEnabled": {
+      "**": false,
+      "main": true
+    }
+  },
   "crons": [
     { "path": "/api/notification-digest", "schedule": "0 23 * * *" },
     { "path": "/api/data-retention", "schedule": "17 * * * *" },

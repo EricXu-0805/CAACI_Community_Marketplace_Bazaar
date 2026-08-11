@@ -14,15 +14,29 @@ const FROZEN_LEGACY_FILENAME_DIGEST =
 const FROZEN_TIMESTAMP_FILENAME_DIGEST =
   '8a72fed57c6814f1bba6b0219e3379e369843afe79fe8f3fd7985945bc48bec2'
 const FROZEN_MIGRATION_ENTRY_DIGEST =
-  'df743ae34921941ad7d9ec61854c50eebf34c3956ac628637f1dab4c75a90d58'
-// These two historical-byte repairs are exceptional and independently pinned:
+  '91682165fa7363f66ecad5fda09456957ccbc543753f21ded66a73b968f356a2'
+// These five historical-byte repairs are exceptional and independently pinned:
 // 014 removes an impossible migration-version collision for clean branches;
+// 038, 060 and 062 keep pg_trgm visible when Supabase preinstalls it in
+// extensions; and
 // 19151729 accepts the equivalent PG17 composite-row deparser order discovered
-// by the official clean replay. Forward migrations converge hosted databases.
+// by official clean replay. Forward migrations converge hosted databases.
 const REVIEWED_FROZEN_REPAIRS = new Map([
   [
     '014_condition_defective.sql',
     '687e51a5cf4785e515a6cc5b099b47623092123e97b6a7790490e6b82165d0aa',
+  ],
+  [
+    '038_search_items_rpc.sql',
+    '33dc94a09bbed356b682a92eb4ed6b3482f30437db5c2388abd70cc4c082107a',
+  ],
+  [
+    '060_search_items_fuzzy_listing_type.sql',
+    'da21a7bafe2dd5388a85823c6596eefef6758527a9a322942b3f5c197a84b186',
+  ],
+  [
+    '062_search_posts_fuzzy.sql',
+    '539f20d20ea1a90462c5f535b870bce841b05d47fc3a7bed28d9e29fa4eb28df',
   ],
   [
     '20260719151729_reconcile_plaza_base_table_acl.sql',
@@ -59,6 +73,18 @@ const REVIEWED_HISTORY_ARCHIVES = new Map([
     '3786a03b60787aa1b3a8642f6656d4b6971a174a7afa3339c5f009a631595a29',
   ],
   [
+    '038_search_items_rpc.sql.pre-extension-search-path-repair.frozen',
+    '4583348ec7b99aedf704891209303c8e44f0f8bcc627e1e08756779bff6b0b95',
+  ],
+  [
+    '060_search_items_fuzzy_listing_type.sql.pre-extension-search-path-repair.frozen',
+    '1714452c622df89b801f4222872c9e93c8f2fa4676b0005617889515dc978b8d',
+  ],
+  [
+    '062_search_posts_fuzzy.sql.pre-extension-search-path-repair.frozen',
+    '1f2aa3e46f3147db4a208e0a94c96e6093ea08f72cd8832110fdb658b1508ab3',
+  ],
+  [
     '20260719151729_reconcile_plaza_base_table_acl.sql.pre-pg17-replay-repair.frozen',
     '2232d8b5c9739974db2a667e175880f59dde89d301c4a7a58362d83b1dd96620',
   ],
@@ -73,6 +99,18 @@ const CANONICAL_014 = new URL(
 )
 const CANONICAL_015 = new URL(
   '../supabase/migrations/015_content_i18n.sql',
+  import.meta.url,
+)
+const CANONICAL_038 = new URL(
+  '../supabase/migrations/038_search_items_rpc.sql',
+  import.meta.url,
+)
+const CANONICAL_060 = new URL(
+  '../supabase/migrations/060_search_items_fuzzy_listing_type.sql',
+  import.meta.url,
+)
+const CANONICAL_062 = new URL(
+  '../supabase/migrations/062_search_posts_fuzzy.sql',
   import.meta.url,
 )
 const LEGACY_RECONCILIATION = new URL(
@@ -291,9 +329,12 @@ test('repaired legacy collisions preserve forensic bytes and require guarded for
 })
 
 test('reviewed historical repairs retain the prior bytes and document ledger byte divergence', async () => {
-  const [operationsReadme, runbook] = await Promise.all([
+  const [operationsReadme, runbook, ...canonicalTrigramFunctions] = await Promise.all([
     readFile(new URL('../supabase/_ops/README.md', import.meta.url), 'utf8'),
     readFile(new URL('../RUNBOOK.md', import.meta.url), 'utf8'),
+    readFile(CANONICAL_038, 'utf8'),
+    readFile(CANONICAL_060, 'utf8'),
+    readFile(CANONICAL_062, 'utf8'),
   ])
 
   for (const [archive, expectedHash] of REVIEWED_HISTORY_ARCHIVES) {
@@ -306,5 +347,10 @@ test('reviewed historical repairs retain the prior bytes and document ledger byt
     assert.match(source, /schema-convergent but byte-divergent/)
     assert.match(source, /ledger does not\s+store SQL content hashes/i)
     assert.match(source, /manifest[^\n]*current replay bytes/i)
+  }
+
+  for (const canonicalFunction of canonicalTrigramFunctions) {
+    assert.match(canonicalFunction, /^\s*SET search_path = pg_catalog, public, extensions$/im)
+    assert.doesNotMatch(canonicalFunction, /^\s*SET search_path = public$/im)
   }
 })

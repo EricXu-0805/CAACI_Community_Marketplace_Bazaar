@@ -101,6 +101,22 @@ test('.vercelignore keeps tests and local private context out of uploaded deploy
   }
 })
 
+test('Vercel Git deployments skip Preview branches and keep main production enabled', async () => {
+  const vercelConfig = JSON.parse(await readFile(path.join(projectRoot, 'vercel.json'), 'utf8'))
+
+  assert.deepEqual(
+    vercelConfig.git,
+    {
+      deploymentEnabled: {
+        '**': false,
+        main: true,
+      },
+    },
+    'automatic Vercel deployments must remain disabled outside main',
+  )
+  assert.equal('ignoreCommand' in vercelConfig, false, 'ignored builds still create canceled Preview deployments')
+})
+
 test('unknown API and missing asset paths use a stable JSON 404 before the SPA fallback', async () => {
   const vercelConfig = JSON.parse(await readFile(path.join(projectRoot, 'vercel.json'), 'utf8'))
   const assetFallbackIndex = vercelConfig.rewrites.findIndex(rule => (
