@@ -118,16 +118,34 @@ Use the exact companions for each phase:
   matching `VERIFY`, `REGRESSION`, and
   `LOCAL_BOOTSTRAP_20260811143207_device_fingerprint_churn_limiter.sql`.
 
-For any hosted target, pause browser fingerprint calls and all service/admin
-direct fingerprint or profile writes. Run the 140018 PRECHECK, apply 140018 once
-through the official ledger-aware endpoint, then run its independent VERIFY.
-Do not run protected smoke while the bridge is installed. Wait at least 65
-seconds, then run the 143207 PRECHECK twice at least five seconds apart. Both
-results must show `bridge_age_seconds >= 65`, `active_rpc_rows = 0`, and
-`matching_advisory_rows = 0`. Only then apply 143207 once through the same
-ledger-aware endpoint and run its independent VERIFY. A failed or ambiguous
-response consumes that attempt: inspect read-only state and stop; never use raw
-`psql`, hand-write the ledger, or retry automatically.
+For any hosted target, stop every operator-controlled browser/smoke caller and
+freeze every known service/admin script or Dashboard operation that can write a
+fingerprint or its profile pointer. This is an operator-attested freeze; it is
+not evidence that an already-distributed client has been remotely recalled.
+Bind the sole operator, credential inventory and frozen writers in the exact
+target approval.
+
+Run the 140018 PRECHECK immediately before apply, preserve its protected-data
+digests and sequence, and separately require zero active fingerprint RPCs and
+zero matching advisory locks. Apply 140018 once through the official
+ledger-aware endpoint. The bridge commit is the authoritative server-side pause
+point for authenticated RPC physical writes. A predecessor call that raced
+before commit can still finish, so the independent bridge VERIFY must reproduce
+the fresh digests and sequence exactly. Any drift, failure or ambiguous
+response requires immediate HOLD and read-only ledger/function classification.
+If the bridge committed, preserve it as the safe HOLD state; do not retry, roll
+it back or continue to the final apply.
+
+Do not run protected smoke while the bridge is installed, and keep every known
+direct writer frozen. Wait at least 65 seconds, then run the 143207 PRECHECK
+twice at least five seconds apart. Both results must show
+`bridge_age_seconds >= 65`, `active_rpc_rows = 0`, and
+`matching_advisory_rows = 0`, and must reproduce the fresh protected digests and
+sequence. Only then apply 143207 once through the same ledger-aware endpoint
+and run its independent VERIFY. Resume controlled callers only after that
+VERIFY reproduces the baseline and proves the cutover table absent. Never use
+raw `psql`, hand-write the ledger, or treat an apparently benign digest drift
+as anything other than HOLD. Never retry automatically.
 
 An exact-empty data-plane fast path keeps newly-created Preview replay
 deterministic: only when `auth.users`, `auth.identities`, `auth.sessions`,

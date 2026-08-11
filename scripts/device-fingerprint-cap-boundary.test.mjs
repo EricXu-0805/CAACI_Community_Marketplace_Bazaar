@@ -34,6 +34,7 @@ const [
   oldRegression,
   oldVerify,
   runbook,
+  operationsReadme,
   useAuth,
   fingerprintUtil,
   bridgeMigration,
@@ -56,6 +57,7 @@ const [
   source(OLD_REGRESSION),
   source(OLD_VERIFY),
   source('RUNBOOK.md'),
+  source('supabase/_ops/README.md'),
   source('app/src/composables/useAuth.ts'),
   source('app/src/utils/fingerprint.ts'),
   source(BRIDGE_MIGRATION),
@@ -192,6 +194,19 @@ test('the runbook keeps staging apply, smoke, production cleanup, and sessions s
   assert.match(runbook, /20260811140018_bound_device_fingerprint_churn\.sql[\s\S]*Wait at least 65 seconds/)
   assert.match(runbook, /PRECHECK_20260811143207_install_device_fingerprint_churn_limiter\.sql[\s\S]*twice,[\s\S]*five seconds apart/)
   assert.match(runbook, /active_rpc_rows = 0[\s\S]*matching_advisory_rows = 0/)
+  for (const operatorGuide of [runbook, operationsReadme]) {
+    assert.match(operatorGuide, /operator-controlled browser\/smoke/)
+    assert.match(operatorGuide, /not (?:a claim|evidence) that an already-distributed (?:browser or mini-program|client) (?:can|has been)[\s\S]*remotely recall/)
+    assert.match(operatorGuide, /bridge commit[\s\S]*authoritative server-side pause[\s\S]*point/)
+    assert.match(operatorGuide, /protected-data[\s\S]*digests and sequence/)
+    assert.match(operatorGuide, /twice[\s\S]*five seconds apart/)
+    assert.match(operatorGuide, /independent VERIFY[\s\S]*resume/i)
+    assert.match(operatorGuide, /apparently benign digest drift[\s\S]*(?:HOLD|waiver)/)
+    assert.match(operatorGuide, /If the bridge committed, preserve[\s\S]*safe HOLD state; do not retry/)
+  }
+  assert.match(runbook, /Staging and production each need their own exact[\s\S]*approval/)
+  assert.match(operationsReadme, /Staging and production require separate exact[\s\S]*approvals/)
+  assert.doesNotMatch(runbook, /First pause browser fingerprint calls plus all service\/admin direct writes/)
   assert.match(runbook, /Hosted REGRESSION and[\s\S]*LOCAL_BOOTSTRAP are forbidden/)
 })
 
