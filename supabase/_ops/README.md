@@ -202,13 +202,16 @@ freeze the repaired inventory and the forensic hashes.
 
 ## Reviewed historical byte divergence
 
-Two frozen migration files required narrowly reviewed repository repairs after
+Five frozen migration files required narrowly reviewed repository repairs after
 their versions had already appeared in hosted ledgers: canonical 014 absorbed
-the colliding image-dimension shape, and 19151729 accepted PostgreSQL 17's
-equivalent composite-row deparser order. The target databases are
+the colliding image-dimension shape; canonical 038, 060, and 062 now keep
+`pg_catalog`, `public`, and `extensions` visible so every historical trigram
+search-function replacement can resolve `pg_trgm` regardless of whether the
+extension was installed in `public` or `extensions`; and 19151729 accepted
+PostgreSQL 17's equivalent composite-row deparser order. The target databases are
 schema-convergent but byte-divergent from the pre-repair repository history.
 Supabase's migration ledger does not store SQL content hashes, so a version row
-must never be presented as proof that either exact byte sequence ran. The
+must never be presented as proof that any exact byte sequence ran. The
 manifest protects the current replay bytes only; PRECHECK/VERIFY and forward
 convergence establish the hosted schema outcome.
 
@@ -216,6 +219,12 @@ The immediately preceding reviewed repository bytes are retained at:
 
 - `forensics/reviewed-history-repairs/014_condition_defective.sql.pre-collision-repair.frozen`
   (`sha256=3786a03b60787aa1b3a8642f6656d4b6971a174a7afa3339c5f009a631595a29`);
+- `forensics/reviewed-history-repairs/038_search_items_rpc.sql.pre-extension-search-path-repair.frozen`
+  (`sha256=4583348ec7b99aedf704891209303c8e44f0f8bcc627e1e08756779bff6b0b95`);
+- `forensics/reviewed-history-repairs/060_search_items_fuzzy_listing_type.sql.pre-extension-search-path-repair.frozen`
+  (`sha256=1714452c622df89b801f4222872c9e93c8f2fa4676b0005617889515dc978b8d`);
+- `forensics/reviewed-history-repairs/062_search_posts_fuzzy.sql.pre-extension-search-path-repair.frozen`
+  (`sha256=1f2aa3e46f3147db4a208e0a94c96e6093ea08f72cd8832110fdb658b1508ab3`);
 - `forensics/reviewed-history-repairs/20260719151729_reconcile_plaza_base_table_acl.sql.pre-pg17-replay-repair.frozen`
   (`sha256=2232d8b5c9739974db2a667e175880f59dde89d301c4a7a58362d83b1dd96620`).
 

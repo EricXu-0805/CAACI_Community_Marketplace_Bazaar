@@ -49,7 +49,7 @@ returns table (
 )
 language sql
 stable
-set search_path = pg_catalog, public, extensions
+set search_path = public
 as $$
   select
     p.id, p.user_id, p.content, p.images, p.image_dimensions,

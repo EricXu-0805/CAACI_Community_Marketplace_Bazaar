@@ -1094,11 +1094,20 @@ event if the original worker subsequently fails.
     `condition_defective` / `content_i18n` rows are already correct.
 
     Record explicitly that hosted state is schema-convergent but byte-divergent
-    from the two pre-repair repository snapshots archived under
+    from the five pre-repair repository snapshots archived under
     `_ops/forensics/reviewed-history-repairs/`. The Supabase ledger does not
-    store SQL content hashes, so a version row proves neither historical byte
+    store SQL content hashes, so a version row proves no exact historical byte
     sequence. The manifest protects current replay bytes only; keep PRECHECK,
     VERIFY and the exported schema evidence with the release record.
+
+    The three trigram replay repairs are `038_search_items_rpc.sql`,
+    `060_search_items_fuzzy_listing_type.sql`, and
+    `062_search_posts_fuzzy.sql`: clean Supabase branches can have `pg_trgm`
+    preinstalled in `extensions`, so every historical trigram search-function
+    replacement must fix its search path to `pg_catalog, public, extensions`.
+    Preserve all three pre-repair snapshots alongside the 014 and 19151729
+    archives; do not rewrite any hosted ledger row to claim the repaired bytes
+    ran there.
 
     Continue in strict order with
     `PRECHECK_20260722080918_optimize_auth_rls_initplans.sql`, migration
