@@ -56,6 +56,7 @@ let latestNotificationFetchId = 0
 // Any local mutation that an older list/count snapshot could roll back bumps
 // this revision. A snapshot only applies after one quiet revision.
 let notificationStateGeneration = 0
+const MAX_NOTIFICATION_SNAPSHOT_RESTARTS = 3
 const restoredStructuredActivityIds = new Set<string>()
 const deliveredLiveNotificationIds = new Set<string>()
 const locallyReadNotificationIds = new Set<string>()
@@ -496,6 +497,7 @@ export function useNotifications() {
     if (!session?.user) return false
     const token = captureAccountRequest(session.user.id)
     if (!isAccountRequestCurrent(token)) return false
+    let snapshotRestarts = 0
 
     while (
       ownerIsCurrent()
@@ -510,6 +512,7 @@ export function useNotifications() {
             .select(fields)
             .eq('user_id', token.userId)
             .order('created_at', { ascending: false })
+            .order('id', { ascending: false })
             .limit(50)
         )),
         supabase
@@ -541,6 +544,8 @@ export function useNotifications() {
         // Keep the newer live row/toast or successful read/delete mutation and
         // retry this same readiness barrier. A detached recursive fetch would
         // compete with the transport retry and make both requests stale.
+        snapshotRestarts += 1
+        if (snapshotRestarts >= MAX_NOTIFICATION_SNAPSHOT_RESTARTS) return false
         continue
       }
       notificationStateGeneration += 1

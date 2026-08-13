@@ -111,6 +111,8 @@ DECLARE
   );
   v_actual_triggers text[];
   v_actual_profile_triggers text[];
+  v_actual_notification_triggers text[];
+  v_actual_block_triggers text[];
   v_expected_triggers constant text[] := ARRAY[
     'authoritative_public_write_boundary',
     'enforce_actor_messages',
@@ -127,6 +129,12 @@ DECLARE
     'moderate_profiles',
     'profiles_00_lock_admin_recovery_before_delete',
     'set_profiles_updated_at'
+  ]::text[];
+  v_expected_notification_triggers constant text[] := ARRAY[
+    'attach_notification_conversation'
+  ]::text[];
+  v_expected_block_triggers constant text[] := ARRAY[
+    'trg_serialize_block_pair_change'
   ]::text[];
   v_role text;
   v_actor uuid;
@@ -211,6 +219,8 @@ BEGIN
      OR pg_catalog.to_regclass('public.conversations') IS NULL
      OR pg_catalog.to_regclass('public.messages') IS NULL
      OR pg_catalog.to_regclass('public.conversation_archives') IS NULL
+     OR pg_catalog.to_regclass('public.notifications') IS NULL
+     OR pg_catalog.to_regclass('public.blocks') IS NULL
      OR pg_catalog.to_regprocedure('auth.uid()') IS NULL
      OR pg_catalog.to_regprocedure('auth.jwt()') IS NULL
      OR pg_catalog.to_regprocedure(
@@ -235,7 +245,8 @@ BEGIN
          ('conversations'),
          ('messages'),
          ('conversation_archives'),
-         ('notifications')
+         ('notifications'),
+         ('blocks')
        ) AS expected(relation_name)
        LEFT JOIN pg_catalog.pg_class AS relation
          ON relation.relname = expected.relation_name
@@ -342,7 +353,23 @@ BEGIN
       ('public', 'messages', 'sender_id', 'uuid'),
       ('public', 'messages', 'content', 'text'),
       ('public', 'messages', 'message_type', 'public.message_type'),
-      ('public', 'messages', 'is_read', 'boolean')
+      ('public', 'messages', 'is_read', 'boolean'),
+      ('public', 'messages', 'created_at', 'timestamp with time zone'),
+      ('public', 'notifications', 'id', 'uuid'),
+      ('public', 'notifications', 'user_id', 'uuid'),
+      ('public', 'notifications', 'type', 'text'),
+      ('public', 'notifications', 'title', 'text'),
+      ('public', 'notifications', 'body', 'text'),
+      ('public', 'notifications', 'conversation_id', 'uuid'),
+      ('public', 'notifications', 'is_read', 'boolean'),
+      ('public', 'notifications', 'created_at',
+        'timestamp with time zone'),
+      ('public', 'notifications', 'emailed_at',
+        'timestamp with time zone'),
+      ('public', 'blocks', 'id', 'uuid'),
+      ('public', 'blocks', 'blocker_id', 'uuid'),
+      ('public', 'blocks', 'blocked_id', 'uuid'),
+      ('public', 'blocks', 'created_at', 'timestamp with time zone')
     ) AS expected(schema_name, table_name, column_name, formatted_type)
     LEFT JOIN pg_catalog.pg_namespace AS namespace
       ON namespace.nspname = expected.schema_name
@@ -385,6 +412,27 @@ BEGIN
        IS DISTINCT FROM v_expected_profile_triggers THEN
     RAISE EXCEPTION 'activation_profile_trigger_inventory_drift: %',
       v_actual_profile_triggers USING ERRCODE = '55000';
+  END IF;
+
+  SELECT pg_catalog.array_agg(trigger.tgname ORDER BY trigger.tgname)
+    INTO v_actual_notification_triggers
+  FROM pg_catalog.pg_trigger AS trigger
+  WHERE trigger.tgrelid = 'public.notifications'::pg_catalog.regclass
+    AND NOT trigger.tgisinternal;
+  IF v_actual_notification_triggers
+       IS DISTINCT FROM v_expected_notification_triggers THEN
+    RAISE EXCEPTION 'activation_notification_trigger_inventory_drift: %',
+      v_actual_notification_triggers USING ERRCODE = '55000';
+  END IF;
+
+  SELECT pg_catalog.array_agg(trigger.tgname ORDER BY trigger.tgname)
+    INTO v_actual_block_triggers
+  FROM pg_catalog.pg_trigger AS trigger
+  WHERE trigger.tgrelid = 'public.blocks'::pg_catalog.regclass
+    AND NOT trigger.tgisinternal;
+  IF v_actual_block_triggers IS DISTINCT FROM v_expected_block_triggers THEN
+    RAISE EXCEPTION 'activation_block_trigger_inventory_drift: %',
+      v_actual_block_triggers USING ERRCODE = '55000';
   END IF;
 
   FOR v_actor, v_role IN
@@ -483,6 +531,21 @@ BEGIN
          AND message.sender_id IN (v_actor_a, v_actor_b, v_actor_c)
          AND message.content ~
            '^caaci-hosted-canary-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+     )
+     OR EXISTS (
+       SELECT 1 FROM public.notifications AS notification
+       WHERE notification.user_id = v_actor_a
+         AND notification.conversation_id = v_conversation_ab
+         AND notification.type = 'system'
+         AND notification.body ~
+           '^caaci-hosted-notification-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+     )
+     OR EXISTS (
+       SELECT 1 FROM public.blocks AS block_relation
+       WHERE (block_relation.blocker_id = v_actor_a
+              AND block_relation.blocked_id = v_actor_b)
+          OR (block_relation.blocker_id = v_actor_b
+              AND block_relation.blocked_id = v_actor_a)
      ) THEN
     RAISE EXCEPTION 'activation_fixture_residue_present'
       USING ERRCODE = '55000';
@@ -513,6 +576,24 @@ SELECT
   trigger.tgfoid::pg_catalog.regprocedure AS trigger_function
 FROM pg_catalog.pg_trigger AS trigger
 WHERE trigger.tgrelid = 'public.profiles'::pg_catalog.regclass
+  AND NOT trigger.tgisinternal
+ORDER BY trigger.tgname;
+
+SELECT
+  trigger.tgname AS trigger_name,
+  pg_catalog.pg_get_triggerdef(trigger.oid, true) AS trigger_definition,
+  trigger.tgfoid::pg_catalog.regprocedure AS trigger_function
+FROM pg_catalog.pg_trigger AS trigger
+WHERE trigger.tgrelid = 'public.notifications'::pg_catalog.regclass
+  AND NOT trigger.tgisinternal
+ORDER BY trigger.tgname;
+
+SELECT
+  trigger.tgname AS trigger_name,
+  pg_catalog.pg_get_triggerdef(trigger.oid, true) AS trigger_definition,
+  trigger.tgfoid::pg_catalog.regprocedure AS trigger_function
+FROM pg_catalog.pg_trigger AS trigger
+WHERE trigger.tgrelid = 'public.blocks'::pg_catalog.regclass
   AND NOT trigger.tgisinternal
 ORDER BY trigger.tgname;
 

@@ -96,11 +96,15 @@ flowchart LR
 
 ## Realtime 与私信
 
-H5/小程序只订阅精确 conversation topic。客户端先完成 Realtime auth
-handshake，再为当前账号拥有的会话加入 private channel；退出、换号、页面
-卸载都会移除 channel 和 fallback 请求。`realtime.messages` 的 RLS 只授权
-conversation participant 使用 broadcast/presence；Postgres Changes 的真实
-数据读取继续由源表 RLS 决定。
+H5 的 Broadcast/Presence 先完成 Realtime auth handshake，再为当前账号拥有的
+会话加入精确的 private `conversation:<uuid>` channel。纯 Postgres Changes 使用
+独立的 authenticated channel，不请求 Broadcast/Presence 的 private-topic 授权；
+真实数据读取始终由源表 RLS 决定。小程序走 long-poll/direct-poll，不伪造
+Presence。退出、换号、页面卸载会撤销当前 owner、清理 timer/监听、发起 channel
+移除，并丢弃所有迟到的请求结果；H5 socket 报错、离线或后台恢复时由单一
+sticky direct-poll owner 接管，Presence 则 fail-closed 为 offline/no-op。
+`realtime.messages` 的 RLS 只授权 conversation participant 使用
+Broadcast/Presence。
 
 `realtime.messages` 是 Supabase Realtime 管理的表，不是应用 Data API 表。
 平台 owner 可以保留对 API roles 的非 grantable S/I/U base ACL；应用只拥有

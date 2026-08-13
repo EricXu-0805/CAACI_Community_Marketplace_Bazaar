@@ -91,6 +91,24 @@ export interface HostedPhoenixBroadcastPush {
   readonly payload: Record<string, unknown>
 }
 
+export type HostedDeniedRealtimeProbe = 'random' | 'global' | 'user'
+
+/**
+ * AUTH-02 is the only place where the local egress guard intentionally lets
+ * an invalid private topic reach hosted Realtime. The target is derived from
+ * the frozen run/actor contract, never from an argument or environment value.
+ */
+export function hostedDeniedRealtimeProbeTopic(
+  contract: HostedRealtimeContract,
+  actor: HostedRealtimeAccount,
+  probe: HostedDeniedRealtimeProbe,
+): string {
+  if (probe === 'random') return `conversation:${contract.runId}`
+  if (probe === 'global') return 'online-users'
+  if (probe === 'user') return `user:${actor.expectedUserId}`
+  throw new Error('hosted_realtime_denied_probe_invalid')
+}
+
 function restResource(pathname: string): string | null {
   const match = /^\/rest\/v1\/([a-z_][a-z0-9_]*)$/.exec(pathname)
   return match?.[1] || null
@@ -854,6 +872,14 @@ function exactPostgresBinding(
       && binding.filter === `user_id=eq.${actor.expectedUserId}`
     )
   }
+  if (topic === `realtime:hosted-notification-${contract.runId}`) {
+    return (
+      binding.table === 'notifications'
+      && binding.event === 'INSERT'
+      && binding.filter
+        === `user_id=eq.${contract.accounts[0].expectedUserId}`
+    )
+  }
   if (/^realtime:hosted-pg-[0-9a-f-]{36}$/i.test(topic)) {
     const match = /^conversation_id=eq\.(.+)$/.exec(String(binding.filter))
     return (
@@ -870,7 +896,10 @@ export function hostedRealtimeJoinAllowed(
   contract: HostedRealtimeContract,
   actor: HostedRealtimeAccount,
   frame: HostedPhoenixFrame,
-  options: { anonymous?: boolean } = {},
+  options: {
+    anonymous?: boolean
+    deniedProbe?: HostedDeniedRealtimeProbe
+  } = {},
 ): boolean {
   if (
     frame.event !== 'phx_join'
@@ -928,6 +957,24 @@ export function hostedRealtimeJoinAllowed(
   ) return false
 
   const privateMatch = /^realtime:conversation:(.+)$/.exec(frame.topic)
+  const deniedProbeTopic = options.deniedProbe
+    ? `realtime:${hostedDeniedRealtimeProbeTopic(
+      contract,
+      actor,
+      options.deniedProbe,
+    )}`
+    : null
+  if (deniedProbeTopic && frame.topic === deniedProbeTopic) {
+    return (
+      options.anonymous !== true
+      && candidate.private === true
+      && bindings.length === 0
+      && presenceConfig.key === actor.expectedUserId
+      && presenceConfig.enabled === true
+      && broadcastConfig.self === false
+      && broadcastConfig.ack === true
+    )
+  }
   if (privateMatch) {
     return (
       knownConversation(contract, privateMatch[1])
@@ -1025,6 +1072,7 @@ export function hostedRealtimeOutboundTextFrameAllowed(
   options: {
     readonly anonymous?: boolean
     readonly allowScenarioMarkers?: boolean
+    readonly deniedProbe?: HostedDeniedRealtimeProbe
   } = {},
 ): boolean {
   if (frame.event === 'phx_join') {

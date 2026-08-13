@@ -12,6 +12,10 @@ const SCENARIO_IDS = new Set([
   'FAIL-01',
   'DEDUPE-01',
   'SWITCH-01',
+  'BLOCK-01',
+  'NOTIFY-01',
+  'SCALE-01',
+  'LIFE-01',
 ])
 
 function scenarioId(testCase: TestCase): string {

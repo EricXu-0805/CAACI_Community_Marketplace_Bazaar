@@ -208,6 +208,141 @@ function channelHarness() {
   }
 }
 
+function browserLifecycleHarness(initialVisibility = 'visible') {
+  const documentListeners = new Map()
+  const windowListeners = new Map()
+  const previousDocument = globalThis.document
+  const previousWindow = globalThis.window
+  const listenersFor = (registry, type) => {
+    let listeners = registry.get(type)
+    if (!listeners) {
+      listeners = new Set()
+      registry.set(type, listeners)
+    }
+    return listeners
+  }
+  const fakeDocument = {
+    visibilityState: initialVisibility,
+    addEventListener(type, listener) {
+      listenersFor(documentListeners, type).add(listener)
+    },
+    removeEventListener(type, listener) {
+      documentListeners.get(type)?.delete(listener)
+    },
+  }
+  const fakeWindow = {
+    addEventListener(type, listener) {
+      listenersFor(windowListeners, type).add(listener)
+    },
+    removeEventListener(type, listener) {
+      windowListeners.get(type)?.delete(listener)
+    },
+  }
+
+  return {
+    install() {
+      globalThis.document = fakeDocument
+      globalThis.window = fakeWindow
+    },
+    restore() {
+      if (previousDocument === undefined) delete globalThis.document
+      else globalThis.document = previousDocument
+      if (previousWindow === undefined) delete globalThis.window
+      else globalThis.window = previousWindow
+    },
+    setVisibility(value) {
+      fakeDocument.visibilityState = value
+      for (const listener of [...(documentListeners.get('visibilitychange') || [])]) {
+        listener()
+      }
+    },
+    emitWindow(type) {
+      for (const listener of [...(windowListeners.get(type) || [])]) listener()
+    },
+    listenerCount() {
+      return [...documentListeners.values(), ...windowListeners.values()]
+        .reduce((total, listeners) => total + listeners.size, 0)
+    },
+  }
+}
+
+async function conversationBrowserRecoveryHarness(initialVisibility = 'visible') {
+  const channel = channelHarness()
+  const lifecycle = browserLifecycleHarness(initialVisibility)
+  const seeds = []
+  let queryCount = 0
+  const supabase = {
+    ...channel.supabase,
+    from(table) {
+      assert.equal(table, 'messages')
+      const query = {
+        select() { return query },
+        eq() { return query },
+        order() { return query },
+        limit() {
+          queryCount += 1
+          const seed = deferred()
+          seeds.push(seed)
+          return seed.promise
+        },
+      }
+      return query
+    },
+  }
+  lifecycle.install()
+  let unsubscribe = () => {}
+  try {
+    const realtime = await loadWithRuntime(
+      'src/composables/useRealtimeFallback.ts',
+      [
+        [
+          "import { useSupabase, platformFetch } from './useSupabase'",
+          'const { useSupabase, platformFetch } = globalThis.__RUNTIME_KEY__',
+        ],
+        [
+          "import { MESSAGE_FIELDS } from './useMessages.constants'",
+          'const { MESSAGE_FIELDS } = globalThis.__RUNTIME_KEY__',
+        ],
+        [
+          "import { BASE_URL } from '../config/runtime'",
+          'const { BASE_URL } = globalThis.__RUNTIME_KEY__',
+        ],
+      ],
+      {
+        useSupabase: () => ({ supabase }),
+        platformFetch: globalThis.fetch,
+        MESSAGE_FIELDS: 'id, conversation_id, sender_id, created_at',
+        BASE_URL: 'https://example.invalid',
+      },
+    )
+
+    let readyCount = 0
+    unsubscribe = realtime.subscribeToConversation(
+      'conversation-browser-recovery',
+      () => {},
+      undefined,
+      () => { readyCount += 1 },
+    )
+    return {
+      channel,
+      lifecycle,
+      get queryCount() { return queryCount },
+      get readyCount() { return readyCount },
+      unsubscribe,
+      cleanup() {
+        unsubscribe()
+        for (const seed of seeds) seed.resolve({ data: [], error: null })
+        lifecycle.restore()
+      },
+    }
+  } catch (error) {
+    unsubscribe()
+    for (const seed of seeds) seed.resolve({ data: [], error: null })
+    lifecycle.restore()
+    throw error
+  }
+}
+
 function deferred() {
   let resolvePromise
   let rejectPromise
@@ -283,6 +418,51 @@ test('insert de-duplication is subscription-local and bounded to 512 ids', async
   deliverFirst(shared)
   assert.equal(firstScope.length, 514)
   assert.equal(firstScope[513], shared.id, 'the oldest id must be eligible after bounded eviction')
+
+  const heldConsumer = deferred()
+  const pendingConsumerRows = []
+  const pendingDelivery = realtime.createBoundedInsertDelivery(
+    async (row) => {
+      pendingConsumerRows.push(row.id)
+      if (row.id === 'pending-row-0') await heldConsumer.promise
+    },
+  )
+  const pendingTasks = Array.from({ length: 512 }, (_, index) => (
+    pendingDelivery({ id: `pending-row-${index}` })
+  ))
+  assert.deepEqual(
+    pendingConsumerRows,
+    ['pending-row-0'],
+    'the first async consumer must hold every later row in FIFO order',
+  )
+  assert.equal(
+    pendingDelivery({ id: 'pending-row-511' }),
+    pendingTasks[511],
+    'a duplicate already pending at capacity must join its existing task',
+  )
+  await assert.rejects(
+    pendingDelivery({ id: 'pending-row-over-capacity' }),
+    /realtime_delivery_queue_capacity/,
+  )
+  heldConsumer.resolve()
+  await Promise.all(pendingTasks)
+  assert.deepEqual(
+    pendingConsumerRows,
+    Array.from({ length: 512 }, (_, index) => `pending-row-${index}`),
+    'the accepted 512 rows must drain exactly once and in source order',
+  )
+  assert.equal(
+    pendingConsumerRows.includes('pending-row-over-capacity'),
+    false,
+    'the rejected 513th row must not be queued behind the capacity error',
+  )
+  await pendingDelivery({ id: 'pending-row-over-capacity' })
+  assert.equal(
+    pendingConsumerRows.at(-1),
+    'pending-row-over-capacity',
+    'settled deliveries must release capacity so the rejected row can retry',
+  )
+  pendingDelivery.stop()
 })
 
 test('conversation H5 readiness fires once only after SUBSCRIBED', async () => {
@@ -388,6 +568,77 @@ test('H5 readiness retries a rejected authoritative snapshot without duplicating
     assert.equal(successes, 1)
   } finally {
     unsubscribe()
+  }
+})
+
+test('H5 initial hidden-to-visible resume takes over a silent conversation socket', async () => {
+  const harness = await conversationBrowserRecoveryHarness('hidden')
+  try {
+    harness.channel.status('SUBSCRIBED')
+    assert.equal(harness.readyCount, 1)
+    assert.equal(harness.queryCount, 0)
+    assert.equal(harness.lifecycle.listenerCount(), 2)
+
+    harness.lifecycle.setVisibility('visible')
+    assert.equal(harness.channel.removeCount(), 1)
+    assert.equal(harness.queryCount, 1, 'foreground takeover must cold-seed one direct poll')
+    assert.deepEqual(
+      capturedTelemetry,
+      [{ message: 'realtime_fallback_takeover', source: 'realtime.fallback.conversation' }],
+    )
+    assert.equal(harness.lifecycle.listenerCount(), 0)
+  } finally {
+    harness.cleanup()
+  }
+})
+
+test('H5 fresh offline takes over once without a visibility transition', async () => {
+  const harness = await conversationBrowserRecoveryHarness()
+  try {
+    harness.channel.status('SUBSCRIBED')
+    harness.lifecycle.emitWindow('offline')
+    assert.equal(harness.channel.removeCount(), 1)
+    assert.equal(harness.queryCount, 1)
+    assert.deepEqual(
+      capturedTelemetry,
+      [{ message: 'realtime_fallback_takeover', source: 'realtime.fallback.conversation' }],
+    )
+    assert.equal(harness.lifecycle.listenerCount(), 0)
+  } finally {
+    harness.cleanup()
+  }
+})
+
+test('H5 visible-without-hidden is not a conversation transport failure', async () => {
+  const harness = await conversationBrowserRecoveryHarness()
+  try {
+    harness.channel.status('SUBSCRIBED')
+    harness.lifecycle.setVisibility('visible')
+    assert.equal(harness.channel.removeCount(), 0)
+    assert.equal(harness.queryCount, 0)
+    assert.deepEqual(capturedTelemetry, [])
+    assert.equal(harness.lifecycle.listenerCount(), 2)
+  } finally {
+    harness.cleanup()
+  }
+})
+
+test('H5 explicit conversation unsubscribe removes lifecycle observers without takeover', async () => {
+  const harness = await conversationBrowserRecoveryHarness()
+  try {
+    harness.channel.status('SUBSCRIBED')
+    harness.unsubscribe()
+    assert.equal(harness.channel.removeCount(), 1, 'explicit teardown still removes its primary socket')
+    assert.equal(harness.lifecycle.listenerCount(), 0)
+
+    harness.lifecycle.setVisibility('hidden')
+    harness.lifecycle.setVisibility('visible')
+    harness.lifecycle.emitWindow('offline')
+    assert.equal(harness.channel.removeCount(), 1)
+    assert.equal(harness.queryCount, 0)
+    assert.deepEqual(capturedTelemetry, [])
+  } finally {
+    harness.cleanup()
   }
 })
 
@@ -3115,6 +3366,269 @@ type Notification = any`,
   assert.equal(transportStops, 8)
 })
 
+test('three torn notification snapshots preserve live state before one delayed quiet retry applies', async (t) => {
+  const userId = '11111111-1111-4111-8111-111111111111'
+  const listReads = Array.from({ length: 4 }, () => deferred())
+  const countReads = Array.from({ length: 4 }, () => deferred())
+  let listReadCalls = 0
+  let countReadCalls = 0
+  const listOrders = []
+  const listLimits = []
+  const supabase = {
+    auth: {
+      getSession: async () => ({ data: { session: { user: { id: userId } } } }),
+    },
+    from(table) {
+      assert.equal(table, 'notifications')
+      let mode = null
+      const query = {
+        select(fields, options) {
+          mode = options?.head ? 'count' : 'list'
+          if (mode === 'count') assert.equal(fields, 'id')
+          return query
+        },
+        eq() { return query },
+        order(column, options) {
+          assert.equal(mode, 'list')
+          listOrders.push([column, options?.ascending])
+          return query
+        },
+        limit(value) {
+          assert.equal(mode, 'list')
+          listLimits.push(value)
+          return query
+        },
+        then(resolvePromise, rejectPromise) {
+          const pending = mode === 'list'
+            ? listReads[listReadCalls++]
+            : countReads[countReadCalls++]
+          assert.ok(pending, 'notification snapshot exceeded its delayed retry budget')
+          return pending.promise.then(resolvePromise, rejectPromise)
+        },
+      }
+      return query
+    },
+  }
+  let liveCallback = null
+  let transportStops = 0
+  const module = await loadWithRuntime(
+    'src/composables/useNotifications.ts',
+    [
+      [
+        "import { ref, watch } from 'vue'",
+        'const { ref, watch } = globalThis.__RUNTIME_KEY__',
+      ],
+      [
+        "import { useSupabase } from './useSupabase'",
+        'const { useSupabase } = globalThis.__RUNTIME_KEY__',
+      ],
+      [
+        "import { useAuth } from './useAuth'",
+        'const { useAuth } = globalThis.__RUNTIME_KEY__',
+      ],
+      [
+        "import { subscribeToUserNotifications } from './useRealtimeFallback'",
+        'const { subscribeToUserNotifications } = globalThis.__RUNTIME_KEY__',
+      ],
+      [
+        "import { pushToast } from './useAppToast'",
+        'const { pushToast } = globalThis.__RUNTIME_KEY__',
+      ],
+      [
+        "import { useI18n } from './useI18n'",
+        'const { useI18n } = globalThis.__RUNTIME_KEY__',
+      ],
+      [
+        "import { invalidateConversations, useMessages } from './useMessages'",
+        'const { invalidateConversations, useMessages } = globalThis.__RUNTIME_KEY__',
+      ],
+      [
+        `import {
+  captureAccountRequest,
+  captureActiveAccountRequest,
+  getActiveAccountId,
+  isAccountRequestCurrent,
+  onAccountTransition,
+} from './accountScope'`,
+        'const { captureAccountRequest, captureActiveAccountRequest, getActiveAccountId, isAccountRequestCurrent, onAccountTransition } = globalThis.__RUNTIME_KEY__',
+      ],
+      [
+        `import {
+  fetchNotificationRowsWithCompatibility,
+  notificationDestination,
+  notificationIcon,
+  notificationToastKind,
+  notificationTypeLabelKey,
+  type Notification,
+} from '../api/notifications'`,
+        `const {
+  fetchNotificationRowsWithCompatibility,
+  notificationDestination,
+  notificationIcon,
+  notificationToastKind,
+  notificationTypeLabelKey,
+} = globalThis.__RUNTIME_KEY__
+type Notification = any`,
+      ],
+    ],
+    {
+      ref: value => ({ value }),
+      watch: () => () => {},
+      useSupabase: () => ({ supabase }),
+      useAuth: () => ({ currentUser: { value: null } }),
+      subscribeToUserNotifications: (_requestedUserId, onNew) => {
+        liveCallback = onNew
+        return () => { transportStops += 1 }
+      },
+      pushToast: () => {},
+      useI18n: () => ({ t: key => key }),
+      invalidateConversations: () => {},
+      useMessages: () => ({ fetchConversations: async () => true }),
+      captureAccountRequest: requestedUserId => ({
+        userId: requestedUserId,
+        generation: 1,
+      }),
+      captureActiveAccountRequest: () => ({ userId, generation: 1 }),
+      getActiveAccountId: () => userId,
+      isAccountRequestCurrent: token => token?.userId === userId,
+      onAccountTransition: () => () => {},
+      fetchNotificationRowsWithCompatibility: async (buildQuery) => {
+        const result = await buildQuery(
+          'id, user_id, type, title, body, item_id, conversation_id, is_read, created_at',
+        )
+        if (result.error) throw result.error
+        return result.data
+      },
+      notificationDestination: () => ({ url: '/pages/notifications/index', switchTab: false }),
+      notificationIcon: () => 'bell',
+      notificationToastKind: () => 'info',
+      notificationTypeLabelKey: () => 'notif.system',
+    },
+    input => input
+      .replace(
+        'const LIVE_NOTIFICATION_RECONCILE_RETRY_MS = 1500',
+        'const LIVE_NOTIFICATION_RECONCILE_RETRY_MS = 0',
+      )
+      .replace(
+        'const notifications = ref<Notification[]>([])',
+        'export const notifications = ref<Notification[]>([])',
+      )
+      .replace(
+        'const unreadNotifCount = ref(0)',
+        'export const unreadNotifCount = ref(0)',
+      )
+      .replace(
+        'function startNotificationsListener(',
+        'export function startNotificationsListener(',
+      )
+      .replace(
+        'function stopNotificationsListener()',
+        'export function stopNotificationsListener()',
+      ),
+  )
+
+  const sentinel = {
+    id: 'notification-sentinel',
+    user_id: userId,
+    type: 'system',
+    title: 'Sentinel',
+    body: '',
+    item_id: null,
+    conversation_id: null,
+    is_read: false,
+    created_at: '2026-07-30T00:00:00.000000Z',
+  }
+  const liveRows = Array.from({ length: 4 }, (_, index) => ({
+    ...sentinel,
+    id: `notification-live-${index + 1}`,
+    title: `Live ${index + 1}`,
+    created_at: `2026-07-30T00:00:00.00000${index + 1}Z`,
+  }))
+  const staleRow = {
+    ...sentinel,
+    id: 'notification-stale-snapshot',
+    title: 'Must never apply',
+  }
+  module.notifications.value = [sentinel]
+  module.unreadNotifCount.value = 7
+  const api = module.useNotifications()
+  module.startNotificationsListener(userId, (isListenerCurrent) => (
+    api.fetchNotifications(isListenerCurrent).then((reconciled) => {
+      if (!reconciled && isListenerCurrent()) {
+        throw new Error('notification_reconcile_failed')
+      }
+    })
+  ))
+  t.after(() => module.stopNotificationsListener())
+  assert.equal(typeof liveCallback, 'function')
+
+  await liveCallback(liveRows[0])
+  await waitUntil(
+    () => listReadCalls === 1 && countReadCalls === 1,
+    'first listener-owned notification snapshot did not start',
+  )
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await liveCallback(liveRows[attempt + 1])
+    listReads[attempt].resolve({ data: [staleRow], error: null })
+    countReads[attempt].resolve({ count: 0, error: null })
+    if (attempt < 2) {
+      await waitUntil(
+        () => listReadCalls === attempt + 2 && countReadCalls === attempt + 2,
+        `torn notification snapshot ${attempt + 1} did not restart in-flight`,
+      )
+    }
+  }
+
+  await waitUntil(
+    () => listReadCalls === 4 && countReadCalls === 4,
+    'the outer delayed retry owner did not start a quiet fourth snapshot',
+  )
+  assert.deepEqual(module.notifications.value.map(row => row.id), [
+    'notification-live-4',
+    'notification-live-3',
+    'notification-live-2',
+    'notification-live-1',
+    'notification-sentinel',
+  ])
+  assert.equal(
+    module.unreadNotifCount.value,
+    11,
+    'none of the three torn list/count pairs may overwrite accepted live state',
+  )
+  assert.equal(
+    module.notifications.value.some(row => row.id === staleRow.id),
+    false,
+  )
+
+  const authoritativeRows = [
+    liveRows[3],
+    liveRows[2],
+    liveRows[1],
+    liveRows[0],
+    sentinel,
+  ]
+  listReads[3].resolve({ data: authoritativeRows, error: null })
+  countReads[3].resolve({ count: authoritativeRows.length, error: null })
+  await waitUntil(
+    () => module.unreadNotifCount.value === authoritativeRows.length,
+    'the quiet delayed retry did not apply its authoritative count',
+  )
+  assert.deepEqual(module.notifications.value, authoritativeRows)
+  await new Promise(resolve => setTimeout(resolve, 5))
+  assert.equal(listReadCalls, 4, 'a successful quiet retry must settle the outer owner')
+  assert.equal(countReadCalls, 4)
+  assert.deepEqual(
+    listOrders,
+    Array.from({ length: 4 }, () => [
+      ['created_at', false],
+      ['id', false],
+    ]).flat(),
+  )
+  assert.deepEqual(listLimits, [50, 50, 50, 50])
+  module.stopNotificationsListener()
+  assert.equal(transportStops, 1)
+})
+
 test('Presence duplicate readiness tracks once and transport failure stays offline/no-op', async () => {
   const listeners = []
   let statusCallback = null
@@ -3458,6 +3972,66 @@ async function loadUseMessagesConsumer(supabase, runtime = {}) {
     },
   )
 }
+
+test('message snapshots preserve microseconds before using UUID as an exact-timestamp tie break', async () => {
+  const conversationId = 'conversation-microsecond-order'
+  const orders = []
+  let pageLimit = null
+  const row = (id, createdAt) => ({
+    id,
+    conversation_id: conversationId,
+    sender_id: '22222222-2222-4222-8222-222222222222',
+    content: id,
+    message_type: 'text',
+    is_read: false,
+    created_at: createdAt,
+  })
+  // Model the exact rows PostgREST returns for
+  // ORDER BY created_at DESC, id DESC.
+  const descendingRows = [
+    row('11111111-1111-4111-8111-111111111111', '2026-07-30T00:00:00.000002Z'),
+    row('ffffffff-ffff-4fff-8fff-ffffffffffff', '2026-07-30T00:00:00.000001Z'),
+    row('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', '2026-07-30T00:00:00.000000Z'),
+    row('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '2026-07-30T00:00:00.000000Z'),
+  ]
+  const supabase = {
+    from(table) {
+      assert.equal(table, 'messages')
+      const query = {
+        select() { return query },
+        eq(column, value) {
+          assert.equal(column, 'conversation_id')
+          assert.equal(value, conversationId)
+          return query
+        },
+        order(column, options) {
+          orders.push([column, options?.ascending])
+          return query
+        },
+        limit(value) {
+          pageLimit = value
+          return Promise.resolve({ data: descendingRows, error: null })
+        },
+      }
+      return query
+    },
+  }
+  const module = await loadUseMessagesConsumer(supabase)
+  const api = module.useMessages()
+
+  assert.equal(await api.fetchMessages(conversationId), true)
+  assert.deepEqual(orders, [
+    ['created_at', false],
+    ['id', false],
+  ])
+  assert.equal(pageLimit, 200)
+  assert.deepEqual(api.messages.value.map(message => message.id), [
+    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    'ffffffff-ffff-4fff-8fff-ffffffffffff',
+    '11111111-1111-4111-8111-111111111111',
+  ])
+})
 
 test('a superseded message snapshot reports failure when its newer owner also fails', async () => {
   const pending = []
@@ -4724,6 +5298,11 @@ test('ChatThread wires guarded ready refetches before initial snapshots', () => 
 
   assert.match(messages, /async function fetchMessages\(conversationId: string\): Promise<boolean>/)
   assert.match(messages, /requestId !== latestMessagesRequestId[\s\S]*?\) return false/)
+  assert.match(
+    messages,
+    /\.order\('created_at', \{ ascending: false \}\)\s*\.order\('id', \{ ascending: false \}\)\s*\.limit\(MESSAGE_PAGE\)/,
+    'a capped message snapshot needs a deterministic id tiebreaker',
+  )
   const subscribeMessagesStart = messages.indexOf('function subscribeToMessages(')
   const subscribeMessagesEnd = messages.indexOf('\n  async function markAsRead(', subscribeMessagesStart)
   const subscribeMessagesBlock = messages.slice(subscribeMessagesStart, subscribeMessagesEnd)
@@ -4777,6 +5356,17 @@ test('consumer readiness requires both inbox and notification snapshots to apply
   )
   assert.match(notifications, /async function fetchNotifications\([\s\S]*?ownerIsCurrent: \(\) => boolean = \(\) => true,[\s\S]*?\): Promise<boolean>/)
   assert.match(notifications, /requestId !== latestNotificationFetchId\) return false/)
+  assert.match(
+    notifications,
+    /\.order\('created_at', \{ ascending: false \}\)\s*\.order\('id', \{ ascending: false \}\)\s*\.limit\(50\)/,
+    'a capped notification snapshot needs a deterministic id tiebreaker',
+  )
+  assert.match(notifications, /const MAX_NOTIFICATION_SNAPSHOT_RESTARTS = 3/)
+  assert.match(
+    notifications,
+    /snapshotRestarts \+= 1\s*if \(snapshotRestarts >= MAX_NOTIFICATION_SNAPSHOT_RESTARTS\) return false/,
+    'continuous live writes must yield to the existing delayed retry owner',
+  )
   const notificationListenerStart = notifications.indexOf('function startNotificationsListener(')
   const notificationListenerEnd = notifications.indexOf('\nfunction stopNotificationsListener()', notificationListenerStart)
   const notificationListenerBlock = notifications.slice(notificationListenerStart, notificationListenerEnd)

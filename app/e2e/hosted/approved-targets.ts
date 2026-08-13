@@ -28,7 +28,8 @@
  *     providerProofExpiresAt: '<exact-UTC-ISO-expiry>',
  *   }
  *
- * Never add the production ref or `illinimarket.com`.
+ * The server-owned environment sentinel must additionally attest
+ * `protocol_revision=2`. Never add the production ref or `illinimarket.com`.
  */
 export interface ApprovedHostedRealtimeTarget {
   readonly projectRef: string

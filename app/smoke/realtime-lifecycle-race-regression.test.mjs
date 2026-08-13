@@ -22,6 +22,51 @@ function deferred() {
   }
 }
 
+function browserLifecycleHarness(initialVisibility = 'visible') {
+  const documentListeners = new Map()
+  const windowListeners = new Map()
+  const previousDocument = globalThis.document
+  const previousWindow = globalThis.window
+  const add = (registry, type, listener) => {
+    if (!registry.has(type)) registry.set(type, new Set())
+    registry.get(type).add(listener)
+  }
+  const fakeDocument = {
+    visibilityState: initialVisibility,
+    addEventListener: (type, listener) => add(documentListeners, type, listener),
+    removeEventListener: (type, listener) => documentListeners.get(type)?.delete(listener),
+  }
+  const fakeWindow = {
+    addEventListener: (type, listener) => add(windowListeners, type, listener),
+    removeEventListener: (type, listener) => windowListeners.get(type)?.delete(listener),
+  }
+  return {
+    install() {
+      globalThis.document = fakeDocument
+      globalThis.window = fakeWindow
+    },
+    restore() {
+      if (previousDocument === undefined) delete globalThis.document
+      else globalThis.document = previousDocument
+      if (previousWindow === undefined) delete globalThis.window
+      else globalThis.window = previousWindow
+    },
+    setVisibility(value) {
+      fakeDocument.visibilityState = value
+      for (const listener of [...(documentListeners.get('visibilitychange') || [])]) {
+        listener()
+      }
+    },
+    emitWindow(type) {
+      for (const listener of [...(windowListeners.get(type) || [])]) listener()
+    },
+    listenerCount() {
+      return [...documentListeners.values(), ...windowListeners.values()]
+        .reduce((total, listeners) => total + listeners.size, 0)
+    },
+  }
+}
+
 async function waitUntil(condition, message, timeoutMs = 500) {
   const deadline = Date.now() + timeoutMs
   while (!condition()) {
@@ -96,6 +141,7 @@ async function createPresenceHarness(trackFlights, { trackRetryMs = 0 } = {}) {
   let presenceState = {}
   let accountCurrent = true
   let transportClosed = false
+  let transportStops = 0
   let trackCalls = 0
   let sendCalls = 0
   let typingEvents = 0
@@ -133,6 +179,7 @@ async function createPresenceHarness(trackFlights, { trackRetryMs = 0 } = {}) {
       return () => {
         if (transportClosed) return
         transportClosed = true
+        transportStops += 1
         accountCurrent = false
         options.onClose?.()
       }
@@ -159,6 +206,9 @@ async function createPresenceHarness(trackFlights, { trackRetryMs = 0 } = {}) {
     },
     get typingEvents() {
       return typingEvents
+    },
+    get transportStops() {
+      return transportStops
     },
     status(status) {
       channelOptions.onStatus?.(status)
@@ -508,3 +558,70 @@ test('Presence close and explicit unsubscribe invalidate a pending track generat
     assert.deepEqual(harness.onlineStates, [])
   }
 })
+
+for (const presenceBrowserCase of [
+  {
+    label: 'an initially hidden tab resumes visible',
+    initialVisibility: 'hidden',
+    trigger(lifecycle) {
+      lifecycle.setVisibility('visible')
+    },
+  },
+  {
+    label: 'a fresh offline event fires',
+    initialVisibility: 'visible',
+    trigger(lifecycle) {
+      lifecycle.emitWindow('offline')
+    },
+  },
+  {
+    label: 'an observed hidden tab resumes visible',
+    initialVisibility: 'visible',
+    trigger(lifecycle) {
+      lifecycle.setVisibility('hidden')
+      lifecycle.setVisibility('visible')
+    },
+  },
+]) {
+  test(`Presence tears down exactly once when ${presenceBrowserCase.label}`, async () => {
+    const lifecycle = browserLifecycleHarness(presenceBrowserCase.initialVisibility)
+    const track = deferred()
+    let harness = null
+    lifecycle.install()
+    try {
+      harness = await createPresenceHarness([track])
+      assert.equal(lifecycle.listenerCount(), 2)
+      harness.status('SUBSCRIBED')
+      track.resolve('ok')
+      await track.promise
+      await Promise.resolve()
+      harness.syncPeerOnline()
+      assert.equal(harness.presence.peerOnline.value, true)
+
+      presenceBrowserCase.trigger(lifecycle)
+      assert.equal(harness.presence.peerOnline.value, false)
+      assert.equal(harness.transportStops, 1, 'browser recovery must close the SDK transport')
+      assert.equal(lifecycle.listenerCount(), 0)
+      assert.deepEqual(harness.onlineStates, [true, false])
+      harness.presence.sendTyping()
+      harness.receivePeerTyping()
+      assert.equal(harness.sendCalls, 0)
+      assert.equal(harness.typingEvents, 0)
+
+      lifecycle.setVisibility('hidden')
+      lifecycle.setVisibility('visible')
+      lifecycle.emitWindow('offline')
+      harness.presence.unsubscribe()
+      assert.equal(
+        harness.transportStops,
+        1,
+        'repeated browser signals and explicit teardown must share one idempotent stop owner',
+      )
+      assert.equal(lifecycle.listenerCount(), 0)
+    } finally {
+      harness?.presence.unsubscribe()
+      track.resolve('ok')
+      lifecycle.restore()
+    }
+  })
+}

@@ -33,6 +33,7 @@ SELECT
   config.dataset_lineage,
   config.fixture_manifest_sha256,
   config.fixture_revision,
+  config.protocol_revision,
   config.admission_open,
   config.last_ttl_heartbeat_at,
   config.expires_at,

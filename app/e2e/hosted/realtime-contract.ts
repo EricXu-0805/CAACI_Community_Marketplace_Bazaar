@@ -37,6 +37,7 @@ export interface HostedRealtimeAccount {
 }
 
 export interface HostedRealtimeContract {
+  readonly protocolRevision: 2
   readonly runId: string
   readonly appOrigin: string
   readonly supabaseOrigin: string
@@ -66,6 +67,7 @@ export interface HostedDeploymentManifest {
 }
 
 export interface HostedEnvironmentSentinel {
+  readonly protocol_revision: 2
   readonly sentinel_id: string
   readonly project_ref: string
   readonly dataset_lineage: string
@@ -382,7 +384,7 @@ export function loadHostedRealtimeContract(
   if (env.CAACI_HOSTED_CANARY_MODE !== 'realtime-staging') {
     contractFailure('mode')
   }
-  if (env.CAACI_HOSTED_CANARY_LAUNCHER !== 'v1') {
+  if (env.CAACI_HOSTED_CANARY_LAUNCHER !== 'v2') {
     contractFailure('safe launcher')
   }
   if (env.CAACI_HOSTED_CANARY_CONFIRM !== CONFIRMATION) {
@@ -470,6 +472,7 @@ export function loadHostedRealtimeContract(
   }
 
   return Object.freeze({
+    protocolRevision: 2,
     runId,
     appOrigin,
     supabaseOrigin: `https://${projectRef}.supabase.co`,
@@ -514,6 +517,7 @@ export function assertHostedEnvironmentSentinel(
     'fixture_revision',
     'lifecycle_state',
     'project_ref',
+    'protocol_revision',
     'provider_disable_proof_sha256',
     'provider_proof_expires_at',
     'provider_side_effects_disabled',
@@ -532,6 +536,7 @@ export function assertHostedEnvironmentSentinel(
     || String(candidate.sentinel_id || '').toLowerCase()
       !== contract.environmentSentinelId
     || String(candidate.project_ref || '').toLowerCase() !== contract.projectRef
+    || candidate.protocol_revision !== contract.protocolRevision
     || String(candidate.dataset_lineage || '').toLowerCase()
       !== contract.datasetLineage
     || candidate.fixture_revision !== contract.fixtureRevision
@@ -556,6 +561,7 @@ export function assertHostedEnvironmentSentinel(
   ) contractFailure('environment sentinel mismatch')
 
   return Object.freeze({
+    protocol_revision: 2,
     sentinel_id: contract.environmentSentinelId,
     project_ref: contract.projectRef,
     dataset_lineage: contract.datasetLineage,
@@ -783,7 +789,7 @@ export function hostedDeploymentManifestProof(
 ): string {
   return createHash('sha256')
     .update([
-      'caaci-hosted-realtime-v1',
+      'caaci-hosted-realtime-v2',
       contract.appOrigin,
       contract.projectRef,
       contract.commit,

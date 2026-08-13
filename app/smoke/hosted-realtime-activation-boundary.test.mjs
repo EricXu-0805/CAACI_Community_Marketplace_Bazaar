@@ -32,6 +32,18 @@ function sqlFunctionBody(sql, functionName) {
   return sql.slice(bodyIndex + bodyMarker.length, endIndex)
 }
 
+function publicSqlFunctionBody(sql, functionName) {
+  const declaration = `CREATE FUNCTION public.${functionName}`
+  const declarationIndex = sql.indexOf(declaration)
+  assert.ok(declarationIndex >= 0, `missing ${functionName} declaration`)
+  const bodyMarker = 'AS $function$'
+  const bodyIndex = sql.indexOf(bodyMarker, declarationIndex)
+  assert.ok(bodyIndex >= 0, `missing ${functionName} body`)
+  const endIndex = sql.indexOf('$function$;', bodyIndex + bodyMarker.length)
+  assert.ok(endIndex >= 0, `missing ${functionName} body terminator`)
+  return sql.slice(bodyIndex + bodyMarker.length, endIndex)
+}
+
 test('hosted activation remains staging-only and outside migration history', () => {
   const targets = source('app/e2e/hosted/approved-targets.ts')
   const harnessReadme = source('app/e2e/hosted/README.md')
@@ -72,6 +84,94 @@ test('hosted activation remains staging-only and outside migration history', () 
   )
 })
 
+test('pg_cron prerequisite binds the reviewed fixture before atomic DDL', () => {
+  const prerequisite = activationSource(
+    'STAGING_PREREQ_enable_pg_cron.sql',
+  )
+  const runner = activationSource('run-local-regression.sh')
+  const readme = activationSource('README.md')
+  const canonicalVerifyIndex = prerequisite.indexOf(
+    '\\ir ../VERIFY_20260719164126_reconcile_managed_realtime_authorization_contract.sql',
+  )
+  const transactionIndex = prerequisite.indexOf('BEGIN;')
+  const productionDenyIndex = prerequisite.indexOf(
+    'staging_prerequisite_refused_known_production_project',
+  )
+  const manifestDenyIndex = prerequisite.indexOf(
+    'staging_prerequisite_fixture_manifest_mismatch',
+  )
+  const extensionIndex = prerequisite.indexOf(
+    'CREATE EXTENSION pg_cron WITH SCHEMA pg_catalog;',
+  )
+  const commitIndex = prerequisite.indexOf('COMMIT;', extensionIndex)
+
+  assert.ok(canonicalVerifyIndex >= 0)
+  assert.ok(canonicalVerifyIndex < transactionIndex)
+  assert.ok(transactionIndex < productionDenyIndex)
+  assert.ok(productionDenyIndex < manifestDenyIndex)
+  assert.ok(manifestDenyIndex < extensionIndex)
+  assert.ok(extensionIndex < commitIndex)
+  assert.match(prerequisite, /\\set ON_ERROR_STOP on/)
+  assert.match(
+    prerequisite,
+    /:'prerequisite_mode' = 'apply-approved-staging-pg-cron'/,
+  )
+  assert.match(
+    prerequisite,
+    /v_mode = 'local-guard-only'[\s\S]*current_database\(\)[\s\S]*caaci_hosted_realtime_regression[\s\S]*inet_server_addr\(\) IS NOT NULL/,
+  )
+  assert.match(
+    prerequisite,
+    /v_mode = 'apply-approved-staging-pg-cron'[\s\S]*current_database\(\) <> 'postgres'/,
+  )
+  assert.match(prerequisite, /lfhvgprfphyfvhidegum/)
+  assert.match(prerequisite, /caaci-hosted-fixture-v1/)
+  assert.match(prerequisite, /extensions\.digest/)
+  for (const marker of [
+    'caaci_hosted_canary',
+    'caaci_dataset_lineage',
+    'caaci_canary_role',
+    'auth.identities',
+    'auth.sessions',
+    'public.profiles',
+    'public.conversations',
+    'v_conversation_ab',
+    'v_conversation_ac',
+  ]) {
+    assert.match(prerequisite, new RegExp(marker.replace('.', '\\.')))
+  }
+  assert.match(prerequisite, /staging_prerequisite_pg_cron_already_present/)
+  assert.match(
+    prerequisite,
+    /staging_prerequisite_pg_cron_postcondition_failed[\s\S]*COMMIT;/,
+  )
+  assert.doesNotMatch(prerequisite, /CREATE EXTENSION IF NOT EXISTS/i)
+  assert.equal(
+    prerequisite.match(/CREATE EXTENSION pg_cron/gi)?.length,
+    1,
+  )
+
+  assert.ok(
+    (runner.match(/STAGING_PREREQ_enable_pg_cron\.sql/g) ?? []).length >= 4,
+  )
+  assert.match(runner, /prerequisite_mode=local-guard-only/)
+  assert.match(runner, /prerequisite_known_production_negative=pass/)
+  assert.match(runner, /prerequisite_target_binding=pass/)
+  assert.match(
+    runner,
+    /staging_prerequisite_refused_known_production_project/,
+  )
+  assert.match(
+    readme,
+    /PostgreSQL has no trusted built-in Supabase project-ref value/,
+  )
+  assert.match(readme, /same exact\s+fixture-binding inputs/)
+  assert.match(
+    readme,
+    /Any failed guard or\s+postcondition rolls the transaction back/,
+  )
+})
+
 test('activation SQL installs a least-privilege run and write ledger', () => {
   const activation = activationSource('ACTIVATE.sql')
 
@@ -79,6 +179,8 @@ test('activation SQL installs a least-privilege run and write ledger', () => {
     'hosted_realtime_canary_environment_config',
     'hosted_realtime_canary_runs',
     'hosted_realtime_canary_writes',
+    'hosted_realtime_canary_notifications',
+    'hosted_realtime_canary_block_transitions',
     'hosted_realtime_canary_profile_baselines',
   ]) {
     assert.match(activation, new RegExp(`private\\.${table}`))
@@ -89,7 +191,10 @@ test('activation SQL installs a least-privilege run and write ledger', () => {
   )
   assert.match(activation, /p_run_id uuid/)
   assert.match(activation, /pg_advisory_xact_lock/)
-  assert.match(activation, /LOCK TABLE public\.conversations IN SHARE MODE/)
+  assert.match(
+    activation,
+    /LOCK TABLE[\s\S]{0,250}public\.conversations,[\s\S]{0,100}public\.notifications,[\s\S]{0,100}public\.blocks[\s\S]{0,100}IN SHARE MODE/,
+  )
   assert.match(activation, /auth\.jwt\(\)[\s\S]*session_id/)
   assert.match(activation, /caaci_hosted_canary/)
   assert.match(activation, /caaci_dataset_lineage/)
@@ -389,7 +494,11 @@ test('public activation RPCs expose only the reviewed identities', () => {
     'public.hosted_realtime_canary_environment()',
     'public.hosted_realtime_canary_begin_run(uuid)',
     'public.hosted_realtime_canary_insert_message(uuid,uuid,uuid,text)',
+    'public.hosted_realtime_canary_insert_scale_batch(uuid,uuid[])',
+    'public.hosted_realtime_canary_insert_notification(uuid,uuid)',
+    'public.hosted_realtime_canary_set_block(uuid,uuid,boolean)',
     'public.hosted_realtime_canary_cleanup(uuid,uuid[])',
+    'public.hosted_realtime_canary_cleanup_v2(uuid,uuid[],uuid[])',
   ]) {
     assert.ok(
       normalized.includes(
@@ -405,7 +514,11 @@ test('public activation RPCs expose only the reviewed identities', () => {
   for (const signature of [
     'public.hosted_realtime_canary_begin_run(uuid)',
     'public.hosted_realtime_canary_insert_message(uuid,uuid,uuid,text)',
+    'public.hosted_realtime_canary_insert_scale_batch(uuid,uuid[])',
+    'public.hosted_realtime_canary_insert_notification(uuid,uuid)',
+    'public.hosted_realtime_canary_set_block(uuid,uuid,boolean)',
     'public.hosted_realtime_canary_cleanup(uuid,uuid[])',
+    'public.hosted_realtime_canary_cleanup_v2(uuid,uuid[],uuid[])',
   ]) {
     assert.ok(
       normalized.includes(
@@ -415,7 +528,7 @@ test('public activation RPCs expose only the reviewed identities', () => {
   }
   assert.doesNotMatch(
     activation,
-    /GRANT EXECUTE ON FUNCTION public\.hosted_realtime_canary_(?:begin_run|insert_message|cleanup)[\s\S]*TO (?:anon|service_role)/i,
+    /GRANT EXECUTE ON FUNCTION public\.hosted_realtime_canary_(?:begin_run|insert_message|insert_scale_batch|insert_notification|set_block|cleanup|cleanup_v2)[\s\S]*TO (?:anon|service_role)/i,
   )
 })
 
@@ -445,6 +558,65 @@ test('insert and cleanup are exact, actor-bound, and restore derived state', () 
   assert.match(activation, /residue_count/)
   assert.doesNotMatch(activation, /DELETE FROM public\.messages[\s\S]*LIKE/i)
   assert.doesNotMatch(activation, /\bTRUNCATE\b/i)
+})
+
+test('protocol V2 pins scale, notification, block, and failure cleanup shapes', () => {
+  const activation = activationSource('ACTIVATE.sql')
+  const cleanupV2 = publicSqlFunctionBody(
+    activation,
+    'hosted_realtime_canary_cleanup_v2',
+  )
+
+  assert.match(
+    activation,
+    /protocol_revision integer NOT NULL DEFAULT 2 CHECK \(protocol_revision = 2\)/,
+  )
+  assert.match(activation, /write_class IN \('base', 'scale'\)/)
+  assert.match(activation, /batch_ordinal BETWEEN 1 AND 51/)
+  assert.match(activation, /expected_created_at timestamptz NOT NULL/)
+  assert.match(
+    activation,
+    /CREATE FUNCTION public\.hosted_realtime_canary_insert_scale_batch\([\s\S]{0,100}p_run_id uuid,[\s\S]{0,100}p_message_ids uuid\[\][\s\S]{0,100}RETURNS TABLE\(inserted_count integer, created_at timestamptz\)/,
+  )
+  assert.match(activation, /pg_catalog\.cardinality\(v_sorted\) <> 51/)
+  assert.match(activation, /v_sorted IS DISTINCT FROM p_message_ids/)
+  assert.match(
+    activation,
+    /CASE WHEN input\.ordinality <= 21[\s\S]{0,100}v_config\.actor_a_id ELSE v_config\.actor_b_id END/,
+  )
+  assert.match(activation, /'caaci-hosted-canary-' \|\| input\.id::text/)
+
+  assert.match(
+    activation,
+    /CREATE FUNCTION public\.hosted_realtime_canary_insert_notification\([\s\S]{0,100}p_run_id uuid,[\s\S]{0,100}p_id uuid[\s\S]{0,100}RETURNS TABLE\(notification_id uuid, created_at timestamptz\)/,
+  )
+  assert.match(activation, /'caaci-hosted-notification-' \|\| p_id::text/)
+  assert.match(
+    activation,
+    /INSERT INTO public\.notifications[\s\S]{0,700}v_marker/,
+  )
+
+  assert.match(
+    activation,
+    /CREATE FUNCTION public\.hosted_realtime_canary_set_block\([\s\S]{0,120}p_blocked_id uuid,[\s\S]{0,80}p_state boolean[\s\S]{0,120}RETURNS TABLE\(blocked boolean, mutation_count integer\)/,
+  )
+  assert.match(
+    activation,
+    /WHEN v_actor = v_config\.actor_a_id THEN v_config\.actor_b_id[\s\S]{0,100}WHEN v_actor = v_config\.actor_b_id THEN v_config\.actor_a_id/,
+  )
+  assert.match(activation, /transition_ordinal = 1 AND blocked/)
+  assert.match(activation, /transition_ordinal = 2 AND NOT blocked/)
+
+  assert.match(
+    activation,
+    /CREATE FUNCTION public\.hosted_realtime_canary_cleanup_v2\([\s\S]{0,160}p_message_ids uuid\[\],[\s\S]{0,80}p_notification_ids uuid\[\][\s\S]{0,180}deleted_messages integer,[\s\S]{0,80}deleted_notifications integer,[\s\S]{0,80}restored_blocks integer,[\s\S]{0,80}residue_count bigint/,
+  )
+  assert.doesNotMatch(
+    cleanupV2,
+    /pg_catalog\.cardinality\(v_supplied_messages\) <> 59/,
+  )
+  assert.match(cleanupV2, /v_supplied_messages @> v_ledger_messages/)
+  assert.match(cleanupV2, /v_supplied_notifications @> v_ledger_notifications/)
 })
 
 test('abnormal termination has a bounded server-owned recovery path', () => {
@@ -482,9 +654,13 @@ test('hosted harness binds every write and final cleanup to one server run', () 
 
   assert.match(fixtures, /hosted_realtime_canary_begin_run/)
   assert.match(fixtures, /p_run_id:\s*hostedContract\.runId/)
-  assert.match(fixtures, /hosted_realtime_canary_cleanup/)
-  assert.match(fixtures, /registry\.allIds\(\)/)
-  assert.match(fixtures, /registry\.completedRunShapeMatches\(hostedContract\)/)
+  assert.match(fixtures, /hosted_realtime_canary_insert_scale_batch/)
+  assert.match(fixtures, /hosted_realtime_canary_insert_notification/)
+  assert.match(fixtures, /hosted_realtime_canary_set_block/)
+  assert.match(fixtures, /hosted_realtime_canary_cleanup_v2/)
+  assert.match(fixtures, /registry\.allMessageIds\(\)/)
+  assert.match(fixtures, /registry\.notificationIds\(\)/)
+  assert.match(fixtures, /registry\.completedV2RunShapeMatches\(hostedContract\)/)
   assert.match(fixtures, /revokeExactHostedSession/)
   assert.match(sdkBoundary, /hosted_realtime_canary_begin_run/)
   assert.match(
@@ -499,5 +675,17 @@ test('hosted harness binds every write and final cleanup to one server run', () 
   assert.match(
     sdkBoundary,
     /exactKeys\(payload,\s*\['p_message_ids', 'p_run_id'\]\)/,
+  )
+  assert.match(
+    sdkBoundary,
+    /exactKeys\(payload,\s*\['p_id', 'p_run_id'\]\)/,
+  )
+  assert.match(
+    sdkBoundary,
+    /exactKeys\(payload,\s*\['p_blocked_id', 'p_run_id', 'p_state'\]\)/,
+  )
+  assert.match(
+    sdkBoundary,
+    /\['p_message_ids', 'p_notification_ids', 'p_run_id'\]/,
   )
 })

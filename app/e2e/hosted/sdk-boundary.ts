@@ -7,11 +7,14 @@ import {
   hostedRealtimeJoinAllowed,
   hostedRealtimeOutboundTextFrameAllowed,
   hostedRealtimeSocketAllowed,
+  type HostedDeniedRealtimeProbe,
 } from './network-boundary'
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const MAX_RESPONSE_BYTES = 128 * 1024
+export const HOSTED_SCALE_MESSAGE_COUNT = 51
+export const HOSTED_SCALE_MEMBER_A_COUNT = 21
 const ALLOWED_HEADER_NAMES = new Set([
   'accept',
   'accept-profile',
@@ -23,6 +26,10 @@ const ALLOWED_HEADER_NAMES = new Set([
   'x-client-info',
   'x-supabase-api-version',
 ])
+const NIL_UUID = '00000000-0000-0000-0000-000000000000'
+const SCALE_CONVERSATION_FIELDS =
+  'id,conversation_id,sender_id,content,message_type,is_read,created_at'
+const SCALE_INBOX_FIELDS = 'id,conversation_id,sender_id,created_at'
 
 interface RegisteredWrite {
   readonly actorId: string
@@ -31,6 +38,11 @@ interface RegisteredWrite {
 
 export class HostedCanaryWriteRegistry {
   private readonly attempts = new Map<string, RegisteredWrite>()
+  private scaleAttempt: readonly string[] | null = null
+  private scaleCreatedAtValue: string | null = null
+  private readonly notificationAttempts = new Map<string, string>()
+  private readonly activeBlocks = new Set<string>()
+  private readonly blockTransitions = new Map<string, boolean[]>()
 
   registerAttempt(
     actor: HostedRealtimeAccount,
@@ -83,6 +95,130 @@ export class HostedCanaryWriteRegistry {
     return [...this.attempts.keys()].sort()
   }
 
+  registerScaleAttempt(
+    actor: HostedRealtimeAccount,
+    messageIds: readonly string[],
+    contract: HostedRealtimeContract,
+  ): void {
+    const ids = [...messageIds]
+    const sorted = [...ids].sort()
+    if (
+      actor.role !== 'member-a'
+      || this.scaleAttempt !== null
+      || ids.length !== HOSTED_SCALE_MESSAGE_COUNT
+      || ids.some((id, index) => (
+        !UUID_RE.test(id)
+        || id !== id.toLowerCase()
+        || id !== sorted[index]
+        || this.attempts.has(id)
+      ))
+      || new Set(ids).size !== ids.length
+      || ids.some(id => (
+        id === contract.runId
+        || id === contract.environmentSentinelId
+        || id === contract.conversations.ab
+        || id === contract.conversations.ac
+        || contract.accounts.some(account => account.expectedUserId === id)
+      ))
+    ) throw new Error('hosted_realtime_write_registry_failed')
+    this.scaleAttempt = Object.freeze(ids)
+  }
+
+  scaleMatches(
+    actor: HostedRealtimeAccount,
+    messageIds: readonly unknown[],
+  ): boolean {
+    return (
+      actor.role === 'member-a'
+      && this.scaleAttempt !== null
+      && messageIds.length === this.scaleAttempt.length
+      && messageIds.every((id, index) => id === this.scaleAttempt?.[index])
+    )
+  }
+
+  setScaleCreatedAt(value: unknown): void {
+    if (
+      this.scaleAttempt === null
+      || this.scaleCreatedAtValue !== null
+      || typeof value !== 'string'
+      || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)
+      || !Number.isFinite(Date.parse(value))
+    ) throw new Error('hosted_realtime_write_registry_failed')
+    this.scaleCreatedAtValue = value
+  }
+
+  scaleCreatedAt(): string | null {
+    return this.scaleCreatedAtValue
+  }
+
+  scaleIds(): readonly string[] {
+    return this.scaleAttempt ? [...this.scaleAttempt] : []
+  }
+
+  registerNotificationAttempt(
+    actor: HostedRealtimeAccount,
+    notificationId: string,
+  ): void {
+    if (
+      actor.role !== 'member-a'
+      || !UUID_RE.test(notificationId)
+      || notificationId !== notificationId.toLowerCase()
+      || this.notificationAttempts.size !== 0
+      || this.notificationAttempts.has(notificationId)
+      || this.attempts.has(notificationId)
+      || this.scaleAttempt?.includes(notificationId)
+    ) throw new Error('hosted_realtime_write_registry_failed')
+    this.notificationAttempts.set(notificationId, actor.expectedUserId)
+  }
+
+  notificationMatches(
+    actor: HostedRealtimeAccount,
+    notificationId: string,
+  ): boolean {
+    return this.notificationAttempts.get(notificationId)
+      === actor.expectedUserId
+  }
+
+  notificationIds(): readonly string[] {
+    return [...this.notificationAttempts.keys()].sort()
+  }
+
+  recordBlockState(
+    actor: HostedRealtimeAccount,
+    state: boolean,
+  ): void {
+    if (actor.role !== 'member-a' && actor.role !== 'member-b') {
+      throw new Error('hosted_realtime_write_registry_failed')
+    }
+    const transitions = this.blockTransitions.get(actor.expectedUserId) || []
+    const expectedState = transitions.length === 0
+      ? true
+      : transitions.length === 1
+        ? false
+        : null
+    if (
+      state !== expectedState
+      || (state && this.activeBlocks.has(actor.expectedUserId))
+      || (!state && !this.activeBlocks.has(actor.expectedUserId))
+    ) throw new Error('hosted_realtime_write_registry_failed')
+    transitions.push(state)
+    this.blockTransitions.set(actor.expectedUserId, transitions)
+    if (state) this.activeBlocks.add(actor.expectedUserId)
+    else this.activeBlocks.delete(actor.expectedUserId)
+  }
+
+  expectedRestoredBlocks(): number {
+    return this.activeBlocks.size
+  }
+
+  allMessageIds(): readonly string[] {
+    const ids = [...this.allIds(), ...this.scaleIds()].sort()
+    if (new Set(ids).size !== ids.length) {
+      throw new Error('hosted_realtime_write_registry_failed')
+    }
+    return ids
+  }
+
   completedRunShapeMatches(contract: HostedRealtimeContract): boolean {
     const counts = {
       aAb: 0,
@@ -119,6 +255,23 @@ export class HostedCanaryWriteRegistry {
     )
   }
 
+  completedV2RunShapeMatches(contract: HostedRealtimeContract): boolean {
+    return (
+      this.completedRunShapeMatches(contract)
+      && this.scaleAttempt?.length === HOSTED_SCALE_MESSAGE_COUNT
+      && this.scaleCreatedAtValue !== null
+      && this.notificationAttempts.size === 1
+      && this.activeBlocks.size === 0
+      && contract.accounts.slice(0, 2).every(account => (
+        this.blockTransitions.get(account.expectedUserId)?.join(',')
+          === 'true,false'
+      ))
+      && this.blockTransitions.size === 2
+      && this.allMessageIds().length
+        === this.attempts.size + HOSTED_SCALE_MESSAGE_COUNT
+    )
+  }
+
   clearAll(ids: readonly string[]): void {
     const expected = this.allIds()
     if (
@@ -126,6 +279,28 @@ export class HostedCanaryWriteRegistry {
       || ids.some((id, index) => id !== expected[index])
     ) throw new Error('hosted_realtime_write_registry_failed')
     this.attempts.clear()
+  }
+
+  clearAllV2(
+    messageIds: readonly string[],
+    notificationIds: readonly string[],
+  ): void {
+    const expectedMessages = this.allMessageIds()
+    const expectedNotifications = this.notificationIds()
+    if (
+      messageIds.length !== expectedMessages.length
+      || messageIds.some((id, index) => id !== expectedMessages[index])
+      || notificationIds.length !== expectedNotifications.length
+      || notificationIds.some((id, index) => (
+        id !== expectedNotifications[index]
+      ))
+    ) throw new Error('hosted_realtime_write_registry_failed')
+    this.attempts.clear()
+    this.scaleAttempt = null
+    this.scaleCreatedAtValue = null
+    this.notificationAttempts.clear()
+    this.activeBlocks.clear()
+    this.blockTransitions.clear()
   }
 
   clearFor(actor: HostedRealtimeAccount, ids: readonly string[]): void {
@@ -140,6 +315,19 @@ export class HostedCanaryWriteRegistry {
 
   get size(): number {
     return this.attempts.size
+  }
+
+  get v2Size(): number {
+    return (
+      this.attempts.size
+      + (this.scaleAttempt?.length || 0)
+      + this.notificationAttempts.size
+      + this.activeBlocks.size
+      + [...this.blockTransitions.values()].reduce(
+        (count, transitions) => count + transitions.length,
+        0,
+      )
+    )
   }
 }
 
@@ -216,6 +404,72 @@ function actorAuthorizationMatches(
   return tokenSubjectMatches(headers.get('authorization') || '', actor)
 }
 
+function exactScaleCursor(
+  createdAt: string,
+  cursorId: string,
+): string {
+  return `(${[
+    `created_at.gt.${createdAt}`,
+    `and(created_at.eq.${createdAt},id.gt.${cursorId})`,
+  ].join(',')})`
+}
+
+export function hostedScaleReadRequestAllowed(
+  url: URL,
+  actor: HostedRealtimeAccount,
+  contract: HostedRealtimeContract,
+  registry: HostedCanaryWriteRegistry,
+): boolean {
+  const createdAt = registry.scaleCreatedAt()
+  const scaleIds = registry.scaleIds()
+  if (
+    actor.role !== 'member-a'
+    || !createdAt
+    || scaleIds.length !== HOSTED_SCALE_MESSAGE_COUNT
+    || url.pathname !== '/rest/v1/messages'
+  ) return false
+  const keys = [...url.searchParams.keys()]
+  if (new Set(keys).size !== keys.length) return false
+
+  const select = url.searchParams.get('select')
+  const cursor = url.searchParams.get('or')
+  const order = url.searchParams.get('order')
+  const limit = url.searchParams.get('limit')
+  if (order !== 'created_at.asc,id.asc') return false
+
+  if (select === SCALE_CONVERSATION_FIELDS) {
+    const allowedCursors = new Set([
+      exactScaleCursor(createdAt, NIL_UUID),
+      exactScaleCursor(createdAt, scaleIds[49]),
+    ])
+    return (
+      keys.length === 5
+      && url.searchParams.get('conversation_id')
+        === `eq.${contract.conversations.ab}`
+      && limit === '50'
+      && !!cursor
+      && allowedCursors.has(cursor)
+    )
+  }
+
+  if (select === SCALE_INBOX_FIELDS) {
+    const incomingIds = scaleIds.slice(HOSTED_SCALE_MEMBER_A_COUNT)
+    const allowedCursors = new Set([
+      exactScaleCursor(createdAt, NIL_UUID),
+      exactScaleCursor(createdAt, incomingIds[24]),
+    ])
+    return (
+      keys.length === 5
+      && url.searchParams.get('sender_id')
+        === `neq.${contract.accounts[0].expectedUserId}`
+      && limit === '25'
+      && !!cursor
+      && allowedCursors.has(cursor)
+    )
+  }
+  return false
+}
+
 function rpcRequestAllowed(
   url: URL,
   actor: HostedRealtimeAccount,
@@ -251,18 +505,57 @@ function rpcRequestAllowed(
       && registry.matches(actor, conversationId, id)
     )
   }
-  if (rpc === 'hosted_realtime_canary_cleanup') {
+  if (rpc === 'hosted_realtime_canary_insert_scale_batch') {
     if (
-      actor.role !== 'member-a'
-      || !exactKeys(payload, ['p_message_ids', 'p_run_id'])
+      !exactKeys(payload, ['p_message_ids', 'p_run_id'])
+      || payload.p_run_id !== contract.runId
+      || !Array.isArray(payload.p_message_ids)
+    ) return false
+    return registry.scaleMatches(actor, payload.p_message_ids)
+  }
+  if (rpc === 'hosted_realtime_canary_insert_notification') {
+    if (
+      !exactKeys(payload, ['p_id', 'p_run_id'])
       || payload.p_run_id !== contract.runId
     ) return false
-    const ids = payload.p_message_ids
-    const expected = registry.allIds()
+    const notificationId = String(payload.p_id || '').toLowerCase()
+    return registry.notificationMatches(actor, notificationId)
+  }
+  if (rpc === 'hosted_realtime_canary_set_block') {
+    if (
+      !exactKeys(payload, ['p_blocked_id', 'p_run_id', 'p_state'])
+      || payload.p_run_id !== contract.runId
+      || typeof payload.p_state !== 'boolean'
+    ) return false
+    const counterpart = actor.role === 'member-a'
+      ? contract.accounts[1]
+      : actor.role === 'member-b'
+        ? contract.accounts[0]
+        : null
+    return payload.p_blocked_id === counterpart?.expectedUserId
+  }
+  if (rpc === 'hosted_realtime_canary_cleanup_v2') {
+    if (
+      actor.role !== 'member-a'
+      || !exactKeys(
+        payload,
+        ['p_message_ids', 'p_notification_ids', 'p_run_id'],
+      )
+      || payload.p_run_id !== contract.runId
+    ) return false
+    const messageIds = payload.p_message_ids
+    const notificationIds = payload.p_notification_ids
+    const expectedMessages = registry.allMessageIds()
+    const expectedNotifications = registry.notificationIds()
     return (
-      Array.isArray(ids)
-      && ids.length === expected.length
-      && ids.every((id, index) => id === expected[index])
+      Array.isArray(messageIds)
+      && messageIds.length === expectedMessages.length
+      && messageIds.every((id, index) => id === expectedMessages[index])
+      && Array.isArray(notificationIds)
+      && notificationIds.length === expectedNotifications.length
+      && notificationIds.every((id, index) => (
+        id === expectedNotifications[index]
+      ))
     )
   }
   return false
@@ -304,6 +597,11 @@ export function hostedSdkRequestAllowed(
       && hostedHttpRequestAllowed(contract, actor, rawUrl, method, body)
     )
   }
+  if (
+    method.toUpperCase() === 'GET'
+    && actorAuthorizationMatches(headers, actor)
+    && hostedScaleReadRequestAllowed(url, actor, contract, registry)
+  ) return true
   return (
     method.toUpperCase() === 'POST'
     && actorAuthorizationMatches(headers, actor)
@@ -515,7 +813,10 @@ export function createHostedGuardedFetch(
 export function createHostedGuardedWebSocketTransport(
   contract: HostedRealtimeContract,
   actor: HostedRealtimeAccount,
-  options: { anonymous?: boolean } = {},
+  options: {
+    anonymous?: boolean
+    deniedProbe?: HostedDeniedRealtimeProbe
+  } = {},
 ): typeof WebSocket {
   return class HostedGuardedWebSocket extends WebSocket {
     private readonly allowedTopics = new Set<string>()

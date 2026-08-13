@@ -55,3 +55,17 @@ test('the scope survives Sentry beforeSend', () => {
   // has to survive it or the tag silently becomes 'application'.
   assert.match(sentry, /\^\[A-Za-z0-9\]\[A-Za-z0-9\._:-\]\*\$/)
 })
+
+test('every H5 Postgres Changes surface has one browser-resume recovery handoff', () => {
+  const fallback = source('src/composables/useRealtimeFallback.ts')
+  assert.match(fallback, /browserRecoveryHandoff\?: \(\) => Handoff/)
+  assert.match(fallback, /document\.addEventListener\('visibilitychange'/)
+  assert.match(fallback, /window\.addEventListener\('offline'/)
+  assert.match(fallback, /document\.removeEventListener\('visibilitychange'/)
+  assert.match(fallback, /window\.removeEventListener\('offline'/)
+  assert.equal(
+    [...fallback.matchAll(/browserRecoveryHandoff: \(\) => undefined,/g)].length,
+    4,
+    'conversation, notifications, inbox and snapshot streams must all recover',
+  )
+})
