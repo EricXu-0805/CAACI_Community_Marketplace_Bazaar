@@ -604,8 +604,11 @@ PREBUILT_EXPECTED_GIT_SHA=<full-reviewed-commit-sha> \
 node scripts/verify-prebuilt-deployment.mjs
 ```
 
-The inventory must contain only the 20 runtime API Functions (the 19 business
-endpoints plus `api/404.func`) and no `*.test.func` directory. The generated
+The inventory must contain only the 21 runtime API Functions (the 20 business
+endpoints plus `api/404.func`) and no `*.test.func` directory. Both counts are
+asserted in code — `api/_deployment-boundary.test.mjs` pins the 20 Supabase-backed
+entrypoints and `api/_edge-redirect-runtime-boundary.test.mjs` pins all 21 — so
+trust those over prose; this paragraph said 20/19 until 2026-08-14. The generated
 route for `/api/:path* -> /api/404.js` must remain before the SPA
 `/(.*) -> /index.html` fallback so an unknown API returns stable JSON 404
 instead of `200 text/html`. `scripts/vercel-function-boundary.test.mjs` checks
@@ -1307,12 +1310,24 @@ The reference sections elsewhere are organized by topic; this is the **sequence*
 Top to bottom; each step links to its detail.
 
 1. **Env vars** scoped on Vercel per [ENV_CHECKLIST pre-launch](ENV_CHECKLIST.md#pre-launch-checklist-fall-2026-beta). Production privileged secrets exist only in Production; trusted Preview uses isolated staging resources and a reviewed ref/custom environment; arbitrary PR previews receive no privileged secrets. The two matching-environment `VITE_*` Supabase vars are non-negotiable (white screen without).
-2. **Supabase dashboard** (Auth):
-   - Site URL + Redirect URLs point at the prod origin.
+2. **Supabase dashboard** (Auth) — all four were read off the dashboard on
+   2026-08-14 and are already correct; re-check rather than re-apply:
+   - Site URL **and** Redirect URLs use the **`www` host**
+     (`https://www.illinimarket.com`). The apex 308-redirects to `www`, so
+     `window.location.origin` — what the app sends as `redirectTo` — is always
+     the `www` form. An apex-only allow-list makes Supabase discard the app's
+     return route and fall back to Site URL.
    - Email confirmation **ON**; password policy at least 8 characters with
-     upper/lower/digit/symbol. On Pro or above, enable leaked-password (HIBP)
-     protection; do not deliberately leave the Security Advisor finding open.
-   - **Reset Password** email template body uses `{{ .Token }}` (the 6-digit code, not the link) **and Email OTP length = 6** (Auth → Providers → Email). The app's reset is a typed code (QA6 #138). Leave the **Confirm signup** template on the link.
+     upper/lower/digit/symbol. Production already shows leaked-password (HIBP)
+     protection as ENABLED on Auth → Attack Protection, and the Security Advisor
+     no longer reports it. For any new or rebuilt environment you must still
+     enable leaked-password (HIBP) protection there; never leave that Security
+     Advisor finding open as an accepted risk.
+   - **Reset Password** and **Confirm sign up** email templates both carry the
+     **6-digit code**, not a link, **and Email OTP length = 6** (Auth →
+     Providers → Email). Both app screens are typed-code screens
+     (`pages/login/index.vue` calls `verifyOtp({ type: 'signup' })`), so a
+     link-only template dead-ends the flow.
 3. **Migrations reconciled** — export the production ledger and actual object
    definitions, resolve the documented 014/015 collision and dashboard-applied
    drift, run every release PRECHECK, then deploy only the reviewed timestamped
@@ -1323,14 +1338,15 @@ Top to bottom; each step links to its detail.
 6. **Seed content** — ≥ a dozen real listings across the main categories. An empty market reads as dead.
 7. **Device verification** — run [QA_DEVICE_CHECKLIST](docs/QA_DEVICE_CHECKLIST.md) (esp. §7: QA6 + motion) on a real iPhone / iPad / Mac + two accounts. CI cannot catch keyboard, realtime, or desktop-layout regressions.
 8. **Post-deploy diagnostic** — [ENV_CHECKLIST diagnostic](ENV_CHECKLIST.md#diagnostic): app 200, admin 200, Sentry receiving events tagged with the deploy SHA.
-9. **Invite the first small cohort**, then run the [daily week-1](#daily-during-week-1) loop. Digest stays **OFF** unless prepped (verify sender-domain DKIM, clear `DIGEST_TEST_EMAIL`, set `DIGEST_LIVE=true`, and set an explicit HTTPS-origin-only `DIGEST_APP_URL`; live mail fails closed without it).
+9. **Invite the first small cohort**, then run the [daily week-1](#daily-during-week-1) loop. **`DIGEST_LIVE` is already `true` in production and should stay that way.** Do not "turn the digest off for the beta": the same flag gates instant meetup mail (`api/meetup-notify.js:52,415` — `if (!TEST_EMAIL && !LIVE) return json({ skipped: 'inert' })`), so clearing it silently stops telling people their meetup was accepted, with no error anywhere. If you ever do want the daily digest off without losing meetup mail, that needs a separate flag, not this one.
 
 ### Before you invite the first cohort
 
 - [ ] Run the pre-launch checklist in `ENV_CHECKLIST.md` (env vars + Supabase auth + reset test).
-- [ ] Mint at least one admin token ([Admin token mint](#admin-token-mint)); store it in a password manager.
-- [ ] Create the [Sentry alert rule](#creating-the-alert-rule-do-this-once-before-launch).
-- [ ] Seed the marketplace so the first visitor doesn't hit an empty feed — a dozen real listings across the main categories. An empty market reads as dead.
+- [x] Admin token: production already holds **two unrevoked `owner` tokens** plus three unrevoked `operator` tokens (counted in `public.admin_tokens` on 2026-08-14). Earlier revisions of this file said production had no Owner and needed a break-glass bootstrap; that is stale. Confirm one of the two owner tokens is actually in your password manager and can still authenticate — an owner row you cannot present is not an owner.
+- [ ] Create the [Sentry alert rule](#creating-the-alert-rule-do-this-once-before-launch). `VITE_SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT` and `SENTRY_AUTH_TOKEN` are all set on Vercel and the shipped bundle reports client errors, so the only missing piece is that **nobody is notified**.
+- [ ] `RESEND_WEBHOOK_SECRET` on Vercel + redeploy. The Resend endpoint already exists and is Enabled (`https://www.illinimarket.com/api/resend-webhook`, listening on bounced/complained + 3 more), but the secret was never copied into Vercel, so the handler answers **503** and every bounce/complaint report is dropped. Verified 503 on the live deploy 2026-08-14.
+- [ ] Seed the marketplace so the first visitor doesn't hit an empty feed — a dozen real listings across the main categories. An empty market reads as dead. As of 2026-08-14 all 14 production items are test junk (`sdfkjl`, `Vhshb`, a $1,000,000 onsen filed under `housing`), 6 of the 13 active ones have no image at all, and the share card for `E2E QA Desk Lamp 1146` renders the description "Please ignore." to anyone it is forwarded to.
 
 ### Daily during week 1
 

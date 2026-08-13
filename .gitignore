@@ -118,6 +118,13 @@ docs/audit/evidence/
 docs/audit/2026-07-17-comprehensive-project-audit.md
 docs/audit/2026-07-18-supabase-api-key-compatibility.md
 docs/audit/2026-07-19-release-candidate-audit.md
+# Agent scratch directories at the repository root. Design-stage audit
+# artifacts get staged here before they are promoted into the (ignored)
+# docs/audit/evidence/ tree, and they self-declare DESIGN_ONLY_NO_AUTHORITY /
+# HOLD_* status. They were NOT ignored, so a single `git add -A` would have
+# published thousands of lines of on-hold evidence at the repo root — exactly
+# what the docs/audit/evidence/ rule above exists to prevent.
+.tmp-*/
 
 # Supabase CLI runtime state — contains pooler-url with embedded DB
 # password and linked-project.json. Must NOT be committed.
