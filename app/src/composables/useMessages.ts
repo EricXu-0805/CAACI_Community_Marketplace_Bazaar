@@ -51,6 +51,49 @@ const conversations = ref<Conversation[]>([])
 const messages = ref<Message[]>([])
 const loading = ref(false)
 
+function timestampSubMillisecondMicroseconds(value: string): number {
+  const fraction = value.match(
+    /\.(\d{1,6})(?:Z|[+-]\d{2}:\d{2})$/,
+  )?.[1] || ''
+  return Number(fraction.padEnd(6, '0').slice(3, 6))
+}
+
+export function comparePostgresTimestamps(left: string, right: string): number {
+  if (left === right) return 0
+
+  const leftMilliseconds = Date.parse(left)
+  const rightMilliseconds = Date.parse(right)
+  if (Number.isFinite(leftMilliseconds) && Number.isFinite(rightMilliseconds)) {
+    if (leftMilliseconds !== rightMilliseconds) {
+      return leftMilliseconds < rightMilliseconds ? -1 : 1
+    }
+
+    // Date.parse truncates PostgreSQL's fourth-through-sixth fractional
+    // digits. Preserve them so adjacent microseconds cannot be reordered by
+    // the UUID tiebreaker below.
+    const leftSubMilliseconds = timestampSubMillisecondMicroseconds(left)
+    const rightSubMilliseconds = timestampSubMillisecondMicroseconds(right)
+    if (leftSubMilliseconds !== rightSubMilliseconds) {
+      return leftSubMilliseconds < rightSubMilliseconds ? -1 : 1
+    }
+    return 0
+  }
+
+  // Database timestamptz values are valid, but retain a deterministic,
+  // locale-independent fallback if a malformed fixture ever crosses the
+  // runtime boundary.
+  return left < right ? -1 : 1
+}
+
+export function compareMessagesChronologically(left: Message, right: Message): number {
+  const timeOrder = comparePostgresTimestamps(left.created_at, right.created_at)
+  if (timeOrder !== 0) return timeOrder
+  const leftId = left.id.toLowerCase()
+  const rightId = right.id.toLowerCase()
+  if (leftId === rightId) return 0
+  return leftId < rightId ? -1 : 1
+}
+
 /*
  * `messages` is intentionally a module singleton because the messages page and
  * ChatThread share it. That also means a slow request/subscription from thread
@@ -354,6 +397,7 @@ export function useMessages() {
       .select(`${MESSAGE_FIELDS}, sender:profiles(id, nickname, avatar_url)`)
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
       .limit(MESSAGE_PAGE)
 
     // A newer fetch or a conversation switch owns the singleton now. Stale
@@ -385,9 +429,7 @@ export function useMessages() {
       ) continue
       byId.set(m.id, m)
     }
-    messages.value = [...byId.values()].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-    )
+    messages.value = [...byId.values()].sort(compareMessagesChronologically)
     return true
   }
 

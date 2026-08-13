@@ -174,6 +174,7 @@ BEGIN
      OR v_config.project_ref <> v_project_ref
      OR v_config.sentinel_id <> v_sentinel
      OR v_config.fixture_manifest_sha256 <> v_manifest
+     OR v_config.protocol_revision <> 2
      OR v_config.admission_open
      OR v_run.status <> 'recovery_required'
      OR v_run.cleaned_at IS NULL
@@ -213,7 +214,141 @@ BEGIN
        WHERE write.run_id = v_run_id
          AND (
            write.deleted_at IS NULL
+           OR write.inserted_at IS NULL
            OR message.id IS NOT NULL
+           OR write.marker IS DISTINCT FROM
+                'caaci-hosted-canary-' || write.message_id::text
+           OR write.expected_created_at IS DISTINCT FROM write.inserted_at
+           OR write.registered_at > write.inserted_at
+           OR write.deleted_at < write.inserted_at
+           OR NOT (
+             (
+               write.write_class = 'base'
+               AND write.batch_ordinal IS NULL
+               AND (
+                 (
+                   write.actor_id = v_config.actor_a_id
+                   AND write.conversation_id IN (
+                     v_config.conversation_ab_id,
+                     v_config.conversation_ac_id
+                   )
+                 )
+                 OR (
+                   write.actor_id = v_config.actor_c_id
+                   AND write.conversation_id =
+                     v_config.conversation_ac_id
+                 )
+               )
+             )
+             OR (
+               write.write_class = 'scale'
+               AND write.batch_ordinal BETWEEN 1 AND 51
+               AND write.conversation_id = v_config.conversation_ab_id
+               AND (
+                 (write.batch_ordinal <= 21
+                  AND write.actor_id = v_config.actor_a_id)
+                 OR (write.batch_ordinal >= 22
+                     AND write.actor_id = v_config.actor_b_id)
+               )
+             )
+           )
+         )
+     )
+     OR EXISTS (
+       SELECT 1
+       FROM private.hosted_realtime_canary_writes AS write
+       WHERE write.run_id = v_run_id
+       GROUP BY write.run_id
+       HAVING pg_catalog.count(*) FILTER (
+         WHERE write.write_class = 'base'
+       ) > 8
+          OR pg_catalog.count(*) FILTER (
+               WHERE write.write_class = 'base'
+                 AND write.actor_id = v_config.actor_a_id
+                 AND write.conversation_id = v_config.conversation_ab_id
+             ) > 5
+          OR pg_catalog.count(*) FILTER (
+               WHERE write.write_class = 'base'
+                 AND write.actor_id = v_config.actor_a_id
+                 AND write.conversation_id = v_config.conversation_ac_id
+             ) > 2
+          OR pg_catalog.count(*) FILTER (
+               WHERE write.write_class = 'base'
+                 AND write.actor_id = v_config.actor_c_id
+                 AND write.conversation_id = v_config.conversation_ac_id
+             ) > 1
+     )
+     OR EXISTS (
+       SELECT 1
+       FROM private.hosted_realtime_canary_writes AS write
+       WHERE write.run_id = v_run_id
+         AND write.write_class = 'scale'
+       GROUP BY write.run_id
+       HAVING pg_catalog.count(*) <> 51
+          OR pg_catalog.min(write.batch_ordinal) <> 1
+          OR pg_catalog.max(write.batch_ordinal) <> 51
+          OR pg_catalog.min(write.expected_created_at)
+               IS DISTINCT FROM pg_catalog.max(write.expected_created_at)
+     )
+     OR EXISTS (
+       SELECT 1
+       FROM private.hosted_realtime_canary_notifications AS ledger
+       LEFT JOIN public.notifications AS notification
+         ON notification.id = ledger.notification_id
+       WHERE ledger.run_id = v_run_id
+         AND (
+           ledger.deleted_at IS NULL
+           OR ledger.inserted_at IS NULL
+           OR notification.id IS NOT NULL
+           OR ledger.marker IS DISTINCT FROM
+                'caaci-hosted-notification-' ||
+                ledger.notification_id::text
+           OR ledger.user_id IS DISTINCT FROM v_config.actor_a_id
+           OR ledger.conversation_id IS DISTINCT FROM
+                v_config.conversation_ab_id
+           OR ledger.expected_created_at IS DISTINCT FROM
+                ledger.inserted_at
+           OR ledger.expected_emailed_at IS DISTINCT FROM
+                ledger.inserted_at
+           OR ledger.deleted_at < ledger.inserted_at
+         )
+     )
+     OR EXISTS (
+       SELECT 1
+       FROM private.hosted_realtime_canary_block_transitions AS transition
+       WHERE transition.run_id = v_run_id
+         AND (
+           transition.applied_at IS NULL
+           OR NOT (
+             (transition.transition_ordinal = 1 AND transition.blocked)
+             OR (
+               transition.transition_ordinal = 2
+               AND NOT transition.blocked
+             )
+           )
+           OR NOT (
+             (
+               transition.blocker_id = v_config.actor_a_id
+               AND transition.blocked_id = v_config.actor_b_id
+             )
+             OR (
+               transition.blocker_id = v_config.actor_b_id
+               AND transition.blocked_id = v_config.actor_a_id
+             )
+           )
+           OR (
+             transition.transition_ordinal = 2
+             AND NOT EXISTS (
+               SELECT 1
+               FROM private.hosted_realtime_canary_block_transitions AS prior
+               WHERE prior.run_id = transition.run_id
+                 AND prior.blocker_id = transition.blocker_id
+                 AND prior.blocked_id = transition.blocked_id
+                 AND prior.transition_ordinal = 1
+                 AND prior.blocked
+                 AND prior.applied_at IS NOT NULL
+             )
+           )
          )
      )
      OR EXISTS (
@@ -273,6 +408,14 @@ BEGIN
            v_config.actor_c_id
          )
          AND notification.created_at >= v_config.activated_at
+     )
+     OR EXISTS (
+       SELECT 1
+       FROM public.blocks AS block_relation
+       WHERE (block_relation.blocker_id = v_config.actor_a_id
+              AND block_relation.blocked_id = v_config.actor_b_id)
+          OR (block_relation.blocker_id = v_config.actor_b_id
+              AND block_relation.blocked_id = v_config.actor_a_id)
      ) THEN
     RAISE EXCEPTION 'recovery_residue_or_derived_state_failed'
       USING ERRCODE = '55000';

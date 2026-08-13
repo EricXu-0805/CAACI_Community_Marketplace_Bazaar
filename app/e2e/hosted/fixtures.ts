@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import {
   expect,
   test as base,
@@ -31,13 +31,17 @@ import {
   hostedHttpRequestAllowed,
   hostedReadReceiptRequestMockable,
   hostedRealtimeBroadcastPushAllowed,
+  hostedDeniedRealtimeProbeTopic,
   hostedRealtimeOutboundTextFrameAllowed,
   hostedRealtimeSocketAllowed,
+  type HostedDeniedRealtimeProbe,
 } from './network-boundary'
 import {
   createHostedGuardedFetch,
   createHostedGuardedWebSocketTransport,
   fetchHostedEnvironmentSentinel,
+  HOSTED_SCALE_MEMBER_A_COUNT,
+  HOSTED_SCALE_MESSAGE_COUNT,
   HostedCanaryWriteRegistry,
   revokeExactHostedSession,
 } from './sdk-boundary'
@@ -1335,10 +1339,29 @@ export interface HostedSdkActor {
     conversationId: string,
     messageId?: string,
   ): Promise<{ id: string; marker: string }>
+  insertNotification(): Promise<{
+    id: string
+    marker: string
+    createdAt: string
+  }>
+  insertScaleBatch(): Promise<{ createdAt: string }>
+  readScaleConversation(): Promise<{
+    rows: readonly Record<string, unknown>[]
+    pageSizes: readonly number[]
+  }>
+  readScaleInbox(): Promise<{
+    rows: readonly Record<string, unknown>[]
+    pageSizes: readonly number[]
+  }>
+  setBlock(state: boolean): Promise<void>
 }
 
 export interface HostedWorld {
   readonly contract: HostedRealtimeContract
+  readonly runnerIds: Readonly<{
+    notification: string
+    scaleMessages: readonly string[]
+  }>
   readonly browserActors: Readonly<{
     a: HostedBrowserActor
     b: HostedBrowserActor
@@ -1349,6 +1372,11 @@ export interface HostedWorld {
     b: HostedSdkActor
     c: HostedSdkActor
   }>
+}
+
+export interface HostedDeniedProbeClient {
+  readonly client: SupabaseClient
+  readonly topic: string
 }
 
 async function createBrowserActor(
@@ -1403,7 +1431,14 @@ async function createBrowserActor(
 async function createSdkActor(
   actor: HostedRealtimeAccount,
   registry: HostedCanaryWriteRegistry,
+  scaleMessageIds: readonly string[],
+  notificationId: string,
 ): Promise<HostedSdkActor> {
+  const guardedFetch = createHostedGuardedFetch(
+    hostedContract,
+    actor,
+    registry,
+  )
   const client = createClient(
     hostedContract.supabaseOrigin,
     hostedContract.publishableKey,
@@ -1414,7 +1449,7 @@ async function createSdkActor(
         detectSessionInUrl: false,
       },
       global: {
-        fetch: createHostedGuardedFetch(hostedContract, actor, registry),
+        fetch: guardedFetch,
       },
       realtime: {
         transport: createHostedGuardedWebSocketTransport(hostedContract, actor),
@@ -1438,10 +1473,121 @@ async function createSdkActor(
       throw new Error('hosted_realtime_sdk_actor_boundary_failed')
     }
     await client.realtime.setAuth(data.session.access_token)
+    const accessToken = data.session.access_token
+
+    const exactRow = (
+      value: unknown,
+      keys: readonly string[],
+    ): Record<string, unknown> | null => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+      const row = value as Record<string, unknown>
+      return Object.keys(row).sort().join('\0') === [...keys].sort().join('\0')
+        ? row
+        : null
+    }
+    const fetchScalePage = async (
+      kind: 'conversation' | 'inbox',
+      cursorId: string,
+    ): Promise<readonly Record<string, unknown>[]> => {
+      if (actor.role !== 'member-a') {
+        throw new Error('hosted_realtime_scale_read_failed')
+      }
+      const createdAt = registry.scaleCreatedAt()
+      if (!createdAt) throw new Error('hosted_realtime_scale_read_failed')
+      const url = new URL(`${hostedContract.supabaseOrigin}/rest/v1/messages`)
+      url.searchParams.set(
+        'select',
+        kind === 'conversation'
+          ? 'id,conversation_id,sender_id,content,message_type,is_read,created_at'
+          : 'id,conversation_id,sender_id,created_at',
+      )
+      if (kind === 'conversation') {
+        url.searchParams.set(
+          'conversation_id',
+          `eq.${hostedContract.conversations.ab}`,
+        )
+      } else {
+        url.searchParams.set(
+          'sender_id',
+          `neq.${hostedContract.accounts[0].expectedUserId}`,
+        )
+      }
+      url.searchParams.set(
+        'or',
+        `(${[
+          `created_at.gt.${createdAt}`,
+          `and(created_at.eq.${createdAt},id.gt.${cursorId})`,
+        ].join(',')})`,
+      )
+      url.searchParams.set('order', 'created_at.asc,id.asc')
+      url.searchParams.set('limit', kind === 'conversation' ? '50' : '25')
+      const response = await guardedFetch(url, {
+        method: 'GET',
+        headers: {
+          accept: 'application/json',
+          'accept-profile': 'public',
+          apikey: hostedContract.publishableKey,
+          authorization: `Bearer ${accessToken}`,
+        },
+      })
+      if (!response.ok) throw new Error('hosted_realtime_scale_read_failed')
+      const rows = await response.json()
+      if (!Array.isArray(rows)) {
+        throw new Error('hosted_realtime_scale_read_failed')
+      }
+      return rows as readonly Record<string, unknown>[]
+    }
+    const assertScaleRows = (
+      rows: readonly Record<string, unknown>[],
+      expectedIds: readonly string[],
+      kind: 'conversation' | 'inbox',
+    ): void => {
+      const createdAt = registry.scaleCreatedAt()
+      const allScaleIds = registry.scaleIds()
+      if (!createdAt || rows.length !== expectedIds.length) {
+        throw new Error('hosted_realtime_scale_read_failed')
+      }
+      for (let index = 0; index < rows.length; index += 1) {
+        const row = exactRow(
+          rows[index],
+          kind === 'conversation'
+            ? [
+              'content',
+              'conversation_id',
+              'created_at',
+              'id',
+              'is_read',
+              'message_type',
+              'sender_id',
+            ]
+            : ['conversation_id', 'created_at', 'id', 'sender_id'],
+        )
+        const id = expectedIds[index]
+        const ordinal = allScaleIds.indexOf(id)
+        const expectedSender = ordinal < HOSTED_SCALE_MEMBER_A_COUNT
+          ? hostedContract.accounts[0].expectedUserId
+          : hostedContract.accounts[1].expectedUserId
+        if (
+          !row
+          || row.id !== id
+          || row.conversation_id !== hostedContract.conversations.ab
+          || row.sender_id !== expectedSender
+          || row.created_at !== createdAt
+          || (
+            kind === 'conversation'
+            && (
+              row.content !== `caaci-hosted-canary-${id}`
+              || row.message_type !== 'text'
+              || row.is_read !== false
+            )
+          )
+        ) throw new Error('hosted_realtime_scale_read_failed')
+      }
+    }
     return {
       actor,
       client,
-      accessToken: data.session.access_token,
+      accessToken,
       async insertMessage(conversationId, messageId = crypto.randomUUID()) {
         const id = messageId.toLowerCase()
         const marker = `caaci-hosted-canary-${id}`
@@ -1463,6 +1609,105 @@ async function createSdkActor(
           || String((row as Record<string, unknown>).id || '') !== id
         ) throw new Error('hosted_realtime_synthetic_insert_failed')
         return { id, marker }
+      },
+      async insertNotification() {
+        const id = notificationId
+        const marker = `caaci-hosted-notification-${id}`
+        registry.registerNotificationAttempt(actor, id)
+        const { data: inserted, error: insertError } = await client.rpc(
+          'hosted_realtime_canary_insert_notification',
+          {
+            p_run_id: hostedContract.runId,
+            p_id: id,
+          },
+        )
+        const row = exactRow(
+          Array.isArray(inserted) ? inserted[0] : inserted,
+          ['created_at', 'notification_id'],
+        )
+        const createdAt = String(row?.created_at || '')
+        if (
+          insertError
+          || row?.notification_id !== id
+          || !Number.isFinite(Date.parse(createdAt))
+        ) throw new Error('hosted_realtime_notification_insert_failed')
+        return { id, marker, createdAt }
+      },
+      async insertScaleBatch() {
+        registry.registerScaleAttempt(actor, scaleMessageIds, hostedContract)
+        const { data: inserted, error: insertError } = await client.rpc(
+          'hosted_realtime_canary_insert_scale_batch',
+          {
+            p_run_id: hostedContract.runId,
+            p_message_ids: [...scaleMessageIds],
+          },
+        )
+        const row = exactRow(
+          Array.isArray(inserted) ? inserted[0] : inserted,
+          ['created_at', 'inserted_count'],
+        )
+        if (
+          insertError
+          || row?.inserted_count !== HOSTED_SCALE_MESSAGE_COUNT
+        ) throw new Error('hosted_realtime_scale_insert_failed')
+        registry.setScaleCreatedAt(row.created_at)
+        return { createdAt: String(row.created_at) }
+      },
+      async readScaleConversation() {
+        const ids = registry.scaleIds()
+        const first = await fetchScalePage(
+          'conversation',
+          '00000000-0000-0000-0000-000000000000',
+        )
+        assertScaleRows(first, ids.slice(0, 50), 'conversation')
+        const second = await fetchScalePage('conversation', ids[49])
+        assertScaleRows(second, ids.slice(50), 'conversation')
+        return {
+          rows: Object.freeze([...first, ...second]),
+          pageSizes: Object.freeze([first.length, second.length]),
+        }
+      },
+      async readScaleInbox() {
+        const ids = registry.scaleIds().slice(HOSTED_SCALE_MEMBER_A_COUNT)
+        const first = await fetchScalePage(
+          'inbox',
+          '00000000-0000-0000-0000-000000000000',
+        )
+        assertScaleRows(first, ids.slice(0, 25), 'inbox')
+        const second = await fetchScalePage('inbox', ids[24])
+        assertScaleRows(second, ids.slice(25), 'inbox')
+        return {
+          rows: Object.freeze([...first, ...second]),
+          pageSizes: Object.freeze([first.length, second.length]),
+        }
+      },
+      async setBlock(state) {
+        const counterpart = actor.role === 'member-a'
+          ? hostedContract.accounts[1]
+          : actor.role === 'member-b'
+            ? hostedContract.accounts[0]
+            : null
+        if (!counterpart || typeof state !== 'boolean') {
+          throw new Error('hosted_realtime_block_mutation_failed')
+        }
+        const { data: mutated, error: mutationError } = await client.rpc(
+          'hosted_realtime_canary_set_block',
+          {
+            p_run_id: hostedContract.runId,
+            p_blocked_id: counterpart.expectedUserId,
+            p_state: state,
+          },
+        )
+        const row = exactRow(
+          Array.isArray(mutated) ? mutated[0] : mutated,
+          ['blocked', 'mutation_count'],
+        )
+        if (
+          mutationError
+          || row?.blocked !== state
+          || row.mutation_count !== 1
+        ) throw new Error('hosted_realtime_block_mutation_failed')
+        registry.recordBlockState(actor, state)
       },
     }
   } catch {
@@ -1540,21 +1785,35 @@ async function cleanupHostedRun(
   coordinator: HostedSdkActor,
   registry: HostedCanaryWriteRegistry,
 ): Promise<void> {
-  const ids = registry.allIds()
+  const messageIds = registry.allMessageIds()
+  const notificationIds = registry.notificationIds()
+  const expectedRestoredBlocks = registry.expectedRestoredBlocks()
   const completedRunShapeMatches =
-    registry.completedRunShapeMatches(hostedContract)
+    registry.completedV2RunShapeMatches(hostedContract)
   const { data, error } = await coordinator.client.rpc(
-    'hosted_realtime_canary_cleanup',
+    'hosted_realtime_canary_cleanup_v2',
     {
       p_run_id: hostedContract.runId,
-      p_message_ids: ids,
+      p_message_ids: messageIds,
+      p_notification_ids: notificationIds,
     },
   )
   const result = Array.isArray(data) ? data[0] : data
+  const resultKeys = (
+    result
+    && typeof result === 'object'
+    && !Array.isArray(result)
+  ) ? Object.keys(result as Record<string, unknown>).sort() : []
   if (
     error
     || !result
     || typeof result !== 'object'
+    || resultKeys.join('\0') !== [
+      'deleted_messages',
+      'deleted_notifications',
+      'residue_count',
+      'restored_blocks',
+    ].join('\0')
     || (result as Record<string, unknown>).residue_count !== 0
   ) throw new Error('hosted_realtime_cleanup_failed')
 
@@ -1562,9 +1821,13 @@ async function cleanupHostedRun(
   // the local attempt registry. The server may safely clean every row it did
   // receive and report fewer deletes; retain that mismatch as a failed run,
   // but clear the local registry once global server residue is proven zero.
-  registry.clearAll(ids)
+  registry.clearAllV2(messageIds, notificationIds)
   if (
-    (result as Record<string, unknown>).deleted_count !== ids.length
+    (result as Record<string, unknown>).deleted_messages !== messageIds.length
+    || (result as Record<string, unknown>).deleted_notifications
+      !== notificationIds.length
+    || (result as Record<string, unknown>).restored_blocks
+      !== expectedRestoredBlocks
     || !completedRunShapeMatches
   ) {
     throw new Error('hosted_realtime_cleanup_count_failed')
@@ -1611,6 +1874,73 @@ export function createHostedAnonymousClient(
   )
 }
 
+export async function createHostedDeniedProbeClient(
+  probe: HostedDeniedRealtimeProbe,
+  coordinator: HostedSdkActor,
+): Promise<HostedDeniedProbeClient> {
+  const actor = hostedContract.accounts[0]
+  if (
+    coordinator.actor.role !== 'member-a'
+    || coordinator.actor.expectedUserId !== actor.expectedUserId
+    || !(['random', 'global', 'user'] as const).includes(probe)
+  ) throw new Error('hosted_realtime_denied_probe_failed')
+  const client = createClient(
+    hostedContract.supabaseOrigin,
+    hostedContract.publishableKey,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+      global: {
+        fetch: async () => {
+          throw new Error('hosted_realtime_denied_probe_http_denied')
+        },
+      },
+      realtime: {
+        transport: createHostedGuardedWebSocketTransport(
+          hostedContract,
+          actor,
+          { deniedProbe: probe },
+        ),
+      },
+    },
+  )
+  await client.realtime.setAuth(coordinator.accessToken)
+  return Object.freeze({
+    client,
+    topic: hostedDeniedRealtimeProbeTopic(hostedContract, actor, probe),
+  })
+}
+
+function createHostedRunnerIds(): Readonly<{
+  notification: string
+  scaleMessages: readonly string[]
+}> {
+  const forbidden = new Set([
+    hostedContract.runId,
+    hostedContract.environmentSentinelId,
+    hostedContract.conversations.ab,
+    hostedContract.conversations.ac,
+    ...hostedContract.accounts.map(account => account.expectedUserId),
+  ])
+  const generated = new Set<string>()
+  for (let attempt = 0; attempt < 512 && generated.size < 52; attempt += 1) {
+    const id = randomUUID().toLowerCase()
+    if (!forbidden.has(id)) generated.add(id)
+  }
+  if (generated.size !== 52) {
+    throw new Error('hosted_realtime_runner_ids_failed')
+  }
+  const [notification, ...scaleMessages] = [...generated]
+  scaleMessages.sort()
+  return Object.freeze({
+    notification,
+    scaleMessages: Object.freeze(scaleMessages),
+  })
+}
+
 type WorkerFixtures = {
   world: HostedWorld
 }
@@ -1619,6 +1949,7 @@ export const test = base.extend<{}, WorkerFixtures>({
   world: [async ({ browser }, use) => {
     assertHostedDeploymentManifestProof(hostedContract, process.env)
     const registry = new HostedCanaryWriteRegistry()
+    const runnerIds = createHostedRunnerIds()
     const browserActors: HostedBrowserActor[] = []
     const sdkActors: HostedSdkActor[] = []
     let runStarted = false
@@ -1629,11 +1960,21 @@ export const test = base.extend<{}, WorkerFixtures>({
         Array.isArray(sentinel) ? sentinel[0] : sentinel,
         'ready',
       )
-      sdkActors.push(await createSdkActor(hostedContract.accounts[0], registry))
+      sdkActors.push(await createSdkActor(
+        hostedContract.accounts[0],
+        registry,
+        runnerIds.scaleMessages,
+        runnerIds.notification,
+      ))
       await beginHostedRun(sdkActors[0])
       runStarted = true
       for (const actor of hostedContract.accounts.slice(1)) {
-        sdkActors.push(await createSdkActor(actor, registry))
+        sdkActors.push(await createSdkActor(
+          actor,
+          registry,
+          runnerIds.scaleMessages,
+          runnerIds.notification,
+        ))
       }
       for (const actor of hostedContract.accounts) {
         browserActors.push(await createBrowserActor(browser, actor))
@@ -1641,6 +1982,7 @@ export const test = base.extend<{}, WorkerFixtures>({
 
       await use({
         contract: hostedContract,
+        runnerIds,
         browserActors: {
           a: browserActors[0],
           b: browserActors[1],
@@ -1721,7 +2063,7 @@ export const test = base.extend<{}, WorkerFixtures>({
           teardownFailed = true
         }
       }
-      if (registry.size !== 0) teardownFailed = true
+      if (registry.v2Size !== 0) teardownFailed = true
       try {
         const sentinel = await fetchHostedEnvironmentSentinel(hostedContract)
         assertHostedEnvironmentSentinel(

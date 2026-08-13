@@ -159,10 +159,23 @@ CREATE TABLE public.conversation_archives (
   PRIMARY KEY (user_id, conversation_id)
 );
 CREATE TABLE public.notifications (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES public.profiles(id),
+  type text NOT NULL CHECK (type IN ('price_drop', 'system', 'sold')),
+  title text NOT NULL,
+  body text NOT NULL DEFAULT '',
   conversation_id uuid REFERENCES public.conversations(id),
-  user_id uuid REFERENCES public.profiles(id),
-  created_at timestamptz NOT NULL DEFAULT pg_catalog.statement_timestamp()
+  is_read boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT pg_catalog.statement_timestamp(),
+  emailed_at timestamptz
+);
+CREATE TABLE public.blocks (
+  id uuid PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
+  blocker_id uuid NOT NULL REFERENCES public.profiles(id),
+  blocked_id uuid NOT NULL REFERENCES public.profiles(id),
+  created_at timestamptz NOT NULL DEFAULT pg_catalog.statement_timestamp(),
+  UNIQUE (blocker_id, blocked_id),
+  CHECK (blocker_id <> blocked_id)
 );
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -170,6 +183,22 @@ ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.conversation_archives ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.blocks ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Blockers can view own blocks"
+  ON public.blocks FOR SELECT TO authenticated
+  USING ((SELECT auth.uid()) = blocker_id);
+CREATE POLICY "Blockers can create own blocks"
+  ON public.blocks FOR INSERT TO authenticated
+  WITH CHECK ((SELECT auth.uid()) = blocker_id);
+CREATE POLICY "Blockers can remove own blocks"
+  ON public.blocks FOR DELETE TO authenticated
+  USING ((SELECT auth.uid()) = blocker_id);
+GRANT SELECT (id, blocker_id, blocked_id, created_at)
+  ON TABLE public.blocks TO authenticated;
+GRANT INSERT (blocker_id, blocked_id)
+  ON TABLE public.blocks TO authenticated;
+GRANT DELETE ON TABLE public.blocks TO authenticated;
 
 CREATE FUNCTION private.current_user_can_access_pair(
   first_user_id uuid,
@@ -422,6 +451,17 @@ CREATE TRIGGER profiles_00_lock_admin_recovery_before_delete
 CREATE TRIGGER set_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
+-- Reproduce the two pre-existing trigger names that PRECHECK and ACTIVATE
+-- freeze before installing their canary guards. Their production bodies are
+-- outside this package; this isolated fixture needs only the same row/event
+-- topology because canary rows already satisfy those ordinary contracts.
+CREATE TRIGGER attach_notification_conversation
+  BEFORE INSERT ON public.notifications
+  FOR EACH ROW EXECUTE FUNCTION public.local_passthrough_trigger();
+CREATE TRIGGER trg_serialize_block_pair_change
+  BEFORE INSERT OR DELETE ON public.blocks
+  FOR EACH ROW EXECUTE FUNCTION public.local_passthrough_trigger();
 
 INSERT INTO auth.users (id, email, raw_app_meta_data) VALUES
   (

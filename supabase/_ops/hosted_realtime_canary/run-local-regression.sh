@@ -117,6 +117,7 @@ compute_source_manifest_sha256() {
   if command -v shasum >/dev/null 2>&1; then
     for source_file in \
       ../VERIFY_20260719164126_reconcile_managed_realtime_authorization_contract.sql \
+      STAGING_PREREQ_enable_pg_cron.sql \
       ACTIVATE.sql PRECHECK.sql VERIFY.sql VERIFY_BODY.sql \
       VERIFY_CRON_BODY.sql RECOVER.sql ROLLBACK.sql \
       LOCAL_BOOTSTRAP.sql LOCAL_EXPECT_VERIFY_FAILURE.sql \
@@ -128,6 +129,7 @@ compute_source_manifest_sha256() {
   elif command -v sha256sum >/dev/null 2>&1; then
     for source_file in \
       ../VERIFY_20260719164126_reconcile_managed_realtime_authorization_contract.sql \
+      STAGING_PREREQ_enable_pg_cron.sql \
       ACTIVATE.sql PRECHECK.sql VERIFY.sql VERIFY_BODY.sql \
       VERIFY_CRON_BODY.sql RECOVER.sql ROLLBACK.sql \
       LOCAL_BOOTSTRAP.sql LOCAL_EXPECT_VERIFY_FAILURE.sql \
@@ -345,6 +347,120 @@ then
   echo "[LOCAL-PG] Auth-owner membership revoke failed" >&2
   exit 1
 fi
+
+local_project_ref='abcdefghijklmnopqrst'
+local_dataset_lineage='local-fixture-v1'
+local_sentinel_id='66666666-6666-4666-8666-666666666666'
+local_fixture_revision='1'
+local_actor_a_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1'
+local_actor_b_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2'
+local_actor_c_id='cccccccc-cccc-4ccc-8ccc-ccccccccccc3'
+local_conversation_ab_id='44444444-4444-4444-8444-444444444444'
+local_conversation_ac_id='55555555-5555-4555-8555-555555555555'
+local_approval_reference='local-pg-cron-prerequisite-regression'
+
+local_fixture_fields=(
+  'caaci-hosted-fixture-v1'
+  "$local_project_ref"
+  "$local_dataset_lineage"
+  "$local_sentinel_id"
+  "$local_fixture_revision"
+  'member-a'
+  "$local_actor_a_id"
+  'member-b'
+  "$local_actor_b_id"
+  'member-c'
+  "$local_actor_c_id"
+  'ab'
+  "$local_conversation_ab_id"
+  'ac'
+  "$local_conversation_ac_id"
+)
+if command -v shasum >/dev/null 2>&1; then
+  local_fixture_manifest_sha256="$(
+    {
+      printf '%s' "${local_fixture_fields[0]}"
+      for ((field_index = 1;
+            field_index < ${#local_fixture_fields[@]};
+            field_index++))
+      do
+        printf '\037%s' "${local_fixture_fields[$field_index]}"
+      done
+    } | shasum -a 256 | awk '{ print $1 }'
+  )"
+else
+  local_fixture_manifest_sha256="$(
+    {
+      printf '%s' "${local_fixture_fields[0]}"
+      for ((field_index = 1;
+            field_index < ${#local_fixture_fields[@]};
+            field_index++))
+      do
+        printf '\037%s' "${local_fixture_fields[$field_index]}"
+      done
+    } | sha256sum | awk '{ print $1 }'
+  )"
+fi
+if [[ ! "$local_fixture_manifest_sha256" =~ ^[0-9a-f]{64}$ ]]; then
+  echo "[LOCAL-PG] Prerequisite fixture manifest generation failed" >&2
+  exit 1
+fi
+
+prerequisite_common_args=(
+  -X
+  -v ON_ERROR_STOP=1
+  -v prerequisite_mode=local-guard-only
+  -v "dataset_lineage=$local_dataset_lineage"
+  -v "fixture_manifest_sha256=$local_fixture_manifest_sha256"
+  -v "sentinel_id=$local_sentinel_id"
+  -v "fixture_revision=$local_fixture_revision"
+  -v "actor_a_id=$local_actor_a_id"
+  -v "actor_b_id=$local_actor_b_id"
+  -v "actor_c_id=$local_actor_c_id"
+  -v "conversation_ab_id=$local_conversation_ab_id"
+  -v "conversation_ac_id=$local_conversation_ac_id"
+  -v "approval_reference=$local_approval_reference"
+  -h "$cluster_socket"
+  -U postgres
+  -d caaci_hosted_realtime_regression
+)
+
+prerequisite_negative_log="$cluster_root/prerequisite-known-production.log"
+if "$psql_bin" \
+  "${prerequisite_common_args[@]}" \
+  -v project_ref=lfhvgprfphyfvhidegum \
+  -f "$script_dir/STAGING_PREREQ_enable_pg_cron.sql" \
+  >"$prerequisite_negative_log" 2>&1
+then
+  echo "[LOCAL-PG] Known-production prerequisite negative unexpectedly passed" \
+    >&2
+  exit 1
+fi
+if ! grep -Fq \
+  'staging_prerequisite_refused_known_production_project' \
+  "$prerequisite_negative_log"
+then
+  echo "[LOCAL-PG] Known-production prerequisite failed for the wrong reason" \
+    >&2
+  tail -n 120 "$prerequisite_negative_log" >&2
+  exit 1
+fi
+{
+  echo "[LOCAL-PG] prerequisite_known_production_negative=pass"
+  cat "$prerequisite_negative_log"
+} >>"$regression_log"
+
+if ! "$psql_bin" \
+  "${prerequisite_common_args[@]}" \
+  -v "project_ref=$local_project_ref" \
+  -f "$script_dir/STAGING_PREREQ_enable_pg_cron.sql" \
+  >>"$regression_log" 2>&1
+then
+  echo "[LOCAL-PG] Prerequisite target-binding regression failed" >&2
+  tail -n 240 "$regression_log" >&2
+  exit 1
+fi
+echo "[LOCAL-PG] prerequisite_target_binding=pass" >>"$regression_log"
 
 if ! "$psql_bin" \
   -X \

@@ -120,7 +120,7 @@ function approvedTargets() {
 function completeEnv(overrides = {}) {
   return {
     CAACI_HOSTED_CANARY_MODE: 'realtime-staging',
-    CAACI_HOSTED_CANARY_LAUNCHER: 'v1',
+    CAACI_HOSTED_CANARY_LAUNCHER: 'v2',
     CAACI_HOSTED_CANARY_CONFIRM: 'WRITE DISPOSABLE SYNTHETIC STAGING DATA',
     CAACI_HOSTED_CANARY_WRITE_ENABLED: 'true',
     CAACI_HOSTED_CANARY_TARGET_IS_STAGING: 'true',
@@ -165,6 +165,7 @@ test('hosted contract accepts only an approved, exact, synthetic disposable targ
   const contract = loadHostedRealtimeContract(completeEnv(), approvedTargets())
 
   assert.equal(contract.appOrigin, APP_ORIGIN)
+  assert.equal(contract.protocolRevision, 2)
   assert.equal(contract.runId, IDS.run)
   assert.equal(contract.supabaseOrigin, `https://${PROJECT_REF}.supabase.co`)
   assert.equal(contract.commit, COMMIT)
@@ -423,6 +424,7 @@ test('server-owned environment sentinel proves synthetic, side-effect-free, clea
   const exact = {
     sentinel_id: IDS.sentinel,
     project_ref: PROJECT_REF,
+    protocol_revision: 2,
     dataset_lineage: LINEAGE,
     fixture_revision: 1,
     fixture_manifest_sha256: FIXTURE_MANIFEST_SHA256,
@@ -453,6 +455,7 @@ test('server-owned environment sentinel proves synthetic, side-effect-free, clea
   for (const sentinel of [
     { ...exact, sentinel_id: IDS.ab },
     { ...exact, project_ref: 'zzzzzzzzzzzzzzzzzzzz' },
+    { ...exact, protocol_revision: 1 },
     { ...exact, dataset_lineage: 'wrong-lineage' },
     { ...exact, fixture_revision: 2 },
     { ...exact, fixture_manifest_sha256: 'f'.repeat(64) },
@@ -698,6 +701,7 @@ test('browser network policy permits only reviewed read paths and exact read rec
     hostedBrowserRequestHeadersAllowed,
     hostedFingerprintRequestMockable,
     hostedHttpRequestAllowed,
+    hostedDeniedRealtimeProbeTopic,
     hostedReadReceiptRequestMockable,
     hostedRealtimeBroadcastPushAllowed,
     hostedRealtimeJoinAllowed,
@@ -1057,6 +1061,30 @@ test('browser network policy permits only reviewed read paths and exact read rec
     ...joinFrame,
     topic: 'realtime:messages:not-approved',
   }), false)
+  const notificationProbeJoin = {
+    ...joinFrame,
+    topic: `realtime:hosted-notification-${IDS.run}`,
+    payload: {
+      ...joinFrame.payload,
+      config: {
+        ...joinFrame.payload.config,
+        postgres_changes: [{
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${IDS.a}`,
+        }],
+      },
+    },
+  }
+  assert.equal(
+    hostedRealtimeJoinAllowed(contract, actor, notificationProbeJoin),
+    true,
+  )
+  assert.equal(hostedRealtimeJoinAllowed(contract, actor, {
+    ...notificationProbeJoin,
+    topic: 'realtime:hosted-notification-operator-chosen',
+  }), false)
   const privateJoin = {
     ...joinFrame,
     topic: `realtime:conversation:${IDS.ab}`,
@@ -1071,6 +1099,47 @@ test('browser network policy permits only reviewed read paths and exact read rec
     },
   }
   assert.equal(hostedRealtimeJoinAllowed(contract, actor, privateJoin), true)
+  const deniedProbeTopics = {
+    random: `conversation:${IDS.run}`,
+    global: 'online-users',
+    user: `user:${IDS.a}`,
+  }
+  for (const [probe, expectedTopic] of Object.entries(deniedProbeTopics)) {
+    assert.equal(
+      hostedDeniedRealtimeProbeTopic(contract, actor, probe),
+      expectedTopic,
+    )
+    const deniedProbeJoin = {
+      ...privateJoin,
+      topic: `realtime:${expectedTopic}`,
+    }
+    assert.equal(
+      hostedRealtimeJoinAllowed(contract, actor, deniedProbeJoin),
+      false,
+    )
+    assert.equal(
+      hostedRealtimeJoinAllowed(
+        contract,
+        actor,
+        deniedProbeJoin,
+        { deniedProbe: probe },
+      ),
+      true,
+    )
+    assert.equal(
+      hostedRealtimeJoinAllowed(
+        contract,
+        actor,
+        { ...deniedProbeJoin, topic: 'realtime:operator-chosen' },
+        { deniedProbe: probe },
+      ),
+      false,
+    )
+  }
+  assert.throws(
+    () => hostedDeniedRealtimeProbeTopic(contract, actor, 'operator-chosen'),
+    /hosted_realtime_denied_probe_invalid/,
+  )
   assert.equal(hostedRealtimeJoinAllowed(contract, actor, {
     ...privateJoin,
     payload: {
@@ -1408,7 +1477,7 @@ test('Node SDK boundary permits only registered canary RPCs for the exact actor'
       p_run_id: IDS.run,
       p_message_ids: [messageId],
     }),
-  ), true)
+  ), false)
   assert.equal(hostedSdkRequestAllowed(
     contract,
     actorA,
@@ -1439,6 +1508,165 @@ test('Node SDK boundary permits only registered canary RPCs for the exact actor'
   )
   assert.equal(completedRegistry.completedRunShapeMatches(contract), true)
   assert.equal(registry.completedRunShapeMatches(contract), false)
+
+  const scaleIds = Object.freeze(Array.from({ length: 51 }, (_, index) => (
+    `90000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`
+  )))
+  const notificationId = 'a0000000-0000-4000-8000-000000000001'
+  completedRegistry.registerScaleAttempt(actorA, scaleIds, contract)
+  assert.deepEqual(completedRegistry.allIds(), [
+    '80000000-0000-4000-8000-000000000001',
+    '80000000-0000-4000-8000-000000000002',
+    '80000000-0000-4000-8000-000000000003',
+    '80000000-0000-4000-8000-000000000004',
+    '80000000-0000-4000-8000-000000000005',
+    '80000000-0000-4000-8000-000000000006',
+    '80000000-0000-4000-8000-000000000007',
+    '80000000-0000-4000-8000-000000000008',
+  ])
+  assert.deepEqual(completedRegistry.scaleIds(), scaleIds)
+  completedRegistry.setScaleCreatedAt('2026-07-31T00:00:00.123456Z')
+  completedRegistry.registerNotificationAttempt(actorA, notificationId)
+  completedRegistry.recordBlockState(actorA, true)
+  assert.equal(completedRegistry.expectedRestoredBlocks(), 1)
+  completedRegistry.recordBlockState(actorA, false)
+  assert.equal(completedRegistry.completedV2RunShapeMatches(contract), false)
+  completedRegistry.recordBlockState(actorB, true)
+  assert.equal(completedRegistry.expectedRestoredBlocks(), 1)
+  completedRegistry.recordBlockState(actorB, false)
+  assert.equal(completedRegistry.completedV2RunShapeMatches(contract), true)
+  assert.equal(completedRegistry.allMessageIds().length, 59)
+  assert.throws(
+    () => new HostedCanaryWriteRegistry().registerScaleAttempt(
+      actorA,
+      [...scaleIds].reverse(),
+      contract,
+    ),
+    /hosted_realtime_write_registry_failed/,
+  )
+
+  assert.equal(hostedSdkRequestAllowed(
+    contract,
+    actorA,
+    completedRegistry,
+    rpc('hosted_realtime_canary_insert_scale_batch'),
+    'POST',
+    headers,
+    JSON.stringify({
+      p_run_id: IDS.run,
+      p_message_ids: scaleIds,
+    }),
+  ), true)
+  assert.equal(hostedSdkRequestAllowed(
+    contract,
+    actorA,
+    completedRegistry,
+    rpc('hosted_realtime_canary_insert_scale_batch'),
+    'POST',
+    headers,
+    JSON.stringify({
+      p_run_id: IDS.run,
+      p_message_ids: scaleIds.slice(0, 50),
+    }),
+  ), false)
+  assert.equal(hostedSdkRequestAllowed(
+    contract,
+    actorA,
+    completedRegistry,
+    rpc('hosted_realtime_canary_insert_notification'),
+    'POST',
+    headers,
+    JSON.stringify({
+      p_run_id: IDS.run,
+      p_id: notificationId,
+    }),
+  ), true)
+  assert.equal(hostedSdkRequestAllowed(
+    contract,
+    actorA,
+    completedRegistry,
+    rpc('hosted_realtime_canary_set_block'),
+    'POST',
+    headers,
+    JSON.stringify({
+      p_run_id: IDS.run,
+      p_blocked_id: IDS.b,
+      p_state: true,
+    }),
+  ), true)
+  assert.equal(hostedSdkRequestAllowed(
+    contract,
+    actorA,
+    completedRegistry,
+    rpc('hosted_realtime_canary_set_block'),
+    'POST',
+    headers,
+    JSON.stringify({
+      p_run_id: IDS.run,
+      p_blocked_id: IDS.c,
+      p_state: true,
+    }),
+  ), false)
+  assert.equal(hostedSdkRequestAllowed(
+    contract,
+    actorA,
+    completedRegistry,
+    rpc('hosted_realtime_canary_cleanup_v2'),
+    'POST',
+    headers,
+    JSON.stringify({
+      p_run_id: IDS.run,
+      p_message_ids: completedRegistry.allMessageIds(),
+      p_notification_ids: [notificationId],
+    }),
+  ), true)
+  assert.equal(hostedSdkRequestAllowed(
+    contract,
+    actorA,
+    completedRegistry,
+    rpc('hosted_realtime_canary_cleanup_v2'),
+    'POST',
+    headers,
+    JSON.stringify({
+      p_run_id: IDS.run,
+      p_message_ids: completedRegistry.allMessageIds().slice(1),
+      p_notification_ids: [notificationId],
+    }),
+  ), false)
+
+  const scaleRead = new URL(
+    `https://${PROJECT_REF}.supabase.co/rest/v1/messages`,
+  )
+  scaleRead.searchParams.set(
+    'select',
+    'id,conversation_id,sender_id,content,message_type,is_read,created_at',
+  )
+  scaleRead.searchParams.set('conversation_id', `eq.${IDS.ab}`)
+  scaleRead.searchParams.set(
+    'or',
+    '(created_at.gt.2026-07-31T00:00:00.123456Z,and(created_at.eq.2026-07-31T00:00:00.123456Z,id.gt.00000000-0000-0000-0000-000000000000))',
+  )
+  scaleRead.searchParams.set('order', 'created_at.asc,id.asc')
+  scaleRead.searchParams.set('limit', '50')
+  assert.equal(hostedSdkRequestAllowed(
+    contract,
+    actorA,
+    completedRegistry,
+    scaleRead.href,
+    'GET',
+    headers,
+    '',
+  ), true)
+  scaleRead.searchParams.set('limit', '500')
+  assert.equal(hostedSdkRequestAllowed(
+    contract,
+    actorA,
+    completedRegistry,
+    scaleRead.href,
+    'GET',
+    headers,
+    '',
+  ), false)
 
   const revokeCalls = []
   await revokeExactHostedSession(contract, jwt, async (request, init) => {
@@ -1593,7 +1821,11 @@ test('safe launcher requires zero args, a complete ordered transcript and fixed 
     '[HOSTED-CANARY] FAIL-01 passed',
     '[HOSTED-CANARY] DEDUPE-01 passed',
     '[HOSTED-CANARY] SWITCH-01 passed',
-    '[HOSTED-CANARY] SUMMARY passed pass=6 fail=0',
+    '[HOSTED-CANARY] BLOCK-01 passed',
+    '[HOSTED-CANARY] NOTIFY-01 passed',
+    '[HOSTED-CANARY] SCALE-01 passed',
+    '[HOSTED-CANARY] LIFE-01 passed',
+    '[HOSTED-CANARY] SUMMARY passed pass=10 fail=0',
   ]
   assert.equal(hostedCanaryTranscriptIsComplete(exactTranscript), true)
   for (const invalidTranscript of [
@@ -1602,7 +1834,7 @@ test('safe launcher requires zero args, a complete ordered transcript and fixed 
     [exactTranscript[1], exactTranscript[0], ...exactTranscript.slice(2)],
     [...exactTranscript.slice(0, 2), exactTranscript[1], ...exactTranscript.slice(3)],
     exactTranscript.map(line => line.replace('RLS-01 passed', 'RLS-01 failed')),
-    exactTranscript.map(line => line.replace('pass=6 fail=0', 'pass=5 fail=0')),
+    exactTranscript.map(line => line.replace('pass=10 fail=0', 'pass=9 fail=0')),
   ]) assert.equal(hostedCanaryTranscriptIsComplete(invalidTranscript), false)
 
   const childEnv = buildHostedCanaryChildEnv({
@@ -1632,7 +1864,7 @@ test('safe launcher requires zero args, a complete ordered transcript and fixed 
   assert.equal(childEnv.XDG_CONFIG_HOME, '/private/run-root/config')
   assert.equal(childEnv.CAACI_HOSTED_CANARY_MODE, 'realtime-staging')
   assert.equal(childEnv.CAACI_HOSTED_CANARY_PROJECT_REF, PROJECT_REF)
-  assert.equal(childEnv.CAACI_HOSTED_CANARY_LAUNCHER, 'v1')
+  assert.equal(childEnv.CAACI_HOSTED_CANARY_LAUNCHER, 'v2')
   assert.equal(childEnv.CAACI_HOSTED_CANARY_RUN_ID, IDS.run)
   assert.equal(
     childEnv.CAACI_HOSTED_CANARY_BROWSER_EXECUTABLE,
@@ -1762,7 +1994,12 @@ test('hosted Playwright surface is separate, manual, no-artifact and deny-by-def
   assert.match(fixtures, /assertHostedEnvironmentSentinel/)
   assert.match(fixtures, /fetchHostedEnvironmentSentinel/)
   assert.match(fixtures, /createHostedGuardedFetch/)
-  assert.match(fixtures, /hosted_realtime_canary_cleanup/)
+  assert.match(fixtures, /hosted_realtime_canary_cleanup_v2/)
+  assert.match(fixtures, /hosted_realtime_canary_insert_scale_batch/)
+  assert.match(fixtures, /hosted_realtime_canary_insert_notification/)
+  assert.match(fixtures, /hosted_realtime_canary_set_block/)
+  assert.match(fixtures, /createHostedDeniedProbeClient/)
+  assert.match(fixtures, /createHostedRunnerIds/)
   assert.match(fixtures, /hostedReadReceiptRequestMockable/)
   assert.match(fixtures, /hostedBrowserRequestHeadersAllowed/)
   assert.match(fixtures, /issuedAccessTokens/)
@@ -1858,7 +2095,22 @@ test('hosted Playwright surface is separate, manual, no-artifact and deny-by-def
   assert.match(spec, /FAIL-01/)
   assert.match(spec, /DEDUPE-01/)
   assert.match(spec, /SWITCH-01/)
+  assert.match(spec, /BLOCK-01/)
+  assert.match(spec, /NOTIFY-01/)
+  assert.match(spec, /SCALE-01/)
+  assert.match(spec, /LIFE-01/)
+  assert.match(spec, /runBlockDirection\(a\)[\s\S]*runBlockDirection\(b\)/)
+  assert.match(
+    spec,
+    /waitForConversationReadsIdle\(conversationId\)[\s\S]{0,500}conversationReadObservation[\s\S]{0,500}delay\(3_500\)/,
+  )
+  assert.match(spec, /\['random', 'global', 'user'\]/)
+  assert.match(spec, /JSON\.stringify\(conversation\.pageSizes\)[\s\S]*\[50, 1\]/)
+  assert.match(spec, /JSON\.stringify\(inbox\.pageSizes\)[\s\S]*\[25, 5\]/)
   assert.match(sdkBoundary, /HostedCanaryWriteRegistry/)
+  assert.match(sdkBoundary, /completedV2RunShapeMatches/)
+  assert.match(sdkBoundary, /HOSTED_SCALE_MESSAGE_COUNT\s*=\s*51/)
+  assert.match(sdkBoundary, /hostedScaleReadRequestAllowed/)
   assert.match(sdkBoundary, /hostedSdkRequestAllowed/)
   assert.match(sdkBoundary, /revokeExactHostedSession/)
   assert.match(sdkBoundary, /createHostedGuardedWebSocketTransport/)
@@ -1903,6 +2155,18 @@ test('hosted Playwright surface is separate, manual, no-artifact and deny-by-def
   assert.doesNotMatch(hostedSources, /console\.(?:log|error|warn|info)|page\.screenshot|tracing\.start|storageState\s*\(|launchPersistentContext|recordHar/)
   assert.doesNotMatch(hostedSources, /SUPABASE_(?:SECRET|SERVICE_ROLE)|ADMIN_TOKEN|OPENAI_API_KEY|RESEND_API_KEY|SENTRY_AUTH_TOKEN|WECHAT_APPSECRET/)
   assert.match(reporter, /HOSTED-CANARY/)
+  for (const scenario of [
+    'AUTH-01',
+    'AUTH-02',
+    'RLS-01',
+    'FAIL-01',
+    'DEDUPE-01',
+    'SWITCH-01',
+    'BLOCK-01',
+    'NOTIFY-01',
+    'SCALE-01',
+    'LIFE-01',
+  ]) assert.match(reporter, new RegExp(`['"]${scenario}['"]`))
   assert.doesNotMatch(reporter, /result\.error|result\.errors|test\.title\b/)
 
   const parsedPackage = JSON.parse(pkg)

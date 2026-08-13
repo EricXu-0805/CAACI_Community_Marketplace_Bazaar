@@ -438,7 +438,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useAuth } from '../composables/useAuth'
 import { useTheme } from '../composables/useTheme'
-import { createClientMessageId, useMessages } from '../composables/useMessages'
+import { createClientMessageId, compareMessagesChronologically, comparePostgresTimestamps, useMessages } from '../composables/useMessages'
 import { useOffers } from '../composables/useOffers'
 import { useMeetups } from '../composables/useMeetups'
 import { CAMPUS_SPOTS, localizeLocation, matchSpot } from '../composables/useCampusSpots'
@@ -555,10 +555,10 @@ let meetupsUnsub: (() => void) | null = null
 let threadEpoch = 0
 const reportLoading = createOwnedLoading()
 // #ifdef H5
-// Re-fetch when the tab is re-foregrounded. Realtime is a known-weak channel
-// and H5 has no polling fallback, so a socket that died (CHANNEL_ERROR / proxy
-// / backgrounded tab) silently stops delivering inserts with no recovery. A
-// foreground heal recovers any window missed while the socket was degraded.
+// Re-fetch when the tab is re-foregrounded. H5 Postgres Changes now hands a
+// background-resumed socket to sticky direct polling, but that poll must first
+// seed its server cursor. This immediate authoritative heal narrows that
+// window; the fallback readiness reconciliation closes any remaining gap.
 let onVisible: (() => void) | null = null
 // #endif
 
@@ -730,9 +730,7 @@ function reconcileSentMessage(sent: Message, tempId?: string) {
     messages.value.push(sent)
   }
 
-  messages.value.sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-  )
+  messages.value.sort(compareMessagesChronologically)
 }
 
 function failOptimisticMessage(tempId: string, error: unknown) {
@@ -1541,7 +1539,7 @@ const timeline = computed<TimelineEntry[]>(() => {
   for (const m of messages.value) out.push({ kind: 'msg', key: 'm-' + m.id, created_at: m.created_at, msg: m })
   for (const o of offers.value) out.push({ kind: 'offer', key: 'o-' + o.id, created_at: o.created_at, offer: o })
   for (const mt of meetups.value) out.push({ kind: 'meetup', key: 'mt-' + mt.id, created_at: mt.created_at, meetup: mt })
-  out.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+  out.sort((a, b) => comparePostgresTimestamps(a.created_at, b.created_at))
   return out
 })
 

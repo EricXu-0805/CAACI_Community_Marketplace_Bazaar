@@ -477,6 +477,14 @@ interface StickyTransportOptions<Handoff> {
    */
   telemetryScope: 'conversation' | 'notifications' | 'inbox' | 'snapshot'
   onReady?: ReconcileCallback
+  /**
+   * H5 can suspend a healthy-looking WebSocket while a tab is backgrounded,
+   * then resume without emitting a terminal channel status. Supplying this
+   * factory makes browser background/resume and offline transitions explicit
+   * transport failures, so the subscription moves once to its direct-poll
+   * owner instead of waiting forever for an SDK error that may never arrive.
+   */
+  browserRecoveryHandoff?: () => Handoff
   startPrimary: (
     onFailure: (handoff: Handoff) => void,
     onReady: () => void,
@@ -507,6 +515,7 @@ function startStickyTransport<Handoff>(
   let primaryStarting = true
   let pendingFailure: { handoff: Handoff } | null = null
   let stopAccountTransition = () => {}
+  let stopBrowserRecoveryObservation = () => {}
   const isCurrent = () => alive && isAccountRequestCurrent(accountToken)
 
   const nextReady = () => {
@@ -558,6 +567,8 @@ function startStickyTransport<Handoff>(
       return
     }
     switched = true
+    stopBrowserRecoveryObservation()
+    stopBrowserRecoveryObservation = () => {}
     // Once per transport: `switched` already makes the handoff sticky, so a
     // flapping connection cannot turn this into a reporting loop.
     captureException(new Error('realtime_fallback_takeover'), {
@@ -579,11 +590,47 @@ function startStickyTransport<Handoff>(
     switchToFallback(handoff)
   }
 
+  if (options.browserRecoveryHandoff && isCurrent() && !switched) {
+    const handoff = options.browserRecoveryHandoff
+    let observedHidden = typeof document !== 'undefined'
+      && document.visibilityState !== 'visible'
+    const onVisibilityChange = () => {
+      if (!isCurrent() || typeof document === 'undefined') return
+      if (document.visibilityState === 'hidden') {
+        observedHidden = true
+        return
+      }
+      if (document.visibilityState === 'visible' && observedHidden) {
+        observedHidden = false
+        switchToFallback(handoff())
+      }
+    }
+    const onOffline = () => {
+      if (isCurrent()) switchToFallback(handoff())
+    }
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVisibilityChange)
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('offline', onOffline)
+    }
+    stopBrowserRecoveryObservation = () => {
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVisibilityChange)
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('offline', onOffline)
+      }
+    }
+  }
+
   const stop = () => {
     if (!alive) return
     alive = false
     stopAccountTransition()
     stopAccountTransition = () => {}
+    stopBrowserRecoveryObservation()
+    stopBrowserRecoveryObservation = () => {}
     transportGeneration += 1
     if (readyRetryTimer) {
       clearTimeout(readyRetryTimer)
@@ -1044,6 +1091,7 @@ export function subscribeToConversation(
         return startStickyTransport<void>({
           telemetryScope: 'conversation',
           onReady,
+          browserRecoveryHandoff: () => undefined,
           startPrimary: (onFailure, markReady) => (
             startPostgresChangesRealtimeChannel({
               supabase,
@@ -1236,6 +1284,7 @@ export function subscribeToUserNotifications(
         return startStickyTransport<void>({
           telemetryScope: 'notifications',
           onReady,
+          browserRecoveryHandoff: () => undefined,
           startPrimary: (onFailure, markReady) => (
             startPostgresChangesRealtimeChannel({
               supabase,
@@ -1289,6 +1338,7 @@ export function subscribeToUserInbox(
         return startStickyTransport<void>({
           telemetryScope: 'inbox',
           onReady,
+          browserRecoveryHandoff: () => undefined,
           startPrimary: (onFailure, markReady) => (
             startPostgresChangesRealtimeChannel({
               supabase,
@@ -1479,6 +1529,7 @@ export function subscribeToSnapshotChanges(
     const transportStop = startStickyTransport<void>({
       telemetryScope: 'snapshot',
       onReady: options.onReady,
+      browserRecoveryHandoff: () => undefined,
       startPrimary: (onFailure, markReady) => (
         startPostgresChangesRealtimeChannel({
           supabase,

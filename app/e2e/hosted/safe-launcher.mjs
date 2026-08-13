@@ -38,10 +38,14 @@ const EXPECTED_TRANSCRIPT = Object.freeze([
   '[HOSTED-CANARY] FAIL-01 passed',
   '[HOSTED-CANARY] DEDUPE-01 passed',
   '[HOSTED-CANARY] SWITCH-01 passed',
-  '[HOSTED-CANARY] SUMMARY passed pass=6 fail=0',
+  '[HOSTED-CANARY] BLOCK-01 passed',
+  '[HOSTED-CANARY] NOTIFY-01 passed',
+  '[HOSTED-CANARY] SCALE-01 passed',
+  '[HOSTED-CANARY] LIFE-01 passed',
+  '[HOSTED-CANARY] SUMMARY passed pass=10 fail=0',
 ])
 const SCENARIO_LINE =
-  /^\[HOSTED-CANARY\] (?:AUTH-01|AUTH-02|RLS-01|FAIL-01|DEDUPE-01|SWITCH-01) (?:passed|failed|timedOut|timedout|interrupted|skipped|unknown)$/
+  /^\[HOSTED-CANARY\] (?:AUTH-01|AUTH-02|RLS-01|FAIL-01|DEDUPE-01|SWITCH-01|BLOCK-01|NOTIFY-01|SCALE-01|LIFE-01) (?:passed|failed|timedOut|timedout|interrupted|skipped|unknown)$/
 const SUMMARY_LINE =
   /^\[HOSTED-CANARY\] SUMMARY (?:passed|failed|timedOut|timedout|interrupted|skipped|unknown) pass=\d+ fail=\d+$/
 const HARNESS_LINE = /^\[HOSTED-CANARY\] HARNESS failed$/
@@ -184,7 +188,7 @@ export function buildHostedCanaryChildEnv(
       childEnv[key] = sourceEnv[key]
     }
   }
-  childEnv.CAACI_HOSTED_CANARY_LAUNCHER = 'v1'
+  childEnv.CAACI_HOSTED_CANARY_LAUNCHER = 'v2'
   childEnv.CAACI_HOSTED_CANARY_RUN_ID = runId
   childEnv.CAACI_HOSTED_CANARY_OUTPUT_DIR = outputDir
   childEnv.CAACI_HOSTED_CANARY_BROWSER_EXECUTABLE = browserExecutable

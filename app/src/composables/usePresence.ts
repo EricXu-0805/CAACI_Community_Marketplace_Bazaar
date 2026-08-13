@@ -54,6 +54,8 @@ export function usePresence() {
     let trackAttempts = 0
     let trackRetryTimer: ReturnType<typeof setTimeout> | null = null
     let lastSentAt = 0
+    let transportUnsubscribe: () => void = () => {}
+    let stopBrowserLifecycle = () => {}
     const setPeerOnline = (online: boolean) => {
       if (peerOnline.value === online) return
       peerOnline.value = online
@@ -141,7 +143,20 @@ export function usePresence() {
       )
     }
 
-    const unsubscribe = startPrivateRealtimeChannel({
+    const stopPresenceTransport = () => {
+      stopBrowserLifecycle()
+      stopBrowserLifecycle = () => {}
+      subscribed = false
+      invalidateTrack()
+      channel = null
+      ownUserId = ''
+      isCurrentAccount = () => false
+      const stopTransport = transportUnsubscribe
+      transportUnsubscribe = () => {}
+      stopTransport()
+    }
+
+    transportUnsubscribe = startPrivateRealtimeChannel({
       supabase,
       topic: `conversation:${conversationId.toLowerCase()}`,
       config: (context) => ({
@@ -183,6 +198,8 @@ export function usePresence() {
         }
       },
       onClose: () => {
+        stopBrowserLifecycle()
+        stopBrowserLifecycle = () => {}
         subscribed = false
         invalidateTrack()
         channel = null
@@ -190,6 +207,39 @@ export function usePresence() {
         isCurrentAccount = () => false
       },
     })
+
+    // A backgrounded browser may resume with a stale socket without emitting
+    // CHANNEL_ERROR/TIMED_OUT/CLOSED. Presence has no polling substitute, so
+    // fail closed to offline/no-op for this mount and let the next legal mount
+    // establish a fresh private channel.
+    let observedHidden = typeof document !== 'undefined'
+      && document.visibilityState !== 'visible'
+    const onVisibilityChange = () => {
+      if (typeof document === 'undefined') return
+      if (document.visibilityState === 'hidden') {
+        observedHidden = true
+        return
+      }
+      if (document.visibilityState === 'visible' && observedHidden) {
+        observedHidden = false
+        stopPresenceTransport()
+      }
+    }
+    const onOffline = () => stopPresenceTransport()
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVisibilityChange)
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('offline', onOffline)
+    }
+    stopBrowserLifecycle = () => {
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVisibilityChange)
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('offline', onOffline)
+      }
+    }
 
     return {
       peerOnline,
@@ -210,11 +260,7 @@ export function usePresence() {
         } catch { /* typing is best-effort */ }
       },
       unsubscribe: () => {
-        subscribed = false
-        invalidateTrack()
-        channel = null
-        ownUserId = ''
-        unsubscribe()
+        stopPresenceTransport()
       },
     }
     // #endif

@@ -7,6 +7,7 @@ import type {
 import {
   assertHostedBrowserActor,
   createHostedAnonymousClient,
+  createHostedDeniedProbeClient,
   expect,
   loginHostedActor,
   openHostedConversation,
@@ -97,6 +98,26 @@ function postgresMessagesChannel(
       filter: `conversation_id=eq.${conversationId}`,
     }, payload => {
       if (payload?.new?.id === markerId) onMarker()
+    })
+}
+
+function postgresNotificationsChannel(
+  client: SupabaseClient,
+  contract: HostedRealtimeContract,
+  markerId: string,
+  onMarker: (row: Record<string, unknown>) => void,
+): RealtimeChannel {
+  return client
+    .channel(`hosted-notification-${contract.runId}`)
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'notifications',
+      filter: `user_id=eq.${contract.accounts[0].expectedUserId}`,
+    }, payload => {
+      if (payload?.new?.id === markerId) {
+        onMarker(payload.new as Record<string, unknown>)
+      }
     })
 }
 
@@ -497,10 +518,26 @@ test('AUTH-02', async ({ world }) => {
       },
     },
   )
+  const dedicatedDeniedProbes = await Promise.all(
+    (['random', 'global', 'user'] as const).map(async probe => {
+      const boundary = await createHostedDeniedProbeClient(probe, a)
+      return {
+        boundary,
+        channel: boundary.client.channel(boundary.topic, {
+          config: {
+            private: true,
+            presence: { key: a.actor.expectedUserId },
+            broadcast: { self: false, ack: true },
+          },
+        }),
+      }
+    }),
+  )
   const legalStatuses = legalChannels.map(() => [] as string[])
   const deniedStatuses = [
     ...deniedChannels.map(() => [] as string[]),
     [] as string[],
+    ...dedicatedDeniedProbes.map(() => [] as string[]),
   ]
 
   try {
@@ -518,8 +555,14 @@ test('AUTH-02', async ({ world }) => {
       subscribeOutcome(
         anonymousChannel,
         15_000,
-        status => deniedStatuses[deniedStatuses.length - 1].push(status),
+        status => deniedStatuses[deniedChannels.length].push(status),
       ),
+      ...dedicatedDeniedProbes.map((entry, index) => subscribeOutcome(
+        entry.channel,
+        15_000,
+        status => deniedStatuses[deniedChannels.length + 1 + index]
+          .push(status),
+      )),
     ])
     const legalOutcomes = outcomes.slice(0, legalChannels.length)
     const deniedOutcomes = outcomes.slice(legalChannels.length)
@@ -551,6 +594,13 @@ test('AUTH-02', async ({ world }) => {
       await closeAnonymousClient(anonymous)
     } catch {
       teardownFailed = true
+    }
+    for (const probe of dedicatedDeniedProbes) {
+      try {
+        await closeAnonymousClient(probe.boundary.client)
+      } catch {
+        teardownFailed = true
+      }
     }
     if (teardownFailed) {
       throw new Error('hosted_realtime_channel_teardown_failed')
@@ -987,6 +1037,34 @@ test('SWITCH-01', async ({ world }) => {
     ) throw new Error('hosted_realtime_account_switch_isolation_failed')
     await assertNoObservedLeak(browserA.page)
     await assertNoObservedLeak(controlPage)
+
+    await signOutHostedActor(controlPage)
+    await waitForCondition(() => (
+      browserA.network.actorActiveSocketCount(actorB) === 0
+    ), 15_000)
+    await browserA.network.setActor(browserA.actor)
+    await loginHostedActor(controlPage, browserA.actor, world.contract)
+    await assertHostedBrowserActor(browserA.page, browserA.actor, world.contract)
+    await assertHostedBrowserActor(controlPage, browserA.actor, world.contract)
+    await navigateToSettings(browserA.page)
+    const restoredTopic =
+      `realtime:messages:${world.contract.conversations.ab}`
+    const beforeRestoreOpen = browserA.network.topicObservation(restoredTopic)
+    await openHostedConversation(
+      browserA.page,
+      world.contract.conversations.ab,
+    )
+    await waitForCondition(() => {
+      const observation = browserA.network.topicObservation(restoredTopic)
+      return (
+        observation.active
+        && observation.successfulJoins > beforeRestoreOpen.successfulJoins
+      )
+    }, 20_000)
+    if (browserA.network.actorActiveSocketCount(actorB) !== 0) {
+      throw new Error('hosted_realtime_account_restore_isolation_failed')
+    }
+    await navigateToSettings(browserA.page)
   } finally {
     let teardownFailed = false
     held.release()
@@ -1013,5 +1091,269 @@ test('SWITCH-01', async ({ world }) => {
     if (teardownFailed) {
       throw new Error('hosted_realtime_switch_teardown_failed')
     }
+  }
+})
+
+test('BLOCK-01', async ({ world }) => {
+  const { a, b } = world.sdkActors
+  const conversationId = world.contract.conversations.ab
+  const activeBlockers = new Set<HostedSdkActor>()
+  let channels: Array<{ actor: HostedSdkActor; channel: RealtimeChannel }> = []
+
+  const closeChannels = async (): Promise<void> => {
+    const closing = channels
+    channels = []
+    const results = await Promise.allSettled(
+      closing.map(entry => removeChannel(entry.actor, entry.channel)),
+    )
+    if (results.some(result => result.status === 'rejected')) {
+      throw new Error('hosted_realtime_block_channel_teardown_failed')
+    }
+  }
+  const pair = () => [
+    { actor: a, channel: privateConversationChannel(a, conversationId) },
+    { actor: b, channel: privateConversationChannel(b, conversationId) },
+  ]
+  const runBlockDirection = async (
+    blocker: HostedSdkActor,
+  ): Promise<void> => {
+    await blocker.setBlock(true)
+    activeBlockers.add(blocker)
+    channels = pair()
+    const deniedStatuses = channels.map(() => [] as string[])
+    const denied = await Promise.all(channels.map((entry, index) => (
+      subscribeOutcome(
+        entry.channel,
+        15_000,
+        status => deniedStatuses[index].push(status),
+      )
+    )))
+    if (denied.some(status => status !== 'CHANNEL_ERROR')) {
+      throw new Error('hosted_realtime_block_rebuild_deny_failed')
+    }
+    await delay(NEGATIVE_OBSERVATION_MS)
+    if (deniedStatuses.some(statuses => statuses.includes('SUBSCRIBED'))) {
+      throw new Error('hosted_realtime_block_rebuild_deny_not_stable')
+    }
+    await closeChannels()
+
+    await blocker.setBlock(false)
+    activeBlockers.delete(blocker)
+    channels = pair()
+    const restored = await Promise.all(
+      channels.map(entry => subscribeOutcome(entry.channel)),
+    )
+    if (restored.some(status => status !== 'SUBSCRIBED')) {
+      throw new Error('hosted_realtime_unblock_rebuild_failed')
+    }
+    await closeChannels()
+  }
+
+  try {
+    channels = pair()
+    const initial = await Promise.all(
+      channels.map(entry => subscribeOutcome(entry.channel)),
+    )
+    if (initial.some(status => status !== 'SUBSCRIBED')) {
+      throw new Error('hosted_realtime_block_initial_join_failed')
+    }
+    await closeChannels()
+
+    await runBlockDirection(a)
+    await runBlockDirection(b)
+  } finally {
+    let teardownFailed = false
+    try {
+      await closeChannels()
+    } catch {
+      teardownFailed = true
+    }
+    for (const blocker of activeBlockers) {
+      try {
+        await blocker.setBlock(false)
+        activeBlockers.delete(blocker)
+      } catch {
+        teardownFailed = true
+      }
+    }
+    if (teardownFailed) {
+      throw new Error('hosted_realtime_block_teardown_failed')
+    }
+  }
+})
+
+test('NOTIFY-01', async ({ world }) => {
+  const { a, b, c } = world.sdkActors
+  const anonymous = createHostedAnonymousClient()
+  const markerId = world.runnerIds.notification
+  const actors = [
+    { key: 'a' as const, client: a.client },
+    { key: 'b' as const, client: b.client },
+    { key: 'c' as const, client: c.client },
+    { key: 'anonymous' as const, client: anonymous },
+  ]
+  const counts = { a: 0, b: 0, c: 0, anonymous: 0 }
+  let receivedBody: unknown
+  const channels = actors.map(({ key, client }) => (
+    postgresNotificationsChannel(
+      client,
+      world.contract,
+      markerId,
+      row => {
+        counts[key] += 1
+        if (key === 'a') receivedBody = row.body
+      },
+    )
+  ))
+
+  try {
+    const outcomes = await Promise.all(
+      channels.map(channel => subscribeOutcome(channel)),
+    )
+    if (outcomes.some(status => status !== 'SUBSCRIBED')) {
+      throw new Error('hosted_realtime_notification_join_failed')
+    }
+    const inserted = await a.insertNotification()
+    await waitForCondition(() => counts.a === 1, 15_000)
+    await delay(NEGATIVE_OBSERVATION_MS)
+    if (
+      inserted.id !== markerId
+      || inserted.marker !== `caaci-hosted-notification-${markerId}`
+      || receivedBody !== inserted.marker
+      || counts.a !== 1
+      || counts.b !== 0
+      || counts.c !== 0
+      || counts.anonymous !== 0
+    ) throw new Error('hosted_realtime_notification_rls_failed')
+  } finally {
+    let teardownFailed = false
+    const removals = await Promise.allSettled(
+      channels.slice(0, 3).map((channel, index) => (
+        actors[index].client.removeChannel(channel)
+      )),
+    )
+    if (removals.some(result => (
+      result.status === 'rejected' || result.value !== 'ok'
+    ))) teardownFailed = true
+    try {
+      await closeAnonymousClient(anonymous)
+    } catch {
+      teardownFailed = true
+    }
+    if (teardownFailed) {
+      throw new Error('hosted_realtime_notification_teardown_failed')
+    }
+  }
+})
+
+test('SCALE-01', async ({ world }) => {
+  const { a, c } = world.sdkActors
+  const anonymous = createHostedAnonymousClient()
+  const scaleIds = new Set(world.runnerIds.scaleMessages)
+  let cCount = 0
+  let anonymousCount = 0
+  const cChannel = c.client
+    .channel(`hosted-pg-${randomUUID()}`)
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'messages',
+      filter: `conversation_id=eq.${world.contract.conversations.ab}`,
+    }, payload => {
+      if (scaleIds.has(String(payload?.new?.id || ''))) cCount += 1
+    })
+  const anonymousChannel = anonymous
+    .channel(`hosted-pg-${randomUUID()}`)
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'messages',
+      filter: `conversation_id=eq.${world.contract.conversations.ab}`,
+    }, payload => {
+      if (scaleIds.has(String(payload?.new?.id || ''))) anonymousCount += 1
+    })
+
+  try {
+    const outcomes = await Promise.all([
+      subscribeOutcome(cChannel),
+      subscribeOutcome(anonymousChannel),
+    ])
+    if (outcomes.some(status => status !== 'SUBSCRIBED')) {
+      throw new Error('hosted_realtime_scale_rls_join_failed')
+    }
+    await a.insertScaleBatch()
+    const conversation = await a.readScaleConversation()
+    const inbox = await a.readScaleInbox()
+    await delay(NEGATIVE_OBSERVATION_MS)
+    if (
+      JSON.stringify(conversation.pageSizes) !== JSON.stringify([50, 1])
+      || conversation.rows.length !== 51
+      || JSON.stringify(inbox.pageSizes) !== JSON.stringify([25, 5])
+      || inbox.rows.length !== 30
+      || cCount !== 0
+      || anonymousCount !== 0
+    ) throw new Error('hosted_realtime_scale_boundary_failed')
+  } finally {
+    let teardownFailed = false
+    try {
+      await removeChannel(c, cChannel)
+    } catch {
+      teardownFailed = true
+    }
+    try {
+      await closeAnonymousClient(anonymous)
+    } catch {
+      teardownFailed = true
+    }
+    if (teardownFailed) {
+      throw new Error('hosted_realtime_scale_teardown_failed')
+    }
+  }
+})
+
+test('LIFE-01', async ({ world }) => {
+  const receiver = world.browserActors.b
+  const conversationId = world.contract.conversations.ab
+  const topic = `realtime:messages:${conversationId}`
+
+  await navigateToSettings(receiver.page)
+  for (let cycle = 0; cycle < 3; cycle += 1) {
+    const beforeOpen = receiver.network.topicObservation(topic)
+    await openHostedConversation(receiver.page, conversationId)
+    await waitForCondition(() => {
+      const current = receiver.network.topicObservation(topic)
+      return (
+        current.activeSockets === 1
+        && current.successfulJoins > beforeOpen.successfulJoins
+      )
+    }, 20_000)
+    await navigateToSettings(receiver.page)
+    await waitForCondition(() => (
+      receiver.network.topicObservation(topic).activeSockets === 0
+    ), 15_000)
+    await receiver.network.waitForConversationReadsIdle(conversationId)
+    const closed = receiver.network.topicObservation(topic)
+    const closedReads = receiver.network.conversationReadObservation(
+      conversationId,
+    )
+    const closedIncrementAttempts =
+      receiver.network.conversationDirectIncrementAttempts(conversationId)
+    await delay(3_500)
+    const stable = receiver.network.topicObservation(topic)
+    const stableReads = receiver.network.conversationReadObservation(
+      conversationId,
+    )
+    if (
+      stable.active
+      || stable.activeSockets !== 0
+      || stable.joinAttempts !== closed.joinAttempts
+      || stable.successfulJoins !== closed.successfulJoins
+      || JSON.stringify(stableReads) !== JSON.stringify(closedReads)
+      || receiver.network.conversationDirectIncrementAttempts(conversationId)
+        !== closedIncrementAttempts
+    ) throw new Error('hosted_realtime_lifecycle_unmount_failed')
+  }
+  if (receiver.network.actorActiveSocketCount(receiver.actor) !== 0) {
+    throw new Error('hosted_realtime_lifecycle_residue_failed')
   }
 })
