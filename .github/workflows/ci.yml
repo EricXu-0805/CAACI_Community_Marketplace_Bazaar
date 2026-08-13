@@ -79,6 +79,13 @@ jobs:
         working-directory: app
         run: npm audit --omit=dev --audit-level=moderate
 
+      # The manifest is the only thing standing between a silently edited
+      # migration and a production apply. RUNBOOK documented this as a command
+      # to run by hand, which meant it was never run.
+      - name: Verify migration file integrity
+        working-directory: supabase/migrations
+        run: shasum -a 256 -c manifest.sha256
+
       - name: API and client boundary tests
         working-directory: app
         run: node --test ../api/*.test.mjs ../scripts/*.test.mjs smoke/*.test.mjs

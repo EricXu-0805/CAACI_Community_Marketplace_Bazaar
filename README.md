@@ -92,14 +92,26 @@ Vercel Edge API
 审计候选、3 条后续 2026-07 production tail，以及 4 条 2026-08 前向迁移。
 生产 ledger 的 34/38 → 37/38 和“38 条候选”是当时发布追踪的历史口径，
 不是当前文件数或当前托管环境证明。4 条 2026-08 迁移分别为 08-01 consent、
-08-08 fingerprint eviction、`20260811140018` quiescence bridge，以及必须在
-排空证明后执行的 `20260811143207` final limiter。托管 Realtime canary 的
+08-08 fingerprint eviction、`20260811140018` quiescence bridge，以及在
+排空证明后执行的 `20260811143207` final limiter。**这 4 条已于 2026-08-14
+全部落到生产**：ledger 现为 112 行，DB239 两条分别记为 `20260813184835` /
+`20260813185627`，`record_fingerprint` 函数体 md5 = `236e5532c22d63f9a0336e38fc381c82`，
+`private.device_fingerprint_rate_limits` 已建（14 行，等于当时的指纹 profile 数），
+临时闸门 `private.device_fingerprint_churn_cutover` 已随迁移 DROP，
+指纹/profile 数据零漂移。托管 Realtime canary 的
 pg_cron 前置脚本已移出迁移历史，改放 `_ops/hosted_realtime_canary/`——它只在
 获批的 staging 项目上执行，生产不装 pg_cron。
 合并前生产 ledger 已逐条核对为 34/38；依次完成 145042、152000、161200 三条
 生产 tail 后为 37/38；`20260718140000_retire_wechat_password_credentials.sql`
 仍待匹配的 passwordless canary，但首版隐藏微信登录并保持 provider fail-closed，
-因此该迁移只在未来重新开放微信身份前执行。应用 bundle 仍需从最终提交生成并验收。不要在任何现有环境直接盲跑
+因此该迁移只在未来重新开放微信身份前执行——它是后置兼容门，不是发布阻断项。
+
+⚠️ **ledger 行数不等于已部署迁移数，两个方向都会骗人。** 经 Management API
+`/database/query` 应用的迁移会执行但不写 ledger 行；而手工经 MCP 应用的迁移，
+`version` 是应用时刻的时间戳、`name` 才是文件名（例如文件 `20260808040313_*`
+在生产的 ledger version 是 `20260810184114`）。所以按版本号查存在性会全查不到，
+按 `name` 查才准。判断某个对象是否真在生产，用 `scripts/schema-drift-probe.mjs`
+或直接读 `pg_proc`/`pg_class`，不要读 ledger。不要在任何现有环境直接盲跑
 `db push`。先读最新 [`docs/audit/`](docs/audit/) 报告，按 PRECHECK →
 备份/staging → migration → VERIFY/REGRESSION/canary 的顺序执行。
 
@@ -165,17 +177,35 @@ CI 已有 smoke job，但当前仍不是 branch protection 的 required check。
 
 ## 部署
 
-- **当前应用工作树仍是未部署的 release candidate**：首版 H5 使用邮箱/密码 +
-  Google，小程序使用邮箱/密码；微信快捷登录隐藏，兼容后端保留且 provider 默认
-  由独立 server-only `WECHAT_LOGIN_ENABLED` 开关 fail-closed；首版保持缺失/false，
-  内容安全凭据不能隐式启用身份登录。仍须从最终提交生成全新 canary，关闭 Google/email provider、HIBP、
-  Owner、Hosted Realtime 和真实用户端/管理员端回归门后，才能提升为稳定应用。
+- **生产是活的，且始终等于 `main`。** `vercel.json` 的 `git.deploymentEnabled`
+  是 `{"**": false, "main": true}`，所以每次合进 main 就自动部署前端——**只部署
+  前端，不跑任何迁移**。`https://www.illinimarket.com` 返回 200，
+  `/deployment-manifest.json` 里的 `commit` 就是当前 main 的 SHA。仓库里若干
+  较早的文档曾写“当前工作树仍是未部署的 release candidate / production NO-GO”，
+  那是 2026-07-19 那一刻的快照，2026-08 合了二十来个 PR 之后已经不成立。
+- 首版 H5 使用邮箱/密码 + Google，小程序使用邮箱/密码；微信快捷登录隐藏，
+  兼容后端保留且 provider 默认由独立 server-only `WECHAT_LOGIN_ENABLED` 开关
+  fail-closed；首版保持缺失/false，内容安全凭据不能隐式启用身份登录。
+- **2026-08-14 实测已关闭的门**：Google/email provider 在跑（生产有 9 个 Google
+  身份）、HIBP 已开、生产已有 2 个未撤销 owner token、DB239 两条迁移已上线。
+  **仍未关闭的门**：`RESEND_WEBHOOK_SECRET` 未配（`/api/resend-webhook` 实测
+  503，退信告警全黑）、Sentry 告警规则没建（上报在跑但无人被通知）、Hosted
+  Realtime canary 的 target allowlist 仍是空的、真机验证与双账号写路径全链路
+  未跑、生产内容仍是测试垃圾。
+- ⚠️ **schema 与前端耦合的改动，合并前必须先把迁移应用到生产。** 合并只推前端。
+  2026-08-06 就栽在这里：#221 把 consent 常量升到 `2026-08-01`，配套迁移没跑，
+  生产 `record_consent` 只认 `2026-07-18`，于是所有存量和新用户都被锁在
+  reconsent 屏上、点同意必 400，直到手工补跑迁移才恢复。
 - 历史 2026-07 的 38 条生产候选迁移存在 API/旧客户端/WeChat 凭据/Storage/Realtime/cron/admin token 的顺序依赖；按
   [RUNBOOK 的候选发布顺序](RUNBOOK.md#2026-07-candidate-release-sequence) 执行，不要把目录排序直接等同于生产发布方案。
 - **H5**: 直接 `vercel --prod` (或 git push main 自动部署)。`vercel.json` 已配好 rewrites。
-- **Supabase Auth Redirect URLs** 必须包含生产域名才能收到密码重置邮件:
-  - Site URL: `https://illinimarket.com`
-  - Redirect URLs: `https://illinimarket.com/**`
+- **Supabase Auth Redirect URLs** 必须包含 **`www` 主机**——站点跑在 www，apex 是
+  308 跳转，而应用发出的 `redirectTo` 取自 `window.location.origin`，永远是 www 形式。
+  只配 apex 会让 Supabase 认为 redirect 不在白名单，整个丢弃并回退到 Site URL，
+  登录后的返回路径（含 login-intent nonce）随之丢失。
+  - Site URL: `https://www.illinimarket.com`
+  - Redirect URLs: `https://www.illinimarket.com/**`（apex 那条保留，两个都留着）
+  - 两项均已于 2026-08-14 在控制台改好；此前是 apex-only。
 
 ## 安全状态
 

@@ -1,7 +1,7 @@
 # Illini Market 发布路线图
 
-> 最后更新：2026-08-01
-> 当前阶段：首版认证收口 + Batch 01/02 immutable commit → staging/Hosted canary → production readiness
+> 最后更新：2026-08-14
+> 当前阶段：**生产已在线且等于 main，内容与运营门未就绪** → 补运营门 + 清测试数据 + 种子内容 → 秋季受限 beta
 > 原则：以可复查证据关闭门禁，不以文件存在、测试小计或文档勾选冒充上线。
 > 历史数据库基线仍记录为 2026-07 合并前 34/38、三条 tail 后 37/38；
 > 本轮新迁移与当前生产状态必须重新审计，不沿用旧数字冒充现状。
@@ -13,10 +13,23 @@
 注销、可访问性和依赖修复链。2026-08-01 又把首版认证拍板为：H5 邮箱/密码 +
 Google，小程序邮箱/密码，隐藏微信快捷登录。`18140000` 与微信 provider canary
 转为“重新开放微信身份前”的兼容/安全门，不再冒充首版用户可见功能门。
-稳定 H5/API/小程序 bundle 仍须从最终精确提交生成并验收。
+**2026-08-14 实测更正**：此前这里写“候选尚未部署 / 需要严格上线演练的 release
+candidate”。那是 2026-07-19 那一刻的判断。事实是 `vercel.json` 只对 `main` 开启
+git 部署，所以**每次合并 main 都自动把前端推上生产**，`https://www.illinimarket.com`
+一直是活的，`/deployment-manifest.json` 的 commit 就是当前 main。
 
-因此目前不是“规划期”，也不是“正式上线”：它是需要严格上线演练的 release
-candidate。
+所以当前不是“能不能上线”的问题，而是“上线了但没人用、且没准备好接待人”的问题：
+
+- **已关闭**（当日逐项实测）：Google/email provider 在跑（9 个 Google 身份）、
+  HIBP 已开、2 个未撤销 owner token、DB239 两条迁移已上线（ledger 112）、
+  Supabase Site URL/Redirect URLs 已修正到 www、两个邮件模板均为 6 位验证码版。
+- **未关闭**：`RESEND_WEBHOOK_SECRET` 未配（`/api/resend-webhook` 实测 503，
+  退信/投诉告警全黑）、Sentry 告警规则未建（上报在跑但无人被通知）、
+  Hosted Realtime canary 的 target allowlist 仍为空、双账号写路径全链路与真机未跑、
+  生产内容 14 件全是测试垃圾、`help@` 值班演练未做。
+- **写路径在生产从未跑通过**：`ratings`、`blocks`、`illini_verifications`、
+  `account_deletion_jobs`、`private.item_deals` 全部 0 行。这五个数字变成非 0
+  才算“真实用户能用”。
 
 ## R0：本地 release candidate（本轮）
 
@@ -89,7 +102,16 @@ H5/API/微信小程序 bundle、provider、管理员 Owner 或真实设备门已
   journey，同时避免 fork PR 获得 secrets；
 - 拆分 `ChatThread`、admin、home、plaza、publish/detail 等大型 SFC，并生成/更新
   Supabase Database types；
-- 用真实流量数据做索引/查询优化，不用破坏性 k6 默认指向生产。
+- 用真实流量数据做索引/查询优化，不用破坏性 k6 默认指向生产；
+- **H5 realtime 的“切一次后台就永久降级”是已知取舍，不是 bug。**
+  `useRealtimeFallback.ts` 把 `visibilitychange`(hidden→visible) 和 `window offline`
+  当作显式传输失败，接管是 sticky 的，所以一次普通的切标签页就会把那个页面的
+  四条 Postgres Changes 流全部转成 3 秒直连轮询，直到重新进页面为止；presence
+  没有轮询替身，直接 fail-closed 成离线。这样选是因为 H5 会在后台挂起一条**看起来
+  healthy** 的 socket 并在恢复时不发任何 `CHANNEL_ERROR`/`TIMED_OUT`/`CLOSED`——
+  宁可多轮询也不能丢消息。代价是稳态开销真实存在。将来的改法：回前台先尝试一次
+  socket 重连，失败再降级；需要新写重连路径和对应测试，不在首版范围（Eric
+  2026-08-14 拍板保留，先把网站确认没问题，小程序和这条优化都往后排）。
 
 ## R4：产品扩展（需要新决策）
 
