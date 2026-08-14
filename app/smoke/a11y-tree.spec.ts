@@ -69,8 +69,25 @@ async function snapshotOf(page: Page, route: string): Promise<string> {
     localStorage.setItem('lang', 'en')
   })
   await page.goto(`/#/${route}`, { waitUntil: 'networkidle' })
-  await page.waitForTimeout(400)
-  return page.locator('body').ariaSnapshot()
+  // Same-document hash navigation: `networkidle` can resolve before uni's
+  // router has swapped the page in, so a fixed sleep snapshots a half-swapped
+  // tree. The 1200ms twin of this line in a11y-authenticated.spec.ts still lost
+  // that race on a CI runner and turned main red; 400ms is a shorter straw.
+  // The hash and <uni-page data-page> are both already correct at that moment,
+  // and an empty page is a perfectly stable one, so wait for the heading
+  // itself — bounded, the same shape as expect(locator).toBeVisible(). A route
+  // that never grows one still falls out at the deadline and is still
+  // reported. See settledAriaSnapshot in a11y-authenticated.spec.ts for the
+  // measurements behind this.
+  const deadline = Date.now() + 15_000
+  let previous = await page.locator('body').ariaSnapshot()
+  while (Date.now() < deadline) {
+    await page.waitForTimeout(150)
+    const current = await page.locator('body').ariaSnapshot()
+    if (current === previous && /^\s*- heading\b/m.test(current)) return current
+    previous = current
+  }
+  return previous
 }
 
 // Both sides of the 768px breakpoint. Several pages hide `.page-header` on
