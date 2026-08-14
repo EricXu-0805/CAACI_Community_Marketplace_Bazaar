@@ -1,4 +1,39 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
+
+/**
+ * Navigating between hash routes is a same-document navigation, so
+ * `networkidle` can resolve before uni's router has swapped the page in. A
+ * fixed sleep after it is a coin flip on a loaded runner: on 2026-08-14 this
+ * sweep reported `pages/messages/index` as having no heading and turned main
+ * red, on a commit that only touched documentation. The heading is static
+ * markup, so the snapshot had simply been taken mid-transition.
+ *
+ * Measured on WebKit: at the instant `goto` resolves, `location.hash` is
+ * already the target and `<uni-page data-page="...">` already carries the
+ * target route, so neither can tell "mounted" from "about to mount". Waiting
+ * for the snapshot to stop changing does not work either, because an empty
+ * page is a perfectly stable one. Nor does waiting for rendered text: publish,
+ * detail and seller all paint some text before their heading.
+ *
+ * So wait for the heading itself, bounded. That is not circular — it turns the
+ * assertion from "has a heading within 1.2s" into "has a heading at all",
+ * which is what the sweep actually means, and is the same bounded-poll shape
+ * as Playwright's own `expect(locator).toBeVisible()`. A route that never
+ * grows one still falls out at the deadline and is still reported.
+ */
+const HEADING = /^\s*- heading\b/m
+
+async function settledAriaSnapshot(page: Page, deadlineMs = 15_000): Promise<string> {
+  const deadline = Date.now() + deadlineMs
+  let previous = await page.locator('body').ariaSnapshot()
+  while (Date.now() < deadline) {
+    await page.waitForTimeout(150)
+    const current = await page.locator('body').ariaSnapshot()
+    if (current === previous && HEADING.test(current)) return current
+    previous = current
+  }
+  return previous
+}
 
 /**
  * The half of the app a logged-out sweep can never see.
@@ -154,9 +189,8 @@ for (const theme of ['light', 'dark']) {
     const contrast: string[] = []
     for (const route of GATED) {
       await page.goto(`/#/${route}`, { waitUntil: 'networkidle' })
-      await page.waitForTimeout(1200)
-      const snap = await page.locator('body').ariaSnapshot()
-      if (!/^\s*- heading\b/m.test(snap)) noHeading.push(route)
+      const snap = await settledAriaSnapshot(page)
+      if (!HEADING.test(snap)) noHeading.push(route)
       const bad = await page.evaluate(PROBE)
       for (const f of bad as any[]) contrast.push(`${route}  ${f.cls}  ${f.ratio}/${f.need}  ${f.fg} on ${f.bg}  ${f.size}px/${f.weight}  "${f.text}"`)
       snap.split('\n').forEach((line, i, all) => {
