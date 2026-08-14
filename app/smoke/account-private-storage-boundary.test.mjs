@@ -144,6 +144,42 @@ test('failed remove overwrites empty, while unverifiable residue keeps a retry s
   assert.equal(boundary.writeAccountPrivateStorage('searchHistory', '["B"]', blocked.storage), false)
 })
 
+test('a device with no local storage is distinguished from a failed cleanup', async () => {
+  const boundary = await loadBoundary()
+  const dead = {
+    getStorageSync() { throw new Error('localStorage is not available') },
+    setStorageSync() { throw new Error('localStorage is not available') },
+    removeStorageSync() { throw new Error('localStorage is not available') },
+  }
+
+  const absent = boundary.reconcileAccountPrivateStorage(null, null, dead)
+  assert.equal(absent.deviceStorageUnavailable, true)
+  assert.equal(absent.unresolvedKeys.length, boundary.ACCOUNT_PRIVATE_STORAGE_KEYS.length)
+  assert.equal(
+    boundary.readAccountPrivateStorage('searchHistory', '[]', dead).allowed,
+    false,
+    'readers stay fail-closed even though the reconciliation is not reported',
+  )
+
+  // The signal this guard must never swallow: storage works, but A's residue
+  // survived erasure and could reach B.
+  const ownerKey = boundary.ACCOUNT_PRIVATE_STORAGE_OWNER_KEY
+  const leaky = memoryStorage([[ownerKey, 'account-a'], ['searchHistory', 'secret']])
+  leaky.storage.removeStorageSync = () => { throw new Error('remove unavailable') }
+  leaky.storage.setStorageSync = (key, value) => {
+    if (key === 'searchHistory') throw new Error('write unavailable')
+    leaky.values.set(key, value)
+  }
+  const leaked = boundary.reconcileAccountPrivateStorage('account-b', 'account-a', leaky.storage)
+  assert.deepEqual(leaked.unresolvedKeys, ['searchHistory'])
+  assert.equal(leaked.deviceStorageUnavailable, false, 'a real residue leak must still be reported')
+
+  const healthy = memoryStorage()
+  const clean = boundary.reconcileAccountPrivateStorage(null, null, healthy.storage)
+  assert.equal(clean.deviceStorageUnavailable, false)
+  assert.equal(clean.ownerRecorded, true)
+})
+
 test('loaded private module state resets synchronously at the ownership boundary', async () => {
   const boundary = await loadBoundary()
   const { storage } = memoryStorage([
