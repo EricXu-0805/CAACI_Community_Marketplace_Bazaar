@@ -35,6 +35,13 @@ export interface AccountPrivateStorageReconciliation {
   cleanupAttempted: boolean
   unresolvedKeys: string[]
   ownerRecorded: boolean
+  /**
+   * Every read, write, and removal threw: the device has no usable local
+   * storage at all (crawlers, storage-blocked browsers). Distinct from a
+   * failed cleanup on working storage, because there is no residue to leak
+   * and the readers are already fail-closed via canAccessAccountPrivateStorage.
+   */
+  deviceStorageUnavailable: boolean
 }
 
 type AccountPrivateStateResetter = () => void
@@ -234,5 +241,12 @@ export function reconcileAccountPrivateStorage(
     hydrateLoadedAccountPrivateState()
   }
 
-  return { cleanupAttempted, unresolvedKeys, ownerRecorded }
+  // A working adapter always resolves at least one of these: the owner marker
+  // parses, or some key erases, or the marker write verifies. All three failing
+  // together only happens when the adapter itself is gone.
+  const deviceStorageUnavailable = !storedOwnerState.readable
+    && !ownerRecorded
+    && unresolvedKeys.length === ACCOUNT_PRIVATE_STORAGE_KEYS.length
+
+  return { cleanupAttempted, unresolvedKeys, ownerRecorded, deviceStorageUnavailable }
 }

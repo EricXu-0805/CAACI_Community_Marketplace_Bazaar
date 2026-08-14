@@ -504,6 +504,19 @@ without one, but nobody is told — you'd only find them by opening the dashboar
 4. Action: notify your email (free tier supports it). Add Slack/Discord later if you want faster response.
 5. Save. That's the whole ask for a beta — no on-call rota needed.
 
+As of 2026-08-14 all of this already exists: `ericxu/javascript-vue` carries three
+enabled issue rules, two scoped to `environment: production` with an Email action,
+both last triggered 2026-08-13. Treat the steps above as the recipe for rebuilding
+them, not as outstanding work.
+
+The thing worth watching is the opposite failure: an alert that fires so often it
+teaches you to ignore mail. `account_private_storage_cleanup_unverified` was 83 of
+roughly 103 total events over 24 days — every request from a visitor whose
+localStorage is unavailable (crawlers, storage-blocked browsers) reported once per
+page load. With the >10-events-in-5-minutes rule live, one fast crawl pages you.
+That specific source is fixed; if a new rule starts firing daily, check whether the
+volume is one condition repeating before you tune the threshold.
+
 ### Server-side alerts and what they actually mean
 
 Client errors are only half of what Sentry carries. These come from Vercel
@@ -1344,7 +1357,7 @@ Top to bottom; each step links to its detail.
 
 - [ ] Run the pre-launch checklist in `ENV_CHECKLIST.md` (env vars + Supabase auth + reset test).
 - [x] Admin token: production already holds **two unrevoked `owner` tokens** plus three unrevoked `operator` tokens (counted in `public.admin_tokens` on 2026-08-14). Earlier revisions of this file said production had no Owner and needed a break-glass bootstrap; that is stale. Confirm one of the two owner tokens is actually in your password manager and can still authenticate — an owner row you cannot present is not an owner.
-- [ ] Create the [Sentry alert rule](#creating-the-alert-rule-do-this-once-before-launch). `VITE_SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT` and `SENTRY_AUTH_TOKEN` are all set on Vercel and the shipped bundle reports client errors, so the only missing piece is that **nobody is notified**.
+- [x] [Sentry alert rules](#creating-the-alert-rule-do-this-once-before-launch) exist and fire. Counted in `ericxu/javascript-vue` on 2026-08-14: three enabled issue rules, two of them scoped to `environment: production` with an Email action, and both last triggered 2026-08-13. Earlier revisions said nobody was notified; that is stale. What is still worth doing is narrowing the noise — see the note under the alert-rule section.
 - [ ] `RESEND_WEBHOOK_SECRET` on Vercel + redeploy. The Resend endpoint already exists and is Enabled (`https://www.illinimarket.com/api/resend-webhook`, listening on bounced/complained + 3 more), but the secret was never copied into Vercel, so the handler answers **503** and every bounce/complaint report is dropped. Verified 503 on the live deploy 2026-08-14.
 - [ ] Seed the marketplace so the first visitor doesn't hit an empty feed — a dozen real listings across the main categories. An empty market reads as dead. As of 2026-08-14 all 14 production items are test junk (`sdfkjl`, `Vhshb`, a $1,000,000 onsen filed under `housing`), 6 of the 13 active ones have no image at all, and the share card for `E2E QA Desk Lamp 1146` renders the description "Please ignore." to anyone it is forwarded to.
 

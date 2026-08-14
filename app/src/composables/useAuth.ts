@@ -140,6 +140,10 @@ export function useAuth() {
 
   function reconcileLocalPrivacy(nextUserId: string | null, previousUserId: string | null) {
     const result = reconcileAccountPrivateStorage(nextUserId, previousUserId)
+    // A device with no local storage reports every key as unresolved on every
+    // page load, which drowned the real signal: 80% of production Sentry volume
+    // was crawlers, and one fast crawl trips the >10-events-in-5-minutes alert.
+    if (result.deviceStorageUnavailable) return
     if (result.unresolvedKeys.length > 0 || !result.ownerRecorded) {
       const error = new Error('account_private_storage_cleanup_unverified')
       captureException(error, {
