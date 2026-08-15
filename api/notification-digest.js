@@ -213,6 +213,7 @@ function digestHtml(rows, isSample, unsubToken) {
       <span style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:10px;background:#C74A2F;color:#fff;font-weight:700;font-size:20px">集</span>
     </div>
     <h1 style="font-family:Georgia,serif;font-size:22px;color:#2A2521;text-align:center;margin:8px 0 2px">香槟集市</h1>
+    <p style="margin:3px 0 0;font-size:12px;font-weight:600;color:#A39A8C;letter-spacing:2px;text-transform:uppercase;text-align:center">Illini Market</p>
     <p style="text-align:center;color:#8B8478;font-size:13px;margin:0 0 20px">你有 ${rows.length} 条新动态 · You have ${rows.length} update${rows.length === 1 ? '' : 's'}${isSample ? ' · 示例 Sample' : ''}</p>
     <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:16px;padding:4px 16px" cellpadding="0" cellspacing="0">
       <tbody><tr><td style="padding:4px 16px"><table style="width:100%;border-collapse:collapse" cellpadding="0" cellspacing="0"><tbody>${items}</tbody></table></td></tr></tbody>
@@ -221,7 +222,9 @@ function digestHtml(rows, isSample, unsubToken) {
       <a href="${esc(APP_URL)}" style="display:inline-block;background:#C74A2F;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-weight:600;font-size:15px">打开集市 · Open</a>
     </div>
     <p style="text-align:center;color:#A39A8C;font-size:11px;line-height:1.6;margin-top:24px">
-      香槟集市 · UIUC 校园二手集市 · Champaign-Urbana, IL<br>
+      香槟集市 · Illini Market<br>
+      UIUC 校园二手集市 · Champaign-Urbana, IL<br>
+      <a href="${esc(APP_URL)}" style="color:#A39A8C;text-decoration:none">illinimarket.com</a><br>
       ${unsub}
     </p>
   </div></body></html>`
@@ -571,7 +574,7 @@ export default async function handler(req) {
     try {
       await resendSend(
         TEST_EMAIL,
-        `香槟集市 · ${SAMPLE_ROWS.length} 条新动态（示例）`,
+        `${SAMPLE_ROWS.length} 条新动态（示例）· Sample`,
         digestHtml(SAMPLE_ROWS, true),
       )
       return json({ mode: 'test', sentTo: 'DIGEST_TEST_EMAIL', sample: true, previewed: 0 })
@@ -725,7 +728,11 @@ export default async function handler(req) {
         if (began !== claimedRows.length) throw new Error('delivery claim expired')
         await resendSend(
           to,
-          `香槟集市 · 你有 ${claimedRows.length} 条新动态 · ${claimedRows.length} update${claimedRows.length === 1 ? '' : 's'}`,
+          // No brand prefix: FROM already renders as "Illini Market" in the
+          // recipient's inbox, and a phone truncates the subject around 35-40
+          // characters, so the prefix was spending that budget on a name the
+          // reader can already see instead of on what actually happened.
+          `你有 ${claimedRows.length} 条新动态 · ${claimedRows.length} update${claimedRows.length === 1 ? '' : 's'}`,
           digestHtml(claimedRows, false, tokenById.get(userId)),
           deliveryClaim.key,
         )
