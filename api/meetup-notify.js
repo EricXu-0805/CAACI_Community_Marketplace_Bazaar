@@ -363,6 +363,7 @@ function mailHtml({ actorName, verb, verbEn, spot, whenLabel, note, itemTitle, u
       <span style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:10px;background:#C74A2F;color:#fff;font-weight:700;font-size:20px">集</span>
     </div>
     <h1 style="font-family:Georgia,serif;font-size:22px;color:#2A2521;text-align:center;margin:8px 0 2px">香槟集市</h1>
+    <p style="margin:3px 0 0;font-size:12px;font-weight:600;color:#A39A8C;letter-spacing:2px;text-transform:uppercase;text-align:center">Illini Market</p>
     <p style="text-align:center;color:#8B8478;font-size:13px;margin:0 0 20px">${esc(actorName)} ${esc(verb)}<br><span style="color:#A39A8C">${esc(actorName)} ${esc(verbEn || verb)}</span></p>
     <div style="background:#fff;border-radius:16px;padding:18px 20px">
       ${itemTitle ? `<div style="font-size:13px;color:#8B8478;margin-bottom:8px">关于 · Re: ${esc(itemTitle)}</div>` : ''}
@@ -374,7 +375,9 @@ function mailHtml({ actorName, verb, verbEn, spot, whenLabel, note, itemTitle, u
       <a href="${esc(APP_URL)}/#/pages/messages/index" style="display:inline-block;background:#C74A2F;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-weight:600;font-size:15px">去回应 · Respond</a>
     </div>
     <p style="text-align:center;color:#A39A8C;font-size:11px;line-height:1.6;margin-top:24px">
-      香槟集市 · UIUC 校园二手集市 · Champaign-Urbana, IL<br>
+      香槟集市 · Illini Market<br>
+      UIUC 校园二手集市 · Champaign-Urbana, IL<br>
+      <a href="${esc(APP_URL)}" style="color:#A39A8C;text-decoration:none">illinimarket.com</a><br>
       ${unsub}
     </p>
   </div></body></html>`
@@ -500,7 +503,7 @@ export default async function handler(req) {
       })
       await resendSend(
         TEST_EMAIL,
-        '香槟集市 · 合成邮件链路测试 · Synthetic meetup preview',
+        '合成邮件链路测试 · Synthetic meetup preview',
         previewHtml,
       )
       return json({ sent: true, mode: 'test' })
@@ -562,7 +565,11 @@ export default async function handler(req) {
     try {
       const began = await beginNotificationEmailDelivery(deliveryClaim)
       if (began !== 1) throw new Error('delivery claim expired')
-      await resendSend(to, `香槟集市 · ${kind.title}`, html, deliveryClaim.key)
+      // No brand prefix: FROM already renders as "Illini Market" in the
+      // recipient's inbox, and a phone truncates the subject around 35-40
+      // characters — a redundant prefix was cutting the English half of every
+      // bilingual title ("...· Meetup proposed") off the end.
+      await resendSend(to, kind.title, html, deliveryClaim.key)
       const completed = await completeNotificationEmailDelivery(deliveryClaim)
       if (completed !== 1) throw new Error('delivery acknowledgement rejected')
     } catch (error) {
