@@ -5,6 +5,7 @@ import { detectSystemLang } from './i18n/detect'
 import { messages } from './i18n/messages'
 import { getAutoLocalized, scheduleAutoTranslate } from './i18n/translate'
 import { detectsAsForeign, interpolate } from './i18n/format'
+import { captureAccountRequest, getActiveAccountId, isAccountRequestCurrent } from './accountScope'
 
 export type { Lang } from './i18n/types'
 export { SUPPORTED_LANGS, DEFAULT_LANG } from './i18n/types'
@@ -37,6 +38,35 @@ function ensureLangInit() {
     }
   } catch {}
   syncUniLocale(currentLang.value)
+}
+
+/*
+ * Mirror the choice to the server so off-platform email can be written in the
+ * language the reader actually picked. Device storage above stays the source of
+ * truth for the UI; this is write-only and nothing reads it back, so a failure
+ * here can never affect what the app renders.
+ *
+ * The Supabase client is imported dynamically, not at module scope. useI18n is
+ * pulled in during the mp-weixin service-thread bootstrap, which is exactly the
+ * window ensureLangInit() above is careful to stay out of — and setLang only
+ * ever runs from a user action, long after that handshake.
+ *
+ * Signed-out users have nowhere to store this, and that is fine: the email
+ * templates fall back to bilingual, which is what everyone got before.
+ */
+async function persistEmailLanguage(next: Lang): Promise<void> {
+  const userId = getActiveAccountId()
+  if (!userId) return
+  const accountToken = captureAccountRequest(userId)
+  try {
+    const { useSupabase } = await import('./useSupabase')
+    if (!isAccountRequestCurrent(accountToken)) return
+    const { supabase } = useSupabase()
+    await supabase.rpc('set_my_email_language', { p_lang: next })
+  } catch {
+    // A preference that failed to sync is not worth a toast or a Sentry event:
+    // the next toggle retries, and the fallback is the previous behaviour.
+  }
 }
 
 /* Keep uni-app's own locale in step — otherwise the built-in chrome
@@ -78,6 +108,7 @@ export function useI18n() {
     currentLang.value = next
     try { uni.setStorageSync('lang', next) } catch {}
     syncUniLocale(next)
+    void persistEmailLanguage(next)
   }
 
   function toggleLang() {
