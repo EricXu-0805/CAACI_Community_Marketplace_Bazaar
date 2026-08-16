@@ -88,17 +88,21 @@ Vercel Edge API
 | 20260717–22… | `supabase/migrations/` + `_ops/` | 公共写入、双向屏蔽、证据/注销、停权/admin、成交评分、FK、Storage、private Realtime、邮件 attribution/claim、Data API 精确 ACL、管理员令牌生命周期、确定性分页、真实 FK 与 ACL 尾部等候选修复；微信密码凭据退役保留为未来重新开放微信身份前的独立兼容门 |
 | 20260801–11… | `supabase/migrations/` + `_ops/` | 首版认证隐私 consent、指纹上限 LRU 修复，以及必须按顺序执行的写入暂停桥与有界 churn limiter |
 
-仓库当前共有 136 个 migration SQL 文件：88 条三位数历史迁移、41 条 2026-07
-审计候选、3 条后续 2026-07 production tail，以及 4 条 2026-08 前向迁移。
+仓库当前共有 137 个 migration SQL 文件：88 条三位数历史迁移、41 条 2026-07
+审计候选、3 条后续 2026-07 production tail，以及 5 条 2026-08 前向迁移。
 生产 ledger 的 34/38 → 37/38 和“38 条候选”是当时发布追踪的历史口径，
-不是当前文件数或当前托管环境证明。4 条 2026-08 迁移分别为 08-01 consent、
+不是当前文件数或当前托管环境证明。前 4 条 2026-08 迁移分别为 08-01 consent、
 08-08 fingerprint eviction、`20260811140018` quiescence bridge，以及在
 排空证明后执行的 `20260811143207` final limiter。**这 4 条已于 2026-08-14
 全部落到生产**：ledger 现为 112 行，DB239 两条分别记为 `20260813184835` /
 `20260813185627`，`record_fingerprint` 函数体 md5 = `236e5532c22d63f9a0336e38fc381c82`，
 `private.device_fingerprint_rate_limits` 已建（14 行，等于当时的指纹 profile 数），
 临时闸门 `private.device_fingerprint_churn_cutover` 已随迁移 DROP，
-指纹/profile 数据零漂移。托管 Realtime canary 的
+指纹/profile 数据零漂移。第 5 条 `20260815185833_user_email_language.sql`
+新建 `public.user_email_prefs` 与 `set_my_email_language(text)`，让退信提醒和
+约见邮件能按收件人自己选的语言发送；它刻意不往 `public.profiles` 加列，
+理由写在该迁移的头注释里（`get_my_profile()` 的复合别名被 Plaza ACL 契约按
+33 列钉死）。托管 Realtime canary 的
 pg_cron 前置脚本已移出迁移历史，改放 `_ops/hosted_realtime_canary/`——它只在
 获批的 staging 项目上执行，生产不装 pg_cron。
 合并前生产 ledger 已逐条核对为 34/38；依次完成 145042、152000、161200 三条

@@ -345,17 +345,39 @@ function fmtWhen(iso) {
  *   rescheduled→ follow the child pending row (parent_meetup_id) instead
  */
 const KIND = {
-  pending: { recipient: 'to_user', title: '新的见面提议 · Meetup proposed', verb: '向你发起了见面提议', verbEn: 'proposed a meetup with you' },
-  accepted: { recipient: 'from_user', title: '约见已确认 · Meetup confirmed', verb: '确认了你的见面提议', verbEn: 'confirmed your meetup' },
-  declined: { recipient: 'from_user', title: '约见被婉拒 · Meetup declined', verb: '婉拒了你的见面提议', verbEn: 'declined your meetup' },
+  pending: { recipient: 'to_user', title: '新的见面提议 · Meetup proposed', titleZh: '新的见面提议', titleEn: 'Meetup proposed', verb: '向你发起了见面提议', verbEn: 'proposed a meetup with you' },
+  accepted: { recipient: 'from_user', title: '约见已确认 · Meetup confirmed', titleZh: '约见已确认', titleEn: 'Meetup confirmed', verb: '确认了你的见面提议', verbEn: 'confirmed your meetup' },
+  declined: { recipient: 'from_user', title: '约见被婉拒 · Meetup declined', titleZh: '约见被婉拒', titleEn: 'Meetup declined', verb: '婉拒了你的见面提议', verbEn: 'declined your meetup' },
+}
+
+/*
+ * Copy for one recipient. `lang` is null when the reader has never chosen one,
+ * and every entry then falls back to the bilingual string this template used
+ * before per-user language existed — so an unknown reader loses nothing.
+ */
+function copyFor(lang) {
+  const zh = lang === 'zh'
+  const en = lang === 'en'
+  return {
+    subject: kind => (zh ? kind.titleZh : en ? kind.titleEn : kind.title),
+    re: zh ? '关于：' : en ? 'Re: ' : '关于 · Re: ',
+    timezone: zh ? '（美中时间）' : en ? ' (US Central)' : '（美中时间 · US Central）',
+    respond: zh ? '去回应' : en ? 'Respond' : '去回应 · Respond',
+    tagline: en
+      ? 'UIUC campus marketplace · Champaign-Urbana, IL'
+      : 'UIUC 校园二手集市 · Champaign-Urbana, IL',
+    unsubPrompt: zh ? '不想再收到邮件提醒？' : en ? 'No longer want these emails? ' : '不想再收到邮件提醒？',
+    unsubLink: zh ? '一键退订' : en ? 'Unsubscribe' : '一键退订 Unsubscribe',
+  }
 }
 
 const LIVE_MEETUP_SELECT = 'id,conversation_id,item_id,from_user,to_user,spot,meet_at,note,status,parent_meetup_id,updated_at'
 const TEST_MEETUP_SELECT = 'id,conversation_id,item_id,from_user,to_user,status,parent_meetup_id'
 
-function mailHtml({ actorName, verb, verbEn, spot, whenLabel, note, itemTitle, unsubToken }) {
+function mailHtml({ actorName, verb, verbEn, spot, whenLabel, note, itemTitle, unsubToken, lang = null }) {
+  const c = copyFor(lang)
   const unsub = unsubToken
-    ? `不想再收到邮件提醒？<a href="${esc(APP_URL)}/api/unsubscribe?t=${esc(unsubToken)}" style="color:#A39A8C">一键退订 Unsubscribe</a>`
+    ? `${c.unsubPrompt}<a href="${esc(APP_URL)}/api/unsubscribe?t=${esc(unsubToken)}" style="color:#A39A8C">${c.unsubLink}</a>`
     : ''
   return `<!DOCTYPE html><html><body style="margin:0;background:#F7F4EE;font-family:-apple-system,'Segoe UI',sans-serif">
   <div style="max-width:520px;margin:0 auto;padding:24px 16px">
@@ -364,19 +386,25 @@ function mailHtml({ actorName, verb, verbEn, spot, whenLabel, note, itemTitle, u
     </div>
     <h1 style="font-family:Georgia,serif;font-size:22px;color:#2A2521;text-align:center;margin:8px 0 2px">香槟集市</h1>
     <p style="margin:3px 0 0;font-size:12px;font-weight:600;color:#A39A8C;letter-spacing:2px;text-transform:uppercase;text-align:center">Illini Market</p>
-    <p style="text-align:center;color:#8B8478;font-size:13px;margin:0 0 20px">${esc(actorName)} ${esc(verb)}<br><span style="color:#A39A8C">${esc(actorName)} ${esc(verbEn || verb)}</span></p>
+    <p style="text-align:center;color:#8B8478;font-size:13px;margin:0 0 20px">${
+      lang === 'en'
+        ? `${esc(actorName)} ${esc(verbEn || verb)}`
+        : lang === 'zh'
+          ? `${esc(actorName)} ${esc(verb)}`
+          : `${esc(actorName)} ${esc(verb)}<br><span style="color:#A39A8C">${esc(actorName)} ${esc(verbEn || verb)}</span>`
+    }</p>
     <div style="background:#fff;border-radius:16px;padding:18px 20px">
-      ${itemTitle ? `<div style="font-size:13px;color:#8B8478;margin-bottom:8px">关于 · Re: ${esc(itemTitle)}</div>` : ''}
+      ${itemTitle ? `<div style="font-size:13px;color:#8B8478;margin-bottom:8px">${c.re}${esc(itemTitle)}</div>` : ''}
       <div style="font-size:16px;font-weight:600;color:#2A2521">📍 ${esc(spot)}</div>
-      <div style="font-size:14px;color:#6B6459;margin-top:4px">🕐 ${esc(whenLabel)}（美中时间 · US Central）</div>
+      <div style="font-size:14px;color:#6B6459;margin-top:4px">🕐 ${esc(whenLabel)}${c.timezone}</div>
       ${note ? `<div style="font-size:13px;color:#6B6459;margin-top:8px;font-style:italic">“${esc(note)}”</div>` : ''}
     </div>
     <div style="text-align:center;margin:24px 0">
-      <a href="${esc(APP_URL)}/#/pages/messages/index" style="display:inline-block;background:#C74A2F;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-weight:600;font-size:15px">去回应 · Respond</a>
+      <a href="${esc(APP_URL)}/#/pages/messages/index" style="display:inline-block;background:#C74A2F;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-weight:600;font-size:15px">${c.respond}</a>
     </div>
     <p style="text-align:center;color:#A39A8C;font-size:11px;line-height:1.6;margin-top:24px">
       香槟集市 · Illini Market<br>
-      UIUC 校园二手集市 · Champaign-Urbana, IL<br>
+      ${c.tagline}<br>
       <a href="${esc(APP_URL)}" style="color:#A39A8C;text-decoration:none">illinimarket.com</a><br>
       ${unsub}
     </p>
@@ -520,6 +548,20 @@ export default async function handler(req) {
     if (recipient.email.endsWith('@wechat.placeholder')) return json({ skipped: 'wechat_placeholder' })
     if (recipient.email_digest_opt_out) return json({ skipped: 'opted_out' })
 
+    // Per-recipient email language (migration 20260815185833). Absent means the
+    // reader never picked one and keeps the bilingual template. The try/catch is
+    // load-bearing: merging to main ships this handler but applies no migration,
+    // so between the merge and the apply this table does not exist — and a
+    // meetup confirmation is worth far more than its own language.
+    let lang = null
+    try {
+      const prefs = await sbGet(
+        `user_email_prefs?user_id=eq.${encodeURIComponent(recipientId)}&select=lang&limit=1`,
+      )
+      const stored = prefs[0]?.lang
+      if (stored === 'zh' || stored === 'en') lang = stored
+    } catch { /* stays bilingual */ }
+
     let itemTitle = ''
     if (meetup.item_id) {
       try {
@@ -529,7 +571,7 @@ export default async function handler(req) {
     }
 
     const html = mailHtml({
-      actorName: actor?.nickname || '对方',
+      actorName: actor?.nickname || (lang === 'en' ? 'Someone' : '对方'),
       verb: kind.verb,
       verbEn: kind.verbEn,
       spot: meetup.spot,
@@ -537,6 +579,7 @@ export default async function handler(req) {
       note: meetup.note,
       itemTitle,
       unsubToken: recipient.unsubscribe_token,
+      lang,
     })
     const to = recipient.email
 
@@ -569,7 +612,7 @@ export default async function handler(req) {
       // recipient's inbox, and a phone truncates the subject around 35-40
       // characters — a redundant prefix was cutting the English half of every
       // bilingual title ("...· Meetup proposed") off the end.
-      await resendSend(to, kind.title, html, deliveryClaim.key)
+      await resendSend(to, copyFor(lang).subject(kind), html, deliveryClaim.key)
       const completed = await completeNotificationEmailDelivery(deliveryClaim)
       if (completed !== 1) throw new Error('delivery acknowledgement rejected')
     } catch (error) {
