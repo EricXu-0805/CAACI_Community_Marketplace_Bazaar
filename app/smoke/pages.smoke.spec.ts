@@ -195,6 +195,71 @@ test('expired auth email link → login, not a blank screen', async ({ page }) =
 })
 
 /**
+ * The install hint is the only thing a first-time iOS visitor sees floating
+ * over the home page, and it is fixed-position chrome, so nothing in the
+ * layout pushes back on where it lands. Pinned under the header it sat on
+ * every browse control the page has — the search field, the filter button and
+ * both halves of the On sale / Wanted switch — from its 1.2s reveal until the
+ * reader found the close button. Every one of those still computed as visible
+ * and enabled; only a hit test at the painted pixel shows the cover.
+ */
+test('the install hint covers none of the home page controls', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('welcomed', '1')
+    localStorage.setItem('lang', 'en')
+  })
+  await page.goto('/#/pages/index/index', { waitUntil: 'networkidle' })
+
+  // It reveals on a timer, so wait for the thing being asserted rather than
+  // for a duration. A run where it never appears has tested nothing.
+  const hint = page.locator('.a2hs')
+  await hint.waitFor({ state: 'visible', timeout: 15_000 })
+
+  const covered = await page.evaluate(() => {
+    const banner = document.querySelector('.a2hs')!
+    // A card under the banner can be scrolled out from under it; the search
+    // field cannot. Only the controls the reader has no way to move are a
+    // defect, so the filter is "has no scrollable ancestor", not a class list.
+    // The walk stops before <body>: uni-app leaves it overflow-y:auto with a
+    // hair of overflow on every page, and counting that as a scroller marks
+    // the entire document movable and quietly empties this test. The real
+    // scroller is the inner <scroll-view> that holds the cards.
+    const movable = (el: Element) => {
+      for (let n = el.parentElement; n && n !== document.body; n = n.parentElement) {
+        const overflow = getComputedStyle(n).overflowY
+        if (/(auto|scroll)/.test(overflow) && n.scrollHeight > n.clientHeight + 4) return true
+      }
+      return false
+    }
+    const hits: string[] = []
+    for (const el of document.querySelectorAll('[role="button"], button, input, .fm-seg, .search-field, .filter-btn')) {
+      if (banner.contains(el) || movable(el)) continue
+      const r = el.getBoundingClientRect()
+      if (r.width < 4 || r.height < 4) continue
+      const x = r.left + r.width / 2
+      const y = r.top + r.height / 2
+      if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) continue
+      const top = document.elementFromPoint(x, y)
+      if (top && banner.contains(top)) {
+        hits.push(`${(el.className || '').toString().trim()} "${(el.textContent || '').trim().slice(0, 28)}"`)
+      }
+    }
+    return hits
+  })
+  expect(
+    covered,
+    `the install hint is covering controls the reader cannot scroll away:\n${covered.join('\n')}`,
+  ).toEqual([])
+
+  // .back-top in pages/index/index.vue sits at bottom 116px + chin and is 40px
+  // tall, and carries z-index 100 against this banner's 300 — so the banner
+  // resting on the tab bar would swallow it whole once the reader scrolls.
+  const clearance = await page.evaluate(() =>
+    innerHeight - document.querySelector('.a2hs')!.getBoundingClientRect().bottom)
+  expect(clearance, 'the install hint must stay clear of the back-to-top lane').toBeGreaterThanOrEqual(156)
+})
+
+/**
  * Core logged-in flow — opt-in. Set SMOKE_EMAIL + SMOKE_PASSWORD and the
  * explicit SMOKE_ACCOUNT_IS_SYNTHETIC=true and
  * SMOKE_DATASET_IS_SYNTHETIC=true attestations to run it (all kept out of the
