@@ -1,4 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 /**
  * A failed read must not render as "you have nothing".
@@ -21,7 +23,32 @@ import { test, expect, type Page } from '@playwright/test'
  * redirects. Kept local rather than shared so that spec stays untouched.
  */
 
-const REF = 'lfhvgprfphyfvhidegum'
+/**
+ * The app derives its auth storage key from the Supabase URL it was compiled
+ * against — authStorageKeyForUrl() in composables/useSupabase.ts takes the
+ * first hostname label. A hardcoded project ref therefore only seeds a usable
+ * session when the dev server happens to point at that same project.
+ *
+ * It did not under the authenticated-smoke job, which pins VITE_SUPABASE_URL
+ * to the staging project: the seeded key was one nobody reads, so no session
+ * existed, every route below fell through to the login page, and the
+ * assertions failed against sign-in copy. That job is skipped on pull
+ * requests, so it only turned red after the merge.
+ *
+ * Resolve it the way Vite does — process env first, then app/.env — and throw
+ * rather than fall back, because a wrong ref here fails as a page full of
+ * plausible text rather than as a missing session.
+ */
+function supabaseUrlForBuild(): string {
+  const fromEnv = process.env.VITE_SUPABASE_URL
+  if (fromEnv) return fromEnv
+  const dotenv = readFileSync(resolve(process.cwd(), '.env'), 'utf8')
+  const match = /^\s*VITE_SUPABASE_URL\s*=\s*(.+?)\s*$/m.exec(dotenv)
+  if (!match) throw new Error('no VITE_SUPABASE_URL in the environment or app/.env — cannot seed a session')
+  return match[1].replace(/^["']|["']$/g, '')
+}
+
+const REF = new URL(supabaseUrlForBuild()).hostname.split('.')[0]
 const UID = '11111111-1111-4111-8111-111111111111'
 const GEN = 'read-failure-generation-0001'
 const POST = '55555555-5555-4555-8555-555555555555'
