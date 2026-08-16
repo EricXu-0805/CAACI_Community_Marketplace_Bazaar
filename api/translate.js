@@ -1,4 +1,5 @@
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from './_deployment-boundary.js'
+import { reportToSentry } from './_sentry-report.js'
 
 export const config = { runtime: 'edge' }
 
@@ -237,6 +238,42 @@ async function rateHit(bucket) {
   }
 }
 
+/*
+ * Contact-channel screen for the model's output.
+ *
+ * Every surface this endpoint translates — item title and description, plaza
+ * post, comment — is written through the content_moderation_check trigger, so
+ * the source text arriving here has already been cleared. The translation has
+ * cleared nothing: it is generated text rendered on a second member's screen
+ * as their counterparty's words. The plaza already carries posts written to
+ * steer this endpoint, and if one ever lands, a phone number or a WeChat
+ * handle in the output is precisely the off-platform contact route the trigger
+ * exists to close.
+ *
+ * Mirrors the three contact_info branches of content_moderation_check (089).
+ * The keyword lexicon is deliberately not mirrored: it lives in a table whose
+ * checker 057 keeps off anon and authenticated so it cannot be probed as an
+ * oracle for what passes moderation, and contact info is the half that is
+ * expressible here without a database round trip.
+ */
+const INVISIBLE_RE = /[\u00AD\u034F\u061C\u180E\u200B-\u200F\u2060-\u2064\u206A-\u206F\uFEFF\uFE00-\uFE0F]/g
+const SEPARATOR_RE = /[\s\-._,。，、]+/g
+const PHONE_RE = /(?<![0-9])1[3-9][0-9]{9}(?![0-9])/
+const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/
+const IM_RE = /微信|wechat|weixin|加v|加微|v信|vx|v我/
+
+function contactSignals(raw) {
+  // The email branch runs against the folded copy, not the stripped one: 089
+  // keeps the dots and the @ that the strip would erase.
+  const folded = raw.normalize('NFKC').toLowerCase()
+  const stripped = folded.replace(SEPARATOR_RE, '').replace(INVISIBLE_RE, '')
+  const signals = []
+  if (PHONE_RE.test(stripped)) signals.push('phone')
+  if (EMAIL_RE.test(folded)) signals.push('email')
+  if (IM_RE.test(stripped)) signals.push('im')
+  return signals
+}
+
 export default async function handler(request) {
   const deploymentError = deploymentBoundaryResponse(evaluateDeploymentBoundary({ supabaseUrl: SUPABASE_URL }))
   if (deploymentError) return deploymentError
@@ -350,6 +387,26 @@ export default async function handler(request) {
         JSON.stringify({ translated: '', skipped: true, reason: 'bad_upstream_payload' }),
         { status: 200, headers },
       )
+    }
+
+    const outputSignals = contactSignals(translated)
+    if (outputSignals.length) {
+      const sourceSignals = contactSignals(text)
+      const introduced = outputSignals.filter(signal => !sourceSignals.includes(signal))
+      if (introduced.length) {
+        // Constant message so repeats group into one issue with a rising count;
+        // both the source and the translation are member copy and stay out of
+        // the alert. Reachable only after the JWT check and the 60/hour cap.
+        await reportToSentry(
+          'api/translate',
+          'translate: output introduced a contact channel the source lacked',
+          { signals: introduced.join(','), target },
+        )
+        return new Response(
+          JSON.stringify({ translated: '', skipped: true, reason: 'unsafe_translation' }),
+          { status: 200, headers },
+        )
+      }
     }
 
     return new Response(
