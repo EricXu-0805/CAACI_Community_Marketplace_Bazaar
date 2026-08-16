@@ -15,7 +15,8 @@
  *
  * If a later migration redefines content_moderation_check, the last assertion
  * here fails on purpose — regenerate these verdicts against the new definition
- * before updating it.
+ * before updating it. The focused English regression below is the deliberate
+ * output-only precision exception: generated "we chat" must not be withheld.
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -100,6 +101,38 @@ test('the output screen reproduces what content_moderation_check does to the sam
   // that answers the same way every time.
   const positives = CORPUS.filter(([, verdict]) => verdict === 'contact_info').length
   assert.ok(positives >= 20 && CORPUS.length - positives >= 15, 'the corpus lost its balance')
+})
+
+test('the output screen does not join ordinary English words into WeChat', async () => {
+  const contactSignals = await loadContactSignals()
+
+  for (const ordinary of [
+    'Can we chat tomorrow?',
+    'Maybe we... chat later.',
+    'Can we, chat tomorrow?',
+    'Should we\nchat tomorrow?',
+    'We chatted yesterday.',
+  ]) {
+    assert.deepEqual(contactSignals(ordinary), [], `ordinary phrase blocked: ${JSON.stringify(ordinary)}`)
+  }
+  for (const disguised of [
+    'WeChat me',
+    'We-Chat me',
+    'We - Chat me',
+    'We.Chat me',
+    'We\u200BChat me',
+    'We\uFE0FChat me',
+    'w e c h a t me',
+    'w echat me',
+    'we c h a t me',
+    'w\ne\nc\nh\na\nt me',
+  ]) {
+    assert.deepEqual(
+      contactSignals(disguised),
+      ['im'],
+      `the screen missed ${JSON.stringify(disguised)}`,
+    )
+  }
 })
 
 test('the contact_info branches still live where these verdicts came from', async () => {

@@ -250,8 +250,10 @@ async function rateHit(bucket) {
  * handle in the output is precisely the off-platform contact route the trigger
  * exists to close.
  *
- * Mirrors the three contact_info branches of content_moderation_check (089).
- * The keyword lexicon is deliberately not mirrored: it lives in a table whose
+ * Mirrors the three contact_info branches of content_moderation_check (089),
+ * with normal whitespace kept significant between the English words "we" and
+ * "chat" so natural model output is not mistaken for the WeChat brand. The
+ * keyword lexicon is deliberately not mirrored: it lives in a table whose
  * checker 057 keeps off anon and authenticated so it cannot be probed as an
  * oracle for what passes moderation, and contact info is the half that is
  * expressible here without a database round trip.
@@ -260,7 +262,31 @@ const INVISIBLE_RE = /[\u00AD\u034F\u061C\u180E\u200B-\u200F\u2060-\u2064\u206A-
 const SEPARATOR_RE = /[\s\-._,。，、]+/g
 const PHONE_RE = /(?<![0-9])1[3-9][0-9]{9}(?![0-9])/
 const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/
-const IM_RE = /微信|wechat|weixin|加v|加微|v信|vx|v我/
+const IM_RE = /微信|weixin|加v|加微|v信|vx|v我/
+const WECHAT_SEPARATOR_CHAR_RE = /[\s\-._,。，、\u00AD\u034F\u061C\u180E\u200B-\u200F\u2060-\u2064\u206A-\u206F\uFE00-\uFE0F\uFEFF]/
+const NATURAL_WE_CHAT_RE = /^we(?:\s+|[,，。.!?;:…]+\s+)chat$/
+
+function hasWechatSignal(folded) {
+  // Keep the original span for every compact "wechat" hit. Removing separators
+  // first is necessary to catch w e c h a t and invisible-character evasions,
+  // but the span lets us preserve the ordinary English phrase "we chat" (and
+  // sentence punctuation followed by whitespace) instead of treating it as a
+  // brand mention. Any separator inside either word remains suspicious.
+  let compact = ''
+  const sourceOffsets = []
+  for (let index = 0; index < folded.length; index += 1) {
+    const char = folded[index]
+    if (WECHAT_SEPARATOR_CHAR_RE.test(char)) continue
+    compact += char
+    sourceOffsets.push(index)
+  }
+
+  for (let from = compact.indexOf('wechat'); from !== -1; from = compact.indexOf('wechat', from + 1)) {
+    const span = folded.slice(sourceOffsets[from], sourceOffsets[from + 5] + 1)
+    if (!NATURAL_WE_CHAT_RE.test(span)) return true
+  }
+  return false
+}
 
 function contactSignals(raw) {
   // The email branch runs against the folded copy, not the stripped one: 089
@@ -270,7 +296,7 @@ function contactSignals(raw) {
   const signals = []
   if (PHONE_RE.test(stripped)) signals.push('phone')
   if (EMAIL_RE.test(folded)) signals.push('email')
-  if (IM_RE.test(stripped)) signals.push('im')
+  if (IM_RE.test(stripped) || hasWechatSignal(folded)) signals.push('im')
   return signals
 }
 
