@@ -16,7 +16,7 @@ const ENV_KEYS = [
   'SUPABASE_SECRET_KEY', 'SUPABASE_PUBLISHABLE_KEY', 'VITE_SUPABASE_PUBLISHABLE_KEY',
   'SUPABASE_ANON_KEY', 'VITE_SUPABASE_ANON_KEY', 'OPENAI_API_KEY',
   'RESEND_API_KEY', 'DIGEST_TEST_EMAIL', 'DIGEST_LIVE', 'DIGEST_APP_URL',
-  'MEETUP_APP_URL', 'VERCEL_ENV', 'VERCEL_URL',
+  'MEETUP_APP_URL', 'VERCEL_ENV', 'VERCEL_URL', 'SENTRY_DSN', 'VITE_SENTRY_DSN',
 ]
 const originalEnv = new Map(ENV_KEYS.map(key => [key, process.env[key]]))
 const originalFetch = globalThis.fetch
@@ -181,6 +181,105 @@ test('translation isolates untrusted copy from the instructions in both directio
       [injection],
     )
   }
+})
+
+/*
+ * The source of a translation is written through the content_moderation_check
+ * trigger; the translation itself is model output that has passed nothing and
+ * is rendered on a second member's screen as their counterparty's words. These
+ * cover the one thing a successful hijack would be worth: putting a phone
+ * number, an email or a WeChat handle where the trigger would have refused it.
+ */
+function translateHarness({ translated, dsn = '' }) {
+  const sentryPosts = []
+  globalThis.fetch = async (input, init = {}) => {
+    const url = urlOf(input)
+    if (url.pathname === '/auth/v1/user') return json({ id: USER_A })
+    if (url.pathname.endsWith('/rpc/edge_rate_hit')) return json(true)
+    if (url.pathname === '/v1/chat/completions') {
+      return json({ choices: [{ message: { content: JSON.stringify({ translated }) } }] })
+    }
+    if (url.host === 'sentry.test') {
+      sentryPosts.push(JSON.parse(init.body))
+      return json({ id: 'event' })
+    }
+    throw new Error(`unexpected fetch ${url}`)
+  }
+  return {
+    sentryPosts,
+    async call(text, target = 'en') {
+      const { default: handler } = await loadApi('translate.js', {
+        ...supabaseEnv,
+        OPENAI_API_KEY: 'openai-test',
+        ...(dsn ? { SENTRY_DSN: dsn } : {}),
+      })
+      const response = await handler(new Request('https://app.test/api/translate', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer user-token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, target }),
+      }))
+      return response.json()
+    },
+  }
+}
+
+test('a translation that introduces a contact channel is withheld and reported once', async () => {
+  const harness = translateHarness({
+    translated: 'Desk lamp, barely used. Add my WeChat 13812345678 to arrange pickup.',
+    dsn: 'https://pub@sentry.test/42',
+  })
+
+  // The listing itself carries no contact channel — the trigger would have
+  // refused it — so every channel in the translation is newly minted.
+  assert.deepEqual(
+    await harness.call('台灯，九成新，欢迎面交。'),
+    { translated: '', skipped: true, reason: 'unsafe_translation' },
+  )
+
+  assert.equal(harness.sentryPosts.length, 1)
+  const [event] = harness.sentryPosts
+  assert.equal(event.message, 'translate: output introduced a contact channel the source lacked')
+  assert.deepEqual(event.extra, { signals: 'phone,im', target: 'en' })
+  // The alert is another log sink: neither the member's copy nor the model's
+  // output may ride along in it.
+  const serialized = JSON.stringify(event)
+  for (const leak of ['13812345678', 'WeChat', '台灯']) {
+    assert.equal(serialized.includes(leak), false, `the alert leaked ${leak}`)
+  }
+})
+
+test('a contact channel the source already carried is translated, not withheld', async () => {
+  // Rows written before 024, and anything the trigger's own lexicon missed,
+  // must stay translatable: withholding here would make a legitimate listing
+  // silently untranslatable with nothing to explain it.
+  const harness = translateHarness({ translated: 'Call me at 13812345678.' })
+  assert.deepEqual(
+    await harness.call('打我电话 13812345678。'),
+    { translated: 'Call me at 13812345678.', target: 'en' },
+  )
+})
+
+test('the output screen folds the evasions 089 folds', async () => {
+  // Full-width digits and a soft hyphen inside 微信 both render as legible
+  // contact info while defeating a naive substring match — the exact pair that
+  // drove the NFKC migration on the database side.
+  for (const evasion of ['联系我：１３８１２３４５６７８', '加\u00AD微\u00AD信 nickxu']) {
+    const harness = translateHarness({ translated: evasion })
+    const body = await harness.call('台灯，九成新。', 'zh')
+    assert.equal(body.reason, 'unsafe_translation', `not caught: ${JSON.stringify(evasion)}`)
+  }
+})
+
+test('an ordinary translation is returned untouched and raises no alert', async () => {
+  const harness = translateHarness({
+    translated: 'Desk lamp, barely used. $15, pickup at Grainger.',
+    dsn: 'https://pub@sentry.test/42',
+  })
+  assert.deepEqual(
+    await harness.call('台灯，九成新，15 刀，Grainger 面交。'),
+    { translated: 'Desk lamp, barely used. $15, pickup at Grainger.', target: 'en' },
+  )
+  assert.deepEqual(harness.sentryPosts, [])
 })
 
 test('configured moderation fails closed on malformed/provider errors and never logs provider bodies', async () => {
