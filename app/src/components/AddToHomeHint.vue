@@ -24,6 +24,8 @@
  * H5-only (the whole template + logic compile out of mp-weixin). iOS can't fire
  * beforeinstallprompt, so this is purely instructional (point at Share → Add to
  * Home Screen). Shown once on the home page; dismissal is remembered locally.
+ * It floats above the tab bar rather than below the header — see the note on
+ * .a2hs for what that position was costing.
  */
 import { ref, onMounted } from 'vue'
 import { useI18n } from '../composables/useI18n'
@@ -63,10 +65,18 @@ function dismiss() {
 
 <style scoped>
 /* #ifdef H5 */
+/* Floats low, not under the header. Pinned below the header it covered every
+   browse control the home page has — the search field, the filter button and
+   both halves of the On sale / Wanted switch — from the 1.2s reveal until the
+   reader found the close button. Down here it also points at the Share button
+   it names, which lives in Safari's bottom toolbar.
+   166px clears the .back-top lane in pages/index/index.vue (bottom 116px +
+   40px tall) with a 10px gap; sitting on the tab bar at 70px instead would
+   swallow that button whole, since it carries z-index 100 to this one's 300. */
 .a2hs {
   position: fixed; z-index: 300;
   left: 12px; right: 12px;
-  top: calc(env(safe-area-inset-top, 0px) + 58px);
+  bottom: calc(166px + env(safe-area-inset-bottom, 0px));
   display: flex; align-items: center; gap: 12px;
   padding: 12px 14px;
   background: var(--bg-elev-1);
@@ -76,7 +86,7 @@ function dismiss() {
   animation: a2hs-in 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 @keyframes a2hs-in {
-  from { opacity: 0; transform: translateY(-12px); }
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: none; }
 }
 .a2hs-icon {
