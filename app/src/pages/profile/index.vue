@@ -84,17 +84,17 @@
              had to swipe blindly instead of scanning a grid. -->
         <view class="stats-row user-card-layer">
           <view class="stat-item" role="button" :aria-label="t('profile.listed')" @click="goMyItems('listed')">
-            <text class="stat-num">{{ listedItems.length }}</text>
+            <text class="stat-num">{{ itemsReady && !itemsError ? listedItems.length : '—' }}</text>
             <text class="stat-label">{{ t('profile.listed') }}</text>
           </view>
           <view class="stat-divider"></view>
           <view class="stat-item" role="button" :aria-label="t('profile.saved')" @click="goMyItems('saved')">
-            <text class="stat-num">{{ savedItems.length }}</text>
+            <text class="stat-num">{{ savedReady && !savedError ? savedItems.length : '—' }}</text>
             <text class="stat-label">{{ t('profile.saved') }}</text>
           </view>
           <view class="stat-divider"></view>
           <view class="stat-item" role="button" :aria-label="t('profile.sold')" @click="goMyItems('sold')">
-            <text class="stat-num">{{ soldItems.length }}</text>
+            <text class="stat-num">{{ itemsReady && !itemsError ? soldItems.length : '—' }}</text>
             <text class="stat-label">{{ t('profile.sold') }}</text>
           </view>
           <view class="stat-divider"></view>
@@ -190,7 +190,10 @@
             <UIcon name="chevron-right" size="xs" color="text-faint" />
           </view>
         </view>
-        <view v-if="loadError" id="profile-listings-panel" class="empty-mini" role="tabpanel" aria-live="assertive">
+        <view v-if="itemsLoading || !itemsReady" id="profile-listings-panel" class="empty-mini" role="tabpanel" aria-busy="true">
+          <text class="empty-mini-text">{{ t('home.loading') }}</text>
+        </view>
+        <view v-else-if="itemsError" id="profile-listings-panel" class="empty-mini" role="tabpanel" aria-live="assertive">
           <text class="empty-mini-text">{{ t('error.loadFailed') }}</text>
           <view class="mini-retry" role="button" tabindex="0" @click="retryLoadMine" @keydown.enter.prevent="retryLoadMine" @keydown.space.prevent="retryLoadMine">{{ t('home.retry') }}</view>
         </view>
@@ -268,8 +271,12 @@
             <UIcon name="chevron-right" size="xs" color="text-faint" />
           </view>
         </view>
-        <view v-if="loadError" class="empty-mini" aria-live="assertive">
+        <view v-if="savedLoading || !savedReady" class="empty-mini" aria-busy="true">
+          <text class="empty-mini-text">{{ t('home.loading') }}</text>
+        </view>
+        <view v-else-if="savedError" class="empty-mini" aria-live="assertive">
           <text class="empty-mini-text">{{ t('error.loadFailed') }}</text>
+          <view class="mini-retry" role="button" tabindex="0" @click="retryLoadMine" @keydown.enter.prevent="retryLoadMine" @keydown.space.prevent="retryLoadMine">{{ t('home.retry') }}</view>
         </view>
         <view v-else-if="savedItems.length === 0" class="empty-mini">
           <UEmptyArt name="favorites" :size="104" />
@@ -377,9 +384,15 @@ const { unreadNotifCount, fetchNotifications } = useNotifications()
 
 const myItems = ref<Item[]>([])
 const savedItems = ref<Item[]>([])
-// Distinct from "this account owns nothing": both leave the refs empty, and
-// this is the first screen after sign-in.
-const loadError = ref(false)
+const itemsReady = ref(false)
+const savedReady = ref(false)
+const itemsLoading = ref(false)
+const savedLoading = ref(false)
+// Listings and favorites fail independently. A single global flag made one
+// failed endpoint erase a successful section and made retry briefly repaint
+// both sections as a healthy empty account.
+const itemsError = ref(false)
+const savedError = ref(false)
 const totalBrowsed = ref(0)
 
 /*
@@ -429,7 +442,12 @@ function clearProfilePrivateState() {
   savedItems.value = []
   totalBrowsed.value = 0
   myTab.value = 'active'
-  loadError.value = false
+  itemsReady.value = false
+  savedReady.value = false
+  itemsLoading.value = false
+  savedLoading.value = false
+  itemsError.value = false
+  savedError.value = false
 }
 
 const profilePageScope = createAccountPageScope(() => {
@@ -490,41 +508,49 @@ onShareTimeline(() => {
 async function loadMine(
   uid: string,
   options: { forceItems?: boolean; showError?: boolean } = {},
-): Promise<boolean> {
+): Promise<{ itemsOk: boolean; savedOk: boolean }> {
   const request = profilePageScope.begin(uid)
-  if (!request) return false
-  loadError.value = false
-  try {
-    const [items, _favs, favItems] = await Promise.all([
-      fetchMyItems(uid, {
-        force: options.forceItems,
-        accountToken: request.accountToken,
-      }),
+  if (!request) return { itemsOk: false, savedOk: false }
+  itemsLoading.value = true
+  savedLoading.value = true
+  itemsError.value = false
+  savedError.value = false
+
+  const [itemsResult, savedResult] = await Promise.allSettled([
+    fetchMyItems(uid, {
+      force: options.forceItems,
+      accountToken: request.accountToken,
+    }),
+    Promise.all([
       loadMyFavorites(uid),
       fetchMyFavoriteItems(uid),
-    ])
-    if (!profilePageScope.isCurrent(request)) return false
-    myItems.value = items
-    savedItems.value = favItems
-    void fetchNotifications().catch(() => {})
-    return true
-  } catch {
-    if (!profilePageScope.isCurrent(request)) return false
-    // Empty refs are indistinguishable from a brand-new account, so the
-    // sections below render "you have nothing" unless they are told this was a
-    // failed read. profile.markFail says "Failed to update", which described a
-    // mutation, not this.
-    loadError.value = true
-    if (options.showError !== false) {
-      uni.showToast({ title: t('error.loadFailed'), icon: 'none' })
-    }
-    return false
+    ]).then(([, favItems]) => favItems),
+  ])
+  if (!profilePageScope.isCurrent(request)) return { itemsOk: false, savedOk: false }
+
+  if (itemsResult.status === 'fulfilled') myItems.value = itemsResult.value
+  else itemsError.value = true
+  if (savedResult.status === 'fulfilled') savedItems.value = savedResult.value
+  else savedError.value = true
+
+  itemsReady.value = true
+  savedReady.value = true
+  itemsLoading.value = false
+  savedLoading.value = false
+  const result = {
+    itemsOk: !itemsError.value,
+    savedOk: !savedError.value,
   }
+  void fetchNotifications().catch(() => {})
+  if ((!result.itemsOk || !result.savedOk) && options.showError !== false) {
+    uni.showToast({ title: t('error.loadFailed'), icon: 'none' })
+  }
+  return result
 }
 
 function retryLoadMine() {
   const uid = currentUser.value?.id
-  if (!uid) return
+  if (!uid || itemsLoading.value || savedLoading.value) return
   void loadMine(uid, { forceItems: true })
 }
 
@@ -627,7 +653,7 @@ onPullDownRefresh(async () => {
     // Explicit refresh bypasses the my-items SWR TTL guard. loadMine owns the
     // account token + page epoch, so a late pull from A cannot clear/replace B.
     const loaded = await loadMine(uid, { forceItems: true, showError: false })
-    if (!loaded && currentUser.value?.id === uid) {
+    if ((!loaded.itemsOk || !loaded.savedOk) && currentUser.value?.id === uid) {
       uni.showToast({ title: t('error.loadFailed'), icon: 'none' })
     }
   } catch (error) {
@@ -690,7 +716,7 @@ async function markAsSold(id: string, actionRequest: AccountPageRequest) {
       // is intentionally empty because the item is terminal. Refresh once and
       // surface the committed outcome instead of asking for another offer.
       const uid = actionRequest.accountToken.userId
-      if (await loadMine(uid, { forceItems: true }) && isCurrent()) {
+      if ((await loadMine(uid, { forceItems: true })).itemsOk && isCurrent()) {
         if (myItems.value.some(item => item.id === id && item.status === 'sold')) {
           uni.showToast({ title: t('profile.markedSold'), icon: 'success' })
           return
@@ -726,7 +752,7 @@ async function markAsSold(id: string, actionRequest: AccountPageRequest) {
             })
             if (!isCurrent()) return
             homeItems.value = homeItems.value.filter(i => i.id !== id)
-            if (!await loadMine(uid, { forceItems: true })) return
+            if (!(await loadMine(uid, { forceItems: true })).itemsOk) return
             if (!isCurrent()) return
             uni.showToast({ title: t('profile.markedSold'), icon: 'success' })
           } catch {
@@ -757,7 +783,7 @@ async function unreserveItem(id: string, actionRequest: AccountPageRequest) {
   try {
     await updateItemStatus(id, 'active')
     if (!profileActionScope.isCurrent(actionRequest)) return
-    if (!await loadMine(uid, { forceItems: true })) return
+    if (!(await loadMine(uid, { forceItems: true })).itemsOk) return
     if (!profileActionScope.isCurrent(actionRequest)) return
     uni.showToast({ title: t('detail.unreserved'), icon: 'success' })
   } catch {
@@ -778,7 +804,7 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
       try {
         await deleteItem(id)
         if (!profileActionScope.isCurrent(actionRequest)) return
-        if (!await loadMine(uid, { forceItems: true })) return
+        if (!(await loadMine(uid, { forceItems: true })).itemsOk) return
         if (!profileActionScope.isCurrent(actionRequest)) return
         uni.showToast({ title: t('profile.deleted'), icon: 'success' })
       } catch {

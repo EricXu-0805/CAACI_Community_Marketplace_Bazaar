@@ -52,6 +52,9 @@ const REF = new URL(supabaseUrlForBuild()).hostname.split('.')[0]
 const UID = '11111111-1111-4111-8111-111111111111'
 const GEN = 'read-failure-generation-0001'
 const POST = '55555555-5555-4555-8555-555555555555'
+const OWNED_ITEM_ID = '22222222-2222-4222-8222-222222222222'
+const SAVED_ITEM_ID = '33333333-3333-4333-8333-333333333333'
+const COMMENT_ID = '44444444-4444-4444-8444-444444444444'
 
 const PROFILE = {
   id: UID, nickname: 'Test User', avatar_url: null, tos_version: '2026-08-01',
@@ -62,6 +65,26 @@ const PROFILE = {
 const POST_ROW = {
   id: POST, user_id: UID, content: 'Anyone selling a rice cooker?', images: [],
   comment_count: 12, like_count: 3, created_at: '2026-08-01T00:00:00Z', profile: PROFILE,
+}
+
+const OWNED_ITEM_ROW = {
+  id: OWNED_ITEM_ID, user_id: UID, title: 'Owned partition remains visible', description: 'mine',
+  price: 25, category: 'other', condition: 'good', status: 'active', listing_type: 'sell',
+  location: 'UIUC', images: [], view_count: 1,
+  created_at: '2026-08-02T00:00:00Z', updated_at: '2026-08-02T00:00:00Z', profile: PROFILE,
+}
+
+const SAVED_ITEM_ROW = {
+  ...OWNED_ITEM_ROW,
+  id: SAVED_ITEM_ID,
+  user_id: '99999999-9999-4999-8999-999999999999',
+  title: 'Saved partition remains visible',
+  profile: { ...PROFILE, id: '99999999-9999-4999-8999-999999999999', nickname: 'Seller' },
+}
+
+const COMMENT_ROW = {
+  id: COMMENT_ID, post_id: POST, user_id: UID, content: 'Recovered comment stays scoped',
+  parent_comment_id: null, like_count: 0, created_at: '2026-08-03T00:00:00Z', profile: PROFILE,
 }
 
 const READS_UNDER_TEST = [/\/rest\/v1\/items/, /\/rest\/v1\/favorites/, /\/rest\/v1\/post_comments/]
@@ -104,6 +127,66 @@ async function serve(page: Page, { failReads }: { failReads: boolean }) {
       headers: { 'content-range': '0-1/2' }, body: JSON.stringify(fixtureFor(path)),
     })
   })
+}
+
+type ControlledEndpoint = 'items' | 'favorites' | 'posts' | 'post_comments'
+
+type ControlledReadState = {
+  failing: ControlledEndpoint | null
+  delayed: ControlledEndpoint | null
+  delayMs: number
+  requests: Record<ControlledEndpoint, number>
+}
+
+function endpointFor(pathname: string): ControlledEndpoint | null {
+  if (pathname.endsWith('/rest/v1/items')) return 'items'
+  if (pathname.endsWith('/rest/v1/favorites')) return 'favorites'
+  if (pathname.endsWith('/rest/v1/posts')) return 'posts'
+  if (pathname.endsWith('/rest/v1/post_comments')) return 'post_comments'
+  return null
+}
+
+function partitionFixture(path: string): unknown {
+  if (path.includes('/rest/v1/items')) return [OWNED_ITEM_ROW]
+  if (path.includes('/rest/v1/favorites')) {
+    // profile asks for both the id set and the joined item rows. Keep those
+    // wire shapes distinct or a false fixture can make one branch look green.
+    const decoded = decodeURIComponent(path)
+    if (decoded.includes('item:items')) return [{ item_id: SAVED_ITEM_ID, item: SAVED_ITEM_ROW }]
+    return [{ item_id: SAVED_ITEM_ID }]
+  }
+  if (path.includes('/rest/v1/post_comments')) return [COMMENT_ROW]
+  return fixtureFor(path)
+}
+
+async function serveControlled(page: Page, state: ControlledReadState) {
+  await page.route('**/*.supabase.co/**', async route => {
+    const url = new URL(route.request().url())
+    const path = `${url.pathname}${url.search}`
+    const endpoint = endpointFor(url.pathname)
+    if (endpoint) {
+      state.requests[endpoint] += 1
+      if (state.failing === endpoint) {
+        return route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"boom"}' })
+      }
+      if (state.delayed === endpoint && state.delayMs > 0) {
+        await new Promise(resolve => setTimeout(resolve, state.delayMs))
+      }
+    }
+    await route.fulfill({
+      status: 200, contentType: 'application/json',
+      headers: { 'content-range': '0-0/1' }, body: JSON.stringify(partitionFixture(path)),
+    })
+  })
+}
+
+function controlledState(failing: ControlledEndpoint): ControlledReadState {
+  return {
+    failing,
+    delayed: null,
+    delayMs: 0,
+    requests: { items: 0, favorites: 0, posts: 0, post_comments: 0 },
+  }
 }
 
 async function visibleText(page: Page, route: string): Promise<string[]> {
@@ -172,4 +255,85 @@ test('a genuinely empty account still gets its designed empty state', async ({ p
   const joined = (await visibleText(page, 'pages/my-items/index')).join(' | ')
   expect(joined, 'the empty state disappeared instead of being made conditional').toMatch(CLAIMS_EMPTY)
   expect(joined, 'a healthy empty account must not be reported as a failure').not.toMatch(/Failed to load/i)
+})
+
+test('profile preserves saved rows when listings fail, and retry never flashes a healthy empty listing', async ({ page }) => {
+  const state = controlledState('items')
+  await seedSession(page)
+  await serveControlled(page, state)
+
+  await visibleText(page, 'pages/profile/index')
+  await expect(page.locator('#profile-listings-panel').getByText('Failed to load', { exact: true })).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: SAVED_ITEM_ROW.title, exact: true }),
+    'a failed listings endpoint erased the independently successful favorites partition',
+  ).toBeVisible()
+
+  const requestsBeforeRetry = state.requests.items
+  state.failing = null
+  state.delayed = 'items'
+  state.delayMs = 1_500
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect.poll(() => state.requests.items).toBeGreaterThan(requestsBeforeRetry)
+
+  await expect(
+    page.getByText("You haven't posted anything yet", { exact: true }),
+    'retry temporarily advertised a healthy empty account while the listings request was still pending',
+  ).toHaveCount(0)
+  await expect(page.getByRole('button', { name: SAVED_ITEM_ROW.title, exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: OWNED_ITEM_ROW.title, exact: true })).toBeVisible()
+})
+
+test('my items preserves listed rows when favorites fail, and retry never flashes a healthy empty saved tab', async ({ page }) => {
+  const state = controlledState('favorites')
+  await seedSession(page)
+  await serveControlled(page, state)
+
+  await visibleText(page, 'pages/my-items/index')
+  await expect(
+    page.getByRole('button', { name: OWNED_ITEM_ROW.title, exact: true }),
+    'a failed favorites endpoint erased the independently successful listings partition',
+  ).toBeVisible()
+
+  await page.getByRole('tab', { name: /My Favorites/i }).click()
+  await expect(page.locator('#my-items-panel').getByText('Failed to load', { exact: true })).toBeVisible()
+  const requestsBeforeRetry = state.requests.favorites
+  state.failing = null
+  state.delayed = 'favorites'
+  state.delayMs = 1_500
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect.poll(() => state.requests.favorites).toBeGreaterThan(requestsBeforeRetry)
+
+  await expect(
+    page.getByText('No saved items yet', { exact: true }),
+    'retry temporarily advertised a healthy empty saved list while the request was still pending',
+  ).toHaveCount(0)
+  await expect(page.getByRole('button', { name: SAVED_ITEM_ROW.title, exact: true })).toBeVisible()
+})
+
+test('comment retry is scoped to comments and keeps the loaded post alive', async ({ page }) => {
+  const state = controlledState('post_comments')
+  await seedSession(page)
+  await serveControlled(page, state)
+
+  await visibleText(page, `pages/post/index?id=${POST}`)
+  await expect(page.getByText(POST_ROW.content, { exact: true })).toBeVisible()
+  await expect(page.getByText('Failed to load', { exact: true })).toBeVisible()
+  const postRequestsBeforeRetry = state.requests.posts
+  const commentRequestsBeforeRetry = state.requests.post_comments
+
+  state.failing = null
+  state.delayed = 'post_comments'
+  state.delayMs = 1_500
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect.poll(() => state.requests.post_comments).toBeGreaterThan(commentRequestsBeforeRetry)
+
+  expect(state.requests.posts, 'comment retry reloaded the already-valid main post').toBe(postRequestsBeforeRetry)
+  await expect(page.getByText(POST_ROW.content, { exact: true })).toBeVisible()
+  await expect(
+    page.getByText('No comments yet', { exact: true }),
+    'comment retry flashed a healthy empty thread while the retry was pending',
+  ).toHaveCount(0)
+  await expect(page.getByText(COMMENT_ROW.content, { exact: true })).toBeVisible()
+  expect(state.requests.posts, 'comment recovery invalidated and fetched the main post').toBe(postRequestsBeforeRetry)
 })

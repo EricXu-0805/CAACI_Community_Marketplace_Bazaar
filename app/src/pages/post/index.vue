@@ -339,11 +339,13 @@ const commentText = ref('')
 const replyTo = ref<PostComment | null>(null)
 const submitting = ref(false)
 let postLoadEpoch = 0
+let commentsLoadEpoch = 0
 const reportLoading = createOwnedLoading()
 let pageMounted = true
 
 function resetPostAccountState() {
   postLoadEpoch += 1
+  commentsLoadEpoch += 1
   commentText.value = ''
   replyTo.value = null
   submitting.value = false
@@ -358,6 +360,7 @@ const stopAccountTransitionListener = onAccountTransition(resetPostAccountState)
 onUnmounted(() => {
   pageMounted = false
   postLoadEpoch += 1
+  commentsLoadEpoch += 1
   reportLoading.cancel()
   stopAccountTransitionListener()
 })
@@ -498,6 +501,7 @@ async function loadPostForCurrentAccount() {
     return
   }
   const requestEpoch = ++postLoadEpoch
+  const commentsRequestEpoch = ++commentsLoadEpoch
   loading.value = true
   loadingComments.value = true
   loadError.value = false
@@ -515,11 +519,11 @@ async function loadPostForCurrentAccount() {
       addPostToHistory(p)
       try {
         const rows = await fetchComments(postId.value)
-        if (!pageMounted || requestEpoch !== postLoadEpoch) return
+        if (!pageMounted || requestEpoch !== postLoadEpoch || commentsRequestEpoch !== commentsLoadEpoch) return
         comments.value = rows
         commentsError.value = false
       } catch (err: any) {
-        if (!pageMounted || requestEpoch !== postLoadEpoch) return
+        if (!pageMounted || requestEpoch !== postLoadEpoch || commentsRequestEpoch !== commentsLoadEpoch) return
         // Same discipline the outer catch applies to the post: a transport
         // failure must not read as "nobody has commented". Without this the
         // header still says (12) while the body says the thread is empty, and
@@ -538,26 +542,36 @@ async function loadPostForCurrentAccount() {
   } finally {
     if (pageMounted && requestEpoch === postLoadEpoch) {
       loading.value = false
-      loadingComments.value = false
+      if (commentsRequestEpoch === commentsLoadEpoch) loadingComments.value = false
     }
   }
 }
 
 async function retryComments() {
   if (!postId.value || loadingComments.value) return
-  const requestEpoch = ++postLoadEpoch
+  const requestPostEpoch = postLoadEpoch
+  const requestCommentsEpoch = ++commentsLoadEpoch
+  const requestPostId = postId.value
+  const requestAccountId = currentUser.value?.id ?? null
+  const isCurrent = () => (
+    pageMounted
+    && requestPostEpoch === postLoadEpoch
+    && requestCommentsEpoch === commentsLoadEpoch
+    && postId.value === requestPostId
+    && (currentUser.value?.id ?? null) === requestAccountId
+  )
   loadingComments.value = true
   commentsError.value = false
   try {
-    const rows = await fetchComments(postId.value)
-    if (!pageMounted || requestEpoch !== postLoadEpoch) return
+    const rows = await fetchComments(requestPostId)
+    if (!isCurrent()) return
     comments.value = rows
   } catch (err: any) {
-    if (!pageMounted || requestEpoch !== postLoadEpoch) return
+    if (!isCurrent()) return
     commentsError.value = true
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
   } finally {
-    if (pageMounted && requestEpoch === postLoadEpoch) loadingComments.value = false
+    if (isCurrent()) loadingComments.value = false
   }
 }
 
