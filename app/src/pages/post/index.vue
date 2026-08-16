@@ -123,7 +123,11 @@
         <view class="cs-header">
           <text class="cs-title">{{ t('plaza.comments') }} ({{ post.comment_count || 0 }})</text>
         </view>
-        <view v-if="comments.length === 0 && !loadingComments" class="cs-empty">
+        <view v-if="commentsError" class="cs-empty cs-error" role="alert" aria-live="assertive">
+          <text>{{ t('error.loadFailed') }}</text>
+          <view class="cs-retry" role="button" tabindex="0" @click.stop="retryComments" @keydown.enter.prevent="retryComments" @keydown.space.prevent="retryComments">{{ t('home.retry') }}</view>
+        </view>
+        <view v-else-if="comments.length === 0 && !loadingComments" class="cs-empty">
           <text>{{ t('plaza.noComments') }}</text>
         </view>
         <template v-for="thread in commentThreads" :key="thread.parent.id">
@@ -329,6 +333,8 @@ const loadingComments = ref(false)
 // Distinct from "post is null": a transport failure must not render as a
 // missing post. Only the catch in loadPostForCurrentAccount sets this.
 const loadError = ref(false)
+// The same distinction for the comment list, which has its own request.
+const commentsError = ref(false)
 const commentText = ref('')
 const replyTo = ref<PostComment | null>(null)
 const submitting = ref(false)
@@ -495,6 +501,7 @@ async function loadPostForCurrentAccount() {
   loading.value = true
   loadingComments.value = true
   loadError.value = false
+  commentsError.value = false
   try {
     // fetchPost/fetchComments annotate liked_by_me from currentUser. Wait for
     // session hydration so a cold deep link does not permanently render every
@@ -510,8 +517,14 @@ async function loadPostForCurrentAccount() {
         const rows = await fetchComments(postId.value)
         if (!pageMounted || requestEpoch !== postLoadEpoch) return
         comments.value = rows
+        commentsError.value = false
       } catch (err: any) {
         if (!pageMounted || requestEpoch !== postLoadEpoch) return
+        // Same discipline the outer catch applies to the post: a transport
+        // failure must not read as "nobody has commented". Without this the
+        // header still says (12) while the body says the thread is empty, and
+        // the toast that explained it is gone in 2.5s.
+        commentsError.value = true
         uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
       }
     }
@@ -527,6 +540,24 @@ async function loadPostForCurrentAccount() {
       loading.value = false
       loadingComments.value = false
     }
+  }
+}
+
+async function retryComments() {
+  if (!postId.value || loadingComments.value) return
+  const requestEpoch = ++postLoadEpoch
+  loadingComments.value = true
+  commentsError.value = false
+  try {
+    const rows = await fetchComments(postId.value)
+    if (!pageMounted || requestEpoch !== postLoadEpoch) return
+    comments.value = rows
+  } catch (err: any) {
+    if (!pageMounted || requestEpoch !== postLoadEpoch) return
+    commentsError.value = true
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
+  } finally {
+    if (pageMounted && requestEpoch === postLoadEpoch) loadingComments.value = false
   }
 }
 
@@ -923,6 +954,13 @@ async function onSubmitComment() {
 .cs-header { padding: 14px 16px 8px; border-bottom: 0.5px solid var(--line-hair); }
 .cs-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
 .cs-empty { padding: 40px 16px; text-align: center; color: var(--text-subtle); font-size: 13px; }
+/* Mirrors .ci-error / .ci-retry in the plaza comment sheet. */
+.cs-error { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.cs-retry {
+  min-height: 44px; padding: 0 18px; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--accent-action); color: var(--ink-inverse); font-weight: 650;
+}
 .cs-item {
   display: flex; gap: 10px; padding: 12px 16px;
   border-bottom: 0.5px solid var(--line-hair);

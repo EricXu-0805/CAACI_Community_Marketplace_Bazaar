@@ -190,7 +190,11 @@
             <UIcon name="chevron-right" size="xs" color="text-faint" />
           </view>
         </view>
-        <view v-if="currentListings.length === 0" id="profile-listings-panel" class="empty-mini" role="tabpanel">
+        <view v-if="loadError" id="profile-listings-panel" class="empty-mini" role="tabpanel" aria-live="assertive">
+          <text class="empty-mini-text">{{ t('error.loadFailed') }}</text>
+          <view class="mini-retry" role="button" tabindex="0" @click="retryLoadMine" @keydown.enter.prevent="retryLoadMine" @keydown.space.prevent="retryLoadMine">{{ t('home.retry') }}</view>
+        </view>
+        <view v-else-if="currentListings.length === 0" id="profile-listings-panel" class="empty-mini" role="tabpanel">
           <UEmptyArt name="bag" :size="104" />
           <text class="empty-mini-text">{{ myTab === 'sold' ? t('profile.noSold') : t('profile.noListings') }}</text>
         </view>
@@ -264,7 +268,10 @@
             <UIcon name="chevron-right" size="xs" color="text-faint" />
           </view>
         </view>
-        <view v-if="savedItems.length === 0" class="empty-mini">
+        <view v-if="loadError" class="empty-mini" aria-live="assertive">
+          <text class="empty-mini-text">{{ t('error.loadFailed') }}</text>
+        </view>
+        <view v-else-if="savedItems.length === 0" class="empty-mini">
           <UEmptyArt name="favorites" :size="104" />
           <text class="empty-mini-text">{{ t('profile.noSaved') }}</text>
         </view>
@@ -370,6 +377,9 @@ const { unreadNotifCount, fetchNotifications } = useNotifications()
 
 const myItems = ref<Item[]>([])
 const savedItems = ref<Item[]>([])
+// Distinct from "this account owns nothing": both leave the refs empty, and
+// this is the first screen after sign-in.
+const loadError = ref(false)
 const totalBrowsed = ref(0)
 
 /*
@@ -419,6 +429,7 @@ function clearProfilePrivateState() {
   savedItems.value = []
   totalBrowsed.value = 0
   myTab.value = 'active'
+  loadError.value = false
 }
 
 const profilePageScope = createAccountPageScope(() => {
@@ -482,6 +493,7 @@ async function loadMine(
 ): Promise<boolean> {
   const request = profilePageScope.begin(uid)
   if (!request) return false
+  loadError.value = false
   try {
     const [items, _favs, favItems] = await Promise.all([
       fetchMyItems(uid, {
@@ -498,11 +510,22 @@ async function loadMine(
     return true
   } catch {
     if (!profilePageScope.isCurrent(request)) return false
+    // Empty refs are indistinguishable from a brand-new account, so the
+    // sections below render "you have nothing" unless they are told this was a
+    // failed read. profile.markFail says "Failed to update", which described a
+    // mutation, not this.
+    loadError.value = true
     if (options.showError !== false) {
-      uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+      uni.showToast({ title: t('error.loadFailed'), icon: 'none' })
     }
     return false
   }
+}
+
+function retryLoadMine() {
+  const uid = currentUser.value?.id
+  if (!uid) return
+  void loadMine(uid, { forceItems: true })
 }
 
 onShow(async () => {
@@ -1360,6 +1383,12 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
   text-align: center;
 }
 .empty-mini-text { font-size: 13px; color: var(--text-muted); }
+/* Mirrors .ci-retry in the plaza comment sheet. */
+.mini-retry {
+  min-height: 44px; padding: 0 18px; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--accent-action); color: var(--ink-inverse); font-weight: 650;
+}
 
 /* ===== More menu (list) ===== */
 .list-menu { margin-top: 12px; }
