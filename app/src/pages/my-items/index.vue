@@ -37,6 +37,11 @@
       </view>
     </view>
 
+    <view v-else-if="loadError" id="my-items-panel" class="empty" role="tabpanel" aria-live="assertive">
+      <text class="empty-text">{{ t('error.loadFailed') }}</text>
+      <view class="retry" role="button" tabindex="0" @click="retryLoad" @keydown.enter.prevent="retryLoad" @keydown.space.prevent="retryLoad">{{ t('home.retry') }}</view>
+    </view>
+
     <view v-else-if="currentList.length === 0" id="my-items-panel" class="empty" role="tabpanel">
       <UEmptyArt :name="tab === 'saved' ? 'favorites' : 'bag'" :size="104" />
       <text class="empty-text">{{ t(EMPTY_KEY[tab]) }}</text>
@@ -131,6 +136,10 @@ const tab = ref<TabKey>('listed')
 const myItems = ref<Item[]>([])
 const savedItems = ref<Item[]>([])
 const ready = ref(false)
+// A failed fetch leaves myItems/savedItems empty, which is byte-identical to a
+// seller who has listed nothing. Without this the page tells them their
+// listings are gone and the only correction is a 1.5s toast.
+const loadError = ref(false)
 
 const listedItems = computed(() => myItems.value.filter(i => i.status !== 'sold'))
 const soldItems = computed(() => myItems.value.filter(i => i.status === 'sold'))
@@ -148,6 +157,7 @@ const pageScope = createAccountPageScope(() => {
   myItems.value = []
   savedItems.value = []
   ready.value = false
+  loadError.value = false
 })
 
 onLoad((query) => {
@@ -170,6 +180,7 @@ async function load() {
   }
   const request = pageScope.begin(uid)
   if (!request) return
+  loadError.value = false
   try {
     const [items, favItems] = await Promise.all([
       fetchMyItems(uid, { accountToken: request.accountToken }),
@@ -180,10 +191,16 @@ async function load() {
     savedItems.value = favItems
   } catch {
     if (!pageScope.isCurrent(request)) return
+    loadError.value = true
     uni.showToast({ title: t('error.loadFailed'), icon: 'none' })
   } finally {
     if (pageScope.isCurrent(request)) ready.value = true
   }
+}
+
+function retryLoad() {
+  if (!ready.value) return
+  void load()
 }
 
 function onTabKeydown(event: KeyboardEvent, current: TabKey) {
@@ -298,4 +315,10 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   padding: 60px 24px;
 }
 .empty-text { font-size: 13px; color: var(--text-muted); }
+/* Mirrors .ci-retry in the plaza comment sheet. */
+.retry {
+  min-height: 44px; padding: 0 18px; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--accent-action); color: var(--ink-inverse); font-weight: 650;
+}
 </style>
