@@ -27,13 +27,15 @@
  * It floats above the tab bar rather than below the header — see the note on
  * .a2hs for what that position was costing.
  */
-import { ref, onMounted } from 'vue'
+import { ref, onBeforeUnmount, onMounted } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import UIcon from './UIcon.vue'
 
 const { t } = useI18n()
 const show = ref(false)
 const KEY = 'a2hs_dismissed_v1'
+let dismissedForSession = false
+let cleanupViewportTracking = () => {}
 
 // #ifdef H5
 onMounted(() => {
@@ -45,17 +47,35 @@ onMounted(() => {
     const nav: any = window.navigator
     const standalone = nav.standalone === true
       || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
-    const dismissed = localStorage.getItem(KEY) === '1'
-    // Phone widths only (≥768 uses the desktop sidebar shell, not a tab/PWA flow).
-    if (isIOS && !standalone && !dismissed && window.innerWidth < 768) {
-      // A short beat so it doesn't fight first paint.
-      setTimeout(() => { show.value = true }, 1200)
+    dismissedForSession = localStorage.getItem(KEY) === '1'
+    if (!isIOS || standalone || dismissedForSession) return
+
+    let revealReady = false
+    // A phone can enter in a >768px landscape viewport and rotate to portrait
+    // without remounting this component. Re-evaluate width on every resize so
+    // that initial orientation cannot permanently suppress the hint.
+    const updateVisibility = () => {
+      show.value = revealReady && !dismissedForSession && window.innerWidth < 768
+    }
+    window.addEventListener('resize', updateVisibility)
+    // A short beat so it doesn't fight first paint. The timer may elapse while
+    // landscape is ineligible; the next portrait resize reveals it.
+    const revealTimer = setTimeout(() => {
+      revealReady = true
+      updateVisibility()
+    }, 1200)
+    cleanupViewportTracking = () => {
+      clearTimeout(revealTimer)
+      window.removeEventListener('resize', updateVisibility)
     }
   } catch {}
 })
 // #endif
 
+onBeforeUnmount(() => cleanupViewportTracking())
+
 function dismiss() {
+  dismissedForSession = true
   show.value = false
   // #ifdef H5
   try { localStorage.setItem(KEY, '1') } catch {}
@@ -100,5 +120,14 @@ function dismiss() {
   color: var(--text-subtle); flex-shrink: 0; cursor: pointer;
 }
 .a2hs-close:active { opacity: 0.6; }
+
+/* A phone in landscape has no fixed vertical lane large enough for this card:
+   keeping the 156px back-to-top clearance puts it over the segment/category
+   controls, while moving it down would cover the tab/back-to-top controls.
+   Hide it for the short landscape viewport and let the same undismissed hint
+   reappear when the phone rotates back to portrait. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .a2hs { display: none; }
+}
 /* #endif */
 </style>
