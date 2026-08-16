@@ -181,10 +181,10 @@ CI 已有 smoke job，但当前仍不是 branch protection 的 required check。
 
 ## 部署
 
-- **生产是活的，且始终等于 `main`。** `vercel.json` 的 `git.deploymentEnabled`
-  是 `{"**": false, "main": true}`，所以每次合进 main 就自动部署前端——**只部署
-  前端，不跑任何迁移**。`https://www.illinimarket.com` 返回 200，
-  `/deployment-manifest.json` 里的 `commit` 就是当前 main 的 SHA。仓库里若干
+- **生产是活的，`main` 只是生产部署的触发源，不是已部署事实本身。**
+  `vercel.json` 的 `git.deploymentEnabled` 是 `{"**": false, "main": true}`；它只部署前端，不跑任何数据库迁移。
+  每次验收必须独立核对 `/deployment-manifest.json` 的完整 commit 与当前候选，不得用
+  “已合并 main”代替“生产已部署且健康”。仓库里若干
   较早的文档曾写“当前工作树仍是未部署的 release candidate / production NO-GO”，
   那是 2026-07-19 那一刻的快照，2026-08 合了二十来个 PR 之后已经不成立。
 - 首版 H5 使用邮箱/密码 + Google，小程序使用邮箱/密码；微信快捷登录隐藏，
@@ -192,8 +192,8 @@ CI 已有 smoke job，但当前仍不是 branch protection 的 required check。
   fail-closed；首版保持缺失/false，内容安全凭据不能隐式启用身份登录。
 - **2026-08-14 实测已关闭的门**：Google/email provider 在跑（生产有 9 个 Google
   身份）、HIBP 已开、生产已有 2 个未撤销 owner token、DB239 两条迁移已上线。
-  **仍未关闭的门**：`RESEND_WEBHOOK_SECRET` 未配（`/api/resend-webhook` 实测
-  503，退信告警全黑）、Sentry 告警规则没建（上报在跑但无人被通知）、Hosted
+  **仍未关闭的门**：`RESEND_WEBHOOK_SECRET` 和回调投递需在当次发布前重新核验；Sentry 的三条
+  issue rule 在 2026-08-14 曾核实存在且触发，但当前启用状态与投递仍需当次复核；Hosted
   Realtime canary 的 target allowlist 仍是空的、真机验证与双账号写路径全链路
   未跑、生产内容仍是测试垃圾。
 - ⚠️ **schema 与前端耦合的改动，合并前必须先把迁移应用到生产。** 合并只推前端。
