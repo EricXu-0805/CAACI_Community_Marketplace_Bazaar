@@ -67,15 +67,28 @@ const MAX_MESSAGE = 4000
    stripped, then whitespace/punct, then lowercase. */
 function normalize(s: string): string {
   if (!s) return ''
+  return fold(s)
+    .replace(/[　\s\-_.+,。，、]/g, '')
+}
+
+/* NFKC-folded and lowercased, but NOT stripped — keeps the dots, spaces and
+   dashes that give a phone number or an email address its shape. Migration
+   089 draws the same line on the server: its keyword lexicon runs against the
+   stripped copy, its email and phone regexes against the folded one. */
+function fold(s: string): string {
+  if (!s) return ''
   return s
     .normalize('NFKC')
     .replace(/[\u00AD\u034F\u061C\u180E\u200B-\u200F\u2060-\u2064\u206A-\u206F\uFEFF\uFE00-\uFE0F]/g, '')
-    .replace(/[　\s\-_.+,。，、]/g, '')
     .toLowerCase()
 }
 
 const CN_MOBILE = /(?<![0-9])1[3-9]\d{9}(?![0-9])/
-const US_MOBILE = /(?<![0-9])\d{3}[-.\s]?\d{3}[-.\s]?\d{4}(?![0-9])/
+/* North American numbering: an area code and an exchange code may not begin
+   with 0 or 1. Without that constraint — and matched against the stripped copy,
+   where the separators above are already gone — this was simply /\d{10}/, so
+   every ISBN-10 and most 10-digit serials were refused as a phone number. */
+const US_MOBILE = /(?<![0-9])[2-9]\d{2}[-.\s]?[2-9]\d{2}[-.\s]?\d{4}(?![0-9])/
 const EMAIL = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/
 const WECHAT_HINT = /(微信|wechat|weixin|加v|加\s*微|v信|v我|威信|vx|私信扣)/
 const QQ_HINT = /(?:qq|扣扣|企鹅)[号:：\s]*\d{5,11}/
@@ -84,10 +97,13 @@ const URL_SHORTENER = /\b(?:bit\.ly|t\.cn|dwz\.cn|sina\.lt|tinyurl\.com|goo\.gl|
 
 function hasContactInfo(raw: string): { hit: boolean; matched: string[] } {
   const n = normalize(raw)
+  // Structure-sensitive patterns read the folded copy; the stripped copy has
+  // already erased the separators they depend on.
+  const f = fold(raw)
   const matched: string[] = []
   if (CN_MOBILE.test(n)) matched.push('CN phone')
-  if (US_MOBILE.test(n)) matched.push('US phone')
-  if (EMAIL.test(n)) matched.push('email')
+  if (US_MOBILE.test(f)) matched.push('US phone')
+  if (EMAIL.test(f)) matched.push('email')
   if (WECHAT_HINT.test(n)) matched.push('WeChat')
   if (QQ_HINT.test(n)) matched.push('QQ')
   return { hit: matched.length > 0, matched }

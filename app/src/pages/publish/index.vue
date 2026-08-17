@@ -247,6 +247,7 @@ import { useItems, type UploadAccountToken } from '../../composables/useItems'
 import { useTranslate } from '../../composables/useTranslate'
 import { mutationCommitState, mutationOutcomeError, shouldCompensateMutationFailure } from '../../api/mutationCommit'
 import { friendlyErrorMessage, PUBLISHABLE_CATEGORIES } from '../../utils'
+import { checkContent } from '../../utils/contentSafety'
 import { DIALOG_INK, DIALOG_WARN } from '../../utils/dialogColors'
 import { captureException } from '../../utils/sentry'
 import type { ItemCategory, ItemCondition } from '../../types'
@@ -835,6 +836,33 @@ async function onSubmit() {
   if (!requireAuth()) return
   // Required-field hard blocks — order matches form visual top-to-bottom flow
   if (!form.title.trim()) { uni.showToast({ title: t('publish.needTitle'), icon: 'none' }); return }
+  /*
+   * Pre-flight the same checks createItem runs. Without this they fire only
+   * after every photo has finished uploading, so a one-character title costs a
+   * full nine-image upload over campus wifi before saying "Content is too
+   * short" — a message that never names the field. createItem keeps its own
+   * copy; it is the gate for every other caller.
+   */
+  const titleSafety = checkContent(form.title, { kind: 'item_title' })
+  if (!titleSafety.ok) {
+    uni.showToast({
+      title: titleSafety.category === 'too_short'
+        ? t('publish.titleTooShort')
+        : friendlyErrorMessage(new Error(`moderation_block:${titleSafety.category}`), lang.value as 'en' | 'zh'),
+      icon: 'none',
+    })
+    return
+  }
+  if (form.description.trim()) {
+    const descSafety = checkContent(form.description, { kind: 'item_desc' })
+    if (!descSafety.ok) {
+      uni.showToast({
+        title: friendlyErrorMessage(new Error(`moderation_block:${descSafety.category}`), lang.value as 'en' | 'zh'),
+        icon: 'none',
+      })
+      return
+    }
+  }
   // A wanted post relaxes price (budget optional → 0) and condition (N/A).
   const rawPrice = form.price.trim()
   const price = rawPrice === '' && form.listingType === 'wanted'
