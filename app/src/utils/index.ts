@@ -2,7 +2,7 @@ import type { ItemCategory } from '../types'
 import { safeItemMediaUrl } from './publicResource'
 // #ifdef H5
 import { useI18n } from '../composables/useI18n'
-import { addBreadcrumb } from './sentry'
+import { addBreadcrumb, captureException } from './sentry'
 // #endif
 // #ifndef H5
 import { detectSystemLang } from '../composables/i18n/detect'
@@ -163,7 +163,71 @@ const CONTENT_MESSAGES: Record<string, { en: string; zh: string }> = {
     en: 'Safety settings could not be loaded. Please retry.',
     zh: '安全设置加载失败，请重试',
   },
+  moderation_unavailable: {
+    en: 'Content could not be checked. Please retry.',
+    zh: '内容检查失败，请重试',
+  },
+  /* Two of api/accountDeletion.ts's EXPLICIT_REJECTIONS carry no underscore,
+     so the sentinel guard below cannot catch them, and they surface on the
+     delete-account screen. The rest of that set is underscored and is left to
+     the guard deliberately — their copy should be written from what Sentry
+     shows actually happens, not from reading the names. */
+  unauthorized:     { en: 'Please sign in again.',            zh: '请重新登录' },
+  forbidden:        { en: "You don't have permission to do that.", zh: '你没有权限执行此操作' },
+  /* Both describe the user doing something normal — switching accounts or
+     signing out — while a request was in flight. Mapped rather than left to
+     the guard so a safe, expected state does not become the loudest thing in
+     Sentry, which is how the last alarm ended up 80% noise. */
+  account_changed:  { en: 'Your account changed. Please try that again.', zh: '账号已切换，请重新操作' },
+  auth_session_boundary_superseded_by_signout: {
+    en: 'You signed out before that finished.',
+    zh: '操作完成前你已退出登录',
+  },
 }
+
+/* Plain English thrown from useItems/useAuth/useRatings, whose catch sites
+   toast friendlyErrorMessage. Written by a person, but only in one language —
+   the same gap CONTENT_MESSAGES above was added to close, one table later.
+   Keyed on the lowercased message, like OFFER_MEETUP_MESSAGES. */
+const THROWN_ENGLISH_MESSAGES: Record<string, { en: string; zh: string }> = {
+  'file too large (max 5mb)':   { en: 'That file is too large (max 5MB).',        zh: '文件太大（最多 5MB）' },
+  'too many files':             { en: 'Too many files selected.',                 zh: '选择的文件太多' },
+  'too many images':            { en: 'Too many images selected.',                zh: '选择的图片太多' },
+  'cannot follow yourself':     { en: "You can't follow yourself.",               zh: '不能关注自己' },
+  'cannot block yourself':      { en: "You can't block yourself.",                zh: '不能拉黑自己' },
+  'title too long':             { en: 'That title is too long.',                  zh: '标题太长' },
+  'description too long':       { en: 'That description is too long.',            zh: '描述太长' },
+  'location too long':          { en: 'That location is too long.',               zh: '地点太长' },
+  'invalid status':             { en: 'That status is not allowed.',              zh: '状态无效' },
+  'stars must be 1-5':          { en: 'Please rate between 1 and 5 stars.',       zh: '请打 1 到 5 星' },
+  'item not found':             { en: 'This listing no longer exists.',           zh: '该商品已不存在' },
+  'item not found or deletion not permitted': {
+    en: 'This listing is gone, or is not yours to delete.',
+    zh: '该商品已不存在，或不是你发布的',
+  },
+  'avatar upload failed':       { en: 'The avatar could not be uploaded.',        zh: '头像上传失败' },
+  'storage upload succeeded but public url resolution failed': {
+    en: 'The upload finished but the image could not be linked. Please retry.',
+    zh: '图片已上传但链接生成失败，请重试',
+  },
+}
+
+/*
+ * What a dropped connection is called depends on the browser: WebKit says
+ * "Load failed", Chrome "Failed to fetch", Firefox "NetworkError when
+ * attempting to fetch resource". None of them is a sentence to show a student
+ * on campus wifi, and none has a Chinese form. Deliberately excludes
+ * AbortError, which also covers deliberate cancellation.
+ */
+const TRANSPORT_FAILURE = /load failed|failed to fetch|networkerror|network request failed|network connection was lost|request timed out|net::err_/
+
+/*
+ * Sentinels — lowercase identifiers thrown for code to branch on, not for
+ * anyone to read ('realtime_poll_non_monotonic_cursor'). Human copy in this
+ * codebase always has spaces and capitals, so requiring an underscore and no
+ * whitespace separates the two families without a list to maintain.
+ */
+const MACHINE_SENTINEL = /^[a-z0-9]+(_[a-z0-9]+)+(:[a-z0-9_]+)?$/
 
 export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string {
   if (!err) return ''
@@ -204,6 +268,18 @@ export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string
     return OFFER_MEETUP_MESSAGES[raw][lang]
   }
 
+  if (THROWN_ENGLISH_MESSAGES[raw]) {
+    return THROWN_ENGLISH_MESSAGES[raw][lang]
+  }
+
+  // Seven variants ('Account changed during offer response', …) all mean the
+  // same thing to whoever is reading, and more get added with each new flow.
+  if (raw.startsWith('account changed') || raw === 'authentication changed') {
+    return lang === 'zh'
+      ? '账号已切换，请重新操作'
+      : 'Your account changed. Please try that again.'
+  }
+
   if (raw === 'invalid_version') {
     return lang === 'zh' ? '协议版本已更新,请刷新后重试' : 'Terms version changed — please refresh and retry.'
   }
@@ -229,6 +305,25 @@ export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string
   // returns the raw English "new row violates row-level security policy".
   if (err?.code === '42501' || raw.includes('row-level security') || raw.includes('row level security')) {
     return lang === 'zh' ? '你没有权限执行此操作' : "You don't have permission to do that"
+  }
+  if (TRANSPORT_FAILURE.test(raw)) {
+    return lang === 'zh'
+      ? '网络连接失败，请检查网络后重试'
+      : "Couldn't reach the network. Check your connection and try again."
+  }
+  if (MACHINE_SENTINEL.test(rawMessage)) {
+    /* Which sentinels actually reach a screen is not knowable by reading the
+       code — most are caught and branched on before any catch site toasts.
+       Report the ones that do get here instead of guessing, so this table
+       gets filled in from evidence. The tag pipeline rejects underscores and
+       caps a tag at 96 characters (sentry.ts stableToken), hence the dots. */
+    // #ifdef H5
+    captureException(new Error('friendlyErrorMessage: a machine sentinel reached the user'), {
+      tags: { source: `error_copy.unmapped.${rawMessage.replace(/_/g, '.')}`.slice(0, 96) },
+      level: 'warning',
+    })
+    // #endif
+    return lang === 'zh' ? '操作失败' : 'Something went wrong'
   }
   return err?.message || (lang === 'zh' ? '操作失败' : 'Something went wrong')
 }
