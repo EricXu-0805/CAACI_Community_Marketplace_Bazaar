@@ -192,13 +192,43 @@ async function reportToSentry(message, extra) {
 
 const TYPE_ICON = { price_drop: '↓', sold: '✓', offer: '$', meetup: '📍', system: '🔔', unread_message: '✉' }
 
-function rowHtml(n) {
+/*
+ * Two triggers write an identifier into notifications.body and match on it to
+ * avoid sending the same alert twice — migrations 016 (follows) and
+ * 017/066/20260717143223 (saved searches). It is a key, not copy. The app
+ * knows that and translates it (BODY_SENTINEL_KEYS in
+ * app/src/composables/useNotifications.ts); this template did not, so the one
+ * line under the item title read "saved_search_match".
+ *
+ * Wording is byte-identical to notif.savedSearchMatch / notif.followeeListing
+ * so the mail and the notification list say the same thing.
+ */
+const BODY_SENTINELS = {
+  saved_search_match: {
+    zh: '你订阅的搜索出现了新商品',
+    en: 'A new listing matches your saved search',
+  },
+  new_listing_from_followee: {
+    zh: '你关注的卖家发布了新商品',
+    en: 'A seller you follow posted a new listing',
+  },
+}
+
+function bodyText(raw, lang) {
+  const forms = BODY_SENTINELS[raw]
+  if (!forms) return raw
+  if (lang === 'zh') return forms.zh
+  if (lang === 'en') return forms.en
+  return `${forms.zh} · ${forms.en}`
+}
+
+function rowHtml(n, lang) {
   const icon = TYPE_ICON[n.type] || '🔔'
   return `<tr><td style="padding:12px 0;border-bottom:1px solid #ECE5DA;vertical-align:top">
     <span style="display:inline-block;width:26px;height:26px;line-height:26px;text-align:center;border-radius:50%;background:#F5D9CE;color:#A03A24;font-weight:700;font-size:13px">${esc(icon)}</span>
   </td><td style="padding:12px 0 12px 12px;border-bottom:1px solid #ECE5DA">
     <div style="font-size:15px;font-weight:600;color:#2A2521">${esc(n.title)}</div>
-    ${n.body ? `<div style="font-size:13px;color:#6B6459;margin-top:2px">${esc(n.body)}</div>` : ''}
+    ${n.body ? `<div style="font-size:13px;color:#6B6459;margin-top:2px">${esc(bodyText(n.body, lang))}</div>` : ''}
   </td></tr>`
 }
 
@@ -229,7 +259,7 @@ function copyFor(lang) {
 
 function digestHtml(rows, isSample, unsubToken, lang = null) {
   const c = copyFor(lang)
-  const items = rows.map(rowHtml).join('')
+  const items = rows.map(n => rowHtml(n, lang)).join('')
   const unsub = unsubToken
     ? `${c.unsubPrompt}<a href="${esc(APP_URL)}/api/unsubscribe?t=${esc(unsubToken)}" style="color:#A39A8C">${c.unsubLink}</a>`
     : c.samplePreview
