@@ -310,6 +310,14 @@ async function onSave() {
 
   try {
     let finalAvatar = avatarUrl.value
+    /* Carried to the terminal message rather than shown at the point of
+       failure — same reason as publish/index.vue and plaza/index.vue. The
+       profile write that follows takes a moment and then fires its own
+       "Saved!" toast, which replaces anything said here, so the last word a
+       user with a failed avatar hears is an unqualified success. The copy is
+       already written for this position: "Avatar upload failed. Other changes
+       saved." */
+    let avatarFailure = ''
     if (finalAvatar && !finalAvatar.startsWith('http')) {
       try {
         const { urls, accountToken } = await uploadImages([finalAvatar], {
@@ -331,7 +339,7 @@ async function onSave() {
           if (!operationStillCurrent()) {
             throw mutationOutcomeError(new Error('Account changed during avatar upload'), 'not_committed')
           }
-          uni.showToast({ title: t('editProfile.avatarFailed'), icon: 'none', duration: 3000 })
+          avatarFailure = t('editProfile.avatarFailed')
           finalAvatar = currentUser.value?.avatar_url || ''
         }
       } catch (uploadErr: any) {
@@ -340,9 +348,8 @@ async function onSave() {
         uploadAccountToken = null
         if (!operationStillCurrent()) throw uploadErr
         console.error('[profile-edit] avatar upload failed')
-        const title = uploadErr?.heic === true ? t('heic.unsupported')
+        avatarFailure = uploadErr?.heic === true ? t('heic.unsupported')
           : (uploadErr?.message || t('editProfile.avatarFailed'))
-        uni.showToast({ title, icon: 'none', duration: 3000 })
         finalAvatar = currentUser.value?.avatar_url || ''
       }
     }
@@ -372,7 +379,14 @@ async function onSave() {
     }
 
     if (!operationStillCurrent()) return
-    uni.showToast({ title: t('editProfile.saved'), icon: 'success' })
+    if (avatarFailure) {
+      // The row was written, so this is not a failure — but the picture the
+      // user came here to change is still the old one, and that has to be the
+      // last thing said. Leave long enough to read past the navigation.
+      uni.showToast({ title: avatarFailure, icon: 'none', duration: 4000 })
+    } else {
+      uni.showToast({ title: t('editProfile.saved'), icon: 'success' })
+    }
     setTimeout(() => {
       if (operationStillCurrent()) goBack()
     }, 1000)
