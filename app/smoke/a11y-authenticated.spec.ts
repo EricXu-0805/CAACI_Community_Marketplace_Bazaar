@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { supabaseRefForBuild } from './supabase-ref'
 
 /**
  * Navigating between hash routes is a same-document navigation, so
@@ -57,7 +58,15 @@ async function settledAriaSnapshot(page: Page, route: string, deadlineMs = 15_00
  * CURRENT_CONSENT_VERSION or the consent gate redirects to /reconsent.
  */
 
-const REF = 'lfhvgprfphyfvhidegum'
+/*
+ * Not a literal. The authenticated CI job pins VITE_SUPABASE_URL to staging,
+ * so a hardcoded production ref wrote a key the app never reads: every gated
+ * route below fell through to the login page, and this sweep — which used to
+ * snapshot the whole document — found the login page's heading and passed.
+ * The scoped snapshot introduced in #253 is what finally noticed, by
+ * reporting ten routes as having no heading at all.
+ */
+const REF = supabaseRefForBuild()
 const UID = '11111111-1111-4111-8111-111111111111'
 const PEER = '22222222-2222-4222-8222-222222222222'
 const ITEM = '33333333-3333-4333-8333-333333333333'

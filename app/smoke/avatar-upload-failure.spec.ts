@@ -1,6 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { supabaseRefForBuild, supabaseUrlForBuild } from './supabase-ref'
 
 /**
  * A failed avatar upload must not end in a green checkmark.
@@ -19,24 +18,8 @@ import { resolve } from 'node:path'
  * one that didn't.
  */
 
-/**
- * The auth storage key is derived from the Supabase URL the app was compiled
- * against (authStorageKeyForUrl in composables/useSupabase.ts). Resolve it the
- * way Vite does and throw rather than guess — a wrong ref fails as a page full
- * of plausible login copy, not as a missing session. See
- * read-failure-states.spec.ts, which learned this the hard way.
- */
-function supabaseUrlForBuild(): string {
-  const fromEnv = process.env.VITE_SUPABASE_URL
-  if (fromEnv) return fromEnv
-  const dotenv = readFileSync(resolve(process.cwd(), '.env'), 'utf8')
-  const match = /^\s*VITE_SUPABASE_URL\s*=\s*(.+?)\s*$/m.exec(dotenv)
-  if (!match) throw new Error('no VITE_SUPABASE_URL in the environment or app/.env — cannot seed a session')
-  return match[1].replace(/^["']|["']$/g, '')
-}
-
 const SUPABASE_HOST = new URL(supabaseUrlForBuild()).hostname
-const REF = SUPABASE_HOST.split('.')[0]
+const REF = supabaseRefForBuild()
 const UID = '11111111-1111-4111-8111-111111111111'
 const GEN = 'avatar-failure-generation-0001'
 
