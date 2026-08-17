@@ -1,7 +1,7 @@
 # Illini Market 发布路线图
 
-> 最后更新：2026-08-14
-> 当前阶段：**生产已在线且等于 main，内容与运营门未就绪** → 补运营门 + 清测试数据 + 种子内容 → 秋季受限 beta
+> 最后更新：2026-08-17
+> 当前阶段：**生产站已在线，当次部署身份仍需独立核对，内容与运营门未就绪** → 补运营门 + 清测试数据 + 种子内容 → 秋季受限 beta
 > 原则：以可复查证据关闭门禁，不以文件存在、测试小计或文档勾选冒充上线。
 > 历史数据库基线仍记录为 2026-07 合并前 34/38、三条 tail 后 37/38；
 > 本轮新迁移与当前生产状态必须重新审计，不沿用旧数字冒充现状。
@@ -13,23 +13,23 @@
 注销、可访问性和依赖修复链。2026-08-01 又把首版认证拍板为：H5 邮箱/密码 +
 Google，小程序邮箱/密码，隐藏微信快捷登录。`18140000` 与微信 provider canary
 转为“重新开放微信身份前”的兼容/安全门，不再冒充首版用户可见功能门。
-**2026-08-14 实测更正**：此前这里写“候选尚未部署 / 需要严格上线演练的 release
-candidate”。那是 2026-07-19 那一刻的判断。事实是 `vercel.json` 只对 `main` 开启
-git 部署，所以**每次合并 main 都自动把前端推上生产**，`https://www.illinimarket.com`
-一直是活的，`/deployment-manifest.json` 的 commit 就是当前 main。
+**2026-08-17 证据边界更正**：`vercel.json` 只对 `main` 开启 git 部署，只能证明合并会触发
+生产部署，不能证明某一刻的生产一定等于 `main`。`https://www.illinimarket.com`
+是活的生产站；每次验收仍必须独立核对 `/deployment-manifest.json` 的完整 commit。
 
 所以当前不是“能不能上线”的问题，而是“上线了但没人用、且没准备好接待人”的问题：
 
-- **已关闭**（当日逐项实测）：Google/email provider 在跑（9 个 Google 身份）、
+- **已关闭**（2026-08-14 快照，逐项实测）：Google/email provider 在跑（9 个 Google 身份）、
   HIBP 已开、2 个未撤销 owner token、DB239 两条迁移已上线（ledger 112）、
   Supabase Site URL/Redirect URLs 已修正到 www、两个邮件模板均为 6 位验证码版。
-- **未关闭**：`RESEND_WEBHOOK_SECRET` 未配（`/api/resend-webhook` 实测 503，
-  退信/投诉告警全黑）、Sentry 告警规则未建（上报在跑但无人被通知）、
+- **未关闭**：`RESEND_WEBHOOK_SECRET` 与回调投递需在当次发布前重新核验；Sentry 的三条
+  issue rule 在 2026-08-14 曾核实存在且触发，但当前启用状态与投递仍需当次复核；
   Hosted Realtime canary 的 target allowlist 仍为空、双账号写路径全链路与真机未跑、
   生产内容 14 件全是测试垃圾、`help@` 值班演练未做。
-- **写路径在生产从未跑通过**：`ratings`、`blocks`、`illini_verifications`、
-  `account_deletion_jobs`、`private.item_deals` 全部 0 行。这五个数字变成非 0
-  才算“真实用户能用”。
+- **生产写旅程尚无可归因的通路证据**：2026-08-14 时 `ratings`、`blocks`、
+  `illini_verifications`、`account_deletion_jobs`、`private.item_deals` 全部 0 行，说明当时没有通路证据；
+  但这些表变成非 0 也不能单独证明“真实用户能用”。关闭门禁需要一次另行授权、绑定精确部署 commit
+  和专用账号的 UI→API→RLS→通知/恢复旅程及可复查回执；fixture、手工 SQL 或行数不算。
 
 ## R0：本地 release candidate（本轮）
 

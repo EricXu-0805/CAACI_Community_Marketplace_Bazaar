@@ -15,20 +15,24 @@ import { test, expect, type Page } from '@playwright/test'
  * page is a perfectly stable one. Nor does waiting for rendered text: publish,
  * detail and seller all paint some text before their heading.
  *
- * So wait for the heading itself, bounded. That is not circular — it turns the
- * assertion from "has a heading within 1.2s" into "has a heading at all",
- * which is what the sweep actually means, and is the same bounded-poll shape
- * as Playwright's own `expect(locator).toBeVisible()`. A route that never
- * grows one still falls out at the deadline and is still reported.
+ * So wait for the heading inside the target route's own `<uni-page>`, bounded.
+ * Scoping matters: the previous route can keep a valid heading in `<body>` for
+ * a frame after the hash and target page shell have changed. A body snapshot
+ * could therefore accept that stale heading before the new route mounted.
+ * This is not circular — a route that never grows a heading still falls out at
+ * the deadline and is still reported.
  */
 const HEADING = /^\s*- heading\b/m
 
-async function settledAriaSnapshot(page: Page, deadlineMs = 15_000): Promise<string> {
+async function settledAriaSnapshot(page: Page, route: string, deadlineMs = 15_000): Promise<string> {
   const deadline = Date.now() + deadlineMs
-  let previous = await page.locator('body').ariaSnapshot()
+  const routePath = route.split('?')[0]
+  const targetPage = page.locator(`uni-page[data-page="${routePath}"]`).last()
+  let previous = ''
   while (Date.now() < deadline) {
     await page.waitForTimeout(150)
-    const current = await page.locator('body').ariaSnapshot()
+    if (await targetPage.count() === 0) continue
+    const current = await targetPage.ariaSnapshot()
     if (current === previous && HEADING.test(current)) return current
     previous = current
   }
@@ -189,7 +193,7 @@ for (const theme of ['light', 'dark']) {
     const contrast: string[] = []
     for (const route of GATED) {
       await page.goto(`/#/${route}`, { waitUntil: 'networkidle' })
-      const snap = await settledAriaSnapshot(page)
+      const snap = await settledAriaSnapshot(page, route)
       if (!HEADING.test(snap)) noHeading.push(route)
       const bad = await page.evaluate(PROBE)
       for (const f of bad as any[]) contrast.push(`${route}  ${f.cls}  ${f.ratio}/${f.need}  ${f.fg} on ${f.bg}  ${f.size}px/${f.weight}  "${f.text}"`)

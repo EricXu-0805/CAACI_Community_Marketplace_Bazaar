@@ -48,25 +48,58 @@ function ensureLangInit() {
  *
  * The Supabase client is imported dynamically, not at module scope. useI18n is
  * pulled in during the mp-weixin service-thread bootstrap, which is exactly the
- * window ensureLangInit() above is careful to stay out of — and setLang only
- * ever runs from a user action, long after that handshake.
+ * window ensureLangInit() above is careful to stay out of. Both a user
+ * language action and useAuth's post-transition sync run after that bootstrap.
  *
- * Signed-out users have nowhere to store this, and that is fine: the email
- * templates fall back to bilingual, which is what everyone got before.
+ * Signed-out users have nowhere to store this. Once auth adopts an active
+ * account, useAuth dynamically calls syncActiveAccountEmailLanguage() so the
+ * language already resolved on the signed-out surface is not lost.
  */
-async function persistEmailLanguage(next: Lang): Promise<void> {
-  const userId = getActiveAccountId()
-  if (!userId) return
-  const accountToken = captureAccountRequest(userId)
+let confirmedEmailLanguage: { userId: string; generation: number; lang: Lang } | null = null
+let emailLanguageSyncQueue: Promise<void> = Promise.resolve()
+
+async function runEmailLanguageSync(
+  userId: string,
+  next: Lang,
+  accountToken: ReturnType<typeof captureAccountRequest>,
+): Promise<void> {
+  if (!isAccountRequestCurrent(accountToken) || currentLang.value !== next) return
+  if (
+    confirmedEmailLanguage?.userId === userId
+    && confirmedEmailLanguage.generation === accountToken.generation
+    && confirmedEmailLanguage.lang === next
+  ) return
+
   try {
     const { useSupabase } = await import('./useSupabase')
-    if (!isAccountRequestCurrent(accountToken)) return
+    if (!isAccountRequestCurrent(accountToken) || currentLang.value !== next) return
     const { supabase } = useSupabase()
-    await supabase.rpc('set_my_email_language', { p_lang: next })
+    const { error } = await supabase.rpc('set_my_email_language', { p_lang: next })
+    // Supabase resolves PostgREST failures as { error } rather than rejecting
+    // the promise. Only a confirmed, still-current write may suppress retries.
+    if (error || !isAccountRequestCurrent(accountToken) || currentLang.value !== next) return
+    confirmedEmailLanguage = { userId, generation: accountToken.generation, lang: next }
   } catch {
-    // A preference that failed to sync is not worth a toast or a Sentry event:
-    // the next toggle retries, and the fallback is the previous behaviour.
+    // Keep the target unconfirmed. A later auth event or language action queues
+    // another attempt, while email continues to use its bilingual fallback.
   }
+}
+
+function persistEmailLanguage(next: Lang): Promise<void> {
+  const userId = getActiveAccountId()
+  if (!userId) return Promise.resolve()
+  const accountToken = captureAccountRequest(userId)
+  // Serialize writes so a slow request for the previous language cannot land
+  // after a newer selection and become the final server value.
+  emailLanguageSyncQueue = emailLanguageSyncQueue.then(() => (
+    runEmailLanguageSync(userId, next, accountToken)
+  ))
+  return emailLanguageSyncQueue
+}
+
+export function syncActiveAccountEmailLanguage(): Promise<void> {
+  ensureLangInit()
+  return persistEmailLanguage(currentLang.value)
 }
 
 /* Keep uni-app's own locale in step — otherwise the built-in chrome

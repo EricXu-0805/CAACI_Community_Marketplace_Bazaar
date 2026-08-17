@@ -182,7 +182,14 @@ test('all affected pages route private async commits through the page scope', ()
   const following = source('src/pages/following/index.vue')
 
   assert.match(profile, /createAccountPageScope\([^]*?clearProfilePrivateState\(\)/)
-  assert.match(profile, /fetchMyItems\(uid, \{[^]*?accountToken: request\.accountToken[^]*?if \(!profilePageScope\.isCurrent\(request\)\) return false[^]*?myItems\.value = items/)
+  assert.match(profile, /Promise\.allSettled\(\[[^]*?fetchMyItems\(uid, \{[^]*?accountToken: request\.accountToken/)
+  assert.match(profile, /if \(!profilePageScope\.isCurrent\(request\)\) return \{ itemsOk: false, savedOk: false \}[^]*?itemsResult\.status === 'fulfilled'\) myItems\.value = itemsResult\.value/)
+  assert.match(profile, /if \(\(await loadMine\(uid, \{ forceItems: true \}\)\)\.itemsOk && isCurrent\(\)\)/)
+  assert.equal(
+    [...profile.matchAll(/if \(!\(await loadMine\(uid, \{ forceItems: true \}\)\)\.itemsOk\) return/g)].length,
+    3,
+    'item mutations must depend on the items partition, not an unrelated favorites failure',
+  )
 
   assert.match(blocked, /createAccountPageScope\([^]*?clearBlockedPageState\(\)/)
   assert.match(blocked, /await loadBlockedIds\(\)[^]*?blockedPageScope\.isCurrent\(request\)[^]*?await supabase[^]*?blockedPageScope\.isCurrent\(request\)[^]*?blockedProfiles\.value/)

@@ -215,8 +215,9 @@ test('the install hint covers none of the home page controls', async ({ page }) 
   const hint = page.locator('.a2hs')
   await hint.waitFor({ state: 'visible', timeout: 15_000 })
 
-  const covered = await page.evaluate(() => {
+  const coveredControls = () => page.evaluate(() => {
     const banner = document.querySelector('.a2hs')!
+    const bannerRect = banner.getBoundingClientRect()
     // A card under the banner can be scrolled out from under it; the search
     // field cannot. Only the controls the reader has no way to move are a
     // defect, so the filter is "has no scrollable ancestor", not a class list.
@@ -236,9 +237,16 @@ test('the install hint covers none of the home page controls', async ({ page }) 
       if (banner.contains(el) || movable(el)) continue
       const r = el.getBoundingClientRect()
       if (r.width < 4 || r.height < 4) continue
-      const x = r.left + r.width / 2
-      const y = r.top + r.height / 2
-      if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) continue
+      // Check the painted intersection rather than only the control's centre.
+      // A banner covering the edge of a search field or button is still a
+      // touch/reading defect even when its centre remains clickable.
+      const left = Math.max(r.left, bannerRect.left, 0)
+      const right = Math.min(r.right, bannerRect.right, innerWidth)
+      const topEdge = Math.max(r.top, bannerRect.top, 0)
+      const bottom = Math.min(r.bottom, bannerRect.bottom, innerHeight)
+      if (right - left <= 1 || bottom - topEdge <= 1) continue
+      const x = left + (right - left) / 2
+      const y = topEdge + (bottom - topEdge) / 2
       const top = document.elementFromPoint(x, y)
       if (top && banner.contains(top)) {
         hits.push(`${(el.className || '').toString().trim()} "${(el.textContent || '').trim().slice(0, 28)}"`)
@@ -246,25 +254,50 @@ test('the install hint covers none of the home page controls', async ({ page }) 
     }
     return hits
   })
-  expect(
-    covered,
-    `the install hint is covering controls the reader cannot scroll away:\n${covered.join('\n')}`,
-  ).toEqual([])
 
-  // .back-top in pages/index/index.vue sits at bottom 116px + chin and is 40px
-  // tall, and carries z-index 100 against this banner's 300 — so the banner
-  // resting on the tab bar would swallow it whole once the reader scrolls.
-  //
-  // Polled rather than read once: the hint reveals through a 0.32s translateY,
-  // and getBoundingClientRect() includes the transform, so a single read taken
-  // the instant it becomes visible measures wherever the animation had got to.
-  // On a loaded runner that was 154 — the settled 166 minus the animation's
-  // 12px — and main went red on a commit that never touched this component.
-  await expect.poll(
-    () => page.evaluate(() =>
-      Math.round(innerHeight - document.querySelector('.a2hs')!.getBoundingClientRect().bottom)),
-    { message: 'the install hint must stay clear of the back-to-top lane', timeout: 5_000 },
-  ).toBeGreaterThanOrEqual(156)
+  const expectNoCoveredControls = async (orientation: string) => {
+    const covered = await coveredControls()
+    expect(
+      covered,
+      `the install hint is covering fixed controls in ${orientation}:\n${covered.join('\n')}`,
+    ).toEqual([])
+  }
+
+  const expectPortraitHintClear = async (orientation: string) => {
+    await expect(hint, `${orientation} must show the first-visit hint`).toBeVisible()
+
+    // .back-top in pages/index/index.vue sits at bottom 116px + chin and is
+    // 40px tall, and carries z-index 100 against this banner's 300. Poll rather
+    // than read once because getBoundingClientRect() includes the hint's 0.32s
+    // reveal transform; measuring mid-animation made this assertion flaky.
+    await expect.poll(
+      () => page.evaluate(() =>
+        Math.round(innerHeight - document.querySelector('.a2hs')!.getBoundingClientRect().bottom)),
+      { message: `${orientation} must keep the hint clear of the back-to-top lane`, timeout: 5_000 },
+    ).toBeGreaterThanOrEqual(156)
+
+    await expectNoCoveredControls(orientation)
+  }
+
+  await expectPortraitHintClear('portrait')
+
+  // iOS rotates the already-visible hint without remounting the page. There is
+  // no safe fixed lane in the short landscape viewport, so the hint must yield
+  // to the page controls and reappear when portrait space returns.
+  await page.setViewportSize({ width: 664, height: 390 })
+  await expect(hint, 'the short landscape viewport has no safe fixed lane').toBeHidden()
+  await page.setViewportSize({ width: 390, height: 664 })
+  await expectPortraitHintClear('portrait after rotation')
+
+  // Large iPhones can start above the 768px desktop breakpoint in landscape.
+  // Mount there, let the reveal delay expire, then rotate without remounting:
+  // the portrait hint must become eligible instead of staying false forever.
+  await page.setViewportSize({ width: 896, height: 414 })
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.waitForTimeout(1500)
+  await expect(hint, 'large-iPhone landscape entry must remain unobstructed').toBeHidden()
+  await page.setViewportSize({ width: 414, height: 896 })
+  await expectPortraitHintClear('large iPhone portrait after landscape entry')
 })
 
 /**

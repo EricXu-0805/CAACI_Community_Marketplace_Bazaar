@@ -23,11 +23,11 @@
         @keydown="onTabKeydown($event, key)"
       >
         <text>{{ t(TAB_LABEL_KEY[key]) }}</text>
-        <text v-if="ready && listFor(key).length > 0" class="tab-count">{{ listFor(key).length }}</text>
+        <text v-if="tabReady(key) && !tabError(key) && listFor(key).length > 0" class="tab-count">{{ listFor(key).length }}</text>
       </view>
     </view>
 
-    <view v-if="!ready" id="my-items-panel" class="grid" role="tabpanel">
+    <view v-if="!currentReady || currentLoading" id="my-items-panel" class="grid" role="tabpanel" aria-busy="true">
       <view v-for="n in 4" :key="n" class="card">
         <view class="card-img-wrap u-sk"></view>
         <view class="card-body">
@@ -37,7 +37,7 @@
       </view>
     </view>
 
-    <view v-else-if="loadError" id="my-items-panel" class="empty" role="tabpanel" aria-live="assertive">
+    <view v-else-if="currentLoadError" id="my-items-panel" class="empty" role="tabpanel" aria-live="assertive">
       <text class="empty-text">{{ t('error.loadFailed') }}</text>
       <view class="retry" role="button" tabindex="0" @click="retryLoad" @keydown.enter.prevent="retryLoad" @keydown.space.prevent="retryLoad">{{ t('home.retry') }}</view>
     </view>
@@ -135,11 +135,15 @@ const { fetchMyFavoriteItems } = useFavorites()
 const tab = ref<TabKey>('listed')
 const myItems = ref<Item[]>([])
 const savedItems = ref<Item[]>([])
-const ready = ref(false)
-// A failed fetch leaves myItems/savedItems empty, which is byte-identical to a
-// seller who has listed nothing. Without this the page tells them their
-// listings are gone and the only correction is a 1.5s toast.
-const loadError = ref(false)
+const itemsReady = ref(false)
+const savedReady = ref(false)
+const itemsLoading = ref(false)
+const savedLoading = ref(false)
+// The two reads are independent. Keeping their state separate preserves a
+// successful listings response when favorites fails (and vice versa) instead
+// of replacing the whole account with one global error/empty state.
+const itemsError = ref(false)
+const savedError = ref(false)
 
 const listedItems = computed(() => myItems.value.filter(i => i.status !== 'sold'))
 const soldItems = computed(() => myItems.value.filter(i => i.status === 'sold'))
@@ -150,14 +154,29 @@ function listFor(key: TabKey): Item[] {
   return listedItems.value
 }
 const currentList = computed(() => listFor(tab.value))
+const currentReady = computed(() => tab.value === 'saved' ? savedReady.value : itemsReady.value)
+const currentLoading = computed(() => tab.value === 'saved' ? savedLoading.value : itemsLoading.value)
+const currentLoadError = computed(() => tab.value === 'saved' ? savedError.value : itemsError.value)
+
+function tabReady(key: TabKey): boolean {
+  return key === 'saved' ? savedReady.value : itemsReady.value
+}
+
+function tabError(key: TabKey): boolean {
+  return key === 'saved' ? savedError.value : itemsError.value
+}
 
 // Same guard the profile page uses: a fetch started as A must never paint
 // rows into B's session after a mid-flight account switch.
 const pageScope = createAccountPageScope(() => {
   myItems.value = []
   savedItems.value = []
-  ready.value = false
-  loadError.value = false
+  itemsReady.value = false
+  savedReady.value = false
+  itemsLoading.value = false
+  savedLoading.value = false
+  itemsError.value = false
+  savedError.value = false
 })
 
 onLoad((query) => {
@@ -174,32 +193,39 @@ async function load() {
   if (!uid) {
     // Deep-linked while signed out. Nothing private can render, so send the
     // user back rather than showing three permanently empty tabs.
-    ready.value = true
+    itemsReady.value = true
+    savedReady.value = true
     uni.reLaunch({ url: '/pages/login/index' })
     return
   }
   const request = pageScope.begin(uid)
   if (!request) return
-  loadError.value = false
-  try {
-    const [items, favItems] = await Promise.all([
-      fetchMyItems(uid, { accountToken: request.accountToken }),
-      fetchMyFavoriteItems(uid),
-    ])
-    if (!pageScope.isCurrent(request)) return
-    myItems.value = items
-    savedItems.value = favItems
-  } catch {
-    if (!pageScope.isCurrent(request)) return
-    loadError.value = true
+  itemsLoading.value = true
+  savedLoading.value = true
+  itemsError.value = false
+  savedError.value = false
+  const [itemsResult, savedResult] = await Promise.allSettled([
+    fetchMyItems(uid, { accountToken: request.accountToken }),
+    fetchMyFavoriteItems(uid),
+  ])
+  if (!pageScope.isCurrent(request)) return
+
+  if (itemsResult.status === 'fulfilled') myItems.value = itemsResult.value
+  else itemsError.value = true
+  if (savedResult.status === 'fulfilled') savedItems.value = savedResult.value
+  else savedError.value = true
+
+  itemsReady.value = true
+  savedReady.value = true
+  itemsLoading.value = false
+  savedLoading.value = false
+  if (itemsError.value || savedError.value) {
     uni.showToast({ title: t('error.loadFailed'), icon: 'none' })
-  } finally {
-    if (pageScope.isCurrent(request)) ready.value = true
   }
 }
 
 function retryLoad() {
-  if (!ready.value) return
+  if (itemsLoading.value || savedLoading.value) return
   void load()
 }
 

@@ -206,6 +206,18 @@ export function useAuth() {
       reconcileLocalPrivacy(userId, previousUserId)
     }
 
+    // useI18n resolves device/system language before auth is necessarily
+    // ready. Once this session owns accountScope, mirror that existing choice
+    // to the per-user email preference. The dynamic import avoids making the
+    // auth module and its mini-program bootstrap path depend on i18n eagerly.
+    // Every authenticated auth event is a retry opportunity; useI18n only
+    // deduplicates a write after Supabase confirms it without an RPC error.
+    const emailLanguageAccountToken = captureAccountRequest(userId)
+    void import('./useI18n').then(({ syncActiveAccountEmailLanguage }) => {
+      if (!isAccountRequestCurrent(emailLanguageAccountToken)) return
+      return syncActiveAccountEmailLanguage()
+    }).catch(() => {})
+
     try {
       await ensureProfileReady({ force: true })
     } catch (err) {
