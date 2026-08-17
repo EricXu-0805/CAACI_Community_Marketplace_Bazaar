@@ -213,6 +213,37 @@ test('the install hint covers none of the home page controls', async ({ page }) 
   // It reveals on a timer, so wait for the thing being asserted rather than
   // for a duration. A run where it never appears has tested nothing.
   const hint = page.locator('.a2hs')
+  const emptyBlock = page.locator('.empty')
+  await expect
+    .poll(async () => (await hint.isVisible()) || (await emptyBlock.isVisible()), {
+      message: 'the home page must settle into a populated feed with the hint, or into its empty state',
+      timeout: 20_000,
+    })
+    .toBe(true)
+
+  /*
+   * An empty feed shows one button — "Post Item", or "Retry" after a failed
+   * load — top-anchored inside a scroller with nothing to scroll, so it cannot
+   * be moved out from under a fixed lane measured up from the bottom. At
+   * 414x896 that lane covered it completely and at 430x932 by 87%, and no
+   * single offset clears both it and the back-to-top button across those
+   * heights. The hint yields instead; assert that it did, and leave the
+   * geometry below to the runs whose feed has cards in it.
+   */
+  if (await emptyBlock.isVisible()) {
+    /* Asserting an absence once passes for the wrong reason: the component
+       reveals on a 1.2s timer, so a single check right after the empty state
+       paints is green even when the hint is about to appear — it stayed green
+       against a build with the fix removed. Hold the assertion across a window
+       several times that timer instead. */
+    const deadline = Date.now() + 4_000
+    while (Date.now() < deadline) {
+      expect(await hint.count(), 'the empty feed owns the screen — the promo must not render').toBe(0)
+      await page.waitForTimeout(150)
+    }
+    return
+  }
+
   await hint.waitFor({ state: 'visible', timeout: 15_000 })
 
   const coveredControls = () => page.evaluate(() => {
