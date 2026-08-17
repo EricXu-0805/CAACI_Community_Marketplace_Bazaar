@@ -71,10 +71,12 @@ function normalize(s: string): string {
     .replace(/[　\s\-_.+,。，、]/g, '')
 }
 
-/* NFKC-folded and lowercased, but NOT stripped — keeps the dots, spaces and
-   dashes that give a phone number or an email address its shape. Migration
-   089 draws the same line on the server: its keyword lexicon runs against the
-   stripped copy, its email and phone regexes against the folded one. */
+/* NFKC-folded and lowercased, but NOT stripped — keeps the dots and the @ that
+   an email address is made of. Migration 089 moves exactly one check onto this
+   copy, its email regex (089:67); its phone check deliberately stays on the
+   stripped copy (089:64), because stripping is what collapses a spaced-out or
+   punctuated number into something a regex can match. Phone rules here stay on
+   the stripped copy for the same reason. */
 function fold(s: string): string {
   if (!s) return ''
   return s
@@ -84,25 +86,42 @@ function fold(s: string): string {
 }
 
 const CN_MOBILE = /(?<![0-9])1[3-9]\d{9}(?![0-9])/
-/* North American numbering: an area code and an exchange code may not begin
-   with 0 or 1. Without that constraint — and matched against the stripped copy,
-   where the separators above are already gone — this was simply /\d{10}/, so
-   every ISBN-10 and most 10-digit serials were refused as a phone number. */
-const US_MOBILE = /(?<![0-9])[2-9]\d{2}[-.\s]?[2-9]\d{2}[-.\s]?\d{4}(?![0-9])/
+/* Read against the stripped copy, so every separator is already gone and the
+   pattern is ten contiguous digits. The separators in the old pattern were dead
+   for that reason, which left it as /\d{10}/ — and so it refused every ISBN-10
+   and most 10-digit serials as phone numbers.
+   North American numbering is the constraint that separates them: neither an
+   area code nor an exchange code may begin with 0 or 1. */
+const US_MOBILE = /(?<![0-9])[2-9]\d{2}[2-9]\d{6}(?![0-9])/
 const EMAIL = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/
 const WECHAT_HINT = /(微信|wechat|weixin|加v|加\s*微|v信|v我|威信|vx|私信扣)/
 const QQ_HINT = /(?:qq|扣扣|企鹅)[号:：\s]*\d{5,11}/
 const URL_ANY = /\b(?:https?:\/\/|www\.)[^\s]+/
 const URL_SHORTENER = /\b(?:bit\.ly|t\.cn|dwz\.cn|sina\.lt|tinyurl\.com|goo\.gl|ow\.ly|tb\.cn|m\.tb\.cn)[/\w]+/
 
+/* An ISBN-10's tenth character is a mod-11 check digit over the first nine, so
+   a ten-digit run that satisfies it is a book identifier rather than a phone
+   number. Chinese-group ISBNs all begin with 7 and roughly half of them also
+   satisfy the North American shape above, so the shape alone does not separate
+   them. A real phone number clears this by chance about one time in eleven,
+   which is why it narrows an existing match instead of replacing it. */
+function looksLikeIsbn10(stripped: string): boolean {
+  for (const run of stripped.match(/(?<![0-9])[0-9]{10}(?![0-9])/g) || []) {
+    let sum = 0
+    for (let i = 0; i < 10; i++) sum += (10 - i) * Number(run[i])
+    if (sum % 11 === 0) return true
+  }
+  return false
+}
+
 function hasContactInfo(raw: string): { hit: boolean; matched: string[] } {
   const n = normalize(raw)
-  // Structure-sensitive patterns read the folded copy; the stripped copy has
-  // already erased the separators they depend on.
+  // Only the email pattern needs the unstripped copy: the dots and the @ it is
+  // built from are exactly what stripping removes.
   const f = fold(raw)
   const matched: string[] = []
   if (CN_MOBILE.test(n)) matched.push('CN phone')
-  if (US_MOBILE.test(f)) matched.push('US phone')
+  if (US_MOBILE.test(n) && !looksLikeIsbn10(n)) matched.push('US phone')
   if (EMAIL.test(f)) matched.push('email')
   if (WECHAT_HINT.test(n)) matched.push('WeChat')
   if (QQ_HINT.test(n)) matched.push('QQ')
