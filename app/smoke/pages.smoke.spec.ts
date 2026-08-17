@@ -254,9 +254,17 @@ test('the install hint covers none of the home page controls', async ({ page }) 
   // .back-top in pages/index/index.vue sits at bottom 116px + chin and is 40px
   // tall, and carries z-index 100 against this banner's 300 — so the banner
   // resting on the tab bar would swallow it whole once the reader scrolls.
-  const clearance = await page.evaluate(() =>
-    innerHeight - document.querySelector('.a2hs')!.getBoundingClientRect().bottom)
-  expect(clearance, 'the install hint must stay clear of the back-to-top lane').toBeGreaterThanOrEqual(156)
+  //
+  // Polled rather than read once: the hint reveals through a 0.32s translateY,
+  // and getBoundingClientRect() includes the transform, so a single read taken
+  // the instant it becomes visible measures wherever the animation had got to.
+  // On a loaded runner that was 154 — the settled 166 minus the animation's
+  // 12px — and main went red on a commit that never touched this component.
+  await expect.poll(
+    () => page.evaluate(() =>
+      Math.round(innerHeight - document.querySelector('.a2hs')!.getBoundingClientRect().bottom)),
+    { message: 'the install hint must stay clear of the back-to-top lane', timeout: 5_000 },
+  ).toBeGreaterThanOrEqual(156)
 })
 
 /**
