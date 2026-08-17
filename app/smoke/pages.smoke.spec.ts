@@ -26,9 +26,18 @@ const PAGES = [
 // Console noise that is expected and not a regression.
 const IGNORE = [
   // A logged-out page may legitimately probe an authenticated endpoint. Keep
-  // this narrow: 404s, 429s and 5xx responses must remain visible to the test.
+  // this narrow: 429s and 5xx must remain visible here, and 404s move to the
+  // response listener below rather than being dropped.
   /Failed to load resource: the server responded with a status of (401|403)/,
   /favicon/,
+  /*
+   * The console line for a 404 carries no URL, so on the runner it reads
+   * "Failed to load resource: ... 404 (Not Found)" twice and names nothing.
+   * The response listener below reports the same 404s with their URL, so
+   * ignoring the anonymous console copy loses no coverage and makes the
+   * failure say which resource is missing.
+   */
+  /Failed to load resource: the server responded with a status of 404/,
   // Playwright's bundled Chromium predates `interactive-widget` (Chrome 108+).
   // It logs this when parsing our viewport meta and then ignores the key — the
   // exact graceful-degradation fallback we rely on for pre-108 / pre-Safari-17.4
@@ -45,7 +54,7 @@ function attachConsoleCollector(page: Page): string[] {
   })
   page.on('pageerror', (e) => errs.push('pageerror: ' + String(e).slice(0, 200)))
   page.on('response', (response) => {
-    if (response.status() >= 500) {
+    if (response.status() === 404 || response.status() >= 500) {
       errs.push(`http ${response.status()}: ${response.url().slice(0, 160)}`)
     }
   })
