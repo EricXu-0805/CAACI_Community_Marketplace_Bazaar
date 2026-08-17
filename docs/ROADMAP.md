@@ -19,7 +19,7 @@ Google，小程序邮箱/密码，隐藏微信快捷登录。`18140000` 与微�
 
 所以当前不是“能不能上线”的问题，而是“上线了但没人用、且没准备好接待人”的问题：
 
-- **已关闭**（当日逐项实测）：Google/email provider 在跑（9 个 Google 身份）、
+- **已关闭**（2026-08-14 快照，逐项实测）：Google/email provider 在跑（9 个 Google 身份）、
   HIBP 已开、2 个未撤销 owner token、DB239 两条迁移已上线（ledger 112）、
   Supabase Site URL/Redirect URLs 已修正到 www、两个邮件模板均为 6 位验证码版。
 - **未关闭**：`RESEND_WEBHOOK_SECRET` 与回调投递需在当次发布前重新核验；Sentry 的三条

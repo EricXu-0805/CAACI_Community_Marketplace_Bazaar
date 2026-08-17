@@ -258,13 +258,50 @@ async function rateHit(bucket) {
  * oracle for what passes moderation, and contact info is the half that is
  * expressible here without a database round trip.
  */
-const INVISIBLE_RE = /[\u00AD\u034F\u061C\u180E\u200B-\u200F\u2060-\u2064\u206A-\u206F\uFEFF\uFE00-\uFE0F]/g
+const INVISIBLE_RE = /\p{Default_Ignorable_Code_Point}/gu
 const SEPARATOR_RE = /[\s\-._,。，、]+/g
 const PHONE_RE = /(?<![0-9])1[3-9][0-9]{9}(?![0-9])/
 const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/
 const IM_RE = /微信|weixin|加v|加微|v信|vx|v我/
-const WECHAT_SEPARATOR_CHAR_RE = /[\s\-._,。，、\u00AD\u034F\u061C\u180E\u200B-\u200F\u2060-\u2064\u206A-\u206F\uFE00-\uFE0F\uFEFF]/
+const WECHAT_SEPARATOR_CHAR_RE = /[\s]|\p{Punctuation}|\p{Default_Ignorable_Code_Point}/u
 const NATURAL_WE_CHAT_RE = /^we(?:\s+|[,，。.!?;:…]+\s+)chat$/
+const WECHAT_RELATION_SOURCE = String.raw`(?:on|in|into|onto|within|via|through|at|using|to|for|with|over|by)`
+const WECHAT_RECIPIENT_SOURCE = String.raw`[\p{L}\p{N}_@.'’&-]+(?:\s+[\p{L}\p{N}_@.'’&-]+){0,11}`
+const WECHAT_CHANNEL_MODIFIER_SOURCE = String.raw`(?:(?:the|a|an|my|our|your|their)\s+)?(?:(?:official|private|personal|new|main|work|school|campus|shared|group|官方|私人|个人|新|工作|学校)\s+){0,2}`
+const WECHAT_CONTACT_PREFIX_RE = new RegExp(
+  String.raw`(?:^|[^a-z0-9])(?:(?:me|us)(?:\s+up)?\s+${WECHAT_RELATION_SOURCE}|add\s+(?:me|us)(?:\s+${WECHAT_RELATION_SOURCE})?|(?:my|our)\s+(?:id|handle|username|account|number|code|alias)\s+${WECHAT_RELATION_SOURCE}|(?:reach|contact|find|message|add|ping|dm|send)\s+${WECHAT_RECIPIENT_SOURCE}\s+${WECHAT_RELATION_SOURCE}|(?:connect\s+with|talk\s+to)\s+${WECHAT_RECIPIENT_SOURCE}\s+${WECHAT_RELATION_SOURCE}|(?:联系|加)\s*${WECHAT_RECIPIENT_SOURCE}\s+${WECHAT_RELATION_SOURCE}|(?:(?:let['’]?s|let\s+us|please|can\s+we)\s+)?(?:move|switch)(?:\s+(?:(?:this|it)(?:\s+(?:chat|conversation))?|the\s+(?:chat|conversation)))?\s+to|via|联系我|加我)\s*["'“”‘’«‹「『【《([{<]*\s*$`,
+  'u',
+)
+const WECHAT_CHANNEL_RELATION_PREFIX_RE = new RegExp(
+  String.raw`(?:^|[^a-z0-9])(?:(?:${WECHAT_RELATION_SOURCE})\s+|(?:请\s*)?(?:用|(?:发|转|移)到)\s*)${WECHAT_CHANNEL_MODIFIER_SOURCE}["'“”‘’«‹「『【《([{<]*\s*$`,
+  'u',
+)
+const WECHAT_CHANNEL_ACTION_PREFIX_RE = new RegExp(
+  String.raw`(?:^|[^a-z0-9])(?:open|use)\s+${WECHAT_CHANNEL_MODIFIER_SOURCE}$`,
+  'u',
+)
+const WECHAT_WRAPPED_CHANNEL_ACTION_PREFIX_RE = new RegExp(
+  String.raw`(?:^|[^a-z0-9])(?:open|use)\s+${WECHAT_CHANNEL_MODIFIER_SOURCE}["'“”‘’«‹「『【《([{<]+\s*$`,
+  'u',
+)
+const WECHAT_METALANGUAGE_RELATION_PREFIX_RE = new RegExp(
+  String.raw`(?:^|[^a-z0-9])(?:(?:search|look)\s+for|compare.{0,80}\s+with|translate.{0,80}\s+to|replace.{0,80}\s+with|use.{0,80}\s+for|(?:the\s+)?(?:word|phrase|term|example|literal).{0,80}\s+(?:with|for|to|in|of))\s+${WECHAT_CHANNEL_MODIFIER_SOURCE}["'“”‘’«‹「『【《([{<]+\s*$`,
+  'u',
+)
+const WECHAT_OPENING_WRAPPER_RE = /["'“‘«‹「『【《([{<]\s*$/u
+const WECHAT_CLOSING_WRAPPER_RE = /^\s*["'”’»›」』】》)}>\]]/u
+const WECHAT_CONTACT_ME_SUFFIX_RE = /^\s+me\b/
+const WECHAT_DIRECT_UNDERSCORE_HANDLE_SUFFIX_RE = /^\s*@\s*[a-z0-9][a-z0-9.-]*_[a-z0-9_.-]*/
+const WECHAT_IDENTITY_LABEL_SUFFIX_RE = /^\s*(?:id|handle|username|account|alias|号|账号|帐号)\s*(?:(?:is|[:=])\s*)?@?\s*[a-z0-9][a-z0-9_.-]*\s*[.!?]?\s*$/
+const WECHAT_EXPLICIT_CODE_SUFFIX_RE = /^\s*(?:number|code)\s*(?:is|[:=])\s*@?\s*[a-z0-9][a-z0-9_.-]*\s*[.!?]?\s*$/
+const WECHAT_RELATION_ACCOUNT_SUFFIX_RE = /^\s*(?:(?:is|as|under)\s+|(?:->|=>|=|\/)\s*)@?\s*(?=[a-z0-9_.-]*[a-z])(?=[a-z0-9_.-]*(?:[0-9_]))[a-z0-9][a-z0-9_.-]*\s*[.!?]?\s*$/
+const WECHAT_RELATION_AT_SUFFIX_RE = /^\s*(?:(?:is|as|under)\s+|(?:->|=>|=|\/)\s*)@\s*[a-z0-9][a-z0-9_.-]*\s*[.!?]?\s*$/
+const WECHAT_BRACKET_STRONG_SUFFIX_RE = /^\s*[\[(]\s*(?:@\s*[a-z0-9][a-z0-9_.-]*|[a-z0-9][a-z0-9.-]*_[a-z0-9_.-]*)\s*[\])]\s*[.!?]?\s*$/
+const WECHAT_COLON_STRONG_SUFFIX_RE = /^\s*[:：]\s*(?:@\s*[a-z0-9][a-z0-9_.-]*|[a-z0-9][a-z0-9.-]*_[a-z0-9_.-]*)\s*[.!?]?\s*$/
+const WECHAT_SEPARATOR_STRONG_SUFFIX_RE = /^\s*[,，、\-—–]\s*(?:@\s*[a-z0-9][a-z0-9_.-]*|[a-z0-9][a-z0-9.-]*_[a-z0-9_.-]*)\s*[.!?]?\s*$/
+const WECHAT_CHINESE_CONTACT_SUFFIX_RE = /^\s*(?:上\s*)?(?:联系|加|找|私信|沟通)\s*@?[\p{L}\p{N}_]/u
+const WECHAT_CHANNEL_NOUN_SUFFIX_RE = /^\s+(?:app|account|id|message)\b/
+const WECHAT_CONTACT_ACTION_SUFFIX_RE = /^\s*(?:(?:app|account|id|message)\b\s*)?(?:[,，]\s*)?(?:to|then|and(?:\s+then)?)\s+(?:contact|message|reach|find|add|ping|dm|send|text|follow|call|talk\s+to|connect\s+with)\b/
 
 function hasWechatSignal(folded) {
   // Keep the original span for every compact "wechat" hit. Removing separators
@@ -274,16 +311,54 @@ function hasWechatSignal(folded) {
   // brand mention. Any separator inside either word remains suspicious.
   let compact = ''
   const sourceOffsets = []
-  for (let index = 0; index < folded.length; index += 1) {
-    const char = folded[index]
+  for (let index = 0; index < folded.length;) {
+    const sourceIndex = index
+    const char = String.fromCodePoint(folded.codePointAt(index))
+    index += char.length
     if (WECHAT_SEPARATOR_CHAR_RE.test(char)) continue
     compact += char
-    sourceOffsets.push(index)
+    for (let unit = 0; unit < char.length; unit += 1) sourceOffsets.push(sourceIndex)
   }
 
   for (let from = compact.indexOf('wechat'); from !== -1; from = compact.indexOf('wechat', from + 1)) {
-    const span = folded.slice(sourceOffsets[from], sourceOffsets[from + 5] + 1)
+    const sourceStart = sourceOffsets[from]
+    const sourceEnd = sourceOffsets[from + 5] + 1
+    const span = folded.slice(sourceStart, sourceEnd)
     if (!NATURAL_WE_CHAT_RE.test(span)) return true
+
+    // A literal space is not enough to make the phrase ordinary English.
+    // Brand/contact constructions such as "we chat me", "we chat @ abc_123",
+    // and "my we chat ID" deliberately add that space to evade a compact
+    // WeChat check. Preserve conversational prose, but restore the screen when
+    // the surrounding text supplies an account/handle/contact context.
+    const rawBefore = folded.slice(0, sourceStart)
+    const rawAfter = folded.slice(sourceEnd)
+    const beforeVariants = [rawBefore.replace(INVISIBLE_RE, ' '), rawBefore.replace(INVISIBLE_RE, '')]
+    const afterVariants = [rawAfter.replace(INVISIBLE_RE, ' '), rawAfter.replace(INVISIBLE_RE, '')]
+      .map(value => value.replace(/^\s*["'”’»›」』】》)}>\]]+\s*/, ' '))
+    const beforeMatches = regex => beforeVariants.some(value => regex.test(value))
+    const afterMatches = regex => afterVariants.some(value => regex.test(value))
+    const isWrappedMention = WECHAT_OPENING_WRAPPER_RE.test(rawBefore)
+      && WECHAT_CLOSING_WRAPPER_RE.test(rawAfter)
+    const isMetalanguageMention = isWrappedMention
+      && beforeMatches(WECHAT_METALANGUAGE_RELATION_PREFIX_RE)
+    const hasContactPrefix = beforeMatches(WECHAT_CONTACT_PREFIX_RE)
+      || beforeMatches(WECHAT_CHANNEL_ACTION_PREFIX_RE)
+      || (!isMetalanguageMention && beforeMatches(WECHAT_CHANNEL_RELATION_PREFIX_RE))
+    const hasWrappedChannelAction = beforeMatches(WECHAT_WRAPPED_CHANNEL_ACTION_PREFIX_RE)
+    if (hasContactPrefix
+      || (hasWrappedChannelAction && afterMatches(WECHAT_CHANNEL_NOUN_SUFFIX_RE))
+      || afterMatches(WECHAT_CONTACT_ME_SUFFIX_RE)
+      || afterMatches(WECHAT_DIRECT_UNDERSCORE_HANDLE_SUFFIX_RE)
+      || afterMatches(WECHAT_IDENTITY_LABEL_SUFFIX_RE)
+      || afterMatches(WECHAT_EXPLICIT_CODE_SUFFIX_RE)
+      || afterMatches(WECHAT_RELATION_ACCOUNT_SUFFIX_RE)
+      || afterMatches(WECHAT_RELATION_AT_SUFFIX_RE)
+      || afterMatches(WECHAT_BRACKET_STRONG_SUFFIX_RE)
+      || afterMatches(WECHAT_COLON_STRONG_SUFFIX_RE)
+      || afterMatches(WECHAT_SEPARATOR_STRONG_SUFFIX_RE)
+      || afterMatches(WECHAT_CHINESE_CONTACT_SUFFIX_RE)
+      || afterMatches(WECHAT_CONTACT_ACTION_SUFFIX_RE)) return true
   }
   return false
 }
