@@ -128,7 +128,7 @@
                 <text class="oc-eyebrow oc-eyebrow-label">{{ entry.offer.from_user === currentUser?.id ? t('chat.offerYou') : t('chat.offerThem') }}</text>
                 <text class="oc-status">{{ offerStatusLabel(entry.offer) }}</text>
               </view>
-              <text class="oc-price">${{ fmtOfferPrice(entry.offer.price) }}</text>
+              <text class="oc-price">{{ fmtOfferPrice(entry.offer.price) }}</text>
               <text v-if="entry.offer.note" class="oc-note">{{ entry.offer.note }}</text>
               <view v-if="entry.offer.status === 'pending' && offerIncoming(entry.offer) && !offerExpired(entry.offer) && itemAllowsTransaction" class="oc-actions">
                 <view class="oc-btn oc-decline" role="button" :aria-label="t('chat.offerDecline')" @click="declineOffer(entry.offer)"><text class="oc-btn-label">{{ t('chat.offerDecline') }}</text></view>
@@ -145,7 +145,7 @@
           <view v-if="entry.offer.status === 'accepted'" class="deal-line">
             <view class="deal-pill">
               <UIcon name="check" size="xs" color="success" />
-              <text class="deal-pill-label">{{ t('chat.dealReached').replace('{price}', '$' + fmtOfferPrice(entry.offer.price)) }}</text>
+              <text class="deal-pill-label">{{ t('chat.dealReached').replace('{price}', fmtOfferPrice(entry.offer.price)) }}</text>
             </view>
             <text
               v-if="itemInfo && currentUser?.id === itemInfo.user_id && (itemInfo.status === 'active' || itemInfo.status === 'reserved')"
@@ -450,7 +450,7 @@ import { useModeration } from '../composables/useModeration'
 import { useLongPress } from '../composables/useLongPress'
 import { useKeyboardHeight } from '../composables/useKeyboardHeight'
 import { createOwnedLoading } from '../composables/ownedLoading'
-import { listingPriceLabel, friendlyErrorMessage, navigateBackOr } from '../utils'
+import { listingPriceLabel, formatPrice, friendlyErrorMessage, navigateBackOr } from '../utils'
 import { DIALOG_DANGER } from '../utils/dialogColors'
 import { captureException } from '../utils/sentry'
 import {
@@ -1551,8 +1551,13 @@ function shouldShowTimeAt(idx: number): boolean {
 }
 
 // ---- Offer helpers ----
+/* The listing price directly above these cards renders through formatPrice, so
+   an offer formatted any other way disagrees with it in the same view: a
+   $1,500 desk drew a $1500 offer, and a $40.50 offer printed as $40.5 — a
+   price a student never typed. Zero is a real zero-dollar offer here rather
+   than a free listing, so it says $0 instead of "Free". */
 function fmtOfferPrice(p: number): string {
-  return Number.isInteger(p) ? String(p) : String(Math.round(p * 100) / 100)
+  return formatPrice(p, '$0')
 }
 function offerIncoming(o: Offer): boolean {
   return o.to_user === currentUser.value?.id
@@ -1580,7 +1585,7 @@ function confirmAcceptedOfferSale(offer: Offer) {
     title: t('profile.markSoldTitle'),
     content: t('profile.confirmDealWith')
       .replace('{name}', otherUserName.value || t('app.user'))
-      .replace('{price}', '$' + fmtOfferPrice(offer.price)),
+      .replace('{price}', fmtOfferPrice(offer.price)),
     confirmText: t('profile.markSoldConfirm'),
     success: async (res) => {
       if (!res.confirm || !isCurrent()) return
