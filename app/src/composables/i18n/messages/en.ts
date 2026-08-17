@@ -219,6 +219,7 @@ const en: Record<string, string> = {
   'publish.permissionModalDismiss': 'Got it · 知道了',
   'heic.unsupported': 'Image format not supported. Please pick another.',
   'publish.needTitle': 'Title is required',
+  'publish.titleTooShort': 'Title needs at least 2 characters',
   'publish.needPrice': 'Enter a valid price',
   'publish.priceTooHigh': 'Price seems too high',
   'publish.priceTooHighBody': 'The price you entered seems unusually high. Listings over $100,000 are rare on a campus marketplace — confirm before listing?',

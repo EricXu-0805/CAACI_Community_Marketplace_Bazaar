@@ -219,6 +219,7 @@ const zh: Record<string, string> = {
   'publish.permissionModalDismiss': '知道了 · Got it',
   'heic.unsupported': '这种图片格式不支持，请换一张',
   'publish.needTitle': '请输入标题',
+  'publish.titleTooShort': '标题至少 2 个字',
   'publish.needPrice': '请输入有效价格',
   'publish.priceTooHigh': '价格似乎过高',
   'publish.priceTooHighBody': '您输入的价格似乎过高。校园二手物品超过 $100,000 比较少见，请确认是否真要发布。',
