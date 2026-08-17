@@ -486,19 +486,30 @@ function clearConfirmCooldown() {
   confirmTimer = null
   confirmCooldown.value = 0
 }
-function runConfirmCooldown(seconds: number) {
+/*
+ * Counts down from the deadline, not from the number of ticks that have
+ * fired. This screen's whole job is to make someone leave for their mail app,
+ * and a backgrounded page has its intervals throttled or suspended — so a
+ * counter that decrements per tick comes back reading whatever it reached
+ * before the app went away, and Resend stays disabled long after the minute
+ * is up. cooldownUntil was already being stored for exactly this reason; it
+ * was only ever consulted on a fresh page load.
+ */
+function runConfirmCooldown(cooldownUntil: number) {
   clearConfirmCooldown()
-  if (seconds <= 0) return
-  confirmCooldown.value = seconds
-  confirmTimer = setInterval(() => {
-    confirmCooldown.value -= 1
+  const remaining = () => Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000))
+  if (remaining() <= 0) return
+  const tick = () => {
+    confirmCooldown.value = remaining()
     if (confirmCooldown.value <= 0 && confirmTimer) { clearInterval(confirmTimer); confirmTimer = null }
-  }, 1000)
+  }
+  tick()
+  confirmTimer = setInterval(tick, 1000)
 }
 function startConfirmCooldown() {
   const cooldownUntil = Date.now() + 60_000
   patchPendingCooldown(cooldownUntil)
-  runConfirmCooldown(60)
+  runConfirmCooldown(cooldownUntil)
 }
 function startSignupConfirmation(submittedEmail: string) {
   pendingEmail.value = submittedEmail
@@ -523,7 +534,7 @@ function restoreSignupConfirmation() {
   pendingEmail.value = pending.email
   confirmCode.value = ''
   awaitingConfirm.value = true
-  runConfirmCooldown(Math.max(0, Math.ceil((pending.cooldownUntil - Date.now()) / 1000)))
+  runConfirmCooldown(pending.cooldownUntil)
 }
 function leaveSignupConfirmation() {
   if (verifying.value || confirmResending.value) return
