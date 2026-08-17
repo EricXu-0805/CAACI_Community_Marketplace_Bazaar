@@ -118,3 +118,86 @@ export function campusDateFromIso(value: string | null | undefined): string {
   const parts = partsAt(instantMs)
   return `${String(parts.year).padStart(4, '0')}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`
 }
+
+/*
+ * The same clock, without Intl.
+ *
+ * Everything above resolves the zone through Intl, which is correct on H5 and
+ * is what the admin console uses. The chat thread also runs in the WeChat
+ * mini-program, whose iOS runtime is JSC without full ICU — the reason
+ * fmtMeetupWhen hand-pads its numbers rather than calling toLocaleTimeString.
+ * A timeZone option that is silently ignored there would put a meetup at the
+ * wrong hour without saying so, so the meetup path encodes the rule instead.
+ *
+ * US Central has been the same rule since 2007: CST is UTC-6, CDT is UTC-5,
+ * daylight time runs from 02:00 local standard on the second Sunday in March
+ * to 02:00 local daylight on the first Sunday in November. Meetups are capped
+ * at 89 days out, so no proposal reaches a year whose rules might differ.
+ * smoke/campus-time-boundary.test.mjs checks every six hours across a year
+ * that these two agree.
+ */
+
+const STANDARD_OFFSET_MIN = -360 // CST
+const DAYLIGHT_OFFSET_MIN = -300 // CDT
+
+/** UTC ms for the nth given weekday of a month, at a given UTC hour. */
+function nthWeekdayUtc(year: number, month: number, weekday: number, nth: number, hourUtc: number): number {
+  const first = Date.UTC(year, month, 1)
+  const shift = (weekday - new Date(first).getUTCDay() + 7) % 7
+  return Date.UTC(year, month, 1 + shift + (nth - 1) * 7, hourUtc)
+}
+
+/* Both transitions expressed in UTC, where they are unambiguous even though
+   the local clock skips and repeats around them: 02:00 CST is 08:00 UTC and
+   02:00 CDT is 07:00 UTC. */
+function daylightWindowUtc(year: number): [number, number] {
+  return [
+    nthWeekdayUtc(year, 2, 0, 2, 8),
+    nthWeekdayUtc(year, 10, 0, 1, 7),
+  ]
+}
+
+/** Minutes to add to UTC to get campus wall-clock time at this instant. */
+export function campusOffsetMinutes(instantMs: number): number {
+  const year = new Date(instantMs).getUTCFullYear()
+  const [start, end] = daylightWindowUtc(year)
+  return instantMs >= start && instantMs < end ? DAYLIGHT_OFFSET_MIN : STANDARD_OFFSET_MIN
+}
+
+/**
+ * Read a picker's `YYYY-MM-DD` and `HH:MM` as campus wall-clock time.
+ *
+ * The offset depends on the instant being computed, so guess with the standard
+ * offset and re-resolve. The two agree except inside the hour daylight time
+ * skips, where the guess lands on the far side and the second pass corrects it.
+ */
+export function campusWallClockToInstant(date: string, time: string): Date | null {
+  const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date)
+  const t = /^(\d{2}):(\d{2})$/.exec(time)
+  if (!d || !t) return null
+  const asUtc = Date.UTC(Number(d[1]), Number(d[2]) - 1, Number(d[3]), Number(t[1]), Number(t[2]))
+  if (Number.isNaN(asUtc)) return null
+  const guess = asUtc - STANDARD_OFFSET_MIN * 60_000
+  return new Date(asUtc - campusOffsetMinutes(guess) * 60_000)
+}
+
+/** Campus wall-clock parts of an instant, without Intl. */
+export function campusPartsNoIntl(instant: Date): {
+  year: number; month: number; day: number; hour: number; minute: number
+} {
+  const shifted = new Date(instant.getTime() + campusOffsetMinutes(instant.getTime()) * 60_000)
+  return {
+    year: shifted.getUTCFullYear(),
+    month: shifted.getUTCMonth() + 1,
+    day: shifted.getUTCDate(),
+    hour: shifted.getUTCHours(),
+    minute: shifted.getUTCMinutes(),
+  }
+}
+
+/** `YYYY-MM-DD` on campus — what the date picker's bounds want. */
+export function campusDateStringNoIntl(instant: Date): string {
+  const p = campusPartsNoIntl(instant)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${p.year}-${pad(p.month)}-${pad(p.day)}`
+}

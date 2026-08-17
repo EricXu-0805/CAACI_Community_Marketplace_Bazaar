@@ -451,6 +451,7 @@ import { useLongPress } from '../composables/useLongPress'
 import { useKeyboardHeight } from '../composables/useKeyboardHeight'
 import { createOwnedLoading } from '../composables/ownedLoading'
 import { listingPriceLabel, formatPrice, friendlyErrorMessage, navigateBackOr } from '../utils'
+import { campusDateStringNoIntl, campusPartsNoIntl, campusWallClockToInstant } from '../utils/campusTime'
 import { DIALOG_DANGER } from '../utils/dialogColors'
 import { captureException } from '../utils/sentry'
 import {
@@ -1737,17 +1738,24 @@ function meetupStatusLabel(m: Meetup): string {
   return t('chat.meetupStatus.' + m.status)
 }
 function meetupSpotLabel(m: Meetup): string { return localizeLocation(m.spot, lang.value as 'en' | 'zh') }
+/* Central, not the device. A meetup happens at a UIUC campus spot, and
+   api/meetup-notify.js has always formatted the mail in America/Chicago — so
+   reading the instant back through getHours() told a student whose phone was
+   still on Asia/Shanghai a different hour than the email did. The CT suffix
+   is there because the number is now about Champaign rather than about them.
+   pad2 rather than toLocaleTimeString for the reason campusTime.ts explains:
+   WeChat mp on iOS runs JSC without full Intl. */
 function fmtMeetupWhen(iso: string): string {
-  const d = new Date(iso)
-  /* pad2 instead of toLocaleTimeString: WeChat mp on iOS runs JSC without
-     full Intl — locale options can be ignored, yielding HH:MM:SS strings. */
-  return `${d.getMonth() + 1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+  const p = campusPartsNoIntl(new Date(iso))
+  return `${p.month}/${p.day} ${pad2(p.hour)}:${pad2(p.minute)} ${t('chat.centralTime')}`
 }
 
 // ---- Meetup composer (propose + reschedule share one bottom sheet) ----
 const safeSpots = computed(() => CAMPUS_SPOTS.filter(s => s.safe))
-const todayStr = computed(() => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}` })
-const maxDateStr = computed(() => { const d = new Date(Date.now() + 89 * 86400000); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}` })
+// Also Central: from Asia/Shanghai the device's "today" is already tomorrow
+// in Champaign for half the day, which put the picker's floor a day ahead.
+const todayStr = computed(() => campusDateStringNoIntl(new Date()))
+const maxDateStr = computed(() => campusDateStringNoIntl(new Date(Date.now() + 89 * 86400000)))
 const meetupSheet = ref<{ open: boolean; mode: 'new' | 'reschedule' | 'reschedule-accepted'; targetId: string }>({ open: false, mode: 'new', targetId: '' })
 
 // #6c — only one live pending proposal per conversation (DB enforces it too).
@@ -1822,9 +1830,11 @@ function closeMeetupSheet() {
 }
 
 function meetupAtIso(): string | null {
-  if (!meetupDateInput.value || !meetupTimeInput.value) return null
-  const dt = new Date(`${meetupDateInput.value}T${meetupTimeInput.value}:00`)
-  if (isNaN(dt.getTime())) return null
+  /* A bare `new Date('2026-09-01T15:00:00')` carries no offset and is read in
+     the device's zone, so a phone still set to Asia/Shanghai turned "15:00"
+     into 02:00 in Champaign — which is the hour the other party's email named. */
+  const dt = campusWallClockToInstant(meetupDateInput.value, meetupTimeInput.value)
+  if (!dt || isNaN(dt.getTime())) return null
   return dt.toISOString()
 }
 async function submitMeetupSheet() {

@@ -352,6 +352,7 @@ const en: Record<string, string> = {
   'chat.meetupExpired': 'Meetup expired',
   'chat.meetupPast': "Can't pick a time in the past",
   'chat.meetupSet': "It's set · {spot} · {when} · meet on campus, be on time",
+  'chat.centralTime': 'CT',
   'chat.meetupTitle': 'Propose a meetup',
   'chat.meetupRescheduleTitle': 'Suggest a new time/place',
   'chat.meetupSpot': 'Place',
