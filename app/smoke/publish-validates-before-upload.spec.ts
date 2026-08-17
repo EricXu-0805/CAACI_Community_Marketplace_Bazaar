@@ -1,6 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { supabaseRefForBuild } from './supabase-ref'
 
 /**
  * A listing that will be refused must be refused before its photos are sent.
@@ -18,18 +17,7 @@ import { resolve } from 'node:path'
 const UID = '11111111-1111-4111-8111-111111111111'
 const GEN = 'publish-order-generation-0001'
 
-// Same reasoning as read-failure-states.spec.ts: the app builds its auth key
-// from the Supabase URL it was compiled against, so the ref has to follow the
-// build rather than be pinned here.
-function supabaseUrlForBuild(): string {
-  const fromEnv = process.env.VITE_SUPABASE_URL
-  if (fromEnv) return fromEnv
-  const dotenv = readFileSync(resolve(process.cwd(), '.env'), 'utf8')
-  const match = /^\s*VITE_SUPABASE_URL\s*=\s*(.+?)\s*$/m.exec(dotenv)
-  if (!match) throw new Error('no VITE_SUPABASE_URL in the environment or app/.env — cannot seed a session')
-  return match[1].replace(/^["']|["']$/g, '')
-}
-const REF = new URL(supabaseUrlForBuild()).hostname.split('.')[0]
+const REF = supabaseRefForBuild()
 
 const PROFILE = {
   id: UID, nickname: 'Test User', avatar_url: null, tos_version: '2026-08-01',
