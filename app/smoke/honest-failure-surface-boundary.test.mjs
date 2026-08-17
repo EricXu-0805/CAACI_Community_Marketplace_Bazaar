@@ -135,7 +135,18 @@ test('a pending email confirmation survives a reload without storing the code', 
   // stale record cannot reopen the panel forever.
   assert.match(login, /const PENDING_CONFIRM_TTL_MS = 60 \* 60 \* 1000/)
   assert.match(login, /Date\.now\(\) >= parsed\.expiresAt/)
-  assert.match(login, /runConfirmCooldown\(Math\.max\(0, Math\.ceil\(\(pending\.cooldownUntil - Date\.now\(\)\) \/ 1000\)\)\)/)
+  // The restore path hands the stored deadline straight to the countdown, and
+  // the countdown reads the clock on every tick rather than decrementing a
+  // number. Pinned as the property rather than as one spelling of it: the
+  // literal that used to be asserted here computed the remaining seconds at
+  // the call site, which restores correctly but then drifts as soon as the
+  // page is backgrounded and its interval stops firing.
+  assert.match(login, /runConfirmCooldown\(pending\.cooldownUntil\)/)
+  assert.match(
+    login,
+    /function runConfirmCooldown\(cooldownUntil: number\) \{[\s\S]{0,400}?cooldownUntil - Date\.now\(\)[\s\S]{0,400}?setInterval\(tick, 1000\)/,
+    'the countdown must recompute from the deadline on each tick, not decrement',
+  )
 
   // Confirming or leaving must retire the record.
   assert.match(login, /clearPendingConfirm\(\)\s*\n\s*clearConfirmCooldown\(\)/)
