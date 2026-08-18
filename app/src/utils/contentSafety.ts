@@ -85,6 +85,18 @@ function fold(s: string): string {
     .toLowerCase()
 }
 
+/* Folded, and stripped of the separators an evader wedges into a word — but
+   with whitespace kept. Two of the WeChat keywords are ordinary English once
+   the spaces are gone: "we chat about pickup" collapses to "wechat", and "TV,
+   Xbox" collapses to "tvxbox", which contains "vx". Both were refused. Those
+   two keywords read against this copy with latin word boundaries; every other
+   keyword is anchored on a CJK character and stays on the stripped copy, where
+   collapsing "加 微 信" is the whole point. */
+function spaced(s: string): string {
+  if (!s) return ''
+  return fold(s).replace(/[\-_.+,。，、]/g, '').replace(/\s+/g, ' ')
+}
+
 const CN_MOBILE = /(?<![0-9])1[3-9]\d{9}(?![0-9])/
 /* Read against the stripped copy, so every separator is already gone and the
    pattern is ten contiguous digits. The separators in the old pattern were dead
@@ -94,7 +106,10 @@ const CN_MOBILE = /(?<![0-9])1[3-9]\d{9}(?![0-9])/
    area code nor an exchange code may begin with 0 or 1. */
 const US_MOBILE = /(?<![0-9])[2-9]\d{2}[2-9]\d{6}(?![0-9])/
 const EMAIL = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/
-const WECHAT_HINT = /(微信|wechat|weixin|加v|加\s*微|v信|v我|威信|vx|私信扣)/
+const WECHAT_HINT = /(微信|weixin|加v|加\s*微|v信|v我|威信|私信扣)/
+/* Read against the spaced copy. Without the boundaries "vx" also matches
+   inside "tvxbox" and inside any word that happens to put v before x. */
+const WECHAT_LATIN = /(?<![a-z])(?:wechat|vx)(?![a-z])/
 const QQ_HINT = /(?:qq|扣扣|企鹅)[号:：\s]*\d{5,11}/
 const URL_ANY = /\b(?:https?:\/\/|www\.)[^\s]+/
 const URL_SHORTENER = /\b(?:bit\.ly|t\.cn|dwz\.cn|sina\.lt|tinyurl\.com|goo\.gl|ow\.ly|tb\.cn|m\.tb\.cn)[/\w]+/
@@ -123,7 +138,7 @@ function hasContactInfo(raw: string): { hit: boolean; matched: string[] } {
   if (CN_MOBILE.test(n)) matched.push('CN phone')
   if (US_MOBILE.test(n) && !looksLikeIsbn10(n)) matched.push('US phone')
   if (EMAIL.test(f)) matched.push('email')
-  if (WECHAT_HINT.test(n)) matched.push('WeChat')
+  if (WECHAT_HINT.test(n) || WECHAT_LATIN.test(spaced(raw))) matched.push('WeChat')
   if (QQ_HINT.test(n)) matched.push('QQ')
   return { hit: matched.length > 0, matched }
 }

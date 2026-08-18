@@ -262,7 +262,13 @@ const INVISIBLE_RE = /\p{Default_Ignorable_Code_Point}/gu
 const SEPARATOR_RE = /[\s\-._,。，、]+/g
 const PHONE_RE = /(?<![0-9])1[3-9][0-9]{9}(?![0-9])/
 const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/
-const IM_RE = /微信|weixin|加v|加微|v信|vx|v我/
+const IM_RE = /微信|weixin|加v|加微|v信|v我/
+/* `vx` is two latin letters, so on the separator-stripped copy it also appears
+   inside "tvxbox" and "novxmeetup" and at the front of "vxworks". It reads
+   against a copy that keeps the whitespace, with latin boundaries — the same
+   split the trigger makes (migration 20260818162716). */
+const SPACED_SEPARATOR_RE = /[\-._,。，、]+/g
+const VX_RE = /(?<![a-z])vx(?![a-z])/
 const WECHAT_SEPARATOR_CHAR_RE = /[\s]|\p{Punctuation}|\p{Default_Ignorable_Code_Point}/u
 const NATURAL_WE_CHAT_RE = /^we(?:\s+|[,，。.!?;:…]+\s+)chat$/
 const WECHAT_RELATION_SOURCE = String.raw`(?:on|in|into|onto|within|via|through|at|using|to|for|with|over|by)`
@@ -368,10 +374,11 @@ function contactSignals(raw) {
   // keeps the dots and the @ that the strip would erase.
   const folded = raw.normalize('NFKC').toLowerCase()
   const stripped = folded.replace(SEPARATOR_RE, '').replace(INVISIBLE_RE, '')
+  const spaced = folded.replace(SPACED_SEPARATOR_RE, '').replace(INVISIBLE_RE, '').replace(/\s+/g, ' ')
   const signals = []
   if (PHONE_RE.test(stripped)) signals.push('phone')
   if (EMAIL_RE.test(folded)) signals.push('email')
-  if (IM_RE.test(stripped) || hasWechatSignal(folded)) signals.push('im')
+  if (IM_RE.test(stripped) || VX_RE.test(spaced) || hasWechatSignal(folded)) signals.push('im')
   return signals
 }
 
