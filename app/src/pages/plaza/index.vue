@@ -562,7 +562,7 @@
       </view>
     </view>
 
-    <view v-if="showAttachSheet" class="sheet-mask sheet-mask-over-composer u-mask-in" @click="showAttachSheet = false"></view>
+    <view v-if="showAttachSheet" class="sheet-mask-over-composer u-mask-in" @click="showAttachSheet = false"></view>
     <view
       v-if="showAttachSheet"
       ref="attachDialogEl"
@@ -2328,8 +2328,20 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 
 /* Attach-item picker opens ON TOP of the compose-fullpage (z-index 1100).
    Its mask + sheet must sit above 1100 so users see it without closing
-   the composer first. Bumped to 1200 range. */
-.sheet-mask-over-composer { z-index: 1200 !important; }
+   the composer first. Bumped to 1200 range.
+
+   The mask used to carry `.sheet-mask` as well, but that class is declared only
+   inside detail/ and saved-searches/ <style scoped>, so here it resolved to
+   nothing: the element was position:static (which makes a z-index inert),
+   transparent, and 390x0. Measured with the picker open — elementFromPoint at
+   the top of the screen returned the composer's textarea, and tapping outside
+   the sheet did not close it, because the mask's @click never got the tap. The
+   sheet is aria-modal="true", so assistive tech was told the page behind it was
+   inert while it was fully reachable. The borrowed class name is gone and the
+   properties live here, the way every other page owns its own mask. */
+.sheet-mask-over-composer {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); z-index: 1200;
+}
 .attach-sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 1201;
   max-height: 70vh; background: var(--bg-elev-1); border-radius: 20px 20px 0 0;
