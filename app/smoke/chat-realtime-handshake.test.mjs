@@ -2540,6 +2540,10 @@ test('a delayed notification INSERT always heals a torn list/count snapshot', as
         'const { useI18n } = globalThis.__RUNTIME_KEY__',
       ],
       [
+        "import { formatPrice } from '../utils'",
+        'const { formatPrice } = globalThis.__RUNTIME_KEY__',
+      ],
+      [
         "import { invalidateConversations, useMessages } from './useMessages'",
         'const { invalidateConversations, useMessages } = globalThis.__RUNTIME_KEY__',
       ],
@@ -2589,6 +2593,10 @@ type Notification = any`,
       },
       pushToast: () => { toastCount += 1 },
       useI18n: () => ({ t: key => key }),
+      formatPrice: (price, freeLabel = 'Free') => (
+        price === 0 ? freeLabel : `$${(Number.isInteger(price) ? String(price) : price.toFixed(2))
+          .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`
+      ),
       invalidateConversations: () => {},
       useMessages: () => ({ fetchConversations: async () => true }),
       captureAccountRequest: uid => ({ userId: uid, generation }),
@@ -3439,6 +3447,10 @@ test('three torn notification snapshots preserve live state before one delayed q
         'const { useI18n } = globalThis.__RUNTIME_KEY__',
       ],
       [
+        "import { formatPrice } from '../utils'",
+        'const { formatPrice } = globalThis.__RUNTIME_KEY__',
+      ],
+      [
         "import { invalidateConversations, useMessages } from './useMessages'",
         'const { invalidateConversations, useMessages } = globalThis.__RUNTIME_KEY__',
       ],
@@ -3482,6 +3494,10 @@ type Notification = any`,
       },
       pushToast: () => {},
       useI18n: () => ({ t: key => key }),
+      formatPrice: (price, freeLabel = 'Free') => (
+        price === 0 ? freeLabel : `$${(Number.isInteger(price) ? String(price) : price.toFixed(2))
+          .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`
+      ),
       invalidateConversations: () => {},
       useMessages: () => ({ fetchConversations: async () => true }),
       captureAccountRequest: requestedUserId => ({
@@ -3880,6 +3896,10 @@ async function loadUseMessagesConsumer(supabase, runtime = {}) {
         'const { useI18n } = globalThis.__RUNTIME_KEY__',
       ],
       [
+        "import { formatPrice } from '../utils'",
+        'const { formatPrice } = globalThis.__RUNTIME_KEY__',
+      ],
+      [
         "import { subscribeToConversation as subscribeToConversationFallback } from './useRealtimeFallback'",
         'const { subscribeToConversationFallback } = globalThis.__RUNTIME_KEY__',
       ],
@@ -4075,6 +4095,10 @@ test('a superseded message snapshot reports failure when its newer owner also fa
       [
         "import { useI18n } from './useI18n'",
         'const { useI18n } = globalThis.__RUNTIME_KEY__',
+      ],
+      [
+        "import { formatPrice } from '../utils'",
+        'const { formatPrice } = globalThis.__RUNTIME_KEY__',
       ],
       [
         "import { subscribeToConversation as subscribeToConversationFallback } from './useRealtimeFallback'",
@@ -4452,6 +4476,10 @@ async function loadFreshUseUnread(runtime) {
       [
         "import { useI18n } from './useI18n'",
         'const { useI18n } = globalThis.__RUNTIME_KEY__',
+      ],
+      [
+        "import { formatPrice } from '../utils'",
+        'const { formatPrice } = globalThis.__RUNTIME_KEY__',
       ],
       [
         "import { subscribeToUserInbox } from './useRealtimeFallback'",
@@ -4871,6 +4899,10 @@ test('a new-conversation live row retries after its first forced fetch fails', a
         'const { useI18n } = globalThis.__RUNTIME_KEY__',
       ],
       [
+        "import { formatPrice } from '../utils'",
+        'const { formatPrice } = globalThis.__RUNTIME_KEY__',
+      ],
+      [
         "import { subscribeToUserInbox } from './useRealtimeFallback'",
         'const { subscribeToUserInbox } = globalThis.__RUNTIME_KEY__',
       ],
@@ -4905,6 +4937,10 @@ test('a new-conversation live row retries after its first forced fetch fails', a
       useSupabase: () => ({ supabase }),
       useAuth: () => ({ currentUser: { value: { id: userId } } }),
       useI18n: () => ({ t: key => key }),
+      formatPrice: (price, freeLabel = 'Free') => (
+        price === 0 ? freeLabel : `$${(Number.isInteger(price) ? String(price) : price.toFixed(2))
+          .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`
+      ),
       subscribeToUserInbox: (_userId, onNew) => {
         onNewMessage = onNew
         return () => {}
@@ -5006,6 +5042,10 @@ test('a live inbox badge failure schedules authoritative recovery without anothe
         'const { useI18n } = globalThis.__RUNTIME_KEY__',
       ],
       [
+        "import { formatPrice } from '../utils'",
+        'const { formatPrice } = globalThis.__RUNTIME_KEY__',
+      ],
+      [
         "import { subscribeToUserInbox } from './useRealtimeFallback'",
         'const { subscribeToUserInbox } = globalThis.__RUNTIME_KEY__',
       ],
@@ -5040,6 +5080,10 @@ test('a live inbox badge failure schedules authoritative recovery without anothe
       useSupabase: () => ({ supabase }),
       useAuth: () => ({ currentUser: { value: { id: userId } } }),
       useI18n: () => ({ t: key => key }),
+      formatPrice: (price, freeLabel = 'Free') => (
+        price === 0 ? freeLabel : `$${(Number.isInteger(price) ? String(price) : price.toFixed(2))
+          .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`
+      ),
       subscribeToUserInbox: (_userId, onNew) => {
         onNewMessage = onNew
         return () => {}

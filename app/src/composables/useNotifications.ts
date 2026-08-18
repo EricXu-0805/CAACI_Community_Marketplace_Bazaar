@@ -4,6 +4,7 @@ import { useAuth } from './useAuth'
 import { subscribeToUserNotifications } from './useRealtimeFallback'
 import { pushToast } from './useAppToast'
 import { useI18n } from './useI18n'
+import { formatPrice } from '../utils'
 import { invalidateConversations, useMessages } from './useMessages'
 import {
   captureAccountRequest,
@@ -36,12 +37,32 @@ const BODY_SENTINEL_KEYS: Record<string, string> = {
   new_listing_from_followee: 'notif.followeeListing',
 }
 
+/*
+ * The sold and price-drop triggers write the amount as '$' || price::text
+ * (migrations 005, 006, 065). price is DECIMAL(10,2), so that is '$25.00' and
+ * '$1234.50' where the app's own formatPrice says '$25' and '$1,234.50' — and
+ * '$0.00' where every other surface says Free. The row cannot be formatted at
+ * insert time anyway: the reader's language is not known there. Reformat on
+ * the way to the screen, the same reason the two sentinels above are keys
+ * rather than sentences.
+ */
+const PRICE_BODY_RE = /^\$(\d+(?:\.\d+)?)(?: → \$(\d+(?:\.\d+)?))?$/
+
 export function notificationBodyText(
   notification: Notification,
   translate: (key: string) => string,
 ): string {
   const key = BODY_SENTINEL_KEYS[notification.body]
-  return key ? translate(key) : notification.body
+  if (key) return translate(key)
+  const amounts = PRICE_BODY_RE.exec(notification.body || '')
+  if (amounts) {
+    const free = translate('home.free')
+    const [, from, to] = amounts
+    return to === undefined
+      ? formatPrice(Number(from), free)
+      : `${formatPrice(Number(from), free)} → ${formatPrice(Number(to), free)}`
+  }
+  return notification.body
 }
 
 /*

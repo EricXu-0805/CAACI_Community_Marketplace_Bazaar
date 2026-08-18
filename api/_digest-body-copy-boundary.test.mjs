@@ -35,6 +35,8 @@ async function loadRenderer() {
     extract(src, 'function esc(', 'esc'),
     src.slice(src.indexOf('const TYPE_ICON ='), src.indexOf('\n', src.indexOf('const TYPE_ICON ='))),
     extract(src, 'const BODY_SENTINELS = {', 'BODY_SENTINELS').replace(/\n\}\n$/, '\n}\n'),
+    src.slice(src.indexOf('const PRICE_BODY_RE ='), src.indexOf('\n', src.indexOf('const PRICE_BODY_RE ='))),
+    extract(src, 'function priceText(', 'priceText'),
     extract(src, 'function bodyText(', 'bodyText'),
     extract(src, 'function rowHtml(', 'rowHtml'),
   ].join('\n')
@@ -44,6 +46,41 @@ async function loadRenderer() {
 // null is a reader who has never picked a language; the template falls back to
 // the bilingual form it used before per-user language existed.
 const READERS = ['en', 'zh', null]
+
+/*
+ * The sold and price-drop triggers write '$' || price::text, and price is
+ * DECIMAL(10,2) — so the row says '$25.00' and '$0.00' where the app says '$25'
+ * and Free. Both readers of that column reformat it; these are the shapes.
+ */
+const PRICE_BODIES = [
+  ['a whole amount loses its cents', '$25.00', { en: '$25', zh: '$25' }],
+  ['thousands are grouped', '$1234.50', { en: '$1,234.50', zh: '$1,234.50' }],
+  ['a free item is not zero dollars', '$0.00', { en: 'Free', zh: '免费' }],
+  ['a price drop keeps both sides', '$40.00 → $25.00', { en: '$40 → $25', zh: '$40 → $25' }],
+  ['a drop to free says so', '$40.00 → $0.00', { en: '$40 → Free', zh: '$40 → 免费' }],
+]
+
+test('an amount is rendered the way the app renders it, not the way the row stores it', async () => {
+  const { rowHtml } = await loadRenderer()
+  const wrong = []
+  for (const [label, body, expected] of PRICE_BODIES) {
+    for (const lang of ['en', 'zh']) {
+      const html = rowHtml({ type: 'sold', title: 'IKEA desk', body }, lang)
+      if (!html.includes(expected[lang])) wrong.push(`${lang} ${label}: ${body} did not become ${expected[lang]}`)
+      if (html.includes('0.00')) wrong.push(`${lang} ${label}: the raw ${body} reached the mail`)
+    }
+  }
+  assert.deepEqual(wrong, [], `the mail printed a stored amount:\n  ${wrong.join('\n  ')}`)
+})
+
+test('a body that is neither a sentinel nor an amount is still printed', async () => {
+  // The control. Without it the reformatting above is satisfied by a renderer
+  // that drops every body it does not recognise.
+  const { rowHtml } = await loadRenderer()
+  for (const lang of ['en', 'zh', null]) {
+    assert.match(rowHtml({ type: 'system', title: 't', body: '你有 3 条未读消息' }, lang), /你有 3 条未读消息/)
+  }
+})
 
 test('a dedup key never reaches the reader', async () => {
   const { rowHtml, BODY_SENTINELS } = await loadRenderer()
