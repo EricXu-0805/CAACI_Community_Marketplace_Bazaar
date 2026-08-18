@@ -1028,11 +1028,39 @@ async function initializeConversationAfterGate() {
       }).catch(() => {})
       fetchOffers(options.id).catch(() => {})
       fetchMeetups(options.id).catch(() => {})
+      void refreshItemSnapshot(options.id)
       if (currentUser.value) refreshReadState(options.id, currentUser.value.id)
     }
     if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisible)
     // #endif
   }
+}
+
+/*
+ * The item is snapshotted once, when the thread opens (the detail fetch above).
+ * Offers and meetups each have realtime plus a poll behind them; the item has
+ * neither. So a listing sold or withdrawn from another screen left this thread
+ * showing a live price, a Make-offer button and live meetup buttons for as long
+ * as the thread stayed open — and every tap failed against the boundary trigger
+ * that already knew. The template has the right closed state; it just never
+ * learned. Refreshed on foreground, and immediately when a mutation is refused
+ * for exactly this reason, so the buttons go away instead of failing twice.
+ */
+async function refreshItemSnapshot(targetId: string): Promise<void> {
+  const epoch = threadEpoch
+  try {
+    const detail = await fetchConversationDetail(targetId)
+    if (!isThreadEpochCurrent(epoch) || conversationId.value !== targetId) return
+    if (detail?.item) itemInfo.value = detail.item
+  } catch {
+    /* Best effort. A stale card is what we already had. */
+  }
+}
+
+function itemClosedUnderneath(err: any): boolean {
+  const message = String(err?.message || err || '')
+  return message.includes('item_unavailable_for_offer')
+    || message.includes('item_unavailable_for_meetup')
 }
 
 async function openConversationBehindModerationGate() {
@@ -1705,6 +1733,7 @@ async function submitOfferSheet() {
   } catch (err: any) {
     if (!isThreadEpochCurrent(actionEpoch)) return
     captureException(err, { tags: { source: 'chat.offer' } })
+    if (itemClosedUnderneath(err)) void refreshItemSnapshot(actionConversationId)
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
   } finally {
     if (actionEpoch === threadEpoch) offerSubmitting.value = false
@@ -1725,6 +1754,7 @@ async function respondOffer(o: Offer, action: 'accept' | 'decline') {
   } catch (err: any) {
     if (!isThreadEpochCurrent(actionEpoch)) return
     captureException(err, { tags: { source: 'chat.offer' } })
+    if (itemClosedUnderneath(err)) void refreshItemSnapshot(actionConversationId)
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
   }
 }
@@ -1867,6 +1897,7 @@ async function submitMeetupSheet() {
   } catch (err: any) {
     if (!isThreadEpochCurrent(actionEpoch)) return
     captureException(err, { tags: { source: 'chat.meetup' } })
+    if (itemClosedUnderneath(err)) void refreshItemSnapshot(actionConversationId)
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
   } finally {
     if (actionEpoch === threadEpoch) meetupSubmitting.value = false
@@ -1887,6 +1918,7 @@ async function respondMeetup(m: Meetup, action: 'accept' | 'decline') {
   } catch (err: any) {
     if (!isThreadEpochCurrent(actionEpoch)) return
     captureException(err, { tags: { source: 'chat.meetup' } })
+    if (itemClosedUnderneath(err)) void refreshItemSnapshot(actionConversationId)
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
   }
 }
