@@ -303,8 +303,18 @@ export default async function handler(request) {
     if ([userDaily, targetDaily, ipHourly].some((decision) => decision === null)) {
       return new Response(JSON.stringify({ error: 'rate_limit_unavailable' }), { status: 503, headers })
     }
-    if ([userDaily, targetDaily, ipHourly].some((decision) => decision === false)) {
+    // The per-IP bucket is 24/hour and is SHARED: campus wifi NATs a whole
+    // building behind one egress address, which is exactly where this beta
+    // runs. Answering 'daily_cap' there told the 25th student in an hour that
+    // their own quota was gone and to come back tomorrow — wrong about whose
+    // limit it is and wrong about the hour it actually resets in, so they stop
+    // trying for a day when ten minutes would have worked. Their own caps are
+    // checked first, so 'daily_cap' is only ever said when it is true.
+    if (userDaily === false || targetDaily === false) {
       return new Response(JSON.stringify({ error: 'daily_cap' }), { status: 429, headers })
+    }
+    if (ipHourly === false) {
+      return new Response(JSON.stringify({ error: 'network_busy' }), { status: 429, headers })
     }
   } catch (error) {
     try { console.error('illini limiter unavailable') } catch {}
