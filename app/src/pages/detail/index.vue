@@ -401,6 +401,7 @@ import UBadge from '../../components/UBadge.vue'
 import UAvatar from '../../components/UAvatar.vue'
 import UIcon from '../../components/UIcon.vue'
 import AppSidebar from '../../components/AppSidebar.vue'
+import { captureException } from '../../utils/sentry'
 import {
   captureAccountRequest,
   isAccountRequestCurrent,
@@ -849,6 +850,24 @@ if (typeof window !== 'undefined') window.addEventListener('resize', onHeroResiz
 onUnmounted(() => { if (typeof window !== 'undefined') window.removeEventListener('resize', onHeroResize) })
 // #endif
 
+/*
+ * The seller's history — sales, rating, reply rate — is read alongside the item,
+ * and every one of those reads may fail quietly, because a listing is still
+ * worth showing without them. That is right for one buyer and wrong for us: a
+ * broken grant on `ratings` would strip every seller's history at once, each
+ * element is gated on `> 0` so nothing would look amiss, and this page reported
+ * nothing anywhere. The message is constant so Sentry groups by it and the
+ * repeat count is the signal.
+ */
+function reportSellerProofFailure(source: string, readError: unknown): void {
+  // #ifdef H5
+  captureException(new Error('detail: a seller-proof read failed and rendered as no history'), {
+    tags: { source, error_name: (readError as any)?.code || (readError as any)?.name || '' },
+    level: 'warning',
+  })
+  // #endif
+}
+
 async function loadDetailForCurrentAccount() {
   const id = detailItemId.value
   if (!id) {
@@ -910,7 +929,10 @@ async function loadDetailForCurrentAccount() {
         .from('items').select('id, title, price, images, image_dimensions, user_id, listing_type')
         .eq('category', itemData.category).eq('status', 'active')
         .neq('id', itemData.id).neq('user_id', itemData.user_id).limit(12),
-      fetchForUser(itemData.user_id, REVIEW_FETCH).catch(() => [] as Rating[]),
+      fetchForUser(itemData.user_id, REVIEW_FETCH).catch((readError) => {
+        reportSellerProofFailure('detail.seller_reviews', readError)
+        return [] as Rating[]
+      }),
       supabase
         .from('items').select('id', { count: 'exact', head: true })
         .eq('user_id', itemData.user_id).eq('status', 'sold'),
@@ -926,6 +948,8 @@ async function loadDetailForCurrentAccount() {
     ratingTargetName.value = ratingEligibility.ratee_nickname || ''
     sellerReviews.value = reviewsRes || []
     soldCount.value = soldCountRes?.count || 0
+    if (soldCountRes?.error) reportSellerProofFailure('detail.seller_sold_count', soldCountRes.error)
+    if (respRes.error) reportSellerProofFailure('detail.seller_response_rate', respRes.error)
     if (respRes.data) sellerResponse.value = { rate: respRes.data.response_rate || 0, sample: respRes.data.response_sample || 0 }
     if (otherItemsRes.data) sellerOtherItems.value = otherItemsRes.data as Item[]
     if (simItemsRes.data) {
