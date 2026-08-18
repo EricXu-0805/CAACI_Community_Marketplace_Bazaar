@@ -219,7 +219,17 @@ export function useAuth() {
     }).catch(() => {})
 
     try {
-      await ensureProfileReady({ force: true })
+      /*
+       * preserveCurrent, because this runs on every auth event — including the
+       * background TOKEN_REFRESHED that fires roughly hourly. Without it the
+       * refresh cleared currentUser and set profileLoadState to 'loading'
+       * before the first request left the device, App.vue's gate treats any
+       * non-'ready' state as profile-recovery, and a browsing user with a
+       * perfectly valid session was reLaunched off their page ~26 s into a
+       * flaky connection. It only preserves a row we already hold for this same
+       * user, and a final failure after all retries still clears it and routes.
+       */
+      await ensureProfileReady({ force: true, preserveCurrent: true })
     } catch (err) {
       console.warn('[auth] fetch profile failed')
       captureException(err, { tags: { source: `fetchProfile-${options.source}` } })
