@@ -107,6 +107,39 @@ test('item share reads the visibility view, escapes content, pins canonical orig
   assert.match(html, /https:\/\/illinimarket\.com\/static\/app-icon-512\.png/)
 })
 
+/**
+ * items_visible hides only 'deleted', so a sold or reserved listing unfurls
+ * from this endpoint too. Before this, the card for a sold item was
+ * byte-identical to an on-sale one — forwarding it to a group chat sent
+ * several people after something already gone.
+ */
+test('a share card says when the listing is no longer on sale', async () => {
+  const { default: handler } = await load('share.js')
+  const selects = []
+  async function unfurl(status) {
+    globalThis.fetch = async (input) => {
+      selects.push(new URL(String(input)).searchParams.get('select') || '')
+      return json([{
+        id: ITEM_ID, title: 'Desk lamp', description: 'Barely used', price: 15,
+        images: [], listing_type: 'sell', status,
+      }])
+    }
+    const html = await (await handler(new Request(`https://illinimarket.com/api/share?id=${ITEM_ID}`))).text()
+    return html.match(/<meta property="og:title" content="([^"]*)"/)[1]
+  }
+
+  const [active, reserved, sold] = [await unfurl('active'), await unfurl('reserved'), await unfurl('sold')]
+
+  assert.match(sold, /已售出 \/ Sold/, 'a sold listing unfurled as if it were on sale')
+  assert.match(reserved, /已预定 \/ Reserved/, 'a reserved listing unfurled as if it were on sale')
+  // The control: an on-sale listing must NOT be labelled, or the assertions
+  // above are satisfied by a card that says "sold" about everything.
+  assert.doesNotMatch(active, /Sold|Reserved|已售出|已预定/)
+  for (const label of [sold, reserved, active]) assert.match(label, /Desk lamp · \$15/)
+  // The status has to be read from the row, not guessed.
+  for (const select of selects) assert.match(select, /(^|,)status(,|$)/)
+})
+
 test('post share uses posts_visible before a separate public author lookup', async () => {
   const calls = []
   globalThis.fetch = async (input) => {
