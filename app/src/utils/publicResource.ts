@@ -182,10 +182,19 @@ function safeDimensions(raw: unknown, imageCount: number): Array<{ w: number; h:
     if (keys.length !== 2 || !keys.includes('w') || !keys.includes('h')) return []
     const w = entry.w
     const h = entry.h
+    if (!Number.isInteger(w) || !Number.isInteger(h)) return []
+    /*
+     * { w: 0, h: 0 } is the explicit unknown slot. The edit flow sends it for
+     * photos it kept but cannot measure (a remote URL), and it has to be a
+     * legal value or the whole array is rejected and the edit fails. Readers
+     * already treat a zero side as unknown and fall back to a default ratio.
+     */
+    if (w === 0 && h === 0) {
+      result.push({ w, h })
+      continue
+    }
     if (
-      !Number.isInteger(w)
-      || !Number.isInteger(h)
-      || w < 1
+      w < 1
       || h < 1
       || w > 8192
       || h > 8192
