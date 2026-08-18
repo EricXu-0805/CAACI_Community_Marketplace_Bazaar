@@ -5,18 +5,27 @@
  * generated text that has passed nothing, and it renders on a second member's
  * screen as their counterparty's words.
  *
- * The verdicts below are not hand-written. Each one is what PostgreSQL 17.10
- * returned when 089's own content_moderation_normalize + content_moderation_check
- * were installed in an empty database (empty moderation_keywords, so the only
- * reachable verdicts are contact_info and NULL) and handed this corpus. That
- * makes this a mirror test rather than a change detector: it fails when the JS
- * screen stops agreeing with what the database actually does, not merely when
- * someone edits a regex.
+ * The verdicts below are not hand-written. Each one is what PostgreSQL returned
+ * when content_moderation_normalize + content_moderation_check were installed in
+ * an empty database (empty moderation_keywords, so the only reachable verdicts
+ * are contact_info and NULL) and handed this corpus. That makes this a mirror
+ * test rather than a change detector: it fails when the JS screen stops agreeing
+ * with what the database actually does, not merely when someone edits a regex.
+ * Regenerated on 17.11 against 089 + 20260818162716, which moved 'vx' onto a
+ * copy that keeps the whitespace and reads it with latin word boundaries. Every
+ * verdict here is unchanged except "vxworks developer", which the old rule
+ * refused as contact info.
  *
  * If a later migration redefines content_moderation_check, the last assertion
  * here fails on purpose — regenerate these verdicts against the new definition
- * before updating it. The focused English regression below is the deliberate
- * output-only precision exception: generated "we chat" must not be withheld.
+ * before updating it.
+ *
+ * Two deliberate divergences, both toward withholding more than the trigger
+ * does, because this screens generated text rather than what a member typed:
+ * a translator that renders 微信 as "we chat" is the risk the trigger never
+ * sees. The focused English regression below keeps ordinary "we chat" flowing;
+ * the contextual cases after it ("contact me on we chat") stay withheld even
+ * though the trigger now allows them.
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -73,12 +82,29 @@ const CORPUS = [
   ["vx: hello", "contact_info"],
   ["v我50", "contact_info"],
   ["v信 abc", "contact_info"],
-  ["vxworks developer", "contact_info"],
+  ["vxworks developer", ""],
+  ["VxWorks dev board, $40", ""],
   ["ＷｅＣｈａｔ", "contact_info"],
   ["微信", "contact_info"],
   ["微 信", "contact_info"],
   ["lamp $15, wechat abc, call 13812345678", "contact_info"],
   ["面交 or 邮寄，微信同号", "contact_info"],
+  ["TV, Xbox", ""],
+  ["Selling my TV, Xbox and a desk", ""],
+  ["TV,Xbox bundle $200", ""],
+  ["55 inch TV + Xbox", ""],
+  ["Nintendo Switch, Xbox Series X", ""],
+  ["Nov X meetup at the Union", ""],
+  ["text me and we chat about pickup", ""],
+  ["DM me, we chat later", ""],
+  ["we chatted yesterday about the price", ""],
+  ["add me on wechat", "contact_info"],
+  ["add me on we-chat", "contact_info"],
+  ["w.e.c.h.a.t me", "contact_info"],
+  ["vx号私聊", "contact_info"],
+  ["VX 12345", "contact_info"],
+  ["v.x. 12345", "contact_info"],
+  ["加 微 信 详 聊", "contact_info"],
   ["", ""],
   ["   ", ""],
   ["普通描述没有联系方式", ""],
@@ -101,6 +127,13 @@ test('the output screen reproduces what content_moderation_check does to the sam
   // that answers the same way every time.
   const positives = CORPUS.filter(([, verdict]) => verdict === 'contact_info').length
   assert.ok(positives >= 20 && CORPUS.length - positives >= 15, 'the corpus lost its balance')
+
+  // The English that collapses into a WeChat keyword once the spaces come out
+  // is the half a corpus loses first, and losing it is what let the trigger
+  // refuse "TV, Xbox" for months.
+  const collisions = CORPUS.filter(([text, verdict]) =>
+    verdict === '' && /xbox|we chat|we chatted|nov x|vxworks/i.test(text)).length
+  assert.ok(collisions >= 8, 'lost the English that collapses into a WeChat keyword')
 })
 
 test('the output screen does not join ordinary English words into WeChat', async () => {
@@ -401,7 +434,7 @@ test('the contact_info branches still live where these verdicts came from', asyn
 
   assert.equal(
     definitions.at(-1),
-    '089_moderation_nfkc_normalize.sql',
+    '20260818162716_latin_contact_keywords_need_word_boundaries.sql',
     'content_moderation_check was redefined after 089 — regenerate the corpus verdicts in '
       + 'this file against the new definition, then update the JS screen in api/translate.js '
       + 'to match before changing this assertion',

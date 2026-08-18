@@ -88,8 +88,8 @@ Vercel Edge API
 | 20260717–22… | `supabase/migrations/` + `_ops/` | 公共写入、双向屏蔽、证据/注销、停权/admin、成交评分、FK、Storage、private Realtime、邮件 attribution/claim、Data API 精确 ACL、管理员令牌生命周期、确定性分页、真实 FK 与 ACL 尾部等候选修复；微信密码凭据退役保留为未来重新开放微信身份前的独立兼容门 |
 | 20260801–11… | `supabase/migrations/` + `_ops/` | 首版认证隐私 consent、指纹上限 LRU 修复，以及必须按顺序执行的写入暂停桥与有界 churn limiter |
 
-仓库当前共有 137 个 migration SQL 文件：88 条三位数历史迁移、41 条 2026-07
-审计候选、3 条后续 2026-07 production tail，以及 5 条 2026-08 前向迁移。
+仓库当前共有 138 个 migration SQL 文件：88 条三位数历史迁移、41 条 2026-07
+审计候选、3 条后续 2026-07 production tail，以及 6 条 2026-08 前向迁移。
 生产 ledger 的 34/38 → 37/38 和“38 条候选”是当时发布追踪的历史口径，
 不是当前文件数或当前托管环境证明。前 4 条 2026-08 迁移分别为 08-01 consent、
 08-08 fingerprint eviction、`20260811140018` quiescence bridge，以及在
@@ -102,7 +102,11 @@ Vercel Edge API
 新建 `public.user_email_prefs` 与 `set_my_email_language(text)`，让退信提醒和
 约见邮件能按收件人自己选的语言发送；它刻意不往 `public.profiles` 加列，
 理由写在该迁移的头注释里（`get_my_profile()` 的复合别名被 Plaza ACL 契约按
-33 列钉死）。托管 Realtime canary 的
+33 列钉死）。第 6 条 `20260818162716_latin_contact_keywords_need_word_boundaries.sql`
+把 `content_moderation_check` 里的 `wechat` / `vx` 两条拉丁关键词挪到保留空格的
+副本上、按拉丁词边界匹配：在剥掉分隔符的副本上 `TV, Xbox` 会塌成 `tvxbox`（含
+`vx`）、`we chat` 会塌成 `wechat`，触发器因此把卖游戏机和约时间的帖子当联系方式
+拒掉。**尚未上生产**，需要 Eric 逐条批准执行。托管 Realtime canary 的
 pg_cron 前置脚本已移出迁移历史，改放 `_ops/hosted_realtime_canary/`——它只在
 获批的 staging 项目上执行，生产不装 pg_cron。
 合并前生产 ledger 已逐条核对为 34/38；依次完成 145042、152000、161200 三条

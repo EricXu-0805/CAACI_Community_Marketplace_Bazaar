@@ -66,6 +66,16 @@ const MUST_ALLOW = [
   ['course numbers', 'ECE 220 CS 225 MATH 241 textbooks'],
   ['digit run longer than a phone number', 'model 12345678901234'],
   ['calculator serial', 'TI-84 Plus CE serial 1234567890'],
+  // Two WeChat keywords are ordinary English once the spaces come out.
+  ['a console, after the comma', 'TV, Xbox'],
+  ['a console, in a sentence', 'Selling my TV, Xbox and a desk'],
+  ['a console, plus separated', '55 inch TV + Xbox'],
+  ['a console, no separator', 'TV,Xbox bundle $200'],
+  ['chat as a verb', 'text me and we chat about pickup'],
+  ['chat as a verb, comma', 'DM me, we chat later'],
+  ['chat in the past tense', 'we chatted yesterday about the price'],
+  ['a month and a letter', 'Nov X meetup at the Union'],
+  ['v before x inside a word', 'Nintendo Switch, Xbox Series X'],
 ]
 
 const MUST_REFUSE = [
@@ -90,6 +100,19 @@ const MUST_REFUSE = [
   ['email', 'reach me at a@b.edu'],
   ['email, full width', 'reach me at ａ＠ｂ．ｅｄｕ'],
   ['WeChat', '加微信详聊'],
+  ['WeChat, latin', 'add me on wechat'],
+  ['WeChat, latin, capitalized', 'WeChat me for pickup'],
+  ['WeChat, latin, hyphen wedged in', 'add me on we-chat'],
+  ['WeChat, latin, letter by letter', 'w.e.c.h.a.t me'],
+  ['WeChat, pinyin', '加weixin聊'],
+  ['WeChat, pinyin spaced', 'wei xin 详聊'],
+  ['vx, the shorthand', 'vx: illinimarket'],
+  ['vx, with a Chinese suffix', 'vx号私聊'],
+  ['vx, dotted', 'v.x. 12345'],
+  ['vx, capitalized', 'VX 12345'],
+  ['加v', '加v详聊'],
+  ['加 微 信, spaced out', '加 微 信 详 聊'],
+  ['v信', 'v信联系'],
 ]
 
 test('ordinary listing copy is not refused as contact info', async () => {
@@ -114,6 +137,13 @@ test('a phone number is refused however it is punctuated', async () => {
 test('the corpus keeps both halves, so no constant answer can satisfy it', () => {
   assert.ok(MUST_ALLOW.length >= 12, 'lost the must-allow half')
   assert.ok(MUST_REFUSE.length >= 16, 'lost the must-refuse half')
+  // Both halves have to carry WeChat, or moving a keyword between the copies
+  // can be green while it stops catching anything, or while it refuses
+  // ordinary English.
+  const wechatAllowed = MUST_ALLOW.filter(([, t]) => /xbox|we chat|we chatted|nov x/i.test(t)).length
+  const wechatRefused = MUST_REFUSE.filter(([, t]) => /wechat|we-chat|w\.e\.c|vx|v\.x|微信|weixin|wei xin|加v|v信|微 信/i.test(t)).length
+  assert.ok(wechatAllowed >= 6, 'lost the English that collapses into a WeChat keyword')
+  assert.ok(wechatRefused >= 10, 'lost the WeChat spellings')
   // The separator spellings are the ones a corpus loses first, and losing them
   // is what let a leak ship green.
   const punctuated = MUST_REFUSE.filter(([, text]) => /[、，。_+,]|\s\s|\d\s\d\s\d/.test(text)).length
