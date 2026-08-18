@@ -364,6 +364,96 @@ test('verification maps an RPC network failure to a retryable 503', async () => 
   assert.deepEqual(await response.json(), { error: 'verification_unavailable' })
 })
 
+/**
+ * Three caps guard this endpoint and one of them is not the caller's.
+ *
+ * The per-IP bucket is 24/hour and shared: campus wifi NATs a whole building
+ * behind one egress address, which is where this beta runs. Answering
+ * 'daily_cap' there told the 25th student in an hour that their own quota was
+ * spent and to come back tomorrow — wrong about whose limit it was, and wrong
+ * about the hour it actually resets in, so they stop trying for a day when ten
+ * minutes would have worked.
+ */
+test('a cap that belongs to the shared network is not reported as the caller’s own', async () => {
+  async function answerWhenExhausted(exhaustedBucketPrefix) {
+    globalThis.fetch = async (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : String(input))
+      if (url.pathname === '/auth/v1/user') return json({ id: USER_ID })
+      if (url.pathname === '/rest/v1/rpc/edge_rate_hit') {
+        const bucket = JSON.parse(init.body).bucket_in
+        return json(!bucket.startsWith(exhaustedBucketPrefix))
+      }
+      if (url.pathname === '/rest/v1/profiles') return json([{ is_illini_verified: false }])
+      throw new Error(`unexpected fetch ${url}`)
+    }
+    const handler = await loadHandler({
+      ...supabaseEnv,
+      RESEND_API_KEY: 'resend-key',
+    }, SEND_API_URL)
+    const response = await handler(new Request('https://app.test/api/auth/send-illini-code', {
+      method: 'POST',
+      headers: {
+        Authorization: BEARER,
+        'Content-Type': 'application/json',
+        'x-forwarded-for': '203.0.113.9',
+      },
+      body: JSON.stringify({ email: 'student@illinois.edu' }),
+    }))
+    return { status: response.status, ...(await response.json()) }
+  }
+
+  const network = await answerWhenExhausted('illini-send:hourly-ip')
+  const mine = await answerWhenExhausted('illini-send:daily-user')
+  const target = await answerWhenExhausted('illini-send:daily-target')
+  const cooldown = await answerWhenExhausted('illini-send:cooldown')
+
+  assert.deepEqual(network, { status: 429, error: 'network_busy' })
+  // The controls. A cap that really is the caller's own must still say so, or
+  // the assertion above is satisfied by an endpoint that blames the network for
+  // everything — and every branch must stay a refusal.
+  assert.deepEqual(mine, { status: 429, error: 'daily_cap' })
+  assert.deepEqual(target, { status: 429, error: 'daily_cap' })
+  assert.deepEqual(cooldown, { status: 429, error: 'cooldown' })
+})
+
+/*
+ * Every refusal a student can do something about has to reach the screen as a
+ * sentence. errToast() falls back to a generic string for an unmapped code, so
+ * a new error name degrades quietly instead of breaking loudly.
+ *
+ * "Can do something about" is read off the status rather than a hand-kept list:
+ * a 4xx is the caller's to fix, a 405 is unreachable from the app, and a 5xx is
+ * ours — those go through the page's generic path on purpose.
+ */
+test('every actionable Illini refusal has copy in both languages', async () => {
+  const [send, verify, zh, en] = await Promise.all([
+    readFile(SEND_API_URL, 'utf8'),
+    readFile(API_URL, 'utf8'),
+    readFile(new URL('../app/src/composables/i18n/messages/zh.ts', import.meta.url), 'utf8'),
+    readFile(new URL('../app/src/composables/i18n/messages/en.ts', import.meta.url), 'utf8'),
+  ])
+  const REFUSAL_RE = /JSON\.stringify\(\{\s*error:\s*'([a-z_]+)'[^)]*\}\),\s*\{\s*status:\s*(\d{3})/g
+  const actionable = new Set()
+  const seen = new Set()
+  for (const source of [send, verify]) {
+    for (const [, code, status] of source.matchAll(REFUSAL_RE)) {
+      seen.add(code)
+      if (status.startsWith('4') && status !== '405') actionable.add(code)
+    }
+  }
+  assert.ok(seen.size >= 10, `only found ${seen.size} refusal codes — the scan stopped matching`)
+  assert.ok(actionable.size >= 6, `only found ${actionable.size} actionable refusals — the status split broke`)
+  assert.ok(actionable.has('network_busy'), 'the shared-network refusal is no longer a 4xx')
+
+  const missing = []
+  for (const code of [...actionable].sort()) {
+    for (const [lang, source] of [['zh', zh], ['en', en]]) {
+      if (!source.includes(`'illini.err.${code}'`)) missing.push(`${lang}: illini.err.${code}`)
+    }
+  }
+  assert.deepEqual(missing, [], `Illini refusals a student can act on with no copy:\n${missing.join('\n')}`)
+})
+
 test('Illini request bodies are bounded before verification or mail side effects', async () => {
   const verifyCalls = []
   globalThis.fetch = async (input) => {

@@ -274,6 +274,7 @@ const zh: Record<string, string> = {
   'illini.err.already_verified': '你已通过认证',
   'illini.err.cooldown': '请稍候再请求新验证码',
   'illini.err.daily_cap': '今天的验证次数已用完，请明天再试',
+  'illini.err.network_busy': '这个网络上的验证请求太多了，请过一会儿再试',
   'illini.err.no_pending': '请先获取验证码',
   'illini.err.expired': '验证码已过期，请重新获取',
   'illini.err.too_many_attempts': '尝试次数过多，请重新获取验证码',

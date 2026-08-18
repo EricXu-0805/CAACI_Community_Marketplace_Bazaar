@@ -274,6 +274,7 @@ const en: Record<string, string> = {
   'illini.err.already_verified': "You're already verified",
   'illini.err.cooldown': 'Please wait a moment before requesting another code',
   'illini.err.daily_cap': "You've reached today's verification limit — try again tomorrow",
+  'illini.err.network_busy': 'Too many verification requests from this network — try again shortly',
   'illini.err.no_pending': 'Request a code first',
   'illini.err.expired': 'That code expired — request a new one',
   'illini.err.too_many_attempts': 'Too many tries — request a new code',
