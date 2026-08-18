@@ -214,12 +214,38 @@ const BODY_SENTINELS = {
   },
 }
 
+/*
+ * The sold and price-drop triggers write the amount as '$' || price::text
+ * (migrations 005, 006, 065). price is DECIMAL(10,2), so the row carries
+ * '$25.00' and '$1234.50' where the app renders '$25' and '$1,234.50', and
+ * '$0.00' where every other surface says Free. Mirrors formatPrice in
+ * app/src/utils/index.ts; kept here rather than shared because this file is an
+ * edge function with no app imports.
+ */
+const PRICE_BODY_RE = /^\$(\d+(?:\.\d+)?)(?: → \$(\d+(?:\.\d+)?))?$/
+
+function priceText(amount, lang) {
+  if (amount === 0) return lang === 'zh' ? '免费' : lang === 'en' ? 'Free' : '免费 / Free'
+  const raw = Number.isInteger(amount) ? String(amount) : amount.toFixed(2)
+  const [whole, decimal] = raw.split('.')
+  return `$${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}${decimal ? `.${decimal}` : ''}`
+}
+
 function bodyText(raw, lang) {
   const forms = BODY_SENTINELS[raw]
-  if (!forms) return raw
-  if (lang === 'zh') return forms.zh
-  if (lang === 'en') return forms.en
-  return `${forms.zh} · ${forms.en}`
+  if (forms) {
+    if (lang === 'zh') return forms.zh
+    if (lang === 'en') return forms.en
+    return `${forms.zh} · ${forms.en}`
+  }
+  const amounts = PRICE_BODY_RE.exec(raw || '')
+  if (amounts) {
+    const [, from, to] = amounts
+    return to === undefined
+      ? priceText(Number(from), lang)
+      : `${priceText(Number(from), lang)} → ${priceText(Number(to), lang)}`
+  }
+  return raw
 }
 
 function rowHtml(n, lang) {

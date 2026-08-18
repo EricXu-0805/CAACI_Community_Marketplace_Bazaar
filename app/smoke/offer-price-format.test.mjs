@@ -18,6 +18,7 @@ import { readFile } from 'node:fs/promises'
 
 const UTILS_URL = new URL('../src/utils/index.ts', import.meta.url)
 const THREAD_URL = new URL('../src/components/ChatThread.vue', import.meta.url)
+const NOTIFICATIONS_URL = new URL('../src/composables/useNotifications.ts', import.meta.url)
 
 function extract(src, signature, what) {
   const start = src.indexOf(signature)
@@ -91,4 +92,65 @@ test('no call site prepends a second currency symbol', async () => {
     .map((line, i) => [i + 1, line])
     .filter(([, line]) => /\$\s*(\+\s*)?fmtOfferPrice|['"]\$['"]\s*\+\s*fmtOfferPrice/.test(line))
   assert.deepEqual(doubled.map(([n]) => n), [], `these lines add a second "$":\n  ${doubled.map(([n, l]) => `${n}: ${l.trim()}`).join('\n  ')}`)
+})
+
+/*
+ * The same question one surface further out. The sold and price-drop triggers
+ * write the amount as '$' || price::text (migrations 005, 006, 065) and price
+ * is DECIMAL(10,2), so the row itself carries '$25.00', '$1234.50' and
+ * '$0.00' — three spellings the app uses nowhere else, the last of which says
+ * a free item sold for nothing. It cannot be formatted at insert time either:
+ * the reader's language is not known there.
+ */
+const NOTIFICATION_BODIES = [
+  ['a whole amount loses its cents', '$25.00', '$25'],
+  ['thousands are grouped', '$1234.50', '$1,234.50'],
+  ['cents that matter are kept', '$40.55', '$40.55'],
+  ['a free item is not zero dollars', '$0.00', 'Free'],
+  ['a price drop keeps both sides', '$40.00 → $25.00', '$40 → $25'],
+  ['a drop to free says so', '$40.00 → $0.00', '$40 → Free'],
+]
+
+async function loadNotificationBodyText() {
+  const utils = await readFile(UTILS_URL, 'utf8')
+  const notifications = await readFile(NOTIFICATIONS_URL, 'utf8')
+  const formatPrice = extract(utils, 'export function formatPrice(', 'formatPrice')
+    .replace('export function', 'function')
+    .replace('price: number', 'price')
+  const sentinels = extract(notifications, 'const BODY_SENTINEL_KEYS', 'BODY_SENTINEL_KEYS')
+    .replace(': Record<string, string>', '')
+  const priceRe = notifications.slice(
+    notifications.indexOf('const PRICE_BODY_RE ='),
+    notifications.indexOf('\n', notifications.indexOf('const PRICE_BODY_RE =')),
+  )
+  assert.ok(priceRe.includes('/'), 'useNotifications.ts no longer declares PRICE_BODY_RE')
+  const body = extract(notifications, 'export function notificationBodyText(', 'notificationBodyText')
+    .replace('export function', 'function')
+    .replace(/notification: Notification,/, 'notification,')
+    .replace(/translate: \(key: string\) => string,/, 'translate,')
+  const js = `${formatPrice}\n${sentinels}\n${priceRe}\n${body}`.replace(/\): string \{/g, ') {')
+  return new Function(`${js}\nreturn notificationBodyText`)()
+}
+
+test('a notification prints an amount the way the rest of the app does', async () => {
+  const notificationBodyText = await loadNotificationBodyText()
+  const translate = key => (key === 'home.free' ? 'Free' : key)
+  const wrong = []
+  for (const [label, stored, expected] of NOTIFICATION_BODIES) {
+    const actual = notificationBodyText({ body: stored }, translate)
+    if (actual !== expected) wrong.push(`${label}: ${stored} -> ${actual} (want ${expected})`)
+  }
+  assert.deepEqual(wrong, [], `a stored amount reached the screen:\n  ${wrong.join('\n  ')}`)
+})
+
+test('a notification body that is not an amount is left alone', async () => {
+  // The control. Without it the reformatting above is satisfied by a function
+  // that returns a price for everything, or drops what it cannot parse.
+  const notificationBodyText = await loadNotificationBodyText()
+  const translate = key => (key === 'home.free' ? 'Free' : key)
+
+  assert.equal(notificationBodyText({ body: '你有 3 条未读消息' }, translate), '你有 3 条未读消息')
+  assert.equal(notificationBodyText({ body: '报价被接受 · Offer accepted' }, translate), '报价被接受 · Offer accepted')
+  // The sentinels still take precedence over everything.
+  assert.equal(notificationBodyText({ body: 'saved_search_match' }, translate), 'notif.savedSearchMatch')
 })
