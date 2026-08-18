@@ -140,7 +140,7 @@ async function responseForRequest(req, boundary) {
   if (id && SUPABASE_URL && SUPABASE_ANON_KEY) {
     const rows = await readPublicRows(
       `items_visible?id=eq.${encodeURIComponent(id)}`
-      + '&select=id,title,description,price,images,listing_type&limit=1',
+      + '&select=id,title,description,price,images,listing_type,status&limit=1',
     )
     item = rows[0] || null
   }
@@ -152,7 +152,15 @@ async function responseForRequest(req, boundary) {
       ? (item.price > 0 ? `求购预算 $${item.price}` : '求购 · 预算面议')
       : (item.price > 0 ? `$${item.price}` : '免费 Free')
   const namePrefix = item && item.listing_type === 'wanted' ? '求购 / Looking for: ' : ''
-  const title = item ? `${namePrefix}${item.title} · ${priceLabel}` : 'Illini Market · 校园二手交易'
+  // items_visible only hides 'deleted', so a sold or reserved listing unfurls
+  // here too. Without this the card is byte-identical to an on-sale one, and
+  // forwarding it to a group chat sends several people after something that is
+  // already gone. Wording matches the app's own status labels.
+  const statusPrefix = !item ? ''
+    : item.status === 'sold' ? '已售出 / Sold · '
+      : item.status === 'reserved' ? '已预定 / Reserved · '
+        : ''
+  const title = item ? `${statusPrefix}${namePrefix}${item.title} · ${priceLabel}` : 'Illini Market · 校园二手交易'
   const desc = item ? (item.description?.slice(0, 160) || `${priceLabel} on Illini Market`) : 'UIUC 校园二手交易平台'
   const fallbackImage = `${site}/static/app-icon-512.png`
   const image = safeImageUrl(item?.images?.[0], fallbackImage, site)
