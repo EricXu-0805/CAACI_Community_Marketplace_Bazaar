@@ -962,6 +962,13 @@ export interface CompressOptions {
   entryPoint?: string
 }
 
+/*
+ * The long edge every uploaded image is resized to. Exported because the
+ * dimensions we persist have to describe the resized object that ends up in
+ * storage, not the camera original that produced it.
+ */
+export const IMAGE_MAX_LONG_EDGE = 1080
+
 export function compressImage(src: string): Promise<string>
 export function compressImage(src: string, maxLongEdge: number, quality?: number): Promise<string>
 export function compressImage(src: string, options: CompressOptions): Promise<string>
@@ -970,7 +977,7 @@ export function compressImage(
   arg2?: number | CompressOptions,
   arg3?: number,
 ): Promise<string> {
-  let maxLongEdge = 1080
+  let maxLongEdge = IMAGE_MAX_LONG_EDGE
   let quality = 0.82
   let entryPoint: string | undefined
 
@@ -1328,6 +1335,34 @@ export function getImageDimensions(src: string): Promise<{ w: number; h: number 
     })
     // #endif
   })
+}
+
+/*
+ * Scale a measured natural size down to the object we actually upload.
+ *
+ * compressImage() resizes the long edge to IMAGE_MAX_LONG_EDGE before the
+ * bytes leave the device, so the camera's own numbers describe a file that
+ * never reaches storage. A recent iPhone shoots 24 MP by default and the
+ * write guard rejects anything past 24 000 000 pixels, which turned "publish
+ * a photo you just took" into a generic failure. Only the ratio is ever read
+ * back (dimsToAspectStyle), and scaling preserves it.
+ *
+ * { w: 0, h: 0 } is the explicit "unknown" slot and passes through unchanged.
+ */
+export function storedImageDimensions(
+  dims: { w: number; h: number },
+  maxLongEdge = IMAGE_MAX_LONG_EDGE,
+): { w: number; h: number } {
+  const w = Math.floor(dims?.w || 0)
+  const h = Math.floor(dims?.h || 0)
+  if (w < 1 || h < 1) return { w: 0, h: 0 }
+  const longEdge = Math.max(w, h)
+  if (longEdge <= maxLongEdge) return { w, h }
+  const scale = maxLongEdge / longEdge
+  return {
+    w: Math.max(1, Math.round(w * scale)),
+    h: Math.max(1, Math.round(h * scale)),
+  }
 }
 
 /*

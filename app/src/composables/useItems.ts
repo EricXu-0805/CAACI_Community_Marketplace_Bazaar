@@ -3,7 +3,7 @@ import { useSupabase } from './useSupabase'
 import { useModeration } from './useModeration'
 import { useI18n } from './useI18n'
 import type { Item, ItemCategory, ItemCondition, ItemSaleCandidate, ItemStatus } from '../types'
-import { compressImage, detectImageMimeType, expandSearch, friendlyErrorMessage, getImageDimensions } from '../utils'
+import { compressImage, detectImageMimeType, expandSearch, friendlyErrorMessage, getImageDimensions, storedImageDimensions } from '../utils'
 import { checkContent, clearLocalDuplicate, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
 import { mpTextGate, mpImageCheck } from './useWechatSecCheck'
 import { searchItemsWithCompatibility } from '../api/searchItems'
@@ -649,10 +649,12 @@ export function useItems() {
    * fails we skip BOTH — the caller's image_dimensions[] will still
    * line up 1:1 with the urls[] it writes into items.images.
    *
-   * Dimensions are measured against the original file so the stored
-   * aspect ratio matches the unscaled image the user uploaded. Any
-   * downscaling done by compressImage() preserves ratio, so the
-   * numbers stay meaningful after Supabase's render-time thumbnail.
+   * Dimensions are measured against the original file and then scaled
+   * to the size compressImage() actually uploads, so the stored pair
+   * describes the object sitting at the URL. Ratio is preserved, and
+   * ratio is the only thing read back. Recording the camera's own
+   * numbers instead made every photo from a 24 MP phone fail the
+   * write guard's pixel ceiling.
    */
   async function cleanupFailedUploadBatch(
     batchUrls: string[],
@@ -700,7 +702,7 @@ export function useItems() {
 
       try {
         assertAccountCurrent(accountToken, session.user.id)
-        const naturalDims = await getImageDimensions(filePath)
+        const naturalDims = storedImageDimensions(await getImageDimensions(filePath))
         assertAccountCurrent(accountToken, session.user.id)
 
         let uploadError: any = null
@@ -885,7 +887,7 @@ export function useItems() {
     const storagePath = `items/${session.user.id}/${fileName}`
     const candidateUrl = supabase.storage.from('item-images').getPublicUrl(storagePath).data.publicUrl
 
-    const naturalDims = await getImageDimensions(tempFile)
+    const naturalDims = storedImageDimensions(await getImageDimensions(tempFile))
     assertAccountCurrent(accountToken, session.user.id)
 
     // #ifdef H5

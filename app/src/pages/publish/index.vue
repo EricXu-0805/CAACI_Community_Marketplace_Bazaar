@@ -959,15 +959,18 @@ async function onSubmit() {
     /*
      * image_dimensions covers ONLY the newly uploaded images in this
      * call; pre-existing URLs (edit flow) don't get dimensions because
-     * we can't reliably measure arbitrary remote URLs client-side. The
-     * frontend still falls back to @load for those, so leaving their
-     * slots absent is correct. We use `null` pads rather than zeros so
-     * consumers can distinguish "unknown" from "0×0".
+     * we can't reliably measure arbitrary remote URLs client-side, and
+     * neither can a photo whose measurement failed. Those slots carry
+     * { w: 0, h: 0 }, which readers render as "unknown" and fall back
+     * to @load for. Dropping them instead left the array shorter than
+     * images[], and the write guard rejects an array that doesn't line
+     * up one-to-one — one unmeasurable photo failed the whole publish.
      */
-    const existingDims: Array<{ w: number; h: number } | null> = existing.map(() => null)
-    const finalDims = [...existingDims, ...uploadedDims].filter(
-      (d): d is { w: number; h: number } => !!d && d.w > 0 && d.h > 0,
-    )
+    const unknownDim = { w: 0, h: 0 }
+    const finalDims = [
+      ...existing.map(() => unknownDim),
+      ...uploadedDims.map(d => (d && d.w > 0 && d.h > 0 ? d : unknownDim)),
+    ]
 
     const trimmedTitle = form.title.trim()
     const trimmedDesc = form.description.trim()

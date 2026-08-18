@@ -136,7 +136,7 @@ test('fetchMyItems never caches or returns A after B becomes current', async () 
     './useSupabase': 'export function useSupabase(){ return { supabase: globalThis.__accountPageTestSupabase } }',
     './useModeration': 'export function useModeration(){ return { blockedIds: { value: new Set() }, ensureLoaded: async () => ({ ok: true }) } }',
     './useI18n': "export function useI18n(){ return { t: key => key, lang: { value: 'en' } } }",
-    '../utils': 'export const compressImage=async x=>x, detectImageMimeType=()=>\"image/jpeg\", expandSearch=x=>[x], friendlyErrorMessage=e=>String(e), getImageDimensions=async()=>({w:1,h:1})',
+    '../utils': 'export const compressImage=async x=>x, detectImageMimeType=()=>\"image/jpeg\", expandSearch=x=>[x], friendlyErrorMessage=e=>String(e), getImageDimensions=async()=>({w:1,h:1}), storedImageDimensions=d=>d',
     '../utils/contentSafety': 'export const checkContent=()=>({ok:true}), clearLocalDuplicate=()=>{}, isLocalDuplicate=()=>false, remoteModerate=async()=>({flagged:false,categories:[]})',
     './useWechatSecCheck': 'export const mpTextGate=async()=>{}, mpImageCheck=async()=>{}',
     '../api/searchItems': 'export const searchItemsWithCompatibility=async()=>({data:[],error:null,hasMore:false})',
