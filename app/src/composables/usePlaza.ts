@@ -7,7 +7,7 @@ import type { Post, PostComment } from '../types'
 import { expandSearch, friendlyErrorMessage } from '../utils'
 import { checkContent, clearLocalDuplicate, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
 import { mpTextGate } from './useWechatSecCheck'
-import { addBreadcrumb } from '../utils/sentry'
+import { addBreadcrumb, captureException } from '../utils/sentry'
 import {
   assertI18nWrite,
   assertPublicMediaWrite,
@@ -232,12 +232,16 @@ export function usePlaza() {
 
       if (currentUser.value && result.length > 0) {
         const postIds = result.map(p => p.id)
-        const { data: myLikes } = await supabase
+        const { data: myLikes, error: likeError } = await supabase
           .from('post_likes')
           .select('post_id')
           .eq('user_id', currentUser.value.id)
           .in('post_id', postIds)
         if (requestId !== latestRequestId) return
+        // A failed membership read leaves every post looking un-liked, which is
+        // indistinguishable from never having liked one. The feed is still worth
+        // showing, so this stays non-fatal — but it must not be invisible.
+        if (likeError) reportLikeMembershipFailure('plaza.post_like_membership', likeError)
         const likeSet = new Set((myLikes || []).map((l: any) => l.post_id))
         result.forEach(p => { p.liked_by_me = likeSet.has(p.id) })
       }
@@ -527,6 +531,19 @@ export function usePlaza() {
     posts.value = posts.value.filter(p => p.id !== postId)
   }
 
+  /*
+   * Constant message so Sentry groups these and the repeat count is the signal
+   * that a grant broke rather than one phone dropping a request.
+   */
+  function reportLikeMembershipFailure(source: string, readError: unknown): void {
+    // #ifdef H5
+    captureException(new Error('plaza: a like-membership read failed and rendered as un-liked'), {
+      tags: { source, error_name: (readError as any)?.code || (readError as any)?.name || '' },
+      level: 'warning',
+    })
+    // #endif
+  }
+
   async function toggleLike(post: Post) {
     if (!currentUser.value) throw new Error('Not authenticated')
     if (likeInFlight.has(post.id)) return
@@ -551,7 +568,12 @@ export function usePlaza() {
         if (!isAccountRequestCurrent(accountToken)) return
         if (error && error.code !== '23505') throw error
         post.liked_by_me = true
-        post.like_count = post.like_count + 1
+        // 23505 means the like was already there, so the trigger already
+        // counted it (migration 010) — the tap only corrected a stale heart.
+        // Incrementing anyway showed a count one higher than the server's until
+        // the next fetch, which is exactly what a failed like-membership read
+        // above sets up: it leaves every post looking un-liked.
+        if (!error) post.like_count = post.like_count + 1
       }
     } finally {
       // transitionAccount() clears A's ownership before B may acquire the same
@@ -584,7 +606,8 @@ export function usePlaza() {
         if (!isAccountRequestCurrent(accountToken)) return
         if (error && error.code !== '23505') throw error
         comment.liked_by_me = true
-        comment.like_count = (comment.like_count ?? 0) + 1
+        // Already liked → migration 040's trigger already counted it.
+        if (!error) comment.like_count = (comment.like_count ?? 0) + 1
       }
     } finally {
       if (likeInFlight.get(comment.id) === accountToken) likeInFlight.delete(comment.id)
@@ -608,11 +631,12 @@ export function usePlaza() {
 
     if (currentUser.value && result.length > 0) {
       const commentIds = result.map(c => c.id)
-      const { data: myLikes } = await supabase
+      const { data: myLikes, error: likeError } = await supabase
         .from('post_comment_likes')
         .select('comment_id')
         .eq('user_id', currentUser.value.id)
         .in('comment_id', commentIds)
+      if (likeError) reportLikeMembershipFailure('plaza.comment_like_membership', likeError)
       const likeSet = new Set((myLikes || []).map((l: any) => l.comment_id))
       result.forEach(c => { c.liked_by_me = likeSet.has(c.id) })
     }
