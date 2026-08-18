@@ -137,6 +137,15 @@ const OFFER_MEETUP_MESSAGES: Record<string, { en: string; zh: string }> = {
   'meetup not found':               { en: 'This meetup no longer exists.',            zh: '该面交安排已不存在' },
   'meetup is no longer pending':    { en: 'This meetup was already handled.',         zh: '该面交安排已被处理' },
   'meetup has expired':             { en: 'This meetup has expired.',                 zh: '该面交安排已过期' },
+  /* Raised by the chat boundary trigger (20260717141822) when the listing
+     closed or the conversation went away underneath an open thread. Without
+     these three the sentinel reaches MACHINE_SENTINEL below and the student is
+     told "Something went wrong" about a listing that was simply sold. Wording
+     matches chat.itemClosed, which the same thread already shows in place of
+     the buttons once it knows. */
+  'item_unavailable_for_offer':     { en: 'This listing is closed, so this action is no longer available.', zh: '该商品已结束交易，无法再执行此操作' },
+  'item_unavailable_for_meetup':    { en: 'This listing is closed, so this action is no longer available.', zh: '该商品已结束交易，无法再执行此操作' },
+  'conversation_unavailable':       { en: 'This conversation is no longer available.', zh: '该会话已不可用' },
 }
 
 const MODERATION_MESSAGES: Record<string, { en: string; zh: string }> = {
