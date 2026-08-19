@@ -229,11 +229,11 @@ test('an unmapped database sentence is reported rather than guessed at', async (
   assert.deepEqual(reported, ['error_copy.db.the.widget.is.out.of.alignment'])
 })
 
-/* The shape check has to hold both ways: an app code that happens to look
-   close to a SQLSTATE must not have its message swallowed. */
+/* The shape check has to hold both ways: a code the app invented for itself
+   must not be mistaken for a SQLSTATE and have its message swallowed. */
 test('only a SQLSTATE-shaped code counts as coming from the database', async () => {
   const { friendlyErrorMessage, reported } = await loadFriendlyErrorMessage()
-  assert.equal(friendlyErrorMessage({ message: 'Upload stalled at 40%', code: 'PGRST202' }, 'en'), 'Upload stalled at 40%')
+  assert.equal(friendlyErrorMessage({ message: 'Upload stalled at 40%', code: 'ERR_UPLOAD' }, 'en'), 'Upload stalled at 40%')
   assert.equal(friendlyErrorMessage({ message: 'Upload stalled at 40%' }, 'en'), 'Upload stalled at 40%')
   assert.deepEqual(reported, [])
 })
@@ -257,4 +257,60 @@ test('the meetup races two students can hit say what happened', async () => {
     assert.match(friendlyErrorMessage({ message, code: '55000' }, lang), expected,
       `${message} (${lang}) fell back to the generic message`)
   }
+})
+
+/*
+ * PostgREST speaks for itself as well as for Postgres, and its codes are not
+ * SQLSTATEs, so the shape check above lets them past. Its sentences are the
+ * most operator-facing text in the whole path — 'Could not find the function
+ * public.set_my_email_language(p_lang) in the schema cache' is what a reader
+ * was shown while a migration sat unapplied, and 'JSON object requested,
+ * multiple (or no) rows returned' is any .single() that found nothing.
+ */
+const POSTGREST_DIAGNOSTICS = [
+  ['PGRST202', 'Could not find the function public.set_my_email_language(p_lang) in the schema cache'],
+  ['PGRST203', 'Could not choose the best candidate function between: public.f(a), public.f(b)'],
+  ['PGRST204', "Could not find the 'email_language' column of 'profiles' in the schema cache"],
+  ['PGRST116', 'JSON object requested, multiple (or no) rows returned'],
+  ['PGRST301', 'JWSError JWSInvalidSignature'],
+  ['PGRST302', 'Anonymous access is disabled'],
+]
+
+test("PostgREST's own diagnostics are not shown to the reader", async () => {
+  const { friendlyErrorMessage } = await loadFriendlyErrorMessage()
+  const leaked = []
+  for (const [code, message] of POSTGREST_DIAGNOSTICS) {
+    for (const lang of ['en', 'zh']) {
+      const out = friendlyErrorMessage({ code, message }, lang)
+      if (out === message) leaked.push(`${lang} ${code}`)
+      else if (lang === 'zh' && !HAS_CJK.test(out)) leaked.push(`zh ${code} -> ${out}`)
+    }
+  }
+  assert.deepEqual(leaked, [], `shown as PostgREST wrote it:\n  ${leaked.join('\n  ')}`)
+})
+
+/*
+ * A client that shipped ahead of its migration and an expired token look the
+ * same to the reader and could not be more different to fix, so they are told
+ * apart here — and only the first one is worth waking anybody for. An expired
+ * token is a normal thing that happens to everyone every hour; reporting it
+ * is how the last alarm ended up 80% one safe state.
+ */
+test('a migration that has not landed is reported; an expired token is not', async () => {
+  const behind = await loadFriendlyErrorMessage()
+  assert.match(behind.friendlyErrorMessage({ code: 'PGRST202', message: 'x' }, 'zh'), /刷新/)
+  assert.deepEqual(behind.reported, ['error_copy.postgrest.PGRST202'])
+
+  const expired = await loadFriendlyErrorMessage()
+  assert.match(expired.friendlyErrorMessage({ code: 'PGRST301', message: 'JWSError JWSInvalidSignature' }, 'zh'), /重新登录/)
+  assert.deepEqual(expired.reported, [], 'an expired token is a safe state and must not be reported')
+})
+
+/* Control: the branch must not swallow the copy already written for the one
+   PostgREST case that had it. */
+test('archive_conversation keeps the specific copy written for it', async () => {
+  const { friendlyErrorMessage } = await loadFriendlyErrorMessage()
+  const err = { code: 'PGRST202', message: 'Could not find the function public.archive_conversation in the schema cache' }
+  assert.match(friendlyErrorMessage(err, 'zh'), /对话归档/)
+  assert.match(friendlyErrorMessage(err, 'en'), /archiv/i)
 })

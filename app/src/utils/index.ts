@@ -256,6 +256,17 @@ const MACHINE_SENTINEL = /^[a-z0-9]+(_[a-z0-9]+)+(:[a-z0-9_]+)?$/
  */
 const SQLSTATE = /^[0-9A-Z]{5}$/
 
+/*
+ * PostgREST's own codes, which are not SQLSTATEs. Its diagnostics were written
+ * for whoever deployed the thing — 'Could not find the function
+ * public.set_my_email_language(p_lang) in the schema cache' — and reached the
+ * last line of friendlyErrorMessage unchanged. PGRST3xx is the auth family and
+ * an expired token is a normal thing to happen; a missing function or column
+ * is not, and means a client shipped ahead of its migration.
+ */
+const POSTGREST_CODE = /^PGRST\d{3}$/
+const POSTGREST_SCHEMA_BEHIND = new Set(['PGRST202', 'PGRST203', 'PGRST204'])
+
 export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string {
   if (!err) return ''
   const rawMessage = String(err?.message || err?.code || err || '')
@@ -365,6 +376,22 @@ export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string
       level: 'warning',
     })
     // #endif
+    return lang === 'zh' ? '操作失败' : 'Something went wrong'
+  }
+  const postgrestCode = String(err?.code || '')
+  if (POSTGREST_CODE.test(postgrestCode)) {
+    if (postgrestCode.startsWith('PGRST3')) {
+      return lang === 'zh' ? '请重新登录' : 'Please sign in again'
+    }
+    // #ifdef H5
+    captureException(new Error('friendlyErrorMessage: a PostgREST diagnostic reached the user'), {
+      tags: { source: `error_copy.postgrest.${postgrestCode}` },
+      level: 'warning',
+    })
+    // #endif
+    if (POSTGREST_SCHEMA_BEHIND.has(postgrestCode)) {
+      return lang === 'zh' ? '功能即将上线,请刷新后重试' : 'Feature rolling out — please refresh'
+    }
     return lang === 'zh' ? '操作失败' : 'Something went wrong'
   }
   return err?.message || (lang === 'zh' ? '操作失败' : 'Something went wrong')
