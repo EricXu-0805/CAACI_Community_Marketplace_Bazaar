@@ -137,6 +137,15 @@ const OFFER_MEETUP_MESSAGES: Record<string, { en: string; zh: string }> = {
   'meetup not found':               { en: 'This meetup no longer exists.',            zh: '该面交安排已不存在' },
   'meetup is no longer pending':    { en: 'This meetup was already handled.',         zh: '该面交安排已被处理' },
   'meetup has expired':             { en: 'This meetup has expired.',                 zh: '该面交安排已过期' },
+  /* Four more sentences from the same three meetup RPCs, and the same shape as
+     the ones above — two students racing each other over one listing. They were
+     missed because they are the only members of the family the database writes
+     as prose rather than as a sentinel, so nothing here matched and a zh reader
+     was shown the English verbatim. */
+  'a meetup proposal is already pending':                 { en: 'A meetup proposal is already waiting for a reply.',   zh: '已经有一个面交邀请在等回复' },
+  'a meetup is already confirmed; reschedule it instead': { en: 'A meetup is already confirmed — reschedule that one.', zh: '已经确认过一次面交，请改约那一次' },
+  'another meetup is already confirmed':                  { en: 'Another meetup is already confirmed.',                zh: '已经确认了另一次面交' },
+  'only an accepted meetup can be rescheduled':           { en: 'Only a confirmed meetup can be rescheduled.',         zh: '只有已确认的面交才能改约' },
   /* Raised by the chat boundary trigger (20260717141822) when the listing
      closed or the conversation went away underneath an open thread. Without
      these three the sentinel reaches MACHINE_SENTINEL below and the student is
@@ -238,6 +247,26 @@ const TRANSPORT_FAILURE = /load failed|failed to fetch|networkerror|network requ
  */
 const MACHINE_SENTINEL = /^[a-z0-9]+(_[a-z0-9]+)+(:[a-z0-9_]+)?$/
 
+/*
+ * Postgres reports every error as a five-character SQLSTATE, and PostgREST
+ * passes it through as `code` — so `code` of exactly that shape means the
+ * sentence in `message` was written by the database, for an operator, in
+ * English. The app's own codes ('SEARCH_SCHEMA_UNAVAILABLE') and PostgREST's
+ * ('PGRST202') are longer, so the shape separates them without a list.
+ */
+const SQLSTATE = /^[0-9A-Z]{5}$/
+
+/*
+ * PostgREST's own codes, which are not SQLSTATEs. Its diagnostics were written
+ * for whoever deployed the thing — 'Could not find the function
+ * public.set_my_email_language(p_lang) in the schema cache' — and reached the
+ * last line of friendlyErrorMessage unchanged. PGRST3xx is the auth family and
+ * an expired token is a normal thing to happen; a missing function or column
+ * is not, and means a client shipped ahead of its migration.
+ */
+const POSTGREST_CODE = /^PGRST\d{3}$/
+const POSTGREST_SCHEMA_BEHIND = new Set(['PGRST202', 'PGRST203', 'PGRST204'])
+
 export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string {
   if (!err) return ''
   const rawMessage = String(err?.message || err?.code || err || '')
@@ -332,6 +361,37 @@ export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string
       level: 'warning',
     })
     // #endif
+    return lang === 'zh' ? '操作失败' : 'Something went wrong'
+  }
+  if (SQLSTATE.test(String(err?.code || ''))) {
+    /* Same reasoning as the sentinel guard above, for the half of the problem
+       it cannot see: a RAISE EXCEPTION whose message is a sentence rather than
+       an identifier reached the final line below and was shown word for word.
+       Whichever ones a student actually hits should get copy written for them
+       here; until then nobody reads 'only an accepted meetup can be
+       rescheduled' off a phone in Chinese. */
+    // #ifdef H5
+    captureException(new Error('friendlyErrorMessage: a database sentence reached the user'), {
+      tags: { source: `error_copy.db.${rawMessage.toLowerCase().replace(/[^a-z0-9]+/g, '.')}`.slice(0, 96) },
+      level: 'warning',
+    })
+    // #endif
+    return lang === 'zh' ? '操作失败' : 'Something went wrong'
+  }
+  const postgrestCode = String(err?.code || '')
+  if (POSTGREST_CODE.test(postgrestCode)) {
+    if (postgrestCode.startsWith('PGRST3')) {
+      return lang === 'zh' ? '请重新登录' : 'Please sign in again'
+    }
+    // #ifdef H5
+    captureException(new Error('friendlyErrorMessage: a PostgREST diagnostic reached the user'), {
+      tags: { source: `error_copy.postgrest.${postgrestCode}` },
+      level: 'warning',
+    })
+    // #endif
+    if (POSTGREST_SCHEMA_BEHIND.has(postgrestCode)) {
+      return lang === 'zh' ? '功能即将上线,请刷新后重试' : 'Feature rolling out — please refresh'
+    }
     return lang === 'zh' ? '操作失败' : 'Something went wrong'
   }
   return err?.message || (lang === 'zh' ? '操作失败' : 'Something went wrong')

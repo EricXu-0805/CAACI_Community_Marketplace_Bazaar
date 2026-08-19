@@ -155,3 +155,162 @@ test('specific messages are not flattened into the generic one', async () => {
       `${message} (${lang}) lost its specific copy`)
   }
 })
+
+/*
+ * The database writes sentences too, and the corpus above cannot see them: it
+ * reads throw sites out of src/, and 'a meetup proposal is already pending' is
+ * raised by propose_meetup, not by any TypeScript. Those messages contain
+ * spaces, so MACHINE_SENTINEL never matched, and they fell through to the last
+ * line of friendlyErrorMessage and were shown word for word — lowercase, in
+ * English, to whoever was reading. Two students racing each other over one
+ * listing is enough to produce all four of the meetup ones.
+ *
+ * Postgres tags every error with a five-character SQLSTATE that PostgREST
+ * passes through as `code`, and the data layer rethrows the PostgrestError
+ * whole (`if (error) throw error`), so `code` is still there at the toast site
+ * and is what separates a database sentence from anything the app wrote.
+ */
+const MIGRATIONS = new URL('../../supabase/migrations/', import.meta.url)
+
+/* Every SQLSTATE the migrations actually raise with, minus the two that
+   friendlyErrorMessage already branches on by code (42501, 23514). */
+const DB_ERRCODES = ['P0001', '55000', '22023', 'P0002', '28000', '40001', '55P03']
+
+/*
+ * Messages raised from inside a function body — the ones a request can reach.
+ * `DO $$ ... $$` blocks run once while the migration is being applied and can
+ * never surface to anybody, so they are cut out first; leaving them in buries
+ * the twenty-one that matter under a hundred more operator assertions.
+ */
+async function databaseSentences() {
+  const found = new Set()
+  for (const entry of await readdir(MIGRATIONS)) {
+    if (!entry.endsWith('.sql')) continue
+    const text = await readFile(new URL(entry, MIGRATIONS), 'utf8')
+    const runtime = text.replace(/\bDO\s+\$([a-zA-Z_]*)\$[\s\S]*?\$\1\$/g, '')
+    for (const m of runtime.matchAll(/RAISE\s+EXCEPTION\s+'((?:[^']|'')*)'/gi)) {
+      const message = m[1].replace(/''/g, "'")
+      // A '%' is a format placeholder, so the string is a diagnostic being
+      // assembled for an operator, never a finished sentence for a reader.
+      if (message.includes('%') || !message.includes(' ')) continue
+      found.add(message)
+    }
+  }
+  return [...found].sort()
+}
+
+test('a sentence raised by the database is never shown word for word', async () => {
+  const { friendlyErrorMessage } = await loadFriendlyErrorMessage()
+  const sentences = await databaseSentences()
+  assert.ok(sentences.length > 10, 'the migration scan found nothing — it stopped reading the corpus')
+  assert.ok(
+    sentences.includes('a meetup proposal is already pending'),
+    'the scan no longer sees the message this test was written for. Either the '
+    + 'migrations reworded it — in which case the OFFER_MEETUP_MESSAGES entry for '
+    + 'it is dead too and both need the new wording — or the scan is broken.',
+  )
+
+  const leaked = []
+  for (const message of sentences) {
+    for (const code of DB_ERRCODES) {
+      for (const lang of ['en', 'zh']) {
+        const out = friendlyErrorMessage({ message, code }, lang)
+        if (out === message) leaked.push(`${lang} ${code}: ${message}`)
+        else if (lang === 'zh' && !HAS_CJK.test(out)) leaked.push(`zh ${code}: ${message} -> ${out}`)
+      }
+    }
+  }
+  assert.deepEqual(leaked, [], `shown to the user as the database wrote it:\n  ${leaked.join('\n  ')}`)
+})
+
+test('an unmapped database sentence is reported rather than guessed at', async () => {
+  const { friendlyErrorMessage, reported } = await loadFriendlyErrorMessage()
+  assert.equal(friendlyErrorMessage({ message: 'the widget is out of alignment', code: '55000' }, 'en'), 'Something went wrong')
+  assert.deepEqual(reported, ['error_copy.db.the.widget.is.out.of.alignment'])
+})
+
+/* The shape check has to hold both ways: a code the app invented for itself
+   must not be mistaken for a SQLSTATE and have its message swallowed. */
+test('only a SQLSTATE-shaped code counts as coming from the database', async () => {
+  const { friendlyErrorMessage, reported } = await loadFriendlyErrorMessage()
+  assert.equal(friendlyErrorMessage({ message: 'Upload stalled at 40%', code: 'ERR_UPLOAD' }, 'en'), 'Upload stalled at 40%')
+  assert.equal(friendlyErrorMessage({ message: 'Upload stalled at 40%' }, 'en'), 'Upload stalled at 40%')
+  assert.deepEqual(reported, [])
+})
+
+/*
+ * Control for the corpus test above, which the generic fallback satisfies for
+ * free: these four are races between two real people and have to say which one
+ * happened, or the student is told "操作失败" for arranging a meetup that had
+ * already been arranged.
+ */
+test('the meetup races two students can hit say what happened', async () => {
+  const { friendlyErrorMessage } = await loadFriendlyErrorMessage()
+  const cases = [
+    ['a meetup proposal is already pending', 'zh', /等回复/],
+    ['a meetup proposal is already pending', 'en', /waiting for a reply/],
+    ['a meetup is already confirmed; reschedule it instead', 'zh', /改约/],
+    ['another meetup is already confirmed', 'zh', /另一次面交/],
+    ['only an accepted meetup can be rescheduled', 'zh', /已确认/],
+  ]
+  for (const [message, lang, expected] of cases) {
+    assert.match(friendlyErrorMessage({ message, code: '55000' }, lang), expected,
+      `${message} (${lang}) fell back to the generic message`)
+  }
+})
+
+/*
+ * PostgREST speaks for itself as well as for Postgres, and its codes are not
+ * SQLSTATEs, so the shape check above lets them past. Its sentences are the
+ * most operator-facing text in the whole path — 'Could not find the function
+ * public.set_my_email_language(p_lang) in the schema cache' is what a reader
+ * was shown while a migration sat unapplied, and 'JSON object requested,
+ * multiple (or no) rows returned' is any .single() that found nothing.
+ */
+const POSTGREST_DIAGNOSTICS = [
+  ['PGRST202', 'Could not find the function public.set_my_email_language(p_lang) in the schema cache'],
+  ['PGRST203', 'Could not choose the best candidate function between: public.f(a), public.f(b)'],
+  ['PGRST204', "Could not find the 'email_language' column of 'profiles' in the schema cache"],
+  ['PGRST116', 'JSON object requested, multiple (or no) rows returned'],
+  ['PGRST301', 'JWSError JWSInvalidSignature'],
+  ['PGRST302', 'Anonymous access is disabled'],
+]
+
+test("PostgREST's own diagnostics are not shown to the reader", async () => {
+  const { friendlyErrorMessage } = await loadFriendlyErrorMessage()
+  const leaked = []
+  for (const [code, message] of POSTGREST_DIAGNOSTICS) {
+    for (const lang of ['en', 'zh']) {
+      const out = friendlyErrorMessage({ code, message }, lang)
+      if (out === message) leaked.push(`${lang} ${code}`)
+      else if (lang === 'zh' && !HAS_CJK.test(out)) leaked.push(`zh ${code} -> ${out}`)
+    }
+  }
+  assert.deepEqual(leaked, [], `shown as PostgREST wrote it:\n  ${leaked.join('\n  ')}`)
+})
+
+/*
+ * A client that shipped ahead of its migration and an expired token look the
+ * same to the reader and could not be more different to fix, so they are told
+ * apart here — and only the first one is worth waking anybody for. An expired
+ * token is a normal thing that happens to everyone every hour; reporting it
+ * is how the last alarm ended up 80% one safe state.
+ */
+test('a migration that has not landed is reported; an expired token is not', async () => {
+  const behind = await loadFriendlyErrorMessage()
+  assert.match(behind.friendlyErrorMessage({ code: 'PGRST202', message: 'x' }, 'zh'), /刷新/)
+  assert.deepEqual(behind.reported, ['error_copy.postgrest.PGRST202'])
+
+  const expired = await loadFriendlyErrorMessage()
+  assert.match(expired.friendlyErrorMessage({ code: 'PGRST301', message: 'JWSError JWSInvalidSignature' }, 'zh'), /重新登录/)
+  assert.deepEqual(expired.reported, [], 'an expired token is a safe state and must not be reported')
+})
+
+/* Control: the branch must not swallow the copy already written for the one
+   PostgREST case that had it. */
+test('archive_conversation keeps the specific copy written for it', async () => {
+  const { friendlyErrorMessage } = await loadFriendlyErrorMessage()
+  const err = { code: 'PGRST202', message: 'Could not find the function public.archive_conversation in the schema cache' }
+  assert.match(friendlyErrorMessage(err, 'zh'), /对话归档/)
+  assert.match(friendlyErrorMessage(err, 'en'), /archiv/i)
+})
