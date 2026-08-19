@@ -92,7 +92,9 @@ test('detail and seller actions reject late results from a replaced account/page
 
   const ownerStatus = functionBlock(detail, 'async function updateOwnedItemStatus', 'function onMarkReserved')
   assert.match(ownerStatus, /await updateItemStatus[^]*?if \(!actionIsCurrent\(\)\) return[^]*?item\.value\.status/)
-  assert.match(ownerStatus, /catch \{\s*if \(!actionIsCurrent\(\)\) return/)
+  // Whether the catch binds the error is up to the handler; what this pins is
+  // that it re-checks currency before it touches anything on screen.
+  assert.match(ownerStatus, /catch (?:\([^)]*\) )?\{\s*if \(!actionIsCurrent\(\)\) return/)
 
   const messages = source('src/composables/useMessages.ts')
   const conversation = functionBlock(messages, 'async function getOrCreateConversation', 'function subscribeToMessages')

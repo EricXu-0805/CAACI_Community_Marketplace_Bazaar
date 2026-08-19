@@ -357,7 +357,8 @@ import { useFavorites } from '../../composables/useFavorites'
 import { useNotifications } from '../../composables/useNotifications'
 import { useLongPress } from '../../composables/useLongPress'
 import type { Item } from '../../types'
-import { formatPrice, listingPriceLabel, thumbUrl } from '../../utils'
+import { formatPrice, friendlyErrorMessage, listingPriceLabel, thumbUrl } from '../../utils'
+import { captureException } from '../../utils/sentry'
 import { safeAvatarThumbUrl } from '../../utils/publicResource'
 import {
   createAccountPageScope,
@@ -365,7 +366,20 @@ import {
 } from '../../composables/accountPageScope'
 import { readAccountPrivateStorage } from '../../api/accountLocalPrivacy'
 
-const { t, localize } = useI18n()
+const { t, lang, localize } = useI18n()
+
+/*
+ * Every action an owner takes on their own listing used to end at the same
+ * fixed sentence — 'Failed to update' — whatever had actually gone wrong, and
+ * none of them told anybody. Marking sold is the write that creates the deal
+ * row every rating hangs off and can fail ten distinct ways; a delete that
+ * fails is not an update at all.
+ */
+function reportOwnerActionFailure(source: string, error: unknown): void {
+  // #ifdef H5
+  captureException(error, { tags: { source }, level: 'warning' })
+  // #endif
+}
 const { isDark } = useTheme()
 const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
@@ -755,8 +769,14 @@ async function markAsSold(id: string, actionRequest: AccountPageRequest) {
             if (!(await loadMine(uid, { forceItems: true })).itemsOk) return
             if (!isCurrent()) return
             uni.showToast({ title: t('profile.markedSold'), icon: 'success' })
-          } catch {
-            if (isCurrent()) uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+          } catch (error: any) {
+            if (!isCurrent()) return
+            reportOwnerActionFailure('profile.mark_item_sold', error)
+            uni.showToast({
+              title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('profile.markFail'),
+              icon: 'none',
+              duration: 2500,
+            })
           }
         },
       })
@@ -772,8 +792,14 @@ async function markAsSold(id: string, actionRequest: AccountPageRequest) {
         if (candidate) confirmCandidate(candidate)
       },
     })
-  } catch {
-    if (isCurrent()) uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+  } catch (error: any) {
+    if (!isCurrent()) return
+    reportOwnerActionFailure('profile.sale_candidates', error)
+    uni.showToast({
+      title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('profile.markFail'),
+      icon: 'none',
+      duration: 2500,
+    })
   }
 }
 
@@ -786,10 +812,14 @@ async function unreserveItem(id: string, actionRequest: AccountPageRequest) {
     if (!(await loadMine(uid, { forceItems: true })).itemsOk) return
     if (!profileActionScope.isCurrent(actionRequest)) return
     uni.showToast({ title: t('detail.unreserved'), icon: 'success' })
-  } catch {
-    if (profileActionScope.isCurrent(actionRequest)) {
-      uni.showToast({ title: t('profile.markFail'), icon: 'none' })
-    }
+  } catch (error: any) {
+    if (!profileActionScope.isCurrent(actionRequest)) return
+    reportOwnerActionFailure('profile.unreserve_item', error)
+    uni.showToast({
+      title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('profile.markFail'),
+      icon: 'none',
+      duration: 2500,
+    })
   }
 }
 
@@ -807,10 +837,14 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
         if (!(await loadMine(uid, { forceItems: true })).itemsOk) return
         if (!profileActionScope.isCurrent(actionRequest)) return
         uni.showToast({ title: t('profile.deleted'), icon: 'success' })
-      } catch {
-        if (profileActionScope.isCurrent(actionRequest)) {
-          uni.showToast({ title: t('profile.markFail'), icon: 'none' })
-        }
+      } catch (error: any) {
+        if (!profileActionScope.isCurrent(actionRequest)) return
+        reportOwnerActionFailure('profile.delete_item', error)
+        uni.showToast({
+          title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('profile.deleteFailed'),
+          icon: 'none',
+          duration: 2500,
+        })
       }
     },
   })
