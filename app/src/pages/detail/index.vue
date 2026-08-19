@@ -1096,9 +1096,14 @@ async function updateOwnedItemStatus(nextStatus: 'reserved' | 'active', successK
     if (!actionIsCurrent()) return
     if (item.value) item.value.status = nextStatus
     uni.showToast({ title: t(successKey), icon: 'success' })
-  } catch {
+  } catch (error: any) {
     if (!actionIsCurrent()) return
-    uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+    reportOwnerActionFailure(`detail.set_status_${nextStatus}`, error)
+    uni.showToast({
+      title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('profile.markFail'),
+      icon: 'none',
+      duration: 2500,
+    })
   }
 }
 
@@ -1108,6 +1113,19 @@ function onMarkReserved() {
 
 function onUnreserve() {
   return updateOwnedItemStatus('active', 'detail.unreserved')
+}
+
+/*
+ * Marking an item sold is the write that creates the deal row every rating
+ * hangs off, and it can fail ten different ways the seller cannot see. Two of
+ * its three entry points threw the error away and showed one fixed sentence,
+ * so the flow that has never once completed in production would also have
+ * failed without leaving a trace.
+ */
+function reportOwnerActionFailure(source: string, error: unknown): void {
+  // #ifdef H5
+  captureException(error, { tags: { source }, level: 'warning' })
+  // #endif
 }
 
 async function onMarkSold() {
@@ -1160,8 +1178,14 @@ async function onMarkSold() {
             if (!actionIsCurrent()) return
             if (item.value) item.value.status = 'sold'
             uni.showToast({ title: t('profile.markedSold'), icon: 'success' })
-          } catch {
-            if (actionIsCurrent()) uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+          } catch (error: any) {
+            if (!actionIsCurrent()) return
+            reportOwnerActionFailure('detail.mark_item_sold', error)
+            uni.showToast({
+              title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('profile.markFail'),
+              icon: 'none',
+              duration: 2500,
+            })
           }
         },
       })
@@ -1177,8 +1201,14 @@ async function onMarkSold() {
         if (candidate) confirmCandidate(candidate)
       },
     })
-  } catch {
-    if (actionIsCurrent()) uni.showToast({ title: t('profile.markFail'), icon: 'none' })
+  } catch (error: any) {
+    if (!actionIsCurrent()) return
+    reportOwnerActionFailure('detail.sale_candidates', error)
+    uni.showToast({
+      title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('profile.markFail'),
+      icon: 'none',
+      duration: 2500,
+    })
   }
 }
 

@@ -1626,6 +1626,7 @@ function confirmAcceptedOfferSale(offer: Offer) {
         if (isCurrent()) uni.showToast({ title: t('profile.markedSold'), icon: 'success' })
       } catch (error: any) {
         if (!isCurrent()) return
+        captureException(error, { tags: { source: 'chat.mark_item_sold' } })
         uni.showToast({
           title: friendlyErrorMessage(error, lang.value as 'en' | 'zh'),
           icon: 'none',

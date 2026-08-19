@@ -436,6 +436,7 @@ const zh: Record<string, string> = {
   'profile.deleteTitle': '确认删除？',
   'profile.deleteConfirm': '该商品将从你的列表中永久移除。',
   'profile.deleted': '已删除',
+  'profile.deleteFailed': '删除失败',
   'profile.noSaved': '还没有收藏的商品',
   'profile.noSold': '还没有已售商品',
   'profile.history': '最近浏览',

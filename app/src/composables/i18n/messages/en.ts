@@ -438,6 +438,7 @@ const en: Record<string, string> = {
   'profile.deleteTitle': 'Delete item?',
   'profile.deleteConfirm': 'This item will be permanently removed from your listings.',
   'profile.deleted': 'Item deleted',
+  'profile.deleteFailed': 'Could not delete that listing',
   'profile.noSaved': 'No saved items yet',
   'profile.noSold': 'No sold items yet',
   'profile.history': 'Recently Viewed',
