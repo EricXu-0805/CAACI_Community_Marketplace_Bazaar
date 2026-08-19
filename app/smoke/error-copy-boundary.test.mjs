@@ -155,3 +155,106 @@ test('specific messages are not flattened into the generic one', async () => {
       `${message} (${lang}) lost its specific copy`)
   }
 })
+
+/*
+ * The database writes sentences too, and the corpus above cannot see them: it
+ * reads throw sites out of src/, and 'a meetup proposal is already pending' is
+ * raised by propose_meetup, not by any TypeScript. Those messages contain
+ * spaces, so MACHINE_SENTINEL never matched, and they fell through to the last
+ * line of friendlyErrorMessage and were shown word for word — lowercase, in
+ * English, to whoever was reading. Two students racing each other over one
+ * listing is enough to produce all four of the meetup ones.
+ *
+ * Postgres tags every error with a five-character SQLSTATE that PostgREST
+ * passes through as `code`, and the data layer rethrows the PostgrestError
+ * whole (`if (error) throw error`), so `code` is still there at the toast site
+ * and is what separates a database sentence from anything the app wrote.
+ */
+const MIGRATIONS = new URL('../../supabase/migrations/', import.meta.url)
+
+/* Every SQLSTATE the migrations actually raise with, minus the two that
+   friendlyErrorMessage already branches on by code (42501, 23514). */
+const DB_ERRCODES = ['P0001', '55000', '22023', 'P0002', '28000', '40001', '55P03']
+
+/*
+ * Messages raised from inside a function body — the ones a request can reach.
+ * `DO $$ ... $$` blocks run once while the migration is being applied and can
+ * never surface to anybody, so they are cut out first; leaving them in buries
+ * the twenty-one that matter under a hundred more operator assertions.
+ */
+async function databaseSentences() {
+  const found = new Set()
+  for (const entry of await readdir(MIGRATIONS)) {
+    if (!entry.endsWith('.sql')) continue
+    const text = await readFile(new URL(entry, MIGRATIONS), 'utf8')
+    const runtime = text.replace(/\bDO\s+\$([a-zA-Z_]*)\$[\s\S]*?\$\1\$/g, '')
+    for (const m of runtime.matchAll(/RAISE\s+EXCEPTION\s+'((?:[^']|'')*)'/gi)) {
+      const message = m[1].replace(/''/g, "'")
+      // A '%' is a format placeholder, so the string is a diagnostic being
+      // assembled for an operator, never a finished sentence for a reader.
+      if (message.includes('%') || !message.includes(' ')) continue
+      found.add(message)
+    }
+  }
+  return [...found].sort()
+}
+
+test('a sentence raised by the database is never shown word for word', async () => {
+  const { friendlyErrorMessage } = await loadFriendlyErrorMessage()
+  const sentences = await databaseSentences()
+  assert.ok(sentences.length > 10, 'the migration scan found nothing — it stopped reading the corpus')
+  assert.ok(
+    sentences.includes('a meetup proposal is already pending'),
+    'the scan no longer sees the message this test was written for. Either the '
+    + 'migrations reworded it — in which case the OFFER_MEETUP_MESSAGES entry for '
+    + 'it is dead too and both need the new wording — or the scan is broken.',
+  )
+
+  const leaked = []
+  for (const message of sentences) {
+    for (const code of DB_ERRCODES) {
+      for (const lang of ['en', 'zh']) {
+        const out = friendlyErrorMessage({ message, code }, lang)
+        if (out === message) leaked.push(`${lang} ${code}: ${message}`)
+        else if (lang === 'zh' && !HAS_CJK.test(out)) leaked.push(`zh ${code}: ${message} -> ${out}`)
+      }
+    }
+  }
+  assert.deepEqual(leaked, [], `shown to the user as the database wrote it:\n  ${leaked.join('\n  ')}`)
+})
+
+test('an unmapped database sentence is reported rather than guessed at', async () => {
+  const { friendlyErrorMessage, reported } = await loadFriendlyErrorMessage()
+  assert.equal(friendlyErrorMessage({ message: 'the widget is out of alignment', code: '55000' }, 'en'), 'Something went wrong')
+  assert.deepEqual(reported, ['error_copy.db.the.widget.is.out.of.alignment'])
+})
+
+/* The shape check has to hold both ways: an app code that happens to look
+   close to a SQLSTATE must not have its message swallowed. */
+test('only a SQLSTATE-shaped code counts as coming from the database', async () => {
+  const { friendlyErrorMessage, reported } = await loadFriendlyErrorMessage()
+  assert.equal(friendlyErrorMessage({ message: 'Upload stalled at 40%', code: 'PGRST202' }, 'en'), 'Upload stalled at 40%')
+  assert.equal(friendlyErrorMessage({ message: 'Upload stalled at 40%' }, 'en'), 'Upload stalled at 40%')
+  assert.deepEqual(reported, [])
+})
+
+/*
+ * Control for the corpus test above, which the generic fallback satisfies for
+ * free: these four are races between two real people and have to say which one
+ * happened, or the student is told "操作失败" for arranging a meetup that had
+ * already been arranged.
+ */
+test('the meetup races two students can hit say what happened', async () => {
+  const { friendlyErrorMessage } = await loadFriendlyErrorMessage()
+  const cases = [
+    ['a meetup proposal is already pending', 'zh', /等回复/],
+    ['a meetup proposal is already pending', 'en', /waiting for a reply/],
+    ['a meetup is already confirmed; reschedule it instead', 'zh', /改约/],
+    ['another meetup is already confirmed', 'zh', /另一次面交/],
+    ['only an accepted meetup can be rescheduled', 'zh', /已确认/],
+  ]
+  for (const [message, lang, expected] of cases) {
+    assert.match(friendlyErrorMessage({ message, code: '55000' }, lang), expected,
+      `${message} (${lang}) fell back to the generic message`)
+  }
+})
