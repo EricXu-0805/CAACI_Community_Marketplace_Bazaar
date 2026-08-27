@@ -282,6 +282,20 @@ jobs:
             exit 1
           fi
 
+      # Before the browser starts, because a schema gap is not a UI problem and
+      # should not have to be read out of console noise. Merging deploys the
+      # frontend and nothing deploys supabase/migrations/, so the client can be
+      # ahead of the database with no other signal — that is what left main red
+      # from 2026-08-16 as two anonymous 404s, and what locked every user out on
+      # 2026-08-06. Reads only PostgREST's OpenAPI document, with the public key
+      # that already ships in the bundle.
+      - name: Verify staging has the RPCs this client calls
+        run: node scripts/verify-deployed-rpcs.mjs
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
       # This job runs the same `npm run smoke`, so it needs Chromium for the
       # CDP-based keyboard-journey sweep too.
       - name: Install Playwright (webkit + chromium)

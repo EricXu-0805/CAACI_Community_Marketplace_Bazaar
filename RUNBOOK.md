@@ -414,9 +414,53 @@ second. Both halves being in the same PR is not the problem; the order is.
    or revert needed.
 
 `scripts/consent-version-deploy-order-boundary.test.mjs` pins the half CI can
-see (the constant must already be accepted by the newest `record_consent` in
-the repo). It cannot prove the migration reached production. That part is this
-runbook and the operator.
+see from the repo alone (the constant must already be accepted by the newest
+`record_consent` in the repo). It cannot see any database.
+
+`scripts/verify-deployed-rpcs.mjs` covers the other half — it asks a real
+database. For every `supabase.rpc()` call in `app/src`, it posts that call's
+argument *names* as nulls and reads the status code. PostgREST resolves a
+function by name **and** argument set, so:
+
+| status | meaning |
+|---|---|
+| `404` | no function of that name takes those arguments — **the gap** |
+| `401` | it exists; anon may not call it |
+| other `4xx` | it exists; the null arguments were rejected |
+| `200` | it exists and ran |
+
+Verified against production on 2026-08-27: a nonexistent name gives 404,
+`set_my_email_language` gives 401, and that same function with one parameter
+renamed gives 404 — so a signature that drifts is caught, not just a missing
+function. A failure names the function and the file that calls it.
+
+It uses the publishable key that already ships inside the browser bundle, so it
+needs no new secret and no write access. (PostgREST's OpenAPI document would be
+the tidier source, but Supabase answers `/rest/v1/` with `401 Only secret API
+keys can be used for this endpoint`, and a lint is not worth a service-role key
+in CI.)
+
+Functions revoked from `anon` are refused at the permission gate, so their
+bodies never execute. The two anon-callable ones — `search_items_fuzzy` and
+`search_posts_fuzzy` — do run, as a `STABLE` search over null terms. Nothing is
+written, and `Prefer: tx=rollback` is sent as a second belt.
+
+CI runs it against **staging** on every push to `main`, in the
+`authenticated-smoke` job, before the browser starts. Run it against production
+yourself whenever a release is schema-coupled:
+
+```bash
+SUPABASE_URL=https://lfhvgprfphyfvhidegum.supabase.co \
+SUPABASE_PUBLISHABLE_KEY=<the key from the production bundle> \
+  node scripts/verify-deployed-rpcs.mjs
+```
+
+Two things it deliberately does **not** do. It never claims agreement from an
+empty result: a client scan that finds no `.rpc()` calls, or a document with no
+`/rpc/` paths, is reported as a broken check rather than a passing one. And it
+only compares the RPC surface — a migration that changes a trigger, a policy, or
+an accepted *value* (which is exactly what 2026-08-06 was) is invisible to it.
+For those, the ordering above and the operator are still the control.
 
 ### Checking whether production actually matches the repo
 
