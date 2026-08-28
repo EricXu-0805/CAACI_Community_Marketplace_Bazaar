@@ -317,9 +317,17 @@ async function finish() {
       })
       obErr = response.error
     } catch (writeError) {
+      captureException(writeError, { tags: { source: 'onboarding.mark_onboarded' } })
       throw mutationOutcomeError(writeError, 'unknown')
     }
+    // Same reasoning as record_consent below, one RPC earlier: mark_onboarded
+    // failing is normally fleet-wide, not per-user, and it strands every new
+    // signup on the last screen of the funnel. Only the avatar-upload path
+    // reported it, and the avatar is optional — the common case was a toast and
+    // silence. An uploaded avatar additionally raises mark_commit_unknown; the
+    // two are separate facts (the write failed / an object may be orphaned).
     if (obErr) {
+      captureException(obErr, { tags: { source: 'onboarding.mark_onboarded' } })
       throw mutationOutcomeError(
         obErr,
         isDefinitiveMutationRejection(obErr) ? 'not_committed' : 'unknown',

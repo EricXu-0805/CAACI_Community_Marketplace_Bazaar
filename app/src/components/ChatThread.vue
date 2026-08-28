@@ -1164,10 +1164,13 @@ async function sendQuickReply(text: string) {
   const senderId = currentUser.value.id
   try {
     await sendWithLocalEcho(convId, senderId, text)
-  } catch {
-    if (isThreadEpochCurrent(actionEpoch)) {
-      uni.showToast({ title: t('chat.fail'), icon: 'none' })
-    }
+  } catch (error: any) {
+    if (!isThreadEpochCurrent(actionEpoch)) return
+    uni.showToast({
+      title: friendlyErrorMessage(error, lang.value as 'en' | 'zh'),
+      icon: 'none',
+      duration: 2500,
+    })
   }
 }
 
