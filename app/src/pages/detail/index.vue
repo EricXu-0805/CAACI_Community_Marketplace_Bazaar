@@ -1098,7 +1098,7 @@ async function updateOwnedItemStatus(nextStatus: 'reserved' | 'active', successK
     uni.showToast({ title: t(successKey), icon: 'success' })
   } catch (error: any) {
     if (!actionIsCurrent()) return
-    reportOwnerActionFailure(`detail.set_status_${nextStatus}`, error)
+    reportActionFailure(`detail.set_status_${nextStatus}`, error)
     uni.showToast({
       title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('profile.markFail'),
       icon: 'none',
@@ -1122,7 +1122,7 @@ function onUnreserve() {
  * so the flow that has never once completed in production would also have
  * failed without leaving a trace.
  */
-function reportOwnerActionFailure(source: string, error: unknown): void {
+function reportActionFailure(source: string, error: unknown): void {
   // #ifdef H5
   captureException(error, { tags: { source }, level: 'warning' })
   // #endif
@@ -1180,7 +1180,7 @@ async function onMarkSold() {
             uni.showToast({ title: t('profile.markedSold'), icon: 'success' })
           } catch (error: any) {
             if (!actionIsCurrent()) return
-            reportOwnerActionFailure('detail.mark_item_sold', error)
+            reportActionFailure('detail.mark_item_sold', error)
             uni.showToast({
               title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('profile.markFail'),
               icon: 'none',
@@ -1203,7 +1203,7 @@ async function onMarkSold() {
     })
   } catch (error: any) {
     if (!actionIsCurrent()) return
-    reportOwnerActionFailure('detail.sale_candidates', error)
+    reportActionFailure('detail.sale_candidates', error)
     uni.showToast({
       title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('profile.markFail'),
       icon: 'none',
@@ -1270,7 +1270,12 @@ async function contactSeller() {
     uni.navigateTo({ url: `/pages/chat/index?id=${conversation.id}&prefill=${prefill}` })
   } catch (error) {
     if (!actionIsCurrent()) return
-    uni.showToast({ title: t('detail.chatFail'), icon: 'none' })
+    reportActionFailure('detail.contact_seller', error)
+    uni.showToast({
+      title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('detail.chatFail'),
+      icon: 'none',
+      duration: 2500,
+    })
   } finally {
     if (operationEpoch === contactSellerOperationEpoch) contactingSeller.value = false
   }
