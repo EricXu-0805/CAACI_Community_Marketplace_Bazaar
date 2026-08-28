@@ -19,8 +19,12 @@ export const config = { runtime: 'edge' }
  *   · Per-user rate limit via edge_rate_hit (m082): 10 sends/hour — a chat
  *     pair realistically produces a handful of meetup actions.
  *   · Same paranoid send gate as the digest: DIGEST_TEST_EMAIL reroutes
- *     everything to the test address; without it DIGEST_LIVE='true' is
- *     required to email a real user; neither set → inert 200.
+ *     everything to the test address; without it MEETUP_LIVE — or DIGEST_LIVE
+ *     where MEETUP_LIVE is unset — must be 'true' to email a real user;
+ *     neither set → inert 200. Meetup mail has its own flag because the
+ *     beta runbook tells an operator to quiet the daily digest, and while the
+ *     two shared one flag that also stopped telling people their meetup was
+ *     accepted, with no error anywhere.
  *   · profiles.email_digest_opt_out is honored — unsubscribed users get
  *     nothing from this path either.
  */
@@ -49,7 +53,9 @@ const ANON_KEY = env(
 )
 const RESEND_API_KEY = env('RESEND_API_KEY')
 const TEST_EMAIL = env('DIGEST_TEST_EMAIL')
-const LIVE = env('DIGEST_LIVE') === 'true'
+// Falls back to DIGEST_LIVE so production, which sets only that one, keeps
+// sending from the moment this ships.
+const LIVE = env('MEETUP_LIVE', env('DIGEST_LIVE')) === 'true'
 const EXPLICIT_APP_URL = env('DEPLOYMENT_APP_ORIGIN', env('MEETUP_APP_URL', env('DIGEST_APP_URL')))
 const EXPLICIT_APP_ORIGIN = strictAppOrigin(EXPLICIT_APP_URL)
 const APP_URL = EXPLICIT_APP_ORIGIN || DEFAULT_APP_URL

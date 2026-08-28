@@ -150,9 +150,10 @@ debugging. Remote deploys supply the commit identity automatically; a local
 | `RESEND_API_KEY` | ✅ required | ❌ | ❌ | Digest、meetup 即时邮件和 Illini 验证码都无法发送。 |
 | `RESEND_WEBHOOK_SECRET` | ✅ required | ❌ | ❌ | Svix signing secret for the Resend endpoint. **Absent in production as of 2026-08-14**, so `/api/resend-webhook` answers 503 and every bounce/complaint report is discarded. The endpoint itself already exists and is Enabled in Resend. This matters more than it looks: the same domain carries the `.edu` verification codes, and a reputation slide first shows up as "new users never receive their code." Setup + verification: [Enabling delivery alerts](RUNBOOK.md#enabling-delivery-alerts-resend-webhook). Vercel reads the env snapshot taken at deploy time, so **redeploy after setting it** or it stays inert. |
 | `DIGEST_TEST_EMAIL` | ✅ test-mode | ❌ | ❌ | If set, **every** digest is rerouted to this one address (real users never emailed) — the safe default for staging. Absent in production. |
-| `DIGEST_LIVE` | ✅ `'true'` to go live | ❌ | ❌ | Unset/≠`'true'` **and** no `DIGEST_TEST_EMAIL` → route refuses to send. Real users are emailed only when `DIGEST_LIVE=true` **and** `DIGEST_TEST_EMAIL` is cleared (two deliberate actions). **Production is live** — `public.notifications` holds 18 rows with a non-null `emailed_at` and `DIGEST_TEST_EMAIL` is unset, so this can only be `'true'`. ⚠️ It also gates **instant meetup mail** (`api/meetup-notify.js:52,415`), so clearing it to "quiet the daily digest" silently stops meetup notifications with no error. |
+| `DIGEST_LIVE` | ✅ `'true'` to go live | ❌ | ❌ | Unset/≠`'true'` **and** no `DIGEST_TEST_EMAIL` → route refuses to send. Real users are emailed only when `DIGEST_LIVE=true` **and** `DIGEST_TEST_EMAIL` is cleared (two deliberate actions). **Production is live** — `public.notifications` holds 18 rows with a non-null `emailed_at` and `DIGEST_TEST_EMAIL` is unset, so this can only be `'true'`. It is also what **instant meetup mail** falls back to when `MEETUP_LIVE` is unset, which is the case in production today — so set `MEETUP_LIVE=true` before clearing this one. |
 | `DIGEST_FROM` | ✅ required for verified sender | ❌ | ❌ | Falls back to `Illini Market <noreply@send.illinimarket.com>`; Resend must verify that domain/address. |
 | `DIGEST_APP_URL` | ✅ required for live mail | ❌ | ❌ | Must be an explicit HTTPS **origin only** (no path/query/credentials). Live digest and meetup mail fail closed when it is absent/invalid; a hosted preview must match `VERCEL_URL`. Synthetic test mail alone may use the harmless sample default. |
+| `MEETUP_LIVE` | ⚠️ set before quieting the digest | ❌ | ❌ | Governs **instant meetup mail** alone (`api/meetup-notify.js:52`). Unset → falls back to `DIGEST_LIVE`, which is how production runs today. Set it to `'true'` and you can clear `DIGEST_LIVE` to stop the daily digest while people still get told their meetup was accepted. Any value other than `'true'` — including `'false'` — makes this route inert no matter what `DIGEST_LIVE` says. |
 | `MEETUP_APP_URL` | ⚠️ optional live override | ❌ | ❌ | Exact HTTPS origin for meetup mail; falls back only to the explicitly configured `DIGEST_APP_URL`, never to an implicit live production URL. |
 
 `DEPLOYMENT_APP_ORIGIN` is the deployment-wide preferred value and wins over
@@ -161,7 +162,9 @@ reviewed transition; they cannot bypass the shared deployment boundary.
 
 The digest is inert by default: it needs `CRON_SECRET` to run at all, and
 either `DIGEST_TEST_EMAIL` (test) or `DIGEST_LIVE=true` plus an explicit safe
-`DIGEST_APP_URL` (live) to send anything.
+`DIGEST_APP_URL` (live) to send anything. Instant meetup mail reads the same
+`DIGEST_TEST_EMAIL` and app-origin pair, but takes its live decision from
+`MEETUP_LIVE` first, so the daily digest can be turned off on its own.
 
 ### Account-deletion recovery cron (`/api/auth/delete-account`, every 10 minutes per `vercel.json`)
 

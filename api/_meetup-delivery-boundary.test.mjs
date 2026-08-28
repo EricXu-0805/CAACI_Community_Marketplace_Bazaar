@@ -24,7 +24,7 @@ const ENV_KEYS = [
   'SUPABASE_URL', 'VITE_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY',
   'SUPABASE_SECRET_KEY', 'SUPABASE_PUBLISHABLE_KEY', 'VITE_SUPABASE_PUBLISHABLE_KEY',
   'SUPABASE_ANON_KEY', 'VITE_SUPABASE_ANON_KEY', 'RESEND_API_KEY',
-  'DIGEST_TEST_EMAIL', 'DIGEST_LIVE', 'DIGEST_APP_URL', 'MEETUP_APP_URL',
+  'DIGEST_TEST_EMAIL', 'DIGEST_LIVE', 'MEETUP_LIVE', 'DIGEST_APP_URL', 'MEETUP_APP_URL',
   'DIGEST_FROM', 'VERCEL_ENV', 'VERCEL_URL',
 ]
 const originalEnv = new Map(ENV_KEYS.map(key => [key, process.env[key]]))
@@ -42,7 +42,7 @@ afterEach(() => {
   console.error = originalConsoleError
 })
 
-async function loadHandler() {
+async function loadHandler(overrides = {}) {
   for (const key of ENV_KEYS) delete process.env[key]
   Object.assign(process.env, {
     SUPABASE_URL: 'https://supabase.test',
@@ -51,7 +51,12 @@ async function loadHandler() {
     RESEND_API_KEY: 'resend-test',
     DIGEST_LIVE: 'true',
     MEETUP_APP_URL: 'https://app.test',
-  })
+  }, overrides)
+  // An override of undefined means "unset"; Object.assign would store the
+  // string 'undefined', which reads as set.
+  for (const [key, value] of Object.entries(overrides)) {
+    if (value === undefined) delete process.env[key]
+  }
   const source = await readFile(new URL('meetup-notify.js', API_ROOT), 'utf8')
   const encoded = Buffer.from(inlineSharedApiImports(source)).toString('base64')
   return (await import(`data:text/javascript;base64,${encoded}#meetup-delivery-${nonce++}`)).default
@@ -318,4 +323,47 @@ test('a missing exact event row falls back to the digest without sending or stam
   assert.deepEqual(await (await invoke(handler, MEETUP_A)).json(), { skipped: 'notification_unavailable' })
   assert.equal(harness.calls.some(call => call.url.hostname === 'api.resend.com'), false)
   assert.equal(rpcCalls(harness, 'claim_notification_email_delivery').length, 0)
+})
+
+/* The daily digest and instant meetup mail shared DIGEST_LIVE. The beta step in
+   RUNBOOK tells an operator to quiet the digest, and on one flag that also
+   stopped telling people their meetup was accepted — inert 200, no error
+   anywhere. These four pin the split: MEETUP_LIVE decides this route,
+   DIGEST_LIVE is only what it falls back to, and that fallback is what keeps
+   production sending across the deploy that introduces the flag. */
+
+async function attemptSend(overrides) {
+  const meetups = new Map([
+    [MEETUP_A, meetup({ id: MEETUP_A, conversationId: CONVERSATION_A, fromUser: BUYER_A, toUser: SELLER })],
+  ])
+  const notifications = new Map([[`meetup:${MEETUP_A}:pending`, NOTIFICATION_A]])
+  const harness = makeHarness({ meetups, notifications })
+  globalThis.fetch = harness.fetch
+  const handler = await loadHandler(overrides)
+  harness.setCaller(BUYER_A)
+  return { body: await (await invoke(handler, MEETUP_A)).json(), harness }
+}
+
+test('MEETUP_LIVE alone sends, so the daily digest can be quiet without silencing meetup mail', async () => {
+  const { body, harness } = await attemptSend({ DIGEST_LIVE: undefined, MEETUP_LIVE: 'true' })
+  assert.deepEqual(body, { sent: true, mode: 'live' })
+  assert.equal(harness.emailed.has(NOTIFICATION_A), true)
+})
+
+test('DIGEST_LIVE alone still sends, so the deploy that adds MEETUP_LIVE does not go dark', async () => {
+  const { body, harness } = await attemptSend({ DIGEST_LIVE: 'true' })
+  assert.deepEqual(body, { sent: true, mode: 'live' })
+  assert.equal(harness.emailed.has(NOTIFICATION_A), true)
+})
+
+test('MEETUP_LIVE replaces DIGEST_LIVE rather than being ORed with it', async () => {
+  const { body, harness } = await attemptSend({ DIGEST_LIVE: 'true', MEETUP_LIVE: 'false' })
+  assert.deepEqual(body, { skipped: 'inert' })
+  assert.equal(harness.emailed.has(NOTIFICATION_A), false)
+})
+
+test('neither flag set stays inert, so the split did not open a send path', async () => {
+  const { body, harness } = await attemptSend({ DIGEST_LIVE: undefined })
+  assert.deepEqual(body, { skipped: 'inert' })
+  assert.equal(harness.emailed.has(NOTIFICATION_A), false)
 })

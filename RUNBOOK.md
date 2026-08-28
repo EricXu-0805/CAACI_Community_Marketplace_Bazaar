@@ -1395,7 +1395,7 @@ Top to bottom; each step links to its detail.
 6. **Seed content** — ≥ a dozen real listings across the main categories. An empty market reads as dead.
 7. **Device verification** — run [QA_DEVICE_CHECKLIST](docs/QA_DEVICE_CHECKLIST.md) (esp. §7: QA6 + motion) on a real iPhone / iPad / Mac + two accounts. CI cannot catch keyboard, realtime, or desktop-layout regressions.
 8. **Post-deploy diagnostic** — [ENV_CHECKLIST diagnostic](ENV_CHECKLIST.md#diagnostic): app 200, admin 200, Sentry receiving events tagged with the deploy SHA.
-9. **Invite the first small cohort**, then run the [daily week-1](#daily-during-week-1) loop. **`DIGEST_LIVE` is already `true` in production and should stay that way.** Do not "turn the digest off for the beta": the same flag gates instant meetup mail (`api/meetup-notify.js:52,415` — `if (!TEST_EMAIL && !LIVE) return json({ skipped: 'inert' })`), so clearing it silently stops telling people their meetup was accepted, with no error anywhere. If you ever do want the daily digest off without losing meetup mail, that needs a separate flag, not this one.
+9. **Invite the first small cohort**, then run the [daily week-1](#daily-during-week-1) loop. **`DIGEST_LIVE` is `true` in production and nothing sets `MEETUP_LIVE` yet, so meetup mail is riding that fallback.** If you want the daily digest off during the beta, set `MEETUP_LIVE=true` **first**, redeploy, and only then clear `DIGEST_LIVE` — clearing it on its own leaves meetup mail inert (`api/meetup-notify.js:52` — `if (!TEST_EMAIL && !LIVE) return json({ skipped: 'inert' })`), which means people stop being told their meetup was accepted and nothing anywhere reports it.
 
 ### Before you invite the first cohort
 
