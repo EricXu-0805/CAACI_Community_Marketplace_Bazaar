@@ -61,7 +61,7 @@ import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
 import { useTheme } from '../../composables/useTheme'
 import { createAccountPageScope } from '../../composables/accountPageScope'
-import { navigateBackOr } from '../../utils'
+import { friendlyErrorMessage, navigateBackOr } from '../../utils'
 import UAvatar from '../../components/UAvatar.vue'
 import UIcon from '../../components/UIcon.vue'
 
@@ -72,7 +72,7 @@ interface BlockedProfile {
   bio: string
 }
 
-const { t } = useI18n()
+const { t, lang } = useI18n()
 const { isDark } = useTheme()
 const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
@@ -187,9 +187,13 @@ function onUnblock(id: string, name: string) {
         if (!blockedActionScope.isCurrent(request)) return
         blockedProfiles.value = blockedProfiles.value.filter(p => p.id !== id)
         uni.showToast({ title: t('blocked.unblocked'), icon: 'success' })
-      } catch {
+      } catch (error: any) {
         if (blockedActionScope.isCurrent(request)) {
-          uni.showToast({ title: t('blocked.unblockFailed'), icon: 'none' })
+          uni.showToast({
+            title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('blocked.unblockFailed'),
+            icon: 'none',
+            duration: 2500,
+          })
         }
       }
     },
