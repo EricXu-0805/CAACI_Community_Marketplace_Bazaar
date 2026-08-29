@@ -296,6 +296,23 @@ jobs:
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
+      # The step above proves the functions exist. This one proves a write
+      # actually survives the policies and triggers stacked on top of them —
+      # the smoke specs below sign in but never write. Publishes one listing
+      # and deletes it; refuses to run against a production ref.
+      - name: Verify a real user can still publish on staging
+        run: node scripts/verify-staging-write-path.mjs
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+          SMOKE_ACCOUNT_IS_SYNTHETIC: ${{ secrets.SMOKE_ACCOUNT_IS_SYNTHETIC }}
+          SMOKE_DATASET_IS_SYNTHETIC: ${{ secrets.SMOKE_DATASET_IS_SYNTHETIC }}
+          SMOKE_EXPECTED_SUPABASE_PROJECT_REF: ${{ vars.SMOKE_EXPECTED_SUPABASE_PROJECT_REF }}
+          SMOKE_EXPECTED_USER_ID: ${{ vars.SMOKE_EXPECTED_USER_ID }}
+
       # This job runs the same `npm run smoke`, so it needs Chromium for the
       # CDP-based keyboard-journey sweep too.
       - name: Install Playwright (webkit + chromium)
