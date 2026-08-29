@@ -1,4 +1,5 @@
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from '../_deployment-boundary.js'
+import { reportToSentry } from '../_sentry-report.js'
 
 export const config = { runtime: 'edge' }
 
@@ -44,6 +45,15 @@ const ANON_KEY = env(
 const SERVICE_KEY = env('SUPABASE_SECRET_KEY', env('SUPABASE_SERVICE_ROLE_KEY'))
 const RESEND_API_KEY = env('RESEND_API_KEY')
 const FROM = env('DIGEST_FROM', 'Illini Market <noreply@send.illinimarket.com>')
+
+const LOGGER = 'api/auth/send-illini-code'
+
+/* Only ever a name or a code — never a message, which can carry an address
+   or an upstream body, both of which these handlers keep out of their logs. */
+function safeCode(error) {
+  const name = error?.name
+  return typeof name === 'string' && /^[A-Za-z]{1,40}$/.test(name) ? name : 'unknown'
+}
 
 const CODE_TTL_MIN = 10
 const RESEND_COOLDOWN_S = 60
@@ -290,6 +300,7 @@ export default async function handler(request) {
       RESEND_COOLDOWN_S,
     )
     if (cooldownAllowed === null) {
+      await reportToSentry(LOGGER, 'illini send: rate limiter unavailable', { bucket: 'cooldown' })
       return new Response(JSON.stringify({ error: 'rate_limit_unavailable' }), { status: 503, headers })
     }
     if (cooldownAllowed === false) {
@@ -301,6 +312,7 @@ export default async function handler(request) {
       rateHit(`illini-send:hourly-ip:${ipKey}`, IP_HOURLY_CAP, 60 * 60),
     ])
     if ([userDaily, targetDaily, ipHourly].some((decision) => decision === null)) {
+      await reportToSentry(LOGGER, 'illini send: rate limiter unavailable', { bucket: 'caps' })
       return new Response(JSON.stringify({ error: 'rate_limit_unavailable' }), { status: 503, headers })
     }
     // The per-IP bucket is 24/hour and is SHARED: campus wifi NATs a whole
@@ -318,6 +330,7 @@ export default async function handler(request) {
     }
   } catch (error) {
     try { console.error('illini limiter unavailable') } catch {}
+    await reportToSentry(LOGGER, 'illini send: rate limiter unavailable', { bucket: 'threw' })
     return new Response(JSON.stringify({ error: 'rate_limit_unavailable' }), { status: 503, headers })
   }
 
@@ -326,6 +339,8 @@ export default async function handler(request) {
     const meResponse = await sbREST(`profiles?id=eq.${user.id}&select=is_illini_verified`)
     if (!meResponse.ok) {
       try { console.error('illini profile lookup failed', meResponse.status) } catch {}
+      await reportToSentry(LOGGER, 'illini send: verification store unavailable',
+        { stage: 'profile_lookup', status: meResponse.status })
       return new Response(JSON.stringify({ error: 'store_failed' }), { status: 503, headers })
     }
     const meRows = await readJsonResponse(meResponse)
@@ -341,6 +356,8 @@ export default async function handler(request) {
     const existingResponse = await sbREST(`illini_verifications?user_id=eq.${user.id}&select=last_sent_at,sent_today,sent_date`)
     if (!existingResponse.ok) {
       try { console.error('illini pending lookup failed', existingResponse.status) } catch {}
+      await reportToSentry(LOGGER, 'illini send: verification store unavailable',
+        { stage: 'pending_lookup', status: existingResponse.status })
       return new Response(JSON.stringify({ error: 'store_failed' }), { status: 503, headers })
     }
     const existingRows = await readJsonResponse(existingResponse)
@@ -361,6 +378,8 @@ export default async function handler(request) {
     })
     if (!up.ok) {
       try { console.error('illini store failed', up.status) } catch {}
+      await reportToSentry(LOGGER, 'illini send: verification store unavailable',
+        { stage: 'upsert', status: up.status })
       return new Response(JSON.stringify({ error: 'store_failed' }), { status: 503, headers })
     }
 
@@ -371,12 +390,17 @@ export default async function handler(request) {
     }, RESEND_TIMEOUT_MS)
     if (!sent.ok) {
       try { console.error('illini resend failed', sent.status) } catch {}
+      // The one most likely to be true for everybody at once: a rotated key or
+      // a sending domain whose reputation has slipped.
+      await reportToSentry(LOGGER, 'illini send: provider rejected the code email',
+        { status: sent.status })
       return new Response(JSON.stringify({ error: 'send_failed' }), { status: 502, headers })
     }
 
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers })
   } catch (e) {
     try { console.error('illini send unavailable') } catch {}
+    await reportToSentry(LOGGER, 'illini send: unhandled failure', { code: safeCode(e) })
     return new Response(JSON.stringify({ error: 'send_failed' }), { status: 503, headers })
   }
 }

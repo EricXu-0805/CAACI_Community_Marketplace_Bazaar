@@ -1,4 +1,5 @@
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from '../_deployment-boundary.js'
+import { reportToSentry } from '../_sentry-report.js'
 
 export const config = { runtime: 'edge' }
 
@@ -46,6 +47,14 @@ function supabaseHeaders(key, authorization = '', extra = {}) {
   if (authorization) headers.Authorization = authorization
   else if (!/^sb_(?:publishable|secret)_/.test(key)) headers.Authorization = `Bearer ${key}`
   return headers
+}
+
+const LOGGER = 'api/auth/verify-illini-code'
+
+/* Only ever a short code — never a message, which can carry an address or an
+   upstream body, both of which these handlers keep out of their logs. */
+function safeCode(value) {
+  return typeof value === 'string' && /^[A-Za-z0-9_]{1,40}$/.test(value) ? value : 'unknown'
 }
 
 const VERIFICATION_ERRORS = Object.freeze({
@@ -186,6 +195,7 @@ export default async function handler(request) {
 
   const rateDecision = await rateHit(user.id)
   if (rateDecision === null) {
+    await reportToSentry(LOGGER, 'illini verify: rate limiter unavailable')
     return new Response(JSON.stringify({ error: 'rate_limit_unavailable' }), { status: 503, headers })
   }
   if (rateDecision === false) {
@@ -224,9 +234,16 @@ export default async function handler(request) {
         return new Response(JSON.stringify({ error: 'auth_required' }), { status: 401, headers })
       }
       if (verifyResponse.status === 404 || result?.code === 'PGRST202') {
+        // The function is not on this database. Every verification fails the
+        // same way until a migration lands, and scripts/verify-deployed-rpcs.mjs
+        // only sees that in CI — this is the same fact observed in production.
+        await reportToSentry(LOGGER, 'illini verify: RPC missing from this database',
+          { status: verifyResponse.status })
         return new Response(JSON.stringify({ error: 'verification_unavailable' }), { status: 503, headers })
       }
       try { console.error('illini verify rpc', verifyResponse.status, String(result?.code || 'unknown').slice(0, 40)) } catch {}
+      await reportToSentry(LOGGER, 'illini verify: RPC refused the attempt',
+        { status: verifyResponse.status, code: safeCode(result?.code) })
       return new Response(JSON.stringify({ error: 'verify_failed' }), { status: 500, headers })
     }
 
@@ -240,9 +257,13 @@ export default async function handler(request) {
     }
 
     try { console.error('illini verify rpc unexpected result') } catch {}
+    // The RPC answered something this handler has no mapping for, so the reader
+    // is told nothing useful and nobody would otherwise learn the contract moved.
+    await reportToSentry(LOGGER, 'illini verify: RPC returned an unmapped result')
     return new Response(JSON.stringify({ error: 'verify_failed' }), { status: 500, headers })
   } catch (e) {
     try { console.error('illini verify unavailable') } catch {}
+    await reportToSentry(LOGGER, 'illini verify: unhandled failure', { code: safeCode(e?.name) })
     return new Response(JSON.stringify({ error: 'verification_unavailable' }), { status: 503, headers })
   }
 }
