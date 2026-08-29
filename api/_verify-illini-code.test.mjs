@@ -24,6 +24,8 @@ const ENV_KEYS = [
   'VITE_SUPABASE_ANON_KEY',
   'VITE_SUPABASE_PUBLISHABLE_KEY',
   'RESEND_API_KEY',
+  'SENTRY_DSN',
+  'VITE_SENTRY_DSN',
 ]
 const originalEnv = new Map(ENV_KEYS.map(key => [key, process.env[key]]))
 const originalFetch = globalThis.fetch
@@ -633,4 +635,154 @@ test('edge handler has no direct service-role verification table mutation path',
   assert.doesNotMatch(source, /illini_verifications\?user_id=/)
   assert.doesNotMatch(source, /profiles\?id=/)
   assert.match(source, /rpc\/verify_illini_email_code/)
+})
+
+
+/*
+ * Nobody has ever verified an Illini address in production — illini_verifications
+ * holds zero rows. With no telemetry on either handler, "nobody tried" and
+ * "everyone failed" produced exactly the same evidence: a toast for the student
+ * and a console line in Vercel that nothing reads.
+ *
+ * api/auth/delete-account.js, the third endpoint in this directory, already
+ * reported. These two did not.
+ *
+ * _sentry-report.js states the rule these tests exist to hold: report only
+ * outcomes an unauthenticated request cannot reach, or the public URL becomes a
+ * way to generate alerts. Both handlers answer 401 before any of this, so the
+ * last test here is the one that matters most.
+ */
+
+const DSN = 'https://publickey@sentry.test/4321'
+
+/** Every Sentry envelope the handler sent, decoded. */
+function sentryCollector() {
+  const sent = []
+  return {
+    sent,
+    intercept(path, init) {
+      if (path !== '/api/4321/store/') return null
+      sent.push(JSON.parse(init.body))
+      return json({ id: 'evt' })
+    },
+  }
+}
+
+test('a provider that will not send the code is reported, without an address or a body', async () => {
+  const sentry = sentryCollector()
+  globalThis.fetch = async (input, init = {}) => {
+    const url = new URL(input instanceof Request ? input.url : String(input))
+    const intercepted = sentry.intercept(url.pathname, init)
+    if (intercepted) return intercepted
+    if (url.pathname === '/auth/v1/user') return json({ id: USER_ID })
+    if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return json(true)
+    if (url.pathname === '/rest/v1/profiles') return json([{ is_illini_verified: false }])
+    if (url.pathname === '/rest/v1/illini_verifications') return json([])
+    if (url.hostname === 'api.resend.com') return json({ message: 'domain not verified' }, 403)
+    throw new Error(`unexpected fetch ${url}`)
+  }
+  const handler = await loadHandler(
+    { ...supabaseEnv, RESEND_API_KEY: 'resend-key', SENTRY_DSN: DSN }, SEND_API_URL)
+
+  const response = await handler(new Request('https://app.test/api/auth/send-illini-code', {
+    method: 'POST',
+    headers: { Authorization: BEARER, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'student@illinois.edu' }),
+  }))
+
+  assert.equal(response.status, 502)
+  assert.deepEqual(sentry.sent.map(e => e.message),
+    ['illini send: provider rejected the code email'])
+  assert.deepEqual(sentry.sent[0].extra, { status: 403 })
+
+  // The suite already forbids logging upstream bodies; an alert is another log.
+  const envelope = JSON.stringify(sentry.sent[0])
+  assert.doesNotMatch(envelope, /student@illinois\.edu|domain not verified|resend-key/)
+})
+
+test('a verification RPC that is not on the database is reported as exactly that', async () => {
+  const sentry = sentryCollector()
+  globalThis.fetch = async (input, init = {}) => {
+    const url = new URL(input instanceof Request ? input.url : String(input))
+    const intercepted = sentry.intercept(url.pathname, init)
+    if (intercepted) return intercepted
+    if (url.pathname === '/auth/v1/user') return json({ id: USER_ID })
+    if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return json(true)
+    if (url.pathname === '/rest/v1/rpc/verify_illini_email_code') {
+      return json({ code: 'PGRST202', message: 'Could not find the function' }, 404)
+    }
+    throw new Error(`unexpected fetch ${url}`)
+  }
+  const handler = await loadHandler({ ...supabaseEnv, SENTRY_DSN: DSN })
+
+  const response = await handler(verificationRequest())
+
+  assert.equal(response.status, 503)
+  assert.deepEqual(await response.json(), { error: 'verification_unavailable' })
+  assert.deepEqual(sentry.sent.map(e => e.message),
+    ['illini verify: RPC missing from this database'])
+})
+
+test('an ordinary refusal is not an alert', async () => {
+  // A wrong code and an exhausted attempt budget are the two things this
+  // endpoint is *for*. Reporting them would bury the faults above under the
+  // normal traffic of people mistyping six digits.
+  for (const [label, result] of [['wrong code', 'bad_code'], ['expired', 'expired'],
+    ['out of attempts', 'too_many_attempts'], ['already taken', 'email_taken']]) {
+    const sentry = sentryCollector()
+    installHappyAuthAndLimiter(result)
+    const inner = globalThis.fetch
+    globalThis.fetch = async (input, init = {}) => {
+      const url = new URL(input instanceof Request ? input.url : String(input))
+      return sentry.intercept(url.pathname, init) || inner(input, init)
+    }
+    const handler = await loadHandler({ ...supabaseEnv, SENTRY_DSN: DSN })
+
+    await handler(verificationRequest())
+    assert.deepEqual(sentry.sent, [], `${label} must not raise an alert`)
+  }
+
+  // Control: the same harness DOES capture an envelope when the fault is real,
+  // so the emptiness above is the handler staying quiet rather than the
+  // collector being wired up wrong.
+  const sentry = sentryCollector()
+  globalThis.fetch = async (input, init = {}) => {
+    const url = new URL(input instanceof Request ? input.url : String(input))
+    const intercepted = sentry.intercept(url.pathname, init)
+    if (intercepted) return intercepted
+    if (url.pathname === '/auth/v1/user') return json({ id: USER_ID })
+    if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return json(true)
+    if (url.pathname === '/rest/v1/rpc/verify_illini_email_code') return json({}, 500)
+    throw new Error(`unexpected fetch ${url}`)
+  }
+  const handler = await loadHandler({ ...supabaseEnv, SENTRY_DSN: DSN })
+  await handler(verificationRequest())
+  assert.equal(sentry.sent.length, 1, 'the collector must be able to see a real fault')
+})
+
+test('an unauthenticated caller cannot make either handler raise an alert', async () => {
+  for (const [label, apiUrl, request] of [
+    ['verify', API_URL, verificationRequest()],
+    ['send', SEND_API_URL, new Request('https://app.test/api/auth/send-illini-code', {
+      method: 'POST',
+      headers: { Authorization: BEARER, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'student@illinois.edu' }),
+    })],
+  ]) {
+    const sentry = sentryCollector()
+    globalThis.fetch = async (input, init = {}) => {
+      const url = new URL(input instanceof Request ? input.url : String(input))
+      const intercepted = sentry.intercept(url.pathname, init)
+      if (intercepted) return intercepted
+      if (url.pathname === '/auth/v1/user') return json({ error: 'bad token' }, 401)
+      throw new Error(`unexpected fetch ${url}`)
+    }
+    const handler = await loadHandler(
+      { ...supabaseEnv, RESEND_API_KEY: 'resend-key', SENTRY_DSN: DSN }, apiUrl)
+
+    const response = await handler(request)
+    assert.equal(response.status, 401, `${label} must refuse an unauthenticated caller`)
+    assert.deepEqual(sentry.sent, [],
+      `${label}'s public URL must not be a way to generate alerts`)
+  }
 })
