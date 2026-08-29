@@ -18,6 +18,7 @@
             :aria-label="t('illini.emailLabel')"
             :disabled="flowBusy"
             type="text"
+            inputmode="email"
             autocomplete="email"
             class="form-input"
             confirm-type="send"

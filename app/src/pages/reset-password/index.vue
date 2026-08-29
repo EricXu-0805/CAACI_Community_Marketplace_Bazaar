@@ -9,7 +9,7 @@
     <view class="form">
       <view class="form-group">
         <text class="form-label">{{ t('resetPw.email') }}</text>
-        <input v-model="email" :placeholder="t('login.email')" :aria-label="t('resetPw.email')" :disabled="saving || resending" type="text" autocomplete="email" class="form-input" />
+        <input v-model="email" :placeholder="t('login.email')" :aria-label="t('resetPw.email')" :disabled="saving || resending" type="text" inputmode="email" autocomplete="email" class="form-input" />
       </view>
 
       <view class="form-group">
