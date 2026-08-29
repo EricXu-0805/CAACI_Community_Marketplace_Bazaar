@@ -143,7 +143,11 @@ test('an unmapped sentinel is reported rather than guessed at', async () => {
 test('specific messages are not flattened into the generic one', async () => {
   const { friendlyErrorMessage } = await loadFriendlyErrorMessage()
   const cases = [
+    // The three shapes that reach the moderation branch. Only the first was
+    // covered, and it is the only one where the category sits at position 1.
     ['moderation_block:contact_info', 'zh', /站内私信/],
+    ['moderation_block:item_title:contact_info', 'zh', /站内私信/],
+    ['moderation_block:sensitive_word:ai(hate,violence)', 'zh', /违规词/],
     ['content_too_long', 'zh', /内容太长/],
     ['rate_limit_items_hour', 'en', /Too many items/],
     ['File too large (max 5MB)', 'en', /5MB/],
@@ -313,4 +317,87 @@ test('archive_conversation keeps the specific copy written for it', async () => 
   const err = { code: 'PGRST202', message: 'Could not find the function public.archive_conversation in the schema cache' }
   assert.match(friendlyErrorMessage(err, 'zh'), /对话归档/)
   assert.match(friendlyErrorMessage(err, 'en'), /archiv/i)
+})
+
+
+/*
+ * Every field the database moderates, taken from the migration rather than
+ * written down here.
+ *
+ * private.assert_moderated_text raises `moderation_block:<field>:<category>`,
+ * and friendlyErrorMessage read the segment at position 1 — the field name.
+ * So 'moderation_block:item_title:contact_info' matched nothing in
+ * MODERATION_MESSAGES and every database rejection was flattened to "内容未通过
+ * 审核", which does not tell a student what to change. The seven specific
+ * messages were reachable only from the client's own pre-check.
+ *
+ * The corpus scan above could not see this: it drops any RAISE message
+ * containing '%' as "a diagnostic being assembled for an operator". That is
+ * true of sentences and false of this one — 'moderation_block:%:%' is a
+ * sentinel whose placeholders are filled with values a reader is shown. This
+ * reads those call sites directly instead.
+ */
+async function moderatedFieldNames() {
+  const found = new Set()
+  for (const entry of await readdir(MIGRATIONS)) {
+    if (!entry.endsWith('.sql')) continue
+    const text = await readFile(new URL(entry, MIGRATIONS), 'utf8')
+    for (const m of text.matchAll(/assert_moderated_text\([^,]+,\s*'([a-z_]+)'/g)) {
+      found.add(m[1])
+    }
+  }
+  return [...found].sort()
+}
+
+test('a rejection from the database says which rule it broke', async () => {
+  const { friendlyErrorMessage } = await loadFriendlyErrorMessage()
+  const fields = await moderatedFieldNames()
+  assert.ok(fields.length >= 8,
+    `the migration scan found ${fields.length} moderated fields — it stopped reading the corpus`)
+  assert.ok(fields.includes('item_title') && fields.includes('message_content'))
+
+  const GENERIC = { zh: '内容未通过审核', en: 'Content blocked by moderation' }
+  const MODERATION_CONTACT_ZH = '请使用站内私信，不要留手机号、微信或邮箱'
+  const flattened = []
+  for (const field of fields) {
+    for (const [lang, expected] of [['zh', '站内私信'], ['en', 'in-app chat']]) {
+      const out = friendlyErrorMessage(new Error(`moderation_block:${field}:contact_info`), lang)
+      if (!out.includes(expected)) flattened.push(`${lang}: ${field} -> ${out}`)
+    }
+  }
+  assert.deepEqual(flattened, [],
+    `these lost the reason and were shown the generic sentence:\n  ${flattened.join('\n  ')}`)
+
+  // Control: a category nobody has written copy for still falls back, so the
+  // lookup above is finding real entries rather than matching anything.
+  for (const lang of ['zh', 'en']) {
+    assert.equal(
+      friendlyErrorMessage(new Error('moderation_block:item_title:no_such_category'), lang),
+      GENERIC[lang],
+    )
+  }
+
+  // A segment that names an inherited Object property must not be treated as a
+  // category. Segments come from a database field name and, on the AI path,
+  // from a provider's category list, so `part in MODERATION_MESSAGES` would
+  // match 'constructor' and hand back an object with no `zh`/`en`, showing the
+  // reader nothing at all.
+  for (const hostile of ['constructor', 'toString', '__proto__']) {
+    assert.equal(
+      friendlyErrorMessage(new Error(`moderation_block:${hostile}:contact_info`), 'zh'),
+      MODERATION_CONTACT_ZH,
+      `a '${hostile}' segment must be skipped, not looked up`,
+    )
+  }
+
+  // Control: a field name must never be mistaken for a category. If one is ever
+  // added to MODERATION_MESSAGES, the search would answer with the field and
+  // this pins that it does not happen silently.
+  for (const field of fields) {
+    assert.equal(
+      friendlyErrorMessage(new Error(`moderation_block:${field}`), 'en'),
+      GENERIC.en,
+      `${field} is being read as a category`,
+    )
+  }
 })
