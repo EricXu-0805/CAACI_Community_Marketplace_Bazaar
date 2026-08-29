@@ -293,8 +293,18 @@ export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string
   }
 
   if (raw.startsWith('moderation_block:')) {
-    const cat = raw.split(':')[1] as keyof typeof MODERATION_MESSAGES
-    if (cat && MODERATION_MESSAGES[cat]) return MODERATION_MESSAGES[cat][lang]
+    // Three shapes arrive here and the category is not always in the same place:
+    //   moderation_block:contact_info                      the client mirror
+    //   moderation_block:sensitive_word:ai(hate,violence)  the client AI check
+    //   moderation_block:item_title:contact_info           the database
+    // private.assert_moderated_text raises the third, field name first, so
+    // reading position 1 got 'item_title' and every rejection the database made
+    // — which is all of them the client mirror does not catch first — fell
+    // through to the generic sentence. No field name is also a category, so the
+    // category is the first segment that names one.
+    const cat = raw.split(':')
+      .find(part => Object.prototype.hasOwnProperty.call(MODERATION_MESSAGES, part))
+    if (cat) return MODERATION_MESSAGES[cat][lang]
     return lang === 'zh' ? '内容未通过审核' : 'Content blocked by moderation'
   }
 
