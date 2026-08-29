@@ -42,6 +42,12 @@
  * search_posts_fuzzy — and those do run, as a STABLE search over null terms.
  * Nothing is written. `Prefer: tx=rollback` is sent as a second belt.
  *
+ * search_items_fuzzy only started running once its spread was resolved: before
+ * that the probe posted two of its eleven arguments, PostgREST could not match
+ * a signature, and the answer was the 404 that made it unverified. It is a
+ * STABLE read, `limit_in` is null so Postgres applies no limit, and the only
+ * database this runs against is the synthetic staging branch.
+ *
  * Usage:  node scripts/verify-deployed-rpcs.mjs
  *         SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY (or the VITE_ prefixed pair)
  */
@@ -87,6 +93,57 @@ function topLevelSegments(body) {
 }
 
 /**
+ * Read the keys a spread contributes, when they can be known for certain.
+ *
+ * `...commonLegacyArgs(params)` hid seven of search_items_fuzzy's eleven
+ * arguments, so the probe posted an incomplete set, PostgREST answered 404 for
+ * a function that is present, and the call had to be reported as unverified.
+ * That left the app's search — the one RPC no browser test ever actually calls,
+ * since the page sweep opens /search and never types — as the single thing this
+ * checker could not speak for.
+ *
+ * Only a local helper whose body is a single `return { … }` of plain keys is
+ * resolved. Anything else (a spread inside the helper, a computed key, a helper
+ * from another module) returns null and the call stays partial, because a
+ * guessed argument set would produce exactly the false 404 this exists to
+ * avoid.
+ */
+export function resolveSpread(source, segment) {
+  const called = /^\.\.\.\s*([A-Za-z_$][\w$]*)\s*\(/.exec(segment)
+  if (!called) return null
+  const declaration = new RegExp(String.raw`function\s+${called[1]}\s*\(`).exec(source)
+  if (!declaration) return null
+
+  const open = source.indexOf('{', declaration.index + declaration[0].length)
+  if (open === -1) return null
+  const returned = source.indexOf('return {', open)
+  if (returned === -1) return null
+
+  let depth = 0
+  let end = -1
+  for (let i = source.indexOf('{', returned); i < source.length; i += 1) {
+    const ch = source[i]
+    if (ch === '{' || ch === '[' || ch === '(') depth += 1
+    else if (ch === '}' || ch === ']' || ch === ')') {
+      depth -= 1
+      if (depth === 0) { end = i; break }
+    }
+  }
+  if (end === -1) return null
+
+  const keys = new Set()
+  for (const entry of topLevelSegments(source.slice(source.indexOf('{', returned) + 1, end))) {
+    const trimmed = entry.trim()
+    if (!trimmed) continue
+    if (trimmed.startsWith('...')) return null
+    const key = /^([A-Za-z_][A-Za-z0-9_]*)\s*:/.exec(trimmed)
+    if (!key) return null
+    keys.add(key[1])
+  }
+  return keys.size ? keys : null
+}
+
+/**
  * `supabase.rpc('name')` or `.rpc('name', { a: 1, b: 2 })`.
  *
  * The argument object is read by scanning forward from the opening brace and
@@ -124,7 +181,12 @@ export function extractRpcCalls(source, file = '') {
         }
         for (const segment of topLevelSegments(source.slice(open + 1, i))) {
           const trimmed = segment.trim()
-          if (trimmed.startsWith('...')) { call.partial = true; continue }
+          if (trimmed.startsWith('...')) {
+            const spread = resolveSpread(source, trimmed)
+            if (spread) for (const key of spread) call.args.add(key)
+            else call.partial = true
+            continue
+          }
           const key = /^([A-Za-z_][A-Za-z0-9_]*)\s*:/.exec(trimmed)
           if (key) call.args.add(key[1])
         }
