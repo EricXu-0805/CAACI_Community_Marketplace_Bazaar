@@ -7,6 +7,7 @@ import {
   extractRpcCalls,
   mergeCalls,
   probeRpc,
+  resolveSpread,
   scanIsMeaningless,
 } from './verify-deployed-rpcs.mjs'
 
@@ -204,4 +205,93 @@ test('a scan that learned nothing refuses to call it agreement', () => {
   // Control: a run that did reach the database is meaningful, so the emptiness
   // checks above are detecting emptiness rather than always objecting.
   assert.equal(scanIsMeaningless(merged, reached), null)
+})
+
+
+/*
+ * search_items_fuzzy hid seven of its eleven arguments behind
+ * `...commonLegacyArgs(params)`, so this checker could only report it as
+ * unverified — leaving the app's search as the one RPC nothing speaks for. The
+ * browser sweep opens /search and never types, so it is not covered there
+ * either.
+ *
+ * The helper is a local function whose whole body is `return { … }` of plain
+ * keys, which can be read with certainty. Anything less certain stays partial:
+ * a guessed argument set produces exactly the false 404 that would make this
+ * checker cry wolf.
+ */
+
+test('a spread of a local literal-returning helper is resolved, not guessed', () => {
+  const source = `
+    function commonLegacyArgs(params) {
+      return {
+        terms_in: params.terms,
+        category_in: params.category ?? null,
+        listing_type_in: params.listingType ?? null,
+      }
+    }
+    await supabase.rpc('search_items_fuzzy', {
+      ...commonLegacyArgs(params),
+      limit_in: limit,
+      offset_in: offset,
+    })
+  `
+  const [call] = extractRpcCalls(source)
+  assert.equal(call.partial, false, 'the arguments are all known, so nothing is a subset')
+  assert.deepEqual([...call.args].sort(),
+    ['category_in', 'limit_in', 'listing_type_in', 'offset_in', 'terms_in'])
+})
+
+test('anything less than certain stays partial rather than being guessed', () => {
+  const cases = {
+    'the helper is not in this file': `
+      supabase.rpc('f', { ...importedArgs(params), limit_in: 1 })`,
+    'the helper spreads something itself': `
+      function build(p) { return { ...base(p), a_in: p.a } }
+      supabase.rpc('f', { ...build(params), limit_in: 1 })`,
+    'the helper has a computed key': `
+      function build(p) { return { [dynamic]: 1, a_in: p.a } }
+      supabase.rpc('f', { ...build(params), limit_in: 1 })`,
+    'the helper does not return an object': `
+      function build(p) { return p.everything }
+      supabase.rpc('f', { ...build(params), limit_in: 1 })`,
+  }
+  for (const [why, source] of Object.entries(cases)) {
+    const [call] = extractRpcCalls(source)
+    assert.equal(call.partial, true, `should stay partial when ${why}`)
+    assert.ok(call.args.has('limit_in'), 'the readable keys are still collected')
+  }
+
+  // Control: the resolvable shape from the test above is NOT partial, so the
+  // assertions here are reacting to the difference rather than to everything.
+  const [resolvable] = extractRpcCalls(`
+    function build(p) { return { a_in: p.a } }
+    supabase.rpc('f', { ...build(params), limit_in: 1 })`)
+  assert.equal(resolvable.partial, false)
+})
+
+test('resolveSpread refuses a segment that is not a helper call', () => {
+  for (const segment of ['...someObject', '...a.b(c)', 'plain_in: 1', '...']) {
+    assert.equal(resolveSpread('function x() { return { a_in: 1 } }', segment), null)
+  }
+  assert.deepEqual([...resolveSpread('function x() { return { a_in: 1 } }', '...x(p)')], ['a_in'])
+})
+
+test('every RPC the client calls is now verifiable, search included', async () => {
+  const merged = mergeCalls(await clientRpcCalls())
+  const partial = merged.filter(call => call.partial).map(call => call.name)
+  assert.deepEqual(partial, [],
+    `these would be probed with an incomplete argument set: ${partial.join(', ')}`)
+
+  // The resolved set is checked against the signature the database declares,
+  // taken from pg_get_function_identity_arguments on production and staging
+  // (both identical) on 2026-08-29. If a migration changes the signature, the
+  // live probe answers 404 and names this function — this pins the static half.
+  const search = merged.find(call => call.name === 'search_items_fuzzy')
+  assert.ok(search, 'the app still searches')
+  assert.deepEqual([...search.args].sort(), [
+    'category_in', 'condition_in', 'limit_in', 'listing_type_in', 'location_in',
+    'offset_in', 'price_max_in', 'price_min_in', 'terms_in', 'user_id_in',
+    'verified_only_in',
+  ])
 })
