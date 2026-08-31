@@ -309,28 +309,49 @@ export async function remoteModerate(
     || !isAccountRequestCurrent(accountToken)
   ) throw new Error('moderation_unavailable')
 
-  const ctrl = new AbortController()
-  const timer = setTimeout(() => ctrl.abort(), 3500)
+  /* The endpoint's own budget runs far past this deadline — it verifies the
+     JWT against Supabase, charges the rate counter, then calls the provider,
+     each with its own multi-second timeout. So a request that overruns here is
+     usually one the server goes on to answer. Production 2026-08-31: the first
+     real listing was refused with 'moderation_unavailable' at 3.5 s while
+     /api/moderate logged 200 for that same request; the seller retried by hand
+     eight seconds later and it went through. Do that retry for them.
+
+     Only a timeout is retried. A 4xx/5xx or a malformed body is an answer, and
+     asking again would just be hammering — including the 429 the per-user rate
+     limiter returns. */
+  const MODERATION_TIMEOUT_MS = 3500
   let j: any
-  try {
-    if (!isAccountRequestCurrent(accountToken)) throw new Error('moderation_unavailable')
-    const r = await platformFetch(MODERATE_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
-      body: JSON.stringify({ text }),
-      signal: ctrl.signal,
-    })
-    if (!isAccountRequestCurrent(accountToken)) throw new Error('moderation_unavailable')
-    if (!r.ok) throw new Error('moderation_unavailable')
-    j = await readBoundedJson(r, {
-      maxBytes: MAX_MODERATION_RESPONSE_BYTES,
-      // The caller's 3.5 s controller remains active through this read; this
-      // secondary bound also covers injected/non-platform fetch responses.
-      timeoutMs: 3500,
-    })
-    if (!isAccountRequestCurrent(accountToken)) throw new Error('moderation_unavailable')
-  } catch { throw new Error('moderation_unavailable') } finally {
-    clearTimeout(timer)
+  for (let attempt = 0; ; attempt++) {
+    const ctrl = new AbortController()
+    let timedOut = false
+    const timer = setTimeout(() => { timedOut = true; ctrl.abort() }, MODERATION_TIMEOUT_MS)
+    try {
+      if (!isAccountRequestCurrent(accountToken)) throw new Error('moderation_unavailable')
+      const r = await platformFetch(MODERATE_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
+        body: JSON.stringify({ text }),
+        signal: ctrl.signal,
+      })
+      if (!isAccountRequestCurrent(accountToken)) throw new Error('moderation_unavailable')
+      if (!r.ok) throw new Error('moderation_unavailable')
+      j = await readBoundedJson(r, {
+        maxBytes: MAX_MODERATION_RESPONSE_BYTES,
+        // This attempt's controller remains active through the read; this
+        // secondary bound also covers injected/non-platform fetch responses.
+        timeoutMs: MODERATION_TIMEOUT_MS,
+      })
+      if (!isAccountRequestCurrent(accountToken)) throw new Error('moderation_unavailable')
+      break
+    } catch {
+      // An account switch mid-flight aborts nothing and must not be retried
+      // under the old account's token; only our own deadline gets a second go.
+      if (timedOut && attempt === 0 && isAccountRequestCurrent(accountToken)) continue
+      throw new Error('moderation_unavailable')
+    } finally {
+      clearTimeout(timer)
+    }
   }
   if (j?.skipped === true && j?.reason === 'no_key') {
     return { flagged: false, categories: [] }
