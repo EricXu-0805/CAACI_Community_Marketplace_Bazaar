@@ -227,6 +227,7 @@ import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
+import { authoredLang } from '../../composables/i18n/format'
 import { useCampusSpots, type CampusSpot } from '../../composables/useCampusSpots'
 import { useLocation } from '../../composables/useLocation'
 import { useItems, type UploadAccountToken } from '../../composables/useItems'
@@ -854,7 +855,7 @@ async function onSubmit() {
 
     const trimmedTitle = form.title.trim()
     const trimmedDesc = form.description.trim()
-    const sourceLang = lang.value
+    const sourceLang = authoredLang(`${trimmedTitle}\n${trimmedDesc}`, lang.value)
 
     const payload = {
       title: trimmedTitle,
