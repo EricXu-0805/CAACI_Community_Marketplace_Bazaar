@@ -16,6 +16,28 @@ export function detectsAsForeign(text: string, uiLang: Lang): boolean {
 }
 
 /*
+ * Which language the author actually wrote in.
+ *
+ * The UI toggle is not the answer, and taking it as the answer is how a
+ * Chinese listing ended up stored as English on production 2026-08-31:
+ * title_i18n was {"en": "宠物航空箱 XL"} with no zh entry at all.
+ *
+ * The label decides what gets translated. translateContentToAll targets every
+ * language except the source, so calling that listing English asked for a
+ * Chinese rendering of text that was already Chinese; the same string came
+ * back, and nothing was stored. English — the one rendering that listing
+ * actually needed — was never requested.
+ *
+ * `detectsAsForeign` only ever fires for the zh/en pair, which is also the
+ * only pair SUPPORTED_LANGS ships, so "foreign to the UI language" names the
+ * language outright. Text with no signal either way keeps the UI language.
+ */
+export function authoredLang(text: string, uiLang: Lang): Lang {
+  if (!detectsAsForeign(text, uiLang)) return uiLang
+  return uiLang === 'zh' ? 'en' : 'zh'
+}
+
+/*
  * Apply {key} placeholder interpolation. Pulled out so t() in useI18n
  * has one fewer responsibility and we can unit-test it independently.
  * Missing keys render as empty strings (same as the old inline impl).

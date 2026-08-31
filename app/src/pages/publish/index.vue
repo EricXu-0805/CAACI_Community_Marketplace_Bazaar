@@ -241,6 +241,7 @@ import { watch } from 'vue'
 import { useAuth } from '../../composables/useAuth'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
+import { authoredLang } from '../../composables/i18n/format'
 import { useCampusSpots, type CampusSpot } from '../../composables/useCampusSpots'
 import { useLocation } from '../../composables/useLocation'
 import { useItems, type UploadAccountToken } from '../../composables/useItems'
@@ -974,10 +975,7 @@ async function onSubmit() {
 
     const trimmedTitle = form.title.trim()
     const trimmedDesc = form.description.trim()
-    // Author-language is today's UI locale. Settings is the only place a
-    // user can change it, so this is a correct proxy for "what language
-    // did they think in while writing this listing".
-    const sourceLang = lang.value
+    const sourceLang = authoredLang(`${trimmedTitle}\n${trimmedDesc}`, lang.value)
 
     const payload = {
       title: trimmedTitle,

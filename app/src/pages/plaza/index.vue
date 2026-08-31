@@ -620,6 +620,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from
 import { onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
 
 import { useI18n } from '../../composables/useI18n'
+import { authoredLang } from '../../composables/i18n/format'
 import { useAuth } from '../../composables/useAuth'
 import { useTheme } from '../../composables/useTheme'
 import { usePlaza, groupCommentsByParent } from '../../composables/usePlaza'
@@ -1358,7 +1359,7 @@ async function onSubmitPost() {
     }
 
     const trimmed = composerText.value.trim()
-    const sourceLang = lang.value
+    const sourceLang = authoredLang(trimmed, lang.value)
 
     const result = await createPost(
       composerText.value,
