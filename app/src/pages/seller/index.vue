@@ -723,11 +723,13 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 .le-title { font-size: 14px; color: var(--text-muted); }
 .le-retry {
   padding: 8px 24px; border-radius: 20px;
-  background: var(--accent-primary); cursor: pointer;
+  background: var(--accent-action); cursor: pointer;
   transition: transform 0.12s;
   &:active { transform: scale(0.96); }
 }
-.le-retry-label { font-size: 13px; font-weight: 600; color: #fff; }
+/* --ink-inverse flips with the theme; a hardcoded #fff was 2.88:1 on the
+   dark-mode coral. Same pairing as plaza's .cta-btn, which passes both. */
+.le-retry-label { font-size: 13px; font-weight: 600; color: var(--ink-inverse); }
 
 .blocked-state {
   display: flex; flex-direction: column; align-items: center;
