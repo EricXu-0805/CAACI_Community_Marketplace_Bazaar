@@ -470,6 +470,8 @@ const zh: Record<string, string> = {
   'login.submitSignup': '注册',
   'login.wait': '请稍候...',
   'login.needEmail': '请输入邮箱',
+  'login.needEmailForReset': '请先填写邮箱，重置码会发到这个地址',
+  'login.badEmailFormat': '邮箱格式不正确',
   'login.needPassword': '密码至少 8 位，需含大小写字母和数字',
   'login.enterPassword': '请输入密码',
   'login.weakPassword': '密码需至少 8 位，并含大小写字母和数字',
