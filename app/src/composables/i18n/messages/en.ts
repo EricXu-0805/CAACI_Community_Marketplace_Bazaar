@@ -472,6 +472,8 @@ const en: Record<string, string> = {
   'login.submitSignup': 'Create Account',
   'login.wait': 'Please wait...',
   'login.needEmail': 'Enter your email',
+  'login.needEmailForReset': 'Enter your email — the reset code goes there',
+  'login.badEmailFormat': "That email address isn't valid",
   'login.needPassword': 'Use 8+ characters with upper & lower case and a number',
   'login.enterPassword': 'Enter your password',
   'login.weakPassword': 'Password needs 8+ characters with upper & lower case and a number',

@@ -204,6 +204,56 @@ test('expired auth email link → login, not a blank screen', async ({ page }) =
 })
 
 /**
+ * "Forgot password?" and "Sign In" said the same four words.
+ *
+ * Both paths toasted `login.needEmail` — "Enter your email" — when the field
+ * was empty. Measured on production 2026-08-31: tapping "Forgot password?"
+ * with nothing typed produced exactly the sign-in form's validation error and
+ * no navigation, so the one screen a locked-out reader reaches first tells
+ * them the field is blank and nothing about what filling it in would do.
+ *
+ * The handler is not broken — it sends the recovery code to whatever is in
+ * that field and then routes to the reset page. Only the copy was wrong, and
+ * password reset is the likeliest support request of the first week.
+ *
+ * This asserts the two paths say different things, not what either says: the
+ * wording is free to change, the collision is not.
+ */
+test('forgot-password does not borrow the sign-in form\'s error', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('welcomed', '1'))
+
+  const messageAfter = async (click: () => Promise<void>) => {
+    await page.goto('/#/pages/login/index', { waitUntil: 'networkidle' })
+    await page.waitForTimeout(1500)
+    const before = new Set((await page.locator('body').innerText()).split('\n').map(l => l.trim()))
+    await click()
+    // The toast is transient, so poll. Deduplicate: uni renders the message
+    // into both the visible toast and a live region, and one path was landing
+    // twice while the other landed once — enough for a raw string compare to
+    // call two identical messages different.
+    for (let i = 0; i < 24; i++) {
+      await page.waitForTimeout(250)
+      const added = [...new Set((await page.locator('body').innerText())
+        .split('\n').map(l => l.trim()).filter(l => l && !before.has(l)))]
+      if (added.length) return added.sort().join(' ')
+    }
+    return ''
+  }
+
+  const signIn = await messageAfter(async () => {
+    await page.getByRole('button', { name: /^Sign In$/ }).last().click()
+  })
+  const forgot = await messageAfter(async () => {
+    await page.getByRole('button', { name: /Forgot password/i }).first().click()
+  })
+
+  // Control: both must actually say something, or "they differ" is vacuous.
+  expect(signIn, 'sign-in with an empty email said nothing').not.toBe('')
+  expect(forgot, 'forgot-password with an empty email said nothing').not.toBe('')
+  expect(forgot, 'forgot-password reused the sign-in validation message').not.toBe(signIn)
+})
+
+/**
  * A route that never reaches a terminal state is worse than one that fails.
  *
  * pages/seller/index held `loading = ref(true)` and its onLoad opened with a

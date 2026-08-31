@@ -607,7 +607,10 @@ async function onForgotPassword() {
   if (formBusy.value) return
   const trimmedEmail = email.value.trim().toLowerCase()
   if (!trimmedEmail) {
-    uni.showToast({ title: t('login.needEmail'), icon: 'none' })
+    // Not the sign-in form's 'login.needEmail'. Someone who tapped "forgot
+    // password" is told the field is empty and nothing else; they have to
+    // guess that filling it in is what sends the code.
+    uni.showToast({ title: t('login.needEmailForReset'), icon: 'none' })
     return
   }
   /*
@@ -616,7 +619,7 @@ async function onForgotPassword() {
    * with no localized message — easier to catch here.
    */
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-    uni.showToast({ title: t('login.needEmail'), icon: 'none' })
+    uni.showToast({ title: t('login.badEmailFormat'), icon: 'none' })
     return
   }
   /*
