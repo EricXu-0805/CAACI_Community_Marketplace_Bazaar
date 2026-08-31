@@ -227,6 +227,78 @@ test('Sentry hooks discard UGC and keep only bounded diagnostic fields', async (
   assert.equal(JSON.stringify(uniEvent).includes(jwt), false)
 })
 
+/**
+ * Every uni-app rejection used to land in one Sentry issue titled
+ * "UniAppRejection: Captured UniAppRejection". Measured against the live
+ * beforeSend on 2026-08-30, these seven produced byte-identical events:
+ *
+ *   uploadFile:fail statusCode:413        a listing photo the server refused
+ *   getLocation:fail auth deny            a denied location permission
+ *   chooseImage:fail cancel               someone dismissing the picker
+ *   navigateTo:fail / reLaunch:fail       a logged-out deep link
+ *   previewImage:fail / switchTab:fail
+ *
+ * The first is a broken publish flow. The rest are noise. Production issue
+ * JAVASCRIPT-VUE-V had been collecting all of them, unresolved, for 24 days,
+ * so the count could not be read as anything and a new upload failure would
+ * have arrived as more events on a known-noisy issue rather than a new one.
+ */
+test('a uni-app rejection says which API rejected', async (t) => {
+  const harness = await loadSentryHarness()
+  t.after(() => harness.cleanup())
+  const options = harness.getOptions()
+
+  const typeOf = (errMsg) => options.beforeSend(
+    { exception: { values: [{ type: 'Object', value: 'placeholder' }] }, breadcrumbs: [] },
+    { originalException: { errMsg } },
+  ).exception.values[0]
+
+  const distinct = new Map()
+  for (const errMsg of [
+    'uploadFile:fail statusCode:413',
+    'getLocation:fail auth deny',
+    'chooseImage:fail cancel',
+    'navigateTo:fail',
+    'reLaunch:fail',
+    'previewImage:fail',
+    'switchTab:fail can not switch to no-tabBar page',
+  ]) {
+    const value = typeOf(errMsg)
+    assert.equal(value.value, `Captured ${value.type}`, `${errMsg} broke the value convention`)
+    assert.equal(distinct.has(value.type), false,
+      `${errMsg} shares issue ${value.type} with ${distinct.get(value.type)}`)
+    distinct.set(value.type, errMsg)
+  }
+  assert.equal(distinct.has('UniAppRejection.uploadFile'), true,
+    'a refused photo upload must get its own Sentry issue')
+
+  // Control. Without this the test above passes by handing every input its own
+  // type, which is exactly how a marker reaches an issue title.
+  const marker = 'CHATMARKER9f6aprivatemessage'
+  const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJwIn0.signature-marker-12345'
+  for (const errMsg of [
+    `${marker} ${jwt}`,
+    `${marker.toUpperCase()}:fail`,
+    `${'a'.repeat(60)}:fail`,
+    'uploadFile:ok',
+    'Uploadfile:fail',
+  ]) {
+    assert.equal(typeOf(errMsg).type, 'UniAppRejection',
+      `${errMsg.slice(0, 40)} was promoted into an issue title`)
+  }
+
+  // The detail after the API name is where paths, URLs and platform strings
+  // live, so it never survives even when the API name does.
+  const detailed = options.beforeSend(
+    { exception: { values: [{ type: 'Object', value: 'placeholder' }] }, breadcrumbs: [] },
+    { originalException: { errMsg: `uploadFile:fail ${marker} ${jwt}` } },
+  )
+  assert.equal(detailed.exception.values[0].type, 'UniAppRejection.uploadFile')
+  const serialized = JSON.stringify(detailed)
+  assert.equal(serialized.includes(marker), false)
+  assert.equal(serialized.includes(jwt), false)
+})
+
 test('captureException never forwards provider messages or arbitrary context', async (t) => {
   const harness = await loadSentryHarness()
   t.after(() => harness.cleanup())

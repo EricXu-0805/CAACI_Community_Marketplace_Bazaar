@@ -64,6 +64,23 @@ function safeErrorName(err: unknown): string {
   return stableToken(name, err && typeof err === 'object' ? 'ProviderError' : 'Error', 64)
 }
 
+/**
+ * uni-app rejects with `{errMsg: "<api>:fail <free-form detail>"}`. The API
+ * name is the only part of that string worth keeping: it is what tells a
+ * failed photo upload apart from a routing hiccup. Everything after it is
+ * dropped — that tail carries file paths, request URLs and native platform
+ * strings.
+ *
+ * The shape required here is uni's own: lowerCamelCase, at most 32 characters,
+ * immediately followed by `:fail` or `:cancel`. Anything else falls back to the
+ * generic bucket rather than being promoted into a Sentry issue title. Without
+ * that narrowing an all-caps marker followed by `:fail` went through verbatim.
+ */
+function uniRejectionType(errMsg: string): string {
+  const api = /^([a-z][A-Za-z0-9]{2,31}):(?:fail|cancel)\b/.exec(errMsg)?.[1]
+  return api ? `UniAppRejection.${api}` : 'UniAppRejection'
+}
+
 function safeErrorCode(err: unknown): string | undefined {
   if (!err || typeof err !== 'object') return undefined
   const record = err as { code?: unknown; status?: unknown; statusCode?: unknown }
@@ -334,16 +351,22 @@ export function initSentry(app: App): void {
 
         /*
          * Normalize uni-app callback rejections from the {errMsg: "..."}
-         * shape into a real exception value so Sentry can group them by
-         * the actual error string instead of bucketing every single one
-         * under the unhelpful "Object captured as promise rejection
-         * with keys: errMsg" placeholder.
+         * shape into a real exception value, keyed on the API that
+         * failed, instead of bucketing every one under the unhelpful
+         * "Object captured as promise rejection with keys: errMsg"
+         * placeholder.
          *
          * The underlying offenders are uni.* APIs (chooseImage,
          * uploadFile, previewImage, showShareMenu, etc) whose .fail
          * callbacks reject without wrapping err in `new Error(...)`.
          * Most call sites in this repo wrap correctly; this catches
          * any future leak so the alert remains debuggable.
+         *
+         * Keying on the API name is what makes it debuggable. Measured
+         * against production on 2026-08-30, an upload rejected with 413,
+         * a denied location permission, a dismissed photo picker and a
+         * logged-out deep link all produced the byte-identical event, so
+         * the one open issue for them could not be read as anything.
          */
         const orig = hint?.originalException as { errMsg?: unknown } | null | undefined
         if (
@@ -353,9 +376,8 @@ export function initSentry(app: App): void {
           'errMsg' in orig &&
           typeof orig.errMsg === 'string'
         ) {
-          event.exception = {
-            values: [{ type: 'UniAppRejection', value: 'Captured UniAppRejection' }],
-          }
+          const type = uniRejectionType(orig.errMsg)
+          event.exception = { values: [{ type, value: `Captured ${type}` }] }
           event.tags = safeEventTags({ ...event.tags, source: 'uni-app-errMsg' })
         }
         return event
