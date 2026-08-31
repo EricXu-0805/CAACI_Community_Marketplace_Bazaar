@@ -204,6 +204,41 @@ test('expired auth email link → login, not a blank screen', async ({ page }) =
 })
 
 /**
+ * A route that never reaches a terminal state is worse than one that fails.
+ *
+ * pages/seller/index held `loading = ref(true)` and its onLoad opened with a
+ * bare `if (!options?.id) return`. Nothing below it runs, and nothing else
+ * clears the flag, so a seller link that lost its query string painted sixteen
+ * skeletons and kept them: no error, no retry, no empty state, nothing
+ * arriving. Measured against production on 2026-08-31 it was still on them
+ * after twelve seconds. A bad id was already handled — it shows the page's own
+ * "Failed to load" with a retry — so only the absent id fell through.
+ *
+ * Every other route answers a missing id: detail says the listing was removed,
+ * post says the post was not found. This asserts seller does too.
+ */
+test('a seller link with no id reaches a terminal state', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('welcomed', '1'))
+
+  // Control first: the locator must not match on a healthy page, or the
+  // assertion below passes by matching some chrome every route paints.
+  await page.goto('/#/pages/settings/index', { waitUntil: 'networkidle' })
+  await expect(page.locator('.load-error')).toHaveCount(0)
+
+  await page.goto('/#/pages/seller/index', { waitUntil: 'networkidle' })
+  await expect(
+    page.locator('.load-error'),
+    'a seller link with no id must resolve to the page\'s error state, not stay on skeletons',
+  ).toBeVisible({ timeout: 15_000 })
+
+  // Retry re-runs the load. It cannot succeed without an id, but it must not
+  // put the page back on the skeletons it just escaped.
+  await page.locator('.le-retry').click()
+  await page.waitForTimeout(3000)
+  await expect(page.locator('.load-error'), 'retry left the page hanging again').toBeVisible()
+})
+
+/**
  * The install hint is the only thing a first-time iOS visitor sees floating
  * over the home page, and it is fixed-position chrome, so nothing in the
  * layout pushes back on where it lands. Pinned under the header it sat on
