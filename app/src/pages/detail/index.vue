@@ -296,6 +296,34 @@
     </view>
   </view>
 
+  <view v-else-if="loadError" class="not-found-page has-sidebar" :class="mpThemeClass" :style="mpChrome" role="alert" aria-live="assertive">
+    <view class="nf-back" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
+    <view class="nf-icon"></view>
+    <text class="nf-title" role="heading" aria-level="1">{{ t('error.loadFailed') }}</text>
+    <text class="nf-sub">{{ t('error.actionFailed') }}</text>
+    <view class="nf-btn" role="button" :aria-label="t('home.retry')" @click="loadDetailForCurrentAccount">{{ t('home.retry') }}</view>
+  </view>
+
+  <view v-else-if="notFound" class="not-found-page has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <view class="nf-back" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
+    <view class="nf-icon"></view>
+    <text class="nf-title" role="heading" aria-level="1">{{ t('detail.notFoundTitle') }}</text>
+    <text class="nf-sub">{{ t('detail.notFoundSub') }}</text>
+    <view class="nf-btn" role="button" :aria-label="t('detail.backHome')" @click="goHome">{{ t('detail.backHome') }}</view>
+  </view>
+
+  <!-- Loading state -->
+  <view v-else class="loading-page has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <view class="loading-spinner"></view>
+    <text class="loading-text" role="heading" aria-level="1">{{ t('home.loading') }}</text>
+  </view>
+
+  <!-- The rating sheet renders after the page-state roots on purpose. It
+       used to sit between `v-if="item"` and `v-else-if="loadError"`, which
+       silently re-pointed the whole else-chain at `item && showRating`: a
+       fully loaded listing fell through to the `v-else` and painted a second
+       screen of spinner below the content. Both sheet nodes are position:
+       fixed with their own z-index, so their place in the DOM is free. -->
   <view v-if="showRating" class="sheet-mask u-mask-in" @click="closeRating"></view>
   <view
     v-if="item && showRating"
@@ -339,28 +367,6 @@
     >
       <text>{{ t('rating.submit') }}</text>
     </view>
-  </view>
-
-  <view v-else-if="loadError" class="not-found-page has-sidebar" :class="mpThemeClass" :style="mpChrome" role="alert" aria-live="assertive">
-    <view class="nf-back" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
-    <view class="nf-icon"></view>
-    <text class="nf-title" role="heading" aria-level="1">{{ t('error.loadFailed') }}</text>
-    <text class="nf-sub">{{ t('error.actionFailed') }}</text>
-    <view class="nf-btn" role="button" :aria-label="t('home.retry')" @click="loadDetailForCurrentAccount">{{ t('home.retry') }}</view>
-  </view>
-
-  <view v-else-if="notFound" class="not-found-page has-sidebar" :class="mpThemeClass" :style="mpChrome">
-    <view class="nf-back" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
-    <view class="nf-icon"></view>
-    <text class="nf-title" role="heading" aria-level="1">{{ t('detail.notFoundTitle') }}</text>
-    <text class="nf-sub">{{ t('detail.notFoundSub') }}</text>
-    <view class="nf-btn" role="button" :aria-label="t('detail.backHome')" @click="goHome">{{ t('detail.backHome') }}</view>
-  </view>
-
-  <!-- Loading state -->
-  <view v-else class="loading-page has-sidebar" :class="mpThemeClass" :style="mpChrome">
-    <view class="loading-spinner"></view>
-    <text class="loading-text" role="heading" aria-level="1">{{ t('home.loading') }}</text>
   </view>
 </template>
 
