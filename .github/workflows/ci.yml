@@ -299,8 +299,9 @@ jobs:
       # The step above proves the functions exist. This one proves a write
       # actually survives the policies and triggers stacked on top of them —
       # the smoke specs below sign in but never write. Publishes one listing
-      # and deletes it; refuses to run against a production ref.
-      - name: Verify a real user can still publish on staging
+      # carrying one uploaded photo, then deletes both; refuses to run against
+      # a production ref.
+      - name: Verify a real user can still publish a listing with a photo
         run: node scripts/verify-staging-write-path.mjs
         env:
           SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}

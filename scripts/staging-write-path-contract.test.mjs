@@ -4,9 +4,15 @@ import test from 'node:test'
 import {
   ACCEPTED_TITLE,
   assertSafeTarget,
+  FOREIGN_OWNER,
   FORBIDDEN_ENV_KEYS,
   KNOWN_PRODUCTION_PROJECT_REFS,
+  main,
+  MEDIA_BUCKET,
+  mediaObjectName,
   moderationRefusal,
+  OBJECT_PREFIX,
+  publicMediaUrl,
   REFUSED_TITLE,
   TITLE_PREFIX,
   uniqueTitles,
@@ -124,4 +130,182 @@ test('each run uses titles no earlier run used', () => {
   assert.ok(a.accepted.startsWith(ACCEPTED_TITLE))
   assert.ok(a.refused.startsWith(REFUSED_TITLE))
   assert.notEqual(a.accepted, a.refused)
+})
+
+/* ------------------------------------------- the sequence, against a stub */
+
+/**
+ * The live steps only ever run on main — the protected-account job is skipped
+ * on pull requests — so without this they would ship unexecuted. That is how a
+ * `process.exit()` inside the try block once skipped the finally and left a
+ * listing behind on staging: nothing had run the cleanup path.
+ *
+ * What this pins is the sequence and, above all, that the cleanup runs when a
+ * later step fails. It cannot say anything about the real database; that is
+ * what the run on main is for.
+ */
+
+const USER_ID = '11111111-2222-4333-8444-555555555555'
+const URL_BASE = `https://${STAGING}.supabase.co`
+
+function stubServer(over = {}) {
+  const calls = []
+  const behavior = {
+    upload: { status: 200, body: { Key: 'ok' } },
+    publicRead: { status: 200, contentType: 'image/png' },
+    foreignUpload: { status: 403, body: { message: 'new row violates row-level security policy' } },
+    insertAccepted: { status: 201, body: [{ id: 'created-row-id' }] },
+    insertRefused: { status: 400, body: { message: 'moderation_block:item_title:contact_info' } },
+    deleteRow: { status: 200, body: [{ id: 'created-row-id' }] },
+    deleteObject: { status: 200, body: {} },
+    ...over,
+  }
+
+  const reply = (spec) => new Response(
+    spec.contentType ? 'binary' : JSON.stringify(spec.body ?? {}),
+    { status: spec.status, headers: { 'content-type': spec.contentType || 'application/json' } },
+  )
+
+  const fetchStub = async (input, init = {}) => {
+    const url = String(input)
+    const method = (init.method || 'GET').toUpperCase()
+    const path = url.slice(URL_BASE.length)
+    calls.push(`${method} ${path.split('?')[0]}`)
+
+    if (path.startsWith('/auth/v1/token')) {
+      return reply({ status: 200, body: { access_token: 'stub-token', user: { id: USER_ID } } })
+    }
+    if (path.startsWith('/auth/v1/logout')) return reply({ status: 204 })
+    if (path.startsWith(`/storage/v1/object/list/${MEDIA_BUCKET}`)) {
+      return reply({ status: 200, body: [] })
+    }
+    if (path.startsWith(`/storage/v1/object/public/${MEDIA_BUCKET}/`)) {
+      return reply(behavior.publicRead)
+    }
+    if (path.startsWith(`/storage/v1/object/${MEDIA_BUCKET}/`)) {
+      if (method === 'DELETE') return reply(behavior.deleteObject)
+      return reply(path.includes(FOREIGN_OWNER) ? behavior.foreignUpload : behavior.upload)
+    }
+    if (path.startsWith('/rest/v1/items')) {
+      if (method === 'DELETE') return reply(behavior.deleteRow)
+      const payload = JSON.parse(init.body)
+      return reply(payload.title.startsWith(`${ACCEPTED_TITLE} `)
+        ? behavior.insertAccepted
+        : behavior.insertRefused)
+    }
+    throw new Error(`the check called an endpoint the stub does not model: ${method} ${path}`)
+  }
+
+  return { calls, fetchStub }
+}
+
+async function runAgainst(stub) {
+  const realFetch = globalThis.fetch
+  const realEnv = { ...process.env }
+  const silenced = { log: console.log, warn: console.warn, error: console.error }
+  globalThis.fetch = stub.fetchStub
+  Object.assign(process.env, validEnv())
+  delete process.env.SMOKE_EXPECTED_USER_ID
+  console.log = () => {}
+  console.warn = () => {}
+  console.error = () => {}
+  try {
+    await main()
+    return null
+  } catch (error) {
+    return error
+  } finally {
+    globalThis.fetch = realFetch
+    Object.assign(console, silenced)
+    for (const key of Object.keys(process.env)) {
+      if (!(key in realEnv)) delete process.env[key]
+    }
+    Object.assign(process.env, realEnv)
+  }
+}
+
+test('a healthy database publishes a listing with a photo and leaves nothing behind', async () => {
+  const stub = stubServer()
+  assert.equal(await runAgainst(stub), null)
+
+  const objectPath = `/storage/v1/object/${MEDIA_BUCKET}/items/${USER_ID}/`
+  assert.ok(stub.calls.includes(`POST /storage/v1/object/list/${MEDIA_BUCKET}`),
+    'stale objects from a killed run were never swept')
+  assert.ok(stub.calls.some(c => c.startsWith(`POST ${objectPath}`)), 'no photo was uploaded')
+  assert.ok(stub.calls.some(c => c.startsWith(`GET /storage/v1/object/public/${MEDIA_BUCKET}/`)),
+    'the photo was never read back the way a share card reads it')
+  assert.ok(stub.calls.some(c => c.includes(FOREIGN_OWNER)),
+    "no upload into another user's folder was attempted, so nothing keeps the first one honest")
+  assert.ok(stub.calls.some(c => c.startsWith(`DELETE ${objectPath}`)), 'the photo was left behind')
+  assert.ok(stub.calls.some(c => c.startsWith('DELETE /rest/v1/items')), 'the listing was left behind')
+  assert.ok(stub.calls.at(-1).startsWith('POST /auth/v1/logout'), 'the session was left open')
+})
+
+test('the listing carries the photo it just uploaded', async () => {
+  let published = null
+  const stub = stubServer()
+  const inner = stub.fetchStub
+  stub.fetchStub = async (input, init = {}) => {
+    if (String(input).endsWith('/rest/v1/items') && (init.method || '') === 'POST') {
+      const payload = JSON.parse(init.body)
+      if (payload.title.startsWith(`${ACCEPTED_TITLE} `)) published = payload
+    }
+    return inner(input, init)
+  }
+  assert.equal(await runAgainst(stub), null)
+
+  assert.equal(published.images.length, 1)
+  assert.match(published.images[0],
+    new RegExp(`^${URL_BASE}/storage/v1/object/public/${MEDIA_BUCKET}/items/${USER_ID}/`),
+    'the URL is not the canonical public shape local_item_media_object_name parses')
+  assert.deepEqual(published.image_dimensions, [{ w: 1, h: 1 }],
+    'assert_image_dimensions wants exactly one entry per image')
+})
+
+test('a refused upload stops the run before any listing is created', async () => {
+  const stub = stubServer({ upload: { status: 403, body: { message: 'row-level security' } } })
+  const error = await runAgainst(stub)
+  assert.match(error.message, /Nobody can attach a photo/)
+  assert.equal(stub.calls.some(c => c === 'POST /rest/v1/items'), false,
+    'it published a listing even though the photo never uploaded')
+})
+
+test('a photo that is not publicly readable fails the run', async () => {
+  const stub = stubServer({ publicRead: { status: 400, contentType: 'application/json' } })
+  const error = await runAgainst(stub)
+  assert.match(error.message, /not publicly readable/)
+})
+
+test("an upload into another user's folder that succeeds fails the run", async () => {
+  const stub = stubServer({ foreignUpload: { status: 200, body: { Key: 'ok' } } })
+  const error = await runAgainst(stub)
+  assert.match(error.message, /accepted an upload into/)
+  assert.ok(stub.calls.some(c => c.startsWith('DELETE') && c.includes(FOREIGN_OWNER)),
+    'the object it should never have been able to write was not cleaned up')
+})
+
+test('the photo and the listing are removed even when a later step fails', async () => {
+  // The gate is gone: the evasion is accepted. Everything before it succeeded,
+  // so the run has a row and an object to clean up while already failing.
+  const stub = stubServer({ insertRefused: { status: 201, body: [{ id: 'evasion-row-id' }] } })
+  const error = await runAgainst(stub)
+  assert.match(error.message, /Contact-info evasion is no longer refused/)
+  assert.ok(stub.calls.some(c => c.startsWith(`DELETE /storage/v1/object/${MEDIA_BUCKET}/items/${USER_ID}/`)),
+    'the photo survived a failing run')
+  assert.ok(stub.calls.some(c => c.startsWith('DELETE /rest/v1/items')),
+    'the listing survived a failing run')
+  assert.ok(stub.calls.at(-1).startsWith('POST /auth/v1/logout'),
+    'the session survived a failing run')
+})
+
+test('the object name and public URL are the shapes the database parses', () => {
+  const name = mediaObjectName(USER_ID, '1756500000000')
+  assert.equal(name, `items/${USER_ID}/${OBJECT_PREFIX}1756500000000.png`)
+  // private.local_item_media_object_name accepts only [A-Za-z0-9._/-] after the
+  // owner prefix, and no query string or fragment anywhere.
+  assert.match(name.split('/').at(-1), /^[A-Za-z0-9][A-Za-z0-9._-]*$/)
+  const url = publicMediaUrl(URL_BASE, name)
+  assert.equal(url, `${URL_BASE}/storage/v1/object/public/${MEDIA_BUCKET}/${name}`)
+  assert.equal(url.includes('?'), false)
+  assert.equal(url.includes('#'), false)
 })

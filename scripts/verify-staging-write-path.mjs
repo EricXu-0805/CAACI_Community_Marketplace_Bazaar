@@ -24,6 +24,25 @@
  * every space removed. It was found by reading a migration comment, not by any
  * check. This runs that sentence through the real trigger.
  *
+ * THE LISTING CARRIES A PHOTO
+ * ---------------------------
+ * A text-only listing leaves the whole media path unproven, and a marketplace
+ * of listings with no pictures is not one anybody uses. Attaching one crosses a
+ * second, independent stack:
+ *
+ *   storage "Authenticated users can upload to own folder"   items/<uid>/…
+ *   account_deletion_tombstone_blocks_item_image_insert      tombstone check
+ *   private.assert_local_media_array                         URL shape, and the
+ *                                                            object must exist
+ *   private.public_write_request_origin                      the JWT iss claim
+ *   private.assert_image_dimensions                          one entry per image
+ *
+ * public_write_request_origin returns NULL for any issuer that is not
+ * `https://<ref>.supabase.co/auth/v1`, and assert_local_media_array turns that
+ * NULL into item_images_issuer_unverifiable. So a deployment can reach the
+ * state where publishing text works for everyone and publishing a photo works
+ * for nobody, with nothing else to see. Only a real upload finds that.
+ *
  * TWO ASSERTIONS, NOT ONE
  * -----------------------
  * A test that only proves "a write lands" passes just as well with moderation
@@ -43,8 +62,9 @@
  * ---------------------
  * Nothing. The row is hard-deleted in the same run, which also releases it from
  * the hourly rate-limit window, so repeated runs neither accumulate rows nor
- * walk into 'rate_limit_items_hour'. Any row a killed run left behind is swept
- * by prefix before this one starts.
+ * walk into 'rate_limit_items_hour'. The uploaded object is deleted with it.
+ * Rows and objects a killed run left behind are swept by prefix before this one
+ * starts.
  *
  * Usage:  node scripts/verify-staging-write-path.mjs
  */
@@ -75,6 +95,40 @@ export const ACCEPTED_TITLE = `${TITLE_PREFIX} Selling my TV, Xbox and a desk`
 export const REFUSED_TITLE = `${TITLE_PREFIX} add me on wechat`
 
 export const DESCRIPTION = 'Created by the CI write-path check and deleted moments later.'
+
+/** The bucket every listing photo lives in. */
+export const MEDIA_BUCKET = 'item-images'
+
+/** Every object this check uploads starts with it, so a sweep can find strays. */
+export const OBJECT_PREFIX = 'ci-write-path-'
+
+/**
+ * A 1x1 PNG, 69 bytes. The point is to cross the policies, not to test an
+ * encoder, and assert_image_dimensions accepts w/h of 1.
+ */
+export const PIXEL_PNG_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGM40W0FAAOsAY61GfG3AAAAAElFTkSuQmCC'
+
+/**
+ * Not a user on any database — the folder an upload must be refused from. A
+ * check that only proves "an upload lands" passes just as well with the folder
+ * clause deleted from the storage policy.
+ */
+export const FOREIGN_OWNER = '00000000-0000-4000-8000-000000000000'
+
+/** The path the app itself writes: items/<owner>/<file>. */
+export function mediaObjectName(owner, runId) {
+  return `items/${owner}/${OBJECT_PREFIX}${runId}.png`
+}
+
+/**
+ * The canonical public URL. private.local_item_media_object_name parses exactly
+ * this shape back out and rejects render URLs, query strings and fragments, so
+ * the listing insert only accepts a URL built this way.
+ */
+export function publicMediaUrl(url, objectName) {
+  return `${url}/storage/v1/object/public/${MEDIA_BUCKET}/${objectName}`
+}
 
 /**
  * Refuse to run anywhere but the reviewed synthetic staging project.
@@ -145,6 +199,17 @@ function rest(url, key, token, path, init = {}) {
   })
 }
 
+function storage(url, key, token, path, init = {}) {
+  return fetch(`${url}/storage/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${token}`,
+      ...(init.headers || {}),
+    },
+  })
+}
+
 async function readJson(response) {
   try { return await response.json() } catch { return null }
 }
@@ -178,12 +243,50 @@ async function signOut(url, key, token) {
   }
 }
 
+/**
+ * Objects a killed run left behind. Unlike rows these do not expire, and the
+ * listing insert refuses a duplicate URL, so they would accumulate silently.
+ */
+async function sweepObjects(url, key, token, userId) {
+  const listed = await storage(url, key, token, `object/list/${MEDIA_BUCKET}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prefix: `items/${userId}/`, limit: 100 }),
+  })
+  if (!listed.ok) {
+    console.warn(`⚠ could not list ${MEDIA_BUCKET} to sweep (HTTP ${listed.status})`)
+    return
+  }
+  const entries = await readJson(listed)
+  if (!Array.isArray(entries)) return
+  const folder = `items/${userId}/`
+  const strays = entries
+    .map(entry => entry?.name)
+    .filter(name => typeof name === 'string')
+    // Supabase returns names relative to the prefix. Tolerate the absolute form
+    // too: guessing wrong here would silently sweep nothing.
+    .map(name => (name.startsWith(folder) ? name.slice(folder.length) : name))
+    .filter(name => name.startsWith(OBJECT_PREFIX))
+  for (const name of strays) {
+    await storage(url, key, token, `object/${MEDIA_BUCKET}/${folder}${name}`,
+      { method: 'DELETE' })
+  }
+  if (strays.length) console.warn(`⚠ swept ${strays.length} object(s) left by an earlier run`)
+}
+
 function fail(message) {
   console.error(`\n✖ ${message}\n`)
   process.exit(1)
 }
 
-async function main() {
+/**
+ * Exported so scripts/staging-write-path-contract.test.mjs can drive the whole
+ * sequence against a stubbed fetch. The steps only ever run for real on main
+ * (the protected-account job is skipped on pull requests), so without this the
+ * cleanup path would ship unexecuted — which is how a `process.exit()` inside
+ * the try block once skipped the finally and left a listing on staging.
+ */
+export async function main() {
   let target
   try {
     target = assertSafeTarget(process.env)
@@ -203,7 +306,13 @@ async function main() {
     return
   }
 
+  const objectName = mediaObjectName(userId, runId)
+  const mediaUrl = publicMediaUrl(url, objectName)
+  const pixel = Buffer.from(PIXEL_PNG_BASE64, 'base64')
+
   let created = null
+  let uploaded = false
+  let strayObject = null
   let cleanupFailed = false
   try {
     // Sweep anything a killed run left behind, so its rows cannot age into the
@@ -215,8 +324,51 @@ async function main() {
     if (Array.isArray(sweptRows) && sweptRows.length) {
       console.warn(`⚠ swept ${sweptRows.length} row(s) left by an earlier run`)
     }
+    await sweepObjects(url, key, token, userId)
 
-    // 1. An ordinary listing must land.
+    // 1. A photo must upload into the user's own folder.
+    const upload = await storage(url, key, token, `object/${MEDIA_BUCKET}/${objectName}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'image/png' },
+      body: pixel,
+    })
+    if (!upload.ok) {
+      const body = await readJson(upload)
+      throw new Error(`uploading a listing photo failed with HTTP ${upload.status}: `
+        + `${body?.message || body?.error || '(no message)'}. Either the storage policy on `
+        + `${MEDIA_BUCKET} no longer accepts items/<uid>/, or the account-deletion `
+        + 'tombstone check refuses this account. Nobody can attach a photo.')
+    }
+    uploaded = true
+    console.log(`✓ uploaded a listing photo to ${objectName}`)
+
+    // 2. It must be readable with no session at all: every card thumbnail and
+    //    every share card's og:image is an anonymous GET of exactly this URL.
+    const publicRead = await fetch(mediaUrl)
+    const contentType = publicRead.headers.get('content-type') || ''
+    if (!publicRead.ok || !contentType.startsWith('image/')) {
+      throw new Error(`the uploaded photo is not publicly readable: HTTP ${publicRead.status} `
+        + `content-type '${contentType}'. Thumbnails and share previews are anonymous GETs `
+        + `of ${MEDIA_BUCKET}; if the bucket stopped being public they are all broken.`)
+    }
+    console.log(`✓ the photo is readable with no session (${contentType})`)
+
+    // 3. Another user's folder must refuse it. Without this, deleting the
+    //    folder clause from the storage policy would leave step 1 passing.
+    const foreignName = mediaObjectName(FOREIGN_OWNER, runId)
+    const foreign = await storage(url, key, token, `object/${MEDIA_BUCKET}/${foreignName}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'image/png' },
+      body: pixel,
+    })
+    if (foreign.ok) {
+      strayObject = foreignName
+      throw new Error(`the storage policy accepted an upload into ${foreignName}. Any signed-in `
+        + "user can write into another user's photo folder.")
+    }
+    console.log(`✓ an upload into another user's folder is still refused (HTTP ${foreign.status})`)
+
+    // 4. An ordinary listing carrying that photo must land.
     const insert = await rest(url, key, token, 'items', {
       method: 'POST',
       headers: { Prefer: 'return=representation' },
@@ -227,6 +379,8 @@ async function main() {
         price: 25,
         category: 'other',
         condition: 'good',
+        images: [mediaUrl],
+        image_dimensions: [{ w: 1, h: 1 }],
       }),
     })
     const insertBody = await readJson(insert)
@@ -237,15 +391,23 @@ async function main() {
           + `Title: ${titles.accepted}. This is the 20260818162716 failure shape — a latin `
           + 'keyword matching against the separator-stripped copy. Nobody can post.')
       }
+      const message = String(insertBody?.message || '')
+      if (message.startsWith('public_write_boundary:item_image')) {
+        throw new Error(`the write boundary refused the listing's own photo as '${message}'. `
+          + `The object is uploaded and publicly readable at ${mediaUrl}, so the disagreement `
+          + 'is between the database and the URL the app builds — issuer origin, folder shape '
+          + 'or dimensions. Publishing text still works; publishing a photo does not.')
+      }
       throw new Error(`publishing failed with HTTP ${insert.status}: `
         + `${insertBody?.message || '(no message)'}. A policy, grant or trigger on `
         + 'public.items is not what this client expects.')
     }
     created = Array.isArray(insertBody) ? insertBody[0] : insertBody
     if (!created?.id) throw new Error('the insert returned no row')
-    console.log(`✓ published a listing through the real policies and triggers (${created.id})`)
+    console.log(`✓ published a listing with its photo through the real policies and `
+      + `triggers (${created.id})`)
 
-    // 2. The gate must still be shut. Without this, deleting moderation
+    // 5. The gate must still be shut. Without this, deleting moderation
     //    entirely would leave the check above passing.
     const blocked = await rest(url, key, token, 'items', {
       method: 'POST',
@@ -288,14 +450,36 @@ async function main() {
         console.error(`✖ could not delete ${created.id} (HTTP ${removed.status}) — still on staging`)
         cleanupFailed = true
       } else {
-        console.log('✓ withdrew the listing; nothing left behind')
+        console.log('✓ withdrew the listing')
       }
+    }
+    if (uploaded) {
+      const dropped = await storage(url, key, token, `object/${MEDIA_BUCKET}/${objectName}`,
+        { method: 'DELETE' })
+      if (!dropped.ok) {
+        console.error(`✖ could not delete ${objectName} (HTTP ${dropped.status}) — still on staging`)
+        cleanupFailed = true
+      } else {
+        console.log('✓ removed the photo; nothing left behind')
+      }
+    }
+    if (strayObject) {
+      // Only reachable when the folder clause is already gone, and the DELETE
+      // policy carries the same clause — so this usually cannot be undone from
+      // here. Say so rather than report a clean run.
+      const dropped = await storage(url, key, token, `object/${MEDIA_BUCKET}/${strayObject}`,
+        { method: 'DELETE' })
+      console.error(dropped.ok
+        ? `⚠ removed ${strayObject}, which should never have been writable`
+        : `✖ ${strayObject} was written into another user's folder and cannot be deleted `
+          + `from this account (HTTP ${dropped.status})`)
+      if (!dropped.ok) cleanupFailed = true
     }
     await signOut(url, key, token)
   }
 
-  if (cleanupFailed) throw new Error('the listing could not be withdrawn from staging')
-  console.log('✓ a real user can publish on this database, and the gate is still shut')
+  if (cleanupFailed) throw new Error('staging was not left as it was found')
+  console.log('✓ a real user can publish a listing with a photo, and the gate is still shut')
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
