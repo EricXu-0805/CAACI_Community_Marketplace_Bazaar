@@ -388,7 +388,15 @@ function sellerRequestIsCurrent(accountToken: AccountRequestToken | null, reques
 
 async function loadSellerData(accountToken: AccountRequestToken | null, requestEpoch: number) {
   const uid = sellerId.value
-  if (!uid) return
+  if (!uid) {
+    // The caller has already raised `loading`; returning without clearing it
+    // strands the page on its skeletons. Both re-entry points — retryLoad()
+    // and the account-transition watcher — land here when the link never
+    // carried an id.
+    loadError.value = true
+    loading.value = false
+    return
+  }
   loading.value = true
   loadError.value = false
 
@@ -499,7 +507,15 @@ onUnmounted(() => {
 function retryLoad() { void loadSellerWithModerationGate() }
 
 onLoad(async (options) => {
-  if (!options?.id) return
+  if (!options?.id) {
+    // `loading` starts true and only the load functions below clear it, so
+    // returning here left the page on its skeletons with no error, no retry
+    // and nothing to wait for. A link without an id is the one case that
+    // never reaches them; give it the same terminal state a bad id gets.
+    loading.value = false
+    loadError.value = true
+    return
+  }
   const uid = options.id
   sellerId.value = uid
   if (options.tab === 'posts') {
