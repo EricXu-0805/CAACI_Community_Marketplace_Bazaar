@@ -1489,6 +1489,7 @@ page,
   --brand-ghost:    #FBEAE2;
   --brand-on-soft:  #A23A22;
   --campus-blue:      #13294B;
+  --campus-blue-on-soft: var(--campus-blue);
   --campus-blue-soft: #E5EAF2;
   --campus-blue-deep: #0A1A33;
   --campus-blue-surface: #13294B;
@@ -1990,6 +1991,7 @@ uni-button:focus-visible {
    * NEVER: prices, regular CTAs, body text, default buttons.
    * --------------------------------------------------------- */
   --campus-blue:      #13294B;
+  --campus-blue-on-soft: var(--campus-blue);
   --campus-blue-soft: #E5EAF2;
   --campus-blue-deep: #0A1A33;
   --campus-blue-surface: #13294B;
@@ -2212,6 +2214,11 @@ uni-button:focus-visible {
 
   /* Campus accents — UIUC navy lifts so verified pill stays legible */
   --campus-blue:      #6A8AC2;
+  /* Navy accent as *text* on its own soft fill, the way --brand-on-soft is.
+     #6A8AC2 reads 3.38:1 there and needs 4.5; no darkening of the fill can
+     close that, so the foreground is what lifts. --campus-blue itself stays
+     put because it is also a fill behind white text. */
+  --campus-blue-on-soft: #8FA9D6;
   --campus-blue-soft: rgba(106, 138, 194, 0.15);
   --campus-blue-deep: #4A6BA0;
   --campus-blue-surface: #13294B;
@@ -2339,6 +2346,7 @@ uni-button:focus-visible {
     --accent-danger: var(--danger);
 
     --campus-blue:      #6A8AC2;
+    --campus-blue-on-soft: #8FA9D6;
     --campus-blue-soft: rgba(106, 138, 194, 0.15);
     --campus-blue-deep: #4A6BA0;
     --campus-blue-surface: #13294B;
@@ -2696,6 +2704,11 @@ page, .page { overflow-x: clip; }
   --brand-on-soft: var(--brand);
 
   --campus-blue:      #6A8AC2;
+  /* Navy accent as *text* on its own soft fill, the way --brand-on-soft is.
+     #6A8AC2 reads 3.38:1 there and needs 4.5; no darkening of the fill can
+     close that, so the foreground is what lifts. --campus-blue itself stays
+     put because it is also a fill behind white text. */
+  --campus-blue-on-soft: #8FA9D6;
   --campus-blue-soft: rgba(106, 138, 194, 0.15);
   --campus-blue-deep: #4A6BA0;
   --campus-blue-surface: #13294B;

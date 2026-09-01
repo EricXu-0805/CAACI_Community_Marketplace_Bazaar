@@ -2111,7 +2111,7 @@ function scrollToBottom() {
   display: flex; align-items: center; justify-content: center; gap: 5px;
   background: var(--campus-blue-soft); border: 0.5px solid var(--campus-blue);
   border-radius: var(--radius-md); padding: 8px; cursor: pointer;
-  .meetup-btn-label { font-size: 13px; font-weight: 600; color: var(--campus-blue); letter-spacing: 0.02em; }
+  .meetup-btn-label { font-size: 13px; font-weight: 600; color: var(--campus-blue-on-soft); letter-spacing: 0.02em; }
   &:active { background: rgba(42, 92, 170, 0.16); }
   &.disabled { opacity: 0.45; }
 }
@@ -2221,7 +2221,7 @@ function scrollToBottom() {
     .deal-pill-label { font-size: 12px; font-weight: 600; color: inherit; }
   }
   .deal-reschedule {
-    display: inline-block; color: var(--campus-blue); background: var(--campus-blue-soft);
+    display: inline-block; color: var(--campus-blue-on-soft); background: var(--campus-blue-soft);
     padding: 5px 10px; border-radius: var(--radius-pill); cursor: pointer;
     font-size: 12px; font-weight: 600;
   }

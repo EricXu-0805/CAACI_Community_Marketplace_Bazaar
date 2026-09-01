@@ -190,8 +190,20 @@ for (const theme of ['light', 'dark']) {
 
     await page.route('**/*.supabase.co/**', async (route) => {
       const path = route.request().url().replace(/^https:\/\/[^/]+/, '')
+      const fixture = fixtureFor(path)
+      /*
+       * PostgREST signals .single()/.maybeSingle() with this Accept header and
+       * supabase-js passes the body straight through, so answering one with an
+       * array makes the array itself the row. fetchItem() uses .single(), which
+       * meant `item` was `[ITEM_ROW]`: the detail route below rendered with no
+       * title, `cat.undefined`, `condition.undefined`, "No photos", and a
+       * TypeError out of formatPrice — and this sweep graded that for
+       * accessible names and contrast as though it were the real page.
+       */
+      const wantsObject = (route.request().headers()['accept'] || '').includes('vnd.pgrst.object+json')
+      const body = wantsObject && Array.isArray(fixture) ? (fixture[0] ?? null) : fixture
       await route.fulfill({ status: 200, contentType: 'application/json',
-        headers: { 'content-range': '0-1/2' }, body: JSON.stringify(fixtureFor(path)) })
+        headers: { 'content-range': '0-1/2' }, body: JSON.stringify(body) })
     })
     await page.route('**/*.jpg', route => route.fulfill({ status: 200, contentType: 'image/png',
       body: Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c6360000002000100' +
@@ -215,6 +227,19 @@ for (const theme of ['light', 'dark']) {
         nameless.push(`${route}  ${role}  ${all.slice(i, i + 3).filter(Boolean).join(' / ').slice(0, 110)}`)
       })
     }
+    /*
+     * Control. Everything above grades whatever reached the screen, and a page
+     * that failed to assemble still has a heading, still has named controls and
+     * still has legible text — so the sweep stayed green for as long as the
+     * fixtures answered .single() with an array. Name something only the real
+     * data can put on screen, so a fixture that stops feeding the app is a
+     * failure here rather than silence everywhere else.
+     */
+    await page.goto(`/#/pages/detail/index?id=${ITEM}`, { waitUntil: 'networkidle' })
+    await expect(page.getByText(ITEM_ROW.title, { exact: false }).first(),
+      'the detail route rendered without its item — the sweep above graded a page that never assembled')
+      .toBeVisible({ timeout: 15_000 })
+
     expect(noHeading, `logged-in routes with no heading:\n${noHeading.join('\n')}`).toEqual([])
     expect([...new Set(nameless)], `nameless controls:\n${[...new Set(nameless)].join('\n')}`).toEqual([])
     expect([...new Set(contrast)], `contrast failures:\n${[...new Set(contrast)].join('\n')}`).toEqual([])

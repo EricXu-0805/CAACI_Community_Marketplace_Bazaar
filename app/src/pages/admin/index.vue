@@ -4593,8 +4593,8 @@ function isExpired(endsAt: string | null): boolean {
 .bf-default-txt { display: flex; flex-direction: column; min-width: 0; }
 .bf-default-label { font-size: 13px; color: var(--text-primary); font-weight: 600; }
 .bf-default-hint { font-size: 12px; color: var(--text-secondary); }
-.pill-default { background: var(--campus-blue-soft); color: var(--campus-blue); }
-.pill-pinned { background: var(--campus-blue-soft); color: var(--campus-blue); }
+.pill-default { background: var(--campus-blue-soft); color: var(--campus-blue-on-soft); }
+.pill-pinned { background: var(--campus-blue-soft); color: var(--campus-blue-on-soft); }
 .chip {
   padding: 4px 12px; border-radius: 999px; font-size: 13px;
   background: var(--bg-elev-1); color: var(--text-secondary);
@@ -4641,7 +4641,7 @@ function isExpired(endsAt: string | null): boolean {
 }
 .kind-ban_applied           { background: var(--danger-soft); color: var(--accent-danger); }
 .kind-suspension_lifted     { background: var(--success-soft); color: var(--accent-good); }
-.kind-report_status_changed { background: var(--campus-blue-soft); color: var(--campus-blue); }
+.kind-report_status_changed { background: var(--campus-blue-soft); color: var(--campus-blue-on-soft); }
 .kind-actor_blocked         { background: var(--warning-soft); color: var(--accent-warn); }
 .kind-admin_login           { background: var(--bg-subtle); color: var(--text-muted); }
 .kind-admin_unauthorized    { background: var(--accent-primary); color: var(--ink-inverse); }
@@ -4668,7 +4668,7 @@ function isExpired(endsAt: string | null): boolean {
   font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
 }
 .pill-pending    { background: var(--warning-soft); color: var(--accent-warn); }
-.pill-reviewed   { background: var(--campus-blue-soft); color: var(--campus-blue); }
+.pill-reviewed   { background: var(--campus-blue-soft); color: var(--campus-blue-on-soft); }
 .pill-resolved   { background: var(--success-soft); color: var(--accent-good); }
 .pill-dismissed  { background: var(--bg-subtle); color: var(--text-muted); }
 .pill-active     { background: var(--danger-soft); color: var(--accent-danger); }
@@ -4679,7 +4679,7 @@ function isExpired(endsAt: string | null): boolean {
 .pill-on         { background: var(--success-soft); color: var(--accent-good); }
 .pill-shadow     { background: var(--accent-primary); color: var(--ink-inverse); }
 .pill-trust      { background: var(--bg-subtle); color: var(--text-secondary); }
-.token-role-operator { background: var(--campus-blue-soft); color: var(--campus-blue); }
+.token-role-operator { background: var(--campus-blue-soft); color: var(--campus-blue-on-soft); }
 .token-role-security_admin { background: var(--warning-soft); color: var(--accent-warn); }
 .token-role-owner { background: var(--danger-soft); color: var(--accent-danger); }
 .owner-recovery {
@@ -4697,7 +4697,7 @@ function isExpired(endsAt: string | null): boolean {
 .owner-recovery-healthy { background: var(--success-soft); border-color: var(--accent-good); }
 .owner-recovery-warning { background: var(--warning-soft); border-color: var(--accent-warn); }
 .owner-recovery-critical { background: var(--danger-soft); border-color: var(--accent-danger); color: var(--accent-danger); }
-.pill-count      { background: var(--campus-blue-soft); color: var(--campus-blue); }
+.pill-count      { background: var(--campus-blue-soft); color: var(--campus-blue-on-soft); }
 .level-0, .level-1 { background: var(--warning-soft); color: var(--accent-warn); }
 .level-2, .level-3 { background: var(--danger-soft); color: var(--accent-danger); }
 .level-4, .level-5 { background: var(--accent-primary); color: var(--ink-inverse); }

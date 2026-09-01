@@ -234,6 +234,35 @@ for (const [themeName, block] of [['light', LIGHT_ROOT], ['dark', DARK_ATTR]]) {
     assert.deepEqual(offenders, [], `use var(--brand-on-soft); --brand-deep is ${ratio.toFixed(2)}:1 there in ${themeName}`)
   })
 
+  test(`${themeName}: --campus-blue is never the text colour on --campus-blue-soft`, () => {
+    // The same shape as the --brand-deep rule above, for the navy accent. In
+    // dark, --campus-blue reads 3.38:1 on its own tint — measured on the chat
+    // page's "Set a meetup" control, which the authenticated sweep had never
+    // rendered. Darkening the tint cannot close a gap that size, so
+    // --campus-blue-on-soft lifts the foreground instead; --campus-blue stays
+    // where it is because it is also a fill sitting behind white text.
+    const chip = rgb(block, '--campus-blue-soft', '--surface')
+    assert.ok(
+      contrast(rgb(block, '--campus-blue-on-soft'), chip) >= 4.5,
+      `${themeName} --campus-blue-on-soft on --campus-blue-soft is ${contrast(rgb(block, '--campus-blue-on-soft'), chip).toFixed(2)}:1`,
+    )
+
+    const ratio = contrast(rgb(block, '--campus-blue'), chip)
+    if (ratio >= 4.5) return // if the palette ever makes it safe, stop asserting
+    const offenders = []
+    const BG = /background(-color)?:\s*[^;]*var\(--campus-blue-soft\)/
+    const FG = /color:\s*var\(--campus-blue\)/
+    for (const file of vueFiles(srcRoot)) {
+      const source = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '))
+      for (const rule of cssRules(source)) {
+        if (BG.test(rule.own) && FG.test(rule.full)) {
+          offenders.push(`${relative(appRoot, file)}:${source.slice(0, rule.index).split('\n').length} ${rule.selector}`)
+        }
+      }
+    }
+    assert.deepEqual(offenders, [], `use var(--campus-blue-on-soft); --campus-blue is ${ratio.toFixed(2)}:1 there in ${themeName}`)
+  })
+
   test(`${themeName}: the selected sidebar item clears 4.5:1 on its own tint`, () => {
     // --brand itself only reaches 3.97:1 on --brand-soft in light mode, which
     // is why --brand-on-soft exists rather than a darker --brand.
