@@ -557,7 +557,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   padding: 3px 10px; border-radius: 12px; background: var(--campus-blue-soft);
 }
 .us-emoji { font-size: 13px; line-height: 1; }
-.us-text { font-size: 12px; color: var(--campus-blue); line-height: 1.45; }
+.us-text { font-size: 12px; color: var(--campus-blue-on-soft); line-height: 1.45; }
 .loc-row { display: flex; align-items: center; gap: 4px; }
 .loc-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-action); }
 .loc-text { font-size: 12px; color: var(--text-subtle); }
