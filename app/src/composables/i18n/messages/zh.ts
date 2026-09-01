@@ -182,7 +182,7 @@ const zh: Record<string, string> = {
   'publish.conditionSelect': '请选择成色',
   'publish.location': '位置',
   'publish.locationPlaceholder': '如: UIUC / Champaign',
-  'publish.obo': 'OBO',
+  'publish.obo': '可议价',
   'publish.oboHint': '接受买家议价',
   'publish.submit': '发布',
   'publish.submitting': '发布中...',

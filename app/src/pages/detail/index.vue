@@ -95,7 +95,7 @@
         <text v-if="item.listing_type === 'wanted'" class="price price-wanted">{{ item.price > 0 ? t('home.budget') + ' ' + formatPrice(item.price, '') : t('home.openBudget') }}</text>
         <template v-else>
           <text :class="['price', { free: !item.price || item.price === 0 }]">{{ formatPrice(item.price, t("home.free")) }}</text>
-          <text v-if="item.negotiable" class="obo">OBO</text>
+          <text v-if="item.negotiable" class="obo">{{ t('publish.obo') }}</text>
         </template>
       </view>
       <view class="title-row">
