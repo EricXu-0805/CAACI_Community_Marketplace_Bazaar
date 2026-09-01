@@ -58,3 +58,41 @@ test('literal translation lookups in application source resolve in both catalogs
 
   assert.deepEqual(missing, [])
 })
+
+/*
+ * The other direction: a key can exist in both catalogs and still never be
+ * reached. `publish.obo` did — the publish toggle used it, but the two badges
+ * that actually show on every negotiable listing wrote the word OBO straight
+ * into the template, so a reader in Chinese got an English abbreviation with
+ * no hint next to it to explain it.
+ *
+ * Asserts the forbidden shape, not the current one: bare Latin words as
+ * element text. The exceptions are named, because each is a word that should
+ * stay untranslated wherever it appears.
+ */
+const UNTRANSLATED = new Set([
+  'EN',     // the language switch, which names the language it switches to
+  'Illini', // the verification badge; a proper noun in both languages
+])
+
+test('user-visible words come from the catalogs, not from the template', async () => {
+  const files = await sourceFiles(SRC_ROOT)
+  const literals = []
+  let elements = 0
+
+  for (const file of files) {
+    if (!file.endsWith('.vue')) continue
+    const template = (await readFile(file, 'utf8')).split('</template>')[0]
+    elements += [...template.matchAll(/<text\b/g)].length
+    for (const match of template.matchAll(/<text\b[^>]*>([^<{}]+)<\/text>/g)) {
+      const text = match[1].trim()
+      if (text.length < 2 || UNTRANSLATED.has(text)) continue
+      if (!/^[A-Za-z][A-Za-z0-9 .,'’!?&/:-]*$/.test(text)) continue
+      literals.push(`${file.slice(APP_ROOT.length)}:${template.slice(0, match.index).split('\n').length}  ${JSON.stringify(text)}`)
+    }
+  }
+
+  // Control: the scan must have read real templates, not zero of them.
+  assert.ok(elements > 200, `only ${elements} <text> elements scanned`)
+  assert.deepEqual(literals, [])
+})

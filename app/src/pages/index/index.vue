@@ -391,7 +391,7 @@
                 <text v-if="item.listing_type === 'wanted'" class="card-price card-price-wanted">{{ item.price > 0 ? t('home.budget') + ' ' + formatPrice(item.price, '') : t('home.openBudget') }}</text>
                 <template v-else>
                   <text :class="['card-price', { 'card-price-free': item.price === 0 }]">{{ formatPrice(item.price, t('home.free')) }}</text>
-                  <text v-if="item.negotiable" class="obo-tag">OBO</text>
+                  <text v-if="item.negotiable" class="obo-tag">{{ t('publish.obo') }}</text>
                 </template>
               </view>
               <view class="card-bottom">
