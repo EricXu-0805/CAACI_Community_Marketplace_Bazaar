@@ -187,7 +187,11 @@ async function reportToSentry(message, extra) {
         extra: extra || {},
       }),
     }, SENTRY_TIMEOUT_MS)
-  } catch { /* a monitoring failure must never affect the run */ }
+  } catch {
+    // Must never affect the run — but silence here is how a failing nightly
+    // send went unnoticed. Say that the alert itself did not get out.
+    console.error('notification_digest_sentry_report_failed')
+  }
 }
 
 const TYPE_ICON = { price_drop: '↓', sold: '✓', offer: '$', meetup: '📍', system: '🔔', unread_message: '✉' }
@@ -609,6 +613,22 @@ async function generateDigestReminders() {
   return result
 }
 
+/*
+ * What a failed send is allowed to say. Both handlers used to log a bare
+ * constant, so the first live digest run (2026-09-01 23:01 UTC) failed for
+ * every recipient and left no way to tell a rejected API key from a timeout.
+ * Every string below is one this file constructs itself; anything else is
+ * reduced to the error's name so a provider body can never reach the log.
+ */
+function failureCode(error) {
+  const message = String((error && error.message) || '')
+  if (/^resend \d{3}$/.test(message)) return message.replace(' ', '_')
+  if (/^(upstream_timeout|upstream_redirect|upstream_response_too_large|delivery acknowledgement rejected|invalid reminder seed response)$/.test(message)) {
+    return message.replace(/ /g, '_')
+  }
+  return (error && error.name) || 'unknown'
+}
+
 async function resendSend(to, subject, html, idempotencyKey = '') {
   const headers = { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' }
   if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey
@@ -773,6 +793,7 @@ export default async function handler(req) {
     let sentCount = 0
     let sendFailed = 0
     let markFailed = 0
+    const failureCodes = {}
 
     async function deliverUserDigest(userId) {
       const to = emailById.get(userId)
@@ -850,12 +871,15 @@ export default async function handler(req) {
         if (deliveryClaim) {
           await releaseNotificationEmailDelivery(deliveryClaim).catch(() => {})
         }
+        const code = failureCode(error)
+        failureCodes[code] = (failureCodes[code] || 0) + 1
         if (providerAccepted) markFailed++
         else sendFailed++
         console.error(
           providerAccepted
             ? 'notification_digest_complete_failed'
             : 'notification_digest_send_failed',
+          code,
         )
       }
     }
@@ -871,6 +895,7 @@ export default async function handler(req) {
       await reportToSentry(`notification digest: ${failed} failure(s)`, {
         sendFailed,
         markFailed,
+        failureCodes,
         reminderFailures,
         usersNotified,
         notifications: sentCount,
