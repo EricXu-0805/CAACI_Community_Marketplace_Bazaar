@@ -1,4 +1,5 @@
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from './_deployment-boundary.js'
+import { reportToSentry } from './_sentry-report.js'
 
 export const config = { runtime: 'edge' }
 
@@ -55,8 +56,6 @@ const VERCEL_URL = env('VERCEL_URL').toLowerCase()
 // Resend requires the From address to be on a domain verified in Resend.
 // Eric verifies the send.illinimarket.com subdomain; override via DIGEST_FROM.
 const FROM = env('DIGEST_FROM', 'Illini Market <noreply@send.illinimarket.com>')
-// Same Sentry project as client errors + admin audit failures — one dashboard.
-const SENTRY_DSN = env('SENTRY_DSN', env('VITE_SENTRY_DSN', ''))
 const WINDOW_DAYS = 7
 const MAX_ROWS = 40
 const NOTIFICATION_PAGE_SIZE = MAX_ROWS * 5
@@ -67,7 +66,6 @@ const LIVE_RUN_LOCK_WINDOW_SECS = 15 * 60
 const MAX_UPSTREAM_RESPONSE_BYTES = 2 * 1024 * 1024
 const SUPABASE_TIMEOUT_MS = 5_000
 const RESEND_TIMEOUT_MS = 8_000
-const SENTRY_TIMEOUT_MS = 2_000
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 function liveAppOriginReady() {
@@ -165,47 +163,23 @@ function esc(s) {
   ))
 }
 
-/* Best-effort Sentry alert (same store endpoint + DSN parsing as api/admin).
-   Fires when a live digest run has send/mark failures so the gap pages someone
-   instead of only landing in Vercel logs. No-op without a DSN. */
-async function reportToSentry(message, extra) {
-  if (!SENTRY_DSN) return
-  try {
-    const m = SENTRY_DSN.match(/^https:\/\/([^@]+)@([^/]+)\/(.+)$/)
-    if (!m) return
-    const [, key, host, projectId] = m
-    await fetchWithTimeout(`https://${host}/api/${projectId}/store/?sentry_key=${key}&sentry_version=7`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message,
-        level: 'error',
-        platform: 'javascript',
-        logger: 'api/notification-digest',
-        environment: VERCEL_ENV || 'unknown',
-        release: env('VERCEL_GIT_COMMIT_SHA').slice(0, 7) || undefined,
-        extra: extra || {},
-      }),
-    }, SENTRY_TIMEOUT_MS)
-  } catch {
-    // Must never affect the run — but silence here is how a failing nightly
-    // send went unnoticed. Say that the alert itself did not get out.
-    console.error('notification_digest_sentry_report_failed')
-  }
-}
-
-const TYPE_ICON = { price_drop: '↓', sold: '✓', offer: '$', meetup: '📍', system: '🔔', unread_message: '✉' }
+const TYPE_ICON = { price_drop: '↓', sold: '✓', offer: '$', meetup: '📍', system: '🔔', unread_message: '✉', rating: '★', follow: '👤', post_comment: '💬', post_like: '♥' }
 
 /*
- * Two triggers write an identifier into notifications.body and match on it to
- * avoid sending the same alert twice — migrations 016 (follows) and
- * 017/066/20260717143223 (saved searches). It is a key, not copy. The app
- * knows that and translates it (BODY_SENTINEL_KEYS in
- * app/src/composables/useNotifications.ts); this template did not, so the one
- * line under the item title read "saved_search_match".
+ * Several triggers write an identifier into notifications.body instead of
+ * copy — migrations 016 (follows), 017/066/20260717143223 (saved searches)
+ * and 20260903070000 (ratings, follows, plaza comments and likes, sold to the
+ * buyer). It is a key, not copy. The app knows that and translates it
+ * (BODY_SENTINEL_KEYS in app/src/composables/useNotifications.ts); this
+ * template did not, so the one line under the item title read
+ * "saved_search_match".
  *
- * Wording is byte-identical to notif.savedSearchMatch / notif.followeeListing
- * so the mail and the notification list say the same thing.
+ * The 20260903070000 keys whose tap target is a post or a person carry it as
+ * '<key>:<uuid>' — see the migration for why that id cannot be a column — so
+ * the key is read off the front rather than matched whole.
+ *
+ * Wording is byte-identical to the notif.* strings so the mail and the
+ * notification list say the same thing.
  */
 const BODY_SENTINELS = {
   saved_search_match: {
@@ -216,6 +190,56 @@ const BODY_SENTINELS = {
     zh: '你关注的卖家发布了新商品',
     en: 'A seller you follow posted a new listing',
   },
+  transaction_rating_received: {
+    zh: '有人评价了你的交易',
+    en: 'Someone rated your transaction',
+  },
+  deal_marked_sold: {
+    zh: '卖家已把你的交易标记为已售出',
+    en: 'The seller marked your purchase as sold',
+  },
+  new_follower: {
+    zh: '有人开始关注你',
+    en: 'Someone started following you',
+  },
+  post_comment: {
+    zh: '有人评论了你的动态',
+    en: 'Someone commented on your post',
+  },
+  post_like: {
+    zh: '有人点赞了你的动态',
+    en: 'Someone liked your post',
+  },
+  post_comment_like: {
+    zh: '有人点赞了你的评论',
+    en: 'Someone liked your comment',
+  },
+  report_outcome_resolved: {
+    zh: '我们已复核你的举报并作出处理',
+    en: 'We reviewed your report and acted on it',
+  },
+  report_outcome_dismissed: {
+    zh: '我们已复核你的举报，未发现违规',
+    en: 'We reviewed your report and found no violation',
+  },
+  appeal_outcome_denied: {
+    zh: '你的申诉已复核，账号限制维持不变',
+    en: 'Your appeal was reviewed; the restriction stands',
+  },
+}
+
+/*
+ * Titles are the same story one column over. Every trigger up to and
+ * including 20260903070000 stores one bilingual literal, which this template
+ * prints as it stands; 20260903090000 stores a sentinel instead, and printing
+ * that raw would put "report_resolved" in the subject line of the row. Only
+ * the sentinels are listed — a bilingual literal is still readable, an
+ * identifier is not.
+ */
+const TITLE_SENTINELS = {
+  report_resolved: { zh: '举报已处理', en: 'Report resolved' },
+  report_dismissed: { zh: '举报已结案', en: 'Report closed' },
+  appeal_denied: { zh: '申诉未通过', en: 'Appeal denied' },
 }
 
 /*
@@ -236,7 +260,8 @@ function priceText(amount, lang) {
 }
 
 function bodyText(raw, lang) {
-  const forms = BODY_SENTINELS[raw]
+  const keyed = /^([a-z_]+):([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(raw || '')
+  const forms = BODY_SENTINELS[keyed ? keyed[1] : raw]
   if (forms) {
     if (lang === 'zh') return forms.zh
     if (lang === 'en') return forms.en
@@ -252,12 +277,20 @@ function bodyText(raw, lang) {
   return raw
 }
 
+function titleText(raw, lang) {
+  const forms = TITLE_SENTINELS[raw]
+  if (!forms) return raw
+  if (lang === 'zh') return forms.zh
+  if (lang === 'en') return forms.en
+  return `${forms.zh} · ${forms.en}`
+}
+
 function rowHtml(n, lang) {
   const icon = TYPE_ICON[n.type] || '🔔'
   return `<tr><td style="padding:12px 0;border-bottom:1px solid #ECE5DA;vertical-align:top">
     <span style="display:inline-block;width:26px;height:26px;line-height:26px;text-align:center;border-radius:50%;background:#F5D9CE;color:#A03A24;font-weight:700;font-size:13px">${esc(icon)}</span>
   </td><td style="padding:12px 0 12px 12px;border-bottom:1px solid #ECE5DA">
-    <div style="font-size:15px;font-weight:600;color:#2A2521">${esc(n.title)}</div>
+    <div style="font-size:15px;font-weight:600;color:#2A2521">${esc(titleText(n.title, lang))}</div>
     ${n.body ? `<div style="font-size:13px;color:#6B6459;margin-top:2px">${esc(bodyText(n.body, lang))}</div>` : ''}
   </td></tr>`
 }
@@ -325,7 +358,12 @@ const SAMPLE_ROWS = [
 // These are the complete notification types in the current schema, split by
 // whether their content must be routed through a verified conversation. Every
 // unknown/future type is closed until explicitly reviewed for email delivery.
-const SAFE_UNROUTED_NOTIFICATION_TYPES = new Set(['price_drop', 'system', 'sold'])
+// The 20260903070000 activity types carry a fixed bilingual title, a body key
+// and no conversation — no comment text, post excerpt or counterparty name —
+// so they are as safe off-platform as a price drop.
+const SAFE_UNROUTED_NOTIFICATION_TYPES = new Set([
+  'price_drop', 'system', 'sold', 'rating', 'follow', 'post_comment', 'post_like',
+])
 const SAFE_CONVERSATION_NOTIFICATION_TYPES = new Set(['offer', 'meetup', 'unread_message'])
 
 async function supabaseError(prefix, response) {
@@ -743,7 +781,7 @@ export default async function handler(req) {
 
     if (!userIds.length) {
       if (reminderFailures > 0) {
-        await reportToSentry('notification digest: reminder generation failure(s)', { reminderFailures })
+        await reportToSentry('api/notification-digest', 'notification digest: reminder generation failure(s)', { reminderFailures })
       }
       return json(
         { mode: 'live', usersNotified: 0, notifications: 0, sendFailed: 0, markFailed: 0, reminderFailures, meetupReminders, unreadReminders },
@@ -892,7 +930,7 @@ export default async function handler(req) {
 
     const failed = sendFailed + markFailed + reminderFailures
     if (failed > 0) {
-      await reportToSentry(`notification digest: ${failed} failure(s)`, {
+      await reportToSentry('api/notification-digest', `notification digest: ${failed} failure(s)`, {
         sendFailed,
         markFailed,
         failureCodes,
@@ -907,7 +945,7 @@ export default async function handler(req) {
     )
   } catch (error) {
     console.error('notification_digest_failed')
-    await reportToSentry('notification digest: fatal failure', { phase: 'live_run' })
+    await reportToSentry('api/notification-digest', 'notification digest: fatal failure', { phase: 'live_run' })
     return json({ error: 'internal' }, 500)
   }
 }

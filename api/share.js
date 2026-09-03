@@ -19,6 +19,10 @@ const PUBLIC_SITE_RAW = process.env.DEPLOYMENT_APP_ORIGIN
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const MAX_PUBLIC_RESPONSE_BYTES = 64 * 1024
+// The locales items.source_lang is constrained to (migration 015). Anything
+// else — including the null carried by listings written before the column
+// existed — leaves the interstitial on its own Chinese copy.
+const DOCUMENT_LANGS = new Set(['zh', 'en', 'ja', 'ko', 'zh-Hant'])
 
 function supabaseHeaders(key, authorization = '', extra = {}) {
   const headers = { apikey: key, ...extra }
@@ -44,6 +48,30 @@ function safeOrigin(raw, fallback = '') {
 }
 
 const SUPABASE_ORIGIN = safeOrigin(SUPABASE_URL, '')
+
+// String#slice counts UTF-16 units, so a cut can land between the two halves
+// of an emoji and leave a lone surrogate — U+FFFD once the response is encoded.
+function truncate(s, max) {
+  const cut = s.slice(0, max)
+  return /[\uD800-\uDBFF]$/.test(cut) ? cut.slice(0, -1) : cut
+}
+
+// The apex 308-redirects to www, so a canonical on the configured apex origin
+// costs every share click an extra hop. Use the www form when that is the host
+// the request actually arrived on.
+function canonicalSite(configured, requestUrl) {
+  const host = new URL(configured).hostname
+  if (requestUrl.protocol === 'https:' && requestUrl.hostname === `www.${host}`) return requestUrl.origin
+  return configured
+}
+
+// Mirrors formatPrice in app/src/utils: whole dollars stay bare, anything else
+// carries two decimals, so 18.5 in the database renders as $18.50 like the app.
+function formatPrice(price) {
+  const raw = Number.isInteger(price) ? String(price) : price.toFixed(2)
+  const [whole, decimal] = raw.split('.')
+  return '$' + whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (decimal ? `.${decimal}` : '')
+}
 
 function safeImageUrl(value, fallback, siteOrigin) {
   if (typeof value !== 'string' || !value) return fallback
@@ -134,13 +162,13 @@ async function responseForRequest(req, boundary) {
   const url = new URL(req.url)
   const rawId = url.searchParams.get('id')
   const id = UUID_RE.test(rawId || '') ? rawId : null
-  const site = boundary.appOrigin || safeOrigin(PUBLIC_SITE_RAW, url.origin)
+  const site = canonicalSite(boundary.appOrigin || safeOrigin(PUBLIC_SITE_RAW, url.origin), url)
 
   let item = null
   if (id && SUPABASE_URL && SUPABASE_ANON_KEY) {
     const rows = await readPublicRows(
       `items_visible?id=eq.${encodeURIComponent(id)}`
-      + '&select=id,title,description,price,images,listing_type,status&limit=1',
+      + '&select=id,title,description,price,images,listing_type,status,source_lang&limit=1',
     )
     item = rows[0] || null
   }
@@ -149,8 +177,8 @@ async function responseForRequest(req, boundary) {
   // sell item is price 0 — neither should render a bare "$0".
   const priceLabel = !item ? ''
     : item.listing_type === 'wanted'
-      ? (item.price > 0 ? `求购预算 $${item.price}` : '求购 · 预算面议')
-      : (item.price > 0 ? `$${item.price}` : '免费 Free')
+      ? (item.price > 0 ? `求购预算 ${formatPrice(Number(item.price))}` : '求购 · 预算面议')
+      : (item.price > 0 ? formatPrice(Number(item.price)) : '免费 Free')
   const namePrefix = item && item.listing_type === 'wanted' ? '求购 / Looking for: ' : ''
   // items_visible only hides 'deleted', so a sold or reserved listing unfurls
   // here too. Without this the card is byte-identical to an on-sale one, and
@@ -161,14 +189,22 @@ async function responseForRequest(req, boundary) {
       : item.status === 'reserved' ? '已预定 / Reserved · '
         : ''
   const title = item ? `${statusPrefix}${namePrefix}${item.title} · ${priceLabel}` : 'Illini Market · 校园二手交易'
-  const desc = item ? (item.description?.slice(0, 160) || `${priceLabel} on Illini Market`) : 'UIUC 校园二手交易平台'
+  const desc = item ? (truncate(item.description || '', 160) || `${priceLabel} on Illini Market`) : 'UIUC 校园二手交易平台'
   const fallbackImage = `${site}/static/app-icon-512.png`
   const image = safeImageUrl(item?.images?.[0], fallbackImage, site)
-  const canonical = item ? `${site}/#/pages/detail/index?id=${id}` : site
+  // A well-formed id that reads back nothing is a deleted or hidden listing,
+  // and the detail route has a screen that says so. Falling back to the site
+  // root dropped whoever tapped the forwarded link on the home page instead,
+  // with nothing to tell them the listing was gone.
+  const canonical = id ? `${site}/#/pages/detail/index?id=${id}` : site
   const escapedCanonical = escapeHtml(canonical)
+  // source_lang records what the seller actually typed in, so a screen reader
+  // gets the right voice and a translator stops "translating" an English
+  // listing out of Chinese. The generic card below is Chinese either way.
+  const docLang = DOCUMENT_LANGS.has(item?.source_lang) ? item.source_lang : 'zh'
 
   const html = `<!DOCTYPE html>
-<html lang="zh">
+<html lang="${docLang}">
 <head>
 <meta charset="utf-8">
 <title>${escapeHtml(title)}</title>

@@ -16,17 +16,6 @@
         </view>
       </view>
 
-      <view v-else-if="loadError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
-        <UEmptyArt name="following" />
-        <text class="empty-text">{{ t('error.loadFailed') }}</text>
-        <view class="retry-btn" role="button" :aria-label="t('home.retry')" @click="retryLoad">{{ t('home.retry') }}</view>
-      </view>
-
-      <view v-else-if="people.length === 0 && !loading" class="empty">
-        <UEmptyArt name="following" />
-        <text class="empty-text">{{ t('follow.emptyPeople') }}</text>
-      </view>
-
       <view v-else class="people u-stagger">
         <view
           v-for="p in people"
@@ -43,13 +32,31 @@
               <UBadge v-if="p.is_illini_verified" variant="illini">Illini</UBadge>
             </view>
             <text v-if="p.status_text" class="pr-status">{{ p.status_emoji ? p.status_emoji + ' ' : '' }}{{ p.status_text }}</text>
-            <text v-else-if="p.location" class="pr-status">{{ p.location }}</text>
+            <text v-else-if="p.location" class="pr-status">{{ localizedLocation(p.location) }}</text>
           </view>
           <UIcon name="chevron-right" size="sm" color="text-faint" />
         </view>
       </view>
 
       <view v-if="loading && people.length > 0" class="loading-tip"><text>{{ t('home.loading') }}</text></view>
+
+      <!--
+        Sits after the list, never in front of it: a failed second page must
+        leave the rows the reader already has on screen and offer the retry
+        underneath them. With nothing loaded yet this same block is the whole
+        screen, which is what an initial failure should look like.
+      -->
+      <view v-if="loadError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
+        <UIcon name="shield" size="lg" color="ink-soft" />
+        <text class="empty-text">{{ t('error.loadFailed') }}</text>
+        <view class="retry-btn" role="button" :aria-label="t('home.retry')" @click="retryLoad">{{ t('home.retry') }}</view>
+      </view>
+
+      <view v-else-if="people.length === 0 && !loading" class="empty">
+        <UEmptyArt name="following" />
+        <text class="empty-text">{{ t('follow.emptyPeople') }}</text>
+      </view>
+
       <view v-else-if="!hasMore && people.length > 0" class="end-tip"><text>{{ t('home.endOf') }}</text></view>
     </scroll-view>
   </view>
@@ -63,6 +70,7 @@ import { onShow, onUnload } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import { useTheme } from '../../composables/useTheme'
 import { useFollow } from '../../composables/useFollow'
+import { localizeLocation } from '../../composables/useCampusSpots'
 import type { FollowedProfile } from '../../composables/useFollow'
 import { useAuth } from '../../composables/useAuth'
 import { friendlyErrorMessage, navigateBackOr } from '../../utils'
@@ -81,6 +89,10 @@ const defaultAvatarSrc = computed(() =>
 )
 const { currentUser, requireAuth, awaitAuthReady } = useAuth()
 const { fetchFollowingProfiles } = useFollow()
+
+function localizedLocation(raw: string | null | undefined) {
+  return localizeLocation(raw, lang.value as 'en' | 'zh')
+}
 
 const people = ref<FollowedProfile[]>([])
 const loading = ref(false)

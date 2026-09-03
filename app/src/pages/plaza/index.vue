@@ -107,7 +107,7 @@
                 <UBadge v-if="p.is_illini_verified" variant="illini">Illini</UBadge>
               </view>
               <text v-if="p.status_text" class="fp-status">{{ p.status_emoji ? p.status_emoji + ' ' : '' }}{{ p.status_text }}</text>
-              <text v-else-if="p.location" class="fp-status">{{ p.location }}</text>
+              <text v-else-if="p.location" class="fp-status">{{ localizedLocation(p.location) }}</text>
             </view>
             <UIcon name="chevron-right" size="sm" color="text-faint" />
           </view>
@@ -127,18 +127,6 @@
           <view class="ps-line u-sk" style="width: 68%"></view>
           <view class="ps-img u-sk"></view>
         </view>
-      </view>
-
-      <view v-else-if="fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
-        <UEmptyArt name="posts" />
-        <text class="empty-text">{{ fetchError }}</text>
-        <view class="cta-btn" role="button" @click="onRefresh">{{ t('home.retry') }}</view>
-      </view>
-
-      <view v-else-if="visiblePosts.length === 0" class="empty">
-        <UEmptyArt name="posts" />
-        <text class="empty-text">{{ t('plaza.empty') }}</text>
-        <view v-if="isLoggedIn" class="cta-btn" role="button" @click="openComposer">{{ t('plaza.write') }}</view>
       </view>
 
       <view v-else class="posts u-stagger" :key="activeTab">
@@ -299,6 +287,26 @@
 
         </view>
       </view>
+
+      <!--
+        Sits after the feed, never in front of it: a failed second page must
+        leave the posts the reader already has on screen and offer the retry
+        underneath them. With nothing loaded yet this same block is the whole
+        screen, which is what an initial failure should look like.
+      -->
+      <template v-if="activeTab !== 'following'">
+        <view v-if="fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
+          <UIcon name="shield" size="lg" color="ink-soft" />
+          <text class="empty-text">{{ fetchError }}</text>
+          <view class="cta-btn" role="button" @click="onRefresh">{{ t('home.retry') }}</view>
+        </view>
+
+        <view v-else-if="!loading && visiblePosts.length === 0" class="empty">
+          <UEmptyArt name="posts" />
+          <text class="empty-text">{{ t('plaza.empty') }}</text>
+          <view v-if="isLoggedIn" class="cta-btn" role="button" @click="openComposer">{{ t('plaza.write') }}</view>
+        </view>
+      </template>
 
       <view
         v-if="activeTab === 'following' ? (!followHasMore && followPeople.length > 0) : (!hasMore && visiblePosts.length > 0)"
@@ -632,10 +640,11 @@ import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
 import { useLongPress } from '../../composables/useLongPress'
 import { useKeyboardHeight } from '../../composables/useKeyboardHeight'
+import { localizeLocation } from '../../composables/useCampusSpots'
 import { createOwnedLoading } from '../../composables/ownedLoading'
 import type { Post, PostComment, Item } from '../../types'
 import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
-import { DIALOG_DANGER } from '../../utils/dialogColors'
+import { DIALOG_DANGER, DIALOG_WARN } from '../../utils/dialogColors'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
 import AppSidebar from '../../components/AppSidebar.vue'
@@ -668,6 +677,10 @@ const { currentUser, isLoggedIn, requireAuth, awaitAuthReady } = useAuth()
 const { posts, loading, hasMore, fetchError, fetchPosts, createPost, updatePostI18n, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, fetchMyActiveItems, clearPosts } = usePlaza()
 const { fetchFollowingProfiles } = useFollow()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
+
+function localizedLocation(raw: string | null | undefined) {
+  return localizeLocation(raw, lang.value as 'en' | 'zh')
+}
 const kb = useKeyboardHeight()
 /*
  * kb.height is a nested Ref in a plain object — Vue templates only unwrap
@@ -1303,6 +1316,29 @@ function removeComposerImage(idx: number) {
   composerImages.value.splice(idx, 1)
 }
 
+/*
+ * Solicitation soft gate. /api/moderate can read the copy as an ad for
+ * off-platform services (代写, 代购, 办证 …); that is a model's opinion about
+ * text the server was willing to accept, so it asks instead of refusing
+ * (#290). Sharing contact details is allowed here and never lands a listing
+ * in this dialog — a WeChat id is how the meetup gets arranged. A dialog that
+ * cannot open resolves true for the same reason: nothing about this screen
+ * may cost a member their listing.
+ */
+function confirmSuspectedAd(): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: t('moderation.adTitle'),
+      content: t('moderation.adBody'),
+      confirmText: t('moderation.adConfirm'),
+      cancelText: t('moderation.adCancel'),
+      confirmColor: DIALOG_WARN,
+      success: (r) => resolve(!!r.confirm),
+      fail: () => resolve(true),
+    })
+  })
+}
+
 async function onSubmitPost() {
   await awaitAuthReady()
   if (!requireAuth()) return
@@ -1370,6 +1406,7 @@ async function onSubmitPost() {
         content_i18n: trimmed ? { [sourceLang]: trimmed } : null,
         source_lang: sourceLang,
         accountToken: submitAccountToken,
+        confirmSuspectedAd,
       },
     )
 
@@ -1428,6 +1465,9 @@ async function onSubmitPost() {
       }
     }
     if (!isAccountRequestCurrent(submitAccountToken)) return
+    // The member pressed Edit on the solicitation confirm. The composer is
+    // still open with their text and photos in it.
+    if (err?.message === 'ad_declined') return
     uni.showToast({
       title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
       icon: 'none',

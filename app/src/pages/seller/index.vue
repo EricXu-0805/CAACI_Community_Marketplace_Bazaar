@@ -34,7 +34,7 @@
       <text v-if="seller.bio" class="bio">{{ seller.bio }}</text>
       <view class="loc-row">
         <view class="loc-dot"></view>
-        <text class="loc-text">{{ seller.location || 'UIUC' }}</text>
+        <text class="loc-text">{{ sellerLocation }}</text>
       </view>
 
       <view
@@ -206,7 +206,7 @@ import { useTheme } from '../../composables/useTheme'
 import { useAuth } from '../../composables/useAuth'
 import { useFollow } from '../../composables/useFollow'
 import { usePlaza } from '../../composables/usePlaza'
-import { pickupTier } from '../../composables/useCampusSpots'
+import { localizeLocation, pickupTier } from '../../composables/useCampusSpots'
 import type { Profile, Item, Post } from '../../types'
 import { listingPriceLabel, formatTime, thumbUrl, friendlyErrorMessage, navigateBackOr } from '../../utils'
 import { safeAvatarThumbUrl, sanitizeItemResources, sanitizeProfileResource } from '../../utils/publicResource'
@@ -241,6 +241,9 @@ function pickupBadge(it: Item): { spot: boolean; label: string } | null {
 
 const seller = ref<Profile | null>(null)
 const sellerItems = ref<Item[]>([])
+const sellerLocation = computed(() =>
+  localizeLocation(seller.value?.location, lang.value as 'en' | 'zh') || 'UIUC'
+)
 const soldCount = ref(0)
 const loading = ref(true)
 const blocked = ref(false)
@@ -414,7 +417,7 @@ async function loadSellerData(accountToken: AccountRequestToken | null, requestE
   try {
     const [profileRes, itemsRes, soldRes] = await Promise.all([
       fetchSellerProfile(),
-      supabase.from('items').select('id, user_id, title, price, images, image_dimensions, status, listing_type, location_verified, created_at').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
+      supabase.from('items').select('id, user_id, title, title_i18n, price, images, image_dimensions, status, listing_type, location_verified, created_at').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
       supabase.from('items').select('id', { count: 'estimated', head: true }).eq('user_id', uid).eq('status', 'sold'),
     ])
     if (!sellerRequestIsCurrent(accountToken, requestEpoch)) return

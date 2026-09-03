@@ -263,6 +263,15 @@ const { translateItemContent } = useTranslate()
 const editId = ref('')
 const loadedUpdatedAt = ref('')
 const loadedEditableSnapshot = ref('')
+/*
+ * The text as it was loaded, so Save can tell a real edit from a price change.
+ * Re-deriving source_lang and re-seeding the i18n maps on every save threw away
+ * translations nobody had asked to change: a Chinese listing that had grown a
+ * proper {en, zh} title map lost its English title the moment its owner edited
+ * the price under an English UI.
+ */
+const loadedTitle = ref('')
+const loadedDescription = ref('')
 let editPageAccountToken: AccountRequestToken | null = null
 const editReady = ref(false)
 let routeEditId = ''
@@ -312,16 +321,50 @@ function editableSnapshot(item: Pick<Item,
   })
 }
 
+/*
+ * Solicitation soft gate. /api/moderate can read the copy as an ad for
+ * off-platform services (代写, 代购, 办证 …); that is a model's opinion about
+ * text the server was willing to accept, so it asks instead of refusing
+ * (#290). Sharing contact details is allowed here and never lands a listing
+ * in this dialog — a WeChat id is how the meetup gets arranged. A dialog that
+ * cannot open resolves true for the same reason: nothing about this screen
+ * may cost a member their listing.
+ */
+let adConfirmedForSubmit = false
+function confirmSuspectedAd(): Promise<boolean> {
+  // commitEditWithCompatibleRetry can call updateItem three times for one Save;
+  // asking again after the seller already said yes is just a second dialog.
+  if (adConfirmedForSubmit) return Promise.resolve(true)
+  return new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: t('moderation.adTitle'),
+      content: t('moderation.adBody'),
+      confirmText: t('moderation.adConfirm'),
+      cancelText: t('moderation.adCancel'),
+      confirmColor: DIALOG_WARN,
+      success: (r) => {
+        adConfirmedForSubmit = !!r.confirm
+        resolve(!!r.confirm)
+      },
+      fail: () => {
+        adConfirmedForSubmit = true
+        resolve(true)
+      },
+    })
+  })
+}
+
 async function commitEditWithCompatibleRetry(
   updates: Parameters<typeof updateItem>[1],
   accountToken?: UploadAccountToken,
 ) {
+  adConfirmedForSubmit = false
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       return await updateItem(
         editId.value,
         updates,
-        { expectedUpdatedAt: loadedUpdatedAt.value, accountToken },
+        { expectedUpdatedAt: loadedUpdatedAt.value, accountToken, confirmSuspectedAd },
       )
     } catch (error: any) {
       if (error?.message !== 'item_edit_conflict' || attempt === 2) throw error
@@ -476,6 +519,8 @@ function resetEditForm() {
   imageDimensions.value = []
   loadedUpdatedAt.value = ''
   loadedEditableSnapshot.value = ''
+  loadedTitle.value = ''
+  loadedDescription.value = ''
   showCat.value = false
   showCond.value = false
 }
@@ -557,6 +602,8 @@ async function prepareEditPage(itemId: string) {
     originalImageUrls.value = [...item.images]
     loadedUpdatedAt.value = item.updated_at
     loadedEditableSnapshot.value = editableSnapshot(item)
+    loadedTitle.value = item.title
+    loadedDescription.value = item.description
     imageDimensions.value = item.images.map((_, index) => {
       const dim = item.image_dimensions?.[index]
       return dim && dim.w > 0 && dim.h > 0 ? dim : { w: 0, h: 0 }
@@ -855,9 +902,12 @@ async function onSubmit() {
 
     const trimmedTitle = form.title.trim()
     const trimmedDesc = form.description.trim()
+    const titleChanged = trimmedTitle !== loadedTitle.value
+    const descChanged = trimmedDesc !== loadedDescription.value
+    const textChanged = titleChanged || descChanged
     const sourceLang = authoredLang(`${trimmedTitle}\n${trimmedDesc}`, lang.value)
 
-    const payload = {
+    const payload: Parameters<typeof updateItem>[1] = {
       title: trimmedTitle,
       description: trimmedDesc,
       // Wanted post: blanked budget → 0 (open budget); condition N/A → keep the
@@ -869,11 +919,14 @@ async function onSubmit() {
       location: form.location || '',
       images,
       image_dimensions: finalDims,
-      title_i18n: trimmedTitle ? { [sourceLang]: trimmedTitle } : null,
-      description_i18n: trimmedDesc ? { [sourceLang]: trimmedDesc } : null,
-      source_lang: sourceLang,
       negotiable: form.negotiable,
     }
+    // Seeding a one-key map is how a translation gets requested, so only do it
+    // for text that actually changed. A price edit must leave the finished
+    // {en, zh} maps of untouched title/description exactly where they are.
+    if (titleChanged) payload.title_i18n = trimmedTitle ? { [sourceLang]: trimmedTitle } : null
+    if (descChanged) payload.description_i18n = trimmedDesc ? { [sourceLang]: trimmedDesc } : null
+    if (textChanged) payload.source_lang = sourceLang
 
     const updatedItem = await commitEditWithCompatibleRetry(
       { ...payload },
@@ -893,6 +946,8 @@ async function onSubmit() {
     imageDimensions.value = [...finalDims]
     originalImageUrls.value = [...images]
     loadedEditableSnapshot.value = editableSnapshot(updatedItem)
+    loadedTitle.value = updatedItem.title
+    loadedDescription.value = updatedItem.description
     if (removedImages.length > 0) {
       try {
         await removeOwnedItemImages(removedImages, {
@@ -913,7 +968,7 @@ async function onSubmit() {
     } else {
       uni.showToast({ title: t('publish.updated'), icon: 'success' })
     }
-    scheduleBilingualFill(
+    if (textChanged) scheduleBilingualFill(
       editId.value,
       trimmedTitle,
       trimmedDesc,
@@ -944,6 +999,9 @@ async function onSubmit() {
       })
     }
     if (!operationStillCurrent()) return
+    // The seller pressed Edit on the solicitation confirm; the form still holds
+    // everything they typed.
+    if (error?.message === 'ad_declined') return
     if (error?.message === 'Invalid price') {
       uni.showToast({ title: t('publish.priceExceedsLimit'), icon: 'none', duration: 3000 })
       return
