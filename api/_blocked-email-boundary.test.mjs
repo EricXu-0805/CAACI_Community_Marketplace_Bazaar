@@ -582,6 +582,30 @@ test('a digest completion failure retries with the same provider idempotency key
   assert.equal(firstSend.headers['Idempotency-Key'], retrySend.headers['Idempotency-Key'])
 })
 
+test('a provider rejection is logged with its status, never as a bare constant', async () => {
+  // The first live run (2026-09-01 23:01 UTC) failed for every recipient and the
+  // log said only 'notification_digest_send_failed', so a rejected key, a
+  // timeout and an unverified sender were indistinguishable. The status is the
+  // one thing the provider response may contribute to the log.
+  const errors = []
+  console.error = (...args) => errors.push(args)
+  const mock = digestFetch({
+    notifications: [queuedNotification()],
+    conversations: [conversationRow()],
+    profiles: [recipientProfile()],
+    resendStatus: 403,
+  })
+  const response = await runDigest(mock.fetch)
+  const body = await response.json()
+
+  assert.equal(response.status, 500)
+  assert.equal(body.sendFailed, 1)
+  assert.equal(mock.calls.filter(call => call.url.hostname === 'api.resend.com').length, 1)
+  assert.deepEqual(errors.filter(line => line[0] === 'notification_digest_send_failed'), [
+    ['notification_digest_send_failed', 'resend_403'],
+  ])
+})
+
 test('a noisy earlier user cannot consume the global row limit and starve the next user', async () => {
   const noisyRows = Array.from({ length: 200 }, (_, index) => queuedNotification({
     id: `${index.toString(16).padStart(8, '0')}-0000-4000-8000-000000000000`,
