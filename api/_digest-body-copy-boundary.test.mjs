@@ -35,12 +35,14 @@ async function loadRenderer() {
     extract(src, 'function esc(', 'esc'),
     src.slice(src.indexOf('const TYPE_ICON ='), src.indexOf('\n', src.indexOf('const TYPE_ICON ='))),
     extract(src, 'const BODY_SENTINELS = {', 'BODY_SENTINELS').replace(/\n\}\n$/, '\n}\n'),
+    extract(src, 'const TITLE_SENTINELS = {', 'TITLE_SENTINELS').replace(/\n\}\n$/, '\n}\n'),
+    extract(src, 'function titleText(', 'titleText'),
     src.slice(src.indexOf('const PRICE_BODY_RE ='), src.indexOf('\n', src.indexOf('const PRICE_BODY_RE ='))),
     extract(src, 'function priceText(', 'priceText'),
     extract(src, 'function bodyText(', 'bodyText'),
     extract(src, 'function rowHtml(', 'rowHtml'),
   ].join('\n')
-  return new Function(`${js}\nreturn { rowHtml, BODY_SENTINELS }`)()
+  return new Function(`${js}\nreturn { rowHtml, BODY_SENTINELS, TITLE_SENTINELS }`)()
 }
 
 // null is a reader who has never picked a language; the template falls back to
@@ -156,6 +158,9 @@ test('the wording matches what the notification list says', async () => {
     post_comment: 'notif.postComment',
     post_like: 'notif.postLike',
     post_comment_like: 'notif.commentLike',
+    report_outcome_resolved: 'notif.reportResolved',
+    report_outcome_dismissed: 'notif.reportDismissed',
+    appeal_outcome_denied: 'notif.appealDenied',
   }
   for (const [file, lang] of APP_I18N.map((u, i) => [u, ['en', 'zh'][i]])) {
     const messages = await readFile(file, 'utf8')
@@ -181,5 +186,45 @@ test('bodies that are already copy are still printed', async () => {
     )
     assert.ok(html.includes('IKEA'), `${lang ?? 'no language'}: a plain body was dropped`)
     assert.ok(html.includes('$30'), `${lang ?? 'no language'}: a plain body lost its price`)
+  }
+})
+
+/*
+ * 20260903090000 stores the headline as a sentinel too, because a trigger
+ * cannot know which language the reader picked. The mail is the one surface
+ * where a raw key would arrive as the sentence a person reads first.
+ */
+test('a moderation outcome has a headline, not an identifier', async () => {
+  const { rowHtml, TITLE_SENTINELS } = await loadRenderer()
+  const TITLE_KEY_FOR = {
+    report_resolved: 'notif.titleReportResolved',
+    report_dismissed: 'notif.titleReportDismissed',
+    appeal_denied: 'notif.titleAppealDenied',
+  }
+  assert.ok(Object.keys(TITLE_SENTINELS).length >= 3, 'the title sentinels are gone')
+  for (const [sentinel, forms] of Object.entries(TITLE_SENTINELS)) {
+    for (const lang of READERS) {
+      const html = rowHtml({ type: 'system', title: sentinel, body: '' }, lang)
+      assert.ok(!html.includes(sentinel), `${lang ?? 'no language'}: ${sentinel} printed the key itself`)
+      assert.ok(html.includes(forms[lang ?? 'zh']), `${lang ?? 'no language'}: ${sentinel} lost its headline`)
+    }
+    const en = rowHtml({ type: 'system', title: sentinel, body: '' }, 'en')
+    assert.ok(!en.includes(forms.zh), `${sentinel}: an English reader got both languages`)
+    for (const [file, lang] of APP_I18N.map((u, i) => [u, ['en', 'zh'][i]])) {
+      const key = TITLE_KEY_FOR[sentinel]
+      const messages = await readFile(file, 'utf8')
+      const line = new RegExp(`'${key}':\\s*'([^']*)'`).exec(messages)
+      assert.ok(line, `${key} is missing from the ${lang} messages`)
+      assert.equal(forms[lang], line[1], `${sentinel} (${lang}) reads differently in the mail than in the app`)
+    }
+  }
+})
+
+test('a title that is real copy is printed as written', async () => {
+  // The control. notify_item_sold (065) writes the item's own title into this
+  // column; a lookup that rewrote unknown titles would erase it.
+  const { rowHtml } = await loadRenderer()
+  for (const lang of READERS) {
+    assert.match(rowHtml({ type: 'sold', title: 'IKEA 书桌 desk', body: '' }, lang), /IKEA 书桌 desk/)
   }
 })
