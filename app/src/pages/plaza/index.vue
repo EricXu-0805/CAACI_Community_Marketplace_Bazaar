@@ -129,18 +129,6 @@
         </view>
       </view>
 
-      <view v-else-if="fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
-        <UEmptyArt name="posts" />
-        <text class="empty-text">{{ fetchError }}</text>
-        <view class="cta-btn" role="button" @click="onRefresh">{{ t('home.retry') }}</view>
-      </view>
-
-      <view v-else-if="visiblePosts.length === 0" class="empty">
-        <UEmptyArt name="posts" />
-        <text class="empty-text">{{ t('plaza.empty') }}</text>
-        <view v-if="isLoggedIn" class="cta-btn" role="button" @click="openComposer">{{ t('plaza.write') }}</view>
-      </view>
-
       <view v-else class="posts u-stagger" :key="activeTab">
         <view v-for="post in visiblePosts" :key="post.id" class="post-card u-rise">
           <!--
@@ -299,6 +287,26 @@
 
         </view>
       </view>
+
+      <!--
+        Sits after the feed, never in front of it: a failed second page must
+        leave the posts the reader already has on screen and offer the retry
+        underneath them. With nothing loaded yet this same block is the whole
+        screen, which is what an initial failure should look like.
+      -->
+      <template v-if="activeTab !== 'following'">
+        <view v-if="fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
+          <UIcon name="shield" size="lg" color="ink-soft" />
+          <text class="empty-text">{{ fetchError }}</text>
+          <view class="cta-btn" role="button" @click="onRefresh">{{ t('home.retry') }}</view>
+        </view>
+
+        <view v-else-if="!loading && visiblePosts.length === 0" class="empty">
+          <UEmptyArt name="posts" />
+          <text class="empty-text">{{ t('plaza.empty') }}</text>
+          <view v-if="isLoggedIn" class="cta-btn" role="button" @click="openComposer">{{ t('plaza.write') }}</view>
+        </view>
+      </template>
 
       <view
         v-if="activeTab === 'following' ? (!followHasMore && followPeople.length > 0) : (!hasMore && visiblePosts.length > 0)"
