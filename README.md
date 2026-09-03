@@ -107,7 +107,10 @@ Vercel Edge API
 把 `content_moderation_check` 里的 `wechat` / `vx` 两条拉丁关键词挪到保留空格的
 副本上、按拉丁词边界匹配：在剥掉分隔符的副本上 `TV, Xbox` 会塌成 `tvxbox`（含
 `vx`）、`we chat` 会塌成 `wechat`，触发器因此把卖游戏机和约时间的帖子当联系方式
-拒掉。**尚未上生产**，需要 Eric 逐条批准执行。托管 Realtime canary 的
+拒掉。**尚未上生产**，需要 Eric 逐条批准执行。2026-09-03 起平台允许留联系方式
+（手机号、微信、邮箱、QQ、Telegram、小红书），`content_moderation_check` 的
+contact_info 分支由单独一条迁移删除；客户端镜像 `app/src/utils/contentSafety.ts`
+与 `/api/translate` 的出站筛查同步移除，链接与屏蔽词两条规则保留。托管 Realtime canary 的
 pg_cron 前置脚本已移出迁移历史，改放 `_ops/hosted_realtime_canary/`——它只在
 获批的 staging 项目上执行，生产不装 pg_cron。
 合并前生产 ledger 已逐条核对为 34/38；依次完成 145042、152000、161200 三条

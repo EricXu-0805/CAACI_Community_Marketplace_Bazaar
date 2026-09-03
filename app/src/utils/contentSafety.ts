@@ -2,16 +2,23 @@
  * Client-side pre-publish content safety.
  *
  * This is the FIRST of multiple layers. It blocks obvious garbage before
- * it hits the network, gives users actionable feedback ("contains a
- * suspected WeChat ID"), and keeps Supabase rate-limit counters from
+ * it hits the network, gives users actionable feedback ("contains
+ * disallowed terms"), and keeps Supabase rate-limit counters from
  * burning on abuse attempts.
  *
  * It is NOT a trust boundary — every check here is replayed server-side
  * by the moderation hook. Never rely on this alone for safety.
  *
+ * Every rule here has to be one content_moderation_check also makes. A rule
+ * only the client has refuses text the database would accept, and the user
+ * cannot work around it — the screen says no and no edit makes it yes.
+ * Sharing contact details is allowed as of 2026-09-03, so the phone, email,
+ * WeChat and QQ rules are gone from both sides. Links stay: a shortener is a
+ * phishing vector, not a way to reach somebody.
+ *
  * Layers (cheapest first):
  *   1. Length & whitespace sanity
- *   2. Contact-info regex (phone, WeChat/QQ ID, email, bare URL)
+ *   2. Normalization (NFKC fold, invisible-character strip)
  *   3. Sensitive-word trie (Chinese + English, homoglyph-normalized)
  *   4. URL shortener / suspicious-TLD heuristics
  *
@@ -32,7 +39,6 @@ export type SafetyCategory =
   | 'ok'
   | 'too_short'
   | 'too_long'
-  | 'contact_info'
   | 'sensitive_word'
   | 'suspicious_link'
   | 'qr_image'
@@ -57,7 +63,7 @@ const MAX_ITEM_DESC = 3000
 const MAX_COMMENT = 1000
 const MAX_MESSAGE = 4000
 
-/* ---------- 2. Contact-info regex ---------- */
+/* ---------- 2. Normalization ---------- */
 
 /* Homoglyph / obfuscation folding — collapse common evasion tricks into
    canonical ASCII. Kept in lockstep with the DB content_moderation_normalize
@@ -67,80 +73,11 @@ const MAX_MESSAGE = 4000
    stripped, then whitespace/punct, then lowercase. */
 function normalize(s: string): string {
   if (!s) return ''
-  return fold(s)
-    .replace(/[　\s\-_.+,。，、]/g, '')
-}
-
-/* NFKC-folded and lowercased, but NOT stripped — keeps the dots and the @ that
-   an email address is made of. Migration 089 moves exactly one check onto this
-   copy, its email regex (089:67); its phone check deliberately stays on the
-   stripped copy (089:64), because stripping is what collapses a spaced-out or
-   punctuated number into something a regex can match. Phone rules here stay on
-   the stripped copy for the same reason. */
-function fold(s: string): string {
-  if (!s) return ''
   return s
     .normalize('NFKC')
     .replace(/[\u00AD\u034F\u061C\u180E\u200B-\u200F\u2060-\u2064\u206A-\u206F\uFEFF\uFE00-\uFE0F]/g, '')
     .toLowerCase()
-}
-
-/* Folded, and stripped of the separators an evader wedges into a word — but
-   with whitespace kept. Two of the WeChat keywords are ordinary English once
-   the spaces are gone: "we chat about pickup" collapses to "wechat", and "TV,
-   Xbox" collapses to "tvxbox", which contains "vx". Both were refused. Those
-   two keywords read against this copy with latin word boundaries; every other
-   keyword is anchored on a CJK character and stays on the stripped copy, where
-   collapsing "加 微 信" is the whole point. */
-function spaced(s: string): string {
-  if (!s) return ''
-  return fold(s).replace(/[\-_.+,。，、]/g, '').replace(/\s+/g, ' ')
-}
-
-const CN_MOBILE = /(?<![0-9])1[3-9]\d{9}(?![0-9])/
-/* Read against the stripped copy, so every separator is already gone and the
-   pattern is ten contiguous digits. The separators in the old pattern were dead
-   for that reason, which left it as /\d{10}/ — and so it refused every ISBN-10
-   and most 10-digit serials as phone numbers.
-   North American numbering is the constraint that separates them: neither an
-   area code nor an exchange code may begin with 0 or 1. */
-const US_MOBILE = /(?<![0-9])[2-9]\d{2}[2-9]\d{6}(?![0-9])/
-const EMAIL = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/
-const WECHAT_HINT = /(微信|weixin|加v|加\s*微|v信|v我|威信|私信扣)/
-/* Read against the spaced copy. Without the boundaries "vx" also matches
-   inside "tvxbox" and inside any word that happens to put v before x. */
-const WECHAT_LATIN = /(?<![a-z])(?:wechat|vx)(?![a-z])/
-const QQ_HINT = /(?:qq|扣扣|企鹅)[号:：\s]*\d{5,11}/
-const URL_ANY = /\b(?:https?:\/\/|www\.)[^\s]+/
-const URL_SHORTENER = /\b(?:bit\.ly|t\.cn|dwz\.cn|sina\.lt|tinyurl\.com|goo\.gl|ow\.ly|tb\.cn|m\.tb\.cn)[/\w]+/
-
-/* An ISBN-10's tenth character is a mod-11 check digit over the first nine, so
-   a ten-digit run that satisfies it is a book identifier rather than a phone
-   number. Chinese-group ISBNs all begin with 7 and roughly half of them also
-   satisfy the North American shape above, so the shape alone does not separate
-   them. A real phone number clears this by chance about one time in eleven,
-   which is why it narrows an existing match instead of replacing it. */
-function looksLikeIsbn10(stripped: string): boolean {
-  for (const run of stripped.match(/(?<![0-9])[0-9]{10}(?![0-9])/g) || []) {
-    let sum = 0
-    for (let i = 0; i < 10; i++) sum += (10 - i) * Number(run[i])
-    if (sum % 11 === 0) return true
-  }
-  return false
-}
-
-function hasContactInfo(raw: string): { hit: boolean; matched: string[] } {
-  const n = normalize(raw)
-  // Only the email pattern needs the unstripped copy: the dots and the @ it is
-  // built from are exactly what stripping removes.
-  const f = fold(raw)
-  const matched: string[] = []
-  if (CN_MOBILE.test(n)) matched.push('CN phone')
-  if (US_MOBILE.test(n) && !looksLikeIsbn10(n)) matched.push('US phone')
-  if (EMAIL.test(f)) matched.push('email')
-  if (WECHAT_HINT.test(n) || WECHAT_LATIN.test(spaced(raw))) matched.push('WeChat')
-  if (QQ_HINT.test(n)) matched.push('QQ')
-  return { hit: matched.length > 0, matched }
+    .replace(/[　\s\-_.+,。，、]/g, '')
 }
 
 /* ---------- 3. Sensitive-word seed list ----------
@@ -209,6 +146,9 @@ function hasSensitiveWord(raw: string): { hit: boolean; matched: string[] } {
 
 /* ---------- 4. URL / suspicious-TLD ---------- */
 
+const URL_ANY = /\b(?:https?:\/\/|www\.)[^\s]+/
+const URL_SHORTENER = /\b(?:bit\.ly|t\.cn|dwz\.cn|sina\.lt|tinyurl\.com|goo\.gl|ow\.ly|tb\.cn|m\.tb\.cn)[/\w]+/
+
 function hasSuspiciousLink(raw: string): { hit: boolean; matched: string[] } {
   const matched: string[] = []
   if (URL_SHORTENER.test(raw)) matched.push('shortener')
@@ -241,17 +181,6 @@ export function checkContent(text: string, opts: CheckOptions): SafetyResult {
 
   const sw = hasSensitiveWord(s)
   if (sw.hit) return { ok: false, category: 'sensitive_word', action: 'block', matched: sw.matched, reason: 'contains disallowed terms' }
-
-  const contact = hasContactInfo(s)
-  if (contact.hit) {
-    return {
-      ok: false,
-      category: 'contact_info',
-      action: 'block',
-      matched: contact.matched,
-      reason: 'avoid sharing contact info here — use in-app chat',
-    }
-  }
 
   if (!opts.allowLinks) {
     const link = hasSuspiciousLink(s)

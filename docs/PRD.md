@@ -89,8 +89,8 @@ Illini Market 是面向 UIUC / Champaign–Urbana 社区的中英双语校园二
 ### 4.3 广场
 
 - 用户发布文字/图片帖子、点赞、评论和关联自己的可见商品；
-- 文本长度、控制字符、NFKC、联系方式/二维码与 moderation 状态在客户端和
-  数据库双重约束；
+- 文本长度、控制字符、NFKC、屏蔽词/二维码与 moderation 状态在客户端和
+  数据库双重约束；联系方式（手机号、微信、邮箱、QQ）自 2026-09-03 起允许发布；
 - 匿名/普通用户只能看到 active、未因作者停权或 moderation 隐藏的内容；
 - 新建或变更 banner 图片必须来自管理员 managed upload ledger，不能把任意
   HTTPS 图像当成受信资源；

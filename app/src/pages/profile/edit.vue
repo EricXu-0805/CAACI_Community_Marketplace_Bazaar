@@ -372,7 +372,7 @@ async function onSave() {
       if (!operationStillCurrent()) return
       console.error('[profile-edit] update failed')
       // friendlyErrorMessage localizes the bio moderation block
-      // ('moderation_block:contact_info' from mig 043) instead of leaking
+      // ('moderation_block:sensitive_word' from mig 045) instead of leaking
       // the raw sentinel to the user.
       uni.showToast({ title: friendlyErrorMessage(result.error, lang.value as 'en' | 'zh') || t('profile.markFail'), icon: 'none', duration: 3000 })
       return

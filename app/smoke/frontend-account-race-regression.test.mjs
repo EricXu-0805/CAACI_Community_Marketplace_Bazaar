@@ -252,7 +252,7 @@ test('Illini verification binds one normalized email to a mutually exclusive flo
 
 test('local duplicate holds are isolated by account identity and session generation', async () => {
   const contentSafety = source('src/utils/contentSafety.ts')
-  const normalizeBlock = functionBlock(contentSafety, 'function normalize', 'const CN_MOBILE')
+  const normalizeBlock = functionBlock(contentSafety, 'function normalize', 'const SENSITIVE_WORDS_ZH')
   const duplicateStart = contentSafety.indexOf('const recentSubmissions')
   assert.ok(duplicateStart >= 0)
   const duplicateModule = await import(compiledDataUrl(`${normalizeBlock}\n${contentSafety.slice(duplicateStart)}`))
