@@ -292,6 +292,10 @@ function onLongPress(id: string) {
 .ni-offer      { background: var(--warning-soft);   color: var(--warning-text); }
 .ni-meetup     { background: var(--campus-blue-soft); color: var(--campus-blue-on-soft); }
 .ni-unread_message { background: var(--campus-blue-soft); color: var(--campus-blue-on-soft); }
+.ni-rating     { background: var(--success-soft);   color: var(--success); }
+.ni-follow     { background: var(--campus-blue-soft); color: var(--campus-blue-on-soft); }
+.ni-post_comment { background: var(--campus-blue-soft); color: var(--campus-blue-on-soft); }
+.ni-post_like  { background: var(--brand-soft);     color: var(--brand-on-soft); }
 .notif-content { flex: 1; min-width: 0; }
 .notif-type {
   /* --text-muted lands at 4.04:1 on the tinted unread row in dark. */
