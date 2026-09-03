@@ -139,8 +139,8 @@ const en: Record<string, string> = {
   'detail.description': 'Description',
   'detail.showMore': 'Show more',
   'detail.showLess': 'Show less',
-  'detail.views': 'views',
-  'detail.wants': 'wants',
+  'detail.views': 'view|views',
+  'detail.wants': 'want|wants',
   'detail.save': 'Save',
   'detail.saved': 'Saved',
   'detail.chat': 'Chat with Seller',
@@ -226,6 +226,12 @@ const en: Record<string, string> = {
   'publish.priceTooHighBody': 'The price you entered seems unusually high. Listings over $100,000 are rare on a campus marketplace — confirm before listing?',
   'publish.priceTooHighConfirm': 'List',
   'publish.priceTooHighCancel': 'Edit',
+  // Solicitation soft gate. The member can always continue, so the button
+  // labels stay inside wx.showModal's 4-character limit like the price gate.
+  'moderation.adTitle': 'Looks like an ad',
+  'moderation.adBody': 'This reads like an ad for off-platform services. Illini Market is for students trading items on campus. Post anyway?',
+  'moderation.adConfirm': 'Post',
+  'moderation.adCancel': 'Edit',
   'publish.priceExceedsLimit': 'Price exceeds the limit (max $1,000,000)',
   'publish.needCategory': 'Select a category',
   'publish.needCondition': 'Select condition',

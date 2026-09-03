@@ -161,11 +161,11 @@
       <view class="stats-row">
         <view class="stat">
           <text class="stat-num">{{ item.view_count }}</text>
-          <text class="stat-label">{{ t('detail.views') }}</text>
+          <text class="stat-label">{{ tc('detail.views', item.view_count) }}</text>
         </view>
         <view class="stat">
           <text class="stat-num">{{ favCount }}</text>
-          <text class="stat-label">{{ t('detail.wants') }}</text>
+          <text class="stat-label">{{ tc('detail.wants', favCount) }}</text>
         </view>
       </view>
     </view>
@@ -212,8 +212,8 @@
       <text class="section-label">{{ t('detail.moreFromSeller') }}</text>
       <scroll-view scroll-x class="more-scroll">
         <view class="more-list u-stagger">
-          <view v-for="si in sellerOtherItems" :key="si.id" class="more-card" role="button" :aria-label="si.title" @click="goToOtherItem(si.id)">
-            <image v-if="thumbUrl(si.images?.[0], 'list')" :src="thumbUrl(si.images?.[0], 'list')" :alt="si.title" class="mc-img" mode="aspectFill" lazy-load />
+          <view v-for="si in sellerOtherItems" :key="si.id" class="more-card" role="button" :aria-label="localize(si.title_i18n, si.title)" @click="goToOtherItem(si.id)">
+            <image v-if="thumbUrl(si.images?.[0], 'list')" :src="thumbUrl(si.images?.[0], 'list')" :alt="localize(si.title_i18n, si.title)" class="mc-img" mode="aspectFill" lazy-load />
             <view v-else class="mc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
             <view class="mc-price-row">
               <text v-if="si.listing_type === 'wanted'" class="u-wanted-tag">{{ t('item.wanted') }}</text>
@@ -229,8 +229,8 @@
       <text class="section-label">{{ t('detail.similar') }}</text>
       <scroll-view scroll-x class="more-scroll">
         <view class="more-list u-stagger">
-          <view v-for="si in similarItems" :key="si.id" class="more-card" role="button" :aria-label="si.title" @click="goToOtherItem(si.id)">
-            <image v-if="thumbUrl(si.images?.[0], 'list')" :src="thumbUrl(si.images?.[0], 'list')" :alt="si.title" class="mc-img" mode="aspectFill" lazy-load />
+          <view v-for="si in similarItems" :key="si.id" class="more-card" role="button" :aria-label="localize(si.title_i18n, si.title)" @click="goToOtherItem(si.id)">
+            <image v-if="thumbUrl(si.images?.[0], 'list')" :src="thumbUrl(si.images?.[0], 'list')" :alt="localize(si.title_i18n, si.title)" class="mc-img" mode="aspectFill" lazy-load />
             <view v-else class="mc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
             <view class="mc-price-row">
               <text v-if="si.listing_type === 'wanted'" class="u-wanted-tag">{{ t('item.wanted') }}</text>
@@ -928,11 +928,11 @@ async function loadDetailForCurrentAccount() {
           }))
         : Promise.resolve({ eligible: false, ratee_id: null, ratee_nickname: null, already_rated: false }),
       supabase
-        .from('items').select('id, title, price, images, image_dimensions, listing_type')
+        .from('items').select('id, title, title_i18n, price, images, image_dimensions, listing_type')
         .eq('user_id', itemData.user_id).eq('status', 'active')
         .neq('id', itemData.id).limit(6),
       supabase
-        .from('items').select('id, title, price, images, image_dimensions, user_id, listing_type')
+        .from('items').select('id, title, title_i18n, price, images, image_dimensions, user_id, listing_type')
         .eq('category', itemData.category).eq('status', 'active')
         .neq('id', itemData.id).neq('user_id', itemData.user_id).limit(12),
       fetchForUser(itemData.user_id, REVIEW_FETCH).catch((readError) => {
