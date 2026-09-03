@@ -220,9 +220,9 @@ test('upstream errors and malformed rows fail to the generic share surface', asy
   globalThis.fetch = async () => new Response('{not-json', { status: 200 })
   const { default: handler } = await load('share.js')
   const response = await handler(new Request(`https://illinimarket.com/api/share?id=${ITEM_ID}`))
-  const html = await response.text()
-  assert.match(html, /Illini Market · 校园二手交易/)
-  assert.doesNotMatch(html, /pages\/detail/)
+  const meta = metaOf(await response.text())
+  assert.equal(meta.title, 'Illini Market · 校园二手交易')
+  assert.equal(meta.description, 'UIUC 校园二手交易平台')
 })
 
 test('share preview bounds public query responses and fails to the generic surface', async () => {
@@ -232,10 +232,10 @@ test('share preview bounds public query responses and fails to the generic surfa
   })
   const { default: handler } = await load('share.js')
   const response = await handler(new Request(`https://illinimarket.com/api/share?id=${ITEM_ID}`))
-  const html = await response.text()
+  const meta = metaOf(await response.text())
 
-  assert.match(html, /Illini Market · 校园二手交易/)
-  assert.doesNotMatch(html, /pages\/detail/)
+  assert.equal(meta.title, 'Illini Market · 校园二手交易')
+  assert.equal(meta.description, 'UIUC 校园二手交易平台')
 })
 
 const LONE_SURROGATE_RE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/
@@ -343,3 +343,90 @@ for (const endpoint of ['share.js', 'share-post.js']) {
     }
   })
 }
+
+// Mirrors the items.source_lang whitelist from migration 015.
+const DOCUMENT_LANGS = new Set(['zh', 'en', 'ja', 'ko', 'zh-Hant'])
+
+function htmlLangOf(markup) {
+  const tag = (markup.match(/<html\b[^>]*>/i) || [])[0]
+  if (!tag) return null
+  const attr = tag.match(/\slang="([^"]*)"/)
+  return attr ? attr[1] : null
+}
+
+/**
+ * items_visible drops deleted listings, so a forwarded link to one reads back
+ * nothing. Every one of those used to point at the site root: whoever tapped
+ * the link landed on the home page with nothing to tell them the listing was
+ * gone, while the detail route has an "Item not available" screen for exactly
+ * this case.
+ */
+test('a share link whose listing is gone lands on the detail route, not the home page', async () => {
+  const { default: handler } = await load('share.js')
+  async function share(query) {
+    globalThis.fetch = async () => json([])
+    return metaOf(await (await handler(new Request(`https://illinimarket.com/api/share${query}`))).text())
+  }
+
+  const detail = `https://illinimarket.com/#/pages/detail/index?id=${ITEM_ID}`
+  const missing = await share(`?id=${ITEM_ID}`)
+  assert.equal(missing.canonical, detail, 'a deleted listing dropped the reader on the home page')
+  assert.equal(missing.ogUrl, detail)
+  assert.equal(missing.refresh, detail)
+  // The card still must not invent a listing it could not read.
+  assert.equal(missing.title, 'Illini Market · 校园二手交易')
+
+  // Control: with no listing named there is nothing to explain, so the root
+  // stays the destination — the fix is not "always append a detail route".
+  for (const query of ['', '?id=not-a-uuid']) {
+    const rootward = await share(query)
+    assert.equal(rootward.canonical, 'https://illinimarket.com', `${query || '(no id)'} invented a detail route`)
+    assert.equal(rootward.ogUrl, 'https://illinimarket.com')
+    assert.equal(rootward.refresh, 'https://illinimarket.com')
+  }
+})
+
+/**
+ * The interstitial hardcoded lang="zh" while carrying the listing's own title
+ * and description, so an English listing was announced in a Chinese voice and
+ * offered for translation out of a language it was never written in.
+ * items.source_lang records what the seller actually typed.
+ */
+test('the share interstitial declares the language the listing was written in', async () => {
+  const { default: handler } = await load('share.js')
+  const selects = []
+  async function langFor(sourceLang) {
+    globalThis.fetch = async (input) => {
+      selects.push(new URL(String(input)).searchParams.get('select') || '')
+      return json([{
+        id: ITEM_ID, title: 'Desk lamp', description: 'Barely used', price: 15,
+        images: [], listing_type: 'sell', status: 'active', source_lang: sourceLang,
+      }])
+    }
+    return htmlLangOf(await (await handler(new Request(`https://illinimarket.com/api/share?id=${ITEM_ID}`))).text())
+  }
+
+  assert.equal(await langFor('en'), 'en', 'an English listing was still declared Chinese')
+  assert.equal(await langFor('ja'), 'ja')
+  // Control: the Chinese case has to keep saying zh, or a blanket 'en' passes.
+  assert.equal(await langFor('zh'), 'zh')
+  // Unsupported or hostile values fall back instead of reaching the attribute.
+  for (const value of [null, undefined, 'de', 'en" onload="alert(1)']) {
+    assert.equal(await langFor(value), 'zh', `${value} reached the lang attribute`)
+  }
+  assert.ok(selects.length > 0)
+  for (const select of selects) assert.match(select, /(^|,)source_lang(,|$)/)
+})
+
+/**
+ * The SPA shell shipped a bare <html>, so every page that is not a share
+ * interstitial handed assistive technology and translation tools no language
+ * at all.
+ */
+test('the app shell declares a language', async () => {
+  const shell = await readFile(new URL('../app/index.html', API_ROOT), 'utf8')
+  const lang = htmlLangOf(shell)
+  assert.ok(lang && DOCUMENT_LANGS.has(lang), `app/index.html declares no supported lang (got ${lang})`)
+  // Control: a shell without the attribute has to be visible as such here.
+  assert.equal(htmlLangOf('<!DOCTYPE html>\n<html>\n<head></head>\n</html>'), null)
+})

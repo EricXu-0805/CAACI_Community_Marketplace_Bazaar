@@ -19,6 +19,10 @@ const PUBLIC_SITE_RAW = process.env.DEPLOYMENT_APP_ORIGIN
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const MAX_PUBLIC_RESPONSE_BYTES = 64 * 1024
+// The locales items.source_lang is constrained to (migration 015). Anything
+// else — including the null carried by listings written before the column
+// existed — leaves the interstitial on its own Chinese copy.
+const DOCUMENT_LANGS = new Set(['zh', 'en', 'ja', 'ko', 'zh-Hant'])
 
 function supabaseHeaders(key, authorization = '', extra = {}) {
   const headers = { apikey: key, ...extra }
@@ -164,7 +168,7 @@ async function responseForRequest(req, boundary) {
   if (id && SUPABASE_URL && SUPABASE_ANON_KEY) {
     const rows = await readPublicRows(
       `items_visible?id=eq.${encodeURIComponent(id)}`
-      + '&select=id,title,description,price,images,listing_type,status&limit=1',
+      + '&select=id,title,description,price,images,listing_type,status,source_lang&limit=1',
     )
     item = rows[0] || null
   }
@@ -188,11 +192,19 @@ async function responseForRequest(req, boundary) {
   const desc = item ? (truncate(item.description || '', 160) || `${priceLabel} on Illini Market`) : 'UIUC 校园二手交易平台'
   const fallbackImage = `${site}/static/app-icon-512.png`
   const image = safeImageUrl(item?.images?.[0], fallbackImage, site)
-  const canonical = item ? `${site}/#/pages/detail/index?id=${id}` : site
+  // A well-formed id that reads back nothing is a deleted or hidden listing,
+  // and the detail route has a screen that says so. Falling back to the site
+  // root dropped whoever tapped the forwarded link on the home page instead,
+  // with nothing to tell them the listing was gone.
+  const canonical = id ? `${site}/#/pages/detail/index?id=${id}` : site
   const escapedCanonical = escapeHtml(canonical)
+  // source_lang records what the seller actually typed in, so a screen reader
+  // gets the right voice and a translator stops "translating" an English
+  // listing out of Chinese. The generic card below is Chinese either way.
+  const docLang = DOCUMENT_LANGS.has(item?.source_lang) ? item.source_lang : 'zh'
 
   const html = `<!DOCTYPE html>
-<html lang="zh">
+<html lang="${docLang}">
 <head>
 <meta charset="utf-8">
 <title>${escapeHtml(title)}</title>
