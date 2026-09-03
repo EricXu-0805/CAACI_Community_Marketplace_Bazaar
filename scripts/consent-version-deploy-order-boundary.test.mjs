@@ -136,3 +136,37 @@ test('RUNBOOK still carries the schema-coupled release order rule', async () => 
   assert.match(source, /no CI step applies\s+`supabase\/migrations`\s+to production/)
   assert.match(source, /apply the migration to production\s+\*\*before\*\*\s+merging/)
 })
+
+test('no smoke fixture pins the consent version to a date literal', async () => {
+  // A stubbed profile carrying tos_version: '2026-08-01' goes stale the moment
+  // any legal document bumps. On 2026-09-03 that is exactly what happened: the
+  // gate sent every stubbed session to /pages/reconsent and about thirty
+  // authenticated specs failed at once, each reporting the element it wanted
+  // rather than the reason it was never rendered. Deriving the value from
+  // CURRENT_CONSENT_VERSION removes the whole class, so this forbids the shape
+  // that can rot — not the value that happens to be current today.
+  const dir = new URL('../app/smoke/', import.meta.url)
+  const specs = (await readdir(dir)).filter((f) => f.endsWith('.spec.ts'))
+  const offenders = []
+  let stubbing = 0
+  for (const file of specs) {
+    const source = await readFile(new URL(file, dir), 'utf8')
+    if (!source.includes('tos_version')) continue
+    stubbing += 1
+    if (/tos_version:\s*'\d{4}-\d{2}-\d{2}'/.test(source)) offenders.push(file)
+  }
+  // Control: if the scan stops finding stubbed profiles it has gone blind, and
+  // an empty offender list would mean nothing at all.
+  assert.ok(
+    stubbing >= 5,
+    `expected several specs to stub tos_version; found ${stubbing}. ` +
+      'If the fixtures moved, point this scan at their new home.',
+  )
+  assert.deepEqual(
+    offenders,
+    [],
+    `these specs hardcode a consent version: ${offenders.join(', ')}. ` +
+      "Import CURRENT_CONSENT_VERSION from '../src/legal' and use it, so a " +
+      'document bump cannot silently gate the fixture.',
+  )
+})

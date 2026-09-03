@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { supabaseRefForBuild } from './supabase-ref'
+import { CURRENT_CONSENT_VERSION } from '../src/legal'
 
 /**
  * A failed read must not render as "you have nothing".
@@ -31,7 +32,7 @@ const SAVED_ITEM_ID = '33333333-3333-4333-8333-333333333333'
 const COMMENT_ID = '44444444-4444-4444-8444-444444444444'
 
 const PROFILE = {
-  id: UID, nickname: 'Test User', avatar_url: null, tos_version: '2026-08-01',
+  id: UID, nickname: 'Test User', avatar_url: null, tos_version: CURRENT_CONSENT_VERSION,
   suspension_level: 0, suspended_until: null, is_illini_verified: true, bio: 'hi', location: 'UIUC',
 }
 // comment_count is deliberately non-zero: the contradiction only shows when

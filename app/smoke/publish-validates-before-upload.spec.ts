@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import zlib from 'node:zlib'
 import { supabaseRefForBuild } from './supabase-ref'
+import { CURRENT_CONSENT_VERSION } from '../src/legal'
 
 /**
  * A listing that will be refused must be refused before its photos are sent.
@@ -21,7 +22,7 @@ const GEN = 'publish-order-generation-0001'
 const REF = supabaseRefForBuild()
 
 const PROFILE = {
-  id: UID, nickname: 'Test User', avatar_url: null, tos_version: '2026-08-01',
+  id: UID, nickname: 'Test User', avatar_url: null, tos_version: CURRENT_CONSENT_VERSION,
   suspension_level: 0, suspended_until: null, is_illini_verified: true, bio: 'hi', location: 'UIUC',
 }
 

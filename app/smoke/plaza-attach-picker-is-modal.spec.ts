@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { supabaseRefForBuild } from './supabase-ref'
+import { CURRENT_CONSENT_VERSION } from '../src/legal'
 
 /**
  * The attach-item picker says it is modal. It has to actually be modal.
@@ -30,7 +31,7 @@ const REF = supabaseRefForBuild()
 const UID = '11111111-1111-4111-8111-111111111111'
 const GEN = 'attach-picker-generation-0001'
 const PROFILE = {
-  id: UID, nickname: 'Test User', avatar_url: null, tos_version: '2026-08-01',
+  id: UID, nickname: 'Test User', avatar_url: null, tos_version: CURRENT_CONSENT_VERSION,
   suspension_level: 0, suspended_until: null, is_illini_verified: true, bio: 'hi', location: 'UIUC',
 }
 // Well above the sheet, which is bottom-anchored at max-height 70vh.

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { supabaseRefForBuild } from './supabase-ref'
+import { CURRENT_CONSENT_VERSION } from '../src/legal'
 
 /**
  * The chat has to notice that the listing closed underneath it.
@@ -29,7 +30,7 @@ const ITEM = '44444444-4444-4444-8444-444444444444'
 const GEN = 'chat-snapshot-generation-0001'
 
 const ME_PROFILE = {
-  id: ME, nickname: 'Me', avatar_url: null, tos_version: '2026-08-01',
+  id: ME, nickname: 'Me', avatar_url: null, tos_version: CURRENT_CONSENT_VERSION,
   suspension_level: 0, suspended_until: null, is_illini_verified: true, bio: '', location: 'UIUC',
 }
 const SELLER_PROFILE = { id: SELLER, nickname: 'Seller', avatar_url: null }
