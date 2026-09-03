@@ -45,6 +45,22 @@ function safeOrigin(raw, fallback = '') {
 
 const SUPABASE_ORIGIN = safeOrigin(SUPABASE_URL, '')
 
+// String#slice counts UTF-16 units, so a cut can land between the two halves
+// of an emoji and leave a lone surrogate — U+FFFD once the response is encoded.
+function truncate(s, max) {
+  const cut = s.slice(0, max)
+  return /[\uD800-\uDBFF]$/.test(cut) ? cut.slice(0, -1) : cut
+}
+
+// The apex 308-redirects to www, so a canonical on the configured apex origin
+// costs every share click an extra hop. Use the www form when that is the host
+// the request actually arrived on.
+function canonicalSite(configured, requestUrl) {
+  const host = new URL(configured).hostname
+  if (requestUrl.protocol === 'https:' && requestUrl.hostname === `www.${host}`) return requestUrl.origin
+  return configured
+}
+
 function safeImageUrl(value, fallback, siteOrigin) {
   if (typeof value !== 'string' || !value) return fallback
   try {
@@ -134,7 +150,7 @@ async function responseForRequest(req, boundary) {
   const url = new URL(req.url)
   const rawId = url.searchParams.get('id')
   const id = UUID_RE.test(rawId || '') ? rawId : null
-  const site = boundary.appOrigin || safeOrigin(PUBLIC_SITE_RAW, url.origin)
+  const site = canonicalSite(boundary.appOrigin || safeOrigin(PUBLIC_SITE_RAW, url.origin), url)
 
   let post = null
   let authorName = ''
@@ -152,9 +168,9 @@ async function responseForRequest(req, boundary) {
     }
   }
 
-  const firstLine = (post?.content || '').split('\n')[0].slice(0, 60) || 'Illini Market · 校园广场'
+  const firstLine = truncate((post?.content || '').split('\n')[0], 60) || 'Illini Market · 校园广场'
   const title = post ? `${firstLine} — ${authorName || '用户'}` : 'Illini Market · 校园广场'
-  const desc = post ? (post.content?.slice(0, 160) || 'A post on Illini Market') : 'UIUC 校园广场 · Plaza'
+  const desc = post ? (truncate(post.content || '', 160) || 'A post on Illini Market') : 'UIUC 校园广场 · Plaza'
   const fallbackImage = `${site}/static/app-icon-512.png`
   const image = safeImageUrl(post?.images?.[0], fallbackImage, site)
   const canonical = post ? `${site}/#/pages/post/index?id=${id}` : site
