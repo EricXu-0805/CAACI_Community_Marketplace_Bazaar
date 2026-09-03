@@ -28,16 +28,18 @@ test('upload batches carry their account generation into item mutations', () => 
   assert.match(items, /return \{ urls, dims, accountToken \}/)
 
   assert.match(publish, /uploadAccountToken = res\.accountToken/)
+  // The property is that the upload batch's token reaches the mutation, not
+  // that it is the only option passed — a sibling option is not a regression.
   assert.match(
     publish,
-    /createItem\(payload, \{\s*accountToken: submitAccountToken,?\s*\}\)/,
+    /createItem\(payload, \{[^}]*accountToken: submitAccountToken,/,
   )
   assert.match(edit, /uploadAccountToken = res\.accountToken/)
   assert.match(
     edit,
     /commitEditWithCompatibleRetry\(\s*\{ \.\.\.payload \},\s*submitAccountToken,?\s*\)/,
   )
-  assert.match(edit, /\{ expectedUpdatedAt: loadedUpdatedAt\.value, accountToken \}/)
+  assert.match(edit, /\{ expectedUpdatedAt: loadedUpdatedAt\.value, accountToken[,\s}]/)
 })
 
 test('account changes fail closed before writes and committed writes are not compensated', () => {
