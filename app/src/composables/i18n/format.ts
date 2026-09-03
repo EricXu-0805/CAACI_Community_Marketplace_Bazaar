@@ -28,13 +28,22 @@ export function detectsAsForeign(text: string, uiLang: Lang): boolean {
  * back, and nothing was stored. English — the one rendering that listing
  * actually needed — was never requested.
  *
- * `detectsAsForeign` only ever fires for the zh/en pair, which is also the
- * only pair SUPPORTED_LANGS ships, so "foreign to the UI language" names the
- * language outright. Text with no signal either way keeps the UI language.
+ * Deferring to `detectsAsForeign` was not enough. That predicate answers a
+ * narrower question — is a fetch worth firing? — and for an English UI it
+ * demands CJK with no Latin run at all, so one brand name kept the wrong
+ * label: 'AirPods Pro 2 全新未拆封' and '求购二手自行车，ISR 附近交易' were both
+ * still filed 'en' after that fix shipped. Titles shaped like those are the
+ * norm on this site, not the exception.
+ *
+ * So decide on script presence, and let CJK win outright: a title carrying any
+ * Chinese was typed by someone writing Chinese, whatever Latin the product
+ * name drags in with it. Text with neither script — a bare price, an empty
+ * description — carries no signal and keeps the UI language.
  */
 export function authoredLang(text: string, uiLang: Lang): Lang {
-  if (!detectsAsForeign(text, uiLang)) return uiLang
-  return uiLang === 'zh' ? 'en' : 'zh'
+  if (/[\u4e00-\u9fff\u3400-\u4dbf]/.test(text)) return 'zh'
+  if (/[A-Za-z]/.test(text)) return 'en'
+  return uiLang
 }
 
 /*
