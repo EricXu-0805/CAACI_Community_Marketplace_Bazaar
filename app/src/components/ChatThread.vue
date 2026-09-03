@@ -661,6 +661,14 @@ function reportBackgroundFailure(source: string, error: unknown) {
   captureException(error, { tags: { source }, level: 'warning' })
 }
 
+/* A receipt asserts the recipient looked at the message, so it may only be
+   written while this thread is actually on screen. Non-H5 targets have no
+   `document`; a mini-program page that is off screen has already torn the
+   thread down, so an absent `document` counts as visible. */
+function isThreadVisible(): boolean {
+  return typeof document === 'undefined' || document.visibilityState === 'visible'
+}
+
 /* Read receipts and the badge are best-effort follow-up work. A transient
    UPDATE/count failure must never abort chat setup or produce an unhandled
    rejection that can terminate a uni-app event callback. */
@@ -833,7 +841,10 @@ function applyIncomingMessage(expectedConversationId: string, newMsg: Message) {
 
   messages.value.push(newMsg)
   nextTick(() => scrollToBottom())
-  if (currentUser.value && newMsg.sender_id !== currentUser.value.id) {
+  // Realtime keeps delivering into a backgrounded tab. Marking on arrival told
+  // the sender "read" for a message nobody had looked at; the visibilitychange
+  // handler below flushes the receipt when the thread comes back on screen.
+  if (currentUser.value && newMsg.sender_id !== currentUser.value.id && isThreadVisible()) {
     refreshReadState(expectedConversationId, currentUser.value.id)
   }
 }
@@ -992,7 +1003,7 @@ async function initializeConversationAfterGate() {
     // genuinely new and worth announcing.
     nextTick(() => { if (isCurrentThreadSetup()) transcriptLive.value = true })
 
-    if (currentUser.value) refreshReadState(options.id, currentUser.value.id)
+    if (currentUser.value && isThreadVisible()) refreshReadState(options.id, currentUser.value.id)
 
     if (options.prefill && messages.value.length === 0) {
       try { inputText.value = decodeURIComponent(options.prefill as string) } catch {}

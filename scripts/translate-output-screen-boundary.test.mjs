@@ -20,6 +20,14 @@
  * here fails on purpose — regenerate these verdicts against the new definition
  * before updating it.
  *
+ * 20260903060000 ended the mirror: sharing contact info is allowed everywhere
+ * a member types, so content_moderation_check has no contact_info branch left
+ * and every verdict below is now the historical one. The screen keeps them on
+ * purpose. What a member chooses to publish about themselves and what a
+ * machine translator emits into somebody else's chat window are different
+ * questions, and only the second one is unattributed. Whether the screen stays
+ * at all is a decision about api/translate.js, not about the trigger.
+ *
  * Two deliberate divergences, both toward withholding more than the trigger
  * does, because this screens generated text rather than what a member typed:
  * a translator that renders 微信 as "we chat" is the risk the trigger never
@@ -434,8 +442,8 @@ test('the contact_info branches still live where these verdicts came from', asyn
 
   assert.equal(
     definitions.at(-1),
-    '20260818162716_latin_contact_keywords_need_word_boundaries.sql',
-    'content_moderation_check was redefined after 089 — regenerate the corpus verdicts in '
+    '20260903060000_allow_contact_info_and_layer_ad_detection.sql',
+    'content_moderation_check was redefined after 20260903060000 — regenerate the corpus verdicts in '
       + 'this file against the new definition, then update the JS screen in api/translate.js '
       + 'to match before changing this assertion',
   )
