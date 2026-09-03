@@ -107,7 +107,7 @@
                 <UBadge v-if="p.is_illini_verified" variant="illini">Illini</UBadge>
               </view>
               <text v-if="p.status_text" class="fp-status">{{ p.status_emoji ? p.status_emoji + ' ' : '' }}{{ p.status_text }}</text>
-              <text v-else-if="p.location" class="fp-status">{{ p.location }}</text>
+              <text v-else-if="p.location" class="fp-status">{{ localizedLocation(p.location) }}</text>
             </view>
             <UIcon name="chevron-right" size="sm" color="text-faint" />
           </view>
@@ -640,6 +640,7 @@ import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
 import { useLongPress } from '../../composables/useLongPress'
 import { useKeyboardHeight } from '../../composables/useKeyboardHeight'
+import { localizeLocation } from '../../composables/useCampusSpots'
 import { createOwnedLoading } from '../../composables/ownedLoading'
 import type { Post, PostComment, Item } from '../../types'
 import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
@@ -676,6 +677,10 @@ const { currentUser, isLoggedIn, requireAuth, awaitAuthReady } = useAuth()
 const { posts, loading, hasMore, fetchError, fetchPosts, createPost, updatePostI18n, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, fetchMyActiveItems, clearPosts } = usePlaza()
 const { fetchFollowingProfiles } = useFollow()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
+
+function localizedLocation(raw: string | null | undefined) {
+  return localizeLocation(raw, lang.value as 'en' | 'zh')
+}
 const kb = useKeyboardHeight()
 /*
  * kb.height is a nested Ref in a plain object — Vue templates only unwrap

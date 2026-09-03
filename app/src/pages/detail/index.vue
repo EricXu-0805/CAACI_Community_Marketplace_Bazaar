@@ -1233,7 +1233,7 @@ async function toggleFavorite() {
   if (!result.ok) return
   isFav.value = result.favorited
   favCount.value = Math.max(0, favCount.value + (result.favorited ? 1 : -1))
-  uni.showToast({ title: result.favorited ? t('detail.saved') : t('detail.save'), icon: 'none' })
+  uni.showToast({ title: result.favorited ? t('detail.saved') : t('detail.unsaved'), icon: 'none' })
 }
 
 async function contactSeller() {

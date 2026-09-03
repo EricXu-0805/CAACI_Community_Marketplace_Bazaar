@@ -52,10 +52,10 @@
             v-for="(spot, index) in CAMPUS_SPOTS"
             :key="spot.id"
             class="spot-chip"
-            :class="{ active: location === spotLabel(spot) }"
+            :class="{ active: isSpotSelected(spot) }"
             role="radio"
-            :tabindex="location === spotLabel(spot) || (!CAMPUS_SPOTS.some(option => location === spotLabel(option)) && index === 0) ? 0 : -1"
-            :aria-checked="location === spotLabel(spot) ? 'true' : 'false'"
+            :tabindex="isSpotSelected(spot) || (!CAMPUS_SPOTS.some(option => isSpotSelected(option)) && index === 0) ? 0 : -1"
+            :aria-checked="isSpotSelected(spot) ? 'true' : 'false'"
             @click="location = spotLabel(spot)"
             @keydown="onSpotKeydown($event, index)"
           >
@@ -99,10 +99,20 @@ const defaultAvatarSrc = computed(() =>
 )
 const { currentUser, updateProfile, requireAuth, awaitAuthReady } = useAuth()
 const { uploadImages, removeOwnedItemImages } = useItems()
-const { CAMPUS_SPOTS } = useCampusSpots()
+const { CAMPUS_SPOTS, matchSpot } = useCampusSpots()
 
 function spotLabel(spot: CampusSpot) {
   return lang.value === 'zh' ? spot.zh : spot.en
+}
+
+/*
+ * A saved spot is stored as the label the editor's UI language produced, so
+ * comparing it against the chip's current label loses the selection the moment
+ * the reader switches language. matchSpot() resolves either language back to
+ * the same entry.
+ */
+function isSpotSelected(spot: CampusSpot) {
+  return matchSpot(location.value)?.id === spot.id
 }
 
 function onSpotKeydown(event: KeyboardEvent, currentIndex: number) {
