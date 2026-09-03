@@ -15,6 +15,7 @@ import {
 } from './accountScope'
 import {
   fetchNotificationRowsWithCompatibility,
+  notificationBodyKey,
   notificationDestination,
   notificationIcon,
   notificationToastKind,
@@ -35,6 +36,12 @@ const unreadNotifCount = ref(0)
 const BODY_SENTINEL_KEYS: Record<string, string> = {
   saved_search_match: 'notif.savedSearchMatch',
   new_listing_from_followee: 'notif.followeeListing',
+  transaction_rating_received: 'notif.ratingReceived',
+  deal_marked_sold: 'notif.dealMarkedSold',
+  new_follower: 'notif.newFollower',
+  post_comment: 'notif.postComment',
+  post_like: 'notif.postLike',
+  post_comment_like: 'notif.commentLike',
 }
 
 /*
@@ -52,8 +59,8 @@ export function notificationBodyText(
   notification: Notification,
   translate: (key: string) => string,
 ): string {
-  const key = BODY_SENTINEL_KEYS[notification.body]
-  if (key) return translate(key)
+  const messageKey = BODY_SENTINEL_KEYS[notificationBodyKey(notification.body).key]
+  if (messageKey) return translate(messageKey)
   const amounts = PRICE_BODY_RE.exec(notification.body || '')
   if (amounts) {
     const free = translate('home.free')

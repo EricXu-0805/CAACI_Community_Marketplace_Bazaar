@@ -94,6 +94,40 @@ test('a dedup key never reaches the reader', async () => {
   assert.deepEqual(leaked, [], `printed verbatim in the mail:\n  ${leaked.join('\n  ')}`)
 })
 
+/*
+ * The 20260903070000 activity keys carry their tap target as '<key>:<uuid>'
+ * because the post or person they open fits neither item_id nor
+ * conversation_id. The row id is routing data; printing it in the mail would
+ * be the same bug as printing the dedup key.
+ */
+test('a keyed body prints its sentence and not the id it routes with', async () => {
+  const { rowHtml, BODY_SENTINELS } = await loadRenderer()
+  const target = '0f3e5c1a-2b4d-4e6f-8a9b-1c2d3e4f5a6b'
+  for (const key of ['new_follower', 'post_comment', 'post_like', 'post_comment_like']) {
+    assert.ok(BODY_SENTINELS[key], `${key} lost its copy`)
+    for (const lang of READERS) {
+      const html = rowHtml({ type: 'system', title: 'x', body: `${key}:${target}` }, lang)
+      assert.ok(!html.includes(target), `${lang ?? 'no language'}: ${key} printed its row id`)
+      assert.ok(!html.includes(key), `${lang ?? 'no language'}: ${key} printed the key itself`)
+      assert.ok(
+        html.includes(BODY_SENTINELS[key][lang ?? 'zh']),
+        `${lang ?? 'no language'}: ${key} lost its sentence`,
+      )
+    }
+  }
+})
+
+test('a colon in real copy is not mistaken for a key', async () => {
+  // The control for the parser above. Meetup bodies are a place and a clock
+  // time; nothing about them may be swallowed.
+  const { rowHtml } = await loadRenderer()
+  for (const lang of READERS) {
+    const html = rowHtml({ type: 'meetup', title: 'x', body: 'Illini Union · 3/5 14:30 CT' }, lang)
+    assert.match(html, /Illini Union/)
+    assert.match(html, /14:30 CT/)
+  }
+})
+
 test('each reader gets the sentence in their own language', async () => {
   const { rowHtml, BODY_SENTINELS } = await loadRenderer()
   for (const [sentinel, forms] of Object.entries(BODY_SENTINELS)) {
@@ -113,7 +147,16 @@ test('each reader gets the sentence in their own language', async () => {
  */
 test('the wording matches what the notification list says', async () => {
   const { BODY_SENTINELS } = await loadRenderer()
-  const KEY_FOR = { saved_search_match: 'notif.savedSearchMatch', new_listing_from_followee: 'notif.followeeListing' }
+  const KEY_FOR = {
+    saved_search_match: 'notif.savedSearchMatch',
+    new_listing_from_followee: 'notif.followeeListing',
+    transaction_rating_received: 'notif.ratingReceived',
+    deal_marked_sold: 'notif.dealMarkedSold',
+    new_follower: 'notif.newFollower',
+    post_comment: 'notif.postComment',
+    post_like: 'notif.postLike',
+    post_comment_like: 'notif.commentLike',
+  }
   for (const [file, lang] of APP_I18N.map((u, i) => [u, ['en', 'zh'][i]])) {
     const messages = await readFile(file, 'utf8')
     for (const [sentinel, forms] of Object.entries(BODY_SENTINELS)) {

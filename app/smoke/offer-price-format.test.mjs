@@ -19,6 +19,7 @@ import { readFile } from 'node:fs/promises'
 const UTILS_URL = new URL('../src/utils/index.ts', import.meta.url)
 const THREAD_URL = new URL('../src/components/ChatThread.vue', import.meta.url)
 const NOTIFICATIONS_URL = new URL('../src/composables/useNotifications.ts', import.meta.url)
+const NOTIFICATION_API_URL = new URL('../src/api/notifications.ts', import.meta.url)
 
 function extract(src, signature, what) {
   const start = src.indexOf(signature)
@@ -114,9 +115,14 @@ const NOTIFICATION_BODIES = [
 async function loadNotificationBodyText() {
   const utils = await readFile(UTILS_URL, 'utf8')
   const notifications = await readFile(NOTIFICATIONS_URL, 'utf8')
+  const notificationApi = await readFile(NOTIFICATION_API_URL, 'utf8')
   const formatPrice = extract(utils, 'export function formatPrice(', 'formatPrice')
     .replace('export function', 'function')
     .replace('price: number', 'price')
+  // The real key reader, not a copy: it decides which bodies are keys at all,
+  // so a drift there is exactly what would put a raw key back on the screen.
+  const bodyKey = extract(notificationApi, 'export function notificationBodyKey(', 'notificationBodyKey')
+    .replace(/^export function notificationBodyKey\(.*\n/, 'function notificationBodyKey(body) {\n')
   const sentinels = extract(notifications, 'const BODY_SENTINEL_KEYS', 'BODY_SENTINEL_KEYS')
     .replace(': Record<string, string>', '')
   const priceRe = notifications.slice(
@@ -128,7 +134,8 @@ async function loadNotificationBodyText() {
     .replace('export function', 'function')
     .replace(/notification: Notification,/, 'notification,')
     .replace(/translate: \(key: string\) => string,/, 'translate,')
-  const js = `${formatPrice}\n${sentinels}\n${priceRe}\n${body}`.replace(/\): string \{/g, ') {')
+  const js = `${formatPrice}\n${bodyKey}\n${sentinels}\n${priceRe}\n${body}`
+    .replace(/\): string \{/g, ') {')
   return new Function(`${js}\nreturn notificationBodyText`)()
 }
 
