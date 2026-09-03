@@ -311,3 +311,180 @@ test('comment retry is scoped to comments and keeps the loaded post alive', asyn
   await expect(page.getByText(COMMENT_ROW.content, { exact: true })).toBeVisible()
   expect(state.requests.posts, 'comment recovery invalidated and fetched the main post').toBe(postRequestsBeforeRetry)
 })
+
+/**
+ * A failed SECOND page must not take the first one down with it.
+ *
+ * Both of these list pages held their error state in front of the list
+ * (`v-else-if="loadError && !loading"`), so a rejected pagination request
+ * replaced rows the reader was already looking at with a full-screen "Failed
+ * to load". The home feed keeps its error block after the list, which makes an
+ * initial failure fill the screen (nothing was loaded) and a load-more failure
+ * read as a footer under the rows that survived — the shape these two follow.
+ */
+
+const FOLLOW_PAGE_SIZE = 30
+const PLAZA_PAGE_SIZE = 20
+
+function followRows(count: number, offset: number): unknown[] {
+  return Array.from({ length: count }, (_, i) => {
+    const n = offset + i + 1
+    const id = `66666666-6666-4666-8666-${String(n).padStart(12, '0')}`
+    return {
+      created_at: `2026-08-01T00:00:${String(n % 60).padStart(2, '0')}Z`,
+      followee_id: id,
+      followee: { ...PROFILE, id, nickname: `Followed ${n}` },
+    }
+  })
+}
+
+function postRows(count: number, offset: number): unknown[] {
+  return Array.from({ length: count }, (_, i) => {
+    const n = offset + i + 1
+    return {
+      ...POST_ROW,
+      id: `77777777-7777-4777-8777-${String(n).padStart(12, '0')}`,
+      content: `Paged post ${n}`,
+      comment_count: 0,
+    }
+  })
+}
+
+type PagedState = { pageRequests: Record<number, number>; failPagesFrom: number }
+
+/**
+ * Serves `endpoint` a page at a time, keyed off the offset supabase-js puts in
+ * the query string, so which page is being asked for is what decides the
+ * outcome — both of these pages fire their page-0 request twice (onMounted,
+ * then again once auth hydrates), and counting requests instead would fail an
+ * initial load and never reach pagination at all. failPagesFrom: 0 is an
+ * initial failure, 1 is a load-more failure with a healthy first page already
+ * on screen.
+ */
+async function servePaged(
+  page: Page,
+  endpoint: string,
+  pageSize: number,
+  rowsFor: (count: number, offset: number) => unknown[],
+  state: PagedState,
+) {
+  await page.route('**/*.supabase.co/**', async route => {
+    const url = new URL(route.request().url())
+    const path = `${url.pathname}${url.search}`
+    if (url.pathname.endsWith(endpoint)) {
+      const offset = Number.parseInt(url.searchParams.get('offset') || '0', 10)
+      const pageIndex = Math.floor((Number.isNaN(offset) ? 0 : offset) / pageSize)
+      state.pageRequests[pageIndex] = (state.pageRequests[pageIndex] ?? 0) + 1
+      if (pageIndex >= state.failPagesFrom) {
+        return route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"boom"}' })
+      }
+      return route.fulfill({
+        status: 200, contentType: 'application/json',
+        headers: { 'content-range': `0-${pageSize - 1}/*` },
+        body: JSON.stringify(rowsFor(pageSize, pageIndex * pageSize)),
+      })
+    }
+    await route.fulfill({
+      status: 200, contentType: 'application/json',
+      headers: { 'content-range': '0-0/1' }, body: JSON.stringify(fixtureFor(path)),
+    })
+  })
+}
+
+/**
+ * uni's <scroll-view> emits scrolltolower off a real scroll event on whichever
+ * descendant actually overflows, so drive that element rather than the window.
+ * Silent when nothing overflows: the regression under test empties the list,
+ * and what has to report that is the assertion below, not a helper throwing
+ * about scrollability.
+ */
+async function scrollFeedToBottom(page: Page, rootSelector: string) {
+  await page.evaluate((sel) => {
+    const root = document.querySelector(sel)
+    if (!root) return
+    const candidates = [root, ...root.querySelectorAll('*')] as HTMLElement[]
+    const scroller = candidates.find(el => {
+      const cs = getComputedStyle(el)
+      return /(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 4
+    })
+    if (!scroller) return
+    scroller.scrollTop = scroller.scrollHeight
+  }, rootSelector)
+}
+
+test('following keeps its loaded people when the next page fails', async ({ page }) => {
+  const state: PagedState = { pageRequests: {}, failPagesFrom: 1 }
+  await seedSession(page)
+  await servePaged(page, '/rest/v1/follows', FOLLOW_PAGE_SIZE, followRows, state)
+
+  await page.goto('/#/pages/following/index', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('button', { name: 'Followed 1', exact: true })).toBeVisible()
+
+  await expect.poll(async () => {
+    await scrollFeedToBottom(page, '.list')
+    return state.pageRequests[1] ?? 0
+  }, { timeout: 15_000 }).toBeGreaterThan(0)
+
+  await expect(page.getByText('Failed to load', { exact: true })).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Followed 1', exact: true }),
+    'a failed second page erased the people already on screen',
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: `Followed ${FOLLOW_PAGE_SIZE}`, exact: true }),
+    'a failed second page erased the people already on screen',
+  ).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible()
+})
+
+test('following still fills the screen with the failure when the first page fails', async ({ page }) => {
+  const state: PagedState = { pageRequests: {}, failPagesFrom: 0 }
+  await seedSession(page)
+  await servePaged(page, '/rest/v1/follows', FOLLOW_PAGE_SIZE, followRows, state)
+
+  await page.goto('/#/pages/following/index', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByText('Failed to load', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible()
+  await expect(
+    page.getByText("You're not following anyone yet — follow sellers to find them here.", { exact: true }),
+    'a failed first page was reported as an empty following list',
+  ).toHaveCount(0)
+})
+
+test('plaza keeps its loaded posts when the next page fails', async ({ page }) => {
+  const state: PagedState = { pageRequests: {}, failPagesFrom: 1 }
+  await seedSession(page)
+  await servePaged(page, '/rest/v1/posts', PLAZA_PAGE_SIZE, postRows, state)
+
+  await page.goto('/#/pages/plaza/index', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByText('Paged post 1', { exact: true })).toBeVisible()
+
+  await expect.poll(async () => {
+    await scrollFeedToBottom(page, '#plaza-feed-panel')
+    return state.pageRequests[1] ?? 0
+  }, { timeout: 15_000 }).toBeGreaterThan(0)
+
+  await expect(page.getByRole('alert').getByRole('button', { name: 'Retry', exact: true })).toBeVisible()
+  await expect(
+    page.getByText('Paged post 1', { exact: true }),
+    'a failed second page erased the posts already on screen',
+  ).toBeVisible()
+  await expect(
+    page.getByText(`Paged post ${PLAZA_PAGE_SIZE}`, { exact: true }),
+    'a failed second page erased the posts already on screen',
+  ).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible()
+})
+
+test('plaza still fills the screen with the failure when the first page fails', async ({ page }) => {
+  const state: PagedState = { pageRequests: {}, failPagesFrom: 0 }
+  await seedSession(page)
+  await servePaged(page, '/rest/v1/posts', PLAZA_PAGE_SIZE, postRows, state)
+
+  await page.goto('/#/pages/plaza/index', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('alert').getByRole('button', { name: 'Retry', exact: true })).toBeVisible()
+  await expect(
+    page.getByText('No posts yet. Be the first!', { exact: true }),
+    'a failed first page was reported as an empty plaza',
+  ).toHaveCount(0)
+})

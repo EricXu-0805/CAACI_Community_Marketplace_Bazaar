@@ -321,16 +321,50 @@ function editableSnapshot(item: Pick<Item,
   })
 }
 
+/*
+ * Solicitation soft gate. /api/moderate can read the copy as an ad for
+ * off-platform services (代写, 代购, 办证 …); that is a model's opinion about
+ * text the server was willing to accept, so it asks instead of refusing
+ * (#290). Sharing contact details is allowed here and never lands a listing
+ * in this dialog — a WeChat id is how the meetup gets arranged. A dialog that
+ * cannot open resolves true for the same reason: nothing about this screen
+ * may cost a member their listing.
+ */
+let adConfirmedForSubmit = false
+function confirmSuspectedAd(): Promise<boolean> {
+  // commitEditWithCompatibleRetry can call updateItem three times for one Save;
+  // asking again after the seller already said yes is just a second dialog.
+  if (adConfirmedForSubmit) return Promise.resolve(true)
+  return new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: t('moderation.adTitle'),
+      content: t('moderation.adBody'),
+      confirmText: t('moderation.adConfirm'),
+      cancelText: t('moderation.adCancel'),
+      confirmColor: DIALOG_WARN,
+      success: (r) => {
+        adConfirmedForSubmit = !!r.confirm
+        resolve(!!r.confirm)
+      },
+      fail: () => {
+        adConfirmedForSubmit = true
+        resolve(true)
+      },
+    })
+  })
+}
+
 async function commitEditWithCompatibleRetry(
   updates: Parameters<typeof updateItem>[1],
   accountToken?: UploadAccountToken,
 ) {
+  adConfirmedForSubmit = false
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       return await updateItem(
         editId.value,
         updates,
-        { expectedUpdatedAt: loadedUpdatedAt.value, accountToken },
+        { expectedUpdatedAt: loadedUpdatedAt.value, accountToken, confirmSuspectedAd },
       )
     } catch (error: any) {
       if (error?.message !== 'item_edit_conflict' || attempt === 2) throw error
@@ -965,6 +999,9 @@ async function onSubmit() {
       })
     }
     if (!operationStillCurrent()) return
+    // The seller pressed Edit on the solicitation confirm; the form still holds
+    // everything they typed.
+    if (error?.message === 'ad_declined') return
     if (error?.message === 'Invalid price') {
       uni.showToast({ title: t('publish.priceExceedsLimit'), icon: 'none', duration: 3000 })
       return

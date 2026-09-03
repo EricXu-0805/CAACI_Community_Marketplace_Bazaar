@@ -2560,6 +2560,7 @@ test('a delayed notification INSERT always heals a torn list/count snapshot', as
       [
         `import {
   fetchNotificationRowsWithCompatibility,
+  notificationBodyKey,
   notificationDestination,
   notificationIcon,
   notificationToastKind,
@@ -2568,6 +2569,7 @@ test('a delayed notification INSERT always heals a torn list/count snapshot', as
 } from '../api/notifications'`,
         `const {
   fetchNotificationRowsWithCompatibility,
+  notificationBodyKey,
   notificationDestination,
   notificationIcon,
   notificationToastKind,
@@ -2614,6 +2616,10 @@ type Notification = any`,
         const pending = listReadQueue.shift()
         assert.ok(pending, 'unexpected notification list read')
         return pending.promise
+      },
+      notificationBodyKey: body => {
+        const match = /^([a-z_]+):([0-9a-f-]{36})$/i.exec(body || '')
+        return match ? { key: match[1], target: match[2] } : { key: body || '', target: null }
       },
       notificationDestination: () => ({ url: '/pages/notifications/index', switchTab: false }),
       notificationIcon: () => 'bell',
@@ -3467,6 +3473,7 @@ test('three torn notification snapshots preserve live state before one delayed q
       [
         `import {
   fetchNotificationRowsWithCompatibility,
+  notificationBodyKey,
   notificationDestination,
   notificationIcon,
   notificationToastKind,
@@ -3475,6 +3482,7 @@ test('three torn notification snapshots preserve live state before one delayed q
 } from '../api/notifications'`,
         `const {
   fetchNotificationRowsWithCompatibility,
+  notificationBodyKey,
   notificationDestination,
   notificationIcon,
   notificationToastKind,
@@ -3514,6 +3522,10 @@ type Notification = any`,
         )
         if (result.error) throw result.error
         return result.data
+      },
+      notificationBodyKey: body => {
+        const match = /^([a-z_]+):([0-9a-f-]{36})$/i.exec(body || '')
+        return match ? { key: match[1], target: match[2] } : { key: body || '', target: null }
       },
       notificationDestination: () => ({ url: '/pages/notifications/index', switchTab: false }),
       notificationIcon: () => 'bell',

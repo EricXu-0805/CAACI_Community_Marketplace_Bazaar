@@ -314,6 +314,12 @@ export function usePlaza() {
       source_lang?: string | null
       /** Identity/generation that owns any uploaded images in this post. */
       accountToken?: AccountRequestToken
+      /*
+       * Asked when /api/moderate reads the post as an ad for off-platform
+       * services — and only then. Advisory, never a refusal (#290): a `false`
+       * is the member choosing to go back to the composer.
+       */
+      confirmSuspectedAd?: () => Promise<boolean>
     } = {},
   ): Promise<{ id: string; partial: boolean; itemsErr?: any }> {
     const userId = currentUser.value?.id
@@ -351,6 +357,9 @@ export function usePlaza() {
         duplicateHeld = true
         const ai = await remoteModerate(trimmed, accountToken)
         if (ai.flagged) throw new Error(`moderation_block:sensitive_word:ai(${ai.categories.join(',')})`)
+        if (ai.categories.includes('spam_ad') && extras.confirmSuspectedAd) {
+          if (!await extras.confirmSuspectedAd()) throw new Error('ad_declined')
+        }
         /* mp store review: WeChat's own classifier (no-op on H5). */
         await mpTextGate(trimmed, 3, accountToken)
         assertAccountCurrent()

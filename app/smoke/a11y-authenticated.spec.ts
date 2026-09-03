@@ -71,24 +71,44 @@ const UID = '11111111-1111-4111-8111-111111111111'
 const PEER = '22222222-2222-4222-8222-222222222222'
 const ITEM = '33333333-3333-4333-8333-333333333333'
 const CONV = '44444444-4444-4444-8444-444444444444'
+const BLOCKED = '55555555-5555-4555-8555-555555555555'
 const GEN = 'a11y-sweep-generation-0001'
 
 const PROFILE = { id: UID, nickname: 'Test User', avatar_url: null, tos_version: '2026-08-01',
   suspension_level: 0, suspended_until: null, is_illini_verified: true, bio: 'hello', location: 'UIUC' }
 const PEER_PROFILE = { id: PEER, nickname: 'Other Person', avatar_url: null, location: 'UIUC', is_illini_verified: false }
+const BLOCKED_PROFILE = { id: BLOCKED, nickname: 'Muted Stranger', avatar_url: null, bio: 'spam',
+  location: 'UIUC', is_illini_verified: false }
+const PROFILE_ROWS = [PROFILE, PEER_PROFILE, BLOCKED_PROFILE]
 const ITEM_ROW = { id: ITEM, user_id: PEER, title: 'Desk lamp', price: 20, category: 'furniture',
   condition: 'mint', status: 'active', listing_type: 'sell', location: 'UIUC', location_verified: true,
   images: [`items/${ITEM}/a.jpg`], image_dimensions: [{ width: 800, height: 600 }], view_count: 5,
   favorite_count: 1, negotiable: true, created_at: '2026-08-01T00:00:00Z', updated_at: '2026-08-01T00:00:00Z',
   description: 'A lamp', profile: PEER_PROFILE }
-const CONV_ROW = { id: CONV, buyer_id: UID, seller_id: PEER, item_id: ITEM, last_message_at: '2026-08-06T10:00:00Z',
+/*
+ * The conversation list renders its preview from an embedded child row, not
+ * from a column on the conversation — useMessages.ts asks for
+ * `latest_messages:messages(id, content, message_type, created_at)` and keeps
+ * the text only when `message_type === 'text'`.
+ */
+const LAST_MESSAGE = { id: 'm2', content: 'Yes, it is.', message_type: 'text',
+  created_at: '2026-08-06T10:00:00Z' }
+const CONV_ROW = { id: CONV, buyer_id: UID, seller_id: PEER, item_id: ITEM,
+  created_at: '2026-08-06T09:00:00Z', last_message_at: '2026-08-06T10:00:00Z',
   is_muted_buyer: false, is_muted_seller: false, is_pinned_buyer: true, is_pinned_seller: false,
-  buyer: PROFILE, seller: PEER_PROFILE, item: ITEM_ROW, unread_messages: [{ id: 'm2' }] }
+  buyer: PROFILE, seller: PEER_PROFILE, item: ITEM_ROW,
+  latest_messages: [LAST_MESSAGE], unread_messages: [{ id: 'm2' }] }
+/*
+ * `message_type`, not `type`. utils/publicResource.ts blanks the body of any
+ * message whose message_type is not exactly 'text', because historical media
+ * lived in a public bucket. With the wrong column name every bubble rendered
+ * with its avatar, timestamp and read receipt — and no words in it.
+ */
 const MSGS = [
-  { id: 'm1', conversation_id: CONV, sender_id: UID, content: 'Is this still available?', type: 'text',
+  { id: 'm1', conversation_id: CONV, sender_id: UID, content: 'Is this still available?', message_type: 'text',
     is_read: true, created_at: '2026-08-06T09:00:00Z', sender: PROFILE },
-  { id: 'm2', conversation_id: CONV, sender_id: PEER, content: 'Yes, it is.', type: 'text',
-    is_read: false, created_at: '2026-08-06T10:00:00Z', sender: PEER_PROFILE },
+  { id: 'm2', conversation_id: CONV, sender_id: PEER, content: LAST_MESSAGE.content, message_type: 'text',
+    is_read: false, created_at: LAST_MESSAGE.created_at, sender: PEER_PROFILE },
 ]
 const NOTIFS = [
   { id: 'n1', user_id: UID, type: 'message', title: 'New message', body: 'Other Person replied',
@@ -96,20 +116,62 @@ const NOTIFS = [
   { id: 'n2', user_id: UID, type: 'sold', title: 'Item sold', body: 'Your desk lamp sold',
     item_id: ITEM, conversation_id: null, is_read: true, created_at: '2026-08-05T10:00:00Z' },
 ]
+const SAVED_SEARCH = { id: 's1', user_id: UID, keyword: 'mini fridge', category: 'furniture',
+  listing_type: 'sell', price_min: 5, price_max: 40, created_at: '2026-08-01T00:00:00Z',
+  last_notified_at: null }
+/* useFollow.ts names the FK explicitly, so the embed arrives under `followee`. */
+const FOLLOW_ROW = { created_at: '2026-08-01T00:00:00Z', followee_id: PEER, followee: PEER_PROFILE }
+/*
+ * Blocking the peer would empty the conversation, follow and item lists this
+ * sweep depends on, so the blocked list gets a profile of its own.
+ */
+const BLOCK_ROW = { blocked_id: BLOCKED }
+const VIEW_HISTORY = [ITEM_ROW]
+
+/**
+ * Row filters the fixtures have to honour. Ignoring one is not merely
+ * incomplete — it answers confidently wrong: `/profiles?id=eq.<peer>` served
+ * with the first row of the pool made the seller route render the *viewer's*
+ * name and bio under the peer's listings.
+ */
+function filterById<T extends { id: string }>(query: string, rows: T[]): T[] {
+  const eq = /[?&]id=eq\.([^&]+)/.exec(query)
+  if (eq) return rows.filter(row => row.id === eq[1])
+  const list = /[?&]id=in\.\(([^)]*)\)/.exec(query)
+  if (list) {
+    const wanted = new Set(list[1].split(',').map(value => value.replace(/^"|"$/g, '')))
+    return rows.filter(row => wanted.has(row.id))
+  }
+  return rows
+}
+
+/**
+ * api/paginatedRead.ts only stops scanning on an *empty* page and throws
+ * `paginated_read_non_progress` when a page repeats a key it already read. A
+ * fixture that answered every page with the same conversation row therefore
+ * made the whole inbox fail: the messages route rendered "Failed to load".
+ */
+function afterKeysetCursor<T extends { id: string }>(query: string, rows: T[]): T[] {
+  const gt = /[?&]id=gt\.([^&]+)/.exec(query)
+  return gt ? rows.filter(row => row.id > gt[1]) : rows
+}
 
 function fixtureFor(path: string): unknown {
-  if (path.includes('/rpc/get_my_profile')) return PROFILE
-  if (path.includes('/rpc/')) return []
-  if (path.includes('/conversations')) return [CONV_ROW]
-  if (path.includes('/messages')) return MSGS
-  if (path.includes('/notifications')) return path.includes('is_read=eq.false') ? [{ id: 'n1' }] : NOTIFS
-  if (path.includes('/items')) return [ITEM_ROW]
-  if (path.includes('/profiles')) return [PROFILE, PEER_PROFILE]
-  if (path.includes('/favorites')) return [{ item_id: ITEM, item: ITEM_ROW }]
-  if (path.includes('/follows')) return [{ followee_id: PEER, profiles: PEER_PROFILE }]
-  if (path.includes('/saved_searches')) return [{ id: 's1', user_id: UID, query: 'lamp', created_at: '2026-08-01T00:00:00Z' }]
-  if (path.includes('/offers')) return []
-  if (path.includes('/meetups')) return []
+  const query = decodeURIComponent(path)
+  if (query.includes('/rpc/get_my_profile')) return PROFILE
+  if (query.includes('/rpc/')) return []
+  if (query.includes('/conversation_archives')) return []
+  if (query.includes('/conversations')) return afterKeysetCursor(query, [CONV_ROW])
+  if (query.includes('/messages')) return MSGS
+  if (query.includes('/notifications')) return query.includes('is_read=eq.false') ? [{ id: 'n1' }] : NOTIFS
+  if (query.includes('/items')) return [ITEM_ROW]
+  if (query.includes('/blocks')) return [BLOCK_ROW]
+  if (query.includes('/profiles')) return filterById(query, PROFILE_ROWS)
+  if (query.includes('/favorites')) return [{ item_id: ITEM, item: ITEM_ROW }]
+  if (query.includes('/follows')) return [FOLLOW_ROW]
+  if (query.includes('/saved_searches')) return [SAVED_SEARCH]
+  if (query.includes('/offers')) return []
+  if (query.includes('/meetups')) return []
   return []
 }
 
@@ -120,6 +182,65 @@ const GATED = [
   'pages/seller/index?id=' + PEER, 'pages/chat/index?id=' + CONV, 'pages/profile/edit',
   'pages/settings/index', 'pages/blocked/index',
 ]
+
+/**
+ * Per-route control, one string each that only the fixture data can put on
+ * screen. Everything else in this file grades whatever reached the screen, and
+ * a route that failed to assemble still has a heading, still has named
+ * controls and still has legible text — an error banner and an empty state
+ * both pass the sweep in silence. #292 added this for the detail route only,
+ * which left four routes being graded as blank: messages was showing "Failed
+ * to load", chat was showing wordless bubbles, following and saved searches
+ * were showing their "nothing here yet" art.
+ */
+const CONTROL: Record<string, string> = {
+  'pages/profile/index': PROFILE.nickname,
+  'pages/messages/index': LAST_MESSAGE.content,
+  'pages/notifications/index': NOTIFS[0].body,
+  'pages/my-items/index': ITEM_ROW.title,
+  'pages/history/index': ITEM_ROW.title,
+  'pages/following/index': PEER_PROFILE.nickname,
+  'pages/saved-searches/index': SAVED_SEARCH.keyword,
+  ['pages/detail/index?id=' + ITEM]: ITEM_ROW.title,
+  ['pages/seller/index?id=' + PEER]: PEER_PROFILE.nickname,
+  ['pages/chat/index?id=' + CONV]: MSGS[0].content,
+  'pages/profile/edit': PROFILE.nickname,
+  'pages/blocked/index': BLOCKED_PROFILE.nickname,
+}
+
+/*
+ * The two gated routes that read nothing: an empty publish form and a list of
+ * device-local settings toggles. Neither can have a data control. They are
+ * named rather than merely absent so that a gated route added later has to be
+ * classified instead of silently losing its control.
+ */
+const NO_SERVER_DATA = new Set(['pages/publish/index', 'pages/settings/index'])
+
+/** Form values are data on screen too — the edit form shows the nickname in an input. */
+function renderedContent(page: Page, routePath: string): Promise<string> {
+  return page.evaluate((selector) => {
+    const shells = document.querySelectorAll(selector)
+    const shell = shells[shells.length - 1] as HTMLElement | undefined
+    if (!shell) return ''
+    const values = [...shell.querySelectorAll('input, textarea')]
+      .map(node => (node as HTMLInputElement).value)
+      .join('\n')
+    return `${shell.innerText}\n${values}`
+  }, `uni-page[data-page="${routePath}"]`)
+}
+
+/** '' once the control text is on screen; otherwise the last thing that was. */
+async function missingControl(page: Page, route: string, control: string, deadlineMs = 15_000): Promise<string> {
+  const routePath = route.split('?')[0]
+  const deadline = Date.now() + deadlineMs
+  let rendered = ''
+  while (Date.now() < deadline) {
+    rendered = await renderedContent(page, routePath)
+    if (rendered.includes(control)) return ''
+    await page.waitForTimeout(150)
+  }
+  return rendered.replace(/\s+/g, ' ').trim().slice(0, 160) || '<nothing rendered>'
+}
 
 const PROBE = `(() => {
   const px = (s) => parseFloat(s) || 0
@@ -176,9 +297,17 @@ const NODE = /^(\s*)- ([a-z]+[a-z-]*)(\s+"([^"]*)")?/
 for (const theme of ['light', 'dark']) {
   test(`authenticated a11y + contrast sweep (${theme})`, async ({ page }) => {
     test.setTimeout(600_000)
-    await page.addInitScript(([ref, uid, gen, th]) => {
+    await page.addInitScript(([ref, uid, gen, th, history]) => {
       localStorage.setItem('welcomed', '1'); localStorage.setItem('lang', 'en')
       localStorage.setItem('theme_pref', th)
+      /*
+       * Recently-viewed is device-local, not a table, so no fixture can fill
+       * it — api/accountLocalPrivacy.ts reads it only while the durable owner
+       * marker matches the signed-in account. Without both keys the route
+       * renders "No browsing history" and the sweep grades that.
+       */
+      localStorage.setItem('account_private_storage_owner_v1', uid)
+      localStorage.setItem('viewHistory', history)
       localStorage.setItem(`sb-${ref}-auth-token`, JSON.stringify({
         tag: 'caaci-auth-value-v2', generation: gen,
         value: JSON.stringify({ access_token: 'stub', token_type: 'bearer', expires_in: 3600,
@@ -186,7 +315,7 @@ for (const theme of ['light', 'dark']) {
           user: { id: uid, email: 'a@illinois.edu', aud: 'authenticated', role: 'authenticated' } }),
       }))
       localStorage.setItem(`sb-${ref}-auth-token-auth-boundary-v2`, JSON.stringify({ v: 2, mode: 'allowed', generation: gen }))
-    }, [REF, UID, GEN, theme] as const)
+    }, [REF, UID, GEN, theme, JSON.stringify(VIEW_HISTORY)] as const)
 
     await page.route('**/*.supabase.co/**', async (route) => {
       const path = route.request().url().replace(/^https:\/\/[^/]+/, '')
@@ -209,11 +338,34 @@ for (const theme of ['light', 'dark']) {
       body: Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c6360000002000100' +
         '05fe02fea7000000004945' + '4e44ae426082', 'hex') }))
 
+    /*
+     * Warm the dev server before anything is graded. The first navigation
+     * also pays for compiling the route chunk, and on a loaded runner that
+     * outlasts the per-route deadlines below — so the first route in the list
+     * gets reported as empty when it renders perfectly well. Waiting for its
+     * shell here spends that cost once, outside every assertion.
+     */
+    await page.goto(`/#/${GATED[0]}`, { waitUntil: 'networkidle' })
+    await page.locator(`uni-page[data-page="${GATED[0].split('?')[0]}"]`).last()
+      .waitFor({ state: 'attached', timeout: 120_000 })
+
     const nameless: string[] = []
     const noHeading: string[] = []
     const contrast: string[] = []
+    const noData: string[] = []
     for (const route of GATED) {
       await page.goto(`/#/${route}`, { waitUntil: 'networkidle' })
+      /*
+       * The control runs first because it is also the strongest "this route
+       * has finished assembling" signal there is: its own data is on screen.
+       * Snapshotting before it left the heading check racing a cold first
+       * route on a loaded runner.
+       */
+      const control = CONTROL[route]
+      if (control) {
+        const rendered = await missingControl(page, route, control)
+        if (rendered) noData.push(`${route}  expected "${control}", got: ${rendered}`)
+      }
       const snap = await settledAriaSnapshot(page, route)
       if (!HEADING.test(snap)) noHeading.push(route)
       const bad = await page.evaluate(PROBE)
@@ -228,18 +380,15 @@ for (const theme of ['light', 'dark']) {
       })
     }
     /*
-     * Control. Everything above grades whatever reached the screen, and a page
-     * that failed to assemble still has a heading, still has named controls and
-     * still has legible text — so the sweep stayed green for as long as the
-     * fixtures answered .single() with an array. Name something only the real
-     * data can put on screen, so a fixture that stops feeding the app is a
-     * failure here rather than silence everywhere else.
+     * Falsy, not just absent. Every control above reads a property off a
+     * fixture row, so renaming that property leaves `CONTROL[route]`
+     * undefined and the check below skips the route in silence — the exact
+     * blind spot this control exists to close.
      */
-    await page.goto(`/#/pages/detail/index?id=${ITEM}`, { waitUntil: 'networkidle' })
-    await expect(page.getByText(ITEM_ROW.title, { exact: false }).first(),
-      'the detail route rendered without its item — the sweep above graded a page that never assembled')
-      .toBeVisible({ timeout: 15_000 })
+    const unclassified = GATED.filter(route => !CONTROL[route] && !NO_SERVER_DATA.has(route))
+    expect(unclassified, `gated routes with neither a data control nor a documented reason for not having one:\n${unclassified.join('\n')}`).toEqual([])
 
+    expect(noData, `routes the sweep graded without their data on screen:\n${noData.join('\n')}`).toEqual([])
     expect(noHeading, `logged-in routes with no heading:\n${noHeading.join('\n')}`).toEqual([])
     expect([...new Set(nameless)], `nameless controls:\n${[...new Set(nameless)].join('\n')}`).toEqual([])
     expect([...new Set(contrast)], `contrast failures:\n${[...new Set(contrast)].join('\n')}`).toEqual([])
