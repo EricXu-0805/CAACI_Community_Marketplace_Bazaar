@@ -326,13 +326,14 @@ function digestFetch(options = {}) {
   return { fetch, calls, notificationReads: () => notificationReads }
 }
 
-async function runDigest(fetch, { testMode = false } = {}) {
+async function runDigest(fetch, { testMode = false, env: extraEnv = {} } = {}) {
   globalThis.fetch = fetch
   const env = {
     SUPABASE_URL: 'https://supabase.test',
     SUPABASE_SERVICE_ROLE_KEY: 'service-test',
     RESEND_API_KEY: 'resend-test',
     CRON_SECRET: 'cron-test',
+    ...extraEnv,
   }
   if (testMode) env.DIGEST_TEST_EMAIL = 'sink@example.com'
   else {
@@ -604,6 +605,41 @@ test('a provider rejection is logged with its status, never as a bare constant',
   assert.deepEqual(errors.filter(line => line[0] === 'notification_digest_send_failed'), [
     ['notification_digest_send_failed', 'resend_403'],
   ])
+})
+
+test('a failed live run reaches Sentry through the DSN production actually has', async () => {
+  // Production has no SENTRY_DSN, only VITE_SENTRY_DSN, and that value carries
+  // a trailing newline. The digest's former inline reader did not trim, its DSN
+  // regex failed on the newline, and every nightly failure was dropped before
+  // any request left the function. The shared reporter trims.
+  console.error = () => {}
+  const sentry = []
+  const upstream = digestFetch({
+    notifications: [queuedNotification()],
+    conversations: [conversationRow()],
+    profiles: [recipientProfile()],
+    resendStatus: 403,
+  })
+  const fetch = async (input, init = {}) => {
+    const url = requestUrl(input)
+    if (url.hostname === 'host.example') {
+      sentry.push({ url, method: requestMethod(input, init), body: requestBody(init) })
+      return json({})
+    }
+    return upstream.fetch(input, init)
+  }
+  const response = await runDigest(fetch, { env: { VITE_SENTRY_DSN: 'https://key@host.example/123\n' } })
+  const body = await response.json()
+
+  assert.equal(response.status, 500)
+  assert.equal(body.sendFailed, 1)
+  assert.equal(upstream.calls.filter(call => call.url.hostname === 'api.resend.com').length, 1)
+  assert.equal(sentry.length, 1, 'the failed run must post exactly one Sentry event')
+  assert.equal(sentry[0].method, 'POST')
+  assert.equal(`${sentry[0].url.origin}${sentry[0].url.pathname}`, 'https://host.example/api/123/store/')
+  assert.equal(sentry[0].body.logger, 'api/notification-digest')
+  assert.equal(sentry[0].body.extra.sendFailed, 1)
+  assert.deepEqual(sentry[0].body.extra.failureCodes, { resend_403: 1 })
 })
 
 test('a noisy earlier user cannot consume the global row limit and starve the next user', async () => {

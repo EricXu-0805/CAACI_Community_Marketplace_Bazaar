@@ -414,7 +414,7 @@ async function loadSellerData(accountToken: AccountRequestToken | null, requestE
   try {
     const [profileRes, itemsRes, soldRes] = await Promise.all([
       fetchSellerProfile(),
-      supabase.from('items').select('id, user_id, title, price, images, image_dimensions, status, listing_type, location_verified, created_at').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
+      supabase.from('items').select('id, user_id, title, title_i18n, price, images, image_dimensions, status, listing_type, location_verified, created_at').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
       supabase.from('items').select('id', { count: 'estimated', head: true }).eq('user_id', uid).eq('status', 'sold'),
     ])
     if (!sellerRequestIsCurrent(accountToken, requestEpoch)) return

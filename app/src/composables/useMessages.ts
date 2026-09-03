@@ -288,7 +288,7 @@ export function useMessages() {
             .from('conversations')
             .select(`${CONVERSATION_FIELDS},
               latest_messages:messages(id, content, message_type, created_at),
-              item:items(id, user_id, title, images, image_dimensions, price, status, category),
+              item:items(id, user_id, title, title_i18n, images, image_dimensions, price, status, category),
               buyer:profiles!conversations_buyer_id_fkey(id, nickname, avatar_url, is_illini_verified),
               seller:profiles!conversations_seller_id_fkey(id, nickname, avatar_url, is_illini_verified)`)
             .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`)
