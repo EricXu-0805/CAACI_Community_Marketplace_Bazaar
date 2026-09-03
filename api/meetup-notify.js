@@ -417,6 +417,22 @@ function mailHtml({ actorName, verb, verbEn, spot, whenLabel, note, itemTitle, u
   </div></body></html>`
 }
 
+/*
+ * What a failed send is allowed to say. Both handlers used to log a bare
+ * constant, so the first live digest run (2026-09-01 23:01 UTC) failed for
+ * every recipient and left no way to tell a rejected API key from a timeout.
+ * Every string below is one this file constructs itself; anything else is
+ * reduced to the error's name so a provider body can never reach the log.
+ */
+function failureCode(error) {
+  const message = String((error && error.message) || '')
+  if (/^resend \d{3}$/.test(message)) return message.replace(' ', '_')
+  if (/^(upstream_timeout|upstream_redirect|upstream_response_too_large|delivery acknowledgement rejected|invalid reminder seed response)$/.test(message)) {
+    return message.replace(/ /g, '_')
+  }
+  return (error && error.name) || 'unknown'
+}
+
 async function resendSend(to, subject, html, idempotencyKey = '') {
   const headers = { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' }
   if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey
@@ -630,7 +646,7 @@ export default async function handler(req) {
 
     return json({ sent: true, mode: 'live' })
   } catch (e) {
-    console.error('meetup_notify_failed')
+    console.error('meetup_notify_failed', failureCode(e))
     return json({ error: 'internal' }, 500)
   }
 }

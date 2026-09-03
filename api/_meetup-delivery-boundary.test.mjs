@@ -287,12 +287,17 @@ test('provider failure leaves the exact event unstamped; retry reuses one key an
   const notifications = new Map([[`meetup:${MEETUP_A}:pending`, NOTIFICATION_A]])
   const harness = makeHarness({ meetups, notifications, resendStatuses: [500, 200] })
   globalThis.fetch = harness.fetch
-  console.error = () => {}
+  const logged = []
+  console.error = (...args) => logged.push(args)
   const handler = await loadHandler()
 
   const failed = await invoke(handler, MEETUP_A)
   assert.equal(failed.status, 500)
   assert.deepEqual(await failed.json(), { error: 'internal' })
+  // The log has to say which failure this was. A bare constant is how the
+  // first live sends failed on 2026-09-01 with no way to tell a rejected key
+  // from a timeout; the provider status is all that may be said.
+  assert.deepEqual(logged, [['meetup_notify_failed', 'resend_500']])
   assert.equal(rpcCalls(harness, 'complete_notification_email_delivery').length, 0)
   assert.equal(harness.emailed.has(NOTIFICATION_A), false)
 
