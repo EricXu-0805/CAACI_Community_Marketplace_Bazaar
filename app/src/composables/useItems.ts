@@ -73,6 +73,14 @@ type ItemMutationOptions = {
   expectedUpdatedAt?: string
   /** Required by publish/edit whenever images came from an upload batch. */
   accountToken?: UploadAccountToken
+  /*
+   * Asked when /api/moderate reads the text as an ad for off-platform services
+   * — and only then. A model's opinion about copy the server was willing to
+   * accept may not refuse anyone (#290), so the form owns the decision and a
+   * `false` here is the member choosing to go back and edit. A caller that
+   * passes nothing publishes unprompted.
+   */
+  confirmSuspectedAd?: () => Promise<boolean>
 }
 
 type OwnedImageCleanupOptions = {
@@ -409,7 +417,7 @@ export function useItems() {
     source_lang?: string | null
     negotiable?: boolean
     listing_type?: 'sell' | 'wanted'
-  }, options?: Pick<ItemMutationOptions, 'accountToken'>) {
+  }, options?: Pick<ItemMutationOptions, 'accountToken' | 'confirmSuspectedAd'>) {
     const entryUserId = getActiveAccountId()
     const accountToken = options?.accountToken
       || (entryUserId ? captureAccountRequest(entryUserId) : null)
@@ -452,6 +460,9 @@ export function useItems() {
     try {
       const ai = await remoteModerate(`${input.title}\n${input.description}`, accountToken)
       if (ai.flagged) throw new Error(`moderation_block:sensitive_word:ai(${ai.categories.join(',')})`)
+      if (ai.categories.includes('spam_ad') && options?.confirmSuspectedAd) {
+        if (!await options.confirmSuspectedAd()) throw new Error('ad_declined')
+      }
       /* mp store review: WeChat's own classifier (no-op on H5). */
       await mpTextGate(`${input.title}\n${input.description}`, 3, accountToken)
       assertAccountCurrent(accountToken, session.user.id)
@@ -589,6 +600,9 @@ export function useItems() {
       if (aiInput.length > 0) {
         const ai = await remoteModerate(aiInput, accountToken)
         if (ai.flagged) throw new Error(`moderation_block:sensitive_word:ai(${ai.categories.join(',')})`)
+        if (ai.categories.includes('spam_ad') && options?.confirmSuspectedAd) {
+          if (!await options.confirmSuspectedAd()) throw new Error('ad_declined')
+        }
         /* mp store review: WeChat's own classifier (no-op on H5). */
         await mpTextGate(aiInput, 3, accountToken)
       }
