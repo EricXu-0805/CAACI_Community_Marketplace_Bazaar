@@ -1,4 +1,5 @@
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from './_deployment-boundary.js'
+import { reportToSentry } from './_sentry-report.js'
 
 export const config = { runtime: 'edge' }
 
@@ -55,8 +56,6 @@ const VERCEL_URL = env('VERCEL_URL').toLowerCase()
 // Resend requires the From address to be on a domain verified in Resend.
 // Eric verifies the send.illinimarket.com subdomain; override via DIGEST_FROM.
 const FROM = env('DIGEST_FROM', 'Illini Market <noreply@send.illinimarket.com>')
-// Same Sentry project as client errors + admin audit failures — one dashboard.
-const SENTRY_DSN = env('SENTRY_DSN', env('VITE_SENTRY_DSN', ''))
 const WINDOW_DAYS = 7
 const MAX_ROWS = 40
 const NOTIFICATION_PAGE_SIZE = MAX_ROWS * 5
@@ -67,7 +66,6 @@ const LIVE_RUN_LOCK_WINDOW_SECS = 15 * 60
 const MAX_UPSTREAM_RESPONSE_BYTES = 2 * 1024 * 1024
 const SUPABASE_TIMEOUT_MS = 5_000
 const RESEND_TIMEOUT_MS = 8_000
-const SENTRY_TIMEOUT_MS = 2_000
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 function liveAppOriginReady() {
@@ -163,35 +161,6 @@ function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
   ))
-}
-
-/* Best-effort Sentry alert (same store endpoint + DSN parsing as api/admin).
-   Fires when a live digest run has send/mark failures so the gap pages someone
-   instead of only landing in Vercel logs. No-op without a DSN. */
-async function reportToSentry(message, extra) {
-  if (!SENTRY_DSN) return
-  try {
-    const m = SENTRY_DSN.match(/^https:\/\/([^@]+)@([^/]+)\/(.+)$/)
-    if (!m) return
-    const [, key, host, projectId] = m
-    await fetchWithTimeout(`https://${host}/api/${projectId}/store/?sentry_key=${key}&sentry_version=7`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message,
-        level: 'error',
-        platform: 'javascript',
-        logger: 'api/notification-digest',
-        environment: VERCEL_ENV || 'unknown',
-        release: env('VERCEL_GIT_COMMIT_SHA').slice(0, 7) || undefined,
-        extra: extra || {},
-      }),
-    }, SENTRY_TIMEOUT_MS)
-  } catch {
-    // Must never affect the run — but silence here is how a failing nightly
-    // send went unnoticed. Say that the alert itself did not get out.
-    console.error('notification_digest_sentry_report_failed')
-  }
 }
 
 const TYPE_ICON = { price_drop: '↓', sold: '✓', offer: '$', meetup: '📍', system: '🔔', unread_message: '✉' }
@@ -743,7 +712,7 @@ export default async function handler(req) {
 
     if (!userIds.length) {
       if (reminderFailures > 0) {
-        await reportToSentry('notification digest: reminder generation failure(s)', { reminderFailures })
+        await reportToSentry('api/notification-digest', 'notification digest: reminder generation failure(s)', { reminderFailures })
       }
       return json(
         { mode: 'live', usersNotified: 0, notifications: 0, sendFailed: 0, markFailed: 0, reminderFailures, meetupReminders, unreadReminders },
@@ -892,7 +861,7 @@ export default async function handler(req) {
 
     const failed = sendFailed + markFailed + reminderFailures
     if (failed > 0) {
-      await reportToSentry(`notification digest: ${failed} failure(s)`, {
+      await reportToSentry('api/notification-digest', `notification digest: ${failed} failure(s)`, {
         sendFailed,
         markFailed,
         failureCodes,
@@ -907,7 +876,7 @@ export default async function handler(req) {
     )
   } catch (error) {
     console.error('notification_digest_failed')
-    await reportToSentry('notification digest: fatal failure', { phase: 'live_run' })
+    await reportToSentry('api/notification-digest', 'notification digest: fatal failure', { phase: 'live_run' })
     return json({ error: 'internal' }, 500)
   }
 }
