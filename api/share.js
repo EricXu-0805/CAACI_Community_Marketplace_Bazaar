@@ -45,6 +45,30 @@ function safeOrigin(raw, fallback = '') {
 
 const SUPABASE_ORIGIN = safeOrigin(SUPABASE_URL, '')
 
+// String#slice counts UTF-16 units, so a cut can land between the two halves
+// of an emoji and leave a lone surrogate — U+FFFD once the response is encoded.
+function truncate(s, max) {
+  const cut = s.slice(0, max)
+  return /[\uD800-\uDBFF]$/.test(cut) ? cut.slice(0, -1) : cut
+}
+
+// The apex 308-redirects to www, so a canonical on the configured apex origin
+// costs every share click an extra hop. Use the www form when that is the host
+// the request actually arrived on.
+function canonicalSite(configured, requestUrl) {
+  const host = new URL(configured).hostname
+  if (requestUrl.protocol === 'https:' && requestUrl.hostname === `www.${host}`) return requestUrl.origin
+  return configured
+}
+
+// Mirrors formatPrice in app/src/utils: whole dollars stay bare, anything else
+// carries two decimals, so 18.5 in the database renders as $18.50 like the app.
+function formatPrice(price) {
+  const raw = Number.isInteger(price) ? String(price) : price.toFixed(2)
+  const [whole, decimal] = raw.split('.')
+  return '$' + whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (decimal ? `.${decimal}` : '')
+}
+
 function safeImageUrl(value, fallback, siteOrigin) {
   if (typeof value !== 'string' || !value) return fallback
   try {
@@ -134,7 +158,7 @@ async function responseForRequest(req, boundary) {
   const url = new URL(req.url)
   const rawId = url.searchParams.get('id')
   const id = UUID_RE.test(rawId || '') ? rawId : null
-  const site = boundary.appOrigin || safeOrigin(PUBLIC_SITE_RAW, url.origin)
+  const site = canonicalSite(boundary.appOrigin || safeOrigin(PUBLIC_SITE_RAW, url.origin), url)
 
   let item = null
   if (id && SUPABASE_URL && SUPABASE_ANON_KEY) {
@@ -149,8 +173,8 @@ async function responseForRequest(req, boundary) {
   // sell item is price 0 — neither should render a bare "$0".
   const priceLabel = !item ? ''
     : item.listing_type === 'wanted'
-      ? (item.price > 0 ? `求购预算 $${item.price}` : '求购 · 预算面议')
-      : (item.price > 0 ? `$${item.price}` : '免费 Free')
+      ? (item.price > 0 ? `求购预算 ${formatPrice(Number(item.price))}` : '求购 · 预算面议')
+      : (item.price > 0 ? formatPrice(Number(item.price)) : '免费 Free')
   const namePrefix = item && item.listing_type === 'wanted' ? '求购 / Looking for: ' : ''
   // items_visible only hides 'deleted', so a sold or reserved listing unfurls
   // here too. Without this the card is byte-identical to an on-sale one, and
@@ -161,7 +185,7 @@ async function responseForRequest(req, boundary) {
       : item.status === 'reserved' ? '已预定 / Reserved · '
         : ''
   const title = item ? `${statusPrefix}${namePrefix}${item.title} · ${priceLabel}` : 'Illini Market · 校园二手交易'
-  const desc = item ? (item.description?.slice(0, 160) || `${priceLabel} on Illini Market`) : 'UIUC 校园二手交易平台'
+  const desc = item ? (truncate(item.description || '', 160) || `${priceLabel} on Illini Market`) : 'UIUC 校园二手交易平台'
   const fallbackImage = `${site}/static/app-icon-512.png`
   const image = safeImageUrl(item?.images?.[0], fallbackImage, site)
   const canonical = item ? `${site}/#/pages/detail/index?id=${id}` : site
