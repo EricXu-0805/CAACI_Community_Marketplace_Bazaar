@@ -203,6 +203,41 @@ onShow(() => {
   setTimeout(enforceConsentGate, 0)
 })
 
+// #ifdef H5
+/*
+ * Same-document route changes bypass every interceptor above.
+ *
+ * On H5 the router is hash-based, so browser Back, a hash edited in the
+ * address bar, and a deep link opened into an already-running PWA all change
+ * the route without calling navigateTo/redirectTo/reLaunch/switchTab/
+ * navigateBack — and App.onShow does not fire either, because the app never
+ * left the foreground. A suspended user, or one whose tos_version is behind
+ * CURRENT_CONSENT_VERSION, could therefore press Back off the gate page and
+ * reach any route. Re-run the same decision on the events those navigations
+ * do emit.
+ */
+let sameDocumentGateQueued = false
+function enforceConsentGateForSameDocumentNavigation() {
+  // One Back emits both popstate and hashchange, and the redirect below emits
+  // another hashchange of its own. Coalescing into a single deferred check
+  // keeps that from recursing: by the time it runs, the URL already names the
+  // gate page and gateDestinationAllowed lets it stand.
+  if (sameDocumentGateQueued) return
+  sameDocumentGateQueued = true
+  setTimeout(() => {
+    sameDocumentGateQueued = false
+    const target = requiredGatePath()
+    if (!target) return
+    // getCurrentPages() still reports the route being left at this point, and
+    // that route is usually the gate page itself — which would read as
+    // "already there" and skip the redirect. The URL is the truth here.
+    const here = pathFromUrl(String(location.hash || '').replace(/^#/, ''))
+    if (gateDestinationAllowed(target, here)) return
+    uni.reLaunch({ url: target })
+  }, 0)
+}
+// #endif
+
 let gateInterceptorsInstalled = false
 function installGateNavigationInterceptors() {
   if (gateInterceptorsInstalled || typeof uni.addInterceptor !== 'function') return
@@ -259,6 +294,11 @@ function installGateNavigationInterceptors() {
       return false
     },
   })
+
+  // #ifdef H5
+  window.addEventListener('popstate', enforceConsentGateForSameDocumentNavigation)
+  window.addEventListener('hashchange', enforceConsentGateForSameDocumentNavigation)
+  // #endif
 }
 
 /*
