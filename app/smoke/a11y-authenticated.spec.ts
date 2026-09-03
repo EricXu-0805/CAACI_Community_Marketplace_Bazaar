@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { supabaseRefForBuild } from './supabase-ref'
+import { CURRENT_CONSENT_VERSION } from '../src/legal'
 
 /**
  * Navigating between hash routes is a same-document navigation, so
@@ -74,7 +75,7 @@ const CONV = '44444444-4444-4444-8444-444444444444'
 const BLOCKED = '55555555-5555-4555-8555-555555555555'
 const GEN = 'a11y-sweep-generation-0001'
 
-const PROFILE = { id: UID, nickname: 'Test User', avatar_url: null, tos_version: '2026-08-01',
+const PROFILE = { id: UID, nickname: 'Test User', avatar_url: null, tos_version: CURRENT_CONSENT_VERSION,
   suspension_level: 0, suspended_until: null, is_illini_verified: true, bio: 'hello', location: 'UIUC' }
 const PEER_PROFILE = { id: PEER, nickname: 'Other Person', avatar_url: null, location: 'UIUC', is_illini_verified: false }
 const BLOCKED_PROFILE = { id: BLOCKED, nickname: 'Muted Stranger', avatar_url: null, bio: 'spam',

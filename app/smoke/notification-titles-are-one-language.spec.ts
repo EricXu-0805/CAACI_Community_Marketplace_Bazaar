@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { supabaseRefForBuild } from './supabase-ref'
 import en from '../src/composables/i18n/messages/en'
 import zh from '../src/composables/i18n/messages/zh'
+import { CURRENT_CONSENT_VERSION } from '../src/legal'
 
 /**
  * A notification headline is written by a database trigger, which cannot know
@@ -24,7 +25,7 @@ const GEN = 'notification-title-generation-1'
 const ROUTE = 'pages/notifications/index'
 
 const PROFILE = {
-  id: UID, nickname: 'Test User', avatar_url: null, tos_version: '2026-08-01',
+  id: UID, nickname: 'Test User', avatar_url: null, tos_version: CURRENT_CONSENT_VERSION,
   suspension_level: 0, suspended_until: null, is_illini_verified: true, bio: '', location: 'UIUC',
 }
 

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { supabaseRefForBuild } from './supabase-ref'
+import { CURRENT_CONSENT_VERSION } from '../src/legal'
 
 /**
  * A background token refresh must not throw a browsing user off their page.
@@ -34,7 +35,7 @@ const GEN = 'token-refresh-generation-0001'
 // the client's auto-refresh tick does, inside the window below.
 const TOKEN_TTL_S = 110
 const PROFILE = {
-  id: UID, nickname: 'Test User', avatar_url: null, tos_version: '2026-08-01',
+  id: UID, nickname: 'Test User', avatar_url: null, tos_version: CURRENT_CONSENT_VERSION,
   suspension_level: 0, suspended_until: null, is_illini_verified: true, bio: 'hi', location: 'UIUC',
 }
 
