@@ -32,7 +32,7 @@ We may remove any listing at our discretion, with or without notice.
 4. Prohibited Conduct.
 The following are grounds for immediate action, up to and including permanent removal:
    · harassment, hate speech, threats, doxxing, or targeted attacks;
-   · spam, phishing, off-platform solicitation, or fraudulent schemes;
+   · spam, phishing, solicitation for off-platform services, or fraudulent schemes;
    · scraping, reverse-engineering, or abuse of our APIs;
    · evading bans via new accounts or devices;
    · coordinated manipulation (ring-bumping, review manipulation, fake reports).

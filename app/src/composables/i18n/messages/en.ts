@@ -750,7 +750,7 @@ const en: Record<string, string> = {
   'reconsent.firstTitle': 'Review and accept before you start',
   'reconsent.firstSub': 'Your account is ready. Please review these documents and accept them to start using Illini Market.',
   'reconsent.version': 'version',
-  'reconsent.summary': "The Privacy Policy now explains precise-location lookup, OpenAI and WeChat content checks, local session/fingerprint storage, shared-conversation deletion, moderation-record retention, and the account-deletion tombstone. You can reread every document in Settings → Legal.",
+  'reconsent.summary': 'The Community Guidelines now allow sharing contact details — phone, WeChat, QQ, email, QR code — to arrange a trade. Soliciting off-platform services and schemes (buying agents, academic ghostwriting, forged documents, click-farming and "easy part-time job" recruiting, loans, currency exchange, referral and pyramid schemes, bulk resale) is still prohibited. The Privacy Policy explains precise-location lookup, OpenAI and WeChat content checks, local session/fingerprint storage, shared-conversation deletion, moderation-record retention, and the account-deletion tombstone. You can reread every document in Settings → Legal.',
   'reconsent.firstSummary': 'These documents explain peer-to-peer transaction risks, precise-location lookup, OpenAI and WeChat content checks, local session/fingerprint storage, moderation-record retention, and account deletion. You can reread them anytime in Settings → Legal.',
   'reconsent.accept': 'I agree — continue',
   'reconsent.saving': 'Saving…',
