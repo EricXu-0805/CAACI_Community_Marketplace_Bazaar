@@ -462,10 +462,30 @@ test.describe('core flow (logged in)', () => {
     await expect(page, 'valid smoke credentials must leave the login page')
       .not.toHaveURL(/\/pages\/login\/index/, { timeout: 15_000 })
 
+    /*
+     * A synthetic account starts at tos_version '0', so the consent gate meets
+     * it on the way in — exactly as it meets a real new student. Accept, the
+     * way a student does, instead of pinning the fixture to whatever version
+     * is current: the next consent bump would silently stale it again.
+     *
+     * This sweep used to skip the screen entirely. The gate ran on app show
+     * and on programmatic navigation, but not on a same-document hash change,
+     * and `page.goto('/#/…')` inside an already-running SPA is exactly that —
+     * so an unconsented account walked straight to the profile. Closing that
+     * hole is what turned this red.
+     */
+    if (/\/pages\/reconsent\/index/.test(page.url())) {
+      await page.locator('.btn-primary').click()
+      await expect(page, 'accepting the terms must leave the consent screen')
+        .not.toHaveURL(/\/pages\/reconsent\/index/, { timeout: 15_000 })
+    }
+
     // Prove the session is usable instead of merely proving that a Locator
     // object exists. Invalid credentials used to pass because
     // `expect(locator).toBeTruthy()` only checked the JS object itself.
     await page.goto('/#/pages/profile/index', { waitUntil: 'networkidle' })
+    await expect(page, 'the consent gate must not still be holding this session')
+      .not.toHaveURL(/\/pages\/reconsent\/index/, { timeout: 15_000 })
     await expect(page.locator('.logged-in-wrap'), 'profile must render authenticated state')
       .toBeVisible({ timeout: 15_000 })
     await expect(page.locator('.login-section')).toHaveCount(0)
