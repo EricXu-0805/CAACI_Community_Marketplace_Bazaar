@@ -89,7 +89,7 @@ export function useFavorites() {
     if (!isAccountRequestCurrent(token)) return []
     const { data, error } = await supabase
       .from('favorites')
-      .select('item_id, item:items(id, user_id, title, price, category, condition, status, listing_type, location, images, image_dimensions, view_count, favorite_count, negotiable, created_at, profile:profiles(id, nickname, avatar_url, location))')
+      .select('item_id, item:items(id, user_id, title, title_i18n, price, category, condition, status, listing_type, location, images, image_dimensions, view_count, favorite_count, negotiable, created_at, profile:profiles(id, nickname, avatar_url, location))')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
 

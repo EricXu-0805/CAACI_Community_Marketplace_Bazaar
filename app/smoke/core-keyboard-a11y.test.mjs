@@ -389,12 +389,16 @@ test('welcome carousel exposes current-slide semantics and keyboard navigation',
 })
 
 test('asynchronous load failures announce only their rendered error panels', () => {
+  // The two paginated feeds carry their panel with a plain v-if placed AFTER
+  // the list, so a failed load-more leaves the loaded rows on screen; pinning
+  // the directive here would forbid that placement. What is being asserted is
+  // the announcement, not where the panel sits in the chain.
   const errorPanels = new Map([
     ['src/pages/blocked/index.vue', 'v-else-if="loadError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true"'],
     ['src/pages/messages/index.vue', 'v-else-if="conversationsError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true"'],
     ['src/pages/seller/index.vue', 'v-else-if="loadError" class="load-error" role="alert" aria-live="assertive" aria-atomic="true"'],
-    ['src/pages/following/index.vue', 'v-else-if="loadError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true"'],
-    ['src/pages/plaza/index.vue', 'v-else-if="fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true"'],
+    ['src/pages/following/index.vue', '"loadError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true"'],
+    ['src/pages/plaza/index.vue', '"fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true"'],
     ['src/pages/index/index.vue', 'v-if="fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true"'],
   ])
   for (const [file, panel] of errorPanels) {
