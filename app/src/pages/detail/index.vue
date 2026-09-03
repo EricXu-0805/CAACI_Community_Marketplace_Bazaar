@@ -161,11 +161,11 @@
       <view class="stats-row">
         <view class="stat">
           <text class="stat-num">{{ item.view_count }}</text>
-          <text class="stat-label">{{ t('detail.views') }}</text>
+          <text class="stat-label">{{ tc('detail.views', item.view_count) }}</text>
         </view>
         <view class="stat">
           <text class="stat-num">{{ favCount }}</text>
-          <text class="stat-label">{{ t('detail.wants') }}</text>
+          <text class="stat-label">{{ tc('detail.wants', favCount) }}</text>
         </view>
       </view>
     </view>
