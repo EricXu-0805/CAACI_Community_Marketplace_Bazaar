@@ -1,4 +1,4 @@
-export const GUIDELINES_VERSION = '2026-04-20'
+export const GUIDELINES_VERSION = '2026-09-03'
 
 export const GUIDELINES_EN = `Community Guidelines
 
@@ -10,13 +10,13 @@ Illini Market is a marketplace and a community. The Terms of Service set the leg
 Treat other users the way you would treat a classmate standing in line at the Union. Disagreement is fine; contempt, hostility, targeted harassment, and hate speech are not. This includes dog-piling, coordinated mockery, and context-free screenshots of someone's post shared to humiliate them.
 
 2. Post what you actually have.
-Listings must describe the real item, in its real condition, available at a real price. No bait listings, no photos you pulled off Amazon for an item you don't own, no "click here for details on my WeChat". Add clear original photos whenever possible.
+Listings must describe the real item, in its real condition, available at a real price. No bait listings, no photos you pulled off Amazon for an item you don't own, no listing that is nothing but a contact handle. Add clear original photos whenever possible.
 
-3. Keep conversations on Illini Market.
-Use in-app chat for buyer–seller communication. Don't push buyers off-platform to WeChat, Discord, Instagram, or Telegram — this is how most scams on peer marketplaces happen. Listings and messages that push off-platform contact will be removed and your account may be rate-limited.
+3. Settle the deal in Illini Market first.
+In-app chat is the only record we can read when a trade goes wrong; a report about a WeChat conversation is one we can do almost nothing with. Agree on the item, the condition, and the price here, then move wherever you like. Someone who wants to skip straight off-platform before naming a price is usually about to waste your time — or take your money.
 
-4. No contact info in public spaces.
-Listings, plaza posts, comments, and item descriptions may not include phone numbers, WeChat IDs, QQ numbers, email addresses, or QR codes. Use in-app chat. This rule protects you more than it protects us.
+4. Contact details are allowed; off-platform solicitation is not.
+Share a phone number, WeChat ID, QQ number, email, or QR code when you're arranging a trade — that is how deals here actually close. What stays banned is the other reason people post a handle: buying-agent services, academic ghostwriting, exam-taking or exam-sitting, forged documents, click-farming and "easy part-time job" recruiting, loans, currency exchange, referral and pyramid schemes, and bulk commercial resale. Whatever you post in public, anyone can read — post the handle you are willing to hand a stranger.
 
 5. Prohibited content at a glance.
    · weapons, ammunition, explosives;
