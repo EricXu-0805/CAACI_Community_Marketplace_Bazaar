@@ -34,7 +34,7 @@ test('README migration inventory matches the repository and names all three prod
   ])
   const sqlCount = migrationEntries.filter(name => name.endsWith('.sql')).length
 
-  assert.equal(sqlCount, 143)
+  assert.equal(sqlCount, 144)
   assert.match(readme, new RegExp(`仓库当前共有 ${sqlCount} 个 migration SQL 文件`))
   assert.match(readme, /38 条候选/)
   assert.match(readme, /145042、152000、161200 三条/)
