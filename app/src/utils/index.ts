@@ -160,7 +160,6 @@ const OFFER_MEETUP_MESSAGES: Record<string, { en: string; zh: string }> = {
 const MODERATION_MESSAGES: Record<string, { en: string; zh: string }> = {
   too_short:        { en: 'Content is too short.',                           zh: '内容太短' },
   too_long:         { en: 'Content is too long.',                            zh: '内容太长' },
-  contact_info:     { en: 'Please use in-app chat — no phone, WeChat, or email allowed here.', zh: '请使用站内私信，不要留手机号、微信或邮箱' },
   sensitive_word:   { en: 'Content contains disallowed terms.',              zh: '内容包含违规词，请修改后重试' },
   suspicious_link:  { en: 'Links are not allowed in this field.',            zh: '此处不允许发送链接' },
   qr_image:         { en: 'Images containing QR codes are not allowed.',     zh: '图片中检测到二维码，不允许发送' },
@@ -294,9 +293,9 @@ export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string
 
   if (raw.startsWith('moderation_block:')) {
     // Three shapes arrive here and the category is not always in the same place:
-    //   moderation_block:contact_info                      the client mirror
+    //   moderation_block:sensitive_word                    the client mirror
     //   moderation_block:sensitive_word:ai(hate,violence)  the client AI check
-    //   moderation_block:item_title:contact_info           the database
+    //   moderation_block:item_title:sensitive_word         the database
     // private.assert_moderated_text raises the third, field name first, so
     // reading position 1 got 'item_title' and every rejection the database made
     // — which is all of them the client mirror does not catch first — fell

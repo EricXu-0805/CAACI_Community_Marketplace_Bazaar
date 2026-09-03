@@ -86,13 +86,22 @@ export const FORBIDDEN_ENV_KEYS = [
 export const TITLE_PREFIX = '[ci write-path]'
 
 /**
- * The sentence production refused. Keeping the real one means this check is a
- * live regression guard on 20260818162716 rather than a generic smoke test.
+ * The sentence production refused. Its latin letters close up into other words
+ * once content_moderation_check strips the separators — 'TV, Xbox' becomes
+ * 'tvxbox' — which is how the trigger came to refuse anyone selling a console
+ * (20260818162716). Keeping a real sentence of that shape means this check is a
+ * live regression guard on the stripped-copy matcher, not a generic smoke test.
  */
 export const ACCEPTED_TITLE = `${TITLE_PREFIX} Selling my TV, Xbox and a desk`
 
-/** An evasion nobody should be able to post. The control. */
-export const REFUSED_TITLE = `${TITLE_PREFIX} add me on wechat`
+/**
+ * A term the keyword lexicon blocks. The control: a check that only proves "a
+ * listing lands" passes just as well against a database whose moderation
+ * trigger has been dropped. Contact details became publishable on 2026-09-03,
+ * so the previous probe ('add me on wechat') is now an ordinary listing and
+ * would have turned this control green with no gate at all.
+ */
+export const REFUSED_TITLE = `${TITLE_PREFIX} cannabis for sale`
 
 export const DESCRIPTION = 'Created by the CI write-path check and deleted moments later.'
 
@@ -427,16 +436,21 @@ export async function main() {
       if (strayId) {
         await rest(url, key, token, `items?id=eq.${strayId}`, { method: 'DELETE' })
       }
-      throw new Error(`the moderation gate accepted "${titles.refused}". Contact-info `
-        + 'evasion is no longer refused on this database.')
+      throw new Error(`the moderation gate accepted "${titles.refused}". A blocklisted `
+        + 'term is no longer refused on this database.')
     }
     const refusal = moderationRefusal(blocked.status, await readJson(blocked))
     if (!refusal) {
-      throw new Error(`the evasion was rejected with HTTP ${blocked.status}, but not by the `
+      throw new Error(`the probe was rejected with HTTP ${blocked.status}, but not by the `
         + 'moderation gate. Something else refused it, so this run says nothing about '
         + 'whether the gate works.')
     }
-    console.log(`✓ contact-info evasion still refused as '${refusal.category}'`)
+    if (!refusal.category.endsWith(':sensitive_word')) {
+      throw new Error(`the gate refused as '${refusal.category}', not the lexicon branch this `
+        + 'probe aims at. Some other rule caught it first, so the run says nothing about '
+        + 'whether the keyword lexicon still works.')
+    }
+    console.log(`✓ a blocklisted term is still refused as '${refusal.category}'`)
   } finally {
     if (created?.id) {
       const removed = await rest(url, key, token, `items?id=eq.${created.id}`, {

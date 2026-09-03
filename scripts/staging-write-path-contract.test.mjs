@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { readFile } from 'node:fs/promises'
 
 import {
   ACCEPTED_TITLE,
@@ -88,12 +89,13 @@ test('credentials and a public key are required', () => {
 
 test('only the moderation sentinel counts as the gate refusing', () => {
   assert.deepEqual(
-    moderationRefusal(400, { message: 'moderation_block:contact_info' }),
-    { status: 400, category: 'contact_info' },
-  )
-  assert.deepEqual(
     moderationRefusal(400, { message: 'moderation_block:sensitive_word' }),
     { status: 400, category: 'sensitive_word' },
+  )
+  // The shape private.assert_moderated_text actually raises: field first.
+  assert.deepEqual(
+    moderationRefusal(400, { message: 'moderation_block:item_title:sensitive_word' }),
+    { status: 400, category: 'item_title:sensitive_word' },
   )
 
   // The failures that must NOT be mistaken for a working gate. Each of these is
@@ -113,11 +115,39 @@ test('only the moderation sentinel counts as the gate refusing', () => {
 
 test('the accepted title is the sentence production actually refused', () => {
   // If someone softens this to a neutral string, the check stops being a
-  // regression guard on 20260818162716 and becomes a generic smoke test.
+  // regression guard on the separator-stripped matcher (20260818162716) and
+  // becomes a generic smoke test.
   assert.match(ACCEPTED_TITLE, /Selling my TV, Xbox and a desk$/)
   assert.ok(ACCEPTED_TITLE.startsWith(TITLE_PREFIX))
   assert.ok(REFUSED_TITLE.startsWith(TITLE_PREFIX),
     'both titles must carry the prefix or the stray sweep cannot find them')
+})
+
+test('the refused title is a term the lexicon migration actually seeds', async () => {
+  // Without this the probe is a sentence somebody believed was blocked. It was
+  // 'add me on wechat' until 2026-09-03, when contact details became
+  // publishable and that title started sailing through — which would have left
+  // the control green against a database with no moderation trigger at all.
+  //
+  // Verbatim containment, not a JS copy of the matcher: content_moderation_check
+  // matches a long keyword as a substring of text whose separators have been
+  // stripped, which is strictly more permissive than this, so a keyword found
+  // here is one the trigger finds too.
+  const lexicon = await readFile(
+    new URL('../supabase/migrations/025_content_moderation_lexicon.sql', import.meta.url), 'utf8')
+  const seeded = [...lexicon.matchAll(/^ {2}\('([^']+)', 'lexicon'/gm)].map(m => m[1])
+  assert.ok(seeded.length >= 100, `parsed only ${seeded.length} keywords — the scan stopped reading`)
+
+  const probe = REFUSED_TITLE.slice(TITLE_PREFIX.length).toLowerCase()
+  const hits = seeded.filter(word => word.length >= 5 && probe.includes(word))
+  assert.notDeepEqual(hits, [],
+    `${JSON.stringify(REFUSED_TITLE)} carries no seeded keyword, so nothing says the database `
+    + 'still refuses it')
+
+  // Control: the prefix every row carries must not be what matched, or the
+  // accepted title would be refused too and the whole check would be moot.
+  const prefix = TITLE_PREFIX.toLowerCase()
+  assert.deepEqual(seeded.filter(word => word.length >= 5 && prefix.includes(word)), [])
 })
 
 test('each run uses titles no earlier run used', () => {
@@ -155,7 +185,7 @@ function stubServer(over = {}) {
     publicRead: { status: 200, contentType: 'image/png' },
     foreignUpload: { status: 403, body: { message: 'new row violates row-level security policy' } },
     insertAccepted: { status: 201, body: [{ id: 'created-row-id' }] },
-    insertRefused: { status: 400, body: { message: 'moderation_block:item_title:contact_info' } },
+    insertRefused: { status: 400, body: { message: 'moderation_block:item_title:sensitive_word' } },
     deleteRow: { status: 200, body: [{ id: 'created-row-id' }] },
     deleteObject: { status: 200, body: {} },
     ...over,
@@ -285,17 +315,28 @@ test("an upload into another user's folder that succeeds fails the run", async (
 })
 
 test('the photo and the listing are removed even when a later step fails', async () => {
-  // The gate is gone: the evasion is accepted. Everything before it succeeded,
-  // so the run has a row and an object to clean up while already failing.
-  const stub = stubServer({ insertRefused: { status: 201, body: [{ id: 'evasion-row-id' }] } })
+  // The gate is gone: the blocklisted term is accepted. Everything before it
+  // succeeded, so the run has a row and an object to clean up while failing.
+  const stub = stubServer({ insertRefused: { status: 201, body: [{ id: 'unmoderated-row-id' }] } })
   const error = await runAgainst(stub)
-  assert.match(error.message, /Contact-info evasion is no longer refused/)
+  assert.match(error.message, /A blocklisted term is no longer refused/)
   assert.ok(stub.calls.some(c => c.startsWith(`DELETE /storage/v1/object/${MEDIA_BUCKET}/items/${USER_ID}/`)),
     'the photo survived a failing run')
   assert.ok(stub.calls.some(c => c.startsWith('DELETE /rest/v1/items')),
     'the listing survived a failing run')
   assert.ok(stub.calls.at(-1).startsWith('POST /auth/v1/logout'),
     'the session survived a failing run')
+})
+
+test('a refusal from some other moderation rule does not count as the lexicon working', async () => {
+  // The probe is a blocklisted term. If the gate answers with a different
+  // category, some earlier branch caught it and the keyword lexicon — the only
+  // thing this probe can speak for — went untested.
+  const stub = stubServer({
+    insertRefused: { status: 400, body: { message: 'moderation_block:item_title:contact_info' } },
+  })
+  const error = await runAgainst(stub)
+  assert.match(error.message, /not the lexicon branch this probe aims at/)
 })
 
 test('the object name and public URL are the shapes the database parses', () => {
