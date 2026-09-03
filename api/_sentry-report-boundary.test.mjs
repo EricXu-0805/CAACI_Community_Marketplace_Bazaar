@@ -221,10 +221,7 @@ for (const cron of CRON_HANDLERS) {
 
 test('every unattended cron in vercel.json reports its own failures', async () => {
   const vercel = JSON.parse(await readFile(new URL('../vercel.json', API_ROOT), 'utf8'))
-  // notification-digest predates this module and carries its own reporter.
-  const selfReporting = new Set(['/api/notification-digest'])
   for (const { path } of vercel.crons) {
-    if (selfReporting.has(path)) continue
     const file = path === '/api/auth/delete-account' ? 'auth/delete-account.js' : `${path.slice('/api/'.length)}.js`
     const source = await readFile(new URL(file, API_ROOT), 'utf8')
     assert.match(

@@ -15,8 +15,8 @@
  * Callers must only report outcomes an unauthenticated request cannot reach —
  * otherwise the endpoint's public URL becomes an alert-flooding primitive.
  *
- * api/notification-digest.js and api/admin/index.js predate this module and
- * carry equivalent reporters bound to their own hardened fetch stacks.
+ * api/admin/index.js predates this module and carries an equivalent reporter
+ * bound to its own hardened fetch stack.
  */
 
 const SENTRY_TIMEOUT_MS = 2_000
