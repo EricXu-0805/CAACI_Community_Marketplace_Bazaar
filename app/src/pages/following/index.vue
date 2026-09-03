@@ -32,7 +32,7 @@
               <UBadge v-if="p.is_illini_verified" variant="illini">Illini</UBadge>
             </view>
             <text v-if="p.status_text" class="pr-status">{{ p.status_emoji ? p.status_emoji + ' ' : '' }}{{ p.status_text }}</text>
-            <text v-else-if="p.location" class="pr-status">{{ p.location }}</text>
+            <text v-else-if="p.location" class="pr-status">{{ localizedLocation(p.location) }}</text>
           </view>
           <UIcon name="chevron-right" size="sm" color="text-faint" />
         </view>
@@ -70,6 +70,7 @@ import { onShow, onUnload } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import { useTheme } from '../../composables/useTheme'
 import { useFollow } from '../../composables/useFollow'
+import { localizeLocation } from '../../composables/useCampusSpots'
 import type { FollowedProfile } from '../../composables/useFollow'
 import { useAuth } from '../../composables/useAuth'
 import { friendlyErrorMessage, navigateBackOr } from '../../utils'
@@ -88,6 +89,10 @@ const defaultAvatarSrc = computed(() =>
 )
 const { currentUser, requireAuth, awaitAuthReady } = useAuth()
 const { fetchFollowingProfiles } = useFollow()
+
+function localizedLocation(raw: string | null | undefined) {
+  return localizeLocation(raw, lang.value as 'en' | 'zh')
+}
 
 const people = ref<FollowedProfile[]>([])
 const loading = ref(false)

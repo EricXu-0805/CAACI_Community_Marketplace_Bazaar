@@ -143,6 +143,7 @@ const zh: Record<string, string> = {
   'detail.wants': '想要',
   'detail.save': '收藏',
   'detail.saved': '已收藏',
+  'detail.unsaved': '已取消收藏',
   'detail.chat': '联系卖家',
   'detail.haveThis': '我有这个',
   'detail.ownItem': '这是你自己的商品',

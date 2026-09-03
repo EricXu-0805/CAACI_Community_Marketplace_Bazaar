@@ -143,6 +143,7 @@ const en: Record<string, string> = {
   'detail.wants': 'want|wants',
   'detail.save': 'Save',
   'detail.saved': 'Saved',
+  'detail.unsaved': 'Removed from saved',
   'detail.chat': 'Chat with Seller',
   'detail.haveThis': 'I have this',
   'detail.ownItem': 'This is your own item',
