@@ -1787,7 +1787,13 @@ function goPublish() {
   text-transform: uppercase;
 }
 
-.card-bottom { display: flex; align-items: center; gap: 5px; margin-top: 7px; min-width: 0; }
+/* The seller cell gets ~80px on a 390px two-column card, and the Illini pill
+   inside it cannot shrink — so whatever was left shrinkable got cut mid-glyph
+   ("4.0/5" painted as "4"). The row wraps instead, which only happens when one
+   line genuinely cannot hold both groups. */
+.card-bottom {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 7px; min-width: 0;
+}
 .card-seller {
   display: flex; align-items: center; gap: 5px;
   flex: 1 1 auto; min-width: 0; overflow: hidden;
@@ -1799,9 +1805,9 @@ function goPublish() {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .seller-rating {
-  flex: 0 1 auto; min-width: 0;
+  flex: 0 0 auto;
   font-size: 11px; color: var(--brand); font-weight: 600;
-  overflow: hidden; white-space: nowrap;
+  white-space: nowrap;
 }
 /* Illini = the one server-truth trust signal (set from an @illinois.edu email,
    not user-editable). Promoted from a 13px ✓ circle that read as decoration to
@@ -1809,7 +1815,7 @@ function goPublish() {
 .card-illini { flex-shrink: 0; }
 .card-fav {
   display: flex; align-items: center; gap: 4px;
-  flex: 0 0 auto; min-width: 0; padding: 4px 2px;
+  flex: 0 0 auto; min-width: 0; padding: 4px 2px; margin-left: auto;
 }
 .heart-img {
   width: 18px; height: 18px; cursor: pointer;

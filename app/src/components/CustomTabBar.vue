@@ -208,8 +208,15 @@ function go(url: string) { uni.switchTab({ url }) }
  * block. Page-level WXSS is more lenient but CustomTabBar is an
  * isComponent:true SFC so it falls under the stricter grammar.
  */
+/*
+ * --ink-inverse, not #fff: in dark mode --brand lifts to a bright ember
+ * (#E47B5F) that carries white at 2.88:1 for 9px text. AppSidebar's badge
+ * already uses the token; this one hardcoded white and nothing noticed,
+ * because the badge only exists once something is unread and the
+ * authenticated sweep's fixtures never produced an unread message.
+ */
 .badge-dot .badge-count {
-  font-size: 9px; color: #fff; font-weight: 700; line-height: 1;
+  font-size: 9px; color: var(--ink-inverse); font-weight: 700; line-height: 1;
   font-family: var(--font-mono, 'SF Mono', Menlo, monospace);
 }
 .badge-dot-only {
