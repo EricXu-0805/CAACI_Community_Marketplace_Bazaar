@@ -64,7 +64,7 @@
               </view>
               <view class="location">
                 <UIcon name="location-pin" size="xs" />
-                <text class="location-text">{{ currentUser?.location || 'UIUC' }}</text>
+                <text class="location-text">{{ myLocation }}</text>
               </view>
             </view>
             <text class="user-status" v-if="currentUser?.status_text || currentUser?.status_emoji">
@@ -352,6 +352,7 @@ import UAvatar from '../../components/UAvatar.vue'
 import UBadge from '../../components/UBadge.vue'
 import UIcon from '../../components/UIcon.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
+import { localizeLocation } from '../../composables/useCampusSpots'
 import { useItems } from '../../composables/useItems'
 import { useFavorites } from '../../composables/useFavorites'
 import { useNotifications } from '../../composables/useNotifications'
@@ -385,6 +386,9 @@ const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
 const { currentUser, isLoggedIn, authState, awaitAuthReady, requireAuth } = useAuth()
+const myLocation = computed(() =>
+  localizeLocation(currentUser.value?.location, lang.value as 'en' | 'zh') || 'UIUC'
+)
 const {
   items: homeItems,
   fetchMyItems,
