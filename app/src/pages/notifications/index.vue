@@ -55,7 +55,7 @@
         </view>
         <view class="notif-content">
           <text class="notif-type">{{ t(notificationTypeLabelKey(n.type)) }}</text>
-          <text class="notif-title">{{ n.title }}</text>
+          <text class="notif-title">{{ notificationTitleText(n, t) }}</text>
           <text class="notif-body">{{ notificationBodyText(n, t) }}</text>
           <text class="notif-time">{{ formatTime(n.created_at) }}</text>
         </view>
@@ -79,6 +79,7 @@ import {
   notificationBodyText,
   notificationDestination,
   notificationIcon,
+  notificationTitleText,
   notificationTypeLabelKey,
   useNotifications,
   type Notification,
@@ -173,7 +174,7 @@ function notificationAriaLabel(n: Notification): string {
   return [
     n.is_read ? '' : t('a11y.unread'),
     t(notificationTypeLabelKey(n.type)),
-    n.title,
+    notificationTitleText(n, t),
     notificationBodyText(n, t),
     formatTime(n.created_at),
   ].filter(Boolean).join('. ')
@@ -292,6 +293,10 @@ function onLongPress(id: string) {
 .ni-offer      { background: var(--warning-soft);   color: var(--warning-text); }
 .ni-meetup     { background: var(--campus-blue-soft); color: var(--campus-blue-on-soft); }
 .ni-unread_message { background: var(--campus-blue-soft); color: var(--campus-blue-on-soft); }
+.ni-rating     { background: var(--success-soft);   color: var(--success); }
+.ni-follow     { background: var(--campus-blue-soft); color: var(--campus-blue-on-soft); }
+.ni-post_comment { background: var(--campus-blue-soft); color: var(--campus-blue-on-soft); }
+.ni-post_like  { background: var(--brand-soft);     color: var(--brand-on-soft); }
 .notif-content { flex: 1; min-width: 0; }
 .notif-type {
   /* --text-muted lands at 4.04:1 on the tinted unread row in dark. */

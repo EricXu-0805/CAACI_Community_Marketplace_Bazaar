@@ -145,8 +145,8 @@ test('specific messages are not flattened into the generic one', async () => {
   const cases = [
     // The three shapes that reach the moderation branch. Only the first was
     // covered, and it is the only one where the category sits at position 1.
-    ['moderation_block:contact_info', 'zh', /站内私信/],
-    ['moderation_block:item_title:contact_info', 'zh', /站内私信/],
+    ['moderation_block:sensitive_word', 'zh', /违规词/],
+    ['moderation_block:item_title:sensitive_word', 'zh', /违规词/],
     ['moderation_block:sensitive_word:ai(hate,violence)', 'zh', /违规词/],
     ['content_too_long', 'zh', /内容太长/],
     ['rate_limit_items_hour', 'en', /Too many items/],
@@ -326,7 +326,7 @@ test('archive_conversation keeps the specific copy written for it', async () => 
  *
  * private.assert_moderated_text raises `moderation_block:<field>:<category>`,
  * and friendlyErrorMessage read the segment at position 1 — the field name.
- * So 'moderation_block:item_title:contact_info' matched nothing in
+ * So 'moderation_block:item_title:sensitive_word' matched nothing in
  * MODERATION_MESSAGES and every database rejection was flattened to "内容未通过
  * 审核", which does not tell a student what to change. The seven specific
  * messages were reachable only from the client's own pre-check.
@@ -357,11 +357,11 @@ test('a rejection from the database says which rule it broke', async () => {
   assert.ok(fields.includes('item_title') && fields.includes('message_content'))
 
   const GENERIC = { zh: '内容未通过审核', en: 'Content blocked by moderation' }
-  const MODERATION_CONTACT_ZH = '请使用站内私信，不要留手机号、微信或邮箱'
+  const MODERATION_SENSITIVE_ZH = '内容包含违规词，请修改后重试'
   const flattened = []
   for (const field of fields) {
-    for (const [lang, expected] of [['zh', '站内私信'], ['en', 'in-app chat']]) {
-      const out = friendlyErrorMessage(new Error(`moderation_block:${field}:contact_info`), lang)
+    for (const [lang, expected] of [['zh', '违规词'], ['en', 'disallowed terms']]) {
+      const out = friendlyErrorMessage(new Error(`moderation_block:${field}:sensitive_word`), lang)
       if (!out.includes(expected)) flattened.push(`${lang}: ${field} -> ${out}`)
     }
   }
@@ -384,8 +384,8 @@ test('a rejection from the database says which rule it broke', async () => {
   // reader nothing at all.
   for (const hostile of ['constructor', 'toString', '__proto__']) {
     assert.equal(
-      friendlyErrorMessage(new Error(`moderation_block:${hostile}:contact_info`), 'zh'),
-      MODERATION_CONTACT_ZH,
+      friendlyErrorMessage(new Error(`moderation_block:${hostile}:sensitive_word`), 'zh'),
+      MODERATION_SENSITIVE_ZH,
       `a '${hostile}' segment must be skipped, not looked up`,
     )
   }

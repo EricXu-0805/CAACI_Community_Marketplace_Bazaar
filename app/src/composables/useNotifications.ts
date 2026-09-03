@@ -15,8 +15,10 @@ import {
 } from './accountScope'
 import {
   fetchNotificationRowsWithCompatibility,
+  notificationBodyKey,
   notificationDestination,
   notificationIcon,
+  notificationTitleText,
   notificationToastKind,
   notificationTypeLabelKey,
   type Notification,
@@ -25,6 +27,7 @@ import {
 export {
   notificationDestination,
   notificationIcon,
+  notificationTitleText,
   notificationTypeLabelKey,
 }
 export type { Notification } from '../api/notifications'
@@ -35,6 +38,19 @@ const unreadNotifCount = ref(0)
 const BODY_SENTINEL_KEYS: Record<string, string> = {
   saved_search_match: 'notif.savedSearchMatch',
   new_listing_from_followee: 'notif.followeeListing',
+  transaction_rating_received: 'notif.ratingReceived',
+  deal_marked_sold: 'notif.dealMarkedSold',
+  new_follower: 'notif.newFollower',
+  post_comment: 'notif.postComment',
+  post_like: 'notif.postLike',
+  post_comment_like: 'notif.commentLike',
+  report_outcome_resolved: 'notif.reportResolved',
+  report_outcome_dismissed: 'notif.reportDismissed',
+  appeal_outcome_denied: 'notif.appealDenied',
+  // notify_suspension_change (20260720035037) writes this one as copy, and
+  // bilingual, so it is looked up by the sentence itself.
+  '另一项账号限制仍在生效 · Another account restriction remains active':
+    'notif.otherRestrictionActive',
 }
 
 /*
@@ -52,8 +68,8 @@ export function notificationBodyText(
   notification: Notification,
   translate: (key: string) => string,
 ): string {
-  const key = BODY_SENTINEL_KEYS[notification.body]
-  if (key) return translate(key)
+  const messageKey = BODY_SENTINEL_KEYS[notificationBodyKey(notification.body).key]
+  if (messageKey) return translate(messageKey)
   const amounts = PRICE_BODY_RE.exec(notification.body || '')
   if (amounts) {
     const free = translate('home.free')
@@ -334,7 +350,7 @@ function handleIncoming(row: Notification) {
   const destination = notificationDestination(row)
   pushToast({
     kind: notificationToastKind(row.type),
-    title: row.title,
+    title: notificationTitleText(row, t),
     body: notificationBodyText(row, t) || undefined,
     route: destination.url,
     switchTab: destination.switchTab,

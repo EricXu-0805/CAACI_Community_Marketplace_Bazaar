@@ -35,12 +35,14 @@ async function loadRenderer() {
     extract(src, 'function esc(', 'esc'),
     src.slice(src.indexOf('const TYPE_ICON ='), src.indexOf('\n', src.indexOf('const TYPE_ICON ='))),
     extract(src, 'const BODY_SENTINELS = {', 'BODY_SENTINELS').replace(/\n\}\n$/, '\n}\n'),
+    extract(src, 'const TITLE_SENTINELS = {', 'TITLE_SENTINELS').replace(/\n\}\n$/, '\n}\n'),
+    extract(src, 'function titleText(', 'titleText'),
     src.slice(src.indexOf('const PRICE_BODY_RE ='), src.indexOf('\n', src.indexOf('const PRICE_BODY_RE ='))),
     extract(src, 'function priceText(', 'priceText'),
     extract(src, 'function bodyText(', 'bodyText'),
     extract(src, 'function rowHtml(', 'rowHtml'),
   ].join('\n')
-  return new Function(`${js}\nreturn { rowHtml, BODY_SENTINELS }`)()
+  return new Function(`${js}\nreturn { rowHtml, BODY_SENTINELS, TITLE_SENTINELS }`)()
 }
 
 // null is a reader who has never picked a language; the template falls back to
@@ -94,6 +96,40 @@ test('a dedup key never reaches the reader', async () => {
   assert.deepEqual(leaked, [], `printed verbatim in the mail:\n  ${leaked.join('\n  ')}`)
 })
 
+/*
+ * The 20260903070000 activity keys carry their tap target as '<key>:<uuid>'
+ * because the post or person they open fits neither item_id nor
+ * conversation_id. The row id is routing data; printing it in the mail would
+ * be the same bug as printing the dedup key.
+ */
+test('a keyed body prints its sentence and not the id it routes with', async () => {
+  const { rowHtml, BODY_SENTINELS } = await loadRenderer()
+  const target = '0f3e5c1a-2b4d-4e6f-8a9b-1c2d3e4f5a6b'
+  for (const key of ['new_follower', 'post_comment', 'post_like', 'post_comment_like']) {
+    assert.ok(BODY_SENTINELS[key], `${key} lost its copy`)
+    for (const lang of READERS) {
+      const html = rowHtml({ type: 'system', title: 'x', body: `${key}:${target}` }, lang)
+      assert.ok(!html.includes(target), `${lang ?? 'no language'}: ${key} printed its row id`)
+      assert.ok(!html.includes(key), `${lang ?? 'no language'}: ${key} printed the key itself`)
+      assert.ok(
+        html.includes(BODY_SENTINELS[key][lang ?? 'zh']),
+        `${lang ?? 'no language'}: ${key} lost its sentence`,
+      )
+    }
+  }
+})
+
+test('a colon in real copy is not mistaken for a key', async () => {
+  // The control for the parser above. Meetup bodies are a place and a clock
+  // time; nothing about them may be swallowed.
+  const { rowHtml } = await loadRenderer()
+  for (const lang of READERS) {
+    const html = rowHtml({ type: 'meetup', title: 'x', body: 'Illini Union · 3/5 14:30 CT' }, lang)
+    assert.match(html, /Illini Union/)
+    assert.match(html, /14:30 CT/)
+  }
+})
+
 test('each reader gets the sentence in their own language', async () => {
   const { rowHtml, BODY_SENTINELS } = await loadRenderer()
   for (const [sentinel, forms] of Object.entries(BODY_SENTINELS)) {
@@ -113,7 +149,19 @@ test('each reader gets the sentence in their own language', async () => {
  */
 test('the wording matches what the notification list says', async () => {
   const { BODY_SENTINELS } = await loadRenderer()
-  const KEY_FOR = { saved_search_match: 'notif.savedSearchMatch', new_listing_from_followee: 'notif.followeeListing' }
+  const KEY_FOR = {
+    saved_search_match: 'notif.savedSearchMatch',
+    new_listing_from_followee: 'notif.followeeListing',
+    transaction_rating_received: 'notif.ratingReceived',
+    deal_marked_sold: 'notif.dealMarkedSold',
+    new_follower: 'notif.newFollower',
+    post_comment: 'notif.postComment',
+    post_like: 'notif.postLike',
+    post_comment_like: 'notif.commentLike',
+    report_outcome_resolved: 'notif.reportResolved',
+    report_outcome_dismissed: 'notif.reportDismissed',
+    appeal_outcome_denied: 'notif.appealDenied',
+  }
   for (const [file, lang] of APP_I18N.map((u, i) => [u, ['en', 'zh'][i]])) {
     const messages = await readFile(file, 'utf8')
     for (const [sentinel, forms] of Object.entries(BODY_SENTINELS)) {
@@ -138,5 +186,45 @@ test('bodies that are already copy are still printed', async () => {
     )
     assert.ok(html.includes('IKEA'), `${lang ?? 'no language'}: a plain body was dropped`)
     assert.ok(html.includes('$30'), `${lang ?? 'no language'}: a plain body lost its price`)
+  }
+})
+
+/*
+ * 20260903090000 stores the headline as a sentinel too, because a trigger
+ * cannot know which language the reader picked. The mail is the one surface
+ * where a raw key would arrive as the sentence a person reads first.
+ */
+test('a moderation outcome has a headline, not an identifier', async () => {
+  const { rowHtml, TITLE_SENTINELS } = await loadRenderer()
+  const TITLE_KEY_FOR = {
+    report_resolved: 'notif.titleReportResolved',
+    report_dismissed: 'notif.titleReportDismissed',
+    appeal_denied: 'notif.titleAppealDenied',
+  }
+  assert.ok(Object.keys(TITLE_SENTINELS).length >= 3, 'the title sentinels are gone')
+  for (const [sentinel, forms] of Object.entries(TITLE_SENTINELS)) {
+    for (const lang of READERS) {
+      const html = rowHtml({ type: 'system', title: sentinel, body: '' }, lang)
+      assert.ok(!html.includes(sentinel), `${lang ?? 'no language'}: ${sentinel} printed the key itself`)
+      assert.ok(html.includes(forms[lang ?? 'zh']), `${lang ?? 'no language'}: ${sentinel} lost its headline`)
+    }
+    const en = rowHtml({ type: 'system', title: sentinel, body: '' }, 'en')
+    assert.ok(!en.includes(forms.zh), `${sentinel}: an English reader got both languages`)
+    for (const [file, lang] of APP_I18N.map((u, i) => [u, ['en', 'zh'][i]])) {
+      const key = TITLE_KEY_FOR[sentinel]
+      const messages = await readFile(file, 'utf8')
+      const line = new RegExp(`'${key}':\\s*'([^']*)'`).exec(messages)
+      assert.ok(line, `${key} is missing from the ${lang} messages`)
+      assert.equal(forms[lang], line[1], `${sentinel} (${lang}) reads differently in the mail than in the app`)
+    }
+  }
+})
+
+test('a title that is real copy is printed as written', async () => {
+  // The control. notify_item_sold (065) writes the item's own title into this
+  // column; a lookup that rewrote unknown titles would erase it.
+  const { rowHtml } = await loadRenderer()
+  for (const lang of READERS) {
+    assert.match(rowHtml({ type: 'sold', title: 'IKEA 书桌 desk', body: '' }, lang), /IKEA 书桌 desk/)
   }
 })

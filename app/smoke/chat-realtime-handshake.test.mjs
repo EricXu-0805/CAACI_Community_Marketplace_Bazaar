@@ -2560,16 +2560,20 @@ test('a delayed notification INSERT always heals a torn list/count snapshot', as
       [
         `import {
   fetchNotificationRowsWithCompatibility,
+  notificationBodyKey,
   notificationDestination,
   notificationIcon,
+  notificationTitleText,
   notificationToastKind,
   notificationTypeLabelKey,
   type Notification,
 } from '../api/notifications'`,
         `const {
   fetchNotificationRowsWithCompatibility,
+  notificationBodyKey,
   notificationDestination,
   notificationIcon,
+  notificationTitleText,
   notificationToastKind,
   notificationTypeLabelKey,
 } = globalThis.__RUNTIME_KEY__
@@ -2615,8 +2619,13 @@ type Notification = any`,
         assert.ok(pending, 'unexpected notification list read')
         return pending.promise
       },
+      notificationBodyKey: body => {
+        const match = /^([a-z_]+):([0-9a-f-]{36})$/i.exec(body || '')
+        return match ? { key: match[1], target: match[2] } : { key: body || '', target: null }
+      },
       notificationDestination: () => ({ url: '/pages/notifications/index', switchTab: false }),
       notificationIcon: () => 'bell',
+      notificationTitleText: notification => notification.title,
       notificationToastKind: () => 'info',
       notificationTypeLabelKey: () => 'notif.system',
     },
@@ -3467,16 +3476,20 @@ test('three torn notification snapshots preserve live state before one delayed q
       [
         `import {
   fetchNotificationRowsWithCompatibility,
+  notificationBodyKey,
   notificationDestination,
   notificationIcon,
+  notificationTitleText,
   notificationToastKind,
   notificationTypeLabelKey,
   type Notification,
 } from '../api/notifications'`,
         `const {
   fetchNotificationRowsWithCompatibility,
+  notificationBodyKey,
   notificationDestination,
   notificationIcon,
+  notificationTitleText,
   notificationToastKind,
   notificationTypeLabelKey,
 } = globalThis.__RUNTIME_KEY__
@@ -3515,8 +3528,13 @@ type Notification = any`,
         if (result.error) throw result.error
         return result.data
       },
+      notificationBodyKey: body => {
+        const match = /^([a-z_]+):([0-9a-f-]{36})$/i.exec(body || '')
+        return match ? { key: match[1], target: match[2] } : { key: body || '', target: null }
+      },
       notificationDestination: () => ({ url: '/pages/notifications/index', switchTab: false }),
       notificationIcon: () => 'bell',
+      notificationTitleText: notification => notification.title,
       notificationToastKind: () => 'info',
       notificationTypeLabelKey: () => 'notif.system',
     },

@@ -281,6 +281,26 @@ export function useTranslate() {
   }
 
   /*
+   * Does this rendering look like it is written in `target`?
+   *
+   * A wrong source_lang used to reach the database as an inverted map:
+   * production carried description_i18n {"en": "用了一年…", "zh": "Used for a
+   * year…"} — the Chinese under the English key and the English translation
+   * filed as the Chinese one. Every reader of that row then saw the language
+   * they had not asked for, and neither key could ever be repaired by a later
+   * fill, because both were populated.
+   *
+   * The endpoint is the only thing that knows what it produced, and it does not
+   * say; the script does. Chinese needs CJK in it. English tolerates the odd
+   * CJK character a product name carries, but not a majority of them.
+   */
+  function scriptMatchesTarget(text: string, target: Lang): boolean {
+    const cjk = text.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g)?.length ?? 0
+    if (target === 'zh') return cjk > 0
+    return cjk <= (text.match(/[A-Za-z]/g)?.length ?? 0)
+  }
+
+  /*
    * Publish-time content translation.
    *
    * Given the text the author typed and the language they typed it in,
@@ -314,7 +334,14 @@ export function useTranslate() {
           // dictionary fallback is useful for immediate display, but it is not
           // a verified full translation and must never become durable i18n data.
           const result = await translateResult(text, target)
-          if (result.verified && result.text && result.text !== text) map[target] = result.text
+          if (
+            result.verified
+            && result.text
+            && result.text !== text
+            && scriptMatchesTarget(result.text, target)
+          ) {
+            map[target] = result.text
+          }
         } catch { /* swallow: partial map is fine */ }
       }),
     )

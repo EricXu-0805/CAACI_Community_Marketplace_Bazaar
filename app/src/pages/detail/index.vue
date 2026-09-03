@@ -161,11 +161,11 @@
       <view class="stats-row">
         <view class="stat">
           <text class="stat-num">{{ item.view_count }}</text>
-          <text class="stat-label">{{ t('detail.views') }}</text>
+          <text class="stat-label">{{ tc('detail.views', item.view_count) }}</text>
         </view>
         <view class="stat">
           <text class="stat-num">{{ favCount }}</text>
-          <text class="stat-label">{{ t('detail.wants') }}</text>
+          <text class="stat-label">{{ tc('detail.wants', favCount) }}</text>
         </view>
       </view>
     </view>
@@ -1233,7 +1233,7 @@ async function toggleFavorite() {
   if (!result.ok) return
   isFav.value = result.favorited
   favCount.value = Math.max(0, favCount.value + (result.favorited ? 1 : -1))
-  uni.showToast({ title: result.favorited ? t('detail.saved') : t('detail.save'), icon: 'none' })
+  uni.showToast({ title: result.favorited ? t('detail.saved') : t('detail.unsaved'), icon: 'none' })
 }
 
 async function contactSeller() {
