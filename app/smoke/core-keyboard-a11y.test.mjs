@@ -393,8 +393,8 @@ test('asynchronous load failures announce only their rendered error panels', () 
     ['src/pages/blocked/index.vue', 'v-else-if="loadError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true"'],
     ['src/pages/messages/index.vue', 'v-else-if="conversationsError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true"'],
     ['src/pages/seller/index.vue', 'v-else-if="loadError" class="load-error" role="alert" aria-live="assertive" aria-atomic="true"'],
-    ['src/pages/following/index.vue', 'v-else-if="loadError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true"'],
-    ['src/pages/plaza/index.vue', 'v-else-if="fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true"'],
+    ['src/pages/following/index.vue', 'v-else-if="loadError && !loading && people.length === 0" class="empty" role="alert" aria-live="assertive" aria-atomic="true"'],
+    ['src/pages/plaza/index.vue', 'v-else-if="fetchError && !loading && visiblePosts.length === 0" class="empty" role="alert" aria-live="assertive" aria-atomic="true"'],
     ['src/pages/index/index.vue', 'v-if="fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true"'],
   ])
   for (const [file, panel] of errorPanels) {

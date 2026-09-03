@@ -129,7 +129,7 @@
         </view>
       </view>
 
-      <view v-else-if="fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
+      <view v-else-if="fetchError && !loading && visiblePosts.length === 0" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
         <UEmptyArt name="posts" />
         <text class="empty-text">{{ fetchError }}</text>
         <view class="cta-btn" role="button" @click="onRefresh">{{ t('home.retry') }}</view>
@@ -300,6 +300,16 @@
         </view>
       </view>
 
+      <view
+        v-if="activeTab !== 'following' && fetchError && !loading && visiblePosts.length > 0"
+        class="empty"
+        role="alert"
+        aria-live="assertive"
+        aria-atomic="true"
+      >
+        <text class="empty-text">{{ fetchError }}</text>
+        <view class="cta-btn" role="button" @click="loadMore">{{ t('home.retry') }}</view>
+      </view>
       <view
         v-if="activeTab === 'following' ? (!followHasMore && followPeople.length > 0) : (!hasMore && visiblePosts.length > 0)"
         class="end-tip"
@@ -1218,8 +1228,13 @@ async function loadMore() {
     return
   }
   if (loading.value || !hasMore.value) return
-  pageIdx.value++
-  await fetchPosts({ page: pageIdx.value, sort: feedSort.value, search: searchText.value })
+  const nextPage = pageIdx.value + 1
+  pageIdx.value = nextPage
+  await fetchPosts({ page: nextPage, sort: feedSort.value, search: searchText.value })
+  // A page that failed stays the next one to ask for, so the footer retry and
+  // the next scroll re-request it instead of skipping it. A refresh that raced
+  // this request has already reset pageIdx and owns it.
+  if (fetchError.value && pageIdx.value === nextPage) pageIdx.value = nextPage - 1
 }
 
 async function onToggleLike(post: Post) {

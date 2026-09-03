@@ -311,3 +311,121 @@ test('comment retry is scoped to comments and keeps the loaded post alive', asyn
   await expect(page.getByText(COMMENT_ROW.content, { exact: true })).toBeVisible()
   expect(state.requests.posts, 'comment recovery invalidated and fetched the main post').toBe(postRequestsBeforeRetry)
 })
+
+/**
+ * A failed load-more must not take the loaded page down with it.
+ *
+ * following and plaza held one error flag for both the first page and every
+ * page after it, and gated it into the same v-if/v-else-if chain as the list.
+ * Thirty rows already on screen vanished behind a full-screen "Failed to
+ * load" the moment page two failed. Home already keeps its grid and appends
+ * the error under it; these follow that shape, and the retry asks for the
+ * page that failed rather than the one after it.
+ */
+const PAGED_FEEDS = [
+  {
+    label: 'following',
+    route: 'pages/following/index',
+    endpoint: '/rest/v1/follows',
+    scroller: 'uni-scroll-view.list .uni-scroll-view',
+    pageSize: 30,
+    row: (i: number) => ({
+      created_at: '2026-08-01T00:00:00Z', followee_id: pagedUuid(i),
+      followee: { ...PROFILE, id: pagedUuid(i), nickname: `Followed person ${i}` },
+    }),
+    name: (i: number) => `Followed person ${i}`,
+    emptyCopy: /not following anyone yet/i,
+  },
+  {
+    label: 'plaza',
+    route: 'pages/plaza/index',
+    endpoint: '/rest/v1/posts',
+    scroller: '#plaza-feed-panel .uni-scroll-view',
+    pageSize: 20,
+    row: (i: number) => ({ ...POST_ROW, id: pagedUuid(i), content: `Paged post ${i}` }),
+    name: (i: number) => `Paged post ${i}`,
+    emptyCopy: /No posts yet/i,
+  },
+]
+
+function pagedUuid(i: number): string {
+  return `66666666-6666-4666-8666-${String(i).padStart(12, '0')}`
+}
+
+type PagedState = { failingOffsets: Set<number>; offsets: number[] }
+
+async function servePaged(page: Page, feed: typeof PAGED_FEEDS[number], state: PagedState) {
+  await page.route('**/*.supabase.co/**', async route => {
+    const url = new URL(route.request().url())
+    if (url.pathname.endsWith(feed.endpoint)) {
+      // supabase-js .range() travels as offset/limit query params.
+      const offset = Number(url.searchParams.get('offset') ?? 0)
+      state.offsets.push(offset)
+      if (state.failingOffsets.has(offset)) {
+        return route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"boom"}' })
+      }
+      // A full first page so the feed believes there is more; a short second
+      // page so a successful retry is distinguishable from the first page.
+      const count = offset === 0 ? feed.pageSize : offset === feed.pageSize ? 5 : 0
+      const rows = Array.from({ length: count }, (_, k) => feed.row(offset + k + 1))
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rows) })
+    }
+    await route.fulfill({
+      status: 200, contentType: 'application/json',
+      headers: { 'content-range': '0-1/2' }, body: JSON.stringify(fixtureFor(`${url.pathname}${url.search}`)),
+    })
+  })
+}
+
+for (const feed of PAGED_FEEDS) {
+  test(`${feed.label}: a failed second page keeps the first page on screen with a footer retry`, async ({ page }) => {
+    const state: PagedState = { failingOffsets: new Set([feed.pageSize]), offsets: [] }
+    await seedSession(page)
+    await servePaged(page, feed, state)
+    await page.goto(`/#/${feed.route}`, { waitUntil: 'domcontentloaded' })
+
+    const firstRow = page.getByRole('button', { name: feed.name(1), exact: true })
+    const lastRow = page.getByRole('button', { name: feed.name(feed.pageSize), exact: true })
+    await expect(firstRow).toBeVisible()
+    await expect(lastRow).toBeAttached()
+    expect(state.offsets, 'the first page must be requested at offset 0 for this test to mean anything').toEqual([0])
+
+    // uni nests two .uni-scroll-view divs; only the inner one overflows.
+    const scrolled = await page.locator(feed.scroller).evaluateAll(els => els
+      .filter(el => el.scrollHeight > el.clientHeight)
+      .map(el => { el.scrollTop = el.scrollHeight; return el.scrollTop }))
+    expect(scrolled, 'no scrollable feed panel to scroll to the bottom of').not.toEqual([])
+    await expect.poll(() => state.offsets, 'scrolling to the bottom never asked for the second page').toContain(feed.pageSize)
+
+    const retry = page.getByRole('button', { name: 'Retry', exact: true })
+    await expect(retry, 'the failed second page left nothing to retry with').toBeVisible()
+    await expect(lastRow, 'a failed second page erased the page that was already on screen').toBeAttached()
+    await expect(firstRow, 'a failed second page erased the page that was already on screen').toBeAttached()
+    await expect(page.getByText(feed.emptyCopy)).toHaveCount(0)
+
+    state.failingOffsets.clear()
+    const requestsBeforeRetry = state.offsets.length
+    await retry.click()
+    await expect.poll(() => state.offsets.slice(requestsBeforeRetry), 'retry must ask again for the page that failed').toContain(feed.pageSize)
+    await expect(page.getByRole('button', { name: feed.name(feed.pageSize + 1), exact: true })).toBeAttached()
+    await expect(firstRow).toBeAttached()
+    await expect(retry).toHaveCount(0)
+  })
+
+  /**
+   * The control: with nothing loaded the failure still owns the screen. A fix
+   * that hid the error behind "rows exist" in both places would pass above.
+   */
+  test(`${feed.label}: a failed first page still gets the full-screen error`, async ({ page }) => {
+    const state: PagedState = { failingOffsets: new Set([0]), offsets: [] }
+    await seedSession(page)
+    await servePaged(page, feed, state)
+    await page.goto(`/#/${feed.route}`, { waitUntil: 'domcontentloaded' })
+
+    const retry = page.getByRole('button', { name: 'Retry', exact: true })
+    await expect(retry).toBeVisible()
+    await expect(page.getByRole('alert').filter({ has: retry }), 'the empty-list failure lost its alert').toBeVisible()
+    await expect(page.getByRole('button', { name: feed.name(1), exact: true })).toHaveCount(0)
+    await expect(page.getByText(feed.emptyCopy), 'a failed first page was painted as a healthy empty feed').toHaveCount(0)
+  })
+}

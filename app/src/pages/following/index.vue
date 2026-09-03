@@ -16,7 +16,7 @@
         </view>
       </view>
 
-      <view v-else-if="loadError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
+      <view v-else-if="loadError && !loading && people.length === 0" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
         <UEmptyArt name="following" />
         <text class="empty-text">{{ t('error.loadFailed') }}</text>
         <view class="retry-btn" role="button" :aria-label="t('home.retry')" @click="retryLoad">{{ t('home.retry') }}</view>
@@ -50,6 +50,10 @@
       </view>
 
       <view v-if="loading && people.length > 0" class="loading-tip"><text>{{ t('home.loading') }}</text></view>
+      <view v-else-if="loadError && people.length > 0" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
+        <text class="empty-text">{{ t('error.loadFailed') }}</text>
+        <view class="retry-btn" role="button" :aria-label="t('home.retry')" @click="loadMore">{{ t('home.retry') }}</view>
+      </view>
       <view v-else-if="!hasMore && people.length > 0" class="end-tip"><text>{{ t('home.endOf') }}</text></view>
     </scroll-view>
   </view>
