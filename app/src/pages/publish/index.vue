@@ -498,6 +498,29 @@ function resetForm() {
   imageList.value = []
 }
 
+/*
+ * Solicitation soft gate. /api/moderate can read the copy as an ad for
+ * off-platform services (代写, 代购, 办证 …); that is a model's opinion about
+ * text the server was willing to accept, so it asks instead of refusing
+ * (#290). Sharing contact details is allowed here and never lands a listing
+ * in this dialog — a WeChat id is how the meetup gets arranged. A dialog that
+ * cannot open resolves true for the same reason: nothing about this screen
+ * may cost a member their listing.
+ */
+function confirmSuspectedAd(): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: t('moderation.adTitle'),
+      content: t('moderation.adBody'),
+      confirmText: t('moderation.adConfirm'),
+      cancelText: t('moderation.adCancel'),
+      confirmColor: DIALOG_WARN,
+      success: (r) => resolve(!!r.confirm),
+      fail: () => resolve(true),
+    })
+  })
+}
+
 function promptSaveDraft(onDecided: () => void) {
   const promptShowVersion = publishShowVersion
   const promptAccountToken = publishPageAccountToken
@@ -999,6 +1022,7 @@ async function onSubmit() {
 
     const newItem = await createItem(payload, {
       accountToken: submitAccountToken,
+      confirmSuspectedAd,
     })
     if (!operationStillCurrent()) {
       throw mutationOutcomeError(new Error('Account changed after item create'), 'committed')
@@ -1051,6 +1075,9 @@ async function onSubmit() {
       })
     }
     if (!operationStillCurrent()) return
+    // The seller pressed Edit on the solicitation confirm. Their form is still
+    // on screen with every field in it, so there is nothing to say about it.
+    if (error?.message === 'ad_declined') return
     // Backend createItem/updateItem in useItems.ts throw 'Invalid price' when
     // input.price > 1,000,000 (the hard cap, defense-in-depth above the 100k
     // soft ceiling enforced by the modal earlier in onSubmit). Translate to a

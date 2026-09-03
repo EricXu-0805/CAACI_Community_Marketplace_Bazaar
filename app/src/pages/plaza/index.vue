@@ -643,7 +643,7 @@ import { useKeyboardHeight } from '../../composables/useKeyboardHeight'
 import { createOwnedLoading } from '../../composables/ownedLoading'
 import type { Post, PostComment, Item } from '../../types'
 import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
-import { DIALOG_DANGER } from '../../utils/dialogColors'
+import { DIALOG_DANGER, DIALOG_WARN } from '../../utils/dialogColors'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
 import AppSidebar from '../../components/AppSidebar.vue'
@@ -1311,6 +1311,29 @@ function removeComposerImage(idx: number) {
   composerImages.value.splice(idx, 1)
 }
 
+/*
+ * Solicitation soft gate. /api/moderate can read the copy as an ad for
+ * off-platform services (代写, 代购, 办证 …); that is a model's opinion about
+ * text the server was willing to accept, so it asks instead of refusing
+ * (#290). Sharing contact details is allowed here and never lands a listing
+ * in this dialog — a WeChat id is how the meetup gets arranged. A dialog that
+ * cannot open resolves true for the same reason: nothing about this screen
+ * may cost a member their listing.
+ */
+function confirmSuspectedAd(): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: t('moderation.adTitle'),
+      content: t('moderation.adBody'),
+      confirmText: t('moderation.adConfirm'),
+      cancelText: t('moderation.adCancel'),
+      confirmColor: DIALOG_WARN,
+      success: (r) => resolve(!!r.confirm),
+      fail: () => resolve(true),
+    })
+  })
+}
+
 async function onSubmitPost() {
   await awaitAuthReady()
   if (!requireAuth()) return
@@ -1378,6 +1401,7 @@ async function onSubmitPost() {
         content_i18n: trimmed ? { [sourceLang]: trimmed } : null,
         source_lang: sourceLang,
         accountToken: submitAccountToken,
+        confirmSuspectedAd,
       },
     )
 
@@ -1436,6 +1460,9 @@ async function onSubmitPost() {
       }
     }
     if (!isAccountRequestCurrent(submitAccountToken)) return
+    // The member pressed Edit on the solicitation confirm. The composer is
+    // still open with their text and photos in it.
+    if (err?.message === 'ad_declined') return
     uni.showToast({
       title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
       icon: 'none',
