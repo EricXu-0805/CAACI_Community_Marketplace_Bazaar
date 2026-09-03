@@ -237,3 +237,109 @@ test('share preview bounds public query responses and fails to the generic surfa
   assert.match(html, /Illini Market · 校园二手交易/)
   assert.doesNotMatch(html, /pages\/detail/)
 })
+
+const LONE_SURROGATE_RE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/
+
+function stubRow(id, extra) {
+  return async (input) => {
+    const url = new URL(String(input))
+    if (url.pathname === '/rest/v1/profiles') return json([{ nickname: 'A' }])
+    return json([{
+      id, user_id: USER_ID, title: 'Desk lamp', content: 'c', description: 'd',
+      price: 15, images: [], listing_type: 'sell', status: 'active', ...extra,
+    }])
+  }
+}
+
+function metaOf(html) {
+  const pick = re => (html.match(re) || [])[1]
+  return {
+    html,
+    title: pick(/<meta property="og:title" content="([^"]*)"/),
+    description: pick(/<meta property="og:description" content="([^"]*)"/),
+    canonical: pick(/<link rel="canonical" href="([^"]*)"/),
+    ogUrl: pick(/<meta property="og:url" content="([^"]*)"/),
+    refresh: pick(/<meta http-equiv="refresh" content="0; url=([^"]*)"/),
+  }
+}
+
+/**
+ * items.price is DECIMAL(10,2) and PostgREST hands it over as a JSON number,
+ * so 18.50 arrives as 18.5 and a bare template literal printed "$18.5" —
+ * while the app's own formatPrice renders "$18.50". The card follows the
+ * app's two-decimal rule.
+ */
+test('item share prices carry cents the way the app renders them', async () => {
+  const { default: handler } = await load('share.js')
+  async function titleFor(extra) {
+    globalThis.fetch = stubRow(ITEM_ID, extra)
+    const html = await (await handler(new Request(`https://illinimarket.com/api/share?id=${ITEM_ID}`))).text()
+    return metaOf(html).title
+  }
+
+  assert.match(await titleFor({ price: 18.5 }), /Desk lamp · \$18\.50$/, 'trailing cent dropped')
+  assert.match(await titleFor({ price: 1234.5 }), /Desk lamp · \$1,234\.50$/, 'thousands or cents drifted from the app')
+  assert.match(await titleFor({ price: 18.5, listing_type: 'wanted' }), /求购预算 \$18\.50$/)
+  // Whole dollars stay bare: the fix must not be "always two decimals".
+  assert.match(await titleFor({ price: 18 }), /Desk lamp · \$18$/)
+})
+
+for (const endpoint of ['share.js', 'share-post.js']) {
+  const route = endpoint === 'share.js' ? 'share' : 'share-post'
+  const page = endpoint === 'share.js' ? 'detail' : 'post'
+  const id = endpoint === 'share.js' ? ITEM_ID : POST_ID
+
+  /**
+   * String#slice counts UTF-16 code units. An emoji is two, so a description
+   * cut at 160 could keep only its first half and emit a lone surrogate, which
+   * the response encoder turns into U+FFFD — a "�" on every unfurl of that card.
+   */
+  test(`${endpoint} never cuts the description inside an emoji`, async () => {
+    const { default: handler } = await load(endpoint)
+    async function describe(text) {
+      globalThis.fetch = stubRow(id, { content: text, description: text })
+      return metaOf(await (await handler(new Request(`https://illinimarket.com/api/${route}?id=${id}`))).text())
+    }
+
+    // 159 ASCII units then a two-unit emoji: a cut at 160 lands between its halves.
+    const straddling = await describe('x'.repeat(159) + '\u{1F525}' + 'tail')
+    assert.doesNotMatch(straddling.html, LONE_SURROGATE_RE, 'a lone surrogate reached the HTML')
+    assert.doesNotMatch(straddling.html, /�/, 'the cut split an emoji and the encoder replaced the half with U+FFFD')
+    assert.equal(straddling.description, 'x'.repeat(159))
+
+    // Control: an emoji that fits entirely (units 158-159) must survive intact,
+    // or the assertions above are satisfied by stripping every emoji.
+    const fitting = await describe('x'.repeat(158) + '\u{1F525}' + 'tail')
+    assert.equal(fitting.description, 'x'.repeat(158) + '\u{1F525}')
+    assert.doesNotMatch(fitting.html, /�/)
+  })
+
+  /**
+   * The apex 308-redirects to www, so a canonical / og:url / meta-refresh on
+   * the configured apex origin costs every share click an extra hop. When the
+   * request arrived on the www form of the configured host, that is the site.
+   */
+  test(`${endpoint} canonical follows the www host the request arrived on`, async () => {
+    const { default: handler } = await load(endpoint)
+    async function canonicalFor(origin) {
+      globalThis.fetch = stubRow(id, {})
+      return metaOf(await (await handler(new Request(`${origin}/api/${route}?id=${id}`))).text())
+    }
+
+    const www = await canonicalFor('https://www.illinimarket.com')
+    const expected = `https://www.illinimarket.com/#/pages/${page}/index?id=${id}`
+    assert.equal(www.canonical, expected, 'canonical points at the apex, which 308s back to www')
+    assert.equal(www.ogUrl, expected)
+    assert.equal(www.refresh, expected)
+
+    // Controls: no other request host may leak into the canonical — the
+    // configured origin wins for the apex itself, an unrelated www host, and
+    // a plain-http www.
+    for (const origin of ['https://illinimarket.com', 'https://www.attacker.example', 'http://www.illinimarket.com']) {
+      const other = await canonicalFor(origin)
+      assert.equal(other.canonical, `https://illinimarket.com/#/pages/${page}/index?id=${id}`, `${origin} leaked into the canonical`)
+      assert.equal(other.ogUrl, other.canonical)
+      assert.equal(other.refresh, other.canonical)
+    }
+  })
+}
