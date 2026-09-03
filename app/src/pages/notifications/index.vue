@@ -55,7 +55,7 @@
         </view>
         <view class="notif-content">
           <text class="notif-type">{{ t(notificationTypeLabelKey(n.type)) }}</text>
-          <text class="notif-title">{{ n.title }}</text>
+          <text class="notif-title">{{ notificationTitleText(n, t) }}</text>
           <text class="notif-body">{{ notificationBodyText(n, t) }}</text>
           <text class="notif-time">{{ formatTime(n.created_at) }}</text>
         </view>
@@ -79,6 +79,7 @@ import {
   notificationBodyText,
   notificationDestination,
   notificationIcon,
+  notificationTitleText,
   notificationTypeLabelKey,
   useNotifications,
   type Notification,
@@ -173,7 +174,7 @@ function notificationAriaLabel(n: Notification): string {
   return [
     n.is_read ? '' : t('a11y.unread'),
     t(notificationTypeLabelKey(n.type)),
-    n.title,
+    notificationTitleText(n, t),
     notificationBodyText(n, t),
     formatTime(n.created_at),
   ].filter(Boolean).join('. ')

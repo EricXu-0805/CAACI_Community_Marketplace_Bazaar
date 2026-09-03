@@ -44,6 +44,61 @@ export function notificationBodyKey(body: string): { key: string; target: string
   return { key: body || '', target: null }
 }
 
+/*
+ * A trigger writes a fixed title as one bilingual string —
+ * '报价被接受 · Offer accepted' — so both readers read both languages.
+ * The row cannot be composed in the reader's language where it is written: a
+ * trigger fires for whoever is on the other end of the event and does not know
+ * what language they read. The screen resolves it, the same reason the body
+ * sentinels above are keys rather than sentences.
+ *
+ * Rows already in production carry the literal, so the literal is what is
+ * looked up; writers added after 20260903090000 send a sentinel key instead
+ * and land in the same table. A title that is user content — notify_item_sold
+ * (065) writes the item's own title — matches nothing and is rendered as
+ * written.
+ */
+export const NOTIFICATION_TITLE_KEYS: Record<string, string> = {
+  // 051 / 20260717141822 — offers
+  '新报价 · New offer': 'notif.titleNewOffer',
+  '报价被接受 · Offer accepted': 'notif.titleOfferAccepted',
+  '报价被拒绝 · Offer declined': 'notif.titleOfferDeclined',
+  '收到还价 · Counter-offer': 'notif.titleCounterOffer',
+  // 052 / 061 / 063 / 085 / 20260718250000 — meetups
+  '见面提议 · Meetup proposed': 'notif.titleMeetupProposed',
+  '约定已确认 · Meetup confirmed': 'notif.titleMeetupConfirmed',
+  '约定被婉拒 · Meetup declined': 'notif.titleMeetupDeclined',
+  '新的见面提议 · Meetup updated': 'notif.titleMeetupUpdated',
+  '改约请求 · Meetup change requested': 'notif.titleMeetupChangeRequested',
+  // 20260718260000 — nightly reminders
+  '见面提醒 · Meetup reminder': 'notif.titleMeetupReminder',
+  '未读消息 · Unread messages': 'notif.titleUnreadMessages',
+  // 076 / 20260720035037 — enforcement
+  '收到一次警告 · You received a warning': 'notif.titleWarningReceived',
+  '账号已被限制 · Your account was restricted': 'notif.titleAccountRestricted',
+  '一项处置已解除 · One action was lifted': 'notif.titleActionLifted',
+  '账号限制已解除 · Your restriction was lifted': 'notif.titleRestrictionLifted',
+  // 20260903070000 — activity
+  '收到新评价 · New rating': 'notif.titleNewRating',
+  '有人关注了你 · New follower': 'notif.titleNewFollower',
+  '收到新评论 · New comment': 'notif.titleNewComment',
+  '收到新点赞 · New like': 'notif.titleNewLike',
+  '你的评论收到点赞 · Comment liked': 'notif.titleCommentLiked',
+  '卖家已标记售出 · Marked sold': 'notif.titleMarkedSold',
+  // 20260903090000 — moderation outcomes, written as sentinels
+  report_resolved: 'notif.titleReportResolved',
+  report_dismissed: 'notif.titleReportDismissed',
+  appeal_denied: 'notif.titleAppealDenied',
+}
+
+export function notificationTitleText(
+  notification: Notification,
+  translate: (key: string) => string,
+): string {
+  const messageKey = NOTIFICATION_TITLE_KEYS[notification.title]
+  return messageKey ? translate(messageKey) : notification.title
+}
+
 export function notificationDestination(notification: Notification): {
   url: string
   switchTab?: boolean

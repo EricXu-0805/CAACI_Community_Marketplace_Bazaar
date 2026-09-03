@@ -18,6 +18,7 @@ import {
   notificationBodyKey,
   notificationDestination,
   notificationIcon,
+  notificationTitleText,
   notificationToastKind,
   notificationTypeLabelKey,
   type Notification,
@@ -26,6 +27,7 @@ import {
 export {
   notificationDestination,
   notificationIcon,
+  notificationTitleText,
   notificationTypeLabelKey,
 }
 export type { Notification } from '../api/notifications'
@@ -42,6 +44,13 @@ const BODY_SENTINEL_KEYS: Record<string, string> = {
   post_comment: 'notif.postComment',
   post_like: 'notif.postLike',
   post_comment_like: 'notif.commentLike',
+  report_outcome_resolved: 'notif.reportResolved',
+  report_outcome_dismissed: 'notif.reportDismissed',
+  appeal_outcome_denied: 'notif.appealDenied',
+  // notify_suspension_change (20260720035037) writes this one as copy, and
+  // bilingual, so it is looked up by the sentence itself.
+  '另一项账号限制仍在生效 · Another account restriction remains active':
+    'notif.otherRestrictionActive',
 }
 
 /*
@@ -341,7 +350,7 @@ function handleIncoming(row: Notification) {
   const destination = notificationDestination(row)
   pushToast({
     kind: notificationToastKind(row.type),
-    title: row.title,
+    title: notificationTitleText(row, t),
     body: notificationBodyText(row, t) || undefined,
     route: destination.url,
     switchTab: destination.switchTab,

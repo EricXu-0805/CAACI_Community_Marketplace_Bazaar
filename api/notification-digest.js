@@ -214,6 +214,32 @@ const BODY_SENTINELS = {
     zh: '有人点赞了你的评论',
     en: 'Someone liked your comment',
   },
+  report_outcome_resolved: {
+    zh: '我们已复核你的举报并作出处理',
+    en: 'We reviewed your report and acted on it',
+  },
+  report_outcome_dismissed: {
+    zh: '我们已复核你的举报，未发现违规',
+    en: 'We reviewed your report and found no violation',
+  },
+  appeal_outcome_denied: {
+    zh: '你的申诉已复核，账号限制维持不变',
+    en: 'Your appeal was reviewed; the restriction stands',
+  },
+}
+
+/*
+ * Titles are the same story one column over. Every trigger up to and
+ * including 20260903070000 stores one bilingual literal, which this template
+ * prints as it stands; 20260903090000 stores a sentinel instead, and printing
+ * that raw would put "report_resolved" in the subject line of the row. Only
+ * the sentinels are listed — a bilingual literal is still readable, an
+ * identifier is not.
+ */
+const TITLE_SENTINELS = {
+  report_resolved: { zh: '举报已处理', en: 'Report resolved' },
+  report_dismissed: { zh: '举报已结案', en: 'Report closed' },
+  appeal_denied: { zh: '申诉未通过', en: 'Appeal denied' },
 }
 
 /*
@@ -251,12 +277,20 @@ function bodyText(raw, lang) {
   return raw
 }
 
+function titleText(raw, lang) {
+  const forms = TITLE_SENTINELS[raw]
+  if (!forms) return raw
+  if (lang === 'zh') return forms.zh
+  if (lang === 'en') return forms.en
+  return `${forms.zh} · ${forms.en}`
+}
+
 function rowHtml(n, lang) {
   const icon = TYPE_ICON[n.type] || '🔔'
   return `<tr><td style="padding:12px 0;border-bottom:1px solid #ECE5DA;vertical-align:top">
     <span style="display:inline-block;width:26px;height:26px;line-height:26px;text-align:center;border-radius:50%;background:#F5D9CE;color:#A03A24;font-weight:700;font-size:13px">${esc(icon)}</span>
   </td><td style="padding:12px 0 12px 12px;border-bottom:1px solid #ECE5DA">
-    <div style="font-size:15px;font-weight:600;color:#2A2521">${esc(n.title)}</div>
+    <div style="font-size:15px;font-weight:600;color:#2A2521">${esc(titleText(n.title, lang))}</div>
     ${n.body ? `<div style="font-size:13px;color:#6B6459;margin-top:2px">${esc(bodyText(n.body, lang))}</div>` : ''}
   </td></tr>`
 }
