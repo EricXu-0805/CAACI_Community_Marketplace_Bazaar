@@ -163,18 +163,23 @@ function esc(s) {
   ))
 }
 
-const TYPE_ICON = { price_drop: '↓', sold: '✓', offer: '$', meetup: '📍', system: '🔔', unread_message: '✉' }
+const TYPE_ICON = { price_drop: '↓', sold: '✓', offer: '$', meetup: '📍', system: '🔔', unread_message: '✉', rating: '★', follow: '👤', post_comment: '💬', post_like: '♥' }
 
 /*
- * Two triggers write an identifier into notifications.body and match on it to
- * avoid sending the same alert twice — migrations 016 (follows) and
- * 017/066/20260717143223 (saved searches). It is a key, not copy. The app
- * knows that and translates it (BODY_SENTINEL_KEYS in
- * app/src/composables/useNotifications.ts); this template did not, so the one
- * line under the item title read "saved_search_match".
+ * Several triggers write an identifier into notifications.body instead of
+ * copy — migrations 016 (follows), 017/066/20260717143223 (saved searches)
+ * and 20260903070000 (ratings, follows, plaza comments and likes, sold to the
+ * buyer). It is a key, not copy. The app knows that and translates it
+ * (BODY_SENTINEL_KEYS in app/src/composables/useNotifications.ts); this
+ * template did not, so the one line under the item title read
+ * "saved_search_match".
  *
- * Wording is byte-identical to notif.savedSearchMatch / notif.followeeListing
- * so the mail and the notification list say the same thing.
+ * The 20260903070000 keys whose tap target is a post or a person carry it as
+ * '<key>:<uuid>' — see the migration for why that id cannot be a column — so
+ * the key is read off the front rather than matched whole.
+ *
+ * Wording is byte-identical to the notif.* strings so the mail and the
+ * notification list say the same thing.
  */
 const BODY_SENTINELS = {
   saved_search_match: {
@@ -184,6 +189,30 @@ const BODY_SENTINELS = {
   new_listing_from_followee: {
     zh: '你关注的卖家发布了新商品',
     en: 'A seller you follow posted a new listing',
+  },
+  transaction_rating_received: {
+    zh: '有人评价了你的交易',
+    en: 'Someone rated your transaction',
+  },
+  deal_marked_sold: {
+    zh: '卖家已把你的交易标记为已售出',
+    en: 'The seller marked your purchase as sold',
+  },
+  new_follower: {
+    zh: '有人开始关注你',
+    en: 'Someone started following you',
+  },
+  post_comment: {
+    zh: '有人评论了你的动态',
+    en: 'Someone commented on your post',
+  },
+  post_like: {
+    zh: '有人点赞了你的动态',
+    en: 'Someone liked your post',
+  },
+  post_comment_like: {
+    zh: '有人点赞了你的评论',
+    en: 'Someone liked your comment',
   },
 }
 
@@ -205,7 +234,8 @@ function priceText(amount, lang) {
 }
 
 function bodyText(raw, lang) {
-  const forms = BODY_SENTINELS[raw]
+  const keyed = /^([a-z_]+):([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(raw || '')
+  const forms = BODY_SENTINELS[keyed ? keyed[1] : raw]
   if (forms) {
     if (lang === 'zh') return forms.zh
     if (lang === 'en') return forms.en
@@ -294,7 +324,12 @@ const SAMPLE_ROWS = [
 // These are the complete notification types in the current schema, split by
 // whether their content must be routed through a verified conversation. Every
 // unknown/future type is closed until explicitly reviewed for email delivery.
-const SAFE_UNROUTED_NOTIFICATION_TYPES = new Set(['price_drop', 'system', 'sold'])
+// The 20260903070000 activity types carry a fixed bilingual title, a body key
+// and no conversation — no comment text, post excerpt or counterparty name —
+// so they are as safe off-platform as a price drop.
+const SAFE_UNROUTED_NOTIFICATION_TYPES = new Set([
+  'price_drop', 'system', 'sold', 'rating', 'follow', 'post_comment', 'post_like',
+])
 const SAFE_CONVERSATION_NOTIFICATION_TYPES = new Set(['offer', 'meetup', 'unread_message'])
 
 async function supabaseError(prefix, response) {

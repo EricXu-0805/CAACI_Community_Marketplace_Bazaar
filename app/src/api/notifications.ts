@@ -11,6 +11,10 @@ export type NotificationType =
   | 'offer'
   | 'meetup'
   | 'unread_message'
+  | 'rating'
+  | 'follow'
+  | 'post_comment'
+  | 'post_like'
 
 export interface Notification {
   id: string
@@ -25,6 +29,21 @@ export interface Notification {
   created_at: string
 }
 
+/*
+ * notifications.body has been a server-owned key rather than copy since
+ * migrations 016/017 ('new_listing_from_followee', 'saved_search_match'). The
+ * activity triggers in 20260903070000 extend that to '<key>:<uuid>' for the
+ * events whose tap target is a post or a person — neither fits item_id (FK to
+ * items) nor conversation_id. Only that exact shape parses, so a body that is
+ * real copy, such as a meetup's 'Illini Union · 3/5 14:30 CT', comes back
+ * whole.
+ */
+export function notificationBodyKey(body: string): { key: string; target: string | null } {
+  const match = /^([a-z_]+):([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(body || '')
+  if (match) return { key: match[1], target: match[2] }
+  return { key: body || '', target: null }
+}
+
 export function notificationDestination(notification: Notification): {
   url: string
   switchTab?: boolean
@@ -34,6 +53,15 @@ export function notificationDestination(notification: Notification): {
   // inbox is therefore the only destination that is always correct.
   if (notification.type === 'unread_message') {
     return { url: '/pages/messages/index', switchTab: true }
+  }
+  const { key, target } = notificationBodyKey(notification.body)
+  if (target) {
+    if (key === 'new_follower') {
+      return { url: `/pages/seller/index?id=${encodeURIComponent(target)}` }
+    }
+    if (key === 'post_comment' || key === 'post_like' || key === 'post_comment_like') {
+      return { url: `/pages/post/index?id=${encodeURIComponent(target)}` }
+    }
   }
   if (notification.conversation_id) {
     return { url: `/pages/chat/index?id=${encodeURIComponent(notification.conversation_id)}` }
@@ -57,6 +85,10 @@ export function notificationIcon(type: NotificationType): string {
     case 'offer': return 'tag'
     case 'meetup': return 'location-pin'
     case 'unread_message': return 'messages'
+    case 'rating': return 'shield'
+    case 'follow': return 'user-plus'
+    case 'post_comment': return 'chat-bubble'
+    case 'post_like': return 'heart'
     default: return 'bell'
   }
 }
@@ -68,6 +100,10 @@ export function notificationTypeLabelKey(type: NotificationType): string {
     case 'offer': return 'notif.offer'
     case 'meetup': return 'notif.meetup'
     case 'unread_message': return 'nav.messages'
+    case 'rating': return 'notif.rating'
+    case 'follow': return 'notif.follow'
+    case 'post_comment': return 'notif.comment'
+    case 'post_like': return 'notif.like'
     default: return 'notif.system'
   }
 }
@@ -75,7 +111,14 @@ export function notificationTypeLabelKey(type: NotificationType): string {
 export function notificationToastKind(
   type: NotificationType,
 ): 'offer' | 'meetup' | 'sold' | 'price_drop' | 'system' | 'message' {
-  return type === 'unread_message' ? 'message' : type
+  switch (type) {
+    case 'unread_message': return 'message'
+    case 'offer':
+    case 'meetup':
+    case 'sold':
+    case 'price_drop': return type
+    default: return 'system'
+  }
 }
 
 interface PostgrestLikeError {
