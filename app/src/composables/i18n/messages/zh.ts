@@ -198,6 +198,7 @@ const zh: Record<string, string> = {
   'app.updateAvailable': '已发布新版本，刷新以获取最新内容？',
   'app.updateNow': '刷新',
   'app.updateLater': '稍后',
+  'app.routeNotFound': '页面不存在，已回到首页',
   'publish.update': '保存修改',
   'publish.updated': '已更新！',
   'publish.updatedPartial': '已保存，但只上传了 {done}/{total} 张图片，请重试补传',

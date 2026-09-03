@@ -198,6 +198,7 @@ const en: Record<string, string> = {
   'app.updateAvailable': 'A newer version is live. Refresh to get the latest?',
   'app.updateNow': 'Refresh',
   'app.updateLater': 'Later',
+  'app.routeNotFound': 'That page does not exist — back to Home.',
   'publish.update': 'Save Changes',
   'publish.updated': 'Updated!',
   'publish.updatedPartial': 'Saved, but only {done} of {total} photos uploaded — try adding the rest again',

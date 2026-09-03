@@ -876,6 +876,71 @@ function installDocumentTitleSync() {
 }
 
 /*
+ * uni.previewImage on H5 mounts a second Vue app on a <div id="u-a-p"> appended
+ * to <body>, outside the router's page tree, and nothing tears it down when the
+ * route changes. Tapping a photo on the detail page and then pressing browser
+ * Back left the user on Home with the full-screen preview still painted over
+ * it — verified with elementFromPoint, which returned the preview's <img> at
+ * the centre of the home page.
+ *
+ * Hooked on the history events rather than in each page's onHide because the
+ * overlay is global (detail, plaza, post and admin all open it) and every route
+ * leave rewrites the hash — uni.navigateTo, navigateBack, switchTab and
+ * reLaunch included.
+ *
+ * fail keeps this in uni's callback mode; the promise form rejects whenever no
+ * preview is open, which is every ordinary navigation.
+ */
+function installPreviewImageRouteGuard() {
+  if (typeof window === 'undefined') return
+  const close = () => {
+    try { uni.closePreviewImage({ fail: () => {} }) } catch { /* no preview open */ }
+  }
+  window.addEventListener('popstate', close)
+  window.addEventListener('hashchange', close)
+}
+
+/*
+ * uni-app's H5 router has no catch-all route: a hash matching nothing in
+ * pages.json renders no page at all. A returning user (welcomed set, so the
+ * first-run reLaunch to /welcome does not fire) got a white screen with no
+ * text, no tab bar, no error and no way out — the landing spot for stale links
+ * and hand-edited URLs.
+ *
+ * __uniRoutes is the compiled form of pages.json, so it cannot drift from it.
+ * Home is registered as path '/' with alias '/pages/index/index', so both
+ * fields are checked, the way uni's own getRouteOptions does. If the global is
+ * missing we call every route known: a guess must never navigate the user off
+ * a page that was about to render.
+ *
+ * Only '#/'-prefixed hashes are judged. A non-route fragment ('#error=…',
+ * '#access_token=…') belongs to the auth-link handling above.
+ */
+function h5HashRouteIsUnknown(hash: string): boolean {
+  if (!hash.startsWith('#/')) return false
+  const routes = (window as any).__uniRoutes
+  if (!Array.isArray(routes) || routes.length === 0) return false
+  const path = hash.slice(1).split(/[?#]/, 1)[0] || '/'
+  return !routes.some((route: any) => route?.path === path || route?.alias === path)
+}
+
+function rescueUnknownHashRoute() {
+  if (typeof window === 'undefined') return
+  if (!h5HashRouteIsUnknown(window.location.hash || '')) return
+  uni.reLaunch({ url: '/pages/index/index' })
+  setTimeout(() => uni.showToast({
+    title: t('app.routeNotFound'),
+    icon: 'none',
+    duration: 2500,
+  }), 300)
+}
+
+function installUnknownRouteFallback() {
+  if (typeof window === 'undefined') return
+  window.addEventListener('hashchange', rescueUnknownHashRoute)
+}
+
+/*
  * uni.showActionSheet is the app's contextual menu — 22 call sites, and the
  * only destination of every Shift+F10 handler in the app. uni-app renders it
  * as plain <div class="uni-actionsheet__cell"> with no role, no tabindex, and
@@ -1198,6 +1263,8 @@ onLaunch((launchOptions) => {
   installActionSheetKeyboardAccess()
   installModalKeyboardAccess()
   installDocumentTitleSync()
+  installPreviewImageRouteGuard()
+  installUnknownRouteFallback()
   // #endif
   /*
    * SYNCHRONOUS hash-PKCE-code rescue — must run BEFORE the setTimeout
@@ -1413,6 +1480,11 @@ onLaunch((launchOptions) => {
         uni.reLaunch({
           url: `/pages/welcome/index${params.length ? `?${params.join('&')}` : ''}`,
         })
+      } else if (!routedToReset) {
+        // Cold load on an unknown hash: hashchange never fires for it, so the
+        // listener above cannot see it. Runs after the welcome branch so a
+        // first-run user still gets /welcome rather than a bare home redirect.
+        rescueUnknownHashRoute()
       }
     } catch (err) {
       captureException(err, { tags: { source: 'onLaunch.welcomeRouting' }, level: 'error' })
