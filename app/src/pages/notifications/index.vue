@@ -56,7 +56,7 @@
         <view class="notif-content">
           <text class="notif-type">{{ t(notificationTypeLabelKey(n.type)) }}</text>
           <text class="notif-title">{{ notificationTitleText(n, t) }}</text>
-          <text class="notif-body">{{ notificationBodyText(n, t) }}</text>
+          <text class="notif-body">{{ notificationBodyText(n, t, tc) }}</text>
           <text class="notif-time">{{ formatTime(n.created_at) }}</text>
         </view>
         <view v-if="!n.is_read" class="notif-dot"></view>
@@ -92,7 +92,7 @@ import {
 } from '../../composables/accountScope'
 import UIcon from '../../components/UIcon.vue'
 
-const { t, lang } = useI18n()
+const { t, tc, lang } = useI18n()
 const { awaitAuthReady, requireAuth } = useAuth()
 const { notifications, fetchNotifications, markAllRead, markRead, deleteNotification } = useNotifications()
 const loading = ref(true)
@@ -175,7 +175,7 @@ function notificationAriaLabel(n: Notification): string {
     n.is_read ? '' : t('a11y.unread'),
     t(notificationTypeLabelKey(n.type)),
     notificationTitleText(n, t),
-    notificationBodyText(n, t),
+    notificationBodyText(n, t, tc),
     formatTime(n.created_at),
   ].filter(Boolean).join('. ')
 }
