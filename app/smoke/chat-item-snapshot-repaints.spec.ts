@@ -35,7 +35,17 @@ const ME_PROFILE = {
 }
 const SELLER_PROFILE = { id: SELLER, nickname: 'Seller', avatar_url: null }
 
-function conversationRow(itemStatus: string) {
+function conversationRow(itemStatus: string | null) {
+  // itemStatus null models a deleted listing: conversations.item_id is
+  // ON DELETE SET NULL, so the row survives the listing and the embed is empty.
+  if (itemStatus === null) {
+    return {
+      id: CONV, item_id: null, buyer_id: ME, seller_id: SELLER,
+      last_message_at: '2026-08-18T00:00:00Z', created_at: '2026-08-18T00:00:00Z',
+      is_pinned_buyer: false, is_pinned_seller: false, is_muted_buyer: false, is_muted_seller: false,
+      item: null, buyer: ME_PROFILE, seller: SELLER_PROFILE,
+    }
+  }
   return {
     id: CONV, item_id: ITEM, buyer_id: ME, seller_id: SELLER,
     last_message_at: '2026-08-18T00:00:00Z', created_at: '2026-08-18T00:00:00Z',
@@ -49,10 +59,14 @@ function conversationRow(itemStatus: string) {
   }
 }
 
-type Thread = { sellItem: (status: string) => void; failOfferWith: (message: string | null) => void }
+type Thread = {
+  sellItem: (status: string) => void
+  deleteItem: () => void
+  failOfferWith: (message: string | null) => void
+}
 
 async function openThread(page: Page): Promise<Thread> {
-  let itemStatus = 'active'
+  let itemStatus: string | null = 'active'
   let offerFailure: string | null = null
 
   await page.addInitScript(([ref, uid, gen]) => {
@@ -99,6 +113,7 @@ async function openThread(page: Page): Promise<Thread> {
 
   return {
     sellItem: (status: string) => { itemStatus = status },
+    deleteItem: () => { itemStatus = null },
     failOfferWith: (message: string | null) => { offerFailure = message },
   }
 }
@@ -147,4 +162,34 @@ test('an offer that fails for any other reason leaves the thread alone', async (
   expect(await toastText(page)).toMatch(/valid price/i)
   await expect(page.locator('.offer-btn').first(), 'an unrelated failure removed the offer button')
     .toBeVisible()
+})
+
+test('a listing deleted out from under the thread takes its card and its actions with it', async ({ page }) => {
+  /*
+   * Migration 20260903013000 is what first lets a seller delete a listing that
+   * has conversations; conversations.item_id is ON DELETE SET NULL, so the
+   * thread outlives the listing and the conversation read comes back with no
+   * item at all.
+   *
+   * refreshItemSnapshot used to guard on `if (detail.item)`, so exactly that
+   * answer was the one it ignored — leaving the pre-delete row in place, still
+   * reading 'active', with Make offer and Propose meetup live over a listing
+   * that no longer exists. Every tap then failed against the boundary trigger.
+   */
+  const thread = await openThread(page)
+
+  thread.deleteItem()
+  thread.failOfferWith('item_unavailable_for_offer')
+
+  await submitAnOffer(page)
+  await page.waitForTimeout(2_000)
+
+  await expect(page.locator('.offer-btn'), 'the offer button outlived the listing it belongs to')
+    .toHaveCount(0, { timeout: 5_000 })
+  await expect(page.locator('.item-card'), 'the card still advertises a deleted listing')
+    .toHaveCount(0, { timeout: 5_000 })
+
+  // The thread itself must survive: the two people can still talk about what
+  // happened. Only the listing context goes.
+  await expect(page.locator('.chat-thread')).toBeVisible()
 })
