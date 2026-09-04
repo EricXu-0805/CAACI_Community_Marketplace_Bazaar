@@ -38,8 +38,8 @@ test('the corpora were generated against the latest definition of the function',
 
   assert.equal(
     definitions.at(-1),
-    '20260903060000_allow_contact_info_and_layer_ad_detection.sql',
-    'content_moderation_check was redefined after 20260903060000 — regenerate the corpora in '
+    '20260904060000_ad_signals_stop_catching_ordinary_listings.sql',
+    'content_moderation_check was redefined after 20260904060000 — regenerate the corpora in '
       + 'scripts/moderation-contact-and-ad-policy.test.mjs against the new definition before '
       + 'changing this assertion',
   )
