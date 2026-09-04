@@ -14,6 +14,22 @@ import {
 import { fetchArchivedConversationIds } from '../api/conversationArchive'
 import { readAllAscendingKeyset } from '../api/paginatedRead'
 
+/*
+ * The conversation currently on screen, reported by ChatThread — which renders
+ * on the phone chat page and inside the desktop two-pane messages layout, so
+ * one signal covers both.
+ *
+ * subscribeToUserInbox filters on sender_id=neq.<me> and nothing else, so the
+ * handler below fires for every incoming message in every conversation,
+ * including the one being read. Without this, a live back-and-forth put a
+ * centred "New message" toast over the thread on every single reply.
+ */
+let openConversationId: string | null = null
+
+export function setOpenConversation(id: string | null): void {
+  openConversationId = id || null
+}
+
 const unreadCount = ref(0)
 const unreadConvIds = ref<Set<string>>(new Set())
 const hasMutedUnread = ref(false)
@@ -341,7 +357,9 @@ export function useUnread() {
         // refreshUnreadCount above already ran ensureLoaded(), so blockedIds is
         // warm — suppress the toast for a blocked sender (B12).
         const fromBlocked = newMsg?.sender_id && blockedIds.value.has(newMsg.sender_id)
-        if (convId && !mutedSet.has(convId) && !fromBlocked) {
+        // Reading the thread is not the same as being interrupted about it.
+        const reading = !!convId && convId === openConversationId
+        if (convId && !reading && !mutedSet.has(convId) && !fromBlocked) {
           uni.showToast({ title: t('msg.newMessage'), icon: 'none', duration: 2000 })
         }
       },

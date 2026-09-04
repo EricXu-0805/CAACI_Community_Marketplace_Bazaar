@@ -792,8 +792,19 @@ async function ensureTranslation() {
 }
 
 async function toggleTranslate() {
-  translated.value = !translated.value
-  if (translated.value) await ensureTranslation()
+  // Turning it back off is local, so it stays free. Turning it ON needs
+  // /api/translate, which answers 401 without a session — and the old code
+  // flipped the icon first and swallowed that, so a signed-out reader saw the
+  // control switch to its "translated" state over unchanged foreign text.
+  // Save, Report and Chat with Seller on this same screen all route to login.
+  if (translated.value) {
+    translated.value = false
+    return
+  }
+  await awaitAuthReady()
+  if (!requireAuth()) return
+  translated.value = true
+  await ensureTranslation()
 }
 
 watch(lang, async () => {
