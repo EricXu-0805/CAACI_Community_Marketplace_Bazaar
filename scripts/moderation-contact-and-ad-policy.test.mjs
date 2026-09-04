@@ -30,6 +30,11 @@ const MIGRATION = path.join(
   'supabase/migrations/20260903060000_allow_contact_info_and_layer_ad_detection.sql',
 )
 
+const MIGRATION_20260904060000 = path.join(
+  ROOT,
+  'supabase/migrations/20260904060000_ad_signals_stop_catching_ordinary_listings.sql',
+)
+
 const PG_BIN_CANDIDATES = [
   '/opt/homebrew/opt/postgresql@17/bin',
   '/usr/local/opt/postgresql@17/bin',
@@ -130,6 +135,24 @@ const BENIGN = [
   ['benign21', 'Nintendo Switch 游戏卡带三张，打包出'],
 ]
 
+/*
+ * Layer 4 pairs a dual-meaning noun with a solicitation signal, anywhere in the
+ * same text, with no proximity. Not one of the 21 sentences above pairs the
+ * two, so that corpus is structurally blind to the whole rule — it could not
+ * go red no matter what the signal list contained. Every sentence here does
+ * pair them, and every one is an ordinary listing: 兼职 is the seller's own
+ * part-time job, 当天 is same-day pickup, 一手 is original-owner, 详谈 is
+ * "price negotiable", 换钱 is only there as a substring of 换钱包.
+ */
+const BENIGN_INTENT = [
+  ['intent1', '兼职时间不够所以出，当天可自取'],
+  ['intent2', '代购的包，价格可详谈'],
+  ['intent3', '全职上班没时间用了，长期闲置'],
+  ['intent4', '日本代购的化妆品，一手未拆'],
+  ['intent5', '换钱包了，长期闲置的旧钱包出'],
+  ['intent6', '代理商保修还剩半年，需要的可以问我'],
+]
+
 /** Controls. Nothing here is part of either corpus number. */
 const CONTROLS = [
   // still refused, and this migration must not touch them
@@ -159,6 +182,7 @@ const CONTROLS = [
 const ALL_ROWS = [
   ...VARIANTS.map(([id, , text]) => [id, text]),
   ...BENIGN,
+  ...BENIGN_INTENT,
   ...CONTROLS,
 ]
 
@@ -320,6 +344,9 @@ ORDER BY v.id;
 
 const pgBin = findPgBin()
 const MIGRATION_SQL = pgBin ? readFileSync(MIGRATION, 'utf8') : ''
+const MIGRATION_20260904060000_SQL = pgBin
+  ? readFileSync(MIGRATION_20260904060000, 'utf8')
+  : ''
 
 describe('moderation policy: contact info allowed, ads caught in four layers', {
   skip: pgBin ? false : 'no local initdb (PostgreSQL 17) — nothing to run against',
@@ -417,6 +444,8 @@ describe('moderation policy: contact info allowed, ads caught in four layers', {
       variantsBlocked.length, 25,
       `expected production's 25 of 45, got ${variantsBlocked.length}: ${variantsBlocked.join(' ')}`,
     )
+    // BENIGN only: BENIGN_INTENT is about a rule that did not exist yet, and
+    // this assertion is a fixed historical reproduction.
     const benignBlocked = blocked(map, BENIGN.map(([id]) => id))
     assert.deepEqual(
       benignBlocked,
@@ -443,6 +472,7 @@ describe('moderation policy: contact info allowed, ads caught in four layers', {
     before(() => {
       psql(SIBLING_20260903023000)
       psql(MIGRATION_SQL)
+      psql(MIGRATION_20260904060000_SQL)
       map = verdicts()
     })
 
@@ -463,6 +493,21 @@ describe('moderation policy: contact info allowed, ads caught in four layers', {
     it('refuses none of the 21 benign secondhand sentences', () => {
       const refused = blocked(map, BENIGN.map(([id]) => id))
       assert.deepEqual(refused, [], `still refusing: ${refused.join(' ')}`)
+    })
+
+    /*
+     * 20260903060000 shipped layer 4 with eight signals that are ordinary
+     * listing copy — 需要的, 长期, 靠谱, 当天, 一手, 详谈, bare 咨询, 可私 —
+     * and the rule fires on a noun and a signal anywhere in the same text. It
+     * put three of the sentences 20260903023000 had just un-broken straight
+     * back, and worse: the client mirror carries none of these rules, so the
+     * composer accepts the text and every photo uploads before the trigger
+     * refuses, with copy that names no word.
+     */
+    it('refuses none of the listings that merely contain a noun and a signal', () => {
+      const refused = blocked(map, BENIGN_INTENT.map(([id]) => id))
+      assert.deepEqual(refused, [], `layer 4 is still catching ordinary listings: ${refused.join(' ')}`)
+      assert.ok(BENIGN_INTENT.length >= 6, 'lost the corpus that exercises layer 4 at all')
     })
 
     it('every block is still sensitive_word, so the triggers and the copy keep working', () => {
@@ -490,6 +535,7 @@ describe('moderation policy: contact info allowed, ads caught in four layers', {
     before(() => {
       psql(SIBLING_20260903023000)
       psql(MIGRATION_SQL)
+      psql(MIGRATION_20260904060000_SQL)
     })
 
     it('reverting the traditional fold loses exactly the traditional-only ads', () => {
@@ -501,8 +547,12 @@ describe('moderation policy: contact info allowed, ads caught in four layers', {
         .filter(([, isAd]) => isAd)
         .map(([id]) => id)
         .filter(id => mutated.get(id) === 'null')
-      assert.deepEqual(lost, ['ad10', 'ad13', 'ad14', 'ad15'])
+      // ad40 (ＪＩＡＮＺＨＩ 日結 招人) joined this set in 20260904060000: with
+      // jianzhi moved from a bare keyword to an intent noun it needs two
+      // signals, and without the fold 日結 never becomes 日结.
+      assert.deepEqual(lost, ['ad10', 'ad13', 'ad14', 'ad15', 'ad40'])
       psql(MIGRATION_SQL)
+      psql(MIGRATION_20260904060000_SQL)
     })
 
     it('emptying the intent table loses exactly the pair-only ads', () => {
@@ -512,10 +562,14 @@ describe('moderation policy: contact info allowed, ads caught in four layers', {
         .filter(([, isAd]) => isAd)
         .map(([id]) => id)
         .filter(id => mutated.get(id) === 'null')
+      // ad31/ad32/ad40 joined this set in 20260904060000. Their keywords —
+      // 戴考, 黛购, jianzhi — were bare substrings that also matched 戴考虑一下,
+      // 黛购物袋 and the name Jian Zhi, so they became intent nouns instead and
+      // now depend on this table like the other pair-only ads.
       assert.deepEqual(
         lost,
         ['ad02', 'ad09', 'ad13', 'ad16', 'ad18', 'ad19', 'ad20', 'ad21',
-          'ad30', 'ad33', 'ad35', 'ad37'],
+          'ad30', 'ad31', 'ad32', 'ad33', 'ad35', 'ad37', 'ad40'],
       )
       psql('UPDATE public.moderation_intent_rules SET active = true;')
     })
@@ -528,6 +582,7 @@ describe('moderation policy: contact info allowed, ads caught in four layers', {
         assert.equal(mutated.get(id), 'contact_info', `${id} should be refused again`)
       }
       psql(MIGRATION_SQL)
+      psql(MIGRATION_20260904060000_SQL)
     })
   })
 })
