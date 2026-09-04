@@ -5455,3 +5455,93 @@ test('consumer readiness requires both inbox and notification snapshots to apply
   assert.ok(notificationWatchStart >= 0 && notificationWatchEnd > notificationWatchStart)
   assert.match(notificationWatchBlock, /startNotificationsListener\(u\.id, \(isListenerCurrent\) => \{[\s\S]*?return fetchNotifications\(isListenerCurrent\)\.then\(\(reconciled\) => \{[\s\S]*?throw new Error\('notification_reconcile_failed'\)/)
 })
+
+test('no "New message" toast for the conversation being read, but still for the others', async () => {
+  /*
+   * subscribeToUserInbox filters on sender_id=neq.<me> and nothing else, so the
+   * handler fires for every incoming message in every conversation — including
+   * the one on screen. Before setOpenConversation the only guards were mute and
+   * blocked, so a live back-and-forth put a centred toast over the thread on
+   * every single reply, on top of the bubble the reader could already see.
+   */
+  const userId = '11111111-1111-4111-8111-111111111111'
+  const peer = '22222222-2222-4222-8222-222222222222'
+  const openConv = 'conversation-being-read'
+  const otherConv = 'conversation-in-the-background'
+  const conversations = [openConv, otherConv].map(id => ({
+    id, buyer_id: userId, seller_id: peer, is_muted_buyer: false, is_muted_seller: false,
+  }))
+  const toasts = []
+  let onNewMessage
+
+  const supabase = createUnreadSnapshotSupabase(() => Promise.resolve({
+    data: conversations.map(conversation => ({ ...conversation, unread_messages: [] })),
+    error: null,
+  }))
+  const module = await loadFreshUseUnread({
+    ref: value => ({ value }),
+    // The subscription is started by the immediate watch on currentUser, so a
+    // no-op watch would leave onNewMessage undefined.
+    watch: (state, callback, options) => {
+      if (options?.immediate) callback(state.value, undefined)
+      return () => {}
+    },
+    useSupabase: () => ({ supabase }),
+    useAuth: () => ({ currentUser: { value: { id: userId } } }),
+    useI18n: () => ({ t: key => key }),
+    subscribeToUserInbox: (_id, handler) => { onNewMessage = handler; return () => {} },
+    invalidateConversations: () => {},
+    applyIncomingMessage: () => true,
+    useMessages: () => ({ fetchConversations: async () => true }),
+    useModeration: () => ({
+      blockedIds: { value: new Set() },
+      ensureLoaded: async () => ({ ok: true }),
+    }),
+    captureAccountRequest: requestedUserId => ({ userId: requestedUserId, generation: 1 }),
+    getActiveAccountId: () => userId,
+    isAccountRequestCurrent: token => token?.userId === userId,
+    onAccountTransition: () => () => {},
+    fetchArchivedConversationIds: async () => new Set(),
+  })
+
+  const previousUni = globalThis.uni
+  globalThis.uni = { showToast: notice => toasts.push(notice.title) }
+  const unread = module.useUnread()
+  try {
+    assert.equal(typeof onNewMessage, 'function')
+    module.setOpenConversation(openConv)
+
+    await onNewMessage({
+      id: '33333333-3333-4333-8333-333333333331',
+      conversation_id: openConv, sender_id: peer, content: 'can you go a bit cheaper?',
+      message_type: 'text', is_read: false, created_at: '2026-09-04T00:00:01.000Z',
+    })
+    assert.deepEqual(toasts, [],
+      'a reply in the thread on screen must not be announced over the thread on screen')
+
+    // Control: the suppression has to be scoped to the open conversation, not
+    // a toast that stopped working.
+    await onNewMessage({
+      id: '33333333-3333-4333-8333-333333333332',
+      conversation_id: otherConv, sender_id: peer, content: 'is the desk still there?',
+      message_type: 'text', is_read: false, created_at: '2026-09-04T00:00:02.000Z',
+    })
+    assert.deepEqual(toasts, ['msg.newMessage'],
+      'a reply in another conversation must still be announced')
+
+    // Leaving the thread restores the toast for it.
+    module.setOpenConversation(null)
+    await onNewMessage({
+      id: '33333333-3333-4333-8333-333333333333',
+      conversation_id: openConv, sender_id: peer, content: 'still around?',
+      message_type: 'text', is_read: false, created_at: '2026-09-04T00:00:03.000Z',
+    })
+    assert.deepEqual(toasts, ['msg.newMessage', 'msg.newMessage'],
+      'closing the thread must put its notifications back')
+  } finally {
+    module.setOpenConversation(null)
+    unread.stopListening()
+    if (previousUni === undefined) delete globalThis.uni
+    else globalThis.uni = previousUni
+  }
+})

@@ -444,7 +444,7 @@ import { useMeetups } from '../composables/useMeetups'
 import { CAMPUS_SPOTS, localizeLocation, matchSpot } from '../composables/useCampusSpots'
 import { usePresence } from '../composables/usePresence'
 import { useItems } from '../composables/useItems'
-import { useUnread } from '../composables/useUnread'
+import { useUnread, setOpenConversation } from '../composables/useUnread'
 import { useI18n } from '../composables/useI18n'
 import { useModeration } from '../composables/useModeration'
 import { useLongPress } from '../composables/useLongPress'
@@ -1149,9 +1149,22 @@ onMounted(async () => {
   await openConversationBehindModerationGate()
 })
 
+/*
+ * The inbox subscription is session-wide, so it cannot tell on its own whether
+ * a message belongs to the thread being read. Report that here: this component
+ * is what renders a thread on the phone page and in the desktop two-pane
+ * layout, and conversationId is already cleared and reassigned as the pane
+ * switches between conversations.
+ */
+watch(conversationId, id => setOpenConversation(id || null), { immediate: true })
+
+// The open-conversation signal is cleared inside, after `mounted = false`:
+// clearing that flag first is the teardown invariant
+// product-journey-state-boundary pins, and nothing here depends on the order.
 onUnmounted(() => {
   mounted = false
   reportLoading.cancel()
+  setOpenConversation(null)
   stopAccountTransitionListener()
   teardownThreadSubscriptions()
   resetOffers()
