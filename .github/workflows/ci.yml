@@ -75,10 +75,6 @@ jobs:
         working-directory: app
         run: npm ci --legacy-peer-deps
 
-      - name: Audit production dependencies
-        working-directory: app
-        run: npm audit --omit=dev --audit-level=moderate
-
       # The manifest is the only thing standing between a silently edited
       # migration and a production apply. RUNBOOK documented this as a command
       # to run by hand, which meant it was never run.
@@ -89,6 +85,45 @@ jobs:
       - name: API and client boundary tests
         working-directory: app
         run: node --test ../api/*.test.mjs ../scripts/*.test.mjs smoke/*.test.mjs
+
+      # Last in the job, because it is the only step here that depends on a
+      # third party. On 2026-09-03 npm's audit endpoint answered 400 and took
+      # this whole required check down before a single boundary test ran: a red
+      # named "Boundary regressions" in which no boundary regression had been
+      # evaluated. Ordering it after the tests means a registry outage can no
+      # longer hide whether our own code passed.
+      #
+      # The same endpoint then went on to hang rather than answer, and the old
+      # step had no timeout, so a degraded registry could hold a required check
+      # open instead of failing it. Each attempt is now bounded.
+      #
+      # A real advisory is deterministic, so it fails on the first attempt and
+      # is never retried away — only a registry that did not answer is retried.
+      # If it never answers the step still fails: "we could not check" must not
+      # be allowed to read as "nothing to report".
+      - name: Audit production dependencies
+        working-directory: app
+        run: |
+          for attempt in 1 2 3; do
+            status=0
+            output=$(timeout 180 npm audit --omit=dev --audit-level=moderate 2>&1) || status=$?
+            echo "$output"
+            if [ "$status" -eq 0 ]; then exit 0; fi
+            if [ "$status" -eq 124 ]; then
+              reason="timed out after 180s"
+            else
+              case "$output" in
+                *"audit endpoint returned an error"*|*"network timeout"*|*"ENOTFOUND"*|*"ECONNRESET"*)
+                  reason="did not reach the registry" ;;
+                *)
+                  exit "$status" ;;
+              esac
+            fi
+            echo "::warning::npm audit $reason (attempt $attempt/3)"
+            if [ "$attempt" -lt 3 ]; then sleep $((attempt * 15)); fi
+          done
+          echo "::error::npm audit could not reach the registry after 3 attempts"
+          exit 1
 
   build-h5:
     name: Build H5
