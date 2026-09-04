@@ -22,10 +22,17 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Production dependencies do not change on their own; advisories against them
+  # do. This is what keeps the audit honest once it stops running on every PR.
+  schedule:
+    - cron: '0 9 * * 1'
   workflow_dispatch:
 
 permissions:
   contents: read
+  # Reading which files a pull request touches, to decide whether the audit has
+  # anything new to look at.
+  pull-requests: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -101,6 +108,32 @@ jobs:
       # is never retried away — only a registry that did not answer is retried.
       # If it never answers the step still fails: "we could not check" must not
       # be allowed to read as "nothing to report".
+      # npm's audit endpoint answered 400 and then stopped answering for most of
+      # 2026-09-03/04, and every pull request waited out three 180s attempts on
+      # it — to re-check a dependency tree it had not touched. `--omit=dev`
+      # reads production dependencies, which cannot change unless one of these
+      # two files does. The weekly schedule above is what catches an advisory
+      # published against a tree nobody edited.
+      - name: Do production dependencies change here?
+        id: deps
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files=$(gh api --paginate \
+            "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            --jq '.[].filename')
+          if grep -qxE 'app/package(-lock)?\.json' <<<"$files"; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Production dependencies untouched here; the audit runs on push to main and on the weekly schedule."
+          fi
+
       # Node 22 bundles npm 10.9.8, which posts audits to
       # /-/npm/v1/security/audits/quick. On 2026-09-03 the registry answered
       # that path with HTTP 400 and "This endpoint is being retired. Use the
@@ -114,9 +147,11 @@ jobs:
       # moving NODE_VERSION would change the runtime under both uni-app builds
       # for a reason that has nothing to do with them.
       - name: Use an npm whose audit endpoint is still served
+        if: steps.deps.outputs.changed == 'true'
         run: npm install -g npm@11
 
       - name: Audit production dependencies
+        if: steps.deps.outputs.changed == 'true'
         working-directory: app
         run: |
           for attempt in 1 2 3; do
