@@ -101,6 +101,21 @@ jobs:
       # is never retried away — only a registry that did not answer is retried.
       # If it never answers the step still fails: "we could not check" must not
       # be allowed to read as "nothing to report".
+      # Node 22 bundles npm 10.9.8, which posts audits to
+      # /-/npm/v1/security/audits/quick. On 2026-09-03 the registry answered
+      # that path with HTTP 400 and "This endpoint is being retired. Use the
+      # bulk advisory endpoint instead", and on every run since it simply
+      # stopped answering — three 180s attempts, twice in a row, on main.
+      # npm 11 posts to /-/npm/v1/security/advisories/bulk instead, which
+      # returns this project's advisories normally (27 low, none at the
+      # moderate gate, so a healthy audit still exits 0).
+      #
+      # Scoped to this job on purpose: nothing else here needs npm 11, and
+      # moving NODE_VERSION would change the runtime under both uni-app builds
+      # for a reason that has nothing to do with them.
+      - name: Use an npm whose audit endpoint is still served
+        run: npm install -g npm@11
+
       - name: Audit production dependencies
         working-directory: app
         run: |
