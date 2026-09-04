@@ -64,10 +64,35 @@ const BODY_SENTINEL_KEYS: Record<string, string> = {
  */
 const PRICE_BODY_RE = /^\$(\d+(?:\.\d+)?)(?: → \$(\d+(?:\.\d+)?))?$/
 
+/*
+ * seed_digest_reminders (20260718260000) writes this body as a sentence with
+ * the count interpolated into it, in both languages:
+ *   '你有 3 条未读消息 · 3 unread messages'
+ * It cannot be a BODY_SENTINEL_KEY, because a key cannot carry a count — so
+ * #317 resolved the headline above it and this line fell through to the raw
+ * column. The notifications list read as a localized headline over a
+ * half-Chinese, half-English body, and it is the only body shape left that
+ * does that.
+ *
+ * The count is recoverable from the sentence, so this needs no migration and
+ * repairs the rows already written.
+ */
+const UNREAD_COUNT_BODY_RE = /^你有\s*(\d+)\s*条未读消息\s*·\s*\d+\s*unread messages?$/
+
 export function notificationBodyText(
   notification: Notification,
   translate: (key: string) => string,
+  translateCount?: (key: string, n: number, params?: Record<string, string | number>) => string,
 ): string {
+  const unread = UNREAD_COUNT_BODY_RE.exec(notification.body || '')
+  if (unread) {
+    const count = Number(unread[1])
+    // English needs plural agreement; without tc the caller still gets one
+    // language rather than two.
+    return translateCount
+      ? translateCount('notif.unreadMessages', count, { count })
+      : translate('notif.unreadMessages').replace('{count}', String(count))
+  }
   const messageKey = BODY_SENTINEL_KEYS[notificationBodyKey(notification.body).key]
   if (messageKey) return translate(messageKey)
   const amounts = PRICE_BODY_RE.exec(notification.body || '')
@@ -346,12 +371,12 @@ function handleIncoming(row: Notification) {
   if (!isFirstLiveDelivery || wasLocallyRead) return
   // Already rendered in-list on the notifications page — don't double-surface.
   if (currentPageIsNotifications()) return
-  const { t } = useI18n()
+  const { t, tc } = useI18n()
   const destination = notificationDestination(row)
   pushToast({
     kind: notificationToastKind(row.type),
     title: notificationTitleText(row, t),
-    body: notificationBodyText(row, t) || undefined,
+    body: notificationBodyText(row, t, tc) || undefined,
     route: destination.url,
     switchTab: destination.switchTab,
     onTap: () => { void markReadById(row.id) },

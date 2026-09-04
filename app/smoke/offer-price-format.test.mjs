@@ -130,11 +130,19 @@ async function loadNotificationBodyText() {
     notifications.indexOf('\n', notifications.indexOf('const PRICE_BODY_RE =')),
   )
   assert.ok(priceRe.includes('/'), 'useNotifications.ts no longer declares PRICE_BODY_RE')
+  // The unread-count body is resolved by its own pattern, and the function
+  // below closes over it, so it has to come along.
+  const unreadRe = notifications.slice(
+    notifications.indexOf('const UNREAD_COUNT_BODY_RE ='),
+    notifications.indexOf('\n', notifications.indexOf('const UNREAD_COUNT_BODY_RE =')),
+  )
+  assert.ok(unreadRe.includes('/'), 'useNotifications.ts no longer declares UNREAD_COUNT_BODY_RE')
   const body = extract(notifications, 'export function notificationBodyText(', 'notificationBodyText')
     .replace('export function', 'function')
     .replace(/notification: Notification,/, 'notification,')
     .replace(/translate: \(key: string\) => string,/, 'translate,')
-  const js = `${formatPrice}\n${bodyKey}\n${sentinels}\n${priceRe}\n${body}`
+    .replace(/translateCount\?: .*=> string,/, 'translateCount,')
+  const js = `${formatPrice}\n${bodyKey}\n${sentinels}\n${priceRe}\n${unreadRe}\n${body}`
     .replace(/\): string \{/g, ') {')
   return new Function(`${js}\nreturn notificationBodyText`)()
 }

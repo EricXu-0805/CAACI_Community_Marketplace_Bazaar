@@ -429,6 +429,7 @@ const zh: Record<string, string> = {
   'notif.like': '点赞',
   'notif.ratingReceived': '有人评价了你的交易',
   'notif.dealMarkedSold': '卖家已把你的交易标记为已售出',
+  'notif.unreadMessages': '你有 {count} 条未读消息',
   'notif.newFollower': '有人开始关注你',
   'notif.postComment': '有人评论了你的动态',
   'notif.postLike': '有人点赞了你的动态',

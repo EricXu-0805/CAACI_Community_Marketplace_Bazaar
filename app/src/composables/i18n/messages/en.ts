@@ -431,6 +431,7 @@ const en: Record<string, string> = {
   'notif.like': 'Like',
   'notif.ratingReceived': 'Someone rated your transaction',
   'notif.dealMarkedSold': 'The seller marked your purchase as sold',
+  'notif.unreadMessages': 'You have {count} unread message|You have {count} unread messages',
   'notif.newFollower': 'Someone started following you',
   'notif.postComment': 'Someone commented on your post',
   'notif.postLike': 'Someone liked your post',
