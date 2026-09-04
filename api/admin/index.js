@@ -583,6 +583,128 @@ const REPORT_STATUSES = new Set(['pending', 'reviewed', 'resolved', 'dismissed']
 const BULK_REPORT_STATUSES = new Set(['reviewed', 'resolved', 'dismissed'])
 const REPORT_TARGET_TYPES = new Set(['item', 'user', 'message', 'post', 'comment'])
 const TAKEDOWN_TARGET_TYPES = new Set(['item', 'post', 'comment'])
+
+/*
+ * A takedown hides the row and does nothing to the photo.
+ *
+ * item-images is public = true, and 068_storage_list_lockdown says it outright:
+ * public reads by URL bypass RLS entirely. api/share.js already published that
+ * exact URL as the og:image of a crawlable page, so it is baked into every
+ * link-preview card the listing was forwarded with. A listing pulled because
+ * its photo showed a student's child or their front door kept serving it.
+ *
+ * The seller's own delete button already does better than the moderator's
+ * takedown — useItems.ts hard-DELETEs the row and removes the objects.
+ *
+ * Moved rather than deleted (Eric's call, 2026-09-04): the takedown is a soft
+ * hide precisely so the evidence survives, and an appeal is decided on what
+ * was actually posted. The reporter's ask is that the photo stop being served,
+ * and leaving the public bucket is exactly that.
+ *
+ * comment is a takedown target too, but post_comments has no media column, so
+ * it has nothing here to move.
+ */
+const TAKEDOWN_MEDIA_TABLES = { item: 'items', post: 'posts' }
+const PUBLIC_ITEM_IMAGE_PREFIX = '/storage/v1/object/public/item-images/'
+const TAKEDOWN_EVIDENCE_BUCKET = 'moderation-evidence'
+
+/*
+ * images is a user-writable column, so every entry here is input, and two
+ * things a first draft of this got wrong are worth naming:
+ *
+ *   · new URL() resolves `..` before you ever see it, so checking for the
+ *     literal segment finds nothing —
+ *     .../item-images/items/<uid>/../../banners/x.png normalizes to
+ *     .../item-images/banners/x.png and reads as an ordinary key.
+ *   · the origin has to be checked, or https://evil.test/<same path> yields
+ *     the same key and moves whatever it names.
+ *
+ * Neither escapes the bucket, but both let an author name an object that is
+ * not theirs — someone else's listing photo, pulled out of the public bucket
+ * by taking down their own post. So the shape is pinned instead: an object
+ * directly under the author's own folder, which is where uploads put them
+ * (the client's ownedItemImagePath enforces the same contract).
+ */
+function takenDownObjectKeys(images, ownerId) {
+  if (!isUuid(ownerId)) return []
+  let expectedOrigin
+  try { expectedOrigin = new URL(SUPABASE_URL).origin } catch { return [] }
+  const keys = []
+  for (const url of Array.isArray(images) ? images : []) {
+    if (typeof url !== 'string') continue
+    let parsed
+    try { parsed = new URL(url) } catch { continue }
+    if (parsed.origin !== expectedOrigin) continue
+    if (!parsed.pathname.startsWith(PUBLIC_ITEM_IMAGE_PREFIX)) continue
+    let key
+    try { key = decodeURIComponent(parsed.pathname.slice(PUBLIC_ITEM_IMAGE_PREFIX.length)) } catch { continue }
+    const segments = key.split('/')
+    if (segments.length !== 3) continue
+    if (segments[0] !== 'items' || segments[1] !== ownerId) continue
+    if (!segments[2] || segments[2] === '.' || segments[2] === '..') continue
+    if (!keys.includes(key)) keys.push(key)
+  }
+  return keys
+}
+
+/*
+ * Read before the mutation, not after: afterwards the row is status='deleted',
+ * and depending on one fewer thing having gone right is worth the ordering.
+ */
+async function readTakedownMedia(targetType, targetId) {
+  const table = TAKEDOWN_MEDIA_TABLES[targetType]
+  if (!table) return []
+  try {
+    const { response, text } = await adminFetch(
+      `${SUPABASE_URL}/rest/v1/${table}?id=eq.${targetId}&select=images,user_id`,
+      { headers: supabaseHeaders(SERVICE_KEY) },
+    )
+    if (!response.ok) return []
+    const rows = parseUpstreamJson(text)
+    const row = Array.isArray(rows) ? rows[0] : null
+    return takenDownObjectKeys(row?.images, row?.user_id)
+  } catch {
+    return []
+  }
+}
+
+async function stashTakenDownMedia(targetType, targetId, keys) {
+  const unmoved = []
+  for (const key of keys) {
+    try {
+      const { response } = await adminFetch(
+        `${SUPABASE_URL}/storage/v1/object/move`,
+        {
+          method: 'POST',
+          headers: supabaseHeaders(SERVICE_KEY, '', { 'Content-Type': 'application/json' }),
+          body: JSON.stringify({
+            bucketId: 'item-images',
+            sourceKey: key,
+            destinationBucket: TAKEDOWN_EVIDENCE_BUCKET,
+            destinationKey: key,
+          }),
+        },
+      )
+      // Gone from the public bucket is the desired state however it got there —
+      // a replayed idempotency key, or the same content taken down twice.
+      if (!response.ok && response.status !== 404) unmoved.push(key)
+    } catch {
+      unmoved.push(key)
+    }
+  }
+  if (unmoved.length) {
+    // The row is hidden either way. What failed is the part the reporter
+    // actually asked for, so it does not get to be silent. Counts only: the
+    // keys are the paths of somebody's photographs.
+    await reportToSentry('takedown left media in the public bucket', {
+      target_type: targetType,
+      target_id: targetId,
+      unmoved: unmoved.length,
+      total: keys.length,
+    })
+  }
+  return { moved: keys.length - unmoved.length, unmoved: unmoved.length }
+}
 const APPEAL_DECISIONS = new Set([
   'accepted', 'denied', 'more_information_required',
 ])
@@ -1539,12 +1661,17 @@ async function handlePost(request, auth) {
     if (!isUuid(body.target_id)) return json({ error: 'invalid_id' }, 400)
     if (!body.reason) return json({ error: 'missing_args' }, 400)
     if (!isModerationReason(body.reason)) return json({ error: 'invalid_reason' }, 400)
-    return json(await executeAdminMutation(request, auth, {
+    const takedownMedia = await readTakedownMedia(body.target_type, body.target_id)
+    const takedown = await executeAdminMutation(request, auth, {
       action: body.action,
       target_type: body.target_type,
       target_id: body.target_id,
       reason: normalizedModerationReason(body.reason),
-    }))
+    })
+    if (takedownMedia.length) {
+      await stashTakenDownMedia(body.target_type, body.target_id, takedownMedia)
+    }
+    return json(takedown)
   }
 
   if (body.action === 'set_post_pinned') {

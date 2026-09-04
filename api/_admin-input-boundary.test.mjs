@@ -437,6 +437,12 @@ test('all twelve JSON write actions use the one atomic mutation RPC', async () =
   for (const body of bodies) {
     const calls = []
     globalThis.fetch = authenticatedFetch(calls, async (url, init) => {
+      // A takedown reads the target's media first, to know what to move out of
+      // the public bucket once the row is hidden. That is a GET and changes
+      // nothing; the invariant here is that nothing *writes* outside the RPC.
+      if ((init?.method || 'GET').toUpperCase() === 'GET') {
+        return new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } })
+      }
       assert.equal(url.pathname, '/rest/v1/rpc/admin_execute_mutation')
       assert.equal(JSON.parse(init.body).p_action, body.action)
       return new Response(JSON.stringify(validMutationResult(body)), {
@@ -447,13 +453,14 @@ test('all twelve JSON write actions use the one atomic mutation RPC', async () =
     const handler = await loadHandler()
     const response = await handler(adminPost(body))
     assert.equal(response.status, 200, body.action)
-    const businessPaths = calls
+    const businessWrites = calls
+      .filter(call => (call.init?.method || 'GET').toUpperCase() !== 'GET')
       .map(call => call.url.pathname)
       .filter(path => ![
         '/rest/v1/rpc/edge_rate_hit',
         '/rest/v1/rpc/admin_token_authorization_v2',
       ].includes(path))
-    assert.deepEqual(businessPaths, ['/rest/v1/rpc/admin_execute_mutation'], body.action)
+    assert.deepEqual(businessWrites, ['/rest/v1/rpc/admin_execute_mutation'], body.action)
   }
 })
 
@@ -1178,4 +1185,137 @@ test('appeal lifecycle sentinels map to stable definitive HTTP outcomes', async 
     assert.equal(response.status, status, providerMessage)
     assert.deepEqual(await response.json(), { error }, providerMessage)
   }
+})
+
+/*
+ * A takedown is a soft hide: it sets status='deleted' and stops there. But
+ * item-images is a public bucket, and 068_storage_list_lockdown says public
+ * reads by URL bypass RLS entirely — so a listing pulled because its photo
+ * showed somebody's child kept serving that photo, at a URL api/share.js had
+ * already published as the og:image of a crawlable page.
+ *
+ * The photo is moved out of the public bucket rather than deleted, because the
+ * soft hide exists so an appeal can be decided on what was actually posted.
+ */
+const TAKEN_DOWN_ITEM = '99999999-9999-4999-8999-999999999999'
+const OWNER_DIR = '11111111-1111-4111-8111-111111111111'
+
+function takedownFetch(calls, images, { moveStatus = 200 } = {}) {
+  return authenticatedFetch(calls, (url) => {
+    if (url.pathname === '/rest/v1/items' || url.pathname === '/rest/v1/posts') {
+      return new Response(JSON.stringify([{ images, user_id: OWNER_DIR }]), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    if (url.pathname === '/rest/v1/rpc/admin_execute_mutation') {
+      return new Response(JSON.stringify({ data: { ok: true, affected: 1 } }), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    if (url.pathname === '/storage/v1/object/move') {
+      return new Response('{}', { status: moveStatus })
+    }
+    if (url.hostname !== 'supabase.test') return new Response('{}', { status: 200 })
+    throw new Error(`unexpected business call ${url.pathname}`)
+  })
+}
+
+const moves = calls => calls
+  .filter(call => call.url.pathname === '/storage/v1/object/move')
+  .map(call => JSON.parse(call.init.body))
+
+test('a taken-down listing has its photos moved out of the public bucket', async () => {
+  const calls = []
+  globalThis.fetch = takedownFetch(calls, [
+    `https://supabase.test/storage/v1/object/public/item-images/items/${OWNER_DIR}/a.jpg`,
+    `https://supabase.test/storage/v1/object/public/item-images/items/${OWNER_DIR}/b.jpg`,
+  ])
+  const handler = await loadHandler()
+  const response = await handler(adminPost({
+    action: 'takedown_content', target_type: 'item', target_id: TAKEN_DOWN_ITEM, reason: 'spam',
+  }))
+
+  assert.equal(response.status, 200)
+  assert.deepEqual(moves(calls), [
+    { bucketId: 'item-images', sourceKey: `items/${OWNER_DIR}/a.jpg`,
+      destinationBucket: 'moderation-evidence', destinationKey: `items/${OWNER_DIR}/a.jpg` },
+    { bucketId: 'item-images', sourceKey: `items/${OWNER_DIR}/b.jpg`,
+      destinationBucket: 'moderation-evidence', destinationKey: `items/${OWNER_DIR}/b.jpg` },
+  ])
+
+  // The photos are read before the row is hidden, so the read cannot depend on
+  // the mutation having gone through first.
+  const order = calls.map(call => call.url.pathname)
+  assert.ok(
+    order.indexOf('/rest/v1/items') < order.indexOf('/rest/v1/rpc/admin_execute_mutation'),
+    'the media was read after the takedown, when the row is already hidden',
+  )
+})
+
+test('a takedown target that cannot carry a photo touches storage at all', async () => {
+  // Control. Without it the assertions above are satisfied by code that fires
+  // a move for every takedown, including ones with nothing to move.
+  for (const targetType of ['comment']) {
+    const calls = []
+    globalThis.fetch = takedownFetch(calls, [])
+    const handler = await loadHandler()
+    const response = await handler(adminPost({
+      action: 'takedown_content', target_type: targetType, target_id: TAKEN_DOWN_ITEM, reason: 'spam',
+    }))
+    assert.equal(response.status, 200)
+    assert.deepEqual(moves(calls), [], `${targetType} has no media column, so nothing should move`)
+  }
+})
+
+test('a takedown of a listing with no photos moves nothing', async () => {
+  const calls = []
+  globalThis.fetch = takedownFetch(calls, [])
+  const handler = await loadHandler()
+  const response = await handler(adminPost({
+    action: 'takedown_content', target_type: 'item', target_id: TAKEN_DOWN_ITEM, reason: 'spam',
+  }))
+  assert.equal(response.status, 200)
+  assert.deepEqual(moves(calls), [])
+})
+
+test('a stored image URL cannot address anything but its own public bucket', async () => {
+  /*
+   * items.images is user-writable, so these strings are input. A value that
+   * names another bucket, walks up out of the prefix, or is not a URL at all
+   * must never become a move request.
+   */
+  const calls = []
+  globalThis.fetch = takedownFetch(calls, [
+    'https://supabase.test/storage/v1/object/public/banners/managed/secret.png',
+    `https://supabase.test/storage/v1/object/public/item-images/items/${OWNER_DIR}/../../banners/x.png`,
+    'https://evil.test/storage/v1/object/public/item-images/items/x/y.jpg',
+    '/storage/v1/object/public/item-images/items/x/y.jpg',
+    'not a url at all',
+    null,
+    42,
+    // The one legitimate entry, so this is not satisfied by refusing everything.
+    `https://supabase.test/storage/v1/object/public/item-images/items/${OWNER_DIR}/ok.jpg`,
+  ])
+  const handler = await loadHandler()
+  await handler(adminPost({
+    action: 'takedown_content', target_type: 'item', target_id: TAKEN_DOWN_ITEM, reason: 'spam',
+  }))
+
+  assert.deepEqual(moves(calls).map(move => move.sourceKey), [`items/${OWNER_DIR}/ok.jpg`])
+})
+
+test('a takedown still succeeds when the photo cannot be moved', async () => {
+  // The row is hidden either way, and refusing the takedown because storage
+  // was unreachable would leave the listing up as well as the photo.
+  const calls = []
+  globalThis.fetch = takedownFetch(calls, [
+    `https://supabase.test/storage/v1/object/public/item-images/items/${OWNER_DIR}/a.jpg`,
+  ], { moveStatus: 500 })
+  const handler = await loadHandler()
+  const response = await handler(adminPost({
+    action: 'takedown_content', target_type: 'item', target_id: TAKEN_DOWN_ITEM, reason: 'spam',
+  }))
+
+  assert.equal(response.status, 200)
+  assert.equal(moves(calls).length, 1)
 })
