@@ -89,7 +89,9 @@ const SENSITIVE_WORDS_ZH = [
   '代写', '代考', '代课', '代发', '刷单', '刷赞', '刷粉',
   '招嫖', '援交', '一夜情', '约炮',
   '赌博', '博彩', '私彩', '菠菜',
-  '办证', '发票', '假证', '假币',
+  // 发票 came off in 20260903023000: it is the word for a receipt, so it
+  // refused 带发票 / 有发票吗？ — routine in Chinese secondhand listings.
+  '办证', '假证', '假币',
   '贷款', '套现', '黑户',
   // Currency exchange (compliance: unlicensed money transmission / laundering).
   // Conservative multi-char phrases only — never bare 美元/人民币/dollar, which
@@ -106,14 +108,21 @@ const SENSITIVE_WORDS_ZH = [
 
 const SENSITIVE_WORDS_EN = [
   'escort', 'onlyfans', 'porn',
-  'drugs', 'cocaine', 'meth', 'weed',
+  // 'weed' is four characters, so it matches on word boundaries and refuses
+  // "Weed killer, half bottle" and "Weeding tool". The database does not carry it.
+  'drugs', 'cocaine', 'meth',
   'gun sale', 'ammo',
   'fake id', 'ghostwriter', 'contract cheating', 'assignment for you',
   'loan shark', 'cash advance',
   'currency exchange', 'exchange currency', 'money exchange', 'foreign exchange', 'forex',
   'buy usd', 'sell usd', 'buy rmb', 'sell rmb',
   'casino', 'betting',
-  'fuck you', 'fuck off', 'bitch', 'asshole', 'kill yourself', 'kys',
+  // 'bitch' is five characters, so it takes the substring branch against the
+  // space-stripped text: "a bit cheaper" normalizes to "abitcheaper", which
+  // contains it. Every price negotiation on the site was refused as profanity.
+  // 20260901071645 left it out of the database for this exact class of reason
+  // and seeded shorter, boundary-matchable words instead.
+  'fuck you', 'fuck off', 'asshole', 'kill yourself', 'kys',
 ]
 
 const SENSITIVE_WORDS_NORMALIZED = [

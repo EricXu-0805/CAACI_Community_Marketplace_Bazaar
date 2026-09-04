@@ -72,6 +72,22 @@ const MUST_PUBLISH = [
   ['ISBN-10', 'ISBN 7302224463 谭浩强 C程序设计 九成新'],
   ['a console, after the comma', 'Selling my TV, Xbox and a desk'],
   ['chat as a verb', 'text me and we chat about pickup'],
+  /*
+   * Ordinary marketplace copy that a client-only entry refused while the
+   * database published it. Each was measured against production's
+   * content_moderation_check on 2026-09-04, which returns NULL for all of them.
+   *
+   * The haggling line is the one that mattered: normalize() strips spaces, so
+   * "a bit cheaper" becomes "abitcheaper", which contains 'bitch'. Asking a
+   * seller to come down on price — the single most common message on a
+   * marketplace — was refused as profanity, on a screen that names no word.
+   */
+  ['asking for a discount', 'Can you go a bit cheaper?'],
+  ['the same word inside a sentence', "it's a bit cheaper than retail"],
+  ['a receipt, Chinese', '带发票，原封未拆'],
+  ['asking about a receipt', '有发票吗？'],
+  ['pet food, the classic collision', 'Rabbit chow, 5 lb bag'],
+  ['garden supplies', 'Weed killer, half bottle'],
 ]
 
 const MUST_REFUSE = [
@@ -117,7 +133,11 @@ test('a link is allowed where the caller says links are allowed', async () => {
 })
 
 test('the corpus keeps both halves, so no constant answer satisfies it', () => {
-  assert.ok(MUST_PUBLISH.length >= 14, 'lost the contact-channel half')
+  assert.ok(MUST_PUBLISH.length >= 20, 'lost the contact-channel half')
+  // The haggling line has to stay: it is the one that proves the checker is
+  // not refusing a word inside another word.
+  assert.ok(MUST_PUBLISH.some(([, text]) => /a bit cheaper/i.test(text)),
+    'the corpus no longer carries the substring collision that blocked haggling')
   assert.ok(MUST_REFUSE.length >= 4, 'lost the still-refused half')
   // One entry per removed rule, or a rule can come back with nothing to catch
   // it. Phone (both numbering plans), email, WeChat and QQ.
