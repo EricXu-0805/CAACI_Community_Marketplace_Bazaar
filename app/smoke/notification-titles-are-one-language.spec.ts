@@ -47,11 +47,33 @@ const ROWS = [
   { id: 'n3', user_id: UID, type: 'sold', title: LISTING_TITLE,
     body: '$30.00', item_id: null, conversation_id: null, is_read: true,
     created_at: '2026-09-03T10:00:00Z' },
+  /*
+   * The one body shape #317 could not cover: seed_digest_reminders writes the
+   * count into a bilingual sentence, so it can never be a sentinel key. Two of
+   * these are on production right now. Both counts are here because English
+   * needs plural agreement and a single-count fixture would not notice.
+   */
+  { id: 'n4', user_id: UID, type: 'unread_message', title: '未读消息 · Unread messages',
+    body: '你有 2 条未读消息 · 2 unread messages', item_id: null, conversation_id: null,
+    is_read: true, created_at: '2026-09-03T09:00:00Z' },
+  { id: 'n5', user_id: UID, type: 'unread_message', title: '未读消息 · Unread messages',
+    body: '你有 1 条未读消息 · 1 unread message', item_id: null, conversation_id: null,
+    is_read: true, created_at: '2026-09-03T08:00:00Z' },
 ]
 
 const EXPECTED: Record<'en' | 'zh', string[]> = {
-  en: [en['notif.titleOfferAccepted'], en['notif.titleReportResolved'], LISTING_TITLE],
-  zh: [zh['notif.titleOfferAccepted'], zh['notif.titleReportResolved'], LISTING_TITLE],
+  en: [en['notif.titleOfferAccepted'], en['notif.titleReportResolved'], LISTING_TITLE,
+    en['notif.titleUnreadMessages'], en['notif.titleUnreadMessages']],
+  zh: [zh['notif.titleOfferAccepted'], zh['notif.titleReportResolved'], LISTING_TITLE,
+    zh['notif.titleUnreadMessages'], zh['notif.titleUnreadMessages']],
+}
+
+/* Plural agreement is the reason both counts are in the fixture. */
+function unreadBody(language: 'en' | 'zh', count: number): string {
+  const raw = (language === 'en' ? en : zh)['notif.unreadMessages']
+  const pipe = raw.indexOf('|')
+  const form = pipe === -1 ? raw : count === 1 ? raw.slice(0, pipe) : raw.slice(pipe + 1)
+  return form.replace('{count}', String(count))
 }
 
 for (const lang of ['en', 'zh'] as const) {
@@ -87,7 +109,7 @@ for (const lang of ['en', 'zh'] as const) {
       const body = wantsObject && Array.isArray(fixture) ? (fixture[0] ?? null) : fixture
       await route.fulfill({
         status: 200, contentType: 'application/json',
-        headers: { 'content-range': '0-2/3' }, body: JSON.stringify(body),
+        headers: { 'content-range': '0-4/5' }, body: JSON.stringify(body),
       })
     })
 
@@ -106,5 +128,20 @@ for (const lang of ['en', 'zh'] as const) {
     const other = lang === 'en' ? zh : en
     expect(rendered.join('\n')).not.toContain('report_resolved')
     expect(rendered.join('\n')).not.toContain(other['notif.titleOfferAccepted'])
+
+    /*
+     * The body under the headline. A localized headline over a half-Chinese,
+     * half-English line is the shape this whole file exists to prevent, and
+     * the unread-count body was the last one still doing it.
+     */
+    const bodies = page.locator(`uni-page[data-page="${ROUTE}"] .notif-body`)
+    const renderedBodies = (await bodies.allInnerTexts()).map(value => (value || '').trim())
+    expect(renderedBodies, `two languages in one body:\n${renderedBodies.join('\n')}`)
+      .not.toContain('你有 2 条未读消息 · 2 unread messages')
+    expect(renderedBodies).toContain(unreadBody(lang, 2))
+    expect(renderedBodies).toContain(unreadBody(lang, 1))
+    for (const body of renderedBodies) {
+      expect(body, `two languages in one body: ${body}`).not.toContain(' · ')
+    }
   })
 }
