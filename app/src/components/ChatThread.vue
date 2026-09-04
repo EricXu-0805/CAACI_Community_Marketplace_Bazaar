@@ -1062,7 +1062,15 @@ async function refreshItemSnapshot(targetId: string): Promise<void> {
   try {
     const detail = await fetchConversationDetail(targetId)
     if (!isThreadEpochCurrent(epoch) || conversationId.value !== targetId) return
-    if (detail?.item) itemInfo.value = detail.item
+    // No answer at all is not news; keep the card we already had.
+    if (!detail) return
+    // An answer carrying no item means the listing is gone. Since
+    // 20260903013000 a seller can delete a listing that has conversations, and
+    // conversations.item_id cascades to NULL — so this is the common shape now,
+    // not an edge case. The old `if (detail.item)` skipped it and left the
+    // pre-delete row in place, still saying 'active', with Make offer and
+    // Propose meetup live over a listing that no longer exists.
+    itemInfo.value = detail.item ?? null
   } catch {
     /* Best effort. A stale card is what we already had. */
   }
