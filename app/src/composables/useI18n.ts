@@ -106,6 +106,24 @@ export function syncActiveAccountEmailLanguage(): Promise<void> {
    (showModal 确定/取消 vs OK/Cancel buttons) ignores the app language. */
 function syncUniLocale(lang: Lang) {
   try { uni.setLocale(lang === 'zh' ? 'zh-Hans' : 'en') } catch {}
+  // #ifdef H5
+  /*
+   * index.html declares lang="zh" statically, and says why: the CSP allows no
+   * inline script, so the shell cannot follow the reader's saved choice before
+   * any script runs. Nothing corrected it afterwards, so an English reader's
+   * entire document stayed declared as Chinese on every route — a screen
+   * reader picks the wrong voice for every string it reads, and the crawler
+   * that renders a shared link reads the same wrong declaration.
+   *
+   * This is the one choke point: ensureLangInit calls it for the saved or
+   * detected language, and setLang calls it on every switch.
+   */
+  try {
+    if (typeof document !== 'undefined' && document.documentElement) {
+      document.documentElement.lang = lang
+    }
+  } catch {}
+  // #endif
 }
 
 export function useI18n() {
