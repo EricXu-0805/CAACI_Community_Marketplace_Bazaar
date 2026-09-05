@@ -12,7 +12,8 @@
     { "path": "/api/notification-digest", "schedule": "0 23 * * *" },
     { "path": "/api/data-retention", "schedule": "17 * * * *" },
     { "path": "/api/banner-upload-gc", "schedule": "37 * * * *" },
-    { "path": "/api/auth/delete-account", "schedule": "*/10 * * * *" }
+    { "path": "/api/auth/delete-account", "schedule": "*/10 * * * *" },
+    { "path": "/api/background-jobs", "schedule": "* * * * *" }
   ],
   "rewrites": [
     { "source": "/share/:id", "destination": "/api/share?id=:id" },

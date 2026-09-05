@@ -192,6 +192,7 @@ test('instant meetup mail fails closed when the block lookup fails', async () =>
 
 function digestFetch(options = {}) {
   const calls = []
+  let digestCursor = options.cursor ?? null
   let notificationReads = 0
   let tokenIndex = 0
   const deliveries = new Map()
@@ -202,6 +203,12 @@ function digestFetch(options = {}) {
     const body = requestBody(init)
     calls.push({ url, method, body, headers: init.headers || {} })
 
+    if (url.pathname === '/rest/v1/rpc/get_notification_digest_cursor') return json({ after_user_id: digestCursor })
+    if (url.pathname === '/rest/v1/rpc/advance_notification_digest_cursor') {
+      if (options.cursorConflict || body.expected_in !== digestCursor) return json(false)
+      digestCursor = body.after_in
+      return json(true)
+    }
     if (url.pathname === '/rest/v1/rpc/edge_rate_hit' && method === 'POST') {
       return json(options.runClaim ?? true)
     }
@@ -729,6 +736,38 @@ test('a noisy earlier user cannot consume the global row limit and starve the ne
   assert.match(resend.body.html, /Later recipient notice/)
   assert.doesNotMatch(resend.body.html, /Noise 0/)
   assert.equal(mock.notificationReads(), 4) // schema probe + two keyset pages + exact claimed set
+})
+
+test('digest resumes beyond 200 opted-out recipients on the next run, then wraps without marking them emailed', async () => {
+  const rows=Array.from({length:205},(_,index)=>queuedNotification({
+    id:`a0000000-0000-4000-8000-${index.toString(16).padStart(12,'0')}`,
+    user_id:`00000000-0000-4000-8000-${index.toString(16).padStart(12,'0')}`,
+    type:'system',conversation_id:null,
+  }))
+  const reads=[]
+  const mock=digestFetch({notificationPage(url) {
+    const cursor=(url.searchParams.get('user_id') || '').slice(3)
+    const batch=rows.filter(row=>!cursor || row.user_id>cursor).slice(0,200)
+    reads.push(batch.map(row=>row.user_id))
+    return batch
+  },profiles:[]})
+  for(let run=0;run<3;run++) assert.equal((await runDigest(mock.fetch)).status,200)
+  assert.deepEqual(reads.map(rows=>rows.length),[200,5,200])
+  assert.equal(reads[1][0],rows[200].user_id)
+  assert.equal(mock.calls.filter(call=>call.url.hostname==='api.resend.com').length,0)
+  assert.equal(mock.calls.filter(call=>call.url.pathname.endsWith('/complete_notification_email_delivery')).length,0)
+})
+
+test('digest saves scan progress before a provider failure and rejects stale cursor writes', async () => {
+  console.error=()=>{}
+  const mock=digestFetch({notifications:[queuedNotification({type:'system',conversation_id:null})],profiles:[recipientProfile()],resendStatus:503})
+  assert.equal((await runDigest(mock.fetch)).status,500)
+  const cursorIndex=mock.calls.findIndex(call=>call.url.pathname.endsWith('/advance_notification_digest_cursor'))
+  const providerIndex=mock.calls.findIndex(call=>call.url.hostname==='api.resend.com')
+  assert.ok(cursorIndex>=0 && providerIndex>cursorIndex)
+  const stale=digestFetch({cursorConflict:true,notifications:[queuedNotification()],profiles:[recipientProfile()]})
+  assert.equal((await runDigest(stale.fetch)).status,500)
+  assert.equal(stale.calls.filter(call=>call.url.hostname==='api.resend.com').length,0)
 })
 
 test('queued-notification block lookup failure closes the send and flags the cron run', async () => {

@@ -1,3 +1,4 @@
+import { moderationObjectKeys, mediaMoveSucceeded } from '../_moderation-media.js'
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from '../_deployment-boundary.js'
 
 export const config = { runtime: 'edge' }
@@ -605,46 +606,10 @@ const TAKEDOWN_TARGET_TYPES = new Set(['item', 'post', 'comment'])
  * it has nothing here to move.
  */
 const TAKEDOWN_MEDIA_TABLES = { item: 'items', post: 'posts' }
-const PUBLIC_ITEM_IMAGE_PREFIX = '/storage/v1/object/public/item-images/'
 const TAKEDOWN_EVIDENCE_BUCKET = 'moderation-evidence'
 
-/*
- * images is a user-writable column, so every entry here is input, and two
- * things a first draft of this got wrong are worth naming:
- *
- *   · new URL() resolves `..` before you ever see it, so checking for the
- *     literal segment finds nothing —
- *     .../item-images/items/<uid>/../../banners/x.png normalizes to
- *     .../item-images/banners/x.png and reads as an ordinary key.
- *   · the origin has to be checked, or https://evil.test/<same path> yields
- *     the same key and moves whatever it names.
- *
- * Neither escapes the bucket, but both let an author name an object that is
- * not theirs — someone else's listing photo, pulled out of the public bucket
- * by taking down their own post. So the shape is pinned instead: an object
- * directly under the author's own folder, which is where uploads put them
- * (the client's ownedItemImagePath enforces the same contract).
- */
 function takenDownObjectKeys(images, ownerId) {
-  if (!isUuid(ownerId)) return []
-  let expectedOrigin
-  try { expectedOrigin = new URL(SUPABASE_URL).origin } catch { return [] }
-  const keys = []
-  for (const url of Array.isArray(images) ? images : []) {
-    if (typeof url !== 'string') continue
-    let parsed
-    try { parsed = new URL(url) } catch { continue }
-    if (parsed.origin !== expectedOrigin) continue
-    if (!parsed.pathname.startsWith(PUBLIC_ITEM_IMAGE_PREFIX)) continue
-    let key
-    try { key = decodeURIComponent(parsed.pathname.slice(PUBLIC_ITEM_IMAGE_PREFIX.length)) } catch { continue }
-    const segments = key.split('/')
-    if (segments.length !== 3) continue
-    if (segments[0] !== 'items' || segments[1] !== ownerId) continue
-    if (!segments[2] || segments[2] === '.' || segments[2] === '..') continue
-    if (!keys.includes(key)) keys.push(key)
-  }
-  return keys
+  return moderationObjectKeys(images, ownerId, SUPABASE_URL)
 }
 
 /*
@@ -679,7 +644,7 @@ async function stashTakenDownMedia(targetType, targetId, keys) {
   const unmoved = []
   for (const key of keys) {
     try {
-      const { response } = await adminFetch(
+      const { response, text } = await adminFetch(
         `${SUPABASE_URL}/storage/v1/object/move`,
         {
           method: 'POST',
@@ -694,7 +659,7 @@ async function stashTakenDownMedia(targetType, targetId, keys) {
       )
       // Gone from the public bucket is the desired state however it got there —
       // a replayed idempotency key, or the same content taken down twice.
-      if (!response.ok && response.status !== 404) unmoved.push(key)
+      if (!mediaMoveSucceeded(response, text)) unmoved.push(key)
     } catch {
       unmoved.push(key)
     }

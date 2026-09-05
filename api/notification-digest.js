@@ -542,33 +542,40 @@ async function loadPendingNotificationPage(since, conversationColumnAvailable, a
 }
 
 async function loadPendingNotifications(since, conversationColumnAvailable) {
+  const state = await sbRpc('get_notification_digest_cursor', {})
+  if (!state || Array.isArray(state) || !Object.hasOwn(state, 'after_user_id') ||
+      (state.after_user_id !== null && !UUID_RE.test(state.after_user_id))) {
+    throw new Error('notification cursor invalid')
+  }
+  const expected = state.after_user_id
+  let afterUserId = expected || ''
+  let nextCursor = expected
   const rows = []
   const users = new Set()
-  let afterUserId = ''
-
-  // Keyset by user_id instead of one global LIMIT. With the old single query,
-  // one noisy/opted-out account could occupy all 200 rows and indefinitely
-  // starve every lexicographically later recipient. We intentionally keep at
-  // most MAX_ROWS for the page's trailing user and advance past it; unsent rows
-  // stay durable for a later run while other users still make progress now.
   for (let page = 0; page < MAX_NOTIFICATION_SCAN_PAGES; page++) {
     const batch = await loadPendingNotificationPage(since, conversationColumnAvailable, afterUserId)
-    if (!batch.length) break
-
+    if (!batch.length) { nextCursor = null; break }
+    let overflow = false
     for (const row of batch) {
-      if (typeof row.user_id !== 'string' || !row.user_id) continue
-      if (!users.has(row.user_id) && users.size >= MAX_DIGEST_USERS) continue
+      if (!UUID_RE.test(row.user_id || '') || (afterUserId && row.user_id <= afterUserId)) {
+        throw new Error('notification pagination did not advance')
+      }
+      if (!users.has(row.user_id) && users.size >= MAX_DIGEST_USERS) { overflow = true; break }
       users.add(row.user_id)
       rows.push(row)
+      nextCursor = row.user_id
     }
-
-    if (batch.length < NOTIFICATION_PAGE_SIZE || users.size >= MAX_DIGEST_USERS) break
-    const nextUserId = batch[batch.length - 1]?.user_id
-    if (typeof nextUserId !== 'string' || !nextUserId || nextUserId === afterUserId) {
-      throw new Error('notification pagination did not advance')
-    }
-    afterUserId = nextUserId
+    // A short final page wraps only if every user on it was admitted. Moving
+    // past an overflow user here would lose that user's turn on every cycle.
+    if (batch.length < NOTIFICATION_PAGE_SIZE && !overflow) { nextCursor = null; break }
+    if (users.size >= MAX_DIGEST_USERS) break
+    afterUserId = nextCursor
   }
+  // Save progress BEFORE profile/privacy/provider work. Opt-outs and provider
+  // failures keep their rows retryable without pinning every run to user zero.
+  if (await sbRpc('advance_notification_digest_cursor', {
+    expected_in: expected, after_in: nextCursor,
+  }) !== true) throw new Error('notification cursor ownership lost')
   return rows
 }
 
