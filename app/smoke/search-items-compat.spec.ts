@@ -67,11 +67,11 @@ test('uses the current signature when it is available', async () => {
   })
 })
 
-test('falls back to the 9-argument signature only for PGRST202', async () => {
+test('falls back through 11 to 9 arguments only for PGRST202', async () => {
   const calls: Record<string, unknown>[] = []
   const client = mockClient(async (_name, args) => {
     calls.push(args)
-    if (calls.length === 1) return { data: null, error: { code: 'PGRST202' } }
+    if (calls.length <= 2) return { data: null, error: { code: 'PGRST202' } }
     return { data: [item(2)], error: null }
   })
 
@@ -79,9 +79,9 @@ test('falls back to the 9-argument signature only for PGRST202', async () => {
 
   expect(result.backend).toBe('legacy')
   expect(result.data.map(row => row.id)).toEqual(['2'])
-  expect(calls).toHaveLength(2)
-  expect(calls[1]).not.toHaveProperty('location_in')
-  expect(calls[1]).not.toHaveProperty('verified_only_in')
+  expect(calls).toHaveLength(3)
+  expect(calls[2]).not.toHaveProperty('location_in')
+  expect(calls[2]).not.toHaveProperty('verified_only_in')
 })
 
 test('does not hide permission or other non-signature errors', async () => {
@@ -128,7 +128,7 @@ test('legacy location filters scan ranked pages before slicing the requested pag
   let calls = 0
   const client = mockClient(async (_name, args) => {
     calls++
-    if (calls === 1) return { data: null, error: { code: 'PGRST202' } }
+    if (calls <= 2) return { data: null, error: { code: 'PGRST202' } }
     const offset = Number(args.offset_in)
     const limit = Number(args.limit_in)
     return { data: rows.slice(offset, offset + limit), error: null }
@@ -148,14 +148,14 @@ test('legacy location filters scan ranked pages before slicing the requested pag
   expect(result.backend).toBe('legacy')
   expect(result.data.map(row => row.id)).toEqual(expected)
   expect(result.hasMore).toBe(true)
-  expect(calls).toBe(3)
+  expect(calls).toBe(4)
 })
 
 test('legacy scan ceiling fails with a stable code instead of a false empty page', async () => {
   let calls = 0
   const client = mockClient(async (_name, args) => {
     calls++
-    if (calls === 1) return { data: null, error: { code: 'PGRST202' } }
+    if (calls <= 2) return { data: null, error: { code: 'PGRST202' } }
     const offset = Number(args.offset_in)
     const limit = Number(args.limit_in)
     return {
@@ -176,7 +176,7 @@ test('legacy scan ceiling fails with a stable code instead of a false empty page
   }
   expect(thrown?.code).toBe(SEARCH_LEGACY_FILTER_LIMIT)
   expect(String(thrown?.message)).not.toContain('search_items_fuzzy')
-  expect(calls).toBe(11)
+  expect(calls).toBe(12)
 })
 
 test('missing both signatures is sanitized before reaching the UI', async () => {
@@ -196,4 +196,19 @@ test('missing both signatures is sanitized before reaching the UI', async () => 
   }
   expect(thrown?.code).toBe(SEARCH_SCHEMA_UNAVAILABLE)
   expect(String(thrown?.message)).not.toContain('search_items_fuzzy')
+})
+
+
+test('new date and price-unit filters are never dropped on an old backend', async () => {
+  const names: string[] = []
+  const client = mockClient(async (name) => { names.push(name); return { data: null, error: { code: 'PGRST202' } } })
+  await expect(searchItemsWithCompatibility(client, { ...baseParams, detailDate: '2026-09-15', priceUnit: 'month' })).rejects.toThrow(SEARCH_SCHEMA_UNAVAILABLE)
+  expect(names).toEqual(['search_items_fuzzy_v2'])
+})
+
+test('v2 passes date and price unit to the server before pagination', async () => {
+  let called: any
+  const client = mockClient(async (name, args) => { called = { name, args }; return { data: [], error: null } })
+  await searchItemsWithCompatibility(client, { ...baseParams, page: 3, detailDate: '2026-09-15', priceUnit: 'month' })
+  expect(called).toMatchObject({ name: 'search_items_fuzzy_v2', args: { detail_date_in: '2026-09-15', price_unit_in: 'month', offset_in: 60, limit_in: 20 } })
 })

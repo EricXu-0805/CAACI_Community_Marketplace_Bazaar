@@ -519,8 +519,8 @@ async function loadPendingNotificationPage(since, conversationColumnAvailable, a
   const cursor = afterUserId ? `&user_id=gt.${encodeURIComponent(afterUserId)}` : ''
   const prefix = `notifications?emailed_at=is.null&created_at=gte.${since}${cursor}`
   const suffix = `&order=user_id.asc,created_at.desc&limit=${NOTIFICATION_PAGE_SIZE}`
-  const currentPath = `${prefix}&select=id,user_id,type,title,body,created_at,conversation_id${suffix}`
-  const legacyPath = `${prefix}&select=id,user_id,type,title,body,created_at${suffix}`
+  const currentPath = `${prefix}&select=id,user_id,type,title,body,created_at,item_id,conversation_id${suffix}`
+  const legacyPath = `${prefix}&select=id,user_id,type,title,body,created_at,item_id${suffix}`
 
   if (conversationColumnAvailable === true) return sbGet(currentPath)
   if (conversationColumnAvailable === false) {
@@ -577,10 +577,10 @@ async function loadNotificationsByIds(ids, conversationColumnAvailable) {
   const inList = `(${ids.map(encodeURIComponent).join(',')})`
   const prefix = `notifications?id=in.${inList}`
   if (conversationColumnAvailable) {
-    return sbGet(`${prefix}&select=id,user_id,type,title,body,created_at,conversation_id&limit=${ids.length}`)
+    return sbGet(`${prefix}&select=id,user_id,type,title,body,created_at,item_id,conversation_id&limit=${ids.length}`)
   }
   const legacyRows = await sbGet(
-    `${prefix}&select=id,user_id,type,title,body,created_at&limit=${ids.length}`,
+    `${prefix}&select=id,user_id,type,title,body,created_at,item_id&limit=${ids.length}`,
   )
   return legacyRows.map(row => ({ ...row, conversation_id: null }))
 }
@@ -597,7 +597,9 @@ async function filterBlockedConversationNotifications(rows) {
   // Both routed and unrouted types are explicit allowlists. A future schema
   // value must receive an off-platform privacy review before this API emails
   // it, even when it happens to carry a valid conversation id.
-  const eligibleRows = rows.filter(row => canEmailWithConversation(row) || canEmailWithoutConversation(row))
+  const eligibleRows = await filterBlockedItemNotifications(
+    rows.filter(row => canEmailWithConversation(row) || canEmailWithoutConversation(row)),
+  )
   const conversationIds = [...new Set(eligibleRows.map(row => row.conversation_id).filter(Boolean))]
   if (!conversationIds.length) return eligibleRows.filter(canEmailWithoutConversation)
 
@@ -621,6 +623,34 @@ async function filterBlockedConversationNotifications(rows) {
     if (!conversation) return false
     if (row.user_id !== conversation.buyer_id && row.user_id !== conversation.seller_id) return false
     return !blockedPairs.has(pairKey(conversation.buyer_id, conversation.seller_id))
+  })
+}
+
+async function filterBlockedItemNotifications(rows) {
+  // Service-key reads bypass the recipient's RLS. Re-resolve the item and
+  // seller before sending, including on a recovered sticky delivery claim.
+  const candidates = rows.filter(row => row.item_id && UUID_RE.test(row.item_id))
+  const ids = [...new Set(candidates.map(row => row.item_id))]
+  const items = []
+  for (const group of chunks(ids, 50)) {
+    items.push(...await sbGet(
+      `items_visible?id=in.(${group.join(',')})&select=id,user_id,status&limit=${group.length}`,
+    ))
+  }
+  const byId = new Map(items.map(item => [item.id, item]))
+  const blocked = await loadBlockedPairKeys(candidates.flatMap(row => {
+    const item = byId.get(row.item_id)
+    return item ? [[row.user_id, item.user_id]] : []
+  }))
+  // items_visible repeats the time-aware suspension/deletion predicate even
+  // for service-key reads. Do not replace it with items or a cached profile flag.
+  return rows.filter(row => {
+    if (!row.item_id) {
+      return row.body !== 'new_listing_from_followee' && row.body !== 'saved_search_match'
+    }
+    const item = byId.get(row.item_id)
+    return Boolean(item && UUID_RE.test(item.user_id) && item.status !== 'deleted'
+      && !blocked.has(pairKey(row.user_id, item.user_id)))
   })
 }
 

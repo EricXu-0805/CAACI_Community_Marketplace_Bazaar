@@ -1,5 +1,5 @@
 <template>
-  <view class="page has-sidebar" :class="mpThemeClass" :style="mpChrome">
+  <view class="page has-sidebar" :class="[mpThemeClass, { 'kb-up': viewportInset > 0 }]" :style="[mpChrome, { '--chat-bottom-inset': `${viewportInset}px` }]">
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
@@ -186,8 +186,8 @@
     </view>
     </view><!-- /.msg-left -->
 
-    <!-- Desktop two-pane (≥768px): the selected conversation's thread,
-         embedded. Hidden on phones, where tapping navigates to /chat. -->
+    <!-- Wide H5 two-pane (≥1100px). Narrow windows and tablets open a
+         full thread so the navigation rail cannot squeeze the composer. -->
     <view class="msg-thread-pane">
       <ChatThread
         v-if="authState === 'authenticated' && selectedConvId"
@@ -221,6 +221,9 @@ import { useI18n } from '../../composables/useI18n'
 import { useMessages } from '../../composables/useMessages'
 import { useUnread } from '../../composables/useUnread'
 import { useTheme } from '../../composables/useTheme'
+import { useVisualViewportInset } from '../../composables/useVisualViewportInset'
+
+const viewportInset = useVisualViewportInset()
 import {
   captureActiveAccountRequest,
   isAccountRequestCurrent,
@@ -305,17 +308,21 @@ function onMessageFilterKeydown(event: KeyboardEvent, current: MsgFilterKey) {
   nextTick(() => tabList?.querySelectorAll<HTMLElement>('[role="tab"]')[nextIndex]?.focus())
 }
 
-// Desktop two-pane (≥768px): tapping a conversation opens it in the right
-// pane (ChatThread embedded) instead of pushing the chat route. Phones keep
+// Wide H5 two-pane (≥1100px): tapping a conversation opens it in the right
+// pane (ChatThread embedded) instead of pushing the chat route. Narrow screens keep
 // navigating. isWide flips on resize so dragging a desktop window across the
 // breakpoint switches behaviour live.
 const selectedConvId = ref('')
 const isWide = ref(false)
 function detectWide() {
-  try { isWide.value = uni.getSystemInfoSync().windowWidth >= 768 } catch {}
+  // #ifdef H5
+  try { isWide.value = uni.getSystemInfoSync().windowWidth >= 1100 } catch {}
+  // #endif
 }
 const handleWindowResize = (res: { size: { windowWidth: number } }) => {
-  isWide.value = res.size.windowWidth >= 768
+  // #ifdef H5
+  isWide.value = res.size.windowWidth >= 1100
+  // #endif
 }
 let windowResizeRegistered = false
 let messagesPageAlive = true
@@ -913,6 +920,7 @@ function goLogin() {
 /* Phones: the thread pane is for the desktop two-pane only. */
 .msg-thread-pane { display: none; }
 
+/* #ifdef H5 */
 @media (min-width: 768px) {
   .page-header { display: none; }
   /* Two-pane shell: the sidebar rail (.has-sidebar padding-left) + a flex
@@ -927,11 +935,12 @@ function goLogin() {
      pattern as .page-lock and the plaza desktop lock. */
   .page {
     position: fixed; inset: 0; left: var(--sidebar-w, 240px);
+    bottom: var(--chat-bottom-inset, 0px); min-height: 0;
     padding: 0; margin: 0; max-width: none;
     display: flex; overflow: hidden;
   }
   .msg-left {
-    width: 340px; flex: none; height: 100vh; overflow-y: auto;
+    width: 100%; flex: none; height: 100%; overflow-y: auto;
     border-right: 1px solid var(--border); box-sizing: border-box;
     /* Keep wheel scroll inside the rail — without this, hitting the top/bottom
        chains the scroll to the page and drags the whole two-pane view (QA6 #2). */
@@ -950,7 +959,8 @@ function goLogin() {
   /* Right pane — the embedded ChatThread, or an empty hint. overflow:hidden so
      the pane itself never scrolls (ChatThread owns its own message scroll-view);
      keeps the left rail and right thread scrolling independently (QA6 #2). */
-  .msg-thread-pane { display: block; flex: 1; min-width: 0; height: 100vh; overflow: hidden; }
+  .msg-thread-pane { flex: 1; min-width: 0; height: 100%; overflow: hidden; }
+  .page.kb-up :deep(.input-bar) { padding-bottom: 9px; }
   .thread-empty {
     height: 100%; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 12px;
@@ -958,4 +968,9 @@ function goLogin() {
   }
   .te-text { font-size: 14px; color: var(--ink-quiet); }
 }
+@media (min-width: 1100px) {
+  .msg-left { width: 340px; }
+  .msg-thread-pane { display: block; }
+}
+/* #endif */
 </style>

@@ -205,6 +205,7 @@ async function loadEditPayloadHarness() {
       const price = input.price
       const images = []
       const finalDims = []
+      const currentListingDetails = () => null
       ${region}
       return { payload, textChanged, sourceLang }
     }

@@ -4232,7 +4232,7 @@ function onTakedownContent(row: any) {
       if (reason === null) return
       if (!beginModerationMutation(mutationKey)) return
       try {
-        await apiPost({
+        const result = await apiPost<{ media_cleanup_pending?: boolean }>({
           action: 'takedown_content',
           target_type: row.target_type,
           target_id: row.target_id,
@@ -4244,7 +4244,15 @@ function onTakedownContent(row: any) {
           if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
         })
         if (isAdminSessionOwnerCurrent(owner)) {
-          uni.showToast({ title: t('admin.toastTakedownDone'), icon: 'success' })
+          if (result.media_cleanup_pending) {
+            uni.showModal({
+              title: t('admin.takedownMediaPendingTitle'),
+              content: t('admin.takedownMediaPendingBody'),
+              showCancel: false,
+            })
+          } else {
+            uni.showToast({ title: t('admin.toastTakedownDone'), icon: 'success' })
+          }
         }
       } catch (err: any) {
         showAdminRequestError(err, t('admin.toastTakedownFailed'))

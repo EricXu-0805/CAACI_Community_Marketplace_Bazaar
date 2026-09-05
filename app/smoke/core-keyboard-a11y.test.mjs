@@ -61,7 +61,7 @@ test('every native input and textarea has an accessible name', () => {
 
 test('H5 transfers uni-app form-control names to the native controls', () => {
   const app = source('src/App.vue')
-  assert.match(app, /const UNI_FORM_CONTROL_SELECTOR = 'uni-input, uni-textarea'/)
+  assert.match(app, /const UNI_FORM_CONTROL_SELECTOR = 'uni-input, uni-textarea, uni-picker'/)
   assert.match(app, /host\.querySelector<HTMLElement>\('input, textarea'\)/)
   assert.match(app, /nativeControl\.setAttribute\(sourceAttr, currentValue\)/)
   assert.match(app, /host\.removeAttribute\(sourceAttr\)/)
@@ -257,8 +257,8 @@ test('the listing gallery can be driven from the keyboard', () => {
   // currentImg used to be written only by the swiper's own touch @change,
   // which left the gallery with no keyboard path at all.
   const detail = source('src/pages/detail/index.vue')
-  assert.match(detail, /aria-roledescription="carousel"/)
-  assert.match(detail, /aria-keyshortcuts="ArrowLeft ArrowRight"/)
+  assert.match(detail, /:aria-roledescription="imgs.length \? 'carousel' : undefined"/)
+  assert.match(detail, /:aria-keyshortcuts="imgs.length \? 'ArrowLeft ArrowRight' : undefined"/)
   assert.match(detail, /@keydown="onGalleryKeydown"/)
   assert.match(detail, /function onGalleryKeydown\(event: KeyboardEvent\)/)
 })
@@ -405,7 +405,7 @@ test('asynchronous load failures announce only their rendered error panels', () 
     assert.ok(source(file).includes(panel), `${file} is missing its asynchronous error announcement`)
   }
   assert.ok(
-    source('src/pages/plaza/index.vue').includes('v-else-if="followError" class="empty" role="alert" aria-live="assertive" aria-atomic="true"'),
+    source('src/pages/plaza/index.vue').includes('v-if="followError" class="empty" role="alert" aria-live="assertive" aria-atomic="true"'),
     'plaza following-load errors must be announced independently of the main feed',
   )
   for (const file of ['src/pages/blocked/index.vue', 'src/pages/messages/index.vue']) {

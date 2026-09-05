@@ -137,6 +137,8 @@ test('fetchMyItems never caches or returns A after B becomes current', async () 
     './useModeration': 'export function useModeration(){ return { blockedIds: { value: new Set() }, ensureLoaded: async () => ({ ok: true }) } }',
     './useI18n': "export function useI18n(){ return { t: key => key, lang: { value: 'en' } } }",
     '../utils': 'export const compressImage=async x=>x, detectImageMimeType=()=>\"image/jpeg\", expandSearch=x=>[x], friendlyErrorMessage=e=>String(e), getImageDimensions=async()=>({w:1,h:1}), storedImageDimensions=d=>d',
+    '../utils/listingDetails': source('src/utils/listingDetails.ts').replace("'./campusTime'", `'${compiledDataUrl(source('src/utils/campusTime.ts'))}'`),
+    '../utils/listingLocation': 'export const listingLocationTerms = area => [area]',
     '../utils/contentSafety': 'export const checkContent=()=>({ok:true}), clearLocalDuplicate=()=>{}, isLocalDuplicate=()=>false, remoteModerate=async()=>({flagged:false,categories:[]})',
     './useWechatSecCheck': 'export const mpTextGate=async()=>{}, mpImageCheck=async()=>{}',
     '../api/searchItems': 'export const searchItemsWithCompatibility=async()=>({data:[],error:null,hasMore:false})',
@@ -149,7 +151,7 @@ test('fetchMyItems never caches or returns A after B becomes current', async () 
   let itemsInput = source('src/composables/useItems.ts')
     .replace("'./accountScope'", `'${accountScopeUrl}'`)
   for (const [specifier, moduleSource] of Object.entries(mocks)) {
-    itemsInput = itemsInput.replace(`'${specifier}'`, `'${moduleDataUrl(moduleSource)}'`)
+    itemsInput = itemsInput.replace(`'${specifier}'`, `'${compiledDataUrl(moduleSource)}'`)
   }
   const { useItems } = await import(compiledDataUrl(itemsInput))
   const { fetchMyItems } = useItems()

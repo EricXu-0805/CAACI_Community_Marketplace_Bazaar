@@ -1,3 +1,4 @@
+import { matchesListingLocation } from '../utils/listingLocation'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Item, ItemCategory, ItemCondition } from '../types'
 
@@ -12,6 +13,8 @@ type SearchCompatibilityErrorCode =
   | typeof SEARCH_LEGACY_FILTER_LIMIT
 
 export interface SearchItemsParams {
+  detailDate?: string
+  priceUnit?: string
   terms: string[]
   category?: ItemCategory | null
   condition?: ItemCondition | null
@@ -68,7 +71,7 @@ function sanitizeSearchError(error: unknown): unknown {
   if (
     value?.code === 'PGRST202'
     || value?.code === 'PGRST203'
-    || signatureText.includes('search_items_fuzzy(')
+    || signatureText.includes('search_items_fuzzy')
   ) {
     return compatibilityError(SEARCH_SCHEMA_UNAVAILABLE)
   }
@@ -83,8 +86,7 @@ function matchesLegacyOnlyFilters(item: Item, location: string, verifiedOnly: bo
   if (verifiedOnly && item.location_verified !== true) return false
   if (!location) return true
 
-  const itemLocation = typeof item.location === 'string' ? item.location : ''
-  return itemLocation.toLocaleLowerCase().includes(location.toLocaleLowerCase())
+  return matchesListingLocation(item.location, location)
 }
 
 function commonLegacyArgs(params: SearchItemsParams) {
@@ -164,7 +166,7 @@ async function searchLegacyWithClientFilters(
 }
 
 /**
- * Prefer the current 11-argument search RPC. During a rolling deployment only,
+ * Prefer the versioned category-aware RPC, then the current 11-argument RPC. During a rolling deployment only,
  * a PGRST202 response retries the previous 9-argument signature. Location and
  * verified-location filters (not expressible by that signature) are applied
  * client-side across ranked legacy pages so pagination remains correct.
@@ -177,6 +179,20 @@ export async function searchItemsWithCompatibility(
   const pageSize = Math.max(1, Math.floor(params.pageSize))
   const location = params.location?.trim() || ''
   const verifiedOnly = params.verifiedOnly === true
+
+  const detailedResult = await supabase.rpc('search_items_fuzzy_v2', {
+    ...commonLegacyArgs(params), limit_in: pageSize, offset_in: page * pageSize,
+    location_in: location || null, verified_only_in: verifiedOnly,
+    detail_date_in: params.detailDate || null, price_unit_in: params.priceUnit || null,
+  })
+  if (!detailedResult.error) {
+    const data = normalizeRows(detailedResult.data)
+    return { data, hasMore: data.length === pageSize, backend: 'current' }
+  }
+  if (!isMissingSearchSignature(detailedResult.error)) throw sanitizeSearchError(detailedResult.error)
+  // A rolling deployment may use the old RPC only when it can express every
+  // requested filter. Never manufacture empty/short pages by filtering later.
+  if (params.detailDate || params.priceUnit) throw compatibilityError(SEARCH_SCHEMA_UNAVAILABLE)
 
   const currentResult = await supabase.rpc('search_items_fuzzy', {
     ...commonLegacyArgs(params),

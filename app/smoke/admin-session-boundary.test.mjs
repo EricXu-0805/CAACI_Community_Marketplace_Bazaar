@@ -220,7 +220,7 @@ test('an authenticated 401 locks once with an explicit localized explanation', a
 test('chat keyboard diagnostics require both a DEV build and the explicit debug query', async () => {
   const chat = await readFile(new URL('src/pages/chat/index.vue', appRoot), 'utf8')
 
-  assert.match(chat, /dbg = import\.meta\.env\.DEV && new URL\(window\.location\.href\)\.searchParams\.has\('kbdebug'\)/)
+  assert.match(chat, /if \(import\.meta\.env\.DEV && new URL\(window\.location\.href\)\.searchParams\.has\('kbdebug'\)\) \{/)
   assert.doesNotMatch(chat, /import\.meta\.env\.DEV\s*\|\|[^\n]*kbdebug/)
 })
 

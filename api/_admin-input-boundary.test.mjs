@@ -1200,11 +1200,11 @@ test('appeal lifecycle sentinels map to stable definitive HTTP outcomes', async 
 const TAKEN_DOWN_ITEM = '99999999-9999-4999-8999-999999999999'
 const OWNER_DIR = '11111111-1111-4111-8111-111111111111'
 
-function takedownFetch(calls, images, { moveStatus = 200 } = {}) {
+function takedownFetch(calls, images, { moveStatus = 200, readStatus = 200, readBody } = {}) {
   return authenticatedFetch(calls, (url) => {
     if (url.pathname === '/rest/v1/items' || url.pathname === '/rest/v1/posts') {
-      return new Response(JSON.stringify([{ images, user_id: OWNER_DIR }]), {
-        status: 200, headers: { 'Content-Type': 'application/json' },
+      return new Response(readBody ?? JSON.stringify([{ images, user_id: OWNER_DIR }]), {
+        status: readStatus, headers: { 'Content-Type': 'application/json' },
       })
     }
     if (url.pathname === '/rest/v1/rpc/admin_execute_mutation') {
@@ -1318,4 +1318,37 @@ test('a takedown still succeeds when the photo cannot be moved', async () => {
 
   assert.equal(response.status, 200)
   assert.equal(moves(calls).length, 1)
+  assert.equal((await response.json()).media_cleanup_pending, true)
+})
+
+test('an unavailable media inventory cannot silently report complete photo removal', async () => {
+  for (const options of [{ readStatus: 503 }, { readBody: 'invalid json' }, { readBody: '{}' }]) {
+    const calls = []
+    globalThis.fetch = takedownFetch(calls, [], options)
+    const handler = await loadHandler()
+    const response = await handler(adminPost({
+      action: 'takedown_content', target_type: 'item', target_id: TAKEN_DOWN_ITEM, reason: 'spam',
+    }))
+    assert.equal(response.status, 200, 'the row must still be hidden')
+    assert.equal((await response.json()).media_cleanup_pending, true)
+    assert.ok(calls.some(call => call.url.pathname === '/rest/v1/rpc/admin_execute_mutation'))
+    assert.equal(moves(calls).length, 0)
+  }
+})
+
+test('repeating takedown retries storage and acknowledges an already absent public photo', async () => {
+  const handler = await loadHandler()
+  for (const moveStatus of [500, 200, 404]) {
+    const calls = []
+    globalThis.fetch = takedownFetch(calls, [
+      `https://supabase.test/storage/v1/object/public/item-images/items/${OWNER_DIR}/a.jpg`,
+    ], { moveStatus })
+    const response = await handler(adminPost({
+      action: 'takedown_content', target_type: 'item', target_id: TAKEN_DOWN_ITEM, reason: 'spam',
+    }))
+    const result = await response.json()
+    assert.equal(result.data.ok, true)
+    assert.equal(result.media_cleanup_pending === true, moveStatus === 500)
+    assert.equal(moves(calls).length, 1)
+  }
 })

@@ -50,6 +50,9 @@
             <view class="remove-btn" role="button" :aria-label="t('a11y.delete')" @click="removeImage(i)">
               <UIcon name="close" size="xs" color="#FFFFFF" aria-hidden="true" />
             </view>
+            <view v-if="i > 0" class="cover-select" role="button" :aria-label="t('publish.makeCoverPhoto', { n: i + 1 })" :aria-disabled="submitting ? 'true' : 'false'" @click="makeCover(i)">
+              <text>{{ t('publish.makeCover') }}</text>
+            </view>
             <view v-if="i === 0" class="cover-tag">
               <text class="cover-tag-label">{{ t('publish.cover') }}</text>
             </view>
@@ -62,6 +65,8 @@
         </view>
         <text class="image-tip">{{ imageList.length >= 9 ? t('publish.imageMaxReached') : t('publish.imageOptional') }}</text>
       </view>
+
+      <ListingPreview :form="form" :images="imageList" />
 
       <!-- Upload progress -->
       <view v-if="uploadProgress" class="upload-bar">
@@ -76,6 +81,7 @@
 
       <view class="form-group">
         <textarea v-model="form.description" :placeholder="t('publish.descPlaceholder')" :aria-label="t('publish.descPlaceholder')" maxlength="500" class="form-textarea" @focus="onFieldFocus" @blur="onFieldBlur" />
+        <text class="field-guidance">{{ t('publish.guide.' + (form.listingType === 'wanted' ? 'wanted' : form.category || 'general')) }}</text>
         <text class="char-count">{{ form.description.length }}/500</text>
       </view>
 
@@ -87,9 +93,9 @@
         </view>
       </view>
 
-      <view v-if="avgPrice > 0 && form.category && form.listingType !== 'wanted'" class="price-hint">
-        <text>{{ t('publish.avgPrice') }}: ${{ avgPrice }}</text>
-      </view>
+
+
+      <text class="price-guidance">{{ t(form.listingType === 'wanted' ? 'publish.budgetHint' : 'publish.priceHint') }}</text>
 
       <!-- Category: inline pill selector -->
       <view class="form-group">
@@ -124,7 +130,7 @@
       </view>
 
       <!-- Condition: inline pill selector (sell only — N/A for a wanted post) -->
-      <view v-if="form.listingType !== 'wanted'" class="form-group">
+      <view v-if="form.listingType !== 'wanted' && !hasCategoryDetails(form.category)" class="form-group">
         <view
           class="field-header"
           role="button"
@@ -156,10 +162,14 @@
         </view>
       </view>
 
+      <ListingCategoryFields v-model="form.details" :category="form.category" :listing-type="form.listingType" :disabled="submitting" @focus="onFieldFocus" @blur="onFieldBlur" />
+
       <view class="form-group row">
         <text class="label">{{ t('publish.location') }}</text>
-        <input v-model="form.location" :placeholder="t('publish.locationPlaceholder')" :aria-label="t('publish.location')" class="form-input flex-input" @focus="onFieldFocus" @blur="onFieldBlur" />
+        <input v-model="form.location" :placeholder="t('publish.locationPlaceholder')" :aria-label="t('publish.location')" maxlength="80" class="form-input flex-input" @focus="onFieldFocus" @blur="onFieldBlur" />
       </view>
+
+      <text class="location-guidance">{{ t('publish.locationHint') }}</text>
 
       <scroll-view scroll-x class="spot-row">
         <view
@@ -237,9 +247,7 @@ import AppToast from '../../components/AppToast.vue'
 // #endif
 import { ref, reactive, computed, onUnmounted } from 'vue'
 import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
-import { watch } from 'vue'
 import { useAuth } from '../../composables/useAuth'
-import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 import { authoredLang } from '../../composables/i18n/format'
 import { useCampusSpots, type CampusSpot } from '../../composables/useCampusSpots'
@@ -256,6 +264,9 @@ import AppSidebar from '../../components/AppSidebar.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PermissionDeniedModal from '../../components/PermissionDeniedModal.vue'
 import UIcon from '../../components/UIcon.vue'
+import ListingPreview from '../../components/ListingPreview.vue'
+import ListingCategoryFields from '../../components/ListingCategoryFields.vue'
+import { emptyListingDetailForm, hasCategoryDetails, listingDetailsFromForm, listingDetailsError, listingDetailFormFromValue } from '../../utils/listingDetails'
 import OsmAttribution from '../../components/OsmAttribution.vue'
 import UButton from '../../components/UButton.vue'
 import {
@@ -323,9 +334,6 @@ async function scheduleBilingualFill(
   }
 }
 
-const { supabase } = useSupabase()
-const avgPrice = ref(0)
-let avgPriceRequestId = 0
 
 const categoryKeys: ItemCategory[] = PUBLISHABLE_CATEGORIES
 const conditionKeys = ['new', 'like_new', 'good', 'fair', 'defective']
@@ -376,6 +384,7 @@ const form = reactive({
   location: '',
   negotiable: false,
   listingType: 'sell' as 'sell' | 'wanted',
+  details: emptyListingDetailForm(),
 })
 
 /*
@@ -397,6 +406,8 @@ const permissionModalVisible = ref(false)
  */
 function onCategoryTap(cat: ItemCategory) {
   form.category = form.category === cat ? '' : cat
+  form.details = emptyListingDetailForm()
+  if (hasCategoryDetails(form.category)) form.condition = ''
   showCat.value = false
 }
 function onConditionTap(cond: string) {
@@ -411,15 +422,7 @@ function onConditionTap(cond: string) {
  * only ever see options without an edit id and is not needed.
  */
 
-watch(() => form.category, async (cat) => {
-  const requestId = ++avgPriceRequestId
-  if (!cat) { avgPrice.value = 0; return }
-  const { data } = await supabase.from('items').select('price').eq('category', cat).eq('status', 'active').limit(50)
-  if (requestId !== avgPriceRequestId) return
-  if (data && data.length > 0) {
-    avgPrice.value = Math.round(data.reduce((s: number, i: any) => s + Number(i.price), 0) / data.length)
-  } else { avgPrice.value = 0 }
-})
+
 
 const MAX_IMAGES_PUBLISH = 9
 
@@ -439,6 +442,7 @@ const isDirty = computed(() => {
     form.location.trim().length > 0 ||
     form.negotiable !== false ||
     form.listingType !== 'sell' ||
+    Object.values(form.details).some(Boolean) ||
     imageList.value.length > 0
   )
 })
@@ -469,6 +473,7 @@ function loadDraft(): PublishDraft | null {
 
 function applyDraft(draft: { form: any; images: string[] }) {
   Object.assign(form, draft.form)
+  form.details = { ...emptyListingDetailForm(), ...draft.form?.details }
   imageList.value = [...(draft.images || [])]
   uni.showToast({ title: t('publish.draftRestored'), icon: 'none' })
 }
@@ -493,6 +498,7 @@ function resetForm() {
   form.location = ''
   form.negotiable = false
   form.listingType = 'sell'
+  form.details = emptyListingDetailForm()
   showCat.value = false
   showCond.value = false
   imageList.value = []
@@ -621,8 +627,6 @@ function resetPublishMemoryState() {
   uploadProgress.value = 0
   permissionModalVisible.value = false
   pendingTabUrl = ''
-  avgPriceRequestId += 1
-  avgPrice.value = 0
   if (typingT) {
     clearTimeout(typingT)
     typingT = null
@@ -721,8 +725,6 @@ function destroyPublishPage() {
   uploadProgress.value = 0
   permissionModalVisible.value = false
   pendingTabUrl = ''
-  avgPriceRequestId += 1
-  avgPrice.value = 0
   if (typingT) {
     clearTimeout(typingT)
     typingT = null
@@ -785,6 +787,12 @@ function chooseImage() {
       }
     },
   })
+}
+
+function makeCover(index: number) {
+  if (submitting.value || index < 1 || index >= imageList.value.length) return
+  const [cover] = imageList.value.splice(index, 1)
+  imageList.value.unshift(cover)
 }
 
 function removeImage(index: number) {
@@ -896,7 +904,9 @@ async function onSubmit() {
       : Number.NaN
   if (!Number.isFinite(price) || price < 0) { uni.showToast({ title: t('publish.needPrice'), icon: 'none' }); return }
   if (!form.category) { uni.showToast({ title: t('publish.needCategory'), icon: 'none' }); return }
-  if (form.listingType !== 'wanted' && !form.condition) { uni.showToast({ title: t('publish.needCondition'), icon: 'none' }); return }
+  if (form.listingType !== 'wanted' && !hasCategoryDetails(form.category) && !form.condition) { uni.showToast({ title: t('publish.needCondition'), icon: 'none' }); return }
+  const detailError = listingDetailsError(form.category, listingDetailsFromForm(form.category, form.details))
+  if (detailError) { uni.showToast({ title: t(detailError), icon: 'none' }); return }
   // Soft gating — price advisory uses modal confirm so user must ack but can continue.
   // 100,000 is a soft ceiling; 99% of trips above it are unit/decimal mistakes,
   // and user actively confirming is cheap insurance.
@@ -1010,6 +1020,7 @@ async function onSubmit() {
       condition: (form.condition || 'good') as ItemCondition,
       listing_type: form.listingType,
       location: form.location || '',
+      listing_details: listingDetailsFromForm(form.category, form.details),
       images,
       image_dimensions: finalDims,
       // Seed the i18n maps with the original text in the source lang.
@@ -1182,6 +1193,10 @@ async function onSubmit() {
   border-radius: 0 0 9px 9px; text-align: center; padding: 2px 0;
   .cover-tag-label { font-size: 10px; color: #fff; font-weight: 500; }
 }
+.cover-select { position: absolute; bottom: 0; left: 0; right: 0; min-height: 32px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.72); color: #fff; font-size: 11px; border-radius: 0 0 9px 9px; cursor: pointer; }
+.field-guidance, .price-guidance, .location-guidance { display: block; font-size: 12px; line-height: 1.6; color: var(--text-subtle); }
+.field-guidance { margin-top: 8px; }
+.price-guidance, .location-guidance { padding: 8px 16px; }
 .image-add {
   width: 96px; height: 96px;
   border: 1.5px dashed var(--border-strong);
@@ -1232,7 +1247,7 @@ async function onSubmit() {
 }
 .flex-input { flex: 1; }
 .char-count { display: block; text-align: right; font-size: 11px; color: var(--text-subtle); margin-top: 4px; }
-.price-hint { padding: 0 16px 8px; font-size: 12px; color: var(--text-muted); }
+
 
 .field-header {
   display: flex; align-items: center; cursor: pointer;

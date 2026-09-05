@@ -1,5 +1,6 @@
 import http from 'k6/http'
 import { check, fail } from 'k6'
+import { assertLoadTarget, parseAccounts } from './_contracts.js'
 
 export const SUPABASE_URL = (__ENV.SUPABASE_URL || '').replace(/\/+$/, '')
 export const ANON_KEY     = __ENV.SUPABASE_PUBLISHABLE_KEY || __ENV.SUPABASE_ANON_KEY || ''
@@ -31,20 +32,17 @@ if (!ANON_KEY) {
 }
 
 const TEST_ACCOUNTS_FILE = __ENV.TEST_ACCOUNTS_FILE || ''
+assertLoadTarget(__ENV)
 
 export function loadTestAccounts() {
-  if (!TEST_ACCOUNTS_FILE) return []
-  const raw = open(TEST_ACCOUNTS_FILE)
-  const lines = raw.split('\n').map(s => s.trim()).filter(Boolean)
-  return lines.map(line => {
-    const [email, password] = line.split(':')
-    return { email, password }
-  })
+  if (!TEST_ACCOUNTS_FILE) throw new Error('TEST_ACCOUNTS_FILE is required; an empty run is not a pass.')
+  return parseAccounts(open(TEST_ACCOUNTS_FILE))
 }
 
 export function supabaseSignIn(email, password) {
   const url = `${SUPABASE_URL}/auth/v1/token?grant_type=password`
   const res = http.post(url, JSON.stringify({ email, password }), {
+    timeout: '10s', redirects: 0,
     headers: {
       'Content-Type': 'application/json',
       apikey: ANON_KEY,
@@ -52,15 +50,24 @@ export function supabaseSignIn(email, password) {
     tags: { op: 'signin' },
   })
   const ok = check(res, { 'signin 200': r => r.status === 200 })
-  if (!ok) fail(`signin failed for ${email}: ${res.status} ${res.body}`)
-  return res.json()
+  if (!ok) fail(`Synthetic account sign-in failed (HTTP ${res.status}).`)
+  const session = res.json()
+  if (!session?.access_token || !session?.user?.id) fail('Malformed synthetic account session.')
+  return session
 }
+
+// Setup runs once: otherwise a 50 rps business test mostly measures password
+// login and auth rate limits. Never print returned sessions or response bodies.
+export function authenticateAccounts(accounts) { return accounts.map(account => supabaseSignIn(account.email, account.password)) }
+export function sessionForVu(sessions) { return sessions[(__VU - 1) % sessions.length] }
+export const DB_RESPONSE_CALLBACK = http.expectedStatuses(200, 201, 204, 400, 409, 429)
 
 export function supabaseInsert(table, payload, jwt) {
   return http.post(
     `${SUPABASE_URL}/rest/v1/${table}`,
     JSON.stringify(payload),
     {
+      timeout: '10s', redirects: 0, responseCallback: DB_RESPONSE_CALLBACK,
       headers: {
         apikey: ANON_KEY,
         Authorization: `Bearer ${jwt}`,
@@ -77,6 +84,7 @@ export function supabaseRpc(fnName, args, jwt) {
     `${SUPABASE_URL}/rest/v1/rpc/${fnName}`,
     JSON.stringify(args || {}),
     {
+      timeout: '10s', redirects: 0, responseCallback: DB_RESPONSE_CALLBACK,
       headers: {
         apikey: ANON_KEY,
         ...(jwt

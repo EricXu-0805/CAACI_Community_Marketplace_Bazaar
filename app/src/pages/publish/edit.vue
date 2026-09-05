@@ -34,6 +34,9 @@
             <view class="remove-btn" role="button" :aria-label="t('a11y.delete')" @click="removeImage(i)">
               <UIcon name="close" size="xs" color="#FFFFFF" aria-hidden="true" />
             </view>
+            <view v-if="i > 0" class="cover-select" role="button" :aria-label="t('publish.makeCoverPhoto', { n: i + 1 })" :aria-disabled="submitting ? 'true' : 'false'" @click="makeCover(i)">
+              <text>{{ t('publish.makeCover') }}</text>
+            </view>
             <view v-if="i === 0" class="cover-tag">
               <text class="cover-tag-label">{{ t('publish.cover') }}</text>
             </view>
@@ -46,6 +49,8 @@
         </view>
         <text class="image-tip">{{ imageList.length >= 9 ? t('publish.imageMaxReached') : t('publish.imageOptional') }}</text>
       </view>
+
+      <ListingPreview :form="form" :images="imageList" />
 
       <!-- Upload progress -->
       <view v-if="uploadProgress" class="upload-bar">
@@ -60,6 +65,7 @@
 
       <view class="form-group">
         <textarea v-model="form.description" :placeholder="t('publish.descPlaceholder')" :aria-label="t('publish.descPlaceholder')" maxlength="500" class="form-textarea" @focus="onFieldFocus" @blur="onFieldBlur" />
+        <text class="field-guidance">{{ t('publish.guide.' + (form.listingType === 'wanted' ? 'wanted' : form.category || 'general')) }}</text>
         <text class="char-count">{{ form.description.length }}/500</text>
       </view>
 
@@ -71,9 +77,9 @@
         </view>
       </view>
 
-      <view v-if="avgPrice > 0 && form.category && form.listingType !== 'wanted'" class="price-hint">
-        <text>{{ t('publish.avgPrice') }}: ${{ avgPrice }}</text>
-      </view>
+
+
+      <text class="price-guidance">{{ t(form.listingType === 'wanted' ? 'publish.budgetHint' : 'publish.priceHint') }}</text>
 
       <!-- Category: inline pill selector -->
       <view class="form-group">
@@ -108,7 +114,7 @@
       </view>
 
       <!-- Condition: inline pill selector (sell only — N/A for a wanted post) -->
-      <view v-if="form.listingType !== 'wanted'" class="form-group">
+      <view v-if="form.listingType !== 'wanted' && !hasCategoryDetails(form.category)" class="form-group">
         <view
           class="field-header"
           role="button"
@@ -140,10 +146,14 @@
         </view>
       </view>
 
+      <ListingCategoryFields v-model="form.details" :category="form.category" :listing-type="form.listingType" :disabled="submitting" :legacy-optional="legacyDetailsOptional" @focus="onFieldFocus" @blur="onFieldBlur" />
+
       <view class="form-group row">
         <text class="label">{{ t('publish.location') }}</text>
-        <input v-model="form.location" :placeholder="t('publish.locationPlaceholder')" :aria-label="t('publish.location')" class="form-input flex-input" @focus="onFieldFocus" @blur="onFieldBlur" />
+        <input v-model="form.location" :placeholder="t('publish.locationPlaceholder')" :aria-label="t('publish.location')" maxlength="80" class="form-input flex-input" @focus="onFieldFocus" @blur="onFieldBlur" />
       </view>
+
+      <text class="location-guidance">{{ t('publish.locationHint') }}</text>
 
       <scroll-view scroll-x class="spot-row">
         <view
@@ -222,10 +232,9 @@ const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif
-import { ref, reactive, watch, onUnmounted } from 'vue'
+import { ref, reactive, computed, onUnmounted } from 'vue'
 import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
-import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 import { authoredLang } from '../../composables/i18n/format'
 import { useCampusSpots, type CampusSpot } from '../../composables/useCampusSpots'
@@ -241,6 +250,9 @@ import type { ImageDim } from '../../types'
 import AppSidebar from '../../components/AppSidebar.vue'
 import PermissionDeniedModal from '../../components/PermissionDeniedModal.vue'
 import UIcon from '../../components/UIcon.vue'
+import ListingPreview from '../../components/ListingPreview.vue'
+import ListingCategoryFields from '../../components/ListingCategoryFields.vue'
+import { emptyListingDetailForm, hasCategoryDetails, listingDetailsFromForm, listingDetailsError, listingDetailFormFromValue } from '../../utils/listingDetails'
 import OsmAttribution from '../../components/OsmAttribution.vue'
 import {
   captureAccountRequest,
@@ -305,7 +317,7 @@ function hideOwnedEditLoadToast() {
 
 function editableSnapshot(item: Pick<Item,
   'title' | 'description' | 'price' | 'category' | 'condition' | 'location' |
-  'images' | 'image_dimensions' | 'negotiable' | 'listing_type'
+  'images' | 'image_dimensions' | 'negotiable' | 'listing_type' | 'listing_details'
 >): string {
   return JSON.stringify({
     title: item.title,
@@ -317,6 +329,7 @@ function editableSnapshot(item: Pick<Item,
     images: item.images || [],
     image_dimensions: item.image_dimensions || [],
     negotiable: item.negotiable ?? false,
+    listing_details: item.listing_details ?? null,
     listing_type: item.listing_type || 'sell',
   })
 }
@@ -424,9 +437,6 @@ async function scheduleBilingualFill(
   }
 }
 
-const { supabase } = useSupabase()
-const avgPrice = ref(0)
-let avgPriceRequestId = 0
 
 const categoryKeys: ItemCategory[] = PUBLISHABLE_CATEGORIES
 const conditionKeys = ['new', 'like_new', 'good', 'fair', 'defective']
@@ -473,6 +483,7 @@ const form = reactive({
   location: '',
   negotiable: false,
   listingType: 'sell' as 'sell' | 'wanted',
+  details: emptyListingDetailForm(),
 })
 
 /*
@@ -483,9 +494,15 @@ const form = reactive({
  * per handoff §11 A9 (twin publish surfaces require lockstep).
  */
 const permissionModalVisible = ref(false)
+const loadedHadDetails = ref(false)
+const loadedCategory = ref('')
+const legacyDetailsOptional = computed(() => !loadedHadDetails.value && form.category === loadedCategory.value)
+const currentListingDetails = () => legacyDetailsOptional.value && !Object.values(form.details).some(Boolean) ? null : listingDetailsFromForm(form.category, form.details)
 
 function onCategoryTap(cat: ItemCategory) {
   form.category = form.category === cat ? '' : cat
+  form.details = emptyListingDetailForm()
+  if (hasCategoryDetails(form.category)) form.condition = ''
   showCat.value = false
 }
 function onConditionTap(cond: string) {
@@ -514,6 +531,9 @@ function resetEditForm() {
   form.location = ''
   form.negotiable = false
   form.listingType = 'sell'
+  form.details = emptyListingDetailForm()
+  loadedHadDetails.value = false
+  loadedCategory.value = ''
   imageList.value = []
   originalImageUrls.value = []
   imageDimensions.value = []
@@ -535,8 +555,6 @@ function resetEditPrivateState() {
   submitting.value = false
   uploadProgress.value = 0
   permissionModalVisible.value = false
-  avgPriceRequestId += 1
-  avgPrice.value = 0
   if (typingT) {
     clearTimeout(typingT)
     typingT = null
@@ -594,6 +612,9 @@ async function prepareEditPage(itemId: string) {
     form.description = item.description
     form.price = String(item.price)
     form.category = item.category
+    form.details = listingDetailFormFromValue(item.category, item.listing_details)
+    loadedHadDetails.value = !!item.listing_details
+    loadedCategory.value = item.category
     form.condition = item.condition
     form.location = item.location
     form.negotiable = item.negotiable ?? false
@@ -685,15 +706,7 @@ onUnload(destroyEditPage)
 
 onUnmounted(destroyEditPage)
 
-watch(() => form.category, async (cat) => {
-  const requestId = ++avgPriceRequestId
-  if (!cat) { avgPrice.value = 0; return }
-  const { data } = await supabase.from('items').select('price').eq('category', cat).eq('status', 'active').limit(50)
-  if (requestId !== avgPriceRequestId) return
-  if (data && data.length > 0) {
-    avgPrice.value = Math.round(data.reduce((s: number, i: any) => s + Number(i.price), 0) / data.length)
-  } else { avgPrice.value = 0 }
-})
+
 
 const MAX_IMAGES_PUBLISH = 9
 
@@ -735,6 +748,14 @@ function chooseImage() {
       }
     },
   })
+}
+
+function makeCover(index: number) {
+  if (submitting.value || index < 1 || index >= imageList.value.length) return
+  const [cover] = imageList.value.splice(index, 1)
+  imageList.value.unshift(cover)
+  const [dims] = imageDimensions.value.splice(index, 1)
+  imageDimensions.value.unshift(dims || { w: 0, h: 0 })
 }
 
 function removeImage(index: number) {
@@ -820,7 +841,9 @@ async function onSubmit() {
       : Number.NaN
   if (!Number.isFinite(price) || price < 0) { uni.showToast({ title: t('publish.needPrice'), icon: 'none' }); return }
   if (!form.category) { uni.showToast({ title: t('publish.needCategory'), icon: 'none' }); return }
-  if (form.listingType !== 'wanted' && !form.condition) { uni.showToast({ title: t('publish.needCondition'), icon: 'none' }); return }
+  if (form.listingType !== 'wanted' && !hasCategoryDetails(form.category) && !form.condition) { uni.showToast({ title: t('publish.needCondition'), icon: 'none' }); return }
+  const detailError = listingDetailsError(form.category, currentListingDetails())
+  if (detailError) { uni.showToast({ title: t(detailError), icon: 'none' }); return }
   if (price > 100000) {
     const confirmed = await new Promise<boolean>((resolve) => {
       uni.showModal({
@@ -920,6 +943,7 @@ async function onSubmit() {
       images,
       image_dimensions: finalDims,
       negotiable: form.negotiable,
+      listing_details: currentListingDetails(),
     }
     // Seeding a one-key map is how a translation gets requested, so only do it
     // for text that actually changed. A price edit must leave the finished
@@ -1084,6 +1108,10 @@ async function onSubmit() {
   border-radius: 0 0 9px 9px; text-align: center; padding: 2px 0;
   .cover-tag-label { font-size: 10px; color: #fff; font-weight: 500; }
 }
+.cover-select { position: absolute; bottom: 0; left: 0; right: 0; min-height: 32px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.72); color: #fff; font-size: 11px; border-radius: 0 0 9px 9px; cursor: pointer; }
+.field-guidance, .price-guidance, .location-guidance { display: block; font-size: 12px; line-height: 1.6; color: var(--text-subtle); }
+.field-guidance { margin-top: 8px; }
+.price-guidance, .location-guidance { padding: 8px 16px; }
 .image-add {
   width: 96px; height: 96px;
   border: 1.5px dashed var(--border-strong);
@@ -1130,7 +1158,7 @@ async function onSubmit() {
 }
 .flex-input { flex: 1; }
 .char-count { display: block; text-align: right; font-size: 11px; color: var(--text-subtle); margin-top: 4px; }
-.price-hint { padding: 0 16px 8px; font-size: 12px; color: var(--text-muted); }
+
 
 .field-header {
   display: flex; align-items: center; cursor: pointer;

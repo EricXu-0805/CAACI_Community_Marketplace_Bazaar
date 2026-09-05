@@ -39,7 +39,7 @@ onAccountTransition(resetFollowingState)
  */
 const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, location, is_illini_verified, status_text, status_emoji'
 const LIST_ITEM_FIELDS =
-  'id, user_id, title, title_i18n, description_i18n, source_lang, price, category, condition, status, listing_type, location, location_verified, images, image_dimensions, view_count, favorite_count, negotiable, created_at'
+  'id, user_id, title, title_i18n, description_i18n, source_lang, price, category, condition, status, listing_details, listing_type, location, location_verified, images, image_dimensions, view_count, favorite_count, negotiable, created_at'
 
 export function useFollow() {
   const { supabase } = useSupabase()
@@ -136,6 +136,7 @@ export function useFollow() {
       .in('user_id', ids)
       .eq('status', 'active')
       .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
       .range(page * pageSize, (page + 1) * pageSize - 1)
     if (!isAccountRequestCurrent(token)) return []
     if (error) throw error
@@ -161,6 +162,7 @@ export function useFollow() {
       .select(`created_at, followee_id, followee:profiles!follows_followee_id_fkey(${PUBLIC_PROFILE_FIELDS})` as any)
       .eq('follower_id', uid)
       .order('created_at', { ascending: false })
+      .order('followee_id', { ascending: false })
       .range(page * pageSize, (page + 1) * pageSize - 1)
     if (moderation.blockedIds.value.size > 0) {
       query = query.not('followee_id', 'in', `(${Array.from(moderation.blockedIds.value).join(',')})`)

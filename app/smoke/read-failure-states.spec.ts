@@ -452,6 +452,30 @@ test('following still fills the screen with the failure when the first page fail
   ).toHaveCount(0)
 })
 
+test('plaza Following keeps people visible and retries the failed page without skipping it', async ({ page }) => {
+  const state: PagedState = { pageRequests: {}, failPagesFrom: 1 }
+  await seedSession(page)
+  await servePaged(page, '/rest/v1/follows', FOLLOW_PAGE_SIZE, followRows, state)
+  await page.goto('/#/pages/plaza/index', { waitUntil: 'domcontentloaded' })
+  await page.getByRole('tab', { name: '关注 · Following', exact: true }).click()
+  await expect(page.locator('.follow-person')).toHaveCount(FOLLOW_PAGE_SIZE)
+  await expect.poll(async () => {
+    await scrollFeedToBottom(page, '#plaza-feed-panel')
+    return state.pageRequests[1] ?? 0
+  }, { timeout: 15_000 }).toBeGreaterThan(0)
+  const retry = page.getByRole('alert').getByRole('button', { name: 'Retry', exact: true })
+  await expect(retry).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Followed 1', exact: true })).toBeVisible()
+  await expect(page.locator('.follow-person')).toHaveCount(FOLLOW_PAGE_SIZE)
+  const attempts = state.pageRequests[1]
+  state.failPagesFrom = Infinity
+  await retry.click()
+  await expect.poll(() => state.pageRequests[1]).toBeGreaterThan(attempts)
+  await expect(page.locator('.follow-person')).toHaveCount(FOLLOW_PAGE_SIZE * 2)
+  await expect(page.getByRole('button', { name: 'Followed 31', exact: true })).toHaveCount(1)
+  await expect(page.getByRole('alert')).toHaveCount(0)
+})
+
 test('plaza keeps its loaded posts when the next page fails', async ({ page }) => {
   const state: PagedState = { pageRequests: {}, failPagesFrom: 1 }
   await seedSession(page)

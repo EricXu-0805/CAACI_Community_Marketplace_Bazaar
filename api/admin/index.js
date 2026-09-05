@@ -653,18 +653,25 @@ function takenDownObjectKeys(images, ownerId) {
  */
 async function readTakedownMedia(targetType, targetId) {
   const table = TAKEDOWN_MEDIA_TABLES[targetType]
-  if (!table) return []
+  if (!table) return { keys: [], complete: true }
   try {
     const { response, text } = await adminFetch(
       `${SUPABASE_URL}/rest/v1/${table}?id=eq.${targetId}&select=images,user_id`,
       { headers: supabaseHeaders(SERVICE_KEY) },
     )
-    if (!response.ok) return []
+    if (!response.ok) throw new Error('takedown_media_read_failed')
     const rows = parseUpstreamJson(text)
-    const row = Array.isArray(rows) ? rows[0] : null
-    return takenDownObjectKeys(row?.images, row?.user_id)
+    if (!Array.isArray(rows)) throw new Error('takedown_media_read_invalid')
+    const row = rows[0]
+    if (row && (!isUuid(row.user_id) || (row.images != null && !Array.isArray(row.images)))) {
+      throw new Error('takedown_media_read_invalid')
+    }
+    return { keys: takenDownObjectKeys(row?.images, row?.user_id), complete: true }
   } catch {
-    return []
+    await reportToSentry('takedown media inventory unavailable', {
+      target_type: targetType, target_id: targetId,
+    })
+    return { keys: [], complete: false }
   }
 }
 
@@ -1668,10 +1675,13 @@ async function handlePost(request, auth) {
       target_id: body.target_id,
       reason: normalizedModerationReason(body.reason),
     })
-    if (takedownMedia.length) {
-      await stashTakenDownMedia(body.target_type, body.target_id, takedownMedia)
-    }
-    return json(takedown)
+    const media = await stashTakenDownMedia(body.target_type, body.target_id, takedownMedia.keys)
+    // Hiding the row succeeded even if storage is unavailable. Preserve that
+    // definitive mutation receipt, but do not tell the operator the photos
+    // are private until both the inventory and every move are confirmed.
+    return json(!takedownMedia.complete || media.unmoved > 0
+      ? { ...takedown, media_cleanup_pending: true }
+      : takedown)
   }
 
   if (body.action === 'set_post_pinned') {

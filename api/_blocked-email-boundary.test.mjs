@@ -283,6 +283,10 @@ function digestFetch(options = {}) {
       return json(options.blockRows || [])
     }
     if (url.pathname === '/rest/v1/conversations' && method === 'GET') return json(options.conversations || [])
+    if (url.pathname === '/rest/v1/items_visible' && method === 'GET') {
+      if (options.itemStatus) return json({ message: 'visibility unavailable' }, options.itemStatus)
+      return json(options.items || [])
+    }
     if (url.pathname === '/rest/v1/profiles' && method === 'GET') return json(options.profiles || [])
     if (url.pathname === '/rest/v1/notifications' && method === 'GET') {
       notificationReads++
@@ -505,6 +509,54 @@ test('queued conversation notifications are filtered after a block and remain un
   assert.equal(body.usersNotified, 0)
   assert.equal(mock.calls.some(call => call.url.hostname === 'api.resend.com'), false)
   assert.equal(mock.calls.some(call => call.method === 'PATCH' && call.url.pathname === '/rest/v1/notifications'), false)
+})
+
+for (const body of ['new_listing_from_followee', 'saved_search_match']) {
+  for (const direction of ['recipient', 'seller']) {
+    test(`${body} never emails across a ${direction}-initiated block`, async () => {
+      const mock = digestFetch({
+        notifications: [queuedNotification({ type: 'system', body, item_id: ITEM, conversation_id: null })],
+        items: [{ id: ITEM, user_id: USER_A, status: 'active' }],
+        blockRows: [{ blocker_id: direction === 'recipient' ? USER_B : USER_A,
+          blocked_id: direction === 'recipient' ? USER_A : USER_B }],
+        profiles: [recipientProfile()],
+      })
+      const response = await runDigest(mock.fetch)
+      assert.equal((await response.json()).usersNotified, 0)
+      assert.equal(mock.calls.some(call => call.url.hostname === 'api.resend.com'), false)
+      assert.equal(mock.calls.some(call => call.url.pathname.endsWith('/claim_notification_email_delivery')), false)
+    })
+  }
+}
+
+for (const scenario of [
+  { label: 'visible seller', items: [{ id: ITEM, user_id: USER_A, status: 'active' }], sends: 1 },
+  { label: 'sold listing', items: [{ id: ITEM, user_id: USER_A, status: 'sold' }], sends: 1 },
+  { label: 'hidden or missing listing', items: [], sends: 0 },
+  { label: 'deleted listing', items: [{ id: ITEM, user_id: USER_A, status: 'deleted' }], sends: 0 },
+  { label: 'failed visibility lookup', itemStatus: 503, sends: 0 },
+]) {
+  test(`item digest rechecks ${scenario.label} before external delivery`, async () => {
+    console.error = () => {}
+    const mock = digestFetch({
+      ...scenario,
+      notifications: [queuedNotification({ type: 'system', body: 'saved_search_match', item_id: ITEM, conversation_id: null })],
+      profiles: [recipientProfile()],
+    })
+    await runDigest(mock.fetch)
+    assert.equal(mock.calls.filter(call => call.url.hostname === 'api.resend.com').length, scenario.sends)
+    if (scenario.sends) assert.equal(mock.calls.filter(call => call.url.pathname === '/rest/v1/items_visible').length, 2,
+      'visibility is checked both before the claim and immediately before provider delivery')
+  })
+}
+
+test('a listing reminder without its item attribution cannot be emailed', async () => {
+  const mock = digestFetch({
+    notifications: [queuedNotification({ type: 'system', body: 'saved_search_match', conversation_id: null })],
+    profiles: [recipientProfile()],
+  })
+  await runDigest(mock.fetch)
+  assert.equal(mock.calls.some(call => call.url.hostname === 'api.resend.com'), false)
 })
 
 test('queued conversation notifications send and stamp when the pair is unblocked', async () => {
