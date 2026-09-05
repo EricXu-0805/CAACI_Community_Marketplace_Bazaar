@@ -4516,7 +4516,7 @@ function isExpired(endsAt: string | null): boolean {
 .dash-loading { padding: 40px 0; text-align: center; color: var(--text-muted); }
 
 .list { display: flex; flex-direction: column; gap: 10px; }
-.empty { padding: 40px 0; text-align: center; color: var(--text-faint); font-size: 13px; }
+.empty { padding: 40px 0; text-align: center; color: var(--text-secondary); font-size: 13px; }
 
 .card {
   padding: 14px; background: var(--bg-elev-1); border-radius: 10px;
@@ -4543,7 +4543,7 @@ function isExpired(endsAt: string | null): boolean {
 .audit-name { color: var(--text-secondary); font-weight: 600; }
 .card-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
 .linked-box { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 8px; }
-.linked-empty { font-size: 12px; color: var(--text-faint); }
+.linked-empty { font-size: 12px; color: var(--text-secondary); }
 .linked-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .linked-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
 .linked-meta { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
