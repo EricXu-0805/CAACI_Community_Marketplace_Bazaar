@@ -7,7 +7,7 @@
     <template v-else>
       <text class="route">{{ details.origin }} → {{ details.destination }}</text>
       <text>{{ details.departure_date }} {{ details.departure_time }} {{ t('listingDetails.campusTime') }}</text>
-      <text v-if="!compact">{{ t(item.listing_type === 'wanted' ? 'listingDetails.seatsWanted' : 'listingDetails.seats') }}: {{ details.seats }} · {{ t('listingDetails.unit.person') }}</text>
+      <text v-if="!compact">{{ t(item.listing_type === 'wanted' ? 'listingDetails.seatsWanted' : 'listingDetails.seatCount') }}: {{ details.seats }} · {{ t('listingDetails.unit.person') }}</text>
     </template>
   </view>
 </template>

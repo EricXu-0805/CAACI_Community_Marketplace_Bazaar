@@ -25,6 +25,7 @@ const zh: Record<string, string> = {
   'listingDetails.departureDate': '出发日期',
   'listingDetails.departureTime': '出发时间',
   'listingDetails.seats': '可用座位',
+  'listingDetails.seatCount': '座位数',
   'listingDetails.seatsWanted': '需要座位',
   'listingDetails.campusTime': '芝加哥时间',
   'listingDetails.tripHint': '时间统一为芝加哥时间，价格为每人费用。请在描述补充行李和接送安排。',

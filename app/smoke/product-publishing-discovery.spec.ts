@@ -150,6 +150,21 @@ for(const [name,width,height,mobile] of [['mac',1440,900,false],['ipad',820,1180
    await page.getByRole('spinbutton',{name:'Price',exact:true}).fill('650');await page.getByRole('heading',{name:'Edit Item',exact:true}).click();await page.getByRole('button',{name:'Save Changes',exact:true}).click()
    await expect.poll(()=>requests.filter(r=>r.method==='PATCH').length).toBe(1);expect(requests.find(r=>r.method==='PATCH')!.body.listing_details).toBeNull()
   })
+ test('sold rides keep a readable status and do not advertise available seats',async({page})=>{
+   await fixture(page,{category:'rideshare',title:'Campus to Chicago ORD',title_i18n:null,price:35,status:'sold',images:[],listing_details:ride});await page.goto(`/#/pages/detail/index?id=${base.id}`)
+   await expect(page.locator('.listing-details-summary')).toContainText('Seats: 3')
+   await expect(page.locator('.listing-details-summary')).not.toContainText('Available seats')
+   await expect(page.locator('.sold-stamp')).toHaveText('Sold')
+   const colors=await page.locator('.sold-stamp').evaluate(el=>{const s=getComputedStyle(el);return {fg:s.color,bg:s.backgroundColor}})
+   const rgba=(s:string)=>s.match(/[\d.]+/g)!.map(Number)
+   const fg=rgba(colors.fg), bg=rgba(colors.bg), alpha=bg[3]??1
+   // A white photo is the lightest possible backdrop; the stamp must still read.
+   const backdrop=bg.slice(0,3).map(c=>c*alpha+255*(1-alpha))
+   const luminance=(cs:number[])=>cs.slice(0,3).map(c=>{const v=c/255;return v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4}).reduce((sum,c,i)=>sum+c*[0.2126,0.7152,0.0722][i],0)
+   const a=luminance(fg),b=luminance(backdrop)
+   expect((Math.max(a,b)+0.05)/(Math.min(a,b)+0.05)).toBeGreaterThanOrEqual(4.5)
+   if(process.env.PRODUCT_AUDIT_CAPTURE)await page.screenshot({path:`../output/release-candidate-20260905/${name}-sold-ride-${auditTheme}.png`,fullPage:true})
+  })
   test('housing and ride details remain readable without horizontal overflow',async({page})=>{
    await fixture(page,{category:'rideshare',price:35,images:[],listing_details:ride});await page.goto(`/#/pages/detail/index?id=${base.id}`)
    await expect(page.locator('.listing-details-summary')).toContainText('Illini Union → Chicago ORD');await expect(page.locator('.price-row .price')).toContainText('/person')

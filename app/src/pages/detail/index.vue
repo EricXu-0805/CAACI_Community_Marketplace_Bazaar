@@ -1368,8 +1368,10 @@ async function contactSeller() {
 .sold-stamp {
   font-family: var(--font-serif);
   font-size: 24px; font-weight: 600;
-  color: var(--ink-inverse);
-  border: 2px solid var(--ink-inverse);
+  /* Photo overlays stay dark in both themes; --ink-inverse flips to dark ink. */
+  color: #F5F0E6;
+  background: rgba(31,29,27,0.8);
+  border: 2px solid currentColor;
   padding: 6px 14px;
   letter-spacing: 0.12em;
   text-transform: uppercase;

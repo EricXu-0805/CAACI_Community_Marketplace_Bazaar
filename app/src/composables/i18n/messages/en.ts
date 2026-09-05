@@ -25,6 +25,7 @@ const en: Record<string, string> = {
   'listingDetails.departureDate': 'Departure date',
   'listingDetails.departureTime': 'Departure time',
   'listingDetails.seats': 'Available seats',
+  'listingDetails.seatCount': 'Seats',
   'listingDetails.seatsWanted': 'Seats needed',
   'listingDetails.campusTime': 'Chicago time',
   'listingDetails.tripHint': 'Times use Chicago time. Price is per person. Add luggage and pickup details in the description.',
