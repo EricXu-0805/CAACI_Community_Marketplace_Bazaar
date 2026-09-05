@@ -57,7 +57,7 @@
         <text v-if="adminRecoveryError" class="admin-recovery-error">{{ t('admin.outcomeRecoveryFailed') }}</text>
         <view class="admin-recovery-actions">
           <view
-            v-if="adminRecoveryUnknownCount > 0 && !adminRecoveryRequiresOwner"
+            v-if="(adminRecoveryUnknownCount > 0 || adminRecoveryError) && !adminRecoveryRequiresOwner"
             :class="['mini-btn', 'primary', { disabled: adminRecoveryBusy }]"
             role="button"
             :tabindex="adminRecoveryBusy ? -1 : 0"
@@ -4232,7 +4232,7 @@ function onTakedownContent(row: any) {
       if (reason === null) return
       if (!beginModerationMutation(mutationKey)) return
       try {
-        const result = await apiPost<{ media_cleanup_pending?: boolean }>({
+        const result = await apiPost<{ media_cleanup_pending?: boolean; media_cache_pending?: boolean }>({
           action: 'takedown_content',
           target_type: row.target_type,
           target_id: row.target_id,
@@ -4248,6 +4248,12 @@ function onTakedownContent(row: any) {
             uni.showModal({
               title: t('admin.takedownMediaPendingTitle'),
               content: t('admin.takedownMediaPendingBody'),
+              showCancel: false,
+            })
+          } else if (result.media_cache_pending) {
+            uni.showModal({
+              title: t('admin.toastTakedownDone'),
+              content: t('admin.takedownCachePendingBody'),
               showCancel: false,
             })
           } else {

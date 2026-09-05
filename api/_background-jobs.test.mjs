@@ -70,13 +70,14 @@ function mock(options = {}) {
   const batches=[...(options.batches || [])]
   globalThis.fetch=async (input,init={}) => {
     const url=new URL(String(input))
-    const body=JSON.parse(init.body)
+    const body=init.body ? JSON.parse(init.body) : null
     calls.push({url,body,init})
     if(url.pathname.endsWith('/claim_moderation_media_job')) return response(jobs.shift() ?? null)
     if(url.pathname.endsWith('/finish_moderation_media_job')) return response(options.finish ?? true)
     if(url.pathname.endsWith('/process_listing_notification_job')) return response(batches.shift() ?? options.repeatBatch ?? {worked:false,scanned:0,inserted:0})
     if(url.pathname.endsWith('/purge_completed_background_jobs')) return response(0)
     if(url.pathname.endsWith('/background_job_status')) return response(options.backlog || BACKLOG)
+    if(url.pathname.startsWith('/storage/v1/cdn/item-images/')) return response(options.purgeBody ?? {message:'success'},options.purgeStatus || 200)
     if(url.pathname==='/storage/v1/object/move') {
       if(options.moveThrow) throw new Error('untrusted provider credentials and object detail')
       return response(options.moveBody || {}, options.moveStatus || 200)
@@ -107,6 +108,7 @@ test('leased evidence moves only its own key and acknowledges the exact lease', 
   assert.deepEqual(calls.find(c=>c.url.pathname.endsWith('/finish_moderation_media_job')).body,{
     id_in:ID,lease_in:TOKEN,outcome_in:'complete',
   })
+  assert.equal(calls.filter(c=>c.url.pathname===`/storage/v1/cdn/item-images/items/${OWNER}/test.png`).length,1)
   assert.ok(calls.every(c=>c.init.redirect==='manual'))
   assert.ok(calls.every(c=>new Headers(c.init.headers).get('apikey')===SERVICE_KEY))
 })
@@ -135,6 +137,19 @@ test('a replay with a missing public source completes instead of retrying foreve
     mock({...options,jobs:[JOB]});const handler=await loadHandler()
     assert.equal((await (await handler(request())).json()).media_completed,1)
   }
+})
+test('a moved image stays retryable until exact-path cache invalidation is accepted', async () => {
+  console.error=()=>{}
+  const calls=mock({jobs:[JOB],purgeStatus:503});const handler=await loadHandler()
+  const result=await (await handler(request())).json()
+  assert.equal(result.media_completed,0);assert.equal(result.media_retried,1)
+  assert.equal(calls.find(c=>c.url.pathname.endsWith('/finish_moderation_media_job')).body.outcome_in,'storage_unavailable')
+})
+test('a malformed successful purge response cannot acknowledge image processing',async()=>{
+  console.error=()=>{}
+  mock({jobs:[JOB],purgeBody:'<html>not a receipt</html>'});const handler=await loadHandler()
+  const result=await (await handler(request())).json()
+  assert.equal(result.media_completed,0);assert.equal(result.media_retried,1)
 })
 test('a lost lease or malformed claim returns retryable failure and cannot report completion', async () => {
   console.error=()=>{}

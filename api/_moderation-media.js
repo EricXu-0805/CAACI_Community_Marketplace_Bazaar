@@ -33,3 +33,8 @@ export function mediaMoveSucceeded(response, text) {
       && body.message === 'Object not found'
   } catch { return false }
 }
+
+export function mediaCachePurgeAccepted(response, text) {
+  if (!response.ok) return false
+  try { return JSON.parse(text)?.message === 'success' } catch { return false }
+}

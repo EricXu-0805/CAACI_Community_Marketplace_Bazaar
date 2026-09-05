@@ -210,6 +210,14 @@ jobs:
         working-directory: app
         run: node ../scripts/verify-build-artifact.mjs dist/build/h5 ci
 
+      - name: Install browsers for compiled admin acceptance
+        working-directory: app
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Verify compiled moderator login and safe recovery
+        working-directory: app
+        run: npx playwright test --config playwright.production-admin.config.ts
+
   build-mp-weixin:
     name: Build mp-weixin
     runs-on: ubuntu-latest

@@ -25,7 +25,8 @@ publication do not receive the older listing's alert.
 A status change to item `deleted` or post `hidden` captures each image in the
 same transaction. Storage moves still run immediately during a moderation API
 request. If that request dies or a move fails, the independent task retries.
-Each object has a two-minute lease. Failed moves back off from 60 seconds to one
+Each object has a two-minute lease. A successful move also queues an exact-path
+CDN purge; a failed purge stays retryable. Failed moves back off from 60 seconds to one
 hour; ten failures leave a durable `failed` record and cause worker HTTP 503.
 Expired or superseded leases cannot acknowledge a later worker's result.
 Restored content cancels unclaimed cleanup. A manual restore while a worker is
@@ -36,8 +37,15 @@ The worker accepts only this project's public item-image URLs in the original
 author's own upload folder. Foreign origins, another owner's folder and path
 traversals are cancelled without touching Storage. A missing source is treated
 as already removed, including Storage's actual HTTP 400 / `NoSuchKey` response.
-This proves public removal, not that an earlier external deletion preserved a
-private copy. A move never becomes a bulk delete. Database job receipts expire
+This proves origin removal and accepted CDN invalidation, not immediate global
+cache disappearance or that an earlier external deletion preserved a private
+copy. Hosted acceptance on 2026-09-05 reproduced a cached 200 after a committed
+move; later public reads returned 400 while both evidence objects existed in
+the private bucket. The scoped purge API returned 200 on staging. Per
+[Supabase's cache documentation](https://supabase.com/docs/guides/storage/cdn/purge-cdn-cache),
+invalidation propagation may take 60 seconds and cannot revoke browser caches.
+The moderator sees that distinction. New app uploads use a 60-second browser
+TTL; existing uploads retain their prior TTL. A move never becomes a bulk delete. Database job receipts expire
 after 30 days; private evidence objects follow the separate content/privacy
 retention procedure and are not erased by this worker.
 

@@ -1,4 +1,4 @@
-import { moderationObjectKeys, mediaMoveSucceeded } from '../_moderation-media.js'
+import { moderationObjectKeys, mediaMoveSucceeded, mediaCachePurgeAccepted } from '../_moderation-media.js'
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from '../_deployment-boundary.js'
 
 export const config = { runtime: 'edge' }
@@ -659,7 +659,18 @@ async function stashTakenDownMedia(targetType, targetId, keys) {
       )
       // Gone from the public bucket is the desired state however it got there —
       // a replayed idempotency key, or the same content taken down twice.
-      if (!mediaMoveSucceeded(response, text)) unmoved.push(key)
+      if (!mediaMoveSucceeded(response, text)) {
+        unmoved.push(key)
+        continue
+      }
+      // Moving the origin object does not synchronously revoke cached public
+      // responses. Queue exact-path CDN invalidation and surface propagation
+      // separately; a failed purge stays in the durable recovery queue.
+      const purge = await adminFetch(
+        `${SUPABASE_URL}/storage/v1/cdn/item-images/${key.split('/').map(encodeURIComponent).join('/')}`,
+        { method: 'DELETE', headers: supabaseHeaders(SERVICE_KEY) },
+      )
+      if (!mediaCachePurgeAccepted(purge.response, purge.text)) unmoved.push(key)
     } catch {
       unmoved.push(key)
     }
@@ -1644,9 +1655,11 @@ async function handlePost(request, auth) {
     // Hiding the row succeeded even if storage is unavailable. Preserve that
     // definitive mutation receipt, but do not tell the operator the photos
     // are private until both the inventory and every move are confirmed.
-    return json(!takedownMedia.complete || media.unmoved > 0
-      ? { ...takedown, media_cleanup_pending: true }
-      : takedown)
+    return json({
+      ...takedown,
+      ...(!takedownMedia.complete || media.unmoved > 0 ? { media_cleanup_pending: true } : {}),
+      ...(takedownMedia.keys.length ? { media_cache_pending: true } : {}),
+    })
   }
 
   if (body.action === 'set_post_pinned') {

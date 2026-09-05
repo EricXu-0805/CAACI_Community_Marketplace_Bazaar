@@ -781,7 +781,7 @@ export function useItems() {
         assertAccountCurrent(accountToken, session.user.id)
         uploadAttempted = true
         const h5Result = await withUploadTimeout(
-          supabase.storage.from('item-images').upload(storagePath, blob, { contentType }),
+          supabase.storage.from('item-images').upload(storagePath, blob, { contentType, cacheControl: '60' }),
           IMAGE_UPLOAD_TIMEOUT_MS,
           'image upload',
           () => cleanupFailedUploadBatch(
@@ -819,9 +819,11 @@ export function useItems() {
             url: uploadUrl,
             filePath: compressedPath,
             name: 'file',
+            formData: { cacheControl: '60' },
             header: {
               Authorization: `Bearer ${session.access_token}`,
               'x-upsert': 'false',
+              'cache-control': 'max-age=60',
             },
           }, IMAGE_UPLOAD_TIMEOUT_MS, 'image upload', () => cleanupFailedUploadBatch(
             [candidateUrl],
@@ -965,7 +967,7 @@ export function useItems() {
     let h5Err: any
     try {
       const result = await withUploadTimeout(
-        supabase.storage.from('item-images').upload(storagePath, blob, { contentType }),
+        supabase.storage.from('item-images').upload(storagePath, blob, { contentType, cacheControl: '60' }),
         IMAGE_UPLOAD_TIMEOUT_MS,
         'image upload',
         () => cleanupFailedUploadBatch(
@@ -1013,9 +1015,11 @@ export function useItems() {
           url: uploadUrl,
           filePath: compressedPath,
           name: 'file',
+          formData: { cacheControl: '60' },
           header: {
             Authorization: `Bearer ${session.access_token}`,
             'x-upsert': 'false',
+            'cache-control': 'max-age=60',
           },
       }, IMAGE_UPLOAD_TIMEOUT_MS, 'image upload', () => cleanupFailedUploadBatch(
         [candidateUrl],

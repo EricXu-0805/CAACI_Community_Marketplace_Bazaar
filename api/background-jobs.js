@@ -1,4 +1,4 @@
-import { moderationObjectKeys, mediaMoveSucceeded } from './_moderation-media.js'
+import { moderationObjectKeys, mediaMoveSucceeded, mediaCachePurgeAccepted } from './_moderation-media.js'
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from './_deployment-boundary.js'
 import { reportToSentry } from './_sentry-report.js'
 
@@ -184,7 +184,12 @@ export default async function handler(request) {
             body: JSON.stringify({ bucketId: 'item-images', sourceKey: key,
               destinationBucket: 'moderation-evidence', destinationKey: key }),
           }, timeLeft())
-          if (mediaMoveSucceeded(response, text)) outcome = 'complete'
+          if (mediaMoveSucceeded(response, text)) {
+            const purge = await serviceCall(new URL(`/storage/v1/cdn/item-images/${key.split('/').map(encodeURIComponent).join('/')}`, origin), {
+              method: 'DELETE', headers: serviceHeaders(),
+            }, timeLeft())
+            if (mediaCachePurgeAccepted(purge.response, purge.text)) outcome = 'complete'
+          }
         } catch { /* Persist a retry after timeout, redirect, or provider failure. */ }
       }
       if (await call('finish_moderation_media_job', {
