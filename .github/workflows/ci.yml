@@ -89,6 +89,25 @@ jobs:
         working-directory: supabase/migrations
         run: shasum -a 256 -c manifest.sha256
 
+      # Ubuntu's bundled major can differ from production. An absent 17 used
+      # to turn the listing/category/moderation SQL regressions into skips.
+      - name: Install PostgreSQL 17 for real database regressions
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          if [ ! -x /usr/lib/postgresql/17/bin/initdb ]; then
+            sudo install -d /usr/share/postgresql-common/pgdg
+            sudo curl --fail --silent --show-error --max-time 30 \
+              -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+              https://www.postgresql.org/media/keys/ACCC4CF8.asc
+            source /etc/os-release
+            printf 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt %s-pgdg main\n' "$VERSION_CODENAME" \
+              | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+            sudo apt-get update -qq -o Acquire::Retries=2
+            sudo apt-get install -y --no-install-recommends postgresql-17
+          fi
+          /usr/lib/postgresql/17/bin/initdb --version
+
       - name: API and client boundary tests
         working-directory: app
         run: node --test ../api/*.test.mjs ../scripts/*.test.mjs smoke/*.test.mjs

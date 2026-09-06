@@ -38,6 +38,7 @@ const MIGRATION_20260904060000 = path.join(
 const PG_BIN_CANDIDATES = [
   '/opt/homebrew/opt/postgresql@17/bin',
   '/usr/local/opt/postgresql@17/bin',
+  '/usr/lib/postgresql/17/bin',
   '/opt/homebrew/opt/postgresql@16/bin',
 ]
 

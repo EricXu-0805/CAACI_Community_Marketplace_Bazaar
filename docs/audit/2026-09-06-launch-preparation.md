@@ -92,6 +92,9 @@ See [background jobs](../admin/BACKGROUND_JOBS.md) for exact retry and recovery.
   public config. Account smoke remains protected-environment, main-only; a PR
   never receives its password or service credentials. Missing schema fails
   before browser startup; HTTP errors are not ignored to make CI pass.
+  The boundary job installs PostgreSQL 17 from the official signed package
+  repository; database tests resolve Linux and Mac binaries. A previous green
+  run skipped several SQL suites because only another major was installed.
 - Real two-account API flows cover transaction attribution, meetup decisions,
   duplicate submission, rating retries and report boundaries. Browser emulation
   covers desktop, iPad and phone layouts; it cannot certify physical keyboard,
