@@ -254,6 +254,13 @@ jobs:
   public-smoke:
     name: Smoke (public page sweep)
     runs-on: ubuntu-latest
+    # A schema-changing PR must test the prepared candidate database. Main
+    # still checks the deployed production schema. These PR values are public
+    # anonymous client configuration, never account or service credentials.
+    env:
+      VITE_SUPABASE_URL: ${{ (github.event_name == 'pull_request' && vars.PR_SMOKE_SUPABASE_URL) || (github.event_name != 'pull_request' && secrets.VITE_SUPABASE_URL) || '' }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ (github.event_name == 'pull_request' && vars.PR_SMOKE_SUPABASE_PUBLISHABLE_KEY) || (github.event_name != 'pull_request' && secrets.VITE_SUPABASE_PUBLISHABLE_KEY) || '' }}
+      VITE_SUPABASE_ANON_KEY: ${{ (github.event_name == 'pull_request' && vars.PR_SMOKE_SUPABASE_ANON_KEY) || (github.event_name != 'pull_request' && secrets.VITE_SUPABASE_ANON_KEY) || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -269,17 +276,11 @@ jobs:
         working-directory: app
         run: npm ci --legacy-peer-deps
 
-      # Fork pull requests do not receive repository values. Detect the
-      # minimum public credential pair inside a shell step (GitHub does not
-      # allow direct `secrets.*` references in an `if:` expression), then skip
-      # the external smoke signal cleanly when it is unavailable.
+      # Detect the public pair inside a shell step; forks without public
+      # configuration can skip, while an available but stale schema fails.
       - name: Detect smoke configuration
         id: smoke-config
         shell: bash
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
           if [[ -n "$VITE_SUPABASE_URL" && ( -n "$VITE_SUPABASE_PUBLISHABLE_KEY" || -n "$VITE_SUPABASE_ANON_KEY" ) ]]; then
             echo "can_run=true" >> "$GITHUB_OUTPUT"
@@ -287,6 +288,10 @@ jobs:
             echo "can_run=false" >> "$GITHUB_OUTPUT"
             echo "Smoke skipped: public Supabase CI credentials are unavailable (expected on forks)."
           fi
+
+      - name: Verify public read schema before browser startup
+        if: steps.smoke-config.outputs.can_run == 'true'
+        run: node scripts/verify-public-read-schema.mjs
 
       # Most specs spread the iPhone 13 device profile, whose
       # defaultBrowserType is webkit. smoke/a11y-keyboard-journey.spec.ts is
@@ -312,10 +317,6 @@ jobs:
         if: steps.smoke-config.outputs.can_run == 'true'
         working-directory: app
         run: npm run smoke
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
   authenticated-smoke:
     name: Smoke (protected staging account)

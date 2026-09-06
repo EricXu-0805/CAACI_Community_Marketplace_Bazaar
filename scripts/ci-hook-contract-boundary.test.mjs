@@ -40,6 +40,8 @@ test('public smoke skips missing configuration while account smoke is protected 
   assert.match(ci, /name: Smoke \(logged-out page sweep only\)[\s\S]*id: smoke-run/)
   const publicJob = ci.slice(ci.indexOf('  public-smoke:'), ci.indexOf('  authenticated-smoke:'))
   assert.doesNotMatch(publicJob, /SMOKE_EMAIL|SMOKE_PASSWORD/)
+  assert.match(publicJob, /github\.event_name == 'pull_request' && vars\.PR_SMOKE_SUPABASE_URL/)
+  assert.ok(publicJob.indexOf('verify-public-read-schema.mjs') < publicJob.indexOf('npx playwright install'))
   assert.match(ci, /authenticated-smoke:[\s\S]*?environment: staging-smoke/)
   assert.match(ci, /github\.event_name == 'push'[\s\S]*?refs\/heads\/main[\s\S]*?github\.event_name == 'workflow_dispatch'[\s\S]*?refs\/heads\/main/)
   assert.match(ci, /SMOKE_EXPECTED_SUPABASE_PROJECT_REF:[\s\S]*?SMOKE_EXPECTED_USER_ID:/)
