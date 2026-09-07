@@ -3,7 +3,7 @@
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
-  <view class="page has-sidebar" v-if="item" :class="mpThemeClass" :style="mpChrome">
+  <view class="page has-sidebar" v-if="item" :class="[mpThemeClass, { 'text-only': imgs.length === 0 }]" :style="mpChrome">
     <!-- Image Carousel -->
     <view :class="['img-area', { 'is-sold': item.status === 'sold' }]">
       <!--
@@ -22,11 +22,11 @@
         class="img-swiper"
         :style="swiperStyle"
         :current="currentImg"
-        role="region"
-        aria-roledescription="carousel"
-        :aria-label="t('a11y.previewImage')"
-        aria-keyshortcuts="ArrowLeft ArrowRight"
-        tabindex="0"
+        :role="imgs.length ? 'region' : undefined"
+        :aria-roledescription="imgs.length ? 'carousel' : undefined"
+        :aria-label="imgs.length ? t('a11y.previewImage') : undefined"
+        :aria-keyshortcuts="imgs.length ? 'ArrowLeft ArrowRight' : undefined"
+        :tabindex="imgs.length ? 0 : -1"
         @change="onGalleryChange"
         @keydown="onGalleryKeydown"
         circular
@@ -59,6 +59,16 @@
           </view>
         </swiper-item>
       </swiper>
+      <!-- #ifdef H5 -->
+      <template v-if="imgs.length > 1">
+        <view class="gallery-nav gallery-prev" role="button" tabindex="0" :aria-label="t('detail.previousImage')" @click.stop="stepGallery(-1)">
+          <UIcon name="chevron-left" size="sm" color="#fff" />
+        </view>
+        <view class="gallery-nav gallery-next" role="button" tabindex="0" :aria-label="t('detail.nextImage')" @click.stop="stepGallery(1)">
+          <UIcon name="chevron-right" size="sm" color="#fff" />
+        </view>
+      </template>
+      <!-- #endif -->
       <view v-if="item.status === 'sold'" class="sold-overlay">
         <text class="sold-stamp">{{ t('status.sold') }}</text>
       </view>
@@ -92,9 +102,9 @@
 
     <view class="info-card">
       <view class="price-row">
-        <text v-if="item.listing_type === 'wanted'" class="price price-wanted">{{ item.price > 0 ? t('home.budget') + ' ' + formatPrice(item.price, '') : t('home.openBudget') }}</text>
+        <text v-if="item.listing_type === 'wanted'" class="price price-wanted">{{ listingPriceLabel(item, t) }}</text>
         <template v-else>
-          <text :class="['price', { free: !item.price || item.price === 0 }]">{{ formatPrice(item.price, t("home.free")) }}</text>
+          <text :class="['price', { free: !item.price || item.price === 0 }]">{{ listingPriceLabel(item, t) }}</text>
           <text v-if="item.negotiable" class="obo">{{ t('publish.obo') }}</text>
         </template>
       </view>
@@ -108,7 +118,7 @@
       <view class="tags">
         <text v-if="item.listing_type === 'wanted'" class="tag tag-wanted">{{ t('item.wanted') }}</text>
         <text class="tag">{{ t('cat.' + item.category) }}</text>
-        <text v-if="item.listing_type !== 'wanted'" class="tag">{{ t('condition.' + item.condition) }}</text>
+        <text v-if="item.listing_type !== 'wanted' && !hasCategoryDetails(item.category)" class="tag">{{ t('condition.' + item.condition) }}</text>
         <view :class="['tag', 'tag-loc', { 'tag-safe': pickupBadge?.spot }]">
           <view class="loc-dot"></view>
           <text>{{ displayLocation }}</text>
@@ -116,6 +126,8 @@
         </view>
       </view>
     </view>
+
+    <view v-if="item.listing_details" class="section"><ListingDetailsSummary :item="item" /></view>
 
     <view class="section" v-if="item.description">
       <text class="section-label">{{ t('detail.description') }}</text>
@@ -371,6 +383,8 @@
 </template>
 
 <script setup lang="ts">
+import ListingDetailsSummary from '../../components/ListingDetailsSummary.vue'
+import { hasCategoryDetails, validListingDate } from '../../utils/listingDetails'
 // uni-app forwards the `?id=` route query as a component attribute on H5.
 // This page intentionally has multiple root nodes (sidebar, toast, and the
 // mutually exclusive content/error/loading roots), so Vue cannot inherit that
@@ -468,6 +482,13 @@ function prepareGalleryNeighbors(index: number) {
 
 function galleryImageReady(index: number): boolean {
   return galleryReadyIndexes.value.includes(index)
+}
+
+function stepGallery(direction: number) {
+  const total = imgs.value.length
+  if (total < 2) return
+  currentImg.value = (currentImg.value + direction + total) % total
+  prepareGalleryNeighbors(currentImg.value)
 }
 
 function onGalleryKeydown(event: KeyboardEvent) {
@@ -616,6 +637,8 @@ function measureHero() {
 }
 
 const swiperStyle = computed(() => {
+  // Text-only and wanted listings have no photo to justify a full-height hero.
+  if (imgs.value.length === 0) return { height: '128px' }
   const ratio = bestAspect(effectiveDims()) ?? (4 / 5)
   if (!heroBoxW.value || !winH.value) {
     return { aspectRatio: String(ratio), maxHeight: '70vh', height: 'auto' }
@@ -939,11 +962,11 @@ async function loadDetailForCurrentAccount() {
           }))
         : Promise.resolve({ eligible: false, ratee_id: null, ratee_nickname: null, already_rated: false }),
       supabase
-        .from('items').select('id, title, title_i18n, price, images, image_dimensions, listing_type')
+        .from('items').select('id, title, title_i18n, price, category, listing_details, images, image_dimensions, listing_type')
         .eq('user_id', itemData.user_id).eq('status', 'active')
         .neq('id', itemData.id).limit(6),
       supabase
-        .from('items').select('id, title, title_i18n, price, images, image_dimensions, user_id, listing_type')
+        .from('items').select('id, title, title_i18n, price, category, listing_details, images, image_dimensions, user_id, listing_type')
         .eq('category', itemData.category).eq('status', 'active')
         .neq('id', itemData.id).neq('user_id', itemData.user_id).limit(12),
       fetchForUser(itemData.user_id, REVIEW_FETCH).catch((readError) => {
@@ -1313,6 +1336,20 @@ async function contactSeller() {
   width: 100%;
   background: var(--bg-inset);
 }
+/* #ifdef H5 */
+.gallery-nav { display: none; }
+@media (min-width: 768px) {
+  .gallery-nav {
+    display: flex; align-items: center; justify-content: center;
+    position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+    width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
+    background: rgba(0, 0, 0, 0.55);
+    &:hover { background: rgba(0, 0, 0, 0.75); }
+  }
+  .gallery-prev { left: 12px; }
+  .gallery-next { right: 12px; }
+}
+/* #endif */
 /*
  * Sold-state hero (gate §4 refine): desaturate the photo and stamp a
  * rotated serif "SOLD" over it — the kit's product_card_v2 pattern
@@ -1331,8 +1368,10 @@ async function contactSeller() {
 .sold-stamp {
   font-family: var(--font-serif);
   font-size: 24px; font-weight: 600;
-  color: var(--ink-inverse);
-  border: 2px solid var(--ink-inverse);
+  /* Photo overlays stay dark in both themes; --ink-inverse flips to dark ink. */
+  color: #F5F0E6;
+  background: rgba(31,29,27,0.8);
+  border: 2px solid currentColor;
   padding: 6px 14px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -1371,7 +1410,7 @@ async function contactSeller() {
 /* Branded gallery placeholder (global .u-thumb-ph) + a small caption so
    a photoless hero reads as intentional, not still-loading. */
 .det-noimg { flex-direction: column; gap: 10px; }
-.det-noimg .u-thumb-ph-seal { font-size: 64px; }
+.det-noimg .u-thumb-ph-seal { font-size: 32px; }
 .det-noimg-cap { font-size: 12px; color: var(--text-subtle); letter-spacing: 0.04em; }
 
 .img-back, .img-share {
@@ -1844,7 +1883,8 @@ async function contactSeller() {
     --detail-shell: calc(1180px + var(--sidebar-w, 240px));
     max-width: var(--detail-shell);
     padding-right: 24px;
-    padding-bottom: 32px;
+    /* Keep the base 80px + safe-area clearance for the fixed CTA. With no
+       related cards, 32px left the final safety note hidden even at the end. */
   }
   /* Column 2 is the decision column and must pack tight. Grid rows are shared
      across columns, so any second item placed in column 1 pairs with a
@@ -1862,6 +1902,17 @@ async function contactSeller() {
     overflow: hidden;
   }
   .info-card { border-radius: 14px; }
+  .page.text-only {
+    grid-template-columns: minmax(0, 720px);
+    justify-content: center; max-width: none; padding-right: 0;
+  }
+  .page.text-only > * { grid-column: 1; }
+  .page.text-only .img-area { grid-row: auto; position: relative; }
+  .page.text-only .action-bar, .page.text-only .rating-sheet {
+    left: var(--sidebar-w, 240px); right: 0; width: auto;
+    max-width: 720px; margin-left: auto; margin-right: auto;
+  }
+
 
   /* The CTA is out of flow, so it cannot inherit column 2's position. Track
      the same capped shell the grid uses, otherwise it drifts to the viewport

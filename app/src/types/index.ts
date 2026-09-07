@@ -1,3 +1,4 @@
+import type { ListingDetails } from '../utils/listingDetails'
 // ============================================
 // CAACI Marketplace - Type Definitions
 // ============================================
@@ -158,6 +159,7 @@ export interface PostComment {
 }
 
 export interface Item {
+  listing_details?: ListingDetails | null
   id: string
   user_id: string
   title: string

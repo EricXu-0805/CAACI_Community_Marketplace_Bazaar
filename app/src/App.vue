@@ -609,7 +609,7 @@ let roleButtonA11yInstalled = false
 const AUTO_TABINDEX_ATTR = 'data-auto-role-tabindex'
 const AUTO_UNI_BUTTON_ROLE_ATTR = 'data-auto-uni-button-role'
 const AUTO_ARIA_DISABLED_ATTR = 'data-auto-role-aria-disabled'
-const UNI_FORM_CONTROL_SELECTOR = 'uni-input, uni-textarea'
+const UNI_FORM_CONTROL_SELECTOR = 'uni-input, uni-textarea, uni-picker'
 const AUTO_NATIVE_LABEL_ATTR = 'data-auto-native-aria-label'
 const AUTO_NATIVE_LABELLEDBY_ATTR = 'data-auto-native-aria-labelledby'
 const NATIVE_KEYBOARD_INTERACTIVE_SELECTOR = [
@@ -1226,6 +1226,13 @@ function installRoleButtonKeyboardAccess() {
     const button = origin.closest<HTMLElement>('[role="button"]')
     if (!button || roleButtonDisabled(button)) return
     if (event.key !== 'Enter') event.preventDefault()
+    // uni-picker uses an invisible native date/time input on desktop. Clicking
+    // its visible child opens only uni's empty custom shell. A keyboard action
+    // must reach the browser picker while the user-activation token is live.
+    const pickerInput = button.closest('uni-picker')?.querySelector<HTMLInputElement>('input[type="date"], input[type="time"]')
+    if (pickerInput && !pickerInput.disabled && typeof pickerInput.showPicker === 'function') {
+      try { pickerInput.showPicker(); return } catch { /* use uni's fallback */ }
+    }
     button.click()
   })
 }
@@ -3045,6 +3052,22 @@ button::after {
  * <uni-picker> element — selector must be the bare class.)
  */
 .uni-picker-container { z-index: 1100 !important; }
+/* A tablet's wheel picker can be wider than the control next to the right
+ * edge. uni's anchored popover then puts Done outside the viewport. Keep the
+ * date/time wheels and their actions in a bounded central dialog on H5. */
+@media (min-width: 768px) {
+  .uni-picker-container[class*="uni-date-"] .uni-picker-custom,
+  .uni-picker-container[class*="uni-time-"] .uni-picker-custom {
+    position: fixed !important;
+    left: 50% !important;
+    top: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: min(360px, calc(100vw - 32px)) !important;
+    max-height: calc(100dvh - 32px);
+    transform: translate(-50%, -50%) !important;
+  }
+}
 
 /*
  * QA6 r7 — warm the native H5 action sheet (long-press → 置顶/免打扰/标记已读/

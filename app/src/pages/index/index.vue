@@ -164,10 +164,12 @@
         <view v-if="filterCondition" class="afb-chip" role="button" :aria-label="t('condition.' + filterCondition)" @click="openFilterSheet">
           <text class="afb-chip-label">{{ t('condition.' + filterCondition) }}</text>
         </view>
+        <view v-if="filterDetailDate" class="afb-chip" role="button" :aria-label="t('listingDetails.filterDate')" @click="openFilterSheet"><text class="afb-chip-label">{{ filterDetailDate }}</text></view>
+        <view v-if="filterPriceUnit" class="afb-chip" role="button" :aria-label="t('listingDetails.priceUnit')" @click="openFilterSheet"><text class="afb-chip-label">{{ t('listingDetails.unit.' + filterPriceUnit) }}</text></view>
         <view v-if="filterLocation" class="afb-chip" role="button" :aria-label="filterLocation" @click="openFilterSheet">
           <text class="afb-chip-label">{{ filterLocation }}</text>
         </view>
-        <view v-if="sortBy !== 'latest'" class="afb-chip" role="button" :aria-label="t('sort.' + sortBy.replace('price_asc', 'priceAsc').replace('price_desc', 'priceDesc'))" @click="openFilterSheet">
+        <view v-if="!searchText.trim() && sortBy !== 'latest'" class="afb-chip" role="button" :aria-label="t('sort.' + sortBy.replace('price_asc', 'priceAsc').replace('price_desc', 'priceDesc'))" @click="openFilterSheet">
           <text class="afb-chip-label">{{ t('sort.' + sortBy.replace('price_asc', 'priceAsc').replace('price_desc', 'priceDesc')) }}</text>
         </view>
       </scroll-view>
@@ -226,7 +228,7 @@
         <text v-if="priceFilterError" id="home-price-filter-error" class="fs-error" role="alert">{{ t(priceFilterError) }}</text>
       </view>
 
-      <view class="fs-section">
+      <view v-if="listingType !== 'wanted' && !hasCategoryDetails(selectedCategory || undefined)" class="fs-section">
         <text class="fs-label">{{ t('filter.condition') }}</text>
         <view class="fs-pills">
           <view
@@ -260,9 +262,24 @@
         </view>
       </view>
 
+      <view v-if="hasCategoryDetails(selectedCategory || undefined)" class="fs-section">
+        <text class="fs-label">{{ t('listingDetails.filterDate') }}</text>
+        <picker :aria-label="t('listingDetails.filterDate')" mode="date" :value="filterDetailDate" start="2000-01-01" end="2099-12-31" @change="filterDetailDate = $event.detail.value">
+          <view class="fpill" role="button" :aria-label="t('listingDetails.filterDate')">{{ filterDetailDate || t('listingDetails.chooseDate') }}</view>
+        </picker>
+        <text class="search-sort-hint">{{ t('listingDetails.filterDateHint') }}</text>
+        <view v-if="selectedCategory === 'housing'" class="fs-pills">
+          <view v-for="unit in ['', 'month', 'week', 'total']" :key="unit" :class="['fpill', { active: filterPriceUnit === unit }]" role="button" :aria-pressed="filterPriceUnit === unit ? 'true' : 'false'" :aria-label="unit ? t('listingDetails.unit.' + unit) : t('listingDetails.allUnits')" @click="filterPriceUnit = unit">{{ unit ? t('listingDetails.unit.' + unit) : t('listingDetails.allUnits') }}</view>
+        </view>
+      </view>
+
       <view class="fs-section">
         <text class="fs-label">{{ t('filter.sort') }}</text>
-        <view class="fs-pills">
+        <view v-if="searchText.trim()" class="search-sort-note">
+          <text class="fpill active">{{ t('filter.relevance') }}</text>
+          <text class="search-sort-hint">{{ t('filter.relevanceHint') }}</text>
+        </view>
+        <view v-else class="fs-pills">
           <view
             v-for="s in sortOpts"
             :key="s.value"
@@ -373,9 +390,9 @@
                 <text class="sold-overlay-label">{{ t('status.sold') }}</text>
               </view>
               <view v-else-if="item.status === 'reserved'" class="card-cond-badge"><UBadge variant="reserved">{{ t('status.reserved') }}</UBadge></view>
-              <view v-else-if="item.condition === 'defective'" class="card-cond-badge"><UBadge variant="defect">{{ t('condition.defective') }}</UBadge></view>
-              <view v-else-if="item.condition === 'new'" class="card-cond-badge"><UBadge variant="new">{{ t('condition.new') }}</UBadge></view>
-              <view v-else-if="item.condition === 'like_new'" class="card-cond-badge"><UBadge variant="mint">{{ t('condition.like_new') }}</UBadge></view>
+              <view v-else-if="!hasCategoryDetails(item.category) && item.condition === 'defective'" class="card-cond-badge"><UBadge variant="defect">{{ t('condition.defective') }}</UBadge></view>
+              <view v-else-if="!hasCategoryDetails(item.category) && item.condition === 'new'" class="card-cond-badge"><UBadge variant="new">{{ t('condition.new') }}</UBadge></view>
+              <view v-else-if="!hasCategoryDetails(item.category) && item.condition === 'like_new'" class="card-cond-badge"><UBadge variant="mint">{{ t('condition.like_new') }}</UBadge></view>
               <view v-if="item.listing_type === 'wanted' && item.status !== 'sold'" class="card-cond-badge"><UBadge variant="wanted">{{ t('item.wanted') }}</UBadge></view>
               <view v-if="item.images && item.images.length > 1" class="img-count-badge">
                 <text class="img-count-label">{{ item.images.length }}</text>
@@ -388,11 +405,16 @@
             <view class="card-info">
               <text class="card-title">{{ localizeItemTitle(item) }}</text>
               <view class="card-price-row">
-                <text v-if="item.listing_type === 'wanted'" class="card-price card-price-wanted">{{ item.price > 0 ? t('home.budget') + ' ' + formatPrice(item.price, '') : t('home.openBudget') }}</text>
+                <text v-if="item.listing_type === 'wanted'" class="card-price card-price-wanted">{{ listingPriceLabel(item, t) }}</text>
                 <template v-else>
-                  <text :class="['card-price', { 'card-price-free': item.price === 0 }]">{{ formatPrice(item.price, t('home.free')) }}</text>
+                  <text :class="['card-price', { 'card-price-free': item.price === 0 }]">{{ listingPriceLabel(item, t) }}</text>
                   <text v-if="item.negotiable" class="obo-tag">{{ t('publish.obo') }}</text>
                 </template>
+              </view>
+              <ListingDetailsSummary :item="item" compact />
+              <view v-if="item.location" class="card-pickup">
+                <UIcon name="location-pin" size="xs" color="text-subtle" aria-hidden="true" />
+                <text class="card-pickup-label">{{ localizeLocation(item.location, lang as 'en' | 'zh') }}</text>
               </view>
               <view class="card-bottom">
                 <view :class="['card-seller', { 'card-seller--verified': item.profile?.is_illini_verified }]">
@@ -445,14 +467,15 @@
       <view v-if="fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
         <UIcon name="shield" size="lg" color="ink-soft" />
         <text class="empty-sub">{{ fetchError }}</text>
-        <view class="empty-btn" role="button" :aria-label="t('home.retry')" @click="onRefresh">{{ t('home.retry') }}</view>
+        <view class="empty-btn" role="button" :aria-label="t('home.retry')" @click="retryFeed">{{ t('home.retry') }}</view>
       </view>
 
       <view v-else-if="!loading && !initialLoading && filteredItems.length === 0" class="empty">
         <UEmptyArt :name="searchText ? 'search' : 'bag'" />
-        <text class="empty-title">{{ searchText ? t('home.noResults') : (listingType === 'wanted' ? t('home.emptyWantedTitle') : t('home.emptyTitle')) }}</text>
-        <text class="empty-sub">{{ searchText ? t('home.tryOther') : (listingType === 'wanted' ? t('home.emptyWantedSub') : t('home.emptySub')) }}</text>
-        <view v-if="searchText" class="empty-btn" role="button" :aria-label="t('home.clearSearch')" @click="searchText = ''; onSearch()">{{ t('home.clearSearch') }}</view>
+        <text class="empty-title">{{ activeFilterCount > 0 || selectedCategory ? t('home.filteredEmpty') : searchText ? t('home.noResults') : (listingType === 'wanted' ? t('home.emptyWantedTitle') : t('home.emptyTitle')) }}</text>
+        <text class="empty-sub">{{ activeFilterCount > 0 || selectedCategory ? t('home.filteredEmptyHint') : searchText ? t('home.tryOther') : (listingType === 'wanted' ? t('home.emptyWantedSub') : t('home.emptySub')) }}</text>
+        <view v-if="activeFilterCount > 0 || selectedCategory" class="empty-btn" role="button" :aria-label="t('home.clearFilters')" @click="selectedCategory = null; onClearAllFilters()">{{ t('home.clearFilters') }}</view>
+        <view v-else-if="searchText" class="empty-btn" role="button" :aria-label="t('home.clearSearch')" @click="searchText = ''; onSearch()">{{ t('home.clearSearch') }}</view>
         <view v-else class="empty-btn" role="button" :aria-label="t('home.postItem')" @click="goPublish">{{ t('home.postItem') }}</view>
       </view>
     </scroll-view>
@@ -478,6 +501,9 @@
 </template>
 
 <script setup lang="ts">
+import ListingDetailsSummary from '../../components/ListingDetailsSummary.vue'
+import { hasCategoryDetails, validListingDate } from '../../utils/listingDetails'
+import { matchesListingLocation } from '../../utils/listingLocation'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 // #ifndef H5
@@ -494,7 +520,7 @@ import { useModeration } from '../../composables/useModeration'
 import { useSemester } from '../../composables/useSemester'
 import { useLongPress } from '../../composables/useLongPress'
 import { createOwnedLoading } from '../../composables/ownedLoading'
-import { pickupTier } from '../../composables/useCampusSpots'
+import { pickupTier, localizeLocation } from '../../composables/useCampusSpots'
 import type { ItemCategory, ItemCondition, Item } from '../../types'
 
 import { debounce, formatTime, formatPrice, listingPriceLabel, friendlyErrorMessage, haptic, thumbUrl, BROWSE_CATEGORIES } from '../../utils'
@@ -640,11 +666,15 @@ const filterPriceMin = ref('')
 const filterPriceMax = ref('')
 const filterCondition = ref<ItemCondition | ''>('')
 const filterLocation = ref('')
+const filterDetailDate = ref('')
+const filterPriceUnit = ref('')
 const sortBy = ref('latest')
 const listingType = ref<'sell' | 'wanted'>('sell')
 
 const MAX_FILTER_PRICE = 1_000_000
 type FilterSnapshot = {
+  detailDate: string
+  priceUnit: string
   priceMin: string
   priceMax: string
   condition: ItemCondition | ''
@@ -665,6 +695,8 @@ function openFilterSheet() {
       filterReturnFocus = document.activeElement
     }
     filterSnapshot = {
+      detailDate: filterDetailDate.value,
+      priceUnit: filterPriceUnit.value,
       priceMin: filterPriceMin.value,
       priceMax: filterPriceMax.value,
       condition: filterCondition.value,
@@ -687,6 +719,8 @@ function restoreFilterTriggerFocus() {
 
 function cancelFilterEdit() {
   if (filterSnapshot) {
+    filterDetailDate.value = filterSnapshot.detailDate
+    filterPriceUnit.value = filterSnapshot.priceUnit
     filterPriceMin.value = filterSnapshot.priceMin
     filterPriceMax.value = filterSnapshot.priceMax
     filterCondition.value = filterSnapshot.condition
@@ -740,8 +774,8 @@ const priceFilterError = computed(() => {
 })
 
 const priceRangeLabel = computed(() => {
-  const min = filterPriceMin.value ? formatPrice(Number(filterPriceMin.value), '') : '$0'
-  const max = filterPriceMax.value ? formatPrice(Number(filterPriceMax.value), '') : '∞'
+  const min = filterPriceMin.value ? formatPrice(Number(filterPriceMin.value), '$0') : '$0'
+  const max = filterPriceMax.value ? formatPrice(Number(filterPriceMax.value), '$0') : '∞'
   return `${min}–${max}`
 })
 
@@ -759,7 +793,7 @@ const categories = computed(() => categoryKeys.map(k => ({
  * keep `null` ("All") at position 0 so tapping it clears the filter and
  * shows everything, matching the pill behavior.
  */
-const conditionKeys: ItemCondition[] = ['new', 'like_new', 'good', 'fair']
+const conditionKeys: ItemCondition[] = ['new', 'like_new', 'good', 'fair', 'defective']
 const conditionOpts = computed(() => {
   const m: Record<string, string> = {}
   conditionKeys.forEach(k => { m[k] = t('condition.' + k) })
@@ -777,7 +811,9 @@ const activeFilterCount = computed(() => {
   if (filterPriceMax.value) c++
   if (filterCondition.value) c++
   if (filterLocation.value) c++
-  if (sortBy.value !== 'latest') c++
+  if (filterDetailDate.value) c++
+  if (filterPriceUnit.value) c++
+  if (!searchText.value.trim() && sortBy.value !== 'latest') c++
   return c
 })
 
@@ -785,12 +821,14 @@ const displayItems = computed(() => items.value)
 
 function getFilterParams() {
   return {
+    detailDate: hasCategoryDetails(selectedCategory.value || undefined) ? filterDetailDate.value || undefined : undefined,
+    priceUnit: selectedCategory.value === 'housing' ? filterPriceUnit.value || undefined : undefined,
     category: selectedCategory.value,
     search: searchText.value,
     priceMin: filterPriceMin.value ? Number(filterPriceMin.value) : undefined,
     priceMax: filterPriceMax.value ? Number(filterPriceMax.value) : undefined,
     condition: filterCondition.value || undefined,
-    sort: sortBy.value,
+    sort: searchText.value.trim() ? undefined : sortBy.value,
     listingType: listingType.value,
     location: filterLocation.value || undefined,
   }
@@ -799,6 +837,7 @@ function getFilterParams() {
 function setListingType(t: 'sell' | 'wanted') {
   if (listingType.value === t) return
   listingType.value = t
+  if (t === 'wanted') filterCondition.value = ''
   currentPage.value = 0
   scrollToTop()
   fetchItems({ ...getFilterParams(), reset: true })
@@ -835,8 +874,7 @@ const filteredItems = computed(() => {
   // Location is filtered server-side on both the regular query and search RPC.
   // Keep this client pass as a defensive fallback for older backend versions.
   if (filterLocation.value) {
-    const loc = filterLocation.value.toLowerCase()
-    result = result.filter(item => item.location.toLowerCase().includes(loc))
+    result = result.filter(item => matchesListingLocation(item.location, filterLocation.value))
   }
 
   return result
@@ -868,6 +906,9 @@ function clearScrollTimers() {
 }
 
 function applyFilters() {
+  if (filterDetailDate.value && !validListingDate(filterDetailDate.value)) {
+    uni.showToast({ title: t('listingDetails.invalidDates'), icon: 'none' }); return
+  }
   if (priceFilterError.value) {
     uni.showToast({ title: t(priceFilterError.value), icon: 'none' })
     return
@@ -886,6 +927,8 @@ function applyFilters() {
 function resetFilters() {
   filterPriceMin.value = ''
   filterPriceMax.value = ''
+  filterDetailDate.value = ''
+  filterPriceUnit.value = ''
   filterCondition.value = ''
   filterLocation.value = ''
   sortBy.value = 'latest'
@@ -993,7 +1036,9 @@ onUnload(() => {
 })
 
 function selectCategory(category: ItemCategory | null) {
+  if (category !== selectedCategory.value) { filterDetailDate.value = ''; filterPriceUnit.value = '' }
   selectedCategory.value = category
+  if (hasCategoryDetails(category || undefined)) filterCondition.value = ''
   currentPage.value = 0
   fetchItems({ ...getFilterParams(), category, reset: true })
 }
@@ -1023,7 +1068,8 @@ function consumePendingSearch() {
       identityGeneration: captureAccountIdentityGeneration(),
     })
     if (intent?.kind === 'query') {
-      selectedCategory.value = null
+      // Searching refines the visible feed. Preserve its category just as we
+      // preserve price/location, so date and rent-unit chips remain effective.
       searchText.value = intent.query
       onSearch()
       return
@@ -1243,10 +1289,16 @@ onShareTimeline(() => ({
   title: 'Illini Market · UIUC 校园二手交易',
 }))
 
-function loadMore() {
-  if (loading.value || !hasMore.value) return
-  currentPage.value++
-  fetchItems({ ...getFilterParams(), page: currentPage.value })
+async function loadMore(retry = false) {
+  if (loading.value || !hasMore.value || (fetchError.value && retry !== true)) return
+  const nextPage = currentPage.value + 1
+  const loaded = await fetchItems({ ...getFilterParams(), page: nextPage })
+  if (loaded) currentPage.value = nextPage
+}
+
+function retryFeed() {
+  if (items.value.length) void loadMore(true)
+  else void onRefresh()
 }
 
 async function onRefresh() {
@@ -1275,6 +1327,10 @@ function goPublish() {
 </script>
 
 <style lang="scss" scoped>
+.card-pickup { display: flex; align-items: center; gap: 4px; min-width: 0; margin: 7px 0; }
+.card-pickup-label { font-size: 12px; line-height: 1.5; color: var(--text-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.search-sort-note { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.search-sort-hint { font-size: 12px; line-height: 1.6; color: var(--text-subtle); }
 /* ============================================
    CAACI Marketplace Homepage
    XHS UI + Xianyu features

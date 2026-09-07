@@ -2062,6 +2062,12 @@ function scrollToBottom() {
    (which would dim the sidebar + conversation list too). */
 .chat-thread.embedded .offer-mask,
 .chat-thread.embedded .offer-sheet { position: absolute; }
+/* #ifdef H5 */
+/* The full-page H5 shell also follows visualViewport. Fixed sheets would
+   escape that keyboard-safe box and cover its input again on iPad/iPhone. */
+.chat-thread .offer-mask,
+.chat-thread .offer-sheet { position: absolute; }
+/* #endif */
 
 /* ========== Chat Header ========== */
 .chat-header {

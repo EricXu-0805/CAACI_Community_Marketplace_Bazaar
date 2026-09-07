@@ -127,6 +127,32 @@ test('now sentinel is seeded from the newest RLS-visible database timestamp, nev
   assert.equal(seedCall.url.searchParams.get('select'), 'id,created_at')
 })
 
+test('conversation polling survives column-level message grants without reading internal fields', async () => {
+  const allowed = new Set(['id', 'conversation_id', 'sender_id', 'content', 'message_type', 'is_read', 'created_at'])
+  const row = { id: MESSAGE_A, conversation_id: USER_B, sender_id: USER_A,
+    content: 'Synthetic test message', message_type: 'text', is_read: false,
+    created_at: '2026-07-18T00:00:01.000Z' }
+  globalThis.fetch = async (input, init = {}) => {
+    const url = new URL(input instanceof Request ? input.url : String(input))
+    if (url.pathname === '/auth/v1/user') return json({ id: USER_A })
+    if (url.pathname.endsWith('/rpc/edge_rate_hit')) return json(true)
+    if (url.pathname === '/rest/v1/messages') {
+      assert.equal(new Headers(init.headers).get('authorization'), 'Bearer caller-token')
+      const columns = (url.searchParams.get('select') || '*').split(',').map(value => value.trim())
+      // Hosted PostgREST denies SELECT * because internal delivery/moderation
+      // columns have no authenticated SELECT grant. A successful seed alone
+      // used to conceal this failure in the subsequent conversation hold.
+      if (columns.some(column => !allowed.has(column))) return json({ code: '42501' }, 403)
+      return json([Object.fromEntries(columns.map(column => [column, row[column]]))])
+    }
+    throw new Error(`unexpected fetch ${url}`)
+  }
+  const { default: handler } = await loadApi()
+  const response = await handler(request('conversation', USER_B))
+  assert.equal(response.status, 200)
+  assert.deepEqual((await response.json()).rows, [row])
+})
+
 test('empty database seed returns an explicit empty cursor for the next poll', async () => {
   globalThis.fetch = async (input) => {
     const url = new URL(input instanceof Request ? input.url : String(input))

@@ -21,7 +21,8 @@ process.env.NO_PROXY = 'localhost,127.0.0.1'
  *
  *   cd app && npm run smoke
  *
- * Auto-starts the H5 dev server on :5173 (reuses one if already running).
+ * Starts its own H5 server on SMOKE_PORT (default :5173). Local developers
+ * may explicitly opt into reuse with SMOKE_REUSE_SERVER=true.
  * The logged-in flow is gated on SMOKE_EMAIL / SMOKE_PASSWORD plus
  * SMOKE_ACCOUNT_IS_SYNTHETIC=true and SMOKE_DATASET_IS_SYNTHETIC=true, plus an
  * exact protected staging project ref and expected synthetic user UUID. CI
@@ -30,6 +31,11 @@ process.env.NO_PROXY = 'localhost,127.0.0.1'
  * failure screenshots for interactive debugging.
  */
 const isCi = process.env.CI === 'true'
+const smokePort = Number(process.env.SMOKE_PORT || '5173')
+if (!Number.isInteger(smokePort) || smokePort < 1024 || smokePort > 65535) {
+  throw new Error('SMOKE_PORT must be an integer between 1024 and 65535')
+}
+const smokeOrigin = `http://localhost:${smokePort}`
 
 export default defineConfig({
   testDir: './smoke',
@@ -44,16 +50,17 @@ export default defineConfig({
   retries: 0,
   reporter: [['list']],
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: smokeOrigin,
     ...devices['iPhone 13'],
     screenshot: isCi ? 'off' : 'only-on-failure',
     trace: 'off',
     video: 'off',
   },
   webServer: {
-    command: 'npm run dev:h5',
-    url: 'http://localhost:5173',
-    reuseExistingServer: true,
+    command: `npm run dev:h5 -- --port ${smokePort}`,
+    url: smokeOrigin,
+    // An unrelated checkout on the same port must not supply a false green.
+    reuseExistingServer: !isCi && process.env.SMOKE_REUSE_SERVER === 'true',
     timeout: 120_000,
   },
 })

@@ -28,8 +28,9 @@ const MIGRATION = resolve(
   repoRoot,
   'supabase/migrations/20260903061500_relabel_cjk_content_filed_as_english.sql',
 )
-const PG_BIN = '/opt/homebrew/opt/postgresql@17/bin'
-const havePg = ['initdb', 'pg_ctl', 'psql'].every(b => existsSync(join(PG_BIN, b)))
+const PG_BIN = ['/opt/homebrew/opt/postgresql@17/bin', '/usr/local/opt/postgresql@17/bin', '/usr/lib/postgresql/17/bin']
+  .find(dir => ['initdb', 'pg_ctl', 'psql'].every(b => existsSync(join(dir, b))))
+const havePg = Boolean(PG_BIN)
 
 const FIXTURE = `
 CREATE TABLE public.items (

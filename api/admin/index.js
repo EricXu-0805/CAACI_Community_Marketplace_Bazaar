@@ -1,3 +1,4 @@
+import { moderationObjectKeys, mediaMoveSucceeded, mediaCachePurgeAccepted } from '../_moderation-media.js'
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from '../_deployment-boundary.js'
 
 export const config = { runtime: 'edge' }
@@ -605,46 +606,10 @@ const TAKEDOWN_TARGET_TYPES = new Set(['item', 'post', 'comment'])
  * it has nothing here to move.
  */
 const TAKEDOWN_MEDIA_TABLES = { item: 'items', post: 'posts' }
-const PUBLIC_ITEM_IMAGE_PREFIX = '/storage/v1/object/public/item-images/'
 const TAKEDOWN_EVIDENCE_BUCKET = 'moderation-evidence'
 
-/*
- * images is a user-writable column, so every entry here is input, and two
- * things a first draft of this got wrong are worth naming:
- *
- *   · new URL() resolves `..` before you ever see it, so checking for the
- *     literal segment finds nothing —
- *     .../item-images/items/<uid>/../../banners/x.png normalizes to
- *     .../item-images/banners/x.png and reads as an ordinary key.
- *   · the origin has to be checked, or https://evil.test/<same path> yields
- *     the same key and moves whatever it names.
- *
- * Neither escapes the bucket, but both let an author name an object that is
- * not theirs — someone else's listing photo, pulled out of the public bucket
- * by taking down their own post. So the shape is pinned instead: an object
- * directly under the author's own folder, which is where uploads put them
- * (the client's ownedItemImagePath enforces the same contract).
- */
 function takenDownObjectKeys(images, ownerId) {
-  if (!isUuid(ownerId)) return []
-  let expectedOrigin
-  try { expectedOrigin = new URL(SUPABASE_URL).origin } catch { return [] }
-  const keys = []
-  for (const url of Array.isArray(images) ? images : []) {
-    if (typeof url !== 'string') continue
-    let parsed
-    try { parsed = new URL(url) } catch { continue }
-    if (parsed.origin !== expectedOrigin) continue
-    if (!parsed.pathname.startsWith(PUBLIC_ITEM_IMAGE_PREFIX)) continue
-    let key
-    try { key = decodeURIComponent(parsed.pathname.slice(PUBLIC_ITEM_IMAGE_PREFIX.length)) } catch { continue }
-    const segments = key.split('/')
-    if (segments.length !== 3) continue
-    if (segments[0] !== 'items' || segments[1] !== ownerId) continue
-    if (!segments[2] || segments[2] === '.' || segments[2] === '..') continue
-    if (!keys.includes(key)) keys.push(key)
-  }
-  return keys
+  return moderationObjectKeys(images, ownerId, SUPABASE_URL)
 }
 
 /*
@@ -653,18 +618,25 @@ function takenDownObjectKeys(images, ownerId) {
  */
 async function readTakedownMedia(targetType, targetId) {
   const table = TAKEDOWN_MEDIA_TABLES[targetType]
-  if (!table) return []
+  if (!table) return { keys: [], complete: true }
   try {
     const { response, text } = await adminFetch(
       `${SUPABASE_URL}/rest/v1/${table}?id=eq.${targetId}&select=images,user_id`,
       { headers: supabaseHeaders(SERVICE_KEY) },
     )
-    if (!response.ok) return []
+    if (!response.ok) throw new Error('takedown_media_read_failed')
     const rows = parseUpstreamJson(text)
-    const row = Array.isArray(rows) ? rows[0] : null
-    return takenDownObjectKeys(row?.images, row?.user_id)
+    if (!Array.isArray(rows)) throw new Error('takedown_media_read_invalid')
+    const row = rows[0]
+    if (row && (!isUuid(row.user_id) || (row.images != null && !Array.isArray(row.images)))) {
+      throw new Error('takedown_media_read_invalid')
+    }
+    return { keys: takenDownObjectKeys(row?.images, row?.user_id), complete: true }
   } catch {
-    return []
+    await reportToSentry('takedown media inventory unavailable', {
+      target_type: targetType, target_id: targetId,
+    })
+    return { keys: [], complete: false }
   }
 }
 
@@ -672,7 +644,7 @@ async function stashTakenDownMedia(targetType, targetId, keys) {
   const unmoved = []
   for (const key of keys) {
     try {
-      const { response } = await adminFetch(
+      const { response, text } = await adminFetch(
         `${SUPABASE_URL}/storage/v1/object/move`,
         {
           method: 'POST',
@@ -687,7 +659,18 @@ async function stashTakenDownMedia(targetType, targetId, keys) {
       )
       // Gone from the public bucket is the desired state however it got there —
       // a replayed idempotency key, or the same content taken down twice.
-      if (!response.ok && response.status !== 404) unmoved.push(key)
+      if (!mediaMoveSucceeded(response, text)) {
+        unmoved.push(key)
+        continue
+      }
+      // Moving the origin object does not synchronously revoke cached public
+      // responses. Queue exact-path CDN invalidation and surface propagation
+      // separately; a failed purge stays in the durable recovery queue.
+      const purge = await adminFetch(
+        `${SUPABASE_URL}/storage/v1/cdn/item-images/${key.split('/').map(encodeURIComponent).join('/')}`,
+        { method: 'DELETE', headers: supabaseHeaders(SERVICE_KEY) },
+      )
+      if (!mediaCachePurgeAccepted(purge.response, purge.text)) unmoved.push(key)
     } catch {
       unmoved.push(key)
     }
@@ -1668,10 +1651,15 @@ async function handlePost(request, auth) {
       target_id: body.target_id,
       reason: normalizedModerationReason(body.reason),
     })
-    if (takedownMedia.length) {
-      await stashTakenDownMedia(body.target_type, body.target_id, takedownMedia)
-    }
-    return json(takedown)
+    const media = await stashTakenDownMedia(body.target_type, body.target_id, takedownMedia.keys)
+    // Hiding the row succeeded even if storage is unavailable. Preserve that
+    // definitive mutation receipt, but do not tell the operator the photos
+    // are private until both the inventory and every move are confirmed.
+    return json({
+      ...takedown,
+      ...(!takedownMedia.complete || media.unmoved > 0 ? { media_cleanup_pending: true } : {}),
+      ...(takedownMedia.keys.length ? { media_cache_pending: true } : {}),
+    })
   }
 
   if (body.action === 'set_post_pinned') {

@@ -288,7 +288,7 @@ export function useMessages() {
             .from('conversations')
             .select(`${CONVERSATION_FIELDS},
               latest_messages:messages(id, content, message_type, created_at),
-              item:items(id, user_id, title, title_i18n, images, image_dimensions, price, status, category),
+              item:items(id, user_id, title, title_i18n, images, image_dimensions, price, status, category, listing_type, listing_details),
               buyer:profiles!conversations_buyer_id_fkey(id, nickname, avatar_url, is_illini_verified),
               seller:profiles!conversations_seller_id_fkey(id, nickname, avatar_url, is_illini_verified)`)
             .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`)
@@ -757,7 +757,7 @@ export function useMessages() {
     const { data, error } = await supabase
       .from('conversations')
       .select(`${CONVERSATION_FIELDS},
-        item:items(id, title, title_i18n, images, price, status, negotiable, user_id, category, listing_type, location),
+        item:items(id, title, title_i18n, images, price, status, negotiable, user_id, category, listing_type, listing_details, location),
         buyer:profiles!conversations_buyer_id_fkey(id, nickname, avatar_url),
         seller:profiles!conversations_seller_id_fkey(id, nickname, avatar_url)`)
       .eq('id', conversationId)

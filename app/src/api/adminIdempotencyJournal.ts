@@ -152,23 +152,29 @@ async function processRequestExclusive<T>(operation: () => Promise<T>): Promise<
 }
 
 function defaultStorage(): JournalStorage {
-  const uniStorage = (globalThis as any).uni
-  if (
-    uniStorage
-    && typeof uniStorage.getStorageSync === 'function'
-    && typeof uniStorage.setStorageSync === 'function'
-    && typeof uniStorage.removeStorageSync === 'function'
-  ) {
+  // H5's uni.getStorageSync turns both "missing" and a Storage exception into
+  // an empty string. An unreadable journal must never look like no past writes.
+  // Its string values are stored verbatim, so the native adapter preserves
+  // existing receipts while allowing access errors to fail closed.
+  // #ifdef H5
+  if (typeof window !== 'undefined') {
     return {
-      getItem(key) {
-        const value = uniStorage.getStorageSync(key)
-        return typeof value === 'string' && value ? value : null
-      },
-      setItem(key, value) { uniStorage.setStorageSync(key, value) },
-      removeItem(key) { uniStorage.removeStorageSync(key) },
+      getItem(key) { return window.localStorage.getItem(key) },
+      setItem(key,value) { window.localStorage.setItem(key,value) },
+      removeItem(key) { window.localStorage.removeItem(key) },
     }
   }
-  return fail()
+  // #endif
+  // Use the compile-time uni binding; production imports need not populate
+  // globalThis. Mini-programs still use their native persistent storage API.
+  return {
+    getItem(key) {
+      const value = uni.getStorageSync(key)
+      return typeof value === 'string' && value ? value : null
+    },
+    setItem(key, value) { uni.setStorageSync(key, value) },
+    removeItem(key) { uni.removeStorageSync(key) },
+  }
 }
 
 function defaultDependencies(): AdminIdempotencyDependencies {

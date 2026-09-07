@@ -271,6 +271,12 @@ export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string
   const rawMessage = String(err?.message || err?.code || err || '')
   const raw = rawMessage.toLowerCase()
 
+  if (raw === 'invalid_listing_details' || raw.startsWith('listingdetails.')) {
+    return lang === 'zh'
+      ? '请检查分类信息中的日期、价格单位、路线和人数后重试'
+      : 'Check the dates, price unit, route and seats in the category details, then try again.'
+  }
+
   if (err?.code === 'SEARCH_SCHEMA_UNAVAILABLE' || err?.code === 'SEARCH_LEGACY_FILTER_LIMIT') {
     return lang === 'zh'
       ? '搜索服务正在升级，请稍后重试'
@@ -959,13 +965,16 @@ export function formatPrice(price: number, freeLabel = 'Free'): string {
  * feeds call this so a budget-0 wanted post never renders as Free.
  */
 export function listingPriceLabel(
-  item: { price: number; listing_type?: string | null },
+  item: { price: number; listing_type?: string | null; category?: string; listing_details?: { kind?: string; price_unit?: string } | null },
   t: (key: string) => string,
 ): string {
+  const d = item.listing_details
+  const unit = d?.kind === item.category && ((d?.kind === 'housing' && ['month', 'week', 'total'].includes(d.price_unit || '')) || (d?.kind === 'rideshare' && d.price_unit === 'person')) ? d.price_unit : ''
+  const suffix = item.price > 0 && unit ? t('listingDetails.suffix.' + unit) : ''
   if (item.listing_type === 'wanted') {
-    return item.price > 0 ? `${t('home.budget')} ${formatPrice(item.price, '')}` : t('home.openBudget')
+    return item.price > 0 ? `${t('home.budget')} ${formatPrice(item.price, '')}${suffix}` : t('home.openBudget')
   }
-  return formatPrice(item.price, t('home.free'))
+  return formatPrice(item.price, t('home.free')) + suffix
 }
 
 /*

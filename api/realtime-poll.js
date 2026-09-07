@@ -30,6 +30,10 @@ export const config = { runtime: 'edge' }
 const MAX_HOLD_MS = 20000
 const TICK_MS = 800
 const ROW_LIMIT = 25
+// Match the authenticated column grants and the client's MESSAGE_FIELDS.
+// SELECT * also asks for private delivery/moderation metadata and is denied
+// by PostgREST even when the caller legitimately belongs to the conversation.
+const MESSAGE_FIELDS = 'id,conversation_id,sender_id,content,message_type,is_read,created_at'
 // This accelerator must stay below the edge execution cap even when Auth,
 // rate-limit and the final poll all approach their deadline.  A slow upstream
 // is safer as an explicit fallback trigger than as an unbounded held request.
@@ -233,7 +237,7 @@ async function fetchRows(scope, id, since, userJwt) {
   if (scope === 'conversation') {
     url = `${SUPABASE_URL}/rest/v1/messages`
       + `?conversation_id=eq.${encId}${sinceFilter}`
-      + `&order=created_at.asc,id.asc&limit=${ROW_LIMIT}&select=*`
+      + `&order=created_at.asc,id.asc&limit=${ROW_LIMIT}&select=${MESSAGE_FIELDS}`
   } else if (scope === 'inbox') {
     url = `${SUPABASE_URL}/rest/v1/messages`
       + `?sender_id=neq.${encId}${sinceFilter}`

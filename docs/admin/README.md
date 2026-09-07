@@ -7,6 +7,7 @@
 | File | Audience | When to read |
 |---|---|---|
 | [RUNBOOK.md](./RUNBOOK.md) | Operators | Daily work — triage reports, apply bans, handle appeals, read audit log |
+| [BACKGROUND_JOBS.md](./BACKGROUND_JOBS.md) | Operators | Listing notification backlog, digest cursor, moderation image retries and scheduler acceptance |
 | [RIGHTS_AND_CONTENT_REQUESTS.md](./RIGHTS_AND_CONTENT_REQUESTS.md) | Operators + privacy/legal reviewer | Manual data access/deletion/correction requests, appeal decisions, and copyright/content complaints |
 | [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md) | Maintainers | Architecture, RPC surface, security model, how to extend |
 

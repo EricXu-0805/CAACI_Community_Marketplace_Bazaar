@@ -80,3 +80,43 @@ test('the action-target lock rejects a second dispatch until the first releases'
   assert.equal(locks.moderationMutationBusy(reportKey), false)
   assert.equal(locks.beginModerationMutation(reportKey), true)
 })
+
+test('partial photo removal shows a persistent warning instead of a complete-success toast', async () => {
+  const javascript = ts.transpileModule(functionBlock('onTakedownContent', 'openUser'), {
+    compilerOptions: { module: ts.ModuleKind.None, target: ts.ScriptTarget.ES2022 },
+  }).outputText
+  for (const pending of [true, false]) {
+    const modals = [], toasts = []
+    let released = false, refreshed = false
+    const deps = {
+      captureAdminSessionOwner: () => ({}), takedownMutationKey: () => 'target',
+      moderationMutationBusy: () => false, isAdminSessionOwnerCurrent: () => true,
+      moderationReasonOrNotify: () => 'spam', beginModerationMutation: () => true,
+      boundedAuditField: value => value, t: key => key,
+      endModerationMutation: () => { released = true },
+      apiPost: async (body, owner, apply) => {
+        assert.equal(body.action, 'takedown_content')
+        const result = { media_cleanup_pending: pending }
+        await apply(result)
+        return result
+      },
+      closeDetail: () => {}, activeTab: { value: 'reports' },
+      loadTab: async () => { refreshed = true }, loadStats: async () => {},
+      showAdminRequestError: error => { throw error },
+      uni: { showModal: options => modals.push(options), showToast: options => toasts.push(options) },
+    }
+    const run = Function(...Object.keys(deps), `${javascript}; return onTakedownContent;`)(...Object.values(deps))
+    run({ target_type: 'item', target_id: 'synthetic-target' })
+    await modals[0].success({ confirm: true, content: 'spam' })
+    assert.equal(refreshed, true)
+    assert.equal(released, true)
+    if (pending) {
+      assert.equal(toasts.length, 0)
+      assert.equal(modals[1].title, 'admin.takedownMediaPendingTitle')
+      assert.equal(modals[1].showCancel, false)
+    } else {
+      assert.equal(modals.length, 1)
+      assert.equal(toasts[0].title, 'admin.toastTakedownDone')
+    }
+  }
+})

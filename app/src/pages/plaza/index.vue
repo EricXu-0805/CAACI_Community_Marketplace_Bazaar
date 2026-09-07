@@ -79,19 +79,19 @@
           <text>{{ t('home.loading') }}...</text>
         </view>
 
-        <view v-else-if="followError" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
+        <view v-if="followError" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
           <UEmptyArt name="following" />
           <text class="empty-text">{{ followError }}</text>
-          <view class="cta-btn" role="button" @click="loadFollowing(true)">{{ t('home.retry') }}</view>
+          <view class="cta-btn" role="button" @click="loadFollowing(followPeople.length === 0)">{{ t('home.retry') }}</view>
         </view>
 
-        <view v-else-if="followPeople.length === 0" class="empty">
+        <view v-if="!followLoading && !followError && followPeople.length === 0" class="empty">
           <UEmptyArt name="following" />
           <text class="empty-text">{{ isLoggedIn ? t('follow.emptyPeople') : t('follow.signInHint') }}</text>
           <view v-if="!isLoggedIn" class="cta-btn" role="button" @click="goToLogin">{{ t('login.signIn') }}</view>
         </view>
 
-        <view v-else class="follow-people u-stagger">
+        <view v-if="followPeople.length > 0" class="follow-people u-stagger">
           <view
             v-for="p in followPeople"
             :key="p.id"
@@ -298,7 +298,7 @@
         <view v-if="fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
           <UIcon name="shield" size="lg" color="ink-soft" />
           <text class="empty-text">{{ fetchError }}</text>
-          <view class="cta-btn" role="button" @click="onRefresh">{{ t('home.retry') }}</view>
+          <view class="cta-btn" role="button" @click="posts.length ? loadMore(true) : onRefresh()">{{ t('home.retry') }}</view>
         </view>
 
         <view v-else-if="!loading && visiblePosts.length === 0" class="empty">
@@ -770,13 +770,18 @@ async function loadFollowing(reset: boolean) {
   const accountToken = captureAccountRequest(currentUser.value.id)
   if (!isAccountRequestCurrent(accountToken)) return
   if (reset) followPage.value = 0
+  const requestedPage = reset ? 0 : followPage.value + 1
   followLoading.value = true
   followError.value = ''
   try {
-    const rows = await fetchFollowingProfiles(followPage.value, FOLLOW_PAGE_SIZE)
+    const rows = await fetchFollowingProfiles(requestedPage, FOLLOW_PAGE_SIZE)
     if (requestEpoch !== plazaAccountEpoch || !isAccountRequestCurrent(accountToken)) return
     if (reset) followPeople.value = rows
-    else followPeople.value.push(...rows)
+    else {
+      const seen = new Set(followPeople.value.map(profile => profile.id))
+      followPeople.value.push(...rows.filter(profile => !seen.has(profile.id) && !!seen.add(profile.id)))
+    }
+    followPage.value = requestedPage
     followHasMore.value = rows.length === FOLLOW_PAGE_SIZE
     followLoaded.value = true
   } catch (error: any) {
@@ -1222,17 +1227,17 @@ async function onRefresh() {
   }
 }
 
-async function loadMore() {
+async function loadMore(retry = false) {
   if (activeTab.value === 'following') {
-    if (!followLoading.value && followHasMore.value) {
-      followPage.value += 1
+    if (!followLoading.value && followHasMore.value && !followError.value) {
       await loadFollowing(false)
     }
     return
   }
-  if (loading.value || !hasMore.value) return
-  pageIdx.value++
-  await fetchPosts({ page: pageIdx.value, sort: feedSort.value, search: searchText.value })
+  if (loading.value || !hasMore.value || (fetchError.value && retry !== true)) return
+  const nextPage = pageIdx.value + 1
+  const loaded = await fetchPosts({ page: nextPage, sort: feedSort.value, search: searchText.value })
+  if (loaded) pageIdx.value = nextPage
 }
 
 async function onToggleLike(post: Post) {

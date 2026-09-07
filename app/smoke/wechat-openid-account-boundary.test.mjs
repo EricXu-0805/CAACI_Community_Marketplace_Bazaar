@@ -66,7 +66,7 @@ test('text and media write chains revalidate the account after WeChat moderation
   }
 
   for (const marker of [
-    'await mpTextGate(`${input.title}\\n${input.description}`, 3, accountToken)',
+    'await mpTextGate(`${input.title}\\n${input.description}\\n${detailsText}`, 3, accountToken)',
     'await mpTextGate(aiInput, 3, accountToken)',
   ]) {
     const gate = items.indexOf(marker)

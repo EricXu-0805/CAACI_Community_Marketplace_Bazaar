@@ -12,6 +12,7 @@ const EXPECTED_EDGE_FILES = [
   'auth/send-illini-code.js',
   'auth/verify-illini-code.js',
   'auth/wechat-login.js',
+  'background-jobs.js',
   'banner-upload-gc.js',
   'data-retention.js',
   'db-proxy.js',

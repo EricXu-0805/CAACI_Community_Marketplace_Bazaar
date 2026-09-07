@@ -1,3 +1,5 @@
+import { listingDetailsError, listingDetailsText, type ListingDetails } from '../utils/listingDetails'
+import { listingLocationTerms } from '../utils/listingLocation'
 import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 import { useModeration } from './useModeration'
@@ -41,6 +43,10 @@ const PAGE_SIZE = 20
 // Without this counter a slow earlier request can resolve AFTER a faster
 // later one and overwrite the new tab's data with the old tab's data.
 let latestRequestId = 0
+// Advance past the last raw row so inserts/deletions above a chronological
+// page cannot shift an offset and duplicate or skip the next listing.
+let latestFeedKey = ''
+const latestFeedCursors = new Map<number, { created_at: string; id: string }>()
 
 /*
  * Public column projection — kept aligned with migrations 014 / 015 /
@@ -52,7 +58,7 @@ let latestRequestId = 0
  */
 const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, location, is_illini_verified, avg_rating, rating_count, status_text, status_emoji'
 const LIST_ITEM_FIELDS =
-  'id, user_id, title, title_i18n, description_i18n, source_lang, price, category, condition, status, listing_type, location, location_verified, images, image_dimensions, view_count, favorite_count, negotiable, created_at'
+  'id, user_id, title, title_i18n, description_i18n, source_lang, price, category, condition, listing_details, status, listing_type, location, location_verified, images, image_dimensions, view_count, favorite_count, negotiable, created_at'
 const DETAIL_ITEM_FIELDS = `${LIST_ITEM_FIELDS}, description, updated_at`
 
 const VALID_STATUSES: ItemStatus[] = ['active', 'reserved', 'sold', 'deleted']
@@ -218,6 +224,8 @@ function resetItemState() {
   // A request that finishes after A -> B must not repopulate the singleton
   // with A's filtered snapshot or release B's loading/error state.
   latestRequestId += 1
+  latestFeedKey = ''
+  latestFeedCursors.clear()
   items.value = []
   loading.value = false
   hasMore.value = true
@@ -233,6 +241,8 @@ export function useItems() {
   const moderation = useModeration()
 
   async function fetchItems(options: {
+    detailDate?: string
+    priceUnit?: string
     page?: number
     category?: ItemCategory | null
     search?: string
@@ -246,8 +256,15 @@ export function useItems() {
     verifiedOnly?: boolean
     reset?: boolean
   } = {}) {
-    const { page = 0, category, search, userId, priceMin, priceMax, condition, sort, listingType, location, verifiedOnly, reset = false } = options
+    const { detailDate, priceUnit, page = 0, category, search, userId, priceMin, priceMax, condition, sort, listingType, location, verifiedOnly, reset = false } = options
     const requestId = ++latestRequestId
+    const feedKey = JSON.stringify([category, search, userId, priceMin, priceMax, condition, sort, listingType, location, verifiedOnly, detailDate, priceUnit])
+    if (reset || page === 0 || feedKey !== latestFeedKey) {
+      latestFeedCursors.clear()
+      latestFeedKey = feedKey
+    }
+    const chronological = !search?.trim() && (!sort || sort === 'latest')
+    const pageCursor = chronological ? latestFeedCursors.get(page) : undefined
 
     if (reset) {
       items.value = []
@@ -284,15 +301,18 @@ export function useItems() {
           .map(t => t.replace(/[%_]/g, '\\$&').replace(/[.,()]/g, '').slice(0, 100))
           .filter(Boolean)
         if (sanitized.length === 0) {
+          hasMore.value = false
           loading.value = false
           return
         }
         const rpcRes = await searchItemsWithCompatibility(supabase, {
           terms: sanitized,
+          detailDate,
+          priceUnit,
           category: category ?? null,
           condition: condition ?? null,
-          priceMin: priceMin && priceMin > 0 ? priceMin : null,
-          priceMax: priceMax && priceMax > 0 ? priceMax : null,
+          priceMin: priceMin !== undefined && priceMin >= 0 ? priceMin : null,
+          priceMax: priceMax !== undefined && priceMax >= 0 ? priceMax : null,
           userId: userId ?? null,
           // The compatibility layer retains the 9-argument production RPC
           // during rollout, while the current 11-argument RPC handles these
@@ -325,20 +345,32 @@ export function useItems() {
         else if (sort === 'popular') q = q.order('view_count', { ascending: false })
         else q = q.order('created_at', { ascending: false })
 
-        q = q.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+        q = q.order('id', { ascending: false })
+        if (pageCursor) {
+          q = q.or(`created_at.lt.${pageCursor.created_at},and(created_at.eq.${pageCursor.created_at},id.lt.${pageCursor.id})`)
+            .limit(PAGE_SIZE)
+        } else {
+          q = q.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+        }
 
         if (category) q = q.eq('category', category)
         if (listingType) q = q.eq('listing_type', listingType)
         if (userId) q = q.eq('user_id', userId)
-        if (priceMin !== undefined && priceMin > 0) q = q.gte('price', priceMin)
-        if (priceMax !== undefined && priceMax > 0) q = q.lte('price', priceMax)
+        if (priceMin !== undefined && priceMin >= 0) q = q.gte('price', priceMin)
+        if (priceMax !== undefined && priceMax >= 0) q = q.lte('price', priceMax)
         if (condition) q = q.eq('condition', condition)
         // Filter location / verified-pickup server-side so pagination + hasMore
         // reflect the filtered set. Client-only filtering over a paginated feed
         // produced a premature "no results" while hasMore stayed true. (The
         // search-RPC path receives the same parameters in migration 085.)
-        if (location) q = q.ilike('location', `%${location}%`)
+        if (location?.trim().toLowerCase() === 'uiuc') {
+          // All alternatives come from the fixed campus registry, never user input.
+          q = q.or(listingLocationTerms('UIUC').map(term => `location.ilike."%${term}%"`).join(','))
+        } else if (location) q = q.ilike('location', `%${location}%`)
         if (verifiedOnly) q = q.eq('location_verified', true)
+        if (detailDate && category === 'housing') q = q.lte('listing_details->>available_from', detailDate).gte('listing_details->>available_to', detailDate)
+        if (detailDate && category === 'rideshare') q = q.eq('listing_details->>departure_date', detailDate)
+        if (priceUnit) q = q.eq('listing_details->>price_unit', priceUnit)
 
         const res = await q
         if (requestId !== latestRequestId) return
@@ -349,6 +381,10 @@ export function useItems() {
       if (error) throw error
 
       if (data) {
+        if (chronological && data.length > 0) {
+          const last = data[data.length - 1]
+          latestFeedCursors.set(page + 1, { created_at: last.created_at, id: last.id })
+        }
         const rows = (data as unknown as Item[]).map(sanitizeItemResources)
         const filtered = moderation.blockedIds.value.size > 0
           ? rows.filter(item => !moderation.blockedIds.value.has(item.user_id))
@@ -357,10 +393,12 @@ export function useItems() {
         if (reset) {
           items.value = filtered
         } else {
-          items.value.push(...filtered)
+          const seen = new Set(items.value.map(item => item.id))
+          items.value.push(...filtered.filter(item => !seen.has(item.id) && !!seen.add(item.id)))
         }
         hasMore.value = searchHasMore ?? data.length === PAGE_SIZE
       }
+      return true
     } catch (error: any) {
       if (requestId !== latestRequestId) return
       fetchError.value = friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('error.loadFailed')
@@ -404,6 +442,7 @@ export function useItems() {
   }
 
   async function createItem(input: {
+    listing_details?: ListingDetails | null
     title: string
     description: string
     price: number
@@ -433,6 +472,10 @@ export function useItems() {
     // (gives user "are you sure?" affordance). 1M is far above any
     // legitimate campus listing — no one prices a textbook at $1M.
     if (!Number.isFinite(input.price) || input.price < 0 || input.price > 1_000_000) throw new Error('Invalid price')
+    const detailError = listingDetailsError(input.category, input.listing_details)
+    if (detailError) throw new Error(detailError)
+    const detailsText = listingDetailsText(input.listing_details)
+    if (detailsText) { const check = checkContent(detailsText, { kind: 'item_desc' }); if (!check.ok) throw new Error(`moderation_block:${check.category}`) }
     if (input.title.length > 200) throw new Error('Title too long')
     if (input.description.length > 2000) throw new Error('Description too long')
     if (input.images.length > MAX_IMAGES) throw new Error('Too many images')
@@ -458,13 +501,13 @@ export function useItems() {
     }
     let mutationStarted = false
     try {
-      const ai = await remoteModerate(`${input.title}\n${input.description}`, accountToken)
+      const ai = await remoteModerate(`${input.title}\n${input.description}\n${detailsText}`, accountToken)
       if (ai.flagged) throw new Error(`moderation_block:sensitive_word:ai(${ai.categories.join(',')})`)
       if (ai.categories.includes('spam_ad') && options?.confirmSuspectedAd) {
         if (!await options.confirmSuspectedAd()) throw new Error('ad_declined')
       }
       /* mp store review: WeChat's own classifier (no-op on H5). */
-      await mpTextGate(`${input.title}\n${input.description}`, 3, accountToken)
+      await mpTextGate(`${input.title}\n${input.description}\n${detailsText}`, 3, accountToken)
       assertAccountCurrent(accountToken, session.user.id)
 
       const payload: Record<string, any> = {
@@ -477,6 +520,7 @@ export function useItems() {
         location: input.location,
         images: input.images,
         negotiable: input.negotiable ?? false,
+        listing_details: input.listing_details ?? null,
       }
       if (input.image_dimensions && input.image_dimensions.length) {
         payload.image_dimensions = input.image_dimensions
@@ -527,7 +571,7 @@ export function useItems() {
 
   async function updateItem(
     id: string,
-    updates: Partial<Pick<Item, 'title' | 'description' | 'price' | 'category' | 'condition' | 'location' | 'images' | 'image_dimensions' | 'title_i18n' | 'description_i18n' | 'source_lang' | 'negotiable'>>,
+    updates: Partial<Pick<Item, 'title' | 'description' | 'price' | 'category' | 'condition' | 'location' | 'images' | 'image_dimensions' | 'title_i18n' | 'description_i18n' | 'source_lang' | 'negotiable' | 'listing_details'>>,
     options?: ItemMutationOptions,
   ) {
     const entryUserId = getActiveAccountId()
@@ -593,8 +637,14 @@ export function useItems() {
       const descCheck = checkContent(updates.description, { kind: 'item_desc' })
       if (!descCheck.ok) throw new Error(`moderation_block:${descCheck.category}:${descCheck.reason || ''}`)
     }
-    if (updates.title !== undefined || updates.description !== undefined) {
-      const aiInput = [updates.title, updates.description]
+    if (updates.listing_details !== undefined) {
+      const detailError = listingDetailsError(updates.category || updates.listing_details?.kind || '', updates.listing_details)
+      if (detailError) throw new Error(detailError)
+    }
+    const detailsText = listingDetailsText(updates.listing_details)
+    if (detailsText) { const check = checkContent(detailsText, { kind: 'item_desc' }); if (!check.ok) throw new Error(`moderation_block:${check.category}`) }
+    if (updates.title !== undefined || updates.description !== undefined || detailsText) {
+      const aiInput = [updates.title, updates.description, detailsText]
         .filter((v): v is string => typeof v === 'string' && v.length > 0)
         .join('\n')
       if (aiInput.length > 0) {
@@ -731,7 +781,7 @@ export function useItems() {
         assertAccountCurrent(accountToken, session.user.id)
         uploadAttempted = true
         const h5Result = await withUploadTimeout(
-          supabase.storage.from('item-images').upload(storagePath, blob, { contentType }),
+          supabase.storage.from('item-images').upload(storagePath, blob, { contentType, cacheControl: '60' }),
           IMAGE_UPLOAD_TIMEOUT_MS,
           'image upload',
           () => cleanupFailedUploadBatch(
@@ -769,9 +819,11 @@ export function useItems() {
             url: uploadUrl,
             filePath: compressedPath,
             name: 'file',
+            formData: { cacheControl: '60' },
             header: {
               Authorization: `Bearer ${session.access_token}`,
               'x-upsert': 'false',
+              'cache-control': 'max-age=60',
             },
           }, IMAGE_UPLOAD_TIMEOUT_MS, 'image upload', () => cleanupFailedUploadBatch(
             [candidateUrl],
@@ -915,7 +967,7 @@ export function useItems() {
     let h5Err: any
     try {
       const result = await withUploadTimeout(
-        supabase.storage.from('item-images').upload(storagePath, blob, { contentType }),
+        supabase.storage.from('item-images').upload(storagePath, blob, { contentType, cacheControl: '60' }),
         IMAGE_UPLOAD_TIMEOUT_MS,
         'image upload',
         () => cleanupFailedUploadBatch(
@@ -963,9 +1015,11 @@ export function useItems() {
           url: uploadUrl,
           filePath: compressedPath,
           name: 'file',
+          formData: { cacheControl: '60' },
           header: {
             Authorization: `Bearer ${session.access_token}`,
             'x-upsert': 'false',
+            'cache-control': 'max-age=60',
           },
       }, IMAGE_UPLOAD_TIMEOUT_MS, 'image upload', () => cleanupFailedUploadBatch(
         [candidateUrl],

@@ -1200,11 +1200,11 @@ test('appeal lifecycle sentinels map to stable definitive HTTP outcomes', async 
 const TAKEN_DOWN_ITEM = '99999999-9999-4999-8999-999999999999'
 const OWNER_DIR = '11111111-1111-4111-8111-111111111111'
 
-function takedownFetch(calls, images, { moveStatus = 200 } = {}) {
+function takedownFetch(calls, images, { moveStatus = 200, purgeStatus = 200, readStatus = 200, readBody } = {}) {
   return authenticatedFetch(calls, (url) => {
     if (url.pathname === '/rest/v1/items' || url.pathname === '/rest/v1/posts') {
-      return new Response(JSON.stringify([{ images, user_id: OWNER_DIR }]), {
-        status: 200, headers: { 'Content-Type': 'application/json' },
+      return new Response(readBody ?? JSON.stringify([{ images, user_id: OWNER_DIR }]), {
+        status: readStatus, headers: { 'Content-Type': 'application/json' },
       })
     }
     if (url.pathname === '/rest/v1/rpc/admin_execute_mutation') {
@@ -1215,6 +1215,7 @@ function takedownFetch(calls, images, { moveStatus = 200 } = {}) {
     if (url.pathname === '/storage/v1/object/move') {
       return new Response('{}', { status: moveStatus })
     }
+    if (url.pathname.startsWith('/storage/v1/cdn/item-images/')) return new Response('{"message":"success"}', { status: purgeStatus })
     if (url.hostname !== 'supabase.test') return new Response('{}', { status: 200 })
     throw new Error(`unexpected business call ${url.pathname}`)
   })
@@ -1236,6 +1237,7 @@ test('a taken-down listing has its photos moved out of the public bucket', async
   }))
 
   assert.equal(response.status, 200)
+  assert.equal((await response.json()).media_cache_pending, true)
   assert.deepEqual(moves(calls), [
     { bucketId: 'item-images', sourceKey: `items/${OWNER_DIR}/a.jpg`,
       destinationBucket: 'moderation-evidence', destinationKey: `items/${OWNER_DIR}/a.jpg` },
@@ -1250,6 +1252,18 @@ test('a taken-down listing has its photos moved out of the public bucket', async
     order.indexOf('/rest/v1/items') < order.indexOf('/rest/v1/rpc/admin_execute_mutation'),
     'the media was read after the takedown, when the row is already hidden',
   )
+})
+
+test('a takedown queues only the owned image cache purge and leaves failed purges visible', async () => {
+  for(const purgeStatus of [200,503]) {
+    const calls=[]
+    globalThis.fetch=takedownFetch(calls,[`https://supabase.test/storage/v1/object/public/item-images/items/${OWNER_DIR}/a.jpg`],{purgeStatus})
+    const handler=await loadHandler()
+    const result=await (await handler(adminPost({action:'takedown_content',target_type:'item',target_id:TAKEN_DOWN_ITEM,reason:'spam'}))).json()
+    assert.equal(result.media_cache_pending,true)
+    assert.equal(Boolean(result.media_cleanup_pending),purgeStatus!==200)
+    assert.deepEqual(calls.filter(c=>c.url.pathname.startsWith('/storage/v1/cdn/')).map(c=>c.url.pathname),[`/storage/v1/cdn/item-images/items/${OWNER_DIR}/a.jpg`])
+  }
 })
 
 test('a takedown target that cannot carry a photo touches storage at all', async () => {
@@ -1318,4 +1332,37 @@ test('a takedown still succeeds when the photo cannot be moved', async () => {
 
   assert.equal(response.status, 200)
   assert.equal(moves(calls).length, 1)
+  assert.equal((await response.json()).media_cleanup_pending, true)
+})
+
+test('an unavailable media inventory cannot silently report complete photo removal', async () => {
+  for (const options of [{ readStatus: 503 }, { readBody: 'invalid json' }, { readBody: '{}' }]) {
+    const calls = []
+    globalThis.fetch = takedownFetch(calls, [], options)
+    const handler = await loadHandler()
+    const response = await handler(adminPost({
+      action: 'takedown_content', target_type: 'item', target_id: TAKEN_DOWN_ITEM, reason: 'spam',
+    }))
+    assert.equal(response.status, 200, 'the row must still be hidden')
+    assert.equal((await response.json()).media_cleanup_pending, true)
+    assert.ok(calls.some(call => call.url.pathname === '/rest/v1/rpc/admin_execute_mutation'))
+    assert.equal(moves(calls).length, 0)
+  }
+})
+
+test('repeating takedown retries storage and acknowledges an already absent public photo', async () => {
+  const handler = await loadHandler()
+  for (const moveStatus of [500, 200, 404]) {
+    const calls = []
+    globalThis.fetch = takedownFetch(calls, [
+      `https://supabase.test/storage/v1/object/public/item-images/items/${OWNER_DIR}/a.jpg`,
+    ], { moveStatus })
+    const response = await handler(adminPost({
+      action: 'takedown_content', target_type: 'item', target_id: TAKEN_DOWN_ITEM, reason: 'spam',
+    }))
+    const result = await response.json()
+    assert.equal(result.data.ok, true)
+    assert.equal(result.media_cleanup_pending === true, moveStatus === 500)
+    assert.equal(moves(calls).length, 1)
+  }
 })

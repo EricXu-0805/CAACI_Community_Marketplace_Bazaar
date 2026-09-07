@@ -28,6 +28,9 @@ app/.env.*.local
 project.config.json
 project.private.config.json
 supabase/.temp/**
+.claude/**
+.agents/**
+.codex/**
 
 # Browser evidence and agent/operator scratch can contain account details,
 # private messages, screenshots, or machine-local state.

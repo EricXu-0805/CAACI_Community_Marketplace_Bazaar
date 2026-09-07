@@ -1,81 +1,73 @@
-# k6 stress tests
+# Marketplace load tests
 
-Load-test harness for the publish / message / report / moderate paths.
+These are destructive **synthetic staging/local** scenarios. They create posts,
+messages and reports and intentionally hit rate limits. They are not evidence of
+production capacity until run against an isolated, representative deployment.
+There are deliberately no production URL defaults. A label such as `staging`
+cannot override the independent check for known production targets.
 
-These scripts are not part of CI. Run them manually against a
-**staging** Supabase project, not production. A handful of test
-accounts will be blown up (rate limits tripped, accounts flagged).
+## Prepare
 
-## Install k6
+Install k6 following https://grafana.com/docs/k6/latest/set-up/install-k6/ .
+Prepare consented, unrestricted synthetic accounts in an isolated dataset. Save
+one `email:password` per line in `output/k6/accounts.txt` (ignored by Git). Colons
+inside passwords are supported. Missing/empty files stop the run.
 
-```bash
-brew install k6          # macOS
-# or: https://k6.io/docs/get-started/installation/
-```
+For message tests use only the buyer/seller of one synthetic conversation. Every
+account is checked for membership before load begins. For reports choose a
+separate synthetic target with no pending reports from these accounts. Remove
+the disposable dataset after the run; do not reuse exhausted rate-limit buckets
+and interpret the next run as an independent capacity measurement.
 
-## One-time setup
-
-1. Create 10 throwaway accounts in the Supabase dashboard of your
-   staging project. Write them to `accounts.txt` one line per
-   account as `email:password`. Keep this file out of git.
-
-2. Log into the app as one of those accounts and tap "Message seller"
-   on any listing to create a conversation. Copy the conversation id
-   from the URL — you'll need it for `message_flood.js`.
-
-3. Pick a victim profile id (any real profile) to target for
-   `report_abuse.js`.
-
-## Run
-
-```bash
-export SUPABASE_URL="https://<proj>.supabase.co"
+```sh
+export SUPABASE_URL="https://<staging-ref>.supabase.co"
 export SUPABASE_PUBLISHABLE_KEY="sb_publishable_..."
-# Temporary fallback while testing a project that still uses legacy JWT keys:
-# export SUPABASE_ANON_KEY="eyJhbGci..."
 export APP_ORIGIN="https://<staging-app-host>"
 export K6_TARGET_ENV="staging"
-export TEST_ACCOUNTS_FILE="./accounts.txt"
+export K6_EXPECTED_SUPABASE_URL="https://<reviewed-staging-ref>.supabase.co"
+export K6_EXPECTED_APP_ORIGIN="https://<reviewed-staging-app-host>"
+export K6_DATASET_IS_SYNTHETIC=true
+export TEST_ACCOUNTS_FILE="./output/k6/accounts.txt"
 
-# 1. Publish-path burst
 k6 run tests/k6/publish_spam.js
-
-# 2. Message flood into a single conversation
-CONVERSATION_ID="<uuid>" k6 run tests/k6/message_flood.js
-
-# 3. Report bombardment against one profile
-TARGET_PROFILE_ID="<uuid>" k6 run tests/k6/report_abuse.js
-
-# 4. Moderate endpoint stress
+CONVERSATION_ID="<synthetic-conversation-uuid>" k6 run tests/k6/message_flood.js
+TARGET_PROFILE_ID="<synthetic-target-uuid>" k6 run tests/k6/report_abuse.js
 k6 run tests/k6/moderate_endpoint.js
 ```
 
-There are deliberately no production URL defaults. Every run must name its
-target environment. `K6_TARGET_ENV=production` is additionally blocked unless
-an approved maintenance plan explicitly supplies
-`K6_ALLOW_PRODUCTION_LOAD_TESTS=I_UNDERSTAND_THIS_WILL_LOAD_PRODUCTION`.
+A local target must be loopback. A hosted target must use HTTPS. Both origins
+must match separately reviewed expected values. Production requires
+`K6_TARGET_ENV=production` and
+`K6_ALLOW_PRODUCTION_LOAD_TESTS=I_UNDERSTAND_THIS_WILL_LOAD_PRODUCTION` from an
+approved maintenance plan, plus a synthetic dataset. No production run is part
+of the default workflow.
 
-## What each test asserts
+## What the scenarios actually measure
 
-| Script | Verifies |
-|---|---|
-| `publish_spam.js` | Moderation triggers on posts reject contact-info payloads; p95 < 1.5 s under 30 VUs |
-| `message_flood.js` | `rate_limit_messages_minute` fires; message moderation blocks WeChat/QQ IDs; no 5xx |
-| `report_abuse.js` | `reports_unique_reporter_target` + hourly rate limit stop flag-bombs |
-| `moderate_endpoint.js` | `/api/moderate` stays under p95 2 s at 50 rps, no 5xx |
+| Scenario | Load | Required evidence |
+|---|---|---|
+| publish_spam | up to 30 VUs, 100 seconds | clean **posts** accepted, profanity rejected, posts p95 < 1.5 s |
+| message_flood | 20 iterations/s, 60 seconds | member messages accepted, profanity rejected or specifically rate limited, p95 < 1.2 s |
+| report_abuse | 10 VUs, 30 seconds | initial reports accepted and subsequent requests hit the exact pending-report unique constraint or named rate limit; p95 < 1.2 s |
+| moderate_endpoint | up to 50 iterations/s, 65 seconds | authenticated real verdicts or explicit 429; p95 < 2 s; missing provider/skipped verdicts fail |
 
-## Thresholds and pass/fail
+Each suite requires **100% of business checks** to pass. Arbitrary 400, 401,
+403, schema/constraint failures, redirects and connection failures are not valid
+proof of moderation or rate limiting. Expected business rejections are excluded
+from the HTTP transport failure metric but still checked by their exact code.
+Positive counters prevent an entirely refused workload from looking healthy.
+Arrival-rate suites also fail if iterations are dropped.
 
-Every script has `thresholds` in `options`. If any threshold is
-breached, k6 exits non-zero. Output includes per-check pass rate and
-per-operation latency breakdown.
+Accounts authenticate once in setup. The business workload does not repeatedly
+password-login on every iteration. Requests have a 10-second timeout and do not
+follow redirects carrying credentials. Do not enable verbose HTTP tracing or
+publish raw session/response data. The moderation scenario invokes external
+providers and may incur staging usage charges.
 
-## If a test fails
-
-- **`rate_limit_*` NOT firing** — migration 012 probably hasn't
-  been run on the target project. Verify `SELECT * FROM
-  rate_limits LIMIT 1` works.
-- **moderation block NOT firing** — migrations 024+025 missing.
-  Verify `SELECT count(*) FROM moderation_keywords WHERE active`.
-- **5xx from /api/moderate** — check Vercel logs. Most likely
-  `OPENAI_API_KEY` env var missing or Tier 0 account hitting 429s.
+Contact handles and everyday price negotiation are allowed by current policy.
+These tests no longer classify those messages as spam. The publish suite tests
+posts; it does not claim to benchmark item uploads, image processing or storage.
+For one end-to-end listing with a photo use the guarded
+`scripts/verify-staging-write-path.mjs` staging probe. Use separate workloads for
+browse/search, fan-out, realtime reconnect storms, media uploads and deletion
+backlogs before making user-capacity claims.

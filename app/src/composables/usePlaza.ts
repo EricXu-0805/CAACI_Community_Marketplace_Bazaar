@@ -63,7 +63,7 @@ const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, is_illini_verified, uid
 // title_i18n is included so attached-item previews localize too. Supabase
 // returns the column as null on pre-015 databases and localize() silently
 // falls back to plain `title`, so this is safe on unmigrated schemas.
-const ATTACHED_ITEM_FIELDS = 'id, user_id, title, title_i18n, price, images, image_dimensions, status, listing_type'
+const ATTACHED_ITEM_FIELDS = 'id, user_id, title, title_i18n, price, images, image_dimensions, status, listing_details, listing_type'
 const POST_COMMENT_FIELDS = 'id, post_id, user_id, content, parent_comment_id, like_count, created_at'
 // Explicit column list rather than `*` — same liability rationale as
 // useMessages.constants: every new posts column would otherwise start
@@ -213,6 +213,7 @@ export function usePlaza() {
           q = q.order('created_at', { ascending: false })
         }
         q = q
+          .order('id', { ascending: false })
           .order('display_order', { foreignTable: 'post_items', ascending: true })
           .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
         const res = await q
@@ -247,8 +248,12 @@ export function usePlaza() {
       }
 
       if (reset) posts.value = result
-      else posts.value.push(...result)
+      else {
+        const seen = new Set(posts.value.map(post => post.id))
+        posts.value.push(...result.filter(post => !seen.has(post.id) && !!seen.add(post.id)))
+      }
       hasMore.value = (data || []).length === PAGE_SIZE
+      return true
     } catch (err: any) {
       if (requestId !== latestRequestId) return
       console.error('[plaza] fetch posts failed')
