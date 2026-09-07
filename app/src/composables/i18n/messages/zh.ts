@@ -794,6 +794,8 @@ const zh: Record<string, string> = {
   'publish.draftDiscard': '不保存',
   'publish.draftSaved': '草稿已保存',
   'publish.draftRestored': '已恢复草稿',
+  'publish.draftPhotosExpired': '已恢复草稿。重新打开页面后，请再次添加照片。',
+  'publish.draftSaveFailed': '草稿保存失败，当前填写的内容已保留。',
   'publish.draftRestoreTitle': '恢复草稿？',
   'publish.draftRestoreBody': '发现一份未完成的草稿。',
   'publish.draftRestore': '恢复',

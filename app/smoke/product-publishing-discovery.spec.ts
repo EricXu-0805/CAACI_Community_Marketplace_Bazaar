@@ -35,6 +35,32 @@ async function fixture(page:Page, overrides:Record<string,unknown>={}){
   return send([])
  });return requests
 }
+
+test('publishing reload restores the latest edits and discarded drafts stay discarded', async ({ page }) => {
+ await fixture(page);await page.goto('/#/pages/publish/index')
+ const title=page.getByRole('textbox',{name:'Title (required)',exact:true})
+ const price=page.getByRole('spinbutton',{name:'Price',exact:true})
+ await title.fill('Fall sublease near campus');await price.fill('700')
+ await page.locator('.image-tip').click()
+ await page.getByRole('button',{name:'Home',exact:true}).click()
+ await page.getByText('Save',{exact:true}).click()
+ await page.getByRole('button',{name:'Post',exact:true}).click()
+ await page.getByText('Keep',{exact:true}).click()
+ await expect(title).toHaveValue('Fall sublease near campus')
+ await title.fill('Updated rent and move-in dates after class');await price.fill('650')
+ await page.reload()
+ await page.getByText('Keep',{exact:true}).click()
+ await expect(title).toHaveValue('Updated rent and move-in dates after class')
+ await expect(price).toHaveValue('650')
+ await page.locator('.image-tip').click()
+ await page.getByRole('button',{name:'Home',exact:true}).click()
+ await page.getByText('Drop',{exact:true}).click()
+ await page.getByRole('button',{name:'Post',exact:true}).click()
+ await expect(title).toHaveValue('')
+ await page.reload()
+ await expect(title).toHaveValue('')
+ await expect(page.getByText('Restore draft?',{exact:true})).toHaveCount(0)
+})
 for(const [name,width,height] of [['mac',1440,900],['ipad',820,1180],['phone',390,844],['small-phone',360,800]] as const){
  test(`${name}: publishing preview distinguishes missing price, free and wanted`,async({page})=>{
   await page.setViewportSize({width,height});const requests=await fixture(page);await page.goto('/#/pages/publish/index')
@@ -67,6 +93,18 @@ test('new listing can choose a cover without deleting other photos',async({page}
  const sources=await page.locator('.preview-image img').evaluateAll(els=>els.map(el=>(el as HTMLImageElement).src))
  await page.getByRole('button',{name:'Use photo 2 as cover',exact:true}).click()
  await expect.poll(()=>page.locator('.preview-image img').evaluateAll(els=>els.map(el=>(el as HTMLImageElement).src))).toEqual([sources[1],sources[0]])
+})
+test('reopened photo drafts explain reattachment instead of showing broken thumbnails',async({page})=>{
+ await fixture(page);await page.goto('/#/pages/publish/index')
+ const title=page.getByRole('textbox',{name:'Title (required)',exact:true})
+ await title.fill('Desk lamp with photos')
+ const chooser=page.waitForEvent('filechooser');await page.getByRole('button',{name:'Add Photo',exact:true}).click()
+ await(await chooser).setFiles([{name:'front.png',mimeType:'image/png',buffer:png}])
+ await expect(page.locator('.image-item')).toHaveCount(1)
+ await page.reload();await page.getByText('Keep',{exact:true}).click()
+ await expect(title).toHaveValue('Desk lamp with photos')
+ await expect(page.locator('.image-item')).toHaveCount(0)
+ await expect(page.locator('uni-toast')).toContainText('add your photos again')
 })
 test('zero ceiling reaches browse and search; ignored search sorts are not offered',async({page})=>{
  const requests=await fixture(page);await page.goto('/#/pages/index/index');await expect(page.locator('.waterfall .card').first()).toBeVisible()

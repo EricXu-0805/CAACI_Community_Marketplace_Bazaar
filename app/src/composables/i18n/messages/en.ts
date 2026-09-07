@@ -798,6 +798,8 @@ const en: Record<string, string> = {
   'publish.draftDiscard': 'Drop',
   'publish.draftSaved': 'Draft saved',
   'publish.draftRestored': 'Draft restored',
+  'publish.draftPhotosExpired': 'Draft restored. Please add your photos again after reopening the page.',
+  'publish.draftSaveFailed': 'Could not save the draft. Your edits are still here.',
   'publish.draftRestoreTitle': 'Restore draft?',
   'publish.draftRestoreBody': 'You have an unfinished listing from last time.',
   'publish.draftRestore': 'Keep',

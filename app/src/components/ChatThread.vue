@@ -308,10 +308,10 @@
       </view>
       <textarea
         ref="chatInputRef"
-        v-model="inputText"
+        v-model="composerText"
         :placeholder="replyToMsg ? t('chat.replyingHint') : t('chat.placeholder')"
         :aria-label="replyToMsg ? t('chat.replyingHint') : t('chat.placeholder')"
-        confirm-type="send"
+        :confirm-type="composerConfirmType"
         :confirm-hold="true"
         :show-confirm-bar="false"
         auto-height
@@ -320,7 +320,6 @@
         :adjust-position="false"
         :cursor-spacing="8"
         @confirm="onSend"
-        @keydown="onComposerKeydown"
         @focus="emojiOpen = false"
         @blur="inputFocused = false"
         class="msg-input"
@@ -437,6 +436,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useAuth } from '../composables/useAuth'
+import { readChatDraft, writeChatDraft } from '../composables/chatDrafts'
 import { useTheme } from '../composables/useTheme'
 import { createClientMessageId, compareMessagesChronologically, comparePostgresTimestamps, useMessages } from '../composables/useMessages'
 import { useOffers } from '../composables/useOffers'
@@ -461,6 +461,7 @@ import {
   captureActiveAccountRequest,
   isAccountRequestCurrent,
   onAccountTransition,
+  type AccountRequestToken,
 } from '../composables/accountScope'
 import type { Item, Offer, Meetup, Message } from '../types'
 import ChatEmojiPanel from './ChatEmojiPanel.vue'
@@ -512,7 +513,49 @@ const defaultAvatar = computed(() =>
 )
 
 const inputText = ref('')
+let composerConfirmType = 'send'
+// uni-h5's "send" mode intercepts every Enter on the inner textarea, even
+// Shift+Enter and IME confirmation. Let the H5 keydown handler decide instead.
+// #ifdef H5
+composerConfirmType = 'return'
+// #endif
+let draftAccountToken: AccountRequestToken | null = null
 const chatInputRef = ref<any>(null)
+function onComposerModelUpdate(value: string) {
+  // #ifdef H5
+  // uni-h5 throttles model updates by 100 ms. A queued update must not put
+  // already-sent text back into the composer or overwrite a newer keystroke.
+  const native = chatInputRef.value?.$el?.querySelector('textarea') as HTMLTextAreaElement | null
+  if (native) value = native.value
+  // #endif
+  inputText.value = value
+}
+const composerText = computed({ get: () => inputText.value, set: onComposerModelUpdate })
+function setComposerText(value: string) {
+  inputText.value = value
+  // #ifdef H5
+  const native = chatInputRef.value?.$el?.querySelector('textarea') as HTMLTextAreaElement | null
+  if (native) {
+    native.value = value
+    chatInputRef.value?.$triggerInput?.({ value })
+  }
+  // #endif
+}
+// #ifdef H5
+// uni-view/uni-textarea normalize keyboard events to just key/code, losing
+// modifier and IME flags. Bind to the actual input so these guards can work.
+watch(chatInputRef, (component, _previous, onCleanup) => {
+  const native = component?.$el?.querySelector('textarea') as HTMLTextAreaElement | null
+  if (!native) return
+  const syncInput = () => { inputText.value = native.value }
+  native.addEventListener('keydown', onComposerKeydown)
+  native.addEventListener('input', syncInput)
+  onCleanup(() => {
+    native.removeEventListener('keydown', onComposerKeydown)
+    native.removeEventListener('input', syncInput)
+  })
+}, { flush: 'post' })
+// #endif
 const emojiOpen = ref(false)
 /*
  * inputFocused drives the uni-app `<input :focus>` binding so we can
@@ -574,6 +617,15 @@ const headerStatus = computed(() => {
   return ''
 })
 watch(inputText, (v) => { if (v && typingApi) typingApi.sendTyping() })
+watch([inputText, replyToMsg], () => {
+  writeChatDraft(draftAccountToken, conversationId.value, {
+    text: inputText.value,
+    reply: replyToMsg.value ? {
+      content: replyToMsg.value.content,
+      message_type: replyToMsg.value.message_type,
+    } : null,
+  })
+}, { flush: 'sync' })
 
 // Guards the async onMounted: an unmount mid-await (desktop two-pane switching
 // conversations before the first fetch resolves, or mobile open-then-back)
@@ -599,6 +651,7 @@ function resetThreadPrivateState() {
   // The render gate is first on purpose: no old item/message/peer frame may be
   // painted while the rest of the synchronous cleanup runs.
   conversationAccessReady.value = false
+  draftAccountToken = null
   transcriptLive.value = false
   threadEpoch += 1
   reportLoading.cancel()
@@ -742,12 +795,12 @@ function reconcileSentMessage(sent: Message, tempId?: string) {
   messages.value.sort(compareMessagesChronologically)
 }
 
-function failOptimisticMessage(tempId: string, error: unknown) {
+function failOptimisticMessage(tempId: string, error: unknown, preserveRejected = false) {
   const idx = messages.value.findIndex(m => m.id === tempId)
   if (idx < 0) return
   const reason = String((error as any)?.message || '')
   const permanent = reason.startsWith('moderation_block') || reason === 'duplicate_message' || reason === 'message_too_long'
-  if (permanent) {
+  if (permanent && !preserveRejected) {
     messages.value.splice(idx, 1)
   } else {
     messages.value[idx]._pending = false
@@ -913,6 +966,11 @@ async function initializeConversationAfterGate() {
         return
       }
 
+      // Restore only after the authoritative conversation and block checks.
+      const draft = readChatDraft(setupAccountToken, options.id)
+      inputText.value = draft?.text || ''
+      replyToMsg.value = draft?.reply || null
+      draftAccountToken = setupAccountToken
       conversationAccessReady.value = true
     } catch (error: any) {
       if (!isCurrentThreadSetup()) return
@@ -1005,7 +1063,7 @@ async function initializeConversationAfterGate() {
 
     if (currentUser.value && isThreadVisible()) refreshReadState(options.id, currentUser.value.id)
 
-    if (options.prefill && messages.value.length === 0) {
+    if (options.prefill && messages.value.length === 0 && !inputText.value && !replyToMsg.value) {
       try { inputText.value = decodeURIComponent(options.prefill as string) } catch {}
     }
 
@@ -1349,10 +1407,9 @@ async function retrySend(msg: any) {
 }
 
 /*
- * Physical-keyboard send vs newline (H5 desktop only — mp has no keydown,
- * so this never fires there). Enter sends; Shift/Ctrl/Cmd+Enter falls
- * through to the textarea's default newline insert. The keydown bubbles
- * from the inner <textarea> to the uni component root we bound on.
+ * H5 physical keyboards (including tablets): Enter sends; modified Enter
+ * retains the browser's editing behaviour. This receives the native event
+ * directly, preserving modifier and composition flags lost by uni wrappers.
  */
 function onComposerKeydown(e: KeyboardEvent) {
   if (!e) return
@@ -1383,7 +1440,7 @@ async function onSend() {
 
   const convId = conversationId.value
   const me = currentUser.value.id
-  inputText.value = ''
+  setComposerText('')
   const wasReplying = replyToMsg.value
   replyToMsg.value = null
   sending.value = true
@@ -1457,10 +1514,14 @@ async function onSend() {
       duration: 2500,
     })
     if (contentRejected) {
-      // Content was rejected — remove the bubble and hand the text back to edit.
-      failOptimisticMessage(tempId, error)
-      inputText.value = text
-      replyToMsg.value = wasReplying
+      // The user can type while moderation is pending. Never replace that new
+      // draft; retain the failed bubble so its text can still be copied.
+      const hasNextDraft = !!inputText.value || !!replyToMsg.value
+      failOptimisticMessage(tempId, error, hasNextDraft)
+      if (!hasNextDraft) {
+        setComposerText(text)
+        replyToMsg.value = wasReplying
+      }
     } else {
       // Transient/network failure — keep the bubble, flip it to retryable.
       failOptimisticMessage(tempId, error)

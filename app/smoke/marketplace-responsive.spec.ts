@@ -86,6 +86,76 @@ async function screenshot(page: Page, name: string) {
   await page.screenshot({ path: resolve(dir, `${name}.png`), fullPage: false })
 }
 
+test.describe('composer draft recovery', () => {
+  test.use({ viewport: { width: 1440, height: 900 }, isMobile: false, hasTouch: false })
+
+  test('modified Enter inserts a newline and plain Enter sends exactly once', async ({ page }) => {
+    const fixture = await seedMarketplace(page)
+    await page.goto(`/#/pages/chat/index?id=${CONV}`)
+    const input = page.locator('.msg-input textarea')
+    await input.fill('First line')
+    await input.press('Shift+Enter')
+    await expect(input).toHaveValue('First line\n')
+    expect(fixture.sends()).toBe(0)
+    for (const modifier of ['Control', 'Meta']) {
+      await input.press(`${modifier}+Enter`)
+      expect(fixture.sends()).toBe(0)
+    }
+    await input.dispatchEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 229, isComposing: true })
+    await input.dispatchEvent('keyup', { key: 'Enter', code: 'Enter', isComposing: true })
+    await expect(input).not.toHaveValue('')
+    expect(fixture.sends()).toBe(0)
+    await input.fill('First line\nLatest second line')
+    await input.press('Enter')
+    await expect.poll(fixture.sends).toBe(1)
+    await expect(page.locator('.msg-bubble').last()).toContainText('Latest second line')
+    await expect(input).toHaveValue('')
+  })
+
+  test('conversation drafts survive switching threads and desktop to phone layout', async ({ page }) => {
+    await seedMarketplace(page)
+    await page.goto('/#/pages/messages/index')
+    await page.locator('.conv-item').first().click()
+    const input = page.locator('.msg-input textarea')
+    const draft = 'I can meet near the library after class; let me check the time.'
+    await input.fill(draft)
+    await page.locator('.conv-item').nth(1).click()
+    await expect(input).toHaveValue('')
+    await input.fill('A different conversation draft')
+    await page.locator('.conv-item').first().click()
+    await expect(input).toHaveValue(draft)
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expect(input).toHaveCount(0)
+    await page.locator('.conv-item').first().click()
+    await expect(input).toHaveValue(draft)
+    await contained(page, '.send-btn', 40)
+  })
+
+  test('a delayed rejection preserves the next draft and keeps the rejected text available', async ({ page }) => {
+    const fixture = await seedMarketplace(page)
+    let reject!: () => void
+    const response = new Promise<void>(resolve => { reject = resolve })
+    let requested = false
+    await page.route('**/api/moderate', async route => {
+      requested = true
+      await response
+      await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ flagged: true, categories: ['harassment'] }) })
+    })
+    await page.goto(`/#/pages/chat/index?id=${CONV}`)
+    const input = page.locator('.msg-input textarea')
+    await input.fill('First message awaiting review')
+    await page.getByRole('button', { name: 'Send message', exact: true }).click()
+    await expect.poll(() => requested).toBe(true)
+    await input.fill('A different message I am still writing')
+    reject()
+    await expect(page.locator('.msg-status.pending')).toHaveCount(0)
+    await expect(input).toHaveValue('A different message I am still writing')
+    await expect(page.locator('.msg-bubble').last()).toContainText('First message awaiting review')
+    await expect(page.locator('.msg-status.failed')).toBeVisible()
+    expect(fixture.sends()).toBe(0)
+  })
+})
+
 async function contained(page: Page, selector: string, minWidth = 0) {
   const box = await page.locator(selector).first().boundingBox()
   expect(box, selector).not.toBeNull()

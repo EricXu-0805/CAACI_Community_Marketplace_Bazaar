@@ -267,6 +267,7 @@ import UIcon from '../../components/UIcon.vue'
 import ListingPreview from '../../components/ListingPreview.vue'
 import ListingCategoryFields from '../../components/ListingCategoryFields.vue'
 import { emptyListingDetailForm, hasCategoryDetails, listingDetailsFromForm, listingDetailsError, listingDetailFormFromValue } from '../../utils/listingDetails'
+import { publishDraftDocumentId, restorableDraftImages } from '../../utils/publishDraft'
 import OsmAttribution from '../../components/OsmAttribution.vue'
 import UButton from '../../components/UButton.vue'
 import {
@@ -448,18 +449,34 @@ const isDirty = computed(() => {
 })
 
 function saveDraft() {
-  writeAccountPrivateStorage(DRAFT_KEY, {
+  if (!publishPageAccountToken || !isAccountRequestCurrent(publishPageAccountToken)) return false
+  return writeAccountPrivateStorage(DRAFT_KEY, {
     form: { ...form },
     images: [...imageList.value],
+    documentId: publishDraftDocumentId,
     savedAt: Date.now(),
   })
 }
+
+function checkpointDraft() {
+  if (publishPageMounted && publishReady.value && publishVisible && isDirty.value) saveDraft()
+}
+
+// Browser Back, reload and backgrounding do not go through uni.switchTab.
+// Synchronous storage lets the last edit survive without delaying navigation.
+// #ifdef H5
+function checkpointHiddenDraft() {
+  if (document.visibilityState === 'hidden') checkpointDraft()
+}
+window.addEventListener('pagehide', checkpointDraft)
+document.addEventListener('visibilitychange', checkpointHiddenDraft)
+// #endif
 
 function clearDraft() {
   removeAccountPrivateStorage(DRAFT_KEY)
 }
 
-type PublishDraft = { form: Record<string, any>; images: string[]; savedAt: number }
+type PublishDraft = { form: Record<string, any>; images: string[]; savedAt: number; documentId?: string }
 
 function loadDraft(): PublishDraft | null {
   try {
@@ -471,11 +488,19 @@ function loadDraft(): PublishDraft | null {
   } catch { return null }
 }
 
-function applyDraft(draft: { form: any; images: string[] }) {
+function applyDraft(draft: PublishDraft) {
   Object.assign(form, draft.form)
   form.details = { ...emptyListingDetailForm(), ...draft.form?.details }
-  imageList.value = [...(draft.images || [])]
-  uni.showToast({ title: t('publish.draftRestored'), icon: 'none' })
+  const images = Array.isArray(draft.images) ? draft.images : []
+  imageList.value = [...images]
+  // #ifdef H5
+  imageList.value = restorableDraftImages(images, draft.documentId)
+  // #endif
+  uni.showToast({
+    title: t(imageList.value.length < images.length ? 'publish.draftPhotosExpired' : 'publish.draftRestored'),
+    icon: 'none',
+    duration: imageList.value.length < images.length ? 5000 : 1500,
+  })
 }
 
 /*
@@ -546,7 +571,11 @@ function promptSaveDraft(onDecided: () => void) {
         return
       }
       if (r.confirm) {
-        saveDraft()
+        if (!saveDraft()) {
+          pendingTabUrl = ''
+          uni.showToast({ title: t('publish.draftSaveFailed'), icon: 'none' })
+          return
+        }
         resetForm()
         uni.showToast({ title: t('publish.draftSaved'), icon: 'none' })
       } else if (r.cancel) {
@@ -712,6 +741,11 @@ function leavePublishPage() {
 
 function destroyPublishPage() {
   if (!publishPageMounted) return
+  checkpointDraft()
+  // #ifdef H5
+  window.removeEventListener('pagehide', checkpointDraft)
+  document.removeEventListener('visibilitychange', checkpointHiddenDraft)
+  // #endif
   publishPageMounted = false
   publishVisible = false
   // Preserve a deliberately saved local draft, but synchronously erase the
@@ -742,6 +776,7 @@ onShow(() => {
 })
 
 onHide(() => {
+  checkpointDraft()
   publishVisible = false
   leavePublishPage()
 })
