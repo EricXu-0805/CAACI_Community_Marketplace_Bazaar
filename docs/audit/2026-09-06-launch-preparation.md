@@ -8,10 +8,11 @@ keeps the existing RLS and response shapes while removing repeated search
 calculations, bounds both search RPCs to 12 nonempty terms of at most 200
 characters, and runs PR public smoke against a prepared staging schema.
 
-The review entry is [draft PR 331](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/pull/331).
-Use its final head SHA, not an earlier local build, for the release receipt.
-Production was read only during this audit. Local/staging evidence does not
-authorize marking the public launch or high-concurrency capacity complete.
+The review entry is [merged PR 331](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/pull/331).
+PR 331 was merged to main as `878fc4f` on September 7 at 02:46 UTC
+(September 6 Chicago). Its production deployment is READY. The migration and
+worker receipts below supersede the initial read-only audit. This does not
+certify physical devices, delivery, backup restoration or large-scale capacity.
 
 ## Order before frontend promotion
 
@@ -32,18 +33,33 @@ blanket database push. The background prerequisite deliberately refuses to run
 before the restrictive listing-notification read policy exists; the search
 optimization refuses to precede structured details. Stop on schema drift.
 
-On September 6 production's first and third PRECHECK passed; the fourth
-correctly stopped at `apply_listing_privacy_boundary_first`. Production had no
-`listing_details` or either new queue. Five candidate migrations therefore
-remain pending in production. One active listing was present; 14 total item
-rows included 12 deleted and one sold. Do not count historical rows as supply.
+Production applied and verified all five migrations, in order, at 02:37–02:40
+UTC on September 7. Actual ledger versions are `20260907023711`,
+`20260907023742`, `20260907023822`, `20260907023935` and `20260907024048`.
+All 154 source migration hashes passed. Existing item content remained
+unchanged: 14 rows with digest `432cc3dabc2536fc2dde72fc3de22785`; 16 profiles
+and Auth accounts. Production public schema probes both returned 200.
 
-Before a production change, retain an accessible recent backup and a restore
-receipt from an isolated destination, plus a separate Storage object recovery
-plan. [Supabase database backups](https://supabase.com/docs/guides/platform/backups)
-contain Storage metadata but not the object bytes. No actual production backup
-or restore receipt was obtained in this audit. Choose a migration window and
-confirm lock/statement timeout limits rather than extending them blindly.
+The latest inspected daily physical backup was completed September 6 at
+07:16:17 UTC. An isolated restore has not run: creating a potentially billable
+restoration project requires separate approval (requested with a US$5 limit).
+[Supabase database backups](https://supabase.com/docs/guides/platform/backups)
+contain Storage metadata but not object bytes. Database and file recovery
+remain separate operational acceptance requirements.
+
+Production deployment `dpl_DBHAD9XQ39W8483zQcFSqWfFkiCh` serves main `878fc4f`.
+The scheduler completed all 13 backfilled moderation-media jobs; pending and
+failed counts are zero. Storage retains all 22 objects: 9 public item images
+and 13 in private moderation evidence. Rollback reference:
+`dpl_8zqbr3qLhFpjVifxJJdzM7yDh4KT` at `c0dfb8b`. Follow the worker-preserving
+rollback instructions below; do not reverse the additive database changes.
+
+Post-merge CI exposed a first-visit hint covering a short feed and an absent
+translation endpoint in Vite's authenticated test harness. The follow-up moves
+the hint into normal feed flow and adds single-listing/rotation/dismissal
+coverage. The account sweep explicitly models the translation no-provider
+response while checking the real synthetic session identity and request; all
+other HTTP errors remain failures. This does not claim paid-provider delivery.
 
 After database VERIFY, run `scripts/verify-public-read-schema.mjs` using only
 the target's public client key; its two zero-row reads catch missing listing

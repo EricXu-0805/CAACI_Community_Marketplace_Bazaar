@@ -336,6 +336,7 @@
 
       <!-- Real Content -->
       <view v-else>
+        <AddToHomeHint v-if="filteredItems.length > 0 && !fetchError" />
         <!-- The only feedback that a search or a category tap changed the
              feed. Without a live region the list silently reshuffles. -->
         <view v-if="searchText || selectedCategory" class="result-count" role="status" aria-live="polite" aria-atomic="true">
@@ -486,17 +487,6 @@
     </view>
 
     <CustomTabBar current="index" />
-    <!--
-      Only once the feed has cards in it. With nothing to show, the page puts
-      up one button — "Post Item", or "Retry" after a failed load — top-anchored
-      inside a scroller with nothing to scroll, so it cannot be moved out from
-      under a lane measured up from the bottom. Measured against the empty
-      state: that button was 100% covered at 414x896, 87% at 430x932, 4% at
-      390x844, clear at 375x667. No single offset clears both it and .back-top
-      across those heights, so the dismissible promo yields to the only thing
-      there is to do here.
-    -->
-    <AddToHomeHint v-if="filteredItems.length > 0 && !fetchError" />
   </view>
 </template>
 

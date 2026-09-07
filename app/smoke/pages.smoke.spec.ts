@@ -288,16 +288,22 @@ test('a seller link with no id reaches a terminal state', async ({ page }) => {
   await expect(page.locator('.load-error'), 'retry left the page hanging again').toBeVisible()
 })
 
-/**
- * The install hint is the only thing a first-time iOS visitor sees floating
- * over the home page, and it is fixed-position chrome, so nothing in the
- * layout pushes back on where it lands. Pinned under the header it sat on
- * every browse control the page has — the search field, the filter button and
- * both halves of the On sale / Wanted switch — from its 1.2s reveal until the
- * reader found the close button. Every one of those still computed as visible
- * and enabled; only a hit test at the painted pixel shows the cover.
- */
-test('the install hint covers none of the home page controls', async ({ page }) => {
+/** The first-visit hint must reserve space even with only one short card. */
+for (const dataset of ['live', 'single listing'] as const) {
+test(`the install hint covers none of the home page controls (${dataset})`, async ({ page }) => {
+  if (dataset === 'single listing') {
+    await page.route('**/rest/v1/items?**', route => route.fulfill({
+      status: 200, contentType: 'application/json', headers: { 'content-range': '0-0/1' },
+      body: JSON.stringify([{
+        id: '77777777-7777-4777-8777-777777777777',
+        user_id: '11111111-1111-4111-8111-111111111111',
+        title: 'Pet carrier XL', description: 'Campus pickup', source_lang: 'en',
+        price: 120, category: 'other', condition: 'new', status: 'active', listing_type: 'sell',
+        location: 'Illini Union', images: [], view_count: 4, favorite_count: 0,
+        created_at: '2026-08-31T05:27:44Z', profile: { nickname: 'Fixture seller' },
+      }]),
+    }))
+  }
   await page.addInitScript(() => {
     localStorage.setItem('welcomed', '1')
     localStorage.setItem('lang', 'en')
@@ -315,15 +321,9 @@ test('the install hint covers none of the home page controls', async ({ page }) 
     })
     .toBe(true)
 
-  /*
-   * An empty feed shows one button — "Post Item", or "Retry" after a failed
-   * load — top-anchored inside a scroller with nothing to scroll, so it cannot
-   * be moved out from under a fixed lane measured up from the bottom. At
-   * 414x896 that lane covered it completely and at 430x932 by 87%, and no
-   * single offset clears both it and the back-to-top button across those
-   * heights. The hint yields instead; assert that it did, and leave the
-   * geometry below to the runs whose feed has cards in it.
-   */
+  // Empty/error feeds yield to the primary action; hold the absence across
+  // the reveal timer so the test cannot pass before the hint is scheduled.
+  if (dataset === 'single listing') await expect(page.locator('.waterfall .card')).toHaveCount(1)
   if (await emptyBlock.isVisible()) {
     /* Asserting an absence once passes for the wrong reason: the component
        reveals on a 1.2s timer, so a single check right after the empty state
@@ -343,23 +343,9 @@ test('the install hint covers none of the home page controls', async ({ page }) 
   const coveredControls = () => page.evaluate(() => {
     const banner = document.querySelector('.a2hs')!
     const bannerRect = banner.getBoundingClientRect()
-    // A card under the banner can be scrolled out from under it; the search
-    // field cannot. Only the controls the reader has no way to move are a
-    // defect, so the filter is "has no scrollable ancestor", not a class list.
-    // The walk stops before <body>: uni-app leaves it overflow-y:auto with a
-    // hair of overflow on every page, and counting that as a scroller marks
-    // the entire document movable and quietly empties this test. The real
-    // scroller is the inner <scroll-view> that holds the cards.
-    const movable = (el: Element) => {
-      for (let n = el.parentElement; n && n !== document.body; n = n.parentElement) {
-        const overflow = getComputedStyle(n).overflowY
-        if (/(auto|scroll)/.test(overflow) && n.scrollHeight > n.clientHeight + 4) return true
-      }
-      return false
-    }
     const hits: string[] = []
     for (const el of document.querySelectorAll('[role="button"], button, input, .fm-seg, .search-field, .filter-btn')) {
-      if (banner.contains(el) || movable(el)) continue
+      if (banner.contains(el)) continue
       const r = el.getBoundingClientRect()
       if (r.width < 4 || r.height < 4) continue
       // Check the painted intersection rather than only the control's centre.
@@ -384,22 +370,20 @@ test('the install hint covers none of the home page controls', async ({ page }) 
     const covered = await coveredControls()
     expect(
       covered,
-      `the install hint is covering fixed controls in ${orientation}:\n${covered.join('\n')}`,
+      `the install hint is covering controls in ${orientation}:\n${covered.join('\n')}`,
     ).toEqual([])
   }
 
   const expectPortraitHintClear = async (orientation: string) => {
     await expect(hint, `${orientation} must show the first-visit hint`).toBeVisible()
 
-    // .back-top in pages/index/index.vue sits at bottom 116px + chin and is
-    // 40px tall, and carries z-index 100 against this banner's 300. Poll rather
-    // than read once because getBoundingClientRect() includes the hint's 0.32s
-    // reveal transform; measuring mid-animation made this assertion flaky.
-    await expect.poll(
-      () => page.evaluate(() =>
-        Math.round(innerHeight - document.querySelector('.a2hs')!.getBoundingClientRect().bottom)),
-      { message: `${orientation} must keep the hint clear of the back-to-top lane`, timeout: 5_000 },
-    ).toBeGreaterThanOrEqual(156)
+    // The first card must start below the hint, including in a feed too
+    // short to scroll. A floating banner at an arbitrary bottom offset fails.
+    await expect.poll(() => page.evaluate(() => {
+      const hint = document.querySelector('.a2hs')!.getBoundingClientRect()
+      const card = document.querySelector('.waterfall .card')!.getBoundingClientRect()
+      return card.top - hint.bottom
+    }), { message: `${orientation} must reserve space for the hint` }).toBeGreaterThanOrEqual(0)
 
     await expectNoCoveredControls(orientation)
   }
@@ -407,7 +391,7 @@ test('the install hint covers none of the home page controls', async ({ page }) 
   await expectPortraitHintClear('portrait')
 
   // iOS rotates the already-visible hint without remounting the page. There is
-  // no safe fixed lane in the short landscape viewport, so the hint must yield
+  // little reading room in the short landscape viewport, so the hint must yield
   // to the page controls and reappear when portrait space returns.
   await page.setViewportSize({ width: 664, height: 390 })
   await expect(hint, 'the short landscape viewport has no safe fixed lane').toBeHidden()
@@ -423,7 +407,13 @@ test('the install hint covers none of the home page controls', async ({ page }) 
   await expect(hint, 'large-iPhone landscape entry must remain unobstructed').toBeHidden()
   await page.setViewportSize({ width: 414, height: 896 })
   await expectPortraitHintClear('large iPhone portrait after landscape entry')
+  await hint.locator('.a2hs-close').click()
+  await expect(hint).toHaveCount(0)
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.waitForTimeout(1500)
+  await expect(hint, 'dismissal must survive reload').toHaveCount(0)
 })
+}
 
 /**
  * Core logged-in flow — opt-in. Set SMOKE_EMAIL + SMOKE_PASSWORD and the
@@ -452,6 +442,25 @@ test.describe('core flow (logged in)', () => {
 
   test('login → authenticated page sweep (no console errors)', async ({ page }) => {
     const errs = attachConsoleCollector(page)
+    // Vite serves the frontend only. Keep the real synthetic Supabase login
+    // and reads, but explicitly stub the paid translation boundary as the
+    // server's no-provider fallback. Do not suppress missing API responses in
+    // the collector or send fixture content to a paid production provider.
+    await page.route('**/api/translate', async route => {
+      const request = route.request()
+      expect(request.method()).toBe('POST')
+      const jwt = (request.headers().authorization || '').replace(/^Bearer /, '')
+      const claims = JSON.parse(Buffer.from(jwt.split('.')[1] || '', 'base64url').toString())
+      expect(claims.sub, 'translation must use the reviewed synthetic identity').toBe(EXPECTED_USER_ID)
+      const body = request.postDataJSON()
+      expect(typeof body.text).toBe('string')
+      expect(Buffer.byteLength(body.text)).toBeLessThanOrEqual(4096)
+      expect(['en', 'zh']).toContain(body.target)
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({ translated: '', skipped: true, reason: 'no_key' }),
+      })
+    })
     await page.addInitScript(() => localStorage.setItem('welcomed', '1'))
     await page.goto('/#/pages/login/index', { waitUntil: 'networkidle' })
     await page.waitForTimeout(1000)

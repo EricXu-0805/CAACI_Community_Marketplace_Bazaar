@@ -24,8 +24,7 @@
  * H5-only (the whole template + logic compile out of mp-weixin). iOS can't fire
  * beforeinstallprompt, so this is purely instructional (point at Share → Add to
  * Home Screen). Shown once on the home page; dismissal is remembered locally.
- * It floats above the tab bar rather than below the header — see the note on
- * .a2hs for what that position was costing.
+ * It occupies space inside the feed so even a single listing stays readable.
  */
 import { ref, onBeforeUnmount, onMounted } from 'vue'
 import { useI18n } from '../composables/useI18n'
@@ -85,18 +84,11 @@ function dismiss() {
 
 <style scoped>
 /* #ifdef H5 */
-/* Floats low, not under the header. Pinned below the header it covered every
-   browse control the home page has — the search field, the filter button and
-   both halves of the On sale / Wanted switch — from the 1.2s reveal until the
-   reader found the close button. Down here it also points at the Share button
-   it names, which lives in Safari's bottom toolbar.
-   166px clears the .back-top lane in pages/index/index.vue (bottom 116px +
-   40px tall) with a 10px gap; sitting on the tab bar at 70px instead would
-   swallow that button whole, since it carries z-index 100 to this one's 300. */
+/* A fixed offset cannot clear cards in short feeds at every phone height.
+   Reserve real space in the feed and let the reader scroll past the hint. */
 .a2hs {
-  position: fixed; z-index: 300;
-  left: 12px; right: 12px;
-  bottom: calc(166px + env(safe-area-inset-bottom, 0px));
+  position: relative;
+  margin: 0 12px 12px;
   display: flex; align-items: center; gap: 12px;
   padding: 12px 14px;
   background: var(--bg-elev-1);
@@ -106,8 +98,8 @@ function dismiss() {
   animation: a2hs-in 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 @keyframes a2hs-in {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: none; }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 .a2hs-icon {
   width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
@@ -121,11 +113,7 @@ function dismiss() {
 }
 .a2hs-close:active { opacity: 0.6; }
 
-/* A phone in landscape has no fixed vertical lane large enough for this card:
-   keeping the 156px back-to-top clearance puts it over the segment/category
-   controls, while moving it down would cover the tab/back-to-top controls.
-   Hide it for the short landscape viewport and let the same undismissed hint
-   reappear when the phone rotates back to portrait. */
+/* Keep the short landscape viewport focused on listings. */
 @media (orientation: landscape) and (max-height: 500px) {
   .a2hs { display: none; }
 }
