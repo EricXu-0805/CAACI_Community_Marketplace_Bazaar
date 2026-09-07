@@ -86,7 +86,7 @@ test('the dependency audit is conditional, but the code it sits beside is not', 
    * npm's audit endpoint answered 400 and then stopped answering for most of
    * 2026-09-03/04, and because the audit ran on every pull request, every one
    * of them waited out three 180s attempts to re-check a dependency tree it had
-   * not touched. `--omit=dev` reads production dependencies, which cannot
+   * not touched. The complete dependency tree, including build tools, cannot
    * change unless app/package.json or app/package-lock.json does.
    *
    * What this pins is the shape, not the wording: the audit runs behind a
@@ -102,7 +102,9 @@ test('the dependency audit is conditional, but the code it sits beside is not', 
   const boundary = ci.slice(ci.indexOf('  boundary-tests:'), ci.indexOf('\n  build-h5:'))
   assert.ok(boundary.includes('boundary-tests'), 'the Boundary regressions job moved')
 
-  const audit = boundary.slice(boundary.indexOf('- name: Audit production dependencies'))
+  const audit = boundary.slice(boundary.indexOf('- name: Audit production and build dependencies'))
+  assert.match(audit, /npm audit --audit-level=moderate/,
+    'the dependency gate must include build tools, where qs and brace-expansion are used')
   assert.match(audit, /if: steps\.\w+\.outputs\.\w+ == 'true'/,
     'the audit step is unconditional again — a registry outage will block every merge')
 

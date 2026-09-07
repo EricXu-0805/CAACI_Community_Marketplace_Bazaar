@@ -129,11 +129,10 @@ jobs:
       # be allowed to read as "nothing to report".
       # npm's audit endpoint answered 400 and then stopped answering for most of
       # 2026-09-03/04, and every pull request waited out three 180s attempts on
-      # it — to re-check a dependency tree it had not touched. `--omit=dev`
-      # reads production dependencies, which cannot change unless one of these
-      # two files does. The weekly schedule above is what catches an advisory
+      # it — to re-check a dependency tree it had not touched. The full tree,
+      # including build tools, cannot change unless one of these two files does. The weekly schedule above is what catches an advisory
       # published against a tree nobody edited.
-      - name: Do production dependencies change here?
+      - name: Do dependencies change here?
         id: deps
         shell: bash
         env:
@@ -150,7 +149,7 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Production dependencies untouched here; the audit runs on push to main and on the weekly schedule."
+            echo "::notice::Dependencies untouched here; the audit runs on push to main and on the weekly schedule."
           fi
 
       # Node 22 bundles npm 10.9.8, which posts audits to
@@ -159,8 +158,8 @@ jobs:
       # bulk advisory endpoint instead", and on every run since it simply
       # stopped answering — three 180s attempts, twice in a row, on main.
       # npm 11 posts to /-/npm/v1/security/advisories/bulk instead, which
-      # returns this project's advisories normally (27 low, none at the
-      # moderate gate, so a healthy audit still exits 0).
+      # returns this project's advisories normally. Include build dependencies:
+      # the previous omit-dev gate missed qs and brace-expansion findings.
       #
       # Scoped to this job on purpose: nothing else here needs npm 11, and
       # moving NODE_VERSION would change the runtime under both uni-app builds
@@ -169,13 +168,13 @@ jobs:
         if: steps.deps.outputs.changed == 'true'
         run: npm install -g npm@11
 
-      - name: Audit production dependencies
+      - name: Audit production and build dependencies
         if: steps.deps.outputs.changed == 'true'
         working-directory: app
         run: |
           for attempt in 1 2 3; do
             status=0
-            output=$(timeout 180 npm audit --omit=dev --audit-level=moderate 2>&1) || status=$?
+            output=$(timeout 180 npm audit --audit-level=moderate 2>&1) || status=$?
             echo "$output"
             if [ "$status" -eq 0 ]; then exit 0; fi
             if [ "$status" -eq 124 ]; then
