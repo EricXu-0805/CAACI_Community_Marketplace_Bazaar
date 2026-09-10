@@ -41,3 +41,11 @@ The chat commit `71d2f22` deployed successfully and passed both local browser su
 The installed DCloud code uses this library only for packing/extracting paid encrypted uni_modules through HBuilderX cloud compilation. This repository has no such plugins. The follow-up removes the archive library and resolves that optional dependency to the local `@caaci/disabled-cloud-zip` package, which performs no archive/filesystem operations and throws immediately on use. Encrypted-plugin cloud compilation is deliberately unavailable until a reviewed safe implementation is introduced. Normal H5 and mp-weixin compilation remain release gates.
 
 No advisory is allowlisted, no audit level is lowered, and no unpatched version is relabeled as patched. npm 11 audit reports **0 vulnerabilities**. Executable tests verify DCloud's actual module resolution, lockfile target, constructor refusal, and preservation of an external file behind a destination symlink. A clean lockfile install is also verified before publication. Exact follow-up CI/deployment evidence is in the local release receipt.
+
+## Tall desktop listing layout found by CI
+
+Security follow-up `a0e67bf` passed dependency/boundary, type-check, both builds and public browser CI. The protected staging browser job found the text-only listing information card at y=170.875, beyond the existing y<170 acceptance threshold. Reproduction at 1440×1400 made the defect clearer: y=208.59375 before the fix.
+
+The desktop grid inherited `min-height: 100vh`; its default content alignment distributed unused height between automatic rows. Text-only desktop pages now use `align-content: start` so extra height stays below their content. The original threshold remains unchanged, and the browser suite now includes both 1440×900 and 1440×1400 as well as phone and iPad sizes. Both affected browser suites passed locally: WebKit/light **56**, Chromium/dark **56**. Verification receipts distinguish this corrected release from the earlier failed CI run.
+
+The device checklist also corrects two stale expectations against current code: structured housing/rideshare fields now exist, and two-pane chat starts at 1100px. Physical-device rows remain unverified.

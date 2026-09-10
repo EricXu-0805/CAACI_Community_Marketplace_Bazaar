@@ -1904,6 +1904,8 @@ async function contactSeller() {
   .info-card { border-radius: 14px; }
   .page.text-only {
     grid-template-columns: minmax(0, 720px);
+    /* Keep spare viewport height below the content, not between its rows. */
+    align-content: start;
     justify-content: center; max-width: none; padding-right: 0;
   }
   .page.text-only > * { grid-column: 1; }

@@ -128,8 +128,8 @@ test('campus filter is bilingual and wanted clears an impossible condition',asyn
  await page.getByRole('button',{name:'Open filters',exact:true}).click();await expect(page.getByRole('button',{name:'Brand New',exact:true})).toHaveCount(0)
 })
 
-for (const [width,height] of [[390,844],[820,1180],[1440,900]]) {
- test(`text-only detail at ${width} keeps title and description near the top`,async({page})=>{
+for (const [width,height] of [[390,844],[820,1180],[1440,900],[1440,1400]]) {
+ test(`text-only detail at ${width}x${height} keeps title and description near the top`,async({page})=>{
   await page.setViewportSize({width,height});await fixture(page)
   await page.goto('/#/pages/detail/index?id=22222222-2222-4222-8222-000000000002')
   await expect(page.locator('.page.text-only')).toBeVisible()
