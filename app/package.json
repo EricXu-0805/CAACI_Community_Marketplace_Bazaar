@@ -66,6 +66,7 @@
     "vue": "^3.4.21"
   },
   "devDependencies": {
+    "adm-zip": "file:./vendor/disabled-cloud-zip",
     "@dcloudio/types": "^3.4.8",
     "@dcloudio/uni-cli-shared": "3.0.0-4080420251103001",
     "@dcloudio/uni-stacktracey": "3.0.0-4080420251103001",
@@ -80,7 +81,7 @@
     "vue-tsc": "3.3.7"
   },
   "overrides": {
-    "adm-zip": "0.6.0",
+    "adm-zip": "$adm-zip",
     "@babel/core": "7.29.7",
     "@babel/plugin-transform-modules-systemjs": "7.29.7",
     "@intlify/core-base": "9.14.5",

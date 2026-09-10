@@ -1,0 +1,8 @@
+{
+  "name": "@caaci/disabled-cloud-zip",
+  "version": "1.0.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "description": "Fail-closed replacement for unused DCloud encrypted-plugin ZIP operations",
+  "main": "index.cjs"
+}
