@@ -21,6 +21,9 @@
     </view>
 
     <view v-if="publishReady" class="form">
+      <view v-if="publishOutcomeUncertain && !submitting" class="recovery-notice" role="status">
+        {{ t('publish.recoveryNotice') }}
+      </view>
       <!-- 出售 / 求购 — a wanted post (migration 054) relaxes price + condition. -->
       <view class="listing-type-seg" role="group" :aria-label="t('publish.title')">
         <view
@@ -268,6 +271,7 @@ import ListingPreview from '../../components/ListingPreview.vue'
 import ListingCategoryFields from '../../components/ListingCategoryFields.vue'
 import { emptyListingDetailForm, hasCategoryDetails, listingDetailsFromForm, listingDetailsError, listingDetailFormFromValue } from '../../utils/listingDetails'
 import { publishDraftDocumentId, restorableDraftImages } from '../../utils/publishDraft'
+import { createClientMessageId as createPublishId } from '../../api/clientMessageId'
 import OsmAttribution from '../../components/OsmAttribution.vue'
 import UButton from '../../components/UButton.vue'
 import {
@@ -344,6 +348,8 @@ const showCat = ref(false)
 const showCond = ref(false)
 const submitting = ref(false)
 let submitEntryLocked = false
+let publishItemId = createPublishId()
+const publishOutcomeUncertain = ref(false)
 const uploadProgress = ref(0)
 const publishReady = ref(false)
 
@@ -448,11 +454,13 @@ const isDirty = computed(() => {
   )
 })
 
-function saveDraft() {
+function saveDraft(images = imageList.value) {
   if (!publishPageAccountToken || !isAccountRequestCurrent(publishPageAccountToken)) return false
   return writeAccountPrivateStorage(DRAFT_KEY, {
     form: { ...form },
-    images: [...imageList.value],
+    images: [...images],
+    itemId: publishItemId,
+    outcomeUncertain: publishOutcomeUncertain.value,
     documentId: publishDraftDocumentId,
     savedAt: Date.now(),
   })
@@ -476,7 +484,7 @@ function clearDraft() {
   removeAccountPrivateStorage(DRAFT_KEY)
 }
 
-type PublishDraft = { form: Record<string, any>; images: string[]; savedAt: number; documentId?: string }
+type PublishDraft = { form: Record<string, any>; images: string[]; savedAt: number; documentId?: string; itemId?: string; outcomeUncertain?: boolean }
 
 function loadDraft(): PublishDraft | null {
   try {
@@ -489,6 +497,8 @@ function loadDraft(): PublishDraft | null {
 }
 
 function applyDraft(draft: PublishDraft) {
+  publishItemId = typeof draft.itemId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(draft.itemId) ? draft.itemId : createPublishId()
+  publishOutcomeUncertain.value = draft.outcomeUncertain === true
   Object.assign(form, draft.form)
   form.details = { ...emptyListingDetailForm(), ...draft.form?.details }
   const images = Array.isArray(draft.images) ? draft.images : []
@@ -515,6 +525,8 @@ function applyDraft(draft: PublishDraft) {
  * guard cleanly.
  */
 function resetForm() {
+  publishItemId = createPublishId()
+  publishOutcomeUncertain.value = false
   form.title = ''
   form.description = ''
   form.price = ''
@@ -974,6 +986,8 @@ async function onSubmit() {
   let partialUpload: { done: number; total: number } | null = null
   let uploadAccountToken: UploadAccountToken | null = null
   let itemCreated = false
+  let submittedImages: string[] | null = null
+  const originalImages = [...imageList.value]
   try {
     const existing: string[] = []
     const toUpload: string[] = []
@@ -1066,14 +1080,32 @@ async function onSubmit() {
       negotiable: form.negotiable,
     }
 
+    const retryCreate = publishOutcomeUncertain.value
+    publishOutcomeUncertain.value = true
+    submittedImages = images
+    imageList.value = images
+    // Checkpoint the logical id and durable photo URLs before the write. A
+    // reload while its response is lost must retry this same listing.
+    if (!saveDraft(images)) throw new Error(t('publish.draftSaveFailed'))
     const newItem = await createItem(payload, {
       accountToken: submitAccountToken,
       confirmSuspectedAd,
+      itemId: publishItemId,
+      retryCreate,
     })
     if (!operationStillCurrent()) {
       throw mutationOutcomeError(new Error('Account changed after item create'), 'committed')
     }
     itemCreated = true
+    // A retry may recover the earlier payload. Delete only this attempt's
+    // unused uploads, never photos referenced by the confirmed listing.
+    const unusedUploads = uploadedForCleanup.filter(url => !newItem.images.includes(url))
+    if (unusedUploads.length) {
+      void removeOwnedItemImages(unusedUploads, { ownerUserId: submitAccountToken.userId,
+        telemetrySource: 'publish.recovered_upload_cleanup' }).catch(error => {
+        captureException(error, { tags: { source: 'publish.recovered_upload_cleanup' }, level: 'warning' })
+      })
+    }
     uploadProgress.value = 0
     resetForm()
     clearDraft()
@@ -1090,9 +1122,9 @@ async function onSubmit() {
     }
     scheduleBilingualFill(
       newItem.id,
-      trimmedTitle,
-      trimmedDesc,
-      sourceLang,
+      newItem.title,
+      newItem.description || '',
+      newItem.source_lang || sourceLang,
       newItem.updated_at,
       submitAccountToken,
     )
@@ -1121,6 +1153,10 @@ async function onSubmit() {
       })
     }
     if (!operationStillCurrent()) return
+    publishOutcomeUncertain.value = !shouldCompensateMutationFailure(error)
+    if (publishOutcomeUncertain.value && submittedImages) imageList.value = submittedImages
+    else imageList.value = originalImages
+    saveDraft()
     // The seller pressed Edit on the solicitation confirm. Their form is still
     // on screen with every field in it, so there is nothing to say about it.
     if (error?.message === 'ad_declined') return
@@ -1153,6 +1189,7 @@ async function onSubmit() {
 </script>
 
 <style lang="scss" scoped>
+.recovery-notice { padding: 14px; margin-bottom: 16px; border: 1px solid currentColor; border-radius: 12px; font-size: 14px; line-height: 1.6; }
 .page {
   min-height: 100vh; background: var(--bg-subtle);
   /* Clear the solid submit footer (70px) sitting flush on the 62px tab bar +

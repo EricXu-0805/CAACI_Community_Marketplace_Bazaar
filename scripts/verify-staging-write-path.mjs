@@ -71,6 +71,8 @@
 
 /** Public identifiers, not credentials. An independent deny that survives an
  *  operator making every other expected value self-consistent. */
+import { randomUUID } from 'node:crypto'
+
 export const KNOWN_PRODUCTION_PROJECT_REFS = new Set(['lfhvgprfphyfvhidegum'])
 
 /** Present in the environment only when someone is holding more power than this
@@ -377,20 +379,22 @@ export async function main() {
     }
     console.log(`✓ an upload into another user's folder is still refused (HTTP ${foreign.status})`)
 
-    // 4. An ordinary listing carrying that photo must land.
+    // 4. An ordinary listing carrying that photo must keep its client retry id.
+    const payload = {
+      id: randomUUID(),
+      user_id: userId,
+      title: titles.accepted,
+      description: DESCRIPTION,
+      price: 25,
+      category: 'other',
+      condition: 'good',
+      images: [mediaUrl],
+      image_dimensions: [{ w: 1, h: 1 }],
+    }
     const insert = await rest(url, key, token, 'items', {
       method: 'POST',
       headers: { Prefer: 'return=representation' },
-      body: JSON.stringify({
-        user_id: userId,
-        title: titles.accepted,
-        description: DESCRIPTION,
-        price: 25,
-        category: 'other',
-        condition: 'good',
-        images: [mediaUrl],
-        image_dimensions: [{ w: 1, h: 1 }],
-      }),
+      body: JSON.stringify(payload),
     })
     const insertBody = await readJson(insert)
     if (!insert.ok) {
@@ -413,8 +417,44 @@ export async function main() {
     }
     created = Array.isArray(insertBody) ? insertBody[0] : insertBody
     if (!created?.id) throw new Error('the insert returned no row')
+    if (created.id !== payload.id) throw new Error('the insert did not preserve the client retry id')
     console.log(`✓ published a listing with its photo through the real policies and `
       + `triggers (${created.id})`)
+
+    // An identical retry reaches the real 60-second title guard first.
+    const sameTitleRetry = await rest(url, key, token, 'items', {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(payload),
+    })
+    const sameTitleBody = await readJson(sameTitleRetry)
+    if (sameTitleRetry.status !== 400 || sameTitleBody?.code !== 'P0001'
+      || sameTitleBody?.message !== 'duplicate_item') {
+      throw new Error('an identical retry did not reach the duplicate-title guard')
+    }
+    console.log('✓ identical retry reached the duplicate-title guard before UUID uniqueness')
+
+    // An edited retry must hit the primary key, independent of the 60-second
+    // title dedupe trigger. Recover the original row by id AND owner afterward.
+    const retry = await rest(url, key, token, 'items', {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({ ...payload, title: `${payload.title} retry` }),
+    })
+    const retryBody = await readJson(retry)
+    if (retry.status !== 409 || retryBody?.code !== '23505') {
+      throw new Error(`a repeated client id did not reach the uniqueness guard (HTTP ${retry.status})`)
+    }
+    const recovered = await rest(url, key, token,
+      `items?id=eq.${payload.id}&user_id=eq.${userId}&select=id,user_id,title,images`)
+    const recoveredRows = await readJson(recovered)
+    if (!recovered.ok || !Array.isArray(recoveredRows) || recoveredRows.length !== 1
+      || recoveredRows[0].id !== payload.id || recoveredRows[0].user_id !== userId
+      || recoveredRows[0].title !== payload.title
+      || JSON.stringify(recoveredRows[0].images) !== JSON.stringify(payload.images)) {
+      throw new Error('owner-scoped retry recovery did not return exactly the original listing and photo')
+    }
+    console.log('✓ repeated client id was refused; owner recovery returned one unchanged listing and photo')
 
     // 5. The gate must still be shut. Without this, deleting moderation
     //    entirely would leave the check above passing.

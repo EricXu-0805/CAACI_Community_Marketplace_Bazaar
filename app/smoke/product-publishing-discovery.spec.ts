@@ -36,6 +36,78 @@ async function fixture(page:Page, overrides:Record<string,unknown>={}){
  });return requests
 }
 
+for (const reloadBeforeRecovery of [false, true]) test(`publishing network recovery: a lost response recovers the committed listing (${reloadBeforeRecovery ? 'reload and retry' : 'immediate'})`, async ({ page }) => {
+ await fixture(page)
+ let committed:any=null, inserts=0, recoveryAvailable=!reloadBeforeRecovery
+ await page.route('**/rest/v1/items?**', async route => {
+  const req=route.request(),url=new URL(req.url())
+  if(req.method()==='POST'){
+   inserts++
+   committed={...base,...req.postDataJSON()}
+   return route.abort('connectionreset')
+  }
+  if(req.method()==='GET'&&committed&&url.searchParams.get('id')===`eq.${committed.id}`){
+   if(!recoveryAvailable)return route.abort('connectionreset')
+   return route.fulfill({contentType:'application/json',body:JSON.stringify(committed)})
+  }
+  return route.fallback()
+ })
+ await page.goto('/#/pages/publish/index')
+ await page.getByRole('textbox',{name:'Title (required)',exact:true}).fill('Study chair available after class')
+ await page.getByRole('spinbutton',{name:'Price',exact:true}).fill('25')
+ await page.getByRole('button',{name:'Category',exact:true}).click();await page.getByRole('button',{name:'Furniture',exact:true}).click()
+ await page.getByRole('button',{name:'Condition',exact:true}).click();await page.getByRole('button',{name:'Good',exact:true}).click()
+ await page.getByRole('button',{name:'Post Item',exact:true}).click()
+ if(reloadBeforeRecovery){
+  await expect.poll(()=>inserts).toBe(1)
+  await expect(page.getByRole('button',{name:'Post Item',exact:true})).toBeEnabled()
+  await page.reload();await page.getByText('Keep',{exact:true}).click()
+  recoveryAvailable=true
+  await expect(page.getByRole('textbox',{name:'Title (required)',exact:true})).toHaveValue('Study chair available after class')
+  await page.getByRole('button',{name:'Post Item',exact:true}).click()
+ }
+ await expect(page).toHaveURL(/pages\/detail\/index\?id=/)
+ expect(inserts).toBe(1)
+ await expect(page.getByRole('heading',{name:'Study chair available after class',exact:true})).toBeVisible()
+})
+
+test('publishing network recovery: a delayed commit survives a duplicate-title rejection on retry', async ({ page }) => {
+ await fixture(page)
+ let committed:any=null, inserts=0, recoveryReads=0
+ await page.route('**/rest/v1/items?**', async route => {
+  const req=route.request(),url=new URL(req.url())
+  if(req.method()==='POST'){
+   inserts++
+   if(inserts===1){committed={...base,...req.postDataJSON()};return route.abort('connectionreset')}
+   expect(req.postDataJSON().id).toBe(committed.id)
+   // The original commit becomes visible after the pre-retry lookup. The
+   // real title/rate-limit trigger can reject before the primary key runs.
+   return route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({code:'P0001',message:'duplicate_item'})})
+  }
+  if(req.method()==='GET'&&committed&&url.searchParams.get('id')===`eq.${committed.id}`){
+   if(!url.searchParams.get('select')?.includes('profile:profiles')){
+    expect(url.searchParams.get('user_id')).toBe(`eq.${UID}`)
+    recoveryReads++
+   }
+   return route.fulfill({contentType:'application/json',body:JSON.stringify(inserts<2?null:committed)})
+  }
+  return route.fallback()
+ })
+ await page.goto('/#/pages/publish/index')
+ await page.getByRole('textbox',{name:'Title (required)',exact:true}).fill('Study chair with a delayed response')
+ await page.getByRole('spinbutton',{name:'Price',exact:true}).fill('25')
+ await page.getByRole('button',{name:'Category',exact:true}).click();await page.getByRole('button',{name:'Furniture',exact:true}).click()
+ await page.getByRole('button',{name:'Condition',exact:true}).click();await page.getByRole('button',{name:'Good',exact:true}).click()
+ await page.getByRole('button',{name:'Post Item',exact:true}).click()
+ await expect.poll(()=>inserts).toBe(1)
+ await expect(page.getByRole('button',{name:'Post Item',exact:true})).toBeEnabled()
+ await page.getByRole('button',{name:'Post Item',exact:true}).click()
+ await expect(page).toHaveURL(/pages\/detail\/index\?id=/)
+ expect(inserts).toBe(2)
+ expect(recoveryReads).toBe(3)
+ await expect(page.getByRole('heading',{name:'Study chair with a delayed response',exact:true})).toBeVisible()
+})
+
 test('publishing reload restores the latest edits and discarded drafts stay discarded', async ({ page }) => {
  await fixture(page);await page.goto('/#/pages/publish/index')
  const title=page.getByRole('textbox',{name:'Title (required)',exact:true})

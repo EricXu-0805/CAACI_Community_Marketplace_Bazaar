@@ -12,23 +12,33 @@ Browser fault injection reproduced both forms of message loss: fail a send then 
 - Let authoritative history/realtime confirmation supersede local failure, while preserving newer server updates.
 - Clear the private outbox synchronously on every account boundary. Stale completions cannot recreate it.
 
-## Publishing candidate — not deployed
+## Publishing recovery — approval resolved on 2026-09-10
 
 A separate browser regression reproduced a committed listing whose response was lost. The existing UI reported failure, leaving a risk of duplicate publication on retry.
 
-The completed local candidate persists a listing id with the draft/photos, recovers by id and owner, reuses the id on retries after reload, preserves uncertain uploads, and localizes the recovery notice. It requires `GRANT INSERT (id) ON public.items TO authenticated` in staging `hygkwxugskijadgfisji`, then production `lfhvgprfphyfvhidegum`.
+The publishing fix persists a listing id with the draft/photos, recovers by id and owner, reuses the id on retries after reload, preserves uncertain uploads, and localizes the recovery notice. The required `GRANT INSERT (id) ON public.items TO authenticated` was applied to staging `hygkwxugskijadgfisji`, verified, then applied to production `lfhvgprfphyfvhidegum` after the user's explicit approval.
 
-Automatic approval rejected the staging migration because this specific permission and target scope were not explicitly approved. No hosted migration was applied. The dependent client changes are excluded from this release and preserved in the local patch `output/network-recovery-20260909/publish-recovery-awaiting-approval.patch`. The review document is `output/network-recovery-20260909/PUBLISH_APPROVAL.md`. Do not deploy that candidate before the database change is approved and verified.
+The earlier automatic approval rejection is resolved by the user's September 10 approval of the exact grant, targets and staging-first sequence. Both projects now allow authenticated INSERT of `items.id`; ID UPDATE, protected status INSERT and anonymous ID INSERT remain denied. Owner RLS policies and trigger definitions are unchanged. The original candidate patch remains archived in `output/network-recovery-20260909/`; it is incorporated into this release.
+
+| Environment | Hosted migration ledger version | Source migration |
+| --- | --- | --- |
+| Staging | `20260910202448` | `20260909201600_idempotent_item_create.sql` |
+| Production | `20260910202643` | `20260909201600_idempotent_item_create.sql` |
+
+The migration service assigns execution timestamps; these ledger entries have the same grant as the immutable source migration. A staging transaction running as the ordinary authenticated SQL role with simulated JWT claims verified client-ID creation, primary-key duplicate rejection, recovery of one unchanged owned row, foreign-owner rejection, ID-update rejection, protected-status rejection and anonymous rejection. All probe writes were rolled back; the leftover count is zero. This proves database behavior, not real Auth issuance. The protected staging CI check additionally signs in with real Auth, uploads a photo, publishes with a client UUID, rejects a repeated UUID, recovers the original owned listing/photo and removes the fixtures.
+
+Final browser review also reproduced a delayed commit becoming visible between the retry lookup and INSERT. The real duplicate-title trigger can return `P0001 duplicate_item` before UUID uniqueness runs. The client now reconciles every server refusal of an uncertain retry against the original owned ID and keeps the outcome uncertain if recovery cannot establish it. A failing-before/fixed-after browser regression covers this timing; staging CI exercises both the identical-title guard and the edited-title UUID guard.
 
 ## Verification
 
 - Browser suites with the complete local candidate: WebKit/light **57 passed**; Chromium/dark **57 passed**.
+- Final candidate integrated onto `cbbc9f9`: WebKit/light **58 passed**, Chromium/dark **58 passed**, plus the complete pre-push gates. This includes the tall-Mac fix and both publishing response-loss cases.
 - Two baseline chat-loss regressions and the baseline lost-publish-response regression failed before the fixes, then passed.
 - New recovery checks cover an iPad-sized remount, rapid Enter, double-click retry, response-lost commits, and publish reload/retry.
 - Selected message/account tests: **75 passed**, including executable account-clear/late-completion and snapshot-acknowledgement races.
 - Complete candidate passed deterministic contracts, type-check, H5 build and mini-program build through the existing pre-push gate. A local-only PostgreSQL test also verified duplicate ids, owner RLS, anonymous denial and protected columns. Three initially failing inventory/localization checks were corrected and rechecked.
 - Manual read-only production browser checks: home, real listing detail/photo navigation, iPad 820×1180 and phone 390×844 layouts. No production message or listing was submitted.
-- Exact main commit, CI and deployment receipts are recorded after release in `output/network-recovery-20260909/`.
+- Exact main commit, CI and deployment receipts for the approved publishing release are recorded in `output/publish-recovery-20260910/`; preceding chat/layout evidence remains in `output/network-recovery-20260909/`.
 
 ## Remaining evidence limits
 

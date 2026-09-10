@@ -180,11 +180,12 @@ const URL_BASE = `https://${STAGING}.supabase.co`
 
 function stubServer(over = {}) {
   const calls = []
+  let storedListing = null
   const behavior = {
     upload: { status: 200, body: { Key: 'ok' } },
     publicRead: { status: 200, contentType: 'image/png' },
     foreignUpload: { status: 403, body: { message: 'new row violates row-level security policy' } },
-    insertAccepted: { status: 201, body: [{ id: 'created-row-id' }] },
+    retry: { status: 409, body: { code: '23505' } },
     insertRefused: { status: 400, body: { message: 'moderation_block:item_title:sensitive_word' } },
     deleteRow: { status: 200, body: [{ id: 'created-row-id' }] },
     deleteObject: { status: 200, body: {} },
@@ -218,10 +219,19 @@ function stubServer(over = {}) {
     }
     if (path.startsWith('/rest/v1/items')) {
       if (method === 'DELETE') return reply(behavior.deleteRow)
+      if (method === 'GET') {
+        const query = new URL(url).searchParams
+        assert.equal(query.get('id'), `eq.${storedListing.id}`)
+        assert.equal(query.get('user_id'), `eq.${USER_ID}`)
+        return reply(over.recovery || { status: 200, body: [storedListing] })
+      }
       const payload = JSON.parse(init.body)
-      return reply(payload.title.startsWith(`${ACCEPTED_TITLE} `)
-        ? behavior.insertAccepted
-        : behavior.insertRefused)
+      if (!payload.title.startsWith(`${ACCEPTED_TITLE} `)) return reply(behavior.insertRefused)
+      if (storedListing) return reply(payload.title === storedListing.title
+        ? { status: 400, body: { code: 'P0001', message: 'duplicate_item' } }
+        : behavior.retry)
+      storedListing = payload
+      return reply({ status: 201, body: [storedListing] })
     }
     throw new Error(`the check called an endpoint the stub does not model: ${method} ${path}`)
   }
@@ -278,7 +288,7 @@ test('the listing carries the photo it just uploaded', async () => {
   stub.fetchStub = async (input, init = {}) => {
     if (String(input).endsWith('/rest/v1/items') && (init.method || '') === 'POST') {
       const payload = JSON.parse(init.body)
-      if (payload.title.startsWith(`${ACCEPTED_TITLE} `)) published = payload
+      if (!published && payload.title.startsWith(`${ACCEPTED_TITLE} `)) published = payload
     }
     return inner(input, init)
   }
@@ -290,6 +300,27 @@ test('the listing carries the photo it just uploaded', async () => {
     'the URL is not the canonical public shape local_item_media_object_name parses')
   assert.deepEqual(published.image_dimensions, [{ w: 1, h: 1 }],
     'assert_image_dimensions wants exactly one entry per image')
+})
+
+test('a retry refused by a missing grant cannot masquerade as working idempotency', async () => {
+  const stub = stubServer({ retry: { status: 403, body: { code: '42501' } } })
+  const error = await runAgainst(stub)
+  assert.match(error.message, /did not reach the uniqueness guard/)
+  assert.ok(stub.calls.some(c => c.startsWith(`DELETE /storage/v1/object/${MEDIA_BUCKET}/items/${USER_ID}/`)))
+  assert.ok(stub.calls.at(-1).startsWith('POST /auth/v1/logout'))
+})
+
+test('a missing committed listing fails owner recovery and still cleans up', async () => {
+  const stub = stubServer({ recovery: { status: 200, body: [] } })
+  const error = await runAgainst(stub)
+  assert.match(error.message, /did not return exactly the original listing and photo/)
+  assert.ok(stub.calls.some(c => c.startsWith('DELETE /rest/v1/items')))
+  assert.ok(stub.calls.some(c => c.startsWith(`DELETE /storage/v1/object/${MEDIA_BUCKET}/items/${USER_ID}/`)))
+})
+
+test('an accepted duplicate fails the uniqueness probe', async () => {
+  const stub = stubServer({ retry: { status: 201, body: [] } })
+  assert.match((await runAgainst(stub)).message, /did not reach the uniqueness guard/)
 })
 
 test('a refused upload stops the run before any listing is created', async () => {

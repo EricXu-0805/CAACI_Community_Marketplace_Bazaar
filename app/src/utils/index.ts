@@ -125,6 +125,7 @@ const RATE_LIMIT_MESSAGES: Record<string, { en: string; zh: string }> = {
 const OFFER_MEETUP_MESSAGES: Record<string, { en: string; zh: string }> = {
   'conversation not found':         { en: 'Conversation not found.',                  zh: '会话不存在' },
   'not a participant':              { en: 'You are not part of this conversation.',   zh: '你不在这个会话里' },
+  'invalid item id':                { en: 'This draft could not be restored. Please start a new listing.', zh: '此草稿无法恢复，请重新填写商品。' },
   'invalid price':                  { en: 'Please enter a valid price.',              zh: '请输入有效的价格' },
   'invalid counter price':          { en: 'Please enter a valid counter price.',      zh: '请输入有效的还价' },
   'offer not found':                { en: 'This offer no longer exists.',             zh: '该报价已不存在' },

@@ -456,7 +456,7 @@ export function useItems() {
     source_lang?: string | null
     negotiable?: boolean
     listing_type?: 'sell' | 'wanted'
-  }, options?: Pick<ItemMutationOptions, 'accountToken' | 'confirmSuspectedAd'>) {
+  }, options?: Pick<ItemMutationOptions, 'accountToken' | 'confirmSuspectedAd'> & { itemId?: string; retryCreate?: boolean }) {
     const entryUserId = getActiveAccountId()
     const accountToken = options?.accountToken
       || (entryUserId ? captureAccountRequest(entryUserId) : null)
@@ -466,6 +466,36 @@ export function useItems() {
     // An upload started under A may finish just before the UI signs in as B.
     // Never let createItem re-bind A's URLs to the newly-current account.
     assertAccountCurrent(accountToken, session.user.id)
+
+    const itemId = options?.itemId
+    if (itemId && !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(itemId)) {
+      throw new Error('Invalid item id')
+    }
+    const recoverCreatedItem = async (): Promise<Item | null> => {
+      if (!itemId) return null
+      try {
+        assertAccountCurrent(accountToken, session.user.id)
+        const { data, error } = await supabase.from('items').select(DETAIL_ITEM_FIELDS as any)
+          .eq('id', itemId).eq('user_id', session.user.id).maybeSingle()
+        assertAccountCurrent(accountToken, session.user.id)
+        if (error) throw mutationOutcomeError(error, 'unknown')
+        if (!data) return null
+        const row = data as unknown as Item
+        if (row.id !== itemId || row.user_id !== session.user.id) throw mutationOutcomeError(new Error('Item recovery mismatch'), 'unknown')
+        invalidateMyItems()
+        return sanitizeItemResources(row)
+      } catch (error) {
+        // Even the verification read may fail while the original write is
+        // still committing. Retain its id/photos until the outcome is known.
+        throw mutationOutcomeError(error, 'unknown')
+      }
+    }
+    if (itemId && options?.retryCreate) {
+      // Resolve a previous uncertain attempt before validating edited fields
+      // or sending another write. A same-id retry can never create a second row.
+      const recovered = await recoverCreatedItem()
+      if (recovered) return recovered
+    }
 
     // Hard cap is 1M as anti-typo / anti-abuse defense in depth. The 100k
     // soft ceiling is enforced as a UI modal in pages/publish/index.vue
@@ -496,7 +526,7 @@ export function useItems() {
       if (!descCheck.ok) throw new Error(`moderation_block:${descCheck.category}:${descCheck.reason || ''}`)
     }
     const duplicateText = `${input.title}::${input.description}`
-    if (isLocalDuplicate(accountToken, 'item', duplicateText)) {
+    if (!(itemId && options?.retryCreate) && isLocalDuplicate(accountToken, 'item', duplicateText)) {
       throw new Error('duplicate_item')
     }
     let mutationStarted = false
@@ -522,6 +552,7 @@ export function useItems() {
         negotiable: input.negotiable ?? false,
         listing_details: input.listing_details ?? null,
       }
+      if (itemId) payload.id = itemId
       if (input.image_dimensions && input.image_dimensions.length) {
         payload.image_dimensions = input.image_dimensions
       }
@@ -540,12 +571,21 @@ export function useItems() {
         data = response.data
         error = response.error
       } catch (writeError) {
-        throw mutationOutcomeError(writeError, 'unknown')
+        error = mutationOutcomeError(writeError, 'unknown')
+      }
+      const duplicateId = String(error?.code || '') === '23505'
+      const retryingUncertainCreate = !!itemId && options?.retryCreate === true
+      // A title/rate-limit trigger may reject before the primary key while
+      // the earlier write finishes committing. This refusal only describes
+      // the retry transaction; reconcile the original even for SQLSTATE 4xx.
+      if (error && itemId && (retryingUncertainCreate || duplicateId || !isDefinitiveMutationRejection(error))) {
+        const recovered = await recoverCreatedItem()
+        if (recovered) { data = recovered; error = null }
       }
       if (error) {
         throw mutationOutcomeError(
           error,
-          isDefinitiveMutationRejection(error) ? 'not_committed' : 'unknown',
+          retryingUncertainCreate || duplicateId ? 'unknown' : isDefinitiveMutationRejection(error) ? 'not_committed' : 'unknown',
         )
       }
       if (!data) throw mutationOutcomeError(new Error('Item create result unavailable'), 'unknown')
