@@ -156,6 +156,75 @@ test.describe('composer draft recovery', () => {
   })
 })
 
+test.describe('chat network recovery', () => {
+  test.use({ viewport: { width: 1440, height: 900 }, isMobile: false, hasTouch: false })
+
+  for (const failWhileAway of [false, true]) {
+    test(`a failed send survives thread navigation (${failWhileAway ? 'failure while away' : 'failure before leaving'})`, async ({ page }) => {
+      const fixture = await seedMarketplace(page)
+      let release!: () => void
+      const response = new Promise<void>(resolve => { release = resolve })
+      let requested = false
+      await page.route('**/api/moderate', async route => {
+        requested = true
+        await response
+        await route.fulfill({ status: 503, contentType: 'application/json', body: '{}' })
+      })
+      await page.goto('/#/pages/messages/index')
+      await page.locator('.conv-item').first().click()
+      const text = 'Please keep this message if the campus connection drops.'
+      await page.locator('.msg-input textarea').fill(text)
+      await page.getByRole('button', { name: 'Send message', exact: true }).click()
+      await expect.poll(() => requested).toBe(true)
+      if (!failWhileAway) {
+        release()
+        await expect(page.locator('.msg-status.failed')).toBeVisible()
+      }
+      await page.locator('.conv-item').nth(1).click()
+      await expect(page.locator('.message-list')).toContainText('Jordan message 35')
+      await expect(page.locator('.message-list')).not.toContainText(text)
+      if (failWhileAway) release()
+      if (failWhileAway) {
+        await page.setViewportSize({ width: 820, height: 1180 })
+        await expect(page.locator('.msg-input textarea')).toHaveCount(0)
+      }
+      await page.locator('.conv-item').first().click()
+      await expect(page.locator('.message-list')).toContainText(text)
+      await expect(page.locator('.msg-status.failed')).toBeVisible()
+      await page.unroute('**/api/moderate')
+      await page.locator('.msg-status.failed').dblclick()
+      await expect.poll(fixture.sends).toBe(1)
+      await expect(page.locator('.msg-status.failed, .msg-status.pending')).toHaveCount(0)
+      await expect(page.locator('.msg-bubble').filter({ hasText: text })).toHaveCount(1)
+    })
+  }
+
+  test('a committed send with a lost response reconciles once after rapid Enter presses', async ({ page }) => {
+    await seedMarketplace(page)
+    let committed:any = null, writes = 0
+    await page.route('**/rest/v1/messages?**', async route => {
+      const req = route.request(), url = new URL(req.url())
+      if (req.method() === 'POST') {
+        writes++
+        committed = { ...req.postDataJSON(), created_at: new Date().toISOString(), is_read: false }
+        return route.abort('connectionreset')
+      }
+      if (req.method() === 'GET' && committed && url.searchParams.get('id') === `eq.${committed.id}`) {
+        return route.fulfill({ contentType: 'application/json', body: JSON.stringify(committed) })
+      }
+      return route.fallback()
+    })
+    await page.goto(`/#/pages/chat/index?id=${CONV}`)
+    const input = page.locator('.msg-input textarea'), text = 'The bus arrives at the library at three.'
+    await input.fill(text)
+    await input.press('Enter'); await input.press('Enter')
+    await expect.poll(() => writes).toBe(1)
+    await expect(page.locator('.msg-status.pending, .msg-status.failed')).toHaveCount(0)
+    await expect(page.locator('.msg-bubble').filter({ hasText: text })).toHaveCount(1)
+    await expect(input).toHaveValue('')
+  })
+})
+
 async function contained(page: Page, selector: string, minWidth = 0) {
   const box = await page.locator(selector).first().boundingBox()
   expect(box, selector).not.toBeNull()

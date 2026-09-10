@@ -476,7 +476,7 @@ const props = defineProps<{ conversationId: string; prefill?: string; embedded?:
 const { t, lang, localize } = useI18n()
 
 const { currentUser, requireAuth, awaitAuthReady } = useAuth()
-const { messages, fetchMessages, sendMessage, subscribeToMessages, markAsRead, fetchConversationDetail, setConversationPinned, setConversationMuted } = useMessages()
+const { messages, fetchMessages, sendMessage, addPendingMessage, discardPendingMessage, subscribeToMessages, markAsRead, fetchConversationDetail, setConversationPinned, setConversationMuted } = useMessages()
 const { offers, fetchOffers, resetOffers, makeOffer, respondToOffer, subscribeToOffers } = useOffers()
 const { meetups, fetchMeetups, resetMeetups, proposeMeetup, respondToMeetup, rescheduleAccepted, subscribeToMeetups } = useMeetups()
 const { subscribeConversationPresence } = usePresence()
@@ -747,7 +747,7 @@ function createOptimisticMessage(
   // Reusing it across retries makes a response-lost send idempotent.
   const tempId = createClientMessageId()
   if (!mounted || conversationId.value !== convId) return tempId
-  messages.value.push({
+  addPendingMessage({
     id: tempId,
     conversation_id: convId,
     sender_id: senderId,
@@ -798,9 +798,11 @@ function reconcileSentMessage(sent: Message, tempId?: string) {
 function failOptimisticMessage(tempId: string, error: unknown, preserveRejected = false) {
   const idx = messages.value.findIndex(m => m.id === tempId)
   if (idx < 0) return
+  if (!messages.value[idx]._pending && !messages.value[idx]._failed) return
   const reason = String((error as any)?.message || '')
   const permanent = reason.startsWith('moderation_block') || reason === 'duplicate_message' || reason === 'message_too_long'
   if (permanent && !preserveRejected) {
+    discardPendingMessage(tempId)
     messages.value.splice(idx, 1)
   } else {
     messages.value[idx]._pending = false
@@ -1379,7 +1381,7 @@ async function retrySend(msg: any) {
   const text = msg?.content
   if (!text) return
   const idx = messages.value.findIndex(m => m.id === msg.id)
-  if (idx < 0) return
+  if (idx < 0 || messages.value[idx]._pending || !messages.value[idx]._failed) return
   // Flip the existing bubble back to _pending IN PLACE — never remove it before
   // the resend resolves, or a second failure would lose the message entirely
   // (no copy in the composer either, since the content carries the reply quote).
@@ -1397,7 +1399,9 @@ async function retrySend(msg: any) {
   } catch (err: any) {
     if (!isThreadEpochCurrent(actionEpoch)) return
     const i = messages.value.findIndex(m => m.id === msg.id)
-    if (i >= 0) { messages.value[i]._pending = false; messages.value[i]._failed = true }
+    if (i >= 0 && (messages.value[i]._pending || messages.value[i]._failed)) {
+      messages.value[i]._pending = false; messages.value[i]._failed = true
+    }
     uni.showToast({
       title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
       icon: 'none',

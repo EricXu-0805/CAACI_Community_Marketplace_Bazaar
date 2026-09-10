@@ -4011,6 +4011,66 @@ async function loadUseMessagesConsumer(supabase, runtime = {}) {
   )
 }
 
+test('pending sends survive page cleanup but account transitions erase them and reject late failures', async () => {
+  let generation = 1, userId = '11111111-1111-4111-8111-111111111111'
+  const transitions = []
+  let rejectModeration
+  const moderation = new Promise((_, reject) => { rejectModeration = reject })
+  const query = { select: () => query, eq: () => query, order: () => query,
+    limit: async () => ({ data: [], error: null }) }
+  const module = await loadUseMessagesConsumer({ from: () => query }, {
+    getActiveAccountId: () => userId,
+    captureAccountRequest: id => ({ userId: id, generation }),
+    captureActiveAccountRequest: () => ({ userId, generation }),
+    isAccountRequestCurrent: token => token?.userId === userId && token?.generation === generation,
+    onAccountTransition: listener => { transitions.push(listener); return () => {} },
+    remoteModerate: () => moderation,
+  })
+  const api = module.useMessages()
+  await api.fetchMessages('a')
+  const row = { id: 'pending-id', conversation_id: 'a', sender_id: userId, content: 'private pending text',
+    message_type: 'text', created_at: '2026-09-09T00:00:00Z', is_read: false, _pending: true }
+  api.addPendingMessage(row)
+  const send = api.sendMessage('a', userId, row.content, 'text', { messageId: row.id }).catch(error => error)
+  api.clearMessages()
+  await api.fetchMessages('b')
+  assert.deepEqual(api.messages.value, [])
+  await api.fetchMessages('a')
+  assert.equal(api.messages.value[0].content, row.content)
+  userId = '22222222-2222-4222-8222-222222222222'; generation++
+  transitions.forEach(listener => listener())
+  assert.deepEqual(api.messages.value, [])
+  rejectModeration(new Error('late network failure'))
+  await send
+  await api.fetchMessages('a')
+  assert.deepEqual(api.messages.value, [], 'the old account cannot repopulate the outbox')
+  userId = row.sender_id; generation++
+  transitions.forEach(listener => listener())
+  await api.fetchMessages('a')
+  assert.deepEqual(api.messages.value, [], 'signing back in cannot revive erased private text')
+})
+
+test('an authoritative snapshot confirms a message even if its retry failed after the read began', async () => {
+  let release
+  let snapshot = Promise.resolve({ data: [], error: null })
+  const query = { select: () => query, eq: () => query, order: () => query, limit: () => snapshot }
+  const module = await loadUseMessagesConsumer({ from: () => query }, {
+    remoteModerate: async () => { throw new Error('retry unavailable') },
+  })
+  const api = module.useMessages()
+  await api.fetchMessages('a')
+  const row = { id: 'pending-id', conversation_id: 'a', sender_id: '11111111-1111-4111-8111-111111111111',
+    content: 'The first attempt committed', message_type: 'text', created_at: '2026-09-09T00:00:00Z', is_read: false }
+  api.addPendingMessage({ ...row, _pending: true })
+  snapshot = new Promise(resolve => { release = resolve })
+  const refresh = api.fetchMessages('a')
+  await assert.rejects(api.sendMessage('a', row.sender_id, row.content, 'text', { messageId: row.id, isRetry: true }))
+  assert.equal(api.messages.value[0]._failed, true)
+  release({ data: [row], error: null })
+  await refresh
+  assert.deepEqual(api.messages.value, [row])
+})
+
 test('message snapshots preserve microseconds before using UUID as an exact-timestamp tie break', async () => {
   const conversationId = 'conversation-microsecond-order'
   const orders = []

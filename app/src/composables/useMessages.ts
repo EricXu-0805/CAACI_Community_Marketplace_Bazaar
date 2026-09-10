@@ -50,6 +50,9 @@ export const CONVERSATION_FIELDS =
 const conversations = ref<Conversation[]>([])
 const messages = ref<Message[]>([])
 const loading = ref(false)
+// Unconfirmed sends belong to the account session, not a mounted chat view.
+// Keep the original id across navigation/retries; never persist private text.
+const pendingMessages = new Map<string, Message>()
 
 function timestampSubMillisecondMicroseconds(value: string): number {
   const fraction = value.match(
@@ -160,7 +163,10 @@ function resetMessageState() {
 // Conversations and timelines are shared module refs. Clear them synchronously
 // at every sign-in/sign-out/account switch so one rendered frame can never show
 // the previous account while the next account's fetch is in flight.
-onAccountTransition(() => resetMessageState())
+onAccountTransition(() => {
+  pendingMessages.clear()
+  resetMessageState()
+})
 
 /*
  * Conversation-list ordering: pinned-first, then newest-message-first.
@@ -227,6 +233,32 @@ export function applyIncomingMessage(
 export function useMessages() {
   const { supabase } = useSupabase()
   const { t, lang } = useI18n()
+
+  function addPendingMessage(message: Message) {
+    if (getActiveAccountId() !== message.sender_id) return
+    pendingMessages.set(message.id, message)
+    if (activeMessagesConversationId === message.conversation_id) messages.value.push(message)
+  }
+
+  function discardPendingMessage(id: string) {
+    pendingMessages.delete(id)
+  }
+
+  function settlePendingMessage(id: string, sent?: Message) {
+    const pending = pendingMessages.get(id)
+    // A history/realtime acknowledgement may have already confirmed this id.
+    // A late transport failure must not turn that acknowledgement into failure.
+    if (!pending) return
+    const row = sent || { ...pending, _pending: false, _failed: true }
+    if (sent) pendingMessages.delete(id)
+    else pendingMessages.set(id, row)
+    if (activeMessagesConversationId !== row.conversation_id) return
+    messageLiveVersionById.set(id, ++latestMessageLiveVersion)
+    const index = messages.value.findIndex(message => message.id === id)
+    if (index >= 0) messages.value.splice(index, 1, row)
+    else messages.value.push(row)
+    messages.value.sort(compareMessagesChronologically)
+  }
 
   async function fetchConversations(
     userId: string,
@@ -390,6 +422,11 @@ export function useMessages() {
     const accountToken = captureActiveAccountRequest()
     if (!accountToken) return false
     activateMessagesConversation(conversationId)
+    for (const pending of pendingMessages.values()) {
+      if (pending.conversation_id === conversationId && !messages.value.some(m => m.id === pending.id)) {
+        messages.value.push(pending)
+      }
+    }
     const liveVersionAtStart = latestMessageLiveVersion
     const requestId = ++latestMessagesRequestId
     const { data, error } = await supabase
@@ -423,8 +460,11 @@ export function useMessages() {
     const byId = new Map<string, Message>()
     for (const m of messages.value) if (m.conversation_id === conversationId) byId.set(m.id, m)
     for (const m of fetched) {
+      pendingMessages.delete(m.id)
       if (
         byId.has(m.id)
+        && !byId.get(m.id)?._pending
+        && !byId.get(m.id)?._failed
         && (messageLiveVersionById.get(m.id) || 0) > liveVersionAtStart
       ) continue
       byId.set(m.id, m)
@@ -566,6 +606,7 @@ export function useMessages() {
       // The list's last-message preview + sort order just changed; force a
       // fresh fetch next time the conversations tab is shown.
       invalidateConversations()
+      settlePendingMessage(messageId, sanitizeMessageResources(data as Message))
 
       /*
        * No client-side conversations.last_message_at UPDATE here:
@@ -586,6 +627,7 @@ export function useMessages() {
       if (duplicateHeld && shouldCompensateMutationFailure(tagged)) {
         clearLocalDuplicate(accountToken, `msg:${conversationId}`, content)
       }
+      if (isAccountRequestCurrent(accountToken)) settlePendingMessage(messageId)
       throw tagged
     }
   }
@@ -692,6 +734,7 @@ export function useMessages() {
           !isAccountRequestCurrent(accountToken) ||
           msg.conversation_id !== conversationId
         ) return
+        pendingMessages.delete(msg.id)
         messageLiveVersionById.set(msg.id, ++latestMessageLiveVersion)
         onNewMessage(msg)
       },
@@ -702,6 +745,7 @@ export function useMessages() {
           !isAccountRequestCurrent(accountToken) ||
           msg.conversation_id !== conversationId
         ) return
+        pendingMessages.delete(msg.id)
         messageLiveVersionById.set(msg.id, ++latestMessageLiveVersion)
         onMessageUpdate(msg)
       } : undefined,
@@ -829,6 +873,8 @@ export function useMessages() {
     fetchConversations,
     fetchMessages,
     sendMessage,
+    addPendingMessage,
+    discardPendingMessage,
     getOrCreateConversation,
     subscribeToMessages,
     markAsRead,
