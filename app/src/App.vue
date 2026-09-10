@@ -900,6 +900,101 @@ function installPreviewImageRouteGuard() {
   window.addEventListener('hashchange', close)
 }
 
+// The native H5 input emits confirm on Enter keyup even when keydown belonged
+// to IME candidate selection. Keep that key pair out of uni's submit handlers
+// without preventing the browser's composition/default editing behavior.
+function installImeConfirmationGuard() {
+  const composing = new WeakSet<HTMLElement>()
+  const candidateEnter = new WeakSet<HTMLElement>()
+  const field = (event: Event) => {
+    const target = event.target
+    return target instanceof HTMLElement && target.matches('input, textarea')
+      && target.closest('uni-input, uni-textarea') ? target : null
+  }
+  document.addEventListener('compositionstart', event => {
+    const target = field(event)
+    if (target) composing.add(target)
+  }, true)
+  document.addEventListener('compositionend', event => {
+    const target = field(event)
+    if (target) composing.delete(target)
+  }, true)
+  document.addEventListener('keydown', event => {
+    const target = field(event)
+    if (!target || event.key !== 'Enter') return
+    if (composing.has(target) || event.isComposing || event.keyCode === 229) {
+      candidateEnter.add(target)
+      event.stopImmediatePropagation()
+    } else candidateEnter.delete(target)
+  }, true)
+  document.addEventListener('keyup', event => {
+    const target = field(event)
+    if (!target || event.key !== 'Enter') return
+    const selecting = candidateEnter.has(target) || composing.has(target)
+      || event.isComposing || event.keyCode === 229
+    candidateEnter.delete(target)
+    if (selecting) event.stopImmediatePropagation()
+  }, true)
+  document.addEventListener('blur', event => {
+    const target = field(event)
+    if (target) { composing.delete(target); candidateEnter.delete(target) }
+  }, true)
+}
+
+// uni.previewImage lives outside the app tree. Give its existing close
+// control a name/focus, and make the obscured page inert until it closes.
+function installPreviewImageKeyboardAccess() {
+  let activeHost: HTMLElement | null = null
+  let cleanup: (() => void) | null = null
+  const sweep = () => {
+    const host = document.getElementById('u-a-p')
+    const surface = host?.firstElementChild as HTMLElement | null
+    const open = !!surface && getComputedStyle(surface).display !== 'none'
+    if (activeHost && (host !== activeHost || !open)) {
+      cleanup?.(); cleanup = null; activeHost = null
+    }
+    if (!host || !surface || !open || activeHost === host) return
+    // The framework renders its close control as the surface's last div.
+    const close = surface.lastElementChild as HTMLElement | null
+    if (!close || close.tagName !== 'DIV' || !close.querySelector('svg')) return
+    activeHost = host
+    const restoreTo = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const route = window.location.href
+    // The mount host has no box; the fixed surface is the visible dialog.
+    surface.setAttribute('role', 'dialog')
+    surface.setAttribute('aria-modal', 'true')
+    surface.setAttribute('aria-label', t('a11y.previewImage'))
+    close.setAttribute('role', 'button')
+    close.setAttribute('aria-label', t('a11y.close'))
+    close.setAttribute('tabindex', '0')
+    const backgrounds = new Map<HTMLElement, boolean>()
+    for (const element of Array.from(document.body.children)) {
+      if (element instanceof HTMLElement && element !== host) {
+        backgrounds.set(element, element.inert)
+        element.inert = true
+      }
+    }
+    claimInitialFocus(host, close, () => host.isConnected && getComputedStyle(surface).display !== 'none')
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === 'Tab') {
+        event.preventDefault(); event.stopPropagation(); close.focus()
+      } else if (event.key === 'Escape') {
+        event.preventDefault(); event.stopPropagation(); close.click()
+      }
+    }
+    host.addEventListener('keydown', keydown)
+    cleanup = () => {
+      host.removeEventListener('keydown', keydown)
+      surface.removeAttribute('role'); surface.removeAttribute('aria-modal'); surface.removeAttribute('aria-label')
+      for (const [element, inert] of backgrounds) element.inert = inert
+      if (route === window.location.href && restoreTo?.isConnected) restoreTo.focus({ preventScroll: true })
+    }
+  }
+  new MutationObserver(sweep).observe(document.body, {
+    childList: true, subtree: true, attributes: true, attributeFilter: ['style'],
+  })
+}
+
 /*
  * uni-app's H5 router has no catch-all route: a hash matching nothing in
  * pages.json renders no page at all. A returning user (welcomed set, so the
@@ -1266,11 +1361,13 @@ onLaunch((launchOptions) => {
   ]).has(launchRoutePath)
   // #ifdef H5
   installRoleButtonKeyboardAccess()
+  installImeConfirmationGuard()
   installToastAnnouncer()
   installActionSheetKeyboardAccess()
   installModalKeyboardAccess()
   installDocumentTitleSync()
   installPreviewImageRouteGuard()
+  installPreviewImageKeyboardAccess()
   installUnknownRouteFallback()
   // #endif
   /*

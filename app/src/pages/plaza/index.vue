@@ -1091,6 +1091,7 @@ const commentsError = ref(false)
 const commentText = ref('')
 const replyTo = ref<PostComment | null>(null)
 const commentSubmitting = ref(false)
+let commentSheetEpoch = 0
 // Sheet 打开时 input 不应自动 focus（避免键盘挡评论列表）。
 // inputFocused 由用户显式动作驱动：tap 输入框 / tap 评论 / tap "回复" / tap 长按菜单"回复"。
 // 关闭 sheet / 切评论 reset 回 false，保证下次打开时键盘不会自动起。
@@ -1556,6 +1557,11 @@ async function openComments(post: Post) {
     return
   }
   await awaitAuthReady()
+  commentSheetEpoch += 1
+  commentText.value = ''
+  replyTo.value = null
+  commentSubmitting.value = false
+  expandedReplies.value = new Set()
   commentDialogOpener = activeElement()
   commentingPost.value = post
   inputFocused.value = false
@@ -1567,6 +1573,7 @@ async function openComments(post: Post) {
 
 async function loadCommentSheet(post: Post) {
   const requestEpoch = plazaAccountEpoch
+  const sheetEpoch = commentSheetEpoch
   const accountToken = currentUser.value
     ? captureAccountRequest(currentUser.value.id)
     : null
@@ -1576,6 +1583,7 @@ async function loadCommentSheet(post: Post) {
     const rows = await fetchComments(post.id)
     if (
       requestEpoch !== plazaAccountEpoch
+      || sheetEpoch !== commentSheetEpoch
       || commentingPost.value?.id !== post.id
       || (accountToken && !isAccountRequestCurrent(accountToken))
     ) return
@@ -1584,6 +1592,7 @@ async function loadCommentSheet(post: Post) {
   } catch {
     if (
       requestEpoch === plazaAccountEpoch
+      && sheetEpoch === commentSheetEpoch
       && commentingPost.value?.id === post.id
       && (!accountToken || isAccountRequestCurrent(accountToken))
     ) {
@@ -1593,6 +1602,7 @@ async function loadCommentSheet(post: Post) {
   } finally {
     if (
       requestEpoch === plazaAccountEpoch
+      && sheetEpoch === commentSheetEpoch
       && commentingPost.value?.id === post.id
       && (!accountToken || isAccountRequestCurrent(accountToken))
     ) loadingComments.value = false
@@ -1606,6 +1616,8 @@ function retryComments() {
 }
 
 function closeComments() {
+  commentSheetEpoch += 1
+  commentSubmitting.value = false
   commentingPost.value = null
   comments.value = []
   loadingComments.value = false
@@ -1638,6 +1650,7 @@ async function onSubmitComment() {
   const me = currentUser.value
   const commentAccountToken = captureAccountRequest(me.id)
   const postId = commentingPost.value.id
+  const sheetEpoch = commentSheetEpoch
   const reply = replyTo.value
   const rawText = commentText.value
   let text = rawText
@@ -1677,6 +1690,7 @@ async function onSubmitComment() {
   try {
     const c = await createComment(postId, text, parentId)
     if (!isAccountRequestCurrent(commentAccountToken)) return
+    if (sheetEpoch !== commentSheetEpoch) return
     // fetchComments hydrates reply_to_name from DB on next refresh; mirror it
     // here from the replyTo we captured before clearing.
     c.reply_to_name = replyName
@@ -1686,18 +1700,22 @@ async function onSubmitComment() {
     uni.showToast({ title: t('plaza.commented'), icon: 'success' })
   } catch (err: any) {
     if (!isAccountRequestCurrent(commentAccountToken)) return
+    if (sheetEpoch !== commentSheetEpoch) return
     const i = comments.value.findIndex(x => x.id === tempId)
     if (i !== -1) comments.value.splice(i, 1)
-    // A moderation/network failure shouldn't lose the draft — restore it.
-    commentText.value = rawText
-    replyTo.value = reply
+    // Restore only an untouched composer. A newer draft/reply belongs to the
+    // user and must never be replaced by a failed earlier submission.
+    if (!commentText.value && !replyTo.value) {
+      commentText.value = rawText
+      replyTo.value = reply
+    }
     uni.showToast({
       title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
       icon: 'none',
       duration: 2500,
     })
   } finally {
-    if (isAccountRequestCurrent(commentAccountToken)) commentSubmitting.value = false
+    if (isAccountRequestCurrent(commentAccountToken) && sheetEpoch === commentSheetEpoch) commentSubmitting.value = false
   }
 }
 

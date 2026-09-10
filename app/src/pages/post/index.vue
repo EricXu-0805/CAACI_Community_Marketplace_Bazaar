@@ -801,28 +801,33 @@ async function onSubmitComment() {
   if (!commentText.value.trim() || !post.value) return
   if (submitting.value) return
   const commentAccountToken = captureAccountRequest(currentUser.value.id)
+  const submittedText = commentText.value
+  const submittedReply = replyTo.value
   submitting.value = true
   try {
-    let text = commentText.value
-    if (replyTo.value) {
-      const name = replyTo.value.profile?.nickname || t('app.user')
+    let text = submittedText
+    if (submittedReply) {
+      const name = submittedReply.profile?.nickname || t('app.user')
       text = `@${name} ${text}`
     }
     // 单层缩进语义：parent 永远指向顶层祖先。若 replyTo 是子评论，跳一级；
     // 否则就是它自己。groupCommentsByParent 渲染时也会做 walk-up 防御。
-    const parentId = replyTo.value
-      ? (replyTo.value.parent_comment_id ?? replyTo.value.id)
+    const parentId = submittedReply
+      ? (submittedReply.parent_comment_id ?? submittedReply.id)
       : undefined
     const c = await createComment(post.value.id, text, parentId)
     if (!isAccountRequestCurrent(commentAccountToken)) return
     // fetchComments hydrates reply_to_name from DB on next refresh; for the
     // optimistic push here we mirror the same logic by reading replyTo's nickname.
-    c.reply_to_name = replyTo.value
-      ? (replyTo.value.profile?.nickname ?? null)
+    c.reply_to_name = submittedReply
+      ? (submittedReply.profile?.nickname ?? null)
       : null
     comments.value.push(c)
-    commentText.value = ''
-    replyTo.value = null
+    // A slow submission must not erase a new draft or a newly selected reply.
+    if (commentText.value === submittedText && replyTo.value === submittedReply) {
+      commentText.value = ''
+      replyTo.value = null
+    }
     if (post.value) post.value.comment_count = (post.value.comment_count || 0) + 1
     uni.showToast({ title: t('plaza.commented'), icon: 'success' })
   } catch (err: any) {
