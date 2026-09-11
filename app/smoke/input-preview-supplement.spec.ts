@@ -100,7 +100,9 @@ for (const width of [390, 834]) test(`supplement: touch inputs remain readable a
 // Chromium's touch gesture API exercises the browser zoom policy rather than
 // replacing visualViewport properties. This is still device emulation.
 test('supplement: browser touch pinch can enlarge the login page', async ({ baseURL }) => {
-  const browser = await chromium.launch()
+  // Use the full browser's compositor, including on Linux CI; the separate
+  // headless shell is not the browser used by the production gesture check.
+  const browser = await chromium.launch({ channel: 'chromium' })
   try {
     const context = await browser.newContext({ ...devices['iPhone 13'], baseURL, viewport: { width: 390, height: 844 } })
     const page = await context.newPage()
@@ -110,6 +112,7 @@ test('supplement: browser touch pinch can enlarge the login page', async ({ base
     await expect(page.getByRole('textbox', { name: 'Email', exact: true })).toBeVisible()
     const cdp = await context.newCDPSession(page)
     try {
+      await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
       await cdp.send('Input.synthesizePinchGesture', { x: 180, y: 180, scaleFactor: 2, gestureSourceType: 'touch' })
       await expect.poll(() => page.evaluate(() => visualViewport!.scale)).toBeGreaterThan(1.5)
       await cdp.send('Input.synthesizePinchGesture', { x: 180, y: 180, scaleFactor: 0.5, gestureSourceType: 'touch' })

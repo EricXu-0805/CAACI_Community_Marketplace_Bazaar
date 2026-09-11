@@ -49,3 +49,5 @@
 两项事件回归修复前失败；补修后的输入/预览套件 13 项通过，包含恢复后保留发布草稿、第二次错误不再次刷新的断言。另将真实编译页面验收加入原有编译检查：浏览器最初收到引用旧文件名的入口，点击发布请求该文件时返回 404；刷新拿到当前入口，再恢复登录及发布意图。该流程运行在 Mac Chromium、Mac WebKit、iPad WebKit、iPhone WebKit，完全使用隔离页面和合成响应。
 
 验证中额外观察到 WebKit 会在刷新后记住同一地址的模块失败。故测试明确区分“部署使文件名改变”和“原地址持续失败”：本修复保证前者能恢复、后者不会无限刷新，不承诺自动修复服务端持续故障。未将同地址失败改写成通过，也未将人工派发事件当作真实文件加载证明。证据包括 `stale-chunk-before.log`、`input-recovery-final.log`、`compiled-unchanged-url.log`、`compiled-recovery-final.log` 和正式站点旧标签页的控制台记录。
+
+编译验收最终为 16 项通过（原有后台首次登录/安全恢复 12 项、上述部署恢复 4 项）。上一版 `ae9af08` 的 Linux 完整浏览器 CI 仅触屏手势项失败，公开套件另有 296 项通过、1 项按配置跳过，受保护套件另有 297 项通过。手势验收随后明确使用完整 Chromium 的无界面模式，并等待页面绘制，而不是默认的独立 headless shell；本机 13 项重新通过。完整浏览器与 headless shell 的区别见 [Playwright 浏览器说明](https://playwright.dev/docs/browsers#chromium-new-headless-mode)。这次调整不改页面内容、不强设缩放比例、不跳过失败检查；Linux 最终结果仍以发布回执中最新提交的 CI 为准。
