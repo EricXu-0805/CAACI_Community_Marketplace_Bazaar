@@ -330,6 +330,11 @@ jobs:
       # same-repository pull request. This check is intentionally NOT in the required
       # set — it's a signal, not a merge gate, so dev-server flakiness can't
       # block shipping.
+      - name: Verify touch zoom before the full browser sweep
+        if: steps.smoke-config.outputs.can_run == 'true'
+        working-directory: app
+        run: npx playwright test smoke/input-preview-supplement.spec.ts --grep 'browser touch pinch'
+
       - name: Smoke (logged-out page sweep only)
         id: smoke-run
         if: steps.smoke-config.outputs.can_run == 'true'

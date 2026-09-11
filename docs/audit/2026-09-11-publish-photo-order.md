@@ -50,4 +50,6 @@
 
 验证中额外观察到 WebKit 会在刷新后记住同一地址的模块失败。故测试明确区分“部署使文件名改变”和“原地址持续失败”：本修复保证前者能恢复、后者不会无限刷新，不承诺自动修复服务端持续故障。未将同地址失败改写成通过，也未将人工派发事件当作真实文件加载证明。证据包括 `stale-chunk-before.log`、`input-recovery-final.log`、`compiled-unchanged-url.log`、`compiled-recovery-final.log` 和正式站点旧标签页的控制台记录。
 
-编译验收最终为 16 项通过（原有后台首次登录/安全恢复 12 项、上述部署恢复 4 项）。上一版 `ae9af08` 的 Linux 完整浏览器 CI 仅触屏手势项失败，公开套件另有 296 项通过、1 项按配置跳过，受保护套件另有 297 项通过。手势验收随后明确使用完整 Chromium 的无界面模式，并等待页面绘制，而不是默认的独立 headless shell；本机 13 项重新通过。完整浏览器与 headless shell 的区别见 [Playwright 浏览器说明](https://playwright.dev/docs/browsers#chromium-new-headless-mode)。这次调整不改页面内容、不强设缩放比例、不跳过失败检查；Linux 最终结果仍以发布回执中最新提交的 CI 为准。
+编译验收最终为 16 项通过（原有后台首次登录/安全恢复 12 项、上述部署恢复 4 项）。完整浏览器 CI 曾仅触屏缩放项失败；`80e7886` 改用完整 Chromium 后，Linux 的高层合成捏合命令仍不能放大，公开组其余298项通过。更换浏览器模式本身没有解决该检查，不将它记作通过。
+
+手势验收最终改用 [CDP 触点事件](https://chromedevtools.github.io/devtools-protocol/tot/Input/#method-dispatchTouchEvent)：两指按下、逐帧移动、抬起，由浏览器计算实际缩放；另用独立的禁止缩放页面作反向对照，确保检查可以识别旧限制。没有强设缩放比例或跳过失败检查。本机输入预览13项通过，公开CI把该检查提前到完整遍历前，便于尽早定位平台差异。最终Linux结果以发布回执中最新提交的CI为准。

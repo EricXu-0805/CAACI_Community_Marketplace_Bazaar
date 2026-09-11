@@ -97,8 +97,9 @@ for (const width of [390, 834]) test(`supplement: touch inputs remain readable a
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1)
 })
 
-// Chromium's touch gesture API exercises the browser zoom policy rather than
-// replacing visualViewport properties. This is still device emulation.
+// Two real CDP touch points exercise the browser's zoom policy. The higher
+// level synthesizePinchGesture platform path differs between Mac and Linux.
+// This is still device emulation, not physical iOS acceptance.
 test('supplement: browser touch pinch can enlarge the login page', async ({ baseURL }) => {
   // Use the full browser's compositor, including on Linux CI; the separate
   // headless shell is not the browser used by the production gesture check.
@@ -112,11 +113,29 @@ test('supplement: browser touch pinch can enlarge the login page', async ({ base
     await expect(page.getByRole('textbox', { name: 'Email', exact: true })).toBeVisible()
     const cdp = await context.newCDPSession(page)
     try {
-      await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
-      await cdp.send('Input.synthesizePinchGesture', { x: 180, y: 180, scaleFactor: 2, gestureSourceType: 'touch' })
+      await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 2 })
+      const pinch = async (start: number, end: number) => {
+        const points = (distance: number) => [
+          { id: 0, x: 195 - distance / 2, y: 180, radiusX: 5, radiusY: 5, force: 1 },
+          { id: 1, x: 195 + distance / 2, y: 180, radiusX: 5, radiusY: 5, force: 1 },
+        ]
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: points(start) })
+        for (let step = 1; step <= 12; step++) {
+          await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: points(start + (end - start) * step / 12) })
+          await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => resolve())))
+        }
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+      }
+      await pinch(100, 240)
       await expect.poll(() => page.evaluate(() => visualViewport!.scale)).toBeGreaterThan(1.5)
-      await cdp.send('Input.synthesizePinchGesture', { x: 180, y: 180, scaleFactor: 0.5, gestureSourceType: 'touch' })
+      await pinch(240, 80)
       await expect.poll(() => page.evaluate(() => visualViewport!.scale)).toBeLessThan(1.1)
+      // A separate fixture with the removed policy must reject the same
+      // gesture, proving this check does not force the reported scale.
+      await page.route('**/__zoom-policy-control', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"><p>Zoom policy control</p>' }))
+      await page.goto('/__zoom-policy-control')
+      await pinch(100, 240)
+      expect(await page.evaluate(() => visualViewport!.scale)).toBeLessThan(1.1)
     } finally { await cdp.detach() }
   } finally { await browser.close() }
 })
