@@ -332,7 +332,7 @@
       tabindex="-1"
       @click.stop
       @keydown="onCommentDialogKeydown"
-      :style="kbLift"
+      :style="[kbLift, viewportSheetStyle]"
     >
       <view class="cmt-header">
         <text id="plaza-comments-title" class="cmt-htitle">{{ t('plaza.commentCount', { count: comments.length }) }}</text>
@@ -482,6 +482,7 @@
       v-if="showComposer"
       ref="composerDialogEl"
       class="composer-fullpage"
+      :style="viewportComposerStyle"
       role="dialog"
       aria-modal="true"
       aria-labelledby="plaza-composer-title"
@@ -575,6 +576,7 @@
       v-if="showAttachSheet"
       ref="attachDialogEl"
       class="attach-sheet open"
+      :style="viewportSheetStyle"
       role="dialog"
       aria-modal="true"
       aria-labelledby="plaza-attach-title"
@@ -640,6 +642,7 @@ import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
 import { useLongPress } from '../../composables/useLongPress'
 import { useKeyboardHeight } from '../../composables/useKeyboardHeight'
+import { useVisualViewportBounds } from '../../composables/useVisualViewportInset'
 import { localizeLocation } from '../../composables/useCampusSpots'
 import { createOwnedLoading } from '../../composables/ownedLoading'
 import type { Post, PostComment, Item } from '../../types'
@@ -690,6 +693,14 @@ const kb = useKeyboardHeight()
  * post/index.vue:268 already used the computed form; mirror it.
  */
 const kbLift = computed(() => (kb.height.value ? { transform: `translateY(-${kb.height.value}px)` } : undefined))
+const { bottomInset, visibleHeight } = useVisualViewportBounds()
+const viewportSheetStyle = computed(() => visibleHeight.value == null ? undefined : ({
+  bottom: `${bottomInset.value}px`,
+  '--sheet-visible-height': `${visibleHeight.value}px`,
+}))
+const viewportComposerStyle = computed(() => visibleHeight.value == null ? undefined : ({
+  top: 'auto', bottom: `${bottomInset.value}px`, height: `${visibleHeight.value}px`,
+}))
 
 onShareAppMessage(() => ({
   title: '校园广场 · Illini Market',
@@ -2266,11 +2277,13 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   max-width: 480px; margin: 0 auto;
   padding-top: env(safe-area-inset-top, 0);
   padding-bottom: env(safe-area-inset-bottom, 0);
+  box-sizing: border-box;
 }
 .comp-body {
-  flex: 1; overflow-y: auto;
+  flex: 1; min-height: 0; overflow-y: auto;
 }
 .comp-header {
+  flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 16px; border-bottom: 0.5px solid var(--line-hair);
 }
@@ -2409,10 +2422,11 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .attach-sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 1201;
   max-height: 70vh; background: var(--bg-elev-1); border-radius: 20px 20px 0 0;
+  max-height: min(70vh, max(0px, calc(var(--sheet-visible-height, 100vh) - 16px)));
   transform: translateY(100%); transition: transform var(--dur-3) var(--ease-warm);
   display: flex; flex-direction: column;
   padding-bottom: env(safe-area-inset-bottom);
-  &.open { transform: translateY(0); }
+  &.open { transform: none; }
 }
 .as-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -2508,10 +2522,8 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   font-weight: 500;
 }
 
-/* Comment sheet (QA6 #7) — Zhihu-style bottom sheet. Fixed over a scrim
-   instead of expanding inline mid-card. Flex column: pinned header, scrolling
-   list (flex:1), then reply-bar + input-bar as the footer. Keyboard lift is
-   an inline translateY (useKeyboardHeight); transition makes it smooth. */
+/* A bounded scroll list between the pinned header and reply controls.
+   H5 uses VisualViewport bounds; mini programs retain their native lift. */
 .comment-mask {
   position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); z-index: 1100;
 }
@@ -2522,11 +2534,12 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
      height:100% (uni's own rule), which only resolves against a parent with a
      definite height. With max-height alone the list couldn't bound itself, so
      it grew to full content height and the reply composer overlapped the last
-     comment (and ate its taps). 75dvh tracks the keyboard-shrunk viewport, so
-     the sheet always sits above the keyboard. Mirrors the working reconsent
+     comment (and ate its taps). The visible-height bound also handles a
+     keyboard which only resizes the visual viewport. Mirrors the reconsent
      page, whose scroll-view scrolls correctly under a definite-height ancestor.
      overflow:hidden clips to the rounded top + backstops the flex bound. */
   height: 75vh; height: 75dvh; box-sizing: border-box; background: var(--bg-elev-1);
+  height: min(75dvh, max(0px, calc(var(--sheet-visible-height, 100dvh) - 16px)));
   border-radius: 20px 20px 0 0;
   display: flex; flex-direction: column;
   transition: transform 0.25s ease-out; will-change: transform;
@@ -2640,21 +2653,10 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   &::after { transform: rotate(-45deg); }
 }
 
-/* N7-redux D3 — keyboard-aware dock wrapper.
-   Lifts .comp-dock + .comp-footer above the soft keyboard via transform
-   translateY. GPU-composited (not layout) → smooth animation regardless
-   of main-thread work. Triggered by useKeyboardHeight composable;
-   transform value bound inline on the .comp-bottom-stack element.
-   Duration 0.25s matches typical iOS keyboard rise (~250ms).
-
-   Background MUST be opaque — the wrapper transform-lifts above the
-   textarea region while still occupying its flex slot at the bottom
-   (transform doesn't relayout). Without an opaque bg, .comp-footer's
-   border-top edge, .comp-count text, and inter-button gaps would
-   show the textarea content through the lifted wrapper. Using
-   var(--bg-elev-1) matches the .composer-fullpage parent bg so the
-   lifted wrapper visually fuses with the rest of the composer chrome. */
+/* H5 keeps this dock inside the resized composer; mini programs lift it
+   using their native keyboard event. Keep its flex slot and fill opaque. */
 .comp-bottom-stack {
+  flex-shrink: 0;
   background: var(--bg-elev-1);
   transition: transform 0.25s ease-out;
   will-change: transform;

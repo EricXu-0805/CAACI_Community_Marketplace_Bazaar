@@ -119,29 +119,17 @@ export function useKeyboardHeight(opts: UseKeyboardHeightOptions = {}): Keyboard
   }
 
   // ============================================================
-  // H5 path — interactive-widget=resizes-content (no JS lift)
+  // H5 path — no transform lift; the owning layout handles visible bounds
   // ============================================================
   // #ifdef H5
   /*
-   * H5 keyboard avoidance is now handled STRUCTURALLY by the viewport meta
-   * `interactive-widget=resizes-content` (app/index.html): the soft keyboard
-   * shrinks the layout viewport itself, so a bottom-anchored flex child (chat
-   * `.input-bar`, plaza `.comp-bottom-stack`, post `.input-wrapper`) or a
-   * `position:fixed; bottom:0` sheet (offer / meetup / comment) reflows to sit
-   * directly above the keyboard with NO transform.
-   *
-   * Applying a translateY lift ON TOP of that reflow double-lifts the bar to
-   * the top of the screen — that was QA6 #8 ("一点就跳到最上面"). The previous
-   * round removed the lift's offsetTop term to fix that, which then
-   * under-corrected the post composer (#9, "被键盘遮住"). A single px formula
-   * could not serve both contexts; the browser-native reflow does, for free.
-   * So H5 reports height 0 — every consumer's translateY binding becomes a
-   * no-op and the keyboard avoidance is deterministic, not a magic number.
-   *
-   * Pre-Safari-17.4 / Chrome <108 fall back to the legacy `resizes-visual`
-   * behaviour (keyboard overlays a fixed bar) — acceptable for a 2026 launch
-   * and strictly no worse than the previously-broken manual lift. `height`
-   * stays 0 here, so no visualViewport listeners are registered.
+   * Keep H5 transforms at zero. Chat shells, plaza sheets/composer and post
+   * detail instead use useVisualViewportInset/useVisualViewportBounds to
+   * size their scroll areas above the keyboard. The viewport meta hint alone
+   * is insufficient when only the visual viewport shrinks. Comparing its
+   * bounds to the layout viewport also avoids a second lift in browsers that
+   * already resize the layout. This composable retains native mini-program
+   * keyboard events; it must not add another H5 adjustment to those owners.
    */
   // #endif
 

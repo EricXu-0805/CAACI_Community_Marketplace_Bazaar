@@ -288,6 +288,45 @@ for (const device of [
       await contained(page, '.os-submit', 100)
     })
 
+    if (device.name.startsWith('ipad') || device.width < 768) test('price filters remain reachable with a keyboard and a panned visual viewport', async ({ page }) => {
+      await seedMarketplace(page)
+      await page.goto('/#/pages/index/index')
+      await page.getByRole('button', { name: 'Open filters', exact: true }).tap()
+      await page.getByRole('spinbutton', { name: 'Min', exact: true }).fill('25')
+      // Bound the sheet by both edges of the visible area. A keyboard can
+      // also pan Safari's viewport without changing the layout viewport.
+      const top = 80, height = 280, bottom = top + height
+      await page.evaluate(({ top, height }) => {
+        Object.defineProperty(visualViewport!, 'height', { configurable: true, value: height })
+        Object.defineProperty(visualViewport!, 'offsetTop', { configurable: true, value: top })
+        visualViewport!.dispatchEvent(new Event('resize'))
+      }, { top, height })
+      const sheet = page.getByRole('dialog', { name: 'Filters', exact: true })
+      await expect.poll(async () => Math.round((await sheet.boundingBox())!.y)).toBeGreaterThanOrEqual(top)
+      await expect.poll(async () => {
+        const box = (await sheet.boundingBox())!
+        return Math.round(box.y + box.height)
+      }).toBeLessThanOrEqual(bottom)
+      await sheet.evaluate(element => { element.scrollTop = element.scrollHeight })
+      const apply = page.getByRole('button', { name: 'Apply', exact: true })
+      const box = (await apply.boundingBox())!
+      expect(box.y).toBeGreaterThanOrEqual(top)
+      expect(box.y + box.height).toBeLessThanOrEqual(bottom)
+      await apply.tap()
+      await expect(sheet).toHaveCount(0)
+      await page.evaluate(() => {
+        delete (visualViewport as any).height
+        delete (visualViewport as any).offsetTop
+        visualViewport!.dispatchEvent(new Event('resize'))
+      })
+      await page.getByRole('button', { name: 'Open filters', exact: true }).tap()
+      await expect(page.getByRole('spinbutton', { name: 'Min', exact: true })).toHaveValue('25')
+      await page.getByRole('spinbutton', { name: 'Min', exact: true }).fill('50')
+      await page.getByRole('button', { name: 'Close filters', exact: true }).tap()
+      await page.getByRole('button', { name: 'Open filters', exact: true }).tap()
+      await expect(page.getByRole('spinbutton', { name: 'Min', exact: true })).toHaveValue('25')
+    })
+
     if (device.name.startsWith('ipad')) test('visual viewport shrink keeps tablet input and sheets above the keyboard', async ({ page }) => {
       await seedMarketplace(page)
       await page.goto('/#/pages/messages/index')

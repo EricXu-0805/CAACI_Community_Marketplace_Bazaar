@@ -64,7 +64,7 @@ async function openPlazaComposer(page: Page) {
   })
 
   await page.goto('/#/pages/plaza/index', { waitUntil: 'networkidle' })
-  await page.locator('.compose-btn').first().click({ timeout: 15_000 })
+  await page.getByRole('button', { name: 'New post', exact: true }).filter({ visible: true }).click({ timeout: 15_000 })
   await expect(page.locator('.comp-attach-btn').first()).toBeVisible({ timeout: 10_000 })
 }
 
@@ -118,3 +118,50 @@ test('tapping beside the attach picker closes it', async ({ page }) => {
   await expect(page.locator('.attach-sheet'), 'the tap went to the composer instead of the backdrop')
     .toBeHidden({ timeout: 5_000 })
 })
+
+for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 834, height: 1194 }, { width: 1194, height: 834 }]) {
+  test(`keyboard keeps plaza tools and both comment entries reachable at ${size.width}px`, async ({ page }) => {
+    await page.setViewportSize(size)
+    await openPlazaComposer(page)
+    const resizeVisualViewport = async (height = 280, top = 80) => {
+      await page.evaluate(({ height, top }) => {
+        Object.defineProperty(visualViewport!, 'height', { configurable: true, value: height })
+        Object.defineProperty(visualViewport!, 'offsetTop', { configurable: true, value: top })
+        visualViewport!.dispatchEvent(new Event('resize'))
+      }, { height, top })
+    }
+    const inVisibleArea = async (selector: string) => {
+      await expect.poll(async () => {
+        const rect = (await page.locator(selector).boundingBox())!
+        return rect.y >= 79 && rect.y + rect.height <= 361
+      }, { message: `${selector} must stay within the panned, keyboard-shrunk viewport` }).toBe(true)
+    }
+    await page.locator('.comp-textarea textarea').fill('A campus question with the keyboard open')
+    await resizeVisualViewport()
+    await inVisibleArea('.composer-fullpage')
+    await inVisibleArea('.comp-bottom-stack')
+    await page.getByRole('button', { name: 'Tag item', exact: true }).tap()
+    await inVisibleArea('.attach-sheet')
+    await page.locator('.attach-sheet').getByRole('button', { name: 'Close', exact: true }).tap()
+    await expect(page.locator('.comp-textarea textarea')).toHaveValue('A campus question with the keyboard open')
+
+    const post = { id: '77777777-7777-4777-8777-777777777777', user_id: UID, content: 'Anyone selling a rice cooker?',
+      images: [], comment_count: 0, like_count: 0, created_at: '2026-09-01T00:00:00Z', profile: PROFILE }
+    await page.route('**/rest/v1/posts?**', route => route.fulfill({ contentType: 'application/json',
+      body: JSON.stringify(route.request().headers().accept?.includes('vnd.pgrst.object') ? post : [post]) }))
+    await page.goto(`/#/pages/post/index?id=${post.id}`)
+    await page.locator('.input-wrapper input').fill('Is this still available?')
+    await resizeVisualViewport()
+    await inVisibleArea('.input-wrapper')
+    await page.goto('/#/pages/plaza/index')
+    // Reload also discards the previous composer instance retained by tab navigation.
+    await page.reload()
+    await page.getByRole('button', { name: 'Comment', exact: true }).tap()
+    await page.locator('.comment-sheet').getByRole('textbox', { name: 'Add a comment...', exact: true }).fill('Interested in this item')
+    await resizeVisualViewport()
+    await inVisibleArea('.comment-sheet')
+    await inVisibleArea('.ci-send')
+    await page.locator('.comment-sheet').getByRole('button', { name: 'Close', exact: true }).tap()
+    await expect(page.locator('.comment-sheet')).toHaveCount(0)
+  })
+}

@@ -1,5 +1,5 @@
 <template>
-  <view class="page" :class="mpThemeClass" :style="mpChrome">
+  <view class="page" :class="mpThemeClass" :style="[mpChrome, viewportStyle]">
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
@@ -294,6 +294,7 @@ import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
 import { useLongPress } from '../../composables/useLongPress'
 import { useKeyboardHeight } from '../../composables/useKeyboardHeight'
+import { useVisualViewportBounds } from '../../composables/useVisualViewportInset'
 import { createOwnedLoading } from '../../composables/ownedLoading'
 import {
   captureAccountRequest,
@@ -319,12 +320,15 @@ const { fetchPost, deletePost, toggleLike, toggleCommentLike, fetchComments, cre
 const { reportTarget } = useModeration()
 const { addPostToHistory } = useHistory()
 
-// Lift the comment bar above the soft keyboard (mirrors the plaza composer);
-// the comment input sets adjust-position=false so this transform is the only
-// lift source. Page is a fixed-height flex column so the bar otherwise sits
-// behind the iOS keyboard.
+// Mini programs lift the input from their native keyboard event. H5 resizes
+// the whole flex layout so the scroll area and input share the visible bounds.
 const kb = useKeyboardHeight()
 const kbLift = computed(() => (kb.height.value ? { transform: `translateY(-${kb.height.value}px)` } : undefined))
+const { bottomInset, visibleHeight } = useVisualViewportBounds()
+const viewportStyle = computed(() => visibleHeight.value == null ? undefined : ({
+  position: 'fixed' as const, left: '0', right: '0', top: 'auto',
+  bottom: `${bottomInset.value}px`, height: `${visibleHeight.value}px`,
+}))
 
 const post = ref<Post | null>(null)
 const comments = ref<PostComment[]>([])

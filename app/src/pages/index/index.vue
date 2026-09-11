@@ -182,7 +182,8 @@
     <view v-if="showFilter" class="filter-mask u-mask-in" @click="cancelFilterEdit"></view>
     <view
       v-if="showFilter"
-      class="filter-sheet u-glass open"
+      class="filter-sheet"
+      :style="filterViewportStyle"
       role="dialog"
       aria-modal="true"
       :aria-label="t('filter.title')"
@@ -502,6 +503,7 @@ import AppToast from '../../components/AppToast.vue'
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { onShow, onHide, onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
 import { useItems } from '../../composables/useItems'
+import { useVisualViewportBounds } from '../../composables/useVisualViewportInset'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
 import { useTheme } from '../../composables/useTheme'
@@ -540,6 +542,11 @@ import {
 } from '../../api/accountLocalPrivacy'
 import { consumeHomeNavigationIntent } from '../../api/navigationIntent'
 
+const { bottomInset: filterBottomInset, visibleHeight: filterVisibleHeight } = useVisualViewportBounds()
+const filterViewportStyle = computed(() => ({
+  bottom: `${filterBottomInset.value}px`,
+  '--filter-visible-height': filterVisibleHeight.value == null ? '100vh' : `${filterVisibleHeight.value}px`,
+}))
 const { t, tc, lang, localize, toggleLang } = useI18n()
 const { isDark, setPref } = useTheme()
 const defaultAvatarSrc = computed(() =>
@@ -1570,23 +1577,25 @@ function goPublish() {
 .filter-sheet {
   position: fixed;
   bottom: 0; left: 0; right: 0; z-index: 1001;
-  /* fill + blur come from .u-glass — the feed images refract through the sheet */
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
   border-radius: 18px 18px 0 0;
   padding: 0 20px 20px;
-  transform: translateY(100%);
-  transition: transform var(--dur-3) var(--ease-warm);
   max-height: 70vh;
+  /* A visual-only keyboard resize does not change vh/dvh. Keep the entire
+     scroll area inside the visible viewport, including when Safari pans it. */
+  max-height: min(70vh, max(0px, calc(var(--filter-visible-height, 100vh) - 16px)));
   overflow-y: auto;
-  &.open { transform: translateY(0); }
+  overscroll-behavior: contain;
 }
 .fs-header {
   display: flex; justify-content: space-between; align-items: center;
   padding: 18px 0 14px;
-  position: sticky; top: 0; background: transparent; z-index: 1;
+  position: sticky; top: 0; background: var(--surface); z-index: 1;
   gap: 12px;
 }
 .fs-close {
-  width: 28px; height: 28px; border-radius: 50%; background: var(--bg-subtle);
+  width: 44px; height: 44px; border-radius: 50%; background: var(--bg-subtle);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; flex-shrink: 0;
   &:active { background: var(--bg-inset); }
@@ -1601,7 +1610,7 @@ function goPublish() {
   &::after { transform: rotate(-45deg); }
 }
 .fs-title { flex: 1; font-size: 17px; font-weight: 700; color: var(--ink); text-align: center; letter-spacing: -0.01em; }
-.fs-reset { font-size: 14px; color: var(--accent-action); cursor: pointer; flex-shrink: 0; }
+.fs-reset { font-size: 14px; color: var(--accent-action); cursor: pointer; flex-shrink: 0; min-height: 44px; display: flex; align-items: center; }
 
 /*
  * Semester / move-out banner — kit ink-editorial card (index_v1.html
@@ -2045,10 +2054,8 @@ function goPublish() {
   .seller-nick { font-size: 12px; }
   .fav-num { font-size: 12px; }
 
-  /* Center the filter sheet within the content column (right of the rail)
-     instead of the viewport, so it doesn't slide under the sidebar. */
-  .filter-sheet { max-width: 480px; left: var(--sidebar-w); right: 0; margin-left: auto; margin-right: auto; transform: translateY(100%);
-    &.open { transform: translateY(0); }
+  /* Center the filter sheet within the content column, right of the rail. */
+  .filter-sheet { max-width: 480px; left: var(--sidebar-w); right: 0; margin-left: auto; margin-right: auto;
   }
 }
 </style>
