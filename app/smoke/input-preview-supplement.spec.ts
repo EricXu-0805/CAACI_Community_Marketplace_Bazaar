@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Locator } from '@playwright/test'
+import { test, expect, chromium, devices, type Page, type Locator } from '@playwright/test'
 import { CURRENT_CONSENT_VERSION } from '../src/legal'
 import { supabaseRefForBuild } from './supabase-ref'
 
@@ -55,6 +55,41 @@ async function acceptComposition(input: Locator) {
   await input.dispatchEvent('compositionend', { data: '桌子' })
   await input.dispatchEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, isComposing: false })
 }
+
+for (const width of [390, 834]) test(`supplement: touch inputs remain readable at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 })
+  await page.addInitScript(() => { localStorage.setItem('welcomed', '1'); localStorage.setItem('lang', 'en') })
+  await page.route('**/*.supabase.co/**', route => route.fulfill({ contentType: 'application/json', body: '[]' }))
+  await page.goto('/#/pages/login/index')
+  const email = page.getByRole('textbox', { name: 'Email', exact: true })
+  await expect(email).toBeVisible()
+  const inputs = page.locator('input')
+  for (const input of await inputs.all()) expect(await input.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16)
+  await email.fill('reading-check@example.invalid')
+  await expect(email).toHaveValue('reading-check@example.invalid')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1)
+})
+
+// Chromium's touch gesture API exercises the browser zoom policy rather than
+// replacing visualViewport properties. This is still device emulation.
+test('supplement: browser touch pinch can enlarge the login page', async ({ baseURL }) => {
+  const browser = await chromium.launch()
+  try {
+    const context = await browser.newContext({ ...devices['iPhone 13'], baseURL, viewport: { width: 390, height: 844 } })
+    const page = await context.newPage()
+    await page.addInitScript(() => { localStorage.setItem('welcomed', '1'); localStorage.setItem('lang', 'en') })
+    await page.route('**/*.supabase.co/**', route => route.fulfill({ contentType: 'application/json', body: '[]' }))
+    await page.goto('/#/pages/login/index')
+    await expect(page.getByRole('textbox', { name: 'Email', exact: true })).toBeVisible()
+    const cdp = await context.newCDPSession(page)
+    try {
+      await cdp.send('Input.synthesizePinchGesture', { x: 180, y: 180, scaleFactor: 2, gestureSourceType: 'touch' })
+      await expect.poll(() => page.evaluate(() => visualViewport!.scale)).toBeGreaterThan(1.5)
+      await cdp.send('Input.synthesizePinchGesture', { x: 180, y: 180, scaleFactor: 0.5, gestureSourceType: 'touch' })
+      await expect.poll(() => page.evaluate(() => visualViewport!.scale)).toBeLessThan(1.1)
+    } finally { await cdp.detach() }
+  } finally { await browser.close() }
+})
 
 test('supplement: IME candidate Enter stays in search until the next deliberate Enter', async ({ page }) => {
   await fixture(page); await page.goto('/#/pages/search/index')

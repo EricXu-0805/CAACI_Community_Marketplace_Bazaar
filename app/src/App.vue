@@ -1973,6 +1973,16 @@ button:focus-visible,
 }
 
 /* #ifdef H5 */
+/* Keep touch inputs readable without restricting the user's page zoom.
+   Target uni's inner controls; bare input selectors are rewritten in H5.
+   Preserve larger title/description styles through the inherited 1em. */
+@media (hover: none) and (pointer: coarse) {
+  .uni-input-input,
+  .uni-textarea-textarea {
+    font-size: max(16px, 1em);
+  }
+}
+
 /* The runtime shim makes every custom role=button keyboard-focusable. Give
    those auto-added tab stops the same visible focus affordance as native
    controls. Keep attribute selectors out of WXSS, where one unsupported

@@ -31,3 +31,13 @@
 仍未覆盖实体 iPhone/iPad 的系统相册、输入法、Safari 工具栏与系统冻结/回收，也未开展生产高并发容量测试。本轮结果不等于全平台无缺陷或生产容量承诺。
 
 本地证据目录：`output/playwright/publish-lifecycle-20260911/`。主要文件包括 `regression-before.log`、`publishing-final.log`、`chromium-final.log`、`boundaries-final.log`、`phone-preview-after.png` 和 `interactive-cover-after.log`。
+
+## 线上补查：触屏阅读与页面缩放
+
+图片修复版本 `5dbf252` 部署后，独立匿名浏览器在手机登录页测得输入字号为 15px；继续倒查发现全站 HTML 模板设置了 `user-scalable=no`，且最小、最大缩放均固定为 1。Chromium 手机模拟中的触屏捏合操作确认页面缩放一直停在 1，用户无法放大阅读；两档触屏字号检查也在 15px 处失败。
+
+补修移除缩放限制，保留初始比例、设备宽度和安全区域设置；触屏原生输入框使用至少 16px 的字号，继承更大的字号。此处采用 CSS 媒体特征区分触屏，桌面不变。禁止用户缩放会影响低视力用户阅读，且不同浏览器可能忽略相关限制，因此浏览器行为和设备范围需分别报告。[MDN viewport 文档](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/meta/name/viewport)
+
+新增测试通过浏览器触屏手势使页面放大再缩回，未通过改写 `visualViewport.scale` 伪造缩放。这仍是 Chromium 设备模拟，不代表实体 iPhone/iPad 或 Safari 输入聚焦的系统缩放已经验收。最终源码提交及本轮完整 CI 以 `output/playwright/publish-lifecycle-20260911/RELEASE_RECEIPT.md` 为准。
+
+补修后 `input-preview-supplement.spec.ts` 与 `marketplace-responsive.spec.ts` 合计 44 项通过，随后重新验证发布体验 43 项通过。修复前新增 3 项检查均失败，分别为 390px/834px 的 15px 输入字号，以及触屏捏合后仍为 1 的页面缩放。证据：`zoom-before.log`、`zoom-responsive-final.log`、`publish-post-zoom.log`。
