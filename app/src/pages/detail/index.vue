@@ -46,6 +46,7 @@
             mode="aspectFit"
             class="swiper-img"
             role="button"
+            :tabindex="currentImg === i ? 0 : -1"
             :aria-label="t('a11y.previewImage')"
             @load="onHeroImgLoad($event, i)"
             @click="previewImage(i)"

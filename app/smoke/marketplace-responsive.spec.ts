@@ -391,16 +391,29 @@ for (const device of [
       })
     })
 
-    if (device.width >= 768) test('product photos have visible mouse and keyboard navigation', async ({ page }) => {
+    test('product photos keep keyboard focus on the visible image', async ({ page }) => {
       await seedMarketplace(page, true)
       await page.goto(`/#/pages/detail/index?id=${ITEM}`)
       await expect(page.locator('.img-counter')).toHaveText('1/3')
-      await page.getByRole('button', { name: 'Next photo', exact: true }).click()
-      await expect(page.locator('.img-counter')).toHaveText('2/3')
-      await page.getByRole('button', { name: 'Next photo', exact: true }).press('Enter')
-      await expect(page.locator('.img-counter')).toHaveText('3/3')
-      await page.getByRole('button', { name: 'Previous photo', exact: true }).click()
-      await expect(page.locator('.img-counter')).toHaveText('2/3')
+      if (device.width >= 768) {
+        await page.getByRole('button', { name: 'Next photo', exact: true }).click()
+        await expect(page.locator('.img-counter')).toHaveText('2/3')
+        await page.getByRole('button', { name: 'Next photo', exact: true }).press('Enter')
+        await expect(page.locator('.img-counter')).toHaveText('3/3')
+        await page.getByRole('button', { name: 'Previous photo', exact: true }).click()
+        await expect(page.locator('.img-counter')).toHaveText('2/3')
+      }
+      const gallery = page.locator('.img-swiper')
+      for (const [key, counter] of [['End', '3/3'], ['Home', '1/3']]) {
+        await gallery.focus()
+        await gallery.press(key)
+        await expect(page.locator('.img-counter')).toHaveText(counter)
+        await gallery.press('Tab')
+        await expect(gallery.locator('[aria-hidden="false"] .swiper-img')).toBeFocused()
+        await page.keyboard.press('Tab')
+        expect(await gallery.evaluate(el => el.contains(document.activeElement)),
+          'Tab should leave the gallery instead of entering an offscreen image').toBe(false)
+      }
       await screenshot(page, `${device.name}-gallery`)
     })
   })

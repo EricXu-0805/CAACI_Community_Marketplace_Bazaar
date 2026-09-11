@@ -263,6 +263,7 @@ test('the listing gallery can be driven from the keyboard', () => {
   assert.match(detail, /:aria-keyshortcuts="imgs.length \? 'ArrowLeft ArrowRight' : undefined"/)
   assert.match(detail, /@keydown="onGalleryKeydown"/)
   assert.match(detail, /function onGalleryKeydown\(event: KeyboardEvent\)/)
+  assert.match(detail, /:tabindex="currentImg === i \? 0 : -1"/)
 })
 
 test('swipe actions stay focusable at rest', () => {
