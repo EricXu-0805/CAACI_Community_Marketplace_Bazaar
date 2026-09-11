@@ -38,6 +38,7 @@ async function seedMarketplace(page: Page, photos = false) {
     created_at: new Date(Date.UTC(2026, 8, 5, 10, i)).toISOString(),
   })))
   let sends = 0
+  const globalPolls: { ids: string[] }[] = []
   await page.addInitScript(([ref, uid, theme]) => {
     localStorage.setItem('welcomed', '1'); localStorage.setItem('lang', 'en'); localStorage.setItem('theme_pref', theme)
     const generation = 'responsive-fixture-generation-01'
@@ -64,8 +65,37 @@ async function seedMarketplace(page: Page, photos = false) {
         const row = { ...req.postDataJSON(), created_at: new Date().toISOString(), is_read: false, sender: PROFILE }
         messages.push(row); sends++; body = [row]
       } else if (req.method() === 'GET') {
-        body = messages.filter(m => !eq('conversation_id') || m.conversation_id === eq('conversation_id'))
-          .sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, Number(url.searchParams.get('limit') || 50))
+        const params = url.searchParams
+        // Match PostgREST's timestamp+ID cursor and sender predicate. Replaying
+        // old rows here invented "New message" toasts during slow UI tests.
+        const cursor = params.get('or')?.match(/^\(created_at\.(gt|lt)\.([^,]+),and\(created_at\.eq\.[^,]+,id\.(?:gt|lt)\.([^)]+)\)\)$/)
+        const timeFilter = params.get('created_at')?.match(/^(gt|lt)\.(.+)$/)
+        const sender = params.get('sender_id')
+        const order = (params.get('order') || 'created_at.desc,id.desc').split(',')
+        const rows = messages.filter(m => {
+          if (eq('conversation_id') && m.conversation_id !== eq('conversation_id')) return false
+          if (eq('id') && m.id !== eq('id')) return false
+          if (sender?.startsWith('neq.') && m.sender_id === sender.slice(4)) return false
+          if (sender?.startsWith('eq.') && m.sender_id !== sender.slice(3)) return false
+          if (timeFilter) {
+            const delta = Date.parse(m.created_at) - Date.parse(timeFilter[2])
+            if (timeFilter[1] === 'gt' ? delta <= 0 : delta >= 0) return false
+          }
+          if (cursor) {
+            const delta = Date.parse(m.created_at) - Date.parse(cursor[2]) || m.id.localeCompare(cursor[3])
+            if (cursor[1] === 'gt' ? delta <= 0 : delta >= 0) return false
+          }
+          return true
+        }).sort((a, b) => {
+          for (const clause of order) {
+            const [field, direction] = clause.split('.')
+            const delta = field === 'id' ? a.id.localeCompare(b.id) : a.created_at.localeCompare(b.created_at)
+            if (delta) return direction === 'desc' ? -delta : delta
+          }
+          return 0
+        }).slice(0, Number(params.get('limit') || 50))
+        if (!params.has('conversation_id') && (cursor || timeFilter)) globalPolls.push({ ids: rows.map(row => row.id) })
+        body = rows
       }
     } else if (path.endsWith('/items') || path.endsWith('/items_visible')) {
       body = url.searchParams.get('id') === `neq.${ITEM}` ? [] : [listing]
@@ -78,6 +108,13 @@ async function seedMarketplace(page: Page, photos = false) {
   })
   return {
     sends: () => sends,
+    globalPolls,
+    receiveInOtherThread: () => {
+      const id = '88888888-8888-4888-8888-888888888888'
+      messages.push({ ...messages[0], id, conversation_id: OTHER,
+        content: 'A genuinely new peer message', created_at: new Date().toISOString(), is_read: false })
+      return id
+    },
     receiveWhileAway: (content: string) => {
       messages.push({ ...messages[0], id: '77777777-7777-4777-8777-777777777777',
         content, created_at: '2026-09-06T10:00:00Z', is_read: false })
@@ -92,6 +129,17 @@ async function screenshot(page: Page, name: string) {
   mkdirSync(dir, { recursive: true })
   await page.screenshot({ path: resolve(dir, `${name}.png`), fullPage: false })
 }
+
+test('inbox polling ignores historical rows and still delivers a new peer message', async ({ page }) => {
+  const f = await seedMarketplace(page)
+  await page.goto(`/#/pages/chat/index?id=${CONV}`)
+  await expect.poll(() => f.globalPolls.length, { timeout: 20_000 }).toBeGreaterThan(0)
+  expect(f.globalPolls.flatMap(poll => poll.ids)).toEqual([])
+  await expect(page.locator('.uni-simple-toast__text').filter({ hasText: /^New message$/ })).toHaveCount(0)
+  const id = f.receiveInOtherThread()
+  await expect.poll(() => f.globalPolls.flatMap(poll => poll.ids), { timeout: 20_000 }).toContain(id)
+  await expect(page.locator('.uni-simple-toast__text')).toHaveText('New message')
+})
 
 for (const [device, width, height] of [['phone', 390, 844], ['ipad', 820, 1180]] as const) {
   for (const kind of ['offer', 'meetup'] as const) {
