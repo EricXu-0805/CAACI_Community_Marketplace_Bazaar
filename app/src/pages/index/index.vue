@@ -1422,6 +1422,22 @@ function goPublish() {
 .mh-search {
   display: flex; align-items: center; gap: 9px;
 }
+/* #ifdef H5 */
+/* On compact phones the English wordmark and both quick controls must share
+   one row without painting over each other. Keep the theme's accessible
+   name when its visual label gives way to a larger touch target. */
+@media (max-width: 374px) {
+  .mh-row { gap: 8px; }
+  .mh-brand { gap: 8px; }
+  .mh-wordmark-stack { overflow: hidden; }
+  .mh-wordmark { font-size: 17px; overflow: hidden; text-overflow: ellipsis; }
+  .mh-eyebrow { font-size: 8px; letter-spacing: 0.12em; white-space: nowrap; }
+  .mh-actions { gap: 6px; }
+  .mh-theme { width: 44px; height: 44px; padding: 0; justify-content: center; }
+  .mh-theme-label { display: none; }
+  .mh-lang { height: 44px; padding: 0 10px; }
+}
+/* #endif */
 /* Desktop search + filter toolbar — hidden on phones (the mobile-header
    covers those), revealed at ≥768px where the mobile-header is display:none. */
 .home-desktop-tools { display: none; }
