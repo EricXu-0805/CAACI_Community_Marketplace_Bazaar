@@ -48,7 +48,7 @@
         <view
           class="banner-slide"
           :role="b.target_url ? 'button' : undefined"
-          :tabindex="b.target_url && current === i ? 0 : undefined"
+          :tabindex="b.target_url ? (current === i ? 0 : -1) : undefined"
           :aria-label="b.target_url ? (titleOf(b) || t('admin.plazaBanners')) : undefined"
           @click="onTap(b)"
           @keydown.enter.prevent="onTap(b)"

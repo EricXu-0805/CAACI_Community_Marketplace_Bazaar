@@ -76,7 +76,14 @@ async function seedMarketplace(page: Page, photos = false) {
     await route.fulfill({ status: 200, contentType: 'application/json',
       headers: { 'content-range': '0-1/2' }, body: JSON.stringify(body) })
   })
-  return { sends: () => sends }
+  return {
+    sends: () => sends,
+    receiveWhileAway: (content: string) => {
+      messages.push({ ...messages[0], id: '77777777-7777-4777-8777-777777777777',
+        content, created_at: '2026-09-06T10:00:00Z', is_read: false })
+      listing.status = 'sold'
+    },
+  }
 }
 
 async function screenshot(page: Page, name: string) {
@@ -85,6 +92,32 @@ async function screenshot(page: Page, name: string) {
   mkdirSync(dir, { recursive: true })
   await page.screenshot({ path: resolve(dir, `${name}.png`), fullPage: false })
 }
+
+test('returning to the foreground reconciles messages and listing status without losing a draft', async ({ page }) => {
+  const fixture = await seedMarketplace(page)
+  await page.goto(`/#/pages/chat/index?id=${CONV}`)
+  await expect(page.locator('.message-list')).toContainText('Alex message 35')
+  const draft = 'Can we meet after my afternoon class?'
+  await page.locator('.msg-input textarea').fill(draft)
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  const update = 'Sold while you were away; thanks for checking.'
+  fixture.receiveWhileAway(update)
+  await expect(page.locator('.message-list')).not.toContainText(update)
+  // This exercises page lifecycle handlers, not OS suspension or a real device.
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
+    Object.defineProperty(document, 'hidden', { configurable: true, value: false })
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  await expect(page.locator('.message-list')).toContainText(update)
+  await expect(page.locator('.ic-sold')).toHaveText('Sold')
+  await expect(page.locator('.msg-input textarea')).toHaveValue(draft)
+  expect(fixture.sends()).toBe(0)
+})
 
 test.describe('composer draft recovery', () => {
   test.use({ viewport: { width: 1440, height: 900 }, isMobile: false, hasTouch: false })

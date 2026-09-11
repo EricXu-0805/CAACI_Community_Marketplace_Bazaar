@@ -206,7 +206,9 @@ test('linked plaza banners are keyboard reachable without focusing decorative ba
   assert.match(banner, /:role="b\.target_url \? 'button' : undefined"/)
   // Also gated on being the visible slide: a link on a banner that has already
   // rotated out of view is a tab stop pointing at something nobody can see.
-  assert.match(banner, /:tabindex="b\.target_url && current === i \? 0 : undefined"/)
+  // Explicit -1 also prevents the global role-button shim from making hidden
+  // slide links focusable when it fills in missing tabindex attributes.
+  assert.match(banner, /:tabindex="b\.target_url \? \(current === i \? 0 : -1\) : undefined"/)
   assert.match(banner, /@keydown\.enter\.prevent="onTap\(b\)"/)
   assert.match(banner, /@keydown\.space\.prevent="onTap\(b\)"/)
 })
