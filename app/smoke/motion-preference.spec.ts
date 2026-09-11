@@ -132,12 +132,18 @@ test('keyboard traversal only visits the visible banner link', async ({ page }) 
   await expect(page.locator('.banner-swiper [aria-hidden="false"]')).toHaveAttribute('aria-label', 'Slide 3 of 3')
   await carousel.press('Tab')
   await expect(page.getByRole('button', { name: 'Campus banner 3', exact: true })).toBeFocused()
+  await expect.poll(() => carousel.evaluate(el => Math.abs(
+    el.querySelector('[aria-hidden="false"]')!.getBoundingClientRect().left - el.getBoundingClientRect().left,
+  ))).toBeLessThan(1)
   await page.keyboard.press('Tab')
   await expect(page.locator('.banner-toggle')).toBeFocused()
   await carousel.focus()
   await carousel.press('Home')
   await carousel.press('Tab')
   await expect(page.getByRole('button', { name: 'Campus banner 1', exact: true })).toBeFocused()
+  await expect.poll(() => carousel.evaluate(el => Math.abs(
+    el.querySelector('[aria-hidden="false"]')!.getBoundingClientRect().left - el.getBoundingClientRect().left,
+  ))).toBeLessThan(1)
   await page.keyboard.press('Enter')
   await expect(page).toHaveURL(/pages\/search\/index/)
 })

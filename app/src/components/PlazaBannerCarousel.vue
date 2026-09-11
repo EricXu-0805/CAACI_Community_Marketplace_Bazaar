@@ -242,6 +242,14 @@ function onTap(b: Banner) {
   overflow: hidden;
   background: var(--bg-subtle);
 }
+/* #ifdef H5 */
+/* Keep keyboard focus from scrolling the transform-driven slide track while
+   the newly current banner is still animating into position. */
+.banner-swiper,
+.banner-swiper :deep(.uni-swiper-wrapper) {
+  overflow: clip;
+}
+/* #endif */
 
 .banner-slide {
   position: relative;

@@ -1048,6 +1048,27 @@ async function initializeConversationAfterGate() {
       reconcileMeetupsFromSubscription,
     )
 
+    // #ifdef H5
+    // Install before awaited snapshots. The transcript can already be usable
+    // while offers/meetups are pending; returning then must still reconcile.
+    onVisible = () => {
+      if (
+        !isCurrentThreadSetup() ||
+        typeof document === 'undefined' ||
+        document.visibilityState !== 'visible' ||
+        !options.id
+      ) return
+      fetchMessages(options.id).then(() => {
+        if (isCurrentThreadSetup()) nextTick(() => scrollToBottom())
+      }).catch(() => {})
+      fetchOffers(options.id).catch(() => {})
+      fetchMeetups(options.id).catch(() => {})
+      void refreshItemSnapshot(options.id)
+      if (currentUser.value) refreshReadState(options.id, currentUser.value.id)
+    }
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisible)
+    // #endif
+
     // A failed history fetch must not abort the rest of setup; the live feed
     // remains active and foreground reconciliation can retry later.
     try {
@@ -1086,24 +1107,6 @@ async function initializeConversationAfterGate() {
       if (isCurrentThreadSetup()) peerOnline.value = online
     })
 
-    // #ifdef H5
-    onVisible = () => {
-      if (
-        !isCurrentThreadSetup() ||
-        typeof document === 'undefined' ||
-        document.visibilityState !== 'visible' ||
-        !options.id
-      ) return
-      fetchMessages(options.id).then(() => {
-        if (isCurrentThreadSetup()) nextTick(() => scrollToBottom())
-      }).catch(() => {})
-      fetchOffers(options.id).catch(() => {})
-      fetchMeetups(options.id).catch(() => {})
-      void refreshItemSnapshot(options.id)
-      if (currentUser.value) refreshReadState(options.id, currentUser.value.id)
-    }
-    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisible)
-    // #endif
   }
 }
 

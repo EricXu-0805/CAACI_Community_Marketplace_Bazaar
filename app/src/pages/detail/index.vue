@@ -1401,6 +1401,14 @@ async function contactSeller() {
      height — clip it instead of letting it bleed below the info card */
   overflow: hidden;
 }
+/* #ifdef H5 */
+/* Swiper moves slides with transforms. A focused slide during that animation
+   must not scroll an overflow:hidden wrapper independently of currentImg. */
+.img-swiper,
+.img-swiper :deep(.uni-swiper-wrapper) {
+  overflow: clip;
+}
+/* #endif */
 .swiper-img {
   display: block;
   width: 100%;

@@ -95,28 +95,42 @@ async function screenshot(page: Page, name: string) {
 
 test('returning to the foreground reconciles messages and listing status without losing a draft', async ({ page }) => {
   const fixture = await seedMarketplace(page)
-  await page.goto(`/#/pages/chat/index?id=${CONV}`)
-  await expect(page.locator('.message-list')).toContainText('Alex message 35')
-  const draft = 'Can we meet after my afternoon class?'
-  await page.locator('.msg-input textarea').fill(draft)
-  await page.evaluate(() => {
-    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
-    Object.defineProperty(document, 'hidden', { configurable: true, value: true })
-    document.dispatchEvent(new Event('visibilitychange'))
+  let releaseOffers!: () => void
+  const pendingOffers = new Promise<void>(resolve => { releaseOffers = resolve })
+  let offersStarted = false
+  await page.route('**/rest/v1/offers?**', async route => {
+    offersStarted = true
+    await pendingOffers
+    await route.fallback()
   })
-  const update = 'Sold while you were away; thanks for checking.'
-  fixture.receiveWhileAway(update)
-  await expect(page.locator('.message-list')).not.toContainText(update)
-  // This exercises page lifecycle handlers, not OS suspension or a real device.
-  await page.evaluate(() => {
-    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
-    Object.defineProperty(document, 'hidden', { configurable: true, value: false })
-    document.dispatchEvent(new Event('visibilitychange'))
-  })
-  await expect(page.locator('.message-list')).toContainText(update)
-  await expect(page.locator('.ic-sold')).toHaveText('Sold')
-  await expect(page.locator('.msg-input textarea')).toHaveValue(draft)
-  expect(fixture.sends()).toBe(0)
+  try {
+    await page.goto(`/#/pages/chat/index?id=${CONV}`)
+    await expect(page.locator('.message-list')).toContainText('Alex message 35')
+    // The transcript is usable while additive offer data is still loading.
+    await expect.poll(() => offersStarted).toBe(true)
+    const draft = 'Can we meet after my afternoon class?'
+    await page.locator('.msg-input textarea').fill(draft)
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
+      Object.defineProperty(document, 'hidden', { configurable: true, value: true })
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    const update = 'Sold while you were away; thanks for checking.'
+    fixture.receiveWhileAway(update)
+    await expect(page.locator('.message-list')).not.toContainText(update)
+    // This exercises page lifecycle handlers, not OS suspension or a real device.
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
+      Object.defineProperty(document, 'hidden', { configurable: true, value: false })
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    await expect(page.locator('.message-list')).toContainText(update)
+    await expect(page.locator('.ic-sold')).toHaveText('Sold')
+    await expect(page.locator('.msg-input textarea')).toHaveValue(draft)
+    expect(fixture.sends()).toBe(0)
+  } finally {
+    releaseOffers()
+  }
 })
 
 test.describe('composer draft recovery', () => {
@@ -410,6 +424,9 @@ for (const device of [
         await expect(page.locator('.img-counter')).toHaveText(counter)
         await gallery.press('Tab')
         await expect(gallery.locator('[aria-hidden="false"] .swiper-img')).toBeFocused()
+        await expect.poll(() => gallery.evaluate(el => Math.abs(
+          el.querySelector('[aria-hidden="false"]')!.getBoundingClientRect().left - el.getBoundingClientRect().left,
+        )), { message: 'focusing a slide during animation must not scroll the wrapper away from the displayed index' }).toBeLessThan(1)
         await page.keyboard.press('Tab')
         expect(await gallery.evaluate(el => el.contains(document.activeElement)),
           'Tab should leave the gallery instead of entering an offscreen image').toBe(false)
