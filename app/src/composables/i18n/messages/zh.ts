@@ -761,6 +761,7 @@ const zh: Record<string, string> = {
   'msg.actionFailed': '操作失败',
 
   'chat.sending': '发送中...',
+  'chat.sentRefreshPending': '已发出，聊天记录将在连接恢复后更新。',
   'chat.sendFailed': '发送失败 - 点击重试',
   'chat.read': '已读',
   'chat.unread': '未读',

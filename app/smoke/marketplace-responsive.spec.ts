@@ -93,6 +93,183 @@ async function screenshot(page: Page, name: string) {
   await page.screenshot({ path: resolve(dir, `${name}.png`), fullPage: false })
 }
 
+for (const [device, width, height] of [['phone', 390, 844], ['ipad', 820, 1180]] as const) {
+  for (const kind of ['offer', 'meetup'] as const) {
+    test.describe(`proposal lifecycle ${device} ${kind}`, () => {
+      test.use({ viewport: { width, height } })
+      const entry = kind === 'offer' ? 'Make an Offer' : 'Set a meetup'
+      const submit = kind === 'offer' ? 'Send offer' : 'Send proposal'
+      const table = kind === 'offer' ? 'offers' : 'meetups'
+      const rpc = kind === 'offer' ? 'make_offer' : 'propose_meetup'
+
+      async function openProposal(page: Page) {
+        await page.getByRole('button', { name: entry, exact: true }).click()
+        await expect(page.getByRole('dialog')).toBeVisible()
+        if (kind === 'offer') {
+          await page.getByRole('spinbutton', { name: 'Your price' }).fill('60')
+        } else {
+          await page.getByRole('textbox', { name: 'Custom spot (campus recommended)' }).fill('Illini Union')
+          const date = new Date(Date.now() + 2 * 86400000)
+          async function pick(label: string, mode: 'date' | 'time', value: string, columns: string[]) {
+            const native = page.locator(`uni-picker input[type="${mode}"]`)
+            if (await native.count()) { await native.fill(value); return }
+            await page.getByRole('button', { name: label, exact: true }).click()
+            const picker = page.locator('.uni-picker-toggle')
+            await expect(picker).toBeVisible()
+            for (const [index, target] of columns.entries()) {
+              const column = picker.locator('uni-picker-view-column').nth(index)
+              const state = await column.evaluate((element, target) => {
+                const indicator = element.querySelector('.uni-picker-view-indicator')!.getBoundingClientRect()
+                const center = indicator.y + indicator.height / 2
+                const items = Array.from(element.querySelectorAll('.uni-picker-item'))
+                const selected = items.findIndex(item => {
+                  const box = item.getBoundingClientRect()
+                  return center >= box.top && center < box.bottom
+                })
+                return { selected, target: items.findIndex(item => item.textContent === target), rowHeight: indicator.height }
+              }, target)
+              expect(state.selected).toBeGreaterThanOrEqual(0)
+              expect(state.target).toBeGreaterThanOrEqual(0)
+              const box = (await column.boundingBox())!
+              for (let current = state.selected; current !== state.target;) {
+                const step = Math.max(-3, Math.min(3, state.target - current))
+                await column.tap({ position: { x: box.width / 2, y: box.height / 2 + step * state.rowHeight } })
+                current += step
+                // Finish each visible wheel movement before the next tap;
+                // mobile WebKit has no mouse-wheel input.
+                await expect.poll(() => column.locator('.uni-picker-view-content').evaluate(element =>
+                  new DOMMatrix(getComputedStyle(element).transform).m42)).toBeCloseTo(-current * state.rowHeight, 1)
+              }
+              await expect.poll(() => column.evaluate(element => {
+                const indicator = element.querySelector('.uni-picker-view-indicator')!.getBoundingClientRect()
+                const center = indicator.y + indicator.height / 2
+                return Array.from(element.querySelectorAll('.uni-picker-item')).find(item => {
+                  const box = item.getBoundingClientRect()
+                  return center >= box.top && center < box.bottom
+                })?.textContent
+              })).toBe(target)
+            }
+            await picker.locator('.uni-picker-action-confirm').click()
+            await expect(picker).toHaveCount(0)
+          }
+          await pick('Pick date', 'date', date.toISOString().slice(0, 10), [
+            date.toLocaleString('en-US', { month: 'long', timeZone: 'UTC' }),
+            String(date.getUTCDate()).padStart(2, '0'), String(date.getUTCFullYear()),
+          ])
+          await pick('Pick time', 'time', '15:00', [])
+        }
+        await page.getByRole('textbox', { name: 'Add a note (optional)' }).fill('Original proposal')
+      }
+
+      async function fixture(page: Page) {
+        await seedMarketplace(page)
+        const requests: Record<string, unknown>[] = []
+        const rows: Record<string, unknown>[] = []
+        let release!: () => void
+        const held = new Promise<void>(resolve => { release = resolve })
+        let failWrite = false
+        let failRead = false
+        await page.route(`**/rest/v1/rpc/${rpc}`, async route => {
+          const data = route.request().postDataJSON()
+          requests.push(data)
+          await held
+          if (failWrite) return route.fulfill({ status: 400, contentType: 'application/json',
+            body: JSON.stringify({ message: 'Please try again', code: 'P0001' }) })
+          const row = { id: `77777777-7777-4777-8777-${String(requests.length).padStart(12, '0')}`,
+            conversation_id: CONV, item_id: ITEM, from_user: ME, to_user: PEER, status: 'pending',
+            price: data.p_price, spot: data.p_spot, meet_at: data.p_meet_at, note: data.p_note,
+            parent_offer_id: null, parent_meetup_id: null, created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(), expires_at: new Date(Date.now() + 86400000).toISOString() }
+          rows.push(row)
+          await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(row) })
+        })
+        await page.route(`**/rest/v1/${table}?**`, route => route.fulfill({
+          status: failRead && rows.length ? 503 : 200, contentType: 'application/json',
+          body: JSON.stringify(failRead && rows.length ? { message: 'Temporary snapshot outage' } : rows),
+        }))
+        await page.goto(`/#/pages/chat/index?id=${CONV}`)
+        await expect(page.getByRole('button', { name: entry, exact: true })).toBeVisible()
+        return { requests, rows, release, reject: (value: boolean) => { failWrite = value },
+          failRefresh: (value: boolean) => { failRead = value } }
+      }
+
+      test('a delayed success preserves the reopened draft', async ({ page }) => {
+        const f = await fixture(page)
+        await openProposal(page)
+        await page.getByRole('button', { name: submit, exact: true }).click()
+        await expect.poll(() => f.requests.length).toBe(1)
+        await expect(page.getByRole('textbox', { name: 'Add a note (optional)' })).not.toBeEditable()
+        await page.getByRole('button', { name: 'Close', exact: true }).click()
+        await openProposal(page)
+        const note = page.getByRole('textbox', { name: 'Add a note (optional)' })
+        await note.fill('Keep this new draft')
+        await page.setViewportSize({ width: height, height: width })
+        f.release()
+        await expect(page.getByRole('button', { name: submit, exact: true })).toHaveAttribute('aria-disabled', 'false')
+        await expect(page.getByRole('dialog')).toBeVisible()
+        await expect(note).toHaveValue('Keep this new draft')
+        expect(f.requests).toHaveLength(1)
+        expect(f.requests[0].p_note).toBe('Original proposal')
+      })
+
+      test('a dismissed send cannot move focus out of a different composer', async ({ page }) => {
+        const f = await fixture(page)
+        await openProposal(page)
+        await page.getByRole('button', { name: submit, exact: true }).click()
+        await expect.poll(() => f.requests.length).toBe(1)
+        await page.getByRole('button', { name: 'Close', exact: true }).click()
+        await page.getByRole('button', { name: kind === 'offer' ? 'Set a meetup' : 'Make an Offer', exact: true }).click()
+        const note = page.getByRole('textbox', { name: 'Add a note (optional)' })
+        await note.fill('Different composer draft')
+        f.release()
+        await expect.poll(() => f.rows.length).toBe(1)
+        await expect(page.locator(kind === 'offer' ? '.offer-card' : '.meetup-card')).toHaveCount(1)
+        await expect(page.getByRole('dialog')).toBeVisible()
+        await expect(note).toBeFocused()
+        await expect(note).toHaveValue('Different composer draft')
+        expect(f.requests).toHaveLength(1)
+      })
+
+      test('a rejected send restores the original form for one deliberate retry', async ({ page }) => {
+        const f = await fixture(page)
+        f.reject(true)
+        await openProposal(page)
+        const send = page.getByRole('button', { name: submit, exact: true })
+        await send.click()
+        await expect.poll(() => f.requests.length).toBe(1)
+        await expect(send).toHaveAttribute('aria-disabled', 'true')
+        await expect(page.getByRole('textbox', { name: 'Add a note (optional)' })).not.toBeEditable()
+        f.release()
+        await expect(send).toHaveAttribute('aria-disabled', 'false')
+        await expect(page.getByRole('textbox', { name: 'Add a note (optional)' })).toHaveValue('Original proposal')
+        f.reject(false)
+        await page.getByRole('textbox', { name: 'Add a note (optional)' }).fill('Corrected proposal')
+        await send.click()
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+        await expect.poll(() => f.requests.length).toBe(2)
+        expect(f.rows).toHaveLength(1)
+        expect(f.rows[0].note).toBe('Corrected proposal')
+      })
+
+      test('a failed refresh after a successful send does not invite resubmission', async ({ page }) => {
+        const f = await fixture(page)
+        f.failRefresh(true)
+        await openProposal(page)
+        await page.getByRole('button', { name: submit, exact: true }).click()
+        await expect.poll(() => f.requests.length).toBe(1)
+        f.release()
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+        await expect(page.locator('.uni-simple-toast__text')).toHaveText('Sent. The conversation will update when the connection recovers.')
+        f.failRefresh(false)
+        await page.evaluate(() => window.dispatchEvent(new Event('online')))
+        await expect(page.locator(kind === 'offer' ? '.offer-card' : '.meetup-card')).toHaveCount(1)
+        expect(f.requests).toHaveLength(1)
+        expect(f.rows).toHaveLength(1)
+      })
+    })
+  }
+}
+
 test('returning to the foreground reconciles messages and listing status without losing a draft', async ({ page }) => {
   const fixture = await seedMarketplace(page)
   let releaseOffers!: () => void

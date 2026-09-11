@@ -765,6 +765,7 @@ const en: Record<string, string> = {
   'msg.actionFailed': 'Action failed',
 
   'chat.sending': 'Sending...',
+  'chat.sentRefreshPending': 'Sent. The conversation will update when the connection recovers.',
   'chat.sendFailed': 'Failed - tap to retry',
   'chat.read': 'Read',
   'chat.unread': 'Unread',

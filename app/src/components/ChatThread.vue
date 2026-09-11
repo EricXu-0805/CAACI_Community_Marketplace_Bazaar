@@ -350,14 +350,14 @@
       <text v-if="itemInfo" class="os-ref">{{ localize(itemInfo.title_i18n, itemInfo.title) }} · {{ t('chat.offerListPrice') }} {{ listingPriceLabel(itemInfo, t) }}</text>
       <view class="os-input-row">
         <text class="os-dollar">$</text>
-        <input v-model="offerPriceInput" type="digit" class="os-input" :placeholder="t('chat.offerPricePh')" :aria-label="t('chat.offerPricePh')" />
+        <input v-model="offerPriceInput" :disabled="offerSheetBusy" type="digit" class="os-input" :placeholder="t('chat.offerPricePh')" :aria-label="t('chat.offerPricePh')" />
       </view>
       <scroll-view v-if="quickAmounts.length" scroll-x class="os-quick">
-        <view v-for="a in quickAmounts" :key="a" class="os-quick-chip" role="button" :aria-label="'$' + a" :aria-pressed="offerPriceInput === String(a) ? 'true' : 'false'" @click="offerPriceInput = String(a)">
+        <view v-for="a in quickAmounts" :key="a" class="os-quick-chip" role="button" :aria-disabled="offerSheetBusy" :aria-label="'$' + a" :aria-pressed="offerPriceInput === String(a) ? 'true' : 'false'" @click="!offerSheetBusy && (offerPriceInput = String(a))">
           <text class="os-quick-chip-label">${{ a }}</text>
         </view>
       </scroll-view>
-      <input v-model="offerNoteInput" class="os-note" :placeholder="t('chat.offerNotePh')" :aria-label="t('chat.offerNotePh')" maxlength="300" />
+      <input v-model="offerNoteInput" :disabled="offerSheetBusy" class="os-note" :placeholder="t('chat.offerNotePh')" :aria-label="t('chat.offerNotePh')" maxlength="300" />
       <view
         :class="['os-submit', { disabled: !Number(offerPriceInput) || offerSubmitting }]"
         role="button"
@@ -365,7 +365,7 @@
         :aria-disabled="!Number(offerPriceInput) || offerSubmitting"
         @click="submitOfferSheet"
       >
-        <text class="os-submit-label">{{ offerSheet.mode === 'counter' ? t('chat.offerSendCounter') : t('chat.offerSend') }}</text>
+        <text class="os-submit-label">{{ offerSubmitting ? t('chat.sending') : offerSheet.mode === 'counter' ? t('chat.offerSendCounter') : t('chat.offerSend') }}</text>
       </view>
       <text class="os-expiry-hint">{{ t('chat.offerExpiry') }}</text>
     </view>
@@ -393,9 +393,10 @@
           :key="s.id"
           :class="['os-quick-chip', { on: meetupSpotInput === (lang === 'zh' ? s.zh : s.en) }]"
           role="button"
+          :aria-disabled="meetupSheetBusy"
           :aria-label="lang === 'zh' ? s.zh : s.en"
           :aria-pressed="meetupSpotInput === (lang === 'zh' ? s.zh : s.en) ? 'true' : 'false'"
-          @click="meetupSpotInput = (lang === 'zh' ? s.zh : s.en)"
+          @click="!meetupSheetBusy && (meetupSpotInput = (lang === 'zh' ? s.zh : s.en))"
         >
           <text class="os-quick-chip-label">{{ lang === 'zh' ? s.zh : s.en }}</text>
         </view>
@@ -403,17 +404,17 @@
       <!-- Free-text spot (#6d): chips are quick-fills; a custom value just
            leaves all chips unhighlighted. Kept ABOVE the date/time pickers so
            neither text field sits under uni's lingering picker overlay (#6b). -->
-      <input v-model="meetupSpotInput" class="os-note mt-spot-input" :placeholder="t('chat.meetupSpotPh')" :aria-label="t('chat.meetupSpotPh')" maxlength="60" :adjust-position="false" />
-      <input v-model="meetupNoteInput" class="os-note" :placeholder="t('chat.offerNotePh')" :aria-label="t('chat.offerNotePh')" maxlength="300" :adjust-position="false" />
+      <input v-model="meetupSpotInput" :disabled="meetupSheetBusy" class="os-note mt-spot-input" :placeholder="t('chat.meetupSpotPh')" :aria-label="t('chat.meetupSpotPh')" maxlength="60" :adjust-position="false" />
+      <input v-model="meetupNoteInput" :disabled="meetupSheetBusy" class="os-note" :placeholder="t('chat.offerNotePh')" :aria-label="t('chat.offerNotePh')" maxlength="300" :adjust-position="false" />
       <view class="mt-row">
         <view class="mt-cell">
-          <picker mode="date" :value="meetupDateInput" :start="todayStr" :end="maxDateStr" @change="meetupDateInput = $event.detail.value">
-            <view class="mt-picker" role="button" :aria-label="t('chat.meetupPickDate')"><text class="mt-picker-label">{{ meetupDateInput || t('chat.meetupPickDate') }}</text></view>
+          <picker mode="date" :disabled="meetupSheetBusy" :value="meetupDateInput" :start="todayStr" :end="maxDateStr" @change="!meetupSheetBusy && (meetupDateInput = $event.detail.value)">
+            <view class="mt-picker" role="button" :aria-disabled="meetupSheetBusy" :aria-label="t('chat.meetupPickDate')"><text class="mt-picker-label">{{ meetupDateInput || t('chat.meetupPickDate') }}</text></view>
           </picker>
         </view>
         <view class="mt-cell">
-          <picker mode="time" :value="meetupTimeInput" @change="meetupTimeInput = $event.detail.value">
-            <view class="mt-picker" role="button" :aria-label="t('chat.meetupPickTime')"><text class="mt-picker-label">{{ meetupTimeInput || t('chat.meetupPickTime') }}</text></view>
+          <picker mode="time" :disabled="meetupSheetBusy" :value="meetupTimeInput" @change="!meetupSheetBusy && (meetupTimeInput = $event.detail.value)">
+            <view class="mt-picker" role="button" :aria-disabled="meetupSheetBusy" :aria-label="t('chat.meetupPickTime')"><text class="mt-picker-label">{{ meetupTimeInput || t('chat.meetupPickTime') }}</text></view>
           </picker>
         </view>
       </view>
@@ -425,7 +426,7 @@
         :aria-disabled="!meetupSpotInput || !meetupDateInput || !meetupTimeInput || meetupSubmitting"
         @click="submitMeetupSheet"
       >
-        <text class="os-submit-label">{{ meetupSheet.mode !== 'new' ? t('chat.meetupSendReschedule') : t('chat.meetupSend') }}</text>
+        <text class="os-submit-label">{{ meetupSubmitting ? t('chat.sending') : meetupSheet.mode !== 'new' ? t('chat.meetupSendReschedule') : t('chat.meetupSend') }}</text>
       </view>
       <text class="os-expiry-hint">{{ t('chat.meetupExpiry') }}</text>
     </view>
@@ -434,7 +435,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, shallowRef, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useAuth } from '../composables/useAuth'
 import { readChatDraft, writeChatDraft } from '../composables/chatDrafts'
 import { useTheme } from '../composables/useTheme'
@@ -1791,6 +1792,8 @@ const offerSheet = ref<{ open: boolean; mode: 'new' | 'counter'; targetId: strin
 const offerPriceInput = ref('')
 const offerNoteInput = ref('')
 const offerSubmitting = ref(false)
+const offerPendingSheet = shallowRef<object | null>(null)
+const offerSheetBusy = computed(() => offerSubmitting.value && offerPendingSheet.value === offerSheet.value)
 const quickAmounts = computed<number[]>(() => {
   const p = itemInfo.value?.price || 0
   if (!p || p <= 0) return []
@@ -1822,6 +1825,8 @@ async function submitOfferSheet() {
   if (!conversationId.value || !price || price <= 0 || offerSubmitting.value) return
   const actionEpoch = threadEpoch
   const actionConversationId = conversationId.value
+  const actionSheet = offerSheet.value
+  offerPendingSheet.value = actionSheet
   offerSubmitting.value = true
   try {
     if (offerSheet.value.mode === 'counter' && offerSheet.value.targetId) {
@@ -1830,10 +1835,14 @@ async function submitOfferSheet() {
       await makeOffer(conversationId.value, price, offerNoteInput.value)
     }
     if (!isThreadEpochCurrent(actionEpoch)) return
-    await fetchOffers(actionConversationId)
-    if (!isThreadEpochCurrent(actionEpoch)) return
-    closeOfferSheet()
-    nextTick(() => scrollToBottom())
+    // A closed/reopened composer owns a new draft, even in the same thread.
+    if (offerSheet.value === actionSheet && actionSheet.open) {
+      closeOfferSheet()
+    }
+    await refreshSentProposal(() => fetchOffers(actionConversationId), actionEpoch, 'offer')
+    if (isThreadEpochCurrent(actionEpoch) && offerSheet.value === actionSheet && !offerSheet.value.open && !meetupSheet.value.open) {
+      nextTick(() => scrollToBottom())
+    }
   } catch (err: any) {
     if (!isThreadEpochCurrent(actionEpoch)) return
     captureException(err, { tags: { source: 'chat.offer' } })
@@ -1841,6 +1850,17 @@ async function submitOfferSheet() {
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
   } finally {
     if (actionEpoch === threadEpoch) offerSubmitting.value = false
+  }
+}
+// The write has already succeeded. A failed follow-up read must not turn it
+// into a send failure or leave the submitted form available for a duplicate.
+async function refreshSentProposal(refresh: () => Promise<unknown>, actionEpoch: number, kind: 'offer' | 'meetup') {
+  try {
+    await refresh()
+  } catch (error) {
+    if (!isThreadEpochCurrent(actionEpoch)) return
+    captureException(error, { tags: { source: `chat.${kind}.refresh_after_send` } })
+    uni.showToast({ title: t('chat.sentRefreshPending'), icon: 'none', duration: 3500 })
   }
 }
 async function acceptOffer(o: Offer) { await respondOffer(o, 'accept') }
@@ -1910,6 +1930,8 @@ const meetupDateInput = ref('')
 const meetupTimeInput = ref('')
 const meetupNoteInput = ref('')
 const meetupSubmitting = ref(false)
+const meetupPendingSheet = shallowRef<object | null>(null)
+const meetupSheetBusy = computed(() => meetupSubmitting.value && meetupPendingSheet.value === meetupSheet.value)
 
 function resetMeetupSheet() {
   meetupSpotInput.value = ''
@@ -1984,6 +2006,8 @@ async function submitMeetupSheet() {
     uni.showToast({ title: t('chat.meetupPast'), icon: 'none' })
     return
   }
+  const actionSheet = meetupSheet.value
+  meetupPendingSheet.value = actionSheet
   meetupSubmitting.value = true
   try {
     if (meetupSheet.value.mode === 'reschedule' && meetupSheet.value.targetId) {
@@ -1994,10 +2018,13 @@ async function submitMeetupSheet() {
       await proposeMeetup(conversationId.value, meetupSpotInput.value, iso, meetupNoteInput.value)
     }
     if (!isThreadEpochCurrent(actionEpoch)) return
-    await fetchMeetups(actionConversationId)
-    if (!isThreadEpochCurrent(actionEpoch)) return
-    closeMeetupSheet()
-    nextTick(() => scrollToBottom())
+    if (meetupSheet.value === actionSheet && actionSheet.open) {
+      closeMeetupSheet()
+    }
+    await refreshSentProposal(() => fetchMeetups(actionConversationId), actionEpoch, 'meetup')
+    if (isThreadEpochCurrent(actionEpoch) && meetupSheet.value === actionSheet && !meetupSheet.value.open && !offerSheet.value.open) {
+      nextTick(() => scrollToBottom())
+    }
   } catch (err: any) {
     if (!isThreadEpochCurrent(actionEpoch)) return
     captureException(err, { tags: { source: 'chat.meetup' } })
