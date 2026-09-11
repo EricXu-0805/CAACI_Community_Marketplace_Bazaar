@@ -20,7 +20,7 @@
       <text class="auth-check-text">{{ t('login.wait') }}</text>
     </view>
 
-    <view v-if="publishReady" class="form">
+    <view v-if="publishReady" class="form" :aria-busy="submitting ? 'true' : 'false'">
       <view v-if="publishOutcomeUncertain && !submitting" class="recovery-notice" role="status">
         {{ t('publish.recoveryNotice') }}
       </view>
@@ -28,19 +28,19 @@
       <view class="listing-type-seg" role="group" :aria-label="t('publish.title')">
         <view
           :class="['lt-seg', 'u-press', { on: form.listingType === 'sell' }]"
-          role="button"
+          role="button" :aria-disabled="submitting ? 'true' : 'false'"
           :aria-label="t('publish.typeSell')"
           :aria-pressed="form.listingType === 'sell' ? 'true' : 'false'"
-          @click="form.listingType = 'sell'"
+          @click="!submitting && (form.listingType = 'sell')"
         >
           <text class="lt-seg-label">{{ t('publish.typeSell') }}</text>
         </view>
         <view
           :class="['lt-seg', 'u-press', { on: form.listingType === 'wanted' }]"
-          role="button"
+          role="button" :aria-disabled="submitting ? 'true' : 'false'"
           :aria-label="t('publish.typeWanted')"
           :aria-pressed="form.listingType === 'wanted' ? 'true' : 'false'"
-          @click="form.listingType = 'wanted'"
+          @click="!submitting && (form.listingType = 'wanted')"
         >
           <text class="lt-seg-label">{{ t('publish.typeWanted') }}</text>
         </view>
@@ -50,7 +50,7 @@
         <view class="image-list">
           <view v-for="(img, i) in imageList" :key="i" class="image-item">
             <image :src="img" alt="Photo" mode="aspectFill" class="preview-image" />
-            <view class="remove-btn" role="button" :aria-label="t('a11y.delete')" @click="removeImage(i)">
+            <view class="remove-btn" role="button" :aria-disabled="submitting ? 'true' : 'false'" :aria-label="t('a11y.delete')" @click="removeImage(i)">
               <UIcon name="close" size="xs" color="#FFFFFF" aria-hidden="true" />
             </view>
             <view v-if="i > 0" class="cover-select" role="button" :aria-label="t('publish.makeCoverPhoto', { n: i + 1 })" :aria-disabled="submitting ? 'true' : 'false'" @click="makeCover(i)">
@@ -60,7 +60,7 @@
               <text class="cover-tag-label">{{ t('publish.cover') }}</text>
             </view>
           </view>
-          <view v-if="imageList.length < 9" class="image-add" role="button" :aria-label="t('publish.addPhoto')" @click="chooseImage">
+          <view v-if="imageList.length < 9" class="image-add" role="button" :aria-disabled="submitting ? 'true' : 'false'" :aria-label="t('publish.addPhoto')" @click="chooseImage">
             <UIcon name="plus" size="sm" color="text-faint" />
             <text class="add-text">{{ t('publish.addPhoto') }}</text>
             <text class="add-count">{{ imageList.length }}/9</text>
@@ -78,12 +78,12 @@
       </view>
 
       <view class="form-group">
-        <input v-model="form.title" :placeholder="form.listingType === 'wanted' ? t('publish.wantedTitlePlaceholder') : t('publish.titlePlaceholder')" :aria-label="form.listingType === 'wanted' ? t('publish.wantedTitlePlaceholder') : t('publish.titlePlaceholder')" maxlength="50" class="form-input title-input" @focus="onFieldFocus" @blur="onFieldBlur" />
+        <input :disabled="submitting" v-model="form.title" :placeholder="form.listingType === 'wanted' ? t('publish.wantedTitlePlaceholder') : t('publish.titlePlaceholder')" :aria-label="form.listingType === 'wanted' ? t('publish.wantedTitlePlaceholder') : t('publish.titlePlaceholder')" maxlength="50" class="form-input title-input" @focus="onFieldFocus" @blur="onFieldBlur" />
         <text class="char-count">{{ form.title.length }}/50</text>
       </view>
 
       <view class="form-group">
-        <textarea v-model="form.description" :placeholder="t('publish.descPlaceholder')" :aria-label="t('publish.descPlaceholder')" maxlength="500" class="form-textarea" @focus="onFieldFocus" @blur="onFieldBlur" />
+        <textarea :disabled="submitting" v-model="form.description" :placeholder="t('publish.descPlaceholder')" :aria-label="t('publish.descPlaceholder')" maxlength="500" class="form-textarea" @focus="onFieldFocus" @blur="onFieldBlur" />
         <text class="field-guidance">{{ t('publish.guide.' + (form.listingType === 'wanted' ? 'wanted' : form.category || 'general')) }}</text>
         <text class="char-count">{{ form.description.length }}/500</text>
       </view>
@@ -92,7 +92,7 @@
         <text class="label">{{ form.listingType === 'wanted' ? t('publish.budget') : t('publish.price') }}</text>
         <view class="price-input">
           <text class="currency">$</text>
-          <input v-model="form.price" type="digit" :placeholder="form.listingType === 'wanted' ? t('publish.budgetPlaceholder') : '0.00'" :aria-label="form.listingType === 'wanted' ? t('publish.budget') : t('publish.price')" class="form-input" @focus="onFieldFocus" @blur="onFieldBlur" />
+          <input :disabled="submitting" v-model="form.price" type="digit" :placeholder="form.listingType === 'wanted' ? t('publish.budgetPlaceholder') : '0.00'" :aria-label="form.listingType === 'wanted' ? t('publish.budget') : t('publish.price')" class="form-input" @focus="onFieldFocus" @blur="onFieldBlur" />
         </view>
       </view>
 
@@ -104,11 +104,11 @@
       <view class="form-group">
         <view
           class="field-header"
-          role="button"
+          role="button" :aria-disabled="submitting ? 'true' : 'false'"
           :aria-label="t('publish.category')"
           :aria-expanded="showCat ? 'true' : 'false'"
           aria-controls="publish-category-options"
-          @click="showCat = !showCat"
+          @click="!submitting && (showCat = !showCat)"
         >
           <text class="label">{{ t('publish.category') }}</text>
           <text :class="['field-value', { placeholder: !form.category }]">
@@ -121,7 +121,7 @@
             v-for="cat in categoryKeys"
             :key="cat"
             :class="['sel-pill', { active: form.category === cat }]"
-            role="button"
+            role="button" :aria-disabled="submitting ? 'true' : 'false'"
             :aria-label="t('cat.' + cat)"
             :aria-pressed="form.category === cat ? 'true' : 'false'"
             @click="onCategoryTap(cat)"
@@ -136,11 +136,11 @@
       <view v-if="form.listingType !== 'wanted' && !hasCategoryDetails(form.category)" class="form-group">
         <view
           class="field-header"
-          role="button"
+          role="button" :aria-disabled="submitting ? 'true' : 'false'"
           :aria-label="t('publish.condition')"
           :aria-expanded="showCond ? 'true' : 'false'"
           aria-controls="publish-condition-options"
-          @click="showCond = !showCond"
+          @click="!submitting && (showCond = !showCond)"
         >
           <text class="label">{{ t('publish.condition') }}</text>
           <text :class="['field-value', { placeholder: !form.condition }]">
@@ -153,7 +153,7 @@
             v-for="cond in conditionKeys"
             :key="cond"
             :class="['sel-pill cond-pill', { active: form.condition === cond }]"
-            role="button"
+            role="button" :aria-disabled="submitting ? 'true' : 'false'"
             :aria-label="t('condition.' + cond)"
             :aria-pressed="form.condition === cond ? 'true' : 'false'"
             @click="onConditionTap(cond)"
@@ -169,7 +169,7 @@
 
       <view class="form-group row">
         <text class="label">{{ t('publish.location') }}</text>
-        <input v-model="form.location" :placeholder="t('publish.locationPlaceholder')" :aria-label="t('publish.location')" maxlength="80" class="form-input flex-input" @focus="onFieldFocus" @blur="onFieldBlur" />
+        <input :disabled="submitting" v-model="form.location" :placeholder="t('publish.locationPlaceholder')" :aria-label="t('publish.location')" maxlength="80" class="form-input flex-input" @focus="onFieldFocus" @blur="onFieldBlur" />
       </view>
 
       <text class="location-guidance">{{ t('publish.locationHint') }}</text>
@@ -180,7 +180,7 @@
           :key="spot.id"
           class="spot-chip"
           :class="{ active: form.location === spotLabel(spot) }"
-          role="button"
+          role="button" :aria-disabled="submitting ? 'true' : 'false'"
           :aria-label="spotLabel(spot)"
           :aria-pressed="form.location === spotLabel(spot) ? 'true' : 'false'"
           @click="onSpotChipTap(spot)"
@@ -199,7 +199,7 @@
       <view
         class="locate-btn"
         :class="{ 'locate-btn--detecting': detectingLoc }"
-        role="button"
+        role="button" :aria-disabled="submitting ? 'true' : 'false'"
         :aria-label="t('a11y.detectLocation')"
         :aria-busy="detectingLoc ? 'true' : 'false'"
         @click="!detectingLoc && onDetectLocation()"
@@ -213,10 +213,10 @@
 
       <view
         class="form-group row toggle-row"
-        role="button"
+        role="button" :aria-disabled="submitting ? 'true' : 'false'"
         :aria-label="t('publish.obo')"
         :aria-pressed="form.negotiable ? 'true' : 'false'"
-        @click="form.negotiable = !form.negotiable"
+        @click="!submitting && (form.negotiable = !form.negotiable)"
       >
         <text class="label">{{ t('publish.obo') }}</text>
         <text class="toggle-hint">{{ t('publish.oboHint') }}</text>
@@ -243,6 +243,7 @@
 </template>
 
 <script setup lang="ts">
+import { mergeListingImages } from '../../utils/listingImages'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 // #ifndef H5
@@ -412,12 +413,14 @@ const permissionModalVisible = ref(false)
  * user immediately sees the field returning to its placeholder state.
  */
 function onCategoryTap(cat: ItemCategory) {
+  if (submitting.value) return
   form.category = form.category === cat ? '' : cat
   form.details = emptyListingDetailForm()
   if (hasCategoryDetails(form.category)) form.condition = ''
   showCat.value = false
 }
 function onConditionTap(cond: string) {
+  if (submitting.value) return
   form.condition = (form.condition === cond ? '' : cond) as ItemCondition | ''
   showCond.value = false
 }
@@ -798,6 +801,7 @@ onUnload(() => {
 onUnmounted(destroyPublishPage)
 
 function chooseImage() {
+  if (submitting.value) return
   const pickerAccountToken = publishPageAccountToken
   if (!pickerAccountToken || !isAccountRequestCurrent(pickerAccountToken)) return
   const remaining = MAX_IMAGES_PUBLISH - imageList.value.length
@@ -810,6 +814,7 @@ function chooseImage() {
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
     success: (res) => {
+      if (submitting.value) return
       if (
         !publishReady.value
         || publishPageAccountToken !== pickerAccountToken
@@ -843,13 +848,16 @@ function makeCover(index: number) {
 }
 
 function removeImage(index: number) {
+  if (submitting.value) return
   imageList.value.splice(index, 1)
 }
 
 async function onDetectLocation() {
+  if (submitting.value) return
   const locationAccountToken = publishPageAccountToken
   if (!locationAccountToken || !isAccountRequestCurrent(locationAccountToken)) return
   const result = await detectLocation()
+  if (submitting.value) return
   if (
     !publishReady.value
     || publishPageAccountToken !== locationAccountToken
@@ -886,6 +894,7 @@ async function onDetectLocation() {
 }
 
 function onSpotChipTap(spot: CampusSpot) {
+  if (submitting.value) return
   const label = spotLabel(spot)
   form.location = label
 }
@@ -989,14 +998,10 @@ async function onSubmit() {
   let submittedImages: string[] | null = null
   const originalImages = [...imageList.value]
   try {
-    const existing: string[] = []
-    const toUpload: string[] = []
-    for (const img of imageList.value) {
-      if (img.startsWith('http')) existing.push(img)
-      else toUpload.push(img)
-    }
+    const toUpload = originalImages.filter(img => !img.startsWith('http'))
     let uploaded: string[] = []
     let uploadedDims: Array<{ w: number; h: number }> = []
+    let uploadedSourceIndices: number[] = []
     if (toUpload.length > 0) {
       try {
         const res = await uploadImagesWithDims(toUpload, {
@@ -1006,6 +1011,7 @@ async function onSubmit() {
         uploaded = res.urls
         uploadedForCleanup = [...res.urls]
         uploadedDims = res.dims
+        uploadedSourceIndices = res.sourceIndices
         uploadAccountToken = res.accountToken
         if (
           res.accountToken.userId !== submitAccountToken.userId
@@ -1038,22 +1044,9 @@ async function onSubmit() {
       }
     }
 
-    const images = [...existing, ...uploaded]
-    /*
-     * image_dimensions covers ONLY the newly uploaded images in this
-     * call; pre-existing URLs (edit flow) don't get dimensions because
-     * we can't reliably measure arbitrary remote URLs client-side, and
-     * neither can a photo whose measurement failed. Those slots carry
-     * { w: 0, h: 0 }, which readers render as "unknown" and fall back
-     * to @load for. Dropping them instead left the array shorter than
-     * images[], and the write guard rejects an array that doesn't line
-     * up one-to-one — one unmeasurable photo failed the whole publish.
-     */
-    const unknownDim = { w: 0, h: 0 }
-    const finalDims = [
-      ...existing.map(() => unknownDim),
-      ...uploadedDims.map(d => (d && d.w > 0 && d.h > 0 ? d : unknownDim)),
-    ]
+    const { images, imageDimensions: finalDims } = mergeListingImages(originalImages, [], {
+      urls: uploaded, dims: uploadedDims, sourceIndices: uploadedSourceIndices,
+    })
 
     const trimmedTitle = form.title.trim()
     const trimmedDesc = form.description.trim()
@@ -1189,6 +1182,9 @@ async function onSubmit() {
 </script>
 
 <style lang="scss" scoped>
+/* #ifdef H5 */
+.form [aria-disabled="true"] { cursor: wait; opacity: 0.65; }
+/* #endif */
 .recovery-notice { padding: 14px; margin-bottom: 16px; border: 1px solid currentColor; border-radius: 12px; font-size: 14px; line-height: 1.6; }
 .page {
   min-height: 100vh; background: var(--bg-subtle);

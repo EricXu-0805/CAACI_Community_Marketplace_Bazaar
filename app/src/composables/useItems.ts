@@ -71,6 +71,8 @@ export type UploadAccountToken = AccountRequestToken
 export interface UploadBatchResult {
   urls: string[]
   dims: Array<{ w: number; h: number }>
+  /** Original positions in tempFiles; failures must not shift later photos. */
+  sourceIndices: number[]
   /** Identity + generation that owned every object in this upload batch. */
   accountToken: UploadAccountToken
 }
@@ -789,6 +791,7 @@ export function useItems() {
     if (tempFiles.length > MAX_IMAGES) throw new Error('Too many files')
     const urls: string[] = []
     const dims: Array<{ w: number; h: number }> = []
+    const sourceIndices: number[] = []
 
     const entryUserId = getActiveAccountId()
     const accountToken = options?.accountToken
@@ -798,7 +801,7 @@ export function useItems() {
     if (!session?.user) throw new Error('Not authenticated')
     assertAccountCurrent(accountToken, session.user.id)
 
-    for (const filePath of tempFiles) {
+    for (const [sourceIndex, filePath] of tempFiles.entries()) {
       const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`
       const storagePath = `items/${session.user.id}/${fileName}`
       const candidateUrl = supabase.storage.from('item-images').getPublicUrl(storagePath).data.publicUrl
@@ -892,6 +895,7 @@ export function useItems() {
           assertAccountCurrent(accountToken, session.user.id)
           urls.push(candidateUrl)
           dims.push(naturalDims)
+          sourceIndices.push(sourceIndex)
         } else {
           // A transport can report failure after Storage accepted the bytes.
           // No item/message references this candidate yet, so removal is safe.
@@ -937,7 +941,7 @@ export function useItems() {
       throw error
     }
 
-    return { urls, dims, accountToken }
+    return { urls, dims, sourceIndices, accountToken }
   }
 
   async function uploadImages(

@@ -25,7 +25,7 @@ test('upload batches carry their account generation into item mutations', () => 
 
   assert.match(items, /interface UploadBatchResult[\s\S]*accountToken: UploadAccountToken/)
   assert.match(items, /const accountToken = options\?\.accountToken[\s\S]*captureAccountRequest\(entryUserId\)[\s\S]*await supabase\.auth\.getSession\(\)/)
-  assert.match(items, /return \{ urls, dims, accountToken \}/)
+  assert.match(items, /return \{[^}]*\baccountToken\s*[,}]/)
 
   assert.match(publish, /uploadAccountToken = res\.accountToken/)
   // The property is that the upload batch's token reaches the mutation, not

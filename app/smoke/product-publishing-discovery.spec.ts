@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { readFileSync } from 'node:fs'
 import { CURRENT_CONSENT_VERSION } from '../src/legal'
 import { supabaseRefForBuild } from './supabase-ref'
 import { CAMPUS_LOCATION_TERMS, matchesListingLocation } from '../src/utils/listingLocation'
@@ -9,6 +10,7 @@ const profile={id:UID,nickname:'Demo student',avatar_url:null,bio:'',tos_version
 const png=Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c636000000200010005fe02fea70000000049454e44ae426082','hex')
 const photos=['front','back'].map(n=>`https://${REF}.supabase.co/storage/v1/object/public/item-images/items/${UID}/${n}.png`)
 const dims=[{w:640,h:480},{w:480,h:640}]
+const coverPhoto=readFileSync('src/static/banner-welcome.png')
 const base={id:'22222222-2222-4222-8222-000000000001',user_id:UID,title:'Desk lamp warm white',description:'Adjustable desk lamp. Pickup after class.',title_i18n:{en:'Desk lamp warm white'},description_i18n:null,source_lang:'en',price:25,category:'electronics',condition:'good',status:'active',listing_type:'sell',location:'Illini Union',images:photos,image_dimensions:dims,location_verified:false,created_at:'2026-09-05T10:00:00Z',updated_at:'2026-09-05T10:00:00Z',view_count:0,favorite_count:0,negotiable:false,profile}
 async function fixture(page:Page, overrides:Record<string,unknown>={}){
  const requests:{url:URL;body:any;method:string}[]=[]
@@ -23,7 +25,12 @@ async function fixture(page:Page, overrides:Record<string,unknown>={}){
   if(/\/(get_my_profile|get_public_profile)$/.test(url.pathname))return send(profile)
   if(url.pathname==='/rest/v1/profiles')return send(req.headers().accept?.includes('vnd.pgrst.object')?profile:[profile])
   if(url.pathname==='/rest/v1/items'){
-   if(['POST','PATCH'].includes(req.method()))return send({...base,...body,updated_at:'2026-09-05T11:00:00Z'})
+   if(['POST','PATCH'].includes(req.method())){
+    const saved={...base,...body,updated_at:'2026-09-05T11:00:00Z'}
+    const index=rows.findIndex(row=>row.id===saved.id)
+    if(index<0)rows.unshift(saved);else rows[index]=saved
+    return send(saved)
+   }
    let found=rows
    for(const field of ['id','user_id','category','condition','listing_type']){const v=url.searchParams.get(field);if(v?.startsWith('eq.'))found=found.filter(i=>String(i[field as keyof typeof base])===v.slice(3));if(v?.startsWith('neq.'))found=found.filter(i=>String(i[field as keyof typeof base])!==v.slice(4))}
    for(const v of url.searchParams.getAll('price'))if(v.startsWith('lte.'))found=found.filter(i=>i.price<=Number(v.slice(4)))
@@ -166,6 +173,113 @@ test('new listing can choose a cover without deleting other photos',async({page}
  await page.getByRole('button',{name:'Use photo 2 as cover',exact:true}).click()
  await expect.poll(()=>page.locator('.preview-image img').evaluateAll(els=>els.map(el=>(el as HTMLImageElement).src))).toEqual([sources[1],sources[0]])
 })
+
+for(const [device,width,height] of [['phone',390,844],['ipad',820,1180]] as const){
+ test(`${device}: publishing retry keeps a newly selected cover before durable draft photos`,async({page})=>{
+  await page.setViewportSize({width,height});await fixture(page)
+  const uploaded:string[]=[]
+  const writes:any[]=[]
+  await page.route('**/storage/v1/object/item-images/**',async route=>{
+   if(route.request().method()!=='POST')return route.fallback()
+   uploaded.push(route.request().url().replace('/object/','/object/public/'))
+   return route.fulfill({contentType:'application/json',body:'{"Key":"synthetic"}'})
+  })
+  await page.route('**/rest/v1/items?**',async route=>{
+   if(route.request().method()==='POST'){
+    writes.push(route.request().postDataJSON())
+    if(writes.length===1)return route.abort('connectionreset')
+    return route.fulfill({contentType:'application/json',body:JSON.stringify({...base,...writes[1]})})
+   }
+   return route.fulfill({contentType:'application/json',body:JSON.stringify(writes.length>1?{...base,...writes[1]}:null)})
+  })
+  await page.goto('/#/pages/publish/index')
+  await page.getByRole('textbox',{name:'Title (required)',exact:true}).fill('Desk for a small dorm room')
+  await page.getByRole('spinbutton',{name:'Price',exact:true}).fill('75')
+  await page.getByRole('button',{name:'Category',exact:true}).click();await page.getByRole('button',{name:'Furniture',exact:true}).click()
+  await page.getByRole('button',{name:'Condition',exact:true}).click();await page.getByRole('button',{name:'Good',exact:true}).click()
+  for(let attempt=0;attempt<2;attempt++){
+   const chooser=page.waitForEvent('filechooser');await page.getByRole('button',{name:'Add Photo',exact:true}).click()
+   await(await chooser).setFiles({name:`cover-${attempt}.png`,mimeType:'image/png',buffer:coverPhoto})
+   await expect(page.locator('.image-item')).toHaveCount(attempt+1)
+   if(attempt===1)await page.getByRole('button',{name:'Use photo 2 as cover',exact:true}).click()
+   await page.getByRole('button',{name:'Post Item',exact:true}).click()
+   if(attempt===0)await expect(page.locator('.recovery-notice')).toBeVisible()
+  }
+  await expect(page).toHaveURL(/pages\/detail\/index/)
+  expect(writes).toHaveLength(2)
+  expect(writes[1].id).toBe(writes[0].id)
+  expect(writes[1].images).toEqual([uploaded[1],uploaded[0]])
+  expect(writes[1].image_dimensions).toEqual([{w:511,h:258},{w:0,h:0}])
+  await expect.poll(()=>page.locator('.swiper-img img').first().getAttribute('src')).toContain(uploaded[1].split('/public/')[1])
+ })
+ for(const failFirst of [false,true])test(`${device}: new cover keeps its place among saved photos${failFirst?' after another upload fails':''}`,async({page})=>{
+  await page.setViewportSize({width,height})
+  const requests=await fixture(page)
+  const uploaded:string[]=[]
+  let attempts=0
+  await page.route('**/storage/v1/object/item-images/**',async route=>{
+   if(route.request().method()==='DELETE')return route.fulfill({contentType:'application/json',body:'[]'})
+   if(route.request().method()!=='POST')return route.fallback()
+   attempts++
+   if(failFirst&&attempts===1)return route.fulfill({status:400,contentType:'application/json',body:'{"statusCode":"400","error":"InvalidRequest","message":"Synthetic upload failure"}'})
+   uploaded.push(route.request().url().replace('/object/','/object/public/'))
+   return route.fulfill({contentType:'application/json',body:'{"Key":"synthetic"}'})
+  })
+  await page.goto(`/#/pages/publish/edit?id=${base.id}`)
+  const chooser=page.waitForEvent('filechooser');await page.getByRole('button',{name:'Add Photo',exact:true}).click()
+  await(await chooser).setFiles(['new-cover','new-back'].map(name=>({name:name+'.png',mimeType:'image/png',buffer:coverPhoto})))
+  await expect(page.locator('.image-item')).toHaveCount(4)
+  await page.getByRole('button',{name:'Use photo 3 as cover',exact:true}).click()
+  await page.getByRole('button',{name:'Preview listing',exact:true}).click()
+  await expect(page.locator('.preview-cover img')).toHaveAttribute('src',/^blob:/)
+  await page.getByRole('button',{name:'Save Changes',exact:true}).click()
+  await expect.poll(()=>requests.filter(r=>r.method==='PATCH').length).toBe(1)
+  const edit=requests.find(r=>r.method==='PATCH')!.body
+  expect(attempts).toBe(2)
+  expect(edit.images).toEqual(failFirst?[...photos,uploaded[0]]:[uploaded[0],...photos,uploaded[1]])
+  const newDim={w:511,h:258}
+  expect(edit.image_dimensions).toEqual(failFirst?[...dims,newDim]:[newDim,...dims,newDim])
+  if(failFirst)await expect(page.locator('uni-toast')).toContainText('1 of 2')
+  await page.goto(`/#/pages/detail/index?id=${base.id}`)
+  await expect.poll(()=>page.locator('.swiper-img img').first().getAttribute('src')).toContain(edit.images[0].split('/public/')[1])
+ })
+ for(const mode of ['create','edit'] as const)test(`${device}: ${mode} keeps the form stable during an upload and unlocks after failure`,async({page})=>{
+  await page.setViewportSize({width,height})
+  const requests=await fixture(page)
+  let release!:()=>void,started=false
+  const pending=new Promise<void>(resolve=>{release=resolve})
+  await page.route('**/storage/v1/object/item-images/**',async route=>{
+   if(route.request().method()==='DELETE')return route.fulfill({contentType:'application/json',body:'[]'})
+   if(route.request().method()!=='POST')return route.fallback()
+   started=true;await pending
+   return route.fulfill({status:400,contentType:'application/json',body:'{"statusCode":"400","error":"InvalidRequest","message":"Synthetic upload failure"}'})
+  })
+  await page.goto(mode==='edit'?`/#/pages/publish/edit?id=${base.id}`:'/#/pages/publish/index')
+  if(mode==='create'){
+   await page.getByRole('textbox',{name:'Title (required)',exact:true}).fill('Desk for a small dorm room')
+   await page.getByRole('spinbutton',{name:'Price',exact:true}).fill('75')
+   await page.getByRole('button',{name:'Category',exact:true}).click();await page.getByRole('button',{name:'Furniture',exact:true}).click()
+   await page.getByRole('button',{name:'Condition',exact:true}).click();await page.getByRole('button',{name:'Good',exact:true}).click()
+  }
+  const chooser=page.waitForEvent('filechooser');await page.getByRole('button',{name:'Add Photo',exact:true}).click()
+  await(await chooser).setFiles({name:'cover.png',mimeType:'image/png',buffer:coverPhoto})
+  const price=page.getByRole('spinbutton',{name:'Price',exact:true})
+  await page.getByRole('button',{name:mode==='edit'?'Save Changes':'Post Item',exact:true}).click()
+  try{
+   await expect.poll(()=>started).toBe(true)
+   await expect(price).not.toBeEditable()
+   await expect(page.getByRole('textbox',{name:'Title (required)',exact:true})).not.toBeEditable()
+   await expect(page.getByRole('button',{name:'Add Photo',exact:true})).toBeDisabled()
+   await expect(page.getByRole('button',{name:'Delete',exact:true}).first()).toBeDisabled()
+   await expect(page.getByRole('button',{name:'Category',exact:true})).toBeDisabled()
+  }finally{release()}
+  await expect(price).toBeEditable()
+  await price.fill('55');await page.locator('.image-tip').click()
+  await expect(price).toHaveValue('55')
+  expect(requests.filter(r=>['POST','PATCH'].includes(r.method)&&r.url.pathname==='/rest/v1/items')).toHaveLength(0)
+  await expect(page.locator('.image-item')).toHaveCount(mode==='edit'?3:1)
+ })
+}
 test('reopened photo drafts explain reattachment instead of showing broken thumbnails',async({page})=>{
  await fixture(page);await page.goto('/#/pages/publish/index')
  const title=page.getByRole('textbox',{name:'Title (required)',exact:true})
