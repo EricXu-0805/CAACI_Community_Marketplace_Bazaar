@@ -56,6 +56,33 @@ async function acceptComposition(input: Locator) {
   await input.dispatchEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, isComposing: false })
 }
 
+for (const kind of ['preload', 'safari-rejection'] as const) test(`supplement: ${kind} recovers a stale page once and preserves the publishing draft`, async ({ page }) => {
+  await fixture(page); await page.goto('/#/pages/publish/index')
+  const title = page.getByRole('textbox', { name: 'Title (required)', exact: true })
+  await title.fill('Desk with a draft that must survive an update')
+  await page.locator('.image-tip').click()
+  const failChunk = () => page.evaluate(kind => {
+    const error = new TypeError(kind === 'preload'
+      ? 'Failed to fetch dynamically imported module: /assets/stale-page.js'
+      : 'Importing a module script failed.')
+    if (kind === 'preload') {
+      const event = Object.assign(new Event('vite:preloadError', { cancelable: true }), { payload: error })
+      window.dispatchEvent(event)
+    } else {
+      window.dispatchEvent(new PromiseRejectionEvent('unhandledrejection', { reason: error, promise: Promise.resolve(), cancelable: true }))
+    }
+  }, kind)
+  await Promise.all([page.waitForEvent('load', { timeout: 5000 }), failChunk()])
+  await page.getByText('Keep', { exact: true }).click()
+  await expect(title).toHaveValue('Desk with a draft that must survive an update')
+  let reloads = 0
+  page.on('framenavigated', frame => { if (frame === page.mainFrame()) reloads++ })
+  await failChunk()
+  await page.waitForTimeout(800)
+  expect(reloads, 'a persistent network/module error must not cause a reload loop').toBe(0)
+  await expect(title).toHaveValue('Desk with a draft that must survive an update')
+})
+
 for (const width of [390, 834]) test(`supplement: touch inputs remain readable at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 })
   await page.addInitScript(() => { localStorage.setItem('welcomed', '1'); localStorage.setItem('lang', 'en') })

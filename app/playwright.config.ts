@@ -43,6 +43,8 @@ export default defineConfig({
   // this, Playwright imports *.test.mjs, causing their tests to execute once as
   // module side effects and again as malformed Playwright cases.
   testMatch: '**/*.spec.ts',
+  // Missing hashed chunks only exist in the compiled-build acceptance gate.
+  testIgnore: '**/compiled-chunk-recovery.spec.ts',
   timeout: 60_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,

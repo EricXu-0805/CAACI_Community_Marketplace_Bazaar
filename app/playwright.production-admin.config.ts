@@ -4,7 +4,7 @@ import { defineConfig, devices } from '@playwright/test'
 // dev server whose global uni object can conceal a production-only failure.
 for(const key of ['HTTP_PROXY','HTTPS_PROXY','ALL_PROXY','http_proxy','https_proxy','all_proxy']) delete process.env[key]
 export default defineConfig({
-  testDir:'./smoke',testMatch:'admin-first-unlock.spec.ts',workers:1,retries:0,
+  testDir:'./smoke',testMatch:['admin-first-unlock.spec.ts','compiled-chunk-recovery.spec.ts'],workers:1,retries:0,
   timeout:30_000,expect:{timeout:10_000},reporter:'list',
   use:{baseURL:'http://localhost:5192',screenshot:process.env.CI==='true'?'off':'only-on-failure',trace:'off',video:'off'},
   projects:[

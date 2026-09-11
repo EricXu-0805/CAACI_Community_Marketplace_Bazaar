@@ -41,3 +41,11 @@
 新增测试通过浏览器触屏手势使页面放大再缩回，未通过改写 `visualViewport.scale` 伪造缩放。这仍是 Chromium 设备模拟，不代表实体 iPhone/iPad 或 Safari 输入聚焦的系统缩放已经验收。最终源码提交及本轮完整 CI 以 `output/playwright/publish-lifecycle-20260911/RELEASE_RECEIPT.md` 为准。
 
 补修后 `input-preview-supplement.spec.ts` 与 `marketplace-responsive.spec.ts` 合计 44 项通过，随后重新验证发布体验 43 项通过。修复前新增 3 项检查均失败，分别为 390px/834px 的 15px 输入字号，以及触屏捏合后仍为 1 的页面缩放。证据：`zoom-before.log`、`zoom-responsive-final.log`、`publish-post-zoom.log`。
+
+## 部署切换补查：旧标签页打不开发布页
+
+正式站点从 `5dbf252` 更新到 `ae9af08` 时，已打开的 Chrome 手机模拟标签页点击 Post，旧页面文件返回 404，屏幕停在“连接超时”。原有恢复只监听未处理的 Promise 错误；Vue 已捕获的异步页面错误不会经过该监听。现在同时接收 Vite 编译产物的 `vite:preloadError`，兼容 WebKit 的模块错误文案，并用跨刷新保留的 30 秒保护阻止重复刷新。离线或无法写入保护标记时保留原错误，正常离页机制仍保存发布、聊天草稿。
+
+两项事件回归修复前失败；补修后的输入/预览套件 13 项通过，包含恢复后保留发布草稿、第二次错误不再次刷新的断言。另将真实编译页面验收加入原有编译检查：浏览器最初收到引用旧文件名的入口，点击发布请求该文件时返回 404；刷新拿到当前入口，再恢复登录及发布意图。该流程运行在 Mac Chromium、Mac WebKit、iPad WebKit、iPhone WebKit，完全使用隔离页面和合成响应。
+
+验证中额外观察到 WebKit 会在刷新后记住同一地址的模块失败。故测试明确区分“部署使文件名改变”和“原地址持续失败”：本修复保证前者能恢复、后者不会无限刷新，不承诺自动修复服务端持续故障。未将同地址失败改写成通过，也未将人工派发事件当作真实文件加载证明。证据包括 `stale-chunk-before.log`、`input-recovery-final.log`、`compiled-unchanged-url.log`、`compiled-recovery-final.log` 和正式站点旧标签页的控制台记录。

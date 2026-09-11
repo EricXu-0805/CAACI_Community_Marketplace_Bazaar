@@ -1450,9 +1450,10 @@ onLaunch((launchOptions) => {
    * (uni-app generates one per page route) or <link rel="modulepreload">
    * fetches a path that no longer exists and rejects with one of:
    *   "Failed to fetch dynamically imported module"
+   *   "Importing a module script failed."
    *   "Unable to preload CSS for /assets/index-*.css"
    *
-   * Both are harmless if the user refreshes — the new index.html has
+   * Refreshing can recover these failures — the new index.html has
    * fresh hashes. Auto-reload turns the rejection into a brief
    * "App updated, refreshing…" toast and a window.location.reload()
    * so users don't see a broken nav. preventDefault() also stops the
@@ -1463,14 +1464,33 @@ onLaunch((launchOptions) => {
    */
   // #ifdef H5
   if (typeof window !== 'undefined') {
-    window.addEventListener('unhandledrejection', (e) => {
-      const reason: any = e?.reason
+    let chunkReloadScheduled = false
+    const recoverChunk = (reason: any): boolean => {
       const msg = String(reason?.message || reason || '')
-      if (/Failed to fetch dynamically imported module|Unable to preload CSS/i.test(msg)) {
-        e.preventDefault()
-        try { uni.showToast({ title: t('app.deployRefreshing'), icon: 'none', duration: 1200 }) } catch {}
-        setTimeout(() => { try { window.location.reload() } catch {} }, 500)
-      }
+      if (!/Failed to fetch dynamically imported module|Importing a module script failed|Unable to preload CSS/i.test(msg)) return false
+      if (chunkReloadScheduled) return true
+      if (!navigator.onLine) return false
+      // A missing chunk can also mean an outage. Persist the guard across the
+      // reload so a second failure leaves the error visible instead of looping.
+      try {
+        const now = Date.now()
+        const previous = Number(sessionStorage.getItem('caaci:chunk-reload-at') || 0)
+        if (previous > 0 && now - previous < 30_000) return false
+        sessionStorage.setItem('caaci:chunk-reload-at', String(now))
+      } catch { return false }
+      chunkReloadScheduled = true
+      try { uni.showToast({ title: t('app.deployRefreshing'), icon: 'none', duration: 1200 }) } catch {}
+      // Normal pagehide checkpoints preserve the active publish/chat drafts.
+      setTimeout(() => { try { window.location.reload() } catch {} }, 500)
+      return true
+    }
+    // Vue catches async route failures, so they need not become unhandled
+    // rejections. Vite emits this event before handing the failure to Vue.
+    window.addEventListener('vite:preloadError', (e) => {
+      if (recoverChunk((e as Event & { payload?: unknown }).payload)) e.preventDefault()
+    })
+    window.addEventListener('unhandledrejection', (e) => {
+      if (recoverChunk(e.reason)) e.preventDefault()
     })
 
     /*
