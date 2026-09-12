@@ -2,6 +2,8 @@ import { test, expect, type Page } from '@playwright/test'
 import { supabaseRefForBuild, supabaseUrlForBuild } from './supabase-ref'
 import { CURRENT_CONSENT_VERSION } from '../src/legal'
 
+test.use({ browserName: process.env.UI_AUDIT_BROWSER === 'chromium' ? 'chromium' : 'webkit' })
+
 /**
  * A failed avatar upload must not end in a green checkmark.
  *
@@ -38,7 +40,7 @@ const PNG = Buffer.from(
   'hex',
 )
 
-async function seed(page: Page, { storageFails }: { storageFails: boolean }) {
+async function seed(page: Page, { storageFails, missingAvatar = false }: { storageFails: boolean; missingAvatar?: boolean }) {
   await page.addInitScript(([ref, uid, gen]) => {
     localStorage.setItem('welcomed', '1')
     localStorage.setItem('lang', 'en')
@@ -56,6 +58,7 @@ async function seed(page: Page, { storageFails }: { storageFails: boolean }) {
       v: 2, mode: 'allowed', generation: gen,
     }))
   }, [REF, UID, GEN] as const)
+  await page.routeWebSocket(/supabase\.co/, socket => socket.close())
 
   // Narrow globs: src/api/ exists, so `**/api/**` would swallow module requests.
   await page.route('**/api/moderate*', route => route.fulfill({
@@ -67,8 +70,13 @@ async function seed(page: Page, { storageFails }: { storageFails: boolean }) {
 
   const storageStatus: number[] = []
   const profileWrites: string[] = []
+  let missingReads = 0
   await page.route(`**/${SUPABASE_HOST}/**`, async (route) => {
     const path = route.request().url().replace(/^https:\/\/[^/]+/, '')
+    if (path.endsWith('/missing-avatar.jpg')) {
+      missingReads++
+      return route.fulfill({ status:404, body:'Not found' })
+    }
     if (path.includes('/storage/v1/object')) {
       if (route.request().method() === 'POST') storageStatus.push(storageFails ? 500 : 200)
       return storageFails
@@ -81,13 +89,16 @@ async function seed(page: Page, { storageFails }: { storageFails: boolean }) {
       profileWrites.push(path)
       return route.fulfill({ status: 204, body: '' })
     }
-    const body = path.includes('/rpc/get_my_profile') ? PROFILE : []
+    const body = path.includes('/rpc/get_my_profile') ? {
+      ...PROFILE,
+      avatar_url: missingAvatar ? `https://${SUPABASE_HOST}/storage/v1/object/public/item-images/items/${UID}/missing-avatar.jpg` : null,
+    } : []
     await route.fulfill({
       status: 200, contentType: 'application/json',
       headers: { 'content-range': '0-0/1' }, body: JSON.stringify(body),
     })
   })
-  return { storageStatus, profileWrites }
+  return { storageStatus, profileWrites, missingReads: () => missingReads }
 }
 
 async function saveWithAnAvatar(page: Page) {
@@ -147,4 +158,19 @@ test('a clean save still reports success', async ({ page }) => {
   expect(await toastText(page)).not.toContain('Avatar upload failed')
   expect(storageStatus).toEqual([200])
   expect(profileWrites.length).toBe(1)
+})
+
+test('a missing stored avatar falls back and can still be replaced with a new photo',async({page})=>{
+  const {storageStatus,profileWrites,missingReads}=await seed(page,{storageFails:false,missingAvatar:true})
+  await page.goto('/#/pages/profile/edit')
+  await expect.poll(missingReads).toBeGreaterThan(0)
+  const preview=page.locator('.avatar-preview img')
+  await expect(preview).toHaveAttribute('src',/default-avatar\.svg$/)
+  await expect.poll(()=>preview.evaluate((img:HTMLImageElement)=>img.complete && img.naturalWidth>0)).toBe(true)
+  expect(storageStatus).toEqual([])
+  expect(profileWrites).toEqual([])
+  await saveWithAnAvatar(page)
+  await expect.poll(()=>toastText(page)).toContain('Saved')
+  expect(storageStatus).toEqual([200])
+  expect(profileWrites).toHaveLength(1)
 })

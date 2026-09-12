@@ -145,7 +145,7 @@ test('list avatars opt into lazy loading and raw edit previews remain isolated',
   // These two flows can contain a local temp-file preview and must not be
   // forced through the remote-storage validator before upload completes.
   for (const file of ['src/pages/onboarding/index.vue', 'src/pages/profile/edit.vue']) {
-    assert.match(source(file), /<image[\s\S]*?:src="avatarUrl \|\| defaultAvatarSrc"/)
+    assert.match(source(file), /<image[\s\S]*?:src="[^"]*avatarUrl \|\| defaultAvatarSrc[^"]*"/)
     assert.doesNotMatch(source(file), /<UAvatar/)
   }
 })

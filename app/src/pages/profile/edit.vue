@@ -22,7 +22,7 @@
 
     <view v-if="profileEditReady" class="form">
       <view class="avatar-section" role="button" :aria-label="t('editProfile.changeAvatar')" @click="onChangeAvatar">
-        <image :src="avatarUrl || defaultAvatarSrc" :alt="nickname || 'avatar'" class="avatar-preview" mode="aspectFill" />
+        <image :key="avatarUrl || defaultAvatarSrc" :src="avatarPreviewFailed ? defaultAvatarSrc : (avatarUrl || defaultAvatarSrc)" :alt="nickname || 'avatar'" class="avatar-preview" mode="aspectFill" @error="avatarPreviewFailed = true" />
         <text class="avatar-hint">{{ t('editProfile.changeAvatar') }}</text>
       </view>
 
@@ -70,7 +70,7 @@
 <script setup lang="ts">
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
-import { ref, computed, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onUnmounted, nextTick, watch } from 'vue'
 import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
@@ -132,6 +132,10 @@ const nickname = ref('')
 const bio = ref('')
 const location = ref('')
 const avatarUrl = ref('')
+const avatarPreviewFailed = ref(false)
+// A missing remote image must not blank the editor or change the saved URL.
+// Selecting another local photo starts a fresh preview and clears the fallback.
+watch(avatarUrl, () => { avatarPreviewFailed.value = false })
 const statusText = ref('')
 const statusEmoji = ref('')
 const saving = ref(false)
