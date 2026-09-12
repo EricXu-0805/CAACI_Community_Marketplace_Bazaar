@@ -578,7 +578,7 @@ async function prepareEditPage(itemId: string) {
   editReady.value = false
   const state = await awaitAuthReady()
   if (!prepareStillVisible()) return
-  if (!requireAuth() || !currentUser.value) {
+  if (!requireAuth(undefined, 'redirectTo') || !currentUser.value) {
     if (state === 'authenticated' && prepareStillVisible()) {
       showOwnedEditLoadToast(t('error.loadFailed'), 1500)
       setTimeout(() => {

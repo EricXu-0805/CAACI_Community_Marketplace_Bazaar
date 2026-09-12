@@ -707,7 +707,7 @@ async function preparePublishPage() {
   const state = await awaitAuthReady()
   if (showVersion !== publishShowVersion) return
   if (state !== 'authenticated') {
-    requireAuth()
+    requireAuth(undefined, 'reLaunch')
     return
   }
   if (!requireAuth() || !currentUser.value) return

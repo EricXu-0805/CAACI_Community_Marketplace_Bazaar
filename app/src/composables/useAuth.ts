@@ -843,7 +843,10 @@ export function useAuth() {
     }
   }
 
-  function requireAuth(returnTarget?: string) {
+  function requireAuth(
+    returnTarget?: string,
+    navigation: 'navigateTo' | 'redirectTo' | 'reLaunch' = 'navigateTo',
+  ) {
     // During hydration, null profile does not mean anonymous.  Callers that can
     // await should use awaitAuthReady(); synchronous guards must not send a
     // known in-flight session to the login page.
@@ -865,7 +868,13 @@ export function useAuth() {
             },
           )
         : null
-      uni.navigateTo({ url: buildLoginRoute(nonce) })
+      // Automatic page gates replace the inaccessible page so cancelling
+      // login cannot reveal it and immediately push another login screen.
+      // Public-page actions keep the default push and their browsing context.
+      const url = buildLoginRoute(nonce)
+      if (navigation === 'reLaunch') uni.reLaunch({ url })
+      else if (navigation === 'redirectTo') uni.redirectTo({ url })
+      else uni.navigateTo({ url })
       return false
     }
     // A public profile projection is not enough to evaluate suspension/TOS.

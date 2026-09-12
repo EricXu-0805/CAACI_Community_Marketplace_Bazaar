@@ -185,7 +185,7 @@ async function prepareProfileEditPage() {
     || prepareEpoch !== profileEditEpoch
     || navigationEpoch !== profileEditNavigationEpoch
   ) return
-  if (!requireAuth()) return
+  if (!requireAuth(undefined, 'redirectTo')) return
   if (!currentUser.value) return
   const accountToken = captureAccountRequest(currentUser.value.id)
   if (!isAccountRequestCurrent(accountToken)) return
