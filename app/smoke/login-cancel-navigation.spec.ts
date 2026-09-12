@@ -33,7 +33,8 @@ for (const cancel of ['button','browser'] as const) for (const [name,target] of 
   await anonymous(page)
   await page.goto('/#/pages/index/index')
   await expect(page.getByRole('button',{name:'Search',exact:true})).toBeVisible()
-  await page.evaluate(url=>(window as any).uni.navigateTo({url}),target)
+  // Use the browser route entry: compiled builds do not expose window.uni.
+  await page.evaluate(url=>{ window.location.hash = url },target)
   await expect(page.getByRole('textbox',{name:'Email',exact:true})).toBeVisible()
   if(cancel==='button') await page.getByRole('button',{name:'Go back',exact:true}).click()
   else await page.goBack()
