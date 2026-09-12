@@ -340,7 +340,7 @@
         <AddToHomeHint v-if="filteredItems.length > 0 && !fetchError" />
         <!-- The only feedback that a search or a category tap changed the
              feed. Without a live region the list silently reshuffles. -->
-        <view v-if="searchText || selectedCategory" class="result-count" role="status" aria-live="polite" aria-atomic="true">
+        <view v-if="!loading && !fetchError && (searchText || selectedCategory)" class="result-count" role="status" aria-live="polite" aria-atomic="true">
           <text>{{ filteredItems.length }} {{ tc('home.results', filteredItems.length) }}</text>
         </view>
         <view class="waterfall" :key="listingType">
@@ -779,17 +779,9 @@ const priceRangeLabel = computed(() => {
 const categoryKeys: (ItemCategory | null)[] = [null, ...BROWSE_CATEGORIES]
 const categories = computed(() => categoryKeys.map(k => ({
   value: k,
-  label: t(k ? 'cat.pair.' + k : 'cat.pair.all'),
+  label: t(k ? 'cat.' + k : 'cat.all'),
 })))
 
-/*
- * Category grid tiles for the mobile hero area.
- *
- * The 4-col circle grid replaces the horizontal pill scroll. Each
- * category gets an emoji icon + soft pastel tile color. We intentionally
- * keep `null` ("All") at position 0 so tapping it clears the filter and
- * shows everything, matching the pill behavior.
- */
 const conditionKeys: ItemCondition[] = ['new', 'like_new', 'good', 'fair', 'defective']
 const conditionOpts = computed(() => {
   const m: Record<string, string> = {}
@@ -1564,6 +1556,15 @@ function goPublish() {
     .pill-label { color: var(--ink-inverse); }
   }
   &:active { transform: scale(0.93); }
+}
+
+// Larger touch targets without making the phone header taller. Localized
+// labels also leave more categories visible in the horizontal rail.
+@media (max-width: 767px), (pointer: coarse) {
+  .feed-mode { padding-top: 2px; padding-bottom: 2px; }
+  .fm-seg { height: 44px; }
+  .cat-bar { padding-top: 2px; padding-bottom: 2px; }
+  .pill { height: 44px; }
 }
 
 /* ========== Filter Bottom Sheet ========== */

@@ -284,6 +284,12 @@ export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string
       : 'Search is being upgraded. Please try again shortly.'
   }
 
+  if (err?.code === 'SEARCH_TIMEOUT') {
+    return lang === 'zh'
+      ? '搜索暂时超时了。试试选择分类、缩小价格范围，或稍后重试。'
+      : 'Search took too long. Choose a category, narrow the price range, or try again shortly.'
+  }
+
   if (err?.code === 'PGRST202' && raw.includes('archive_conversation')) {
     return lang === 'zh'
       ? '对话归档功能正在升级，请稍后重试'

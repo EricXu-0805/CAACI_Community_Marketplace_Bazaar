@@ -4,6 +4,7 @@ import type { Item } from '../src/types'
 import {
   SEARCH_LEGACY_FILTER_LIMIT,
   SEARCH_SCHEMA_UNAVAILABLE,
+  SEARCH_TIMEOUT,
   isMissingSearchSignature,
   searchItemsWithCompatibility,
 } from '../src/api/searchItems'
@@ -95,6 +96,17 @@ test('does not hide permission or other non-signature errors', async () => {
     thrown = error
   }
   expect(thrown).toBe(permissionError)
+})
+
+test('statement cancellation stays a recognizable timeout without legacy retries', async () => {
+  let calls = 0
+  const client = mockClient(async () => {
+    calls++
+    return { data: null, error: { code: '57014', message: 'canceling statement due to statement timeout',
+      details: 'search_items_fuzzy_v2 internal context' } }
+  })
+  await expect(searchItemsWithCompatibility(client, baseParams)).rejects.toMatchObject({ code: SEARCH_TIMEOUT })
+  expect(calls).toBe(1)
 })
 
 test('ambiguous signatures are sanitized without attempting a legacy call', async () => {

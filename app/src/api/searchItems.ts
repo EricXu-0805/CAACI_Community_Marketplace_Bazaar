@@ -7,10 +7,12 @@ const LEGACY_SCAN_MAX_ROWS = 1000
 
 export const SEARCH_SCHEMA_UNAVAILABLE = 'SEARCH_SCHEMA_UNAVAILABLE'
 export const SEARCH_LEGACY_FILTER_LIMIT = 'SEARCH_LEGACY_FILTER_LIMIT'
+export const SEARCH_TIMEOUT = 'SEARCH_TIMEOUT'
 
 type SearchCompatibilityErrorCode =
   | typeof SEARCH_SCHEMA_UNAVAILABLE
   | typeof SEARCH_LEGACY_FILTER_LIMIT
+  | typeof SEARCH_TIMEOUT
 
 export interface SearchItemsParams {
   detailDate?: string
@@ -60,6 +62,9 @@ export function isMissingSearchSignature(error: unknown): boolean {
 
 function sanitizeSearchError(error: unknown): unknown {
   const value = error as PostgrestLikeError | null
+  // A hosted statement timeout is capacity feedback, not a missing RPC.
+  // Keep it explicit and never amplify load by retrying older signatures.
+  if (value?.code === '57014') return compatibilityError(SEARCH_TIMEOUT)
   const signatureText = [value?.message, value?.details, value?.hint]
     .filter(part => typeof part === 'string')
     .join(' ')
