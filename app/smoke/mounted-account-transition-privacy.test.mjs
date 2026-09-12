@@ -81,7 +81,7 @@ test('mounted private pages synchronously hide A while the central owner boundar
   const profile = source('src/pages/profile/edit.vue')
   const edit = source('src/pages/publish/edit.vue')
 
-  assert.match(publish, /onAccountTransition\(\(transition\) => \{\s*\/\/[^]*?resetPublishMemoryState\(\)/)
+  assert.match(publish, /onAccountTransition\(\(\) => \{\s*\/\/[^]*?resetPublishMemoryState\(\)/)
   const publishReset = functionBlock(publish, 'function resetPublishMemoryState()', '\n}\n\nconst stopAccountTransitionListener')
   assert.match(publishReset, /publishReady\.value = false[^]*?publishPageAccountToken = null[^]*?resetForm\(\)/)
   assert.doesNotMatch(publishReset, /clearDraft\(\)/, 'null -> same owner must not delete the durable draft')
@@ -91,11 +91,11 @@ test('mounted private pages synchronously hide A while the central owner boundar
   assert.match(publish, /const operationStillCurrent = \(\) => \([^]*?operationEpoch === publishOperationEpoch[^]*?isAccountRequestCurrent\(entryAccountToken\)/)
 
   assert.match(profile, /v-if="profileEditReady" class="form"/)
-  assert.match(profile, /onAccountTransition\(\(transition\) => \{\s*resetProfilePrivateState\(\)/)
+  assert.match(profile, /onAccountTransition\(\(\) => \{\s*resetProfilePrivateState\(\)/)
   assert.match(profile, /function resetProfilePrivateState\(\) \{[^]*?profileEditReady\.value = false[^]*?pageAccountToken = null[^]*?nickname\.value = ''[^]*?avatarUrl\.value = ''/)
 
   assert.match(edit, /v-if="editReady" class="form"/)
-  assert.match(edit, /onAccountTransition\(\(transition\) => \{\s*resetEditPrivateState\(\)/)
+  assert.match(edit, /onAccountTransition\(\(\) => \{\s*resetEditPrivateState\(\)/)
   assert.match(edit, /function resetEditPrivateState\(\) \{[^]*?editReady\.value = false[^]*?editPageAccountToken = null[^]*?resetEditForm\(\)/)
   assert.match(edit, /const prepareStillVisible = \(\) => \([^]*?editPageVisible[^]*?prepareEpoch === editPrepareEpoch[^]*?navigationEpoch === editNavigationEpoch/)
   assert.match(edit, /!prepareStillVisible\(\)[^]*?!isAccountRequestCurrent\(accountToken\)/)

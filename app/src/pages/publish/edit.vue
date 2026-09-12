@@ -651,9 +651,11 @@ async function prepareEditPage(itemId: string) {
   }
 }
 
-const stopAccountTransitionListener = onAccountTransition((transition) => {
+const stopAccountTransitionListener = onAccountTransition(() => {
   resetEditPrivateState()
-  if (transition.userId && editPageVisible && routeEditId) {
+  // Anonymous settlement must resume the auth gate too, after invalidating
+  // the old preparation, so an expired session reaches login instead of hanging.
+  if (editPageVisible && routeEditId) {
     void Promise.resolve().then(() => {
       if (editPageMounted && editPageVisible && routeEditId) return prepareEditPage(routeEditId)
     })

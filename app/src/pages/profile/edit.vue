@@ -194,9 +194,11 @@ async function prepareProfileEditPage() {
   profileEditReady.value = true
 }
 
-const stopAccountTransitionListener = onAccountTransition((transition) => {
+const stopAccountTransitionListener = onAccountTransition(() => {
   resetProfilePrivateState()
-  if (!transition.userId || !profileEditVisible) return
+  // Resume the auth gate for anonymous settlement as well: resetting the
+  // epoch already invalidated any preparation waiting on the expired session.
+  if (!profileEditVisible) return
   void Promise.resolve().then(() => {
     if (profileEditMounted && profileEditVisible) return prepareProfileEditPage()
   })

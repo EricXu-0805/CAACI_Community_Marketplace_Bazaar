@@ -680,13 +680,16 @@ function resetPublishMemoryState() {
   resetForm()
 }
 
-const stopAccountTransitionListener = onAccountTransition((transition) => {
+const stopAccountTransitionListener = onAccountTransition(() => {
   // This runs inside transitionAccount(), before useAuth publishes the next
   // profile. Hide and erase A's mounted refs synchronously, then only re-open
   // the still-visible tab after B/anonymous auth and durable storage ownership
   // have settled.
   resetPublishMemoryState()
-  if (publishVisible && transition.userId) {
+  // Anonymous startup/sign-out also invalidates the pending preparation.
+  // Re-run it so the settled anonymous state can open login; otherwise the
+  // stale showVersion exits and leaves "Please wait" on screen indefinitely.
+  if (publishVisible) {
     void Promise.resolve().then(() => {
       if (publishPageMounted && publishVisible) return preparePublishPage()
     })
