@@ -36,7 +36,10 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # A weekly advisory scan must wait for release verification, not cancel it.
+  # Keep one shared group so the protected staging account is never raced by
+  # scheduled and push runs. A newer code change still supersedes older work.
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
 
 env:
   NODE_VERSION: '22'
