@@ -85,6 +85,7 @@ test('statement-scoped search preserves deployed SQL results and live moderation
     const access = sql("SELECT proname,proacl,prosecdef FROM pg_proc WHERE proname IN ('search_items_fuzzy','search_items_fuzzy_v2') ORDER BY proname")
     sql('BEGIN;' + migration + 'COMMIT;')
     sql('BEGIN;' + migration + 'COMMIT;')
+    sql(read('../supabase/_ops/VERIFY_20260914_statement_scoped_listing_search.sql'))
     assert.deepEqual(snapshot(), before, 'same complete ordered rows, rank, translations, detail filters and visibility at all thresholds')
     assert.equal(sql("SELECT proname,proacl,prosecdef FROM pg_proc WHERE proname IN ('search_items_fuzzy','search_items_fuzzy_v2') ORDER BY proname"), access)
     assert.equal(asUser(`SELECT count(*) FROM items WHERE user_id='${id(2)}'`), '0')

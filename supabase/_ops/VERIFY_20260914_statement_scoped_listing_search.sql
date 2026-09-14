@@ -1,4 +1,9 @@
 -- Read-only; safe after the matching migration in staging or production.
+\set ON_ERROR_STOP on
+BEGIN;
+SET TRANSACTION READ ONLY;
+SET LOCAL lock_timeout='2s';
+SET LOCAL statement_timeout='30s';
 DO $verify$
 DECLARE helper oid := 'moderation_private.hidden_content_profile_ids()'::regprocedure;
 BEGIN
@@ -19,3 +24,4 @@ BEGIN
   THEN RAISE EXCEPTION 'statement_scoped_listing_visibility_verification_failed'; END IF;
 END;
 $verify$;
+ROLLBACK;
