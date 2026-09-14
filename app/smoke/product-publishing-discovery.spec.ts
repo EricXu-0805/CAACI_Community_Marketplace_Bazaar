@@ -37,8 +37,15 @@ for (const [surface,route,button] of [
   const before=await page.locator('input,textarea').evaluateAll(els=>els.map(el=>(el as HTMLInputElement).value))
   await page.evaluate(failure=>{(window as any).uni.chooseImage=(options:any)=>options.fail({errMsg:`chooseImage:fail ${failure}`})},failure)
   await pick.click()
-  const message=page.getByText(failure==='auth deny' ? 'Photo access was not allowed. Review the privacy prompt or photo permissions, then try again.' : 'Couldn’t open the photo library. Your draft is unchanged. Please try again.',{exact:true})
-  if(failure==='cancel') await expect(message).toHaveCount(0); else await expect(message).toBeVisible()
+  const messageText=failure==='auth deny' ? 'Photo access was not allowed. Review the privacy prompt or photo permissions, then try again.' : 'Couldn’t open the photo library. Your draft is unchanged. Please try again.'
+  // H5 mirrors toasts into a screen-reader region. Check that announcement
+  // separately so two copies of the text cannot make the visual check ambiguous.
+  const message=page.locator('.uni-simple-toast__text').filter({hasText:messageText})
+  if(failure==='cancel') await expect(message).toHaveCount(0)
+  else {
+   await expect(page.locator('div[role="status"][aria-live="polite"]')).toHaveText(messageText)
+   await expect(message).toBeVisible()
+  }
   expect(await page.locator('input,textarea').evaluateAll(els=>els.map(el=>(el as HTMLInputElement).value))).toEqual(before)
   expect(requests.filter(req=>['POST','PATCH'].includes(req.method)&&req.url.pathname==='/rest/v1/items')).toHaveLength(0)
  })
