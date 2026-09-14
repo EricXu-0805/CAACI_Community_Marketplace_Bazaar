@@ -106,4 +106,9 @@ test('WeChat tablet keeps primary navigation and page headers without an H5 side
       rule.walkDecls('display', decl => assert.notEqual(decl.value, 'none', `${page}: no sidebar may replace this header in mp`))
     })
   }
+  for (const page of ['detail/index', 'publish/edit']) {
+    cssFor(`pages/${page}.vue`).walkDecls(decl => {
+      assert.doesNotMatch(decl.value, /var\(--sidebar-w/, `${page}: mini-program actions must not reserve an absent sidebar`)
+    })
+  }
 })

@@ -9,13 +9,13 @@
 ## Goal 与执行记录
 
 1. [x] 读取最新项目状态、Goals、工作方法及旧清单，重新核对远端 main 和实际公开商品。
-2. [x] 微信开发者工具检查启动、图片、详情、联系卖家的登录引导、iPad 导航及消息入口；真实账号写入没有冒充完成。
+2. [x] 微信开发者工具检查启动、图片、详情、联系卖家的登录引导、iPad 导航、详情操作栏及消息入口；真实账号写入没有冒充完成。
 3. [x] H5 手机、iPad、Mac 浏览；真实组件合成数据覆盖商品发布、聊天、报价、约见和键盘视口变化。
 4. [x] 对照成熟市场产品公开资料，核查适合校园交易的功能与展示方式；不把竞品帮助文档当作亲自操作竞品 App。
 5. [x] 修复本轮确认的跨端缺陷和内容展示问题，并建立针对性回归。
 6. [x] 新增、运行隔离数据库恢复模拟；复核线上商品读取权限。真实混合并发和生产整库恢复仍单列未完成。
 7. [x] 完整边界测试、类型检查、H5/微信构建、产物检查、正式构建浏览器验收。
-8. [ ] 推送 main、核验 CI/生产部署，完成最终回执。
+8. 发布收尾单独记录：main、CI、生产部署与正式域名复验结果以文首 `RELEASE_RECEIPT.md` 为准。
 
 ## 从使用者任务发现的问题
 
@@ -24,7 +24,7 @@
 | P0 | 打开微信小程序商品页 | 桌面样式中的 `*` 选择器进入 WXSS；普通构建成功，微信官方编译器仍报错，页面可能白屏 | 桌面网格样式仅编译进 H5；官方 WXSS 编译器复验全部 46 个文件 |
 | P1 | 在微信中看商品图片、发送请求 | 自有代码使用裸 `URL` / `AbortController`，与微信运行时全局命名空间不一致；校验器吞掉异常后图片变空 | 应用与 Supabase 统一走已安装的全局 API，提前初始化；实际商品图恢复，产物 VM 验证合法媒体、拒绝跨用户 URL、请求超时处理 |
 | P1 | 微信冷启动 | 调用已被 H5 条件编译移除的路由恢复函数，产生 ReferenceError | 限定调用只在 H5；模拟器启动不再报该错误，产物检查禁止其泄漏 |
-| P1 | iPad 微信切换首页、广场、消息等 | ≥768px 隐藏底部导航和标题，但侧栏仅在 H5 存在；主要入口全部消失 | 小程序所有宽度保留底部导航；首页、广场、发布、个人页的桌面样式限定 H5；iPad 模拟器实际进入消息页 |
+| P1 | iPad 微信切换首页、广场、消息等 | ≥768px 隐藏底部导航和标题，但侧栏仅在 H5 存在；主要入口全部消失；详情/编辑底栏也错误预留网页侧栏 | 小程序所有宽度保留底部导航；首页、广场、发布、个人页的桌面样式限定 H5；iPad 模拟器实际进入消息页；详情和编辑栏移除不存在的侧栏偏移 |
 | P1 | 填写“Union 北门、下午五点后取货” | 包含地标名称的自由文本被缩写为地标，额外方向/时间被丢弃；也会误显示“认证地点” | 仅精确匹配标准名称才本地化，保留自由说明；标签改成“校园取货点”，不暗示平台认证安全 |
 | P2 | 选择快捷取货点 | 仍推荐已经关闭的 UGL | 从快捷选项移除；旧商品中的原始地址保留，不擅自改写历史事实 |
 | P2 | 添加照片，取消/拒绝权限/相册异常 | 多个入口没有失败反馈，用户不清楚是否操作成功 | 发布、编辑、个人头像、引导页、广场统一失败提示；取消不骚扰，保留表单；延迟返回仍核对账号，照片总数不超上限 |
@@ -44,6 +44,7 @@ UGL 关闭状态来自[学校图书馆公告](https://www.library.illinois.edu/g
 |---|---|
 | [微信白屏](../../output/playwright/platform-readiness-20260914/03-mini-wxss-failure.png) → [修复后商品](../../output/playwright/platform-readiness-20260914/05-mini-detail-fixed.png) | 实际开发者工具运行 |
 | [iPad 导航缺失](../../output/playwright/platform-readiness-20260914/08-mini-ipad-home-stable.png) → [修复后导航](../../output/playwright/platform-readiness-20260914/09-mini-ipad-nav-fixed.png) | 同一模拟器，真实公开商品 |
+| [iPad 详情底栏偏移](../../output/playwright/platform-readiness-20260914/14-mini-ipad-action-offset-before.png) → [修复后](../../output/playwright/platform-readiness-20260914/15-mini-ipad-action-fixed.png) | 实际开发者工具运行；编辑页同类 CSS 一并修复 |
 | [手机商品暗色](../../output/playwright/platform-readiness-20260914/11-h5-phone-detail-dark.png) | H5 候选，真实公开商品 |
 | [iPad 聊天](../../output/audit-20260905/ui/platform-readiness-20260914/ipad-portrait-chat.png)、[Mac 聊天](../../output/audit-20260905/ui/platform-readiness-20260914/mac-wide-chat.png) | 真实组件、合成消息；不是线上用户聊天 |
 | [手机报价](../../output/audit-20260905/ui/platform-readiness-20260914/phone-390-offer.png)、[发布预览](../../output/playwright/platform-readiness-20260914/phone-publish-preview-viewport.png) | 操作区和预览信息可见；键盘是浏览器条件模拟 |
@@ -78,7 +79,7 @@ UGL 关闭状态来自[学校图书馆公告](https://www.library.illinois.edu/g
 | 发布预览视觉补验 | 4 passed | 四尺寸，描述/OBO/免费/求购与无横向溢出 |
 | 正式 H5 产物浏览器 | 16 passed | 后台首次解锁、安全恢复、丢失页面 chunk；Chromium 与 WebKit |
 | 类型检查、H5 构建/产物 | passed | H5 143 files，本地 manifest 明确非部署产物 |
-| 微信构建/产物 | passed | 308 files，1,811,799 bytes 原始包大小；2 MiB 主包余量约 279 KiB，最终以上传计算为准 |
+| 微信构建/产物 | passed | 308 files，1,810,983 bytes 原始包大小；2 MiB 主包余量约 279 KiB，最终以上传计算为准 |
 | 官方 WXSS 编译器 | 46 files、0 failed | 本机微信开发者工具自带编译器 |
 | 微信运行时 | 图片、合法媒体归属、请求边界通过 | VM 只模拟 Web API 全局命名空间；实际 UI 另有开发者工具截图 |
 | 本地数据库恢复 | 10,001 条合成商品，恢复约 219ms | 两个隔离 PostgreSQL 17，逻辑备份；**不是生产 RTO/Supabase 整库恢复** |

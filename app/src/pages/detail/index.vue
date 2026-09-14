@@ -1845,6 +1845,7 @@ async function contactSeller() {
 }
 
 /* ========== Desktop ========== */
+/* #ifdef H5 */
 @media (min-width: 768px) {
   /* The rail is position:fixed at the viewport edge, so centering a box that
      *includes* the rail reservation parked 240px of dead space between the
@@ -1870,6 +1871,7 @@ async function contactSeller() {
   }
   .rating-sheet.open { transform: translateY(0); }
 }
+/* #endif */
 
 /*
  * Wide desktop: stop rendering a phone column on a 1440 screen. The gallery

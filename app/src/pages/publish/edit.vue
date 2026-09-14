@@ -1332,6 +1332,7 @@ async function onSubmit() {
   &:active { opacity: 0.8; }
 }
 
+/* #ifdef H5 */
 @media (min-width: 768px) {
   /* Adaptive shell: rail reserves the left; fill + center the form, and
      re-center the fixed submit bar under the 720px form column. */
@@ -1342,4 +1343,5 @@ async function onSubmit() {
   .form { max-width: 720px; margin-left: auto; margin-right: auto; }
   .submit-bar { bottom: 0; left: var(--sidebar-w); right: 0; width: auto; max-width: 720px; margin-left: auto; margin-right: auto; transform: none; }
 }
+/* #endif */
 </style>
