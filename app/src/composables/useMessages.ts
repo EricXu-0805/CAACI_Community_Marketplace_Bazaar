@@ -568,7 +568,11 @@ export function useMessages() {
         // failure. Also try on 5xx/unclassified responses whose commit state
         // is unknown.
         const duplicatePrimaryKey = String((error as any)?.code || '') === '23505'
-        const shouldRecover = duplicatePrimaryKey
+        // A same-id retry can hit a BEFORE INSERT duplicate/rate guard before
+        // PostgreSQL reaches the primary key. That rejects this attempt only;
+        // the original send may already have committed after a lost response.
+        const shouldRecover = options?.isRetry === true
+          || duplicatePrimaryKey
           || !isDefinitiveMutationRejection(error)
         if (shouldRecover) {
           const recovered = await recoverCommittedMessage(
@@ -590,7 +594,7 @@ export function useMessages() {
           // the original logical send may already be committed; media must not
           // be compensated. Keep the outcome unknown and let later history or
           // a same-id retry reconcile it.
-          duplicatePrimaryKey
+          options?.isRetry === true || duplicatePrimaryKey
             ? 'unknown'
             : isDefinitiveMutationRejection(error) ? 'not_committed' : 'unknown',
         )

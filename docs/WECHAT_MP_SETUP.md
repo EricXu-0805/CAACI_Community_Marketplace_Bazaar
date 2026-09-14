@@ -219,7 +219,7 @@ and response body.
 §2 lists the four domain categories. Adding `/api/auth/wechat-login`
 needs:
 
-- **request 合法域名**: `https://illinimarket.com`
+- **request 合法域名**: `https://www.illinimarket.com`
   (already required for /api/moderate and /api/translate)
 
 No new entry needed — the domain is shared with existing endpoints.

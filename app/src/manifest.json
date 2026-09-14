@@ -19,14 +19,21 @@
         "distribute": {
             "android": {
                 "permissions": [
-                    "<uses-permission android:name=\"android.permission.CHANGE_NETWORK_STATE\"/>",
                     "<uses-permission android:name=\"android.permission.ACCESS_NETWORK_STATE\"/>",
-                    "<uses-permission android:name=\"android.permission.ACCESS_WIFI_STATE\"/>",
-                    "<uses-permission android:name=\"android.permission.CAMERA\"/>",
-                    "<uses-permission android:name=\"android.permission.READ_PHONE_STATE\"/>"
-                ]
+                    "<uses-permission android:name=\"android.permission.CAMERA\"/>"
+                ],
+                "permissionPhoneState": {
+                    "request": "none"
+                },
+                "enableOAID": false
             },
-            "ios": {},
+            "ios": {
+                "devices": "universal",
+                "privacyDescription": {
+                    "NSPhotoLibraryUsageDescription": "Select photos for your listings, community posts, or profile picture.",
+                    "NSCameraUsageDescription": "Take photos for your listings, community posts, or profile picture."
+                }
+            },
             "sdkConfigs": {}
         }
     },

@@ -4071,6 +4071,46 @@ test('an authoritative snapshot confirms a message even if its retry failed afte
   assert.deepEqual(api.messages.value, [row])
 })
 
+test('same-id message retries reconcile BEFORE INSERT rejections without claiming an unknown send failed', async () => {
+  // Hosted staging returns P0001 duplicate_message before checking the PK.
+  // Use the real commit classifier: the general consumer harness intentionally
+  // treats errors as unknown and would otherwise conceal this regression.
+  const commit = await loadWithRuntime('src/api/mutationCommit.ts', [], {})
+  const row = { id: 'pending-id', conversation_id: 'retry-thread',
+    sender_id: '11111111-1111-4111-8111-111111111111', content: 'Already sent',
+    message_type: 'text', created_at: '2026-09-14T00:00:00Z', is_read: false }
+  for (const message of ['duplicate_message', 'rate_limit_messages_minute']) {
+    for (const recovery of ['found', 'unavailable', 'different-content', 'first-attempt']) {
+      const filters = []
+      let reads = 0
+      const query = {
+        insert(payload) { assert.equal(payload.id, row.id); return query },
+        select() { return query },
+        eq(key, value) { filters.push([key, value]); return query },
+        single: async () => ({ data: null, error: { code: 'P0001', message } }),
+        maybeSingle: async () => {
+          reads++
+          return recovery === 'unavailable'
+            ? { data: null, error: { status: 503 } }
+            : { data: { ...row, content: recovery === 'different-content' ? 'Another send' : row.content }, error: null }
+        },
+      }
+      const module = await loadUseMessagesConsumer({ from: table => {
+        assert.equal(table, 'messages'); return query
+      } }, commit)
+      const pending = module.useMessages().sendMessage(row.conversation_id, row.sender_id,
+        row.content, 'text', { messageId: row.id, isRetry: recovery !== 'first-attempt' })
+      if (recovery === 'found') assert.deepEqual(await pending, row)
+      else await assert.rejects(pending, error => error.mutationCommitState ===
+        (recovery === 'first-attempt' ? 'not_committed' : 'unknown'))
+      assert.equal(reads, recovery === 'first-attempt' ? 0 : 1)
+      if (reads) assert.deepEqual(filters, [
+        ['id', row.id], ['sender_id', row.sender_id], ['conversation_id', row.conversation_id],
+      ])
+    }
+  }
+})
+
 test('message snapshots preserve microseconds before using UUID as an exact-timestamp tie break', async () => {
   const conversationId = 'conversation-microsecond-order'
   const orders = []
