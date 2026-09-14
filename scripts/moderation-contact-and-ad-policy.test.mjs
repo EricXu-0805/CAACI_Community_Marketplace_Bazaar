@@ -528,6 +528,45 @@ describe('moderation policy: contact info allowed, ads caught in four layers', {
     })
   })
 
+  describe('inlined Han folding keeps moderation and caller isolation', () => {
+    let beforeVerdicts
+    const inlineSql = readFileSync(path.join(ROOT,'supabase/migrations/20260914220849_inline_moderation_han_fold.sql'),'utf8')
+    before(() => {
+      psql(SIBLING_20260903023000); psql(MIGRATION_SQL); psql(MIGRATION_20260904060000_SQL)
+      beforeVerdicts = verdicts()
+      // Capture outputs before replacing the function, over every BMP scalar
+      // and supplementary samples; PostgreSQL rejects zero/surrogate characters.
+      psql(`CREATE TABLE fold_oracle AS SELECT raw,public.content_moderation_fold_han(raw) expected
+        FROM (SELECT chr(n) raw FROM generate_series(1,65535) n WHERE n NOT BETWEEN 55296 AND 57343
+          UNION ALL SELECT null UNION ALL SELECT '' UNION ALL SELECT '😀𠮷寫購醫'
+          UNION ALL SELECT repeat('寫購職單結過證辦開發',100)) samples;`)
+      psql('BEGIN;'+inlineSql+'COMMIT;')
+    })
+    it('keeps every allow/refuse verdict in the existing full policy corpus', () => {
+      assert.deepEqual(verdicts(),beforeVerdicts)
+      assert.equal(psql("SELECT count(*) FROM fold_oracle WHERE public.content_moderation_fold_han(raw) IS DISTINCT FROM expected;").trim(),'0')
+    })
+    it('inlines the pure expression and cannot resolve a hostile translate function', () => {
+      const plan=psql("EXPLAIN (VERBOSE,COSTS OFF) SELECT public.content_moderation_fold_han(keyword) FROM public.moderation_keywords;")
+      assert.match(plan,/translate/)
+      assert.doesNotMatch(plan,/content_moderation_fold_han/)
+      psql(`CREATE SCHEMA hostile_fold;
+        CREATE FUNCTION hostile_fold.translate(text,text,text) RETURNS text LANGUAGE sql IMMUTABLE AS $$ SELECT 'hijacked'::text $$;`)
+      assert.equal(psql("SET search_path=hostile_fold,pg_catalog,public; SELECT public.content_moderation_fold_han('寫購醫');").trim(),'写购医')
+      psql('DROP SCHEMA hostile_fold CASCADE;')
+    })
+    it('keeps live keyword/rule edits and restores the original function on rollback', () => {
+      psql("INSERT INTO public.moderation_keywords(keyword,category,severity) VALUES('probeuniquemodterm','test',1);")
+      assert.equal(psql("SELECT content_moderation_check('probeuniquemodterm');").trim(),'sensitive_word')
+      psql("UPDATE public.moderation_keywords SET active=false WHERE keyword='probeuniquemodterm';")
+      assert.equal(psql("SELECT content_moderation_check('probeuniquemodterm') IS NULL;").trim(),'t')
+      psql("DELETE FROM public.moderation_keywords WHERE keyword='probeuniquemodterm';")
+      psql(readFileSync(path.join(ROOT,'supabase/_ops/ROLLBACK_20260914_inline_moderation_han_fold.sql'),'utf8'))
+      assert.deepEqual(verdicts(),beforeVerdicts)
+      psql('DROP TABLE fold_oracle;')
+    })
+  })
+
   // -- mutations: show each layer is load-bearing ---------------------------
 
   describe('mutations', () => {

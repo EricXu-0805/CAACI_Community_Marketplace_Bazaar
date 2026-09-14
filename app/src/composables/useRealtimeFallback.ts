@@ -477,6 +477,8 @@ interface StickyTransportOptions<Handoff> {
    */
   telemetryScope: 'conversation' | 'notifications' | 'inbox' | 'snapshot'
   onReady?: ReconcileCallback
+  /** A connected socket can miss a row without reporting a terminal status. */
+  primaryReconcile?: { run: ReconcileCallback; intervalMs: number }
   /**
    * H5 can suspend a healthy-looking WebSocket while a tab is backgrounded,
    * then resume without emitting a terminal channel status. Supplying this
@@ -512,13 +514,40 @@ function startStickyTransport<Handoff>(
   let transportGeneration = 0
   let activeUnsubscribe: Unsubscribe = () => {}
   let readyRetryTimer: ReturnType<typeof setTimeout> | null = null
+  let primaryReconcileTimer: ReturnType<typeof setTimeout> | null = null
   let primaryStarting = true
   let pendingFailure: { handoff: Handoff } | null = null
   let stopAccountTransition = () => {}
   let stopBrowserRecoveryObservation = () => {}
   const isCurrent = () => alive && isAccountRequestCurrent(accountToken)
 
+  const stopPrimaryReconcile = () => {
+    if (primaryReconcileTimer) clearTimeout(primaryReconcileTimer)
+    primaryReconcileTimer = null
+  }
+  const schedulePrimaryReconcile = (generation: number) => {
+    const reconcile = options.primaryReconcile
+    if (!reconcile || !isCurrent() || switched || generation !== transportGeneration) return
+    stopPrimaryReconcile()
+    primaryReconcileTimer = setTimeout(async () => {
+      primaryReconcileTimer = null
+      if (!isCurrent() || switched || generation !== transportGeneration) return
+      try {
+        // Background/resume has its own handoff. Quiet convergence must not
+        // make hidden tabs poll or overlap a slow previous snapshot.
+        if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+          await reconcile.run()
+        }
+      } catch {
+        // Retry at the normal cadence; transient failures must not spin.
+      } finally {
+        schedulePrimaryReconcile(generation)
+      }
+    }, reconcile.intervalMs)
+  }
+
   const nextReady = () => {
+    stopPrimaryReconcile()
     if (readyRetryTimer) {
       clearTimeout(readyRetryTimer)
       readyRetryTimer = null
@@ -536,13 +565,19 @@ function startStickyTransport<Handoff>(
         result = Promise.reject(new Error('realtime_reconcile_failed'))
       }
       if (!result || typeof (result as Promise<void>).then !== 'function') {
-        if (isCurrent() && generation === transportGeneration) sent = true
+        if (isCurrent() && generation === transportGeneration) {
+          sent = true
+          schedulePrimaryReconcile(generation)
+        }
         running = false
         return
       }
       void Promise.resolve(result)
         .then(() => {
-          if (isCurrent() && generation === transportGeneration) sent = true
+          if (isCurrent() && generation === transportGeneration) {
+            sent = true
+            schedulePrimaryReconcile(generation)
+          }
         })
         .catch(() => {
           if (!isCurrent() || generation !== transportGeneration) return
@@ -567,6 +602,7 @@ function startStickyTransport<Handoff>(
       return
     }
     switched = true
+    stopPrimaryReconcile()
     stopBrowserRecoveryObservation()
     stopBrowserRecoveryObservation = () => {}
     // Once per transport: `switched` already makes the handoff sticky, so a
@@ -632,6 +668,7 @@ function startStickyTransport<Handoff>(
     stopBrowserRecoveryObservation()
     stopBrowserRecoveryObservation = () => {}
     transportGeneration += 1
+    stopPrimaryReconcile()
     if (readyRetryTimer) {
       clearTimeout(readyRetryTimer)
       readyRetryTimer = null
@@ -1091,6 +1128,7 @@ export function subscribeToConversation(
         return startStickyTransport<void>({
           telemetryScope: 'conversation',
           onReady,
+          primaryReconcile: onReconcile ? { run: onReconcile, intervalMs: 15000 } : undefined,
           browserRecoveryHandoff: () => undefined,
           startPrimary: (onFailure, markReady) => (
             startPostgresChangesRealtimeChannel({
@@ -1284,6 +1322,7 @@ export function subscribeToUserNotifications(
         return startStickyTransport<void>({
           telemetryScope: 'notifications',
           onReady,
+          primaryReconcile: onReconcile ? { run: onReconcile, intervalMs: 60000 } : undefined,
           browserRecoveryHandoff: () => undefined,
           startPrimary: (onFailure, markReady) => (
             startPostgresChangesRealtimeChannel({
@@ -1338,6 +1377,7 @@ export function subscribeToUserInbox(
         return startStickyTransport<void>({
           telemetryScope: 'inbox',
           onReady,
+          primaryReconcile: onReconcile ? { run: onReconcile, intervalMs: 60000 } : undefined,
           browserRecoveryHandoff: () => undefined,
           startPrimary: (onFailure, markReady) => (
             startPostgresChangesRealtimeChannel({
@@ -1529,6 +1569,7 @@ export function subscribeToSnapshotChanges(
     const transportStop = startStickyTransport<void>({
       telemetryScope: 'snapshot',
       onReady: options.onReady,
+      primaryReconcile: { run: runSnapshotChange, intervalMs: 30000 },
       browserRecoveryHandoff: () => undefined,
       startPrimary: (onFailure, markReady) => (
         startPostgresChangesRealtimeChannel({

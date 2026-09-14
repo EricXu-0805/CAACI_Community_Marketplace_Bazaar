@@ -229,7 +229,7 @@ No new entry needed — the domain is shared with existing endpoints.
 ```bash
 npm run build:mp-weixin
 # DevTools → Import project → app/dist/build/mp-weixin/
-# 详情 → 本地设置 → 勾 "不校验合法域名" (dev only)
+# 详情 → 本地设置：保持合法域名校验；关闭校验的本地运行不能作为验收证据
 # Current first-release acceptance: login page has email/password and no
 # WeChat/Google button. The steps below apply only to a separately approved
 # future build that deliberately re-enables WeChat identity.

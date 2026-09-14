@@ -1004,11 +1004,18 @@ async function initializeConversationAfterGate() {
        handshake. Request/epoch guards make concurrent snapshots latest-wins. */
     const reconcileMessagesFromSubscription = () => {
       if (!isCurrentThreadSetup()) return
+      const previousLastId = messages.value[messages.value.length - 1]?.id
       return fetchMessages(options.id).then((reconciled) => {
         if (!reconciled && isCurrentThreadSetup()) {
           throw new Error('message_reconcile_failed')
         }
-        if (isCurrentThreadSetup()) nextTick(() => scrollToBottom())
+        if (!isCurrentThreadSetup()) return
+        // Quiet reconciliation also runs while the socket looks healthy.
+        // An unchanged snapshot/read receipt must not pull readers to the end.
+        if (messages.value[messages.value.length - 1]?.id !== previousLastId) nextTick(() => scrollToBottom())
+        if (isThreadVisible() && messages.value.some(message => (
+          message.sender_id !== setupAccountToken.userId && !message.is_read
+        ))) refreshReadState(options.id, setupAccountToken.userId)
       })
     }
     unsubscribe = subscribeToMessages(

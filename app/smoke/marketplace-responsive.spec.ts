@@ -22,7 +22,7 @@ const LISTING = { id: ITEM, user_id: PEER, title: 'Adjustable study desk for a s
   description: 'A clean desk with adjustable legs. Pickup on campus. '.repeat(18),
   view_count: 5, favorite_count: 1, created_at: '2026-09-01T00:00:00Z', profile: SELLER }
 
-async function seedMarketplace(page: Page, photos = false) {
+async function seedMarketplace(page: Page, photos = false, healthySocket = false) {
   const listing = { ...LISTING, images: photos ? ['front', 'side', 'back'].map(name =>
     `https://${supabaseRefForBuild()}.supabase.co/storage/v1/object/public/item-images/items/${PEER}/${name}.jpg`) : [] }
   const conversations = [CONV, OTHER].map((id, i) => ({ id, item_id: ITEM, buyer_id: ME, seller_id: PEER,
@@ -48,7 +48,21 @@ async function seedMarketplace(page: Page, photos = false) {
         user: { id: uid, email: 'fixture@example.invalid', aud: 'authenticated', role: 'authenticated' } }) }))
     localStorage.setItem(`sb-${ref}-auth-token-auth-boundary-v2`, JSON.stringify({ v: 2, mode: 'allowed', generation }))
   }, [supabaseRefForBuild(), ME, process.env.UI_AUDIT_THEME === 'dark' ? 'dark' : 'light'] as const)
-  await page.routeWebSocket(/supabase\.co/, socket => socket.close())
+  const joinedTopics: string[] = []
+  await page.routeWebSocket(/supabase\.co/, socket => {
+    if (!healthySocket) { socket.close(); return }
+    // The actual SDK's Phoenix v2 handshake, with no row events delivered.
+    // This isolates silent loss while the channel remains SUBSCRIBED.
+    socket.onMessage(message => {
+      if (typeof message !== 'string') return
+      const [joinRef, ref, topic, event, payload] = JSON.parse(message)
+      const response = event === 'phx_join'
+        ? { postgres_changes: (payload.config?.postgres_changes || []).map((filter: object, index: number) => ({ ...filter, id: index + 1 })) }
+        : {}
+      if (event === 'phx_join') joinedTopics.push(topic)
+      socket.send(JSON.stringify([joinRef, ref, topic, 'phx_reply', { status: 'ok', response }]))
+    })
+  })
   await page.route(url => url.pathname.startsWith('/api/'), route => route.fulfill({ status: 200, contentType: 'application/json',
     body: JSON.stringify({ flagged: false, categories: [], messages: [], events: [] }) }))
   await page.route('**/*.supabase.co/**', async route => {
@@ -108,6 +122,7 @@ async function seedMarketplace(page: Page, photos = false) {
   })
   return {
     sends: () => sends,
+    joinedTopics,
     globalPolls,
     receiveInOtherThread: () => {
       const id = '88888888-8888-4888-8888-888888888888'
@@ -695,4 +710,56 @@ test('layout resize is not subtracted twice and pinch zoom is not treated as a k
   })
   await expect(page.locator('.chat-page-wrap')).not.toHaveClass(/kb-up/)
   await expect.poll(async () => Math.round((await page.locator('.chat-thread').boundingBox())!.height)).toBe(830)
+})
+
+for (const [device, width, height] of [['phone', 390, 844], ['ipad', 820, 1180], ['desktop', 1440, 900]] as const) {
+  test(`quiet chat reconciliation preserves the reading position on ${device}`, async ({ page }) => {
+    await page.setViewportSize({ width, height })
+    await seedMarketplace(page)
+    let snapshots = 0
+    page.on('requestfinished', request => {
+      const url = new URL(request.url())
+      if (request.method() === 'GET' && url.pathname.endsWith('/messages')
+        && url.searchParams.get('conversation_id') === `eq.${CONV}`
+        && url.searchParams.get('select')?.includes('sender:profiles')) snapshots++
+    })
+    await page.goto(`/#/pages/chat/index?id=${CONV}`)
+    await expect(page.locator('.message-list')).toContainText('Alex message 35')
+    await expect(page.locator('.message-list')).toHaveAttribute('aria-live', 'polite')
+    // Wait for the direct tier's initial snapshot before choosing a reading
+    // position; later unchanged snapshots must not snap back to the bottom.
+    await expect.poll(() => snapshots).toBeGreaterThanOrEqual(2)
+    const transcript = page.locator('.message-list .uni-scroll-view-scrollbar-hidden')
+    await expect(transcript).toBeVisible()
+    await expect.poll(() => transcript.evaluate(element => element.scrollHeight - element.clientHeight - element.scrollTop)).toBeLessThan(10)
+    await transcript.evaluate(element => { element.scrollTop = 80 })
+    await expect.poll(() => transcript.evaluate(element => Math.round(element.scrollTop))).toBe(80)
+    const before = snapshots
+    await expect.poll(() => snapshots, { timeout: 12000 }).toBeGreaterThan(before)
+    await expect.poll(() => transcript.evaluate(element => Math.round(element.scrollTop))).toBe(80)
+  })
+}
+
+
+test('a healthy socket with a silently missed message heals the visible chat without reopening', async ({ page }) => {
+  const fixture = await seedMarketplace(page, false, true)
+  const seededPolls: string[] = []
+  page.on('request', request => {
+    const url = new URL(request.url())
+    if (url.pathname.endsWith('/messages') && url.searchParams.get('select') === 'id,created_at') {
+      seededPolls.push(url.pathname)
+    }
+  })
+  await page.goto(`/#/pages/chat/index?id=${CONV}`)
+  await expect(page.locator('.message-list')).toContainText('Alex message 35')
+  await expect.poll(() => fixture.joinedTopics).toContain(`realtime:messages:${CONV}`)
+  const draft = 'Keep this draft while waiting for a response'
+  await page.locator('.msg-input textarea').fill(draft)
+  const missed = 'This response was committed without a socket event.'
+  fixture.receiveWhileAway(missed)
+  await expect(page.locator('.message-list')).not.toContainText(missed)
+  await expect(page.locator('.message-list')).toContainText(missed, { timeout: 22000 })
+  await expect(page.locator('.msg-input textarea')).toHaveValue(draft)
+  expect(seededPolls).toEqual([])
+  expect(fixture.sends()).toBe(0)
 })

@@ -261,6 +261,16 @@ files to the approved encrypted backup store, remove local temporary copies,
 and **never commit or chat-send a dump**. Back up Storage object bytes
 separately and reconcile them against the database object manifest.
 
+The listing search migration also owns `search_private` (composite types,
+scoring functions, derived rows, RLS and sync triggers) and the `intarray`
+extension installed there. A hand-written schema allowlist must include it.
+After restoring, run `VERIFY_20260914_cached_listing_search.sql`; do not make
+this schema a Data API exposure or restore only the public search RPC bodies.
+Rebuild the derived fields transactionally after changes to pg_trgm, ICU or
+the database collation, and verify against the original ranking before use.
+The repository's local synthetic listing recovery drill now includes the cache;
+it does not replace hosted Auth/Storage/backup-point recovery evidence.
+
 ### Restore from automatic backup
 
 This is destructive — it overwrites the live DB. Don't do it without the team's

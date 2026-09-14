@@ -5645,3 +5645,125 @@ test('no "New message" toast for the conversation being read, but still for the 
     else globalThis.uni = previousUni
   }
 })
+
+async function quietReconcileHarness() {
+  const channel = channelHarness()
+  const timers = new Map()
+  const accountListeners = new Set()
+  let nextTimer = 0
+  let current = true
+  const runtime = {
+    useSupabase: () => ({ supabase: channel.supabase }),
+    MESSAGE_FIELDS: 'id, conversation_id, created_at',
+    BASE_URL: 'https://example.invalid',
+    platformFetch: globalThis.fetch,
+    isAccountRequestCurrent: () => current,
+    onAccountTransition: fn => { accountListeners.add(fn); return () => accountListeners.delete(fn) },
+    setTimeout: (fn, ms) => { const id = ++nextTimer; timers.set(id, { fn, ms }); return id },
+    clearTimeout: id => timers.delete(id),
+  }
+  const realtime = await loadWithRuntime('src/composables/useRealtimeFallback.ts', [
+    ["import { useSupabase, platformFetch } from './useSupabase'", 'const { useSupabase, platformFetch } = globalThis.__RUNTIME_KEY__'],
+    ["import { MESSAGE_FIELDS } from './useMessages.constants'", 'const { MESSAGE_FIELDS } = globalThis.__RUNTIME_KEY__'],
+    ["import { BASE_URL } from '../config/runtime'", 'const { BASE_URL } = globalThis.__RUNTIME_KEY__'],
+    ['type Unsubscribe =', 'const { setTimeout, clearTimeout } = globalThis.__RUNTIME_KEY__\ntype Unsubscribe ='],
+  ], runtime)
+  return {
+    channel, realtime, timers,
+    advance(ms) {
+      const due = [...timers].filter(([, entry]) => entry.ms === ms)
+      assert.equal(due.length, 1, `expected one ${ms}ms owner`)
+      const [id, entry] = due[0]
+      timers.delete(id)
+      return entry.fn()
+    },
+    switchAccount() { current = false; for (const fn of [...accountListeners]) fn() },
+  }
+}
+
+test('healthy conversation silently missing a row converges without another socket event or page resume', async () => {
+  const h = await quietReconcileHarness()
+  const history = [{ id: 'first', is_read: false }]
+  let visible = []
+  let readyCalls = 0
+  let snapshots = 0
+  const stop = h.realtime.subscribeToConversation('quiet-chat', () => {}, undefined,
+    () => { readyCalls++; visible = structuredClone(history) },
+    () => { snapshots++; visible = structuredClone(history) },
+  )
+  try {
+    assert.equal(h.timers.size, 0, 'no timer before authenticated readiness')
+    h.channel.status('SUBSCRIBED')
+    h.channel.status('SUBSCRIBED')
+    history[0].is_read = true
+    history.push({ id: 'silently-missed', is_read: false })
+    assert.equal(visible.length, 1)
+    await h.advance(15000)
+    assert.deepEqual(visible, history, 'missed INSERT and UPDATE converge together')
+    assert.equal(readyCalls, 1, 'quiet convergence does not redefine readiness')
+    assert.equal(snapshots, 1)
+    assert.equal(h.channel.wasRemoved(), false, 'healthy channel stays available for low-latency events')
+    assert.equal(h.timers.size, 1)
+  } finally { stop() }
+  assert.equal(h.timers.size, 0)
+})
+
+test('quiet conversation recovery retries failures, pauses hidden tabs, and never overlaps a slow read', async () => {
+  const lifecycle = browserLifecycleHarness()
+  lifecycle.install()
+  const h = await quietReconcileHarness()
+  const pending = deferred()
+  let calls = 0
+  const stop = h.realtime.subscribeToConversation('slow-chat', () => {}, undefined, () => {}, () => {
+    calls++
+    if (calls === 1) throw new Error('temporary HTTP failure')
+    return pending.promise
+  })
+  try {
+    h.channel.status('SUBSCRIBED')
+    await h.advance(15000)
+    assert.equal(calls, 1)
+    lifecycle.setVisibility('hidden')
+    await h.advance(15000)
+    assert.equal(calls, 1, 'hidden tab does not run a quiet snapshot')
+    // Restore the visibility property without emitting resume: specifically
+    // test a still-healthy primary, not the separately covered handoff path.
+    globalThis.document.visibilityState = 'visible'
+    const task = h.advance(15000)
+    assert.equal(calls, 2)
+    assert.equal(h.timers.size, 0, 'slow snapshot owns its entire interval')
+    h.channel.status('SUBSCRIBED')
+    assert.equal(h.timers.size, 0, 'duplicate readiness cannot add a timer')
+    stop()
+    pending.resolve()
+    await task
+    assert.equal(h.timers.size, 0, 'settling after teardown cannot revive recovery')
+  } finally { pending.resolve(); stop(); lifecycle.restore() }
+})
+
+for (const stream of ['inbox', 'notifications', 'offers', 'meetups']) {
+  test(`healthy ${stream} repairs a silent gap and account switching removes its recovery owner`, async () => {
+    const h = await quietReconcileHarness()
+    let version = 0
+    let observed = -1
+    const reconcile = () => { observed = version }
+    const interval = ['offers', 'meetups'].includes(stream) ? 30000 : 60000
+    const stop = stream === 'inbox'
+      ? h.realtime.subscribeToUserInbox('11111111-1111-4111-8111-111111111111', () => {}, reconcile, reconcile)
+      : stream === 'notifications'
+        ? h.realtime.subscribeToUserNotifications('11111111-1111-4111-8111-111111111111', () => {}, reconcile, reconcile)
+        : h.realtime.subscribeToSnapshotChanges({ topic: stream, table: stream, filter: 'conversation_id=eq.test', intervalMs: 5000, onReady: reconcile, onChange: reconcile })
+    try {
+      h.channel.status('SUBSCRIBED')
+      assert.equal(observed, 0)
+      version = 1
+      await h.advance(interval)
+      assert.equal(observed, 1)
+      assert.equal(h.timers.size, 1)
+      h.switchAccount()
+      assert.equal(h.timers.size, 0)
+      h.channel.status('SUBSCRIBED')
+      assert.equal(h.timers.size, 0)
+    } finally { stop() }
+  })
+}
