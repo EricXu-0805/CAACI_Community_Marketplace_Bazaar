@@ -621,6 +621,7 @@
 </template>
 
 <script setup lang="ts">
+import { photoPickerErrorKey } from '../../utils/photoPicker'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 // #ifndef H5
@@ -1325,6 +1326,11 @@ function onComposerPickImage() {
           composerImages.value.push(p)
         }
       }
+    },
+    fail: (error) => {
+      if (!pickerIsCurrent()) return
+      const key = photoPickerErrorKey(error)
+      if (key) uni.showToast({ title: t(key), icon: 'none', duration: 3500 })
     },
   })
 }
@@ -2662,6 +2668,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   will-change: transform;
 }
 
+/* #ifdef H5 */
 @media (min-width: 768px) {
   .page-header { display: none; }
   /* Drop the base 480px centering — the sidebar rail (.has-sidebar in
@@ -2687,4 +2694,5 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   }
   .plaza-compose-d:active { transform: scale(0.96); background: var(--brand-deep); }
 }
+/* #endif */
 </style>

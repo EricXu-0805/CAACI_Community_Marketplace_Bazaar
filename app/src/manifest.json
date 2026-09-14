@@ -35,7 +35,7 @@
         "appid": "wxc3da81aa8852a6ff",
         "darkmode": true,
         "setting": {
-            "urlCheck": false,
+            "urlCheck": true,
             "es6": true,
             "minified": true,
             "postcss": true

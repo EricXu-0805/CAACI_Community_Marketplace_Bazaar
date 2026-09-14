@@ -87,6 +87,7 @@
 </template>
 
 <script setup lang="ts">
+import { photoPickerErrorKey } from '../../utils/photoPicker'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
@@ -209,6 +210,7 @@ async function pickAvatar() {
   const accountToken = captureAccountRequest(currentUser.value.id)
   const pickerEpoch = pageEpoch
   const pickerIsCurrent = () => pickerEpoch === pageEpoch && isAccountRequestCurrent(accountToken)
+  let preparingPhoto = false
   try {
     const res = await new Promise<any>((resolve, reject) => {
       uni.chooseImage({
@@ -220,6 +222,7 @@ async function pickAvatar() {
       })
     })
     if (!pickerIsCurrent() || !res?.tempFilePaths?.[0]) return
+    preparingPhoto = true
     const compressed = await compressImage(res.tempFilePaths[0], { entryPoint: 'onboarding' })
     if (!pickerIsCurrent()) return
     // Keep a local preview and upload only when Finish is pressed. Uploading
@@ -228,8 +231,9 @@ async function pickAvatar() {
     avatarUrl.value = compressed
   } catch (e: any) {
     if (!pickerIsCurrent()) return
-    if (e?.errMsg && /cancel/i.test(e.errMsg)) return
-    const title = e?.heic === true ? t('heic.unsupported') : t('onboarding.photoFail')
+    const key = photoPickerErrorKey(e)
+    if (!key) return
+    const title = e?.heic === true ? t('heic.unsupported') : t(preparingPhoto ? 'onboarding.photoFail' : key)
     uni.showToast({ title, icon: 'none' })
   }
 }

@@ -881,6 +881,7 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
   :root:not([data-theme="light"]) .ph-title { color: var(--ink-strong); }
 }
 /* #endif */
+/* #ifdef H5 */
 @media (min-width: 768px) {
   .page-header { display: none; }
   .page { padding-bottom: 0; max-width: none; margin: 0; }
@@ -891,6 +892,7 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
     margin-right: auto;
   }
 }
+/* #endif */
 
 .login-section {
   background: var(--bg-elev-1); display: flex; flex-direction: column;

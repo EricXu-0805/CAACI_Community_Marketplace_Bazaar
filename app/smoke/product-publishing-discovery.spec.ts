@@ -12,6 +12,37 @@ const photos=['front','back'].map(n=>`https://${REF}.supabase.co/storage/v1/obje
 const dims=[{w:640,h:480},{w:480,h:640}]
 const coverPhoto=readFileSync('src/static/banner-welcome.png')
 const base={id:'22222222-2222-4222-8222-000000000001',user_id:UID,title:'Desk lamp warm white',description:'Adjustable desk lamp. Pickup after class.',title_i18n:{en:'Desk lamp warm white'},description_i18n:null,source_lang:'en',price:25,category:'electronics',condition:'good',status:'active',listing_type:'sell',location:'Illini Union',images:photos,image_dimensions:dims,location_verified:false,created_at:'2026-09-05T10:00:00Z',updated_at:'2026-09-05T10:00:00Z',view_count:0,favorite_count:0,negotiable:false,profile}
+
+test('pickup directions survive detail and edit preview', async ({page}) => {
+ await fixture(page,{location:'Illini Union north entrance after 5pm'})
+ await page.goto(`/#/pages/detail/index?id=${base.id}`)
+ await expect(page.locator('.tag-loc')).toContainText('Illini Union north entrance after 5pm')
+ await expect(page.locator('.safe-badge')).toHaveCount(0)
+ await page.goto(`/#/pages/publish/edit?id=${base.id}`)
+ await page.getByRole('button',{name:'Preview listing',exact:true}).click()
+ await expect(page.locator('.preview-card')).toContainText('Illini Union north entrance after 5pm')
+ await expect(page.locator('.preview-description')).toContainText('Adjustable desk lamp. Pickup after class.')
+ await expect(page.locator('.spot-chip').filter({hasText:'UGL'})).toHaveCount(0)
+})
+
+for (const [surface,route,button] of [
+ ['new listing','/#/pages/publish/index','Add Photo'],
+ ['edit listing',`/#/pages/publish/edit?id=${base.id}`,'Add Photo'],
+ ['profile','/#/pages/profile/edit','Change Photo'],
+] as const) {
+ for (const failure of ['cancel','auth deny','system error']) test(`photo picker ${surface}: ${failure} preserves form and reports only real failures`, async ({page}) => {
+  const requests=await fixture(page); await page.goto(route)
+  const pick=page.getByRole('button',{name:button,exact:true})
+  await expect(pick).toBeVisible()
+  const before=await page.locator('input,textarea').evaluateAll(els=>els.map(el=>(el as HTMLInputElement).value))
+  await page.evaluate(failure=>{(window as any).uni.chooseImage=(options:any)=>options.fail({errMsg:`chooseImage:fail ${failure}`})},failure)
+  await pick.click()
+  const message=page.getByText(failure==='auth deny' ? 'Photo access was not allowed. Review the privacy prompt or photo permissions, then try again.' : 'Couldn’t open the photo library. Your draft is unchanged. Please try again.',{exact:true})
+  if(failure==='cancel') await expect(message).toHaveCount(0); else await expect(message).toBeVisible()
+  expect(await page.locator('input,textarea').evaluateAll(els=>els.map(el=>(el as HTMLInputElement).value))).toEqual(before)
+  expect(requests.filter(req=>['POST','PATCH'].includes(req.method)&&req.url.pathname==='/rest/v1/items')).toHaveLength(0)
+ })
+}
 async function fixture(page:Page, overrides:Record<string,unknown>={}){
  const requests:{url:URL;body:any;method:string}[]=[]
  const rows=[{...base,...overrides},{...base,id:'22222222-2222-4222-8222-000000000002',title:'Desk lamp free',price:0,images:[],location:'伊利尼学生中心'},{...base,id:'22222222-2222-4222-8222-000000000003',title:'Wanted desk lamp',price:0,images:[],listing_type:'wanted'}]
@@ -148,7 +179,18 @@ for(const [name,width,height] of [['mac',1440,900],['ipad',820,1180],['phone',39
   await page.getByRole('spinbutton',{name:'Price',exact:true}).fill('0')
   await page.getByRole('button',{name:'Category',exact:true}).click();await page.getByRole('button',{name:'Furniture',exact:true}).click()
   await expect(page.locator('.field-guidance')).toContainText('dimensions');await expect(page.locator('.preview-card')).toContainText('Free')
+  await page.getByRole('textbox',{name:'Describe your item...',exact:true}).fill('Warm desk light, adjustable arm.\nSmall scratch on the base. Pickup after class.')
+  await page.getByRole('spinbutton',{name:'Price',exact:true}).fill('25')
+  await page.getByRole('button',{name:'OBO',exact:true}).click()
+  await expect(page.locator('.preview-negotiable')).toContainText('OBO')
+  await expect(page.locator('.preview-description')).toContainText('Small scratch on the base.')
+  if(process.env.PRODUCT_AUDIT_CAPTURE){
+   await page.locator('.preview-card').scrollIntoViewIfNeeded()
+   await page.screenshot({path:`../output/playwright/platform-readiness-20260914/${name}-publish-preview-viewport.png`,fullPage:false})
+  }
+  await page.getByRole('spinbutton',{name:'Price',exact:true}).fill('0')
   await page.getByRole('button',{name:'Wanted',exact:true}).click();await expect(page.locator('.preview-card')).toContainText('Open budget')
+  await expect(page.locator('.preview-negotiable')).toHaveCount(0)
   await expect(page.getByRole('button',{name:'Condition',exact:true})).toHaveCount(0);await expect(page.locator('.field-guidance')).toContainText('when you need it')
   expect(requests.filter(r=>r.url.searchParams.get('select')==='price')).toHaveLength(0)
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true)

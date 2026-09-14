@@ -2004,6 +2004,7 @@ function goPublish() {
 /* ============================================
    DESKTOP >= 768px
    ============================================ */
+/* #ifdef H5 */
 @media (min-width: 768px) {
   /* Sidebar reserves the left rail (.has-sidebar in App.vue); the feed
      fills the remaining column instead of centering at 1120px. */
@@ -2059,4 +2060,5 @@ function goPublish() {
   .filter-sheet { max-width: 480px; left: var(--sidebar-w); right: 0; margin-left: auto; margin-right: auto;
   }
 }
+/* #endif */
 </style>

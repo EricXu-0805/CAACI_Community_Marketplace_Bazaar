@@ -785,7 +785,9 @@ const zh: Record<string, string> = {
   'profile.seeAll': '查看全部',
   'profile.moreSection': '更多',
 
-  'publish.imageOptional': '图片可选 - 不上传也可以发布',
+  'publish.imageOptional': '图片可选。首图拍清完整物品，后面补充细节和瑕疵。',
+  'photoPicker.permission': '未获得照片访问权限。请检查隐私授权提示或相册权限后重试。',
+  'photoPicker.failed': '暂时无法打开相册，已填写的内容不会丢失，请重试。',
   'publish.imageMaxReached': '最多上传 9 张',
   'publish.imageDropped': '超出 9 张限制，已忽略 {n} 张',
   'publish.imagesUploaded': '已上传 {done}/{total} 张图片',
@@ -808,7 +810,7 @@ const zh: Record<string, string> = {
   'error.actionFailed': '操作失败，请重试',
 
   'pickup.verifiedPickup': '已共享定位',
-  'pickup.safeSpot': '认证地点',
+  'pickup.safeSpot': '校园取货点',
 
   'follow.follow': '关注',
   'follow.following': '已关注',
@@ -854,7 +856,7 @@ const zh: Record<string, string> = {
   'onboarding.addPhoto': '选择照片',
   'onboarding.changePhoto': '更换照片',
   'onboarding.noAvatar': '跳过，使用默认头像',
-  'onboarding.photoFail': '照片上传失败',
+  'onboarding.photoFail': '照片处理失败，请换一张图片重试。',
   'onboarding.next': '下一步',
   'onboarding.back': '返回',
   'onboarding.finish': '完成',

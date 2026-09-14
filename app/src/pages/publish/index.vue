@@ -243,6 +243,7 @@
 </template>
 
 <script setup lang="ts">
+import { photoPickerErrorKey } from '../../utils/photoPicker'
 import { mergeListingImages } from '../../utils/listingImages'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
@@ -830,7 +831,7 @@ function chooseImage() {
       const picked = Array.isArray(res.tempFilePaths)
         ? res.tempFilePaths
         : res.tempFilePaths ? [res.tempFilePaths] : []
-      const accepted = picked.slice(0, remaining)
+      const accepted = picked.slice(0, Math.max(0, MAX_IMAGES_PUBLISH - imageList.value.length))
       const dropped = picked.length - accepted.length
       imageList.value.push(...accepted)
       if (dropped > 0) {
@@ -840,6 +841,11 @@ function chooseImage() {
           duration: 2500,
         })
       }
+    },
+    fail: (error) => {
+      if (!publishReady.value || submitting.value || publishPageAccountToken !== pickerAccountToken || !isAccountRequestCurrent(pickerAccountToken)) return
+      const key = photoPickerErrorKey(error)
+      if (key) uni.showToast({ title: t(key), icon: 'none', duration: 3500 })
     },
   })
 }
@@ -1229,7 +1235,9 @@ async function onSubmit() {
 }
 /* #endif */
 
+/* #ifdef H5 */
 @media (min-width: 768px) { .page-header { display: none; } }
+/* #endif */
 
 /* ========== Form ========== */
 .form { background: var(--bg-elev-1); }
@@ -1474,6 +1482,7 @@ async function onSubmit() {
   border-top: 0.5px solid var(--border-hair);
   z-index: 40;
 }
+/* #ifdef H5 */
 @media (min-width: 768px) {
   /* Center the fixed submit bar under the 720px form column: span the
      area right of the rail, then margin:auto caps it at the form width. */
@@ -1484,4 +1493,5 @@ async function onSubmit() {
   .page { max-width: none; margin: 0; }
   .form { max-width: 720px; margin-left: auto; margin-right: auto; }
 }
+/* #endif */
 </style>

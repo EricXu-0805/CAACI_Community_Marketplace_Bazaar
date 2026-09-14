@@ -2,6 +2,7 @@
 import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { verifyMiniProgram } from './verify-miniprogram.mjs'
 
 async function walk(root, relative = '') {
   const entries = await readdir(path.join(root, relative), { withFileTypes: true })
@@ -81,6 +82,7 @@ export async function verifyBuildArtifact(root, expectedEnvironment = 'none') {
     }
   }
 
+  if (files.includes('app.json')) await verifyMiniProgram(root, files)
   return Object.freeze({ files: files.length, environment: expectedEnvironment })
 }
 

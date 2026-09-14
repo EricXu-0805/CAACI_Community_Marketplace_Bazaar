@@ -1881,6 +1881,7 @@ async function contactSeller() {
  * is pulled into column 1, so a section that renders conditionally (no
  * description, no reviews, no related items) cannot shift the layout.
  */
+/* #ifdef H5 */
 @media (min-width: 1100px) {
   .page {
     display: grid;
@@ -1937,4 +1938,5 @@ async function contactSeller() {
   }
   .action-bar { border-radius: 14px 14px 0 0; }
 }
+/* #endif */
 </style>

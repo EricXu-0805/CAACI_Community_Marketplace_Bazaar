@@ -1,7 +1,4 @@
-// #ifdef MP-WEIXIN || MP-QQ || MP-BAIDU || MP-ALIPAY || MP-TOUTIAO
-import { installUrlShim } from '../utils/urlShim'
-installUrlShim()
-// #endif
+import '../utils/platformGlobals'
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { makeMpFetch } from '../utils/mpFetch'

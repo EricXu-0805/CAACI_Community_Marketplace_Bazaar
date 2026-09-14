@@ -789,7 +789,9 @@ const en: Record<string, string> = {
   'profile.seeAll': 'See all',
   'profile.moreSection': 'More',
 
-  'publish.imageOptional': 'Images optional — text-only posts are fine',
+  'publish.imageOptional': 'Photos are optional. Show the whole item first, then details and any flaws.',
+  'photoPicker.permission': 'Photo access was not allowed. Review the privacy prompt or photo permissions, then try again.',
+  'photoPicker.failed': 'Couldn’t open the photo library. Your draft is unchanged. Please try again.',
   'publish.imageMaxReached': 'Max 9 photos reached',
   'publish.imageDropped': '{n} extra photo(s) skipped (9 max)',
   'publish.imagesUploaded': '{done}/{total} images uploaded',
@@ -812,7 +814,7 @@ const en: Record<string, string> = {
   'error.actionFailed': 'Something went wrong. Please try again.',
 
   'pickup.verifiedPickup': 'Location shared',
-  'pickup.safeSpot': 'Safe spot',
+  'pickup.safeSpot': 'Campus pickup',
 
   'follow.follow': 'Follow',
   'follow.following': 'Following',
@@ -858,7 +860,7 @@ const en: Record<string, string> = {
   'onboarding.addPhoto': 'Choose photo',
   'onboarding.changePhoto': 'Change photo',
   'onboarding.noAvatar': 'Skip — use default',
-  'onboarding.photoFail': "Couldn't upload photo",
+  'onboarding.photoFail': "Couldn't prepare this photo. Please try another image.",
   'onboarding.next': 'Continue',
   'onboarding.back': 'Back',
   'onboarding.finish': 'Finish',

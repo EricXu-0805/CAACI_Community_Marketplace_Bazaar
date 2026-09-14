@@ -88,3 +88,22 @@ test('mp-weixin component WXSS avoids unsupported tag, ID, and attribute selecto
   assert.ok(checkedBlocks >= 40, `expected broad scoped-style coverage, got ${checkedBlocks}`)
   assert.deepEqual(violations, [])
 })
+
+test('WeChat tablet keeps primary navigation and page headers without an H5 sidebar', () => {
+  const cssFor = relative => postcss.parse(scopedStyleBlocks(fs.readFileSync(path.join(sourceRoot, relative), 'utf8'))
+    .map(block => block.isScss ? sass.compileString(keepForMpWeixin(block.body)).css : keepForMpWeixin(block.body)).join('\n'))
+  const tab = cssFor('components/CustomTabBar.vue')
+  let unconditionalDisplay = ''
+  tab.walkRules(rule => {
+    if (rule.selector === '.tabbar' && rule.parent.type === 'root') {
+      rule.walkDecls('display', decl => { unconditionalDisplay = decl.value })
+    }
+  })
+  assert.equal(unconditionalDisplay, 'flex', 'tablet needs tabs even above 767px')
+  for (const page of ['index', 'plaza', 'messages', 'profile', 'publish']) {
+    cssFor(`pages/${page}/index.vue`).walkRules(rule => {
+      if (!['.mobile-header', '.page-header'].includes(rule.selector)) return
+      rule.walkDecls('display', decl => assert.notEqual(decl.value, 'none', `${page}: no sidebar may replace this header in mp`))
+    })
+  }
+})

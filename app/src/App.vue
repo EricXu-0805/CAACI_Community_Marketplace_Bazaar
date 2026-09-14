@@ -1605,10 +1605,12 @@ onLaunch((launchOptions) => {
           url: `/pages/welcome/index${params.length ? `?${params.join('&')}` : ''}`,
         })
       } else if (!routedToReset) {
+        // #ifdef H5
         // Cold load on an unknown hash: hashchange never fires for it, so the
         // listener above cannot see it. Runs after the welcome branch so a
         // first-run user still gets /welcome rather than a bare home redirect.
         rescueUnknownHashRoute()
+        // #endif
       }
     } catch (err) {
       captureException(err, { tags: { source: 'onLaunch.welcomeRouting' }, level: 'error' })

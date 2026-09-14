@@ -1,192 +1,105 @@
-# WeChat mini-program build — activation checklist
+# 微信小程序上线与验收
 
-> **Release-candidate boundary (2026-07-19):** the repository can build an
-> `mp-weixin` artifact, but this candidate has not been deployed to the current
-> production schema or validated in WeChat DevTools/on a physical phone with the
-> real domain allow-list, AppID secrets, Supabase keys, Storage, long-poll, or
-> moderation providers. “Implemented” below means code/build coverage, not a
-> production or real-device pass.
+> **2026-09-14 更新。** 当前已在微信开发者工具 RC 2.02.2607161 / 基础库 3.17.2
+> 运行生产公开商品的首页、详情和登录引导，并检查 iPhone/iPad 模拟尺寸。
+> 这不是已上传体验版、真机双账号闭环或微信审核通过。最新完整证据见
+> [本轮跨平台报告](audit/2026-09-14-platform-readiness.md)。
 
-This app is built on uni-app, so `npm run build:mp-weixin` produces
-a WeChat mp bundle at `app/dist/build/mp-weixin/`. But: shipping that
-to WeChat's app review is a real amount of work. This doc captures
-everything that is required beyond the code, in order.
+## 1. 当前范围
 
-## Status at a glance
+首版使用同一套商品、广场、账号与聊天服务。小程序只显示**邮箱/密码登录**；
+Google 登录只在 H5 显示，微信快捷登录保持关闭，后文 §8 是未来激活手册。
+聊天使用经过鉴权的长轮询与直接查询降级；不能承诺原生后台消息推送或即时送达。
+`app-plus` 模板也不代表已有可以提交 App Store / Google Play 的原生安装包。
 
-| Piece | Status | Notes |
+| 项目 | 当前证据 | 上线前还需什么 |
 |---|---|---|
-| REST calls (auth, items, posts, messages, rpc) | Candidate implementation; real provider pending | `app/src/utils/mpFetch.ts` |
-| `uni.request` timeout + abort | Candidate boundary-tested | 25 s timeout, AbortSignal wired; real weak-network test pending |
-| Image upload (`chooseImage`, compress, upload) | Candidate implementation; real Storage/device pending | needs `requiredPrivateInfos` (already in manifest) |
-| File picker (`chooseMedia`) | Candidate implementation; real device pending | ditto |
-| Supabase Realtime (chat websocket) | Candidate long-poll/direct-poll fallback; real latency pending | See §3 — `useRealtimeFallback.ts` 3-tier strategy |
-| Deep-linking via `#/...` routes | Replace with `uni.navigateTo` only | no `window.location.hash` on mp |
-| `fetch`/`WebSocket`/`navigator` | Use uni.* | `mpFetch` handles fetch; see §3 for WebSocket |
-| OpenAI proxies (`/api/moderate`, `/api/translate`) | Candidate authenticated routes; provider/allow-list pending | needs domain allow-list and real user JWT |
+| 启动、公开商品、图片、详情、登录表单 | 开发者工具实际运行；WXSS 官方编译器与产物运行检查 | 同版本体验版真机复验 |
+| iPad 导航 | 本轮发现宽屏错误隐藏导航并修复；模拟器复验 | 真机横竖屏、微信分屏 |
+| 邮箱登录、上传、发商品、私信 | 共用代码与自动化覆盖；没有本轮微信真实账号闭环 | 两个获授权测试账号完成一次完整交易沟通流程 |
+| 相册 | 失败/拒绝权限/取消会保留表单，真实组件模拟回归 | 系统相册、HEIC、权限拒绝后恢复、iOS 有限照片权限 |
+| 发布、聊天安全 | 账号隔离、服务端校验、举报/屏蔽、受限媒体 URL | 托管审核服务自然运行、微信审核方要求与后台配置 |
+| 账号主体、服务类目、备案、合法域名、隐私声明 | 未读取账号后台，不可勾选完成 | 运营者在微信后台核实并保留回执 |
 
-## 1. Register a WeChat mini-program
+## 2. 服务器域名与构建配置
 
-1. Go to <https://mp.weixin.qq.com/> and register a new mini-program
-   (小程序). You need a real organization or an individual account
-   with WeChat Pay linked.
-2. Copy the `AppID` (looks like `wxabcdef0123456789`).
-3. Paste it into `app/src/manifest.json` → `mp-weixin.appid`.
-4. Install the official WeChat DevTools (微信开发者工具):
-   <https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html>
+`mp-weixin.appid` 当前为 `wxc3da81aa8852a6ff`；`setting.urlCheck` 必须保持 **true**。
+构建检查要求真实 AppID 格式、合法 HTTPS 接口 origin、包体预算、全部页面入口和
+媒体/请求运行时边界。不要用“不校验合法域名”掩盖正式包的问题。
 
-## 2. Domain allow-list
+在该 AppID 的「开发管理 → 开发设置 → 服务器域名」核实以下**实际使用域名**：
 
-WeChat mp enforces a strict per-AppID allow-list for all outbound
-network calls. Your production build will refuse requests to any
-domain not on this list. During dev you can tick "不校验合法域名"
-in DevTools to skip this, which is why `manifest.json` has
-`setting.urlCheck = false` — but this flag is disabled automatically
-for release builds.
-
-Log into <https://mp.weixin.qq.com/> → 开发管理 → 开发设置 → 服务器域名,
-then add:
-
-**request 合法域名 (HTTPS only):**
-- `https://lfhvgprfphyfvhidegum.supabase.co`   — Supabase REST + Auth
-- `https://illinimarket.com`  — our /api/moderate, /api/translate
-
-**socket 合法域名 (WSS only):**
-- `wss://lfhvgprfphyfvhidegum.supabase.co`  — Supabase Realtime
-  (only needed once §3 polling fallback is replaced with a real
-  WebSocket adapter)
-
-**uploadFile 合法域名:**
-- `https://lfhvgprfphyfvhidegum.supabase.co`  — Supabase Storage direct upload
-
-**downloadFile 合法域名:**
-- `https://lfhvgprfphyfvhidegum.supabase.co`  — Supabase Storage GET
-
-WeChat takes ~5 minutes to propagate the allow-list.
-
-## 3. Supabase Realtime (chat websocket) — polling fallback
-
-The supabase-js realtime client uses Phoenix channels over a single
-WebSocket. WeChat mp has `wx.connectSocket` but it **does not round-trip
-cleanly** through Phoenix's handshake. Symptom: the channel subscribes,
-but `broadcast` and `postgres_changes` events never fire.
-
-**Implemented in the candidate** by a 3-tier strategy in
-`app/src/composables/useRealtimeFallback.ts`. The latency figures are design
-targets; validate them with the migrated staging schema, real credentials and a
-physical phone before calling this resolved:
-
-| Platform | Path | Latency |
+| 类型 | 当前候选需要的域名 | 用途 |
 |---|---|---|
-| H5 | `supabase.channel(...)` (Phoenix over WebSocket) | <200 ms |
-| mp + long-poll OK | `GET /api/realtime-poll?scope=...&id=...&since=...` | ~1 s |
-| mp + long-poll 5xx'd | Direct PostgREST `GET /rest/v1/messages` every 3 s | 3 s |
+| request | `https://lfhvgprfphyfvhidegum.supabase.co` | Auth、REST、RPC |
+| request | `https://www.illinimarket.com` | 鉴权后的 `/api/*`，包括审核、翻译和长轮询 |
+| uploadFile / downloadFile | `https://lfhvgprfphyfvhidegum.supabase.co` | 商品和头像图片；仍需体验版验证实际上传传输方式 |
+| socket | 当前轮询方案不据此宣称 WebSocket 可用 | 将来启用 `wx.connectSocket` 适配时再核对 WSS 域名并实测 |
 
-Long-poll protocol:
-1. Client opens `GET /api/realtime-poll?scope=conversation&id=X&since=CURSOR`
-   with its Supabase JWT in the Authorization header.
-2. Edge function (`api/realtime-poll.js`) tight-polls Supabase every
-   800 ms internally, held up to 20 s (under Vercel's 25 s edge cap).
-3. Returns `{rows:[…], next_since: "ISO|UUID"}` on first hit, or
-   `{rows:[]}` on timeout.
-4. Client immediately re-opens with the new cursor.
+`https://illinimarket.com` 会跳转到 www；小程序 API 构建直接使用 www，避免把
+重定向域名当成最终请求域名。staging 必须使用独立构建配置及对应测试域名。
+后台是否接受这些域名、其备案/证书要求和当前 AppID 的配额，以真实后台结果为准；
+本轮后台被工具站点安全策略阻止访问，尚未修改任何后台设置。
 
-Security:
-- Message reads forward the caller's JWT with the publishable key; they never
-  use privileged credentials. RLS on `public.messages` therefore evaluates
-  against the real user, so a participant in conversation A cannot long-poll
-  conversation B.
-- The separate amplification limiter is a privileged RPC and uses
-  `SUPABASE_SECRET_KEY` (temporary legacy `SUPABASE_SERVICE_ROLE_KEY`
-  fallback). The route also needs `SUPABASE_PUBLISHABLE_KEY` (temporary legacy
-  `SUPABASE_ANON_KEY` fallback) and `SUPABASE_URL`. An unavailable limiter
-  fails closed before polling messages.
+## 3. 聊天与容量
 
-Circuit breaker: if long-poll returns 5xx / throws / aborts twice in a
-row the client falls back to direct 3s PostgREST polling for the rest
-of that session. Prevents a broken edge deploy from blocking chat.
+H5 优先使用 Supabase Realtime；小程序使用 `useRealtimeFallback.ts` 的鉴权轮询。
+`api/realtime-poll.js` 按约 800ms 查询、单次最多约 20s；客户端失败后退到约 3s 的
+直接查询。前台恢复、会话切换、重复发送和响应丢失都有回归测试，延迟仍取决于
+网络和托管负载。真实用户容量必须覆盖活跃聊天、长轮询连接、上传和后台任务。
 
-Call sites (platform-agnostic):
-- `useMessages.subscribeToMessages()`
-- `useUnread.startListening()`
+商品搜索在上轮 staging 的 10,001 条数据压力测试中仍出现复杂搜索超时。
+不能将普通商品列表的短时并发成功外推成整个平台容量验收。
 
-Cursor strategy: use the lexicographic `(created_at,id)` key of the last row.
-The composite cursor prevents rows from being lost when more than one page has
-the same server timestamp. Timestamp-only cursors remain accepted during a
-rolling upgrade; the first successful response advances them to `ISO|UUID`.
+## 4. 隐私与系统能力
 
-## 4. Page-to-tabBar mismatch
+源码启用 `__usePrivacyCheck__: true`，但这只是启用平台机制。
+运营者仍需在后台发布与实际收集行为一致的《用户隐私保护指引》，核实照片用途、
+用户内容、联系方式、第三方处理者和数据删除入口，并验证拒绝后仍可浏览。
+不要把所有相册 API 都写进 `requiredPrivateInfos`；按当前微信后台/API 文档的适用
+字段逐项声明。当前首页/发布页的小程序不调用 H5 的浏览器 GPS 按钮。
 
-`pages.json` declares a `tabBar`; the Plaza and Publish routes use only the
-cross-platform subset currently supported by the release candidate:
+小程序使用有图标的 `CustomTabBar.vue`，原生 tab bar 被隐藏；平板也必须保留
+这条导航，因为 `AppSidebar` 是 H5 专用。不要根据 `pages.json` 的原生文字项误判
+产品缺图标，也不要在未验证 WXSS 的情况下直接复用桌面 CSS。
 
-- **Plaza**: public posts are text plus up to four canonical local images.
-  Public chat is text-only until a private chat-media bucket and signed-delivery
-  path exist. Do not re-introduce public video/media URLs as a Mini Program
-  workaround; the database write boundary rejects them.
-- **Publish**: `uni.chooseImage` works. Image compression in
-  `utils/index.ts::compressImage` already has the correct dual
-  branch — H5 uses canvas + toDataURL, non-H5 uses `uni.compressImage`
-  with the same signature. ✅ Done in `src/utils/index.ts:610`.
+## 5. 构建与检查
 
-### tabBar icons
-
-`pages.json` currently declares `tabBar.list` with text only and no
-`iconPath` / `selectedIconPath`. This is LEGAL on mp — tabs render
-as text-only — but reviewers and users expect icons. When you add
-them, use 81×81 PNGs (standard mp dimensions) and put them under
-`src/static/tab/` since `src/static/*` is the only folder uni-app
-ships verbatim to the mp bundle.
-
-## 5. Build commands
+在 `app/` 内使用 Node 22 和已配置的公开 Supabase 客户端环境变量：
 
 ```bash
-# Dev — opens DevTools automatically if set up
-npm run dev:mp-weixin
-
-# Production
-npm run build:mp-weixin
-# Output: app/dist/build/mp-weixin/
-# Then: File → Open in WeChat DevTools → upload for review
+VITE_BASE_URL=https://www.illinimarket.com npm run build:mp-weixin
+node ../scripts/verify-build-artifact.mjs dist/build/mp-weixin none
 ```
 
-## 6. What won't work on mp (list for honesty)
+开发者工具导入 `app/dist/build/mp-weixin/`。当前检查采用主包/每个分包 2 MiB 的
+保守原始文件预算，最终上传体积和平台规则仍以开发者工具为准。CI 和本地 push
+都会运行产物检查；普通编译成功不再被当成 WXSS/运行时正确的充分证据。
 
-- **Anything using `window.*`, `document.*`, `fetch` directly.**
-  `mpFetch` handles Supabase; if you add more direct `fetch()` calls,
-  wrap them with `platformFetch` from `useSupabase.ts`.
-- **Realtime pushes in chat** (see §3).
-- **Service workers / push notifications** — use `wx.subscribeMessage` instead.
-- **`BarcodeDetector`** (used for client-side QR code detection in
-  moderation). Need to fall back to `wx.scanCode` or server-side detection.
-- **OpenAI moderation from mp**: the candidate calls the authenticated
-  `/api/moderate` route. It still needs `illinimarket.com` in the request
-  allow-list, a real user JWT, provider configuration, and DevTools/phone
-  verification (§2).
-- **Deep links** — use `uni.navigateTo({ url: '/pages/...' })` not
-  location-hash routing.
+## 6. 体验版验收步骤
 
-## 7. Submission checklist (when you're ready)
+1. 首页 → 搜索/筛选 → 商品详情 → 联系卖家 → 登录 → 返回原商品/会话。
+2. 发布商品：取消相册、拒绝权限、多图、换封面、预览、断网重试、保存后编辑。
+3. 两个测试账号完成消息、报价、约见、拒绝/改约、后台恢复；第三账号不能读写会话。
+4. iPhone 与 iPad 原生中文输入法、联想词、emoji、横竖屏、相册权限恢复。
+5. 举报/屏蔽、内容处理、账号注销、数据删除与用户反馈由运营者完成实际闭环。
+6. 有真实来源的截图/记录写入验收表；合成数据、模拟器和真机分别标注。
 
-- [x] `appid` filled in `manifest.json` (`wxc3da81aa8852a6ff`)
-- [ ] All four domain lists populated on mp.weixin.qq.com
-- [ ] `setting.urlCheck` left as `false` in manifest (the real
-      check happens server-side during upload)
-- [x] `requiredPrivateInfos` includes every API you actually call
-      (chooseImage, chooseMedia — see manifest.json)
-- [ ] Tested on a physical phone via DevTools → 真机调试
-- [ ] Privacy agreement page (§3 of our Privacy Policy already
-      covers this — point the mp privacy section at /pages/legal)
-- [ ] Operator info / ICP beian filed (required for any mp used
-      by people in mainland China)
-- [ ] §8 below: WECHAT_APPID + WECHAT_APPSECRET + SUPABASE_URL +
-      SUPABASE_SECRET_KEY + SUPABASE_PUBLISHABLE_KEY set on Vercel (keep the
-      legacy service_role/anon aliases only during the rolling migration;
-      required for wx.login to function at all). Before enabling image async,
-      also provision WECHAT_PUSH_TOKEN + WECHAT_ENCODING_AES_KEY and complete
-      the encrypted provider canary below
+## 7. 提审门槛
 
-Allow ~3–5 business days for WeChat's first review.
+- [x] 源码 AppID 已设置，合法域名校验开启。
+- [x] 本轮修复：WXSS 白屏、Web API 全局变量、H5 路由误调用、平板导航隐藏。
+- [ ] 正确账号主体、服务类目、对应资质和所适用备案；不得凭“校园项目”推断豁免。
+- [ ] 微信后台服务器域名、隐私声明已发布并有回执。
+- [ ] 体验版真实登录、商品上传、聊天、审核服务与拒绝授权闭环。
+- [ ] 两台实体设备（含 iPad）完成关键输入和相册场景。
+- [ ] 容量与恢复风险有可接受的发布范围；大规模开放前补齐真实混合负载和整库恢复。
+- [ ] 版本说明、截图、客服/支持入口、审核测试账号按后台要求备齐；上传、提审、审核
+      通过与正式发布分别留证，不能把其中一步当作全部完成。
+
+参考：微信开发者工具内的实际校验；[腾讯云小程序发布文档](https://docs.cloudbase.net/lowcode/app/mp)
+的包体说明；[工信部 APP 备案解读](https://www.miit.gov.cn/zwgk/zcjd/art/2023/art_39b4f1acc36745b98478e0ec3e07128d.html)。
+备案适用性与具体类目以该账号主体/服务范围及微信后台核实结果为准。
 
 ## 8. wx.login silent sign-in — deployment guide
 

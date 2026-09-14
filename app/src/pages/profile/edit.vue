@@ -68,6 +68,7 @@
 </template>
 
 <script setup lang="ts">
+import { photoPickerErrorKey } from '../../utils/photoPicker'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { ref, computed, onUnmounted, nextTick, watch } from 'vue'
@@ -253,8 +254,13 @@ function onChangeAvatar() {
         || pageAccountToken !== pickerAccountToken
         || !isAccountRequestCurrent(pickerAccountToken)
       ) return
-      const tempPath = res.tempFilePaths[0]
-      avatarUrl.value = tempPath
+      const tempPath = Array.isArray(res.tempFilePaths) ? res.tempFilePaths[0] : res.tempFilePaths
+      if (tempPath) avatarUrl.value = tempPath
+    },
+    fail: (error) => {
+      if (!profileEditReady.value || pageAccountToken !== pickerAccountToken || !isAccountRequestCurrent(pickerAccountToken)) return
+      const key = photoPickerErrorKey(error)
+      if (key) uni.showToast({ title: t(key), icon: 'none', duration: 3500 })
     },
   })
 }

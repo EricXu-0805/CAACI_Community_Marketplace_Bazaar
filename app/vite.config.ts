@@ -281,7 +281,7 @@ function requireMpAppOrigin(): Plugin {
 
 /*
  * Rewrites every `new URL(` and `new URLSearchParams(` reference inside
- * @supabase/* package code to go through `globalThis.` on mp builds.
+ * application and @supabase/* code to go through `globalThis.` on mp builds.
  *
  * Why: WeChat mini-program JSCore exposes URL on globalThis but bare
  * identifier lookup inside vendor.js can return undefined (witnessed
@@ -291,9 +291,8 @@ function requireMpAppOrigin(): Plugin {
  * through `globalThis.URL` (where our urlShim installs MiniURL) routes
  * the call to the polyfill regardless of scope quirks.
  *
- * Scoped to @supabase/* paths so we don't accidentally rewrite our own
- * code or unrelated deps. Only fires when UNI_PLATFORM is mp-* — H5
- * builds keep native URL.
+ * Application validators and transport need the same namespace as Supabase.
+ * Keep unrelated dependencies and H5 untouched.
  */
 /*
  * Override uni-h5-vite's plugin/config.js chunkFileNames hook for chunks
@@ -394,16 +393,16 @@ function removeUniH5RemoteShadowPreload(): Plugin {
 function mpWebApiGlobalThisRewrite(): Plugin {
   const APIS = ["URL", "URLSearchParams", "Headers", "AbortController", "AbortSignal"];
   const constructorRe = new RegExp(
-    `new (${APIS.join("|")})\\(`,
+    `\\bnew\\s+(${APIS.join("|")})\\s*\\(`,
     "g",
   );
   return {
-    name: "mp-supabase-webapi-globalthis",
+    name: "mp-webapi-globalthis",
     enforce: "pre",
     transform(code, id) {
       const platform = process.env.UNI_PLATFORM || "";
       if (!platform.startsWith("mp-")) return null;
-      if (!id.includes("@supabase")) return null;
+      if (!id.includes("@supabase") && !id.startsWith(path.resolve(__dirname, 'src') + path.sep)) return null;
       if (!constructorRe.test(code)) return null;
       constructorRe.lastIndex = 0;
       return {

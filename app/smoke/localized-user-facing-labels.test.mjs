@@ -207,3 +207,17 @@ test('localizeLocation crosses languages and leaves free-form text alone', async
   assert.equal(localizeLocation('Greg Hall', 'zh'), 'Greg Hall')
   assert.equal(localizeLocation('', 'en'), '')
 })
+
+test('pickup locations retain directions and never endorse a substring match', async () => {
+  const { localizeLocation, matchSpot, pickupTier, CAMPUS_SPOTS } = await loadTs('src/composables/useCampusSpots.ts')
+  for (const raw of ['Illini Union north entrance after 5pm', 'Not at Illini Union', '伊利尼学生中心北门，下午五点', 'UGL']) {
+    assert.equal(localizeLocation(raw, 'en'), raw)
+    assert.equal(localizeLocation(raw, 'zh'), raw)
+    assert.equal(matchSpot(raw), null)
+    assert.equal(pickupTier(raw, false), null)
+  }
+  assert.equal(matchSpot('  ILLINI UNION  ')?.id, 'illini_union')
+  assert.equal(pickupTier('Illini Union', false), 'spot')
+  assert.equal(pickupTier('Custom address', true), 'shared')
+  assert.equal(CAMPUS_SPOTS.some(spot => spot.id === 'ugl'), false, 'closed library must not be suggested as a meetup spot')
+})

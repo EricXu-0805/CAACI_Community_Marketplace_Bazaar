@@ -11,10 +11,17 @@
         <image v-if="images[0]" :src="images[0]" :alt="form.title || t('publish.cover')" mode="aspectFit" class="preview-cover" />
         <view class="preview-copy">
           <text class="preview-title">{{ form.title.trim() || t('publish.previewUntitled') }}</text>
-          <text class="preview-price">{{ priceLabel }}</text>
+          <view class="preview-price-row">
+            <text class="preview-price">{{ priceLabel }}</text>
+            <text v-if="form.negotiable && form.listingType !== 'wanted' && Number(form.price) > 0" class="preview-negotiable">{{ t('publish.obo') }}</text>
+          </view>
           <text v-if="form.category || (form.condition && form.listingType !== 'wanted' && !hasCategoryDetails(form.category))" class="preview-meta">{{ [form.category && t('cat.' + form.category), form.listingType !== 'wanted' && !hasCategoryDetails(form.category) && form.condition && t('condition.' + form.condition)].filter(Boolean).join(' · ') }}</text>
           <text class="preview-meta">{{ previewLocation }}</text>
         </view>
+      </view>
+      <view v-if="form.description?.trim()" class="preview-description">
+        <text class="preview-description-label">{{ t('detail.description') }}</text>
+        <text class="preview-description-text">{{ form.description.trim() }}</text>
       </view>
       <ListingDetailsSummary :item="{ category: form.category, listing_type: form.listingType, listing_details: form.details ? listingDetailsFromForm(form.category, form.details) : null }" />
     </view>
@@ -28,7 +35,7 @@ import { localizeLocation } from '../composables/useCampusSpots'
 import UIcon from './UIcon.vue'
 import ListingDetailsSummary from './ListingDetailsSummary.vue'
 import { hasCategoryDetails, listingDetailsFromForm, type ListingDetailForm } from '../utils/listingDetails'
-const props = defineProps<{ form: { title: string; price: string; category: string; condition: string; location: string; listingType: string; details?: ListingDetailForm }; images: string[] }>()
+const props = defineProps<{ form: { title: string; price: string; category: string; condition: string; location: string; listingType: string; description?: string; negotiable?: boolean; details?: ListingDetailForm }; images: string[] }>()
 const { t, lang } = useI18n()
 const open = ref(false)
 const previewLocation = computed(() => localizeLocation(props.form.location.trim(), lang.value as 'en' | 'zh') || t('publish.previewLocation'))
@@ -49,5 +56,10 @@ const priceLabel = computed(() => {
 .preview-copy { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .preview-title { font-size: 15px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
 .preview-price { font-size: 17px; font-weight: 700; color: var(--accent-primary); }
+.preview-price-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.preview-negotiable { font-size: 11px; color: var(--text-secondary); background: var(--bg-subtle); border-radius: 4px; padding: 2px 5px; }
+.preview-description { margin-top: 10px; padding: 12px; background: var(--surface); border-radius: var(--radius-md); }
+.preview-description-label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--text-secondary); }
+.preview-description-text { display: block; font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-primary); }
 .preview-meta { font-size: 12px; color: var(--text-subtle); line-height: 1.5; overflow-wrap: anywhere; }
 </style>

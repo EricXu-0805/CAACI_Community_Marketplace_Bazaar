@@ -227,6 +227,7 @@
 </template>
 
 <script setup lang="ts">
+import { photoPickerErrorKey } from '../../utils/photoPicker'
 import { mergeListingImages } from '../../utils/listingImages'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
@@ -742,7 +743,7 @@ function chooseImage() {
       const picked = Array.isArray(res.tempFilePaths)
         ? res.tempFilePaths
         : res.tempFilePaths ? [res.tempFilePaths] : []
-      const accepted = picked.slice(0, remaining)
+      const accepted = picked.slice(0, Math.max(0, MAX_IMAGES_PUBLISH - imageList.value.length))
       const dropped = picked.length - accepted.length
       imageList.value.push(...accepted)
       imageDimensions.value.push(...accepted.map(() => ({ w: 0, h: 0 })))
@@ -753,6 +754,11 @@ function chooseImage() {
           duration: 2500,
         })
       }
+    },
+    fail: (error) => {
+      if (!editReady.value || submitting.value || editPageAccountToken !== pickerAccountToken || !isAccountRequestCurrent(pickerAccountToken)) return
+      const key = photoPickerErrorKey(error)
+      if (key) uni.showToast({ title: t(key), icon: 'none', duration: 3500 })
     },
   })
 }

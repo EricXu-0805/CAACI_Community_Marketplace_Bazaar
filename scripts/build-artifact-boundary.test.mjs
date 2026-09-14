@@ -43,3 +43,36 @@ for (const [label, relative, content] of [
     await assert.rejects(verifyBuildArtifact(root, 'ci'), /build_artifact_invalid/)
   })
 }
+
+async function miniArtifact() {
+  const root = await artifact({ manifest: false })
+  await mkdir(path.join(root, 'pages/home'), { recursive: true })
+  await writeFile(path.join(root, 'app.json'), JSON.stringify({ pages: ['pages/home/index'] }))
+  await writeFile(path.join(root, 'project.config.json'), JSON.stringify({ appid: 'wx1234567890abcdef', setting: { urlCheck: true } }))
+  for (const suffix of ['js', 'wxml', 'json']) await writeFile(path.join(root, `pages/home/index.${suffix}`), '')
+  return root
+}
+
+test('mini-program validation rejects WXSS universal selectors even in desktop media queries', async () => {
+  const root = await miniArtifact()
+  await writeFile(path.join(root, 'app.wxss'), '@media(min-width:1100px){.page>*.scope{grid-column:2}}')
+  await assert.rejects(verifyBuildArtifact(root), /WXSS does not support universal selectors/)
+})
+
+test('mini-program validation rejects packages beyond the upload limit', async () => {
+  const root = await miniArtifact()
+  await writeFile(path.join(root, 'large.bin'), Buffer.alloc(2 * 1024 * 1024))
+  await assert.rejects(verifyBuildArtifact(root), /exceeds 2 MiB/)
+})
+
+test('mini-program validation refuses a domain-check bypass', async () => {
+  const root = await miniArtifact()
+  await writeFile(path.join(root, 'project.config.json'), JSON.stringify({ appid: 'wx1234567890abcdef', setting: { urlCheck: false } }))
+  await assert.rejects(verifyBuildArtifact(root), /domain validation enabled/)
+})
+
+test('mini-program validation catches renamed or absent page entries', async () => {
+  const root = await miniArtifact()
+  await writeFile(path.join(root, 'app.json'), JSON.stringify({ pages: ['pages/missing/index'] }))
+  await assert.rejects(verifyBuildArtifact(root), /missing mini-program page entry/)
+})

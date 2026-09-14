@@ -300,6 +300,10 @@ function go(url: string) { uni.switchTab({ url }) }
    showed up in both browsers. The label just uses .lbl now. */
 
 @media (max-width: 767px) { .tabbar { display: flex; } }
+/* Mini programs have no H5 sidebar, including on tablets. */
+/* #ifndef H5 */
+.tabbar { display: flex; }
+/* #endif */
 /* after the media rule so it wins the cascade at every width */
 .tabbar.tabbar-hidden { display: none; }
 </style>

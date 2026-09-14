@@ -9,7 +9,6 @@ export const CAMPUS_SPOTS: CampusSpot[] = [
   { id: 'illini_union',  en: 'Illini Union',      zh: '伊利尼学生中心',   safe: true  },
   { id: 'grainger',      en: 'Grainger Library',  zh: 'Grainger 图书馆',  safe: true  },
   { id: 'main_library',  en: 'Main Library',      zh: '主图书馆',         safe: true  },
-  { id: 'ugl',           en: 'UGL',               zh: '本科生图书馆',     safe: true  },
   { id: 'siebel',        en: 'Siebel Center',     zh: 'Siebel CS 楼',     safe: true  },
   { id: 'green_st',      en: 'Green Street',      zh: '绿街',             safe: false },
   { id: 'arc',           en: 'ARC Gym',           zh: 'ARC 健身房',       safe: true  },
@@ -27,11 +26,10 @@ for (const s of CAMPUS_SPOTS) {
 export function matchSpot(location: string | null | undefined): CampusSpot | null {
   if (!location) return null
   const key = location.trim().toLowerCase()
-  if (LABEL_INDEX.has(key)) return LABEL_INDEX.get(key)!
-  for (const s of CAMPUS_SPOTS) {
-    if (key.includes(s.en.toLowerCase()) || location.includes(s.zh)) return s
-  }
-  return null
+  // Only an exact chip label may be translated or receive a campus marker.
+  // Substring matches erased directions ("Illini Union north entrance") and
+  // even endorsed exclusions ("not at Illini Union"). Free text stays intact.
+  return LABEL_INDEX.get(key) || null
 }
 
 /*
@@ -61,11 +59,8 @@ export type PickupTier = 'spot' | 'shared'
  * Two-tier pickup signal, computed at render time from the stored location
  * string — no DB column, no migration. `item.location` is already returned by
  * every list/detail/search path.
- *   'spot'   — the location is a recognized safe campus spot (Illini Union,
- *              the libraries, …). The strongest honest signal: the meetup is at
- *              a known public place. Fires on the spot NAME (chip or typed),
- *              independent of GPS — naming a safe public spot IS the signal,
- *              and the buyer verifies it by showing up.
+ *   'spot'   — the seller chose an exact campus pickup label. This does not
+ *              certify safety, opening hours, the seller, or an actual visit.
  *   'shared' — no safe-spot match, but the seller shared a real device GPS fix.
  *   null     — neither; render nothing.
  * green_st has safe:false, so "Green Street" falls through to 'shared'/null.
