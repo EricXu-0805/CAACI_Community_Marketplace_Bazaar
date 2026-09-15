@@ -112,6 +112,15 @@ identity status, and data scope have been recorded.
 
 ## Correction and deletion requests
 
+The public, bilingual account-deletion guide is available at
+`/account-deletion` on the deployed app origin. It works without sign-in or
+JavaScript and links to web Settings and the existing support email. Use that
+URL for store account-deletion metadata after verifying the deployed page and
+confirming an operator monitors the support inbox. The page itself does not
+submit a deletion request or prove that a support request has been handled.
+Keep the guide's contact and retention summary aligned when changing the
+versioned Privacy Policy; it supplements that policy rather than replacing it.
+
 - Direct ordinary profile corrections to the in-app profile editor where
   possible. For fields that cannot be edited, verify identity and document the
   exact old/new value and data source before a privileged change.

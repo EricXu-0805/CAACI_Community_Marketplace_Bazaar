@@ -23,6 +23,9 @@
       <view class="disclaimer">
         <text class="disclaimer-text">{{ disclaimer }}</text>
       </view>
+      <!-- #ifdef H5 -->
+      <a v-if="docType === 'privacy'" class="deletion-guide" href="/account-deletion">{{ lang === 'zh' ? '账号注销指引' : 'Account deletion guide' }}</a>
+      <!-- #endif -->
       <text class="body">{{ body }}</text>
       <view class="contact-row" role="button" :aria-label="t('legal.contactLabel') + ': ' + contactEmail" @click="onContactEmail">
         <text class="contact-label">{{ t('legal.contactLabel') }}</text>
@@ -157,6 +160,12 @@ function onContactEmail() {
   box-sizing: border-box;
   width: 100%;
   overflow-x: hidden;
+}
+.deletion-guide {
+  display: inline-flex; align-items: center; min-height: 44px; margin-bottom: 16px;
+  color: var(--accent-primary); font-size: 14px; text-decoration: underline;
+  text-underline-offset: 3px;
+  &:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 3px; }
 }
 .body {
   display: block;

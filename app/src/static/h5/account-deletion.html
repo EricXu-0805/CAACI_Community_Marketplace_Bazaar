@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Delete your Illini Market account online, or request help if you cannot sign in. 香槟集市账号注销指引。">
+  <meta name="color-scheme" content="light dark">
+  <title>Delete your account · Illini Market / 香槟集市账号注销</title>
+  <link rel="icon" href="/static/app-icon.svg" type="image/svg+xml">
+  <style>
+    :root { color-scheme: light dark; --bg:#f7f4ee; --panel:#fffdf9; --text:#27231e; --muted:#625b52; --line:#d8cfc2; --accent:#874110; --soft:#f5e9da; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:17px/1.65 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    main { max-width:800px; margin:auto; padding:24px max(20px,env(safe-area-inset-left)) max(40px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-right)); }
+    a { color:var(--accent); text-underline-offset:4px; overflow-wrap:anywhere; }
+    a:focus-visible,summary:focus-visible { outline:3px solid var(--accent); outline-offset:5px; border-radius:4px; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; padding-bottom:24px; border-bottom:1px solid var(--line); }
+    .brand { display:inline-flex; align-items:center; gap:4px; min-height:44px; font-weight:750; text-decoration:none; }
+    nav { display:flex; gap:16px; }
+    nav a { display:inline-flex; align-items:center; min-height:44px; }
+    section { scroll-margin-top:24px; padding-top:32px; }
+    h1,h2 { margin:0 0 12px; font-size:clamp(28px,5vw,38px); line-height:1.2; letter-spacing:-.025em; }
+    .card h2,h3 { margin:0 0 6px; font-size:20px; }
+    p { margin:0 0 16px; }
+    .intro { color:var(--muted); max-width:60ch; }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:24px; margin:24px 0; }
+    ol,ul { padding-left:24px; margin:12px 0 20px; }
+    li { padding-left:4px; margin:8px 0; }
+    .button { display:inline-flex; align-items:center; justify-content:center; min-height:48px; max-width:100%; padding:10px 20px; border-radius:10px; background:var(--accent); color:var(--panel); font-weight:650; text-decoration:none; text-align:center; }
+    .notice { padding:16px 20px; background:var(--soft); border-radius:12px; }
+    details { margin-top:20px; border-top:1px solid var(--line); padding-top:8px; }
+    summary { cursor:pointer; padding:12px 0; font-weight:650; min-height:48px; }
+    details p,details li { color:var(--muted); font-size:16px; }
+    .divider { border-top:1px solid var(--line); margin-top:40px; }
+    footer { margin-top:40px; padding-top:20px; border-top:1px solid var(--line); color:var(--muted); font-size:15px; }
+    @media(max-width:420px) { .card { padding:20px; } .button { width:100%; } }
+    @media(prefers-color-scheme:dark) { :root { --bg:#12100d; --panel:#201c17; --text:#f4ede3; --muted:#c9beae; --line:#4c4236; --accent:#f4bc82; --soft:#302519; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <a class="brand" href="/">Illini Market · <span lang="zh">香槟集市</span></a>
+    <nav aria-label="Page languages"><a href="#english" lang="en">English</a><a href="#chinese" lang="zh">中文</a></nav>
+  </header>
+  <section id="english" aria-labelledby="title-en">
+    <h1 id="title-en">Delete your account</h1>
+    <p class="intro">You can delete your Illini Market account in the app or on our website. You do not need to install or reinstall the app.</p>
+    <div class="card">
+      <h2>If you can sign in</h2>
+      <ol>
+        <li>Open Illini Market and sign in to the account you want to delete.</li>
+        <li>Go to <strong>Profile → Settings → Delete Account</strong>.</li>
+        <li>Read the confirmation and submit your deletion request. Follow the status shown on screen; an accepted request may still be processing.</li>
+      </ol>
+      <a class="button" href="/#/pages/settings/index">Open account settings</a>
+    </div>
+    <div class="card">
+      <h2>Cannot sign in, or need help?</h2>
+      <p>Request account deletion by emailing <a href="mailto:help@illinimarket.com?subject=Illini%20Market%20account%20deletion%20request">help@illinimarket.com</a>. If possible, send your request from the email used for your account and say that you want to delete your Illini Market account.</p>
+      <p>We need to verify account ownership before acting on the request. Never send your password, verification codes, or session tokens.</p>
+      <a href="/#/pages/login/index">Sign in or reset your password</a>
+    </div>
+    <p class="notice"><strong>Deletion is permanent.</strong> Your account and most associated content are removed. Your shared conversations and their messages are deleted for both participants. Uninstalling the app or clearing its cache does not delete your account.</p>
+    <details>
+      <summary>What is deleted, and what may remain?</summary>
+      <ul>
+        <li>The deletion process removes your authentication account, profile, owned listings and uploaded media, and other account-linked content. Some steps run in the background; a pending request is not a completed deletion.</li>
+        <li>A restricted internal record of the former account ID and completion timestamps is kept indefinitely to prevent unexpired access tokens from creating new files. After completion, it contains no email, nickname, password, or WeChat identifier.</li>
+        <li>Report snapshots, moderation, enforcement and audit records may remain while reasonably necessary for abuse investigations, appeals, fraud prevention or legal obligations. There is currently no single automatic retention deadline for these records.</li>
+        <li>If you were the counterparty on another person's sold listing, that listing and non-identifying deal details may remain; the deleted account's participant, offer and conversation links are cleared.</li>
+      </ul>
+      <p>See the <a href="/#/pages/legal/index?type=privacy">Privacy Policy</a> for the full retention details.</p>
+    </details>
+  </section>
+  <section id="chinese" class="divider" lang="zh" aria-labelledby="title-zh">
+    <h2 id="title-zh">注销香槟集市账号</h2>
+    <p class="intro">你可以在应用内或网页版注销账号，无需安装或重新安装应用。</p>
+    <div class="card">
+      <h3>可以登录账号</h3>
+      <ol>
+        <li>打开香槟集市，登录你要注销的账号。</li>
+        <li>进入<strong>我的 → 设置 → 注销账号</strong>。</li>
+        <li>阅读确认提示后提交申请，并留意页面显示的处理状态。申请已受理时，部分清理可能仍在进行。</li>
+      </ol>
+      <a class="button" href="/#/pages/settings/index">打开账号设置</a>
+    </div>
+    <div class="card">
+      <h3>无法登录，或需要帮助？</h3>
+      <p>请发邮件至 <a href="mailto:help@illinimarket.com?subject=Illini%20Market%20account%20deletion%20request">help@illinimarket.com</a> 申请注销。尽量使用注册账号时的邮箱发送，并说明你希望注销香槟集市账号。</p>
+      <p>我们需要先核实账号归属，再处理申请。不要发送密码、验证码或登录令牌。</p>
+      <a href="/#/pages/login/index">登录或重置密码</a>
+    </div>
+    <p class="notice"><strong>注销后无法恢复。</strong>账号及大部分关联内容会被删除，你参与的共享会话及消息也会从双方账号中永久删除。卸载应用或清除缓存不会注销账号。</p>
+    <details>
+      <summary>哪些内容会删除，哪些可能保留？</summary>
+      <ul>
+        <li>注销流程会删除认证账号、个人资料、自有商品及上传的媒体等关联内容。部分步骤在后台处理；“处理中”不代表已全部删除。</li>
+        <li>系统会无限期保留受限访问的原账号 ID 和完成时间，以阻止尚未过期的登录令牌继续创建文件。注销完成后，该记录不含邮箱、昵称、密码或微信身份标识。</li>
+        <li>举报快照、审核、处罚和审计记录，可能在调查滥用、处理申诉、防范欺诈或履行法律义务所合理必需的期间内保留。目前这些记录没有统一的自动删除期限。</li>
+        <li>如果你是他人已售商品的交易对方，该商品和不识别个人身份的交易详情可能继续保留；与你已注销账号关联的参与人、报价和会话链接会清除。</li>
+      </ul>
+      <p>完整的数据保留说明见<a href="/#/pages/legal/index?type=privacy">隐私政策</a>。</p>
+    </details>
+  </section>
+  <footer>Illini Market · 香槟集市<br><a href="/#/pages/legal/index?type=privacy">Privacy Policy / 隐私政策</a> · <a href="/">Return to marketplace / 返回集市</a></footer>
+</main>
+</body>
+</html>

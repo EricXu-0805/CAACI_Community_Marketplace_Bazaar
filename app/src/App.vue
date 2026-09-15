@@ -1352,6 +1352,10 @@ onLaunch((launchOptions) => {
     return hashPath || optionPath
   })()
   const welcomeRoutingExempt = new Set([
+    // Public account-deletion guides link here. A first-time browser visitor
+    // must reach Settings (and its sign-in action), not lose it to onboarding.
+    '/pages/settings/index',
+    '/pages/legal/index',
     '/pages/reset-password/index',
     '/pages/profile-recovery/index',
     '/pages/suspended/index',

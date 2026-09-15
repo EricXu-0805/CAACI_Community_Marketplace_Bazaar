@@ -177,4 +177,32 @@ test.describe('an unknown hash route is not a blank page', () => {
     await page.waitForTimeout(1200)
     expect(await page.evaluate(() => location.hash)).toBe('#/pages/settings/index')
   })
+
+  test('a first-run account deletion visitor can sign in from Settings and cancel back', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.removeItem('welcomed')
+      localStorage.setItem('lang', 'en')
+    })
+    await page.goto('/#/pages/settings/index', { waitUntil: 'domcontentloaded' })
+    const signIn = page.getByRole('button', { name: 'Sign In', exact: true })
+    await expect(signIn).toBeVisible()
+    await signIn.click()
+    await expect.poll(() => page.evaluate(() => location.hash)).toMatch(/^#\/pages\/login\/index\?intent=/)
+    await page.goBack()
+    await expect(signIn).toBeVisible()
+    expect(await page.evaluate(() => location.hash)).toBe('#/pages/settings/index')
+    await expect(page.getByRole('button', { name: 'Skip', exact: true })).toHaveCount(0)
+  })
+
+  test('a first-run privacy visitor can read the policy without onboarding', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.removeItem('welcomed')
+      localStorage.setItem('lang', 'en')
+    })
+    await page.goto('/#/pages/legal/index?type=privacy', { waitUntil: 'networkidle' })
+    await expect(page.getByRole('tab', { name: 'Privacy Policy', exact: true })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('link', { name: 'Account deletion guide', exact: true })).toHaveAttribute('href', '/account-deletion')
+    expect(await page.evaluate(() => location.hash)).toBe('#/pages/legal/index?type=privacy')
+    await expect(page.getByRole('button', { name: 'Skip', exact: true })).toHaveCount(0)
+  })
 })

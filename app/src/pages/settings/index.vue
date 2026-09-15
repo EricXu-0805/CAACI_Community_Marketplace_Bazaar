@@ -83,6 +83,21 @@
       </view>
     </view>
 
+    <view v-if="authState === 'anonymous'" class="section">
+      <view
+        class="menu-item"
+        role="button"
+        tabindex="0"
+        :aria-label="t('profile.signIn')"
+        @click="requireAuth('/pages/settings/index')"
+        @keydown.enter.prevent="requireAuth('/pages/settings/index')"
+        @keydown.space.prevent="requireAuth('/pages/settings/index')"
+      >
+        <text class="mi-label">{{ t('profile.signIn') }}</text>
+        <view class="mi-arrow"></view>
+      </view>
+    </view>
+
     <view v-if="isLoggedIn" class="section">
       <view
         class="menu-item"
@@ -168,7 +183,7 @@ import { removeAccountPrivateStorage } from '../../api/accountLocalPrivacy'
 import UIcon from '../../components/UIcon.vue'
 
 const { t, lang, setLang } = useI18n()
-const { isLoggedIn, currentUser, signOut } = useAuth()
+const { isLoggedIn, currentUser, signOut, authState, requireAuth } = useAuth()
 
 /*
  * A WeChat-provisioned identity has no mailbox anyone can open, so every
