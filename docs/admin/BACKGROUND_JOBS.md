@@ -52,7 +52,15 @@ retention procedure and are not erased by this worker.
 Monitor `listing_pending`, `listing_oldest_seconds`, `media_pending` and
 `media_failed` in the authenticated response. A growing oldest age, any failed
 media, repeated HTTP 503, or absence of scheduled runs needs operator action.
-Sentry receives counts only when configured. Do not treat missing Sentry
+Worker failures record the failing RPC operation, a fixed error category and
+progress counts in runtime logs and, when configured, Sentry. For example,
+`provider_timeout` distinguishes an upstream timeout from `backlog_invalid`.
+Arbitrary provider messages, object paths, account IDs and credentials are
+excluded. Media retries log only aggregate retry/failed counts. Inspect these
+diagnostics alongside queue age and the next scheduled run; a recovered queue
+does not retroactively prove every notification was delivered. The HTTP error
+response remains generic and the retry/lease behavior is unchanged.
+Do not treat missing Sentry
 configuration as monitoring coverage. For a failed media job, an authorized
 database operator reviews the exact object/reference and resolves the Storage
 error first, then resets **only that reviewed job ID** to `state='pending'`,

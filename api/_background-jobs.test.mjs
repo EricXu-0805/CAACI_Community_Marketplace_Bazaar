@@ -88,6 +88,8 @@ function mock(options = {}) {
 }
 
 test('worker rejects unauthorized, wrong-method and unconfigured requests without touching data', async () => {
+  const logs = []
+  console.error = (...args) => logs.push(args)
   for(const [env,req,status] of [
     [{},request({secret:null}),401],[{},request({secret:'wrong'}),401],
     [{},request({method:'POST'}),405],[{CRON_SECRET:''},request(),503],
@@ -95,6 +97,41 @@ test('worker rejects unauthorized, wrong-method and unconfigured requests withou
   ]) {
     const calls=mock();const handler=await loadHandler(env)
     assert.equal((await handler(req)).status,status);assert.equal(calls.length,0)
+  }
+  assert.deepEqual(logs, [], 'public callers cannot inject worker diagnostics')
+})
+
+test('worker diagnostics identify the failed operation without exposing upstream content', async () => {
+  const secret = 'private-photo.png user@example.test bearer-private-token'
+  for (const [failure, expected] of [
+    [() => response(secret, 503), 'provider_status_503'],
+    [() => response(secret), 'provider_malformed'],
+    [() => { throw new DOMException(secret, 'AbortError') }, 'provider_timeout'],
+    [() => { throw new Error(secret) }, 'unexpected_failure'],
+    [() => { throw new Error('provider_status_503 ' + secret) }, 'unexpected_failure'],
+    [() => { throw { get message() { throw new Error(secret) } } }, 'unexpected_failure'],
+  ]) {
+    const logs = [], events = []
+    console.error = (...args) => logs.push(args)
+    const handler = await loadHandler({ SENTRY_DSN: 'https://public@sentry.test/1' })
+    globalThis.fetch = async (input, init) => {
+      const url = new URL(String(input))
+      if (url.hostname === 'sentry.test') { events.push(JSON.parse(init.body)); return response({}) }
+      if (url.pathname.endsWith('/claim_moderation_media_job')) return response(null)
+      assert.ok(url.pathname.endsWith('/process_listing_notification_job'))
+      return failure()
+    }
+    const result = await handler(request())
+    const body = await result.text()
+    assert.equal(result.status, 503)
+    assert.equal(result.headers.get('Retry-After'), '600')
+    assert.equal(logs.length, 1)
+    assert.equal(events.length, 1)
+    assert.equal(logs[0][1].operation, 'process_listing_notification_job')
+    assert.equal(logs[0][1].code, expected)
+    assert.deepEqual(events[0].extra, logs[0][1])
+    assert.doesNotMatch(body, /operation|provider_status/)
+    assert.doesNotMatch(JSON.stringify({ logs, events, body }), /private-photo|user@example|bearer-private-token/)
   }
 })
 test('leased evidence moves only its own key and acknowledges the exact lease', async () => {

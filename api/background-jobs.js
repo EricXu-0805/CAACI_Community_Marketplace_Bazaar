@@ -136,6 +136,19 @@ function parseJson(text) {
   try { return JSON.parse(text) } catch { throw new Error('provider_malformed') }
 }
 
+function safeFailureCode(error) {
+  // Never log arbitrary fetch errors: their messages can include URLs,
+  // credentials or provider response content. Only our fixed codes survive.
+  try {
+    const code = error?.message
+    if (typeof code === 'string' && (
+      /^(?:provider_(?:timeout|redirect|malformed)|response_too_large|run_deadline_exceeded|claim_invalid|media_lease_lost|listing_batch_invalid|backlog_invalid)$/.test(code)
+      || /^provider_status_[45]\d{2}$/.test(code)
+    )) return code
+  } catch { /* An untrusted error object must not break failure handling. */ }
+  return 'unexpected_failure'
+}
+
 async function rpc(origin, name, args, timeoutMs) {
   const url = new URL(`/rest/v1/rpc/${name}`, origin)
   const { response, text } = await serviceCall(url, {
@@ -163,7 +176,11 @@ export default async function handler(request) {
     if (remaining <= 0) throw new Error('run_deadline_exceeded')
     return Math.min(CALL_TIMEOUT_MS, remaining)
   }
-  const call = (name, args = {}) => rpc(origin, name, args, timeLeft())
+  let operation = 'start'
+  const call = (name, args = {}) => {
+    operation = name
+    return rpc(origin, name, args, timeLeft())
+  }
   const counts = { listing_batches: 0, notifications: 0, media_completed: 0, media_retried: 0, media_cancelled: 0 }
   try {
     // Reserve time for both kinds of work. Each object has its own lease, so a
@@ -214,13 +231,18 @@ export default async function handler(request) {
       name => Number.isSafeInteger(backlog[name]) && backlog[name] >= 0,
     )) throw new Error('backlog_invalid')
     if (counts.media_retried || backlog.media_failed) {
+      console.error('[background-jobs] media needs retry', {
+        retryCount: counts.media_retried, failedCount: backlog.media_failed,
+      })
       await reportToSentry('api/background-jobs', 'moderation media needs retry', {
         retryCount: counts.media_retried, failedCount: backlog.media_failed,
       })
     }
     return json({ success: backlog.media_failed === 0, ...counts, backlog }, backlog.media_failed ? 503 : 200)
-  } catch {
-    await reportToSentry('api/background-jobs', 'background worker incomplete', counts)
+  } catch (error) {
+    const diagnostic = { operation, code: safeFailureCode(error), ...counts }
+    console.error('[background-jobs] worker incomplete', diagnostic)
+    await reportToSentry('api/background-jobs', 'background worker incomplete', diagnostic)
     return retryable({ error: 'background_work_incomplete', ...counts })
   }
 }
