@@ -305,6 +305,54 @@ Storage metadata, grants, extensions, and managed schemas inconsistent.
    recovered target until Auth/Storage identity and object consistency are
    proven.
 
+### Local Storage file-backend snapshots
+
+For a self-hosted **file backend**, object bytes alone are insufficient. Storage
+also reads Linux extended attributes, including `user.supabase.content-type`
+and `user.supabase.cache-control`. The BusyBox `cp -a` in the tested Storage
+image did not preserve these attributes: copied files had matching byte hashes,
+but public and authenticated downloads failed with HTTP 500 / `ENODATA`.
+This procedure applies to local file volumes, not managed Supabase or S3 object
+backups.
+
+1. Quiesce source writers and snapshot the database and object volume at the
+   same application recovery point. Keep the source read-only and the target
+   service stopped. Use an empty, separate destination volume.
+2. Run the helper below inside the exact Storage image used by the recovery
+   environment. It uses that image's installed `fs-xattr`; do not add it to the
+   web application's dependencies. The example version was integration-tested;
+   revalidate after changing the Storage image/backend.
+
+```bash
+# Set these to the reviewed, existing local volumes before running.
+: "${SOURCE_VOLUME:?Set the quiesced source volume}"
+: "${DESTINATION_VOLUME:?Set a separate empty recovery volume}"
+docker volume inspect "$SOURCE_VOLUME" "$DESTINATION_VOLUME" >/dev/null
+docker run --rm --network none --user 0:0 \
+  --mount "type=volume,source=$SOURCE_VOLUME,target=/source,readonly" \
+  --mount "type=volume,source=$DESTINATION_VOLUME,target=/destination" \
+  --mount "type=bind,source=$PWD/scripts/copy-storage-file-backend.mjs,target=/app/copy-storage-file-backend.mjs,readonly" \
+  --entrypoint node public.ecr.aws/supabase/storage-api:v1.58.1 \
+  /app/copy-storage-file-backend.mjs /source /destination
+```
+
+The helper refuses nonempty/overlapping paths, symlinks, non-regular files and
+objects missing required metadata. It copies file bytes and extended attributes,
+preserves ownership/mode/timestamps, checks SHA-256 of both bytes and attributes,
+and checks for source-file changes during copying. These checks do not replace
+quiescing writers. Its JSON receipt omits object names and attribute values.
+On any failure, keep the target offline; inspect or discard only that failed
+recovery target and retry into a new empty one. It does not undo a partial copy.
+
+3. Start Auth, REST and Storage against the restored database/volume. Verify
+   password login, a session refresh issued before the snapshot, member-only
+   chat history, anonymous search, public and private object downloads with
+   matching hashes, denied cross-owner access and a fresh owner upload.
+   Corroborate generic 500 errors using the exact request's logs and unchanged
+   data; a server error alone is not evidence that authorization worked.
+4. Record the complete recovery duration and cleanup result. A fast database
+   import step or byte-copy receipt alone is not service recovery or RTO proof.
+
 ## Ephemeral data retention
 
 > When: the hourly `/api/data-retention` cron returns 503, or immediately after
