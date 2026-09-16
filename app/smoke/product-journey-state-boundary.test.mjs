@@ -231,12 +231,13 @@ test('private list failures stay distinguishable from genuine empty states', () 
   assert.match(savedSearchesSource, /catch \(err: any\) \{[\s\S]*?loadError\.value = true/)
 })
 
-test('hard-entry subpages inspect the in-app stack before choosing a safe return path', () => {
+test('search results go to the marketplace while back actions preserve safe return paths', () => {
   const submit = searchSource.slice(
     searchSource.indexOf('function onSubmit'),
     searchSource.indexOf('\nfunction removeOne'),
   )
-  assert.equal((submit.match(/goBack\(\)/g) || []).length >= 2, true)
+  assert.equal((submit.match(/showResults\(\)/g) || []).length >= 2, true)
+  assert.match(searchSource, /function showResults\(\) \{[\s\S]*?uni\.switchTab\(\{ url: '\/pages\/index\/index' \}\)/)
   assert.match(navigationSource, /hasPreviousPage = getCurrentPages\(\)\.length > 1/)
   assert.match(navigationSource, /if \(hasPreviousPage\) \{\s+uni\.navigateBack\(\)\s+return\s+\}\s+fallback\(\)/)
   assert.match(searchSource, /function goBack\(\) \{ navigateBackOr\(\(\) => uni\.switchTab\(\{ url: '\/pages\/index\/index' \}\)\) \}/)

@@ -1,8 +1,8 @@
-export const PRIVACY_VERSION = '2026-08-01'
+export const PRIVACY_VERSION = '2026-09-16'
 
 export const PRIVACY_EN = `Privacy Policy
 
-Effective date: August 1, 2026
+Effective date: September 16, 2026
 Version: ${PRIVACY_VERSION}
 
 1. Scope.
@@ -12,11 +12,11 @@ This Privacy Policy explains what information Illini Market collects, how we use
 
    a. Account data. Email address (required), nickname, avatar, short bio, and the campus/area you select. H5 users may also choose Google OAuth; Google supplies Supabase Auth with an identity identifier, verified email, and basic account profile fields made available by the consent screen. We do not receive your Google password. When Google and an existing email/password account use the same verified email, Supabase may automatically attach that Google identity to the existing account so both methods use one underlying user ID. The first release does not provide a manual identity-linking, merge, split, or unlink screen. If you optionally verify a University of Illinois affiliation, we store the verified Illinois email on your profile; while a code is pending, we store the normalized address, a hash of the short-lived code, its expiry, attempt count, and send timing/count metadata. An abandoned pending record can remain until a later verification attempt, account deletion, or a maintenance cleanup. The first-release mini-program does not expose WeChat sign-in. If a future release enables it, we may store the account's WeChat openid and, when supplied by WeChat, unionid; an internal placeholder email represents that identity in Supabase Auth.
 
-   b. Listing and community data. Titles, descriptions, photos, prices, categories, and approximate pickup locations you enter. Plaza posts, comments, and messages. Items you favorite or save.
+   b. Listing and community data. Titles, descriptions, photos, prices, categories, and approximate pickup locations you enter. Plaza posts, comments, and messages. Items you favorite or save. Public listing titles and descriptions may be automatically translated into English using OpenAI; the original is retained and translations can contain errors. Private chat text and attachments are not sent to this listing-translation service.
 
-   c. Communication data. Messages between you and other users, including message timestamps and read receipts. Reports you submit about other users or content.
+   c. Communication data. Messages between you and other users, including message timestamps, read receipts, and photo/video attachments. Attachments are kept in a private bucket. Authorized participants receive short-lived access links; a copied link can work until it expires. Messages and attachments are not end-to-end encrypted. Archiving a chat only hides it from your own inbox; it does not delete it for the other person. Reports you submit about other users or content.
 
-   d. Interaction and reputation data. Favorites, follows, likes, saved-search terms/filters, ratings and review text, and the item/account pair plus timestamp for an authenticated listing view (used to count one view per viewer). A transaction rating is accepted only from one of the two parties attributed to that exact sold listing and only about the other attributed party; an unrelated conversation does not create rating eligibility.
+   d. Interaction and reputation data. Favorites, follows, likes, saved-search terms/filters, hidden-item preferences ("Not interested"), ratings and review text, and the item/account pair plus timestamp for an authenticated listing view (used to count one view per viewer). A transaction rating is accepted only from one of the two parties attributed to that exact sold listing and only about the other attributed party; an unrelated conversation does not create rating eligibility.
 
    e. Transaction-coordination data. Offer prices, notes, counterparties, status and expiry; meetup proposals, place, time, notes, counterparties and status. When a listing owner confirms a sale, we also keep a private attribution record linking the listing to the exact accepted offer, its conversation, the two transaction parties, agreed price, acceptance time, and confirmation time. We use that record to close the listing and authorize one rating in each direction between the actual parties. Conversation records remain visible only to their participants and authorized operators; sale attribution is returned only through account-checked functions to the attributed parties or listing owner as needed, and is never added to the public listing row.
 
@@ -24,7 +24,7 @@ This Privacy Policy explains what information Illini Market collects, how we use
 
    g. Network, device, and abuse-prevention data. Our hosting and API infrastructure processes IP addresses and request metadata. Application rate-limit records use pseudonymized hash or HMAC bucket keys rather than raw IP addresses. When available, we record a user-agent snippet and an installation-scoped fingerprint: a SHA-256 hash created on your device from a random local salt and coarse browser/device characteristics. It is an advisory signal, not proof that accounts belong to one person and not a basis for automatic linked-account punishment. We also process action timing/frequency and a trust score to prioritize moderation review. These signals are used to prevent spam, fraud, ban evasion, and harassment.
 
-   h. Optional approximate location. Only after you choose "Use current location" and grant permission, the app rounds the device fix to three decimal places (an approximately 100-meter grid) before it leaves your device for our Vercel edge route and an OpenStreetMap Nominatim-compatible service. The provider is asked for a street/campus-area label, not a building-level result. The marketplace database stores the location text you choose for the listing, not the coordinate. We never request location silently.
+   h. Optional approximate location. Only after you choose "Use current location" and grant permission, the app rounds the device fix to three decimal places (an approximately 100-meter grid) before it leaves your device for our Vercel edge route and an OpenStreetMap Nominatim-compatible service. The provider is asked for a street/campus-area label, not a building-level result. The marketplace database stores the location text you choose for the listing, not the coordinate. We never request location silently. "Nearby" uses the selected broad area (UIUC, Champaign or Urbana), not a live distance calculation. Device detection and manually entered locations are distinguished, but neither verifies an address, identity or the physical presence of an item.
 
 3. How We Use It.
    · Operate the marketplace, authenticate your account, deliver messages, and show you relevant listings.
@@ -70,6 +70,7 @@ We use first-party app/browser storage for the Supabase session; language, theme
 Data may be processed in the United States and other jurisdictions where our configured service providers operate. If you access the service from another country, your data may be transferred across borders under the providers' applicable terms and safeguards.
 
 11. Automated Decisions.
+"For you" ranks a bounded selection of visible listings using freshness, up to three categories derived from recent browsing and favorites, and seller variety. The category summary is calculated on your device; only the category names are sent with the feed request, not the full local browsing history. "Not interested" is saved privately to your account and removes the listing from discovery; you can undo it or restore hidden items. Choose "Latest" to use chronological order, and clear local browsing history to reset that interest signal. These choices do not create email or push subscriptions.
 We use automated systems to rate the risk of spam, fraud, or abuse (the "trust score") and to pre-screen content (keyword filters and AI moderation). These systems can block specific content and help prioritize human moderation; the trust score is not currently an automatic feed-ranking or account-punishment decision. You may request human review of an enforcement action as described in Terms §11.
 
 12. Changes.

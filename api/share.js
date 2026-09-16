@@ -135,7 +135,7 @@ function responseHeaders(boundary) {
   const headers = {
     'content-type': 'text/html; charset=utf-8',
     'cache-control': 'public, max-age=60, s-maxage=300',
-    'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; img-src https:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
     'referrer-policy': 'no-referrer',
     'x-content-type-options': 'nosniff',
     'x-frame-options': 'DENY',
@@ -168,7 +168,7 @@ async function responseForRequest(req, boundary) {
   if (id && SUPABASE_URL && SUPABASE_ANON_KEY) {
     const rows = await readPublicRows(
       `items_visible?id=eq.${encodeURIComponent(id)}`
-      + '&select=id,title,description,price,images,listing_type,status,source_lang&limit=1',
+      + '&select=id,title,description,price,images,listing_type,status,source_lang,title_i18n,description_i18n&limit=1',
     )
     item = rows[0] || null
   }
@@ -188,25 +188,35 @@ async function responseForRequest(req, boundary) {
     : item.status === 'sold' ? 'Sold / 已售出 · '
       : item.status === 'reserved' ? 'Reserved / 已预定 · '
         : ''
-  const title = item ? `${statusPrefix}${namePrefix}${item.title} · ${priceLabel}` : 'Illini Market · UIUC Community Marketplace'
-  const desc = item ? (truncate(item.description || '', 160) || `${priceLabel} on Illini Market`) : 'Buy, sell, and connect with the UIUC community. 校园二手交易与交流。'
+  const preferredLang = url.searchParams.get('lang') === 'zh' ? 'zh' : 'en'
+  const translatedTitle = item?.title_i18n?.[preferredLang]
+  const translatedDescription = item?.description_i18n?.[preferredLang]
+  const usable = text => typeof text === 'string' && text.trim() && (preferredLang !== 'en' || !/[㐀-鿿ぁ-ヿ가-힣]/.test(text))
+  const displayTitle = usable(translatedTitle) ? translatedTitle : item?.title
+  const displayDescription = usable(translatedDescription) ? translatedDescription : item?.description
+  const title = item ? `${statusPrefix}${namePrefix}${displayTitle} · ${priceLabel}` : 'Illini Market · UIUC Community Marketplace'
+  const desc = item ? (truncate(displayDescription || '', 160) || `${priceLabel} on Illini Market`) : 'Buy, sell, and connect with the UIUC community. 校园二手交易与交流。'
   const fallbackImage = `${site}/static/app-icon-512.png`
   const image = safeImageUrl(item?.images?.[0], fallbackImage, site)
   // A well-formed id that reads back nothing is a deleted or hidden listing,
   // and the detail route has a screen that says so. Falling back to the site
   // root dropped whoever tapped the forwarded link on the home page instead,
   // with nothing to tell them the listing was gone.
-  const canonical = id ? `${site}/#/pages/detail/index?id=${id}` : site
+  const destination = id ? `${site}/#/pages/detail/index?id=${id}` : site
+  const canonical = id ? `${site}/share/${id}${url.searchParams.get('lang') === 'zh' ? '?lang=zh' : ''}` : site
   const escapedCanonical = escapeHtml(canonical)
   // source_lang records what the seller actually typed in, so a screen reader
   // gets the right voice and a translator stops "translating" an English
   // listing out of Chinese. The generic card uses English first with Chinese labels.
-  const docLang = DOCUMENT_LANGS.has(item?.source_lang) ? item.source_lang : 'en'
+  const docLang = usable(translatedTitle) ? preferredLang : (DOCUMENT_LANGS.has(item?.source_lang) ? item.source_lang : 'en')
 
   const html = `<!DOCTYPE html>
 <html lang="${docLang}">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/png" href="${site}/static/app-icon-192.png">
+<link rel="apple-touch-icon" href="${site}/static/app-icon-512.png">
 <title>${escapeHtml(title)}</title>
 <meta name="description" content="${escapeHtml(desc)}">
 <link rel="canonical" href="${escapedCanonical}">
@@ -214,13 +224,14 @@ async function responseForRequest(req, boundary) {
 <meta property="og:title" content="${escapeHtml(title)}">
 <meta property="og:description" content="${escapeHtml(desc)}">
 <meta property="og:image" content="${escapeHtml(image)}">
+<meta property="og:image:alt" content="${escapeHtml(title)}">
 <meta property="og:url" content="${escapedCanonical}">
 <meta property="og:site_name" content="Illini Market">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${escapeHtml(title)}">
 <meta name="twitter:description" content="${escapeHtml(desc)}">
 <meta name="twitter:image" content="${escapeHtml(image)}">
-<meta http-equiv="refresh" content="0; url=${escapedCanonical}">
+<meta http-equiv="refresh" content="0; url=${escapeHtml(destination)}">
 <style>body{margin:0;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f2f2f7;color:#636366}</style>
 </head>
 <body><p lang="en">Loading Illini Market...</p></body>

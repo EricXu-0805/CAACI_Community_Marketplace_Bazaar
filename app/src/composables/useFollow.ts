@@ -132,7 +132,7 @@ export function useFollow() {
      */
     const { data, error } = await supabase
       .from('items')
-      .select(`${LIST_ITEM_FIELDS}, profile:profiles(${PUBLIC_PROFILE_FIELDS})` as any)
+      .select(`${LIST_ITEM_FIELDS}, profile:profiles!items_user_id_fkey(${PUBLIC_PROFILE_FIELDS})` as any)
       .in('user_id', ids)
       .eq('status', 'active')
       .order('created_at', { ascending: false })

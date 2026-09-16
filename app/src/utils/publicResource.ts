@@ -1,3 +1,4 @@
+import { validChatMediaPath } from './chatMedia'
 const MAX_PUBLIC_URL_BYTES = 500
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const SAFE_OBJECT_SUFFIX_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,299}$/
@@ -253,7 +254,7 @@ export function sanitizeMessageResources<T>(message: T): T {
     ...message,
     // Historical media lived in a public listing bucket.  Keep the durable row
     // and type for evidence/preview text, but never auto-load its public URL.
-    content: message.message_type === 'text' ? message.content : '',
+    content: message.message_type === 'text' || validChatMediaPath(message.content, message.message_type, message.sender_id, message.conversation_id, message.id) ? message.content : '',
     sender: message.sender ? sanitizeProfileResource(message.sender) : message.sender,
   } as T
 }

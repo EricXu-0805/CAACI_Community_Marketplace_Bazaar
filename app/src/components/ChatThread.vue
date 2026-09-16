@@ -235,17 +235,7 @@
             >
               <text>{{ entry.msg.content }}</text>
             </view>
-            <view
-              v-else
-              class="msg-bubble msg-media-unavailable"
-              @touchstart="msgLongPress.onTouchstart(entry.msg)"
-              @touchend="msgLongPress.onTouchend"
-              @touchcancel="msgLongPress.onTouchcancel"
-              @touchmove="msgLongPress.onTouchmove"
-              @contextmenu.prevent="onMsgLongPress(entry.msg)"
-            >
-              <text>{{ t('chat.mediaUnavailable') }}</text>
-            </view>
+            <ChatMedia v-else :message="entry.msg" />
             <UAvatar
               v-if="entry.msg.sender_id === currentUser?.id"
               :src="currentUser?.avatar_url"
@@ -329,6 +319,13 @@
         <text class="send-label">{{ t('chat.send') }}</text>
       </view>
     </view>
+    <!-- #ifdef H5 -->
+    <view class="attachment-actions" :style="kbLift">
+      <button class="attachment-action" :disabled="sending" @click="chooseChatMedia('image')"><UIcon name="image" size="sm" /><text>{{ t('chat.photo') }}</text></button>
+      <button class="attachment-action" :disabled="sending" @click="chooseChatMedia('video')"><UIcon name="video" size="sm" /><text>{{ t('chat.video') }}</text></button>
+      <text class="attachment-hint">{{ sending ? t('chat.sending') : t('chat.privateMediaHint') }}</text>
+    </view>
+    <!-- #endif -->
     <ChatEmojiPanel :open="emojiOpen" @pick="onPickEmoji" @pick-sticker="onPickSticker" />
 
     <!-- Offer composer (new offer + counter) -->
@@ -466,6 +463,8 @@ import {
 } from '../composables/accountScope'
 import type { Item, Offer, Meetup, Message } from '../types'
 import ChatEmojiPanel from './ChatEmojiPanel.vue'
+import ChatMedia from './ChatMedia.vue'
+import { useChatMedia } from '../composables/useChatMedia'
 import UAvatar from './UAvatar.vue'
 import UIcon from './UIcon.vue'
 import USticker from './USticker.vue'
@@ -727,7 +726,10 @@ function isThreadVisible(): boolean {
    UPDATE/count failure must never abort chat setup or produce an unhandled
    rejection that can terminate a uni-app event callback. */
 function refreshReadState(convId: string, userId: string) {
-  void markAsRead(convId, userId)
+  const epoch = threadEpoch
+  const stillVisible = () => mounted && epoch === threadEpoch && conversationId.value === convId && isThreadVisible()
+  if (!stillVisible()) return
+  void markAsRead(convId, userId, stillVisible)
     .catch((error) => {
       reportBackgroundFailure('chat.markAsRead', error)
     })
@@ -743,17 +745,19 @@ function createOptimisticMessage(
   convId: string,
   senderId: string,
   content: string,
+  type: import('../types').MessageType = 'text',
+  id = createClientMessageId(),
 ): string {
   // This is both the optimistic key and the eventual database primary key.
   // Reusing it across retries makes a response-lost send idempotent.
-  const tempId = createClientMessageId()
+  const tempId = id
   if (!mounted || conversationId.value !== convId) return tempId
   addPendingMessage({
     id: tempId,
     conversation_id: convId,
     sender_id: senderId,
     content,
-    message_type: 'text',
+    message_type: type,
     is_read: false,
     created_at: new Date().toISOString(),
     _pending: true,
@@ -1349,7 +1353,7 @@ function stickerOf(msg: any): StickerName | null {
 
 function replyPreview(msg: any): string {
   if (msg.message_type === 'image' || msg.message_type === 'video') {
-    return `[${t('chat.mediaUnavailable')}]`
+    return `[${t(msg.message_type === 'image' ? 'chat.photo' : 'chat.video')}]`
   }
   if (stickerOf(msg)) return `[${t('chat.sticker')}]`
   return msg.content || ''
@@ -1383,9 +1387,36 @@ function applySuggestion(emoji: string) {
   inputText.value = `${inputText.value}${emoji}`
 }
 
+const { upload: uploadChatMedia } = useChatMedia()
+async function chooseChatMedia(type: 'image'|'video') {
+  if (sending.value || !conversationAccessReady.value || conversationUnavailable.value) return
+  const token=captureActiveAccountRequest(), epoch=threadEpoch, convId=conversationId.value
+  if (!token || !convId) return
+  sending.value=true
+  try {
+    const file=await new Promise<string>((resolve,reject)=>{
+      if(type==='image')uni.chooseImage({count:1,sourceType:['album','camera'],success:r=>resolve(r.tempFilePaths[0]),fail:reject})
+      else uni.chooseVideo({sourceType:['album','camera'],compressed:true,maxDuration:60,success:r=>resolve(r.tempFilePath),fail:reject})
+    })
+    if(!isThreadEpochCurrent(epoch)||!isAccountRequestCurrent(token))return
+    const id=createClientMessageId()
+    const path=await uploadChatMedia(file,type,convId,id,token)
+    if(!isThreadEpochCurrent(epoch)||!isAccountRequestCurrent(token))return
+    createOptimisticMessage(convId,token.userId!,path,type,id)
+    try {
+      const sent=await sendMessage(convId,token.userId!,path,type,{messageId:id,accountToken:token})
+      if(isThreadEpochCurrent(epoch)) {reconcileSentMessage(sent,id);nextTick(()=>scrollToBottom())}
+    } catch(error) {failOptimisticMessage(id,error);throw error}
+  } catch(error:any) {
+    if(!isThreadEpochCurrent(epoch)||!isAccountRequestCurrent(token))return
+    if(String(error?.errMsg||'').includes('cancel'))return
+    uni.showToast({title:String(error?.message||'').includes('too_large') ? t('chat.mediaTooLarge') : t('chat.mediaSendFailed'),icon:'none',duration:3000})
+  } finally {if(epoch===threadEpoch)sending.value=false}
+}
+
 async function retrySend(msg: any) {
   if (!currentUser.value || !conversationId.value) return
-  if (msg?.message_type !== 'text') return
+  if (!['text','image','video'].includes(msg?.message_type)) return
   const actionEpoch = threadEpoch
   const convId = conversationId.value
   const senderId = currentUser.value.id
@@ -1399,7 +1430,7 @@ async function retrySend(msg: any) {
   messages.value[idx]._failed = false
   messages.value[idx]._pending = true
   try {
-    const sent = await sendMessage(convId, senderId, text, 'text', {
+    const sent = await sendMessage(convId, senderId, text, msg.message_type, {
       messageId: msg.id,
       isRetry: true,
     })
@@ -2583,9 +2614,9 @@ function scrollToBottom() {
   transition: transform 0.22s ease-out; will-change: transform;
 }
 .input-bar .img-btn,
-.input-bar .emoji-btn { margin-bottom: 1px; } /* optical center vs 40px input in the single-line state */
+.input-bar .emoji-btn { margin-bottom: 0; }
 .msg-input {
-  flex: 1; min-height: 40px;
+  flex: 1; min-width: 0; min-height: 44px;
   /* Grow with auto-height up to 4 lines (22px × 4 + 18px padding), then
      scroll internally. overflow-y is the piece that was missing: auto-height
      sets height:fit-content!important (uni textarea.css), max-height clamps
@@ -2594,14 +2625,14 @@ function scrollToBottom() {
   max-height: 106px; overflow-y: auto;
   background: var(--bg-subtle);
   border-radius: 20px; box-sizing: border-box;
-  padding: 9px 16px; line-height: 22px; font-size: 15px; color: var(--text-primary);
+  padding: 11px 14px; line-height: 22px; font-size: 16px; color: var(--text-primary);
   /* uni-app ships `uni-textarea { word-break: break-all }` — that split
      English words mid-word while typing. Inner textarea uses word-break:
      inherit, so overriding on this class cascades in. */
   word-break: normal; overflow-wrap: break-word;
 }
 .send-btn {
-  height: 40px; padding: 0 14px; background: var(--accent-primary);
+  height: 44px; padding: 0 14px; background: var(--accent-primary);
   border-radius: 20px;
   display: flex; align-items: center; justify-content: center; gap: 5px;
   cursor: pointer; flex-shrink: 0;
@@ -2628,4 +2659,10 @@ function scrollToBottom() {
 .cu-back { background: var(--bg-subtle); }
 .cu-retry-label { color: #fff; font-size: 14px; font-weight: 600; }
 .cu-back-label { color: var(--text-secondary); font-size: 14px; font-weight: 600; }
+</style>
+
+<style scoped>
+.attachment-actions{display:flex;align-items:center;gap:8px;padding:0 12px 8px;background:var(--bg-elev-1);flex-shrink:0}
+.attachment-action{display:flex;align-items:center;gap:6px;margin:0;min-height:36px;padding:4px 10px;border-radius:10px;font-size:13px;line-height:1.4;background:var(--bg-elev-2);color:var(--text-secondary);border:0}
+.attachment-action::after{border:0}.attachment-hint{margin-left:auto;font-size:11px;color:var(--text-muted)}
 </style>

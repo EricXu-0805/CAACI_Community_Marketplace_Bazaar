@@ -134,6 +134,7 @@ test('fetchMyItems never caches or returns A after B becomes current', async () 
   const mocks = {
     vue: 'export const ref = value => ({ value })',
     './useSupabase': 'export function useSupabase(){ return { supabase: globalThis.__accountPageTestSupabase } }',
+    './useDiscovery': 'export function useDiscovery(){ return { hiddenIds: { value: new Set() }, loadHiddenItems: async () => {} } }',
     './useModeration': 'export function useModeration(){ return { blockedIds: { value: new Set() }, ensureLoaded: async () => ({ ok: true }) } }',
     './useI18n': "export function useI18n(){ return { t: key => key, lang: { value: 'en' } } }",
     '../utils': 'export const compressImage=async x=>x, detectImageMimeType=()=>\"image/jpeg\", expandSearch=x=>[x], friendlyErrorMessage=e=>String(e), getImageDimensions=async()=>({w:1,h:1}), storedImageDimensions=d=>d',

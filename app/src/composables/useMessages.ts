@@ -1,3 +1,4 @@
+import { validChatMediaPath } from '../utils/chatMedia'
 import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 import { useModeration } from './useModeration'
@@ -45,7 +46,7 @@ import {
 export { MESSAGE_FIELDS }
 export { createClientMessageId }
 export const CONVERSATION_FIELDS =
-  'id, is_direct, item_id, buyer_id, seller_id, last_message_at, created_at, is_pinned_buyer, is_pinned_seller, is_muted_buyer, is_muted_seller' as const
+  'id, is_direct, item_id, buyer_id, seller_id, last_message_at, created_at, is_pinned_buyer, is_pinned_seller, is_muted_buyer, is_muted_seller, is_unread_buyer, is_unread_seller' as const
 
 const conversations = ref<Conversation[]>([])
 const messages = ref<Message[]>([])
@@ -144,7 +145,10 @@ export function invalidateConversations() {
   conversationsFetchedFor = null
 }
 
+const readStateWrites = new Map<string, Promise<void>>()
+
 function resetMessageState() {
+  readStateWrites.clear()
   conversations.value = []
   messages.value = []
   loading.value = false
@@ -499,7 +503,9 @@ export function useMessages() {
       if (accountToken.userId !== senderId || !isAccountRequestCurrent(accountToken)) {
         throw mutationOutcomeError(new Error('Account changed'), 'not_committed')
       }
-      if (type !== 'text') throw new Error('chat_media_private_storage_required')
+      if (type !== 'text' && !validChatMediaPath(content, type, senderId, conversationId, messageId)) {
+        throw new Error('chat_media_invalid_reference')
+      }
       if (content.length > 2000) throw new Error('message_too_long')
 
       // App-generated sticker tokens skip the prose guards (the DB trigger
@@ -802,21 +808,30 @@ export function useMessages() {
     )
   }
 
-  async function markAsRead(conversationId: string, userId: string) {
+  function setReadState(conversationId: string, userId: string, unread: boolean, stillVisible?: () => boolean): Promise<void> {
     const accountToken = captureAccountRequest(userId)
-    if (!isAccountRequestCurrent(accountToken)) return
-    const { error } = await supabase
-      .from('messages')
-      .update({ is_read: true })
-      .eq('conversation_id', conversationId)
-      .neq('sender_id', userId)
-      .eq('is_read', false)
+    if (!isAccountRequestCurrent(accountToken)) return Promise.resolve()
+    const key = `${userId}:${accountToken.generation}:${conversationId}`
+    // A slow automatic receipt must settle before a later explicit unread
+    // reminder. Reversed network completion otherwise silently erased it.
+    const previous = readStateWrites.get(key) || Promise.resolve()
+    const operation = previous.catch(() => {}).then(async () => {
+      if (!isAccountRequestCurrent(accountToken) || (stillVisible && !stillVisible())) return
+      const { error } = await supabase.rpc('set_conversation_read_state', {
+        conversation_id_in: conversationId, expected_user_id_in: userId, unread_in: unread,
+      })
+      if (!isAccountRequestCurrent(accountToken)) return
+      if (error) throw error
+    })
+    readStateWrites.set(key, operation)
+    void operation.finally(() => {
+      if (readStateWrites.get(key) === operation) readStateWrites.delete(key)
+    }).catch(() => {})
+    return operation
+  }
 
-    if (!isAccountRequestCurrent(accountToken)) return
-    if (error) {
-      console.error('[messages] mark as read failed')
-      throw error
-    }
+  async function markAsRead(conversationId: string, userId: string, stillVisible?: () => boolean) {
+    return setReadState(conversationId, userId, false, stillVisible)
   }
 
   async function archiveConversation(conversationId: string) {
@@ -851,12 +866,15 @@ export function useMessages() {
     const accountToken = captureAccountRequest(userId)
     if (!isAccountRequestCurrent(accountToken)) throw new Error('Account changed')
     const field = conv.buyer_id === userId ? 'is_pinned_buyer' : 'is_pinned_seller'
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('conversations')
       .update({ [field]: pinned })
       .eq('id', conv.id)
+      .select('id')
+      .single()
     if (!isAccountRequestCurrent(accountToken)) return
     if (error) throw error
+    if (!data) throw new Error('conversation_unavailable')
     ;(conv as any)[field] = pinned
     // Pin state drives list sort order; callers re-fetch to re-sort, so the
     // SWR guard must not short-circuit that fetch.
@@ -867,38 +885,21 @@ export function useMessages() {
     const accountToken = captureAccountRequest(userId)
     if (!isAccountRequestCurrent(accountToken)) throw new Error('Account changed')
     const field = conv.buyer_id === userId ? 'is_muted_buyer' : 'is_muted_seller'
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('conversations')
       .update({ [field]: muted })
       .eq('id', conv.id)
+      .select('id')
+      .single()
     if (!isAccountRequestCurrent(accountToken)) return
     if (error) throw error
+    if (!data) throw new Error('conversation_unavailable')
     ;(conv as any)[field] = muted
     invalidateConversations()
   }
 
   async function markConversationUnread(conversationId: string, userId: string) {
-    const accountToken = captureAccountRequest(userId)
-    if (!isAccountRequestCurrent(accountToken)) return
-    const { data: lastMsg, error: lookupError } = await supabase
-      .from('messages')
-      .select('id')
-      .eq('conversation_id', conversationId)
-      .neq('sender_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (!isAccountRequestCurrent(accountToken)) return
-    if (lookupError) throw lookupError
-    if (lastMsg) {
-      const { error } = await supabase
-        .from('messages')
-        .update({ is_read: false })
-        .eq('id', lastMsg.id)
-      if (!isAccountRequestCurrent(accountToken)) return
-      if (error) throw error
-    }
+    return setReadState(conversationId, userId, true)
   }
 
   return {

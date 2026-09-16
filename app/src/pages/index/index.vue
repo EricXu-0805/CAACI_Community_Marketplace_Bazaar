@@ -188,12 +188,12 @@
     <view v-if="showFilter" class="filter-mask u-mask-in" @click="cancelFilterEdit"></view>
     <view
       v-if="showFilter"
+      ref="filterDialogEl"
       class="filter-sheet"
       :style="filterViewportStyle"
       role="dialog"
       aria-modal="true"
       :aria-label="t('filter.title')"
-      @keydown="onFilterDialogKeydown"
     >
       <view class="fs-header">
         <view class="fs-close" role="button" tabindex="0" :aria-label="t('a11y.filterClose')" @click="cancelFilterEdit">
@@ -262,7 +262,7 @@
             role="button"
             :aria-label="loc"
             :aria-pressed="filterLocation === loc ? 'true' : 'false'"
-            @click="filterLocation = filterLocation === loc ? '' : loc"
+            @click="filterLocation = filterLocation === loc ? '' : loc; nearbySource = filterLocation ? t('discovery.selectedArea') : ''"
           >
             <text class="fpill-label">{{ loc }}</text>
           </view>
@@ -302,6 +302,7 @@
       </view>
 
       <view class="fs-footer">
+        <button v-if="hiddenIds.size" class="discovery-restore" :disabled="discoveryChanging" @click="onRestoreHidden">{{ t('discovery.restoreAll', { count: hiddenIds.size }) }}</button>
         <view
           :class="['fs-apply', { disabled: !!priceFilterError }]"
           role="button"
@@ -325,6 +326,17 @@
       @refresherrefresh="onRefresh"
     >
       <!-- Skeleton Loading -->
+      <view v-if="!searchText" class="discovery-controls" :aria-label="t('discovery.browse')">
+        <button class="discovery-mode" :class="{ chosen: sortBy === 'latest' }" :aria-pressed="sortBy === 'latest'" @click="setBrowseMode('latest')">{{ t('sort.latest') }}</button>
+        <button class="discovery-mode" :class="{ chosen: sortBy === 'recommended' }" :aria-pressed="sortBy === 'recommended'" @click="setBrowseMode('recommended')">{{ t('sort.recommended') }}</button>
+        <button class="discovery-mode" :class="{ chosen: !!filterLocation }" :disabled="detectingNearby" @click="chooseNearby"><UIcon name="location-pin" size="xs" color="currentColor" />{{ detectingNearby ? t('publish.detectingLocation') : t('discovery.nearby') }}</button>
+        <button class="discovery-about discovery-mode" :aria-label="t('discovery.howTitle')" @click="explainDiscovery"><UIcon name="info" size="xs" color="currentColor" /></button>
+      </view>
+      <text v-if="nearbySource && filterLocation" class="discovery-note">{{ nearbySource }} · {{ filterLocation }}</text>
+      <view v-if="lastHiddenId" class="discovery-undo" role="status" aria-live="polite">
+        <text>{{ t('discovery.hidden') }}</text>
+        <button class="discovery-undo-action" :disabled="discoveryChanging" @click="undoHidden">{{ t('discovery.undo') }}</button>
+      </view>
       <view v-if="initialLoading" class="waterfall">
         <view v-for="ci in columnCount" :key="'sk'+ci" class="wf-col">
           <view v-for="n in 3" :key="'sk'+ci+'-'+n" class="card skeleton-card">
@@ -411,7 +423,11 @@
               </view>
             </view>
             <view class="card-info">
+              <view class="card-heading">
               <text class="card-title">{{ localizeItemTitle(item) }}</text>
+              <button class="card-more" :aria-label="t('discovery.itemOptions', { title: localizeItemTitle(item) })" @click.stop="onCardLongPress(item)" @touchstart.stop @touchend.stop><UIcon name="more-horizontal" size="sm" color="text-muted" /></button>
+              </view>
+              <text v-if="item.discovery_reason" class="discovery-reason">{{ t('discovery.reason.' + item.discovery_reason) }}</text>
               <view class="card-price-row">
                 <text v-if="item.listing_type === 'wanted'" class="card-price card-price-wanted">{{ listingPriceLabel(item, t) }}</text>
                 <template v-else>
@@ -436,21 +452,21 @@
                   />
                   <text class="seller-nick">{{ item.profile?.nickname || t('app.user') }}</text>
                   <UBadge v-if="item.profile?.is_illini_verified" variant="illini" class="card-illini" :title="t('profile.illiniVerified')">Illini</UBadge>
-                  <text v-if="(item.profile?.rating_count || 0) > 0" class="seller-rating">{{ Number(item.profile?.avg_rating || 0).toFixed(1) }}/5</text>
                 </view>
                 <view class="card-fav">
                   <text class="card-time">{{ formatTime(item.created_at) }}</text>
                   <text v-if="isOldItem(item.created_at)" class="old-tag">{{ t('home.oldListing') }}</text>
-                  <image
+                  <text v-if="(item.profile?.rating_count || 0) > 0" class="seller-rating">{{ Number(item.profile?.avg_rating || 0).toFixed(1) }}/5</text>
+                  <button class="card-save"
+                    :aria-label="isFavorited(item.id) ? t('a11y.unfavorite') : t('a11y.favorite')"
+                    :aria-pressed="isFavorited(item.id)"
+                    @click.stop="onQuickFav(item)" @touchstart.stop @touchend.stop
+                  ><image
                     :src="isFavorited(item.id) ? '/static/heart-filled.svg' : '/static/heart.svg'"
                     alt=""
                     :class="['heart-img', { 'u-anim-heart-pop': isFavorited(item.id) }]"
-                    role="button"
-                    tabindex="0"
-                    :aria-label="isFavorited(item.id) ? t('a11y.unfavorite') : t('a11y.favorite')"
-                    @click.stop="onQuickFav(item)"
-                    @keydown="onQuickFavoriteKeydown($event, item)"
-                  />
+                    aria-hidden="true"
+                  /></button>
                   <text v-if="(item.favorite_count || 0) > 0" class="fav-num">{{ item.favorite_count }}</text>
                 </view>
               </view>
@@ -471,6 +487,9 @@
         <text>{{ t('home.endOf') }} · {{ filteredItems.length }} {{ tc('home.results', filteredItems.length) }}</text>
         <text class="divider"></text>
       </view>
+      <!-- Empty -->
+      <button v-if="sortBy === 'recommended' && !hasMore && !loading" class="discovery-all" @click="setBrowseMode('latest')">{{ t('discovery.allLatest') }}</button>
+      <button v-if="!loading && !filteredItems.length && hiddenIds.size" class="discovery-all" :disabled="discoveryChanging" @click="onRestoreHidden">{{ t('discovery.restoreAll', { count: hiddenIds.size }) }}</button>
       <!-- Empty -->
       <view v-if="fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
         <UIcon name="shield" size="lg" color="ink-soft" />
@@ -494,6 +513,7 @@
     </view>
 
     <CustomTabBar current="index" />
+    <PermissionDeniedModal :visible="nearbyPermissionVisible" @close="nearbyPermissionVisible = false" />
   </view>
 </template>
 
@@ -514,6 +534,12 @@ import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
 import { useTheme } from '../../composables/useTheme'
 import { useFavorites } from '../../composables/useFavorites'
+import { useDiscovery } from '../../composables/useDiscovery'
+import { useHistory } from '../../composables/useHistory'
+import { useLocation } from '../../composables/useLocation'
+import { useDomKeydown } from '../../composables/useDomKeydown'
+import { interestCategories, nearbyArea } from '../../utils/discovery'
+import PermissionDeniedModal from '../../components/PermissionDeniedModal.vue'
 import { useModeration } from '../../composables/useModeration'
 import { useSemester } from '../../composables/useSemester'
 import { useLongPress } from '../../composables/useLongPress'
@@ -613,7 +639,13 @@ function pickupBadge(it: Item): { spot: boolean; label: string } | null {
 
 const { items, loading, hasMore, fetchError, fetchItems, clearItems } = useItems()
 const { currentUser, requireAuth, awaitAuthReady } = useAuth()
-const { isFavorited, toggleFavorite, loadMyFavorites } = useFavorites()
+const { isFavorited, toggleFavorite, loadMyFavorites, favoriteIds } = useFavorites()
+const { history: viewedItems } = useHistory()
+const { hiddenIds, changing: discoveryChanging, loadHiddenItems, setHidden, restoreAllHidden } = useDiscovery()
+const { detectLocation, detecting: detectingNearby } = useLocation()
+const lastHiddenId = ref('')
+const nearbySource = ref('')
+const nearbyPermissionVisible = ref(false)
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
 
 const initialLoading = ref(true)
@@ -665,6 +697,8 @@ let homeShowEpoch = 0
 let homeVisible = false
 
 const showFilter = ref(false)
+const filterDialogEl = ref<unknown>(null)
+useDomKeydown(filterDialogEl, onFilterDialogKeydown)
 const filterPriceMin = ref('')
 const filterPriceMax = ref('')
 const filterCondition = ref<ItemCondition | ''>('')
@@ -682,6 +716,7 @@ type FilterSnapshot = {
   priceMax: string
   condition: ItemCondition | ''
   location: string
+  nearbySource: string
   sort: string
 }
 let filterSnapshot: FilterSnapshot | null = null
@@ -704,6 +739,7 @@ function openFilterSheet() {
       priceMax: filterPriceMax.value,
       condition: filterCondition.value,
       location: filterLocation.value,
+      nearbySource: nearbySource.value,
       sort: sortBy.value,
     }
   }
@@ -728,6 +764,7 @@ function cancelFilterEdit() {
     filterPriceMax.value = filterSnapshot.priceMax
     filterCondition.value = filterSnapshot.condition
     filterLocation.value = filterSnapshot.location
+    nearbySource.value = filterSnapshot.nearbySource
     sortBy.value = filterSnapshot.sort
   }
   filterSnapshot = null
@@ -797,7 +834,7 @@ const conditionOpts = computed(() => {
 
 const locationOpts = ['Champaign', 'Urbana', 'UIUC']
 
-const sortKeys = ['latest', 'price_asc', 'price_desc', 'popular']
+const sortKeys = ['latest', 'recommended', 'price_asc', 'price_desc', 'popular']
 const sortOpts = computed(() => sortKeys.map(k => ({ value: k, label: t('sort.' + k.replace('price_asc', 'priceAsc').replace('price_desc', 'priceDesc')) })))
 
 const activeFilterCount = computed(() => {
@@ -824,6 +861,7 @@ function getFilterParams() {
     priceMax: filterPriceMax.value ? Number(filterPriceMax.value) : undefined,
     condition: filterCondition.value || undefined,
     sort: searchText.value.trim() ? undefined : sortBy.value,
+    interestCategories: interestCategories(viewedItems.value, favoriteIds.value, hiddenIds.value),
     listingType: listingType.value,
     location: filterLocation.value || undefined,
   }
@@ -836,6 +874,93 @@ function setListingType(t: 'sell' | 'wanted') {
   currentPage.value = 0
   scrollToTop()
   fetchItems({ ...getFilterParams(), reset: true })
+}
+
+function setBrowseMode(mode: 'latest' | 'recommended') {
+  sortBy.value = mode
+  currentPage.value = 0
+  scrollToTop()
+  void fetchItems({ ...getFilterParams(), reset: true })
+}
+
+function explainDiscovery() {
+  uni.showModal({ title: t('discovery.howTitle'), content: t('discovery.howBody'), showCancel: false, confirmText: t('publish.permissionModalDismiss') })
+}
+
+function chooseNearby() {
+  if (detectingNearby.value) return
+  const epoch = homeAccountEpoch
+  const areas = ['UIUC', 'Champaign', 'Urbana']
+  uni.showActionSheet({
+    itemList: [t('publish.useCurrentLocation'), ...areas, t('discovery.anywhere')],
+    success: async ({ tapIndex }) => {
+      if (epoch !== homeAccountEpoch) return
+      let area = '', source = ''
+      if (tapIndex === 0) {
+        const result = await detectLocation()
+        if (epoch !== homeAccountEpoch || !homeVisible) return
+        if (!result.ok) {
+          if (result.reason === 'permission_denied') nearbyPermissionVisible.value = true
+          else uni.showToast({ title: t(result.reason === 'timeout' ? 'publish.gpsTimeout' : 'publish.gpsUnavailable'), icon: 'none' })
+          return
+        }
+        area = nearbyArea(result.location) || ''
+        if (!area) { uni.showToast({ title: t('discovery.outsideArea'), icon: 'none' }); return }
+        source = t('discovery.detectedArea')
+      } else if (tapIndex <= 3) {
+        area = areas[tapIndex - 1]
+        source = t('discovery.selectedArea')
+      }
+      filterLocation.value = area
+      nearbySource.value = source
+      currentPage.value = 0
+      void fetchItems({ ...getFilterParams(), reset: true })
+    },
+  })
+}
+
+async function hideItem(item: Item) {
+  if (!requireAuth() || !currentUser.value || discoveryChanging.value) return
+  const epoch = homeAccountEpoch
+  try {
+    if (await setHidden(item.id, true)) { lastHiddenId.value = item.id; haptic('light') }
+  } catch {
+    if (epoch === homeAccountEpoch) uni.showToast({ title: t('discovery.changeFailed'), icon: 'none' })
+  }
+}
+
+async function undoHidden() {
+  if (!lastHiddenId.value) return
+  const epoch = homeAccountEpoch
+  try {
+    if (await setHidden(lastHiddenId.value, false)) {
+      lastHiddenId.value = ''
+      currentPage.value = 0
+      void fetchItems({ ...getFilterParams(), reset: true })
+    }
+  } catch {
+    if (epoch === homeAccountEpoch) uni.showToast({ title: t('discovery.changeFailed'), icon: 'none' })
+  }
+}
+
+function onRestoreHidden() {
+  const epoch = homeAccountEpoch
+  uni.showModal({
+    title: t('discovery.restoreTitle'), content: t('discovery.restoreBody'),
+    confirmText: t('discovery.restore'), cancelText: t('filter.cancel'),
+    success: async ({ confirm }) => {
+      if (!confirm || epoch !== homeAccountEpoch) return
+      try {
+        if (!(await restoreAllHidden())) return
+        lastHiddenId.value = ''
+        cancelFilterEdit()
+        currentPage.value = 0
+        void fetchItems({ ...getFilterParams(), reset: true })
+      } catch {
+        if (epoch === homeAccountEpoch) uni.showToast({ title: t('discovery.changeFailed'), icon: 'none' })
+      }
+    },
+  })
 }
 
 function onFeedModeKeydown(event: KeyboardEvent, current: 'sell' | 'wanted') {
@@ -859,7 +984,7 @@ function onFeedModeKeydown(event: KeyboardEvent, current: 'sell' | 'wanted') {
 }
 
 const filteredItems = computed(() => {
-  let result = [...displayItems.value]
+  let result = displayItems.value.filter(item => !hiddenIds.value.has(item.id))
 
   // Safety net for the 在售/求购 tab — the search RPC doesn't filter by
   // listing_type, so narrow client-side too (the non-search path already
@@ -920,6 +1045,7 @@ function applyFilters() {
 }
 
 function resetFilters() {
+  nearbySource.value = ''
   filterPriceMin.value = ''
   filterPriceMax.value = ''
   filterDetailDate.value = ''
@@ -936,6 +1062,8 @@ function onClearAllFilters() {
 }
 
 function resetHomeAccountState() {
+  lastHiddenId.value = ''
+  nearbyPermissionVisible.value = false
   homeAccountEpoch += 1
   clearItems()
   initialLoading.value = true
@@ -1122,15 +1250,6 @@ function onItemCardKeydown(event: KeyboardEvent, itemId: string) {
   goToDetail(itemId)
 }
 
-function onQuickFavoriteKeydown(event: KeyboardEvent, item: Item) {
-  if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return
-  // The favorite is nested inside the card. Consume both activation keys so
-  // the delegated role-button shim and the card handler cannot also open the
-  // item detail after toggling the heart.
-  event.preventDefault()
-  event.stopPropagation()
-  void onQuickFav(item)
-}
 
 /* 1.5s + haptic for the home feed report flow — a thumb resting on a
    card during scroll used to fire the report action sheet at 350ms,
@@ -1153,7 +1272,7 @@ async function onCardLongPress(item: Item) {
   const favLabel = isFavorited(item.id) ? t('home.unsave') : t('detail.save')
   const isMine = currentUser.value?.id && item.user_id === currentUser.value.id
   const actions: string[] = [favLabel, t('home.shareItem')]
-  if (!isMine) actions.push(t('report.reportItem'))
+  if (!isMine) actions.push(t('discovery.notInterested'), t('report.reportItem'))
   uni.showActionSheet({
     itemList: actions,
     success: async (res) => {
@@ -1162,9 +1281,9 @@ async function onCardLongPress(item: Item) {
         await onQuickFav(item)
       } else if (res.tapIndex === 1) {
         // #ifdef H5
-        const url = `${window.location.origin}/share/${item.id}`
+        const url = `${window.location.origin}/share/${item.id}${lang.value === 'zh' ? '?lang=zh' : ''}`
         if (navigator.share) {
-          navigator.share({ title: item.title, text: `${listingPriceLabel(item, t)} - ${item.title}`, url })
+          navigator.share({ title: `${localize(item.title_i18n, item.title)} · Illini Market`, text: `${listingPriceLabel(item, t)} · ${localize(item.title_i18n, item.title)}`, url })
             .catch((err: any) => {
               if (err?.name !== 'AbortError') console.warn('[share] failed')
             })
@@ -1180,6 +1299,8 @@ async function onCardLongPress(item: Item) {
         })
         // #endif
       } else if (res.tapIndex === 2 && !isMine) {
+        await hideItem(item)
+      } else if (res.tapIndex === 3 && !isMine) {
         promptReportItem(item.id)
       }
     },
@@ -1256,6 +1377,9 @@ onShow(async () => {
   await awaitAuthReady()
   if (!homeVisible || showEpoch !== homeShowEpoch) return
   consumePendingSearch()
+  // Refresh explicit feedback from other devices, retaining the existing feed
+  // and scroll position. Failed sync does not reset a known hidden set.
+  void loadHiddenItems(true).catch(() => {})
   if (lastScrollTop.value > 0) {
     const saved = lastScrollTop.value
     scrollRestoreTimer = setTimeout(() => {
@@ -1329,6 +1453,28 @@ async function goPublish() {
 </script>
 
 <style lang="scss" scoped>
+.discovery-controls { display: flex; align-items: center; gap: 6px; padding: 8px 12px 4px; }
+.discovery-controls .discovery-mode, .discovery-undo .discovery-undo-action, .discovery-all, .discovery-restore, .card-more {
+  margin: 0; border: 0; background: transparent; color: var(--text-secondary); font: inherit;
+  padding: 0 10px; min-height: 44px; line-height: 1.3; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  cursor: pointer; border-radius: var(--radius-pill);
+  &::after { border: 0; }
+  &:active { background: var(--bg-inset); }
+}
+.discovery-controls .discovery-mode { font-size: 13px; white-space: nowrap; }
+.discovery-controls .discovery-mode.chosen { color: var(--text-primary); font-weight: 700; background: var(--surface); }
+.discovery-controls .discovery-about { margin-left: auto; width: 44px; padding: 0; }
+.discovery-note { display: block; font-size: 12px; color: var(--text-muted); padding: 0 20px 8px; }
+.discovery-undo { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 12px; padding: 4px 12px; background: var(--surface); border: 1px solid var(--border-hair); border-radius: var(--radius-md); color: var(--text-primary); font-size: 13px; }
+.discovery-undo .discovery-undo-action, .discovery-all, .discovery-restore { color: var(--accent-primary); font-size: 13px; }
+.discovery-all { display: flex; margin: 8px auto; }
+.discovery-restore { display: flex; width: 100%; margin-bottom: 8px; }
+.card-heading { display: flex; align-items: flex-start; gap: 2px; }
+.card-heading .card-title { flex: 1; min-width: 0; }
+.card-more { flex: 0 0 36px; min-height: 36px; padding: 0; margin: -6px -8px 0 0; }
+.discovery-reason { display: block; font-size: 10px; line-height: 1.5; color: var(--text-muted); margin: 2px 0 5px; }
+@media (pointer: coarse) { .card-more { flex-basis: 44px; min-height: 44px; } }
+
 .card-pickup { display: flex; align-items: center; gap: 4px; min-width: 0; margin: 7px 0; }
 .card-pickup-label { font-size: 12px; line-height: 1.5; color: var(--text-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .search-sort-note { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
@@ -1576,10 +1722,16 @@ async function goPublish() {
 // Larger touch targets without making the phone header taller. Localized
 // labels also leave more categories visible in the horizontal rail.
 @media (max-width: 767px), (pointer: coarse) {
-  .feed-mode { padding-top: 2px; padding-bottom: 2px; }
+  .marketplace-actions { padding-top: 10px; padding-bottom: 8px; gap: 8px; }
+  .feed-mode { padding-top: 0; padding-bottom: 0; padding-right: 0; gap: 4px; }
   .fm-seg { height: 44px; }
-  .cat-bar { padding-top: 2px; padding-bottom: 2px; }
+  .feed-publish { min-height: 44px; padding: 0 12px; }
+  .cat-bar { padding-top: 4px; padding-bottom: 8px; }
   .pill { height: 44px; }
+}
+@media (max-width: 390px) {
+  .fm-seg { padding: 0 12px; }
+  .feed-publish { font-size: 12px; gap: 4px; padding: 0 10px; }
 }
 
 /* ========== Filter Bottom Sheet ========== */
@@ -1879,11 +2031,11 @@ async function goPublish() {
    ("4.0/5" painted as "4"). The row wraps instead, which only happens when one
    line genuinely cannot hold both groups. */
 .card-bottom {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 7px; min-width: 0;
+  display: flex; flex-direction: column; align-items: stretch; gap: 2px; margin-top: 7px; min-width: 0;
 }
 .card-seller {
   display: flex; align-items: center; gap: 5px;
-  flex: 1 1 auto; min-width: 0; overflow: hidden;
+  flex: 1 1 auto; min-width: 0; min-height: 24px; overflow: hidden;
 }
 .seller-pic { width: 16px; height: 16px; border-radius: 50%; background: var(--bg-subtle); flex-shrink: 0; }
 .seller-nick {
@@ -1902,8 +2054,14 @@ async function goPublish() {
 .card-illini { flex-shrink: 0; }
 .card-fav {
   display: flex; align-items: center; gap: 4px;
-  flex: 0 0 auto; min-width: 0; padding: 4px 2px; margin-left: auto;
+  flex: 0 0 auto; min-width: 0; padding: 0; width: 100%;
 }
+.card-fav .card-time { margin-right: auto; }
+.card-save { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; margin: 0 -8px 0 0; flex-shrink: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+.card-save::after { border: 0; }
+.card-save:active { background: var(--bg-inset); }
+/* Nested controls must not shrink the whole listing under the finger. */
+.card:active { transform: none; }
 .heart-img {
   width: 18px; height: 18px; cursor: pointer;
   transition: transform 0.15s;
@@ -1915,9 +2073,6 @@ async function goPublish() {
   /* The date already communicates age on narrow waterfall cards; dropping
      the redundant "Old" label keeps the fixed date+heart group collision-free. */
   .old-tag { display: none; }
-  /* The trust badge outranks a repeated seller name in a 2-column card. The
-     avatar still identifies the seller; the full nickname remains on detail. */
-  .card-seller--verified .seller-nick { display: none; }
 }
 
 /* ========== Skeleton ========== */

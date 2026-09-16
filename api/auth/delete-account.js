@@ -35,7 +35,7 @@ const ANON_KEY = env(
   env('SUPABASE_ANON_KEY', env('VITE_SUPABASE_PUBLISHABLE_KEY', env('VITE_SUPABASE_ANON_KEY'))),
 )
 const CRON_SECRET = env('CRON_SECRET')
-const IMAGE_BUCKET = 'item-images'
+const STORAGE_BUCKETS = ['item-images', 'chat-media']
 const STORAGE_PAGE_SIZE = 1000
 const MAX_STORAGE_PAGES_PER_SWEEP = 4
 const MAX_STORAGE_CURSOR_CHARS = 4 * 1024
@@ -404,8 +404,8 @@ function validateOwnedStorageName(uid, name) {
   return name
 }
 
-async function listOwnedStorage(uid, limit, cursor = '') {
-  const response = await fetchWithTimeout(`${SUPABASE_URL}/storage/v1/object/list-v2/${IMAGE_BUCKET}`, {
+async function listOwnedStorage(uid, limit, cursor = '', bucket = 'item-images') {
+  const response = await fetchWithTimeout(`${SUPABASE_URL}/storage/v1/object/list-v2/${bucket}`, {
     method: 'POST',
     headers: serviceHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({
@@ -461,12 +461,12 @@ async function listOwnedStorage(uid, limit, cursor = '') {
   return { paths, hasNext: result.hasNext, nextCursor }
 }
 
-async function deleteOwnedStorage(uid, paths) {
+async function deleteOwnedStorage(uid, paths, bucket = 'item-images') {
   if (paths.length === 0) return
   if (paths.length > STORAGE_PAGE_SIZE) throw new Error('storage_delete_batch_invalid')
   for (const path of paths) validateOwnedStorageName(uid, path)
 
-  const response = await fetchWithTimeout(`${SUPABASE_URL}/storage/v1/object/${IMAGE_BUCKET}`, {
+  const response = await fetchWithTimeout(`${SUPABASE_URL}/storage/v1/object/${bucket}`, {
     method: 'DELETE',
     headers: serviceHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ prefixes: paths }),
@@ -475,6 +475,10 @@ async function deleteOwnedStorage(uid, paths) {
 }
 
 async function sweepStorage(uid) {
+  for (const bucket of STORAGE_BUCKETS) await sweepStorageBucket(uid, bucket)
+}
+
+async function sweepStorageBucket(uid, bucket) {
   // List V2 with delimiter disabled returns every nested object as a flat,
   // full key. Delete each page immediately so memory stays O(page size). A
   // fixed page budget also prevents a single Edge invocation from traversing
@@ -483,8 +487,8 @@ async function sweepStorage(uid) {
   let cursor = ''
   const seenCursors = new Set()
   for (let pageIndex = 0; pageIndex < MAX_STORAGE_PAGES_PER_SWEEP; pageIndex += 1) {
-    const page = await listOwnedStorage(uid, STORAGE_PAGE_SIZE, cursor)
-    await deleteOwnedStorage(uid, page.paths)
+    const page = await listOwnedStorage(uid, STORAGE_PAGE_SIZE, cursor, bucket)
+    await deleteOwnedStorage(uid, page.paths, bucket)
     if (!page.hasNext) break
 
     if (seenCursors.has(page.nextCursor)) throw new Error('storage_cursor_invalid')
@@ -495,7 +499,7 @@ async function sweepStorage(uid) {
     cursor = page.nextCursor
   }
 
-  const remaining = await listOwnedStorage(uid, 1)
+  const remaining = await listOwnedStorage(uid, 1, '', bucket)
   if (remaining.paths.length > 0 || remaining.hasNext) {
     throw new Error('storage_delete_incomplete')
   }

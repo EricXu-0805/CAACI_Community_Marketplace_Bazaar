@@ -113,6 +113,7 @@ function createHarness({
   loadJobMutator = row => row,
   checkpointRowMutator = row => row,
   storageObjects = ['photo.jpg', 'clip.mp4'],
+  privateChatObjects = [],
   storageDeleteStatuses = [],
   storageDeleteApplies = true,
   storageListMutator = result => result,
@@ -135,6 +136,7 @@ function createHarness({
     name: normalizeStorageName(name),
   })
   let objects = storageObjects.map(storageRow)
+  let chatObjects = privateChatObjects.map(storageRow)
   let authDeleteAdditionApplied = false
   const checkpointFailureCounts = { ...checkpointFailures }
 
@@ -210,6 +212,15 @@ function createHarness({
 
     if (url.pathname === '/rest/v1/profiles') return json([{ wechat_openid: 'wx-test' }])
 
+    if (url.pathname === '/storage/v1/object/list-v2/chat-media') {
+      return json({hasNext:false,folders:[],objects:chatObjects.slice(0,body.limit)})
+    }
+    if (url.pathname === '/storage/v1/object/chat-media' && method === 'DELETE') {
+      const removed=new Set(body.prefixes)
+      chatObjects=chatObjects.filter(row=>!removed.has(row.name))
+      return empty()
+    }
+
     if (url.pathname === '/storage/v1/object/list-v2/item-images') {
       const limit = Number(body?.limit || 100)
       const prefix = String(body?.prefix || '')
@@ -271,6 +282,7 @@ function createHarness({
     fetch,
     calls,
     get job() { return job },
+    get chatObjects() { return chatObjects },
     get objects() {
       return objects.map(row => row.name.startsWith(ownerPrefix)
         ? row.name.slice(ownerPrefix.length)
@@ -1150,3 +1162,15 @@ test('a hanging Storage call is aborted and leaves the durable saga retryable', 
   assert.ok(redirects.length > 0)
   assert.ok(redirects.every(value => value === 'manual'))
 })
+
+ test('account deletion removes private conversation uploads before removing Auth identity',async()=>{
+  const harness=createHarness({privateChatObjects:['44444444-4444-4444-8444-444444444444/55555555-5555-4555-8555-555555555555.jpg']})
+  globalThis.fetch=harness.fetch
+  const {default:handler}=await loadApi()
+  const response=await handler(deleteRequest())
+  assert.equal(response.status,200)
+  assert.equal(harness.chatObjects.length,0)
+  const removal=callIndex(harness.calls,c=>c.url.pathname==='/storage/v1/object/chat-media'&&c.method==='DELETE')
+  const identity=callIndex(harness.calls,c=>c.url.pathname===`/auth/v1/admin/users/${USER_ID}`&&c.method==='DELETE')
+  assert.ok(removal>=0&&removal<identity)
+ })

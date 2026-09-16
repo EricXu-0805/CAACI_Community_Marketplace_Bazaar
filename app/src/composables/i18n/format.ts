@@ -11,7 +11,8 @@ export function detectsAsForeign(text: string, uiLang: Lang): boolean {
   const hasCjk = /[\u4e00-\u9fff\u3400-\u4dbf]/.test(text)
   const hasLatin = /[A-Za-z]{3,}/.test(text)
   if (uiLang === 'zh' && !hasCjk && hasLatin) return true
-  if (uiLang === 'en' && hasCjk && !hasLatin) return true
+  // A model name such as AirPods does not make the surrounding Chinese English.
+  if (uiLang === 'en' && /[\u3400-\u9fff\u3040-\u30ff\uac00-\ud7af]/.test(text)) return true
   return false
 }
 

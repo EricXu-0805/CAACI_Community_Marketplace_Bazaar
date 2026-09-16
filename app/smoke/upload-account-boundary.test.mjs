@@ -106,18 +106,18 @@ test('response-lost and 5xx mutations retain media while definite rejections com
   assert.equal(committed.mutationCommitted, true)
 })
 
-test('public chat rejects media while text and stickers retain account-bound idempotent sends', () => {
+test('chat requires private media keys while text and stickers retain account-bound idempotent sends', () => {
   const messages = source('src/composables/useMessages.ts')
   const chat = source('src/components/ChatThread.vue')
   const edit = source('src/pages/publish/edit.vue')
 
-  assert.doesNotMatch(chat, /sendUploadedMedia|uni\.chooseImage\(|uni\.chooseVideo\(|uploadOneImage|uploadOneVideo/)
-  assert.match(messages, /if \(type !== 'text'\) throw new Error\('chat_media_private_storage_required'\)/)
+  assert.doesNotMatch(chat, /uploadOneImage|uploadOneVideo|item-images/)
+  assert.match(chat, /uploadChatMedia/)
+  assert.match(messages, /type !== 'text' && !validChatMediaPath\(content, type, senderId, conversationId, messageId\)/)
   assert.match(messages, /options\?: \{[\s\S]*accountToken\?: AccountRequestToken[\s\S]*messageId\?: string/)
   assert.match(messages, /mutationOutcomeError\(writeError, 'unknown'\)/)
   assert.match(chat, /sendMessage\(convId, senderId, content, 'text', \{ messageId: tempId \}\)/)
   assert.match(chat, /sendWithLocalEcho\(convId, senderId, stickerToken\(name\)\)/)
-  assert.match(chat, /if \(msg\?\.message_type !== 'text'\) return/)
   assert.match(chat, /throw mutationOutcomeError\(error, 'committed'\)/)
 
   // Removing old edit images must still know A when no new upload batch exists.

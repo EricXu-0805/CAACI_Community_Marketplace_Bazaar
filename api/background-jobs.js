@@ -1,6 +1,7 @@
 import { moderationObjectKeys, mediaMoveSucceeded, mediaCachePurgeAccepted } from './_moderation-media.js'
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from './_deployment-boundary.js'
 import { reportToSentry } from './_sentry-report.js'
+import { translateListing } from './_listing-translation.js'
 
 export const config = { runtime: 'edge' }
 
@@ -216,7 +217,8 @@ export default async function handler(request) {
       else if (outcome === 'invalid_reference') counts.media_cancelled++
       else counts.media_retried++
     }
-    for (let i = 0; i < 100 && deadline - Date.now() > 5_000; i++) {
+    const translationEnabled = process.env.LISTING_ENGLISH_AUTOTRANSLATE === '1' && Boolean(process.env.OPENAI_API_KEY)
+    for (let i = 0; i < 100 && deadline - Date.now() > (translationEnabled ? 15_000 : 5_000); i++) {
       const batch = await call('process_listing_notification_job', { batch_size_in: 200 })
       if (!batch || typeof batch.worked !== 'boolean' || !Number.isInteger(batch.scanned) ||
           batch.scanned < 0 || batch.scanned > 200 || !Number.isInteger(batch.inserted) ||
@@ -224,6 +226,28 @@ export default async function handler(request) {
       if (!batch.worked) break
       counts.listing_batches++
       counts.notifications += batch.inserted
+    }
+    if (translationEnabled && deadline - Date.now() > 12_000) {
+      const translation = await translateListing({ key: process.env.OPENAI_API_KEY, call, request: serviceCall })
+      counts.translation_state = translation.state
+      const translationStatus = await call('listing_translation_status')
+      if (!translationStatus || !['pending','failed'].every(k => Number.isSafeInteger(translationStatus[k]) && translationStatus[k]>=0)) throw new Error('backlog_invalid')
+      counts.translation_pending = translationStatus.pending
+      counts.translation_failed = translationStatus.failed
+      if (translationStatus.failed) await reportToSentry('api/background-jobs', 'listing translation needs attention', { failedCount: translationStatus.failed })
+    }
+    // Sweep only database-claimed, unreferenced private uploads. Claims block
+    // later message attachment and survive provider timeouts for safe retries.
+    for(let i=0;i<3 && deadline-Date.now()>5_000;i++) {
+      const orphan=await call('claim_chat_media_orphan')
+      if(orphan===null) break
+      if(!orphan || typeof orphan.name!=='string' || !/^items\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp|gif|mp4|mov|webm)$/.test(orphan.name)) throw new Error('claim_invalid')
+      const {response}=await serviceCall(new URL('/storage/v1/object/chat-media',origin),{
+        method:'DELETE',headers:serviceHeaders({'Content-Type':'application/json'}),
+        body:JSON.stringify({prefixes:[orphan.name]}),
+      },timeLeft())
+      if(!response.ok) throw new Error(`provider_status_${response.status}`)
+      if(await call('finish_chat_media_orphan',{name_in:orphan.name})!==true) throw new Error('media_lease_lost')
     }
     await call('purge_completed_background_jobs', { limit_in: 500 })
     const backlog = await call('background_job_status')

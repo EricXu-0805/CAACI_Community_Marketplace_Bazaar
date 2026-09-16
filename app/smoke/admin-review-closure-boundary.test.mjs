@@ -235,14 +235,14 @@ test('user search rejects one-character enumeration and labels the 50-row displa
 test('lift and content removal require bounded operator reasons and name the target impact', () => {
   const takedown = functionBlock('onTakedownContent', 'openUser')
   assert.match(takedown, /admin\.takedownConfirmBody[\s\S]*?type: boundedAuditField\(row\.target_type\)[\s\S]*?id: boundedAuditField\(row\.target_id\)/)
-  assert.match(takedown, /editable: true/)
+  assert.match(takedown, /showModerationReason\(/)
   assert.match(takedown, /const reason = moderationReasonOrNotify\(r\.content\)/)
   assert.match(takedown, /action: 'takedown_content'[\s\S]*?reason/)
   assert.doesNotMatch(takedown, /reason: 'admin takedown'/)
 
   const lift = functionBlock('onLiftSuspension', 'onBanPrompt')
   assert.match(lift, /admin\.liftConfirmBody[\s\S]*?\{ target \}/)
-  assert.match(lift, /editable: true/)
+  assert.match(lift, /showModerationReason\(/)
   assert.match(lift, /const reason = moderationReasonOrNotify\(r\.content\)/)
   assert.match(lift, /action: 'lift_suspension'[\s\S]*?reason/)
   assert.doesNotMatch(lift, /\|\| t\('admin\.adminReview'\)/)

@@ -38,8 +38,10 @@ test('the corpora were generated against the latest definition of the function',
 
   assert.equal(
     definitions.at(-1),
-    '20260904060000_ad_signals_stop_catching_ordinary_listings.sql',
-    'content_moderation_check was redefined after 20260904060000 — regenerate the corpora in '
+    // The September 16 real-PostgreSQL suite reruns every original corpus
+    // against the generated-pattern implementation and its rollback/reinstall.
+    '20260916222000_precompute_moderation_patterns.sql',
+    'content_moderation_check was redefined after 20260916222000 — regenerate the corpora in '
       + 'scripts/moderation-contact-and-ad-policy.test.mjs against the new definition before '
       + 'changing this assertion',
   )

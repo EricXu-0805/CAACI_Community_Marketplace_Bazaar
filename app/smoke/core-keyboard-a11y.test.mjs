@@ -113,14 +113,14 @@ test('home feed tabs, filters, cards and empty actions are keyboard reachable', 
     'function onFilterDialogKeydown(event: KeyboardEvent)',
     'class="card u-press u-rise"\n            role="button"',
     '@keydown.self="onItemCardKeydown($event, item.id)"',
-    'tabindex="0"\n                    :aria-label="isFavorited(item.id)',
-    '@keydown="onQuickFavoriteKeydown($event, item)"',
+    'class="card-save"',
+    ':aria-label="isFavorited(item.id)',
     'function onItemCardKeydown(event: KeyboardEvent, itemId: string)',
-    'function onQuickFavoriteKeydown(event: KeyboardEvent, item: Item)',
     'class="empty-btn" role="button"',
   ])
   const home = source('src/pages/index/index.vue')
-  assert.match(home, /function onQuickFavoriteKeydown[^]*?event\.preventDefault\(\)[^]*?event\.stopPropagation\(\)[^]*?void onQuickFav\(item\)/)
+  // A native button supplies Enter/Space activation; a role on uni-view did not.
+  assert.match(home, /<button[^>]*class="card-save"[^>]*@click\.stop="onQuickFav\(item\)"/)
 })
 
 test('detail rating dialog traps focus and exposes a roving keyboard radio group', () => {
@@ -165,11 +165,11 @@ test('message list and profile tabs implement roving tabindex and menu access', 
   ])
 })
 
-test('chat keeps message keyboard actions after public media removal and discards failed temp messages locally', () => {
+test('chat keeps message keyboard actions with private media and discards failed temp messages locally', () => {
   const chat = source('src/components/ChatThread.vue')
   expectSnippets('src/components/ChatThread.vue', [
     '@keydown.self="onMessageKeydown($event, entry.msg)"',
-    "t('chat.mediaUnavailable')",
+    '<ChatMedia',
     'v-if="offerSheet.open"\n      class="offer-sheet open"',
     'v-if="meetupSheet.open"\n      class="offer-sheet open"',
     '@keydown="onComposerSheetKeydown($event, \'offer\')"',
@@ -178,7 +178,7 @@ test('chat keeps message keyboard actions after public media removal and discard
     "actions.push(t('chat.discardFailed'))",
     'messages.value.splice(index, 1)',
   ])
-  assert.doesNotMatch(chat, /:src="entry\.msg\.content"|uni\.chooseImage\(|uni\.chooseVideo\(/)
+  assert.doesNotMatch(chat, /:src="entry\.msg\.content"/)
   assert.doesNotMatch(chat, /deleteMessage|chat\.deleteMsg/)
 })
 
@@ -315,10 +315,10 @@ test('plaza overlays and admin details expose modal and Escape contracts', () =>
     '@keydown="onCommentDialogKeydown"',
     'ref="composerDialogEl"',
     'aria-labelledby="plaza-composer-title"',
-    '@keydown="onComposerDialogKeydown"',
+    'useDomKeydown(composerDialogEl, onComposerDialogKeydown)',
     'ref="attachDialogEl"',
     'aria-labelledby="plaza-attach-title"',
-    '@keydown="onAttachDialogKeydown"',
+    'useDomKeydown(attachDialogEl, onAttachDialogKeydown)',
     'function handleDialogKeydown(event: KeyboardEvent',
   ])
   expectSnippets('src/pages/admin/index.vue', [
@@ -326,7 +326,7 @@ test('plaza overlays and admin details expose modal and Escape contracts', () =>
     'class="detail-sheet open"',
     'role="dialog"',
     'aria-modal="true"',
-    '@keydown="onDetailDialogKeydown"',
+    'useDomKeydown(detailDialogEl, onDetailDialogKeydown)',
     'function onDetailDialogKeydown(event: KeyboardEvent)',
     'function focusDetailDialog()',
     'function closeDetail(restoreFocus = true)',
@@ -340,7 +340,7 @@ test('permission and saved-search overlays trap focus and restore their opener',
     'role="dialog"',
     'aria-modal="true"',
     'tabindex="-1"',
-    '@keydown="onDialogKeydown"',
+    'useDomKeydown(dialogEl, onDialogKeydown)',
     'function focusDialog(epoch: number)',
     'function restoreDialogFocus(epoch: number, target: HTMLElement | null)',
     'function onDialogKeydown(e: KeyboardEvent)',
@@ -353,7 +353,7 @@ test('permission and saved-search overlays trap focus and restore their opener',
     'role="dialog"',
     'aria-modal="true"',
     'aria-labelledby="saved-search-form-title"',
-    '@keydown="onFormDialogKeydown"',
+    'useDomKeydown(formDialogEl, onFormDialogKeydown)',
     'function openForm()',
     'function closeForm(restoreFocus = true)',
     'function onFormDialogKeydown(event: KeyboardEvent)',
@@ -435,9 +435,9 @@ test('long-press-only moderation and history actions have keyboard alternatives'
     '@keydown="onCommentKeyboardMenu($event, thread.parent)"',
     'function onPostKeyboardMenu(event: KeyboardEvent)',
   ])
-  expectSnippets('src/pages/history/index.vue', [
-    'aria-keyshortcuts="Shift+F10 Delete"',
-    'function onHistoryCardKeydown(event: KeyboardEvent',
+  expectSnippets('src/components/USwipeAction.vue', [
+    'aria-keyshortcuts="Delete Shift+F10"',
+    'useDomKeydown(linkEl, keydown)',
   ])
 })
 

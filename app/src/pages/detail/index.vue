@@ -111,11 +111,12 @@
       </view>
       <view class="title-row">
         <text class="title" role="heading" aria-level="1">{{ displayTitle }}</text>
-        <view :class="['translate-btn', { loading: translatePending }]" role="button" :aria-label="t('a11y.translate')" @click="toggleTranslate">
-          <text v-if="!translatePending" class="translate-btn-label">{{ translated ? 'A文' : '文A' }}</text>
-          <text v-else class="translate-btn-label">···</text>
-        </view>
+        <button v-if="translationRelevant" :class="['translate-btn', { disabled: translationBusy }]" :disabled="translationBusy" :aria-label="translationActionLabel" @click="toggleTranslate">
+          <UIcon name="translate" size="sm" />
+          <text class="translate-btn-label">{{ translationActionLabel }}</text>
+        </button>
       </view>
+      <text v-if="translationUnavailable && !originalShown" class="translation-notice" role="status">{{ t('detail.translationUnavailable') }}</text>
       <view class="tags">
         <text v-if="item.listing_type === 'wanted'" class="tag tag-wanted">{{ t('item.wanted') }}</text>
         <text class="tag">{{ t('cat.' + item.category) }}</text>
@@ -410,13 +411,14 @@ import { useModeration } from '../../composables/useModeration'
 import { useTheme } from '../../composables/useTheme'
 import type { Item, Rating } from '../../types'
 
-import { formatTime, haptic, formatPrice, listingPriceLabel, navigateBackOr, quickTranslate, thumbUrl, friendlyErrorMessage } from '../../utils'
+import { formatTime, haptic, formatPrice, listingPriceLabel, navigateBackOr, thumbUrl, friendlyErrorMessage } from '../../utils'
 import { readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
 import { localizeLocation, pickupTier } from '../../composables/useCampusSpots'
 import { useRatings } from '../../composables/useRatings'
 import { createOwnedLoading } from '../../composables/ownedLoading'
 import { useTranslate } from '../../composables/useTranslate'
+import { detectsAsForeign } from '../../composables/i18n/format'
 import { computed, onUnmounted, watch, nextTick, getCurrentInstance } from 'vue'
 import UBadge from '../../components/UBadge.vue'
 import UAvatar from '../../components/UAvatar.vue'
@@ -458,6 +460,9 @@ const descExpanded = ref(false)
 const notFound = ref(false)
 const loadError = ref(false)
 const translated = ref(false)
+const originalShown = ref(false)
+const translationBusy = ref(false)
+let translationEpoch = 0
 const detailItemId = ref('')
 let detailLoadEpoch = 0
 const reportLoading = createOwnedLoading()
@@ -534,11 +539,13 @@ watch(() => imgs.value.length, (length) => {
  */
 const displayTitle = computed(() => {
   if (!item.value) return ''
+  if (originalShown.value) return item.value.title
   if (translated.value && translatedTitle.value) return translatedTitle.value
   return localize(item.value.title_i18n, item.value.title)
 })
 const displayDescription = computed(() => {
   if (!item.value) return ''
+  if (originalShown.value) return item.value.description
   if (translated.value && translatedDesc.value) return translatedDesc.value
   return localize(item.value.description_i18n, item.value.description)
 })
@@ -598,18 +605,12 @@ function onHeroImgLoad(e: any, i: number) {
  * aspect). Safety net: max-height 70vh so a 9:16 portrait can't eat
  * the whole viewport and push the price/title below the fold.
  */
-// Pick the most landscape-leaning aspect across all images so the swiper
-// viewport doesn't get locked to an unusually tall image0. Subsequent
-// slides then horizontal-letterbox (acceptable) instead of vertical-
-// letterbox (the "200-300px blank band" bug Eric reported on long-image items).
+// Freeze to the cover image. A wide screenshot later in the gallery must not
+// squeeze the main product photo into a shallow strip on a phone.
 function bestAspect(dims: ImageDim[] | null): number | null {
-  if (!dims || !dims.length) return null
-  let maxRatio = 0
-  for (const d of dims) {
-    if (d?.w && d?.h) maxRatio = Math.max(maxRatio, d.w / d.h)
-  }
-  if (maxRatio === 0) return null
-  return Math.max(0.4, Math.min(maxRatio, 2.5))
+  const first = dims?.[0]
+  if (!first?.w || !first?.h) return null
+  return Math.max(0.6, Math.min(first.w / first.h, 1.8))
 }
 
 /*
@@ -786,56 +787,59 @@ async function onSubmitRating() {
   }
 }
 
-// lang / localize / t all come from the top-level useI18n() destructure.
-const { translate: translateText, getCached, pending: translatePending } = useTranslate()
-
+const { translateResult } = useTranslate()
 const translatedTitle = ref('')
 const translatedDesc = ref('')
-
-function dictionaryFallback(kind: 'title' | 'desc'): string {
-  if (!item.value) return ''
-  const src = kind === 'title' ? item.value.title : item.value.description
-  return quickTranslate(src, lang.value as 'en' | 'zh')
-}
-
-async function ensureTranslation() {
-  if (!item.value) return
-  const target = lang.value as 'en' | 'zh'
-  const cachedT = getCached(item.value.title, target)
-  const cachedD = getCached(item.value.description, target)
-  translatedTitle.value = cachedT || dictionaryFallback('title')
-  translatedDesc.value  = cachedD || dictionaryFallback('desc')
-  if (cachedT && cachedD) return
-  const [t2, d2] = await Promise.all([
-    cachedT ? Promise.resolve(cachedT) : translateText(item.value.title, target),
-    cachedD ? Promise.resolve(cachedD) : translateText(item.value.description, target),
-  ])
-  if (!item.value) return
-  if (t2) translatedTitle.value = t2
-  if (d2) translatedDesc.value  = d2
-}
+const translationRelevant = computed(() => !!item.value && (
+  detectsAsForeign(item.value.title, lang.value) || detectsAsForeign(item.value.description || '', lang.value)
+))
+const translationUnavailable = computed(() => !!item.value && (
+  detectsAsForeign(displayTitle.value, lang.value) || detectsAsForeign(displayDescription.value || '', lang.value)
+))
+const translationActionLabel = computed(() => translationBusy.value ? t('detail.translating')
+  : originalShown.value ? t('detail.showTranslation')
+  : !translationUnavailable.value ? t('detail.showOriginal') : t('a11y.translate'))
 
 async function toggleTranslate() {
-  // Turning it back off is local, so it stays free. Turning it ON needs
-  // /api/translate, which answers 401 without a session — and the old code
-  // flipped the icon first and swallowed that, so a signed-out reader saw the
-  // control switch to its "translated" state over unchanged foreign text.
-  // Save, Report and Chat with Seller on this same screen all route to login.
-  if (translated.value) {
-    translated.value = false
-    return
-  }
+  if (translationBusy.value || !item.value) return
+  if (originalShown.value) { originalShown.value = false; return }
+  if (!translationUnavailable.value) { originalShown.value = true; return }
+  const entryItem = item.value
+  const entryEpoch = detailLoadEpoch
   await awaitAuthReady()
-  if (!requireAuth()) return
-  translated.value = true
-  await ensureTranslation()
+  if (!alive || entryEpoch !== detailLoadEpoch || item.value !== entryItem || !requireAuth()) return
+  const accountToken = captureAccountRequest(currentUser.value!.id)
+  const target = lang.value === 'en' ? 'en' : 'zh'
+  const requestEpoch = ++translationEpoch
+  translationBusy.value = true
+  const current = () => alive && requestEpoch === translationEpoch && entryEpoch === detailLoadEpoch
+    && item.value === entryItem && lang.value === target && isAccountRequestCurrent(accountToken)
+  try {
+    const translateField = (text: string, existing: string) => !detectsAsForeign(existing, target)
+      ? Promise.resolve({ text: existing, verified: true }) : translateResult(text, target)
+    const [title, desc] = await Promise.all([
+      translateField(entryItem.title, displayTitle.value),
+      translateField(entryItem.description || '', displayDescription.value || ''),
+    ])
+    if (!current()) return
+    if (title.verified) translatedTitle.value = title.text
+    if (desc.verified) translatedDesc.value = desc.text
+    translated.value = title.verified || desc.verified
+    if (!title.verified || !desc.verified) uni.showToast({ title: t('detail.translationFailed'), icon: 'none' })
+  } finally {
+    if (current()) translationBusy.value = false
+  }
 }
 
-watch(lang, async () => {
-  if (translated.value && item.value) {
-    await ensureTranslation()
-  }
-})
+function resetDetailTranslation() {
+  translationEpoch++
+  translationBusy.value = false
+  originalShown.value = false
+  translated.value = false
+  translatedTitle.value = ''
+  translatedDesc.value = ''
+}
+watch(lang, resetDetailTranslation)
 
 let alive = true
 function detailRequestIsCurrent(accountToken: AccountRequestToken | null, requestEpoch: number): boolean {
@@ -865,9 +869,7 @@ function resetDetailAccountState() {
   reported.value = false
   notFound.value = false
   loadError.value = false
-  translated.value = false
-  translatedTitle.value = ''
-  translatedDesc.value = ''
+  resetDetailTranslation()
   measuredDims.value = []
   reportLoading.cancel()
 }
@@ -1063,9 +1065,9 @@ function goSeller(uid: string) {
 function onShare() {
   if (!item.value) return
   // #ifdef H5
-  const shareUrl = `${window.location.origin}/share/${item.value.id}`
+  const shareUrl = `${window.location.origin}/share/${item.value.id}${lang.value === 'zh' ? '?lang=zh' : ''}`
   if (navigator.share) {
-    navigator.share({ title: item.value.title, text: `${listingPriceLabel(item.value, t)} - ${item.value.title}`, url: shareUrl })
+    navigator.share({ title: `${displayTitle.value} · Illini Market`, text: `${listingPriceLabel(item.value, t)} · ${displayTitle.value}`, url: shareUrl })
       .catch((err: any) => {
         if (err?.name !== 'AbortError') console.warn('[share] failed')
       })
@@ -1519,11 +1521,15 @@ async function contactSeller() {
   line-height: 1.45;
 }
 .translate-btn {
-  flex-shrink: 0; padding: 4px 8px;
-  background: var(--bg-subtle); border-radius: 6px; cursor: pointer;
-  .translate-btn-label { font-size: 11px; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.02em; }
+  flex-shrink: 0; padding: 0 10px; margin: 0; min-height: 44px;
+  display: inline-flex; align-items: center; gap: 6px; line-height: 1.3;
+  color: var(--text-secondary); background: var(--bg-subtle); border: 0; border-radius: 10px; cursor: pointer;
+  &::after { border: 0; }
+  .translate-btn-label { font-size: 12px; font-weight: 500; }
+  &.disabled { opacity: 0.6; }
   &:active { background: var(--bg-inset); }
 }
+.translation-notice { display: block; font-size: 12px; line-height: 1.6; margin-top: 8px; color: var(--text-muted); }
 .tags { display: flex; gap: 6px; margin-top: 11px; flex-wrap: wrap; }
 .tag {
   font-size: 12px; padding: 4px 10px;

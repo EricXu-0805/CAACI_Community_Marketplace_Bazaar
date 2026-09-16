@@ -131,7 +131,7 @@ test('the control does not claim the translated state it could not reach', async
 
   await page.goto(`/#/pages/detail/index?id=${ITEM}`, { waitUntil: 'domcontentloaded' })
   await expect(page.locator('.translate-btn')).toBeVisible({ timeout: 20_000 })
-  await expect(page.locator('.translate-btn')).toContainText('文A')
+  await expect(page.locator('.translate-btn')).toContainText('Translate')
 
   await page.locator('.translate-btn').click()
   await page.waitForTimeout(2_000)
@@ -145,23 +145,46 @@ test('the control does not claim the translated state it could not reach', async
   const stillOnDetail = /pages\/detail\/index/.test(page.url())
   if (stillOnDetail) {
     await expect(page.locator('.translate-btn'), 'the glyph must not flip when nothing was translated')
-      .not.toContainText('A文')
+      .not.toContainText('Original')
   }
 })
 
-test('control: with a session the same tap really does translate', async ({ page }) => {
+test('a partial Chinese map automatically fills English even with a Latin model name', async ({ page }) => {
   const translateCalls: string[] = []
   await seedSession(page)
   await serve(page, translateCalls)
 
   await page.goto(`/#/pages/detail/index?id=${ITEM}`, { waitUntil: 'domcontentloaded' })
   await expect(page.locator('.translate-btn')).toBeVisible({ timeout: 20_000 })
-  await expect(page.locator('body'), 'the Chinese title is what a reader starts from')
-    .toContainText(ZH_TITLE)
-
-  await page.locator('.translate-btn').click()
-
   await expect(page.locator('body'), 'a signed-in reader gets the real translation')
     .toContainText(EN_TITLE, { timeout: 20_000 })
   expect(translateCalls.length, 'the endpoint must actually be called').toBeGreaterThan(0)
+})
+
+
+test('a signed-out visitor reads durable English counterparts without paid translation calls',async({page})=>{
+ const calls:string[]=[];await seedAnonymous(page);await serve(page,calls)
+ await page.route('**/rest/v1/items?**',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({...ITEM_ROW,title_i18n:{en:EN_TITLE,zh:ZH_TITLE},description_i18n:{en:'Pet carrier, lightly used. Campus pickup.',zh:ZH_DESC}})}))
+ await page.goto(`/#/pages/detail/index?id=${ITEM}`)
+ await expect(page.locator('.title')).toHaveText(EN_TITLE)
+ await expect(page.locator('body')).toContainText('Pet carrier, lightly used. Campus pickup.')
+ expect(calls).toEqual([])
+})
+
+test('translation failure remains visible and can be retried before showing the original',async({page})=>{
+ await seedSession(page);await serve(page,[])
+ await page.route('**/api/translate',r=>r.fulfill({json:{skipped:true,reason:'upstream_503'}}))
+ await page.goto(`/#/pages/detail/index?id=${ITEM}`)
+ await expect(page.locator('.translation-notice')).toContainText('Original text is shown')
+ await page.getByRole('button',{name:'Translate',exact:true}).click()
+ await expect(page.locator('.uni-simple-toast__text')).toContainText('Translation could not finish')
+ await expect(page.getByRole('button',{name:'Translate',exact:true})).toBeEnabled()
+ await page.route('**/api/translate',r=>r.fulfill({json:{translated:r.request().postDataJSON().text===ZH_TITLE?EN_TITLE:'Pet carrier, excellent condition, campus pickup'}}))
+ await page.getByRole('button',{name:'Translate',exact:true}).click()
+ await expect(page.locator('.title')).toHaveText(EN_TITLE)
+ await expect(page.locator('.translation-notice')).toHaveCount(0)
+ await page.getByRole('button',{name:'Original',exact:true}).click()
+ await expect(page.locator('.title')).toHaveText(ZH_TITLE)
+ await page.getByRole('button',{name:'Translation',exact:true}).click()
+ await expect(page.locator('.title')).toHaveText(EN_TITLE)
 })

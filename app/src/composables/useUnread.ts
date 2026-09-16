@@ -99,6 +99,8 @@ export function useUnread() {
               seller_id,
               is_muted_buyer,
               is_muted_seller,
+              is_unread_buyer,
+              is_unread_seller,
               unread_messages:messages(id)
             `)
             .or(`buyer_id.eq.${uid},seller_id.eq.${uid}`)
@@ -175,7 +177,8 @@ export function useUnread() {
       // contains at most one id when an unread incoming message exists.
       const unreadSet = new Set<string>(
         convs
-          .filter((c: any) => Array.isArray(c.unread_messages) && c.unread_messages.length > 0)
+          .filter((c: any) => (c.buyer_id === uid ? c.is_unread_buyer : c.is_unread_seller)
+            || (Array.isArray(c.unread_messages) && c.unread_messages.length > 0))
           .map((c: any) => c.id),
       )
 

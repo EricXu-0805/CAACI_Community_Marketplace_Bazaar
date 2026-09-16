@@ -152,6 +152,15 @@ test('the migration teaches record_consent 2026-09-03 and still refuses unknown 
     // Applying twice is how a re-run of the release script behaves; the
     // precheck's "already at target" branch must accept that.
     psqlFile(MIGRATION)
+    const nextMigration = fileURLToPath(new URL('supabase/migrations/20260916210800_accept_discovery_media_privacy_consent.sql', REPO))
+    psqlFile(nextMigration)
+    assert.equal(psql(`select public.record_consent('2026-09-16', '${USER}');`).trim(), '')
+    assert.equal(psql(`select tos_version from public.profiles where id='${USER}';`).trim(), '2026-09-16')
+    refuses(`select public.record_consent('2026-09-16', '${OLDER_USER}');`, 'account_changed')
+    refuses(`select public.record_consent('2027-01-01', '${USER}');`, 'invalid_version')
+    psql(`select public.record_consent('2026-09-03', '${USER}');`)
+    assert.equal(psql(`select tos_version from public.profiles where id='${USER}';`).trim(), '2026-09-16')
+    psqlFile(nextMigration)
   } finally {
     try { execFileSync(join(bin, 'pg_ctl'), ['-D', data, '-m', 'immediate', '-w', 'stop'], { stdio: 'ignore' }) } catch {}
     rmSync(dir, { recursive: true, force: true })

@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { quickTranslate } from '../utils'
+import { detectsAsForeign } from './i18n/format'
 import { platformFetch, useSupabase } from './useSupabase'
 import { addBreadcrumb } from '../utils/sentry'
 import { SUPPORTED_LANGS, type Lang as AppLang } from './useI18n'
@@ -153,7 +154,7 @@ export function useTranslate() {
     loadDisk()
     const key = cacheKey(text, target)
     const hit = mem.get(key)
-    if (!hit) return null
+    if (!hit || detectsAsForeign(hit.translated, target)) return null
     if (Date.now() - hit.at > CACHE_TTL_MS) {
       mem.delete(key)
       return null
@@ -252,7 +253,7 @@ export function useTranslate() {
       }
 
       const translated = typeof json?.translated === 'string' ? json.translated.trim() : ''
-      if (!translated) return { text: quickTranslate(text, target), verified: false }
+      if (!translated || detectsAsForeign(translated, target)) return { text: quickTranslate(text, target), verified: false }
 
       // A settings-triggered clear may abort this request after the upstream
       // already responded. Return the useful result to its caller, but never
@@ -371,6 +372,7 @@ export function useTranslate() {
 
   return {
     translate,
+    translateResult,
     getCached,
     pending,
     translateContentToAll,

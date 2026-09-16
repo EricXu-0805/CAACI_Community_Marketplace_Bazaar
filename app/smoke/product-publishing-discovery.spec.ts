@@ -464,3 +464,249 @@ test.describe('category search controls',()=>{
   const query=requests.filter(r=>r.url.pathname.endsWith('search_items_fuzzy_v2')).at(-1)!.body;expect(query.detail_date_in).toBeNull();expect(query.price_unit_in).toBeNull()
  })
 })
+
+// Real-device feedback: storage quota/policy failure must not prevent a valid
+// listing from reaching the server, and an uncertain response must reuse its id.
+test('publishing with unavailable draft storage keeps one id across retry', async ({ page }) => {
+ await fixture(page)
+ await page.addInitScript(() => {
+  const original = Storage.prototype.setItem
+  Storage.prototype.setItem = function (key, value) {
+   if (key === 'publish_draft_v1') throw new DOMException('Quota exceeded', 'QuotaExceededError')
+   return original.call(this, key, value)
+  }
+ })
+ const writes: any[] = []
+ let recovered = false
+ await page.route('**/rest/v1/items?**', async route => {
+  if (route.request().method() === 'POST') {
+   writes.push(route.request().postDataJSON())
+   return route.abort('connectionreset')
+  }
+  const url = new URL(route.request().url())
+  if (writes.length && url.searchParams.get('id') === `eq.${writes[0].id}`) {
+   if (!recovered) return route.abort('connectionreset')
+   return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ...base, ...writes[0] }) })
+  }
+  return route.fallback()
+ })
+ await page.goto('/#/pages/publish/index')
+ await page.getByRole('textbox', { name: 'Title (required)', exact: true }).fill('Study chair with a storage failure')
+ await page.getByRole('spinbutton', { name: 'Price', exact: true }).fill('25')
+ await page.getByRole('button', { name: 'Category', exact: true }).click()
+ await page.getByRole('button', { name: 'Furniture', exact: true }).click()
+ await page.getByRole('button', { name: 'Condition', exact: true }).click()
+ await page.getByRole('button', { name: 'Good', exact: true }).click()
+ await page.getByRole('button', { name: 'Post Item', exact: true }).click()
+ await expect.poll(() => writes.length).toBe(1)
+ await expect(page.locator('.draft-storage-notice')).toBeVisible()
+ await expect(page.getByRole('button', { name: 'Post Item', exact: true })).toBeEnabled()
+ await expect(page.getByRole('textbox', { name: 'Title (required)', exact: true })).toHaveValue('Study chair with a storage failure')
+ recovered = true
+ await page.getByRole('button', { name: 'Post Item', exact: true }).click()
+ await expect(page).toHaveURL(/pages\/detail\/index\?id=/)
+ expect(writes).toHaveLength(1)
+})
+
+test('denied location opens a working focused dialog and returns to the form without a page error', async ({ page }) => {
+ await fixture(page)
+ const errors:string[]=[]
+ page.on('pageerror', error=>errors.push(error.message))
+ await page.goto('/#/pages/publish/index')
+ const locate=page.getByRole('button',{name:'Detect current location',exact:true})
+ await expect(locate).toBeVisible()
+ await page.evaluate(()=>{
+  Object.defineProperty(navigator,'permissions',{configurable:true,value:{query:async()=>({state:'denied'})}})
+ })
+ await locate.click()
+ const dialog=page.getByRole('dialog',{name:'Location access needed'})
+ await expect(dialog).toBeVisible()
+ const dismiss=dialog.getByRole('button',{name:'Got it',exact:true})
+ await expect(dismiss).toBeFocused()
+ await page.keyboard.press('Tab')
+ expect(errors).toEqual([])
+ await expect(dismiss).toBeFocused()
+ await page.keyboard.press('Escape')
+ await expect(dialog).toHaveCount(0)
+ await expect(locate).toBeFocused()
+ expect(errors).toEqual([])
+})
+
+test('location result shows a detected area and becomes manual after editing', async ({ page }) => {
+ await fixture(page)
+ await page.route('**/api/geocode?**',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({address:{road:'Green Street',city:'Champaign'}})}))
+ await page.goto('/#/pages/publish/index')
+ const locate=page.getByRole('button',{name:'Detect current location',exact:true})
+ await expect(locate).toBeVisible()
+ await page.evaluate(()=>{
+  Object.defineProperty(navigator,'permissions',{configurable:true,value:{query:async()=>({state:'granted'})}})
+  ;(window as any).uni.getLocation=(options:any)=>options.success({latitude:40.1106,longitude:-88.2272,accuracy:20})
+ })
+ await locate.click()
+ await expect(page.getByRole('textbox',{name:'Location',exact:true})).toHaveValue('Green Street, Champaign')
+ await expect(page.locator('.location-result')).toContainText('Detected by your device')
+ await page.getByRole('textbox',{name:'Location',exact:true}).fill('Library entrance')
+ await expect(page.locator('.location-result')).toContainText('Entered manually')
+ await expect(page.locator('.location-result')).not.toContainText('Detected by your device')
+})
+
+test('history supports right swipe and visible single-entry removal without deleting other history', async ({ page }) => {
+ await fixture(page)
+ await page.addInitScript(([uid,history])=>{
+  if(!sessionStorage.getItem('history-fixture')){
+   localStorage.setItem('account_private_storage_owner_v1',uid)
+   localStorage.setItem('viewHistory',history)
+   sessionStorage.setItem('history-fixture','1')
+  }
+ },[UID,JSON.stringify([base,{...base,id:'22222222-2222-4222-8222-000000000009',title:'Second viewed item',title_i18n:{en:'Second viewed item'}}])])
+ await page.goto('/#/pages/history/index')
+ await expect(page.locator('.swipe-row')).toHaveCount(2)
+ const content=page.locator('.swipe-content').first()
+ await content.dispatchEvent('touchstart',{touches:[{clientX:50,clientY:200}]})
+ await content.dispatchEvent('touchmove',{touches:[{clientX:150,clientY:205}]})
+ await content.dispatchEvent('touchend',{touches:[]})
+ await expect(page.locator('.swipe-action.on-left')).toBeVisible()
+ await page.locator('.swipe-action.on-left').click()
+ await expect(page.locator('.swipe-row')).toHaveCount(1)
+ await expect(page.locator('.swipe-row')).toContainText('Second viewed item')
+ await page.reload()
+ await expect(page.locator('.swipe-row')).toHaveCount(1)
+ await expect(page.locator('.swipe-row')).toContainText('Second viewed item')
+ await page.locator('.swipe-visible-action').click()
+ await expect(page.locator('.swipe-row')).toHaveCount(0)
+})
+
+test('search submitted after Profile navigates to listing results rather than history back', async ({ page }) => {
+ const requests=await fixture(page)
+ await page.goto('/#/pages/profile/index')
+ await expect(page.getByRole('heading',{name:'Profile',exact:true})).toBeVisible()
+ await page.evaluate(()=>{(window as any).uni.navigateTo({url:'/pages/search/index'})})
+ await page.locator('.search-field input').fill('desk')
+ await page.locator('.search-field input').press('Enter')
+ await expect(page).toHaveURL(/#\/(?:pages\/index\/index)?(?:\?.*)?$/)
+ await expect.poll(()=>requests.some(r=>r.url.pathname.endsWith('/search_items_fuzzy_v2'))).toBe(true)
+})
+
+for(const [width,height] of [[390,844],[820,1180],[1440,900]]) test(`cover image stays large with a wide second photo at ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height})
+ await fixture(page,{image_dimensions:[{w:1200,h:1100},{w:2400,h:400}]})
+ await page.goto(`/#/pages/detail/index?id=${base.id}`)
+ await expect(page.locator('.img-swiper')).toBeVisible()
+ await expect.poll(async()=>Math.round((await page.locator('.img-swiper').boundingBox())!.height)).toBeGreaterThan(280)
+ await page.locator('.swiper-img').first().click()
+ const viewer=page.getByRole('dialog',{name:'Preview image',exact:true})
+ await expect(viewer).toBeVisible()
+ const image=viewer.locator('img').first()
+ await expect.poll(async()=>(await image.boundingBox())!.width).toBeGreaterThan(width*.8)
+ await page.keyboard.press('Escape');await expect(viewer).toHaveCount(0)
+})
+
+test('discovery: hide, undo, reload and restore are reversible',async({page})=>{
+ await fixture(page,{user_id:'33333333-3333-4333-8333-333333333333'})
+ const hidden=new Set<string>()
+ await page.route('**/rest/v1/hidden_items?**',async r=>{
+  const req=r.request(),url=new URL(req.url())
+  if(req.method()==='POST'){hidden.add(req.postDataJSON().item_id);return r.fulfill({json:{item_id:base.id}})}
+  if(req.method()==='DELETE'){const id=url.searchParams.get('item_id')?.slice(3);if(id)hidden.delete(id);else hidden.clear()}
+  return r.fulfill({json:[...hidden].map(item_id=>({item_id}))})
+ })
+ await page.route('**/rest/v1/rpc/browse_listing_ids',r=>r.fulfill({json:[base.id,'22222222-2222-4222-8222-000000000002'].filter(id=>!hidden.has(id)).map(id=>({id,reason:'recent'}))}))
+ await page.goto('/#/')
+ const card=page.locator('.card').filter({has:page.locator('.card-price',{hasText:/^\$25$/})})
+ await expect(card).toBeVisible()
+ await card.locator('.card-more').click();await page.locator('.uni-actionsheet__cell').filter({hasText:/^Not interested$/}).click()
+ await expect(card).toHaveCount(0);await expect(page.locator('.discovery-undo')).toBeVisible();expect(hidden.size).toBe(1)
+ await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(card).toBeVisible();expect(hidden.size).toBe(0)
+ await card.locator('.card-more').click();await page.locator('.uni-actionsheet__cell').filter({hasText:/^Not interested$/}).click()
+ await page.reload();await expect(page.locator('.card-title')).toHaveCount(1);await expect(card).toHaveCount(0)
+ await page.locator('.filter-btn:visible').click()
+ await page.getByRole('button',{name:'Restore hidden items (1)',exact:true}).click()
+ await page.locator('.uni-modal__btn_primary').click();await expect(card).toBeVisible();expect(hidden.size).toBe(0)
+})
+
+test('discovery: recommendation order stays fixed across pages without uploading full history',async({page})=>{
+ await fixture(page)
+ const rows=Array.from({length:25},(_,i)=>({...base,id:`44444444-4444-4444-8444-${String(i).padStart(12,'0')}`,title:`Suggestion ${i}`,title_i18n:null,images:[]}))
+ const calls:any[]=[]
+ await page.route('**/rest/v1/rpc/browse_listing_ids',r=>{calls.push(r.request().postDataJSON());return r.fulfill({json:rows.map(row=>({id:row.id,reason:'interest'}))})})
+ await page.route('**/rest/v1/items?**',r=>{const ids=new URL(r.request().url()).searchParams.get('id');return ids?.startsWith('in.')?r.fulfill({json:rows.filter(row=>ids.includes(row.id))}):r.fallback()})
+ await page.goto('/#/');await page.getByRole('button',{name:'For you',exact:true}).click()
+ await expect(page.locator('.card-title')).toHaveCount(20);expect(calls).toHaveLength(1);expect(calls[0].categories_in).toEqual([])
+ expect(Object.keys(calls[0]).some(key=>/history|latitude|longitude/.test(key))).toBe(false)
+ await page.locator('.feed .uni-scroll-view').evaluateAll(els=>els.forEach(el=>{el.scrollTop=el.scrollHeight}))
+ await expect(page.locator('.card-title')).toHaveCount(25);expect(calls).toHaveLength(1)
+ await expect(page.getByRole('button',{name:'Browse all latest listings',exact:true})).toBeVisible()
+ const titles=await page.locator('.card-title').allTextContents();expect(new Set(titles).size).toBe(titles.length)
+})
+
+test('discovery: denied nearby location preserves area; manual choice works',async({page})=>{
+ await fixture(page);await page.goto('/#/')
+ await page.evaluate(()=>Object.defineProperty(navigator,'permissions',{configurable:true,value:{query:async()=>({state:'denied'})}}))
+ await page.getByRole('button',{name:'Nearby',exact:true}).click();await page.locator('.uni-actionsheet__cell').filter({hasText:/^Use current location$/}).click()
+ const dialog=page.getByRole('dialog',{name:'Location access needed'});await expect(dialog).toBeVisible();await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0)
+ await page.getByRole('button',{name:'Nearby',exact:true}).click();await page.locator('.uni-actionsheet__cell').filter({hasText:/^UIUC$/}).click()
+ await expect(page.locator('.discovery-note')).toHaveText('Selected area · approximate match · UIUC');await expect(page.locator('.card-title')).toHaveCount(2)
+})
+
+test('history: failed durable deletion stays visible with retry feedback',async({page})=>{
+ await fixture(page)
+ await page.addInitScript(([uid,item])=>{localStorage.setItem('account_private_storage_owner_v1',uid);localStorage.setItem('viewHistory',item)},[UID,JSON.stringify([base])])
+ await page.goto('/#/pages/history/index');await expect(page.locator('.item-row')).toHaveCount(1)
+ await page.evaluate(()=>{const original=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key==='viewHistory')throw new DOMException('Quota exceeded','QuotaExceededError');return original.call(this,key,value)}})
+ await page.getByRole('button',{name:'Remove from history',exact:true}).click()
+ await expect(page.locator('.item-row')).toHaveCount(1);await expect(page.locator('.uni-simple-toast__text')).toContainText('Could not remove this history')
+ expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('viewHistory')||'[]').length)).toBe(1)
+})
+
+for(const [width,height] of [[375,812],[390,844],[430,932],[768,1024],[1024,768],[1440,810]]) test(`feedback visual matrix ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height});await fixture(page,{profile:{...profile,nickname:'Xiaoyu Zhang',avg_rating:4,rating_count:7}})
+ let renderedImage=false
+ await page.route(url=>/\/storage\/v1\/(?:object|render\/image)\/public\/item-images\//.test(url.pathname),r=>{renderedImage=true;return r.fulfill({contentType:'image/png',body:coverPhoto})});await page.goto('/#/pages/index/index');await expect(page.locator('.card').first()).toHaveCSS('opacity','1')
+ const bounds=await page.locator('.marketplace-actions').evaluate(el=>{
+  const r=el.getBoundingClientRect();const prev=el.previousElementSibling?.getBoundingClientRect()
+  return {left:r.left,right:r.right,top:r.top,previousBottom:prev?.bottom||0,scroll:el.scrollWidth,client:el.clientWidth}
+ })
+ expect(bounds.left).toBeGreaterThanOrEqual(0);expect(bounds.right).toBeLessThanOrEqual(width+1);expect(bounds.scroll).toBeLessThanOrEqual(bounds.client+1)
+ if(width<768){
+  const gap=await page.locator('.marketplace-actions').evaluate(el=>el.getBoundingClientRect().top-document.querySelector('.mobile-header')!.getBoundingClientRect().bottom)
+  expect(gap).toBeGreaterThanOrEqual(0)
+ }
+ await expect(page.locator('.card').first().locator('.seller-nick')).toBeVisible()
+ const targets=await page.locator('.card').first().locator('.card-save').boundingBox();expect(targets!.height).toBeGreaterThanOrEqual(44)
+ // The listing card uses a native img; inspect the image itself.
+ await expect.poll(()=>renderedImage).toBe(true)
+ await expect.poll(()=>page.locator('img.card-img').first().evaluate(el=>(el as HTMLImageElement).naturalWidth)).toBeGreaterThan(1)
+ if(process.env.PRODUCT_AUDIT_CAPTURE)await page.screenshot({path:`../output/feedback-20260916/home-${width}-${auditTheme}.png`})
+ await page.goto('/#/pages/profile/index');await expect(page.locator('.user-card')).toBeVisible();await expect(page.locator('.horz-card').first()).toBeVisible()
+ if(process.env.PRODUCT_AUDIT_CAPTURE)await page.screenshot({path:`../output/feedback-20260916/profile-${width}-${auditTheme}.png`})
+})
+
+ test('discovery: a removed first candidate page does not strand later listings',async({page})=>{
+  await fixture(page)
+  const rows=Array.from({length:25},(_,i)=>({...base,id:`44444444-4444-4444-8444-${String(i).padStart(12,'0')}`,title:`Suggestion ${i}`,title_i18n:null,images:[]}))
+  await page.route('**/rest/v1/rpc/browse_listing_ids',r=>r.fulfill({json:rows.map(row=>({id:row.id,reason:'interest'}))}))
+  await page.route('**/rest/v1/items?**',r=>{const ids=new URL(r.request().url()).searchParams.get('id');return ids?.startsWith('in.')?r.fulfill({json:rows.slice(20).filter(row=>ids.includes(row.id))}):r.fallback()})
+  await page.goto('/#/');await page.getByRole('button',{name:'For you',exact:true}).click()
+  await expect(page.locator('.card-title')).toHaveCount(5)
+  await expect(page.getByRole('button',{name:'Browse all latest listings',exact:true})).toBeVisible()
+ })
+
+test('saved-search sheet focuses its field, traps Tab and restores its opener without TypeError',async({page})=>{
+ await fixture(page);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message))
+ await page.goto('/#/pages/saved-searches/index')
+ const opener=page.getByRole('button',{name:'Add saved search',exact:true});await opener.click()
+ const sheet=page.getByRole('dialog',{name:'New Saved Search',exact:true});await expect(sheet).toBeVisible()
+ await expect(sheet.getByRole('textbox',{name:'Keyword',exact:true})).toBeFocused()
+ await page.keyboard.press('Shift+Tab');await page.keyboard.press('Tab')
+ expect(await sheet.evaluate(el=>el.contains(document.activeElement))).toBe(true)
+ await page.keyboard.press('Escape');await expect(sheet).toHaveCount(0);await expect(opener).toBeFocused();expect(errors).toEqual([])
+})
+
+test('partial browser NetworkInformation cannot interrupt startup and offline still gives feedback',async({page})=>{
+ await fixture(page);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message))
+ await page.addInitScript(()=>Object.defineProperty(navigator,'connection',{configurable:true,value:{type:'unknown'}}))
+ await page.goto('/#/');await expect(page.locator('.card').first()).toBeVisible()
+ await page.evaluate(()=>window.dispatchEvent(new Event('offline')))
+ await expect(page.locator('.uni-simple-toast__text')).toContainText(/network|connection|offline/i)
+ expect(errors).toEqual([])
+})

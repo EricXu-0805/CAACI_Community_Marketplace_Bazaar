@@ -8,7 +8,7 @@ const source = readFileSync(sourceUrl, 'utf8')
 
 async function loadPublicResource(origin) {
   const compiled = ts.transpileModule(
-    source.replace('import.meta.env.VITE_SUPABASE_URL', JSON.stringify(origin)),
+    source.replace("import { validChatMediaPath } from './chatMedia'", () => readFileSync(new URL('../src/utils/chatMedia.ts', import.meta.url), 'utf8')).replace('import.meta.env.VITE_SUPABASE_URL', JSON.stringify(origin)),
     {
       compilerOptions: {
         target: ts.ScriptTarget.ES2022,
@@ -54,7 +54,7 @@ test('public media reads and writes fail closed around the exact configured orig
   assert.match(source, /url\.search/)
   assert.match(source, /url\.hash/)
   assert.match(source, /throw new Error\('invalid_public_media'\)/)
-  assert.match(source, /message\.message_type === 'text' \? message\.content : ''/)
+  assert.match(source, /validChatMediaPath\(message.content, message.message_type, message.sender_id, message.conversation_id, message.id\)/)
 })
 
 test('avatar thumbnails validate exact origin and owner before constructing a render URL', async () => {

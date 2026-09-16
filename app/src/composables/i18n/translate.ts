@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { platformFetch, useSupabase } from '../useSupabase'
 import type { Lang } from './types'
+import { detectsAsForeign } from './format'
 import { BASE_URL } from '../../config/runtime'
 import { readBoundedJson } from '../../api/responseBody'
 import {
@@ -178,7 +179,7 @@ export function scheduleAutoTranslate(text: string, target: Lang) {
       const translated = typeof json?.translated === 'string' ? json.translated.trim() : ''
       // An identical non-empty translation is still a successful response
       // (brand/model names often remain unchanged), so it is safe to cache.
-      if (translated) rememberAutoLocalize(key, translated)
+      if (translated && !detectsAsForeign(translated, target)) rememberAutoLocalize(key, translated)
       else deferAutoRetry(key)
     })
     .catch(() => {

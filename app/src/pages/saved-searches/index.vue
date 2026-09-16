@@ -65,7 +65,6 @@
       aria-modal="true"
       aria-labelledby="saved-search-form-title"
       tabindex="-1"
-      @keydown="onFormDialogKeydown"
     >
       <view class="fs-header">
         <text
@@ -141,6 +140,8 @@
 </template>
 
 <script setup lang="ts">
+import { useDomKeydown } from '../../composables/useDomKeydown'
+import { resolveHtmlElement } from '../../utils/domElement'
 import AppSidebar from '../../components/AppSidebar.vue'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
@@ -163,7 +164,8 @@ const { currentUser, requireAuth, awaitAuthReady } = useAuth()
 const { items, fetchMine, create, remove } = useSavedSearch()
 
 const showForm = ref(false)
-const formDialogEl = ref<HTMLElement | null>(null)
+const formDialogEl = ref<unknown>(null)
+useDomKeydown(formDialogEl, onFormDialogKeydown)
 const submitting = ref(false)
 const loading = ref(false)
 const loadError = ref(false)
@@ -195,7 +197,7 @@ function openForm() {
   showForm.value = true
   nextTick(() => {
     if (focusEpoch !== formDialogFocusEpoch || !showForm.value || typeof document === 'undefined') return
-    const dialog = formDialogEl.value
+    const dialog = resolveHtmlElement(formDialogEl.value)
     const firstInput = dialog?.querySelector<HTMLElement>('input:not([disabled])')
     ;(firstInput || dialog)?.focus()
   })

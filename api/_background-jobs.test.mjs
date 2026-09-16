@@ -9,7 +9,7 @@ const CRON_SECRET = 'background-jobs-cron-secret'
 const SERVICE_KEY = 'background-jobs-service-key'
 const ENV_KEYS = [
   'SUPABASE_URL', 'VITE_SUPABASE_URL', 'SUPABASE_SECRET_KEY',
-  'SUPABASE_SERVICE_ROLE_KEY', 'CRON_SECRET',
+  'SUPABASE_SERVICE_ROLE_KEY', 'CRON_SECRET', 'OPENAI_API_KEY', 'LISTING_ENGLISH_AUTOTRANSLATE',
   // Without these the failure paths would POST to a developer's real Sentry
   // and break the fetch-call assertions below.
   'SENTRY_DSN', 'VITE_SENTRY_DSN',
@@ -67,11 +67,19 @@ const BACKLOG = { listing_pending: 0, listing_oldest_seconds: 0, media_pending: 
 function mock(options = {}) {
   const calls=[]
   const jobs=[...(options.jobs || [])]
+  const orphans=[...(options.orphans || [])]
   const batches=[...(options.batches || [])]
   globalThis.fetch=async (input,init={}) => {
     const url=new URL(String(input))
     const body=init.body ? JSON.parse(init.body) : null
     calls.push({url,body,init})
+    if(url.pathname.endsWith('/claim_listing_translation')) return response(options.translationJob ?? null)
+    if(url.pathname.endsWith('/finish_listing_translation')) return response(true)
+    if(url.pathname.endsWith('/listing_translation_status')) return response(options.translationStatus ?? {pending:0,failed:0})
+    if(url.hostname==='api.openai.com') return response({choices:[{finish_reason:'stop',message:{content:JSON.stringify({title:'Desk',description:'Good condition'})}}]})
+    if(url.pathname.endsWith('/claim_chat_media_orphan')) return response(orphans.shift() ?? null)
+    if(url.pathname.endsWith('/finish_chat_media_orphan')) return response(options.orphanFinish ?? true)
+    if(url.pathname==='/storage/v1/object/chat-media') return response({},options.orphanDeleteStatus || 200)
     if(url.pathname.endsWith('/claim_moderation_media_job')) return response(jobs.shift() ?? null)
     if(url.pathname.endsWith('/finish_moderation_media_job')) return response(options.finish ?? true)
     if(url.pathname.endsWith('/process_listing_notification_job')) return response(batches.shift() ?? options.repeatBatch ?? {worked:false,scanned:0,inserted:0})
@@ -216,4 +224,45 @@ test('terminal media failure is visible to cron monitoring and does not leak the
 test('background worker has an every-minute production schedule', async () => {
   const vercel=JSON.parse(await readFile(new URL('../vercel.json',import.meta.url),'utf8'))
   assert.deepEqual(vercel.crons.filter(job=>job.path==='/api/background-jobs'),[{path:'/api/background-jobs',schedule:'* * * * *'}])
+})
+
+test('orphan cleanup deletes only claimed private objects and requires authoritative acknowledgement',async()=>{
+ const name=`items/${OWNER}/${ID}/${TOKEN}.mp4`
+ for(const [options,status] of [[{},200],[{orphanDeleteStatus:503},503],[{orphanFinish:false},503]]){
+  const calls=mock({...options,orphans:[{name}]});const handler=await loadHandler()
+  assert.equal((await handler(request())).status,status)
+  const deletion=calls.find(c=>c.url.pathname==='/storage/v1/object/chat-media')
+  assert.deepEqual(deletion.body,{prefixes:[name]})
+  assert.equal(calls.some(c=>c.url.pathname.endsWith('/finish_chat_media_orphan')),options.orphanDeleteStatus!==503)
+ }
+})
+test('orphan cleanup rejects attacker-controlled object paths before a storage request',async()=>{
+ const calls=mock({orphans:[{name:'../item-images/private.jpg'}]});const handler=await loadHandler()
+ assert.equal((await handler(request())).status,503)
+ assert.equal(calls.some(c=>c.url.pathname==='/storage/v1/object/chat-media'),false)
+})
+
+test('configured translation worker completes its lease and reports counts without exposing content',async()=>{
+ const calls=mock({translationJob:{id:ID,lease:TOKEN,revision:2,title:'书桌',description:'状况很好',title_needed:true,description_needed:true}})
+ const handler=await loadHandler({OPENAI_API_KEY:'synthetic-private-key',LISTING_ENGLISH_AUTOTRANSLATE:'1'});const res=await handler(request());const body=await res.json()
+ assert.equal(res.status,200);assert.equal(body.translation_state,'complete');assert.equal(body.translation_pending,0)
+ assert.equal(calls.filter(c=>c.url.hostname==='api.openai.com').length,1)
+ assert.equal(calls.find(c=>c.url.pathname.endsWith('/finish_listing_translation')).body.revision_in,2)
+ assert.doesNotMatch(JSON.stringify(body),/书桌|状况|private-key|Desk/)
+ assert.ok(calls.some(c=>c.url.pathname.endsWith('/claim_chat_media_orphan')),'media cleanup still runs')
+})
+test('malformed translation queue monitoring fails closed',async()=>{
+ console.error=()=>{};mock({translationStatus:{pending:'wrong',failed:0}})
+ const handler=await loadHandler({OPENAI_API_KEY:'synthetic-private-key',LISTING_ENGLISH_AUTOTRANSLATE:'1'})
+ assert.equal((await handler(request())).status,503)
+})
+
+test('an existing provider key alone never activates automatic listing translation',async()=>{
+ for (const flag of [undefined,'0','true']) {
+  const calls=mock()
+  const handler=await loadHandler({OPENAI_API_KEY:'synthetic-private-key',...(flag?{LISTING_ENGLISH_AUTOTRANSLATE:flag}:{})})
+  assert.equal((await handler(request())).status,200)
+  assert.equal(calls.some(c=>c.url.hostname==='api.openai.com'||c.url.pathname.endsWith('/claim_listing_translation')),false)
+  assert.ok(calls.some(c=>c.url.pathname.endsWith('/process_listing_notification_job')))
+ }
 })

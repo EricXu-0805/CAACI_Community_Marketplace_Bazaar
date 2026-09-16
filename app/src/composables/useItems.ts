@@ -3,6 +3,7 @@ import { listingLocationTerms } from '../utils/listingLocation'
 import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 import { useModeration } from './useModeration'
+import { useDiscovery } from './useDiscovery'
 import { useI18n } from './useI18n'
 import type { Item, ItemCategory, ItemCondition, ItemSaleCandidate, ItemStatus } from '../types'
 import { compressImage, detectImageMimeType, expandSearch, friendlyErrorMessage, getImageDimensions, storedImageDimensions } from '../utils'
@@ -47,6 +48,10 @@ let latestRequestId = 0
 // page cannot shift an offset and duplicate or skip the next listing.
 let latestFeedKey = ''
 const latestFeedCursors = new Map<number, { created_at: string; id: string }>()
+// Freeze the small discovery id list per refresh. Opening an item or loading
+// another page cannot rerank already-seen cards. Each page rechecks live RLS.
+let discoveryPool: Array<{ id: string; reason: 'interest' | 'recent' }> | null = null
+let discoveryOffset = 0
 
 /*
  * Public column projection — kept aligned with migrations 014 / 015 /
@@ -225,6 +230,8 @@ function invalidateMyItems() {
 }
 
 function resetItemState() {
+  discoveryPool = null
+  discoveryOffset = 0
   // Public rows are still account-personalized by the current block set. An
   // A request that finishes after A -> B must not repopulate the singleton
   // with A's filtered snapshot or release B's loading/error state.
@@ -242,6 +249,7 @@ onAccountTransition(resetItemState)
 
 export function useItems() {
   const { supabase } = useSupabase()
+  const { hiddenIds, loadHiddenItems } = useDiscovery()
   const { t, lang } = useI18n()
   const moderation = useModeration()
 
@@ -256,6 +264,7 @@ export function useItems() {
     priceMax?: number
     condition?: ItemCondition | null
     sort?: string
+    interestCategories?: ItemCategory[]
     listingType?: 'sell' | 'wanted'
     location?: string
     verifiedOnly?: boolean
@@ -265,6 +274,8 @@ export function useItems() {
     const requestId = ++latestRequestId
     const feedKey = JSON.stringify([category, search, userId, priceMin, priceMax, condition, sort, listingType, location, verifiedOnly, detailDate, priceUnit])
     if (reset || page === 0 || feedKey !== latestFeedKey) {
+      discoveryPool = null
+      discoveryOffset = 0
       latestFeedCursors.clear()
       latestFeedKey = feedKey
     }
@@ -283,6 +294,8 @@ export function useItems() {
         const gate = await moderation.ensureLoaded()
         if (requestId !== latestRequestId) return
         if (!gate.ok) throw new Error('moderation_gate_unavailable')
+        await loadHiddenItems()
+        if (requestId !== latestRequestId) return
       }
 
       let data: any
@@ -331,6 +344,47 @@ export function useItems() {
         if (requestId !== latestRequestId) return
         data = rpcRes.data
         searchHasMore = rpcRes.hasMore
+      } else if (sort === 'recommended' || hiddenIds.value.size > 0 || moderation.blockedIds.value.size > 0) {
+        let candidateIds: Array<{ id: string; reason: 'interest' | 'recent' }>
+        if (sort === 'recommended' && discoveryPool) candidateIds = discoveryPool
+        else {
+          const result = await supabase.rpc('browse_listing_ids', {
+            sort_in: sort || 'latest', categories_in: options.interestCategories?.slice(0, 3) || [],
+            category_in: category || null, condition_in: condition || null,
+            price_min_in: priceMin ?? null, price_max_in: priceMax ?? null,
+            user_id_in: userId || null, listing_type_in: listingType || null,
+            location_in: location?.trim() || null, verified_only_in: verifiedOnly === true,
+            detail_date_in: detailDate || null, price_unit_in: priceUnit || null,
+            limit_in: PAGE_SIZE, offset_in: pageCursor ? 0 : page * PAGE_SIZE,
+            before_created_in: pageCursor?.created_at || null, before_id_in: pageCursor?.id || null,
+          })
+          if (requestId !== latestRequestId) return
+          if (result.error || !Array.isArray(result.data)) throw result.error || new Error('discovery_unavailable')
+          candidateIds = result.data
+          if (sort === 'recommended') discoveryPool = candidateIds
+        }
+        let nextOffset = discoveryOffset
+        data = []
+        // Revalidate live rows, skipping a now-deleted/hidden whole page so
+        // an empty first page cannot strand the remaining recommendation pool.
+        do {
+          const pageIds = sort === 'recommended' ? candidateIds.slice(nextOffset, nextOffset + PAGE_SIZE) : candidateIds
+          searchHasMore = sort === 'recommended' ? nextOffset + PAGE_SIZE < candidateIds.length : pageIds.length === PAGE_SIZE
+          if (!pageIds.length) break
+          const result = await supabase.from('items')
+            .select(`${LIST_ITEM_FIELDS}, profile:profiles!items_user_id_fkey(${PUBLIC_PROFILE_FIELDS})` as any)
+            .eq('status', 'active').in('id', pageIds.map(row => row.id))
+          if (requestId !== latestRequestId) return
+          if (result.error) throw result.error
+          const byId = new Map((result.data as unknown as Item[] || []).map(item => [item.id, item]))
+          data = pageIds.flatMap(row => {
+            const item = byId.get(row.id)
+            return item && !hiddenIds.value.has(item.id) ? [{ ...item, discovery_reason: sort === 'recommended' ? row.reason : undefined }] : []
+          })
+          nextOffset += PAGE_SIZE
+        } while (sort === 'recommended' && !data.length && searchHasMore)
+        if (sort === 'recommended') discoveryOffset = nextOffset
+
       } else {
         /*
          * No-search path → plain PostgREST query. The select() call's
@@ -342,7 +396,7 @@ export function useItems() {
          */
         let q = supabase
           .from('items')
-          .select(`${LIST_ITEM_FIELDS}, profile:profiles(${PUBLIC_PROFILE_FIELDS})` as any)
+          .select(`${LIST_ITEM_FIELDS}, profile:profiles!items_user_id_fkey(${PUBLIC_PROFILE_FIELDS})` as any)
           .eq('status', 'active')
 
         if (sort === 'price_asc') q = q.order('price', { ascending: true })
@@ -420,7 +474,7 @@ export function useItems() {
     const viewAccountToken = viewOwnerId ? captureAccountRequest(viewOwnerId) : null
     const { data, error } = await supabase
       .from('items')
-      .select(`${DETAIL_ITEM_FIELDS}, profile:profiles(${PUBLIC_PROFILE_FIELDS})` as any)
+      .select(`${DETAIL_ITEM_FIELDS}, profile:profiles!items_user_id_fkey(${PUBLIC_PROFILE_FIELDS})` as any)
       .eq('id', id)
       .single()
     if (error) throw error

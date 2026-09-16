@@ -180,15 +180,11 @@ export function useI18n() {
     map: Record<string, string> | null | undefined,
     original?: string | null,
   ): string {
-    if (map) {
-      const hit = map[currentLang.value]
-      if (hit && hit.trim()) return hit
-      const fb = map[DEFAULT_LANG]
-      if (fb && fb.trim()) return fb
-      const anyVal = Object.values(map).find((v) => typeof v === 'string' && v.trim())
-      if (anyVal) return anyVal
-    }
-    const text = original || ''
+    const hit = map?.[currentLang.value]
+    if (typeof hit === 'string' && hit.trim() && !detectsAsForeign(hit, currentLang.value)) return hit
+    // A partial map must not bypass the target-language cache or translation.
+    // Prefer the author's original over an unrelated fallback translation.
+    const text = original || (map && Object.values(map).find(v => typeof v === 'string' && v.trim())) || ''
     if (!text) return ''
     /*
      * Auto-translate escape hatch: when the DB row has no i18n map (yet
@@ -200,7 +196,7 @@ export function useI18n() {
      */
     const cached = getAutoLocalized(text, currentLang.value)
     if (cached !== undefined) return cached
-    if (currentLang.value !== DEFAULT_LANG || detectsAsForeign(text, currentLang.value)) {
+    if (detectsAsForeign(text, currentLang.value)) {
       scheduleAutoTranslate(text, currentLang.value)
     }
     return text
@@ -230,18 +226,7 @@ export function useI18n() {
   ) {
     const pendingFetch = ref(false)
     const result = computed(() => {
-      const map = mapGetter()
-      const original = originalGetter() || ''
-      const target = currentLang.value
-      if (map) {
-        const hit = map[target]
-        if (hit && hit.trim()) return hit
-      }
-      if (!original) return ''
-      const cached = getAutoLocalized(original, target)
-      if (cached !== undefined) return cached
-      scheduleAutoTranslate(original, target)
-      return original
+      return localize(mapGetter(), originalGetter())
     })
     return { result, pendingFetch }
   }

@@ -10,15 +10,15 @@ const stickerComponent = readFileSync(new URL('../src/components/USticker.vue', 
 const csp = JSON.parse(readFileSync(new URL('../../vercel.json', import.meta.url), 'utf8'))
 
 test('public listing storage is not presented as private chat media', () => {
-  assert.equal(thread.includes('uni.chooseImage('), false)
-  assert.equal(thread.includes('uni.chooseVideo('), false)
+  assert.equal(thread.includes('uni.chooseImage('), true)
+  assert.equal(thread.includes('uni.chooseVideo('), true)
   assert.equal(thread.includes(':src="entry.msg.content"'), false)
   assert.equal(thread.includes('uploadOneImage'), false)
   assert.equal(thread.includes('uploadOneVideo'), false)
-  assert.match(thread, /chat\.mediaUnavailable/)
+  assert.match(thread, /<ChatMedia/)
   assert.match(messages, /type !== 'text'/)
-  assert.match(messages, /chat_media_private_storage_required/)
-  assert.match(resources, /message\.message_type === 'text' \? message\.content : ''/)
+  assert.match(messages, /chat_media_invalid_reference/)
+  assert.match(resources, /validChatMediaPath/)
 })
 
 test('composer retains emoji/stickers without fake glyph controls', () => {

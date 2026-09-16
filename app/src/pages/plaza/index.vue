@@ -488,7 +488,6 @@
       aria-modal="true"
       aria-labelledby="plaza-composer-title"
       tabindex="-1"
-      @keydown="onComposerDialogKeydown"
     >
       <view class="comp-header">
         <text class="comp-cancel" role="button" @click="onComposerCancel">{{ t('plaza.cancel') }}</text>
@@ -583,7 +582,6 @@
       aria-modal="true"
       aria-labelledby="plaza-attach-title"
       tabindex="-1"
-      @keydown="onAttachDialogKeydown"
     >
       <view class="as-header">
         <text id="plaza-attach-title" class="as-title">{{ t('plaza.pickItem') }}</text>
@@ -623,6 +621,8 @@
 </template>
 
 <script setup lang="ts">
+import { useDomKeydown } from '../../composables/useDomKeydown'
+import { resolveHtmlElement } from '../../utils/domElement'
 import { photoPickerErrorKey } from '../../utils/photoPicker'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
@@ -899,7 +899,8 @@ function clearSearch() {
 }
 
 const showComposer = ref(false)
-const composerDialogEl = ref<HTMLElement | null>(null)
+const composerDialogEl = ref<unknown>(null)
+useDomKeydown(composerDialogEl, onComposerDialogKeydown)
 const composerText = ref('')
 const composerImages = ref<string[]>([])
 const composerFocused = ref(false)
@@ -912,7 +913,8 @@ const MAX_CHIPS = 3
 const composerAttachedItems = ref<AttachableItem[]>([])
 const chipCapReached = computed(() => composerAttachedItems.value.length >= MAX_CHIPS)
 const showAttachSheet = ref(false)
-const attachDialogEl = ref<HTMLElement | null>(null)
+const attachDialogEl = ref<unknown>(null)
+useDomKeydown(attachDialogEl, onAttachDialogKeydown)
 const myActiveItems = ref<AttachableItem[]>([])
 /* Picker hides items already attached to this composer session, so the
    user can't pick the same item twice (matches the (post_id, item_id)
@@ -932,7 +934,8 @@ function activeElement(): HTMLElement | null {
   return document.activeElement instanceof HTMLElement ? document.activeElement : null
 }
 
-function focusDialog(dialog: HTMLElement | null, preferredSelector?: string) {
+function focusDialog(reference: unknown, preferredSelector?: string) {
+  const dialog = resolveHtmlElement(reference)
   if (!dialog || typeof dialog.querySelector !== 'function') return
   const preferred = preferredSelector
     ? dialog.querySelector<HTMLElement>(preferredSelector)

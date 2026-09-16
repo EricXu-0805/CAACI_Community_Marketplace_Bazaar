@@ -123,7 +123,7 @@ function responseHeaders(boundary) {
   const headers = {
     'content-type': 'text/html; charset=utf-8',
     'cache-control': 'public, max-age=60, s-maxage=300',
-    'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; img-src https:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
     'referrer-policy': 'no-referrer',
     'x-content-type-options': 'nosniff',
     'x-frame-options': 'DENY',
@@ -173,7 +173,8 @@ async function responseForRequest(req, boundary) {
   const desc = post ? (truncate(post.content || '', 160) || 'A post on Illini Market') : 'UIUC Campus Plaza · 校园广场'
   const fallbackImage = `${site}/static/app-icon-512.png`
   const image = safeImageUrl(post?.images?.[0], fallbackImage, site)
-  const canonical = post ? `${site}/#/pages/post/index?id=${id}` : site
+  const destination = id ? `${site}/#/pages/post/index?id=${id}` : site
+  const canonical = id ? `${site}/share-post/${id}` : site
   const escapedCanonical = escapeHtml(canonical)
 
   const docLang = new Set(['zh', 'en', 'ja', 'ko', 'zh-Hant']).has(post?.source_lang) ? post.source_lang : 'en'
@@ -181,6 +182,9 @@ async function responseForRequest(req, boundary) {
 <html lang="${docLang}">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/png" href="${site}/static/app-icon-192.png">
+<link rel="apple-touch-icon" href="${site}/static/app-icon-512.png">
 <title>${escapeHtml(title)}</title>
 <meta name="description" content="${escapeHtml(desc)}">
 <link rel="canonical" href="${escapedCanonical}">
@@ -188,13 +192,14 @@ async function responseForRequest(req, boundary) {
 <meta property="og:title" content="${escapeHtml(title)}">
 <meta property="og:description" content="${escapeHtml(desc)}">
 <meta property="og:image" content="${escapeHtml(image)}">
+<meta property="og:image:alt" content="${escapeHtml(title)}">
 <meta property="og:url" content="${escapedCanonical}">
 <meta property="og:site_name" content="Illini Market">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${escapeHtml(title)}">
 <meta name="twitter:description" content="${escapeHtml(desc)}">
 <meta name="twitter:image" content="${escapeHtml(image)}">
-<meta http-equiv="refresh" content="0; url=${escapedCanonical}">
+<meta http-equiv="refresh" content="0; url=${escapeHtml(destination)}">
 <style>body{margin:0;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f2f2f7;color:#636366}</style>
 </head>
 <body><p lang="en">Loading Illini Market...</p></body>
