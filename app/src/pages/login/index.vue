@@ -4,6 +4,7 @@
       <UIcon name="chevron-left" size="xs" color="accent-primary" />
     </view>
     <view class="header u-rise">
+      <LanguageToggle class="auth-language" />
       <image class="logo-mark-img" :src="logoSrc" :alt="t('app.name')" mode="aspectFit" />
       <text class="app-name" role="heading" aria-level="1">{{ t('app.name') }}</text>
       <text class="app-desc">{{ t('app.desc') }}</text>
@@ -206,6 +207,7 @@
 </template>
 
 <script setup lang="ts">
+import LanguageToggle from '../../components/LanguageToggle.vue'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { ref, computed, nextTick, onUnmounted, watch } from 'vue'
@@ -935,6 +937,7 @@ async function onSubmit() {
   padding: 72px 0 40px;
   padding-top: calc(72px + var(--mp-status-bar, env(safe-area-inset-top, 0px)));
 }
+.auth-language { align-self: stretch; padding: 0 0 16px; }
 .logo-mark-img {
   width: 56px; height: 56px; border-radius: 14px;
   box-shadow: var(--shadow-soft);

@@ -253,7 +253,7 @@ const TITLE_SENTINELS = {
 const PRICE_BODY_RE = /^\$(\d+(?:\.\d+)?)(?: → \$(\d+(?:\.\d+)?))?$/
 
 function priceText(amount, lang) {
-  if (amount === 0) return lang === 'zh' ? '免费' : lang === 'en' ? 'Free' : '免费 / Free'
+  if (amount === 0) return lang === 'zh' ? '免费' : lang === 'en' ? 'Free' : 'Free / 免费'
   const raw = Number.isInteger(amount) ? String(amount) : amount.toFixed(2)
   const [whole, decimal] = raw.split('.')
   return `$${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}${decimal ? `.${decimal}` : ''}`
@@ -265,7 +265,7 @@ function bodyText(raw, lang) {
   if (forms) {
     if (lang === 'zh') return forms.zh
     if (lang === 'en') return forms.en
-    return `${forms.zh} · ${forms.en}`
+    return `${forms.en} · ${forms.zh}`
   }
   const amounts = PRICE_BODY_RE.exec(raw || '')
   if (amounts) {
@@ -277,12 +277,38 @@ function bodyText(raw, lang) {
   return raw
 }
 
+// Exact legacy system titles. User-authored titles are left untouched.
+const BILINGUAL_TITLES = {
+  '新报价 · New offer': { zh: '新报价', en: 'New offer' },
+  '报价被接受 · Offer accepted': { zh: '报价被接受', en: 'Offer accepted' },
+  '报价被拒绝 · Offer declined': { zh: '报价被拒绝', en: 'Offer declined' },
+  '收到还价 · Counter-offer': { zh: '收到还价', en: 'Counter-offer' },
+  '见面提议 · Meetup proposed': { zh: '见面提议', en: 'Meetup proposed' },
+  '约定已确认 · Meetup confirmed': { zh: '约定已确认', en: 'Meetup confirmed' },
+  '约定被婉拒 · Meetup declined': { zh: '约定被婉拒', en: 'Meetup declined' },
+  '新的见面提议 · Meetup updated': { zh: '新的见面提议', en: 'Meetup updated' },
+  '改约请求 · Meetup change requested': { zh: '改约请求', en: 'Meetup change requested' },
+  '见面提醒 · Meetup reminder': { zh: '见面提醒', en: 'Meetup reminder' },
+  '未读消息 · Unread messages': { zh: '未读消息', en: 'Unread messages' },
+  '收到一次警告 · You received a warning': { zh: '收到一次警告', en: 'You received a warning' },
+  '账号已被限制 · Your account was restricted': { zh: '账号已被限制', en: 'Your account was restricted' },
+  '一项处置已解除 · One action was lifted': { zh: '一项处置已解除', en: 'One action was lifted' },
+  '账号限制已解除 · Your restriction was lifted': { zh: '账号限制已解除', en: 'Your restriction was lifted' },
+  '收到新评价 · New rating': { zh: '收到新评价', en: 'New rating' },
+  '有人关注了你 · New follower': { zh: '有人关注了你', en: 'New follower' },
+  '收到新评论 · New comment': { zh: '收到新评论', en: 'New comment' },
+  '收到新点赞 · New like': { zh: '收到新点赞', en: 'New like' },
+  '你的评论收到点赞 · Comment liked': { zh: '你的评论收到点赞', en: 'Comment liked' },
+  '卖家已标记售出 · Marked sold': { zh: '卖家已标记售出', en: 'Marked sold' },
+}
+
 function titleText(raw, lang) {
-  const forms = TITLE_SENTINELS[raw]
+  const forms = Object.hasOwn(TITLE_SENTINELS, raw) ? TITLE_SENTINELS[raw]
+    : Object.hasOwn(BILINGUAL_TITLES, raw) ? BILINGUAL_TITLES[raw] : null
   if (!forms) return raw
   if (lang === 'zh') return forms.zh
   if (lang === 'en') return forms.en
-  return `${forms.zh} · ${forms.en}`
+  return `${forms.en} · ${forms.zh}`
 }
 
 function rowHtml(n, lang) {
@@ -297,8 +323,8 @@ function rowHtml(n, lang) {
 
 /*
  * Copy for one recipient. `lang` is null when the reader has never chosen one,
- * and every entry then falls back to the bilingual string this template used
- * before per-user language existed — so an unknown reader loses nothing.
+ * and every entry then uses English first with a Chinese translation.
+ * An explicit language preference renders just that language.
  */
 function copyFor(lang) {
   const zh = lang === 'zh'
@@ -307,16 +333,16 @@ function copyFor(lang) {
     updates: n => (
       zh ? `你有 ${n} 条新动态`
         : en ? `${n} update${n === 1 ? '' : 's'}`
-          : `你有 ${n} 条新动态 · ${n} update${n === 1 ? '' : 's'}`
+          : `${n} update${n === 1 ? '' : 's'} · 你有 ${n} 条新动态`
     ),
-    sample: zh ? '示例' : en ? 'Sample' : '示例 Sample',
-    open: zh ? '打开集市' : en ? 'Open Illini Market' : '打开集市 · Open',
-    tagline: en
-      ? 'UIUC campus marketplace · Champaign-Urbana, IL'
-      : 'UIUC 校园二手集市 · Champaign-Urbana, IL',
-    unsubPrompt: zh ? '不想再收到邮件提醒？' : en ? 'No longer want these emails? ' : '不想再收到邮件提醒？',
-    unsubLink: zh ? '一键退订' : en ? 'Unsubscribe' : '一键退订 Unsubscribe',
-    samplePreview: zh ? '示例预览' : en ? 'Sample preview' : '示例预览 · Sample preview',
+    sample: zh ? '示例' : en ? 'Sample' : 'Sample · 示例',
+    open: zh ? '打开集市' : en ? 'Open Illini Market' : 'Open Illini Market · 打开集市',
+    tagline: zh ? 'UIUC 校园二手集市 · Champaign-Urbana, IL'
+      : en ? 'UIUC campus marketplace · Champaign-Urbana, IL'
+        : 'UIUC campus marketplace / 校园二手集市 · Champaign-Urbana, IL',
+    unsubPrompt: zh ? '不想再收到邮件提醒？' : en ? 'No longer want these emails? ' : 'No longer want these emails? / 不想再收到邮件提醒？ ',
+    unsubLink: zh ? '一键退订' : en ? 'Unsubscribe' : 'Unsubscribe · 一键退订',
+    samplePreview: zh ? '示例预览' : en ? 'Sample preview' : 'Sample preview · 示例预览',
   }
 }
 
@@ -326,13 +352,13 @@ function digestHtml(rows, isSample, unsubToken, lang = null) {
   const unsub = unsubToken
     ? `${c.unsubPrompt}<a href="${esc(APP_URL)}/api/unsubscribe?t=${esc(unsubToken)}" style="color:#A39A8C">${c.unsubLink}</a>`
     : c.samplePreview
-  return `<!DOCTYPE html><html><body style="margin:0;background:#F7F4EE;font-family:-apple-system,'Segoe UI',sans-serif">
+  return `<!DOCTYPE html><html lang="${lang === 'zh' ? 'zh' : 'en'}"><body style="margin:0;background:#F7F4EE;font-family:-apple-system,'Segoe UI',sans-serif">
   <div style="max-width:520px;margin:0 auto;padding:24px 16px">
     <div style="text-align:center;margin-bottom:8px">
       <span style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:10px;background:#C74A2F;color:#fff;font-weight:700;font-size:20px">集</span>
     </div>
-    <h1 style="font-family:Georgia,serif;font-size:22px;color:#2A2521;text-align:center;margin:8px 0 2px">Illini 集市</h1>
-    <p style="margin:3px 0 0;font-size:12px;font-weight:600;color:#A39A8C;letter-spacing:2px;text-transform:uppercase;text-align:center">Illini Market</p>
+    <h1 style="font-family:Georgia,serif;font-size:22px;color:#2A2521;text-align:center;margin:8px 0 2px">Illini Market</h1>
+    <p style="margin:3px 0 0;font-size:12px;font-weight:600;color:#A39A8C;letter-spacing:2px;text-transform:uppercase;text-align:center"><span lang="zh">Illini 集市</span></p>
     <p style="text-align:center;color:#8B8478;font-size:13px;margin:0 0 20px">${c.updates(rows.length)}${isSample ? ` · ${c.sample}` : ''}</p>
     <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:16px;padding:4px 16px" cellpadding="0" cellspacing="0">
       <tbody><tr><td style="padding:4px 16px"><table style="width:100%;border-collapse:collapse" cellpadding="0" cellspacing="0"><tbody>${items}</tbody></table></td></tr></tbody>
@@ -341,7 +367,7 @@ function digestHtml(rows, isSample, unsubToken, lang = null) {
       <a href="${esc(APP_URL)}" style="display:inline-block;background:#C74A2F;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-weight:600;font-size:15px">${c.open}</a>
     </div>
     <p style="text-align:center;color:#A39A8C;font-size:11px;line-height:1.6;margin-top:24px">
-      Illini 集市 · Illini Market<br>
+      Illini Market · <span lang="zh">Illini 集市</span><br>
       ${c.tagline}<br>
       <a href="${esc(APP_URL)}" style="color:#A39A8C;text-decoration:none">illinimarket.com</a><br>
       ${unsub}
@@ -350,7 +376,7 @@ function digestHtml(rows, isSample, unsubToken, lang = null) {
 }
 
 const SAMPLE_ROWS = [
-  { type: 'system', title: '系统通知 · System notice', body: '示例预览 · Sample preview' },
+  { type: 'system', title: '系统通知 · System notice', body: 'Sample preview · 示例预览' },
   { type: 'sold', title: '商品已售出 · Item sold', body: '示例商品 · Sample item' },
   { type: 'price_drop', title: '降价提醒 · Price drop', body: '你收藏的「IKEA 书桌」降到 $30' },
 ]

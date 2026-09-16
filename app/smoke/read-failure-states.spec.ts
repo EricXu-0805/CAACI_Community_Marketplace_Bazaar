@@ -457,7 +457,7 @@ test('plaza Following keeps people visible and retries the failed page without s
   await seedSession(page)
   await servePaged(page, '/rest/v1/follows', FOLLOW_PAGE_SIZE, followRows, state)
   await page.goto('/#/pages/plaza/index', { waitUntil: 'domcontentloaded' })
-  await page.getByRole('tab', { name: '关注 · Following', exact: true }).click()
+  await page.getByRole('tab', { name: 'Following', exact: true }).click()
   await expect(page.locator('.follow-person')).toHaveCount(FOLLOW_PAGE_SIZE)
   await expect.poll(async () => {
     await scrollFeedToBottom(page, '#plaza-feed-panel')

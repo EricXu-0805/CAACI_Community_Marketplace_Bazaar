@@ -26,7 +26,7 @@
         <text class="disclaimer-text">{{ disclaimer }}</text>
       </view>
       <!-- #ifdef H5 -->
-      <a v-if="docType === 'privacy'" class="deletion-guide" href="/account-deletion">{{ lang === 'zh' ? '账号注销指引' : 'Account deletion guide' }}</a>
+      <a v-if="docType === 'privacy'" class="deletion-guide" :href="lang === 'zh' ? '/account-deletion#chinese' : '/account-deletion#english'">{{ lang === 'zh' ? '账号注销指引' : 'Account deletion guide' }}</a>
       <!-- #endif -->
       <text class="body">{{ body }}</text>
       <view class="contact-row" role="button" :aria-label="t('legal.contactLabel') + ': ' + contactEmail" @click="onContactEmail">

@@ -177,19 +177,19 @@ async function responseForRequest(req, boundary) {
   // sell item is price 0 — neither should render a bare "$0".
   const priceLabel = !item ? ''
     : item.listing_type === 'wanted'
-      ? (item.price > 0 ? `求购预算 ${formatPrice(Number(item.price))}` : '求购 · 预算面议')
-      : (item.price > 0 ? formatPrice(Number(item.price)) : '免费 Free')
-  const namePrefix = item && item.listing_type === 'wanted' ? '求购 / Looking for: ' : ''
+      ? (item.price > 0 ? `Budget / 求购预算 ${formatPrice(Number(item.price))}` : 'Wanted / 求购 · Budget negotiable / 预算面议')
+      : (item.price > 0 ? formatPrice(Number(item.price)) : 'Free / 免费')
+  const namePrefix = item && item.listing_type === 'wanted' ? 'Looking for / 求购: ' : ''
   // items_visible only hides 'deleted', so a sold or reserved listing unfurls
   // here too. Without this the card is byte-identical to an on-sale one, and
   // forwarding it to a group chat sends several people after something that is
   // already gone. Wording matches the app's own status labels.
   const statusPrefix = !item ? ''
-    : item.status === 'sold' ? '已售出 / Sold · '
-      : item.status === 'reserved' ? '已预定 / Reserved · '
+    : item.status === 'sold' ? 'Sold / 已售出 · '
+      : item.status === 'reserved' ? 'Reserved / 已预定 · '
         : ''
-  const title = item ? `${statusPrefix}${namePrefix}${item.title} · ${priceLabel}` : 'Illini Market · 校园二手交易'
-  const desc = item ? (truncate(item.description || '', 160) || `${priceLabel} on Illini Market`) : 'UIUC 校园二手交易平台'
+  const title = item ? `${statusPrefix}${namePrefix}${item.title} · ${priceLabel}` : 'Illini Market · UIUC Community Marketplace'
+  const desc = item ? (truncate(item.description || '', 160) || `${priceLabel} on Illini Market`) : 'Buy, sell, and connect with the UIUC community. 校园二手交易与交流。'
   const fallbackImage = `${site}/static/app-icon-512.png`
   const image = safeImageUrl(item?.images?.[0], fallbackImage, site)
   // A well-formed id that reads back nothing is a deleted or hidden listing,
@@ -200,8 +200,8 @@ async function responseForRequest(req, boundary) {
   const escapedCanonical = escapeHtml(canonical)
   // source_lang records what the seller actually typed in, so a screen reader
   // gets the right voice and a translator stops "translating" an English
-  // listing out of Chinese. The generic card below is Chinese either way.
-  const docLang = DOCUMENT_LANGS.has(item?.source_lang) ? item.source_lang : 'zh'
+  // listing out of Chinese. The generic card uses English first with Chinese labels.
+  const docLang = DOCUMENT_LANGS.has(item?.source_lang) ? item.source_lang : 'en'
 
   const html = `<!DOCTYPE html>
 <html lang="${docLang}">
@@ -223,7 +223,7 @@ async function responseForRequest(req, boundary) {
 <meta http-equiv="refresh" content="0; url=${escapedCanonical}">
 <style>body{margin:0;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f2f2f7;color:#636366}</style>
 </head>
-<body><p>Loading Illini Market...</p></body>
+<body><p lang="en">Loading Illini Market...</p></body>
 </html>`
 
   return new Response(html, {

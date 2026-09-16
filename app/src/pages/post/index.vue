@@ -490,8 +490,8 @@ onUnload(() => {
 
 onShareAppMessage(() => {
   const p = post.value
-  if (!p) return { title: '校园广场 · Illini Market', path: '/pages/plaza/index' }
-  const firstLine = (p.content || '').split('\n')[0].slice(0, 50).trim() || '校园广场 · Illini Market'
+  if (!p) return { title: t('share.plaza'), path: '/pages/plaza/index' }
+  const firstLine = localize(p.content_i18n, p.content || '').split('\n')[0].slice(0, 50).trim() || t('share.plaza')
   return {
     title: firstLine,
     path: `/pages/post/index?id=${p.id}`,
@@ -501,8 +501,8 @@ onShareAppMessage(() => {
 
 onShareTimeline(() => {
   const p = post.value
-  if (!p) return { title: '校园广场 · Illini Market' }
-  const firstLine = (p.content || '').split('\n')[0].slice(0, 50).trim() || '校园广场 · Illini Market'
+  if (!p) return { title: t('share.plaza') }
+  const firstLine = localize(p.content_i18n, p.content || '').split('\n')[0].slice(0, 50).trim() || t('share.plaza')
   return {
     title: firstLine,
     query: `id=${p.id}`,

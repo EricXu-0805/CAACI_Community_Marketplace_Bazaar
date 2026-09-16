@@ -70,9 +70,9 @@
           </view>
         </view>
         <view class="asb-legal">
-          <a class="asb-legal-link" href="/about">{{ lang === 'zh' ? '关于' : 'About' }}</a>
-          <a class="asb-legal-link" href="/privacy">{{ lang === 'zh' ? '隐私' : 'Privacy' }}</a>
-          <a class="asb-legal-link" href="/terms">{{ lang === 'zh' ? '条款' : 'Terms' }}</a>
+          <a class="asb-legal-link" :href="lang === 'zh' ? '/about#zh' : '/about'">{{ lang === 'zh' ? '关于' : 'About' }}</a>
+          <a class="asb-legal-link" :href="lang === 'zh' ? '/privacy#zh' : '/privacy'">{{ lang === 'zh' ? '隐私' : 'Privacy' }}</a>
+          <a class="asb-legal-link" :href="lang === 'zh' ? '/terms#zh' : '/terms'">{{ lang === 'zh' ? '条款' : 'Terms' }}</a>
         </view>
       </view>
     </view>
@@ -99,7 +99,7 @@ const { isDark, setPref } = useTheme()
 const { currentUser } = useAuth()
 
 const logoSrc = computed(() => (isDark.value ? '/static/logo-mark-dark.svg' : '/static/logo-mark.svg'))
-const brandEyebrow = computed(() => (lang.value === 'zh' ? 'ILLINI MARKET' : 'Illini 集市 · CAACI'))
+const brandEyebrow = computed(() => (lang.value === 'zh' ? 'ILLINI MARKET' : 'UIUC · CAACI'))
 const themeLabel = computed(() =>
   isDark.value ? (lang.value === 'zh' ? '暗' : 'Dark') : (lang.value === 'zh' ? '亮' : 'Light'),
 )

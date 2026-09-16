@@ -130,8 +130,8 @@ test('a share card says when the listing is no longer on sale', async () => {
 
   const [active, reserved, sold] = [await unfurl('active'), await unfurl('reserved'), await unfurl('sold')]
 
-  assert.match(sold, /已售出 \/ Sold/, 'a sold listing unfurled as if it were on sale')
-  assert.match(reserved, /已预定 \/ Reserved/, 'a reserved listing unfurled as if it were on sale')
+  assert.match(sold, /Sold \/ 已售出/, 'a sold listing unfurled as if it were on sale')
+  assert.match(reserved, /Reserved \/ 已预定/, 'a reserved listing unfurled as if it were on sale')
   // The control: an on-sale listing must NOT be labelled, or the assertions
   // above are satisfied by a card that says "sold" about everything.
   assert.doesNotMatch(active, /Sold|Reserved|已售出|已预定/)
@@ -221,8 +221,8 @@ test('upstream errors and malformed rows fail to the generic share surface', asy
   const { default: handler } = await load('share.js')
   const response = await handler(new Request(`https://illinimarket.com/api/share?id=${ITEM_ID}`))
   const meta = metaOf(await response.text())
-  assert.equal(meta.title, 'Illini Market · 校园二手交易')
-  assert.equal(meta.description, 'UIUC 校园二手交易平台')
+  assert.equal(meta.title, 'Illini Market · UIUC Community Marketplace')
+  assert.equal(meta.description, 'Buy, sell, and connect with the UIUC community. 校园二手交易与交流。')
 })
 
 test('share preview bounds public query responses and fails to the generic surface', async () => {
@@ -234,8 +234,8 @@ test('share preview bounds public query responses and fails to the generic surfa
   const response = await handler(new Request(`https://illinimarket.com/api/share?id=${ITEM_ID}`))
   const meta = metaOf(await response.text())
 
-  assert.equal(meta.title, 'Illini Market · 校园二手交易')
-  assert.equal(meta.description, 'UIUC 校园二手交易平台')
+  assert.equal(meta.title, 'Illini Market · UIUC Community Marketplace')
+  assert.equal(meta.description, 'Buy, sell, and connect with the UIUC community. 校园二手交易与交流。')
 })
 
 const LONE_SURROGATE_RE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/
@@ -374,7 +374,7 @@ test('a share link whose listing is gone lands on the detail route, not the home
   assert.equal(missing.ogUrl, detail)
   assert.equal(missing.refresh, detail)
   // The card still must not invent a listing it could not read.
-  assert.equal(missing.title, 'Illini Market · 校园二手交易')
+  assert.equal(missing.title, 'Illini Market · UIUC Community Marketplace')
 
   // Control: with no listing named there is nothing to explain, so the root
   // stays the destination — the fix is not "always append a detail route".
@@ -412,7 +412,7 @@ test('the share interstitial declares the language the listing was written in', 
   assert.equal(await langFor('zh'), 'zh')
   // Unsupported or hostile values fall back instead of reaching the attribute.
   for (const value of [null, undefined, 'de', 'en" onload="alert(1)']) {
-    assert.equal(await langFor(value), 'zh', `${value} reached the lang attribute`)
+    assert.equal(await langFor(value), 'en', `${value} reached the lang attribute`)
   }
   assert.ok(selects.length > 0)
   for (const select of selects) assert.match(select, /(^|,)source_lang(,|$)/)
@@ -429,4 +429,20 @@ test('the app shell declares a language', async () => {
   assert.ok(lang && DOCUMENT_LANGS.has(lang), `app/index.html declares no supported lang (got ${lang})`)
   // Control: a shell without the attribute has to be visible as such here.
   assert.equal(htmlLangOf('<!DOCTYPE html>\n<html>\n<head></head>\n</html>'), null)
+})
+
+test('post share declares the author language and uses English for unknown metadata', async () => {
+  const { default: handler } = await load('share-post.js')
+  for (const [language, expected] of [['en', 'en'], ['zh', 'zh'], [null, 'en'], ['en" onload="alert(1)', 'en']]) {
+    globalThis.fetch = async input => {
+      const url = new URL(String(input))
+      if (url.pathname.endsWith('/posts_visible')) {
+        assert.match(url.searchParams.get('select'), /source_lang/)
+        return json([{ id: ITEM_ID, content: 'Campus lunch', images: [], user_id: ITEM_ID, source_lang: language }])
+      }
+      return json([{ nickname: 'Campus reader' }])
+    }
+    const html = await (await handler(new Request(`https://illinimarket.com/api/share-post?id=${ITEM_ID}`))).text()
+    assert.equal(htmlLangOf(html), expected)
+  }
 })

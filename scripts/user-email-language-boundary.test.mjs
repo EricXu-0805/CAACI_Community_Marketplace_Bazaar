@@ -92,9 +92,8 @@ async function loadCopyFor(rel) {
   return new Function(`${body}\nreturn copyFor`)()
 }
 
-test('an unknown language renders exactly the bilingual email that shipped before', async () => {
-  // Nobody has a stored preference on day one. If the fallback drifted, the
-  // rollout would silently change every recipient's email instead of none.
+test('an unknown language receives English first with a Chinese translation', async () => {
+  // Unknown recipients retain both languages, with English readable first.
   const KIND = { title: '新的见面提议 · Meetup proposed', titleZh: '新的见面提议', titleEn: 'Meetup proposed' }
 
   for (const rel of SENDERS) {
@@ -109,6 +108,7 @@ test('an unknown language renders exactly the bilingual email that shipped befor
     // unsubscribe line has always been a Chinese prompt followed by a
     // `一键退订 Unsubscribe` link, so neither half carries both scripts alone.
     const fallback = render(null).join(' ')
+    assert.ok(fallback.search(/[A-Za-z]/) < fallback.search(/[一-鿿]/))
     assert.ok(CJK.test(fallback) && LATIN.test(fallback),
       `${rel} is not bilingual for a reader who never chose a language`)
     assert.ok(

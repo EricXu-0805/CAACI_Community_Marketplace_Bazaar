@@ -333,11 +333,11 @@ async function releaseNotificationEmailDelivery(claim) {
   })
 }
 
-function fmtWhen(iso) {
+function fmtWhen(iso, lang) {
   try {
-    return new Intl.DateTimeFormat('zh-CN', {
+    return new Intl.DateTimeFormat(lang === 'zh' ? 'zh-CN' : 'en-US', {
       timeZone: 'America/Chicago', month: 'numeric', day: 'numeric',
-      hour: '2-digit', minute: '2-digit', hour12: false,
+      hour: '2-digit', minute: '2-digit', hour12: lang !== 'zh',
     }).format(new Date(iso))
   } catch { return String(iso).slice(5, 16).replace('T', ' ') }
 }
@@ -358,22 +358,22 @@ const KIND = {
 
 /*
  * Copy for one recipient. `lang` is null when the reader has never chosen one,
- * and every entry then falls back to the bilingual string this template used
- * before per-user language existed — so an unknown reader loses nothing.
+ * and every entry then uses English first with a Chinese translation.
+ * An explicit language preference renders just that language.
  */
 function copyFor(lang) {
   const zh = lang === 'zh'
   const en = lang === 'en'
   return {
-    subject: kind => (zh ? kind.titleZh : en ? kind.titleEn : kind.title),
-    re: zh ? '关于：' : en ? 'Re: ' : '关于 · Re: ',
-    timezone: zh ? '（美中时间）' : en ? ' (US Central)' : '（美中时间 · US Central）',
-    respond: zh ? '去回应' : en ? 'Respond' : '去回应 · Respond',
-    tagline: en
-      ? 'UIUC campus marketplace · Champaign-Urbana, IL'
-      : 'UIUC 校园二手集市 · Champaign-Urbana, IL',
-    unsubPrompt: zh ? '不想再收到邮件提醒？' : en ? 'No longer want these emails? ' : '不想再收到邮件提醒？',
-    unsubLink: zh ? '一键退订' : en ? 'Unsubscribe' : '一键退订 Unsubscribe',
+    subject: kind => (zh ? kind.titleZh : en ? kind.titleEn : `${kind.titleEn} · ${kind.titleZh}`),
+    re: zh ? '关于：' : en ? 'Re: ' : 'Re: / 关于：',
+    timezone: zh ? '（美中时间）' : en ? ' (US Central)' : ' (US Central · 美中时间)',
+    respond: zh ? '去回应' : en ? 'Respond' : 'Respond · 去回应',
+    tagline: zh ? 'UIUC 校园二手集市 · Champaign-Urbana, IL'
+      : en ? 'UIUC campus marketplace · Champaign-Urbana, IL'
+        : 'UIUC campus marketplace / 校园二手集市 · Champaign-Urbana, IL',
+    unsubPrompt: zh ? '不想再收到邮件提醒？' : en ? 'No longer want these emails? ' : 'No longer want these emails? / 不想再收到邮件提醒？ ',
+    unsubLink: zh ? '一键退订' : en ? 'Unsubscribe' : 'Unsubscribe · 一键退订',
   }
 }
 
@@ -385,19 +385,19 @@ function mailHtml({ actorName, verb, verbEn, spot, whenLabel, note, itemTitle, u
   const unsub = unsubToken
     ? `${c.unsubPrompt}<a href="${esc(APP_URL)}/api/unsubscribe?t=${esc(unsubToken)}" style="color:#A39A8C">${c.unsubLink}</a>`
     : ''
-  return `<!DOCTYPE html><html><body style="margin:0;background:#F7F4EE;font-family:-apple-system,'Segoe UI',sans-serif">
+  return `<!DOCTYPE html><html lang="${lang === 'zh' ? 'zh' : 'en'}"><body style="margin:0;background:#F7F4EE;font-family:-apple-system,'Segoe UI',sans-serif">
   <div style="max-width:520px;margin:0 auto;padding:24px 16px">
     <div style="text-align:center;margin-bottom:8px">
       <span style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:10px;background:#C74A2F;color:#fff;font-weight:700;font-size:20px">集</span>
     </div>
-    <h1 style="font-family:Georgia,serif;font-size:22px;color:#2A2521;text-align:center;margin:8px 0 2px">Illini 集市</h1>
-    <p style="margin:3px 0 0;font-size:12px;font-weight:600;color:#A39A8C;letter-spacing:2px;text-transform:uppercase;text-align:center">Illini Market</p>
+    <h1 style="font-family:Georgia,serif;font-size:22px;color:#2A2521;text-align:center;margin:8px 0 2px">Illini Market</h1>
+    <p style="margin:3px 0 0;font-size:12px;font-weight:600;color:#A39A8C;letter-spacing:2px;text-transform:uppercase;text-align:center"><span lang="zh">Illini 集市</span></p>
     <p style="text-align:center;color:#8B8478;font-size:13px;margin:0 0 20px">${
       lang === 'en'
         ? `${esc(actorName)} ${esc(verbEn || verb)}`
         : lang === 'zh'
           ? `${esc(actorName)} ${esc(verb)}`
-          : `${esc(actorName)} ${esc(verb)}<br><span style="color:#A39A8C">${esc(actorName)} ${esc(verbEn || verb)}</span>`
+          : `${esc(actorName)} ${esc(verbEn || verb)}<br><span lang="zh" style="color:#A39A8C">${esc(actorName)} ${esc(verb)}</span>`
     }</p>
     <div style="background:#fff;border-radius:16px;padding:18px 20px">
       ${itemTitle ? `<div style="font-size:13px;color:#8B8478;margin-bottom:8px">${c.re}${esc(itemTitle)}</div>` : ''}
@@ -409,7 +409,7 @@ function mailHtml({ actorName, verb, verbEn, spot, whenLabel, note, itemTitle, u
       <a href="${esc(APP_URL)}/#/pages/messages/index" style="display:inline-block;background:#C74A2F;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-weight:600;font-size:15px">${c.respond}</a>
     </div>
     <p style="text-align:center;color:#A39A8C;font-size:11px;line-height:1.6;margin-top:24px">
-      Illini 集市 · Illini Market<br>
+      Illini Market · <span lang="zh">Illini 集市</span><br>
       ${c.tagline}<br>
       <a href="${esc(APP_URL)}" style="color:#A39A8C;text-decoration:none">illinimarket.com</a><br>
       ${unsub}
@@ -593,11 +593,11 @@ export default async function handler(req) {
     }
 
     const html = mailHtml({
-      actorName: actor?.nickname || (lang === 'en' ? 'Someone' : '对方'),
+      actorName: actor?.nickname || (lang === 'zh' ? '对方' : 'Someone'),
       verb: kind.verb,
       verbEn: kind.verbEn,
       spot: meetup.spot,
-      whenLabel: fmtWhen(meetup.meet_at),
+      whenLabel: fmtWhen(meetup.meet_at, lang),
       note: meetup.note,
       itemTitle,
       unsubToken: recipient.unsubscribe_token,

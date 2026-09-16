@@ -565,7 +565,7 @@ const defaultAvatarSrc = computed(() =>
 const logoSrc = computed(() =>
   isDark.value ? '/static/logo-mark-dark.svg' : '/static/logo-mark.svg'
 )
-const brandEyebrow = computed(() => (lang.value === 'zh' ? 'ILLINI MARKET' : 'Illini 集市 · CAACI'))
+const brandEyebrow = computed(() => (lang.value === 'zh' ? 'ILLINI MARKET' : 'UIUC · CAACI'))
 const themeLabel = computed(() =>
   isDark.value ? (lang.value === 'zh' ? '暗' : 'Dark') : (lang.value === 'zh' ? '亮' : 'Light'),
 )
@@ -1276,12 +1276,12 @@ onHide(() => {
 })
 
 onShareAppMessage(() => ({
-  title: 'Illini Market · UIUC 校园二手交易',
+  title: t('share.marketplace'),
   path: '/pages/index/index',
 }))
 
 onShareTimeline(() => ({
-  title: 'Illini Market · UIUC 校园二手交易',
+  title: t('share.marketplace'),
 }))
 
 async function loadMore(retry = false) {

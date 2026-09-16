@@ -334,9 +334,9 @@ const activeCount = computed(() => sellerItems.value.length)
 
 onShareAppMessage(() => {
   const s = seller.value
-  if (!s) return { title: 'Illini Market · UIUC 校园二手交易', path: '/pages/index/index' }
+  if (!s) return { title: t('share.marketplace'), path: '/pages/index/index' }
   return {
-    title: `${s.nickname || '商家'} 的 Illini Market 主页`,
+    title: t('share.profile', { name: s.nickname || t('app.user') }),
     path: `/pages/seller/index?id=${s.id}`,
     imageUrl: safeAvatarThumbUrl(s.avatar_url, s.id) || defaultAvatarSrc.value,
   }
@@ -344,9 +344,9 @@ onShareAppMessage(() => {
 
 onShareTimeline(() => {
   const s = seller.value
-  if (!s) return { title: 'Illini Market · UIUC 校园二手交易' }
+  if (!s) return { title: t('share.marketplace') }
   return {
-    title: `${s.nickname || '商家'} 的 Illini Market 主页`,
+    title: t('share.profile', { name: s.nickname || t('app.user') }),
     query: `id=${s.id}`,
     imageUrl: safeAvatarThumbUrl(s.avatar_url, s.id) || defaultAvatarSrc.value,
   }

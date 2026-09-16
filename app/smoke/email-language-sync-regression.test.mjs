@@ -49,11 +49,9 @@ async function loadEmailLanguageHarness({ storedLang = '', systemLang = 'zh', re
       export const ref = value => ({ value })
       export const computed = getter => ({ get value(){ return getter() } })
     `,
-    './i18n/types': `
-      export const DEFAULT_LANG = 'zh'
-      export const SUPPORTED_LANGS = [{ code: 'zh' }, { code: 'en' }]
-      export const coerceLang = value => value === 'zh' || value === 'en' ? value : null
-    `,
+    './i18n/types': ts.transpileModule(source('src/composables/i18n/types.ts'), {
+      compilerOptions: { module: ts.ModuleKind.ES2022 },
+    }).outputText,
     './i18n/detect': `export const detectSystemLang = () => '${systemLang}'`,
     './i18n/messages': `export const messages = { zh: {}, en: {} }`,
     './i18n/translate': `

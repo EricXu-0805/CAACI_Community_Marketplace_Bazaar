@@ -1,6 +1,6 @@
 # Supabase Email Templates
 
-Custom branded email templates for Illini Market. Bilingual (中英), warm
+Custom branded email templates for Illini Market. Bilingual (English first, with Chinese), warm
 terracotta brand, code-based (not magic links).
 
 ## How to apply
@@ -9,8 +9,8 @@ terracotta brand, code-based (not magic links).
 2. For each template:
    - `Confirm signup` → paste contents of `confirm-signup.html`
    - `Reset password` → paste contents of `reset-password.html`
-   - Signup subject: `Illini Market · 确认邮箱 / Verify your email`
-   - Recovery subject: `Illini Market · 重置密码 / Reset your password`
+   - Signup subject: `Illini Market · Verify your email / 确认邮箱`
+   - Recovery subject: `Illini Market · Reset your password / 重置密码`
    The subject is a separate dashboard setting; changing the HTML `<title>`
    does not change the subject shown in the inbox.
 3. **Both templates use `{{ .Token }}` (the 6-digit code), NOT
