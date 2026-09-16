@@ -14,7 +14,7 @@ const profile = { id: ME, nickname: 'Demo buyer', avatar_url: null, bio: '', loc
 const peer = { ...profile, id: PEER, nickname: 'Demo seller' }
 const item = { id: ITEM, user_id: PEER, title: 'Study desk', description: 'Desk with adjustable legs. Pickup after class.', price: 35, category: 'furniture', listing_type: 'sell', condition: 'good', status: 'active', images: [], image_dimensions: [], location: 'UIUC', created_at: '2026-09-01T00:00:00Z', profile: peer, view_count: 1, favorite_count: 0 }
 
-async function fixture(page: Page, options: { anonymous?: boolean; blocked?: boolean; race?: boolean; theme?: string } = {}) {
+async function fixture(page: Page, options: { anonymous?: boolean; blocked?: boolean; race?: boolean; theme?: string; postContent?: string; pinned?: boolean } = {}) {
   const writes: { path: string; data: any }[] = []
   const conversations: any[] = []
   const messages: any[] = []
@@ -51,7 +51,7 @@ async function fixture(page: Page, options: { anonymous?: boolean; blocked?: boo
       return send(messages.filter(m => (!eq('conversation_id') || m.conversation_id === eq('conversation_id')) && (!eq('id') || m.id === eq('id'))))
     }
     if (path.endsWith('/items') || path.endsWith('/items_visible')) return send([item].filter(i => (!eq('id') || i.id === eq('id')) && (!eq('user_id') || i.user_id === eq('user_id')) && (!eq('listing_type') || i.listing_type === eq('listing_type')) && (!eq('category') || i.category === eq('category'))))
-    if (path.endsWith('/posts')) return send([{ id: POST, user_id: PEER, content: 'A quiet afternoon on campus.', images: [], profile: peer, created_at: item.created_at, like_count: 0, comment_count: 0, status: 'active', post_items: [] }])
+    if (path.endsWith('/posts')) return send([{ id: POST, user_id: PEER, content: options.postContent ?? 'A quiet afternoon on campus.', is_pinned: options.pinned ?? false, images: [], profile: peer, created_at: item.created_at, like_count: 0, comment_count: 0, status: 'active', post_items: [] }])
     return send([])
   })
   return { writes, conversations, messages }
@@ -193,3 +193,35 @@ for (const [name, width, height] of [['phone',390,844],['ipad-portrait',820,1180
     })
   })
 }
+
+for (const width of [390, 1440]) test(`plaza long post ${width}px: compact accessible name and independent controls`, async ({ page }) => {
+  const content = 'Campus update 校园动态\n' + 'Bring useful items and tell us what you need. 欢迎分享校园里的实用信息。\n'.repeat(28)
+  await page.setViewportSize({ width, height: 900 })
+  await fixture(page, { anonymous: true, postContent: content })
+  await page.goto('/#/pages/plaza/index')
+  const card = page.locator('.post-tappable')
+  await expect(card).toHaveAccessibleName(/^Open post by Demo seller: Campus update 校园动态/)
+  const label = await card.getAttribute('aria-label')
+  expect(label!.length).toBeLessThan(180)
+  expect(label).not.toMatch(/\n/)
+  await expect(page.locator('.post-content')).toHaveText(content, { useInnerText: true })
+  // Snapshot and computed name must both remain useful for a real long post.
+  expect(await card.ariaSnapshot()).toContain('button "Open post by Demo seller:')
+  await card.getByRole('button', { name: 'Demo seller', exact: true }).last().click()
+  await expect(page).toHaveURL(new RegExp(`pages/seller/index\\?id=${PEER}`))
+  await page.goto('/#/pages/plaza/index')
+  await card.focus(); await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(new RegExp(`pages/post/index\\?id=${POST}`))
+})
+
+test('plaza long pinned post: expand and collapse keep full content readable', async ({ page }) => {
+  const content = 'Campus update\n' + 'A long multilingual announcement. 校园公告。\n'.repeat(35)
+  await fixture(page, { anonymous: true, postContent: content, pinned: true })
+  await page.goto('/#/pages/plaza/index')
+  await page.getByRole('button', { name: 'Tap to expand', exact: true }).click()
+  await expect(page.locator('.post-tappable')).toHaveAttribute('role', 'group')
+  await expect(page.locator('.post-content')).toHaveText(content, { useInnerText: true })
+  await page.getByRole('button', { name: 'Collapse', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Tap to expand', exact: true })).toBeVisible()
+  await expect(page).toHaveURL(/pages\/plaza\/index/)
+})
