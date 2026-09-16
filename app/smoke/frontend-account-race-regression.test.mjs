@@ -348,15 +348,15 @@ test('polling, offer, moderation and view-count continuations retain their entry
 
   const messages = source('src/composables/useMessages.ts')
   for (const [startMarker, endMarker] of [
-    ['async function markAsRead', 'async function archiveConversation'],
+    ['function setReadState', 'async function archiveConversation'],
     ['async function archiveConversation', 'async function fetchConversationDetail'],
     ['async function setConversationPinned', 'async function setConversationMuted'],
     ['async function setConversationMuted', 'async function markConversationUnread'],
-    ['async function markConversationUnread', '\n\n  return {'],
   ]) {
     const mutation = functionBlock(messages, startMarker, endMarker)
     assert.match(mutation, /isAccountRequestCurrent\(accountToken\)/)
   }
+  assert.match(functionBlock(messages, 'async function markConversationUnread', '\n\n  return {'), /setReadState\(conversationId, userId, true\)/)
 
   const favorites = source('src/composables/useFavorites.ts')
   const favoriteItems = functionBlock(favorites, 'async function fetchMyFavoriteItems', 'function reset()')

@@ -26,15 +26,17 @@ export type IconName =
   | 'more-horizontal' | 'more-vertical' | 'chevron-right' | 'chevron-left'
   | 'coffee' | 'graduation'
   | 'history' | 'user-plus' | 'bookmark' | 'layout-grid'
-  | 'edit' | 'flag' | 'location-pin' | 'settings' | 'shield' | 'arrow-up' | 'reserved'
+  | 'info' | 'edit' | 'flag' | 'location-pin' | 'settings' | 'shield' | 'arrow-up' | 'reserved'
   | 'cat-electronics' | 'cat-furniture' | 'cat-clothing' | 'cat-books'
   | 'cat-transport' | 'cat-daily' | 'cat-food' | 'cat-other'
-  | 'forward' | 'send'
-  | 'sun' | 'moon'
+  | 'forward' | 'send' | 'trash'
+  | 'sun' | 'moon' | 'translate'
 
 export type IconWeight = 'regular' | 'filled'
 
 export const ICONS: Record<string, string> = {
+  'translate-regular': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h12M9 3v2M6 5c0 5 4 8 7 10M13 5c-1 6-5 9-10 11M13 21l4-10 4 10M14.5 17h5"/></svg>`,
+  'trash-regular': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M9 6V4h6v2M6 6l1 14h10l1-14M10 10v6M14 10v6"/></svg>`,
   // Tab bar — 4 names × 2 weights
   'home-regular':     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 11.5 12 4.2l8.5 7.3"/><path d="M5.5 10.2V19a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-8.8"/><path d="M9.7 20v-4.6a1 1 0 0 1 1-1h2.6a1 1 0 0 1 1 1V20"/></svg>`,
   'home-filled':      `<svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path d="M12 3.4 2.6 11.6c-.5.4-.2 1.2.4 1.2H5V19a1.4 1.4 0 0 0 1.4 1.4H9.6V15a1 1 0 0 1 1-1h2.8a1 1 0 0 1 1 1v5.4h3.2A1.4 1.4 0 0 0 19 19v-6.2h2c.6 0 .9-.8.4-1.2z"/></svg>`,
@@ -91,6 +93,7 @@ export const ICONS: Record<string, string> = {
   'flag-regular':         `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V4h12l-2 4 2 4H4"/></svg>`,
   'location-pin-regular': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-7.5-7-12a7 7 0 0 1 14 0c0 4.5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>`,
   'settings-regular':     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6 1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+  'info-regular': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><circle cx="12" cy="7" r=".7" fill="currentColor" stroke="none"/></svg>`,
   'shield-regular':       `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
   'arrow-up-regular':     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>`,
   'send-regular':         `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg>`,

@@ -53,6 +53,7 @@ test('migration inventory covers every shipped direct relation plus view depende
     'conversations',
     'favorites',
     'follows',
+    'hidden_items',
     'items',
     'meetups',
     'messages',
@@ -70,7 +71,7 @@ test('migration inventory covers every shipped direct relation plus view depende
     'suspensions',
   ])
 
-  const migration = await readFile(migrationUrl, 'utf8')
+  const migration = (await readFile(migrationUrl, 'utf8')) + (await readFile(new URL('../supabase/migrations/20260916195510_discovery_preferences.sql', import.meta.url), 'utf8'))
   for (const relation of relations) {
     assert.match(migration, new RegExp(`public\\.${relation}\\b`), relation)
   }
@@ -103,7 +104,7 @@ test('ACL reset removes table and column drift before exact role grants', async 
 })
 
 test('public profile projection excludes identity, contact and moderation state', async () => {
-  const migration = await readFile(migrationUrl, 'utf8')
+  const migration = (await readFile(migrationUrl, 'utf8')) + (await readFile(new URL('../supabase/migrations/20260916195510_discovery_preferences.sql', import.meta.url), 'utf8'))
   const match = migration.match(
     /GRANT SELECT \(\s*id, nickname,[\s\S]*?\) ON TABLE public\.profiles TO anon, authenticated;/,
   )

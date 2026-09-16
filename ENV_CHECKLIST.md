@@ -227,6 +227,7 @@ unbounded delete.
 | Var | Vercel | GH Actions | Local | If missing |
 |---|---|---|---|---|
 | `OPENAI_API_KEY` | ✅ optional | ❌ | ⚠️ shell-only | Remote moderation/translation provider is skipped; local/database safety layers remain. |
+| `LISTING_ENGLISH_AUTOTRANSLATE` | optional, exact `1` to enable | ❌ | optional | Enables one queued public-listing English translation per cron run. Default off even with an existing OpenAI key. Activate only after approved provider validation; remove to pause without losing jobs or completed translations. |
 | `WECHAT_LOGIN_ENABLED` | ❌ first release; future reviewed re-enable only | ❌ | ⚠️ shell-only | Exact `true` is the independent server-side identity-login gate. Missing/false keeps `/api/auth/wechat-login` at 404 even when content-safety credentials are configured. Never couple it to the media gate. |
 | `WECHAT_APPID` | ✅ for mp safety/future login | ❌ | ⚠️ shell-only | First-release login remains email/password and the independent login flag keeps the dormant API at 404. Only after a future `WECHAT_LOGIN_ENABLED=true` activation does a missing AppID/secret pair return 503. |
 | `WECHAT_APPSECRET` | ✅ for mp safety/future login | ❌ | ⚠️ shell-only | Same; server-only and never browser-prefixed. It is not a first-release authentication credential while the route flag and UI are disabled. |

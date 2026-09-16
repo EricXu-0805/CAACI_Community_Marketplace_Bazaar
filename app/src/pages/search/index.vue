@@ -186,7 +186,7 @@ function onSubmit() {
   // current navigation state lives in the typed runtime channel above.
   removeAccountPrivateStorage('pending_search')
   removeAccountPrivateStorage('pending_category')
-  goBack()
+  showResults()
 }
 
 function pick(text: string) {
@@ -205,7 +205,7 @@ function pickCategory(cat: ItemCategory | null) {
   )
   removeAccountPrivateStorage('pending_category')
   removeAccountPrivateStorage('pending_search')
-  goBack()
+  showResults()
 }
 
 function removeOne(text: string) {
@@ -218,6 +218,9 @@ function clearHistory() {
   removeAccountPrivateStorage(STORAGE_KEY)
 }
 
+// Submission always belongs to the marketplace. Browser history may point to
+// a profile, a saved search or an external deep link; only Cancel goes back.
+function showResults() { uni.switchTab({ url: '/pages/index/index' }) }
 function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/index/index' })) }
 </script>
 

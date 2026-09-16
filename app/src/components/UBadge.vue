@@ -1,6 +1,6 @@
 <template>
   <view class="u-badge" :class="`u-badge--${variant}`">
-    <UIcon v-if="variant === 'illini'" name="check" size="xs" color="#FFFFFF" aria-hidden="true" />
+    <UIcon v-if="variant === 'illini'" name="check" size="xs" color="currentColor" aria-hidden="true" />
     <text class="u-badge-txt"><slot /></text>
   </view>
 </template>
@@ -82,7 +82,7 @@ defineProps<{
 .u-badge--official { background: var(--campus-orange-surface); color: #fff; padding: 1px 6px; font-weight: 700; }
 /* illini badge leads with the design-system check icon so it reads explicitly as "verified", not just a
    campus label (QA7 r2 — Eric: 加一个 verified 更明了). */
-.u-badge--illini   { display: inline-flex; align-items: center; gap: 3px; background: var(--campus-blue-surface); color: #fff; padding: 1px 7px; font-weight: 700; }
+.u-badge--illini   { display: inline-flex; align-items: center; gap: 3px; background: var(--surface-alt); color: var(--text-secondary); border: 1px solid var(--border-hair); border-radius: var(--radius-pill); padding: 1px 6px; font-weight: 600; }
 .u-badge--illini :deep(.u-icon) { width: 10px !important; height: 10px !important; }
 /* wanted/ISO tag — solid campus-blue so it reads as a listing-TYPE marker,
    distinct from the frosted condition chips. */

@@ -68,7 +68,7 @@ async function loadFallback({
   const runtimeKey = `__realtime_async_delivery_${++runtimeSequence}`
   // These cases are about delivery ordering, not observability; the fallback
   // takeover still reports, so give it a sink rather than a real Sentry client.
-  globalThis[runtimeKey] = { captureException: () => {}, ...runtime }
+  globalThis[runtimeKey] = { captureException: () => {}, addBreadcrumb: () => {}, ...runtime }
   let input = fallbackSource
     .replace(
       "import { useSupabase, platformFetch } from './useSupabase'",
@@ -99,8 +99,8 @@ async function loadFallback({
       } = globalThis.${runtimeKey}`,
     )
     .replace(
-      "import { captureException } from '../utils/sentry'",
-      `const { captureException } = globalThis.${runtimeKey}`,
+      "import { captureException, addBreadcrumb } from '../utils/sentry'",
+      `const { captureException, addBreadcrumb } = globalThis.${runtimeKey}`,
     )
 
   for (const [from, to] of replacements) input = input.replace(from, to)

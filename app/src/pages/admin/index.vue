@@ -730,6 +730,19 @@
       </template>
     </view>
 
+    <view v-if="reasonPrompt" class="reason-mask" @click.self="closeReasonPrompt()">
+      <view ref="reasonDialogEl" class="reason-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-reason-title" aria-describedby="admin-reason-impact" tabindex="-1">
+        <text id="admin-reason-title" class="reason-title">{{ reasonPrompt.title }}</text>
+        <text id="admin-reason-impact" class="reason-impact">{{ reasonPrompt.content }}</text>
+        <label for="admin-reason-input" class="reason-label">{{ reasonPrompt.placeholderText }}</label>
+        <textarea id="admin-reason-input" v-model="reasonText" class="reason-input" :aria-label="reasonPrompt.placeholderText" :maxlength="1000" :auto-height="false" />
+        <view class="reason-actions">
+          <button class="reason-cancel" @click="closeReasonPrompt()">{{ t('filter.cancel') }}</button>
+          <button class="reason-confirm" @click="confirmReasonPrompt">{{ reasonPrompt.confirmText || t('admin.confirmAction') }}</button>
+        </view>
+      </view>
+    </view>
+
     <view v-if="detailOpen" class="detail-mask" @click="closeDetail()"></view>
     <view
       v-if="detailOpen"
@@ -739,7 +752,6 @@
       aria-modal="true"
       aria-labelledby="admin-detail-title"
       tabindex="-1"
-      @keydown="onDetailDialogKeydown"
     >
       <view class="detail-head">
         <text id="admin-detail-title" class="detail-title">{{ detailTitle }}</text>
@@ -797,6 +809,8 @@
 </template>
 
 <script setup lang="ts">
+import { useDomKeydown } from '../../composables/useDomKeydown'
+import { resolveHtmlElement } from '../../utils/domElement'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
@@ -2617,7 +2631,8 @@ async function reloadAppliedUserReviewState(owner: AdminSessionOwner) {
 }
 
 const detailOpen = ref(false)
-const detailDialogEl = ref<HTMLElement | null>(null)
+const detailDialogEl = ref<unknown>(null)
+useDomKeydown(detailDialogEl, onDetailDialogKeydown)
 const detailLoading = ref(false)
 const detailKind = ref<'report' | 'suspension' | ''>('')
 const detailRow = ref<any>(null)
@@ -2634,7 +2649,7 @@ function activeAdminElement(): HTMLElement | null {
 }
 
 function focusDetailDialog() {
-  const dialog = detailDialogEl.value
+  const dialog = resolveHtmlElement(detailDialogEl.value)
   if (!dialog || typeof dialog.querySelector !== 'function') return
   const first = dialog.querySelector<HTMLElement>('.detail-close')
   ;(first || dialog).focus()
@@ -3297,6 +3312,7 @@ async function onUnlock() {
 
 function resetAdminPrivateState() {
   invalidateAllAdminRequests()
+  closeReasonPrompt(false)
   clearAdminTokenExpiryTimer()
   adminServerClockBaseMs = null
   adminWallClockBaseMs = null
@@ -4082,11 +4098,73 @@ async function refreshAppealDecisionState(owner: AdminSessionOwner) {
   if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
 }
 
+// Editable uni.showModal uses content as the input value and hides the
+// explanation. Keep the impact separate from an intentionally blank reason.
+interface ModerationReasonPrompt {
+  title: string
+  content: string
+  placeholderText: string
+  confirmText?: string
+  confirmColor?: string
+  success: (result: { confirm: boolean; content: string }) => void | Promise<void>
+}
+const reasonPrompt = ref<ModerationReasonPrompt | null>(null)
+const reasonText = ref('')
+const reasonDialogEl = ref<unknown>(null)
+let reasonOpener: HTMLElement | null = null
+let reasonFocusEpoch = 0
+function showModerationReason(prompt: ModerationReasonPrompt) {
+  if (reasonPrompt.value) return
+  reasonText.value = ''
+  reasonPrompt.value = prompt
+  if (typeof document === 'undefined') return
+  reasonOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  const epoch = ++reasonFocusEpoch
+  nextTick(() => {
+    if (epoch === reasonFocusEpoch && reasonPrompt.value) resolveHtmlElement(reasonDialogEl.value)?.focus()
+  })
+}
+function closeReasonPrompt(restoreFocus = true) {
+  reasonPrompt.value = null
+  reasonText.value = ''
+  const opener = reasonOpener
+  reasonOpener = null
+  const epoch = ++reasonFocusEpoch
+  nextTick(() => {
+    if (restoreFocus && epoch === reasonFocusEpoch && typeof document !== 'undefined' && opener && document.contains(opener)) opener.focus()
+  })
+}
+function confirmReasonPrompt() {
+  const prompt = reasonPrompt.value
+  if (!prompt) return
+  const content = moderationReasonOrNotify(reasonText.value)
+  if (content === null) return
+  closeReasonPrompt()
+  void prompt.success({ confirm: true, content })
+}
+useDomKeydown(reasonDialogEl, event => {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    event.stopPropagation()
+    closeReasonPrompt()
+  } else if (event.key === 'Tab' && typeof document !== 'undefined') {
+    const dialog = resolveHtmlElement(reasonDialogEl.value)
+    const focusables = Array.from(dialog?.querySelectorAll<HTMLElement>('textarea, button') || [])
+    if (!focusables.length) return
+    const index = focusables.indexOf(document.activeElement as HTMLElement)
+    if (event.shiftKey && index <= 0) {
+      event.preventDefault(); focusables[focusables.length - 1].focus()
+    } else if (!event.shiftKey && (index < 0 || index === focusables.length - 1)) {
+      event.preventDefault(); focusables[0].focus()
+    }
+  }
+})
+
 function onDecideAppeal(a: AppealRow, decision: AppealDecision) {
   const owner = captureAdminSessionOwner()
   if (!owner || appealDecisionIds.value.includes(a.id)) return
   const canLift = appealCanLift(a)
-  uni.showModal({
+  showModerationReason({
     title: decision === 'accepted'
       ? t('admin.appealAcceptConfirmTitle')
       : decision === 'denied'
@@ -4101,7 +4179,6 @@ function onDecideAppeal(a: AppealRow, decision: AppealDecision) {
             target: appealDecisionTarget(a),
           })
         : t('admin.appealMoreInfoConfirmBody', { target: appealDecisionTarget(a) }),
-    editable: true,
     placeholderText: t('admin.appealDecisionReasonPh'),
     confirmText: decision === 'accepted'
       ? t('admin.appealAcceptConfirm')
@@ -4216,13 +4293,12 @@ function onTakedownContent(row: any) {
   const owner = captureAdminSessionOwner()
   const mutationKey = takedownMutationKey(row)
   if (!owner || moderationMutationBusy(mutationKey)) return
-  uni.showModal({
+  showModerationReason({
     title: t('admin.takedownConfirmTitle'),
     content: t('admin.takedownConfirmBody', {
       type: boundedAuditField(row.target_type) || '—',
       id: boundedAuditField(row.target_id) || '—',
     }),
-    editable: true,
     placeholderText: t('admin.takedownReasonPh'),
     confirmText: t('admin.takedownConfirm'),
     confirmColor: '#c0392b',
@@ -4285,10 +4361,9 @@ function onLiftSuspension(s: {
   const mutationKey = liftMutationKey(s)
   if (!owner || moderationMutationBusy(mutationKey) || (s.ends_at && isExpired(s.ends_at))) return
   const target = adminSuspensionTarget(s.profile_nickname, s.profile_id || '—', s.id)
-  uni.showModal({
+  showModerationReason({
     title: t('admin.liftConfirmTitle'),
     content: t('admin.liftConfirmBody', { target }),
-    editable: true,
     placeholderText: t('admin.liftReasonPh'),
     confirmText: t('admin.liftConfirm'),
     success: async (r) => {
@@ -4335,14 +4410,13 @@ function onBanPrompt(targetId: string, nickname?: string) {
       if (!isAdminSessionOwnerCurrent(owner)) return
       const level = a.tapIndex + 1
       const target = adminProfileTarget(nickname, targetId)
-      uni.showModal({
+      showModerationReason({
         title: t('admin.banConfirmTitle'),
         content: t('admin.banConfirmBody', {
           target,
           impact: t(`admin.banL${level}`),
         }),
-        editable: true,
-        placeholderText: t('admin.banReasonPh'),
+            placeholderText: t('admin.banReasonPh'),
         success: async (r) => {
           if (!r.confirm || !isAdminSessionOwnerCurrent(owner) || moderationMutationBusy(mutationKey)) return
           const reason = moderationReasonOrNotify(r.content)
@@ -4391,6 +4465,19 @@ function isExpired(endsAt: string | null): boolean {
 </script>
 
 <style lang="scss" scoped>
+.reason-mask { position: fixed; inset: 0; z-index: 1200; background: rgba(0,0,0,.38); display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+.reason-dialog { width: 100%; max-width: 520px; max-height: 85vh; overflow-y: auto; background: var(--surface); border-radius: 20px; padding: 24px; box-sizing: border-box; box-shadow: var(--shadow-float); animation: reasonEnter 180ms ease-out both; }
+.reason-title { display: block; color: var(--ink); font-size: 20px; font-weight: 650; }
+.reason-impact { display: block; color: var(--ink-soft); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; margin: 16px 0 24px; }
+.reason-label { display: block; color: var(--ink-soft); font-size: 13px; margin-bottom: 8px; }
+.reason-input { width: 100%; height: 100px; padding: 12px; box-sizing: border-box; border-radius: 12px; background: var(--bg-subtle); color: var(--ink); font-size: 16px; line-height: 1.5; }
+.reason-actions { display: flex; gap: 12px; margin-top: 20px; }
+.reason-cancel, .reason-confirm { flex: 1; margin: 0; min-height: 44px; border-radius: 12px; font-size: 15px; }
+.reason-cancel { background: var(--bg-subtle); color: var(--ink); }
+.reason-confirm { background: var(--accent); color: var(--on-accent, #fff); }
+@keyframes reasonEnter { from { opacity: .65; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .reason-dialog { animation: none; } }
+
 .admin {
   min-height: 100vh; background: var(--bg-subtle);
   padding: calc(20px + var(--mp-status-bar, env(safe-area-inset-top, 0px))) 16px 40px;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 import { onLaunch, onShow } from "@dcloudio/uni-app"
 import { useAuth } from "./composables/useAuth"
 import { useI18n } from "./composables/useI18n"
@@ -19,6 +19,7 @@ import {
 import {
   captureAccountIdentityGeneration,
   getActiveAccountId,
+  onAccountTransition,
 } from './composables/accountScope'
 
 /*
@@ -43,6 +44,9 @@ import {
 // #ifdef H5
 import '@fontsource-variable/fraunces/opsz.css'
 // #endif
+
+let stopNetworkNotice: (() => void) | undefined
+onUnmounted(() => stopNetworkNotice?.())
 
 const {
   init,
@@ -900,6 +904,7 @@ function installPreviewImageRouteGuard() {
   }
   window.addEventListener('popstate', close)
   window.addEventListener('hashchange', close)
+  onAccountTransition(close)
 }
 
 // The native H5 input emits confirm on Enter keyup even when keydown belonged
@@ -1554,11 +1559,20 @@ onLaunch((launchOptions) => {
   }
   // #endif
 
-  uni.onNetworkStatusChange?.((res: { isConnected: boolean }) => {
-    if (!res.isConnected) {
-      uni.showToast({ title: t('error.noNetwork'), icon: 'none', duration: 3000 })
-    }
-  })
+  stopNetworkNotice?.()
+  const notifyOffline = () => uni.showToast({ title: t('error.noNetwork'), icon: 'none', duration: 3000 })
+  // Browser NetworkInformation is optional and Safari does not implement it.
+  // uni.onNetworkStatusChange assumes its change API exists on partial shims.
+  // The standard window event works without that experimental interface.
+  // #ifdef H5
+  window.addEventListener('offline', notifyOffline)
+  stopNetworkNotice = () => window.removeEventListener('offline', notifyOffline)
+  // #endif
+  // #ifndef H5
+  const handleNetwork = (res: { isConnected: boolean }) => { if (!res.isConnected) notifyOffline() }
+  uni.onNetworkStatusChange?.(handleNetwork)
+  stopNetworkNotice = () => uni.offNetworkStatusChange?.(handleNetwork)
+  // #endif
 
   /*
    * Defer the heavy startup work (Supabase getSession round-trip, auth
@@ -2048,6 +2062,17 @@ uni-button:focus-visible {
      box always survives. */
   outline-offset: -2px;
   border-radius: 4px;
+}
+/* Compound fields show focus on their rounded outer surface, aligned with
+   the surrounding controls. Keep an explicit indicator for keyboard users
+   without drawing a second, square frame around the native inner editor. */
+.search-field:focus-within,
+.msg-input:focus-within {
+  box-shadow: inset 0 0 0 1.5px var(--brand);
+}
+.search-field .uni-input-input:focus-visible,
+.msg-input .uni-textarea-textarea:focus-visible {
+  outline: none !important;
 }
 /* #endif */
 
@@ -3025,50 +3050,50 @@ page, .page { overflow-x: clip; }
    start to avoid a first-frame flash, but does NOT retain the end-
    state, so it can't outrank an :active press transform afterwards. */
 @keyframes u-rise {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0.65; transform: translateY(6px); }
   to   { opacity: 1; transform: none; }
 }
-.u-rise { animation: u-rise var(--dur-3, 360ms) var(--ease-warm, ease) backwards; }
+.u-rise { animation: u-rise var(--dur-2, 220ms) var(--ease-warm, ease) backwards; }
 
 /* #ifdef H5 */
 /* Staggered list entrance — put .u-stagger on a container whose direct
    children are the cards/rows; each one fades + rises in sequence so a
    list "fans in" instead of popping as one block. The cascade caps at the
-   10th child (later items share the last delay) so long / paginated lists
+   9th child at 160 ms (later items share that delay) so long / paginated lists
    never wait seconds. transform/opacity only = GPU-cheap. The H5 block uses
    the universal selector; WXSS rejects `*`, so the mp twin below targets
    `> view` instead — every stagger container's direct children are views.
    Appended (load-more) rows animate on mount with their nth-child delay;
    already-settled rows are untouched. Honors reduced-motion below. */
-.u-stagger > * { animation: u-rise var(--dur-3, 360ms) var(--ease-warm, ease) backwards; }
+.u-stagger > * { animation: u-rise var(--dur-2, 220ms) var(--ease-warm, ease) backwards; }
 .u-stagger > *:nth-child(1)  { animation-delay: 0ms; }
-.u-stagger > *:nth-child(2)  { animation-delay: 36ms; }
-.u-stagger > *:nth-child(3)  { animation-delay: 72ms; }
-.u-stagger > *:nth-child(4)  { animation-delay: 108ms; }
-.u-stagger > *:nth-child(5)  { animation-delay: 144ms; }
-.u-stagger > *:nth-child(6)  { animation-delay: 180ms; }
-.u-stagger > *:nth-child(7)  { animation-delay: 216ms; }
-.u-stagger > *:nth-child(8)  { animation-delay: 252ms; }
-.u-stagger > *:nth-child(9)  { animation-delay: 288ms; }
-.u-stagger > *:nth-child(10) { animation-delay: 324ms; }
-.u-stagger > *:nth-child(n+11) { animation-delay: 360ms; }
+.u-stagger > *:nth-child(2)  { animation-delay: 20ms; }
+.u-stagger > *:nth-child(3)  { animation-delay: 40ms; }
+.u-stagger > *:nth-child(4)  { animation-delay: 60ms; }
+.u-stagger > *:nth-child(5)  { animation-delay: 80ms; }
+.u-stagger > *:nth-child(6)  { animation-delay: 100ms; }
+.u-stagger > *:nth-child(7)  { animation-delay: 120ms; }
+.u-stagger > *:nth-child(8)  { animation-delay: 140ms; }
+.u-stagger > *:nth-child(9)  { animation-delay: 160ms; }
+.u-stagger > *:nth-child(10) { animation-delay: 160ms; }
+.u-stagger > *:nth-child(n+11) { animation-delay: 160ms; }
 @media (prefers-reduced-motion: reduce) {
   .u-stagger > * { animation: none; }
 }
 /* #endif */
 /* #ifndef H5 */
-.u-stagger > view { animation: u-rise var(--dur-3, 360ms) var(--ease-warm, ease) backwards; }
+.u-stagger > view { animation: u-rise var(--dur-2, 220ms) var(--ease-warm, ease) backwards; }
 .u-stagger > view:nth-child(1)  { animation-delay: 0ms; }
-.u-stagger > view:nth-child(2)  { animation-delay: 36ms; }
-.u-stagger > view:nth-child(3)  { animation-delay: 72ms; }
-.u-stagger > view:nth-child(4)  { animation-delay: 108ms; }
-.u-stagger > view:nth-child(5)  { animation-delay: 144ms; }
-.u-stagger > view:nth-child(6)  { animation-delay: 180ms; }
-.u-stagger > view:nth-child(7)  { animation-delay: 216ms; }
-.u-stagger > view:nth-child(8)  { animation-delay: 252ms; }
-.u-stagger > view:nth-child(9)  { animation-delay: 288ms; }
-.u-stagger > view:nth-child(10) { animation-delay: 324ms; }
-.u-stagger > view:nth-child(n+11) { animation-delay: 360ms; }
+.u-stagger > view:nth-child(2)  { animation-delay: 20ms; }
+.u-stagger > view:nth-child(3)  { animation-delay: 40ms; }
+.u-stagger > view:nth-child(4)  { animation-delay: 60ms; }
+.u-stagger > view:nth-child(5)  { animation-delay: 80ms; }
+.u-stagger > view:nth-child(6)  { animation-delay: 100ms; }
+.u-stagger > view:nth-child(7)  { animation-delay: 120ms; }
+.u-stagger > view:nth-child(8)  { animation-delay: 140ms; }
+.u-stagger > view:nth-child(9)  { animation-delay: 160ms; }
+.u-stagger > view:nth-child(10) { animation-delay: 160ms; }
+.u-stagger > view:nth-child(n+11) { animation-delay: 160ms; }
 @media (prefers-reduced-motion: reduce) {
   .u-stagger > view { animation: none; }
 }
@@ -3125,7 +3150,7 @@ page, .page { overflow-x: clip; }
 .u-chip:active, .u-press:active, .tap:active,
 [role="button"]:active, button:active, uni-button:active,
 .u-btn-primary:active, .u-btn-brand:active, .u-btn-ink:active, .u-btn-ghost:active {
-  transform: scale(0.96);
+  transform: scale(0.98);
 }
 @media (prefers-reduced-motion: reduce) {
   .u-anim-heart-pop { animation: none; }
@@ -3148,7 +3173,7 @@ page, .page { overflow-x: clip; }
   transition: transform 170ms var(--ease-warm, cubic-bezier(0.2, 0.8, 0.2, 1));
 }
 .u-mp-pressed {
-  transform: scale(0.96);
+  transform: scale(0.98);
 }
 button::after {
   border: none;
@@ -3322,5 +3347,16 @@ button::after {
     scroll-behavior: auto !important;
   }
 }
+/* #endif */
+</style>
+
+<style>
+/* #ifdef H5 */
+/* The framework only sets max-width/max-height, leaving smaller originals at
+   their intrinsic pixel size even inside a full-screen viewer. */
+#u-a-p > div { z-index: 1300 !important; background: rgba(15,15,15,.96) !important; }
+#u-a-p img { width: 100%; height: 100%; object-fit: contain; box-sizing: border-box; padding: 48px 12px; }
+#u-a-p [role="button"][aria-label] { margin-top: env(safe-area-inset-top,0px); margin-right: 8px; border-radius: 22px; background: rgba(255,255,255,.1); }
+@media(min-width:768px){ #u-a-p img { padding: 48px 72px; } }
 /* #endif */
 </style>

@@ -214,7 +214,7 @@ const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif
-import { ref, reactive, computed, nextTick, onMounted, watch } from 'vue'
+import { ref, reactive, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { onShow, onPullDownRefresh, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
@@ -226,6 +226,7 @@ import { useVisualViewportInset } from '../../composables/useVisualViewportInset
 const viewportInset = useVisualViewportInset()
 import {
   captureActiveAccountRequest,
+  onAccountTransition,
   isAccountRequestCurrent,
   type AccountRequestToken,
 } from '../../composables/accountScope'
@@ -256,6 +257,9 @@ const {
   clearMessages,
 } = useMessages()
 const { unreadConvIds, refreshUnreadCount } = useUnread()
+const conversationActionBusy = reactive(new Set<string>())
+const stopActionReset = onAccountTransition(() => conversationActionBusy.clear())
+onUnmounted(stopActionReset)
 const { isDark } = useTheme()
 
 /*
@@ -573,18 +577,22 @@ async function togglePin(
   conv: Conversation,
   accountToken = conversationActionToken(conv),
 ) {
-  if (!accountToken || !isAccountRequestCurrent(accountToken)) return
+  if (!accountToken || !isAccountRequestCurrent(accountToken) || conversationActionBusy.has(conv.id)) return
   closeSwipe(conv.id)
+  conversationActionBusy.add(conv.id)
   try {
     const pinned = conv.buyer_id === accountToken.userId
       ? !!conv.is_pinned_buyer
       : !!conv.is_pinned_seller
     await setConversationPinned(conv, accountToken.userId, !pinned)
     if (!isAccountRequestCurrent(accountToken)) return
-    await fetchConversations(accountToken.userId)
+    await fetchConversations(accountToken.userId, { force: true })
+    if (isAccountRequestCurrent(accountToken)) uni.showToast({ title: pinned ? t('msg.unpin') : t('msg.pinned'), icon: 'none' })
   } catch (err: any) {
     if (!isAccountRequestCurrent(accountToken)) return
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
+  } finally {
+    if (isAccountRequestCurrent(accountToken)) conversationActionBusy.delete(conv.id)
   }
 }
 
@@ -592,7 +600,8 @@ async function toggleMute(
   conv: Conversation,
   accountToken = conversationActionToken(conv),
 ) {
-  if (!accountToken || !isAccountRequestCurrent(accountToken)) return
+  if (!accountToken || !isAccountRequestCurrent(accountToken) || conversationActionBusy.has(conv.id)) return
+  conversationActionBusy.add(conv.id)
   try {
     const muted = conv.buyer_id === accountToken.userId
       ? !!conv.is_muted_buyer
@@ -603,6 +612,8 @@ async function toggleMute(
   } catch (err: any) {
     if (!isAccountRequestCurrent(accountToken)) return
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
+  } finally {
+    if (isAccountRequestCurrent(accountToken)) conversationActionBusy.delete(conv.id)
   }
 }
 
@@ -610,12 +621,18 @@ async function toggleRead(
   conv: Conversation,
   accountToken = conversationActionToken(conv),
 ) {
-  if (!accountToken || !isAccountRequestCurrent(accountToken)) return
+  if (!accountToken || !isAccountRequestCurrent(accountToken) || conversationActionBusy.has(conv.id)) return
   closeSwipe(conv.id)
+  conversationActionBusy.add(conv.id)
   try {
     if (unreadConvIds.value.has(conv.id)) {
       await markAsRead(conv.id, accountToken.userId)
     } else {
+      // Close the desktop thread before marking it unread; its read-on-visible
+      // handler would otherwise immediately clear the reminder.
+      if (selectedConvId.value === conv.id) selectedConvId.value = ''
+      await nextTick()
+      if (!isAccountRequestCurrent(accountToken)) return
       await markConversationUnread(conv.id, accountToken.userId)
     }
     if (!isAccountRequestCurrent(accountToken)) return
@@ -623,6 +640,8 @@ async function toggleRead(
   } catch (err: any) {
     if (!isAccountRequestCurrent(accountToken)) return
     uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
+  } finally {
+    if (isAccountRequestCurrent(accountToken)) conversationActionBusy.delete(conv.id)
   }
 }
 
@@ -637,9 +656,13 @@ function onArchive(
     content: t('msg.archiveHint'),
     confirmColor: DIALOG_INK,
     success: async (r) => {
-      if (!r.confirm || !isAccountRequestCurrent(accountToken)) return
+      if (!r.confirm || !isAccountRequestCurrent(accountToken) || conversationActionBusy.has(conv.id)) return
+      conversationActionBusy.add(conv.id)
       try {
         await archiveConversation(conv.id)
+        if (!isAccountRequestCurrent(accountToken)) return
+        if (selectedConvId.value === conv.id) selectedConvId.value = ''
+        await refreshUnreadCount()
         if (!isAccountRequestCurrent(accountToken)) return
         uni.showToast({ title: t('msg.archived'), icon: 'success' })
       } catch (err: any) {
@@ -649,6 +672,8 @@ function onArchive(
           icon: 'none',
           duration: 2500,
         })
+      } finally {
+        if (isAccountRequestCurrent(accountToken)) conversationActionBusy.delete(conv.id)
       }
     },
   })

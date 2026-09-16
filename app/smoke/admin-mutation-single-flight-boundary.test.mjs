@@ -89,6 +89,7 @@ test('partial photo removal shows a persistent warning instead of a complete-suc
     const modals = [], toasts = []
     let released = false, refreshed = false
     const deps = {
+      showModerationReason: options => modals.push(options),
       captureAdminSessionOwner: () => ({}), takedownMutationKey: () => 'target',
       moderationMutationBusy: () => false, isAdminSessionOwnerCurrent: () => true,
       moderationReasonOrNotify: () => 'spam', beginModerationMutation: () => true,

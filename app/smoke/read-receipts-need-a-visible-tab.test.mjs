@@ -46,6 +46,7 @@ export function createHarness(document, meId) {
   const backgroundFailures = []
   let onVisible = null
   let mounted = true
+  let threadEpoch = 1
 
   const nextTick = (fn) => { if (fn) fn() }
   const scrollToBottom = () => {}
@@ -55,8 +56,8 @@ export function createHarness(document, meId) {
   const fetchOffers = () => Promise.resolve([])
   const fetchMeetups = () => Promise.resolve([])
   const refreshUnreadCount = () => Promise.resolve()
-  const markAsRead = (convId, userId) => {
-    readWrites.push({ convId, userId })
+  const markAsRead = (convId, userId, stillVisible) => {
+    if (!stillVisible || stillVisible()) readWrites.push({ convId, userId })
     return Promise.resolve()
   }
   const reportBackgroundFailure = (source, error) => backgroundFailures.push({ source, error })

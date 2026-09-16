@@ -11,6 +11,7 @@ const source = relativePath => readFileSync(resolve(appRoot, relativePath), 'utf
 let runtimeSequence = 0
 /* Telemetry emitted by the module under test since the last loadWithRuntime. */
 const capturedTelemetry = []
+const capturedRecovery = []
 
 async function readAllAscendingKeysetForTest(options) {
   const rows = []
@@ -38,6 +39,7 @@ async function readAllAscendingKeysetForTest(options) {
 async function loadWithRuntime(relativePath, replacements, runtime, transform = value => value) {
   const runtimeKey = `__chat_realtime_smoke_${++runtimeSequence}`
   capturedTelemetry.length = 0
+  capturedRecovery.length = 0
   const defaultAccountToken = {
     userId: '11111111-1111-4111-8111-111111111111',
     generation: 1,
@@ -95,6 +97,7 @@ async function loadWithRuntime(relativePath, replacements, runtime, transform = 
     onAccountTransition: () => () => {},
     readAllAscendingKeyset: readAllAscendingKeysetForTest,
     subscribeToSnapshotChanges: () => () => {},
+    addBreadcrumb: crumb => capturedRecovery.push(crumb.category),
     // Fallback takeovers report to Sentry. Record them per load so a test can
     // assert the degradation was announced, not just that polling took over.
     captureException: (error, context) => {
@@ -133,11 +136,12 @@ async function loadWithRuntime(relativePath, replacements, runtime, transform = 
       'const { captureActiveAccountRequest, isAccountRequestCurrent, onAccountTransition } = globalThis.__RUNTIME_KEY__',
     )
     .replace(
-      "import { captureException } from '../utils/sentry'",
-      'const { captureException } = globalThis.__RUNTIME_KEY__',
+      "import { captureException, addBreadcrumb } from '../utils/sentry'",
+      'const { captureException, addBreadcrumb } = globalThis.__RUNTIME_KEY__',
     )
   for (const [from, to] of replacements) input = input.replace(from, to.replaceAll('__RUNTIME_KEY__', runtimeKey))
   input = input.replaceAll('__RUNTIME_KEY__', runtimeKey)
+  input = input.replace("import { validChatMediaPath } from '../utils/chatMedia'", () => source('src/utils/chatMedia.ts'))
   const compiled = ts.transpileModule(input, {
     compilerOptions: {
       target: ts.ScriptTarget.ES2022,
@@ -584,8 +588,9 @@ test('H5 initial hidden-to-visible resume takes over a silent conversation socke
     assert.equal(harness.queryCount, 1, 'foreground takeover must cold-seed one direct poll')
     assert.deepEqual(
       capturedTelemetry,
-      [{ message: 'realtime_fallback_takeover', source: 'realtime.fallback.conversation' }],
+      [],
     )
+    assert.deepEqual(capturedRecovery, ['realtime.recovery.resume.conversation'])
     assert.equal(harness.lifecycle.listenerCount(), 0)
   } finally {
     harness.cleanup()
@@ -601,8 +606,9 @@ test('H5 fresh offline takes over once without a visibility transition', async (
     assert.equal(harness.queryCount, 1)
     assert.deepEqual(
       capturedTelemetry,
-      [{ message: 'realtime_fallback_takeover', source: 'realtime.fallback.conversation' }],
+      [],
     )
+    assert.deepEqual(capturedRecovery, ['realtime.recovery.offline.conversation'])
     assert.equal(harness.lifecycle.listenerCount(), 0)
   } finally {
     harness.cleanup()
@@ -5395,37 +5401,23 @@ test('useUnread preserves the last badge on query failure and rejects a late pri
   )
 })
 
-test('markConversationUnread surfaces a failed latest-message lookup', async () => {
-  let updateCalls = 0
+test('manual unread handles empty conversations and surfaces rejected writes without changing receipts', async () => {
+  const calls = []
   const supabase = {
-    from(table) {
-      assert.equal(table, 'messages')
-      const query = {
-        select() { return query },
-        update() { updateCalls += 1; return query },
-        eq() { return query },
-        neq() { return query },
-        order() { return query },
-        limit() { return query },
-        maybeSingle() {
-          return Promise.resolve({
-            data: null,
-            error: { code: '503', message: 'latest message unavailable' },
-          })
-        },
-      }
-      return query
+    from() { assert.fail('manual unread must not rewrite message receipts') },
+    async rpc(name, args) {
+      calls.push({ name, args })
+      return { data: null, error: calls.length === 1 ? null : { code: '42501' } }
     },
   }
   const module = await loadUseMessagesConsumer(supabase)
-  await assert.rejects(
-    module.useMessages().markConversationUnread(
-      'conversation-mark-unread',
-      '11111111-1111-4111-8111-111111111111',
-    ),
-    error => error?.code === '503',
-  )
-  assert.equal(updateCalls, 0)
+  const messages = module.useMessages()
+  const uid = '11111111-1111-4111-8111-111111111111'
+  await messages.markConversationUnread('conversation-mark-unread', uid)
+  assert.deepEqual(calls[0], { name: 'set_conversation_read_state', args: {
+    conversation_id_in: 'conversation-mark-unread', expected_user_id_in: uid, unread_in: true,
+  } })
+  await assert.rejects(messages.markConversationUnread('conversation-mark-unread', uid), error => error?.code === '42501')
 })
 
 test('ChatThread wires guarded ready refetches before initial snapshots', () => {
@@ -5767,3 +5759,31 @@ for (const stream of ['inbox', 'notifications', 'offers', 'meetups']) {
     } finally { stop() }
   })
 }
+
+test('slow automatic receipts settle before explicit unread; hidden-thread queued receipts are skipped',async()=>{
+ const calls=[];let completeFirst,visible=true
+ const first=new Promise(resolve=>{completeFirst=resolve})
+ const module=await loadUseMessagesConsumer({rpc:async(name,args)=>{assert.equal(name,'set_conversation_read_state');calls.push(args.unread_in);if(calls.length===1)await first;return {error:null}}})
+ const messages=module.useMessages()
+ const read=messages.markAsRead('conversation-1','user-a',()=>visible)
+ await new Promise(resolve=>setImmediate(resolve))
+ const queuedRead=messages.markAsRead('conversation-1','user-a',()=>visible)
+ visible=false
+ const unread=messages.markConversationUnread('conversation-1','user-a')
+ await new Promise(resolve=>setImmediate(resolve));assert.deepEqual(calls,[false])
+ completeFirst();await Promise.all([read,queuedRead,unread])
+ assert.deepEqual(calls,[false,true],'a reminder cannot be overwritten by an older receipt')
+})
+
+test('read-state queue rejects a failed write without stranding later user actions or crossing accounts',async()=>{
+ let generation=1,rejectFirst;const calls=[]
+ const first=new Promise((_,reject)=>{rejectFirst=reject})
+ const module=await loadUseMessagesConsumer({rpc:async(name,args)=>{calls.push(args.unread_in);if(calls.length===1)await first;return {error:null}}},{captureAccountRequest:userId=>({userId,generation}),isAccountRequestCurrent:token=>token.generation===generation})
+ const messages=module.useMessages()
+ const failed=messages.markAsRead('conversation-1','user-a');const rejection=assert.rejects(failed,/offline/)
+ await new Promise(resolve=>setImmediate(resolve))
+ const stale=messages.markConversationUnread('conversation-1','user-a')
+ generation++;rejectFirst(new Error('offline'))
+ await rejection;await stale;assert.deepEqual(calls,[false])
+ await messages.markConversationUnread('conversation-1','user-b');assert.deepEqual(calls,[false,true])
+})

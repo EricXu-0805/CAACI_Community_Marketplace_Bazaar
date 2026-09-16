@@ -9,7 +9,6 @@
       :aria-describedby="bodyId"
       tabindex="-1"
       @click.stop
-      @keydown="onDialogKeydown"
     >
       <text :id="titleId" class="pdm-title t-h2">{{ t('publish.permissionModalTitle') }}</text>
       <text :id="bodyId" class="pdm-body t-body">{{ t(permissionBodyKey) }}</text>
@@ -39,9 +38,11 @@
 </template>
 
 <script setup lang="ts">
+import { useDomKeydown } from '../composables/useDomKeydown'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import UButton from './UButton.vue'
+import { resolveHtmlElement } from '../utils/domElement'
 
 const { t } = useI18n()
 let permissionBodyKey = 'publish.permissionModalBody'
@@ -66,7 +67,8 @@ const emit = defineEmits<{
 const uid = Math.random().toString(36).slice(2, 6)
 const titleId = computed(() => `pdm-title-${uid}`)
 const bodyId = computed(() => `pdm-body-${uid}`)
-const dialogEl = ref<HTMLElement | null>(null)
+const dialogEl = ref<unknown>(null)
+useDomKeydown(dialogEl, onDialogKeydown)
 let dialogOpener: HTMLElement | null = null
 let dialogFocusEpoch = 0
 
@@ -107,7 +109,7 @@ function onOpenSettings() {
 function focusDialog(epoch: number) {
   nextTick(() => {
     if (epoch !== dialogFocusEpoch || !props.visible || typeof document === 'undefined') return
-    const dialog = dialogEl.value
+    const dialog = resolveHtmlElement(dialogEl.value)
     if (!dialog) return
     const first = dialog.querySelector<HTMLElement>(
       '[role="button"]:not([aria-disabled="true"]), button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',

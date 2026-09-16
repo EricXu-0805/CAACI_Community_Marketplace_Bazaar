@@ -327,19 +327,19 @@ for (const endpoint of ['share.js', 'share-post.js']) {
     }
 
     const www = await canonicalFor('https://www.illinimarket.com')
-    const expected = `https://www.illinimarket.com/#/pages/${page}/index?id=${id}`
+    const expected = `https://www.illinimarket.com/${route}/${id}`
     assert.equal(www.canonical, expected, 'canonical points at the apex, which 308s back to www')
     assert.equal(www.ogUrl, expected)
-    assert.equal(www.refresh, expected)
+    assert.equal(www.refresh, `https://www.illinimarket.com/#/pages/${page}/index?id=${id}`)
 
     // Controls: no other request host may leak into the canonical — the
     // configured origin wins for the apex itself, an unrelated www host, and
     // a plain-http www.
     for (const origin of ['https://illinimarket.com', 'https://www.attacker.example', 'http://www.illinimarket.com']) {
       const other = await canonicalFor(origin)
-      assert.equal(other.canonical, `https://illinimarket.com/#/pages/${page}/index?id=${id}`, `${origin} leaked into the canonical`)
+      assert.equal(other.canonical, `https://illinimarket.com/${route}/${id}`, `${origin} leaked into the canonical`)
       assert.equal(other.ogUrl, other.canonical)
-      assert.equal(other.refresh, other.canonical)
+      assert.equal(other.refresh, `https://illinimarket.com/#/pages/${page}/index?id=${id}`)
     }
   })
 }
@@ -370,8 +370,8 @@ test('a share link whose listing is gone lands on the detail route, not the home
 
   const detail = `https://illinimarket.com/#/pages/detail/index?id=${ITEM_ID}`
   const missing = await share(`?id=${ITEM_ID}`)
-  assert.equal(missing.canonical, detail, 'a deleted listing dropped the reader on the home page')
-  assert.equal(missing.ogUrl, detail)
+  assert.equal(missing.canonical, `https://illinimarket.com/share/${ITEM_ID}`)
+  assert.equal(missing.ogUrl, missing.canonical)
   assert.equal(missing.refresh, detail)
   // The card still must not invent a listing it could not read.
   assert.equal(missing.title, 'Illini Market · UIUC Community Marketplace')
@@ -445,4 +445,17 @@ test('post share declares the author language and uses English for unknown metad
     const html = await (await handler(new Request(`https://illinimarket.com/api/share-post?id=${ITEM_ID}`))).text()
     assert.equal(htmlLangOf(html), expected)
   }
+})
+
+test('share cards use English counterparts and stable per-listing URLs with brand icons',async()=>{
+ const {default:handler}=await load('share.js')
+ globalThis.fetch=stubRow(ITEM_ID,{title:'宠物航空箱 XL',description:'32.225 英寸',source_lang:'zh',title_i18n:{zh:'宠物航空箱 XL',en:'Pet airline crate XL'},description_i18n:{zh:'32.225 英寸',en:'32.225 inches'}})
+ const english=await(await handler(new Request(`https://illinimarket.com/share/${ITEM_ID}?id=${ITEM_ID}`))).text()
+ assert.match(metaOf(english).title,/Pet airline crate XL/);assert.equal(htmlLangOf(english),'en')
+ assert.match(english,/rel="apple-touch-icon" href="https:\/\/illinimarket.com\/static\/app-icon-512.png"/)
+ assert.equal(metaOf(english).ogUrl,`https://illinimarket.com/share/${ITEM_ID}`)
+ assert.doesNotMatch(metaOf(english).ogUrl,/#/)
+ const chinese=await(await handler(new Request(`https://illinimarket.com/api/share?id=${ITEM_ID}&lang=zh`))).text()
+ assert.match(metaOf(chinese).title,/宠物航空箱 XL/);assert.equal(htmlLangOf(chinese),'zh')
+ assert.equal(metaOf(chinese).ogUrl,`https://illinimarket.com/share/${ITEM_ID}?lang=zh`)
 })

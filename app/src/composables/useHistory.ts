@@ -52,13 +52,18 @@ export function useHistory() {
   }
 
   function removeFromHistory(id: string) {
-    history.value = history.value.filter(i => i.id !== id)
-    save()
+    const next = history.value.filter(i => i.id !== id)
+    if (!writeAccountPrivateStorage('viewHistory', JSON.stringify(next))) return false
+    const stored = readAccountPrivateStorage<unknown>('viewHistory', '')
+    if (!stored.allowed || parseHistory<Item>(stored.value).some(i => i.id === id)) return false
+    history.value = next
+    return true
   }
 
   function clearHistory() {
+    if (!removeAccountPrivateStorage('viewHistory')) return false
     history.value = []
-    removeAccountPrivateStorage('viewHistory')
+    return true
   }
 
   function addPostToHistory(post: Post) {
@@ -67,13 +72,18 @@ export function useHistory() {
   }
 
   function removePostFromHistory(id: string) {
-    postHistory.value = postHistory.value.filter(p => p.id !== id)
-    savePosts()
+    const next = postHistory.value.filter(p => p.id !== id)
+    if (!writeAccountPrivateStorage('postViewHistory', JSON.stringify(next))) return false
+    const stored = readAccountPrivateStorage<unknown>('postViewHistory', '')
+    if (!stored.allowed || parseHistory<Post>(stored.value).some(p => p.id === id)) return false
+    postHistory.value = next
+    return true
   }
 
   function clearPostHistory() {
+    if (!removeAccountPrivateStorage('postViewHistory')) return false
     postHistory.value = []
-    removeAccountPrivateStorage('postViewHistory')
+    return true
   }
 
   return {

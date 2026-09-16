@@ -159,6 +159,7 @@ export interface PostComment {
 }
 
 export interface Item {
+  discovery_reason?: 'interest' | 'recent'
   listing_details?: ListingDetails | null
   id: string
   user_id: string
@@ -194,6 +195,8 @@ export interface Conversation {
   seller_id: string
   last_message_at: string
   created_at: string
+  is_unread_buyer?: boolean
+  is_unread_seller?: boolean
   is_pinned_buyer?: boolean
   is_pinned_seller?: boolean
   is_muted_buyer?: boolean
@@ -228,4 +231,3 @@ export interface Favorite {
   created_at: string
   item?: Item
 }
-

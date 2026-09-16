@@ -567,6 +567,59 @@ describe('moderation policy: contact info allowed, ads caught in four layers', {
     })
   })
 
+
+  describe('precomputed keyword patterns preserve the policy oracle and live updates', () => {
+    const patternSql=readFileSync(path.join(ROOT,'supabase/migrations/20260916222000_precompute_moderation_patterns.sql'),'utf8')
+    const rollbackSql=readFileSync(path.join(ROOT,'supabase/_ops/ROLLBACK_20260916_precompute_moderation_patterns.sql'),'utf8')
+    let prior
+    before(() => {
+      psql(SIBLING_20260903023000); psql(MIGRATION_SQL); psql(MIGRATION_20260904060000_SQL)
+      prior=verdicts()
+      const definition=psql("SELECT pg_get_functiondef('public.content_moderation_check(text)'::regprocedure);")
+      psql(definition.replace('public.content_moderation_check(', 'public.moderation_pattern_oracle('))
+      psql('BEGIN;'+patternSql+'COMMIT;')
+    })
+    after(() => {
+      psql('BEGIN;'+rollbackSql+'COMMIT;')
+      psql('DROP FUNCTION public.moderation_pattern_oracle(text);')
+    })
+    it('keeps every corpus verdict and short-word/punctuation/wildcard behavior', () => {
+      assert.deepEqual(verdicts(),prior)
+      psql("INSERT INTO public.moderation_keywords(keyword,category,severity) VALUES ('qzx','test',1), ('qa%pattern','test',1), ('折_測 詞','test',1);")
+      const inputs=['qzx','aqzxb','QZX!','ｑｚｘ','q z x','qaZpattern','qa%pattern','折测词','折_測 詞',null,'']
+      const differential=psql(`SELECT count(*) FROM (VALUES ${inputs.map(x=>`(${x===null?'NULL':sqlLiteral(x)})`).join(',')}) v(raw) WHERE public.content_moderation_check(raw) IS DISTINCT FROM public.moderation_pattern_oracle(raw);`).trim()
+      assert.equal(differential,'0')
+      // Existing rule rows cover non-ASCII folding as well as arbitrary lengths.
+      assert.equal(psql(`SELECT count(*) FROM (SELECT keyword FROM public.moderation_keywords ORDER BY keyword LIMIT 120) k WHERE public.content_moderation_check('test '||keyword||' end') IS DISTINCT FROM public.moderation_pattern_oracle('test '||keyword||' end');`).trim(),'0')
+      psql("DELETE FROM public.moderation_keywords WHERE category='test';")
+    })
+    it('keyword rename, deactivate, delete and intent edits take effect immediately', () => {
+      psql("INSERT INTO public.moderation_keywords(keyword,category,severity) VALUES ('uniquepatternprobe','test',1);")
+      assert.equal(psql("SELECT content_moderation_check('uniquepatternprobe');").trim(),'sensitive_word')
+      psql("UPDATE public.moderation_keywords SET keyword='differentpatternprobe' WHERE keyword='uniquepatternprobe';")
+      assert.equal(psql("SELECT content_moderation_check('uniquepatternprobe') IS NULL;").trim(),'t')
+      assert.equal(psql("SELECT content_moderation_check('differentpatternprobe');").trim(),'sensitive_word')
+      psql("UPDATE public.moderation_keywords SET active=false WHERE keyword='differentpatternprobe';")
+      assert.equal(psql("SELECT content_moderation_check('differentpatternprobe') IS NULL;").trim(),'t')
+      psql("DELETE FROM public.moderation_keywords WHERE keyword='differentpatternprobe';")
+      psql("INSERT INTO public.moderation_intent_rules(noun,signals) VALUES('测试意图',ARRAY['信号一','信号二']);")
+      assert.equal(psql("SELECT content_moderation_check('测试意图 信号一 信号二');").trim(),'sensitive_word')
+      psql("UPDATE public.moderation_intent_rules SET active=false WHERE noun='测试意图';")
+      assert.equal(psql("SELECT content_moderation_check('测试意图 信号一 信号二') IS NULL;").trim(),'t')
+      psql("DELETE FROM public.moderation_intent_rules WHERE noun='测试意图';")
+      assert.throws(()=>psql("UPDATE public.moderation_keywords SET match_pattern='forged' WHERE active=true;"),/generated|non-DEFAULT/)
+    })
+    it('supports idempotent apply, rollback and reinstall without changing verdicts', () => {
+      psql('BEGIN;'+patternSql+'COMMIT;')
+      assert.deepEqual(verdicts(),prior)
+      psql('BEGIN;'+rollbackSql+'COMMIT;')
+      assert.deepEqual(verdicts(),prior)
+      assert.equal(psql("SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='moderation_keywords' AND column_name IN ('match_pattern','match_word_boundary');").trim(),'0')
+      psql('BEGIN;'+patternSql+'COMMIT;')
+      assert.deepEqual(verdicts(),prior)
+    })
+  })
+
   // -- mutations: show each layer is load-bearing ---------------------------
 
   describe('mutations', () => {

@@ -55,7 +55,7 @@
           <view class="user-info">
             <view class="name-row">
               <text class="nickname">{{ currentUser?.nickname }}</text>
-              <UBadge v-if="currentUser?.is_illini_verified" variant="illini">Illini</UBadge>
+              <UBadge v-if="currentUser?.is_illini_verified" variant="illini" :aria-label="t('profile.illiniVerified')">Illini</UBadge>
             </view>
             <view class="user-meta-row">
               <view v-if="currentUser?.uid" class="uid-row" role="button" :aria-label="t('profile.uid')" @click.stop="copyUid">
@@ -1033,23 +1033,15 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
 }
 .user-info { flex: 1; min-width: 0; }
 .name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-/*
- * The earned Illini badge sits on the navy user-card, where the default
- * navy-fill / white-text pill is invisible (QA7: "verify 成功也没什么区别" — the
- * badge was rendering, just navy-on-navy). Render it here as a high-contrast
- * ivory chip with navy text + a soft lift so the verification actually reads
- * as a reward. Only overridden on this dark surface; light-surface usages
- * (listing cards, posts) keep the standard navy pill.
- */
+/* Subtle ivory verification chip on the fixed navy profile surface. */
 .name-row :deep(.u-badge--illini) {
-  background: #fff;
-  /* The fill is a fixed white, so the text cannot follow the theme:
-     --campus-blue lightens to #6A8AC2 in dark and lands at 3.48:1 here.
-     Pinned to the navy the light theme uses (14.5:1 on white). */
-  color: #13294B;
-  padding: 2px 10px;
+  background: rgba(245, 240, 230, 0.12);
+  color: #F5F0E6;
+  border: 1px solid rgba(245, 240, 230, 0.3);
+  border-radius: 999px;
+  padding: 3px 9px;
   font-size: 11px;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.28);
+  box-shadow: none;
 }
 /*
  * Name + meta on the user card pin to ivory (#F5F0E6) since the

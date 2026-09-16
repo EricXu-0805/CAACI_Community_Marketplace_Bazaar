@@ -41,17 +41,10 @@
     </view>
 
     <view v-else-if="historyReady && tab === 'items'" id="history-items-panel" class="items u-stagger" role="tabpanel">
-      <view
-        v-for="item in history"
-        :key="item.id"
-        class="item-row u-rise"
-        role="button"
-        :aria-label="localize(item.title_i18n, item.title)"
-        aria-keyshortcuts="Shift+F10 Delete"
-        @click="goDetail(item.id)"
-        @keydown="onHistoryCardKeydown($event, item.id, 'item')"
-        @longpress="onRemoveOne(item.id, 'item')"
-      >
+      <USwipeAction v-for="item in history" :key="item.id"
+        :label="localize(item.title_i18n, item.title)" :action-label="t('history.removeOne')"
+        @open="goDetail(item.id)" @action="removeEntry(item.id, 'item')" @menu="onRemoveOne(item.id, 'item')">
+      <view class="item-row u-rise">
         <image v-if="thumbUrl(item.images?.[0], 'list')" :src="thumbUrl(item.images?.[0], 'list')" :alt="item.title" class="item-img" mode="aspectFill" lazy-load />
         <view v-else class="item-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
         <view class="item-info">
@@ -62,20 +55,13 @@
           </view>
         </view>
       </view>
+      </USwipeAction>
     </view>
 
     <view v-else-if="historyReady" id="history-posts-panel" class="items u-stagger" role="tabpanel">
-      <view
-        v-for="p in postHistory"
-        :key="p.id"
-        class="post-row u-rise"
-        role="button"
-        :aria-label="p.content"
-        aria-keyshortcuts="Shift+F10 Delete"
-        @click="goPostDetail(p.id)"
-        @keydown="onHistoryCardKeydown($event, p.id, 'post')"
-        @longpress="onRemoveOne(p.id, 'post')"
-      >
+      <USwipeAction v-for="p in postHistory" :key="p.id" :label="p.content" :action-label="t('history.removeOne')"
+        @open="goPostDetail(p.id)" @action="removeEntry(p.id, 'post')" @menu="onRemoveOne(p.id, 'post')">
+      <view class="post-row u-rise">
         <UAvatar :src="p.profile?.avatar_url" :owner="p.user_id" :fallback="defaultAvatarSrc" :alt="p.profile?.nickname || 'avatar'" class="post-avatar" lazy />
         <view class="post-info">
           <view class="post-top">
@@ -96,6 +82,7 @@
           </view>
         </view>
       </view>
+      </USwipeAction>
     </view>
     </view>
   </view>
@@ -114,6 +101,7 @@ import { listingPriceLabel, navigateBackOr, thumbUrl } from '../../utils'
 import UAvatar from '../../components/UAvatar.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
 import UIcon from '../../components/UIcon.vue'
+import USwipeAction from '../../components/USwipeAction.vue'
 import { onAccountTransition } from '../../composables/accountScope'
 
 const { t, localize } = useI18n()
@@ -175,16 +163,15 @@ function onHistoryTabKeydown(event: KeyboardEvent, current: 'items' | 'posts') {
   nextTick(() => tabList?.querySelectorAll<HTMLElement>('[role="tab"]')[nextIndex]?.focus())
 }
 
-function onHistoryCardKeydown(event: KeyboardEvent, id: string, kind: 'item' | 'post') {
-  if (event.key !== 'Delete' && event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
-  event.preventDefault()
-  event.stopPropagation()
-  onRemoveOne(id, kind)
-}
-
 function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/profile/index' })) }
 function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${id}` }) }
 function goPostDetail(id: string) { uni.navigateTo({ url: `/pages/post/index?id=${id}` }) }
+
+function removeEntry(id: string, kind: 'item' | 'post') {
+  if (!historyReady.value || !pageMounted) return
+  const removed = kind === 'item' ? removeFromHistory(id) : removePostFromHistory(id)
+  if (!removed) uni.showToast({ title: t('history.removeFailed'), icon: 'none' })
+}
 
 function onRemoveOne(id: string, kind: 'item' | 'post') {
   const actionEpoch = historyActionEpoch
@@ -193,8 +180,7 @@ function onRemoveOne(id: string, kind: 'item' | 'post') {
     success: (res) => {
       if (actionEpoch !== historyActionEpoch) return
       if (res.tapIndex === 0) {
-        if (kind === 'item') removeFromHistory(id)
-        else removePostFromHistory(id)
+        removeEntry(id, kind)
       }
     },
   })
@@ -207,8 +193,8 @@ function onClear() {
     content: t('history.clearHint'),
     success: (res) => {
       if (!res.confirm || actionEpoch !== historyActionEpoch) return
-      if (tab.value === 'items') clearHistory()
-      else clearPostHistory()
+      const removed = tab.value === 'items' ? clearHistory() : clearPostHistory()
+      if (!removed) uni.showToast({ title: t('history.removeFailed'), icon: 'none' })
     },
   })
 }

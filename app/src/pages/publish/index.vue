@@ -21,6 +21,9 @@
     </view>
 
     <view v-if="publishReady" class="form" :aria-busy="submitting ? 'true' : 'false'">
+      <view v-if="draftStorageUnavailable" class="recovery-notice draft-storage-notice" role="status">
+        {{ t('publish.draftSessionOnly') }}
+      </view>
       <view v-if="publishOutcomeUncertain && !submitting" class="recovery-notice" role="status">
         {{ t('publish.recoveryNotice') }}
       </view>
@@ -173,6 +176,10 @@
       </view>
 
       <text class="location-guidance">{{ t('publish.locationHint') }}</text>
+      <view v-if="form.location || locationFeedback" class="location-result" role="status" aria-live="polite">
+        <UIcon :name="detectedLocationLabel === form.location && form.location ? 'location-pin' : 'edit'" size="xs" />
+        <text>{{ locationFeedback || t(detectedLocationLabel === form.location ? 'publish.locationDetected' : 'publish.locationManual') }}</text>
+      </view>
 
       <scroll-view scroll-x class="spot-row">
         <view
@@ -252,7 +259,7 @@ const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif
-import { ref, reactive, computed, onUnmounted } from 'vue'
+import { watch, ref, reactive, computed, onUnmounted } from 'vue'
 import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
@@ -405,6 +412,12 @@ const form = reactive({
  * they're either retryable or environmental.
  */
 const permissionModalVisible = ref(false)
+const detectedLocationLabel = ref('')
+const locationFeedback = ref('')
+watch(() => form.location, value => {
+  if (value !== detectedLocationLabel.value) detectedLocationLabel.value = ''
+  locationFeedback.value = ''
+}, { flush: 'sync' })
 
 /*
  * Tag toggle handlers: tapping the currently-active pill clears the
@@ -444,6 +457,7 @@ const MAX_IMAGES_PUBLISH = 9
    work when they accidentally tap a tabbar icon mid-compose. Scoped to
    new-item mode only (edit mode has a live item row already). */
 const DRAFT_KEY = 'publish_draft_v1'
+const draftStorageUnavailable = ref(false)
 let routePublishIntent: PublishNavigationIntent | null = null
 onLoad((options) => { routePublishIntent = parsePublishNavigationIntent(options || {}) })
 function applyPublishContext(intent: PublishNavigationIntent | null) {
@@ -539,6 +553,7 @@ function applyDraft(draft: PublishDraft) {
  * guard cleanly.
  */
 function resetForm() {
+  draftStorageUnavailable.value = false
   publishItemId = createPublishId()
   publishOutcomeUncertain.value = false
   form.title = ''
@@ -879,6 +894,7 @@ async function onDetectLocation() {
   if (submitting.value) return
   const locationAccountToken = publishPageAccountToken
   if (!locationAccountToken || !isAccountRequestCurrent(locationAccountToken)) return
+  locationFeedback.value = ''
   const result = await detectLocation()
   if (submitting.value) return
   if (
@@ -896,6 +912,7 @@ async function onDetectLocation() {
      * though it's no longer routed through the toast path here.
      */
     if (result.reason === 'permission_denied') {
+      locationFeedback.value = t('publish.gpsPermissionDenied')
       permissionModalVisible.value = true
       return
     }
@@ -906,20 +923,23 @@ async function onDetectLocation() {
       geocode_failed: 'publish.gpsGeocodeFailed',
       unsupported: 'publish.gpsUnsupported',
     }
+    locationFeedback.value = t(reasonKey[result.reason] || 'publish.gpsUnknownError')
     uni.showToast({
-      title: t(reasonKey[result.reason] || 'publish.gpsUnknownError'),
+      title: locationFeedback.value,
       icon: 'none',
       duration: 2500,
     })
     return
   }
   form.location = result.location
+  detectedLocationLabel.value = result.location
 }
 
 function onSpotChipTap(spot: CampusSpot) {
   if (submitting.value) return
   const label = spotLabel(spot)
   form.location = label
+  detectedLocationLabel.value = ''
 }
 
 async function onSubmit() {
@@ -1100,9 +1120,11 @@ async function onSubmit() {
     publishOutcomeUncertain.value = true
     submittedImages = images
     imageList.value = images
-    // Checkpoint the logical id and durable photo URLs before the write. A
-    // reload while its response is lost must retry this same listing.
-    if (!saveDraft(images)) throw new Error(t('publish.draftSaveFailed'))
+    // Prefer a durable checkpoint, but quota/private-browsing restrictions
+    // must not disable publication. The current page retains the same logical
+    // id and uploaded URLs for reconciliation/retry if the response is lost.
+    // Be explicit that a reload cannot restore an unsaved draft.
+    draftStorageUnavailable.value = !saveDraft(images)
     const newItem = await createItem(payload, {
       accountToken: submitAccountToken,
       confirmSuspectedAd,
@@ -1205,6 +1227,8 @@ async function onSubmit() {
 </script>
 
 <style lang="scss" scoped>
+.location-result { margin: 0 16px 12px; padding: 10px 12px; display: flex; align-items: flex-start; gap: 8px; border-radius: 10px; background: var(--bg-elev-2); color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+.location-result .u-icon { flex-shrink: 0; margin-top: 2px; }
 /* #ifdef H5 */
 .form [aria-disabled="true"] { cursor: wait; opacity: 0.65; }
 /* #endif */
@@ -1254,7 +1278,8 @@ async function onSubmit() {
 /* #endif */
 
 /* ========== Form ========== */
-.form { background: var(--bg-elev-1); }
+.form {
+  animation: u-fade-in var(--dur-2, 220ms) var(--ease-warm, ease-out); background: var(--bg-elev-1); }
 /* 出售 / 求购 segmented toggle at the top of the form. */
 .listing-type-seg {
   display: flex; gap: 8px; padding: 14px 16px 0;
