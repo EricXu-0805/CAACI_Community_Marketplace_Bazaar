@@ -348,7 +348,7 @@ const zh: Record<string, string> = {
   'publish.priceTooHighConfirm': '确认发布',
   'publish.priceTooHighCancel': '返回修改',
   'moderation.adTitle': '这看起来像广告',
-  'moderation.adBody': '这看起来像招揽站外服务的广告。香槟集市只用于同学之间交易物品。仍要发布吗？',
+  'moderation.adBody': '这看起来像招揽站外服务的广告。Illini 集市只用于同学之间交易物品。仍要发布吗？',
   'moderation.adConfirm': '仍要发布',
   'moderation.adCancel': '返回修改',
   'publish.priceExceedsLimit': '价格超出系统限制（最高 $1,000,000）',

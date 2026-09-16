@@ -1,6 +1,7 @@
 # 微信小程序上线与验收
 
-> **2026-09-14 更新。** 当前已在微信开发者工具 RC 2.02.2607161 / 基础库 3.17.2
+> **2026-09-16 更新。** 本轮已完成网站一次性码关联微信的受控候选，真实托管Auth/数据库演练通过（微信身份返回仍为模拟）；生产未开启。详见[账号关联启用说明](release/2026-09-16-wechat-account-link.md)。
+> 2026-09-14 历史设备证据： 当前已在微信开发者工具 RC 2.02.2607161 / 基础库 3.17.2
 > 运行生产公开商品的首页、详情和登录引导，并检查 iPhone/iPad 模拟尺寸。
 > 这不是已上传体验版、真机双账号闭环或微信审核通过。最新完整证据见
 > [本轮跨平台报告](audit/2026-09-14-platform-readiness.md)。
@@ -101,7 +102,7 @@ node ../scripts/verify-build-artifact.mjs dist/build/mp-weixin none
 的包体说明；[工信部 APP 备案解读](https://www.miit.gov.cn/zwgk/zcjd/art/2023/art_39b4f1acc36745b98478e0ec3e07128d.html)。
 备案适用性与具体类目以该账号主体/服务范围及微信后台核实结果为准。
 
-## 8. wx.login silent sign-in — deployment guide
+## 8. 受控微信登录与已有账号关联 — deployment guide
 
 > **首版状态（2026-08-01）**：本节是兼容与未来激活手册，不是当前发布步骤。
 > 首版小程序只显示邮箱/密码，微信快捷登录入口隐藏；H5 的 Google OAuth 也不
@@ -203,10 +204,10 @@ push an empty commit or click an ad-hoc production “Redeploy” merely to pick
 configuration; environment changes do not affect an already-running deployment,
 so configuration and artifact promotion must stay in the same approved release.
 
-The route deliberately has no unauthenticated configuration/readiness oracle:
+The GET route does not expose credentials or configuration. When login is enabled, a bounded POST `capabilities` action returns only public `login` / `account_link` booleans; this controls visible entries and is not evidence that a real provider flow has passed:
 
 ```bash
-curl -i https://illinimarket.com/api/auth/wechat-login
+curl -i https://www.illinimarket.com/api/auth/wechat-login
 ```
 
 Expect `405 method_not_allowed`. Verify readiness with a temporary WeChat
@@ -235,37 +236,19 @@ npm run build:mp-weixin
 # future build that deliberately re-enables WeChat identity.
 ```
 
-Future re-enable happy path:
-1. Click "微信一键登录" → DevTools simulates wx.login and returns a code
-2. Edge function exchanges code → openid (if AppSecret is wrong or
-   code is fake, you'll see `wechat_exchange_failed` and a `wxErrcode`
-   — look it up in the [WeChat error code table][wxerr])
-3. Admin `generate_link(type=magiclink)` creates or reuses the hidden
-   `wx_<openid>@wechat.placeholder` Auth user; `/auth/v1/verify` exchanges the
-   one-time token hash for a GoTrue session; no email is sent
-4. A compare-and-set profile update binds the openid/unionid only if the row is
-   still unbound; a conflicting identity fails closed instead of overwriting it
-5. Page reLaunches to home; in Supabase table editor, look for a row
-   in profiles with `wechat_openid = o<something>` matching the
-   DevTools openid
+Future re-enable matrix (only after the linked release gates):
+1. Website user signs in recently, opens Settings → Link WeChat, and generates a five-minute one-time code.
+2. Mini-program chooses “Used the website? Link your account”, obtains a fresh wx.login code, and previews the nickname/masked email of the target. It does not send a password, user ID or client-provided openid as proof.
+3. A second fresh wx.login and explicit confirmation atomically bind the identity. GoTrue issues a session for the original website user ID; no email, password transfer or Google metadata overwrite.
+4. Returning WeChat login resolves the bound original account first. Unbound login does not create a new account silently; new users must choose registration and accept the applicable agreements.
+5. Verify conflicts, cancellation, expired/replayed codes, revoked website sessions, account switching and network loss. Two pre-existing accounts with content are not merged automatically. A failed response after successful binding can be followed by the ordinary bound login path; never create a fallback duplicate.
 
 [wxerr]: https://developers.weixin.qq.com/miniprogram/dev/framework/server-ability/backend-api.html
 
 ### 8.5 Current limits and required real-device checks
 
-- **No account linking.** An email user who later signs in with
-  WeChat will get a SEPARATE profile row. No UX to merge them
-  yet. Short-term workaround: force users to pick one identity
-  per device. Long-term: add a settings page action "bind WeChat
-  to this account" that sends the js_code along with the current
-  email session JWT, and have the edge function merge if and only
-  if the email session matches.
-- **No user profile fetch from WeChat.** We accept `nickname` and
-  `avatar_url` from the client, but the client has to call
-  `wx.getUserProfile` first and pass them in. The current login
-  button does not do this — it just wx.logins for openid. Add
-  nickname/avatar capture to the button if you want prefilled
-  profiles.
+- **Controlled linking implemented, production disabled.** Website proof uses a recent live session; WeChat proof comes only from the provider exchange. Preview, explicit confirmation and original user ID preservation are required. Code storage is hashed, proof is short-lived, and MFA accounts are not downgraded. See the linked release note for all three feature flags and retention.
+- **No automatic WeChat profile import.** Nickname/avatar editing remains separate from identity proof. Do not infer account ownership from a matching nickname or avatar, or request extra profile permissions just to bind an account.
 - **Placeholder email compatibility.** Existing identities keep the historical
   `wx_<openid>@wechat.placeholder` mapping. Email normalization means two
   openids differing only by case would collide; the route rejects identity
@@ -344,3 +327,11 @@ old plaintext map or the corresponding Auth passwords. Use this order:
 Do this first with a disposable project/account. Password rotation may affect
 existing sessions or trigger security notifications depending on current Auth
 settings; verify those effects before touching the full roster.
+
+## 9. 2026-09-16 关联候选回执
+
+本地迁移 `20260916073035_wechat_account_link_tickets.sql` 仅应用staging；管理工具生成的远端版本号为 `20260916080340`、同名 `wechat_account_link_tickets`。后续迁移对账需按此映射确认，不直接重写账本或再次运行同一建表迁移。生产未应用。
+
+2866988 修复真实Auth返回的12字符刷新令牌被前后端误拒绝的问题；同一无密码合成网站账号通过真实Auth/会话/SDK/数据库完成关联与再次登录，测试账号已删除。此结果不等于真实微信提供方、体验版或平台审核通过。
+
+启用前需要 `WECHAT_LOGIN_ENABLED`、`WECHAT_ACCOUNT_LINK_ENABLED`、`WECHAT_LINK_RETENTION_ENABLED` 的明确目标配置。暂停新增关联仍需保留旧用户登录和票据清理。当前共享网络入口限流可能影响同一校园NAT下的集中首次登录；真实体验版阶段应专门验证429提示和恢复，再按观测调整，不先无限放宽。

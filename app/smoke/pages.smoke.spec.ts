@@ -21,7 +21,19 @@ const PAGES = [
   'pages/saved-searches/index', 'pages/search/index', 'pages/onboarding/index',
   'pages/reconsent/index', 'pages/profile-recovery/index',
   'pages/suspended/index', 'pages/admin/index', 'pages/my-items/index',
+  'pages/account-link/index',
 ]
+
+// The Vite frontend-only server has no Edge API. Represent the production
+// disabled capability response explicitly; unexpected actions still fail.
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/auth/wechat-login', async route => {
+    if (route.request().method() === 'POST'
+      && route.request().postDataJSON()?.action === 'capabilities') {
+      await route.fulfill({ contentType: 'application/json', body: '{"login":false,"account_link":false}' })
+    } else await route.fallback()
+  })
+})
 
 // Console noise that is expected and not a regression.
 const IGNORE = [
@@ -126,6 +138,8 @@ test('smoke route list stays in sync with pages.json', () => {
     readFileSync(resolve(process.cwd(), 'src/pages.json'), 'utf8')
       .replace(/^\s*\/\/.*$/gm, ''),
   ).pages.map((page: { path: string }) => page.path)
+  // Uni assigns '/' and the mini-program entry point to the first page.
+  expect(configured[0]).toBe('pages/index/index')
   expect([...PAGES].sort()).toEqual([...configured].sort())
 })
 

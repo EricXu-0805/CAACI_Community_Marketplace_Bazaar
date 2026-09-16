@@ -28,6 +28,10 @@
 5. 在目标环境启用 `WECHAT_LOGIN_ENABLED=true`、`WECHAT_ACCOUNT_LINK_ENABLED=true`、`WECHAT_LINK_RETENTION_ENABLED=true`；核对微信 AppID/Secret、合法域名、隐私接口声明、内容安全回调及审核配置。凭据只在服务端。
 6. 确认设置/登录入口出现、真实流程正常、小时清理成功后，再提交平台审核。暂停新关联仅关闭 ACCOUNT_LINK，保留 LOGIN（既有关联用户仍可登录）和 RETENTION；严重登录事件按独立应急策略处理。
 
+## 迁移对账
+
+staging 管理工具将本地 `20260916073035_wechat_account_link_tickets.sql` 记录为 `20260916080340 / wechat_account_link_tickets`。此为本轮核实映射，不代表两次应用；生产未应用。后续部署前按映射确认，不能盲目重跑或重写已应用迁移。
+
 ## 可核查证据
 
 - `scripts/wechat-account-link.test.mjs`：真实本地 PostgreSQL 权限/竞态/重放/失效/MFA/清理。

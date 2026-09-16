@@ -565,7 +565,7 @@ const defaultAvatarSrc = computed(() =>
 const logoSrc = computed(() =>
   isDark.value ? '/static/logo-mark-dark.svg' : '/static/logo-mark.svg'
 )
-const brandEyebrow = computed(() => (lang.value === 'zh' ? 'ILLINI MARKET' : '香槟集市 · CAACI'))
+const brandEyebrow = computed(() => (lang.value === 'zh' ? 'ILLINI MARKET' : 'Illini 集市 · CAACI'))
 const themeLabel = computed(() =>
   isDark.value ? (lang.value === 'zh' ? '暗' : 'Dark') : (lang.value === 'zh' ? '亮' : 'Light'),
 )

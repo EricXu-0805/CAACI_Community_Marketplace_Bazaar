@@ -1,12 +1,12 @@
 {
 	"pages": [
-		{ "path": "pages/account-link/index", "style": { "navigationStyle": "custom" } },
 		{
 			"path": "pages/index/index",
 			"style": {
 				"navigationStyle": "custom"
 			}
 		},
+		{ "path": "pages/account-link/index", "style": { "navigationStyle": "custom" } },
 		{
 			"path": "pages/plaza/index",
 			"style": {
