@@ -9,6 +9,10 @@ terracotta brand, code-based (not magic links).
 2. For each template:
    - `Confirm signup` → paste contents of `confirm-signup.html`
    - `Reset password` → paste contents of `reset-password.html`
+   - Signup subject: `Illini Market · 确认邮箱 / Verify your email`
+   - Recovery subject: `Illini Market · 重置密码 / Reset your password`
+   The subject is a separate dashboard setting; changing the HTML `<title>`
+   does not change the subject shown in the inbox.
 3. **Both templates use `{{ .Token }}` (the 6-digit code), NOT
    `{{ .ConfirmationURL }}`.** The app's reset-password page and signup-confirm
    panel ask the user to type the code (`verifyOtp`), so the email must carry the
@@ -35,3 +39,9 @@ From address is `illinimarket.com`, not CAACI. Configure under
 
 Open the `.html` files directly in a browser. `{{ .Token }}` renders literally
 in the preview; Supabase substitutes the real 6-digit code at send time.
+
+After applying, send a real signup confirmation to a Gmail `+` alias owned by
+the tester. Check the received subject, sender/domain, current `Illini 集市`
+branding, website wording, six-digit code and its verification. Check recovery
+mail separately. Gmail aliases share the existing inbox; this does not create
+a new Google identity or validate Google's own OAuth notification email.
