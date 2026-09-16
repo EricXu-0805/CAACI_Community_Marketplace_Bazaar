@@ -12,14 +12,14 @@
       @keydown="onDialogKeydown"
     >
       <text :id="titleId" class="pdm-title t-h2">{{ t('publish.permissionModalTitle') }}</text>
-      <text :id="bodyId" class="pdm-body t-body">{{ t('publish.permissionModalBody') }}</text>
+      <text :id="bodyId" class="pdm-body t-body">{{ t(permissionBodyKey) }}</text>
 
       <view class="pdm-actions">
         <!-- "Open Settings" only where it can actually deep-link: mp-weixin's
              uni.openSetting(). On H5 there is NO API to open browser/OS
              permission settings, so the button would just dismiss — a
              "clicked it, nothing happened" trust hit. The body text already
-             gives the manual iOS path, so H5 shows a single honest "Got it". -->
+             explains the browser permission setting, so H5 shows a single honest "Got it". -->
         <!-- #ifdef MP-WEIXIN -->
         <UButton variant="primary" block class="pdm-btn" @click="onOpenSettings">
           {{ t('publish.permissionModalOpenSettings') }}
@@ -44,6 +44,10 @@ import { useI18n } from '../composables/useI18n'
 import UButton from './UButton.vue'
 
 const { t } = useI18n()
+let permissionBodyKey = 'publish.permissionModalBody'
+// #ifdef MP-WEIXIN
+permissionBodyKey = 'publish.permissionModalBodyMp'
+// #endif
 
 const props = defineProps<{
   visible: boolean
@@ -85,8 +89,7 @@ function onDismiss() {
  *   H5 (iOS Safari / Android Chrome / desktop): there is no public
  *     API to deep-link into browser permission settings. The CTA
  *     here is honest: we emit close, and the body text told the
- *     user the manual Settings path (Safari → Settings → Websites
- *     → Location). Not pretending to open settings prevents the
+ *     user to allow location for this site in their browser settings. Not pretending to open settings prevents the
  *     "I clicked it but nothing happened" trust hit.
  */
 function onOpenSettings() {

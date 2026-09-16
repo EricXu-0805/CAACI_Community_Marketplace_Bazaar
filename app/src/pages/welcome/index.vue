@@ -1,6 +1,7 @@
 <template>
   <view class="page" :class="mpThemeClass" :style="mpChrome">
     <text class="sr-only" role="heading" aria-level="1">{{ t('app.name') }}</text>
+    <LanguageToggle class="welcome-language" />
     <swiper
       class="swiper focusable"
       :current="current"
@@ -47,6 +48,7 @@
 </template>
 
 <script setup lang="ts">
+import LanguageToggle from '../../components/LanguageToggle.vue'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { ref, computed } from 'vue'
@@ -137,7 +139,8 @@ function finish() {
   height: 100vh; height: 100dvh; background: var(--bg-page); display: flex;
   flex-direction: column; max-width: 480px; margin: 0 auto;
 }
-.swiper { flex: 1; }
+.welcome-language { padding-top: calc(8px + var(--mp-status-bar, env(safe-area-inset-top, 0px)) + var(--mp-navbar-height, 0px)); }
+.swiper { flex: 1; min-height: 0; }
 .slide {
   height: 100%; display: flex; flex-direction: column;
   align-items: center; justify-content: center; padding: 0 40px; gap: 16px;

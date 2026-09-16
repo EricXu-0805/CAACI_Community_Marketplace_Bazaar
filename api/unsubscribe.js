@@ -145,7 +145,7 @@ async function rateHit(bucket, max, windowSecs) {
 
 function page(titleZh, titleEn, subZh, subEn) {
   const html = `<!DOCTYPE html>
-<html lang="zh"><head><meta charset="utf-8">
+<html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${titleEn}</title>
 <style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F7F4EE;font-family:-apple-system,'Segoe UI',sans-serif;color:#2A2521}
@@ -153,7 +153,7 @@ function page(titleZh, titleEn, subZh, subEn) {
 .seal{display:inline-block;width:44px;height:44px;line-height:44px;border-radius:11px;background:#C74A2F;color:#fff;font-weight:700;font-size:22px;margin-bottom:16px}
 h1{font-size:19px;margin:0 0 6px}p{font-size:13px;color:#8B8478;line-height:1.6;margin:0}</style>
 </head><body><div class="card"><div class="seal">集</div>
-<h1>${titleZh} · ${titleEn}</h1><p>${subZh}<br>${subEn}</p></div></body></html>`
+<h1>${titleEn} · <span lang="zh">${titleZh}</span></h1><p>${subEn}<br><span lang="zh">${subZh}</span></p></div></body></html>`
   return new Response(html, {
     status: 200,
     headers: HTML_HEADERS,
@@ -166,7 +166,7 @@ h1{font-size:19px;margin:0 0 6px}p{font-size:13px;color:#8B8478;line-height:1.6;
 function confirmPage(token) {
   const action = `/api/unsubscribe?t=${encodeURIComponent(token)}`
   const html = `<!DOCTYPE html>
-<html lang="zh"><head><meta charset="utf-8">
+<html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Unsubscribe</title>
 <style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F7F4EE;font-family:-apple-system,'Segoe UI',sans-serif;color:#2A2521}
@@ -175,9 +175,9 @@ function confirmPage(token) {
 h1{font-size:19px;margin:0 0 6px}p{font-size:13px;color:#8B8478;line-height:1.6;margin:0 0 20px}
 button{appearance:none;border:0;border-radius:10px;background:#C74A2F;color:#fff;font-size:15px;font-weight:600;padding:12px 28px;cursor:pointer}</style>
 </head><body><div class="card"><div class="seal">集</div>
-<h1>退订邮件提醒 · Unsubscribe</h1>
-<p>点击下方按钮，将不再收到集市的邮件提醒。<br>Click below to stop receiving Illini Market email reminders.</p>
-<form method="POST" action="${action}"><button type="submit">确认退订 · Confirm unsubscribe</button></form>
+<h1>Unsubscribe · <span lang="zh">退订邮件提醒</span></h1>
+<p>Click below to stop receiving Illini Market email reminders.<br><span lang="zh">点击下方按钮，将不再收到集市的邮件提醒。</span></p>
+<form method="POST" action="${action}"><button type="submit">Confirm unsubscribe · <span lang="zh">确认退订</span></button></form>
 </div></body></html>`
   return new Response(html, {
     status: 200,

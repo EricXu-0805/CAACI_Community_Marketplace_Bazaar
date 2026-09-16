@@ -1029,10 +1029,10 @@ onLoad((options) => {
  */
 onShareAppMessage(() => {
   const it = item.value
-  if (!it) return { title: 'Illini Market · UIUC 校园二手交易', path: '/pages/index/index' }
+  if (!it) return { title: t('share.marketplace'), path: '/pages/index/index' }
   const priceLabel = listingPriceLabel(it, t)
   return {
-    title: `${priceLabel} · ${it.title}`,
+    title: `${priceLabel} · ${localize(it.title_i18n, it.title)}`,
     path: `/pages/detail/index?id=${it.id}`,
     imageUrl: it.images?.[0] ? thumbUrl(it.images[0], 'card') : '',
   }
@@ -1040,10 +1040,10 @@ onShareAppMessage(() => {
 
 onShareTimeline(() => {
   const it = item.value
-  if (!it) return { title: 'Illini Market · UIUC 校园二手交易' }
+  if (!it) return { title: t('share.marketplace') }
   const priceLabel = listingPriceLabel(it, t)
   return {
-    title: `${priceLabel} · ${it.title}`,
+    title: `${priceLabel} · ${localize(it.title_i18n, it.title)}`,
     query: `id=${it.id}`,
     imageUrl: it.images?.[0] ? thumbUrl(it.images[0], 'card') : '',
   }

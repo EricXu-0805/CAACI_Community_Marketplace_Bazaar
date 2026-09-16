@@ -108,7 +108,7 @@ function syncUniLocale(lang: Lang) {
   try { uni.setLocale(lang === 'zh' ? 'zh-Hans' : 'en') } catch {}
   // #ifdef H5
   /*
-   * index.html declares lang="zh" statically, and says why: the CSP allows no
+   * index.html declares lang="en" statically, and says why: the CSP allows no
    * inline script, so the shell cannot follow the reader's saved choice before
    * any script runs. Nothing corrected it afterwards, so an English reader's
    * entire document stayed declared as Chinese on every route — a screen

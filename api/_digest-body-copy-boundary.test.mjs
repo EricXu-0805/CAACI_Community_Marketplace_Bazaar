@@ -36,13 +36,14 @@ async function loadRenderer() {
     src.slice(src.indexOf('const TYPE_ICON ='), src.indexOf('\n', src.indexOf('const TYPE_ICON ='))),
     extract(src, 'const BODY_SENTINELS = {', 'BODY_SENTINELS').replace(/\n\}\n$/, '\n}\n'),
     extract(src, 'const TITLE_SENTINELS = {', 'TITLE_SENTINELS').replace(/\n\}\n$/, '\n}\n'),
+    extract(src, 'const BILINGUAL_TITLES = {', 'BILINGUAL_TITLES'),
     extract(src, 'function titleText(', 'titleText'),
     src.slice(src.indexOf('const PRICE_BODY_RE ='), src.indexOf('\n', src.indexOf('const PRICE_BODY_RE ='))),
     extract(src, 'function priceText(', 'priceText'),
     extract(src, 'function bodyText(', 'bodyText'),
     extract(src, 'function rowHtml(', 'rowHtml'),
   ].join('\n')
-  return new Function(`${js}\nreturn { rowHtml, BODY_SENTINELS, TITLE_SENTINELS }`)()
+  return new Function(`${js}\nreturn { rowHtml, BODY_SENTINELS, TITLE_SENTINELS, BILINGUAL_TITLES }`)()
 }
 
 // null is a reader who has never picked a language; the template falls back to
@@ -226,5 +227,28 @@ test('a title that is real copy is printed as written', async () => {
   const { rowHtml } = await loadRenderer()
   for (const lang of READERS) {
     assert.match(rowHtml({ type: 'sold', title: 'IKEA 书桌 desk', body: '' }, lang), /IKEA 书桌 desk/)
+  }
+})
+
+test('legacy system titles follow the selected language without rewriting user titles', async () => {
+  const { rowHtml, BILINGUAL_TITLES } = await loadRenderer()
+  const source = await readFile(new URL('../app/src/api/notifications.ts', import.meta.url), 'utf8')
+  const mappings = [...source.matchAll(/'([^']+)': '(notif\.title[^']+)'/g)]
+  assert.equal(Object.keys(BILINGUAL_TITLES).length, mappings.length)
+  for (const [_, raw, key] of mappings) {
+    const forms = BILINGUAL_TITLES[raw]
+    for (const [index, lang] of ['en', 'zh'].entries()) {
+      const catalog = await readFile(APP_I18N[index], 'utf8')
+      const copy = new RegExp(`'${key}':\\s*'([^']*)'`).exec(catalog)
+      assert.equal(forms[lang], copy[1])
+      const html = rowHtml({ type: 'system', title: raw, body: '' }, lang)
+      assert.ok(html.includes(forms[lang]), raw)
+      assert.ok(!html.includes(forms[lang === 'en' ? 'zh' : 'en']), raw)
+    }
+    const fallback = rowHtml({ type: 'system', title: raw, body: '' }, null)
+    assert.ok(fallback.indexOf(forms.en) < fallback.indexOf(forms.zh), raw)
+  }
+  for (const lang of ['en', 'zh', null]) {
+    assert.match(rowHtml({ type: 'sold', title: '书桌 · study desk', body: '' }, lang), /书桌 · study desk/)
   }
 })

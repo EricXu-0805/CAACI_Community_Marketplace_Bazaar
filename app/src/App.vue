@@ -52,7 +52,7 @@ const {
   ensureProfileReady,
   refreshProfile,
 } = useAuth()
-const { t } = useI18n()
+const { t, lang } = useI18n()
 useTheme()
 
 /*
@@ -847,7 +847,7 @@ function syncDocumentTitle() {
     path = (window.location.hash || '').replace(/^#/, '').split('?')[0]
   } catch { /* non-browser */ }
   if (!path) path = '/' + currentPagePath().replace(/^\//, '')
-  if (path === '/') return
+  if (path === '/') path = '/pages/index/index'
 
   const name = t('app.name')
   const key = PAGE_TITLE_KEYS[path]
@@ -873,6 +873,7 @@ function installDocumentTitleSync() {
   const titleEl = document.querySelector('title')
   if (titleEl) new MutationObserver(schedule).observe(titleEl, { childList: true, characterData: true, subtree: true })
   window.addEventListener('hashchange', schedule)
+  watch(lang, schedule)
   schedule()
 }
 

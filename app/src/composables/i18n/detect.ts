@@ -42,7 +42,11 @@ export function detectSystemLang(): Lang {
     // #endif
   } catch {}
 
-  const lower = String(raw).toLowerCase()
+  return resolveSystemLang(raw)
+}
+
+export function resolveSystemLang(raw: unknown): Lang {
+  const lower = String(raw ?? '').trim().toLowerCase().replace(/_/g, '-')
   if (!lower) return DEFAULT_LANG
 
   if (lower.startsWith('zh')) {

@@ -1,6 +1,7 @@
 <template>
   <view class="page" :class="mpThemeClass" :style="mpChrome">
     <view class="header">
+      <LanguageToggle class="auth-language" />
       <image class="logo-mark-img" :src="logoSrc" :alt="t('app.name')" mode="aspectFit" />
       <text class="app-name" role="heading" aria-level="1">{{ t('resetPw.title') }}</text>
       <text class="app-desc">{{ t('resetPw.hint') }}</text>
@@ -59,6 +60,7 @@
 </template>
 
 <script setup lang="ts">
+import LanguageToggle from '../../components/LanguageToggle.vue'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 /*
@@ -270,6 +272,7 @@ function goLogin() {
   padding: 64px 0 32px;
   padding-top: calc(64px + var(--mp-status-bar, env(safe-area-inset-top, 0px)));
 }
+.auth-language { align-self: stretch; padding: 0 0 16px; }
 .logo-mark-img {
   width: 56px; height: 56px; border-radius: 14px;
   box-shadow: var(--shadow-soft);

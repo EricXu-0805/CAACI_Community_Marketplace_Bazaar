@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 /**
  * The document has to say which language it is actually in.
  *
- * app/index.html declares lang="zh" and explains why: the CSP allows no inline
+ * app/index.html declares lang="en" and explains why: the CSP allows no inline
  * script, so the shell cannot follow the reader's saved choice before any
  * script has run. That is a fine starting value. What was missing is anything
  * correcting it afterwards — so a reader who picked English got the whole app,
@@ -49,15 +49,16 @@ test('a saved Chinese preference is declared too, so this is not a constant', as
   }).toBe('zh')
 })
 
-test('tapping the language toggle updates the declaration without a reload', async ({ page }) => {
+test('language selection updates labels and title and survives a reload', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('welcomed', '1')
-    localStorage.setItem('lang', 'zh')
+    if (!localStorage.getItem('lang')) localStorage.setItem('lang', 'zh')
   })
   await page.goto('/#/pages/index/index', { waitUntil: 'domcontentloaded' })
   await expect.poll(() => docLang(page), { timeout: 20_000 }).toBe('zh')
 
   // .mh-lang is the header toggle on Home, wired straight to toggleLang.
+  await expect(page).toHaveTitle('首页 · Illini 集市')
   const toggle = page.locator('.mh-lang').first()
   await expect(toggle).toBeVisible({ timeout: 15_000 })
   await toggle.click()
@@ -66,4 +67,36 @@ test('tapping the language toggle updates the declaration without a reload', asy
     message: 'the declaration did not follow the switch the reader just made',
     timeout: 20_000,
   }).toBe('en')
+  await expect(page).toHaveTitle('Home · Illini Market')
+  await page.reload()
+  await expect.poll(() => docLang(page)).toBe('en')
+  await expect(page).toHaveTitle('Home · Illini Market')
+  await toggle.click()
+  await expect(page).toHaveTitle('首页 · Illini 集市')
 })
+
+for (const [device, viewport] of [
+  ['phone', { width: 390, height: 844 }],
+  ['tablet', { width: 1024, height: 768 }],
+  ['desktop', { width: 1440, height: 900 }],
+] as const) {
+  test(`${device}: a new visitor can change language on welcome and sign-in`, async ({ page }) => {
+    await page.setViewportSize(viewport)
+    await page.addInitScript(() => {
+      if (!localStorage.getItem('lang')) localStorage.setItem('lang', 'en')
+    })
+    await page.goto('/#/pages/welcome/index', { waitUntil: 'domcontentloaded' })
+    const language = page.locator('.language-choice')
+    await language.getByRole('button', { name: 'Switch to Chinese' }).click()
+    await expect.poll(() => docLang(page)).toBe('zh')
+    await expect(page).toHaveTitle('Illini 集市')
+    await page.goto('/#/pages/login/index', { waitUntil: 'domcontentloaded' })
+    await language.getByRole('button', { name: '切换到英文' }).click()
+    await expect(page).toHaveTitle('Sign In · Illini Market')
+    await expect(page.locator('.tab-bar')).toContainText('Sign In')
+    await page.reload()
+    await expect.poll(() => docLang(page)).toBe('en')
+    await expect(language.getByRole('button', { name: 'Switch to Chinese' })).toBeVisible()
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  })
+}

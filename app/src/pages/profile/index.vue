@@ -505,9 +505,9 @@ function onMyTabKeydown(event: KeyboardEvent, current: 'active' | 'sold') {
 
 onShareAppMessage(() => {
   const u = currentUser.value
-  if (!u) return { title: 'Illini Market · UIUC 校园二手交易', path: '/pages/index/index' }
+  if (!u) return { title: t('share.marketplace'), path: '/pages/index/index' }
   return {
-    title: `${u.nickname || '我'} 的 Illini Market 主页`,
+    title: t('share.profile', { name: u.nickname || t('app.user') }),
     path: `/pages/seller/index?id=${u.id}`,
     imageUrl: safeAvatarThumbUrl(u.avatar_url, u.id) || defaultAvatarSrc.value,
   }
@@ -515,9 +515,9 @@ onShareAppMessage(() => {
 
 onShareTimeline(() => {
   const u = currentUser.value
-  if (!u) return { title: 'Illini Market · UIUC 校园二手交易' }
+  if (!u) return { title: t('share.marketplace') }
   return {
-    title: `${u.nickname || '我'} 的 Illini Market 主页`,
+    title: t('share.profile', { name: u.nickname || t('app.user') }),
     query: `id=${u.id}`,
     imageUrl: safeAvatarThumbUrl(u.avatar_url, u.id) || defaultAvatarSrc.value,
   }

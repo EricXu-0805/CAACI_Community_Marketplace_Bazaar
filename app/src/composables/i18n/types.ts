@@ -15,11 +15,11 @@
 export type Lang = 'zh' | 'en' | 'ja' | 'ko' | 'zh-Hant'
 
 export const SUPPORTED_LANGS: Array<{ code: Lang; label: string }> = [
-  { code: 'zh', label: '中文' },
   { code: 'en', label: 'English' },
+  { code: 'zh', label: '中文' },
 ]
 
-export const DEFAULT_LANG: Lang = 'zh'
+export const DEFAULT_LANG: Lang = 'en'
 
 export function coerceLang(v: unknown): Lang | null {
   return SUPPORTED_LANGS.some((l) => l.code === v) ? (v as Lang) : null

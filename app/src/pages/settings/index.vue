@@ -174,7 +174,7 @@ import { computed, ref, onUnmounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { wechatCapabilities } from '../../api/wechatAccountLink'
 import { useAuth } from '../../composables/useAuth'
-import { useI18n } from '../../composables/useI18n'
+import { useI18n, SUPPORTED_LANGS } from '../../composables/useI18n'
 import { useSupabase, platformFetch } from '../../composables/useSupabase'
 import { useTheme, type ThemePref } from '../../composables/useTheme'
 import { useHistory } from '../../composables/useHistory'
@@ -236,22 +236,8 @@ const stopAccountTransitionListener = onAccountTransition(() => {
 
 onUnmounted(stopAccountTransitionListener)
 
-/*
- * Language picker.
- *
- * Source of truth for the list of supported locales. Adding a new one
- * (say 'ja', 'ko', 'zh-Hant') is: (1) add an entry here, (2) fill in
- * the matching Record<string, string> block in useI18n.ts. Nothing
- * else in the app hard-codes 'zh' or 'en' for UI, because the useI18n
- * API hands out the current lang via a computed ref and every page
- * pulls labels through t(). For item/post content bilingualism see
- * the Wave 3b notes — that still needs a DB column.
- */
-type SupportedLang = 'zh' | 'en'
-const LANGUAGES: Array<{ code: SupportedLang; label: string }> = [
-  { code: 'zh', label: '中文' },
-  { code: 'en', label: 'English' },
-]
+// Keep the picker aligned with the supported dictionaries.
+const LANGUAGES = SUPPORTED_LANGS
 
 const currentLangLabel = computed(
   () => LANGUAGES.find(l => l.code === lang.value)?.label || 'English'

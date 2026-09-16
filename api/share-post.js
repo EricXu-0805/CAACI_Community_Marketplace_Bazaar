@@ -157,7 +157,7 @@ async function responseForRequest(req, boundary) {
   if (id && SUPABASE_URL && SUPABASE_ANON_KEY) {
     const rows = await readPublicRows(
       `posts_visible?id=eq.${encodeURIComponent(id)}`
-      + '&select=id,content,images,user_id&limit=1',
+      + '&select=id,content,images,user_id,source_lang&limit=1',
     )
     post = rows[0] || null
     if (post?.user_id && UUID_RE.test(post.user_id)) {
@@ -168,16 +168,17 @@ async function responseForRequest(req, boundary) {
     }
   }
 
-  const firstLine = truncate((post?.content || '').split('\n')[0], 60) || 'Illini Market · 校园广场'
-  const title = post ? `${firstLine} — ${authorName || '用户'}` : 'Illini Market · 校园广场'
-  const desc = post ? (truncate(post.content || '', 160) || 'A post on Illini Market') : 'UIUC 校园广场 · Plaza'
+  const firstLine = truncate((post?.content || '').split('\n')[0], 60) || 'Illini Market · Campus Plaza'
+  const title = post ? `${firstLine} — ${authorName || 'User'}` : 'Illini Market · Campus Plaza'
+  const desc = post ? (truncate(post.content || '', 160) || 'A post on Illini Market') : 'UIUC Campus Plaza · 校园广场'
   const fallbackImage = `${site}/static/app-icon-512.png`
   const image = safeImageUrl(post?.images?.[0], fallbackImage, site)
   const canonical = post ? `${site}/#/pages/post/index?id=${id}` : site
   const escapedCanonical = escapeHtml(canonical)
 
+  const docLang = new Set(['zh', 'en', 'ja', 'ko', 'zh-Hant']).has(post?.source_lang) ? post.source_lang : 'en'
   const html = `<!DOCTYPE html>
-<html lang="zh">
+<html lang="${docLang}">
 <head>
 <meta charset="utf-8">
 <title>${escapeHtml(title)}</title>
@@ -196,7 +197,7 @@ async function responseForRequest(req, boundary) {
 <meta http-equiv="refresh" content="0; url=${escapedCanonical}">
 <style>body{margin:0;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f2f2f7;color:#636366}</style>
 </head>
-<body><p>Loading Illini Market...</p></body>
+<body><p lang="en">Loading Illini Market...</p></body>
 </html>`
 
   return new Response(html, {

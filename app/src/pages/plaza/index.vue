@@ -708,12 +708,12 @@ const viewportComposerStyle = computed(() => visibleHeight.value == null ? undef
 }))
 
 onShareAppMessage(() => ({
-  title: '校园广场 · Illini Market',
+  title: t('share.plaza'),
   path: '/pages/plaza/index',
 }))
 
 onShareTimeline(() => ({
-  title: '校园广场 · Illini Market',
+  title: t('share.plaza'),
 }))
 
 // Release the module-scoped feed on page unload so posts (with images +

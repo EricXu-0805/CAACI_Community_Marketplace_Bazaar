@@ -96,3 +96,22 @@ test('user-visible words come from the catalogs, not from the template', async (
   assert.ok(elements > 200, `only ${elements} <text> elements scanned`)
   assert.deepEqual(literals, [])
 })
+
+async function catalog(lang) {
+  const ts = await import('typescript')
+  const raw = await readFile(join(SRC_ROOT, `composables/i18n/messages/${lang}.ts`), 'utf8')
+  const js = ts.default.transpileModule(raw, { compilerOptions: { module: ts.default.ModuleKind.CommonJS } }).outputText
+  const exports = {}
+  new Function('exports', js)(exports)
+  return Object.values(exports)[0]
+}
+
+test('translations preserve interpolation parameters and English UI has no unintended Chinese', async () => {
+  const en = await catalog('en')
+  const zh = await catalog('zh')
+  const parameters = value => [...new Set([...value.matchAll(/\{(\w+)\}/g)].map(m => m[1]))].sort()
+  for (const [key, value] of Object.entries(en)) {
+    assert.deepEqual(parameters(value), parameters(zh[key]), `${key}: mismatched parameters`)
+    if (key !== 'lang.switch') assert.doesNotMatch(value, /\p{Script=Han}/u, key)
+  }
+})
