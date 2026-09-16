@@ -32,6 +32,7 @@ const detecting = ref(false)
 const LOCATION_CACHE_TTL_MS = 5 * 60 * 1000
 const LOCATION_FIX_TIMEOUT_MS = 15_000
 const GEOCODE_REQUEST_TIMEOUT_MS = 8_000
+const PERMISSION_QUERY_TIMEOUT_MS = 1_000
 let cachedLocationAt = 0
 // This epoch is intentionally independent of account ids. A -> anonymous -> B
 // and even two forced anonymous transitions must invalidate a device fix that
@@ -99,49 +100,57 @@ export function useLocation() {
     cachedLocation.value = ''
     cachedLocationAt = 0
 
-    /*
-     * Guard against runtimes where uni.getLocation is unavailable (rare
-     * — happens in some embedded webviews and on quickapp). Surface as
-     * 'unsupported' so the caller can show a distinct message instead
-     * of a generic "location failed" toast.
-     */
-    if (typeof uni === 'undefined' || typeof uni.getLocation !== 'function') {
-      return { ok: false, reason: 'unsupported' }
-    }
-
-    /*
-     * H5 permission preflight. On iOS Safari + Android Chrome a
-     * previously denied site-level permission causes
-     * navigator.geolocation.getCurrentPosition to reject *immediately*
-     * with code 1 — same shape as a fresh deny — making the failure
-     * indistinguishable. Querying permissions.state lets us
-     * short-circuit denied state without waking the geolocation
-     * subsystem and emit 'permission_denied' to the caller.
-     *
-     * Safe to no-op on mp-weixin (no navigator global) and on older
-     * browsers without Permissions API (typeof check + try/catch).
-     */
-    try {
-      const permsApi = (typeof navigator !== 'undefined' ? navigator.permissions : undefined) as
-        | {
-            query: (q: { name: 'geolocation' }) => Promise<{
-              state: 'granted' | 'denied' | 'prompt'
-            }>
-          }
-        | undefined
-      if (permsApi?.query) {
-        const status = await permsApi.query({ name: 'geolocation' })
-        if (!requestStillCurrent()) return { ok: false, reason: 'position_unavailable' }
-        if (status.state === 'denied') {
-          return { ok: false, reason: 'permission_denied' }
-        }
-      }
-    } catch {
-      /* Permissions API itself failed — fall through to getLocation. */
-    }
-
     detecting.value = true
     try {
+      /*
+       * Guard against runtimes where uni.getLocation is unavailable (rare
+       * — happens in some embedded webviews and on quickapp). Surface as
+       * 'unsupported' so the caller can show a distinct message instead
+       * of a generic "location failed" toast.
+       */
+      if (typeof uni === 'undefined' || typeof uni.getLocation !== 'function') {
+        return { ok: false, reason: 'unsupported' }
+      }
+
+      /*
+       * H5 permission preflight. On iOS Safari + Android Chrome a
+       * previously denied site-level permission causes
+       * navigator.geolocation.getCurrentPosition to reject *immediately*
+       * with code 1 — same shape as a fresh deny — making the failure
+       * indistinguishable. Querying permissions.state lets us
+       * short-circuit denied state without waking the geolocation
+       * subsystem and emit 'permission_denied' to the caller.
+       *
+       * Safe to no-op on mp-weixin (no navigator global) and on older
+       * browsers without Permissions API (typeof check + try/catch).
+       */
+      try {
+        const permsApi = (typeof navigator !== 'undefined' ? navigator.permissions : undefined) as
+          | {
+              query: (q: { name: 'geolocation' }) => Promise<{
+                state: 'granted' | 'denied' | 'prompt'
+              }>
+            }
+          | undefined
+        if (permsApi?.query) {
+          // Permission introspection is optional. Some embedded browsers never
+          // settle query(); don't leave the location button stuck on that step.
+          const status = await new Promise<{ state: string } | null>((resolve) => {
+            const timer = setTimeout(() => resolve(null), PERMISSION_QUERY_TIMEOUT_MS)
+            Promise.resolve().then(() => permsApi.query({ name: 'geolocation' }))
+              .then(resolve, () => resolve(null))
+              .finally(() => clearTimeout(timer))
+          })
+          if (!requestStillCurrent()) return { ok: false, reason: 'position_unavailable' }
+          if (status?.state === 'denied') {
+            return { ok: false, reason: 'permission_denied' }
+          }
+        }
+      } catch {
+        /* Permissions API itself failed — fall through to getLocation. */
+      }
+
+      if (!requestStillCurrent()) return { ok: false, reason: 'position_unavailable' }
       const res: UniApp.GetLocationSuccess = await new Promise((resolve, reject) => {
         let settled = false
         const timer = setTimeout(() => {
@@ -149,23 +158,35 @@ export function useLocation() {
           settled = true
           reject({ code: 3, message: 'location deadline exceeded' })
         }, LOCATION_FIX_TIMEOUT_MS)
-        uni.getLocation({
-          type: 'wgs84',
-          success: (value) => {
-            if (settled) return
-            settled = true
-            clearTimeout(timer)
-            resolve(value)
-          },
-          fail: (error) => {
-            if (settled) return
-            settled = true
-            clearTimeout(timer)
-            reject(error)
-          },
-        })
+        try {
+          uni.getLocation({
+            type: 'wgs84',
+            success: (value) => {
+              if (settled) return
+              settled = true
+              clearTimeout(timer)
+              resolve(value)
+            },
+            fail: (error) => {
+              if (settled) return
+              settled = true
+              clearTimeout(timer)
+              reject(error)
+            },
+          })
+        } catch (error) {
+          settled = true
+          clearTimeout(timer)
+          reject(error)
+        }
       })
 
+      // Stop before exporting coordinates, not only before updating the UI.
+      if (!requestStillCurrent()
+        || !Number.isFinite(res.latitude) || Math.abs(res.latitude) > 90
+        || !Number.isFinite(res.longitude) || Math.abs(res.longitude) > 180) {
+        return { ok: false, reason: 'position_unavailable' }
+      }
       const name = await reverseGeocode(res.latitude, res.longitude)
       if (!requestStillCurrent()) {
         // Never return A's device context to a page that may now be rendering B.
@@ -225,34 +246,50 @@ export function useLocation() {
       url = `${BASE_URL}/api/geocode?lat=${queryLat}&lon=${queryLng}`
       // #endif
 
-      const data: any = await new Promise((resolve, reject) => {
-        uni.request({
-          url,
-          timeout: GEOCODE_REQUEST_TIMEOUT_MS,
-          header: { 'Accept-Language': 'en' },
-          success: (res) => {
-            // Bot-block / rate-limit / error JSON: anything non-200 or without
-            // an address block is treated as a miss and asks for manual input.
-            if (res.statusCode && res.statusCode !== 200) { resolve(null); return }
-            resolve(res.data)
-          },
-          fail: reject,
-        })
+      const data: any = await new Promise((resolve) => {
+        let settled = false
+        let request: UniApp.RequestTask | undefined
+        const finish = (value: unknown) => {
+          if (settled) return
+          settled = true
+          clearTimeout(timer)
+          resolve(value)
+        }
+        const timer = setTimeout(() => {
+          finish(null)
+          // A platform timeout need not deliver a callback after backgrounding.
+          // Own the deadline and ignore callbacks that arrive after recovery.
+          try { request?.abort() } catch { /* already completed */ }
+        }, GEOCODE_REQUEST_TIMEOUT_MS)
+        try {
+          request = uni.request({
+            url,
+            timeout: GEOCODE_REQUEST_TIMEOUT_MS,
+            header: { 'Accept-Language': 'en' },
+            success: (res) => {
+              // Bot-block / rate-limit / error JSON: anything non-200 or without
+              // an address block is treated as a miss and asks for manual input.
+              if (res.statusCode && res.statusCode !== 200) { finish(null); return }
+              finish(res.data)
+            },
+            fail: () => finish(null),
+          })
+        } catch { finish(null) }
       })
 
       const addr = (data && data.address) || {}
 
       const building = addr.building || addr.amenity || addr.shop || addr.university || addr.school
       const road = addr.road || addr.street || addr.pedestrian
-      const houseNum = addr.house_number
       const neighborhood = addr.neighbourhood || addr.suburb
       const city = addr.city || addr.town || addr.village || addr.hamlet || addr.county
       const region = addr.state || addr.region || addr.county
 
       const parts: string[] = []
       if (building) parts.push(building)
-      if (houseNum && road) parts.push(`${houseNum} ${road}`)
-      else if (road) parts.push(road)
+      // This value becomes public listing text. A pickup area is enough;
+      // arrange a door/unit number privately after agreeing on a meetup.
+      if (road) parts.push(road)
       if (neighborhood && parts.length === 0) parts.push(neighborhood)
       if (city && parts.length < 2) parts.push(city)
 

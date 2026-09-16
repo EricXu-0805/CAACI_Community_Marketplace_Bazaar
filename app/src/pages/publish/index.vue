@@ -828,7 +828,8 @@ function chooseImage() {
   }
   uni.chooseImage({
     count: remaining,
-    sizeType: ['compressed'],
+    // Compress once in the shared upload pipeline, retaining product detail.
+    sizeType: ['original'],
     sourceType: ['album', 'camera'],
     success: (res) => {
       if (submitting.value) return

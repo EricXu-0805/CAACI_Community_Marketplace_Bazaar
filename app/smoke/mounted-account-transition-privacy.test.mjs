@@ -40,12 +40,14 @@ test('an A location request cannot repopulate the cache after B is adopted', asy
   const previousUni = globalThis.uni
   const locationCallbacks = []
   let geolocationStarts = 0
+  let addressQueries = 0
   globalThis.uni = {
     getLocation(options) {
       geolocationStarts += 1
       locationCallbacks.push(options)
     },
     request(options) {
+      addressQueries += 1
       options.success({
         statusCode: 200,
         data: { address: { building: 'Account A private building' } },
@@ -65,6 +67,7 @@ test('an A location request cannot repopulate the cache after B is adopted', asy
     assert.equal(geolocationStarts, 2, 'B can start a fresh fix while A is still in flight')
     locationCallbacks[0].success({ latitude: 40.11, longitude: -88.22 })
     assert.deepEqual(await staleA, { ok: false, reason: 'position_unavailable' })
+    assert.equal(addressQueries, 0, 'A coordinates must not leave the device after account transition')
     assert.equal(location.cachedLocation.value, '')
     assert.equal(location.detecting.value, true, 'A finalization must not clear B detecting state')
     locationCallbacks[1].fail({ code: 2, message: 'unavailable' })

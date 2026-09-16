@@ -197,7 +197,7 @@ function rateLimited(headers, retryAfter) {
 
 const ADDRESS_FIELDS = [
   'building', 'amenity', 'shop', 'university', 'school',
-  'road', 'street', 'pedestrian', 'house_number',
+  'road', 'street', 'pedestrian',
   'neighbourhood', 'suburb', 'city', 'town', 'village', 'hamlet',
   'county', 'state', 'region',
 ]
@@ -305,9 +305,13 @@ export default async function handler(request) {
       return new Response(JSON.stringify({ error: 'invalid_geocoder_response' }), { status: 502, headers })
     }
     const address = safeAddress(data.address)
-    const displayName = typeof data.display_name === 'string'
-      ? data.display_name.slice(0, 2000)
-      : ''
+    // Do not forward the provider's full address (door/unit/postcode included).
+    // Preserve the response field for older clients, but derive it from the
+    // same minimized area fields used for public listing autofill.
+    const displayName = [
+      address.road || address.street || address.pedestrian || address.neighbourhood || address.suburb,
+      address.city || address.town || address.village || address.county,
+    ].filter(Boolean).join(', ')
     return new Response(
       JSON.stringify({ address, display_name: displayName }),
       {

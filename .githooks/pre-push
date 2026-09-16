@@ -148,7 +148,9 @@ echo ""
 # ──────────────────────────────────────────────────────────────────
 if [ "$RUN_BOUNDARIES" -eq 1 ]; then
   echo "${BOLD}[boundary]${RESET} node --test api/scripts/client contracts"
-  if node --test ../api/*.test.mjs ../scripts/*.test.mjs smoke/*.test.mjs >"$PRE_PUSH_TMP/boundaries.log" 2>&1; then
+  # Several suites start real isolated PostgreSQL clusters. Bound file-level
+  # parallelism so macOS's shared-memory ID limit cannot starve those fixtures.
+  if node --test --test-concurrency=4 ../api/*.test.mjs ../scripts/*.test.mjs smoke/*.test.mjs >"$PRE_PUSH_TMP/boundaries.log" 2>&1; then
     echo "  ${GREEN}✓${RESET} boundary tests passed"
   else
     echo "  ${RED}✗${RESET} boundary tests FAILED"

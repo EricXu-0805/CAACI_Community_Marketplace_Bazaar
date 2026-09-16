@@ -65,6 +65,9 @@ const VALID_STATUSES: ItemStatus[] = ['active', 'reserved', 'sold', 'deleted']
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 const MAX_IMAGES = 9
 const IMAGE_UPLOAD_TIMEOUT_MS = 30_000
+// Product/detail galleries need more resolution than avatars and chat thumbs.
+// Feed requests still use 480/640px transforms; originals remain capped at 5MB.
+const PUBLIC_IMAGE_MAX_LONG_EDGE = 1600
 
 export type UploadAccountToken = AccountRequestToken
 
@@ -809,13 +812,13 @@ export function useItems() {
 
       try {
         assertAccountCurrent(accountToken, session.user.id)
-        const naturalDims = storedImageDimensions(await getImageDimensions(filePath))
+        const naturalDims = storedImageDimensions(await getImageDimensions(filePath), PUBLIC_IMAGE_MAX_LONG_EDGE)
         assertAccountCurrent(accountToken, session.user.id)
 
         let uploadError: any = null
 
         // #ifdef H5
-        const compressed = await compressImage(filePath, { entryPoint: options?.entryPoint })
+        const compressed = await compressImage(filePath, { entryPoint: options?.entryPoint, maxLongEdge: PUBLIC_IMAGE_MAX_LONG_EDGE })
         assertAccountCurrent(accountToken, session.user.id)
         const response = await fetch(compressed)
         const blob = await response.blob()
@@ -840,7 +843,7 @@ export function useItems() {
         // #endif
 
         // #ifndef H5
-        const compressedPath = await compressImage(filePath, { entryPoint: options?.entryPoint })
+        const compressedPath = await compressImage(filePath, { entryPoint: options?.entryPoint, maxLongEdge: PUBLIC_IMAGE_MAX_LONG_EDGE })
         assertAccountCurrent(accountToken, session.user.id)
         const fileInfo = await new Promise<{ size: number } | null>((resolve) => {
           uni.getFileInfo({

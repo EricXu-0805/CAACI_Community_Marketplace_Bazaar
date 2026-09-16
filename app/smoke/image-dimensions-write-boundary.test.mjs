@@ -45,18 +45,22 @@ test('every resolution a phone shoots survives measurement and the write guard',
   const storedImageDimensions = await load('../src/utils/index.ts', 'storedImageDimensions')
   const assertPublicMediaWrite = await load('../src/utils/publicResource.ts', 'assertPublicMediaWrite')
 
-  for (const { label, w, h } of CAMERA_SIZES) {
-    const stored = storedImageDimensions({ w, h })
-    assert.doesNotThrow(
-      () => assertPublicMediaWrite(urls(1), OWNER, 9, [stored]),
-      `${label} (${w}x${h}) cannot be published`,
-    )
-    // Only the ratio is ever read back, so scaling has to preserve it exactly
-    // enough that a card reserves the same slot.
-    assert.ok(
-      Math.abs(stored.w / stored.h - w / h) < 0.005,
-      `${label} lost its aspect ratio: ${w}x${h} became ${stored.w}x${stored.h}`,
-    )
+  for (const maxEdge of [1080, 1600]) {
+    for (const { label, w, h } of CAMERA_SIZES) {
+      const stored = storedImageDimensions({ w, h }, maxEdge)
+      assert.equal(Math.max(stored.w, stored.h), maxEdge)
+      assert.doesNotThrow(
+        () => assertPublicMediaWrite(urls(1), OWNER, 9, [stored]),
+        `${label} (${w}x${h}) cannot be published`,
+      )
+      // Only the ratio is ever read back, so scaling has to preserve it exactly
+      // enough that a card reserves the same slot. Each resized side may
+      // round by half a pixel; panoramic images amplify ratio error.
+      assert.ok(
+        Math.abs(stored.w / stored.h - w / h) <= (0.5 + 0.5 * w / h) / stored.h,
+        `${label} lost its aspect ratio: ${w}x${h} became ${stored.w}x${stored.h}`,
+      )
+    }
   }
 })
 

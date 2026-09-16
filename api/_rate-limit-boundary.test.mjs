@@ -126,8 +126,8 @@ test('anonymous geocoder pseudonymizes the network key and enforces a shared one
     }
     if (url.hostname === 'geo.example.test') {
       return json({
-        address: { road: 'Green Street', city: 'Champaign', injected: '<script>alert(1)</script>' },
-        display_name: 'Green Street',
+        address: { road: 'Green Street', city: 'Champaign', house_number: '123', unit: '4B', postcode: '61820', injected: '<script>alert(1)</script>' },
+        display_name: '123 Green Street, Apartment 4B, Champaign, 61820',
       })
     }
     throw new Error(`unexpected fetch ${url}`)
@@ -161,7 +161,7 @@ test('anonymous geocoder pseudonymizes the network key and enforces a shared one
   assert.equal(provider.searchParams.get('zoom'), '16')
   assert.deepEqual(await response.json(), {
     address: { road: 'Green Street', city: 'Champaign' },
-    display_name: 'Green Street',
+    display_name: 'Green Street, Champaign',
   })
 })
 

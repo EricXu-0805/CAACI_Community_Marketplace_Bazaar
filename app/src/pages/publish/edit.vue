@@ -731,7 +731,7 @@ function chooseImage() {
   }
   uni.chooseImage({
     count: remaining,
-    sizeType: ['compressed'],
+    sizeType: ['original'],
     sourceType: ['album', 'camera'],
     success: (res) => {
       if (submitting.value) return

@@ -1308,7 +1308,7 @@ function onComposerPickImage() {
 
   uni.chooseImage({
     count: 4 - composerImages.value.length,
-    sizeType: ['compressed'],
+    sizeType: ['original'],
     sourceType: ['album', 'camera'],
     success: async (res: any) => {
       if (!pickerIsCurrent()) return
@@ -2288,6 +2288,11 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   padding-top: env(safe-area-inset-top, 0);
   padding-bottom: env(safe-area-inset-bottom, 0);
   box-sizing: border-box;
+  animation: composer-enter 160ms ease-out;
+}
+@keyframes composer-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .comp-body {
   flex: 1; min-height: 0; overflow-y: auto;
@@ -2677,6 +2682,11 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 }
 
 /* #ifdef H5 */
+/* uni's auto-height wrapper otherwise exposes only a 24px editing target
+   inside a large empty panel. Keep a real clickable writing area while still
+   allowing long drafts to grow and scroll with their attached images. */
+.comp-textarea { min-height: 232px; }
+.comp-textarea :deep(.uni-textarea-wrapper) { min-height: 200px; }
 @media (min-width: 768px) {
   .page-header { display: none; }
   /* Drop the base 480px centering — the sidebar rail (.has-sidebar in
@@ -2714,7 +2724,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
     box-shadow: 0 24px 80px rgba(0,0,0,.25);
   }
   .comp-header { padding: 18px 24px; }
-  .comp-textarea { padding: 24px; min-height: 0; }
+  .comp-textarea { padding: 24px; min-height: 248px; }
   .comp-images { padding-left: 24px; padding-right: 24px; }
   .comp-footer { padding: 14px 24px; }
 }
