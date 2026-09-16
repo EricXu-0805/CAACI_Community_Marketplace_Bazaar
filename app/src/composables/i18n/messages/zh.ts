@@ -1,4 +1,10 @@
 const zh: Record<string, string> = {
+  'home.publishSell': '发布出售',
+  'home.publishWanted': '发布求购',
+  'seller.message': '私信',
+  'plaza.addPhotos': '添加图片',
+  'chat.directConversation': '私信',
+
   'listingDetails.housing': '租房信息',
   'listingDetails.rideshare': '拼车信息',
   'listingDetails.fromDate': '起租日期',

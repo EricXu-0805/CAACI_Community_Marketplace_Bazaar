@@ -1,5 +1,7 @@
 <template>
-  <view class="page" :class="mpThemeClass" :style="mpChrome">
+  <view class="page secondary-page secondary-page--seller has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <AppSidebar current="index" />
+    <view class="secondary-content">
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
@@ -37,8 +39,8 @@
         <text class="loc-text">{{ sellerLocation }}</text>
       </view>
 
+      <view v-if="!isOwnProfile" class="seller-actions">
       <view
-        v-if="!isOwnProfile"
         :class="['follow-btn', { following: isFollowing(seller.id), disabled: followingActionActive }]"
         role="button"
         :aria-label="isFollowing(seller.id) ? t('follow.following') : t('follow.follow')"
@@ -47,6 +49,13 @@
         @click="onToggleFollow"
       >
         <text>{{ isFollowing(seller.id) ? t('follow.following') : t('follow.follow') }}</text>
+      </view>
+
+        <view class="message-btn" :class="{ disabled: contactingSeller }" role="button"
+          :aria-label="t('seller.message')" :aria-disabled="contactingSeller ? 'true' : 'false'" @click="contactSeller">
+          <UIcon name="chat-bubble" size="xs" color="currentColor" />
+          <text>{{ contactingSeller ? t('login.wait') : t('seller.message') }}</text>
+        </view>
       </view>
 
       <view class="trust-row">
@@ -188,22 +197,25 @@
       </view>
     </view>
     </template>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import AppSidebar from '../../components/AppSidebar.vue'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif
 import { ref, computed, nextTick, onUnmounted } from 'vue'
-import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
+import { onLoad, onHide, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { useSupabase } from '../../composables/useSupabase'
 import { useI18n } from '../../composables/useI18n'
 import { useModeration } from '../../composables/useModeration'
 import { useTheme } from '../../composables/useTheme'
 import { useAuth } from '../../composables/useAuth'
+import { useMessages } from '../../composables/useMessages'
 import { useFollow } from '../../composables/useFollow'
 import { usePlaza } from '../../composables/usePlaza'
 import { localizeLocation, pickupTier } from '../../composables/useCampusSpots'
@@ -229,6 +241,7 @@ const defaultAvatarSrc = computed(() =>
 const { supabase } = useSupabase()
 const { ensureLoaded, isBlocked } = useModeration()
 const { currentUser, requireAuth, awaitAuthReady } = useAuth()
+const { getOrCreateDirectConversation } = useMessages()
 const { isFollowing, toggleFollow, loadMyFollowing } = useFollow()
 
 const { fetchUserPosts } = usePlaza()
@@ -374,6 +387,33 @@ async function onToggleFollow() {
     if (operationEpoch === followingActionEpoch) followingActionActive.value = false
   }
 }
+const contactingSeller = ref(false)
+let contactEpoch = 0
+async function contactSeller() {
+  if (contactingSeller.value) return
+  const epoch = ++contactEpoch
+  const loadEpoch = sellerLoadEpoch
+  const isCurrent = () => sellerPageMounted && epoch === contactEpoch && loadEpoch === sellerLoadEpoch
+  let actionIsCurrent = isCurrent
+  contactingSeller.value = true
+  try {
+    await awaitAuthReady()
+    if (!isCurrent() || !requireAuth() || !seller.value || !currentUser.value || isOwnProfile.value) return
+    const peerId = seller.value.id
+    const token = captureAccountRequest(currentUser.value.id)
+    actionIsCurrent = () => isCurrent() && isAccountRequestCurrent(token) && seller.value?.id === peerId
+    const gate = await ensureLoaded()
+    if (!actionIsCurrent()) return
+    if (!gate.ok || isBlocked(peerId)) throw new Error('conversation_unavailable')
+    const conversation = await getOrCreateDirectConversation(token.userId, peerId)
+    if (actionIsCurrent()) uni.navigateTo({ url: `/pages/chat/index?id=${conversation.id}` })
+  } catch (error) {
+    if (actionIsCurrent()) uni.showToast({ title: friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('detail.chatFail'), icon: 'none' })
+  } finally {
+    if (epoch === contactEpoch) contactingSeller.value = false
+  }
+}
+onHide(() => { contactEpoch += 1; contactingSeller.value = false })
 const joinLabel = computed(() => {
   if (!seller.value?.created_at) return '—'
   const d = new Date(seller.value.created_at)
@@ -486,6 +526,8 @@ async function loadSellerWithModerationGate() {
 
 const stopAccountTransitionListener = onAccountTransition(() => {
   sellerLoadEpoch += 1
+  contactEpoch += 1
+  contactingSeller.value = false
   followingActionEpoch += 1
   followingActionActive.value = false
   loading.value = true
@@ -502,6 +544,8 @@ const stopAccountTransitionListener = onAccountTransition(() => {
 onUnmounted(() => {
   sellerPageMounted = false
   sellerLoadEpoch += 1
+  contactEpoch += 1
+  contactingSeller.value = false
   followingActionEpoch += 1
   followingActionActive.value = false
   stopAccountTransitionListener()
@@ -629,8 +673,11 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 }
 .sp-stat { display: inline-flex; align-items: center; gap: 2px; }
 
+.seller-actions { display: flex; justify-content: center; gap: 10px; margin-top: 12px; width: 100%; }
+.message-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 0 20px; border: 1px solid var(--border-strong); border-radius: 24px; color: var(--text-primary); font-size: 13px; font-weight: 600; cursor: pointer; box-sizing: border-box; }
+.message-btn.disabled { opacity: .5; pointer-events: none; }
 .follow-btn {
-  margin-top: 12px;
+  min-height: 40px; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
   padding: 8px 22px; border-radius: 20px;
   background: var(--accent-primary); color: var(--ink-inverse);
   font-size: 13px; font-weight: 600;

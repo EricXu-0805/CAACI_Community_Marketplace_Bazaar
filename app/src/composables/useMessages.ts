@@ -45,7 +45,7 @@ import {
 export { MESSAGE_FIELDS }
 export { createClientMessageId }
 export const CONVERSATION_FIELDS =
-  'id, item_id, buyer_id, seller_id, last_message_at, created_at, is_pinned_buyer, is_pinned_seller, is_muted_buyer, is_muted_seller' as const
+  'id, is_direct, item_id, buyer_id, seller_id, last_message_at, created_at, is_pinned_buyer, is_pinned_seller, is_muted_buyer, is_muted_seller' as const
 
 const conversations = ref<Conversation[]>([])
 const messages = ref<Message[]>([])
@@ -712,6 +712,38 @@ export function useMessages() {
     return data as Conversation
   }
 
+  async function getOrCreateDirectConversation(userId: string, peerId: string) {
+    const token = captureAccountRequest(userId)
+    const assertCurrent = () => {
+      if (!isAccountRequestCurrent(token)) throw new Error('account_changed')
+    }
+    assertCurrent()
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    if (!uuid.test(userId) || !uuid.test(peerId) || userId === peerId) throw new Error('conversation_unavailable')
+    const find = () => supabase.from('conversations').select(CONVERSATION_FIELDS)
+      .eq('is_direct', true)
+      .or(`and(buyer_id.eq.${userId},seller_id.eq.${peerId}),and(buyer_id.eq.${peerId},seller_id.eq.${userId})`)
+      .maybeSingle()
+    const existing = await find()
+    assertCurrent()
+    if (existing.error) throw existing.error
+    if (existing.data) return existing.data as Conversation
+    const created = await supabase.from('conversations')
+      .insert({ item_id: null, buyer_id: userId, seller_id: peerId, is_direct: true })
+      .select(CONVERSATION_FIELDS).single()
+    assertCurrent()
+    if (!created.error) return created.data as Conversation
+    if (created.error.code === '23505') {
+      // A reversed pair, another tab, or simultaneous clicks may have won.
+      // Re-read through RLS; a new block must still hide the winning row.
+      const raced = await find()
+      assertCurrent()
+      if (raced.error) throw raced.error
+      if (raced.data) return raced.data as Conversation
+    }
+    throw created.error
+  }
+
   function subscribeToMessages(
     conversationId: string,
     onNewMessage: (msg: Message) => void,
@@ -880,6 +912,7 @@ export function useMessages() {
     addPendingMessage,
     discardPendingMessage,
     getOrCreateConversation,
+    getOrCreateDirectConversation,
     subscribeToMessages,
     markAsRead,
     markConversationUnread,

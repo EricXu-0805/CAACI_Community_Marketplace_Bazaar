@@ -197,14 +197,14 @@ test('H5 OAuth restores only the nonce-bound descriptor from session storage', a
   try {
     const beforeDeparture = await import(`${intentModuleUrl}#oauth-before`)
     const nonce = beforeDeparture.stageLoginReturnIntent(
-      '/pages/publish/index',
+      '/pages/publish/index?listingType=wanted&category=books',
       anonymousOwner,
       { nonce: 'nonce-oauth12345', now: 100 },
     )
     assert.equal(nonce, 'nonce-oauth12345')
     assert.equal(values.size, 1)
     const stored = JSON.parse([...values.values()][0])
-    assert.deepEqual(stored.route, { path: '/pages/publish/index', params: {} })
+    assert.deepEqual(stored.route, { path: '/pages/publish/index', params: { listingType: 'wanted', category: 'books' } })
     assert.equal('target' in stored, false)
 
     // A fresh module instance models the full-page provider round trip.
@@ -215,7 +215,7 @@ test('H5 OAuth restores only the nonce-bound descriptor from session storage', a
     )
     assert.equal(
       afterCallback.peekAuthorizedLoginReturnIntent(nonce, accountAOwner, { now: 201 }),
-      '/pages/publish/index',
+      '/pages/publish/index?category=books&listingType=wanted',
     )
     assert.match(loginSource, /redirectTo = loginIntentNonce[\s\S]*buildLoginRoute\(loginIntentNonce\)/)
     assert.match(loginSource, /oauthReturnExpected[\s\S]*watch\(currentUser/)
@@ -290,4 +290,27 @@ test('authorized login return is one-shot and A to B to A cannot revive it', () 
     null,
     'switching back to A cannot revive the revoked target',
   )
+})
+
+test('publish context is enum-only, single-use, and bound to the account identity', () => {
+  const wanted = { listingType: 'wanted', category: 'books' }
+  intent.stagePublishNavigationIntent(wanted, accountAOwner)
+  assert.deepEqual(intent.consumePublishNavigationIntent(accountAOwner), wanted)
+  assert.equal(intent.consumePublishNavigationIntent(accountAOwner), null)
+  intent.stagePublishNavigationIntent(wanted, accountAOwner)
+  assert.equal(intent.consumePublishNavigationIntent(accountBOwner), null)
+  assert.equal(intent.consumePublishNavigationIntent(accountAOwner), null)
+  for (const value of [{ listingType: 'bad' }, { listingType: 'sell', category: 'unknown' }, { listingType: 'wanted', category: { id: 'books' } }]) {
+    assert.equal(intent.parsePublishNavigationIntent(value), null)
+  }
+})
+
+test('publish login return carries public context across authentication without allowing arbitrary parameters', () => {
+  const target = '/pages/publish/index?listingType=wanted&category=books'
+  const nonce = intent.stageLoginReturnIntent(target, anonymousOwner, { nonce: 'publish-nonce-12345', now: 100 })
+  assert.ok(nonce)
+  assert.equal(intent.canonicalReturnRoute(intent.parseReturnRoute(target, 'login')), '/pages/publish/index?category=books&listingType=wanted')
+  for (const query of ['listingType=bad', 'category=books', 'listingType=sell&category=unknown', 'listingType=sell&listingType=wanted', 'listingType=sell&next=https://evil.invalid', 'listingType=sell&title=private']) {
+    assert.equal(intent.parseReturnRoute('/pages/publish/index?' + query, 'login'), null)
+  }
 })

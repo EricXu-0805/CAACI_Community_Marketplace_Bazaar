@@ -1,5 +1,7 @@
 <template>
-  <view class="page" :class="mpThemeClass" :style="mpChrome">
+  <view class="page secondary-page secondary-page--list has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <AppSidebar current="profile" />
+    <view class="secondary-content">
     <view class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
       <text class="header-title" role="heading" aria-level="1">{{ t('nav.following') }}</text>
@@ -59,10 +61,12 @@
 
       <view v-else-if="!hasMore && people.length > 0" class="end-tip"><text>{{ t('home.endOf') }}</text></view>
     </scroll-view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import AppSidebar from '../../components/AppSidebar.vue'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { ref, computed, nextTick, onMounted, watch } from 'vue'

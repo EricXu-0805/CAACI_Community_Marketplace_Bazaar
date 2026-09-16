@@ -1,5 +1,7 @@
 <template>
-  <view class="page" :class="mpThemeClass" :style="mpChrome">
+  <view class="page secondary-page secondary-page--reading has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <AppSidebar current="profile" />
+    <view class="secondary-content">
     <view class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
       <text class="header-title" role="heading" aria-level="1">{{ title }}</text>
@@ -33,10 +35,12 @@
         <text class="contact-hint">{{ t('legal.contactHint') }}</text>
       </view>
     </scroll-view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import AppSidebar from '../../components/AppSidebar.vue'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { ref, computed, nextTick } from 'vue'

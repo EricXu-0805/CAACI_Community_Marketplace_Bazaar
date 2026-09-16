@@ -1,5 +1,7 @@
 <template>
-  <view class="page" :class="mpThemeClass" :style="mpChrome">
+  <view class="page secondary-page secondary-page--settings has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <AppSidebar current="profile" />
+    <view class="secondary-content">
     <view class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="brand" /></view>
       <text class="header-title" role="heading" aria-level="1">{{ t('settings.title') }}</text>
@@ -153,10 +155,12 @@
         <text class="mi-label danger-text">{{ t('settings.deleteAccount') }}</text>
       </view>
     </view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import AppSidebar from '../../components/AppSidebar.vue'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { computed, ref, onUnmounted } from 'vue'

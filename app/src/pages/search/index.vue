@@ -1,5 +1,7 @@
 <template>
-  <view class="page" :class="mpThemeClass" :style="mpChrome">
+  <view class="page secondary-page secondary-page--search has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <AppSidebar current="index" />
+    <view class="secondary-content">
     <text class="sr-only" role="heading" aria-level="1">{{ t('a11y.search') }}</text>
     <!-- #ifndef H5 -->
     <AppToast />
@@ -68,10 +70,12 @@
         </view>
       </view>
     </scroll-view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import AppSidebar from '../../components/AppSidebar.vue'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 // #ifndef H5

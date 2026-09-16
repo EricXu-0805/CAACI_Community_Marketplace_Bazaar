@@ -186,6 +186,8 @@ export interface Item {
 }
 
 export interface Conversation {
+  /** General private chat; false for listing threads, including deleted items. */
+  is_direct?: boolean
   id: string
   item_id: string | null
   buyer_id: string

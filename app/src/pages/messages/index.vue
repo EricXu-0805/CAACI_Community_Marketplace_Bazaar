@@ -458,7 +458,7 @@ function convPreview(conv: Conversation): string {
   if (type === 'video') return `[${t('chat.video')}]`
   const preview = (conv as any).last_message_preview
   if (preview && parseStickerToken(preview)) return `[${t('chat.sticker')}]`
-  return preview || (conv.item ? localize(conv.item.title_i18n, conv.item.title) : '')
+  return preview || (conv.item ? localize(conv.item.title_i18n, conv.item.title) : conv.is_direct ? t('chat.directConversation') : '')
 }
 
 function getOtherUser(conv: Conversation): Profile | undefined {

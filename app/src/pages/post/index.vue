@@ -1,5 +1,7 @@
 <template>
-  <view class="page" :class="mpThemeClass" :style="[mpChrome, viewportStyle]">
+  <view class="page secondary-page secondary-page--post has-sidebar" :class="mpThemeClass" :style="[mpChrome, viewportStyle]">
+    <AppSidebar current="plaza" />
+    <view class="secondary-content">
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
@@ -274,10 +276,12 @@
         </view>
       </view>
     </view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import AppSidebar from '../../components/AppSidebar.vue'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 // #ifndef H5
@@ -848,6 +852,7 @@ async function onSubmitComment() {
 </script>
 
 <style lang="scss" scoped>
+.secondary-content { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .page {
   height: 100vh; height: 100dvh;
   background: var(--bg-subtle);

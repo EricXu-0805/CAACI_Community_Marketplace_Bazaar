@@ -1,4 +1,10 @@
 const en: Record<string, string> = {
+  'home.publishSell': 'Sell an item',
+  'home.publishWanted': 'Post a request',
+  'seller.message': 'Message',
+  'plaza.addPhotos': 'Add photos',
+  'chat.directConversation': 'Direct message',
+
   'listingDetails.housing': 'Housing details',
   'listingDetails.rideshare': 'Trip details',
   'listingDetails.fromDate': 'Available from',

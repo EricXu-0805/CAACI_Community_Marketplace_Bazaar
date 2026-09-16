@@ -1849,10 +1849,9 @@ async function contactSeller() {
 @media (min-width: 768px) {
   /* The rail is position:fixed at the viewport edge, so centering a box that
      *includes* the rail reservation parked 240px of dead space between the
-     rail and the content and pushed the column off-centre. Hug the rail
-     instead — the same "fill the remaining column" contract the home, plaza
-     and messages shells already use. */
-  .page { max-width: calc(760px + var(--sidebar-w, 240px)); margin: 0; }
+     rail and the content and pushed the column off-centre. Fill the remaining
+     canvas; the wide-screen grid below supplies symmetric inner gutters. */
+  .page { max-width: none; margin: 0; }
   /*
    * Don't hard-set height here either. The inline :style aspect-ratio
    * handles it, and the 70vh cap keeps the hero from eating the whole
@@ -1892,9 +1891,12 @@ async function contactSeller() {
     align-items: start;
     /* Cap the whole thing: an uncapped 1fr made the gallery 1232px on a 1920
        screen, which just letterboxes a phone photo across half a monitor. */
-    --detail-shell: calc(1180px + var(--sidebar-w, 240px));
-    max-width: var(--detail-shell);
-    padding-right: 24px;
+    --detail-content: 1360px;
+    --detail-gutter: max(24px, calc((100vw - var(--sidebar-w, 240px) - var(--detail-content)) / 2));
+    max-width: none;
+    padding-left: calc(var(--sidebar-w, 240px) + var(--detail-gutter));
+    padding-right: var(--detail-gutter);
+    padding-top: 24px;
     /* Keep the base 80px + safe-area clearance for the fixed CTA. With no
        related cards, 32px left the final safety note hidden even at the end. */
   }
@@ -1918,7 +1920,8 @@ async function contactSeller() {
     grid-template-columns: minmax(0, 720px);
     /* Keep spare viewport height below the content, not between its rows. */
     align-content: start;
-    justify-content: center; max-width: none; padding-right: 0;
+    justify-content: center; max-width: none; padding-right: 24px;
+    padding-left: calc(var(--sidebar-w, 240px) + 24px);
   }
   .page.text-only > * { grid-column: 1; }
   .page.text-only .img-area { grid-row: auto; position: relative; }
@@ -1934,7 +1937,7 @@ async function contactSeller() {
   .action-bar,
   .rating-sheet {
     left: auto;
-    right: max(24px, calc(100vw - var(--detail-shell) + 24px));
+    right: var(--detail-gutter);
     width: 400px; max-width: none;
     margin: 0;
   }

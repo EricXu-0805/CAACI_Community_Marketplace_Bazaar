@@ -1,5 +1,7 @@
 <template>
-  <view class="page" :class="mpThemeClass" :style="mpChrome">
+  <view class="page secondary-page secondary-page--form has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <AppSidebar current="profile" />
+    <view class="secondary-content">
     <view v-if="profileEditReady" class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack">
         <UIcon name="chevron-left" size="xs" color="accent-primary" />
@@ -64,10 +66,12 @@
         </scroll-view>
       </view>
     </view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import AppSidebar from '../../components/AppSidebar.vue'
 import { photoPickerErrorKey } from '../../utils/photoPicker'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()

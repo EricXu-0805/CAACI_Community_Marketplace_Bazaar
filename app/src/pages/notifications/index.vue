@@ -1,5 +1,7 @@
 <template>
-  <view class="page" :class="mpThemeClass" :style="mpChrome">
+  <view class="page secondary-page secondary-page--notifications has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <AppSidebar current="profile" />
+    <view class="secondary-content">
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
@@ -62,10 +64,12 @@
         <view v-if="!n.is_read" class="notif-dot"></view>
       </view>
     </view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import AppSidebar from '../../components/AppSidebar.vue'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 // #ifndef H5

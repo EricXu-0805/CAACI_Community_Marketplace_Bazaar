@@ -146,8 +146,8 @@ test('the desktop detail page uses the width instead of centring a phone column'
 
   // The rail is position:fixed at the viewport edge, so a centred box that
   // *included* the rail reservation parked ~240px of dead space between the
-  // rail and the content. Hug the rail like the other desktop shells.
-  assert.match(detail, /\.page \{ max-width: calc\(760px \+ var\(--sidebar-w, 240px\)\); margin: 0; \}/)
+  // rail and the content. Fill the outer canvas like the other desktop shells.
+  assert.match(detail, /\.page \{ max-width: none; margin: 0; \}/)
   assert.doesNotMatch(detail, /max-width: calc\(640px \+ var\(--sidebar-w, 240px\)\); margin: 0 auto;/)
 
   // Wide desktop splits into a reading column and a decision column.
@@ -160,12 +160,11 @@ test('the desktop detail page uses the width instead of centring a phone column'
   // price card. The gallery spanning every row is what keeps column 2 packed.
   assert.match(detail, /\.img-area \{\s*\n\s*grid-column: 1;\s*\n\s*grid-row: 1 \/ span 99;/)
 
-  // An uncapped 1fr made the gallery 1232px on a 1920 screen. The fixed CTA is
-  // out of flow and cannot inherit column 2, so it tracks the same cap.
-  assert.match(detail, /--detail-shell: calc\(1180px \+ var\(--sidebar-w, 240px\)\);/)
-  assert.match(detail, /max-width: var\(--detail-shell\);/)
-  assert.match(
-    detail,
-    /right: max\(24px, calc\(100vw - var\(--detail-shell\) \+ 24px\)\);/,
-  )
+  // Inner gutters centre the bounded gallery/details pair in the canvas
+  // remaining after the sidebar. The fixed CTA tracks that same right edge.
+  assert.match(detail, /--detail-content: 1360px;/)
+  assert.match(detail, /--detail-gutter: max\(24px, calc\(\(100vw - var\(--sidebar-w, 240px\) - var\(--detail-content\)\) \/ 2\)\);/)
+  assert.match(detail, /padding-left: calc\(var\(--sidebar-w, 240px\) \+ var\(--detail-gutter\)\);/)
+  assert.match(detail, /right: var\(--detail-gutter\);/)
+
 })

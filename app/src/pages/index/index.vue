@@ -86,6 +86,7 @@
     </view>
 
     <!-- 在售 / 求购 — sell listings vs wanted (ISO) posts (migration 054). -->
+    <view class="marketplace-actions">
     <view class="feed-mode" role="tablist" :aria-label="t('home.tabOnSale') + ' / ' + t('home.tabWanted')">
       <view
         :class="['fm-seg', 'u-press', { on: listingType === 'sell' }]"
@@ -107,6 +108,11 @@
       >
         <text class="fm-seg-label">{{ t('home.tabWanted') }}</text>
       </view>
+    </view>
+    <view class="feed-publish u-press" role="button" :aria-label="t(listingType === 'wanted' ? 'home.publishWanted' : 'home.publishSell')" @click="goPublish">
+      <UIcon name="plus" size="xs" color="ink-inverse" />
+      <text>{{ t(listingType === 'wanted' ? 'home.publishWanted' : 'home.publishSell') }}</text>
+    </view>
     </view>
 
     <!--
@@ -540,7 +546,7 @@ import {
   removeAccountPrivateStorage,
   writeAccountPrivateStorage,
 } from '../../api/accountLocalPrivacy'
-import { consumeHomeNavigationIntent } from '../../api/navigationIntent'
+import { consumeHomeNavigationIntent, stagePublishNavigationIntent } from '../../api/navigationIntent'
 
 const { bottomInset: filterBottomInset, visibleHeight: filterVisibleHeight } = useVisualViewportBounds()
 const filterViewportStyle = computed(() => ({
@@ -1310,7 +1316,14 @@ function goToDetail(id: string) {
   uni.navigateTo({ url: `/pages/detail/index?id=${id}` })
 }
 
-function goPublish() {
+async function goPublish() {
+  const intent = { listingType: listingType.value, category: selectedCategory.value || '' } as const
+  await awaitAuthReady()
+  const target = `/pages/publish/index?listingType=${intent.listingType}${intent.category ? `&category=${intent.category}` : ''}`
+  if (!requireAuth(target)) return
+  stagePublishNavigationIntent(intent, {
+    userId: getActiveAccountId(), identityGeneration: captureAccountIdentityGeneration(),
+  })
   uni.switchTab({ url: '/pages/publish/index' })
 }
 </script>
@@ -1490,6 +1503,8 @@ function goPublish() {
  * feed pages.
  */
 /* 在售 / 求购 segmented control — compact pill pair on the surface header. */
+.marketplace-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; background: var(--surface); padding-right: 16px; }
+.feed-publish { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 14px; border-radius: var(--radius-pill); background: var(--brand); color: var(--ink-inverse); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
 .feed-mode {
   flex-shrink: 0;
   display: flex; gap: 6px;

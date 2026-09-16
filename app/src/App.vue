@@ -3171,6 +3171,48 @@ button::after {
 @media (min-width: 768px) {
   .has-sidebar { padding-left: var(--sidebar-w, 240px); box-sizing: border-box; }
 }
+
+/* Secondary routes share the same outer canvas as primary tabs. Reading
+   surfaces are bounded independently of the viewport/desktop navigation. */
+.secondary-content { width: 100%; min-width: 0; box-sizing: border-box; }
+.secondary-page.secondary-page--post > .secondary-content { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+@media (min-width: 768px) {
+  .page.secondary-page.has-sidebar { max-width: none; margin: 0; width: 100%; padding-left: var(--sidebar-w, 240px); padding-right: 0; }
+  .secondary-page > .secondary-content {
+    width: calc(100% - 48px); max-width: 1040px; margin: 24px auto;
+  }
+  .secondary-page .secondary-content > .header,
+  .secondary-page .secondary-content > .page-header {
+    min-height: 64px; padding: 12px 20px; box-sizing: border-box;
+    border-radius: 16px 16px 0 0;
+  }
+  .secondary-page .header-title { font-size: 22px; line-height: 1.4; }
+  .secondary-page .back-btn { min-width: 40px; min-height: 40px; flex-shrink: 0; }
+  .secondary-page .secondary-content > .section { border-radius: 14px; overflow: hidden; }
+  .secondary-page.secondary-page--form > .secondary-content,
+  .secondary-page.secondary-page--reading > .secondary-content { max-width: 880px; }
+  .secondary-page.secondary-page--catalog > .secondary-content,
+  .secondary-page.secondary-page--seller > .secondary-content { max-width: 1360px; }
+  .secondary-page.secondary-page--catalog .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; padding: 20px; }
+  .secondary-page.secondary-page--seller .items-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; margin: 20px 0; }
+  .secondary-page.secondary-page--seller .grid-item { overflow: hidden; border-radius: 14px; }
+  .secondary-page.secondary-page--seller .seller-section { border-radius: 0 0 16px 16px; padding: 32px 24px; }
+  .secondary-page.secondary-page--seller .seller-tabs { margin-top: 24px; padding: 14px; border-radius: 14px; }
+  .secondary-page.secondary-page--seller .st-chip { flex: 0 1 180px; height: 40px; }
+  .secondary-page.secondary-page--post > .secondary-content { max-width: 1040px; overflow: hidden; border-radius: 16px; }
+  .secondary-page.secondary-page--post .body { background: var(--bg-elev-1); }
+  .secondary-page.secondary-page--post .images { max-width: 720px; margin-left: auto; margin-right: auto; }
+}
+@media (min-width: 1180px) {
+  .secondary-page.secondary-page--seller > .secondary-content {
+    display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px 28px; align-items: start;
+  }
+  .secondary-page.secondary-page--seller .secondary-content > .header { grid-column: 1 / -1; border-radius: 16px; }
+  .secondary-page.secondary-page--seller .seller-section { grid-column: 1; grid-row: 2 / span 2; border-radius: 16px; position: sticky; top: 24px; }
+  .secondary-page.secondary-page--seller .seller-tabs { grid-column: 2; margin-top: 0; }
+  .secondary-page.secondary-page--seller [role="tabpanel"] { grid-column: 2; min-width: 0; }
+  .secondary-page.secondary-page--seller .items-grid { margin-top: 0; }
+}
 /* #endif */
 
 /* #ifdef H5 */

@@ -478,6 +478,7 @@
       </view>
     </view>
 
+    <view v-if="showComposer" class="composer-backdrop"></view>
     <view
       v-if="showComposer"
       ref="composerDialogEl"
@@ -552,8 +553,9 @@
       </view>
       <view class="comp-footer">
         <view class="comp-tools">
-          <view v-if="composerImages.length < 4" class="comp-add-img" role="button" :aria-label="t('a11y.pickImage')" @click="onComposerPickImage">
-            <view class="cai-ico"></view>
+          <view v-if="composerImages.length < 4" class="comp-add-img" role="button" :aria-label="t('plaza.addPhotos')" @click="onComposerPickImage">
+            <UIcon name="image" size="xs" color="text-secondary" />
+            <text class="cab-label">{{ t('plaza.addPhotos') }}</text>
           </view>
           <view
             class="comp-attach-btn"
@@ -701,6 +703,8 @@ const viewportSheetStyle = computed(() => visibleHeight.value == null ? undefine
 }))
 const viewportComposerStyle = computed(() => visibleHeight.value == null ? undefined : ({
   top: 'auto', bottom: `${bottomInset.value}px`, height: `${visibleHeight.value}px`,
+  '--composer-visible-height': `${visibleHeight.value}px`,
+  '--composer-bottom-inset': `${bottomInset.value}px`,
 }))
 
 onShareAppMessage(() => ({
@@ -2336,9 +2340,12 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   padding: 8px 16px;
   border-top: 0.5px solid var(--line-hair);
 }
-.comp-tools { display: flex; gap: 12px; }
+.comp-tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.comp-footer { gap: 8px; flex-wrap: wrap; }
+.comp-count { margin-left: auto; }
+.composer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.38); z-index: 1099; }
 .comp-add-img {
-  width: 32px; height: 32px; border-radius: 8px;
+  min-height: 36px; padding: 0 10px; gap: 6px; border-radius: 8px;
   background: var(--bg-subtle); display: flex; align-items: center; justify-content: center;
   cursor: pointer;
   &:active { background: var(--bg-inset); }
@@ -2354,7 +2361,8 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .comp-count { font-size: 12px; color: var(--text-subtle); }
 
 .comp-attach-btn {
-  display: flex; align-items: center; gap: 4px;
+  min-height: 36px; box-sizing: border-box;
+  display: flex; align-items: center; gap: 6px;
   padding: 6px 10px; border-radius: 8px;
   background: var(--bg-subtle); cursor: pointer;
   &:active { background: var(--bg-inset); }
@@ -2693,6 +2701,22 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
     transition: transform var(--dur-1, 120ms) var(--ease-std, ease), background var(--dur-1, 120ms) var(--ease-std, ease);
   }
   .plaza-compose-d:active { transform: scale(0.96); background: var(--brand-deep); }
+}
+/* #endif */
+/* #ifdef H5 */
+@media (min-width: 768px) {
+  .composer-fullpage {
+    top: auto !important; left: 24px; right: 24px;
+    bottom: calc(var(--composer-bottom-inset, 0px) + max(24px, (var(--composer-visible-height, 100dvh) - 680px) / 2)) !important;
+    width: calc(100% - 48px); max-width: 800px;
+    height: min(680px, calc(var(--composer-visible-height, 100dvh) - 48px)) !important;
+    margin: 0 auto; border-radius: 20px; overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0,0,0,.25);
+  }
+  .comp-header { padding: 18px 24px; }
+  .comp-textarea { padding: 24px; min-height: 0; }
+  .comp-images { padding-left: 24px; padding-right: 24px; }
+  .comp-footer { padding: 14px 24px; }
 }
 /* #endif */
 </style>

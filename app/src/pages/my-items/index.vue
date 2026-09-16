@@ -1,5 +1,7 @@
 <template>
-  <view class="page" :class="mpThemeClass" :style="mpChrome">
+  <view class="page secondary-page secondary-page--catalog has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <AppSidebar current="profile" />
+    <view class="secondary-content">
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
@@ -81,10 +83,12 @@
     </view>
 
     <view style="height: 40px;"></view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import AppSidebar from '../../components/AppSidebar.vue'
 /*
  * Full-list view behind the profile stat strip.
  *

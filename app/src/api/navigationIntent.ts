@@ -42,6 +42,31 @@ interface OwnedHomeNavigationIntent {
   readonly value: HomeNavigationIntent
 }
 
+export interface PublishNavigationIntent {
+  readonly listingType: 'sell' | 'wanted'
+  readonly category: ItemCategoryIntent | ''
+}
+
+let pendingPublishNavigationIntent: { owner: NavigationIntentOwner; value: PublishNavigationIntent } | null = null
+
+export function parsePublishNavigationIntent(value: Record<string, unknown>): PublishNavigationIntent | null {
+  if (value.listingType !== 'sell' && value.listingType !== 'wanted') return null
+  const category = value.category || ''
+  if (category !== '' && !ITEM_CATEGORIES.has(category as ItemCategoryIntent)) return null
+  return { listingType: value.listingType, category: category as ItemCategoryIntent | '' }
+}
+
+export function stagePublishNavigationIntent(value: PublishNavigationIntent, owner: NavigationIntentOwner): void {
+  const parsed = parsePublishNavigationIntent(value as unknown as Record<string, unknown>)
+  pendingPublishNavigationIntent = parsed ? { owner: cleanOwner(owner), value: parsed } : null
+}
+
+export function consumePublishNavigationIntent(owner: NavigationIntentOwner): PublishNavigationIntent | null {
+  const pending = pendingPublishNavigationIntent
+  pendingPublishNavigationIntent = null
+  return pending && sameOwner(pending.owner, cleanOwner(owner)) ? pending.value : null
+}
+
 interface LoginReturnRecord {
   readonly version: 1
   readonly nonce: string
@@ -211,6 +236,19 @@ export function parseReturnRoute(
 
   const query = queryAt >= 0 ? raw.slice(queryAt + 1) : ''
   const search = new URLSearchParams(query)
+  // Only these public enum values may accompany a publishing login return.
+  // Keeping them on the authorized return record also survives OAuth reloads.
+  if (purpose === 'login' && rawPath === '/pages/publish/index' && query) {
+    const fields: Record<string, string> = {}
+    let invalid = false
+    search.forEach((value, key) => {
+      if (!['listingType', 'category'].includes(key) || key in fields) invalid = true
+      fields[key] = value
+    })
+    const intent = parsePublishNavigationIntent(fields)
+    if (invalid || !intent) return null
+    return { path: rawPath, params: { listingType: intent.listingType, ...(intent.category ? { category: intent.category } : {}) } }
+  }
   const allowed = new Set(policy.required)
   const seen = new Set<string>()
   const params: Record<string, string> = {}

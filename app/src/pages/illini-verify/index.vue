@@ -1,5 +1,7 @@
 <template>
-  <view class="page" :class="mpThemeClass" :style="mpChrome">
+  <view class="page secondary-page secondary-page--form has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <AppSidebar current="profile" />
+    <view class="secondary-content">
     <view class="header">
       <view class="back" role="button" :aria-label="t('a11y.back')" @click="goBack"><view class="back-arrow"></view></view>
       <view class="hero-badge"><UIcon name="check" size="xs" color="#FFFFFF" aria-hidden="true" /><text class="hero-illini">Illini</text></view>
@@ -59,10 +61,12 @@
         >{{ t('illini.changeEmail') }}</view>
       </template>
     </view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import AppSidebar from '../../components/AppSidebar.vue'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 /*

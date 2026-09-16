@@ -245,13 +245,15 @@
 <script setup lang="ts">
 import { photoPickerErrorKey } from '../../utils/photoPicker'
 import { mergeListingImages } from '../../utils/listingImages'
+import { consumePublishNavigationIntent, parsePublishNavigationIntent, type PublishNavigationIntent } from '../../api/navigationIntent'
+import { getActiveAccountId, captureAccountIdentityGeneration } from '../../composables/accountScope'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif
 import { ref, reactive, computed, onUnmounted } from 'vue'
-import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { authoredLang } from '../../composables/i18n/format'
@@ -429,8 +431,8 @@ function onConditionTap(cond: string) {
 /*
  * Edit-mode entry was split into pages/publish/edit.vue (registered as
  * a non-tabbar subpage in pages.json). This file is now exclusively the
- * tabbar "Post" entry for new-listing creation; an onLoad here would
- * only ever see options without an edit id and is not needed.
+ * tabbar "Post" entry for new-listing creation. onLoad accepts a validated
+ * sale/wanted/category context from a login return, never an edit id.
  */
 
 
@@ -442,6 +444,14 @@ const MAX_IMAGES_PUBLISH = 9
    work when they accidentally tap a tabbar icon mid-compose. Scoped to
    new-item mode only (edit mode has a live item row already). */
 const DRAFT_KEY = 'publish_draft_v1'
+let routePublishIntent: PublishNavigationIntent | null = null
+onLoad((options) => { routePublishIntent = parsePublishNavigationIntent(options || {}) })
+function applyPublishContext(intent: PublishNavigationIntent | null) {
+  if (!intent) return
+  resetForm()
+  form.listingType = intent.listingType
+  form.category = intent.category
+}
 
 const isDirty = computed(() => {
   return (
@@ -729,8 +739,10 @@ async function preparePublishPage() {
   publishPageAccountToken = nextAccountToken
 
   publishReady.value = true
+  const intent = consumePublishNavigationIntent({ userId: getActiveAccountId(), identityGeneration: captureAccountIdentityGeneration() }) || routePublishIntent
+  routePublishIntent = null
   const draft = loadDraft()
-  if (draft && !isDirty.value) {
+  if ((draft && !isDirty.value) || (intent && isDirty.value)) {
     const draftShowVersion = showVersion
     const draftAccountToken = nextAccountToken
     uni.showModal({
@@ -744,11 +756,12 @@ async function preparePublishPage() {
           draftShowVersion !== publishShowVersion
           || !isAccountRequestCurrent(draftAccountToken)
         ) return
-        if (r.confirm) applyDraft(draft)
-        else if (r.cancel) clearDraft()
+        if (r.confirm) { if (draft && !isDirty.value) applyDraft(draft) }
+        else if (r.cancel) { clearDraft(); applyPublishContext(intent) }
       },
     })
   }
+  else applyPublishContext(intent)
   installTabGuard()
 }
 

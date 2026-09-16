@@ -100,6 +100,7 @@ export function formatTime(dateStr: string): string {
 }
 
 const RATE_LIMIT_MESSAGES: Record<string, { en: string; zh: string }> = {
+  rate_limit_conversations: { en: 'You have started many new chats. Please try again later.', zh: '新建私信较多，请稍后再试。' },
   rate_limit_items_hour:    { en: 'Too many items this hour. Try again later.',       zh: '本小时发布太多,稍后再试' },
   rate_limit_items_day:     { en: 'Daily item limit reached. Try again tomorrow.',    zh: '今日已达发布上限' },
   duplicate_item:           { en: 'You just posted this. Wait a moment.',              zh: '刚刚已发布过这条,请稍等' },
