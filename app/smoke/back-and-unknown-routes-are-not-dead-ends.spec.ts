@@ -194,15 +194,20 @@ test.describe('an unknown hash route is not a blank page', () => {
     await expect(page.getByRole('button', { name: 'Skip', exact: true })).toHaveCount(0)
   })
 
-  test('a first-run privacy visitor can read the policy without onboarding', async ({ page }) => {
-    await page.addInitScript(() => {
-      localStorage.removeItem('welcomed')
-      localStorage.setItem('lang', 'en')
+  for (const [lang, privacy, guide, section, skip] of [
+    ['en', 'Privacy Policy', 'Account deletion guide', 'english', 'Skip'],
+    ['zh', '隐私政策', '账号注销指引', 'chinese', '跳过'],
+  ] as const) {
+    test(`a first-run ${lang} privacy visitor can read the policy and find their language in the deletion guide`, async ({ page }) => {
+      await page.addInitScript((language) => {
+        localStorage.removeItem('welcomed')
+        localStorage.setItem('lang', language)
+      }, lang)
+      await page.goto('/#/pages/legal/index?type=privacy', { waitUntil: 'networkidle' })
+      await expect(page.getByRole('tab', { name: privacy, exact: true })).toHaveAttribute('aria-selected', 'true')
+      await expect(page.getByRole('link', { name: guide, exact: true })).toHaveAttribute('href', `/account-deletion#${section}`)
+      expect(await page.evaluate(() => location.hash)).toBe('#/pages/legal/index?type=privacy')
+      await expect(page.getByRole('button', { name: skip, exact: true })).toHaveCount(0)
     })
-    await page.goto('/#/pages/legal/index?type=privacy', { waitUntil: 'networkidle' })
-    await expect(page.getByRole('tab', { name: 'Privacy Policy', exact: true })).toHaveAttribute('aria-selected', 'true')
-    await expect(page.getByRole('link', { name: 'Account deletion guide', exact: true })).toHaveAttribute('href', '/account-deletion')
-    expect(await page.evaluate(() => location.hash)).toBe('#/pages/legal/index?type=privacy')
-    await expect(page.getByRole('button', { name: 'Skip', exact: true })).toHaveCount(0)
-  })
+  }
 })
