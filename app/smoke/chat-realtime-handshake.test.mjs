@@ -11,6 +11,7 @@ const source = relativePath => readFileSync(resolve(appRoot, relativePath), 'utf
 let runtimeSequence = 0
 /* Telemetry emitted by the module under test since the last loadWithRuntime. */
 const capturedTelemetry = []
+const capturedRecovery = []
 
 async function readAllAscendingKeysetForTest(options) {
   const rows = []
@@ -38,6 +39,7 @@ async function readAllAscendingKeysetForTest(options) {
 async function loadWithRuntime(relativePath, replacements, runtime, transform = value => value) {
   const runtimeKey = `__chat_realtime_smoke_${++runtimeSequence}`
   capturedTelemetry.length = 0
+  capturedRecovery.length = 0
   const defaultAccountToken = {
     userId: '11111111-1111-4111-8111-111111111111',
     generation: 1,
@@ -95,6 +97,7 @@ async function loadWithRuntime(relativePath, replacements, runtime, transform = 
     onAccountTransition: () => () => {},
     readAllAscendingKeyset: readAllAscendingKeysetForTest,
     subscribeToSnapshotChanges: () => () => {},
+    addBreadcrumb: crumb => capturedRecovery.push(crumb.category),
     // Fallback takeovers report to Sentry. Record them per load so a test can
     // assert the degradation was announced, not just that polling took over.
     captureException: (error, context) => {
@@ -133,8 +136,8 @@ async function loadWithRuntime(relativePath, replacements, runtime, transform = 
       'const { captureActiveAccountRequest, isAccountRequestCurrent, onAccountTransition } = globalThis.__RUNTIME_KEY__',
     )
     .replace(
-      "import { captureException } from '../utils/sentry'",
-      'const { captureException } = globalThis.__RUNTIME_KEY__',
+      "import { captureException, addBreadcrumb } from '../utils/sentry'",
+      'const { captureException, addBreadcrumb } = globalThis.__RUNTIME_KEY__',
     )
   for (const [from, to] of replacements) input = input.replace(from, to.replaceAll('__RUNTIME_KEY__', runtimeKey))
   input = input.replaceAll('__RUNTIME_KEY__', runtimeKey)
@@ -585,8 +588,9 @@ test('H5 initial hidden-to-visible resume takes over a silent conversation socke
     assert.equal(harness.queryCount, 1, 'foreground takeover must cold-seed one direct poll')
     assert.deepEqual(
       capturedTelemetry,
-      [{ message: 'realtime_fallback_takeover', source: 'realtime.fallback.conversation' }],
+      [],
     )
+    assert.deepEqual(capturedRecovery, ['realtime.recovery.resume.conversation'])
     assert.equal(harness.lifecycle.listenerCount(), 0)
   } finally {
     harness.cleanup()
@@ -602,8 +606,9 @@ test('H5 fresh offline takes over once without a visibility transition', async (
     assert.equal(harness.queryCount, 1)
     assert.deepEqual(
       capturedTelemetry,
-      [{ message: 'realtime_fallback_takeover', source: 'realtime.fallback.conversation' }],
+      [],
     )
+    assert.deepEqual(capturedRecovery, ['realtime.recovery.offline.conversation'])
     assert.equal(harness.lifecycle.listenerCount(), 0)
   } finally {
     harness.cleanup()

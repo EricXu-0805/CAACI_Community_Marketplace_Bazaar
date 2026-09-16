@@ -676,9 +676,9 @@ for(const [width,height] of [[375,812],[390,844],[430,932],[768,1024],[1024,768]
  // The listing card uses a native img; inspect the image itself.
  await expect.poll(()=>renderedImage).toBe(true)
  await expect.poll(()=>page.locator('img.card-img').first().evaluate(el=>(el as HTMLImageElement).naturalWidth)).toBeGreaterThan(1)
- if(process.env.PRODUCT_AUDIT_CAPTURE)await page.screenshot({path:`../output/feedback-20260916/home-${width}-${auditTheme}.png`})
+ if(process.env.PRODUCT_AUDIT_CAPTURE)await page.screenshot({animations:'disabled',path:`../output/feedback-20260916/home-${width}-${auditTheme}.png`})
  await page.goto('/#/pages/profile/index');await expect(page.locator('.user-card')).toBeVisible();await expect(page.locator('.horz-card').first()).toBeVisible()
- if(process.env.PRODUCT_AUDIT_CAPTURE)await page.screenshot({path:`../output/feedback-20260916/profile-${width}-${auditTheme}.png`})
+ if(process.env.PRODUCT_AUDIT_CAPTURE)await page.screenshot({animations:'disabled',path:`../output/feedback-20260916/profile-${width}-${auditTheme}.png`})
 })
 
  test('discovery: a removed first candidate page does not strand later listings',async({page})=>{

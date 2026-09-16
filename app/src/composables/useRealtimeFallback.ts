@@ -8,7 +8,7 @@ import {
   isAccountRequestCurrent,
   onAccountTransition,
 } from './accountScope'
-import { captureException } from '../utils/sentry'
+import { captureException, addBreadcrumb } from '../utils/sentry'
 
 /*
  * Realtime abstraction with three tiers:
@@ -591,7 +591,7 @@ function startStickyTransport<Handoff>(
     return attempt
   }
 
-  const switchToFallback = (handoff: Handoff) => {
+  const switchToFallback = (handoff: Handoff, reason: 'failure' | 'resume' | 'offline' = 'failure') => {
     if (!isCurrent() || switched) return
     // A future primary implementation may report a setup failure
     // synchronously. Defer the handoff until its real unsubscribe handle has
@@ -607,10 +607,16 @@ function startStickyTransport<Handoff>(
     stopBrowserRecoveryObservation = () => {}
     // Once per transport: `switched` already makes the handoff sticky, so a
     // flapping connection cannot turn this into a reporting loop.
-    captureException(new Error('realtime_fallback_takeover'), {
-      tags: { source: `realtime.fallback.${options.telemetryScope}` },
-      level: 'warning',
-    })
+    if (reason === 'failure') {
+      captureException(new Error('realtime_fallback_takeover'), {
+        tags: { source: `realtime.fallback.${options.telemetryScope}` },
+        level: 'warning',
+      })
+    } else {
+      // Browser lifecycle recovery is deliberate, not a failed subscription.
+      // Retain a privacy-safe diagnostic trail without opening an error issue.
+      addBreadcrumb({ category: `realtime.recovery.${reason}.${options.telemetryScope}`, message: 'transport_recovery', level: 'info' })
+    }
     const stopPrimary = activeUnsubscribe
     activeUnsubscribe = () => {}
     stopPrimary()
@@ -638,11 +644,11 @@ function startStickyTransport<Handoff>(
       }
       if (document.visibilityState === 'visible' && observedHidden) {
         observedHidden = false
-        switchToFallback(handoff())
+        switchToFallback(handoff(), 'resume')
       }
     }
     const onOffline = () => {
-      if (isCurrent()) switchToFallback(handoff())
+      if (isCurrent()) switchToFallback(handoff(), 'offline')
     }
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', onVisibilityChange)
