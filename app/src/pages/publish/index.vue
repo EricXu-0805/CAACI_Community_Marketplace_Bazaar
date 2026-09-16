@@ -8,11 +8,11 @@
     <!-- .page-header is display:none at >=768px, and display:none drops the
          node from the accessibility tree — so the heading has to live outside
          it or Mac/iPad get no heading at all. -->
-    <text class="sr-only" role="heading" aria-level="1">{{ t('publish.title') }}</text>
+    <text class="sr-only" role="heading" aria-level="1">{{ t(form.listingType === 'wanted' ? 'home.publishWanted' : 'publish.title') }}</text>
 
     <!-- Mobile Header -->
     <view v-if="publishReady" class="page-header u-glass u-glass--hair-b">
-      <text class="ph-title">{{ t('publish.title') }}</text>
+      <text class="ph-title">{{ t(form.listingType === 'wanted' ? 'home.publishWanted' : 'publish.title') }}</text>
     </view>
 
     <view v-if="!publishReady" class="auth-check" role="status" aria-live="polite">
@@ -66,7 +66,7 @@
             <text class="add-count">{{ imageList.length }}/9</text>
           </view>
         </view>
-        <text class="image-tip">{{ imageList.length >= 9 ? t('publish.imageMaxReached') : t('publish.imageOptional') }}</text>
+        <text class="image-tip">{{ imageList.length >= 9 ? t('publish.imageMaxReached') : t(form.listingType === 'wanted' ? 'publish.wantedImageOptional' : 'publish.imageOptional') }}</text>
       </view>
 
       <ListingPreview :form="form" :images="imageList" />
@@ -83,7 +83,7 @@
       </view>
 
       <view class="form-group">
-        <textarea :disabled="submitting" v-model="form.description" :placeholder="t('publish.descPlaceholder')" :aria-label="t('publish.descPlaceholder')" maxlength="500" class="form-textarea" @focus="onFieldFocus" @blur="onFieldBlur" />
+        <textarea :disabled="submitting" v-model="form.description" :placeholder="t(form.listingType === 'wanted' ? 'publish.wantedDescPlaceholder' : 'publish.descPlaceholder')" :aria-label="t(form.listingType === 'wanted' ? 'publish.wantedDescPlaceholder' : 'publish.descPlaceholder')" maxlength="500" class="form-textarea" @focus="onFieldFocus" @blur="onFieldBlur" />
         <text class="field-guidance">{{ t('publish.guide.' + (form.listingType === 'wanted' ? 'wanted' : form.category || 'general')) }}</text>
         <text class="char-count">{{ form.description.length }}/500</text>
       </view>
@@ -214,12 +214,12 @@
       <view
         class="form-group row toggle-row"
         role="button" :aria-disabled="submitting ? 'true' : 'false'"
-        :aria-label="t('publish.obo')"
+        :aria-label="t(form.listingType === 'wanted' ? 'publish.wantedObo' : 'publish.obo')"
         :aria-pressed="form.negotiable ? 'true' : 'false'"
         @click="!submitting && (form.negotiable = !form.negotiable)"
       >
-        <text class="label">{{ t('publish.obo') }}</text>
-        <text class="toggle-hint">{{ t('publish.oboHint') }}</text>
+        <text class="label">{{ t(form.listingType === 'wanted' ? 'publish.wantedObo' : 'publish.obo') }}</text>
+        <text class="toggle-hint">{{ t(form.listingType === 'wanted' ? 'publish.wantedOboHint' : 'publish.oboHint') }}</text>
         <view :class="['toggle', { on: form.negotiable }]">
           <view class="toggle-knob"></view>
         </view>
@@ -228,7 +228,7 @@
 
     <view v-show="publishReady && !typing" class="submit-bar">
       <UButton size="lg" block :loading="submitting" @click="onSubmit">
-        {{ t('publish.submit') }}
+        {{ t(form.listingType === 'wanted' ? 'home.publishWanted' : 'publish.submit') }}
       </UButton>
     </view>
 

@@ -98,6 +98,12 @@ for (const kind of ['sell', 'wanted'] as const) test(`publish ${kind} from a cat
   await page.locator('.feed-publish').click()
   await expect(page.locator('.lt-seg.on')).toContainText(kind === 'wanted' ? 'Wanted' : 'Selling')
   await expect(page.locator('.field-value').first()).toContainText('Electronics')
+  if (kind === 'wanted') {
+    await expect(page.getByRole('heading', { name: 'Post a request', exact: true })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Describe what you need, preferred condition and timing...', exact: true })).toBeVisible()
+    await expect(page.locator('.image-tip')).toContainText('Add reference images')
+    await expect(page.getByRole('button', { name: 'Flexible budget', exact: true })).toContainText('Discuss the price with the seller')
+  }
   // On leaving a prefilled form, explicitly discard the draft. Re-enter via
   // a different category to exercise uni-app's cached tab (no second onLoad).
   await page.locator('.tabbar').getByRole('button', { name: 'Home', exact: true }).click()
