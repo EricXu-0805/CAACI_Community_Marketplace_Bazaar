@@ -4,6 +4,7 @@ import type { Plugin } from "vite";
 import uni from "@dcloudio/vite-plugin-uni";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { localDevServerBoundary } from "./dev-server-boundary.mjs";
+import { publicBrandPages } from "./public-brand-pages";
 
 /*
  * VITE_RELEASE auto-derivation order:
@@ -416,6 +417,7 @@ function mpWebApiGlobalThisRewrite(): Plugin {
 export default defineConfig({
   plugins: [
     localDevServerBoundary(),
+    ...(!isMpBuild ? [publicBrandPages()] : []),
     deploymentConfigurationBoundary(),
     rejectPrivilegedSupabaseKeyInPublicEnv(),
     requireMpAppOrigin(),

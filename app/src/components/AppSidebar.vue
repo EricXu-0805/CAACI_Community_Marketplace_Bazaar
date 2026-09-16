@@ -69,6 +69,11 @@
             <text :class="['asb-lang', { on: lang === 'en' }]">EN</text>
           </view>
         </view>
+        <view class="asb-legal">
+          <a class="asb-legal-link" href="/about">{{ lang === 'zh' ? '关于' : 'About' }}</a>
+          <a class="asb-legal-link" href="/privacy">{{ lang === 'zh' ? '隐私' : 'Privacy' }}</a>
+          <a class="asb-legal-link" href="/terms">{{ lang === 'zh' ? '条款' : 'Terms' }}</a>
+        </view>
       </view>
     </view>
   </view>
@@ -125,6 +130,12 @@ function toggleTheme() {
 <style scoped>
 /* Phone-first: hidden until the iPad/Mac breakpoint. */
 .app-sidebar { display: none; }
+.asb-legal { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 14px; font-size: 12px; }
+.asb-legal-link { color: var(--ink-soft); text-decoration: none; }
+/* #ifdef H5 */
+.asb-legal-link:hover { text-decoration: underline; }
+.asb-legal-link:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 4px; }
+/* #endif */
 
 @media (min-width: 768px) {
   .app-sidebar {
