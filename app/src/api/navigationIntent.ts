@@ -132,6 +132,7 @@ const LOGIN_NO_PARAM_ROUTES = new Set([
   '/pages/notifications/index',
   '/pages/history/index',
   '/pages/settings/index',
+  '/pages/account-link/index',
   '/pages/blocked/index',
   '/pages/illini-verify/index',
   '/pages/profile/edit',

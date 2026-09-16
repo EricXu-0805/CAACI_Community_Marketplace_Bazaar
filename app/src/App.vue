@@ -821,6 +821,7 @@ const PAGE_TITLE_KEYS: Record<string, string> = {
   '/pages/saved-searches/index': 'savedSearch.title',
   '/pages/search/index': 'a11y.search',
   '/pages/settings/index': 'settings.title',
+  '/pages/account-link/index': 'wechat.title',
   '/pages/blocked/index': 'settings.blockedUsers',
   '/pages/notifications/index': 'notif.title',
   '/pages/login/index': 'login.signIn',
@@ -1355,6 +1356,7 @@ onLaunch((launchOptions) => {
     // Public account-deletion guides link here. A first-time browser visitor
     // must reach Settings (and its sign-in action), not lose it to onboarding.
     '/pages/settings/index',
+    '/pages/account-link/index',
     '/pages/legal/index',
     '/pages/reset-password/index',
     '/pages/profile-recovery/index',

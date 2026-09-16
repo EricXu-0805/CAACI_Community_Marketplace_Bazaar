@@ -290,9 +290,9 @@ test('all first-party small API consumers use bounded body readers', async () =>
   // WeChat login lives inside the auth state machine. Its compatibility parser
   // delegates to the same streaming cap/deadline implementation, so reading
   // response.body directly cannot bypass the platform transport boundary.
-  const auth = await readFile(new URL('src/composables/useAuth.ts', ROOT), 'utf8')
+  const auth = await readFile(new URL('src/api/wechatAccountLink.ts', ROOT), 'utf8')
   const bounded = await readFile(new URL('src/api/boundedJson.ts', ROOT), 'utf8')
-  assert.match(auth, /const res = await platformFetch\(endpoint,/)
+  assert.match(auth, /const response = await platformFetch\(/)
   assert.match(auth, /readBoundedJsonResponse/)
   assert.match(bounded, /return await readBoundedJson<T>\(response, \{ maxBytes, timeoutMs \}\)/)
   assert.doesNotMatch(bounded, /body\.getReader\(/)

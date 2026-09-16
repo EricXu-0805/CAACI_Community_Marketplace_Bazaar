@@ -3,9 +3,9 @@ import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from '../_depl
 export const config = { runtime: 'edge' }
 
 /*
- * /api/auth/wechat-login — mp-weixin silent sign-in endpoint.
+ * /api/auth/wechat-login — mp-weixin sign-in and deliberate account linking.
  *
- * Passwordless custom-provider flow (v4):
+ * Passwordless custom-provider flow (v5):
  *
  *   1. The mini program obtains a single-use js_code with wx.login().
  *   2. This endpoint applies a fail-closed atomic network limit before
@@ -13,8 +13,10 @@ export const config = { runtime: 'edge' }
  *      js_codes are never written to the limiter table.
  *   3. WeChat exchanges js_code for openid/unionid server-side, followed by a
  *      second fail-closed limit on the pseudonymized identity.
- *   4. Supabase Admin generate_link(type=magiclink) creates or reuses the
- *      deterministic placeholder-email user and returns a one-time token hash.
+ *   4. A server-only lookup resolves an existing bound website account first.
+ *      Only explicit registration may create a placeholder-email user.
+ *      Supabase Admin generate_link returns a one-time token hash for that
+ *      exact user; existing website metadata is not overwritten.
  *   5. /auth/v1/verify exchanges that token hash for a real access/refresh
  *      session. No email is sent and this endpoint creates, retrieves and
  *      returns no reusable plaintext password.
@@ -34,6 +36,9 @@ export const config = { runtime: 'edge' }
  * provider is deliberately enabled:
  *   WECHAT_LOGIN_ENABLED=true, WECHAT_APPID, WECHAT_APPSECRET, SUPABASE_URL,
  *   SUPABASE_SECRET_KEY, SUPABASE_PUBLISHABLE_KEY
+ * New linking additionally requires WECHAT_ACCOUNT_LINK_ENABLED=true and its
+ * reviewed database migration. Keep WECHAT_LINK_RETENTION_ENABLED=true after
+ * activation even if new linking is paused.
  * Legacy SUPABASE_SERVICE_ROLE_KEY / SUPABASE_ANON_KEY remain rolling fallbacks.
  */
 
@@ -57,6 +62,7 @@ const WECHAT_APPSECRET = env('WECHAT_APPSECRET')
 // implicitly activate identity login; only this independent exact-value gate
 // can make the dormant route reachable.
 const WECHAT_LOGIN_ENABLED = process.env.WECHAT_LOGIN_ENABLED === 'true'
+const WECHAT_ACCOUNT_LINK_ENABLED = process.env.WECHAT_ACCOUNT_LINK_ENABLED === 'true'
 const SUPABASE_URL_RAW = env('SUPABASE_URL', env('VITE_SUPABASE_URL'))
 const SUPABASE_SERVICE = env('SUPABASE_SECRET_KEY', env('SUPABASE_SERVICE_ROLE_KEY'))
 const SUPABASE_ANON = env(
@@ -448,7 +454,7 @@ function validUserId(value) {
     && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 }
 
-async function generateMagicLink(email, nickname) {
+async function generateMagicLink(email, nickname, existingAccount = false) {
   let response
   try {
     response = await fetchWithTimeout(`${SUPABASE_URL}/auth/v1/admin/generate_link`, {
@@ -460,10 +466,8 @@ async function generateMagicLink(email, nickname) {
       body: JSON.stringify({
         type: 'magiclink',
         email,
-        data: {
-          provider: 'wechat',
-          ...(nickname ? { nickname } : {}),
-        },
+        // Existing website accounts retain their own metadata and provider.
+        ...(!existingAccount ? { data: { provider: 'wechat', ...(nickname ? { nickname } : {}) } } : {}),
       }),
     })
   } catch {
@@ -687,19 +691,114 @@ async function verifyMagicLink(link, expectedEmail) {
   return body
 }
 
+// Account-link helpers use only fixed server destinations and bounded responses.
+async function serviceJson(path, init = {}) {
+  try {
+    const response = await fetchWithTimeout(`${SUPABASE_URL}${path}`, {
+      ...init, headers:supabaseHeaders(SUPABASE_SERVICE,'',{'Content-Type':'application/json', ...init.headers}),
+    })
+    if (!response.ok) throw new Error('upstream_failed')
+    return await response.json()
+  } catch { throw endpointError('link_unavailable','account_link',503) }
+}
+
+async function boundAccount(identity) {
+  const rows = await serviceJson(`/rest/v1/profiles?wechat_openid=eq.${encodeURIComponent(identity.openid)}&select=id,wechat_openid,wechat_unionid,suspension_level,suspended_until&limit=2`)
+  if (!Array.isArray(rows) || rows.length > 1) throw endpointError('link_unavailable','account_link',503)
+  if (!rows.length) return null
+  if (!validUserId(rows[0]?.id) || rows[0]?.wechat_openid !== identity.openid
+    || !Object.hasOwn(rows[0], 'wechat_unionid')) throw endpointError('link_unavailable','account_link',503)
+  if (rows[0].suspension_level >= 2 && (!rows[0].suspended_until || !(Date.parse(rows[0].suspended_until) <= Date.now()))) throw endpointError('account_changed','account_link',409)
+  ensureIdentityCompatible(rows[0],identity.openid,identity.unionid)
+  return rows[0]
+}
+
+async function accountEmail(userId) {
+  const user = await serviceJson(`/auth/v1/admin/users/${encodeURIComponent(userId)}`)
+  if (user?.id !== userId || typeof user.email !== 'string' || user.email.length > 320
+    || !user.email.includes('@') || !user.email_confirmed_at || user.deleted_at
+    || (user.banned_until && !(Date.parse(user.banned_until) <= Date.now()))) {
+    throw endpointError('account_changed','account_link',409)
+  }
+  if (Array.isArray(user.factors) && user.factors.some(factor => factor.status === 'verified')) throw endpointError('account_changed','account_link',409)
+  const deletions = await serviceJson(`/rest/v1/account_deletion_jobs?user_id=eq.${encodeURIComponent(userId)}&select=user_id&limit=1`)
+  if (!Array.isArray(deletions) || deletions.length) throw endpointError('account_changed','account_link',409)
+  return user.email
+}
+
+async function websiteSession(request) {
+  const authorization = request.headers.get('authorization') || ''
+  if (!/^Bearer [A-Za-z0-9_.-]{40,16384}$/.test(authorization)) throw endpointError('reauth_required','account_link',401)
+  let response
+  try {
+    response = await fetchWithTimeout(`${SUPABASE_URL}/auth/v1/user`, {
+      headers:supabaseHeaders(SUPABASE_ANON,authorization),
+    })
+  } catch { throw endpointError('link_unavailable','account_link',503) }
+  if (!response.ok) throw endpointError('reauth_required','account_link',401)
+  const user = await response.json().catch(()=>null)
+  // Parse only after GoTrue has authenticated this EXACT bearer. The database
+  // additionally proves session ownership, age and revocation at each step.
+  try {
+    const segment = authorization.slice(7).split('.')[1]
+    const claims = JSON.parse(atob(segment.replace(/-/g,'+').replace(/_/g,'/')))
+    if (!validUserId(user?.id) || claims.sub !== user.id || !validUserId(claims.session_id)) throw new Error('claims')
+    return {userId:user.id,sessionId:claims.session_id}
+  } catch { throw endpointError('reauth_required','account_link',401) }
+}
+
+function randomHex(size) {
+  return Array.from(crypto.getRandomValues(new Uint8Array(size)), b=>b.toString(16).padStart(2,'0')).join('')
+}
+function randomLinkCode() {
+  const alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
+  return Array.from(crypto.getRandomValues(new Uint8Array(10)), b=>alphabet[b & 31]).join('')
+}
+function validExpiry(value) {
+  const expiry = typeof value === 'string' ? Date.parse(value) : NaN
+  return Number.isFinite(expiry) && expiry > Date.now() && expiry <= Date.now() + 301_000
+}
+async function linkRpc(action, body) {
+  const result = await serviceJson(`/rest/v1/rpc/wechat_link_${action}`, {method:'POST',body:JSON.stringify(body)})
+  if (!result || typeof result !== 'object' || Array.isArray(result)) throw endpointError('link_unavailable','account_link',503)
+  if (result.error) {
+    const code = ['reauth_required','already_linked','invalid_request','link_expired','link_conflict'].includes(result.error) ? result.error : 'link_unavailable'
+    throw endpointError(code,'account_link',code === 'reauth_required' ? 401 : code === 'link_unavailable' ? 503 : 409)
+  }
+  return result
+}
+function linkFailure(error,id) {
+  const allowed = new Map([['reauth_required',401],['already_linked',409],['invalid_request',400],
+    ['link_expired',409],['link_conflict',409],['wechat_account_not_linked',409],['account_changed',409],
+    ['link_unavailable',503],['rate_limited',429],['rate_limit_unavailable',503]])
+  const status = allowed.get(error?.message)
+  if (status) {
+    if (status === 503) logFailure(id,error)
+    return json({error:error.message},status,id)
+  }
+  logFailure(id,error)
+  return json({error:'login_failed'},error?.status === 503 ? 503 : 500,id)
+}
+
 async function retryPause() {
   const random = new Uint8Array(1)
   crypto.getRandomValues(random)
   await new Promise((resolve) => setTimeout(resolve, 35 + (random[0] % 31)))
 }
 
-async function createPasswordlessSession(identity, nickname) {
-  const email = emailFor(identity.openid)
+async function createPasswordlessSession(identity, nickname, { allowCreate = false, expectedUserId = '' } = {}) {
+  // This lookup remains active even if NEW linking is later disabled. Never
+  // fall back to a placeholder account after an established binding fails.
+  const bound = await boundAccount(identity)
+  if (expectedUserId && bound?.id !== expectedUserId) throw endpointError('link_conflict', 'account_link', 409)
+  if (!bound && !allowCreate) throw endpointError('wechat_account_not_linked', 'account_link', 409)
+  const email = bound ? await accountEmail(bound.id) : emailFor(identity.openid)
   let lastError
   for (let attempt = 0; attempt < VERIFY_ATTEMPTS; attempt += 1) {
     let link
     try {
-      link = await generateMagicLink(email, nickname)
+      link = await generateMagicLink(email, nickname, !!bound)
+      if (bound && link.userId !== bound.id) throw endpointError('account_changed', 'account_link', 409)
     } catch (error) {
       lastError = error
       if (attempt + 1 >= VERIFY_ATTEMPTS || !retryableGenerateConflict(error)) throw error
@@ -807,16 +906,49 @@ export default async function handler(request) {
     return inputFailureResponse(error, id)
   }
 
+  const action = body?.action || 'login'
+  if (!['login', 'capabilities', 'link_status', 'link_issue', 'link_preview', 'link_confirm'].includes(action)) {
+    return json({ error: 'invalid_request' }, 400, id)
+  }
+  if (action === 'capabilities') {
+    return json({ login: true, account_link: WECHAT_ACCOUNT_LINK_ENABLED }, 200, id)
+  }
+  if (action.startsWith('link_') && !WECHAT_ACCOUNT_LINK_ENABLED) {
+    return json({ error: 'wechat_link_disabled' }, 404, id)
+  }
+  const webAction = action === 'link_issue' || action === 'link_status'
   const jsCode = typeof body?.js_code === 'string' ? body.js_code.trim() : ''
   const nickname = sanitizeNickname(body?.nickname)
-  if (!jsCode || jsCode.length > 256 || /[\u0000-\u001F\u007F]/.test(jsCode)) {
+  if (!webAction && (!jsCode || jsCode.length > 256 || /[\u0000-\u001F\u007F]/.test(jsCode))) {
     return json({ error: 'bad_js_code' }, 400, id)
   }
-
+  const linkCode = typeof body?.link_code === 'string' ? body.link_code.replace(/[ -]/g, '').toUpperCase() : ''
+  if (['link_preview','link_confirm'].includes(action) && !/^[0-9A-HJKMNP-TV-Z]{10}$/.test(linkCode)) {
+    return json({ error: 'invalid_request' }, 400, id)
+  }
+  if (action === 'link_confirm' && (typeof body?.confirmation !== 'string' || !/^[0-9a-f]{64}$/.test(body.confirmation))) {
+    return json({ error: 'invalid_request' }, 400, id)
+  }
   try {
     await enforceNetworkRateLimit(request)
   } catch (error) {
     return rateLimitFailureResponse(error, id)
+  }
+  if (webAction) {
+    try {
+      const owner = await websiteSession(request)
+      const permitted = await rateHit(`wechat-link:owner:${await hmacHex('link-owner', owner.userId)}`, 6)
+      if (permitted !== true) throw endpointError(permitted === false ? 'rate_limited' : 'rate_limit_unavailable', 'account_link', permitted === false ? 429 : 503)
+      if (action === 'link_status') {
+        const profile = await readProfileForBinding(owner.userId)
+        return json({ linked: !!profile.wechat_openid }, 200, id)
+      }
+      const code = randomLinkCode()
+      const ticket = await linkRpc('issue', {user_id_in:owner.userId, session_id_in:owner.sessionId,
+        app_id_in:WECHAT_APPID, code_hash_in:await hmacHex('link-code',code)})
+      if (!validExpiry(ticket.expires_at)) throw endpointError('link_unavailable','account_link',503)
+      return json({link_code:code,expires_at:ticket.expires_at},200,id)
+    } catch (error) { return linkFailure(error,id) }
   }
 
   let identity
@@ -834,10 +966,28 @@ export default async function handler(request) {
   }
 
   try {
-    const session = await createPasswordlessSession(identity, nickname)
+    if (action === 'link_preview' || action === 'link_confirm') {
+      const confirmation = action === 'link_preview' ? randomHex(32) : body.confirmation
+      const result = await linkRpc(action === 'link_preview' ? 'preview' : 'confirm', {
+        code_hash_in:await hmacHex('link-code',linkCode), app_id_in:WECHAT_APPID,
+        openid_in:identity.openid,unionid_in:identity.unionid,
+        proof_hash_in:await hmacHex('link-confirmation',confirmation),
+      })
+      if (action === 'link_preview') {
+        if (typeof result.nickname !== 'string' || typeof result.email_label !== 'string'
+          || result.email_label.length > 320 || !validExpiry(result.expires_at)) {
+          throw endpointError('link_unavailable','account_link',503)
+        }
+        return json({nickname:sanitizeNickname(result.nickname),email_label:result.email_label,
+          expires_at:result.expires_at,confirmation},200,id)
+      }
+      if (!validUserId(result.user_id)) throw endpointError('link_unavailable','account_link',503)
+      const session = await createPasswordlessSession(identity, '', {expectedUserId:result.user_id})
+      return json(sessionForClient(session),200,id)
+    }
+    const session = await createPasswordlessSession(identity, nickname, { allowCreate: body.create_account === true })
     return json(sessionForClient(session), 200, id)
   } catch (error) {
-    logFailure(id, error)
-    return json({ error: 'login_failed' }, error.status === 503 ? 503 : 500, id)
+    return linkFailure(error, id)
   }
 }

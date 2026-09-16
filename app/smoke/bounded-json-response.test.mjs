@@ -71,12 +71,13 @@ test('bounded JSON rejects and cancels a real never-ending stream on deadline', 
   assert.equal(cancelled, true)
 })
 
-test('WeChat login uses the bounded parser for both success and error payloads', () => {
-  const source = readFileSync(resolve(appRoot, 'src/composables/useAuth.ts'), 'utf8')
-  const start = source.indexOf('async function signInWithWeChat(')
-  const end = source.indexOf('\n  async function signOut(', start)
-  const block = source.slice(start, end)
-  assert.ok(start >= 0 && end > start)
-  assert.equal((block.match(/readBoundedJsonResponse</g) || []).length, 2)
-  assert.doesNotMatch(block, /res\.json\(/)
+test('WeChat login and linking share one bounded parse before handling success or error', () => {
+  const auth = readFileSync(resolve(appRoot, 'src/composables/useAuth.ts'), 'utf8')
+  const source = readFileSync(resolve(appRoot, 'src/api/wechatAccountLink.ts'), 'utf8')
+  assert.match(auth, /const payload = await wechatAccountRequest\(/)
+  const parse = source.indexOf('const payload = await readBoundedJsonResponse<')
+  const status = source.indexOf('if (!response.ok)')
+  const success = source.indexOf('return payload as T')
+  assert.ok(parse > 0 && parse < status && status < success)
+  assert.doesNotMatch(source, /response\.json\(/)
 })

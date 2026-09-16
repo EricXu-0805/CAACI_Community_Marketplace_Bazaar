@@ -19,6 +19,8 @@ function env(name, fallback = '') {
 const SUPABASE_URL = env('SUPABASE_URL', env('VITE_SUPABASE_URL'))
 const SERVICE_KEY = env('SUPABASE_SECRET_KEY', env('SUPABASE_SERVICE_ROLE_KEY'))
 const CRON_SECRET = env('CRON_SECRET')
+// Keep retention enabled when pausing new linking. Enable only after its migration.
+const WECHAT_LINK_RETENTION_ENABLED = process.env.WECHAT_LINK_RETENTION_ENABLED === 'true'
 const RPC_TIMEOUT_MS = 5_000
 const RUN_TIMEOUT_MS = 20_000
 const MAX_RPC_BATCHES = 5
@@ -127,7 +129,7 @@ function normalizeRpcResult(payload) {
   }
 }
 
-async function runRetentionBatch(url, timeoutMs) {
+async function runRetentionBatch(url, timeoutMs, normalize = normalizeRpcResult) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
@@ -153,7 +155,7 @@ async function runRetentionBatch(url, timeoutMs) {
     const raw = await readBodyLimited(response)
     let payload
     try { payload = JSON.parse(raw) } catch { throw new Error('rpc_response_malformed') }
-    const normalized = normalizeRpcResult(payload)
+    const normalized = normalize(payload)
     if (!normalized) throw new Error('rpc_response_invalid')
     return normalized
   } finally {
@@ -195,6 +197,22 @@ export default async function handler(req) {
       deleted.illiniVerifications += result.deleted.illiniVerifications
       deleted.wechatMediaChecks += result.deleted.wechatMediaChecks
       hasMore = result.hasMore
+    }
+    if (WECHAT_LINK_RETENTION_ENABLED) {
+      deleted.wechatLinkTickets = 0
+      let linkMore = true, linkBatches = 0
+      while (linkMore && linkBatches < MAX_RPC_BATCHES) {
+        const remainingMs = RUN_TIMEOUT_MS - (Date.now() - startedAt)
+        if (remainingMs <= 0) throw new Error('run_deadline_exceeded')
+        const result = await runRetentionBatch(
+          new URL('/rest/v1/rpc/prune_wechat_link_requests', url).toString(),
+          Math.min(RPC_TIMEOUT_MS, remainingMs),
+          payload => payload && validDeletedCount(payload.deleted) && typeof payload.has_more === 'boolean' ? payload : null,
+        )
+        deleted.wechatLinkTickets += result.deleted
+        linkMore = result.has_more; linkBatches += 1
+      }
+      hasMore = hasMore || linkMore
     }
   } catch (error) {
     // Static error codes only: no upstream body, secret, URL, bucket, email,

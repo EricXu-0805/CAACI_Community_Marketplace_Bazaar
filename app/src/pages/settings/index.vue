@@ -100,6 +100,13 @@
       </view>
     </view>
 
+    <view v-if="isLoggedIn && wechatLinkAvailable" class="section">
+      <view class="menu-item" role="button" tabindex="0" :aria-label="t('wechat.title')"
+        @click="goAccountLink" @keydown.enter.prevent="goAccountLink" @keydown.space.prevent="goAccountLink">
+        <text class="mi-label">{{ t('wechat.title') }}</text><view class="mi-arrow"></view>
+      </view>
+    </view>
+
     <view v-if="isLoggedIn" class="section">
       <view
         class="menu-item"
@@ -164,6 +171,8 @@ import AppSidebar from '../../components/AppSidebar.vue'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { computed, ref, onUnmounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+import { wechatCapabilities } from '../../api/wechatAccountLink'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useSupabase, platformFetch } from '../../composables/useSupabase'
@@ -201,6 +210,11 @@ const { supabase } = useSupabase()
 const { pref: themePref, setPref: setThemePref } = useTheme()
 const { clearHistory, clearPostHistory } = useHistory()
 const cacheSize = ref('--')
+const wechatLinkAvailable = ref(false)
+let settingsMounted = true
+onUnmounted(() => { settingsMounted = false })
+onShow(() => { void wechatCapabilities().then(value => { if (settingsMounted) wechatLinkAvailable.value = value.account_link }) })
+function goAccountLink() { uni.navigateTo({url:'/pages/account-link/index'}) }
 const appVersionLabel = `${APP_VERSION} · ${BUILD_REF}`
 let settingsAccountEpoch = 0
 let deletionLoadingOwned = false

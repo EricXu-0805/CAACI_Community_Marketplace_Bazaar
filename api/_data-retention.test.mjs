@@ -8,6 +8,7 @@ const API_ROOT = new URL('./', import.meta.url)
 const CRON_SECRET = 'cron-test-secret'
 const SERVICE_KEY = 'service-test-key'
 const ENV_KEYS = [
+  'WECHAT_LINK_RETENTION_ENABLED',
   'SUPABASE_URL', 'VITE_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'CRON_SECRET',
   'SUPABASE_SECRET_KEY', 'SUPABASE_PUBLISHABLE_KEY', 'VITE_SUPABASE_PUBLISHABLE_KEY',
   // Without these the failure paths would POST to a developer's real Sentry
@@ -415,4 +416,24 @@ test('the same timeout also bounds a stalled successful response body', async ()
     },
     batches: 0,
   })
+})
+
+
+test('enabled linking retention clears bounded expired-ticket batches without returning row data', async () => {
+  const { default: handler } = await loadApi({ WECHAT_LINK_RETENTION_ENABLED: 'true' })
+  const paths = []; let linkCalls = 0
+  globalThis.fetch = async (input, init) => {
+    const path = new URL(input).pathname; paths.push(path)
+    assert.equal(init.method, 'POST'); assert.equal(init.body, '{}')
+    if (path.endsWith('/prune_wechat_link_requests')) {
+      linkCalls += 1
+      return response({ deleted: linkCalls === 1 ? 1000 : 2, has_more: linkCalls === 1 })
+    }
+    return response(rpcPayload())
+  }
+  const result = await handler(request()); assert.equal(result.status, 200)
+  const body = await result.json()
+  assert.equal(body.deleted.wechatLinkTickets, 1002)
+  assert.equal(linkCalls, 2)
+  assert.deepEqual([...new Set(paths)], ['/rest/v1/rpc/run_ephemeral_data_retention', '/rest/v1/rpc/prune_wechat_link_requests'])
 })

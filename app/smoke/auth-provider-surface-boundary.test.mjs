@@ -22,7 +22,7 @@ function functionBody(fileSource, name) {
   return rest.slice(0, end < 0 ? undefined : end)
 }
 
-test('first-release login surface exposes email/password and H5-only Google', () => {
+test('login exposes email/password, H5 Google and explicitly gated mini-program WeChat', () => {
   assert.match(login, /v-model="email"/)
   assert.match(login, /v-model="password"/)
   assert.match(login, /@click="onSubmit"/)
@@ -33,11 +33,15 @@ test('first-release login surface exposes email/password and H5-only Google', ()
   assert.match(h5Block, /@click="onSignInWithGoogle"/)
   assert.match(h5Block, /login\.googleSignIn/)
 
-  assert.doesNotMatch(login, /wechatQuick|onWeChatLogin|wx-btn|wx-icon/)
-  assert.doesNotMatch(login, /linkIdentity|账号合并|绑定微信|link WeChat/i)
+  const mpStart = login.indexOf('<!-- #ifdef MP-WEIXIN -->')
+  const mpBlock = login.slice(mpStart, login.indexOf('<!-- #endif -->', mpStart))
+  assert.match(mpBlock, /v-if="wechatLoginAvailable"/)
+  assert.match(mpBlock, /@click="onWechatSignIn"/)
+  assert.match(mpBlock, /v-if="wechatLinkAvailable"/)
+  assert.doesNotMatch(login, /linkIdentity\(/)
 })
 
-test('hidden WeChat login keeps compatibility, cleanup, and server boundaries dormant', () => {
+test('WeChat keeps compatibility and stays disabled until explicit server activation', () => {
   assert.match(auth, /async function signInWithWeChat\(/)
   assert.match(auth, /signInWithWeChat,/)
   assert.match(accountPrivacy, /wechat_seccheck_openid/)

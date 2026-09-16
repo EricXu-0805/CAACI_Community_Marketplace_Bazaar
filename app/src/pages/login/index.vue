@@ -152,21 +152,8 @@
       </button>
 
       <!-- #ifdef H5 -->
-      <!--
-        Google OAuth — H5-only secondary auth path. Placed BELOW the
-        email form (per spec) with an 'or' divider so the email/password
-        path stays primary. Same button works for both 'login' and
-        'signup' tab modes — Supabase signInWithOAuth creates a profile
-        on first sign-in, so the user doesn't need to think about which
-        tab they're on. The mini-program deliberately stays on
-        email/password for the first release. Google OAuth has no reliable
-        native mini-program flow, and the dormant WeChat compatibility path
-        is intentionally not exposed.
-
-        Until the dashboard configuration in the commit message is done,
-        clicking this button surfaces a 'provider is not enabled' error
-        from Supabase — that's the expected pre-config state.
-      -->
+      <!-- Google remains H5-only. WeChat below is shown only after its
+           independent server capability gate is deliberately enabled. -->
       <view class="or-divider google-divider">
         <view class="or-line"></view>
         <text class="or-text">{{ t('login.orContinue') }}</text>
@@ -178,6 +165,13 @@
         </view>
         <text>{{ googleLoading ? t('login.connectingGoogle') : t('login.googleSignIn') }}</text>
       </button>
+      <!-- #endif -->
+      <!-- #ifdef MP-WEIXIN -->
+      <view v-if="wechatLoginAvailable" class="wechat-options">
+        <button class="google-btn" :disabled="formBusy" @click="onWechatSignIn">{{ t(mode === 'signup' ? 'wechat.signup' : 'wechat.login') }}</button>
+        <text v-if="mode === 'signup'" class="wechat-helper">{{ t('wechat.agreementHint') }}</text>
+        <button v-if="wechatLinkAvailable" class="wechat-link" :disabled="formBusy" @click="openAccountLink">{{ t('wechat.existing') }}</button>
+      </view>
       <!-- #endif -->
     </view>
 
@@ -218,6 +212,7 @@ import { ref, computed, nextTick, onUnmounted, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useSupabase, prepareSupabaseAuthPersistence } from '../../composables/useSupabase'
+import { wechatCapabilities, wechatErrorKey } from '../../api/wechatAccountLink'
 import { useI18n } from '../../composables/useI18n'
 import { useTheme } from '../../composables/useTheme'
 import { passwordRules, passwordValid, friendlyErrorMessage, navigateBackOr } from '../../utils'
@@ -239,6 +234,7 @@ const { t, lang } = useI18n()
 const {
   signIn,
   signUp,
+  signInWithWeChat,
   loading,
   currentUser,
 } = useAuth()
@@ -306,6 +302,8 @@ function focusField(id: 'login-email-error' | 'login-password-error' | 'login-ni
   })
   // #endif
 }
+const wechatLoginAvailable = ref(false)
+const wechatLinkAvailable = ref(false)
 const googleLoading = ref(false)
 const forgotLoading = ref(false)
 const authRedirecting = ref(false)
@@ -348,6 +346,13 @@ function scheduleHomeRedirect(delay: number, expectedUserId?: string) {
 }
 
 onLoad((options) => {
+  // #ifdef MP-WEIXIN
+  void wechatCapabilities().then(capabilities => {
+    if (!mounted) return
+    wechatLoginAvailable.value = capabilities.login
+    wechatLinkAvailable.value = capabilities.account_link
+  })
+  // #endif
   loginIntentNonce = readLoginIntentNonce(options?.intent)
   // #ifdef H5
   try {
@@ -750,6 +755,19 @@ async function onSignInWithGoogle() {
   // #endif
 }
 
+function openAccountLink() {
+  if (!formBusy.value) uni.navigateTo({ url: '/pages/account-link/index' })
+}
+async function onWechatSignIn() {
+  if (formBusy.value) return
+  formError.value = ''
+  if (mode.value === 'signup' && !agreed.value) { formError.value = t('login.agreeRequired'); return }
+  const { data, error } = await signInWithWeChat({createAccount:mode.value === 'signup',isCurrent:()=>mounted})
+  if (!mounted) return
+  if (error) formError.value = t(wechatErrorKey(error))
+  else scheduleHomeRedirect(0, data?.user?.id)
+}
+
 async function onSubmit() {
   if (formBusy.value) return
   const submittedMode = mode.value
@@ -1146,4 +1164,8 @@ async function onSubmit() {
   font-size: 11px; color: var(--text-subtle);
   letter-spacing: 0.05em; font-weight: 500;
 }
+.wechat-options { margin-top:24px; }
+.wechat-helper { display:block; font-size:13px; line-height:1.6; color:var(--ink-quiet); margin-top:12px; }
+.wechat-link { background:transparent; color:var(--brand); font-size:14px; line-height:1.5; padding:14px 8px; }
+.wechat-link::after { border:0; }
 </style>

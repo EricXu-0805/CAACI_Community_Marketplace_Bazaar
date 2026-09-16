@@ -1,7 +1,6 @@
 import { ref, computed } from 'vue'
 import {
   useSupabase,
-  platformFetch,
   prepareSupabaseAuthPersistence,
   failClosedSupabaseSignOut,
 } from './useSupabase'
@@ -16,7 +15,6 @@ import { checkContent, remoteModerate } from '../utils/contentSafety'
 import { addBreadcrumb, captureAuthFailure, captureException } from '../utils/sentry'
 import { safeAvatarUrl, sanitizeProfileResource } from '../utils/publicResource'
 import type { Profile } from '../types'
-import { BASE_URL } from '../config/runtime'
 import {
   captureAccountIdentityGeneration,
   captureAccountRequest,
@@ -33,7 +31,7 @@ import {
   mutationOutcomeError,
 } from '../api/mutationCommit'
 import { reconcileAccountPrivateStorage } from '../api/accountLocalPrivacy'
-import { readBoundedJsonResponse } from '../api/boundedJson'
+import { freshWechatCode, wechatAccountRequest } from '../api/wechatAccountLink'
 import {
   buildLoginRoute,
   loginReturnRouteFromPage,
@@ -62,7 +60,6 @@ let lastProfileRetryAt = 0
 
 const PROFILE_RETRY_DELAYS_MS = [0, 350, 1100] as const
 const PROFILE_RETRY_COOLDOWN_MS = 3000
-const WECHAT_LOGIN_RESPONSE_MAX_BYTES = 64 * 1024
 
 function hasOwn(value: object, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(value, key)
@@ -555,50 +552,35 @@ export function useAuth() {
     }
   }
 
-  async function signInWithWeChat(): Promise<{ data: any; error: any }> {
+  async function signInWithWeChat(options: { createAccount?: boolean; linkCode?: string; confirmation?: string; isCurrent?: () => boolean } = {}): Promise<{ data: any; error: any }> {
     // #ifndef MP-WEIXIN
     return { data: null, error: new Error('wechat_login_only_available_on_mp_weixin') }
     // #endif
     // #ifdef MP-WEIXIN
+    if (loading.value || getActiveAccountId()) return { data: null, error: new Error('account_changed') }
+    const identityGeneration = captureAccountIdentityGeneration()
     loading.value = true
     try {
-      const code: string = await new Promise((resolve, reject) => {
-        uni.login({
-          provider: 'weixin',
-          success: (res: any) => res?.code ? resolve(res.code) : reject(new Error('no_code')),
-          fail: (err: any) => reject(new Error(err?.errMsg || 'wx_login_failed')),
-        })
+      const code = await freshWechatCode()
+      if (!isAccountIdentityGenerationCurrent(identityGeneration, null) || options.isCurrent?.() === false) throw new Error('account_changed')
+      const linking = !!options.linkCode && !!options.confirmation
+      const payload = await wechatAccountRequest(linking ? 'link_confirm' : 'login', {
+        js_code: code,
+        ...(linking ? { link_code: options.linkCode, confirmation: options.confirmation } : { create_account: options.createAccount === true }),
       })
-
-      const endpoint = `${BASE_URL}/api/auth/wechat-login`
-      const res = await platformFetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ js_code: code }),
-      })
-      if (!res.ok) {
-        const detail: Record<string, unknown> = await readBoundedJsonResponse<Record<string, unknown>>(
-          res,
-          WECHAT_LOGIN_RESPONSE_MAX_BYTES,
-        ).catch(() => ({}))
-        const rawProviderError: unknown = detail['error']
-        const providerError: string = typeof rawProviderError === 'string'
-          ? rawProviderError as string
-          : ''
-        throw new Error(providerError || `http_${res.status}`)
-      }
-      const payload = await readBoundedJsonResponse<Record<string, any>>(
-        res,
-        WECHAT_LOGIN_RESPONSE_MAX_BYTES,
-      )
-      if (!payload?.access_token) throw new Error('no_access_token')
+      if (!isAccountIdentityGenerationCurrent(identityGeneration, null) || options.isCurrent?.() === false) throw new Error('account_changed')
+      if (typeof payload.access_token !== 'string' || payload.access_token.length < 16
+        || typeof payload.refresh_token !== 'string' || payload.refresh_token.length < 16
+        || typeof payload.user?.id !== 'string') throw new Error('invalid_session')
 
       await prepareSupabaseAuthPersistence()
+      if (!isAccountIdentityGenerationCurrent(identityGeneration, null) || options.isCurrent?.() === false) throw new Error('account_changed')
       const { data: sessionData, error } = await supabase.auth.setSession({
         access_token: payload.access_token,
-        refresh_token: payload.refresh_token || payload.access_token,
+        refresh_token: payload.refresh_token,
       })
       if (error) throw error
+      if (sessionData.session?.user?.id !== payload.user.id) throw new Error('invalid_session')
       if (sessionData.session?.user) {
         await applySession(sessionData.session, { settle: true, source: 'wechat-signin' })
       }

@@ -7,6 +7,7 @@ import { inlineSharedApiImports } from './_test-module-loader.mjs'
 const MODULE_URL = new URL('./auth/wechat-login.js', import.meta.url)
 const ENV_KEYS = [
   'WECHAT_LOGIN_ENABLED',
+  'WECHAT_ACCOUNT_LINK_ENABLED',
   'WECHAT_APPID',
   'WECHAT_APPSECRET',
   'SUPABASE_URL',
@@ -62,7 +63,7 @@ function response(body, status = 200) {
 }
 
 function request(body, headers = {}) {
-  const text = typeof body === 'string' ? body : JSON.stringify(body)
+  const text = typeof body === 'string' ? body : JSON.stringify({ create_account: true, ...body })
   return new Request('https://app.test/api/auth/wechat-login', {
     method: 'POST',
     headers: {
@@ -106,6 +107,9 @@ function successfulFetch(calls, options = {}) {
   })
   return async (input, init = {}) => {
     const url = new URL(String(input))
+    // These cases exercise explicit first-account creation; linked-account
+    // lookup/session behavior has a separate adversarial suite.
+    if (url.pathname === '/rest/v1/profiles' && url.searchParams.has('wechat_openid') && !url.searchParams.has('id')) return response([])
     const method = init.method || 'GET'
     const parsedBody = init.body ? JSON.parse(init.body) : null
     calls.push({ url, method, body: parsedBody, headers: init.headers, redirect: init.redirect, cache: init.cache })
@@ -245,6 +249,9 @@ test('wechat-login passwordless and abuse boundaries', async (t) => {
     let stalledCancelled = false
     globalThis.fetch = async (input) => {
       const url = new URL(String(input))
+    // These cases exercise explicit first-account creation; linked-account
+    // lookup/session behavior has a separate adversarial suite.
+    if (url.pathname === '/rest/v1/profiles' && url.searchParams.has('wechat_openid') && !url.searchParams.has('id')) return response([])
       if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return response(true)
       if (url.hostname === 'api.weixin.qq.com') {
         return new Response(new ReadableStream({
@@ -267,6 +274,9 @@ test('wechat-login passwordless and abuse boundaries', async (t) => {
     const oversizedHandler = await loadHandler()
     globalThis.fetch = async (input) => {
       const url = new URL(String(input))
+    // These cases exercise explicit first-account creation; linked-account
+    // lookup/session behavior has a separate adversarial suite.
+    if (url.pathname === '/rest/v1/profiles' && url.searchParams.has('wechat_openid') && !url.searchParams.has('id')) return response([])
       if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return response(true)
       if (url.hostname === 'api.weixin.qq.com') {
         return new Response('{}', {
@@ -286,6 +296,9 @@ test('wechat-login passwordless and abuse boundaries', async (t) => {
     const calls = []
     globalThis.fetch = async (input, init = {}) => {
       const url = new URL(String(input))
+    // These cases exercise explicit first-account creation; linked-account
+    // lookup/session behavior has a separate adversarial suite.
+    if (url.pathname === '/rest/v1/profiles' && url.searchParams.has('wechat_openid') && !url.searchParams.has('id')) return response([])
       calls.push({ url, body: init.body ? JSON.parse(init.body) : null })
       if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return response(null)
       throw new Error('WeChat must not run when limiter is unavailable')
@@ -305,6 +318,9 @@ test('wechat-login passwordless and abuse boundaries', async (t) => {
     calls.length = 0
     globalThis.fetch = async (input, init = {}) => {
       const url = new URL(String(input))
+    // These cases exercise explicit first-account creation; linked-account
+    // lookup/session behavior has a separate adversarial suite.
+    if (url.pathname === '/rest/v1/profiles' && url.searchParams.has('wechat_openid') && !url.searchParams.has('id')) return response([])
       calls.push({ url, body: init.body ? JSON.parse(init.body) : null })
       if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return response(false)
       throw new Error('WeChat must not run when rate limited')
@@ -379,6 +395,9 @@ test('wechat-login passwordless and abuse boundaries', async (t) => {
     const logs = []
     globalThis.fetch = async (input, init = {}) => {
       const url = new URL(String(input))
+    // These cases exercise explicit first-account creation; linked-account
+    // lookup/session behavior has a separate adversarial suite.
+    if (url.pathname === '/rest/v1/profiles' && url.searchParams.has('wechat_openid') && !url.searchParams.has('id')) return response([])
       calls.push(url)
       if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return response(true)
       if (url.hostname === 'api.weixin.qq.com') {
@@ -402,6 +421,9 @@ test('wechat-login passwordless and abuse boundaries', async (t) => {
     let authCalls = 0
     globalThis.fetch = async (input) => {
       const url = new URL(String(input))
+    // These cases exercise explicit first-account creation; linked-account
+    // lookup/session behavior has a separate adversarial suite.
+    if (url.pathname === '/rest/v1/profiles' && url.searchParams.has('wechat_openid') && !url.searchParams.has('id')) return response([])
       if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return response(true)
       if (url.hostname === 'api.weixin.qq.com') {
         return response({ errcode: 49999, errmsg: 'upstream detail must stay private' })
@@ -426,6 +448,9 @@ test('wechat-login passwordless and abuse boundaries', async (t) => {
     let wechatAttempts = 0
     globalThis.fetch = async (input) => {
       const url = new URL(String(input))
+    // These cases exercise explicit first-account creation; linked-account
+    // lookup/session behavior has a separate adversarial suite.
+    if (url.pathname === '/rest/v1/profiles' && url.searchParams.has('wechat_openid') && !url.searchParams.has('id')) return response([])
       if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return response(true)
       if (url.hostname === 'api.weixin.qq.com') {
         wechatAttempts += 1
@@ -447,6 +472,9 @@ test('wechat-login passwordless and abuse boundaries', async (t) => {
     let authCalls = 0
     globalThis.fetch = async (input) => {
       const url = new URL(String(input))
+    // These cases exercise explicit first-account creation; linked-account
+    // lookup/session behavior has a separate adversarial suite.
+    if (url.pathname === '/rest/v1/profiles' && url.searchParams.has('wechat_openid') && !url.searchParams.has('id')) return response([])
       if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return response(true)
       if (url.hostname === 'api.weixin.qq.com') return response({ openid: '../../bad?identity' })
       if (url.pathname.startsWith('/auth/v1/')) authCalls += 1
@@ -464,6 +492,9 @@ test('wechat-login passwordless and abuse boundaries', async (t) => {
     const logs = []
     globalThis.fetch = async (input, init = {}) => {
       const url = new URL(String(input))
+    // These cases exercise explicit first-account creation; linked-account
+    // lookup/session behavior has a separate adversarial suite.
+    if (url.pathname === '/rest/v1/profiles' && url.searchParams.has('wechat_openid') && !url.searchParams.has('id')) return response([])
       calls.push(url)
       if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return response(true)
       if (url.hostname === 'api.weixin.qq.com') return response({ openid: OPENID })
@@ -493,6 +524,9 @@ test('wechat-login passwordless and abuse boundaries', async (t) => {
     logs.length = 0
     globalThis.fetch = async (input, init = {}) => {
       const url = new URL(String(input))
+    // These cases exercise explicit first-account creation; linked-account
+    // lookup/session behavior has a separate adversarial suite.
+    if (url.pathname === '/rest/v1/profiles' && url.searchParams.has('wechat_openid') && !url.searchParams.has('id')) return response([])
       calls.push(url)
       if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return response(true)
       if (url.hostname === 'api.weixin.qq.com') return response({ openid: OPENID })
@@ -518,6 +552,9 @@ test('wechat-login passwordless and abuse boundaries', async (t) => {
     const logs = []
     globalThis.fetch = async (input) => {
       const url = new URL(String(input))
+    // These cases exercise explicit first-account creation; linked-account
+    // lookup/session behavior has a separate adversarial suite.
+    if (url.pathname === '/rest/v1/profiles' && url.searchParams.has('wechat_openid') && !url.searchParams.has('id')) return response([])
       if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return response(true)
       if (url.hostname === 'api.weixin.qq.com') return response({ openid: OPENID })
       if (url.pathname === '/auth/v1/admin/generate_link') {
@@ -547,6 +584,9 @@ test('wechat-login passwordless and abuse boundaries', async (t) => {
     const calls = []
     globalThis.fetch = async (input, init = {}) => {
       const url = new URL(String(input))
+    // These cases exercise explicit first-account creation; linked-account
+    // lookup/session behavior has a separate adversarial suite.
+    if (url.pathname === '/rest/v1/profiles' && url.searchParams.has('wechat_openid') && !url.searchParams.has('id')) return response([])
       calls.push({ url, method: init.method || 'GET' })
       if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return response(true)
       if (url.hostname === 'api.weixin.qq.com') return response({ openid: OPENID, unionid: UNIONID })
@@ -576,6 +616,9 @@ test('wechat-login passwordless and abuse boundaries', async (t) => {
     let generateCalls = 0
     globalThis.fetch = async (input, init = {}) => {
       const url = new URL(String(input))
+    // These cases exercise explicit first-account creation; linked-account
+    // lookup/session behavior has a separate adversarial suite.
+    if (url.pathname === '/rest/v1/profiles' && url.searchParams.has('wechat_openid') && !url.searchParams.has('id')) return response([])
       const body = init.body ? JSON.parse(init.body) : null
       calls.push({ url, body })
       if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return response(true)
@@ -602,6 +645,9 @@ test('wechat-login passwordless and abuse boundaries', async (t) => {
     generateCalls = 0
     globalThis.fetch = async (input, init = {}) => {
       const url = new URL(String(input))
+    // These cases exercise explicit first-account creation; linked-account
+    // lookup/session behavior has a separate adversarial suite.
+    if (url.pathname === '/rest/v1/profiles' && url.searchParams.has('wechat_openid') && !url.searchParams.has('id')) return response([])
       calls.push({ url, body: init.body ? JSON.parse(init.body) : null })
       if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return response(true)
       if (url.hostname === 'api.weixin.qq.com') return response({ openid: OPENID })
@@ -624,6 +670,9 @@ test('wechat-login passwordless and abuse boundaries', async (t) => {
     let generated = 0
     globalThis.fetch = async (input, init = {}) => {
       const url = new URL(String(input))
+    // These cases exercise explicit first-account creation; linked-account
+    // lookup/session behavior has a separate adversarial suite.
+    if (url.pathname === '/rest/v1/profiles' && url.searchParams.has('wechat_openid') && !url.searchParams.has('id')) return response([])
       if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return response(true)
       if (url.hostname === 'api.weixin.qq.com') return response({ openid: OPENID })
       if (url.pathname === '/auth/v1/admin/generate_link') {
@@ -644,6 +693,9 @@ test('wechat-login passwordless and abuse boundaries', async (t) => {
     generated = 0
     globalThis.fetch = async (input) => {
       const url = new URL(String(input))
+    // These cases exercise explicit first-account creation; linked-account
+    // lookup/session behavior has a separate adversarial suite.
+    if (url.pathname === '/rest/v1/profiles' && url.searchParams.has('wechat_openid') && !url.searchParams.has('id')) return response([])
       if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return response(true)
       if (url.hostname === 'api.weixin.qq.com') return response({ openid: OPENID })
       if (url.pathname === '/auth/v1/admin/generate_link') {
@@ -677,6 +729,9 @@ test('wechat-login passwordless and abuse boundaries', async (t) => {
 
     globalThis.fetch = async (input, init = {}) => {
       const url = new URL(String(input))
+    // These cases exercise explicit first-account creation; linked-account
+    // lookup/session behavior has a separate adversarial suite.
+    if (url.pathname === '/rest/v1/profiles' && url.searchParams.has('wechat_openid') && !url.searchParams.has('id')) return response([])
       const method = init.method || 'GET'
       const body = init.body ? JSON.parse(init.body) : null
       calls.push({ url, method, body })

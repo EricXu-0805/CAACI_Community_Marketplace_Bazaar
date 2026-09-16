@@ -127,7 +127,7 @@
           @click="goDetail(item.id)"
         >
           <view class="gi-img-wrap">
-            <image v-if="thumbUrl(item.images?.[0], 'list')" :src="thumbUrl(item.images?.[0], 'list')" :alt="item.title" class="gi-img" mode="aspectFill" lazy-load />
+            <image v-if="thumbUrl(item.images?.[0], 'list')" :src="thumbUrl(item.images?.[0], 'list')" :alt="item.title" class="gi-img" mode="aspectFit" lazy-load />
             <view v-else class="gi-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
             <view v-if="pickupBadge(item)" class="badge-safe-corner" :class="{ 'badge-safe-corner--shared': !pickupBadge(item)!.spot }" :aria-label="pickupBadge(item)!.label">
               <UIcon v-if="pickupBadge(item)!.spot" name="check" size="xs" color="ink-inverse" />
@@ -457,7 +457,7 @@ async function loadSellerData(accountToken: AccountRequestToken | null, requestE
   try {
     const [profileRes, itemsRes, soldRes] = await Promise.all([
       fetchSellerProfile(),
-      supabase.from('items').select('id, user_id, title, title_i18n, price, category, images, image_dimensions, status, listing_details, listing_type, location_verified, created_at').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
+      supabase.from('items').select('id, user_id, title, title_i18n, price, category, images, image_dimensions, status, listing_details, listing_type, location, location_verified, created_at').eq('user_id', uid).eq('status', 'active').order('created_at', { ascending: false }),
       supabase.from('items').select('id', { count: 'estimated', head: true }).eq('user_id', uid).eq('status', 'sold'),
     ])
     if (!sellerRequestIsCurrent(accountToken, requestEpoch)) return
@@ -722,15 +722,10 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   background: var(--bg-elev-1);
   .gi-info { display: flex; flex-direction: column; gap: 6px; }
 }
-.gi-skel-img { aspect-ratio: 4 / 5; }
-/* Seller grid deliberately opts OUT of the DB-dims pipeline: individual
-   items across a shop look like a storefront only when every tile is
-   the same shape. Xiaohongshu profile / Taobao storefront grids all
-   adopt the same 4:5 portrait frame + aspectFill (cover) contract, so
-   the grid reads as a product shelf, not a mixed feed. Center-crop is
-   acceptable because the seller already chose image[0] as the hero —
-   detail page preserves the full uncropped image. */
-.gi-img-wrap { position: relative; aspect-ratio: 4 / 5; overflow: hidden; }
+.gi-skel-img { aspect-ratio: 1; }
+/* A shop grid stays consistent without cropping a product's edges. Keep the
+   complete first photo visible; typography and square frames align the shelf. */
+.gi-img-wrap { position: relative; aspect-ratio: 1; overflow: hidden; background: var(--bg-subtle); }
 .gi-img { width: 100%; height: 100%; }
 .gi-info { padding: 8px 10px; }
 
