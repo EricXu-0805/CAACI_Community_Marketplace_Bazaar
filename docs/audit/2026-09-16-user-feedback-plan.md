@@ -15,22 +15,22 @@ Baseline: main `281799c`. This is a new audit, not a restatement of earlier gree
 | ID | User outcome | Status | Required evidence |
 |---|---|---|---|
 | 01 | On sale/Wanted row has comfortable spacing at narrow widths | Implemented; light/dark cross-device WebKit evidence passed; release pending | 375/390/430 px screenshots, 768/1024/1440 px no overflow |
-| 02 | Shared listing identifies its item, price, image and brand | Open | server metadata plus real supported share preview; OS-owned layout limitation |
+| 02 | Shared listing identifies its item, price, image and brand | Metadata tests passed; real external-app preview pending release | server metadata plus real supported share preview; OS-owned layout limitation |
 | 03 | Illini verification badge fits profile palette | Implemented; light/dark cross-device WebKit evidence passed; release pending | light/dark visual checks, accurate accessible label |
 | 04 | Hide uninteresting items; useful nearby/interest feed and fuzzy search | Local/hosted preference checks passed; 10k discovery capacity passed; release pending | primary-source design, reversible control, privacy, deterministic ranking/pagination tests |
 | 05 | Search stays on search; seller names find their listings | Navigation + seller matching/RLS/rename/rollback verified locally; deployment pending | actual navigation and seller matching tests |
 | 06 | Remove one viewed item via gesture or visible action | Local gesture, visible deletion and failed-storage preservation passed; release pending | removal survives revisit; other history stays |
 | 07 | Focused search/chat fields align without harsh inner box | Implemented; light/dark cross-device WebKit evidence passed; release pending | keyboard focus visible, touch focus and composer geometry |
 | 08 | Chat supports discoverable photos and video | Private SQL, H5 browser and hosted image/video/access checks passed; mini-program media remains gated | authorized media upload/view/error tests, access and size limits |
-| 09 | English mode offers English listing titles/descriptions | Open | original preserved, translation displayed/cached, failure/retry handling |
+| 09 | English mode offers English listing titles/descriptions | SQL/browser retry and caching passed; real provider receipt and opt-in pending | original preserved, translation displayed/cached, failure/retry handling |
 | 10 | Pin/archive/read-unread actually change conversation state | Local SQL + phone/desktop WebKit verified; deploy pending | persistence, two participants, account transition safety |
 | 11 | Locate shows result/error; manual and detected labels distinguished | Local WebKit denied/detected/manual verified; device permission UX remains a real-device check | permission/timeout/unsupported/edit flows; no false identity verification |
 | 12 | Draft failure does not trap a valid publication or lose edits | Local unavailable-storage + idempotent retry verified; deploy pending | reproduced failure, recoverable/idempotent publish, draft restore |
-| 13 | Admin reports/bans/Plaza pins and media work | Open | isolated authorized/unauthorized tests and read-only production inspection |
+| 13 | Admin reports/bans/Plaza pins and media work | Synthetic admin/browser checks passed; owner portal unlock pending | isolated authorized/unauthorized tests and read-only production inspection |
 | 14 | Images open at useful size with clear viewer controls | Phone/tablet/desktop cover and fullscreen sizing/focus verified locally; release pending | landscape/portrait/phone/tablet/desktop visual evidence |
 | 15 | Current Sentry issues investigated and confirmed bugs fixed | Live triage recorded; modal refs and native network listener fixed locally; post-release observation pending | current issue/event evidence with sensitive fields excluded |
 | 16 | Admin welcome/rules/how-to post is published and Plaza tested | Open | published post receipt and factual bilingual content |
-| 17 | Clicks/icons/modal/composer transitions feel coherent | Modal focus fixes verified locally; broader review open | representative flows, reduced motion, no blocked interactions |
+| 17 | Clicks/icons/modal/composer transitions feel coherent | Cross-device light/dark and dialog/motion tests passed; user acceptance pending | representative flows, reduced motion, no blocked interactions |
 
 ## Scope and safeguards
 
@@ -57,13 +57,13 @@ Sentry login completed by the user; live issue access restored. 37 unresolved gr
 | Issue | Evidence | Interpretation / action |
 |---|---|---|
 | JAVASCRIPT-VUE-25 / 7736111166 | 6 events, e03e910, PermissionDeniedModal `querySelector` on component ref | Confirmed; resolve `$el`, native keydown binding; WebKit focus/Tab/Escape passed |
-| JAVASCRIPT-VUE-1Z / 7734906548 | saved-searches `querySelector`, 8b930d3 | Same confirmed bug; fixed alongside admin/Plaza dialog ref normalization; saved-search UI test still needed |
+| JAVASCRIPT-VUE-1Z / 7734906548 | saved-searches `querySelector`, 8b930d3 | Same confirmed bug; fixed alongside admin/Plaza dialog ref normalization; saved-search sheet focus, Tab and Escape passed |
 | JAVASCRIPT-VUE-28 / 7736131972 | 24 publish.create events, e03e910 | Matches failed-draft publication path; synthetic reproduction fixed; raw provider cause not recoverable from scrubbed event |
 | JAVASCRIPT-VUE-24 / 7736102465 | 27 realtime.fallback.notifications warnings, e03e910 | Distinguish expected recovery from actual degradation; investigation pending |
 | JAVASCRIPT-VUE-27 / 7736117817 | loadMyFavorites provider error, e03e910, no code | Not enough evidence to assign cause yet |
 | JAVASCRIPT-VUE-26 / 7736117700 | fetchProfile-authchange-signed_in, e03e910, no code | Not enough evidence to assign cause yet |
 | JAVASCRIPT-VUE-21 / 7735329271 | auth-record-fingerprint, code 42501, 5a89415 | Historical-version access error; check current policies/runtime before changing authority |
-| JAVASCRIPT-VUE-22 / 7735329301 | fetchProfile-authchange-signed_in, code 42501, 5a89415 | Historical-version access error; current verification pending |
+| JAVASCRIPT-VUE-22 / 7735329301 | fetchProfile-authchange-signed_in, code 42501, 5a89415 | Historical-version access error; current production grants verified |
 | JAVASCRIPT-VUE-20 / 7735218794 | minified TypeError; 2866988 / 5697c76 | Unresolved source mapping; do not guess |
 
 No issue was resolved/ignored in Sentry merely because a local test passed. Current production verification still pending.
@@ -100,3 +100,12 @@ No issue was resolved/ignored in Sentry merely because a local test passed. Curr
 - Sentry issues remain open until fresh deployed evidence supports closure. Synthetic runs and old releases are not counted as current end-user incidents automatically.
 
 - Authenticated 10k discovery screening also passed: ordinary GoTrue buyer, 1/5/10 concurrency; at 10, 358 journeys in 12.24 seconds, p95 252–285 ms, no errors. Ordered search rollback now compares the complete restored definition to the actual prior indexed algorithm. Final focused worker/search/rollback/corpus checks: 20 passed.
+
+## Release handoff — candidate 92528e8 / PR 337
+
+- Full pre-push boundaries, types, H5/mp-weixin builds and artifact checks passed. PR: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/pull/337. No direct main push or protection bypass.
+- Production atomic bundle attempt was rejected **before execution** by automatic review: the current permission was judged insufficient for this specific ten-part production change (storage, permissions, triggers, search and brief locking). A concrete approval card was sent. Production remains at the prior migration/release; do not merge before the DB step is approved, applied and verified.
+- The generated bundle and prior production function snapshot are in ignored `output/feedback-release-20260916/`; `scripts/build-feedback-release-bundle.mjs` rebuilds the checksum-verified bundle. See `2026-09-16-feedback-release.md` for order and rollback.
+- Mixed-run fixtures and 10,001 capacity listings / 101 synthetic SQL users were removed with ownership guards and normal cascade rules. Staging returned to the pre-capacity **3 items / 9 profiles**, its item cache also has 3 rows, and notification/media queues are empty. Three GoTrue feedback fixtures remain for the pending translation/feature follow-up; private credential files remain local, ignored and mode 0600.
+- Final staging security advisor has no ERROR finding. Service-owned RLS tables deliberately have no client policies; authenticated SECURITY DEFINER RPCs require their account/participant checks. The existing Han-fold warning is an intentional immutable invoker SQL expression calling `pg_catalog.translate`, with hostile search-path tests already passing; adding a configuration clause would disable its reviewed inlining optimization. Leaked-password protection is still reported disabled; no paid plan or account setting was changed.
+- Sentry issues were triaged but not marked resolved on the strength of local tests. Post-deploy observation, genuine Google-authored authorization mail, device OS flows and platform review remain open.

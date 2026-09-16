@@ -236,7 +236,13 @@ test.describe('text fields paint a focus ring', () => {
       const unpainted: string[] = []
       for (let i = 0; i < count; i++) {
         const field = fields.nth(i)
-        const box = await field.boundingBox()
+        // Compound editors intentionally paint focus around their rounded
+        // surface. Cropping only the native input misses that visible ring.
+        const box = await field.evaluate(el => {
+          const surface = el.closest('.search-field, .msg-input') || el
+          const rect = surface.getBoundingClientRect()
+          return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+        })
         if (!box || box.width < 2 || box.height < 2) continue
         const clip = {
           x: Math.max(0, box.x - 6), y: Math.max(0, box.y - 6),
