@@ -1,6 +1,6 @@
-# Indexed search candidate — production apply pending
+# Indexed search — deployment completed
 
-This change packages the tested search implementation and its evidence in version control. It does **not** apply SQL to production or activate a client feature. The existing CI deploys frontend code; it does not execute files under `supabase/_ops/`.
+The reviewed search package has been deployed and post-deployment search checks passed. This document retains the implementation and isolated-test evidence. Detailed deployment receipts remain in private operational records. The existing CI deploys frontend code; it does not execute files under `supabase/_ops/`.
 
 ## Problem and behavior
 
@@ -10,7 +10,7 @@ Short descriptions need separate treatment: exact folded matches seed the page, 
 
 ## Reviewed SQL
 
-The files in [indexed_search_candidate](../../supabase/_ops/indexed_search_candidate/) are manual release candidates:
+The files in [indexed_search_candidate](../../supabase/_ops/indexed_search_candidate/) preserve the reviewed manual release package. Their candidate comments and original bytes remain unchanged for checksum verification:
 
 - `fields.sql`: maintained flat search fields and their indexes. It follows the cached-field migration and is not a standalone production install.
 - `query.sql`: invoker search scorer and v2 RPC. It also requires the cached and indexed fields.
@@ -18,7 +18,7 @@ The files in [indexed_search_candidate](../../supabase/_ops/indexed_search_candi
 - `ROLLBACK.sql`: complete reviewed rollback after a successful install.
 - `manifest.sha256`: exact reviewed SQL bytes.
 
-Production was read-only checked at 14 items (one active), no `search_private`, no `intarray`, pg_trgm 1.6. This is a dated baseline, not an assumption to carry into an eventual deployment. **Explicit approval for the production extension, triggers and backfill is still pending.** Earlier automatic approval review rejected that action because its production impact needed specific authorization.
+The earlier production approval hold has been resolved. Installation and post-deployment checks covered cache consistency, result parity, access restrictions and the browser search/filter/recovery journey. Do not reapply this installer or its component fragments to an already-upgraded database; consult the private deployment record before later database work.
 
 The installer refuses an unexpected existing schema/extension or more than 100 items. The item-count guard is repeated after acquiring the write lock to cover concurrent publications. Install and rollback wait at most 2 seconds for locks and set a 15-second statement timeout. The transaction briefly blocks item writes during backfill; an error aborts the transaction. Read traffic remains available. These are per-operation bounds, not a promised total release duration.
 
@@ -56,8 +56,6 @@ The source tests passed locally with no skips: both locale regressions plus eigh
 
 The logical restore uses a shared local cluster role bootstrap. It does not replace a full production database/Auth/Storage restore or establish hosted recovery time.
 
-## Remaining release sequence
+## Remaining release conditions
 
-1. Receive the outstanding explicit production database approval; recheck target, schema, item count, SQL hashes and current deployment before executing.
-2. Apply the reviewed transaction through the normal migration authority, verify actual extensions, cache equality, RLS and public search behavior, and retain the apply/rollback receipt. Do not silently treat this source-only merge as a database deployment.
-3. Keep real device input/photo/background behavior, WeChat real-account/configuration/review, complete production restore, native signing/store review, and the new Google authorization-email check as separate unclosed gates.
+Production search activation and its smoke acceptance are complete. Real device input/photo/background behavior, WeChat real-account/configuration/review, complete production restore, native signing/store review, and the new Google authorization-email check remain separate unclosed gates. The synthetic staging capacity results above remain separate from production activation.
