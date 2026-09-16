@@ -1,0 +1,2777 @@
+{
+  "status": "candidate_only_production_apply_pending_explicit_approval",
+  "baseCommit": "5a89415ba57d1f548cdd14e8a53351b103c3257a",
+  "hostedScope": "Existing staging branch; synthetic fixtures; no production data export or paid resize",
+  "readonly": {
+    "long": {
+      "startedAt": "2026-09-16T11:18:19.116Z",
+      "target": "https://hygkwxugskijadgfisji.supabase.co",
+      "sourceCommit": "5a89415; separate temporary KNN RPC, original website RPC unchanged; 10001 isolated synthetic rows",
+      "dataset": {
+        "items": 10001,
+        "profiles": 101,
+        "role": "anon",
+        "authMethod": "publishable key",
+        "seedMethod": "SQL synthetic fixture with transaction-local trigger suppression to avoid notifications/moderation jobs; cache backfilled with its real builder and maintained KNN trigger. HTTP reads use unchanged anon role, grants and RLS. Not a publish or login capacity test."
+      },
+      "workload": "closed-loop simultaneous HTTP requests, not a user-count guarantee",
+      "seconds": 12,
+      "checks": [
+        {
+          "name": "search-selective",
+          "ok": true,
+          "ms": 548.534625,
+          "status": 200,
+          "hash": "4019f5da9e2d4cffe51d0ae2df701ba5380e7855fbc2c4823397a3edbac8f46d"
+        },
+        {
+          "name": "search-selective-existing-rpc-equality",
+          "ok": true,
+          "status": 200
+        },
+        {
+          "name": "search-synonyms",
+          "ok": true,
+          "ms": 225.60695899999996,
+          "status": 200,
+          "hash": "7cf0de7052747a65976c1de3842e8b8c701b802326ec4a42674513f02aa2db5d"
+        },
+        {
+          "name": "search-synonyms-existing-rpc-equality",
+          "ok": true,
+          "status": 200
+        },
+        {
+          "name": "search-broad",
+          "ok": true,
+          "ms": 159.3778749999999,
+          "status": 200,
+          "hash": "fe61ef6ea3e71b353be7b16a8ada3f32b6271748a45d2fef7d99f3b4adb0bc32"
+        },
+        {
+          "name": "search-broad-existing-rpc-equality",
+          "ok": true,
+          "status": 200
+        },
+        {
+          "name": "search-twelve",
+          "ok": true,
+          "ms": 226.76991700000008,
+          "status": 200,
+          "hash": "450428fcdd9a7da3a234356c9835b047f32647fa56e2c73cc436788e452a6ba0"
+        },
+        {
+          "name": "search-twelve-existing-rpc-equality",
+          "ok": true,
+          "status": 200
+        },
+        {
+          "name": "search-absent",
+          "ok": true,
+          "ms": 180.61920800000007,
+          "status": 200,
+          "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        {
+          "name": "search-absent-existing-rpc-equality",
+          "ok": true,
+          "status": 200
+        },
+        {
+          "name": "suspended-hidden",
+          "ok": true,
+          "status": 200
+        },
+        {
+          "name": "deleted-hidden",
+          "ok": true,
+          "status": 200
+        }
+      ],
+      "phases": [
+        {
+          "concurrency": 1,
+          "startedAt": "2026-09-16T11:18:23.132Z",
+          "cases": [
+            {
+              "name": "search-selective",
+              "requests": 7,
+              "correct": 7,
+              "failures": 0,
+              "p50Ms": 136,
+              "p95Ms": 215,
+              "maxMs": 215,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-synonyms",
+              "requests": 7,
+              "correct": 7,
+              "failures": 0,
+              "p50Ms": 165,
+              "p95Ms": 254,
+              "maxMs": 254,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-broad",
+              "requests": 7,
+              "correct": 7,
+              "failures": 0,
+              "p50Ms": 185,
+              "p95Ms": 302,
+              "maxMs": 302,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-twelve",
+              "requests": 7,
+              "correct": 7,
+              "failures": 0,
+              "p50Ms": 248,
+              "p95Ms": 425,
+              "maxMs": 425,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-absent",
+              "requests": 6,
+              "correct": 6,
+              "failures": 0,
+              "p50Ms": 177,
+              "p95Ms": 246,
+              "maxMs": 246,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            }
+          ],
+          "elapsedMs": 12097.406167000001,
+          "requests": 34,
+          "rps": 2.81,
+          "pass": true
+        },
+        {
+          "concurrency": 5,
+          "startedAt": "2026-09-16T11:18:35.231Z",
+          "cases": [
+            {
+              "name": "search-selective",
+              "requests": 22,
+              "correct": 22,
+              "failures": 0,
+              "p50Ms": 333,
+              "p95Ms": 437,
+              "maxMs": 438,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-synonyms",
+              "requests": 22,
+              "correct": 22,
+              "failures": 0,
+              "p50Ms": 394,
+              "p95Ms": 571,
+              "maxMs": 620,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-broad",
+              "requests": 22,
+              "correct": 22,
+              "failures": 0,
+              "p50Ms": 367,
+              "p95Ms": 518,
+              "maxMs": 542,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-twelve",
+              "requests": 21,
+              "correct": 21,
+              "failures": 0,
+              "p50Ms": 551,
+              "p95Ms": 744,
+              "maxMs": 761,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-absent",
+              "requests": 21,
+              "correct": 21,
+              "failures": 0,
+              "p50Ms": 439,
+              "p95Ms": 603,
+              "maxMs": 659,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            }
+          ],
+          "elapsedMs": 12152.849666,
+          "requests": 108,
+          "rps": 8.89,
+          "pass": true
+        },
+        {
+          "concurrency": 10,
+          "startedAt": "2026-09-16T11:18:47.386Z",
+          "cases": [
+            {
+              "name": "search-selective",
+              "requests": 24,
+              "correct": 24,
+              "failures": 0,
+              "p50Ms": 525,
+              "p95Ms": 660,
+              "maxMs": 1145,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-synonyms",
+              "requests": 24,
+              "correct": 24,
+              "failures": 0,
+              "p50Ms": 635,
+              "p95Ms": 920,
+              "maxMs": 1357,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-broad",
+              "requests": 24,
+              "correct": 24,
+              "failures": 0,
+              "p50Ms": 656,
+              "p95Ms": 789,
+              "maxMs": 1315,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-twelve",
+              "requests": 24,
+              "correct": 24,
+              "failures": 0,
+              "p50Ms": 1027,
+              "p95Ms": 1315,
+              "maxMs": 1543,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-absent",
+              "requests": 24,
+              "correct": 24,
+              "failures": 0,
+              "p50Ms": 775,
+              "p95Ms": 1009,
+              "maxMs": 1312,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            }
+          ],
+          "elapsedMs": 11044.460249999996,
+          "requests": 120,
+          "rps": 10.87,
+          "pass": true
+        }
+      ],
+      "finishedAt": "2026-09-16T11:18:58.433Z",
+      "pass": true
+    },
+    "dense": {
+      "startedAt": "2026-09-16T11:19:45.672Z",
+      "target": "https://hygkwxugskijadgfisji.supabase.co",
+      "sourceCommit": "5a89415; separate temporary KNN RPC, original website RPC unchanged; 10001 isolated synthetic rows",
+      "dataset": {
+        "items": 10001,
+        "profiles": 101,
+        "role": "anon",
+        "authMethod": "publishable key",
+        "seedMethod": "SQL synthetic fixture with transaction-local trigger suppression to avoid notifications/moderation jobs; cache backfilled with its real builder and maintained KNN trigger. HTTP reads use unchanged anon role, grants and RLS. Not a publish or login capacity test."
+      },
+      "workload": "closed-loop simultaneous HTTP requests, not a user-count guarantee",
+      "seconds": 12,
+      "checks": [
+        {
+          "name": "search-selective",
+          "ok": true,
+          "ms": 394.73970899999995,
+          "status": 200,
+          "hash": "ff67230fd41bbfe760225288fbbb1f1e02a4219dff9439258863d2647d06cf59"
+        },
+        {
+          "name": "search-selective-existing-rpc-equality",
+          "ok": true,
+          "status": 200
+        },
+        {
+          "name": "search-synonyms",
+          "ok": true,
+          "ms": 214.17383300000006,
+          "status": 200,
+          "hash": "7f92a026aa41d8cd8df37e5a06c7a7da41054629b95c46d86952bef64a973c43"
+        },
+        {
+          "name": "search-synonyms-existing-rpc-equality",
+          "ok": true,
+          "status": 200
+        },
+        {
+          "name": "search-broad",
+          "ok": true,
+          "ms": 258.136583,
+          "status": 200,
+          "hash": "fcb182ac489c4b5739c532eee1afd95f4ac57746ebdbb99bf2d256ff3f41c77d"
+        },
+        {
+          "name": "search-broad-existing-rpc-equality",
+          "ok": true,
+          "status": 200
+        },
+        {
+          "name": "search-twelve",
+          "ok": true,
+          "ms": 400.103666,
+          "status": 200,
+          "hash": "2510b2c8b80bdcf7942d1ec379dee8dfdeabdc2b3772becba0a46fc2d9cced68"
+        },
+        {
+          "name": "search-twelve-existing-rpc-equality",
+          "ok": true,
+          "status": 200
+        },
+        {
+          "name": "search-absent",
+          "ok": true,
+          "ms": 231.0379170000001,
+          "status": 200,
+          "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        {
+          "name": "search-absent-existing-rpc-equality",
+          "ok": true,
+          "status": 200
+        },
+        {
+          "name": "suspended-hidden",
+          "ok": true,
+          "status": 200
+        },
+        {
+          "name": "deleted-hidden",
+          "ok": true,
+          "status": 200
+        }
+      ],
+      "phases": [
+        {
+          "concurrency": 1,
+          "startedAt": "2026-09-16T11:19:49.621Z",
+          "cases": [
+            {
+              "name": "search-selective",
+              "requests": 7,
+              "correct": 7,
+              "failures": 0,
+              "p50Ms": 157,
+              "p95Ms": 287,
+              "maxMs": 287,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-synonyms",
+              "requests": 7,
+              "correct": 7,
+              "failures": 0,
+              "p50Ms": 169,
+              "p95Ms": 240,
+              "maxMs": 240,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-broad",
+              "requests": 7,
+              "correct": 7,
+              "failures": 0,
+              "p50Ms": 189,
+              "p95Ms": 218,
+              "maxMs": 218,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-twelve",
+              "requests": 7,
+              "correct": 7,
+              "failures": 0,
+              "p50Ms": 234,
+              "p95Ms": 357,
+              "maxMs": 357,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-absent",
+              "requests": 7,
+              "correct": 7,
+              "failures": 0,
+              "p50Ms": 192,
+              "p95Ms": 677,
+              "maxMs": 677,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            }
+          ],
+          "elapsedMs": 12773.346041999997,
+          "requests": 35,
+          "rps": 2.74,
+          "pass": true
+        },
+        {
+          "concurrency": 5,
+          "startedAt": "2026-09-16T11:20:02.397Z",
+          "cases": [
+            {
+              "name": "search-selective",
+              "requests": 23,
+              "correct": 23,
+              "failures": 0,
+              "p50Ms": 336,
+              "p95Ms": 443,
+              "maxMs": 571,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-synonyms",
+              "requests": 23,
+              "correct": 23,
+              "failures": 0,
+              "p50Ms": 391,
+              "p95Ms": 521,
+              "maxMs": 633,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-broad",
+              "requests": 23,
+              "correct": 23,
+              "failures": 0,
+              "p50Ms": 355,
+              "p95Ms": 491,
+              "maxMs": 645,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-twelve",
+              "requests": 22,
+              "correct": 22,
+              "failures": 0,
+              "p50Ms": 456,
+              "p95Ms": 565,
+              "maxMs": 754,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-absent",
+              "requests": 22,
+              "correct": 22,
+              "failures": 0,
+              "p50Ms": 363,
+              "p95Ms": 593,
+              "maxMs": 751,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            }
+          ],
+          "elapsedMs": 12166.632792,
+          "requests": 113,
+          "rps": 9.29,
+          "pass": true
+        },
+        {
+          "concurrency": 10,
+          "startedAt": "2026-09-16T11:20:14.565Z",
+          "cases": [
+            {
+              "name": "search-selective",
+              "requests": 24,
+              "correct": 24,
+              "failures": 0,
+              "p50Ms": 575,
+              "p95Ms": 676,
+              "maxMs": 873,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-synonyms",
+              "requests": 24,
+              "correct": 24,
+              "failures": 0,
+              "p50Ms": 715,
+              "p95Ms": 904,
+              "maxMs": 958,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-broad",
+              "requests": 24,
+              "correct": 24,
+              "failures": 0,
+              "p50Ms": 702,
+              "p95Ms": 860,
+              "maxMs": 978,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-twelve",
+              "requests": 24,
+              "correct": 24,
+              "failures": 0,
+              "p50Ms": 1108,
+              "p95Ms": 1190,
+              "maxMs": 1194,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-absent",
+              "requests": 24,
+              "correct": 24,
+              "failures": 0,
+              "p50Ms": 831,
+              "p95Ms": 915,
+              "maxMs": 1042,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            }
+          ],
+          "elapsedMs": 11583.159833000005,
+          "requests": 120,
+          "rps": 10.36,
+          "pass": true
+        }
+      ],
+      "finishedAt": "2026-09-16T11:20:26.149Z",
+      "pass": true
+    },
+    "old": {
+      "startedAt": "2026-09-16T11:21:05.200Z",
+      "target": "https://hygkwxugskijadgfisji.supabase.co",
+      "sourceCommit": "5a89415; separate temporary KNN RPC, original website RPC unchanged; 10001 isolated synthetic rows",
+      "dataset": {
+        "items": 10001,
+        "profiles": 101,
+        "role": "anon",
+        "authMethod": "publishable key",
+        "seedMethod": "SQL synthetic fixture with transaction-local trigger suppression to avoid notifications/moderation jobs; cache backfilled with its real builder and maintained KNN trigger. HTTP reads use unchanged anon role, grants and RLS. Not a publish or login capacity test."
+      },
+      "workload": "closed-loop simultaneous HTTP requests, not a user-count guarantee",
+      "seconds": 12,
+      "checks": [
+        {
+          "name": "search-selective",
+          "ok": true,
+          "ms": 478.851459,
+          "status": 200,
+          "hash": "348a60305f33536650dc831a14e53de4095831847315c4c7f38230e9e71ec1b5"
+        },
+        {
+          "name": "search-selective-existing-rpc-equality",
+          "ok": true,
+          "status": 200
+        },
+        {
+          "name": "search-synonyms",
+          "ok": true,
+          "ms": 246.78404100000012,
+          "status": 200,
+          "hash": "348a60305f33536650dc831a14e53de4095831847315c4c7f38230e9e71ec1b5"
+        },
+        {
+          "name": "search-synonyms-existing-rpc-equality",
+          "ok": true,
+          "status": 200
+        },
+        {
+          "name": "search-broad",
+          "ok": true,
+          "ms": 238.70350000000008,
+          "status": 200,
+          "hash": "fcb182ac489c4b5739c532eee1afd95f4ac57746ebdbb99bf2d256ff3f41c77d"
+        },
+        {
+          "name": "search-broad-existing-rpc-equality",
+          "ok": true,
+          "status": 200
+        },
+        {
+          "name": "search-twelve",
+          "ok": true,
+          "ms": 353.30666699999983,
+          "status": 200,
+          "hash": "348a60305f33536650dc831a14e53de4095831847315c4c7f38230e9e71ec1b5"
+        },
+        {
+          "name": "search-twelve-existing-rpc-equality",
+          "ok": true,
+          "status": 200
+        },
+        {
+          "name": "search-absent",
+          "ok": true,
+          "ms": 324.30604200000016,
+          "status": 200,
+          "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        {
+          "name": "search-absent-existing-rpc-equality",
+          "ok": true,
+          "status": 200
+        },
+        {
+          "name": "suspended-hidden",
+          "ok": true,
+          "status": 200
+        },
+        {
+          "name": "deleted-hidden",
+          "ok": true,
+          "status": 200
+        }
+      ],
+      "phases": [
+        {
+          "concurrency": 1,
+          "startedAt": "2026-09-16T11:21:09.733Z",
+          "cases": [
+            {
+              "name": "search-selective",
+              "requests": 7,
+              "correct": 7,
+              "failures": 0,
+              "p50Ms": 188,
+              "p95Ms": 201,
+              "maxMs": 201,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-synonyms",
+              "requests": 6,
+              "correct": 6,
+              "failures": 0,
+              "p50Ms": 222,
+              "p95Ms": 299,
+              "maxMs": 299,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-broad",
+              "requests": 6,
+              "correct": 6,
+              "failures": 0,
+              "p50Ms": 187,
+              "p95Ms": 209,
+              "maxMs": 209,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-twelve",
+              "requests": 6,
+              "correct": 6,
+              "failures": 0,
+              "p50Ms": 285,
+              "p95Ms": 333,
+              "maxMs": 333,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-absent",
+              "requests": 6,
+              "correct": 6,
+              "failures": 0,
+              "p50Ms": 272,
+              "p95Ms": 328,
+              "maxMs": 328,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            }
+          ],
+          "elapsedMs": 12010.899208000003,
+          "requests": 31,
+          "rps": 2.58,
+          "pass": true
+        },
+        {
+          "concurrency": 5,
+          "startedAt": "2026-09-16T11:21:21.748Z",
+          "cases": [
+            {
+              "name": "search-selective",
+              "requests": 19,
+              "correct": 19,
+              "failures": 0,
+              "p50Ms": 431,
+              "p95Ms": 660,
+              "maxMs": 660,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-synonyms",
+              "requests": 19,
+              "correct": 19,
+              "failures": 0,
+              "p50Ms": 521,
+              "p95Ms": 666,
+              "maxMs": 666,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-broad",
+              "requests": 19,
+              "correct": 19,
+              "failures": 0,
+              "p50Ms": 479,
+              "p95Ms": 570,
+              "maxMs": 570,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-twelve",
+              "requests": 18,
+              "correct": 18,
+              "failures": 0,
+              "p50Ms": 627,
+              "p95Ms": 850,
+              "maxMs": 850,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-absent",
+              "requests": 18,
+              "correct": 18,
+              "failures": 0,
+              "p50Ms": 513,
+              "p95Ms": 690,
+              "maxMs": 690,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            }
+          ],
+          "elapsedMs": 12383.800208999997,
+          "requests": 93,
+          "rps": 7.51,
+          "pass": true
+        },
+        {
+          "concurrency": 10,
+          "startedAt": "2026-09-16T11:21:34.133Z",
+          "cases": [
+            {
+              "name": "search-selective",
+              "requests": 21,
+              "correct": 21,
+              "failures": 0,
+              "p50Ms": 794,
+              "p95Ms": 1039,
+              "maxMs": 1052,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-synonyms",
+              "requests": 21,
+              "correct": 21,
+              "failures": 0,
+              "p50Ms": 973,
+              "p95Ms": 1199,
+              "maxMs": 1234,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-broad",
+              "requests": 21,
+              "correct": 21,
+              "failures": 0,
+              "p50Ms": 925,
+              "p95Ms": 1118,
+              "maxMs": 1133,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-twelve",
+              "requests": 20,
+              "correct": 20,
+              "failures": 0,
+              "p50Ms": 1572,
+              "p95Ms": 1872,
+              "maxMs": 1891,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            },
+            {
+              "name": "search-absent",
+              "requests": 20,
+              "correct": 20,
+              "failures": 0,
+              "p50Ms": 1028,
+              "p95Ms": 1207,
+              "maxMs": 1285,
+              "p95LimitMs": 2000,
+              "failuresSample": [],
+              "pass": true
+            }
+          ],
+          "elapsedMs": 12869.014750000002,
+          "requests": 103,
+          "rps": 8,
+          "pass": true
+        }
+      ],
+      "finishedAt": "2026-09-16T11:21:47.003Z",
+      "pass": true
+    }
+  },
+  "mixed": {
+    "scope": "Hosted staging; 10001 prepared varied synthetic items including 2000 older exact short descriptions and 2000 unrelated short descriptions; 3 real synthetic Auth sessions, 10 concurrent read loops (maximum 240 reads/60s), chat+reconciliation+notifications+media. One photo upload/publication before load and one during load. Temporary candidate search RPC; not a peak-user guarantee.",
+    "checks": [
+      {
+        "name": "create synthetic user 0",
+        "ok": true
+      },
+      {
+        "name": "generate synthetic sign-in without mail 0",
+        "ok": true
+      },
+      {
+        "name": "real Auth session 0",
+        "ok": true
+      },
+      {
+        "name": "create synthetic user 1",
+        "ok": true
+      },
+      {
+        "name": "generate synthetic sign-in without mail 1",
+        "ok": true
+      },
+      {
+        "name": "real Auth session 1",
+        "ok": true
+      },
+      {
+        "name": "create synthetic user 2",
+        "ok": true
+      },
+      {
+        "name": "generate synthetic sign-in without mail 2",
+        "ok": true
+      },
+      {
+        "name": "real Auth session 2",
+        "ok": true
+      },
+      {
+        "name": "10001 prepared varied items verified by SQL before run",
+        "ok": true
+      },
+      {
+        "name": "follow synthetic seller",
+        "ok": true
+      },
+      {
+        "name": "save precise synthetic search",
+        "ok": true
+      },
+      {
+        "name": "follow synthetic seller",
+        "ok": true
+      },
+      {
+        "name": "save precise synthetic search",
+        "ok": true
+      },
+      {
+        "name": "owner photo upload",
+        "ok": true
+      },
+      {
+        "name": "outsider cannot replace photo",
+        "ok": true
+      },
+      {
+        "name": "real user publishes owned photo item",
+        "ok": true
+      },
+      {
+        "name": "buyer starts own conversation",
+        "ok": true
+      },
+      {
+        "name": "poll requires authentication",
+        "ok": true
+      },
+      {
+        "name": "before mixed load full search equality 1 anon",
+        "ok": true
+      },
+      {
+        "name": "before mixed load full search equality 1 member",
+        "ok": true
+      },
+      {
+        "name": "before mixed load full search equality 3 anon",
+        "ok": true
+      },
+      {
+        "name": "before mixed load full search equality 3 member",
+        "ok": true
+      },
+      {
+        "name": "before mixed load full search equality 12 anon",
+        "ok": true
+      },
+      {
+        "name": "before mixed load full search equality 12 member",
+        "ok": true
+      },
+      {
+        "name": "owner photo upload",
+        "ok": true
+      },
+      {
+        "name": "outsider cannot replace photo",
+        "ok": true
+      },
+      {
+        "name": "real user publishes owned photo item",
+        "ok": true
+      },
+      {
+        "name": "moderate only synthetic media fixture",
+        "ok": true
+      },
+      {
+        "name": "after mixed load full search equality 1 anon",
+        "ok": true
+      },
+      {
+        "name": "after mixed load full search equality 1 member",
+        "ok": true
+      },
+      {
+        "name": "after mixed load full search equality 3 anon",
+        "ok": true
+      },
+      {
+        "name": "after mixed load full search equality 3 member",
+        "ok": true
+      },
+      {
+        "name": "after mixed load full search equality 12 anon",
+        "ok": true
+      },
+      {
+        "name": "after mixed load full search equality 12 member",
+        "ok": true
+      },
+      {
+        "name": "photo publication occurred during read load",
+        "ok": true
+      },
+      {
+        "name": "poll recovers every committed message",
+        "ok": true
+      },
+      {
+        "name": "six unique durable chat messages",
+        "ok": true
+      },
+      {
+        "name": "outsider cannot read chat history",
+        "ok": true
+      },
+      {
+        "name": "outsider polling is empty",
+        "ok": true
+      },
+      {
+        "name": "outsider receives no realtime messages",
+        "ok": true
+      },
+      {
+        "name": "four correct follow/search notifications",
+        "ok": true,
+        "count": 4
+      },
+      {
+        "name": "moderated photo bytes preserved privately",
+        "ok": true
+      },
+      {
+        "name": "moderated photo no longer public",
+        "ok": true
+      },
+      {
+        "name": "outsider cannot access evidence image",
+        "ok": true
+      },
+      {
+        "name": "remove owned test objects in item-images",
+        "ok": true
+      },
+      {
+        "name": "remove owned test objects in moderation-evidence",
+        "ok": true
+      },
+      {
+        "name": "revoke synthetic refresh sessions before deletion",
+        "ok": true
+      },
+      {
+        "name": "cleanup identity matches synthetic account",
+        "ok": true
+      },
+      {
+        "name": "remove exact synthetic account",
+        "ok": true
+      },
+      {
+        "name": "revoke synthetic refresh sessions before deletion",
+        "ok": true
+      },
+      {
+        "name": "cleanup identity matches synthetic account",
+        "ok": true
+      },
+      {
+        "name": "remove exact synthetic account",
+        "ok": true
+      },
+      {
+        "name": "revoke synthetic refresh sessions before deletion",
+        "ok": true
+      },
+      {
+        "name": "cleanup identity matches synthetic account",
+        "ok": true
+      },
+      {
+        "name": "remove exact synthetic account",
+        "ok": true
+      }
+    ],
+    "requests": [
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 157,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 334,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 336,
+        "ok": true
+      },
+      {
+        "kind": "chat-write",
+        "status": 201,
+        "ms": 678,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 927,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 355,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 1203,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 1205,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 1275,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 1431,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 125,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 1176,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1734,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 591,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1959,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 131,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1645,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 1031,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 106,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 942,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 1102,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1485,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 845,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 1072,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 120,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 632,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 819,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1485,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1328,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 87,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 553,
+        "ok": true
+      },
+      {
+        "kind": "chat-write",
+        "status": 201,
+        "ms": 293,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 702,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 202,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1180,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 875,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 166,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1338,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 999,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 946,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 952,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 610,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 136,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1392,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 667,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1307,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 280,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 636,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1068,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 222,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 809,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 706,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 141,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 1185,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 144,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 1789,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 1360,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 2058,
+        "ok": true
+      },
+      {
+        "kind": "chat-write",
+        "status": 201,
+        "ms": 533,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 1122,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1967,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 1192,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 117,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1699,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 644,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 114,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 745,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1607,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 762,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 693,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 115,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 794,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1351,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 190,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 946,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 769,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1425,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 879,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 524,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 79,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1338,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 534,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 183,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1231,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 531,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 585,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 536,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 239,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1187,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 718,
+        "ok": true
+      },
+      {
+        "kind": "chat-write",
+        "status": 201,
+        "ms": 397,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 103,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1172,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 608,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1066,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 112,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 677,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 495,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 531,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1023,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 175,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 543,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 673,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1023,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 175,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 624,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 716,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 93,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1105,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 584,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 556,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 948,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 75,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 823,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 484,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 458,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 117,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 759,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 453,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 112,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 645,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 475,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 543,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 799,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 448,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 108,
+        "ok": true
+      },
+      {
+        "kind": "chat-write",
+        "status": 201,
+        "ms": 235,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 592,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 87,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 995,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 513,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 648,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 107,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 546,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 557,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1025,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1011,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 434,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 122,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 444,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 904,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 102,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 279,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 788,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 121,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 594,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 550,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 787,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 564,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 100,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 501,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 562,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 103,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 923,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 415,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 646,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 1008,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 157,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 445,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 517,
+        "ok": true
+      },
+      {
+        "kind": "chat-write",
+        "status": 201,
+        "ms": 212,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 123,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 906,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 779,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 558,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 99,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 631,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 644,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 602,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 938,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 81,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 719,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 433,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 642,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 386,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 404,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 157,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 813,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 81,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 432,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 403,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 160,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 851,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 829,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 97,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 517,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 642,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 494,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 530,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 818,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 322,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 66,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 798,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 442,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 349,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 94,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 387,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 473,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 125,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 793,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 467,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 104,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 849,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 464,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 755,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 546,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 85,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 731,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 374,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 490,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 86,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 405,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 498,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 771,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 92,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 418,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 325,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 828,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 310,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 73,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 493,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 93,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 800,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 518,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 729,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 531,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 325,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 110,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 742,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 610,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 392,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 131,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 713,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 456,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 363,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 91,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 444,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 691,
+        "ok": true
+      },
+      {
+        "kind": "browse",
+        "status": 200,
+        "ms": 105,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 333,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 425,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 741,
+        "ok": true
+      },
+      {
+        "kind": "search-single",
+        "status": 200,
+        "ms": 464,
+        "ok": true
+      },
+      {
+        "kind": "search-3terms",
+        "status": 200,
+        "ms": 304,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 696,
+        "ok": true
+      },
+      {
+        "kind": "search-12terms",
+        "status": 200,
+        "ms": 473,
+        "ok": true
+      }
+    ],
+    "startedAt": "2026-09-16T11:34:04.891Z",
+    "mediaDuringLoad": true,
+    "worker": {
+      "status": 200,
+      "ms": 1856,
+      "success": true,
+      "listing_batches": 3,
+      "notifications": 4,
+      "media_completed": 1,
+      "media_retried": 0,
+      "media_cancelled": 0,
+      "backlog": {
+        "media_failed": 0,
+        "media_pending": 0,
+        "listing_pending": 0,
+        "listing_oldest_seconds": 0
+      }
+    },
+    "poll": {
+      "received": [
+        "5c239ac6-9a4f-4e39-bc02-6522af7475cd",
+        "34f945be-befa-4af9-9b94-f58d1b04fb9a",
+        "e3e3ee69-a7b3-4f4f-9612-c01c4926035a",
+        "50c1101a-ed72-4d05-abc6-f726b5c25a06",
+        "59054c2f-8391-4382-a91a-c5f297c0a67f",
+        "4c0d0da3-10d7-4f8f-956d-7d11b3bc0645"
+      ],
+      "status": 200
+    },
+    "realtime": {
+      "seller": 6,
+      "outsider": 0,
+      "complete": true
+    },
+    "metrics": [
+      {
+        "kind": "browse",
+        "count": 60,
+        "failed": 0,
+        "p95Ms": 280
+      },
+      {
+        "kind": "chat-write",
+        "count": 6,
+        "failed": 0,
+        "p95Ms": 678
+      },
+      {
+        "kind": "search-3terms",
+        "count": 60,
+        "failed": 0,
+        "p95Ms": 1192
+      },
+      {
+        "kind": "search-single",
+        "count": 60,
+        "failed": 0,
+        "p95Ms": 1185
+      },
+      {
+        "kind": "search-12terms",
+        "count": 60,
+        "failed": 0,
+        "p95Ms": 1734
+      }
+    ],
+    "pass": true,
+    "finishedAt": "2026-09-16T11:38:41.862Z",
+    "cleanedAccounts": 3,
+    "cleaned": true
+  },
+  "logicalRestore": {
+    "scope": "local PG17, en_US.UTF-8, 14 synthetic items after pruning the fixture; exact review install/rollback scripts, copied hosted item visibility policy and suspension helper; logical pg_dump/pg_restore into a second database on the same local PG17 instance (shared role bootstrap), not production/Auth/Storage/full-cluster recovery",
+    "samples": [
+      {
+        "label": "unverified-extension-version-rolls-back-before-cache",
+        "pass": true
+      },
+      {
+        "label": "bundled-install",
+        "pass": true
+      },
+      {
+        "label": "live-edit",
+        "pass": true
+      },
+      {
+        "label": "live-delete",
+        "pass": true
+      },
+      {
+        "label": "logical-backup-restored-cache-native-results-and-permissions",
+        "pass": true
+      },
+      {
+        "label": "restored-cache-maintains-subsequent-edit",
+        "pass": true
+      },
+      {
+        "label": "bundled-rollback",
+        "pass": true
+      }
+    ],
+    "installMs": 39,
+    "pass": true
+  },
+  "sqlSha256": {
+    "fields.sql": "c936cfc74d14666993dc235341eca8971bcfb5fbe6f59ecb9a4d0b1f7b5822e7",
+    "query.sql": "43d3dd13285c3d67833200dc025a70e2a35348fda5dfbc641c7728552d8f5263",
+    "INSTALL.sql": "78c649850e63e115c6d93eee175143bdff6050a6673c7c4e89ef2e86d99d63ed",
+    "ROLLBACK.sql": "ff3f417ff115366b6824fa8aa77233e31661248ba41d54a38af224f77df69afd"
+  },
+  "cleanup": {
+    "items": 2,
+    "profiles": 6,
+    "authUsers": 6,
+    "testRowsAndObjectsRemaining": 0,
+    "pendingJobs": 0,
+    "originalSearchRpcMd5": "0da5d52cead8822697f3d6882ecab430",
+    "temporarySearchObjectsRemoved": true,
+    "testConnectionAndSessionFilesRemoved": true
+  },
+  "sourcePackage": {
+    "revision": 3,
+    "hashes": {
+      "fields.sql": "c936cfc74d14666993dc235341eca8971bcfb5fbe6f59ecb9a4d0b1f7b5822e7",
+      "query.sql": "588e403213bb34735cb345a9a7a3d00250d9472329e0f23b4bea8aa3141bda6e",
+      "INSTALL.sql": "be03da257e3e1d16b761f4465348b81da96427afe46fe10251b3b19b290651f2",
+      "ROLLBACK.sql": "80be0b1490cc994292c0b7a457da88dce9ee9d1855f4bcaec4fc152f9f5ad902"
+    },
+    "changesAfterHostedRehearsal": [
+      "Rollback statement timeout tightened from inherited 120s to 15s",
+      "Repeat 100-item installation bound under item write lock"
+    ],
+    "kernel": "Search logic unchanged from successful hosted rehearsals; query.sql trailing blank lines removed",
+    "verification": {
+      "fullRegression": {
+        "pass": true,
+        "locales": [
+          "libc",
+          "icu"
+        ],
+        "skipped": 0,
+        "durationMs": 106229.75213
+      },
+      "exactInstallRollback": {
+        "pass": true,
+        "scenarioCount": 8,
+        "durationMs": 2278.474958,
+        "checks": [
+          "oversized target refuses without changing rows",
+          "extension version drift rolls back before cache",
+          "effective install and rollback statement timeout 15s and lock timeout 2s",
+          "native result equality",
+          "live update and delete",
+          "logical dump/restore equality and privileges",
+          "restored cache maintenance",
+          "rollback"
+        ]
+      },
+      "sqlManifest": "4/4 SHA256 matched"
+    }
+  }
+}
