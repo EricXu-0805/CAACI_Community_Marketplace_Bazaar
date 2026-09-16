@@ -570,7 +570,8 @@ export function useAuth() {
       })
       if (!isAccountIdentityGenerationCurrent(identityGeneration, null) || options.isCurrent?.() === false) throw new Error('account_changed')
       if (typeof payload.access_token !== 'string' || payload.access_token.length < 16
-        || typeof payload.refresh_token !== 'string' || payload.refresh_token.length < 16
+        || typeof payload.refresh_token !== 'string' || payload.refresh_token.length < 12 || payload.refresh_token.length > 16_384
+        || /[\s\u0000-\u001F\u007F]/.test(payload.refresh_token)
         || typeof payload.user?.id !== 'string') throw new Error('invalid_session')
 
       await prepareSupabaseAuthPersistence()

@@ -677,7 +677,9 @@ async function verifyMagicLink(link, expectedEmail) {
     || body.access_token.length < 16
     || body.access_token.length > 16_384
     || typeof body?.refresh_token !== 'string'
-    || body.refresh_token.length < 16
+    // Supabase still issues supported 12-character legacy refresh tokens.
+    || body.refresh_token.length < 12
+    || /[\s\u0000-\u001F\u007F]/.test(body.refresh_token)
     || body.refresh_token.length > 16_384
     || body?.token_type !== 'bearer'
     || !Number.isFinite(body?.expires_in)

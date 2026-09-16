@@ -1,6 +1,6 @@
 # 微信与网站共用账号：实现与启用说明
 
-状态：代码候选完成，数据库已在测试环境完成合成账号闭环。生产功能关闭；尚未证明真实微信体验版端到端登录。
+状态：代码候选完成，数据库及真实托管 Auth 已在测试环境完成合成账号闭环。生产功能关闭；尚未证明真实微信体验版端到端登录。
 
 ## 用户怎么用
 
@@ -23,7 +23,7 @@
 
 1. 部署本轮候选代码及迁移 `20260916073035_wechat_account_link_tickets.sql`；生产迁移本轮尚未应用。验证私有表/四个服务函数权限，保留原账号数据。
 2. 完成 `20260718140000_retire_wechat_password_credentials.sql` 的历史密码退役证据。不能仅凭换了无密码登录接口就认定旧密码失效。
-3. 用微信体验版真实账号验证：已绑定用户、Google-only网站用户、邮箱用户、新用户、已有两个账号冲突、取消/过期、后台恢复、网络断开后重试；核对生成的 Supabase session 真是原用户 ID。当前 SQL canary 与接口 mock 不替代这一步。
+3. 用微信体验版真实账号验证：已绑定用户、Google-only网站用户、邮箱用户、新用户、已有两个账号冲突、取消/过期、后台恢复、网络断开后重试；核对生成的 Supabase session 真是原用户 ID。当前真实 Auth 演练仅模拟微信提供方，不替代这一步。
 4. 更新正式隐私政策及相应同意版本/审核说明：说明可选微信登录和双端关联、openid/unionid、占位邮箱适用范围、哈希票据/短期确认和保留期限。当前线上政策仍描述微信未开放，不能先开功能再补文案。
 5. 在目标环境启用 `WECHAT_LOGIN_ENABLED=true`、`WECHAT_ACCOUNT_LINK_ENABLED=true`、`WECHAT_LINK_RETENTION_ENABLED=true`；核对微信 AppID/Secret、合法域名、隐私接口声明、内容安全回调及审核配置。凭据只在服务端。
 6. 确认设置/登录入口出现、真实流程正常、小时清理成功后，再提交平台审核。暂停新关联仅关闭 ACCOUNT_LINK，保留 LOGIN（既有关联用户仍可登录）和 RETENTION；严重登录事件按独立应急策略处理。
@@ -34,5 +34,7 @@
 - `api/_wechat-account-link.test.mjs`：合成提供方和 Auth 响应的端点验证，不能代表真实微信服务可用。
 - `app/smoke/wechat-link-page-lifecycle.test.mjs`：实际页面脚本的控制器测试，覆盖切号/隐藏/迟到结果，不能代表实体系统输入法或相册。
 - 测试环境事务 canary：真实触发器、原用户绑定、错误 proof/重放拒绝；整体回滚，复核无残留。
+- `output/platform-audit-20260916/wechat-auth-service-rehearsal.json`：真实托管 Auth 创建已确认邮箱、无密码合成用户，通过真实 bearer/auth.sessions、RPC、会话签发和当前客户端 SDK，验证关联及随后登录均为原用户 ID；只模拟微信身份返回。错误 proof/重放拒绝，最后删除该精确合成用户，cleaned=true。未发送邮件。
+- 演练实际发现刷新令牌为 12 字符，旧代码要求至少16导致关联后登录失败；前后端改为接受有效12字符格式并保留大小/控制字符限制。回归包含合法12、短值、超长、空白/控制字符和缺失值。[Auth 实际格式校验](https://github.com/supabase/auth/blob/master/internal/api/token_refresh.go)。
 
 参考：[Supabase 身份关联](https://supabase.com/docs/guides/auth/auth-identity-linking)、[Auth 会话生命周期](https://supabase.com/docs/guides/auth/sessions)。

@@ -42,7 +42,7 @@ function mock(options={}) {
     if(url.pathname==='/rest/v1/profiles')return json(options.unbound && !url.searchParams.has('id') ? [] : [{id:UID,wechat_openid:OPENID,wechat_unionid:UNIONID,nickname:'Existing member'}])
     if(url.pathname===`/auth/v1/admin/users/${UID}`)return json({id:UID,email:EMAIL,email_confirmed_at:'2026-01-01T00:00:00Z',user_metadata:{provider:'google'}})
     if(url.pathname==='/auth/v1/admin/generate_link')return json({id:UID,email:EMAIL,hashed_token:'token-hash-1234567890123456',verification_type:'magiclink'})
-    if(url.pathname==='/auth/v1/verify')return json({access_token:'access-12345678901234567890',refresh_token:'refresh-12345678901234567890',token_type:'bearer',expires_in:3600,user:{id:UID,email:EMAIL},provider_token:'never-forward'})
+    if(url.pathname==='/auth/v1/verify')return json({access_token:'access-12345678901234567890',refresh_token:'abc123def456',token_type:'bearer',expires_in:3600,user:{id:UID,email:EMAIL},provider_token:'never-forward'})
     throw new Error(`Unexpected fixture destination ${url.pathname}`)
   }
   return calls
@@ -99,6 +99,7 @@ test('website/WeChat account linking API rejects unproved identity and preserves
     const res=await handler(request({action:'link_confirm',js_code:'fresh-confirm',link_code:CODE,confirmation:CONFIRMATION}))
     assert.equal(res.status,200);const body=await res.json()
     assert.equal(body.user.id,UID);assert.equal(body.user.email,EMAIL);assert.equal(body.provider_token,undefined)
+    assert.equal(body.refresh_token,'abc123def456','real Supabase 12-character refresh tokens are supported')
     const generated=calls.find(c=>c.url.pathname.endsWith('generate_link')).body
     assert.deepEqual(generated,{type:'magiclink',email:EMAIL})
     assert.equal(calls.some(c=>c.init.method==='PATCH'),false)
@@ -108,6 +109,15 @@ test('website/WeChat account linking API rejects unproved identity and preserves
     const res=await handler(request({js_code:'returning-code'}));assert.equal(res.status,200)
     assert.equal((await res.json()).user.id,UID)
     assert.equal(calls.find(c=>c.url.pathname.endsWith('generate_link')).body.email,EMAIL)
+  })
+  await t.test('short, oversized and whitespace-bearing refresh tokens fail closed',async()=>{
+    const handler=await load()
+    for(const refresh_token of [undefined,'a'.repeat(11),'a'.repeat(16385),'abc123def45\n','abc123 def456','abc123def45\u0000']){
+      mock({override:url=>url.pathname==='/auth/v1/verify'?json({access_token:'access-12345678901234567890',refresh_token,token_type:'bearer',expires_in:3600,user:{id:UID,email:EMAIL}}):null})
+      const res=await handler(request({js_code:'fresh'}))
+      assert.equal(res.status,500)
+      assert.equal((await res.json()).refresh_token,undefined)
+    }
   })
   await t.test('unbound login requires explicit registration rather than creating a placeholder silently',async()=>{
     const handler=await load(),calls=mock({unbound:true})
