@@ -157,7 +157,7 @@
             :class="['post-tappable', { 'pinned-expanded': post.is_pinned && pinnedExpanded.has(post.id) }]"
             :role="post.is_pinned && pinnedExpanded.has(post.id) ? 'group' : 'button'"
             :tabindex="post.is_pinned && pinnedExpanded.has(post.id) ? -1 : undefined"
-            :aria-label="post.content || (post.profile?.nickname || t('app.user'))"
+            :aria-label="postCardLabel(post)"
             :aria-keyshortcuts="post.is_pinned && pinnedExpanded.has(post.id) ? undefined : 'Shift+F10'"
             @click="goPostDetail(post)"
             @keydown="onPostCardKeydown($event, post)"
@@ -1542,6 +1542,18 @@ function onDeletePost(post: Post) {
 
 function previewImage(urls: string[], idx: number) {
   uni.previewImage({ urls, current: urls[idx] })
+}
+
+function postCardLabel(post: Post) {
+  // Keep the navigation stop brief; the full post remains readable in the
+  // card and detail view. Long announcements must not become minute-long
+  // button names (or disappear from bounded accessibility snapshots).
+  const author = Array.from((post.profile?.nickname || t('app.user')).replace(/\s+/g, ' ').trim()).slice(0, 40).join('')
+  const text = (translations[post.id] || post.content || '').replace(/\s+/g, ' ').trim()
+  const characters = Array.from(text)
+  const excerpt = characters.slice(0, 100).join('') + (characters.length > 100 ? '…' : '')
+  const action = t('plaza.openPostBy', { name: author })
+  return excerpt ? `${action}: ${excerpt}` : action
 }
 
 function goPostDetail(post: Post) {

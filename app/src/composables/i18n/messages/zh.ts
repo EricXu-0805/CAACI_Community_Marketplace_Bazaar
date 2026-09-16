@@ -818,6 +818,7 @@ const zh: Record<string, string> = {
   'plaza.hideReplies': '收起回复',
   'plaza.collapseComments': '收起评论',
   'plaza.tapToExpand': '点击展开',
+  'plaza.openPostBy': '打开 {name} 的动态',
   'plaza.collapse': '收起',
   'plaza.commentCount': '{count} 条评论',
   'plaza.notFound': '找不到这条动态',

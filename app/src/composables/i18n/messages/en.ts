@@ -822,6 +822,7 @@ const en: Record<string, string> = {
   'plaza.hideReplies': 'Hide replies',
   'plaza.collapseComments': 'Collapse comments',
   'plaza.tapToExpand': 'Tap to expand',
+  'plaza.openPostBy': 'Open post by {name}',
   'plaza.collapse': 'Collapse',
   'plaza.commentCount': '{count} comments',
   'plaza.notFound': 'Post not found',
