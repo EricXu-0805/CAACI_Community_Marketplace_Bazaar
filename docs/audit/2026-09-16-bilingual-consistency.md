@@ -50,10 +50,30 @@ retaining Chinese.
   Gmail alias at 17:42:43 UTC: English-first title/body, current brand, six-digit
   code and domain link verified; SPF/DKIM/DMARC passed and Gmail rendering was
   visually checked. No password was changed. The already-confirmed account did
-  not receive another signup message after an accepted resend; fresh signup
-  receipt remains separately pending. Private receipts are under
+  not receive another signup message after an accepted resend. With explicit
+  approval, a new plus label of the same Gmail received a fresh signup email at
+  17:47:13 UTC. The same sender/content/domain/authentication checks and actual
+  Gmail rendering passed. No new Google account was created, no OTP was redeemed,
+  and no onboarding or publishing was performed. Private receipts are under
   `output/bilingual-20260916/`.
 - Google's own new-authorization/security email is separate from site OTP emails;
   it remains pending and is not covered by these code tests.
 - H5 viewport simulation/build evidence does not certify physical iOS/iPad input,
   WeChat experience-version behavior, or platform review.
+
+## Production verification follow-up
+
+- PR #335 merged as `8a8b5b2` after all four required checks passed. Vercel
+  production deployment `dpl_EsqC5zrAMdUM7GLnTauZT55b1oct` is READY with both
+  market domains assigned; the actual Settings page displays `8a8b5b2`.
+- Deployed Chrome checks passed for desktop Settings language switching and
+  reload persistence, English Plaza/composer controls (1440 × 900); phone Welcome
+  and Sign In switching plus refreshed language persistence (390 × 844); and
+  tablet recovery/Home titles and labels (1024 × 768). Observed document widths
+  matched each viewport without horizontal overflow. These are viewport checks,
+  not physical-device certification. No content was submitted or password changed.
+- The full PR public sweep reported 365 passed, 1 skipped and 1 failed. The sole
+  failure was the previous exact `/account-deletion` href expectation: the new
+  language-specific link correctly includes `#english`. The follow-up updates
+  that contract and adds the equivalent Chinese policy/deletion-guide case;
+  full follow-up CI must pass before reporting this regression gate as complete.
