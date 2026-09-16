@@ -122,8 +122,19 @@ for (const locale of ['libc', 'icu']) test(`cached search preserves native resul
       PREPARE visible_owner AS SELECT count(*)>0 FROM items WHERE user_id='${id(2)}';
       EXECUTE visible_owner;
       RESET ROLE; UPDATE suspensions SET lifted_at=now() WHERE profile_id='${id(2)}'; SET ROLE anon; EXECUTE visible_owner;
-      RESET ROLE; UPDATE suspensions SET lifted_at=null,ends_at=clock_timestamp()+interval '0.2 seconds' WHERE profile_id='${id(2)}'; SET ROLE anon; EXECUTE visible_owner;
-      SELECT pg_sleep(0.25); EXECUTE visible_owner;
+      RESET ROLE;
+      -- Keep the active-phase setup and prepared execution in one outer
+      -- statement: statement_timestamp() cannot expire between them if a
+      -- busy runner pauses psql for more than 200 ms. No fixture write occurs
+      -- between the active read and the expired read below.
+      DO $expiry$ DECLARE visible boolean; BEGIN
+        UPDATE suspensions SET lifted_at=null,ends_at=statement_timestamp()+interval '0.2 seconds' WHERE profile_id='${id(2)}';
+        SET LOCAL ROLE anon;
+        EXECUTE 'EXECUTE visible_owner' INTO visible;
+        PERFORM set_config('test.prepared_before_expiry',visible::text,false);
+        PERFORM pg_sleep(0.25);
+      END $expiry$;
+      SET ROLE anon; SELECT current_setting('test.prepared_before_expiry')::boolean; EXECUTE visible_owner;
       RESET ROLE; UPDATE suspensions SET ends_at=null WHERE profile_id='${id(2)}'; SET ROLE authenticated; SET request.jwt.claim.sub='${id(2)}'; EXECUTE visible_owner;
       SET request.jwt.claim.sub='${id(1)}'; EXECUTE visible_owner; RESET ROLE;`)
     assert.deepEqual(live.split('\n').filter(Boolean), ['f', 't', 'f', 't', 't', 'f'], 'prepared plans cannot cache expiry, lift or account identity across statements')

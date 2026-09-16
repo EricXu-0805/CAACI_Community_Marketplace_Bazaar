@@ -9,7 +9,7 @@ Baseline: `8b930d3`, branch `codex/main-release-followup-20260906`. User supplie
 - [x] Plaza composer: visible photo action label, aligned toolbar, usable desktop dialog and phone sheet.
 - [x] Responsive shell: consistent navigation and available-width content on secondary/deeper routes; seller, listing detail, settings, notifications, profile edit, saved lists and posts; desktop/tablet layouts with bounded reading widths rather than a phone-width outer canvas.
 - [x] Verify real rendered local browser journeys with synthetic data at phone, iPad and Mac widths; security/DB regression for new direct messaging; type check and both platform builds; inspect affected existing tests.
-- [ ] Review final diff, publish only a verified compatible change within current authorization, and record exact deployment/migration evidence or remaining external gates.
+- [x] Review final diff, publish only a verified compatible change within current authorization, and record exact deployment/migration evidence or remaining external gates.
 
 ## Evidence and decisions
 
@@ -69,3 +69,22 @@ The full pre-push gate passed: boundary tests, TypeScript, H5 build and artifact
 validation, and mp-weixin build and artifact validation. Frontend rollout is
 tracked by the matching Git commit and Vercel deployment receipt in the dated
 state log; a READY deployment is not physical-device acceptance.
+
+
+## Frontend receipt and CI follow-up
+
+- Implementation commit `59e452b86eeb9ffe0063c00b7bad8687e6cabfab` was pushed
+  to main after the complete local pre-push gate passed.
+- Vercel production `dpl_FqR6PDB1ZP2rd7SZppvD9a7NJTQc` is READY and aliases
+  include `illinimarket.com` and `www.illinimarket.com`, with the exact same SHA.
+- GitHub run `35060011322` passed Type-check, H5/compiled acceptance and
+  mp-weixin. Its boundary job caught an older search-test timing race: a
+  200ms active suspension expired before the pre-expiry assertion on a busy
+  runner. The failure was in the libc search regression, not the new direct
+  conversation test. This follow-up keeps fixture setup and the active read in
+  one outer statement with a fixed statement_timestamp, then reads the same
+  prepared plan after natural expiry without an intervening fixture write.
+  libc and ICU database tests both pass locally; the six expected permission
+  outcomes are unchanged. No production search function or migration changed.
+- Subsequent CI/deployment receipts are saved in `output/ui-followup-20260916/`
+  and the September 16 state log. Do not reinterpret an older failed run as green.
