@@ -9,7 +9,7 @@ const source = async path => readFile(new URL(path, ROOT), 'utf8')
 test('pre-push runs deterministic boundary tests for executable non-client changes', async () => {
   const hook = await source('.githooks/pre-push')
 
-  assert.match(hook, /node --test \.\.\/api\/\*\.test\.mjs \.\.\/scripts\/\*\.test\.mjs smoke\/\*\.test\.mjs/)
+  assert.match(hook, /node --test --test-concurrency=4 \.\.\/api\/\*\.test\.mjs \.\.\/scripts\/\*\.test\.mjs smoke\/\*\.test\.mjs/)
   assert.match(hook, /needs_boundary_tests\(\)[\s\S]*\.github\/\*[\s\S]*\*\)[\s\S]*return 0/)
   assert.match(hook, /needs_client_builds\(\)[\s\S]*\.github\/\*\|\.githooks\/\*\)[\s\S]*return 1/)
   assert.match(hook, /supabase\/migrations\/\*\.sql\)[\s\S]*return 1/)
