@@ -1,4 +1,4 @@
-// The product has two names — `Illini Market` (en) and `香槟集市` (zh) — and four
+// The product has two names — `Illini Market` (en) and `Illini 集市` (zh) — and four
 // outbound email surfaces. The two Supabase auth templates paired both names and
 // linked the domain; the two Vercel handlers named only the Chinese half, so an
 // English-reading recipient got a wordmark they had never seen and no way to tie
@@ -28,7 +28,8 @@ const EMAIL_SURFACES = [
 test('every outbound email names the product in both languages', () => {
   for (const rel of EMAIL_SURFACES) {
     const source = read(rel)
-    assert.match(source, /香槟集市/, `${rel} dropped the Chinese wordmark`)
+    assert.match(source, />Illini 集市</, `${rel} dropped the current Chinese wordmark`)
+    assert.doesNotMatch(source, /香槟集市/, `${rel} still contains the retired Chinese wordmark`)
     assert.match(
       source,
       />Illini Market</,
@@ -61,7 +62,7 @@ test('handler subjects do not re-spend the inbox on the brand', () => {
     // wordmark; the footer pairing is mid-template and never quote-adjacent.
     assert.doesNotMatch(
       source,
-      /[`'"](香槟集市|Illini Market)\s*·/,
+      /[`'"](Illini 集市|Illini Market)\s*·/,
       `${rel} has a subject literal repeating the brand the FROM name already shows`,
     )
   }

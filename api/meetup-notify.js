@@ -390,7 +390,7 @@ function mailHtml({ actorName, verb, verbEn, spot, whenLabel, note, itemTitle, u
     <div style="text-align:center;margin-bottom:8px">
       <span style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:10px;background:#C74A2F;color:#fff;font-weight:700;font-size:20px">集</span>
     </div>
-    <h1 style="font-family:Georgia,serif;font-size:22px;color:#2A2521;text-align:center;margin:8px 0 2px">香槟集市</h1>
+    <h1 style="font-family:Georgia,serif;font-size:22px;color:#2A2521;text-align:center;margin:8px 0 2px">Illini 集市</h1>
     <p style="margin:3px 0 0;font-size:12px;font-weight:600;color:#A39A8C;letter-spacing:2px;text-transform:uppercase;text-align:center">Illini Market</p>
     <p style="text-align:center;color:#8B8478;font-size:13px;margin:0 0 20px">${
       lang === 'en'
@@ -409,7 +409,7 @@ function mailHtml({ actorName, verb, verbEn, spot, whenLabel, note, itemTitle, u
       <a href="${esc(APP_URL)}/#/pages/messages/index" style="display:inline-block;background:#C74A2F;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-weight:600;font-size:15px">${c.respond}</a>
     </div>
     <p style="text-align:center;color:#A39A8C;font-size:11px;line-height:1.6;margin-top:24px">
-      香槟集市 · Illini Market<br>
+      Illini 集市 · Illini Market<br>
       ${c.tagline}<br>
       <a href="${esc(APP_URL)}" style="color:#A39A8C;text-decoration:none">illinimarket.com</a><br>
       ${unsub}
