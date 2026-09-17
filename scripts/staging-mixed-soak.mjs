@@ -22,12 +22,24 @@ export function timingSummary(samples){
  const sorted=[...samples].sort((a,b)=>a-b)
  return {count:sorted.length,p95Ms:sorted[Math.max(0,Math.ceil(sorted.length*.95)-1)]??null,maxMs:sorted.at(-1)??null}
 }
+export async function createSoakPost(rest,userId,content){
+ // Match usePlaza: the server allocates identity and owns moderation status.
+ const rows=JSON.parse(await rest('posts?select=id',{method:'POST',headers:{Prefer:'return=representation'},body:{user_id:userId,content,images:[]}}))
+ if(!Array.isArray(rows)||rows.length!==1||!UUID.test(rows[0]?.id||''))throw Error('soak_post_identity_invalid')
+ return rows[0].id
+}
+export async function setSoakLike(rest,postId,userId,liked){
+ if(liked)await rest('post_likes',{method:'POST',body:{post_id:postId,user_id:userId}})
+ else await rest(`post_likes?post_id=eq.${postId}&user_id=eq.${userId}`,{method:'DELETE'})
+ const rows=JSON.parse(await rest(`posts?id=eq.${postId}&select=id,like_count`))
+ if(rows.length!==1||rows[0].id!==postId||rows[0].like_count!==Number(liked))throw Error('soak_post_like_mismatch')
+}
 export async function main(){
  const {url,key}=safeSoakTarget(process.env)
  const durationMs=300_000,stopAt=Date.now()+durationMs
- const id=randomUUID(),postId=randomUUID(),run=id.slice(0,8)
+ const id=randomUUID(),run=id.slice(0,8),postContent=`Synthetic staging soak ${id}`
  const timings={search:[],listing:[],plaza:[],write:[],media:[]},events=new Set(),written=new Set()
- let token='',client,channel,objectName='',cleanupOk=true,runFailure=null,operations=0
+ let token='',userId='',postId='',postAttempted=false,pendingMutation=null,client,channel,objectName='',cleanupOk=true,runFailure=null,operations=0
  const http=async(path,{method='GET',body,headers={},bytes=false}={})=>{
   const res=await fetch(url+path,{method,headers:{apikey:key,...(token?{Authorization:`Bearer ${token}`}:{}) ,...headers},
    ...(body===undefined?{}:{body:typeof body==='string'||Buffer.isBuffer(body)?body:JSON.stringify(body)}),redirect:'error',signal:AbortSignal.timeout(10000)})
@@ -40,7 +52,7 @@ export async function main(){
   const auth=JSON.parse(await http('/auth/v1/token?grant_type=password',{method:'POST',headers:{'Content-Type':'application/json'},body:{email:process.env.SMOKE_EMAIL,password:process.env.SMOKE_PASSWORD}}))
   token=auth.access_token
   if(!token||auth.user?.id!==process.env.SMOKE_EXPECTED_USER_ID)throw Error('soak_account_mismatch')
-  const uid=auth.user.id
+  const uid=userId=auth.user.id
   client=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},global:{fetch:(input,init={})=>fetch(input,{...init,signal:AbortSignal.timeout(10000)})}})
   const {error}=await client.auth.setSession({access_token:token,refresh_token:auth.refresh_token})
   if(error)throw Error('soak_sdk_session_failed')
@@ -48,10 +60,10 @@ export async function main(){
   await http(`/storage/v1/object/item-images/${objectName}`,{method:'POST',body:Buffer.from(PIXEL_PNG_BASE64,'base64'),headers:{'Content-Type':'image/png'}})
   const photo=`${url}/storage/v1/object/public/item-images/${objectName}`
   await rest('items',{method:'POST',body:{id,user_id:uid,title:`[ci soak] Desk ${run}`,description:'Synthetic staging acceptance. Removed after the run.',price:25,category:'furniture',condition:'good',images:[photo],image_dimensions:[{w:1,h:1}],location:'UIUC'}})
-  await rest('posts',{method:'POST',body:{id:postId,user_id:uid,content:`Synthetic staging soak ${run} revision 0`,images:[],status:'active'}})
+  postAttempted=true
+  postId=await createSoakPost(rest,uid,postContent)
   channel=client.channel(`soak-${run}`).on('postgres_changes',{event:'UPDATE',schema:'public',table:'posts',filter:`id=eq.${postId}`},event=>{
-   const n=/ revision (\d+)$/.exec(event.new?.content||'')?.[1]
-   if(n)events.add(Number(n))
+   if(pendingMutation && event.new?.id===postId && event.new.like_count===pendingMutation.count)events.add(pendingMutation.sequence)
   })
   await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('soak_realtime_subscribe_timeout')),12000);channel.subscribe(status=>{if(status==='SUBSCRIBED'){clearTimeout(timer);resolve()}else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){clearTimeout(timer);reject(Error('soak_realtime_subscribe_failed'))}})})
   let round=0,nextWrite=0
@@ -67,7 +79,8 @@ export async function main(){
    if(results.some(r=>r.status==='rejected'))throw Error('soak_read_failed')
    if(Date.now()>=nextWrite){
     const rev=written.size+1
-    await timed('write',()=>rest(`posts?id=eq.${postId}`,{method:'PATCH',body:{content:`Synthetic staging soak ${run} revision ${rev}`}}))
+    pendingMutation={sequence:rev,count:rev%2}
+    await timed('write',()=>setSoakLike(rest,postId,uid,Boolean(rev%2)))
     written.add(rev);nextWrite=Date.now()+30000
     await timed('media',async()=>{
      const body=await http(`/storage/v1/object/public/item-images/${objectName}`,{bytes:true})
@@ -84,7 +97,14 @@ export async function main(){
   if(channel)await client.removeChannel(channel).catch(()=>{})
   // Exact per-run IDs only; no deletion by broad title/prefix or other accounts.
   if(token){
-   for(const path of [`posts?id=eq.${postId}`,`items?id=eq.${id}`]){
+   // A timed-out INSERT might have committed before its identity reached us.
+   // Recover only this account's exact UUID-bearing synthetic content.
+   if(postAttempted&&!postId&&userId)try{
+    const rows=JSON.parse(await rest(`posts?user_id=eq.${userId}&content=eq.${encodeURIComponent(postContent)}&select=id`))
+    if(rows.length===1&&UUID.test(rows[0].id))postId=rows[0].id
+    else if(rows.length)cleanupOk=false
+   }catch{cleanupOk=false}
+   for(const path of [...(postId?[`posts?id=eq.${postId}&user_id=eq.${userId}`]:[]),`items?id=eq.${id}`]){
     try{await rest(path,{method:'DELETE'});if(JSON.parse(await rest(path+'&select=id')).length)cleanupOk=false}catch{cleanupOk=false}
    }
    if(objectName)try{await http('/storage/v1/object/item-images',{method:'DELETE',headers:{'Content-Type':'application/json'},body:{prefixes:[objectName]}})}catch{cleanupOk=false}

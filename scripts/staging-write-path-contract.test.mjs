@@ -218,9 +218,15 @@ function stubServer(over = {}) {
       return reply(path.includes(FOREIGN_OWNER) ? behavior.foreignUpload : behavior.upload)
     }
     if (path.startsWith('/rest/v1/items')) {
+      const query = new URL(url).searchParams
+      // Model column grants, including credentials that permit writes but not
+      // reads. A permissive stub hid a real PostgREST RETURNING * failure.
+      if (new Headers(init.headers).get('Prefer') === 'return=representation'
+        && query.get('select') !== 'id') {
+        return reply({ status: 403, body: { code: '42501', message: 'permission denied for table items' } })
+      }
       if (method === 'DELETE') return reply(behavior.deleteRow)
       if (method === 'GET') {
-        const query = new URL(url).searchParams
         assert.equal(query.get('id'), `eq.${storedListing.id}`)
         assert.equal(query.get('user_id'), `eq.${USER_ID}`)
         return reply(over.recovery || { status: 200, body: [storedListing] })
@@ -231,7 +237,7 @@ function stubServer(over = {}) {
         ? { status: 400, body: { code: 'P0001', message: 'duplicate_item' } }
         : behavior.retry)
       storedListing = payload
-      return reply({ status: 201, body: [storedListing] })
+      return reply({ status: 201, body: [{ id: storedListing.id }] })
     }
     throw new Error(`the check called an endpoint the stub does not model: ${method} ${path}`)
   }
@@ -286,7 +292,7 @@ test('the listing carries the photo it just uploaded', async () => {
   const stub = stubServer()
   const inner = stub.fetchStub
   stub.fetchStub = async (input, init = {}) => {
-    if (String(input).endsWith('/rest/v1/items') && (init.method || '') === 'POST') {
+    if (new URL(input).pathname === '/rest/v1/items' && (init.method || '') === 'POST') {
       const payload = JSON.parse(init.body)
       if (!published && payload.title.startsWith(`${ACCEPTED_TITLE} `)) published = payload
     }

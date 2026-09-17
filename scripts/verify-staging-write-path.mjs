@@ -329,7 +329,7 @@ export async function main() {
     // Sweep anything a killed run left behind, so its rows cannot age into the
     // rate-limit window and fail this one for the wrong reason.
     const swept = await rest(url, key, token,
-      `items?user_id=eq.${userId}&title=like.${encodeURIComponent(`${TITLE_PREFIX}%`)}`,
+      `items?user_id=eq.${userId}&title=like.${encodeURIComponent(`${TITLE_PREFIX}%`)}&select=id`,
       { method: 'DELETE', headers: { Prefer: 'return=representation' } })
     const sweptRows = await readJson(swept)
     if (Array.isArray(sweptRows) && sweptRows.length) {
@@ -391,7 +391,9 @@ export async function main() {
       images: [mediaUrl],
       image_dimensions: [{ w: 1, h: 1 }],
     }
-    const insert = await rest(url, key, token, 'items', {
+    // The receipt used for a location check is write-only. PostgREST's default
+    // RETURNING * would try to read it, so request only the identity we verify.
+    const insert = await rest(url, key, token, 'items?select=id', {
       method: 'POST',
       headers: { Prefer: 'return=representation' },
       body: JSON.stringify(payload),
@@ -422,7 +424,7 @@ export async function main() {
       + `triggers (${created.id})`)
 
     // An identical retry reaches the real 60-second title guard first.
-    const sameTitleRetry = await rest(url, key, token, 'items', {
+    const sameTitleRetry = await rest(url, key, token, 'items?select=id', {
       method: 'POST',
       headers: { Prefer: 'return=representation' },
       body: JSON.stringify(payload),
@@ -436,7 +438,7 @@ export async function main() {
 
     // An edited retry must hit the primary key, independent of the 60-second
     // title dedupe trigger. Recover the original row by id AND owner afterward.
-    const retry = await rest(url, key, token, 'items', {
+    const retry = await rest(url, key, token, 'items?select=id', {
       method: 'POST',
       headers: { Prefer: 'return=representation' },
       body: JSON.stringify({ ...payload, title: `${payload.title} retry` }),
@@ -458,7 +460,7 @@ export async function main() {
 
     // 5. The gate must still be shut. Without this, deleting moderation
     //    entirely would leave the check above passing.
-    const blocked = await rest(url, key, token, 'items', {
+    const blocked = await rest(url, key, token, 'items?select=id', {
       method: 'POST',
       headers: { Prefer: 'return=representation' },
       body: JSON.stringify({
@@ -493,7 +495,7 @@ export async function main() {
     console.log(`✓ a blocklisted term is still refused as '${refusal.category}'`)
   } finally {
     if (created?.id) {
-      const removed = await rest(url, key, token, `items?id=eq.${created.id}`, {
+      const removed = await rest(url, key, token, `items?id=eq.${created.id}&select=id`, {
         method: 'DELETE',
         headers: { Prefer: 'return=representation' },
       })
