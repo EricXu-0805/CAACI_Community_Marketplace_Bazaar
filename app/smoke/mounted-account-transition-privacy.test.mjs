@@ -66,7 +66,7 @@ test('an A location request cannot repopulate the cache after B is adopted', asy
     const freshB = location.detectLocation()
     assert.equal(geolocationStarts, 2, 'B can start a fresh fix while A is still in flight')
     locationCallbacks[0].success({ latitude: 40.11, longitude: -88.22 })
-    assert.deepEqual(await staleA, { ok: false, reason: 'position_unavailable' })
+    assert.deepEqual(await staleA, { ok: false, reason: 'cancelled' })
     assert.equal(addressQueries, 0, 'A coordinates must not leave the device after account transition')
     assert.equal(location.cachedLocation.value, '')
     assert.equal(location.detecting.value, true, 'A finalization must not clear B detecting state')

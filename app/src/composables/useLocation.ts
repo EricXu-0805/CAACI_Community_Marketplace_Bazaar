@@ -26,6 +26,7 @@ export type LocationResult =
         | 'timeout'
         | 'geocode_failed'
         | 'unsupported'
+        | 'cancelled'
     }
 
 const cachedLocation = ref('')
@@ -33,6 +34,10 @@ const detecting = ref(false)
 const phase = ref<'idle' | 'locating' | 'address'>('idle')
 const LOCATION_CACHE_TTL_MS = 5 * 60 * 1000
 const LOCATION_FIX_TIMEOUT_MS = 15_000
+// Native timeout starts after permission is granted. Allow time to read the
+// browser prompt, with an explicit Cancel action and a separate safety deadline.
+const BROWSER_PERMISSION_DEADLINE_MS = 60_000
+const LOCATION_AUTH_TIMEOUT_MS = 3_000
 const GEOCODE_REQUEST_TIMEOUT_MS = 8_000
 const PERMISSION_QUERY_TIMEOUT_MS = 1_000
 let cachedLocationAt = 0
@@ -41,11 +46,13 @@ let cachedLocationAt = 0
 // was already in flight; identity equality alone is not an ownership proof.
 let locationRequestGeneration = 0
 let locationDetectionId = 0
+let cancelActiveDetection: (() => void) | undefined
 
 // A location label is private device context. Never let a shared-device
 // account switch reuse the previous user's result, and do not keep a stale
 // location for the lifetime of a long-running app session.
 onAccountTransition(() => {
+  cancelActiveDetection?.()
   locationRequestGeneration += 1
   locationDetectionId += 1
   cachedLocation.value = ''
@@ -73,11 +80,12 @@ function classifyLocationError(
   err: unknown,
 ): Exclude<LocationResult, { ok: true }>['reason'] {
   const e = err as
-    | { code?: number; errMsg?: string; errCode?: number; message?: string }
+    | { code?: number; errMsg?: string; errCode?: number; message?: string; cancelled?: boolean }
     | undefined
   const code = e?.code ?? e?.errCode
   const text = `${e?.errMsg ?? ''} ${e?.message ?? ''}`.toLowerCase()
 
+  if (e?.cancelled) return 'cancelled'
   if (code === 1) return 'permission_denied'
   if (code === 3) return 'timeout'
   if (code === 2) return 'position_unavailable'
@@ -90,14 +98,35 @@ function classifyLocationError(
 }
 
 export function useLocation() {
+  let ownedDetectionId = 0
+  function cancelDetection() {
+    if (ownedDetectionId === locationDetectionId) cancelActiveDetection?.()
+  }
   async function detectLocation(options?: { itemId: string }): Promise<LocationResult> {
+    cancelActiveDetection?.()
     const requestGeneration = locationRequestGeneration
     const detectionId = ++locationDetectionId
+    ownedDetectionId = detectionId
+    let cancelled = false
+    let cancelStage: (() => void) | undefined
     const requestStillCurrent = () => (
-      requestGeneration === locationRequestGeneration
+      !cancelled && requestGeneration === locationRequestGeneration
       && detectionId === locationDetectionId
     )
+    const registerCancel = (callback: () => void) => {
+      cancelStage = callback
+      if (!requestStillCurrent()) callback()
+    }
+    cancelActiveDetection = () => {
+      cancelled = true
+      cancelStage?.()
+      if (detectionId === locationDetectionId) {
+        detecting.value = false
+        phase.value = 'idle'
+      }
+    }
     if (!options && cachedLocation.value && Date.now() - cachedLocationAt < LOCATION_CACHE_TTL_MS) {
+      cancelActiveDetection = undefined
       return { ok: true, location: cachedLocation.value }
     }
     cachedLocation.value = ''
@@ -151,7 +180,7 @@ export function useLocation() {
               .then(resolve, () => resolve(null))
               .finally(() => clearTimeout(timer))
           })
-          if (!requestStillCurrent()) return { ok: false, reason: 'position_unavailable' }
+          if (!requestStillCurrent()) return { ok: false, reason: cancelled ? 'cancelled' : 'position_unavailable' }
           if (status?.state === 'denied') {
             return { ok: false, reason: 'permission_denied' }
           }
@@ -160,14 +189,20 @@ export function useLocation() {
         /* Permissions API itself failed — fall through to getLocation. */
       }
 
-      if (!requestStillCurrent()) return { ok: false, reason: 'position_unavailable' }
+      if (!requestStillCurrent()) return { ok: false, reason: cancelled ? 'cancelled' : 'position_unavailable' }
       const res: Pick<UniApp.GetLocationSuccess, 'latitude' | 'longitude' | 'accuracy'> & { fixAt?: number } = await new Promise((resolve, reject) => {
         let settled = false
         const timer = setTimeout(() => {
           if (settled) return
           settled = true
           reject({ code: 3, message: 'location deadline exceeded' })
-        }, LOCATION_FIX_TIMEOUT_MS)
+        }, browserGeo ? BROWSER_PERMISSION_DEADLINE_MS : LOCATION_FIX_TIMEOUT_MS)
+        registerCancel(() => {
+          if (settled) return
+          settled = true
+          clearTimeout(timer)
+          reject({ cancelled: true })
+        })
         try {
           // H5 verification asks for a fresh fix, rather than a cached map position.
           // #ifdef H5
@@ -216,13 +251,13 @@ export function useLocation() {
       const resolved = await reverseGeocode(res.latitude, res.longitude, options ? {
         itemId: options.itemId, accuracy: res.accuracy,
         fixAt: res.fixAt,
-      } : undefined, requestStillCurrent)
+      } : undefined, requestStillCurrent, registerCancel)
       const name = resolved?.location
       if (!requestStillCurrent()) {
         // Never return A's device context to a page that may now be rendering B.
         // The pages also carry their own account token, but the cache boundary
         // must be safe independently of any particular caller.
-        return { ok: false, reason: 'position_unavailable' }
+        return { ok: false, reason: cancelled ? 'cancelled' : 'position_unavailable' }
       }
       /*
        * reverseGeocode returns `string | null` post-Phase-1b: a real
@@ -244,11 +279,11 @@ export function useLocation() {
     } catch (err) {
       return { ok: false, reason: classifyLocationError(err) }
     } finally {
-      if (detectionId === locationDetectionId) { detecting.value = false; phase.value = 'idle' }
+      if (detectionId === locationDetectionId) { detecting.value = false; phase.value = 'idle'; cancelActiveDetection = undefined }
     }
   }
 
-  async function reverseGeocode(lat: number, lng: number, check?: { itemId: string; accuracy: number; fixAt?: number }, stillCurrent: () => boolean = () => true): Promise<{ location: string; verification?: StreetVerification } | null> {
+  async function reverseGeocode(lat: number, lng: number, check?: { itemId: string; accuracy: number; fixAt?: number }, stillCurrent: () => boolean = () => true, registerCancel: (callback: () => void) => void = () => {}): Promise<{ location: string; verification?: StreetVerification } | null> {
     try {
       /*
        * QA6 #12 — go through our own /api/geocode proxy instead of hitting
@@ -278,9 +313,21 @@ export function useLocation() {
 
       let accessToken = ''
       if (check && check.accuracy > 0 && check.accuracy <= 100 && check.fixAt && Date.now() - check.fixAt <= 60_000) {
-        const { useSupabase } = await import('./useSupabase')
-        const { data: { session } } = await useSupabase().supabase.auth.getSession()
-        accessToken = session?.access_token || ''
+        // Refresh/session locks can stall after a mobile resume. Autofill can
+        // still succeed without a verification receipt; never leave it spinning.
+        accessToken = await new Promise<string>(resolve => {
+          let settled = false
+          const finish = (value = '') => {
+            if (settled) return
+            settled = true
+            clearTimeout(timer)
+            resolve(value)
+          }
+          const timer = setTimeout(() => finish(), LOCATION_AUTH_TIMEOUT_MS)
+          registerCancel(() => finish())
+          void import('./useSupabase').then(({ useSupabase }) => useSupabase().supabase.auth.getSession())
+            .then(({ data: { session } }) => finish(session?.access_token || ''), () => finish())
+        })
       }
       if (!stillCurrent()) return null
       const verifiedRequest = !!accessToken
@@ -300,6 +347,11 @@ export function useLocation() {
           // Own the deadline and ignore callbacks that arrive after recovery.
           try { request?.abort() } catch { /* already completed */ }
         }, requestTimeout)
+        registerCancel(() => {
+          finish(null)
+          try { request?.abort() } catch { /* already completed */ }
+        })
+        if (!stillCurrent()) return
         try {
           request = uni.request({
             url: verifiedRequest ? url.split('?')[0] : url,
@@ -350,5 +402,5 @@ export function useLocation() {
     }
   }
 
-  return { cachedLocation, detecting, phase, detectLocation }
+  return { cachedLocation, detecting, phase, detectLocation, cancelDetection }
 }

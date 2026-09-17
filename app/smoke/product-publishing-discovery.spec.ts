@@ -732,3 +732,109 @@ test('Save exits once even if durable draft writes fail, then restores latest vi
  await expect(title).toHaveValue('')
  await expect(page.getByText('Restore draft?',{exact:true})).toHaveCount(0)
 })
+
+async function observeDraftDecisions(page: Page, holdFirstDecision = false) {
+ await page.evaluate(holdFirst => {
+  const runtime = (window as any).uni
+  const audit = (window as any).__draftDecisions = { callbacks: [] as any[], navigations: [] as string[] }
+  const showModal = runtime.showModal
+  runtime.showModal = (options: any) => {
+   if (options.title !== 'Save draft?') return showModal(options)
+   audit.callbacks.push(options.success)
+   // Close the real dialog, but deliver its decision later to exercise stale callbacks.
+   return showModal(holdFirst && audit.callbacks.length === 1 ? { ...options, success: () => {} } : options)
+  }
+  const switchTab = runtime.switchTab
+  runtime.switchTab = (options: any) => switchTab({ ...options, success: (result: any) => {
+   audit.navigations.push(options.url)
+   options.success?.(result)
+  } })
+ }, holdFirstDecision)
+}
+
+async function publishVisibility(page: Page, state: 'hidden' | 'visible') {
+ await page.evaluate(value => {
+  Object.defineProperty(document, 'visibilityState', { configurable: true, value })
+  Object.defineProperty(document, 'hidden', { configurable: true, value: value === 'hidden' })
+  document.dispatchEvent(new Event('visibilitychange'))
+ }, state)
+}
+
+for (const quotaBlocked of [false, true]) test(`draft decision: one Save survives background/resume with ${quotaBlocked ? 'quota-blocked' : 'working'} storage`, async ({ page }) => {
+ await fixture(page)
+ if (quotaBlocked) await page.addInitScript(() => {
+  const write = Storage.prototype.setItem
+  Storage.prototype.setItem = function(key, value) {
+   if (key === 'publish_draft_v1') throw new DOMException('Quota exceeded', 'QuotaExceededError')
+   return write.call(this, key, value)
+  }
+ })
+ await page.goto('/#/pages/publish/index')
+ const title = page.getByRole('textbox', { name: 'Title (required)', exact: true })
+ await title.fill('Draft kept across a phone interruption')
+ await page.locator('.image-tip').click()
+ await observeDraftDecisions(page)
+ await page.getByRole('button', { name: 'Home', exact: true }).click()
+ await expect(page.getByText('Save draft?', { exact: true })).toBeVisible()
+ await publishVisibility(page, 'hidden')
+ await expect(title).toHaveCount(0)
+ await publishVisibility(page, 'visible')
+ await expect(title).toHaveValue('Draft kept across a phone interruption')
+ await page.getByText('Save', { exact: true }).click()
+ await expect(page).toHaveURL(/#\/(?:pages\/index\/index)?$/)
+ await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible()
+ expect(await page.evaluate(() => {
+  const audit = (window as any).__draftDecisions
+  return { prompts: audit.callbacks.length, navigations: audit.navigations }
+ })).toEqual({ prompts: 1, navigations: ['/pages/index/index'] })
+ await page.getByRole('button', { name: 'Post', exact: true }).click()
+ await page.getByText('Keep', { exact: true }).click()
+ await expect(title).toHaveValue('Draft kept across a phone interruption')
+ await expect(page.locator('.draft-storage-notice')).toHaveCount(quotaBlocked ? 1 : 0)
+})
+
+test('draft decision: departure and return reject the old Save without consuming a newer dialog', async ({ page }) => {
+ await fixture(page)
+ await page.goto('/#/pages/publish/index')
+ const title = page.getByRole('textbox', { name: 'Title (required)', exact: true })
+ await title.fill('Draft before an actual page departure')
+ await page.locator('.image-tip').click()
+ await observeDraftDecisions(page, true)
+ await page.getByRole('button', { name: 'Home', exact: true }).click()
+ await page.getByText('Save', { exact: true }).click()
+ await page.evaluate(id => (window as any).uni.navigateTo({ url: `/pages/detail/index?id=${id}` }), base.id)
+ await expect(page).toHaveURL(/pages\/detail\/index/)
+ await expect(page.getByRole('heading', { name: base.title, exact: true })).toBeVisible()
+ await page.evaluate(() => (window as any).__draftDecisions.callbacks[0]({ confirm: true, cancel: false }))
+ await expect(page).toHaveURL(/pages\/detail\/index/)
+ await page.evaluate(() => (window as any).uni.switchTab({ url: '/pages/publish/index' }))
+ await expect(title).toHaveValue('Draft before an actual page departure')
+ await page.getByRole('button', { name: 'Profile', exact: true }).click()
+ await expect(page.getByText('Save draft?', { exact: true })).toBeVisible()
+ // The first page visit's callback must not clear this visit's destination or lock.
+ await page.evaluate(() => (window as any).__draftDecisions.callbacks[0]({ confirm: true, cancel: false }))
+ await expect(title).toHaveValue('Draft before an actual page departure')
+ await page.getByText('Save', { exact: true }).click()
+ await expect(page).toHaveURL(/pages\/profile\/index/)
+ expect(await page.evaluate(() => (window as any).__draftDecisions.navigations)).toEqual(['/pages/publish/index', '/pages/profile/index'])
+})
+
+test('draft decision: sign-out rejects an old Save and cannot restore the previous account draft', async ({ page }) => {
+ await fixture(page)
+ await page.goto('/#/pages/publish/index')
+ await page.getByRole('textbox', { name: 'Title (required)', exact: true }).fill('Private draft from the signed-out account')
+ await page.locator('.image-tip').click()
+ await observeDraftDecisions(page, true)
+ await page.getByRole('button', { name: 'Home', exact: true }).click()
+ await page.getByText('Save', { exact: true }).click()
+ await page.evaluate(async () => {
+  const modulePath = '/src/composables/useAuth.ts'
+  const { useAuth } = await import(modulePath)
+  await useAuth().signOut({ redirect: false })
+ })
+ await expect(page).toHaveURL(/pages\/login\/index/)
+ await page.evaluate(() => (window as any).__draftDecisions.callbacks[0]({ confirm: true, cancel: false }))
+ await expect(page).toHaveURL(/pages\/login\/index/)
+ expect(await page.evaluate(() => (window as any).__draftDecisions.navigations)).toEqual([])
+ expect(await page.evaluate(() => (window as any).uni.getStorageSync('publish_draft_v1'))).toBeFalsy()
+})

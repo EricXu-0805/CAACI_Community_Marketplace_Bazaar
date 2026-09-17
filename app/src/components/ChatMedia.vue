@@ -25,25 +25,48 @@ const url=ref(''),loading=ref(false)
 let version=0, alive=true
 const valid=computed(()=>validChatMediaPath(props.message.content,props.message.message_type,props.message.sender_id,props.message.conversation_id,props.message.id))
 const removeTransition=onAccountTransition(()=>{version++;url.value='';loading.value=false})
-async function load(preservePhoto=false){
+function isTransientSigningFailure(error:unknown):boolean{
+  if(!(error instanceof Error))return false
+  const storageError=error as Error & {status?:number;originalError?:unknown}
+  if(storageError.status!==undefined)return storageError.status>=500 && storageError.status<600
+  // Storage wraps rejected fetches. Do not treat arbitrary TypeErrors (including
+  // an invalid signed URL) or unknown errors as permission to keep private media.
+  const cause=error.name==='StorageUnknownError'?storageError.originalError:error
+  if(!(cause instanceof Error))return false
+  if(cause.name==='AbortError')return /^(response_headers_timeout|response_body_timeout)$/.test(cause.message)
+  return cause.name==='TypeError' && /^(failed to fetch|load failed|networkerror when attempting to fetch resource\.?|network request failed|the network connection was lost\.?)$/i.test(cause.message)
+}
+async function load(preservePhoto=false):Promise<string|null>{
   const token=captureActiveAccountRequest(), request=++version
   if(!preservePhoto)url.value=''
-  if(!token || !valid.value || props.message._pending) { loading.value=false; return }
+  if(!alive || !token || !valid.value || props.message._pending) { url.value='';loading.value=false;return null }
+  const isCurrent=()=>alive && request===version && isAccountRequestCurrent(token)
   loading.value=true
   try{
     const {data,error}=await supabase.storage.from(CHAT_MEDIA_BUCKET).createSignedUrl(props.message.content,CHAT_MEDIA_URL_TTL)
     if(error||!data?.signedUrl) throw error || new Error('media_unavailable')
     const candidate=new URL(data.signedUrl),base=new URL(import.meta.env.VITE_SUPABASE_URL || '')
     if(candidate.origin!==base.origin || candidate.pathname !== `/storage/v1/object/sign/${CHAT_MEDIA_BUCKET}/${props.message.content}`) throw new Error('media_invalid_url')
-    if(alive && request===version && isAccountRequestCurrent(token))url.value=data.signedUrl
-  }catch{ if(alive && request===version)url.value='' /* Explicit retry; never log private paths/tokens. */ }
+    if(!isCurrent())return null
+    // Preview renewal must not reload the already-rendered thumbnail.
+    if(!preservePhoto)url.value=data.signedUrl
+    return data.signedUrl
+  }catch(error){
+    if(isCurrent()){
+      if(!preservePhoto || !isTransientSigningFailure(error))url.value=''
+      if(preservePhoto)uni.showToast({title:t('error.loadFailed'),icon:'none'})
+    }
+    // A retained thumbnail is never a fallback preview URL after failed renewal.
+    return null
+  }
   finally{if(alive&&request===version)loading.value=false}
 }
 function mediaError(){url.value=''}
 async function preview(){
   // Renew at interaction time so a photo can still open after a long chat.
-  await load(true)
-  if(url.value)uni.previewImage({current:url.value,urls:[url.value]})
+  const token=captureActiveAccountRequest(), request=version+1
+  const signedUrl=await load(true)
+  if(signedUrl && alive && request===version && isAccountRequestCurrent(token))uni.previewImage({current:signedUrl,urls:[signedUrl]})
 }
 // Polling replaces message objects even when the media identity is unchanged.
 // Independent primitive watch sources keep an already loaded image/video mounted.

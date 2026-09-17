@@ -85,7 +85,7 @@ test('a coarse device fix autofills without claiming street verification',async(
 })
 
 for(const mode of ['pending-permission','denied','timeout','unavailable'] as const) test(`location ${mode}: native request starts directly and shows its outcome`,async({page})=>{
- await setup(page)
+ const geo = await setup(page)
  await page.addInitScript(mode=>{
   (window as any).__nativeGeoCalls=0
   Object.defineProperty(navigator,'permissions',{configurable:true,value:{query:()=>new Promise(()=>{})}})
@@ -98,14 +98,38 @@ for(const mode of ['pending-permission','denied','timeout','unavailable'] as con
   await expect(page.locator('.location-result')).toContainText('Waiting for your browser')
   const field=page.getByRole('textbox',{name:'Location',exact:true})
   await field.fill('Keep my own pickup area')
+  await expect(page.locator('.locate-btn')).toBeEnabled()
   await page.evaluate(()=>(window as any).__completeGeo({coords:{latitude:40.11,longitude:-88.23,accuracy:800},timestamp:Date.now()}))
   await expect(page.locator('.locate-btn')).toBeEnabled()
   await expect(field).toHaveValue('Keep my own pickup area')
   await expect(page.locator('.pickup-badge')).toHaveText('Manual entry')
+  expect(geo).toHaveLength(0)
  }else{
   await expect(page.locator('.locate-btn')).toBeEnabled()
   await expect(page.locator('.location-result')).not.toBeEmpty()
   await expect(page.locator('.pickup-badge.checked')).toHaveCount(0)
   if(mode==='denied')await expect(page.getByRole('dialog')).toBeVisible()
  }
+})
+
+for (const route of ['/#/pages/publish/index', `/#/pages/publish/edit?id=${ITEM}`]) test(`cancel location keeps the form usable and rejects a late fix: ${route}`,async({page})=>{
+ const geo = await setup(page)
+ await page.addInitScript(()=>Object.defineProperty(navigator,'geolocation',{configurable:true,value:{getCurrentPosition:(success:any)=>{(window as any).__completeGeo=success}}}))
+ await page.goto(route)
+ await page.getByRole('button',{name:'Detect current location',exact:true}).click()
+ await expect(page.locator('.location-result')).toContainText('Waiting for your browser')
+ const field=page.getByRole('textbox',{name:'Location',exact:true})
+ const original=await field.inputValue()
+ if(process.env.FEEDBACK_VISUAL_DIR){
+  await mkdir(process.env.FEEDBACK_VISUAL_DIR,{recursive:true})
+  await page.locator('.pickup-section').screenshot({path:`${process.env.FEEDBACK_VISUAL_DIR}/${route.includes('/edit')?'edit':'new'}-location-waiting.png`})
+ }
+ await page.locator('.locate-cancel').click()
+ await expect(page.locator('.locate-btn')).toBeEnabled()
+ await expect(page.locator('.locate-cancel')).toHaveCount(0)
+ await page.evaluate(()=>(window as any).__completeGeo({coords:{latitude:40.11,longitude:-88.23,accuracy:20},timestamp:Date.now()}))
+ await expect(field).toHaveValue(original)
+ expect(geo).toHaveLength(0)
+ await field.fill('Manual pickup near the library')
+ await expect(page.locator('.pickup-badge')).toHaveText('Manual entry')
 })

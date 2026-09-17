@@ -5,8 +5,10 @@ import { CURRENT_CONSENT_VERSION } from '../src/legal'
 import { supabaseRefForBuild } from './supabase-ref'
 test.use({browserName: process.env.CHAT_AUDIT_BROWSER === 'chromium' ? 'chromium' : 'webkit'})
 const ME='11111111-1111-4111-8111-111111111111',PEER='22222222-2222-4222-8222-222222222222',CONV='44444444-4444-4444-8444-444444444444'
+type SignatureFailure = number | 'network' | 'invalid-url' | 'missing-url'
 async function fixture(page:Page){
  const sent:any[]=[];const signed:any[]=[];const uploads:any[]=[];let failSend=false
+ let signatureFailure:SignatureFailure|null=null, signatureWait:Promise<void>|null=null
  const profile={id:ME,nickname:'Buyer',avatar_url:null,tos_version:CURRENT_CONSENT_VERSION,suspension_level:0,suspended_until:null}
  const conv={id:CONV,buyer_id:ME,seller_id:PEER,is_direct:true,item_id:null,item:null,buyer:profile,seller:{id:PEER,nickname:'Demo seller',avatar_url:null},created_at:'2026-09-16T10:00:00Z',last_message_at:'2026-09-16T10:00:00Z',is_pinned_buyer:false,is_pinned_seller:false,is_muted_buyer:false,is_muted_seller:false,is_unread_buyer:false,is_unread_seller:false,latest_messages:[],unread_messages:[]}
  let archived=false, rejectPin=false
@@ -27,7 +29,13 @@ async function fixture(page:Page){
   if(path.startsWith('/storage/v1/object/sign/chat-media/')){
    if(req.method()==='POST'){
     signed.push({path,body:req.postDataJSON()})
-    return route.fulfill({contentType:'application/json',body:JSON.stringify({signedURL:path.replace('/storage/v1','')+'?token=synthetic-private'})})
+    const failure=signatureFailure, wait=signatureWait, sequence=signed.length
+    signatureFailure=null;signatureWait=null
+    if(wait)await wait
+    if(failure==='network')return route.abort('connectionreset')
+    if(typeof failure==='number')return route.fulfill({status:failure,contentType:'application/json',body:JSON.stringify({statusCode:String(failure),message:'Synthetic signing failure'})})
+    const signedURL=failure==='invalid-url'?'/object/sign/chat-media/wrong-object.jpg':path.replace('/storage/v1','')+`?token=synthetic-private-${sequence}`
+    return route.fulfill({contentType:'application/json',body:JSON.stringify(failure==='missing-url'?{}:{signedURL})})
    }
    if(path.endsWith('.mp4'))return route.fulfill({contentType:'video/mp4',body:readFileSync(resolve(process.cwd(),'smoke/fixtures/media/chat-sample.mp4'))})
    return route.fulfill({contentType:'image/png',body:Buffer.from(PNG,'base64')})
@@ -59,7 +67,10 @@ async function fixture(page:Page){
   if(req.headers().accept?.includes('vnd.pgrst.object')&&Array.isArray(data))data=data[0]??null
   return route.fulfill({contentType:'application/json',body:JSON.stringify(data)})
  })
- return {conv,sent,signed,uploads,setFail:(v:boolean)=>{failSend=v}}
+ return {conv,sent,signed,uploads,setFail:(v:boolean)=>{failSend=v},
+  failNextSignature:(failure:SignatureFailure)=>{signatureFailure=failure},
+  holdNextSignature:()=>{let release!:()=>void;signatureWait=new Promise<void>(resolve=>{release=resolve});return release},
+ }
 }
 
 const PNG='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6zdAAAAAASUVORK5CYII='
@@ -135,4 +146,66 @@ test('existing photo stays mounted through repeated authoritative message refres
   expect(await page.evaluate(()=>(window as any).__originalPhoto===document.querySelector('.chat-photo img'))).toBe(true)
  }
  expect(state.signed.length).toBe(signedBefore)
+})
+
+async function openPhoto(page:Page){
+ const state=await open(page)
+ const chooser=page.waitForEvent('filechooser')
+ await page.locator('.attachment-actions').getByRole('button',{name:'Photo',exact:true}).click()
+ await (await chooser).setFiles({name:'photo.png',mimeType:'image/png',buffer:Buffer.from(PNG,'base64')})
+ await expect(page.locator('.chat-photo img')).toBeVisible()
+ await page.evaluate(()=>{(window as any).__originalPhoto=document.querySelector('.chat-photo img')})
+ return {...state,thumbnail:await page.locator('.chat-photo img').getAttribute('src')}
+}
+
+for(const failure of [503,'network'] as const){
+ test(`photo preview preserves its thumbnail after ${failure}, then retries with a fresh URL`,async({page})=>{
+  const state=await openPhoto(page), before=state.signed.length
+  state.failNextSignature(failure)
+  await page.locator('.media-photo-button').click()
+  await expect.poll(()=>state.signed.length).toBe(before+1)
+  await expect(page.locator('.media-photo-button')).toBeEnabled()
+  await expect(page.locator('.chat-photo img')).toHaveAttribute('src',state.thumbnail!)
+  expect(await page.evaluate(()=>(window as any).__originalPhoto===document.querySelector('.chat-photo img'))).toBe(true)
+  await expect(page.locator('#u-a-p img')).toHaveCount(0)
+  await expect(page.getByText('Failed to load',{exact:true}).first()).toBeVisible()
+
+  await page.locator('.media-photo-button').click()
+  await expect(page.locator('#u-a-p img')).toBeVisible()
+  await expect(page.locator('#u-a-p img')).toHaveAttribute('src',new RegExp(`token=synthetic-private-${before+2}$`))
+  expect(await page.evaluate(()=>(window as any).__originalPhoto===document.querySelector('.chat-photo img'))).toBe(true)
+  await expect(page.locator('.chat-photo img')).toHaveAttribute('src',state.thumbnail!)
+  expect(state.signed.every(call=>call.body.expiresIn===60)).toBe(true)
+ })
+}
+
+for(const failure of [401,403,404,'invalid-url','missing-url'] as const){
+ test(`photo preview clears its thumbnail on ${failure} without opening the old URL`,async({page})=>{
+  const state=await openPhoto(page)
+  state.failNextSignature(failure)
+  await page.locator('.media-photo-button').click()
+  await expect(page.locator('.media-retry')).toBeEnabled()
+  await expect(page.locator('.chat-photo')).toHaveCount(0)
+  await expect(page.locator('#u-a-p img')).toHaveCount(0)
+ })
+}
+
+test('account sign-out clears the photo and prevents an in-flight renewal from opening it',async({page})=>{
+ const state=await openPhoto(page), before=state.signed.length
+ const release=state.holdNextSignature()
+ try{
+  await page.locator('.media-photo-button').click()
+  await expect.poll(()=>state.signed.length).toBe(before+1)
+  await page.evaluate(ref=>{
+   const channel=new BroadcastChannel(`sb-${ref}-auth-token`)
+   channel.postMessage({event:'SIGNED_OUT',session:null});channel.close()
+  },supabaseRefForBuild())
+  await expect(page.locator('.chat-photo')).toHaveCount(0)
+  const response=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname.startsWith('/storage/v1/object/sign/chat-media/'))
+  release();await response
+  // Allow the SDK promise, Vue update and global preview mount to settle.
+  await page.waitForTimeout(300)
+  await expect(page.locator('#u-a-p img')).toHaveCount(0)
+  await expect(page.locator('.chat-photo')).toHaveCount(0)
+ }finally{release()}
 })

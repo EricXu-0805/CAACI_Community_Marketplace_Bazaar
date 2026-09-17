@@ -158,6 +158,7 @@
         :detected="detectedLocationLabel === form.location && !!form.location"
         :feedback="locationFeedback"
         @detect="onDetectLocation"
+        @cancel="cancelDetection"
         @focus="onFieldFocus"
         @blur="onFieldBlur"
       />
@@ -236,7 +237,7 @@ import {
 
 const { t, lang } = useI18n()
 
-const { detectLocation, detecting: detectingLoc, phase: locationPhase } = useLocation()
+const { detectLocation, cancelDetection, detecting: detectingLoc, phase: locationPhase } = useLocation()
 const streetVerification = useStreetVerification()
 const loadedCheckedLocation = ref('')
 function locationCheckToken() {
@@ -640,6 +641,7 @@ const stopAccountTransitionListener = onAccountTransition(() => {
 })
 
 function destroyEditPage() {
+  cancelDetection()
   if (editPageDestroyed) return
   editPageDestroyed = true
   // uni-app can defer Vue unmount after the native page has already left the
@@ -757,6 +759,7 @@ const detectedLocationLabel = ref('')
 const locationFeedback = ref('')
 let locationEditRevision = 0
 watch(() => form.location, value => {
+  cancelDetection()
   locationEditRevision++
   if (value !== streetVerification.value?.location) streetVerification.value = null
   if (value !== detectedLocationLabel.value) detectedLocationLabel.value = ''
@@ -781,6 +784,7 @@ async function onDetectLocation() {
     || !isAccountRequestCurrent(locationAccountToken)
   ) return
   if (!result.ok) {
+    if (result.reason === 'cancelled') return
     console.warn('[publish-edit] location detect failed')
     /*
      * Phase 1b dispatch: permission_denied → modal (teach the

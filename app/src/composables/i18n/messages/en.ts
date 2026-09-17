@@ -364,6 +364,7 @@ const en: Record<string, string> = {
   'publish.manualAreaBadge': "Manual entry",
   'publish.findingStreet': "Finding your street…",
   'publish.locationWaiting': "Waiting for your browser or device to share a location…",
+  'publish.cancelLocation': 'Cancel',
   'publish.locationPermissionHint': "Your browser will ask to use your location if you haven’t already chosen. Select Allow to find your street.",
   'publish.locationManualPlaceholder': "Or type a street or pickup area",
   'publish.pickupPrivacy': "Only the approximate street is shown. Share door or apartment details privately in chat.",

@@ -7,11 +7,14 @@
       </text>
     </view>
     <!-- #ifdef H5 -->
+    <view class="locate-actions">
     <button class="locate-btn" :class="{ 'locate-btn--disabled': disabled || detecting }" :disabled="disabled || detecting" :aria-label="t('a11y.detectLocation')" :aria-busy="detecting ? 'true' : 'false'" @click="$emit('detect')">
       <view v-if="detecting" class="locate-spinner" />
       <UIcon v-else name="location-pin" size="sm" />
       <text>{{ t(detecting ? (phase === 'address' ? 'publish.findingStreet' : 'publish.detectingLocation') : 'publish.useCurrentLocation') }}</text>
     </button>
+    <button v-if="detecting" class="locate-cancel" :disabled="disabled" @click="$emit('cancel')">{{ t('publish.cancelLocation') }}</button>
+    </view>
     <text v-if="!modelValue && !feedback && !detecting" class="pickup-help">{{ t('publish.locationPermissionHint') }}</text>
     <!-- #endif -->
     <view class="pickup-input-row">
@@ -41,7 +44,7 @@ const { t, lang } = useI18n()
 const { CAMPUS_SPOTS } = useCampusSpots()
 const spotLabel = (spot: { en: string; zh: string }) => lang.value === 'zh' ? spot.zh : spot.en
 const props = defineProps<{ modelValue: string; disabled?: boolean; detecting?: boolean; phase?: string; verified?: boolean; previouslyChecked?: boolean; detected?: boolean; feedback?: string }>()
-const emit = defineEmits<{ 'update:modelValue': [value: string]; detect: []; focus: []; blur: [] }>()
+const emit = defineEmits<{ 'update:modelValue': [value: string]; detect: []; cancel: []; focus: []; blur: [] }>()
 const locationValue = computed({ get: () => props.modelValue, set: value => emit('update:modelValue', value) })
 </script>
 <style scoped>
@@ -50,8 +53,13 @@ const locationValue = computed({ get: () => props.modelValue, set: value => emit
 .pickup-title { font-size: 17px; font-weight: 650; color: var(--ink); }
 .pickup-badge { font-size: 11px; font-weight: 600; color: var(--text-secondary); background: var(--bg-subtle); padding: 4px 8px; border-radius: 6px; }
 .pickup-badge.checked { background: var(--success-soft, var(--bg-subtle)); color: var(--success); }
+.locate-actions { display: flex; align-items: stretch; gap: 8px; }
+.locate-actions .locate-btn { flex: 1; min-width: 0; width: auto; }
+.locate-cancel { flex: none; margin: 0 0 10px; padding: 10px 12px; min-height: 44px; border: 0; border-radius: 12px; background: var(--bg-subtle); color: var(--ink); font-size: 14px; line-height: 1.4; }
+.locate-cancel::after { border: 0; }
 .locate-btn { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 16px; margin: 0 0 10px; width: 100%; border: 0; border-radius: 12px; background: var(--bg-subtle); color: var(--ink); font-size: 14px; font-weight: 600; line-height: 1.4; transition: background 160ms ease; }
-.locate-btn::after { border: 0; }.locate-btn:active { background: var(--bg-inset); }.locate-btn--disabled { opacity: .7; }
+.locate-btn::after { border: 0; }.locate-btn:active { background: var(--bg-inset); }
+.locate-btn.locate-btn--disabled { color: var(--text-secondary); opacity: 1; }
 .locate-spinner { width: 16px; height: 16px; border: 2px solid var(--line-soft); border-top-color: var(--ink); border-radius: 50%; animation: pickup-spin .8s linear infinite; }
 .pickup-input-row { display: flex; gap: 8px; align-items: center; min-height: 48px; margin: 14px 0 0; padding: 0 12px; border-radius: 10px; background: var(--bg-subtle); }
 .pickup-input { flex: 1; min-width: 0; font-size: 16px; color: var(--ink); }
