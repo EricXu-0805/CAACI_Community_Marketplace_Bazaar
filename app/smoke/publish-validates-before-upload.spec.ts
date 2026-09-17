@@ -3,6 +3,11 @@ import zlib from 'node:zlib'
 import { supabaseRefForBuild } from './supabase-ref'
 import { CURRENT_CONSENT_VERSION } from '../src/legal'
 
+// Mocked HTTP sessions must never reach the hosted Realtime service.
+test.beforeEach(async ({ page }) => {
+  await page.routeWebSocket(/\.supabase\.co(?:[:/]|$)/, socket => socket.close())
+})
+
 /**
  * A listing that will be refused must be refused before its photos are sent.
  *

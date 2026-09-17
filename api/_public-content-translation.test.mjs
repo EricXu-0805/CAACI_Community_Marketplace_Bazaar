@@ -18,6 +18,16 @@ test('provider receives a strict required translated field, not an ambiguous JSO
  assert.equal(format.json_schema.strict,true)
  assert.deepEqual(format.json_schema.schema,{type:'object',properties:{translated:{type:'string'}},required:['translated'],additionalProperties:false})
 })
+test('the literal bilingual language-switch label is readable in English without dropping other text',async()=>{
+ for(const label of ['中 / EN','中 | EN','中/EN']) {
+  const f=fixture(`Switch ${label} in your profile.`)
+  assert.deepEqual(await translatePublicContent(f.options),{state:'complete'})
+  assert.equal(f.calls[1].args.english_in,'Switch Chinese / English in your profile.')
+ }
+ const f=fixture('Switch 中 / EN; 未翻译的信息')
+ assert.deepEqual(await translatePublicContent(f.options),{state:'retry'})
+ assert.equal(f.calls[1].args.english_in,null)
+})
 test('refusal, truncation and alternative field names never become published English',async()=>{
  for(const choice of [
   {finish_reason:'length',message:{content:JSON.stringify({translated:'Pickup Friday'})}},
