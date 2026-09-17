@@ -17,15 +17,20 @@ function platformSource(input,platform){
   return out.join('\n')
 }
 async function fixture(t,platform='H5'){
-  const state={account:'account-a',calls:[],hooks:{},timers:[],unmount:[],authCalls:[]}
+  const state={account:'account-a',identity:0,calls:[],hooks:{},timers:[],unmount:[],authCalls:[],routes:[]}
   const loggedIn={get value(){return !!state.account}}
   const bindings={
     ref:value=>({value}),computed:fn=>({get value(){return fn()}}),onUnmounted:fn=>state.unmount.push(fn),
-    onShow:fn=>state.hooks.show=fn,onHide:fn=>state.hooks.hide=fn,
+    onLoad:fn=>state.hooks.load=fn,onShow:fn=>state.hooks.show=fn,onHide:fn=>state.hooks.hide=fn,
     useI18n:()=>({t:key=>key}),useAuth:()=>({isLoggedIn:loggedIn,requireAuth:()=>{},signOut:async()=>true,
-      signInWithWeChat:async options=>{state.authCalls.push(options);return {error:new Error('test-offline')}}}),
-    useSupabase:()=>({supabase:{auth:{getSession:async()=>({data:{session:{user:{id:state.account},access_token:'access-token'}}})}}}),
+      signInWithWeChat:async options=>{state.authCalls.push(options);return state.authWait?state.authWait.promise:{error:new Error('test-offline')}}}),
+    useSupabase:()=>({supabase:{auth:{getSession:async()=>state.sessionWait?state.sessionWait.promise:({data:{session:{user:{id:state.account},access_token:'access-token'}}})}}}),
     onAccountTransition:fn=>{state.transition=fn;return()=>{}},getActiveAccountId:()=>state.account,
+    captureAccountIdentityGeneration:()=>state.identity,
+    readLoginIntentNonce:value=>value || null,
+    authorizeLoginReturnIntent:(nonce,owner)=>{state.authorized={nonce,owner};return nonce==='safe-return-intent'},
+    peekAuthorizedLoginReturnIntent:(nonce,owner)=>nonce==='safe-return-intent'&&owner.userId===state.account?'/pages/messages/index':null,
+    uni:{reLaunch:value=>state.routes.push(value.url),setClipboardData:()=>{}},
     mpChromeVars:()=>({}),mpThemeClass:()=>'',navigateBackOr:()=>{},
     freshWechatCode:async()=>{if(state.wxWait)return state.wxWait.promise;return 'fresh-code'},
     wechatCapabilities:async()=>({login:true,account_link:true}),
@@ -46,7 +51,7 @@ async function fixture(t,platform='H5'){
   input=`const {${Object.keys(bindings).join(',')}}=globalThis.${key};\n`+input+'\nexport {issuedCode,enteredCode,preview,seconds,busy,errorKey,generateCode,previewAccount,confirmAccount,clearPrivateState};'
   const output=ts.transpileModule(input,{compilerOptions:{module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2022}}).outputText
   state.page=await import(`data:text/javascript;base64,${Buffer.from(output).toString('base64')}`)
-  state.hooks.show();await flush();return state
+  state.hooks.load?.({intent:'safe-return-intent'});state.hooks.show();await flush();return state
 }
 
 test('late website code response cannot render after an account switch or page hide',async t=>{
@@ -82,4 +87,55 @@ test('typing a code only previews; explicit confirmation carries the proof and f
   assert.equal(state.authCalls[0].linkCode,'ABCDEFGHJK');assert.equal(state.authCalls[0].confirmation,'a'.repeat(64))
   assert.equal(page.preview.value,null)
   state.hooks.hide();assert.equal(state.authCalls[0].isCurrent(),false)
+})
+
+test('old confirmation failure cannot clear a new preview after hide and return',async t=>{
+  const state=await fixture(t,'MP-WEIXIN'),page=state.page
+  state.account=null;state.transition();page.enteredCode.value='ABCDE FGHJK'
+  await page.previewAccount();state.authWait=deferred()
+  const pending=page.confirmAccount()
+  state.hooks.hide();state.hooks.show();await flush()
+  page.enteredCode.value='ABCDE FGHJK';await page.previewAccount()
+  state.authWait.resolve({error:new Error('old-failure')});await pending
+  assert.equal(page.preview.value?.nickname,'My account')
+  assert.equal(page.errorKey.value,'')
+  assert.deepEqual(state.routes,[])
+})
+
+test('successful mini-program linking returns to the original task for the exact authenticated identity',async t=>{
+  const state=await fixture(t,'MP-WEIXIN'),page=state.page
+  state.account=null;state.transition();page.enteredCode.value='ABCDE FGHJK'
+  await page.previewAccount();state.authWait=deferred()
+  const pending=page.confirmAccount()
+  state.account='account-a';state.identity++;state.transition()
+  state.authWait.resolve({data:{user:{id:'account-a'}},error:null});await pending
+  assert.deepEqual(state.routes,['/pages/messages/index'])
+  assert.equal(state.authorized.owner.userId,'account-a')
+})
+
+test('late linking success cannot navigate a different account or a later ownership generation',async t=>{
+  for(const changed of ['different-account','return-to-same-account']){
+    const state=await fixture(t,'MP-WEIXIN'),page=state.page
+    state.account=null;state.transition();page.enteredCode.value='ABCDE FGHJK'
+    await page.previewAccount();state.authWait=deferred()
+    const pending=page.confirmAccount()
+    state.account=changed==='different-account'?'account-b':'account-a';state.identity+=3;state.transition()
+    state.authWait.resolve({data:{user:{id:'account-a'}},error:null});await pending
+    assert.deepEqual(state.routes,[])
+    assert.equal(state.authorized,undefined)
+  }
+})
+
+test('stalled website session stops loading and a late session cannot issue a link code',async t=>{
+  const state=await fixture(t),page=state.page
+  t.mock.timers.enable({apis:['setTimeout']})
+  state.sessionWait=deferred()
+  const pending=page.generateCode();await flush()
+  assert.equal(page.busy.value,true)
+  t.mock.timers.tick(10_000);await pending
+  assert.equal(page.busy.value,false)
+  assert.equal(page.errorKey.value,'wechat.session_unavailable')
+  state.sessionWait.resolve({data:{session:{user:{id:state.account},access_token:'late-token'}}});await flush()
+  assert.equal(state.calls.some(call=>call.action==='link_issue'),false)
+  assert.equal(page.issuedCode.value,'')
 })

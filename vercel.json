@@ -21,6 +21,7 @@
     { "source": "/robots.txt", "destination": "/static/robots.txt" },
     { "source": "/account-deletion", "destination": "/static/h5/account-deletion.html" },
     { "source": "/about", "destination": "/static/h5/about.html" },
+    { "source": "/community", "destination": "/static/h5/community.html" },
     { "source": "/privacy", "destination": "/static/h5/privacy.html" },
     { "source": "/terms", "destination": "/static/h5/terms.html" },
     { "source": "/assets/:path*", "destination": "/api/404.js" },

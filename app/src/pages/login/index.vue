@@ -41,6 +41,14 @@
         </view>
       </view>
 
+      <!-- #ifdef MP-WEIXIN -->
+      <view v-if="wechatLinkAvailable" class="existing-account-card">
+        <text class="existing-account-title">{{ t('wechat.existingTitle') }}</text>
+        <text class="wechat-helper">{{ t('wechat.existingHint') }}</text>
+        <button class="wechat-link" :disabled="formBusy" @click="openAccountLink">{{ t('wechat.existing') }}</button>
+      </view>
+      <!-- #endif -->
+
       <!--
         Field errors live next to their field and stay there. A toast was the
         old feedback for every validation and sign-in failure: it floats away
@@ -171,7 +179,10 @@
       <view v-if="wechatLoginAvailable" class="wechat-options">
         <button class="google-btn" :disabled="formBusy" @click="onWechatSignIn">{{ t(mode === 'signup' ? 'wechat.signup' : 'wechat.login') }}</button>
         <text v-if="mode === 'signup'" class="wechat-helper">{{ t('wechat.agreementHint') }}</text>
-        <button v-if="wechatLinkAvailable" class="wechat-link" :disabled="formBusy" @click="openAccountLink">{{ t('wechat.existing') }}</button>
+      </view>
+      <view v-if="wechatCapabilitiesUnavailable" class="wechat-options" role="status">
+        <text class="wechat-helper">{{ t('wechat.connectionUnavailable') }}</text>
+        <button class="wechat-link" :disabled="wechatCapabilitiesChecking || formBusy" @click="refreshWechatCapabilities">{{ t('wechat.retry') }}</button>
       </view>
       <!-- #endif -->
     </view>
@@ -306,6 +317,9 @@ function focusField(id: 'login-email-error' | 'login-password-error' | 'login-ni
 }
 const wechatLoginAvailable = ref(false)
 const wechatLinkAvailable = ref(false)
+const wechatCapabilitiesUnavailable = ref(false)
+const wechatCapabilitiesChecking = ref(false)
+let capabilitiesAttempt = 0
 const googleLoading = ref(false)
 const forgotLoading = ref(false)
 const authRedirecting = ref(false)
@@ -347,14 +361,20 @@ function scheduleHomeRedirect(delay: number, expectedUserId?: string) {
   }, delay)
 }
 
-onLoad((options) => {
+async function refreshWechatCapabilities() {
   // #ifdef MP-WEIXIN
-  void wechatCapabilities().then(capabilities => {
-    if (!mounted) return
-    wechatLoginAvailable.value = capabilities.login
-    wechatLinkAvailable.value = capabilities.account_link
-  })
+  const attempt = ++capabilitiesAttempt
+  wechatCapabilitiesChecking.value = true
+  const capabilities = await wechatCapabilities()
+  if (!mounted || attempt !== capabilitiesAttempt) return
+  wechatLoginAvailable.value = capabilities.login
+  wechatLinkAvailable.value = capabilities.account_link
+  wechatCapabilitiesUnavailable.value = capabilities.unavailable
+  wechatCapabilitiesChecking.value = false
   // #endif
+}
+onLoad((options) => {
+  void refreshWechatCapabilities()
   loginIntentNonce = readLoginIntentNonce(options?.intent)
   // #ifdef H5
   try {
@@ -758,7 +778,9 @@ async function onSignInWithGoogle() {
 }
 
 function openAccountLink() {
-  if (!formBusy.value) uni.navigateTo({ url: '/pages/account-link/index' })
+  if (!formBusy.value) uni.navigateTo({ url: loginIntentNonce
+    ? `/pages/account-link/index?intent=${encodeURIComponent(loginIntentNonce)}`
+    : '/pages/account-link/index' })
 }
 async function onWechatSignIn() {
   if (formBusy.value) return
@@ -1168,6 +1190,9 @@ async function onSubmit() {
   letter-spacing: 0.05em; font-weight: 500;
 }
 .wechat-options { margin-top:24px; }
+.existing-account-card { padding:16px; margin:0 0 24px; border:1px solid var(--border); border-radius:16px; background:var(--bg-subtle); }
+.existing-account-title { display:block; font-size:16px; font-weight:600; color:var(--text-primary); }
+.existing-account-card .wechat-link { text-align:left; padding:12px 0 0; margin:0; }
 .wechat-helper { display:block; font-size:13px; line-height:1.6; color:var(--ink-quiet); margin-top:12px; }
 .wechat-link { background:transparent; color:var(--brand); font-size:14px; line-height:1.5; padding:14px 8px; }
 .wechat-link::after { border:0; }

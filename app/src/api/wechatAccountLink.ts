@@ -20,11 +20,18 @@ export async function wechatAccountRequest<T = Record<string, any>>(
   return payload as T
 }
 
-export async function wechatCapabilities(): Promise<{ login: boolean; account_link: boolean }> {
+export async function wechatCapabilities(): Promise<{ login: boolean; account_link: boolean; unavailable: boolean }> {
   try {
     const result = await wechatAccountRequest('capabilities')
-    return { login: result.login === true, account_link: result.account_link === true }
-  } catch { return { login: false, account_link: false } }
+    if (typeof result.login !== 'boolean' || typeof result.account_link !== 'boolean') throw new Error('link_unavailable')
+    return { login: result.login, account_link: result.login && result.account_link, unavailable: false }
+  } catch (error) {
+    // Only the server's explicit release gate means "not available yet".
+    // A timeout or malformed response should offer retry, not pretend that
+    // the user's sign-in method no longer exists.
+    return { login: false, account_link: false,
+      unavailable: !(error instanceof Error && error.message === 'wechat_login_disabled') }
+  }
 }
 
 export function freshWechatCode(): Promise<string> {

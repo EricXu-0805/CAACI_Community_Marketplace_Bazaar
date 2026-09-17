@@ -29,6 +29,7 @@
 import { BASE_URL } from '../config/runtime'
 import { useSupabase, platformFetch } from './useSupabase'
 import { readBoundedJson } from '../api/responseBody'
+import { freshWechatCode } from '../api/wechatAccountLink'
 import {
   hasDurableWechatMediaHandoff,
   wechatTextGateOutcome,
@@ -87,7 +88,12 @@ async function authenticatedBearer(
     const accountToken = expectedAccountToken
       || (entryUserId ? captureAccountRequest(entryUserId) : null)
     if (!accountToken || !isAccountRequestCurrent(accountToken)) throw identityBoundaryError()
-    const { data: { session } } = await supabase.auth.getSession()
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const sessionRead = supabase.auth.getSession()
+    const deadline = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(identityBoundaryError()), 10_000)
+    })
+    const { data: { session } } = await Promise.race([sessionRead, deadline]).finally(() => clearTimeout(timer))
     if (
       !session?.user?.id
       || !session.access_token
@@ -105,17 +111,10 @@ function assertAccountCurrent(accountToken: AccountRequestToken) {
 }
 
 async function freshJsCode(): Promise<string> {
-  return await new Promise((resolve) => {
-    try {
-      uni.login({
-        provider: 'weixin',
-        success: (r: UniApp.LoginRes) => resolve(r.code || ''),
-        fail: () => resolve(''),
-      })
-    } catch {
-      resolve('')
-    }
-  })
+  // Reuse the bounded, single-settlement login helper. If WeChat does not
+  // return a fresh code, only the server's trusted existing account binding
+  // may satisfy identity; an unbound account still fails closed there.
+  return await freshWechatCode().catch(() => '')
 }
 
 async function callSeccheck(
