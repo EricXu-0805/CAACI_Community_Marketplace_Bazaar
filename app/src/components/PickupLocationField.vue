@@ -59,7 +59,7 @@ const locationValue = computed({ get: () => props.modelValue, set: value => emit
 .locate-cancel::after { border: 0; }
 .locate-btn { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 16px; margin: 0 0 10px; width: 100%; border: 0; border-radius: 12px; background: var(--bg-subtle); color: var(--ink); font-size: 14px; font-weight: 600; line-height: 1.4; transition: background 160ms ease; }
 .locate-btn::after { border: 0; }.locate-btn:active { background: var(--bg-inset); }
-.locate-btn[disabled] { color: var(--text-secondary); opacity: 1; }
+.locate-btn.locate-btn--disabled { color: var(--text-secondary); opacity: 1; }
 .locate-spinner { width: 16px; height: 16px; border: 2px solid var(--line-soft); border-top-color: var(--ink); border-radius: 50%; animation: pickup-spin .8s linear infinite; }
 .pickup-input-row { display: flex; gap: 8px; align-items: center; min-height: 48px; margin: 14px 0 0; padding: 0 12px; border-radius: 10px; background: var(--bg-subtle); }
 .pickup-input { flex: 1; min-width: 0; font-size: 16px; color: var(--ink); }
