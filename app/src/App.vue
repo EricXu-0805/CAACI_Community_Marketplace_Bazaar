@@ -2006,8 +2006,6 @@ input, textarea {
   letter-spacing: inherit;
 }
 
-input:focus-visible,
-textarea:focus-visible,
 button:focus-visible,
 .focusable:focus-visible {
   outline: 2px solid var(--brand) !important;
@@ -2037,43 +2035,17 @@ uni-button:focus-visible {
   border-radius: 4px;
 }
 
-/*
- * The rule above this block reads `input:focus-visible, textarea:focus-visible`
- * in the source and ships as `uni-input:focus-visible, uni-textarea:...`: the
- * H5 compiler rewrites bare element selectors to uni's custom-element names,
- * the same transform that turns <view> into <uni-view>. But focus lands on the
- * real <input> uni nests INSIDE that wrapper, and :focus-visible does not
- * propagate to ancestors the way :focus-within does — so no text field in the
- * web build had a focus ring at all. Measured: every one computed
- * `outline: none`, which is the initial value, not an override.
- *
- * Class selectors survive the rewrite, so target uni's inner nodes by class.
- */
+/* Text fields already expose their caret and editable surface. Do not draw
+   a second frame inside uni's native input or around the compound field.
+   Keyboard focus on buttons/links remains visible through the rules above. */
+input:focus-visible,
+textarea:focus-visible,
 .uni-input-input:focus-visible,
 .uni-textarea-textarea:focus-visible {
-  outline: 2px solid var(--brand) !important;
-  /* Inset, not the +2px used everywhere else. uni sizes the inner control to
-     fill its wrapper exactly, and that wrapper clips: `uni-input` is
-     `overflow: hidden` and `.uni-textarea-wrapper` is `overflow-y: hidden`,
-     which computes overflow-x to auto, so it clips on both axes. An outward
-     ring lands entirely in the clipped region and paints nothing — verified by
-     screenshotting a focused search field and seeing bare background. An
-     element's own overflow never clips its own outline, so drawing inside the
-     box always survives. */
-  outline-offset: -2px;
-  border-radius: 4px;
-}
-/* Compound fields show focus on their rounded outer surface, aligned with
-   the surrounding controls. Keep an explicit indicator for keyboard users
-   without drawing a second, square frame around the native inner editor. */
-.search-field:focus-within,
-.msg-input:focus-within {
-  box-shadow: inset 0 0 0 1.5px var(--brand);
-}
-.search-field .uni-input-input:focus-visible,
-.msg-input .uni-textarea-textarea:focus-visible {
   outline: none !important;
 }
+.search-field:focus-within,
+.msg-input:focus-within { box-shadow: none; }
 /* #endif */
 
 /*

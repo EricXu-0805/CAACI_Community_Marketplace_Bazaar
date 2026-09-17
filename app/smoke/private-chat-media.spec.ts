@@ -1,9 +1,9 @@
 import { resolve } from 'node:path'
-import { readFileSync } from 'node:fs'
+import { readFileSync, mkdirSync } from 'node:fs'
 import { test, expect, type Page } from '@playwright/test'
 import { CURRENT_CONSENT_VERSION } from '../src/legal'
 import { supabaseRefForBuild } from './supabase-ref'
-test.use({browserName:'webkit'})
+test.use({browserName: process.env.CHAT_AUDIT_BROWSER === 'chromium' ? 'chromium' : 'webkit'})
 const ME='11111111-1111-4111-8111-111111111111',PEER='22222222-2222-4222-8222-222222222222',CONV='44444444-4444-4444-8444-444444444444'
 async function fixture(page:Page){
  const sent:any[]=[];const signed:any[]=[];const uploads:any[]=[];let failSend=false
@@ -96,4 +96,43 @@ test('video attachment uses private storage and renders playback controls',async
  expect(state.sent).toHaveLength(1);expect(state.sent[0].message_type).toBe('video')
  expect(state.sent[0].content).toMatch(/\.mp4$/)
  expect(state.uploads[0].path).toContain('/chat-media/')
+})
+
+for (const [device,width,height] of [['phone',390,844],['ipad',820,1180],['mac',1920,1080]] as const) {
+ test(`${device}: composer starts level, stays borderless on focus and grows only for content`,async({page})=>{
+  await page.setViewportSize({width,height});await open(page)
+  const editor=page.locator('.msg-input textarea')
+  const sizes=()=>page.locator('.input-bar').evaluate(el=>['.emoji-btn','.msg-input','.send-btn'].map(s=>{const e=el.querySelector(s)!;const r=e.getBoundingClientRect();return {height:r.height,bottom:r.bottom,outline:getComputedStyle(e).outlineWidth,shadow:getComputedStyle(e).boxShadow}}))
+  for(const focused of [false,true]){
+   if(focused)await editor.focus()
+   const boxes=await sizes()
+   expect(Math.max(...boxes.map(b=>b.height))-Math.min(...boxes.map(b=>b.height))).toBeLessThan(2)
+   expect(boxes[1].shadow).toBe('none')
+   expect(await editor.evaluate(e=>getComputedStyle(e).outlineStyle)).toBe('none')
+  }
+  await editor.fill('First line\nSecond line\nThird line')
+  await expect.poll(async()=> (await sizes())[1].height).toBeGreaterThan(60)
+  const boxes=await sizes();expect(Math.abs(boxes[1].bottom-boxes[2].bottom)).toBeLessThan(2)
+  await editor.fill('');await expect.poll(async()=> (await sizes())[1].height).toBeLessThan(46)
+  if(process.env.FEEDBACK_VISUAL_DIR){mkdirSync(process.env.FEEDBACK_VISUAL_DIR,{recursive:true});await page.screenshot({path:`${process.env.FEEDBACK_VISUAL_DIR}/${device}-chat.png`})}
+ })
+}
+
+test('existing photo stays mounted through repeated authoritative message refreshes',async({page})=>{
+ const state=await open(page)
+ const chooser=page.waitForEvent('filechooser')
+ await page.locator('.attachment-actions').getByRole('button',{name:'Photo',exact:true}).click()
+ await (await chooser).setFiles({name:'photo.png',mimeType:'image/png',buffer:Buffer.from(PNG,'base64')})
+ await expect(page.locator('.chat-photo img')).toBeVisible()
+ await page.evaluate(()=>{(window as any).__originalPhoto=document.querySelector('.chat-photo img')})
+ const signedBefore=state.signed.length
+ for(let n=0;n<3;n++){
+  state.sent[0].is_read=n%2===0
+  const response=page.waitForResponse(r=>new URL(r.url()).pathname==='/rest/v1/messages'&&r.request().method()==='GET')
+  await page.evaluate(()=>window.dispatchEvent(new Event('online')))
+  await response
+  await page.waitForTimeout(150)
+  expect(await page.evaluate(()=>(window as any).__originalPhoto===document.querySelector('.chat-photo img'))).toBe(true)
+ }
+ expect(state.signed.length).toBe(signedBefore)
 })

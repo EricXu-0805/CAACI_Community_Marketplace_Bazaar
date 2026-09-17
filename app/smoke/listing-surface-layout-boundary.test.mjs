@@ -110,22 +110,14 @@ test('the my-items page is routable and account-scoped', async () => {
   assert.match(myItems, /uni\.reLaunch\(\{ url: '\/pages\/login\/index' \}\)/)
 })
 
-test('campus-spot chips keep the form gutter on both listing flows', async () => {
+test('campus-spot chips use the shared padded location field on both listing flows', async () => {
   for (const rel of ['src/pages/publish/index.vue', 'src/pages/publish/edit.vue']) {
-    const source = await read(rel)
-    // The rail is a scroll-view outside .form-group, so it has to restore that
-    // row's 16px gutter itself. scroll-view is NOT covered by the global
-    // `view { box-sizing: border-box }` rule, so without this the leading
-    // gutter adds to 100% and the rail renders 16px wider than the screen —
-    // measured 406px on a 390px viewport. An ancestor clips the overhang,
-    // which silently eats the trailing gutter below.
-    assert.match(source, /\.spot-row \{[\s\S]{0,400}?box-sizing: border-box;/)
-    assert.match(source, /\.spot-row \{[\s\S]{0,400}?padding: 0 0 8px 16px;/)
-    // A scroll container's trailing padding is not honoured everywhere, so the
-    // last chip carries the closing gutter.
-    assert.match(source, /&:last-child \{ margin-right: 16px; \}/)
-    assert.match(source, /\.form-group \{\s*\n\s*padding: 13px 16px;/)
+    assert.match(await read(rel), /<PickupLocationField/)
   }
+  const field = await read('src/components/PickupLocationField.vue')
+  // The outer section now owns the gutter, keeping the scroll rail at 100%.
+  assert.match(field, /\.pickup-section \{ padding: 24px 20px;/)
+  assert.match(field, /\.spot-row \{ box-sizing: border-box; width: 100%;/)
 })
 
 test('OpenStreetMap credit stays present but reads as a caption', async () => {

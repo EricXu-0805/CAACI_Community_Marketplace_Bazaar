@@ -46,12 +46,22 @@ import { resolveHtmlElement } from '../utils/domElement'
 
 const { t } = useI18n()
 let permissionBodyKey = 'publish.permissionModalBody'
+// #ifdef H5
+if (typeof navigator !== 'undefined') {
+  const agent = navigator.userAgent
+  if (/Edg/i.test(agent)) permissionBodyKey = 'publish.permissionEdge'
+  else if (/CriOS|Chrome/i.test(agent)) permissionBodyKey = 'publish.permissionChrome'
+  else if (/FxiOS|Firefox/i.test(agent)) permissionBodyKey = 'publish.permissionFirefox'
+  else if (/Safari/i.test(agent)) permissionBodyKey = 'publish.permissionSafari'
+}
+// #endif
 // #ifdef MP-WEIXIN
 permissionBodyKey = 'publish.permissionModalBodyMp'
 // #endif
 
 const props = defineProps<{
   visible: boolean
+  returnFocusSelector?: string
 }>()
 
 const emit = defineEmits<{
@@ -160,7 +170,10 @@ watch(
     if (typeof document === 'undefined') return
     const epoch = ++dialogFocusEpoch
     if (next) {
-      dialogOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null
+      // A native permission prompt or a temporarily disabled trigger can
+      // move focus to body. Prefer the explicit trigger when supplied.
+      dialogOpener = (props.returnFocusSelector ? document.querySelector<HTMLElement>(props.returnFocusSelector) : null)
+        || (document.activeElement instanceof HTMLElement ? document.activeElement : null)
       focusDialog(epoch)
     } else {
       const target = dialogOpener
