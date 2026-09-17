@@ -152,7 +152,9 @@ test('account-bound external side effects cannot cross the A to B handoff', () =
 
   const wechatGate = source('src/composables/useWechatSecCheck.ts')
   const bearer = functionBlock(wechatGate, 'async function authenticatedBearer', 'function assertAccountCurrent')
-  assert.ok(bearer.indexOf('const accountToken = expectedAccountToken') < bearer.indexOf('await supabase.auth.getSession()'))
+  const bearerCapture = bearer.indexOf('const accountToken = expectedAccountToken')
+  const bearerRead = bearer.indexOf('supabase.auth.getSession()')
+  assert.ok(bearerCapture >= 0 && bearerRead > bearerCapture)
   assert.match(bearer, /session\.user\.id !== accountToken\.userId[^]*?!isAccountRequestCurrent\(accountToken\)/)
   for (const [path, expectedCalls] of [
     ['src/composables/useItems.ts', 4],
