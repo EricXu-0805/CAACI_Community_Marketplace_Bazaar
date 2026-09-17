@@ -33,11 +33,14 @@ test('login exposes email/password, H5 Google and explicitly gated mini-program 
   assert.match(h5Block, /@click="onSignInWithGoogle"/)
   assert.match(h5Block, /login\.googleSignIn/)
 
-  const mpStart = login.indexOf('<!-- #ifdef MP-WEIXIN -->')
-  const mpBlock = login.slice(mpStart, login.indexOf('<!-- #endif -->', mpStart))
+  // Existing-account guidance and new sign-in controls may occupy separate
+  // MP-only sections; each must still disappear from the H5 surface.
+  const mpSections = /<!-- #ifdef MP-WEIXIN -->([\s\S]*?)<!-- #endif -->/g
+  const mpBlock = [...login.matchAll(mpSections)].map(match => match[1]).join('\n')
   assert.match(mpBlock, /v-if="wechatLoginAvailable"/)
   assert.match(mpBlock, /@click="onWechatSignIn"/)
   assert.match(mpBlock, /v-if="wechatLinkAvailable"/)
+  assert.doesNotMatch(login.split('<script')[0].replace(mpSections, ''), /@click="(?:onWechatSignIn|openAccountLink)"/)
   assert.doesNotMatch(login, /linkIdentity\(/)
 })
 

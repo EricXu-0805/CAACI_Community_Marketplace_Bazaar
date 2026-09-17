@@ -8,6 +8,7 @@
 - Make the existing-account route prominent before the mini-program email form. Google-only website users should link their existing account instead of creating a second one; email users can use the same credentials directly.
 - Distinguish a deliberate disabled capability from a network/configuration failure. The latter gets an explicit retry, rather than silently removing the sign-in method.
 - Bound the website session lookup so generating a link code cannot leave the page busy indefinitely.
+- Bound the mini-program moderation prerequisites too: a stalled session lookup fails after 10 seconds, and a missing `wx.login` callback settles after 15 seconds. Late results cannot submit another check or cross accounts. Only the server's already trusted identity binding can cover an absent fresh code; unbound accounts still fail closed.
 - Build both targets, verify the mini-program artifact and official WXSS compilation, and preserve clear separation between automated tests and a real WeChat-account run.
 
 ## Live findings, September 17
