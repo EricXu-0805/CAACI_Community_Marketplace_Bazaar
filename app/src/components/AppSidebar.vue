@@ -70,6 +70,7 @@
           </view>
         </view>
         <view class="asb-legal">
+          <a class="asb-legal-link" :href="lang === 'zh' ? '/community#zh' : '/community'">{{ t('settings.community') }}</a>
           <a class="asb-legal-link" :href="lang === 'zh' ? '/about#zh' : '/about'">{{ lang === 'zh' ? '关于' : 'About' }}</a>
           <a class="asb-legal-link" :href="lang === 'zh' ? '/privacy#zh' : '/privacy'">{{ lang === 'zh' ? '隐私' : 'Privacy' }}</a>
           <a class="asb-legal-link" :href="lang === 'zh' ? '/terms#zh' : '/terms'">{{ lang === 'zh' ? '条款' : 'Terms' }}</a>

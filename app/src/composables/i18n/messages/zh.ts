@@ -785,6 +785,7 @@ const zh: Record<string, string> = {
   'seller.sold': '已售',
   'seller.joined': '加入',
   'settings.title': '设置',
+  'settings.community': '社区与联系',
   'settings.language': '语言',
   'settings.appearance': '外观',
   'settings.themeAuto': '跟随系统',

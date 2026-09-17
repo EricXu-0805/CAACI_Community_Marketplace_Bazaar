@@ -62,6 +62,12 @@
         <text class="mi-label">{{ t('settings.version') }}</text>
         <text class="mi-value">{{ appVersionLabel }}</text>
       </view>
+      <!-- #ifdef H5 -->
+      <a class="menu-item community-link" :href="lang === 'zh' ? '/community#zh' : '/community'">
+        <text class="mi-label">{{ t('settings.community') }}</text>
+        <view class="mi-arrow"></view>
+      </a>
+      <!-- #endif -->
     </view>
 
     <view class="section">
@@ -603,6 +609,7 @@ function onSignOut() {
   outline-offset: -2px;
 }
 .menu-item.static { cursor: default; }
+.community-link { color: inherit; text-decoration: none; }
 .mi-label {
   font-size: 15px;
   color: var(--ink);

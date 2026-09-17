@@ -789,6 +789,7 @@ const en: Record<string, string> = {
   'seller.sold': 'Sold',
   'seller.joined': 'Joined',
   'settings.title': 'Settings',
+  'settings.community': 'Community & contact',
   'settings.language': 'Language',
   'settings.appearance': 'Appearance',
   'settings.themeAuto': 'Auto',
