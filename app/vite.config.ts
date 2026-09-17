@@ -423,8 +423,8 @@ export default defineConfig({
     rejectPrivilegedSupabaseKeyInPublicEnv(),
     requireMpAppOrigin(),
     mpWebApiGlobalThisRewrite(),
-    uni(),
     miniProgramAssets(process.env.UNI_PLATFORM),
+    uni(),
     removeUniH5RemoteShadowPreload(),
     chunkFileNamesForNodeModules(),
     ...(sentryEnabled
