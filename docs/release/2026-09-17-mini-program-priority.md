@@ -16,7 +16,13 @@
 - WeChat Devtools RC 2.02.2607161 is open on this project's `app/dist/build/mp-weixin`, but its login has expired and the simulator reports that it needs login again. The owner has been asked to scan its login QR. No upload, experience version, review or publication is claimed.
 - Production database read-only inventory: one legacy WeChat password-map row, one bound profile and one placeholder Auth account. The password-retirement migration is not in the live migration ledger. No password, identity or row was printed or changed. Do not enable login before the corresponding old-account recovery/retirement path is established.
 - Production linking foundation is present under remote migration `20260917044349 / reviewed_wechat_link_foundation_disabled`; do not apply the local migration again.
-- The existing local environment snapshot does not provide an AppSecret or usable message-push token. This snapshot is not proof of the current hosted environment's complete configuration; verify in the account's approved backend before enabling anything.
+- Production environment-name inventory (values were not exported): `WECHAT_APPID` and `WECHAT_PUSH_TOKEN` exist. `WECHAT_APPSECRET`, `WECHAT_ENCODING_AES_KEY`, `WECHAT_LOGIN_ENABLED`, `WECHAT_ACCOUNT_LINK_ENABLED`, `WECHAT_LINK_RETENTION_ENABLED` and `WECHAT_MEDIA_ASYNC_ENABLED` are absent. An existing variable name is not proof that its value or provider connection is valid. Keep the capability gates closed until the full activation sequence is accepted.
+
+## September 17 validation update
+
+Account continuity and community entry changes were merged by PR #345 into main `b12c9ed6fe09f04fe004d3de0275ee34d4a0140c`; all six main CI jobs succeeded (run 35265369999), including the protected staging account's photo-listing write path. The PR public-page sweep passed 432 tests with one skipped. These are browser/build/database checks, not real WeChat sign-in evidence.
+
+The candidate package is in `output/mini-release-20260917/`. The later candidate sourced from `411d29a` also contains the optional bilingual email-domain suggestion: 341 emitted files, 1,908,784 main-package bytes, 29 pages, and official WXSS compilation 52/52 passed. Domain validation remains enabled. Neither candidate has been uploaded or reviewed while the developer session is expired; the current deployment and package receipts remain separate.
 
 ## Remaining activation sequence
 
