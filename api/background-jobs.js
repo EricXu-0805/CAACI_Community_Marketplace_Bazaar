@@ -1,6 +1,7 @@
 import { moderationObjectKeys, mediaMoveSucceeded, mediaCachePurgeAccepted } from './_moderation-media.js'
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from './_deployment-boundary.js'
 import { reportToSentry } from './_sentry-report.js'
+import { translatePublicContent } from './_public-content-translation.js'
 import { translateListing } from './_listing-translation.js'
 
 export const config = { runtime: 'edge' }
@@ -227,14 +228,25 @@ export default async function handler(request) {
       counts.listing_batches++
       counts.notifications += batch.inserted
     }
-    if (translationEnabled && deadline - Date.now() > 12_000) {
-      const translation = await translateListing({ key: process.env.OPENAI_API_KEY, call, request: serviceCall })
-      counts.translation_state = translation.state
-      const translationStatus = await call('listing_translation_status')
-      if (!translationStatus || !['pending','failed'].every(k => Number.isSafeInteger(translationStatus[k]) && translationStatus[k]>=0)) throw new Error('backlog_invalid')
-      counts.translation_pending = translationStatus.pending
-      counts.translation_failed = translationStatus.failed
-      if (translationStatus.failed) await reportToSentry('api/background-jobs', 'listing translation needs attention', { failedCount: translationStatus.failed })
+    // Alternate the first queue each minute. A slow listing provider must not
+    // permanently starve public posts, and vice versa. Keep the same bounded
+    // maximum of one request per queue per run and reserve cleanup time.
+    const translationQueues = Math.floor(Date.now() / 60_000) % 2
+      ? ['public', 'listing'] : ['listing', 'public']
+    for (const queue of translationQueues) {
+      if (!translationEnabled || deadline - Date.now() <= 12_000) continue
+      const isPublic = queue === 'public'
+      const translate = isPublic ? translatePublicContent : translateListing
+      const result = await translate({ key: process.env.OPENAI_API_KEY, call, request: serviceCall,
+        timeoutMs: Math.min(8000, deadline-Date.now()-5000) })
+      const prefix = isPublic ? 'public_translation' : 'translation'
+      counts[`${prefix}_state`] = result.state
+      const status = await call(isPublic ? 'public_content_translation_status' : 'listing_translation_status')
+      if (!status || !['pending','failed'].every(k => Number.isSafeInteger(status[k]) && status[k]>=0)) throw new Error('backlog_invalid')
+      counts[`${prefix}_pending`] = status.pending
+      counts[`${prefix}_failed`] = status.failed
+      if (status.failed) await reportToSentry('api/background-jobs',
+        isPublic ? 'public translation needs attention' : 'listing translation needs attention', { failedCount: status.failed })
     }
     // Sweep only database-claimed, unreferenced private uploads. Claims block
     // later message attachment and survive provider timeouts for safe retries.

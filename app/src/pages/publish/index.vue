@@ -178,7 +178,7 @@
       <text class="location-guidance">{{ t('publish.locationHint') }}</text>
       <view v-if="form.location || locationFeedback" class="location-result" role="status" aria-live="polite">
         <UIcon :name="detectedLocationLabel === form.location && form.location ? 'location-pin' : 'edit'" size="xs" />
-        <text>{{ locationFeedback || t(detectedLocationLabel === form.location ? 'publish.locationDetected' : 'publish.locationManual') }}</text>
+        <text>{{ locationFeedback || t(streetVerification ? 'publish.locationChecked' : detectedLocationLabel === form.location ? 'publish.locationDetected' : 'publish.locationManual') }}</text>
       </view>
 
       <scroll-view scroll-x class="spot-row">
@@ -266,6 +266,7 @@ import { useI18n } from '../../composables/useI18n'
 import { authoredLang } from '../../composables/i18n/format'
 import { useCampusSpots, type CampusSpot } from '../../composables/useCampusSpots'
 import { useLocation } from '../../composables/useLocation'
+import { useStreetVerification } from '../../composables/useStreetVerification'
 import { useItems, type UploadAccountToken } from '../../composables/useItems'
 import { useTranslate } from '../../composables/useTranslate'
 import { mutationCommitState, mutationOutcomeError, shouldCompensateMutationFailure } from '../../api/mutationCommit'
@@ -304,6 +305,11 @@ function spotLabel(spot: CampusSpot) {
   return lang.value === 'zh' ? spot.zh : spot.en
 }
 const { detectLocation, detecting: detectingLoc } = useLocation()
+const streetVerification = useStreetVerification()
+function locationCheckToken() {
+  const receipt = streetVerification.value
+  return receipt?.location === form.location && Date.parse(receipt.expires_at) > Date.now() ? receipt.token : undefined
+}
 const { currentUser, requireAuth, awaitAuthReady } = useAuth()
 const { createItem, updateItem, fetchItem, uploadImagesWithDims, removeOwnedItemImages, fetchItems } = useItems()
 const { translateItemContent } = useTranslate()
@@ -415,6 +421,7 @@ const permissionModalVisible = ref(false)
 const detectedLocationLabel = ref('')
 const locationFeedback = ref('')
 watch(() => form.location, value => {
+  if (value !== streetVerification.value?.location) streetVerification.value = null
   if (value !== detectedLocationLabel.value) detectedLocationLabel.value = ''
   locationFeedback.value = ''
 }, { flush: 'sync' })
@@ -553,6 +560,7 @@ function applyDraft(draft: PublishDraft) {
  * guard cleanly.
  */
 function resetForm() {
+  streetVerification.value = null
   draftStorageUnavailable.value = false
   publishItemId = createPublishId()
   publishOutcomeUncertain.value = false
@@ -895,7 +903,7 @@ async function onDetectLocation() {
   const locationAccountToken = publishPageAccountToken
   if (!locationAccountToken || !isAccountRequestCurrent(locationAccountToken)) return
   locationFeedback.value = ''
-  const result = await detectLocation()
+  const result = await detectLocation({ itemId: publishItemId })
   if (submitting.value) return
   if (
     !publishReady.value
@@ -932,6 +940,7 @@ async function onDetectLocation() {
     return
   }
   form.location = result.location
+  streetVerification.value = result.verification || null
   detectedLocationLabel.value = result.location
 }
 
@@ -1129,6 +1138,7 @@ async function onSubmit() {
       accountToken: submitAccountToken,
       confirmSuspectedAd,
       itemId: publishItemId,
+      locationCheckToken: locationCheckToken(),
       retryCreate,
     })
     if (!operationStillCurrent()) {

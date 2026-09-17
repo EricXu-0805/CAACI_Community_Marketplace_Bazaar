@@ -383,13 +383,13 @@ export function useAuth() {
       // timed out and can repopulate currentUser after the retry loop entered
       // the fail-closed error state. The abort also releases the underlying H5
       // fetch / mini-program request instead of leaving three orphaned reads.
-      const { data, error } = await withAuthInitTimeout(
+      const { data, error, status } = await withAuthInitTimeout(
         supabase.rpc('get_my_profile').abortSignal(controller.signal),
         6000,
       )
       if (requestId !== latestProfileRequestId || !isAccountRequestCurrent(accountToken)) return false
 
-      if (error) throw error
+      if (error) throw Object.assign(error, { status })
       if (isGateCompleteProfile(data, userId)) {
         currentUser.value = sanitizeProfileResource(data as Profile)
         return true

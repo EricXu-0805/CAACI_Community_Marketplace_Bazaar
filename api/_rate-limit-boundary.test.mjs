@@ -418,3 +418,53 @@ test('missing WeChat credentials degrade only after authentication', async () =>
   assert.equal(unauthorized.status, 401)
   assert.deepEqual(await unauthorized.json(), { error: 'unauthorized' })
 })
+
+const streetSession = '33333333-3333-4333-8333-333333333333'
+const streetBearer = 'Bearer e30.' + Buffer.from(JSON.stringify({sub:USER_ID,session_id:streetSession})).toString('base64url') + '.test-signature'
+function streetRequest(extra = {}, authorization = streetBearer) {
+ return new Request('https://app.test/api/geocode', {method:'POST',headers:{authorization,'Content-Type':'application/json'},body:JSON.stringify({lat:40.110123,lon:-88.230456,item_id:MEETUP_ID,accuracy:30,fix_at:Date.now(),...extra})})
+}
+test('street check verifies Auth before geocoding, rounds coordinates and binds only street text to a receipt',async()=>{
+ const calls=[]
+ globalThis.fetch=async(input,init)=>{
+  const url=urlOf(input);calls.push({url,body:init?.body&&JSON.parse(init.body),headers:init?.headers})
+  if(url.pathname==='/auth/v1/user') {assert.equal(init.headers.Authorization,streetBearer);return json({id:USER_ID})}
+  if(url.pathname.endsWith('/edge_rate_hit'))return json(true)
+  if(url.pathname==='/reverse') {assert.equal(url.searchParams.get('lat'),'40.110');assert.equal(url.searchParams.get('lon'),'-88.230');return json({lat:'40.110',lon:'-88.230',address:{road:'Green Street',city:'Champaign',house_number:'123',postcode:'61820'}})}
+  if(url.pathname.endsWith('/issue_street_location_check'))return json({token:MEETUP_ID,location:'Green Street, Champaign'})
+  throw new Error('unexpected upstream')
+ }
+ const {default:handler}=await loadApi('geocode.js',supabaseEnv)
+ const response=await handler(streetRequest())
+ assert.equal(response.status,200);assert.match(response.headers.get('Cache-Control'),/no-store/)
+ const data=await response.json();assert.equal(data.verification.location,'Green Street, Champaign');assert.equal(data.address.house_number,undefined)
+ assert.deepEqual(calls.at(-1).body,{user_id_in:USER_ID,session_id_in:streetSession,item_id_in:MEETUP_ID,street_label_in:'Green Street, Champaign'})
+ assert.deepEqual(calls.filter(c=>c.url.pathname.endsWith('/edge_rate_hit')).map(c=>c.body.max_in),[20,40,1])
+})
+test('street checks fail closed for expired authentication, inaccurate fixes and non-street geocoder results',async()=>{
+ let count=0
+ globalThis.fetch=async()=>{count++;return json({},401)}
+ const {default:handler}=await loadApi('geocode.js',supabaseEnv)
+ assert.equal((await handler(streetRequest({accuracy:101}))).status,422);assert.equal(count,0)
+ assert.equal((await handler(streetRequest())).status,401);assert.equal(count,1)
+ const paths=[]
+ globalThis.fetch=async(input)=>{
+  const url=urlOf(input);paths.push(url.pathname)
+  if(url.pathname==='/auth/v1/user')return json({id:USER_ID})
+  if(url.pathname.endsWith('/edge_rate_hit'))return json(true)
+  return json({lat:'40.11',lon:'-88.23',address:{city:'Champaign'}})
+ }
+ const result=await (await handler(streetRequest())).json()
+ assert.equal(result.verification,null)
+ assert.ok(!paths.some(p=>p.endsWith('/issue_street_location_check')))
+})
+test('oversized or stalled street request bodies stop before Auth or geocoder requests',async t=>{
+ globalThis.fetch=async()=>{throw new Error('must not fetch')}
+ const {default:handler}=await loadApi('geocode.js',supabaseEnv)
+ assert.equal((await handler(streetRequest({extra:'x'.repeat(2049)}))).status,400)
+ t.mock.timers.enable({apis:['setTimeout']})
+ const body=new ReadableStream({start(c){c.enqueue(new TextEncoder().encode('{'))}})
+ const pending=handler(new Request('https://app.test/api/geocode',{method:'POST',body,duplex:'half'}))
+ t.mock.timers.tick(4000)
+ assert.equal((await pending).status,400)
+})

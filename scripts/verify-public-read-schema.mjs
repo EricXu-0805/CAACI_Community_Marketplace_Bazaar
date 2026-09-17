@@ -16,8 +16,9 @@ export async function verifyPublicReadSchema({ url, key, fetchImpl = fetch }) {
   const headers = { apikey: key }
   if (!key.startsWith('sb_publishable_')) headers.Authorization = `Bearer ${key}`
   const checks = [
-    ['item category details', 'items', 'id,listing_details'],
+    ['item category and street details', 'items', 'id,listing_details,location_verified,location_checked_at'],
     ['plaza attached item details', 'posts', 'id,item:items(id,listing_details)'],
+    ['public comment translations', 'post_comments', 'id,content_i18n'],
   ]
   const results = []
   for (const [name, table, select] of checks) {

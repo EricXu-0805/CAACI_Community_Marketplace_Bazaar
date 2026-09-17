@@ -14,8 +14,9 @@ import { onAccountTransition } from './accountScope'
  * permission_prompt_dismissed and unsupported, which Phase 1a does
  * not yet emit) avoids a type change when that lands.
  */
+export interface StreetVerification { token: string; location: string; checked_at: string; expires_at: string }
 export type LocationResult =
-  | { ok: true; location: string }
+  | { ok: true; location: string; verification?: StreetVerification }
   | {
       ok: false
       reason:
@@ -87,14 +88,14 @@ function classifyLocationError(
 }
 
 export function useLocation() {
-  async function detectLocation(): Promise<LocationResult> {
+  async function detectLocation(options?: { itemId: string }): Promise<LocationResult> {
     const requestGeneration = locationRequestGeneration
     const detectionId = ++locationDetectionId
     const requestStillCurrent = () => (
       requestGeneration === locationRequestGeneration
       && detectionId === locationDetectionId
     )
-    if (cachedLocation.value && Date.now() - cachedLocationAt < LOCATION_CACHE_TTL_MS) {
+    if (!options && cachedLocation.value && Date.now() - cachedLocationAt < LOCATION_CACHE_TTL_MS) {
       return { ok: true, location: cachedLocation.value }
     }
     cachedLocation.value = ''
@@ -151,7 +152,7 @@ export function useLocation() {
       }
 
       if (!requestStillCurrent()) return { ok: false, reason: 'position_unavailable' }
-      const res: UniApp.GetLocationSuccess = await new Promise((resolve, reject) => {
+      const res: Pick<UniApp.GetLocationSuccess, 'latitude' | 'longitude' | 'accuracy'> & { fixAt?: number } = await new Promise((resolve, reject) => {
         let settled = false
         const timer = setTimeout(() => {
           if (settled) return
@@ -159,6 +160,21 @@ export function useLocation() {
           reject({ code: 3, message: 'location deadline exceeded' })
         }, LOCATION_FIX_TIMEOUT_MS)
         try {
+          // H5 verification asks for a fresh fix, rather than a cached map position.
+          // #ifdef H5
+          if (options && typeof navigator !== 'undefined' && navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(position => {
+              if (settled) return
+              settled = true; clearTimeout(timer)
+              resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy, fixAt: position.timestamp })
+            }, error => {
+              if (settled) return
+              settled = true; clearTimeout(timer); reject(error)
+            }, { enableHighAccuracy: true, maximumAge: 0, timeout: LOCATION_FIX_TIMEOUT_MS })
+            return
+          }
+          // #endif
           uni.getLocation({
             type: 'wgs84',
             success: (value) => {
@@ -187,7 +203,11 @@ export function useLocation() {
         || !Number.isFinite(res.longitude) || Math.abs(res.longitude) > 180) {
         return { ok: false, reason: 'position_unavailable' }
       }
-      const name = await reverseGeocode(res.latitude, res.longitude)
+      const resolved = await reverseGeocode(res.latitude, res.longitude, options ? {
+        itemId: options.itemId, accuracy: res.accuracy,
+        fixAt: res.fixAt,
+      } : undefined, requestStillCurrent)
+      const name = resolved?.location
       if (!requestStillCurrent()) {
         // Never return A's device context to a page that may now be rendering B.
         // The pages also carry their own account token, but the cache boundary
@@ -210,7 +230,7 @@ export function useLocation() {
       }
       cachedLocation.value = name
       cachedLocationAt = Date.now()
-      return { ok: true, location: name }
+      return { ok: true, location: name, ...(resolved?.verification ? { verification: resolved.verification } : {}) }
     } catch (err) {
       return { ok: false, reason: classifyLocationError(err) }
     } finally {
@@ -218,7 +238,7 @@ export function useLocation() {
     }
   }
 
-  async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+  async function reverseGeocode(lat: number, lng: number, check?: { itemId: string; accuracy: number; fixAt?: number }, stillCurrent: () => boolean = () => true): Promise<{ location: string; verification?: StreetVerification } | null> {
     try {
       /*
        * QA6 #12 — go through our own /api/geocode proxy instead of hitting
@@ -246,6 +266,15 @@ export function useLocation() {
       url = `${BASE_URL}/api/geocode?lat=${queryLat}&lon=${queryLng}`
       // #endif
 
+      let accessToken = ''
+      if (check && check.accuracy > 0 && check.accuracy <= 100 && check.fixAt && Date.now() - check.fixAt <= 60_000) {
+        const { useSupabase } = await import('./useSupabase')
+        const { data: { session } } = await useSupabase().supabase.auth.getSession()
+        accessToken = session?.access_token || ''
+      }
+      if (!stillCurrent()) return null
+      const verifiedRequest = !!accessToken
+      const requestTimeout = verifiedRequest ? 30_000 : GEOCODE_REQUEST_TIMEOUT_MS
       const data: any = await new Promise((resolve) => {
         let settled = false
         let request: UniApp.RequestTask | undefined
@@ -260,12 +289,14 @@ export function useLocation() {
           // A platform timeout need not deliver a callback after backgrounding.
           // Own the deadline and ignore callbacks that arrive after recovery.
           try { request?.abort() } catch { /* already completed */ }
-        }, GEOCODE_REQUEST_TIMEOUT_MS)
+        }, requestTimeout)
         try {
           request = uni.request({
-            url,
-            timeout: GEOCODE_REQUEST_TIMEOUT_MS,
-            header: { 'Accept-Language': 'en' },
+            url: verifiedRequest ? url.split('?')[0] : url,
+            method: verifiedRequest ? 'POST' : 'GET',
+            ...(verifiedRequest ? { data: { lat: queryLat, lon: queryLng, item_id: check!.itemId, accuracy: check!.accuracy, fix_at: check!.fixAt } } : {}),
+            timeout: requestTimeout,
+            header: { 'Accept-Language': 'en', ...(verifiedRequest ? { Authorization: `Bearer ${accessToken}` } : {}) },
             success: (res) => {
               // Bot-block / rate-limit / error JSON: anything non-200 or without
               // an address block is treated as a miss and asks for manual input.
@@ -277,6 +308,10 @@ export function useLocation() {
         } catch { finish(null) }
       })
 
+      const verification = data?.verification
+      if (verifiedRequest && verification && typeof verification.location === 'string' && verification.location.length <= 80
+        && /^[0-9a-f-]{36}$/i.test(verification.token || '') && Number.isFinite(Date.parse(verification.checked_at))
+        && Date.parse(verification.expires_at) > Date.now()) return { location: verification.location, verification }
       const addr = (data && data.address) || {}
 
       const building = addr.building || addr.amenity || addr.shop || addr.university || addr.school
@@ -298,7 +333,8 @@ export function useLocation() {
       // gets persisted as the listing's public location. A city/region label
       // is acceptable; if the provider has none, the caller asks the user to
       // enter a location manually.
-      return precise || city || region || null
+      const location = precise || city || region
+      return location ? { location } : null
     } catch {
       return null
     }

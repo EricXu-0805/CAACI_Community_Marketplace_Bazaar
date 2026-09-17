@@ -1,0 +1,42 @@
+-- LOCAL/STAGING ONLY. No real content, and all writes roll back.
+\set ON_ERROR_STOP on
+BEGIN;
+INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES('97100000-0000-4000-8000-000000000001','english@example.test','{}');
+INSERT INTO public.profiles(id,nickname) VALUES('97100000-0000-4000-8000-000000000001','English fixture') ON CONFLICT(id) DO NOTHING;
+INSERT INTO public.posts(id,user_id,content) VALUES('97100000-0000-4000-8000-000000000011','97100000-0000-4000-8000-000000000001','周五下午取货');
+CREATE TEMP TABLE jobs(value jsonb);
+UPDATE translation_private.public_content_jobs SET available_at='2000-01-01' WHERE content_id IN ('97100000-0000-4000-8000-000000000011','97100000-0000-4000-8000-000000000021');
+INSERT INTO jobs SELECT public.claim_public_content_translation();
+DO $$ DECLARE j jsonb; BEGIN SELECT value INTO j FROM jobs;
+ IF j->>'content'<>'周五下午取货' OR j->>'kind'<>'post' THEN RAISE EXCEPTION 'claim_wrong_content'; END IF;
+ IF NOT public.finish_public_content_translation('post',(j->>'id')::uuid,(j->>'revision')::bigint,(j->>'lease')::uuid,j->>'content','Pickup Friday afternoon') THEN RAISE EXCEPTION 'finish_failed'; END IF;
+ IF (SELECT content_i18n->>'en' FROM public.posts WHERE id='97100000-0000-4000-8000-000000000011')<>'Pickup Friday afternoon' THEN RAISE EXCEPTION 'english_not_persisted'; END IF;
+END $$;
+INSERT INTO public.post_comments(id,post_id,user_id,content) VALUES('97100000-0000-4000-8000-000000000021','97100000-0000-4000-8000-000000000011','97100000-0000-4000-8000-000000000001','可以下午三点吗');
+DELETE FROM jobs;
+UPDATE translation_private.public_content_jobs SET available_at='2000-01-01' WHERE content_id IN ('97100000-0000-4000-8000-000000000011','97100000-0000-4000-8000-000000000021');
+INSERT INTO jobs SELECT public.claim_public_content_translation();
+UPDATE public.post_comments SET content='改成下午四点' WHERE id='97100000-0000-4000-8000-000000000021';
+DO $$ DECLARE j jsonb; BEGIN SELECT value INTO j FROM jobs;
+ IF public.finish_public_content_translation('comment',(j->>'id')::uuid,(j->>'revision')::bigint,(j->>'lease')::uuid,j->>'content','Can we meet at 3 pm?') THEN RAISE EXCEPTION 'stale_translation_accepted'; END IF;
+END $$;
+DELETE FROM jobs;
+UPDATE translation_private.public_content_jobs SET available_at='2000-01-01' WHERE content_id IN ('97100000-0000-4000-8000-000000000011','97100000-0000-4000-8000-000000000021');
+INSERT INTO jobs SELECT public.claim_public_content_translation();
+DO $$ DECLARE j jsonb; BEGIN SELECT value INTO j FROM jobs;
+ IF NOT public.finish_public_content_translation('comment',(j->>'id')::uuid,(j->>'revision')::bigint,(j->>'lease')::uuid,j->>'content','Change it to 4 pm') THEN RAISE EXCEPTION 'comment_finish_failed'; END IF;
+ IF (SELECT content_i18n->>'en' FROM public.post_comments WHERE id='97100000-0000-4000-8000-000000000021')<>'Change it to 4 pm' THEN RAISE EXCEPTION 'comment_missing_english'; END IF;
+END $$;
+SET LOCAL ROLE anon;
+DO $$ BEGIN
+ IF has_function_privilege(current_user,'public.claim_public_content_translation()','EXECUTE') THEN RAISE EXCEPTION 'public_claim'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.post_comments WHERE id='97100000-0000-4000-8000-000000000021' AND content_i18n->>'en'='Change it to 4 pm') THEN RAISE EXCEPTION 'anonymous_english_unreadable'; END IF;
+END $$;
+RESET ROLE;
+UPDATE public.post_comments SET content='重新修改' WHERE id='97100000-0000-4000-8000-000000000021';
+DO $$ BEGIN IF EXISTS(SELECT 1 FROM public.post_comments WHERE id='97100000-0000-4000-8000-000000000021' AND content_i18n IS NOT NULL) THEN RAISE EXCEPTION 'edit_kept_stale_translation'; END IF; END $$;
+UPDATE public.posts SET content='新的取货安排' WHERE id='97100000-0000-4000-8000-000000000011';
+DO $$ BEGIN IF EXISTS(SELECT 1 FROM public.posts WHERE id='97100000-0000-4000-8000-000000000011' AND content_i18n IS NOT NULL) THEN RAISE EXCEPTION 'post_edit_kept_stale_translation'; END IF; END $$;
+DELETE FROM public.posts WHERE id='97100000-0000-4000-8000-000000000011';
+DO $$ BEGIN IF EXISTS(SELECT 1 FROM translation_private.public_content_jobs WHERE content_id IN ('97100000-0000-4000-8000-000000000011','97100000-0000-4000-8000-000000000021')) THEN RAISE EXCEPTION 'deletion_retained_queue'; END IF; END $$;
+ROLLBACK;

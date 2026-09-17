@@ -25,7 +25,7 @@ export function useFavorites() {
   async function loadMyFavorites(userId: string) {
     const token = captureAccountRequest(userId)
     if (!isAccountRequestCurrent(token)) return
-    const { data, error } = await supabase
+    const { data, error, status } = await supabase
       .from('favorites')
       .select('item_id')
       .eq('user_id', userId)
@@ -36,7 +36,7 @@ export function useFavorites() {
     if (error) {
       if (!isAccountRequestCurrent(token)) return
       console.error('[favorites] load failed')
-      captureException(error, { tags: { source: 'loadMyFavorites' } })
+      captureException({ ...error, status }, { tags: { source: 'loadMyFavorites' } })
       return
     }
     if (data && isAccountRequestCurrent(token)) {

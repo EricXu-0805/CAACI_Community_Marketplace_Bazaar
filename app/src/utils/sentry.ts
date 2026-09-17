@@ -84,10 +84,14 @@ function uniRejectionType(errMsg: string): string {
 function safeErrorCode(err: unknown): string | undefined {
   if (!err || typeof err !== 'object') return undefined
   const record = err as { code?: unknown; status?: unknown; statusCode?: unknown }
-  const raw = record.code ?? record.statusCode ?? record.status
-  const candidate = typeof raw === 'number' && Number.isFinite(raw) ? String(raw) : raw
-  const code = stableToken(candidate, '', 48)
-  return code || undefined
+  // A provider often returns code: '' for network/HTTP failures. That must
+  // not erase an available numeric status or collapse unrelated incidents.
+  for (const raw of [record.code, record.statusCode, record.status]) {
+    const candidate = typeof raw === 'number' && Number.isFinite(raw) ? String(raw) : raw
+    const code = stableToken(candidate, '', 48)
+    if (code) return code
+  }
+  return undefined
 }
 
 function safeTelemetryUrl(value: unknown): string | undefined {

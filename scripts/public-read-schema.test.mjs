@@ -3,12 +3,12 @@ import test from 'node:test'
 import { verifyPublicReadSchema } from './verify-public-read-schema.mjs'
 const url = 'https://abcdefghijklmnopqrst.supabase.co'
 const key = 'sb_publishable_synthetic'
-test('public schema preflight checks both zero-row projections without write access', async () => {
+test('public schema preflight checks listing, post and comment projections without write access', async () => {
   const seen = []
   const results = await verifyPublicReadSchema({ url, key, fetchImpl: async (target, init) => {
     seen.push({ target, init }); return new Response('[]', { status: 200 })
   } })
-  assert.equal(results.length, 2)
+  assert.equal(results.length, 3)
   for (const { target, init } of seen) {
     assert.equal(target.searchParams.get('limit'), '0')
     assert.equal(init.method, undefined)
@@ -17,6 +17,8 @@ test('public schema preflight checks both zero-row projections without write acc
     assert.ok(init.signal instanceof AbortSignal)
   }
   assert.equal(seen[1].target.searchParams.get('select'), 'id,item:items(id,listing_details)')
+  assert.match(seen[0].target.searchParams.get('select'), /location_checked_at/)
+  assert.equal(seen[2].target.searchParams.get('select'), 'id,content_i18n')
 })
 test('missing fields, authentication failure and provider outage cannot pass preflight', async () => {
   for (const status of [400,401,403,500]) {

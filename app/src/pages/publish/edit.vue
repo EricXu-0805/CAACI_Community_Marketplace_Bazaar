@@ -154,6 +154,7 @@
       </view>
 
       <text class="location-guidance">{{ t('publish.locationHint') }}</text>
+      <text v-if="form.location" class="location-guidance" role="status">{{ t(streetVerification ? 'publish.locationChecked' : loadedCheckedLocation === form.location ? 'publish.locationPreviouslyChecked' : 'publish.locationManual') }}</text>
 
       <scroll-view scroll-x class="spot-row">
         <view
@@ -234,13 +235,14 @@ const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif
-import { ref, reactive, computed, onUnmounted } from 'vue'
+import { watch, ref, reactive, computed, onUnmounted } from 'vue'
 import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { authoredLang } from '../../composables/i18n/format'
 import { useCampusSpots, type CampusSpot } from '../../composables/useCampusSpots'
 import { useLocation } from '../../composables/useLocation'
+import { useStreetVerification } from '../../composables/useStreetVerification'
 import { useItems, type UploadAccountToken } from '../../composables/useItems'
 import { useTranslate } from '../../composables/useTranslate'
 import { mutationCommitState, mutationOutcomeError, shouldCompensateMutationFailure } from '../../api/mutationCommit'
@@ -270,6 +272,12 @@ function spotLabel(spot: CampusSpot) {
   return lang.value === 'zh' ? spot.zh : spot.en
 }
 const { detectLocation, detecting: detectingLoc } = useLocation()
+const streetVerification = useStreetVerification()
+const loadedCheckedLocation = ref('')
+function locationCheckToken() {
+  const receipt = streetVerification.value
+  return receipt?.location === form.location && Date.parse(receipt.expires_at) > Date.now() ? receipt.token : undefined
+}
 const { currentUser, requireAuth, awaitAuthReady } = useAuth()
 const { updateItem, fetchItem, uploadImagesWithDims, removeOwnedItemImages } = useItems()
 const { translateItemContent } = useTranslate()
@@ -379,7 +387,7 @@ async function commitEditWithCompatibleRetry(
       return await updateItem(
         editId.value,
         updates,
-        { expectedUpdatedAt: loadedUpdatedAt.value, accountToken, confirmSuspectedAd },
+        { expectedUpdatedAt: loadedUpdatedAt.value, accountToken, confirmSuspectedAd, locationCheckToken: locationCheckToken() },
       )
     } catch (error: any) {
       if (error?.message !== 'item_edit_conflict' || attempt === 2) throw error
@@ -527,6 +535,8 @@ function onConditionTap(cond: string) {
  * hand-crafted attempt or a stale deep link; same UX response works.
  */
 function resetEditForm() {
+  loadedCheckedLocation.value = ''
+  streetVerification.value = null
   form.title = ''
   form.description = ''
   form.price = ''
@@ -621,6 +631,7 @@ async function prepareEditPage(itemId: string) {
     loadedCategory.value = item.category
     form.condition = item.condition
     form.location = item.location
+    loadedCheckedLocation.value = item.location_verified && item.location_checked_at ? item.location : ''
     form.negotiable = item.negotiable ?? false
     form.listingType = (item.listing_type || 'sell') as 'sell' | 'wanted'
     imageList.value = [...item.images]
@@ -777,6 +788,8 @@ function removeImage(index: number) {
   imageDimensions.value.splice(index, 1)
 }
 
+watch(() => form.location, value => { if (value !== streetVerification.value?.location) streetVerification.value = null })
+
 async function onDetectLocation() {
   if (submitting.value) return
   const locationAccountToken = editPageAccountToken
@@ -785,7 +798,7 @@ async function onDetectLocation() {
     || !locationAccountToken
     || !isAccountRequestCurrent(locationAccountToken)
   ) return
-  const result = await detectLocation()
+  const result = await detectLocation({ itemId: editId.value })
   if (submitting.value) return
   if (
     !editReady.value
@@ -819,6 +832,7 @@ async function onDetectLocation() {
     return
   }
   form.location = result.location
+  streetVerification.value = result.verification || null
 }
 
 function onSpotChipTap(spot: CampusSpot) {

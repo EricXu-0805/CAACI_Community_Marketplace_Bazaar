@@ -129,6 +129,9 @@
       </view>
     </view>
 
+    <view v-if="item.location_verified && item.location_checked_at" class="section">
+      <text class="translation-notice">{{ t('pickup.checkExplanation', { date: new Date(item.location_checked_at).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US') }) }}</text>
+    </view>
     <view v-if="item.listing_details" class="section"><ListingDetailsSummary :item="item" /></view>
 
     <view class="section" v-if="item.description">
