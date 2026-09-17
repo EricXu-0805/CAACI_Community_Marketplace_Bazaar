@@ -2,6 +2,11 @@ import { test, expect, type Page } from '@playwright/test'
 import { supabaseRefForBuild } from './supabase-ref'
 import { CURRENT_CONSENT_VERSION } from '../src/legal'
 
+// Mocked HTTP sessions must never reach the hosted Realtime service.
+test.beforeEach(async ({ page }) => {
+  await page.routeWebSocket(/\.supabase\.co(?:[:/]|$)/, socket => socket.close())
+})
+
 /**
  * The chat has to notice that the listing closed underneath it.
  *

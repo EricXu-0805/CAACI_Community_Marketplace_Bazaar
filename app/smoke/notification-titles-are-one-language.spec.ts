@@ -4,6 +4,11 @@ import en from '../src/composables/i18n/messages/en'
 import zh from '../src/composables/i18n/messages/zh'
 import { CURRENT_CONSENT_VERSION } from '../src/legal'
 
+// Mocked HTTP sessions must never reach the hosted Realtime service.
+test.beforeEach(async ({ page }) => {
+  await page.routeWebSocket(/\.supabase\.co(?:[:/]|$)/, socket => socket.close())
+})
+
 /**
  * A notification headline is written by a database trigger, which cannot know
  * which language the person who opens the app reads. Every trigger up to
