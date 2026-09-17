@@ -171,6 +171,13 @@ for (const [name, width, height] of [['phone',390,844],['ipad-portrait',820,1180
       const dialog = page.locator('.composer-fullpage')
       await expect(dialog).toBeVisible()
       await expect(dialog.getByRole('button', { name: 'Add photos', exact: true })).toBeVisible()
+      // Visibility also includes the entrance animation. Measure the settled
+      // layout, not a translucent frame with fractional transform rounding.
+      await dialog.evaluate(async element => {
+        await Promise.all(element.getAnimations().map(animation => animation.finished))
+      })
+      await expect(dialog).toHaveCSS('opacity', '1')
+      await expect(dialog).toHaveCSS('transform', 'none')
       const box = (await dialog.boundingBox())!
       expect(box.width).toBeGreaterThan(width >= 768 ? 650 : 380)
       expect(box.height).toBeLessThanOrEqual(height)

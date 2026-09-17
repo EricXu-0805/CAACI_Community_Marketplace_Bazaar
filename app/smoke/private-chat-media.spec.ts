@@ -32,7 +32,7 @@ async function fixture(page:Page){
     const failure=signatureFailure, wait=signatureWait, sequence=signed.length
     signatureFailure=null;signatureWait=null
     if(wait)await wait
-    if(failure==='network')return route.abort('internetdisconnected')
+    if(failure==='network')return route.abort('connectionreset')
     if(typeof failure==='number')return route.fulfill({status:failure,contentType:'application/json',body:JSON.stringify({statusCode:String(failure),message:'Synthetic signing failure'})})
     const signedURL=failure==='invalid-url'?'/object/sign/chat-media/wrong-object.jpg':path.replace('/storage/v1','')+`?token=synthetic-private-${sequence}`
     return route.fulfill({contentType:'application/json',body:JSON.stringify(failure==='missing-url'?{}:{signedURL})})
