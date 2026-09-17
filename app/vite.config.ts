@@ -5,6 +5,7 @@ import uni from "@dcloudio/vite-plugin-uni";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { localDevServerBoundary } from "./dev-server-boundary.mjs";
 import { publicBrandPages } from "./public-brand-pages";
+import { miniProgramAssets } from "./mini-program-assets.mjs";
 
 /*
  * VITE_RELEASE auto-derivation order:
@@ -422,6 +423,7 @@ export default defineConfig({
     rejectPrivilegedSupabaseKeyInPublicEnv(),
     requireMpAppOrigin(),
     mpWebApiGlobalThisRewrite(),
+    miniProgramAssets(process.env.UNI_PLATFORM),
     uni(),
     removeUniH5RemoteShadowPreload(),
     chunkFileNamesForNodeModules(),
