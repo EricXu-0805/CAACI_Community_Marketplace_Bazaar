@@ -91,6 +91,7 @@
           @input="emailError = ''"
         />
         <text v-if="emailError" id="login-email-error" class="field-error" role="alert">{{ emailError }}</text>
+        <EmailDomainHint :email="email" :disabled="formBusy" @accept="email = $event; emailError = ''" />
         <view v-if="isIlliniEmail" class="illini-hint">
           <UIcon name="check" size="xs" color="success" />
           <text class="ih-text">{{ t('login.illiniEmail') }}</text>
@@ -219,6 +220,7 @@
 
 <script setup lang="ts">
 import LanguageToggle from '../../components/LanguageToggle.vue'
+import EmailDomainHint from '../../components/EmailDomainHint.vue'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { ref, computed, nextTick, onUnmounted, watch } from 'vue'

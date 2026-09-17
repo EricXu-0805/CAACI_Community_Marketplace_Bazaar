@@ -11,6 +11,7 @@
       <view class="form-group">
         <text class="form-label">{{ t('resetPw.email') }}</text>
         <input v-model="email" :placeholder="t('login.email')" :aria-label="t('resetPw.email')" :disabled="saving || resending" type="text" inputmode="email" autocomplete="email" class="form-input" />
+        <EmailDomainHint :email="email" :disabled="saving || resending" @accept="email = $event" />
       </view>
 
       <view class="form-group">
@@ -61,6 +62,7 @@
 
 <script setup lang="ts">
 import LanguageToggle from '../../components/LanguageToggle.vue'
+import EmailDomainHint from '../../components/EmailDomainHint.vue'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 /*

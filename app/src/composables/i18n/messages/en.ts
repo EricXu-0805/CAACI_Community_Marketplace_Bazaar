@@ -702,6 +702,7 @@ const en: Record<string, string> = {
   'login.signUp': 'Sign Up',
   'login.nickname': 'Nickname',
   'login.email': 'Email',
+  'login.emailDomainSuggestion': 'Did you mean {email}? Tap to use it.',
   'login.illiniEmail': 'Illini email · unlocks the verified badge',
   'login.password': 'Password',
   'login.submitLogin': 'Sign In',
