@@ -22,6 +22,31 @@ export function timingSummary(samples){
  const sorted=[...samples].sort((a,b)=>a-b)
  return {count:sorted.length,p95Ms:sorted[Math.max(0,Math.ceil(sorted.length*.95)-1)]??null,maxMs:sorted.at(-1)??null}
 }
+export function waitForPostgresReady(channel,{timeoutMs=12000}={}){
+ // SUBSCRIBED acknowledges the socket join, not the database listener.
+ // https://supabase.com/docs/guides/troubleshooting/realtime-postgres-changes-troubleshooting
+ // Wait for both acknowledgements; sleeping or dropping the first write hides a gap.
+ return new Promise((resolve,reject)=>{
+  let subscribed=false,postgresReady=false,settled=false
+  const finish=error=>{
+   if(settled)return
+   if(!error&&(!subscribed||!postgresReady))return
+   settled=true;clearTimeout(timer)
+   if(error)reject(error);else resolve()
+  }
+  const timer=setTimeout(()=>finish(Error('soak_realtime_ready_timeout')),timeoutMs)
+  try{
+   channel.on('system','*',payload=>{
+    if(payload?.extension!=='postgres_changes')return
+    if(payload.status==='error')finish(Error('soak_realtime_listener_failed'))
+    else if(payload.status==='ok'){postgresReady=true;finish()}
+   }).subscribe(status=>{
+    if(status==='SUBSCRIBED'){subscribed=true;finish()}
+    else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(status))finish(Error('soak_realtime_subscribe_failed'))
+   })
+  }catch{finish(Error('soak_realtime_subscribe_failed'))}
+ })
+}
 export async function createSoakPost(rest,userId,content){
  // Match usePlaza: the server allocates identity and owns moderation status.
  const rows=JSON.parse(await rest('posts?select=id',{method:'POST',headers:{Prefer:'return=representation'},body:{user_id:userId,content,images:[]}}))
@@ -65,7 +90,7 @@ export async function main(){
   channel=client.channel(`soak-${run}`).on('postgres_changes',{event:'UPDATE',schema:'public',table:'posts',filter:`id=eq.${postId}`},event=>{
    if(pendingMutation && event.new?.id===postId && event.new.like_count===pendingMutation.count)events.add(pendingMutation.sequence)
   })
-  await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('soak_realtime_subscribe_timeout')),12000);channel.subscribe(status=>{if(status==='SUBSCRIBED'){clearTimeout(timer);resolve()}else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){clearTimeout(timer);reject(Error('soak_realtime_subscribe_failed'))}})})
+  await waitForPostgresReady(channel)
   let round=0,nextWrite=0
   while(Date.now()<stopAt){
    const start=Date.now()
@@ -112,7 +137,8 @@ export async function main(){
   }
  }
  const summary={durationSeconds:Math.round((Date.now()-(stopAt-durationMs))/1000),dataset:'isolated synthetic staging, not 10k capacity',parallelReads:3,operations,
-  timings:Object.fromEntries(Object.entries(timings).map(([k,v])=>[k,timingSummary(v)])),writes:written.size,realtimeDelivered:[...written].filter(n=>events.has(n)).length,cleanupOk,passed:!runFailure&&cleanupOk,failure:runFailure}
+  timings:Object.fromEntries(Object.entries(timings).map(([k,v])=>[k,timingSummary(v)])),writes:written.size,realtimeDelivered:[...written].filter(n=>events.has(n)).length,
+  missingRealtimeSequences:[...written].filter(n=>!events.has(n)),cleanupOk,cleanupState:cleanupOk?'complete':'incomplete',passed:!runFailure&&cleanupOk,failure:runFailure}
  console.log(JSON.stringify(summary,null,2))
  if(!summary.passed)process.exitCode=1
  return summary

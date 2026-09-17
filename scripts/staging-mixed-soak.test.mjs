@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {safeSoakTarget,timingSummary,createSoakPost,setSoakLike} from './staging-mixed-soak.mjs'
+import {safeSoakTarget,timingSummary,createSoakPost,setSoakLike,waitForPostgresReady} from './staging-mixed-soak.mjs'
 const env={SUPABASE_URL:'https://hygkwxugskijadgfisji.supabase.co',SUPABASE_PUBLISHABLE_KEY:'sb_publishable_fixture',SMOKE_EXPECTED_SUPABASE_PROJECT_REF:'hygkwxugskijadgfisji',SMOKE_EXPECTED_USER_ID:'11111111-1111-4111-8111-111111111111',SMOKE_EMAIL:'test@example.invalid',SMOKE_PASSWORD:'fixture',SMOKE_ACCOUNT_IS_SYNTHETIC:'true',SMOKE_DATASET_IS_SYNTHETIC:'true'}
 test('soak rejects production, non-reviewed targets, privileged keys, missing exact user and real data',()=>{
  assert.equal(safeSoakTarget(env).ref,env.SMOKE_EXPECTED_SUPABASE_PROJECT_REF)
@@ -9,6 +9,33 @@ test('soak rejects production, non-reviewed targets, privileged keys, missing ex
 test('p95 includes tail latency and empty samples cannot imply zero latency',()=>{
  assert.deepEqual(timingSummary([]),{count:0,p95Ms:null,maxMs:null})
  assert.deepEqual(timingSummary([...Array(18).fill(10),2000,3000]),{count:20,p95Ms:2000,maxMs:3000})
+})
+function channelHarness(){
+ let system,status
+ const channel={on(type,filter,callback){assert.equal(type,'system');assert.equal(filter,'*');system=callback;return channel},subscribe(callback){status=callback;return channel}}
+ return {channel,system:payload=>system(payload),status:value=>status(value)}
+}
+for(const first of ['socket','database'])test(`soak waits for the actual database listener when ${first} acknowledges first`,async()=>{
+ const h=channelHarness();let ready=false
+ const waiting=waitForPostgresReady(h.channel).then(()=>{ready=true})
+ const socket=()=>h.status('SUBSCRIBED'),database=()=>h.system({extension:'postgres_changes',status:'ok'})
+ ;(first==='socket'?socket:database)()
+ await Promise.resolve();assert.equal(ready,false,'the first write must still be blocked')
+ h.system({extension:'presence',status:'ok'})
+ await Promise.resolve();assert.equal(ready,false)
+ ;(first==='socket'?database:socket)()
+ await waiting;assert.equal(ready,true)
+})
+test('soak fails instead of counting a socket-only join as a ready database listener',async()=>{
+ const h=channelHarness(),waiting=waitForPostgresReady(h.channel,{timeoutMs:5})
+ h.status('SUBSCRIBED')
+ await assert.rejects(waiting,/soak_realtime_ready_timeout/)
+})
+test('soak rejects database-listener errors and channel closures before writes',async()=>{
+ for(const fail of [h=>h.system({extension:'postgres_changes',status:'error'}),h=>h.status('CLOSED'),h=>h.status('CHANNEL_ERROR')]){
+  const h=channelHarness(),waiting=waitForPostgresReady(h.channel)
+  fail(h);await assert.rejects(waiting,/soak_realtime_(listener|subscribe)_failed/)
+ }
 })
 test('soak uses the ordinary post grants and observes both like transitions',async()=>{
  const uid=env.SMOKE_EXPECTED_USER_ID,pid='22222222-2222-4222-8222-222222222222'
