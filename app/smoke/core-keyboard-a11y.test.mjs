@@ -92,12 +92,17 @@ test('publish and edit expose every core selector to keyboard users', () => {
     'class="image-add" role="button"',
     ':aria-label="form.listingType === \'wanted\' ? t(\'publish.wantedTitlePlaceholder\') : t(\'publish.titlePlaceholder\')"',
     ':aria-label="form.listingType === \'wanted\' ? t(\'publish.budget\') : t(\'publish.price\')"',
-    ':aria-label="t(\'publish.location\')"',
+    '<PickupLocationField',
     'aria-controls="edit-category-options"',
     'id="edit-category-options"',
     'aria-controls="edit-condition-options"',
     'id="edit-condition-options"',
     ':aria-pressed="form.negotiable ? \'true\' : \'false\'"',
+  ])
+  expectSnippets('src/components/PickupLocationField.vue', [
+    ':aria-label="t(\'publish.location\')"',
+    ':aria-label="t(\'a11y.detectLocation\')"',
+    'role="status" aria-live="polite"',
   ])
 })
 

@@ -18,12 +18,11 @@ function styleBlock(source, selector, nextSelector) {
   return source.slice(start, end)
 }
 
-test('current-location controls preserve the mobile form gutter in create and edit flows', () => {
-  for (const source of [publishSource, editSource]) {
-    const locateButton = styleBlock(source, '.locate-btn {', '.locate-btn-icon')
-    assert.match(locateButton, /margin:\s*10px 16px 0;/)
-    assert.doesNotMatch(locateButton, /margin-top:\s*10px;/)
-  }
+test('current-location controls share a padded field in create and edit flows', async () => {
+  for (const source of [publishSource, editSource]) assert.match(source, /<PickupLocationField/)
+  const field = await readFile(new URL('src/components/PickupLocationField.vue', ROOT), 'utf8')
+  assert.match(field, /\.pickup-section \{ padding: 24px 20px;/)
+  assert.match(field, /\.locate-btn \{[^}]*width: 100%;/)
 })
 
 test('gallery pagination stays above the overlapping detail card', () => {

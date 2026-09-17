@@ -148,50 +148,19 @@
 
       <ListingCategoryFields v-model="form.details" :category="form.category" :listing-type="form.listingType" :disabled="submitting" :legacy-optional="legacyDetailsOptional" @focus="onFieldFocus" @blur="onFieldBlur" />
 
-      <view class="form-group row">
-        <text class="label">{{ t('publish.location') }}</text>
-        <input :disabled="submitting" v-model="form.location" :placeholder="t('publish.locationPlaceholder')" :aria-label="t('publish.location')" maxlength="80" class="form-input flex-input" @focus="onFieldFocus" @blur="onFieldBlur" />
-      </view>
-
-      <text class="location-guidance">{{ t('publish.locationHint') }}</text>
-      <text v-if="form.location" class="location-guidance" role="status">{{ t(streetVerification ? 'publish.locationChecked' : loadedCheckedLocation === form.location ? 'publish.locationPreviouslyChecked' : 'publish.locationManual') }}</text>
-
-      <scroll-view scroll-x class="spot-row">
-        <view
-          v-for="spot in CAMPUS_SPOTS"
-          :key="spot.id"
-          class="spot-chip"
-          :class="{ active: form.location === spotLabel(spot) }"
-          role="button" :aria-disabled="submitting ? 'true' : 'false'"
-          :aria-label="spotLabel(spot)"
-          :aria-pressed="form.location === spotLabel(spot) ? 'true' : 'false'"
-          @click="onSpotChipTap(spot)"
-        >
-          {{ spotLabel(spot) }}
-        </view>
-      </scroll-view>
-
-      <!-- #ifdef H5 -->
-      <!-- H5-only: on mp this button would need uni.getLocation, whose
-           console 接口申请 is category-gated (individual subjects are
-           effectively never approved) — so the mp build drops the button
-           (manual location input + spot chips remain) and the manifest
-           declares no location APIs at all, keeping that whole review
-           risk class off the table. -->
-      <view
-        class="locate-btn"
-        :class="{ 'locate-btn--detecting': detectingLoc }"
-        role="button" :aria-disabled="submitting ? 'true' : 'false'"
-        :aria-label="t('a11y.detectLocation')"
-        :aria-busy="detectingLoc ? 'true' : 'false'"
-        @click="!detectingLoc && onDetectLocation()"
-      >
-        <view v-if="detectingLoc" class="locate-btn-spinner"></view>
-        <image v-else class="locate-btn-icon" src="/static/locate.svg" alt="" mode="aspectFit" />
-        <text class="locate-btn-text">{{ detectingLoc ? t('publish.detectingLocation') : t('publish.useCurrentLocation') }}</text>
-      </view>
-      <OsmAttribution />
-      <!-- #endif -->
+      <PickupLocationField
+        v-model="form.location"
+        :disabled="submitting"
+        :detecting="detectingLoc"
+        :phase="locationPhase"
+        :verified="!!streetVerification || loadedCheckedLocation === form.location"
+        :previously-checked="!streetVerification && loadedCheckedLocation === form.location"
+        :detected="detectedLocationLabel === form.location && !!form.location"
+        :feedback="locationFeedback"
+        @detect="onDetectLocation"
+        @focus="onFieldFocus"
+        @blur="onFieldBlur"
+      />
 
       <view
         class="form-group row toggle-row"
@@ -222,6 +191,7 @@
     <PermissionDeniedModal
       v-if="editReady"
       :visible="permissionModalVisible"
+      return-focus-selector=".locate-btn"
       @close="permissionModalVisible = false"
     />
   </view>
@@ -240,7 +210,6 @@ import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { authoredLang } from '../../composables/i18n/format'
-import { useCampusSpots, type CampusSpot } from '../../composables/useCampusSpots'
 import { useLocation } from '../../composables/useLocation'
 import { useStreetVerification } from '../../composables/useStreetVerification'
 import { useItems, type UploadAccountToken } from '../../composables/useItems'
@@ -257,7 +226,7 @@ import UIcon from '../../components/UIcon.vue'
 import ListingPreview from '../../components/ListingPreview.vue'
 import ListingCategoryFields from '../../components/ListingCategoryFields.vue'
 import { emptyListingDetailForm, hasCategoryDetails, listingDetailsFromForm, listingDetailsError, listingDetailFormFromValue } from '../../utils/listingDetails'
-import OsmAttribution from '../../components/OsmAttribution.vue'
+import PickupLocationField from '../../components/PickupLocationField.vue'
 import {
   captureAccountRequest,
   isAccountRequestCurrent,
@@ -266,12 +235,8 @@ import {
 } from '../../composables/accountScope'
 
 const { t, lang } = useI18n()
-const { CAMPUS_SPOTS } = useCampusSpots()
 
-function spotLabel(spot: CampusSpot) {
-  return lang.value === 'zh' ? spot.zh : spot.en
-}
-const { detectLocation, detecting: detectingLoc } = useLocation()
+const { detectLocation, detecting: detectingLoc, phase: locationPhase } = useLocation()
 const streetVerification = useStreetVerification()
 const loadedCheckedLocation = ref('')
 function locationCheckToken() {
@@ -788,18 +753,28 @@ function removeImage(index: number) {
   imageDimensions.value.splice(index, 1)
 }
 
-watch(() => form.location, value => { if (value !== streetVerification.value?.location) streetVerification.value = null })
+const detectedLocationLabel = ref('')
+const locationFeedback = ref('')
+let locationEditRevision = 0
+watch(() => form.location, value => {
+  locationEditRevision++
+  if (value !== streetVerification.value?.location) streetVerification.value = null
+  if (value !== detectedLocationLabel.value) detectedLocationLabel.value = ''
+  locationFeedback.value = ''
+}, { flush: 'sync' })
 
 async function onDetectLocation() {
-  if (submitting.value) return
+  if (submitting.value || detectingLoc.value) return
+  const editRevision = locationEditRevision
   const locationAccountToken = editPageAccountToken
   if (
     !editReady.value
     || !locationAccountToken
     || !isAccountRequestCurrent(locationAccountToken)
   ) return
+  locationFeedback.value = ''
   const result = await detectLocation({ itemId: editId.value })
-  if (submitting.value) return
+  if (submitting.value || editRevision !== locationEditRevision) return
   if (
     !editReady.value
     || editPageAccountToken !== locationAccountToken
@@ -814,6 +789,7 @@ async function onDetectLocation() {
      * per handoff §11 A9 twin-surface lockstep rule.
      */
     if (result.reason === 'permission_denied') {
+      locationFeedback.value = t('publish.gpsPermissionDenied')
       permissionModalVisible.value = true
       return
     }
@@ -824,8 +800,9 @@ async function onDetectLocation() {
       geocode_failed: 'publish.gpsGeocodeFailed',
       unsupported: 'publish.gpsUnsupported',
     }
+    locationFeedback.value = t(reasonKey[result.reason] || 'publish.gpsUnknownError')
     uni.showToast({
-      title: t(reasonKey[result.reason] || 'publish.gpsUnknownError'),
+      title: locationFeedback.value,
       icon: 'none',
       duration: 2500,
     })
@@ -833,13 +810,9 @@ async function onDetectLocation() {
   }
   form.location = result.location
   streetVerification.value = result.verification || null
+  detectedLocationLabel.value = result.location
 }
 
-function onSpotChipTap(spot: CampusSpot) {
-  if (submitting.value) return
-  const label = spotLabel(spot)
-  form.location = label
-}
 
 async function onSubmit() {
   // Lock before auth readiness and the high-price confirmation modal so
@@ -1228,80 +1201,6 @@ async function onSubmit() {
 .cp-name { font-size: 13px; font-weight: 600; }
 .cp-hint { font-size: 10px; opacity: 0.7; line-height: 1.25; }
 .cond-pill.active .cp-hint { color: rgba(255,255,255,0.8); }
-
-/* ========== Location ========== */
-/* Gutter parity with pages/publish/index.vue — see the note there. */
-.spot-row {
-  white-space: nowrap;
-  // scroll-view is not covered by the global `view { box-sizing: border-box }`
-  // rule, so the leading gutter would otherwise add to 100% and make the rail
-  // 16px wider than the screen — an overhang an ancestor clips, taking the
-  // last chip's trailing gutter with it.
-  box-sizing: border-box;
-  padding: 0 0 8px 16px;
-  margin-top: 4px;
-}
-.spot-chip {
-  display: inline-block;
-  padding: 6px 12px;
-  margin-right: 8px;
-  &:last-child { margin-right: 16px; }
-  background: var(--bg-subtle);
-  color: var(--text-primary);
-  font-size: 13px;
-  border-radius: 14px;
-  cursor: pointer;
-  transition: background 0.15s;
-  &:active { background: var(--bg-inset); }
-  &.active { background: var(--accent-primary); color: var(--ink-inverse); }
-}
-.locate-btn {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  padding: 12px 14px;
-  /* Keep the edit flow visually identical to new-publish and off the
-     viewport edge on narrow Safari screens. */
-  margin: 10px 16px 0;
-  background: var(--bg-subtle);
-  border: 1px solid var(--border-strong, var(--bg-inset));
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-
-  &:active {
-    background: var(--bg-inset);
-  }
-
-  &--detecting {
-    pointer-events: none;
-    opacity: 0.75;
-  }
-}
-
-.locate-btn-icon {
-  width: 18px;
-  height: 18px;
-  display: block;
-  flex-shrink: 0;
-}
-
-.locate-btn-spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--bg-inset);
-  border-top-color: var(--text-secondary);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  flex-shrink: 0;
-}
-
-.locate-btn-text {
-  font-size: 14px;
-  color: var(--text-secondary);
-  line-height: 1;
-}
 
 @keyframes spin { to { transform: rotate(360deg); } }
 

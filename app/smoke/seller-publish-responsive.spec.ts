@@ -104,10 +104,10 @@ for (const kind of ['sell', 'wanted'] as const) test(`publish ${kind} from a cat
     await expect(page.locator('.image-tip')).toContainText('Add reference images')
     await expect(page.getByRole('button', { name: 'Flexible budget', exact: true })).toContainText('Discuss the price with the seller')
   }
-  // On leaving a prefilled form, explicitly discard the draft. Re-enter via
+  // An untouched category prefill is not a draft. Re-enter via
   // a different category to exercise uni-app's cached tab (no second onLoad).
   await page.locator('.tabbar').getByRole('button', { name: 'Home', exact: true }).click()
-  await page.getByText('Drop', { exact: true }).last().click()
+  await expect(page.getByText('Save', { exact: true })).toHaveCount(0)
   await expect(page.locator('.feed-publish')).toBeVisible()
   await page.locator('.cat-bar').getByRole('button', { name: 'Furniture', exact: true }).click()
   await page.locator('.feed-publish').click()

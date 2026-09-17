@@ -5,19 +5,22 @@ import { readFile } from 'node:fs/promises'
 const ROOT = new URL('../', import.meta.url)
 
 test('every listing flow that can invoke reverse geocoding shows linked OpenStreetMap attribution', async () => {
-  const [publish, edit, attribution, en, zh, location] = await Promise.all([
+  const [publish, edit, attribution, en, zh, location, field] = await Promise.all([
     readFile(new URL('src/pages/publish/index.vue', ROOT), 'utf8'),
     readFile(new URL('src/pages/publish/edit.vue', ROOT), 'utf8'),
     readFile(new URL('src/components/OsmAttribution.vue', ROOT), 'utf8'),
     readFile(new URL('src/composables/i18n/messages/en.ts', ROOT), 'utf8'),
     readFile(new URL('src/composables/i18n/messages/zh.ts', ROOT), 'utf8'),
     readFile(new URL('src/composables/useLocation.ts', ROOT), 'utf8'),
+    readFile(new URL('src/components/PickupLocationField.vue', ROOT), 'utf8'),
   ])
 
   for (const source of [publish, edit]) {
-    assert.match(source, /<OsmAttribution\s*\/>/)
-    assert.match(source, /import OsmAttribution from/)
+    assert.match(source, /<PickupLocationField/)
+    assert.match(source, /import PickupLocationField from/)
   }
+  assert.match(field, /<OsmAttribution\s*\/>/)
+  assert.match(field, /import OsmAttribution from/)
   assert.match(attribution, /publish\.osmAttribution/)
   assert.match(en, /'publish\.osmAttribution': '© OpenStreetMap contributors'/)
   assert.match(zh, /'publish\.osmAttribution': '© OpenStreetMap contributors'/)

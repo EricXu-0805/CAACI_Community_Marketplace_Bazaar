@@ -5,13 +5,11 @@
     <!-- #endif -->
     <AppSidebar current="publish" />
 
-    <!-- .page-header is display:none at >=768px, and display:none drops the
-         node from the accessibility tree — so the heading has to live outside
-         it or Mac/iPad get no heading at all. -->
+    <!-- One accessible page heading across desktop and mobile layouts. -->
     <text class="sr-only" role="heading" aria-level="1">{{ t(form.listingType === 'wanted' ? 'home.publishWanted' : 'publish.title') }}</text>
 
-    <!-- Mobile Header -->
-    <view v-if="publishReady" class="page-header u-glass u-glass--hair-b">
+    <!-- Responsive page header -->
+    <view v-if="publishReady" class="page-header">
       <text class="ph-title">{{ t(form.listingType === 'wanted' ? 'home.publishWanted' : 'publish.title') }}</text>
     </view>
 
@@ -50,6 +48,7 @@
       </view>
 
       <view class="image-section">
+        <text class="section-title">{{ t('publish.photosHeading') }}</text>
         <view class="image-list">
           <view v-for="(img, i) in imageList" :key="i" class="image-item">
             <image :src="img" alt="Photo" mode="aspectFill" class="preview-image" />
@@ -80,12 +79,14 @@
         <text class="upload-text">{{ t('publish.uploading') }} {{ uploadProgress }}%</text>
       </view>
 
-      <view class="form-group">
-        <input :disabled="submitting" v-model="form.title" :placeholder="form.listingType === 'wanted' ? t('publish.wantedTitlePlaceholder') : t('publish.titlePlaceholder')" :aria-label="form.listingType === 'wanted' ? t('publish.wantedTitlePlaceholder') : t('publish.titlePlaceholder')" maxlength="50" class="form-input title-input" @focus="onFieldFocus" @blur="onFieldBlur" />
+      <view class="form-group title-group">
+        <text class="field-label">{{ t('publish.titleLabel') }}</text>
+        <input :disabled="submitting" v-model="form.title" :placeholder="t(form.listingType === 'wanted' ? 'publish.wantedTitleExample' : 'publish.titleExample')" :aria-label="form.listingType === 'wanted' ? t('publish.wantedTitlePlaceholder') : t('publish.titlePlaceholder')" maxlength="50" class="form-input title-input" @focus="onFieldFocus" @blur="onFieldBlur" />
         <text class="char-count">{{ form.title.length }}/50</text>
       </view>
 
-      <view class="form-group">
+      <view class="form-group description-group">
+        <text class="field-label">{{ t('publish.descriptionLabel') }}</text>
         <textarea :disabled="submitting" v-model="form.description" :placeholder="t(form.listingType === 'wanted' ? 'publish.wantedDescPlaceholder' : 'publish.descPlaceholder')" :aria-label="t(form.listingType === 'wanted' ? 'publish.wantedDescPlaceholder' : 'publish.descPlaceholder')" maxlength="500" class="form-textarea" @focus="onFieldFocus" @blur="onFieldBlur" />
         <text class="field-guidance">{{ t('publish.guide.' + (form.listingType === 'wanted' ? 'wanted' : form.category || 'general')) }}</text>
         <text class="char-count">{{ form.description.length }}/500</text>
@@ -170,53 +171,18 @@
 
       <ListingCategoryFields v-model="form.details" :category="form.category" :listing-type="form.listingType" :disabled="submitting" @focus="onFieldFocus" @blur="onFieldBlur" />
 
-      <view class="form-group row">
-        <text class="label">{{ t('publish.location') }}</text>
-        <input :disabled="submitting" v-model="form.location" :placeholder="t('publish.locationPlaceholder')" :aria-label="t('publish.location')" maxlength="80" class="form-input flex-input" @focus="onFieldFocus" @blur="onFieldBlur" />
-      </view>
-
-      <text class="location-guidance">{{ t('publish.locationHint') }}</text>
-      <view v-if="form.location || locationFeedback" class="location-result" role="status" aria-live="polite">
-        <UIcon :name="detectedLocationLabel === form.location && form.location ? 'location-pin' : 'edit'" size="xs" />
-        <text>{{ locationFeedback || t(streetVerification ? 'publish.locationChecked' : detectedLocationLabel === form.location ? 'publish.locationDetected' : 'publish.locationManual') }}</text>
-      </view>
-
-      <scroll-view scroll-x class="spot-row">
-        <view
-          v-for="spot in CAMPUS_SPOTS"
-          :key="spot.id"
-          class="spot-chip"
-          :class="{ active: form.location === spotLabel(spot) }"
-          role="button" :aria-disabled="submitting ? 'true' : 'false'"
-          :aria-label="spotLabel(spot)"
-          :aria-pressed="form.location === spotLabel(spot) ? 'true' : 'false'"
-          @click="onSpotChipTap(spot)"
-        >
-          {{ spotLabel(spot) }}
-        </view>
-      </scroll-view>
-
-      <!-- #ifdef H5 -->
-      <!-- H5-only: on mp this button would need uni.getLocation, whose
-           console 接口申请 is category-gated (individual subjects are
-           effectively never approved) — so the mp build drops the button
-           (manual location input + spot chips remain) and the manifest
-           declares no location APIs at all, keeping that whole review
-           risk class off the table. -->
-      <view
-        class="locate-btn"
-        :class="{ 'locate-btn--detecting': detectingLoc }"
-        role="button" :aria-disabled="submitting ? 'true' : 'false'"
-        :aria-label="t('a11y.detectLocation')"
-        :aria-busy="detectingLoc ? 'true' : 'false'"
-        @click="!detectingLoc && onDetectLocation()"
-      >
-        <view v-if="detectingLoc" class="locate-btn-spinner"></view>
-        <image v-else class="locate-btn-icon" src="/static/locate.svg" alt="" mode="aspectFit" />
-        <text class="locate-btn-text">{{ detectingLoc ? t('publish.detectingLocation') : t('publish.useCurrentLocation') }}</text>
-      </view>
-      <OsmAttribution />
-      <!-- #endif -->
+      <PickupLocationField
+        v-model="form.location"
+        :disabled="submitting"
+        :detecting="detectingLoc"
+        :phase="locationPhase"
+        :verified="!!streetVerification"
+        :detected="detectedLocationLabel === form.location && !!form.location"
+        :feedback="locationFeedback"
+        @detect="onDetectLocation"
+        @focus="onFieldFocus"
+        @blur="onFieldBlur"
+      />
 
       <view
         class="form-group row toggle-row"
@@ -244,6 +210,7 @@
     <PermissionDeniedModal
       v-if="publishReady"
       :visible="permissionModalVisible"
+      return-focus-selector=".locate-btn"
       @close="permissionModalVisible = false"
     />
   </view>
@@ -264,7 +231,6 @@ import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { authoredLang } from '../../composables/i18n/format'
-import { useCampusSpots, type CampusSpot } from '../../composables/useCampusSpots'
 import { useLocation } from '../../composables/useLocation'
 import { useStreetVerification } from '../../composables/useStreetVerification'
 import { useItems, type UploadAccountToken } from '../../composables/useItems'
@@ -284,7 +250,7 @@ import ListingCategoryFields from '../../components/ListingCategoryFields.vue'
 import { emptyListingDetailForm, hasCategoryDetails, listingDetailsFromForm, listingDetailsError, listingDetailFormFromValue } from '../../utils/listingDetails'
 import { publishDraftDocumentId, restorableDraftImages } from '../../utils/publishDraft'
 import { createClientMessageId as createPublishId } from '../../api/clientMessageId'
-import OsmAttribution from '../../components/OsmAttribution.vue'
+import PickupLocationField from '../../components/PickupLocationField.vue'
 import UButton from '../../components/UButton.vue'
 import {
   captureAccountRequest,
@@ -299,12 +265,8 @@ import {
 } from '../../api/accountLocalPrivacy'
 
 const { t, lang } = useI18n()
-const { CAMPUS_SPOTS } = useCampusSpots()
 
-function spotLabel(spot: CampusSpot) {
-  return lang.value === 'zh' ? spot.zh : spot.en
-}
-const { detectLocation, detecting: detectingLoc } = useLocation()
+const { detectLocation, detecting: detectingLoc, phase: locationPhase } = useLocation()
 const streetVerification = useStreetVerification()
 function locationCheckToken() {
   const receipt = streetVerification.value
@@ -420,7 +382,9 @@ const form = reactive({
 const permissionModalVisible = ref(false)
 const detectedLocationLabel = ref('')
 const locationFeedback = ref('')
+let locationEditRevision = 0
 watch(() => form.location, value => {
+  locationEditRevision++
   if (value !== streetVerification.value?.location) streetVerification.value = null
   if (value !== detectedLocationLabel.value) detectedLocationLabel.value = ''
   locationFeedback.value = ''
@@ -466,24 +430,30 @@ const MAX_IMAGES_PUBLISH = 9
 const DRAFT_KEY = 'publish_draft_v1'
 const draftStorageUnavailable = ref(false)
 let routePublishIntent: PublishNavigationIntent | null = null
+// Visit-only fallback for blocked/quota-limited storage. Never shared across accounts.
+let visitDraft: PublishDraft | null | undefined
+let visitDraftIsTemporary = false
 onLoad((options) => { routePublishIntent = parsePublishNavigationIntent(options || {}) })
 function applyPublishContext(intent: PublishNavigationIntent | null) {
   if (!intent) return
   resetForm()
   form.listingType = intent.listingType
   form.category = intent.category
+  initialContext.category = intent.category
+  initialContext.listingType = intent.listingType
 }
 
+const initialContext = reactive({ category: '', listingType: 'sell' })
 const isDirty = computed(() => {
   return (
     form.title.trim().length > 0 ||
     form.description.trim().length > 0 ||
     form.price.trim().length > 0 ||
-    form.category !== '' ||
+    form.category !== initialContext.category ||
     form.condition !== '' ||
     form.location.trim().length > 0 ||
     form.negotiable !== false ||
-    form.listingType !== 'sell' ||
+    form.listingType !== initialContext.listingType ||
     Object.values(form.details).some(Boolean) ||
     imageList.value.length > 0
   )
@@ -491,14 +461,18 @@ const isDirty = computed(() => {
 
 function saveDraft(images = imageList.value) {
   if (!publishPageAccountToken || !isAccountRequestCurrent(publishPageAccountToken)) return false
-  return writeAccountPrivateStorage(DRAFT_KEY, {
-    form: { ...form },
+  const snapshot: PublishDraft = {
+    form: { ...form, details: { ...form.details } },
     images: [...images],
     itemId: publishItemId,
     outcomeUncertain: publishOutcomeUncertain.value,
     documentId: publishDraftDocumentId,
     savedAt: Date.now(),
-  })
+  }
+  visitDraft = snapshot
+  const durable = writeAccountPrivateStorage(DRAFT_KEY, snapshot)
+  visitDraftIsTemporary = !durable
+  return durable
 }
 
 function checkpointDraft() {
@@ -516,12 +490,15 @@ document.addEventListener('visibilitychange', checkpointHiddenDraft)
 // #endif
 
 function clearDraft() {
+  visitDraft = null
+  visitDraftIsTemporary = false
   removeAccountPrivateStorage(DRAFT_KEY)
 }
 
 type PublishDraft = { form: Record<string, any>; images: string[]; savedAt: number; documentId?: string; itemId?: string; outcomeUncertain?: boolean }
 
 function loadDraft(): PublishDraft | null {
+  if (visitDraft !== undefined) return visitDraft
   try {
     const stored = readAccountPrivateStorage<unknown>(DRAFT_KEY, null)
     if (!stored.allowed) return null
@@ -532,6 +509,7 @@ function loadDraft(): PublishDraft | null {
 }
 
 function applyDraft(draft: PublishDraft) {
+  draftStorageUnavailable.value = visitDraftIsTemporary
   publishItemId = typeof draft.itemId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(draft.itemId) ? draft.itemId : createPublishId()
   publishOutcomeUncertain.value = draft.outcomeUncertain === true
   Object.assign(form, draft.form)
@@ -560,6 +538,8 @@ function applyDraft(draft: PublishDraft) {
  * guard cleanly.
  */
 function resetForm() {
+  initialContext.category = ''
+  initialContext.listingType = 'sell'
   streetVerification.value = null
   draftStorageUnavailable.value = false
   publishItemId = createPublishId()
@@ -602,6 +582,8 @@ function confirmSuspectedAd(): Promise<boolean> {
 }
 
 function promptSaveDraft(onDecided: () => void) {
+  if (draftPromptOpen) return
+  draftPromptOpen = true
   const promptShowVersion = publishShowVersion
   const promptAccountToken = publishPageAccountToken
   uni.showModal({
@@ -611,6 +593,7 @@ function promptSaveDraft(onDecided: () => void) {
     cancelText: t('publish.draftDiscard'),
     confirmColor: DIALOG_INK,
     success: (r) => {
+      draftPromptOpen = false
       if (
         promptShowVersion !== publishShowVersion
         || !promptAccountToken
@@ -620,13 +603,12 @@ function promptSaveDraft(onDecided: () => void) {
         return
       }
       if (r.confirm) {
-        if (!saveDraft()) {
-          pendingTabUrl = ''
-          uni.showToast({ title: t('publish.draftSaveFailed'), icon: 'none' })
-          return
-        }
+        const durable = saveDraft()
+        // A valid account can keep the draft for this visit even when the
+        // browser rejects storage. Never trap the user in the save dialog.
+        if (!visitDraft) { pendingTabUrl = ''; return }
         resetForm()
-        uni.showToast({ title: t('publish.draftSaved'), icon: 'none' })
+        uni.showToast({ title: t(durable ? 'publish.draftSaved' : 'publish.draftSavedVisit'), icon: 'none', duration: durable ? 1500 : 5000 })
       } else if (r.cancel) {
         clearDraft()
         resetForm()
@@ -644,7 +626,7 @@ function promptSaveDraft(onDecided: () => void) {
      * is in a degraded state). Don't auto-navigate; clear the pending
      * URL so the next tab tap starts fresh instead of silently jumping.
      */
-    fail: () => { pendingTabUrl = '' },
+    fail: () => { draftPromptOpen = false; pendingTabUrl = '' },
   })
 }
 
@@ -653,6 +635,7 @@ function promptSaveDraft(onDecided: () => void) {
    interceptor to this page's lifetime so other pages don't inherit it. */
 let switchTabInterceptor: { invoke: (args: any) => boolean } | null = null
 let pendingTabUrl = ''
+let draftPromptOpen = false
 const removeScopedInterceptor = uni.removeInterceptor as unknown as (
   method: string,
   interceptor: { invoke: (args: any) => boolean },
@@ -665,6 +648,7 @@ function installTabGuard() {
       /* Staying on the publish tab itself shouldn't trigger the prompt. */
       if (args.url && args.url.includes('/pages/publish/index')) return true
       if (!isDirty.value) return true
+      if (draftPromptOpen) return false
       pendingTabUrl = args.url
       promptSaveDraft(() => {
         if (pendingTabUrl) {
@@ -696,6 +680,9 @@ let publishOperationEpoch = 0
 let publishPageMounted = true
 
 function resetPublishMemoryState() {
+  visitDraft = undefined
+  visitDraftIsTemporary = false
+  draftPromptOpen = false
   publishShowVersion += 1
   publishOperationEpoch += 1
   publishReady.value = false
@@ -759,7 +746,9 @@ async function preparePublishPage() {
     // persistent A -> B cleanup; this page only clears mounted refs here.
     resetForm()
   }
-  publishPageAccountToken = nextAccountToken
+  // Keep this token stable across a permission prompt/background resume when
+  // the authenticated account epoch has not changed.
+  if (!publishPageAccountToken || !isAccountRequestCurrent(publishPageAccountToken)) publishPageAccountToken = nextAccountToken
 
   publishReady.value = true
   const intent = consumePublishNavigationIntent({ userId: getActiveAccountId(), identityGeneration: captureAccountIdentityGeneration() }) || routePublishIntent
@@ -780,7 +769,7 @@ async function preparePublishPage() {
           || !isAccountRequestCurrent(draftAccountToken)
         ) return
         if (r.confirm) { if (draft && !isDirty.value) applyDraft(draft) }
-        else if (r.cancel) { clearDraft(); applyPublishContext(intent) }
+        else if (r.cancel) { clearDraft(); resetForm(); applyPublishContext(intent) }
       },
     })
   }
@@ -801,6 +790,9 @@ function destroyPublishPage() {
   window.removeEventListener('pagehide', checkpointDraft)
   document.removeEventListener('visibilitychange', checkpointHiddenDraft)
   // #endif
+  visitDraft = undefined
+  visitDraftIsTemporary = false
+  draftPromptOpen = false
   publishPageMounted = false
   publishVisible = false
   // Preserve a deliberately saved local draft, but synchronously erase the
@@ -899,12 +891,13 @@ function removeImage(index: number) {
 }
 
 async function onDetectLocation() {
-  if (submitting.value) return
+  if (submitting.value || detectingLoc.value) return
+  const editRevision = locationEditRevision
   const locationAccountToken = publishPageAccountToken
   if (!locationAccountToken || !isAccountRequestCurrent(locationAccountToken)) return
   locationFeedback.value = ''
   const result = await detectLocation({ itemId: publishItemId })
-  if (submitting.value) return
+  if (submitting.value || editRevision !== locationEditRevision) return
   if (
     !publishReady.value
     || publishPageAccountToken !== locationAccountToken
@@ -944,12 +937,6 @@ async function onDetectLocation() {
   detectedLocationLabel.value = result.location
 }
 
-function onSpotChipTap(spot: CampusSpot) {
-  if (submitting.value) return
-  const label = spotLabel(spot)
-  form.location = label
-  detectedLocationLabel.value = ''
-}
 
 async function onSubmit() {
   // Acquire before the first await (including auth readiness and the high-price
@@ -1237,8 +1224,6 @@ async function onSubmit() {
 </script>
 
 <style lang="scss" scoped>
-.location-result { margin: 0 16px 12px; padding: 10px 12px; display: flex; align-items: flex-start; gap: 8px; border-radius: 10px; background: var(--bg-elev-2); color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
-.location-result .u-icon { flex-shrink: 0; margin-top: 2px; }
 /* #ifdef H5 */
 .form [aria-disabled="true"] { cursor: wait; opacity: 0.65; }
 /* #endif */
@@ -1267,7 +1252,7 @@ async function onSubmit() {
 .page-header {
   padding: 11px 16px;
   padding-top: calc(11px + var(--mp-status-bar, env(safe-area-inset-top, 0px)));
-  /* fill + blur + bottom hairline come from .u-glass + .u-glass--hair-b */
+  background: var(--surface); border-bottom: 0.5px solid var(--line-hair);
   position: sticky; top: 0; z-index: 50;
 }
 .ph-title { font-size: 17px; font-weight: 700; color: var(--text-primary); }
@@ -1284,12 +1269,12 @@ async function onSubmit() {
 /* #endif */
 
 /* #ifdef H5 */
-@media (min-width: 768px) { .page-header { display: none; } }
+@media (min-width: 768px) { .page-header { position: static; max-width: 880px; margin: 24px auto 0; padding: 0; background: none; border: 0; } .ph-title { font-size: 26px; letter-spacing: -.4px; } }
 /* #endif */
 
 /* ========== Form ========== */
 .form {
-  animation: u-fade-in var(--dur-2, 220ms) var(--ease-warm, ease-out); background: var(--bg-elev-1); }
+  animation: publish-enter 180ms ease-out; background: var(--bg-elev-1); border-radius: 18px; overflow: hidden; margin: 12px; }
 /* 出售 / 求购 segmented toggle at the top of the form. */
 .listing-type-seg {
   display: flex; gap: 8px; padding: 14px 16px 0;
@@ -1305,7 +1290,12 @@ async function onSubmit() {
     .lt-seg-label { color: var(--brand-on-soft); }
   }
 }
-.image-section { padding: 16px; }
+.image-section { padding: 20px; }
+.section-title { display: block; margin-bottom: 14px; font-size: 16px; font-weight: 650; color: var(--ink); }
+.field-label { display: block; margin-bottom: 10px; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.title-group .form-input, .description-group .form-textarea { padding: 12px; box-sizing: border-box; border-radius: 10px; background: var(--bg-subtle); }
+.title-group .form-input { min-height: 48px; }
+.description-group .form-textarea { height: 130px; }
 .image-list { display: flex; flex-wrap: wrap; gap: 9px; }
 .image-item { position: relative; width: 96px; height: 96px; }
 .preview-image { width: 100%; height: 100%; border-radius: 9px; object-fit: cover; }
@@ -1417,86 +1407,6 @@ async function onSubmit() {
 .cp-hint { font-size: 10px; opacity: 0.7; line-height: 1.25; }
 .cond-pill.active .cp-hint { color: rgba(255,255,255,0.8); }
 
-/* ========== Location ========== */
-/*
- * The chip rail is a scroll-view, so it sits outside .form-group and lost
- * that row's 16px gutter — the first chip ran flush into the screen edge.
- * Padding-left restores the gutter; the trailing gutter comes from the last
- * chip's own margin, because a scroll container's padding-right is not
- * guaranteed to survive overflow in every engine.
- */
-.spot-row {
-  white-space: nowrap;
-  // scroll-view is not covered by the global `view { box-sizing: border-box }`
-  // rule, so the leading gutter would otherwise add to 100% and make the rail
-  // 16px wider than the screen — an overhang an ancestor clips, taking the
-  // last chip's trailing gutter with it.
-  box-sizing: border-box;
-  padding: 0 0 8px 16px;
-  margin-top: 4px;
-}
-.spot-chip {
-  display: inline-block;
-  padding: 6px 12px;
-  margin-right: 8px;
-  &:last-child { margin-right: 16px; }
-  background: var(--bg-subtle);
-  color: var(--text-primary);
-  font-size: 13px;
-  border-radius: 14px;
-  cursor: pointer;
-  transition: background 0.15s;
-  &:active { background: var(--bg-inset); }
-  &.active { background: var(--accent-primary); color: var(--ink-inverse); }
-}
-.locate-btn {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  padding: 12px 14px;
-  /* Align this secondary action with the 16px form gutter. A full-bleed
-     outlined control looked accidentally clipped on narrow Safari screens. */
-  margin: 10px 16px 0;
-  background: var(--bg-subtle);
-  border: 1px solid var(--border-strong, var(--bg-inset));
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-
-  &:active {
-    background: var(--bg-inset);
-  }
-
-  &--detecting {
-    pointer-events: none;
-    opacity: 0.75;
-  }
-}
-
-.locate-btn-icon {
-  width: 18px;
-  height: 18px;
-  display: block;
-  flex-shrink: 0;
-}
-
-.locate-btn-spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--bg-inset);
-  border-top-color: var(--text-secondary);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  flex-shrink: 0;
-}
-
-.locate-btn-text {
-  font-size: 14px;
-  color: var(--text-secondary);
-  line-height: 1;
-}
-
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ========== Toggle ========== */
@@ -1535,12 +1445,14 @@ async function onSubmit() {
 @media (min-width: 768px) {
   /* Center the fixed submit bar under the 720px form column: span the
      area right of the rail, then margin:auto caps it at the form width. */
-  .submit-bar { bottom: 0; left: var(--sidebar-w); right: 0; width: auto; max-width: 720px; margin-left: auto; margin-right: auto; transform: none; }
+  .submit-bar { bottom: 0; left: var(--sidebar-w); right: 0; width: auto; max-width: 880px; margin-left: auto; margin-right: auto; transform: none; }
   /* The base .page rule centers a 480px column for phone; on desktop the
      .has-sidebar rail already reserves the left edge via padding-left, so
      let the page fill the remaining column and center the form instead. */
   .page { max-width: none; margin: 0; }
-  .form { max-width: 720px; margin-left: auto; margin-right: auto; }
+  .form { max-width: 880px; margin-top: 16px; margin-bottom: 24px; margin-left: auto; margin-right: auto; }
 }
 /* #endif */
+@keyframes publish-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .form { animation: none; } }
 </style>

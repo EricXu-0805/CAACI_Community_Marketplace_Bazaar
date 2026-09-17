@@ -2537,7 +2537,7 @@ function scrollToBottom() {
   padding: 2px;
 }
 .emoji-btn {
-  width: 38px; height: 38px; display: flex;
+  width: 44px; height: 44px; display: flex;
   align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
   background: var(--bg-subtle); border-radius: 50%;
   &:active { background: var(--bg-inset); }
@@ -2631,6 +2631,12 @@ function scrollToBottom() {
      inherit, so overriding on this class cascades in. */
   word-break: normal; overflow-wrap: break-word;
 }
+/* #ifdef H5 */
+/* uni's wrapper inherits the outer 44px minimum, then adds 22px padding.
+   Its content minimum must be one line, so an empty composer is exactly 44px. */
+.msg-input :deep(.uni-textarea-wrapper) { min-height: 22px; max-height: 84px; overflow-y: auto; }
+/* #endif */
+
 .send-btn {
   height: 44px; padding: 0 14px; background: var(--accent-primary);
   border-radius: 20px;

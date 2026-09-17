@@ -38,6 +38,7 @@ for(const [name,width,height] of [['phone',390,844],['ipad',820,1180],['mac',192
   await page.goto('/#/pages/publish/index?listingType=wanted&category=furniture')
   await page.getByRole('button',{name:'Detect current location',exact:true}).click()
   await expect(page.locator('.location-result, .location-guidance[role=status]')).toContainText('Street area checked')
+  if(process.env.FEEDBACK_VISUAL_DIR){await mkdir(process.env.FEEDBACK_VISUAL_DIR,{recursive:true});await expect(page.getByRole('textbox',{name:'Location',exact:true})).toHaveValue('Green Street, Champaign');await page.screenshot({path:`${process.env.FEEDBACK_VISUAL_DIR}/${name}-location.png`});await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:`${process.env.FEEDBACK_VISUAL_DIR}/${name}-publish.png`})}
   expect(geo).toHaveLength(1);expect(geo[0].method).toBe('POST');expect(geo[0].url).not.toContain('lat=')
   expect(geo[0].data).toMatchObject({lat:'40.110',lon:'-88.230',accuracy:30})
   await page.getByRole('textbox',{name:'Location',exact:true}).fill('Urbana pickup')
@@ -81,4 +82,30 @@ test('a coarse device fix autofills without claiming street verification',async(
  await expect(page.locator('.location-result, .location-guidance[role=status]')).toContainText('Detected')
  await expect(page.locator('.location-result, .location-guidance[role=status]')).not.toContainText('Street area checked')
  expect(geo[0].method).toBe('GET')
+})
+
+for(const mode of ['pending-permission','denied','timeout','unavailable'] as const) test(`location ${mode}: native request starts directly and shows its outcome`,async({page})=>{
+ await setup(page)
+ await page.addInitScript(mode=>{
+  (window as any).__nativeGeoCalls=0
+  Object.defineProperty(navigator,'permissions',{configurable:true,value:{query:()=>new Promise(()=>{})}})
+  Object.defineProperty(navigator,'geolocation',{configurable:true,value:{getCurrentPosition:(success:any,fail:any)=>{(window as any).__nativeGeoCalls++;(window as any).__completeGeo=success;if(mode!=='pending-permission')fail({code:mode==='denied'?1:mode==='timeout'?3:2})}}})
+ },mode)
+ await page.goto('/#/pages/publish/index')
+ await page.getByRole('button',{name:'Detect current location',exact:true}).click()
+ expect(await page.evaluate(()=>(window as any).__nativeGeoCalls)).toBe(1)
+ if(mode==='pending-permission'){
+  await expect(page.locator('.location-result')).toContainText('Waiting for your browser')
+  const field=page.getByRole('textbox',{name:'Location',exact:true})
+  await field.fill('Keep my own pickup area')
+  await page.evaluate(()=>(window as any).__completeGeo({coords:{latitude:40.11,longitude:-88.23,accuracy:800},timestamp:Date.now()}))
+  await expect(page.locator('.locate-btn')).toBeEnabled()
+  await expect(field).toHaveValue('Keep my own pickup area')
+  await expect(page.locator('.pickup-badge')).toHaveText('Manual entry')
+ }else{
+  await expect(page.locator('.locate-btn')).toBeEnabled()
+  await expect(page.locator('.location-result')).not.toBeEmpty()
+  await expect(page.locator('.pickup-badge.checked')).toHaveCount(0)
+  if(mode==='denied')await expect(page.getByRole('dialog')).toBeVisible()
+ }
 })

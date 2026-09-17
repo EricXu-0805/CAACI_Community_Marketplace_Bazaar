@@ -59,6 +59,7 @@ type Stop = {
   ariaHidden: boolean
   focusPaint: string
   blurPaint: string
+  visibleCaret: boolean
 }
 
 // Properties a focus indicator can plausibly use. Comparing the focused and
@@ -130,6 +131,7 @@ async function describeFocused(page: Page) {
       opacity: Number(opacity.toFixed(3)),
       ariaHidden: hidden,
       focusPaint, blurPaint,
+      visibleCaret: /^(INPUT|TEXTAREA)$/.test(el.tagName) && !['transparent', 'rgba(0, 0, 0, 0)'].includes(getComputedStyle(el).caretColor),
       signature: `${el.tagName}.${el.getAttribute('class') || ''}#${el.id || ''}`
         + `@${Math.round(rect.x)},${Math.round(rect.y)}`,
     }
@@ -188,7 +190,7 @@ test.describe('keyboard journey', () => {
       const hiddenFromReader = stops.filter(s => s.ariaHidden)
       // WCAG 2.4.7. A scroll container is a browser-supplied stop with nothing
       // to indicate; every authored control must show where focus is.
-      const noFocusRing = stops.filter(s => s.focusPaint === s.blurPaint && !isScrollContainer(s))
+      const noFocusRing = stops.filter(s => s.focusPaint === s.blurPaint && !s.visibleCaret && !isScrollContainer(s))
 
       const show = (list: Stop[]) => list
         .map(s => `#${s.index} <${s.tag} class="${s.cls}"> role=${s.role || '-'} `
@@ -207,58 +209,22 @@ test.describe('keyboard journey', () => {
   }
 })
 
-/*
- * Comparing computed style focused against unfocused proves a rule matched.
- * It does not prove anything was painted. uni sizes its inner <input> to fill
- * `uni-input`, which is `overflow: hidden`, and its inner <textarea> to fill
- * `.uni-textarea-wrapper`, which clips on both axes — so an outward focus ring
- * computes correctly and lands entirely in the clipped region. The paint check
- * in the journey above reported those fields as covered while a screenshot
- * showed bare background.
- *
- * So compare pixels. Text-entry elements always match :focus-visible, even on
- * programmatic focus, so this does not have to tab its way there.
- */
-test.describe('text fields paint a focus ring', () => {
+// Text entry uses its caret as the focus cue. Eric explicitly requested no
+// red frame; buttons and links still have a keyboard focus indicator above.
+test.describe('text fields use a visible caret without an outline', () => {
   for (const route of ['pages/search/index', 'pages/login/index', 'pages/plaza/index']) {
-    test(`${route} — the ring is visible, not just computed`, async ({ page }) => {
-      await page.addInitScript(() => {
-        localStorage.setItem('welcomed', '1')
-        localStorage.setItem('lang', 'en')
-      })
-      await page.goto(`/#/${route}`, { waitUntil: 'networkidle' })
-      await page.waitForTimeout(500)
-
-      const fields = page.locator('.uni-input-input, .uni-textarea-textarea')
-      const count = await fields.count()
-      expect(count, `no text field on ${route} to check`).toBeGreaterThan(0)
-
-      const unpainted: string[] = []
-      for (let i = 0; i < count; i++) {
-        const field = fields.nth(i)
-        // Compound editors intentionally paint focus around their rounded
-        // surface. Cropping only the native input misses that visible ring.
-        const box = await field.evaluate(el => {
-          const surface = el.closest('.search-field, .msg-input') || el
-          const rect = surface.getBoundingClientRect()
-          return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
-        })
-        if (!box || box.width < 2 || box.height < 2) continue
-        const clip = {
-          x: Math.max(0, box.x - 6), y: Math.max(0, box.y - 6),
-          width: box.width + 12, height: box.height + 12,
-        }
-        await field.evaluate(el => (el as HTMLElement).blur())
-        const before = await page.screenshot({ clip })
-        await field.evaluate(el => (el as HTMLElement).focus())
-        const after = await page.screenshot({ clip })
-        await field.evaluate(el => (el as HTMLElement).blur())
-        if (before.equals(after)) {
-          unpainted.push(`${await field.getAttribute('class')} at ${Math.round(box.x)},${Math.round(box.y)}`)
-        }
+    test(route, async ({ page }) => {
+      await page.addInitScript(() => { localStorage.setItem('welcomed', '1'); localStorage.setItem('lang', 'en') })
+      await page.goto(`/#/${route}`)
+      const fields = page.locator('input:visible:not([type="checkbox"]), textarea:visible')
+      await expect(fields.first()).toBeVisible()
+      for (const field of await fields.all()) {
+        await field.focus()
+        await expect(field).toBeFocused()
+        const paint = await field.evaluate(el => ({ outline: getComputedStyle(el).outlineStyle, caret: getComputedStyle(el).caretColor }))
+        expect(paint.outline).toBe('none')
+        expect(['transparent', 'rgba(0, 0, 0, 0)']).not.toContain(paint.caret)
       }
-      expect(unpainted, `focused text fields that paint no ring on ${route}:\n${unpainted.join('\n')}`)
-        .toEqual([])
     })
   }
 })

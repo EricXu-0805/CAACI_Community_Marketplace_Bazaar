@@ -28,7 +28,7 @@ const removeTransition=onAccountTransition(()=>{version++;url.value='';loading.v
 async function load(preservePhoto=false){
   const token=captureActiveAccountRequest(), request=++version
   if(!preservePhoto)url.value=''
-  if(!token || !valid.value || props.message._pending) return
+  if(!token || !valid.value || props.message._pending) { loading.value=false; return }
   loading.value=true
   try{
     const {data,error}=await supabase.storage.from(CHAT_MEDIA_BUCKET).createSignedUrl(props.message.content,CHAT_MEDIA_URL_TTL)
@@ -45,7 +45,16 @@ async function preview(){
   await load(true)
   if(url.value)uni.previewImage({current:url.value,urls:[url.value]})
 }
-watch(()=>[props.message.content,props.message._pending],()=>void load(),{immediate:true})
+// Polling replaces message objects even when the media identity is unchanged.
+// Independent primitive watch sources keep an already loaded image/video mounted.
+watch([
+  () => props.message.id,
+  () => props.message.sender_id,
+  () => props.message.conversation_id,
+  () => props.message.message_type,
+  () => props.message.content,
+  () => !!props.message._pending,
+], () => void load(), { immediate: true })
 onUnmounted(()=>{alive=false;version++;url.value='';removeTransition()})
 </script>
 <style scoped>

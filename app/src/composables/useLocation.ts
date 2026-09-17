@@ -30,6 +30,7 @@ export type LocationResult =
 
 const cachedLocation = ref('')
 const detecting = ref(false)
+const phase = ref<'idle' | 'locating' | 'address'>('idle')
 const LOCATION_CACHE_TTL_MS = 5 * 60 * 1000
 const LOCATION_FIX_TIMEOUT_MS = 15_000
 const GEOCODE_REQUEST_TIMEOUT_MS = 8_000
@@ -50,6 +51,7 @@ onAccountTransition(() => {
   cachedLocation.value = ''
   cachedLocationAt = 0
   detecting.value = false
+  phase.value = 'idle'
 })
 
 /*
@@ -102,14 +104,21 @@ export function useLocation() {
     cachedLocationAt = 0
 
     detecting.value = true
+    phase.value = 'locating'
     try {
+      // Invoke the browser API in the click task. An awaited permission
+      // preflight can lose user activation and cannot grant permission itself.
+      let browserGeo: Geolocation | undefined
+      // #ifdef H5
+      browserGeo = typeof navigator !== 'undefined' ? navigator.geolocation : undefined
+      // #endif
       /*
        * Guard against runtimes where uni.getLocation is unavailable (rare
        * — happens in some embedded webviews and on quickapp). Surface as
        * 'unsupported' so the caller can show a distinct message instead
        * of a generic "location failed" toast.
        */
-      if (typeof uni === 'undefined' || typeof uni.getLocation !== 'function') {
+      if (!browserGeo && (typeof uni === 'undefined' || typeof uni.getLocation !== 'function')) {
         return { ok: false, reason: 'unsupported' }
       }
 
@@ -133,7 +142,7 @@ export function useLocation() {
               }>
             }
           | undefined
-        if (permsApi?.query) {
+        if (!browserGeo && permsApi?.query) {
           // Permission introspection is optional. Some embedded browsers never
           // settle query(); don't leave the location button stuck on that step.
           const status = await new Promise<{ state: string } | null>((resolve) => {
@@ -162,8 +171,8 @@ export function useLocation() {
         try {
           // H5 verification asks for a fresh fix, rather than a cached map position.
           // #ifdef H5
-          if (options && typeof navigator !== 'undefined' && navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(position => {
+          if (browserGeo) {
+            browserGeo.getCurrentPosition(position => {
               if (settled) return
               settled = true; clearTimeout(timer)
               resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude,
@@ -203,6 +212,7 @@ export function useLocation() {
         || !Number.isFinite(res.longitude) || Math.abs(res.longitude) > 180) {
         return { ok: false, reason: 'position_unavailable' }
       }
+      phase.value = 'address'
       const resolved = await reverseGeocode(res.latitude, res.longitude, options ? {
         itemId: options.itemId, accuracy: res.accuracy,
         fixAt: res.fixAt,
@@ -234,7 +244,7 @@ export function useLocation() {
     } catch (err) {
       return { ok: false, reason: classifyLocationError(err) }
     } finally {
-      if (detectionId === locationDetectionId) detecting.value = false
+      if (detectionId === locationDetectionId) { detecting.value = false; phase.value = 'idle' }
     }
   }
 
@@ -340,5 +350,5 @@ export function useLocation() {
     }
   }
 
-  return { cachedLocation, detecting, detectLocation }
+  return { cachedLocation, detecting, phase, detectLocation }
 }
