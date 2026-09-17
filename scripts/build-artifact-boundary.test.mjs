@@ -71,6 +71,12 @@ test('mini-program validation refuses a domain-check bypass', async () => {
   await assert.rejects(verifyBuildArtifact(root), /domain validation enabled/)
 })
 
+test('mini-program validation reserves compiler headroom below the platform upload limit', async () => {
+  const root = await miniArtifact()
+  await writeFile(path.join(root, 'large.bin'), Buffer.alloc(Math.floor(1.7 * 1024 * 1024)))
+  await assert.rejects(verifyBuildArtifact(root), /exceeds 1.6 MiB source budget/)
+})
+
 test('mini-program validation catches renamed or absent page entries', async () => {
   const root = await miniArtifact()
   await writeFile(path.join(root, 'app.json'), JSON.stringify({ pages: ['pages/missing/index'] }))

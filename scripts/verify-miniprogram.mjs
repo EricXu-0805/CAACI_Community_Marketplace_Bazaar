@@ -3,6 +3,10 @@ import path from 'node:path'
 import { verifyMpRuntime } from './verify-mp-runtime.mjs'
 
 const PACKAGE_LIMIT = 2 * 1024 * 1024
+// The emitted source is smaller than WeChat's final compiler/upload package.
+// A 1.82 MiB local package was rejected as 2137 KB on 2026-09-17. Reserve
+// compiler headroom here; only a real upload can certify the final size.
+const SOURCE_BUDGET = Math.floor(1.6 * 1024 * 1024)
 
 export async function verifyMiniProgram(root, files) {
   const app = JSON.parse(await readFile(path.join(root, 'app.json'), 'utf8'))
@@ -26,6 +30,7 @@ export async function verifyMiniProgram(root, files) {
   }
   for (const [pkg, bytes] of sizes) {
     if (bytes > PACKAGE_LIMIT) throw new Error(`build_artifact_invalid: mini-program ${pkg} exceeds 2 MiB (${bytes} bytes)`)
+    if (bytes > SOURCE_BUDGET) throw new Error(`build_artifact_invalid: mini-program ${pkg} exceeds 1.6 MiB source budget; leave room for WeChat compilation (${bytes} bytes)`)
   }
   const pages = [...(app.pages || []), ...subpackages.flatMap(pkg => pkg.pages.map(page => `${pkg.root}/${page}`))]
   if (!pages.length) throw new Error('build_artifact_invalid: no mini-program pages')
