@@ -20,7 +20,7 @@
         <view class="link-card">
           <text v-if="checking" role="status">{{ t('wechat.checking') }}</text>
           <template v-else-if="!available">
-            <text class="link-copy">{{ t('wechat.disabled') }}</text>
+            <text class="link-copy" role="status">{{ t(capabilitiesUnavailable ? 'wechat.connectionUnavailable' : 'wechat.disabled') }}</text>
             <button class="link-secondary" @click="refresh">{{ t('wechat.retry') }}</button>
           </template>
           <template v-else>
@@ -71,13 +71,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
-import { onShow, onHide } from '@dcloudio/uni-app'
+import { onLoad, onShow, onHide } from '@dcloudio/uni-app'
 import AppSidebar from '../../components/AppSidebar.vue'
 import UIcon from '../../components/UIcon.vue'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
 import { useSupabase } from '../../composables/useSupabase'
-import { onAccountTransition, getActiveAccountId } from '../../composables/accountScope'
+import { onAccountTransition, getActiveAccountId, captureAccountIdentityGeneration } from '../../composables/accountScope'
+import { authorizeLoginReturnIntent, peekAuthorizedLoginReturnIntent, readLoginIntentNonce } from '../../api/navigationIntent'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 import { navigateBackOr } from '../../utils'
 import { freshWechatCode, wechatAccountRequest, wechatCapabilities, wechatErrorKey, type WechatLinkPreview } from '../../api/wechatAccountLink'
@@ -87,12 +88,14 @@ const { isLoggedIn, requireAuth, signOut, signInWithWeChat } = useAuth()
 const { supabase } = useSupabase()
 const mpChrome = mpChromeVars()
 const available = ref(false), checking = ref(true), linked = ref(false), busy = ref(false)
+const capabilitiesUnavailable = ref(false)
 const issuedCode = ref(''), enteredCode = ref(''), expiresAt = ref(0), now = ref(Date.now()), errorKey = ref('')
 const preview = ref<WechatLinkPreview | null>(null)
 const normalizedCode = computed(() => enteredCode.value.replace(/[ -]/g, '').toUpperCase())
 const formattedCode = computed(() => `${issuedCode.value.slice(0, 5)} ${issuedCode.value.slice(5)}`)
 const seconds = computed(() => Math.max(0, Math.ceil((expiresAt.value - now.value) / 1000)))
 let epoch = 0, visible = false, clock: ReturnType<typeof setInterval> | null = null
+let authAttempt = 0, loginIntentNonce: string | null = null
 function clearPrivateState() {
   epoch += 1
   issuedCode.value = ''; enteredCode.value = ''; preview.value = null; expiresAt.value = 0
@@ -102,7 +105,12 @@ const stop = onAccountTransition(() => { clearPrivateState(); linked.value = fal
 function isCurrent(request: number) { return visible && request === epoch }
 async function websiteToken() {
   const userId = getActiveAccountId()
-  const { data, error } = await supabase.auth.getSession()
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const sessionRead = supabase.auth.getSession()
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('session_unavailable')), 10_000)
+  })
+  const { data, error } = await Promise.race([sessionRead, deadline]).finally(() => clearTimeout(timer))
   if (error || !userId || data.session?.user.id !== userId) throw new Error('reauth_required')
   return data.session.access_token
 }
@@ -112,6 +120,7 @@ async function refresh() {
   const capabilities = await wechatCapabilities()
   if (!isCurrent(request)) return
   available.value = capabilities.account_link
+  capabilitiesUnavailable.value = capabilities.unavailable
   // #ifdef H5
   if (available.value && isLoggedIn.value) {
     try {
@@ -154,24 +163,32 @@ async function previewAccount() {
 }
 async function confirmAccount() {
   if (busy.value || !preview.value || seconds.value <= 0) return
-  busy.value = true; errorKey.value = ''
-  const request = epoch
-  const { error } = await signInWithWeChat({linkCode:normalizedCode.value,confirmation:preview.value.confirmation,isCurrent:()=>isCurrent(request)})
-  // Successful auth intentionally clears the private state via its account transition.
-  if (!visible) return
-  busy.value = false
-  if (error) { preview.value = null; errorKey.value = wechatErrorKey(error) }
-  else uni.reLaunch({url:'/pages/index/index'})
+  await finishWechatSignIn({linkCode:normalizedCode.value,confirmation:preview.value.confirmation})
 }
 async function retryWechatLogin() {
   if (busy.value) return
-  busy.value = true
-  const request = epoch
-  const { error } = await signInWithWeChat({isCurrent:()=>isCurrent(request)})
-  if (!visible) return
+  await finishWechatSignIn()
+}
+async function finishWechatSignIn(fields: {linkCode?: string; confirmation?: string} = {}) {
+  busy.value = true; errorKey.value = ''
+  const attempt = ++authAttempt, request = epoch
+  const identity = captureAccountIdentityGeneration()
+  const { data, error } = await signInWithWeChat({...fields,isCurrent:()=>attempt === authAttempt && isCurrent(request)})
+  // A successful sign-in clears secrets through the account transition, so
+  // use a separate page-lifetime attempt plus the exact resulting identity.
+  if (!visible || attempt !== authAttempt) return
+  if (error) {
+    if (!isCurrent(request)) return
+    busy.value = false; preview.value = null; errorKey.value = wechatErrorKey(error)
+    return
+  }
+  const userId = getActiveAccountId(), generation = captureAccountIdentityGeneration()
+  if (!data?.user?.id || userId !== data.user.id || generation !== identity + 1) return
   busy.value = false
-  if (error) errorKey.value = wechatErrorKey(error)
-  else uni.reLaunch({url:'/pages/index/index'})
+  const owner = {userId,identityGeneration:generation}
+  if (loginIntentNonce) authorizeLoginReturnIntent(loginIntentNonce, owner)
+  const target = loginIntentNonce ? peekAuthorizedLoginReturnIntent(loginIntentNonce, owner) : null
+  uni.reLaunch({url:target || '/pages/index/index'})
 }
 async function reauthenticate() {
   if (busy.value) return
@@ -185,6 +202,7 @@ function copyCode() {
   uni.setClipboardData({data:issuedCode.value,success:()=>uni.showToast({title:t('wechat.copied'),icon:'none'})})
 }
 function goBack() { if (!busy.value) navigateBackOr(() => uni.reLaunch({url:'/pages/settings/index'})) }
+onLoad(options => { loginIntentNonce = readLoginIntentNonce(options?.intent) })
 onShow(() => {
   visible = true; now.value = Date.now(); void refresh()
   if (clock) clearInterval(clock)
@@ -193,8 +211,8 @@ onShow(() => {
     if (expiresAt.value && seconds.value <= 0) { clearPrivateState(); errorKey.value = 'wechat.link_expired' }
   }, 1000)
 })
-onHide(() => { visible = false; clearPrivateState(); if (clock) clearInterval(clock); clock = null })
-onUnmounted(() => { visible = false; clearPrivateState(); stop(); if (clock) clearInterval(clock) })
+onHide(() => { visible = false; authAttempt += 1; clearPrivateState(); if (clock) clearInterval(clock); clock = null })
+onUnmounted(() => { visible = false; authAttempt += 1; clearPrivateState(); stop(); if (clock) clearInterval(clock) })
 </script>
 
 <style scoped>
