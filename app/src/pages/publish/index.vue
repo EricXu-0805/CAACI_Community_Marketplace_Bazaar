@@ -180,6 +180,7 @@
         :detected="detectedLocationLabel === form.location && !!form.location"
         :feedback="locationFeedback"
         @detect="onDetectLocation"
+        @cancel="cancelDetection"
         @focus="onFieldFocus"
         @blur="onFieldBlur"
       />
@@ -266,7 +267,7 @@ import {
 
 const { t, lang } = useI18n()
 
-const { detectLocation, detecting: detectingLoc, phase: locationPhase } = useLocation()
+const { detectLocation, cancelDetection, detecting: detectingLoc, phase: locationPhase } = useLocation()
 const streetVerification = useStreetVerification()
 function locationCheckToken() {
   const receipt = streetVerification.value
@@ -384,6 +385,7 @@ const detectedLocationLabel = ref('')
 const locationFeedback = ref('')
 let locationEditRevision = 0
 watch(() => form.location, value => {
+  cancelDetection()
   locationEditRevision++
   if (value !== streetVerification.value?.location) streetVerification.value = null
   if (value !== detectedLocationLabel.value) detectedLocationLabel.value = ''
@@ -509,6 +511,7 @@ function loadDraft(): PublishDraft | null {
 }
 
 function applyDraft(draft: PublishDraft) {
+  invalidateDraftDecision()
   draftStorageUnavailable.value = visitDraftIsTemporary
   publishItemId = typeof draft.itemId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(draft.itemId) ? draft.itemId : createPublishId()
   publishOutcomeUncertain.value = draft.outcomeUncertain === true
@@ -530,7 +533,7 @@ function applyDraft(draft: PublishDraft) {
  * Reset all form state to defaults — used after the user picks "Save"
  * or "Discard" in the draft prompt. Critical: without this reset the
  * form stays dirty after the prompt closes, which means the recursive
- * uni.switchTab() inside promptSaveDraft's onDecided callback would
+ * uni.switchTab() inside promptSaveDraft would
  * trigger the SAME tab guard, the SAME prompt, and uni.showModal's
  * single-instance lock would swallow the second modal silently — user
  * sees "stuck on publish, second tap does nothing". Resetting first
@@ -538,6 +541,8 @@ function applyDraft(draft: PublishDraft) {
  * guard cleanly.
  */
 function resetForm() {
+  invalidateDraftDecision()
+  cancelDetection()
   initialContext.category = ''
   initialContext.listingType = 'sell'
   streetVerification.value = null
@@ -581,10 +586,22 @@ function confirmSuspectedAd(): Promise<boolean> {
   })
 }
 
-function promptSaveDraft(onDecided: () => void) {
+function isCurrentPublishRoute() {
+  const pages = getCurrentPages()
+  return pages[pages.length - 1]?.route === 'pages/publish/index'
+}
+
+function invalidateDraftDecision() {
+  draftDecisionEpoch += 1
+  draftPromptOpen = false
+}
+
+function promptSaveDraft(url: string) {
   if (draftPromptOpen) return
   draftPromptOpen = true
-  const promptShowVersion = publishShowVersion
+  // A show version changes on background/resume; this decision belongs to
+  // the current form and page visit, with its own captured destination.
+  const promptEpoch = ++draftDecisionEpoch
   const promptAccountToken = publishPageAccountToken
   uni.showModal({
     title: t('publish.draftPromptTitle'),
@@ -593,20 +610,22 @@ function promptSaveDraft(onDecided: () => void) {
     cancelText: t('publish.draftDiscard'),
     confirmColor: DIALOG_INK,
     success: (r) => {
+      // A late callback must not unlock or consume a newer dialog.
+      if (promptEpoch !== draftDecisionEpoch) return
       draftPromptOpen = false
       if (
-        promptShowVersion !== publishShowVersion
+        !publishPageMounted
+        || !publishVisible
+        || !isCurrentPublishRoute()
         || !promptAccountToken
+        || publishPageAccountToken !== promptAccountToken
         || !isAccountRequestCurrent(promptAccountToken)
-      ) {
-        pendingTabUrl = ''
-        return
-      }
+      ) return
       if (r.confirm) {
         const durable = saveDraft()
         // A valid account can keep the draft for this visit even when the
         // browser rejects storage. Never trap the user in the save dialog.
-        if (!visitDraft) { pendingTabUrl = ''; return }
+        if (!visitDraft) return
         resetForm()
         uni.showToast({ title: t(durable ? 'publish.draftSaved' : 'publish.draftSavedVisit'), icon: 'none', duration: durable ? 1500 : 5000 })
       } else if (r.cancel) {
@@ -616,17 +635,16 @@ function promptSaveDraft(onDecided: () => void) {
         // Modal dismissed without a clear confirm/cancel (rare on H5
         // but possible on mp). Don't navigate — leave the form alone
         // and let the user try again. Equivalent to fail() below.
-        pendingTabUrl = ''
         return
       }
-      onDecided()
+      uni.switchTab({ url })
     },
     /*
      * Modal failed to show at all (very rare — usually means uni runtime
-     * is in a degraded state). Don't auto-navigate; clear the pending
-     * URL so the next tab tap starts fresh instead of silently jumping.
+     * is in a degraded state). Only release this dialog's lock; never
+     * unlock a newer prompt or navigate without a decision.
      */
-    fail: () => { draftPromptOpen = false; pendingTabUrl = '' },
+    fail: () => { if (promptEpoch === draftDecisionEpoch) draftPromptOpen = false },
   })
 }
 
@@ -634,8 +652,8 @@ function promptSaveDraft(onDecided: () => void) {
    official escape hatch is uni.addInterceptor('switchTab'). Scope the
    interceptor to this page's lifetime so other pages don't inherit it. */
 let switchTabInterceptor: { invoke: (args: any) => boolean } | null = null
-let pendingTabUrl = ''
 let draftPromptOpen = false
+let draftDecisionEpoch = 0
 const removeScopedInterceptor = uni.removeInterceptor as unknown as (
   method: string,
   interceptor: { invoke: (args: any) => boolean },
@@ -649,14 +667,7 @@ function installTabGuard() {
       if (args.url && args.url.includes('/pages/publish/index')) return true
       if (!isDirty.value) return true
       if (draftPromptOpen) return false
-      pendingTabUrl = args.url
-      promptSaveDraft(() => {
-        if (pendingTabUrl) {
-          const url = pendingTabUrl
-          pendingTabUrl = ''
-          uni.switchTab({ url })
-        }
-      })
+      promptSaveDraft(args.url)
       return false
     },
   }
@@ -678,6 +689,11 @@ let publishPageAccountToken: AccountRequestToken | null = null
 let publishVisible = false
 let publishOperationEpoch = 0
 let publishPageMounted = true
+// App hide precedes the current page's hide on both H5 and mini-programs.
+// Consume it once so a later route departure, even while hidden, invalidates.
+let publishBackgroundHide = false
+function markPublishBackgroundHide() { publishBackgroundHide = publishVisible }
+uni.onAppHide(markPublishBackgroundHide)
 
 function resetPublishMemoryState() {
   visitDraft = undefined
@@ -691,7 +707,6 @@ function resetPublishMemoryState() {
   submitting.value = false
   uploadProgress.value = 0
   permissionModalVisible.value = false
-  pendingTabUrl = ''
   if (typingT) {
     clearTimeout(typingT)
     typingT = null
@@ -786,6 +801,7 @@ function leavePublishPage() {
 function destroyPublishPage() {
   if (!publishPageMounted) return
   checkpointDraft()
+  uni.offAppHide(markPublishBackgroundHide)
   // #ifdef H5
   window.removeEventListener('pagehide', checkpointDraft)
   document.removeEventListener('visibilitychange', checkpointHiddenDraft)
@@ -805,7 +821,6 @@ function destroyPublishPage() {
   submitting.value = false
   uploadProgress.value = 0
   permissionModalVisible.value = false
-  pendingTabUrl = ''
   if (typingT) {
     clearTimeout(typingT)
     typingT = null
@@ -818,12 +833,15 @@ function destroyPublishPage() {
 
 onShow(() => {
   if (!publishPageMounted) return
+  publishBackgroundHide = false
   publishVisible = true
   void preparePublishPage()
 })
 
 onHide(() => {
   checkpointDraft()
+  if (!publishBackgroundHide) invalidateDraftDecision()
+  publishBackgroundHide = false
   publishVisible = false
   leavePublishPage()
 })
@@ -904,6 +922,7 @@ async function onDetectLocation() {
     || !isAccountRequestCurrent(locationAccountToken)
   ) return
   if (!result.ok) {
+    if (result.reason === 'cancelled') return
     console.warn('[publish] location detect failed')
     /*
      * Phase 1b dispatch: permission_denied → modal (teach the

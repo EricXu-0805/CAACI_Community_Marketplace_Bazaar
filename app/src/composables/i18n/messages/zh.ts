@@ -364,6 +364,7 @@ const zh: Record<string, string> = {
   'publish.manualAreaBadge': "手动填写",
   'publish.findingStreet': "正在查找街道…",
   'publish.locationWaiting': "正在等待浏览器或设备提供位置…",
+  'publish.cancelLocation': '取消定位',
   'publish.locationPermissionHint': "如果你还没选择过，浏览器会询问是否允许使用位置。选择“允许”后即可查找街道。",
   'publish.locationManualPlaceholder': "也可以填写街道或大致取货区域",
   'publish.pickupPrivacy': "公开展示大致街道即可，门牌或房间号请在聊天中私下沟通。",

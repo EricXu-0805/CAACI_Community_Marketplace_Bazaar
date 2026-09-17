@@ -900,6 +900,7 @@ function chooseNearby() {
         const result = await detectLocation()
         if (epoch !== homeAccountEpoch || !homeVisible) return
         if (!result.ok) {
+          if (result.reason === 'cancelled') return
           if (result.reason === 'permission_denied') nearbyPermissionVisible.value = true
           else uni.showToast({ title: t(result.reason === 'timeout' ? 'publish.gpsTimeout' : 'publish.gpsUnavailable'), icon: 'none' })
           return

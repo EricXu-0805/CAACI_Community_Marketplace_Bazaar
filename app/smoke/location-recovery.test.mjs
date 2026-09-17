@@ -4,11 +4,11 @@ import { readFileSync } from 'node:fs'
 import ts from 'typescript'
 
 let fixtureId = 0
-async function locationFixture(t, uni, permissions) {
+async function locationFixture(t, uni, permissions, geolocation) {
   const previousUni = Object.getOwnPropertyDescriptor(globalThis, 'uni')
   const previousNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
   Object.defineProperty(globalThis, 'uni', { configurable: true, writable: true, value: uni })
-  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: permissions ? { permissions } : {} })
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { permissions, geolocation } })
   t.after(() => {
     for (const [key, descriptor] of [['uni', previousUni], ['navigator', previousNavigator]]) {
       if (descriptor) Object.defineProperty(globalThis, key, descriptor)
@@ -18,6 +18,7 @@ async function locationFixture(t, uni, permissions) {
   const input = readFileSync(new URL('../src/composables/useLocation.ts', import.meta.url), 'utf8')
     .replace("import { ref } from 'vue'", 'const ref = value => ({ value })')
     .replace("import { BASE_URL } from '../config/runtime'", "const BASE_URL = 'https://app.test'")
+    .replace("import('./useSupabase')", "Promise.resolve({ useSupabase: () => ({ supabase: { auth: { getSession: () => uni.testSession() } } }) })")
     .replace("import { onAccountTransition } from './accountScope'", 'const onAccountTransition = () => {}')
   const output = ts.transpileModule(input, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText
   const module = await import(`data:text/javascript;base64,${Buffer.from(`${output}\n// fixture ${++fixtureId}`).toString('base64')}`)
@@ -101,3 +102,84 @@ for (const coordinates of [[NaN, 0], [0, Infinity], [91, 0], [0, -181]]) {
     assert.equal(requests, 0)
   })
 }
+
+
+test('native permission can complete after twenty seconds without a premature app timeout', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  let accept
+  const location = await locationFixture(t, {
+    request(options) { options.success({ statusCode: 200, data: { address: { road: 'Green Street' } } }) },
+  }, undefined, { getCurrentPosition(success) { accept = success } })
+  const pending = location.detectLocation()
+  t.mock.timers.tick(20_000)
+  await flush()
+  assert.equal(location.detecting.value, true, 'still awaiting the native permission decision')
+  accept({ coords: { latitude: 40.11, longitude: -88.23, accuracy: 20 }, timestamp: Date.now() })
+  assert.deepEqual(await pending, { ok: true, location: 'Green Street' })
+})
+
+test('cancel stops a pending device fix and never exports its late coordinates', async t => {
+  let accept, requests = 0
+  const location = await locationFixture(t, {
+    request() { requests += 1 },
+  }, undefined, { getCurrentPosition(success) { accept = success } })
+  const pending = location.detectLocation()
+  location.cancelDetection()
+  assert.equal(location.detecting.value, false)
+  accept({ coords: { latitude: 40.11, longitude: -88.23, accuracy: 20 }, timestamp: Date.now() })
+  assert.deepEqual(await pending, { ok: false, reason: 'cancelled' })
+  assert.equal(requests, 0)
+  assert.equal(location.cachedLocation.value, '')
+})
+
+
+test('a stalled session lookup falls back to unverified autofill and ignores the late session', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  let finishSession
+  const requests = []
+  const location = await locationFixture(t, {
+    testSession() { return new Promise(resolve => { finishSession = resolve }) },
+    request(options) { requests.push(options); options.success({ statusCode: 200, data: { address: { road: 'Green Street' } } }) },
+  }, undefined, { getCurrentPosition(success) { success({ coords: { latitude: 40.11, longitude: -88.23, accuracy: 20 }, timestamp: Date.now() }) } })
+  const pending = location.detectLocation({ itemId: '11111111-1111-4111-8111-111111111111' })
+  await flush()
+  assert.equal(location.phase.value, 'address')
+  t.mock.timers.tick(3000)
+  assert.deepEqual(await pending, { ok: true, location: 'Green Street' })
+  assert.equal(requests.length, 1)
+  assert.equal(requests[0].method, 'GET')
+  assert.equal(requests[0].header.Authorization, undefined)
+  finishSession({ data: { session: { access_token: 'late-token' } } })
+  await flush()
+  assert.equal(requests.length, 1)
+})
+
+test('cancelling address lookup aborts it and permits a new lookup without stale loading', async t => {
+  const requests = []
+  let aborted = 0
+  const location = await locationFixture(t, {
+    getLocation: fix,
+    request(options) { requests.push(options); return { abort() { aborted += 1 } } },
+  })
+  const pending = location.detectLocation()
+  await flush()
+  location.cancelDetection()
+  assert.deepEqual(await pending, { ok: false, reason: 'cancelled' })
+  assert.equal(aborted, 1)
+  const retry = location.detectLocation()
+  await flush()
+  requests[0].success({statusCode:200, data:{address:{road:'Old Street'}}})
+  assert.equal(location.detecting.value, true)
+  requests[1].success({statusCode:200, data:{address:{road:'New Street'}}})
+  assert.deepEqual(await retry, {ok:true, location:'New Street'})
+})
+
+
+test('an unresponsive native prompt releases loading at the separate safety deadline', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const location = await locationFixture(t, {}, undefined, { getCurrentPosition() {} })
+  const pending = location.detectLocation()
+  t.mock.timers.tick(60_000)
+  assert.deepEqual(await pending, { ok: false, reason: 'timeout' })
+  assert.equal(location.detecting.value, false)
+})
