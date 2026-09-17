@@ -49,7 +49,7 @@
             :aria-label="t('a11y.translate')"
             @click.stop="toggleTranslate"
           >
-            <text v-if="!translatePending" class="translate-btn-label">{{ translated ? 'A文' : '文A' }}</text>
+            <text v-if="!translatePending" class="translate-btn-label">{{ t(displayContent !== post.content ? 'detail.showOriginal' : 'detail.showTranslation') }}</text>
             <text v-else class="translate-btn-label">···</text>
           </view>
         </view>
@@ -137,7 +137,7 @@
             class="cs-item u-rise"
             role="group"
             tabindex="0"
-            :aria-label="thread.parent.content"
+            :aria-label="localize(thread.parent.content_i18n, thread.parent.content)"
             aria-keyshortcuts="Shift+F10"
             @keydown="onCommentKeyboardMenu($event, thread.parent)"
             @touchstart="commentLongPress.onTouchstart(thread.parent)"
@@ -158,7 +158,7 @@
                 <text class="cs-name">{{ thread.parent.profile?.nickname || t('app.user') }}</text>
                 <text class="cs-time">{{ formatTime(thread.parent.created_at) }}</text>
               </view>
-              <text class="cs-content">{{ thread.parent.content }}</text>
+              <text class="cs-content">{{ localize(thread.parent.content_i18n, thread.parent.content) }}</text>
               <view class="cs-actions">
                 <view class="cs-like-btn hit-target" role="button" :aria-label="thread.parent.liked_by_me ? t('a11y.unlike') : t('a11y.like')" :aria-pressed="thread.parent.liked_by_me ? 'true' : 'false'" @click.stop="onToggleCommentLike(thread.parent)">
                   <image :src="thread.parent.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
@@ -176,7 +176,7 @@
               class="cs-item cs-item-child"
               role="group"
               tabindex="0"
-              :aria-label="child.content"
+              :aria-label="localize(child.content_i18n, child.content)"
               aria-keyshortcuts="Shift+F10"
               @keydown="onCommentKeyboardMenu($event, child)"
               @touchstart="commentLongPress.onTouchstart(child)"
@@ -197,7 +197,7 @@
                   <text class="cs-name">{{ child.profile?.nickname || t('app.user') }}</text>
                   <text class="cs-time">{{ formatTime(child.created_at) }}</text>
                 </view>
-                <text class="cs-content">{{ child.content }}</text>
+                <text class="cs-content">{{ localize(child.content_i18n, child.content) }}</text>
                 <view class="cs-actions">
                   <view class="cs-like-btn hit-target" role="button" :aria-label="child.liked_by_me ? t('a11y.unlike') : t('a11y.like')" :aria-pressed="child.liked_by_me ? 'true' : 'false'" @click.stop="onToggleCommentLike(child)">
                     <image :src="child.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
@@ -358,6 +358,8 @@ function resetPostAccountState() {
   replyTo.value = null
   submitting.value = false
   translated.value = false
+  originalShown.value = false
+  translationEpoch += 1
   translatedContent.value = ''
   if (post.value) post.value.liked_by_me = false
   comments.value = comments.value.map(comment => ({ ...comment, liked_by_me: false }))
@@ -432,6 +434,8 @@ function onImgLoad(e: any, idx: number) {
    OPENAI_API_KEY isn't set on the edge function. */
 const { translate: translateText, getCached, pending: translatePending } = useTranslate()
 const translated = ref(false)
+const originalShown = ref(false)
+let translationEpoch = 0
 const translatedContent = ref('')
 
 /*
@@ -443,39 +447,47 @@ const translatedContent = ref('')
  */
 const displayContent = computed(() => {
   if (!post.value) return ''
+  if (originalShown.value) return post.value.content
   if (translated.value && translatedContent.value) return translatedContent.value
   return localize(post.value.content_i18n, post.value.content)
 })
 
 async function ensureTranslation() {
-  if (!post.value || !post.value.content) return
+  const source = post.value
+  if (!source?.content) return
   const target = lang.value as 'en' | 'zh'
-  const cached = getCached(post.value.content, target)
-  translatedContent.value = cached || quickTranslate(post.value.content, target)
+  const epoch = translationEpoch
+  const loadEpoch = postLoadEpoch
+  const cached = getCached(source.content, target)
+  translatedContent.value = cached || quickTranslate(source.content, target)
   if (cached) return
-  const t2 = await translateText(post.value.content, target)
-  if (!post.value) return
-  if (t2) translatedContent.value = t2
+  const result = await translateText(source.content, target)
+  if (pageMounted && epoch === translationEpoch && loadEpoch === postLoadEpoch
+    && lang.value === target && post.value?.id === source.id && post.value.content === source.content && result) {
+    translatedContent.value = result
+  }
 }
 
 async function toggleTranslate() {
-  // Turning it back off is local, so it stays free. Turning it ON needs
-  // /api/translate, which answers 401 without a session — and the old code
-  // flipped the icon first and swallowed that, so a signed-out reader saw the
-  // control switch to its "translated" state over unchanged foreign text.
-  // Save, Report and Chat on this same screen all route to login instead.
-  if (translated.value) {
-    translated.value = false
+  if (!post.value) return
+  if (displayContent.value !== post.value.content) {
+    originalShown.value = true
     return
   }
+  originalShown.value = false
+  if (displayContent.value !== post.value.content) return
+  const epoch = translationEpoch
   await awaitAuthReady()
-  if (!requireAuth()) return
+  if (epoch !== translationEpoch || !requireAuth()) return
   translated.value = true
   await ensureTranslation()
 }
 
-watch(lang, async () => {
-  if (translated.value && post.value) await ensureTranslation()
+watch(lang, () => {
+  translationEpoch += 1
+  originalShown.value = false
+  translated.value = false
+  translatedContent.value = ''
 })
 
 onLoad((options) => {
@@ -914,20 +926,19 @@ async function onSubmitComment() {
   .badge-pinned-label { font-size: 10px; font-weight: 600; color: var(--warning-text); letter-spacing: 0.02em; }
 }
 
-.content-wrap { position: relative; padding-right: 44px; }
+.content-wrap { display: flex; flex-direction: column; align-items: flex-start; }
 .content {
   font-size: 15px; color: var(--text-primary); line-height: 1.55;
   white-space: pre-wrap; word-break: break-word; display: block;
 }
 .translate-btn {
-  position: absolute; top: 0; right: 0;
-  min-width: 36px; height: 24px; border-radius: 12px;
-  background: var(--bg-subtle); padding: 0 8px;
+  min-width: 80px; min-height: 44px; border-radius: 12px;
+  background: var(--bg-subtle); padding: 0 12px; margin-top: 8px;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
-  .translate-btn-label { font-size: 11px; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.3px; }
+  .translate-btn-label { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
   &:active { background: var(--bg-inset); }
-  &.loading { opacity: 0.7; pointer-events: none; }
+  &.loading { opacity: 0.7; pointer-events: none; padding: 0 12px; }
 }
 
 .images { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }

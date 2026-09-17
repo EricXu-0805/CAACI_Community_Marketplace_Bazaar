@@ -64,7 +64,7 @@ let discoveryOffset = 0
 const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, location, is_illini_verified, avg_rating, rating_count, status_text, status_emoji'
 const LIST_ITEM_FIELDS =
   'id, user_id, title, title_i18n, description_i18n, source_lang, price, category, condition, listing_details, status, listing_type, location, location_verified, images, image_dimensions, view_count, favorite_count, negotiable, created_at'
-const DETAIL_ITEM_FIELDS = `${LIST_ITEM_FIELDS}, description, updated_at`
+const DETAIL_ITEM_FIELDS = `${LIST_ITEM_FIELDS}, description, updated_at, location_checked_at`
 
 const VALID_STATUSES: ItemStatus[] = ['active', 'reserved', 'sold', 'deleted']
 const MAX_FILE_SIZE = 5 * 1024 * 1024
@@ -86,6 +86,7 @@ export interface UploadBatchResult {
 }
 
 type ItemMutationOptions = {
+  locationCheckToken?: string
   expectedUpdatedAt?: string
   /** Required by publish/edit whenever images came from an upload batch. */
   accountToken?: UploadAccountToken
@@ -515,7 +516,7 @@ export function useItems() {
     source_lang?: string | null
     negotiable?: boolean
     listing_type?: 'sell' | 'wanted'
-  }, options?: Pick<ItemMutationOptions, 'accountToken' | 'confirmSuspectedAd'> & { itemId?: string; retryCreate?: boolean }) {
+  }, options?: Pick<ItemMutationOptions, 'accountToken' | 'confirmSuspectedAd' | 'locationCheckToken'> & { itemId?: string; retryCreate?: boolean }) {
     const entryUserId = getActiveAccountId()
     const accountToken = options?.accountToken
       || (entryUserId ? captureAccountRequest(entryUserId) : null)
@@ -611,6 +612,7 @@ export function useItems() {
         negotiable: input.negotiable ?? false,
         listing_details: input.listing_details ?? null,
       }
+      if (options?.locationCheckToken) payload.location_check_token = options.locationCheckToken
       if (itemId) payload.id = itemId
       if (input.image_dimensions && input.image_dimensions.length) {
         payload.image_dimensions = input.image_dimensions
@@ -760,7 +762,7 @@ export function useItems() {
 
     let updateQuery = supabase
       .from('items')
-      .update(updates)
+      .update({ ...updates, ...(options?.locationCheckToken ? { location_check_token: options.locationCheckToken } : {}) })
       .eq('id', id)
       .eq('user_id', session.user.id)
 

@@ -359,3 +359,13 @@ test('captureException never forwards provider messages or arbitrary context', a
     assert.equal(serialized.includes(secret), false, `capture path leaked ${secret}`)
   }
 })
+
+test('empty provider codes retain a safe HTTP status without revealing the provider body', async () => {
+  const harness = await loadSentryHarness()
+  try {
+    harness.mod.captureException({code:'',status:503,message:'PRIVATE_PROVIDER_BODY',details:'private token and account'}, {tags:{source:'loadMyFavorites'}})
+    harness.mod.captureException({code:'',status:0,message:'PRIVATE_NETWORK_URL'}, {tags:{source:'fetchProfile-signed_in'}})
+    assert.deepEqual(harness.captures.map(c=>c.context.tags.error_code),['503','0'])
+    assert.ok(!JSON.stringify(harness.captures).includes('PRIVATE'))
+  } finally { harness.cleanup() }
+})

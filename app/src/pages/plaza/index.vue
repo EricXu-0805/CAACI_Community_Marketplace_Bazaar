@@ -200,7 +200,7 @@
             </view>
 
             <view class="post-content-wrap">
-              <text class="post-content">{{ translations[post.id] ? translations[post.id] : post.content }}</text>
+              <text class="post-content">{{ displayPostContent(post) }}</text>
               <view
                 v-if="post.content && post.content.trim().length > 0"
                 :class="['pc-translate', 'hit-target', { loading: translatingId === post.id }]"
@@ -208,7 +208,7 @@
                 :aria-label="t('a11y.translate')"
                 @click.stop="togglePostTranslate(post)"
               >
-                <text v-if="translatingId !== post.id" class="pc-translate-label">{{ translations[post.id] ? 'A文' : '文A' }}</text>
+                <text v-if="translatingId !== post.id" class="pc-translate-label">{{ t(displayPostContent(post) !== post.content ? 'detail.showOriginal' : 'detail.showTranslation') }}</text>
                 <text v-else class="pc-translate-label">···</text>
               </view>
             </view>
@@ -355,7 +355,7 @@
           class="cs-item u-rise"
           role="group"
           tabindex="0"
-          :aria-label="thread.parent.content"
+          :aria-label="localize(thread.parent.content_i18n, thread.parent.content)"
           aria-keyshortcuts="Shift+F10"
           @keydown="onCommentKeyboardMenu($event, thread.parent)"
           @touchstart="commentLongPress.onTouchstart(thread.parent)"
@@ -376,7 +376,7 @@
               <text class="cs-name">{{ thread.parent.profile?.nickname || t('app.user') }}</text>
               <text class="cs-time">{{ formatTime(thread.parent.created_at) }}</text>
             </view>
-            <text class="cs-content">{{ thread.parent.content }}</text>
+            <text class="cs-content">{{ localize(thread.parent.content_i18n, thread.parent.content) }}</text>
             <view class="cs-actions">
               <view class="cs-like-btn hit-target" role="button" :aria-label="thread.parent.liked_by_me ? t('a11y.unlike') : t('a11y.like')" :aria-pressed="thread.parent.liked_by_me ? 'true' : 'false'" @click.stop="onToggleCommentLike(thread.parent)">
                 <image :src="thread.parent.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
@@ -394,7 +394,7 @@
             class="cs-item cs-item-child"
             role="group"
             tabindex="0"
-            :aria-label="child.content"
+            :aria-label="localize(child.content_i18n, child.content)"
             aria-keyshortcuts="Shift+F10"
             @keydown="onCommentKeyboardMenu($event, child)"
             @touchstart="commentLongPress.onTouchstart(child)"
@@ -415,7 +415,7 @@
                 <text class="cs-name">{{ child.profile?.nickname || t('app.user') }}</text>
                 <text class="cs-time">{{ formatTime(child.created_at) }}</text>
               </view>
-              <text class="cs-content">{{ child.content }}</text>
+              <text class="cs-content">{{ localize(child.content_i18n, child.content) }}</text>
               <view class="cs-actions">
                 <view class="cs-like-btn hit-target" role="button" :aria-label="child.liked_by_me ? t('a11y.unlike') : t('a11y.like')" :aria-pressed="child.liked_by_me ? 'true' : 'false'" @click.stop="onToggleCommentLike(child)">
                   <image :src="child.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
@@ -1142,6 +1142,17 @@ const commentThreads = computed(() => groupCommentsByParent(comments.value))
    redrawing the whole feed. Uses the same /api/translate + quickTranslate
    fallback pipeline as the detail page, keyed to the current app lang. */
 const translations = reactive<Record<string, string>>({})
+const originalPosts = reactive(new Set<string>())
+let translationEpoch = 0
+function displayPostContent(post: Post) {
+  return originalPosts.has(post.id) ? post.content : translations[post.id] || localize(post.content_i18n, post.content)
+}
+watch(lang, () => {
+  translationEpoch += 1
+  originalPosts.clear()
+  translatingId.value = ''
+  for (const id of Object.keys(translations)) delete translations[id]
+})
 const translatingId = ref('')
 
 /*
@@ -1156,6 +1167,8 @@ const pinnedExpanded = reactive(new Set<string>())
 const { translate: translateText, getCached } = useTranslate()
 
 function resetPlazaAccountState() {
+  translationEpoch += 1
+  originalPosts.clear()
   plazaAccountEpoch += 1
   onComposerCancel()
   closeComments()
@@ -1212,20 +1225,26 @@ async function reloadPlazaForCurrentAccount() {
 
 async function togglePostTranslate(post: Post) {
   if (!post.content) return
-  if (translations[post.id]) {
-    delete translations[post.id]
+  if (displayPostContent(post) !== post.content) {
+    originalPosts.add(post.id)
     return
   }
+  originalPosts.delete(post.id)
+  if (displayPostContent(post) !== post.content) return
   const target = lang.value as 'en' | 'zh'
+  const epoch = translationEpoch
+  const accountEpoch = plazaAccountEpoch
   const cached = getCached(post.content, target)
   if (cached) { translations[post.id] = cached; return }
+  await awaitAuthReady()
+  if (epoch !== translationEpoch || accountEpoch !== plazaAccountEpoch || !requireAuth()) return
   translations[post.id] = quickTranslate(post.content, target)
   translatingId.value = post.id
   try {
     const live = await translateText(post.content, target)
-    if (live) translations[post.id] = live
+    if (epoch === translationEpoch && accountEpoch === plazaAccountEpoch && lang.value === target && live) translations[post.id] = live
   } finally {
-    translatingId.value = ''
+    if (epoch === translationEpoch && translatingId.value === post.id) translatingId.value = ''
   }
 }
 
@@ -1549,7 +1568,7 @@ function postCardLabel(post: Post) {
   // card and detail view. Long announcements must not become minute-long
   // button names (or disappear from bounded accessibility snapshots).
   const author = Array.from((post.profile?.nickname || t('app.user')).replace(/\s+/g, ' ').trim()).slice(0, 40).join('')
-  const text = (translations[post.id] || post.content || '').replace(/\s+/g, ' ').trim()
+  const text = (displayPostContent(post) || '').replace(/\s+/g, ' ').trim()
   const characters = Array.from(text)
   const excerpt = characters.slice(0, 100).join('') + (characters.length > 100 ? '…' : '')
   const action = t('plaza.openPostBy', { name: author })
@@ -2211,18 +2230,17 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   .badge-pinned-label { font-size: 10px; font-weight: 600; color: var(--warning-text); letter-spacing: 0.02em; }
 }
 
-.post-content-wrap { position: relative; padding-right: 40px; }
+.post-content-wrap { display: flex; flex-direction: column; align-items: flex-start; }
 .post-content {
   font-size: 15px; color: var(--text-primary); line-height: 1.5;
   white-space: pre-wrap; word-break: break-word; display: block;
 }
 .pc-translate {
-  position: absolute; top: -2px; right: 0;
-  min-width: 32px; height: 22px; border-radius: 11px;
-  background: var(--bg-subtle); padding: 0 7px;
+  min-width: 80px; min-height: 44px; border-radius: 12px;
+  background: var(--bg-subtle); padding: 0 12px; margin-top: 8px;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
-  .pc-translate-label { font-size: 10px; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.2px; }
+  .pc-translate-label { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
   &:active { background: var(--bg-inset); }
   &.loading { opacity: 0.7; pointer-events: none; }
 }

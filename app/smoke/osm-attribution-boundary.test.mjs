@@ -28,11 +28,11 @@ test('every listing flow that can invoke reverse geocoding shows linked OpenStre
   assert.match(location, /const queryLng = lng\.toFixed\(3\)/)
   assert.match(location, /geocode\?lat=\$\{queryLat\}&lon=\$\{queryLng\}/)
   assert.doesNotMatch(location, /lat\.toFixed\([45]\).*lng\.toFixed\([45]\)/s)
-  assert.match(location, /return precise \|\| city \|\| region \|\| null/)
+  assert.match(location, /const location = precise \|\| city \|\| region/)
   assert.match(location, /LOCATION_FIX_TIMEOUT_MS\s*=\s*15_000/)
   assert.match(location, /GEOCODE_REQUEST_TIMEOUT_MS\s*=\s*8_000/)
   assert.match(location, /reject\(\{ code: 3, message: 'location deadline exceeded' \}\)/)
-  assert.match(location, /timeout: GEOCODE_REQUEST_TIMEOUT_MS/)
+  assert.match(location, /timeout: requestTimeout/)
 })
 
 test('cached location is short-lived and cleared at every account transition', async () => {

@@ -1,3 +1,4 @@
+import { streetCheckInput, streetLabel, verifiedSessionId } from './_street-location.js'
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from './_deployment-boundary.js'
 
 export const config = { runtime: 'edge' }
@@ -33,8 +34,8 @@ function cors(origin) {
   if (!ALLOWED_ORIGINS.includes(origin)) return { Vary: 'Origin' }
   return {
     'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '600',
     Vary: 'Origin',
   }
@@ -42,6 +43,7 @@ function cors(origin) {
 
 function env(name, fb = '') { return process.env[name] || fb }
 const SUPABASE_URL = env('SUPABASE_URL', env('VITE_SUPABASE_URL'))
+const ANON_KEY = env('SUPABASE_PUBLISHABLE_KEY', env('SUPABASE_ANON_KEY', env('VITE_SUPABASE_PUBLISHABLE_KEY', env('VITE_SUPABASE_ANON_KEY'))))
 const SERVICE_KEY = env('SUPABASE_SECRET_KEY', env('SUPABASE_SERVICE_ROLE_KEY'))
 const DEFAULT_NOMINATIM_BASE_URL = 'https://nominatim.openstreetmap.org'
 const UPSTREAM_TIMEOUT_MS = 6000
@@ -225,16 +227,56 @@ export default async function handler(request) {
   }
 
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers })
-  if (request.method !== 'GET') {
+  if (!['GET', 'POST'].includes(request.method)) {
     return new Response(JSON.stringify({ error: 'method_not_allowed' }), { status: 405, headers })
   }
 
+  let body = null, check = null, userId = null, sessionId = null
+  if (request.method === 'POST') {
+    // Bound streaming request bytes even when Content-Length is omitted.
+    const reader = request.body?.getReader(); let bytes = 0; const chunks = []
+    let bodyTimer
+    try {
+      if (!reader) throw new Error('empty')
+      await Promise.race([
+        (async () => {
+          while (true) {
+            const part = await reader.read(); if (part.done) break
+            bytes += part.value.byteLength
+            if (bytes > 2048) { void reader.cancel().catch(() => {}); throw new Error('large') }
+            chunks.push(part.value)
+          }
+        })(),
+        new Promise((_, reject) => {
+          bodyTimer = setTimeout(() => {
+            void reader.cancel().catch(() => {})
+            reject(new Error('body_timeout'))
+          }, 4000)
+        }),
+      ])
+      const joined = new Uint8Array(bytes); let at = 0
+      for (const part of chunks) { joined.set(part, at); at += part.byteLength }
+      body = JSON.parse(new TextDecoder().decode(joined))
+    } catch { return new Response(JSON.stringify({ error: 'invalid_request' }), { status: 400, headers }) }
+    finally { clearTimeout(bodyTimer) }
+    check = streetCheckInput(body)
+    if (!check) return new Response(JSON.stringify({ error: 'fresh_accurate_fix_required' }), { status: 422, headers })
+    const bearer = request.headers.get('authorization') || ''
+    if (!/^Bearer [^\s]+$/i.test(bearer) || !ANON_KEY) return new Response('{}', { status: 401, headers })
+    try {
+      const auth = await fetchWithTimeout(`${SUPABASE_URL}/auth/v1/user`, { headers: supabaseHeaders(ANON_KEY, bearer) }, LIMITER_TIMEOUT_MS)
+      const user = auth.ok ? await auth.json() : null
+      userId = user?.id; sessionId = verifiedSessionId(bearer, userId)
+    } catch { /* fail closed */ }
+    if (!userId || !sessionId) return new Response('{}', { status: 401, headers })
+  }
   const params = new URL(request.url).searchParams
-  const latRaw = params.get('lat')
-  const lonRaw = params.get('lon')
+  const latRaw = body ? body.lat : params.get('lat')
+  const lonRaw = body ? body.lon : params.get('lon')
   // Require the params to be PRESENT — Number(null) is 0 (finite), so a
   // param-less GET used to sail through as (0,0). (QA8 audit #14.)
-  if (latRaw === null || latRaw === '' || lonRaw === null || lonRaw === '') {
+  if (!['string','number'].includes(typeof latRaw) || !['string','number'].includes(typeof lonRaw)
+      || String(latRaw).trim() === '' || String(lonRaw).trim() === '') {
     return new Response(JSON.stringify({ error: 'bad_coords' }), { status: 400, headers })
   }
   const lat = Number(latRaw)
@@ -256,6 +298,10 @@ export default async function handler(request) {
     return new Response(JSON.stringify({ error: 'rate_limit_unavailable' }), { status: 503, headers })
   }
 
+  if (check) {
+    const allowed = await rateHit(`geocode:account:${userId}`, 20, 3600)
+    if (allowed !== true) return allowed === false ? rateLimited(headers, 3600) : new Response('{}', { status: 503, headers })
+  }
   const perNetworkAllowed = await rateHit(`geocode:network:${networkKey}`, 40, 3600)
   if (perNetworkAllowed === null) {
     return new Response(JSON.stringify({ error: 'rate_limit_unavailable' }), { status: 503, headers })
@@ -312,8 +358,19 @@ export default async function handler(request) {
       address.road || address.street || address.pedestrian || address.neighbourhood || address.suburb,
       address.city || address.town || address.village || address.county,
     ].filter(Boolean).join(', ')
+    let verification = null
+    const checkedStreet = check && streetLabel(data, Number(providerLat), Number(providerLon))
+    if (checkedStreet) {
+      try {
+        const issued = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/issue_street_location_check`, {
+          method: 'POST', headers: supabaseHeaders(SERVICE_KEY, '', { 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ user_id_in: userId, session_id_in: sessionId, item_id_in: check.itemId, street_label_in: checkedStreet }),
+        }, LIMITER_TIMEOUT_MS)
+        verification = issued.ok ? await issued.json().catch(() => null) : null
+      } catch { /* Autofill remains useful without a verification badge. */ }
+    }
     return new Response(
-      JSON.stringify({ address, display_name: displayName }),
+      JSON.stringify({ address, display_name: displayName, ...(check ? { verification } : {}) }),
       {
         status: 200,
         headers,

@@ -150,6 +150,7 @@ export interface PostComment {
   post_id: string
   user_id: string
   content: string
+  content_i18n?: Record<string, string> | null
   parent_comment_id: string | null
   like_count?: number
   created_at: string
@@ -175,6 +176,7 @@ export interface Item {
   listing_type?: 'sell' | 'wanted'
   location: string
   location_verified?: boolean
+  location_checked_at?: string | null
   images: string[]
   image_dimensions?: ImageDim[]
   view_count: number

@@ -64,7 +64,7 @@ const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, is_illini_verified, uid
 // returns the column as null on pre-015 databases and localize() silently
 // falls back to plain `title`, so this is safe on unmigrated schemas.
 const ATTACHED_ITEM_FIELDS = 'id, user_id, title, title_i18n, price, images, image_dimensions, status, listing_details, listing_type'
-const POST_COMMENT_FIELDS = 'id, post_id, user_id, content, parent_comment_id, like_count, created_at'
+const POST_COMMENT_FIELDS = 'id, post_id, user_id, content, content_i18n, parent_comment_id, like_count, created_at'
 // Explicit column list rather than `*` — same liability rationale as
 // useMessages.constants: every new posts column would otherwise start
 // shipping down the wire even when no UI consumes it. This enumerates

@@ -17,6 +17,7 @@ const ENV_KEYS = [
 const originalEnv = new Map(ENV_KEYS.map(key => [key, process.env[key]]))
 const originalFetch = globalThis.fetch
 const originalConsoleError = console.error
+const originalNow = Date.now
 let importNonce = 0
 
 
@@ -28,6 +29,7 @@ afterEach(() => {
   }
   globalThis.fetch = originalFetch
   console.error = originalConsoleError
+  Date.now = originalNow
 })
 
 async function loadHandler(overrides = {}) {
@@ -73,6 +75,8 @@ function mock(options = {}) {
     const url=new URL(String(input))
     const body=init.body ? JSON.parse(init.body) : null
     calls.push({url,body,init})
+    if(url.pathname.endsWith('/claim_public_content_translation')) return response(null)
+    if(url.pathname.endsWith('/public_content_translation_status')) return response({pending:0,failed:0})
     if(url.pathname.endsWith('/claim_listing_translation')) return response(options.translationJob ?? null)
     if(url.pathname.endsWith('/finish_listing_translation')) return response(true)
     if(url.pathname.endsWith('/listing_translation_status')) return response(options.translationStatus ?? {pending:0,failed:0})
@@ -264,5 +268,26 @@ test('an existing provider key alone never activates automatic listing translati
   assert.equal((await handler(request())).status,200)
   assert.equal(calls.some(c=>c.url.hostname==='api.openai.com'||c.url.pathname.endsWith('/claim_listing_translation')),false)
   assert.ok(calls.some(c=>c.url.pathname.endsWith('/process_listing_notification_job')))
+ }
+})
+
+test('a busy first queue cannot permanently starve the other translation queue',async()=>{
+ for (const minute of [2,3]) {
+  let now=minute*60_000
+  Date.now=()=>now
+  const calls=mock({translationJob:{id:ID,lease:TOKEN,revision:2,title:'书桌',description:'状况很好',title_needed:true,description_needed:true}})
+  const baseFetch=globalThis.fetch
+  globalThis.fetch=async(input,init)=>{
+   const value=await baseFetch(input,init)
+   // Model other completed work plus slow upstream, without sleeping.
+   if(String(input).includes('api.openai.com'))now+=14_000
+   return value
+  }
+  const handler=await loadHandler({OPENAI_API_KEY:'synthetic-private-key',LISTING_ENGLISH_AUTOTRANSLATE:'1'})
+  assert.equal((await handler(request())).status,200)
+  const claims=calls.filter(c=>/\/claim_(?:listing|public_content)_translation$/.test(c.url.pathname))
+  assert.ok(claims[0].url.pathname.endsWith(minute%2?'/claim_public_content_translation':'/claim_listing_translation'))
+  if(minute%2)assert.equal(claims.length,2)
+  assert.ok(calls.some(c=>c.url.pathname.endsWith('/claim_chat_media_orphan')))
  }
 })

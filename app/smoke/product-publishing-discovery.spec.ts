@@ -534,17 +534,18 @@ test('denied location opens a working focused dialog and returns to the form wit
 
 test('location result shows a detected area and becomes manual after editing', async ({ page }) => {
  await fixture(page)
- await page.route('**/api/geocode?**',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({address:{road:'Green Street',city:'Champaign'}})}))
+ await page.route(url=>url.pathname==='/api/geocode',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({address:{road:'Green Street',city:'Champaign'},verification:null})}))
  await page.goto('/#/pages/publish/index')
  const locate=page.getByRole('button',{name:'Detect current location',exact:true})
  await expect(locate).toBeVisible()
  await page.evaluate(()=>{
   Object.defineProperty(navigator,'permissions',{configurable:true,value:{query:async()=>({state:'granted'})}})
-  ;(window as any).uni.getLocation=(options:any)=>options.success({latitude:40.1106,longitude:-88.2272,accuracy:20})
+  Object.defineProperty(navigator,'geolocation',{configurable:true,value:{getCurrentPosition:(success:any)=>success({coords:{latitude:40.1106,longitude:-88.2272,accuracy:20},timestamp:Date.now()})}})
  })
  await locate.click()
  await expect(page.getByRole('textbox',{name:'Location',exact:true})).toHaveValue('Green Street, Champaign')
  await expect(page.locator('.location-result')).toContainText('Detected by your device')
+ await expect(page.locator('.location-result')).not.toContainText('Street area checked')
  await page.getByRole('textbox',{name:'Location',exact:true}).fill('Library entrance')
  await expect(page.locator('.location-result')).toContainText('Entered manually')
  await expect(page.locator('.location-result')).not.toContainText('Detected by your device')
