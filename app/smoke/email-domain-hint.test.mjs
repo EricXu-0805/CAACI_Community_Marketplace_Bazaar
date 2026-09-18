@@ -12,6 +12,14 @@ test('a provider suffix typo gets a suggestion without losing the local part or 
   assert.equal(suggestEmailDomain('student@gmail.cmo'), 'student@gmail.com')
 })
 
+test('the observed Hotmail omission offers a suggestion while preserving the plus alias', () => {
+  const submitted = '  Test.User+signup@HOTMAI.COM  '
+  assert.equal(suggestEmailDomain(submitted), 'Test.User+signup@hotmail.com')
+  for (const value of ['a@mail.hotmai.com', 'a@hotmai.co', '@hotmai.com', 'a@@hotmai.com']) {
+    assert.equal(suggestEmailDomain(value), null)
+  }
+})
+
 test('valid, custom, incomplete and ambiguous domains are not guessed', () => {
   for (const email of ['a@gmail.com', 'a@gmail.co', 'a@illinois.edu', 'a@lab.con',
     'a@mail.hotmail.con', 'a@hotmail.contact', 'a@hotmial.com', 'a@', '@hotmail.con',
