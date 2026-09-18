@@ -70,7 +70,7 @@
     "@dcloudio/types": "^3.4.8",
     "@dcloudio/uni-cli-shared": "3.0.0-4080420251103001",
     "@dcloudio/uni-stacktracey": "3.0.0-4080420251103001",
-    "@dcloudio/vite-plugin-uni": "3.0.0-4080420251103001",
+    "@dcloudio/vite-plugin-uni": "3.0.0-5020420260813003",
     "@playwright/test": "^1.60.0",
     "@sentry/vite-plugin": "^5.2.0",
     "@vue/runtime-core": "3.4.21",
