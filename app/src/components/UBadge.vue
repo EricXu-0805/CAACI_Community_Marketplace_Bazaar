@@ -1,7 +1,7 @@
 <template>
   <view class="u-badge" :class="`u-badge--${variant}`">
     <UIcon v-if="variant === 'illini'" name="check" size="xs" color="currentColor" aria-hidden="true" />
-    <text class="u-badge-txt"><slot /></text>
+    <text class="u-badge-txt">{{ label }}</text>
   </view>
 </template>
 
@@ -20,6 +20,9 @@ import UIcon from './UIcon.vue'
  * official · illini (post/plaza pills; 1px 6px / weight 700 — verbatim lift).
  */
 defineProps<{
+  // Native mini-program slots can retain the previous locale. An explicit
+  // prop makes label changes cross the component setData boundary.
+  label: string
   variant: 'new' | 'mint' | 'defect' | 'reserved' | 'official' | 'illini' | 'wanted'
 }>()
 </script>

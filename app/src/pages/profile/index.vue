@@ -55,7 +55,7 @@
           <view class="user-info">
             <view class="name-row">
               <text class="nickname">{{ currentUser?.nickname }}</text>
-              <UBadge v-if="currentUser?.is_illini_verified" variant="illini" :aria-label="t('profile.illiniVerified')">Illini</UBadge>
+              <UBadge v-if="currentUser?.is_illini_verified" variant="illini" :aria-label="t('profile.illiniVerified')" label="Illini" />
             </view>
             <view class="user-meta-row">
               <view v-if="currentUser?.uid" class="uid-row" role="button" :aria-label="t('profile.uid')" @click.stop="copyUid">

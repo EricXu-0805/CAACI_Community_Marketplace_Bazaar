@@ -45,7 +45,7 @@
         :label="localize(item.title_i18n, item.title)" :action-label="t('history.removeOne')"
         @open="goDetail(item.id)" @action="removeEntry(item.id, 'item')" @menu="onRemoveOne(item.id, 'item')">
       <view class="item-row u-rise">
-        <image v-if="thumbUrl(item.images?.[0], 'list')" :src="thumbUrl(item.images?.[0], 'list')" :alt="item.title" class="item-img" mode="aspectFill" lazy-load />
+        <image v-if="thumbUrl(item.images?.[0], 'list')" :src="thumbUrl(item.images?.[0], 'list')" :alt="localize(item.title_i18n, item.title)" class="item-img" mode="aspectFill" lazy-load />
         <view v-else class="item-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
         <view class="item-info">
           <text class="item-title">{{ localize(item.title_i18n, item.title) }}</text>
@@ -59,7 +59,7 @@
     </view>
 
     <view v-else-if="historyReady" id="history-posts-panel" class="items u-stagger" role="tabpanel">
-      <USwipeAction v-for="p in postHistory" :key="p.id" :label="p.content" :action-label="t('history.removeOne')"
+      <USwipeAction v-for="p in postHistory" :key="p.id" :label="localize(p.content_i18n, p.content)" :action-label="t('history.removeOne')"
         @open="goPostDetail(p.id)" @action="removeEntry(p.id, 'post')" @menu="onRemoveOne(p.id, 'post')">
       <view class="post-row u-rise">
         <UAvatar :src="p.profile?.avatar_url" :owner="p.user_id" :fallback="defaultAvatarSrc" :alt="p.profile?.nickname || 'avatar'" class="post-avatar" lazy />
@@ -68,7 +68,7 @@
             <text class="post-name">{{ p.profile?.nickname || t('app.user') }}</text>
             <text v-if="p.is_official" class="post-official">{{ t('plaza.official') }}</text>
           </view>
-          <text class="post-content">{{ p.content }}</text>
+          <text class="post-content">{{ localize(p.content_i18n, p.content) }}</text>
           <view v-if="p.images && p.images.length > 0" class="post-imgs">
             <image
               v-for="(img, i) in p.images.slice(0, 3)"

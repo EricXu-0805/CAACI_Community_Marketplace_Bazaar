@@ -218,9 +218,10 @@ jobs:
         working-directory: app
         run: npm run build:h5
         env:
-          # Stub values — the build only needs the strings to exist;
-          # Vercel injects the real values at deploy time.
-          VITE_SUPABASE_URL: https://ci-stub.supabase.co
+          # A syntactically valid, synthetic project ref lets compiled session
+          # acceptance derive its storage key from the artifact manifest.
+          # Browser fixtures intercept all requests; no live account is used.
+          VITE_SUPABASE_URL: https://00000000000000000000.supabase.co
           VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci-stub-key
           VITE_BASE_URL: https://ci-app-stub.invalid
 
@@ -235,7 +236,7 @@ jobs:
         working-directory: app
         run: npx playwright install --with-deps chromium webkit
 
-      - name: Verify compiled moderator login and safe recovery
+      - name: Verify compiled moderator recovery and persistent drafts
         working-directory: app
         run: npx playwright test --config playwright.production-admin.config.ts
 

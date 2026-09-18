@@ -31,6 +31,23 @@ export interface SyncStorage {
   removeStorageSync(key: string): void
 }
 
+// The H5 production compiler imports direct uni API references on demand;
+// its global `uni` object can be empty. Passing that object as an adapter
+// therefore made real browsers look storage-blocked while dev tests passed.
+// Keep calls lazy for mini-program bootstrap and statically identifiable.
+const runtimeStorage: SyncStorage = {
+  getStorageSync(key) {
+    // H5 uni.getStorageSync swallows Storage read errors as missing values.
+    // Check native readability first so privacy cleanup cannot bless residue.
+    // #ifdef H5
+    if (typeof window !== 'undefined') window.localStorage.getItem(key)
+    // #endif
+    return uni.getStorageSync(key)
+  },
+  setStorageSync(key, value) { uni.setStorageSync(key, value) },
+  removeStorageSync(key) { uni.removeStorageSync(key) },
+}
+
 export interface AccountPrivateStorageReconciliation {
   cleanupAttempted: boolean
   unresolvedKeys: string[]
@@ -122,7 +139,7 @@ function readStoredOwner(storage: SyncStorage): StoredOwnerState {
  * True only when this runtime is allowed to observe or mutate unscoped private
  * storage. A prior owner's marker is never trusted while auth is unresolved.
  */
-export function canAccessAccountPrivateStorage(storage: SyncStorage = uni): boolean {
+export function canAccessAccountPrivateStorage(storage: SyncStorage = runtimeStorage): boolean {
   const stored = readStoredOwner(storage)
   if (!stored.readable || stored.owner === ACCOUNT_PRIVATE_STORAGE_CLEANUP_SENTINEL) return false
 
@@ -145,7 +162,7 @@ export interface AccountPrivateStorageRead<T> {
 export function readAccountPrivateStorage<T>(
   key: AccountPrivateStorageKey,
   fallback: T,
-  storage: SyncStorage = uni,
+  storage: SyncStorage = runtimeStorage,
 ): AccountPrivateStorageRead<T> {
   if (!canAccessAccountPrivateStorage(storage)) return { allowed: false, value: fallback }
   try {
@@ -163,7 +180,7 @@ export function readAccountPrivateStorage<T>(
 export function writeAccountPrivateStorage(
   key: AccountPrivateStorageKey,
   value: unknown,
-  storage: SyncStorage = uni,
+  storage: SyncStorage = runtimeStorage,
 ): boolean {
   if (!canAccessAccountPrivateStorage(storage)) return false
   try {
@@ -177,7 +194,7 @@ export function writeAccountPrivateStorage(
 /** Remove only inside the currently verified owner lineage. */
 export function removeAccountPrivateStorage(
   key: AccountPrivateStorageKey,
-  storage: SyncStorage = uni,
+  storage: SyncStorage = runtimeStorage,
 ): boolean {
   if (!canAccessAccountPrivateStorage(storage)) return false
   return eraseAndVerify(storage, key)
@@ -191,7 +208,7 @@ export function removeAccountPrivateStorage(
 export function reconcileAccountPrivateStorage(
   nextUserId: string | null,
   previousUserId: string | null,
-  storage: SyncStorage = uni,
+  storage: SyncStorage = runtimeStorage,
 ): AccountPrivateStorageReconciliation {
   const storedOwnerState = readStoredOwner(storage)
   // An unreadable/malformed marker must never be interpreted as anonymous.

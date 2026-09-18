@@ -1,4 +1,5 @@
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from './_deployment-boundary.js'
+import { isOwnWechatChatPhoto, trustedWechatPhotoUrl } from './_wechat-media-path.js'
 
 export const config = { runtime: 'edge' }
 
@@ -373,6 +374,35 @@ export default async function handler(request) {
     if (body.content.length > MAX_TEXT_CHARS) return json({ error: 'content_too_large' }, 400)
     content = body.content
     if (!content.trim()) return json({ ok: true, suggest: 'pass' })
+  } else if (body.bucket === 'chat-media') {
+    if (process.env.WECHAT_CHAT_PHOTOS_ENABLED !== 'true') return json({ error: 'wechat_chat_photos_disabled' }, 503)
+    if (!SUPABASE_ANON) return json({ error: 'private_media_unavailable' }, 503)
+    if (!isOwnWechatChatPhoto(body.storage_path, userId) || body.media_url != null) {
+      return json({ error: 'bad_media_path' }, 400)
+    }
+    // Never use the service role here: possession of a path is not permission
+    // to send a private attachment to a third-party moderation provider.
+    try {
+      const path = body.storage_path
+      const response = await fetchWithTimeout(
+        `${SUPABASE_URL}/storage/v1/object/sign/chat-media/${path}`,
+        {
+          method: 'POST',
+          headers: supabaseHeaders(SUPABASE_ANON, request.headers.get('authorization'), {
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({ expiresIn: 600 }),
+        },
+        SUPABASE_TIMEOUT_MS,
+      )
+      if (!response.ok) return json({ error: 'private_media_unavailable' }, 503)
+      const data = await readJsonResponse(response, MAX_SUPABASE_BYTES)
+      const mediaUrl = trustedWechatPhotoUrl(data?.signedURL, SUPABASE_URL, path)
+      if (!mediaUrl) return json({ error: 'private_media_unavailable' }, 503)
+      media = { mediaUrl, bucket: 'chat-media', storagePath: path }
+    } catch {
+      return json({ error: 'private_media_unavailable' }, 503)
+    }
   } else {
     if (typeof body.media_url !== 'string') return json({ error: 'bad_media_url' }, 400)
     const mediaUrl = body.media_url
@@ -418,7 +448,7 @@ export default async function handler(request) {
         body: JSON.stringify({
           version: 2,
           openid,
-          scene: 1,
+          scene: media.bucket === 'chat-media' ? 4 : 1,
           media_type: 2,
           media_url: media.mediaUrl,
         }),

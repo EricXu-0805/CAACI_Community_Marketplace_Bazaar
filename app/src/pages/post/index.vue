@@ -32,8 +32,8 @@
           <view class="head-info">
             <view class="head-name-row">
               <text class="head-name" role="button" @click.stop="goSeller(post.user_id)">{{ post.profile?.nickname || t('app.user') }}</text>
-              <UBadge v-if="post.is_official" variant="official">{{ t('plaza.official') }}</UBadge>
-              <UBadge v-else-if="post.profile?.is_illini_verified" variant="illini">Illini</UBadge>
+              <UBadge v-if="post.is_official" variant="official" :label="t('plaza.official')" />
+              <UBadge v-else-if="post.profile?.is_illini_verified" variant="illini" label="Illini" />
               <view v-if="post.is_pinned" class="badge-pinned"><text class="badge-pinned-label">{{ t('plaza.pinned') }}</text></view>
             </view>
             <text class="head-time">{{ formatTime(post.created_at) }}</text>
@@ -91,7 +91,7 @@
             class="aic-img"
             mode="aspectFill"
             lazy-load
-            :alt="pi.item.title"
+            :alt="localize(pi.item.title_i18n, pi.item.title)"
           />
           <view v-else class="aic-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
           <view class="aic-body">

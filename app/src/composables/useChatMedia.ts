@@ -2,6 +2,9 @@ import { useSupabase, platformFetch } from './useSupabase'
 import { isAccountRequestCurrent, type AccountRequestToken } from './accountScope'
 import { compressImage, detectImageMimeType } from '../utils'
 import { CHAT_MEDIA_BUCKET, validChatMediaPath } from '../utils/chatMedia'
+// #ifdef MP-WEIXIN
+import { uploadMiniChatPhoto } from '../api/miniChatPhoto'
+// #endif
 
 const TYPES: Record<string,string> = {'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','video/mp4':'mp4','video/quicktime':'mov','video/webm':'webm'}
 export function useChatMedia() {
@@ -25,9 +28,12 @@ export function useChatMedia() {
     current()
     return path
     // #endif
+    // #ifdef MP-WEIXIN
+    if (type === 'image' && import.meta.env.VITE_WECHAT_CHAT_PHOTOS_ENABLED === 'true') {
+      return await uploadMiniChatPhoto(file, conversationId, messageId, token)
+    }
+    // #endif
     // #ifndef H5
-    // Private files require a private WeChat moderation handoff before enabling
-    // this uploader in mp builds. Never fall back to the public listing bucket.
     throw new Error('chat_media_platform_unavailable')
     // #endif
   }

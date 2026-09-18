@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "test": "cd app && node --test ../api/*.test.mjs ../scripts/*.test.mjs smoke/*.test.mjs",
+    "test": "cd app && node --test --test-concurrency=2 ../api/*.test.mjs ../scripts/*.test.mjs smoke/*.test.mjs",
     "verify:migrations": "cd supabase/migrations && shasum -a 256 -c manifest.sha256"
   },
   "packageManager": "npm@10.8.2",

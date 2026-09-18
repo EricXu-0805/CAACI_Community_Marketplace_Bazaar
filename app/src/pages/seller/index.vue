@@ -27,7 +27,7 @@
       <UAvatar :src="seller.avatar_url" :owner="seller.id" :fallback="defaultAvatarSrc" :alt="seller.nickname || 'avatar'" class="avatar" />
       <view class="name-row">
         <text class="nickname">{{ seller.nickname }}</text>
-        <UBadge v-if="seller.is_illini_verified" variant="illini">Illini</UBadge>
+        <UBadge v-if="seller.is_illini_verified" variant="illini" label="Illini" />
       </view>
       <text v-if="seller.status_text || seller.status_emoji" class="user-status">
         <text v-if="seller.status_emoji" class="us-emoji">{{ seller.status_emoji }}</text>
@@ -127,7 +127,7 @@
           @click="goDetail(item.id)"
         >
           <view class="gi-img-wrap">
-            <image v-if="thumbUrl(item.images?.[0], 'list')" :src="thumbUrl(item.images?.[0], 'list')" :alt="item.title" class="gi-img" mode="aspectFit" lazy-load />
+            <image v-if="thumbUrl(item.images?.[0], 'list')" :src="thumbUrl(item.images?.[0], 'list')" :alt="localize(item.title_i18n, item.title)" class="gi-img" mode="aspectFit" lazy-load />
             <view v-else class="gi-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
             <view v-if="pickupBadge(item)" class="badge-safe-corner" :class="{ 'badge-safe-corner--shared': !pickupBadge(item)!.spot }" :aria-label="pickupBadge(item)!.label">
               <UIcon v-if="pickupBadge(item)!.spot" name="check" size="xs" color="ink-inverse" />

@@ -29,6 +29,31 @@ function memoryStorage(initial = []) {
   }
 }
 
+test('the default adapter persists through direct runtime APIs and fails closed on native read denial', async () => {
+  const boundary = await loadBoundary()
+  const local = memoryStorage()
+  const previousUni = globalThis.uni
+  const previousWindow = globalThis.window
+  globalThis.uni = local.storage
+  globalThis.window = { localStorage: { getItem: key => local.values.get(key) ?? null } }
+  try {
+    boundary.reconcileAccountPrivateStorage('account-a', null)
+    assert.equal(boundary.writeAccountPrivateStorage('publish_draft_v1', { title: 'Persisted' }), true)
+    assert.deepEqual(boundary.readAccountPrivateStorage('publish_draft_v1', null).value, { title: 'Persisted' })
+    // Real H5 uni masks this exception as an empty value; an unreadable owner
+    // must never be mistaken for unowned storage and used across accounts.
+    globalThis.window.localStorage.getItem = () => { throw new Error('Storage access denied') }
+    assert.deepEqual(boundary.readAccountPrivateStorage('publish_draft_v1', null), { allowed: false, value: null })
+    assert.equal(boundary.writeAccountPrivateStorage('publish_draft_v1', { title: 'Unsafe overwrite' }), false)
+    assert.deepEqual(local.values.get('publish_draft_v1'), { title: 'Persisted' })
+  } finally {
+    if (previousUni === undefined) delete globalThis.uni
+    else globalThis.uni = previousUni
+    if (previousWindow === undefined) delete globalThis.window
+    else globalThis.window = previousWindow
+  }
+})
+
 test('anonymous local work is adopted once, then never crosses A -> B', async () => {
   const boundary = await loadBoundary()
   const { values, storage } = memoryStorage([

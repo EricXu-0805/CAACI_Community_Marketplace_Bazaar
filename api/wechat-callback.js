@@ -1,4 +1,6 @@
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from './_deployment-boundary.js'
+import { isOwnWechatChatPhoto } from './_wechat-media-path.js'
+import { mediaMoveSucceeded } from './_moderation-media.js'
 
 export const config = { runtime: 'edge' }
 
@@ -8,10 +10,10 @@ export const config = { runtime: 'edge' }
  * Sole consumer today: media_check_async verdicts (event wxa_media_check).
  * /api/wechat-seccheck submits every mp-uploaded image and records
  * trace_id → storage object in wechat_media_checks (m087); WeChat pushes
- * the verdict here minutes later. On a risky verdict we delete the storage
+ * the verdict here minutes later. On a risky/review verdict we delete the storage
  * object with the service key (the image simply 404s wherever it was
- * referenced) and drop the mapping row. 'review'/'pass' just clean up the
- * row — borderline images stay up for the normal report/admin pipeline.
+ * referenced) and drop the mapping row. Only 'pass' keeps the object: there
+ * is no staffed review queue that could safely approve a 'review' result.
  *
  * POST accepts only WeChat security mode: msg_signature authenticates Token,
  * timestamp, nonce and the encrypted body; AES-256-CBC decryption then verifies
@@ -517,7 +519,7 @@ export default async function handler(request) {
 
   const q = `${SUPABASE_URL}/rest/v1/wechat_media_checks?trace_id=eq.${encodeURIComponent(traceId)}`
 
-  if (suggest === 'risky') {
+  if (suggest === 'risky' || suggest === 'review') {
       let mappingResponse
       try {
         mappingResponse = await fetchWithTimeout(
@@ -550,11 +552,12 @@ export default async function handler(request) {
          deletion is restricted to the recorded owner's generated image path.
          Preserve a rejected mapping for investigation instead of consuming
          the only pointer to a potentially risky object. */
-      if (bucket !== 'item-images'
-        || !UUID_RE.test(owner)
-        || !storagePath.startsWith(ownPrefix)
-        || !/^[A-Za-z0-9._-]+$/.test(fileName)
-        || fileName.includes('..')) {
+      const ownPublicImage = bucket === 'item-images'
+        && storagePath.startsWith(ownPrefix)
+        && /^[A-Za-z0-9._-]+$/.test(fileName)
+        && !fileName.includes('..')
+      const ownChatPhoto = bucket === 'chat-media' && isOwnWechatChatPhoto(storagePath, owner)
+      if (!UUID_RE.test(owner) || (!ownPublicImage && !ownChatPhoto)) {
         return retryableFailure('unsafe_media_mapping', claim)
       }
 
@@ -571,13 +574,17 @@ export default async function handler(request) {
       }
       /* 404 is a confirmed-absent object and makes a retried callback
          idempotent after Storage succeeded but mapping cleanup failed. */
-      if (!storageDelete.ok && storageDelete.status !== 404) {
+      let deletionAccepted = storageDelete.ok || storageDelete.status === 404
+      if (storageDelete.status === 400) {
+        try { deletionAccepted = mediaMoveSucceeded(storageDelete, JSON.stringify(await readJsonResponse(storageDelete))) } catch {}
+      }
+      if (!deletionAccepted) {
         return retryableFailure('storage_deletion_rejected', claim)
       }
   }
 
   /* Mapping cleanup (zero or one row) and receipt completion commit in one
-     database transaction. Zero supports a DB-first rolling window. Risky
+     database transaction. Zero supports a DB-first rolling window. Non-pass
      verdicts still require the validated mapping above before Storage delete. */
   if (!(await completeClaim(claim, traceId))) {
     return retryableFailure('receipt_completion_failed', claim)
