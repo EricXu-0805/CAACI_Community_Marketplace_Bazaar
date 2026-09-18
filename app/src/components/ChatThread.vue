@@ -326,6 +326,12 @@
       <text class="attachment-hint">{{ sending ? t('chat.sending') : t('chat.privateMediaHint') }}</text>
     </view>
     <!-- #endif -->
+    <!-- #ifdef MP-WEIXIN -->
+    <view v-if="miniChatPhotosEnabled" class="attachment-actions" :style="kbLift">
+      <button class="attachment-action" :disabled="sending" @click="chooseChatMedia('image')"><UIcon name="image" size="sm" /><text>{{ t('chat.photo') }}</text></button>
+      <text class="attachment-hint">{{ sending ? t('chat.sending') : t('chat.wechatPhotoPrivacy') }}</text>
+    </view>
+    <!-- #endif -->
     <ChatEmojiPanel :open="emojiOpen" @pick="onPickEmoji" @pick-sticker="onPickSticker" />
 
     <!-- Offer composer (new offer + counter) -->
@@ -1388,6 +1394,9 @@ function applySuggestion(emoji: string) {
 }
 
 const { upload: uploadChatMedia } = useChatMedia()
+// #ifdef MP-WEIXIN
+const miniChatPhotosEnabled = import.meta.env.VITE_WECHAT_CHAT_PHOTOS_ENABLED === 'true'
+// #endif
 async function chooseChatMedia(type: 'image'|'video') {
   if (sending.value || !conversationAccessReady.value || conversationUnavailable.value) return
   const token=captureActiveAccountRequest(), epoch=threadEpoch, convId=conversationId.value
@@ -1410,7 +1419,12 @@ async function chooseChatMedia(type: 'image'|'video') {
   } catch(error:any) {
     if(!isThreadEpochCurrent(epoch)||!isAccountRequestCurrent(token))return
     if(String(error?.errMsg||'').includes('cancel'))return
-    uni.showToast({title:String(error?.message||'').includes('too_large') ? t('chat.mediaTooLarge') : t('chat.mediaSendFailed'),icon:'none',duration:3000})
+    const reason = String(error?.message || '')
+    const title = reason.includes('too_large') ? t('chat.mediaTooLarge')
+      : reason.includes('wechat_media') ? t('chat.mediaReviewUnavailable')
+      : reason.includes('invalid_file') ? t('chat.mediaInvalidFile')
+      : t('chat.mediaSendFailed')
+    uni.showToast({title,icon:'none',duration:3000})
   } finally {if(epoch===threadEpoch)sending.value=false}
 }
 

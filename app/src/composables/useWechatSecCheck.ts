@@ -195,10 +195,15 @@ export async function mpImageCheck(
 ): Promise<void> {
   // #ifdef MP-WEIXIN
   if (!storagePath) return
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-  const mediaUrl = `${supabaseUrl}/storage/v1/object/public/${bucket}/${storagePath}`
+  const payload: Record<string, unknown> = { kind: 'image', bucket, storage_path: storagePath }
+  // Private chat paths are resolved and signed by the server with this user's
+  // bearer. Never construct a public URL or send a client-supplied capability.
+  if (bucket !== 'chat-media') {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+    payload.media_url = `${supabaseUrl}/storage/v1/object/public/${bucket}/${storagePath}`
+  }
   const result = await callSeccheck(
-    { kind: 'image', media_url: mediaUrl, bucket, storage_path: storagePath },
+    payload,
     { failureCode: 'wechat_media_check_unavailable' },
     expectedAccountToken,
   )
