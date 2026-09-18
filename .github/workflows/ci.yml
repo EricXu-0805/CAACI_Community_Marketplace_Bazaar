@@ -48,12 +48,13 @@ jobs:
   typecheck:
     name: Type-check
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -70,12 +71,13 @@ jobs:
   boundary-tests:
     name: Boundary regressions
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -199,12 +201,13 @@ jobs:
   build-h5:
     name: Build H5
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -243,12 +246,13 @@ jobs:
   build-mp-weixin:
     name: Build mp-weixin
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -276,6 +280,7 @@ jobs:
   public-smoke:
     name: Smoke (public page sweep)
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     # A schema-changing PR must test the prepared candidate database. Main
     # still checks the deployed production schema. These PR values are public
     # anonymous client configuration, never account or service credentials.
@@ -285,10 +290,10 @@ jobs:
       VITE_SUPABASE_ANON_KEY: ${{ (github.event_name == 'pull_request' && vars.PR_SMOKE_SUPABASE_ANON_KEY) || (github.event_name != 'pull_request' && secrets.VITE_SUPABASE_ANON_KEY) || '' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -307,6 +312,10 @@ jobs:
           if [[ -n "$VITE_SUPABASE_URL" && ( -n "$VITE_SUPABASE_PUBLISHABLE_KEY" || -n "$VITE_SUPABASE_ANON_KEY" ) ]]; then
             echo "can_run=true" >> "$GITHUB_OUTPUT"
           else
+            if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+              echo "::error::Production smoke configuration is missing; release verification cannot be skipped."
+              exit 1
+            fi
             echo "can_run=false" >> "$GITHUB_OUTPUT"
             echo "Smoke skipped: public Supabase CI credentials are unavailable (expected on forks)."
           fi
@@ -331,9 +340,8 @@ jobs:
       # publishable key (safe to expose to this public build); the legacy anon
       # value remains only as a rolling fallback. This PR-capable job never
       # receives an account credential or privileged secret, including for a
-      # same-repository pull request. This check is intentionally NOT in the required
-      # set — it's a signal, not a merge gate, so dev-server flakiness can't
-      # block shipping.
+      # same-repository pull request. It is not a PR merge gate, but it must
+      # pass on main before the production release readiness check succeeds.
       - name: Verify touch zoom before the full browser sweep
         if: steps.smoke-config.outputs.can_run == 'true'
         working-directory: app
@@ -355,12 +363,13 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     environment: staging-smoke
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout reviewed main commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -455,3 +464,21 @@ jobs:
           SMOKE_DATASET_IS_SYNTHETIC: ${{ secrets.SMOKE_DATASET_IS_SYNTHETIC }}
           SMOKE_EXPECTED_SUPABASE_PROJECT_REF: ${{ vars.SMOKE_EXPECTED_SUPABASE_PROJECT_REF }}
           SMOKE_EXPECTED_USER_ID: ${{ vars.SMOKE_EXPECTED_USER_ID }}
+
+  production-release-readiness:
+    name: Production release readiness
+    # Vercel imports this main-only check before assigning production domains.
+    # A skipped, cancelled or failed dependency cannot release a new build.
+    if: >-
+      always() && github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: [typecheck, boundary-tests, build-h5, build-mp-weixin, public-smoke, authenticated-smoke]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout reviewed main commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Require every release check to succeed
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: node scripts/check-release-readiness.mjs
