@@ -235,7 +235,7 @@ jobs:
         working-directory: app
         run: npx playwright install --with-deps chromium webkit
 
-      - name: Verify compiled moderator login and safe recovery
+      - name: Verify compiled moderator recovery and persistent drafts
         working-directory: app
         run: npx playwright test --config playwright.production-admin.config.ts
 
