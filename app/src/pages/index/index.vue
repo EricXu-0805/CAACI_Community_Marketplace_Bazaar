@@ -383,7 +383,7 @@
                 :src="thumbUrl(item.images?.[0], 'card')"
                 :class="['card-img', { 'card-img-sold': item.status === 'sold' }]"
                 :style="dimsToAspectStyle(effectiveDims(item), 0)"
-                :alt="item.title"
+                :alt="localizeItemTitle(item)"
                 loading="lazy"
                 lazy-load
                 mode="aspectFit"
