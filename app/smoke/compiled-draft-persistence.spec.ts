@@ -1,8 +1,8 @@
 import { test, expect, type Page } from '@playwright/test'
-import { readFileSync } from 'node:fs'
 import { CURRENT_CONSENT_VERSION } from '../src/legal'
+import { supabaseRefForCompiledBuild } from './supabase-ref'
 
-const manifest = JSON.parse(readFileSync('dist/build/h5/deployment-manifest.json', 'utf8'))
+const projectRef = supabaseRefForCompiledBuild()
 const owner = '11111111-1111-4111-8111-111111111111'
 
 async function fixture(page: Page) {
@@ -17,7 +17,7 @@ async function fixture(page: Page) {
         user: { id: owner, email: 'fixture@example.invalid', aud: 'authenticated', role: 'authenticated' } }),
     }))
     localStorage.setItem(`sb-${ref}-auth-token-auth-boundary-v2`, JSON.stringify({ v: 2, mode: 'allowed', generation }))
-  }, { ref: manifest.projectRef, owner })
+  }, { ref: projectRef, owner })
   await page.routeWebSocket(/supabase\.co/, socket => socket.close())
   await page.route('**/*.sentry.io/**', route => route.abort())
   await page.route(url => url.pathname.startsWith('/api/'), route => route.fulfill({ contentType: 'application/json', body: '{}' }))
