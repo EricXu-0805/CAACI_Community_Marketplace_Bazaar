@@ -1468,11 +1468,11 @@ onLaunch((launchOptions) => {
    * Refreshing can recover these failures — the new index.html has
    * fresh hashes. Auto-reload turns the rejection into a brief
    * "App updated, refreshing…" toast and a window.location.reload()
-   * so users don't see a broken nav. preventDefault() also stops the
-   * rejection from propagating to Sentry's global handler (the
-   * ignoreErrors filter in utils/sentry.ts is the second line of
-   * defense for any case where preventDefault doesn't work, e.g.
-   * Safari treating it differently).
+   * so users don't see a broken nav. Preserve the rejected import: cancelling
+   * Vite's event makes its wrapper resolve undefined, which uni-app's generated
+   * route loader then dereferences as a module. Only suppress a truly unhandled
+   * rejection after scheduling recovery; Vue must receive the original async
+   * route failure rather than a misleading secondary TypeError.
    */
   // #ifdef H5
   if (typeof window !== 'undefined') {
@@ -1499,7 +1499,7 @@ onLaunch((launchOptions) => {
     // Vue catches async route failures, so they need not become unhandled
     // rejections. Vite emits this event before handing the failure to Vue.
     window.addEventListener('vite:preloadError', (e) => {
-      if (recoverChunk((e as Event & { payload?: unknown }).payload)) e.preventDefault()
+      recoverChunk((e as Event & { payload?: unknown }).payload)
     })
     window.addEventListener('unhandledrejection', (e) => {
       if (recoverChunk(e.reason)) e.preventDefault()
