@@ -1,5 +1,10 @@
 # Audit archive
 
+Current product scope and validation distinctions are summarized in
+[Current scope](../release/2026-09-17-current-scope.md). The release owner's
+current checklist reconciles new feedback with these dated reports; historical
+checkboxes are not inherited as current completion evidence.
+
 During build-out (Apr–Jun 2026) the marketplace went through several audit
 rounds — accessibility / i18n / UX, security, performance, and the V3 / V3.5
 visual-refresh + onboarding sprints. Those reports describe what each round

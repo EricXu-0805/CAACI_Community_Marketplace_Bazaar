@@ -1455,7 +1455,13 @@ Top to bottom; each step links to its detail.
 8. **Post-deploy diagnostic** — [ENV_CHECKLIST diagnostic](ENV_CHECKLIST.md#diagnostic): app 200, admin 200, Sentry receiving events tagged with the deploy SHA.
 9. **Invite the first small cohort**, then run the [daily week-1](#daily-during-week-1) loop. **`DIGEST_LIVE` is `true` in production and nothing sets `MEETUP_LIVE` yet, so meetup mail is riding that fallback.** If you want the daily digest off during the beta, set `MEETUP_LIVE=true` **first**, redeploy, and only then clear `DIGEST_LIVE` — clearing it on its own leaves meetup mail inert (`api/meetup-notify.js:52` — `if (!TEST_EMAIL && !LIVE) return json({ skipped: 'inert' })`), which means people stop being told their meetup was accepted and nothing anywhere reports it.
 
-### Before you invite the first cohort
+### Historical first-cohort checklist (August snapshots)
+
+The dated counts and findings below are historical evidence, not live incident
+status. Reconcile them with the release owner's current checklist before action;
+do not repeat old removals, credential changes or seeding assumptions without
+checking current state. Current feature scope is in
+[`docs/release/2026-09-17-current-scope.md`](docs/release/2026-09-17-current-scope.md).
 
 - [ ] Run the pre-launch checklist in `ENV_CHECKLIST.md` (env vars + Supabase auth + reset test).
 - [x] Admin token: production already holds **two unrevoked `owner` tokens** plus three unrevoked `operator` tokens (counted in `public.admin_tokens` on 2026-08-14). Earlier revisions of this file said production had no Owner and needed a break-glass bootstrap; that is stale. Confirm one of the two owner tokens is actually in your password manager and can still authenticate — an owner row you cannot present is not an owner.
