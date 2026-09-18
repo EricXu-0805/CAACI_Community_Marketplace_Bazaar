@@ -31,7 +31,11 @@ test('a missing compiled route reloads once and restores the requested journey',
     const source = await response.text()
     expect(source).toMatch(/pages-publish-index\.[\w-]+\.js/)
     servedOldEntry = true
-    await route.fulfill({ response, body: source.replaceAll(/pages-publish-index\.[\w-]+\.js/g, 'pages-publish-index.removed-release.js') })
+    const loaderPattern = /(import\("\.\/pages-publish-index\.[^"]+"\).*?\.then\()(\w+)=>(\w+\(\2\.default\|\|\2\))/
+    expect(source).toMatch(loaderPattern)
+    const instrumented = source.replace(loaderPattern, (_match, prefix, arg, body) =>
+      `${prefix}${arg}=>{if(!${arg})console.error('chunk-fixture:undefined-route-module');return ${body}}`)
+    await route.fulfill({ response, body: instrumented.replaceAll(/pages-publish-index\.[\w-]+\.js/g, 'pages-publish-index.removed-release.js') })
   })
   await page.route('**/assets/pages-publish-index.removed-release.js', route => {
     failedUrl = route.request().url()
@@ -53,6 +57,10 @@ test('a missing compiled route reloads once and restores the requested journey',
   }
   expect(failedUrl).toContain('/assets/pages-publish-index.')
   expect(reloads).toBe(1)
+  // A cancelled Vite preload event resolves its import to undefined. uni-app's
+  // generated route then dereferences .default, masking the original failure.
+  expect(lifecycle.filter(message => /(?:undefined|null).*default|default.*(?:undefined|null)/i.test(message))).toEqual([])
+  expect(lifecycle).not.toContain('chunk-fixture:undefined-route-module')
   await expect(page).toHaveURL(/pages\/login\/index\?intent=/)
   await expect(page.getByText('The connection timed out, click the screen to try again.')).toHaveCount(0)
 })
