@@ -40,7 +40,7 @@ export function supabaseRefForBuild(): string {
 export function supabaseRefForCompiledBuild(): string {
   const manifest = JSON.parse(readFileSync(resolve(process.cwd(), 'dist/build/h5/deployment-manifest.json'), 'utf8'))
   const ref = manifest?.projectRef
-  if (manifest?.schema !== 1 || typeof ref !== 'string' || !/^[a-z0-9-]{1,63}$/.test(ref)) {
+  if (manifest?.schema !== 1 || typeof ref !== 'string' || !/^[a-z0-9]{20}$/.test(ref)) {
     throw new Error('compiled H5 manifest has no valid project ref — rebuild before session acceptance')
   }
   return ref
