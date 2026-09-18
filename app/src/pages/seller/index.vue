@@ -27,7 +27,7 @@
       <UAvatar :src="seller.avatar_url" :owner="seller.id" :fallback="defaultAvatarSrc" :alt="seller.nickname || 'avatar'" class="avatar" />
       <view class="name-row">
         <text class="nickname">{{ seller.nickname }}</text>
-        <UBadge v-if="seller.is_illini_verified" variant="illini">Illini</UBadge>
+        <UBadge v-if="seller.is_illini_verified" variant="illini" label="Illini" />
       </view>
       <text v-if="seller.status_text || seller.status_emoji" class="user-status">
         <text v-if="seller.status_emoji" class="us-emoji">{{ seller.status_emoji }}</text>

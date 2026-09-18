@@ -409,11 +409,11 @@
               <view v-if="item.status === 'sold'" class="sold-overlay">
                 <text class="sold-overlay-label">{{ t('status.sold') }}</text>
               </view>
-              <view v-else-if="item.status === 'reserved'" class="card-cond-badge"><UBadge variant="reserved">{{ t('status.reserved') }}</UBadge></view>
-              <view v-else-if="!hasCategoryDetails(item.category) && item.condition === 'defective'" class="card-cond-badge"><UBadge variant="defect">{{ t('condition.defective') }}</UBadge></view>
-              <view v-else-if="!hasCategoryDetails(item.category) && item.condition === 'new'" class="card-cond-badge"><UBadge variant="new">{{ t('condition.new') }}</UBadge></view>
-              <view v-else-if="!hasCategoryDetails(item.category) && item.condition === 'like_new'" class="card-cond-badge"><UBadge variant="mint">{{ t('condition.like_new') }}</UBadge></view>
-              <view v-if="item.listing_type === 'wanted' && item.status !== 'sold'" class="card-cond-badge"><UBadge variant="wanted">{{ t('item.wanted') }}</UBadge></view>
+              <view v-else-if="item.status === 'reserved'" class="card-cond-badge"><UBadge variant="reserved" :label="t('status.reserved')" /></view>
+              <view v-else-if="!hasCategoryDetails(item.category) && item.condition === 'defective'" class="card-cond-badge"><UBadge variant="defect" :label="t('condition.defective')" /></view>
+              <view v-else-if="!hasCategoryDetails(item.category) && item.condition === 'new'" class="card-cond-badge"><UBadge variant="new" :label="t('condition.new')" /></view>
+              <view v-else-if="!hasCategoryDetails(item.category) && item.condition === 'like_new'" class="card-cond-badge"><UBadge variant="mint" :label="t('condition.like_new')" /></view>
+              <view v-if="item.listing_type === 'wanted' && item.status !== 'sold'" class="card-cond-badge"><UBadge variant="wanted" :label="t('item.wanted')" /></view>
               <view v-if="item.images && item.images.length > 1" class="img-count-badge">
                 <text class="img-count-label">{{ item.images.length }}</text>
               </view>
@@ -451,7 +451,7 @@
                     lazy
                   />
                   <text class="seller-nick">{{ item.profile?.nickname || t('app.user') }}</text>
-                  <UBadge v-if="item.profile?.is_illini_verified" variant="illini" class="card-illini" :title="t('profile.illiniVerified')">Illini</UBadge>
+                  <UBadge v-if="item.profile?.is_illini_verified" variant="illini" class="card-illini" :title="t('profile.illiniVerified')" label="Illini" />
                 </view>
                 <view class="card-fav">
                   <text class="card-time">{{ formatTime(item.created_at) }}</text>

@@ -32,8 +32,8 @@
           <view class="head-info">
             <view class="head-name-row">
               <text class="head-name" role="button" @click.stop="goSeller(post.user_id)">{{ post.profile?.nickname || t('app.user') }}</text>
-              <UBadge v-if="post.is_official" variant="official">{{ t('plaza.official') }}</UBadge>
-              <UBadge v-else-if="post.profile?.is_illini_verified" variant="illini">Illini</UBadge>
+              <UBadge v-if="post.is_official" variant="official" :label="t('plaza.official')" />
+              <UBadge v-else-if="post.profile?.is_illini_verified" variant="illini" label="Illini" />
               <view v-if="post.is_pinned" class="badge-pinned"><text class="badge-pinned-label">{{ t('plaza.pinned') }}</text></view>
             </view>
             <text class="head-time">{{ formatTime(post.created_at) }}</text>
