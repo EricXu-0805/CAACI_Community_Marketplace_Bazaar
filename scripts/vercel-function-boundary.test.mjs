@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
-import { readdir, readFile } from 'node:fs/promises'
+import { readdir, readFile, mkdtemp, mkdir, copyFile, rm } from 'node:fs/promises'
 import { createRequire } from 'node:module'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
@@ -98,6 +99,31 @@ test('.vercelignore keeps tests and local private context out of uploaded deploy
   ]
   for (const rule of requiredRules) {
     assert.match(ignore, new RegExp(`^${rule.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'))
+  }
+})
+
+test('Edge routes bundle with only the API runtime files shipped to Vercel', async () => {
+  // Local imports can work while their target is excluded from deployment.
+  // Reproduce the shipped source boundary instead of bundling the full checkout.
+  const root = await mkdtemp(path.join(tmpdir(), 'illini-edge-source-'))
+  try {
+    const runtimeFiles = (await walkFiles(apiRoot)).filter(file => file.endsWith('.js'))
+    const entryPoints = []
+    for (const file of runtimeFiles) {
+      const destination = path.join(root, 'api', file)
+      await mkdir(path.dirname(destination), { recursive: true })
+      await copyFile(path.join(apiRoot, file), destination)
+      if (!file.split('/').some(segment => segment.startsWith('_'))) entryPoints.push(destination)
+    }
+    const appRequire = createRequire(path.join(projectRoot, 'app', 'package.json'))
+    const { build } = appRequire('esbuild')
+    const result = await build({
+      entryPoints, outdir: path.join(root, 'bundle'), bundle: true, write: false,
+      platform: 'browser', format: 'esm', target: 'es2022', logLevel: 'silent',
+    })
+    assert.equal(result.outputFiles.length, entryPoints.length)
+  } finally {
+    await rm(root, { recursive: true, force: true })
   }
 })
 
