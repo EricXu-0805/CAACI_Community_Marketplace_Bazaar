@@ -36,12 +36,12 @@ export async function smallBody(request) {
 }
 
 export default async function handler(request) {
+  const boundary = evaluateDeploymentBoundary({ supabaseUrl: process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL })
+  if (!boundary.ok) return deploymentBoundaryResponse(boundary)
   if (request.method !== 'POST') return reply(405)
   const env = process.env
   if (env.ACQUISITION_ENABLED !== 'true') return reply()
   const origin = normalizeSupabaseOrigin(env.SUPABASE_URL || env.VITE_SUPABASE_URL)
-  const boundary = evaluateDeploymentBoundary({ supabaseUrl: origin })
-  if (!boundary.ok) return deploymentBoundaryResponse(boundary)
   // Preview traffic must not inflate the live acquisition report.
   if (!['production', 'test'].includes(boundary.environment)) return reply()
   if (request.headers.get('origin') !== new URL(request.url).origin) return reply(403)
