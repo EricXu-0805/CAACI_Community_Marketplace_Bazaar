@@ -580,6 +580,8 @@ const zh: Record<string, string> = {
   'chat.openPhoto': '查看照片',
   'chat.loadMedia': '加载附件',
   'chat.privateMediaHint': '私密会话',
+  'chat.videoReviewPrivacy': '视频需完成安全检查后才能发送',
+  'chat.videoReviewUnavailable': '视频尚未发送。安全检查待处理或暂不可用，请稍后重试。',
   'chat.wechatPhotoPrivacy': '照片将交由微信进行内容安全检查',
   'chat.mediaReviewUnavailable': '照片安全检查暂不可用，照片尚未发送，请稍后重试。',
   'chat.mediaInvalidFile': '暂不支持此文件格式，请选择 JPEG 或 PNG 照片。',

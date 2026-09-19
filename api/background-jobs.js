@@ -1,3 +1,5 @@
+import { monitoredCron } from './_cron-monitor.js'
+import { moderateVideoJob } from './_video-moderation.js'
 import { moderationObjectKeys, mediaMoveSucceeded, mediaCachePurgeAccepted } from './_moderation-media.js'
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from './_deployment-boundary.js'
 import { reportToSentry } from './_sentry-report.js'
@@ -165,9 +167,7 @@ async function rpc(origin, name, args, timeoutMs) {
   return parseJson(text)
 }
 
-export default async function handler(request) {
-  const deploymentError = deploymentBoundaryResponse(evaluateDeploymentBoundary({ supabaseUrl: SUPABASE_URL }))
-  if (deploymentError) return deploymentError
+async function handleRequest(request) {
   if (request.method !== 'GET') return json({ error: 'method_not_allowed' }, 405, { Allow: 'GET' })
   const origin = serviceOrigin()
   if (!origin) return retryable({ error: 'not_configured' })
@@ -185,6 +185,11 @@ export default async function handler(request) {
   }
   const counts = { listing_batches: 0, notifications: 0, media_completed: 0, media_retried: 0, media_cancelled: 0 }
   try {
+    if (process.env.CHAT_VIDEO_MODERATION_ENABLED === 'true') {
+      const video = await moderateVideoJob({ call, request: serviceCall, origin: origin.href, serviceHeaders, timeoutMs: timeLeft() })
+      counts.video_state = video.state
+      if (['review', 'failed'].includes(video.state)) await reportToSentry('api/background-jobs', 'private video review needs attention', { state: video.state })
+    }
     // Reserve time for both kinds of work. Each object has its own lease, so a
     // single bad upload cannot delay all later evidence or listing reminders.
     for (let i = 0; i < 3 && deadline - Date.now() > 10_000; i++) {
@@ -281,4 +286,10 @@ export default async function handler(request) {
     await reportToSentry('api/background-jobs', 'background worker incomplete', diagnostic)
     return retryable({ error: 'background_work_incomplete', ...counts })
   }
+}
+
+export default async function handler(request) {
+  const deploymentError = deploymentBoundaryResponse(evaluateDeploymentBoundary({ supabaseUrl: SUPABASE_URL }))
+  if (deploymentError) return deploymentError
+  return monitoredCron(request, 'background-jobs', handleRequest)
 }

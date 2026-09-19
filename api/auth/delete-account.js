@@ -1,3 +1,4 @@
+import { monitoredCron } from '../_cron-monitor.js'
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from '../_deployment-boundary.js'
 import { reportToSentry } from '../_sentry-report.js'
 
@@ -718,11 +719,15 @@ async function handleCron(req) {
   return json({ success: true, processed: jobs.length, completed, pending })
 }
 
-export default async function handler(req) {
-  const deploymentError = deploymentBoundaryResponse(evaluateDeploymentBoundary({ supabaseUrl: SUPABASE_URL }))
-  if (deploymentError) return deploymentError
+async function handleRequest(req) {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204 })
   if (req.method === 'POST') return handlePost(req)
   if (req.method === 'GET') return handleCron(req)
   return json({ error: 'method_not_allowed' }, 405)
+}
+
+export default async function handler(request) {
+  const deploymentError = deploymentBoundaryResponse(evaluateDeploymentBoundary({ supabaseUrl: SUPABASE_URL }))
+  if (deploymentError) return deploymentError
+  return monitoredCron(request, 'delete-account', handleRequest)
 }

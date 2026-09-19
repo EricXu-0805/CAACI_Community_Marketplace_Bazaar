@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises'
 // cannot resolve. Every shared api/_*.js helper must therefore be inlined here;
 // adding one to a handler without adding it to this map breaks every suite that
 // loads that handler.
-const SHARED_MODULES = ['_deployment-boundary.js', '_sentry-report.js', '_moderation-media.js', '_listing-translation.js', '_street-location.js', '_public-content-translation.js', '_wechat-media-path.js']
+const SHARED_MODULES = ['_video-moderation.js', '_cron-monitor.js', '_deployment-boundary.js', '_sentry-report.js', '_moderation-media.js', '_listing-translation.js', '_street-location.js', '_public-content-translation.js', '_wechat-media-path.js']
 
 const inlined = new Map(await Promise.all(SHARED_MODULES.map(async name => {
   const source = await readFile(new URL(`./${name}`, import.meta.url), 'utf8')

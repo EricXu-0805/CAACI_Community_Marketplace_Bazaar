@@ -1291,3 +1291,40 @@ test('the app has no default-public or global user-enumeration channel', async (
   assert.match(presence, /payload\?\.user_id !== expectedPeerId/)
   assert.match(presence, /payload\?\.conversation_id !== conversationId/)
 })
+
+test('replacement channel waits for both removal and the SDK socket close', async () => {
+  const runtime = await loadBoundaryRuntime()
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
+  const removal = deferred()
+  const disconnected = deferred()
+  let disconnectCalls = 0
+  let disconnecting = false
+  const harness = realtimeHarness({ sessionPromise: { data: { session: {
+    user: { id: '11111111-1111-4111-8111-111111111111' }, access_token: 'test-jwt',
+  } } } })
+  harness.supabase.realtime.isDisconnecting = () => disconnecting
+  harness.supabase.getChannels = () => []
+  harness.supabase.realtime.disconnect = () => { disconnectCalls++; return disconnected.promise }
+  const base = { supabase: harness.supabase, topic: 'replacement-test', configure: channel => channel }
+  let stopFirst, stopSecond
+  try {
+    stopFirst = runtime.startPrivateRealtimeChannel(base)
+    await wait(10)
+    assert.equal(harness.events.filter(x => x === 'subscribe').length, 1)
+    harness.supabase.removeChannel = () => { disconnecting = true; return removal.promise }
+    stopFirst()
+    stopSecond = runtime.startPrivateRealtimeChannel(base)
+    await wait(25)
+    assert.equal(harness.events.filter(x => x === 'subscribe').length, 1)
+    removal.resolve('ok')
+    await wait(25)
+    assert.equal(disconnectCalls, 1, 'an empty but connected SDK socket gets an explicit awaited teardown')
+    assert.equal(harness.events.filter(x => x === 'subscribe').length, 1, 'resolved removal is not a completed socket close')
+    disconnected.resolve('ok')
+    disconnecting = false
+    await wait(30)
+    assert.equal(harness.events.filter(x => x === 'subscribe').length, 2)
+  } finally {
+    removal.resolve('ok'); disconnected.resolve('ok'); disconnecting = false; stopFirst?.(); stopSecond?.(); runtime.dispose()
+  }
+})

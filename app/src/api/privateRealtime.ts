@@ -11,6 +11,22 @@ export interface PrivateRealtimeContext {
   isCurrent: () => boolean
 }
 
+const pendingChannelRemovals = new WeakMap<SupabaseClient, Promise<unknown>>()
+
+// SDK removeChannel resolves before its last-channel socket disconnect finishes.
+// Joining while that close is in flight can acknowledge a subscription but lose
+// subsequent database events. Do not disconnect a socket shared by other tabs.
+async function waitForChannelTeardown(supabase: SupabaseClient, current: () => boolean): Promise<void> {
+  const deadline = Date.now() + 2000
+  while (current()) {
+    const pending = pendingChannelRemovals.get(supabase)
+    if (!pending && !supabase.realtime.isDisconnecting?.()) return
+    if (Date.now() >= deadline) throw new Error('realtime_teardown_timeout')
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error('realtime_teardown_superseded')
+}
+
 export type RealtimeChannelFailureStage =
   | 'getSession'
   | 'setAuth'
@@ -460,7 +476,18 @@ function startAuthenticatedRealtimeChannel(
       const closing = channel
       channel = null
       try {
-        void Promise.resolve(options.supabase.removeChannel(closing)).catch(() => {})
+        const previous = pendingChannelRemovals.get(options.supabase)
+        const removed = Promise.resolve(options.supabase.removeChannel(closing)).then(async () => {
+          // removeChannel can return "ok" with zero channels while the SDK still
+          // reports connected. Explicitly await the empty socket teardown; a
+          // live sibling channel must never be disconnected by this cleanup.
+          if (options.supabase.getChannels?.().length === 0) await options.supabase.realtime.disconnect?.()
+        }).catch(() => {})
+        const pending = previous ? Promise.all([previous, removed]) : removed
+        pendingChannelRemovals.set(options.supabase, pending)
+        void pending.finally(() => {
+          if (pendingChannelRemovals.get(options.supabase) === pending) pendingChannelRemovals.delete(options.supabase)
+        })
       } catch {
         // A concurrently closed socket is already in the desired state.
       }
@@ -489,6 +516,9 @@ function startAuthenticatedRealtimeChannel(
     // reads and verifies Auth while it owns the same queue used by every SDK
     // setAuth call, so an older account cannot complete after this preflight.
     try {
+      if (pendingChannelRemovals.has(options.supabase) || options.supabase.realtime.isDisconnecting?.()) {
+        await waitForChannelTeardown(options.supabase, isCurrent)
+      }
       await setLatestRealtimeAuth(options.supabase, accountToken, isCurrent)
     } catch (error) {
       fail({

@@ -17,9 +17,11 @@ async function fixture(t) {
     useSupabase: () => ({ supabase: { auth: { getSession: () => state.sessionWait || Promise.resolve({ data: { session: { user: { id: OWNER }, access_token: 'account-a-token' } } }) } } }),
     compressImage: async () => 'temp-compressed.jpg',
     preferredSupabasePublicKey: () => 'sb_publishable_fixture',
+    waitForChatVideoReview: async (...args) => { state.videoChecks = (state.videoChecks || []).concat([args]); if (state.videoWait) await state.videoWait; if (state.checkFails) throw new Error('chat_video_review_unavailable') },
     mpImageCheck: async (...args) => { state.checks.push(args); if (state.checkWait) await state.checkWait; if (state.checkFails) throw new Error('wechat_media_check_unavailable') },
     platformFetch: async (url, options) => { state.cleanup.push({ url, options }); return {} },
     uni: {
+      getVideoInfo: options => options.success({ type: state.mime, duration: state.duration ?? 20 }),
       getImageInfo: options => options.success({ type: state.mime }),
       getFileInfo: options => options.success({ size: state.size }),
       uploadFile: options => { state.uploads.push(options); return { abort: () => { state.aborts++ } } },
@@ -36,7 +38,7 @@ async function fixture(t) {
   globalThis[key] = bindings; t.after(() => { delete globalThis[key] })
   Object.assign(bindings, await compile('../src/utils/chatMedia.ts'))
   const module = await compile('../src/api/miniChatPhoto.ts')
-  state.start = () => module.uploadMiniChatPhoto('temp.jpg', CONV, MSG, { userId: OWNER })
+  state.start = (type = 'image') => module.uploadMiniChatPhoto('temp.jpg', CONV, MSG, { userId: OWNER }, type)
   return state
 }
 
@@ -93,3 +95,23 @@ for (const [name, change, reason] of [
   const state = await fixture(t); Object.assign(state, change)
   await assert.rejects(state.start(), reason); assert.equal(state.uploads.length, 0)
 })
+
+
+test('mini video waits for the final server review before becoming sendable', async t => {
+  const state = await fixture(t); state.mime = 'mp4'; let resolve;
+  state.videoWait = new Promise(r => { resolve = r }); let settled = false;
+  const pending = state.start('video').then(path => { settled = true; return path });
+  await flush(); state.uploads[0].success({statusCode:200}); await flush();
+  assert.equal(settled,false); assert.equal(state.checks.length,0); assert.equal(state.videoChecks.length,1);
+  resolve(); assert.match(await pending,/\.mp4$/);
+});
+test('mini video review failure cleans its private upload without a message', async t => {
+  const state = await fixture(t); state.mime = 'mp4'; state.checkFails = true;
+  const pending = state.start('video'); const rejected = assert.rejects(pending,/chat_video_review/);
+  await flush(); state.uploads[0].success({statusCode:200}); await rejected; await flush();
+  assert.equal(state.cleanup.length,1);
+});
+test('mini video rejects clips longer than one minute before upload', async t => {
+  const state=await fixture(t); state.mime='mp4'; state.duration=61;
+  await assert.rejects(state.start('video'),/invalid_file/); assert.equal(state.uploads.length,0);
+});

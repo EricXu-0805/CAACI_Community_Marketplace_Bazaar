@@ -1,3 +1,4 @@
+import { monitoredCron } from './_cron-monitor.js'
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from './_deployment-boundary.js'
 import { reportToSentry } from './_sentry-report.js'
 
@@ -747,9 +748,7 @@ function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } })
 }
 
-export default async function handler(req) {
-  const deploymentError = deploymentBoundaryResponse(evaluateDeploymentBoundary({ supabaseUrl: SUPABASE_URL }))
-  if (deploymentError) return deploymentError
+async function handleRequest(req) {
   if (req.method !== 'GET') return json({ error: 'method_not_allowed' }, 405)
 
   // Auth — require the documented Bearer scheme exactly. Accepting the raw
@@ -1011,4 +1010,10 @@ export default async function handler(req) {
     await reportToSentry('api/notification-digest', 'notification digest: fatal failure', { phase: 'live_run' })
     return json({ error: 'internal' }, 500)
   }
+}
+
+export default async function handler(request) {
+  const deploymentError = deploymentBoundaryResponse(evaluateDeploymentBoundary({ supabaseUrl: SUPABASE_URL }))
+  if (deploymentError) return deploymentError
+  return monitoredCron(request, 'notification-digest', handleRequest)
 }
