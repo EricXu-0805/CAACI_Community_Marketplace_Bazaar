@@ -10,10 +10,10 @@ test('versioned privacy copy discloses active data paths and retention limits in
     readFile(new URL('src/legal/privacy.zh.ts', ROOT), 'utf8'),
   ])
 
-  assert.match(en, /PRIVACY_VERSION = '2026-09-17'/)
-  assert.match(en, /Effective date: September 17, 2026/)
-  assert.match(zh, /版本号：2026-09-17/)
-  assert.match(zh, /生效日期：2026 年 9 月 17 日/)
+  assert.match(en, /PRIVACY_VERSION = '2026-09-19'/)
+  assert.match(en, /Effective date: September 19, 2026/)
+  assert.match(zh, /版本号：2026-09-19/)
+  assert.match(zh, /生效日期：2026 年 9 月 19 日/)
   for (const source of [en, zh]) {
     for (const provider of ['Supabase', 'Google', 'Vercel', 'Resend', 'Sentry', 'OpenAI', 'OpenStreetMap', 'WeChat']) {
       const localized = provider === 'WeChat' && source === zh ? '微信' : provider
@@ -25,6 +25,8 @@ test('versioned privacy copy discloses active data paths and retention limits in
     assert.match(source, /(random per-install salt|安装级随机盐)/)
     assert.match(source, /(retained indefinitely|无限期保留)/)
   }
+  assert.match(en, /First-party campaign measurement[\s\S]*Global Privacy Control[\s\S]*bounded hourly maintenance/)
+  assert.match(zh, /站内渠道统计[\s\S]*不复制消息正文[\s\S]*每小时维护任务/)
   assert.doesNotMatch(en, /session cookies to keep you signed in/i)
   assert.doesNotMatch(zh, /会话 Cookie 保持登录状态/)
   assert.doesNotMatch(en, /AWS us-east-1|Data is processed in the United States/)
@@ -57,7 +59,7 @@ test('versioned privacy copy discloses active data paths and retention limits in
 
 test('material privacy version is accepted only by the matching forward migration', async () => {
   const migration = await readFile(
-    new URL('../../supabase/migrations/20260917034644_accept_street_public_translation_privacy.sql', import.meta.url),
+    new URL('../../supabase/migrations/20260919090100_accept_acquisition_privacy.sql', import.meta.url),
     'utf8',
   )
 
@@ -70,6 +72,7 @@ test('material privacy version is accepted only by the matching forward migratio
   assert.match(migration, /GRANT EXECUTE ON FUNCTION public\.record_consent\(text, uuid\)[\s\S]*TO authenticated/)
   assert.match(migration, /REVOKE ALL ON FUNCTION[\s\S]*FROM PUBLIC, anon, authenticated, service_role/)
   assert.match(migration, /WHEN '2026-09-17' THEN target_version := '2026-09-17'/)
+  assert.match(migration, /WHEN '2026-09-19' THEN target_version := '2026-09-19'/)
   assert.doesNotMatch(migration, /UPDATE public\.profiles[\s\S]*SET tos_version = '0'/)
 })
 
