@@ -176,6 +176,23 @@ test('a 390px card shows the whole seller rating', async ({ page }) => {
   expectWholeTextIsVisible(verified, 'the rating on a verified seller\'s card')
 })
 
+test('the install hint does not move a listing after the reader scrolls to it', async ({ page }) => {
+  await stub(page)
+  await page.goto('/#/pages/index/index', { waitUntil: 'domcontentloaded' })
+  const before = await measure(page, RATED_TITLE, '.seller-rating')
+  expectWholeTextIsVisible(before, 'the initially visible seller rating')
+  const rating = page.locator('.card', { hasText: RATED_TITLE }).locator('.seller-rating')
+  const initial = await rating.boundingBox()
+  // The former 1.2-second install-hint reveal moved this already-visible row
+  // below the viewport. Do not scroll again: that would conceal the jump.
+  await page.waitForTimeout(1600)
+  const after = await rating.boundingBox()
+  expect(initial).not.toBeNull()
+  expect(after).not.toBeNull()
+  expect(Math.abs(after!.y - initial!.y), 'the feed moved after the card was visible').toBeLessThan(1)
+  await expect(page.locator('.a2hs')).toBeVisible()
+})
+
 test('a desktop column shows the whole rating too', async ({ page }) => {
   await stub(page)
   await page.setViewportSize({ width: 1024, height: 900 })
