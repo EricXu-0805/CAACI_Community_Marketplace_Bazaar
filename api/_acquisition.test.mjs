@@ -7,7 +7,7 @@ const request=(data={},headers={})=>new Request('https://www.illinimarket.com/ap
 test('only bounded same-origin campaign events reach service-only writes; signup identity comes from verified Auth',async()=>{
  const oldFetch=globalThis.fetch,oldEnv={...process.env};Object.assign(process.env,env)
  const calls=[]
- globalThis.fetch=async(url,init)=>{calls.push({url,init});return Response.json(url.endsWith('/edge_rate_hit')?true:url.endsWith('/user')?{id:'22222222-2222-4222-8222-222222222222'}:null)}
+ globalThis.fetch=async(url,init)=>{calls.push({url,init});return url.endsWith('/record_acquisition')?new Response(null,{status:204}):Response.json(url.endsWith('/edge_rate_hit')?true:{id:'22222222-2222-4222-8222-222222222222'})}
  try{
   process.env.ACQUISITION_ENABLED='false'
   assert.equal((await handler(request())).status,204)
@@ -26,6 +26,8 @@ test('only bounded same-origin campaign events reach service-only writes; signup
   assert.equal((await handler(request())).status,204)
   assert.equal(calls.length,2);assert.match(JSON.parse(calls[0].init.body).bucket_in,/^growth:[a-f0-9]{64}$/)
   assert.deepEqual(JSON.parse(calls[1].init.body),{visit_in:id,source_in:'reddit',user_in:null})
+  assert.equal(calls[0].init.headers.apikey,'sb_secret_fixture')
+  assert.equal(calls[0].init.headers.Authorization,undefined)
   calls.length=0
   assert.equal((await handler(request({event:'signup'},{authorization:'Bearer caller-token'}))).status,204)
   assert.equal(calls[1].init.headers.Authorization,'Bearer caller-token')

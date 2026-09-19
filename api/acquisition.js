@@ -5,7 +5,12 @@ export const config = { runtime: 'edge' }
 export const SOURCES = new Set(['caaci', 'wechat_students', 'wechat_local', 'xiaohongshu', 'facebook', 'reddit', 'instagram', 'x', 'linkedin'])
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const reply = (status = 204) => new Response(null, { status, headers: { 'Cache-Control': 'no-store' } })
-const headers = key => ({ apikey: key, ...(/^sb_(publishable|secret)_/.test(key) ? {} : { Authorization: `Bearer ${key}` }), 'Content-Type': 'application/json' })
+function supabaseHeaders(key, authorization = '', extra = {}) {
+  const headers = { apikey: key, ...extra }
+  if (authorization) headers.Authorization = authorization
+  else if (!/^sb_(?:publishable|secret)_/.test(key)) headers.Authorization = `Bearer ${key}`
+  return headers
+}
 
 export async function smallBody(request) {
   if (Number(request.headers.get('content-length')) > 512) throw Error('body_limit')
@@ -50,11 +55,11 @@ export default async function handler(request) {
     || Object.keys(data).some(k => !['event', 'source', 'visit_id'].includes(k))) return reply(400)
   const call = async (path, key, body, authorization) => {
     const r = await fetchBounded(fetch, `${origin}${path}`, {
-      method: body ? 'POST' : 'GET', headers: { ...headers(key), ...(authorization ? { Authorization: authorization } : {}) },
+      method: body ? 'POST' : 'GET', headers: supabaseHeaders(key, authorization, { 'Content-Type': 'application/json' }),
       ...(body ? { body: JSON.stringify(body) } : {}),
     }, { timeoutMs: 2500, maxBytes: 32 * 1024 })
     if (!r.ok) throw Error('upstream_failed')
-    return await r.json()
+    return r.bytes.byteLength ? await r.json() : null
   }
   try {
     const network = (request.headers.get('x-vercel-forwarded-for') || request.headers.get('x-real-ip') || 'unknown').slice(0, 128)
