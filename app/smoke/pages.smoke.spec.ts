@@ -324,8 +324,8 @@ test(`the install hint covers none of the home page controls (${dataset})`, asyn
   })
   await page.goto('/#/pages/index/index', { waitUntil: 'networkidle' })
 
-  // It reveals on a timer, so wait for the thing being asserted rather than
-  // for a duration. A run where it never appears has tested nothing.
+  // Wait for the populated feed and inline hint (or the empty state).
+  // A run where the hint never appears has tested nothing.
   const hint = page.locator('.a2hs')
   const emptyBlock = page.locator('.empty')
   await expect

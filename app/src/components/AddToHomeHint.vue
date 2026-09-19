@@ -49,22 +49,17 @@ onMounted(() => {
     dismissedForSession = localStorage.getItem(KEY) === '1'
     if (!isIOS || standalone || dismissedForSession) return
 
-    let revealReady = false
     // A phone can enter in a >768px landscape viewport and rotate to portrait
     // without remounting this component. Re-evaluate width on every resize so
     // that initial orientation cannot permanently suppress the hint.
     const updateVisibility = () => {
-      show.value = revealReady && !dismissedForSession && window.innerWidth < 768
+      show.value = !dismissedForSession && window.innerWidth < 768
     }
     window.addEventListener('resize', updateVisibility)
-    // A short beat so it doesn't fight first paint. The timer may elapse while
-    // landscape is ineligible; the next portrait resize reveals it.
-    const revealTimer = setTimeout(() => {
-      revealReady = true
-      updateVisibility()
-    }, 1200)
+    // Reserve the inline space before listings arrive. A delayed reveal pushes
+    // the card a reader is already viewing below the fixed bottom navigation.
+    updateVisibility()
     cleanupViewportTracking = () => {
-      clearTimeout(revealTimer)
       window.removeEventListener('resize', updateVisibility)
     }
   } catch {}
