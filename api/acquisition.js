@@ -1,5 +1,5 @@
 import { evaluateDeploymentBoundary, deploymentBoundaryResponse } from './_deployment-boundary.js'
-import { fetchBounded, normalizeSupabaseOrigin } from '../scripts/http-boundary.mjs'
+import { fetchBounded, normalizeSupabaseOrigin } from './_http-boundary.js'
 
 export const config = { runtime: 'edge' }
 export const SOURCES = new Set(['caaci', 'wechat_students', 'wechat_local', 'xiaohongshu', 'facebook', 'reddit', 'instagram', 'x', 'linkedin'])
