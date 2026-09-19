@@ -26,6 +26,7 @@ test('only bounded same-origin campaign events reach service-only writes; signup
   assert.equal((await handler(request())).status,204)
   assert.equal(calls.length,2);assert.match(JSON.parse(calls[0].init.body).bucket_in,/^growth:[a-f0-9]{64}$/)
   assert.deepEqual(JSON.parse(calls[1].init.body),{visit_in:id,source_in:'reddit',user_in:null})
+  assert.equal(calls[0].init.redirect,'manual')
   assert.equal(calls[0].init.headers.apikey,'sb_secret_fixture')
   assert.equal(calls[0].init.headers.Authorization,undefined)
   calls.length=0
@@ -34,6 +35,8 @@ test('only bounded same-origin campaign events reach service-only writes; signup
   assert.equal(JSON.parse(calls[2].init.body).user_in,'22222222-2222-4222-8222-222222222222')
   globalThis.fetch=async()=>Response.json(false)
   assert.equal((await handler(request())).status,429)
+  globalThis.fetch=async()=>Response.redirect('https://untrusted.example',302)
+  assert.equal((await handler(request())).status,503,'upstream redirects do not forward privileged headers')
   globalThis.fetch=async()=>{throw Error('network')}
   assert.equal((await handler(request())).status,503)
  }finally{globalThis.fetch=oldFetch;for(const k of Object.keys(process.env))if(!(k in oldEnv))delete process.env[k];Object.assign(process.env,oldEnv)}
