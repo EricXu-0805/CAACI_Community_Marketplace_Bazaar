@@ -1,3 +1,4 @@
+import { monitoredCron } from './_cron-monitor.js'
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from './_deployment-boundary.js'
 import { reportToSentry } from './_sentry-report.js'
 
@@ -186,9 +187,7 @@ async function deleteStorageObjects(origin, names, timeoutMs) {
   }, timeoutMs)
 }
 
-export default async function handler(request) {
-  const deploymentError = deploymentBoundaryResponse(evaluateDeploymentBoundary({ supabaseUrl: SUPABASE_URL }))
-  if (deploymentError) return deploymentError
+async function handleRequest(request) {
   if (request.method !== 'GET') {
     return json({ error: 'method_not_allowed' }, 405, { Allow: 'GET' })
   }
@@ -269,4 +268,10 @@ export default async function handler(request) {
     })
   }
   return json({ success: true, deleted, batches })
+}
+
+export default async function handler(request) {
+  const deploymentError = deploymentBoundaryResponse(evaluateDeploymentBoundary({ supabaseUrl: SUPABASE_URL }))
+  if (deploymentError) return deploymentError
+  return monitoredCron(request, 'banner-upload-gc', handleRequest)
 }

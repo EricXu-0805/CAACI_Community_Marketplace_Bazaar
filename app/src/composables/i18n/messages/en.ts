@@ -582,6 +582,8 @@ const en: Record<string, string> = {
   'chat.openPhoto': 'Open photo',
   'chat.loadMedia': 'Load attachment',
   'chat.privateMediaHint': 'Private conversation',
+  'chat.videoReviewPrivacy': 'Videos are reviewed before sending',
+  'chat.videoReviewUnavailable': 'Your video has not been sent. The safety review is pending or unavailable. Please try again later.',
   'chat.wechatPhotoPrivacy': 'Photos checked by WeChat for content safety',
   'chat.mediaReviewUnavailable': 'Photo safety check is unavailable. Your photo was not sent. Please try again.',
   'chat.mediaInvalidFile': 'This file format is not supported. Please choose a JPEG or PNG photo.',
