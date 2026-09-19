@@ -5,6 +5,9 @@ import { useAuth } from "./composables/useAuth"
 import { useI18n } from "./composables/useI18n"
 import { useTheme } from "./composables/useTheme"
 import { CURRENT_CONSENT_VERSION } from './legal'
+// #ifdef H5
+import { startAcquisition, attributeNewAccount } from './api/acquisition'
+// #endif
 import { captureException } from './utils/sentry'
 import { isSuspensionActive } from './utils/suspension'
 import { platformFetch } from './composables/useSupabase'
@@ -58,6 +61,11 @@ const {
 } = useAuth()
 const { t, lang } = useI18n()
 useTheme()
+// #ifdef H5
+watch(() => [currentUser.value?.id, currentUser.value?.tos_version], ([id, consent]) => {
+  if (id && consent) void attributeNewAccount(id, consent)
+})
+// #endif
 
 /*
  * OAuth-callback affordance overlay (H5 only).
@@ -1341,6 +1349,9 @@ function installRoleButtonKeyboardAccess() {
 // #endif
 
 onLaunch((launchOptions) => {
+  // #ifdef H5
+  startAcquisition()
+  // #endif
   // Capture the original descriptor before any welcome reLaunch can replace
   // uni-app's launch options. H5 hash routing is authoritative when present.
   let launchHash = ''

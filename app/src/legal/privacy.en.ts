@@ -1,8 +1,8 @@
-export const PRIVACY_VERSION = '2026-09-17'
+export const PRIVACY_VERSION = '2026-09-19'
 
 export const PRIVACY_EN = `Privacy Policy
 
-Effective date: September 17, 2026
+Effective date: September 19, 2026
 Version: ${PRIVACY_VERSION}
 
 1. Scope.
@@ -25,6 +25,8 @@ This Privacy Policy explains what information Illini Market collects, how we use
    g. Network, device, and abuse-prevention data. Our hosting and API infrastructure processes IP addresses and request metadata. Application rate-limit records use pseudonymized hash or HMAC bucket keys rather than raw IP addresses. When available, we record a user-agent snippet and an installation-scoped fingerprint: a SHA-256 hash created on your device from a random local salt and coarse browser/device characteristics. It is an advisory signal, not proof that accounts belong to one person and not a basis for automatic linked-account punishment. We also process action timing/frequency and a trust score to prioritize moderation review. These signals are used to prevent spam, fraud, ban evasion, and harassment.
 
    h. Optional approximate location. Only after you choose "Use current location" and grant permission, the app rounds the device fix to three decimal places (an approximately 100-meter grid) before it leaves your device for our Vercel edge route and an OpenStreetMap Nominatim-compatible service. The provider is asked for a street/campus-area label, not a building-level result. The marketplace database stores the location text you choose for the listing, not the coordinate. We never request location silently. "Nearby" uses the selected broad area (UIUC, Champaign or Urbana), not a live distance calculation. For a street check, a fresh device fix with reported accuracy of 100 meters or better is matched to a nearby mapped street. The server issues an account-, session- and listing-bound receipt valid for 10 minutes. It stores the approximate street label and check time, never coordinates or a door/unit number. The receipt is consumed when you save; changing the location removes the badge. Unused expired receipts are cleaned up during later checks and linked receipts are removed on account deletion. The published badge records this historical device-assisted check; it does not prove residence, identity, ownership or physical presence. Device locations can be inaccurate or spoofed. Manually entered locations are not verified.
+
+   i. First-party campaign measurement. A tagged website link may supply one allowlisted channel label, such as CAACI or Facebook. We keep a random campaign-session ID in this browser tab for up to 24 hours and record the label, ID and visit time on our own service. After a newly registered user verifies their email and accepts this policy, we can associate that session with the new account and count whether it subsequently publishes a non-deleted listing or sends a message. We do not copy message contents, full URLs/referrers, email addresses or coordinates into this report, and do not send these events to an advertising or third-party analytics provider. Browser Do Not Track and Global Privacy Control signals disable collection. Preview builds do not collect it. These are campaign sessions and new-account cohorts, not a count of distinct people or proof that a channel caused a transaction. Account-linked records are removed on account deletion; campaign records older than 30 days are excluded from reports and removed in bounded hourly maintenance batches, subject to maintenance availability. Test cohorts can be excluded by authorized operators.
 
 3. How We Use It.
    · Operate the marketplace, authenticate your account, deliver messages, and show you relevant listings.

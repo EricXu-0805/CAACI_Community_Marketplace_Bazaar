@@ -7,6 +7,7 @@ import { join, relative } from 'node:path'
 const API_ROOT = fileURLToPath(new URL('.', import.meta.url))
 const EXPECTED_EDGE_FILES = [
   '404.js',
+  'acquisition.js',
   'admin/index.js',
   'auth/delete-account.js',
   'auth/send-illini-code.js',
