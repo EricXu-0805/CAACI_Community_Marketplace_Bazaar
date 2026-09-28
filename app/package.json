@@ -60,25 +60,25 @@
     "@dcloudio/uni-mp-weixin": "3.0.0-4080420251103001",
     "@dcloudio/uni-mp-xhs": "3.0.0-4080420251103001",
     "@dcloudio/uni-quickapp-webview": "3.0.0-4080420251103001",
-    "@fontsource-variable/fraunces": "^5.2.9",
+    "@fontsource-variable/fraunces": "^5.3.0",
     "@sentry/vue": "^10.50.0",
-    "@supabase/supabase-js": "^2.103.0",
-    "vue": "^3.4.21"
+    "@supabase/supabase-js": "^2.117.2",
+    "vue": "^3.5.43"
   },
   "devDependencies": {
     "adm-zip": "file:./vendor/disabled-cloud-zip",
-    "@dcloudio/types": "^3.4.8",
+    "@dcloudio/types": "^3.4.32",
     "@dcloudio/uni-cli-shared": "3.0.0-4080420251103001",
     "@dcloudio/uni-stacktracey": "3.0.0-4080420251103001",
     "@dcloudio/vite-plugin-uni": "3.0.0-4080420251103001",
-    "@playwright/test": "^1.60.0",
-    "@sentry/vite-plugin": "^5.2.0",
-    "@vue/runtime-core": "3.4.21",
+    "@playwright/test": "^1.63.0",
+    "@sentry/vite-plugin": "^5.4.0",
+    "@vue/runtime-core": "3.5.43",
     "@vue/tsconfig": "0.9.1",
-    "sass": "^1.99.0",
+    "sass": "^1.105.0",
     "typescript": "5.9.3",
     "vite": "6.4.3",
-    "vue-tsc": "3.3.7"
+    "vue-tsc": "3.3.11"
   },
   "overrides": {
     "adm-zip": "$adm-zip",
