@@ -1123,14 +1123,13 @@ function isSupportSubject(value) {
 }
 
 function isSupportMessageId(value) {
-  if (value === null) return true
   // A conservative ASCII RFC 5322 dot-atom Message-ID; no comments, folded
   // headers, display names, address lists or untrusted additional headers.
-  return typeof value === 'string' && value.length <= 254
+  return value === null || (typeof value === 'string' && value.length <= 254
     && /^<[A-Za-z0-9!#$%&'*+\-/=?^_`{|}~]+(?:\.[A-Za-z0-9!#$%&'*+\-/=?^_`{|}~]+)*@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?>$/.test(value)
     && value.slice(1, -1).split('@')[1].split('.').every(label => (
       /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label)
-    ))
+    )))
 }
 
 function validSupportReceipt(receipt, requestId, expected = null) {

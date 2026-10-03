@@ -1,6 +1,7 @@
 -- Read-only verification. No email is sent and no token is stamped as used.
 \set ON_ERROR_STOP on
-BEGIN READ ONLY;
+BEGIN;
+SET TRANSACTION READ ONLY;
 DO $verify$
 DECLARE
   function_name text;
@@ -93,4 +94,4 @@ BEGIN
   END LOOP;
 END;
 $verify$;
-COMMIT;
+ROLLBACK;

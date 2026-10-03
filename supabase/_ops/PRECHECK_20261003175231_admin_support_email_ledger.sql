@@ -1,6 +1,7 @@
 -- Read-only deployment precheck. Reconcile migration history separately.
 \set ON_ERROR_STOP on
-BEGIN READ ONLY;
+BEGIN;
+SET TRANSACTION READ ONLY;
 DO $precheck$
 BEGIN
   IF pg_catalog.to_regclass('public.admin_support_email_requests') IS NOT NULL THEN
@@ -19,4 +20,4 @@ BEGIN
   END IF;
 END;
 $precheck$;
-COMMIT;
+ROLLBACK;
