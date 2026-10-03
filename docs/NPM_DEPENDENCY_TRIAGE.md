@@ -1,27 +1,54 @@
 # npm audit triage
 
-Refreshed 2026-09-06 (Chicago) using Node 22.23.2, a clean install and both
-full-tree and production-labelled npm 11 audit views. This replaces the July
-snapshot: the current lockfile uses Vite 6.4.3, not Vite 5.2.8.
+Refreshed 2026-10-03 UTC using Node 22.23.3 and npm 11.21.0. The current
+lockfile uses Vite 6.4.3. Historical clean audit results below do not describe
+the current registry advisory state.
 
 ## Current candidate
 
 | Audit view | Low | Moderate | High | Critical | Total |
 |---|---:|---:|---:|---:|---:|
-| Complete dependency tree | 0 | 0 | 0 | 0 | 0 |
-| `--omit=dev` | 0 | 0 | 0 | 0 | 0 |
+| Complete dependency tree, 2026-10-03 | 0 | 0 | 32 | 0 | 32 |
+
+The 32 affected dependency nodes share one root advisory:
+[braces GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm),
+affecting versions through 3.0.3. The registry's latest braces remains 3.0.3,
+and the advisory lists no patched release. The existing moderate-severity
+audit gate therefore remains a release blocker. This is not 32 distinct
+vulnerabilities or proof of browser/runtime exploitation.
+
+Update the existing brace-expansion override from 5.0.9 to the official
+5.0.12 patch. It addresses the new
+[quadratic rewrite](https://github.com/advisories/GHSA-q2hr-2g5m-vwhr),
+[nested brace](https://github.com/advisories/GHSA-qhr7-859c-m2p7), and
+[comma parser](https://github.com/advisories/GHSA-6j4f-fj2g-mc7p) advisories.
+The lockfile update changes only that package. Full-tree audit still fails on
+braces after this update; do not suppress it, downgrade DCloud, or use
+`npm audit fix --force` to manufacture a passing release.
+
+[Upstream braces PR #72](https://github.com/micromatch/braces/pull/72) is an
+unmerged proposal, not an official package release. Any local patch requires
+independent validation of string and AST entry points, ordinary glob behavior,
+and compiler bundles that contain their own copy. A package override alone
+does not establish that Vite/Rollup's bundled code is fixed. No local fork or
+advisory exclusion is included in this candidate.
 
 These are registry-advisory results for this lockfile, not a claim that the
 application has no exploitable bugs. Re-run them after dependency changes and
 on the weekly schedule. The release receipt must bind the result to the actual
 main SHA and deployment.
 
-## September release follow-up
+## Historical September release follow-up
+
+The 2026-09-06 Node 22.23.2/npm 11 scan reported zero findings for both the
+complete tree and `--omit=dev`. That was a dated result, superseded by the
+October advisory state above.
 
 Main's production-labelled scan found 27 low-severity dependency nodes, all
 from postcss-selector-parser. Updating that parser removed them. A separate
 full-tree scan then exposed 4 moderate and 2 high nodes hidden by `--omit=dev`:
-qs and brace-expansion plus their dependents. All are patched in the candidate.
+qs and brace-expansion plus their dependents. Those then-known advisories were
+patched in the September candidate.
 
 | Package | Previous | Selected patch | Advisory |
 |---|---|---|---|
@@ -32,7 +59,7 @@ qs and brace-expansion plus their dependents. All are patched in the candidate.
 
 Scoped overrides retain both parser major versions and the existing uni-app
 release. No forced DCloud downgrade or blanket `npm audit fix --force` was
-used. The lockfile changes only these four package versions across five nodes.
+used. That September update changed four package versions across five nodes.
 Use clean installation, type-check, both builds, boundary tests and browser
 regression together to verify compatibility; an audit result alone is not a
 functional acceptance result.
