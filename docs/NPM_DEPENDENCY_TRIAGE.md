@@ -33,6 +33,16 @@ and compiler bundles that contain their own copy. A package override alone
 does not establish that Vite/Rollup's bundled code is fixed. No local fork or
 advisory exclusion is included in this candidate.
 
+At 17:49 UTC on October 3, upstream PR #72 had advanced to
+`28d440b5dd449dbf1fe6f3506cf94ecca4d02660`, still unmerged and unreleased.
+Independent bounded comparisons confirm its new parent-cycle rejection and
+restore the five previously failing `escapeInvalid` samples. A deliberately
+malformed direct AST with a self-referencing value array still overflows the
+expansion stack; this is not evidence of a normal string-glob exploit path.
+The complete unpublished branch also changes parser output relative to 3.0.3.
+These findings supersede the earlier candidate-specific failures; they do not
+change the advisory or justify adopting an unpublished fork.
+
 These are registry-advisory results for this lockfile, not a claim that the
 application has no exploitable bugs. Re-run them after dependency changes and
 on the weekly schedule. The release receipt must bind the result to the actual

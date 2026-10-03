@@ -3,8 +3,12 @@ import { defineConfig, devices } from '@playwright/test'
 // Build H5 first. This gate must exercise the shipped compiler output, not a
 // dev server whose global uni object can conceal a production-only failure.
 for(const key of ['HTTP_PROXY','HTTPS_PROXY','ALL_PROXY','http_proxy','https_proxy','all_proxy']) delete process.env[key]
+// Local acceptance may use an isolated H5 build without replacing dist/build.
+// Quote the path as shell data, including spaces and literal single quotes.
+const h5BuildDir = process.env.SMOKE_H5_BUILD_DIR || 'dist/build/h5'
+const quotedH5BuildDir = "'" + h5BuildDir.replace(/'/g, "'\\''") + "'"
 export default defineConfig({
-  testDir:'./smoke',testMatch:['admin-first-unlock.spec.ts','compiled-chunk-recovery.spec.ts','compiled-draft-persistence.spec.ts'],workers:1,retries:0,
+  testDir:'./smoke',testMatch:['admin-first-unlock.spec.ts','admin-support-reply.spec.ts','compiled-chunk-recovery.spec.ts','compiled-draft-persistence.spec.ts'],workers:1,retries:0,
   timeout:30_000,expect:{timeout:10_000},reporter:'list',
   use:{baseURL:'http://localhost:5192',screenshot:process.env.CI==='true'?'off':'only-on-failure',trace:'off',video:'off'},
   projects:[
@@ -13,5 +17,5 @@ export default defineConfig({
     {name:'ipad-webkit',use:{...devices['iPad Pro 11']}},
     {name:'phone-webkit',use:{...devices['iPhone 13']}},
   ],
-  webServer:{command:'npx vite preview --host localhost --port 5192 --strictPort --outDir dist/build/h5',url:'http://localhost:5192',reuseExistingServer:false,timeout:30_000},
+  webServer:{command:`npx vite preview --host localhost --port 5192 --strictPort --outDir ${quotedH5BuildDir}`,url:'http://localhost:5192',reuseExistingServer:false,timeout:30_000},
 })

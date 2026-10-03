@@ -10,9 +10,11 @@ export const config = { runtime: 'edge' }
  *   Bearer token per admin (Authorization: Bearer iam_admin_<random>).
  *   The token is SHA-256 hashed and matched against admin_tokens through the
  *   versioned admin_token_authorization_v2 projection.
- *   On hit, JSON writes pass the token digest into admin_execute_mutation,
+ *   On hit, ordinary JSON writes pass the token digest into admin_execute_mutation,
  *   which revalidates it and commits the business change, actor/token/key
- *   audit row, and idempotency result in one database transaction. Login,
+ *   audit row, and idempotency result in one database transaction.
+ *   Support email uses its own owner-only claim/receipt RPCs so required audit
+ *   and durable idempotency commit before an external send. Login,
  *   unauthorized-attempt and multipart-upload telemetry remain separate
  *   best-effort events because they are not part of a JSON business write.
  *
@@ -55,6 +57,9 @@ const REQUEST_BODY_TIMEOUT_MS = 5000
 const ADMIN_UNAUTHORIZED_AUDIT_MAX = 1
 const ADMIN_UNAUTHORIZED_AUDIT_WINDOW_SECS = 60 * 60
 const ADMIN_BEARER_PATTERN = /^iam_admin_[A-Za-z0-9_-]{43}$/
+const SUPPORT_EMAIL_FROM = 'help@illinimarket.com'
+const SUPPORT_EMAIL_TIMEOUT_MS = 8000
+const SUPPORT_EMAIL_RESPONSE_MAX_BYTES = 16 * 1024
 const UNSAFE_ADMIN_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/u
 
 function hasUnsafeAdminText(value) {
@@ -206,8 +211,8 @@ const SENTRY_DSN   = env('SENTRY_DSN', env('VITE_SENTRY_DSN', ''))
 
 /*
  * Login, unauthorized-attempt and multipart-upload telemetry is best-effort.
- * Required JSON-mutation audits are enforced inside admin_execute_mutation and
- * roll the business transaction back on failure. For these remaining
+ * Required mutation audits are enforced inside admin_execute_mutation or the
+ * support email claim and roll the transaction back on failure. For these remaining
  * telemetry-only writes, emit a stable-code Sentry event when configured.
  */
 async function reportToSentry(message, extra) {
@@ -732,6 +737,8 @@ const OWNER_RESOURCES = new Set([
   'idempotency_reconciliation',
   'plaza_posts',
   'banners',
+  'support_email_status',
+  'support_email_receipt',
 ])
 const SECURITY_RESOURCES = new Set(['tokens'])
 const ADMIN_RESOURCES = new Set(['whoami', ...OWNER_RESOURCES])
@@ -1094,6 +1101,210 @@ async function recordAdminLogin(auth) {
   }
 }
 
+// Support replies deliberately do not extend the exact authorization projection
+// or the generic business-mutation dispatcher. An owner-only RPC commits a
+// permanent claim and its required audit before this server contacts Resend.
+// Claims are never reclaimed: an interrupted worker may have sent the message.
+function isSupportRecipient(value) {
+  if (typeof value !== 'string' || value.length > 254) return false
+  const parts = value.split('@')
+  if (parts.length !== 2 || parts[0].length < 1 || parts[0].length > 64) return false
+  if (!/^[A-Za-z0-9!#$%&'*+\-/=?^_`{|}~]+(?:\.[A-Za-z0-9!#$%&'*+\-/=?^_`{|}~]+)*$/.test(parts[0])) return false
+  const labels = parts[1].split('.')
+  return labels.length >= 2
+    && parts[1].length <= 253
+    && labels.every(label => /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label))
+    && /^[A-Za-z]{2,63}$/.test(labels.at(-1))
+}
+
+function isSupportSubject(value) {
+  return typeof value === 'string' && value.length <= 200 && value.trim().length > 0
+    && !hasUnsafeAdminText(value) && value.isWellFormed()
+}
+
+function isSupportMessageId(value) {
+  if (value === null) return true
+  // A conservative ASCII RFC 5322 dot-atom Message-ID; no comments, folded
+  // headers, display names, address lists or untrusted additional headers.
+  return typeof value === 'string' && value.length <= 254
+    && /^<[A-Za-z0-9!#$%&'*+\-/=?^_`{|}~]+(?:\.[A-Za-z0-9!#$%&'*+\-/=?^_`{|}~]+)*@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?>$/.test(value)
+    && value.slice(1, -1).split('@')[1].split('.').every(label => (
+      /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label)
+    ))
+}
+
+function validSupportReceipt(receipt, requestId, expected = null) {
+  return hasExactKeys(receipt, ['request_id', 'status', 'provider_id', 'to', 'subject', 'created_at'])
+    && isUuid(receipt.request_id)
+    && receipt.request_id.toLowerCase() === requestId.toLowerCase()
+    && new Set(['pending', 'sent', 'unknown', 'failed']).has(receipt.status)
+    && (receipt.status === 'sent' ? isUuid(receipt.provider_id) : receipt.provider_id === null)
+    && isSupportRecipient(receipt.to) && isSupportSubject(receipt.subject)
+    && isIsoTimestamp(receipt.created_at)
+    && (!expected || (receipt.to === expected.to && receipt.subject === expected.subject))
+}
+
+async function supportEmailRpc(fn, args) {
+  let upstream
+  try {
+    upstream = await adminFetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: supabaseHeaders(SERVICE_KEY, '', { 'Content-Type': 'application/json' }),
+      body: JSON.stringify(args),
+    }, { maxBytes: SUPPORT_EMAIL_RESPONSE_MAX_BYTES })
+  } catch {
+    throw codedError('support_email_outcome_unknown')
+  }
+  let result
+  try { result = parseUpstreamJson(upstream.text) } catch {
+    throw codedError('support_email_outcome_unknown')
+  }
+  if (!upstream.response.ok) {
+    const sentinelErrors = {
+      support_email_invalid_token: 'admin_token_inactive',
+      support_email_forbidden: 'admin_capability_denied',
+      support_email_invalid_request: 'support_email_invalid',
+      support_email_request_conflict: 'idempotency_conflict',
+      support_email_not_found: 'support_email_not_found',
+      support_email_rate_limited: 'support_email_rate_limited',
+    }
+    const message = typeof result?.message === 'string' ? result.message : ''
+    if (Object.hasOwn(sentinelErrors, message)) {
+      const error = codedError(sentinelErrors[message])
+      // This particular SQL branch runs only after the global request ID was
+      // found absent, before INSERT, and its exception rolls back the claim.
+      // Do not infer this fence from an arbitrary status or transport error.
+      if (fn === 'admin_support_email_claim' && message === 'support_email_rate_limited'
+          && result.code === 'P0001' && upstream.response.status === 400) {
+        error.supportSubmissionNotAttempted = true
+      }
+      throw error
+    }
+    if (result?.code === 'PGRST202' || result?.code === '42883' || result?.code === '42P01') {
+      throw codedError('support_email_unavailable')
+    }
+    // A claim could have committed when its transport failed. A stable code
+    // keeps SQL errors, recipient/subject/body and credentials out of clients.
+    throw codedError('support_email_outcome_unknown')
+  }
+  return result
+}
+
+async function handleSupportEmailStatus(auth) {
+  if (auth?.role !== 'owner') throw codedError('admin_capability_denied')
+  let available = false
+  if (env('RESEND_API_KEY')) {
+    try {
+      const state = await supportEmailRpc('admin_support_email_status', { p_token_hash: auth.tokenHash })
+      available = hasExactKeys(state, ['available']) && state.available === true
+    } catch (error) {
+      if (error?.code === 'admin_token_inactive' || error?.code === 'admin_capability_denied') throw error
+    }
+  }
+  return json({ data: { available, from: SUPPORT_EMAIL_FROM, reply_to: SUPPORT_EMAIL_FROM } })
+}
+
+async function handleSupportEmailReceipt(auth, requestId) {
+  if (auth?.role !== 'owner') throw codedError('admin_capability_denied')
+  if (!isUuid(requestId)) throw codedError('support_email_invalid')
+  const receipt = await supportEmailRpc('admin_support_email_receipt', {
+    p_token_hash: auth.tokenHash, p_request_id: requestId.toLowerCase(),
+  })
+  if (!validSupportReceipt(receipt, requestId)) throw codedError('support_email_outcome_unknown')
+  return json({ data: receipt })
+}
+
+async function handleSupportEmailSend(request, auth, body) {
+  if (auth?.role !== 'owner') throw codedError('admin_capability_denied')
+  if (!hasExactKeys(body, ['action', 'request_id', 'to', 'subject', 'text', 'in_reply_to'])
+      || !isUuid(body.request_id) || !isSupportRecipient(body.to)
+      || !isSupportSubject(body.subject)
+      || typeof body.text !== 'string' || body.text.length > 10000 || !body.text.trim()
+      || !body.text.isWellFormed()
+      || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/u.test(body.text)
+      || !isSupportMessageId(body.in_reply_to)) throw codedError('support_email_invalid')
+  const requestId = body.request_id.toLowerCase()
+  const idempotencyKey = (request.headers.get('idempotency-key') || '').trim().toLowerCase()
+  if (!isUuid(idempotencyKey) || idempotencyKey !== requestId) throw codedError('invalid_idempotency_key')
+  const resendKey = env('RESEND_API_KEY')
+  if (!resendKey) {
+    // No claim RPC or provider call was attempted in this submission. This
+    // marker may release only the browser's fresh active submission; it is
+    // never permission to discard an older uncertain recovery identifier.
+    return json({ error: 'support_email_unavailable', request_id: requestId, submission: 'not_attempted' }, 503)
+  }
+
+  // Hash the complete exact intent, including fixed sender/header policy.
+  // Only this digest and bounded receipt metadata go to PostgreSQL. Email
+  // content remains in this invocation and the explicitly selected provider.
+  const intentHash = await sha256Hex(canonicalJson({
+    version: 1, action: body.action, from: SUPPORT_EMAIL_FROM, reply_to: SUPPORT_EMAIL_FROM,
+    to: body.to, subject: body.subject, text: body.text, in_reply_to: body.in_reply_to,
+  }))
+  let claim
+  try {
+    claim = await supportEmailRpc('admin_support_email_claim', {
+      p_token_hash: auth.tokenHash, p_request_id: requestId, p_intent_hash: intentHash,
+      p_to: body.to, p_subject: body.subject,
+    })
+  } catch (error) {
+    if (error?.code === 'support_email_rate_limited' && error.supportSubmissionNotAttempted === true) {
+      return json({ error: error.code, request_id: requestId, submission: 'not_attempted' }, 429)
+    }
+    throw error
+  }
+  if (!hasExactKeys(claim, ['claimed', 'receipt']) || typeof claim.claimed !== 'boolean'
+      || !validSupportReceipt(claim.receipt, requestId, body)
+      || (claim.claimed && claim.receipt.status !== 'pending')) {
+    throw codedError('support_email_outcome_unknown')
+  }
+  if (!claim.claimed) return json({ data: claim.receipt })
+
+  let status = 'unknown'
+  let providerId = null
+  try {
+    const result = await adminFetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json',
+        'Idempotency-Key': `support-reply/${requestId}`,
+      },
+      body: JSON.stringify({
+        from: SUPPORT_EMAIL_FROM, reply_to: SUPPORT_EMAIL_FROM,
+        to: [body.to], subject: body.subject, text: body.text,
+        ...(body.in_reply_to ? { headers: { 'In-Reply-To': body.in_reply_to, References: body.in_reply_to } } : {}),
+      }),
+    }, { timeoutMs: SUPPORT_EMAIL_TIMEOUT_MS, maxBytes: SUPPORT_EMAIL_RESPONSE_MAX_BYTES })
+    if (result.response.ok) {
+      const accepted = parseUpstreamJson(result.text)
+      if (isPlainObject(accepted) && isUuid(accepted.id)) {
+        status = 'sent' // Provider acceptance only; never a delivery assertion.
+        providerId = accepted.id.toLowerCase()
+      }
+    } else if (new Set([400, 401, 403, 404, 405, 413, 415, 422, 429]).has(result.response.status)) {
+      status = 'failed'
+    }
+  } catch {
+    // Timeout, redirects, oversized/malformed responses and network failures
+    // cannot prove nonacceptance. No retry is permitted, even on later visits.
+  }
+  try {
+    const receipt = await supportEmailRpc('admin_support_email_finish', {
+      p_token_hash: auth.tokenHash, p_request_id: requestId, p_intent_hash: intentHash,
+      p_status: status, p_provider_id: providerId,
+    })
+    if (!validSupportReceipt(receipt, requestId, body)
+        || receipt.status !== status || receipt.provider_id !== providerId) {
+      throw codedError('support_email_outcome_unknown')
+    }
+    return json({ data: receipt })
+  } catch {
+    // The provider may have accepted the email even when the receipt could
+    // not be committed/read. Keep the request ID for read-only reconciliation.
+    throw codedError('support_email_outcome_unknown')
+  }
+}
+
 async function handleGet(request, auth) {
   const url = new URL(request.url)
   const resource = url.searchParams.get('resource') || ''
@@ -1102,6 +1313,11 @@ async function handleGet(request, auth) {
 
   if (ADMIN_RESOURCES.has(resource) && !roleCanRead(auth?.role, resource)) {
     throw codedError('admin_capability_denied')
+  }
+
+  if (resource === 'support_email_status') return handleSupportEmailStatus(auth)
+  if (resource === 'support_email_receipt') {
+    return handleSupportEmailReceipt(auth, url.searchParams.get('request_id'))
   }
 
   if (resource === 'whoami') {
@@ -1560,6 +1776,7 @@ async function handlePost(request, auth) {
     return json({ error: 'bad_json' }, 400)
   }
   if (!body || !body.action) return json({ error: 'missing_action' }, 400)
+  if (body.action === 'send_support_reply') return handleSupportEmailSend(request, auth, body)
   if (OWNER_ACTIONS.has(body.action) && !roleCanMutate(auth?.role, body.action)) {
     throw codedError('admin_capability_denied')
   }
@@ -1904,15 +2121,18 @@ export default async function handler(request) {
     return json({ error: 'method_not_allowed' }, 405)
   } catch (err) {
     const error = stableErrorCode(err)
-    const status = error === 'invalid_idempotency_key' || error === 'admin_mutation_invalid' ? 400
+    const status = error === 'invalid_idempotency_key' || error === 'admin_mutation_invalid'
+      || error === 'support_email_invalid' ? 400
       : error === 'admin_token_inactive' ? 401
         : error === 'admin_capability_denied'
           || error === 'self_appeal_decision_forbidden' ? 403
           : error === 'idempotency_conflict'
             || error === 'admin_mutation_conflict'
             || error === 'appeal_already_decided' ? 409
-          : error === 'admin_mutation_not_found' ? 404
-            : error === 'admin_outcome_unknown' ? 503
+          : error === 'admin_mutation_not_found' || error === 'support_email_not_found' ? 404
+            : error === 'support_email_rate_limited' ? 429
+              : error === 'admin_outcome_unknown' || error === 'support_email_outcome_unknown'
+                || error === 'support_email_unavailable' ? 503
               : 500
     return json({ error }, status)
   }
