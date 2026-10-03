@@ -1,4 +1,4 @@
-import { monitoredCron } from './_cron-monitor.js'
+import { releasedCron } from './_cron-release.js'
 import { moderateVideoJob } from './_video-moderation.js'
 import { moderationObjectKeys, mediaMoveSucceeded, mediaCachePurgeAccepted } from './_moderation-media.js'
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from './_deployment-boundary.js'
@@ -289,7 +289,8 @@ async function handleRequest(request) {
 }
 
 export default async function handler(request) {
-  const deploymentError = deploymentBoundaryResponse(evaluateDeploymentBoundary({ supabaseUrl: SUPABASE_URL }))
+  const boundary = evaluateDeploymentBoundary({ supabaseUrl: SUPABASE_URL })
+  const deploymentError = deploymentBoundaryResponse(boundary)
   if (deploymentError) return deploymentError
-  return monitoredCron(request, 'background-jobs', handleRequest)
+  return releasedCron(request, 'background-jobs', handleRequest, boundary)
 }

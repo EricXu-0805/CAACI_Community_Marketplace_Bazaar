@@ -7,12 +7,17 @@ const PACKAGE_LIMIT = 2 * 1024 * 1024
 // A 1.82 MiB local package was rejected as 2137 KB on 2026-09-17. Reserve
 // compiler headroom here; only a real upload can certify the final size.
 const SOURCE_BUDGET = Math.floor(1.6 * 1024 * 1024)
+// Keep the startup package below the DevTools performance recommendation.
+const MAIN_SOURCE_BUDGET = 1.5 * 1024 * 1024
 
 export async function verifyMiniProgram(root, files) {
   const app = JSON.parse(await readFile(path.join(root, 'app.json'), 'utf8'))
   const project = JSON.parse(await readFile(path.join(root, 'project.config.json'), 'utf8'))
   if (!/^wx[0-9a-f]{16}$/.test(project.appid || '') || project.setting?.urlCheck !== true) {
     throw new Error('build_artifact_invalid: mini-program requires an AppID and domain validation enabled')
+  }
+  if (app.lazyCodeLoading !== 'requiredComponents') {
+    throw new Error('build_artifact_invalid: mini-program requires component lazy loading')
   }
   const subpackages = app.subPackages || app.subpackages || []
   const packageRoots = subpackages.map(pkg => `${pkg.root.replace(/\/$/, '')}/`)
@@ -31,6 +36,10 @@ export async function verifyMiniProgram(root, files) {
   for (const [pkg, bytes] of sizes) {
     if (bytes > PACKAGE_LIMIT) throw new Error(`build_artifact_invalid: mini-program ${pkg} exceeds 2 MiB (${bytes} bytes)`)
     if (bytes > SOURCE_BUDGET) throw new Error(`build_artifact_invalid: mini-program ${pkg} exceeds 1.6 MiB source budget; leave room for WeChat compilation (${bytes} bytes)`)
+    if (pkg === 'main' && bytes > MAIN_SOURCE_BUDGET) throw new Error(`build_artifact_invalid: mini-program main exceeds 1.5 MiB startup source budget (${bytes} bytes)`)
+  }
+  for (const tab of app.tabBar?.list || []) {
+    if (!app.pages?.includes(tab.pagePath)) throw new Error(`build_artifact_invalid: mini-program tab page must remain in main package ${tab.pagePath}`)
   }
   const pages = [...(app.pages || []), ...subpackages.flatMap(pkg => pkg.pages.map(page => `${pkg.root}/${page}`))]
   if (!pages.length) throw new Error('build_artifact_invalid: no mini-program pages')

@@ -1,4 +1,4 @@
-import { monitoredCron } from './_cron-monitor.js'
+import { releasedCron } from './_cron-release.js'
 import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from './_deployment-boundary.js'
 import { reportToSentry } from './_sentry-report.js'
 
@@ -271,7 +271,8 @@ async function handleRequest(request) {
 }
 
 export default async function handler(request) {
-  const deploymentError = deploymentBoundaryResponse(evaluateDeploymentBoundary({ supabaseUrl: SUPABASE_URL }))
+  const boundary = evaluateDeploymentBoundary({ supabaseUrl: SUPABASE_URL })
+  const deploymentError = deploymentBoundaryResponse(boundary)
   if (deploymentError) return deploymentError
-  return monitoredCron(request, 'banner-upload-gc', handleRequest)
+  return releasedCron(request, 'banner-upload-gc', handleRequest, boundary)
 }
