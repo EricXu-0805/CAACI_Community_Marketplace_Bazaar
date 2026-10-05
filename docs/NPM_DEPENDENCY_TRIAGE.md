@@ -1,10 +1,40 @@
 # npm audit triage
 
-Refreshed 2026-10-03 UTC using Node 22.23.3 and npm 11.21.0. The current
-lockfile uses Vite 6.4.3. Historical clean audit results below do not describe
-the current registry advisory state.
+Refreshed 2026-10-05 UTC using Node 22.23.3 and npm 11.21.0.
 
 ## Current candidate
+
+| Audit view | Low | Moderate | High | Critical | Total |
+|---|---:|---:|---:|---:|---:|
+| Complete dependency tree, 2026-10-05 | 0 | 0 | 0 | 0 | 0 |
+
+The independent braces chain was replaced by bounded first-party glob/watch
+adapters with their real package identities exposed to npm audit. Vite 6.4.3
+and Rollup 4.60.2 now use integrity-pinned local archives rebuilt from official
+source with a bounded braces backport. Their upstream package names, versions,
+licenses and native optional dependencies are retained. These are locally
+maintained builds, not official upstream patched releases. No advisory is
+excluded and the moderate-severity threshold is unchanged.
+
+The registry still lists braces 3.0.3 and no official patched release for
+GHSA-vfj7-8cjw-p6xm. Audit does not inspect private bundled source: all three
+embedded copies therefore have separate source, generated-byte, ordinary
+compatibility and actual watcher validation. See the
+[maintenance contract](../app/build-compat/source-builds/README.md) and
+[archive manifests](../app/vendor/source-builds/manifest.json).
+
+The integrated local gates passed: 1,677 boundary tests, zero failures and one
+existing optional artifact-inventory skip; type-check; H5/Weixin builds and
+artifact scans; and 32 compiled-browser checks. Five existing peer-version
+conflicts remain, so `npm ls --all` is not clean. A zero audit is dated registry
+evidence, not a claim that every possible denial of service or application
+vulnerability is fixed. Repeat the gates after dependency changes and bind
+release evidence to the actual commit and deployment.
+
+## Historical October 3 candidate
+
+The following findings describe the earlier lock and unmodified embedded
+copies. They are preserved as history, superseded by the October 5 candidate.
 
 | Audit view | Low | Moderate | High | Critical | Total |
 |---|---:|---:|---:|---:|---:|
@@ -31,7 +61,7 @@ unmerged proposal, not an official package release. Any local patch requires
 independent validation of string and AST entry points, ordinary glob behavior,
 and compiler bundles that contain their own copy. A package override alone
 does not establish that Vite/Rollup's bundled code is fixed. No local fork or
-advisory exclusion is included in this candidate.
+advisory exclusion was included in that October 3 candidate.
 
 At 17:49 UTC on October 3, upstream PR #72 had advanced to
 `28d440b5dd449dbf1fe6f3506cf94ecca4d02660`, still unmerged and unreleased.

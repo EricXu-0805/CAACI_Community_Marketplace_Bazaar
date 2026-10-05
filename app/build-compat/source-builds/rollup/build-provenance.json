@@ -1,0 +1,156 @@
+{
+  "official_source": {
+    "url": "https://codeload.github.com/rollup/rollup/tar.gz/refs/tags/v4.60.2",
+    "tag": "v4.60.2",
+    "commit": "a6be82b8abd747458afdc7484319f7b5deb92535",
+    "archive_sha256": "5ae70a325f019a98e59cf73cc26c5d117212fd70921bb14a3e7f3684eca13203",
+    "verified_original_source_files": 13248,
+    "modified_original_source_files": [],
+    "lock_sha256": "b5a04c560e6ec75a253009f8233d6fcf5b2dac76d452256e1110bab4f136a335",
+    "config_sha256": "fe82b466e4ffef663a7260546a7d4e87bfdd9a7dd89842784228d220a95314ec"
+  },
+  "build": {
+    "node": "22.23.3",
+    "dependency_installer_npm": "11.21.0",
+    "command": "npm run build:js:node",
+    "exact_script": "rollup --config rollup.config.ts --configPlugin typescript --configIsBuildNode --forceExit",
+    "bootstrap_rollup": "4.60.1",
+    "target_rollup": "4.60.2",
+    "SOURCE_DATE_EPOCH": 1776519449,
+    "install_flags": "--legacy-peer-deps --ignore-scripts --no-audit --no-fund --userconfig=/dev/null",
+    "install_caveat": "Current npm 10 and 11 reject unchanged upstream lock on optional peer resolution; legacy-peer-deps preserved every locked version. Official tag workflow uses npm install, not ci. No audit-success claim is made for upstream build-only dependencies.",
+    "banner_caveat": "Official source tar has no .git; unmodified upstream banner reports commit unknown. Exact tag commit is recorded separately. No generated file is edited.",
+    "native_recompiled": false
+  },
+  "braces": {
+    "version": "3.0.3",
+    "patch_sha256": "8889beb3edfb82a8a0c9b6354f0b4e6d15212ab79e03cbb399946d116b7f1a3a",
+    "files": [
+      {
+        "path": "LICENSE",
+        "sha256": "35bdd8a44339719441900fb50fbefc5e2dca1ca662cbaed7a687de842c8b70f2"
+      },
+      {
+        "path": "README.md",
+        "sha256": "947b0fc3cc12eaaa070207126213fbdf9ab2bf8cd13dcc6e4007b36b79309866"
+      },
+      {
+        "path": "index.js",
+        "sha256": "332ea07c7b006361aad12aa994ca75dc1db8e8382b884909e2f38f10b85c88a4"
+      },
+      {
+        "path": "lib/compile.js",
+        "sha256": "774a7af426e8ff0e89336aea3e7c75d887f955768d64f5906b0394869b3ed7e9"
+      },
+      {
+        "path": "lib/constants.js",
+        "sha256": "f9fb688959232eee3e6ad7906a5b0e3234815db49ee857ef86983d65b917dc7c"
+      },
+      {
+        "path": "lib/expand.js",
+        "sha256": "102b184ece142d42807b67038c6a893e72b0ad4fb999a7b51f5909b10e179255"
+      },
+      {
+        "path": "lib/parse.js",
+        "sha256": "fb9f4fd9a2f00e584cd9e7d3ffbf0de468081c5c549ce3a78a8d670a0f4a05b5"
+      },
+      {
+        "path": "lib/stringify.js",
+        "sha256": "7c661b9de2494534558b0301d30ed9a86cf70707186f7b67be6846c2fb3e62a1"
+      },
+      {
+        "path": "lib/utils.js",
+        "sha256": "d91ed5e20a91b5e99b46cd2cd5d192176235cd1c8145e4fff57edf3349495ab7"
+      },
+      {
+        "path": "package.json",
+        "sha256": "56f08b888a4f30dc7cf8a7dbb36ffe92b737912ba36abe9d069d32167c957ac7"
+      }
+    ],
+    "source_map_verified_inputs": [
+      {
+        "source": "../../node_modules/braces/lib/constants.js",
+        "sha256": "f9fb688959232eee3e6ad7906a5b0e3234815db49ee857ef86983d65b917dc7c"
+      },
+      {
+        "source": "../../node_modules/braces/lib/utils.js",
+        "sha256": "d91ed5e20a91b5e99b46cd2cd5d192176235cd1c8145e4fff57edf3349495ab7"
+      },
+      {
+        "source": "../../node_modules/braces/lib/stringify.js",
+        "sha256": "7c661b9de2494534558b0301d30ed9a86cf70707186f7b67be6846c2fb3e62a1"
+      },
+      {
+        "source": "../../node_modules/braces/lib/compile.js",
+        "sha256": "774a7af426e8ff0e89336aea3e7c75d887f955768d64f5906b0394869b3ed7e9"
+      },
+      {
+        "source": "../../node_modules/braces/lib/expand.js",
+        "sha256": "102b184ece142d42807b67038c6a893e72b0ad4fb999a7b51f5909b10e179255"
+      },
+      {
+        "source": "../../node_modules/braces/lib/parse.js",
+        "sha256": "fb9f4fd9a2f00e584cd9e7d3ffbf0de468081c5c549ce3a78a8d670a0f4a05b5"
+      },
+      {
+        "source": "../../node_modules/braces/index.js",
+        "sha256": "332ea07c7b006361aad12aa994ca75dc1db8e8382b884909e2f38f10b85c88a4"
+      }
+    ]
+  },
+  "candidate_dist": {
+    "bin/rollup": "1fb15fb4c980c21e6a8554161d50840363d4ec083d89827a287c041b45c60025",
+    "bin/rollup.map": "bd1c348584fcb8346d3513730ff7f85b4a483d2341dc1ac7487f176f1e31ebc9",
+    "es/getLogFilter.js": "35a73e4cfd5ce39624ee427c4c7d3e9217392c0416dac8272265be56af35ba50",
+    "es/package.json": "6dc1b06d6b093e9cccb20bee06a93836eee0420ae26803ca2ce4065d82f070d1",
+    "es/parseAst.js": "3af605bb5f78323e1bb753ce2aed4870792a64a41af0ce202df5236d804b8865",
+    "es/rollup.js": "d3856f3a7cd11abc93116af763e3177aad6c89ee48cd8432cc4376583c2d8942",
+    "es/shared/node-entry.js": "2d8440822787fc24ddcde17b48a614a1a3773b7845441c1620ce7dc1fbe3dc28",
+    "es/shared/parseAst.js": "b1c59e4a3b237a0e3606c58c9ab8e0387b0f3f88c2f501ba5cc7a65a3cdf8769",
+    "es/shared/watch.js": "bf167da1ffea38f0b8d14754b7b737e7e1e2abd7e2aa8e3389b93f3f118c5ad1",
+    "getLogFilter.d.ts": "e7cbf7017d77efd5099e08d85bf58c7658f29edfce5ab0db8faccb86fe9736fa",
+    "getLogFilter.js": "ad18772d7f73e0f1eff0ea671edacd317edf7cb50e38fd1841cfd6c1897f4f79",
+    "getLogFilter.js.map": "1c3c02f2a5496c654435046032169c5c426ed592eabba4011f7250727336282d",
+    "loadConfigFile.d.ts": "da9f07c6be066d7b02671ee64ac78bd56cd1a57d98f1ad6b2ef54f685ca146cf",
+    "loadConfigFile.js": "3da26ce9a71c5024e76bcbab131fe7712983696165579628abd8a77028f342e2",
+    "loadConfigFile.js.map": "9b95b4691e0063564e1b1f19f16cca5f2bafee5ee7f6e440bf7e98c7758d9763",
+    "native.js": "93c3da450b25ba485bb3de20dded405aa9c105951e8d31964eeb49633c2b16ea",
+    "parseAst.d.ts": "a660aa95476042d3fdcc1343cf6bb8fdf24772d31712b1db321c5a4dcc325434",
+    "parseAst.js": "1827e7193dc2b9868536f1be802bb1e75051330c2303dcbca9d6f08583c340b0",
+    "parseAst.js.map": "0d61cb628763b3eca38fb03a30a09a3478f8e3afcbe75ccf1b500af14423a23f",
+    "rollup.d.ts": "ee70b8037ecdf0de6c04f35277f253663a536d7e38f1539d270e4e916d225a3f",
+    "rollup.js": "a4f32a3d5e7156b1a5079fb45f6d8abced64d53daa4eadb9a334ef5c26993cc9",
+    "rollup.js.map": "6a05de961fbd85ecfc683dc5dcadbaa9459e5e28090fc6e32c7fb7e1ed23532d",
+    "shared/fsevents-importer.js": "dfbbe8b08e6405885ae8366d170cebc110864a585634d45d122213c881e60bd1",
+    "shared/fsevents-importer.js.map": "8eecabfe98e17ba17e51a3ab332e20aeb87c98e897cb1bdda8fbfdd145730bae",
+    "shared/index.js": "f59bfe97639e2ff297f36853f7fb43f7eb86142f87d22c1a38b3ab60a50c439b",
+    "shared/index.js.map": "eceac3f87d03c153f2b0f31c6f3605112202c51b1c559e9673aa389eb332b4e8",
+    "shared/loadConfigFile.js": "0589164267b0d8154607566d0d22a5b282f8bb7a97ae4eb748ebede93faff7b8",
+    "shared/loadConfigFile.js.map": "a3a12caeaceb641834f466595e0eae9dbb285d7cbf3d2ad2d09567594a5d9ec0",
+    "shared/parseAst.js": "587d03d196eb7f94e40ccff0fabd3825115fefa1878a748d51a94584349a0c60",
+    "shared/parseAst.js.map": "2b5b60b5f8262f9222e23fc4caa9c63ed1aea0a0595df8a543518ab8bca05af0",
+    "shared/rollup.js": "36ddeea5a34081cb01eeb331b70e269fb6ee602b803e4bd0e9943f9970201d0c",
+    "shared/rollup.js.map": "99cf8cf9b24b9b3b4911c26d6ff625abb71fd6e130b14d199f972565dce8db8a",
+    "shared/watch-cli.js": "ae6e887c161bba92ed55fda1fe6e75f5dd6d8e12c4e357c94a78d1a26f1f0caf",
+    "shared/watch-cli.js.map": "b61a6536feed0af9dc9a986e0618c487688a4081f2044bdd0402ebf46a784d4c",
+    "shared/watch.js": "9346dcc7e3dbf3f9314c767a97c1ecedb12ab4643035d432dcbe5ebdd16a35c5",
+    "shared/watch.js.map": "3b593497cea395e9f1c18cef9bd78de3d8be076b1a471f3d97a72098a19c32f3"
+  },
+  "changed_from_unpatched_same_source_build": [
+    {
+      "path": "es/shared/watch.js",
+      "baseline_sha256": "06949371020e2cec1a2aea93ab50d987af4a166ce0bd990600b600c7c3f36d7f",
+      "candidate_sha256": "bf167da1ffea38f0b8d14754b7b737e7e1e2abd7e2aa8e3389b93f3f118c5ad1"
+    },
+    {
+      "path": "shared/index.js",
+      "baseline_sha256": "faf7eaee6f5cbb3481b235b50e198bad68df11d2ad19065fe43913d58a956cc7",
+      "candidate_sha256": "f59bfe97639e2ff297f36853f7fb43f7eb86142f87d22c1a38b3ab60a50c439b"
+    },
+    {
+      "path": "shared/index.js.map",
+      "baseline_sha256": "7ae54398657ff5554dfe7f5fca702c887eca9a49d05d72bc8510304266345d1a",
+      "candidate_sha256": "eceac3f87d03c153f2b0f31c6f3605112202c51b1c559e9673aa389eb332b4e8"
+    }
+  ]
+}

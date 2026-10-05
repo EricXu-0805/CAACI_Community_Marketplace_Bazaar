@@ -1,6 +1,6 @@
 # Bounded DCloud build compatibility
 
-This candidate removes the independent `braces` dependency chain used by the pinned DCloud H5/Weixin build tools. It does **not** remove the separately embedded copies in Vite/Rollup, and is not yet release-ready. The application, production configuration, and database are unchanged.
+This implementation removes the independent `braces` dependency chain used by the pinned DCloud H5/Weixin build tools. Separately, [source-built Vite/Rollup packages](source-builds/README.md) apply a bounded, reviewed backport to their three private copies. These are locally maintained builds, not new upstream security releases. Production configuration and the database are unchanged.
 
 Two first-party packages adapt the observed consumers without copying or renaming the vulnerable implementation:
 
@@ -47,4 +47,4 @@ After regeneration, the two original `picomatch@4.0.4` lock records under `uni-c
 
 The isolated implementation has real filesystem comparisons and dynamic watcher tests. Unsupported baseline patterns remain listed separately. H5/Weixin builds and compiled-H5 browser acceptance are separate integration checks; an audit reporting zero does not certify custom code or inspect bundled private parsers.
 
-Vite 6.4.3 and Rollup 4.60.2 still contain three unchanged private braces copies. Full elimination needs corrected upstream bundles or a separately reviewed commitment to maintain bundle patches. Also, the full PostgreSQL regression gate must pass in a host with available shared-memory slots. Neither remaining issue is waived by the adapter tests. This candidate must not be merged or deployed while those release conditions remain unresolved.
+The October 5 integrated candidate passed the complete boundary suite (1,677 passed, one existing optional artifact-inventory skip), including real isolated PostgreSQL tests; type-check; both builds; artifact scans; 32 compiled-browser checks; and the strict full dependency audit (zero findings). Independent verification also exercised all three rebuilt private modules and real native watcher/config-reload behavior. This dated local evidence does not replace CI on the pushed commit, production configuration checks, or the owner's real Admin, email and WeChat-device acceptance. No production migration, merge or deployment is authorized by these results.

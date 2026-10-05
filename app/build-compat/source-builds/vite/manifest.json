@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "status": "Verified source rebuild recipe for a locally maintained patch; not an official upstream patched release.",
+  "node": {
+    "version": "v22.23.3",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "pnpm": {
+    "version": "10.8.1",
+    "archive_root": "package",
+    "archive_url": "https://registry.npmjs.org/pnpm/-/pnpm-10.8.1.tgz",
+    "archive_sha256": "d8b2ebbc65cf02c349eca6b45c9640b910f16b6adebdb7b926e9db440e47cac7",
+    "archive_integrity": "sha512-xQCIupmMZ7jKjJnfil4C/Sri4rKaryOP6qnhJCSNP0j5+22yQklJ/5Ac/7teDwzBrWrttgLNKUUHUdEcNQI2dw=="
+  },
+  "vite": {
+    "version": "6.4.3",
+    "commit": "6c2c881f15495738ff03bc1d67cc052c07e0cac4",
+    "archive_root": "vite-6c2c881f15495738ff03bc1d67cc052c07e0cac4",
+    "archive_url": "https://codeload.github.com/vitejs/vite/tar.gz/6c2c881f15495738ff03bc1d67cc052c07e0cac4",
+    "archive_sha256": "b5d5e3a9c865752266bb84714ce0b08c9c010a8f3287dc9dc8db28bd861bc09c"
+  },
+  "source_patch": {
+    "file": "vite-source-change.patch",
+    "sha256": "d5ccd65c9e9d100626273707ada35fad2def66e5fe93f0eaab6f2da78e76542c",
+    "description": "Includes root package patch registration, pinned lock changes and the new braces patch file."
+  },
+  "braces_patch": {
+    "file": "braces-source.patch",
+    "sha256": "8889beb3edfb82a8a0c9b6354f0b4e6d15212ab79e03cbb399946d116b7f1a3a",
+    "installed_path": "patches/braces@3.0.3.patch",
+    "description": "Applied to source dependencies by pnpm; must equal the file introduced by source_patch."
+  },
+  "patched_inputs": {
+    "package.json": "35bbfb34e585e441a56c1a1d5de07b5e3b5363a940c665318c1080be114b51b6",
+    "pnpm-lock.yaml": "75079ae64ebff75d66f6bedd4cc7719d0e9ac59a871e785844700d91788d065a"
+  },
+  "braces_source_files": [
+    {
+      "path": "lib/constants.js",
+      "sha256": "f9fb688959232eee3e6ad7906a5b0e3234815db49ee857ef86983d65b917dc7c"
+    },
+    {
+      "path": "lib/compile.js",
+      "sha256": "774a7af426e8ff0e89336aea3e7c75d887f955768d64f5906b0394869b3ed7e9"
+    },
+    {
+      "path": "lib/expand.js",
+      "sha256": "102b184ece142d42807b67038c6a893e72b0ad4fb999a7b51f5909b10e179255"
+    },
+    {
+      "path": "lib/parse.js",
+      "sha256": "fb9f4fd9a2f00e584cd9e7d3ffbf0de468081c5c549ce3a78a8d670a0f4a05b5"
+    },
+    {
+      "path": "lib/stringify.js",
+      "sha256": "7c661b9de2494534558b0301d30ed9a86cf70707186f7b67be6846c2fb3e62a1"
+    },
+    {
+      "path": "lib/utils.js",
+      "sha256": "d91ed5e20a91b5e99b46cd2cd5d192176235cd1c8145e4fff57edf3349495ab7"
+    }
+  ],
+  "expected_dist": [
+    {
+      "path": "dist/client/client.mjs",
+      "bytes": 32405,
+      "sha256": "0002f3fbd756eb15b131a549bea3869481a52139c22019dd2a23409f115a83fc"
+    },
+    {
+      "path": "dist/client/env.mjs",
+      "bytes": 643,
+      "sha256": "5bdaca544f5cef6f738fbd103a0f60ceaedacd1051edd3514d912e01448443f2"
+    },
+    {
+      "path": "dist/node/chunks/dep-3RmXg9uo.js",
+      "bytes": 13038,
+      "sha256": "4702c10a382ad3509e53a06b680ea8210775d7f9da1236f8f59b03c5617b2ae7"
+    },
+    {
+      "path": "dist/node/chunks/dep-BaWSNrg5.js",
+      "bytes": 235611,
+      "sha256": "63384ad390f54546463508018d095bec5483c8578a744ef87962824e90ff1fa5"
+    },
+    {
+      "path": "dist/node/chunks/dep-CvfTChi5.js",
+      "bytes": 339559,
+      "sha256": "c3684e056dda4f4ccc503a963adcbd3ea86f3aafcbbfa25020814ede2707a156"
+    },
+    {
+      "path": "dist/node/chunks/dep-DmMbUOr5.js",
+      "bytes": 19503,
+      "sha256": "c96810cf6e76a63974f947aca750c949926665145fe283e8fd2ae4b84cf373fb"
+    },
+    {
+      "path": "dist/node/chunks/dep-jeFBLW_f.js",
+      "bytes": 1507282,
+      "sha256": "80401ad3ba84ce60f4e297ef1f44f447450452987ce148fee596fdc7abbd7ae1"
+    },
+    {
+      "path": "dist/node/cli.js",
+      "bytes": 29164,
+      "sha256": "d53a9f86c24f226137ceeea8040268798ef020fdcfab83750077d0aa7ffef619"
+    },
+    {
+      "path": "dist/node/constants.js",
+      "bytes": 4186,
+      "sha256": "58c1d17e5f8118fe278a620a1ca11bc2554d3c7fb899ac9d13ffeb5a15279e17"
+    },
+    {
+      "path": "dist/node/index.d.ts",
+      "bytes": 153546,
+      "sha256": "d9030fc0c412a31e7e13d189b9ad032b5177c20217add0f24fd3fff0cf272882"
+    },
+    {
+      "path": "dist/node/index.js",
+      "bytes": 6677,
+      "sha256": "b10cb32d4bc778b7493cd9017e065bf2b83709f93f826edb05b42be2fc109f69"
+    },
+    {
+      "path": "dist/node/module-runner.d.ts",
+      "bytes": 10612,
+      "sha256": "e2ed5b81cbed3a511b21a18ab2539e79ac1f4bc1d1d28f8d35d8104caa3b429f"
+    },
+    {
+      "path": "dist/node/module-runner.js",
+      "bytes": 53266,
+      "sha256": "82300b4a5e6b52632ca2fc9226b3fb3ac11f95b788f7c5b7f89166e91f712823"
+    },
+    {
+      "path": "dist/node/moduleRunnerTransport.d-DJ_mE5sf.d.ts",
+      "bytes": 2969,
+      "sha256": "035d0934d304483f07148427a5bd5b98ac265dae914a6b49749fe23fbd893ec7"
+    },
+    {
+      "path": "dist/node-cjs/publicUtils.cjs",
+      "bytes": 106613,
+      "sha256": "0fbd2324ac278105ca9ad0dab270cb08b6d35e4ceb196d8ff24bdc70ecfd40bd"
+    }
+  ],
+  "verified_rebuilds": 2,
+  "scope": "Only a newly created output directory is written. No application, database, publication, or generated-file patching."
+}
