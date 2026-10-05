@@ -1,0 +1,14 @@
+{
+  "name": "@illini-market/watch-compat",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DCloud directory watching with explicit selection over the official Chokidar 4 runtime",
+  "main": "index.cjs",
+  "files": ["index.cjs", "README.md"],
+  "license": "UNLICENSED",
+  "engines": { "node": "22.x" },
+  "dependencies": {
+    "chokidar-runtime": "npm:chokidar@4.0.3",
+    "picomatch": "2.3.2"
+  }
+}

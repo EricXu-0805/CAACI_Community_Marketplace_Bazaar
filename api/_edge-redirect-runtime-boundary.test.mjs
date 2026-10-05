@@ -17,6 +17,7 @@ const EXPECTED_EDGE_FILES = [
   'banner-upload-gc.js',
   'data-retention.js',
   'db-proxy.js',
+  'deployment-identity.js',
   'geocode.js',
   'meetup-notify.js',
   'moderate.js',

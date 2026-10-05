@@ -1,0 +1,502 @@
+{
+  "artifacts": [
+    {
+      "addedNonDistFiles": [
+        "CAACI-BUILD-PROVENANCE.json",
+        "CAACI-PATCH-NOTICE.txt"
+      ],
+      "bytes": 630253,
+      "distFiles": 15,
+      "fileHashes": {
+        "CAACI-BUILD-PROVENANCE.json": {
+          "bytes": 3289,
+          "sha256": "769348afd571d26abbdeaaa708ca4dbc2532caed92737d309cfe9077ad1f7a1a"
+        },
+        "CAACI-PATCH-NOTICE.txt": {
+          "bytes": 532,
+          "sha256": "eda32a9418de6b452bc32e52daae5fbe5c782bc152b8dd147257ca99b43cd961"
+        },
+        "LICENSE.md": {
+          "bytes": 115624,
+          "sha256": "008938a3441801ca3960f8e3ccb4c0738e7996442a53063141d57d3769a7344d"
+        },
+        "README.md": {
+          "bytes": 1152,
+          "sha256": "b5fa3b42dc55ef7ca4e8732af201cf6cf090360af6aae32d19e2643f08b4a26e"
+        },
+        "bin/openChrome.applescript": {
+          "bytes": 2691,
+          "sha256": "91516dbb952a792f8e9e85aa8f23d029eb5778058e035b59e2b962196cc32923"
+        },
+        "bin/vite.js": {
+          "bytes": 2542,
+          "sha256": "8498a58e0d311572c409038515df0e5d707bdc6ab5927153f487e36ef1c9052c"
+        },
+        "client.d.ts": {
+          "bytes": 5109,
+          "sha256": "1eef826bc4a19de22155487984e345a34c9cd511dd1170edc7a447cb8231dd4a"
+        },
+        "dist/client/client.mjs": {
+          "bytes": 32405,
+          "sha256": "0002f3fbd756eb15b131a549bea3869481a52139c22019dd2a23409f115a83fc"
+        },
+        "dist/client/env.mjs": {
+          "bytes": 643,
+          "sha256": "5bdaca544f5cef6f738fbd103a0f60ceaedacd1051edd3514d912e01448443f2"
+        },
+        "dist/node-cjs/publicUtils.cjs": {
+          "bytes": 106613,
+          "sha256": "0fbd2324ac278105ca9ad0dab270cb08b6d35e4ceb196d8ff24bdc70ecfd40bd"
+        },
+        "dist/node/chunks/dep-3RmXg9uo.js": {
+          "bytes": 13038,
+          "sha256": "4702c10a382ad3509e53a06b680ea8210775d7f9da1236f8f59b03c5617b2ae7"
+        },
+        "dist/node/chunks/dep-BaWSNrg5.js": {
+          "bytes": 235611,
+          "sha256": "63384ad390f54546463508018d095bec5483c8578a744ef87962824e90ff1fa5"
+        },
+        "dist/node/chunks/dep-CvfTChi5.js": {
+          "bytes": 339559,
+          "sha256": "c3684e056dda4f4ccc503a963adcbd3ea86f3aafcbbfa25020814ede2707a156"
+        },
+        "dist/node/chunks/dep-DmMbUOr5.js": {
+          "bytes": 19503,
+          "sha256": "c96810cf6e76a63974f947aca750c949926665145fe283e8fd2ae4b84cf373fb"
+        },
+        "dist/node/chunks/dep-jeFBLW_f.js": {
+          "bytes": 1507282,
+          "sha256": "80401ad3ba84ce60f4e297ef1f44f447450452987ce148fee596fdc7abbd7ae1"
+        },
+        "dist/node/cli.js": {
+          "bytes": 29164,
+          "sha256": "d53a9f86c24f226137ceeea8040268798ef020fdcfab83750077d0aa7ffef619"
+        },
+        "dist/node/constants.js": {
+          "bytes": 4186,
+          "sha256": "58c1d17e5f8118fe278a620a1ca11bc2554d3c7fb899ac9d13ffeb5a15279e17"
+        },
+        "dist/node/index.d.ts": {
+          "bytes": 153546,
+          "sha256": "d9030fc0c412a31e7e13d189b9ad032b5177c20217add0f24fd3fff0cf272882"
+        },
+        "dist/node/index.js": {
+          "bytes": 6677,
+          "sha256": "b10cb32d4bc778b7493cd9017e065bf2b83709f93f826edb05b42be2fc109f69"
+        },
+        "dist/node/module-runner.d.ts": {
+          "bytes": 10612,
+          "sha256": "e2ed5b81cbed3a511b21a18ab2539e79ac1f4bc1d1d28f8d35d8104caa3b429f"
+        },
+        "dist/node/module-runner.js": {
+          "bytes": 53266,
+          "sha256": "82300b4a5e6b52632ca2fc9226b3fb3ac11f95b788f7c5b7f89166e91f712823"
+        },
+        "dist/node/moduleRunnerTransport.d-DJ_mE5sf.d.ts": {
+          "bytes": 2969,
+          "sha256": "035d0934d304483f07148427a5bd5b98ac265dae914a6b49749fe23fbd893ec7"
+        },
+        "index.cjs": {
+          "bytes": 2717,
+          "sha256": "c5bdea7acf43bd186d2a19b61add34f0af6b241cae9e44fede30fdf5b62df225"
+        },
+        "index.d.cts": {
+          "bytes": 209,
+          "sha256": "296d036442c7dc89d907bdba74c8151e48b8c6f66a01c93afd8750b31ce959be"
+        },
+        "misc/false.js": {
+          "bytes": 21,
+          "sha256": "3f405f8c82812b5fd5a6ca325a1b9039479bf9de3ee1ef51d76ea80fba7d486c"
+        },
+        "misc/true.js": {
+          "bytes": 20,
+          "sha256": "1ca1ff5b531880de960715f4622cb4bfe61620ad0ab56764a00f3afe2bf2981a"
+        },
+        "package.json": {
+          "bytes": 5251,
+          "sha256": "a1d0149fd986fd34b6d35503d2c0d8d9f743c4dbaaf94fbc11812bc84b05884d"
+        },
+        "types/customEvent.d.ts": {
+          "bytes": 1312,
+          "sha256": "11443a1dcfaaa404c68d53368b5b818712b95dd19f188cab1669c39bee8b84b3"
+        },
+        "types/hmrPayload.d.ts": {
+          "bytes": 1282,
+          "sha256": "a7ca8df4f2931bef2aa4118078584d84a0b16539598eaadf7dce9104dfaa381c"
+        },
+        "types/hot.d.ts": {
+          "bytes": 1060,
+          "sha256": "36977c14a7f7bfc8c0426ae4343875689949fb699f3f84ecbe5b300ebf9a2c55"
+        },
+        "types/import-meta.d.ts": {
+          "bytes": 249,
+          "sha256": "28a9d5c4741fdd62a94faea49ef7585d825e8379e5d23a2d773f723ce56d6b50"
+        },
+        "types/importGlob.d.ts": {
+          "bytes": 1909,
+          "sha256": "7f698624bbbb060ece7c0e51b7236520ebada74b747d7523c7df376453ed6fea"
+        },
+        "types/importMeta.d.ts": {
+          "bytes": 871,
+          "sha256": "19efad8495a7a6b064483fccd1d2b427403dd84e67819f86d1c6ee3d7abf749c"
+        },
+        "types/internal/cssPreprocessorOptions.d.ts": {
+          "bytes": 1960,
+          "sha256": "7870becb94cbc11d2d01b77c4422589adcba4d8e59f726246d40cd0d129784d8"
+        },
+        "types/internal/lightningcssOptions.d.ts": {
+          "bytes": 520,
+          "sha256": "4ec16d7a4e366c06a4573d299e15fe6207fc080f41beac5da06f4af33ea9761e"
+        },
+        "types/metadata.d.ts": {
+          "bytes": 885,
+          "sha256": "f70b8328a15ca1d10b1436b691e134a49bc30dcf3183a69bfaa7ba77e1b78ecd"
+        },
+        "types/package.json": {
+          "bytes": 109,
+          "sha256": "22fe256ab91f03f1e8ddb5182cedf07448ace5ab09c6a73467ca1be3e83beaf4"
+        }
+      },
+      "filename": "vite-6.4.3-local.1a015818854f495a.tgz",
+      "files": 37,
+      "integrity": "sha512-rn+lFNmHiRwosRsL+sdb1v/G/79uQf27XNYXe3y/cBhLskPR5tZAf3JvHyb1OU2eiCeqQvtEakHjoNmfot5HbQ==",
+      "name": "vite",
+      "officialNonDistUnchangedExcept": [],
+      "officialPackageJsonByteIdentical": true,
+      "provenance": {
+        "build": {
+          "allDistFilesByteIdentical": true,
+          "command": "pnpm --filter vite run build",
+          "node": "22.23.3",
+          "packageManager": "pnpm10.8.1",
+          "patchedLockSha256": "75079ae64ebff75d66f6bedd4cc7719d0e9ac59a871e785844700d91788d065a",
+          "sequentialBuilds": 2
+        },
+        "distFileSha256": {
+          "client/client.mjs": "0002f3fbd756eb15b131a549bea3869481a52139c22019dd2a23409f115a83fc",
+          "client/env.mjs": "5bdaca544f5cef6f738fbd103a0f60ceaedacd1051edd3514d912e01448443f2",
+          "node-cjs/publicUtils.cjs": "0fbd2324ac278105ca9ad0dab270cb08b6d35e4ceb196d8ff24bdc70ecfd40bd",
+          "node/chunks/dep-3RmXg9uo.js": "4702c10a382ad3509e53a06b680ea8210775d7f9da1236f8f59b03c5617b2ae7",
+          "node/chunks/dep-BaWSNrg5.js": "63384ad390f54546463508018d095bec5483c8578a744ef87962824e90ff1fa5",
+          "node/chunks/dep-CvfTChi5.js": "c3684e056dda4f4ccc503a963adcbd3ea86f3aafcbbfa25020814ede2707a156",
+          "node/chunks/dep-DmMbUOr5.js": "c96810cf6e76a63974f947aca750c949926665145fe283e8fd2ae4b84cf373fb",
+          "node/chunks/dep-jeFBLW_f.js": "80401ad3ba84ce60f4e297ef1f44f447450452987ce148fee596fdc7abbd7ae1",
+          "node/cli.js": "d53a9f86c24f226137ceeea8040268798ef020fdcfab83750077d0aa7ffef619",
+          "node/constants.js": "58c1d17e5f8118fe278a620a1ca11bc2554d3c7fb899ac9d13ffeb5a15279e17",
+          "node/index.d.ts": "d9030fc0c412a31e7e13d189b9ad032b5177c20217add0f24fd3fff0cf272882",
+          "node/index.js": "b10cb32d4bc778b7493cd9017e065bf2b83709f93f826edb05b42be2fc109f69",
+          "node/module-runner.d.ts": "e2ed5b81cbed3a511b21a18ab2539e79ac1f4bc1d1d28f8d35d8104caa3b429f",
+          "node/module-runner.js": "82300b4a5e6b52632ca2fc9226b3fb3ac11f95b788f7c5b7f89166e91f712823",
+          "node/moduleRunnerTransport.d-DJ_mE5sf.d.ts": "035d0934d304483f07148427a5bd5b98ac265dae914a6b49749fe23fbd893ec7"
+        },
+        "notice": "Locally rebuilt upstream source with a reviewed-candidate braces source patch. Not an official patched upstream release. Final independent review and application gates remain required.",
+        "officialReleaseEnvelope": {
+          "integrity": "sha512-NTKlcQjlAK7MlQoyb6LgaqHc8sso/pVyUJYWMws3jg21uTJw/LddqIFPcPqP6PzpgbIcZyKI85sFE4HBrQDA8A==",
+          "packageJsonSha256": "a1d0149fd986fd34b6d35503d2c0d8d9f743c4dbaaf94fbc11812bc84b05884d",
+          "sha256": "e498f166131407cd8ab819dfbc656c62d514b4e5e62f6f639efcef1614beb809",
+          "tarball": "https://registry.npmjs.org/vite/-/vite-6.4.3.tgz"
+        },
+        "package": {
+          "name": "vite",
+          "version": "6.4.3"
+        },
+        "packaging": {
+          "distFiles": 15,
+          "distHashesSha256": "99920a822f57de734e0547b644dbeee9490ca9b5ed8476e304776002252a6605",
+          "licenseChanged": false,
+          "strategy": "Keep official non-dist files and package.json; replace complete dist from frozen official source build; add this provenance and patch notice."
+        },
+        "schemaVersion": 1,
+        "sourcePatch": {
+          "library": "braces",
+          "patchSha256": "8889beb3edfb82a8a0c9b6354f0b4e6d15212ab79e03cbb399946d116b7f1a3a",
+          "sourceSetSha256": "7e8901e121587a8d44b78f7cac0bedbc3a157868e9ee2eb93509e44bdde337d5",
+          "upstreamVersion": "3.0.3"
+        },
+        "upstreamSource": {
+          "archiveSha256": "b5d5e3a9c865752266bb84714ce0b08c9c010a8f3287dc9dc8db28bd861bc09c",
+          "commit": "6c2c881f15495738ff03bc1d67cc052c07e0cac4",
+          "repository": "https://github.com/vitejs/vite",
+          "tag": "v6.4.3"
+        }
+      },
+      "removedStaleDistPaths": [
+        "dist/node/chunks/dep-CV-fz3CQ.js",
+        "dist/node/chunks/dep-DDtvSN7_.js",
+        "dist/node/chunks/dep-Dm0c1Wj2.js"
+      ],
+      "sha256": "1a015818854f495a792d48e2956514763a2dfce6e90e59e517ca5ded5cefc329",
+      "status": "Locally rebuilt source candidate awaiting final independent review/application gates",
+      "version": "6.4.3"
+    },
+    {
+      "addedNonDistFiles": [
+        "CAACI-BUILD-PROVENANCE.json",
+        "CAACI-PATCH-NOTICE.txt"
+      ],
+      "bytes": 1223532,
+      "distFiles": 36,
+      "fileHashes": {
+        "CAACI-BUILD-PROVENANCE.json": {
+          "bytes": 5629,
+          "sha256": "f5c511768d2c2bcebc3511f94db5efdda944c355e75fb3b293e87e9b0ab9cb22"
+        },
+        "CAACI-PATCH-NOTICE.txt": {
+          "bytes": 535,
+          "sha256": "3016257f74e0819440ed1c4643cc20b5684b1c659760c7b17ac738419ecce3ad"
+        },
+        "LICENSE.md": {
+          "bytes": 35231,
+          "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8"
+        },
+        "README.md": {
+          "bytes": 9999,
+          "sha256": "509a34b064a1698f3f1ac659b9630ed9663059ddb6c4d5d033449b0fb2540da9"
+        },
+        "dist/bin/rollup": {
+          "bytes": 82236,
+          "sha256": "1fb15fb4c980c21e6a8554161d50840363d4ec083d89827a287c041b45c60025"
+        },
+        "dist/bin/rollup.map": {
+          "bytes": 464386,
+          "sha256": "bd1c348584fcb8346d3513730ff7f85b4a483d2341dc1ac7487f176f1e31ebc9"
+        },
+        "dist/es/getLogFilter.js": {
+          "bytes": 2013,
+          "sha256": "35a73e4cfd5ce39624ee427c4c7d3e9217392c0416dac8272265be56af35ba50"
+        },
+        "dist/es/package.json": {
+          "bytes": 17,
+          "sha256": "6dc1b06d6b093e9cccb20bee06a93836eee0420ae26803ca2ce4065d82f070d1"
+        },
+        "dist/es/parseAst.js": {
+          "bytes": 260,
+          "sha256": "3af605bb5f78323e1bb753ce2aed4870792a64a41af0ce202df5236d804b8865"
+        },
+        "dist/es/rollup.js": {
+          "bytes": 408,
+          "sha256": "d3856f3a7cd11abc93116af763e3177aad6c89ee48cd8432cc4376583c2d8942"
+        },
+        "dist/es/shared/node-entry.js": {
+          "bytes": 945209,
+          "sha256": "2d8440822787fc24ddcde17b48a614a1a3773b7845441c1620ce7dc1fbe3dc28"
+        },
+        "dist/es/shared/parseAst.js": {
+          "bytes": 86117,
+          "sha256": "b1c59e4a3b237a0e3606c58c9ab8e0387b0f3f88c2f501ba5cc7a65a3cdf8769"
+        },
+        "dist/es/shared/watch.js": {
+          "bytes": 267301,
+          "sha256": "bf167da1ffea38f0b8d14754b7b737e7e1e2abd7e2aa8e3389b93f3f118c5ad1"
+        },
+        "dist/getLogFilter.d.ts": {
+          "bytes": 171,
+          "sha256": "e7cbf7017d77efd5099e08d85bf58c7658f29edfce5ab0db8faccb86fe9736fa"
+        },
+        "dist/getLogFilter.js": {
+          "bytes": 2155,
+          "sha256": "ad18772d7f73e0f1eff0ea671edacd317edf7cb50e38fd1841cfd6c1897f4f79"
+        },
+        "dist/getLogFilter.js.map": {
+          "bytes": 8683,
+          "sha256": "1c3c02f2a5496c654435046032169c5c426ed592eabba4011f7250727336282d"
+        },
+        "dist/loadConfigFile.d.ts": {
+          "bytes": 471,
+          "sha256": "da9f07c6be066d7b02671ee64ac78bd56cd1a57d98f1ad6b2ef54f685ca146cf"
+        },
+        "dist/loadConfigFile.js": {
+          "bytes": 672,
+          "sha256": "3da26ce9a71c5024e76bcbab131fe7712983696165579628abd8a77028f342e2"
+        },
+        "dist/loadConfigFile.js.map": {
+          "bytes": 125,
+          "sha256": "9b95b4691e0063564e1b1f19f16cca5f2bafee5ee7f6e440bf7e98c7758d9763"
+        },
+        "dist/native.js": {
+          "bytes": 4787,
+          "sha256": "93c3da450b25ba485bb3de20dded405aa9c105951e8d31964eeb49633c2b16ea"
+        },
+        "dist/parseAst.d.ts": {
+          "bytes": 134,
+          "sha256": "a660aa95476042d3fdcc1343cf6bb8fdf24772d31712b1db321c5a4dcc325434"
+        },
+        "dist/parseAst.js": {
+          "bytes": 473,
+          "sha256": "1827e7193dc2b9868536f1be802bb1e75051330c2303dcbca9d6f08583c340b0"
+        },
+        "dist/parseAst.js.map": {
+          "bytes": 112,
+          "sha256": "0d61cb628763b3eca38fb03a30a09a3478f8e3afcbe75ccf1b500af14423a23f"
+        },
+        "dist/rollup.d.ts": {
+          "bytes": 36145,
+          "sha256": "ee70b8037ecdf0de6c04f35277f253663a536d7e38f1539d270e4e916d225a3f"
+        },
+        "dist/rollup.js": {
+          "bytes": 4633,
+          "sha256": "a4f32a3d5e7156b1a5079fb45f6d8abced64d53daa4eadb9a334ef5c26993cc9"
+        },
+        "dist/rollup.js.map": {
+          "bytes": 18935,
+          "sha256": "6a05de961fbd85ecfc683dc5dcadbaa9459e5e28090fc6e32c7fb7e1ed23532d"
+        },
+        "dist/shared/fsevents-importer.js": {
+          "bytes": 851,
+          "sha256": "dfbbe8b08e6405885ae8366d170cebc110864a585634d45d122213c881e60bd1"
+        },
+        "dist/shared/fsevents-importer.js.map": {
+          "bytes": 2236,
+          "sha256": "8eecabfe98e17ba17e51a3ab332e20aeb87c98e897cb1bdda8fbfdd145730bae"
+        },
+        "dist/shared/index.js": {
+          "bytes": 257445,
+          "sha256": "f59bfe97639e2ff297f36853f7fb43f7eb86142f87d22c1a38b3ab60a50c439b"
+        },
+        "dist/shared/index.js.map": {
+          "bytes": 1285961,
+          "sha256": "eceac3f87d03c153f2b0f31c6f3605112202c51b1c559e9673aa389eb332b4e8"
+        },
+        "dist/shared/loadConfigFile.js": {
+          "bytes": 22894,
+          "sha256": "0589164267b0d8154607566d0d22a5b282f8bb7a97ae4eb748ebede93faff7b8"
+        },
+        "dist/shared/loadConfigFile.js.map": {
+          "bytes": 100669,
+          "sha256": "a3a12caeaceb641834f466595e0eae9dbb285d7cbf3d2ad2d09567594a5d9ec0"
+        },
+        "dist/shared/parseAst.js": {
+          "bytes": 95223,
+          "sha256": "587d03d196eb7f94e40ccff0fabd3825115fefa1878a748d51a94584349a0c60"
+        },
+        "dist/shared/parseAst.js.map": {
+          "bytes": 442705,
+          "sha256": "2b5b60b5f8262f9222e23fc4caa9c63ed1aea0a0595df8a543518ab8bca05af0"
+        },
+        "dist/shared/rollup.js": {
+          "bytes": 944415,
+          "sha256": "36ddeea5a34081cb01eeb331b70e269fb6ee602b803e4bd0e9943f9970201d0c"
+        },
+        "dist/shared/rollup.js.map": {
+          "bytes": 4609990,
+          "sha256": "99cf8cf9b24b9b3b4911c26d6ff625abb71fd6e130b14d199f972565dce8db8a"
+        },
+        "dist/shared/watch-cli.js": {
+          "bytes": 18445,
+          "sha256": "ae6e887c161bba92ed55fda1fe6e75f5dd6d8e12c4e357c94a78d1a26f1f0caf"
+        },
+        "dist/shared/watch-cli.js.map": {
+          "bytes": 91251,
+          "sha256": "b61a6536feed0af9dc9a986e0618c487688a4081f2044bdd0402ebf46a784d4c"
+        },
+        "dist/shared/watch.js": {
+          "bytes": 10523,
+          "sha256": "9346dcc7e3dbf3f9314c767a97c1ecedb12ab4643035d432dcbe5ebdd16a35c5"
+        },
+        "dist/shared/watch.js.map": {
+          "bytes": 44573,
+          "sha256": "3b593497cea395e9f1c18cef9bd78de3d8be076b1a471f3d97a72098a19c32f3"
+        },
+        "package.json": {
+          "bytes": 12032,
+          "sha256": "6f080b212d0087b89d332492897fc4768bf75a51d727f4d4d5037f1d2af5ee35"
+        }
+      },
+      "filename": "rollup-4.60.2-local.5f94a2c689eb367b.tgz",
+      "files": 41,
+      "integrity": "sha512-Qy9XoupIHHqOXhieusDS6hIZegB+LpWUXAvF25aESiVWT09jCZDT4FKEYstlamS57TK3ooHDopL80IJyVnrJ9g==",
+      "name": "rollup",
+      "officialNonDistUnchangedExcept": [],
+      "officialPackageJsonByteIdentical": true,
+      "provenance": {
+        "build": {
+          "SOURCE_DATE_EPOCH": 1776519449,
+          "allDistFilesByteIdentical": true,
+          "command": "npm run build:js:node",
+          "exactScript": "rollup --config rollup.config.ts --configPlugin typescript --configIsBuildNode --forceExit",
+          "nativeRecompiled": false,
+          "nativeRuntime": "Official registry optional dependencies pinned to4.60.2",
+          "node": "22.23.3",
+          "packageManager": "npm11.21.0",
+          "sequentialBuilds": 2,
+          "sourceConfigSha256": "fe82b466e4ffef663a7260546a7d4e87bfdd9a7dd89842784228d220a95314ec",
+          "sourceLockSha256": "b5a04c560e6ec75a253009f8233d6fcf5b2dac76d452256e1110bab4f136a335"
+        },
+        "distFileSha256": {
+          "bin/rollup": "1fb15fb4c980c21e6a8554161d50840363d4ec083d89827a287c041b45c60025",
+          "bin/rollup.map": "bd1c348584fcb8346d3513730ff7f85b4a483d2341dc1ac7487f176f1e31ebc9",
+          "es/getLogFilter.js": "35a73e4cfd5ce39624ee427c4c7d3e9217392c0416dac8272265be56af35ba50",
+          "es/package.json": "6dc1b06d6b093e9cccb20bee06a93836eee0420ae26803ca2ce4065d82f070d1",
+          "es/parseAst.js": "3af605bb5f78323e1bb753ce2aed4870792a64a41af0ce202df5236d804b8865",
+          "es/rollup.js": "d3856f3a7cd11abc93116af763e3177aad6c89ee48cd8432cc4376583c2d8942",
+          "es/shared/node-entry.js": "2d8440822787fc24ddcde17b48a614a1a3773b7845441c1620ce7dc1fbe3dc28",
+          "es/shared/parseAst.js": "b1c59e4a3b237a0e3606c58c9ab8e0387b0f3f88c2f501ba5cc7a65a3cdf8769",
+          "es/shared/watch.js": "bf167da1ffea38f0b8d14754b7b737e7e1e2abd7e2aa8e3389b93f3f118c5ad1",
+          "getLogFilter.d.ts": "e7cbf7017d77efd5099e08d85bf58c7658f29edfce5ab0db8faccb86fe9736fa",
+          "getLogFilter.js": "ad18772d7f73e0f1eff0ea671edacd317edf7cb50e38fd1841cfd6c1897f4f79",
+          "getLogFilter.js.map": "1c3c02f2a5496c654435046032169c5c426ed592eabba4011f7250727336282d",
+          "loadConfigFile.d.ts": "da9f07c6be066d7b02671ee64ac78bd56cd1a57d98f1ad6b2ef54f685ca146cf",
+          "loadConfigFile.js": "3da26ce9a71c5024e76bcbab131fe7712983696165579628abd8a77028f342e2",
+          "loadConfigFile.js.map": "9b95b4691e0063564e1b1f19f16cca5f2bafee5ee7f6e440bf7e98c7758d9763",
+          "native.js": "93c3da450b25ba485bb3de20dded405aa9c105951e8d31964eeb49633c2b16ea",
+          "parseAst.d.ts": "a660aa95476042d3fdcc1343cf6bb8fdf24772d31712b1db321c5a4dcc325434",
+          "parseAst.js": "1827e7193dc2b9868536f1be802bb1e75051330c2303dcbca9d6f08583c340b0",
+          "parseAst.js.map": "0d61cb628763b3eca38fb03a30a09a3478f8e3afcbe75ccf1b500af14423a23f",
+          "rollup.d.ts": "ee70b8037ecdf0de6c04f35277f253663a536d7e38f1539d270e4e916d225a3f",
+          "rollup.js": "a4f32a3d5e7156b1a5079fb45f6d8abced64d53daa4eadb9a334ef5c26993cc9",
+          "rollup.js.map": "6a05de961fbd85ecfc683dc5dcadbaa9459e5e28090fc6e32c7fb7e1ed23532d",
+          "shared/fsevents-importer.js": "dfbbe8b08e6405885ae8366d170cebc110864a585634d45d122213c881e60bd1",
+          "shared/fsevents-importer.js.map": "8eecabfe98e17ba17e51a3ab332e20aeb87c98e897cb1bdda8fbfdd145730bae",
+          "shared/index.js": "f59bfe97639e2ff297f36853f7fb43f7eb86142f87d22c1a38b3ab60a50c439b",
+          "shared/index.js.map": "eceac3f87d03c153f2b0f31c6f3605112202c51b1c559e9673aa389eb332b4e8",
+          "shared/loadConfigFile.js": "0589164267b0d8154607566d0d22a5b282f8bb7a97ae4eb748ebede93faff7b8",
+          "shared/loadConfigFile.js.map": "a3a12caeaceb641834f466595e0eae9dbb285d7cbf3d2ad2d09567594a5d9ec0",
+          "shared/parseAst.js": "587d03d196eb7f94e40ccff0fabd3825115fefa1878a748d51a94584349a0c60",
+          "shared/parseAst.js.map": "2b5b60b5f8262f9222e23fc4caa9c63ed1aea0a0595df8a543518ab8bca05af0",
+          "shared/rollup.js": "36ddeea5a34081cb01eeb331b70e269fb6ee602b803e4bd0e9943f9970201d0c",
+          "shared/rollup.js.map": "99cf8cf9b24b9b3b4911c26d6ff625abb71fd6e130b14d199f972565dce8db8a",
+          "shared/watch-cli.js": "ae6e887c161bba92ed55fda1fe6e75f5dd6d8e12c4e357c94a78d1a26f1f0caf",
+          "shared/watch-cli.js.map": "b61a6536feed0af9dc9a986e0618c487688a4081f2044bdd0402ebf46a784d4c",
+          "shared/watch.js": "9346dcc7e3dbf3f9314c767a97c1ecedb12ab4643035d432dcbe5ebdd16a35c5",
+          "shared/watch.js.map": "3b593497cea395e9f1c18cef9bd78de3d8be076b1a471f3d97a72098a19c32f3"
+        },
+        "notice": "Locally rebuilt upstream source with a reviewed-candidate braces source patch. Not an official patched upstream release. Final independent review and application gates remain required.",
+        "officialReleaseEnvelope": {
+          "integrity": "sha512-J9qZyW++QK/09NyN/zeO0dG/1GdGfyp9lV8ajHnRVLfo/uFsbji5mHnDgn/qYdUHyCkM2N+8VyspgZclfAh0eQ==",
+          "packageJsonSha256": "6f080b212d0087b89d332492897fc4768bf75a51d727f4d4d5037f1d2af5ee35",
+          "sha256": "aaaf63ed4fd12d68457c85654144e750da49e4936f94267e747845cd5ac991c8",
+          "tarball": "https://registry.npmjs.org/rollup/-/rollup-4.60.2.tgz"
+        },
+        "package": {
+          "name": "rollup",
+          "version": "4.60.2"
+        },
+        "packaging": {
+          "distFiles": 36,
+          "distHashesSha256": "2868d6a1c8b5ee97eaa42ad9b1fddd16521b275e417aaf688790ccc5530ba164",
+          "licenseChanged": false,
+          "strategy": "Keep official non-dist files and package.json; replace complete dist from frozen official source build; add this provenance and patch notice."
+        },
+        "schemaVersion": 1,
+        "sourcePatch": {
+          "library": "braces",
+          "patchSha256": "8889beb3edfb82a8a0c9b6354f0b4e6d15212ab79e03cbb399946d116b7f1a3a",
+          "sourceSetSha256": "7e8901e121587a8d44b78f7cac0bedbc3a157868e9ee2eb93509e44bdde337d5",
+          "upstreamVersion": "3.0.3"
+        },
+        "upstreamSource": {
+          "archiveSha256": "5ae70a325f019a98e59cf73cc26c5d117212fd70921bb14a3e7f3684eca13203",
+          "archiveUrl": "https://codeload.github.com/rollup/rollup/tar.gz/refs/tags/v4.60.2",
+          "commit": "a6be82b8abd747458afdc7484319f7b5deb92535",
+          "repository": "https://github.com/rollup/rollup",
+          "tag": "v4.60.2"
+        }
+      },
+      "removedStaleDistPaths": [],
+      "sha256": "5f94a2c689eb367b96b5d2ce8211a7a81f91dede8f23ea81ad8163be1638620b",
+      "status": "Locally rebuilt source candidate awaiting final independent review/application gates",
+      "version": "4.60.2"
+    }
+  ],
+  "status": "Candidate artifacts, not an official upstream release or audit certificate"
+}

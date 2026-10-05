@@ -1,27 +1,94 @@
 # npm audit triage
 
-Refreshed 2026-09-06 (Chicago) using Node 22.23.2, a clean install and both
-full-tree and production-labelled npm 11 audit views. This replaces the July
-snapshot: the current lockfile uses Vite 6.4.3, not Vite 5.2.8.
+Refreshed 2026-10-05 UTC using Node 22.23.3 and npm 11.21.0.
 
 ## Current candidate
 
 | Audit view | Low | Moderate | High | Critical | Total |
 |---|---:|---:|---:|---:|---:|
-| Complete dependency tree | 0 | 0 | 0 | 0 | 0 |
-| `--omit=dev` | 0 | 0 | 0 | 0 | 0 |
+| Complete dependency tree, 2026-10-05 | 0 | 0 | 0 | 0 | 0 |
+
+The independent braces chain was replaced by bounded first-party glob/watch
+adapters with their real package identities exposed to npm audit. Vite 6.4.3
+and Rollup 4.60.2 now use integrity-pinned local archives rebuilt from official
+source with a bounded braces backport. Their upstream package names, versions,
+licenses and native optional dependencies are retained. These are locally
+maintained builds, not official upstream patched releases. No advisory is
+excluded and the moderate-severity threshold is unchanged.
+
+The registry still lists braces 3.0.3 and no official patched release for
+GHSA-vfj7-8cjw-p6xm. Audit does not inspect private bundled source: all three
+embedded copies therefore have separate source, generated-byte, ordinary
+compatibility and actual watcher validation. See the
+[maintenance contract](../app/build-compat/source-builds/README.md) and
+[archive manifests](../app/vendor/source-builds/manifest.json).
+
+The integrated local gates passed: 1,677 boundary tests, zero failures and one
+existing optional artifact-inventory skip; type-check; H5/Weixin builds and
+artifact scans; and 32 compiled-browser checks. Five existing peer-version
+conflicts remain, so `npm ls --all` is not clean. A zero audit is dated registry
+evidence, not a claim that every possible denial of service or application
+vulnerability is fixed. Repeat the gates after dependency changes and bind
+release evidence to the actual commit and deployment.
+
+## Historical October 3 candidate
+
+The following findings describe the earlier lock and unmodified embedded
+copies. They are preserved as history, superseded by the October 5 candidate.
+
+| Audit view | Low | Moderate | High | Critical | Total |
+|---|---:|---:|---:|---:|---:|
+| Complete dependency tree, 2026-10-03 | 0 | 0 | 32 | 0 | 32 |
+
+The 32 affected dependency nodes share one root advisory:
+[braces GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm),
+affecting versions through 3.0.3. The registry's latest braces remains 3.0.3,
+and the advisory lists no patched release. The existing moderate-severity
+audit gate therefore remains a release blocker. This is not 32 distinct
+vulnerabilities or proof of browser/runtime exploitation.
+
+Update the existing brace-expansion override from 5.0.9 to the official
+5.0.12 patch. It addresses the new
+[quadratic rewrite](https://github.com/advisories/GHSA-q2hr-2g5m-vwhr),
+[nested brace](https://github.com/advisories/GHSA-qhr7-859c-m2p7), and
+[comma parser](https://github.com/advisories/GHSA-6j4f-fj2g-mc7p) advisories.
+The lockfile update changes only that package. Full-tree audit still fails on
+braces after this update; do not suppress it, downgrade DCloud, or use
+`npm audit fix --force` to manufacture a passing release.
+
+[Upstream braces PR #72](https://github.com/micromatch/braces/pull/72) is an
+unmerged proposal, not an official package release. Any local patch requires
+independent validation of string and AST entry points, ordinary glob behavior,
+and compiler bundles that contain their own copy. A package override alone
+does not establish that Vite/Rollup's bundled code is fixed. No local fork or
+advisory exclusion was included in that October 3 candidate.
+
+At 17:49 UTC on October 3, upstream PR #72 had advanced to
+`28d440b5dd449dbf1fe6f3506cf94ecca4d02660`, still unmerged and unreleased.
+Independent bounded comparisons confirm its new parent-cycle rejection and
+restore the five previously failing `escapeInvalid` samples. A deliberately
+malformed direct AST with a self-referencing value array still overflows the
+expansion stack; this is not evidence of a normal string-glob exploit path.
+The complete unpublished branch also changes parser output relative to 3.0.3.
+These findings supersede the earlier candidate-specific failures; they do not
+change the advisory or justify adopting an unpublished fork.
 
 These are registry-advisory results for this lockfile, not a claim that the
 application has no exploitable bugs. Re-run them after dependency changes and
 on the weekly schedule. The release receipt must bind the result to the actual
 main SHA and deployment.
 
-## September release follow-up
+## Historical September release follow-up
+
+The 2026-09-06 Node 22.23.2/npm 11 scan reported zero findings for both the
+complete tree and `--omit=dev`. That was a dated result, superseded by the
+October advisory state above.
 
 Main's production-labelled scan found 27 low-severity dependency nodes, all
 from postcss-selector-parser. Updating that parser removed them. A separate
 full-tree scan then exposed 4 moderate and 2 high nodes hidden by `--omit=dev`:
-qs and brace-expansion plus their dependents. All are patched in the candidate.
+qs and brace-expansion plus their dependents. Those then-known advisories were
+patched in the September candidate.
 
 | Package | Previous | Selected patch | Advisory |
 |---|---|---|---|
@@ -32,7 +99,7 @@ qs and brace-expansion plus their dependents. All are patched in the candidate.
 
 Scoped overrides retain both parser major versions and the existing uni-app
 release. No forced DCloud downgrade or blanket `npm audit fix --force` was
-used. The lockfile changes only these four package versions across five nodes.
+used. That September update changed four package versions across five nodes.
 Use clean installation, type-check, both builds, boundary tests and browser
 regression together to verify compatibility; an audit result alone is not a
 functional acceptance result.

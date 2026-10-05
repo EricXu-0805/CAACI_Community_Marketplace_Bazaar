@@ -13,12 +13,14 @@
 				"navigationStyle": "custom"
 			}
 		},
+		// #ifndef MP-WEIXIN
 		{
 			"path": "pages/post/index",
 			"style": {
 				"navigationStyle": "custom"
 			}
 		},
+		// #endif
 		{
 			"path": "pages/publish/index",
 			"style": {
@@ -45,12 +47,14 @@
 				"enablePullDownRefresh": true
 			}
 		},
+		// #ifndef MP-WEIXIN
 		{
 			"path": "pages/detail/index",
 			"style": {
 				"navigationStyle": "custom"
 			}
 		},
+		// #endif
 		{
 			"path": "pages/chat/index",
 			"style": {
@@ -77,10 +81,12 @@
 			"path": "pages/settings/index",
 			"style": { "navigationStyle": "custom" }
 		},
+		// #ifndef MP-WEIXIN
 		{
 			"path": "pages/seller/index",
 			"style": { "navigationStyle": "custom" }
 		},
+		// #endif
 		{
 			"path": "pages/profile/edit",
 			"style": {
@@ -153,6 +159,24 @@
 		}
 		// #endif
 	],
+	// #ifdef MP-WEIXIN
+	// Keep existing deep links while downloading these non-tab pages on entry.
+	// Shared components stay in the main package; these are not independent packages.
+	"subPackages": [
+		{
+			"root": "pages/detail",
+			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
+		},
+		{
+			"root": "pages/post",
+			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
+		},
+		{
+			"root": "pages/seller",
+			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
+		}
+	],
+	// #endif
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
 		"navigationBarTitleText": "Illini Market",

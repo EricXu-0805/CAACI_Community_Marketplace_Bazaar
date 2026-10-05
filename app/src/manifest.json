@@ -41,6 +41,7 @@
     "mp-weixin": {
         "appid": "wxc3da81aa8852a6ff",
         "darkmode": true,
+        "lazyCodeLoading": "requiredComponents",
         "setting": {
             "urlCheck": true,
             "es6": true,

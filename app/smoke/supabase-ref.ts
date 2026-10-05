@@ -38,7 +38,8 @@ export function supabaseRefForBuild(): string {
 
 /** Compiled acceptance must follow the artifact, not the current shell's env. */
 export function supabaseRefForCompiledBuild(): string {
-  const manifest = JSON.parse(readFileSync(resolve(process.cwd(), 'dist/build/h5/deployment-manifest.json'), 'utf8'))
+  const buildDir = process.env.SMOKE_H5_BUILD_DIR || 'dist/build/h5'
+  const manifest = JSON.parse(readFileSync(resolve(process.cwd(), buildDir, 'deployment-manifest.json'), 'utf8'))
   const ref = manifest?.projectRef
   if (manifest?.schema !== 1 || typeof ref !== 'string' || !/^[a-z0-9]{20}$/.test(ref)) {
     throw new Error('compiled H5 manifest has no valid project ref — rebuild before session acceptance')

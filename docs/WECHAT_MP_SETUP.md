@@ -74,9 +74,19 @@ VITE_BASE_URL=https://www.illinimarket.com npm run build:mp-weixin
 node ../scripts/verify-build-artifact.mjs dist/build/mp-weixin none
 ```
 
-开发者工具导入 `app/dist/build/mp-weixin/`。当前检查采用主包/每个分包 2 MiB 的
-保守原始文件预算，最终上传体积和平台规则仍以开发者工具为准。CI 和本地 push
-都会运行产物检查；普通编译成功不再被当成 WXSS/运行时正确的充分证据。
+开发者工具导入 `app/dist/build/mp-weixin/`。本地验收可设置 `UNI_OUTPUT_DIR` 指向
+临时目录，避免覆盖已导入的开发版。当前检查保留每包 2 MiB 上限，并预留编译
+空间：主包原始文件预算 1.5 MiB、每个分包 1.6 MiB；最终上传体积和平台规则仍以
+开发者工具为准。CI 和本地 push 都会运行产物检查；普通编译成功不再被当成
+WXSS/运行时正确的充分证据。
+
+2026-10-02 本地候选为微信开启 `lazyCodeLoading: "requiredComponents"`，将商品详情、
+广场帖子详情和卖家主页拆为非独立分包。现有 `pages/detail/index`、`pages/post/index`、
+`pages/seller/index` 路径不变，五个底部导航页和共享组件仍在主包；其他平台路由配置
+不变。主包由 1,639,455 降为 1,520,085 字节（减少 7.28%），全包合计 1,639,695 字节。
+这是主包拆分与按需注入配置完成的证据，不代表总下载量减少或真机冷启动已经提速。
+首次进入三个分包、分享直达、断网重试与返回导航仍需同版本开发工具/体验版真机验收。
+本轮未上传或发布；本地编译和静态依赖检查不能代替上述体验验收。
 
 ## 6. 体验版验收步骤
 

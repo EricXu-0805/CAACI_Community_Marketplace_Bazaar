@@ -106,6 +106,16 @@
         <text>{{ t('admin.ownerRecoveryUnavailableBody') }}</text>
       </view>
 
+      <!-- #ifdef H5 -->
+      <AdminSupportReply
+        v-if="whoami?.role === 'owner'"
+        ref="supportReply"
+        :key="whoami.token_id"
+        :actor-id="whoami.admin_id"
+        :transport="supportReplyTransport"
+      />
+      <!-- #endif -->
+
       <view v-if="canReadModeration" class="stats-row">
         <view class="stat">
           <text class="stat-n">{{ stats?.active_suspensions ?? '—' }}</text>
@@ -834,6 +844,10 @@ import { useTheme } from '../../composables/useTheme'
 import { useI18n } from '../../composables/useI18n'
 import UAvatar from '../../components/UAvatar.vue'
 import UIcon from '../../components/UIcon.vue'
+// #ifdef H5
+import AdminSupportReply from '../../components/AdminSupportReply.vue'
+import { decodeSupportReplySendResponse, type SupportReplyPayload, type SupportReplyTransport } from '../../api/adminSupportReply'
+// #endif
 import { campusDateBounds, campusDateFromIso } from '../../utils/campusTime'
 
 const { t, lang, toggleLang } = useI18n()
@@ -918,6 +932,14 @@ const keyInput = ref('')
 const unlocked = ref(false)
 const checking = ref(false)
 const gateError = ref('')
+// #ifdef H5
+const supportReply = ref<InstanceType<typeof AdminSupportReply> | null>(null)
+const supportReplyTransport: SupportReplyTransport = {
+  status: () => supportEmailGet({ resource: 'support_email_status' }),
+  receipt: requestId => supportEmailGet({ resource: 'support_email_receipt', request_id: requestId }),
+  send: payload => sendSupportEmail(payload),
+}
+// #endif
 const ADMIN_TOKEN_PATTERN = /^iam_admin_[A-Za-z0-9_-]{43}$/
 const adminTokenFormatValid = computed(() => ADMIN_TOKEN_PATTERN.test(keyInput.value.trim()))
 let adminSessionEpoch = 0
@@ -2769,6 +2791,47 @@ async function apiGet<T>(
   return json.data as T
 }
 
+// #ifdef H5
+function requireSupportEmailOwner(): AdminSessionOwner {
+  const owner = requireAdminSessionOwner(true)
+  if (whoami.value?.role !== 'owner') throw new Error('admin_capability_denied')
+  return owner
+}
+
+async function supportEmailGet(params: Record<string, string>): Promise<unknown> {
+  const owner = requireSupportEmailOwner()
+  try {
+    return await apiGet(params, owner)
+  } catch (error) {
+    if (isAdminSessionOwnerCurrent(owner) && error instanceof Error && error.message === 'admin_capability_denied') {
+      return lockAdminAfterAuthorizationLoss(owner)
+    }
+    throw error
+  }
+}
+
+async function sendSupportEmail(payload: SupportReplyPayload): Promise<unknown> {
+  const owner = requireSupportEmailOwner()
+  // Support email has its own once-only ledger. Never use the mutation journal,
+  // generic apiPost retry, or a fresh request ID to recover an uncertain send.
+  const response = await platformFetch(apiBase(), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': payload.request_id,
+      Authorization: `Bearer ${owner.key}`,
+    },
+    body: JSON.stringify(payload),
+  })
+  if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
+  updateAdminServerClock(response)
+  if (response.status === 401 || response.status === 403) return lockAdminAfterAuthorizationLoss(owner)
+  const json = await readAdminJson<unknown>(response)
+  if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
+  return decodeSupportReplySendResponse(response.status, json, payload.request_id)
+}
+// #endif
+
 type AdminMutationJournalHandle = Awaited<ReturnType<typeof reserveAdminIdempotencyKey>>
 
 interface AdminMutationReceipt<T> {
@@ -3312,6 +3375,9 @@ async function onUnlock() {
 
 function resetAdminPrivateState() {
   invalidateAllAdminRequests()
+  // #ifdef H5
+  supportReply.value?.clearPrivateState()
+  // #endif
   closeReasonPrompt(false)
   clearAdminTokenExpiryTimer()
   adminServerClockBaseMs = null
