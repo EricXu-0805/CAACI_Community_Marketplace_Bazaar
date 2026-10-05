@@ -3,10 +3,7 @@
   "outputDirectory": "app/dist/build/h5",
   "framework": null,
   "git": {
-    "deploymentEnabled": {
-      "**": false,
-      "main": true
-    }
+    "deploymentEnabled": false
   },
   "crons": [
     { "path": "/api/notification-digest", "schedule": "0 23 * * *" },
