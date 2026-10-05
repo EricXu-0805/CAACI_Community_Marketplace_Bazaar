@@ -682,7 +682,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   background: var(--accent-primary); color: var(--ink-inverse);
   font-size: 13px; font-weight: 600;
   cursor: pointer;
-  transition: all 0.12s;
+  transition: transform 0.12s;
   &:active { transform: scale(0.96); }
   &.following {
     background: var(--bg-elev-1); color: var(--text-primary);
