@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
-import { mkdtempSync, writeFileSync, readFileSync, symlinkSync, rmSync, realpathSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { mkdtempSync, writeFileSync, readFileSync, symlinkSync, rmSync, realpathSync, lstatSync } from 'node:fs'
+import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 
@@ -11,15 +11,18 @@ const appRequire = createRequire(join(appRoot, 'package.json'))
 const cliRequire = createRequire(appRequire.resolve('@dcloudio/uni-cli-shared/package.json'))
 
 test('DCloud resolves the controlled ZIP denial package instead of the vulnerable archive library', () => {
-  const expected = realpathSync(join(appRoot, 'vendor/disabled-cloud-zip/index.cjs'))
+  const expected = realpathSync(join(appRoot, 'node_modules/adm-zip/index.cjs'))
   assert.equal(realpathSync(cliRequire.resolve('adm-zip')), expected)
   assert.equal(realpathSync(appRequire.resolve('adm-zip')), expected)
+  assert.equal(lstatSync(join(appRoot, 'node_modules/adm-zip')).isSymbolicLink(), false)
+  assert.deepEqual(readFileSync(expected), readFileSync(join(appRoot, 'vendor/disabled-cloud-zip/index.cjs')))
   assert.equal(cliRequire('adm-zip/package.json').name, '@caaci/disabled-cloud-zip')
   const lock = JSON.parse(readFileSync(join(appRoot, 'package-lock.json'), 'utf8'))
   const rows = Object.entries(lock.packages).filter(([path]) => path.endsWith('/adm-zip'))
   assert.equal(rows.length, 1)
-  assert.equal(rows[0][1].link, true)
-  assert.equal(resolve(appRoot, rows[0][1].resolved), join(appRoot, 'vendor/disabled-cloud-zip'))
+  assert.equal(rows[0][1].name, '@caaci/disabled-cloud-zip')
+  assert.notEqual(rows[0][1].link, true)
+  assert.equal(rows[0][1].resolved, 'file:vendor/disabled-cloud-zip')
 })
 
 test('cloud ZIP packing and extraction fail before touching a destination symlink', () => {
