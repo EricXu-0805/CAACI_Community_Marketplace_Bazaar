@@ -93,7 +93,7 @@ test('all string entry points enforce the source depth budget without an option 
   assert.throws(() => braces.parse('{{a,b}}', { maxDepth: 1.5 }), /Input depth/)
 })
 
-test('each source operation reads a maxDepth option once', () => {
+test('depth guards snapshot maxDepth on ordinary non-range traversals', () => {
   for (const operation of [braces.parse, ...Object.values(internal)]) {
     let reads = 0
     const options = { get maxDepth() { reads++; return reads === 1 ? 2 : NaN } }
