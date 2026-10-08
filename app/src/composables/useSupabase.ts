@@ -56,6 +56,16 @@ const authStorage = createFailClosedAuthStorage({
 
 let authSignOutTask: Promise<FailClosedSignOutResult> | null = null
 
+/**
+ * SDK notifications may already be queued when local logout starts. The task
+ * closes the token-capture window before storage becomes blocked; the durable
+ * storage boundary then keeps old events out until explicit session creation
+ * has verified a purge and enabled a new generation.
+ */
+export function canAcceptSupabaseAuthSession(): boolean {
+  return authSignOutTask === null && !authStorage.isWriteBlocked()
+}
+
 /*
  * `platformFetch` — the app-wide adaptive fetch.
  *

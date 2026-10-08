@@ -155,7 +155,7 @@ test('a language action retries an unconfirmed write without duplicating confirm
 test('authenticated session application dynamically schedules the language sync on every retry opportunity', () => {
   const auth = source('src/composables/useAuth.ts')
   const applyStart = auth.indexOf('  async function applySession(')
-  const applyEnd = auth.indexOf('\n  async function initializeAuth()', applyStart)
+  const applyEnd = auth.indexOf('\n  function subscribeToAuth()', applyStart)
   assert.ok(applyStart >= 0 && applyEnd > applyStart)
   const applySession = auth.slice(applyStart, applyEnd)
 

@@ -106,8 +106,9 @@ test('the my-items page is routable and account-scoped', async () => {
   assert.match(myItems, /if \(!pageScope\.isCurrent\(request\)\) return/)
   assert.match(myItems, /accountToken: request\.accountToken/)
   assert.match(myItems, /onUnload\(\(\) => \{ pageScope\.dispose\(\) \}\)/)
-  // Signed-out deep link must not sit on three permanently empty tabs.
-  assert.match(myItems, /uni\.reLaunch\(\{ url: '\/pages\/login\/index' \}\)/)
+  // The shared guard replaces inaccessible deep links with login or session
+  // recovery, preserving the distinction between anonymous and unavailable.
+  assert.match(myItems, /if \(!requireAuth\(undefined, 'reLaunch'\)\) return/)
 })
 
 test('campus-spot chips use the shared padded location field on both listing flows', async () => {

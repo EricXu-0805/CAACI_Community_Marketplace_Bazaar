@@ -3,6 +3,7 @@ import {
   useSupabase,
   prepareSupabaseAuthPersistence,
   failClosedSupabaseSignOut,
+  canAcceptSupabaseAuthSession,
 } from './useSupabase'
 import { useModeration } from './useModeration'
 import {
@@ -41,7 +42,7 @@ import {
 const currentUser = ref<Profile | null>(null)
 const isLoggedIn = computed(() => !!currentUser.value)
 const loading = ref(false)
-export type AuthState = 'initializing' | 'authenticated' | 'anonymous'
+export type AuthState = 'initializing' | 'authenticated' | 'anonymous' | 'unavailable'
 const authState = ref<AuthState>('initializing')
 const authInitialized = computed(() => authState.value !== 'initializing')
 export type ProfileLoadState = 'idle' | 'loading' | 'ready' | 'error'
@@ -50,9 +51,10 @@ const profileLoadError = ref<unknown>(null)
 
 let authSubscription: { unsubscribe: () => void } | null = null
 let authInitPromise: Promise<void> | null = null
-let authEventVersion = 0
-let latestAuthEventTask: Promise<void> = Promise.resolve()
-let initialAuthHandshakeComplete = false
+let authInitInFlight = false
+let authReadVersion = 0
+let authAuthorityVersion = 0
+let lastAuthInitAt = 0
 let initialAnonymousBroadcastComplete = false
 let profileRetryPromise: Promise<boolean> | null = null
 let profileRetryForUser: string | null = null
@@ -60,6 +62,7 @@ let lastProfileRetryAt = 0
 
 const PROFILE_RETRY_DELAYS_MS = [0, 350, 1100] as const
 const PROFILE_RETRY_COOLDOWN_MS = 3000
+const AUTH_RETRY_COOLDOWN_MS = 3000
 
 function hasOwn(value: object, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(value, key)
@@ -155,17 +158,24 @@ export function useAuth() {
     session: { user: { id: string } } | null,
     options: { settle: boolean; forceAnonymous?: boolean; source: string }
   ) {
+    if (session?.user && !canAcceptSupabaseAuthSession()) {
+      throw new Error('auth_session_boundary_superseded')
+    }
+    // Any authoritative session (including direct sign-in) supersedes a
+    // snapshot read that started earlier, even when the user id is unchanged.
+    authAuthorityVersion += 1
     if (!session?.user) {
       // Invalidate both profile requests and every account-scoped request
       // before clearing refs.  A completion already queued in the microtask
       // queue can no longer restore the previous identity after sign-out.
       latestProfileRequestId += 1
+      profileRetryPromise = null
+      profileRetryForUser = null
       const previousUserId = getActiveAccountId()
-      const forceInitialAnonymous = !initialAuthHandshakeComplete
-        && !initialAnonymousBroadcastComplete
-      // Consume the one-shot before notifying listeners. INITIAL_SESSION and
-      // getSession may both report the same cold-start null snapshot; marking
-      // it first also makes two concurrently-started applySession tasks safe.
+      const forceInitialAnonymous = !initialAnonymousBroadcastComplete
+      // Consume the one-shot before notifying listeners. An explicit sign-out
+      // and getSession can both confirm anonymous ownership; marking it first
+      // also makes two concurrently-started applySession tasks safe.
       if (forceInitialAnonymous) initialAnonymousBroadcastComplete = true
       const anonymousGeneration = transitionAccount(
         null,
@@ -196,6 +206,8 @@ export function useAuth() {
     if (identityChanged) {
       beginAuthTransition()
       latestProfileRequestId += 1
+      profileRetryPromise = null
+      profileRetryForUser = null
       currentUser.value = null
       profileLoadState.value = 'idle'
       profileLoadError.value = null
@@ -209,9 +221,9 @@ export function useAuth() {
     // auth module and its mini-program bootstrap path depend on i18n eagerly.
     // Every authenticated auth event is a retry opportunity; useI18n only
     // deduplicates a write after Supabase confirms it without an RPC error.
-    const emailLanguageAccountToken = captureAccountRequest(userId)
+    const accountToken = captureAccountRequest(userId)
     void import('./useI18n').then(({ syncActiveAccountEmailLanguage }) => {
-      if (!isAccountRequestCurrent(emailLanguageAccountToken)) return
+      if (!isAccountRequestCurrent(accountToken)) return
       return syncActiveAccountEmailLanguage()
     }).catch(() => {})
 
@@ -231,7 +243,7 @@ export function useAuth() {
       console.warn('[auth] fetch profile failed')
       captureException(err, { tags: { source: `fetchProfile-${options.source}` } })
     } finally {
-      if (options.settle && getActiveAccountId() === userId) {
+      if (options.settle && isAccountRequestCurrent(accountToken)) {
         // Session and profile readiness are separate states. A valid session
         // may settle as authenticated after a profile failure, but App.vue then
         // routes only to the fail-closed recovery surface until the complete
@@ -240,13 +252,13 @@ export function useAuth() {
       }
     }
 
-    if (getActiveAccountId() === userId) {
+    if (isAccountRequestCurrent(accountToken)) {
       recordFingerprint().catch(() => {})
     }
   }
 
-  async function initializeAuth() {
-    authSubscription?.unsubscribe()
+  function subscribeToAuth() {
+    if (authSubscription) return
     const { loadBlockedIds } = useModeration()
 
     /*
@@ -259,15 +271,22 @@ export function useAuth() {
      */
     try {
       const { data } = supabase.auth.onAuthStateChange((event, session) => {
-        authEventVersion += 1
-        latestAuthEventTask = applySession(session, {
-          // During the initial getSession handshake, getSession is the single
-          // readiness barrier.  Later auth events settle their own transition.
-          settle: initialAuthHandshakeComplete,
+        // auth-js also emits INITIAL_SESSION(null) when reading/refreshing the
+        // stored session fails, without passing that error to the listener.
+        // Only a successful getSession(null) or an explicit SIGNED_OUT proves
+        // anonymous ownership; do not erase drafts on that ambiguous event.
+        if (!session?.user && event !== 'SIGNED_OUT') return
+        if (session?.user && !canAcceptSupabaseAuthSession()) return
+        const sessionTask = applySession(session, {
+          // An event owns its readiness barrier. A stalled getSession must
+          // neither hold a complete event hostage nor settle its profile early.
+          settle: true,
           forceAnonymous: event === 'SIGNED_OUT',
           source: `authchange-${String(event).toLowerCase()}`,
-        }).then(() => {
-          if (session?.user && getActiveAccountId() === session.user.id) {
+        })
+        const accountToken = session?.user ? captureAccountRequest(session.user.id) : null
+        void sessionTask.then(() => {
+          if (isAccountRequestCurrent(accountToken)) {
             void loadBlockedIds().then(result => {
               if (!result.ok && result.reason === 'load_failed') {
                 console.warn('loadBlockedIds failed after auth change')
@@ -287,49 +306,58 @@ export function useAuth() {
     } catch (err) {
       console.warn('[auth] state listener setup failed')
     }
+  }
 
-    try {
-      const eventVersionBeforeSessionRead = authEventVersion
-      const { data: { session } } = await withAuthInitTimeout(supabase.auth.getSession())
-      if (authEventVersion === eventVersionBeforeSessionRead) {
-        await applySession(session, { settle: true, source: 'init' })
-      } else {
-        // An auth event that happened while getSession was in flight is newer
-        // than the captured snapshot.  Wait for that event instead of rolling
-        // the process back to the stale getSession identity.
-        await latestAuthEventTask
-        settleAuthState(getActiveAccountId() ? 'authenticated' : 'anonymous')
+  async function initializeAuth(readVersion: number) {
+    subscribeToAuth()
+    const authorityVersion = authAuthorityVersion
+    const isCurrentRead = () => readVersion === authReadVersion
+      && authorityVersion === authAuthorityVersion
+    let failureReported = false
+    const unavailable = (error: unknown) => {
+      if (!isCurrentRead()) return
+      if (!failureReported) {
+        failureReported = true
+        console.warn('[auth] session bootstrap unavailable')
+        captureException(error, { tags: { source: 'getSession-init' } })
       }
-    } catch (err) {
-      console.warn('[auth] session bootstrap failed')
-      captureException(err, { tags: { source: 'getSession-init' } })
-      if (!getActiveAccountId() && !initialAnonymousBroadcastComplete) {
-        // If both the subscription bootstrap and getSession fail to establish
-        // an identity, fail closed through the same anonymous transition and
-        // storage reconciliation as a normal null session. Merely settling
-        // authState would let mounted pages hydrate the previous device
-        // owner's unscoped history/drafts once awaitAuthReady resolves.
-        await applySession(null, {
-          settle: true,
-          forceAnonymous: true,
-          source: 'init-failure',
-        })
-      } else {
-        // A newer auth event already established B (or already broadcast the
-        // one-shot anonymous boundary); do not roll it back or double-reload.
-        settleAuthState(getActiveAccountId() ? 'authenticated' : 'anonymous')
-      }
+      // A deadline/read failure proves neither anonymous nor signed out.
+      // Leave account ownership unreconciled: existing private readers deny
+      // access to owned drafts until a real session/anonymous result arrives.
+      settleAuthState('unavailable')
     }
-    initialAuthHandshakeComplete = true
+    try {
+      // Observe the original read, not only Promise.race's winning value.
+      // A late result can recover unless an event, sign-out, or retry already
+      // superseded it. Consume late errors too, without an unhandled rejection.
+      const sessionTask = Promise.resolve(supabase.auth.getSession()).then(async ({ data, error }) => {
+        if (!isCurrentRead()) return
+        if (error) throw error
+        await applySession(data.session, { settle: true, source: 'init' })
+      }).catch(unavailable)
+      await withAuthInitTimeout(sessionTask)
+    } catch (error) {
+      unavailable(error)
+    }
   }
 
   function init(): Promise<void> {
-    if (authInitPromise) return authInitPromise
-    authInitPromise = initializeAuth().finally(() => {
-      // Keep a resolved promise as the idempotence sentinel.  Repeated calls
-      // from app/page lifecycles must not stack auth subscriptions.
+    if (authInitPromise && (
+      authInitInFlight
+      || authState.value !== 'unavailable'
+      || Date.now() - lastAuthInitAt < AUTH_RETRY_COOLDOWN_MS
+    )) return authInitPromise
+    lastAuthInitAt = Date.now()
+    authInitInFlight = true
+    const readVersion = ++authReadVersion
+    beginAuthTransition()
+    const task = initializeAuth(readVersion).finally(() => {
+      if (readVersion === authReadVersion) authInitInFlight = false
     })
-    return authInitPromise
+    // Successful initialization remains idempotent. Unavailable attempts may
+    // be retried explicitly or on foreground, sharing the existing listener.
+    authInitPromise = task
+    return task
   }
 
   async function recordFingerprint() {
@@ -599,6 +627,9 @@ export function useAuth() {
     // Invalidate the account generation before awaiting the auth request.  No
     // in-flight A response can repopulate shared state during sign-out.
     latestProfileRequestId += 1
+    authAuthorityVersion += 1
+    profileRetryPromise = null
+    profileRetryForUser = null
     const previousUserId = getActiveAccountId()
     transitionAccount(null, true)
     const signOutIdentityGeneration = captureAccountIdentityGeneration()
@@ -834,6 +865,10 @@ export function useAuth() {
     // await should use awaitAuthReady(); synchronous guards must not send a
     // known in-flight session to the login page.
     if (authState.value === 'initializing') return false
+    if (authState.value === 'unavailable') {
+      uni.reLaunch({ url: '/pages/profile-recovery/index' })
+      return false
+    }
     if (authState.value === 'anonymous') {
       let currentTarget: string | null = returnTarget || null
       if (!currentTarget) {

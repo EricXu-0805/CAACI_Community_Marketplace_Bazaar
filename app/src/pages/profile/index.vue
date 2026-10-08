@@ -37,6 +37,20 @@
       <text class="login-hint">{{ t('home.loading') }}</text>
     </view>
 
+    <view v-else-if="authState === 'unavailable'" class="login-section" role="status" aria-live="polite">
+      <text class="login-hint">{{ t('auth.sessionUnavailableTitle') }}</text>
+      <text class="login-hint">{{ t('auth.sessionUnavailableBody') }}</text>
+      <view
+        class="login-btn"
+        role="button"
+        tabindex="0"
+        :aria-label="t('home.retry')"
+        @click="retrySession"
+        @keydown.enter.prevent="retrySession"
+        @keydown.space.prevent="retrySession"
+      >{{ t('home.retry') }}</view>
+    </view>
+
     <view v-else-if="authState === 'anonymous'" class="login-section">
       <view class="avatar-placeholder">
         <view class="ap-head"></view>
@@ -385,7 +399,11 @@ const { isDark } = useTheme()
 const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
-const { currentUser, isLoggedIn, authState, awaitAuthReady, requireAuth } = useAuth()
+const { currentUser, isLoggedIn, authState, awaitAuthReady, requireAuth, init } = useAuth()
+
+function retrySession() {
+  if (authState.value === 'unavailable') void init()
+}
 const myLocation = computed(() =>
   localizeLocation(currentUser.value?.location, lang.value as 'en' | 'zh') || 'UIUC'
 )

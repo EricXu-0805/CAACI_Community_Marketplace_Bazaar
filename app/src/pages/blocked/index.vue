@@ -145,7 +145,7 @@ function fetchProfiles(): Promise<boolean> {
 onShow(async () => {
   const state = await awaitAuthReady()
   if (!blockedPageAlive) return
-  if (state === 'anonymous') {
+  if (state !== 'authenticated') {
     blockedPageScope.invalidate()
     clearBlockedPageState()
     requireAuth()
