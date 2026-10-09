@@ -239,9 +239,13 @@ jobs:
         working-directory: app
         run: npx playwright install --with-deps chromium webkit
 
-      - name: Verify compiled moderator recovery and persistent drafts
+      - name: Verify compiled auth recovery, moderator recovery and persistent drafts
         working-directory: app
         run: npx playwright test --config playwright.production-admin.config.ts
+        env:
+          # The delayed-auth fixture must never fall back to a real project.
+          # Match the synthetic ref used in the H5 artifact built above.
+          VITE_SUPABASE_URL: https://00000000000000000000.supabase.co
 
   build-mp-weixin:
     name: Build mp-weixin

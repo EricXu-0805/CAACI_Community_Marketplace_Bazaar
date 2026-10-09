@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "description": "Exact npm inputs and reviewed CJS dependency externalization. Original files remain unchanged.",
+  "dependencies": {
+    "postcss-selector-parser": "7.1.6",
+    "source-map-js": "1.2.2"
+  },
+  "packages": {
+    "@dcloudio/uni-cli-shared": {
+      "version": "3.0.0-4080420251103001",
+      "resolved": "https://registry.npmjs.org/@dcloudio/uni-cli-shared/-/uni-cli-shared-3.0.0-4080420251103001.tgz",
+      "integrity": "sha512-CI9gfUSrneTJFp52CBpAwDE9vsaxdwg4uA7n2ehKB+WLXgP2zmLp+0QoSQoFYISYll6MnfQK6Pcl8Oj1c7mKUA=="
+    },
+    "@vue/compiler-sfc": {
+      "version": "3.4.21",
+      "resolved": "https://registry.npmjs.org/@vue/compiler-sfc/-/compiler-sfc-3.4.21.tgz",
+      "integrity": "sha512-me7epoTxYlY+2CUM7hy9PCDdpMPfIwrOvAXud2Upk10g4YLv9UBW7kL798TvMeDhPthkZ0CONNrK2GoeI1ODiQ=="
+    }
+  },
+  "modules": [
+    {
+      "path": "@dcloudio/uni-cli-shared/lib/@vue/compiler-sfc/dist/compiler-sfc.cjs.js",
+      "sha256": "a7cd4b6378d7c1b51608c3f03ba6298c290ecaf43dbba2e3b9c97677a1df02b3",
+      "adaptedSha256": "93a41a16ffbecb7a9fa19d636e7d432ee0ea784be3ed9c3451766bb04e422ff2",
+      "replacements": [
+        {
+          "before": "var distExports = dist.exports;",
+          "after": "var distExports = require(\"postcss-selector-parser\");",
+          "count": 1
+        },
+        {
+          "before": "var sourceMap = sourceMap$1;",
+          "after": "var sourceMap = sourceMapJs;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "@dcloudio/uni-cli-shared/lib/vapor/@vue/compiler-sfc/dist/compiler-sfc.cjs.js",
+      "sha256": "d906cbb7bc50d8f9b9d7e505e03583383532e6c906dcb64051e43c83c26d446a",
+      "adaptedSha256": "5c7fc286ee2793e033d6abf7e6b3d687617415c9c795da52c9807316a7fce51b",
+      "replacements": [
+        {
+          "before": "/*@__PURE__*/ requireDist()",
+          "after": "require(\"postcss-selector-parser\")",
+          "count": 3
+        },
+        {
+          "before": "var sourceMap = /*@__PURE__*/ requireSourceMap();",
+          "after": "var sourceMap = sourceMapJs;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "@vue/compiler-sfc/dist/compiler-sfc.cjs.js",
+      "sha256": "883346368ea33317dc4a7ffdd11011111ad957be13e850825f0b7038f48987d3",
+      "adaptedSha256": "1ea15a804a101472dab59650fd0a3e574ef3fd963f9a9bc75f4f6bc906560cf6",
+      "replacements": [
+        {
+          "before": "var distExports = dist.exports;",
+          "after": "var distExports = require(\"postcss-selector-parser\");",
+          "count": 1
+        },
+        {
+          "before": "var sourceMap = sourceMap$1;",
+          "after": "var sourceMap = sourceMapJs;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "@dcloudio/uni-cli-shared/dist/hbx/alias.js",
+      "sha256": "af0ba4248c971633b6666ef9d5fa2307f2d5cfe2fcbc18b369bee1b8b789a441",
+      "adaptedSha256": "13bb7425e9600e5451e886e8cd07d9c9bb897ef88a24eaf4380e9c20eba4c1f5",
+      "replacements": [
+        {
+          "before": "            '@vue/shared': require.resolve('@vue/shared'),\n",
+          "after": "",
+          "count": 1
+        },
+        {
+          "before": "            '@vue/shared/dist/shared.esm-bundler.js': require.resolve('@vue/shared/dist/shared.esm-bundler.js'),\n",
+          "after": "",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

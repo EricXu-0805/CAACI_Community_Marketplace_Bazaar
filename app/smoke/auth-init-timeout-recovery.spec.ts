@@ -28,9 +28,14 @@ const PROFILE = {
 }
 
 test.use({
-  browserName: process.env.UI_AUDIT_BROWSER === 'chromium' ? 'chromium' : 'webkit',
+  // Respect the compiled acceptance project's engine; local focused runs can
+  // explicitly select either installed engine without changing that matrix.
+  ...(process.env.UI_AUDIT_BROWSER === 'chromium' || process.env.UI_AUDIT_BROWSER === 'webkit'
+    ? { browserName: process.env.UI_AUDIT_BROWSER }
+    : {}),
   serviceWorkers: 'block',
 })
+test.setTimeout(60_000)
 test.beforeEach(() => {
   test.skip(process.env.VITE_SUPABASE_URL !== SUPABASE_ORIGIN,
     'Requires a clean local fixture configured with the synthetic all-zero Supabase ref.')
@@ -167,7 +172,9 @@ test('a refresh held beyond 10s preserves the owned draft and late success resto
     fixture.releaseRefresh()
     await expectHome(page)
     await expectOwnedDraft(page)
-    await page.evaluate(() => { (window as any).uni.switchTab({ url: '/pages/publish/index' }) })
+    // Use the shipped navigation UI; window.uni only exposes a subset of
+    // helpers in compiled H5 and must not be supplied by a dev-server shim.
+    await page.getByRole('button', { name: 'Post', exact: true }).click()
     await expect(page.getByText('Restore draft?', { exact: true })).toBeVisible()
     await page.getByText('Keep', { exact: true }).click()
     await expect(page.getByRole('textbox', { name: 'Title (required)', exact: true })).toHaveValue(DRAFT.form.title)

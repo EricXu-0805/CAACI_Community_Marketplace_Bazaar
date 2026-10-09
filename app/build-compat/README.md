@@ -1,5 +1,13 @@
 # Bounded DCloud build compatibility
 
+The [compiler security adapter](compiler/README.md) separately redirects the
+pinned compilers' embedded selector/map operations to reviewed official fixes.
+It also removes DCloud's two global `@vue/shared` aliases so the repaired server
+renderer and existing page runtime each keep their matching shared dependency.
+The project's Uni npm scripts and Vite configuration load this hash-checked adapter; Node
+22.15 or newer within Node 22 is required. This does not upgrade the page runtime
+or enable DCloud SSR.
+
 This implementation removes the independent `braces` dependency chain used by the pinned DCloud H5/Weixin build tools. Separately, [source-built Vite/Rollup packages](source-builds/README.md) apply a bounded, reviewed backport to their three private copies. These are locally maintained builds, not new upstream security releases. Production configuration and the database are unchanged.
 
 Two first-party packages adapt the observed consumers without copying or renaming the vulnerable implementation:
