@@ -183,8 +183,11 @@ function enforceConsentGate() {
   uni.reLaunch({ url: target })
 }
 
-watch([currentUser, authState, profileLoadState], () => {
-  setTimeout(() => {
+let gateNavigationTimer: ReturnType<typeof setTimeout> | null = null
+function queueGateNavigation() {
+  if (gateNavigationTimer) clearTimeout(gateNavigationTimer)
+  gateNavigationTimer = setTimeout(() => {
+    gateNavigationTimer = null
     const target = requiredGatePath()
     if (target) {
       enforceConsentGate()
@@ -192,10 +195,29 @@ watch([currentUser, authState, profileLoadState], () => {
     }
     // A login return remains pending while profile recovery, suspension, or
     // re-consent owns navigation. Once that gate clears, resume atomically.
-    if (!RETURN_RESUME_GATE_PAGES.has(currentPagePath())) return
+    const here = currentPagePath()
+    if (!RETURN_RESUME_GATE_PAGES.has(here)) return
     const destination = consumeActiveAuthorizedLoginReturnIntent(navigationIntentOwner())
-    if (destination) uni.reLaunch({ url: destination })
+    if (destination) {
+      uni.reLaunch({ url: destination })
+    } else if (
+      here === 'pages/profile-recovery/index'
+      && authState.value === 'authenticated'
+      && profileLoadState.value === 'ready'
+      && currentUser.value?.id === getActiveAccountId()
+    ) {
+      // A late session/profile response can recover without another gesture.
+      // Keep this fallback with the login-return owner so the two cannot race.
+      uni.reLaunch({ url: '/pages/index/index' })
+    }
   }, 100)
+}
+
+watch([currentUser, authState, profileLoadState], queueGateNavigation)
+uni.$on('auth:resume-profile-recovery', queueGateNavigation)
+onUnmounted(() => {
+  uni.$off('auth:resume-profile-recovery', queueGateNavigation)
+  if (gateNavigationTimer) clearTimeout(gateNavigationTimer)
 })
 
 // App.onShow covers foreground/resume transitions.  Route changes inside an
@@ -203,6 +225,10 @@ watch([currentUser, authState, profileLoadState], () => {
 // this closes the old race where currentUser resolved on exempt /login and the
 // later reLaunch('/home') happened without another currentUser change.
 onShow(() => {
+  if (authState.value === 'unavailable') {
+    void init()
+    return
+  }
   if (authState.value === 'authenticated') {
     const profileTask = profileLoadState.value === 'ready'
       ? refreshProfile()

@@ -166,7 +166,7 @@ onMounted(async () => {
   pageVisible = true
   const state = await awaitAuthReady()
   if (!pageMounted || !pageVisible) return
-  if (state === 'anonymous') {
+  if (state !== 'authenticated') {
     requireAuth()
     return
   }
@@ -405,7 +405,7 @@ async function onSubmitAppeal() {
   if (submittingAppeal.value) return
   const state = await awaitAuthReady()
   if (submittingAppeal.value) return
-  if (state === 'anonymous') {
+  if (state !== 'authenticated') {
     requireAuth()
     return
   }

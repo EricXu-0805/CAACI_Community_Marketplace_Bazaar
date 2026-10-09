@@ -101,7 +101,7 @@ let pageMounted = true
 onMounted(async () => {
   const state = await awaitAuthReady()
   if (!pageMounted) return
-  if (state === 'anonymous') requireAuth()
+  if (state !== 'authenticated') requireAuth()
 })
 
 const ILLINI_RE = /^[^@\s]+@illinois\.edu$/

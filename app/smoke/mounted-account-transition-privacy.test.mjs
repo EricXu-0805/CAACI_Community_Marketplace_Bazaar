@@ -164,7 +164,7 @@ test('ChatThread tears down account-owned subscriptions and invalidates pending 
   assert.match(meetups, /function resetMeetups\(\) \{[^]*?activeFetchEpoch \+= 1[^]*?meetups\.value = \[\]/)
 
   assert.match(chatRoute, /const \{ currentUser, awaitAuthReady \} = useAuth\(\)/)
-  assert.match(chatRoute, /onMounted\(\(\) => \{[^]*?routeMounted = true[^]*?const state = await awaitAuthReady\(\)[^]*?if \(!routeMounted \|\| conversationId\.value\) return[^]*?state === 'authenticated' \? '\/pages\/messages\/index' : '\/pages\/login\/index'/)
+  assert.match(chatRoute, /onMounted\(\(\) => \{[^]*?routeMounted = true[^]*?const state = await awaitAuthReady\(\)[^]*?if \(!routeMounted \|\| conversationId\.value\) return[^]*?state === 'authenticated'\s*\? '\/pages\/messages\/index'\s*: state === 'anonymous' \? '\/pages\/login\/index' : '\/pages\/profile-recovery\/index'/)
   assert.match(chatRoute, /onUnmounted\(\(\) => \{\s*routeMounted = false\s*\}\)/)
 })
 

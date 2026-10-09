@@ -81,7 +81,7 @@ const firstConsent = computed(() => !currentUser.value?.tos_version || currentUs
 onMounted(async () => {
   const state = await awaitAuthReady()
   if (!pageMounted) return
-  if (state === 'anonymous') requireAuth()
+  if (state !== 'authenticated') requireAuth()
 })
 
 const termsVersion = TERMS_VERSION
@@ -110,7 +110,7 @@ async function onAccept() {
   const state = await awaitAuthReady()
   if (!pageMounted) return
   if (submitting.value) return
-  if (state === 'anonymous') {
+  if (state !== 'authenticated') {
     requireAuth()
     return
   }

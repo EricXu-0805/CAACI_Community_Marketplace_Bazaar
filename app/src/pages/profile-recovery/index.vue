@@ -4,23 +4,24 @@
       <view class="status-copy" role="status" aria-live="polite">
         <view class="shield" aria-hidden="true"><UIcon name="shield" size="xl" color="brand" /></view>
         <text class="badge">{{ t('auth.profileUnavailableBadge') }}</text>
-        <text class="title" role="heading" aria-level="1">{{ t('auth.profileUnavailableTitle') }}</text>
-        <text class="body">{{ t('auth.profileUnavailableBody') }}</text>
+        <text class="title" role="heading" aria-level="1">{{ t(sessionRecovery ? 'auth.sessionUnavailableTitle' : 'auth.profileUnavailableTitle') }}</text>
+        <text class="body">{{ t(sessionRecovery ? 'auth.sessionUnavailableBody' : 'auth.profileUnavailableBody') }}</text>
       </view>
 
       <view
-        :class="['primary', { disabled: retrying || deleting }]"
+        :class="['primary', { disabled: retryDisabled }]"
         role="button"
-        :tabindex="retrying || deleting ? -1 : 0"
-        :aria-disabled="retrying || deleting ? 'true' : 'false'"
-        :aria-label="t('auth.profileRetry')"
+        :tabindex="retryDisabled ? -1 : 0"
+        :aria-disabled="retryDisabled ? 'true' : 'false'"
+        :aria-label="t(sessionRecovery ? 'home.retry' : 'auth.profileRetry')"
         @click="retry"
         @keydown.enter.prevent="retry"
         @keydown.space.prevent="retry"
       >
-        <text>{{ retrying ? t('auth.profileRetrying') : t('auth.profileRetry') }}</text>
+        <text>{{ retrying || authState === 'initializing' ? t('auth.profileRetrying') : t(sessionRecovery ? 'home.retry' : 'auth.profileRetry') }}</text>
       </view>
       <view
+        v-if="accountControlsAvailable"
         :class="['secondary', { disabled: deleting }]"
         role="button"
         :tabindex="deleting ? -1 : 0"
@@ -32,8 +33,9 @@
       >
         <text>{{ t('profile.signOut') }}</text>
       </view>
-      <text class="privacy-option">{{ t('auth.profileDeleteAvailable') }}</text>
+      <text v-if="accountControlsAvailable" class="privacy-option">{{ t('auth.profileDeleteAvailable') }}</text>
       <view
+        v-if="accountControlsAvailable"
         :class="['danger-action', { disabled: deleting || retrying }]"
         role="button"
         :tabindex="deleting || retrying ? -1 : 0"
@@ -50,7 +52,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { onShow, onHide } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
 import { useSupabase, platformFetch } from '../../composables/useSupabase'
@@ -73,6 +76,8 @@ import UIcon from '../../components/UIcon.vue'
 const { t } = useI18n()
 const {
   currentUser,
+  authState,
+  init,
   profileLoadState,
   awaitAuthReady,
   ensureProfileReady,
@@ -83,10 +88,33 @@ const mpChrome = mpChromeVars()
 const retrying = ref(false)
 const deleting = ref(false)
 let pageAccountToken: AccountRequestToken | null = null
+// Unknown-session retries must stay in that mode while init is pending. The
+// first discovered identity may bind this page; a later replacement never can.
+const sessionRecovery = ref(authState.value !== 'authenticated')
+const accountControlsAvailable = ref(false)
+let pendingAccountToken = captureActiveAccountRequest()
+let mayDiscoverInitialAccount = !pendingAccountToken
 let mounted = true
+let pageVisible = true
 let pageEpoch = 0
+let recoveryNavigationStarted = false
+let ownsSignOutNavigation = false
 let deletionLoadingOwned = false
 let completionTimer: ReturnType<typeof setTimeout> | null = null
+const retryDisabled = computed(() => (
+  retrying.value || deleting.value || authState.value === 'initializing'
+  || (!sessionRecovery.value && !accountControlsAvailable.value)
+))
+
+function recoveryPageIsCurrent(): boolean {
+  if (!mounted || !pageVisible) return false
+  try {
+    const pages = getCurrentPages() as Array<{ route?: string }>
+    return pages[pages.length - 1]?.route === 'pages/profile-recovery/index'
+  } catch {
+    return false
+  }
+}
 
 function stopDeletionLoading() {
   if (!deletionLoadingOwned) return
@@ -100,31 +128,101 @@ function stopDeletionLoading() {
 const stopAccountTransitionListener = onAccountTransition(() => {
   pageEpoch += 1
   pageAccountToken = null
+  accountControlsAvailable.value = false
+  pendingAccountToken = mayDiscoverInitialAccount ? captureActiveAccountRequest() : null
+  mayDiscoverInitialAccount = false
   retrying.value = false
   deleting.value = false
   stopDeletionLoading()
 })
 
+function reconcileRecoveryState() {
+  if (!mounted) return
+  if (authState.value !== 'authenticated') accountControlsAvailable.value = false
+  if (authState.value === 'authenticated') {
+    if (pendingAccountToken && isAccountRequestCurrent(pendingAccountToken)) {
+      pageAccountToken = pendingAccountToken
+      sessionRecovery.value = false
+      accountControlsAvailable.value = true
+    } else if (
+      profileLoadState.value !== 'ready'
+      && recoveryPageIsCurrent()
+      && !recoveryNavigationStarted
+    ) {
+      // A replacement account needs a new page. Old modal and click handlers
+      // retain their invalidated token instead of acquiring the new account.
+      recoveryNavigationStarted = true
+      uni.reLaunch({ url: '/pages/profile-recovery/index' })
+    }
+  } else if (
+    authState.value === 'anonymous'
+    && !ownsSignOutNavigation
+    && recoveryPageIsCurrent()
+    && !recoveryNavigationStarted
+  ) {
+    recoveryNavigationStarted = true
+    uni.reLaunch({ url: '/pages/login/index' })
+  }
+}
+
+function releaseStaleSignOutNavigation(owned: boolean) {
+  if (owned) return
+  ownsSignOutNavigation = false
+  reconcileRecoveryState()
+}
+
+function canContinueSignOutNavigation(): boolean {
+  if (ownsSignOutNavigation && recoveryPageIsCurrent()) return true
+  ownsSignOutNavigation = false
+  reconcileRecoveryState()
+  return false
+}
+
+watch(authState, reconcileRecoveryState, { flush: 'sync' })
+onShow(() => {
+  pageVisible = true
+  reconcileRecoveryState()
+})
+onHide(() => {
+  pageVisible = false
+  ownsSignOutNavigation = false
+})
+
 async function retry() {
-  if (retrying.value || deleting.value) return
+  if (retryDisabled.value || !recoveryPageIsCurrent()) return
+  if (sessionRecovery.value) {
+    if (authState.value !== 'unavailable') return
+    const retryEpoch = pageEpoch
+    retrying.value = true
+    try {
+      await init()
+      if (recoveryPageIsCurrent() && retryEpoch === pageEpoch && authState.value === 'unavailable') {
+        uni.showToast({ title: t('auth.profileRetryFailed'), icon: 'none', duration: 2600 })
+      }
+    } finally {
+      if (mounted && retryEpoch === pageEpoch) retrying.value = false
+    }
+    return
+  }
   const accountToken = pageAccountToken
   if (!accountToken || !isAccountRequestCurrent(accountToken)) return
   retrying.value = true
   try {
     const ready = await ensureProfileReady({ force: true })
     if (!mounted || !isAccountRequestCurrent(accountToken)) return
+    if (!recoveryPageIsCurrent()) return
     if (
       ready
       && profileLoadState.value === 'ready'
       && currentUser.value?.id === accountToken.userId
     ) {
-      // App.vue's navigation interceptor applies suspension/re-consent next.
-      uni.reLaunch({ url: '/pages/index/index' })
+      // App.vue resumes the authorized return or home after applying gates.
       return
     }
     uni.showToast({ title: t('auth.profileRetryFailed'), icon: 'none', duration: 2600 })
   } catch (error) {
     if (!mounted || !isAccountRequestCurrent(accountToken)) return
+    if (!recoveryPageIsCurrent()) return
     captureException(error, { tags: { source: 'profile-recovery-retry' }, level: 'warning' })
     uni.showToast({ title: t('auth.profileRetryFailed'), icon: 'none', duration: 2600 })
   } finally {
@@ -133,16 +231,19 @@ async function retry() {
 }
 
 async function leave() {
-  if (deleting.value) return
+  if (deleting.value || !accountControlsAvailable.value || !recoveryPageIsCurrent()) return
   const accountToken = pageAccountToken
   if (!accountToken || !isAccountRequestCurrent(accountToken)) return
+  ownsSignOutNavigation = true
   const ownsAnonymousContinuation = await signOut({ redirect: false })
+  releaseStaleSignOutNavigation(ownsAnonymousContinuation)
   if (!ownsAnonymousContinuation || !mounted) return
+  if (!canContinueSignOutNavigation()) return
   uni.reLaunch({ url: '/pages/welcome/index' })
 }
 
 function deleteAccount() {
-  if (deleting.value || retrying.value) return
+  if (deleting.value || retrying.value || !accountControlsAvailable.value || !recoveryPageIsCurrent()) return
   const accountToken = pageAccountToken
   if (!accountToken || !isAccountRequestCurrent(accountToken)) return
   const dialogEpoch = pageEpoch
@@ -191,8 +292,11 @@ function deleteAccount() {
         )
         if (!flowStillCurrent()) return
 
+        ownsSignOutNavigation = true
         const ownsAnonymousContinuation = await signOut({ redirect: false })
+        releaseStaleSignOutNavigation(ownsAnonymousContinuation)
         if (!ownsAnonymousContinuation || !mounted) return
+        if (!canContinueSignOutNavigation()) return
         const resultUiEpoch = pageEpoch
         stopDeletionLoading()
         if (deletion.status === 'pending') {
@@ -201,7 +305,7 @@ function deleteAccount() {
             content: t('settings.deleteAccountPending'),
             showCancel: false,
             success: () => {
-              if (mounted && resultUiEpoch === pageEpoch) {
+              if (mounted && resultUiEpoch === pageEpoch && ownsSignOutNavigation && recoveryPageIsCurrent()) {
                 uni.reLaunch({ url: '/pages/welcome/index' })
               }
             },
@@ -215,7 +319,7 @@ function deleteAccount() {
           duration: 2000,
         })
         completionTimer = setTimeout(() => {
-          if (mounted && resultUiEpoch === pageEpoch) {
+          if (mounted && resultUiEpoch === pageEpoch && ownsSignOutNavigation && recoveryPageIsCurrent()) {
             uni.reLaunch({ url: '/pages/welcome/index' })
           }
         }, 1500)
@@ -223,8 +327,11 @@ function deleteAccount() {
         if (!flowStillCurrent()) return
         captureException(error, { tags: { source: 'profile-recovery-delete-account' } })
         if (accountDeletionOutcomeUnknown(error)) {
+          ownsSignOutNavigation = true
           const ownsAnonymousContinuation = await signOut({ redirect: false })
+          releaseStaleSignOutNavigation(ownsAnonymousContinuation)
           if (!ownsAnonymousContinuation || !mounted) return
+          if (!canContinueSignOutNavigation()) return
           const resultUiEpoch = pageEpoch
           stopDeletionLoading()
           uni.showModal({
@@ -232,7 +339,7 @@ function deleteAccount() {
             content: t('settings.deleteAccountUnknown'),
             showCancel: false,
             success: () => {
-              if (mounted && resultUiEpoch === pageEpoch) {
+              if (mounted && resultUiEpoch === pageEpoch && ownsSignOutNavigation && recoveryPageIsCurrent()) {
                 uni.reLaunch({ url: '/pages/welcome/index' })
               }
             },
@@ -255,15 +362,19 @@ function deleteAccount() {
 }
 
 onMounted(async () => {
-  const state = await awaitAuthReady()
+  const entryEpoch = pageEpoch
+  await awaitAuthReady()
   if (!mounted) return
-  if (state === 'anonymous') {
-    uni.reLaunch({ url: '/pages/login/index' })
-    return
-  }
-  pageAccountToken = captureActiveAccountRequest()
-  if (profileLoadState.value === 'ready' && currentUser.value) {
-    uni.reLaunch({ url: '/pages/index/index' })
+  reconcileRecoveryState()
+  if (
+    entryEpoch === pageEpoch
+    && recoveryPageIsCurrent()
+    && authState.value === 'authenticated'
+    && profileLoadState.value === 'ready'
+    && isAccountRequestCurrent(pageAccountToken)
+    && currentUser.value?.id === pageAccountToken?.userId
+  ) {
+    uni.$emit('auth:resume-profile-recovery')
   }
 })
 
@@ -273,6 +384,7 @@ onUnmounted(() => {
   completionTimer = null
   stopDeletionLoading()
   pageAccountToken = null
+  accountControlsAvailable.value = false
   stopAccountTransitionListener()
 })
 </script>

@@ -41,20 +41,12 @@ test('the first authoritative anonymous handshake clears mounted prior-owner sta
 
   const auth = source('src/composables/useAuth.ts')
   assert.match(auth, /let initialAnonymousBroadcastComplete = false/)
-  assert.match(auth, /const forceInitialAnonymous = !initialAuthHandshakeComplete[^]*?&& !initialAnonymousBroadcastComplete/)
+  assert.match(auth, /const forceInitialAnonymous = !initialAnonymousBroadcastComplete/)
   assert.match(auth, /if \(forceInitialAnonymous\) initialAnonymousBroadcastComplete = true[^]*?transitionAccount\([^]*?\|\| forceInitialAnonymous/)
 
-  // Supabase is allowed to deliver INITIAL_SESSION synchronously from listener
-  // registration and then return the same null snapshot from getSession. The
-  // one-shot must produce exactly one forced notification in either ordering.
-  let initialAnonymousBroadcastComplete = false
-  const forceDecisions = [0, 1].map(() => {
-    const force = !initialAnonymousBroadcastComplete
-    if (force) initialAnonymousBroadcastComplete = true
-    return force
-  })
-  assert.deepEqual(forceDecisions, [true, false])
-  assert.match(auth, /if \(!getActiveAccountId\(\) && !initialAnonymousBroadcastComplete\) \{[^]*?await applySession\(null, \{[^]*?forceAnonymous: true,[^]*?source: 'init-failure'/)
+  // Timeout/read failure is inconclusive and must not force this boundary.
+  // auth-init-timeout/recovery-races execute useAuth itself for successful
+  // anonymous snapshots, ambiguous INITIAL_SESSION(null), and failures.
 
   const search = source('src/pages/search/index.vue')
   const mounted = functionBlock(search, 'onMounted(async () => {', 'onUnmounted(() => {')

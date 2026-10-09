@@ -5,6 +5,76 @@ business work or Sentry cron check-ins. A production candidate can receive cron
 requests while its custom domain is still waiting for release checks. Production
 environment, a valid cron secret, or a matching Git commit alone is insufficient.
 
+
+## CI-first production creation
+
+`git.deploymentEnabled: false` disables automatic Git deployments for every
+branch. The existing main-only `Production release readiness` check remains
+mandatory, but is now a prerequisite to **creating** a production candidate,
+not only to assigning its domain. Keep the existing deployment check; do not
+force-promote or remove it.
+
+For a separately authorized release:
+
+1. Serialize release activity. Re-read this repository's current full main SHA
+   and its complete `CI` run/attempt. Require the six upstream jobs and
+   `Production release readiness` to have actually succeeded on that exact SHA.
+   A green PR, weekly audit, skipped staging check, stale run or another workflow
+   is insufficient. Resolve any outstanding production candidate before
+   creating another; never cancel or promote one blindly.
+2. `scripts/check-ci-first-release.mjs <snapshot.json>` is an **offline additional
+   preflight**, not an authenticated API client, authorization or release lock.
+   Its input contains requestedSha, mainSha, projectId, vercelConfig, an explicit
+   productionCandidates `{projectId, complete, items}` inventory, the GitHub run fields, and
+   jobs `{run_id, run_attempt, complete, items}` collected completely for the
+   same attempt. Collect jobs from the attempt-specific GitHub endpoint,
+   traverse every page, and verify the collected count against `total_count`.
+   Every job also binds run_id/run_attempt/head_sha. Re-read the current main
+   and the run's latest attempt immediately before the authorized action;
+   source configuration alone does not prove that cloud settings have applied.
+3. In the existing project's normal Deployments → Create Deployment flow,
+   enter the exact verified 40-character SHA. If that SHA belongs to several
+   branches, select main/Production configuration. The existing authorized
+   deployment API is equivalent: bind the verified project/team and repository
+   ID, set `target: production`, and supply Git source `ref: main` plus the exact
+   `sha`. Metadata labels alone do not bind source. Do not substitute latest
+   commit selection, uploaded local files, or project-setting overrides.
+   Create once. This sequence
+   needs no new token, deploy hook, permission, paid scheduler or Preview copy
+   of production credentials. Do not use `--skip-domain` to park another
+   production candidate while waiting for CI.
+4. Preserve the deployment-ID/commit/project/nonce gate below. Read the created
+   candidate's runtime identity and normal platform deployment metadata. Allow
+   ordinary checks/promotion; if it fails or outcome is unknown, inspect the
+   existing deployment instead of creating a replacement.
+5. Verify the root domain's expected redirect to www and the www runtime
+   identity directly; read back both domains' platform deployment identity. Observe naturally scheduled
+   runs and provider-accepted Sentry check-ins separately; a 200 worker response
+   is not a Sentry receipt. Preserve each existing task's durable claim and
+   idempotency state.
+
+This prevents the observed long **CI-wait** period from beginning after a new
+production candidate exists. It does **not** prove atomic cron/alias handoff,
+zero missed delivery or non-overlapping old/new workers. Vercel documents
+best-effort delivery, no retry, possible overlap/duplicates, and that a new
+deployment does not stop in-flight functions. An old run admitted before a
+switch can still finish afterward. Never relax the runtime identity gate or
+forward a scheduler credential to a caller-controlled target to hide that gap.
+
+A strict no-overlap/catch-up requirement additionally needs persistent scheduled
+slots, deployment-wide admission and draining, stable business-effect keys,
+and authoritative completion of in-flight effects. Unknown remote outcomes
+must block release rather than be cleared by a lease timeout. Such coordination
+is **not implemented by this configuration/preflight**. It requires separately
+reviewed database/runtime integration and a legacy-worker bootstrap; its offline
+reference model is not production code. Do not claim the overall handoff defect
+is fully repaired by CI-first creation alone.
+
+Official sequence references:
+- [Git deployment policy](https://vercel.com/docs/project-configuration/git-configuration#git.deploymentenabled)
+- [Create from an exact Git reference](https://vercel.com/docs/git#creating-a-deployment-from-a-git-reference)
+- [Checks delay domain assignment](https://vercel.com/docs/deployment-checks#github-checks)
+
 ## Runtime contract
 
 1. The existing deployment boundary verifies environment, Supabase project, and
@@ -38,8 +108,10 @@ existing authentication and processing paths.
 
 The runtime endpoint avoids relying on deployment IDs in static/prebuilt files:
 a reused artifact or same-commit redeployment is still checked against its
-runtime deployment ID. There is no SHA-only fallback. No new database migration,
-secret, feature flag, or cloud configuration setting is introduced.
+runtime deployment ID. There is no SHA-only fallback. The runtime identity gate
+itself introduces no new database migration, secret, feature flag or cloud
+configuration setting. The separate CI-first proposal above does change the
+Git deployment policy and is not active until its authorized rollout.
 
 ## Release acceptance
 
@@ -54,8 +126,9 @@ Local tests alone do not complete production acceptance.
 - Inspect the candidate's read-only identity endpoint with a new UUID nonce and
   compare its deployment ID/full commit with Vercel's candidate record. This
   confirms runtime metadata, without manually triggering a destructive worker.
-- Before promotion, the candidate's normal scheduled GETs must return 503 and
-  perform no queue/provider operations or Sentry check-ins. During the first
+- Any normal scheduled GET arriving at a candidate before promotion must return
+  503 and perform no queue/provider operations or Sentry check-ins. Do not hold
+  a ready release merely to wait for a cron invocation. During the first
   rollout, the old formal deployment lacks this endpoint, so a candidate returns
   `cron_release_unverified`; this is expected. Later candidates should return
   `cron_deployment_not_current` against an older formal deployment.

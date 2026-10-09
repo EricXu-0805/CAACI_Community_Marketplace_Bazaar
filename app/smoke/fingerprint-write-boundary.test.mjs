@@ -20,7 +20,7 @@ function sourceBetween(source, startMarker, endMarker) {
 const applySessionSource = sourceBetween(
   authSource,
   '  async function applySession(',
-  '\n  async function initializeAuth()',
+  '\n  function subscribeToAuth()',
 )
 const recordFingerprintSource = sourceBetween(
   authSource,

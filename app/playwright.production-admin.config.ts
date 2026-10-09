@@ -8,7 +8,7 @@ for(const key of ['HTTP_PROXY','HTTPS_PROXY','ALL_PROXY','http_proxy','https_pro
 const h5BuildDir = process.env.SMOKE_H5_BUILD_DIR || 'dist/build/h5'
 const quotedH5BuildDir = "'" + h5BuildDir.replace(/'/g, "'\\''") + "'"
 export default defineConfig({
-  testDir:'./smoke',testMatch:['admin-first-unlock.spec.ts','admin-support-reply.spec.ts','compiled-chunk-recovery.spec.ts','compiled-draft-persistence.spec.ts'],workers:1,retries:0,
+  testDir:'./smoke',testMatch:['admin-first-unlock.spec.ts','admin-support-reply.spec.ts','compiled-chunk-recovery.spec.ts','compiled-draft-persistence.spec.ts','auth-init-timeout-recovery.spec.ts'],workers:1,retries:0,
   timeout:30_000,expect:{timeout:10_000},reporter:'list',
   use:{baseURL:'http://localhost:5192',screenshot:process.env.CI==='true'?'off':'only-on-failure',trace:'off',video:'off'},
   projects:[

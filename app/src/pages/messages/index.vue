@@ -34,7 +34,22 @@
       </view>
     </view>
 
-    <view v-if="authState === 'anonymous'" class="login-prompt">
+    <view v-if="authState === 'unavailable'" class="empty" role="status" aria-live="polite">
+      <UIcon name="shield" size="lg" color="text-faint" />
+      <text class="empty-title">{{ t('auth.sessionUnavailableTitle') }}</text>
+      <text class="empty-sub">{{ t('auth.sessionUnavailableBody') }}</text>
+      <view
+        class="empty-btn"
+        role="button"
+        tabindex="0"
+        :aria-label="t('home.retry')"
+        @click="retrySession"
+        @keydown.enter.prevent="retrySession"
+        @keydown.space.prevent="retrySession"
+      >{{ t('home.retry') }}</view>
+    </view>
+
+    <view v-else-if="authState === 'anonymous'" class="login-prompt">
       <UEmptyArt name="messages" :size="104" />
       <text class="prompt-text">{{ t('msg.signIn') }}</text>
       <view
@@ -243,7 +258,11 @@ import { parseStickerToken } from '../../components/stickers/registry'
 
 const { t, lang, localize } = useI18n()
 
-const { currentUser, isLoggedIn, authState, awaitAuthReady, requireAuth } = useAuth()
+const { currentUser, isLoggedIn, authState, awaitAuthReady, requireAuth, init } = useAuth()
+
+function retrySession() {
+  if (authState.value === 'unavailable') void init()
+}
 const {
   conversations,
   loading,

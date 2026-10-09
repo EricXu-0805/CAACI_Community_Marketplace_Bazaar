@@ -113,7 +113,7 @@ async function loadCurrentNotifications() {
   try {
     const state = await awaitAuthReady()
     if (!pageVisible || requestEpoch !== pageLoadEpoch) return
-    if (state === 'anonymous') {
+    if (state !== 'authenticated') {
       requireAuth()
       return
     }

@@ -496,6 +496,8 @@ const en: Record<string, string> = {
   'msg.archived': 'Archived',
   'msg.archiveFailed': 'Archive failed. Please try again.',
   'auth.profileUnavailableBadge': 'Secure account check',
+  'auth.sessionUnavailableTitle': 'Unable to check your sign-in status',
+  'auth.sessionUnavailableBody': 'Your session could not be confirmed. Check your connection and try again.',
   'auth.profileUnavailableTitle': 'Account data is temporarily unavailable',
   'auth.profileUnavailableBody': 'We could not safely verify your consent and account-status fields. Access stays paused until the secure profile check succeeds.',
   'auth.profileRetry': 'Retry secure check',

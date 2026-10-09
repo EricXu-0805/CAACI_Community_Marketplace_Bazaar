@@ -494,6 +494,8 @@ const zh: Record<string, string> = {
   'msg.archived': '已归档',
   'msg.archiveFailed': '归档失败，请重试',
   'auth.profileUnavailableBadge': '安全账号检查',
+  'auth.sessionUnavailableTitle': '暂时无法确认登录状态',
+  'auth.sessionUnavailableBody': '暂时无法确认你的登录会话。请检查网络连接后重试。',
   'auth.profileUnavailableTitle': '账号数据暂时无法加载',
   'auth.profileUnavailableBody': '系统暂时无法安全确认你的协议与账号状态字段。检查成功前会暂停进入应用，避免绕过限制。',
   'auth.profileRetry': '重新安全检查',

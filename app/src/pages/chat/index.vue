@@ -57,7 +57,9 @@ onMounted(() => {
     const state = await awaitAuthReady()
     if (!routeMounted || conversationId.value) return
     uni.reLaunch({
-      url: state === 'authenticated' ? '/pages/messages/index' : '/pages/login/index',
+      url: state === 'authenticated'
+        ? '/pages/messages/index'
+        : state === 'anonymous' ? '/pages/login/index' : '/pages/profile-recovery/index',
     })
   })()
 })

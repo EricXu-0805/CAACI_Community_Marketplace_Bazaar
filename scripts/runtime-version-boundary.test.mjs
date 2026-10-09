@@ -12,8 +12,8 @@ test('local, CI, app, and Vercel runtime declarations stay on supported Node 22'
     readFile(new URL('.github/workflows/ci.yml', ROOT), 'utf8'),
   ])
 
-  assert.equal(rootPackage.engines?.node, '22.x')
-  assert.equal(appPackage.engines?.node, '22.x')
+  assert.equal(rootPackage.engines?.node, '>=22.15.0 <23')
+  assert.equal(appPackage.engines?.node, '>=22.15.0 <23')
   assert.equal(nvmrc.trim(), '22')
   assert.match(workflow, /NODE_VERSION:\s*'22'/)
   assert.doesNotMatch(workflow, /NODE_VERSION:\s*'20'/)

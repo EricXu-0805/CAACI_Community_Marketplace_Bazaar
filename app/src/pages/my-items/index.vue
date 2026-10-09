@@ -132,7 +132,7 @@ const EMPTY_KEY: Record<TabKey, string> = {
 }
 
 const { t, localize } = useI18n()
-const { currentUser, awaitAuthReady } = useAuth()
+const { currentUser, awaitAuthReady, requireAuth } = useAuth()
 const { fetchMyItems } = useItems()
 const { fetchMyFavoriteItems } = useFavorites()
 
@@ -193,15 +193,9 @@ onUnload(() => { pageScope.dispose() })
 
 async function load() {
   await awaitAuthReady()
+  if (!requireAuth(undefined, 'reLaunch')) return
   const uid = currentUser.value?.id
-  if (!uid) {
-    // Deep-linked while signed out. Nothing private can render, so send the
-    // user back rather than showing three permanently empty tabs.
-    itemsReady.value = true
-    savedReady.value = true
-    uni.reLaunch({ url: '/pages/login/index' })
-    return
-  }
+  if (!uid) return
   const request = pageScope.begin(uid)
   if (!request) return
   itemsLoading.value = true

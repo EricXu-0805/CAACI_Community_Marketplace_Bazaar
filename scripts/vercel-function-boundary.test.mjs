@@ -127,18 +127,15 @@ test('Edge routes bundle with only the API runtime files shipped to Vercel', asy
   }
 })
 
-test('Vercel Git deployments skip Preview branches and keep main production enabled', async () => {
+test('Vercel Git deployments wait for explicit creation after exact main CI', async () => {
   const vercelConfig = JSON.parse(await readFile(path.join(projectRoot, 'vercel.json'), 'utf8'))
 
   assert.deepEqual(
     vercelConfig.git,
     {
-      deploymentEnabled: {
-        '**': false,
-        main: true,
-      },
+      deploymentEnabled: false,
     },
-    'automatic Vercel deployments must remain disabled outside main',
+    'automatic Vercel deployments must remain disabled until the separate release step',
   )
   assert.equal('ignoreCommand' in vercelConfig, false, 'ignored builds still create canceled Preview deployments')
 })
