@@ -32,13 +32,19 @@ const names = [...Object.keys(BASE), 'VITE_SUPABASE_URL', 'SUPABASE_SECRET_KEY',
   'DIGEST_LIVE', 'DIGEST_TEST_EMAIL', 'RESEND_API_KEY']
 const originalEnv = new Map(names.map(name => [name, process.env[name]]))
 const originalFetch = globalThis.fetch
+const originalInfo = console.info
+let diagnosticRecords = []
+const rejections = () => diagnosticRecords.filter(record => record.event === 'cron_release_rejected')
 afterEach(() => {
   globalThis.fetch = originalFetch
+  console.info = originalInfo
   for (const [name, value] of originalEnv) value === undefined ? delete process.env[name] : process.env[name] = value
 })
 function setup(overrides = {}) {
   for (const name of names) delete process.env[name]
   Object.assign(process.env, BASE, overrides)
+  diagnosticRecords = []
+  console.info = line => diagnosticRecords.push(JSON.parse(line))
   return evaluateDeploymentBoundary({ supabaseUrl: process.env.SUPABASE_URL })
 }
 function req(path = '/api/background-jobs', overrides = {}) {
@@ -58,6 +64,7 @@ async function blocked(boundary, expected = 'cron_release_unverified') {
   const response = await releasedCron(req(), 'background-jobs', () => { ran = true }, boundary)
   assert.equal(response.status, 503)
   assert.equal(response.headers.get('cache-control'), 'no-store, max-age=0')
+  assert.equal(response.headers.get('retry-after'), '60')
   assert.deepEqual(await response.json(), { error: expected })
   assert.equal(ran, false)
 }
@@ -83,7 +90,13 @@ for (const { path } of config.crons) {
       assert.equal(response.status, 503)
       assert.deepEqual(await response.json(), { error: 'cron_deployment_not_current' })
       assert.equal(calls.length, 1)
+      assert.deepEqual(rejections().at(-1), {
+        event: 'cron_release_rejected', job: path === '/api/auth/delete-account' ? 'delete-account' : path.slice('/api/'.length),
+        code: 'cron_deployment_not_current', deployment_id: ID, commit_sha: SHA,
+      })
+      assert.doesNotMatch(JSON.stringify(rejections()), /dpl_Older|dpl_SameCommit|synthetic|private|evil|nonce|https/)
     }
+    assert.equal(rejections().length, 2)
   })
   test(`${path}: wrong or missing cron credentials cannot probe the public identity`, async () => {
     setup()
@@ -94,6 +107,7 @@ for (const { path } of config.crons) {
       assert.equal((await handler(req(path, { headers }))).status, 401)
     }
     assert.equal(calls, 0)
+    assert.deepEqual(rejections(), [])
   })
 }
 
@@ -119,6 +133,7 @@ test('promotion, rollback and re-promotion are evaluated every invocation before
   }
   assert.deepEqual(events, ['probe', 'probe', 'in_progress', 'work', 'ok', 'probe', 'probe', 'in_progress', 'work', 'ok'])
   assert.equal(new Set(nonces).size, 4)
+  assert.equal(rejections().length, 2, 'successful identity checks do not produce rejection diagnostics')
 })
 
 test('release authorization is enforced even when Sentry is disabled', async () => {
@@ -156,6 +171,11 @@ test('missing or malformed runtime identities cannot fall back to a commit or lo
     const boundary = setup({ ...overrides, CAACI_LOCAL_DEV: 'true' })
     assert.equal(boundary.environment, 'production')
     await blocked(boundary, 'cron_release_identity_missing')
+    assert.deepEqual(rejections(), [{
+      event: 'cron_release_rejected', job: 'background-jobs', code: 'cron_release_identity_missing',
+      deployment_id: Object.hasOwn(overrides, 'VERCEL_DEPLOYMENT_ID') ? null : ID,
+      commit_sha: Object.hasOwn(overrides, 'VERCEL_GIT_COMMIT_SHA') ? null : SHA,
+    }])
   }
   assert.equal(calls, 0)
 })
@@ -214,6 +234,9 @@ for (const [label, makeResponse] of [
     globalThis.fetch = async url => { calls++; return makeResponse(boundary, url) }
     await blocked(boundary)
     assert.equal(calls, 1)
+    assert.deepEqual(rejections(), [{ event: 'cron_release_rejected', job: 'background-jobs',
+      code: 'cron_release_unverified', deployment_id: ID, commit_sha: SHA }])
+    assert.doesNotMatch(JSON.stringify(rejections()), /private|synthetic|nonce|https|evil|11111111|<html>/)
   })
 }
 
@@ -242,6 +265,41 @@ test('user deletion POST and OPTIONS do not require the cron identity probe', as
   assert.equal((await handler(req('/api/auth/delete-account', { method: 'OPTIONS' }))).status, 204)
   assert.equal((await handler(req('/api/auth/delete-account', { method: 'POST', headers: {} }))).status, 401)
   assert.equal(calls, 0)
+  assert.deepEqual(rejections(), [])
+})
+
+test('rejection diagnostics exclude unknown jobs and invalid local metadata', async () => {
+  const boundary = setup({ VERCEL_DEPLOYMENT_ID: 'private-runtime-id\nhttps://private.test',
+    VERCEL_GIT_COMMIT_SHA: 'private-runtime-commit' })
+  let calls = 0, businessCalls = 0
+  globalThis.fetch = async () => { calls++; throw new Error('unexpected network') }
+  const run = async () => { businessCalls++; return json({}) }
+  const unknown = await releasedCron(req(), 'private-request-job', run, boundary)
+  assert.equal(unknown.status, 503)
+  assert.deepEqual(await unknown.json(), { error: 'cron_release_identity_missing' })
+  assert.deepEqual(rejections(), [])
+  await blocked(boundary, 'cron_release_identity_missing')
+  assert.deepEqual(rejections(), [{ event: 'cron_release_rejected', job: 'background-jobs',
+    code: 'cron_release_identity_missing', deployment_id: null, commit_sha: null }])
+  assert.doesNotMatch(JSON.stringify(rejections()), /private|synthetic|https/)
+  assert.equal(calls, 0)
+  assert.equal(businessCalls, 0)
+})
+
+test('throwing rejection diagnostics preserve all three 503 codes and never permit monitoring or work', async () => {
+  for (const code of ['cron_release_identity_missing', 'cron_release_unverified', 'cron_deployment_not_current']) {
+    const boundary = setup(code === 'cron_release_identity_missing' ? { VERCEL_DEPLOYMENT_ID: '' } : {})
+    console.info = () => { throw new Error('private-log-failure') }
+    let calls = 0
+    globalThis.fetch = async url => {
+      calls++
+      assert.equal(new URL(url).origin, APP, 'only the existing identity probe may run')
+      return json(identity(boundary, url, code === 'cron_release_unverified'
+        ? { nonce: NONCE, private: 'private-upstream-body' } : { deploymentId: 'dpl_RemoteOnly' }))
+    }
+    await blocked(boundary, code)
+    assert.equal(calls, code === 'cron_release_identity_missing' ? 0 : 1)
+  }
 })
 
 test('authenticated user deletion reaches its existing preparation flow without cron deployment identity', async () => {
@@ -301,4 +359,5 @@ test('preview cannot supply a production identity and its existing isolated work
   const expected = json({ isolated: true })
   assert.equal(await releasedCron(req(), 'background-jobs', async () => expected, boundary), expected)
   assert.equal(calls, 0)
+  assert.deepEqual(rejections(), [])
 })

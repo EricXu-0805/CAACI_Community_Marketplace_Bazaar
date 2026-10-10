@@ -3,6 +3,8 @@ import { monitoredCron } from './_cron-monitor.js'
 
 const DEPLOYMENT_ID_RE = /^dpl_[a-zA-Z0-9]{1,128}$/
 const COMMIT_RE = /^[0-9a-f]{40}$/
+const CRON_JOBS = new Set(['background-jobs', 'notification-digest', 'data-retention', 'banner-upload-gc', 'delete-account'])
+const REJECTION_CODES = new Set(['cron_release_identity_missing', 'cron_release_unverified', 'cron_deployment_not_current'])
 // Keep the release authority in reviewed source. A production candidate may
 // have its own valid HTTPS app origin; letting it choose the probe destination
 // would let that candidate authorize itself before the formal domain moves.
@@ -29,7 +31,18 @@ export function cronDeploymentIdentity(boundary, env = process.env) {
   }
 }
 
-function unavailable(code) {
+function unavailable(code, job) {
+  // Reached only after production GET authentication. Never include the probe's
+  // unverified identity, body, URL, nonce, or request credentials in diagnostics.
+  if (process.env.VERCEL_ENV === 'production' && CRON_JOBS.has(job) && REJECTION_CODES.has(code)) {
+    try {
+      const deploymentId = String(process.env.VERCEL_DEPLOYMENT_ID || '')
+      const commit = String(process.env.VERCEL_GIT_COMMIT_SHA || '')
+      console.info(JSON.stringify({ event: 'cron_release_rejected', job, code,
+        deployment_id: DEPLOYMENT_ID_RE.test(deploymentId) ? deploymentId : null,
+        commit_sha: COMMIT_RE.test(commit) ? commit : null }))
+    } catch { /* Diagnostics must not change the rejection or permit work. */ }
+  }
   return new Response(JSON.stringify({ error: code }), {
     status: 503,
     headers: {
@@ -73,7 +86,7 @@ export async function releasedCron(request, job, run, boundary) {
   }
 
   const identity = cronDeploymentIdentity(boundary)
-  if (!identity) return unavailable('cron_release_identity_missing')
+  if (!identity) return unavailable('cron_release_identity_missing', job)
   const nonce = crypto.randomUUID()
   const url = new URL('/api/deployment-identity', PRODUCTION_CRON_ORIGIN)
   url.searchParams.set('nonce', nonce)
@@ -83,15 +96,15 @@ export async function releasedCron(request, job, run, boundary) {
       headers: { Accept: 'application/json', 'Cache-Control': 'no-cache, no-store' },
     }, { timeoutMs: 3_000, maxBytes: 4_096 })
     if (response.status !== 200 || !/^application\/json(?:\s*;|$)/i.test(response.headers.get('content-type') || '')) {
-      return unavailable('cron_release_unverified')
+      return unavailable('cron_release_unverified', job)
     }
     const current = await response.json()
-    if (current?.nonce !== nonce) return unavailable('cron_release_unverified')
+    if (current?.nonce !== nonce) return unavailable('cron_release_unverified', job)
     if (!Object.entries(identity).every(([key, value]) => current[key] === value)) {
-      return unavailable('cron_deployment_not_current')
+      return unavailable('cron_deployment_not_current', job)
     }
   } catch {
-    return unavailable('cron_release_unverified')
+    return unavailable('cron_release_unverified', job)
   }
   return monitoredCron(request, job, run)
 }
