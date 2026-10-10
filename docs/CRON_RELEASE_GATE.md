@@ -43,10 +43,16 @@ For a separately authorized release:
    needs no new token, deploy hook, permission, paid scheduler or Preview copy
    of production credentials. Do not use `--skip-domain` to park another
    production candidate while waiting for CI.
-4. Preserve the deployment-ID/commit/project/nonce gate below. Read the created
-   candidate's runtime identity and normal platform deployment metadata. Allow
-   ordinary checks/promotion; if it fails or outcome is unknown, inspect the
-   existing deployment instead of creating a replacement.
+4. Preserve the deployment-ID/commit/project/nonce gate below. The coordinator
+   contract below prepares **before creation** and watches the returned candidate
+   immediately. Its default CLI transport blocks writes because the CLI cannot
+   disable internal POST retries. The explicit native HTTPS path below provides
+   a single-request transport, but needs an already approved external credential
+   injection and separate release authorization. Preparation does not verify
+   either condition or authorize creation; do not create a candidate assuming
+   the default read-only path will promote it.
+   If it fails or the outcome is unknown, inspect that existing deployment
+   instead of creating a replacement or repeating Promote.
 5. Verify the root domain's expected redirect to www and the www runtime
    identity directly; read back both domains' platform deployment identity. Observe naturally scheduled
    runs and provider-accepted Sentry check-ins separately; a 200 worker response
@@ -74,6 +80,205 @@ Official sequence references:
 - [Git deployment policy](https://vercel.com/docs/project-configuration/git-configuration#git.deploymentenabled)
 - [Create from an exact Git reference](https://vercel.com/docs/git#creating-a-deployment-from-a-git-reference)
 - [Checks delay domain assignment](https://vercel.com/docs/deployment-checks#github-checks)
+
+## Prepared READY-to-Promote coordinator
+
+**The default CLI adapter is read-only. An explicit native HTTPS transport is
+implemented and tested locally; it has not been used or verified in production.**
+Inspection of installed Vercel CLI 50.44.0 found that
+both `api` and `promote` use an HTTP client with internal retries, with no supported
+disable-retry flag. One subprocess therefore does not mean one POST. The adapter
+contains no POST implementation and rejects `promote()` even with `execute: true`.
+It supplies the supported explicit team scope for every Vercel read, rather than
+relying on a query parameter that CLI current-team configuration can replace.
+
+`scripts/run-ci-first-release.mjs` implements the serial coordinator and its
+adapter boundary. `scripts/ci-first-release-cli-adapter.mjs` provides CLI/HTTP
+reads. `scripts/ci-first-release-https-transport.mjs` adds the explicit native
+write path. None makes cloud calls or reads release credentials at import time. This change
+does not install a CI release job, create a deployment, change cloud settings or
+activate a production release. Tests use fake CLI/read responses and local
+loopback HTTPS servers with dummy tokens. Passing tests do not prove live
+credentials, permissions, existing secret injection or current platform state.
+
+Use the existing authenticated `gh` and `vercel` CLIs on one trusted release host.
+The script never opens authentication files or accepts tokens in CLI arguments, override headers,
+arbitrary endpoints, force flags or a caller-supplied candidate URL. CLI execution
+uses argument arrays, fixed read-only API routes and bounded output/time. Anonymous
+identity probes carry no credentials, reject redirects, and share a bounded
+deadline with response-body consumption. A protected or unverifiable candidate
+blocks the handoff; the coordinator does not add a protection bypass.
+
+Choose **one durable project state directory shared by every invocation**, outside
+ephemeral build output. Obtain the existing team ID, repository numeric ID, full
+main SHA and successful CI run/attempt through authorized reads. The following
+commands inspect preparation and a separately authorized candidate. They do not
+authorize creation or complete an automatic release:
+
+```sh
+node scripts/run-ci-first-release.mjs prepare \
+  --state-dir "$release_state" --sha "$release_sha" \
+  --team-id "$release_team_id" --repo-id "$release_repository_id" \
+  --run-id "$release_ci_run_id" --run-attempt "$release_ci_attempt"
+
+# Only for a candidate created by an independently approved release path.
+node scripts/run-ci-first-release.mjs watch \
+  --state-dir "$release_state" --candidate-id "$release_candidate_id"
+```
+
+`prepare` is read-only on the cloud. It checks the ordinary promotion protocol
+and CLI read capabilities, fresh exact main CI and all attempt-specific jobs, source Git
+deployment policy, the existing project/team/repository, complete production
+candidate inventory and both current domain aliases. It persists the release
+scope and common previous deployment ID. Default CLI preparation reports
+`executionAvailable: false`, `doNotCreateForThisHandoff: true` and the fixed
+`single_attempt_promotion_transport_unavailable` blocker. `watch --execute` is
+rejected before mutation. Both domains must agree. The candidate
+must be created after preparation and within two minutes of it; stale preparation
+or a pre-existing deployment is rejected. If preparation ages out before creation,
+resolve/archive that local preparation under the same serial release discipline
+and prepare again. Do not replace state after any remote outcome becomes unknown.
+
+For the optional native transport, `--token-env` is the **name** of an environment
+variable supplied by an existing approved external secret-injection mechanism.
+It is not a token value. This repository does not establish that such a mechanism
+exists, create a token, configure a secret, extract CLI credentials or request a
+new credential. The name is validated and bound with the transport in the local
+preparation record; `watch` must use the same name and transport. Preparation
+never reads the value. For example, inspect the native path without executing:
+
+```sh
+node scripts/run-ci-first-release.mjs prepare \
+  --state-dir "$release_state" --sha "$release_sha" \
+  --team-id "$release_team_id" --repo-id "$release_repository_id" \
+  --run-id "$release_ci_run_id" --run-attempt "$release_ci_attempt" \
+  --transport native-https --token-env "$release_token_env"
+
+node scripts/run-ci-first-release.mjs watch \
+  --state-dir "$release_state" --candidate-id "$release_candidate_id" \
+  --transport native-https --token-env "$release_token_env"
+```
+
+The native preparation reports `executionAvailable: true` only for implemented
+transport capability. It also explicitly reports `credentialsVerified: false`,
+`permissionsVerified: false` and `authorizesCreation: false`. Neither a token
+value nor its existence is inspected. During an already authorized release,
+append `--execute` to the matching native `watch` command and start it immediately
+after the separately authorized creation step returns the candidate ID. Without
+`--execute`, native watch remains read-only and never calls the token accessor.
+With it, the environment value is accessed only inside `promote()`, after the
+durable intent exists and all READY/main/CI/identity/alias guards passed. The
+programmatic adapter also accepts an explicit approved token accessor with the
+same timing contract. The token is never persisted or included in results/errors.
+
+The native writer calls Node 22 `https.request()` and `end()` once, with a fresh
+one-use agent (`agent: false`), fixed `api.vercel.com:443`, TLS verification enabled,
+the fixed project, and validated team and candidate IDs. It has no redirect
+handling, HTTP retries, CLI fallback, force flag or request body. A latch blocks
+concurrent or subsequent calls to that writer instance. The total deadline
+covers the token accessor, connection/TLS and bounded response-body consumption;
+expiration actively destroys the request. A late credential result cannot start
+a request after timeout or cancellation. Only a completed 201/202 response is
+accepted; other statuses, resets, truncated/oversized bodies, missing credentials
+and timeouts throw a sanitized error and cause read-only reconciliation. No
+`Retry-After` value authorizes a resend. Node's own HTTP timeout event does not
+abort a request, which is why this transport actively destroys it; see the
+[Node 22 HTTP contract](https://nodejs.org/download/release/v22.23.3/docs/api/http.html#httprequestoptions-callback)
+and [HTTPS request API](https://nodejs.org/download/release/v22.23.3/docs/api/https.html#httpsrequestoptions-callback).
+
+This precheck establishes the protocol and read access before a candidate can
+receive cron. It cannot prove future write permission or guarantee that the
+Promote API will accept a later request. The ordinary API is
+`POST /v10/projects/{projectId}/promote/{deploymentId}` with the existing team scope,
+without a force/skip-checks/body override. An accepted response is not proof that
+aliases have finished moving. See [Vercel's normal promotion API](https://vercel.com/docs/rest-api/projects/point-production-traffic-to-a-given-deployment).
+
+`watch` follows only the supplied candidate ID, polling at one-second intervals
+with a fifteen-minute READY budget and bounded individual reads. Once READY, it
+does not sleep, wait for CI, pause for a prompt or rediscover the API. It verifies
+the authoritative Git source, Production/team/project identity and candidate
+nonce response, re-reads main and the same CI attempt with all jobs, rejects any
+other unresolved candidate, and rechecks both aliases. The native writer provides
+the single-attempt path; the shipped CLI adapter always declares false and
+cannot be used to send that POST. The read-only watcher
+reports `ready_read_only`, without writing a promotion intent or making a cloud
+change while both aliases still name the previous deployment. It can persist a
+read-only observation if automatic domain assignment has already begun. This
+mode is for inspection, not the time-sensitive release path.
+
+Production creation may already start automatic alias assignment. If either
+formal alias has reached this candidate, the watcher sends no Promote and only
+observes propagation. That observation is persisted as an immutable read-only
+intent before waiting; even if aliases later return to the old deployment, a
+subsequent `--execute` cannot promote again. If recording the observation fails,
+the project lock is preserved. Any unrelated deployment in either alias is a conflict.
+Verification requires both platform aliases to name this candidate, the www
+runtime identity to match the candidate including app origin, the root to return
+the expected 307/308 redirect to www, and a second alias read after those probes.
+No code infers worker success or Sentry acceptance from these identity checks.
+
+The state directory must belong to the invoking user and have no group/other
+permissions (normally mode 0700). Its path is canonicalized once, and its directory
+ancestry and inode are checked on each state operation. A replaced directory or
+lock inode is rejected; the old process cannot remove a replacement process's
+lock. The project lock uses exclusive local file creation. Preparation, candidate
+binding and promotion intent are immutable files, flushed together with their
+directory before the dependent step. A promotion intent is persisted **before**
+calling the adapter. A timeout, lost response, interrupted process, corrupt or
+partially written journal, or post-response disk failure cannot authorize a retry.
+Every subsequent invocation with an intent is read-only, even with `--execute`.
+The runner attempts readback after a lost response and preserves unresolved state
+when it cannot verify completion. Explicit recovery is also read-only:
+
+```sh
+node scripts/run-ci-first-release.mjs reconcile \
+  --state-dir "$release_state" --candidate-id "$release_candidate_id"
+```
+
+Recovery never clears a lock or intent, retries Promote, creates a replacement,
+cancels a candidate or rolls back. A crashed process may leave its project lock;
+read-only recovery can still inspect the bound candidate. A missing PID, elapsed
+time or unchanged alias does not prove a remote write never happened. Preserve
+these files as evidence. Start another release only after the previous outcome
+and any surviving executor have been independently resolved and the completed
+state archived under the same project serialization discipline.
+
+The lock covers cooperating processes that use this directory, not other hosts,
+the dashboard or another directory. Node's path operations are not an atomic
+filesystem defense against a malicious process running as the same user; keep
+the state directory and its owner-controlled ancestors trusted. Final main/CI/alias reads and Promote are not
+an atomic compare-and-swap; changes can race between them, and production create
+may change aliases before the watcher starts. The external create-to-watch gap,
+platform READY-to-alias latency and in-flight old workers remain. The native
+coordinator can remove avoidable operator/protocol-discovery waits from its local
+control flow, but this has not been exercised against production and
+does not establish a maximum handoff delay, zero lost ticks, zero overlap, drain
+or business-effect fencing. Do not relax the runtime identity gate to hide these
+limits. It still requires separately authorized production acceptance.
+
+The adapter also fails closed on compatibility gaps: both platform alias records
+must expose their deployment ID, and historical READY records need an explicit
+`PROMOTED` substate to be excluded from unresolved candidates. A platform-only
+root redirect with a null deployment ID or legacy metadata without that substate
+needs separate read-only investigation; the script does not fabricate identity
+or treat `aliasAssigned` as proof of production traffic. These current-project
+shapes have not been checked by the isolated fake tests.
+
+Remaining production prerequisites are independent verification of the existing
+approved credential-injection mechanism, write authorization and a permitted,
+verifiable candidate identity path. A separate authorized read on 2026-10-10
+observed the current production deployment's independent URL returning HTTP 401
+for anonymous `/api/deployment-identity` requests, while the official www identity
+and root redirect were readable. Future candidates must not be assumed readable;
+the coordinator fails closed and provides no protection bypass or protection
+setting change. A separate inventory read also left historical READY deployments
+unresolved under the strict candidate gate. Those blockers must be resolved by
+authorized investigation before this coordinator can be used for a release.
+Production credential injection, write permission and native API response behavior
+were not exercised during this isolated implementation.
+Local server counts prove that the client did not resend in the tested cases;
+they do not prove that remote business effects happen exactly once or that cron
+and alias changes are atomic.
 
 ## Runtime contract
 
@@ -157,6 +362,8 @@ Run with the project's Node 22 runtime:
 ```sh
 node --test --test-concurrency=2 api/*.test.mjs
 node --test scripts/vercel-function-boundary.test.mjs
+node --test scripts/ci-first-release.test.mjs scripts/run-ci-first-release.test.mjs scripts/ci-first-release-cli-adapter.test.mjs
+node --test scripts/ci-first-release-https-transport.test.mjs
 ```
 
 `api/_cron-release.test.mjs` executes all scheduled handlers with rejected
