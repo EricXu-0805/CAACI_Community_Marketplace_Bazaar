@@ -83,6 +83,26 @@ Official sequence references:
 
 ## Prepared READY-to-Promote coordinator
 
+The strict coordinator below is one optional automatic handoff implementation.
+Its single-HTTP-attempt and conservative inventory requirements must not be
+silently changed, but they do not govern every ordinary supervised release.
+The [existing-connector/browser protocol](SUPERVISED_RELEASE.md) keeps the same
+exact-main CI, runtime identity, normal Promote and post-release checks while
+truthfully limiting its guarantee to one host tool invocation with durable
+intent and read-only recovery. Historical STAGED records are reviewed as history,
+not deleted or assumed to be active work solely from that state. That protocol
+needs separate production authorization and does not promise atomic Cron handoff.
+
+The bounded supervised controller prepares before candidate creation, polls the
+returned candidate, runs independent final reads together and enters the existing
+connector immediately after its durable reservation. It addresses host delay,
+not a platform transaction: the measured 2026-10-10 release spent 110.407 seconds
+between READY and Promote, then 6.559 seconds before the www alias `updatedAt`.
+One pre-alias 503 occurred during Promote itself. Even an immediate invocation
+cannot therefore be presented as proof that the release gate will never reject
+a naturally scheduled request. This local tool requires no application redeploy
+to install or test, and leaves the runtime gate and Cron configuration intact.
+
 **The default CLI adapter is read-only. An explicit native HTTPS transport is
 implemented and tested locally; it has not been used or verified in production.**
 Inspection of installed Vercel CLI 50.44.0 found that
@@ -299,9 +319,11 @@ and alias changes are atomic.
 5. Every invocation probes again, without a cached allow decision. A different
    deployment built from the same commit remains blocked. Missing endpoint,
    malformed/stale response, network error, or mismatch returns 503 before work
-   or any Sentry cron check-in. Vercel does not retry failed cron invocations;
-   `Retry-After: 60` is advisory to manual clients, and the next scheduled tick
-   checks again.
+   or any Sentry cron check-in. [Vercel does not retry failed cron invocations](https://vercel.com/docs/cron-jobs/manage-cron-jobs#cron-job-error-handling).
+   `Retry-After: 60` is not a provider retry or business compensation guarantee.
+   A later scheduled delivery checks again, but delivery is best effort; its
+   HTTP 200 alone does not establish that any previously outstanding item was
+   processed. Existing durable claims, cursors and idempotency remain necessary.
 
 The authority is fixed in reviewed source so a candidate cannot set its own
 unique URL as `DEPLOYMENT_APP_ORIGIN` and authorize itself. A deliberate domain
@@ -374,6 +396,8 @@ test copies only shipped API runtime sources before bundling every route.
 
 ## Platform references
 
+- [Vercel Cron request routing](https://vercel.com/docs/cron-jobs#how-cron-jobs-work): scheduled GET requests target the production deployment URL; this is not an atomic custom-domain handoff contract.
+- [Vercel skip-domain](https://vercel.com/docs/cli/deploy#skip-domain): controls automatic promotion/aliasing, not a documented pause of the candidate's Cron scheduler.
 - [Vercel production deployment states](https://vercel.com/docs/deployments/promoting-a-deployment#production-deployment-state): staged/current and domain assignment are distinct from the production environment.
 - [Vercel system variables](https://vercel.com/docs/environment-variables/system-environment-variables#vercel_deployment_id): deployment ID is unique and available at runtime; a production URL variable is also present in Preview and is not an approval signal.
 - [Vercel prebuilt caveat](https://vercel.com/docs/cli/deploy#when-not-to-use---prebuilt): build-time system-variable availability differs for prebuilt workflows.
