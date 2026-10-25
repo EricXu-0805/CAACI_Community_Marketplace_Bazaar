@@ -42,7 +42,7 @@ function document(title: string, body: string, page: string) {
 // accounts. Do not add a guessed handle or a temporary creator-console URL.
 const developerChannels = [
   {name:'Reddit',handle:'u/Fun_Maintenance_3445',url:'https://www.reddit.com/user/Fun_Maintenance_3445/'},
-  {name:'X',handle:'@guoyi_xu46651',url:'https://x.com/guoyi_xu46651'},
+  {name:'X',handle:'@guoyi_eric_xu',url:'https://x.com/guoyi_eric_xu'},
 ]
 function channelCard(url: string, title: string, description: string, label: string) {
   return `<a class="channel" href="${escapeHtml(url)}" rel="noreferrer"><strong>${escapeHtml(title)} ↗</strong><span>${escapeHtml(description)}</span><small>${escapeHtml(label)}</small></a>`
