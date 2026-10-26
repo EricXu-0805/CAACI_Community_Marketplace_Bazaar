@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "status": "Verified source rebuild recipe for a locally maintained patch; not an official upstream patched release.",
+  "status": "Verified source rebuild recipe for Vite6.4.4 with the existing reviewed braces patch; two independent fresh installs produced identical dist bytes.",
   "node": {
     "version": "v22.23.3",
     "platform": "darwin",
@@ -14,11 +14,11 @@
     "archive_integrity": "sha512-xQCIupmMZ7jKjJnfil4C/Sri4rKaryOP6qnhJCSNP0j5+22yQklJ/5Ac/7teDwzBrWrttgLNKUUHUdEcNQI2dw=="
   },
   "vite": {
-    "version": "6.4.3",
-    "commit": "6c2c881f15495738ff03bc1d67cc052c07e0cac4",
-    "archive_root": "vite-6c2c881f15495738ff03bc1d67cc052c07e0cac4",
-    "archive_url": "https://codeload.github.com/vitejs/vite/tar.gz/6c2c881f15495738ff03bc1d67cc052c07e0cac4",
-    "archive_sha256": "b5d5e3a9c865752266bb84714ce0b08c9c010a8f3287dc9dc8db28bd861bc09c"
+    "version": "6.4.4",
+    "commit": "5f0d9a4aaa31124695e7cf6ffe349e9d0a4b705e",
+    "archive_root": "vite-5f0d9a4aaa31124695e7cf6ffe349e9d0a4b705e",
+    "archive_url": "https://codeload.github.com/vitejs/vite/tar.gz/5f0d9a4aaa31124695e7cf6ffe349e9d0a4b705e",
+    "archive_sha256": "cc76fcb525d27ce78b4b855ad4cfdedec25820384c30c29debee844470a13785"
   },
   "source_patch": {
     "file": "vite-source-change.patch",
@@ -33,7 +33,7 @@
   },
   "patched_inputs": {
     "package.json": "35bbfb34e585e441a56c1a1d5de07b5e3b5363a940c665318c1080be114b51b6",
-    "pnpm-lock.yaml": "75079ae64ebff75d66f6bedd4cc7719d0e9ac59a871e785844700d91788d065a"
+    "pnpm-lock.yaml": "7983644ce47ec9142df0be4678b375b2d7ed90c2489f1d69d0b51883bc05f60e"
   },
   "braces_source_files": [
     {
@@ -78,9 +78,14 @@
       "sha256": "4702c10a382ad3509e53a06b680ea8210775d7f9da1236f8f59b03c5617b2ae7"
     },
     {
-      "path": "dist/node/chunks/dep-BaWSNrg5.js",
+      "path": "dist/node/chunks/dep-BLWOA66J.js",
+      "bytes": 19503,
+      "sha256": "2411c47bbe44d937101a4f9f0ee120a1a9abe563bab0de25fe6e199513cb1987"
+    },
+    {
+      "path": "dist/node/chunks/dep-CUEnu8h2.js",
       "bytes": 235611,
-      "sha256": "63384ad390f54546463508018d095bec5483c8578a744ef87962824e90ff1fa5"
+      "sha256": "05c4584e923e12981c16d5d11c749ec2cfe706aa7d4dc244f7aa8f8e142fcb92"
     },
     {
       "path": "dist/node/chunks/dep-CvfTChi5.js",
@@ -88,19 +93,14 @@
       "sha256": "c3684e056dda4f4ccc503a963adcbd3ea86f3aafcbbfa25020814ede2707a156"
     },
     {
-      "path": "dist/node/chunks/dep-DmMbUOr5.js",
-      "bytes": 19503,
-      "sha256": "c96810cf6e76a63974f947aca750c949926665145fe283e8fd2ae4b84cf373fb"
-    },
-    {
-      "path": "dist/node/chunks/dep-jeFBLW_f.js",
-      "bytes": 1507282,
-      "sha256": "80401ad3ba84ce60f4e297ef1f44f447450452987ce148fee596fdc7abbd7ae1"
+      "path": "dist/node/chunks/dep-D0eUZGAo.js",
+      "bytes": 1513165,
+      "sha256": "9aa12ac306150db397ebc7ccc6f9187fd39b38957f4041a0011b85bd1370ca31"
     },
     {
       "path": "dist/node/cli.js",
       "bytes": 29164,
-      "sha256": "d53a9f86c24f226137ceeea8040268798ef020fdcfab83750077d0aa7ffef619"
+      "sha256": "ab3107c15bfa4c53db0a16e57ca1ff948abcfbd0e591e22e09bf086f4ee0a093"
     },
     {
       "path": "dist/node/constants.js",
@@ -115,7 +115,7 @@
     {
       "path": "dist/node/index.js",
       "bytes": 6677,
-      "sha256": "b10cb32d4bc778b7493cd9017e065bf2b83709f93f826edb05b42be2fc109f69"
+      "sha256": "2eb4c4a1b444e36addc38b1e923991b8e117874ab417f603820ed053cae71e7e"
     },
     {
       "path": "dist/node/module-runner.d.ts",

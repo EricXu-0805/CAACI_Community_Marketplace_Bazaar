@@ -1,6 +1,6 @@
 # Exact Vite source rebuild recipe
 
-This recipe rebuilds the locally reviewed braces source patch inside official Vite 6.4.3. It does not represent an official upstream patched release. Keep these five files together:
+This recipe rebuilds the locally reviewed braces source patch inside official Vite 6.4.4. It does not represent an official upstream patched release. Keep these five files together:
 
 - `rebuild-vite.py`
 - `manifest.json`
@@ -12,7 +12,7 @@ Requirements: Python 3.9 or newer, the system `patch` utility, and the verified 
 
 Supply the two official archives listed in `manifest.json`:
 
-- Vite source commit `6c2c881f15495738ff03bc1d67cc052c07e0cac4` archive.
+- Vite source commit `5f0d9a4aaa31124695e7cf6ffe349e9d0a4b705e` archive.
 - Official npm `pnpm-10.8.1.tgz` archive.
 
 The script does not download these archives. It validates their SHA256 values, and the pnpm archive's npm SHA512 integrity, before creating the output directory. Archived inputs can be reused. Subsequent frozen dependency installation uses `https://registry.npmjs.org` and needs network access.
@@ -33,4 +33,4 @@ Installation uses the verified pnpm version, frozen lock, `--ignore-scripts`, `-
 
 Success requires the exact complete set of **15** `dist` files in `manifest.json`, including their byte lengths and SHA256 hashes. Logs are in the new output's `logs/`; the final comparison is `verification.json`. This recipe stops after source build verification. It does not pack, publish, modify the application, or change a database.
 
-The underlying source build was executed twice successfully with identical output bytes. On October 5, this exact committed script also passed a complete run in a new isolated directory: the fresh install downloaded 484 packages with zero reused, all 15 generated files matched the manifest, and the committed packager reproduced the exact final archive from the new output. No prior dependency tree, cache or generated distribution was used as build input. Repeat this verification if the recipe or its inputs change.
+On October 26, the Vite 6.4.4 source build was executed twice from independent fresh installations and task-local stores; all 15 generated files matched byte for byte. The unchanged committed packager then reproduced the new content-addressed archive. The existing braces source patch is byte-identical to the earlier review. No prior dependency tree, cache or generated distribution was used as build input. The October 5 evidence applies to the previous 6.4.3 archive. Repeat this verification if the recipe or its inputs change.
