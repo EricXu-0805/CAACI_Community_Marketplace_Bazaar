@@ -235,6 +235,33 @@ jobs:
         working-directory: app
         run: node ../scripts/verify-build-artifact.mjs dist/build/h5 ci
 
+      # Keep the same signed Ubuntu package sources while avoiding the Azure
+      # mirror that stalled H5 browser dependency downloads on this runner.
+      - name: Use the Ubuntu archive mirror for H5 browser dependencies
+        shell: bash
+        run: |
+          sudo python3 - <<'PYTHON'
+          from pathlib import Path
+          import re
+
+          path = Path('/etc/apt/apt-mirrors.txt')
+          try:
+              original = path.read_bytes()
+          except FileNotFoundError:
+              print('No APT mirror list; leaving runner sources unchanged.')
+          else:
+              updated, count = re.subn(
+                  rb'(?m)^([ \t]*)(https?://)azure\.archive\.ubuntu\.com/ubuntu(/?)(?=[ \t\r\n]|$)',
+                  rb'\1\2archive.ubuntu.com/ubuntu\3',
+                  original,
+              )
+              if count:
+                  path.write_bytes(updated)
+                  print(f'Replaced {count} Azure Ubuntu mirror URL(s).')
+              else:
+                  print('No exact Azure Ubuntu mirror URL; leaving sources unchanged.')
+          PYTHON
+
       - name: Install browsers for compiled admin acceptance
         working-directory: app
         run: npx playwright install --with-deps chromium webkit
