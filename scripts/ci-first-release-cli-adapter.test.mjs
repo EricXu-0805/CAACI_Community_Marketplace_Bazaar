@@ -16,6 +16,12 @@ const output = value => ({ stdout: JSON.stringify(value), stderr: '', exitCode: 
 const identity = () => ({ schema: 1, environment: 'production', deploymentId: DEPLOYMENT,
   commit: SHA, projectRef: 'abcdefghijklmnopqrst', appOrigin: 'https://illinimarket.com', nonce: NONCE })
 const job = (id, name = 'Other') => ({ id, name, run_id: 123, head_sha: SHA, status: 'completed', conclusion: 'success' })
+const deferred = () => {
+  let resolve
+  const promise = new Promise(done => { resolve = done })
+  return { promise, resolve }
+}
+const tick = () => new Promise(resolve => setImmediate(resolve))
 
 function harness(options = {}) {
   const calls = [], fetches = []
@@ -120,6 +126,76 @@ test('fresh snapshot binds exact main/run/latest attempt and source config; abse
   assert.ok(h.calls.every(c => !c.args.includes('POST') && !c.args.includes('--cache')))
 })
 
+test('snapshot starts attempt-specific jobs with independent reads and rechecks run/main only after all complete', async () => {
+  const releaseJobs = deferred(), releaseConfig = deferred(), firstReads = new Set()
+  const h = harness({ async overrideCommand(name, args) {
+    const path = new URL(args[1], 'https://unused.invalid').pathname
+    firstReads.add(path)
+    if (name === 'gh' && path.endsWith('/attempts/2/jobs')) await releaseJobs.promise
+    if (name === 'gh' && path.endsWith('/contents/vercel.json')) await releaseConfig.promise
+  } })
+  const pending = h.adapter.readSnapshot(request)
+  try {
+    await tick()
+    for (const suffix of ['/git/ref/heads/main', '/actions/runs/123', '/contents/vercel.json', '/attempts/2/jobs']) {
+      assert.ok([...firstReads].some(path => path.endsWith(suffix)), `independent read started: ${suffix}`)
+    }
+    assert.ok(firstReads.has('/v7/deployments'))
+    releaseConfig.resolve()
+    await tick()
+    assert.equal(h.calls.filter(c => c.args[1].endsWith('/git/ref/heads/main')).length, 1)
+    assert.equal(h.calls.filter(c => c.args[1].endsWith('/actions/runs/123')).length, 1)
+  } finally { releaseConfig.resolve(); releaseJobs.resolve() }
+  assert.equal((await pending).jobs.items.length, 7)
+  assert.equal(h.calls.filter(c => c.args[1].endsWith('/git/ref/heads/main')).length, 2)
+  assert.equal(h.calls.filter(c => c.args[1].endsWith('/actions/runs/123')).length, 2)
+})
+
+test('deployment and both aliases start alongside project verification without registering an unverified origin', async () => {
+  for (const method of ['readDeployment', 'readAliases']) {
+    const releaseProject = deferred(), started = new Set()
+    const h = harness({ async overrideCommand(_name, args) {
+      const path = new URL(args[1], 'https://unused.invalid').pathname
+      started.add(path)
+      if (path === `/v9/projects/${RELEASE_PROJECT}`) await releaseProject.promise
+    } })
+    let resolved = false
+    const pending = (method === 'readDeployment' ? h.adapter.readDeployment({ deploymentId: DEPLOYMENT }) : h.adapter.readAliases())
+      .then(result => { resolved = true; return result })
+    try {
+      await tick()
+      const expected = method === 'readDeployment' ? [`/v13/deployments/${DEPLOYMENT}`]
+        : ['/v4/aliases/illinimarket.com', '/v4/aliases/www.illinimarket.com']
+      assert.deepEqual([...started].sort(), [`/v9/projects/${RELEASE_PROJECT}`, ...expected].sort())
+      assert.equal(resolved, false, 'metadata is not usable before project validation')
+      await assert.rejects(h.adapter.readIdentity({ origin: ORIGIN, nonce: NONCE }), /release_adapter_identity_target_invalid/)
+      assert.equal(h.fetches.length, 0)
+    } finally { releaseProject.resolve() }
+    await pending
+  }
+})
+
+test('a late project rejection discards concurrent snapshot, deployment and alias results', async () => {
+  for (const method of ['readSnapshot', 'readDeployment', 'readAliases']) {
+    const releaseProject = deferred()
+    const h = harness({ async overrideCommand(_name, args) {
+      if (args[1].startsWith(`/v9/projects/${RELEASE_PROJECT}?`)) await releaseProject.promise
+    } })
+    h.data.project.accountId = 'team_Other'
+    const pending = method === 'readSnapshot' ? h.adapter.readSnapshot(request)
+      : method === 'readDeployment' ? h.adapter.readDeployment({ deploymentId: DEPLOYMENT }) : h.adapter.readAliases()
+    const rejected = assert.rejects(pending, /release_adapter_project_mismatch/)
+    try {
+      await tick()
+      await assert.rejects(h.adapter.readIdentity({ origin: ORIGIN, nonce: NONCE }), /release_adapter_identity_target_invalid/)
+      assert.equal(h.fetches.length, 0)
+    } finally { releaseProject.resolve() }
+    await rejected
+    await assert.rejects(h.adapter.readIdentity({ origin: ORIGIN, nonce: NONCE }), /release_adapter_identity_target_invalid/)
+    assert.ok(h.calls.every(call => !call.args.includes('POST')))
+  }
+})
+
 test('job pagination reads every page and rejects duplicate, incomplete and changing totals', async () => {
   const h = harness()
   h.data.jobPages = [
@@ -175,7 +251,25 @@ test('complete production inventory excludes proven history and keeps all staged
   const result = await h.adapter.readCandidates()
   assert.equal(result.complete, true)
   assert.deepEqual(result.items.map(item => item.id), ['dpl_Legacy', 'dpl_Staged', 'dpl_Rolling', 'dpl_Building', 'dpl_Unknown'])
+  assert.deepEqual(result.items.map(item => item.readySubstate), [undefined, 'STAGED', 'ROLLING', undefined, undefined])
   assert.ok(h.calls.find(c => c.args[1].includes('until=100')))
+})
+
+test('successive inventories preserve STAGED to ROLLING changes without inventing a missing substate', async () => {
+  const h = harness()
+  h.data.inventory = [
+    inventoryPage([listed(DEPLOYMENT, 'READY', { readySubstate: 'STAGED' })]),
+    inventoryPage([listed(DEPLOYMENT, 'READY', { readySubstate: 'ROLLING' })]),
+    inventoryPage([listed(DEPLOYMENT, 'READY')]),
+  ]
+  const staged = await h.adapter.readCandidates()
+  const rolling = await h.adapter.readCandidates()
+  const unknown = await h.adapter.readCandidates()
+  assert.equal(staged.items[0].readySubstate, 'STAGED')
+  assert.equal(rolling.items[0].readySubstate, 'ROLLING')
+  assert.equal(Object.hasOwn(unknown.items[0], 'readySubstate'), false)
+  assert.deepEqual(staged.items.map(item => item.id), rolling.items.map(item => item.id))
+  assert.ok(h.calls.every(call => !call.args.includes('POST')))
 })
 
 test('candidateId never hides another deployment and malformed/looped pagination never reports complete', async () => {

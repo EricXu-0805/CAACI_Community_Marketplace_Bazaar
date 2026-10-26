@@ -101,8 +101,12 @@ export function createCliAdapter({ teamId, repositoryId, execute = false,
   }
   async function readDeployment({ deploymentId } = {}) {
     requireValue(typeof deploymentId === 'string' && DEPLOYMENT_ID.test(deploymentId), 'release_adapter_invalid_deployment')
-    await verifyProject()
-    return deployment(await vercel(scopedPath(`/v13/deployments/${deploymentId}`, { withGitRepoInfo: 'true' })), deploymentId)
+    // Both requests are scoped read-only lookups. Do not register the returned
+    // origin until the independent project and deployment checks both pass.
+    const [, raw] = await Promise.all([
+      verifyProject(), vercel(scopedPath(`/v13/deployments/${deploymentId}`, { withGitRepoInfo: 'true' })),
+    ])
+    return deployment(raw, deploymentId)
   }
   async function readCandidates() {
     await verifyProject()
@@ -131,7 +135,8 @@ export function createCliAdapter({ teamId, repositoryId, execute = false,
         // aliasAssigned alone can describe default/staging aliases and does
         // not prove production traffic, including for legacy READY records.
         const historical = item.readyState === 'READY' && item.readySubstate === 'PROMOTED'
-        if (!historical) items.push({ id: item.uid, projectId: RELEASE_PROJECT, teamId, target: 'production', readyState: item.readyState })
+        if (!historical) items.push({ id: item.uid, projectId: RELEASE_PROJECT, teamId, target: 'production', readyState: item.readyState,
+          ...(item.readySubstate === undefined ? {} : { readySubstate: item.readySubstate }) })
       }
       const next = data.pagination.next
       if (next === null) return { projectId: RELEASE_PROJECT, teamId, complete: true, items }
@@ -165,13 +170,7 @@ export function createCliAdapter({ teamId, repositoryId, execute = false,
     requireValue(object(configJson), 'release_adapter_config_invalid')
     return configJson
   }
-  async function readSnapshot({ requestedSha, runId, runAttempt, candidateId } = {}) {
-    requireValue(typeof requestedSha === 'string' && SHA.test(requestedSha) && positive(runId) && positive(runAttempt)
-      && (candidateId === undefined || (typeof candidateId === 'string' && DEPLOYMENT_ID.test(candidateId))),
-    'release_adapter_invalid_snapshot_request')
-    const [mainSha, run, vercelConfig, productionCandidates] = await Promise.all([
-      readMain(), readRun(runId, runAttempt, requestedSha), readConfig(requestedSha), readCandidates(),
-    ])
+  async function readJobs(runId, runAttempt, requestedSha) {
     const jobs = [], jobIds = new Set()
     let expectedCount
     for (let page = 1; page <= MAX_PAGES; page++) {
@@ -195,6 +194,19 @@ export function createCliAdapter({ teamId, repositoryId, execute = false,
       if (jobs.length === expectedCount) break
       requireValue(data.jobs.length === 100 && page < MAX_PAGES, 'release_adapter_jobs_incomplete')
     }
+    return { run_id: runId, run_attempt: runAttempt, complete: true, items: jobs }
+  }
+  async function readSnapshot({ requestedSha, runId, runAttempt, candidateId } = {}) {
+    requireValue(typeof requestedSha === 'string' && SHA.test(requestedSha) && positive(runId) && positive(runAttempt)
+      && (candidateId === undefined || (typeof candidateId === 'string' && DEPLOYMENT_ID.test(candidateId))),
+    'release_adapter_invalid_snapshot_request')
+    // Jobs use the exact attempt in the URL and every row is validated before
+    // use. Fetch them alongside the other independent reads, then retain the
+    // final run/main recheck after the entire initial snapshot has completed.
+    const [mainSha, run, vercelConfig, productionCandidates, jobs] = await Promise.all([
+      readMain(), readRun(runId, runAttempt, requestedSha), readConfig(requestedSha), readCandidates(),
+      readJobs(runId, runAttempt, requestedSha),
+    ])
     const [latestRun, latestMain] = await Promise.all([readRun(runId, runAttempt, requestedSha), readMain()])
     requireValue(latestRun.status === run.status && latestRun.conclusion === run.conclusion
       && latestMain === mainSha, 'release_adapter_snapshot_changed')
@@ -203,20 +215,22 @@ export function createCliAdapter({ teamId, repositoryId, execute = false,
       run: { id: run.id, run_attempt: run.run_attempt, repository: { id: repoId, full_name: run.repository.full_name },
         path: run.path, name: run.name, head_branch: run.head_branch, head_sha: run.head_sha,
         event: run.event, status: run.status, conclusion: run.conclusion },
-      jobs: { run_id: runId, run_attempt: runAttempt, complete: true, items: jobs } }
+      jobs }
   }
   async function readAliases() {
-    await verifyProject()
-    const items = []
-    for (const alias of DOMAINS) {
-      const data = await vercel(scopedPath(`/v4/aliases/${alias}`, { projectId: RELEASE_PROJECT }))
+    const [, responses] = await Promise.all([
+      verifyProject(),
+      Promise.all(DOMAINS.map(alias => vercel(scopedPath(`/v4/aliases/${alias}`, { projectId: RELEASE_PROJECT })))),
+    ])
+    const items = DOMAINS.map((alias, index) => {
+      const data = responses[index]
       requireValue(data?.alias === alias && data.projectId === RELEASE_PROJECT
         && typeof data.deploymentId === 'string' && DEPLOYMENT_ID.test(data.deploymentId)
         && (data.teamId === undefined || data.teamId === teamId)
         && (data.deployment === undefined || data.deployment?.id === data.deploymentId)
         && data.deletedAt == null && data.microfrontends == null, 'release_adapter_alias_mismatch')
-      items.push({ alias, deploymentId: data.deploymentId, projectId: RELEASE_PROJECT })
-    }
+      return { alias, deploymentId: data.deploymentId, projectId: RELEASE_PROJECT }
+    })
     return { projectId: RELEASE_PROJECT, teamId, complete: true, items }
   }
   async function publicGet(url, json) {
