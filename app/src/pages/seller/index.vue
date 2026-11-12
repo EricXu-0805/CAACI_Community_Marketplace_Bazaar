@@ -170,7 +170,9 @@
         <text>{{ t('seller.noPosts') }}</text>
       </view>
       <view v-else class="posts-list u-stagger">
-        <view v-for="post in userPosts" :key="post.id" class="sp-card u-rise" role="button" :aria-label="localize(post.content_i18n, post.content)" @click="goPost(post.id)">
+        <view v-for="post in userPosts" :key="post.id" class="sp-card u-rise" role="button" :aria-label="post.title || localize(post.content_i18n, post.content)" @click="goPost(post.id)">
+          <text v-if="post.category" class="sp-board">{{ t(`plaza.category.${post.category}`) }}</text>
+          <text v-if="post.title" class="sp-title">{{ post.title }}</text>
           <text class="sp-content">{{ localize(post.content_i18n, post.content) }}</text>
           <view v-if="post.images?.length" class="sp-imgs">
             <image
@@ -791,4 +793,6 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 }
 .blocked-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
 .blocked-sub { font-size: 13px; color: var(--text-muted); line-height: 1.5; max-width: 240px; }
+.sp-board { display: block; color: var(--accent-action); font-size: 12px; margin-bottom: 4px; }
+.sp-title { display: block; font-weight: 700; font-size: 18px; margin-bottom: 6px; overflow-wrap: anywhere; }
 </style>

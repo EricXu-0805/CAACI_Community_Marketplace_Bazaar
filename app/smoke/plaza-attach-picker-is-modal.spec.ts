@@ -86,8 +86,10 @@ test('the attach picker covers the composer it opens over', async ({ page }) => 
   // The control comes first: before the picker opens, this point belongs to
   // the composer. Without it, every assertion below is satisfied by a page
   // that renders a permanent full-screen mask.
-  expect(await whatIsAt(page, ABOVE_THE_SHEET_Y), 'the composer was not under the probe point')
-    .toContain('textarea')
+  expect(await page.evaluate(y => {
+    const hit = document.elementFromPoint(window.innerWidth / 2, y)
+    return !!hit && !!document.querySelector('.composer-fullpage')?.contains(hit)
+  }, ABOVE_THE_SHEET_Y), 'the composer was not under the probe point').toBe(true)
 
   await page.locator('.comp-attach-btn').first().click()
   await expect(page.locator('.attach-sheet')).toBeVisible({ timeout: 10_000 })

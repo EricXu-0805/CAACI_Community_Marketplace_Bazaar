@@ -19,7 +19,7 @@
         class="post-card"
         role="group"
         tabindex="0"
-        :aria-label="displayContent"
+        :aria-label="post.title ? `${post.title}: ${displayContent}` : displayContent"
         aria-keyshortcuts="Shift+F10"
         @keydown="onPostKeyboardMenu"
         @touchstart="postLongPress.onTouchstart()"
@@ -40,6 +40,8 @@
           </view>
         </view>
 
+        <text v-if="post.category" class="post-board">{{ t(`plaza.category.${post.category}`) }}</text>
+        <text v-if="post.title" class="post-topic-title" role="heading" aria-level="2">{{ post.title }}</text>
         <view class="content-wrap">
           <text class="content">{{ displayContent }}</text>
           <view
@@ -503,7 +505,7 @@ onUnload(() => {
 onShareAppMessage(() => {
   const p = post.value
   if (!p) return { title: t('share.plaza'), path: '/pages/plaza/index' }
-  const firstLine = localize(p.content_i18n, p.content || '').split('\n')[0].slice(0, 50).trim() || t('share.plaza')
+  const firstLine = (p.title || localize(p.content_i18n, p.content || '')).split('\n')[0].slice(0, 50).trim() || t('share.plaza')
   return {
     title: firstLine,
     path: `/pages/post/index?id=${p.id}`,
@@ -514,7 +516,7 @@ onShareAppMessage(() => {
 onShareTimeline(() => {
   const p = post.value
   if (!p) return { title: t('share.plaza') }
-  const firstLine = localize(p.content_i18n, p.content || '').split('\n')[0].slice(0, 50).trim() || t('share.plaza')
+  const firstLine = (p.title || localize(p.content_i18n, p.content || '')).split('\n')[0].slice(0, 50).trim() || t('share.plaza')
   return {
     title: firstLine,
     query: `id=${p.id}`,
@@ -634,7 +636,7 @@ function onShare() {
   if (typeof window !== 'undefined' && window.location?.origin) origin = window.location.origin
   // #endif
   const url = `${origin}/share-post/${post.value.id}`
-  const preview = post.value.content.slice(0, 60).replace(/\n/g, ' ')
+  const preview = (post.value.title || post.value.content).slice(0, 60).replace(/\n/g, ' ')
   uni.setClipboardData({
     data: `${preview}…\n${url}`,
     success: () => uni.showToast({ title: t('plaza.contentCopied'), icon: 'success' }),
@@ -1117,4 +1119,6 @@ async function onSubmitComment() {
   .send-btn-label { font-size: 13px; color: var(--ink-inverse); font-weight: 600; }
   &.disabled { opacity: 0.3; pointer-events: none; }
 }
+.post-board { display: block; font-size: 12px; color: var(--accent-action); margin-bottom: 6px; }
+.post-topic-title { display: block; font-size: 22px; font-weight: 700; line-height: 1.4; margin-bottom: 12px; overflow-wrap: anywhere; }
 </style>

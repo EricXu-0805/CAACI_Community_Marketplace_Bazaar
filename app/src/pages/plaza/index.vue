@@ -62,6 +62,17 @@
       </view>
     </scroll-view>
 
+    <scroll-view v-if="activeTab !== 'following'" class="board-filters" scroll-x :show-scrollbar="false">
+      <view class="board-row" :aria-label="t('plaza.board')">
+        <view v-for="category in [null, ...POST_CATEGORIES]" :key="category || 'all'"
+          class="board-chip" :class="{ active: selectedCategory === category }" role="button" tabindex="0"
+          :aria-pressed="selectedCategory === category ? 'true' : 'false'"
+          @click="selectCategory(category)" @keydown.enter="selectCategory(category)" @keydown.space.prevent="selectCategory(category)">
+          <text>{{ category ? t(`plaza.category.${category}`) : t('plaza.allBoards') }}</text>
+        </view>
+      </view>
+    </scroll-view>
+
     <scroll-view
       id="plaza-feed-panel"
       class="feed"
@@ -199,6 +210,8 @@
               </view>
             </view>
 
+            <text v-if="post.category" class="post-board">{{ t(`plaza.category.${post.category}`) }}</text>
+            <text v-if="post.title" class="post-topic-title" role="heading" aria-level="2">{{ post.title }}</text>
             <view class="post-content-wrap">
               <text class="post-content">{{ displayPostContent(post) }}</text>
               <view
@@ -502,6 +515,27 @@
         </text>
       </view>
       <view class="comp-body">
+        <view class="composer-mode" role="group" :aria-label="t('plaza.write')">
+          <view v-for="mode in (['update', 'topic'] as const)" :key="mode" class="board-chip"
+            :class="{ active: composerMode === mode }" role="button" tabindex="0"
+            :aria-pressed="composerMode === mode ? 'true' : 'false'"
+            @click="composerMode = mode" @keydown.enter="composerMode = mode" @keydown.space.prevent="composerMode = mode">
+            <text>{{ t(mode === 'topic' ? 'plaza.formatTopic' : 'plaza.formatUpdate') }}</text>
+          </view>
+        </view>
+        <view v-if="composerMode === 'topic'" class="composer-topic">
+          <input v-model="composerTitle" class="topic-title-input" :maxlength="POST_TITLE_MAX"
+            :placeholder="t('plaza.topicTitle')" :aria-label="t('plaza.topicTitle')" />
+          <text class="topic-board-label">{{ t('plaza.chooseBoard') }}</text>
+          <view class="topic-board-options" role="group" :aria-label="t('plaza.chooseBoard')">
+            <view v-for="category in POST_CATEGORIES" :key="category" class="board-chip"
+              :class="{ active: composerCategory === category }" role="button" tabindex="0"
+              :aria-pressed="composerCategory === category ? 'true' : 'false'"
+              @click="composerCategory = category" @keydown.enter="composerCategory = category" @keydown.space.prevent="composerCategory = category">
+              <text>{{ t(`plaza.category.${category}`) }}</text>
+            </view>
+          </view>
+        </view>
         <textarea
           v-model="composerText"
           :placeholder="t('plaza.postHint')"
@@ -649,6 +683,7 @@ import { useVisualViewportBounds } from '../../composables/useVisualViewportInse
 import { localizeLocation } from '../../composables/useCampusSpots'
 import { createOwnedLoading } from '../../composables/ownedLoading'
 import type { Post, PostComment, Item } from '../../types'
+import { POST_CATEGORIES, POST_TITLE_MAX, normalizePostTopic, type PostCategory } from '../../utils/communityPost'
 import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
 import { DIALOG_DANGER, DIALOG_WARN } from '../../utils/dialogColors'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
@@ -745,7 +780,14 @@ const feedTabs = computed<{ key: FeedTabKey; label: string }[]>(() => [
   { key: 'recent', label: t('plaza.tab.recent') },
 ])
 const feedSort = computed<'recent' | 'hot'>(() => (activeTab.value === 'hot' ? 'hot' : 'recent'))
-const visiblePosts = computed(() => posts.value)
+const selectedCategory = ref<PostCategory | null>(null)
+const visiblePosts = computed(() => selectedCategory.value
+  ? posts.value.filter(post => post.category === selectedCategory.value) : posts.value)
+function selectCategory(category: PostCategory | null) {
+  selectedCategory.value = category
+  pageIdx.value = 0
+  fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: category ?? undefined })
+}
 
 function onFeedTabKeydown(event: KeyboardEvent, current: FeedTabKey) {
   const order: FeedTabKey[] = ['following', 'hot', 'recent']
@@ -816,7 +858,7 @@ watch(activeTab, (k) => {
   } else {
     // 热门 / 最新 differ only by server sort — re-fetch on switch.
     pageIdx.value = 0
-    fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value })
+    fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
   }
 })
 
@@ -884,23 +926,26 @@ function onSearchInput() {
   if (searchDebounce) clearTimeout(searchDebounce)
   searchDebounce = setTimeout(() => {
     pageIdx.value = 0
-    fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value })
+    fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
   }, 300)
 }
 function onSearchSubmit() {
   if (searchDebounce) clearTimeout(searchDebounce)
   pageIdx.value = 0
-  fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value })
+  fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
 }
 function clearSearch() {
   searchText.value = ''
   pageIdx.value = 0
-  fetchPosts({ reset: true, sort: feedSort.value })
+  fetchPosts({ reset: true, sort: feedSort.value, category: selectedCategory.value ?? undefined })
 }
 
 const showComposer = ref(false)
 const composerDialogEl = ref<unknown>(null)
 useDomKeydown(composerDialogEl, onComposerDialogKeydown)
+const composerMode = ref<'update' | 'topic'>('update')
+const composerTitle = ref('')
+const composerCategory = ref<PostCategory | null>(null)
 const composerText = ref('')
 const composerImages = ref<string[]>([])
 const composerFocused = ref(false)
@@ -1093,6 +1138,9 @@ async function openComposer() {
   // the existing 300ms setTimeout — focus must fire AFTER the modal
   // becomes visible, not before, so the soft keyboard mounts on the
   // visible textarea (mirroring the previous timing contract).
+  composerMode.value = 'update'
+  composerTitle.value = ''
+  composerCategory.value = null
   composerText.value = ''
   composerImages.value = []
   composerAttachedItems.value = []
@@ -1220,7 +1268,7 @@ async function reloadPlazaForCurrentAccount() {
       return
     }
   }
-  await fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value })
+  await fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
 }
 
 async function togglePostTranslate(post: Post) {
@@ -1259,7 +1307,7 @@ async function onRefresh() {
   pageIdx.value = 0
   const failsafe = setTimeout(() => { refreshing.value = false }, 10000)
   try {
-    await fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value })
+    await fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
   } finally {
     clearTimeout(failsafe)
     refreshing.value = false
@@ -1275,7 +1323,7 @@ async function loadMore(retry = false) {
   }
   if (loading.value || !hasMore.value || (fetchError.value && retry !== true)) return
   const nextPage = pageIdx.value + 1
-  const loaded = await fetchPosts({ page: nextPage, sort: feedSort.value, search: searchText.value })
+  const loaded = await fetchPosts({ page: nextPage, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
   if (loaded) pageIdx.value = nextPage
 }
 
@@ -1304,6 +1352,9 @@ function onComposerCancel() {
   composerSessionId += 1
   composerFocused.value = false
   showComposer.value = false
+  composerMode.value = 'update'
+  composerTitle.value = ''
+  composerCategory.value = null
   composerText.value = ''
   composerImages.value = []
   composerAttachedItems.value = []
@@ -1404,6 +1455,17 @@ async function onSubmitPost() {
     uni.showToast({ title: t('msg.actionFailed'), icon: 'none' })
     return
   }
+  try {
+    if (composerMode.value === 'topic') {
+      if (!composerTitle.value.trim() || !composerCategory.value) throw new Error('post_topic_required')
+      normalizePostTopic(composerTitle.value, composerCategory.value)
+    }
+  } catch (error) {
+    uni.showToast({ title: friendlyErrorMessage(error), icon: 'none' })
+    return
+  }
+  const submitTopic = composerMode.value === 'topic'
+    ? normalizePostTopic(composerTitle.value, composerCategory.value) : { title: null, category: null }
   const submitAccountToken = composerAccountToken
   submitting.value = true
   let imageUrls: string[] = []
@@ -1451,6 +1513,7 @@ async function onSubmitPost() {
       imageUrls,
       composerAttachedItems.value.map(c => c.id),
       {
+        ...submitTopic,
         image_dimensions: imageDims,
         content_i18n: trimmed ? { [sourceLang]: trimmed } : null,
         source_lang: sourceLang,
@@ -1459,6 +1522,9 @@ async function onSubmitPost() {
       },
     )
 
+    composerMode.value = 'update'
+    composerTitle.value = ''
+    composerCategory.value = null
     composerText.value = ''
     composerImages.value = []
     composerAttachedItems.value = []
@@ -1479,6 +1545,11 @@ async function onSubmitPost() {
         uni.showToast({ title: t('plaza.posted'), icon: 'success' })
       }
     }
+
+    // The current board/search may exclude the new post. Show its committed
+    // identity, including partial attachment success, so retry never means a
+    // second post. The existing warning toast remains visible on navigation.
+    uni.navigateTo({ url: `/pages/post/index?id=${result.id}` })
 
     // Fire-and-forget bilingual fill. Same strategy as the item publish
     // flow: don't block the toast, best-effort upsert the other locale.
@@ -1597,7 +1668,7 @@ function onSharePost(post: Post) {
   if (typeof window !== 'undefined' && window.location?.origin) origin = window.location.origin
   // #endif
   const url = `${origin}/share-post/${post.id}`
-  const preview = post.content.slice(0, 60).replace(/\n/g, ' ')
+  const preview = (post.title || post.content).slice(0, 60).replace(/\n/g, ' ')
   uni.setClipboardData({
     data: `${preview}…\n${url}`,
     success: () => uni.showToast({ title: t('plaza.contentCopied'), icon: 'success' }),
@@ -2732,7 +2803,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   .page { padding-bottom: 0; height: 100dvh; overflow: hidden; max-width: none; margin: 0; }
   /* Center the whole single column — search, tabs and feed share one
      640px reading width so the toolbar aligns with the posts. */
-  .search-wrap, .feed-tabs, .feed { max-width: 640px; margin-left: auto; margin-right: auto; }
+  .search-wrap, .feed-tabs, .board-filters, .feed { max-width: 640px; margin-left: auto; margin-right: auto; }
   .feed { padding-bottom: 0; }
   /* Search bar + compose button share the toolbar row on desktop. */
   .search-wrap { display: flex; align-items: center; gap: 10px; }
@@ -2762,4 +2833,16 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   .comp-footer { padding: 14px 24px; }
 }
 /* #endif */
+.board-filters { flex-shrink: 0; width: 100%; height: 52px; }
+.board-row { display: flex; gap: 8px; padding: 8px 16px; width: max-content; }
+.board-chip { flex-shrink: 0; padding: 8px 12px; border-radius: 16px; background: var(--bg-subtle); color: var(--text-muted); font-size: 13px; cursor: pointer; }
+.board-chip.active { color: var(--accent-action); background: var(--bg-elev-1); box-shadow: inset 0 0 0 1px var(--accent-action); }
+.board-chip:focus-visible { outline: 2px solid var(--accent-action); outline-offset: 2px; }
+.post-board { display: block; color: var(--accent-action); font-size: 12px; margin-bottom: 6px; }
+.post-topic-title { display: block; font-size: 19px; font-weight: 700; line-height: 1.4; margin-bottom: 8px; overflow-wrap: anywhere; }
+.composer-mode { display: flex; gap: 8px; padding: 12px 16px 4px; }
+.composer-topic { padding: 12px 16px 0; }
+.topic-title-input { width: 100%; height: 44px; font-size: 18px; font-weight: 600; color: var(--text-primary); border-bottom: 1px solid var(--line-hair); }
+.topic-board-label { display: block; color: var(--text-muted); font-size: 12px; margin: 12px 0 8px; }
+.topic-board-options { display: flex; gap: 8px; flex-wrap: wrap; }
 </style>

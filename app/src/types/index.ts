@@ -1,3 +1,4 @@
+import type { PostCategory } from '../utils/communityPost'
 import type { ListingDetails } from '../utils/listingDetails'
 // ============================================
 // CAACI Marketplace - Type Definitions
@@ -123,6 +124,8 @@ export interface Meetup {
 }
 
 export interface Post {
+  title?: string | null
+  category?: PostCategory | null
   id: string
   user_id: string
   content: string

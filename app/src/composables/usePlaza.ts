@@ -4,6 +4,7 @@ import { useAuth } from './useAuth'
 import { useModeration } from './useModeration'
 import { useI18n } from './useI18n'
 import type { Post, PostComment } from '../types'
+import { normalizePostTopic, type PostCategory } from '../utils/communityPost'
 import { expandSearch, friendlyErrorMessage } from '../utils'
 import { checkContent, clearLocalDuplicate, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
 import { mpTextGate } from './useWechatSecCheck'
@@ -70,7 +71,7 @@ const POST_COMMENT_FIELDS = 'id, post_id, user_id, content, content_i18n, parent
 // shipping down the wire even when no UI consumes it. This enumerates
 // all current posts columns; add here when a new read dependency lands.
 const POST_COLUMNS =
-  'id, user_id, content, images, image_dimensions, content_i18n, source_lang, is_official, is_pinned, like_count, comment_count, status, created_at, updated_at'
+  'id, user_id, title, category, content, images, image_dimensions, content_i18n, source_lang, is_official, is_pinned, like_count, comment_count, status, created_at, updated_at'
 // post_items is mig 041's join table; replaces the single posts.attached_item_id
 // column. Display order is enforced by the .order(..., { foreignTable: 'post_items' })
 // clause on every SELECT below — Supabase doesn't sort nested relations otherwise.
@@ -157,8 +158,8 @@ export function usePlaza() {
   const { currentUser } = useAuth()
   const { t, lang } = useI18n()
 
-  async function fetchPosts(options: { page?: number; reset?: boolean; search?: string; sort?: 'recent' | 'hot' } = {}) {
-    const { page = 0, reset = false, search, sort = 'recent' } = options
+  async function fetchPosts(options: { page?: number; reset?: boolean; search?: string; category?: PostCategory; sort?: 'recent' | 'hot' } = {}) {
+    const { page = 0, reset = false, search, category, sort = 'recent' } = options
     const requestId = ++latestRequestId
     if (reset) {
       posts.value = []
@@ -176,7 +177,8 @@ export function usePlaza() {
 
       let data: any, error: any
       if (search && search.trim()) {
-        // Posts fuzzy search (migration 062): trigram match on content OR
+        // Community search includes titles and applies the board before paging.
+        // The legacy search_posts_fuzzy RPC remains for older clients. Match content OR
         // author nickname, ranked — so a person's name surfaces their posts
         // (#11) and typos/partial words match (#12). The RPC sorts internally
         // (pinned → rank → hot/recent → recency) and omits post_items chips.
@@ -187,7 +189,8 @@ export function usePlaza() {
           .map(t => t.replace(/[%_]/g, '\\$&').replace(/[.,()]/g, '').slice(0, 100))
           .filter(Boolean)
         if (terms.length === 0) { hasMore.value = false; return }
-        const res = await supabase.rpc('search_posts_fuzzy', {
+        const res = await supabase.rpc('search_community_posts', {
+          category_in: category ?? null,
           terms_in: terms,
           sort_in: sort,
           limit_in: PAGE_SIZE,
@@ -204,6 +207,7 @@ export function usePlaza() {
           .select(POST_SELECT)
           .eq('status', 'active')
           .order('is_pinned', { ascending: false })
+        if (category) q = q.eq('category', category)
         if (sort === 'hot') {
           q = q
             .order('like_count', { ascending: false })
@@ -314,6 +318,8 @@ export function usePlaza() {
     images: string[] = [],
     attachedItemIds: string[] = [],
     extras: {
+      title?: string | null
+      category?: PostCategory | null
       image_dimensions?: Array<{ w: number; h: number }>
       content_i18n?: Record<string, string> | null
       source_lang?: string | null
@@ -334,6 +340,7 @@ export function usePlaza() {
     let primaryWriteStarted = false
     let postCommitted = false
     const trimmed = content.trim()
+    let moderationText = trimmed
 
     const assertAccountCurrent = (committed = false) => {
       if (accountToken.userId !== userId || !isAccountRequestCurrent(accountToken)) {
@@ -346,6 +353,12 @@ export function usePlaza() {
 
     try {
       assertAccountCurrent()
+      const topic = normalizePostTopic(extras.title, extras.category)
+      moderationText = topic.title ? `${topic.title}\n${trimmed}` : trimmed
+      if (topic.title) {
+        const safety = checkContent(topic.title, { kind: 'post' })
+        if (!safety.ok) throw new Error(`moderation_block:${safety.category}:${safety.reason || ''}`)
+      }
       if (!trimmed && images.length === 0 && attachedItemIds.length === 0) {
         throw new Error('content_required')
       }
@@ -358,21 +371,24 @@ export function usePlaza() {
       if (trimmed) {
         const safety = checkContent(trimmed, { kind: 'post' })
         if (!safety.ok) throw new Error(`moderation_block:${safety.category}:${safety.reason || ''}`)
-        if (isLocalDuplicate(accountToken, 'post', trimmed)) throw new Error('duplicate_post')
+      }
+      if (moderationText) {
+        if (isLocalDuplicate(accountToken, 'post', moderationText)) throw new Error('duplicate_post')
         duplicateHeld = true
-        const ai = await remoteModerate(trimmed, accountToken)
+        const ai = await remoteModerate(moderationText, accountToken)
         if (ai.flagged) throw new Error(`moderation_block:sensitive_word:ai(${ai.categories.join(',')})`)
         if (ai.categories.includes('spam_ad') && extras.confirmSuspectedAd) {
           if (!await extras.confirmSuspectedAd()) throw new Error('ad_declined')
         }
         /* mp store review: WeChat's own classifier (no-op on H5). */
-        await mpTextGate(trimmed, 3, accountToken)
+        await mpTextGate(moderationText, 3, accountToken)
         assertAccountCurrent()
       }
 
       const payloadContent = trimmed || ' '
       const basePayload: Record<string, any> = {
         user_id: userId,
+        ...topic,
         content: payloadContent,
         images,
       }
@@ -470,7 +486,7 @@ export function usePlaza() {
       // Keep the duplicate hold for unknown/committed outcomes so a retry
       // cannot create a second post while realtime/history catches up.
       if (duplicateHeld && shouldCompensateMutationFailure(tagged)) {
-        clearLocalDuplicate(accountToken, 'post', trimmed)
+        clearLocalDuplicate(accountToken, 'post', moderationText)
       }
       throw tagged
     }

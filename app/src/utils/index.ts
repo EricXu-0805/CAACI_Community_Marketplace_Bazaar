@@ -174,6 +174,8 @@ const MODERATION_MESSAGES: Record<string, { en: string; zh: string }> = {
 // rate-limit families above. Previously thrown as raw English strings
 // ('Content too long', etc.) or a stray i18n key, which leaked to zh users.
 const CONTENT_MESSAGES: Record<string, { en: string; zh: string }> = {
+  post_title_invalid: { en: 'Use a single-line title of up to 120 characters.', zh: '标题请使用单行，最多 120 字' },
+  post_topic_required: { en: 'Add a title and choose a board for your topic.', zh: '话题请填写标题并选择板块' },
   content_required: { en: 'Please write something first.',    zh: '请先输入内容' },
   content_too_long: { en: 'Content is too long (max 2000).',  zh: '内容太长（最多 2000 字）' },
   message_too_long: { en: 'Message is too long (max 2000).',  zh: '消息太长（最多 2000 字）' },

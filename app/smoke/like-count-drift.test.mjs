@@ -59,6 +59,7 @@ async function loadPlaza(insertError) {
   }
 
   const mocks = {
+    '../utils/communityPost': source('src/utils/communityPost.ts'),
     vue: 'export const ref = value => ({ value })',
     './useSupabase': 'export function useSupabase(){ return { supabase: globalThis.__likeDriftSupabase } }',
     './useAuth': `export function useAuth(){ return { currentUser: { value: { id: '${UID}' } } } }`,
@@ -75,7 +76,7 @@ async function loadPlaza(insertError) {
 
   let input = source('src/composables/usePlaza.ts').replace("'./accountScope'", `'${accountScopeUrl}'`)
   for (const [specifier, moduleSource] of Object.entries(mocks)) {
-    input = input.replace(`'${specifier}'`, `'${moduleDataUrl(moduleSource)}'`)
+    input = input.replace(`'${specifier}'`, `'${compiledDataUrl(moduleSource)}'`)
   }
   const { usePlaza } = await import(`${compiledDataUrl(input)}#${insertError ? 'dup' : 'fresh'}`)
   accountScope.transitionAccount(UID)
