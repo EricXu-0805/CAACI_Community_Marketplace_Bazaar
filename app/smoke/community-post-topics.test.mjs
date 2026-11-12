@@ -21,13 +21,14 @@ test('topic input keeps legacy updates nullable and rejects incomplete/invalid m
 })
 
 let sequence = 0
-async function loadPlaza({ postError = null, attachmentError = null, switchAccountAfterInsert = false } = {}) {
+async function loadPlaza({ postError = null, attachmentError = null, switchAccountAfterInsert = false, switchAccountAfterModeration = false } = {}) {
   const writes = [], cleared = [], moderated = [], query = [], rpc = []
   const scopeUrl = compile(`${source('composables/accountScope.ts')}\n// fixture ${++sequence}`)
   const scope = await import(scopeUrl)
   scope.transitionAccount('user-a')
   const stub = {
     writes, cleared, moderated,
+    async moderationGate() { if (switchAccountAfterModeration) scope.transitionAccount('user-b') },
     supabase: {
       from(table) {
         let payload
@@ -60,7 +61,7 @@ async function loadPlaza({ postError = null, attachmentError = null, switchAccou
       clearLocalDuplicate=(token,kind,text)=>globalThis.__communityTopicTest.cleared.push(text),
       isLocalDuplicate=()=>false,
       remoteModerate=async(text)=>{globalThis.__communityTopicTest.moderated.push(text);return {flagged:false,categories:[]}}`,
-    './useWechatSecCheck': 'export const mpTextGate=async()=>{}',
+    './useWechatSecCheck': 'export const mpTextGate=async()=>globalThis.__communityTopicTest.moderationGate()',
     '../utils/sentry': 'export const addBreadcrumb=()=>{}, captureException=()=>{}',
     '../utils/publicResource': 'export const assertI18nWrite=()=>{}, assertPublicMediaWrite=()=>{}, sanitizeItemResources=x=>x, sanitizePostResources=x=>x',
   }
@@ -130,4 +131,13 @@ test('category is applied on the server for ordinary and search pagination', asy
   assert.equal(h.rpc[0][0], 'search_community_posts')
   assert.equal(h.rpc[0][1].category_in, 'alumni-career')
   assert.equal(h.rpc[0][1].offset_in, 40)
+})
+
+
+test('account change while topic WeChat moderation is pending prevents any post write', async () => {
+  const h = await loadPlaza({ switchAccountAfterModeration: true })
+  await assert.rejects(h.plaza.createPost('Body', [], [], topic), error => error.mutationCommitState === 'not_committed')
+  assert.equal(h.writes.length, 0)
+  assert.equal(h.plaza.posts.value.length, 0)
+  assert.deepEqual(h.cleared, ['Study group\nBody'])
 })
