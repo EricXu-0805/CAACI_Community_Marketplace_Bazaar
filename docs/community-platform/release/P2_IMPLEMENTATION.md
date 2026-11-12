@@ -5,7 +5,7 @@
 - 基线：`7b18f2052e52a4268c25407d0584748477cbf978`。
 - 分支：`codex/community-topics-20261112`。
 - 工作区：`/Users/xiaogangxu/Downloads/CAACI/Community-Platform/implementation`。
-- 远端当前提交：`c52badf273aee9480f228d0d69fb47548ad53cb3`（功能提交 e4c776b，加 CI 环境修复）；[草稿 PR #369](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/pull/369)。主代理通过 GitHub 连接提交当前工作树的18个完整文件，包含后续两处修复；没有仅取旧暂存区。本地 worktree 未创建对应 commit，VM 以远端分支为准。
+- 远端当前提交：`005ca9d6b5ac23346dfeb38f3deb95984bffd27b`（功能提交 e4c776b、CI 环境修复 c52badf、测试修正 005ca9d）；[草稿 PR #369](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/pull/369)。首个功能提交通过 GitHub 连接提交当时工作树的18个完整文件，包含后续两处修复；没有仅取旧暂存区。本地 worktree 未创建对应 commit，VM 以远端分支为准。
 - 原项目目录的未提交登录/恢复改动未合入，也未改动。
 
 ## 本批实现
@@ -72,4 +72,10 @@ Mac本轮Node路径为 `/Users/xiaogangxu/.npm/_npx/52027bd8fc0022aa/node_module
 
 ## 首轮CI补记
 
-PR369首批提交的H5编译已完成，但Build H5及public smoke均在Playwright安装阶段被ubuntu-latest升级至26.04阻断，尚未执行对应浏览器验收。已仅将三个安装Playwright的job固定Ubuntu24.04，等待主代理新提交及Actions复验；详见 [P2_CI_FINDINGS](P2_CI_FINDINGS.md)，不能记为CI全绿。
+PR369首批提交的H5编译已完成，但Build H5及public smoke均在Playwright安装阶段被ubuntu-latest升级至26.04阻断，尚未执行对应浏览器验收。已仅将三个安装Playwright的job固定Ubuntu24.04；c52badf的H5 job随后成功，最终005ca9d完整CI仍待核验；详见 [P2_CI_FINDINGS](P2_CI_FINDINGS.md)，不能记为CI全绿。
+
+## 草稿PR最新交接补记
+
+Runner修复后，head `c52badf` 的H5及编译后浏览器验收、类型检查、微信构建通过；Boundary为1994通过/1失败/1跳过，唯一失败是本批审核文本变量变化后旧静态测试标记未同步。仅两个测试文件已修，新增审核中换号的0写入行为验证，专项11/11通过，产品未变。
+
+最新已提交head为 **`005ca9d6b5ac23346dfeb38f3deb95984bffd27b`**；**最新完整CI待核验**，旧run的public sweep未记录终态并已停止监控。详见 [P2_CI_FINDINGS](P2_CI_FINDINGS.md) 与 [boundary-fix.log](p2-checks/boundary-fix.log)。这仍是草稿PR交接，不能据先前部分成功关闭P2或视为生产发布完成。

@@ -150,33 +150,33 @@
     },
     {
       "path": "release/CURRENT_STATUS.html",
-      "bytes": 8647,
-      "sha256": "7e02c3d8aed64a0ddcaa493130b7c91613d5699412c64f50c02a1556de378871"
+      "bytes": 9700,
+      "sha256": "8d1fdf3151091f00d3ec6f3dd7812e112d7256d17fa76fe6e57a14e617c72870"
     },
     {
       "path": "release/CURRENT_STATUS.md",
-      "bytes": 5720,
-      "sha256": "4cce3d5133e842d6de28cf7b3ad602c013c0fd23104bcd427ed8504550007e0d"
+      "bytes": 6711,
+      "sha256": "37f6216cfeb9c7a0a5a6686f28cb5679e83b961edb8a09f418bad4547243eb0b"
     },
     {
       "path": "release/P2_CI_FINDINGS.html",
-      "bytes": 5915,
-      "sha256": "1260d0db918f01a923f4e59b544605b8e8096b0b8684fe848be1723af16c2a7f"
+      "bytes": 8041,
+      "sha256": "d8d16d1f60c957be8a7977d675fb462946919fd21fa5ee10ab5ddb1f6d04fd37"
     },
     {
       "path": "release/P2_CI_FINDINGS.md",
-      "bytes": 3076,
-      "sha256": "c7f9eb3f4798310a685f3b814655382c60549957d8e17e6aed7a1cdbef547214"
+      "bytes": 4920,
+      "sha256": "a470f09461d98a1c2d271c7c88a598e9b2406dd5357a1235aca4e186c424ac90"
     },
     {
       "path": "release/P2_IMPLEMENTATION.html",
-      "bytes": 11679,
-      "sha256": "80619822f0b972b538596833cc9e5cebb7ecad6f8680903308dac6d7e3ccaf21"
+      "bytes": 12545,
+      "sha256": "c7c6cb2baafdd8186f3876842bb371e4d5bcaf8f781d02db1ea7e0573f81178a"
     },
     {
       "path": "release/P2_IMPLEMENTATION.md",
-      "bytes": 8436,
-      "sha256": "fbee4f2c35eb9753fc5646c8be032002b9125b77736213a3abd68341cb6fd77a"
+      "bytes": 9213,
+      "sha256": "f0b34208d8e7d648073bb52579ff39b568a971caa3e3e916326fa4a173c429ae"
     },
     {
       "path": "release/PUBLIC_HTTP_CHECK.json",
@@ -202,6 +202,11 @@
       "path": "release/community-mobile.jpg",
       "bytes": 62868,
       "sha256": "321aca0c30ddb3bd3631c86c575ebe176fb659eca7f30457595d63c36152698f"
+    },
+    {
+      "path": "release/p2-checks/boundary-fix.log",
+      "bytes": 2559,
+      "sha256": "c7b2ee15629c4b7d4e7b7e2351521637907fdb6cd085d100c63b1a3960d8f1df"
     },
     {
       "path": "release/p2-checks/browser-final.log",

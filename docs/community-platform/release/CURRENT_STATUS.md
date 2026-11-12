@@ -39,7 +39,7 @@ P3-P8: 未实施；按依赖逐批进行。
 - 基线 main：7b18f2052e52a4268c25407d0584748477cbf978。
 - 续接分支：codex/community-topics-20261112。
 - 本轮新增 nullable title/category、发布/列表/详情、板块筛选与兼容搜索；保留旧动态及本人最多三件在售商品关联。
-- 远端提交：`c52badf273aee9480f228d0d69fb47548ad53cb3`；[草稿 PR #369](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/pull/369)，未合并。
+- 远端提交：`005ca9d6b5ac23346dfeb38f3deb95984bffd27b`；[草稿 PR #369](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/pull/369)，未合并。
 - 已过类型检查、54项关联测试、临时合成schema PostgreSQL检查、3个新HTTP fixture浏览器用例、6个原附件/键盘用例及双端构建。Node为22.23.2，本机npm11.12.1与仓库声明10.8.2不同，声明版本由CI继续核对。
 - 详细命令、原始日志与未验范围见 [P2_IMPLEMENTATION](P2_IMPLEMENTATION.md)。
 - 本地 worktree 仍是未提交副本；GitHub提交读取的是当前完整工作树（含两处审查修复），VM以远端分支续接。
@@ -65,6 +65,14 @@ P3-P8: 未实施；按依赖逐批进行。
 
 ## GitHub 检查进度
 
-首个提交的类型检查与微信构建通过；网页构建在编译完成后因 Ubuntu26.04 不受 Playwright1.60 支持而未能安装测试浏览器，公开页面巡检同因未启动。已在 c52badf 将三个浏览器检查 job 固定至 Ubuntu24.04，未改依赖或账号权限。新一轮 [CI](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43211362178) 正在运行，结果随后追加。详情见 [CI 说明](P2_CI_FINDINGS.md)。
+首个提交的类型检查与微信构建通过；网页构建在编译完成后因 Ubuntu26.04 不受 Playwright1.60 支持而未能安装测试浏览器，公开页面巡检同因未启动。已在 c52badf 将三个浏览器检查 job 固定至 Ubuntu24.04，未改依赖或账号权限。该轮结果见下方追加记录；[最新提交的 CI](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43212596901) 仍在运行，接手时必须重新读取。详情见 [CI 说明](P2_CI_FINDINGS.md)。
 
 Supabase 自动预览在项目设置中关闭，本次检查标记 skipped；受保护账号测试也跳过，不能算通过。当前不具备已验证的完整候选数据库/双账号链路。
+
+### 最后一次检查与交接边界（005ca9d）
+
+- c52badf 版本的类型、微信构建和 H5 job 已成功；H5包括编译后登录恢复、管理界面与草稿测试。
+- 同轮 Boundary 结果为1994通过、1失败、1跳过。失败来自既有静态断言仍匹配旧变量名；现已同步并补了微信审核等待期间切换账号不得写入帖子的行为检查，专项11/11通过。
+- 最后提交005ca9d仅修改两个测试文件，产品代码未再修改。**新提交的完整GitHub CI尚待结束；不要把c52badf的结果改写成005ca9d全绿。** 最新结果在PR #369的Checks；前一轮公开page sweep尚未完成。
+- 本次交付到研究/示例demo和可续接的正式代码草稿；P1/P2保持部分完成，不能据此应用生产迁移或开始真实用户内测。
+- 本机原工程仍有20项tracked修改和8项untracked，数量与接手时相同；本轮没有把这些改动带入PR。
