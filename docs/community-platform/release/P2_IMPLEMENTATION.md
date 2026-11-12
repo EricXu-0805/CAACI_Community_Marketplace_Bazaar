@@ -1,0 +1,75 @@
+# P2 首批代码交付与验收记录
+
+记录日期：2026-11-12（America/Chicago）。状态：本地首批实现与针对性检查完成，未部署，P2尚未完成。独立复核已通过两项修正。代码已在 GitHub 草稿 PR 中提交；生产发布尚未进行。
+
+- 基线：`7b18f2052e52a4268c25407d0584748477cbf978`。
+- 分支：`codex/community-topics-20261112`。
+- 工作区：`/Users/xiaogangxu/Downloads/CAACI/Community-Platform/implementation`。
+- 远端当前提交：`c52badf273aee9480f228d0d69fb47548ad53cb3`（功能提交 e4c776b，加 CI 环境修复）；[草稿 PR #369](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/pull/369)。主代理通过 GitHub 连接提交当前工作树的18个完整文件，包含后续两处修复；没有仅取旧暂存区。本地 worktree 未创建对应 commit，VM 以远端分支为准。
+- 原项目目录的未提交登录/恢复改动未合入，也未改动。
+
+## 本批实现
+
+1. 新迁移 `supabase/migrations/20261112120000_community_post_topics.sql` 为posts增加nullable title/category。旧动态二者null；新话题二者同时有效。标题trim后单行1–120字符、最多480字节，板块为五个社区slug，独立于商品类别。只追加必要SELECT/INSERT列授权，未开放标题编辑、官方/置顶权限，复用数据库文本校验及审核。
+2. 原发帖面板增加动态/话题模式；话题必填标题与板块，保留正文/图片/本人商品非空、正文2000字、4图、最多3件本人active商品规则。广场、详情、个人帖子列表显示标题/板块，服务器在分页前应用板块筛选。客户端分享文案优先标题。
+3. 新增invoker权限的 `search_community_posts`，支持标题/正文/作者搜索与板块过滤，保留原 `search_posts_fuzzy` 的签名和返回结构。搜索仍省略商品chips。
+4. 标题进入既有客户端/AI/微信审核流程；举报快照保存标题/板块，管理员现场及删帖后的证据预览均显示标题、板块和正文摘要，旧快照仍回退正文。重发的两个函数仅扩充post分支，权限及其他目标分支保持原状。
+5. 保留已有未提交/已提交但附件失败/提交结果未知语义及账号代次保护。成功及部分成功都进入已提交ID的详情，避免当前板块/搜索隐藏刚发的内容；附件失败仍明确提示，不重建帖子或清除已提交媒体。
+
+主要源码：`app/src/composables/usePlaza.ts`、`app/src/utils/communityPost.ts`、`app/src/pages/{plaza,post,seller}/index.vue`、`app/src/types/index.ts`、中英词条与错误文案。另同步迁移checksum、README迁移数量及相关断言。
+
+## 已执行检查
+
+本轮Node **22.23.2**；实际npm **11.12.1**（仓库packageManager声明10.8.2，未改锁文件）。依赖采用仓库要求的 `--legacy-peer-deps`；隔离安装使用 `--ignore-scripts`，没有执行改变共用git配置的prepare。测试/构建只使用占位环境，不读取生产配置。
+
+| 检查 | 结果与实际覆盖 |
+| --- | --- |
+| 关联Node测试 | 54/54通过：输入边界、标题审核、null旧动态、服务端板块查询、部分成功、未知提交/换号保护、原点赞/评论/媒体/账号边界及迁移清单。见 [unit.log](p2-checks/unit.log)。 |
+| 临时真实PostgreSQL 17 | 1/1测试通过，内部多项断言：执行新迁移、旧RPC原样、旧行/null写入、标题/板块非法输入、列ACL/RLS、原本人active/3件商品规则、举报证据不可伪造/修改、管理员接口权限、删帖后标题板块与旧快照回退。命令回执exit0；最后用例耗时约1.63秒。 |
+| 新浏览器用例 | 最终3/3通过：旧动态共存、板块过滤、标题搜索/详情；从Campus life筛选下发布Alumni话题和无板块动态，均进入新帖详情。见 [browser-final.log](p2-checks/browser-final.log)。 |
+| 原附件/键盘浏览器用例 | 6/6通过：附件模态层及320/390/834/1194px键盘视口。该次同跑的新详情fixture曾错误返回两行，随后仅修fixture并由最终3/3重跑通过；不要把旧日志的1 failed当作当前未解决缺陷。原始记录 [browser.log](p2-checks/browser.log)。 |
+| 类型检查 | `npm run type-check` exit0。见 [type.log](p2-checks/type.log)。 |
+| H5 / 微信构建 | 最终产品修改后两者均exit0。见 [h5.log](p2-checks/h5.log)、[mp.log](p2-checks/mp.log)。 |
+| 迁移清单与diff | 181个checksum全部通过；`git diff --check`通过。见 [manifest.log](p2-checks/manifest.log)。 |
+| 独立只读复核 | 首轮发现举报标题证据遗漏、过滤隐藏刚发帖；两处已修。复核确认仅post分支扩充、权限未放宽，导航覆盖success/partial。复核代理未代跑测试。 |
+
+**检查范围限制：** PostgreSQL使用临时合成schema，posts RLS为简化规则，并复用相关真实helper、商品cap/策略、举报函数；不是完整迁移链或完整停权/拉黑/封禁作者可见性验收。浏览器通过HTTP mock和合成会话运行，不是真实PostgREST、托管Auth或双账号真人流程。微信仅编译通过，未做真机交互。
+
+## 可重跑命令
+
+在独立工作区根目录使用Node22。以下不要求生产凭证；本地PG测试会创建并清理专用临时数据库，某些Mac执行环境需允许其共享内存/本地socket。
+
+```sh
+node --test scripts/community-post-topics.test.mjs
+node --test app/smoke/community-post-topics.test.mjs app/smoke/like-count-drift.test.mjs app/smoke/plaza-account-transition.test.mjs app/smoke/plaza-comment-read-state.test.mjs app/smoke/upload-account-boundary.test.mjs app/smoke/public-resource-boundary.test.mjs app/smoke/frontend-account-race-regression.test.mjs scripts/plaza-base-table-acl-forward-boundary.test.mjs scripts/migration-version-boundary.test.mjs scripts/release-migration-count-boundary.test.mjs
+npm run verify:migrations
+git diff --check
+```
+
+客户端命令从 `implementation/app` 运行。全新VM先按仓库锁文件安装 `npm ci --legacy-peer-deps`，正式CI沿用仓库声明的npm版本。
+
+```sh
+export VITE_SUPABASE_URL=https://00000000000000000000.supabase.co
+export VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ci-stub-key
+export VITE_BASE_URL=https://ci-app-stub.invalid
+npm run type-check
+npm run build:h5
+npm run build:mp-weixin
+SMOKE_PORT=5186 npm run smoke -- community-post-topics.spec.ts plaza-attach-picker-is-modal.spec.ts
+```
+
+Mac本轮Node路径为 `/Users/xiaogangxu/.npm/_npx/52027bd8fc0022aa/node_modules/node/bin/node`；这是本机缓存位置，VM需自行配置Node22，不能依赖此绝对路径。
+
+## 未完成与下一步
+
+- **P2仍缺“只补失败商品关联”的恢复UI。** 当前仅保留partial状态/提示并进入已提交帖子；不能只补验收就宣称P2关闭。尚无持久client_request_id、原子发布RPC、跨重启结果未知恢复或恰好一次保证。
+- GitHub CI 在 PR 创建后触发，最终状态见 CURRENT_STATUS；本轮未运行完整全部测试、真实隔离数据库全迁移链/PostgREST/托管Auth及双账号验收；未验证生产兼容窗、真实登录dirty改动或微信真机。npm10.8.2声明环境尚待CI核对。
+- 尚未应用任何生产或托管库迁移、部署正式代码。公开官网preview与生产数据库共用，不能用它替代隔离写测试。
+- 服务端share-post的OG预览仍使用正文；标题翻译、长文/富文本、标签、内容类型、解决状态、关注收藏、跨站身份、活动/付费权益均未实现。
+- 安装输出提示现有依赖审计告警，本批未升级依赖或运行audit fix；是否阻断发布由现有依赖/CI流程评估。
+
+发布顺序：核对目标隔离schema/权限→应用候选迁移→真实API/双账号与旧客户端验证→部署客户端。回滚优先回退客户端，保留nullable列、新话题数据和旧RPC；不可直接删列丢失已写内容。按需关闭新话题入口也应保留动态兼容。生产步骤由主代理/后续负责人独立执行，本报告不是生产应用回执。
+
+## 首轮CI补记
+
+PR369首批提交的H5编译已完成，但Build H5及public smoke均在Playwright安装阶段被ubuntu-latest升级至26.04阻断，尚未执行对应浏览器验收。已仅将三个安装Playwright的job固定Ubuntu24.04，等待主代理新提交及Actions复验；详见 [P2_CI_FINDINGS](P2_CI_FINDINGS.md)，不能记为CI全绿。

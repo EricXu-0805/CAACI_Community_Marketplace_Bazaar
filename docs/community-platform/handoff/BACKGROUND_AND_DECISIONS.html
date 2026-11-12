@@ -1,0 +1,144 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>项目背景与决定 · V4</title><style>*{box-sizing:border-box}body{margin:0;background:#f6f5f0;color:#292b26;font:16px/1.85 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}header{padding:16px 4vw;border-bottom:1px solid #deded5;background:#fff;display:flex;gap:22px;align-items:center;flex-wrap:wrap}header strong{margin-right:auto}a{color:#94472e;text-underline-offset:4px}header a{text-decoration:none;font-size:14px}main{max-width:1120px;margin:36px auto 70px;background:white;border:1px solid #e0e1d8;padding:40px 48px;border-radius:9px}h1{font-size:30px;line-height:1.45;margin:0 0 20px}h2{margin-top:42px;font-size:23px;border-bottom:1px solid #ecece5;padding-bottom:9px}h3{font-size:19px;margin-top:28px}table{border-collapse:collapse;font-size:14px;line-height:1.7;display:block;overflow:auto;max-width:100%;margin:22px 0}th,td{border:1px solid #dddfd6;padding:12px 14px;vertical-align:top;min-width:140px}th{background:#f3f3eb;text-align:left}code{background:#f3f3ed;padding:2px 5px;font-size:.87em;overflow-wrap:anywhere}pre{padding:16px;background:#f3f3ed;overflow:auto;line-height:1.6}pre code{padding:0}li{margin:7px 0}img{max-width:100%;height:auto}footer{max-width:1120px;margin:0 auto 40px;color:#707168;padding:0 24px;font-size:13px}@media(max-width:700px){header{gap:12px;padding:13px 18px}header strong{width:100%}main{margin:14px 10px 36px;padding:25px 19px}h1{font-size:25px}h2{font-size:21px}body{font-size:15px}td,th{min-width:130px}}@media print{body{background:white}header,footer{display:none}main{border:0;padding:0;margin:0;max-width:none}h2{break-after:avoid}tr{break-inside:avoid}table{display:table;font-size:10px}td,th{min-width:0;padding:7px}}</style></head><body><header><strong>Illini Market · 项目交接</strong><a href="../plan.html">方案</a><a href="../research/PLATFORM_RESEARCH.html">平台研究</a><a href="START_HERE.html">OMO接手</a><a href="../release/CURRENT_STATUS.html">当前状态</a><a href="https://illini-community-demo.vercel.app/">打开公开演示 ↗</a></header><main><h1>项目背景与决定</h1>
+<p>更新：2026-11-12。本文是给新开发者的背景，不包含私聊原图或合作方的私人信息。</p>
+<h2>背景</h2>
+<p>Eric（Guoyi Xu）参与 UIUC 学生及 CAACI 社区相关项目，现有工作包含二手平台 Illini Market、CAACI 官网、活动和未来商业权益设想。原始讨论希望让这些内容互相带来用户和持续交流，尤其服务新生安顿、生活问答、校友经验、求职交流与线下活动。</p>
+<p>原对话“制定协同平台计划”形成过 V1 和 V2。Eric 随后要求在 Mac 接续，并要求阅读全部对话。已读取两轮文字、九张截图的可见内容和 V1→V2 文档修改，恢复 V2 全文。截图有语音转写，没有语音文件；没有把不可见语音作为事实。</p>
+<p>原对话提出先做纯 UI 给合作方看。首轮据此制作了独立本地原型，随后 Eric 提出本轮修订：调研范围需要扩大，方案要足够详细以供另一台 VM 的 OMO 接手，产品不能像把不同网站模块拼在一起，也不能充满 AI 式文案。</p>
+<h2>用户明确提出的要求</h2>
+<table>
+<thead>
+<tr>
+<th>要求</th>
+<th>实施含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>不只参考一亩三分地与美卡论坛</td>
+<td>比较社区、交易、活动和成熟工具产品的具体设计，不用一站模板包办所有页面</td>
+</tr>
+<tr>
+<td>详细调查，再判断怎么执行</td>
+<td>每项设计给出来源、适用任务、取舍和验证办法</td>
+</tr>
+<tr>
+<td>界面精美、清楚、不繁杂、降低 AI 味</td>
+<td>调整内容顺序、重复入口、列表密度、文案和状态，不仅换颜色字体</td>
+</tr>
+<tr>
+<td>后面接口留好</td>
+<td>先明确对象归属、稳定 ID、来源、权限和失败约定；业务未就绪时不展示假功能</td>
+</tr>
+<tr>
+<td>可以开始后续迭代，有 GitHub 权限可动手</td>
+<td>提交可审查的小批成果，保留现有工程和在途工作</td>
+</tr>
+<tr>
+<td>OMO 将在另一虚拟机运行</td>
+<td>文档与样例必须可搬走，不依赖当前聊天、Mac 绝对路径或当前登录状态</td>
+</tr>
+<tr>
+<td>需要可转发的 demo 网址</td>
+<td>独立部署示例页面，普通访客可打开；用户自行转发</td>
+</tr>
+<tr>
+<td>模型选型不急，主要由 AI 开发，Eric 主导</td>
+<td>先解决产品与工程问题；不为站内 AI 增加无用途入口</td>
+</tr>
+</tbody>
+</table>
+<h2>当前采用的设计建议</h2>
+<p>这些是本次实施选择，尚无证据表明 Eric 已逐项认可。</p>
+<ul>
+<li>Illini Market 继续作为产品名称和社区核心；首轮不做重新命名或跨站品牌重塑。</li>
+<li>首屏直接展示社区内容。主导航收敛为社区、二手、活动、消息、我的；旧 home/community 路径保留兼容。</li>
+<li>五个话题板块：校园生活、二手与安顿、校友求职、活动搭子、本地优惠。板块管理话题；商品、活动、指南分别使用适合自己的详情。</li>
+<li>主题类型和话题板块分开：例如“校友求职”下可以有提问或经验。公告等官方身份需要权限，不能让用户自选成为官方发布。</li>
+<li>讨论用便于扫描的主题行；商品用图片、价格、状态；活动突出时间、地点、主办来源和报名状态。</li>
+<li>对外 demo 使用合成示例人物、内容和素材；未来 Local Pass 等尚未可用能力留在方案和接口文件，不占普通用户首屏。</li>
+</ul>
+<h2>现有系统如何分工</h2>
+<table>
+<thead>
+<tr>
+<th>系统</th>
+<th>已知职责</th>
+<th>社区应怎样连接</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Illini Market</td>
+<td>账户、二手、广场、评论、私信、举报与管理员能力</td>
+<td>扩展现有领域，保留既有权限与旧内容</td>
+</tr>
+<tr>
+<td>CAACI 官网 <code>a2751012962/caaciorg</code></td>
+<td>React/Vite 官网；源码已有文章、会员、活动报名、志愿者、商业目录及收款等能力</td>
+<td>优先链接和公开内容引用；按可验证接口逐步接入</td>
+</tr>
+<tr>
+<td>旧官网相关工程 <code>JiachenTu/CAACI_web</code></td>
+<td>另一套历史会员工程</td>
+<td>不当成当前官网部署的同义词；仅有明确迁移需要时查阅</td>
+</tr>
+<tr>
+<td>Local Pass</td>
+<td>商业权益与订阅方向</td>
+<td>当前实现/运营状态仍需对应系统证据，不把未来资格显示为已拥有</td>
+</tr>
+</tbody>
+</table>
+<p>详细技术事实及提交依据见 <code>ENGINEERING_BASELINE.md</code>。账户整合采用可撤销的显式关联；相同邮箱不是直接合并会员或商业资格的依据。</p>
+<h2>尚未决定的事</h2>
+<table>
+<thead>
+<tr>
+<th>问题</th>
+<th>当前处理</th>
+<th>何时需要答案</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>合作方对原型的具体意见</td>
+<td>提供链接，等待真实反馈，不替对方表态</td>
+<td>正式 UI 大范围落地前</td>
+</tr>
+<tr>
+<td>社区日常内容、回复、审核负责人</td>
+<td>不默认 Eric 必须全天值班，也不替合作方承诺</td>
+<td>真实邀请内测前</td>
+</tr>
+<tr>
+<td>校友身份验证方式</td>
+<td>原型使用示例身份，正式产品暂不显示未经验证的徽章</td>
+<td>上线校友认证前</td>
+</tr>
+<tr>
+<td>Local Pass 的当前运营主体、供给、定价</td>
+<td>历史方案存在不同口径，本轮不执行价格</td>
+<td>开始权益与支付功能前</td>
+</tr>
+<tr>
+<td>活动联合主办、票务、财务安排</td>
+<td>原聊天包含合作设想，未据此建立账单或承诺</td>
+<td>实际活动发布/收款前</td>
+</tr>
+<tr>
+<td>官网测试数据库与接口稳定性</td>
+<td>preview 与支付测试环境不等于数据隔离</td>
+<td>任何可写跨站集成测试前</td>
+</tr>
+</tbody>
+</table>
+<p>不需要这些答案才能完成原型、研究、只读接口分析或离线开发。遇到依赖它们的动作时，再提出具体问题。</p>
+<h2>更正历史材料</h2>
+<ul>
+<li>V3 所说“没有活动实体/报名系统”只适用于当时检查的 Illini Market 仓库。CAACI 当前官网源码已有活动报名，V4 明确更正生态范围的误读。</li>
+<li>本机网页能打开、模拟检查通过，不代表生产功能已实现。旧轮剩余浏览器交互未完成，当前状态以 <code>release/CURRENT_STATUS.md</code> 新证据为准。</li>
+<li>旧生态蓝图的正文与附录对批准状态存在矛盾；其中收费、外包和排期不能自动当作现行决定。</li>
+<li>Dropbox 不是本任务依赖。Eric 只是询问过用途，没有要求把工程迁移到 Dropbox。</li>
+<li>一次采用的颜色、字号和布局是本项目版本选择，不是 Eric 的永久审美偏好。</li>
+</ul>
+</main><footer>V4 · 2026-11-12 · <a href="BACKGROUND_AND_DECISIONS.md">Markdown 源文件</a> · 本地交接材料，不包含在公开 demo 内。</footer></body></html>

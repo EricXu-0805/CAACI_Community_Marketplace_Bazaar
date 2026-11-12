@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Illini Market 社区产品演示。所有内容与操作均为示例。">
+  <title>Illini Market · 社区</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#main">跳到主要内容</a>
+  <div class="demo-bar"><span><i></i> 产品演示 · 全部为示例内容</span><a href="#about">演示说明</a><button id="reset-start" type="button" data-action="reset">重置</button><span id="reset-confirmation" class="reset-confirmation" hidden><span>清除演示记录？</span><button id="reset-confirm-button" type="button" data-action="reset-confirm">确认重置</button><button type="button" data-action="reset-cancel">取消</button></span></div>
+  <div id="storage-notice" role="status" hidden></div>
+  <header class="topbar">
+    <a href="#home" class="brand" aria-label="Illini Market 社区首页"><span class="brand-mark">im</span><span>Illini Market</span></a>
+    <div class="campus-name">UIUC <span>学生与校友社区</span></div>
+    <form id="global-search" role="search"><span data-icon="search" aria-hidden="true"></span><label class="sr-only" for="search-input">搜索讨论</label><input id="search-input" placeholder="搜索讨论…" autocomplete="off"><button type="submit">搜索</button></form>
+    <a class="top-profile" href="#profile" aria-label="我的"><span class="avatar terracotta">我</span></a>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" aria-label="主导航">
+      <nav id="desktop-nav"></nav>
+      <div id="category-section"><div class="side-label">讨论板块</div><nav id="category-nav"></nav></div>
+      <div class="sidebar-bottom"><a href="#guide" class="side-link"><span data-icon="book-open"></span>新生指南</a><a href="#admin" class="side-link"><span data-icon="shield"></span>审核演示<span id="report-count" class="count"></span></a><a href="#about" class="side-link"><span data-icon="info"></span>关于这个演示</a><span class="sidebar-footnote">Champaign · Urbana</span></div>
+    </aside>
+    <main id="main" tabindex="-1"></main>
+  </div>
+  <nav id="mobile-nav" class="mobile-nav" aria-label="手机主导航"></nav>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <dialog id="report-dialog"><form id="report-form"><div class="dialog-heading"><h2>举报内容</h2><button type="button" class="icon-button" data-action="close-report" aria-label="关闭举报"><span data-icon="x"></span></button></div><p class="muted">举报只保存在本次演示中，不会通知真人。</p><input type="hidden" name="postId"><label for="report-reason">原因</label><select name="reason" id="report-reason"><option>广告或重复推广</option><option>内容不实或已失效</option><option>辱骂、骚扰或危险内容</option><option>隐私或其他问题</option></select><label for="report-detail">补充说明（选填）</label><textarea id="report-detail" name="detail" rows="3" maxlength="500" placeholder="具体是哪部分存在问题？"></textarea><div class="dialog-actions"><button type="button" class="button secondary" data-action="close-report">取消</button><button type="submit" class="button">提交举报</button></div></form></dialog>
+  <script src="assets/feather.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
