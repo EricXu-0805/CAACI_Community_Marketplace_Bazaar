@@ -3125,7 +3125,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .ca-img { width: 48px; height: 48px; border-radius: 8px; flex-shrink: 0; }
 .ca-body { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ca-title { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ca-price { font-size: 13px; color: var(--accent-action); font-weight: 600; }
+.ca-price { font-size: 13px; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .ca-remove {
   width: 22px; height: 22px; border-radius: 50%;
   background: var(--ink-soft); display: flex; align-items: center; justify-content: center;
@@ -3153,7 +3153,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .aic-img { width: 52px; height: 52px; border-radius: 8px; flex-shrink: 0; }
 .aic-body { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .aic-title { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.aic-price { font-size: 14px; color: var(--accent-action); font-weight: 700; }
+.aic-price { font-size: 14px; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .aic-sold { font-size: 11px; color: var(--text-muted); }
 
 /* Attach-item picker opens ON TOP of the compose-fullpage (z-index 1100).
@@ -3209,7 +3209,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .as-img { width: 56px; height: 56px; border-radius: 8px; flex-shrink: 0; }
 .as-body { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .as-title-text { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.as-price { font-size: 13px; color: var(--accent-action); font-weight: 600; }
+.as-price { font-size: 13px; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .cs-item {
   display: flex; gap: 10px; padding: 12px 16px;

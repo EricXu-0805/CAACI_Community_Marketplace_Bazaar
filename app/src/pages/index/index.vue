@@ -2002,13 +2002,15 @@ async function goPublish() {
   overflow: hidden; word-break: normal; overflow-wrap: break-word;
 }
 .card-price-row { display: flex; align-items: baseline; gap: 4px; margin-top: 5px; }
-/* Waterfall card price in Fraunces serif + terracotta — matches the
+/* Waterfall card price in Fraunces serif — matches the
    米白书院 "price is the only confident number on the page" rule.
+   Ink, not the brand colour, since SPEC 9.5: the brand is for the one solid
+   button, the current state and links.
    Free items shift to sage so "免费 / Free" reads as positive state. */
 .card-price {
   font-family: var(--font-serif);
   font-size: 17px; font-weight: 600;
-  color: var(--brand);
+  color: var(--ink);
   letter-spacing: -0.01em;
   line-height: 1;
   font-feature-settings: 'tnum';

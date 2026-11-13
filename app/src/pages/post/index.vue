@@ -1073,7 +1073,7 @@ async function onSubmitComment() {
 .aic-img { width: 52px; height: 52px; border-radius: 8px; flex-shrink: 0; }
 .aic-body { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .aic-title { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.aic-price { font-size: 14px; color: var(--accent-action); font-weight: 700; }
+.aic-price { font-size: 14px; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .aic-sold { font-size: 11px; color: var(--text-muted); }
 
 .stats-row {

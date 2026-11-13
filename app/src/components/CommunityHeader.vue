@@ -24,8 +24,11 @@
         </view>
         <view v-if="menuOpen" class="cx-mask" @click="menuOpen = false"></view>
         <view v-if="menuOpen" id="cx-boards" class="cx-pop">
-          <text v-for="category in POST_CATEGORIES" :key="category" class="cx-pop-i" role="button"
-            @click="pick(() => emit('board', category))">{{ t(`plaza.category.${category}`) }}</text>
+          <view v-for="category in POST_CATEGORIES" :key="category" class="cx-pop-i" role="button"
+            @click="pick(() => emit('board', category))">
+            <view :class="['cx-pop-bar', `cx-b-${category}`]"></view>
+            <text class="cx-pop-t">{{ t(`plaza.category.${category}`) }}</text>
+          </view>
           <text class="cx-pop-i cx-pop-all" role="button" @click="pick(() => emit('all'))">{{ t('plaza.allDiscussions') }}</text>
         </view>
         <text class="cx-nav-i cx-nav-t" role="button" @click="goTab('/pages/index/index')">{{ t('home.navMarket') }}</text>
@@ -195,9 +198,20 @@ function goNotifications() { uni.navigateTo({ url: '/pages/notifications/index' 
   display: flex; flex-direction: column;
   background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--radius-md); box-shadow: var(--shadow-pop);
 }
-.cx-pop-i { padding: 0 var(--space-3); border-radius: var(--radius-sm); font-size: 14px; line-height: 36px; color: var(--ink); cursor: pointer; }
+.cx-pop-i {
+  display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); border-radius: var(--radius-sm);
+  font-size: 14px; line-height: 36px; color: var(--ink); cursor: pointer;
+}
 .cx-pop-i:hover { background: var(--surface-alt); }
-.cx-pop-all { margin-top: var(--space-1); color: var(--ink-soft); box-shadow: 0 -1px 0 var(--line-hair); }
+.cx-pop-t { font-size: 14px; line-height: 36px; color: var(--ink); white-space: nowrap; }
+/* Each board leads with its own 3px bar, as on its home card (SPEC 5.4 rule 6). */
+.cx-pop-bar { flex: none; width: 3px; height: var(--space-4); border-radius: var(--radius-xs); background: var(--cx-board); }
+.cx-b-campus-life { --cx-board: var(--board-campus-life); }
+.cx-b-settling-market { --cx-board: var(--board-settling-market); }
+.cx-b-alumni-career { --cx-board: var(--board-alumni-career); }
+.cx-b-events-social { --cx-board: var(--board-events-social); }
+.cx-b-local-deals { --cx-board: var(--board-local-deals); }
+.cx-pop-all { display: block; margin-top: var(--space-1); color: var(--ink-soft); box-shadow: 0 -1px 0 var(--line-hair); }
 .cx-right { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: var(--space-3); margin-left: var(--space-6); }
 .cx-search {
   flex: 0 1 320px; min-width: 0; display: flex; align-items: center; gap: var(--space-2);

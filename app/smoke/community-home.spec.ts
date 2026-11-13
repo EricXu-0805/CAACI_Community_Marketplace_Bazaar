@@ -20,6 +20,8 @@ import { now as NOW, items as ITEMS, makePost } from './fixtures/community-home/
 
 const REF = supabaseRefForBuild()
 const SHOTS = 'test-results/visual/HOME.3'
+// HOME.4: direction A (D-35) on the same home, and its screenshot matrix.
+const SHOTS_A = 'test-results/visual/HOME.4'
 const MINUTE = 60_000, HOUR = 60 * MINUTE, DAY = 24 * HOUR
 const ago = (ms: number) => new Date(NOW - ms).toISOString()
 const BOARDS = ['campus-life', 'settling-market', 'alumni-career', 'events-social', 'local-deals']
@@ -203,12 +205,6 @@ async function openHome(page: Page, data: Served, options: { lang?: 'zh' | 'en';
   return seen
 }
 
-// uni's <scroll-view> scrolls on an inner element; find the one that overflows.
-const scrollToEnd = (page: Page, selector: string) => page.locator(selector).evaluate(root => {
-  const scroller = [root, ...root.querySelectorAll('*')].find(el =>
-    /(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight + 4)
-  if (scroller) scroller.scrollTop = scroller.scrollHeight
-})
 const board = (page: Page, slug: string) => page.locator(`.ch [data-board="${slug}"]`)
 const postIds = (page: Page) => page.locator('[data-post-id]').evaluateAll(rows => rows.map(row => row.getAttribute('data-post-id')))
 // A count drawn as "0" is the thing SPEC 5.4 rule 8 forbids, wherever it sits.
@@ -223,8 +219,91 @@ const zeroCounts = (page: Page) => page.locator('.ch, .cx-hdr, .cx-m').evaluateA
 const top = async (page: Page, selector: string) => (await page.locator(selector).first().boundingBox())!.y
 
 const PHONE = { width: 390, height: 844, scale: 2, mobile: true }
+const TABLET = { width: 768, height: 1024, scale: 1, mobile: false }
 const DESKTOP = { width: 1280, height: 800, scale: 1, mobile: false }
-const SURFACE = { include: '.page', exclude: ['.tabbar'] }
+// The community surface is everything on the page but the app's shared chrome:
+// the tab bar and, from 768px to 1023px, the left rail. Both predate this page.
+const SURFACE = { include: '.page', exclude: ['.tabbar', '.app-sidebar'] }
+
+// What a token paints, as this page resolves it in the theme it is showing.
+const tokenColours = (page: Page, tokens: string[]) => page.evaluate(names => {
+  const probe = document.body.appendChild(document.createElement('i'))
+  const colours = names.map(name => { probe.style.color = `var(${name})`; return getComputedStyle(probe).color })
+  probe.remove()
+  return colours
+}, tokens)
+
+// The home scrolls inside its own scroll-view, on an inner element of uni's. A
+// picture of all of it needs a window as tall as what that element holds.
+async function shootWhole(page: Page, path: string, size: { width: number; height: number }) {
+  const hidden = await page.locator('.home-scroll').evaluate(root => {
+    const scroller = [root, ...root.querySelectorAll('*')].find(el =>
+      /(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight + 4)
+    return scroller ? scroller.scrollHeight - scroller.clientHeight : 0
+  })
+  await page.setViewportSize({ width: size.width, height: size.height + hidden })
+  await page.waitForLoadState('networkidle')
+  await settle(page)
+  await page.screenshot({ path, animations: 'disabled' })
+}
+
+/*
+ * HOME.4 (SPEC 9.5, 9.6): the home in direction A. One fixture, drawn in light
+ * and dark, Chinese and English, at 390, 768 and 1280: twelve first screens,
+ * each audited, each with a picture of the whole page beside it.
+ */
+for (const size of [PHONE, TABLET, DESKTOP]) {
+  test.describe(`the home in direction A at ${size.width}px`, () => {
+    // uni-h5 reads the window width from the screen, so both have to move.
+    test.use({
+      viewport: { width: size.width, height: size.height },
+      screen: { width: size.width, height: size.height },
+      deviceScaleFactor: size.scale, isMobile: size.mobile, hasTouch: size.mobile,
+    })
+
+    for (const theme of ['light', 'dark'] as const) for (const lang of ['zh', 'en'] as const) {
+      test(`①② ${theme} ${lang}: board colours, ink prices, the screenshot and the SPEC 9.6 audit`, async ({ page }) => {
+        await openHome(page, { posts: SHOWCASE, items: SHOWCASE_ITEMS }, { lang, theme })
+        const name = `home-${size.width}-${theme}-${lang}`
+        await page.screenshot({ path: `${SHOTS_A}/${name}.png`, animations: 'disabled' })
+
+        // SPEC 5.4 rule 6: a board's colour is on its 3px bar and its name; six boards, six colours.
+        const slugs = [...BOARDS, 'market']
+        const colours = await tokenColours(page, slugs.map(slug => `--board-${slug}`))
+        expect(new Set(colours).size).toBe(6)
+        const painted = await page.locator('.ch-grid > .ch-card').evaluateAll(cards => cards.map(card => [
+          getComputedStyle(card.querySelector('.ch-bar')!).backgroundColor,
+          getComputedStyle(card.querySelector('.ch-bname')!).color,
+        ]))
+        expect(painted).toEqual(colours.map(colour => [colour, colour]))
+        // SPEC 5.2 ④: in the latest list a row's board is named in that board's colour.
+        const labels = await page.locator('.ch-lr .ch-lb').evaluateAll(els => els.map(el =>
+          [[...el.classList].find(cls => cls.startsWith('ch-b-'))!.slice(5), getComputedStyle(el).color]))
+        expect(labels.length).toBe(size === DESKTOP ? 15 : 10)
+        for (const [slug, colour] of labels) expect(colour, `the ${slug} label`).toBe(colours[slugs.indexOf(slug)])
+
+        // SPEC 9.5: a price is ink, weight 600, in tabular numerals; the brand colour is not a price colour.
+        const [ink, brand] = await tokenColours(page, ['--ink', '--brand'])
+        const price = page.locator('.ch-price').first()
+        await expect(price).toHaveCSS('color', ink)
+        await expect(price).toHaveCSS('font-weight', '600')
+        await expect(price).toHaveCSS('font-variant-numeric', 'tabular-nums')
+        expect(ink).not.toBe(brand)
+
+        const surface = await visualAudit(page, `HOME.4 ${name}`, SURFACE)
+        const whole = await visualAudit(page, `HOME.4 ${name} whole page`, { include: 'body' })
+        expect(surface.small, 'text under 12px on the community home').toEqual([])
+        expect(surface.contrast, 'contrast on the community home').toEqual([])
+        if (surface.axe) expect(surface.axe, 'axe color-contrast on the community home').toEqual([])
+        expect(surface.overflow, 'horizontal overflow').toBe(0)
+        // From 1024px the page has no shared chrome left, so the whole page is held to the same.
+        if (size === DESKTOP) expect(whole.small, 'text under 12px on the whole desktop page').toEqual([])
+
+        await shootWhole(page, `${SHOTS_A}/${name}-full.png`, size)
+      })
+    }
+  })
+}
 
 for (const size of [PHONE, DESKTOP]) {
   test.describe(`community home at ${size.width}px`, () => {
@@ -235,28 +314,7 @@ for (const size of [PHONE, DESKTOP]) {
       deviceScaleFactor: size.scale, isMobile: size.mobile, hasTouch: size.mobile,
     })
 
-    for (const [theme, lang] of [['light', 'zh'], ['dark', 'zh'], ['light', 'en']] as const) {
-      test(`⑤ ${theme} ${lang}: screenshot, text size, contrast and overflow`, async ({ page }) => {
-        await openHome(page, { posts: SHOWCASE, items: SHOWCASE_ITEMS }, { lang, theme })
-        const name = `home-${size.width}-${theme}-${lang}`
-        await page.screenshot({ path: `${SHOTS}/${name}.png`, animations: 'disabled' })
-
-        // The community surface is everything on the page but the shared tab bar,
-        // whose 10px labels predate this page; the whole-page figures are logged beside it.
-        const surface = await visualAudit(page, `HOME.3 ${name}`, SURFACE)
-        const whole = await visualAudit(page, `HOME.3 ${name} whole page`, { include: 'body' })
-        expect(surface.small, 'text under 12px on the community home').toEqual([])
-        expect(surface.contrast, 'contrast on the community home').toEqual([])
-        if (surface.axe) expect(surface.axe, 'axe color-contrast on the community home').toEqual([])
-        expect(surface.overflow, 'horizontal overflow').toBe(0)
-        if (size === DESKTOP) expect(whole.small, 'text under 12px on the whole desktop page').toEqual([])
-
-        // Further down the same page, for the eye: the scroll area moved to its end.
-        await scrollToEnd(page, '.home-scroll')
-        await page.screenshot({ path: `${SHOTS}/${name}-end.png`, animations: 'disabled' })
-      })
-    }
-
+    // The screenshots and the SPEC 9.6 audit of this home are the HOME.4 matrix above.
     test('⑤ every post is drawn once, no count reads 0, and every posts query names the region', async ({ page }) => {
       for (const posts of [posts60, posts20]) {
         const seen = await openHome(page, { posts: posts.map(post => asRow(post)), items: PLAIN_ITEMS })
@@ -571,6 +629,9 @@ for (const size of [PHONE, DESKTOP]) {
         await toggle.click()
         await expect(toggle).toHaveAttribute('aria-expanded', 'true')
         await expect(page.locator('.cx-pop .cx-pop-i')).toHaveText([...BOARD_ZH, '全部讨论'])
+        // Each board leads with its own colour, as on its card.
+        expect(await page.locator('.cx-pop .cx-pop-bar').evaluateAll(bars => bars.map(bar => getComputedStyle(bar).backgroundColor)))
+          .toEqual(await tokenColours(page, BOARDS.map(slug => `--board-${slug}`)))
         await page.keyboard.press('Escape')
         await expect(page.locator('.cx-pop')).toHaveCount(0)
         await toggle.click()
@@ -597,5 +658,12 @@ test('⑤ the CSS added for the home holds no hex colour', () => {
     expect(css.length, name).toBeGreaterThan(200)
     expect(css.match(/#[0-9a-fA-F]{3,8}\b/g) || [], `hex literals in ${name}`).toEqual([])
     expect(css.match(/rgba?\(/g) || [], `raw colours in ${name}`).toEqual([])
+  }
+  // HOME.4 restyled two shared badges; their rules name tokens only.
+  const badges = styles('src/components/UBadge.vue')
+  for (const variant of ['official', 'illini']) {
+    const rule = new RegExp(`\\.u-badge--${variant}\\s*\\{[^}]*\\}`).exec(badges)?.[0] || ''
+    expect(rule.length, variant).toBeGreaterThan(60)
+    expect(rule.match(/#[0-9a-fA-F]{3,8}\b|rgba?\(/g) || [], `raw colours in .u-badge--${variant}`).toEqual([])
   }
 })

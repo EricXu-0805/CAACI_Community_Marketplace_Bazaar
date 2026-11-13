@@ -38,7 +38,7 @@
           <view class="ch-main">
             <view class="ch-grid">
               <template v-for="card in sections.cards" :key="card.kind === 'board' ? card.category : 'market'">
-                <view v-if="card.kind === 'board'" class="ch-card" data-block="board" :data-board="card.category">
+                <view v-if="card.kind === 'board'" :class="['ch-card', `ch-b-${card.category}`]" data-block="board" :data-board="card.category">
                   <view class="ch-card-h">
                     <view class="ch-bar"></view>
                     <text class="ch-bname" role="heading" aria-level="2">{{ tx(card.title) }}</text>
@@ -81,7 +81,7 @@
                   </view>
                 </view>
 
-                <view v-else class="ch-card ch-card-market" data-block="market">
+                <view v-else class="ch-card ch-card-market ch-b-market" data-block="market">
                   <view class="ch-card-h">
                     <view class="ch-bar"></view>
                     <text class="ch-bname" role="heading" aria-level="2">{{ tx(card.title) }}</text>
@@ -139,7 +139,7 @@
                       <text class="ch-lr-t">{{ row.post.title }}</text>
                       <view class="ch-meta">
                         <UAvatar class="ch-av" :src="author(row)?.avatar_url" :owner="row.post.user_id" :fallback="defaultAvatarSrc" lazy />
-                        <text v-if="row.post.category" class="ch-mi">{{ t(`plaza.category.${row.post.category}`) }}</text>
+                        <text v-if="row.post.category" :class="['ch-mi', 'ch-lb', `ch-b-${row.post.category}`]">{{ t(`plaza.category.${row.post.category}`) }}</text>
                         <text class="ch-mi">·</text>
                         <text class="ch-mi ch-author">{{ author(row)?.nickname || t('app.user') }}</text>
                         <text v-if="row.post.is_official" class="ch-tag ch-tag-line">{{ t('plaza.official') }}</text>
@@ -280,8 +280,15 @@ function sendFeedback() { window.location.href = `mailto:${SUPPORT_EMAIL}` }
 .ch-wrap { min-width: 0; }
 
 /* ---- shared pieces ---- */
-.ch-bar { flex: none; width: 3px; height: var(--space-4); border-radius: var(--radius-xs); background: var(--line-bold); }
-.ch-bname { flex: 0 1 auto; min-width: 0; font-size: var(--t-h3); line-height: var(--lh-h3); font-weight: 600; color: var(--ink);
+/* SPEC 5.4 rule 6: a board's colour is on its 3px bar and on its name, and nowhere else. */
+.ch-b-campus-life { --ch-board: var(--board-campus-life); }
+.ch-b-settling-market { --ch-board: var(--board-settling-market); }
+.ch-b-alumni-career { --ch-board: var(--board-alumni-career); }
+.ch-b-events-social { --ch-board: var(--board-events-social); }
+.ch-b-local-deals { --ch-board: var(--board-local-deals); }
+.ch-b-market { --ch-board: var(--board-market); }
+.ch-bar { flex: none; width: 3px; height: var(--space-4); border-radius: var(--radius-xs); background: var(--ch-board); }
+.ch-bname { flex: 0 1 auto; min-width: 0; font-size: var(--t-h3); line-height: var(--lh-h3); font-weight: 600; color: var(--ch-board);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ch-link { flex: none; margin-left: auto; font-size: var(--t-caption); line-height: var(--space-6); color: var(--ink-soft); white-space: nowrap; cursor: pointer; }
 .ch-week + .ch-link { margin-left: 0; }
@@ -290,6 +297,8 @@ function sendFeedback() { window.location.href = `mailto:${SUPPORT_EMAIL}` }
 .ch-row { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .ch-row-t { min-width: 0; color: var(--ink); overflow: hidden; }
 .ch-mi { flex: none; font-size: var(--t-meta); line-height: var(--space-5); color: var(--ink-quiet); white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* The board a latest row belongs to is that board's name, so it takes the board's colour (SPEC 5.2 ④). */
+.ch-lb { color: var(--ch-board); }
 .ch-author { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ch-meta { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
 .ch-cnt { flex: none; font-size: var(--t-meta); line-height: var(--space-5); color: var(--ink-soft); font-variant-numeric: tabular-nums; }

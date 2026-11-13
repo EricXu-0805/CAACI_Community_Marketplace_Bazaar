@@ -748,7 +748,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .gi-price-row { display: flex; align-items: center; gap: 5px; margin-top: 4px; }
-.gi-price { font-size: 15px; font-weight: 700; color: var(--text-primary); display: block; }
+.gi-price { font-size: 15px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; display: block; }
 
 .empty { padding: 60px 16px; text-align: center; color: var(--text-subtle); font-size: 14px; }
 

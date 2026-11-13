@@ -320,7 +320,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   font-family: var(--font-serif);
   font-size: 17px; font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--brand);
+  color: var(--ink);
   line-height: 1;
   font-feature-settings: 'tnum';
   &.free { color: var(--success); }

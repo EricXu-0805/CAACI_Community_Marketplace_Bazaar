@@ -1483,7 +1483,8 @@ async function contactSeller() {
 /*
  * Price — the star of the detail page.
  *
- * 米白书院 calls for serif terracotta at ~28px with tabular numerals.
+ * 米白书院 calls for a serif at ~28px with tabular numerals, in ink
+ * since SPEC 9.5 (the brand colour is no longer a price colour).
  * The previous 800-weight sans "marketplace" style was too loud next
  * to the warm canvas; Fraunces 600 at 28px reads bookshop-confident.
  * Free items drop to sage (--success) to differentiate.
@@ -1492,7 +1493,7 @@ async function contactSeller() {
   font-family: var(--font-serif);
   font-size: 28px;
   font-weight: 600;
-  color: var(--brand);
+  color: var(--ink);
   letter-spacing: -0.02em;
   line-height: 1;
   font-feature-settings: 'tnum';
@@ -1502,7 +1503,7 @@ async function contactSeller() {
 /*
  * OBO — "or best offer", ivory_academy puts this in amber (warning
  * tone) because it's a price-open affordance, not a CTA. Small pill,
- * mono-ish caps, fits next to the terracotta price without fighting
+ * mono-ish caps, fits next to the price without fighting
  * for attention.
  */
 .obo {
@@ -1688,7 +1689,7 @@ async function contactSeller() {
 .mc-price {
   font-family: var(--font-serif);
   font-size: 15px; font-weight: 600;
-  color: var(--brand);
+  color: var(--ink);
   letter-spacing: -0.01em;
   display: block;
   line-height: 1;
