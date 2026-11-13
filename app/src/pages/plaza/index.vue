@@ -799,7 +799,7 @@ const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
 const { currentUser, isLoggedIn, requireAuth, awaitAuthReady } = useAuth()
-const { posts, loading, hasMore, fetchError, fetchPosts, createPost, recoverCreatedPost, updatePostI18n, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, fetchMyActiveItems, clearPosts } = usePlaza()
+const { posts, loading, hasMore, fetchError, fetchPosts, invalidatePosts, createPost, recoverCreatedPost, updatePostI18n, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, fetchMyActiveItems, clearPosts } = usePlaza()
 const { following, followingLoaded, loadMyFollowing } = useFollow()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
 
@@ -876,12 +876,12 @@ async function loadFeed(page = 0) {
       return false
     }
     const epoch = plazaAccountEpoch
+    loading.value = true
     if (!followingLoaded.value) await loadMyFollowing()
     if (epoch !== plazaAccountEpoch || activeTab.value !== 'following') return false
     if (!followingLoaded.value) {
       // Who the reader follows could not be read. That is a failed load, not an empty list.
-      posts.value = []
-      loading.value = false
+      invalidatePosts()
       fetchError.value = t('plaza.loadFailed')
       return false
     }
@@ -1053,6 +1053,7 @@ function onFeedTabKeydown(event: KeyboardEvent, current: FeedTabKey) {
 
 // The three tabs differ by server sort or by whose posts are asked for, so a switch reads again.
 watch(activeTab, tab => {
+  invalidatePosts()
   // A search runs over everyone's posts (see runSearch), so opening 关注的人 ends it.
   if (tab === 'following') searchText.value = ''
   pageIdx.value = 0

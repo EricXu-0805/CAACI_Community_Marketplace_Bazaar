@@ -225,6 +225,16 @@ export function usePlaza() {
   const { currentUser } = useAuth()
   const { t, lang } = useI18n()
 
+  // A tab can need another read before fetchPosts starts (the follow list).
+  // Fence the previous feed immediately, without dropping pending attachments.
+  function invalidatePosts() {
+    latestRequestId += 1
+    posts.value = []
+    loading.value = false
+    hasMore.value = true
+    fetchError.value = ''
+  }
+
   /*
    * `authors` narrows the list to posts those people wrote: the 关注的人 tab
    * (SPEC 6.2) passes the people the reader follows. An empty list is an empty
@@ -246,6 +256,7 @@ export function usePlaza() {
         if (requestId !== latestRequestId) return
         if (!gate.ok) throw new Error('moderation_gate_unavailable')
       }
+      const visibleAuthors = authors?.filter(id => !moderation.blockedIds.value.has(id))
 
       let data: any, error: any
       if (search && search.trim()) {
@@ -270,7 +281,7 @@ export function usePlaza() {
           offset_in: page * PAGE_SIZE,
         })
         data = res.data; error = res.error
-      } else if (authors && authors.length === 0) {
+      } else if (visibleAuthors && visibleAuthors.length === 0) {
         data = []; error = null
       } else {
         // Pinned posts (CAACI 官方 announcements) always lead. Within that,
@@ -284,7 +295,7 @@ export function usePlaza() {
           .eq('region', ACTIVE_REGION)
           .order('is_pinned', { ascending: false })
         if (category) q = q.eq('category', category)
-        if (authors) q = q.in('user_id', authors)
+        if (visibleAuthors) q = q.in('user_id', visibleAuthors)
         if (sort === 'hot') {
           q = q
             .order('like_count', { ascending: false })
@@ -980,6 +991,7 @@ export function usePlaza() {
     hasMore,
     fetchError,
     fetchPosts,
+    invalidatePosts,
     fetchPost,
     createPost,
     recoverCreatedPost,
