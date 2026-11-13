@@ -358,3 +358,15 @@
 - 未测项: illinois.edu/about/calendars/ 证书验证失败，没取到；整本导出的条数与大小没能重测
 - 下一条: P2.7
 - 附: [OMO自决] D-43 第 1 项：D-33 选 A（理由：原建议 A；调研没找到 B 的官方入口），D-36 选 D（与 D-23 一致），D-39 选 A（copyright@caaciorg.com，邮箱由 Eric 建）。撤回：在 DECISIONS 对应条目改选项。D-34 等 BRAND.4 的 24px 预览后再定。同一提交带上 appendix/visual/P2.4/composer-390-light-zh.png（P2.4 的截图，P2.4 的写回等 CI）。
+
+### L30 · 2026-11-13 01:19 CT · P2.4 发帖默认「话题」，板块在前、字段下方报错
+- task_id: P2.4
+- code_sha: 91027fb35962fc48444beee2deb95fa6a7400f15（codex/community-topics-20261112，已推送；CI 由包含它的 9b27fcc 给出）
+- docs_sha: a724bd85070190ace0b54b625adff1c4042c70c4
+- 环境: 本地 tony-ws pw1.60；CI
+- 命令: zh/en 改 plaza.write、plaza.topicTitle、plaza.postHint，新增 titleHint*/bodyHint*/titleLeft/errBoard/errTitle/errBody 共 16 个 key；plaza/index.vue：composerMode 默认 topic、模式按钮「话题｜动态」、从板块筛选进入预选该板块、字段顺序 板块→标题→正文→图片→关联商品、标题剩 20 字显示计数、占位随板块变、必填错误显示在字段下方并把焦点移到第一个出错字段、话题模式不弹 toast；community-post-topics.spec.ts 两条旧用例按新行为改、新增 zh 用例并截图。运行：第一次 typecheck 报 composerText 先用后声明（log check-20261113T065236Z.log），修正后 `SMOKE_SPECS="$DEF input-preview-supplement.spec.ts" ~/work/illini-dev-env/run-checks.sh ~/work/illini install typecheck test smoke`（log check-20261113T065340Z.log）test 通过、smoke 1 failed：uni-h5 的 placeholder 画在单独的 .uni-input-placeholder 元素上，不在 input 属性里，断言改读该元素后 `~/work/illini-dev-env/run-checks.sh ~/work/illini install smoke`（log check-20261113T070116Z.log）
+- 计数: ① 默认话题，按钮顺序「话题｜动态」；② 从板块筛选进入预选该板块（en 用例断言 Campus life 为选中）；③ 字段顺序由新用例按位置断言；④ 空表单提交显示「请选一个板块」「请填写标题」「请填写正文」三行、无 .uni-toast，补板块和正文后只剩「请填写标题」且焦点在标题框；⑤ smoke 23 passed；test 2001 / 2000 / 0 / 1 [本地测]；截图 appendix/visual/P2.4/composer-390-light-zh.png（OMO 已看过）；CI Type-check、Boundary、两个 Build 全 success，public sweep 按预期失败在预检 [CI run#43383800477]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43383800477
+- 未测项: 无
+- 下一条: REGION.1
+- 附: 已知小问题留给 HOME.4（D-35 方向 A 套用时）：390 宽度下板块示例标题的占位文字超出一行被截断。
