@@ -100,7 +100,7 @@
     "postcss": "8.5.25",
     "ws@8.18.0": "8.21.1",
     "browserslist": "4.28.8",
-    "qs@^6.0.0": "6.16.0",
+    "qs@^6.0.0": "6.16.2",
     "fast-glob@3.3.3": "file:./build-compat/glob",
     "chokidar@3.6.0": "file:./build-compat/watch",
     "rollup@4.60.2": "$rollup",
@@ -109,6 +109,6 @@
     "source-map-js": "1.2.2",
     "postcss-selector-parser": "7.1.6",
     "body-parser": "1.20.9",
-    "follow-redirects": "1.16.1"
+    "follow-redirects": "1.16.3"
   }
 }
