@@ -514,11 +514,13 @@ podman run --rm --userns=keep-id -p 127.0.0.1:5173:5173 -e HOME=/cache/home -v ~
 
 ```bash
 REPO=EricXu-0805/CAACI_Community_Marketplace_Bazaar
-gh pr checks <PR号> --repo $REPO                                  # 每个 job 一行：pass / fail / skipping / pending
-gh pr checks <PR号> --repo $REPO --watch --interval 60             # 等到全部跑完
+# 读 PR 的 CI：令牌没有 Checks 读权限，gh pr checks 返回 403（2026-11-12 tony-ws 实测），改走 Actions 接口
+RUN=$(gh run list --repo $REPO --branch <分支> --workflow ci.yml --event pull_request --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run watch $RUN --repo $REPO --interval 60                     # 等到跑完；已结束的 run 立即返回
+gh run view $RUN --repo $REPO --json headSha,status,conclusion,jobs \
+  --jq '.headSha, .status, (.jobs[] | [.name, .conclusion] | @tsv)'   # 每个 job 一行：success / failure / skipped
 gh run list --repo $REPO --branch <分支> --limit 5 --json databaseId,headSha,event,status,conclusion \
   --jq '.[] | [.databaseId, .headSha[0:7], .event, .status, .conclusion] | @tsv'
-gh run view <run_id> --repo $REPO --json headSha,conclusion,jobs --jq '.headSha, (.jobs[] | [.name, .conclusion] | @tsv)'
 gh run view <run_id> --repo $REPO --log-failed | grep -E '✘|failed|Error|not ok' | head -50
 gh run view <run_id> --repo $REPO --log | grep -E '# (tests|pass|fail|skipped) [0-9]+$'    # Boundary 汇总
 gh run view <run_id> --repo $REPO --log | grep -E '[0-9]+ (passed|failed|skipped|flaky)'  # Smoke 汇总
@@ -526,6 +528,7 @@ gh run view <run_id> --repo $REPO --log | grep -m3 'Image: ubuntu'              
 ```
 
 - 记结论前，先确认 run 的 headSha 等于本任务的 code_sha。
+- 本套文件里说「PR 的 CI」或「job 结论」，都指上面 `gh run view $RUN` 的输出。不要用 `gh pr checks`，403 时也不要去找别的令牌。
 - 每个 job 的预期结果见 ENGINEERING「CI 解读」，这里不重复。
 - **重跑**：令牌的 Actions 权限是只读（D-07），`gh run rerun` 预计返回 403（未实测）。所以重跑有三种办法，按顺序选：
   1. 本来就要推下一个任务的提交，推送会触发新的 run；

@@ -9,7 +9,7 @@ E1 已于 2026-11-12 完成（分支已推送，草稿 PR #370，见 STATUS_LOG 
 先跑这 5 条，输出原样记进 STATUS_LOG：
 1. `git -C ~/work/illini fetch origin && git -C ~/work/illini status --porcelain && git -C ~/work/illini rev-parse HEAD`
 2. `git -C ~/work/illini-docs fetch origin && git -C ~/work/illini-docs switch --track origin/codex/community-plan-v5`（已在该分支就改用 `git -C ~/work/illini-docs pull --ff-only`）
-3. `gh pr checks 369 --repo EricXu-0805/CAACI_Community_Marketplace_Bazaar`
+3. `gh run list --repo EricXu-0805/CAACI_Community_Marketplace_Bazaar --branch codex/community-topics-20261112 --workflow ci.yml --event pull_request --limit 1 --json databaseId,headSha,conclusion`（不用 `gh pr checks`，原因见 RUNBOOK §7）
 4. `node -v && npm -v`
 5. `cat ~/work/illini-docs/docs/community-platform/STATUS.md`
 

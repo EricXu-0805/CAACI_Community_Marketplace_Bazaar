@@ -295,11 +295,11 @@ gh pr create --draft --base main --head codex/config-fixes-20261112 --repo $REPO
 ```
 **DoD**：
 - ① 草稿 PR 已开，base 是 main。
-- ② `gh pr checks`：Type-check、Boundary regressions（含依赖审计这一步）、Build H5、Build mp-weixin、Smoke (public page sweep) 为 pass；Smoke (protected staging account) 和 Production release readiness 为 skipping。D-41 未定时，Boundary 只允许失败在依赖审计那一步，STATUS 写「等待 D-41」。
+- ② PR 最新 CI run 的 job 结论（RUNBOOK §7）：Type-check、Boundary regressions（含依赖审计这一步）、Build H5、Build mp-weixin、Smoke (public page sweep) 为 success；Smoke (protected staging account) 和 Production release readiness 为 skipped。D-41 未定时，Boundary 只允许失败在依赖审计那一步，STATUS 写「等待 D-41」。
 - ③ Boundary 的汇总是 `# fail 0`、`# skipped 1`。
 - ④ STATUS 记 PR 号、head SHA、run id 和每个 job 的结论。
 
-**证据**：`gh pr checks` 输出和 Boundary 汇总行。标签 [CI run#]
+**证据**：`gh run view $RUN` 的 job 列表和 Boundary 汇总行。标签 [CI run#]
 **回退**：PR 保持草稿，修正提交推到同一分支。
 
 ### P1.8 把合并后的 main 并入 PR #369 分支
@@ -571,10 +571,10 @@ sha256sum supabase/migrations/20261112120000_community_post_topics.sql | tee $EV
 **DoD**：
 - ① Eric 在 PR #369 留言：应用时间（CT）、PRECHECK 和 VERIFY 的输出。
 - ② P2.1 版的脚本对 staging 运行，5 项全部 200。
-- ③ 新的 CI run（headSha 等于新的 code_sha）里，Smoke (public page sweep) 0 failed；Type-check、Boundary regressions、Build H5、Build mp-weixin 为 pass。
+- ③ 新的 CI run（headSha 等于新的 code_sha）里，Smoke (public page sweep) 0 failed；Type-check、Boundary regressions、Build H5、Build mp-weixin 为 success。
 - ④ STATUS 记 run id、passed/failed/skipped 计数和新的 code_sha。
 
-**证据**：`$EV/<TS>-staging-after.txt`、`gh pr checks 369` 输出。标签 [CI run#]
+**证据**：`$EV/<TS>-staging-after.txt`、#369 最新 CI run 的 `gh run view` 输出（RUNBOOK §7）。标签 [CI run#]
 **回退**：staging 不回滚，按 RUNBOOK §13「staging 上的迁移」。
 
 ### P2.7 「话题已发布、商品没关联上」的恢复界面
@@ -725,16 +725,17 @@ EV=$EV $RC ~/work/illini install probe p2-authz-matrix.mjs
 **命令**：
 ```bash
 gh pr edit 369 --repo $REPO --body-file $EV/$TS-369-body.md
-gh pr checks 369 --repo $REPO
+RUN=$(gh run list --repo $REPO --branch codex/community-topics-20261112 --workflow ci.yml --event pull_request --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run view $RUN --repo $REPO --json headSha,conclusion,jobs --jq '.headSha, (.jobs[] | [.name, .conclusion] | @tsv)'
 gh pr view 369 --repo $REPO --json isDraft
 ```
 **DoD**：
 - ① PR 描述列出已完成的任务编号和 STATUS 链接。
-- ② `gh pr checks 369` 里所有不是 skipped 的项都是 pass。
+- ② 该 run 的 headSha 等于 code_sha，所有不是 skipped 的 job 都是 success。
 - ③ `isDraft` 仍为 true，OMO 不改。
 - ④ STATUS 的 `next_task_id` 指向一条不依赖合并的任务。
 
-**证据**：`gh pr checks` 输出。标签 [CI run#]
+**证据**：`gh run view $RUN` 输出。标签 [CI run#]
 **回退**：无。
 
 ---
@@ -1171,7 +1172,7 @@ $RC ~/work/illini-p3 install migrations test
 依赖：P3.1–P3.6｜负责：Eric（应用）/ OMO（核对）｜Eric：按 E4 同一流程，把 P3 的迁移（以及 LEGAL.2、LEGAL.4 已经冻结的迁移）应用到 hygkwxugskijadgfisji
 **DoD**：
 - ① Eric 留言应用时间和 VERIFY 的输出。
-- ② `gh pr checks <P3 PR>` 里所有不是 skipped 的项都是 pass。
+- ② P3 PR 最新 CI run（RUNBOOK §7）里所有不是 skipped 的 job 都是 success。
 - ③ STATUS 记 run id 和计数。
 
 **证据**：PR checks。标签 [CI run#]

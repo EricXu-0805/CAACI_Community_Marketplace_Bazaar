@@ -830,8 +830,8 @@ RPC 与管理动作见 §9；VERIFY 断言上面每一条约束、策略、列�
 | Build H5 | pass | 构建后跑 `verify-build-artifact.mjs dist/build/h5 ci`，再 `npx playwright install --with-deps chromium webkit` 和编译版管理端验收。runner 用 `ubuntu-latest`，即 Ubuntu 26.04；Playwright 1.60 在 26.04 上装不了浏览器，P1.5 升到 1.65.0 后才能通过 |
 | Build mp-weixin | pass | 构建加 `verify-build-artifact.mjs dist/build/mp-weixin none`；不跑 `verify-miniprogram.mjs` 包体预算 |
 | Smoke (public page sweep) | pass | PR 上的 `VITE_SUPABASE_URL` 取仓库变量 `vars.PR_SMOKE_SUPABASE_URL`，即 staging-smoke。先跑 `verify-public-read-schema.mjs`，再跑全量未登录巡检。它依赖 staging-smoke 的 schema：PR 带了新迁移而 staging 没应用时必然失败，重跑多少次都一样，要等 Eric 按 E4 应用迁移（P2.6、P3.7、P4.11）。P2.1 之后，缺迁移会在浏览器启动前以 `public_schema_mismatch` 失败 |
-| Smoke (protected staging account) | skipping | 只在 push 到 main 或在 main 上手动触发时运行（:392-396），用受保护的 `staging-smoke` Environment；PR 代码拿不到账号凭据 |
-| Production release readiness | skipping | 只在 main 上运行，要求前六个 job 全部成功（:499-512）。正式发布要求七个 job 都成功（SUPERVISED_RELEASE.md 第 1 步） |
+| Smoke (protected staging account) | skipped | 只在 push 到 main 或在 main 上手动触发时运行（:392-396），用受保护的 `staging-smoke` Environment；PR 代码拿不到账号凭据 |
+| Production release readiness | skipped | 只在 main 上运行，要求前六个 job 全部成功（:499-512）。正式发布要求七个 job 都成功（SUPERVISED_RELEASE.md 第 1 步） |
 
 OMO 的 GitHub 令牌没有 Variables 权限（D-07），读不到 `PR_SMOKE_SUPABASE_ANON_KEY`。同一个公开 key 由 Eric 写进工作站的 `~/.config/illini/staging.env`（[RUNBOOK.md](RUNBOOK.md) §11 E3）。
 

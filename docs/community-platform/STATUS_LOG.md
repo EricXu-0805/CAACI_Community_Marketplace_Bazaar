@@ -165,3 +165,14 @@
 - ci_run_url: —
 - 未测项: tony-ws 上 ~/work/illini-docs 还在 4e459bd，切换由 P1.1 ④ 做；本条改动（STATUS、本条、OMO_PROMPT 第 3 行）是 617055e 之后的单独提交
 - 下一条: P1.1
+
+### L14 · 2026-11-12 23:40 CT · tony-ws 上 gh pr checks 返回 403，CI 读法改走 Actions 接口
+- task_id: —（P1.1 前的环境核对）
+- code_sha: 005ca9d6b5ac23346dfeb38f3deb95984bffd27b
+- docs_sha: 3b2ac973892e84a14559282a5f16f419cb1a9543
+- 环境: 本地 tony-ws（gh 登录 EricXu-0805，细粒度令牌）
+- 命令: `gh pr checks 369`；`gh api repos/$REPO/commits/005ca9d/check-runs`；`gh api repos/$REPO/commits/005ca9d/status`；`gh run list --branch codex/community-topics-20261112 --workflow ci.yml --event pull_request --limit 1`；`gh run view 43212596901 --json headSha,status,conclusion,jobs`；`gh run watch 43212596901`
+- 计数: gh pr checks 与 check-runs 接口都返回 403「Resource not accessible by personal access token」；commit status、Actions 的 run 列表、run view、run watch 都可读 [本地测]。run 43212596901 headSha 005ca9d，7 个 job：Type-check、Boundary regressions、Build H5、Build mp-weixin 为 success，Smoke (public page sweep) 为 failure，另两个 skipped，与 STATUS 的 CI 表一致 [CI run#43212596901]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43212596901
+- 未测项: 没有试给令牌加 Checks 权限；改走 Actions 接口后不需要。OMO_PROMPT 第 3 条、RUNBOOK §7、BACKLOG P1.7 / P2.6 / P2.13 / P3.7 的 DoD、ENGINEERING CI 表的 skipping 都已改成 Actions 接口的写法（success / failure / skipped）
+- 下一条: P1.1
