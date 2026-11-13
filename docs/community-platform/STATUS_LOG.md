@@ -176,3 +176,20 @@
 - ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43212596901
 - 未测项: 没有试给令牌加 Checks 权限；改走 Actions 接口后不需要。OMO_PROMPT 第 3 条、RUNBOOK §7、BACKLOG P1.7 / P2.6 / P2.13 / P3.7 的 DoD、ENGINEERING CI 表的 skipping 都已改成 Actions 接口的写法（success / failure / skipped）
 - 下一条: P1.1
+
+### L15 · 2026-11-12 23:30 CT · P1.1 工作站、仓库与登录状态核对通过
+- task_id: P1.1
+- code_sha: 005ca9d6b5ac23346dfeb38f3deb95984bffd27b
+- docs_sha: 29b50d884b359e5dcce5c9cf4f9943fc8787da76
+- 环境: 本地 tony-ws
+- 命令: OMO 启动的五条预检（原样输出见「附」）；RUNBOOK §2 开工核对整段与 §2.1，输出在 ~/work/evidence/P1.1/20261113T053016Z-preflight.txt（gh auth status 只取计数，没有含 Token 的行）
+- 计数: ① node v22.23.5；② gh 登录 EricXu-0805 计数 1；③ ~/work/illini status --porcelain 无输出，HEAD = @{u} = 005ca9d6b5ac23346dfeb38f3deb95984bffd27b；④ ~/work/illini-docs 的 @{u} 是 origin/codex/community-plan-v5，HEAD 29b50d8；⑤ vercel whoami 输出 ericxu-0805，find ~/work -name .vercel -type d 无输出；⑥ podman images 有 localhost/illini-dev:pw1.60-node22-pg17。另：npm 10.8.2（已知偏差，P1.2 ④ 处理）、umask 0022、podman 5.7.0、残留容器 0、df 空闲 291G [本地测]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43212596901（headSha 005ca9d，conclusion failure，与 STATUS CI 表一致）
+- 未测项: 无
+- 下一条: P1.2
+- 附（五条预检原样输出）:
+  1. `git -C ~/work/illini fetch origin && git -C ~/work/illini status --porcelain && git -C ~/work/illini rev-parse HEAD` → `005ca9d6b5ac23346dfeb38f3deb95984bffd27b`
+  2. `git -C ~/work/illini-docs fetch origin && git -C ~/work/illini-docs switch --track origin/codex/community-plan-v5` → `Switched to a new branch 'codex/community-plan-v5'` / `branch 'codex/community-plan-v5' set up to track 'origin/codex/community-plan-v5'.`
+  3. `gh run list --repo EricXu-0805/CAACI_Community_Marketplace_Bazaar --branch codex/community-topics-20261112 --workflow ci.yml --event pull_request --limit 1 --json databaseId,headSha,conclusion` → `[{"conclusion":"failure","databaseId":43212596901,"headSha":"005ca9d6b5ac23346dfeb38f3deb95984bffd27b"}]`
+  4. `node -v && npm -v` → `v22.23.5` / `10.8.2`
+  5. `cat ~/work/illini-docs/docs/community-platform/STATUS.md` → 与材料分支 29b50d8 上的 STATUS.md 相同（写于 2026-11-12 23:25 CT，next_task_id: P1.1）
