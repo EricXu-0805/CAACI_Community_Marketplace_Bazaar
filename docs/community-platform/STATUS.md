@@ -1,18 +1,18 @@
 # STATUS
 
-写于 2026-11-13 00:45 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-13 00:53 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: P2.3`
+`next_task_id: P2.4`
 
 ## 版本
 
 | 项 | 值 |
 |---|---|
 | 代码分支 / PR | codex/community-topics-20261112 / #369（草稿，OPEN）[本地测：git push 9c173a4] |
-| code_sha | 9c173a48bd61c0da5ee3a714af94d1f6c8a36522（OMO 推送 P2.1、P2.2 后的 #369 head） |
+| code_sha | a25810bb08110cbf48b30c63f3b63f3b0e240da8（OMO 推送 P2.3 后的 #369 head） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-12 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-12 git ls-remote] |
-| docs_sha | 3a2997ef91d06a624ad089daac4fd9f1b6385a90（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
+| docs_sha | 0a69a060015147ea8002a759b7dd0927f1c681d1（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
 | 配置 / 品牌 / 首页分支 | codex/config-fixes-20261112 远端 14b4e4a（P1.2–P1.5），没开 PR（P1.7）；品牌、首页还没建（BRAND.1 / HOME.3）[本地测] |
 | tony-ws 仓库 | ~/work/illini 在 005ca9d；~/work/illini-docs 已切到 codex/community-plan-v5（P1.1 ④，见 STATUS_LOG L15）[本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
@@ -20,7 +20,7 @@
 
 ## CI
 
-PR #369 · run [43377614567](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43377614567) · head 9c173a4 · 2026-11-13 CT 结束 · conclusion failure [CI run#43377614567]
+PR #369 · run [43380822445](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43380822445) · head a25810b · 2026-11-13 CT 结束 · conclusion failure（job 结论与下表相同）[CI run#43380822445]
 
 | job | 结论 | 计数 / 原因 |
 |---|---|---|
@@ -61,7 +61,8 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P1.6 / P1.8 / P1.11、P1.12 | 未测 / 失败 | P1.6 失败（停这条）：npm audit fix 后审计仍 43 个，7 个包要 Eric 逐项定，见 STATUS_LOG；P1.8 等 E5（合并 P1.7 的 PR）；P1.11、P1.12 等 D-29（E2）与 E3 |
 | P2.1 | 通过 | ①②④ 本地；③ 由 CI 的 public sweep 在 staging 上给出预期报错（本地 S-1 运行等 E3）[CI run#43377614567] |
 | P2.2 | 通过 | test 2001 / 2000 / 0 / 1，smoke 35 passed [本地测]；CI Boundary 同数 [CI run#43377614567] |
-| P2.3–P2.4 | 未测 | zh.ts:894-898 仍是旧板块名；tabBar 首页/广场/发布/消息/我的；composerMode 默认 'update'（plaza/index.vue:946）[源码 005ca9d] |
+| P2.3 | 通过 | 9→0；两张截图第 2 项为「社区」；smoke 14 passed、test 2001/2000/0/1 [本地测]；CI 同前 [CI run#43380822445] |
+| P2.4 | 未测 | zh.ts:894-898 仍是旧板块名；tabBar 首页/广场/发布/消息/我的；composerMode 默认 'update'（plaza/index.vue:946）[源码 005ca9d] |
 | P2.5、REGION.1 | 未测 | 迁移 20261112120000 未应用到任何托管库，没有 lock_timeout，_ops 下缺 PRECHECK/VERIFY/REGRESSION，没有 region 列 [源码 005ca9d] |
 | P2.6 | 失败 | public sweep 2 failed（上表）；等 D-29、E4 |
 | P2.7–P2.13、REGION.2 | 未测 | 依赖 P2.4 / P2.5 / P2.6 |

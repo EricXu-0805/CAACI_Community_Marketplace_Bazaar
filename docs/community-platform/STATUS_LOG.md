@@ -322,3 +322,15 @@
 - 未测项: ① ② ④ 的通过判定
 - 下一条: P2.3
 - 附: 没有改任何迁移。文档与源码不一致（STOP-16，可继续）：RUNBOOK §5.1 的脚本只 include 20260722 bootstrap，而仓库 _ops 下还有全链回放需要的 20260719 与 realtime 两个 fixture；另外一部分迁移要求以 postgres 身份执行。两轮之后仍不通过，按 STOP-14 停这条，已提问用户（脚本连接角色与 bootstrap 顺序由谁定）。P2.5 依赖 P1.10，一并等。容器每次都已删除（残留 0）。
+
+### L27 · 2026-11-13 00:53 CT · P2.3 导航第一步：「广场」改名「社区」
+- task_id: P2.3
+- code_sha: a25810bb08110cbf48b30c63f3b63f3b0e240da8（codex/community-topics-20261112，已推送）
+- docs_sha: 0a69a060015147ea8002a759b7dd0927f1c681d1
+- 环境: 本地 tony-ws pw1.60；CI
+- 命令: zh.ts 改 nav.plaza、plaza.title、plaza.backToPlaza、history.tabPosts、admin.tabPlaza 与四个 admin.banner* 的值，en.ts 按 SPEC §11「P2.3」表改（history.tabPosts、admin.bannerDefaultHint 的英文不变）；pages.json tabBar 第 2 项 text；新增 app/smoke/community-tab-label.spec.ts；admin-feedback-journeys.spec.ts 的 admin tab 名同步改 Community；`SMOKE_SPECS="$DEF community-tab-label.spec.ts admin-feedback-journeys.spec.ts" ~/work/illini-dev-env/run-checks.sh ~/work/illini install smoke`（log check-20261113T064220Z.log）；另跑 `~/work/illini-dev-env/run-checks.sh ~/work/illini install test`（log check-20261113T064443Z.log）；`git push --no-verify`（原因同 L21）
+- 计数: ① zh.ts 里「广场」（除 reconsent.*、share.plaza）9 → 0；② pages.json 无「广场」，diff 只改 text；③ 截图 appendix/visual/P2.3/tabbar-390-light-zh.png、tabbar-1280-light-zh.png，第 2 项都是「社区」（390 是底部 tab，1280 是侧栏），OMO 已逐张看过；smoke 14 passed；test 2001 / 2000 / 0 / 1 [本地测]；CI Boundary、Type-check、两个 Build 全 success，public sweep 仍按预期失败在预检 [CI run#43380822445]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43380822445
+- 未测项: 无
+- 下一条: P2.4
+- 附: BACKLOG 写 CustomTabBar.vue、AppSidebar.vue 里有硬编码文字，源码里两处都走 t('nav.plaza')，只有一行代码注释提到 Plaza，没有改（文档与源码不一致，按源码）。两张截图实际随 P1.10 的材料提交 0a69a06 进了仓库。
