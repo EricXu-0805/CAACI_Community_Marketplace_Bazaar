@@ -746,3 +746,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 「关注的人」帖子流在真实 staging 数据上的表现（等 E3）
 - 下一条: D-45 第 6 项 HOME.4 写回（L61）
 - 附: 没接上的 7 个 key（已加进语言包，留 ④）：plaza.ref.removed、plaza.ref.unlink——post_items 的 SELECT 策略（20260719151729_reconcile_plaza_base_table_acl.sql:295）对已删除或读不到的商品不返回行，作者也看不到，需要改策略或加 RPC；plaza.hidden、plaza.hiddenOwner、plaza.appeal——posts 的 SELECT 策略（同文件 :267）只返回 active 行、无作者例外、无原因列，属 P3.5/P3.6；plaza.emptyUnanswered——「待回答」tab 随 P3.4；plaza.restrictedReply——不需要迁移，但 App.vue 的 requiredGatePath() 把所有受限账号送去 pages/suspended，要按 SPEC §6.5.1 拆分门禁（plaza.restrictedPost 同理）。自决：规则 BACKLOG §14 第 28 行（代码照 SPEC）；撤回 `git revert c16f0a1`。首页英文文案仍按 buildHomeSections 返回，与 SPEC §11「HOME.3 首页」节不同，那一节不在本次两节内。
+
+### L61 · 2026-11-13 10:13 CT · HOME.4 首页按方向 A 定稿（D-35）：板块色、价格样式、徽章与字体栈 [OMO自决]
+- task_id: HOME.4
+- code_sha: 010f8f6（#374，已推送；push 用 --no-verify 同 L21）
+- docs_sha: 191f551c7c823c717ec9c4c16e5725e420660b3f
+- 环境: 本地 tony-ws run-checks（容器 Chromium/WebKit），axe-core 4.14.0；实现由 OMO 子任务（visual-engineering）做
+- 命令: 按 BACKLOG HOME.4 DoD 与 SPEC §9.5 六项。`SMOKE_SPECS="community-home.spec.ts community-board-states.spec.ts contrast-runtime.spec.ts community-topic-row.spec.ts community-post-topics.spec.ts community-post-partial-attach.spec.ts plaza-attach-picker-is-modal.spec.ts" ~/work/illini-dev-env/run-checks.sh ~/work/illini-home install typecheck test smoke mp`
+- 计数: ① 390/768/1280 × 浅/深 × 中/英 共 12 组：社区区域 <12px 文本 0、横向溢出 0、axe color-contrast 0（日志 44 行 AXE 全 0）；新 CSS 无 hex（hex 只在 App.vue 的 token 定义里）。② 12 张截图 appendix/visual/HOME.4/。③ 与方向 A 的差异表 appendix/visual/HOME.4/diff-vs-direction-a.md（43 行加 §9.5 六项）。install、typecheck rc=0；test 2047 / 2046 / 0 / 1；smoke 85 passed；mp rc=0，主包 1,570,077（余 2,787）（check-20261113T151200Z）[本地测]。SPEC §9.5：--success-text 与 6 个 --board-* token 进五套配色（暗色值各 6.3:1）；14 条价格规则改 --ink、600、等宽数字；官方徽章 --ink 底 --surface-alt；--font-hei 加 Segoe UI、Hiragino Sans GB；印章与 logo 在 #372，不重复
+- ci_run_url: —（#374 base 不是 main，不触发 CI）
+- 未测项: 真机；整页 390 的 tab 栏 10px 标签、768 侧栏「ILLINI MARKET」9.5px 是共享组件旧问题，审计范围同 HOME.3 不含它们
+- 下一条: D-45 第 7 项（小程序论坛首页）
+- 附: 自决：规则 BACKLOG §14 第 24 行（稿与 SPEC 不同以 SPEC 为准）与第 28 行；暗色 token 值由 OMO 定（SPEC 只给浅色）；L49 的侧栏「发布」按钮暗色 2.87:1 顺手改成 --ink-inverse（它让两张截图 axe 不过）；768 起标题与正文 26/16px（稿 22/15px，App.vue 现有桌面字号不在六项内）；分隔点保持 --ink-quiet。CommunityHome.vue 有两处占位「集」，合 #372 时改。撤回 `git revert 010f8f6`。

@@ -2,7 +2,7 @@
 
 写于 2026-11-13 07:48 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-45 第 5 项（#374 部分）与第 6 项 HOME.4`
+`next_task_id: D-45 第 7 项（小程序论坛首页）`
 `latest_batch: appendix/batch/FINAL.md`
 
 ## 版本
@@ -83,7 +83,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | HOME.3 | 通过 | #374 a756081；首页 19 条用例全过，AXE 0、<12px 0 [本地测] |
 | HOME.5 | 通过 | #374 2d18576；合并 #369 后 68eb43b，MERGEABLE；主包 1,568,808（余 4,056）[本地测] |
 | P2.12 | 通过 | 草稿 PR #374（244a8e7）；12 张截图 <12px 0、axe 0；首屏 390 5 行、1280 9 行 [本地测] |
-| HOME.4 | 未测 | 依赖各自任务（D-35 已定 A） |
+| HOME.4 | 通过 | #374 010f8f6；12 组 axe 0、<12px 0、溢出 0；截图 appendix/visual/HOME.4/ [本地测] |
 | P3.1–P3.8 | 未测 | 依赖 P2.13（#369 合并） |
 | P4.7 第一步 | 通过 | appendix/research/campus-events.md；D-33 已按 D-43 代定 A，第二步依赖 P4.1、P4.2 |
 | P4.1 | 通过 | 本地 wip/P4.1 5f62ddd，容器 test 2015/2014/0/1 [本地测]；不推送 |
