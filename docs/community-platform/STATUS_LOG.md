@@ -275,3 +275,15 @@
 - 未测项: 无
 - 下一条: P1.9
 - 附: 范围比 BACKLOG 写的多一处：api/notification-digest.js 的邮件正文与标题跟着改，否则现有边界测试会失败。
+
+### L23 · 2026-11-13 00:41 CT · P1.9 测试镜像升级到 Playwright 1.65（pw1.65-node22-pg17）
+- task_id: P1.9
+- code_sha: 14b4e4ae60bfc953783b2b1f72b84ec549ed457d（全量在这个 head 上跑）
+- docs_sha: 89d6644e363b17b1cb81f7c80a7b2c63e1e70f9d
+- 环境: 本地 tony-ws，新镜像 localhost/illini-dev:pw1.65-node22-pg17
+- 命令: 按 RUNBOOK §4.3 ③ 留底 Containerfile.pw1.60 并改三处；`podman pull mcr.microsoft.com/playwright:v1.65.0-noble`；`podman build -t localhost/illini-dev:pw1.65-node22-pg17 -f Containerfile .`（log ~/work/illini-dev-env/logs/build-pw1.65-20261113T060442Z.log，BUILD_RC=0）；镜像核对与 selftest 存 ~/work/evidence/P1.9/*-image-check.txt；`~/work/illini-dev-env/run-checks.sh ~/work/illini-config install typecheck h5 h5accept mp migrations test smoke`（log ~/work/illini-dev-env/logs/check-20261113T061027Z.log）
+- 计数: ① 镜像 ID 169f16e69d1e040a0a31c1f9f7c3451a1d320436136c442a2fe383851c236e0b；node v22.23.5、npm 10.9.9、initdb (PostgreSQL) 17.12、/ms-playwright 有 chromium-1254 与 webkit-2388、locale 有 en_US.utf8；② selftest 三行 gate_rc 为 1/1/0，与 RUNBOOK §4.3 ① 一致；③ 全量每个 STEP rc=0，image=pw1.65：install 601 s（keep-id 首跑）、h5accept 52 passed、TEST tests=1994 pass=1993 fail=0 skipped=1 pg_skips=0、smoke 6 passed；④ appendix/env/ 存档 sha256：Containerfile 50faec27a1691ca21fb1cfb4779fb83c8292e89b766a0757a8165a25c9dadd62，run-checks.sh a813612b0484dcffecfcde24be69e9016c2cb2fec33e48af146c6cc24981a14b，mp-size.mjs 7708271c9da1ba19b3f3df8761a2fa778a8969168466d38c620c24fcc09060e1，另有 P1.13 的 vercel-guard.sh ff453b2636cb2ee2471dd09a60640704de604aba75bba7bccf8191174e5e1e7b [本地测]
+- ci_run_url: —
+- 未测项: 无
+- 下一条: P1.10
+- 附: 四个存档文件实际随 P2.1 的材料提交 abf549a 一起进了仓库（git add 整个目录），内容与上面的 sha256 一致。构建过程中有两次操作失误：第一次改 Containerfile 时脚本转义写坏、没改成功，但已启动的构建监控会用旧文件打出 pw1.65 标签，在 build 开始前把它的子 shell 杀掉（BUILD_RC=143），没有生成错误标签的镜像；第二个监控的 pgrep 等待会匹配到自己的命令行，一直空等到超时被杀，没有构建。pw1.60 镜像与 Containerfile.pw1.60 按 RUNBOOK §13 保留到 P1.8。

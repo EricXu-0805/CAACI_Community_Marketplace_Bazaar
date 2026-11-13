@@ -1,8 +1,8 @@
 # STATUS
 
-写于 2026-11-13 00:03 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-13 00:41 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: P1.9`
+`next_task_id: P1.10`
 
 ## 版本
 
@@ -12,7 +12,7 @@
 | code_sha | 9c173a48bd61c0da5ee3a714af94d1f6c8a36522（OMO 推送 P2.1、P2.2 后的 #369 head） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-12 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-12 git ls-remote] |
-| docs_sha | abf549a3fb33065ab142ff98a1b905e261a4b18a（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
+| docs_sha | 89d6644e363b17b1cb81f7c80a7b2c63e1e70f9d（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
 | 配置 / 品牌 / 首页分支 | codex/config-fixes-20261112 远端 cc63ab5（P1.2–P1.4），没开 PR（P1.7）；品牌、首页还没建（BRAND.1 / HOME.3）[本地测] |
 | tony-ws 仓库 | ~/work/illini 在 005ca9d；~/work/illini-docs 已切到 codex/community-plan-v5（P1.1 ④，见 STATUS_LOG L15）[本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
@@ -55,7 +55,8 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P1.4 | 通过 | 旧色 grep 15→0；typecheck、h5、mp rc=0 [本地测] |
 | P1.5 | 未测 | ①–③ 通过（fsevents 删除经 Eric 批准，STATUS_LOG）；④ 等 P1.9，⑤ 等 P1.7 的 CI [本地测] |
 | P1.13 | 通过 | DoD ①–④ 符合；link 拉下的 .env.local 已按 Eric 答复删除 [本地测] |
-| P1.7、P1.9、P1.10 | 未测 | P1.9 构建 pw1.65 镜像中；P1.10 依赖 P1.9；P1.7 依赖 P1.5 |
+| P1.9 | 通过 | 镜像 169f16e6…，全量每步 rc=0；test 1994 / 1993 / 0 / 1 [本地测] |
+| P1.7、P1.10 | 未测 | P1.10 L-SQL 回放进行中；P1.7 依赖 P1.6 |
 | P1.6 / P1.8 / P1.11、P1.12 | 未测 | P1.6：D-41 已定（A，在配置分支单独做 deps: 提交），等 P1.5 ④；P1.8 等 E5（合并 P1.7 的 PR）；P1.11、P1.12 等 D-29（E2）与 E3 |
 | P2.1 | 通过 | ①②④ 本地；③ 由 CI 的 public sweep 在 staging 上给出预期报错（本地 S-1 运行等 E3）[CI run#43377614567] |
 | P2.2 | 通过 | test 2001 / 2000 / 0 / 1，smoke 35 passed [本地测]；CI Boundary 同数 [CI run#43377614567] |
