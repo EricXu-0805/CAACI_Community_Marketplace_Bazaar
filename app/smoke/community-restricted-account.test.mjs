@@ -159,8 +159,8 @@ function renderedReply(path, user, lang) {
 }
 
 for (let level = 0; level <= 5; level++) {
-  test(`L${level} ${messages.en[`suspended.l${level}Name`]} has the SPEC browsing gate`, () => {
-    assert.equal(gate(profile(level)), level === 5 ? '/pages/suspended/index' : null)
+  test(`L${level} ${messages.en[`suspended.l${level}Name`]} retains the account gate until all server writes are protected`, () => {
+    assert.equal(gate(profile(level)), level >= 2 ? '/pages/suspended/index' : null)
   })
   for (const lang of ['en', 'zh']) {
     test(`L${level} composer opens or stops before touching the draft in ${lang}`, async () => {
@@ -219,7 +219,8 @@ test('expired L2-L5 restrictions allow browsing and composing again', async () =
 
 test('restriction changes retain profile-recovery, consent, and unauthenticated controls', async () => {
   assert.equal(gate(profile(2), { profileLoadState: Vue.ref('loading') }), '/pages/profile-recovery/index')
-  assert.equal(gate({ ...profile(2), tos_version: '0' }), '/pages/reconsent/index')
+  assert.equal(gate({ ...profile(2), tos_version: '0' }), '/pages/suspended/index')
+  assert.equal(gate({ ...profile(1), tos_version: '0' }), '/pages/reconsent/index')
   assert.equal(gate(null), null)
   const h = composer(null, 'en')
   await h.open()

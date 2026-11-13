@@ -93,8 +93,7 @@ const oauthCallbackInFlight = ref(false)
  *
  * Runs whenever the logged-in profile changes (login, signup, page
  * refresh). Decides in order:
- *   1. Active permanent termination (level 5) → /pages/suspended/index.
- *      Temporary restrictions can browse; publishing stays server-gated.
+ *   1. If user is suspended (level >= 2, not expired) → /pages/suspended/index.
  *   2. Else if profile.tos_version < CURRENT_CONSENT_VERSION → /pages/reconsent/index.
  *   3. Else let the user through.
  *
@@ -154,7 +153,7 @@ function requiredGatePath(): string | null {
   }
   const u = currentUser.value
   if (!u) return null
-  if (u.suspension_level === 5 && isSuspensionActive(u)) {
+  if (isSuspensionActive(u)) {
     return '/pages/suspended/index'
   }
   // O1 (2026-05-20): onboarding branch removed. New users (tos_version='0'
