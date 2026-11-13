@@ -524,7 +524,7 @@
 - 下一条: FINAL
 - 附: Boundary 的依赖审计只在 PR 改了依赖文件时才跑（#369、#372 没改，所以通过）；#371 卡在这一步是 main 上原有的 @intlify、glob、minimatch、vite 公告，等 P1.6 剩余项。宿主 pre-push 钩子在配置分支上是通过的（P1.3 的 postgresBinDir 已在这条分支），合并后 #369、#372 推送不再需要 --no-verify。
 
-### L44 · 2026-11-13 03:57 CT · P1.10 L-SQL 全链回放 181/181：托管面缺口放进 #369 的 _ops LOCAL_BOOTSTRAP（D-44 第 2 项），变红验证通过
+### L44 · 2026-11-13 03:57 CT · P1.10 L-SQL 全链回放 181/181：托管面缺口放进 #369 的 _ops LOCAL_BOOTSTRAP（D-44 第 2 项），变红验证通过 [OMO自决]
 - task_id: P1.10
 - code_sha: 5abcb861fc0736e59d66f7832c1dfefe0ceacefe（codex/community-topics-20261112，#369，已推送，push 用 --no-verify 同 L21；只新增 4 个 supabase/_ops 文件，supabase/migrations/ 与 manifest.sha256 无改动）
 - docs_sha: 24d141a238711de528b9f72676aca9f36fd5fd5c
@@ -535,8 +535,9 @@
 - 未测项: 无
 - 下一条: P2.5
 - 附: D-44 第 2 项要求的 3 次上限只用了 1 次。D-44 列了三处缺口，实际是四处：auth.mfa_factors 也被 20260916073035 读到（f.status = verified），按同一规则单独成文件。提交前做过两次不回放迁移的探查（裸镜像 + 已有 bootstrap 后列出 auth/storage/realtime 表列；四份新文件在裸镜像上自检与守卫测试），不算计数尝试，脚本在 evidence/P1.10/probe-surface.sh、bootstrap-selfcheck.sh。
+- 自决（D-45 补记）: 规则 BACKLOG §14 第 28 行（文档与源码不一致，以源码为准）；选了：D-44 列三处缺口，实际四处，auth.mfa_factors 也单独成文件；理由：20260916073035 读到 f.status；证据 evidence/P1.10/probe-surface.sh；撤回 `git revert 5abcb86`。归档 appendix/env/lsql-replay.sh 的 sha256 为 dc67d1ad7aac0e73a961c0cc31cc3b7c8021eda81998285ed95fdb2c028c7ca6，与 ~/work/illini-dev-env/lsql-replay.sh 相同（RUNBOOK §4 ⑤）。
 
-### L45 · 2026-11-13 04:12 CT · P1.6 跨大版本按 D-44 第 3 项做成草稿 PR #373（@intlify 11.4.19、glob 14.0.6、minimatch 11.0.8），合不合由 Eric 定
+### L45 · 2026-11-13 04:12 CT · P1.6 跨大版本按 D-44 第 3 项做成草稿 PR #373（@intlify 11.4.19、glob 14.0.6、minimatch 11.0.8），合不合由 Eric 定 [OMO自决]
 - task_id: P1.6
 - code_sha: 55716ba57871f86b67bb2ecea6deca005627ccb0（codex/deps-crossmajor-20261113，从 #371 head b259105 切出，草稿 PR #373，base codex/config-fixes-20261112；正常推送，宿主 pre-push 检查通过）
 - docs_sha: b584adcf620eb7b8c3a5e36dc60a4ee0062301f3
@@ -547,8 +548,9 @@
 - 未测项: Sentry source map 上传（要 token，Eric 在发布构建里确认，已写进 PR 描述）；这条分支上的完整 public sweep（CI 不触发，本地只跑了默认 smoke 集合）
 - 下一条: P2.5
 - 附: 与 D-44 原文的两处出入 [OMO自决]：@intlify/vue-devtools 在 npm 上没有 11.x（最新 9.14.1），留在 9.14.1，它不在审计报出的 7 个包里；glob、minimatch 的覆盖限定在 @sentry/bundler-plugin-core 子树（树里只有这一处用到它们），不做全局覆盖。pages.json 本来没有 `%key%`，所以用产物逐字节比对代替「占位全被替换」的检查。
+- 自决（D-45 补记）: 规则 BACKLOG §14 第 28 行；选了：`@intlify/vue-devtools` 留 9.14.1、`glob` / `minimatch` 只在 `@sentry/bundler-plugin-core` 子树覆盖、用产物逐字节比对代替 `%key%` 检查；理由见上条附；证据 evidence/P1.6x/verify.log；撤回：关闭 #373 或 `git revert 55716ba`。补记：lockfile 还带动 `path-scurry` 下的 `lru-cache` 11.3.5 → 11.5.3。
 
-### L46 · 2026-11-13 04:36 CT · P2.5 冻结前修订 20261112120000 并补 PRECHECK/VERIFY/REGRESSION；20261112120000 冻结
+### L46 · 2026-11-13 04:36 CT · P2.5 冻结前修订 20261112120000 并补 PRECHECK/VERIFY/REGRESSION；20261112120000 冻结 [OMO自决]
 - task_id: P2.5
 - code_sha: 090d2be97f8a898d011a414ad223cd6320544ad1（codex/community-topics-20261112，#369，已推送，push 用 --no-verify 同 L21）
 - docs_sha: 5707d1b29110631ddaac37fe039981a406bc204c
@@ -559,6 +561,7 @@
 - 未测项: ④ staging source_lang 探测（等 E3）；smoke 里 community-post-partial-attach.spec.ts 的偶发失败（P2.7 的测试时序问题，另行修，见附）
 - 下一条: P2.9
 - 附: [OMO自决] architect 子任务因模型额度中断，只留下 DoD ③ 证据，P2.5 由 OMO 自己做。VERIFY 按迁移实际授权断言：capture_report_target_snapshot 是触发器函数，迁移对 PUBLIC、anon、authenticated、service_role 全部 REVOKE（ENGINEERING §5.1 写「只有 service_role 能执行」，实际是谁都不能直接执行），admin_get_report_detail 只给 service_role。已知副作用照 §5.1：应用本迁移后旧的 VERIFY_20260718_reconcile_app_table_acl_boundaries 会报 posts 列清单漂移，属预期，没改那个历史文件。L-SQL 日志头写的 head 是 5abcb86，因为回放读工作区，内容与 090d2be 相同。smoke 第一次跑 community-post-partial-attach.spec.ts 有 1 条失败：失败快照里标题框被清空、正文还在；uni-input 用 100ms 节流把输入同步到 v-model，测试 fill 之后马上打开挂商品面板，标题在同步前被重新渲染覆盖。与 P2.5 改动无关，修测试另提交。
+- 自决（D-45 补记）: 规则 D-42 第 7 项（子任务额度中断，主会话接手）与 BACKLOG §14 第 28 行（VERIFY 按迁移实际授权断言）；撤回：VERIFY 随 `git revert 090d2be`（迁移已冻结，撤回要按 §14 第 12 行报 Eric）。partial-attach 的测试修正按 §14 第 5 行，撤回 `git revert d7e6d9b`。
 
 ### L47 · 2026-11-13 04:51 CT · P2.9 话题分享卡用话题标题，动态用正文首行；兼容矩阵按实测补证据
 - task_id: P2.9
@@ -571,6 +574,7 @@
 - 未测项: 无
 - 下一条: HOME.2
 - 附: 部署顺序：新 share-post.js 的查询带 title，若早于 20261112120000 上线，posts_visible 缺 title 会 400，所有帖子退回兜底文字，必须先迁移（已写进 §6）。#369 上 share-post.js 的兜底文案还是旧品牌名，#372 也改了同一段，两个 PR 合并时这里会冲突，要 Eric 合第二个时取 #372 的文案。
+- D-45 更正: 2022/2021 是在 bd6fee5 的树上量的（含 HOME.2 的新文件）。ci 一栏「随 bd6fee5 重跑」不成立：run 43412348642 被取消，#369 在 P2.9 之后的 CI 证据是 46e69b8 的 run 43418959287（Boundary 2035/2034/0/1）。附里「取 #372 的文案」是错的：share-post.js 冲突块里 #369 一侧是 P2.9 的 topicTitle / headline 逻辑，整块取 #372 会撤掉 P2.9；要手工合，只取 #372 的品牌字串。
 
 ### L48 · 2026-11-13 04:51 CT · HOME.2 首页区块纯函数 buildHomeSections 与 5 组 fixture 单测
 - task_id: HOME.2
@@ -583,8 +587,9 @@
 - 未测项: 无
 - 下一条: REGION.2
 - 附: 短卡只补一行补位文案，剩余高度由布局保留（HOME.3 实现）；「新来先看」取官方且 is_featured 的帖子最多 5 条，按 SPEC §5。
+- D-45 更正: ci 一栏「随 bd6fee5 重跑」不成立，run 43412348642 被取消。
 
-### L49 · 2026-11-13 04:53 CT · P2.12 话题列表行按论坛密度重排；草稿 PR #374（base #369 分支）
+### L49 · 2026-11-13 04:53 CT · P2.12 话题列表行按论坛密度重排；草稿 PR #374（base #369 分支） [OMO自决]
 - task_id: P2.12
 - code_sha: 244a8e7be3a82f3647eab33694c322dd64e4bf8b（codex/community-home-20261112，从 #369 be2ebb6 切出，草稿 PR #374，base codex/community-topics-20261112；push 用 --no-verify 同 L21）
 - docs_sha: 457a995752c181135a09f25a1be0b43d6f384ec6
@@ -595,6 +600,7 @@
 - 未测项: 页面其他部分不在本任务：动态卡与底栏 10–11px 文字、暗色侧栏「发布」按钮 2.87:1
 - 下一条: REGION.2
 - 附: [OMO自决] 英文 plaza.ref.more 用 "{n} items in all" 而不是 SPEC 的 "+{n} more"：中文「等 {n} 件」数的是总数，i18n parity 测试要求中英占位符一致，照 SPEC 会差 1；建议 Eric 把 SPEC §11 改成这一版。读不到的关联商品仍由 usePlaza 的 stripDeletedItems 丢掉，行里不显示「关联的商品已下架」，留给引用卡（SPEC 6.6）任务。HOME.3、HOME.5 要在这条分支上接着做（先把 #369 merge 进来拿 HOME.2，不 rebase）。
+- 自决（D-45 补记）: 规则 BACKLOG §14 第 28 行；撤回：把 en.ts 的 plaza.ref.more 改回 SPEC 的 "+{n} more"。D-45 第 5 项要求代码照 SPEC，第三批改回，理由记进 ④ 由 Eric 定。
 
 ### L50 · 2026-11-13 05:00 CT · REGION.2 社区查询都带 region=cu；只有一个地区时不显示切换器，页头标「香槟」
 - task_id: REGION.2
@@ -607,7 +613,7 @@
 - 未测项: 无
 - 下一条: P2.8
 
-### L51 · 2026-11-13 05:27 CT · P2.8 同一 ID 幂等发布与账号草稿（仅本地提交）
+### L51 · 2026-11-13 05:27 CT · P2.8 同一 ID 幂等发布与账号草稿（已推送 #369） [OMO自决]
 - task_id: P2.8
 - code_sha: 46e69b8459af4d20668d612a9d83fdecbe3e27fa（#369，OMO 主会话已推送，push 用 --no-verify 同 L21）
 - docs_sha: e287b81d1904a45cc63e02e95ee06f54eacb1e68
@@ -619,8 +625,9 @@
 - 下一条: P2.10
 - 附: App.vue 的 H5 uni-modal 层级必须高于 composer，首轮桌面 smoke 证明旧层级使保留草稿按钮被 textarea 遮挡；utils/index.ts 补两条新诊断的中英文映射。冻结迁移未改。材料记录保留为未提交改动，避免在要求的两个代码提交之外另建提交。
 - 附（主会话）：本条由子任务起草，主会话核对后提交；修正 typecheck 后的 test/smoke 由 check-20261113T113035Z（test 2042/2041/0/1、smoke 20 passed）覆盖。
+- 自决（D-45 补记）: 规则 BACKLOG §14 第 28 行。P2.8 把 SPEC §11 的 6 个 key 改了名，原条目没记（STOP-16a）：publishUnknown→publishUncertain、publishNotFound→publishMissing、draftCloseTitle→closeComposer、draftKeep→keepDraft、draftDiscard→discardDraft、draftClear→clearDraft；D-45 第 5 项改回 SPEC 的名字。H5 原生确认框层级、诊断文案本地化超出 BACKLOG 文件清单。撤回 `git revert 46e69b8`。
 
-### L52 · 2026-11-13 06:10 CT · HOME.3 社区 tab 默认视图改为论坛首页（#374 分支）
+### L52 · 2026-11-13 06:10 CT · HOME.3 社区 tab 默认视图改为论坛首页（#374 分支） [OMO自决]
 - task_id: HOME.3
 - code_sha: a756081（codex/community-home-20261112，草稿 PR #374；含 merge #369 的 953749c；push 用 --no-verify 同 L21）
 - docs_sha: 8323f0285e74cc6f95824ab39e691d23250ff9bf
@@ -631,8 +638,9 @@
 - 未测项: 真机；#374 不在 #372 之上，截图里的站名与标识仍是旧占位，品牌以 #372 为准
 - 下一条: HOME.5
 - 附: [OMO自决] home 分支用 merge 拿到 #369 的 HOME.2、REGION.2（不 rebase 已推送分支），唯一冲突是两边各加的 import，两边都保留。
+- 自决（D-45 补记）: 规则 D-42 第 3 项对 §14 第 2 行的限制（只 merge、不 rebase）；撤回 `git revert -m 1 953749c`。D-45 更正：a756081 改了九份旧 spec，不是四份：a11y-keyboard-journey、community-post-partial-attach、community-post-topics、community-topic-row、input-preview-supplement、motion-preference、plaza-attach-picker-is-modal、read-failure-states、seller-publish-responsive。
 
-### L53 · 2026-11-13 06:11 CT · P2.10 小程序话题分享用标题、板块深链；包体在预算内
+### L53 · 2026-11-13 06:11 CT · P2.10 小程序话题分享用标题、板块深链；包体在预算内 [OMO自决]
 - task_id: P2.10
 - code_sha: 92698d159021612b84005ad4c36908dda537a86c（#369，已推送；push 用 --no-verify 同 L21）
 - docs_sha: 5e465ef6c5f89cc5cadd6032cc748ec9815f9439
@@ -652,8 +660,9 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 真机预览留到 P5.2；分享卡在微信里的实际显示
 - 下一条: HOME.5
 - 附: 主包只剩约 14 KB 余量；#374 分支（HOME.3 加 HOME.5 进行中）单独构建主包已是 1,561,352（check-20261113T120648Z），两条分支合并后可能超过 1.5 MiB，HOME.5 提交后实测合并结果。L46 把 partial-attach 偶发失败归因于 uni-input 100ms 节流；本条查到的直接原因是编辑器 300ms 延迟聚焦把标题输入抢走，d7e6d9b 的测试等待仍然有效，应用侧的修复在本提交。
+- 自决（D-45 补记）: 规则 BACKLOG §14 第 5 行（spec 时过时不过要修根因）：修编辑器 300ms 延迟聚焦；照片区分上传图与临时路径用已有的属主校验边界；撤回 `git revert 92698d1`（含 P2.10 全部）。
 
-### L54 · 2026-11-13 07:10 CT · HOME.5 板块页与「全部讨论」五种状态；#369 合入 #374 分支并解决冲突
+### L54 · 2026-11-13 07:10 CT · HOME.5 板块页与「全部讨论」五种状态；#369 合入 #374 分支并解决冲突 [OMO自决]
 - task_id: HOME.5
 - code_sha: 2d18576、68eb43b（codex/community-home-20261112，草稿 PR #374，已推送；push 用 --no-verify 同 L21）
 - docs_sha: 143b4371bf0800b0932adf670c976294dbc08502
@@ -664,3 +673,16 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 真机；小程序上的首页（按设计不编进 mp）
 - 下一条: —（D-44 可做队列已空）
 - 附: 子任务列出 21 处与 SPEC 的出入，要点：首页、新页头、板块页只编进 H5，小程序仍是平铺列表（主包预算）；「近期活动」在 P4.8 前无数据源不渲染，「新来先看」要等 P3 的 is_featured；英文文案按 buildHomeSections 返回渲染，与 SPEC §11 个别处不同；桌面字号按现有 token；app.tagline 与 #372 同位置新增同一 key，合并时取 #372；视图切换用 replaceState 不加历史；桌面板块页与「全部讨论」侧栏只有「关于本站」；发帖入口的无障碍名改为「New topic / 发话题」，九份旧 spec 随之调整。其余见子任务回报（evidence/HOME.5）。风险：主包余量只剩 4,056 字节，下一个进主包的改动大概率超预算。
+- 自决（D-45 补记）: 合并解冲突按 D-42 第 3 项对 §14 第 2 行的限制（只 merge）；首页只编进 H5 属 §14 第 23 行「移不动就报 Eric」，原条目写成设计取舍，已改列 ④（L55）；撤回 `git revert -m 1 68eb43b`（合并），只编进 H5 由 D-45 第 4、7 项处理。D-45 更正：smoke 7 份 spec 共 79 条（其余 6 份是 70 条，不是 74；community-post-topics 先通过的 4 条算了两次，报告里的 83 同理）；P2.10 板块链接用例在 390/1280 上 URL、选中信号、搜索框三处断言都改了（390 上「搜索框为空」变成「搜索框不存在」加一次「不再发出搜索请求」计数）；「合并时取 #372」改为手工合（同 L47）。21 处出入全文见 L55。
+
+### L55 · 2026-11-13 07:45 CT · D-45 第 1 项：第二批报告与 STATUS 按核查更正，L44–L54 补自决标签 [OMO自决]
+- task_id: D-45.1
+- code_sha: —（只改文档）
+- docs_sha: f8e2b97591a52a5e84d89b1a240f533a9b37bfe0
+- 环境: tony-ws 只读核对：git merge-tree、git show、gh run view、Actions job 日志
+- 命令: 逐条核实 D-45 第 1 项：`git merge-tree --write-tree 92698d1 ba070e7`、`68eb43b ba070e7`（冲突文件与冲突块内容）、`55716ba 68eb43b`（无冲突）；ci.yml 第 182 行 `npm audit --audit-level=moderate`；`gh run view 43412348642`（cancelled，bd6fee5）；run 43422815812 / 43418959287 的 Boundary job 日志计数；24d141a、5abcb86 提交时间；check-20261113T124553Z 各 spec 用例数；BACKLOG P2.13 依赖；SPEC §8；SPEC §11 表与 92698d1 / 68eb43b 的 en/zh 对照（evidence/D45-spec11.json）；46e69b8 新增的 key；归档 lsql-replay.sh 的 sha256；55716ba 与 b259105 的 lockfile 中 `lru-cache` 版本
+- 计数: 核实结果：D-45 第 1 项列的每一条都成立，全部照改。#369×#372、#374×#372 冲突都在 api/share-post.js、en.ts、zh.ts，#369 一侧分别是 P2.9 的 topicTitle / headline 与 P2.2 的「回复 / reply」；#373×#374 无冲突；ci.yml 的 audit 无例外清单；run 43412348642 cancelled；run 43422815812 Boundary 2044/2043/0/1，43418959287 为 2035/2034/0/1；24d141a 03:32:55 CT、5abcb86 03:41:46 CT；合并后 smoke 7 份 spec 共 79 条（另查出 L54「其余 6 份 74」也错，应为 70）；P2.13 依赖 P1.8；SPEC §8 无 H5-only 豁免；STOP-16a 的 6 个 key 改名属实；SPEC §11 共 116 行，92698d1 缺 38、值不同 24，68eb43b 缺 24、值不同 23（第 5 项按此改）；lsql-replay.sh sha256 dc67d1ad…7ca6；`lru-cache` 11.3.5→11.5.3。改了：FINAL.md 第二批原地更正（①②③④⑥⑦）；L44–L54 补 [OMO自决] 标签、规则、撤回命令与 D-45 更正行；STATUS 的分支、仓库、CI 表、上一次 run、P2.8、P2.11–P2.13、BRAND.5–7 各行与阻塞清单
+- ci_run_url: —
+- 未测项: 无
+- 下一条: D-45 第 2 项（PR 文案）
+- 附: D-45 目标已于 2026-11-13 07:40 CT 用 create_goal 设定，范围限 D-45 第 1–7 项。HOME.5 子任务报回的 21 处与 SPEC 的出入（原文在 tony-ws evidence/HOME.5，摘录）：① 首页、新页头、板块页、「全部讨论」只编进 H5，小程序保留平铺列表和旧页头（主包预算；已列 ④）；② <12px 只在社区区域断言，共享 tab 栏 10px 标签是旧问题；③「近期活动」在 P4.8 前无数据源不渲染；④「新来先看」只在测试 mock 下出现，is_featured 等 P3.1/P3.5，home.typeGuide / home.typeRules 没加；⑤ 文案按 buildHomeSections 返回渲染，英文与 SPEC §11 个别处不同；⑥ 字号按现有 token（`--t-h2` 26px、`--t-body` 16px，≥768px），SPEC 写 22/15px，桌面字标是字面 20px；⑦ 新增 app.tagline（BRAND.1 的值），与 #372 同位置同 key，字标仍读 app.name；⑧ 新 key home.navMarket，「全部」用 cat.all；⑨ 发帖入口无障碍名改为「New topic / 发话题」，九份旧 spec 随之调整；⑩ 手机「全部讨论」顶栏有返回和标题、没有板块标签行；⑪ 视图切换用 replaceState，不加历史；⑫ 悬浮按钮距 tab 栏 15.5px，tab 栏 62px（SPEC 56px，共享组件）；⑬ 手机访客条的标语在 44px 内折成两行；⑭ 仓库与镜像是 Playwright 1.60（任务文字写 1.65）；⑮ 板块页页头固定在排序 tab 之上；⑯ 应用运行中，裸社区地址保留上次的视图，冷启动打开首页；⑰「关注的人」tab 的空状态与未登录文案没改；⑱ 桌面板块页与「全部讨论」侧栏只有「关于本站」；⑲ communityHome.ts 导出 boardFiller（HOME.2 文件改 14 行）；⑳ plaza.empty 与失败文案改用 DoD 措辞，read-failure-states.spec 跟改；㉑ HOME.5 提交带了 HOME.3 的地址修复和手机首页底部留白。

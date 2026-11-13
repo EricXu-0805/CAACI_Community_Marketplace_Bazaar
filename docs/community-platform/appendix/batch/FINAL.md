@@ -114,11 +114,13 @@ P1.7 ｜ 通过 ｜ b259105（#371） ｜ bb5c1fb ｜ CI；本地 pw1.65 / pw1.6
 
 ## 第二批（D-44）
 
+> 2026-11-13 按 D-45 第 1 项更正（supervisor 核查指出，OMO 逐条核实后改），更正记录见 STATUS_LOG L55。
+
 按 D-44 第 4 项只写新增内容，八节格式同上；逐条细节在 STATUS_LOG L44 起。`latest_batch` 不变。
 
 ### ① 起止与 SHA 范围
 
-- 起止：2026-11-13 03:50 CT（D-44，材料分支 24d141a）至 2026-11-13 07:11 CT。
+- 起止：2026-11-13 03:33 CT（材料分支 24d141a 的提交时间；第一个代码提交 5abcb86 在 03:41 CT）至 2026-11-13 07:11 CT。
 - docs_sha：24d141a → 本节所在提交。
 - code_sha：
   - #369 `codex/community-topics-20261112`：be2ebb6 → 92698d1（P1.10 bootstrap 5abcb86、P2.5 090d2be、P2.7 测试修正 d7e6d9b、P2.9 ece6d12、HOME.2 bd6fee5、REGION.2 44629b4、P2.8 46e69b8、P2.10 92698d1）。
@@ -131,14 +133,14 @@ P1.7 ｜ 通过 ｜ b259105（#371） ｜ bb5c1fb ｜ CI；本地 pw1.65 / pw1.6
 P1.10 ｜ 通过 ｜ 5abcb86 ｜ 24d141a ｜ L-SQL supabase/postgres:17.6.1.104 ｜ lsql-replay.sh（第 1 次计数尝试）＋变红验证（L44） ｜ 181/181；删 deleted_at 后停在 20260916073035 ｜ — ｜ 无 ｜ — ｜ P2.5
 P1.6 跨大版本 ｜ 通过（合不合由 Eric） ｜ 55716ba（#373） ｜ b584adc ｜ pw1.65 ｜ $RC 全量 + npmaudit + 产物比对 + Sentry 加载（L45） ｜ 1994 / 1993 / 0 / 1；审计只剩 vite；mp 336、h5 157 个文件逐字节一致 ｜ —（ci.yml 不对非 main 的 base 触发） ｜ source map 上传 ｜ — ｜ P2.5
 P2.5 ｜ 通过，20261112120000 冻结 ｜ 090d2be ｜ 5707d1b ｜ L-SQL；pw1.60 ｜ lsql-replay.sh … 20261112120000；$RC install typecheck migrations test smoke（L46） ｜ 181/181，PRECHECK→REPLAY→VERIFY→REGRESSION；2001 / 2000 / 0 / 1 ｜ 43409123864（public sweep 等 E4） ｜ ④ staging 探测 ｜ E3、E4 ｜ P2.9
-P2.9 ｜ 通过 ｜ ece6d12 ｜ c62c618 ｜ pw1.60 ｜ $RC install typecheck test（L47） ｜ 2022 / 2021 / 0 / 1 ｜ — ｜ 无 ｜ — ｜ HOME.2
+P2.9 ｜ 通过 ｜ ece6d12 ｜ c62c618 ｜ pw1.60 ｜ $RC install typecheck test（L47） ｜ 2022 / 2021 / 0 / 1（在 bd6fee5 的树上量，含 HOME.2） ｜ —（bd6fee5 的 run 43412348642 被取消） ｜ 无 ｜ — ｜ HOME.2
 HOME.2 ｜ 通过 ｜ bd6fee5 ｜ 99e2c7a ｜ pw1.60 ｜ 同上（L48） ｜ 19 条规则单测；变异检查失败如期 ｜ — ｜ 无 ｜ — ｜ REGION.2
 P2.12 ｜ 通过 ｜ 244a8e7（#374） ｜ 457a995 ｜ pw1.60＋axe 4.14.0 ｜ $RC install typecheck test smoke h5 mp（L49） ｜ 2001 / 2000 / 0 / 1；smoke 33 passed；12 张截图 <12px 0、axe 0 ｜ —（不触发 CI） ｜ 页面其他部分的小字与暗色按钮对比度 ｜ — ｜ REGION.2
 REGION.2 ｜ 通过 ｜ 44629b4 ｜ 5ce7260 ｜ pw1.60 ｜ $RC install typecheck test smoke（L50） ｜ 2024 / 2023 / 0 / 1；smoke 15 passed ｜ — ｜ 无 ｜ — ｜ P2.8
 P2.8 ｜ 通过 ｜ 46e69b8 ｜ e287b81 ｜ pw1.60 ｜ $RC install typecheck test smoke（L51） ｜ 2035 / 2034 / 0 / 1；smoke 19 passed；修 typecheck 后 rc=0 ｜ 43418959287（public sweep 等 E4） ｜ 无 ｜ E4 ｜ P2.10
 HOME.3 ｜ 通过 ｜ a756081（#374） ｜ 8323f02 ｜ pw1.60＋axe 4.14.0 ｜ $RC install typecheck test smoke（L52） ｜ 2024 / 2023 / 0 / 1；smoke 43 passed；首页 19 条用例、AXE 0、<12px 0 ｜ —（不触发 CI） ｜ 真机 ｜ — ｜ HOME.5
 P2.10 ｜ 通过 ｜ 92698d1 ｜ 5e465ef ｜ pw1.60 ｜ $RC install typecheck test smoke mp；7b18f20 基线 install mp（L53） ｜ 2044 / 2043 / 0 / 1；smoke 20 passed；主包 1,558,580（预算余 14,284） ｜ 43422815812（public sweep 等 E4） ｜ 真机预览（P5.2） ｜ E4 ｜ HOME.5
-HOME.5 ｜ 通过 ｜ 2d18576、68eb43b（#374） ｜ 143b437 ｜ pw1.60＋axe 4.14.0 ｜ $RC install typecheck test smoke；合并后加 mp（L54） ｜ 2024 / 2023 / 0 / 1，smoke 63 passed；合并后 2044 / 2043 / 0 / 1，smoke 83 passed，主包 1,568,808 ｜ —（不触发 CI） ｜ 真机 ｜ — ｜ —
+HOME.5 ｜ 通过 ｜ 2d18576、68eb43b（#374） ｜ 143b437 ｜ pw1.60＋axe 4.14.0 ｜ $RC install typecheck test smoke；合并后加 mp（L54） ｜ 2024 / 2023 / 0 / 1，smoke 63 passed；合并后 2044 / 2043 / 0 / 1，smoke 79 passed（7 份 spec 共 79 条），主包 1,568,808 ｜ —（不触发 CI） ｜ 真机 ｜ — ｜ —
 ```
 
 ### ③ [OMO自决] 清单
@@ -151,19 +153,24 @@ HOME.5 ｜ 通过 ｜ 2d18576、68eb43b（#374） ｜ 143b437 ｜ pw1.60＋axe 4
 | L46 | P2.7 的 partial-attach smoke 偶发失败（uni-input 100ms 节流），只改测试等待模型同步，d7e6d9b |
 | L49 | 英文 plaza.ref.more 用 "{n} items in all"（SPEC 写 "+{n} more"），建议改 SPEC §11 |
 | L51 | P2.8 超出 BACKLOG 文件清单：H5 原生确认框提到编辑器之上，新增诊断文案本地化 |
-| L52 | home 分支用 merge 拿 #369（不 rebase 已推送分支），冲突两边都保留；默认视图改变，四份旧 spec 改为先进「全部讨论」 |
+| L52 | home 分支用 merge 拿 #369（不 rebase 已推送分支），冲突两边都保留；默认视图改变，九份旧 spec（a11y-keyboard-journey、community-post-partial-attach、community-post-topics、community-topic-row、input-preview-supplement、motion-preference、plaza-attach-picker-is-modal、read-failure-states、seller-publish-responsive）随之调整 |
 | L53 | P2.10 顺带修编辑器 300ms 延迟聚焦抢走标题输入（更正 L46 的归因）；照片区分上传图与临时路径用已有的属主校验边界 |
-| L54 | #369 合入 #374：P2.10 的深链钩子只在小程序生效，H5 由视图代码接住别的页面带来的板块；随合并调整 1 份单测的依赖和 5 条 smoke 用例的定位，断言的行为不变 |
+| L54 | #369 合入 #374：P2.10 的深链钩子只在小程序生效，H5 由视图代码接住别的页面带来的板块；随合并调整 1 份单测的依赖和 5 条 smoke 用例；其中 P2.10 板块链接用例在 390/1280 上 URL、选中信号、搜索框三处断言都改了（390 上「搜索框为空」变成「搜索框不存在」加一次「不再发出搜索请求」计数） |
+| L54 | 首页、新页头、板块页只编进 H5，小程序仍是平铺列表：HOME.5 子任务为主包预算做的取舍，SPEC §8 与 D-12 没有这条豁免，按 BACKLOG §14 第 23 行应报 Eric；已列入 ④，D-45 第 4、7 项先尝试补上 |
 
-### ④ 等 Eric 的清单（新增）
+### ④ 等 Eric 的清单（新增，按解锁的任务数从多到少）
 
 | 要 Eric 做的一件事 | 解锁 |
 |---|---|
-| 审阅 #373：合不合；合之前在带 SENTRY_AUTH_TOKEN 的发布构建里确认 source map 上传 | Boundary 的依赖审计只剩 vite |
-| 审阅 #374（P2.12、HOME.3、HOME.5），base 是 #369 分支，#369 合并后改 base | 首页上线 |
-| 先合 #369，再处理 #374：#374 与它的 base 在 plaza/index.vue 有两块冲突（已在 home 分支 68eb43b 解掉，GitHub 显示 MERGEABLE；#369 若再有改动，可能要再合一次） | #374 可合并 |
-| E3 / E4 照旧（P2.5 ④ staging 探测；20261112120000 已冻结，可应用到 staging） | P2.6、P2.11、P2.13、#369 的 public sweep |
-| 合 #369 与 #372 时，share-post.js 的兜底文案会冲突，取 #372 的品牌文案 | — |
+| 在生产应用 20261112120000 并跑它的 VERIFY（ENGINEERING §6），P2.5 DoD ④ 生产那一半由 Eric 核。应用后旧的 VERIFY_20260718_reconcile_app_table_acl_boundaries 会报 posts 列清单漂移，属预期（L46）。#369 合进 main 就是把前端发布到 illinimarket.com 生产，必须排在这一步之后，BACKLOG 还要求合并前 P2.13 通过；顺序反了，新前端按 POST_COLUMNS 查询会 400，社区页打不开 | #369 合并，进而 P3.1–P3.8 和其余依赖 #369 合并的任务 |
+| E3 / E4：staging 合成账号，把 20261112120000 应用到 staging | P2.5 ④ staging 探测、P2.6、P2.11、P2.13，#369 的 public sweep |
+| E5：合 #371（P1.7） | P1.8，进而 P2.13；BRAND.2 ⑦ 的 Build H5 |
+| 审阅 #374（P2.12、HOME.3、HOME.5，已合入 #369 的 92698d1，68eb43b 显示 MERGEABLE），#369 合并后改 base | 首页上线 |
+| 定首页是否只在 H5：现在小程序仍是平铺列表，SPEC §8、D-12 没有这条豁免（见 ③ L54）；D-45 第 4、7 项先尝试补进小程序 | H5 与小程序同日发布（D-12） |
+| #372 合并要手工合：#369×#372 冲突在 api/share-post.js、en.ts、zh.ts，#374×#372 另有 app.name / app.desc / app.tagline / app.formerly 一块。#369 一侧是 P2.9 的 topicTitle / headline 逻辑和 P2.2 的「回复 / reply」措辞，整块取 #372 会把这两项悄悄撤掉；保留 #369 的逻辑和措辞，只取 #372 的品牌字串 | 品牌上线 |
+| 审阅 #373：合不合；合之前在带 SENTRY_AUTH_TOKEN 的发布构建里确认 source map 上传。合了 #371、#373 以后 Boundary 照样红：ci.yml 第 182 行的 `npm audit --audit-level=moderate` 没有例外清单，vite 6.4.4 的 moderate 还在；让 CI 认例外清单要改 workflow，归 Eric | 依赖审计（还需 workflow 改动或 vite 升级） |
+| 删 #369、#371 的分支之前，先把 #374、#373 的 base 改成 main：删掉 base 分支会关闭依赖它的 PR，且不能重开 | 保住 #373、#374 |
+| L49：暗色下侧栏「发布」按钮白字对 #E47B5F，对比度 2.87:1（页面其他部分，不在 P2.12 范围） | — |
 
 ### ⑤【硬】与【暂停推送】事件
 
@@ -175,14 +182,14 @@ HOME.5 ｜ 通过 ｜ 2d18576、68eb43b（#374） ｜ 143b437 ｜ pw1.60＋axe 4
 - P2.5 ④ staging 的 source_lang 探测等 E3。
 - 新 share-post.js 查询带 title，必须先应用 20261112120000 再发前端（ENGINEERING §6）。
 - community-post-topics.spec.ts 里「打开编辑器后马上填标题」与 partial-attach 同类，理论上有同样的节流时序问题，这次没出现。
-- 小程序主包：#369 在 92698d1 为 1,558,580 字节，1.5 MiB 预算只剩 14,284；#374 单独构建 1,561,352。两者合并后（68eb43b）主包 1,568,808 字节，只剩 4,056：下一个进主包的改动大概率超预算，首页已按设计只编进 H5。
+- 小程序主包：#369 在 92698d1 为 1,558,580 字节，1.5 MiB 预算只剩 14,284；#374 单独构建 1,561,352。两者合并后（68eb43b）主包 1,568,808 字节，只剩 4,056：下一个进主包的改动大概率超预算。首页、新页头、板块页目前只编进 H5，这不是 SPEC 允许的设计（见 ③ L54、④）。
 - L46 当时把 partial-attach 偶发失败归因于 uni-input 节流，L53 查到直接原因是编辑器 300ms 延迟聚焦，已在 92698d1 修复。
 - 子任务三次在检查排队时提前结束、一次越界改了材料仓库（L51 由主会话更正后提交）；所有写回与推送最终都由主会话做。
-- #372（品牌）与 #369、#374 有已知文案冲突：share-post.js 的兜底文案、app.tagline，合并时取 #372。
+- #372（品牌）与 #369、#374 有冲突，不能整块取 #372，要手工合（见 ④）。
 
 ### ⑦ 下一批
 
-1. Eric 定合并顺序，建议 #371 → #373，#369 → #374，#372 最后（冲突处取 #372 的文案）。
+1. Eric 定合并顺序。#369 合进 main 就是发布到生产：先在生产应用 20261112120000 并跑 VERIFY，P2.13 通过后再合。建议 #371 → #373，#369 → #374，#372 最后手工合（保留 #369 的 P2.9、P2.2，只取 #372 的品牌字串）；删 base 分支之前先把 #373、#374 的 base 改成 main。
 2. E3（staging env）到位后：P2.5 ④ staging 探测、P2.6、P2.11、P2.13；E4 解开 #369 的 public sweep。
 3. 候选：小程序主包瘦身或拆分包（余 4,056 字节）；按 L49、L54 的出入修订 SPEC §11 英文文案。
 
