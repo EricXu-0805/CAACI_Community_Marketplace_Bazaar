@@ -10,7 +10,7 @@
 | 项 | 值 |
 |---|---|
 | 代码分支 / PR | codex/community-topics-20261112 / #369（草稿，OPEN）[本地测：git push 9c173a4] |
-| code_sha | 46e69b8459af4d20668d612a9d83fdecbe3e27fa（OMO 推送 P2.8 后的 #369 head） |
+| code_sha | 92698d159021612b84005ad4c36908dda537a86c（OMO 推送 P2.10 后的 #369 head） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-12 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-12 git ls-remote] |
 | docs_sha | 5e465ef6c5f89cc5cadd6032cc748ec9815f9439（本次本地状态写回之前材料分支的 HEAD，未另建材料提交） |
@@ -21,7 +21,7 @@
 
 ## CI
 
-PR #369 · run [43418959287](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43418959287) · head 46e69b8 · 2026-11-13 CT 结束 · conclusion failure（public sweep 停在预检，等 E4；其余 job success）[CI run#43418959287]
+PR #369 · run [43422815812](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43422815812) · head 92698d1 · 2026-11-13 CT 结束 · conclusion failure（public sweep 停在预检，等 E4；其余 job success）[CI run#43422815812]
 
 | job | 结论 | 计数 / 原因 |
 |---|---|---|

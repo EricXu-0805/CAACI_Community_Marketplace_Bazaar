@@ -648,7 +648,7 @@
 | pages/seller/ | 28,185 | 28,677 | +492 |
 
 install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（check-20261113T115848Z）[本地测]；之前一轮（check-20261113T114603Z）smoke 2 条失败，原因是编辑器 300ms 延迟聚焦，修后通过
-- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43422815812（运行中，结论记在 STATUS 的 CI 行）
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43422815812（Type-check、Boundary、Build H5、Build mp-weixin success；public sweep 停在预检，等 E4）
 - 未测项: 真机预览留到 P5.2；分享卡在微信里的实际显示
 - 下一条: HOME.5
 - 附: 主包只剩约 14 KB 余量；#374 分支（HOME.3 加 HOME.5 进行中）单独构建主包已是 1,561,352（check-20261113T120648Z），两条分支合并后可能超过 1.5 MiB，HOME.5 提交后实测合并结果。L46 把 partial-attach 偶发失败归因于 uni-input 100ms 节流；本条查到的直接原因是编辑器 300ms 延迟聚焦把标题输入抢走，d7e6d9b 的测试等待仍然有效，应用侧的修复在本提交。
