@@ -571,3 +571,15 @@
 - 未测项: 无
 - 下一条: HOME.2
 - 附: 部署顺序：新 share-post.js 的查询带 title，若早于 20261112120000 上线，posts_visible 缺 title 会 400，所有帖子退回兜底文字，必须先迁移（已写进 §6）。#369 上 share-post.js 的兜底文案还是旧品牌名，#372 也改了同一段，两个 PR 合并时这里会冲突，要 Eric 合第二个时取 #372 的文案。
+
+### L48 · 2026-11-13 04:51 CT · HOME.2 首页区块纯函数 buildHomeSections 与 5 组 fixture 单测
+- task_id: HOME.2
+- code_sha: bd6fee5（#369，已推送）
+- docs_sha: 99e2c7a98e50f53d0f1591662554607803d98272
+- 环境: 本地 tony-ws run-checks；宿主 Node 22
+- 命令: 新增 app/src/utils/communityHome.ts（buildHomeSections(posts, items, events, now, viewport)，纯函数，用传入的 now）、app/smoke/community-home-sections.test.mjs、app/smoke/fixtures/community-home/（20 帖、60 帖、某板块 0 帖、同一作者 5 帖、官方 5 帖，加 helpers）。实现由 OMO 子任务（deep-low）写，子任务两次在检查排队时结束，OMO 接手：补丁排除它误带的 partial-attach spec 旧改动后应用，逐条对照 BACKLOG 规则复核代码，自己跑检查与变异检查
+- 计数: 19 条单测覆盖：卡片顺序；桌面 4 行、手机 3 行；每卡置顶最多 1 条；同一作者每卡最多 2 条（含置顶）；官方整页最多 3 条；去重优先级 置顶 > 板块卡 > 全站最新 > 本周热议；全站最新去重后不足 5 条收成链接；本周 N≥3 才显示；本周热议门槛（7 天内、每帖 ≥3 回复且来自 ≥2 人、满 5 帖）；7 天内相对时间、更早写「11月3日」；计数 0 不显示；补位文案。宿主 19/19；变异检查：作者上限改成 3 后「同一作者 5 帖」用例失败，恢复后 19/19；容器 install、typecheck、test 2022/2021/0/1 [本地测]
+- ci_run_url: —（#369 随 bd6fee5 重跑）
+- 未测项: 无
+- 下一条: REGION.2
+- 附: 短卡只补一行补位文案，剩余高度由布局保留（HOME.3 实现）；「新来先看」取官方且 is_featured 的帖子最多 5 条，按 SPEC §5。
