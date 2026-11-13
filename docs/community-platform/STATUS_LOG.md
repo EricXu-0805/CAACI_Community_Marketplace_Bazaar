@@ -523,3 +523,15 @@
 - 未测项: 无
 - 下一条: FINAL
 - 附: Boundary 的依赖审计只在 PR 改了依赖文件时才跑（#369、#372 没改，所以通过）；#371 卡在这一步是 main 上原有的 @intlify、glob、minimatch、vite 公告，等 P1.6 剩余项。宿主 pre-push 钩子在配置分支上是通过的（P1.3 的 postgresBinDir 已在这条分支），合并后 #369、#372 推送不再需要 --no-verify。
+
+### L44 · 2026-11-13 03:57 CT · P1.10 L-SQL 全链回放 181/181：托管面缺口放进 #369 的 _ops LOCAL_BOOTSTRAP（D-44 第 2 项），变红验证通过
+- task_id: P1.10
+- code_sha: 5abcb861fc0736e59d66f7832c1dfefe0ceacefe（codex/community-topics-20261112，#369，已推送，push 用 --no-verify 同 L21；只新增 4 个 supabase/_ops 文件，supabase/migrations/ 与 manifest.sha256 无改动）
+- docs_sha: 24d141a238711de528b9f72676aca9f36fd5fd5c
+- 环境: 隔离环境 L-SQL：docker.io/supabase/postgres:17.6.1.104，--network none，一次一个容器（~/work/evidence/.container.lock）
+- 命令: 按缺口分 4 份文件（时间戳取第一个用到该缺口的迁移）：LOCAL_BOOTSTRAP_20260808040313_cli_migration_ledger.sql（来源 supabase/cli v3.1.0 apps/cli/src/command-internal/migration-history.ts:27-33）、LOCAL_BOOTSTRAP_20260811143207_auth_identities_sessions.sql、LOCAL_BOOTSTRAP_20260916073035_auth_users_ban_delete.sql、LOCAL_BOOTSTRAP_20260916073035_auth_mfa_factors.sql（来源 supabase/auth v2.197.0 的 20210909172000、20231117164230、20220811173540、20221114143122、20220114185340、20230116124412、20221003041349 各迁移）。每份文件头写「只用于本地 L-SQL 回放、不应用到托管库」和每张表每一列的出处，并带守卫：会话里没有 caaci.local_bootstrap = lsql-replay 就报错退出（裸镜像上实测不带标记被拒）。~/work/illini-dev-env/lsql-replay.sh 去掉内联台账与 auth 存根，只管怎么跑：整条链用 postgres 连接；没有顶层 BEGIN 的迁移包一层事务；在每条迁移之前加载同时间戳、带 lsql-replay 守卫的 _ops 文件（同时间戳的旧单迁移 fixture 不带守卫，不会被带进来）；台账文件加载后补记已回放的迁移，之后每条迁移记一行。RUNBOOK §5.1 换成这份脚本全文（与实际脚本 diff 无输出），存档 appendix/env/lsql-replay.sh。命令：`flock ~/work/evidence/.container.lock ~/work/illini-dev-env/lsql-replay.sh ~/work/illini`；变红验证在 5abcb86 的临时 detached worktree 里删掉 auth_users_ban_delete.sql 的 deleted_at 一行后跑同一命令，跑完删除 worktree
+- 计数: ① 新文件提交后第 1 次计数尝试：`files=181 replayed=181 errors=0 done=1 rc=0`，脚本退出 0（lsql-20261113T094148Z）；② 最后一个 REPLAY 行是 `REPLAY 20261112120000_community_post_topics.sql`；③ 连接角色：日志开头 `select current_user` 为 supabase_admin，链内迁移经 `\connect postgres postgres` 以 postgres 执行；④ 变红：`files=181 replayed=162 errors=1 done=0 rc=3`，最后一个 REPLAY 是 20260916073035_wechat_account_link_tickets.sql，ERROR 行 `psql:/work/migrations/20260916073035_wechat_account_link_tickets.sql:44: ERROR:  column u.deleted_at does not exist`，正是第一条读这一列的迁移（lsql-20261113T095513Z）。两份日志存 evidence/P1.10/d44-green-…、d44-red-… [隔离环境 L-SQL]
+- ci_run_url: —（L-SQL 只在本地）
+- 未测项: 无
+- 下一条: P2.5
+- 附: D-44 第 2 项要求的 3 次上限只用了 1 次。D-44 列了三处缺口，实际是四处：auth.mfa_factors 也被 20260916073035 读到（f.status = verified），按同一规则单独成文件。提交前做过两次不回放迁移的探查（裸镜像 + 已有 bootstrap 后列出 auth/storage/realtime 表列；四份新文件在裸镜像上自检与守卫测试），不算计数尝试，脚本在 evidence/P1.10/probe-surface.sh、bootstrap-selfcheck.sh。

@@ -351,7 +351,14 @@ P1.3 ③ 的反例（`PG_BIN_DIR=/nonexistent`）在这个镜像里只有一种�
 
 用于 P1.10、P2.5 ⑤、P3.1 ④、P4.2 ⑤。BACKLOG P1.10 里的逐条命令和下面的脚本等价，任选其一。要在指定迁移前后跑 PRECHECK、VERIFY、REGRESSION 时，用脚本更方便。
 
-脚本放在 `~/work/illini-dev-env/lsql-replay.sh`，执行 `chmod 755`。整个脚本未实测：
+脚本放在 `~/work/illini-dev-env/lsql-replay.sh`，执行 `chmod 755`。下面是 2026-11-13 在 tony-ws 实测跑通 181/181 的版本（P1.10，D-44；存档 `appendix/env/lsql-replay.sh`）。和最初写在这里的草稿相比，改了四处，都只管「怎么跑」：
+
+- 整条链用 postgres 连接回放（托管上迁移由 postgres 执行，后面的 precheck 断言 proowner = postgres）；仓库 `_ops` 里管托管 schema 的 LOCAL_BOOTSTRAP 用 supabase_admin 跑。
+- 没有顶层 `BEGIN;` 的迁移由脚本包一层事务（托管的迁移端点自己开事务，`LOCK TABLE`、`SET LOCAL` 依赖它），台账行和迁移在同一个事务里提交。
+- 镜像缺的托管面（CLI 迁移台账、auth.identities / sessions / mfa_factors、auth.users 的 banned_until / deleted_at）放在 #369 的 `supabase/_ops/LOCAL_BOOTSTRAP_<迁移时间戳>_*.sql`，文件头写明只用于本地回放和每列的来源；脚本在对应迁移之前、先 `SET caaci.local_bootstrap = 'lsql-replay'` 再 `\i`。只认带这个标记的文件，同一时间戳下给单条迁移用的旧 fixture 不会被带进来。
+- CLI 台账出现之后，脚本先补记已经回放的迁移，之后每条迁移回放完记一行，和 CLI 应用迁移时一样。
+
+变红验证（D-44）：把某个 bootstrap 里一列必需的列删掉再跑，回放应在第一条读这一列的迁移上报错。
 
 ```bash
 #!/usr/bin/env bash
@@ -372,14 +379,52 @@ for _ in $(seq 1 90); do podman exec "$NAME" pg_isready -h localhost -U postgres
 PSQL=(podman exec -i -e PGPASSWORD="$PGPW" "$NAME" psql -X -h localhost -U supabase_admin -d postgres)
 "${PSQL[@]}" -c 'select current_user, version()' >>"$LOG" 2>&1 || { echo "cannot connect as supabase_admin; see $LOG" >&2; exit 2; }
 emit() {
+  # Hosted Supabase applies migrations as postgres (non-superuser), and later prechecks assert proowner = postgres.
+  # So the chain runs as postgres; only the repo's LOCAL_BOOTSTRAP fixtures for managed schemas run as supabase_admin.
   printf '%s\n' '\set ON_ERROR_STOP on' "SET caaci.local_bootstrap = '20260722-disposable-pg17';" '\i /work/_ops/LOCAL_BOOTSTRAP_20260722_full_clean_supabase_base.sql'
-  local f ts x
+  printf '%s\n' '\connect postgres postgres'
+  local f ts x r rec platform=0 base ledger=0 rows=()
   for f in $(cd "$REPO/supabase/migrations" && ls -1 *.sql | LC_ALL=C sort); do
     ts=${f%%_*}
+    # auth.jwt() and the storage columns come from the Auth/Storage services on hosted; the repo's fixture
+    # for that surface runs after the numbered 001-089 chain (its header says so).
+    if [ "$platform" = 0 ] && [ ${#ts} -ge 14 ]; then
+      printf '%s\n' '\connect postgres supabase_admin' '\echo BOOTSTRAP LOCAL_BOOTSTRAP_20260719_full_release_platform.sql' '\i /work/_ops/LOCAL_BOOTSTRAP_20260719_full_release_platform.sql' '\connect postgres postgres'; platform=1
+    fi
+    # Hosted surfaces the image lacks (CLI migration ledger, Auth tables and columns) live in _ops files that
+    # declare themselves for this replay (guard marker lsql-replay); each runs right before the first migration
+    # that reads it. Older LOCAL_BOOTSTRAP_<ts> fixtures for single-migration harnesses have no such marker.
+    for x in "$REPO"/supabase/_ops/LOCAL_BOOTSTRAP_"$ts"_*.sql; do
+      [ -f "$x" ] && grep -q "IS DISTINCT FROM 'lsql-replay'" "$x" || continue
+      printf '%s\n' '\connect postgres supabase_admin' "SET caaci.local_bootstrap = 'lsql-replay';" "\\echo BOOTSTRAP ${x##*/}" "\\i /work/_ops/${x##*/}" '\connect postgres postgres'
+      case "$x" in *_cli_migration_ledger.sql)
+        # The CLI records every migration it applies; record the ones already replayed before the ledger existed.
+        ledger=1
+        for r in "${rows[@]}"; do printf "INSERT INTO supabase_migrations.schema_migrations (version, name) VALUES ('%s', '%s');\n" "${r%%|*}" "${r#*|}"; done;;
+      esac
+    done
+    # realtime.messages and realtime.topic() come from Supabase Realtime, not the image.
+    if [ "$ts" = 20260718240000 ]; then
+      printf '%s\n' '\connect postgres supabase_admin' '\echo BOOTSTRAP LOCAL_BOOTSTRAP_20260718_private_conversation_realtime.sql' '\i /work/_ops/LOCAL_BOOTSTRAP_20260718_private_conversation_realtime.sql' '\connect postgres postgres'
+    fi
     if [[ $CHECK == *" $ts "* ]]; then for x in "$REPO"/supabase/_ops/PRECHECK_"$ts"_*.sql; do [ -f "$x" ] && printf '\\echo PRECHECK %s\n\\i /work/_ops/%s\n' "${x##*/}" "${x##*/}"; done; fi
-    printf '\\echo REPLAY %s\n\\i /work/migrations/%s\n' "$f" "$f"
+    base=${f%.sql}
+    # Record the migration in the CLI ledger once it exists; before that, remember it for the backfill.
+    rec=""
+    if [ "$ledger" = 1 ]; then rec=$(printf "INSERT INTO supabase_migrations.schema_migrations (version, name) VALUES ('%s', '%s');" "$ts" "${base#*_}"); else rows+=("$ts|${base#*_}"); fi
+    # The ledger-aware migration endpoint owns the transaction for files without a top-level BEGIN
+    # (several say so); wrap them so LOCK TABLE / SET LOCAL behave as hosted, and commit the ledger row with them.
+    if grep -qE '^BEGIN;' "$REPO/supabase/migrations/$f"; then
+      printf '\\echo REPLAY %s\n\\i /work/migrations/%s\n' "$f" "$f"
+      [ -n "$rec" ] && printf '%s\n' "$rec"
+    else
+      printf '\\echo REPLAY %s\nBEGIN;\n\\i /work/migrations/%s\n' "$f" "$f"
+      [ -n "$rec" ] && printf '%s\n' "$rec"
+      printf 'COMMIT;\n'
+    fi
     if [[ $CHECK == *" $ts "* ]]; then for x in "$REPO"/supabase/_ops/VERIFY_"$ts"_*.sql; do [ -f "$x" ] && printf '\\echo VERIFY %s\n\\i /work/_ops/%s\n' "${x##*/}" "${x##*/}"; done; fi
   done
+  printf '%s\n' '\connect postgres supabase_admin'
   for ts in $CHECK; do for x in "$REPO"/supabase/_ops/REGRESSION_"$ts"_*.sql; do [ -f "$x" ] && printf '\\echo REGRESSION %s\n\\i /work/_ops/%s\n' "${x##*/}" "${x##*/}"; done; done
   printf '\\echo REPLAY_DONE\n'
 }
