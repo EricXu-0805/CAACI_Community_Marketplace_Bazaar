@@ -626,8 +626,29 @@
 - docs_sha: 8323f0285e74cc6f95824ab39e691d23250ff9bf
 - 环境: 本地 tony-ws run-checks（容器 Chromium/WebKit），axe-core 4.14.0
 - 命令: 社区 tab 默认视图改为论坛首页，原平铺列表移到「全部讨论」：新增 app/src/components/CommunityHome.vue、CommunityHeader.vue、app/src/composables/useCommunityHome.ts（区块全部交给 HOME.2 的 buildHomeSections，查询都带 region=cu），plaza/index.vue 接入，zh/en 文案；新增 app/smoke/visual-audit.ts（§0.3 在仓库内的那层）与 app/smoke/community-home.spec.ts；默认视图变了，motion-preference、plaza-attach-picker-is-modal、read-failure-states、seller-publish-responsive 四份旧 spec 改成先进「全部讨论」。只用 App.vue 的 token，视觉方向按 D-35 A。实现由 OMO 子任务（visual-engineering）做，OMO 看过截图后推送。`SMOKE_SPECS="community-home.spec.ts community-board-states.spec.ts contrast-runtime.spec.ts community-topic-row.spec.ts community-post-topics.spec.ts" ~/work/illini-dev-env/run-checks.sh ~/work/illini-home install typecheck test smoke`
-- 计数: ① 390：板块标签行、新来先看折叠条、近期活动（无活动不出现）、5 个板块各 3 条、二手新上架横滑、全站最新最多 10 条（用例 ①「390: chips…」与「fewer than five left…」）；② 1280：主栏 876px（2×3 板块卡 + 全站最新 15 条）、侧栏 300px 依次新来先看/近期活动/本周热议/关于本站、首页无左侧栏（用例 ②）；③ 页头搜索占位「搜话题」，只搜社区（两个尺寸各一条用例）；④ 20 帖 fixture 1280×800 六张卡满、全站最新收成一行，60 帖全站最新 15 行（用例 ④）；⑤ data-post-id 唯一、页面无计数「0」、新增 CSS hex 字面量 0、<12px 文本 0、横向溢出 0，日志 `AXE color-contrast violations=0`（390 浅/深/英、1280 浅/深/英，首页区块与整页各一行）（用例 ⑤ ×9）。community-home.spec.ts 19 条全过；install、typecheck rc=0，test 2024/2023/0/1 pg_skips=0，smoke 43 passed（check-20261113T115028Z）[本地测]。截图 12 张存 appendix/visual/HOME.3/
+- 计数: ① 390：板块标签行、新来先看折叠条、近期活动（无活动不出现）、5 个板块各 3 条、二手新上架横滑、全站最新最多 10 条（用例 ①「390: chips…」与「fewer than five left…」）；② 1280：主栏 876px（2×3 板块卡 + 全站最新 15 条）、侧栏 300px 依次新来先看/近期活动/本周热议/关于本站、首页无左侧栏（用例 ②）；③ 页头搜索占位「搜话题」，只搜社区（两个尺寸各一条用例）；④ 20 帖 fixture 1280×800 六张卡满、全站最新收成一行，60 帖全站最新 15 行（用例 ④）；⑤ data-post-id 唯一、页面无计数「0」、新增 CSS hex 字面量 0、<12px 文本 0、横向溢出 0，日志 `AXE color-contrast violations=0`（390 浅/深/英、1280 浅/深/英，首页区块与整页各一行）（用例 ⑤ ×9）。community-home.spec.ts 19 条全过；install、typecheck rc=0，test 2024/2023/0/1 pg_skips=0，smoke 43 passed（check-20261113T115028Z）[本地测]。截图 13 张（含 20 帖 fixture 一张）存 appendix/visual/HOME.3/
 - ci_run_url: —（ci.yml 只对 base 为 main 的 PR 触发，#374 不跑 CI）
 - 未测项: 真机；#374 不在 #372 之上，截图里的站名与标识仍是旧占位，品牌以 #372 为准
 - 下一条: HOME.5
 - 附: [OMO自决] home 分支用 merge 拿到 #369 的 HOME.2、REGION.2（不 rebase 已推送分支），唯一冲突是两边各加的 import，两边都保留。
+
+### L53 · 2026-11-13 06:11 CT · P2.10 小程序话题分享用标题、板块深链；包体在预算内
+- task_id: P2.10
+- code_sha: 92698d159021612b84005ad4c36908dda537a86c（#369，已推送；push 用 --no-verify 同 L21）
+- docs_sha: 5e465ef6c5f89cc5cadd6032cc748ec9815f9439
+- 环境: 本地 tony-ws run-checks（mp 构建）；CI
+- 命令: app/src/pages/post/index.vue：onShareAppMessage 用话题原标题（最多 50 个 Unicode 字符），path /pages/post/index?id=；新增 app/src/api/communityNavigation.ts，pendingBoard / pendingView 在 switchTab 前写入，社区页 onShow 读取并清空一次；plaza/index.vue 接入，并修掉编辑器 300ms 延迟自动聚焦把标题输入抢到正文的问题（改为按会话守卫的渲染时机聚焦）；新增 app/smoke/community-board-deeplink.test.mjs；community-post-topics.spec.ts 补 390/1280 板块跳转。命令按 BACKLOG：临时 detached worktree ~/work/illini-7b18f20 跑 `~/work/illini-dev-env/run-checks.sh ~/work/illini-7b18f20 install mp`，`~/work/illini-dev-env/run-checks.sh ~/work/illini install typecheck test smoke mp`，之后 `git worktree remove`（不带 --force）。实现由 OMO 子任务（deep-low）做
+- 计数: ① 分享标题与深链：单测「mini-program topic shares use the original title, at most 50 Unicode characters, and the permanent post path」「board links stage pendingBoard before switchTab and onShow consumes and clears it once」及直接 query、未知路由用例通过；② 两边 mp 都 rc=0，日志有 `build artifact verified: none 336 files`（7b18f20，check-20261113T112810Z）与 `none 339 files`（92698d1，check-20261113T115848Z）和 packageBytes；③ 主包 1,558,580 字节，比 1.5 MiB 少 14,284；分包都低于 1.6 MiB；④ 字节对照：
+
+| 包 | 7b18f20 | 92698d1 | 差值 |
+|---|---:|---:|---:|
+| 主包 | 1,534,627 | 1,558,580 | +23,953 |
+| pages/detail/ | 56,422 | 56,422 | 0 |
+| pages/post/ | 35,003 | 39,465 | +4,462 |
+| pages/seller/ | 28,185 | 28,677 | +492 |
+
+install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（check-20261113T115848Z）[本地测]；之前一轮（check-20261113T114603Z）smoke 2 条失败，原因是编辑器 300ms 延迟聚焦，修后通过
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43422815812（运行中，结论记在 STATUS 的 CI 行）
+- 未测项: 真机预览留到 P5.2；分享卡在微信里的实际显示
+- 下一条: HOME.5
+- 附: 主包只剩约 14 KB 余量；#374 分支（HOME.3 加 HOME.5 进行中）单独构建主包已是 1,561,352（check-20261113T120648Z），两条分支合并后可能超过 1.5 MiB，HOME.5 提交后实测合并结果。L46 把 partial-attach 偶发失败归因于 uni-input 100ms 节流；本条查到的直接原因是编辑器 300ms 延迟聚焦把标题输入抢走，d7e6d9b 的测试等待仍然有效，应用侧的修复在本提交。
