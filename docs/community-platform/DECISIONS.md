@@ -73,6 +73,28 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
 - **D-36 主域名**（D-43 代定（2026-11-13），Eric 可在最终报告后改）：选 D，明确延后到内测之后，与 D-23「域名暂不注册」一致。BRAND.6 继续等；P5.1 之前 Eric 需要重新答复。撤回：在本条改选项。
 - **D-39 版权投诉与撤稿的收件邮箱**（D-43 代定（2026-11-13），Eric 可在最终报告后改）：选 A，在 caaciorg.com 下新建专用地址，草稿里写 copyright@caaciorg.com，转给 Eric 和轮值伙伴。这个邮箱由 Eric 建（E9 ④），列进最终报告。撤回：在本条改选项，LEGAL.4 的页面和模板改地址。
 
+- **D-44 第一批之后由 supervisor 代定的三件事**（2026-11-13 03:50 CT，Claude（Eric 自己账号上的 supervisor 会话）按 D-43 定并写入）：依据是 Eric 2026-11-13 01:51 CT 原话「OK，你就继续弄就行了，自己的号作为supervisor控制」，以及 D-43「明显会批准的事直接做」。D-42 第 0 项的优先级不变，【硬】条照旧高于本条；Eric 看最终报告后可以改其中任何一项。
+  1. **P2.12 现在就能做。** 它依赖的 HOME.1、P2.2 已通过，D-35 已定 A；STATUS 里写的「等 D-35」是漏改。按 BACKLOG P2.12 在 `codex/community-home-20261112` 上做：从 #369 的 head 切出，不进 #369，开草稿 PR。PR 的 base 选 `codex/community-topics-20261112`，这样 diff 里只有 P2.12。
+  2. **P1.10 缺的托管面放进 #369 的 `supabase/_ops/`，作为新增的 LOCAL_BOOTSTRAP 文件，不在回放脚本里内联。** 理由：仓库里已经有 15 份 `LOCAL_BOOTSTRAP_<迁移时间戳>_*.sql`，惯例是每个托管面缺口单独一份文件，跟着 PR 让人审得到；内联在 tony-ws 脚本里的存根没人审，日后会和仓库对不上。具体要求：
+     - 按缺口分文件，命名照惯例，时间戳取第一个用到该缺口的迁移。现在已知三处：CLI 迁移台账 `supabase_migrations.schema_migrations`（20260808040313）、`auth.identities` 和 `auth.sessions`（20260811143207）、`auth.users` 新增的列（如 `deleted_at`，20260916073035）。每份文件头写明两件事：①只用于本地 L-SQL 回放，不应用到托管库；②每张表、每一列从哪来，要么是 `_ops` 里的现有文件，要么是 supabase/auth 某个 tag 下的某个迁移文件。
+     - 回放脚本只管怎么跑：按迁移顺序 `\i` 这些文件；断言当前角色是 postgres 的迁移改用 postgres 连接；没有顶层 BEGIN 的迁移由脚本包一层事务。这几条改动同步写进 RUNBOOK §5.1，保证脚本和文档一致。
+     - 必须验证回放能失败：跑通以后，从新 bootstrap 里删掉一列必需的列再跑一次，回放要在预期的那条迁移上报错。两次的日志都留下。
+     - `supabase/migrations/` 里已有的文件一个都不改；两份 manifest 里已有的行不动。
+     - 新文件提交之后最多再试 3 次。还到不了 181/181，就再次转【跳过】，在最终报告里写清停在哪条迁移、还缺什么。
+     - 跑通之后按原有依赖往下做：P2.5 → P2.8、P2.9、REGION.2 → P2.10，HOME.2 → HOME.3 → HOME.5。还依赖 Eric 其他事项的任务照旧等。
+  3. **P1.6 剩下的跨大版本升级，单独准备一个草稿 PR，合不合由 Eric 定。** 这条取代 D-43 第 2 项里「跨大版本仍然【跳过】」的说法，只限下面两组 overrides，其他新增依赖仍然【跳过】。
+     - 分支 `codex/deps-crossmajor-20261113`，从 #371 的 head 切出，PR 的 base 设成 `codex/config-fixes-20261112`，diff 里只有两组改动：
+       - `app/package.json` overrides 里的 @intlify/core-base、message-compiler、shared、vue-devtools 一起抬到 11.4.14 或更高；
+       - glob 抬到 14.0.2 或更高，minimatch 抬到 11.0.1 或更高。
+     - 验证（都在容器里跑）：
+       - 全量 install、typecheck、h5、mp、test、smoke 都通过；
+       - `npm audit --audit-level=moderate` 只剩例外清单里的 vite；
+       - h5 和 mp 两份产物里，pages.json 的 `%key%` 全部被替换掉，产物里的中英文标题和用 #371 head 构建出来的逐条一致；
+       - Sentry 插件不配 token，只确认构建时插件能加载、不报错。
+     - 上传 source map 那一步验证不了，写进 PR 描述和最终报告。PR 不转 ready，不合并。
+  4. **报告：** 三件事都做完或都停下以后，在 `appendix/batch/FINAL.md` 末尾加一节「第二批（D-44）」，按同样的八节格式，只写新增的内容。STATUS 里的 `latest_batch` 不变。
+  5. **续跑：** 用 create_goal 重新设一个目标，范围就是本条这三件事。额度照 D-43 第 6 项。
+
 ## 待定
 
 ### D-28 轮值伙伴与四项职责的小时数
