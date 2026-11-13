@@ -69,6 +69,9 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
   4. 仍然等 Eric 的：要 Eric 本人账号或线下动作的事（Supabase 后台、微信后台、Cloudflare、Google Drive、/login、建邮箱、找人签字），只有 Eric 看得到的事实（D-29 staging 里有没有真实数据、D-30 微信后台），以及要具体人选或董事会同意的事（D-28、D-32、D-37、D-38）。【硬】条一条都不放开：合并 main 等于把前端发布到 illinimarket.com 生产，托管库迁移要 Eric 的凭据，这两样仍只由 Eric 做。
   5. 报告：不再按每 10 条写中间报告，进度只记在 STATUS 和 STATUS_LOG。只在可做队列空了的时候写一份最终报告 `appendix/batch/FINAL.md`，和 STATUS 同一个提交推送；出现【暂停推送】时也写这份，但只留在本地。最终报告在 D-42 第 10 项七节之外加第八节「代 Eric 定的事」，逐条写编号、选了什么、理由、怎么撤回。STATUS 的 `next_task_id` 下一行写 `latest_batch: appendix/batch/FINAL.md`。
   6. 额度：Eric 2026-11-13 确认 CAACI 的 Claude Team 没开 extra usage，只用号池额度，可以全部用掉。
+- **D-33 学校活动收哪些 UIUC 日历**（D-43 代定（2026-11-13），Eric 可在最终报告后改）：选 A，逐条收录：站务在管理台贴单条活动链接，服务端只读那一条的日历文件，候选来源为 ISSS（3715）和综合日历（7）。依据：原「建议 A」；P4.7 第一步调研（appendix/research/campus-events.md，2026-11-13）没找到整本 ICS 的官方导出地址，B 方式没有可引用的官方入口。撤回：在本条改选项，P4.7 第二步按新选项写。
+- **D-36 主域名**（D-43 代定（2026-11-13），Eric 可在最终报告后改）：选 D，明确延后到内测之后，与 D-23「域名暂不注册」一致。BRAND.6 继续等；P5.1 之前 Eric 需要重新答复。撤回：在本条改选项。
+- **D-39 版权投诉与撤稿的收件邮箱**（D-43 代定（2026-11-13），Eric 可在最终报告后改）：选 A，在 caaciorg.com 下新建专用地址，草稿里写 copyright@caaciorg.com，转给 Eric 和轮值伙伴。这个邮箱由 Eric 建（E9 ④），列进最终报告。撤回：在本条改选项，LEGAL.4 的页面和模板改地址。
 
 ## 待定
 
@@ -96,23 +99,11 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
 - 建议：A。先用一家把核对和撤回流程跑通（判断）。D-37 之前不以 CAACI 名义签。每份同意都记进授权记录表（E11），编号写进 consent_ref。
 - 谁定：Eric 和 CAACI 主席（对接合作组织）。截止：P4.5。
 
-### D-33 学校活动收哪些 UIUC 日历
-- 现状：2026-11-12 只读实测：XML 接口要向 Illinois Web Services 申请 key，公开的日历文件导出不需要；综合日历（ID 7）条目太多、展览按天拆分；ISSS 日历（ID 3715）里多数条目是咨询时段和学期日期。实测数字和两种接入方式的做法见 ENGINEERING §9.3，限量理由和排除规则见 SPEC 6.7.11。官方 feed 的使用条款是否允许站内展示，没找到书面说法。
-- 选项：A 逐条收录：站务在管理台贴单条活动链接，服务端只读那一条的日历文件，候选来源为 ISSS（3715）和综合日历（7）；B 按选定日历整本同步：导出要在 1 MB 以内，配排除规则（咨询时段、学期日期等），综合日历 7 超过上限不能选；C 首发不收学校活动。
-- 建议：A。人工挑选不依赖学校对整本导出的态度，也守得住「全部」视图每周 10 条的上限（判断）。ISSS 导出确认在 1 MB 内、条款允许之后，再考虑对 3715 改用 B。先等 OMO 交 appendix/research/campus-events.md（P4.7 第一步）。我判断只展示事实信息并链回原页风险低，但学校没有给过书面说法。
-- 谁定：Eric。截止：P4.7。
-
 ### D-34 新 logo
 - 现状：生产 logo 是 app/src/static/logo-mark.svg 的宋体「集」字印章（暗色为 logo-mark-dark.svg）。design/direction-a.html 的「玉」字印章沿用「集」印章的几何，用系统宋体的 `<text>` 渲染；替换生产文件之前必须转成轮廓路径。
 - 选项：BRAND.4 出的 3 个印章稿（「玉」单字或「玉米地」三字）三选一。
 - 建议：「玉」单字。24px 的 tab 图标和 favicon 上，三个字很难认（判断，看 BRAND.4 的 24px 预览再定）。
 - 谁定：Eric。截止：BRAND.4。
-
-### D-36 主域名
-- 现状：2026-11-12 查询，cornfieldforum.com/.org/.net/.app、cornfieldcu.com/.org/.net/.app、cornfield.app 未注册；cornfield.com/.org/.net 在 2000 年已被注册（cornfield.com 的域名服务器在 Afternic，疑似待售，价格未知）。查询只代表当时，这些域名随时可能被人注册。完整结果在 appendix/research/naming.md。
-- 选项：A cornfieldforum.com；B cornfield.app；C cornfieldcu.com；D 明确延后到内测之后。
-- 建议：A。名字不带地区，和 D-21 的州级品牌一致；.com 比 .app 好记（判断）。注册时开自动续费（E9 ①）。
-- 谁定：Eric。截止：P5.1（内测前必须答复）。
 
 ### D-37 CAACI 正式同意以 CAACI 名义运营
 - 现状：app/src/legal/terms.en.ts:9 写「Illini Market is a community project operated by Guoyi (Eric) Xu」。cold-start-legal.md「建议方案」一：运营主体决定 FTC 规则管不管得到、DMCA 代理人用谁的名义登记、授权由谁签、出事由谁担责；「supported by CAACI」「免费」这类对外说法，定稿前要和主席确认属实。
@@ -125,12 +116,6 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
 - 要提供：代理人姓名或职位、CAACI 邮寄地址、电话、邮箱。
 - 建议：代理人写职位（如 Vice President, CAACI），不写个人姓名；邮箱用 D-39 的统一地址。这样换届时少改一次登记（判断）。
 - 谁定：Eric 和 CAACI 主席。截止：LEGAL.3。
-
-### D-39 版权投诉与撤稿的收件邮箱
-- 现状：没有。LEGAL.4 页面、模板 A 署名行、DMCA 登记都要写这个地址。
-- 选项：A 在 caaciorg.com 下新建专用地址（例如 copyright@caaciorg.com），转给 Eric 和轮值伙伴；B 用 Eric 个人邮箱。
-- 建议：A。换人不换地址，也和 D-26 的 CAACI 名义一致。
-- 谁定：Eric。截止：LEGAL.4。
 
 ## 试点指标（D-09）
 

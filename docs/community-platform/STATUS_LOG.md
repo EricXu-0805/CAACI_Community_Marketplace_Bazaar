@@ -346,3 +346,15 @@
 - 未测项: ④ 全量（没有可提交的修复）
 - 下一条: P1.7
 - 附: Eric（经 Claude 代答，依据 D-42，6e32367）：「这 22 项只少了 1 个漏洞，还带 dotenv 16→17 的大版本升级，不提交，lockfile 保持 14b4e4a。P1.6 按 D-42 第 4 项转【跳过】」。改 overrides 和跨大版本都属 D-42 第 4 项「P1.6 里要 --force 的包、改 overrides 的包和 vite」，等 Eric 定。另记 D-42 落实：create_goal 已建；schedule_prompt 续跑提醒 sch_8c65fd689233（每 3600 秒，首次 2026-11-13 08:08 UTC）已建，提示词与 RUNBOOK §10 原文一致。
+
+### L29 · 2026-11-13 01:17 CT · P4.7 第一步：UIUC 官方日历调研；D-43 代定 D-33、D-36、D-39 [OMO自决]
+- task_id: P4.7
+- code_sha: —（只写材料分支）
+- docs_sha: 86dac4b06cdf9ac18c26cd9ff27b09598df22ad4
+- 环境: 本地 tony-ws；只读请求 UIUC 官方页面与官方 feed
+- 命令: 子任务 st_01a1d3c0（类别 unspecified-low）按 BACKLOG P4.7 第一步只读官方文档与 feed，每个地址最多一次；OMO 通读后复制为 appendix/research/campus-events.md。DECISIONS 按 D-43 第 1 项把 D-33（A）、D-36（D）、D-39（A）移到已定，各条写「D-43 代定」
+- 计数: campus-events.md 12,616 字节：单条活动 ICS 不要 key，3715/33558080 返回 200、1,359 字节，与 11-12 一致；XML 要向 Illinois Web Services 申请 key，当前版本 v18（v17 已于 2026/11/1 停用），并发超限返回 503；书面使用条款未找到；整本 ICS 的官方导出地址未找到（猜的 /ical/{id}.ics 对 7、3715、5749 都返回 404，再往下只有抓 HTML 才拿得到，按规则未取）；被撤下的活动在 feed 里的表现「未知」（缺口 8）。请求 6 次，全部 GET，见文件 §8 [源码 docs]
+- ci_run_url: —
+- 未测项: illinois.edu/about/calendars/ 证书验证失败，没取到；整本导出的条数与大小没能重测
+- 下一条: P2.7
+- 附: [OMO自决] D-43 第 1 项：D-33 选 A（理由：原建议 A；调研没找到 B 的官方入口），D-36 选 D（与 D-23 一致），D-39 选 A（copyright@caaciorg.com，邮箱由 Eric 建）。撤回：在 DECISIONS 对应条目改选项。D-34 等 BRAND.4 的 24px 预览后再定。同一提交带上 appendix/visual/P2.4/composer-390-light-zh.png（P2.4 的截图，P2.4 的写回等 CI）。
