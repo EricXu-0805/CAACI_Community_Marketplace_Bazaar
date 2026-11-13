@@ -287,3 +287,14 @@
 - 未测项: 无
 - 下一条: P1.10
 - 附: 四个存档文件实际随 P2.1 的材料提交 abf549a 一起进了仓库（git add 整个目录），内容与上面的 sha256 一致。构建过程中有两次操作失误：第一次改 Containerfile 时脚本转义写坏、没改成功，但已启动的构建监控会用旧文件打出 pw1.65 标签，在 build 开始前把它的子 shell 杀掉（BUILD_RC=143），没有生成错误标签的镜像；第二个监控的 pgrep 等待会匹配到自己的命令行，一直空等到超时被杀，没有构建。pw1.60 镜像与 Containerfile.pw1.60 按 RUNBOOK §13 保留到 P1.8。
+
+### L24 · 2026-11-13 00:41 CT · P1.5 ④ 通过：容器内 Playwright 1.65.0，提交已推送
+- task_id: P1.5
+- code_sha: 14b4e4ae60bfc953783b2b1f72b84ec549ed457d（codex/config-fixes-20261112，已推送）
+- docs_sha: 08549fe74756dad388641985ebb55f801bd880da
+- 环境: 本地 tony-ws，pw1.65 镜像
+- 命令: `RUN_CMD='cd app && npx playwright --version' ~/work/illini-dev-env/run-checks.sh ~/work/illini-config cmd`（log check-20261113T063218Z-cmd.log）；`git push origin codex/config-fixes-20261112`（宿主机 pre-push 全过，日志 ~/work/evidence/P1.5/push.log）
+- 计数: ④ 输出 Version 1.65.0；同一 head 的全量见 P1.9 那条 [本地测]
+- ci_run_url: —
+- 未测项: ⑤ 等 P1.7 的 PR CI
+- 下一条: P1.10

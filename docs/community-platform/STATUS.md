@@ -12,8 +12,8 @@
 | code_sha | 9c173a48bd61c0da5ee3a714af94d1f6c8a36522（OMO 推送 P2.1、P2.2 后的 #369 head） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-12 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-12 git ls-remote] |
-| docs_sha | 89d6644e363b17b1cb81f7c80a7b2c63e1e70f9d（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
-| 配置 / 品牌 / 首页分支 | codex/config-fixes-20261112 远端 cc63ab5（P1.2–P1.4），没开 PR（P1.7）；品牌、首页还没建（BRAND.1 / HOME.3）[本地测] |
+| docs_sha | 08549fe74756dad388641985ebb55f801bd880da（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
+| 配置 / 品牌 / 首页分支 | codex/config-fixes-20261112 远端 14b4e4a（P1.2–P1.5），没开 PR（P1.7）；品牌、首页还没建（BRAND.1 / HOME.3）[本地测] |
 | tony-ws 仓库 | ~/work/illini 在 005ca9d；~/work/illini-docs 已切到 codex/community-plan-v5（P1.1 ④，见 STATUS_LOG L15）[本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
@@ -53,7 +53,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P1.2 | 通过 | DoD ①–⑥ 符合，见 STATUS_LOG [本地测] |
 | P1.3 | 通过 | test 1994 / 1993 / 0 / 1，pg_skips=0；写死路径 32→1 [本地测] |
 | P1.4 | 通过 | 旧色 grep 15→0；typecheck、h5、mp rc=0 [本地测] |
-| P1.5 | 未测 | ①–③ 通过（fsevents 删除经 Eric 批准，STATUS_LOG）；④ 等 P1.9，⑤ 等 P1.7 的 CI [本地测] |
+| P1.5 | 未测 | ①–④ 通过（fsevents 删除经 Eric 批准）；⑤ 等 P1.7 的 CI [本地测] |
 | P1.13 | 通过 | DoD ①–④ 符合；link 拉下的 .env.local 已按 Eric 答复删除 [本地测] |
 | P1.9 | 通过 | 镜像 169f16e6…，全量每步 rc=0；test 1994 / 1993 / 0 / 1 [本地测] |
 | P1.7、P1.10 | 未测 | P1.10 L-SQL 回放进行中；P1.7 依赖 P1.6 |
