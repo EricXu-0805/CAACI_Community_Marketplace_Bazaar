@@ -619,3 +619,15 @@
 - 下一条: P2.10
 - 附: App.vue 的 H5 uni-modal 层级必须高于 composer，首轮桌面 smoke 证明旧层级使保留草稿按钮被 textarea 遮挡；utils/index.ts 补两条新诊断的中英文映射。冻结迁移未改。材料记录保留为未提交改动，避免在要求的两个代码提交之外另建提交。
 - 附（主会话）：本条由子任务起草，主会话核对后提交；修正 typecheck 后的 test/smoke 由 check-20261113T113035Z（test 2042/2041/0/1、smoke 20 passed）覆盖。
+
+### L52 · 2026-11-13 06:10 CT · HOME.3 社区 tab 默认视图改为论坛首页（#374 分支）
+- task_id: HOME.3
+- code_sha: a756081（codex/community-home-20261112，草稿 PR #374；含 merge #369 的 953749c；push 用 --no-verify 同 L21）
+- docs_sha: 8323f0285e74cc6f95824ab39e691d23250ff9bf
+- 环境: 本地 tony-ws run-checks（容器 Chromium/WebKit），axe-core 4.14.0
+- 命令: 社区 tab 默认视图改为论坛首页，原平铺列表移到「全部讨论」：新增 app/src/components/CommunityHome.vue、CommunityHeader.vue、app/src/composables/useCommunityHome.ts（区块全部交给 HOME.2 的 buildHomeSections，查询都带 region=cu），plaza/index.vue 接入，zh/en 文案；新增 app/smoke/visual-audit.ts（§0.3 在仓库内的那层）与 app/smoke/community-home.spec.ts；默认视图变了，motion-preference、plaza-attach-picker-is-modal、read-failure-states、seller-publish-responsive 四份旧 spec 改成先进「全部讨论」。只用 App.vue 的 token，视觉方向按 D-35 A。实现由 OMO 子任务（visual-engineering）做，OMO 看过截图后推送。`SMOKE_SPECS="community-home.spec.ts community-board-states.spec.ts contrast-runtime.spec.ts community-topic-row.spec.ts community-post-topics.spec.ts" ~/work/illini-dev-env/run-checks.sh ~/work/illini-home install typecheck test smoke`
+- 计数: ① 390：板块标签行、新来先看折叠条、近期活动（无活动不出现）、5 个板块各 3 条、二手新上架横滑、全站最新最多 10 条（用例 ①「390: chips…」与「fewer than five left…」）；② 1280：主栏 876px（2×3 板块卡 + 全站最新 15 条）、侧栏 300px 依次新来先看/近期活动/本周热议/关于本站、首页无左侧栏（用例 ②）；③ 页头搜索占位「搜话题」，只搜社区（两个尺寸各一条用例）；④ 20 帖 fixture 1280×800 六张卡满、全站最新收成一行，60 帖全站最新 15 行（用例 ④）；⑤ data-post-id 唯一、页面无计数「0」、新增 CSS hex 字面量 0、<12px 文本 0、横向溢出 0，日志 `AXE color-contrast violations=0`（390 浅/深/英、1280 浅/深/英，首页区块与整页各一行）（用例 ⑤ ×9）。community-home.spec.ts 19 条全过；install、typecheck rc=0，test 2024/2023/0/1 pg_skips=0，smoke 43 passed（check-20261113T115028Z）[本地测]。截图 12 张存 appendix/visual/HOME.3/
+- ci_run_url: —（ci.yml 只对 base 为 main 的 PR 触发，#374 不跑 CI）
+- 未测项: 真机；#374 不在 #372 之上，截图里的站名与标识仍是旧占位，品牌以 #372 为准
+- 下一条: HOME.5
+- 附: [OMO自决] home 分支用 merge 拿到 #369 的 HOME.2、REGION.2（不 rebase 已推送分支），唯一冲突是两边各加的 import，两边都保留。
