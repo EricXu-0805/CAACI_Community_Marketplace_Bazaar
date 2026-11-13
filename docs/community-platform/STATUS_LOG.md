@@ -606,3 +606,16 @@
 - ci_run_url: —（#369 随 44629b4 重跑，public sweep 等 E4）
 - 未测项: 无
 - 下一条: P2.8
+
+### L51 · 2026-11-13 05:27 CT · P2.8 同一 ID 幂等发布与账号草稿（仅本地提交）
+- task_id: P2.8
+- code_sha: 46e69b8459af4d20668d612a9d83fdecbe3e27fa（#369，OMO 主会话已推送，push 用 --no-verify 同 L21）
+- docs_sha: e287b81d1904a45cc63e02e95ee06f54eacb1e68
+- 环境: 本地 tony-ws，run-checks，localhost/illini-dev:pw1.60-node22-pg17，L-UI / 本地 PG17
+- 命令: 所有容器检查均经 `flock ~/work/evidence/.container.lock ~/work/illini-dev-env/run-checks.sh ~/work/illini` 串行执行；`SMOKE_SPECS="community-post-topics.spec.ts plaza-attach-picker-is-modal.spec.ts community-post-partial-attach.spec.ts"`，步骤 install typecheck test smoke。日志 `~/work/illini-dev-env/logs/check-20261113T111907Z.log`（install/test/smoke 通过，typecheck 的 image_dimensions:null 类型错误已修成 []）；修正后的 typecheck 日志 `~/work/illini-dev-env/logs/check-20261113T112638Z.log`。首轮失败诊断留在 `check-20261113T110959Z.log`。
+- 计数: ① openComposer 生成 UUIDv4，恢复草稿与重试沿用；② createPost 接受 postId/retryCreate，23505、duplicate_post、未知结果回读本人相同 ID；③ 未知结果保留面板，检查按钮只读，查无后同 ID 再发；④ plaza_composer_draft_v1 保存规定字段、排除 blob，保留/不保留/恢复/清空、换号清理均接入；⑤ community-post-idempotency.test.mjs 覆盖响应丢失、23505、duplicate_post、身份边界及账号草稿清理，现有 PG row-4 断言精确 ACL 差集；⑥ TEST tests=2035 pass=2034 fail=0 skipped=1 pg_skips=0；smoke 19 passed；install/typecheck/test/smoke 最终均 rc=0 [本地测]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43418959287（Type-check、Boundary、Build H5、Build mp-weixin success；public sweep 停在预检，等 E4）
+- 未测项: 无
+- 下一条: P2.10
+- 附: App.vue 的 H5 uni-modal 层级必须高于 composer，首轮桌面 smoke 证明旧层级使保留草稿按钮被 textarea 遮挡；utils/index.ts 补两条新诊断的中英文映射。冻结迁移未改。材料记录保留为未提交改动，避免在要求的两个代码提交之外另建提交。
+- 附（主会话）：本条由子任务起草，主会话核对后提交；修正 typecheck 后的 test/smoke 由 check-20261113T113035Z（test 2042/2041/0/1、smoke 20 passed）覆盖。
