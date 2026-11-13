@@ -583,3 +583,15 @@
 - 未测项: 无
 - 下一条: REGION.2
 - 附: 短卡只补一行补位文案，剩余高度由布局保留（HOME.3 实现）；「新来先看」取官方且 is_featured 的帖子最多 5 条，按 SPEC §5。
+
+### L49 · 2026-11-13 04:53 CT · P2.12 话题列表行按论坛密度重排；草稿 PR #374（base #369 分支）
+- task_id: P2.12
+- code_sha: 244a8e7be3a82f3647eab33694c322dd64e4bf8b（codex/community-home-20261112，从 #369 be2ebb6 切出，草稿 PR #374，base codex/community-topics-20261112；push 用 --no-verify 同 L21）
+- docs_sha: 457a995752c181135a09f25a1be0b43d6f384ec6
+- 环境: 本地 tony-ws run-checks（容器 Chromium/WebKit），axe-core 4.14.0（tools/）
+- 命令: plaza/index.vue 话题行：标题、14px 两行摘要、「{板块} · {作者} · {时间}」元信息行、右对齐 tabular-nums 回复数、0 回复 30 天内「待回答」；关联商品纯文本行；72×72 圆角 8 首图与「+N」；翻译/点赞/分享只在详情页；动态保留原卡片；zh/en 新增文案；新增 app/smoke/community-topic-row.spec.ts（①②③⑤ 用例与 ④⑥ 截图矩阵、axe）。实现由 OMO 子任务（visual-engineering）做，OMO 看过截图后提交。`SMOKE_SPECS="community-topic-row.spec.ts community-post-topics.spec.ts plaza-attach-picker-is-modal.spec.ts community-post-partial-attach.spec.ts" RC ~/work/illini-home install typecheck test smoke`，另跑 h5 mp
+- 计数: ① 标题手机 2 行/桌面 1 行、摘要 14px 两行、元信息一行、回复数右对齐 tabular-nums；② 「关联 · 台灯 $15 · 已售出 · 等 3 件」「Linked · Bike $80 · Available」，72×72 圆角 8 首图；③ 话题行无点赞/分享/翻译，详情页有，动态卡不变；④ 列表范围 <12px 文本 0、axe color-contrast 0（12 个组合），横向溢出 0；⑤ 390×844 首屏 5 行、1280×800 首屏 9 行；⑥ 12 张截图存 appendix/visual/P2.12/；install、typecheck rc=0，test 2001/2000/0/1，smoke 33 passed，h5、mp rc=0（主包 1,555,969 字节）[本地测]
+- ci_run_url: —（ci.yml 只对 base 为 main 的 PR 触发，#374 不跑 CI）
+- 未测项: 页面其他部分不在本任务：动态卡与底栏 10–11px 文字、暗色侧栏「发布」按钮 2.87:1
+- 下一条: REGION.2
+- 附: [OMO自决] 英文 plaza.ref.more 用 "{n} items in all" 而不是 SPEC 的 "+{n} more"：中文「等 {n} 件」数的是总数，i18n parity 测试要求中英占位符一致，照 SPEC 会差 1；建议 Eric 把 SPEC §11 改成这一版。读不到的关联商品仍由 usePlaza 的 stripDeletedItems 丢掉，行里不显示「关联的商品已下架」，留给引用卡（SPEC 6.6）任务。HOME.3、HOME.5 要在这条分支上接着做（先把 #369 merge 进来拿 HOME.2，不 rebase）。
