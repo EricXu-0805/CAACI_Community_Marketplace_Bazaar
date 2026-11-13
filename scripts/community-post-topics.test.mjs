@@ -124,6 +124,8 @@ test('topic migration preserves legacy rows, RLS, metadata ACL and item ownershi
     assert.equal(as("SELECT count(*) FROM search_community_posts(ARRAY['Quantum'],'recent',20,1,NULL)", 'anon'), '1')
     assert.equal(as("SELECT count(*) FROM search_community_posts(ARRAY['Legacy'],'recent',20,0,NULL)", 'anon'), '2')
     assert.equal(as("SELECT count(*) FROM search_posts_fuzzy(ARRAY['Legacy'])", 'anon'), '2')
+    // ENGINEERING §6: installed old clients keep the old RPC, which matches bodies, not titles.
+    assert.equal(as("SELECT count(*) FROM search_posts_fuzzy(ARRAY['Quantum'])", 'anon'), '0')
     assert.equal(sql("SELECT prosecdef FROM pg_proc WHERE oid='public.search_community_posts(text[],text,integer,integer,text,text)'::regprocedure"), 'f')
     // REGION.1: one region for now, readable by everyone, never written by clients.
     assert.equal(as("SELECT count(*) FROM search_community_posts(ARRAY['Quantum'],'recent',20,0,NULL,'cu')", 'anon'), '2')

@@ -431,6 +431,30 @@ test('the app shell declares a language', async () => {
   assert.equal(htmlLangOf('<!DOCTYPE html>\n<html>\n<head></head>\n</html>'), null)
 })
 
+test('post share titles a topic with its title and an update with its first line', async () => {
+  const { default: handler } = await load('share-post.js')
+  const ogTitle = html => html.match(/<meta property="og:title" content="([^"]*)"/)[1]
+  for (const [row, expected] of [
+    [{ title: 'Where can I buy a cheap desk in Urbana?', content: 'First body line\nsecond line' },
+      'Where can I buy a cheap desk in Urbana? — Campus reader'],
+    [{ title: null, content: 'Campus lunch today\nmore details' }, 'Campus lunch today — Campus reader'],
+    [{ title: '   ', content: 'A blank title falls back' }, 'A blank title falls back — Campus reader'],
+    [{ title: '<b>Desk</b> & "lamp"', content: 'Body' },
+      '&lt;b&gt;Desk&lt;/b&gt; &amp; &quot;lamp&quot; — Campus reader'],
+  ]) {
+    globalThis.fetch = async input => {
+      const url = new URL(String(input))
+      if (url.pathname.endsWith('/posts_visible')) {
+        assert.match(url.searchParams.get('select'), /(^|,)title(,|$)/)
+        return json([{ id: POST_ID, images: [], user_id: USER_ID, source_lang: 'en', ...row }])
+      }
+      return json([{ nickname: 'Campus reader' }])
+    }
+    const html = await (await handler(new Request(`https://illinimarket.com/api/share-post?id=${POST_ID}`))).text()
+    assert.equal(ogTitle(html), expected)
+  }
+})
+
 test('post share declares the author language and uses English for unknown metadata', async () => {
   const { default: handler } = await load('share-post.js')
   for (const [language, expected] of [['en', 'en'], ['zh', 'zh'], [null, 'en'], ['en" onload="alert(1)', 'en']]) {
