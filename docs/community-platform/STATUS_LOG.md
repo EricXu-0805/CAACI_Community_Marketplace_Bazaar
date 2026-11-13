@@ -595,3 +595,14 @@
 - 未测项: 页面其他部分不在本任务：动态卡与底栏 10–11px 文字、暗色侧栏「发布」按钮 2.87:1
 - 下一条: REGION.2
 - 附: [OMO自决] 英文 plaza.ref.more 用 "{n} items in all" 而不是 SPEC 的 "+{n} more"：中文「等 {n} 件」数的是总数，i18n parity 测试要求中英占位符一致，照 SPEC 会差 1；建议 Eric 把 SPEC §11 改成这一版。读不到的关联商品仍由 usePlaza 的 stripDeletedItems 丢掉，行里不显示「关联的商品已下架」，留给引用卡（SPEC 6.6）任务。HOME.3、HOME.5 要在这条分支上接着做（先把 #369 merge 进来拿 HOME.2，不 rebase）。
+
+### L50 · 2026-11-13 05:00 CT · REGION.2 社区查询都带 region=cu；只有一个地区时不显示切换器，页头标「香槟」
+- task_id: REGION.2
+- code_sha: 44629b4（#369，已推送）
+- docs_sha: 5ce7260bacfd1b21f19d0e3d08c4a26a8358110c
+- 环境: 本地 tony-ws run-checks；宿主 Node 22
+- 命令: 新增 app/src/utils/region.ts（REGIONS、ACTIVE_REGION、showRegionSwitcher、regionLabel）；usePlaza 列表查询加 .eq('region', ACTIVE_REGION)，搜索 RPC 传 region_in；plaza 页头标题旁显示地区标签（data-test=region-label），只有多个地区时渲染 data-test=region-switcher；两份加载 usePlaza 的测试加 region 模块映射；新增 app/smoke/region-switcher.test.mjs；community-post-topics.spec.ts 加切换器为 0 与地区标签断言。`SMOKE_SPECS=3 个社区 spec ~/work/illini-dev-env/run-checks.sh ~/work/illini install typecheck test smoke`
+- 计数: ① REGIONS 与 ACTIVE_REGION 按 DoD；② 单测拦截请求：列表查询带 region=cu、搜索 RPC 的 region_in=cu；首页查询由 HOME.3 接入；③ smoke 断言 region-switcher 0 个，单测断言两个地区时切换器出现；④ 页头标签「香槟」/ Champaign-Urbana；⑤ typecheck rc=0，test 2024/2023/0/1，smoke 15 passed [本地测]
+- ci_run_url: —（#369 随 44629b4 重跑，public sweep 等 E4）
+- 未测项: 无
+- 下一条: P2.8
