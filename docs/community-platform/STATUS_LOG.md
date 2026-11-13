@@ -442,3 +442,14 @@
 - 未测项: ② 替换（进行中）
 - 下一条: BRAND.4
 - 附: [OMO自决] D-43 第 1 项：D-34 选「玉」单字，取 B 的单字变体（宋体，和 D-35 A 一致），理由与撤回写在 DECISIONS D-34。
+
+### L37 · 2026-11-13 02:32 CT · P2.7 部分成功恢复：关联失败的商品由作者在话题页补关联，绝不重发帖子
+- task_id: P2.7
+- code_sha: be2ebb6a3752a763cdad2f634b0db2fb88e75161（codex/community-topics-20261112，已推送；功能 7d6eacc，修正 be2ebb6）
+- docs_sha: 3ad55422e3e9d6282abdae55942a78f369321062
+- 环境: 本地 tony-ws pw1.60；CI
+- 命令: usePlaza.ts：createPost 返回 {partial:'items_failed', failedItemIds} 或 {partial:'refetch_failed'}；待关联 itemIds 存模块级 Map 并镜像到 sessionStorage `pending-post-items:<accountId>:<postId>`，resetPlazaState（换号时）清掉；新增 retryAttachPostItems：先读已有 post_items，只插缺的，23505 算已关联，42501 算不可关联，post_items_cap_exceeded 算已满，其他错误保留待关联，从不调用 posts insert。plaza/index.vue 按模式出提示并在 URL 加 `&attach=pending`；post/index.vue 只对作者显示提示条与「重新关联」「不关联了」，请求中按钮禁用；zh/en 新增 attach* 共 9 个 key、partialPublish 按模式分两条；新增 smoke/community-post-partial-attach.spec.ts。第一次全量 typecheck 报 useSupabase() 解构错误（log check-20261113T073241Z），修正后 `SMOKE_SPECS="community-post-topics.spec.ts plaza-attach-picker-is-modal.spec.ts community-post-partial-attach.spec.ts" ~/work/illini-dev-env/run-checks.sh ~/work/illini install typecheck test smoke`（log check-20261113T073353Z）通过并提交 7d6eacc。之后对照 DoD ④ 复查代码，发现第二次重试时 display_order 用待关联列表里的下标，会和已关联的商品同号、排序不定（表上没有 (post_id, display_order) 唯一约束，所以不丢关联）；改为接在现有最大 display_order 之后，同一命令重跑（log check-20261113T081608Z）后提交 be2ebb6
+- 计数: ① 两种 partial 返回值已区分，refetch_failed 不提示；② Map + sessionStorage key 与换号清理已做，URL 带 attach=pending；③ 提示条只对作者显示，文案「话题已发布，「{name}」等 {n} 件商品没有关联上」与两个按钮；④ 只插缺的且保持原顺序、23505 / 42501 / 上限 / 网络错误各自处理、请求中禁用、从不 insert posts；⑤ partialPublish 两条 + attachPending、attachRetry、attachDismiss、attachUnavailable 等中英文；⑥ smoke 15 passed，新 spec 覆盖五种情况（500 后重试 201 且 posts 只写 1 次；重试时 42501 显示不可关联；refetch 失败不出提示条；SIGNED_OUT 广播后提示条与 sessionStorage 记录都清掉；B 打开同一链接看不到提示条）；TEST 2001/2000/0/1 pg_skips=0 [本地测]；CI Type-check、Boundary、两个 Build 全 success，public sweep 照旧停在预检（E4） [CI run#43392843858]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43392843858
+- 未测项: 「换号」只用 SIGNED_OUT 测了退出这一种；换成另一个账号走同一个 resetPlazaState 路径，没单独写用例
+- 下一条: BRAND.1

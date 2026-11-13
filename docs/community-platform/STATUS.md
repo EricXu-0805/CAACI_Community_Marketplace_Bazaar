@@ -1,18 +1,18 @@
 # STATUS
 
-写于 2026-11-13 02:31 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-13 02:32 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: P2.7`
+`next_task_id: BRAND.1`
 
 ## 版本
 
 | 项 | 值 |
 |---|---|
 | 代码分支 / PR | codex/community-topics-20261112 / #369（草稿，OPEN）[本地测：git push 9c173a4] |
-| code_sha | 9b27fccf981eb9f30729585df03eacd682908f62（OMO 推送 REGION.1 后的 #369 head） |
+| code_sha | be2ebb6a3752a763cdad2f634b0db2fb88e75161（OMO 推送 P2.7 修正后的 #369 head） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-12 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-12 git ls-remote] |
-| docs_sha | 0fc3426a1e646f4774974ea1646e352839246f05（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
+| docs_sha | 3ad55422e3e9d6282abdae55942a78f369321062（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
 | 配置 / 品牌 / 首页分支 | codex/config-fixes-20261112 远端 14b4e4a（P1.2–P1.5），没开 PR（P1.7）；品牌、首页还没建（BRAND.1 / HOME.3）[本地测] |
 | tony-ws 仓库 | ~/work/illini 在 005ca9d；~/work/illini-docs 已切到 codex/community-plan-v5（P1.1 ④，见 STATUS_LOG L15）[本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
@@ -20,7 +20,7 @@
 
 ## CI
 
-PR #369 · run [43383800477](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43383800477) · head 9b27fcc · 2026-11-13 CT 结束 · conclusion failure（job 结论与下表相同；91027fb 的 run 被 9b27fcc 取代后取消）[CI run#43383800477]
+PR #369 · run [43392843858](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43392843858) · head be2ebb6 · 2026-11-13 CT 结束 · conclusion failure（public sweep 停在预检，等 E4；其余 job success）[CI run#43392843858]
 
 | job | 结论 | 计数 / 原因 |
 |---|---|---|
@@ -66,7 +66,9 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | REGION.1 | 通过 | 列、约束、只读授权、region_in 已并入；test 2001/2000/0/1 [本地测]；④ 的 VERIFY/L-SQL 随 P2.5 |
 | P2.5 | 未测 | 依赖 P1.10（L-SQL 回放进行中）；迁移仍缺 lock_timeout 与 _ops 三件套 |
 | P2.6 | 失败 | public sweep 2 failed（上表）；等 D-29、E4 |
-| P2.7–P2.13、REGION.2 | 未测 | 依赖 P2.4 / P2.5 / P2.6 |
+| P2.7 | 通过 | smoke 15 passed、test 2001/2000/0/1 [本地测]；CI [CI run#43392843858] |
+| P2.8–P2.10、REGION.2 | 跳过 | 经 P2.5 依赖已【跳过】的 P1.10 |
+| P2.11–P2.13 | 未测 | 依赖 P2.5 / P2.6 |
 | BRAND.1–BRAND.3 | 未测 | 基线计数写在 BACKLOG 各自 DoD |
 | BRAND.4 | 部分 | ① 出稿已交 appendix/visual/logo/；D-34 已按 D-43 代定 B 的单字「玉」；② 替换进行中 |
 | BRAND.5–BRAND.7 | 未测 | 等 D-30（E7）、D-36、D-35 |
