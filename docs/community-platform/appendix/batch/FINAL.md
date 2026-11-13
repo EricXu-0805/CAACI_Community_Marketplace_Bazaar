@@ -203,6 +203,7 @@ HOME.5 ｜ 通过 ｜ 2d18576、68eb43b（#374） ｜ 143b437 ｜ pw1.60＋axe 4
 ## 第三批（D-45）
 
 > 2026-11-13 按 D-46 第 1 项更正（supervisor 第三批核查，OMO 逐条核实后改），记录见 STATUS_LOG L64。
+> 2026-11-13 按 D-47 第 1 项再更正 ② 的 D-45.5b 行、④ 的 key 数、⑥ 的 #370 CI，记录见 STATUS_LOG L72。
 
 按 D-45 第 1–7 项做，八节格式同上；逐条细节在 STATUS_LOG L55 起。`latest_batch` 不变。
 
@@ -226,7 +227,7 @@ D-45.2 ｜ 通过 ｜ —（只改 PR 文案） ｜ bd7cba3 ｜ GitHub REST ｜ 
 D-45.3 ｜ 通过 ｜ 88ca762（本地） ｜ 7013638 ｜ pw1.65 ｜ 全量 install typecheck test h5 mp smoke（L57） ｜ 2051 / 2050 / 0 / 1；smoke 510 passed、4 failed（stub 环境，origin/main 同样失败）、1 skipped；主包 1,570,622（余 2,242） ｜ — ｜ CI ｜ — ｜ D-45.4
 D-45.4 ｜ 通过 ｜ 4a3cbe6（#375） ｜ 00ba6bc ｜ pw1.60 ｜ 三次尝试 + 提交前全量（L58） ｜ 主包 1,502,824，余 70,040（68.4 KiB）；2044 / 2043 / 0 / 1；smoke 15 passed ｜ —（不触发 CI） ｜ 合并后实际余量 ｜ — ｜ D-45.5
 D-45.5a ｜ 通过 ｜ b7bcf3a（#369） ｜ c25cf05 ｜ pw1.60 ｜ install typecheck test smoke mp（L59） ｜ 2053 / 2052 / 0 / 1；smoke 22 passed；主包 1,559,509 ｜ run 43448423151（Type-check、Boundary 2053 / 2052 / 0 / 1、Build H5、Build mp-weixin 4 个 success，public sweep 停在预检等 E4，2 个 skipped） ｜ 受限日期真机显示 ｜ E3 ｜ D-45.5b
-D-45.5b ｜ 通过（D-46 3e 6d6c598 补齐「HOME.3 首页」节，L69） ｜ c16f0a1（#374） ｜ 191f551 ｜ pw1.60 ｜ 同上加 7 份 smoke（L60） ｜ 2047 / 2046 / 0 / 1；smoke 99 passed；主包 1,566,720；新增 13 个 key（ref.more 原有，只改英文），接上 6 个；ref.removed、ref.unlink、hidden、hiddenOwner、appeal 要服务端（SELECT 策略或 RPC），restrictedReply、restrictedPost 只要拆 App.vue 门禁（D-46 第 3 项 f），emptyUnanswered 随 P3.4；SPEC §11「HOME.3 首页」节 11 个 key 和 plaza.boardDesc / boardAsk 还没进语言包（D-46 第 3 项 e） ｜ —（不触发 CI） ｜ 关注者帖子流真数据 ｜ E3 ｜ HOME.4
+D-45.5b ｜ 通过（D-46 3e 6d6c598 补齐「HOME.3 首页」节，L69） ｜ c16f0a1（#374） ｜ 191f551 ｜ pw1.60 ｜ 同上加 7 份 smoke（L60） ｜ 2047 / 2046 / 0 / 1；smoke 99 passed；主包 1,566,720；新增 13 个 key（ref.more 原有，只改英文），接上 6 个；没接上的 7 个：ref.removed、ref.unlink、hidden、hiddenOwner、appeal 要服务端（SELECT 策略或 RPC），restrictedReply 只要拆 App.vue 门禁（D-46 第 3 项 f），emptyUnanswered 随 P3.4（plaza.restrictedPost 是 b7bcf3a 在 #369 加的，不在这 13 个里）。「HOME.3 首页」节 29 个 key（含 LEGAL.1 后才启用的 home.aboutBodyCaaci）和 plaza.boardDesc / boardAsk 已由 D-46 3e（6d6c598）进语言包（L69）。现在还没接上的：ref.removed、ref.unlink、hidden、hiddenOwner、appeal 等服务端（P3.5 / P3.6）；emptyUnanswered 等 P3.4；home.events、home.allEvents 等 P4.8 的近期活动区块；home.typeGuide、home.typeRules 等 D-47 第 2 项 b（#374）。restrictedReply、restrictedPost 已由 D-46 3f 在 #369 520e55a 接上（L71），#374 要 merge #369 以后才有 ｜ —（不触发 CI） ｜ 关注者帖子流真数据 ｜ E3 ｜ HOME.4
 HOME.4 ｜ 通过 ｜ 010f8f6（#374） ｜ dce559d ｜ pw1.60＋axe 4.14.0 ｜ 同上（L61） ｜ 12 组 axe 0、<12px 0、溢出 0；2047 / 2046 / 0 / 1；smoke 85 passed ｜ — ｜ 真机 ｜ — ｜ D-45.7
 #374 合并 ｜ 通过 ｜ 7c82fd1（merge #369 b7bcf3a）、fb9c6b9（merge #375） ｜ dce559d ｜ pw1.60 ｜ install typecheck test smoke(8) mp ｜ 2056 / 2055 / 0 / 1；smoke 114 passed；主包 1,511,879（余 60,985） ｜ — ｜ — ｜ — ｜ D-45.7
 D-45.7 ｜ 通过 ｜ 86ffd0e（#374） ｜ d00fb3b ｜ pw1.60 ｜ install typecheck test h5 mp smoke（L62） ｜ 2064 / 2063 / 0 / 1；smoke 114 passed；小程序主包 1,550,634（余 22,230）；H5 截图 32 张像素不变（86ffd0e 给手机页头加了一层不带条件编译的 cx-regions，H5 的 DOM 有变化） ｜ —（不触发 CI） ｜ 微信开发者工具 / 真机 ｜ — ｜ —
@@ -249,7 +250,7 @@ D-45.7 ｜ 通过 ｜ 86ffd0e（#374） ｜ d00fb3b ｜ pw1.60 ｜ install typec
 | 要 Eric 做的一件事 | 解锁 |
 |---|---|
 | 合并顺序与 base：#369 → #375 → #374。删 #369 的分支之前，先把 #374、#375 的 base 都改成 main（删 base 分支会关闭依赖它的 PR，且不能重开）；#369 若 squash 合并，改完 base 后 #374、#375 要再 merge 一次 origin/main | #375、#374 能合，进而首页上线 |
-| SPEC §11 有 7 个 key 已进语言包但没接上，分三类：plaza.ref.removed、ref.unlink、hidden、hiddenOwner、appeal 要服务端改 post_items / posts 的 SELECT 策略或加 RPC（P3.5 / P3.6，归 Eric 定）；plaza.restrictedReply、restrictedPost 只要拆 App.vue 的受限门禁（D-46 第 3 项 f，OMO 做）；plaza.emptyUnanswered 随 P3.4 | 隐藏 / 申诉、引用卡下架 |
+| c16f0a1（#374）新增的 13 个 key 里有 7 个已进语言包但没接上，分三类：plaza.ref.removed、ref.unlink、hidden、hiddenOwner、appeal 要服务端改 post_items / posts 的 SELECT 策略或加 RPC（P3.5 / P3.6，归 Eric 定）；plaza.restrictedReply 只要拆 App.vue 的受限门禁（D-46 第 3 项 f，OMO 做）；plaza.emptyUnanswered 随 P3.4。另有 plaza.restrictedPost 是 b7bcf3a（#369）加的，不在这 13 个里，同样随 D-46 第 3 项 f。D-47 补记：3f 已在 #369 520e55a 接上 restrictedReply、restrictedPost（L71），还没 merge 进 #374 | 隐藏 / 申诉、引用卡下架 |
 | 用微信开发者工具或真机看一遍小程序社区页：首页、手机页头与胶囊对齐（iOS 上页头中心低 2px）、板块页、全部讨论、下拉刷新、暗色、复制 toast；小程序构建要配 VITE_BASE_URL（「关于本站」复制的链接） | 小程序与 H5 同日发布（D-12） |
 | #372 手工合并：除 api/share-post.js、en.ts、zh.ts 外，#374 与 #372 还在 app/src/pages/plaza/index.vue 冲突——c16f0a1 删了「关注的人」名单（SPEC §6.2 改成帖子流），#372 的 BRAND.3 徽章改的正是名单里那段。保留 #374 的删除，不带回名单；#372 在这块的徽章改动丢弃（名单在 pages/following 里，那一页的徽章照 #372）。其余规则同前：保留 #369 的 P2.9 / P2.2 逻辑和措辞，只取 #372 的品牌字串 | 品牌上线 |
 | 主包余量：#369＋#375＋#374 合上后 22,230 字节（H5 stub 环境，CI 环境多 91 字节），低于 D-45 第 4 项的 64 KiB。五个 PR 都合上后的数见第四批（D-46 第 5 项重测） | 后续进主包的功能 |
@@ -266,7 +267,7 @@ D-45.7 ｜ 通过 ｜ 86ffd0e（#374） ｜ d00fb3b ｜ pw1.60 ｜ install typec
 - #375、#374 的 base 不是 main，CI 不触发。
 - 「关注的人」帖子流、受限日期提示只在本地 mock 下验证，要真实 staging 数据（E3）。
 - 小程序首页只在本地间接验证（路由单测、编译产物校验、页头 WXSS 在 Chromium / WebKit 320–414px 渲染），没在微信里跑过。首页一次并发 9 个请求，加上小程序一直挂着的 inbox 长轮询和每 20 秒一次的通知轮询，登录用户会到 10 个、碰上通知轮询到 11 个，超过微信 request 并发上限 10（D-46 第 3 项 c）。
-- #370 在 f43bdd1 上 CI 红（run 43470604328）：Build H5 与 public sweep 在 ubuntu-26.04 上装不上 Playwright 浏览器，和 main 是同一个基础设施问题，改 workflow 归 Eric。
+- #370 在 f43bdd1 上 CI 红（run 43470604328）：Build H5 与 public sweep 在 ubuntu-26.04 上装不上 Playwright 浏览器，和 main 是同一个基础设施问题，改 workflow 归 Eric。之后在 5f66faa、08f036c、bd397ce 上又红了三次（run 43475385858、43484767294、43487337489），原因相同：失败的都是 Build H5 的「Install browsers for compiled admin acceptance」和 public sweep 的「Install Playwright (webkit + chromium)」两步，日志「Cannot install dependencies for ubuntu26.04-x64 with Playwright 1.60.0!」。
 - 小程序主包余 22,230 字节，任何再进主包的改动都要先腾空间。
 
 ### ⑦ 下一批

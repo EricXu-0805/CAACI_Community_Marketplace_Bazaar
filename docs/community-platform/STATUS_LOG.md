@@ -855,3 +855,42 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - ci_run_url: —（#374 base 不是 main，不触发 CI）
 - 未测项: —
 - 下一条: D-46 第 3 项 f（#369，子任务进行中）
+
+### L70 · 2026-11-13 12:09 CT · D-46 第 3 项 b：小程序上关闭发帖面板改用操作菜单，按钮文字不再超过微信上限
+- task_id: D-46.3b
+- code_sha: 3588c24（#369；12:09 CT 本地提交，没有单独推送，和 3f 一起推送 b7bcf3a..520e55a）
+- docs_sha: 81196fa128e34be1e2669a93c0a51049c4b504b7
+- 环境: 本地 tony-ws run-checks（pw1.60-node22-pg17）；微信官方文档；实现由 OMO 子任务做，主会话核对后推送
+- 命令: 先查微信官方文档（developers.weixin.qq.com 的 wx.showModal、wx.showActionSheet 页）：showModal 的 confirmText、cancelText「最多 4 个字符」；showActionSheet 的 itemList「数组长度最大为 6」，alertText 基础库 2.14.0 起。再把社区代码里 13 处 showModal / showActionSheet 的中英按钮文字查一遍，超长的只有 plaza/index.vue 关闭发帖面板的弹窗（英文 confirmText "Keep draft" 10 个字符、cancelText "Discard" 7 个；中文「保留草稿」「不保留」不超），其余都合规。先写 app/smoke/community-mp-dialogs.test.mjs（8 条，按条件编译分别取 H5 与 MP-WEIXIN 的源码），在 b7bcf3a 上 4 条失败、4 条通过（check-20261113T175832Z）。修法：onComposerCancel 在 `#ifdef MP-WEIXIN` 里改用 uni.showActionSheet（alertText 是 plaza.draftCloseTitle，itemList 是 SPEC 全文的 plaza.draftKeep、plaza.draftDiscard，tapIndex 0 为保留），`#ifndef MP-WEIXIN` 照旧 showModal，两边共用同一个 closeDraft。`~/work/illini-dev-env/run-checks.sh ~/work/illini install typecheck test h5 mpci smoke`
+- 计数: 新测试 8 条全过；install、typecheck、h5、mpci rc=0，test 2061 / 2060 / 0 / 1，smoke 35 passed，主包（CI 环境）1,559,431（余 13,433）（check-20261113T175933Z）[本地测]。这份日志头记的 head 是 b7bcf3a：检查跑在提交之前的工作树上，3588c24 于 18:09:15Z 提交
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43491206333（520e55a，含本条；运行中，结论补在 STATUS 的 CI 行）
+- 未测项: 微信开发者工具或真机上操作菜单的样子与 alertText（基础库 2.14.0 起才有；manifest 没设最低基础库）
+- 下一条: D-46 第 3 项 f
+- 附: SPEC 文字在小程序上用操作菜单放得下，不需要 Eric 定。「再 merge 进 #375、#374」还没做。「13 处」的逐个审计是子任务做的，主会话核对了微信文档和改动的那一处。撤回 `git revert 3588c24`。
+
+### L71 · 2026-11-13 13:15 CT · D-46 第 3 项 f：受限账号可以浏览，发帖和回复在打开输入之前就拦下（SPEC §6.5.1），只有永久封禁去 suspended 页
+- task_id: D-46.3f
+- code_sha: 520e55a（#369，已推送 b7bcf3a..520e55a，连同 3b 的 3588c24）
+- docs_sha: 81196fa128e34be1e2669a93c0a51049c4b504b7
+- 环境: 本地 tony-ws run-checks（pw1.60-node22-pg17）；只读核对 supabase/migrations；实现由 OMO 子任务做，主会话核对后推送
+- 命令: 开工前先确认服务端已经拦住受限账号的写入：supabase/migrations/028_fix_enforce_actor_type.sql 第 76、80、84、88 行给 posts、post_comments、items、messages 建 BEFORE INSERT 触发器，都执行 public.trg_enforce_actor()；这个函数最新的定义在 20260718160000_reconcile_expired_suspension_visibility.sql 第 633 行，第 665–666 行在有效级别 ≥ 2 时抛 suspension_active。服务端已拦，只改客户端，不建迁移、不动 RLS。先写 app/smoke/community-restricted-account.test.mjs（92 条：L0–L5 每一级、过期的 L2–L5、中英文、plaza 与 post 两个页面，加 profile-recovery、reconsent、未登录三个对照），community-post-topics.spec.ts 加按级别、语言、390 / 1280 宽度展开的浏览器用例；修复前（3588c24 的代码）92 条里 60 条失败、32 条通过（check-20261113T183727Z）。修法：App.vue:157 requiredGatePath() 只把有效的 L5 送去 pages/suspended；plaza/index.vue:1215 openComposer() 在打开面板之前拦：L5 reLaunch 到 suspended，L2–L4 toast plaza.restrictedPost（恢复日期按当前语言格式化），不打开面板；plaza/index.vue:468 与 post/index.vue:276 的回复栏换成 plaza.restrictedReply 的提示（role=status），没有输入框，onSubmitComment、onCommentTap 和长按菜单的「回复」也直接返回；en.ts / zh.ts 加 plaza.restrictedReply。`~/work/illini-dev-env/run-checks.sh ~/work/illini install typecheck test h5 mpci smoke`
+- 计数: 修复后 install、typecheck、h5、mpci rc=0，test 2153 / 2152 / 0 / 1，smoke 53 passed，主包（CI 环境）1,560,420（比 3b 多 989，余 12,444）（check-20261113T190341Z；日志头 head 是 3588c24，检查跑在 520e55a 提交之前的工作树上）[本地测]。行为：L0、L1 正常；L2–L4 可以浏览，回复处显示 restrictedReply、没有输入框也不写入，发帖在打开面板之前 toast 带日期的 restrictedPost；L5 去 pages/suspended；过期的 L2–L5 一切正常
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43491206333（520e55a；运行中，结论补在 STATUS 的 CI 行）
+- 未测项: staging 上的真实受限账号（等 E3）；微信开发者工具或真机。D-47 第 5 项（3a 以后小程序冷启动进 suspended、reconsent 等页的登录用户也会收到新消息 toast 和通知横幅）没有在本条做：3a 的监听启动在 #375，#369 上还没有，排在 D-47 第 2–5 项里
+- 下一条: D-46 第 3 项 a（后半：3d24a8e merge 进 #374），取法见 L72
+- 附: 「再 merge 进 #375、#374」还没做。#374 上已有 c16f0a1 加的 plaza.restrictedReply，中英值与本条相同，merge 时 en.ts / zh.ts 如果冲突取同一个值。D-46 第 1 项指出的「restrictedPost 是提交失败以后的 toast」由本条改成打开面板之前提示。撤回 `git revert 520e55a`。
+
+### L72 · 2026-11-13 13:30 CT · D-46 第 3 项按分支三路并行、第 4 和第 6 项提前开工；目标范围扩到 D-46 第 1–6 项加 D-47；D-47 第 1 项文档更正（更正 L60、L64、L69） [OMO自决]
+- task_id: D-47.1
+- code_sha: —（只改文档）
+- docs_sha: 81196fa128e34be1e2669a93c0a51049c4b504b7
+- 环境: tony-ws 只读核对：~/work 下各 worktree 的 git log / ls-remote / merge-base、gh run list / view、SPEC.md、run-checks 日志
+- 命令: `git -C ~/work/illini ls-remote origin <七个分支>`；`TZ=UTC git log -1 --format='%h %cd'` 取 eca5a8d、73206a0、3d24a8e、3588c24、6d6c598、8972507、ecc330b、520e55a；`git -C ~/work/illini-home merge-base --is-ancestor 3d24a8e 6d6c598`；`git -C ~/work/illini-mpbudget log --oneline 3d24a8e..HEAD`；`gh run list --branch codex/community-plan-v5`、`gh run view <id> --json jobs`、`gh run view 43487337489 --log-failed`；`gh run view 43491206333 --json jobs`；SPEC.md 第 879 行与「HOME.3 首页」表（第 1163 行起）；`git show c16f0a1 -- app/src/composables/i18n/messages/en.ts`；~/work/illini-home app/src/utils/communityHome.ts:67
+- 计数: ① 顺序：D-46 第 8 项定的是 3a → 3b → 3d → 3c → 3e → 3f，实际按分支分三路并行：#375 上 3a（3d24a8e，18:38:07Z）；#369 上 3b → 3f（3588c24 18:09:15Z 本地提交后没有单独推送，520e55a 19:15:35Z，两个一起推送 b7bcf3a..520e55a）；#374 上 3d → 3c → 3e（eca5a8d 17:59:05Z、73206a0 18:30:42Z、6d6c598 18:52:40Z）。D-46 第 4 项在第 3 项没做完时已在 #375 开工（本地 8972507 19:05:52Z、1443d5c、ecc330b 19:14:44Z，未推送）；D-46 第 6 项 BRAND.7 在单独的文档 worktree ~/work/illini-docs-brand7（本地分支 local/brand7-20261113，现在还在 bd397ce，没有新提交）进行。② 远端 head：#369 520e55a、#374 6d6c598、#375 3d24a8e、#373 55716ba、#372 ba070e7、#371 b259105、#370 81196fa；#374 的 6d6c598 不含 3a 的 3d24a8e（merge-base 返回非 0），也不含 3b、3f。③ 主包（CI build-mp-weixin 环境）：#369 520e55a 1,560,420；#375 3d24a8e 1,502,862；#374 6d6c598 1,551,820；核查方 #374＋3a 试合 1,551,949（余 20,915，离 64 KiB 差 44,621，还没算 #369 的 3b、3f 和 #372、#373）。④ D-47 第 1 项逐条：(a) 顺序变化没记、next_task_id 从 3b 跳到 3f——成立，本条补记，next_task_id 按 BACKLOG §0.1 第 2 条重取；(b) #374 还缺 3a——成立，STATUS 已写明；(c) STATUS 过期——成立，整篇改写，主包全部换成 CI 环境的数（P2.10 行没有 CI 环境实测，按 D-46 的 91 字节换算并标明）；(d) FINAL ② D-45.5b 行自相矛盾——成立，已改，写明剩下没接上的 key 各等什么；(e)「7 个 key」后面列了 8 个名字——成立（c16f0a1 的 en.ts 新增 plaza key 里有 restrictedReply、没有 restrictedPost；restrictedPost 在 b7bcf3a），FINAL ④ 与 D-45.5b 行已把 restrictedPost 单独写，L60 的更正见下；#374 描述是 PR 文案，本次只改文档，留到 D-47 第 7 项收尾时对；(f) 28 与 29——成立（SPEC 表 29 行），FINAL 第三批里没有写 28 的地方，D-45.5b 行已写 29，L64 的更正见下；(g) #370 又红三次——成立，43475385858（5f66faa）、43484767294（08f036c）、43487337489（bd397ce）都是 failure，失败步骤都是 Build H5 的「Install browsers for compiled admin acceptance」和 public sweep 的「Install Playwright (webkit + chromium)」，43487337489 日志「Cannot install dependencies for ubuntu26.04-x64 with Playwright 1.60.0!」，FINAL ⑥ 与 STATUS 的 CI 节已补；(h) L69「没有与 SPEC 的分歧」——成立，更正见下
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43487337489（#370 bd397ce，failure；另两次见上）；#370 的 81196fa run 43490982420 写本条时还在跑
+- 未测项: 3b、3f 的门禁日志头记的是提交之前的 HEAD（检查跑在未提交的工作树上），提交以后的树没有再单独跑一次全量；#369 的 CI 还在跑
+- 下一条: D-46 第 3 项 a（后半：3d24a8e merge 进 #374）
+- 附: 自决：规则 D-42 第 3 项（[OMO自决] 当场记）与 D-47 第 1、8 项。选了什么、理由：(1) 第 3 项按分支分三路并行，因为 3a、3b / 3f、3c / 3d / 3e 在三个不同分支，互不依赖，而 run-checks 的容器锁本来就让检查串行，按单线顺序做只会多等；(2) 3b 本地提交后没有单独推送，和 3f 一起推，现在在 #369 上，还没 merge 进 #375、#374；(3) D-46 第 4 项（#375）和第 6 项（单独的文档 worktree）在第 3 项做完之前开工；(4) 目标范围按 D-47 第 8 项扩到 D-46 第 1–6 项加 D-47；goal 工具不能替换还在进行的目标，所以在这里记一笔，不另设目标；(5) STATUS_LOG 只追加（本文件「格式」上方的规则），L60、L64、L69 原文不改，更正写在本条；(6) next_task_id 取 D-46 第 8 项顺序里第一条没做完的：3a 的后半「再 merge 进 #374」（D-47 允许和第 4 项一起 merge），之后是 3b、3f merge 进 #375、#374、D-47 第 2–5 项、D-46 第 4–6 项。从现在起照 D-47：同一个分支同一时间只让一个子任务推送，顺序一变当场记。证据：上面的提交时间与 ls-remote。撤回：顺序变化已推送，撤不回；文档更正 `git revert <本条所在提交>`。
+- 更正 L60: 「D-46 更正」里「7 个没接上的 key 分三类」后面列了 8 个名字。c16f0a1 新增的 13 个 key 里没接上的 7 个是 ref.removed、ref.unlink、hidden、hiddenOwner、appeal（要服务端）、restrictedReply（拆 App.vue 门禁）、emptyUnanswered（随 P3.4）；plaza.restrictedPost 是 b7bcf3a（#369）加的，不在这 13 个里。restrictedReply、restrictedPost 现在已由 3f 接上（L71）。
+- 更正 L64: SPEC §11「HOME.3 首页」节是 29 个 key，不是 28：SPEC.md 第 1163 行起的表有 29 行，含 LEGAL.1 以后才启用的 home.aboutBodyCaaci。
+- 更正 L69: 「没有与 SPEC 的分歧」不对。SPEC.md 第 879 行英文补位行是「Good for: {topics} · Post the first one ›」，6d6c598 的 communityHome.ts:67 拼出来是「Good for: {topics} Post the first one ›」，少了「 · 」；中文照 SPEC 是「适合在这里问：{补位话题} 发第一帖 ›」。代码和测试由 D-47 第 2 项 a 在 #374 上改。另外 home.typeGuide、home.typeRules 进了语言包但没有地方用（D-47 第 2 项 b）；home.events、home.allEvents 没有地方用是对的，近期活动区块等 P4.8。
