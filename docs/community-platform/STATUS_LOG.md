@@ -240,3 +240,15 @@
 - ci_run_url: —
 - 未测项: ④ 等 P1.9 的 pw1.65 镜像；⑤ 等 P1.7 的 PR CI
 - 下一条: P1.9
+
+### L20 · 2026-11-13 00:03 CT · P1.13 Vercel CLI 护栏与 demo 项目关联；link 拉下的 .env.local 已删除
+- task_id: P1.13
+- code_sha: —（工作站任务，不改仓库）
+- docs_sha: 78373c87403c6566cc1576955ef88ce8145f50d7
+- 环境: 本地 tony-ws，Vercel CLI 65.15.0
+- 命令: RUNBOOK §9 ①：护栏写入 ~/.local/bin/vercel（sha256 ff453b2636cb2ee2471dd09a60640704de604aba75bba7bccf8191174e5e1e7b），vc 链接；②：备份 ~/.bashrc.before-P1.13-20261112、~/.profile.before-P1.13-20261112，两文件末尾加 PATH 一行，Node 前缀的 vercel、vc 改指护栏；③：`vercel project ls`、`vercel inspect illini-community-demo.vercel.app`（证据 ~/work/evidence/P1.13/20261113T054239Z-*.txt，禁用标识计数 0），项目名写入 ~/.config/illini/vercel-demo-project（目录新建，700），`vercel link --yes --project=illini-community-demo --scope ericxu-0805s-projects`；自测 ~/work/evidence/P1.13/20261113T055524Z-guard.txt
+- 计数: ① demo 项目名 illini-community-demo（生产部署 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6，别名 illini-community-demo.vercel.app）；② 新交互 shell 里 `vercel deploy --prod`、`vercel env pull`、直接调用 ~/.local/opt/node/bin/vercel deploy --prod、在 ~ 下 deploy 都被拒，exit=1；demo 目录内 VERCEL_REAL=/bin/echo 放行；whoami 为 ericxu-0805；③ find 只有 /home/guoyi/work/demo-publish/.vercel；④ ls -A 为 .gitignore、.vercel，没有 .env* [本地测]
+- ci_run_url: —
+- 未测项: 无
+- 下一条: P1.9
+- 附: STOP-7 一次：CLI 65.15.0 的 `vercel link --yes` 自动下载 demo 项目的短期 VERCEL_OIDC_TOKEN，写入 ~/work/demo-publish/.env.local（1377 字节）。OMO 没读内容，先 chmod 600 再停下提问；Eric（经 Claude 代答）答复「删文件并继续」，已直接 rm（不进回收站），证据文件里令牌计数 0。按同一答复，RUNBOOK §9 ③ 补了 link 之后删 .env*.local 的步骤（随 P1.2 的材料提交一并提交）；同一提交还按 PR #370 第二条留言改写了 DECISIONS 的 D-41。

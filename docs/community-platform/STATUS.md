@@ -12,7 +12,7 @@
 | code_sha | 005ca9d6b5ac23346dfeb38f3deb95984bffd27b（2026-11-12 git ls-remote） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-12 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-12 git ls-remote] |
-| docs_sha | 095985f48edcc964406aea22b8539613676f223d（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
+| docs_sha | 78373c87403c6566cc1576955ef88ce8145f50d7（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
 | 配置 / 品牌 / 首页分支 | codex/config-fixes-20261112 远端 cc63ab5（P1.2–P1.4），没开 PR（P1.7）；品牌、首页还没建（BRAND.1 / HOME.3）[本地测] |
 | tony-ws 仓库 | ~/work/illini 在 005ca9d；~/work/illini-docs 已切到 codex/community-plan-v5（P1.1 ④，见 STATUS_LOG L15）[本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
@@ -52,8 +52,9 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P1.3 | 通过 | test 1994 / 1993 / 0 / 1，pg_skips=0；写死路径 32→1 [本地测] |
 | P1.4 | 通过 | 旧色 grep 15→0；typecheck、h5、mp rc=0 [本地测] |
 | P1.5 | 未测 | ①–③ 通过（fsevents 删除经 Eric 批准，STATUS_LOG）；④ 等 P1.9，⑤ 等 P1.7 的 CI [本地测] |
-| P1.7、P1.9、P1.10、P1.13 | 未测 | P1.7、P1.9、P1.10 依赖 P1.2–P1.5；P1.13 只依赖 P1.1 |
-| P1.6 / P1.8 / P1.11、P1.12 | 未测 | 分别等 D-41 / E5（合并 P1.7 的 PR）/ D-29（E2）与 E3 |
+| P1.13 | 通过 | DoD ①–④ 符合；link 拉下的 .env.local 已按 Eric 答复删除 [本地测] |
+| P1.7、P1.9、P1.10 | 未测 | P1.9 构建 pw1.65 镜像中；P1.10 依赖 P1.9；P1.7 依赖 P1.5 |
+| P1.6 / P1.8 / P1.11、P1.12 | 未测 | P1.6：D-41 已定（A，在配置分支单独做 deps: 提交），等 P1.5 ④；P1.8 等 E5（合并 P1.7 的 PR）；P1.11、P1.12 等 D-29（E2）与 E3 |
 | P2.1 | 未测 | verify-public-read-schema.mjs:20 对 posts 只查 id,item:items(id,listing_details) [源码 005ca9d] |
 | P2.2–P2.4 | 未测 | zh.ts:894-898 仍是旧板块名；tabBar 首页/广场/发布/消息/我的；composerMode 默认 'update'（plaza/index.vue:946）[源码 005ca9d] |
 | P2.5、REGION.1 | 未测 | 迁移 20261112120000 未应用到任何托管库，没有 lock_timeout，_ops 下缺 PRECHECK/VERIFY/REGRESSION，没有 region 列 [源码 005ca9d] |
@@ -73,9 +74,9 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 
 1. D-29 → E2、E3：staging-smoke 只有合成数据的书面确认与 A/B/C 账号。挡住 P1.11、P1.12、P2.6、P2.11。
 2. E4：P2.5 在 STATUS_LOG 写出「20261112120000 冻结」后，Eric 把迁移应用到 hygkwxugskijadgfisji。挡住 P2.6、P2.13。
-3. D-41：依赖审计修复范围。未定前 P1.6 跳过，P1.7 先开草稿 PR。
+3. D-41 已定（2026-11-12，选 A，执行方式按 PR #370 第二条留言：在配置分支单独做 deps: 提交）。P1.6 只差 P1.5 ④（P1.9）。
 4. E5：合并 P1.7 的 PR。挡住 P1.8，以及 BRAND.2 ⑦ 的 Build H5。
-5. D-35（视觉）挡住 HOME.4、P2.12、BRAND.7；D-34（logo）挡住 BRAND.4 ②。
-6. D-30（E7，微信后台核对）挡住 BRAND.5、P5.2；D-31（E8，fork 权限）挡住 P4.3。
+5. D-35 已定（A 纸本书院），HOME.4、P2.12、BRAND.7 只剩各自的任务依赖；D-34（logo）仍挡住 BRAND.4 ②。
+6. D-30（E7，微信后台核对）挡住 BRAND.5、P5.2；D-31 已定（A），E8（fork 与令牌权限）还没做，P4.3 只在本地写。D-40 已定（A，请律师审 LEGAL.2、LEGAL.4），LEGAL 组仍等 D-37。
 7. D-37（董事会同意）挡住 LEGAL.1–LEGAL.3；D-28（轮值伙伴）挡住 LEGAL.6 与 P5；D-36（域名）挡住 BRAND.6、P5.1。
 8. E6（官方账号 profile id）在 P3.5 与 P4.9 前需要；D-32、D-33、D-38、D-39、D-40 的截止任务见 [DECISIONS.md](DECISIONS.md)。
