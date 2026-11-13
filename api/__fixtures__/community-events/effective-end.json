@@ -1,0 +1,6 @@
+[
+  {"name":"explicit end","starts_at":"2026-11-20T17:30:00Z","ends_at":"2026-11-20T19:30:00Z","effective_end":"2026-11-20T19:30:00Z"},
+  {"name":"no end","starts_at":"2026-11-20T17:30:00Z","ends_at":null,"effective_end":"2026-11-20T17:30:00Z"},
+  {"name":"all day","all_day":true,"starts_at":"2026-11-20T06:00:00Z","ends_at":"2026-11-21T06:00:00Z","effective_end":"2026-11-21T06:00:00Z"},
+  {"name":"multi day","occurrence_count":3,"starts_at":"2026-11-20T17:30:00Z","ends_at":"2026-11-22T19:30:00Z","effective_end":"2026-11-22T19:30:00Z"}
+]
