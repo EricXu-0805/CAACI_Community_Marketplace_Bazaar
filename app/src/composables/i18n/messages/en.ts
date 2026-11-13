@@ -964,6 +964,7 @@ const en: Record<string, string> = {
   'plaza.draftRestored': 'Restored your unsent draft',
   'plaza.draftClear': 'Clear',
   'plaza.restrictedPost': "You can't post while your account is restricted. Access returns {date}.",
+  'plaza.restrictedReply': "You can't reply while your account is restricted.",
   'plaza.comments': 'Replies',
   'plaza.noComments': 'No replies yet',
   'plaza.noMoreComments': 'No more replies',

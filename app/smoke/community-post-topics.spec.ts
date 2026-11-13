@@ -15,7 +15,7 @@ const PROFILE = {
   suspension_level: 0, suspended_until: null, is_illini_verified: true, bio: 'hi', location: 'UIUC',
 }
 
-async function openPlazaComposer(page: Page, install: () => Promise<void>, lang: 'en' | 'zh' = 'en') {
+async function openPlazaComposer(page: Page, install: () => Promise<void>, lang: 'en' | 'zh' = 'en', options: { open?: boolean; level?: number } = {}) {
   await page.addInitScript(([ref, uid, gen, lang]) => {
     localStorage.setItem('welcomed', '1')
     localStorage.setItem('lang', lang)
@@ -34,7 +34,11 @@ async function openPlazaComposer(page: Page, install: () => Promise<void>, lang:
   }, [REF, UID, GEN, lang] as const)
 
   await page.route('**/*.supabase.co/**', async route => {
-    const body = route.request().url().includes('/rpc/get_my_profile') ? PROFILE : []
+    const profile = options.level === undefined ? PROFILE : {
+      ...PROFILE, suspension_level: options.level,
+      suspended_until: options.level === 5 ? 'infinity' : '2100-12-03T12:34:56Z',
+    }
+    const body = route.request().url().includes('/rpc/get_my_profile') ? profile : []
     await route.fulfill({
       status: 200, contentType: 'application/json',
       headers: { 'content-range': '0-0/1' }, body: JSON.stringify(body),
@@ -43,8 +47,10 @@ async function openPlazaComposer(page: Page, install: () => Promise<void>, lang:
 
   await install()
   await page.goto('/#/pages/plaza/index', { waitUntil: 'networkidle' })
+  if (options.level === 5) return
   await expect(page.locator('[data-test=region-switcher]')).toHaveCount(0)
   await expect(page.locator('[data-test=region-label]').first()).toHaveText(/^(Champaign-Urbana|香槟)$/)
+  if (options.open === false) return
   await page.getByRole('button', { name: lang === 'zh' ? '发布新帖' : 'New post', exact: true }).filter({ visible: true }).click({ timeout: 15_000 })
   await expect(page.locator('.comp-attach-btn').first()).toBeVisible({ timeout: 10_000 })
 }
@@ -287,4 +293,65 @@ for (const [lang, width] of [['en', 390], ['zh', 1280]] as const) {
     await expect(composer).toBeVisible()
     await expect(page.locator('.comp-submit')).toHaveText(lang === 'zh' ? '发布' : 'Post')
   })
+}
+
+for (const [lang, width] of [['en', 390], ['en', 1280], ['zh', 390]] as const) {
+  for (const level of [0, 1, 2, 3, 4, 5]) {
+    test(`L${level} browsing, reply box, and composer follow SPEC 6.5.1 in ${lang} at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 844 })
+      let writes = 0
+      await openPlazaComposer(page, async () => {
+        await page.route('**/rest/v1/posts?**', route => {
+          if (route.request().method() !== 'GET') writes++
+          const body = route.request().headers().accept?.includes('vnd.pgrst.object') ? TOPIC : [TOPIC]
+          return route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) })
+        })
+        await page.route('**/rest/v1/post_comments?**', route => {
+          if (route.request().method() !== 'GET') writes++
+          return route.fulfill({ contentType: 'application/json', body: '[]' })
+        })
+      }, lang, { open: false, level })
+
+      if (level === 5) {
+        await expect(page).toHaveURL(/pages\/suspended\/index/)
+        await expect(page.locator('.composer-fullpage')).toHaveCount(0)
+        expect(writes).toBe(0)
+        return
+      }
+      await expect(page).toHaveURL(/pages\/plaza\/index/)
+      await expect(page.getByRole('heading', { name: TOPIC.title, exact: true })).toBeVisible()
+      await page.locator('.post-card').getByRole('button', { name: lang === 'zh' ? '回复' : 'Reply', exact: true }).click()
+      const sheet = page.locator('.comment-sheet')
+      await expect(sheet).toBeVisible()
+      const restrictedReply = lang === 'zh' ? '账号受限期间不能回复' : "You can't reply while your account is restricted."
+      if (level >= 2) {
+        await expect(sheet.locator('.reply-restricted')).toHaveText(restrictedReply)
+        await expect(sheet.locator('textarea')).toHaveCount(0)
+        if (level === 2) await page.screenshot({ path: `test-results/visual/D46/restricted-sheet-${width}-${lang}.png` })
+      } else await expect(sheet.locator('textarea')).toBeVisible()
+      await sheet.locator('.as-close').click()
+      await expect(sheet).toHaveCount(0)
+
+      await page.getByRole('button', { name: lang === 'zh' ? '发布新帖' : 'New post', exact: true }).filter({ visible: true }).click()
+      if (level >= 2) {
+        const date = await page.evaluate(lang => new Date('2100-12-03T12:34:56Z').toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US'), lang)
+        await expect(page.locator('uni-toast')).toContainText(lang === 'zh'
+          ? `账号受限期间不能发帖，${date} 恢复`
+          : `You can't post while your account is restricted. Access returns ${date}.`)
+        await expect(page.locator('.composer-fullpage')).toHaveCount(0)
+      } else {
+        await expect(page.locator('.composer-fullpage')).toBeVisible()
+        await page.locator('.comp-cancel').click()
+      }
+      await page.getByRole('heading', { name: TOPIC.title, exact: true }).click()
+      await expect(page).toHaveURL(new RegExp(`pages/post/index.*id=${TOPIC.id}`))
+      const input = page.locator('.input-wrapper')
+      if (level >= 2) {
+        await expect(input.locator('.reply-restricted')).toHaveText(restrictedReply)
+        await expect(input.locator('input')).toHaveCount(0)
+        if (level === 2) await page.screenshot({ path: `test-results/visual/D46/restricted-post-${width}-${lang}.png` })
+      } else await expect(input.locator('input')).toBeVisible()
+      expect(writes).toBe(0)
+    })
+  }
 }

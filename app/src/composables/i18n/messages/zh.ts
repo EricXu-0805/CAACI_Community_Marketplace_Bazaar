@@ -960,6 +960,7 @@ const zh: Record<string, string> = {
   'plaza.draftRestored': '已恢复上次没发的内容',
   'plaza.draftClear': '清空',
   'plaza.restrictedPost': '账号受限期间不能发帖，{date} 恢复',
+  'plaza.restrictedReply': '账号受限期间不能回复',
   'plaza.comments': '回复',
   'plaza.noComments': '还没有回复',
   'plaza.noMoreComments': '没有更多回复',
