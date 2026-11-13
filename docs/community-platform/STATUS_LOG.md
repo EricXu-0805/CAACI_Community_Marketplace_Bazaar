@@ -252,3 +252,14 @@
 - 未测项: 无
 - 下一条: P1.9
 - 附: STOP-7 一次：CLI 65.15.0 的 `vercel link --yes` 自动下载 demo 项目的短期 VERCEL_OIDC_TOKEN，写入 ~/work/demo-publish/.env.local（1377 字节）。OMO 没读内容，先 chmod 600 再停下提问；Eric（经 Claude 代答）答复「删文件并继续」，已直接 rm（不进回收站），证据文件里令牌计数 0。按同一答复，RUNBOOK §9 ③ 补了 link 之后删 .env*.local 的步骤（随 P1.2 的材料提交一并提交）；同一提交还按 PR #370 第二条留言改写了 DECISIONS 的 D-41。
+
+### L21 · 2026-11-13 00:03 CT · P2.1 schema 预检加社区话题列与搜索 RPC 探测
+- task_id: P2.1
+- code_sha: 5db1cfe85d11b83cf663e5c616a62d8ec52636b1（codex/community-topics-20261112，与 P2.2 一起推送，远端 head 9c173a4）
+- docs_sha: 5a11fb984dbd1dceb397cd0f8c1bcbf154d135aa
+- 环境: 本地 tony-ws pw1.60；CI
+- 命令: scripts/verify-public-read-schema.mjs 加第 4 项检查 posts(id,title,category,region) 和对 rpc/search_community_posts 的只读 POST 探测；scripts/public-read-schema.test.mjs 同步扩充；`~/work/illini-dev-env/run-checks.sh ~/work/illini install test`（log check-20261113T054404Z.log）；`git push --no-verify origin codex/community-topics-20261112`：宿主机 pre-push 的 4 个失败都是 spawnSync initdb ENOENT（这 4 个测试在 #369 上还用旧的 PATH 回退，宿主机没有 PG 时取到「.」；P1.3 已在配置分支修掉，P1.8 带过来），属于环境原因，按 RUNBOOK §3 用 --no-verify，日志 ~/work/evidence/P2.2/push-369.log
+- 计数: ① 检查 3 → 4 项，另加 1 个 RPC 探测；② 单测覆盖缺列 400、RPC 404、全部 200（4 tests 全过）；③ CI 的 public sweep 对还没应用迁移的 staging 运行，退出码 1，输出「public_schema_mismatch: community topic columns returned HTTP 400」[CI run#43377614567]；④ TEST tests=1998 pass=1997 fail=0 skipped=1 pg_skips=0 [本地测]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43377614567
+- 未测项: ③ 的本地 S-1 运行（staging.env 等 E3）；CI 已在同一 staging 上给出同样结果
+- 下一条: P1.9

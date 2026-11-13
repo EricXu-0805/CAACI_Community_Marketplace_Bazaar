@@ -8,11 +8,11 @@
 
 | 项 | 值 |
 |---|---|
-| 代码分支 / PR | codex/community-topics-20261112 / #369（草稿，OPEN）[源码 005ca9d] |
-| code_sha | 005ca9d6b5ac23346dfeb38f3deb95984bffd27b（2026-11-12 git ls-remote） |
+| 代码分支 / PR | codex/community-topics-20261112 / #369（草稿，OPEN）[本地测：git push 9c173a4] |
+| code_sha | 9c173a48bd61c0da5ee3a714af94d1f6c8a36522（OMO 推送 P2.1、P2.2 后的 #369 head） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-12 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-12 git ls-remote] |
-| docs_sha | 78373c87403c6566cc1576955ef88ce8145f50d7（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
+| docs_sha | 5a11fb984dbd1dceb397cd0f8c1bcbf154d135aa（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
 | 配置 / 品牌 / 首页分支 | codex/config-fixes-20261112 远端 cc63ab5（P1.2–P1.4），没开 PR（P1.7）；品牌、首页还没建（BRAND.1 / HOME.3）[本地测] |
 | tony-ws 仓库 | ~/work/illini 在 005ca9d；~/work/illini-docs 已切到 codex/community-plan-v5（P1.1 ④，见 STATUS_LOG L15）[本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
@@ -20,17 +20,19 @@
 
 ## CI
 
-PR #369 · run [43212596901](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43212596901) · head 005ca9d · 2026-11-12 06:21 CT 结束 · conclusion failure [CI run#43212596901]
+PR #369 · run [43377614567](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43377614567) · head 9c173a4 · 2026-11-13 CT 结束 · conclusion failure [CI run#43377614567]
 
 | job | 结论 | 计数 / 原因 |
 |---|---|---|
 | Type-check | success | |
-| Boundary regressions | success | 1997 tests：1996 pass / 0 fail / 1 skipped |
+| Boundary regressions | success | 2001 tests：2000 pass / 0 fail / 1 skipped |
 | Build H5 | success | |
 | Build mp-weixin | success | |
-| Smoke (public page sweep) | failure | 437 passed / 2 failed / 6 skipped；pages/plaza/index 浅色、深色各一次 400「[plaza] fetch posts failed」。staging-smoke（hygkwxugskijadgfisji）没有应用 20261112120000 |
+| Smoke (public page sweep) | failure | 预期中：P2.1 的预检在启动浏览器前报「public_schema_mismatch: community topic columns returned HTTP 400」。staging-smoke（hygkwxugskijadgfisji）还没应用 20261112120000（等 E4） |
 | Smoke (protected staging account) | skipped | |
 | Production release readiness | skipped | |
+
+上一次：run 43212596901 · head 005ca9d · failure（public sweep 437 passed / 2 failed，plaza 拉帖 400）[CI run#43212596901]
 
 main · 定时 run [42684660097](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/42684660097) · 2026-11-09 · runner ubuntu-26.04 [CI run#42684660097]
 
@@ -55,7 +57,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P1.13 | 通过 | DoD ①–④ 符合；link 拉下的 .env.local 已按 Eric 答复删除 [本地测] |
 | P1.7、P1.9、P1.10 | 未测 | P1.9 构建 pw1.65 镜像中；P1.10 依赖 P1.9；P1.7 依赖 P1.5 |
 | P1.6 / P1.8 / P1.11、P1.12 | 未测 | P1.6：D-41 已定（A，在配置分支单独做 deps: 提交），等 P1.5 ④；P1.8 等 E5（合并 P1.7 的 PR）；P1.11、P1.12 等 D-29（E2）与 E3 |
-| P2.1 | 未测 | verify-public-read-schema.mjs:20 对 posts 只查 id,item:items(id,listing_details) [源码 005ca9d] |
+| P2.1 | 通过 | ①②④ 本地；③ 由 CI 的 public sweep 在 staging 上给出预期报错（本地 S-1 运行等 E3）[CI run#43377614567] |
 | P2.2–P2.4 | 未测 | zh.ts:894-898 仍是旧板块名；tabBar 首页/广场/发布/消息/我的；composerMode 默认 'update'（plaza/index.vue:946）[源码 005ca9d] |
 | P2.5、REGION.1 | 未测 | 迁移 20261112120000 未应用到任何托管库，没有 lock_timeout，_ops 下缺 PRECHECK/VERIFY/REGRESSION，没有 region 列 [源码 005ca9d] |
 | P2.6 | 失败 | public sweep 2 failed（上表）；等 D-29、E4 |
