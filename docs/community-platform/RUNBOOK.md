@@ -627,13 +627,16 @@ find ~/work -name .vercel -type d         # 只有 /home/guoyi/work/demo-publish
 | 备用链 | settings.json 的 retry.fallbackChains：claude-opus-5-5、claude-fable-5-2 → chatgpt-subscription/gpt-6-astra；claude-sonnet-5-5 → gpt-6.1-sol；claude-haiku-5-5 → gpt-6-luna-fast |
 | ChatGPT 号 | default 是 admin@caaciorg.com，login-2 是 dev@caaciorg.onmicrosoft.com，都走 SIWC，plan 已开 |
 | 统计 | .bashrc 设了 `OMO_DISABLE_TELEMETRY=1` |
+| 档位（2026-11-13） | 主会话 Opus 5.5 xhigh，由 Claude 经控制 socket 设定（D-42 第 7 项） |
+| 类别路由（2026-11-13） | ~/.omo/omo.json 给 deep-low、deep-high、ultrabrain 加了 Claude 兜底，unspecified-high 用 Opus 5.5 high；其余类别用 omo 内置链 |
 
 OMO 自己的规则：
 
-- 不改 ~/.omo 下的任何配置，不加、不删、不切换账号，也不升级 omo。这些都由 Eric 决定。
+- 不改 ~/.omo 下的配置文件，不加、不删、不切换账号，也不升级 omo。这些都由 Eric 决定。例外：schedule_prompt 写进 ~/.omo/agent/schedule/ 的续跑提醒，和 create_goal 建的目标（D-42 第 8 项）。
 - 不读 ~/.omo/agent 下权限为 700 的目录，例如 anthropic-subscription*、gateway、rpc，里面是登录凭据。
 - 加 ChatGPT 号由 Eric 在 omo 里执行 `/login chatgpt-subscription`，新号追加，不覆盖已有的号。`/gpt-account add` 有 device ID bug，不要用。
-- 切到备用模型后，任务规则照旧。四个 Claude 号和备用链都用不了时，把当前任务停在一个能提交的点，在 STATUS 的阻塞项写「模型额度」，然后等 Eric。
+- 切到备用模型后，任务规则照旧。四个 Claude 号和备用链都用不了时，把当前任务提交到本地任务分支（不推送），在 STATUS 的阻塞项写「模型额度，<CT 时刻>」。不等 Eric：goal 或续跑提醒唤醒、额度恢复后，先跑 §2 核对，再从 STATUS 的 next_task_id 接着做。
+- 续跑提醒（D-42 第 8 项）：`schedule_prompt` create，everySeconds 3600，提示词原文：「D-42 续跑。你正在执行任务就忽略本条。空闲时：按 RUNBOOK §2 核对；读 #369、#370 的新留言（RUNBOOK §7、D-42 第 6 项），有 E 或 D 的答复就按 BACKLOG §2 解锁；然后从 STATUS 的 next_task_id 接着做。可做队列为空就只读留言，不新开任务。」
 - OMO 不靠会话记忆续接工作。会话中断后，从 STATUS 的 next_task_id 接着做。这要求每个任务都按 §8 写回。
 
 ## 11 Eric 一次性准备（E1–E14）
@@ -680,32 +683,32 @@ OMO 自己的规则：
 
 ## 12 STOP 清单
 
-遇到以下任一情况，立即停下。
+每条末尾标了 DECISIONS D-42 定的类别。【硬】OMO 永不执行，只由 Eric 本人做；OMO 可以在本地写好、不推送。【自决】OMO 自己处理，STATUS_LOG 标题加 `[OMO自决]`，写规则编号、选择、理由、证据路径、撤回办法。【跳过】停放这条任务，等 Eric 的动作或 D 编号。三类都不停下提问，接着做下一个不受影响的任务。另标【暂停推送】的，触发条件和做法见 D-42 第 2 项。
 
-1. **开工核对不符**：`git rev-parse HEAD` 与 STATUS.md 的 code_sha 不同，或者工作区有不是本任务产生的改动 → 停，只问一个问题。
-2. **生产与官网标识**：任何命令、URL、env 或日志里出现 lfhvgprfphyfvhidegum（Illini 生产库）或 wslzeqhipvibeflmxznh（官网库），或者要对 illinimarket.com、caaciorg.com 发 POST/PUT/PATCH/DELETE → 立即停。唯一例外：P4.3/P4.4 对 https://caaciorg.com/api/public-events 与 /api/articles 的只读 GET。
-3. **托管数据库**：对 staging-smoke 或生产执行迁移、DDL、批量写，或任何需要 service_role 的调用 → 不做，交 Eric（E4）。OMO 在 staging 只用 anon key，以合成账号 A/B/C 做产品内的正常操作。
-4. **凭据**：不索取、不持有、不打印 service_role、sb_secret_*、数据库密码、Supabase PAT、Vercel token、OpenAI key；~/.config/illini/staging.env 保持 600，内容不进仓库、日志、截图、PR。继续工作需要这些 → 停。
-5. **对外动作**：不发邮件、Brevo、Discord、微信、小红书、Reddit 私信，不在任何外站发帖，不联系合作组织、作者或官网维护者；不碰 Brevo、周报 cron、OpenClaw、Codex 自动化。caaciorg 只做 D-11 授权的 P4.3 那一个 PR，并且 D-31 的权限到位后才推。
-6. **Git**：不 merge 任何 PR、不转 ready、不推 main、不 force push、不 rebase 已推送的分支、不删远端分支；不对他人改动执行 `git reset --hard` 或 `git clean`。只推 BACKLOG 写明的分支（codex/config-fixes-20261112、codex/community-topics-20261112、codex/brand-cornfield-20261112、codex/community-home-20261112、codex/community-p3-*、codex/community-events-*、codex/community-plan-v5、caaciorg fork 上的功能分支）。
-7. **Vercel**：禁止 `vercel deploy --prod`、promote、rollback、env pull/add/rm、domains、alias；只允许 link 到 P1.13 记录的 demo 项目，预览部署只发到该项目；要碰任何其他项目 → 停。
-8. **依赖与 lockfile**：只允许 D-16 的两项变化（packageManager 声明；@playwright/test 1.65.0 及其 playwright、playwright-core）和 D-41 批准的清单；`npm ci` 后 lockfile 出现其他变化，或者需要新增、升级任何依赖 → 停。
-9. **工作流与发布配置**：.github/workflows 只做 P1.2 与 P1.5 写明的改动；vercel.json、manifest.sha256 里已有的行、任何已应用到托管库的迁移文件都不改；20261112120000 在 STATUS_LOG 记下「冻结」后不再改，后续变更另起迁移。
-10. **视觉**：D-35 选定之前，不改现有页面的颜色、字号、间距和组件样式；新页面只用 App.vue 已有的 token，新增 CSS 不写 hex 字面量。
-11. **外站内容**：不对 Reddit、一亩三分地、美卡、知乎、小红书做任何访问、脚本、无头浏览器、镜像站、SERP API 或代理请求；冷启动内容由真人完成（CONTENT 组）。UIUC 日历只读官方文档与官方 feed（P4.7），只有抓 HTML 才拿得到 → 停。
-12. **法律、品牌与付费**：法律文本、品牌名、运营方的变更不发布到生产；生产发布、小程序提审、域名注册、DMCA 登记和任何付费只由 Eric 做。LEGAL.1 未完成时，不把运营方改成 CAACI。
-13. **共享工作站**：不 sudo，不改系统级配置，不动 Tony、danny 的进程、容器和文件；Playwright 并行 worker ≤6；容器用完即删。
-14. **重复失败**：同一个失败修了两轮仍不过 → 停，附日志路径和两次尝试的差异。
-15. **待定决定**：任务依赖的 D 编号仍为 open → 不替 Eric 选，跳到下一个不依赖它的任务，在 STATUS 写明在等哪个 D 编号。
-16. **文档与源码不一致**：发现 V5 文档与源码不一致 → 以源码为准继续，并在 STATUS_LOG 记录；如果影响本 STOP 清单、数据归属或授权边界 → 停。
+1. **开工核对不符**：`git rev-parse HEAD` 与 STATUS.md 的 code_sha 不同，或者工作区有不是本任务产生的改动 →【自决】：按提交作者 `omo@tony-ws.invalid` 认定是不是自己的提交（不看提交说明），是就把 STATUS 对齐到实际 HEAD；远端前进且能 fast-forward 就 `pull --ff-only`，把别人推的提交列进批次报告；出现分叉、归不了因的提交或未提交改动，不 stash、不 reset、不 clean，这个目录的任务转【跳过】。
+2. **生产与官网标识**：任何命令、URL、env 或日志里出现 lfhvgprfphyfvhidegum（Illini 生产库）或 wslzeqhipvibeflmxznh（官网库），或者要对 illinimarket.com、caaciorg.com 发 POST/PUT/PATCH/DELETE →【硬】，指向或到达这两个库时另加【暂停推送】（D-42 第 2 项）。唯一例外：P4.3/P4.4 对 https://caaciorg.com/api/public-events 与 /api/articles 的只读 GET。
+3. **托管数据库**：对 staging-smoke 或生产执行迁移、DDL、批量写，或任何需要 service_role 的调用 → 不做，交 Eric（E4）。OMO 在 staging 只用 anon key，以合成账号 A/B/C 做产品内的正常操作。【硬】
+4. **凭据**：不索取、不持有、不打印 service_role、sb_secret_*、数据库密码、Supabase PAT、Vercel token、OpenAI key；~/.config/illini/staging.env 保持 600，内容不进仓库、日志、截图、PR。继续工作需要这些 →【硬】。
+5. **对外动作**：不发邮件、Brevo、Discord、微信、小红书、Reddit 私信，不在任何外站发帖，不联系合作组织、作者或官网维护者；不碰 Brevo、周报 cron、OpenClaw、Codex 自动化。caaciorg 只做 D-11 授权的 P4.3 那一个 PR，并且 D-31 的权限到位后才推；上游 PR 由 Eric 在网页上开。【硬】。例外：`[OMO]` 评论发在本仓库的 #369、#370 上，不算对外动作（D-42 第 6 项）。
+6. **Git**：不 merge 任何 PR、不转 ready、不推 main、不 force push、不 rebase 已推送的分支、不删远端分支；不对他人改动执行 `git reset --hard` 或 `git clean`。以上是 6a【硬】。6b【自决】：新分支名只用 `codex/community-` 或 `codex/config-` 开头，`wip/*` 不推；已有的分支只推 BACKLOG 写明的那些（codex/config-fixes-20261112、codex/community-topics-20261112、codex/brand-cornfield-20261112、codex/community-home-20261112、codex/community-p3-*、codex/community-events-*、codex/community-plan-v5、caaciorg fork 上的功能分支）。
+7. **Vercel**：禁止 `vercel deploy --prod`、promote、rollback、env pull/add/rm、domains、alias；只允许 link 到 P1.13 记录的 demo 项目，预览部署只发到该项目；要碰任何其他项目 →【硬】。
+8. **依赖与 lockfile**：只允许 D-16 的两项变化（packageManager 声明；@playwright/test 1.65.0 及其 playwright、playwright-core）和 D-41 批准的清单；8a【自决】：已批准的升级自己带出的传递变化（例如 STATUS_LOG L19 的 fsevents 删除），lockfile diff 存 $EV。8b【跳过】：新增依赖，或升级批准清单以外的包（包括改 overrides），把包名、版本、原因列进批次报告。
+9. **工作流与发布配置**：9a【硬】.github/workflows 只做 P1.2 与 P1.5 写明的改动。9b【硬】vercel.json 不改（BRAND.6 经 D-36 的那一处除外）。9c【硬】manifest.sha256 里已有的行、已应用到托管库或已在 main 上的迁移文件都不改。9d【自决】20261112120000 在 STATUS_LOG 记下「冻结」后不再改、也永远不改名，后续变更另起迁移，冻结后交 Eric（E4）；撤销冻结仍要 Eric 留言同意。
+10. **视觉**：D-35 选定之前，不改现有页面的颜色、字号、间距和组件样式；新页面只用 App.vue 已有的 token，新增 CSS 不写 hex 字面量。D-35 已定 A，按方向 A 做【自决】。
+11. **外站内容**：不对 Reddit、一亩三分地、美卡、知乎、小红书做任何访问、脚本、无头浏览器、镜像站、SERP API 或代理请求；冷启动内容由真人完成（CONTENT 组）。UIUC 日历只读官方文档与官方 feed（P4.7），只有抓 HTML 才拿得到 → 这条任务【跳过】。抓取本身【硬】。
+12. **法律、品牌与付费**：法律文本、品牌名、运营方的变更不发布到生产；生产发布、小程序提审、域名注册、DMCA 登记和任何付费只由 Eric 做。LEGAL.1 未完成时，不把运营方改成 CAACI。【硬】
+13. **共享工作站**：不 sudo，不改系统级配置，不动 Tony、danny 的进程、容器和文件；Playwright 并行 worker ≤6；容器用完即删。【硬】
+14. **重复失败**：同一个失败修了两轮仍不过 →【自决】：换思路最多再试 3 次，每次在 STATUS_LOG 写假设和改动；不加 retries、不调 timeout、不删断言、不跳测试，也不越过任何【硬】条（例如不改已应用的迁移，不改 workflows）。共 5 次仍不过 →【跳过】，附日志路径和各次的差异。
+15. **待定决定**：任务依赖的 D 编号仍为 open → 不替 Eric 选，跳到下一个不依赖它的任务，在 STATUS 写明在等哪个 D 编号。【跳过】
+16. **文档与源码不一致**：发现 V5 文档与源码不一致 → 16a【自决】以源码为准继续，并在 STATUS_LOG 记录。16b【跳过】：如果影响本 STOP 清单、数据归属或授权边界。
 
-停下时：
+遇到【硬】或【跳过】时：
 
-1. 在 STATUS.md 的「阻塞与等待 Eric」写一条。
-2. 在相关 PR 留一条评论。没有相关 PR，就留在材料分支的草稿 PR 上。
-3. 接着做下一个不受影响的任务（STOP-15）。STOP-1 之外，「停这条」和「全停」的区别见 BACKLOG §0.1。
+1. 在 STATUS.md 的「阻塞与等待 Eric」写一条：规则编号、task_id、要 Eric 做的一件事。
+2. 记进下一份批次报告（D-42 第 10 项）。不逐条留 PR 评论。
+3. 接着做下一个不受影响的任务。BACKLOG §0.1 的「全停」只剩【暂停推送】一种，本地任务照做。
 
-评论格式：
+只有【暂停推送】当场在 #370 留评论，格式：
 
 ```text
 [OMO] STOP-<编号>｜<task_id>｜<一个问题，一句话>

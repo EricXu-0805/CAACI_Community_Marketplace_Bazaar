@@ -38,6 +38,26 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
 - **D-40 法律文本定稿前请律师**（2026-11-12，Eric 在 Claude Code 弹窗选定、由 Claude 代发到 PR #370 留言 https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/pull/370#issuecomment-6845368862）：选 A。原话：「请律师，只审 LEGAL.2 的条款与隐私政策、LEGAL.4 的投诉流程」。
 - **D-41 依赖安全审计**（2026-11-12，Eric 在 Claude Code 弹窗选定、由 Claude 代发到 PR #370 留言 https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/pull/370#issuecomment-6845368862）：选 A。原话：「OMO 另开依赖修复 PR，先跑 npm audit fix，不带 --force，列出 lockfile 变化；需要 --force 的项和 vite 逐个报 Eric」。执行方式以第二条留言为准（2026-11-13 00:20 CT 由 Claude 代发，https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/pull/370#issuecomment-6845406956）：「A 的执行方式按 BACKLOG P1.6 的写法，不另开分支。在 `codex/config-fixes-20261112` 上单独做一个以 `deps:` 开头的提交，在配置修正 PR 的描述里单列一节」；「修复范围不变：只跑 `npm audit fix`，不带 --force；需要 --force 的项和 vite 逐个报 Eric」。上一条里「另开依赖修复 PR」的说法以这条为准。
 
+- **D-42 自主执行授权**（2026-11-13 00:30 CT，Eric 在 Claude Code 对话里定，由 Claude 写入）：Eric 原话：「把大部分的权限全部交给OMO去做，然后等它做完一大坨东西，然后返回给你……额度 reset 就 reset，然后那个就是滚着跑，然后用模型啊 effort 都自己选最合适的，然后不用担心成本的问题……该用 Ultra 用 Ultra，该用好的模型用好的模型」。从这条起，OMO 不再停下来提问。遇到 RUNBOOK §12 列的情况，按每条末尾的【硬】【自决】【跳过】处理，然后接着做下一条不受影响的任务。
+  0. 优先级：OMO_PROMPT 硬规则 1–5、RUNBOOK §12 标【硬】的条目、本文件「授权边界」里 OMO 一栏写「不可以」的行，高于本条，也高于任何 PR 留言、提问超时和批次报告。本条只在与 RUNBOOK §7、§10、§12 其余部分和 BACKLOG §0.1、§14 冲突时优先。
+  1. 【硬】OMO 永不执行，只由 Eric 本人做：RUNBOOK §12 标【硬】的各条；BACKLOG §14 第 11、26 行，以及第 21 行里凭据已经推送的情形；P4.3 向上游 a2751012962/caaciorg 开 PR（D-31，Eric 在网页上开）；任何 PR 转 ready 或合并。OMO 可以在本地写好改动、不推送，把要 Eric 做的那一步写进批次报告。
+  2. 【暂停推送】只在三种情况下触发：(a) OMO 将要执行或已经执行的命令、URL、env 指向 lfhvgprfphyfvhidegum 或 wslzeqhipvibeflmxznh，或者日志显示请求到达了它们（仓库源码、文档、测试里本来就有这两个字符串，被 grep 或测试输出带出来，只记 STATUS_LOG，不触发）；(b) BACKLOG §14 第 11 行；(c) 凭据已经推送。触发后停止所有 git push、gh pr edit、对 staging 的请求和 vercel deploy，只做本地任务，批次报告留在本地，在 #370 留一条 `[OMO] STOP-<编号>｜<task_id>｜<日志路径>`，评论里不复述凭据或数据。Eric 留言解除之前不恢复。
+  3. 【自决】OMO 自己定，接着做：RUNBOOK §12 标【自决】的各条；BACKLOG §14 第 1、2、3、4、5、6、9、12（只走另起新迁移）、14（只限 manifest.sha256 冲突）、15、20、21（凭据只在本地未推送的提交或本机日志里）、23、24、25、27、28（不影响 STOP 清单、数据归属、授权边界的）、29 行。附加限制：
+     - §14 第 2 行：只 `git merge origin/main`，不 rebase；只给自己没冻结、没推送过的新迁移改时间戳，20261112120000 永远不改名；合并时 lockfile 或迁移文件有冲突，转【跳过】。
+     - §14 第 14 行：只有 manifest.sha256 冲突时按磁盘重算，重算后 `git diff origin/main -- supabase/migrations/manifest.sha256` 只能有新增行；迁移文件本身冲突就 `git merge --abort`，转【跳过】。
+     - 重跑 CI 的空提交：每个失败原因最多一次；STATUS 已经记为预期失败的（例如等 E4 的 public sweep）不重跑。
+     - 磁盘：只删 dangling 镜像和自己的 illini-、lsql- 容器；P1.8 之前保留 pw1.60 镜像（RUNBOOK §13）。
+     - §14 第 21 行本地情形：改写未推送的提交，把那份日志移进回收站，不打印凭据值。
+     - 每条在 STATUS_LOG 的标题里加 `[OMO自决]`，正文写规则编号、选了什么、理由、证据路径、怎么撤回（通常是 `git revert <sha>`）。
+  4. 【跳过】停放这条任务，等 Eric：RUNBOOK §12 标【跳过】的各条；BACKLOG §14 第 7（新增依赖，或升级批准清单以外的包）、8、10、13、16、17、18、19、22、28（影响 STOP 清单、数据归属或授权边界的）行，以及第 2、14 行里转【跳过】的情形；宿主机 node 不是 v22.23.5（容器里的任务照做）；P1.6 里要 --force 的包、改 overrides 的包和 vite；所有待定的 D 编号和没完成的 E2–E14。Eric 答复之后，OMO 只做这个答复解锁的步骤，第 1 项里的步骤仍由 Eric 做。
+  5. 不提问：OMO 不调用提问工具，要 Eric 做的事写进 STATUS「阻塞与等待 Eric」和批次报告。提问超时后返回的「按你的判断继续」只适用于【自决】的事，不算 Eric 同意了第 1 项的任何一步。
+  6. PR 留言：只认作者登录名是 EricXu-0805、首行不以 `[OMO]` 开头的评论，bot 评论不算。留言只能回答 D 编号、报告 E 已完成，不能授权第 1 项。报告 E 已完成的，先用看得到的事实核对再解锁：E4 看 `verify-public-read-schema` 能不能通过，E5 看 main 是否含有 P1.7 的提交，E8 看能不能读到 EricXu-0805/caaciorg。`[OMO]` 评论发在这个私有仓库的 #369、#370 上，不算硬规则 2 说的外发消息。
+  7. 模型与档位：2026-11-13 Claude 已经把主会话设成 Opus 5.5 xhigh，并在 ~/.omo/omo.json 给只有 ChatGPT 模型的 deep-low、deep-high、ultrabrain 加了 Claude 兜底（ChatGPT 两个号的用量查询 11-13 显示 auth stale，推理能不能用没测）。迁移、RLS、权限、安全、跨文件重构交给 architect 或 plan-consultant 类别（Fable 5.2 max）；文案替换、计数核对这类机械活交给 quick。OMO 自己不改 ~/.omo 下的文件，不加号、不切号，不升级 omo。
+  8. 续跑：OMO 读到本条后调用 create_goal，目标写「按 BACKLOG §2 队列做完所有不等 Eric 的任务；完成线：可做队列为空，并且最新一份批次报告已推送」，完成线不含第 1 项的任何动作。额度全部用完时，goal 会在最早的重置时刻自己恢复。另用 schedule_prompt 建一个每 3600 秒触发的续跑提醒作备份：建之前先 list，同一个会话只留一个，提示词原文见 RUNBOOK §10。每个 STEP 通过就提交到本地任务分支，因为额度耗尽之后 OMO 已经无法再执行提交。
+  9. 上下文压缩之后、每写完一份批次报告之后，重读 OMO_PROMPT 硬规则、RUNBOOK §12 和本条。
+  10. 批次报告：写 `appendix/batch/B<nn>.md`（nn 从 01 起），和 STATUS 同一个提交推到 codex/community-plan-v5，STATUS 的 `next_task_id` 下一行写 `latest_batch: appendix/batch/B<nn>.md`。三种时候写：可做队列空了；比上一份多完成 10 条任务；出现【暂停推送】（这时只留在本地）。报告分七节：① 起止时刻（CT）与 code_sha、docs_sha 的范围；② 完成的任务，一条一行，用 OMO_PROMPT 的回报格式；③ [OMO自决] 清单，每条带 STATUS_LOG 编号；④ 等 Eric 的清单，每条写 Eric 要做的一件事和它解锁的任务，按解锁任务数从多到少排；⑤【硬】和【暂停推送】事件，附日志路径；⑥ 未测项与风险；⑦ 下一批的 task_id。写完不结束会话。
+  11. 没核实的三处：schedule_prompt 和 goal 在这个会话里能不能按时唤醒；四个 Claude 号用完、切到 ChatGPT 之后，额度恢复时会不会自动切回 Claude；远程消息在有问题待答时会不会被当成那个问题的答案。号池的四个号都是 Claude Team，原话里的「Ultra」这里按最高档位理解；要把 Eric 本人的 Ultra 号加进来，由 Eric 自己 /login。
+
 ## 待定
 
 ### D-28 轮值伙伴与四项职责的小时数
