@@ -652,3 +652,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 真机预览留到 P5.2；分享卡在微信里的实际显示
 - 下一条: HOME.5
 - 附: 主包只剩约 14 KB 余量；#374 分支（HOME.3 加 HOME.5 进行中）单独构建主包已是 1,561,352（check-20261113T120648Z），两条分支合并后可能超过 1.5 MiB，HOME.5 提交后实测合并结果。L46 把 partial-attach 偶发失败归因于 uni-input 100ms 节流；本条查到的直接原因是编辑器 300ms 延迟聚焦把标题输入抢走，d7e6d9b 的测试等待仍然有效，应用侧的修复在本提交。
+
+### L54 · 2026-11-13 07:10 CT · HOME.5 板块页与「全部讨论」五种状态；#369 合入 #374 分支并解决冲突
+- task_id: HOME.5
+- code_sha: 2d18576、68eb43b（codex/community-home-20261112，草稿 PR #374，已推送；push 用 --no-verify 同 L21）
+- docs_sha: 143b4371bf0800b0932adf670c976294dbc08502
+- 环境: 本地 tony-ws run-checks（容器 Chromium/WebKit），axe-core 4.14.0
+- 命令: HOME.5（2d18576，子任务 visual-engineering 做）：板块页页头（名称、SPEC §3 范围说明、「发话题」预选该板块，不足 3 条在列表后补位），「全部讨论」三个 tab（新发布｜热门｜关注的人；板块页无「关注的人」），五种状态（加载中 3 行骨架、首次失败+重试、加载更多失败、全空+示例问题+发话题、搜索无结果把词预填进标题）；新增 CommunityAbout.vue、community-board-states.spec.ts；HOME.2 的 communityHome.ts 导出 boardFiller 供板块页共用。同一提交修了 HOME.3 的问题：常驻 tab 被带视图地址的链接重新打开时以地址为准（加 hashchange 跟随）。合并（68eb43b，OMO）：home 分支 merge #369 的 92698d1（P2.8、P2.10），plaza/index.vue 两块冲突——P2.10 的 onLoad/onShow 包进 #ifndef H5 放在 H5 视图代码之前；H5 的 onShow 先消费别的页面经 switchTab 带来的 pendingBoard/pendingView，经 routeOf 交给 showBoard/showAll/showHome；P2.8 的 finishComposerPublication 加 H5 首页刷新标记。随合并调整测试：community-board-deeplink.test.mjs 给 openComposer 补 POST_CATEGORIES 依赖；community-post-topics.spec.ts 的 5 条 P2.8/P2.10 用例改用「New topic」、桌面页头搜索框、板块页地址与页头，并用「跳回板块后不再发出搜索请求」断言搜索词已清空。命令：`SMOKE_SPECS="community-home.spec.ts community-board-states.spec.ts contrast-runtime.spec.ts community-topic-row.spec.ts community-post-topics.spec.ts" ~/work/illini-dev-env/run-checks.sh ~/work/illini-home install typecheck test smoke`（HOME.5）；合并后加 community-post-partial-attach、plaza-attach-picker-is-modal 两份并跑 mp
+- 计数: HOME.5：① 板块页页头与补位（用例 ①×2，各跑 390/1280）；② tab（用例 ②）；③ 五种状态各一条用例；④ community-board-states.spec.ts 20 条全过；install、typecheck rc=0，test 2024/2023/0/1，smoke 63 passed（check-20261113T122311Z）；板块页与「全部讨论」390/1280 × 浅/深：社区区域 <12px 0、横向溢出 0、axe 0（AXE 行在同一日志）。合并后：typecheck rc=0；test 第一次 2044/2042/1/1（P2.10 的聚焦单测缺 POST_CATEGORIES 依赖），补依赖后 2044/2043/0/1（check-20261113T125959Z）；smoke 第一次 79 条中 5 条失败（都是 #369 新增用例按旧列表写的），调整后 community-post-topics 9 passed（check-20261113T130758Z），其余 6 份 74 passed（check-20261113T124553Z）；mp 主包 1,568,808（预算 1,572,864，余 4,056）[本地测]。#374 推到 68eb43b，GitHub 显示 MERGEABLE。截图：appendix/visual/HOME.5/ 8 张（板块页、「全部讨论」× 390/1280 × 浅/深）
+- ci_run_url: —（ci.yml 只对 base 为 main 的 PR 触发，#374 不跑 CI）
+- 未测项: 真机；小程序上的首页（按设计不编进 mp）
+- 下一条: —（D-44 可做队列已空）
+- 附: 子任务列出 21 处与 SPEC 的出入，要点：首页、新页头、板块页只编进 H5，小程序仍是平铺列表（主包预算）；「近期活动」在 P4.8 前无数据源不渲染，「新来先看」要等 P3 的 is_featured；英文文案按 buildHomeSections 返回渲染，与 SPEC §11 个别处不同；桌面字号按现有 token；app.tagline 与 #372 同位置新增同一 key，合并时取 #372；视图切换用 replaceState 不加历史；桌面板块页与「全部讨论」侧栏只有「关于本站」；发帖入口的无障碍名改为「New topic / 发话题」，九份旧 spec 随之调整。其余见子任务回报（evidence/HOME.5）。风险：主包余量只剩 4,056 字节，下一个进主包的改动大概率超预算。

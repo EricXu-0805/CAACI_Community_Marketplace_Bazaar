@@ -1,8 +1,8 @@
 # STATUS
 
-写于 2026-11-13 06:11 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-13 07:10 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: P2.10`
+`next_task_id: —（D-44 可做队列已空；P2.6、P2.11、P2.13 等 E3/E4）`
 `latest_batch: appendix/batch/FINAL.md`
 
 ## 版本
@@ -13,7 +13,7 @@
 | code_sha | 92698d159021612b84005ad4c36908dda537a86c（OMO 推送 P2.10 后的 #369 head） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-12 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-12 git ls-remote] |
-| docs_sha | 5e465ef6c5f89cc5cadd6032cc748ec9815f9439（本次本地状态写回之前材料分支的 HEAD，未另建材料提交） |
+| docs_sha | 143b4371bf0800b0932adf670c976294dbc08502（本次本地状态写回之前材料分支的 HEAD，未另建材料提交） |
 | 配置 / 品牌 / 首页分支 | codex/config-fixes-20261112 远端 b259105，草稿 PR #371（P1.2–P1.7）；codex/brand-cornfield-20261112 远端 ba070e7，草稿 PR #372（BRAND.1–BRAND.4）；首页分支没建（HOME.3 经 P2.5 随 P1.10【跳过】）[本地测] |
 | tony-ws 仓库 | ~/work/illini 在 be2ebb6（#369）；worktree：illini-config（#371）、illini-brand（#372）、illini-events（wip/P4.1 5f62ddd，本地不推送）、illini-main（origin/main 只读对照）；~/work/caaciorg 本地 feat/public-events-feed 28d59b1（不推送）；~/work/illini-docs 在 codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
@@ -81,7 +81,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | HOME.1 | 通过 | ①–③ 以 design/ 为准（L08）；④ axe 4.14.0：12 个组合 color-contrast 0、<12px 0、溢出 0 [本地测]；⑤ D-35 已定 A |
 | HOME.2 | 通过 | bd6fee5，19 条规则单测 [本地测] |
 | HOME.3 | 通过 | #374 a756081；首页 19 条用例全过，AXE 0、<12px 0 [本地测] |
-| HOME.5 | 进行中 | 子任务在 #374 分支上做 |
+| HOME.5 | 通过 | #374 2d18576；合并 #369 后 68eb43b，MERGEABLE；主包 1,568,808（余 4,056）[本地测] |
 | P2.12 | 通过 | 草稿 PR #374（244a8e7）；12 张截图 <12px 0、axe 0；首屏 390 5 行、1280 9 行 [本地测] |
 | HOME.4 | 未测 | 依赖各自任务（D-35 已定 A） |
 | P3.1–P3.8 | 未测 | 依赖 P2.13（#369 合并） |
