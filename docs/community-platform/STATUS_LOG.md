@@ -722,3 +722,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 真机；五个 PR 合在一起后的实际余量（按第 3 项多出约 12 KB 估算约 57 KiB，低于 64 KiB）
 - 下一条: D-45 第 5 项（代码对齐 SPEC §11）
 - 附: 自决：规则 BACKLOG §14 第 23 行（主包预算）；选了条件编译，不移动页面路径、不加依赖；理由见命令；撤回 `git revert 4a3cbe6` 或关闭 #375。注意 #375 只在 #369 之上量到 64 KiB 以上；合上 #374、#372 后估计约 57 KiB，第 7 项（小程序论坛首页）要在这个余量里做。
+
+### L59 · 2026-11-13 09:01 CT · D-45 第 5 项（#369 部分）：发帖相关文案对齐 SPEC §11，补上发布中、上传进度与受限日期 [OMO自决]
+- task_id: D-45.5a
+- code_sha: b7bcf3a（#369，已推送；push 用 --no-verify 同 L21）
+- docs_sha: 00ba6bcf17b079deaf2e9c8feb30eb81ce5ca040
+- 环境: 本地 tony-ws run-checks；实现由 OMO 子任务（deep-low）做，主会话核对后推送
+- 命令: en.ts / zh.ts 按 SPEC §11：6 个 key 改回 SPEC 名（publishUncertain→publishUnknown、publishMissing→publishNotFound、closeComposer→draftCloseTitle、keepDraft→draftKeep、discardDraft→draftDiscard、clearDraft→draftClear，值照 SPEC，旧名在 app/src、app/smoke、scripts 里已无引用）；plaza.posted、plaza.notFound、英文 plaza.draftRestored 改为 SPEC 的值；新增 plaza.publishing（提交按钮发布中）、plaza.uploadingImages（上传图片时按钮显示 {done}/{total}，useItems.uploadImagesWithDims 加可选 onProgress，开始报 0/total、每个文件结束后报一次，其他调用方不变）、plaza.restrictedPost（发帖报 suspension_active:<级别>:<ISO 时间> 时显示，日期按当前语言 toLocaleDateString；没有可解析日期时照旧 friendlyErrorMessage）。新增 app/smoke/community-composer-status.test.mjs（9 条），community-post-topics.spec.ts 加 2 条浏览器用例并按新文案改旧断言。`SMOKE_SPECS="community-post-topics.spec.ts plaza-attach-picker-is-modal.spec.ts community-post-partial-attach.spec.ts" ~/work/illini-dev-env/run-checks.sh ~/work/illini install typecheck test smoke mp`
+- 计数: install、typecheck、mp rc=0（check-20261113T144122Z）；test 2053 / 2052 / 0 / 1 pg_skips=0（check-20261113T144943Z）；smoke 22 passed（check-20261113T145516Z）；小程序主包 1,559,509（比 92698d1 多 929）[本地测]
+- ci_run_url: CI 随 b7bcf3a 运行中，结论记在 STATUS 的 CI 行
+- 未测项: 受限日期在真实 staging 账号上的显示（等 E3）
+- 下一条: D-45 第 5 项（#374 部分）与第 6 项 HOME.4（子任务进行中）
+- 附: 自决：规则 BACKLOG §14 第 28 行（代码照 SPEC）；新 key 接入的位置是 SPEC 没写死的实现选择（按钮文字、toast）；撤回 `git revert b7bcf3a`。plaza.checkPublished 不在 SPEC §11，保留原样。
