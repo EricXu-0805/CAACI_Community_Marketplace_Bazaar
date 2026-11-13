@@ -190,6 +190,23 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
   6. **文档。** STATUS 的 docs_sha 还是 81196fa；按 RUNBOOK §8 第 2 步，应当是本次写回之前材料分支的 HEAD。
   7. **顺序：** 1 → 2 → 3 → D-47 第 2–5 项 → 本条第 4 项 → D-46 第 5、6 项 → D-47 第 7 项。每项最多试 3 次。目标范围加上本条，在 STATUS_LOG 记一笔。「第四批（D-46）」报告里，本条各项单独成行。
 
+- **D-49 受限账号按通行做法处理：先在服务端拦住写入，再放开浏览**（2026-11-13 14:20 CT。Eric 2026-11-13 14:11 CT 对 D-48 第 1 项两条路的原话：「这个你按照一般标准来吧」。supervisor（Claude，Eric 自己账号上的会话）据此选第一条并写入）：限制如果只靠客户端挡，绕过客户端的人就等于没被限制；常见平台的临时限制（只读模式）都是服务端拒绝写入，客户端只负责提示。D-48 第 1 项「写进 ④ 请 Eric 定两条路」改为：Eric 已定，按本条做。【硬】条照旧高于本条。
+  1. **D-48 第 1 项照做。** #369 恢复成所有有效的 L2–L5 都去 pages/suspended。#369 按原计划上线，不等本条。
+  2. **本条另开一个草稿 PR。** 分支 `codex/community-restricted-20261113`，从 D-48 第 1、2 项做完后的 #369 head 切出，base 设成 `codex/community-topics-20261112`（#369 合进 main 以后改成 main，写进 ⑦）。本条第 3–5 项都在这个分支上做。D-45 到 D-48 的「不新建迁移」只对这个分支解除，而且只限本条的一个新迁移；其余分支照旧。不改已经存在的迁移，20261112120000 一个字节都不动，不改 `.github/workflows/`，不改 RLS 以外的权限模型。
+  3. **迁移：有效级别 L2–L5 的账号，服务端拒绝下面这些写入。** 用现有的 moderation_private.current_profile_state（或 is_posting_allowed）判断，报和 trg_enforce_actor 同样的错误 `suspension_active:<level>:<until>`。
+     - 要拦（会被别人看到或通知到别人）：商品会话 INSERT（is_direct 以外那一支）；make_offer、respond_to_offer（含还价）；propose_meetup、respond_to_meetup、reschedule_accepted_meetup；submit_transaction_rating；follows INSERT；post_likes、post_comment_likes INSERT；items UPDATE 中改内容的列（标题、描述、价格、图片、位置、分类、listing_details、negotiable、condition）以及把商品重新上架；客户端能改内容的 posts、post_comments UPDATE；profiles UPDATE 中公开显示的列（昵称、简介、状态、位置、头像）；item-images 存储桶上传。
+     - 照旧允许：所有读；删自己的内容；把自己的商品下架或标为已售；举报、屏蔽、收藏、保存的搜索、隐藏、通知已读，会话的置顶、静音、已读和归档；submit_appeal；同意新版条款（record_consent）；注销账号；登录和邮箱相关。
+     - 动手前，把 D-48 第 1 项的路径表当线索逐条核对，再自己从迁移里把所有写入路径过一遍，有遗漏的补进来；判断不了归哪边的写进 ④。
+     - 迁移照 ENGINEERING §6 和 P2.5 的做法，配 PRECHECK、VERIFY、REGRESSION，在本地 L-SQL 环境重放。REGRESSION 要覆盖：L0、L1 和过期的 L2–L5，每条写入都成功；有效的 L2–L5，每条要拦的写入都报 suspension_active，每条照旧允许的都成功。迁移定稿后算 sha256 冻结，记进 STATUS_LOG。应用到 staging 和生产都归 Eric，列进 ④ 和 ⑦。
+  4. **客户端。**
+     - App.vue requiredGatePath()：只有有效的 L5 去 pages/suspended，L2–L4 可以浏览（即 520e55a 的改法）。
+     - L2–L4 要能在 app 里看到限制详情、用到申诉：加一个不挡操作的提示条，点开进 pages/suspended；pages/suspended 对 L2–L4 要有回首页的路，不能卡住。文字用 SPEC §6.5.1 和 §11 已有的 key；SPEC 里没有的文字写进 ④，代码先用最接近的 SPEC 文字。
+     - 第 3 项拦住的那些入口（聊天发送、报价、约见、评价、发布和编辑商品、改资料、关注、点赞），客户端先拦一道：提示受限和恢复日期，不让用户填完表单、传完图片才失败。服务端照样拦。
+     - utils/index.ts 把 suspension_active 映射成 SPEC 的「账号受限」文字并带恢复日期；不再当 error 报 Sentry；聊天发送被拒时不显示「点击重试」。
+     - L0–L5 和过期的每一级都要有测试，先在修改前的代码上确认会红。
+  5. **上线顺序。** 本 PR 的迁移要先在生产应用并跑通 VERIFY，前端才能合；顺序反过来，就会出现「客户端放开了、服务端还没拦」的空档。这一条写进 ④、⑦、PR 描述，并按 RUNBOOK 现有的「Schema-coupled release order」一节补一条上线检查项（2026-08 那次 consent 版本和迁移不同步，把全站锁死了几个小时）。
+  6. **顺序：** 本条排在 D-48 全部和 D-47 第 2–5 项之后、D-46 第 5、6 项之前。第 3 项在本地 L-SQL 重放过不了，就停下写清停在哪。目标范围加上本条，在 STATUS_LOG 记一笔。「第四批（D-46）」报告里本条单独一节。
+
 ## 待定
 
 ### D-28 轮值伙伴与四项职责的小时数
