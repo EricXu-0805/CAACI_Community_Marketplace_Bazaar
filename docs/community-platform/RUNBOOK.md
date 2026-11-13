@@ -602,11 +602,12 @@ vercel inspect illini-community-demo.vercel.app --scope ericxu-0805s-projects 2>
 install -d -m 700 ~/.config/illini && printf '%s\n' '<上一行的项目名>' > ~/.config/illini/vercel-demo-project
 mkdir -p ~/work/demo-publish && cd ~/work/demo-publish
 vercel link --yes --project=$(cat ~/.config/illini/vercel-demo-project) --scope ericxu-0805s-projects   # 护栏只认这一种写法
-ls -A ~/work/demo-publish                 # 只有 .vercel；出现任何 .env* 文件，按 STOP-7 停下
+find ~/work/demo-publish -maxdepth 1 -name '.env*.local' -print -exec rm -f -- {} +   # vercel link 会自动拉短期 VERCEL_OIDC_TOKEN 写进 .env.local（CLI 65.15.0 实测）：不读内容，直接 rm（不进回收站），删了就记进 STATUS_LOG
+ls -A ~/work/demo-publish                 # 只有 .vercel 和 .gitignore；还有别的 .env* 文件，按 STOP-7 停下
 find ~/work -name .vercel -type d         # 只有 /home/guoyi/work/demo-publish/.vercel
 ```
 
-项目名同时写进 STATUS_LOG。P1.13 时目录里只有 .vercel；demo 的运行文件在 BRAND.7 才放进来（④）。
+项目名同时写进 STATUS_LOG。以后每次在 ~/work/demo-publish 执行 `vercel link` 之后，都先跑上面那条 find，删掉 `.env*.local` 并记进 STATUS_LOG（Eric 2026-11-13 经 Claude 答复）。P1.13 时目录里只有 .vercel；demo 的运行文件在 BRAND.7 才放进来（④）。
 
 **④ 预览部署（BRAND.7）。**
 

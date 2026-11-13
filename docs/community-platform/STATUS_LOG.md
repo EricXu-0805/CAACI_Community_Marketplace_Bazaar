@@ -193,3 +193,15 @@
   3. `gh run list --repo EricXu-0805/CAACI_Community_Marketplace_Bazaar --branch codex/community-topics-20261112 --workflow ci.yml --event pull_request --limit 1 --json databaseId,headSha,conclusion` → `[{"conclusion":"failure","databaseId":43212596901,"headSha":"005ca9d6b5ac23346dfeb38f3deb95984bffd27b"}]`
   4. `node -v && npm -v` → `v22.23.5` / `10.8.2`
   5. `cat ~/work/illini-docs/docs/community-platform/STATUS.md` → 与材料分支 29b50d8 上的 STATUS.md 相同（写于 2026-11-12 23:25 CT，next_task_id: P1.1）
+
+### L16 · 2026-11-13 00:03 CT · P1.2 npm 版本声明对齐 CI，宿主机 npm 恢复 10.9.9
+- task_id: P1.2
+- code_sha: affb8ac38e8a42cb7396f45c8e73f7a6ffdf539c（codex/config-fixes-20261112，与 P1.3、P1.4 一起推送，远端 head cc63ab5）
+- docs_sha: d168faff0e221ead412b78abb9c32db5e920a5fd
+- 环境: 本地 tony-ws，镜像 localhost/illini-dev:pw1.60-node22-pg17
+- 命令: 按 RUNBOOK §4.3 ①② 装新 run-checks.sh（sha256 a813612b…a14b，备份 run-checks.sh.before-P1.2-20261112）与 mp-size.mjs（sha256 7708271c…60e1），`run-checks.sh --selftest` 三行都符合；`git worktree add -b codex/config-fixes-20261112 ~/work/illini-config origin/main`；NPMV 取自 run 43212596901 的 Type-check job 日志（`gh run view --log` 返回空，tony-ws 的 /tmp/gh-cli-cache 属于另一个用户，改用 TMPDIR=~/.cache/omo-tmp 和 `gh api repos/$REPO/actions/jobs/131163844850/logs`）；RUNBOOK §2.2 换宿主机 npm（备份 ~/.local/opt/npm-10.8.2.before-P1.2-20261112）；`~/work/illini-dev-env/run-checks.sh ~/work/illini-config install`，log ~/work/illini-dev-env/logs/check-20261113T053227Z.log；证据 ~/work/evidence/P1.2/；`git push -u origin codex/config-fixes-20261112`（pre-push 宿主机 boundary、typecheck、h5、mp 全过，日志 ~/work/evidence/P1.2/push-config.log）
+- 计数: ① worktree HEAD 7b18f20；② 两份 package.json 都是 npm@10.9.9（CI 日志 `npm: 10.9.9`）；③ ci.yml 只多 Toolchain versions 一步；④ 宿主机 npm -v 10.9.9（交互 shell 同）；⑤ install rc=0（含 lockfile sha256 比对）；⑥ diffstat 只列 3 个文件 [本地测]
+- ci_run_url: —（ci.yml 只在 pull_request 到 main 时触发，P1.7 开 PR 后才有 run）
+- 未测项: CI 上的 Toolchain versions 步骤（P1.7）
+- 下一条: P1.3
+- 附: 提交身份：tony-ws 没配 git 身份，用户跳过了这个问题，OMO 按判断用 `git -c user.name="OMO (tony-ws)" -c user.email="omo@tony-ws.invalid"` 逐条传入，不改 ~/.gitconfig。P1.1 第一次核对脚本的转义写坏，只有 node、podman 等只读命令报错退出，没有改动任何东西。
