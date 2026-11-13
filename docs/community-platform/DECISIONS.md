@@ -58,6 +58,18 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
   10. 批次报告：写 `appendix/batch/B<nn>.md`（nn 从 01 起），和 STATUS 同一个提交推到 codex/community-plan-v5，STATUS 的 `next_task_id` 下一行写 `latest_batch: appendix/batch/B<nn>.md`。三种时候写：可做队列空了；比上一份多完成 10 条任务；出现【暂停推送】（这时只留在本地）。报告分七节：① 起止时刻（CT）与 code_sha、docs_sha 的范围；② 完成的任务，一条一行，用 OMO_PROMPT 的回报格式；③ [OMO自决] 清单，每条带 STATUS_LOG 编号；④ 等 Eric 的清单，每条写 Eric 要做的一件事和它解锁的任务，按解锁任务数从多到少排；⑤【硬】和【暂停推送】事件，附日志路径；⑥ 未测项与风险；⑦ 下一批的 task_id。写完不结束会话。
   11. 没核实的三处：schedule_prompt 和 goal 在这个会话里能不能按时唤醒；四个 Claude 号用完、切到 ChatGPT 之后，额度恢复时会不会自动切回 Claude；远程消息在有问题待答时会不会被当成那个问题的答案。号池的四个号都是 Claude Team，原话里的「Ultra」这里按最高档位理解；要把 Eric 本人的 Ultra 号加进来，由 Eric 自己 /login。
 
+- **D-43 明显会批准的事直接做，只交最终报告**（2026-11-13 01:13 CT，Eric 在 Claude Code 对话里定，由 Claude 写入）：Eric 原话：「有一些很明显我会批准的任务也可以直接自己做，给我最后一期报告就行了，我给权限，然后我们是没有extra usage的，就是号池的额度，那个都可以用的」。本条与 D-42 第 4、10 项冲突时以本条为准；D-42 第 0 项的优先级不变，【硬】条照旧高于本条。
+  1. 按推荐直接定：DECISIONS 待定里给了建议、而且落地只是本地文件或草稿 PR 分支上的改动（可以 `git revert` 撤回）的，OMO 按建议定，在该条写「D-43 代定（<日期>），Eric 可在最终报告后改」：
+     - D-33 选 A（逐条收录），P4.7 第一步的调研先照做；
+     - D-34 选「玉」单字，前提是 BRAND.4 的 24px 预览认得出；认不出就选 24px 下最清楚的那一稿，并写明理由；
+     - D-36 选 D（延后到内测之后），与 Eric 2026-11-12「先不注册」一致；
+     - D-39 选 A，草稿里写 copyright@caaciorg.com。这个邮箱由 Eric 去建，列进最终报告。
+  2. 依赖修复：同一大版本内的安全修复 OMO 直接做，包括 overrides 在同一大版本内调高（P1.6 里的 follow-redirects、qs 属于这一类）。安装和全量测试都在容器里跑，全量通过才提交，提交说明以 `deps:` 开头。没有修复版的漏洞（vite 6.4.4）写进 P1.6 DoD ③ 的例外清单，写明包名、advisory 编号、复查日期（30 天后），这份清单视为 Eric 已批准。跨大版本的升级（vue-i18n 9→11 带的 @intlify、glob、minimatch）和新增依赖仍然【跳过】，列进最终报告，并写明各自要改哪些代码。
+  3. 其余【跳过】项里，唯一的阻塞是「等 Eric 批准或选择」、文档里写了推荐做法、改动可以撤回的，同样按推荐做，记 `[OMO按推荐]`。
+  4. 仍然等 Eric 的：要 Eric 本人账号或线下动作的事（Supabase 后台、微信后台、Cloudflare、Google Drive、/login、建邮箱、找人签字），只有 Eric 看得到的事实（D-29 staging 里有没有真实数据、D-30 微信后台），以及要具体人选或董事会同意的事（D-28、D-32、D-37、D-38）。【硬】条一条都不放开：合并 main 等于把前端发布到 illinimarket.com 生产，托管库迁移要 Eric 的凭据，这两样仍只由 Eric 做。
+  5. 报告：不再按每 10 条写中间报告，进度只记在 STATUS 和 STATUS_LOG。只在可做队列空了的时候写一份最终报告 `appendix/batch/FINAL.md`，和 STATUS 同一个提交推送；出现【暂停推送】时也写这份，但只留在本地。最终报告在 D-42 第 10 项七节之外加第八节「代 Eric 定的事」，逐条写编号、选了什么、理由、怎么撤回。STATUS 的 `next_task_id` 下一行写 `latest_batch: appendix/batch/FINAL.md`。
+  6. 额度：Eric 2026-11-13 确认 CAACI 的 Claude Team 没开 extra usage，只用号池额度，可以全部用掉。
+
 ## 待定
 
 ### D-28 轮值伙伴与四项职责的小时数

@@ -39,5 +39,5 @@ task_id ｜ 结论（通过 / 未测 / 失败）｜ code_sha ｜ docs_sha ｜ �
 
 批次与续跑（D-42 第 8、10 项）：
 - 读到 D-42 后调用 create_goal 建目标（原文见 DECISIONS D-42 第 8 项），再用 schedule_prompt 建一个每 3600 秒的续跑提醒（先 list，只留一个；提示词见 RUNBOOK §10）。
-- 可做队列空了、比上一份多完成 10 条任务、或出现【暂停推送】时，写 appendix/batch/B<nn>.md（七节，见 D-42 第 10 项），和 STATUS 同一个提交推送。
+- D-43：明显会批准的事按推荐直接做（范围见 DECISIONS D-43）。不写中间报告，可做队列空了才写一份最终报告 appendix/batch/FINAL.md（D-42 第 10 项七节，加 D-43 第 5 项的第八节），和 STATUS 同一个提交推送；出现【暂停推送】时也写，但只留在本地。
 - 写完批次报告不结束会话。额度用完时把改动提交到本地任务分支，等 goal 或提醒唤醒后，从 STATUS 的 next_task_id 接着做。
