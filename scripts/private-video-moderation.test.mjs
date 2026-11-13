@@ -1,11 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { postgresBinDir } from './_postgres-bin.mjs'
 
-const bin = ['/opt/homebrew/opt/postgresql@17/bin', '/usr/lib/postgresql/17/bin'].find(p => existsSync(join(p, 'initdb')))
+const bin = postgresBinDir()
 test('video SQL denies unreviewed delivery, stale leases, other users and replacement reuse', { skip: !bin && 'PostgreSQL required' }, () => {
   const dir = mkdtempSync(join(tmpdir(), 'video-review-')), data = join(dir, 'data')
   const port = String(50000 + Math.floor(Math.random() * 10000))

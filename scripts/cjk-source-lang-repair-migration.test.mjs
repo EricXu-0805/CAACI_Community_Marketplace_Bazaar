@@ -18,18 +18,18 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { postgresBinDir } from './_postgres-bin.mjs'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const MIGRATION = resolve(
   repoRoot,
   'supabase/migrations/20260903061500_relabel_cjk_content_filed_as_english.sql',
 )
-const PG_BIN = ['/opt/homebrew/opt/postgresql@17/bin', '/usr/local/opt/postgresql@17/bin', '/usr/lib/postgresql/17/bin']
-  .find(dir => ['initdb', 'pg_ctl', 'psql'].every(b => existsSync(join(dir, b))))
+const PG_BIN = postgresBinDir()
 const havePg = Boolean(PG_BIN)
 
 const FIXTURE = `

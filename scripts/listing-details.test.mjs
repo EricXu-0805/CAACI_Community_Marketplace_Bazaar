@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { postgresBinDir } from './_postgres-bin.mjs'
 const require=createRequire(new URL('../app/package.json',import.meta.url)),ts=require('typescript')
 const read=path=>readFileSync(new URL(path,import.meta.url),'utf8')
 const js=source=>ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText
@@ -23,7 +24,7 @@ test('category details preserve explicit facts and reject invalid dates, units a
  for(const detail of [{...trip,seats:1.5},{...trip,seats:9},{...trip,origin:' Chicago ORD '},{...trip,departure_time:'25:00'},{...trip,departure_date:'2026-03-08',departure_time:'02:30'},{...trip,time_zone:'UTC'}])assert.ok(helpers.listingDetailsError('rideshare',detail))
  assert.equal(helpers.listingDetailsError('rideshare',{...trip,departure_date:'2026-11-01',departure_time:'01:30'}),'')
 })
-const bin=['/opt/homebrew/opt/postgresql@17/bin','/usr/lib/postgresql/17/bin'].find(p=>existsSync(join(p,'initdb')))
+const bin=postgresBinDir()
 const migration=read('../supabase/migrations/20260905194646_structured_housing_rideshare_details.sql')
 const old=read('../supabase/migrations/20260903030000_search_items_fuzzy_matches_translations.sql')
 const setup=`

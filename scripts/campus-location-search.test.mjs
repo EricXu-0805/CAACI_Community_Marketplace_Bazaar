@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-const bin = ['/opt/homebrew/opt/postgresql@17/bin', '/opt/homebrew/opt/postgresql@16/bin', '/usr/lib/postgresql/17/bin', '/usr/lib/postgresql/16/bin'].find(dir => existsSync(join(dir, 'initdb')))
+import { postgresBinDir } from './_postgres-bin.mjs'
+const bin = postgresBinDir()
 const old = readFileSync(new URL('../supabase/migrations/20260903030000_search_items_fuzzy_matches_translations.sql', import.meta.url), 'utf8')
 const candidate = readFileSync(new URL('../supabase/migrations/20260905184951_campus_location_search_alignment.sql', import.meta.url), 'utf8')
 const verify = readFileSync(new URL('../supabase/_ops/VERIFY_20260905_campus_location_search_alignment.sql', import.meta.url), 'utf8')
