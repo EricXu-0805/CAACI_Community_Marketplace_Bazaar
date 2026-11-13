@@ -811,3 +811,14 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 无
 - 下一条: D-46 第 3 项 a
 - 附: 自决：gh 客户端报错改 REST，依据 D-46 第 2 项「不行就照 L56 用 REST PATCH」；mpci 步骤依据 D-46「主包一律用 CI build-mp-weixin 的环境量」，撤回：删掉 run-checks.sh 的 MPCI_STUB 和 [mpci] 两行。
+
+### L66 · 2026-11-13 12:39 CT · D-46 第 3 项 a：小程序每一页都启动消息与通知监听（修 4a3cbe6 引入的问题）
+- task_id: D-46.3a
+- code_sha: 3d24a8e（#375，已推送；push 用 --no-verify 同 L21）
+- docs_sha: 5f66faaeed2eeb93adad288162e2e1e43ab133b5
+- 环境: 本地 tony-ws run-checks；实现由 OMO 子任务（deep-low）做，主会话核对后推送
+- 命令: 先写 app/smoke/mp-session-listener-startup.test.mjs（主测「MP app setup starts both session listeners once before any page is mounted」，对照：H5 仍由 AppSidebar 启动、小程序页不挂 AppSidebar）；在 4a3cbe6 上主测失败、两个对照通过（check-20261113T175834Z）。修法：App.vue 在小程序应用 setup 时调用 useUnread()、useNotifications() 各一次（两个 composable 自带模块级防重），H5 仍由 AppSidebar 启动；auth-recovery-page-lifecycle.test.mjs 的夹具补两个替身，断言不变。`~/work/illini-dev-env/run-checks.sh ~/work/illini-mpbudget install typecheck test h5 mpci smoke`
+- 计数: 修复前 15 个非 tab 页（account-link、blocked、detail、following、history、illini-verify、legal、my-items、post、profile/edit、publish/edit、saved-searches、search、seller、settings）冷启动时两个监听都没起；notifications 页只有通知监听，chat 只有未读。修复后：新测试 3 条全过（check-20261113T175914Z）；install、typecheck、h5、mpci rc=0，test 2047 / 2046 / 0 / 1，smoke 15 passed（check-20261113T182923Z）；主包（CI 环境）1,502,862 [本地测]
+- ci_run_url: —（#375 base 不是 main，不触发 CI）
+- 未测项: 真机或开发者工具：从分享卡冷启动进商品页能否收到新消息和通知、前后台切换、切换账号不重复不串号
+- 下一条: D-46 第 3 项 b（#369，子任务进行中）
