@@ -95,6 +95,26 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
   4. **报告：** 三件事都做完或都停下以后，在 `appendix/batch/FINAL.md` 末尾加一节「第二批（D-44）」，按同样的八节格式，只写新增的内容。STATUS 里的 `latest_batch` 不变。
   5. **续跑：** 用 create_goal 重新设一个目标，范围就是本条这三件事。额度照 D-43 第 6 项。
 
+- **D-45 第二批核查后由 supervisor 定的事**（2026-11-13 07:45 CT，Claude（Eric 自己账号上的 supervisor 会话）按 D-43 定并写入）：依据是 Eric 2026-11-13 01:51 CT 原话「OK，你就继续弄就行了，自己的号作为supervisor控制」，以及 D-43「明显会批准的事直接做」。D-42 第 0 项的优先级不变，【硬】条照旧高于本条；Eric 看最终报告后可以改其中任何一项。背景：supervisor 对第二批报告做了独立核查（五个只读检查，再由本会话复核高风险项）。第 1 项是报告要改的地方，第 2–7 项是现在还能做、不需要 Eric 的事。
+  1. **先改报告和 STATUS（只改文档）。** 每条先自己核实；核实不成立的不改，在 STATUS_LOG 写明理由。
+     - ④⑥⑦ 关于 #372 冲突「取 #372」的说法是错的。`git merge-tree` 试合：#369×#372 冲突在 api/share-post.js、en.ts、zh.ts；#374×#372 另有 app.name / app.desc / app.tagline / app.formerly 一块。share-post.js 冲突块里 #369 一侧是 P2.9 的 topicTitle / headline 逻辑，en/zh 的 `suspended.sub`、`suspended.subPerma` 里 #369 一侧是 P2.2 的「回复 / reply」措辞，取 #372 会把这两项悄悄撤掉。改成：手工合，保留 #369 的逻辑和措辞，只取 #372 的品牌字串。
+     - ④ 加一条，放在合并顺序前面：#369 合进 main 就是把前端发布到 illinimarket.com 生产。合之前必须先在生产应用 20261112120000 并跑它的 VERIFY（ENGINEERING §6），否则新前端按 POST_COLUMNS 查询会 400，社区页打不开；BACKLOG 还要求 #369 合并前 P2.13 通过。
+     - ④ 里 #373「解锁 Boundary 只剩 vite」写准确：CI 的 `npm audit --audit-level=moderate`（ci.yml 第 187 行附近）没有例外清单，vite 6.4.4 的 moderate 还在，合了 #371、#373 以后 Boundary 照样红。让 CI 认例外清单要改 workflow，归 Eric。
+     - ⑥「首页已按设计只编进 H5」不成立：SPEC §8 和 D-12 没有这条豁免，是 HOME.5 子任务为了主包预算做的取舍（L54 的「21 处与 SPEC 的出入」之一）。挪进 ③（标 [OMO自决]），④ 写成请 Eric 定的事；本条第 4、7 项先尝试补上。另外 20 处出入现在只在 tony-ws 的 evidence/HOME.5，摘进 STATUS_LOG。
+     - 数字更正：HOME.5 合并后 smoke 总数（核查方数到 7 份 spec 共 79 条，83 可能把 community-post-topics 的 4 条算了两次）；③ L52「四份旧 spec」（a756081 实际改了 9 份）；L54「断言的行为不变」（P2.10 board-link 用例在 390/1280 上 URL、选中信号、搜索框三处断言都变了，390 上「搜索框为空」变成「搜索框不存在」加一次性计数）；P2.9 的 2022/2021 是在 bd6fee5 上量的；L47/L48 说 #369「随 bd6fee5 重跑」，但 run 43412348642 被取消；① 的起点时间按 24d141a / 5abcb86 的提交时间。
+     - ④ 补漏：P2.5 DoD ④ 生产那一半由 Eric 核；E4 应用迁移后 VERIFY_20260718_reconcile_app_table_acl_boundaries 会报预期内的 posts 列漂移（L46），提前写给 Eric；L49 暗色侧栏「发布」按钮对比度 2.87:1；#369、#371 合并后删分支之前，先把 #374、#373 的 base 改成 main（删 base 分支会把依赖它的 PR 关掉，且不能重开）；④ 按解锁任务数从多到少排（D-42 第 10 项）。
+     - STATUS.md 过期处：CI 表的 Boundary 计数（run 43422815812 实际 2044/2043/0/1）；「首页分支没建」；「~/work/illini 在 be2ebb6」；P2.8「本地提交」（46e69b8 已推送）；「上一次 run」的标号；BRAND.7 写的 D-35 阻塞（实际等 HOME.4）；P2.13 还等 E5（P1.8）；「其余 job success」改成 4 个 success、2 个 skipped。
+     - STOP-16a：P2.8 把 SPEC §11 的 6 个 key 改了名（draftCloseTitle→closeComposer 等），STATUS_LOG 没记。按第 5 项改回 SPEC 的名字。
+     - L44–L54 的 [OMO自决] 按 D-42 第 3 项补齐标签、依据条款和撤回命令；L44 补记归档 lsql-replay.sh 的 sha256（RUNBOOK §4 ⑤）；L45 补记 path-scurry 下 lru-cache 11.3.5→11.5.3。
+  2. **PR 文案。** 只用 `gh pr edit` 改标题和描述，不转 ready。#369 的描述还是 V4 时的，按 P2.13 DoD ① 改成已完成任务清单加 STATUS 链接；#374 的标题改成覆盖 P2.12、HOME.3、HOME.5；#373 标题和描述里的 `@intlify` 加反引号（裸写 @ 会通知 GitHub 上的 intlify 账号，10:01Z 已经通知过一次）。以后 PR、提交说明里的包名一律加反引号。
+  3. **本地集成试合，不推送。** 在 tony-ws 上建一个只在本地的分支（不推送、不开 PR）：#373 head（含 #371）＋ #374 head（含 #369）＋ #372 head，按第 1 项的规则手工解冲突。跑全量 install、typecheck、test、h5、mp、smoke，用仓库的 verify-build-artifact.mjs 量小程序主包字节数，结果写进 STATUS_LOG 和报告。目的：确认合并顺序，并量出五个 PR 都合上以后的主包余量（现在的 4,056 字节只算了 #369＋#374）。
+  4. **小程序主包腾空间，单独开草稿 PR。** 分支 `codex/community-mp-budget-20261113`，从 #369 head 切出，base 设成 `codex/community-topics-20261112`。优先用不改页面路径的办法：主包里的大图和静态资源、只被分包用到的组件和代码挪进分包、去掉没用到的东西。要移动页面路径时，H5 和小程序的旧链接（SPEC §4.5、分享卡、邮件里的链接）都必须还能打开，做不到就不移。tab 页留在主包（verify-miniprogram.mjs:42）；不加新依赖。目标：主包余量至少 64 KiB；做不到就写清最多能腾出多少、卡在哪。
+  5. **代码对齐 SPEC §11（D-17 常规工作）。** 核查方拿 68eb43b 对 SPEC §11 比出 26 行不一致或缺失。按 SPEC 改代码，不改 SPEC：补上缺的 key（plaza.publishing、uploadingImages、restrictedPost）；plaza.posted、plaza.notFound 按 SPEC；P2.8 改过名的 key 改回 SPEC 的名字；#374 的「关注的人」tab 按 SPEC §6.2，文案用 SPEC 那两句，列表放关注的人发的帖子，不是关注的人名单。「关注的人发的帖子」如果要新迁移，停下记进 ④，不建迁移。认为 SPEC 本身写错的（例如 L49 的 ref.more），代码先照 SPEC，理由记进 ④ 由 Eric 定。#369 范围内的 key 在 #369 改，首页部分在 #374 改。每次改完量一次主包。
+  6. **HOME.4。** 依赖 HOME.3、HOME.1 已通过，D-35 已定 A，按 BACKLOG §0.1 现在就能做。在 #374 分支上做，DoD 照 BACKLOG。
+  7. **小程序论坛首页（D-12）。** D-12 要求 H5 和小程序同一天上线。第 4 项腾出空间后，把论坛首页、新页头、板块页补进小程序，放在 #374；空间不够就停，写进 ④。
+  8. **不做：** 不改 `.github/workflows/`（ubuntu-26.04 runner 上 Playwright 1.60 装不上浏览器、audit 例外清单，这两件归 Eric）；不改 SPEC；不合并、不转 ready、不 force push、不 rebase 已推送的分支；20261112120000 一个字节都不动；不新建迁移。
+  9. **顺序和报告：** 1 → 2 → 3 → 4 → 5、6 → 7。每项最多试 3 次，过不了就转【跳过】，写清停在哪。全部做完或停下以后，在 FINAL.md 末尾加一节「第三批（D-45）」，八节格式，FINAL 和 STATUS 放在同一个提交（D-43 第 5 项）。用 create_goal 设新目标，范围是本条第 1–7 项，并在 STATUS_LOG 记下目标已设。额度照 D-43 第 6 项。
+
 ## 待定
 
 ### D-28 轮值伙伴与四项职责的小时数
