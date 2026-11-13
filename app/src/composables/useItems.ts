@@ -845,9 +845,14 @@ export function useItems() {
 
   async function uploadImagesWithDims(
     tempFiles: string[],
-    options?: { entryPoint?: string; accountToken?: UploadAccountToken },
+    options?: {
+      entryPoint?: string
+      accountToken?: UploadAccountToken
+      onProgress?: (done: number, total: number) => void
+    },
   ): Promise<UploadBatchResult> {
     if (tempFiles.length > MAX_IMAGES) throw new Error('Too many files')
+    options?.onProgress?.(0, tempFiles.length)
     const urls: string[] = []
     const dims: Array<{ w: number; h: number }> = []
     const sourceIndices: number[] = []
@@ -990,6 +995,8 @@ export function useItems() {
           )
         }
         console.warn('[upload] Skipping an image after processing failure')
+      } finally {
+        options?.onProgress?.(sourceIndex + 1, tempFiles.length)
       }
     }
 

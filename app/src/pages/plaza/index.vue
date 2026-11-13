@@ -594,16 +594,18 @@
           :aria-disabled="submitDisabled ? 'true' : 'false'"
           @click="onSubmitPost"
         >
-          {{ submitting ? t('login.wait') : t(outcomeUncertain ? 'plaza.checkPublished' : 'plaza.submit') }}
+          {{ submitting
+            ? composerUploadProgress ? t('plaza.uploadingImages', composerUploadProgress) : t('plaza.publishing')
+            : t(outcomeUncertain ? 'plaza.checkPublished' : 'plaza.submit') }}
         </text>
       </view>
       <view class="comp-body">
         <view v-if="draftRestored" class="composer-notice">
           <text>{{ t('plaza.draftRestored') }}</text>
-          <text class="composer-clear" role="button" @click="clearComposerDraft">{{ t('plaza.clearDraft') }}</text>
+          <text class="composer-clear" role="button" @click="clearComposerDraft">{{ t('plaza.draftClear') }}</text>
         </view>
         <text v-if="outcomeUncertain || publicationMissing" class="composer-notice" role="status">
-          {{ t(outcomeUncertain ? 'plaza.publishUncertain' : 'plaza.publishMissing') }}
+          {{ t(outcomeUncertain ? 'plaza.publishUnknown' : 'plaza.publishNotFound') }}
         </text>
         <view class="composer-mode" role="group" :aria-label="t('plaza.write')">
           <view v-for="mode in (['topic', 'update'] as const)" :key="mode" class="board-chip"
@@ -1246,6 +1248,7 @@ watch(composerMode, () => { composerErrors.value = {} })
 const composerImages = ref<string[]>([])
 const composerFocused = ref(false)
 const submitting = ref(false)
+const composerUploadProgress = ref<{ done: number; total: number } | null>(null)
 let composerAccountToken: AccountRequestToken | null = null
 let composerSessionId = 0
 
@@ -1714,9 +1717,9 @@ function onComposerCancel() {
   const token = composerAccountToken
   const sessionId = composerSessionId
   uni.showModal({
-    title: t('plaza.closeComposer'),
-    confirmText: t('plaza.keepDraft'),
-    cancelText: t('plaza.discardDraft'),
+    title: t('plaza.draftCloseTitle'),
+    confirmText: t('plaza.draftKeep'),
+    cancelText: t('plaza.draftDiscard'),
     success: result => {
       if (!token || !isAccountRequestCurrent(token) || sessionId !== composerSessionId || submitting.value) return
       if (result.confirm) {
@@ -1731,6 +1734,7 @@ function onComposerCancel() {
 }
 
 function resetComposer() {
+  composerUploadProgress.value = null
   composerSessionId += 1
   composerFocused.value = false
   showComposer.value = false
@@ -1929,10 +1933,15 @@ async function onSubmitPost() {
         up = await uploadImagesWithDims(localImages, {
           entryPoint: 'plaza',
           accountToken: submitAccountToken,
+          onProgress: (done, total) => {
+            if (isAccountRequestCurrent(submitAccountToken)) composerUploadProgress.value = { done, total }
+          },
         })
       } catch (upErr: any) {
         if (upErr?.heic === true) throw new Error(t('heic.unsupported'))
         throw upErr
+      } finally {
+        if (isAccountRequestCurrent(submitAccountToken)) composerUploadProgress.value = null
       }
       newlyUploadedUrls = up.urls
       let localIndex = 0
@@ -2028,8 +2037,12 @@ async function onSubmitPost() {
     }
     composerPostId.value = createClientMessageId()
     composerRetryCreate = false
+    const restrictedUntil = /^suspension_active:[^:]+:(.+)$/.exec(err?.message || '')?.[1]
+    const restrictionDate = restrictedUntil ? new Date(restrictedUntil) : null
     uni.showToast({
-      title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
+      title: restrictionDate && !Number.isNaN(restrictionDate.getTime())
+        ? t('plaza.restrictedPost', { date: restrictionDate.toLocaleDateString(lang.value === 'zh' ? 'zh-CN' : 'en-US') })
+        : friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
       icon: 'none',
       duration: 2500,
     })
