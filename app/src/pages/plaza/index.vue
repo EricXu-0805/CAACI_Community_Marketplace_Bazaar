@@ -1021,8 +1021,7 @@ function showBoard(category: PostCategory) {
 }
 const boardFillText = computed(() => {
   if (!selectedCategory.value) return ''
-  const text = boardFiller(selectedCategory.value)
-  return lang.value === 'zh' ? text.zh : text.en
+  return boardFiller(selectedCategory.value, t, lang.value)
 })
 function showAll() {
   if (view.value === 'all') return

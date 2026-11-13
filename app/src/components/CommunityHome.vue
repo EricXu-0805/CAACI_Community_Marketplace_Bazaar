@@ -82,7 +82,7 @@
                         </template>
                       </view>
                       <view v-else class="ch-row ch-fill" role="button" @click="emit('compose', card.category)">
-                        <text class="ch-fill-t">{{ tx(row.text) }}</text>
+                        <text class="ch-fill-t">{{ boardFiller(card.category, t, lang) }}</text>
                       </view>
                     </template>
                   </view>
@@ -231,7 +231,7 @@ import { useI18n } from '../composables/useI18n'
 import { useTheme } from '../composables/useTheme'
 import type { CommunityHomeItem, CommunityHomePost } from '../composables/useCommunityHome'
 import { BASE_URL, SUPPORT_EMAIL } from '../config/runtime'
-import type { HomeItem, HomePostRow, HomeSections, HomeText } from '../utils/communityHome'
+import { boardFiller, type HomeItem, type HomeMessage, type HomePostRow, type HomeSections, type HomeText } from '../utils/communityHome'
 import type { PostCategory } from '../utils/communityPost'
 import { listingPriceLabel, thumbUrl } from '../utils'
 
@@ -269,8 +269,9 @@ function closeGuest() {
   try { uni.setStorageSync(GUEST_NOTICE_KEY, '1') } catch { /* storage unavailable: closed for this visit only */ }
 }
 
-// buildHomeSections words its copy in the two shipped languages.
-const tx = (text: HomeText) => lang.value === 'zh' ? text.zh : text.en
+// Catalog messages follow the active language; relative times keep their two forms.
+const tx = (text: HomeText | HomeMessage) => 'key' in text
+  ? t(text.key, text.params) : lang.value === 'zh' ? text.zh : text.en
 const author = (row: HomePostRow) => (row.post as CommunityHomePost).profile
 // A row is one button, so its name carries what the row shows.
 function rowLabel(row: HomePostRow) {
