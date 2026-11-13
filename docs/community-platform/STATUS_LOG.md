@@ -370,3 +370,15 @@
 - 未测项: 无
 - 下一条: REGION.1
 - 附: 已知小问题留给 HOME.4（D-35 方向 A 套用时）：390 宽度下板块示例标题的占位文字超出一行被截断。
+
+### L31 · 2026-11-13 01:20 CT · REGION.1 posts.region 字段并入 20261112120000（冻结前）
+- task_id: REGION.1
+- code_sha: 9b27fccf981eb9f30729585df03eacd682908f62（codex/community-topics-20261112，已推送）
+- docs_sha: e7fae5ab841c7983abd87d736c4b2b1567b3df3e
+- 环境: 本地 tony-ws pw1.60（容器内 PG17 测试真正执行这份迁移）；CI
+- 命令: 迁移：posts 加 `region text NOT NULL DEFAULT 'cu'` 和 `posts_region_check CHECK (region IN ('cu'))`；`GRANT SELECT (title, category, region)` 给 anon、authenticated，INSERT 仍只开 title、category；search_community_posts 加第 6 个参数 `region_in text DEFAULT 'cu'`、条件 `p.region = region_in`，REVOKE/GRANT 改成新签名；manifest.sha256 里这一行按新内容更新（冻结前唯一允许改的已有行）；scripts/community-post-topics.test.mjs 加 7 条断言；`~/work/illini-dev-env/run-checks.sh ~/work/illini install migrations test`（log check-20261113T070351Z.log）
+- 计数: ① 列与约束已加；② 只授 SELECT(region)，authenticated 写 region 和改 region 都被拒（permission denied）；③ RPC 带 region_in，cu 查到 2 条、chi 查到 0 条；④ 单测断言默认值 'cu'、非空、posts_region_check 拒绝 'chi'、所有行都是 cu；⑤ ENGINEERING §4 已写明新增地区的五件事；migrations 全部校验通过；TEST tests=2001 pass=2000 fail=0 skipped=1 pg_skips=0 [本地测]；CI Boundary success [CI run#43383800477]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43383800477
+- 未测项: ④ 的 VERIFY 文件与 L-SQL 回放（随 P2.5；P1.10 进行中）
+- 下一条: P2.7
+- 附: search_community_posts 的函数级 statement_timeout（ENGINEERING §5.1 第 5 行后半）和 lock_timeout 等其余冻结前改动留给 P2.5。客户端还没传 region_in，用的是默认值 cu（REGION.2 再加常量）。
