@@ -267,16 +267,16 @@ test('a recovery page entered after readiness still delegates its authorized ret
   assert.deepEqual(h.calls.routes, ['/pages/messages/index'])
 })
 
-test('late readiness permits temporary restrictions and respects permanent suspension and consent gates', async t => {
+test('late readiness respects every active restriction before consent and return navigation', async t => {
   for (const [profile, destination] of [
     [{ suspension: 0 }, '/pages/messages/index'],
     [{ suspension: 1 }, '/pages/messages/index'],
-    [{ suspension: 2 }, '/pages/messages/index'],
-    [{ suspension: 3 }, '/pages/messages/index'],
-    [{ suspension: 4 }, '/pages/messages/index'],
+    [{ suspension: 2 }, '/pages/suspended/index'],
+    [{ suspension: 3 }, '/pages/suspended/index'],
+    [{ suspension: 4 }, '/pages/suspended/index'],
     [{ suspension: 5 }, '/pages/suspended/index'],
     [{ consent: '0' }, '/pages/reconsent/index'],
-    [{ suspension: 2, consent: '0' }, '/pages/reconsent/index'],
+    [{ suspension: 2, consent: '0' }, '/pages/suspended/index'],
     [{ suspension: 5, consent: '0' }, '/pages/suspended/index'],
   ]) {
     const h = await fixture(t, { app: true })

@@ -1527,9 +1527,10 @@ function onComposerCancel() {
     resetComposer()
   }
   // #ifdef MP-WEIXIN
-  // wx.showModal limits button text to four characters; keep the full labels.
+  // MP base libraries 3.15.0–3.15.2 allow 8 weighted units per modal button
+  // (Latin-1 counts 1, other UTF-16 units 2). "Keep draft" needs 10.
   uni.showActionSheet({
-    alertText: t('plaza.draftCloseTitle'),
+    title: t('plaza.draftCloseTitle'),
     itemList: [t('plaza.draftKeep'), t('plaza.draftDiscard')],
     success: result => closeDraft(result.tapIndex === 0),
   })
