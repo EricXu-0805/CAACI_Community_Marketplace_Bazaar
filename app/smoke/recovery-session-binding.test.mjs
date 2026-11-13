@@ -10,7 +10,7 @@ const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const source = relativePath => readFileSync(resolve(appRoot, relativePath), 'utf8')
 
 async function loadRecoveryBoundary() {
-  const compiled = ts.transpileModule(source('src/api/recoveryPassword.ts'), {
+  const compiled = ts.transpileModule(source('src/pages/reset-password/recoveryPassword.ts'), {
     compilerOptions: {
       target: ts.ScriptTarget.ES2022,
       module: ts.ModuleKind.ES2022,

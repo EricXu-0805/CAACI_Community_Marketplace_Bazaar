@@ -53,7 +53,7 @@ test('rating creation and deletion are RPC-only and bound to the two attributed 
 test('frontend never guesses a deal from conversations or writes sold/ratings directly', async () => {
   const [items, ratings, detail, profile, chat, types] = await Promise.all([
     source('app/src/composables/useItems.ts'),
-    source('app/src/composables/useRatings.ts'),
+    source('app/src/pages/detail/useRatings.ts'),
     source('app/src/pages/detail/index.vue'),
     source('app/src/pages/profile/index.vue'),
     source('app/src/components/ChatThread.vue'),

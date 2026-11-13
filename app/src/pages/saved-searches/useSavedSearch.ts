@@ -1,13 +1,13 @@
 import { ref } from 'vue'
-import { useSupabase } from './useSupabase'
-import { useAuth } from './useAuth'
-import type { ItemCategory } from '../types'
+import { useSupabase } from '../../composables/useSupabase'
+import { useAuth } from '../../composables/useAuth'
+import type { ItemCategory } from '../../types'
 import {
   captureAccountRequest,
   getActiveAccountId,
   isAccountRequestCurrent,
   onAccountTransition,
-} from './accountScope'
+} from '../../composables/accountScope'
 
 export type SavedSearchListingType = 'sell' | 'wanted' | 'both'
 

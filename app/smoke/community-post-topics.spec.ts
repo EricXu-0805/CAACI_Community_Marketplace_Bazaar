@@ -311,7 +311,10 @@ for (const [lang, width] of [['en', 390], ['en', 1280], ['zh', 390]] as const) {
       await openPlazaComposer(page, async () => {
         await page.route('**/rest/v1/posts?**', route => {
           if (route.request().method() !== 'GET') writes++
-          const body = route.request().headers().accept?.includes('vnd.pgrst.object') ? TOPIC : [TOPIC]
+          // Topic rows open their detail page; only legacy updates have an inline reply sheet.
+          const idFilter = new URL(route.request().url()).searchParams.get('id')
+          const rows = [TOPIC, LEGACY].filter(post => !idFilter || idFilter === `eq.${post.id}`)
+          const body = route.request().headers().accept?.includes('vnd.pgrst.object') ? rows[0] ?? null : rows
           return route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) })
         })
         await page.route('**/rest/v1/post_comments?**', route => {
@@ -328,6 +331,7 @@ for (const [lang, width] of [['en', 390], ['en', 1280], ['zh', 390]] as const) {
       }
       await expect(page).toHaveURL(/pages\/plaza\/index/)
       await expect(page.getByRole('heading', { name: TOPIC.title, exact: true })).toBeVisible()
+      await expect(page.locator('.post-card')).toContainText(LEGACY.content)
       await page.locator('.post-card').getByRole('button', { name: lang === 'zh' ? '回复' : 'Reply', exact: true }).click()
       const sheet = page.locator('.comment-sheet')
       await expect(sheet).toBeVisible()

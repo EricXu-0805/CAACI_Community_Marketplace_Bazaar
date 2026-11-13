@@ -4,6 +4,10 @@ import { onLaunch, onShow } from "@dcloudio/uni-app"
 import { useAuth } from "./composables/useAuth"
 import { useI18n } from "./composables/useI18n"
 import { useTheme } from "./composables/useTheme"
+// #ifdef MP-WEIXIN
+import { useUnread } from './composables/useUnread'
+import { useNotifications } from './composables/useNotifications'
+// #endif
 import { CURRENT_CONSENT_VERSION } from './legal'
 // #ifdef H5
 import { startAcquisition, attributeNewAccount } from './api/acquisition'
@@ -61,6 +65,12 @@ const {
 } = useAuth()
 const { t, lang } = useI18n()
 useTheme()
+// #ifdef MP-WEIXIN
+// Own the session watchers even when a share opens a non-tab page first.
+// Both composables guard repeated callers and handle account transitions.
+useUnread()
+useNotifications()
+// #endif
 // #ifdef H5
 watch(() => [currentUser.value?.id, currentUser.value?.tos_version], ([id, consent]) => {
   if (id && consent) void attributeNewAccount(id, consent)

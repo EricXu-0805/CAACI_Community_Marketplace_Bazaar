@@ -105,7 +105,7 @@ import { listingPriceLabel, navigateBackOr, thumbUrl } from '../../utils'
 import UAvatar from '../../components/UAvatar.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
 import UIcon from '../../components/UIcon.vue'
-import USwipeAction from '../../components/USwipeAction.vue'
+import USwipeAction from './USwipeAction.vue'
 import { onAccountTransition } from '../../composables/accountScope'
 
 const { t, localize } = useI18n()

@@ -17,8 +17,8 @@
 </template>
 <script setup lang="ts">
 import { ref } from 'vue'
-import UIcon from './UIcon.vue'
-import { useDomKeydown } from '../composables/useDomKeydown'
+import UIcon from '../../components/UIcon.vue'
+import { useDomKeydown } from '../../composables/useDomKeydown'
 const linkEl = ref<unknown>(null)
 useDomKeydown(linkEl, keydown)
 defineProps<{ label: string; actionLabel: string }>()

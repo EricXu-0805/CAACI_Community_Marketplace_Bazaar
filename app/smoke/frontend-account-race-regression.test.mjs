@@ -359,7 +359,7 @@ test('polling, offer, moderation and view-count continuations retain their entry
       < favoriteItems.indexOf('if (error) throw error'),
   )
 
-  const ratings = source('src/composables/useRatings.ts')
+  const ratings = source('src/pages/detail/useRatings.ts')
   const submitRating = functionBlock(ratings, 'async function submitRating', 'async function fetchForUser')
   assert.match(submitRating, /const accountToken = (?:input\.accountToken \|\| )?captureAccountRequest\(userId\)[^]*?await supabase[^]*?if \(!isAccountRequestCurrent\(accountToken\)\) throw/)
   const hasRated = functionBlock(ratings, 'async function hasRated', '\n\n  return {')
