@@ -419,7 +419,7 @@ export function usePlaza() {
 
     try {
       assertAccountCurrent()
-      const topic = normalizePostTopic(extras.title, extras.category)
+      const topic = normalizePostTopic(extras.title, extras.category, trimmed)
       moderationText = topic.title ? `${topic.title}\n${trimmed}` : trimmed
       if (topic.title) {
         const safety = checkContent(topic.title, { kind: 'post' })

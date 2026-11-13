@@ -18,6 +18,11 @@ test('topic input keeps legacy updates nullable and rejects incomplete/invalid m
   }
   for (const title of ['x'.repeat(121), 'First\nsecond', 'First\rsecond']) assert.throws(() => normalizePostTopic(title, 'campus-life'), /post_title_invalid/)
   assert.equal(normalizePostTopic('界'.repeat(120), 'campus-life').title.length, 120)
+  for (const body of ['', '   ', '\n\t', null]) {
+    assert.throws(() => normalizePostTopic('A question', 'campus-life', body), /post_topic_body_required/)
+  }
+  assert.deepEqual(normalizePostTopic('A question', 'campus-life', ' Body '), { title: 'A question', category: 'campus-life' })
+  assert.deepEqual(normalizePostTopic(null, null, ''), { title: null, category: null })
 })
 
 let sequence = 0
@@ -92,7 +97,8 @@ test('legacy publish still stores null metadata; validation fails before writing
     ['Body', [], { title: 'Title' }, /post_topic_required/],
     ['Body', [], { ...topic, title: 'forbidden title' }, /moderation_block/],
     ['Body', ['1','2','3','4'], topic, /attach_item_cap/],
-    ['', [], topic, /content_required/],
+    ['', [], topic, /post_topic_body_required/],
+    ['', [], {}, /content_required/],
   ]) {
     h = await loadPlaza()
     await assert.rejects(h.plaza.createPost(body, [], items, metadata), error)

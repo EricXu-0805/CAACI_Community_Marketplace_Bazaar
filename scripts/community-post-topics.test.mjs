@@ -86,6 +86,18 @@ test('topic migration preserves legacy rows, RLS, metadata ACL and item ownershi
     const oldSearch = read('062_search_posts_fuzzy.sql')
     sql(oldSearch.slice(oldSearch.indexOf('create or replace function')))
     const oldRpc = sql("SELECT pg_get_functiondef('public.search_posts_fuzzy(text[],text,integer,integer)'::regprocedure)")
+    // The real posts_visible the migration rebuilds; only its visibility helper is stubbed.
+    sql(`CREATE SCHEMA moderation_private;
+      CREATE FUNCTION moderation_private.profile_content_visible(uuid) RETURNS boolean LANGUAGE sql STABLE
+        AS $$ SELECT coalesce((SELECT suspension_level < 2 FROM public.profiles WHERE id = $1), true) $$;
+      GRANT USAGE ON SCHEMA moderation_private TO anon, authenticated;`)
+    const visibility = read('20260718160000_reconcile_expired_suspension_visibility.sql')
+    const viewStart = visibility.indexOf('CREATE OR REPLACE VIEW public.posts_visible')
+    assert.ok(viewStart >= 0)
+    sql(visibility.slice(viewStart, visibility.indexOf(';', viewStart) + 1))
+    sql('GRANT SELECT ON public.posts_visible TO anon, authenticated, service_role')
+    const viewColumns = () => sql("SELECT string_agg(attname, ',' ORDER BY attnum) FROM pg_attribute WHERE attrelid='public.posts_visible'::regclass AND attnum > 0")
+    const legacyViewColumns = viewColumns()
     sql(migration)
     assert.equal(sql("SELECT pg_get_functiondef('public.search_posts_fuzzy(text[],text,integer,integer)'::regprocedure)"), oldRpc)
     assert.equal(as(`SELECT title IS NULL AND category IS NULL FROM posts WHERE id='${POST}'`), 't')
@@ -122,6 +134,25 @@ test('topic migration preserves legacy rows, RLS, metadata ACL and item ownershi
     assert.throws(() => as("INSERT INTO posts(user_id,content,region) VALUES(auth.uid(),'Body','cu')"), /permission denied/)
     assert.throws(() => as(`UPDATE posts SET region='cu' WHERE user_id=auth.uid()`), /permission denied/)
     assert.equal(sql("SELECT has_function_privilege('authenticated','private.validate_post_topic()','execute')"), 'f')
+    // ENGINEERING §5.1 row 3: a topic needs a body; the trigger names it before the CHECK does.
+    assert.throws(() => as("INSERT INTO posts(user_id,content,title,category) VALUES(auth.uid(),'   ','Blank body','campus-life')"), /post_topic_body_required/)
+    as("INSERT INTO posts(user_id,content) VALUES(auth.uid(),'   ')")
+    assert.throws(() => sql(`BEGIN; ALTER TABLE posts DISABLE TRIGGER validate_post_topic;
+      INSERT INTO posts(user_id,content,title,category) VALUES('${UID}',' ','Trigger off','campus-life'); COMMIT;`), /posts_topic_body_check/)
+    // Row 4: the client may choose the id (P2.8 retries); a repeat is a key conflict, never a second post.
+    const clientId = '44444444-4444-4444-8444-444444444444'
+    const clientInsert = () => as(`INSERT INTO posts(id,user_id,content,title,category) VALUES('${clientId}',auth.uid(),'Retry-safe body','Client id topic','events-social')`)
+    clientInsert()
+    assert.throws(clientInsert, /duplicate key/)
+    assert.equal(sql(`SELECT count(*) FROM posts WHERE id='${clientId}'`), '1')
+    assert.throws(() => as(`UPDATE posts SET id=gen_random_uuid() WHERE id='${clientId}'`), /permission denied/)
+    // Row 5: the new RPC carries its own statement budget.
+    assert.match(sql("SELECT array_to_string(proconfig, ';') FROM pg_proc WHERE oid='public.search_community_posts(text[],text,integer,integer,text,text)'::regprocedure"), /(^|;)statement_timeout=3s($|;)/)
+    // Row 6: posts_visible keeps its columns and options and only appends four.
+    assert.equal(viewColumns(), `${legacyViewColumns},source_lang,title,category,region`)
+    assert.equal(sql("SELECT array_to_string(reloptions, ',') FROM pg_class WHERE oid='public.posts_visible'::regclass"), 'security_invoker=true,security_barrier=true')
+    assert.equal(as("SELECT title || '|' || category || '|' || region FROM posts_visible WHERE title='Quantum study group'", 'anon'), 'Quantum study group|campus-life|cu')
+    assert.equal(as("SELECT count(*) FROM posts_visible WHERE title='Quantum hidden'", 'anon'), '0')
     // Existing item rules apply to topics as they do to legacy updates.
     const topicId = sql("SELECT id FROM posts WHERE title='Quantum study group'")
     for (let n = 1; n <= 6; n++) sql(`INSERT INTO items(id,user_id,status) VALUES('00000000-0000-4000-8000-00000000000${n}','${n === 5 ? OTHER : UID}','${n === 6 ? 'sold' : 'active'}')`)

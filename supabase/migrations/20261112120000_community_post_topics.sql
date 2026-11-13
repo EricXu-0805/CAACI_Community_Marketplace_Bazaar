@@ -1,6 +1,8 @@
 -- Additive community topics. Deploy the migration before the new client.
 -- Old clients keep inserting updates without either field and keep their RPC.
 BEGIN;
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '60s';
 
 ALTER TABLE public.posts
   ADD COLUMN title text,
@@ -13,7 +15,10 @@ ALTER TABLE public.posts
       AND octet_length(title) <= 480
       AND title !~ E'[\\r\\n]'
       AND category IN ('campus-life', 'settling-market', 'alumni-career', 'events-social', 'local-deals'))
-  );
+  ),
+  -- Old clients only render the body, and 044's duplicate guard compares bodies
+  -- only, so a topic always carries one. Legacy updates keep their own rules.
+  ADD CONSTRAINT posts_topic_body_check CHECK (title IS NULL OR btrim(content) <> '');
 
 -- REGION.1 (D-21): every post carries its region from the first version, so a
 -- second region later needs no rename and no backfill. A constant default only
@@ -27,6 +32,8 @@ ALTER TABLE public.posts
 -- is readable but never client-written (new posts take the default).
 GRANT SELECT (title, category, region) ON public.posts TO anon, authenticated;
 GRANT INSERT (title, category) ON public.posts TO authenticated;
+-- P2.8: the client generates the post id so a retried publish can be recognised.
+GRANT INSERT (id) ON public.posts TO authenticated;
 
 CREATE FUNCTION private.validate_post_topic()
 RETURNS trigger
@@ -35,6 +42,9 @@ SECURITY DEFINER
 SET search_path = pg_catalog
 AS $function$
 BEGIN
+  IF NEW.title IS NOT NULL AND btrim(coalesce(NEW.content, '')) = '' THEN
+    RAISE EXCEPTION 'post_topic_body_required' USING ERRCODE = '23514';
+  END IF;
   PERFORM private.assert_text_boundary(NEW.title, 'post_title', 1, 120, 480, true);
   PERFORM private.assert_moderated_text(NEW.title, 'post_title');
   RETURN NEW;
@@ -139,6 +149,38 @@ $$;
 
 revoke all on function public.search_community_posts(text[], text, int, int, text, text) from public;
 grant execute on function public.search_community_posts(text[], text, int, int, text, text) to anon, authenticated;
+ALTER FUNCTION public.search_community_posts(text[], text, int, int, text, text)
+  SET statement_timeout = '3s';
+
+-- Same 11 columns, invoker rights, barrier and grants as
+-- 20260718160000_reconcile_expired_suspension_visibility.sql:516-537. Columns are
+-- only appended: source_lang (api/share-post.js reads it, but the repository
+-- definition never had it), then the topic and region columns.
+CREATE OR REPLACE VIEW public.posts_visible
+WITH (security_invoker = true, security_barrier = true)
+AS
+SELECT
+  post.id,
+  post.user_id,
+  post.content,
+  post.images,
+  post.is_official,
+  post.is_pinned,
+  post.like_count,
+  post.comment_count,
+  post.status,
+  post.created_at,
+  post.updated_at,
+  post.source_lang,
+  post.title,
+  post.category,
+  post.region
+FROM public.posts AS post
+WHERE post.status = 'active'
+  AND moderation_private.profile_content_visible(post.user_id);
+
+REVOKE ALL ON public.posts_visible FROM PUBLIC;
+GRANT SELECT ON public.posts_visible TO anon, authenticated, service_role;
 
 
 -- Reissue the existing evidence functions with only the post branch extended.
