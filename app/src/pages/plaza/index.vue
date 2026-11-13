@@ -258,7 +258,7 @@
               lazy-load
               :alt="localize(pi.item.title_i18n, pi.item.title)"
             />
-            <view v-else class="aic-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
+            <view v-else class="aic-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">玉</text></view>
             <view class="aic-body">
               <text class="aic-title">{{ localize(pi.item.title_i18n, pi.item.title) }}</text>
               <text class="aic-price">{{ listingPriceLabel(pi.item, t) }}</text>
@@ -535,7 +535,7 @@
             class="ca-img"
             mode="aspectFill"
           />
-          <view v-else class="ca-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
+          <view v-else class="ca-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">玉</text></view>
           <view class="ca-body">
             <text class="ca-title">{{ localize(it.title_i18n, it.title) }}</text>
             <text class="ca-price">{{ listingPriceLabel(it, t) }}</text>
@@ -607,7 +607,7 @@
             mode="aspectFill"
             lazy-load
           />
-          <view v-else class="as-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
+          <view v-else class="as-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">玉</text></view>
           <view class="as-body">
             <text class="as-title-text">{{ localize(it.title_i18n, it.title) }}</text>
             <text class="as-price">{{ listingPriceLabel(it, t) }}</text>

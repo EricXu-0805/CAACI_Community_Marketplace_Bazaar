@@ -55,7 +55,7 @@
         </swiper-item>
         <swiper-item v-if="imgs.length === 0">
           <view class="u-thumb-ph u-thumb-ph--fill det-noimg">
-            <text class="u-thumb-ph-seal">集</text>
+            <text class="u-thumb-ph-seal">玉</text>
             <text class="det-noimg-cap">{{ t('detail.noPhotos') }}</text>
           </view>
         </swiper-item>
@@ -231,7 +231,7 @@
         <view class="more-list u-stagger">
           <view v-for="si in sellerOtherItems" :key="si.id" class="more-card" role="button" :aria-label="localize(si.title_i18n, si.title)" @click="goToOtherItem(si.id)">
             <image v-if="thumbUrl(si.images?.[0], 'list')" :src="thumbUrl(si.images?.[0], 'list')" :alt="localize(si.title_i18n, si.title)" class="mc-img" mode="aspectFill" lazy-load />
-            <view v-else class="mc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
+            <view v-else class="mc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">玉</text></view>
             <view class="mc-price-row">
               <text v-if="si.listing_type === 'wanted'" class="u-wanted-tag">{{ t('item.wanted') }}</text>
               <text :class="['mc-price', { free: si.listing_type !== 'wanted' && (!si.price || si.price === 0) }]">{{ listingPriceLabel(si, t) }}</text>
@@ -248,7 +248,7 @@
         <view class="more-list u-stagger">
           <view v-for="si in similarItems" :key="si.id" class="more-card" role="button" :aria-label="localize(si.title_i18n, si.title)" @click="goToOtherItem(si.id)">
             <image v-if="thumbUrl(si.images?.[0], 'list')" :src="thumbUrl(si.images?.[0], 'list')" :alt="localize(si.title_i18n, si.title)" class="mc-img" mode="aspectFill" lazy-load />
-            <view v-else class="mc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
+            <view v-else class="mc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">玉</text></view>
             <view class="mc-price-row">
               <text v-if="si.listing_type === 'wanted'" class="u-wanted-tag">{{ t('item.wanted') }}</text>
               <text :class="['mc-price', { free: si.listing_type !== 'wanted' && (!si.price || si.price === 0) }]">{{ listingPriceLabel(si, t) }}</text>

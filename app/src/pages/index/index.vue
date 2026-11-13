@@ -404,7 +404,7 @@
                 :style="dimsToAspectStyle(null, 0, '3/2')"
                 aria-hidden="true"
               >
-                <text class="u-thumb-ph-seal">集</text>
+                <text class="u-thumb-ph-seal">玉</text>
               </view>
               <view v-if="item.status === 'sold'" class="sold-overlay">
                 <text class="sold-overlay-label">{{ t('status.sold') }}</text>

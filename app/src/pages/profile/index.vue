@@ -254,7 +254,7 @@
                 mode="aspectFill"
                 lazy-load
               />
-              <view v-else class="horz-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
+              <view v-else class="horz-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">玉</text></view>
               <view class="horz-info">
                 <text class="horz-title">{{ localize(item.title_i18n, item.title) }}</text>
                 <view class="horz-price-row">
@@ -314,7 +314,7 @@
                 mode="aspectFill"
                 lazy-load
               />
-              <view v-else class="fav-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
+              <view v-else class="fav-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">玉</text></view>
             </view>
             <view class="fav-body">
               <text class="fav-title">{{ localize(item.title_i18n, item.title) }}</text>

@@ -93,7 +93,7 @@
             lazy-load
             :alt="localize(pi.item.title_i18n, pi.item.title)"
           />
-          <view v-else class="aic-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
+          <view v-else class="aic-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">玉</text></view>
           <view class="aic-body">
             <text class="aic-title">{{ localize(pi.item.title_i18n, pi.item.title) }}</text>
             <text class="aic-price">{{ listingPriceLabel(pi.item, t) }}</text>
