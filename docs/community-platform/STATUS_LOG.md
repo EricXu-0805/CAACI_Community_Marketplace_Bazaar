@@ -1016,3 +1016,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 微信真实网络调度；只限制首页，不是应用级六请求限制。稳态6+2+2和onShow可能第11条的开发者工具观察写入STATUS第13条与FINAL④。
 - 附: H5九个首轮读取一起开始；小程序旧轮拿到槽位后先检查世代，作废时不发查询并归还槽位。读取报错/抛错、回帖、多实例共享和最终数据都有行为断言。STATUS旧Boundary行误引43500445187，按已读的2156条CI证据改为43503547193。D-49只读architect准备因号池限额/不可用退出、工具0次，未产出方案或修改代码；不转额外计费渠道，实际D-49仍待前置项。
 - next_task_id: D-47.4。
+
+## L83 · 2026-11-13 17:40 CT · D-47.4 关注读取与全屏蔽行为测试
+- task_id: D-47.4
+- code_sha: 2942e8e8491b15360505350829013d3bb045204e（#374，已推送，仅改测试）
+- docs_sha: 1d1734c9c77d78aae0d680538359ce0855c5b32d
+- 环境: tony-ws pw1.60-node22-pg17
+- 命令: 在独立86ffd0e工作树运行最终九条测试，check-20261113T231802Z：9/2/7/0，两个原有对照通过。全屏蔽用例等真实loadFeed完成或捕获意外posts查询，旧代码实际向blocked发出查询；成功读取用例在旧代码首先因previous旧行没清空而红，不声称原来的成功查询算法有错。失败重试用例直接调用loadFeed，绕过tab watcher，旧代码回填late行。
+- 计数: 正式分支check-20261113T232337Z为9/9。再在隔离树使用c7b0634两个owner文件，只移除失败分支invalidatePosts，232550Z：直接重试用例因late行回填而红，recent对照通过（2/1/1/0）；变异已恢复。完整单测232918Z为2237/2236/0/1，pg_skips=0。验收与提交树同为4aa3c18c321f4d198afe57576acc9c5ac5caece1。
+- ci_run_url: —（base不是main）
+- 未测项: 未重跑不受测试改动影响的页面构建；应用源码、依赖和构建配置与c7b0634完全相同，沿用L82的typecheck、H5、mpci和132条浏览器验收。主包最近实测仍为L82的1,373,057，而不是声称本提交重新构建。LSP不可用，未安装依赖或提问；实际Node测试已执行。
+- 附: loadMyFollowing成功夹具更新following和followingLoaded，与真实成功路径一致；全屏蔽同时检查无posts查询、posts为空、hasMore=false、没有读取错误及SPEC§6.2的plaza.emptyFollowing。原六条行为断言保留，事件条件取代固定微任务次数。容器通过后按RUNBOOK§3 push --no-verify。
+- next_task_id: D-48.4。

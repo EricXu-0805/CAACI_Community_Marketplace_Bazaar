@@ -1,11 +1,11 @@
 # STATUS
 
-写于 2026-11-13 17:07 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-13 17:40 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-47 第 4 项（关注读取与全屏蔽测试）`
+`next_task_id: D-48 第 4 项（主包证据与注释收尾）`
 `latest_batch: appendix/batch/FINAL.md`
 
-next_task_id 按 D-48 第 7 项的新优先顺序取第一条未完成项：D-48 1 → 2 → D-50.3 → D-48 3 → D-47 2–5 → D-48 4 → D-49 → D-46 5、6 → D-47 7。D-47 第2、3、5项已完成；有效L2–L5的门禁恢复已进入#369、#375和#374的远端head，不 revert #375 的合并提交。
+next_task_id 按 D-48 第 7 项的新优先顺序取第一条未完成项：D-48 1 → 2 → D-50.3 → D-48 3 → D-47 2–5 → D-48 4 → D-49 → D-46 5、6 → D-47 7。D-47 第2–5项已完成；有效L2–L5的门禁恢复已进入#369、#375和#374的远端head，不 revert #375 的合并提交。
 
 ## 版本
 
@@ -15,9 +15,9 @@ next_task_id 按 D-48 第 7 项的新优先顺序取第一条未完成项：D-48
 | code_sha | ae058c216027da52d7346361b3be6aaf388d6d35（D-48.1、D-48.2、D-50.3 已完成并推送） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | 7293b0165f93ca13819f2fc1229e8348f87c6d66（本次写回之前材料分支的 HEAD） |
-| 其余代码分支（远端 head） | #374 codex/community-home-20261112 c7b0634（已推送；含#369 ae058c2和#375 22d9009，D-47.2为885603e、D-47.5合并为c1ef194、D-47.3为c7b0634；依赖#375）。#375 codex/community-mp-budget-20261113 22d9009（已推送；007abf1合入#369 ae058c2，22d9009抑制门禁页的新入站提示；base #369分支）。#373 codex/deps-crossmajor-20261113 55716ba（base #371）。#372 codex/brand-cornfield-20261112 ba070e7。#371 codex/config-fixes-20261112 b259105。#374/#375依据本次push回执，其余沿用此前ls-remote记录 [本地测] |
-| tony-ws worktree | ~/work/illini ae058c2（#369）；illini-home c7b0634（#374，干净、与远端一致）；illini-mpbudget 22d9009（#375，干净、与远端一致，子任务已交回）；illini-deps 55716ba；illini-brand ba070e7；illini-config b259105；illini-events wip/P4.1 5f62ddd（本地不推送）；illini-main 7b18f20（只读对照）；illini-docs-brand7 的 local/brand7-20261113 在bd397ce，BRAND.7原型工作暂停保留、未提交；~/work/caaciorg 本地feat/public-events-feed 28d59b1（不推送）；~/work/illini-docs 在codex/community-plan-v5 [本地测] |
+| docs_sha | 1d1734c9c77d78aae0d680538359ce0855c5b32d（本次写回之前材料分支的 HEAD） |
+| 其余代码分支（远端 head） | #374 codex/community-home-20261112 2942e8e（已推送；2942e8e只改关注流测试，构建源码与c7b0634相同；含#369 ae058c2和#375 22d9009，D-47.2为885603e、D-47.5合并为c1ef194、D-47.3为c7b0634；依赖#375）。#375 codex/community-mp-budget-20261113 22d9009（已推送；007abf1合入#369 ae058c2，22d9009抑制门禁页的新入站提示；base #369分支）。#373 codex/deps-crossmajor-20261113 55716ba（base #371）。#372 codex/brand-cornfield-20261112 ba070e7。#371 codex/config-fixes-20261112 b259105。#374/#375依据本次push回执，其余沿用此前ls-remote记录 [本地测] |
+| tony-ws worktree | ~/work/illini ae058c2（#369）；illini-home 2942e8e（#374，干净、与远端一致）；illini-mpbudget 22d9009（#375，干净、与远端一致，子任务已交回）；illini-deps 55716ba；illini-brand ba070e7；illini-config b259105；illini-events wip/P4.1 5f62ddd（本地不推送）；illini-main 7b18f20（只读对照）；illini-docs-brand7 的 local/brand7-20261113 在bd397ce，BRAND.7原型工作暂停保留、未提交；~/work/caaciorg 本地feat/public-events-feed 28d59b1（不推送）；~/work/illini-docs 在codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 
@@ -110,7 +110,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | D-46 第 1、2 项 | 通过 | L64、L65 |
 | D-46 第 3 项 a | 通过 | 3d24a8e已进入#374；所有小程序页启动监听。门禁页的新入站提示由22d9009抑制，已通过c1ef194合入#374；未改普通错误提示或停监听（L81、L82） |
 | D-46 第 3 项 b | 通过 | ae058c2的标题映射、D-50长度规则已进入#369、#375 22d9009和#374 c7b0634远端head（L77、L81） |
-| D-46 第 3 项 c、d、e | 原修复通过；d补测待做 | 73206a0、eca5a8d、6d6c598为原修复；e由885603e补完，c由c7b0634改为仅小程序限流并取消过期队列。D-47.4的d补测下一步做（L80、L82） |
+| D-46 第 3 项 c、d、e | 通过，D-47补完完成 | 73206a0、eca5a8d、6d6c598为原修复；e由885603e补完，c由c7b0634改为仅小程序限流并取消过期队列。d补测为2942e8e（L80、L82、L83） |
 | D-46 第 3 项 f | 全局放行已撤回 | 有效L2–L5 → suspended已进入#369 ae058c2、#375 22d9009和#374 c7b0634远端head。发帖前拦截和回复提示保留；不 revert 30c4b4d。受限浏览只能在D-49新迁移证明服务端拦截后于独立PR实现（L76、L81、L82） |
 | D-46 第 4 项 | 通过（#375 单独）；五个 PR 合上后的余量待第 5 项 | #375 8972507、1443d5c、ecc330b（已推送）；主包（CI 环境）1,322,319（L73）[本地测] |
 | D-46 第 5、6 项 | 未做 / 暂停 | 第5项排在D-48、D-47第2–5项和D-49之后；第6项原型改动保留，届时按BRAND.7行接续 |
@@ -118,7 +118,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | D-47 第 1 项 | 通过 | 见L72；后续状态按各次写回继续更新 |
 | D-47 第 2 项 | 通过 | 885603e：2190/2189/0/1，132条浏览器通过，四张标签截图已看；类型字段歧义见第16条（L80） |
 | D-47 第 3 项 | 通过 | c7b0634：旧代码8条中3红；新版8条全过，三类真实源码变异均被抓到；2234/2233/0/1、132条浏览器通过（L82） |
-| D-47 第 4 项 | 待补测试 | 下一条；实现沿用eca5a8d，须完善followingLoaded成功夹具与全屏蔽/成功读取/失败重试隔离证据 |
+| D-47 第 4 项 | 通过 | 2942e8e：在86ffd0e上9条中7红、2个对照通过，当前9/9；仅移除失败分支invalidatePosts的变异为1红1对照通过。完整单测2237/2236/0/1；没有应用源码变动，构建沿用L82（L83） |
 | D-47 第 5 项 | 通过 | #375 22d9009，已合入#374。按D-48门禁更新后39条先红23、后全过；#375全量2204/2203/0/1；组合全量见L82。真实微信投递时序和原生浮层未测（L81） |
 | P3.1–P3.8 | 未测 | 依赖 P2.13（#369 合并） |
 | P4.7 第一步 | 通过 | appendix/research/campus-events.md；D-33 已按 D-43 代定 A，第二步依赖 P4.1、P4.2 |
@@ -153,7 +153,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
    | app/src/composables/i18n/messages/en.ts、zh.ts | 自动合并会各留两份 plaza.restrictedReply，手工去重为每语言一份；未改变值 |
 
 12. 删 #369 的分支之前，先把 #374、#375 的 base 都改成 main；删 #371 的分支之前，先把 #373 的 base 改成 main（删 base 分支会关闭依赖它的 PR，且不能重开）。#369 若 squash 合并，改完 base 后 #374、#375 要再 merge 一次 origin/main。
-13. 首页、新页头、板块页、全部讨论已编进小程序。当前#374 c7b0634（含#369 ae058c2和#375 22d9009）按CI环境实测主包1,373,057、余199,807（check-20261113T224013Z），64KiB目标满足此三者组合；尚未计入#372/#373，五PR最终数待D-46.5。微信开发者工具/真机仍须验证渲染、胶囊、路由、3b操作菜单标题、门禁页新提示抑制及首次分包下载/离线失败：目前无preloadRule，login/search/notifications/settings/legal等首次进入会下载分包，失败未有提示；本批不加preloadRule。首页6个请求加inbox 2个、notifications 2个稳态共10个，onShow资料读取可能成为第11个；D-47.3只限首页，未加应用级限流，需要开发者工具观察新旧基础库排队行为。小程序构建需要VITE_BASE_URL。D-50长度规则只核验基础库3.15.0–3.15.2，更早版本未核，manifest未设最低基础库；生产英文按钮误报已撤销。
+13. 首页、新页头、板块页、全部讨论已编进小程序。当前#374 2942e8e只改测试；最近构建c7b0634（含#369 ae058c2和#375 22d9009）按CI环境实测主包1,373,057、余199,807（check-20261113T224013Z），64KiB目标满足此三者组合；尚未计入#372/#373，五PR最终数待D-46.5。微信开发者工具/真机仍须验证渲染、胶囊、路由、3b操作菜单标题、门禁页新提示抑制及首次分包下载/离线失败：目前无preloadRule，login/search/notifications/settings/legal等首次进入会下载分包，失败未有提示；本批不加preloadRule。首页6个请求加inbox 2个、notifications 2个稳态共10个，onShow资料读取可能成为第11个；D-47.3只限首页，未加应用级限流，需要开发者工具观察新旧基础库排队行为。小程序构建需要VITE_BASE_URL。D-50长度规则只核验基础库3.15.0–3.15.2，更早版本未核，manifest未设最低基础库；生产英文按钮误报已撤销。
 
 14. D-49：服务端路线已定，不再等待二选一。新草稿 PR 的唯一迁移先在生产应用、VERIFY 通过，前端才能合；staging/生产应用均由 Eric 做。#369 合入 main 后该 PR 的 base 改成 main。D-48 六类路径已由 OMO 追踪最新迁移/调用方做源码核查；未执行新的 PG17 复现，不代表已检查托管库实际状态（证据见 L75）。
 
