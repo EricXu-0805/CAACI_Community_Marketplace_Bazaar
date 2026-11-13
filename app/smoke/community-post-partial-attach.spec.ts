@@ -101,7 +101,7 @@ async function publishWithItem(page: Page, state: State) {
   await signIn(page, UID)
   await serve(page, UID, state)
   await page.goto('/#/pages/plaza/index', { waitUntil: 'networkidle' })
-  await page.getByRole('button', { name: 'New post', exact: true }).filter({ visible: true }).click({ timeout: 15_000 })
+  await page.getByRole('button', { name: 'New topic', exact: true }).filter({ visible: true }).click({ timeout: 15_000 })
   const composer = page.locator('.composer-fullpage')
   const title = page.locator('.topic-title-input input')
   const body = page.locator('.comp-textarea textarea')

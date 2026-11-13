@@ -185,7 +185,7 @@ async function openList(page: Page, options: { lang: 'zh' | 'en'; theme: 'light'
   }, [options.lang, options.theme] as const)
   await page.emulateMedia({ colorScheme: options.theme })
   await serve(page, options.posts)
-  await page.goto('/#/pages/plaza/index', { waitUntil: 'networkidle' })
+  await page.goto('/#/pages/plaza/index?view=all', { waitUntil: 'networkidle' })
   await expect(page.locator('.topic-row').first()).toBeVisible({ timeout: 15_000 })
   await settle(page)
 }

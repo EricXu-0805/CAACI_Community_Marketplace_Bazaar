@@ -8,8 +8,28 @@
     <!-- .page-header is display:none at >=768px, and display:none drops the
          node from the accessibility tree — so the heading has to live outside
          it or Mac/iPad get no heading at all. -->
-    <text class="sr-only" role="heading" aria-level="1">{{ t('plaza.title') }}</text>
+    <text class="sr-only" role="heading" aria-level="1">{{ pageHeading }}</text>
 
+    <!-- #ifdef H5 -->
+    <CommunityHeader
+      v-model:search="searchText"
+      :view="view"
+      :board="view === 'board' ? selectedCategory : null"
+      :desktop="isDesktop"
+      :is-logged-in="isLoggedIn"
+      @home="showHome"
+      @all="showAll"
+      @board="showBoard"
+      @compose="openComposer"
+      @login="goToLogin"
+      @search-input="onSearchInput"
+      @search-submit="onSearchSubmit"
+      @search-open="openSearch"
+    />
+    <!-- #endif -->
+    <!-- The mini program keeps this header and the list below it: its main
+         package has no room for the home yet (BACKLOG 14, row 23). -->
+    <!-- #ifndef H5 -->
     <view class="page-header">
       <text class="ph-title">{{ t('plaza.title') }}</text>
       <text class="ph-region" data-test="region-label">{{ regionLabel(lang) }}</text>
@@ -21,8 +41,9 @@
         <text class="cb-label">{{ t('plaza.write') }}</text>
       </view>
     </view>
+    <!-- #endif -->
 
-    <view class="search-wrap">
+    <view v-if="view === 'all'" class="search-wrap">
       <view class="search-bar">
         <view class="sb-icon"></view>
         <input
@@ -31,24 +52,18 @@
           :aria-label="t('plaza.searchPlaceholder')"
           class="sb-input"
           confirm-type="search"
+          :focus="searchFocused"
           @input="onSearchInput"
           @confirm="onSearchSubmit"
+          @blur="searchFocused = false"
         />
         <view v-if="searchText" class="sb-clear" role="button" :aria-label="t('a11y.searchClear')" @click="clearSearch"></view>
-      </view>
-      <!-- Desktop-only compose entry: the mobile compose-btn lives in
-           .page-header, which is display:none ≥768px, so on Mac/iPad there was
-           no way to write a post (the sidebar +发布 creates an item, not a
-           post). Sits beside the search bar on the desktop reading column. -->
-      <view v-if="isLoggedIn" class="plaza-compose-d" role="button" :aria-label="t('a11y.compose')" @click="openComposer">
-        <UIcon name="edit" size="sm" color="ink-inverse" />
-        <text class="pcd-label">{{ t('plaza.write') }}</text>
       </view>
     </view>
 
     <!-- Feed tabs live OUTSIDE the scroll area (directly under search) so
          they stay put while the feed scrolls — 闲鱼/xhs pattern. -->
-    <scroll-view class="feed-tabs" scroll-x :show-scrollbar="false">
+    <scroll-view v-if="view !== 'home'" class="feed-tabs" scroll-x :show-scrollbar="false">
       <view class="ft-row" role="tablist" :aria-label="t('plaza.title')">
         <view
           v-for="tab in feedTabs"
@@ -66,7 +81,7 @@
       </view>
     </scroll-view>
 
-    <scroll-view v-if="activeTab !== 'following'" class="board-filters" scroll-x :show-scrollbar="false">
+    <scroll-view v-if="view === 'all' && activeTab !== 'following'" class="board-filters" scroll-x :show-scrollbar="false">
       <view class="board-row" :aria-label="t('plaza.board')">
         <view v-for="category in [null, ...POST_CATEGORIES]" :key="category || 'all'"
           class="board-chip" :class="{ active: selectedCategory === category }" role="button" tabindex="0"
@@ -78,6 +93,7 @@
     </scroll-view>
 
     <scroll-view
+      v-if="view !== 'home'"
       id="plaza-feed-panel"
       class="feed"
       role="tabpanel"
@@ -87,7 +103,8 @@
       @refresherrefresh="onRefresh"
       @scrolltolower="loadMore"
     >
-      <PlazaBannerCarousel />
+      <!-- SPEC 6.2: the banners stay with all discussions; the home and the board pages have none. -->
+      <PlazaBannerCarousel v-if="view === 'all'" />
 
       <template v-if="activeTab === 'following'">
         <view v-if="followLoading && followPeople.length === 0" class="loading">
@@ -370,6 +387,28 @@
         <text>{{ t('home.endOf') }}</text>
       </view>
     </scroll-view>
+
+    <!-- #ifdef H5 -->
+    <scroll-view v-if="view === 'home'" class="home-scroll" scroll-y refresher-enabled
+      :refresher-triggered="refreshing" @refresherrefresh="onRefresh">
+      <CommunityHome
+        :sections="homeSections"
+        :ready="!!homeData"
+        :failed="homeFailed"
+        :desktop="isDesktop"
+        :is-logged-in="isLoggedIn"
+        @board="showBoard"
+        @all="showAll"
+        @compose="openComposer"
+        @retry="loadHome"
+        @login="goToLogin"
+      />
+    </scroll-view>
+    <!-- SPEC 5.3 ⑩: below 1024px the way to start a topic floats above the tab bar. -->
+    <view v-if="!isDesktop && !showComposer" class="community-fab" role="button" :aria-label="t('plaza.write')" @click="openComposer">
+      <UIcon name="plus" size="md" color="ink-inverse" />
+    </view>
+    <!-- #endif -->
 
     <!-- Comment sheet (QA6 #7, r3). HOISTED to the page root (single instance,
          driven by commentingPost) so its position:fixed anchors to the VIEWPORT.
@@ -711,7 +750,7 @@ const mpChrome = mpChromeVars()
 import AppToast from '../../components/AppToast.vue'
 // #endif
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
+import { onLoad, onShow, onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
 
 import { useI18n } from '../../composables/useI18n'
 import { authoredLang } from '../../composables/i18n/format'
@@ -740,6 +779,12 @@ import AppSidebar from '../../components/AppSidebar.vue'
 import { BASE_URL } from '../../config/runtime'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PlazaBannerCarousel from '../../components/PlazaBannerCarousel.vue'
+// #ifdef H5
+import CommunityHeader from '../../components/CommunityHeader.vue'
+import CommunityHome from '../../components/CommunityHome.vue'
+import { useCommunityHome } from '../../composables/useCommunityHome'
+import { buildHomeSections, type HomePostData } from '../../utils/communityHome'
+// #endif
 import UAvatar from '../../components/UAvatar.vue'
 import UBadge from '../../components/UBadge.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
@@ -836,6 +881,99 @@ function selectCategory(category: PostCategory | null) {
   pageIdx.value = 0
   fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: category ?? undefined })
 }
+
+/*
+ * The views of this page (SPEC 4.4): the forum home, one board, or all
+ * discussions, which is the flat list this page used to open on. On H5 each has
+ * an address that opens it directly. The mini program shows the list only.
+ */
+type CommunityView = 'home' | 'board' | 'all'
+const view = ref<CommunityView>('all')
+const pageHeading = computed(() => {
+  // #ifdef H5
+  if (view.value === 'all') return t('plaza.allDiscussions')
+  if (view.value === 'board' && selectedCategory.value) return t(`plaza.category.${selectedCategory.value}`)
+  // #endif
+  return t('plaza.title')
+})
+
+// #ifdef H5
+view.value = 'home'
+// The home lays out differently from 1024px (SPEC 5.2, 5.3), and holds more rows there.
+const desktopMedia = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+  ? window.matchMedia('(min-width: 1024px)') : null
+const isDesktop = ref(!!desktopMedia?.matches)
+const onDesktopChange = (event: MediaQueryListEvent) => { isDesktop.value = event.matches }
+if (typeof desktopMedia?.addEventListener === 'function') {
+  desktopMedia.addEventListener('change', onDesktopChange)
+  onUnmounted(() => desktopMedia.removeEventListener('change', onDesktopChange))
+}
+
+const { homeData, homeFailed, loadHome, clearHome } = useCommunityHome()
+const EMPTY_HOME: HomePostData = { candidates: [], weeklyCategories: [], totalDiscussionCount: 0 }
+// No event source exists before P4.8, so the events block has nothing to show.
+const homeSections = computed(() => buildHomeSections(
+  homeData.value?.posts ?? EMPTY_HOME, homeData.value?.items ?? [], [], homeData.value?.now ?? 0,
+  isDesktop.value ? 'desktop' : 'phone',
+))
+
+// An unknown board or view opens the home (SPEC 4.4).
+onLoad((query) => {
+  const board = POST_CATEGORIES.find(category => category === query?.board)
+  if (board) {
+    view.value = 'board'
+    selectedCategory.value = board
+  } else {
+    view.value = query?.view === 'all' ? 'all' : 'home'
+  }
+})
+
+// Keeps the address on the view being shown, so a reload or a shared link opens the same one.
+function syncAddress() {
+  if (typeof window === 'undefined' || !window.location.hash.startsWith('#/pages/plaza/index')) return
+  const query = view.value === 'board' ? `?board=${selectedCategory.value}` : view.value === 'all' ? '?view=all' : ''
+  const hash = `#/pages/plaza/index${query}`
+  if (window.location.hash !== hash) window.history.replaceState(window.history.state, '', hash)
+}
+
+// A topic published from here belongs on the home, so the snapshot is read again once the home is back.
+let homeStale = false
+function refreshStaleHome() {
+  if (view.value !== 'home' || (homeData.value && !homeStale)) return
+  homeStale = false
+  void loadHome()
+}
+onShow(() => {
+  syncAddress()
+  if (homeStale) refreshStaleHome()
+})
+
+function showHome() {
+  view.value = 'home'
+  selectedCategory.value = null
+  searchText.value = ''
+  syncAddress()
+  refreshStaleHome()
+}
+function showBoard(category: PostCategory) {
+  view.value = 'board'
+  searchText.value = ''
+  selectCategory(category)
+  syncAddress()
+}
+function showAll() {
+  if (view.value === 'all') return
+  view.value = 'all'
+  selectCategory(null)
+  syncAddress()
+}
+// The phone top bar has a search icon, not a field: the field is in all discussions.
+function openSearch() {
+  showAll()
+  searchFocused.value = false
+  nextTick(() => { searchFocused.value = true })
+}
+// #endif
 
 function onFeedTabKeydown(event: KeyboardEvent, current: FeedTabKey) {
   const order: FeedTabKey[] = ['following', 'hot', 'recent']
@@ -969,18 +1107,28 @@ function onImgLoad(e: any, post: Post, idx: number) {
 }
 
 const searchText = ref('')
+const searchFocused = ref(false)
 let searchDebounce: ReturnType<typeof setTimeout> | null = null
+function runSearch() {
+  // #ifdef H5
+  // The header field is on every view; a search lists across boards, in all discussions.
+  if (view.value !== 'all') {
+    if (!searchText.value.trim()) return
+    view.value = 'all'
+    selectedCategory.value = null
+    syncAddress()
+  }
+  // #endif
+  pageIdx.value = 0
+  fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
+}
 function onSearchInput() {
   if (searchDebounce) clearTimeout(searchDebounce)
-  searchDebounce = setTimeout(() => {
-    pageIdx.value = 0
-    fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
-  }, 300)
+  searchDebounce = setTimeout(runSearch, 300)
 }
 function onSearchSubmit() {
   if (searchDebounce) clearTimeout(searchDebounce)
-  pageIdx.value = 0
-  fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
+  runSearch()
 }
 function clearSearch() {
   searchText.value = ''
@@ -1198,7 +1346,7 @@ const { uploadImagesWithDims, removeOwnedItemImages } = useItems()
 const { translateContentToAll } = useTranslate()
 const { addPostToHistory } = useHistory()
 
-async function openComposer() {
+async function openComposer(board?: unknown) {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
   composerDialogOpener = activeElement()
@@ -1215,8 +1363,9 @@ async function openComposer() {
   // visible textarea (mirroring the previous timing contract).
   composerMode.value = 'topic'
   composerTitle.value = ''
-  // Opened from a board (the board filter is set): that board is preselected.
-  composerCategory.value = selectedCategory.value
+  // Opened from a board (a home card's filler, or the board filter is set): that
+  // board is preselected. A click passes its event here, which names no board.
+  composerCategory.value = POST_CATEGORIES.find(category => category === board) ?? selectedCategory.value
   composerErrors.value = {}
   composerText.value = ''
   composerImages.value = []
@@ -1314,6 +1463,9 @@ function resetPlazaAccountState() {
   for (const id of Object.keys(translations)) delete translations[id]
   reportLoading.cancel()
   clearPosts()
+  // #ifdef H5
+  clearHome()
+  // #endif
 }
 
 const stopAccountTransitionListener = onAccountTransition(resetPlazaAccountState)
@@ -1330,6 +1482,13 @@ async function reloadPlazaForCurrentAccount() {
   const userId = currentUser.value?.id
   const accountToken = userId ? captureAccountRequest(userId) : null
   if (accountToken && !isAccountRequestCurrent(accountToken)) return
+  // #ifdef H5
+  // The home read waits on the same block list itself.
+  if (view.value === 'home') {
+    await loadHome()
+    return
+  }
+  // #endif
   if (accountToken) {
     const moderationGate = await ensureBlockedLoaded()
     if (
@@ -1384,6 +1543,14 @@ async function onRefresh() {
   pageIdx.value = 0
   const failsafe = setTimeout(() => { refreshing.value = false }, 10000)
   try {
+    // #ifdef H5
+    if (view.value === 'home') {
+      await loadHome()
+      // The last snapshot stays on screen, so a refresh that failed has to say so.
+      if (homeFailed.value && homeData.value) uni.showToast({ title: t('plaza.loadFailed'), icon: 'none', duration: 3000 })
+      return
+    }
+    // #endif
     await fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
   } finally {
     clearTimeout(failsafe)
@@ -1637,6 +1804,9 @@ async function onSubmitPost() {
       }
     }
 
+    // #ifdef H5
+    homeStale = true
+    // #endif
     // The current board/search may exclude the new post. Show its committed
     // identity, including partial attachment success, so retry never means a
     // second post. The existing warning toast remains visible on navigation.
@@ -2196,10 +2366,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   background: var(--canvas);
   border-bottom: 0.5px solid var(--border);
 }
-/* Desktop compose button — hidden on mobile (the header compose-btn covers
-   that case); revealed + laid out beside the search bar in the 768 block. */
-.plaza-compose-d { display: none; }
-.pcd-label { font-size: 14px; font-weight: 600; color: #fff; white-space: nowrap; letter-spacing: 0.01em; }
 .search-bar {
   display: flex; align-items: center; gap: 8px;
   background: var(--surface-alt);
@@ -3014,16 +3180,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
      640px reading width so the toolbar aligns with the posts. */
   .search-wrap, .feed-tabs, .board-filters, .feed { max-width: 640px; margin-left: auto; margin-right: auto; }
   .feed { padding-bottom: 0; }
-  /* Search bar + compose button share the toolbar row on desktop. */
-  .search-wrap { display: flex; align-items: center; gap: 10px; }
-  .search-bar { flex: 1; min-width: 0; }
-  .plaza-compose-d {
-    display: inline-flex; align-items: center; gap: 7px; flex: none;
-    padding: 9px 16px; border-radius: var(--radius-md);
-    background: var(--brand); cursor: pointer;
-    transition: transform var(--dur-1, 120ms) var(--ease-std, ease), background var(--dur-1, 120ms) var(--ease-std, ease);
-  }
-  .plaza-compose-d:active { transform: scale(0.96); background: var(--brand-deep); }
   /* SPEC 6.3.2: on desktop the list sits in one surface container. */
   .posts {
     margin: var(--space-2) 0 var(--space-5); padding: 0;
@@ -3093,4 +3249,29 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .field-error { display: block; margin-top: 6px; font-size: 13px; color: var(--danger); }
 .comp-body-error { padding: 0 16px; }
 .title-left { display: block; margin-top: 6px; font-size: 12px; color: var(--text-secondary); }
+
+/* #ifdef H5 */
+.home-scroll { flex: 1; min-height: 0; }
+/* 52px round, 16px above the 62px tab bar (SPEC 5.3 ⑩). */
+.community-fab {
+  position: fixed; right: var(--space-4); z-index: 30;
+  bottom: calc(62px + var(--space-4) + env(safe-area-inset-bottom, 0px));
+  width: 52px; height: 52px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--brand); box-shadow: var(--shadow-pop); cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  &:active { background: var(--brand-deep); }
+}
+@media (min-width: 768px) {
+  /* No tab bar from here up. */
+  .community-fab { right: var(--space-6); bottom: var(--space-6); }
+}
+@media (min-width: 1024px) {
+  /* SPEC 4.3: the community page has its own 56px header and no left rail;
+     that header holds the search field. */
+  .page.has-sidebar { padding-left: 0; }
+  .page :deep(.app-sidebar) { display: none; }
+  .search-wrap { display: none; }
+}
+/* #endif */
 </style>

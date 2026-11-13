@@ -461,7 +461,7 @@ test('plaza Following keeps people visible and retries the failed page without s
   const state: PagedState = { pageRequests: {}, failPagesFrom: 1 }
   await seedSession(page)
   await servePaged(page, '/rest/v1/follows', FOLLOW_PAGE_SIZE, followRows, state)
-  await page.goto('/#/pages/plaza/index', { waitUntil: 'domcontentloaded' })
+  await page.goto('/#/pages/plaza/index?view=all', { waitUntil: 'domcontentloaded' })
   await page.getByRole('tab', { name: 'Following', exact: true }).click()
   await expect(page.locator('.follow-person')).toHaveCount(FOLLOW_PAGE_SIZE)
   await expect.poll(async () => {
@@ -486,7 +486,7 @@ test('plaza keeps its loaded posts when the next page fails', async ({ page }) =
   await seedSession(page)
   await servePaged(page, '/rest/v1/posts', PLAZA_PAGE_SIZE, postRows, state)
 
-  await page.goto('/#/pages/plaza/index', { waitUntil: 'domcontentloaded' })
+  await page.goto('/#/pages/plaza/index?view=all', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText('Paged post 1', { exact: true })).toBeVisible()
 
   await expect.poll(async () => {
@@ -511,7 +511,7 @@ test('plaza still fills the screen with the failure when the first page fails', 
   await seedSession(page)
   await servePaged(page, '/rest/v1/posts', PLAZA_PAGE_SIZE, postRows, state)
 
-  await page.goto('/#/pages/plaza/index', { waitUntil: 'domcontentloaded' })
+  await page.goto('/#/pages/plaza/index?view=all', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('alert').getByRole('button', { name: 'Retry', exact: true })).toBeVisible()
   await expect(
     page.getByText('No posts yet. Be the first!', { exact: true }),
