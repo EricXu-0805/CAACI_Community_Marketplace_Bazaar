@@ -298,3 +298,15 @@
 - ci_run_url: —
 - 未测项: ⑤ 等 P1.7 的 PR CI
 - 下一条: P1.10
+
+### L25 · 2026-11-13 00:41 CT · P1.6 依赖审计：npm audit fix 不能让审计通过，停这条等 Eric
+- task_id: P1.6
+- code_sha: —（没有提交；lockfile 已退回 14b4e4a）
+- docs_sha: f6e71ee5f20fc60ae281bf2d5db5b7033f41ae68
+- 环境: 本地 tony-ws，pw1.65 镜像（npm 11 审计）与宿主机 npm 10.9.9
+- 命令: 基线 `~/work/illini-dev-env/run-checks.sh ~/work/illini-config install npmaudit`（log check-20261113T063637Z-npmaudit.log）；`cd app && npm audit fix --legacy-peer-deps`（不带 --force）；`~/work/illini-dev-env/run-checks.sh ~/work/illini-config install npmaudit`（log check-20261113T063818Z-npmaudit.log）；第二遍 `npm audit fix --legacy-peer-deps` 没有任何变化；第一遍的 lockfile 变化存 ~/work/evidence/P1.6/audit-fix-pass1.patch 与 lock-changes.txt，没有提交
+- 计数: ① 基线与 DoD 不一致：第一次 npm 11 审计报 13 个（9 moderate、4 high），audit fix 之后同一镜像报 43 个（8 moderate、35 high），宿主机 npm 10.9.9 报 46 个（8 moderate、38 high）；涉及的 7 个包都在 L01 的名单内，没有新包。② 第一遍 audit fix 改了 22 项：@sentry 插件树重组（@sentry/vite-plugin 5.2.0→5.4.1，新增 @sentry/bundler-plugins 10.78.0 等）、@sentry/cli 2.58.5→2.58.6、dotenv 16.6.1→17.4.2、glob 13.0.6→13.0.7、minimatch 10.2.5→10.2.6、lru-cache、balanced-match。③ 不通过：剩余 @intlify/core-base、@intlify/shared（package.json overrides 固定 9.14.5，要 --force；GHSA-8rc2-428q-7ww3、GHSA-83rm-6c8r-g728）、qs（要 --force；GHSA-6pq8-jhm2-2vcw）、vite 6.4.4（没有修复版；GHSA-8g5g-mxqh-grgj）、follow-redirects（GHSA-mrwp-f3q8-3g9p）、glob（GHSA-3g3m-2fjr-6pw4）、minimatch（GHSA-g3hv-75wg-m249），后三个标注 audit fix 可修但没修动 [本地测]
+- ci_run_url: —
+- 未测项: ④ 全量（没有可提交的修复）
+- 下一条: P1.10
+- 附: 停这条（STOP-14，同时 D-41 要求 --force 项与 vite 逐个报 Eric）。问题已经通过提问发给用户；按用户的硬规则 2（不外发消息），没有在 PR 上留言。D-41 已定后 P1.7 的依赖包括 P1.6，所以 P1.7 一起等。
