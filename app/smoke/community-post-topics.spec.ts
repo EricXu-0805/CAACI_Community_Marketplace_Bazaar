@@ -88,21 +88,31 @@ async function fixture(page: Page, lang: 'en' | 'zh' = 'en') {
   return { writes, searches, behavior }
 }
 
-test('legacy rows, board filtering, title search and topic detail coexist', async ({ page }) => {
-  const h = await fixture(page)
-  await page.locator('.comp-cancel').click()
-  await expect(page.getByText('Legacy campus update', { exact: true })).toBeVisible()
-  await expect(page.getByRole('heading', { name: TOPIC.title })).toBeVisible()
-  await page.locator('.board-filters').getByRole('button', { name: 'Campus life', exact: true }).click()
-  await expect(page.getByText('Legacy campus update', { exact: true })).toHaveCount(0)
-  await page.locator('.sb-input input').fill('Quantum')
-  await expect.poll(() => h.searches.length).toBeGreaterThan(0)
-  expect(h.searches.at(-1)?.category_in).toBe('campus-life')
-  await page.getByRole('heading', { name: TOPIC.title }).click()
-  await expect(page).toHaveURL(new RegExp(`pages/post/index.*id=${TOPIC.id}`))
-  await expect(page.locator('.post-topic-title')).toHaveText(TOPIC.title)
-  await expect(page.locator('.post-board')).toHaveText('Campus life')
-})
+for (const width of [390, 1280]) {
+  test(`legacy rows, board filtering, title search and topic board links coexist at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 })
+    const h = await fixture(page)
+    await page.locator('.comp-cancel').click()
+    await expect(page.getByText('Legacy campus update', { exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: TOPIC.title })).toBeVisible()
+    await page.locator('.board-filters').getByRole('button', { name: 'Campus life', exact: true }).click()
+    await expect(page.getByText('Legacy campus update', { exact: true })).toHaveCount(0)
+    await page.locator('.sb-input input').fill('Quantum')
+    await expect.poll(() => h.searches.length).toBeGreaterThan(0)
+    expect(h.searches.at(-1)?.category_in).toBe('campus-life')
+    await page.getByRole('heading', { name: TOPIC.title }).click()
+    await expect(page).toHaveURL(new RegExp(`pages/post/index.*id=${TOPIC.id}`))
+    await expect(page.locator('.post-topic-title')).toHaveText(TOPIC.title)
+    await expect(page.locator('.post-board')).toHaveText('Campus life')
+    await page.screenshot({ path: `test-results/visual/P2.10/board-link-${width}-light-en.png` })
+    await page.locator('.post-board').click()
+    await expect(page).toHaveURL(/#\/pages\/plaza\/index$/)
+    await expect(page.locator('.board-filters').getByRole('button', { name: 'Campus life', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.locator('.sb-input input')).toHaveValue('')
+    await expect(page.getByText('Legacy campus update', { exact: true })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: TOPIC.title })).toBeVisible()
+  })
+}
 
 test('topic validates metadata before writing and sends the selected board', async ({ page }) => {
   const h = await fixture(page)

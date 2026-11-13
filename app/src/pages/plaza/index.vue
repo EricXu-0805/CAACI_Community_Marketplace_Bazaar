@@ -680,7 +680,7 @@ const mpChrome = mpChromeVars()
 import AppToast from '../../components/AppToast.vue'
 // #endif
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
+import { onLoad, onShow, onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
 
 import { useI18n } from '../../composables/useI18n'
 import { authoredLang } from '../../composables/i18n/format'
@@ -699,9 +699,11 @@ import { useVisualViewportBounds } from '../../composables/useVisualViewportInse
 import { localizeLocation } from '../../composables/useCampusSpots'
 import { createOwnedLoading } from '../../composables/ownedLoading'
 import { createClientMessageId } from '../../api/clientMessageId'
+import { communityNavigation } from '../../api/communityNavigation'
 import { readAccountPrivateStorage, writeAccountPrivateStorage, removeAccountPrivateStorage } from '../../api/accountLocalPrivacy'
 import type { Post, PostComment, Item } from '../../types'
 import { POST_CATEGORIES, POST_TITLE_MAX, normalizePostTopic, type PostCategory } from '../../utils/communityPost'
+import { safeItemMediaUrls } from '../../utils/publicResource'
 import { REGIONS, regionLabel, showRegionSwitcher } from '../../utils/region'
 import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
 import { DIALOG_DANGER, DIALOG_WARN } from '../../utils/dialogColors'
@@ -807,6 +809,23 @@ function selectCategory(category: PostCategory | null) {
   pageIdx.value = 0
   fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: category ?? undefined })
 }
+
+onLoad(options => {
+  if (!options || !('board' in options || 'view' in options)) return
+  communityNavigation.pendingBoard = 'board' in options ? String(options.board || '') : null
+  communityNavigation.pendingView = 'view' in options ? String(options.view || '') : null
+})
+
+onShow(() => {
+  const { pendingBoard, pendingView } = communityNavigation
+  communityNavigation.pendingBoard = null
+  communityNavigation.pendingView = null
+  if (pendingBoard === null && pendingView === null) return
+  searchText.value = ''
+  activeTab.value = 'recent'
+  selectCategory(pendingView === null && POST_CATEGORIES.includes(pendingBoard as PostCategory)
+    ? pendingBoard as PostCategory : null)
+})
 
 function onFeedTabKeydown(event: KeyboardEvent, current: FeedTabKey) {
   const order: FeedTabKey[] = ['following', 'hot', 'recent']
@@ -1191,6 +1210,8 @@ async function openComposer() {
   composerDialogOpener = activeElement()
   composerSessionId += 1
   composerAccountToken = captureAccountRequest(currentUser.value.id)
+  const openedSessionId = composerSessionId
+  const openedAccountToken = composerAccountToken
   composerPostId.value = createClientMessageId()
   outcomeUncertain.value = false
   publicationMissing.value = false
@@ -1207,7 +1228,11 @@ async function openComposer() {
   showAttachSheet.value = false
   composerFocused.value = false
   showComposer.value = true
-  setTimeout(() => { composerFocused.value = true }, 300)
+  nextTick(() => {
+    if (showComposer.value && openedSessionId === composerSessionId && isAccountRequestCurrent(openedAccountToken)) {
+      composerFocused.value = true
+    }
+  })
   const draft = readAccountPrivateStorage<ComposerDraft | null>(COMPOSER_DRAFT_KEY, null).value
   if (draft && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(draft.postId)
     && (draft.mode === 'topic' || draft.mode === 'update')
@@ -1672,8 +1697,9 @@ async function onSubmitPost() {
   let partialUpload: { done: number; total: number } | null = null
   try {
     let imageDims: Array<{ w: number; h: number }> = []
-    const existingImages = composerImages.value.filter(image => /^https?:/.test(image))
-    const localImages = composerImages.value.filter(image => !/^https?:/.test(image))
+    const existingImages = safeItemMediaUrls(composerImages.value, submitAccountToken.userId)
+    const uploadedImages = new Set(existingImages)
+    const localImages = composerImages.value.filter(image => !uploadedImages.has(image))
     imageUrls = [...existingImages]
     const expectedImages = localImages.length
     if (expectedImages > 0) {
@@ -1688,9 +1714,10 @@ async function onSubmitPost() {
         throw upErr
       }
       newlyUploadedUrls = up.urls
+      let localIndex = 0
       imageUrls = composerImages.value.flatMap(image => {
-        if (/^https?:/.test(image)) return [image]
-        const index = up.sourceIndices.indexOf(localImages.indexOf(image))
+        if (uploadedImages.has(image)) return [image]
+        const index = up.sourceIndices.indexOf(localIndex++)
         return index < 0 ? [] : [up.urls[index]]
       })
       imageDims = existingImages.length ? [] : up.dims

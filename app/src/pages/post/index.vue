@@ -40,7 +40,10 @@
           </view>
         </view>
 
-        <text v-if="post.category" class="post-board">{{ t(`plaza.category.${post.category}`) }}</text>
+        <text v-if="post.category" class="post-board" role="button" tabindex="0"
+          @click.stop="openCommunityBoard(post.category)"
+          @keydown.enter.prevent="openCommunityBoard(post.category)"
+          @keydown.space.prevent="openCommunityBoard(post.category)">{{ t(`plaza.category.${post.category}`) }}</text>
         <text v-if="post.title" class="post-topic-title" role="heading" aria-level="2">{{ post.title }}</text>
         <view class="content-wrap">
           <text class="content">{{ displayContent }}</text>
@@ -318,6 +321,7 @@ import { useLongPress } from '../../composables/useLongPress'
 import { useKeyboardHeight } from '../../composables/useKeyboardHeight'
 import { useVisualViewportBounds } from '../../composables/useVisualViewportInset'
 import { createOwnedLoading } from '../../composables/ownedLoading'
+import { openCommunityBoard } from '../../api/communityNavigation'
 import {
   captureAccountRequest,
   isAccountRequestCurrent,
@@ -585,7 +589,7 @@ onUnload(() => {
 onShareAppMessage(() => {
   const p = post.value
   if (!p) return { title: t('share.plaza'), path: '/pages/plaza/index' }
-  const firstLine = (p.title || localize(p.content_i18n, p.content || '')).split('\n')[0].slice(0, 50).trim() || t('share.plaza')
+  const firstLine = Array.from((p.title || localize(p.content_i18n, p.content || '')).split('\n')[0]).slice(0, 50).join('').trim() || t('share.plaza')
   return {
     title: firstLine,
     path: `/pages/post/index?id=${p.id}`,
@@ -596,7 +600,7 @@ onShareAppMessage(() => {
 onShareTimeline(() => {
   const p = post.value
   if (!p) return { title: t('share.plaza') }
-  const firstLine = (p.title || localize(p.content_i18n, p.content || '')).split('\n')[0].slice(0, 50).trim() || t('share.plaza')
+  const firstLine = Array.from((p.title || localize(p.content_i18n, p.content || '')).split('\n')[0]).slice(0, 50).join('').trim() || t('share.plaza')
   return {
     title: firstLine,
     query: `id=${p.id}`,
