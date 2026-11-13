@@ -1,6 +1,6 @@
 # STATUS
 
-写于 2026-11-13 02:00 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-13 02:15 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
 `next_task_id: P2.7`
 
@@ -12,7 +12,7 @@
 | code_sha | 9b27fccf981eb9f30729585df03eacd682908f62（OMO 推送 REGION.1 后的 #369 head） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-12 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-12 git ls-remote] |
-| docs_sha | d42268a25c7531e2af67cff570f41766a196f908（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
+| docs_sha | b27e1dbafefc8ddd671fdbcf9741400a480c7494（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
 | 配置 / 品牌 / 首页分支 | codex/config-fixes-20261112 远端 14b4e4a（P1.2–P1.5），没开 PR（P1.7）；品牌、首页还没建（BRAND.1 / HOME.3）[本地测] |
 | tony-ws 仓库 | ~/work/illini 在 005ca9d；~/work/illini-docs 已切到 codex/community-plan-v5（P1.1 ④，见 STATUS_LOG L15）[本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
@@ -69,7 +69,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P2.7–P2.13、REGION.2 | 未测 | 依赖 P2.4 / P2.5 / P2.6 |
 | BRAND.1–BRAND.3 | 未测 | 基线计数写在 BACKLOG 各自 DoD |
 | BRAND.4–BRAND.7 | 未测 | 等 D-34、D-30（E7）、D-36、D-35 |
-| HOME.1 | 未测 | ①–③ 由 design/direction-{a,b,c}.html 与 design/screenshots/ 满足（2026-11-12 14:18 CT，L08），以 design/ 为准，不另做；④ 只跑过脚本对比度，axe 未跑；⑤ 等待 D-35 |
+| HOME.1 | 通过 | ①–③ 以 design/ 为准（L08）；④ axe 4.14.0：12 个组合 color-contrast 0、<12px 0、溢出 0 [本地测]；⑤ D-35 已定 A |
 | HOME.2、HOME.3、HOME.5 | 未测 | 依赖 P2.5、REGION.1 |
 | HOME.4、P2.12 | 未测 | 等 D-35 |
 | P3.1–P3.8 | 未测 | 依赖 P2.13（#369 合并） |

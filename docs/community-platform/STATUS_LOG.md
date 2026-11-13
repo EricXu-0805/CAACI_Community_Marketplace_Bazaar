@@ -418,3 +418,15 @@
 - 未测项: 无
 - 下一条: P2.7
 - 附: CAMPUS_CALENDARS 先留空，等 P4.7 第二步按 D-33（A）填；ICS 解析归 P4.7。#369 合并后按 §1 改成 codex/community-events-<日期> 再推。
+
+### L35 · 2026-11-13 02:15 CT · HOME.1 视觉稿 axe 复核：12 个页面×宽度组合 0 违规，共用 axe 工具装好
+- task_id: HOME.1
+- code_sha: —（只动 illini-dev-env/tools 与材料分支 appendix；三份视觉稿 HTML 未改）
+- docs_sha: b27e1dbafefc8ddd671fdbcf9741400a480c7494
+- 环境: 本地 tony-ws，localhost/illini-dev:pw1.65-node22-pg17（Chromium 随 Playwright 1.65.0）
+- 命令: ~/work/illini-dev-env/tools/package.json 固定 axe-core 4.14.0、opentype.js 2.0.0（BRAND.4 子任务装）、playwright 1.65.0（`npm install --save-exact`，PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1，用镜像自带浏览器）；新写 page-audit.mjs：打开静态页，按宽度输出 axe color-contrast 违规数、可见且 <12px 的文字节点数、横向溢出像素，只含「·」的文字按 design/README.md「检查」不计。照 BACKLOG 命令对 direction-{a,b,c}.html 与 #detail（:target 切到话题页）各跑 390、1280；两个文件复制到 appendix/env/tools/
+- 计数: ① design/ 3 个 HTML、27 张截图都在（L08）；② ③ 以 design/ 为准；④ 12 个组合 color-contrast 0、<12px 0、390 溢出 0px（~/work/evidence/HOME.1/20261113T081211Z-audit.json）；反向对照页（#bbb 对白 1.91:1、10px、600px 宽块）报出 contrast 1、small 1、overflow 210，证明三项都能报错；⑤ D-35 已定 A（#370 留言 2026-11-13 05:52 UTC），不再等待 [本地测]。sha256：package.json a8f7aea50b03687b5a82ee3606145cfdd0e59829d6ab4f5962a2ac957e0e28df，page-audit.mjs 16ba4c5dbc25008e071a8d28eb88026044aaf3d150c0f9630912779a74e5d08f
+- ci_run_url: —
+- 未测项: 无
+- 下一条: P2.7
+- 附: 没有违规，所以三份 HTML 不改。暗色与英文稿仍由 HOME.4 的截图矩阵补。
