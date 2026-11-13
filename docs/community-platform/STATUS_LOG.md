@@ -229,3 +229,14 @@
 - 未测项: 无
 - 下一条: P1.5
 - 附: 范围外仍有旧色 #C74A2F：api/auth/send-illini-code.js、api/meetup-notify.js、api/notification-digest.js、api/unsubscribe.js 的邮件内联样式，以及 supabase/email-templates 两个模板，另有 App.vue 3 行注释。P1.4 只管 app/src，没有改；建议在 BRAND.2（邮件显示名）时一并处理，或由 Eric 另定。
+
+### L19 · 2026-11-13 00:03 CT · P1.5 Playwright 升到 1.65.0：STOP-8 后经 Eric 批准，fsevents 删除算在 D-16 范围内
+- task_id: P1.5
+- code_sha: 14b4e4ae60bfc953783b2b1f72b84ec549ed457d（codex/config-fixes-20261112，本地提交，P1.9 全量通过后再推）
+- docs_sha: 095985f48edcc964406aea22b8539613676f223d
+- 环境: 本地 tony-ws，宿主机 npm 10.9.9
+- 命令: 第一次：`cd ~/work/illini-config/app && npm install --legacy-peer-deps --no-audit --no-fund --save-dev @playwright/test@^1.65.0`，DoD ② 的 grep 只列出 `-    "node_modules/playwright/node_modules/fsevents": {`，即第 4 个包，按 STOP-8 / §14 第 7 行停这条，补丁存 ~/work/evidence/P1.5/20261113T054220Z-p1.5-attempt.patch，两个文件退回 P1.4 状态。Eric 答复（经 Claude 代答）：「算在范围内……fsevents 是 Playwright 1.65 自己去掉的 macOS 可选依赖，属于 D-16 批准的 Playwright 升级本身带来的变化。lockfile 里如果还有这三个包和 fsevents 以外的变化，仍按 STOP-8 停」。第二次照同一命令重做，app/package.json 只保留版本行（npm 会把 devDependencies 重新排序，没有带进提交）；lockfile diff 存 ~/work/evidence/P1.5/20261113T055600Z-lock.diff（98 行）
+- 计数: ① app/package.json 为 ^1.65.0；② lockfile 变化：@playwright/test、playwright、playwright-core 1.60.0→1.65.0（engines node >=18→>=20），删除 node_modules/playwright/node_modules/fsevents 2.3.2（playwright 不再声明 optionalDependencies fsevents），没有其他变化；③ ci.yml 无 ubuntu-24.04 [本地测]
+- ci_run_url: —
+- 未测项: ④ 等 P1.9 的 pw1.65 镜像；⑤ 等 P1.7 的 PR CI
+- 下一条: P1.9
