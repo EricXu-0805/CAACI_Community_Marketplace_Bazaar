@@ -218,6 +218,27 @@ const zeroCounts = (page: Page) => page.locator('.ch, .cx-hdr, .cx-m').evaluateA
 }))
 const top = async (page: Page, selector: string) => (await page.locator(selector).first().boundingBox())!.y
 
+async function captureStartHereThemes(page: Page, size: { width: number; height: number }) {
+  await page.locator('.ch [data-block="start-here"]').screenshot({
+    path: `test-results/visual/D47/start-here-${size.width}-light.png`, animations: 'disabled',
+  })
+  const darkPage = await page.context().newPage()
+  try {
+    await darkPage.setViewportSize(size)
+    await darkPage.routeWebSocket(/\.supabase\.co(?:[:/]|$)/, socket => socket.close())
+    await openHome(darkPage, { posts: SHOWCASE, items: SHOWCASE_ITEMS }, { theme: 'dark' })
+    if (size.width < 1024) await darkPage.locator('.ch [data-block="start-here"] .ch-fold').click()
+    const labels = darkPage.locator('.ch [data-block="start-here"] .ch-tag')
+    await expect(labels).toHaveText(['指南', '守则'])
+    await expect(labels.first()).toHaveCSS('font-size', '12px')
+    await darkPage.locator('.ch [data-block="start-here"]').screenshot({
+      path: `test-results/visual/D47/start-here-${size.width}-dark.png`, animations: 'disabled',
+    })
+  } finally {
+    await darkPage.close()
+  }
+}
+
 const PHONE = { width: 390, height: 844, scale: 2, mobile: true }
 const TABLET = { width: 768, height: 1024, scale: 1, mobile: false }
 const DESKTOP = { width: 1280, height: 800, scale: 1, mobile: false }
@@ -384,6 +405,10 @@ for (const size of [PHONE, DESKTOP]) {
         // The bar opens in place.
         await fold.click()
         await expect(page.locator('.ch [data-block="start-here"] .ch-guide-t')).toHaveText(['新生落脚清单：第一周要办的 8 件事', '社区守则（2026 年 11 月版）'])
+        // SPEC 5.3 ④, as 5.2 S1: a 12px type label stands before each title.
+        const kinds = page.locator('.ch [data-block="start-here"] .ch-guide > *')
+        await expect(kinds).toHaveText(['指南', '新生落脚清单：第一周要办的 8 件事', '守则', '社区守则（2026 年 11 月版）'])
+        await expect(kinds.first()).toHaveCSS('font-size', '12px')
         const ids = await postIds(page)
         expect(new Set(ids).size).toBe(ids.length)
 
@@ -393,6 +418,7 @@ for (const size of [PHONE, DESKTOP]) {
         expect(button!.width).toBeCloseTo(52, 0)
         // 16px above the bar, give or take the bar's hairline top border.
         expect(Math.abs(bar!.y - (button!.y + button!.height) - 16)).toBeLessThanOrEqual(1)
+        await captureStartHereThemes(page, size)
       })
 
       test('① with fewer than five left, the latest block is only the button; a short board gets one filler', async ({ page }) => {
@@ -566,6 +592,10 @@ for (const size of [PHONE, DESKTOP]) {
         await expect(page.locator('.ch-side [role="heading"]')).toHaveText(['新来先看', '本周热议', '关于本站'])
         await expect(page.getByText('近期活动')).toHaveCount(0)
         await expect(page.locator('.ch-side [data-block="start-here"] .ch-guide-t')).toHaveText(['新生落脚清单：第一周要办的 8 件事', '社区守则（2026 年 11 月版）'])
+        // SPEC 5.2 S1: a 12px type label, 「守则」 or 「指南」, stands before each title.
+        const kinds = page.locator('.ch-side [data-block="start-here"] .ch-guide > *')
+        await expect(kinds).toHaveText(['指南', '新生落脚清单：第一周要办的 8 件事', '守则', '社区守则（2026 年 11 月版）'])
+        await expect(kinds.first()).toHaveCSS('font-size', '12px')
         const hot = page.locator('.ch-side [data-block="hot"] .ch-hot')
         await expect(hot).toHaveCount(5)
         await expect(hot.first().locator('.ch-row-t')).toHaveText('周末带爸妈吃饭，Champaign 哪家中餐适合')
@@ -575,6 +605,7 @@ for (const size of [PHONE, DESKTOP]) {
         const ids = await postIds(page)
         expect(ids.length).toBe(20 + 15 + 2 + 5)
         expect(new Set(ids).size).toBe(ids.length)
+        await captureStartHereThemes(page, size)
       })
 
       test('④ 20 posts: six full cards and the latest block as one line; 60 posts: fifteen latest rows', async ({ page }) => {

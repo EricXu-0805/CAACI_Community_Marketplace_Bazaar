@@ -36,6 +36,8 @@ export interface HomePostRow {
   replyCount?: number
   unanswered: boolean
 }
+/** A start-here row also names its kind, 「守则」 or 「指南」 (SPEC 5.2 S1). */
+export interface HomeStartRow extends HomePostRow { type: HomeMessage }
 export interface HomeFillerRow { kind: 'filler' }
 export interface HomeBoardCard {
   kind: 'board'
@@ -55,16 +57,21 @@ export interface HomeMarketCard {
 export interface HomeSections {
   cards: (HomeBoardCard | HomeMarketCard)[]
   latest: { mode: 'list' | 'link'; rows: HomePostRow[]; link: HomeMessage }
-  newHere: HomePostRow[] | null
+  newHere: HomeStartRow[] | null
   events: HomeEvent[] | null
   hot: { presentation: 'sidebar' | 'tab'; rows: HomePostRow[] } | null
   showAbout: boolean
 }
 
 const DAY = 86_400_000
-/** The filler uses the same catalog messages on home cards and board pages. */
+/**
+ * The filler uses the same catalog messages on home cards and board pages.
+ * SPEC 7 joins them differently: 「适合在这里问：{话题} 发第一帖 ›」 and
+ * "Good for: {topics} · Post the first one ›".
+ */
 export function boardFiller(category: PostCategory, t: (key: string) => string, lang: string): string {
-  return `${t('home.fillPrefix')}${lang === 'zh' ? '' : ' '}${t(`plaza.boardAsk.${category}`)} ${t('home.firstPost')}`
+  const zh = lang === 'zh'
+  return `${t('home.fillPrefix')}${zh ? '' : ' '}${t(`plaza.boardAsk.${category}`)}${zh ? ' ' : ' · '}${t('home.firstPost')}`
 }
 
 // Binary string comparison avoids dependence on the host's locale.
@@ -142,7 +149,13 @@ export function buildHomeSections(
     if (pin) card.rows.push(take(pin))
   }
   // Featured posts have their own slot; a pinned featured post stays in its board.
-  const newHere = allowed.filter(p => p.is_official && p.is_featured && !used.has(p.id)).slice(0, 5).map(take)
+  // SPEC 2 names 社区守则 (Community guidelines), but provides no stored kind.
+  // Identify that title for now; the rules/guide metadata contract remains undecided.
+  const newHere: HomeStartRow[] = allowed.filter(p => p.is_official && p.is_featured && !used.has(p.id)).slice(0, 5)
+    .map(post => ({
+      ...take(post),
+      type: { key: /社区守则|community guidelines/i.test(post.title || '') ? 'home.typeRules' : 'home.typeGuide' },
+    }))
   for (const card of cards) {
     const authors = new Map<string, number>()
     for (const existing of card.rows) {

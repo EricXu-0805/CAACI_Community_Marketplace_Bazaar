@@ -1,3 +1,9 @@
+/*
+ * The two tables below are copied by hand from SPEC §11 "HOME.3 首页" (and the §3
+ * board tables it points to) as they stand in docs/community-platform/SPEC.md at
+ * docs_sha 81196fa. This branch carries no SPEC.md, so nothing compares them for
+ * us: when SPEC changes, update these rows and the docs_sha above with it.
+ */
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'

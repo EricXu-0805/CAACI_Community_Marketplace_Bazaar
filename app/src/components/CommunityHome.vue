@@ -30,6 +30,7 @@
           <template v-if="startOpen">
             <view v-for="row in sections.newHere" :key="row.post.id" class="ch-guide" role="button"
               :data-post-id="row.post.id" @click="openPost(row.post.id)">
+              <text class="ch-tag">{{ tx(row.type) }}</text>
               <text class="ch-guide-t">{{ row.post.title }}</text>
             </view>
           </template>
@@ -181,6 +182,7 @@
               <text class="ch-sb-h" role="heading" aria-level="2">{{ t('home.startHere') }}</text>
               <view v-for="row in sections.newHere" :key="row.post.id" class="ch-guide" role="button"
                 :data-post-id="row.post.id" @click="openPost(row.post.id)">
+                <text class="ch-tag">{{ tx(row.type) }}</text>
                 <text class="ch-guide-t">{{ row.post.title }}</text>
               </view>
             </view>
@@ -374,7 +376,7 @@ function copyAbout() {
 .ch-lr-t { display: block; font-size: var(--t-body); line-height: var(--lh-caption); font-weight: 500; color: var(--ink); overflow: hidden; }
 .ch-more { display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; }
 .ch-more-t { color: var(--ink-soft); }
-.ch-guide { display: flex; align-items: center; height: 36px; cursor: pointer; }
+.ch-guide { display: flex; align-items: center; gap: var(--space-2); height: 36px; cursor: pointer; }
 .ch-guide-t { min-width: 0; font-size: 14px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ch-foot-l { font-size: var(--t-meta); line-height: var(--space-5); color: var(--ink-soft); text-decoration: none; cursor: pointer; }
 .ch-state { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); padding: var(--space-8) var(--space-4); }

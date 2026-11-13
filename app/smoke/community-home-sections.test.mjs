@@ -293,6 +293,24 @@ test('featured official posts use newHere once, while pinned featured posts keep
   assert.equal(new Set(ids(allRows(result))).size, allRows(result).length)
 })
 
+test('start-here rows name their kind: 守则 for the community guidelines, 指南 for any other post', () => {
+  const featured = (id, title, age) => makePost(id, {
+    title, is_official: true, is_featured: true, created_at: atAge(age),
+  })
+  const kinds = (viewport, posts) => build(posts, viewport).newHere
+    .map(row => [row.post.id, label(row.type), label(row.type, 'en')])
+  for (const viewport of ['desktop', 'phone']) {
+    assert.deepEqual(kinds(viewport, [
+      featured('checklist', '新生落脚清单：第一周要办的 8 件事', day),
+      featured('rules-zh', '社区守则（2026 年 11 月版）', 2 * day),
+      featured('rules-en', 'Community Guidelines, November 2026', 3 * day),
+    ]), [['checklist', '指南', 'Guide'], ['rules-zh', '守则', 'Rules'], ['rules-en', '守则', 'Rules']])
+    // Only the glossary's own name for the rules counts; a guide may have 守则 in its title.
+    assert.deepEqual(kinds(viewport, [featured('safety', '二手交易安全守则：当面验货再付款', day)]),
+      [['safety', '指南', 'Guide']])
+  }
+})
+
 test('market filters inactive items, sorts by time/id, caps each viewport and adds one filler when short', () => {
   const fixture = [
     ...items, ...['sold', 'reserved', 'deleted'].map(status => ({ ...items[0], id: status, status })),
@@ -356,8 +374,9 @@ test('home labels and both board fillers render the SPEC catalog copy through tr
   assert.equal(label(result.cards[5].title, 'en'), 'Market')
   assert.equal(label(build([], 'phone', []).cards[5].title, 'en'), 'New in Market')
   assert.equal(label(result.cards[5].filler, 'en'), 'List the first item ›')
+  // SPEC 7: "Good for: {topics} · Post the first one ›", with the dot between the two halves.
   assert.equal(boardFiller('campus-life', translate('en'), 'en'),
-    'Good for: course loads, exams, library seats Post the first one ›')
+    'Good for: course loads, exams, library seats · Post the first one ›')
   assert.equal(boardFiller('campus-life', translate('zh'), 'zh'),
     '适合在这里问：选课、考试、图书馆座位 发第一帖 ›')
   const calls = []
