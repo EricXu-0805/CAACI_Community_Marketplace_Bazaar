@@ -160,3 +160,8 @@ podman run --rm --network none --userns=keep-id -e HOME=/tmp \
 - release zip 没有下载，原因和核对方法见上。
 - 没有替换 `logo-mark.svg` 等图标文件，那是 D-34 选定之后的事。
 - 只在 Chromium 158 里渲染过。
+
+
+## 替换（2026-11-13，BRAND.4 ②）
+
+D-34 按 D-43 代定为 B 稿的单字「玉」之后，在 #372（codex/brand-cornfield-20261112，提交 ba070e7）替换：logo-mark.svg、logo-mark-dark.svg（与 draft-b-mono.svg、draft-b-mono-dark.svg 逐字节相同）；app-icon.svg（保留它自己的满版渐变几何，只把字换成同一字体的轮廓）、app-icon-192.png、app-icon-512.png（尺寸与格式不变）；8 个页面里 13 处 `u-thumb-ph-seal` 的「集」改成「玉」。没有单独的 favicon 文件，index.html 的三个 icon 链接就指向上面三个文件；小程序图标在微信后台，不在仓库里。浅色、深色登录页截图：app-logo-light.png、app-logo-dark.png（390×844，2 倍）。

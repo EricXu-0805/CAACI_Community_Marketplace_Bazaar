@@ -499,3 +499,15 @@
 - 未测项: ④ 向 preview 开 PR（E8 之后由 Eric 在网页上开，D-42 第 1 项【硬】）；⑤ 上线后从工作站请求一次
 - 下一条: P1.7
 - 附: D-42 第 2 项 (a) 记录：caaciorg 仓库自己的源码、模板和测试里有 17 个文件含官网库标识（wslz…），是仓库原有内容，不是 OMO 的命令或请求；按规定只记这一条、不触发【暂停推送】。为此 CI 步骤除 npm ci 外全部 --network none，输出写盘前逐行脱敏；OMO 新增的三个文件里两个托管标识都是 0 次。
+
+### L42 · 2026-11-13 03:08 CT · BRAND.4 ② 「集」印章换成「玉」：logo、应用图标、占位图（#372 ba070e7）
+- task_id: BRAND.4
+- code_sha: ba070e73ff53ac037721cc00c6576327efeff11a（codex/brand-cornfield-20261112，草稿 PR #372，已推送；push 用 --no-verify，同 L21）
+- docs_sha: beb3c1d9465345773e0b5fbb598796a76a2da49f
+- 环境: 本地 tony-ws pw1.60；截图用 pw1.65 镜像的 Chromium
+- 命令: OMO 子任务按 D-34 代定结果替换：logo-mark.svg / logo-mark-dark.svg 用 draft-b-mono(-dark).svg；app-icon.svg 保留可遮罩图标的满版几何，只换字的轮廓；app-icon-192/512.png 用镜像 Chromium 重新渲染，尺寸不变；13 处占位「集」→「玉」。`~/work/illini-dev-env/run-checks.sh ~/work/illini-brand install typecheck h5 mp test smoke`（verify-chain-8.log）
+- 计数: ② 替换的 SVG 里 <text> 0 个（static/ 下只剩 placeholder.svg 的「No Image」文字，它不是印章，不在 SPEC §1.5 的替换范围）；③ `git grep -c 集 -- 'app/src/static/*.svg'` 无输出；④ 浅色、深色截图各 1 张已放 appendix/visual/logo/（OMO 看过：登录页显示新印章、玉米地、原 Illini Market、伊利诺伊华人论坛）；typecheck、h5、mp、smoke 6 passed 通过，TEST 1991/1990/0/1 [本地测]
+- ci_run_url: —（#372 随 ba070e7 重跑；Build H5 仍等 E5）
+- 未测项: 小程序在微信后台的图标（不在仓库，BRAND.5 / E7 时 Eric 换）
+- 下一条: P1.7
+- 附: 邮件里的「集」字印章（send-illini-code、meetup-notify、notification-digest、unsubscribe、两个邮件模板）不在 SPEC §1.5 的替换清单里，没改，列进最终报告；另有 6 处代码注释仍写「集」印章。
