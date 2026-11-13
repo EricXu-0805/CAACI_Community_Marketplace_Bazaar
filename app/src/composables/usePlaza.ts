@@ -49,6 +49,71 @@ let latestRequestId = 0
  * waiting for page unmount/sign-out cleanup can briefly expose account A's
  * membership state to account B.
  */
+/*
+ * P2.7: items a just-published post could not link, per account and post.
+ * Mirrored to sessionStorage so a reload of the detail tab still offers the
+ * retry; both copies are dropped on any account transition.
+ */
+const PENDING_POST_ITEMS_PREFIX = 'pending-post-items:'
+const pendingPostItems = new Map<string, string[]>()
+const pendingKey = (accountId: string, postId: string) => `${PENDING_POST_ITEMS_PREFIX}${accountId}:${postId}`
+
+function pendingSession(): Storage | null {
+  try { return typeof sessionStorage === 'undefined' ? null : sessionStorage } catch { return null }
+}
+
+export function rememberPendingPostItems(accountId: string, postId: string, itemIds: string[]) {
+  const key = pendingKey(accountId, postId)
+  if (itemIds.length === 0) {
+    pendingPostItems.delete(key)
+    try { pendingSession()?.removeItem(key) } catch { /* storage unavailable */ }
+    return
+  }
+  pendingPostItems.set(key, [...itemIds])
+  try { pendingSession()?.setItem(key, JSON.stringify(itemIds)) } catch { /* storage unavailable */ }
+}
+
+export function readPendingPostItems(accountId: string, postId: string): string[] {
+  const key = pendingKey(accountId, postId)
+  const held = pendingPostItems.get(key)
+  if (held) return [...held]
+  try {
+    const parsed = JSON.parse(pendingSession()?.getItem(key) || 'null')
+    if (Array.isArray(parsed) && parsed.length <= 3 && parsed.every(id => typeof id === 'string' && id)) {
+      pendingPostItems.set(key, parsed)
+      return [...parsed]
+    }
+  } catch { /* ignore malformed mirror */ }
+  return []
+}
+
+function clearAllPendingPostItems() {
+  pendingPostItems.clear()
+  const store = pendingSession()
+  if (!store) return
+  try {
+    const keys: string[] = []
+    for (let i = 0; i < store.length; i += 1) {
+      const key = store.key(i)
+      if (key?.startsWith(PENDING_POST_ITEMS_PREFIX)) keys.push(key)
+    }
+    keys.forEach(key => store.removeItem(key))
+  } catch { /* storage unavailable */ }
+}
+
+export type CreatePostResult =
+  | { id: string; partial: false }
+  | { id: string; partial: 'items_failed'; failedItemIds: string[]; itemsErr?: any }
+  | { id: string; partial: 'refetch_failed'; itemsErr?: any }
+
+export type RetryAttachResult = {
+  linked: string[]
+  unavailable: string[]
+  capped: string[]
+  pending: string[]
+  transientError: unknown | null
+}
+
 function resetPlazaState() {
   latestRequestId += 1
   posts.value = []
@@ -56,6 +121,7 @@ function resetPlazaState() {
   hasMore.value = true
   fetchError.value = ''
   likeInFlight.clear()
+  clearAllPendingPostItems()
 }
 
 onAccountTransition(resetPlazaState)
@@ -332,7 +398,7 @@ export function usePlaza() {
        */
       confirmSuspectedAd?: () => Promise<boolean>
     } = {},
-  ): Promise<{ id: string; partial: boolean; itemsErr?: any }> {
+  ): Promise<CreatePostResult> {
     const userId = currentUser.value?.id
     if (!userId) throw new Error('Not authenticated')
     const accountToken = extras.accountToken || captureAccountRequest(userId)
@@ -425,7 +491,7 @@ export function usePlaza() {
 
       /* Step 2: bulk insert post_items in addition order. A failure here is a
          partial success: the post (and every image URL) is already committed. */
-      let partial = false
+      let partial: false | 'items_failed' | 'refetch_failed' = false
       let itemsErr: any = null
       if (attachedItemIds.length > 0) {
         assertAccountCurrent(true)
@@ -442,8 +508,9 @@ export function usePlaza() {
           piErr = error
         }
         if (piErr) {
-          partial = true
+          partial = 'items_failed'
           itemsErr = piErr
+          if (isAccountRequestCurrent(accountToken)) rememberPendingPostItems(userId, newId, attachedItemIds)
           addBreadcrumb({
             category: 'plaza',
             level: 'error',
@@ -467,7 +534,7 @@ export function usePlaza() {
               .single()
             if (full) post = sanitizePostResources(full as unknown as Post)
           } catch (error: any) {
-            partial = true
+            partial = 'refetch_failed'
             itemsErr = error
           }
         }
@@ -475,7 +542,9 @@ export function usePlaza() {
 
       assertAccountCurrent(true)
       posts.value = [post, ...posts.value]
-      return { id: newId, partial, itemsErr }
+      if (partial === 'items_failed') return { id: newId, partial, failedItemIds: [...attachedItemIds], itemsErr }
+      if (partial === 'refetch_failed') return { id: newId, partial, itemsErr }
+      return { id: newId, partial: false }
     } catch (error) {
       const tagged = mutationCommitState(error)
         ? error
@@ -790,6 +859,49 @@ export function usePlaza() {
     resetPlazaState()
   }
 
+  /*
+   * P2.7: link the items a published post is still missing. Reads the
+   * post's current post_items, inserts only the absent ones in their original
+   * order, and never touches posts. 23505 counts as linked; 42501 means the
+   * item can no longer be linked; the cap trigger means the post is full; any
+   * other failure stops and keeps the rest pending for another try.
+   */
+  async function retryAttachPostItems(postId: string, itemIds: string[]): Promise<RetryAttachResult> {
+    const userId = currentUser.value?.id
+    if (!userId) throw new Error('Not authenticated')
+    const token = captureAccountRequest(userId)
+    const result: RetryAttachResult = { linked: [], unavailable: [], capped: [], pending: [], transientError: null }
+    let existing: any
+    try {
+      existing = await supabase.from('post_items').select('item_id').eq('post_id', postId)
+    } catch (error) {
+      existing = { error }
+    }
+    if (existing.error) {
+      result.pending = [...itemIds]
+      result.transientError = existing.error
+      return result
+    }
+    const have = new Set((existing.data || []).map((row: { item_id: string }) => row.item_id))
+    for (const [index, itemId] of itemIds.entries()) {
+      if (result.transientError) { result.pending.push(itemId); continue }
+      if (have.has(itemId)) { result.linked.push(itemId); continue }
+      if (!isAccountRequestCurrent(token)) { result.pending.push(itemId); continue }
+      let error: any = null
+      try {
+        error = (await supabase.from('post_items').insert({ post_id: postId, item_id: itemId, display_order: index })).error
+      } catch (thrown) {
+        error = thrown
+      }
+      if (!error || error.code === '23505') result.linked.push(itemId)
+      else if (error.code === '42501') result.unavailable.push(itemId)
+      else if (/post_items_cap_exceeded/.test(String(error.message || ''))) result.capped.push(itemId)
+      else { result.transientError = error; result.pending.push(itemId) }
+    }
+    if (isAccountRequestCurrent(token)) rememberPendingPostItems(userId, postId, result.pending)
+    return result
+  }
+
   return {
     posts,
     loading,
@@ -798,6 +910,7 @@ export function usePlaza() {
     fetchPosts,
     fetchPost,
     createPost,
+    retryAttachPostItems,
     updatePostI18n,
     deletePost,
     toggleLike,

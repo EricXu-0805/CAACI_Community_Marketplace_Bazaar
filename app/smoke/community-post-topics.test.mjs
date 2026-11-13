@@ -103,7 +103,8 @@ test('legacy publish still stores null metadata; validation fails before writing
 test('attachment failure retains the committed topic and returns partial success', async () => {
   const h = await loadPlaza({ attachmentError: { code: '42501', message: 'Denied' } })
   const result = await h.plaza.createPost('Body', [], ['item-1'], topic)
-  assert.equal(result.partial, true)
+  assert.equal(result.partial, 'items_failed')
+  assert.deepEqual(result.failedItemIds, ['item-1'])
   assert.equal(result.id, 'post-1')
   assert.equal(h.plaza.posts.value[0].title, topic.title)
   assert.deepEqual(h.cleared, [], 'committed post must retain duplicate guard')

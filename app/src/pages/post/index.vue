@@ -79,6 +79,21 @@
           />
         </view>
 
+        <view v-if="attachBannerVisible" class="attach-pending" role="status">
+          <text class="attach-pending-text">{{ attachBannerText }}</text>
+          <text v-if="attachNotice" class="attach-pending-note">{{ attachNotice }}</text>
+          <view class="attach-pending-actions">
+            <view class="attach-pending-btn primary" :class="{ disabled: attachBusy }" role="button"
+              :aria-disabled="attachBusy ? 'true' : 'false'" @click="onRetryAttach">
+              <text>{{ attachBusy ? t('plaza.attaching') : t('plaza.attachRetry') }}</text>
+            </view>
+            <view class="attach-pending-btn" role="button" @click="onDismissAttach">
+              <text>{{ t('plaza.attachDismiss') }}</text>
+            </view>
+          </view>
+        </view>
+        <text v-else-if="attachNotice" class="attach-pending-note standalone" role="status">{{ attachNotice }}</text>
+
         <view
           v-for="pi in (post.post_items || [])"
           :key="pi.item.id"
@@ -294,7 +309,8 @@ import { onLoad, onUnload, onShareAppMessage, onShareTimeline } from '@dcloudio/
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
 import { useTheme } from '../../composables/useTheme'
-import { usePlaza, groupCommentsByParent } from '../../composables/usePlaza'
+import { usePlaza, groupCommentsByParent, readPendingPostItems, rememberPendingPostItems } from '../../composables/usePlaza'
+import { useSupabase } from '../../composables/useSupabase'
 import { useModeration } from '../../composables/useModeration'
 import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
@@ -322,7 +338,8 @@ const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
 const { currentUser, requireAuth, awaitAuthReady } = useAuth()
-const { fetchPost, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment } = usePlaza()
+const { fetchPost, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, retryAttachPostItems } = usePlaza()
+const { supabase } = useSupabase()
 const { reportTarget } = useModeration()
 const { addPostToHistory } = useHistory()
 
@@ -337,6 +354,67 @@ const viewportStyle = computed(() => visibleHeight.value == null ? undefined : (
 }))
 
 const post = ref<Post | null>(null)
+// P2.7: items this author's just-published post could not link (author only).
+const attachPendingIds = ref<string[]>([])
+const attachItemNames = ref<Record<string, string>>({})
+const attachBusy = ref(false)
+const attachNotice = ref('')
+const attachBannerVisible = computed(() => !!post.value && !!currentUser.value
+  && currentUser.value.id === post.value.user_id && attachPendingIds.value.length > 0)
+const attachBannerText = computed(() => {
+  const ids = attachPendingIds.value
+  const name = attachItemNames.value[ids[0]] || ''
+  return ids.length > 1 ? t('plaza.attachPending', { name, n: ids.length }) : t('plaza.attachPendingOne', { name })
+})
+
+async function loadAttachPending(p: Post) {
+  attachPendingIds.value = []
+  attachNotice.value = ''
+  const accountId = currentUser.value?.id
+  if (!accountId || accountId !== p.user_id) return
+  const ids = readPendingPostItems(accountId, p.id)
+  if (ids.length === 0) return
+  try {
+    const { data } = await supabase.from('items').select('id, title, title_i18n').in('id', ids)
+    const names: Record<string, string> = {}
+    for (const row of (data || []) as Array<{ id: string; title: string; title_i18n: Record<string, string> | null }>) {
+      names[row.id] = localize(row.title_i18n, row.title)
+    }
+    attachItemNames.value = names
+  } catch { attachItemNames.value = {} }
+  if ((currentUser.value?.id ?? null) === accountId && post.value?.id === p.id) attachPendingIds.value = ids
+}
+
+async function onRetryAttach() {
+  const p = post.value
+  if (!p || attachBusy.value || attachPendingIds.value.length === 0) return
+  attachBusy.value = true
+  attachNotice.value = ''
+  try {
+    const result = await retryAttachPostItems(p.id, attachPendingIds.value)
+    if (post.value?.id !== p.id) return
+    attachPendingIds.value = result.pending
+    if (result.unavailable.length) attachNotice.value = t('plaza.attachUnavailable')
+    else if (result.capped.length) attachNotice.value = t('plaza.attachCap')
+    if (result.linked.length) {
+      const refreshed = await fetchPost(p.id).catch(() => null)
+      if (refreshed && post.value?.id === p.id) post.value = refreshed
+      if (!result.pending.length && !result.unavailable.length && !result.capped.length) {
+        uni.showToast({ title: t('plaza.attachDone'), icon: 'success' })
+      }
+    }
+  } finally {
+    attachBusy.value = false
+  }
+}
+
+function onDismissAttach() {
+  const p = post.value
+  const accountId = currentUser.value?.id
+  if (p && accountId) rememberPendingPostItems(accountId, p.id, [])
+  attachPendingIds.value = []
+  attachNotice.value = ''
+}
 const comments = ref<PostComment[]>([])
 const loading = ref(true)
 const loadingComments = ref(false)
@@ -383,6 +461,8 @@ watch(() => currentUser.value?.id ?? null, (userId, previousUserId) => {
   // render. Never expose the previous account's in-progress comment draft.
   commentText.value = ''
   replyTo.value = null
+  attachPendingIds.value = []
+  attachNotice.value = ''
   if (postId.value) void loadPostForCurrentAccount()
 })
 
@@ -550,6 +630,7 @@ async function loadPostForCurrentAccount() {
     if (p) {
       post.value = p
       addPostToHistory(p)
+      void loadAttachPending(p)
       try {
         const rows = await fetchComments(postId.value)
         if (!pageMounted || requestEpoch !== postLoadEpoch || commentsRequestEpoch !== commentsLoadEpoch) return
@@ -1120,5 +1201,13 @@ async function onSubmitComment() {
   &.disabled { opacity: 0.3; pointer-events: none; }
 }
 .post-board { display: block; font-size: 12px; color: var(--accent-action); margin-bottom: 6px; }
+.attach-pending { margin: 12px 0; padding: 12px 14px; border-radius: 12px; background: var(--bg-subtle); border: 1px solid var(--line-hair); }
+.attach-pending-text { display: block; font-size: 14px; line-height: 1.5; color: var(--text-primary); }
+.attach-pending-note { display: block; margin-top: 6px; font-size: 13px; color: var(--danger); }
+.attach-pending-note.standalone { margin: 12px 0; }
+.attach-pending-actions { display: flex; gap: 8px; margin-top: 10px; }
+.attach-pending-btn { padding: 6px 14px; border-radius: 999px; font-size: 14px; color: var(--text-secondary); border: 1px solid var(--line-hair); }
+.attach-pending-btn.primary { color: var(--brand); border-color: var(--brand); }
+.attach-pending-btn.disabled { opacity: 0.5; pointer-events: none; }
 .post-topic-title { display: block; font-size: 22px; font-weight: 700; line-height: 1.4; margin-bottom: 12px; overflow-wrap: anywhere; }
 </style>

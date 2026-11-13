@@ -1580,12 +1580,12 @@ async function onSubmitPost() {
     composerAccountToken = null
     showComposer.value = false
 
-    if (result.partial) {
+    if (result.partial === 'items_failed') {
       /* Post row landed but post_items insert failed (RLS reject /
-         net blip / cap overflow). Soft-warn — the post is intact and
-         visible; chips just aren't attached. Sentry breadcrumb fires
-         from createPost itself. */
-      uni.showToast({ title: t('plaza.partialPublish'), icon: 'none', duration: 4000 })
+         net blip / cap overflow). The post is intact; the detail page offers
+         the author a retry that only links the missing items (P2.7). A failed
+         refetch after a successful link is not reported. */
+      uni.showToast({ title: t(submitTopic.title ? 'plaza.partialPublish' : 'plaza.partialPublishUpdate'), icon: 'none', duration: 4000 })
     } else {
       if (partialUpload) {
         uni.showToast({ title: t('plaza.postedPartial', partialUpload), icon: 'none', duration: 4000 })
@@ -1597,7 +1597,7 @@ async function onSubmitPost() {
     // The current board/search may exclude the new post. Show its committed
     // identity, including partial attachment success, so retry never means a
     // second post. The existing warning toast remains visible on navigation.
-    uni.navigateTo({ url: `/pages/post/index?id=${result.id}` })
+    uni.navigateTo({ url: `/pages/post/index?id=${result.id}${result.partial === 'items_failed' ? '&attach=pending' : ''}` })
 
     // Fire-and-forget bilingual fill. Same strategy as the item publish
     // flow: don't block the toast, best-effort upsert the other locale.
