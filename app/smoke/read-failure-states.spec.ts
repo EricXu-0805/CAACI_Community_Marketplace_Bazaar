@@ -494,7 +494,9 @@ test('plaza keeps its loaded posts when the next page fails', async ({ page }) =
     return state.pageRequests[1] ?? 0
   }, { timeout: 15_000 }).toBeGreaterThan(0)
 
-  await expect(page.getByRole('alert').getByRole('button', { name: 'Retry', exact: true })).toBeVisible()
+  // A later page that failed leaves one line under the rows to retry it (SPEC 7).
+  const retryMore = page.getByRole('alert').getByRole('button', { name: "Couldn't load more. Tap to retry.", exact: true })
+  await expect(retryMore).toBeVisible()
   await expect(
     page.getByText('Paged post 1', { exact: true }),
     'a failed second page erased the posts already on screen',
@@ -503,7 +505,10 @@ test('plaza keeps its loaded posts when the next page fails', async ({ page }) =
     page.getByText(`Paged post ${PLAZA_PAGE_SIZE}`, { exact: true }),
     'a failed second page erased the posts already on screen',
   ).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible()
+  state.failPagesFrom = Infinity
+  await retryMore.click()
+  await expect(page.getByText(`Paged post ${PLAZA_PAGE_SIZE + 1}`, { exact: true })).toBeVisible()
+  await expect(page.getByRole('alert')).toHaveCount(0)
 })
 
 test('plaza still fills the screen with the failure when the first page fails', async ({ page }) => {
@@ -512,9 +517,10 @@ test('plaza still fills the screen with the failure when the first page fails', 
   await servePaged(page, '/rest/v1/posts', PLAZA_PAGE_SIZE, postRows, state)
 
   await page.goto('/#/pages/plaza/index?view=all', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('alert').getByText("Couldn't load. Check your connection and try again.", { exact: true })).toBeVisible()
   await expect(page.getByRole('alert').getByRole('button', { name: 'Retry', exact: true })).toBeVisible()
   await expect(
-    page.getByText('No posts yet. Be the first!', { exact: true }),
+    page.getByText('No topics yet.', { exact: false }),
     'a failed first page was reported as an empty plaza',
   ).toHaveCount(0)
 })

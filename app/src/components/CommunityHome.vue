@@ -180,16 +180,7 @@
                 <text v-if="row.replyCount" class="ch-cnt">{{ row.replyCount }}</text>
               </view>
             </view>
-            <view v-if="sections.showAbout" class="ch-sb" data-block="about">
-              <text class="ch-sb-h" role="heading" aria-level="2">{{ t('home.about') }}</text>
-              <text class="ch-about">{{ t('home.aboutBody') }}</text>
-              <view class="ch-links">
-                <text class="ch-foot-l" role="button" @click="openLegal('guidelines')">{{ t('legal.guidelines') }}</text>
-                <text class="ch-foot-l" role="button" @click="openLegal('terms')">{{ t('legal.terms') }}</text>
-                <text class="ch-foot-l" role="button" @click="openLegal('privacy')">{{ t('legal.privacy') }}</text>
-                <text class="ch-foot-l" role="button" @click="sendFeedback">{{ t('home.feedback') }}</text>
-              </view>
-            </view>
+            <CommunityAbout v-if="sections.showAbout" data-block="about" />
           </view>
         </view>
       </template>
@@ -209,6 +200,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import CommunityAbout from './CommunityAbout.vue'
 import UAvatar from './UAvatar.vue'
 import UIcon from './UIcon.vue'
 import { useI18n } from '../composables/useI18n'
@@ -346,7 +338,8 @@ function sendFeedback() { window.location.href = `mailto:${SUPPORT_EMAIL}` }
 .ch-guest-x { flex: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 
 /* ---- phone (also 768–1023, where the content column is capped at 720px) ---- */
-.ch-m { padding-bottom: calc(var(--space-8) + var(--space-7) + env(safe-area-inset-bottom, 0px)); }
+/* Room for the tab bar and the floating button above it, so the last line is never under either. */
+.ch-m { padding-bottom: calc(62px + 52px + var(--space-4) + env(safe-area-inset-bottom, 0px)); }
 .ch-m .ch-wrap { max-width: 720px; margin: 0 auto; }
 .ch-m .ch-guest { gap: var(--space-2); padding: 0 var(--space-1) 0 var(--space-4); }
 .ch-m .ch-guest-t {
@@ -420,9 +413,6 @@ function sendFeedback() { window.location.href = `mailto:${SUPPORT_EMAIL}` }
 .ch-sb-h { display: block; margin-bottom: var(--space-1); font-size: var(--t-body); line-height: var(--space-7); font-weight: 600; color: var(--ink); }
 .ch-hot { display: flex; align-items: center; gap: var(--space-3); height: 34px; cursor: pointer; }
 .ch-hot .ch-row-t { flex: 1; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
-.ch-about { display: block; font-size: var(--t-caption); line-height: var(--lh-body); color: var(--ink-soft); }
-.ch-links { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); margin-top: var(--space-2); }
-.ch-links .ch-foot-l { font-size: var(--t-caption); }
 .ch-d .ch-foot { margin-top: var(--space-8); border-top: 1px solid var(--line-soft); }
 .ch-d .ch-foot-in {
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4);

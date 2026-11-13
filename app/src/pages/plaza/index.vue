@@ -8,7 +8,7 @@
     <!-- .page-header is display:none at >=768px, and display:none drops the
          node from the accessibility tree — so the heading has to live outside
          it or Mac/iPad get no heading at all. -->
-    <text class="sr-only" role="heading" aria-level="1">{{ pageHeading }}</text>
+    <text v-if="view !== 'board'" class="sr-only" role="heading" aria-level="1">{{ pageHeading }}</text>
 
     <!-- #ifdef H5 -->
     <CommunityHeader
@@ -61,6 +61,18 @@
       </view>
     </view>
 
+    <!-- #ifdef H5 -->
+    <!-- SPEC 6.1: a board page opens with its name, what belongs there, and a way
+         to start a topic there; the sort tabs come under it. -->
+    <view v-if="view === 'board' && selectedCategory" class="board-head">
+      <view class="bh-text">
+        <text class="bh-name" role="heading" aria-level="1">{{ t(`plaza.category.${selectedCategory}`) }}</text>
+        <text class="bh-scope">{{ t(`plaza.boardScope.${selectedCategory}`) }}</text>
+      </view>
+      <text class="bh-compose" role="button" @click="openComposer">{{ t('plaza.write') }}</text>
+    </view>
+    <!-- #endif -->
+
     <!-- Feed tabs live OUTSIDE the scroll area (directly under search) so
          they stay put while the feed scrolls — 闲鱼/xhs pattern. -->
     <scroll-view v-if="view !== 'home'" class="feed-tabs" scroll-x :show-scrollbar="false">
@@ -76,7 +88,7 @@
           @click="activeTab = tab.key"
           @keydown="onFeedTabKeydown($event, tab.key)"
         >
-          <text class="t-tag ft-label">{{ tab.label }}</text>
+          <text class="ft-label">{{ tab.label }}</text>
         </view>
       </view>
     </scroll-view>
@@ -103,6 +115,8 @@
       @refresherrefresh="onRefresh"
       @scrolltolower="loadMore"
     >
+      <view class="feed-cols">
+      <view class="feed-main">
       <!-- SPEC 6.2: the banners stay with all discussions; the home and the board pages have none. -->
       <PlazaBannerCarousel v-if="view === 'all'" />
 
@@ -367,17 +381,33 @@
         screen, which is what an initial failure should look like.
       -->
       <template v-if="activeTab !== 'following'">
-        <view v-if="fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
-          <UIcon name="shield" size="lg" color="ink-soft" />
-          <text class="empty-text">{{ fetchError }}</text>
-          <view class="cta-btn" role="button" @click="posts.length ? loadMore(true) : onRefresh()">{{ t('home.retry') }}</view>
+        <view v-if="fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true" :class="{ 'empty-more': posts.length > 0 }">
+          <!-- SPEC 7: a later page that failed keeps the rows and offers one line under them. -->
+          <view v-if="posts.length > 0" class="more-retry" role="button" @click="loadMore(true)">
+            <text class="more-retry-t">{{ t('plaza.loadMoreFailed') }}</text>
+          </view>
+          <template v-else>
+            <text class="empty-text">{{ t('plaza.loadFailed') }}</text>
+            <view class="state-btn" role="button" @click="onRefresh()">{{ t('plaza.retry') }}</view>
+          </template>
         </view>
 
         <view v-else-if="!loading && visiblePosts.length === 0" class="empty">
           <UEmptyArt name="posts" />
-          <text class="empty-text">{{ t('plaza.empty') }}</text>
-          <view v-if="isLoggedIn" class="cta-btn" role="button" @click="openComposer">{{ t('plaza.write') }}</view>
+          <text class="empty-text">{{ emptyText }}</text>
+          <!-- #ifdef H5 -->
+          <view v-if="view === 'board' && !searchText.trim()" class="board-fill" role="button" @click="openComposer">
+            <text class="board-fill-t">{{ boardFillText }}</text>
+          </view>
+          <!-- #endif -->
+          <view class="state-btn" role="button" @click="composeFromEmpty">{{ t('plaza.write') }}</view>
         </view>
+        <!-- #ifdef H5 -->
+        <!-- SPEC 6.1: a board with fewer than three topics says what to ask there. -->
+        <view v-else-if="view === 'board' && !loading && !hasMore && visiblePosts.length < 3" class="board-fill" role="button" @click="openComposer">
+          <text class="board-fill-t">{{ boardFillText }}</text>
+        </view>
+        <!-- #endif -->
       </template>
 
       <view
@@ -385,6 +415,12 @@
         class="end-tip"
       >
         <text>{{ t('home.endOf') }}</text>
+      </view>
+      </view>
+      <!-- #ifdef H5 -->
+      <!-- SPEC 6.1: on desktop the lists keep the home's sidebar. Until P3.5 and P4.8 give it more, that is the about block. -->
+      <CommunityAbout v-if="isDesktop" class="feed-side" />
+      <!-- #endif -->
       </view>
     </scroll-view>
 
@@ -780,10 +816,11 @@ import { BASE_URL } from '../../config/runtime'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PlazaBannerCarousel from '../../components/PlazaBannerCarousel.vue'
 // #ifdef H5
+import CommunityAbout from '../../components/CommunityAbout.vue'
 import CommunityHeader from '../../components/CommunityHeader.vue'
 import CommunityHome from '../../components/CommunityHome.vue'
 import { useCommunityHome } from '../../composables/useCommunityHome'
-import { buildHomeSections, type HomePostData } from '../../utils/communityHome'
+import { boardFiller, buildHomeSections, type HomePostData } from '../../utils/communityHome'
 // #endif
 import UAvatar from '../../components/UAvatar.vue'
 import UBadge from '../../components/UBadge.vue'
@@ -867,11 +904,12 @@ const reportLoading = createOwnedLoading()
  */
 type FeedTabKey = 'following' | 'hot' | 'recent'
 const activeTab = ref<FeedTabKey>('recent')
+// SPEC 6.1, 6.2, until P3.4: 新发布｜热门｜关注的人, and a board page has no 关注的人.
 const feedTabs = computed<{ key: FeedTabKey; label: string }[]>(() => [
-  { key: 'following', label: t('plaza.tab.following') },
-  { key: 'hot', label: t('plaza.tab.hot') },
-  { key: 'recent', label: t('plaza.tab.recent') },
-])
+  { key: 'recent' as const, label: t('plaza.tab.recent') },
+  { key: 'hot' as const, label: t('plaza.tab.hot') },
+  { key: 'following' as const, label: t('plaza.tab.following') },
+].filter(tab => view.value !== 'board' || tab.key !== 'following'))
 const feedSort = computed<'recent' | 'hot'>(() => (activeTab.value === 'hot' ? 'hot' : 'recent'))
 const selectedCategory = ref<PostCategory | null>(null)
 const visiblePosts = computed(() => selectedCategory.value
@@ -918,14 +956,15 @@ const homeSections = computed(() => buildHomeSections(
 ))
 
 // An unknown board or view opens the home (SPEC 4.4).
+function routeOf(query: { board?: unknown; view?: unknown }): { view: CommunityView; board: PostCategory | null } {
+  const board = POST_CATEGORIES.find(category => category === query.board)
+  if (board) return { view: 'board', board }
+  return { view: query.view === 'all' ? 'all' : 'home', board: null }
+}
 onLoad((query) => {
-  const board = POST_CATEGORIES.find(category => category === query?.board)
-  if (board) {
-    view.value = 'board'
-    selectedCategory.value = board
-  } else {
-    view.value = query?.view === 'all' ? 'all' : 'home'
-  }
+  const route = routeOf(query || {})
+  view.value = route.view
+  selectedCategory.value = route.board
 })
 
 // Keeps the address on the view being shown, so a reload or a shared link opens the same one.
@@ -934,6 +973,26 @@ function syncAddress() {
   const query = view.value === 'board' ? `?board=${selectedCategory.value}` : view.value === 'all' ? '?view=all' : ''
   const hash = `#/pages/plaza/index${query}`
   if (window.location.hash !== hash) window.history.replaceState(window.history.state, '', hash)
+}
+/*
+ * This tab page is kept alive, so an address that names a view can arrive
+ * without a load: from another page, or typed over this one. The address wins
+ * then. A bare address is what the tab bar opens, and keeps the view as it was.
+ */
+function followAddress() {
+  if (typeof window === 'undefined') return
+  const [path, search] = window.location.hash.split('?')
+  if (path !== '#/pages/plaza/index' || !search) return
+  const params = new URLSearchParams(search)
+  const route = routeOf({ board: params.get('board'), view: params.get('view') })
+  if (route.view === view.value && route.board === (view.value === 'board' ? selectedCategory.value : null)) return
+  if (route.board) showBoard(route.board)
+  else if (route.view === 'all') showAll()
+  else showHome()
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('hashchange', followAddress)
+  onUnmounted(() => window.removeEventListener('hashchange', followAddress))
 }
 
 // A topic published from here belongs on the home, so the snapshot is read again once the home is back.
@@ -944,6 +1003,7 @@ function refreshStaleHome() {
   void loadHome()
 }
 onShow(() => {
+  followAddress()
   syncAddress()
   if (homeStale) refreshStaleHome()
 })
@@ -958,9 +1018,15 @@ function showHome() {
 function showBoard(category: PostCategory) {
   view.value = 'board'
   searchText.value = ''
+  if (activeTab.value === 'following') activeTab.value = 'recent'
   selectCategory(category)
   syncAddress()
 }
+const boardFillText = computed(() => {
+  if (!selectedCategory.value) return ''
+  const text = boardFiller(selectedCategory.value)
+  return lang.value === 'zh' ? text.zh : text.en
+})
 function showAll() {
   if (view.value === 'all') return
   view.value = 'all'
@@ -976,7 +1042,7 @@ function openSearch() {
 // #endif
 
 function onFeedTabKeydown(event: KeyboardEvent, current: FeedTabKey) {
-  const order: FeedTabKey[] = ['following', 'hot', 'recent']
+  const order = feedTabs.value.map(tab => tab.key)
   let nextIndex = order.indexOf(current)
   if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (nextIndex + 1) % order.length
   else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (nextIndex - 1 + order.length) % order.length
@@ -1129,6 +1195,18 @@ function onSearchInput() {
 function onSearchSubmit() {
   if (searchDebounce) clearTimeout(searchDebounce)
   runSearch()
+}
+// SPEC 7: what an empty list says depends on why it is empty.
+const emptyText = computed(() => {
+  const query = searchText.value.trim()
+  if (query) return t('plaza.searchEmpty', { q: query })
+  return selectedCategory.value ? t('plaza.emptyBoard') : t('plaza.empty')
+})
+// SPEC 6.2: a search that found nothing becomes the title of the topic that asks it.
+async function composeFromEmpty() {
+  const question = searchText.value.trim()
+  await openComposer()
+  if (question && showComposer.value) composerTitle.value = Array.from(question).slice(0, POST_TITLE_MAX).join('')
 }
 function clearSearch() {
   searchText.value = ''
@@ -2401,55 +2479,37 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 }
 
 /*
- * Feed sub-tabs — ink-fill active chip row (active = --ink bg /
- * --ink-inverse text; inactive = --ink-quiet on transparent). Brand is
- * reserved for price/CTA/official, so selection state uses ink per the
- * nav-filter convention. Horizontally scrollable, 32px chips.
+ * Sort tabs (SPEC 6.1, 6.2): 14px text, the current one underlined in the brand
+ * colour, the way direction A marks every current tab. They sit outside the
+ * scroll area, so they stay put while the list scrolls.
  */
 .feed-tabs {
   width: 100%;
   white-space: nowrap;
-  padding: var(--space-2) 0;
-  /* Sits outside the scroll area now — paint the same canvas as the
-     search bar above so the fixed header reads as one block. */
   background: var(--canvas);
-  border-bottom: 0.5px solid var(--line-hair);
+  border-bottom: 1px solid var(--line-hair);
 }
 .ft-row {
-  /* Three tabs, equal width, no h-scroll — fills the row like a native
-     segmented control (活动 tab removed 2026-06 so everything fits). */
   display: flex;
-  width: 100%;
-  box-sizing: border-box;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-5);
+  box-sizing: border-box;
   padding: 0 var(--space-4);
 }
 .ft-chip {
-  flex: 1 1 auto;
-  justify-content: center;
-  height: 32px;
-  padding: 0 var(--space-1);
-  border-radius: var(--radius-pill);
-  border: 0.5px solid var(--border);
-  background: transparent;
+  flex: none;
   display: inline-flex;
   align-items: center;
+  height: 44px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background var(--dur-1, 120ms) var(--ease-std, ease),
-    color var(--dur-1, 120ms) var(--ease-std, ease);
-  &:active { opacity: 0.7; }
-  &.active {
-    background: var(--ink);
-    border-color: var(--ink);
-  }
+  &.active { box-shadow: inset 0 -2px 0 var(--brand); }
 }
 .ft-label {
-  color: var(--ink-quiet);
-  line-height: 1;
+  font-size: 14px;
+  color: var(--ink-soft);
   white-space: nowrap;
-  .ft-chip.active & { color: var(--ink-inverse); }
+  .ft-chip.active & { color: var(--ink); font-weight: 600; }
 }
 
 .feed {
@@ -2462,7 +2522,17 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   display: flex; flex-direction: column; align-items: center;
   padding: 80px 16px; gap: 12px; color: var(--text-subtle); font-size: 14px;
 }
-.empty-text { font-size: 14px; color: var(--text-muted); }
+.empty-text { font-size: 14px; color: var(--text-muted); text-align: center; }
+/* SPEC 7 states. One solid button a screen is the way to start a topic, so these are outlined. */
+.state-btn {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--space-5);
+  border-radius: var(--radius-sm); box-shadow: inset 0 0 0 1px var(--line-bold);
+  font-size: 14px; color: var(--ink); background: var(--surface); cursor: pointer;
+  &:active { background: var(--surface-alt); }
+}
+.empty.empty-more { padding: var(--space-2) var(--space-4) var(--space-5); }
+.more-retry { display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 var(--space-4); cursor: pointer; }
+.more-retry-t { font-size: 14px; color: var(--ink-soft); }
 .cta-btn {
   margin-top: 8px; padding: 10px 28px;
   background: var(--accent-primary); color: var(--ink-inverse); border-radius: 22px;
@@ -3252,6 +3322,22 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 
 /* #ifdef H5 */
 .home-scroll { flex: 1; min-height: 0; }
+/* Board page head (SPEC 6.1): the page name, what belongs here, and a way to start a topic here. */
+.board-head {
+  flex: none; display: flex; align-items: flex-start; gap: var(--space-3); box-sizing: border-box; width: 100%;
+  padding: var(--space-4) var(--space-4) var(--space-3); background: var(--surface);
+}
+.bh-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.bh-name { font-family: var(--font-serif); font-size: var(--t-h2); line-height: var(--lh-h2); font-weight: 600; color: var(--ink); }
+.bh-scope { font-size: var(--t-caption); line-height: var(--lh-caption); color: var(--ink-soft); }
+.bh-compose {
+  flex: none; padding: 0 var(--space-3); border-radius: var(--radius-sm);
+  font-size: 14px; line-height: var(--space-7); color: var(--ink); white-space: nowrap;
+  box-shadow: inset 0 0 0 1px var(--line-bold); cursor: pointer;
+}
+.board-fill { padding: var(--space-3) var(--space-4); background: var(--surface); cursor: pointer; }
+.board-fill-t { font-size: var(--t-caption); line-height: var(--lh-caption); color: var(--ink-quiet); }
+.empty .board-fill { padding: 0; background: transparent; text-align: center; }
 /* 52px round, 16px above the 62px tab bar (SPEC 5.3 ⑩). */
 .community-fab {
   position: fixed; right: var(--space-4); z-index: 30;
@@ -3265,6 +3351,8 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 @media (min-width: 768px) {
   /* No tab bar from here up. */
   .community-fab { right: var(--space-6); bottom: var(--space-6); }
+  /* The same 640px column as the tabs and the list. */
+  .board-head { max-width: 640px; margin-left: auto; margin-right: auto; }
 }
 @media (min-width: 1024px) {
   /* SPEC 4.3: the community page has its own 56px header and no left rail;
@@ -3272,6 +3360,24 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   .page.has-sidebar { padding-left: 0; }
   .page :deep(.app-sidebar) { display: none; }
   .search-wrap { display: none; }
+  /* SPEC 6.1: board pages and all discussions keep the home's columns, 876px of list beside the 300px sidebar. */
+  .feed-tabs, .board-filters, .board-head {
+    box-sizing: border-box; width: min(1200px, calc(100% - var(--space-8))); max-width: none;
+    margin-left: auto; margin-right: auto;
+  }
+  .feed-tabs, .board-filters { padding-right: calc(300px + var(--space-6)); }
+  /* The head is a card as wide as the list under it. */
+  .board-head {
+    margin-top: var(--space-4); border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+    width: calc(min(1200px, 100% - var(--space-8)) - 300px - var(--space-6));
+    margin-right: calc((100% - min(1200px, 100% - var(--space-8))) / 2 + 300px + var(--space-6));
+  }
+  .feed { max-width: none; }
+  .feed-cols {
+    display: grid; grid-template-columns: minmax(0, 1fr) 300px; column-gap: var(--space-6); align-items: start;
+    width: min(1200px, calc(100% - var(--space-8))); margin: 0 auto;
+  }
+  .feed-side { margin-top: var(--space-2); }
 }
 /* #endif */
 </style>

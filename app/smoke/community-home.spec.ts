@@ -384,6 +384,20 @@ for (const size of [PHONE, DESKTOP]) {
         await page.reload({ waitUntil: 'networkidle' })
         await expect(page.locator('.topic-row')).toHaveCount(20)
         await expect(page.locator('.ch')).toHaveCount(0)
+
+        // The tab page stays alive between visits. Coming back by an address that
+        // names a view opens that view, whatever view the page was left on.
+        await page.goto('/#/pages/legal/index?type=terms')
+        await expect(page.locator('.cx-top')).toHaveCount(0)
+        await page.goto('/#/pages/plaza/index?board=campus-life')
+        await expect(page.locator('.cx-chip.on')).toHaveText('校园日常')
+        await expect(page.locator('.topic-row')).toHaveCount(4)
+        // A bare address is what the tab bar opens: the view stays, and the address follows it.
+        await page.goto('/#/pages/legal/index?type=terms')
+        await expect(page.locator('.cx-top')).toHaveCount(0)
+        await page.goto('/#/pages/plaza/index')
+        await expect(page.locator('.cx-chip.on')).toHaveText('校园日常')
+        await expect(page).toHaveURL(/pages\/plaza\/index\?board=campus-life$/)
       })
 
       test('a filler opens the composer with its board chosen', async ({ page }) => {
@@ -491,14 +505,14 @@ for (const size of [PHONE, DESKTOP]) {
         expect((await first.boundingBox())!.height).toBeGreaterThanOrEqual(56)
 
         // Sidebar, top to bottom. No event source exists before P4.8, so that block is absent.
-        await expect(page.locator('.ch-side > .ch-sb .ch-sb-h')).toHaveText(['新来先看', '本周热议', '关于本站'])
+        await expect(page.locator('.ch-side [role="heading"]')).toHaveText(['新来先看', '本周热议', '关于本站'])
         await expect(page.getByText('近期活动')).toHaveCount(0)
         await expect(page.locator('.ch-side [data-block="start-here"] .ch-guide-t')).toHaveText(['新生落脚清单：第一周要办的 8 件事', '社区守则（2026 年 11 月版）'])
         const hot = page.locator('.ch-side [data-block="hot"] .ch-hot')
         await expect(hot).toHaveCount(5)
         await expect(hot.first().locator('.ch-row-t')).toHaveText('周末带爸妈吃饭，Champaign 哪家中餐适合')
         await expect(hot.locator('.ch-cnt')).toHaveText(['12', '6', '5', '4', '3'])
-        await expect(page.locator('.ch-side [data-block="about"] .ch-links .ch-foot-l')).toHaveText(['社区守则', '用户协议', '隐私政策', '意见反馈'])
+        await expect(page.locator('.ch-side [data-block="about"] [role="button"]')).toHaveText(['社区守则', '用户协议', '隐私政策', '意见反馈'])
 
         const ids = await postIds(page)
         expect(ids.length).toBe(20 + 15 + 2 + 5)
@@ -577,6 +591,7 @@ test('⑤ the CSS added for the home holds no hex colour', () => {
   for (const [name, css] of [
     ['CommunityHome.vue', styles('src/components/CommunityHome.vue')],
     ['CommunityHeader.vue', styles('src/components/CommunityHeader.vue')],
+    ['CommunityAbout.vue', styles('src/components/CommunityAbout.vue')],
     ['plaza/index.vue (home rules)', added],
   ]) {
     expect(css.length, name).toBeGreaterThan(200)

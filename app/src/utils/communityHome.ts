@@ -89,6 +89,12 @@ const BOARD_COPY: Record<PostCategory, { title: HomeText; description: HomeText;
   },
 }
 
+/** The line that stands in for missing topics: on a home card, and under a board page with fewer than three. */
+export function boardFiller(category: PostCategory): HomeText {
+  const ask = BOARD_COPY[category].ask
+  return { zh: `适合在这里问：${ask.zh} 发第一帖 ›`, en: `Ask here about ${ask.en}. Start the first topic ›` }
+}
+
 // Binary string comparison avoids dependence on the host's locale.
 const idDescending = (a: { id: string }, b: { id: string }) => a.id < b.id ? 1 : a.id > b.id ? -1 : 0
 const newest = (a: { id: string; created_at: string }, b: { id: string; created_at: string }) =>
@@ -185,13 +191,7 @@ export function buildHomeSections(
       card.weeklyCount = weeklyCount
       card.weeklyLabel = { zh: `本周 ${weeklyCount} 新帖`, en: `${weeklyCount} new posts this week` }
     }
-    if (card.rows.length < rowLimit) {
-      const ask = BOARD_COPY[card.category].ask
-      card.rows.push({
-        kind: 'filler',
-        text: { zh: `适合在这里问：${ask.zh} 发第一帖 ›`, en: `Ask here about ${ask.en}. Start the first topic ›` },
-      })
-    }
+    if (card.rows.length < rowLimit) card.rows.push({ kind: 'filler', text: boardFiller(card.category) })
   }
 
   const remaining = allowed.filter(p => !used.has(p.id))
