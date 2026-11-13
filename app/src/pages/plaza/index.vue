@@ -462,12 +462,15 @@
       <view v-if="!loadingComments && comments.length > 0" class="cmt-end"><text>{{ t('plaza.noMoreComments') }}</text></view>
       </scroll-view>
 
-      <view v-if="replyTo" class="ci-reply-bar">
+      <view v-if="replyTo && !replyRestricted" class="ci-reply-bar">
         <text class="ci-reply-label">{{ t('plaza.replyingTo') }} @{{ replyTo.profile?.nickname || t('app.user') }}</text>
         <view class="ci-reply-x" role="button" :aria-label="t('a11y.close')" @click.stop="replyTo = null"><view class="ci-rx"></view></view>
       </view>
 
-      <view class="ci-input-bar">
+      <view v-if="replyRestricted" class="ci-input-bar reply-restricted" role="status">
+        <text>{{ t('plaza.restrictedReply') }}</text>
+      </view>
+      <view v-else class="ci-input-bar">
         <textarea
           v-model="commentText"
           class="ci-input"
@@ -517,16 +520,18 @@
           :aria-disabled="submitDisabled ? 'true' : 'false'"
           @click="onSubmitPost"
         >
-          {{ submitting ? t('login.wait') : t(outcomeUncertain ? 'plaza.checkPublished' : 'plaza.submit') }}
+          {{ submitting
+            ? composerUploadProgress ? t('plaza.uploadingImages', composerUploadProgress) : t('plaza.publishing')
+            : t(outcomeUncertain ? 'plaza.checkPublished' : 'plaza.submit') }}
         </text>
       </view>
       <view class="comp-body">
         <view v-if="draftRestored" class="composer-notice">
           <text>{{ t('plaza.draftRestored') }}</text>
-          <text class="composer-clear" role="button" @click="clearComposerDraft">{{ t('plaza.clearDraft') }}</text>
+          <text class="composer-clear" role="button" @click="clearComposerDraft">{{ t('plaza.draftClear') }}</text>
         </view>
         <text v-if="outcomeUncertain || publicationMissing" class="composer-notice" role="status">
-          {{ t(outcomeUncertain ? 'plaza.publishUncertain' : 'plaza.publishMissing') }}
+          {{ t(outcomeUncertain ? 'plaza.publishUnknown' : 'plaza.publishNotFound') }}
         </text>
         <view class="composer-mode" role="group" :aria-label="t('plaza.write')">
           <view v-for="mode in (['topic', 'update'] as const)" :key="mode" class="board-chip"
@@ -709,6 +714,7 @@ import { safeItemMediaUrls } from '../../utils/publicResource'
 import { REGIONS, regionLabel, showRegionSwitcher } from '../../utils/region'
 import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
 import { DIALOG_DANGER, DIALOG_WARN } from '../../utils/dialogColors'
+import { isSuspensionActive } from '../../utils/suspension'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
 // #ifdef H5
@@ -740,6 +746,7 @@ const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
 const { currentUser, isLoggedIn, requireAuth, awaitAuthReady } = useAuth()
+const replyRestricted = computed(() => isSuspensionActive(currentUser.value))
 const { posts, loading, hasMore, fetchError, fetchPosts, createPost, recoverCreatedPost, updatePostI18n, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, fetchMyActiveItems, clearPosts } = usePlaza()
 const { fetchFollowingProfiles } = useFollow()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
@@ -1035,6 +1042,7 @@ watch(composerMode, () => { composerErrors.value = {} })
 const composerImages = ref<string[]>([])
 const composerFocused = ref(false)
 const submitting = ref(false)
+const composerUploadProgress = ref<{ done: number; total: number } | null>(null)
 let composerAccountToken: AccountRequestToken | null = null
 let composerSessionId = 0
 
@@ -1211,6 +1219,15 @@ const { addPostToHistory } = useHistory()
 async function openComposer() {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
+  if (isSuspensionActive(currentUser.value)) {
+    if (currentUser.value.suspension_level === 5) {
+      uni.reLaunch({ url: '/pages/suspended/index' })
+    } else {
+      const date = new Date(currentUser.value.suspended_until!).toLocaleDateString(lang.value === 'zh' ? 'zh-CN' : 'en-US')
+      uni.showToast({ title: t('plaza.restrictedPost', { date }), icon: 'none', duration: 3500 })
+    }
+    return
+  }
   composerDialogOpener = activeElement()
   composerSessionId += 1
   composerAccountToken = captureAccountRequest(currentUser.value.id)
@@ -1499,24 +1516,36 @@ function onComposerCancel() {
   }
   const token = composerAccountToken
   const sessionId = composerSessionId
-  uni.showModal({
-    title: t('plaza.closeComposer'),
-    confirmText: t('plaza.keepDraft'),
-    cancelText: t('plaza.discardDraft'),
-    success: result => {
-      if (!token || !isAccountRequestCurrent(token) || sessionId !== composerSessionId || submitting.value) return
-      if (result.confirm) {
-        if (!saveComposerDraft()) {
-          uni.showToast({ title: t('publish.draftSaveFailed'), icon: 'none' })
-          return
-        }
-      } else removeAccountPrivateStorage(COMPOSER_DRAFT_KEY)
-      resetComposer()
-    },
+  const closeDraft = (keep: boolean) => {
+    if (!token || !isAccountRequestCurrent(token) || sessionId !== composerSessionId || submitting.value) return
+    if (keep) {
+      if (!saveComposerDraft()) {
+        uni.showToast({ title: t('publish.draftSaveFailed'), icon: 'none' })
+        return
+      }
+    } else removeAccountPrivateStorage(COMPOSER_DRAFT_KEY)
+    resetComposer()
+  }
+  // #ifdef MP-WEIXIN
+  // wx.showModal limits button text to four characters; keep the full labels.
+  uni.showActionSheet({
+    alertText: t('plaza.draftCloseTitle'),
+    itemList: [t('plaza.draftKeep'), t('plaza.draftDiscard')],
+    success: result => closeDraft(result.tapIndex === 0),
   })
+  // #endif
+  // #ifndef MP-WEIXIN
+  uni.showModal({
+    title: t('plaza.draftCloseTitle'),
+    confirmText: t('plaza.draftKeep'),
+    cancelText: t('plaza.draftDiscard'),
+    success: result => closeDraft(result.confirm),
+  })
+  // #endif
 }
 
 function resetComposer() {
+  composerUploadProgress.value = null
   composerSessionId += 1
   composerFocused.value = false
   showComposer.value = false
@@ -1712,10 +1741,15 @@ async function onSubmitPost() {
         up = await uploadImagesWithDims(localImages, {
           entryPoint: 'plaza',
           accountToken: submitAccountToken,
+          onProgress: (done, total) => {
+            if (isAccountRequestCurrent(submitAccountToken)) composerUploadProgress.value = { done, total }
+          },
         })
       } catch (upErr: any) {
         if (upErr?.heic === true) throw new Error(t('heic.unsupported'))
         throw upErr
+      } finally {
+        if (isAccountRequestCurrent(submitAccountToken)) composerUploadProgress.value = null
       }
       newlyUploadedUrls = up.urls
       let localIndex = 0
@@ -1811,8 +1845,12 @@ async function onSubmitPost() {
     }
     composerPostId.value = createClientMessageId()
     composerRetryCreate = false
+    const restrictedUntil = /^suspension_active:[^:]+:(.+)$/.exec(err?.message || '')?.[1]
+    const restrictionDate = restrictedUntil ? new Date(restrictedUntil) : null
     uni.showToast({
-      title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
+      title: restrictionDate && !Number.isNaN(restrictionDate.getTime())
+        ? t('plaza.restrictedPost', { date: restrictionDate.toLocaleDateString(lang.value === 'zh' ? 'zh-CN' : 'en-US') })
+        : friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
       icon: 'none',
       duration: 2500,
     })
@@ -1992,6 +2030,7 @@ function onCommentKeydown(e: KeyboardEvent) {
 async function onSubmitComment() {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
+  if (replyRestricted.value) return
   if (!commentText.value.trim() || !commentingPost.value) return
   if (commentSubmitting.value) return
   commentSubmitting.value = true
@@ -2073,6 +2112,7 @@ async function onSubmitComment() {
 async function onCommentTap(c: PostComment) {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
+  if (replyRestricted.value) return
   replyTo.value = c
   inputFocused.value = true
 }
@@ -2127,6 +2167,7 @@ async function onCommentLongPress(c: PostComment) {
     success: (res) => {
       if (!actionIsCurrent()) return
       if (res.tapIndex === 0) {
+        if (replyRestricted.value) return
         replyTo.value = c
         inputFocused.value = true
       } else if (isMine && res.tapIndex === 1) {
@@ -2950,6 +2991,10 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   padding: 8px 16px;
   background: var(--bg-elev-1);
   border-top: 0.5px solid var(--line-hair);
+}
+.reply-restricted {
+  min-height: 44px; box-sizing: border-box; align-items: center;
+  font-size: 14px; line-height: 20px; color: var(--ink-soft);
 }
 .ci-input {
   flex: 1; min-height: 36px;
