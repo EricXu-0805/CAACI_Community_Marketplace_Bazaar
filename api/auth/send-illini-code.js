@@ -44,7 +44,7 @@ const ANON_KEY = env(
 )
 const SERVICE_KEY = env('SUPABASE_SECRET_KEY', env('SUPABASE_SERVICE_ROLE_KEY'))
 const RESEND_API_KEY = env('RESEND_API_KEY')
-const FROM = env('DIGEST_FROM', 'Illini Market <noreply@send.illinimarket.com>')
+const FROM = env('DIGEST_FROM', '玉米地 Cornfield <noreply@send.illinimarket.com>')
 
 const LOGGER = 'api/auth/send-illini-code'
 
@@ -237,11 +237,11 @@ function codeEmailHtml(code) {
   <div style="max-width:480px;margin:0 auto;padding:32px 20px;">
     <div style="text-align:center;">
       <span style="display:inline-block;width:44px;height:44px;line-height:44px;border-radius:12px;background:#C74A2F;color:#fff;font-weight:700;font-size:22px;">集</span>
-      <div style="font-family:Georgia,'Times New Roman',serif;font-size:20px;color:#2A2521;margin-top:10px;">Illini Market</div>
+      <div style="font-family:Georgia,'Times New Roman',serif;font-size:20px;color:#2A2521;margin-top:10px;">Cornfield · 玉米地</div>
     </div>
     <div style="background:#fff;border-radius:16px;padding:28px 28px 26px;margin-top:18px;">
       <div style="font-size:15px;color:#4A443B;line-height:1.55;">
-        Use this code to verify your Illinois campus email and earn your <b style="color:#13294B;">Illini</b> badge:
+        Use this code to verify your Illinois campus email and earn the <b style="color:#13294B;">Campus email verified</b> badge:
       </div>
       <div style="font-size:32px;font-weight:800;letter-spacing:9px;color:#ffffff;text-align:center;background:#13294B;border-radius:12px;padding:18px 0;margin:18px 0 4px;">${code}</div>
       <div style="font-size:12px;color:#8B8478;line-height:1.5;margin-top:16px;">
@@ -249,7 +249,7 @@ function codeEmailHtml(code) {
       </div>
     </div>
     <div style="text-align:center;color:#A39A8C;font-size:11px;line-height:1.6;margin-top:20px;">
-      Illini Market · UIUC campus marketplace
+      Cornfield · 玉米地 · Chinese community in Illinois
     </div>
   </div>
 </body></html>`
@@ -386,7 +386,7 @@ export default async function handler(request) {
     const sent = await fetchWithTimeout('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM, to: [email], subject: 'Your Illini Market verification code', html: codeEmailHtml(code) }),
+      body: JSON.stringify({ from: FROM, to: [email], subject: 'Your Cornfield verification code', html: codeEmailHtml(code) }),
     }, RESEND_TIMEOUT_MS)
     if (!sent.ok) {
       try { console.error('illini resend failed', sent.status) } catch {}

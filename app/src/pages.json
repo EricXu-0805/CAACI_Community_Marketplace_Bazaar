@@ -179,7 +179,7 @@
 	// #endif
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "Illini Market",
+		"navigationBarTitleText": "玉米地",
 		"navigationBarBackgroundColor": "#F7F4EE",
 		"backgroundColor": "#F7F4EE"
 	},

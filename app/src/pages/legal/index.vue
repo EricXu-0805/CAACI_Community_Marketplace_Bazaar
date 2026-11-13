@@ -96,8 +96,8 @@ const body = computed(() => {
 // liability language also lives in the versioned Terms, so it is covered by
 // the consent bundle rather than relying on unversioned page chrome.
 const disclaimer = computed(() => lang.value === 'zh'
-  ? 'Illini 集市是 Guoyi (Eric) Xu 运营的社区项目，面向 UIUC 社区的点对点二手集市。平台不持有、不寄送、不担保任何商品，也不保证卖家或商品的真实性、品质与安全；交易与线下面交的风险由买卖双方自行承担。'
-  : 'Illini Market is a community project operated by Guoyi (Eric) Xu — a peer-to-peer marketplace for the UIUC community. We do not hold, ship, or guarantee any item, and make no warranty as to the authenticity, quality, or safety of any listing or seller. You transact and meet in person at your own risk.')
+  ? '玉米地是 Guoyi (Eric) Xu 运营的社区项目，面向 UIUC 社区的点对点二手集市。平台不持有、不寄送、不担保任何商品，也不保证卖家或商品的真实性、品质与安全；交易与线下面交的风险由买卖双方自行承担。'
+  : 'Cornfield is a community project operated by Guoyi (Eric) Xu — a peer-to-peer marketplace for the UIUC community. We do not hold, ship, or guarantee any item, and make no warranty as to the authenticity, quality, or safety of any listing or seller. You transact and meet in person at your own risk.')
 
 onLoad((options) => {
   const t = options?.type

@@ -158,7 +158,7 @@
         <view class="seller-info">
           <view class="seller-name-row">
             <text class="seller-name">{{ item.profile.nickname }}</text>
-            <UBadge v-if="item.profile.is_illini_verified" variant="illini" :title="t('profile.illiniVerified')" label="Illini" />
+            <UBadge v-if="item.profile.is_illini_verified" variant="illini" :title="t('profile.illiniVerified')" :label="t('profile.illiniVerified')" />
           </view>
           <view v-if="soldCount > 0 || reviewCount > 0 || showReplyRate" class="seller-proof">
             <text v-if="soldCount > 0" class="sp-item"><text class="sp-strong">{{ soldCount }}</text> {{ t('detail.soldCount') }}</text>
@@ -199,7 +199,7 @@
           <view class="rv-body">
             <view class="rv-head">
               <text class="rv-nick">{{ r.rater?.nickname || t('app.user') }}</text>
-              <UBadge v-if="r.rater?.is_illini_verified" variant="illini" label="Illini" />
+              <UBadge v-if="r.rater?.is_illini_verified" variant="illini" :title="t('profile.illiniVerified')" :aria-label="t('profile.illiniVerified')" :label="t('profile.verifiedShort')" />
               <text class="rv-stars">{{ r.stars }}/5</text>
               <text class="rv-time">· {{ formatTime(r.created_at) }}</text>
             </view>
@@ -1070,7 +1070,7 @@ function onShare() {
   // #ifdef H5
   const shareUrl = `${window.location.origin}/share/${item.value.id}${lang.value === 'zh' ? '?lang=zh' : ''}`
   if (navigator.share) {
-    navigator.share({ title: `${displayTitle.value} · Illini Market`, text: `${listingPriceLabel(item.value, t)} · ${displayTitle.value}`, url: shareUrl })
+    navigator.share({ title: `${displayTitle.value} · ${t('app.name')}`, text: `${listingPriceLabel(item.value, t)} · ${displayTitle.value}`, url: shareUrl })
       .catch((err: any) => {
         if (err?.name !== 'AbortError') console.warn('[share] failed')
       })

@@ -104,7 +104,7 @@
             <view class="fp-info">
               <view class="fp-name-row">
                 <text class="fp-name">{{ p.nickname || t('app.user') }}</text>
-                <UBadge v-if="p.is_illini_verified" variant="illini" label="Illini" />
+                <UBadge v-if="p.is_illini_verified" variant="illini" :title="t('profile.illiniVerified')" :aria-label="t('profile.illiniVerified')" :label="t('profile.verifiedShort')" />
               </view>
               <text v-if="p.status_text" class="fp-status">{{ p.status_emoji ? p.status_emoji + ' ' : '' }}{{ p.status_text }}</text>
               <text v-else-if="p.location" class="fp-status">{{ localizedLocation(p.location) }}</text>
@@ -189,7 +189,7 @@
                 <view class="pa-name-row">
                   <text class="pa-name" role="button" @click.stop="goSeller(post.user_id)">{{ post.profile?.nickname || t('app.user') }}</text>
                   <UBadge v-if="post.is_official" variant="official" :label="t('plaza.official')" />
-                  <UBadge v-else-if="post.profile?.is_illini_verified" variant="illini" label="Illini" />
+                  <UBadge v-else-if="post.profile?.is_illini_verified" variant="illini" :label="t('profile.illiniVerified')" />
                   <view v-if="post.is_pinned" class="badge-pinned"><text class="badge-pinned-label">{{ t('plaza.pinned') }}</text></view>
                 </view>
                 <text class="pa-time">{{ formatTime(post.created_at) }}</text>

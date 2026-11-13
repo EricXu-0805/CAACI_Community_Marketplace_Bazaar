@@ -61,7 +61,7 @@ const EXPLICIT_APP_ORIGIN = strictAppOrigin(EXPLICIT_APP_URL)
 const APP_URL = EXPLICIT_APP_ORIGIN || DEFAULT_APP_URL
 const VERCEL_ENV = env('VERCEL_ENV').toLowerCase()
 const VERCEL_URL = env('VERCEL_URL').toLowerCase()
-const FROM = env('DIGEST_FROM', 'Illini Market <noreply@send.illinimarket.com>')
+const FROM = env('DIGEST_FROM', '玉米地 Cornfield <noreply@send.illinimarket.com>')
 
 const RATE_MAX = 10
 const RATE_WINDOW_SECS = 3600
@@ -369,9 +369,9 @@ function copyFor(lang) {
     re: zh ? '关于：' : en ? 'Re: ' : 'Re: / 关于：',
     timezone: zh ? '（美中时间）' : en ? ' (US Central)' : ' (US Central · 美中时间)',
     respond: zh ? '去回应' : en ? 'Respond' : 'Respond · 去回应',
-    tagline: zh ? 'UIUC 校园二手集市 · Champaign-Urbana, IL'
-      : en ? 'UIUC campus marketplace · Champaign-Urbana, IL'
-        : 'UIUC campus marketplace / 校园二手集市 · Champaign-Urbana, IL',
+    tagline: zh ? '伊利诺伊华人论坛，现开放香槟地区'
+      : en ? 'Chinese community in Illinois, now open in Champaign-Urbana'
+        : 'Chinese community in Illinois, now open in Champaign-Urbana / 伊利诺伊华人论坛，现开放香槟地区',
     unsubPrompt: zh ? '不想再收到邮件提醒？' : en ? 'No longer want these emails? ' : 'No longer want these emails? / 不想再收到邮件提醒？ ',
     unsubLink: zh ? '一键退订' : en ? 'Unsubscribe' : 'Unsubscribe · 一键退订',
   }
@@ -390,8 +390,8 @@ function mailHtml({ actorName, verb, verbEn, spot, whenLabel, note, itemTitle, u
     <div style="text-align:center;margin-bottom:8px">
       <span style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:10px;background:#C74A2F;color:#fff;font-weight:700;font-size:20px">集</span>
     </div>
-    <h1 style="font-family:Georgia,serif;font-size:22px;color:#2A2521;text-align:center;margin:8px 0 2px">Illini Market</h1>
-    <p style="margin:3px 0 0;font-size:12px;font-weight:600;color:#A39A8C;letter-spacing:2px;text-transform:uppercase;text-align:center"><span lang="zh">Illini 集市</span></p>
+    <h1 style="font-family:Georgia,serif;font-size:22px;color:#2A2521;text-align:center;margin:8px 0 2px">Cornfield</h1>
+    <p style="margin:3px 0 0;font-size:12px;font-weight:600;color:#A39A8C;letter-spacing:2px;text-transform:uppercase;text-align:center"><span lang="zh">玉米地</span></p>
     <p style="text-align:center;color:#8B8478;font-size:13px;margin:0 0 20px">${
       lang === 'en'
         ? `${esc(actorName)} ${esc(verbEn || verb)}`
@@ -409,7 +409,7 @@ function mailHtml({ actorName, verb, verbEn, spot, whenLabel, note, itemTitle, u
       <a href="${esc(APP_URL)}/#/pages/messages/index" style="display:inline-block;background:#C74A2F;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-weight:600;font-size:15px">${c.respond}</a>
     </div>
     <p style="text-align:center;color:#A39A8C;font-size:11px;line-height:1.6;margin-top:24px">
-      Illini Market · <span lang="zh">Illini 集市</span><br>
+      Cornfield · <span lang="zh">玉米地</span><br>
       ${c.tagline}<br>
       <a href="${esc(APP_URL)}" style="color:#A39A8C;text-decoration:none">illinimarket.com</a><br>
       ${unsub}
@@ -630,7 +630,7 @@ export default async function handler(req) {
     try {
       const began = await beginNotificationEmailDelivery(deliveryClaim)
       if (began !== 1) throw new Error('delivery claim expired')
-      // No brand prefix: FROM already renders as "Illini Market" in the
+      // No brand prefix: FROM already renders as "玉米地 Cornfield" in the
       // recipient's inbox, and a phone truncates the subject around 35-40
       // characters — a redundant prefix was cutting the English half of every
       // bilingual title ("...· Meetup proposed") off the end.
