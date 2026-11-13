@@ -310,3 +310,15 @@
 - 未测项: ④ 全量（没有可提交的修复）
 - 下一条: P1.10
 - 附: 停这条（STOP-14，同时 D-41 要求 --force 项与 vite 逐个报 Eric）。问题已经通过提问发给用户；按用户的硬规则 2（不外发消息），没有在 PR 上留言。D-41 已定后 P1.7 的依赖包括 P1.6，所以 P1.7 一起等。
+
+### L26 · 2026-11-13 00:45 CT · P1.10 L-SQL 全链回放：两轮修正后仍未跑通，停这条
+- task_id: P1.10
+- code_sha: 9c173a48bd61c0da5ee3a714af94d1f6c8a36522（被回放的 ~/work/illini head；不改仓库）
+- docs_sha: 3a2997ef91d06a624ad089daac4fd9f1b6385a90
+- 环境: L-SQL：docker.io/supabase/postgres:17.6.1.104，--network none，连接角色 supabase_admin
+- 命令: 按 RUNBOOK §5.1 原样建 ~/work/illini-dev-env/lsql-replay.sh（sha256 95c75beec49807f0927d633a3f834da4a48e4e7603f8c68ce189fccfedd11239，原样副本 lsql-replay.sh.as-in-RUNBOOK）；`lsql-replay.sh ~/work/illini` 三次：原样（log lsql-20261113T063230Z.log）、修正 1（lsql-20261113T064041Z.log）、修正 2（lsql-20261113T064250Z.log，脚本 sha256 2e6cd7180946f8c09a5ce6b88f6efd8cd53dfe436b42f7b6ac760af760e6c2e1）；另用一次性容器查镜像初始化后的 auth 函数（~/work/evidence/P1.10/probe-auth.sh）
+- 计数: ③ 连接角色：supabase_admin 能连上（PostgreSQL 17.6）。原样：files=181 replayed=109 errors=1，停在 REPLAY 20260718230000_authoritative_public_write_resource_boundaries.sql，「ERROR: migration_precheck_failed: missing function auth.jwt()」——镜像的 auth schema 只有 email/role/uid。修正 1（numbered 001–089 之后加 _ops/LOCAL_BOOTSTRAP_20260719_full_release_platform.sql，它的文件头写明用于「full 001-089 + candidate replay」）：replayed=110，停在 20260718240000_private_conversation_realtime.sql，「migration_blocked: realtime.messages is missing」。修正 2（在 20260718240000 之前加 _ops/LOCAL_BOOTSTRAP_20260718_private_conversation_realtime.sql）：replayed=129，停在 20260722081141_harden_authenticated_function_surface.sql，「function-surface hardening must run as postgres, got supabase_admin」[隔离环境 L-SQL]
+- ci_run_url: —
+- 未测项: ① ② ④ 的通过判定
+- 下一条: P2.3
+- 附: 没有改任何迁移。文档与源码不一致（STOP-16，可继续）：RUNBOOK §5.1 的脚本只 include 20260722 bootstrap，而仓库 _ops 下还有全链回放需要的 20260719 与 realtime 两个 fixture；另外一部分迁移要求以 postgres 身份执行。两轮之后仍不通过，按 STOP-14 停这条，已提问用户（脚本连接角色与 bootstrap 顺序由谁定）。P2.5 依赖 P1.10，一并等。容器每次都已删除（残留 0）。
