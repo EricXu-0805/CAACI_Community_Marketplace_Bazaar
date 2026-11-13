@@ -3,7 +3,9 @@
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
+    <!-- #ifdef H5 -->
     <AppSidebar current="plaza" />
+    <!-- #endif -->
 
     <!-- .page-header is display:none at >=768px, and display:none drops the
          node from the accessibility tree — so the heading has to live outside
@@ -709,7 +711,9 @@ import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbU
 import { DIALOG_DANGER, DIALOG_WARN } from '../../utils/dialogColors'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 import { BASE_URL } from '../../config/runtime'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PlazaBannerCarousel from '../../components/PlazaBannerCarousel.vue'

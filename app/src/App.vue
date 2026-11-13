@@ -2412,6 +2412,7 @@ textarea:focus-visible,
 /* M1 — desktop type-scale bump (kit v5 colors_and_type.css:456-462).
  * H5 ≥768px only; mp-weixin is mobile and never hits this breakpoint
  * so no page/.page mirror is needed. */
+/* #ifdef H5 */
 @media (min-width: 768px) {
   :root {
     --t-display: 56px;   --lh-display: 1.05;
@@ -2420,6 +2421,7 @@ textarea:focus-visible,
     --t-body:    16px;
   }
 }
+/* #endif */
 
 /*
  * ============================================================

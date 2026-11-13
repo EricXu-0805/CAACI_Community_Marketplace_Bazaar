@@ -1,6 +1,8 @@
 <template>
   <view class="page secondary-page secondary-page--catalog has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <!-- #ifdef H5 -->
     <AppSidebar current="profile" />
+    <!-- #endif -->
     <view class="secondary-content">
     <!-- #ifndef H5 -->
     <AppToast />
@@ -88,7 +90,9 @@
 </template>
 
 <script setup lang="ts">
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 /*
  * Full-list view behind the profile stat strip.
  *

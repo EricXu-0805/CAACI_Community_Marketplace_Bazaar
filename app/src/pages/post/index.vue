@@ -1,6 +1,8 @@
 <template>
   <view class="page secondary-page secondary-page--post has-sidebar" :class="mpThemeClass" :style="[mpChrome, viewportStyle]">
+    <!-- #ifdef H5 -->
     <AppSidebar current="plaza" />
+    <!-- #endif -->
     <view class="secondary-content">
     <!-- #ifndef H5 -->
     <AppToast />
@@ -301,7 +303,9 @@
 </template>
 
 <script setup lang="ts">
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 // #ifndef H5

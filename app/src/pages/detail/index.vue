@@ -1,5 +1,7 @@
 <template>
+  <!-- #ifdef H5 -->
   <AppSidebar current="" />
+  <!-- #endif -->
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
@@ -426,7 +428,9 @@ import { computed, onUnmounted, watch, nextTick, getCurrentInstance } from 'vue'
 import UBadge from '../../components/UBadge.vue'
 import UAvatar from '../../components/UAvatar.vue'
 import UIcon from '../../components/UIcon.vue'
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 import { captureException } from '../../utils/sentry'
 import {
   captureAccountRequest,
