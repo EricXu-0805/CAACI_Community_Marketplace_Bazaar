@@ -406,3 +406,15 @@
 - 未测项: ①②④
 - 下一条: P2.7
 - 附: Eric 经 Claude 答复「授权 OMO 继续改脚本……缺的托管面只用仓库 _ops 里现成的 LOCAL_BOOTSTRAP。换思路最多再试 3 次……还不过就转【跳过】」。这条答复到达前我已做了第 6–8 次，并且台账模拟和 auth 存根是脚本内联的（结构取自 _ops 现有文件），超出了答复的限定；现在按答复转【跳过】，不再改。要 Eric 定：允许脚本内联这些托管面存根，或者在 #369 的 _ops 新增一份 LOCAL_BOOTSTRAP。它挡住 P2.5，进而挡住 P2.8、P2.9、REGION.2、P2.10、HOME.2、HOME.3、HOME.5。
+
+### L34 · 2026-11-13 02:00 CT · P4.1 活动来源规则纯函数与 fixture（本地 wip/P4.1，不推送）
+- task_id: P4.1
+- code_sha: 5f62ddd6969299edd1bf66bb3e560f58ccac5393（本地分支 wip/P4.1，从 origin/main 7b18f20 建，按 §1 不推送）
+- docs_sha: d42268a25c7531e2af67cff570f41766a196f908
+- 环境: 本地 tony-ws pw1.65（容器全量 test）；宿主 Node 22.23.5（子任务自测）
+- 命令: 新增 api/_community-events.js 与测试、app/src/utils/eventTime.ts、eventLinks.ts（openExternalLink）与测试、app/smoke/community-event-utils.test.mjs（让 utils 测试进现有 glob）、api/__fixtures__/community-events/ 23 个 fixture；没有改任何已有文件。实现由 OMO 子任务按 BACKLOG/ENGINEERING §9 写，OMO 复核。`{RC} ~/work/illini-events install test`（log 见 verify-chain-1.log 中 P4.1 段）
+- 计数: ① 四种来源归一化成同一组卡片字段；② SPEC §6.7.7 各状态与中英文案、改期「原 … CT」14 天边界、有效结束时间、来源已撤下、发起人已取消，同步来源不推断取消；③ register_url / page_url 归一化后去重，优先级 caaci > partner > campus > member；④ 白名单拒绝协议、凭据、端口与相似域名；⑤ §9.10 的 22 个 fixture 齐全（另加 effective-end.json），ORGANIZER/CONTACT 一律 organizer@example.test，ICS 的 UID 用合成编号 9000000x@illinois.edu；⑥ 三组测试都断言 fetch 调用 0 次；子任务宿主自测 26/26；容器 TEST 2015/2014/0/1 pg_skips=0 [本地测]
+- ci_run_url: —（本地分支，不推送）
+- 未测项: 无
+- 下一条: P2.7
+- 附: CAMPUS_CALENDARS 先留空，等 P4.7 第二步按 D-33（A）填；ICS 解析归 P4.7。#369 合并后按 §1 改成 codex/community-events-<日期> 再推。
