@@ -1,8 +1,8 @@
 # STATUS
 
-写于 2026-11-13 04:12 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-13 04:36 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: P2.5`
+`next_task_id: P2.9`
 `latest_batch: appendix/batch/FINAL.md`
 
 ## 版本
@@ -10,10 +10,10 @@
 | 项 | 值 |
 |---|---|
 | 代码分支 / PR | codex/community-topics-20261112 / #369（草稿，OPEN）[本地测：git push 9c173a4] |
-| code_sha | be2ebb6a3752a763cdad2f634b0db2fb88e75161（OMO 推送 P2.7 修正后的 #369 head） |
+| code_sha | 090d2be97f8a898d011a414ad223cd6320544ad1（OMO 推送 P2.5 后的 #369 head） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-12 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-12 git ls-remote] |
-| docs_sha | b584adcf620eb7b8c3a5e36dc60a4ee0062301f3（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
+| docs_sha | 5707d1b29110631ddaac37fe039981a406bc204c（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
 | 配置 / 品牌 / 首页分支 | codex/config-fixes-20261112 远端 b259105，草稿 PR #371（P1.2–P1.7）；codex/brand-cornfield-20261112 远端 ba070e7，草稿 PR #372（BRAND.1–BRAND.4）；首页分支没建（HOME.3 经 P2.5 随 P1.10【跳过】）[本地测] |
 | tony-ws 仓库 | ~/work/illini 在 be2ebb6（#369）；worktree：illini-config（#371）、illini-brand（#372）、illini-events（wip/P4.1 5f62ddd，本地不推送）、illini-main（origin/main 只读对照）；~/work/caaciorg 本地 feat/public-events-feed 28d59b1（不推送）；~/work/illini-docs 在 codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
@@ -21,7 +21,7 @@
 
 ## CI
 
-PR #369 · run [43392843858](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43392843858) · head be2ebb6 · 2026-11-13 CT 结束 · conclusion failure（public sweep 停在预检，等 E4；其余 job success）[CI run#43392843858]
+PR #369 · run [43409123864](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43409123864) · head 090d2be · 2026-11-13 CT 结束 · conclusion failure（public sweep 停在预检，等 E4；其余 job success）[CI run#43409123864]
 
 | job | 结论 | 计数 / 原因 |
 |---|---|---|
@@ -65,7 +65,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P2.3 | 通过 | 9→0；两张截图第 2 项为「社区」；smoke 14 passed、test 2001/2000/0/1 [本地测]；CI 同前 [CI run#43380822445] |
 | P2.4 | 通过 | smoke 23 passed、test 2001/2000/0/1 [本地测]；CI [CI run#43383800477] |
 | REGION.1 | 通过 | 列、约束、只读授权、region_in 已并入；test 2001/2000/0/1 [本地测]；④ 的 VERIFY/L-SQL 随 P2.5 |
-| P2.5 | 未测 | P1.10 已通过；冻结前修订进行中（OMO 子任务） |
+| P2.5 | 通过 | 20261112120000 冻结（sha256 e2a85c3e…）；L-SQL 181/181，PRECHECK→REPLAY→VERIFY→REGRESSION 全过；test 2001/2000/0/1 [隔离环境 L-SQL][本地测]；④ staging 探测等 E3 |
 | P2.6 | 失败 | public sweep 2 failed（上表）；等 D-29、E4 |
 | P2.7 | 通过 | smoke 15 passed、test 2001/2000/0/1 [本地测]；CI [CI run#43392843858] |
 | P2.8–P2.10、REGION.2 | 跳过 | 经 P2.5 依赖已【跳过】的 P1.10 |
