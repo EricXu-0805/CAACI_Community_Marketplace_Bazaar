@@ -1498,21 +1498,32 @@ function onComposerCancel() {
   }
   const token = composerAccountToken
   const sessionId = composerSessionId
+  const closeDraft = (keep: boolean) => {
+    if (!token || !isAccountRequestCurrent(token) || sessionId !== composerSessionId || submitting.value) return
+    if (keep) {
+      if (!saveComposerDraft()) {
+        uni.showToast({ title: t('publish.draftSaveFailed'), icon: 'none' })
+        return
+      }
+    } else removeAccountPrivateStorage(COMPOSER_DRAFT_KEY)
+    resetComposer()
+  }
+  // #ifdef MP-WEIXIN
+  // wx.showModal limits button text to four characters; keep the full labels.
+  uni.showActionSheet({
+    alertText: t('plaza.draftCloseTitle'),
+    itemList: [t('plaza.draftKeep'), t('plaza.draftDiscard')],
+    success: result => closeDraft(result.tapIndex === 0),
+  })
+  // #endif
+  // #ifndef MP-WEIXIN
   uni.showModal({
     title: t('plaza.draftCloseTitle'),
     confirmText: t('plaza.draftKeep'),
     cancelText: t('plaza.draftDiscard'),
-    success: result => {
-      if (!token || !isAccountRequestCurrent(token) || sessionId !== composerSessionId || submitting.value) return
-      if (result.confirm) {
-        if (!saveComposerDraft()) {
-          uni.showToast({ title: t('publish.draftSaveFailed'), icon: 'none' })
-          return
-        }
-      } else removeAccountPrivateStorage(COMPOSER_DRAFT_KEY)
-      resetComposer()
-    },
+    success: result => closeDraft(result.confirm),
   })
+  // #endif
 }
 
 function resetComposer() {
