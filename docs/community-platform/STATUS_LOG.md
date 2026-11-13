@@ -710,3 +710,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: CI（本地分支不推送）；pages.smoke 的首页、社区页巡检要在有真实 staging 的环境跑（CI public sweep，等 E4）
 - 下一条: D-45 第 4 项（主包腾空间草稿 PR）
 - 附: 结论：合并顺序可以是 #371 → #373，#369 → #374（#373 与 #374 之间无冲突），#372 最后手工合。五个 PR 都合上后主包只剩 2,242 字节余量，任何再进主包的改动都会超预算，所以第 4 项要按合并后的大小留余量。
+
+### L58 · 2026-11-13 08:35 CT · D-45 第 4 项：小程序主包腾出 68.4 KiB 余量，草稿 PR #375（base #369 分支）[OMO自决]
+- task_id: D-45.4
+- code_sha: 4a3cbe6（codex/community-mp-budget-20261113，从 #369 head 92698d1 切出，草稿 PR #375，base codex/community-topics-20261112；push 用 --no-verify 同 L21；PR 用 REST POST 建，因为 gh 的 GraphQL 报 Projects classic）
+- docs_sha: 7013638cf7c207832f1bb7c1239777d7cd7a5d94
+- 环境: 本地 tony-ws run-checks（mp 构建 + verify-build-artifact）
+- 命令: 三次尝试（每项最多 3 次）：① manifest.json 的 mp-weixin 加 `optimization.subPackages: true`，主包 1,558,580 不变，撤回；② en.ts / zh.ts 的 admin.* 包进 `// #ifdef H5`（各 3 段，保留小程序用到的 admin.title、admin.plazaBanners；核对过拼接与模板字符串的 admin. 前缀都只在 pages/admin、AdminSupportReply 这类 H5 文件）；③ 21 个页面的 `<AppSidebar>` 与 import 包进 `#ifdef H5`（组件模板本来就是 H5 专用，小程序里渲染为空），UButton 的 `(hover: hover) and (min-width: 768px)` 块与 App.vue 的桌面字号块包进 `/* #ifdef H5 */`。每次 `~/work/illini-dev-env/run-checks.sh ~/work/illini-mpbudget install mp`；提交前 `~/work/illini-dev-env/run-checks.sh ~/work/illini-mpbudget install typecheck test h5 mp smoke`。分析脚本与日志在 tony-ws evidence/D45-mpbudget/
+- 计数: 主包：92698d1 1,558,580 → ① 1,558,580 → ② 1,512,374（-46,206）→ ③ 1,502,824（-9,550），余量 70,040 字节（68.4 KiB ≥ 64 KiB）；分包 detail 56,210、post 39,248、seller 28,460。提交前全量：install、typecheck、h5、mp rc=0，test 2044 / 2043 / 0 / 1 pg_skips=0，smoke 15 passed（check-20261113T142650Z）[本地测]。没采用的：PNG 无损重存只省 776 字节；98 个找不到字面引用的 key 大多靠 `'cat.' +` 这类拼接在用，不能去掉
+- ci_run_url: —（#375 base 不是 main，ci.yml 不触发）
+- 未测项: 真机；五个 PR 合在一起后的实际余量（按第 3 项多出约 12 KB 估算约 57 KiB，低于 64 KiB）
+- 下一条: D-45 第 5 项（代码对齐 SPEC §11）
+- 附: 自决：规则 BACKLOG §14 第 23 行（主包预算）；选了条件编译，不移动页面路径、不加依赖；理由见命令；撤回 `git revert 4a3cbe6` 或关闭 #375。注意 #375 只在 #369 之上量到 64 KiB 以上；合上 #374、#372 后估计约 57 KiB，第 7 项（小程序论坛首页）要在这个余量里做。
