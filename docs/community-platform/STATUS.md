@@ -1,6 +1,6 @@
 # STATUS
 
-写于 2026-11-13 14:40 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-13 15:17 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
 `next_task_id: D-48 第 3 项（手工合入 #375、#374）`
 `latest_batch: appendix/batch/FINAL.md`
@@ -15,22 +15,22 @@ next_task_id 按 D-48 第 7 项的新优先顺序取第一条未完成项：D-48
 | code_sha | ae058c216027da52d7346361b3be6aaf388d6d35（D-48.1、D-48.2、D-50.3 已完成并推送） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | d982ec84f9abf3ea69144e89dafd8b17cecdfb26（本次写回之前材料分支的 HEAD） |
+| docs_sha | b4788cf2310945935f15dde771ecab03fd1656a6（本次写回之前材料分支的 HEAD） |
 | 其余代码分支（远端 head） | #374 codex/community-home-20261112 6d6c598（P2.12、HOME.3、HOME.4、HOME.5、SPEC §11、小程序首页、D-46 3d / 3c / 3e；已合入 #369 b7bcf3a 与 #375 4a3cbe6，依赖 #375）。**#374 还不含 3a（3d24a8e），也不含 #369 上的 3b（3588c24）、3f（520e55a）**，所以 #374 上仍有 4a3cbe6 带来的小程序非 tab 页不启动消息与通知监听的问题。#375 codex/community-mp-budget-20261113 30c4b4d（小程序主包腾空间 4a3cbe6、D-46 3a 3d24a8e、D-46 第 4 项 8972507 / 1443d5c / ecc330b，30c4b4d 合入 #369 520e55a 的 3b、3f；base #369 分支）。#373 codex/deps-crossmajor-20261113 55716ba（P1.6 跨大版本，base #371）。#372 codex/brand-cornfield-20261112 ba070e7（BRAND.1–BRAND.4）。#371 codex/config-fixes-20261112 b259105（P1.2–P1.7）[本地测：git ls-remote] |
-| tony-ws worktree | ~/work/illini ae058c2（#369，与远端一致）；illini-home 6d6c598（#374，与远端一致）；illini-mpbudget 30c4b4d（#375，与远端一致；D-47 第 5 项子任务进行中）；illini-deps 55716ba（#373）；illini-brand ba070e7（#372）；illini-config b259105（#371）；illini-events wip/P4.1 5f62ddd（本地不推送）；illini-main 7b18f20（origin/main 只读对照）；illini-docs-brand7 本地分支 local/brand7-20261113，在 bd397ce（D-46 第 6 项 BRAND.7 进行中，还没有新提交）；~/work/caaciorg 本地 feat/public-events-feed 28d59b1（不推送）；~/work/illini-docs 在 codex/community-plan-v5 [本地测] |
+| tony-ws worktree | ~/work/illini ae058c2（#369，与远端一致）；illini-home 4b6f079（#374 本地合入 #369；#375 007abf1 的合并尚未提交，远端仍6d6c598，组合检查进行中）；illini-mpbudget 007abf1（#375 本地合入 #369 ae058c2，尚未推送；远端30c4b4d）；illini-deps 55716ba（#373）；illini-brand ba070e7（#372）；illini-config b259105（#371）；illini-events wip/P4.1 5f62ddd（本地不推送）；illini-main 7b18f20（origin/main 只读对照）；illini-docs-brand7 本地分支 local/brand7-20261113，在 bd397ce（D-46 第 6 项 BRAND.7 进行中，还没有新提交）；~/work/caaciorg 本地 feat/public-events-feed 28d59b1（不推送）；~/work/illini-docs 在 codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 
 ## CI
 
-#369 最新 run 43503547193（ae058c2）运行中；下表是最近已完成的 4a44a41 结果。
+#369 最新 run 43503547193（ae058c2）已完成；四项success，public sweep停在schema预检等E4，两项skipped。
 
-PR #369 · run [43500445187](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43500445187) · head 4a44a41 · conclusion failure（Type-check、Boundary、Build H5、Build mp-weixin success；public sweep 停在 Verify public read schema before browser startup，等 E4；其余两项 skipped）[CI run#43500445187]
+PR #369 · run [43503547193](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43503547193) · head ae058c2 · conclusion failure（Type-check、Boundary、Build H5、Build mp-weixin success；public sweep 停在 Verify public read schema before browser startup，等 E4；其余两项 skipped）[CI run#43503547193]
 
 | job | 结论 | 计数 / 原因 |
 |---|---|---|
 | Type-check | success | |
-| Boundary regressions | success | 2153 tests：2152 pass / 0 fail / 1 skipped [CI run#43500445187] |
+| Boundary regressions | success | 2156 tests：2155 pass / 0 fail / 1 skipped [CI run#43500445187] |
 | Build H5 | success | |
 | Build mp-weixin | success | |
 | Smoke (public page sweep) | failure | 预期中：停在「Verify public read schema before browser startup」预检。staging-smoke 还没应用 20261112120000（等 E4） |
@@ -51,7 +51,7 @@ PR #369 · run [43500445187](https://github.com/EricXu-0805/CAACI_Community_Mark
 | #375 ecc330b（D-46 第 4 项） | 1,322,319 | 250,545 | check-20261113T191554Z，L73 [本地测] |
 | #375 30c4b4d（合入 #369 3b、3f） | 1,324,250 | 248,614 | check-20261113T193317Z：test 2162 / 2161 / 0 / 1，smoke 105 passed、只有 4 条已知 pages.smoke 失败 [本地测] |
 | #374 6d6c598 | 1,551,820 | 21,044 | check-20261113T183852Z [本地测] |
-| #374 6d6c598 ＋ 3d24a8e 试合（supervisor） | 1,551,949 | 20,915 | D-47 第 6 项；离 D-46 第 4 项的 64 KiB 还差 44,621，没算 #369 的 3b、3f 和 #372、#373 |
+| #374 6d6c598 ＋ 3d24a8e 试合（supervisor） | 1,551,949 | 20,915 | D-47 第 6 项；这是第二轮拆包前的历史组合，已被本次组合实测替代，没算 #369 的 3b、3f 和 #372、#373 |
 
 main · 定时 run [42684660097](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/42684660097) · 2026-11-09 · runner ubuntu-26.04 [CI run#42684660097]
 
@@ -134,8 +134,19 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 9. E6（官方账号 profile id）在 P3.5 与 P4.9 前需要；D-32、D-33、D-38、D-39、D-40 的截止任务见 [DECISIONS.md](DECISIONS.md)。
 10. BRAND（#372）生产发布后：Eric 在 STATUS_LOG 记发布日；「原 Illini Market」（app.formerly，登录页与 /about）在发布日 + 90 天移除；同时做 E10（邮件模板、生产 DIGEST_FROM）。
 11. #372 要手工合：与 #369 冲突在 api/share-post.js、en.ts、zh.ts（#374 另有 app.name / app.desc / app.tagline / app.formerly 一块）；保留 #369 的 P2.9 topicTitle / headline 逻辑与 P2.2「回复 / reply」措辞，只取 #372 的品牌字串。#374 与 #372 还在 app/src/pages/plaza/index.vue 冲突：c16f0a1 删了「关注的人」名单，#372 的 BRAND.3 徽章改的正是那段；保留 #374 的删除，这块的徽章改动丢弃（名单在 pages/following，那一页照 #372）。
+
+   #369 → #374 冲突图（D-48.3，实合 ae058c2）：
+
+   | 文件 | 合并规则 |
+   |---|---|
+   | app/src/pages/plaza/index.vue | 保留 #374 的 following 帖子流、invalidatePosts 与 openComposer(board?)；加入 replyRestricted；六个 compose/click 入口共用发帖前限制检查 |
+   | app/src/pages/post/index.vue | 同时保留 authorBlocked、replyFailed 的布局/重试状态与 replyRestricted 提示及写入前拦截，三处逐块合并 |
+   | app/smoke/community-board-deeplink.test.mjs | 保留社区路由测试工具，另补 isSuspensionActive，避免重复导入 |
+   | app/smoke/community-post-topics.spec.ts | 保留 view=all 和 New topic/发话题；加入 L2–L5 门禁与 options.open；正常账号夹具同时提供话题与旧式动态，保留两种回复入口验证 |
+   | app/src/composables/i18n/messages/en.ts、zh.ts | 自动合并会各留两份 plaza.restrictedReply，手工去重为每语言一份；未改变值 |
+
 12. 删 #369 的分支之前，先把 #374、#375 的 base 都改成 main；删 #371 的分支之前，先把 #373 的 base 改成 main（删 base 分支会关闭依赖它的 PR，且不能重开）。#369 若 squash 合并，改完 base 后 #374、#375 要再 merge 一次 origin/main。
-13. 首页、新页头、板块页、「全部讨论」已编进小程序（#374，D-45 第 7 项，L62）。主包（CI 环境）：#374 6d6c598 1,551,820（余 21,044，只含 #369 b7bcf3a＋#375 4a3cbe6＋#374）；supervisor 把 #374 和 3a 试合是 1,551,949（余 20,915），离 D-46 第 4 项的 64 KiB 还差 44,621，还没算 #369 的 3b、3f 和 #372、#373；五个 PR 都合上的数等 D-46 第 5 项。小程序渲染、胶囊对齐与运行时行为没在微信开发者工具或真机上跑过，请 Eric 用开发者工具确认，其中包括 3b 的关闭草稿操作菜单（alertText 要基础库 2.14.0 起，manifest 没设最低基础库）和 3f 的受限提示；小程序的「关于本站」复制链接，构建需要 VITE_BASE_URL。暗色侧栏「发布」按钮对比度已在 HOME.4 修好（L61）。
+13. 首页、新页头、板块页、全部讨论已编进小程序。当前 #369 ae058c2＋#375 007abf1＋#374 4b6f079 的合并工作树按 CI 环境实测主包1,372,224、余200,640（check-20261113T205110Z），64 KiB空间目标已满足此三者组合；尚未计入#372/#373，五PR最终数待D-46.5。微信开发者工具/真机仍须验证渲染、胶囊、路由、3b操作菜单标题及首次分包下载/离线失败：目前无preloadRule，login/search/notifications/settings/legal等首次进入会下载分包，失败未有提示；不在本批加preloadRule。小程序构建需要VITE_BASE_URL。D-50的长度规则只核验了基础库3.15.0–3.15.2，更早版本未核，manifest未设最低基础库。生产英文按钮误报已撤销。
 
 14. D-49：服务端路线已定，不再等待二选一。新草稿 PR 的唯一迁移先在生产应用、VERIFY 通过，前端才能合；staging/生产应用均由 Eric 做。#369 合入 main 后该 PR 的 base 改成 main。D-48 六类路径已由 OMO 追踪最新迁移/调用方做源码核查；未执行新的 PG17 复现，不代表已检查托管库实际状态（证据见 L75）。
 

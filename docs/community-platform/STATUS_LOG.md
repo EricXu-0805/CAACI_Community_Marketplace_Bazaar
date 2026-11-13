@@ -955,3 +955,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 真机、早于3.15.0的基础库；未设最低基础库。长度规则出处是supervisor解包证据，OMO独立验证的是已锁定uni适配器及应用调用/语言包。
 - 下一条: D-48 第3项。
 - 附: git push --no-verify沿用RUNBOOK §3的宿主机环境例外，容器全量先通过。D-48 第5项生产按钮误报已撤销；Got it、Restore、Cancel、Messages在该规则下都合法，不写入待Eric验证清单。
+
+### L78 · 2026-11-13 15:17 CT · D-48.3 手工合并进展与冲突图（验证未完成）
+- task_id: D-48.3
+- code_sha: #375 本地007abf1（30c4b4d合入ae058c2）；#374 本地4b6f079（6d6c598手工合入ae058c2），继续合入007abf1尚未提交；两条依赖分支均未推送
+- docs_sha: b4788cf2310945935f15dde771ecab03fd1656a6
+- 环境: tony-ws pw1.60-node22-pg17，mpci=CI 环境
+- 命令: #374 原有D-47.2未提交改动完整保存到 ~/work/evidence/D47/home-item2-uncommitted.patch，比较相同后仅用逆补丁恢复该批自有修改，未用reset/checkout/clean；按D-48优先顺序合并。四文件冲突与en/zh重复键按STATUS第11条处理。#375未完成的account-gate-prompts测试原样留在工作区，未移走或跳过。
+- 计数: 定向首次112/108/4/0，四个正常回复对照因夹具缺少replyFailed报ReferenceError；补状态、原断言不变后112全过（check-20261113T204834Z），typecheck通过。组合全量check-20261113T205110Z：2189/2188/0/1、pg_skips=0，install/typecheck/h5/mpci通过，主包1,372,224、余200,640（只含#369+#375+#374，尚不含#372/#373）。浏览器202条：191pass、10fail、1skip；4条为既有stub域名失败，6条为新合入的L0/L1用例只造话题却点击旧式动态回复按钮。已补充真实旧式动态夹具并保留全部原验证，在重跑该测试文件；此时不得记作全量通过。
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43503547193（Boundary 2156/2155/0/1，四项success、public sweep schema预检失败、两项skipped）
+- 未测项: 修正夹具后的浏览器重跑、#375 D-47.5、D-47.2–4的继续实现、五PR最终试合；真机。
+- 下一条: D-48.3浏览器重跑通过后记录#375→#374合并，再继续D-47.2–5。
+- 更正L71: en.ts/zh.ts不一定发生文本冲突；本次自动合并实际各引入两份同名restrictedReply，必须显式去重，不能只写“如果冲突取同一个值”。
