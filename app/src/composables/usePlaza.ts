@@ -873,7 +873,7 @@ export function usePlaza() {
     const result: RetryAttachResult = { linked: [], unavailable: [], capped: [], pending: [], transientError: null }
     let existing: any
     try {
-      existing = await supabase.from('post_items').select('item_id').eq('post_id', postId)
+      existing = await supabase.from('post_items').select('item_id, display_order').eq('post_id', postId)
     } catch (error) {
       existing = { error }
     }
@@ -882,18 +882,23 @@ export function usePlaza() {
       result.transientError = existing.error
       return result
     }
-    const have = new Set((existing.data || []).map((row: { item_id: string }) => row.item_id))
-    for (const [index, itemId] of itemIds.entries()) {
+    const rows: Array<{ item_id: string; display_order?: number }> = existing.data || []
+    const have = new Set(rows.map(row => row.item_id))
+    // Pending items always follow the linked ones in the original order, so
+    // appending after the highest existing position keeps that order.
+    let nextOrder = rows.reduce((max, row) => Number.isInteger(row.display_order) ? Math.max(max, row.display_order! + 1) : max, 0)
+    for (const itemId of itemIds) {
       if (result.transientError) { result.pending.push(itemId); continue }
       if (have.has(itemId)) { result.linked.push(itemId); continue }
       if (!isAccountRequestCurrent(token)) { result.pending.push(itemId); continue }
       let error: any = null
       try {
-        error = (await supabase.from('post_items').insert({ post_id: postId, item_id: itemId, display_order: index })).error
+        error = (await supabase.from('post_items').insert({ post_id: postId, item_id: itemId, display_order: nextOrder })).error
       } catch (thrown) {
         error = thrown
       }
-      if (!error || error.code === '23505') result.linked.push(itemId)
+      if (!error) { result.linked.push(itemId); nextOrder += 1 }
+      else if (error.code === '23505') result.linked.push(itemId)
       else if (error.code === '42501') result.unavailable.push(itemId)
       else if (/post_items_cap_exceeded/.test(String(error.message || ''))) result.capped.push(itemId)
       else { result.transientError = error; result.pending.push(itemId) }
