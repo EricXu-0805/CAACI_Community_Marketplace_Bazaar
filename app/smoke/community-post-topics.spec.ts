@@ -195,7 +195,7 @@ for (const width of [390, 1280]) {
     h.behavior.failRecovery = true
     await page.locator('.comp-submit').click()
     await expect(page.locator('.comp-submit')).toHaveText('Check whether it posted')
-    await expect(page.locator('.composer-notice')).toContainText('Your content is still here.')
+    await expect(page.locator('.composer-notice')).toContainText('Your text is still here.')
     expect(h.writes).toHaveLength(1)
     const postId = String(h.writes[0].id)
     await page.screenshot({ path: `test-results/visual/P2.8/unknown-${width}-light-en.png` })
@@ -205,7 +205,7 @@ for (const width of [390, 1280]) {
     await page.getByRole('button', { name: 'Keep draft', exact: true }).click()
     await expect(page.locator('.composer-fullpage')).toHaveCount(0)
     await page.getByRole('button', { name: 'New post', exact: true }).filter({ visible: true }).click()
-    await expect(page.locator('.composer-fullpage')).toContainText('Restored your unfinished post')
+    await expect(page.locator('.composer-fullpage')).toContainText('Restored your unsent draft')
     await expect(page.locator('.topic-title-input input')).toHaveValue(RETRY_TITLE)
     await expect(page.locator('.comp-textarea textarea')).toHaveValue('Meet at the library')
     await expect(page.locator('.comp-submit')).toHaveText('Check whether it posted')
@@ -226,7 +226,7 @@ test('an absent uncertain post can be sent again with the same id', async ({ pag
   await expect(page.locator('.comp-submit')).toHaveText('Check whether it posted')
   const postId = String(h.writes[0].id)
   await page.locator('.comp-submit').click()
-  await expect(page.locator('.composer-notice')).toContainText("It hasn't posted. You can try posting again.")
+  await expect(page.locator('.composer-notice')).toContainText("It didn't post. You can send it again.")
   await expect(page.locator('.comp-submit')).toHaveText('Post')
   expect(h.writes).toHaveLength(1)
   h.behavior.failPublish = false
@@ -242,7 +242,7 @@ test('discarding a composer removes its saved draft and account changes remove i
   await page.locator('.comp-cancel').click()
   await page.getByRole('button', { name: 'Keep draft', exact: true }).click()
   await page.getByRole('button', { name: 'New post', exact: true }).filter({ visible: true }).click()
-  await expect(page.locator('.composer-fullpage')).toContainText('Restored your unfinished post')
+  await expect(page.locator('.composer-fullpage')).toContainText('Restored your unsent draft')
   await page.locator('.comp-cancel').click()
   await page.getByRole('button', { name: 'Discard', exact: true }).click()
   expect(await page.evaluate(() => localStorage.getItem('plaza_composer_draft_v1'))).toBeNull()
@@ -258,3 +258,33 @@ test('discarding a composer removes its saved draft and account changes remove i
   }, REF)
   await expect.poll(() => page.evaluate(() => localStorage.getItem('plaza_composer_draft_v1'))).toBeNull()
 })
+
+for (const [lang, width] of [['en', 390], ['zh', 1280]] as const) {
+  test(`publishing text and restriction date follow the current language in ${lang} at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 })
+    await fixture(page, lang)
+    const composer = page.locator('.composer-fullpage')
+    await composer.getByRole('button', { name: lang === 'zh' ? '动态' : 'Update', exact: true }).click()
+    await page.locator('.comp-textarea textarea').fill('A campus update')
+    let releasePost!: () => void
+    const pendingPost = new Promise<void>(resolve => { releasePost = resolve })
+    await page.route('**/rest/v1/posts?**', async route => {
+      if (route.request().method() !== 'POST') return route.fallback()
+      await pendingPost
+      await route.fulfill({
+        status: 400, contentType: 'application/json',
+        body: JSON.stringify({ code: 'P0001', message: 'suspension_active:2:2026-12-03T12:34:56Z' }),
+      })
+    })
+    await page.locator('.comp-submit').click()
+    await expect(page.locator('.comp-submit')).toHaveText(lang === 'zh' ? '发布中…' : 'Posting…')
+    await page.screenshot({ path: `test-results/visual/D45/publishing-${width}-${lang}.png` })
+    releasePost()
+    const date = await page.evaluate(lang => new Date('2026-12-03T12:34:56Z').toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US'), lang)
+    await expect(page.locator('uni-toast')).toContainText(lang === 'zh'
+      ? `账号受限期间不能发帖，${date} 恢复`
+      : `You can't post while your account is restricted. Access returns ${date}.`)
+    await expect(composer).toBeVisible()
+    await expect(page.locator('.comp-submit')).toHaveText(lang === 'zh' ? '发布' : 'Post')
+  })
+}

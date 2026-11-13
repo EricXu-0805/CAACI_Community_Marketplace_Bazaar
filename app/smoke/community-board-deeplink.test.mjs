@@ -152,6 +152,7 @@ test('mini-program temporary HTTP photos upload while owned draft URLs are reuse
       composerText: { value: 'Body' }, composerErrors: { value: {} }, focusComposerField() {},
       composerImages: { value: [...temporaryPhotos, owned] }, composerAttachedItems: { value: [] },
       submitting: { value: false }, composerAccountToken: token, isAccountRequestCurrent: () => true,
+      composerUploadProgress: { value: null },
       normalizePostTopic, friendlyErrorMessage: error => String(error), lang: { value: 'en' }, t: key => key,
       safeItemMediaUrls,
       uploadImagesWithDims: async files => {
