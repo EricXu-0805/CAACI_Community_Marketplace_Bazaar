@@ -168,6 +168,28 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
   7. **PR 文案。** #374、#375 的描述是 17:40Z 改的，之后代码又推了三次，描述「已知问题」里列的并发、关注帖子流、11 个 key、AppSidebar 监听都已经修了。本批收尾、写 FINAL 之前，按当时的 head 把 #369、#374、#375 的描述再对一遍，照旧不转 ready。#370 描述还写着「D-01 至 D-41」，一起改。
   8. **顺序和报告：** 第 1 项在下一次写 STATUS 时做。第 2–5 项排在 3f 之后、D-46 第 5 项（集成试合）之前；第 4 项（腾空间）照常进行。第 7 项在收尾时做。每项最多试 3 次。目标范围扩到 D-46 第 1–6 项加本条，在 STATUS_LOG 记一笔。「第四批（D-46）」报告里，本条各项单独成行。
 
+- **D-48 3b、3f、第 4 项核查后由 supervisor 定的事**（2026-11-13 14:10 CT，Claude（Eric 自己账号上的 supervisor 会话）按 D-43 定并写入）：依据同 D-46。D-46、D-47 照旧有效，本条只做补充；【硬】条照旧高于本条，Eric 看最终报告后可以改其中任何一项。背景：supervisor 对 3b（3588c24）、3f（520e55a）、第 4 项（8972507、1443d5c、ecc330b）和 D-47 第 1 项的文档做了五个独立核查。其中一项在本机 PG17 上载入迁移里的真实函数体，用 L0–L5 账号逐个跑了写入。第 4 项超额完成；3b 要改一处；3f 要撤回门禁放开的那一半。
+  1. **3f：撤回 App.vue 门禁的放开（在 #369，最先做）。** D-46 第 3 项 f 的前提是：服务端已经拦住受限账号的写入，没拦住就停。L71 只核对了 posts、post_comments、items、messages 四个 BEFORE INSERT 触发器，可 520e55a 放开的是整个 app，不只是社区。核查方实测，有效级别 L2–L4 的账号做下面这些写入，服务端都不拦：
+     - 商品会话 INSERT（20260916050227 第 58–62 行只在 is_direct 时查限制）；
+     - make_offer、respond_to_offer（报价附言最多 300 字，会给卖家发通知）；
+     - propose_meetup、respond_to_meetup、reschedule_accepted_meetup（地点和附言，会发通知，并经 /api/meetup-notify 发邮件）；
+     - submit_transaction_rating（公开评价，最多 500 字）；
+     - items UPDATE（改已有商品的标题、描述、价格、图片；降价会把新标题推给收藏的人）；
+     - profiles UPDATE、头像上传、follows、post_likes、post_comment_likes（后三个会给对方发通知）。
+     等于给受限账号开了一条私信通道，和服务条款 L2「不能发帖、发消息、上架」、suspended.sub 的文案都矛盾。另外，L2–L4 从此没有入口进 pages/suspended，看不到限制详情，也用不了应用内申诉；已经停在 pages/suspended 的 L2–L4 用户会卡在那一页。
+     改法：在 #369 上用一个新提交，把 requiredGatePath() 恢复成 3588c24 的样子，所有有效的 L2–L5 都去 pages/suspended；然后照常 merge 进 #375、#374。520e55a 已经随 30c4b4d merge 进了 #375，不要在 #375 上 revert 那个 merge 提交：以后 #369 合进 main 时，那个 revert 会把 #369 的改动再撤一次。plaza、post 里「打开面板之前拦」和回复栏的受限提示可以保留：L2–L4 暂时走不到，以后放开时用得上。community-restricted-account.test.mjs 按恢复后的行为改，L2–L5 每一级都断言去 pages/suspended，过期的 L2–L5 一切正常；先确认改后的测试在 520e55a 上会红。不建迁移，不改 RLS。
+     写进 ④ 请 Eric 定两条路：一是先用新迁移在服务端拦住上面这些写入，再按 SPEC §6.5.1 让受限账号浏览；二是只放开社区几页，其余页面照旧挡住（只靠客户端，服务端照样不拦）。附上写入路径表；supervisor 的核查结果只作线索，OMO 自己逐条再核一遍再写。③ 里给 L71 记一笔更正：前提只核对了四个 INSERT 触发器。FINAL ② D-45.5b 行写明 restrictedReply、restrictedPost 代码已接上，但撤回门禁以后 L2–L4 暂时看不到。
+  2. **3b：操作菜单的标题没显示（在 #369）。** uni-app 小程序运行时（@dcloudio/uni-mp-weixin 3.0.0-4080420251103001，dist/uni.api.esm.js 第 1161–1164 行）对 showActionSheet 有参数映射 `toArgs.alertText = fromArgs.title`，调用方自己传的 alertText 会被覆盖成 undefined。所以 3588c24 的操作菜单在任何基础库上都没有「关闭发帖面板？」这个标题，只剩「保留草稿 / 不保留 / 取消」，不合 SPEC。改成传 `title`。测试要能抓住这一点：现在删掉 alertText 那一行，8 条照样全过。
+  3. **#369 merge 进 #374 有冲突。先做完第 1、2 项再 merge。** 核查方试合 6d6c598 × 520e55a，四个文件冲突：plaza/index.vue、post/index.vue（3 处）、community-board-deeplink.test.mjs、community-post-topics.spec.ts。en.ts、zh.ts 会自动合并，但 plaza.restrictedReply 各出现两次，typecheck 报 TS1117。L71「如果冲突取同一个值」的预判不对；STATUS 第 11 条补一张 #369→#374 的冲突图。#374 的 openComposer(board?) 和它新加的六个入口也要带上 #369 的拦截。merge 完跑 community-restricted-account、community-mp-dialogs 和全量检查。
+  4. **第 4 项收尾（在 #375）。**
+     - 目标已达到。核查方按 CI 环境试合（没推送）：#375 单独余 250,545 字节；#374＋#375 余 201,481；#375＋#369 余 248,614。STATUS 阻塞第 13 条和试合行里的「还差 44,621」改掉。五个 PR 都合上的数等 D-46 第 5 项。
+     - mini-program-subpackage-routes.test.mjs 第 6 条（分包里的代码只从本分包引用）在 3d24a8e 上只因为对照断言而红，没证明过能抓到真正的跨包引用。做一次变异：在主包页面 import 一个分包里的模块，确认这条会红。L73「修复前 1 条失败」实为 2 条，更正。
+     - pages.json 新加的注释把 chat 写成「app 自己会打开的页面」，不对。chat 留在主包，是因为它只是 ChatThread 外面 2 KB 的壳。改注释。
+     - 没有 preloadRule：login、search、notifications、settings、legal 等页第一次打开要先下载分包，下载失败没有提示。写进 ④ 的手动验证清单，由 Eric 在开发者工具里看；现在不加。
+  5. **范围外的 showModal 英文按钮（只记录）。** 核查方查了全 app：main（已在生产）上 index/index.vue:887 的「Got it」、:949 的「Restore」「Cancel」，detail/index.vue:1204、profile/index.vue:766 的「Messages」，都超过 4 个字符，小程序上走得到。微信文档只写「最多 4 个字符」，没说英文怎么数，也没说超长时是整个弹窗失败还是截断。写进 ④：请 Eric 在开发者工具的英文环境点一次，确认会失败再修。
+  6. **文档。** STATUS 的 docs_sha 还是 81196fa；按 RUNBOOK §8 第 2 步，应当是本次写回之前材料分支的 HEAD。
+  7. **顺序：** 1 → 2 → 3 → D-47 第 2–5 项 → 本条第 4 项 → D-46 第 5、6 项 → D-47 第 7 项。每项最多试 3 次。目标范围加上本条，在 STATUS_LOG 记一笔。「第四批（D-46）」报告里，本条各项单独成行。
+
 ## 待定
 
 ### D-28 轮值伙伴与四项职责的小时数
