@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
  * Every one of these surfaces holds its rows in a ref that starts empty, so a
  * rejected fetch leaves behind exactly the state a brand-new account has. The
  * pages then paint their designed empty art over it — "You haven't posted
- * anything yet", "No comments yet" — and the only correction is a toast that
+ * anything yet", "No replies yet" — and the only correction is a toast that
  * is gone in a second and a half. On a flaky campus connection a seller is
  * told their listings are gone, and a plaza reader sees a header promising
  * twelve comments above a body saying nobody has commented.
@@ -192,7 +192,7 @@ async function visibleText(page: Page, route: string): Promise<string[]> {
   return previous
 }
 
-const CLAIMS_EMPTY = /haven't posted anything|no listings|haven't saved|No saved|No comments yet|nothing yet/i
+const CLAIMS_EMPTY = /haven't posted anything|no listings|haven't saved|No saved|No replies yet|nothing yet/i
 
 const SURFACES = [
   { label: 'my items', route: 'pages/my-items/index' },
@@ -220,8 +220,8 @@ test('post detail never shows a comment count above "no comments"', async ({ pag
   const joined = (await visibleText(page, `pages/post/index?id=${POST}`)).join(' | ')
   // The count comes from the post row and stays truthful; it is the body that
   // must not contradict it.
-  expect(joined).toMatch(/Comments \(12\)/)
-  expect(joined, 'the header promised 12 comments and the body said there are none').not.toMatch(/No comments yet/i)
+  expect(joined).toMatch(/Replies \(12\)/)
+  expect(joined, 'the header promised 12 comments and the body said there are none').not.toMatch(/No replies yet/i)
 })
 
 /**
@@ -311,7 +311,7 @@ test('comment retry is scoped to comments and keeps the loaded post alive', asyn
   expect(state.requests.posts, 'comment retry reloaded the already-valid main post').toBe(postRequestsBeforeRetry)
   await expect(page.getByText(POST_ROW.content, { exact: true })).toBeVisible()
   await expect(
-    page.getByText('No comments yet', { exact: true }),
+    page.getByText('No replies yet', { exact: true }),
     'comment retry flashed a healthy empty thread while the retry was pending',
   ).toHaveCount(0)
   await expect(page.getByText(COMMENT_ROW.content, { exact: true })).toBeVisible()

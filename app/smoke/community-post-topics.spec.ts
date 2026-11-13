@@ -108,7 +108,7 @@ test('topic validates metadata before writing and sends the selected board', asy
   await expect(page.getByText('Add a title and choose a board for your topic.', { exact: true })).toBeVisible()
   expect(h.writes).toHaveLength(0)
   await page.locator('.topic-title-input input').fill('Calculus study group')
-  await composer.getByRole('button', { name: 'Alumni & careers', exact: true }).click()
+  await composer.getByRole('button', { name: 'Ask alumni', exact: true }).click()
   await page.locator('.comp-submit').click()
   await expect(composer).toHaveCount(0)
   expect(h.writes).toHaveLength(1)
