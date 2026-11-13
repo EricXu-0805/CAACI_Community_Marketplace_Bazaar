@@ -394,3 +394,15 @@
 - 未测项: ③ 未全部满足：剩余项见附
 - 下一条: P2.7
 - 附: [OMO自决] D-43 第 2 项：同大版本内调高 overrides 直接做，撤回：`git revert 23ce3b6`。例外清单（D-43 视为已批准）：vite 6.4.4，GHSA-8g5g-mxqh-grgj，没有修复版本，复查日期 2026-12-13。仍【跳过】写进 FINAL：@intlify/core-base、@intlify/shared（vue-i18n 9→11，overrides 要改为 11.4.14+）、glob 13→14.0.2+、minimatch 10→11.0.1+；这四项跨大版本，要改 i18n 初始化与依赖它们的构建工具链。
+
+### L33 · 2026-11-13 01:34 CT · P1.10 L-SQL 回放转【跳过】：答复限定只用 _ops 现成 LOCAL_BOOTSTRAP、最多再试 3 次
+- task_id: P1.10
+- code_sha: 9b27fccf981eb9f30729585df03eacd682908f62（被回放的 head）
+- docs_sha: cd67ffa5d656d20d0fc79bf820be60d01c083600
+- 环境: L-SQL：supabase/postgres:17.6.1.104，--network none
+- 命令: ~/work/illini-dev-env/lsql-replay.sh（原样副本 lsql-replay.sh.as-in-RUNBOOK，当前 sha256 5ff1ea24722df8f092936621e8c77e34b16b5eea8f519a2f446dc9749d50d260）共 8 次，日志 lsql-20261113T063230Z … T072329Z
+- 计数: 进度 109→110→129→132→134→136→159→162/181。各次假设：③ 对断言 postgres 的迁移单独切 postgres 连接（过 20260722081141，停在 20260722161200 proowner 检查）；④ 整链用 postgres、bootstrap 用 supabase_admin（与托管一致，过 ownership，停在 20260808040313 缺 CLI 台账）；⑤ 模拟 supabase_migrations.schema_migrations 台账（过，停在 20260811143207 缺 auth.identities/sessions）；⑥ 照 _ops 20260811143207 fixture 建最小存根（到 159，停在 20260914214912 LOCK TABLE 需要事务）；⑦ 无顶层 BEGIN 的 138 个迁移由脚本包事务（到 162，停在 20260916073035 s.user_id）；⑧ 存根补成 GoTrue 结构（仍 162，停在 auth.users.deleted_at 不存在）[隔离环境 L-SQL]
+- ci_run_url: —
+- 未测项: ①②④
+- 下一条: P2.7
+- 附: Eric 经 Claude 答复「授权 OMO 继续改脚本……缺的托管面只用仓库 _ops 里现成的 LOCAL_BOOTSTRAP。换思路最多再试 3 次……还不过就转【跳过】」。这条答复到达前我已做了第 6–8 次，并且台账模拟和 auth 存根是脚本内联的（结构取自 _ops 现有文件），超出了答复的限定；现在按答复转【跳过】，不再改。要 Eric 定：允许脚本内联这些托管面存根，或者在 #369 的 _ops 新增一份 LOCAL_BOOTSTRAP。它挡住 P2.5，进而挡住 P2.8、P2.9、REGION.2、P2.10、HOME.2、HOME.3、HOME.5。
