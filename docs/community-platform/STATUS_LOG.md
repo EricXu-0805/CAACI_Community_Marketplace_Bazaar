@@ -906,3 +906,16 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 微信开发者工具或真机：每个分包首次进入的下载与等待、从分享卡 / 通知链接 / 登录回跳冷启动直接进分包页、下载失败或离线（调用处没有 fail 回调）、welcome → login → reconsent 首次流程里 login 要下载分包、从分包页返回、微信计算的上传体积
 - 下一条: D-46 第 3 项 a（后半：merge 进 #374）
 - 附: 自决：依据 D-46 第 4 项「优先不改页面路径，只被分包用到的代码挪进分包」与 D-45 第 4 项；留在主包的：5 个 tab 页；pages/publish/edit、pages/profile/edit（和 tab 页同目录，root 会吞掉整个目录，要改路由才能移）；pages/welcome（App.onLaunch 把首次访问的人 reLaunch 过去，启动时序敏感）；pages/reconsent、suspended、profile-recovery（App.vue reLaunch 过去且没有失败处理，分包下载失败会把人卡在没有门禁的页面）；pages/chat。没做：legal 正文留在 app/src/legal——#372 的 scripts/brand-name-boundary.test.mjs 按路径排除 app/src/legal，挪进 pages/legal 会让两个分支合上后这条测试失败，另外要把版本常量从英文正文里拆出来（App.vue 引 CURRENT_CONSENT_VERSION 会把英文全文拉进主包），约 52 KB，需要 #372 那边加一个排除。首次进分包的骨架：blocked、following、my-items、notifications、saved-searches 已有骨架，account-link 显示状态文字，history 列表区在数据就绪前是空的（SPEC §8 下最该补骨架的一页），其余页面立即渲染。撤回：`git revert ecc330b 1443d5c 8972507`（#375）。
+
+### L74 · 2026-11-13 14:04 CT · D-48 优先修正：目标范围扩展，3f 全局放行不可发布
+- task_id: D-48.6
+- code_sha: 520e55a（待修复；未把测试改动计为完成）
+- docs_sha: 38cc32c9d8ddec68ac4f8a94c2203fb8097e77c1
+- 环境: tony-ws，只读迁移/客户端和本地容器测试；不访问托管数据库
+- 命令: 材料分支 git pull --ff-only 到 38cc32c，读取 D-48；git diff 3588c24 520e55a -- app/src/App.vue；查看锁定版本 @dcloudio/uni-mp-weixin 的 dist/uni.api.esm.js:1161–1164。恢复门禁测试先在 520e55a 上跑，监控 mon_ARKG217ABFT8E2CX，尚未得出结果。
+- 计数: D-48 所有新增事项已纳入待办；暂停 #375 D-47.5 和 BRAND.7 的后续修改。#374 D-47.2 已在跑的检查保留，但暂不继续实现后项。目标扩为 D-46 第 1–6 项加 D-47、D-48；原 create_goal 保持进行中，以最新直接指令扩展范围。
+- ci_run_url: —
+- 未测项: 恢复门禁的红/绿测试和全量检查；六类服务端写入限制独立审查进行中，尚不把 supervisor 的结论当作 OMO 已复现。
+- 下一条: D-48 第 1 项
+- 更正 L71: 先前只核查 posts、post_comments、items、messages 的四个 BEFORE INSERT 守卫，不能据此断言整个 app 的写入已受限；520e55a 放开全局门禁的前提核查范围不足。本次先恢复门禁，不新增迁移、不改 RLS 或服务端函数；保留社区发帖/回复的防护。
+- 后续顺序: D-48 1 → 2 → 3 → D-47 2–5 → D-48 4 → D-46 5、6 → D-47 7；同分支只允许一个执行者。

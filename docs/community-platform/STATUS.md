@@ -1,11 +1,11 @@
 # STATUS
 
-写于 2026-11-13 13:32 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-13 14:04 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-46 第 3 项 a（后半：3d24a8e merge 进 #374）`
+`next_task_id: D-48 第 1 项（恢复有效 L2–L5 的全局门禁）`
 `latest_batch: appendix/batch/FINAL.md`
 
-next_task_id 的取法（BACKLOG §0.1 第 2 条，D-47 第 1 项）：按 D-46 第 8 项的顺序取第一条没做完的。3a 的修复已在 #375，但「再 merge 进 #374」还没做；D-47 允许它和 D-46 第 4 项一起 merge。之后依次是 3b、3f merge 进 #375 和 #374，D-47 第 2–5 项，D-46 第 4–6 项。见 STATUS_LOG L72。
+next_task_id 按 D-48 第 7 项的新优先顺序取第一条未完成项：D-48 1 → 2 → 3 → D-47 2–5 → D-48 4 → D-46 5、6 → D-47 7。D-48.1 未通过并合入相关分支前，520e55a 的全局门禁放行不可发布；不 revert #375 的合并提交。
 
 ## 版本
 
@@ -15,7 +15,7 @@ next_task_id 的取法（BACKLOG §0.1 第 2 条，D-47 第 1 项）：按 D-46 
 | code_sha | 520e55a430331b6c2e2f4fdb144e4974a60ebc05（D-46 3b 3588c24、3f 520e55a 一起推送后的 #369 head，b7bcf3a..520e55a） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | 81196fa128e34be1e2669a93c0a51049c4b504b7（本次写回之前材料分支的 HEAD） |
+| docs_sha | 38cc32c9d8ddec68ac4f8a94c2203fb8097e77c1（本次写回之前材料分支的 HEAD） |
 | 其余代码分支（远端 head） | #374 codex/community-home-20261112 6d6c598（P2.12、HOME.3、HOME.4、HOME.5、SPEC §11、小程序首页、D-46 3d / 3c / 3e；已合入 #369 b7bcf3a 与 #375 4a3cbe6，依赖 #375）。**#374 还不含 3a（3d24a8e），也不含 #369 上的 3b（3588c24）、3f（520e55a）**，所以 #374 上仍有 4a3cbe6 带来的小程序非 tab 页不启动消息与通知监听的问题。#375 codex/community-mp-budget-20261113 30c4b4d（小程序主包腾空间 4a3cbe6、D-46 3a 3d24a8e、D-46 第 4 项 8972507 / 1443d5c / ecc330b，30c4b4d 合入 #369 520e55a 的 3b、3f；base #369 分支）。#373 codex/deps-crossmajor-20261113 55716ba（P1.6 跨大版本，base #371）。#372 codex/brand-cornfield-20261112 ba070e7（BRAND.1–BRAND.4）。#371 codex/config-fixes-20261112 b259105（P1.2–P1.7）[本地测：git ls-remote] |
 | tony-ws worktree | ~/work/illini 520e55a（#369，与远端一致）；illini-home 6d6c598（#374，与远端一致）；illini-mpbudget 30c4b4d（#375，与远端一致；D-47 第 5 项子任务进行中）；illini-deps 55716ba（#373）；illini-brand ba070e7（#372）；illini-config b259105（#371）；illini-events wip/P4.1 5f62ddd（本地不推送）；illini-main 7b18f20（origin/main 只读对照）；illini-docs-brand7 本地分支 local/brand7-20261113，在 bd397ce（D-46 第 6 项 BRAND.7 进行中，还没有新提交）；~/work/caaciorg 本地 feat/public-events-feed 28d59b1（不推送）；~/work/illini-docs 在 codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
@@ -92,7 +92,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | BRAND.2 | 通过（⑦ 等 E5） | 品牌名检索 76 → 0，test 1991/1990/0/1 [本地测]；Build H5 等 E5 [CI run#43393646871] |
 | BRAND.4 | 通过 | ① 出稿在 appendix/visual/logo/；D-34 代定 B 的单字「玉」；② #372 ba070e7 替换完成 [本地测] |
 | BRAND.5、BRAND.6 | 未测 | BRAND.5 等 D-30（E7）；BRAND.6 等 D-36（延后到内测后） |
-| BRAND.7 | 进行中 | 依赖（BRAND.1、BRAND.3、BRAND.4、P2.2、HOME.4、P1.13）都已做完，分散在没合并的 #372（BRAND.1/3/4）、#369（P2.2）、#374（HOME.4）上；D-46 第 6 项在 ~/work/illini-docs-brand7（本地分支 local/brand7-20261113）判断能否先做，做不了就写清等哪几个 PR 合并 |
+| BRAND.7 | 按 D-48 顺序暂停 | ~/work/illini-docs-brand7 的原型改动保留，未提交、未部署；已有截图早于最后两次修改，恢复时须重拍。待 D-48 前置修正和 D-46 第 5 项后继续 |
 | HOME.1 | 通过 | ①–③ 以 design/ 为准（L08）；④ axe 4.14.0：12 个组合 color-contrast 0、<12px 0、溢出 0 [本地测]；⑤ D-35 已定 A |
 | HOME.2 | 通过 | bd6fee5，19 条规则单测 [本地测] |
 | HOME.3 | 通过 | #374 a756081；首页 19 条用例全过，AXE 0、<12px 0 [本地测]；SPEC §11「HOME.3 首页」节 29 个 key 已由 6d6c598 进语言包（L69）；home.events、home.allEvents 等 P4.8（近期活动区块，现在不做）；英文补位行少「 · 」与 home.typeGuide / typeRules 没用上，由 D-47 第 2 项 a、b 改 |
@@ -103,11 +103,11 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | D-46 第 3 项 a | 部分 | 修复 3d24a8e 在 #375（L66）；「再 merge 进 #374」未做 |
 | D-46 第 3 项 b | 通过（merge 未做） | 3588c24 在 #369，test 2061 / 2060 / 0 / 1，主包（CI 环境）1,559,431（L70）；「再 merge 进 #375、#374」未做 |
 | D-46 第 3 项 c、d、e | 通过（D-47 补完未做） | 73206a0、eca5a8d、6d6c598 在 #374（L67–L69）；D-47 第 2–4 项在 #374 上补 |
-| D-46 第 3 项 f | 通过（merge 未做） | 520e55a 在 #369，服务端触发器先核过；test 2153 / 2152 / 0 / 1，smoke 53 passed，主包（CI 环境）1,560,420（L71）；「再 merge 进 #375、#374」未做 |
+| D-46 第 3 项 f | 部分撤回待验证，不可发布 | 520e55a 的全局放行超出了四个 INSERT 守卫的核查范围；按 D-48.1 在 #369 新提交恢复有效 L2–L5 → suspended，保留社区发帖前拦截和回复提示。已改恢复测试，修复前红测排队中；源码尚未恢复（L74） |
 | D-46 第 4 项 | 通过（#375 单独）；五个 PR 合上后的余量待第 5 项 | #375 8972507、1443d5c、ecc330b（已推送）；主包（CI 环境）1,322,319（L73）[本地测] |
 | D-46 第 5、6 项 | 未做 / 进行中 | 第 5 项（集成试合）排在第 3、4 项和 D-47 第 2–5 项之后；第 6 项见 BRAND.7 行 |
 | D-47 第 1 项 | 通过 | 本次写回（L72） |
-| D-47 第 2–5 项 | 未做 | 2a–2d、3a–3d、4 在 #374；5 随 3a 的 merge 一起看（3a 的监听只在 #375） |
+| D-47 第 2–5 项 | 按 D-48 暂停后续实现 | #374 第 2 项已有未提交修复和正在运行的全量检查；第 3、4 项测试草稿只在 evidence/ 临时目录。#375 第 5 项只有未提交测试，未改生产代码；待 D-48 第 1–3 项完成后恢复 |
 | P3.1–P3.8 | 未测 | 依赖 P2.13（#369 合并） |
 | P4.7 第一步 | 通过 | appendix/research/campus-events.md；D-33 已按 D-43 代定 A，第二步依赖 P4.1、P4.2 |
 | P4.1 | 通过 | 本地 wip/P4.1 5f62ddd，容器 test 2015/2014/0/1 [本地测]；不推送 |
