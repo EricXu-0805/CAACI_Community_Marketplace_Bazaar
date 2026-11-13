@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { readFile, readdir } from 'node:fs/promises'
 import test from 'node:test'
 
 // The mini-program main package has a hard source budget
@@ -8,7 +8,8 @@ import test from 'node:test'
 // card, an email link or a `uni.navigateTo` call names never changes. This
 // file pins both halves: no route moved, and the pages that left stay out.
 
-const PAGES_JSON = new URL('../src/pages.json', import.meta.url)
+const SRC = new URL('../src/', import.meta.url)
+const PAGES_JSON = new URL('pages.json', SRC)
 
 // Every route registered before the split, in its H5 order.
 const ROUTES = [
@@ -190,4 +191,38 @@ test('no main-package page sits under a subpackage root', async () => {
     assert.deepEqual(main.filter(route => route.startsWith(`${root}/`)), [], `${root} contains a main-package page`)
     assert.deepEqual(roots.filter(other => other.startsWith(`${root}/`)), [], `${root} contains another subpackage root`)
   }
+})
+
+async function sourceFiles(dir = SRC) {
+  const out = []
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) out.push(...await sourceFiles(new URL(`${entry.name}/`, dir)))
+    else if (/\.(?:vue|ts|js)$/.test(entry.name)) out.push(new URL(entry.name, dir))
+  }
+  return out
+}
+
+test('code under a subpackage root is imported only from inside that root', async () => {
+  // A module below a root is emitted into that subpackage. The main package
+  // and the other subpackages cannot require it in WeChat, while vue-tsc and
+  // the H5 build accept the import, so only this scan can refuse it.
+  const { packages } = await readRoutes('mp-weixin')
+  const roots = packages.map(pkg => new URL(`${pkg.root}/`, SRC).pathname)
+  const rootOf = pathname => roots.find(root => pathname.startsWith(root))
+  const offenders = []
+  let inside = 0
+  for (const file of await sourceFiles()) {
+    const source = await readFile(file, 'utf8')
+    for (const [, , specifier] of source.matchAll(/\b(?:from|import|require)\s*\(?\s*(['"])([^'"\n]+)\1/g)) {
+      if (!/^(?:\.{1,2}\/|@\/)/.test(specifier)) continue
+      const target = specifier.startsWith('@/') ? new URL(specifier.slice(2), SRC) : new URL(specifier, file)
+      const root = rootOf(target.pathname)
+      if (!root) continue
+      if (rootOf(file.pathname) === root) inside += 1
+      else offenders.push(`${file.pathname.slice(SRC.pathname.length)} imports ${specifier}`)
+    }
+  }
+  // Control: a scan that matched nothing would pass without having looked.
+  assert.ok(inside > 0, 'the scan found no import inside any subpackage root')
+  assert.deepEqual(offenders, [])
 })

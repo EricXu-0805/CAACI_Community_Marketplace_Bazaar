@@ -420,7 +420,7 @@ import { formatTime, haptic, formatPrice, listingPriceLabel, navigateBackOr, thu
 import { readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
 import { localizeLocation, pickupTier } from '../../composables/useCampusSpots'
-import { useRatings } from '../../composables/useRatings'
+import { useRatings } from './useRatings'
 import { createOwnedLoading } from '../../composables/ownedLoading'
 import { useTranslate } from '../../composables/useTranslate'
 import { detectsAsForeign } from '../../composables/i18n/format'

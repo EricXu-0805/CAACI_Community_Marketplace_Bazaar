@@ -85,7 +85,7 @@ import {
 import {
   RECOVERY_IDENTITY_MISMATCH,
   updateRecoveryPasswordWithBoundSession,
-} from '../../api/recoveryPassword'
+} from './recoveryPassword'
 import { useI18n } from '../../composables/useI18n'
 import { useTheme } from '../../composables/useTheme'
 import { passwordRules, passwordValid, friendlyErrorMessage } from '../../utils'
