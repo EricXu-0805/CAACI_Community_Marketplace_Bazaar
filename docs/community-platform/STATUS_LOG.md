@@ -833,3 +833,14 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - ci_run_url: —（#374 base 不是 main，不触发 CI）
 - 未测项: 真实关注数据（等 E3）
 - 下一条: D-46 第 3 项 c
+
+### L68 · 2026-11-13 12:55 CT · D-46 第 3 项 c：首页同时在飞的请求不超过 6 个
+- task_id: D-46.3c
+- code_sha: 73206a0（#374，已推送）
+- docs_sha: 9ee2df90ada07114b4a1cb0f7475d7eef1c5bea0
+- 环境: 本地 tony-ws run-checks；实现由 OMO 子任务（deep-low）做，主会话核对后推送
+- 命令: 先写 app/smoke/community-home-concurrency.test.mjs（打桩请求层，断言在飞 ≤ 6、重叠加载也 ≤ 6、组装结果不变）；修复前同时 9 个、重叠加载 18 个，2 条失败、数据对照通过（check-20261113T175837Z）。useCommunityHome.ts：所有首页查询先取 6 个共享名额之一，覆盖回复查询、重叠加载和多个首页实例。`SMOKE_SPECS="…8 份…" ~/work/illini-dev-env/run-checks.sh ~/work/illini-home install typecheck test h5 mpci smoke`
+- 计数: 3 条全过；test 2073 / 2072 / 0 / 1；smoke 114 passed（community-home.spec.ts 未改照样通过）；主包（CI 环境）1,550,883（check-20261113T181629Z）[本地测]
+- ci_run_url: —（#374 base 不是 main，不触发 CI）
+- 未测项: 小程序上加长轮询与通知轮询后的实际并发（开发者工具）
+- 下一条: D-46 第 3 项 e
