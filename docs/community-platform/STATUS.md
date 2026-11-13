@@ -1,8 +1,8 @@
 # STATUS
 
-写于 2026-11-13 07:45 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-13 07:48 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-45 第 2 项（PR 文案）`
+`next_task_id: D-45 第 3 项（本地集成试合）`
 `latest_batch: appendix/batch/FINAL.md`
 
 ## 版本
@@ -13,7 +13,7 @@
 | code_sha | 92698d159021612b84005ad4c36908dda537a86c（OMO 推送 P2.10 后的 #369 head） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-12 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-12 git ls-remote] |
-| docs_sha | f8e2b97591a52a5e84d89b1a240f533a9b37bfe0（本次本地状态写回之前材料分支的 HEAD，未另建材料提交） |
+| docs_sha | a64ae9919dbcc54df4dec67754809ea5bc0b0a39（本次本地状态写回之前材料分支的 HEAD，未另建材料提交） |
 | 配置 / 品牌 / 首页分支 | codex/config-fixes-20261112 远端 b259105，草稿 PR #371（P1.2–P1.7）；codex/brand-cornfield-20261112 远端 ba070e7，草稿 PR #372（BRAND.1–BRAND.4）；codex/community-home-20261112 远端 68eb43b，草稿 PR #374（P2.12、HOME.3、HOME.5，已合入 #369 的 92698d1）；codex/deps-crossmajor-20261113 远端 55716ba，草稿 PR #373（P1.6 跨大版本，base #371）[本地测] |
 | tony-ws 仓库 | ~/work/illini 在 92698d1（#369）；worktree：illini-config（#371）、illini-brand（#372）、illini-home（#374）、illini-deps（#373）、illini-events（wip/P4.1 5f62ddd，本地不推送）、illini-main（origin/main 只读对照）；~/work/caaciorg 本地 feat/public-events-feed 28d59b1（不推送）；~/work/illini-docs 在 codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |

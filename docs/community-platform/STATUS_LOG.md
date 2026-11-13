@@ -686,3 +686,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 无
 - 下一条: D-45 第 2 项（PR 文案）
 - 附: D-45 目标已于 2026-11-13 07:40 CT 用 create_goal 设定，范围限 D-45 第 1–7 项。HOME.5 子任务报回的 21 处与 SPEC 的出入（原文在 tony-ws evidence/HOME.5，摘录）：① 首页、新页头、板块页、「全部讨论」只编进 H5，小程序保留平铺列表和旧页头（主包预算；已列 ④）；② <12px 只在社区区域断言，共享 tab 栏 10px 标签是旧问题；③「近期活动」在 P4.8 前无数据源不渲染；④「新来先看」只在测试 mock 下出现，is_featured 等 P3.1/P3.5，home.typeGuide / home.typeRules 没加；⑤ 文案按 buildHomeSections 返回渲染，英文与 SPEC §11 个别处不同；⑥ 字号按现有 token（`--t-h2` 26px、`--t-body` 16px，≥768px），SPEC 写 22/15px，桌面字标是字面 20px；⑦ 新增 app.tagline（BRAND.1 的值），与 #372 同位置同 key，字标仍读 app.name；⑧ 新 key home.navMarket，「全部」用 cat.all；⑨ 发帖入口无障碍名改为「New topic / 发话题」，九份旧 spec 随之调整；⑩ 手机「全部讨论」顶栏有返回和标题、没有板块标签行；⑪ 视图切换用 replaceState，不加历史；⑫ 悬浮按钮距 tab 栏 15.5px，tab 栏 62px（SPEC 56px，共享组件）；⑬ 手机访客条的标语在 44px 内折成两行；⑭ 仓库与镜像是 Playwright 1.60（任务文字写 1.65）；⑮ 板块页页头固定在排序 tab 之上；⑯ 应用运行中，裸社区地址保留上次的视图，冷启动打开首页；⑰「关注的人」tab 的空状态与未登录文案没改；⑱ 桌面板块页与「全部讨论」侧栏只有「关于本站」；⑲ communityHome.ts 导出 boardFiller（HOME.2 文件改 14 行）；⑳ plaza.empty 与失败文案改用 DoD 措辞，read-failure-states.spec 跟改；㉑ HOME.5 提交带了 HOME.3 的地址修复和手机首页底部留白。
+
+### L56 · 2026-11-13 07:48 CT · D-45 第 2 项：#369、#373、#374 的标题与描述按 D-45 更新（不转 ready）
+- task_id: D-45.2
+- code_sha: —（只改 PR 文案）
+- docs_sha: a64ae9919dbcc54df4dec67754809ea5bc0b0a39
+- 环境: GitHub REST（同一令牌）
+- 命令: 先按 D-45 用 `gh pr edit <n> --title … --body-file …`：三个 PR 都报 GraphQL「Projects (classic) is being deprecated … (repository.pullRequest.projectCards)」，没有改动（读回标题与描述长度不变）。这是 gh 读 projectCards 的客户端问题，不是权限被拒，所以改用 `gh api -X PATCH repos/…/pulls/<n> -f title=… -F body=@…`，只传 title、body 两个字段。文案存 tony-ws evidence/D45-pr/<n>-before.md、<n>-after.md
+- 计数: #369：描述按 P2.13 DoD ① 改成「合并前必须先做」（生产应用 20261112120000 加 VERIFY、P2.13 通过）、13 项已完成任务与提交、未完成的 P2.6/P2.11/P2.13、CI run 43422815812、与 #374/#372 的关系、STATUS 链接；#373：标题与描述里的包名加反引号（`@intlify` 等 5 处裸写的 @ 名），补记 `lru-cache` 11.3.5→11.5.3，写明合后 Boundary 仍因 `vite` 报红；#374：标题改为覆盖 P2.12、HOME.3、HOME.5，描述的 smoke 数改为 79、#372 改为手工合、首页只编进 H5 改为待 Eric 定、补记合并时改了的 5 条用例。读回：三个都是 draft、open，标题已换，#373 描述里没有裸写的 @ 名
+- ci_run_url: —
+- 未测项: 无
+- 下一条: D-45 第 3 项（本地集成试合）
+- 附: 以后 PR、提交说明里的包名一律加反引号（D-45 第 2 项）。
