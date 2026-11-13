@@ -23,12 +23,12 @@ next_task_id 的取法（BACKLOG §0.1 第 2 条，D-47 第 1 项）：按 D-46 
 
 ## CI
 
-PR #369 · run [43491206333](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43491206333) · head 520e55a · 运行中，结论补在本行（13:28 CT 时 Boundary 还在跑）[CI run#43491206333]
+PR #369 · run [43491206333](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43491206333) · head 520e55a · conclusion failure（public sweep 停在预检，等 E4；Type-check、Boundary 2153 / 2152 / 0 / 1、Build H5、Build mp-weixin 4 个 success，protected staging 与 release readiness 2 个 skipped）[CI run#43491206333]
 
-| job | 结论（13:28 CT） | 计数 / 原因 |
+| job | 结论 | 计数 / 原因 |
 |---|---|---|
 | Type-check | success | |
-| Boundary regressions | 运行中 | 本地同一份代码 2153 / 2152 / 0 / 1（check-20261113T190341Z）[本地测] |
+| Boundary regressions | success | 2153 tests：2152 pass / 0 fail / 1 skipped [CI run#43491206333] |
 | Build H5 | success | |
 | Build mp-weixin | success | |
 | Smoke (public page sweep) | failure | 预期中：停在「Verify public read schema before browser startup」预检。staging-smoke 还没应用 20261112120000（等 E4） |
