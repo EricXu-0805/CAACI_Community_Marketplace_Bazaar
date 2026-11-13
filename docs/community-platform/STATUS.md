@@ -1,11 +1,11 @@
 # STATUS
 
-写于 2026-11-13 14:04 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-13 14:16 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
 `next_task_id: D-48 第 1 项（恢复有效 L2–L5 的全局门禁）`
 `latest_batch: appendix/batch/FINAL.md`
 
-next_task_id 按 D-48 第 7 项的新优先顺序取第一条未完成项：D-48 1 → 2 → 3 → D-47 2–5 → D-48 4 → D-46 5、6 → D-47 7。D-48.1 未通过并合入相关分支前，520e55a 的全局门禁放行不可发布；不 revert #375 的合并提交。
+next_task_id 按 D-48 第 7 项的新优先顺序取第一条未完成项：D-48 1 → 2 → 3 → D-47 2–5 → D-48 4 → D-49 → D-46 5、6 → D-47 7。D-48.1 未通过并合入相关分支前，520e55a 的全局门禁放行不可发布；不 revert #375 的合并提交。
 
 ## 版本
 
@@ -15,7 +15,7 @@ next_task_id 按 D-48 第 7 项的新优先顺序取第一条未完成项：D-48
 | code_sha | 520e55a430331b6c2e2f4fdb144e4974a60ebc05（D-46 3b 3588c24、3f 520e55a 一起推送后的 #369 head，b7bcf3a..520e55a） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | 38cc32c9d8ddec68ac4f8a94c2203fb8097e77c1（本次写回之前材料分支的 HEAD） |
+| docs_sha | ffb68d4982c217c89b184c31a919dea0cce2c043（本次写回之前材料分支的 HEAD） |
 | 其余代码分支（远端 head） | #374 codex/community-home-20261112 6d6c598（P2.12、HOME.3、HOME.4、HOME.5、SPEC §11、小程序首页、D-46 3d / 3c / 3e；已合入 #369 b7bcf3a 与 #375 4a3cbe6，依赖 #375）。**#374 还不含 3a（3d24a8e），也不含 #369 上的 3b（3588c24）、3f（520e55a）**，所以 #374 上仍有 4a3cbe6 带来的小程序非 tab 页不启动消息与通知监听的问题。#375 codex/community-mp-budget-20261113 30c4b4d（小程序主包腾空间 4a3cbe6、D-46 3a 3d24a8e、D-46 第 4 项 8972507 / 1443d5c / ecc330b，30c4b4d 合入 #369 520e55a 的 3b、3f；base #369 分支）。#373 codex/deps-crossmajor-20261113 55716ba（P1.6 跨大版本，base #371）。#372 codex/brand-cornfield-20261112 ba070e7（BRAND.1–BRAND.4）。#371 codex/config-fixes-20261112 b259105（P1.2–P1.7）[本地测：git ls-remote] |
 | tony-ws worktree | ~/work/illini 520e55a（#369，与远端一致）；illini-home 6d6c598（#374，与远端一致）；illini-mpbudget 30c4b4d（#375，与远端一致；D-47 第 5 项子任务进行中）；illini-deps 55716ba（#373）；illini-brand ba070e7（#372）；illini-config b259105（#371）；illini-events wip/P4.1 5f62ddd（本地不推送）；illini-main 7b18f20（origin/main 只读对照）；illini-docs-brand7 本地分支 local/brand7-20261113，在 bd397ce（D-46 第 6 项 BRAND.7 进行中，还没有新提交）；~/work/caaciorg 本地 feat/public-events-feed 28d59b1（不推送）；~/work/illini-docs 在 codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
@@ -106,6 +106,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | D-46 第 3 项 f | 部分撤回待验证，不可发布 | 520e55a 的全局放行超出了四个 INSERT 守卫的核查范围；按 D-48.1 在 #369 新提交恢复有效 L2–L5 → suspended，保留社区发帖前拦截和回复提示。已改恢复测试，修复前红测排队中；源码尚未恢复（L74） |
 | D-46 第 4 项 | 通过（#375 单独）；五个 PR 合上后的余量待第 5 项 | #375 8972507、1443d5c、ecc330b（已推送）；主包（CI 环境）1,322,319（L73）[本地测] |
 | D-46 第 5、6 项 | 未做 / 进行中 | 第 5 项（集成试合）排在第 3、4 项和 D-47 第 2–5 项之后；第 6 项见 BRAND.7 行 |
+| D-49 | 待前置项 | Eric 已定先服务端限制写入；D-48 全部、D-47 第 2–5 项后，从修正后的 #369 创建 codex/community-restricted-20261113 草稿 PR，base #369。仅此分支获准一个新迁移；先生产应用并 VERIFY，再合前端。#369 恢复旧门禁后不等待此 PR（L75） |
 | D-47 第 1 项 | 通过 | 本次写回（L72） |
 | D-47 第 2–5 项 | 按 D-48 暂停后续实现 | #374 第 2 项已有未提交修复和正在运行的全量检查；第 3、4 项测试草稿只在 evidence/ 临时目录。#375 第 5 项只有未提交测试，未改生产代码；待 D-48 第 1–3 项完成后恢复 |
 | P3.1–P3.8 | 未测 | 依赖 P2.13（#369 合并） |
@@ -131,3 +132,5 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 11. #372 要手工合：与 #369 冲突在 api/share-post.js、en.ts、zh.ts（#374 另有 app.name / app.desc / app.tagline / app.formerly 一块）；保留 #369 的 P2.9 topicTitle / headline 逻辑与 P2.2「回复 / reply」措辞，只取 #372 的品牌字串。#374 与 #372 还在 app/src/pages/plaza/index.vue 冲突：c16f0a1 删了「关注的人」名单，#372 的 BRAND.3 徽章改的正是那段；保留 #374 的删除，这块的徽章改动丢弃（名单在 pages/following，那一页照 #372）。
 12. 删 #369 的分支之前，先把 #374、#375 的 base 都改成 main；删 #371 的分支之前，先把 #373 的 base 改成 main（删 base 分支会关闭依赖它的 PR，且不能重开）。#369 若 squash 合并，改完 base 后 #374、#375 要再 merge 一次 origin/main。
 13. 首页、新页头、板块页、「全部讨论」已编进小程序（#374，D-45 第 7 项，L62）。主包（CI 环境）：#374 6d6c598 1,551,820（余 21,044，只含 #369 b7bcf3a＋#375 4a3cbe6＋#374）；supervisor 把 #374 和 3a 试合是 1,551,949（余 20,915），离 D-46 第 4 项的 64 KiB 还差 44,621，还没算 #369 的 3b、3f 和 #372、#373；五个 PR 都合上的数等 D-46 第 5 项。小程序渲染、胶囊对齐与运行时行为没在微信开发者工具或真机上跑过，请 Eric 用开发者工具确认，其中包括 3b 的关闭草稿操作菜单（alertText 要基础库 2.14.0 起，manifest 没设最低基础库）和 3f 的受限提示；小程序的「关于本站」复制链接，构建需要 VITE_BASE_URL。暗色侧栏「发布」按钮对比度已在 HOME.4 修好（L61）。
+
+14. D-49：服务端路线已定，不再等待二选一。新草稿 PR 的唯一迁移先在生产应用、VERIFY 通过，前端才能合；staging/生产应用均由 Eric 做。#369 合入 main 后该 PR 的 base 改成 main。D-48 六类路径已由 OMO 追踪最新迁移/调用方做源码核查；未执行新的 PG17 复现，不代表已检查托管库实际状态（证据见 L75）。

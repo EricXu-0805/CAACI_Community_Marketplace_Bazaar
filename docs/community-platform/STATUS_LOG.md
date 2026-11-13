@@ -919,3 +919,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 下一条: D-48 第 1 项
 - 更正 L71: 先前只核查 posts、post_comments、items、messages 的四个 BEFORE INSERT 守卫，不能据此断言整个 app 的写入已受限；520e55a 放开全局门禁的前提核查范围不足。本次先恢复门禁，不新增迁移、不改 RLS 或服务端函数；保留社区发帖/回复的防护。
 - 后续顺序: D-48 1 → 2 → 3 → D-47 2–5 → D-48 4 → D-46 5、6 → D-47 7；同分支只允许一个执行者。
+
+### L75 · 2026-11-13 14:16 CT · D-48 六类服务端路径独立源码核查；D-49 选定服务端先行并扩展范围
+- task_id: D-48.1 / D-49.6
+- code_sha: 520e55a（核查的服务器源码版本；不含正在验证的客户端改动）
+- docs_sha: ffb68d4982c217c89b184c31a919dea0cce2c043
+- 环境: tony-ws 只读源码；未访问托管数据库，未执行 PG17 复现。
+- 命令: 追踪最新迁移替换、RLS/ACL、触发器及真实调用方；完整证据 ~/work/evidence/D48-server-audit/server-write-paths.md，简表 concise-table.md。本机没有原生 PG17，非阻塞容器锁探测未取得锁，故不把 supervisor 的 PG17 结果记作自己的运行证据。
+- 计数: 六类路径完成源码核查，均未发现对有效 L2–L4 的 actor-level 拒绝；正常身份、参与者、屏蔽、内容及状态检查仍然存在。商品会话：20260916050227_direct_profile_conversations.sql:51–102,124–137（限制判断只在 is_direct 分支）。报价/还价：20260717141822_enforce_symmetric_chat_block_boundary.sql:537–774。约见三 RPC：20260718250000_durable_meetup_email_delivery.sql:192–591；后续触发器20260718260000:35–47；邮件调用 api/meetup-notify.js:447–647。评价：20260718210000_deal_attributed_ratings.sql:450–535。商品 UPDATE：20260722080918_optimize_auth_rls_initplans.sql:320–323，降价通知005_notifications_and_price_drop.sql:37–65。资料/头像/关注/两类点赞：20260722080918:362–365,380–390,416–418；存储守卫20260718230000:910–1030。
+- ci_run_url: —
+- 未测项: 当前托管库的迁移状态、真实 L0–L5 执行矩阵、Storage HTTP 处理和邮件发送。降价通知行被创建不代表一定展示/送达，后续 SELECT 可隐藏 L3/L4 商品；街道验证的受限条件只影响认证回执，不拒绝正常手动编辑。
+- 下一条: D-48 第 1 项验证完成后提交并推送，然后第 2 项。
+- 附: D-49 已选择服务端先行，撤下 D-48 的二选一待决条目。目标扩展为 D-46 第 1–6 项加 D-47、D-48、D-49。仅 codex/community-restricted-20261113 分支获准一个新迁移；从 D-48 第 1、2 项完成后的 #369 head 切出，base 为 #369，其他分支不新增迁移。现有迁移/manifest 已有行、20261112120000 和 workflows 不改。新迁移先生产应用并 VERIFY，再合新前端；托管应用归 Eric，#369 恢复旧门禁后可按原计划上线。
