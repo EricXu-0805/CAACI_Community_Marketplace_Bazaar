@@ -515,12 +515,15 @@
       <view v-if="!loadingComments && comments.length > 0" class="cmt-end"><text>{{ t('plaza.noMoreComments') }}</text></view>
       </scroll-view>
 
-      <view v-if="replyTo" class="ci-reply-bar">
+      <view v-if="replyTo && !replyRestricted" class="ci-reply-bar">
         <text class="ci-reply-label">{{ t('plaza.replyingTo') }} @{{ replyTo.profile?.nickname || t('app.user') }}</text>
         <view class="ci-reply-x" role="button" :aria-label="t('a11y.close')" @click.stop="replyTo = null"><view class="ci-rx"></view></view>
       </view>
 
-      <view class="ci-input-bar">
+      <view v-if="replyRestricted" class="ci-input-bar reply-restricted" role="status">
+        <text>{{ t('plaza.restrictedReply') }}</text>
+      </view>
+      <view v-else class="ci-input-bar">
         <textarea
           v-model="commentText"
           class="ci-input"
@@ -761,6 +764,7 @@ import { POST_CATEGORIES, POST_TITLE_MAX, normalizePostTopic, type PostCategory 
 import { safeItemMediaUrls } from '../../utils/publicResource'
 import { formatTime, formatPrice, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
 import { DIALOG_DANGER, DIALOG_WARN } from '../../utils/dialogColors'
+import { isSuspensionActive } from '../../utils/suspension'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
 // #ifdef H5
@@ -799,6 +803,7 @@ const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
 const { currentUser, isLoggedIn, requireAuth, awaitAuthReady } = useAuth()
+const replyRestricted = computed(() => isSuspensionActive(currentUser.value))
 const { posts, loading, hasMore, fetchError, fetchPosts, invalidatePosts, createPost, recoverCreatedPost, updatePostI18n, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, fetchMyActiveItems, clearPosts } = usePlaza()
 const { following, followingLoaded, loadMyFollowing } = useFollow()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
@@ -1383,6 +1388,15 @@ const { addPostToHistory } = useHistory()
 async function openComposer(board?: unknown) {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
+  if (isSuspensionActive(currentUser.value)) {
+    if (currentUser.value.suspension_level === 5) {
+      uni.reLaunch({ url: '/pages/suspended/index' })
+    } else {
+      const date = new Date(currentUser.value.suspended_until!).toLocaleDateString(lang.value === 'zh' ? 'zh-CN' : 'en-US')
+      uni.showToast({ title: t('plaza.restrictedPost', { date }), icon: 'none', duration: 3500 })
+    }
+    return
+  }
   composerDialogOpener = activeElement()
   composerSessionId += 1
   composerAccountToken = captureAccountRequest(currentUser.value.id)
@@ -1672,21 +1686,33 @@ function onComposerCancel() {
   }
   const token = composerAccountToken
   const sessionId = composerSessionId
+  const closeDraft = (keep: boolean) => {
+    if (!token || !isAccountRequestCurrent(token) || sessionId !== composerSessionId || submitting.value) return
+    if (keep) {
+      if (!saveComposerDraft()) {
+        uni.showToast({ title: t('publish.draftSaveFailed'), icon: 'none' })
+        return
+      }
+    } else removeAccountPrivateStorage(COMPOSER_DRAFT_KEY)
+    resetComposer()
+  }
+  // #ifdef MP-WEIXIN
+  // MP base libraries 3.15.0–3.15.2 allow 8 weighted units per modal button
+  // (Latin-1 counts 1, other UTF-16 units 2). "Keep draft" needs 10.
+  uni.showActionSheet({
+    title: t('plaza.draftCloseTitle'),
+    itemList: [t('plaza.draftKeep'), t('plaza.draftDiscard')],
+    success: result => closeDraft(result.tapIndex === 0),
+  })
+  // #endif
+  // #ifndef MP-WEIXIN
   uni.showModal({
     title: t('plaza.draftCloseTitle'),
     confirmText: t('plaza.draftKeep'),
     cancelText: t('plaza.draftDiscard'),
-    success: result => {
-      if (!token || !isAccountRequestCurrent(token) || sessionId !== composerSessionId || submitting.value) return
-      if (result.confirm) {
-        if (!saveComposerDraft()) {
-          uni.showToast({ title: t('publish.draftSaveFailed'), icon: 'none' })
-          return
-        }
-      } else removeAccountPrivateStorage(COMPOSER_DRAFT_KEY)
-      resetComposer()
-    },
+    success: result => closeDraft(result.confirm),
   })
+  // #endif
 }
 
 function resetComposer() {
@@ -2227,6 +2253,7 @@ function onCommentKeydown(e: KeyboardEvent) {
 async function onSubmitComment() {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
+  if (replyRestricted.value) return
   if (!commentText.value.trim() || !commentingPost.value) return
   if (commentSubmitting.value) return
   commentSubmitting.value = true
@@ -2308,6 +2335,7 @@ async function onSubmitComment() {
 async function onCommentTap(c: PostComment) {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
+  if (replyRestricted.value) return
   replyTo.value = c
   inputFocused.value = true
 }
@@ -2362,6 +2390,7 @@ async function onCommentLongPress(c: PostComment) {
     success: (res) => {
       if (!actionIsCurrent()) return
       if (res.tapIndex === 0) {
+        if (replyRestricted.value) return
         replyTo.value = c
         inputFocused.value = true
       } else if (isMine && res.tapIndex === 1) {
@@ -3154,6 +3183,10 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   padding: 8px 16px;
   background: var(--bg-elev-1);
   border-top: 0.5px solid var(--line-hair);
+}
+.reply-restricted {
+  min-height: 44px; box-sizing: border-box; align-items: center;
+  font-size: 14px; line-height: 20px; color: var(--ink-soft);
 }
 .ci-input {
   flex: 1; min-height: 36px;

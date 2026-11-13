@@ -279,13 +279,16 @@
     </view>
 
     <view v-if="post && !authorBlocked" class="input-wrapper" :style="kbLift">
-      <view v-if="replyTo" class="reply-bar">
+      <view v-if="replyTo && !replyRestricted" class="reply-bar">
         <text class="reply-label">{{ t('plaza.replyingTo') }} @{{ replyTo.profile?.nickname || t('app.user') }}</text>
         <view class="reply-x" role="button" :aria-label="t('a11y.close')" @click="replyTo = null">
           <view class="rx-inner"></view>
         </view>
       </view>
-      <view :class="['input-bar', { 'has-note': replyFailed }]">
+      <view v-if="replyRestricted" class="input-bar reply-restricted" role="status">
+        <text>{{ t('plaza.restrictedReply') }}</text>
+      </view>
+      <view v-else :class="['input-bar', { 'has-note': replyFailed }]">
         <input
           v-model="commentText"
           :placeholder="replyTo ? t('plaza.replyHint') : t('plaza.commentHint')"
@@ -350,6 +353,7 @@ import { mutationCommitState } from '../../api/mutationCommit'
 import { clearLocalDuplicate } from '../../utils/contentSafety'
 import { formatTime, friendlyErrorMessage, navigateBackOr, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
 import { DIALOG_DANGER, DIALOG_INK } from '../../utils/dialogColors'
+import { isSuspensionActive } from '../../utils/suspension'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim, Post, PostComment } from '../../types'
 import { BASE_URL } from '../../config/runtime'
@@ -363,6 +367,7 @@ const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
 const { currentUser, requireAuth, awaitAuthReady } = useAuth()
+const replyRestricted = computed(() => isSuspensionActive(currentUser.value))
 const { fetchPost, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, retryAttachPostItems } = usePlaza()
 const { supabase } = useSupabase()
 const { reportTarget, blockedIds, ensureLoaded: ensureBlockedLoaded, unblockUser } = useModeration()
@@ -818,6 +823,7 @@ function onDelete() {
 async function onCommentTap(c: PostComment) {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
+  if (replyRestricted.value) return
   replyTo.value = c
 }
 
@@ -896,6 +902,7 @@ async function onCommentLongPress(c: PostComment) {
           },
         })
       } else if (!isMine && res.tapIndex === 0) {
+        if (replyRestricted.value) return
         replyTo.value = c
       } else if (!isMine && res.tapIndex === 1) {
         promptReport('comment', c.id)
@@ -960,6 +967,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 async function onSubmitComment() {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
+  if (replyRestricted.value) return
   if (!commentText.value.trim() || !post.value) return
   if (submitting.value) return
   const commentAccountToken = captureAccountRequest(currentUser.value.id)
@@ -1304,6 +1312,10 @@ async function retryReply() {
 .input-bar.has-note { padding-bottom: var(--space-1); }
 .reply-failed { padding: 0 var(--space-4) calc(var(--space-2) + env(safe-area-inset-bottom)); cursor: pointer; }
 .reply-failed-t { font-size: var(--t-caption); line-height: var(--lh-caption); color: var(--danger); }
+.reply-restricted {
+  min-height: 44px; box-sizing: border-box; align-items: center;
+  font-size: 14px; line-height: 20px; color: var(--ink-soft);
+}
 .input {
   flex: 1; height: 40px; background: var(--bg-subtle); border-radius: 20px;
   padding: 0 14px; font-size: 14px; color: var(--text-primary);

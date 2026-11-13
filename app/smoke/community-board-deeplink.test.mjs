@@ -10,6 +10,7 @@ const compile = input => ts.transpileModule(input, {
 }).outputText
 const moduleUrl = input => `data:text/javascript;base64,${Buffer.from(compile(input)).toString('base64')}`
 const { normalizePostTopic } = await import(moduleUrl(source('utils/communityPost.ts')))
+const { isSuspensionActive } = await import(moduleUrl(source('utils/suspension.ts')))
 const plaza = source('pages/plaza/index.vue')
 const postPage = source('pages/post/index.vue')
 const POST = '33333333-3333-4333-8333-333333333333'
@@ -213,6 +214,7 @@ test('composer focus runs on the render tick without a delayed focus steal or st
     const token = { userId: 'user-a', generation: 1 }
     const dependencies = {
       awaitAuthReady: async () => {}, requireAuth: () => true, currentUser: { value: { id: 'user-a' } },
+      isSuspensionActive,
       composerDialogOpener: null, activeElement: () => null, composerSessionId: 0, composerAccountToken: null,
       captureAccountRequest: () => token, isAccountRequestCurrent: () => true, createClientMessageId: () => POST,
       composerPostId: { value: '' }, outcomeUncertain: { value: false }, publicationMissing: { value: false },
