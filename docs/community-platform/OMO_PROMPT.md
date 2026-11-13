@@ -1,6 +1,6 @@
 # OMO 启动提示
 
-Eric 先完成 E1（提交并推送 codex/community-plan-v5，见 RUNBOOK §11「Eric 一次性准备」），再把分隔线以下整段粘进 tony-ws 的 tmux 会话 omo。
+E1 已于 2026-11-12 完成（分支已推送，草稿 PR #370，见 STATUS_LOG L13）。把分隔线以下整段粘进 tony-ws 的 tmux 会话 omo。
 
 ---
 

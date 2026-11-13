@@ -636,7 +636,7 @@ OMO 自己的规则：
 
 括号里写这一项解锁哪些任务。完成后，在相关 PR 留言或在 STATUS_LOG 留痕；OMO 读到后抄进 STATUS。
 
-- **E1** 提交并推送 V5 分支，开草稿 PR（D-14；解锁 P1.1 ④）。V5 文件 2026-11-12 还没有提交（`git status` 里是未跟踪文件和已暂存的移动）。确认 V5 后，在 Mac 上执行 `cd /Users/xiaogangxu/Downloads/CAACI/Community-Platform/plan-v5 && git add -A docs/community-platform && git commit -m 'docs: 玉米地社区方案 V5' && git push -u origin codex/community-plan-v5`，再执行 `gh pr create --draft --base main --head codex/community-plan-v5 --repo EricXu-0805/CAACI_Community_Marketplace_Bazaar --title 'docs: 玉米地社区方案 V5'`。不合并。
+- **E1** 提交并推送 V5 分支，开草稿 PR（D-14；解锁 P1.1 ④）。**2026-11-12 已完成**（617055e，草稿 PR #370，见 STATUS_LOG L13）；以下是当时的步骤，留作重建分支时参考。在 Mac 上执行 `cd /Users/xiaogangxu/Downloads/CAACI/Community-Platform/plan-v5 && git add -A docs/community-platform && git commit -m 'docs: 玉米地社区方案 V5' && git push -u origin codex/community-plan-v5`，再执行 `gh pr create --draft --base main --head codex/community-plan-v5 --repo EricXu-0805/CAACI_Community_Marketplace_Bazaar --title 'docs: 玉米地社区方案 V5'`。不合并。
 - **E2** 书面确认 staging-smoke 只有合成数据（D-29；解锁 P1.11、P2.6）。在 Supabase 后台打开项目 hygkwxugskijadgfisji → Authentication → Users，逐页看邮箱，确认没有真实用户；在 Table Editor 里抽看 profiles、items、posts、messages。确认后在 PR #369 留言「YYYY-MM-DD HH:MM CT 核对：staging-smoke 只有合成数据」。
 - **E3** 建合成账号和凭据文件（解锁 P1.11）。
   1. 在同一项目的 Authentication → Users → Add user → Create new user 里，依次建 syn-a@example.test、syn-b@example.test、syn-c@example.test，各用 24 位随机密码，并勾选 Auto Confirm User。

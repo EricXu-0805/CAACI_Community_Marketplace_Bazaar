@@ -154,3 +154,14 @@
 - ci_run_url: —
 - 未测项: BACKLOG、RUNBOOK 的命令在 tony-ws 上都没跑过；只核对了被引用行号的一部分（上面列出的文件）
 - 下一条: E1（Eric 审阅后提交、推送并开草稿 PR）→ P1.1
+
+### L13 · 2026-11-12 23:25 CT · E1 完成：V5 提交、推送、开草稿 PR
+- task_id: E1（D-14）
+- code_sha: 005ca9d6b5ac23346dfeb38f3deb95984bffd27b
+- docs_sha: 617055e7e573e53c40b73c25b2153a3b00d07e5f
+- 环境: 本地 Eric 的 Mac，/Users/xiaogangxu/Downloads/CAACI/Community-Platform/plan-v5（分支 codex/community-plan-v5）
+- 命令: 提交前对 docs/community-platform 做密钥扫描；`git add -A docs/community-platform && git commit`；`git push -u origin codex/community-plan-v5`；`gh pr create --draft --base main --head codex/community-plan-v5`；`git ls-remote --heads origin`
+- 计数: 密钥扫描 0 命中 [本地测]。远端 codex/community-plan-v5 = 617055e、codex/community-topics-20261112 = 005ca9d、main = 7b18f20 [本地测]。PR #370 草稿 OPEN，base main；检查 1 项 skipped（文档改动）[本地测：gh]
+- ci_run_url: —
+- 未测项: tony-ws 上 ~/work/illini-docs 还在 4e459bd，切换由 P1.1 ④ 做；本条改动（STATUS、本条、OMO_PROMPT 第 3 行）是 617055e 之后的单独提交
+- 下一条: P1.1

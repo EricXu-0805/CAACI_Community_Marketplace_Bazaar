@@ -1,6 +1,6 @@
 # STATUS
 
-写于 2026-11-12 23:15 CT · 作者：V5 编写会话（Claude，Eric 的 Mac）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-12 23:25 CT · 作者：V5 编写会话（Claude，Eric 的 Mac）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
 `next_task_id: P1.1`
 
@@ -11,10 +11,10 @@
 | 代码分支 / PR | codex/community-topics-20261112 / #369（草稿，OPEN）[源码 005ca9d] |
 | code_sha | 005ca9d6b5ac23346dfeb38f3deb95984bffd27b（2026-11-12 git ls-remote） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-12 git ls-remote） |
-| 材料分支 | codex/community-plan-v5：只在 Eric 的 Mac（/Users/xiaogangxu/Downloads/CAACI/Community-Platform/plan-v5），远端未建，等 E1 |
-| docs_sha | 4e459bd81df766b15c97b85109ffbb7067c7ebcd（V5 文件未提交；E1 提交并推送后改成推送的提交） |
+| 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-12 git ls-remote] |
+| docs_sha | 617055e7e573e53c40b73c25b2153a3b00d07e5f（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
 | 配置 / 品牌 / 首页分支 | 都还没建（P1.2 / BRAND.1 / HOME.3） |
-| tony-ws 仓库 | ~/work/illini 在 005ca9d；~/work/illini-docs 在 4e459bd（V4 材料分支）[本地测] |
+| tony-ws 仓库 | ~/work/illini 在 005ca9d；~/work/illini-docs 在 4e459bd（V4 材料分支），P1.1 ④ 切到 codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 
@@ -68,12 +68,11 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 
 ## 阻塞与等待 Eric
 
-1. E1（D-14）：V5 文件没提交，分支没推送，tony-ws 上的 ~/work/illini-docs 读不到本套文件。OMO 开工前必须完成。
-2. D-29 → E2、E3：staging-smoke 只有合成数据的书面确认与 A/B/C 账号。挡住 P1.11、P1.12、P2.6、P2.11。
-3. E4：P2.5 在 STATUS_LOG 写出「20261112120000 冻结」后，Eric 把迁移应用到 hygkwxugskijadgfisji。挡住 P2.6、P2.13。
-4. D-41：依赖审计修复范围。未定前 P1.6 跳过，P1.7 先开草稿 PR。
-5. E5：合并 P1.7 的 PR。挡住 P1.8，以及 BRAND.2 ⑦ 的 Build H5。
-6. D-35（视觉）挡住 HOME.4、P2.12、BRAND.7；D-34（logo）挡住 BRAND.4 ②。
-7. D-30（E7，微信后台核对）挡住 BRAND.5、P5.2；D-31（E8，fork 权限）挡住 P4.3。
-8. D-37（董事会同意）挡住 LEGAL.1–LEGAL.3；D-28（轮值伙伴）挡住 LEGAL.6 与 P5；D-36（域名）挡住 BRAND.6、P5.1。
-9. E6（官方账号 profile id）在 P3.5 与 P4.9 前需要；D-32、D-33、D-38、D-39、D-40 的截止任务见 [DECISIONS.md](DECISIONS.md)。
+1. D-29 → E2、E3：staging-smoke 只有合成数据的书面确认与 A/B/C 账号。挡住 P1.11、P1.12、P2.6、P2.11。
+2. E4：P2.5 在 STATUS_LOG 写出「20261112120000 冻结」后，Eric 把迁移应用到 hygkwxugskijadgfisji。挡住 P2.6、P2.13。
+3. D-41：依赖审计修复范围。未定前 P1.6 跳过，P1.7 先开草稿 PR。
+4. E5：合并 P1.7 的 PR。挡住 P1.8，以及 BRAND.2 ⑦ 的 Build H5。
+5. D-35（视觉）挡住 HOME.4、P2.12、BRAND.7；D-34（logo）挡住 BRAND.4 ②。
+6. D-30（E7，微信后台核对）挡住 BRAND.5、P5.2；D-31（E8，fork 权限）挡住 P4.3。
+7. D-37（董事会同意）挡住 LEGAL.1–LEGAL.3；D-28（轮值伙伴）挡住 LEGAL.6 与 P5；D-36（域名）挡住 BRAND.6、P5.1。
+8. E6（官方账号 profile id）在 P3.5 与 P4.9 前需要；D-32、D-33、D-38、D-39、D-40 的截止任务见 [DECISIONS.md](DECISIONS.md)。
