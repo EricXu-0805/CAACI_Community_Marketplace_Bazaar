@@ -453,3 +453,14 @@
 - ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43392843858
 - 未测项: 「换号」只用 SIGNED_OUT 测了退出这一种；换成另一个账号走同一个 resetPlazaState 路径，没单独写用例
 - 下一条: BRAND.1
+
+### L38 · 2026-11-13 02:37 CT · BRAND.1 产品名换成「玉米地 / Cornfield」：界面、清单文件、公开页
+- task_id: BRAND.1
+- code_sha: 9157d966c48c8d6bd81cc3a30aefdc70bd033102（codex/brand-cornfield-20261112，草稿 PR #372，base main 7b18f20，已推送；BRAND.1–3 一个提交，因 zh/en 两个文案文件里三项的 key 交错）
+- docs_sha: c22ac52fd12093d43598f64c1dc7d8261ca06e16
+- 环境: 本地 tony-ws pw1.60（分支从 main 建，还是 Playwright 1.60）；CI
+- 命令: i18n app.name、app.desc，新增 app.tagline、app.formerly；manifest.json、pages.json、manifest.webmanifest、index.html、public-brand-pages.ts、account-deletion.html、robots.txt、moderation.adBody（删「只用于同学之间交易物品」）、api/moderate.js 提示词、pages/index 与 detail 的 navigator.share 标题；登录页加 12px「原 Illini Market」一行，/about（public-brand-pages.ts 生成的静态页，不能调 t()）写死「Cornfield (formerly Illini Market)」「玉米地（原 Illini Market）」。`~/work/illini-dev-env/run-checks.sh ~/work/illini-brand install typecheck h5 h5accept mp migrations test smoke`（log check-20261113T074156Z）：test 两条失败，都是 api/_share-boundary.test.mjs 仍断言旧兜底描述；SPEC §1.1 规定分享卡描述用一句话介绍，所以改断言为新值，`~/work/illini-dev-env/run-checks.sh ~/work/illini-brand install test` 复测（log check-20261113T082329Z）通过。改动由 OMO 子任务按 SPEC §1.1–§1.7、ENGINEERING §3 写，OMO 复核并跑全量
+- 计数: ① app.name 玉米地 / Cornfield，app.desc 伊利诺伊华人论坛 / Chinese community in Illinois，app.tagline 已加；② 列出的文件都已改，mp 产物 projectname 为「玉米地」（evidence/BRAND.1/*-projectname.txt）；③ 登录页与 /about 有「原 Illini Market」，移除日写进 STATUS 阻塞第 9 条；④ diff 无重命名，is_illini_verified 删 9 行加 9 行（只换 label），illinimarket.com 各地址集合不变，pages/illini-verify、存储 key、send/verify-illini-code 文件名都没动；⑤ 全量 install、typecheck、h5、h5accept、mp、migrations、smoke 通过，test 1991/1990/0/1 [本地测]；CI Type-check、Boundary（没碰依赖文件，审计按 workflow 跳过）、Build mp-weixin success；Build H5 失败在「Install browsers for compiled admin acceptance」、public sweep 失败在「Install Playwright」，都是 Ubuntu 26.04 上 Playwright 1.60 装不上浏览器，P1.5 在 #371 修，等 E5 [CI run#43393646871]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43393646871
+- 未测项: 无
+- 下一条: BRAND.3
