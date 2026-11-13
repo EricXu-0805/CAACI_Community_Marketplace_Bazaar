@@ -1,8 +1,9 @@
 # STATUS
 
-写于 2026-11-13 03:23 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-13 03:25 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: P1.7`
+`next_task_id: P1.10`
+`latest_batch: appendix/batch/FINAL.md`
 
 ## 版本
 
@@ -12,9 +13,9 @@
 | code_sha | be2ebb6a3752a763cdad2f634b0db2fb88e75161（OMO 推送 P2.7 修正后的 #369 head） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-12 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-12 git ls-remote] |
-| docs_sha | bb5c1fb3a364a828a5fd83a5004cb3574d6e2ea2（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
-| 配置 / 品牌 / 首页分支 | codex/config-fixes-20261112 远端 14b4e4a（P1.2–P1.5），没开 PR（P1.7）；品牌、首页还没建（BRAND.1 / HOME.3）[本地测] |
-| tony-ws 仓库 | ~/work/illini 在 005ca9d；~/work/illini-docs 已切到 codex/community-plan-v5（P1.1 ④，见 STATUS_LOG L15）[本地测] |
+| docs_sha | fd794fa511f3551590af8c09210863b29019dfae（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
+| 配置 / 品牌 / 首页分支 | codex/config-fixes-20261112 远端 b259105，草稿 PR #371（P1.2–P1.7）；codex/brand-cornfield-20261112 远端 ba070e7，草稿 PR #372（BRAND.1–BRAND.4）；首页分支没建（HOME.3 经 P2.5 随 P1.10【跳过】）[本地测] |
+| tony-ws 仓库 | ~/work/illini 在 be2ebb6（#369）；worktree：illini-config（#371）、illini-brand（#372）、illini-events（wip/P4.1 5f62ddd，本地不推送）、illini-main（origin/main 只读对照）；~/work/caaciorg 本地 feat/public-events-feed 28d59b1（不推送）；~/work/illini-docs 在 codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 
@@ -53,7 +54,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P1.2 | 通过 | DoD ①–⑥ 符合，见 STATUS_LOG [本地测] |
 | P1.3 | 通过 | test 1994 / 1993 / 0 / 1，pg_skips=0；写死路径 32→1 [本地测] |
 | P1.4 | 通过 | 旧色 grep 15→0；typecheck、h5、mp rc=0 [本地测] |
-| P1.5 | 未测 | ①–④ 通过（fsevents 删除经 Eric 批准）；⑤ 等 P1.7 的 CI [本地测] |
+| P1.5 | 通过 | ①–④ 通过（fsevents 删除经 Eric 批准）[本地测]；⑤ #371 的 Build H5 在 ubuntu-26.04 上 success [CI run#43397680516] |
 | P1.13 | 通过 | DoD ①–④ 符合；link 拉下的 .env.local 已按 Eric 答复删除 [本地测] |
 | P1.9 | 通过 | 镜像 169f16e6…，全量每步 rc=0；test 1994 / 1993 / 0 / 1 [本地测] |
 | P1.10 | 跳过 | 8 次修正到 162/181；按答复限定转【跳过】，等 Eric 定托管面存根的放法 [隔离环境 L-SQL] |
