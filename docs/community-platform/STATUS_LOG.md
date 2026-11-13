@@ -475,3 +475,15 @@
 - ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43393646871
 - 未测项: 无
 - 下一条: BRAND.2
+
+### L40 · 2026-11-13 02:37 CT · BRAND.2 分享卡、邮件显示名与品牌断言测试；开草稿 PR #372
+- task_id: BRAND.2
+- code_sha: 9157d966c48c8d6bd81cc3a30aefdc70bd033102（codex/brand-cornfield-20261112，草稿 PR #372，base main 7b18f20，已推送；BRAND.1–3 一个提交，因 zh/en 两个文案文件里三项的 key 交错）
+- docs_sha: 8ca557e10f784e9bf729647a7ec93bde766d8557
+- 环境: 本地 tony-ws pw1.60（分支从 main 建，还是 Playwright 1.60）；CI
+- 命令: api/share.js、share-post.js 的 og:site_name「玉米地 Cornfield」、兜底标题「玉米地 · 社区」、兜底描述换成一句话介绍；share.plaza / marketplace / profile 中英文；DIGEST_FROM 默认值「玉米地 Cornfield <noreply@send.illinimarket.com>」；send-illini-code、notification-digest、meetup-notify、unsubscribe 正文；supabase/email-templates 两个模板；_share-boundary、_email-brand-boundary 改新名（_deployment-boundary 只断言域名，不用改）；新增 scripts/brand-name-boundary.test.mjs 把品牌名与徽章两条检索写成测试。`git push --no-verify -u`（分支从 main 建，宿主 pre-push 的 PG 测试找不到 initdb，同 L21）；`gh pr create --draft --base main` → #372。`~/work/illini-dev-env/run-checks.sh ~/work/illini-brand install typecheck h5 h5accept mp migrations test smoke`（log check-20261113T074156Z）：test 两条失败，都是 api/_share-boundary.test.mjs 仍断言旧兜底描述；SPEC §1.1 规定分享卡描述用一句话介绍，所以改断言为新值，`~/work/illini-dev-env/run-checks.sh ~/work/illini-brand install test` 复测（log check-20261113T082329Z）通过。改动由 OMO 子任务按 SPEC §1.1–§1.7、ENGINEERING §3 写，OMO 复核并跑全量
+- 计数: ① og:site_name、兜底标题、share.plaza 与 SPEC §1.7 一致；② DIGEST_FROM 默认值已改，发件域不变；③ 两个模板已同步；④ 两份断言测试改新名，新测试在容器里 2/2 通过，故意放回旧名时 1 条失败（变异检查）；⑤ 品牌名检索 76 行 / 19 个文件 → 0（evidence/BRAND.2/20261113T075437Z-brand-grep.txt）；⑥ test 1991/1990/0/1 [本地测]；⑦ CI Type-check、Boundary（没碰依赖文件，审计按 workflow 跳过）、Build mp-weixin success；Build H5 失败在「Install browsers for compiled admin acceptance」、public sweep 失败在「Install Playwright」，都是 Ubuntu 26.04 上 Playwright 1.60 装不上浏览器，P1.5 在 #371 修，等 E5 [CI run#43393646871]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43393646871
+- 未测项: ⑦ Build H5 等 E5（#371 合并后重跑）
+- 下一条: P4.3
+- 附: E10（合并后）：Eric 把两个邮件模板粘到 Supabase 后台、生产 DIGEST_FROM 显示名改「玉米地 Cornfield」。邮件和退订页里的「集」字印章没在 BRAND.4 的替换范围里，列进最终报告。
