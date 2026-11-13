@@ -33,6 +33,10 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
 - **D-25 冷启动低风险组合**（2026-11-12，Eric 弹窗）：内容见「冷启动内容政策」，依据 appendix/research/cold-start-legal.md。
 - **D-26 以 CAACI 名义运营**（2026-11-12，Eric 弹窗）：社区条款、DMCA 指定代理人登记、转载授权都用 CAACI 名义；需主席/董事会正式同意（D-37）。后果见「运营主体」。
 - **D-27 默认采用四项**（2026-11-12，Eric 授权按推荐处理，不再单独确认）：徽章「伊利诺伊认证 / Verified Illini」改为「校园邮箱已验证 / Campus email verified」（BRAND.3）；小程序显示名改为「玉米地」，不带「论坛」以避开类目资质，由 Eric 在微信后台改，改前核对服务类目、主体类型、剩余改名次数（D-30、BRAND.5）；「二手 / Market」保留为站内分区名；新 logo 用印章风格的「玉」或「玉米地」（D-34），不用 Block I 和学校的橙蓝配色。
+- **D-31 caaciorg 的 fork 权限**（2026-11-12，Eric 在 Claude Code 弹窗选定、由 Claude 代发到 PR #370 留言 https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/pull/370#issuecomment-6845368862）：选 A。原话：「Eric 建 fork EricXu-0805/caaciorg，把它加进 tony-ws 的令牌，给 Contents、Pull requests 读写；上游 PR 由 Eric 在网页上开」。同一留言写明 fork 和令牌权限还没加（E8），P4.3 推送前仍要等 E8 完成；在那之前 P4.3 只在本地写。
+- **D-35 视觉方向**（2026-11-12，Eric 在 Claude Code 弹窗选定、由 Claude 代发到 PR #370 留言 https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/pull/370#issuecomment-6845368862）：选 A（纸本书院，design/direction-a.html）。HOME.4、P2.12 按方向 A 做，BRAND.7 随后。
+- **D-40 法律文本定稿前请律师**（2026-11-12，Eric 在 Claude Code 弹窗选定、由 Claude 代发到 PR #370 留言 https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/pull/370#issuecomment-6845368862）：选 A。原话：「请律师，只审 LEGAL.2 的条款与隐私政策、LEGAL.4 的投诉流程」。
+- **D-41 依赖安全审计**（2026-11-12，Eric 在 Claude Code 弹窗选定、由 Claude 代发到 PR #370 留言 https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/pull/370#issuecomment-6845368862）：选 A。原话：「OMO 另开依赖修复 PR，先跑 npm audit fix，不带 --force，列出 lockfile 变化；需要 --force 的项和 vite 逐个报 Eric」。留言没有写新分支的名字；按 BACKLOG P1.6，推送前要有 Eric 指定的分支名，并加进 RUNBOOK STOP-6 的白名单，在那之前 P1.6 只在本地分支做。
 
 ## 待定
 
@@ -54,12 +58,6 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
 - 结果怎么走：① 主体和类目都覆盖 UGC：BRAND.5 直接改名，P5.2 照常提审。② 类目不覆盖：先申请社区/论坛类目或补资质，P5.2 等资质下来。③ 个人主体不能开 UGC：主体换成组织（与 D-26 一致就用 CAACI），P5.2 推迟，Eric 重议 D-12。
 - 谁定：Eric。截止：BRAND.5（改名前）、P5.2（提审前）。
 
-### D-31 caaciorg 的 fork 权限
-- 现状：tony-ws 的令牌只覆盖 Illini 仓库（D-07）。a2751012962/caaciorg 公开可读，功能分支的 PR 开向 preview，main 只收 preview、release、hotfix。
-- 选项：A 把 fork EricXu-0805/caaciorg 加进令牌（Contents、Pull requests 读写），OMO 推分支，上游 PR 由 OMO 或 Eric 在网页开（E8）；B Eric 自己推 fork 分支，OMO 只交补丁文件。
-- 建议：A。选 B 的话，每次修改都要 Eric 手工搬一遍。
-- 谁定：Eric。截止：P4.3。
-
 ### D-32 首批合作组织与书面同意
 - 现状：没有任何合作组织给过书面同意，CSSA 只是举例。同意书中英文模板在 SPEC 6.7.11。
 - 选项：A 首批只签 1 家（如 CSSA），跑满一个学期再加；B 一次签 2–3 家；C 首发不转发，活动页只放 CAACI 和学校活动。
@@ -77,12 +75,6 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
 - 选项：BRAND.4 出的 3 个印章稿（「玉」单字或「玉米地」三字）三选一。
 - 建议：「玉」单字。24px 的 tab 图标和 favicon 上，三个字很难认（判断，看 BRAND.4 的 24px 预览再定）。
 - 谁定：Eric。截止：BRAND.4。
-
-### D-35 视觉方向
-- 现状：三份稿是 design/direction-a.html（纸本书院）、direction-b.html（白底高密）、direction-c.html（图文双列），27 张截图在 design/screenshots/，对比表、token 表和推荐理由在 [design/README.md](design/README.md)。C 的全站最新是图文瀑布流，和 homepage.md 区块规则 3（首页不放图帖）冲突，design/README.md 已注明。代码仍是 App.vue 的现有样式（D-03，SPEC 9.1）。
-- 选项：A / B / C。可以混选，例如 A 的配色加 B 的行密度；混选时写清每一项取哪份。
-- 建议：A。它只用生产 App.vue 的 token，改动面最小；保留 Eric 2026-06-12 批准的图标和印章几何；以标题为主的列表适合「待回答」「订阅话题」这类论坛任务（判断）。
-- 谁定：Eric。截止：HOME.4、P2.12（BRAND.7 也在等）。
 
 ### D-36 主域名
 - 现状：2026-11-12 查询，cornfieldforum.com/.org/.net/.app、cornfieldcu.com/.org/.net/.app、cornfield.app 未注册；cornfield.com/.org/.net 在 2000 年已被注册（cornfield.com 的域名服务器在 Afternic，疑似待售，价格未知）。查询只代表当时，这些域名随时可能被人注册。完整结果在 appendix/research/naming.md。
@@ -107,18 +99,6 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
 - 选项：A 在 caaciorg.com 下新建专用地址（例如 copyright@caaciorg.com），转给 Eric 和轮值伙伴；B 用 Eric 个人邮箱。
 - 建议：A。换人不换地址，也和 D-26 的 CAACI 名义一致。
 - 谁定：Eric。截止：LEGAL.4。
-
-### D-40 法律文本定稿前是否请律师
-- 现状：cold-start-legal.md 第六节建议在定稿社区条款、隐私政策、DMCA 政策和审核规则时请律师。UIUC Student Legal Service 的资料写明不处理版权和商标，这一条没有重新核实；候选是芝加哥的 Lawyers for the Creative Arts 和伊利诺伊州律师协会的律师转介服务，两家的受理资格都没核实。
-- 选项：A 请律师只审 LEGAL.2 的条款与隐私政策、LEGAL.4 的投诉流程；B 不请，按 cold-start-legal.md 定稿，内测后复议。
-- 建议：A。小程序面向中国大陆用户，又要以 CAACI 名义运营，两件事叠在一起，自写条款出错的代价大于一次审阅（判断；费用没有询价）。
-- 谁定：Eric。截止：LEGAL.2。
-
-### D-41 依赖安全审计怎么处理
-- 现状：main 7b18f20 的定时 CI run 42684660097（2026-11-09）里，npm audit --audit-level=moderate 退出 1，其中 vite 6.4.4 没有修复版本（明细见 STATUS_LOG L01）。配置修正 PR 会改 app/package*.json，同一审计会在 PR 上运行。
-- 选项：A OMO 另开依赖修复 PR，先跑 npm audit fix（不带 --force）并列出 lockfile 变化，--force 项和 vite 逐个报 Eric；B 把 Playwright 升级拆出去，等审计修好再合；C 接受审计红灯合并。
-- 建议：A。选 C 会让 main 的 Boundary job 一直红，之后每个 PR 的 CI 都读不出真实结论（判断）。
-- 谁定：Eric。截止：P1.6。未定之前 P1.6 跳过，P1.7 先开草稿 PR。
 
 ## 试点指标（D-09）
 
