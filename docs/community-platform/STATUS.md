@@ -14,7 +14,7 @@
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-12 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-12 git ls-remote] |
 | docs_sha | a64ae9919dbcc54df4dec67754809ea5bc0b0a39（本次本地状态写回之前材料分支的 HEAD，未另建材料提交） |
-| 配置 / 品牌 / 首页分支；codex/community-mp-budget-20261113 远端 4a3cbe6，草稿 PR #375（小程序主包腾空间，base #369） | codex/config-fixes-20261112 远端 b259105，草稿 PR #371（P1.2–P1.7）；codex/brand-cornfield-20261112 远端 ba070e7，草稿 PR #372（BRAND.1–BRAND.4）；codex/community-home-20261112 远端 86ffd0e，草稿 PR #374（P2.12、HOME.3、HOME.4、HOME.5、SPEC §11 首页部分、小程序论坛首页；已合入 #369 的 b7bcf3a 与 #375，依赖 #375）；codex/deps-crossmajor-20261113 远端 55716ba，草稿 PR #373（P1.6 跨大版本，base #371）[本地测] |
+| 配置 / 品牌 / 首页分支 | codex/config-fixes-20261112 远端 b259105，草稿 PR #371（P1.2–P1.7）；codex/brand-cornfield-20261112 远端 ba070e7，草稿 PR #372（BRAND.1–BRAND.4）；codex/community-home-20261112 远端 86ffd0e，草稿 PR #374（P2.12、HOME.3、HOME.4、HOME.5、SPEC §11 首页部分、小程序论坛首页；已合入 #369 的 b7bcf3a 与 #375，依赖 #375）；codex/deps-crossmajor-20261113 远端 55716ba，草稿 PR #373（P1.6 跨大版本，base #371）；codex/community-mp-budget-20261113 远端 4a3cbe6，草稿 PR #375（小程序主包腾空间，base #369）[本地测] |
 | tony-ws 仓库 | ~/work/illini 在 92698d1（#369）；worktree：illini-config（#371）、illini-brand（#372）、illini-home（#374）、illini-deps（#373）、illini-events（wip/P4.1 5f62ddd，本地不推送）、illini-main（origin/main 只读对照）；~/work/caaciorg 本地 feat/public-events-feed 28d59b1（不推送）；~/work/illini-docs 在 codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
