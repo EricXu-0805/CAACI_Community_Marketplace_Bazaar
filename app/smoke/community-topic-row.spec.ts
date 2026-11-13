@@ -416,7 +416,8 @@ for (const size of SIZES) {
         expect([...new Set(await replyOffsets(page))]).toEqual([0])
 
         const sale = rowWith(page, '毕业清东西')
-        await expect(sale.locator('.tr-linked')).toHaveText('Linked · Desk lamp $15 · Sold · 3 items in all')
+        // SPEC 11: three linked items read 「等 3 件」 in Chinese and "+2 more" in English.
+        await expect(sale.locator('.tr-linked')).toHaveText('Linked · Desk lamp $15 · Sold · +2 more')
         await expect(rowWith(page, '自行车').locator('.tr-linked')).toHaveText('Linked · Bike $80 · Available')
         const [row, image] = await Promise.all([sale.boundingBox(), sale.locator('.tr-thumb').boundingBox()])
         expect(image!.width).toBeCloseTo(72, 0)

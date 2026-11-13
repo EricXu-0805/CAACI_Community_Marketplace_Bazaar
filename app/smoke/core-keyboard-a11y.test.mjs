@@ -412,9 +412,21 @@ test('asynchronous load failures announce only their rendered error panels', () 
   for (const [file, panel] of errorPanels) {
     assert.ok(source(file).includes(panel), `${file} is missing its asynchronous error announcement`)
   }
-  assert.ok(
-    source('src/pages/plaza/index.vue').includes('v-if="followError" class="empty" role="alert" aria-live="assertive" aria-atomic="true"'),
-    'plaza following-load errors must be announced independently of the main feed',
+  // The plaza's following tab is the same feed narrowed to posts by followed
+  // people (SPEC 6.2), so it fails through that feed's panel. Two things could
+  // silence it: the panel being switched off on that tab (only the signed-out
+  // tab, which loads nothing, may do without it), or a failed read of who is
+  // followed never being recorded as a failed load.
+  const plaza = source('src/pages/plaza/index.vue')
+  assert.match(
+    plaza,
+    /<template v-if="!followingSignedOut">\s*<view v-if="fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true"/,
+    'plaza following-load errors must be announced by the feed panel that tab renders',
+  )
+  assert.match(
+    plaza,
+    /if \(!followingLoaded\.value\) \{[^}]*fetchError\.value = /,
+    'a failed read of who is followed must reach the announced error panel',
   )
   for (const file of ['src/pages/blocked/index.vue', 'src/pages/messages/index.vue']) {
     assert.doesNotMatch(

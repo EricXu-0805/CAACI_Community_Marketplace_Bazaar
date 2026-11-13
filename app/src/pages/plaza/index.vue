@@ -93,7 +93,7 @@
       </view>
     </scroll-view>
 
-    <scroll-view v-if="view === 'all' && activeTab !== 'following'" class="board-filters" scroll-x :show-scrollbar="false">
+    <scroll-view v-if="view === 'all' && !followingSignedOut" class="board-filters" scroll-x :show-scrollbar="false">
       <view class="board-row" :aria-label="t('plaza.board')">
         <view v-for="category in [null, ...POST_CATEGORIES]" :key="category || 'all'"
           class="board-chip" :class="{ active: selectedCategory === category }" role="button" tabindex="0"
@@ -120,45 +120,13 @@
       <!-- SPEC 6.2: the banners stay with all discussions; the home and the board pages have none. -->
       <PlazaBannerCarousel v-if="view === 'all'" />
 
-      <template v-if="activeTab === 'following'">
-        <view v-if="followLoading && followPeople.length === 0" class="loading">
-          <text>{{ t('home.loading') }}...</text>
-        </view>
-
-        <view v-if="followError" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
-          <UEmptyArt name="following" />
-          <text class="empty-text">{{ followError }}</text>
-          <view class="cta-btn" role="button" @click="loadFollowing(followPeople.length === 0)">{{ t('home.retry') }}</view>
-        </view>
-
-        <view v-if="!followLoading && !followError && followPeople.length === 0" class="empty">
-          <UEmptyArt name="following" />
-          <text class="empty-text">{{ isLoggedIn ? t('follow.emptyPeople') : t('follow.signInHint') }}</text>
-          <view v-if="!isLoggedIn" class="cta-btn" role="button" @click="goToLogin">{{ t('login.signIn') }}</view>
-        </view>
-
-        <view v-if="followPeople.length > 0" class="follow-people u-stagger">
-          <view
-            v-for="p in followPeople"
-            :key="p.id"
-            class="follow-person u-rise"
-            role="button"
-            :aria-label="p.nickname || t('app.user')"
-            @click="goToFollowSeller(p.id)"
-          >
-            <UAvatar :src="p.avatar_url" :owner="p.id" :fallback="defaultAvatarSrc" :alt="p.nickname || 'avatar'" class="fp-avatar" lazy />
-            <view class="fp-info">
-              <view class="fp-name-row">
-                <text class="fp-name">{{ p.nickname || t('app.user') }}</text>
-                <UBadge v-if="p.is_illini_verified" variant="illini" label="Illini" />
-              </view>
-              <text v-if="p.status_text" class="fp-status">{{ p.status_emoji ? p.status_emoji + ' ' : '' }}{{ p.status_text }}</text>
-              <text v-else-if="p.location" class="fp-status">{{ localizedLocation(p.location) }}</text>
-            </view>
-            <UIcon name="chevron-right" size="sm" color="text-faint" />
-          </view>
-        </view>
-      </template>
+      <!-- SPEC 6.2: 关注的人 is the same list, narrowed to what the people the reader
+           follows have posted. Without an account it can only ask to sign in. -->
+      <view v-if="followingSignedOut" class="empty">
+        <UEmptyArt name="following" />
+        <text class="empty-text">{{ t('plaza.signInFollowing') }}</text>
+        <view class="state-btn" role="button" @click="goToLogin">{{ t('login.signIn') }}</view>
+      </view>
 
       <view v-else-if="loading && posts.length === 0" class="post-skel-list">
         <view v-for="n in 3" :key="'ps' + n" class="post-skel">
@@ -380,7 +348,7 @@
         underneath them. With nothing loaded yet this same block is the whole
         screen, which is what an initial failure should look like.
       -->
-      <template v-if="activeTab !== 'following'">
+      <template v-if="!followingSignedOut">
         <view v-if="fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true" :class="{ 'empty-more': posts.length > 0 }">
           <!-- SPEC 7: a later page that failed keeps the rows and offers one line under them. -->
           <view v-if="posts.length > 0" class="more-retry" role="button" @click="loadMore(true)">
@@ -393,14 +361,15 @@
         </view>
 
         <view v-else-if="!loading && visiblePosts.length === 0" class="empty">
-          <UEmptyArt name="posts" />
+          <UEmptyArt :name="activeTab === 'following' ? 'following' : 'posts'" />
           <text class="empty-text">{{ emptyText }}</text>
           <!-- #ifdef H5 -->
           <view v-if="view === 'board' && !searchText.trim()" class="board-fill" role="button" @click="openComposer">
             <text class="board-fill-t">{{ boardFillText }}</text>
           </view>
           <!-- #endif -->
-          <view class="state-btn" role="button" @click="composeFromEmpty">{{ t('plaza.write') }}</view>
+          <!-- SPEC 6.2: when nobody the reader follows has posted, the sentence stands alone. -->
+          <view v-if="activeTab !== 'following'" class="state-btn" role="button" @click="composeFromEmpty">{{ t('plaza.write') }}</view>
         </view>
         <!-- #ifdef H5 -->
         <!-- SPEC 6.1: a board with fewer than three topics says what to ask there. -->
@@ -410,10 +379,7 @@
         <!-- #endif -->
       </template>
 
-      <view
-        v-if="activeTab === 'following' ? (!followHasMore && followPeople.length > 0) : (!hasMore && visiblePosts.length > 0)"
-        class="end-tip"
-      >
+      <view v-if="!followingSignedOut && !hasMore && visiblePosts.length > 0" class="end-tip">
         <text>{{ t('home.endOf') }}</text>
       </view>
       </view>
@@ -801,7 +767,6 @@ import { useAuth } from '../../composables/useAuth'
 import { useTheme } from '../../composables/useTheme'
 import { usePlaza, groupCommentsByParent, type CreatePostResult } from '../../composables/usePlaza'
 import { useFollow } from '../../composables/useFollow'
-import type { FollowedProfile } from '../../composables/useFollow'
 import { useModeration } from '../../composables/useModeration'
 import { useItems, type UploadAccountToken, type UploadBatchResult } from '../../composables/useItems'
 import { useHistory } from '../../composables/useHistory'
@@ -809,7 +774,6 @@ import { useTranslate } from '../../composables/useTranslate'
 import { useLongPress } from '../../composables/useLongPress'
 import { useKeyboardHeight } from '../../composables/useKeyboardHeight'
 import { useVisualViewportBounds } from '../../composables/useVisualViewportInset'
-import { localizeLocation } from '../../composables/useCampusSpots'
 import { createOwnedLoading } from '../../composables/ownedLoading'
 import { createClientMessageId } from '../../api/clientMessageId'
 import { communityNavigation } from '../../api/communityNavigation'
@@ -857,12 +821,9 @@ const defaultAvatarSrc = computed(() =>
 )
 const { currentUser, isLoggedIn, requireAuth, awaitAuthReady } = useAuth()
 const { posts, loading, hasMore, fetchError, fetchPosts, createPost, recoverCreatedPost, updatePostI18n, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, fetchMyActiveItems, clearPosts } = usePlaza()
-const { fetchFollowingProfiles } = useFollow()
+const { following, followingLoaded, loadMyFollowing } = useFollow()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
 
-function localizedLocation(raw: string | null | undefined) {
-  return localizeLocation(raw, lang.value as 'en' | 'zh')
-}
 const kb = useKeyboardHeight()
 /*
  * kb.height is a nested Ref in a plain object — Vue templates only unwrap
@@ -905,13 +866,12 @@ let plazaAccountEpoch = 0
 const reportLoading = createOwnedLoading()
 
 /*
- * Feed sub-tabs (v5 kit: 关注 / 热门 / 最新). 热门 and 最新 both show all
- * posts but差 in server sort — 热门 ranks by engagement, 最新 by recency —
- * so switching between them re-fetches. 关注 lists the PEOPLE the current
- * user follows via useFollow.fetchFollowingProfiles (tap → seller page) —
- * not their listings. The prior 推荐/官方 split was replaced to
- * match the v5 design; CAACI 官方 posts still surface inline (pinned-first
- * + OFFICIAL badge) rather than via a dedicated tab.
+ * Feed sub-tabs (SPEC 6.2: 新发布 / 热门 / 关注的人). 热门 and 新发布 both show all
+ * posts but差 in server sort — 热门 ranks by engagement, 新发布 by recency —
+ * so switching between them re-fetches. 关注的人 is the same list, newest
+ * first, narrowed to posts written by the people the reader follows; the
+ * people themselves are listed on pages/following. CAACI 官方 posts surface
+ * inline (pinned-first + OFFICIAL badge) rather than via a dedicated tab.
  */
 type FeedTabKey = 'following' | 'hot' | 'recent'
 const activeTab = ref<FeedTabKey>('recent')
@@ -925,10 +885,38 @@ const feedSort = computed<'recent' | 'hot'>(() => (activeTab.value === 'hot' ? '
 const selectedCategory = ref<PostCategory | null>(null)
 const visiblePosts = computed(() => selectedCategory.value
   ? posts.value.filter(post => post.category === selectedCategory.value) : posts.value)
+// 关注的人 without an account: there is nobody to follow, so the tab asks to sign in.
+const followingSignedOut = computed(() => activeTab.value === 'following' && !isLoggedIn.value)
+
+// Every read of the list goes through here, so the tab, the board filter and the search stay in step.
+async function loadFeed(page = 0) {
+  let authors: string[] | undefined
+  if (activeTab.value === 'following') {
+    if (!currentUser.value) {
+      posts.value = []
+      return false
+    }
+    const epoch = plazaAccountEpoch
+    if (!followingLoaded.value) await loadMyFollowing()
+    if (epoch !== plazaAccountEpoch || activeTab.value !== 'following') return false
+    if (!followingLoaded.value) {
+      // Who the reader follows could not be read. That is a failed load, not an empty list.
+      posts.value = []
+      loading.value = false
+      fetchError.value = t('plaza.loadFailed')
+      return false
+    }
+    authors = [...following.value]
+  }
+  return fetchPosts({
+    page, reset: page === 0, sort: feedSort.value, search: searchText.value,
+    category: selectedCategory.value ?? undefined, authors,
+  })
+}
 function selectCategory(category: PostCategory | null) {
   selectedCategory.value = category
   pageIdx.value = 0
-  fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: category ?? undefined })
+  void loadFeed()
 }
 
 // The mini program shows the list only; H5 routes the same intents to its views below.
@@ -1097,81 +1085,24 @@ function onFeedTabKeydown(event: KeyboardEvent, current: FeedTabKey) {
   nextTick(() => tabList?.querySelectorAll<HTMLElement>('[role="tab"]')[nextIndex]?.focus())
 }
 
-/* 关注 tab — the PEOPLE you follow (not their listings). Lazy-loaded the
- * first time the user opens the tab, then paginated via the scroll-view's
- * bottom-reach handler. followLoaded gates the one-shot initial fetch;
- * followLoading guards against concurrent loads. */
-const FOLLOW_PAGE_SIZE = 30
-const followPeople = ref<FollowedProfile[]>([])
-const followLoading = ref(false)
-const followHasMore = ref(true)
-const followPage = ref(0)
-const followLoaded = ref(false)
-const followError = ref('')
-
-async function loadFollowing(reset: boolean) {
-  if (followLoading.value) return
-  await awaitAuthReady()
-  const requestEpoch = plazaAccountEpoch
-  if (!currentUser.value) {
-    followPeople.value = []
-    followError.value = ''
-    followLoaded.value = true
-    return
-  }
-  const accountToken = captureAccountRequest(currentUser.value.id)
-  if (!isAccountRequestCurrent(accountToken)) return
-  if (reset) followPage.value = 0
-  const requestedPage = reset ? 0 : followPage.value + 1
-  followLoading.value = true
-  followError.value = ''
-  try {
-    const rows = await fetchFollowingProfiles(requestedPage, FOLLOW_PAGE_SIZE)
-    if (requestEpoch !== plazaAccountEpoch || !isAccountRequestCurrent(accountToken)) return
-    if (reset) followPeople.value = rows
-    else {
-      const seen = new Set(followPeople.value.map(profile => profile.id))
-      followPeople.value.push(...rows.filter(profile => !seen.has(profile.id) && !!seen.add(profile.id)))
-    }
-    followPage.value = requestedPage
-    followHasMore.value = rows.length === FOLLOW_PAGE_SIZE
-    followLoaded.value = true
-  } catch (error: any) {
-    if (requestEpoch !== plazaAccountEpoch || !isAccountRequestCurrent(accountToken)) return
-    if (reset) followPeople.value = []
-    followError.value = friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('error.loadFailed')
-    uni.showToast({ title: followError.value, icon: 'none', duration: 2500 })
-  } finally {
-    if (requestEpoch === plazaAccountEpoch && isAccountRequestCurrent(accountToken)) followLoading.value = false
-  }
-}
-
-watch(activeTab, (k) => {
-  if (k === 'following') {
-    if (!followLoaded.value) loadFollowing(true)
-  } else {
-    // 热门 / 最新 differ only by server sort — re-fetch on switch.
-    pageIdx.value = 0
-    fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
-  }
+// The three tabs differ by server sort or by whose posts are asked for, so a switch reads again.
+watch(activeTab, tab => {
+  // A search runs over everyone's posts (see runSearch), so opening 关注的人 ends it.
+  if (tab === 'following') searchText.value = ''
+  pageIdx.value = 0
+  void loadFeed()
 })
 
-// The page-local following result is account-scoped. If auth hydrates after
-// the tab was opened (or the account changes without destroying this tab),
-// invalidate the anonymous/previous-account snapshot and reload in place.
+// What the list holds is account-scoped (likes, blocks, who is followed). If
+// auth hydrates after the page opened, or the account changes without
+// destroying this tab, reload in place.
 watch(currentUser, (u, prev) => {
   if (u?.id === prev?.id) return
   // A tab page can survive account switches. Never carry A's in-progress
   // composer or comment draft into B's session.
   if (showComposer.value) resetComposer()
   if (commentingPost.value || commentText.value) closeComments()
-  followLoaded.value = false
-  followPeople.value = []
-  followError.value = ''
-  followPage.value = 0
-  followHasMore.value = true
-  if (activeTab.value === 'following') void loadFollowing(true)
-  else void reloadPlazaForCurrentAccount()
+  void reloadPlazaForCurrentAccount()
 })
 
 /*
@@ -1227,8 +1158,13 @@ function runSearch() {
     syncAddress()
   }
   // #endif
+  // The search RPC cannot narrow by author, so a search runs over everyone's posts.
+  if (activeTab.value === 'following' && searchText.value.trim()) {
+    activeTab.value = 'recent'
+    return
+  }
   pageIdx.value = 0
-  fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
+  void loadFeed()
 }
 function onSearchInput() {
   if (searchDebounce) clearTimeout(searchDebounce)
@@ -1242,6 +1178,7 @@ function onSearchSubmit() {
 const emptyText = computed(() => {
   const query = searchText.value.trim()
   if (query) return t('plaza.searchEmpty', { q: query })
+  if (activeTab.value === 'following') return t('plaza.emptyFollowing')
   return selectedCategory.value ? t('plaza.emptyBoard') : t('plaza.empty')
 })
 // SPEC 6.2: a search that found nothing becomes the title of the topic that asks it.
@@ -1253,7 +1190,7 @@ async function composeFromEmpty() {
 function clearSearch() {
   searchText.value = ''
   pageIdx.value = 0
-  fetchPosts({ reset: true, sort: feedSort.value, category: selectedCategory.value ?? undefined })
+  void loadFeed()
 }
 
 const showComposer = ref(false)
@@ -1464,10 +1401,6 @@ function goToAttachedItem(id: string) {
   uni.navigateTo({ url: `/pages/detail/index?id=${id}` })
 }
 
-function goToFollowSeller(id: string) {
-  uni.navigateTo({ url: `/pages/seller/index?id=${id}` })
-}
-
 function goToLogin() {
   requireAuth('/pages/plaza/index')
 }
@@ -1621,12 +1554,6 @@ function resetPlazaAccountState() {
   searchText.value = ''
   if (searchDebounce) clearTimeout(searchDebounce)
   searchDebounce = null
-  followPeople.value = []
-  followLoading.value = false
-  followLoaded.value = false
-  followError.value = ''
-  followPage.value = 0
-  followHasMore.value = true
   refreshing.value = false
   submitting.value = false
   commentSubmitting.value = false
@@ -1675,7 +1602,7 @@ async function reloadPlazaForCurrentAccount() {
       return
     }
   }
-  await fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
+  await loadFeed()
 }
 
 async function togglePostTranslate(post: Post) {
@@ -1722,7 +1649,7 @@ async function onRefresh() {
       return
     }
     // #endif
-    await fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
+    await loadFeed()
   } finally {
     clearTimeout(failsafe)
     refreshing.value = false
@@ -1730,15 +1657,9 @@ async function onRefresh() {
 }
 
 async function loadMore(retry = false) {
-  if (activeTab.value === 'following') {
-    if (!followLoading.value && followHasMore.value && !followError.value) {
-      await loadFollowing(false)
-    }
-    return
-  }
-  if (loading.value || !hasMore.value || (fetchError.value && retry !== true)) return
+  if (followingSignedOut.value || loading.value || !hasMore.value || (fetchError.value && retry !== true)) return
   const nextPage = pageIdx.value + 1
-  const loaded = await fetchPosts({ page: nextPage, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
+  const loaded = await loadFeed(nextPage)
   if (loaded) pageIdx.value = nextPage
 }
 
@@ -2197,8 +2118,10 @@ function topicLinkedLine(post: Post) {
     price: formatPrice(first.price, '$0').replace(/^\$/, ''),
     status,
   })
+  // SPEC 11 words the two languages differently: 「等 3 件」 counts every linked
+  // item, "+2 more" counts those after the one named.
   return linked.length > 1
-    ? `${line} · ${t('plaza.ref.more', { n: linked.length })}`
+    ? `${line} · ${t('plaza.ref.more', { n: lang.value === 'zh' ? linked.length : linked.length - 1 })}`
     : line
 }
 
@@ -2713,39 +2636,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .empty.empty-more { padding: var(--space-2) var(--space-4) var(--space-5); }
 .more-retry { display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 var(--space-4); cursor: pointer; }
 .more-retry-t { font-size: 14px; color: var(--ink-soft); }
-.cta-btn {
-  margin-top: 8px; padding: 10px 28px;
-  background: var(--accent-primary); color: var(--ink-inverse); border-radius: 22px;
-  font-size: 14px; font-weight: 600; cursor: pointer;
-  &:active { opacity: 0.85; }
-}
-
-/* 关注 tab — 2-col grid of followed sellers' active listings (item
-   cards, visually distinct from the post-cards in 推荐/官方). Tokenized
-   to ivory_academy v5 — surface card on warm border, terracotta price. */
-.follow-people { padding: 4px 0; }
-.follow-person {
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 16px; cursor: pointer;
-  border-bottom: 0.5px solid var(--line-hair);
-  -webkit-tap-highlight-color: transparent;
-  &:active { background: var(--bg-subtle); }
-}
-.fp-avatar {
-  width: 44px; height: 44px; border-radius: 50%;
-  background: var(--bg-subtle); flex-shrink: 0;
-}
-.fp-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.fp-name-row { display: flex; align-items: center; gap: 6px; }
-.fp-name {
-  font-size: 15px; font-weight: 600; color: var(--ink);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.fp-status {
-  font-size: 12px; color: var(--ink-quiet);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-
 .posts { padding: 8px 0 20px; }
 .post-skel {
   background: var(--bg-elev-1); padding: 14px 16px;

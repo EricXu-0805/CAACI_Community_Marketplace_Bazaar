@@ -34,6 +34,10 @@ const SETTLING = [
 ].map((title, i) => topic(i + 1, 'settling-market', title))
 const BUDDIES = ['这周六去芝加哥中国城，有人一起拼车吗？', '找周末一起去 ARC 打羽毛球的搭子'].map((title, i) => topic(20 + i, 'events-social', title))
 const MANY = Array.from({ length: 45 }, (_, i) => topic(100 + i, 'campus-life', `第 ${i + 1} 个话题：期末周怎么安排复习`))
+// Someone the reader does not follow.
+const STRANGER = { ...AUTHOR, id: uuid('10000000', 7), nickname: 'yuki_uiuc' }
+const STRANGERS = ['CS 225 和 MATH 241 放同一学期会不会太累？', '附近有能订中式生日蛋糕的店吗？']
+  .map((title, i) => topic(40 + i, i ? 'local-deals' : 'campus-life', title, { user_id: STRANGER.id, profile: STRANGER }))
 
 interface Feed {
   rows: Row[]
@@ -43,8 +47,12 @@ interface Feed {
   hold: Promise<void> | null
   requests: number[]
   searches: Record<string, unknown>[]
+  /** Who the signed-in reader follows; null makes that read fail. */
+  follows: string[] | null
+  /** The user_id filter of each posts read, '' when it had none. */
+  authors: string[]
 }
-const feed = (rows: Row[]): Feed => ({ rows, failFrom: Infinity, hold: null, requests: [], searches: [] })
+const feed = (rows: Row[]): Feed => ({ rows, failFrom: Infinity, hold: null, requests: [], searches: [], follows: [], authors: [] })
 
 async function serve(page: Page, state: Feed, profile?: Record<string, unknown>) {
   await page.route(url => url.pathname.startsWith('/api/'), route => route.fulfill({
@@ -59,7 +67,16 @@ async function serve(page: Page, state: Feed, profile?: Record<string, unknown>)
       if (state.hold) await state.hold
       if (offset >= state.failFrom) return route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"boom"}' })
       const category = url.searchParams.get('category')?.replace(/^eq\./, '')
-      return json(state.rows.filter(row => !category || row.category === category).slice(offset, offset + limit))
+      const filter = url.searchParams.get('user_id') || ''
+      state.authors.push(filter)
+      const authors = /^in\.\((.*)\)$/.exec(filter)?.[1].split(',')
+      return json(state.rows
+        .filter(row => (!category || row.category === category) && (!authors || authors.includes(String(row.user_id))))
+        .slice(offset, offset + limit))
+    }
+    if (url.pathname.endsWith('/rest/v1/follows')) {
+      if (!state.follows) return route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"boom"}' })
+      return json(state.follows.map(followee_id => ({ followee_id })))
     }
     if (url.pathname.endsWith('/rest/v1/rpc/search_community_posts')) {
       state.searches.push(request.postDataJSON())
@@ -163,12 +180,94 @@ for (const size of [PHONE, DESKTOP]) {
       await expect(tabs(page).nth(1)).toHaveAttribute('aria-selected', 'true')
       await page.keyboard.press('End')
       await expect(tabs(page).nth(2)).toHaveAttribute('aria-selected', 'true')
+      // Nobody is signed in: the tab can only ask for that, and there is nothing to filter.
+      const signIn = page.locator('#plaza-feed-panel .empty')
+      await expect(signIn.locator('.empty-text')).toHaveText('登录后能看到你关注的人发的内容')
+      await expect(signIn.getByRole('button', { name: '登录', exact: true })).toBeVisible()
+      await expect(page.locator('.topic-row')).toHaveCount(0)
       await expect(page.locator('.board-filters')).toHaveCount(0)
 
       await page.goto('/#/pages/plaza/index?board=settling-market')
       await page.reload()
       await expect(tabs(page)).toHaveText(['新发布', '热门'])
       await expect(tabs(page).first()).toHaveAttribute('aria-selected', 'true')
+    })
+
+    test('② 关注的人 lists what the people the reader follows have posted, and a board narrows it', async ({ page }) => {
+      const state = feed([...SETTLING, ...BUDDIES, ...STRANGERS])
+      state.follows = [AUTHOR.id]
+      await open(page, '?view=all', state, { signedIn: true })
+      await expect(page.locator('.topic-row')).toHaveCount(9)
+      await tabs(page).nth(2).click()
+      await expect(page.locator('.topic-row')).toHaveCount(7)
+      expect(state.authors.at(-1)).toBe(`in.(${AUTHOR.id})`)
+      await expect(page.locator('.topic-row .tr-author')).toHaveText(Array(7).fill('Kevin Z.'))
+      // SPEC 6.2: the tab combines with the board filter.
+      await page.locator('.board-filters').getByRole('button', { name: '找搭子', exact: true }).click()
+      await expect(page.locator('.topic-row')).toHaveCount(2)
+      expect(state.authors.at(-1)).toBe(`in.(${AUTHOR.id})`)
+      // Back on 新发布 the same board shows everyone again.
+      await tabs(page).first().click()
+      await expect.poll(() => state.authors.at(-1)).toBe('')
+      await expect(page.locator('.topic-row')).toHaveCount(2)
+    })
+
+    test('② a search runs over everyone: it leaves 关注的人, and opening 关注的人 ends the search', async ({ page }) => {
+      const state = feed([...SETTLING, ...STRANGERS])
+      state.follows = [AUTHOR.id]
+      await open(page, '?view=all', state, { signedIn: true })
+      await expect(page.locator('.topic-row')).toHaveCount(7)
+      await tabs(page).nth(2).click()
+      await expect(page.locator('.topic-row')).toHaveCount(5)
+      const field = page.locator(size.mobile ? '.sb-input input' : '.cx-search input')
+      await field.fill('二手冰箱')
+      // The search RPC cannot narrow by author, so the result is shown under 新发布.
+      await expect(page.locator('#plaza-feed-panel .empty .empty-text')).toHaveText('没找到和「二手冰箱」有关的话题')
+      await expect(tabs(page).first()).toHaveAttribute('aria-selected', 'true')
+      expect(state.searches.length).toBeGreaterThan(0)
+      await tabs(page).nth(2).click()
+      await expect(field).toHaveValue('')
+      await expect(page.locator('.topic-row')).toHaveCount(5)
+      expect(state.authors.at(-1)).toBe(`in.(${AUTHOR.id})`)
+    })
+
+    test('② 关注的人 with nobody followed having posted says only that, and asks for nobody\'s posts', async ({ page }) => {
+      const state = feed([...SETTLING, ...STRANGERS])
+      await open(page, '?view=all', state, { signedIn: true })
+      await expect(page.locator('.topic-row')).toHaveCount(7)
+      const reads = state.requests.length
+      await tabs(page).nth(2).click()
+      const empty = page.locator('#plaza-feed-panel .empty')
+      await expect(empty.locator('.empty-text')).toHaveText('你关注的人还没有发帖')
+      await expect(empty.getByRole('button')).toHaveCount(0)
+      await expect(page.locator('.topic-row')).toHaveCount(0)
+      expect(state.requests.length, 'following nobody is not a read of everyone').toBe(reads)
+
+      // Following only someone who has not posted is the same sentence, from a read that found nothing.
+      state.follows = [uuid('10000000', 9)]
+      await tabs(page).first().click()
+      await expect(page.locator('.topic-row')).toHaveCount(7)
+      await page.reload()
+      await expect(page.locator('.topic-row')).toHaveCount(7)
+      await tabs(page).nth(2).click()
+      await expect(empty.locator('.empty-text')).toHaveText('你关注的人还没有发帖')
+      expect(state.authors.at(-1)).toBe(`in.(${uuid('10000000', 9)})`)
+    })
+
+    test('② 关注的人 when who is followed cannot be read: a failed load, and 重试 recovers', async ({ page }) => {
+      const state = feed([...SETTLING, ...STRANGERS])
+      state.follows = null
+      await open(page, '?view=all', state, { signedIn: true })
+      await expect(page.locator('.topic-row')).toHaveCount(7)
+      await tabs(page).nth(2).click()
+      const failure = page.locator('#plaza-feed-panel').getByRole('alert')
+      await expect(failure.locator('.empty-text')).toHaveText('没加载出来，检查网络后再试')
+      await expect(page.getByText('你关注的人还没有发帖')).toHaveCount(0)
+      await expect(page.locator('.topic-row')).toHaveCount(0)
+      state.follows = [AUTHOR.id]
+      await failure.getByRole('button', { name: '重试', exact: true }).click()
+      await expect(page.locator('.topic-row')).toHaveCount(5)
+      expect(state.authors.at(-1)).toBe(`in.(${AUTHOR.id})`)
     })
 
     test('③ loading: three skeleton rows and no words', async ({ page }) => {

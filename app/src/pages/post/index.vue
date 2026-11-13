@@ -14,7 +14,7 @@
       <view v-else style="width: 32px;"></view>
     </view>
 
-    <scroll-view v-if="post" class="body" scroll-y>
+    <scroll-view v-if="post && !authorBlocked" class="body" scroll-y>
       <view
         class="post-card"
         role="group"
@@ -116,8 +116,12 @@
           <view v-else class="aic-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
           <view class="aic-body">
             <text class="aic-title">{{ localize(pi.item.title_i18n, pi.item.title) }}</text>
-            <text class="aic-price">{{ listingPriceLabel(pi.item, t) }}</text>
-            <text v-if="pi.item.status === 'sold'" class="aic-sold">{{ t('status.sold') }}</text>
+            <!-- SPEC 6.6: the price, whether the item can still be had, and whether it is the reader's own. -->
+            <view class="aic-meta">
+              <text class="aic-price">{{ listingPriceLabel(pi.item, t) }}</text>
+              <text :class="['aic-tag', `aic-tag-${pi.item.status}`]">{{ t(refStatusKey(pi.item.status)) }}</text>
+              <text v-if="currentUser && pi.item.user_id === currentUser.id" class="aic-tag">{{ t('plaza.ref.mine') }}</text>
+            </view>
           </view>
           <UIcon name="chevron-right" size="sm" color="text-faint" />
         </view>
@@ -245,6 +249,12 @@
       </view>
     </scroll-view>
 
+    <!-- SPEC 6.4: a topic by someone the reader has blocked says so, with the way to undo it. -->
+    <view v-else-if="post" class="not-found">
+      <text>{{ t('plaza.blockedAuthor') }}</text>
+      <view class="back-home" role="button" :aria-disabled="unblocking ? 'true' : 'false'" @click="onUnblockAuthor">{{ t('plaza.unblock') }}</view>
+    </view>
+
     <view v-else-if="loading" class="loading">
       <text>{{ t('home.loading') }}</text>
     </view>
@@ -266,14 +276,14 @@
       <view class="back-home" role="button" @click="goPlaza">{{ t('plaza.backToPlaza') }}</view>
     </view>
 
-    <view v-if="post" class="input-wrapper" :style="kbLift">
+    <view v-if="post && !authorBlocked" class="input-wrapper" :style="kbLift">
       <view v-if="replyTo" class="reply-bar">
         <text class="reply-label">{{ t('plaza.replyingTo') }} @{{ replyTo.profile?.nickname || t('app.user') }}</text>
         <view class="reply-x" role="button" :aria-label="t('a11y.close')" @click="replyTo = null">
           <view class="rx-inner"></view>
         </view>
       </view>
-      <view class="input-bar">
+      <view :class="['input-bar', { 'has-note': replyFailed }]">
         <input
           v-model="commentText"
           :placeholder="replyTo ? t('plaza.replyHint') : t('plaza.commentHint')"
@@ -294,6 +304,10 @@
         >
           <text class="send-btn-label">{{ replyTo ? t('plaza.reply') : t('plaza.comment') }}</text>
         </view>
+      </view>
+      <!-- SPEC 6.4: a reply that did not go out stays in the box, and this line sends it again. -->
+      <view v-if="replyFailed" class="reply-failed" role="button" @click="retryReply">
+        <text class="reply-failed-t">{{ t('plaza.replyFailed') }}</text>
       </view>
     </view>
     </view>
@@ -326,7 +340,10 @@ import {
   captureAccountRequest,
   isAccountRequestCurrent,
   onAccountTransition,
+  type AccountRequestToken,
 } from '../../composables/accountScope'
+import { mutationCommitState } from '../../api/mutationCommit'
+import { clearLocalDuplicate } from '../../utils/contentSafety'
 import { formatTime, friendlyErrorMessage, navigateBackOr, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
 import { DIALOG_DANGER, DIALOG_INK } from '../../utils/dialogColors'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
@@ -344,7 +361,7 @@ const defaultAvatarSrc = computed(() =>
 const { currentUser, requireAuth, awaitAuthReady } = useAuth()
 const { fetchPost, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, retryAttachPostItems } = usePlaza()
 const { supabase } = useSupabase()
-const { reportTarget } = useModeration()
+const { reportTarget, blockedIds, ensureLoaded: ensureBlockedLoaded, unblockUser } = useModeration()
 const { addPostToHistory } = useHistory()
 
 // Mini programs lift the input from their native keyboard event. H5 resizes
@@ -358,6 +375,25 @@ const viewportStyle = computed(() => visibleHeight.value == null ? undefined : (
 }))
 
 const post = ref<Post | null>(null)
+// SPEC 6.6: a linked item's card says whether it can still be had.
+const refStatusKey = (status: string) => status === 'sold' ? 'plaza.ref.sold'
+  : status === 'reserved' ? 'plaza.ref.reserved' : 'plaza.ref.available'
+// SPEC 6.4: the reader blocked this author. The block list hides their posts from
+// the lists; a direct link lands here, so the page says why it shows nothing.
+const authorBlocked = computed(() => !!post.value && !!currentUser.value && blockedIds.value.has(post.value.user_id))
+const unblocking = ref(false)
+async function onUnblockAuthor() {
+  const blocked = post.value
+  if (!blocked || unblocking.value) return
+  unblocking.value = true
+  try {
+    await unblockUser(blocked.user_id)
+  } catch (err: any) {
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
+  } finally {
+    unblocking.value = false
+  }
+}
 // P2.7: items this author's just-published post could not link (author only).
 const attachPendingIds = ref<string[]>([])
 const attachItemNames = ref<Record<string, string>>({})
@@ -430,6 +466,15 @@ const commentsError = ref(false)
 const commentText = ref('')
 const replyTo = ref<PostComment | null>(null)
 const submitting = ref(false)
+// SPEC 6.4: a reply whose send failed stays in the box, with a line under it to
+// send it again. failedReply is what that send carried, so the retry can tell
+// whether it was written after all.
+const replyFailed = ref(false)
+let failedReply: { text: string; typed: string; token: AccountRequestToken } | null = null
+watch(commentText, typed => {
+  // The line belongs to the text that failed, not to whatever is typed next.
+  if (replyFailed.value && typed !== failedReply?.typed) replyFailed.value = false
+})
 let postLoadEpoch = 0
 let commentsLoadEpoch = 0
 const reportLoading = createOwnedLoading()
@@ -441,6 +486,8 @@ function resetPostAccountState() {
   commentText.value = ''
   replyTo.value = null
   submitting.value = false
+  replyFailed.value = false
+  failedReply = null
   translated.value = false
   originalShown.value = false
   translationEpoch += 1
@@ -628,6 +675,10 @@ async function loadPostForCurrentAccount() {
     // session hydration so a cold deep link does not permanently render every
     // like as belonging to an anonymous viewer.
     await awaitAuthReady()
+    if (!pageMounted || requestEpoch !== postLoadEpoch) return
+    // The block list decides what this page shows, so it is read before the topic.
+    // If it cannot be read the topic still opens: a block hides, it does not gate.
+    if (currentUser.value) await ensureBlockedLoaded()
     if (!pageMounted || requestEpoch !== postLoadEpoch) return
     const p = await fetchPost(postId.value)
     if (!pageMounted || requestEpoch !== postLoadEpoch) return
@@ -911,8 +962,9 @@ async function onSubmitComment() {
   const submittedText = commentText.value
   const submittedReply = replyTo.value
   submitting.value = true
+  replyFailed.value = false
+  let text = submittedText
   try {
-    let text = submittedText
     if (submittedReply) {
       const name = submittedReply.profile?.nickname || t('app.user')
       text = `@${name} ${text}`
@@ -939,14 +991,57 @@ async function onSubmitComment() {
     uni.showToast({ title: t('plaza.commented'), icon: 'success' })
   } catch (err: any) {
     if (!isAccountRequestCurrent(commentAccountToken)) return
-    uni.showToast({
-      title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
-      icon: 'none',
-      duration: 2500,
-    })
+    if (mutationCommitState(err) === 'unknown') {
+      // The request went out and no answer says what became of it: a dropped
+      // connection, a 5xx, a lost response. A refusal with a reason (a rule the
+      // text broke, a rejected write) is not this, and keeps its own message.
+      failedReply = { text: text.trim(), typed: submittedText, token: commentAccountToken }
+      replyFailed.value = true
+    } else {
+      uni.showToast({
+        title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
+        icon: 'none',
+        duration: 2500,
+      })
+    }
   } finally {
     if (isAccountRequestCurrent(commentAccountToken)) submitting.value = false
   }
+}
+
+async function retryReply() {
+  const failed = failedReply
+  const target = post.value
+  if (!failed || !target || submitting.value || !isAccountRequestCurrent(failed.token)) return
+  submitting.value = true
+  try {
+    // The failed send may have been written after all, its answer lost on the
+    // way back. The thread says which: a reply that is there is shown, and only
+    // one that is not is sent again.
+    const rows = await fetchComments(target.id)
+    if (!isAccountRequestCurrent(failed.token) || post.value?.id !== target.id) return
+    comments.value = rows
+    commentsError.value = false
+    if (rows.some(row => row.user_id === failed.token.userId && row.content === failed.text)) {
+      failedReply = null
+      replyFailed.value = false
+      if (commentText.value === failed.typed) {
+        commentText.value = ''
+        replyTo.value = null
+      }
+      target.comment_count = Math.max(target.comment_count || 0, rows.length)
+      uni.showToast({ title: t('plaza.commented'), icon: 'success' })
+      return
+    }
+    // Not there. createComment still holds this text as just sent; release it so the retry is not refused as a duplicate.
+    clearLocalDuplicate(failed.token, `comment:${target.id}`, failed.text)
+  } catch {
+    // The thread cannot be read either. The line stays, to be tapped again.
+    return
+  } finally {
+    if (isAccountRequestCurrent(failed.token)) submitting.value = false
+  }
+  await onSubmitComment()
 }
 </script>
 
@@ -1074,7 +1169,15 @@ async function onSubmitComment() {
 .aic-body { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .aic-title { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .aic-price { font-size: 14px; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
-.aic-sold { font-size: 11px; color: var(--text-muted); }
+.aic-meta { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1) var(--space-2); }
+/* SPEC 6.6 status tags: neutral by default, the warning pair for a reserved item, quiet for a sold one. */
+.aic-tag {
+  flex: none; padding: 0 var(--space-2); border-radius: var(--radius-xs);
+  font-size: var(--t-meta); line-height: var(--space-5); white-space: nowrap;
+  color: var(--ink-soft); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-soft);
+}
+.aic-tag-reserved { color: var(--warning-text); background: var(--warning-soft); box-shadow: none; }
+.aic-tag-sold { color: var(--ink-quiet); }
 
 .stats-row {
   display: flex; gap: 28px; margin-top: 16px;
@@ -1193,6 +1296,10 @@ async function onSubmitComment() {
   display: flex; gap: 8px; padding: 9px 12px;
   padding-bottom: calc(9px + env(safe-area-inset-bottom));
 }
+/* The line under the box takes over the bottom inset while it is shown. */
+.input-bar.has-note { padding-bottom: var(--space-1); }
+.reply-failed { padding: 0 var(--space-4) calc(var(--space-2) + env(safe-area-inset-bottom)); cursor: pointer; }
+.reply-failed-t { font-size: var(--t-caption); line-height: var(--lh-caption); color: var(--danger); }
 .input {
   flex: 1; height: 40px; background: var(--bg-subtle); border-radius: 20px;
   padding: 0 14px; font-size: 14px; color: var(--text-primary);
