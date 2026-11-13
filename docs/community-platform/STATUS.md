@@ -2,7 +2,7 @@
 
 写于 2026-11-13 11:39 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: —（D-45 第 1–7 项已做完；P2.6、P2.11、P2.13 等 E3/E4/E5，见阻塞清单）`
+`next_task_id: D-46 第 2 项（PR 文案）`
 `latest_batch: appendix/batch/FINAL.md`
 
 ## 版本

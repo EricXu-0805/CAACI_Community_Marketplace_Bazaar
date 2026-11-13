@@ -787,3 +787,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: —
 - 下一条: —
 - 附: 自决：依据 D-42 第 3 项对 §14 第 2 行的限制（只 merge、不 rebase）与 D-45 第 7 项（主包空间不够就停，所以先拿 #375 腾出的空间）。后果：#374 依赖 #375，要先合 #375。撤回：`git revert -m 1 fb9c6b9`（要同时撤 86ffd0e，否则小程序主包超预算）、`git revert -m 1 7c82fd1`。坑：以后 #375 单独合进 main 的话，#374 上的 `git revert -m 1 fb9c6b9` 会在 #374 合并时把 #375 的改动再删一次；关闭 #375 也撤不掉 #374 里这一份。
+
+### L64 · 2026-11-13 11:39 CT · D-46 第 1 项：第三批报告、STATUS、STATUS_LOG 按核查更正
+- task_id: D-46.1
+- code_sha: —（只改文档）
+- docs_sha: d2f9f253a40d75f3cb98d527c66b71c153c434ea
+- 环境: tony-ws 只读核对：git merge-tree、gh run view、Actions job 日志、SPEC.md、ci.yml
+- 命令: 逐条核实 D-46 第 1 项：`git merge-tree --write-tree 86ffd0e ba070e7`（冲突 api/share-post.js、en.ts、zh.ts、app/src/pages/plaza/index.vue；plaza 一块是 #374 删掉的「关注的人」名单 vs #372 的 BRAND.3 徽章）；ci.yml 第 301 行 build-mp-weixin 用 https://ci-stub.supabase.co，H5 job（第 228、276 行）用 00000000000000000000.supabase.co；run 43448423151 Boundary 2053 / 2052 / 0 / 1，43422815812 为 2044 / 2043 / 0 / 1；run 43470604328（#370，f43bdd1）failure，Build H5 与 public sweep 的「Install Playwright」步骤失败；f8e2b97 提交于 07:39:46 CT；SPEC.md「HOME.3 首页」节 28 个 key 中 11 个不在 86ffd0e 的 en.ts；useCommunityHome 一次 Promise.all 9 个请求，useRealtimeFallback 里长轮询 /api/realtime-poll 与 intervalMs 20000 的通知轮询；各 worktree head；BACKLOG BRAND.7 依赖
+- 计数: D-46 第 1 项每条都成立，全部照改：FINAL 第三批原地更正（①起点、②主包测量环境说明与 D-45.2 / 5a / 5b / 7 四行、③ L63、④按解锁数重排并补 base、#372 plaza 规则、L61 字号、余量标签、⑥并发与 #370 CI、⑦base、⑧撤回与 revert 坑）；STATUS_LOG L56 补 [OMO自决]，L59 / L60 改依据与数字，L61、L62 补记，新增 L63 合并记录；STATUS 表头时间、docs_sha、worktree head、CI 表 Boundary、上一次 run、#370 CI、主包测量环境、BRAND.7 依赖、阻塞第 11 / 12 / 13 项。第三批漏掉「HOME.3 首页」节的原因：我的对照脚本只认 4 列表格，这一节是 3 列
+- ci_run_url: —
+- 未测项: 无
+- 下一条: D-46 第 2 项（PR 文案）
+- 附: D-46 目标已于 2026-11-13 用 create_goal 设定，范围限 D-46 第 1–6 项。
