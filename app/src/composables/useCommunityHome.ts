@@ -23,13 +23,19 @@ const WEEK = 7 * 86_400_000
 const HOME_POST_SELECT = 'id, user_id, title, category, is_official, is_pinned, comment_count, status, created_at, profile:profiles!posts_user_id_fkey(id, nickname, avatar_url)'
 const HOME_ITEM_FIELDS = 'id, user_id, title, title_i18n, price, images, status, listing_type, listing_details, created_at'
 
-// All home instances and reloads share six slots, leaving room for inbox polls.
+// Only mini-program home reads need a shared budget. H5 starts its reads together.
+let homeReadLimit = Infinity
+// #ifdef MP-WEIXIN
+homeReadLimit = 6
+// #endif
 const pendingHomeReads: Array<() => void> = []
 let activeHomeReads = 0
-async function readHome<T>(query: () => PromiseLike<T>): Promise<T> {
-  if (activeHomeReads >= 6) await new Promise<void>(resolve => pendingHomeReads.push(resolve))
+class StaleHomeRead extends Error {}
+async function readHome<T>(query: () => PromiseLike<T>, isCurrent: () => boolean): Promise<T> {
+  if (activeHomeReads >= homeReadLimit) await new Promise<void>(resolve => pendingHomeReads.push(resolve))
   else activeHomeReads += 1
   try {
+    if (!isCurrent()) throw new StaleHomeRead()
     return await query()
   } finally {
     const next = pendingHomeReads.shift()
@@ -39,7 +45,7 @@ async function readHome<T>(query: () => PromiseLike<T>): Promise<T> {
 }
 
 /**
- * Reads for the community home (ENGINEERING §7). Requests share six slots and
+ * Reads for the community home (ENGINEERING §7). Mini-program reads share six slots and
  * the result is handed to buildHomeSections, which alone decides what each
  * block shows. Every community query names the active region.
  */
@@ -53,7 +59,7 @@ export function useCommunityHome() {
   let latestRequest = 0
 
   // One feed per board, plus topics across boards; queries start inside a slot.
-  function feed(category: PostCategory | null, limit: number) {
+  function feed(category: PostCategory | null, limit: number, isCurrent: () => boolean) {
     return readHome(() => {
       const scoped = supabase.from('posts').select(HOME_POST_SELECT).eq('region', ACTIVE_REGION).eq('status', 'active')
       return (category ? scoped.eq('category', category) : scoped.not('title', 'is', null))
@@ -61,11 +67,12 @@ export function useCommunityHome() {
         .order('created_at', { ascending: false })
         .order('id', { ascending: false })
         .limit(limit)
-    })
+    }, isCurrent)
   }
 
   async function loadHome() {
     const requestId = ++latestRequest
+    const isCurrent = () => requestId === latestRequest
     homeLoading.value = true
     homeFailed.value = false
     try {
@@ -76,17 +83,17 @@ export function useCommunityHome() {
       }
       const now = Date.now()
       const [feeds, weekly, total, market] = await Promise.all([
-        Promise.all([feed(null, 40), ...POST_CATEGORIES.map(category => feed(category, 8))]),
+        Promise.all([feed(null, 40, isCurrent), ...POST_CATEGORIES.map(category => feed(category, 8, isCurrent))]),
         // This week's topics, counted per board on the client.
         readHome(() => supabase.from('posts').select('id, category, comment_count')
           .eq('region', ACTIVE_REGION).eq('status', 'active').not('title', 'is', null)
-          .gte('created_at', new Date(now - WEEK).toISOString()).limit(1000)),
+          .gte('created_at', new Date(now - WEEK).toISOString()).limit(1000), isCurrent),
         // Topics and updates in the region, for "see all N discussions".
         readHome(() => supabase.from('posts').select('id', { count: 'exact', head: true })
-          .eq('region', ACTIVE_REGION).eq('status', 'active')),
+          .eq('region', ACTIVE_REGION).eq('status', 'active'), isCurrent),
         // Listings for sale. Items carry no region (ENGINEERING §4).
         readHome(() => supabase.from('items').select(HOME_ITEM_FIELDS).eq('status', 'active').eq('listing_type', 'sell')
-          .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(6)),
+          .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(6), isCurrent),
       ])
       if (requestId !== latestRequest) return
       const failed = [...feeds, weekly, total, market].find(result => result.error)
@@ -97,7 +104,7 @@ export function useCommunityHome() {
       const busy = weeklyRows.filter(row => row.comment_count >= 3).map(row => row.id)
       const repliers = new Map<string, string[]>()
       if (busy.length >= 5) {
-        const replies = await readHome(() => supabase.from('post_comments').select('post_id, user_id').in('post_id', busy))
+        const replies = await readHome(() => supabase.from('post_comments').select('post_id, user_id').in('post_id', busy), isCurrent)
         if (requestId !== latestRequest) return
         if (replies.error) throw replies.error
         for (const reply of (replies.data || []) as { post_id: string; user_id: string }[]) {
