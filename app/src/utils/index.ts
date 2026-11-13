@@ -212,6 +212,8 @@ const CONTENT_MESSAGES: Record<string, { en: string; zh: string }> = {
    the same gap CONTENT_MESSAGES above was added to close, one table later.
    Keyed on the lowercased message, like OFFER_MEETUP_MESSAGES. */
 const THROWN_ENGLISH_MESSAGES: Record<string, { en: string; zh: string }> = {
+  'invalid post id': { en: 'This draft could not be restored. Please start a new post.', zh: '此草稿无法恢复，请重新发帖。' },
+  'post recovery mismatch': { en: 'Could not confirm this post. Check again.', zh: '没能确认这条帖子，请再次检查。' },
   'file too large (max 5mb)':   { en: 'That file is too large (max 5MB).',        zh: '文件太大（最多 5MB）' },
   'too many files':             { en: 'Too many files selected.',                 zh: '选择的文件太多' },
   'too many images':            { en: 'Too many images selected.',                zh: '选择的图片太多' },

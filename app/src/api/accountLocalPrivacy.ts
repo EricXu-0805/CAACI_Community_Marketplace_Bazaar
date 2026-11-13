@@ -14,6 +14,7 @@ export const ACCOUNT_PRIVATE_STORAGE_KEYS = [
   'postViewHistory',
   'searchHistory',
   'publish_draft_v1',
+  'plaza_composer_draft_v1',
   'pending_search',
   'pending_category',
   'chat_emoji_recent',

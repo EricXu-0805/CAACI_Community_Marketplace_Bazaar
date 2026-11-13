@@ -98,6 +98,10 @@ test('topic migration preserves legacy rows, RLS, metadata ACL and item ownershi
     sql('GRANT SELECT ON public.posts_visible TO anon, authenticated, service_role')
     const viewColumns = () => sql("SELECT string_agg(attname, ',' ORDER BY attnum) FROM pg_attribute WHERE attrelid='public.posts_visible'::regclass AND attnum > 0")
     const legacyViewColumns = viewColumns()
+    const postAcl = () => sql(`SELECT grantee || ':' || privilege_type || ':' || column_name
+      FROM information_schema.column_privileges WHERE table_schema='public' AND table_name='posts'
+      AND grantee IN ('authenticated','anon') ORDER BY 1`).split('\n')
+    const legacyAcl = postAcl()
     sql(migration)
     assert.equal(sql("SELECT pg_get_functiondef('public.search_posts_fuzzy(text[],text,integer,integer)'::regprocedure)"), oldRpc)
     assert.equal(as(`SELECT title IS NULL AND category IS NULL FROM posts WHERE id='${POST}'`), 't')
@@ -142,6 +146,16 @@ test('topic migration preserves legacy rows, RLS, metadata ACL and item ownershi
     assert.throws(() => sql(`BEGIN; ALTER TABLE posts DISABLE TRIGGER validate_post_topic;
       INSERT INTO posts(user_id,content,title,category) VALUES('${UID}',' ','Trigger off','campus-life'); COMMIT;`), /posts_topic_body_check/)
     // Row 4: the client may choose the id (P2.8 retries); a repeat is a key conflict, never a second post.
+    const addedAcl = postAcl().filter(privilege => !legacyAcl.includes(privilege))
+    assert.deepEqual(addedAcl, [
+      'anon:SELECT:category', 'anon:SELECT:region', 'anon:SELECT:title',
+      'authenticated:INSERT:category', 'authenticated:INSERT:id', 'authenticated:INSERT:title',
+      'authenticated:SELECT:category', 'authenticated:SELECT:region', 'authenticated:SELECT:title',
+    ], 'id is the only new INSERT privilege beyond the topic metadata contract')
+    assert.ok(legacyAcl.every(privilege => postAcl().includes(privilege)), 'existing ACL remains intact')
+    assert.equal(sql("SELECT has_table_privilege('authenticated','public.posts','INSERT')"), 'f')
+    assert.equal(sql("SELECT has_column_privilege('anon','public.posts','id','INSERT')"), 'f')
+    assert.equal(sql("SELECT has_column_privilege('authenticated','public.posts','id','UPDATE')"), 'f')
     const clientId = '44444444-4444-4444-8444-444444444444'
     const clientInsert = () => as(`INSERT INTO posts(id,user_id,content,title,category) VALUES('${clientId}',auth.uid(),'Retry-safe body','Client id topic','events-social')`)
     clientInsert()
