@@ -822,3 +822,14 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - ci_run_url: —（#375 base 不是 main，不触发 CI）
 - 未测项: 真机或开发者工具：从分享卡冷启动进商品页能否收到新消息和通知、前后台切换、切换账号不重复不串号
 - 下一条: D-46 第 3 项 b（#369，子任务进行中）
+
+### L67 · 2026-11-13 12:55 CT · D-46 第 3 项 d：「关注的人」切 tab 先清空、作废旧请求，查询前去掉已屏蔽用户
+- task_id: D-46.3d
+- code_sha: eca5a8d（#374，已推送）
+- docs_sha: 08f036ca7323e2d338479a3b592b38eb1d26884e
+- 环境: 本地 tony-ws run-checks；实现由 OMO 子任务（deep-low）做，主会话核对后推送
+- 命令: 先写 app/smoke/plaza-following-feed.test.mjs（切 tab 立即清空 / 加载中、读关注列表期间的旧请求、读失败、屏蔽作者、两个对照）；修复前 4 条失败、2 个对照通过（check-20261113T174500Z）。usePlaza.ts / plaza/index.vue：切 tab 先清空并递增请求号再 await 关注列表；读失败也递增；查询前去掉已屏蔽的关注对象。`SMOKE_SPECS="…8 份…" ~/work/illini-dev-env/run-checks.sh ~/work/illini-home install typecheck test h5 mpci smoke`
+- 计数: 6 条全过；install、typecheck、h5、mpci rc=0；test 2070 / 2069 / 0 / 1；smoke 114 passed；主包（CI 环境）1,550,705（check-20261113T174549Z）[本地测]
+- ci_run_url: —（#374 base 不是 main，不触发 CI）
+- 未测项: 真实关注数据（等 E3）
+- 下一条: D-46 第 3 项 c
