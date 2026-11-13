@@ -487,3 +487,15 @@
 - 未测项: ⑦ Build H5 等 E5（#371 合并后重跑）
 - 下一条: P4.3
 - 附: E10（合并后）：Eric 把两个邮件模板粘到 Supabase 后台、生产 DIGEST_FROM 显示名改「玉米地 Cornfield」。邮件和退订页里的「集」字印章没在 BRAND.4 的替换范围里，列进最终报告。
+
+### L41 · 2026-11-13 02:51 CT · P4.3 官网 GET /api/public-events v1 本地写好（不推送：推送等 E8，开上游 PR 是 Eric 的【硬】步骤）
+- task_id: P4.3
+- code_sha: 28d59b1ade3a247ac5cca0c809e4c91f614f5eab（~/work/caaciorg 本地分支 feat/public-events-feed，从 upstream/preview fae3f5f 建；只有 upstream 远端，已取消上游跟踪，没有推送）
+- docs_sha: 82ad9fd019646189e1a695fe08252a296952da42
+- 环境: tony-ws；docker.io/library/node:20-bookworm 与 node:24-bookworm 容器，npm ci 联网，其余步骤 --network none，输出逐行脱敏
+- 命令: 新增 functions/api/public-events.js（只导出 onRequestGet：window=upcoming|recent、id=<uuid>；只读 events 表 §9.1 列出的列，limit 201；200 带 cache-control public, max-age=60；400 invalid_window、404 not_found、500 固定 {"error":"unavailable"}；takes_registrations / registration_open / page_url / register_url 规则照 web/src/lib/events.ts 与 _event-form.js；content_hash 对规范化 JSON 求 sha256）；test/public-events.test.js 5 条；test/api-auth-gates.test.js 的 UNGATED 加一条 read-only。~/work/evidence/P4.3/caaciorg-ci.sh 在 Node 20、24 上跑 caaciorg CI 的同一组步骤；第一次只有 format:check 失败（只报这两个新文件），prettier --write 后 verify-chain-5.sh 重跑 format:check、lint、test
+- 计数: ① 参数、响应结构、缓存头、400/404/500 正文与 §9.1 一致（测试断言 select 列、limit 201、order、published=eq.true、complete=false 时只回 200 条、500 正文不含 supabase）；② 输出只含 v1 的 15 个字段，测试断言报名问题、志愿者问题、perk、image_url 都不出现；③ Node 20 与 24：npm ci、lint、typecheck、build -w web、test、build 在格式修正前都通过，格式修正后 format:check、lint、test 再过一遍（test 1252 / 1244 / 0，其余 8 条 skipped）；④⑤ 未做 [本地测]
+- ci_run_url: —（不推送）
+- 未测项: ④ 向 preview 开 PR（E8 之后由 Eric 在网页上开，D-42 第 1 项【硬】）；⑤ 上线后从工作站请求一次
+- 下一条: P1.7
+- 附: D-42 第 2 项 (a) 记录：caaciorg 仓库自己的源码、模板和测试里有 17 个文件含官网库标识（wslz…），是仓库原有内容，不是 OMO 的命令或请求；按规定只记这一条、不触发【暂停推送】。为此 CI 步骤除 npm ci 外全部 --network none，输出写盘前逐行脱敏；OMO 新增的三个文件里两个托管标识都是 0 次。
