@@ -94,18 +94,29 @@ async function serve(page: Page, uid: string, state: State) {
   })
 }
 
+const LONG_TITLE = 'Selling my desk lamp, barely used, pick it up near the Main Library this weekend, cash or Venmo is fine'
+const TITLE_LEFT = 120 - Array.from(LONG_TITLE).length
+
 async function publishWithItem(page: Page, state: State) {
   await signIn(page, UID)
   await serve(page, UID, state)
   await page.goto('/#/pages/plaza/index', { waitUntil: 'networkidle' })
   await page.getByRole('button', { name: 'New post', exact: true }).filter({ visible: true }).click({ timeout: 15_000 })
   const composer = page.locator('.composer-fullpage')
+  const title = page.locator('.topic-title-input input')
+  const body = page.locator('.comp-textarea textarea')
+  // uni-input syncs v-model behind a 100 ms throttle; the length counter is derived from the
+  // model, so seeing it proves the title reached the composer before anything re-renders.
+  const titleLeft = page.locator('.title-left')
   await composer.getByRole('button', { name: 'Settling in', exact: true }).click()
-  await page.locator('.topic-title-input input').fill('Selling my desk lamp')
-  await page.locator('.comp-textarea textarea').fill('Works well')
+  await title.fill(LONG_TITLE)
+  await expect(titleLeft).toContainText(String(TITLE_LEFT))
+  await body.fill('Works well')
   await page.locator('.comp-attach-btn').first().click()
   await page.locator('.attach-sheet .as-item').first().click()
   await expect(page.locator('.comp-attached')).toHaveCount(1)
+  await expect(titleLeft).toContainText(String(TITLE_LEFT))
+  await expect(body).toHaveValue('Works well')
   await page.locator('.comp-submit').click()
   await expect(page).toHaveURL(new RegExp(`pages/post/index.*id=${POST_ID}`), { timeout: 15_000 })
 }

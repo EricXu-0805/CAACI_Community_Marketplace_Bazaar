@@ -18,6 +18,11 @@ test('topic input keeps legacy updates nullable and rejects incomplete/invalid m
   }
   for (const title of ['x'.repeat(121), 'First\nsecond', 'First\rsecond']) assert.throws(() => normalizePostTopic(title, 'campus-life'), /post_title_invalid/)
   assert.equal(normalizePostTopic('界'.repeat(120), 'campus-life').title.length, 120)
+  for (const body of ['', '   ', '\n\t', null]) {
+    assert.throws(() => normalizePostTopic('A question', 'campus-life', body), /post_topic_body_required/)
+  }
+  assert.deepEqual(normalizePostTopic('A question', 'campus-life', ' Body '), { title: 'A question', category: 'campus-life' })
+  assert.deepEqual(normalizePostTopic(null, null, ''), { title: null, category: null })
 })
 
 let sequence = 0
@@ -68,6 +73,7 @@ async function loadPlaza({ postError = null, attachmentError = null, switchAccou
   let input = source('composables/usePlaza.ts')
     .replace("'./accountScope'", `'${scopeUrl}'`)
     .replace("'../utils/communityPost'", `'${topicModule}'`)
+    .replace("'../utils/region'", `'${compile(source('utils/region.ts'))}'`)
     .replace("'../api/mutationCommit'", `'${compile(source('api/mutationCommit.ts'))}'`)
   for (const [specifier, code] of Object.entries(mocks)) input = input.replace(`'${specifier}'`, `'${compile(code)}'`)
   const { usePlaza } = await import(`${compile(input)}#${sequence}`)
@@ -92,7 +98,8 @@ test('legacy publish still stores null metadata; validation fails before writing
     ['Body', [], { title: 'Title' }, /post_topic_required/],
     ['Body', [], { ...topic, title: 'forbidden title' }, /moderation_block/],
     ['Body', ['1','2','3','4'], topic, /attach_item_cap/],
-    ['', [], topic, /content_required/],
+    ['', [], topic, /post_topic_body_required/],
+    ['', [], {}, /content_required/],
   ]) {
     h = await loadPlaza()
     await assert.rejects(h.plaza.createPost(body, [], items, metadata), error)
@@ -128,10 +135,12 @@ test('category is applied on the server for ordinary and search pagination', asy
   const h = await loadPlaza()
   await h.plaza.fetchPosts({ category: 'campus-life', page: 1 })
   assert.ok(h.query.some(([key, value]) => key === 'category' && value === 'campus-life'))
+  assert.ok(h.query.some(([key, value]) => key === 'region' && value === 'cu'))
   await h.plaza.fetchPosts({ category: 'alumni-career', search: 'Quantum', page: 2 })
   assert.equal(h.rpc[0][0], 'search_community_posts')
   assert.equal(h.rpc[0][1].category_in, 'alumni-career')
   assert.equal(h.rpc[0][1].offset_in, 40)
+  assert.equal(h.rpc[0][1].region_in, 'cu')
 })
 
 

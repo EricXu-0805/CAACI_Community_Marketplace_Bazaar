@@ -157,7 +157,7 @@ async function responseForRequest(req, boundary) {
   if (id && SUPABASE_URL && SUPABASE_ANON_KEY) {
     const rows = await readPublicRows(
       `posts_visible?id=eq.${encodeURIComponent(id)}`
-      + '&select=id,content,images,user_id,source_lang&limit=1',
+      + '&select=id,content,images,user_id,source_lang,title&limit=1',
     )
     post = rows[0] || null
     if (post?.user_id && UUID_RE.test(post.user_id)) {
@@ -169,7 +169,9 @@ async function responseForRequest(req, boundary) {
   }
 
   const firstLine = truncate((post?.content || '').split('\n')[0], 60) || 'Illini Market · Campus Plaza'
-  const title = post ? `${firstLine} — ${authorName || 'User'}` : 'Illini Market · Campus Plaza'
+  const topicTitle = typeof post?.title === 'string' ? post.title.trim() : ''
+  const headline = topicTitle ? truncate(topicTitle, 120) : firstLine
+  const title = post ? `${headline} — ${authorName || 'User'}` : 'Illini Market · Campus Plaza'
   const desc = post ? (truncate(post.content || '', 160) || 'A post on Illini Market') : 'UIUC Campus Plaza · 校园广场'
   const fallbackImage = `${site}/static/app-icon-512.png`
   const image = safeImageUrl(post?.images?.[0], fallbackImage, site)

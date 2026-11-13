@@ -60,6 +60,7 @@ async function loadPlaza(insertError) {
 
   const mocks = {
     '../utils/communityPost': source('src/utils/communityPost.ts'),
+    '../utils/region': source('src/utils/region.ts'),
     vue: 'export const ref = value => ({ value })',
     './useSupabase': 'export function useSupabase(){ return { supabase: globalThis.__likeDriftSupabase } }',
     './useAuth': `export function useAuth(){ return { currentUser: { value: { id: '${UID}' } } } }`,

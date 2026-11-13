@@ -12,6 +12,10 @@
 
     <view class="page-header">
       <text class="ph-title">{{ t('plaza.title') }}</text>
+      <text class="ph-region" data-test="region-label">{{ regionLabel(lang) }}</text>
+      <view v-if="showRegionSwitcher()" class="ph-region-switcher" data-test="region-switcher">
+        <text v-for="region in REGIONS" :key="region.slug" class="ph-region-option">{{ lang === 'zh' ? region.zh : region.en }}</text>
+      </view>
       <view class="compose-btn" role="button" :aria-label="t('a11y.compose')" @click="openComposer" v-if="isLoggedIn">
         <view class="cb-pen"></view>
         <text class="cb-label">{{ t('plaza.write') }}</text>
@@ -727,6 +731,7 @@ import { localizeLocation } from '../../composables/useCampusSpots'
 import { createOwnedLoading } from '../../composables/ownedLoading'
 import type { Post, PostComment, Item } from '../../types'
 import { POST_CATEGORIES, POST_TITLE_MAX, normalizePostTopic, type PostCategory } from '../../utils/communityPost'
+import { REGIONS, regionLabel, showRegionSwitcher } from '../../utils/region'
 import { formatTime, formatPrice, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
 import { DIALOG_DANGER, DIALOG_WARN } from '../../utils/dialogColors'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
@@ -3078,6 +3083,9 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .board-chip:focus-visible { outline: 2px solid var(--accent-action); outline-offset: 2px; }
 .composer-mode { display: flex; gap: 8px; padding: 12px 16px 4px; }
 .composer-topic { padding: 12px 16px 0; }
+.ph-region { margin-left: 8px; font-size: 13px; color: var(--ink-soft); }
+.ph-region-switcher { display: flex; gap: 8px; margin-left: 8px; }
+.ph-region-option { font-size: 13px; color: var(--ink-soft); }
 .topic-title-input { width: 100%; height: 44px; font-size: 18px; font-weight: 600; color: var(--text-primary); border-bottom: 1px solid var(--line-hair); }
 .topic-board-label { display: block; color: var(--text-muted); font-size: 12px; margin: 12px 0 8px; }
 .topic-board-options { display: flex; gap: 8px; flex-wrap: wrap; }
