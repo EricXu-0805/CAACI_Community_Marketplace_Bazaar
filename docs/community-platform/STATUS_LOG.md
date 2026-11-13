@@ -734,3 +734,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 受限日期在真实 staging 账号上的显示（等 E3）
 - 下一条: D-45 第 5 项（#374 部分）与第 6 项 HOME.4（子任务进行中）
 - 附: 自决：规则 BACKLOG §14 第 28 行（代码照 SPEC）；新 key 接入的位置是 SPEC 没写死的实现选择（按钮文字、toast）；撤回 `git revert b7bcf3a`。plaza.checkPublished 不在 SPEC §11，保留原样。
+
+### L60 · 2026-11-13 10:13 CT · D-45 第 5 项（#374 部分）：首页、列表与详情文案对齐 SPEC §11，「关注的人」tab 改为关注者的帖子 [OMO自决]
+- task_id: D-45.5b
+- code_sha: c16f0a1（#374，已推送；push 用 --no-verify 同 L21）
+- docs_sha: 01a2ceae136b04aaffdf53acea13b5fb6c959845
+- 环境: 本地 tony-ws run-checks；实现由 OMO 子任务（visual-engineering）做，主会话核对后推送
+- 命令: 按 SPEC §11「P2.7 部分成功、6.6 引用卡」「列表与详情状态（HOME.3、HOME.5、6.4）」两节改 en.ts / zh.ts 与页面，不改 SPEC。`SMOKE_SPECS="community-home.spec.ts community-board-states.spec.ts contrast-runtime.spec.ts community-topic-row.spec.ts community-post-topics.spec.ts community-post-partial-attach.spec.ts plaza-attach-picker-is-modal.spec.ts" ~/work/illini-dev-env/run-checks.sh ~/work/illini-home install typecheck test smoke mp`
+- 计数: 两节 38 个 key 中英都与 SPEC 一致。新增 14 个 key：已接 7 个——plaza.ref.more（英文按 SPEC 改为 "+{n} more"，中文「等 {n} 件」数总数）、plaza.ref.mine、plaza.emptyFollowing、plaza.signInFollowing、plaza.blockedAuthor、plaza.unblock、plaza.replyFailed；「关注的人」tab 按 SPEC §6.2 列关注者发的帖子（fetchPosts 按关注的 user_id 过滤 posts，不需要新迁移），关注者名单仍在 pages/following。第一次全量 test 2047/2044/2（core-keyboard-a11y、localized-user-facing-labels 两条钉着被移除的名单，改为检查「关注的人」失败时主列表错误面板被播报、社区页不再显示所在地），重跑 install、typecheck rc=0，test 2047 / 2046 / 0 / 1 pg_skips=0，smoke 99 passed（check-20261113T155654Z），read-failure-states 单跑 13 passed（check-20261113T160851Z）；小程序主包 1,566,720（预算 1,572,864，余 6,144）[本地测]。截图 tony-ws evidence/D45-home/（11 张）
+- ci_run_url: —（#374 base 不是 main，不触发 CI）
+- 未测项: 「关注的人」帖子流在真实 staging 数据上的表现（等 E3）
+- 下一条: D-45 第 6 项 HOME.4 写回（L61）
+- 附: 没接上的 7 个 key（已加进语言包，留 ④）：plaza.ref.removed、plaza.ref.unlink——post_items 的 SELECT 策略（20260719151729_reconcile_plaza_base_table_acl.sql:295）对已删除或读不到的商品不返回行，作者也看不到，需要改策略或加 RPC；plaza.hidden、plaza.hiddenOwner、plaza.appeal——posts 的 SELECT 策略（同文件 :267）只返回 active 行、无作者例外、无原因列，属 P3.5/P3.6；plaza.emptyUnanswered——「待回答」tab 随 P3.4；plaza.restrictedReply——不需要迁移，但 App.vue 的 requiredGatePath() 把所有受限账号送去 pages/suspended，要按 SPEC §6.5.1 拆分门禁（plaza.restrictedPost 同理）。自决：规则 BACKLOG §14 第 28 行（代码照 SPEC）；撤回 `git revert c16f0a1`。首页英文文案仍按 buildHomeSections 返回，与 SPEC §11「HOME.3 首页」节不同，那一节不在本次两节内。
