@@ -967,3 +967,52 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 修正夹具后的浏览器重跑、#375 D-47.5、D-47.2–4的继续实现、五PR最终试合；真机。
 - 下一条: D-48.3浏览器重跑通过后记录#375→#374合并，再继续D-47.2–5。
 - 更正L71: en.ts/zh.ts不一定发生文本冲突；本次自动合并实际各引入两份同名restrictedReply，必须显式去重，不能只写“如果冲突取同一个值”。
+
+### L79 · 2026-11-13 15:57 CT · D-48.3 依赖合并验收完成；继续 D-47 第2–5项 [OMO自决]
+- task_id: D-48.3 / D-47.merge
+- code_sha: #374 4b6f079、b35cf8e（均已推送）；#375 本地007abf1（尚未推送，保留D-47.5未完成工作）
+- docs_sha: 7293b0165f93ca13819f2fc1229e8348f87c6d66
+- 环境: tony-ws pw1.60-node22-pg17，mpci=CI环境
+- 命令: 冲突处理见L78与STATUS第11条。第二次浏览器验证check-20261113T211542Z仍有6条失败：夹具为带id过滤的maybeSingle详情请求返回了两条记录，页面正确进入读取失败态。按真实id条件过滤响应，保留内联回复、打开编辑器和详情输入框全部断言；第三次验证check-20261113T212151Z为29 passed、rc=0。其它已通过检查未重跑；本次只改测试夹具，不改变已验证的构建输入。
+- 计数: 合并定向112条全过；组合全量2189/2188/0/1，pg_skips=0，typecheck/h5/mpci通过。完整浏览器202条首次191pass/10fail/1skip；其中6条新失败已由该测试文件29条全过关闭，剩4条为既有stub域名巡检失败（pages/index、plaza浅深）。主包1,372,224，余200,640，仅#369+#375+#374组合；五PR最终数仍待D-46.5。
+- ci_run_url: —（#374和#375的base不是main，不触发该CI）
+- 未测项: 微信真机、门禁页提示抑制、D-47.2–4补完及五PR集成。类型标签没有SPEC规定的稳定判别字段，见STATUS第16条。
+- 下一条: D-47 第2项。
+- 附: 依D-47第1项的并行许可，D-47.2→3→4由主会话在#374执行，第5项由唯一子任务在#375执行；同分支不同时派两个写者/推送者，所有推送由主会话完成。D-49只读架构准备同步进行，仅写evidence，不建分支、不写迁移或客户端；实际实现仍排在D-48全部和D-47.2–5之后。D-47.2保存的补丁已接回#374，重新验证新基线并生成手机/桌面浅深截图。
+
+## L80 · 2026-11-13 17:07 CT · D-47.2 首页分隔符与类型标签 [OMO自决]
+- task_id: D-47.2
+- code_sha: 885603e4a276317e401a64b6bafb4f4d70d6c228（#374，已推送）
+- docs_sha: 7293b0165f93ca13819f2fc1229e8348f87c6d66
+- 环境: tony-ws pw1.60-node22-pg17；mpci=CI环境
+- 命令: check-20261113T194618Z在6d6c598上证明两条单测和两条浏览器用例先红。接回依赖合并后的分支，check-20261113T214641Z运行cmd/install/typecheck/test/h5/mpci/smoke；smoke为home、board-states、contrast、topic-row、post-topics、partial-attach、picker-modal、read-failure八个文件。按RUNBOOK§3在容器验收后push --no-verify。
+- 计数: 2190 tests / 2189 pass / 0 fail / 1 skipped，pg_skips=0；132条浏览器通过；构建与typecheck rc=0。主包1,372,454、余200,410，仅#369+#375+#374组合。
+- ci_run_url: —（base不是main）
+- 未测项: 真实微信；近期活动区块仍等P4.8。守则/指南没有SPEC规定的稳定元数据字段，当前按官方精选标题识别“社区守则/Community guidelines”，其余为指南；该歧义进入FINAL④，不声称SPEC规定了这个判别法。
+- 附: 390/1280、light/dark四张类型标签截图均已查看，字体12px，证据~/work/evidence/D47/labels/。英文补位用“ · ”，中文不改；语言表测试注明SPEC docs_sha=81196fa，SPEC变表时须一起更新。
+- next_task_id: D-47.3。
+
+## L81 · 2026-11-13 17:07 CT · D-47.5 门禁页入站提示抑制及传播
+- task_id: D-47.5
+- code_sha: #375 22d90095e139fe3f5a0db5e135206e00e5afb54e；#374合并c1ef194d474cfff8506b5cc2e5b50a392f9d2652（均已推送，c1ef194随L82推送）
+- docs_sha: 7293b0165f93ca13819f2fc1229e8348f87c6d66
+- 环境: tony-ws pw1.60-node22-pg17；mpci=CI环境
+- 命令: 在D-48恢复后的007abf1上运行更新过的39条测试，check-20261113T213151Z为39/16/23/0。实现只在useUnread、useNotifications的入站提示出口读取当前页面；suspended、reconsent、profile-recovery、onboarding、welcome、login不再触发新提示。check-20261113T213343Z定向104/104；check-20261113T213421Z全量；合入#374后check-20261113T222156Z定向42/42和typecheck通过，组合全量见L82。
+- 计数: #375单测2204/2203/0/1，pg_skips=0；typecheck/H5/mpci通过；smoke105 pass/4 fail/1 skipped，四条都是已知stub域名失败（index和plaza各浅深）。主包1,324,732、余248,132。#374上的完整组合是L82。
+- ci_run_url: —（base不是main）
+- 未测项: 真机冷启动投递时序与原生浮层；不声称已有提示被清除。监听、计数和普通错误/认证提示的对照均在39条里；39条加载真实路由判断，旧握手测试也内联真实新模块，未删断言。
+- 附: 子任务状态一度停在旧WAITING，但仓库已存在21:48的22d9009。主会话核对实际提交、两份红绿日志、全量日志后接管并推送；子任务只补交证据、未再运行或改动。恢复门禁和D-50也随007abf1进入#375远端，不再有“#375远端仍全局放行”的当前状态。
+- next_task_id: 主会话继续D-47.3→4。
+
+## L82 · 2026-11-13 17:07 CT · D-47.3 仅小程序限流及过期队列取消
+- task_id: D-47.3
+- code_sha: c7b06343f51b23f26630ad2c72b905b7eff505a6（#374，已推送）
+- docs_sha: 7293b0165f93ca13819f2fc1229e8348f87c6d66
+- 环境: tony-ws pw1.60-node22-pg17；mpci=CI环境
+- 命令: check-20261113T200507Z在6d6c598上8条中3红（H5峰值6而非9；clear发9而非6；reload发19而非16）。隔离工作树实现先在221418Z取得8/8；正式分支224013Z运行cmd/install/typecheck/test/h5/mpci/smoke，smoke八文件同L80。验收时HEAD为c1ef194、索引树f799d8e0495e7179ff1c8366ee951c7efacc31d3；提交后树SHA完全相同。容器通过后按RUNBOOK§3 push --no-verify。
+- 计数: 2234 tests / 2233 pass / 0 fail / 1 skipped，pg_skips=0；8条并发用例及132条浏览器通过；typecheck/H5/mpci rc=0。主包1,373,057、余199,807，仅#369 ae058c2+#375 22d9009+#374 c7b0634，五PR数仍待集成。
+- 变异: 222246Z故意不归还槽位，read场景因后续Promise无法完成而被Node标记cancelled；同进程throw用例被父级取消，未把它算作第二个证明。222653Z单独运行throw场景，同样因槽位泄漏无法完成（1 cancelled，rc=1）。223114Z让回帖绕过槽位，断言峰值7而非6；223541Z把队列放到每实例内，断言峰值12而非6。所有变异只改隔离工作树，之后恢复；正式源码采用已先通过8条的版本。
+- ci_run_url: —（base不是main）
+- 未测项: 微信真实网络调度；只限制首页，不是应用级六请求限制。稳态6+2+2和onShow可能第11条的开发者工具观察写入STATUS第13条与FINAL④。
+- 附: H5九个首轮读取一起开始；小程序旧轮拿到槽位后先检查世代，作废时不发查询并归还槽位。读取报错/抛错、回帖、多实例共享和最终数据都有行为断言。STATUS旧Boundary行误引43500445187，按已读的2156条CI证据改为43503547193。D-49只读architect准备因号池限额/不可用退出、工具0次，未产出方案或修改代码；不转额外计费渠道，实际D-49仍待前置项。
+- next_task_id: D-47.4。
