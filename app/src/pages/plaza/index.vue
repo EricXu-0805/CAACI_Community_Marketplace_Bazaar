@@ -506,9 +506,9 @@
         <text class="comp-cancel" role="button" @click="onComposerCancel">{{ t('plaza.cancel') }}</text>
         <text id="plaza-composer-title" class="comp-title">{{ t('plaza.write') }}</text>
         <text
-          :class="['comp-submit', { disabled: (!composerText.trim() && composerImages.length === 0 && composerAttachedItems.length === 0) || submitting }]"
+          :class="['comp-submit', { disabled: submitDisabled }]"
           role="button"
-          :aria-disabled="(!composerText.trim() && composerImages.length === 0 && composerAttachedItems.length === 0) || submitting ? 'true' : 'false'"
+          :aria-disabled="submitDisabled ? 'true' : 'false'"
           @click="onSubmitPost"
         >
           {{ submitting ? t('login.wait') : t('plaza.submit') }}
@@ -516,7 +516,7 @@
       </view>
       <view class="comp-body">
         <view class="composer-mode" role="group" :aria-label="t('plaza.write')">
-          <view v-for="mode in (['update', 'topic'] as const)" :key="mode" class="board-chip"
+          <view v-for="mode in (['topic', 'update'] as const)" :key="mode" class="board-chip"
             :class="{ active: composerMode === mode }" role="button" tabindex="0"
             :aria-pressed="composerMode === mode ? 'true' : 'false'"
             @click="composerMode = mode" @keydown.enter="composerMode = mode" @keydown.space.prevent="composerMode = mode">
@@ -524,8 +524,6 @@
           </view>
         </view>
         <view v-if="composerMode === 'topic'" class="composer-topic">
-          <input v-model="composerTitle" class="topic-title-input" :maxlength="POST_TITLE_MAX"
-            :placeholder="t('plaza.topicTitle')" :aria-label="t('plaza.topicTitle')" />
           <text class="topic-board-label">{{ t('plaza.chooseBoard') }}</text>
           <view class="topic-board-options" role="group" :aria-label="t('plaza.chooseBoard')">
             <view v-for="category in POST_CATEGORIES" :key="category" class="board-chip"
@@ -535,17 +533,24 @@
               <text>{{ t(`plaza.category.${category}`) }}</text>
             </view>
           </view>
+          <text v-if="composerErrors.board" class="field-error" role="alert">{{ t('plaza.errBoard') }}</text>
+          <input v-model="composerTitle" class="topic-title-input" :maxlength="POST_TITLE_MAX" :focus="composerTitleFocused"
+            :placeholder="composerCategory ? t(`plaza.titleHint.${composerCategory}`) : t('plaza.titleHintDefault')"
+            :aria-label="t('plaza.topicTitle')" @blur="composerTitleFocused = false" />
+          <text v-if="composerTitleLeft <= 20" class="title-left">{{ t('plaza.titleLeft', { n: composerTitleLeft }) }}</text>
+          <text v-if="composerErrors.title" class="field-error" role="alert">{{ t('plaza.errTitle') }}</text>
         </view>
         <textarea
           v-model="composerText"
-          :placeholder="t('plaza.postHint')"
-          :aria-label="t('plaza.postHint')"
+          :placeholder="composerBodyHint"
+          :aria-label="composerMode === 'topic' ? t('plaza.formatTopic') : t('plaza.postHint')"
           class="comp-textarea"
           :adjust-position="false"
           :auto-height="true"
           :focus="composerFocused"
           maxlength="2000"
         />
+        <text v-if="composerMode === 'topic' && composerErrors.body" class="field-error comp-body-error" role="alert">{{ t('plaza.errBody') }}</text>
         <view v-if="composerImages.length > 0" class="comp-images">
           <view v-for="(img, i) in composerImages" :key="i" class="ci-wrap">
             <image :src="img" alt="Photo" class="ci-img" mode="aspectFill" />
@@ -943,10 +948,37 @@ function clearSearch() {
 const showComposer = ref(false)
 const composerDialogEl = ref<unknown>(null)
 useDomKeydown(composerDialogEl, onComposerDialogKeydown)
-const composerMode = ref<'update' | 'topic'>('update')
+const composerMode = ref<'update' | 'topic'>('topic')
 const composerTitle = ref('')
 const composerCategory = ref<PostCategory | null>(null)
+const composerTitleFocused = ref(false)
+// P2.4 (SPEC 6.5.3): required-field errors sit under their field; no toast.
+const composerErrors = ref<{ board?: boolean; title?: boolean; body?: boolean }>({})
+const composerTitleLeft = computed(() => POST_TITLE_MAX - Array.from(composerTitle.value).length)
+const composerBodyHint = computed(() => composerMode.value !== 'topic'
+  ? t('plaza.postHint')
+  : composerCategory.value ? t(`plaza.bodyHint.${composerCategory.value}`) : t('plaza.bodyHintDefault'))
+const submitDisabled = computed(() => submitting.value || (composerMode.value !== 'topic'
+  && !composerText.value.trim() && composerImages.value.length === 0 && composerAttachedItems.value.length === 0))
+
+function focusComposerField(field: 'board' | 'title' | 'body') {
+  if (field === 'title') {
+    composerTitleFocused.value = false
+    nextTick(() => { composerTitleFocused.value = true })
+  } else if (field === 'body') {
+    composerFocused.value = false
+    nextTick(() => { composerFocused.value = true })
+  } else {
+    // #ifdef H5
+    ;(document.querySelector('.topic-board-options .board-chip') as HTMLElement | null)?.focus()
+    // #endif
+  }
+}
 const composerText = ref('')
+watch(composerCategory, value => { if (value) composerErrors.value.board = false })
+watch(composerTitle, value => { if (value.trim()) composerErrors.value.title = false })
+watch(composerText, value => { if (value.trim()) composerErrors.value.body = false })
+watch(composerMode, () => { composerErrors.value = {} })
 const composerImages = ref<string[]>([])
 const composerFocused = ref(false)
 const submitting = ref(false)
@@ -1138,9 +1170,11 @@ async function openComposer() {
   // the existing 300ms setTimeout — focus must fire AFTER the modal
   // becomes visible, not before, so the soft keyboard mounts on the
   // visible textarea (mirroring the previous timing contract).
-  composerMode.value = 'update'
+  composerMode.value = 'topic'
   composerTitle.value = ''
-  composerCategory.value = null
+  // Opened from a board (the board filter is set): that board is preselected.
+  composerCategory.value = selectedCategory.value
+  composerErrors.value = {}
   composerText.value = ''
   composerImages.value = []
   composerAttachedItems.value = []
@@ -1352,9 +1386,10 @@ function onComposerCancel() {
   composerSessionId += 1
   composerFocused.value = false
   showComposer.value = false
-  composerMode.value = 'update'
+  composerMode.value = 'topic'
   composerTitle.value = ''
   composerCategory.value = null
+  composerErrors.value = {}
   composerText.value = ''
   composerImages.value = []
   composerAttachedItems.value = []
@@ -1442,7 +1477,19 @@ function confirmSuspectedAd(): Promise<boolean> {
 async function onSubmitPost() {
   await awaitAuthReady()
   if (!requireAuth()) return
-  if (
+  if (composerMode.value === 'topic') {
+    const errors = {
+      board: !composerCategory.value,
+      title: !composerTitle.value.trim(),
+      body: !composerText.value.trim(),
+    }
+    composerErrors.value = errors
+    const first = (['board', 'title', 'body'] as const).find(field => errors[field])
+    if (first) {
+      focusComposerField(first)
+      return
+    }
+  } else if (
     !composerText.value.trim()
     && composerImages.value.length === 0
     && composerAttachedItems.value.length === 0
@@ -1522,9 +1569,10 @@ async function onSubmitPost() {
       },
     )
 
-    composerMode.value = 'update'
+    composerMode.value = 'topic'
     composerTitle.value = ''
     composerCategory.value = null
+    composerErrors.value = {}
     composerText.value = ''
     composerImages.value = []
     composerAttachedItems.value = []
@@ -2845,4 +2893,8 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .topic-title-input { width: 100%; height: 44px; font-size: 18px; font-weight: 600; color: var(--text-primary); border-bottom: 1px solid var(--line-hair); }
 .topic-board-label { display: block; color: var(--text-muted); font-size: 12px; margin: 12px 0 8px; }
 .topic-board-options { display: flex; gap: 8px; flex-wrap: wrap; }
+.composer-topic .topic-title-input { margin-top: 12px; }
+.field-error { display: block; margin-top: 6px; font-size: 13px; color: var(--danger); }
+.comp-body-error { padding: 0 16px; }
+.title-left { display: block; margin-top: 6px; font-size: 12px; color: var(--text-secondary); }
 </style>
