@@ -10,7 +10,7 @@
 | 项 | 值 |
 |---|---|
 | 代码分支 / PR | codex/community-topics-20261112 / #369（草稿，OPEN）[本地测：git push 9c173a4] |
-| code_sha | 92698d159021612b84005ad4c36908dda537a86c（OMO 推送 P2.10 后的 #369 head） |
+| code_sha | b7bcf3a933eb60710872e3a62e9cd6f0d251ca89（OMO 推送 D-45 第 5 项后的 #369 head） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-12 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-12 git ls-remote] |
 | docs_sha | a64ae9919dbcc54df4dec67754809ea5bc0b0a39（本次本地状态写回之前材料分支的 HEAD，未另建材料提交） |
@@ -21,7 +21,7 @@
 
 ## CI
 
-PR #369 · run [43422815812](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43422815812) · head 92698d1 · 2026-11-13 CT 结束 · conclusion failure（public sweep 停在预检，等 E4；Type-check、Boundary、Build H5、Build mp-weixin 4 个 success，protected staging 与 release readiness 2 个 skipped）[CI run#43422815812]
+PR #369 · run [43448423151](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43448423151) · head b7bcf3a · 2026-11-13 CT 结束 · conclusion failure（public sweep 停在预检，等 E4；Type-check、Boundary、Build H5、Build mp-weixin 4 个 success，protected staging 与 release readiness 2 个 skipped）[CI run#43448423151]
 
 | job | 结论 | 计数 / 原因 |
 |---|---|---|
