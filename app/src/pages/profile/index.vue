@@ -3,7 +3,9 @@
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
+    <!-- #ifdef H5 -->
     <AppSidebar current="profile" />
+    <!-- #endif -->
 
     <!--
       Profile page — campus-market redesign.
@@ -360,7 +362,9 @@ import { onShow, onHide, onPullDownRefresh, onShareAppMessage, onShareTimeline, 
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import { useTheme } from '../../composables/useTheme'
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import UAvatar from '../../components/UAvatar.vue'
 import UBadge from '../../components/UBadge.vue'

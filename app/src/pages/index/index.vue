@@ -4,7 +4,9 @@
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
+    <!-- #ifdef H5 -->
     <AppSidebar current="index" />
+    <!-- #endif -->
 
     <view class="mobile-header u-glass u-glass--hair-b">
       <!--
@@ -553,7 +555,9 @@ import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import { BASE_URL } from '../../config/runtime'
 // #endif
 import type { ImageDim } from '../../types'
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import UBadge from '../../components/UBadge.vue'
 import UAvatar from '../../components/UAvatar.vue'
