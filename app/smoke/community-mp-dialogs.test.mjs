@@ -1,12 +1,25 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import ts from 'typescript'
 
 const source = path => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8')
 const compile = input => ts.transpileModule(input, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
 }).outputText
+// D-50: supervisor inspected WAServiceMainContext.js in base libraries
+// 3.15.0, 3.15.1 and 3.15.2. Non-Latin-1 UTF-16 units count twice; max is 8.
+// Older base libraries were not verified.
+const modalUnits = text => text.replace(/[^\x00-\xff]/g, '##').length
+// Exercise the pinned uni-app adapter, not a mock that preserves alertText.
+const adapterSource = readFileSync(new URL('../node_modules/@dcloudio/uni-mp-weixin/dist/uni.api.esm.js', import.meta.url), 'utf8')
+const adapterAst = ts.createSourceFile('uni.api.esm.js', adapterSource, ts.ScriptTarget.Latest, true)
+const sheetAdapter = adapterAst.statements.filter(ts.isVariableStatement)
+  .flatMap(statement => [...statement.declarationList.declarations])
+  .find(declaration => declaration.name.getText(adapterAst) === 'showActionSheet')
+assert.ok(sheetAdapter?.initializer, 'the pinned MP runtime exposes its action-sheet adapter')
+const nativeSheetAdapter = new Function(`return (${sheetAdapter.initializer.getText(adapterAst)})`)()
+
 function messages(lang) {
   const module = { exports: {} }
   new Function('module', 'exports', compile(source(`composables/i18n/messages/${lang}.ts`)))(module, module.exports)
@@ -17,12 +30,13 @@ function messages(lang) {
 function platformSource(input, platform) {
   const enabled = [true]
   return input.split('\n').filter(line => {
-    const directive = line.match(/\/\/ #(ifdef|ifndef) (H5|MP-WEIXIN)/)
+    const directive = line.match(/^\s*\/\/\s*#(ifdef|ifndef)\s+(.+)$/)
     if (directive) {
-      enabled.push(enabled.at(-1) && (directive[1] === 'ifdef' ? directive[2] === platform : directive[2] !== platform))
+      const matches = directive[2].split(/\s*\|\|\s*/).includes(platform)
+      enabled.push(enabled.at(-1) && (directive[1] === 'ifdef' ? matches : !matches))
       return false
     }
-    if (line.includes('// #endif')) { enabled.pop(); return false }
+    if (/^\s*\/\/\s*#endif/.test(line)) { enabled.pop(); return false }
     return enabled.at(-1)
   }).join('\n')
 }
@@ -36,12 +50,14 @@ function cancelFixture(platform, lang) {
   const record = kind => options => {
     if (platform === 'MP-WEIXIN' && kind === 'modal') {
       for (const key of ['confirmText', 'cancelText']) {
-        if (options[key]) assert.ok(Array.from(options[key]).length <= 4,
-          `wx.showModal ${key} exceeds 4 characters in ${lang}: ${options[key]}`)
+        if (options[key]) assert.ok(modalUnits(options[key]) <= 8,
+          `wx.showModal ${key} exceeds 8 units in ${lang}: ${options[key]}`)
       }
     }
     if (kind === 'sheet') assert.ok(options.itemList.length <= 6)
-    state.dialogs.push({ kind, ...options })
+    const nativeOptions = { ...options }
+    if (platform === 'MP-WEIXIN' && kind === 'sheet') nativeSheetAdapter.args(options, nativeOptions)
+    state.dialogs.push({ kind, ...nativeOptions })
   }
   const scope = {
     submitting: { value: false },
@@ -70,6 +86,12 @@ for (const lang of ['en', 'zh']) {
     const h = cancelFixture('MP-WEIXIN', lang)
     h.cancel()
     assert.equal(h.dialogs.length, 1)
+  })
+
+  test(`MP-WEIXIN draft-close title reaches the native action sheet in ${lang}`, () => {
+    const h = cancelFixture('MP-WEIXIN', lang)
+    h.cancel()
+    assert.equal(h.dialogs[0].alertText, messages(lang)['plaza.draftCloseTitle'])
   })
 
   test(`MP-WEIXIN draft choices keep, discard, and ignore cancellation in ${lang}`, () => {
@@ -104,26 +126,64 @@ for (const lang of ['en', 'zh']) {
     assert.deepEqual([h.saves, h.removes, h.resets], [1, 0, 1])
   })
 
-  test(`all explicit community MP-WEIXIN modal button labels fit in ${lang}`, () => {
+  test(`all MP-reachable app modal button labels fit the base-library rule in ${lang}`, () => {
     const dictionary = messages(lang)
-    let modals = 0
-    for (const path of ['pages/plaza/index.vue', 'pages/post/index.vue']) {
-      const script = platformSource(source(path).match(/<script setup lang="ts">([^]*?)<\/script>/)[1], 'MP-WEIXIN')
+    const { config, error } = ts.parseConfigFileTextToJson(
+      'pages.json', platformSource(source('pages.json'), 'MP-WEIXIN'))
+    assert.equal(error, undefined)
+    const pages = new Set([
+      ...config.pages.map(page => `${page.path}.vue`),
+      ...(config.subPackages || []).flatMap(pack => pack.pages.map(page => `${pack.root}/${page.path}.vue`)),
+    ])
+    const visited = new Set()
+    function files(directory = '') {
+      return readdirSync(new URL(`../src/${directory}`, import.meta.url), { withFileTypes: true })
+        .flatMap(entry => entry.isDirectory() ? files(`${directory}${entry.name}/`)
+          : /\.(vue|ts|js)$/.test(entry.name) ? [`${directory}${entry.name}`] : [])
+    }
+    for (const path of files()) {
+      if (path.startsWith('pages/') && path.endsWith('.vue') && !pages.has(path)) continue
+      const raw = platformSource(source(path), 'MP-WEIXIN')
+      const script = path.endsWith('.vue')
+        ? [...raw.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(match => match[1]).join('\n')
+        : raw
       const ast = ts.createSourceFile(path, script, ts.ScriptTarget.Latest, true)
+      function labels(expression) {
+        if (ts.isStringLiteral(expression)) return [expression.text]
+        if (ts.isConditionalExpression(expression)) return [...labels(expression.whenTrue), ...labels(expression.whenFalse)]
+        assert.ok(ts.isCallExpression(expression) && expression.expression.getText(ast) === 't',
+          `${path}: unhandled modal button expression ${expression.getText(ast)}`)
+        const key = expression.arguments[0].text
+        assert.ok(key in dictionary, `${path}: missing ${lang}:${key}`)
+        return [dictionary[key]]
+      }
       function visit(node) {
         if (ts.isCallExpression(node) && node.expression.getText(ast) === 'uni.showModal') {
-          modals++
+          visited.add(path)
+          assert.ok(ts.isObjectLiteralExpression(node.arguments[0]), `${path}: resolve this modal options object`)
           for (const property of node.arguments[0].properties) {
+            assert.equal(ts.isSpreadAssignment(property), false, `${path}: resolve spread modal options`)
             if (!['confirmText', 'cancelText'].includes(property.name?.getText(ast))) continue
-            const key = property.initializer.arguments[0].text
-            assert.ok(key in dictionary, key)
-            assert.ok(Array.from(dictionary[key]).length <= 4, `${path}: ${key} = ${dictionary[key]}`)
+            for (const label of labels(property.initializer)) {
+              assert.ok(modalUnits(label) <= 8, `${path}: ${label} = ${modalUnits(label)} units`)
+            }
           }
         }
         ts.forEachChild(node, visit)
       }
       visit(ast)
     }
-    assert.ok(modals >= 5, 'control: retain the compliant moderation and deletion confirmations')
+    assert.ok(visited.has('pages/index/index.vue'), 'scan reaches the production discovery modals')
+    assert.ok(visited.has('components/ChatThread.vue'), 'scan reaches modal calls in shared components')
+    assert.equal(visited.has('pages/admin/index.vue'), false, 'H5-only admin routes are excluded')
   })
 }
+
+test('base-library modal units accept eight Latin units or four Chinese characters', () => {
+  for (const text of ['Got it', 'Restore', 'Cancel', 'Messages', '一二三四']) {
+    assert.ok(modalUnits(text) <= 8, text)
+  }
+  for (const text of ['Keep draft', '123456789', '一二三四五']) {
+    assert.ok(modalUnits(text) > 8, text)
+  }
+})

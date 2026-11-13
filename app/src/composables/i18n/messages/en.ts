@@ -470,7 +470,7 @@ const en: Record<string, string> = {
   'publish.priceTooHighConfirm': 'List',
   'publish.priceTooHighCancel': 'Edit',
   // Solicitation soft gate. The member can always continue, so the button
-  // labels stay inside wx.showModal's 4-character limit like the price gate.
+  // labels stay within wx.showModal's 8 weighted units (Latin-1: 1, others: 2).
   'moderation.adTitle': 'Looks like an ad',
   'moderation.adBody': 'This reads like an ad for off-platform services. Illini Market is for students trading items on campus. Post anyway?',
   'moderation.adConfirm': 'Post',
@@ -721,7 +721,7 @@ const en: Record<string, string> = {
   'profile.edit': 'Edit',
   'profile.markSold': 'Mark Sold',
   // showModal button variant — wx.showModal fails outright (no dialog) when
-  // confirmText/cancelText exceed 4 chars, so modal buttons get short keys.
+  // confirmText/cancelText exceed 8 weighted units (Latin-1: 1, others: 2).
   'profile.markSoldConfirm': 'Sold',
   'profile.signOutConfirm': 'Exit',
   'profile.markSoldTitle': 'Mark as sold?',
