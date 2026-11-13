@@ -205,3 +205,15 @@
 - 未测项: CI 上的 Toolchain versions 步骤（P1.7）
 - 下一条: P1.3
 - 附: 提交身份：tony-ws 没配 git 身份，用户跳过了这个问题，OMO 按判断用 `git -c user.name="OMO (tony-ws)" -c user.email="omo@tony-ws.invalid"` 逐条传入，不改 ~/.gitconfig。P1.1 第一次核对脚本的转义写坏，只有 node、podman 等只读命令报错退出，没有改动任何东西。
+
+### L17 · 2026-11-13 00:03 CT · P1.3 缺 PostgreSQL 17 时 CI 失败，所有测试改用 postgresBinDir()
+- task_id: P1.3
+- code_sha: 7ec020a5dc886f6a1239c5a08f66d6326cb75889（codex/config-fixes-20261112）
+- docs_sha: 76fb233b6be4179ee687e983d518280736c4f9d1
+- 环境: 本地 tony-ws，镜像 pw1.60-node22-pg17
+- 命令: 新增 scripts/_postgres-bin.mjs（postgresBinDir、LINUX_PG17_BIN）与 scripts/postgres-bin.test.mjs；31 个文件的查找改为 postgresBinDir()，删掉 PG16 回退和 PATH 搜索，并删掉因此不再用的导入；ci-hook-contract-boundary.test.mjs 对 ci.yml 的路径断言改用 LINUX_PG17_BIN；`RUN_CMD='cd app && PG_BIN_DIR=/nonexistent node --test ../scripts/admin-support-email-ledger.test.mjs' ~/work/illini-dev-env/run-checks.sh ~/work/illini-config cmd`（log check-20261113T053430Z-cmd.log）；`~/work/illini-dev-env/run-checks.sh ~/work/illini-config install test`（log check-20261113T053438Z.log）；证据 ~/work/evidence/P1.3/
+- 计数: ① postgres-bin.test.mjs 5 tests / 5 pass（4 个子测试对应 4 种情况）；② 写死路径的文件 32 → 1（只剩 scripts/_postgres-bin.mjs）；③ cmd rc=1，日志含 `postgresql_17_required_in_ci: no initdb in /nonexistent`；④ TEST tests=1994 pass=1993 fail=0 skipped=1 pg_skips=0，唯一 SKIP 是 Vercel Build Output（main 基线 1989 + 新增 5）[本地测]
+- ci_run_url: —（P1.7）
+- 未测项: 无
+- 下一条: P1.4
+- 附: simulate-listing-recovery.mjs 不是测试但也写死了路径，一并改用 postgresBinDir()（它原本就在找不到时 assert 失败，行为不变）。

@@ -2,7 +2,7 @@
 
 写于 2026-11-13 00:03 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: P1.3`
+`next_task_id: P1.4`
 
 ## 版本
 
@@ -12,7 +12,7 @@
 | code_sha | 005ca9d6b5ac23346dfeb38f3deb95984bffd27b（2026-11-12 git ls-remote） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-12 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-12 git ls-remote] |
-| docs_sha | d168faff0e221ead412b78abb9c32db5e920a5fd（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
+| docs_sha | 76fb233b6be4179ee687e983d518280736c4f9d1（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
 | 配置 / 品牌 / 首页分支 | codex/config-fixes-20261112 远端 cc63ab5（P1.2–P1.4），没开 PR（P1.7）；品牌、首页还没建（BRAND.1 / HOME.3）[本地测] |
 | tony-ws 仓库 | ~/work/illini 在 005ca9d；~/work/illini-docs 已切到 codex/community-plan-v5（P1.1 ④，见 STATUS_LOG L15）[本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
@@ -49,7 +49,8 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 |---|---|---|
 | P1.1 | 通过 | DoD 六项全部符合，见 STATUS_LOG L15 [本地测] |
 | P1.2 | 通过 | DoD ①–⑥ 符合，见 STATUS_LOG [本地测] |
-| P1.3–P1.5 | 未测 | 基线：packageManager npm@10.8.2；写死 PG 路径的测试文件 33 个（7b18f20 上 32 个）；uni.scss:16 #C74A2F；@playwright/test ^1.60.0 [源码 005ca9d] |
+| P1.3 | 通过 | test 1994 / 1993 / 0 / 1，pg_skips=0；写死路径 32→1 [本地测] |
+| P1.4–P1.5 | 未测 | 基线：packageManager npm@10.8.2；写死 PG 路径的测试文件 33 个（7b18f20 上 32 个）；uni.scss:16 #C74A2F；@playwright/test ^1.60.0 [源码 005ca9d] |
 | P1.7、P1.9、P1.10、P1.13 | 未测 | P1.7、P1.9、P1.10 依赖 P1.2–P1.5；P1.13 只依赖 P1.1 |
 | P1.6 / P1.8 / P1.11、P1.12 | 未测 | 分别等 D-41 / E5（合并 P1.7 的 PR）/ D-29（E2）与 E3 |
 | P2.1 | 未测 | verify-public-read-schema.mjs:20 对 posts 只查 id,item:items(id,listing_details) [源码 005ca9d] |
