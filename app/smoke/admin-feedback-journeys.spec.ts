@@ -35,7 +35,7 @@ test('owner resolves synthetic reports, pins/unpins a post and edits a banner wi
  await page.getByRole('button',{name:'Resolve all',exact:true}).click();await page.locator('.uni-modal__btn_primary').click()
  await expect(page.getByText('No reports to show.',{exact:true})).toBeVisible()
  expect(writes[0]).toMatchObject({action:'resolve_target_reports',target_type:'post',target_id:postId,status:'resolved'})
- await page.getByRole('tab',{name:'Plaza',exact:true}).click()
+ await page.getByRole('tab',{name:'Community',exact:true}).click()
  await page.getByRole('button',{name:'Pin',exact:true}).click();await page.locator('.uni-modal__btn_primary').click()
  await expect(page.getByRole('button',{name:'Unpin',exact:true})).toBeVisible()
  await page.getByRole('button',{name:'Unpin',exact:true}).click();await page.locator('.uni-modal__btn_primary').click()
