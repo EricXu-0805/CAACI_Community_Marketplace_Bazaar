@@ -687,7 +687,7 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 下一条: D-45 第 2 项（PR 文案）
 - 附: D-45 目标已于 2026-11-13 07:40 CT 用 create_goal 设定，范围限 D-45 第 1–7 项。HOME.5 子任务报回的 21 处与 SPEC 的出入（原文在 tony-ws evidence/HOME.5，摘录）：① 首页、新页头、板块页、「全部讨论」只编进 H5，小程序保留平铺列表和旧页头（主包预算；已列 ④）；② <12px 只在社区区域断言，共享 tab 栏 10px 标签是旧问题；③「近期活动」在 P4.8 前无数据源不渲染；④「新来先看」只在测试 mock 下出现，is_featured 等 P3.1/P3.5，home.typeGuide / home.typeRules 没加；⑤ 文案按 buildHomeSections 返回渲染，英文与 SPEC §11 个别处不同；⑥ 字号按现有 token（`--t-h2` 26px、`--t-body` 16px，≥768px），SPEC 写 22/15px，桌面字标是字面 20px；⑦ 新增 app.tagline（BRAND.1 的值），与 #372 同位置同 key，字标仍读 app.name；⑧ 新 key home.navMarket，「全部」用 cat.all；⑨ 发帖入口无障碍名改为「New topic / 发话题」，九份旧 spec 随之调整；⑩ 手机「全部讨论」顶栏有返回和标题、没有板块标签行；⑪ 视图切换用 replaceState，不加历史；⑫ 悬浮按钮距 tab 栏 15.5px，tab 栏 62px（SPEC 56px，共享组件）；⑬ 手机访客条的标语在 44px 内折成两行；⑭ 仓库与镜像是 Playwright 1.60（任务文字写 1.65）；⑮ 板块页页头固定在排序 tab 之上；⑯ 应用运行中，裸社区地址保留上次的视图，冷启动打开首页；⑰「关注的人」tab 的空状态与未登录文案没改；⑱ 桌面板块页与「全部讨论」侧栏只有「关于本站」；⑲ communityHome.ts 导出 boardFiller（HOME.2 文件改 14 行）；⑳ plaza.empty 与失败文案改用 DoD 措辞，read-failure-states.spec 跟改；㉑ HOME.5 提交带了 HOME.3 的地址修复和手机首页底部留白。
 
-### L56 · 2026-11-13 07:48 CT · D-45 第 2 项：#369、#373、#374 的标题与描述按 D-45 更新（不转 ready）
+### L56 · 2026-11-13 07:48 CT · D-45 第 2 项：#369、#373、#374 的标题与描述按 D-45 更新（不转 ready） [OMO自决]
 - task_id: D-45.2
 - code_sha: —（只改 PR 文案）
 - docs_sha: a64ae9919dbcc54df4dec67754809ea5bc0b0a39
@@ -698,6 +698,7 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 无
 - 下一条: D-45 第 3 项（本地集成试合）
 - 附: 以后 PR、提交说明里的包名一律加反引号（D-45 第 2 项）。
+- 自决（D-46 补记）: 依据 D-45 第 2 项（只改 title、body，不转 ready）；gh pr edit 因 Projects classic 的 GraphQL 报错改不了，改用同一令牌的 REST PATCH（D-46 第 2 项事后认可同样做法）；撤回：用同样的 REST PATCH 把 title、body 改回 tony-ws evidence/D45-pr/<n>-before.md。D-46 更正：#369 的标题没改，只改了描述；改了标题的是 #373、#374。
 
 ### L57 · 2026-11-13 08:27 CT · D-45 第 3 项：本地集成试合 #373+#374+#372（只在本地，不推送），量合并后主包
 - task_id: D-45.3
@@ -734,6 +735,7 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 受限日期在真实 staging 账号上的显示（等 E3）
 - 下一条: D-45 第 5 项（#374 部分）与第 6 项 HOME.4（子任务进行中）
 - 附: 自决：规则 BACKLOG §14 第 28 行（代码照 SPEC）；新 key 接入的位置是 SPEC 没写死的实现选择（按钮文字、toast）；撤回 `git revert b7bcf3a`。plaza.checkPublished 不在 SPEC §11，保留原样。
+- D-46 更正: 依据写错了。BACKLOG §14 第 28 行说的是「文档与源码不一致时以源码为准」，意思正相反；本条的依据是 D-45 第 5 项「按 SPEC 改代码，不改 SPEC」。plaza.restrictedPost 现在是提交失败以后的 toast，SPEC §6.5.1 要求受限账号在打开面板之前就提示，由 D-46 第 3 项 f 改。
 
 ### L60 · 2026-11-13 10:13 CT · D-45 第 5 项（#374 部分）：首页、列表与详情文案对齐 SPEC §11，「关注的人」tab 改为关注者的帖子 [OMO自决]
 - task_id: D-45.5b
@@ -746,6 +748,7 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 「关注的人」帖子流在真实 staging 数据上的表现（等 E3）
 - 下一条: D-45 第 6 项 HOME.4 写回（L61）
 - 附: 没接上的 7 个 key（已加进语言包，留 ④）：plaza.ref.removed、plaza.ref.unlink——post_items 的 SELECT 策略（20260719151729_reconcile_plaza_base_table_acl.sql:295）对已删除或读不到的商品不返回行，作者也看不到，需要改策略或加 RPC；plaza.hidden、plaza.hiddenOwner、plaza.appeal——posts 的 SELECT 策略（同文件 :267）只返回 active 行、无作者例外、无原因列，属 P3.5/P3.6；plaza.emptyUnanswered——「待回答」tab 随 P3.4；plaza.restrictedReply——不需要迁移，但 App.vue 的 requiredGatePath() 把所有受限账号送去 pages/suspended，要按 SPEC §6.5.1 拆分门禁（plaza.restrictedPost 同理）。自决：规则 BACKLOG §14 第 28 行（代码照 SPEC）；撤回 `git revert c16f0a1`。首页英文文案仍按 buildHomeSections 返回，与 SPEC §11「HOME.3 首页」节不同，那一节不在本次两节内。
+- D-46 更正: 依据同 L59，是 D-45 第 5 项，不是 §14 第 28 行。新增的 key 是 13 个（plaza.ref.more 原来就有，只改了英文），接上 6 个；改动的测试是三条：core-keyboard-a11y.test.mjs、localized-user-facing-labels.test.mjs 两条单测，加 read-failure-states.spec.ts 里的一条 Playwright 用例。7 个没接上的 key 分三类：ref.removed、ref.unlink、hidden、hiddenOwner、appeal 要服务端；restrictedReply、restrictedPost 只要拆 App.vue 门禁；emptyUnanswered 随 P3.4。另外本条没做完：SPEC §11「HOME.3 首页」节有 11 个 key（home.weekNew、collapsed、fillPrefix、firstPost、typeGuide、typeRules、events、allEvents、market、marketNew、marketFill）不在语言包，文字写死在 utils/communityHome.ts，英文与 SPEC 不同；plaza.boardDesc.<slug>、plaza.boardAsk.<slug> 也不在语言包。第三批做对照时脚本只认 4 列表格，这一节是 3 列，被整节漏掉。D-45.5b 改为「部分」，D-46 第 3 项 e 做完再改回。
 
 ### L61 · 2026-11-13 10:13 CT · HOME.4 首页按方向 A 定稿（D-35）：板块色、价格样式、徽章与字体栈 [OMO自决]
 - task_id: HOME.4
@@ -758,6 +761,7 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 真机；整页 390 的 tab 栏 10px 标签、768 侧栏「ILLINI MARKET」9.5px 是共享组件旧问题，审计范围同 HOME.3 不含它们
 - 下一条: D-45 第 7 项（小程序论坛首页）
 - 附: 自决：规则 BACKLOG §14 第 24 行（稿与 SPEC 不同以 SPEC 为准）与第 28 行；暗色 token 值由 OMO 定（SPEC 只给浅色）；L49 的侧栏「发布」按钮暗色 2.87:1 顺手改成 --ink-inverse（它让两张截图 axe 不过）；768 起标题与正文 26/16px（稿 22/15px，App.vue 现有桌面字号不在六项内）；分隔点保持 --ink-quiet。CommunityHome.vue 有两处占位「集」，合 #372 时改。撤回 `git revert 010f8f6`。
+- D-46 补记: 768px 起首页标题和正文保留 26 / 16px（App.vue 现有桌面字号），没按 SPEC §9 的 22 / 15px，已列进第三批 ④ 请 Eric 定。
 
 ### L62 · 2026-11-13 11:12 CT · D-45 第 7 项：论坛首页、手机页头、板块页与「全部讨论」编进小程序（D-12），主包在预算内 [OMO自决]
 - task_id: D-45.7
@@ -770,3 +774,16 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 小程序在微信里的渲染、胶囊对齐（iOS 上页头中心比胶囊低 2px）、状态栏留白、下拉刷新、搜索聚焦、悬浮按钮与 tab 栏、暗色、复制 toast、首页 9 个并发请求（微信上限 10）、微信编译后的包体积——都要开发者工具或真机
 - 下一条: —（D-45 第 1–7 项已做完，写第三批报告）
 - 附: 自决：规则 BACKLOG §14 第 23 行（主包预算）与第 28 行；#374 合入 #375 后依赖 #375（先合 #375 再合 #374）；小程序「发话题」从登录后才显示的页头按钮改为一直显示的悬浮按钮，点击时要求登录；a11y.compose 不再使用但保留以免和其他分支冲突。撤回 `git revert 86ffd0e`（只撤小程序首页），合并用 `git revert -m 1 fb9c6b9` / `7c82fd1`。
+- D-46 更正: 「H5 截图 32 张逐字节不变」写准确：86ffd0e 在 CommunityHeader.vue 给手机页头加了一层不带条件编译的 cx-regions，H5 的 DOM 变了，像素不变。「首页 9 个并发请求，微信上限 10」漏了小程序上一直挂着的 inbox 长轮询（useRealtimeFallback）和每 20 秒一次的通知轮询：登录用户会到 10 个，碰上通知轮询到 11 个（D-46 第 3 项 c）。主包数是 H5 job 的 stub URL 下量的，CI build-mp-weixin 环境少 91 字节。合并 7c82fd1、fb9c6b9 的记录见 L63。
+
+### L63 · 2026-11-13 11:39 CT · #374 合入 #369 b7bcf3a（7c82fd1）与 #375（fb9c6b9）[OMO自决]
+- task_id: D-46.merge
+- code_sha: 7c82fd1、fb9c6b9（#374，已推送）
+- docs_sha: 35dabd85da9ce608b097e8806cceb14862fedd5c
+- 环境: 本地 tony-ws run-checks
+- 命令: `git merge --no-ff origin/codex/community-topics-20261112`（community-post-topics.spec.ts 冲突：按钮名取「New topic」，草稿提示取「Restored your unsent draft」）；`git merge --no-ff origin/codex/community-mp-budget-20261113`（无冲突）；之后全量 install typecheck test smoke(8 份) mp
+- 计数: test 2056 / 2055 / 0 / 1，smoke 114 passed，主包 1,511,879（H5 stub 环境）（check-20261113T161318Z）[本地测]
+- ci_run_url: —（#374 不触发 CI）
+- 未测项: —
+- 下一条: —
+- 附: 自决：依据 D-42 第 3 项对 §14 第 2 行的限制（只 merge、不 rebase）与 D-45 第 7 项（主包空间不够就停，所以先拿 #375 腾出的空间）。后果：#374 依赖 #375，要先合 #375。撤回：`git revert -m 1 fb9c6b9`（要同时撤 86ffd0e，否则小程序主包超预算）、`git revert -m 1 7c82fd1`。坑：以后 #375 单独合进 main 的话，#374 上的 `git revert -m 1 fb9c6b9` 会在 #374 合并时把 #375 的改动再删一次；关闭 #375 也撤不掉 #374 里这一份。

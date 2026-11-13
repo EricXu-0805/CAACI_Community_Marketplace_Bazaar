@@ -1,6 +1,6 @@
 # STATUS
 
-写于 2026-11-13 07:48 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-13 11:39 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
 `next_task_id: —（D-45 第 1–7 项已做完；P2.6、P2.11、P2.13 等 E3/E4/E5，见阻塞清单）`
 `latest_batch: appendix/batch/FINAL.md`
@@ -13,9 +13,9 @@
 | code_sha | b7bcf3a933eb60710872e3a62e9cd6f0d251ca89（OMO 推送 D-45 第 5 项后的 #369 head） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-12 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-12 git ls-remote] |
-| docs_sha | a64ae9919dbcc54df4dec67754809ea5bc0b0a39（本次本地状态写回之前材料分支的 HEAD，未另建材料提交） |
+| docs_sha | 35dabd85da9ce608b097e8806cceb14862fedd5c（D-46 写回之前材料分支的 HEAD） |
 | 配置 / 品牌 / 首页分支 | codex/config-fixes-20261112 远端 b259105，草稿 PR #371（P1.2–P1.7）；codex/brand-cornfield-20261112 远端 ba070e7，草稿 PR #372（BRAND.1–BRAND.4）；codex/community-home-20261112 远端 86ffd0e，草稿 PR #374（P2.12、HOME.3、HOME.4、HOME.5、SPEC §11 首页部分、小程序论坛首页；已合入 #369 的 b7bcf3a 与 #375，依赖 #375）；codex/deps-crossmajor-20261113 远端 55716ba，草稿 PR #373（P1.6 跨大版本，base #371）；codex/community-mp-budget-20261113 远端 4a3cbe6，草稿 PR #375（小程序主包腾空间，base #369）[本地测] |
-| tony-ws 仓库 | ~/work/illini 在 92698d1（#369）；worktree：illini-config（#371）、illini-brand（#372）、illini-home（#374）、illini-deps（#373）、illini-events（wip/P4.1 5f62ddd，本地不推送）、illini-main（origin/main 只读对照）；~/work/caaciorg 本地 feat/public-events-feed 28d59b1（不推送）；~/work/illini-docs 在 codex/community-plan-v5 [本地测] |
+| tony-ws 仓库 | ~/work/illini 在 b7bcf3a（#369）；worktree：illini-config b259105（#371）、illini-brand ba070e7（#372）、illini-home 86ffd0e（#374）、illini-deps 55716ba（#373）、illini-mpbudget 4a3cbe6（#375）、illini-events（wip/P4.1 5f62ddd，本地不推送）、illini-main（origin/main 只读对照）；~/work/caaciorg 本地 feat/public-events-feed 28d59b1（不推送）；~/work/illini-docs 在 codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 
@@ -26,14 +26,18 @@ PR #369 · run [43448423151](https://github.com/EricXu-0805/CAACI_Community_Mark
 | job | 结论 | 计数 / 原因 |
 |---|---|---|
 | Type-check | success | |
-| Boundary regressions | success | 2044 tests：2043 pass / 0 fail / 1 skipped |
+| Boundary regressions | success | 2053 tests：2052 pass / 0 fail / 1 skipped |
 | Build H5 | success | |
 | Build mp-weixin | success | |
 | Smoke (public page sweep) | failure | 预期中：P2.1 的预检在启动浏览器前报「public_schema_mismatch: community topic columns returned HTTP 400」。staging-smoke（hygkwxugskijadgfisji）还没应用 20261112120000（等 E4） |
 | Smoke (protected staging account) | skipped | |
 | Production release readiness | skipped | |
 
-上一次：run 43418959287 · head 46e69b8 · failure（public sweep 停在预检，等 E4；Boundary 2035/2034/0/1；其余 job 同上）[CI run#43418959287]。bd6fee5 的 run 43412348642 被取消。
+上一次：run 43422815812 · head 92698d1 · failure（public sweep 停在预检，等 E4；Boundary 2044/2043/0/1；其余 job 同上）[CI run#43422815812]。
+
+材料分支 #370 · run 43470604328 · head f43bdd1 · failure：Build H5、Smoke (public page sweep) 在 ubuntu-26.04 上装不上 Playwright 浏览器，和 main 同一个基础设施问题，改 workflow 归 Eric [CI run#43470604328]。
+
+主包测量环境：第三批及以前的主包数用 H5 job 的 stub URL（00000000000000000000.supabase.co）量，比 CI build-mp-weixin 环境（https://ci-stub.supabase.co，ci.yml 第 301 行）多 91 字节；第四批起一律按 CI 环境量。
 
 main · 定时 run [42684660097](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/42684660097) · 2026-11-09 · runner ubuntu-26.04 [CI run#42684660097]
 
@@ -77,7 +81,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | BRAND.3 | 通过 | 徽章检索 10 → 0 [本地测] |
 | BRAND.2 | 通过（⑦ 等 E5） | 品牌名检索 76 → 0，test 1991/1990/0/1 [本地测]；Build H5 等 E5 [CI run#43393646871] |
 | BRAND.4 | 通过 | ① 出稿在 appendix/visual/logo/；D-34 代定 B 的单字「玉」；② #372 ba070e7 替换完成 [本地测] |
-| BRAND.5–BRAND.7 | 未测 | BRAND.5 等 D-30（E7）；BRAND.6 等 D-36（延后到内测后）；BRAND.7 等 HOME.4（D-35 已定 A） |
+| BRAND.5–BRAND.7 | 未测 | BRAND.5 等 D-30（E7）；BRAND.6 等 D-36（延后到内测后）；BRAND.7 的依赖（BRAND.1、BRAND.3、BRAND.4、P2.2、HOME.4、P1.13）都已做完，分散在没合并的 #372（BRAND.1/3/4）、#369（P2.2）、#374（HOME.4）上，只等这三个 PR 合并；D-46 第 6 项判断能否先做预览 |
 | HOME.1 | 通过 | ①–③ 以 design/ 为准（L08）；④ axe 4.14.0：12 个组合 color-contrast 0、<12px 0、溢出 0 [本地测]；⑤ D-35 已定 A |
 | HOME.2 | 通过 | bd6fee5，19 条规则单测 [本地测] |
 | HOME.3 | 通过 | #374 a756081；首页 19 条用例全过，AXE 0、<12px 0 [本地测] |
@@ -104,6 +108,6 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 8. D-37（董事会同意）挡住 LEGAL.1–LEGAL.3；D-28（轮值伙伴）挡住 LEGAL.6 与 P5；D-36 已按 D-43 代定 D（延后），BRAND.6 等内测之后，P5.1 前 Eric 要重新答复。
 9. E6（官方账号 profile id）在 P3.5 与 P4.9 前需要；D-32、D-33、D-38、D-39、D-40 的截止任务见 [DECISIONS.md](DECISIONS.md)。
 10. BRAND（#372）生产发布后：Eric 在 STATUS_LOG 记发布日；「原 Illini Market」（app.formerly，登录页与 /about）在发布日 + 90 天移除；同时做 E10（邮件模板、生产 DIGEST_FROM）。
-11. #372 要手工合：与 #369 冲突在 api/share-post.js、en.ts、zh.ts（#374 另有 app.name / app.desc / app.tagline / app.formerly 一块）；保留 #369 的 P2.9 topicTitle / headline 逻辑与 P2.2「回复 / reply」措辞，只取 #372 的品牌字串。
-12. 删 #369、#371 的分支之前，先把 #374、#373 的 base 改成 main（删 base 分支会关闭依赖它的 PR，且不能重开）。
-13. 首页、新页头、板块页、「全部讨论」已编进小程序（#374 86ffd0e，D-45 第 7 项，L62），主包 1,550,634（余 22,230，低于 64 KiB）；小程序渲染、胶囊对齐与运行时行为没在微信开发者工具或真机上跑过，请 Eric 用开发者工具确认；小程序的「关于本站」复制链接，构建需要 VITE_BASE_URL。暗色侧栏「发布」按钮对比度已在 HOME.4 修好（L61）。
+11. #372 要手工合：与 #369 冲突在 api/share-post.js、en.ts、zh.ts（#374 另有 app.name / app.desc / app.tagline / app.formerly 一块）；保留 #369 的 P2.9 topicTitle / headline 逻辑与 P2.2「回复 / reply」措辞，只取 #372 的品牌字串。#374 与 #372 还在 app/src/pages/plaza/index.vue 冲突：c16f0a1 删了「关注的人」名单，#372 的 BRAND.3 徽章改的正是那段；保留 #374 的删除，这块的徽章改动丢弃（名单在 pages/following，那一页照 #372）。
+12. 删 #369 的分支之前，先把 #374、#375 的 base 都改成 main；删 #371 的分支之前，先把 #373 的 base 改成 main（删 base 分支会关闭依赖它的 PR，且不能重开）。#369 若 squash 合并，改完 base 后 #374、#375 要再 merge 一次 origin/main。
+13. 首页、新页头、板块页、「全部讨论」已编进小程序（#374 86ffd0e，D-45 第 7 项，L62），主包 1,550,634（余 22,230，H5 stub 环境，只含 #369＋#375＋#374，低于 64 KiB）；小程序渲染、胶囊对齐与运行时行为没在微信开发者工具或真机上跑过，请 Eric 用开发者工具确认；小程序的「关于本站」复制链接，构建需要 VITE_BASE_URL。暗色侧栏「发布」按钮对比度已在 HOME.4 修好（L61）。

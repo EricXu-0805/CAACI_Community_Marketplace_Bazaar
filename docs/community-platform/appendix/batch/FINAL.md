@@ -202,11 +202,13 @@ HOME.5 ｜ 通过 ｜ 2d18576、68eb43b（#374） ｜ 143b437 ｜ pw1.60＋axe 4
 
 ## 第三批（D-45）
 
+> 2026-11-13 按 D-46 第 1 项更正（supervisor 第三批核查，OMO 逐条核实后改），记录见 STATUS_LOG L64。
+
 按 D-45 第 1–7 项做，八节格式同上；逐条细节在 STATUS_LOG L55 起。`latest_batch` 不变。
 
 ### ① 起止与 SHA 范围
 
-- 起止：2026-11-13 07:45 CT（D-45，材料分支 f8e2b97）至 2026-11-13 11:13 CT。
+- 起止：2026-11-13 07:39 CT（材料分支 f8e2b97 的提交时间）至 2026-11-13 11:13 CT。
 - docs_sha：f8e2b97 → 本节所在提交。
 - code_sha：
   - #369 `codex/community-topics-20261112`：92698d1 → b7bcf3a（第 5 项 #369 部分）。
@@ -216,16 +218,18 @@ HOME.5 ｜ 通过 ｜ 2d18576、68eb43b（#374） ｜ 143b437 ｜ pw1.60＋axe 4
 
 ### ② 完成的任务
 
+> 主包数的测量环境：本批的主包数都是用 H5 job 的 stub URL（00000000000000000000.supabase.co）量的，比 CI build-mp-weixin 环境（https://ci-stub.supabase.co，ci.yml 第 301 行）每个多 91 字节。第四批起一律按 CI 环境量。
+
 ```text
 D-45.1 ｜ 通过 ｜ —（只改文档） ｜ a64ae99 ｜ 只读核对 ｜ merge-tree、gh run、日志计数等（L55） ｜ 第 1 项每条都成立，全部照改；另查出 L54「其余 6 份 74」应为 70 ｜ — ｜ 无 ｜ — ｜ D-45.2
-D-45.2 ｜ 通过 ｜ —（只改 PR 文案） ｜ bd7cba3 ｜ GitHub REST ｜ gh pr edit 报 Projects classic，改用 PATCH（L56） ｜ #369、#373、#374 标题与描述已改，三个仍是草稿 ｜ — ｜ 无 ｜ — ｜ D-45.3
+D-45.2 ｜ 通过 ｜ —（只改 PR 文案） ｜ bd7cba3 ｜ GitHub REST ｜ gh pr edit 报 Projects classic，改用 PATCH（L56） ｜ #373、#374 标题与描述已改，#369 只改了描述（标题没改），三个仍是草稿 ｜ — ｜ 无 ｜ — ｜ D-45.3
 D-45.3 ｜ 通过 ｜ 88ca762（本地） ｜ 7013638 ｜ pw1.65 ｜ 全量 install typecheck test h5 mp smoke（L57） ｜ 2051 / 2050 / 0 / 1；smoke 510 passed、4 failed（stub 环境，origin/main 同样失败）、1 skipped；主包 1,570,622（余 2,242） ｜ — ｜ CI ｜ — ｜ D-45.4
 D-45.4 ｜ 通过 ｜ 4a3cbe6（#375） ｜ 00ba6bc ｜ pw1.60 ｜ 三次尝试 + 提交前全量（L58） ｜ 主包 1,502,824，余 70,040（68.4 KiB）；2044 / 2043 / 0 / 1；smoke 15 passed ｜ —（不触发 CI） ｜ 合并后实际余量 ｜ — ｜ D-45.5
-D-45.5a ｜ 通过 ｜ b7bcf3a（#369） ｜ c25cf05 ｜ pw1.60 ｜ install typecheck test smoke mp（L59） ｜ 2053 / 2052 / 0 / 1；smoke 22 passed；主包 1,559,509 ｜ run 43448423151（public sweep 等 E4，其余通过） ｜ 受限日期真机显示 ｜ E3 ｜ D-45.5b
-D-45.5b ｜ 通过 ｜ c16f0a1（#374） ｜ 191f551 ｜ pw1.60 ｜ 同上加 7 份 smoke（L60） ｜ 2047 / 2046 / 0 / 1；smoke 99 passed；主包 1,566,720；7 个 key 待服务端 ｜ —（不触发 CI） ｜ 关注者帖子流真数据 ｜ E3 ｜ HOME.4
+D-45.5a ｜ 通过 ｜ b7bcf3a（#369） ｜ c25cf05 ｜ pw1.60 ｜ install typecheck test smoke mp（L59） ｜ 2053 / 2052 / 0 / 1；smoke 22 passed；主包 1,559,509 ｜ run 43448423151（Type-check、Boundary 2053 / 2052 / 0 / 1、Build H5、Build mp-weixin 4 个 success，public sweep 停在预检等 E4，2 个 skipped） ｜ 受限日期真机显示 ｜ E3 ｜ D-45.5b
+D-45.5b ｜ 部分 ｜ c16f0a1（#374） ｜ 191f551 ｜ pw1.60 ｜ 同上加 7 份 smoke（L60） ｜ 2047 / 2046 / 0 / 1；smoke 99 passed；主包 1,566,720；新增 13 个 key（ref.more 原有，只改英文），接上 6 个；ref.removed、ref.unlink、hidden、hiddenOwner、appeal 要服务端（SELECT 策略或 RPC），restrictedReply、restrictedPost 只要拆 App.vue 门禁（D-46 第 3 项 f），emptyUnanswered 随 P3.4；SPEC §11「HOME.3 首页」节 11 个 key 和 plaza.boardDesc / boardAsk 还没进语言包（D-46 第 3 项 e） ｜ —（不触发 CI） ｜ 关注者帖子流真数据 ｜ E3 ｜ HOME.4
 HOME.4 ｜ 通过 ｜ 010f8f6（#374） ｜ dce559d ｜ pw1.60＋axe 4.14.0 ｜ 同上（L61） ｜ 12 组 axe 0、<12px 0、溢出 0；2047 / 2046 / 0 / 1；smoke 85 passed ｜ — ｜ 真机 ｜ — ｜ D-45.7
 #374 合并 ｜ 通过 ｜ 7c82fd1（merge #369 b7bcf3a）、fb9c6b9（merge #375） ｜ dce559d ｜ pw1.60 ｜ install typecheck test smoke(8) mp ｜ 2056 / 2055 / 0 / 1；smoke 114 passed；主包 1,511,879（余 60,985） ｜ — ｜ — ｜ — ｜ D-45.7
-D-45.7 ｜ 通过 ｜ 86ffd0e（#374） ｜ d00fb3b ｜ pw1.60 ｜ install typecheck test h5 mp smoke（L62） ｜ 2064 / 2063 / 0 / 1；smoke 114 passed；小程序主包 1,550,634（余 22,230）；H5 截图 32 张逐字节不变 ｜ —（不触发 CI） ｜ 微信开发者工具 / 真机 ｜ — ｜ —
+D-45.7 ｜ 通过 ｜ 86ffd0e（#374） ｜ d00fb3b ｜ pw1.60 ｜ install typecheck test h5 mp smoke（L62） ｜ 2064 / 2063 / 0 / 1；smoke 114 passed；小程序主包 1,550,634（余 22,230）；H5 截图 32 张像素不变（86ffd0e 给手机页头加了一层不带条件编译的 cx-regions，H5 的 DOM 有变化） ｜ —（不触发 CI） ｜ 微信开发者工具 / 真机 ｜ — ｜ —
 ```
 
 ### ③ [OMO自决] 清单
@@ -237,20 +241,20 @@ D-45.7 ｜ 通过 ｜ 86ffd0e（#374） ｜ d00fb3b ｜ pw1.60 ｜ install typec
 | L59 | 新 key 接入位置（按钮文字、toast）是 SPEC 没写死的实现选择；`uploadImagesWithDims` 加可选进度回调 |
 | L60 | 「关注的人」按关注的 user_id 过滤 posts，不需要迁移；两条钉着旧名单的单测改为检查新行为 |
 | L61 | 暗色板块色由 OMO 定（SPEC 只给浅色）；侧栏「发布」按钮暗色对比度顺手修到 --ink-inverse；768 起字号沿用现有 token |
-| #374 | 合入 #375 以便第 7 项在主包预算内做；#374 因此依赖 #375 |
+| L63 | #374 合入 #369 b7bcf3a 与 #375，以便第 7 项在主包预算内做；#374 因此依赖 #375 |
 | L62 | 小程序首页：地址栏机制、桌面布局、外链留在 H5；小程序上「关于本站」「意见反馈」改为复制链接 / 邮箱；「发话题」改为一直显示的悬浮按钮，点了再要求登录；P2.10 深链单测「未知板块」按 SPEC §4.4 改为断言回首页 |
 
-### ④ 等 Eric 的清单（新增）
+### ④ 等 Eric 的清单（新增，按解锁的任务数从多到少）
 
 | 要 Eric 做的一件事 | 解锁 |
 |---|---|
-| 审阅 #375（主包腾空间），合在 #369 之后、#374 之前 | 小程序主包余量 |
-| 五个 PR 都合上后主包余量估计约 57 KiB，低于 64 KiB；再往主包加东西前要再腾 | 后续进主包的功能 |
-| #374 现在依赖 #375：先合 #375，再合 #374 | 首页上线 |
-| SPEC §11 有 7 个 key 已进语言包但没接上：plaza.ref.removed / ref.unlink 要改 post_items 的 SELECT 策略或加 RPC（作者也看不到已删商品的关联）；plaza.hidden / hiddenOwner / appeal 要改 posts 的 SELECT 策略（P3.5/P3.6）；plaza.emptyUnanswered 随 P3.4；plaza.restrictedReply 与 plaza.restrictedPost 要按 SPEC §6.5.1 拆分 App.vue 的受限门禁（现在受限账号一律去 pages/suspended） | 隐藏/申诉、引用卡下架、受限提示 |
-| L49 `plaza.ref.more`：代码已照 SPEC（中文「等 {n} 件」数总数，英文 "+{n} more" 数剩余），两种语言数的不是同一个数；建议 Eric 定是否改 SPEC | — |
+| 合并顺序与 base：#369 → #375 → #374。删 #369 的分支之前，先把 #374、#375 的 base 都改成 main（删 base 分支会关闭依赖它的 PR，且不能重开）；#369 若 squash 合并，改完 base 后 #374、#375 要再 merge 一次 origin/main | #375、#374 能合，进而首页上线 |
+| SPEC §11 有 7 个 key 已进语言包但没接上，分三类：plaza.ref.removed、ref.unlink、hidden、hiddenOwner、appeal 要服务端改 post_items / posts 的 SELECT 策略或加 RPC（P3.5 / P3.6，归 Eric 定）；plaza.restrictedReply、restrictedPost 只要拆 App.vue 的受限门禁（D-46 第 3 项 f，OMO 做）；plaza.emptyUnanswered 随 P3.4 | 隐藏 / 申诉、引用卡下架 |
 | 用微信开发者工具或真机看一遍小程序社区页：首页、手机页头与胶囊对齐（iOS 上页头中心低 2px）、板块页、全部讨论、下拉刷新、暗色、复制 toast；小程序构建要配 VITE_BASE_URL（「关于本站」复制的链接） | 小程序与 H5 同日发布（D-12） |
-| 五个 PR 合上后小程序主包余量：#374（含 #375）为 22,230 字节，低于 D-45 第 4 项的 64 KiB；#372 还会再加一点。P3 新功能进主包前要先再腾空间（候选：只被分包用到的代码移进分包） | 后续进主包的功能 |
+| #372 手工合并：除 api/share-post.js、en.ts、zh.ts 外，#374 与 #372 还在 app/src/pages/plaza/index.vue 冲突——c16f0a1 删了「关注的人」名单（SPEC §6.2 改成帖子流），#372 的 BRAND.3 徽章改的正是名单里那段。保留 #374 的删除，不带回名单；#372 在这块的徽章改动丢弃（名单在 pages/following 里，那一页的徽章照 #372）。其余规则同前：保留 #369 的 P2.9 / P2.2 逻辑和措辞，只取 #372 的品牌字串 | 品牌上线 |
+| 主包余量：#369＋#375＋#374 合上后 22,230 字节（H5 stub 环境，CI 环境多 91 字节），低于 D-45 第 4 项的 64 KiB。五个 PR 都合上后的数见第四批（D-46 第 5 项重测） | 后续进主包的功能 |
+| L61：768px 起首页标题和正文是 26 / 16px（App.vue 现有桌面字号），SPEC §9 写 22 / 15px；请 Eric 定按 SPEC 改代码还是改 SPEC | — |
+| L49 `plaza.ref.more`：代码已照 SPEC（中文「等 {n} 件」数总数，英文 "+{n} more" 数剩余），两种语言数的不是同一个数；建议 Eric 定是否改 SPEC | — |
 
 ### ⑤【硬】与【暂停推送】事件
 
@@ -261,12 +265,13 @@ D-45.7 ｜ 通过 ｜ 86ffd0e（#374） ｜ d00fb3b ｜ pw1.60 ｜ install typec
 - 本地全量 smoke 的 pages.smoke 首页与社区页巡检在 stub 环境下必然失败（origin/main 同样），要在有真实 staging 的 CI 上跑（等 E4）。
 - #375、#374 的 base 不是 main，CI 不触发。
 - 「关注的人」帖子流、受限日期提示只在本地 mock 下验证，要真实 staging 数据（E3）。
-- 小程序首页只在本地间接验证（路由单测、编译产物校验、页头 WXSS 在 Chromium / WebKit 320–414px 渲染），没在微信里跑过；首页 9 个并发请求，微信上限 10。
+- 小程序首页只在本地间接验证（路由单测、编译产物校验、页头 WXSS 在 Chromium / WebKit 320–414px 渲染），没在微信里跑过。首页一次并发 9 个请求，加上小程序一直挂着的 inbox 长轮询和每 20 秒一次的通知轮询，登录用户会到 10 个、碰上通知轮询到 11 个，超过微信 request 并发上限 10（D-46 第 3 项 c）。
+- #370 在 f43bdd1 上 CI 红（run 43470604328）：Build H5 与 public sweep 在 ubuntu-26.04 上装不上 Playwright 浏览器，和 main 是同一个基础设施问题，改 workflow 归 Eric。
 - 小程序主包余 22,230 字节，任何再进主包的改动都要先腾空间。
 
 ### ⑦ 下一批
 
-1. Eric：在生产应用 20261112120000 并跑 VERIFY，P2.13 通过后再合 #369；建议顺序 #371 → #373，#369 → #375 → #374，#372 最后手工合。
+1. Eric：在生产应用 20261112120000 并跑 VERIFY，P2.13 通过后再合 #369；建议顺序 #371 → #373，#369 → #375 → #374，#372 最后手工合；删 #369 的分支之前先把 #374、#375 的 base 都改成 main。
 2. Eric：E3 / E4（staging 账号与迁移）解锁 P2.6、P2.11、P2.13；E5 合 #371 解锁 P1.8。
 3. Eric：用微信开发者工具确认小程序社区页（见 ④）。
 4. 候选（不需要迁移）：按 SPEC §6.5.1 拆分 App.vue 的受限门禁，接上 plaza.restrictedReply / restrictedPost；首页英文文案按 SPEC §11「HOME.3 首页」节对齐。
@@ -277,6 +282,6 @@ D-45.7 ｜ 通过 ｜ 86ffd0e（#374） ｜ d00fb3b ｜ pw1.60 ｜ install typec
 
 | 编号 | 选了什么 | 理由 | 怎么撤回 |
 |---|---|---|---|
-| D-45 第 4 项 | 用 H5 条件编译腾主包空间，不移动页面路径 | D-45 第 4 项「优先不改页面路径」 | 关闭 #375 |
+| D-45 第 4 项 | 用 H5 条件编译腾主包空间，不移动页面路径 | D-45 第 4 项「优先不改页面路径」 | 关闭 #375 撤不掉 #374 里由 fb9c6b9 合进来的那一份：要在 #374 上 `git revert -m 1 fb9c6b9`。注意：以后 #375 单独合进 main 的话，#374 上的这个 revert 会在 #374 合并时把 #375 的改动再删一次，所以要么 #375 和 #374 一起撤，要么都不撤 |
 | D-45 第 7 项 | 小程序上「发话题」改为悬浮按钮，「关于本站」「意见反馈」改为复制 | SPEC §8：小程序不用 web-view，外链改复制 | `git revert 86ffd0e` |
-| #374 合入 #375 | 让小程序首页在主包预算内做；#374 因此依赖 #375 | D-45 第 4、7 项 | `git revert -m 1 fb9c6b9`（同时要撤 86ffd0e） |
+| #374 合入 #375 | 让小程序首页在主包预算内做；#374 因此依赖 #375 | D-45 第 4、7 项 | `git revert -m 1 fb9c6b9`（同时要撤 86ffd0e）；同上，#375 若单独进 main，这个 revert 会把 #375 的改动再删一次 |
