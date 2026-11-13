@@ -698,3 +698,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 无
 - 下一条: D-45 第 3 项（本地集成试合）
 - 附: 以后 PR、提交说明里的包名一律加反引号（D-45 第 2 项）。
+
+### L57 · 2026-11-13 08:27 CT · D-45 第 3 项：本地集成试合 #373+#374+#372（只在本地，不推送），量合并后主包
+- task_id: D-45.3
+- code_sha: local/integ-20261113 88ca762（只在 tony-ws 本地，不推送、不开 PR）：从 #373 head 55716ba（含 #371）起，merge #374 head 68eb43b（含 #369，无冲突，daab54a），再 merge #372 head ba070e7（88ca762）
+- docs_sha: bd7cba3575fc7881e8380d9dda44441262426023
+- 环境: 本地 tony-ws run-checks（镜像按 #373 lockfile 的 Playwright 1.65 选 pw1.65）
+- 命令: #372 的冲突按 D-45 第 1 项手工合：api/share-post.js 保留 #369 的 P2.9 topicTitle / headline 逻辑，三处兜底字串取 #372 的品牌字串；en.ts / zh.ts 的 app.name / app.desc / app.tagline / app.formerly 一块取 #372；suspended.sub 保留 #369 的「回复 / reply」（P2.2），suspended.subPerma 取 #372 的品牌名。`SMOKE_SPECS=" " ~/work/illini-dev-env/run-checks.sh ~/work/illini-integ install typecheck test h5 mp smoke`（smoke 跑全部 spec）。对照：`SMOKE_SPECS="pages.smoke.spec.ts" ~/work/illini-dev-env/run-checks.sh ~/work/illini-main install smoke`（origin/main 7b18f20）
+- 计数: install、typecheck、h5、mp rc=0；test 2051 / 2050 / 0 / 1 pg_skips=0；全量 smoke 515 条：510 passed、1 skipped、4 failed（24.8 分钟，check-20261113T134859Z）。4 条失败都是 pages.smoke 的 pages/index/index 与 pages/plaza/index 在浅色、深色下「loads clean」：控制台报解析不了 stub 地址 00000000000000000000.supabase.co。对照 origin/main 7b18f20 的同一 spec：65 passed、1 skipped、同样这 4 条失败（check-20261113T142137Z），属本地 stub 环境，与合并无关。小程序主包 1,570,622 字节（预算 1,572,864，余 2,242），分包 detail 56,570、post 39,493、seller 28,705 [本地测]
+- ci_run_url: —（本地分支，不推送）
+- 未测项: CI（本地分支不推送）；pages.smoke 的首页、社区页巡检要在有真实 staging 的环境跑（CI public sweep，等 E4）
+- 下一条: D-45 第 4 项（主包腾空间草稿 PR）
+- 附: 结论：合并顺序可以是 #371 → #373，#369 → #374（#373 与 #374 之间无冲突），#372 最后手工合。五个 PR 都合上后主包只剩 2,242 字节余量，任何再进主包的改动都会超预算，所以第 4 项要按合并后的大小留余量。
