@@ -1,8 +1,8 @@
 # STATUS
 
-写于 2026-11-13 14:21 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-13 14:40 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-48 第 2 项（操作菜单标题）`
+`next_task_id: D-48 第 3 项（手工合入 #375、#374）`
 `latest_batch: appendix/batch/FINAL.md`
 
 next_task_id 按 D-48 第 7 项的新优先顺序取第一条未完成项：D-48 1 → 2 → D-50.3 → D-48 3 → D-47 2–5 → D-48 4 → D-49 → D-46 5、6 → D-47 7。D-48.1 已在 #369 恢复（4a44a41）；#375 尚缺恢复提交，其 520e55a 的全局放行不可发布；不 revert #375 的合并提交。
@@ -11,26 +11,26 @@ next_task_id 按 D-48 第 7 项的新优先顺序取第一条未完成项：D-48
 
 | 项 | 值 |
 |---|---|
-| 代码分支 / PR | codex/community-topics-20261112 / #369（草稿，OPEN），远端 4a44a41 [本地测：2026-11-13 git ls-remote] |
-| code_sha | 4a44a41212877ee3785050783351fc5c5a0fbb7b（D-48.1 恢复所有有效 L2–L5 门禁，已推送） |
+| 代码分支 / PR | codex/community-topics-20261112 / #369（草稿，OPEN），远端 ae058c2 [本地测：2026-11-13 git ls-remote] |
+| code_sha | ae058c216027da52d7346361b3be6aaf388d6d35（D-48.1、D-48.2、D-50.3 已完成并推送） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | 06a0c70904493c0389fec32c1204184160ae9be4（本次写回之前材料分支的 HEAD） |
+| docs_sha | d982ec84f9abf3ea69144e89dafd8b17cecdfb26（本次写回之前材料分支的 HEAD） |
 | 其余代码分支（远端 head） | #374 codex/community-home-20261112 6d6c598（P2.12、HOME.3、HOME.4、HOME.5、SPEC §11、小程序首页、D-46 3d / 3c / 3e；已合入 #369 b7bcf3a 与 #375 4a3cbe6，依赖 #375）。**#374 还不含 3a（3d24a8e），也不含 #369 上的 3b（3588c24）、3f（520e55a）**，所以 #374 上仍有 4a3cbe6 带来的小程序非 tab 页不启动消息与通知监听的问题。#375 codex/community-mp-budget-20261113 30c4b4d（小程序主包腾空间 4a3cbe6、D-46 3a 3d24a8e、D-46 第 4 项 8972507 / 1443d5c / ecc330b，30c4b4d 合入 #369 520e55a 的 3b、3f；base #369 分支）。#373 codex/deps-crossmajor-20261113 55716ba（P1.6 跨大版本，base #371）。#372 codex/brand-cornfield-20261112 ba070e7（BRAND.1–BRAND.4）。#371 codex/config-fixes-20261112 b259105（P1.2–P1.7）[本地测：git ls-remote] |
-| tony-ws worktree | ~/work/illini 4a44a41（#369，与远端一致）；illini-home 6d6c598（#374，与远端一致）；illini-mpbudget 30c4b4d（#375，与远端一致；D-47 第 5 项子任务进行中）；illini-deps 55716ba（#373）；illini-brand ba070e7（#372）；illini-config b259105（#371）；illini-events wip/P4.1 5f62ddd（本地不推送）；illini-main 7b18f20（origin/main 只读对照）；illini-docs-brand7 本地分支 local/brand7-20261113，在 bd397ce（D-46 第 6 项 BRAND.7 进行中，还没有新提交）；~/work/caaciorg 本地 feat/public-events-feed 28d59b1（不推送）；~/work/illini-docs 在 codex/community-plan-v5 [本地测] |
+| tony-ws worktree | ~/work/illini ae058c2（#369，与远端一致）；illini-home 6d6c598（#374，与远端一致）；illini-mpbudget 30c4b4d（#375，与远端一致；D-47 第 5 项子任务进行中）；illini-deps 55716ba（#373）；illini-brand ba070e7（#372）；illini-config b259105（#371）；illini-events wip/P4.1 5f62ddd（本地不推送）；illini-main 7b18f20（origin/main 只读对照）；illini-docs-brand7 本地分支 local/brand7-20261113，在 bd397ce（D-46 第 6 项 BRAND.7 进行中，还没有新提交）；~/work/caaciorg 本地 feat/public-events-feed 28d59b1（不推送）；~/work/illini-docs 在 codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 
 ## CI
 
-#369 最新 run 43500445187（4a44a41）运行中；下表是最近已完成的 520e55a 结果。
+#369 最新 run 43503547193（ae058c2）运行中；下表是最近已完成的 4a44a41 结果。
 
-PR #369 · run [43491206333](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43491206333) · head 520e55a · conclusion failure（public sweep 停在预检，等 E4；Type-check、Boundary 2153 / 2152 / 0 / 1、Build H5、Build mp-weixin 4 个 success，protected staging 与 release readiness 2 个 skipped）[CI run#43491206333]
+PR #369 · run [43500445187](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43500445187) · head 4a44a41 · conclusion failure（Type-check、Boundary、Build H5、Build mp-weixin success；public sweep 停在 Verify public read schema before browser startup，等 E4；其余两项 skipped）[CI run#43500445187]
 
 | job | 结论 | 计数 / 原因 |
 |---|---|---|
 | Type-check | success | |
-| Boundary regressions | success | 2153 tests：2152 pass / 0 fail / 1 skipped [CI run#43491206333] |
+| Boundary regressions | success | 2153 tests：2152 pass / 0 fail / 1 skipped [CI run#43500445187] |
 | Build H5 | success | |
 | Build mp-weixin | success | |
 | Smoke (public page sweep) | failure | 预期中：停在「Verify public read schema before browser startup」预检。staging-smoke 还没应用 20261112120000（等 E4） |
@@ -44,6 +44,7 @@ PR #369 · run [43491206333](https://github.com/EricXu-0805/CAACI_Community_Mark
 
 | 分支 / 组合 | 主包（CI 环境） | 余量 | 来源 |
 |---|---|---|---|
+| #369 ae058c2 | 1,560,392 | 12,472 | check-20261113T202910Z，L77 [本地测] |
 | #369 4a44a41 | 1,560,396 | 12,468 | check-20261113T200620Z，L76 [本地测] |
 | #369 520e55a | 1,560,420 | 12,444 | check-20261113T190341Z [本地测] |
 | #375 3d24a8e | 1,502,862 | 70,002 | check-20261113T182923Z [本地测] |
@@ -104,7 +105,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | HOME.4 | 通过 | #374 010f8f6；12 组 axe 0、<12px 0、溢出 0；截图 appendix/visual/HOME.4/ [本地测] |
 | D-46 第 1、2 项 | 通过 | L64、L65 |
 | D-46 第 3 项 a | 部分 | 修复 3d24a8e 在 #375（L66）；「再 merge 进 #374」未做 |
-| D-46 第 3 项 b | 通过（merge 未做） | 3588c24 在 #369，test 2061 / 2060 / 0 / 1，主包（CI 环境）1,559,431（L70）；「再 merge 进 #375、#374」未做 |
+| D-46 第 3 项 b | 修正通过，合并待做 | #369 ae058c2 修正 uni-app title→alertText 映射，D-50 使用加权长度≤8并覆盖全部小程序可达 showModal；11条定向测试通过，两种真实文案变异均红；#375、#374尚缺新修正（L77） |
 | D-46 第 3 项 c、d、e | 通过（D-47 补完未做） | 73206a0、eca5a8d、6d6c598 在 #374（L67–L69）；D-47 第 2–4 项在 #374 上补 |
 | D-46 第 3 项 f | 全局放行已撤回；分支合并待做 | #369 4a44a41 恢复有效 L2–L5 → suspended；发帖前拦截、回复提示保留但这些账号暂时不可达。红测 104/99/5/0；绿测 2153/2152/0/1，smoke 53 passed，H5/mpci 通过（L76）。需再 merge 进 #375、#374，不 revert 30c4b4d |
 | D-46 第 4 项 | 通过（#375 单独）；五个 PR 合上后的余量待第 5 项 | #375 8972507、1443d5c、ecc330b（已推送）；主包（CI 环境）1,322,319（L73）[本地测] |

@@ -943,3 +943,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 真机/托管账号；#375 和 #374 的后续合并。
 - 下一条: D-48 第2项，随后 D-50 第3项，再做 D-48 第3项合并。
 - 附: 仅新提交恢复 App.vue，不 revert #375 的30c4b4d。D-50 已读取（2f445c9）：showModal 按 replace(/[^\x00-\xff]/g,"##").length <= 8 检查，来源为 supervisor 解包的 WAServiceMainContext.js 3.15.0–3.15.2；只 Keep draft 超限，D-48 第5项撤销。后续测试覆盖全 app 可达小程序调用及两个变异。目标范围为 D-46–D-50；本轮完成后关闭目标、取消续跑，不接新 BACKLOG。材料分支076e400未推送时遇到远端D-50更新，按 RUNBOOK §8.7 只重放这一个本地提交为06a0c70；未改写任何已推送提交。
+
+### L77 · 2026-11-13 14:40 CT · D-48.2 菜单标题修正与 D-50 实际按钮长度规则
+- task_id: D-48.2 / D-50.3
+- code_sha: ae058c216027da52d7346361b3be6aaf388d6d35（#369，已推送）
+- docs_sha: d982ec84f9abf3ea69144e89dafd8b17cecdfb26
+- 环境: tony-ws pw1.60-node22-pg17；mpci=CI build-mp-weixin 环境
+- 命令: 直接读取锁定版本 @dcloudio/uni-mp-weixin/dist/uni.api.esm.js 的 showActionSheet.args；测试实际执行该适配器，红测 check-20261113T202430Z 为11/9/2/0，英文和中文标题均被覆盖为undefined。调用改用title。全app测试按小程序pages.json与条件编译排除H5专属页面，扫描页面和共享源码里的showModal；以D-50给出的WAServiceMainContext.js 3.15.0–3.15.2规则检查加权长度≤8。en.ts两处与plaza注释已更正，生产按钮文字未改。
+- 计数: 两次有效变异在独立临时工作区：英文123456789使英文失败、中文通过（check-20261113T202739Z）；中文一二三四五使中文失败、英文通过（check-20261113T202846Z）。变异语言文件已逐字节恢复（git diff --exit-code）。首次英文运行check-20261113T202615Z因容器看不到依赖软链接退出，不计作有效红测；改用该工作区npm ci后重跑。正式定向11条全过；全量2156/2155/0/1、pg_skips=0，smoke53 passed，install/typecheck/h5/mpci全部rc=0（check-20261113T202910Z），主包1,560,392、余12,472。
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43503547193（运行中）；上次43500445187四项success，public sweep预检失败等E4，两项skipped。
+- 未测项: 真机、早于3.15.0的基础库；未设最低基础库。长度规则出处是supervisor解包证据，OMO独立验证的是已锁定uni适配器及应用调用/语言包。
+- 下一条: D-48 第3项。
+- 附: git push --no-verify沿用RUNBOOK §3的宿主机环境例外，容器全量先通过。D-48 第5项生产按钮误报已撤销；Got it、Restore、Cancel、Messages在该规则下都合法，不写入待Eric验证清单。
