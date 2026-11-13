@@ -104,6 +104,7 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
 - 选项：BRAND.4 出的 3 个印章稿（「玉」单字或「玉米地」三字）三选一。
 - 建议：「玉」单字。24px 的 tab 图标和 favicon 上，三个字很难认（判断，看 BRAND.4 的 24px 预览再定）。
 - 谁定：Eric。截止：BRAND.4。
+- **D-43 代定（2026-11-13），Eric 可在最终报告后改**：选「玉」单字，用方案 B 的单字变体 `draft-b-mono.svg`（Noto Serif SC Black，字放大）。依据：BRAND.4 的 24px 预览里单字「玉」认得出（A 的横画偏淡，B 单字与 C 单字都清楚），三字稿 B、C 在 24px 下粘成一团；在两个清楚的单字里取宋体的 B，和 D-35 选定的 A 纸本书院、design/direction-a.html 的宋体印章一致（C 单字是黑体，24px 略更清楚，但风格不同）。对照图见 appendix/visual/logo/sheet-light.png、sheet-dark.png。撤回：在本条改选项，BRAND.4 ② 的替换提交 `git revert`。
 
 ### D-37 CAACI 正式同意以 CAACI 名义运营
 - 现状：app/src/legal/terms.en.ts:9 写「Illini Market is a community project operated by Guoyi (Eric) Xu」。cold-start-legal.md「建议方案」一：运营主体决定 FTC 规则管不管得到、DMCA 代理人用谁的名义登记、授权由谁签、出事由谁担责；「supported by CAACI」「免费」这类对外说法，定稿前要和主席确认属实。

@@ -430,3 +430,15 @@
 - 未测项: 无
 - 下一条: P2.7
 - 附: 没有违规，所以三份 HTML 不改。暗色与英文稿仍由 HOME.4 的截图矩阵补。
+
+### L36 · 2026-11-13 02:31 CT · BRAND.4 印章 logo 出稿 3 稿；D-34 按 D-43 代定 B 的单字「玉」 [OMO自决]
+- task_id: BRAND.4
+- code_sha: —（出稿只写材料分支；替换另记）
+- docs_sha: 0fc3426a1e646f4774974ea1646e352839246f05
+- 环境: tony-ws 宿主 Node 22.23.5（opentype.js 2.0.0 转轮廓）；localhost/illini-dev:pw1.65-node22-pg17 的 Chromium 158 渲染 PNG
+- 命令: OMO 子任务按 BACKLOG BRAND.4 做：字体取 notofonts/noto-cjk 的 Serif2.003、Sans2.004 两个 release 标签下的 SubsetOTF（release 页的 zip 下载会跳到 release-assets.githubusercontent.com，不在允许的主机里，所以按同一标签从仓库取同一路径的文件，SOURCES.md 写了核对 zip 的命令）；~/work/illini-dev-env/tools/seal-glyphs.mjs 用 opentype.js 取轮廓、自己格式化坐标（2.0.0 的 toPathData 会写出 NaN），seal-render.mjs 直接驱动镜像里的 Chromium；几何与七个颜色值沿用生产「集」印章，只换字
+- 计数: ① 3 个方案（A 单字「玉」Serif Bold；B 三字 Serif Black + 单字变体；C 三字 Sans Bold + 单字变体）共 10 个 SVG（含暗色），`grep -c '<text'` 全部 0；24px、512px 预览各 3 张，另有两个单字变体的 24px 预览；浅色、深色对照图各 1 张；SOURCES.md 写字体名、标签、地址、sha256、SIL OFL 1.1。OMO 看过对照图：24px 下 A 的横画偏淡但认得出，B 单字、C 单字清楚，B、C 三字粘连 [本地测]
+- ci_run_url: —
+- 未测项: ② 替换（进行中）
+- 下一条: BRAND.4
+- 附: [OMO自决] D-43 第 1 项：D-34 选「玉」单字，取 B 的单字变体（宋体，和 D-35 A 一致），理由与撤回写在 DECISIONS D-34。
