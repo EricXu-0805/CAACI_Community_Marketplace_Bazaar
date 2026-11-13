@@ -758,3 +758,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 真机；整页 390 的 tab 栏 10px 标签、768 侧栏「ILLINI MARKET」9.5px 是共享组件旧问题，审计范围同 HOME.3 不含它们
 - 下一条: D-45 第 7 项（小程序论坛首页）
 - 附: 自决：规则 BACKLOG §14 第 24 行（稿与 SPEC 不同以 SPEC 为准）与第 28 行；暗色 token 值由 OMO 定（SPEC 只给浅色）；L49 的侧栏「发布」按钮暗色 2.87:1 顺手改成 --ink-inverse（它让两张截图 axe 不过）；768 起标题与正文 26/16px（稿 22/15px，App.vue 现有桌面字号不在六项内）；分隔点保持 --ink-quiet。CommunityHome.vue 有两处占位「集」，合 #372 时改。撤回 `git revert 010f8f6`。
+
+### L62 · 2026-11-13 11:12 CT · D-45 第 7 项：论坛首页、手机页头、板块页与「全部讨论」编进小程序（D-12），主包在预算内 [OMO自决]
+- task_id: D-45.7
+- code_sha: 86ffd0e（#374，已推送；push 用 --no-verify 同 L21）；之前 7c82fd1 合入 #369 b7bcf3a、fb9c6b9 合入 #375
+- docs_sha: dce559dab72824e5597dfc51792e7d13e05f9b44
+- 环境: 本地 tony-ws run-checks（容器 Chromium/WebKit）；实现由 OMO 子任务（visual-engineering）做，主会话核对后推送；没有微信开发者工具
+- 命令: 先在 home 分支 merge #369 b7bcf3a（community-post-topics.spec.ts 冲突：按钮名取「New topic」，草稿提示取「Restored your unsent draft」）与 #375，全量 `~/work/illini-dev-env/run-checks.sh ~/work/illini-home install typecheck test smoke mp`（8 份 spec）通过：2056 / 2055 / 0 / 1，smoke 114 passed，主包 1,511,879（check-20261113T161318Z）。再把首页编进小程序：只把地址栏机制（syncAddress / followAddress 函数体、hashchange）、桌面布局（56px 桌面页头、CommunityAbout、AppSidebar、桌面 @media、matchMedia）、外链（/about、mailto）留在 `#ifdef H5`；小程序 onLoad(query) 与 onShow 的 pendingBoard / pendingView 都按 SPEC §4.4 路由到首页 / 板块页 / 全部讨论，未知值回首页；小程序「关于本站」「意见反馈」改为复制链接 / 邮箱。全量 `SMOKE_SPECS="…8 份…" ~/work/illini-dev-env/run-checks.sh ~/work/illini-home install typecheck test h5 mp smoke`
+- 计数: install、typecheck、h5、mp rc=0；test 2064 / 2063 / 0 / 1 pg_skips=0；smoke 114 passed（check-20261113T165612Z）；h5 产物 158 个文件，mp 产物 345 个文件校验通过；小程序主包 1,550,634（比 fb9c6b9 多 38,755，余 22,230），分包 detail 56,206、post 42,343、seller 28,485 不变 [本地测]。新增 community-mp-routing.test.mjs 8 条（默认首页、pendingBoard / pendingView 只消费一次、未知值回首页、带参数路径、小程序视图是普通状态、发帖后回首页刷新、搜索图标进全部讨论并聚焦）；把 fb9c6b9 的页面放回去 17 条里 13 条失败，5 处变异各自变红（check-20261113T165225Z-cmd、165146Z-cmd）。P2.10 深链单测断言 38 → 57 条，「未知板块」按 SPEC §4.4 改为断言回首页（原为不过滤的列表），没有删断言。H5 smoke 写出的 32 张截图与改动前逐字节一致
+- ci_run_url: —（#374 base 不是 main，不触发 CI）
+- 未测项: 小程序在微信里的渲染、胶囊对齐（iOS 上页头中心比胶囊低 2px）、状态栏留白、下拉刷新、搜索聚焦、悬浮按钮与 tab 栏、暗色、复制 toast、首页 9 个并发请求（微信上限 10）、微信编译后的包体积——都要开发者工具或真机
+- 下一条: —（D-45 第 1–7 项已做完，写第三批报告）
+- 附: 自决：规则 BACKLOG §14 第 23 行（主包预算）与第 28 行；#374 合入 #375 后依赖 #375（先合 #375 再合 #374）；小程序「发话题」从登录后才显示的页头按钮改为一直显示的悬浮按钮，点击时要求登录；a11y.compose 不再使用但保留以免和其他分支冲突。撤回 `git revert 86ffd0e`（只撤小程序首页），合并用 `git revert -m 1 fb9c6b9` / `7c82fd1`。

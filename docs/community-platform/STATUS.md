@@ -2,7 +2,7 @@
 
 写于 2026-11-13 07:48 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-45 第 7 项（小程序论坛首页）`
+`next_task_id: —（D-45 第 1–7 项已做完；P2.6、P2.11、P2.13 等 E3/E4/E5，见阻塞清单）`
 `latest_batch: appendix/batch/FINAL.md`
 
 ## 版本
@@ -14,7 +14,7 @@
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-12 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-12 git ls-remote] |
 | docs_sha | a64ae9919dbcc54df4dec67754809ea5bc0b0a39（本次本地状态写回之前材料分支的 HEAD，未另建材料提交） |
-| 配置 / 品牌 / 首页分支 | codex/config-fixes-20261112 远端 b259105，草稿 PR #371（P1.2–P1.7）；codex/brand-cornfield-20261112 远端 ba070e7，草稿 PR #372（BRAND.1–BRAND.4）；codex/community-home-20261112 远端 68eb43b，草稿 PR #374（P2.12、HOME.3、HOME.5，已合入 #369 的 92698d1）；codex/deps-crossmajor-20261113 远端 55716ba，草稿 PR #373（P1.6 跨大版本，base #371）[本地测] |
+| 配置 / 品牌 / 首页分支；codex/community-mp-budget-20261113 远端 4a3cbe6，草稿 PR #375（小程序主包腾空间，base #369） | codex/config-fixes-20261112 远端 b259105，草稿 PR #371（P1.2–P1.7）；codex/brand-cornfield-20261112 远端 ba070e7，草稿 PR #372（BRAND.1–BRAND.4）；codex/community-home-20261112 远端 86ffd0e，草稿 PR #374（P2.12、HOME.3、HOME.4、HOME.5、SPEC §11 首页部分、小程序论坛首页；已合入 #369 的 b7bcf3a 与 #375，依赖 #375）；codex/deps-crossmajor-20261113 远端 55716ba，草稿 PR #373（P1.6 跨大版本，base #371）[本地测] |
 | tony-ws 仓库 | ~/work/illini 在 92698d1（#369）；worktree：illini-config（#371）、illini-brand（#372）、illini-home（#374）、illini-deps（#373）、illini-events（wip/P4.1 5f62ddd，本地不推送）、illini-main（origin/main 只读对照）；~/work/caaciorg 本地 feat/public-events-feed 28d59b1（不推送）；~/work/illini-docs 在 codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
@@ -81,7 +81,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | HOME.1 | 通过 | ①–③ 以 design/ 为准（L08）；④ axe 4.14.0：12 个组合 color-contrast 0、<12px 0、溢出 0 [本地测]；⑤ D-35 已定 A |
 | HOME.2 | 通过 | bd6fee5，19 条规则单测 [本地测] |
 | HOME.3 | 通过 | #374 a756081；首页 19 条用例全过，AXE 0、<12px 0 [本地测] |
-| HOME.5 | 通过 | #374 2d18576；合并 #369 后 68eb43b，MERGEABLE；主包 1,568,808（余 4,056）[本地测] |
+| HOME.5 | 通过 | #374 2d18576；#374 现 86ffd0e（含 HOME.4、SPEC §11、小程序首页，已合入 #369 b7bcf3a 与 #375）；小程序主包 1,550,634（余 22,230）[本地测] |
 | P2.12 | 通过 | 草稿 PR #374（244a8e7）；12 张截图 <12px 0、axe 0；首屏 390 5 行、1280 9 行 [本地测] |
 | HOME.4 | 通过 | #374 010f8f6；12 组 axe 0、<12px 0、溢出 0；截图 appendix/visual/HOME.4/ [本地测] |
 | P3.1–P3.8 | 未测 | 依赖 P2.13（#369 合并） |
@@ -106,4 +106,4 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 10. BRAND（#372）生产发布后：Eric 在 STATUS_LOG 记发布日；「原 Illini Market」（app.formerly，登录页与 /about）在发布日 + 90 天移除；同时做 E10（邮件模板、生产 DIGEST_FROM）。
 11. #372 要手工合：与 #369 冲突在 api/share-post.js、en.ts、zh.ts（#374 另有 app.name / app.desc / app.tagline / app.formerly 一块）；保留 #369 的 P2.9 topicTitle / headline 逻辑与 P2.2「回复 / reply」措辞，只取 #372 的品牌字串。
 12. 删 #369、#371 的分支之前，先把 #374、#373 的 base 改成 main（删 base 分支会关闭依赖它的 PR，且不能重开）。
-13. 首页、新页头、板块页现在只编进 H5（L54，SPEC §8、D-12 没有豁免），请 Eric 定；D-45 第 4、7 项先尝试补进小程序。暗色侧栏「发布」按钮对比度 2.87:1（L49）。
+13. 首页、新页头、板块页、「全部讨论」已编进小程序（#374 86ffd0e，D-45 第 7 项，L62），主包 1,550,634（余 22,230，低于 64 KiB）；小程序渲染、胶囊对齐与运行时行为没在微信开发者工具或真机上跑过，请 Eric 用开发者工具确认；小程序的「关于本站」复制链接，构建需要 VITE_BASE_URL。暗色侧栏「发布」按钮对比度已在 HOME.4 修好（L61）。
