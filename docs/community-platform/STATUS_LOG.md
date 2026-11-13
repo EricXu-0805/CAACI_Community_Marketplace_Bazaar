@@ -263,3 +263,15 @@
 - ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43377614567
 - 未测项: ③ 的本地 S-1 运行（staging.env 等 E3）；CI 已在同一 staging 上给出同样结果
 - 下一条: P1.9
+
+### L22 · 2026-11-13 00:03 CT · P2.2 板块名与「回复」术语，app 与通知邮件一致
+- task_id: P2.2
+- code_sha: 9c173a48bd61c0da5ee3a714af94d1f6c8a36522（codex/community-topics-20261112）
+- docs_sha: abf549a3fb33065ab142ff98a1b905e261a4b18a
+- 环境: 本地 tony-ws pw1.60；CI
+- 命令: zh.ts、en.ts 按 SPEC §11「P2.2」表改 31 个 key 的值（key 不变），suspended.whatHappensBody 只改「评论」/comment；新增 app/smoke/reply-terminology.test.mjs；第一轮 `SMOKE_SPECS="$DEF read-failure-states.spec.ts" ~/work/illini-dev-env/run-checks.sh ~/work/illini install test smoke`（log check-20261113T055038Z.log）test 2 fail（api/_digest-body-copy-boundary.test.mjs 要求邮件与站内通知文案一致）、smoke 4 fail（plaza-attach-picker 还在找「Tag item」）；修正：api/notification-digest.js 的 post_comment、post_like、post_comment_like 文案和 BILINGUAL_TITLES 里两个旧标题的显示值（键是库里已存的原始标题，不改），三个 smoke spec 的断言改新文案；第二轮 `SMOKE_SPECS="$DEF read-failure-states.spec.ts input-preview-supplement.spec.ts" ~/work/illini-dev-env/run-checks.sh ~/work/illini install test smoke`（log check-20261113T060248Z.log）
+- 计数: ① 五个板块名与 SPEC §3 一致，旧板块名 grep 0；② zh.ts 除 reconsent.* 外含「评论」的行 18 → 0，en.ts 值里 Comment/comments 0（新单测 3 tests 全过）；③ 新发布 / 关注的人 / 关联商品 已改；④ TEST tests=2001 pass=2000 fail=0 skipped=1 pg_skips=0，smoke 35 passed / 0 failed [本地测]；CI Boundary 2001 / 2000 / 0 / 1 [CI run#43377614567]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43377614567
+- 未测项: 无
+- 下一条: P1.9
+- 附: 范围比 BACKLOG 写的多一处：api/notification-digest.js 的邮件正文与标题跟着改，否则现有边界测试会失败。
