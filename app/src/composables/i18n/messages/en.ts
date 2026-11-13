@@ -970,6 +970,14 @@ const en: Record<string, string> = {
   'plaza.attachDone': 'Linked',
   'plaza.attachUnavailable': "This item is no longer for sale, so it can't be linked.",
   'plaza.attachCap': 'You can link up to 3 items.',
+  'plaza.ref.available': 'Available',
+  'plaza.ref.reserved': 'Reserved',
+  'plaza.ref.sold': 'Sold',
+  // {n} counts every linked item; the Chinese copy reads it as a total, so this does too.
+  'plaza.ref.more': '{n} items in all',
+  'plaza.ref.row': 'Linked · {name} ${price} · {status}',
+  'plaza.ref.rowRemoved': 'The linked item has been removed',
+  'plaza.unansweredTag': 'Unanswered',
   'plaza.uploadFailed': 'Image upload failed — please retry',
 
   'login.agreeRequired': 'Please review the Terms, Privacy Policy, and Community Guidelines before signing up',

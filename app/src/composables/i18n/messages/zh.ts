@@ -966,6 +966,13 @@ const zh: Record<string, string> = {
   'plaza.attachDone': '已关联',
   'plaza.attachUnavailable': '这件商品已不在售，无法关联',
   'plaza.attachCap': '已达 3 件上限',
+  'plaza.ref.available': '在售',
+  'plaza.ref.reserved': '已预留',
+  'plaza.ref.sold': '已售出',
+  'plaza.ref.more': '等 {n} 件',
+  'plaza.ref.row': '关联 · {name} ${price} · {status}',
+  'plaza.ref.rowRemoved': '关联的商品已下架',
+  'plaza.unansweredTag': '待回答',
   'plaza.uploadFailed': '图片上传失败 — 请重试',
 
   'login.agreeRequired': '请先阅读《用户协议》《隐私政策》和《社区规范》',

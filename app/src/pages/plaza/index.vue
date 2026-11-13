@@ -141,7 +141,46 @@
       </view>
 
       <view v-else class="posts u-stagger" :key="activeTab">
-        <view v-for="post in visiblePosts" :key="post.id" class="post-card u-rise">
+        <template v-for="post in visiblePosts" :key="post.id">
+        <!--
+          A topic (a post with a title) lists as one row (SPEC 6.3.2). The whole
+          row opens the topic; like, share, translate and report are on that
+          page. An update has no title and keeps the card below.
+        -->
+        <view
+          v-if="post.title"
+          :class="['topic-row', 'u-rise', { 'has-thumb': post.images && post.images.length > 0 }]"
+          role="button"
+          :aria-label="topicRowLabel(post)"
+          @click="goPostDetail(post)"
+        >
+          <view class="tr-text">
+            <text class="tr-title" role="heading" aria-level="2">{{ post.title }}</text>
+            <text v-if="post.content" class="tr-excerpt">{{ topicExcerpt(post) }}</text>
+          </view>
+          <view v-if="post.images && post.images.length > 0" class="tr-thumb" aria-hidden="true">
+            <image class="tr-thumb-img" :src="thumbUrl(post.images[0], 'list')" mode="aspectFill" />
+            <text v-if="post.images.length > 1" class="tr-thumb-more">+{{ post.images.length - 1 }}</text>
+          </view>
+          <text v-if="post.post_items && post.post_items.length > 0" class="tr-linked">{{ topicLinkedLine(post) }}</text>
+          <view class="tr-meta">
+            <template v-if="post.is_pinned">
+              <text class="tr-meta-item">{{ t('plaza.pinned') }}</text>
+              <text class="tr-meta-item">·</text>
+            </template>
+            <template v-if="post.category && !selectedCategory">
+              <text class="tr-meta-item">{{ t(`plaza.category.${post.category}`) }}</text>
+              <text class="tr-meta-item">·</text>
+            </template>
+            <text class="tr-meta-item tr-author">{{ post.profile?.nickname || t('app.user') }}</text>
+            <text v-if="post.is_official" class="tr-tag">{{ t('plaza.official') }}</text>
+            <text class="tr-meta-item">·</text>
+            <text class="tr-meta-item">{{ formatTime(post.created_at) }}</text>
+          </view>
+          <text v-if="post.comment_count > 0" class="tr-replies tr-count">{{ post.comment_count }}</text>
+          <text v-else-if="topicIsUnanswered(post)" class="tr-replies tr-tag tr-tag-ask">{{ t('plaza.unansweredTag') }}</text>
+        </view>
+        <view v-else class="post-card u-rise">
           <!--
             Pinned-collapsed surface: when a pinned announcement is in
             its compact state, render a single-line summary that the
@@ -210,8 +249,6 @@
               </view>
             </view>
 
-            <text v-if="post.category" class="post-board">{{ t(`plaza.category.${post.category}`) }}</text>
-            <text v-if="post.title" class="post-topic-title" role="heading" aria-level="2">{{ post.title }}</text>
             <view class="post-content-wrap">
               <text class="post-content">{{ displayPostContent(post) }}</text>
               <view
@@ -299,6 +336,7 @@
           </view>
 
         </view>
+        </template>
       </view>
 
       <!--
@@ -689,7 +727,7 @@ import { localizeLocation } from '../../composables/useCampusSpots'
 import { createOwnedLoading } from '../../composables/ownedLoading'
 import type { Post, PostComment, Item } from '../../types'
 import { POST_CATEGORIES, POST_TITLE_MAX, normalizePostTopic, type PostCategory } from '../../utils/communityPost'
-import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
+import { formatTime, formatPrice, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
 import { DIALOG_DANGER, DIALOG_WARN } from '../../utils/dialogColors'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
@@ -1694,6 +1732,55 @@ function postCardLabel(post: Post) {
   return excerpt ? `${action}: ${excerpt}` : action
 }
 
+/* ---------- Topic rows (SPEC 6.3.2) ---------- */
+const TOPIC_EXCERPT_CHARS = 160
+const UNANSWERED_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
+
+function topicExcerpt(post: Post) {
+  // The row clamps this to two lines; the rest of a 2,000-character body would
+  // only be weight in the list.
+  const text = localize(post.content_i18n, post.content).replace(/\s+/g, ' ').trim()
+  return Array.from(text).slice(0, TOPIC_EXCERPT_CHARS).join('')
+}
+
+// SPEC 5.5, until P3.4: no reply yet and posted within the last 30 days.
+function topicIsUnanswered(post: Post) {
+  return post.comment_count === 0
+    && Date.now() - new Date(post.created_at).getTime() <= UNANSWERED_WINDOW_MS
+}
+
+// Names the first linked item only; the topic page shows all of them (SPEC 6.6).
+function topicLinkedLine(post: Post) {
+  const linked = post.post_items || []
+  const first = linked[0]?.item
+  if (!first) return ''
+  if (first.status === 'deleted') return t('plaza.ref.rowRemoved')
+  const status = first.status === 'sold' ? t('plaza.ref.sold')
+    : first.status === 'reserved' ? t('plaza.ref.reserved')
+    : t('plaza.ref.available')
+  const line = t('plaza.ref.row', {
+    name: localize(first.title_i18n, first.title),
+    // The message carries the "$" itself, so it takes the bare amount.
+    price: formatPrice(first.price, '$0').replace(/^\$/, ''),
+    status,
+  })
+  return linked.length > 1
+    ? `${line} · ${t('plaza.ref.more', { n: linked.length })}`
+    : line
+}
+
+// The row is one button, so its name carries what the row shows, minus the excerpt.
+function topicRowLabel(post: Post) {
+  const author = post.profile?.nickname || t('app.user')
+  const parts = post.is_pinned ? [t('plaza.pinned'), post.title || ''] : [post.title || '']
+  if (post.category && !selectedCategory.value) parts.push(t(`plaza.category.${post.category}`))
+  parts.push(post.is_official ? `${author} ${t('plaza.official')}` : author, formatTime(post.created_at))
+  if (post.comment_count > 0) parts.push(t('plaza.commentCount', { count: post.comment_count }))
+  else if (topicIsUnanswered(post)) parts.push(t('plaza.unansweredTag'))
+  if (post.post_items?.length) parts.push(topicLinkedLine(post))
+  return parts.join(' · ')
+}
+
 function goPostDetail(post: Post) {
   /*
    * An EXPANDED pinned post should not navigate on body tap — the user
@@ -2249,6 +2336,75 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .ps-meta { flex: 1; display: flex; flex-direction: column; gap: 7px; }
 .ps-line { height: 11px; }
 .ps-img { height: 168px; border-radius: 12px; margin-top: 2px; }
+
+/*
+ * Topic row (SPEC 6.3.2): a forum row, not a card. On phones the title and
+ * excerpt sit beside the first image, and the linked item and the meta line run
+ * full width below it, so reply counts line up at the right edge of every row.
+ * From 1024px (H5 block below) the excerpt and the meta line share one line.
+ * The whole row is the only tap target.
+ */
+.topic-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line-hair);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  &:active { background: var(--surface-alt); }
+}
+.tr-text {
+  grid-column: 1 / -1;
+  min-width: 0;
+  display: flex; flex-direction: column; gap: var(--space-1);
+}
+.has-thumb .tr-text { grid-column: 1; align-self: start; }
+.tr-title, .tr-excerpt {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden; overflow-wrap: anywhere;
+}
+.tr-title { font-size: var(--t-h3); line-height: var(--lh-h3); font-weight: 600; color: var(--ink); }
+.tr-excerpt { font-size: 14px; line-height: var(--lh-caption); color: var(--ink-soft); }
+.tr-thumb {
+  grid-column: 2; grid-row: 1; align-self: start;
+  position: relative; width: 72px; height: 72px;
+  border-radius: var(--radius-sm); overflow: hidden; background: var(--surface-alt);
+}
+.tr-thumb-img { display: block; width: 100%; height: 100%; }
+.tr-linked {
+  grid-column: 1 / -1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.tr-linked, .tr-meta-item { font-size: var(--t-caption); line-height: var(--lh-caption); color: var(--ink-quiet); }
+.tr-meta {
+  grid-column: 1;
+  min-width: 0; min-height: var(--space-5);
+  display: flex; align-items: center; gap: var(--space-1);
+}
+/* On the item itself: uni-h5's own text rule would beat an inherited nowrap. */
+.tr-meta-item { flex: none; white-space: nowrap; }
+/* A long nickname gives way first, so the time stays readable. */
+.tr-author { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tr-tag {
+  flex: none; padding: 0 var(--space-2); border-radius: var(--radius-xs);
+  font-size: var(--t-meta); line-height: var(--space-5); font-weight: 500; white-space: nowrap;
+  color: var(--ink); background: var(--surface-alt); box-shadow: inset 0 0 0 1px var(--line-bold);
+}
+.tr-tag-ask { color: var(--warning-text); background: var(--warning-soft); box-shadow: none; }
+.tr-replies { grid-column: 2; justify-self: end; }
+.tr-count {
+  font-size: var(--t-body); line-height: var(--space-5); font-weight: 500;
+  color: var(--ink-soft); font-variant-numeric: tabular-nums;
+}
+.tr-thumb-more {
+  position: absolute; right: var(--space-1); bottom: var(--space-1);
+  padding: 0 var(--space-1); border-radius: var(--radius-xs);
+  font-size: var(--t-meta); line-height: var(--lh-meta); font-weight: 500;
+  color: var(--ink-soft); background: var(--surface); font-variant-numeric: tabular-nums;
+}
 
 .post-card {
   background: var(--bg-elev-1); padding: 14px 16px;
@@ -2863,7 +3019,41 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
     transition: transform var(--dur-1, 120ms) var(--ease-std, ease), background var(--dur-1, 120ms) var(--ease-std, ease);
   }
   .plaza-compose-d:active { transform: scale(0.96); background: var(--brand-deep); }
+  /* SPEC 6.3.2: on desktop the list sits in one surface container. */
+  .posts {
+    margin: var(--space-2) 0 var(--space-5); padding: 0;
+    border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+    background: var(--surface); overflow: hidden;
+  }
+  .topic-row:last-child, .post-card:last-child { border-bottom: 0; }
 }
+@media (min-width: 1024px) {
+  /* SPEC 6.3.2 desktop: a one-line title; the excerpt, the meta line (240px)
+     and the reply count share the second line; the first image is centred at
+     the right. display: contents lets the title and excerpt join this grid. */
+  /* The meta column is 240px so rows line up; a longer line (pinned, official)
+     widens its own row's column, up to 60%, before the author is cut. */
+  .topic-row { grid-template-columns: minmax(0, 1fr) fit-content(60%) auto; align-content: center; row-gap: 0; }
+  .tr-meta { min-width: 240px; }
+  .tr-text { display: contents; }
+  .tr-title, .tr-excerpt { -webkit-line-clamp: 1; }
+  .tr-title { grid-column: 1 / -1; grid-row: 1; }
+  .tr-excerpt { grid-column: 1; grid-row: 2; }
+  .tr-meta { grid-column: 2; grid-row: 2; }
+  .tr-replies { grid-column: 3; grid-row: 2; }
+  .tr-linked { grid-column: 1 / -1; grid-row: 3; }
+  .topic-row.has-thumb {
+    position: relative;
+    min-height: calc(72px + 2 * var(--space-3));
+    padding-right: calc(var(--space-4) + 72px + var(--space-3));
+  }
+  .has-thumb .tr-thumb {
+    position: absolute; grid-column: auto; grid-row: auto;
+    top: 50%; right: var(--space-4); transform: translateY(-50%);
+  }
+}
+/* The row is full-bleed, so draw the focus ring inside it. */
+.topic-row:focus-visible { outline-offset: -2px; }
 /* #endif */
 /* #ifdef H5 */
 @media (min-width: 768px) {
@@ -2886,8 +3076,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .board-chip { flex-shrink: 0; padding: 8px 12px; border-radius: 16px; background: var(--bg-subtle); color: var(--text-muted); font-size: 13px; cursor: pointer; }
 .board-chip.active { color: var(--accent-action); background: var(--bg-elev-1); box-shadow: inset 0 0 0 1px var(--accent-action); }
 .board-chip:focus-visible { outline: 2px solid var(--accent-action); outline-offset: 2px; }
-.post-board { display: block; color: var(--accent-action); font-size: 12px; margin-bottom: 6px; }
-.post-topic-title { display: block; font-size: 19px; font-weight: 700; line-height: 1.4; margin-bottom: 8px; overflow-wrap: anywhere; }
 .composer-mode { display: flex; gap: 8px; padding: 12px 16px 4px; }
 .composer-topic { padding: 12px 16px 0; }
 .topic-title-input { width: 100%; height: 44px; font-size: 18px; font-weight: 600; color: var(--text-primary); border-bottom: 1px solid var(--line-hair); }
