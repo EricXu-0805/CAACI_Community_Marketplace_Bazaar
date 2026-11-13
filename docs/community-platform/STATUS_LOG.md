@@ -535,3 +535,15 @@
 - 未测项: 无
 - 下一条: P2.5
 - 附: D-44 第 2 项要求的 3 次上限只用了 1 次。D-44 列了三处缺口，实际是四处：auth.mfa_factors 也被 20260916073035 读到（f.status = verified），按同一规则单独成文件。提交前做过两次不回放迁移的探查（裸镜像 + 已有 bootstrap 后列出 auth/storage/realtime 表列；四份新文件在裸镜像上自检与守卫测试），不算计数尝试，脚本在 evidence/P1.10/probe-surface.sh、bootstrap-selfcheck.sh。
+
+### L45 · 2026-11-13 04:12 CT · P1.6 跨大版本按 D-44 第 3 项做成草稿 PR #373（@intlify 11.4.19、glob 14.0.6、minimatch 11.0.8），合不合由 Eric 定
+- task_id: P1.6
+- code_sha: 55716ba57871f86b67bb2ecea6deca005627ccb0（codex/deps-crossmajor-20261113，从 #371 head b259105 切出，草稿 PR #373，base codex/config-fixes-20261112；正常推送，宿主 pre-push 检查通过）
+- docs_sha: b584adcf620eb7b8c3a5e36dc60a4ee0062301f3
+- 环境: 本地 tony-ws localhost/illini-dev:pw1.65-node22-pg17；宿主 npm 10.9.9 只用于重算 lockfile
+- 命令: app/package.json overrides：@intlify/core-base、message-compiler、shared 9.14.5 → 11.4.19；新增 `"@sentry/bundler-plugin-core": { "glob": "14.0.6", "minimatch": "11.0.8" }`；`npm install --package-lock-only --legacy-peer-deps`，lockfile 只变这两组及其自带依赖（path-scurry 3.0.0、@intlify/devtools-types、@isaacs/nonrecursive-glob-match、balanced-match 位置）。`~/work/illini-dev-env/run-checks.sh ~/work/illini-deps install typecheck h5 h5accept mp test smoke npmaudit`；容器里不带 token 构造 sentryVitePlugin；同一镜像、同一组 stub 变量下 `~/work/illini-dev-env/run-checks.sh ~/work/illini-config install h5 mp` 构建 #371 head 作对照，`diff -rq` 两份 dist；`npm ls` 看版本唯一。脚本与输出在 evidence/P1.6x/
+- 计数: ① install、typecheck、h5、h5accept、mp、test、smoke（run-checks 默认集合）rc=0，TEST 1994/1993/0/1 pg_skips=0；② `npx npm@11 audit --audit-level=moderate` 只剩 1 个 moderate：vite 6.4.4（例外清单），#371 head 上同一命令 37 个；③ mp-weixin 336 个文件、h5 157 个文件与 #371 head 构建逐字节一致（diff -rq 0），标题一致（mp app.json「Illini Market」，h5「Illini Market」「Moderation」），`%key%` 在 src/pages.json 与两份产物里都是 0；④ Sentry 插件不带 token 构造成功，解析到 glob 14.0.6、minimatch 11.0.8；⑤ npm ls：glob、minimatch、@intlify/core-base、shared、message-compiler 各一个版本 [本地测]
+- ci_run_url: —（ci.yml 只对 base 为 main 的 PR 和推送到 main 触发，#373 不跑 CI；workflow_dispatch 可能带上生产相关 job，没有手动触发）
+- 未测项: Sentry source map 上传（要 token，Eric 在发布构建里确认，已写进 PR 描述）；这条分支上的完整 public sweep（CI 不触发，本地只跑了默认 smoke 集合）
+- 下一条: P2.5
+- 附: 与 D-44 原文的两处出入 [OMO自决]：@intlify/vue-devtools 在 npm 上没有 11.x（最新 9.14.1），留在 9.14.1，它不在审计报出的 7 个包里；glob、minimatch 的覆盖限定在 @sentry/bundler-plugin-core 子树（树里只有这一处用到它们），不做全局覆盖。pages.json 本来没有 `%key%`，所以用产物逐字节比对代替「占位全被替换」的检查。
