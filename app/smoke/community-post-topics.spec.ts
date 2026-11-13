@@ -43,6 +43,8 @@ async function openPlazaComposer(page: Page, install: () => Promise<void>, lang:
 
   await install()
   await page.goto('/#/pages/plaza/index', { waitUntil: 'networkidle' })
+  await expect(page.locator('[data-test=region-switcher]')).toHaveCount(0)
+  await expect(page.locator('[data-test=region-label]').first()).toHaveText(/^(Champaign-Urbana|香槟)$/)
   await page.getByRole('button', { name: lang === 'zh' ? '发布新帖' : 'New post', exact: true }).filter({ visible: true }).click({ timeout: 15_000 })
   await expect(page.locator('.comp-attach-btn').first()).toBeVisible({ timeout: 10_000 })
 }

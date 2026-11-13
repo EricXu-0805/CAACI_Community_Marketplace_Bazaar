@@ -5,6 +5,7 @@ import { useModeration } from './useModeration'
 import { useI18n } from './useI18n'
 import type { Post, PostComment } from '../types'
 import { normalizePostTopic, type PostCategory } from '../utils/communityPost'
+import { ACTIVE_REGION } from '../utils/region'
 import { expandSearch, friendlyErrorMessage } from '../utils'
 import { checkContent, clearLocalDuplicate, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
 import { mpTextGate } from './useWechatSecCheck'
@@ -257,6 +258,7 @@ export function usePlaza() {
         if (terms.length === 0) { hasMore.value = false; return }
         const res = await supabase.rpc('search_community_posts', {
           category_in: category ?? null,
+          region_in: ACTIVE_REGION,
           terms_in: terms,
           sort_in: sort,
           limit_in: PAGE_SIZE,
@@ -272,6 +274,7 @@ export function usePlaza() {
           .from('posts')
           .select(POST_SELECT)
           .eq('status', 'active')
+          .eq('region', ACTIVE_REGION)
           .order('is_pinned', { ascending: false })
         if (category) q = q.eq('category', category)
         if (sort === 'hot') {

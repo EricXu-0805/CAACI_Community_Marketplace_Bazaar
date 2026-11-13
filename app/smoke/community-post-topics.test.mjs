@@ -73,6 +73,7 @@ async function loadPlaza({ postError = null, attachmentError = null, switchAccou
   let input = source('composables/usePlaza.ts')
     .replace("'./accountScope'", `'${scopeUrl}'`)
     .replace("'../utils/communityPost'", `'${topicModule}'`)
+    .replace("'../utils/region'", `'${compile(source('utils/region.ts'))}'`)
     .replace("'../api/mutationCommit'", `'${compile(source('api/mutationCommit.ts'))}'`)
   for (const [specifier, code] of Object.entries(mocks)) input = input.replace(`'${specifier}'`, `'${compile(code)}'`)
   const { usePlaza } = await import(`${compile(input)}#${sequence}`)
@@ -134,10 +135,12 @@ test('category is applied on the server for ordinary and search pagination', asy
   const h = await loadPlaza()
   await h.plaza.fetchPosts({ category: 'campus-life', page: 1 })
   assert.ok(h.query.some(([key, value]) => key === 'category' && value === 'campus-life'))
+  assert.ok(h.query.some(([key, value]) => key === 'region' && value === 'cu'))
   await h.plaza.fetchPosts({ category: 'alumni-career', search: 'Quantum', page: 2 })
   assert.equal(h.rpc[0][0], 'search_community_posts')
   assert.equal(h.rpc[0][1].category_in, 'alumni-career')
   assert.equal(h.rpc[0][1].offset_in, 40)
+  assert.equal(h.rpc[0][1].region_in, 'cu')
 })
 
 
