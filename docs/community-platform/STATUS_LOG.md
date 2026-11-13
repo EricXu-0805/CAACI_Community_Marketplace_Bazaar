@@ -464,3 +464,14 @@
 - ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43393646871
 - 未测项: 无
 - 下一条: BRAND.3
+
+### L39 · 2026-11-13 02:37 CT · BRAND.3 徽章改名「校园邮箱已验证」（D-27）
+- task_id: BRAND.3
+- code_sha: 9157d966c48c8d6bd81cc3a30aefdc70bd033102（codex/brand-cornfield-20261112，草稿 PR #372，base main 7b18f20，已推送；BRAND.1–3 一个提交，因 zh/en 两个文案文件里三项的 key 交错）
+- docs_sha: a61d51dfeaf1418272a344600c39a34c6d8e13a1
+- 环境: 本地 tony-ws pw1.60（分支从 main 建，还是 Playwright 1.60）；CI
+- 命令: profile.illiniVerified、verifyTitle、verifyHint、illini.title、illini.intro、login.illiniEmail 的中英文值按 SPEC §1.6 改，key 名不变；新增 profile.verifiedShort（列表、卡片、关注、评价行用短名，title/aria-label 用全称）；9 处写死 label="Illini" 的 UBadge 改用 i18n。brand-name-boundary.test.mjs 含徽章检索。`~/work/illini-dev-env/run-checks.sh ~/work/illini-brand install typecheck h5 h5accept mp migrations test smoke`（log check-20261113T074156Z）：test 两条失败，都是 api/_share-boundary.test.mjs 仍断言旧兜底描述；SPEC §1.1 规定分享卡描述用一句话介绍，所以改断言为新值，`~/work/illini-dev-env/run-checks.sh ~/work/illini-brand install test` 复测（log check-20261113T082329Z）通过。改动由 OMO 子任务按 SPEC §1.1–§1.7、ENGINEERING §3 写，OMO 复核并跑全量
+- 计数: ① profile.illiniVerified =「校园邮箱已验证 / Campus email verified」，其余 5 个 key 不含 Illini；② 徽章检索 10 → 0（evidence/BRAND.3/20261113T075437Z-badge-grep.txt）；③ diff 里 pages/illini-verify、is_illini_verified 都没有重命名 [本地测]；CI Type-check、Boundary（没碰依赖文件，审计按 workflow 跳过）、Build mp-weixin success；Build H5 失败在「Install browsers for compiled admin acceptance」、public sweep 失败在「Install Playwright」，都是 Ubuntu 26.04 上 Playwright 1.60 装不上浏览器，P1.5 在 #371 修，等 E5 [CI run#43393646871]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43393646871
+- 未测项: 无
+- 下一条: BRAND.2
