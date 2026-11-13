@@ -511,3 +511,15 @@
 - 未测项: 小程序在微信后台的图标（不在仓库，BRAND.5 / E7 时 Eric 换）
 - 下一条: P1.7
 - 附: 邮件里的「集」字印章（send-illini-code、meetup-notify、notification-digest、unsubscribe、两个邮件模板）不在 SPEC §1.5 的替换清单里，没改，列进最终报告；另有 6 处代码注释仍写「集」印章。
+
+### L43 · 2026-11-13 03:23 CT · P1.7 配置修正草稿 PR #371：CI 除依赖审计外全部通过；修了 Playwright 1.65 下 3 条桌面用例的回归
+- task_id: P1.7
+- code_sha: b259105ee8e72466cfe63350081919a9be748618（codex/config-fixes-20261112，草稿 PR #371，base main，已推送）
+- docs_sha: bb5c1fb3a364a828a5fd83a5004cb3574d6e2ea2
+- 环境: CI；本地 tony-ws pw1.65 / pw1.60 对照
+- 命令: 第一次 CI（run 43386686161，head 23ce3b6）public sweep 有 4 条失败：marketplace-responsive 的 3 条桌面用例点第二个会话超时，product-publishing-discovery 1 条刷新计数。诊断：本地两份 spec 在配置分支复现 3 条（130 passed / 3 failed），origin/main 的只读 worktree（7b18f20，Playwright 1.60）133 条全过，product-publishing 那条两边都过（判为 CI 偶发）；在失败用例里插桩对比，main 上 screen.width 1440、点会话后留在消息页分栏，配置分支 screen.width 390、点会话跳到 /pages/chat，会话列表卸载。原因：Playwright 1.65 的测试运行器在 describe 覆盖 viewport 时保留了 iPhone 13 设备的 390 宽 screen，uni-h5 取 min(innerWidth, clientWidth, screen.width) 当窗口宽，messages 页按 windowWidth ≥ 1100 判断宽屏。修正只改测试：两个桌面 describe 的 test.use 加 `screen: { width: 1440, height: 900 }`（b259105）；本地两份 spec 133 passed，推送时宿主 pre-push 检查通过。另按 D-41 补充把 #371 描述的依赖一节改成 23ce3b6 的内容（gh pr edit 碰到 Projects classic 弃用报错，改用 REST PATCH）
+- 计数: ① 草稿 PR #371，base main；② run 43397680516：Type-check、Build H5（runner Image ubuntu-26.04，P1.5 ⑤ 一并满足）、Build mp-weixin、Smoke (public page sweep) success，Smoke (protected staging account)、Production release readiness skipped，Boundary regressions 只失败在「Audit production and build dependencies」；③ Boundary 汇总 # fail 0、# skipped 1；④ 本条与 STATUS 记了 PR 号、head、run id 和各 job 结论 [CI run#43397680516]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43397680516
+- 未测项: 无
+- 下一条: FINAL
+- 附: Boundary 的依赖审计只在 PR 改了依赖文件时才跑（#369、#372 没改，所以通过）；#371 卡在这一步是 main 上原有的 @intlify、glob、minimatch、vite 公告，等 P1.6 剩余项。宿主 pre-push 钩子在配置分支上是通过的（P1.3 的 postgresBinDir 已在这条分支），合并后 #369、#372 推送不再需要 --no-verify。
