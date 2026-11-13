@@ -387,6 +387,8 @@ export function usePlaza() {
     images: string[] = [],
     attachedItemIds: string[] = [],
     extras: {
+      postId?: string
+      retryCreate?: boolean
       title?: string | null
       category?: PostCategory | null
       image_dimensions?: Array<{ w: number; h: number }>
@@ -422,6 +424,13 @@ export function usePlaza() {
 
     try {
       assertAccountCurrent()
+      if (extras.postId && !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(extras.postId)) {
+        throw new Error('Invalid post id')
+      }
+      if (extras.postId && extras.retryCreate) {
+        const recovered = await recoverCreatedPost(extras.postId, attachedItemIds, accountToken)
+        if (recovered) return recovered
+      }
       const topic = normalizePostTopic(extras.title, extras.category, trimmed)
       moderationText = topic.title ? `${topic.title}\n${trimmed}` : trimmed
       if (topic.title) {
@@ -442,7 +451,13 @@ export function usePlaza() {
         if (!safety.ok) throw new Error(`moderation_block:${safety.category}:${safety.reason || ''}`)
       }
       if (moderationText) {
-        if (isLocalDuplicate(accountToken, 'post', moderationText)) throw new Error('duplicate_post')
+        if (!extras.retryCreate && isLocalDuplicate(accountToken, 'post', moderationText)) {
+          if (extras.postId) {
+            const recovered = await recoverCreatedPost(extras.postId, attachedItemIds, accountToken)
+            if (recovered) return recovered
+          }
+          throw new Error('duplicate_post')
+        }
         duplicateHeld = true
         const ai = await remoteModerate(moderationText, accountToken)
         if (ai.flagged) throw new Error(`moderation_block:sensitive_word:ai(${ai.categories.join(',')})`)
@@ -454,8 +469,9 @@ export function usePlaza() {
         assertAccountCurrent()
       }
 
-      const payloadContent = trimmed || ' '
+      const payloadContent = topic.title ? trimmed : trimmed || ' '
       const basePayload: Record<string, any> = {
+        ...(extras.postId ? { id: extras.postId } : {}),
         user_id: userId,
         ...topic,
         content: payloadContent,
@@ -475,12 +491,20 @@ export function usePlaza() {
       try {
         res = await supabase.from('posts').insert(basePayload).select(POST_SELECT).single()
       } catch (writeError) {
-        throw mutationOutcomeError(writeError, 'unknown')
+        res = { error: mutationOutcomeError(writeError, 'unknown') }
+      }
+      const duplicateId = res.error?.code === '23505'
+      if (extras.postId && (res.error || !res.data) && (extras.retryCreate || duplicateId
+        || res.error?.message?.includes('duplicate_post')
+        || !res.data && !isDefinitiveMutationRejection(res.error))) {
+        const recovered = await recoverCreatedPost(extras.postId, attachedItemIds, accountToken)
+        if (recovered) return recovered
       }
       if (res.error) {
         throw mutationOutcomeError(
           res.error,
-          isDefinitiveMutationRejection(res.error) ? 'not_committed' : 'unknown',
+          extras.retryCreate || duplicateId ? 'unknown'
+            : isDefinitiveMutationRejection(res.error) ? 'not_committed' : 'unknown',
         )
       }
       if (!res.data) {
@@ -544,7 +568,7 @@ export function usePlaza() {
       }
 
       assertAccountCurrent(true)
-      posts.value = [post, ...posts.value]
+      posts.value = [post, ...posts.value.filter(row => row.id !== newId)]
       if (partial === 'items_failed') return { id: newId, partial, failedItemIds: [...attachedItemIds], itemsErr }
       if (partial === 'refetch_failed') return { id: newId, partial, itemsErr }
       return { id: newId, partial: false }
@@ -561,6 +585,38 @@ export function usePlaza() {
         clearLocalDuplicate(accountToken, 'post', moderationText)
       }
       throw tagged
+    }
+  }
+
+  /** Check an uncertain publish without sending another INSERT. */
+  async function recoverCreatedPost(
+    postId: string,
+    itemIds: string[] = [],
+    expectedToken?: AccountRequestToken,
+  ): Promise<CreatePostResult | null> {
+    const uid = currentUser.value?.id
+    const token = expectedToken || (uid ? captureAccountRequest(uid) : null)
+    try {
+      if (!token || token.userId !== uid || !isAccountRequestCurrent(token)) throw new Error('Account changed while checking post')
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(postId)) throw new Error('Invalid post id')
+      const { data, error } = await supabase.from('posts').select(POST_SELECT)
+        .eq('id', postId).eq('user_id', uid).maybeSingle()
+      if (!isAccountRequestCurrent(token)) throw new Error('Account changed while checking post')
+      if (error) throw error
+      if (!data) return null
+      const post = sanitizePostResources(data as unknown as Post)
+      if (post.id !== postId || post.user_id !== uid) throw new Error('Post recovery mismatch')
+      const linked = new Set(post.post_items?.map(row => row.item?.id))
+      const missing = itemIds.filter(id => !linked.has(id))
+      // The original request may have stopped between posts and post_items.
+      // Keep the existing detail-page retry as the single owner of missing links.
+      rememberPendingPostItems(uid!, postId, missing.length ? itemIds : [])
+      posts.value = [post, ...posts.value.filter(row => row.id !== postId)]
+      return missing.length
+        ? { id: postId, partial: 'items_failed', failedItemIds: missing }
+        : { id: postId, partial: false }
+    } catch (error) {
+      throw mutationOutcomeError(error, 'unknown')
     }
   }
 
@@ -918,6 +974,7 @@ export function usePlaza() {
     fetchPosts,
     fetchPost,
     createPost,
+    recoverCreatedPost,
     retryAttachPostItems,
     updatePostI18n,
     deletePost,

@@ -57,6 +57,7 @@ const TOPIC = { ...LEGACY, id: '33333333-3333-4333-8333-333333333333', title: 'Q
 async function fixture(page: Page, lang: 'en' | 'zh' = 'en') {
   const writes: Record<string, unknown>[] = [], searches: Record<string, unknown>[] = []
   const posts = [TOPIC, LEGACY]
+  const behavior = { failPublish: false, failRecovery: false, persistOnFailure: true }
   await openPlazaComposer(page, async () => {
     await page.route(/\/api\/(moderate|translate)(?:\?|$)/, route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ flagged: false, categories: [] }) }))
     await page.route('**/rest/v1/rpc/search_community_posts', route => {
@@ -68,7 +69,12 @@ async function fixture(page: Page, lang: 'en' | 'zh' = 'en') {
       let body: unknown
       if (request.method() === 'POST') {
         const payload = request.postDataJSON(); writes.push(payload)
-        const post = { ...LEGACY, ...payload, id: '44444444-4444-4444-8444-444444444444' }; posts.unshift(post); body = post
+        const post = { ...LEGACY, ...payload }
+        if (!behavior.failPublish || behavior.persistOnFailure) posts.unshift(post)
+        if (behavior.failPublish) return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'response lost' }) })
+        body = post
+      } else if (url.searchParams.has('user_id') && behavior.failRecovery) {
+        return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ message: 'offline' }) })
       } else if (request.headers().accept?.includes('vnd.pgrst.object')) {
         body = posts.find(post => `eq.${post.id}` === url.searchParams.get('id'))
       } else if (url.searchParams.has('id')) {
@@ -79,24 +85,42 @@ async function fixture(page: Page, lang: 'en' | 'zh' = 'en') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
     })
   }, lang)
-  return { writes, searches }
+  return { writes, searches, behavior }
 }
 
-test('legacy rows, board filtering, title search and topic detail coexist', async ({ page }) => {
-  const h = await fixture(page)
-  await page.locator('.comp-cancel').click()
-  await expect(page.getByText('Legacy campus update', { exact: true })).toBeVisible()
-  await expect(page.getByRole('heading', { name: TOPIC.title })).toBeVisible()
-  await page.locator('.board-filters').getByRole('button', { name: 'Campus life', exact: true }).click()
-  await expect(page.getByText('Legacy campus update', { exact: true })).toHaveCount(0)
-  await page.locator('.sb-input input').fill('Quantum')
-  await expect.poll(() => h.searches.length).toBeGreaterThan(0)
-  expect(h.searches.at(-1)?.category_in).toBe('campus-life')
-  await page.getByRole('heading', { name: TOPIC.title }).click()
-  await expect(page).toHaveURL(new RegExp(`pages/post/index.*id=${TOPIC.id}`))
-  await expect(page.locator('.post-topic-title')).toHaveText(TOPIC.title)
-  await expect(page.locator('.post-board')).toHaveText('Campus life')
-})
+for (const width of [390, 1280]) {
+  test(`legacy rows, board filtering, title search and topic board links coexist at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 })
+    const h = await fixture(page)
+    await page.locator('.comp-cancel').click()
+    await expect(page.getByText('Legacy campus update', { exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: TOPIC.title })).toBeVisible()
+    await page.locator('.board-filters').getByRole('button', { name: 'Campus life', exact: true }).click()
+    await expect(page.getByText('Legacy campus update', { exact: true })).toHaveCount(0)
+    // All discussions searches from the top bar on phones and from the page header on desktop (HOME.3).
+    const search = page.locator(width < 1024 ? '.sb-input input' : '.cx-search input')
+    await search.fill('Quantum')
+    await expect.poll(() => h.searches.length).toBeGreaterThan(0)
+    expect(h.searches.at(-1)?.category_in).toBe('campus-life')
+    await page.getByRole('heading', { name: TOPIC.title }).click()
+    await expect(page).toHaveURL(new RegExp(`pages/post/index.*id=${TOPIC.id}`))
+    await expect(page.locator('.post-topic-title')).toHaveText(TOPIC.title)
+    await expect(page.locator('.post-board')).toHaveText('Campus life')
+    await page.screenshot({ path: `test-results/visual/P2.10/board-link-${width}-light-en.png` })
+    const searchesBeforeBoardLink = h.searches.length
+    await page.locator('.post-board').click()
+    // On H5 the board link opens that board's page, whose address names it (HOME.5).
+    await expect(page).toHaveURL(/#\/pages\/plaza\/index\?board=campus-life$/)
+    await expect(page.locator('.board-head').getByRole('heading', { level: 1 })).toHaveText('Campus life')
+    // Desktop keeps the header search on every view; a phone board page has none.
+    if (width >= 1024) await expect(search).toHaveValue('')
+    else await expect(page.locator('.sb-input')).toHaveCount(0)
+    await expect(page.getByText('Legacy campus update', { exact: true })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: TOPIC.title })).toBeVisible()
+    // The board list was read without the earlier words: no further search request.
+    expect(h.searches.length).toBe(searchesBeforeBoardLink)
+  })
+}
 
 test('topic validates metadata before writing and sends the selected board', async ({ page }) => {
   const h = await fixture(page)
@@ -111,12 +135,13 @@ test('topic validates metadata before writing and sends the selected board', asy
   await expect(composer.locator('.field-error')).toHaveText(['Add a title'])
   expect(h.writes).toHaveLength(0)
   await page.locator('.topic-title-input input').fill('Calculus study group')
+  await expect(composer.locator('.field-error')).toHaveCount(0)
   await composer.getByRole('button', { name: 'Ask alumni', exact: true }).click()
   await page.locator('.comp-submit').click()
   await expect(composer).toHaveCount(0)
   expect(h.writes).toHaveLength(1)
   expect(h.writes[0]).toMatchObject({ title: 'Calculus study group', category: 'alumni-career', content: 'Looking for a weekly study group' })
-  await expect(page).toHaveURL(/pages\/post\/index.*id=44444444/);
+  await expect(page).toHaveURL(new RegExp(`pages/post/index.*id=${h.writes[0].id}`))
   await expect(page.getByRole('heading', { name: 'Calculus study group' })).toBeVisible()
 })
 
@@ -131,7 +156,7 @@ test('existing update entry publishes without topic metadata', async ({ page }) 
   await page.locator('.comp-submit').click()
   await expect(page.locator('.composer-fullpage')).toHaveCount(0)
   expect(h.writes[0]).toMatchObject({ title: null, category: null, content: 'A short campus update' })
-  await expect(page).toHaveURL(/pages\/post\/index.*id=44444444/)
+  await expect(page).toHaveURL(new RegExp(`pages/post/index.*id=${h.writes[0].id}`))
   await expect(page.getByText('A short campus update', { exact: true })).toBeVisible()
 })
 
@@ -157,4 +182,87 @@ test('topic is the default and missing fields are explained under each field, wi
   await expect(page.locator('.uni-toast')).toHaveCount(0)
   await page.screenshot({ path: 'test-results/visual/P2.4/composer-390-light-zh.png' })
   expect(h.writes).toHaveLength(0)
+})
+
+const RETRY_TITLE = 'Study together near Grainger this weekend, with calculus practice questions and a short break afterwards'
+async function fillRetryTopic(page: Page) {
+  const composer = page.locator('.composer-fullpage')
+  await composer.getByRole('button', { name: 'Campus life', exact: true }).click()
+  await page.locator('.topic-title-input input').fill(RETRY_TITLE)
+  await expect(page.locator('.title-left')).toContainText(String(120 - RETRY_TITLE.length))
+  await page.locator('.comp-textarea textarea').fill('Meet at the library')
+  await expect(page.locator('.comp-count')).toContainText(String(2000 - 'Meet at the library'.length))
+}
+
+for (const width of [390, 1280]) {
+  test(`unknown publish keeps its draft and checks the same id at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 })
+    const h = await fixture(page)
+    await fillRetryTopic(page)
+    h.behavior.failPublish = true
+    h.behavior.failRecovery = true
+    await page.locator('.comp-submit').click()
+    await expect(page.locator('.comp-submit')).toHaveText('Check whether it posted')
+    await expect(page.locator('.composer-notice')).toContainText('Your content is still here.')
+    expect(h.writes).toHaveLength(1)
+    const postId = String(h.writes[0].id)
+    await page.screenshot({ path: `test-results/visual/P2.8/unknown-${width}-light-en.png` })
+    await page.locator('.comp-cancel').click()
+    await expect(page.getByRole('button', { name: 'Keep draft', exact: true })).toBeVisible()
+    await page.screenshot({ path: `test-results/visual/P2.8/draft-confirm-${width}-light-en.png` })
+    await page.getByRole('button', { name: 'Keep draft', exact: true }).click()
+    await expect(page.locator('.composer-fullpage')).toHaveCount(0)
+    await page.getByRole('button', { name: 'New topic', exact: true }).filter({ visible: true }).click()
+    await expect(page.locator('.composer-fullpage')).toContainText('Restored your unfinished post')
+    await expect(page.locator('.topic-title-input input')).toHaveValue(RETRY_TITLE)
+    await expect(page.locator('.comp-textarea textarea')).toHaveValue('Meet at the library')
+    await expect(page.locator('.comp-submit')).toHaveText('Check whether it posted')
+    h.behavior.failRecovery = false
+    await page.locator('.comp-submit').click()
+    await expect(page).toHaveURL(new RegExp(`pages/post/index.*id=${postId}`))
+    expect(h.writes).toHaveLength(1)
+    expect(await page.evaluate(() => localStorage.getItem('plaza_composer_draft_v1'))).toBeNull()
+  })
+}
+
+test('an absent uncertain post can be sent again with the same id', async ({ page }) => {
+  const h = await fixture(page)
+  await fillRetryTopic(page)
+  h.behavior.failPublish = true
+  h.behavior.persistOnFailure = false
+  await page.locator('.comp-submit').click()
+  await expect(page.locator('.comp-submit')).toHaveText('Check whether it posted')
+  const postId = String(h.writes[0].id)
+  await page.locator('.comp-submit').click()
+  await expect(page.locator('.composer-notice')).toContainText("It hasn't posted. You can try posting again.")
+  await expect(page.locator('.comp-submit')).toHaveText('Post')
+  expect(h.writes).toHaveLength(1)
+  h.behavior.failPublish = false
+  await page.locator('.comp-submit').click()
+  await expect(page).toHaveURL(new RegExp(`pages/post/index.*id=${postId}`))
+  expect(h.writes).toHaveLength(2)
+  expect(h.writes.map(write => write.id)).toEqual([postId, postId])
+})
+
+test('discarding a composer removes its saved draft and account changes remove it too', async ({ page }) => {
+  await fixture(page)
+  await fillRetryTopic(page)
+  await page.locator('.comp-cancel').click()
+  await page.getByRole('button', { name: 'Keep draft', exact: true }).click()
+  await page.getByRole('button', { name: 'New topic', exact: true }).filter({ visible: true }).click()
+  await expect(page.locator('.composer-fullpage')).toContainText('Restored your unfinished post')
+  await page.locator('.comp-cancel').click()
+  await page.getByRole('button', { name: 'Discard', exact: true }).click()
+  expect(await page.evaluate(() => localStorage.getItem('plaza_composer_draft_v1'))).toBeNull()
+  await page.getByRole('button', { name: 'New topic', exact: true }).filter({ visible: true }).click()
+  await expect(page.locator('.topic-title-input input')).toHaveValue('')
+  await fillRetryTopic(page)
+  await page.locator('.comp-cancel').click()
+  await page.getByRole('button', { name: 'Keep draft', exact: true }).click()
+  await page.evaluate(ref => {
+    const channel = new BroadcastChannel(`sb-${ref}-auth-token`)
+    channel.postMessage({ event: 'SIGNED_OUT', session: null })
+    channel.close()
+  }, REF)
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('plaza_composer_draft_v1'))).toBeNull()
 })
