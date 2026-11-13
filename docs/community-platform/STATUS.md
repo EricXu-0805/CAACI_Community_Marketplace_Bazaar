@@ -16,8 +16,8 @@ next_task_id 的取法（BACKLOG §0.1 第 2 条，D-47 第 1 项）：按 D-46 
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
 | docs_sha | 81196fa128e34be1e2669a93c0a51049c4b504b7（本次写回之前材料分支的 HEAD） |
-| 其余代码分支（远端 head） | #374 codex/community-home-20261112 6d6c598（P2.12、HOME.3、HOME.4、HOME.5、SPEC §11、小程序首页、D-46 3d / 3c / 3e；已合入 #369 b7bcf3a 与 #375 4a3cbe6，依赖 #375）。**#374 还不含 3a（3d24a8e），也不含 #369 上的 3b（3588c24）、3f（520e55a）**，所以 #374 上仍有 4a3cbe6 带来的小程序非 tab 页不启动消息与通知监听的问题。#375 codex/community-mp-budget-20261113 ecc330b（小程序主包腾空间 4a3cbe6、D-46 3a 3d24a8e、D-46 第 4 项 8972507 / 1443d5c / ecc330b，base #369 分支；还没合入 #369 的 3b、3f，子任务进行中）。#373 codex/deps-crossmajor-20261113 55716ba（P1.6 跨大版本，base #371）。#372 codex/brand-cornfield-20261112 ba070e7（BRAND.1–BRAND.4）。#371 codex/config-fixes-20261112 b259105（P1.2–P1.7）[本地测：git ls-remote] |
-| tony-ws worktree | ~/work/illini 520e55a（#369，与远端一致）；illini-home 6d6c598（#374，与远端一致）；illini-mpbudget ecc330b（#375，与远端一致；合入 #369 与 D-47 第 5 项的子任务进行中）；illini-deps 55716ba（#373）；illini-brand ba070e7（#372）；illini-config b259105（#371）；illini-events wip/P4.1 5f62ddd（本地不推送）；illini-main 7b18f20（origin/main 只读对照）；illini-docs-brand7 本地分支 local/brand7-20261113，在 bd397ce（D-46 第 6 项 BRAND.7 进行中，还没有新提交）；~/work/caaciorg 本地 feat/public-events-feed 28d59b1（不推送）；~/work/illini-docs 在 codex/community-plan-v5 [本地测] |
+| 其余代码分支（远端 head） | #374 codex/community-home-20261112 6d6c598（P2.12、HOME.3、HOME.4、HOME.5、SPEC §11、小程序首页、D-46 3d / 3c / 3e；已合入 #369 b7bcf3a 与 #375 4a3cbe6，依赖 #375）。**#374 还不含 3a（3d24a8e），也不含 #369 上的 3b（3588c24）、3f（520e55a）**，所以 #374 上仍有 4a3cbe6 带来的小程序非 tab 页不启动消息与通知监听的问题。#375 codex/community-mp-budget-20261113 30c4b4d（小程序主包腾空间 4a3cbe6、D-46 3a 3d24a8e、D-46 第 4 项 8972507 / 1443d5c / ecc330b，30c4b4d 合入 #369 520e55a 的 3b、3f；base #369 分支）。#373 codex/deps-crossmajor-20261113 55716ba（P1.6 跨大版本，base #371）。#372 codex/brand-cornfield-20261112 ba070e7（BRAND.1–BRAND.4）。#371 codex/config-fixes-20261112 b259105（P1.2–P1.7）[本地测：git ls-remote] |
+| tony-ws worktree | ~/work/illini 520e55a（#369，与远端一致）；illini-home 6d6c598（#374，与远端一致）；illini-mpbudget 30c4b4d（#375，与远端一致；D-47 第 5 项子任务进行中）；illini-deps 55716ba（#373）；illini-brand ba070e7（#372）；illini-config b259105（#371）；illini-events wip/P4.1 5f62ddd（本地不推送）；illini-main 7b18f20（origin/main 只读对照）；illini-docs-brand7 本地分支 local/brand7-20261113，在 bd397ce（D-46 第 6 项 BRAND.7 进行中，还没有新提交）；~/work/caaciorg 本地 feat/public-events-feed 28d59b1（不推送）；~/work/illini-docs 在 codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 
@@ -45,6 +45,7 @@ PR #369 · run [43491206333](https://github.com/EricXu-0805/CAACI_Community_Mark
 | #369 520e55a | 1,560,420 | 12,444 | check-20261113T190341Z [本地测] |
 | #375 3d24a8e | 1,502,862 | 70,002 | check-20261113T182923Z [本地测] |
 | #375 ecc330b（D-46 第 4 项） | 1,322,319 | 250,545 | check-20261113T191554Z，L73 [本地测] |
+| #375 30c4b4d（合入 #369 3b、3f） | 1,324,250 | 248,614 | check-20261113T193317Z：test 2162 / 2161 / 0 / 1，smoke 105 passed、只有 4 条已知 pages.smoke 失败 [本地测] |
 | #374 6d6c598 | 1,551,820 | 21,044 | check-20261113T183852Z [本地测] |
 | #374 6d6c598 ＋ 3d24a8e 试合（supervisor） | 1,551,949 | 20,915 | D-47 第 6 项；离 D-46 第 4 项的 64 KiB 还差 44,621，没算 #369 的 3b、3f 和 #372、#373 |
 
