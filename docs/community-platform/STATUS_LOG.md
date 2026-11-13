@@ -559,3 +559,15 @@
 - 未测项: ④ staging source_lang 探测（等 E3）；smoke 里 community-post-partial-attach.spec.ts 的偶发失败（P2.7 的测试时序问题，另行修，见附）
 - 下一条: P2.9
 - 附: [OMO自决] architect 子任务因模型额度中断，只留下 DoD ③ 证据，P2.5 由 OMO 自己做。VERIFY 按迁移实际授权断言：capture_report_target_snapshot 是触发器函数，迁移对 PUBLIC、anon、authenticated、service_role 全部 REVOKE（ENGINEERING §5.1 写「只有 service_role 能执行」，实际是谁都不能直接执行），admin_get_report_detail 只给 service_role。已知副作用照 §5.1：应用本迁移后旧的 VERIFY_20260718_reconcile_app_table_acl_boundaries 会报 posts 列清单漂移，属预期，没改那个历史文件。L-SQL 日志头写的 head 是 5abcb86，因为回放读工作区，内容与 090d2be 相同。smoke 第一次跑 community-post-partial-attach.spec.ts 有 1 条失败：失败快照里标题框被清空、正文还在；uni-input 用 100ms 节流把输入同步到 v-model，测试 fill 之后马上打开挂商品面板，标题在同步前被重新渲染覆盖。与 P2.5 改动无关，修测试另提交。
+
+### L47 · 2026-11-13 04:51 CT · P2.9 话题分享卡用话题标题，动态用正文首行；兼容矩阵按实测补证据
+- task_id: P2.9
+- code_sha: ece6d12（#369，已推送，head bd6fee5）
+- docs_sha: c62c618af8870d0d0b6b267824a35b4eca2ce6d1
+- 环境: 本地 tony-ws run-checks；宿主 Node 22（两份测试单独跑）
+- 命令: api/share-post.js：posts_visible 查询加 title；OG 标题 = title 去空白后非空就用 title（最多 120 字），否则正文首行，后接「— 作者」。api/_share-boundary.test.mjs 加话题用例（有标题、title null、全空白、含 HTML 字符），并断言查询带 title；scripts/suspension-visibility-legacy-view-boundary.test.mjs 加用例：20261112120000 重建的 posts_visible 保留 11 列、两个选项、过滤条件和授权，只追加 source_lang/title/category/region，且 VERIFY 写着同一份列清单；scripts/community-post-topics.test.mjs 加断言：旧 RPC search_posts_fuzzy 用只在标题里的词搜得 0 条。材料分支 ENGINEERING §6 兼容矩阵补实测证据与部署顺序风险
+- 计数: ① OG 标题规则生效，两份测试都有话题用例；变异检查：把标题改回只用首行，新用例失败；宿主 26/26；② P2 不翻译标题，英文界面显示原文，title_i18n 已在 BACKLOG P6.1 候选；③ §6 矩阵每格写明用户看到什么并补证据（旧 H5 搜索不到标题词 [本地测]、分享标题 [本地测]、新 H5 [本地测 P2.4]）；④ install、typecheck、test 2022/2021/0/1 pg_skips=0 [本地测]
+- ci_run_url: —（#369 随 bd6fee5 重跑，public sweep 停在预检等 E4）
+- 未测项: 无
+- 下一条: HOME.2
+- 附: 部署顺序：新 share-post.js 的查询带 title，若早于 20261112120000 上线，posts_visible 缺 title 会 400，所有帖子退回兜底文字，必须先迁移（已写进 §6）。#369 上 share-post.js 的兜底文案还是旧品牌名，#372 也改了同一段，两个 PR 合并时这里会冲突，要 Eric 合第二个时取 #372 的文案。

@@ -531,13 +531,13 @@ RPC 与管理动作见 §9；VERIFY 断言上面每一条约束、策略、列�
 | 客户端 × 帖子 | 列表 | 详情 | 搜索 | 分享预览 |
 |---|---|---|---|---|
 | 旧 H5（7b18f20，未刷新的标签页）× 动态 | 不变 | 不变 | `search_posts_fuzzy`，不变 | 由服务端版本决定（末行） |
-| 旧 H5 × 话题 | 显示成无标题的动态卡，只有正文（旧 `POST_COLUMNS` 不含 `title`，`usePlaza.ts:72-73`） | 同列表 | `search_posts_fuzzy` 只匹配正文和昵称，标题里的词搜不到 | 同上 |
+| 旧 H5 × 话题 | 显示成无标题的动态卡，只有正文（旧 `POST_COLUMNS` 不含 `title`，`usePlaza.ts:72-73`） | 同列表 | `search_posts_fuzzy` 只匹配正文和昵称，标题里的词搜不到 [本地测：scripts/community-post-topics.test.mjs，用只在标题里的词调旧 RPC 得 0 条] | 同上 |
 | 新 H5 × 动态 | 原卡片 | 原样 | `search_community_posts`，匹配正文 | 同上 |
-| 新 H5 × 话题 | 标题、板块、元信息行 | 标题加正文 | `search_community_posts`，匹配标题和正文 | 同上 |
+| 新 H5 × 话题 | 标题、板块、元信息行 | 标题加正文 | `search_community_posts`，匹配标题和正文 [本地测：P2.4 的 community-post-topics.spec.ts；PG 断言见 scripts/community-post-topics.test.mjs] | 同上 |
 | 新小程序 × 动态、话题 | 同新 H5 | 同新 H5 | 同新 H5 | 走 `onShareAppMessage`，话题用标题（≤50 字，P2.10），不经 share-post.js |
-| 服务端 share-post.js | — | — | — | P2.9 部署前：OG 标题 = 正文首行（`posts_visible` 缺 `source_lang` 时一律是兜底文字，§13 缺口 1）；部署后：`title` 优先，否则正文首行 |
+| 服务端 share-post.js | — | — | — | P2.9 部署前：OG 标题 = 正文首行（`posts_visible` 缺 `source_lang` 时一律是兜底文字，§13 缺口 1）；部署后（#369 P2.9）：`title` 去掉首尾空白后非空就用 `title`（最多 120 字），否则用正文首行，后面都接「— 作者」[本地测：api/_share-boundary.test.mjs 四种情况]。新 share-post.js 的查询带 `title`，如果早于 20261112120000 上线，`posts_visible` 没有 `title` 列会返回 400，所有帖子都退回兜底文字，所以同样必须先迁移 |
 
-- 英文界面里的标题按原文显示（§5.2）。
+- 英文界面里的标题按原文显示（§5.2），P2 阶段标题不翻译；`title_i18n` 已在 BACKLOG P6.1 的候选里。
 - 新客户端连到未迁移的库：`POST_COLUMNS` 读 `title, category` 返回 400，社区页打不开。CI run 43212596901 的两例公开巡检失败就是这种情况（STATUS.md）。所以顺序永远是先迁移、后前端（仓库 RUNBOOK.md「Schema-coupled release order」）。
 - 发布顺序（D-12）：Eric 在生产应用迁移并跑 VERIFY → H5 按 `docs/SUPERVISED_RELEASE.md` 发布，小程序同一天提审和发布（P5.2）。
 - 小程序首次发布之后的硬规则：后续迁移只能新增可空或带默认值的列，不删除、不改名已发布版本会读的列和 RPC 参数；RPC 的返回形状要变时用新函数名（先例：`search_community_posts` 与 `search_posts_fuzzy` 并存）。
