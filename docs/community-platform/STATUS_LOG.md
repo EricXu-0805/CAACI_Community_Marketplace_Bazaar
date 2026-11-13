@@ -217,3 +217,15 @@
 - 未测项: 无
 - 下一条: P1.4
 - 附: simulate-listing-recovery.mjs 不是测试但也写死了路径，一并改用 postgresBinDir()（它原本就在找不到时 assert 失败，行为不变）。
+
+### L18 · 2026-11-13 00:03 CT · P1.4 品牌色统一 #B9452C
+- task_id: P1.4
+- code_sha: cc63ab59bc41a498adfba55cf91dc6a976c67cd4（codex/config-fixes-20261112）
+- docs_sha: 8558860bf011b9f6b8d022b7e67a6a28b4ac8ecc
+- 环境: 本地 tony-ws，镜像 pw1.60-node22-pg17
+- 命令: uni.scss:16 改 #B9452C；App.vue、ChatThread.vue、pages/index、pages/post、pages/profile 的 rgba(199,74,47,…) 改 rgba(185,69,44,…)，透明度不变；BACKLOG 的旧色 grep（证据 ~/work/evidence/P1.4/*-oldcolor-{before,after}.txt）；`~/work/illini-dev-env/run-checks.sh ~/work/illini-config install typecheck h5 mp`（log check-20261113T054031Z.log）
+- 计数: ① 旧色 grep 15 → 0；② illustrations、stickers 的 diff 为空，App.vue diff 里 E47B5F 计数 0；③ install、typecheck、h5、mp 全部 rc=0 [本地测]
+- ci_run_url: —（P1.7）
+- 未测项: 无
+- 下一条: P1.5
+- 附: 范围外仍有旧色 #C74A2F：api/auth/send-illini-code.js、api/meetup-notify.js、api/notification-digest.js、api/unsubscribe.js 的邮件内联样式，以及 supabase/email-templates 两个模板，另有 App.vue 3 行注释。P1.4 只管 app/src，没有改；建议在 BRAND.2（邮件显示名）时一并处理，或由 Eric 另定。
