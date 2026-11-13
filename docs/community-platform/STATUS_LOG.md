@@ -844,3 +844,14 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - ci_run_url: —（#374 base 不是 main，不触发 CI）
 - 未测项: 小程序上加长轮询与通知轮询后的实际并发（开发者工具）
 - 下一条: D-46 第 3 项 e
+
+### L69 · 2026-11-13 12:55 CT · D-46 第 3 项 e：SPEC §11「HOME.3 首页」节与板块说明、示例问题进语言包
+- task_id: D-46.3e
+- code_sha: 6d6c598（#374，已推送）
+- docs_sha: 831524ecec7a59a08c016ef0bcfd44529dccb0d9
+- 环境: 本地 tony-ws run-checks；实现由 OMO 子任务（deep-low）做，主会话核对后推送
+- 命令: 先写 app/smoke/community-home-catalog.test.mjs（HOME.3 节 29 个 key 与 10 个板块 key 的中英值逐字等于 SPEC，含能发现缺 key 和改字的对照）；修复前 2 条对照测试失败、对照通过（check-20261113T183734Z）。en.ts / zh.ts 补 11 个 home.* key、5 个 plaza.boardDesc.<slug>、5 个 plaza.boardAsk.<slug> 与 home.aboutBodyCaaci（LEGAL.1 前不启用）；communityHome.ts 改为返回 key 与参数，CommunityHome.vue 用 t() 渲染；community-home-sections.test.mjs 按新返回值改并加双语渲染用例。`SMOKE_SPECS="…8 份…" ~/work/illini-dev-env/run-checks.sh ~/work/illini-home install typecheck test h5 mpci smoke`
+- 计数: 通过（check-20261113T183852Z-test）；test 2077 / 2076 / 0 / 1；smoke 114 passed；主包（CI 环境）1,551,820，余 21,044 [本地测]；子任务看过桌面与手机英文截图，Market、New in Market、每周文案无重叠；没有与 SPEC 的分歧
+- ci_run_url: —（#374 base 不是 main，不触发 CI）
+- 未测项: —
+- 下一条: D-46 第 3 项 f（#369，子任务进行中）
