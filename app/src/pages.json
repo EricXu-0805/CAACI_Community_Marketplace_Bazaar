@@ -6,7 +6,9 @@
 				"navigationStyle": "custom"
 			}
 		},
+		// #ifndef MP-WEIXIN
 		{ "path": "pages/account-link/index", "style": { "navigationStyle": "custom" } },
+		// #endif
 		{
 			"path": "pages/plaza/index",
 			"style": {
@@ -61,6 +63,7 @@
 				"navigationStyle": "custom"
 			}
 		},
+		// #ifndef MP-WEIXIN
 		{
 			"path": "pages/history/index",
 			"style": { "navigationStyle": "custom" }
@@ -73,15 +76,16 @@
 			"path": "pages/legal/index",
 			"style": { "navigationStyle": "custom" }
 		},
+		// #endif
 		{
 			"path": "pages/welcome/index",
 			"style": { "navigationStyle": "custom" }
 		},
+		// #ifndef MP-WEIXIN
 		{
 			"path": "pages/settings/index",
 			"style": { "navigationStyle": "custom" }
 		},
-		// #ifndef MP-WEIXIN
 		{
 			"path": "pages/seller/index",
 			"style": { "navigationStyle": "custom" }
@@ -93,6 +97,7 @@
 				"navigationStyle": "custom"
 			}
 		},
+		// #ifndef MP-WEIXIN
 		{
 			"path": "pages/notifications/index",
 			"style": { "navigationStyle": "custom" }
@@ -135,6 +140,7 @@
 			"path": "pages/onboarding/index",
 			"style": { "navigationStyle": "custom" }
 		},
+		// #endif
 		{
 			"path": "pages/reconsent/index",
 			"style": { "navigationStyle": "custom" }
@@ -162,6 +168,10 @@
 	// #ifdef MP-WEIXIN
 	// Keep existing deep links while downloading these non-tab pages on entry.
 	// Shared components stay in the main package; these are not independent packages.
+	// Each root is the page's own directory, so every route is unchanged. Pages
+	// the app opens by itself stay in the main package: the first-run welcome,
+	// the consent, suspension and recovery gates, and chat. A directory that
+	// holds a tab page (publish, profile) cannot be a root.
 	"subPackages": [
 		{
 			"root": "pages/detail",
@@ -173,6 +183,62 @@
 		},
 		{
 			"root": "pages/seller",
+			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
+		},
+		{
+			"root": "pages/account-link",
+			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
+		},
+		{
+			"root": "pages/blocked",
+			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
+		},
+		{
+			"root": "pages/following",
+			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
+		},
+		{
+			"root": "pages/history",
+			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
+		},
+		{
+			"root": "pages/illini-verify",
+			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
+		},
+		{
+			"root": "pages/legal",
+			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
+		},
+		{
+			"root": "pages/login",
+			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
+		},
+		{
+			"root": "pages/my-items",
+			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
+		},
+		{
+			"root": "pages/notifications",
+			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
+		},
+		{
+			"root": "pages/onboarding",
+			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
+		},
+		{
+			"root": "pages/reset-password",
+			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
+		},
+		{
+			"root": "pages/saved-searches",
+			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
+		},
+		{
+			"root": "pages/search",
+			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
+		},
+		{
+			"root": "pages/settings",
 			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
 		}
 	],
