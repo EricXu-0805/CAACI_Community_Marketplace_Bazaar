@@ -931,3 +931,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 当前托管库的迁移状态、真实 L0–L5 执行矩阵、Storage HTTP 处理和邮件发送。降价通知行被创建不代表一定展示/送达，后续 SELECT 可隐藏 L3/L4 商品；街道验证的受限条件只影响认证回执，不拒绝正常手动编辑。
 - 下一条: D-48 第 1 项验证完成后提交并推送，然后第 2 项。
 - 附: D-49 已选择服务端先行，撤下 D-48 的二选一待决条目。目标扩展为 D-46 第 1–6 项加 D-47、D-48、D-49。仅 codex/community-restricted-20261113 分支获准一个新迁移；从 D-48 第 1、2 项完成后的 #369 head 切出，base 为 #369，其他分支不新增迁移。现有迁移/manifest 已有行、20261112120000 和 workflows 不改。新迁移先生产应用并 VERIFY，再合新前端；托管应用归 Eric，#369 恢复旧门禁后可按原计划上线。
+
+### L76 · 2026-11-13 14:21 CT · D-48.1 恢复所有有效 L2–L5 的全局门禁；登记 D-50 规则与本轮停止条件
+- task_id: D-48.1
+- code_sha: 4a44a41212877ee3785050783351fc5c5a0fbb7b（#369，已推送）
+- docs_sha: 06a0c70904493c0389fec32c1204184160ae9be4
+- 环境: tony-ws localhost/illini-dev:pw1.60-node22-pg17；mpci 使用 CI build-mp-weixin 环境
+- 命令: 测试先改为有效 L2–L5 全部跳 suspended，在 520e55a 原源码上运行 community-restricted-account 和 auth-recovery-page-lifecycle（check-20261113T200510Z），104/99/5/0，准确失败于 L2–L4 及限制优先级。恢复 App.vue 的 requiredGatePath 判断与原注释，保留社区发帖/回复防护；run-checks cmd install typecheck test h5 mpci smoke（四份 smoke，check-20261113T200620Z）全部 rc=0。容器验证后依 RUNBOOK §3 已知宿主机 PostgreSQL/依赖环境差异用 git push --no-verify，未删弱测试。
+- 计数: 定向绿测通过；全量 2153/2152/0/1，pg_skips=0；smoke 53 passed；H5、mpci 通过；主包1,560,396，余12,468。测试运行在提交前的相同工作树，日志头为520e55a。
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43500445187（运行中）
+- 未测项: 真机/托管账号；#375 和 #374 的后续合并。
+- 下一条: D-48 第2项，随后 D-50 第3项，再做 D-48 第3项合并。
+- 附: 仅新提交恢复 App.vue，不 revert #375 的30c4b4d。D-50 已读取（2f445c9）：showModal 按 replace(/[^\x00-\xff]/g,"##").length <= 8 检查，来源为 supervisor 解包的 WAServiceMainContext.js 3.15.0–3.15.2；只 Keep draft 超限，D-48 第5项撤销。后续测试覆盖全 app 可达小程序调用及两个变异。目标范围为 D-46–D-50；本轮完成后关闭目标、取消续跑，不接新 BACKLOG。材料分支076e400未推送时遇到远端D-50更新，按 RUNBOOK §8.7 只重放这一个本地提交为06a0c70；未改写任何已推送提交。
