@@ -4,8 +4,11 @@
     From 1024px it is the 56px header of SPEC 5.2 ①, which replaces the left
     rail on this page; below that it is the 48px top bar and the 44px board
     chips of SPEC 5.3 ①②. It sits outside the scrolling area, so it stays put.
+    The mini program has the phone layout only (SPEC 8), so the desktop header
+    is compiled into H5 alone.
   -->
   <view v-if="desktop" class="cx-hdr">
+    <!-- #ifdef H5 -->
     <view class="cx-hdr-in">
       <view class="cx-brand" role="button" :aria-label="t('app.name')" @click="emit('home')">
         <image class="cx-seal" :src="logoSrc" mode="aspectFit" />
@@ -68,6 +71,7 @@
         </template>
       </view>
     </view>
+    <!-- #endif -->
   </view>
 
   <view v-else class="cx-m">
@@ -80,9 +84,11 @@
         <image class="cx-seal" :src="logoSrc" mode="aspectFit" />
         <text class="cx-wm">{{ t('app.name') }}</text>
       </template>
-      <text class="cx-region" data-test="region-label">{{ regionLabel(lang) }}</text>
-      <view v-if="showRegionSwitcher()" class="cx-region-switcher" data-test="region-switcher">
-        <text v-for="region in REGIONS" :key="region.slug" class="cx-region">{{ lang === 'zh' ? region.zh : region.en }}</text>
+      <view class="cx-regions">
+        <text class="cx-region" data-test="region-label">{{ regionLabel(lang) }}</text>
+        <view v-if="showRegionSwitcher()" class="cx-region-switcher" data-test="region-switcher">
+          <text v-for="region in REGIONS" :key="region.slug" class="cx-region">{{ lang === 'zh' ? region.zh : region.en }}</text>
+        </view>
       </view>
       <view class="cx-top-r">
         <view class="cx-ib" role="button" :aria-label="t('a11y.search')" @click="emit('search-open')">
@@ -143,20 +149,23 @@ const emit = defineEmits<{
 
 const { t, tc, lang } = useI18n()
 const { isDark } = useTheme()
-const { currentUser } = useAuth()
-const { unreadCount } = useUnread()
 const { unreadNotifCount } = useNotifications()
 
 const logoSrc = computed(() => isDark.value ? '/static/logo-mark-dark.svg' : '/static/logo-mark.svg')
-const defaultAvatarSrc = computed(() => isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg')
 // The count sits in the control's name: the badge beside the icon is not read on its own.
-const messagesLabel = computed(() => unreadCount.value > 0
-  ? `${t('nav.messages')}, ${unreadCount.value} ${tc('a11y.unreadCount', unreadCount.value)}`
-  : t('nav.messages'))
 const notifLabel = computed(() => unreadNotifCount.value > 0
   ? `${t('notif.title')}, ${t('a11y.unreadNotifications')}`
   : t('notif.title'))
+function goNotifications() { uni.navigateTo({ url: '/pages/notifications/index' }) }
 
+// #ifdef H5
+// What only the desktop header holds: the board menu, the search field, messages and the avatar.
+const { currentUser } = useAuth()
+const { unreadCount } = useUnread()
+const defaultAvatarSrc = computed(() => isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg')
+const messagesLabel = computed(() => unreadCount.value > 0
+  ? `${t('nav.messages')}, ${unreadCount.value} ${tc('a11y.unreadCount', unreadCount.value)}`
+  : t('nav.messages'))
 const searchModel = computed({ get: () => props.search, set: value => emit('update:search', value) })
 const menuOpen = ref(false)
 function pick(go: () => void) {
@@ -164,11 +173,10 @@ function pick(go: () => void) {
   go()
 }
 function goTab(url: string) { uni.switchTab({ url }) }
-function goNotifications() { uni.navigateTo({ url: '/pages/notifications/index' }) }
+// #endif
 </script>
 
 <style lang="scss" scoped>
-/* #ifdef H5 */
 .cx-seal { flex: none; display: block; }
 .cx-wm { flex: none; font-family: var(--font-serif); font-weight: 600; color: var(--ink); white-space: nowrap; }
 .cx-region {
@@ -179,6 +187,7 @@ function goNotifications() { uni.navigateTo({ url: '/pages/notifications/index' 
 .cx-region-switcher { display: flex; gap: var(--space-2); }
 .cx-ib { position: relative; flex: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 
+/* #ifdef H5 */
 /* ---- desktop header ---- */
 .cx-hdr { position: relative; z-index: 30; flex: none; height: 56px; background: var(--surface); border-bottom: 1px solid var(--line-soft); }
 .cx-hdr-in { display: flex; align-items: center; width: min(1200px, calc(100% - var(--space-8))); height: 56px; margin: 0 auto; }
@@ -234,6 +243,7 @@ function goNotifications() { uni.navigateTo({ url: '/pages/notifications/index' 
 .cx-login, .cx-join { flex: none; font-size: 14px; line-height: var(--space-7); white-space: nowrap; cursor: pointer; }
 .cx-login { color: var(--ink-soft); }
 .cx-join { padding: 0 var(--space-3); border-radius: var(--radius-sm); color: var(--ink); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-bold); }
+/* #endif */
 
 /* ---- phone top bar and board chips ---- */
 .cx-m { flex: none; z-index: 20; background: var(--surface); padding-top: env(safe-area-inset-top, 0px); }
@@ -242,6 +252,7 @@ function goNotifications() { uni.navigateTo({ url: '/pages/notifications/index' 
 .cx-m .cx-wm, .cx-title { font-size: var(--t-h3); line-height: var(--space-6); }
 .cx-title { flex: none; font-weight: 600; color: var(--ink); white-space: nowrap; }
 .cx-m .cx-region { line-height: 26px; }
+.cx-regions { flex: none; display: flex; align-items: center; gap: var(--space-2); }
 .cx-top-r { flex: none; display: flex; margin-left: auto; }
 .cx-m .cx-ib { width: 40px; height: 40px; }
 .cx-back { margin-left: calc(-1 * var(--space-3)); }
@@ -255,5 +266,23 @@ function goNotifications() { uni.navigateTo({ url: '/pages/notifications/index' 
 .cx-chip-t { font-size: 14px; color: var(--ink-soft); white-space: nowrap; }
 .cx-chip.on { box-shadow: inset 0 0 0 1px var(--brand); }
 .cx-chip.on .cx-chip-t { color: var(--brand); }
+
+/* #ifdef MP-WEIXIN */
+/*
+ * WeChat's capsule owns the right of the band under the status bar (App.vue,
+ * --mp-navbar-*). The bar takes that band's height, so its icons centre on the
+ * capsule, and stops short of it. That leaves less room than on the web: the
+ * region label shows only when all of it fits (its row wraps out of sight
+ * otherwise; the empty first item keeps a lone label from staying put), and a
+ * long title is cut before the icons move. An empty label row costs no gap.
+ */
+.cx-m { padding-top: var(--mp-status-bar); }
+.cx-top { height: var(--mp-navbar-height); padding-right: var(--mp-navbar-right-pad); }
+.cx-m .cx-wm, .cx-title { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cx-regions {
+  flex: 1 1 0; min-width: 0; flex-wrap: wrap; align-content: flex-start; height: 26px; overflow: hidden;
+  margin-right: calc(-1 * var(--space-2));
+}
+.cx-regions::before { content: ''; flex: none; width: 0; height: 26px; margin-right: calc(-1 * var(--space-2)); }
 /* #endif */
 </style>

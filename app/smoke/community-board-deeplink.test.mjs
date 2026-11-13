@@ -2,14 +2,14 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import ts from 'typescript'
+import { communityNavigation, communityRouting, openCommunityBoard, POST_CATEGORIES } from './helpers/community-routing-harness.mjs'
 
 const source = path => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8')
 const compile = input => ts.transpileModule(input, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 },
 }).outputText
 const moduleUrl = input => `data:text/javascript;base64,${Buffer.from(compile(input)).toString('base64')}`
-const { communityNavigation, openCommunityBoard } = await import(moduleUrl(source('api/communityNavigation.ts')))
-const { POST_CATEGORIES, normalizePostTopic } = await import(moduleUrl(source('utils/communityPost.ts')))
+const { normalizePostTopic } = await import(moduleUrl(source('utils/communityPost.ts')))
 const plaza = source('pages/plaza/index.vue')
 const postPage = source('pages/post/index.vue')
 const POST = '33333333-3333-4333-8333-333333333333'
@@ -25,22 +25,22 @@ function hook(page, name, dependencies) {
   return new Function(...Object.keys(dependencies), compile(`const callback = ${callback};\nreturn callback;`))(...Object.values(dependencies))
 }
 
+// The page's own onLoad, onShow and views, as the mini program compiles them.
 function navigationFixture() {
   communityNavigation.pendingBoard = null
   communityNavigation.pendingView = null
-  const selected = [], switches = []
-  const activeTab = { value: 'following' }, searchText = { value: 'old search' }
-  const dependencies = { communityNavigation, POST_CATEGORIES, activeTab, searchText, selectCategory: category => selected.push(category) }
-  globalThis.uni = {
-    switchTab(options) {
-      switches.push({ ...options, pendingBoard: communityNavigation.pendingBoard, pendingView: communityNavigation.pendingView })
+  const switches = []
+  const routing = communityRouting('MP-WEIXIN', {
+    uni: {
+      switchTab(options) {
+        switches.push({ ...options, pendingBoard: communityNavigation.pendingBoard, pendingView: communityNavigation.pendingView })
+      },
     },
-  }
-  return {
-    selected, switches, activeTab, searchText,
-    onLoad: hook(plaza, 'onLoad', dependencies),
-    onShow: hook(plaza, 'onShow', dependencies),
-  }
+  })
+  routing.activeTab.value = 'following'
+  routing.searchText.value = 'old search'
+  // Selecting a board reads the list for it, so each read names the board that was selected.
+  return { ...routing, switches, selected: routing.feedReads }
 }
 
 test('board links stage pendingBoard before switchTab and onShow consumes and clears it once', () => {
@@ -50,34 +50,55 @@ test('board links stage pendingBoard before switchTab and onShow consumes and cl
   h.onLoad({})
   h.onShow()
   assert.deepEqual(h.selected, ['events-social'])
+  assert.equal(h.view.value, 'board')
+  assert.equal(h.selectedCategory.value, 'events-social')
   assert.equal(h.activeTab.value, 'recent')
   assert.equal(h.searchText.value, '')
   assert.deepEqual(communityNavigation, { pendingBoard: null, pendingView: null })
   h.onShow()
   assert.deepEqual(h.selected, ['events-social'], 'a later tab visit must not replay the handoff')
+  assert.equal(h.view.value, 'board')
   assert.match(postPage, /@click\.stop="openCommunityBoard\(post\.category\)"/)
   assert.match(postPage, /@keydown\.enter\.prevent="openCommunityBoard\(post\.category\)"/)
 })
 
-test('direct board query parameters select each supported board and are cleared on show', () => {
+test('direct board query parameters select each supported board and are cleared on show', async () => {
   for (const board of POST_CATEGORIES) {
     const h = navigationFixture()
     h.onLoad({ board })
     h.onShow()
-    assert.deepEqual(h.selected, [board])
+    assert.equal(h.view.value, 'board')
+    assert.equal(h.selectedCategory.value, board)
+    await h.mounted()
+    assert.deepEqual(h.selected, [board], 'the first read lists the board the path named')
+    assert.deepEqual(h.homeReads, [])
     assert.deepEqual(communityNavigation, { pendingBoard: null, pendingView: null })
   }
 })
 
-test('unknown boards and views fall back to the unfiltered community feed', () => {
-  for (const options of [{ board: 'unknown' }, { board: '' }, { view: 'unknown' }, { view: 'all' }]) {
+// SPEC 4.4: an unknown board or view opens the forum home; view=all is the unfiltered list.
+test('unknown boards and views open the forum home, and view=all the unfiltered community feed', async () => {
+  for (const options of [{ board: 'unknown' }, { board: '' }, { view: 'unknown' }, { view: '' }, { board: 'unknown', view: 'unknown' }]) {
     const h = navigationFixture()
     h.onLoad(options)
     h.onShow()
-    assert.deepEqual(h.selected, [null])
+    await h.mounted()
+    assert.equal(h.view.value, 'home')
+    assert.equal(h.selectedCategory.value, null)
+    assert.deepEqual(h.selected, [], 'the home reads no list')
+    assert.equal(h.homeReads.length, 1)
     assert.equal(communityNavigation.pendingBoard, null)
     assert.equal(communityNavigation.pendingView, null)
   }
+  const h = navigationFixture()
+  h.onLoad({ view: 'all' })
+  h.onShow()
+  await h.mounted()
+  assert.equal(h.view.value, 'all')
+  assert.deepEqual(h.selected, [null])
+  assert.deepEqual(h.homeReads, [])
+  assert.equal(communityNavigation.pendingBoard, null)
+  assert.equal(communityNavigation.pendingView, null)
 })
 
 test('pendingView is consumed and cleared, and a later board intent replaces it', () => {
@@ -85,18 +106,23 @@ test('pendingView is consumed and cleared, and a later board intent replaces it'
   communityNavigation.pendingView = 'all'
   h.onShow()
   assert.deepEqual(h.selected, [null])
+  assert.equal(h.view.value, 'all')
   assert.deepEqual(communityNavigation, { pendingBoard: null, pendingView: null })
   h = navigationFixture()
   communityNavigation.pendingView = 'all'
   openCommunityBoard('campus-life')
   h.onShow()
   assert.deepEqual(h.selected, ['campus-life'])
+  assert.equal(h.view.value, 'board')
+  assert.deepEqual(communityNavigation, { pendingBoard: null, pendingView: null })
 })
 
 test('an ordinary onShow preserves the current community selection and search', () => {
   const h = navigationFixture()
   h.onShow()
   assert.deepEqual(h.selected, [])
+  assert.deepEqual(h.homeReads, [])
+  assert.equal(h.view.value, 'home')
   assert.equal(h.activeTab.value, 'following')
   assert.equal(h.searchText.value, 'old search')
 })

@@ -7,12 +7,10 @@
     <AppSidebar current="plaza" />
     <!-- #endif -->
 
-    <!-- .page-header is display:none at >=768px, and display:none drops the
-         node from the accessibility tree — so the heading has to live outside
-         it or Mac/iPad get no heading at all. -->
+    <!-- The header below names no heading, and a board page's head is its own
+         (SPEC 6.1), so the other two views get theirs here. -->
     <text v-if="view !== 'board'" class="sr-only" role="heading" aria-level="1">{{ pageHeading }}</text>
 
-    <!-- #ifdef H5 -->
     <CommunityHeader
       v-model:search="searchText"
       :view="view"
@@ -28,22 +26,6 @@
       @search-submit="onSearchSubmit"
       @search-open="openSearch"
     />
-    <!-- #endif -->
-    <!-- The mini program keeps this header and the list below it: its main
-         package has no room for the home yet (BACKLOG 14, row 23). -->
-    <!-- #ifndef H5 -->
-    <view class="page-header">
-      <text class="ph-title">{{ t('plaza.title') }}</text>
-      <text class="ph-region" data-test="region-label">{{ regionLabel(lang) }}</text>
-      <view v-if="showRegionSwitcher()" class="ph-region-switcher" data-test="region-switcher">
-        <text v-for="region in REGIONS" :key="region.slug" class="ph-region-option">{{ lang === 'zh' ? region.zh : region.en }}</text>
-      </view>
-      <view class="compose-btn" role="button" :aria-label="t('a11y.compose')" @click="openComposer" v-if="isLoggedIn">
-        <view class="cb-pen"></view>
-        <text class="cb-label">{{ t('plaza.write') }}</text>
-      </view>
-    </view>
-    <!-- #endif -->
 
     <view v-if="view === 'all'" class="search-wrap">
       <view class="search-bar">
@@ -63,7 +45,6 @@
       </view>
     </view>
 
-    <!-- #ifdef H5 -->
     <!-- SPEC 6.1: a board page opens with its name, what belongs there, and a way
          to start a topic there; the sort tabs come under it. -->
     <view v-if="view === 'board' && selectedCategory" class="board-head">
@@ -73,7 +54,6 @@
       </view>
       <text class="bh-compose" role="button" @click="openComposer">{{ t('plaza.write') }}</text>
     </view>
-    <!-- #endif -->
 
     <!-- Feed tabs live OUTSIDE the scroll area (directly under search) so
          they stay put while the feed scrolls — 闲鱼/xhs pattern. -->
@@ -365,20 +345,16 @@
         <view v-else-if="!loading && visiblePosts.length === 0" class="empty">
           <UEmptyArt :name="activeTab === 'following' ? 'following' : 'posts'" />
           <text class="empty-text">{{ emptyText }}</text>
-          <!-- #ifdef H5 -->
           <view v-if="view === 'board' && !searchText.trim()" class="board-fill" role="button" @click="openComposer">
             <text class="board-fill-t">{{ boardFillText }}</text>
           </view>
-          <!-- #endif -->
           <!-- SPEC 6.2: when nobody the reader follows has posted, the sentence stands alone. -->
           <view v-if="activeTab !== 'following'" class="state-btn" role="button" @click="composeFromEmpty">{{ t('plaza.write') }}</view>
         </view>
-        <!-- #ifdef H5 -->
         <!-- SPEC 6.1: a board with fewer than three topics says what to ask there. -->
         <view v-else-if="view === 'board' && !loading && !hasMore && visiblePosts.length < 3" class="board-fill" role="button" @click="openComposer">
           <text class="board-fill-t">{{ boardFillText }}</text>
         </view>
-        <!-- #endif -->
       </template>
 
       <view v-if="!followingSignedOut && !hasMore && visiblePosts.length > 0" class="end-tip">
@@ -392,7 +368,6 @@
       </view>
     </scroll-view>
 
-    <!-- #ifdef H5 -->
     <scroll-view v-if="view === 'home'" class="home-scroll" scroll-y refresher-enabled
       :refresher-triggered="refreshing" @refresherrefresh="onRefresh">
       <CommunityHome
@@ -412,7 +387,6 @@
     <view v-if="!isDesktop && !showComposer" class="community-fab" role="button" :aria-label="t('plaza.write')" @click="openComposer">
       <UIcon name="plus" size="md" color="ink-inverse" />
     </view>
-    <!-- #endif -->
 
     <!-- Comment sheet (QA6 #7, r3). HOISTED to the page root (single instance,
          driven by commentingPost) so its position:fixed anchors to the VIEWPORT.
@@ -785,7 +759,6 @@ import { readAccountPrivateStorage, writeAccountPrivateStorage, removeAccountPri
 import type { Post, PostComment, Item } from '../../types'
 import { POST_CATEGORIES, POST_TITLE_MAX, normalizePostTopic, type PostCategory } from '../../utils/communityPost'
 import { safeItemMediaUrls } from '../../utils/publicResource'
-import { REGIONS, regionLabel, showRegionSwitcher } from '../../utils/region'
 import { formatTime, formatPrice, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
 import { DIALOG_DANGER, DIALOG_WARN } from '../../utils/dialogColors'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
@@ -798,11 +771,11 @@ import CustomTabBar from '../../components/CustomTabBar.vue'
 import PlazaBannerCarousel from '../../components/PlazaBannerCarousel.vue'
 // #ifdef H5
 import CommunityAbout from '../../components/CommunityAbout.vue'
+// #endif
 import CommunityHeader from '../../components/CommunityHeader.vue'
 import CommunityHome from '../../components/CommunityHome.vue'
 import { useCommunityHome } from '../../composables/useCommunityHome'
 import { boardFiller, buildHomeSections, type HomePostData } from '../../utils/communityHome'
-// #endif
 import UAvatar from '../../components/UAvatar.vue'
 import UBadge from '../../components/UBadge.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
@@ -925,52 +898,33 @@ function selectCategory(category: PostCategory | null) {
   void loadFeed()
 }
 
-// The mini program shows the list only; H5 routes the same intents to its views below.
-// #ifndef H5
-onLoad(options => {
-  if (!options || !('board' in options || 'view' in options)) return
-  communityNavigation.pendingBoard = 'board' in options ? String(options.board || '') : null
-  communityNavigation.pendingView = 'view' in options ? String(options.view || '') : null
-})
-
-onShow(() => {
-  const { pendingBoard, pendingView } = communityNavigation
-  communityNavigation.pendingBoard = null
-  communityNavigation.pendingView = null
-  if (pendingBoard === null && pendingView === null) return
-  searchText.value = ''
-  activeTab.value = 'recent'
-  selectCategory(pendingView === null && POST_CATEGORIES.includes(pendingBoard as PostCategory)
-    ? pendingBoard as PostCategory : null)
-})
-// #endif
-
 /*
  * The views of this page (SPEC 4.4): the forum home, one board, or all
  * discussions, which is the flat list this page used to open on. On H5 each has
- * an address that opens it directly. The mini program shows the list only.
+ * an address that opens it directly. The mini program has no address, so there
+ * a view is plain state (SPEC 8).
  */
 type CommunityView = 'home' | 'board' | 'all'
-const view = ref<CommunityView>('all')
+const view = ref<CommunityView>('home')
 const pageHeading = computed(() => {
-  // #ifdef H5
   if (view.value === 'all') return t('plaza.allDiscussions')
   if (view.value === 'board' && selectedCategory.value) return t(`plaza.category.${selectedCategory.value}`)
-  // #endif
   return t('plaza.title')
 })
 
-// #ifdef H5
-view.value = 'home'
 // The home lays out differently from 1024px (SPEC 5.2, 5.3), and holds more rows there.
+// The mini program has the phone layout only (SPEC 8), so there this stays false.
+const isDesktop = ref(false)
+// #ifdef H5
 const desktopMedia = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
   ? window.matchMedia('(min-width: 1024px)') : null
-const isDesktop = ref(!!desktopMedia?.matches)
+isDesktop.value = !!desktopMedia?.matches
 const onDesktopChange = (event: MediaQueryListEvent) => { isDesktop.value = event.matches }
 if (typeof desktopMedia?.addEventListener === 'function') {
   desktopMedia.addEventListener('change', onDesktopChange)
   onUnmounted(() => desktopMedia.removeEventListener('change', onDesktopChange))
 }
+// #endif
 
 const { homeData, homeFailed, loadHome, clearHome } = useCommunityHome()
 const EMPTY_HOME: HomePostData = { candidates: [], weeklyCategories: [], totalDiscussionCount: 0 }
@@ -986,6 +940,7 @@ function routeOf(query: { board?: unknown; view?: unknown }): { view: CommunityV
   if (board) return { view: 'board', board }
   return { view: query.view === 'all' ? 'all' : 'home', board: null }
 }
+// A query names the view: the address on H5, and in the mini program a path that carries one.
 onLoad((query) => {
   const route = routeOf(query || {})
   view.value = route.view
@@ -994,10 +949,12 @@ onLoad((query) => {
 
 // Keeps the address on the view being shown, so a reload or a shared link opens the same one.
 function syncAddress() {
+  // #ifdef H5
   if (typeof window === 'undefined' || !window.location.hash.startsWith('#/pages/plaza/index')) return
   const query = view.value === 'board' ? `?board=${selectedCategory.value}` : view.value === 'all' ? '?view=all' : ''
   const hash = `#/pages/plaza/index${query}`
   if (window.location.hash !== hash) window.history.replaceState(window.history.state, '', hash)
+  // #endif
 }
 /*
  * This tab page is kept alive, so an address that names a view can arrive
@@ -1005,6 +962,7 @@ function syncAddress() {
  * then. A bare address is what the tab bar opens, and keeps the view as it was.
  */
 function followAddress() {
+  // #ifdef H5
   if (typeof window === 'undefined') return
   const [path, search] = window.location.hash.split('?')
   if (path !== '#/pages/plaza/index' || !search) return
@@ -1014,11 +972,14 @@ function followAddress() {
   if (route.board) showBoard(route.board)
   else if (route.view === 'all') showAll()
   else showHome()
+  // #endif
 }
+// #ifdef H5
 if (typeof window !== 'undefined') {
   window.addEventListener('hashchange', followAddress)
   onUnmounted(() => window.removeEventListener('hashchange', followAddress))
 }
+// #endif
 
 // A topic published from here belongs on the home, so the snapshot is read again once the home is back.
 let homeStale = false
@@ -1075,7 +1036,6 @@ function openSearch() {
   searchFocused.value = false
   nextTick(() => { searchFocused.value = true })
 }
-// #endif
 
 function onFeedTabKeydown(event: KeyboardEvent, current: FeedTabKey) {
   const order = feedTabs.value.map(tab => tab.key)
@@ -1155,7 +1115,6 @@ const searchText = ref('')
 const searchFocused = ref(false)
 let searchDebounce: ReturnType<typeof setTimeout> | null = null
 function runSearch() {
-  // #ifdef H5
   // The header field is on every view; a search lists across boards, in all discussions.
   if (view.value !== 'all') {
     if (!searchText.value.trim()) return
@@ -1163,7 +1122,6 @@ function runSearch() {
     selectedCategory.value = null
     syncAddress()
   }
-  // #endif
   // The search RPC cannot narrow by author, so a search runs over everyone's posts.
   if (activeTab.value === 'following' && searchText.value.trim()) {
     activeTab.value = 'recent'
@@ -1568,9 +1526,7 @@ function resetPlazaAccountState() {
   for (const id of Object.keys(translations)) delete translations[id]
   reportLoading.cancel()
   clearPosts()
-  // #ifdef H5
   clearHome()
-  // #endif
 }
 
 const stopAccountTransitionListener = onAccountTransition(resetPlazaAccountState)
@@ -1587,13 +1543,11 @@ async function reloadPlazaForCurrentAccount() {
   const userId = currentUser.value?.id
   const accountToken = userId ? captureAccountRequest(userId) : null
   if (accountToken && !isAccountRequestCurrent(accountToken)) return
-  // #ifdef H5
   // The home read waits on the same block list itself.
   if (view.value === 'home') {
     await loadHome()
     return
   }
-  // #endif
   if (accountToken) {
     const moderationGate = await ensureBlockedLoaded()
     if (
@@ -1648,14 +1602,12 @@ async function onRefresh() {
   pageIdx.value = 0
   const failsafe = setTimeout(() => { refreshing.value = false }, 10000)
   try {
-    // #ifdef H5
     if (view.value === 'home') {
       await loadHome()
       // The last snapshot stays on screen, so a refresh that failed has to say so.
       if (homeFailed.value && homeData.value) uni.showToast({ title: t('plaza.loadFailed'), icon: 'none', duration: 3000 })
       return
     }
-    // #endif
     await loadFeed()
   } finally {
     clearTimeout(failsafe)
@@ -1846,9 +1798,7 @@ function finishComposerPublication(result: CreatePostResult, partialUpload?: { d
   } else {
     uni.showToast({ title: t('plaza.posted'), icon: 'success' })
   }
-  // #ifdef H5
   homeStale = true
-  // #endif
   uni.navigateTo({ url: `/pages/post/index?id=${result.id}${result.partial === 'items_failed' ? '&attach=pending' : ''}` })
 }
 
@@ -2497,61 +2447,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   margin: 0 auto;
   display: flex; flex-direction: column;
   overflow: hidden;
-}
-
-.page-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 11px 16px;
-  padding-top: calc(11px + var(--mp-status-bar, env(safe-area-inset-top, 0px)));
-  /* #ifdef MP-WEIXIN */
-  /* keep the compose button out from under the native capsule */
-  padding-right: var(--mp-navbar-right-pad, 0px);
-  /* #endif */
-  background: var(--canvas);
-  border-bottom: 0.5px solid var(--border);
-  z-index: 20;
-}
-.ph-title {
-  font-family: var(--font-serif);
-  font-size: 18px;
-  font-weight: 500;
-  color: var(--ink);
-  letter-spacing: 0.02em;
-}
-
-/* P1 §1.6: soften page-title color in dark — see commentary in
- * profile/index.vue. Plaza's title uses --ink directly (vs the
- * --text-primary alias used in profile/publish) but both resolve to
- * #F0E8D6 cream in dark, with the same 14:1 over-contrast problem.
- * --ink-strong (0.92α) drops to ~12:1. Light unchanged. */
-/* #ifdef H5 */
-[data-theme="dark"] .ph-title { color: var(--ink-strong); }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .ph-title { color: var(--ink-strong); }
-}
-/* #endif */
-.compose-btn {
-  height: 32px; padding: 0 13px 0 11px;
-  border-radius: var(--radius-pill);
-  background: var(--brand);
-  display: inline-flex; align-items: center; gap: 6px;
-  cursor: pointer;
-  box-shadow: var(--shadow-cta);
-  transition: background var(--dur-1, 120ms) var(--ease-std, ease);
-  &:active { background: var(--brand-deep); }
-}
-.cb-pen {
-  width: 12px; height: 12px; position: relative;
-  &::before {
-    content: ''; position: absolute; inset: 0;
-    background: #fff;
-    clip-path: polygon(0 100%, 40% 100%, 100% 40%, 60% 0, 0 60%);
-  }
-}
-.cb-label {
-  font-size: 13px; color: #fff; font-weight: 600;
-  line-height: 1;
-  letter-spacing: 0.02em;
 }
 
 /*
@@ -3329,7 +3224,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .comp-textarea { min-height: 232px; }
 .comp-textarea :deep(.uni-textarea-wrapper) { min-height: 200px; }
 @media (min-width: 768px) {
-  .page-header { display: none; }
   /* Drop the base 480px centering — the sidebar rail (.has-sidebar in
      App.vue) already reserves the left column via padding-left, so
      centering the whole .page fights the rail. */
@@ -3401,9 +3295,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .board-chip:focus-visible { outline: 2px solid var(--accent-action); outline-offset: 2px; }
 .composer-mode { display: flex; gap: 8px; padding: 12px 16px 4px; }
 .composer-topic { padding: 12px 16px 0; }
-.ph-region { margin-left: 8px; font-size: 13px; color: var(--ink-soft); }
-.ph-region-switcher { display: flex; gap: 8px; margin-left: 8px; }
-.ph-region-option { font-size: 13px; color: var(--ink-soft); }
 .topic-title-input { width: 100%; height: 44px; font-size: 18px; font-weight: 600; color: var(--text-primary); border-bottom: 1px solid var(--line-hair); }
 .topic-board-label { display: block; color: var(--text-muted); font-size: 12px; margin: 12px 0 8px; }
 .topic-board-options { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -3412,7 +3303,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .comp-body-error { padding: 0 16px; }
 .title-left { display: block; margin-top: 6px; font-size: 12px; color: var(--text-secondary); }
 
-/* #ifdef H5 */
 .home-scroll { flex: 1; min-height: 0; }
 /* Board page head (SPEC 6.1): the page name, what belongs here, and a way to start a topic here. */
 .board-head {
@@ -3440,6 +3330,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   -webkit-tap-highlight-color: transparent;
   &:active { background: var(--brand-deep); }
 }
+/* #ifdef H5 */
 @media (min-width: 768px) {
   /* No tab bar from here up. */
   .community-fab { right: var(--space-6); bottom: var(--space-6); }

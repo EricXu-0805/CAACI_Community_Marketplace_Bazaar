@@ -3,7 +3,8 @@
     Community home (SPEC 5.2 desktop, 5.3 phone). What each block holds, what is
     left out and where a filler goes all come from buildHomeSections; this
     component only lays the result out. A post is drawn once, so every row
-    carries its data-post-id.
+    carries its data-post-id. The mini program has the phone layout only
+    (SPEC 8), so what only the desktop draws is compiled into H5 alone.
   -->
   <view :class="['ch', desktop ? 'ch-d' : 'ch-m']">
     <view class="ch-wrap">
@@ -42,11 +43,15 @@
                   <view class="ch-card-h">
                     <view class="ch-bar"></view>
                     <text class="ch-bname" role="heading" aria-level="2">{{ tx(card.title) }}</text>
+                    <!-- #ifdef H5 -->
                     <text v-if="desktop && card.weeklyLabel" class="ch-week">{{ tx(card.weeklyLabel) }}</text>
+                    <!-- #endif -->
                     <text class="ch-link" role="button" :aria-label="`${tx(card.title)} ${t(desktop ? 'home.seeAll' : 'home.more')}`"
                       @click="emit('board', card.category)">{{ t(desktop ? 'home.seeAll' : 'home.more') }}</text>
                   </view>
+                  <!-- #ifdef H5 -->
                   <text v-if="desktop" class="ch-desc">{{ tx(card.description) }}</text>
+                  <!-- #endif -->
                   <view class="ch-rows">
                     <template v-if="!ready">
                       <view v-for="n in (desktop ? 4 : 3)" :key="n" class="ch-row ch-row-sk"><view :class="['ch-sk', 'u-sk', { 'ch-sk-short': n % 2 === 0 }]"></view></view>
@@ -55,6 +60,7 @@
                       <view v-if="row.kind === 'post'" class="ch-row" role="button" :data-post-id="row.post.id"
                         :aria-label="rowLabel(row)" @click="openPost(row.post.id)">
                         <template v-if="desktop">
+                          <!-- #ifdef H5 -->
                           <text v-if="row.post.is_pinned" class="ch-tag">{{ t('plaza.pinned') }}</text>
                           <text class="ch-row-t">{{ row.post.title }}</text>
                           <text v-if="row.unanswered" class="ch-tag ch-tag-ask">{{ t('plaza.unansweredTag') }}</text>
@@ -62,6 +68,7 @@
                             <text v-if="row.replyCount" class="ch-cnt">{{ row.replyCount }}</text>
                             <text class="ch-mi">{{ tx(row.time) }}</text>
                           </view>
+                          <!-- #endif -->
                         </template>
                         <template v-else>
                           <text class="ch-row-t">{{ row.post.title }}</text>
@@ -89,6 +96,7 @@
                   </view>
                   <!-- Desktop: three rows. Phone: a strip of cards that scrolls sideways. -->
                   <view v-if="desktop" class="ch-rows">
+                    <!-- #ifdef H5 -->
                     <template v-if="!ready">
                       <view v-for="n in 3" :key="n" class="ch-item ch-row-sk"><view :class="['ch-sk', 'u-sk', { 'ch-sk-short': n % 2 === 0 }]"></view></view>
                     </template>
@@ -104,6 +112,7 @@
                         <text class="ch-fill-t">{{ tx(card.filler) }}</text>
                       </view>
                     </template>
+                    <!-- #endif -->
                   </view>
                   <scroll-view v-else-if="ready" class="ch-strip" scroll-x :show-scrollbar="false">
                     <view class="ch-strip-row">
@@ -130,7 +139,9 @@
               <view v-if="sections.latest.mode === 'list'" class="ch-latest" data-block="latest">
                 <view class="ch-sec-h">
                   <text class="ch-sec-t" role="heading" aria-level="2">{{ t('home.latest') }}</text>
+                  <!-- #ifdef H5 -->
                   <text v-if="desktop" class="ch-link" role="button" @click="emit('all')">{{ t('home.allDiscussions') }}</text>
+                  <!-- #endif -->
                 </view>
                 <view class="ch-list">
                   <view v-for="row in sections.latest.rows" :key="row.post.id" class="ch-lr" role="button"
@@ -165,6 +176,7 @@
           </view>
 
           <view v-if="desktop" class="ch-side">
+            <!-- #ifdef H5 -->
             <view v-if="ready && sections.newHere" class="ch-sb" data-block="start-here">
               <text class="ch-sb-h" role="heading" aria-level="2">{{ t('home.startHere') }}</text>
               <view v-for="row in sections.newHere" :key="row.post.id" class="ch-guide" role="button"
@@ -181,6 +193,7 @@
               </view>
             </view>
             <CommunityAbout v-if="sections.showAbout" data-block="about" />
+            <!-- #endif -->
           </view>
         </view>
       </template>
@@ -188,11 +201,20 @@
 
     <view class="ch-foot">
       <view class="ch-foot-in">
+        <!-- #ifdef H5 -->
         <a class="ch-foot-l" :href="lang === 'zh' ? '/about#zh' : '/about'">{{ t('home.about') }}</a>
+        <!-- #endif -->
+        <!-- #ifndef H5 -->
+        <text class="ch-foot-l" role="button" @click="copyAbout">{{ t('home.about') }}</text>
+        <!-- #endif -->
         <text class="ch-foot-l" role="button" @click="openLegal('guidelines')">{{ t('legal.guidelines') }}</text>
+        <!-- #ifdef H5 -->
         <text v-if="desktop" class="ch-foot-l" role="button" @click="openLegal('privacy')">{{ t('legal.privacy') }}</text>
+        <!-- #endif -->
         <text class="ch-foot-l" role="button" @click="sendFeedback">{{ t('home.feedback') }}</text>
+        <!-- #ifdef H5 -->
         <text v-if="desktop" class="ch-foot-c">© {{ year }} {{ t('app.name') }}</text>
+        <!-- #endif -->
       </view>
     </view>
   </view>
@@ -200,13 +222,15 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+// #ifdef H5
 import CommunityAbout from './CommunityAbout.vue'
+// #endif
 import UAvatar from './UAvatar.vue'
 import UIcon from './UIcon.vue'
 import { useI18n } from '../composables/useI18n'
 import { useTheme } from '../composables/useTheme'
 import type { CommunityHomeItem, CommunityHomePost } from '../composables/useCommunityHome'
-import { SUPPORT_EMAIL } from '../config/runtime'
+import { BASE_URL, SUPPORT_EMAIL } from '../config/runtime'
 import type { HomeItem, HomePostRow, HomeSections, HomeText } from '../utils/communityHome'
 import type { PostCategory } from '../utils/communityPost'
 import { listingPriceLabel, thumbUrl } from '../utils'
@@ -266,7 +290,23 @@ function openItem(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 function openMarket() { uni.switchTab({ url: '/pages/index/index' }) }
 function openPublish() { uni.switchTab({ url: '/pages/publish/index' }) }
 function openLegal(type: 'guidelines' | 'terms' | 'privacy') { uni.navigateTo({ url: `/pages/legal/index?type=${type}` }) }
-function sendFeedback() { window.location.href = `mailto:${SUPPORT_EMAIL}` }
+// SPEC 8: the mini program opens no web page and no mail app, so it copies the address instead.
+function sendFeedback() {
+  // #ifdef H5
+  window.location.href = `mailto:${SUPPORT_EMAIL}`
+  // #endif
+  // #ifndef H5
+  uni.setClipboardData({ data: SUPPORT_EMAIL, success: () => uni.showToast({ title: t('legal.emailCopied'), icon: 'success' }) })
+  // #endif
+}
+// #ifndef H5
+function copyAbout() {
+  uni.setClipboardData({
+    data: `${BASE_URL}/about${lang.value === 'zh' ? '#zh' : ''}`,
+    success: () => uni.showToast({ title: t('detail.linkCopied'), icon: 'success' }),
+  })
+}
+// #endif
 </script>
 
 <style lang="scss" scoped>
@@ -291,8 +331,6 @@ function sendFeedback() { window.location.href = `mailto:${SUPPORT_EMAIL}` }
 .ch-bname { flex: 0 1 auto; min-width: 0; font-size: var(--t-h3); line-height: var(--lh-h3); font-weight: 600; color: var(--ch-board);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ch-link { flex: none; margin-left: auto; font-size: var(--t-caption); line-height: var(--space-6); color: var(--ink-soft); white-space: nowrap; cursor: pointer; }
-.ch-week + .ch-link { margin-left: 0; }
-.ch-week { flex: none; margin-left: auto; margin-right: var(--space-1); font-size: var(--t-meta); color: var(--ink-quiet); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .ch-card-h { display: flex; align-items: center; gap: var(--space-2); }
 .ch-row { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .ch-row-t { min-width: 0; color: var(--ink); overflow: hidden; }
@@ -301,7 +339,6 @@ function sendFeedback() { window.location.href = `mailto:${SUPPORT_EMAIL}` }
 .ch-lb { color: var(--ch-board); }
 .ch-author { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ch-meta { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
-.ch-cnt { flex: none; font-size: var(--t-meta); line-height: var(--space-5); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .ch-tag {
   flex: none; padding: 0 var(--space-2); border-radius: var(--radius-xs);
   font-size: var(--t-meta); line-height: var(--space-5); font-weight: 500; white-space: nowrap;
@@ -316,7 +353,6 @@ function sendFeedback() { window.location.href = `mailto:${SUPPORT_EMAIL}` }
 .ch-sk { width: 76%; height: var(--space-3); }
 .ch-sk-short { width: 54%; }
 .ch-price { flex: none; font-size: var(--t-body); font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
-.ch-thumb { flex: none; width: 40px; height: 40px; border-radius: var(--radius-sm); overflow: hidden; background: var(--surface-alt); }
 .ch-av { flex: none; width: var(--space-5); height: var(--space-5); border-radius: 50%; overflow: hidden; background: var(--surface-alt); }
 .ch-pill {
   flex: none; min-width: var(--space-7); padding: 0 var(--space-2); border-radius: var(--radius-pill);
@@ -385,6 +421,10 @@ function sendFeedback() { window.location.href = `mailto:${SUPPORT_EMAIL}` }
 
 /* #ifdef H5 */
 /* ---- desktop, from 1024px (SPEC 5.2): a 1200px container, 876 + 24 + 300 ---- */
+.ch-week + .ch-link { margin-left: 0; }
+.ch-week { flex: none; margin-left: auto; margin-right: var(--space-1); font-size: var(--t-meta); color: var(--ink-quiet); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ch-cnt { flex: none; font-size: var(--t-meta); line-height: var(--space-5); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.ch-thumb { flex: none; width: 40px; height: 40px; border-radius: var(--radius-sm); overflow: hidden; background: var(--surface-alt); }
 .ch-d .ch-wrap { width: min(1200px, calc(100% - var(--space-8))); margin: 0 auto; }
 .ch-d .ch-guest {
   gap: var(--space-3); margin-top: var(--space-4); padding: 0 var(--space-2) 0 var(--space-4);
