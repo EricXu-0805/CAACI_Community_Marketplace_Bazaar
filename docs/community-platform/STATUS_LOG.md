@@ -382,3 +382,15 @@
 - 未测项: ④ 的 VERIFY 文件与 L-SQL 回放（随 P2.5；P1.10 进行中）
 - 下一条: P2.7
 - 附: search_community_posts 的函数级 statement_timeout（ENGINEERING §5.1 第 5 行后半）和 lock_timeout 等其余冻结前改动留给 P2.5。客户端还没传 region_in，用的是默认值 cu（REGION.2 再加常量）。
+
+### L32 · 2026-11-13 01:34 CT · [OMO自决] P1.6 按 D-43 第 2 项做同大版本依赖修复（deps: 23ce3b6）
+- task_id: P1.6
+- code_sha: 23ce3b658299fc38581d7255f0c2196c10bb43d2（codex/config-fixes-20261112，已推送）
+- docs_sha: 263b127a406a07bb2e309c788ac3e207eb083f54
+- 环境: 本地 tony-ws pw1.65；宿主 npm 10.9.9 重算 lockfile
+- 命令: app/package.json overrides：follow-redirects 1.16.1→1.16.3、`qs@^6.0.0` 6.16.0→6.16.2（同一大版本内最新补丁）；`npm install --legacy-peer-deps --no-audit --no-fund`；`~/work/illini-dev-env/run-checks.sh ~/work/illini-config install typecheck h5 h5accept mp migrations test smoke npmaudit`（log check-20261113T071702Z.log），h5accept 因 Playwright webServer 30 秒启动超时失败（当时 L-SQL 回放与构建同时占用 CPU，未进入任何用例），负载降下后单独重跑 `~/work/illini-dev-env/run-checks.sh ~/work/illini-config install h5 h5accept`（log check-20261113T072559Z.log）
+- 计数: lockfile 只变 2 项：follow-redirects 1.16.1→1.16.3、qs 6.16.0→6.16.2；typecheck、h5、mp、migrations、smoke rc=0；TEST 1994/1993/0/1 pg_skips=0；h5accept 重跑 52 passed；npm 11 审计 45→37（6 moderate、31 high），npmaudit 仍 rc=1 [本地测]
+- ci_run_url: —（PR #371 随推送重跑）
+- 未测项: ③ 未全部满足：剩余项见附
+- 下一条: P2.7
+- 附: [OMO自决] D-43 第 2 项：同大版本内调高 overrides 直接做，撤回：`git revert 23ce3b6`。例外清单（D-43 视为已批准）：vite 6.4.4，GHSA-8g5g-mxqh-grgj，没有修复版本，复查日期 2026-12-13。仍【跳过】写进 FINAL：@intlify/core-base、@intlify/shared（vue-i18n 9→11，overrides 要改为 11.4.14+）、glob 13→14.0.2+、minimatch 10→11.0.1+；这四项跨大版本，要改 i18n 初始化与依赖它们的构建工具链。
