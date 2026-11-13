@@ -112,7 +112,15 @@ test('topic migration preserves legacy rows, RLS, metadata ACL and item ownershi
     assert.equal(as("SELECT count(*) FROM search_community_posts(ARRAY['Quantum'],'recent',20,1,NULL)", 'anon'), '1')
     assert.equal(as("SELECT count(*) FROM search_community_posts(ARRAY['Legacy'],'recent',20,0,NULL)", 'anon'), '2')
     assert.equal(as("SELECT count(*) FROM search_posts_fuzzy(ARRAY['Legacy'])", 'anon'), '2')
-    assert.equal(sql("SELECT prosecdef FROM pg_proc WHERE oid='public.search_community_posts(text[],text,integer,integer,text)'::regprocedure"), 'f')
+    assert.equal(sql("SELECT prosecdef FROM pg_proc WHERE oid='public.search_community_posts(text[],text,integer,integer,text,text)'::regprocedure"), 'f')
+    // REGION.1: one region for now, readable by everyone, never written by clients.
+    assert.equal(as("SELECT count(*) FROM search_community_posts(ARRAY['Quantum'],'recent',20,0,NULL,'cu')", 'anon'), '2')
+    assert.equal(as("SELECT count(*) FROM search_community_posts(ARRAY['Quantum'],'recent',20,0,NULL,'chi')", 'anon'), '0')
+    assert.equal(as("SELECT count(*) FROM posts WHERE region <> 'cu'", 'anon'), '0')
+    assert.equal(sql("SELECT column_default || '|' || is_nullable FROM information_schema.columns WHERE table_schema='public' AND table_name='posts' AND column_name='region'"), "'cu'::text|NO")
+    assert.throws(() => sql(`INSERT INTO posts(user_id,content,region) VALUES('${UID}','Body','chi')`), /posts_region_check/)
+    assert.throws(() => as("INSERT INTO posts(user_id,content,region) VALUES(auth.uid(),'Body','cu')"), /permission denied/)
+    assert.throws(() => as(`UPDATE posts SET region='cu' WHERE user_id=auth.uid()`), /permission denied/)
     assert.equal(sql("SELECT has_function_privilege('authenticated','private.validate_post_topic()','execute')"), 'f')
     // Existing item rules apply to topics as they do to legacy updates.
     const topicId = sql("SELECT id FROM posts WHERE title='Quantum study group'")

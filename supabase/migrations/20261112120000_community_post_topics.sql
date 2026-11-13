@@ -15,9 +15,17 @@ ALTER TABLE public.posts
       AND category IN ('campus-life', 'settling-market', 'alumni-career', 'events-social', 'local-deals'))
   );
 
+-- REGION.1 (D-21): every post carries its region from the first version, so a
+-- second region later needs no rename and no backfill. A constant default only
+-- touches the catalog; the CHECK scans once under the migration's lock budget.
+ALTER TABLE public.posts
+  ADD COLUMN region text NOT NULL DEFAULT 'cu',
+  ADD CONSTRAINT posts_region_check CHECK (region IN ('cu'));
+
 -- Keep existing row policies, server-owned columns, update permissions and
--- post_items ownership/cap triggers unchanged. Only these two columns open.
-GRANT SELECT (title, category) ON public.posts TO anon, authenticated;
+-- post_items ownership/cap triggers unchanged. Only these columns open; region
+-- is readable but never client-written (new posts take the default).
+GRANT SELECT (title, category, region) ON public.posts TO anon, authenticated;
 GRANT INSERT (title, category) ON public.posts TO authenticated;
 
 CREATE FUNCTION private.validate_post_topic()
@@ -48,7 +56,8 @@ create or replace function public.search_community_posts(
   sort_in    text  default 'recent',
   limit_in   int   default 20,
   offset_in  int   default 0,
-  category_in text default null
+  category_in text default null,
+  region_in  text  default 'cu'
 )
 returns table (
   id                uuid,
@@ -107,6 +116,7 @@ as $$
   from public.posts p
   left join public.profiles pr on pr.id = p.user_id
   where p.status = 'active'
+    and p.region = region_in
     and (category_in is null or p.category = category_in)
     and exists (
       select 1
@@ -127,8 +137,8 @@ as $$
   offset greatest(0, offset_in)
 $$;
 
-revoke all on function public.search_community_posts(text[], text, int, int, text) from public;
-grant execute on function public.search_community_posts(text[], text, int, int, text) to anon, authenticated;
+revoke all on function public.search_community_posts(text[], text, int, int, text, text) from public;
+grant execute on function public.search_community_posts(text[], text, int, int, text, text) to anon, authenticated;
 
 
 -- Reissue the existing evidence functions with only the post branch extended.
