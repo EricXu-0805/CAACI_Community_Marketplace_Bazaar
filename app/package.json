@@ -71,7 +71,7 @@
     "@dcloudio/uni-cli-shared": "3.0.0-4080420251103001",
     "@dcloudio/uni-stacktracey": "3.0.0-4080420251103001",
     "@dcloudio/vite-plugin-uni": "3.0.0-4080420251103001",
-    "@playwright/test": "^1.60.0",
+    "@playwright/test": "^1.65.0",
     "@sentry/vite-plugin": "^5.2.0",
     "@vue/runtime-core": "3.4.21",
     "@vue/tsconfig": "0.9.1",
