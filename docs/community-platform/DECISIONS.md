@@ -115,6 +115,33 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
   8. **不做：** 不改 `.github/workflows/`（ubuntu-26.04 runner 上 Playwright 1.60 装不上浏览器、audit 例外清单，这两件归 Eric）；不改 SPEC；不合并、不转 ready、不 force push、不 rebase 已推送的分支；20261112120000 一个字节都不动；不新建迁移。
   9. **顺序和报告：** 1 → 2 → 3 → 4 → 5、6 → 7。每项最多试 3 次，过不了就转【跳过】，写清停在哪。全部做完或停下以后，在 FINAL.md 末尾加一节「第三批（D-45）」，八节格式，FINAL 和 STATUS 放在同一个提交（D-43 第 5 项）。用 create_goal 设新目标，范围是本条第 1–7 项，并在 STATUS_LOG 记下目标已设。额度照 D-43 第 6 项。
 
+- **D-46 第三批核查后由 supervisor 定的事**（2026-11-13 11:40 CT，Claude（Eric 自己账号上的 supervisor 会话）按 D-43 定并写入）：依据同 D-45（Eric 2026-11-13 01:51 CT 原话「OK，你就继续弄就行了，自己的号作为supervisor控制」，D-43「明显会批准的事直接做」）。D-42 第 0 项的优先级不变，【硬】条照旧高于本条；Eric 看最终报告后可以改其中任何一项。背景：supervisor 对第三批报告做了六个只读核查（分支完整性、CI 与 PR、报告一致性、测试与 SPEC §11、条件编译、主包重测）。分支没被改写，禁区没碰，20261112120000 的 sha256 没变，两个 merge 没丢改动，主包数字能复现（差 91 字节，见第 1 项）。D-45 第 7 项按完成算：1.5 MiB 硬预算守住了；64 KiB 的余量要求改由本条第 4 项、按五个 PR 合上后的集成构建去达成。第 1–2 项是报告和 PR 文案要改的地方，第 3–6 项是现在还能做、不需要 Eric 的事。
+  1. **报告和 STATUS（只改文档）。** 每条先自己核实；核实不成立的不改，在 STATUS_LOG 写明理由。
+     - 第三批 ④ 自相矛盾：「五个 PR 都合上后约 57 KiB」是 L58 在第 7 项之前的估算，删掉；「22,230 字节」只含 #369＋#375＋#374，不是五个 PR 的数，改标签。五个 PR 的数用本条第 5 项重测的结果。#375 描述里的「约 57 KiB」一起改。
+     - #375 的 base 也是 `codex/community-topics-20261112`。删 #369 分支之前要先把 #374、#375 的 base 都改成 main；STATUS 第 12 条、④、⑦、#369 描述现在只写了 #374 / #373。另写明：#369 如果 squash 合并，改完 base 以后 #374、#375 要再 merge 一次 origin/main。
+     - #372 冲突图过期：`git merge-tree` 86ffd0e × ba070e7 现在还在 app/src/pages/plaza/index.vue 冲突（c16f0a1 删了「关注的人」名单，#372 的 BRAND.3 徽章改的正是那一段）。手工合并规则补上这一处怎么处理。
+     - D-45 第 5 项没有全部完成：SPEC §11「HOME.3 首页」节有 11 个 key 不在语言包（home.weekNew、collapsed、fillPrefix、firstPost、typeGuide、typeRules、events、allEvents、market、marketNew、marketFill），文字写死在 utils/communityHome.ts，英文和 SPEC 不同；plaza.boardDesc.<slug>、plaza.boardAsk.<slug> 也不在语言包。② 的 D-45.5b 先改成「部分」，第 3 项 e 做完再改回。
+     - STATUS 又过期了：run 43448423151 的 Boundary 是 2053 / 2052 / 0 / 1（表里还是 2044）；「上一次 run」应为 43422815812；表头时间和 docs_sha；~/work 下各 worktree 的 head；BRAND.7 的依赖（BRAND.1/3/4、P2.2、HOME.4、P1.13）都已做完，只等合并，写清楚等哪几个 PR。
+     - ② 的措辞：D-45.5a「其余通过」改成 4 个 success、2 个 skipped。D-45.5b「7 个 key 待服务端」拆开写：ref.removed、ref.unlink、hidden、hiddenOwner、appeal 要服务端（SELECT 策略或 RPC）；restrictedReply、restrictedPost 只要拆 App.vue 门禁（本条第 3 项 f）；emptyUnanswered 随 P3.4。restrictedPost 现在是提交失败以后的 toast，SPEC §6.5.1 要求不打开面板。L56「三个标题都换了」不对，#369 没改名。L60「新增 14 个 key」实为 13 个（ref.more 原来就有，只改了英文）；「两条单测」实为三条，还有 read-failure-states.spec.ts 里的一条 Playwright 用例。
+     - ⑥「H5 截图逐字节不变」写准确：86ffd0e 在 CommunityHeader.vue 给手机页头加了一层不带条件编译的 `cx-regions`，H5 的 DOM 变了，像素应当不变。⑥「首页 9 个并发请求，微信上限 10」漏了小程序上一直挂着的 inbox 长轮询和每 20 秒一次的通知轮询：登录用户会到 10 个，碰上通知轮询到 11 个（本条第 3 项 c 处理）。
+     - ⑧ 的撤回办法：4a3cbe6 已经由 fb9c6b9 合进 #374，「关闭 #375」撤不掉 #374 里的那一份。再写明 revert 合并提交的坑：以后 #375 单独合进 main 的话，#374 上的 `git revert -m 1 fb9c6b9` 会在 #374 合并时把 #375 的改动再删一次。
+     - [OMO自决] 补齐：L56 标题缺标签、依据条款和撤回命令；「#374 合入 #375」没有 STATUS_LOG 编号；L59、L60 的依据写成 BACKLOG §14 第 28 行（那一行说以源码为准，意思正相反），实际依据是 D-45 第 5 项；L61 保留 26 / 16px、没按 SPEC 的 22 / 15px，这处出入写进 ④。第三批 ④ 按解锁任务数排序；① 的起点用 f8e2b97 的提交时间 07:39 CT。
+     - 主包以后一律用 CI 的 build-mp-weixin 环境量（ci.yml 301–303 行，`https://ci-stub.supabase.co`）。第三批的数是用 H5 job 的 stub URL 量的，每个主包数比 CI 环境多 91 字节；表里注明环境，或者按 CI 环境重写。
+     - 第三批没提 #370 在 f43bdd1 上的 CI 红（run 43470604328：ubuntu-26.04 上 Playwright 装不上浏览器，和 main 同一个基础设施问题，归 Eric）。补进 ⑥。
+  2. **PR 文案。** 先用 `gh pr edit`，不行就照 L56 用 REST PATCH（只传 title、body），不转 ready。#369 描述按 b7bcf3a 更新：任务表加 D-45.5a 那一行，最新 run 写 43448423151，提到 #375，删分支前要改 #374 和 #375 的 base。#374 描述上半部分和后加的「D-45 更新」互相矛盾（「只编进 H5」「余 4,056」「diff 里只有三件事」），整篇按现状重写，标题补上 HOME.4 和小程序首页。#375 描述按第 1 项改余量。#371 描述里的 `@playwright/test`、`@intlify/*` 加反引号。
+  3. **代码修复（D-17 常规工作）。** 每条先写一个修复前会失败的测试（带对照），确认问题存在再改；核实不成立就不改，写进 STATUS_LOG。每次改完用 CI 环境量一次主包。
+     - a. **小程序非 tab 页没有消息和通知提醒（4a3cbe6 引入，在 #375 修，再 merge 进 #374）。** AppSidebar 在小程序上原来只靠 CSS 隐藏，组件照样挂载，setup 里的 useUnread()、useNotifications() 就是会话级消息和通知监听的启动点。4a3cbe6 把它包进 `#ifdef H5` 以后，小程序上 detail、post、seller 等非 tab 页没有地方再启动这两个监听；从分享卡直接打开商品页的用户，进任意 tab 页之前收不到新消息提示。修法例如在小程序上一次性启动这两个监听；不能把 AppSidebar 加回主包。
+     - b. **小程序 showModal 的英文按钮（在 #369 修，再 merge 进 #375、#374）。** plaza/index.vue 关闭发帖面板的弹窗用 confirmText 'Keep draft'、cancelText 'Discard'。微信 showModal 的按钮文字最多 4 个字符，超长时整个弹窗调用失败（本仓库 2026-07 的小程序审计踩过）。先查微信官方文档确认，再把社区相关代码里所有 showModal / showActionSheet 的中英按钮文字查一遍。小程序上换成不超长的交互（例如 showActionSheet），H5 照 SPEC 不动；SPEC 文字在小程序上实在放不下的，写进 ④ 请 Eric 定。
+     - c. **首页并发请求（在 #374）。** useCommunityHome.ts 一次并发 9 个请求，加上 /api/realtime-poll 长轮询和通知轮询，登录用户在小程序上会到 10–11 个，微信 request 并发上限是 10。把首页同时在飞的请求压到 6 个以内（分两批，或者把 5 个板块的 feed 并成一次查询），H5 显示结果不变。
+     - d. **「关注的人」帖子流（在 #374）。** 现在切到这个 tab 先 await loadMyFollowing，期间上一个 tab 的全站帖子挂在「关注的人」下面；读关注列表失败时没有递增 latestRequestId，上一个 tab 还在飞的请求落地后会把全站帖子填进来。改成切 tab 时先清空帖子、作废旧请求。另外查询前先去掉已屏蔽的用户（useFollow.fetchFollowingFeed 已经这样做），避免一整页都被过滤掉时显示「你关注的人还没有发帖」而 hasMore 仍为 true。
+     - e. **SPEC §11「HOME.3 首页」节和板块文案进语言包（在 #374，D-45 第 5 项的剩余部分）。** 第 1 项列的 11 个 home.* key，以及 plaza.boardDesc.<slug>、plaza.boardAsk.<slug>，中英文按 SPEC §11。认为 SPEC 写错的，代码照 SPEC，理由进 ④。
+     - f. **受限账号门禁按 SPEC §6.5.1 拆开（在 #369，再 merge 进 #375、#374）。** 现在 App.vue:150-167 把所有有效的 suspension 都送去 pages/suspended。按 SPEC §6.5.1：受限账号可以浏览，回复时提示 restrictedReply，发帖时在打开面板之前 toast restrictedPost；永久封禁照旧去 pages/suspended。开工前先确认服务端已经拦住受限账号的写入（触发器或 RLS）；没拦住就停，写进 ④，不建迁移、不改 RLS。每一级 suspension 都要有测试。
+  4. **主包第二轮腾空间。** 目标：五个 PR 都合上以后（第 5 项的集成构建）主包余量至少 64 KiB。办法同 D-45 第 4 项：优先不改页面路径，只被分包用到的代码和组件挪进分包，去掉没用到的东西；tab 页留在主包，不加依赖。在 #375 上做，再 merge 进 #374（只 merge，不 rebase）。做不到就写清最多腾出多少、卡在哪。
+  5. **按当前 head 重做本地集成试合，不推送。** 第 3、4 项做完以后，用 #373、#374 最新 head、#372 重新试合，按第 1 项更新后的规则手工解冲突（含 plaza/index.vue），跑全量 install、typecheck、test、h5、mp、smoke，用 CI 的 mp 环境量主包。这个数写进 ④，作为「五个 PR 都合上后」的余量。
+  6. **BRAND.7。** 依赖都已做完，只是分散在没合并的 #372、#369、#374 上。按 BACKLOG 里 BRAND.7 的 DoD 判断：能在一个现有分支上做、不需要把 #372 合进别的 PR 分支，就做；做不了就在 STATUS 写清它等哪几个 PR 合并，列进 ⑦。
+  7. **不做：** 同 D-45 第 8 项：不改 `.github/workflows/`，不改 SPEC，不合并、不转 ready、不 force push、不 rebase 已推送的分支，20261112120000 一个字节都不动，不新建迁移，不改 RLS 和服务端函数。
+  8. **顺序和报告：** 1 → 2 → 3a → 3b → 3d → 3c → 3e → 3f → 4 → 5 → 6。每项最多试 3 次，过不了就转【跳过】，写清停在哪。全部做完或停下以后，在 FINAL.md 末尾加一节「第四批（D-46）」，八节格式，FINAL 和 STATUS 放在同一个提交。用 create_goal 设新目标，范围是本条第 1–6 项，并在 STATUS_LOG 记下目标已设。额度照 D-43 第 6 项。
+
 ## 待定
 
 ### D-28 轮值伙伴与四项职责的小时数
