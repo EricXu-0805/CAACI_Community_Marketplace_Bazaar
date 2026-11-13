@@ -1,6 +1,6 @@
 # STATUS
 
-写于 2026-11-13 00:53 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-13 01:12 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
 `next_task_id: P2.4`
 
@@ -12,7 +12,7 @@
 | code_sha | a25810bb08110cbf48b30c63f3b63f3b0e240da8（OMO 推送 P2.3 后的 #369 head） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-12 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-12 git ls-remote] |
-| docs_sha | 0a69a060015147ea8002a759b7dd0927f1c681d1（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
+| docs_sha | 6e3236769cb816dd77677bad350a3fb08f5134b5（写本版 STATUS 之前材料分支的 HEAD，取法见 RUNBOOK §8） |
 | 配置 / 品牌 / 首页分支 | codex/config-fixes-20261112 远端 14b4e4a（P1.2–P1.5），没开 PR（P1.7）；品牌、首页还没建（BRAND.1 / HOME.3）[本地测] |
 | tony-ws 仓库 | ~/work/illini 在 005ca9d；~/work/illini-docs 已切到 codex/community-plan-v5（P1.1 ④，见 STATUS_LOG L15）[本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
@@ -57,8 +57,8 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P1.13 | 通过 | DoD ①–④ 符合；link 拉下的 .env.local 已按 Eric 答复删除 [本地测] |
 | P1.9 | 通过 | 镜像 169f16e6…，全量每步 rc=0；test 1994 / 1993 / 0 / 1 [本地测] |
 | P1.10 | 失败 | 两轮修正后 129/181，停在 20260722081141（要求 postgres 角色），见 STATUS_LOG；停这条 [隔离环境 L-SQL] |
-| P1.7 | 未测 | 依赖 P1.6 |
-| P1.6 / P1.8 / P1.11、P1.12 | 未测 / 失败 | P1.6 失败（停这条）：npm audit fix 后审计仍 43 个，7 个包要 Eric 逐项定，见 STATUS_LOG；P1.8 等 E5（合并 P1.7 的 PR）；P1.11、P1.12 等 D-29（E2）与 E3 |
+| P1.7 | 未测 | 草稿 PR #371 已开（base main，head 14b4e4a），等 CI |
+| P1.6 / P1.8 / P1.11、P1.12 | 跳过 / 未测 | P1.6【跳过】（D-42 第 4 项）：7 个包要 Eric 逐项定，明细见 STATUS_LOG 与批次报告；P1.8 等 E5（合并 P1.7 的 PR）；P1.11、P1.12 等 D-29（E2）与 E3 |
 | P2.1 | 通过 | ①②④ 本地；③ 由 CI 的 public sweep 在 staging 上给出预期报错（本地 S-1 运行等 E3）[CI run#43377614567] |
 | P2.2 | 通过 | test 2001 / 2000 / 0 / 1，smoke 35 passed [本地测]；CI Boundary 同数 [CI run#43377614567] |
 | P2.3 | 通过 | 9→0；两张截图第 2 项为「社区」；smoke 14 passed、test 2001/2000/0/1 [本地测]；CI 同前 [CI run#43380822445] |
@@ -80,7 +80,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 
 1. D-29 → E2、E3：staging-smoke 只有合成数据的书面确认与 A/B/C 账号。挡住 P1.11、P1.12、P2.6、P2.11。
 2. E4：P2.5 在 STATUS_LOG 写出「20261112120000 冻结」后，Eric 把迁移应用到 hygkwxugskijadgfisji。挡住 P2.6、P2.13。
-3. D-41 已定（选 A）。P1.6 按 A 执行后审计仍不通过：@intlify/core-base、@intlify/shared、qs 要 --force，vite 没有修复版，follow-redirects、glob、minimatch 没修动。等 Eric 逐项定处理办法；P1.7 跟着等。
+3. 【跳过】P1.6（D-42 第 4 项）：要 Eric 逐项定 7 个包——follow-redirects、qs 改 overrides 即可修；@intlify/core-base、@intlify/shared 要 vue-i18n 9→11；glob、minimatch 跨大版本；vite 没有修复版。P1.7 已照开草稿 PR #371，Boundary 只允许卡在依赖审计。
 4. P1.10（L-SQL 回放工具）停这条，等答复脚本的连接角色与 bootstrap 顺序；挡住 P2.5，进而挡住 HOME.2、HOME.3、HOME.5。E5：合并 P1.7 的 PR。挡住 P1.8，以及 BRAND.2 ⑦ 的 Build H5。
 5. D-35 已定（A 纸本书院），HOME.4、P2.12、BRAND.7 只剩各自的任务依赖；D-34（logo）仍挡住 BRAND.4 ②。
 6. D-30（E7，微信后台核对）挡住 BRAND.5、P5.2；D-31 已定（A），E8（fork 与令牌权限）还没做，P4.3 只在本地写。D-40 已定（A，请律师审 LEGAL.2、LEGAL.4），LEGAL 组仍等 D-37。

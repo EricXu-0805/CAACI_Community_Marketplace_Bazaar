@@ -334,3 +334,15 @@
 - 未测项: 无
 - 下一条: P2.4
 - 附: BACKLOG 写 CustomTabBar.vue、AppSidebar.vue 里有硬编码文字，源码里两处都走 t('nav.plaza')，只有一行代码注释提到 Plaza，没有改（文档与源码不一致，按源码）。两张截图实际随 P1.10 的材料提交 0a69a06 进了仓库。
+
+### L28 · 2026-11-13 01:12 CT · P1.6 按 D-42 第 4 项转【跳过】：7 个包等 Eric 逐项定
+- task_id: P1.6
+- code_sha: —（没有提交；codex/config-fixes-20261112 保持 14b4e4a）
+- docs_sha: 6e3236769cb816dd77677bad350a3fb08f5134b5
+- 环境: 本地 tony-ws，pw1.65 镜像（npm 11 audit --json）
+- 命令: `RUN_CMD='cd app && npx -y npm@11 audit --json …' ~/work/illini-dev-env/run-checks.sh ~/work/illini-config install cmd`（log ~/work/illini-dev-env/logs/check-20261113T070853Z-cmd.log，副本 ~/work/evidence/P1.6/audit-detail.log）；overrides 与锁定版本取自 app/package.json、app/package-lock.json；最新版取自 `npm view <包> version`
+- 计数: npm 11 审计 45 个（9 moderate、36 high）[本地测]。7 个包：① @intlify/core-base 9.14.5（overrides 固定）：GHSA-83rm-6c8r-g728 high（=9.14.5）、GHSA-8rc2-428q-7ww3 low（<11.4.14），要升到 11.4.14+，即 vue-i18n 9→11 大版本，并改 overrides；② @intlify/shared 9.14.5（overrides 固定）：GHSA-83rm-6c8r-g728 high，同上；③ qs 6.16.0（overrides `qs@^6.0.0: 6.16.0` 固定）：GHSA-6pq8-jhm2-2vcw moderate（≤6.16.0），改 overrides 到 6.16.1+（最新 6.17.1）可修，npm 自己给的修法是把 @dcloudio/vite-plugin-uni 降到远古 alpha（--force），不可取；④ vite 6.4.4（vendor 本地构建）：GHSA-8g5g-mxqh-grgj moderate，没有修复版；⑤ follow-redirects 1.16.1（overrides 固定）：GHSA-mrwp-f3q8-3g9p high（1.16.0–1.16.1），改 overrides 到 1.16.2+（最新 1.16.3）可修；⑥ glob 13.0.6：GHSA-3g3m-2fjr-6pw4 moderate（9.0.0–14.0.1），要 14.0.2+，跨大版本；⑦ minimatch 10.2.5：GHSA-g3hv-75wg-m249 moderate（<11.0.1），要 11.0.1+，跨大版本。@dcloudio 系列的 30 多条 high 都是经 @intlify 传递来的，随 ①② 一起处理。
+- ci_run_url: —
+- 未测项: ④ 全量（没有可提交的修复）
+- 下一条: P1.7
+- 附: Eric（经 Claude 代答，依据 D-42，6e32367）：「这 22 项只少了 1 个漏洞，还带 dotenv 16→17 的大版本升级，不提交，lockfile 保持 14b4e4a。P1.6 按 D-42 第 4 项转【跳过】」。改 overrides 和跨大版本都属 D-42 第 4 项「P1.6 里要 --force 的包、改 overrides 的包和 vite」，等 Eric 定。另记 D-42 落实：create_goal 已建；schedule_prompt 续跑提醒 sch_8c65fd689233（每 3600 秒，首次 2026-11-13 08:08 UTC）已建，提示词与 RUNBOOK §10 原文一致。
