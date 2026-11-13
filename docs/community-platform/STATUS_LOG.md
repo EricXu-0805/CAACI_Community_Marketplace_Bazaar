@@ -799,3 +799,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 无
 - 下一条: D-46 第 2 项（PR 文案）
 - 附: D-46 目标已于 2026-11-13 用 create_goal 设定，范围限 D-46 第 1–6 项。
+
+### L65 · 2026-11-13 11:41 CT · D-46 第 2 项：#369、#374 描述按现状重写，#375 改余量，#371 包名加反引号；run-checks 加 mpci 步骤 [OMO自决]
+- task_id: D-46.2
+- code_sha: —（PR 文案；~/work/illini-dev-env/run-checks.sh 不在仓库里）
+- docs_sha: b2cd9ac262fd08b6cffe74c4092d9b7edd6dba97
+- 环境: GitHub REST（同一令牌）；tony-ws 本机脚本
+- 命令: 四个 PR 先试 `gh pr edit`，都报 Projects classic 的 GraphQL 错误，照 L56 改用 `gh api -X PATCH repos/…/pulls/<n> -f title=… -F body=@…`，只传 title、body。文案存 tony-ws evidence/D46-pr/<n>-before.md、<n>-after.md。run-checks.sh 新增 MPCI_STUB 与 `mpci` 步骤（ci.yml 第 301–303 行 build-mp-weixin 的三个环境变量），原 mp 步骤不动
+- 计数: #369：任务表加 D-45.5a（b7bcf3a）一行，CI 改 run 43448423151（Boundary 2053 / 2052 / 0 / 1，4 success、2 skipped），写明 #375、#374 都以本分支为 base，删分支前先改两个的 base、squash 后要再 merge origin/main；标题不变。#374：标题改为覆盖 P2.12、HOME.3–HOME.5 与小程序首页，正文按提交重写（含合并、依赖 #375、主包测量环境、已知问题与 D-46 第 3 项、#372 四个冲突文件的合法）。#375：删「约 57 KiB」，写实测 22,230（只含三者）与五个 PR 待重测，加合并顺序、base 与 3a 已知问题。#371：`@playwright/test`、`@intlify/core-base`、`@intlify/shared` 加反引号。读回：四个都是 draft、open。run-checks.sh sha256 511241d0b1ad88b5542205da6780dba12662a5bbd35fd27663919a802f951751，已同步到 appendix/env/run-checks.sh；RUNBOOK §4 写明量主包用 mpci
+- ci_run_url: —
+- 未测项: 无
+- 下一条: D-46 第 3 项 a
+- 附: 自决：gh 客户端报错改 REST，依据 D-46 第 2 项「不行就照 L56 用 REST PATCH」；mpci 步骤依据 D-46「主包一律用 CI build-mp-weixin 的环境量」，撤回：删掉 run-checks.sh 的 MPCI_STUB 和 [mpci] 两行。

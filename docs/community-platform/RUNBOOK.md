@@ -133,7 +133,7 @@ rm "$T"/node-$V-linux-x64.tar.xz "$T"/SHASUMS256.txt && rmdir "$T"
 
 - `~/work/illini-dev-env/Containerfile` 基于 `mcr.microsoft.com/playwright:v1.60.0-noble`（Ubuntu 24.04.4）。它把 Node 22.23.5 装到 /usr/local/node22，用 SHASUMS256 校验；从 PGDG 装 postgresql-17；生成 en_US.UTF-8；最后执行 `npm install -g npm@10.8.2`。
 - 镜像 `localhost/illini-dev:pw1.60-node22-pg17`，ID 3e3509725721，2.97 GB。容器内实测：node v22.23.5、npm 10.8.2、git 2.43.0、initdb (PostgreSQL) 17.11；/ms-playwright 下有 chromium-1223、webkit-2287、firefox-1522；`locale -a` 里有 en_US.utf8。
-- `run-checks.sh` 有 7 个步骤：install、typecheck、h5、mp、migrations、test、smoke。它只把仓库挂到 /work，把 ~/.cache/illini-dev 挂到 /cache，设 `CI=1`，构建时用 CI 同款的 stub 环境变量。
+- `run-checks.sh` 有 7 个步骤：install、typecheck、h5、mp、migrations、test、smoke。它只把仓库挂到 /work，把 ~/.cache/illini-dev 挂到 /cache，设 `CI=1`，构建时用 CI 同款的 stub 环境变量。 例外是主包：h5、mp 步骤用 H5 job 的 stub（00000000000000000000.supabase.co），而 CI 的 build-mp-weixin 用 `https://ci-stub.supabase.co`（ci.yml 第 301 行），主包会差 91 字节；量主包一律用 `mpci` 步骤（D-46 起），它用 build-mp-weixin 的三个环境变量构建并跑 verify-build-artifact 与 mp-size。
 
 现版有五处缺口，P1.9 修掉，新脚本见 §4.3：
 

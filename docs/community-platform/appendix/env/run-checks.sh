@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Runs the repo CI checks inside localhost/illini-dev:pw<playwright major.minor>-node22-pg17 (RUNBOOK §4).
 # usage: run-checks.sh <repo-dir> [steps...]    |    run-checks.sh --selftest
-#   steps: install typecheck h5 h5accept mp migrations test smoke npmaudit cmd, and "probe <file>"
+#   steps: install typecheck h5 h5accept mp mpci migrations test smoke npmaudit cmd, and "probe <file>"
+#   mpci builds mp-weixin with the CI build-mp-weixin environment; main-package bytes come from it (D-46)
 #   default: install typecheck h5 mp migrations test
 #   SMOKE_SPECS="a.spec.ts b.spec.ts" overrides the smoke spec list; RUN_CMD feeds the cmd step;
 #   IMAGE=... forces an image (default: picked from @playwright/test in app/package-lock.json).
@@ -37,6 +38,8 @@ GIT_COMMON=$(git -C "$REPO" rev-parse --path-format=absolute --git-common-dir)
 SMOKE_SPECS=${SMOKE_SPECS:-community-post-topics.spec.ts plaza-attach-picker-is-modal.spec.ts}
 STAMP=$(date -u +%Y%m%dT%H%M%SZ); LOG=$ENVDIR/logs/check-$STAMP.log
 STUB="VITE_SUPABASE_URL=https://00000000000000000000.supabase.co VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ci-stub-key VITE_BASE_URL=https://ci-app-stub.invalid"
+# The environment of ci.yml's build-mp-weixin job (lines 301-303); main-package bytes are measured here (D-46).
+MPCI_STUB="VITE_SUPABASE_URL=https://ci-stub.supabase.co VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ci-stub-key VITE_BASE_URL=https://ci-app-stub.invalid"
 EXTRA=()
 inbox() {
   podman run --rm --userns=keep-id -e HOME=/cache/home -e CI=true -e PG_BIN_DIR=/usr/lib/postgresql/17/bin \
@@ -49,6 +52,7 @@ declare -A CMD=(
   [h5]="cd app && env $STUB npm run build:h5 && node ../scripts/verify-build-artifact.mjs dist/build/h5 ci"
   [h5accept]="cd app && env $STUB npx playwright test --config playwright.production-admin.config.ts"
   [mp]="cd app && env $STUB npm run build:mp-weixin && node ../scripts/verify-build-artifact.mjs dist/build/mp-weixin none && node /dev-env/mp-size.mjs dist/build/mp-weixin"
+  [mpci]="cd app && env $MPCI_STUB npm run build:mp-weixin && node ../scripts/verify-build-artifact.mjs dist/build/mp-weixin none && node /dev-env/mp-size.mjs dist/build/mp-weixin"
   [migrations]="cd supabase/migrations && shasum -a 256 -c manifest.sha256 >/dev/null && echo all-migration-checksums-ok"
   [test]="cd app && node --test --test-concurrency=2 ../api/*.test.mjs ../scripts/*.test.mjs smoke/*.test.mjs"
   [smoke]="cd app && env $STUB SMOKE_PORT=5186 npx playwright test $SMOKE_SPECS"
