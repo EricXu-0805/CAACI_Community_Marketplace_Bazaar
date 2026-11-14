@@ -1093,3 +1093,18 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - ci_run_url: —（两PR base不是main）
 - 未测项: 微信真实冷启动投递/原生浮层仍列人工检查；测试证明调用抑制、计数继续、普通错误保留和页面恢复后的提示恢复，不冒充设备验收。
 - next_task_id: D-49。
+
+### L89 · 2026-11-13 20:34 CT · D-49在本地基线阶段按停止条件收束 [OMO自决]
+- task_id: D-49
+- code_sha: 专用本地分支codex/community-restricted-20261113从04edaa36a6edd717c069d78dc4afad57ac1f196c切出，仍在该HEAD；没有功能提交或草稿PR
+- docs_sha: f20f44ca2deda0d0b4cc38a98357a3d89e438f6d
+- 依据: D-49第6项“第3项在本地L-SQL重放过不了，就停下写清停在哪”，并按本轮三次上限收束，不把前两次夹具纠正当作通过或重置计数。D-43不提问，余下队列继续；不自设下一目标。
+- 分工: st_01a1d75f完成只读盘点（20类禁止、21类允许和API/后台）；主会话通读并核对规范状态/异常格式及API入口。st_01a1d7cb（ChatGPT deep-high）仅在指定新分支起草PRECHECK和REGRESSION，主会话尚未编辑API/客户端。
+- 三次运行: lsql-20261114T021033Z在181/181后因夹具用到不存在的owner_id停，删掉未被使用的夹具列；021312Z因tgenabled内部char序列化停，改成text；021553Z再在REGRESSION第293行的Storage fixture INSERT停，private.queue_chat_video_review()引用NEW.version，而现有两个Storage bootstrap均未建该列。最终files181/replayed181/errors1/done0/SQLrc3，wrapper exit1。
+- 计数: 计划96类×25状态=2400只是未完成草稿；实际执行行为用例0，有效基线红测0，最终绿测0。三次是设置阶段失败，不是迁移功能证明。
+- 缺口复核: 已读原日志4004行、LOCAL_BOOTSTRAP_20260722_full_clean_supabase_base.sql:49–57、20260719平台文件和20260919064706既有trigger。不通过删Storage用例或替换trigger绕过。scripts/_postgres-bin.mjs不在#369/专用基线；主会话在~/work/illini-config/scripts/_postgres-bin.mjs（#371）找到真实postgresBinDir导出，未猜实现或复制进来。
+- 保留证据: ~/work/evidence/D49/sql/BLOCKED.md、blocked-baseline.patch、source-owner-evidence.md；11个真实stored-body MD5与ACL摘要来自未改181链。工作区只有未提交PRECHECK_20261114015420_restricted_account_writes.sql、REGRESSION_20261114015420_restricted_account_writes.sql；两者都是未完成草稿，PRECHECK未单独运行。
+- 未做: 没有新迁移、VERIFY、Node回归、manifest/计数变更、冻结新SHA、API限制、登录修正、L2–L4放开、提示条、Sentry/聊天/回复retry修复或PR。旧20261112120000仍为e2a85c3ec33c98e8317b764a59fc8af1434c15319794e3f64a6606be70e5a92c。保留现有全部有效L2–L5全局门禁，#369不等D-49。
+- 收尾: 没有重启第四次回放；task_cancel释放st_01a1d7cb驻留/续跑资源。podman ps确认三次021xxx本地容器均已清理，无托管动作。本地模拟缺口不能推出生产Storage形状。
+- ④与⑦: 正式FINAL的D-49独立节须写明停止、0覆盖、无PR和待解决前置；仍保留“生产先应用新迁移并VERIFY，前端后合”的未来释放条件，不声称已达成。
+- next_task_id: D-46.5，之后D-46.6、D-47.7和最终同提交报告；按D-50停止。
