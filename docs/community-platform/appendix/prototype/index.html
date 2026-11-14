@@ -2,33 +2,71 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <meta name="description" content="Illini Market 社区产品演示。所有内容与操作均为示例。">
-  <title>Illini Market · 社区</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="玉米地（Cornfield）演示站：伊利诺伊华人论坛，现开放香槟地区。内容均为虚构，操作只保存在这个浏览器。">
+  <meta property="og:site_name" content="玉米地 Cornfield">
+  <meta property="og:title" content="玉米地 · 社区">
+  <title>社区 · 玉米地</title>
+  <link rel="icon" type="image/svg+xml" href="assets/seal.svg">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <a class="skip" href="#main">跳到主要内容</a>
-  <div class="demo-bar"><span><i></i> 产品演示 · 全部为示例内容</span><a href="#about">演示说明</a><button id="reset-start" type="button" data-action="reset">重置</button><span id="reset-confirmation" class="reset-confirmation" hidden><span>清除演示记录？</span><button id="reset-confirm-button" type="button" data-action="reset-confirm">确认重置</button><button type="button" data-action="reset-cancel">取消</button></span></div>
-  <div id="storage-notice" role="status" hidden></div>
-  <header class="topbar">
-    <a href="#home" class="brand" aria-label="Illini Market 社区首页"><span class="brand-mark">im</span><span>Illini Market</span></a>
-    <div class="campus-name">UIUC <span>学生与校友社区</span></div>
-    <form id="global-search" role="search"><span data-icon="search" aria-hidden="true"></span><label class="sr-only" for="search-input">搜索讨论</label><input id="search-input" placeholder="搜索讨论…" autocomplete="off"><button type="submit">搜索</button></form>
-    <a class="top-profile" href="#profile" aria-label="我的"><span class="avatar terracotta">我</span></a>
-  </header>
-  <div class="layout">
-    <aside class="sidebar" aria-label="主导航">
-      <nav id="desktop-nav"></nav>
-      <div id="category-section"><div class="side-label">讨论板块</div><nav id="category-nav"></nav></div>
-      <div class="sidebar-bottom"><a href="#guide" class="side-link"><span data-icon="book-open"></span>新生指南</a><a href="#admin" class="side-link"><span data-icon="shield"></span>审核演示<span id="report-count" class="count"></span></a><a href="#about" class="side-link"><span data-icon="info"></span>关于这个演示</a><span class="sidebar-footnote">Champaign · Urbana</span></div>
-    </aside>
-    <main id="main" tabindex="-1"></main>
+  <div class="demo-bar" role="note">
+    <p class="demo-note">演示站：内容均为虚构，操作只保存在这个浏览器</p>
+    <span class="demo-tools">
+      <a class="demo-about" href="#about">演示说明</a>
+      <button id="reset-start" type="button" data-action="reset">重置</button>
+      <span id="reset-confirmation" class="reset-confirmation" hidden>
+        <span>清除在这个浏览器里的操作？</span>
+        <button id="reset-confirm-button" type="button" data-action="reset-confirm">确认重置</button>
+        <button type="button" data-action="reset-cancel">取消</button>
+      </span>
+    </span>
   </div>
-  <nav id="mobile-nav" class="mobile-nav" aria-label="手机主导航"></nav>
+  <div id="storage-notice" role="status" hidden></div>
+  <header id="topbar" class="topbar m-brand">
+    <div class="topbar-in">
+      <a id="top-back" class="tb-icon tb-back" href="#home" data-action="back" aria-label="返回"><span data-icon="chevron-left" data-icon-size="22"></span></a>
+      <a class="brand" href="#home" aria-label="玉米地 社区首页">
+        <picture>
+          <source srcset="assets/seal-dark.svg" media="(prefers-color-scheme: dark)">
+          <img class="seal" src="assets/seal.svg" alt="" width="32" height="32">
+        </picture>
+        <span class="wordmark">玉米地</span>
+      </a>
+      <span class="region">香槟</span>
+      <span id="top-title" class="tb-title"></span>
+      <nav id="desktop-nav" class="tb-nav" aria-label="主导航"></nav>
+      <form id="global-search" class="tb-search" role="search">
+        <span data-icon="search" data-icon-size="16"></span>
+        <label class="sr-only" for="search-input">搜话题</label>
+        <input id="search-input" type="search" placeholder="搜话题" autocomplete="off" enterkeyhint="search" maxlength="60">
+        <button type="button" class="tb-search-x" data-action="search-close">取消</button>
+      </form>
+      <a id="top-compose" class="btn btn-primary tb-compose" href="#compose">发话题</a>
+      <button type="button" class="tb-icon tb-search-open" data-action="search-open" aria-label="搜话题"><span data-icon="search" data-icon-size="22"></span></button>
+      <a class="tb-icon tb-msg" href="#messages" aria-label="消息"><span data-icon="mail" data-icon-size="20"></span></a>
+      <a class="tb-me" href="#profile" aria-label="我的"><span class="avatar">我</span></a>
+    </div>
+    <nav id="chips" class="chips" aria-label="板块" hidden></nav>
+  </header>
+  <main id="main" tabindex="-1"></main>
+  <a id="fab" class="fab" href="#compose" aria-label="发话题" hidden><span data-icon="plus" data-icon-size="24"></span></a>
+  <nav id="mobile-nav" class="tabbar" aria-label="手机主导航"></nav>
   <div id="toast" role="status" aria-live="polite"></div>
-  <dialog id="report-dialog"><form id="report-form"><div class="dialog-heading"><h2>举报内容</h2><button type="button" class="icon-button" data-action="close-report" aria-label="关闭举报"><span data-icon="x"></span></button></div><p class="muted">举报只保存在本次演示中，不会通知真人。</p><input type="hidden" name="postId"><label for="report-reason">原因</label><select name="reason" id="report-reason"><option>广告或重复推广</option><option>内容不实或已失效</option><option>辱骂、骚扰或危险内容</option><option>隐私或其他问题</option></select><label for="report-detail">补充说明（选填）</label><textarea id="report-detail" name="detail" rows="3" maxlength="500" placeholder="具体是哪部分存在问题？"></textarea><div class="dialog-actions"><button type="button" class="button secondary" data-action="close-report">取消</button><button type="submit" class="button">提交举报</button></div></form></dialog>
+  <dialog id="report-dialog">
+    <form id="report-form">
+      <div class="dialog-h"><h2>举报</h2><button type="button" class="tb-icon" data-action="close-report" aria-label="关闭"><span data-icon="x" data-icon-size="20"></span></button></div>
+      <input type="hidden" name="postId">
+      <label for="report-reason">原因</label>
+      <select name="reason" id="report-reason"><option>垃圾信息 / 诈骗</option><option>违禁物品</option><option>骚扰 / 辱骂</option><option>信息虚假</option><option>其他</option></select>
+      <label for="report-detail">补充说明 <span class="opt">选填</span></label>
+      <textarea id="report-detail" name="detail" rows="3" maxlength="500" placeholder="哪一部分有问题"></textarea>
+      <div class="form-actions"><button type="button" class="btn" data-action="close-report">取消</button><button type="submit" class="btn btn-primary">提交</button></div>
+    </form>
+  </dialog>
   <script src="assets/feather.min.js"></script>
   <script src="app.js"></script>
 </body>
