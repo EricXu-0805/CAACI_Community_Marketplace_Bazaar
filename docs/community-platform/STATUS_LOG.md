@@ -1080,3 +1080,16 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43539761691 · head04edaa3；Type-check、Boundary、H5、mp-weixin四项success，Boundary2156/2155/0/1；public sweep在schema预检报community topic columns HTTP400（E4），两项skipped。job132277316686与132277316304日志已实读，不冒充浏览器已运行。
 - 未测项: 更老基础库/真机保持原记录；本提交按supervisor要求留待D-46.5集成传播到#374/#375。
 - next_task_id: D-47.5冷启动补充，之后D-49。
+
+### L88 · 2026-11-13 19:51 CT · D-47.5 未知页面不弹提示；夹具独立提交
+- task_id: D-47.5（18:20补充）
+- code_sha: 8df14c5ba4d53c669271679ff36707cda8b5f8ba（夹具）；73cde944f7505ad65909c9e9f9cf1820bfeb73da（#375实现）；adc6ee70501d19dd9a623984957798a7d60fbd0f（#374传播），均已推送
+- docs_sha: abbd6b0155ddd99245f5f32f8f6b3a179954be66
+- 环境: 本地pw1.60-node22-pg17，mpci=CI环境
+- 根因: 原helper对空route或getCurrentPages异常返回true。新实现只在有已知前台route且不在账号流程页时允许入站提示；异常/空栈均false，未改通用toast、监听或计数。依据是L86的[OMO自决]，不声称SPEC规定了入站策略。
+- 红绿: 011543Z在0eabe73上43/39/4/0，H5/MP的空栈/抛错四例都错误显示1条而非0。实现后012024Z定向43/43、typecheck/H5/mpci通过，但全量2208/2205/2/1：旧chat-realtime两条正常页面用例根本没提供页面API，原先依赖catch放行。
+- 夹具处理: 保留所有断言，给通知场景显式plaza页，聊天场景chat→messages页；真实helper继续加载。先用原生产helper验证该文件013515Z为65/65，再单独提交8df14c5。恢复已验证的新helper后，013858Z全量2208/2207/0/1、pg_skips=0通过；验收/提交树60f310c230c77fc653ce110f36d783f5bfee2995。未重复未变产品源码已通过的typecheck/H5/mpci。
+- 传播: #374仅合入已有两个提交，没有夹带新修正；014642Z定向108/108、typecheck/mpci通过；验收/合并树2cd9306b6c9153c002ecc05b681e2702dd786e49。#375主包1,324,735/余248,129；#374主包1,373,060/余199,804，仍只是当前三者组合。
+- ci_run_url: —（两PR base不是main）
+- 未测项: 微信真实冷启动投递/原生浮层仍列人工检查；测试证明调用抑制、计数继续、普通错误保留和页面恢复后的提示恢复，不冒充设备验收。
+- next_task_id: D-49。
