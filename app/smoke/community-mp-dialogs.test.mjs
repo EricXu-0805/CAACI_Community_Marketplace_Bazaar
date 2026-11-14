@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import ts from 'typescript'
+import { initScopedPreContext } from '../node_modules/@dcloudio/uni-cli-shared/dist/preprocess/context.js'
 
 const source = path => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8')
 const compile = input => ts.transpileModule(input, {
@@ -28,11 +29,13 @@ function messages(lang) {
 
 // Follow the platform-stack helpers in wechat-moderation-recovery.test.mjs.
 function platformSource(input, platform) {
+  const { preVueContext } = initScopedPreContext(platform.toLowerCase())
   const enabled = [true]
   return input.split('\n').filter(line => {
     const directive = line.match(/^\s*\/\/\s*#(ifdef|ifndef)\s+(.+)$/)
     if (directive) {
-      const matches = directive[2].split(/\s*\|\|\s*/).includes(platform)
+      const matches = directive[2].split(/\s*\|\|\s*/)
+        .some(flag => preVueContext[flag.replace(/-/g, '_')])
       enabled.push(enabled.at(-1) && (directive[1] === 'ifdef' ? matches : !matches))
       return false
     }
@@ -128,13 +131,15 @@ for (const lang of ['en', 'zh']) {
 
   test(`all MP-reachable app modal button labels fit the base-library rule in ${lang}`, () => {
     const dictionary = messages(lang)
-    const { config, error } = ts.parseConfigFileTextToJson(
-      'pages.json', platformSource(source('pages.json'), 'MP-WEIXIN'))
-    assert.equal(error, undefined)
-    const pages = new Set([
-      ...config.pages.map(page => `${page.path}.vue`),
-      ...(config.subPackages || []).flatMap(pack => pack.pages.map(page => `${pack.root}/${page.path}.vue`)),
-    ])
+    const [allPages, pages] = [source('pages.json'), platformSource(source('pages.json'), 'MP-WEIXIN')]
+      .map(input => {
+        const { config, error } = ts.parseConfigFileTextToJson('pages.json', input)
+        assert.equal(error, undefined)
+        return new Set([
+          ...config.pages.map(page => `${page.path}.vue`),
+          ...(config.subPackages || []).flatMap(pack => pack.pages.map(page => `${pack.root}/${page.path}.vue`)),
+        ])
+      })
     const visited = new Set()
     function files(directory = '') {
       return readdirSync(new URL(`../src/${directory}`, import.meta.url), { withFileTypes: true })
@@ -142,7 +147,7 @@ for (const lang of ['en', 'zh']) {
           : /\.(vue|ts|js)$/.test(entry.name) ? [`${directory}${entry.name}`] : [])
     }
     for (const path of files()) {
-      if (path.startsWith('pages/') && path.endsWith('.vue') && !pages.has(path)) continue
+      if (allPages.has(path) && !pages.has(path)) continue
       const raw = platformSource(source(path), 'MP-WEIXIN')
       const script = path.endsWith('.vue')
         ? [...raw.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(match => match[1]).join('\n')
