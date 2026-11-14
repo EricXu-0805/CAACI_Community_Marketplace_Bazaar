@@ -204,6 +204,7 @@ HOME.5 ｜ 通过 ｜ 2d18576、68eb43b（#374） ｜ 143b437 ｜ pw1.60＋axe 4
 
 > 2026-11-13 按 D-46 第 1 项更正（supervisor 第三批核查，OMO 逐条核实后改），记录见 STATUS_LOG L64。
 > 2026-11-13 按 D-47 第 1 项再更正 ② 的 D-45.5b 行、④ 的 key 数、⑥ 的 #370 CI，记录见 STATUS_LOG L72。
+> 2026-11-14 按 supervisor 18:20 核查补充第 4 项，再按当时的 head 重写 ② 的 D-45.5b 行与 ④ 第二行，记录见 STATUS_LOG L92。
 
 按 D-45 第 1–7 项做，八节格式同上；逐条细节在 STATUS_LOG L55 起。`latest_batch` 不变。
 
@@ -227,7 +228,7 @@ D-45.2 ｜ 通过 ｜ —（只改 PR 文案） ｜ bd7cba3 ｜ GitHub REST ｜ 
 D-45.3 ｜ 通过 ｜ 88ca762（本地） ｜ 7013638 ｜ pw1.65 ｜ 全量 install typecheck test h5 mp smoke（L57） ｜ 2051 / 2050 / 0 / 1；smoke 510 passed、4 failed（stub 环境，origin/main 同样失败）、1 skipped；主包 1,570,622（余 2,242） ｜ — ｜ CI ｜ — ｜ D-45.4
 D-45.4 ｜ 通过 ｜ 4a3cbe6（#375） ｜ 00ba6bc ｜ pw1.60 ｜ 三次尝试 + 提交前全量（L58） ｜ 主包 1,502,824，余 70,040（68.4 KiB）；2044 / 2043 / 0 / 1；smoke 15 passed ｜ —（不触发 CI） ｜ 合并后实际余量 ｜ — ｜ D-45.5
 D-45.5a ｜ 通过 ｜ b7bcf3a（#369） ｜ c25cf05 ｜ pw1.60 ｜ install typecheck test smoke mp（L59） ｜ 2053 / 2052 / 0 / 1；smoke 22 passed；主包 1,559,509 ｜ run 43448423151（Type-check、Boundary 2053 / 2052 / 0 / 1、Build H5、Build mp-weixin 4 个 success，public sweep 停在预检等 E4，2 个 skipped） ｜ 受限日期真机显示 ｜ E3 ｜ D-45.5b
-D-45.5b ｜ 通过（D-46 3e 6d6c598 补齐「HOME.3 首页」节，L69） ｜ c16f0a1（#374） ｜ 191f551 ｜ pw1.60 ｜ 同上加 7 份 smoke（L60） ｜ 2047 / 2046 / 0 / 1；smoke 99 passed；主包 1,566,720；新增 13 个 key（ref.more 原有，只改英文），接上 6 个；没接上的 7 个：ref.removed、ref.unlink、hidden、hiddenOwner、appeal 要服务端（SELECT 策略或 RPC），restrictedReply 已接入，但 D-48 恢复全局门禁后 L2–L4 暂时看不到，emptyUnanswered 随 P3.4（plaza.restrictedPost 是 b7bcf3a 在 #369 加的，不在这 13 个里；已接入发帖前拦截，但 D-48 恢复门禁后 L2–L4 暂时不可达）。「HOME.3 首页」节 29 个 key（含 LEGAL.1 后才启用的 home.aboutBodyCaaci）和 plaza.boardDesc / boardAsk 已由 D-46 3e（6d6c598）进语言包（L69）。现在还没接上的：ref.removed、ref.unlink、hidden、hiddenOwner、appeal 等服务端（P3.5 / P3.6）；emptyUnanswered 等 P3.4；home.events、home.allEvents 等 P4.8 的近期活动区块；home.typeGuide、home.typeRules 等 D-47 第 2 项 b（#374）。restrictedReply、restrictedPost 已由 D-46 3f 在 #369 520e55a 接上（L71），#374 要 merge #369 以后才有 ｜ —（不触发 CI） ｜ 关注者帖子流真数据 ｜ E3 ｜ HOME.4
+D-45.5b ｜ 通过（D-46 3e 6d6c598 补齐「HOME.3 首页」节，L69） ｜ c16f0a1（#374） ｜ 191f551 ｜ pw1.60 ｜ 同上加 7 份 smoke（L60） ｜ 2047 / 2046 / 0 / 1；smoke 99 passed；主包 1,566,720；新增 13 个 key（ref.more 原有，只改英文），当时接上 6 个。按现在的 head（#369 04edaa3、#375 571be45、#374 2e0f582）：「HOME.3 首页」节 29 个 key（含 LEGAL.1 后才启用的 home.aboutBodyCaaci）和 plaza.boardDesc / boardAsk 已由 6d6c598 进语言包（L69）；home.typeGuide、home.typeRules 已由 885603e 接上（L80）。restrictedReply 和 #369 的 restrictedPost 已由 520e55a 接进界面，但受限门禁已由 4a44a41 在 #369 恢复为所有有效 L2–L5 进 pages/suspended，并经 007abf1、4b6f079 进了 #375、#374，所以 L2–L4 现在看不到这两条（要等 D-49 先在服务端拦住写入）。仍没接上的：ref.removed、ref.unlink、hidden、hiddenOwner、appeal 等服务端（P3.5 / P3.6）；emptyUnanswered 等 P3.4；home.events、home.allEvents 等 P4.8 的近期活动区块 ｜ —（不触发 CI） ｜ 关注者帖子流真数据 ｜ E3 ｜ HOME.4
 HOME.4 ｜ 通过 ｜ 010f8f6（#374） ｜ dce559d ｜ pw1.60＋axe 4.14.0 ｜ 同上（L61） ｜ 12 组 axe 0、<12px 0、溢出 0；2047 / 2046 / 0 / 1；smoke 85 passed ｜ — ｜ 真机 ｜ — ｜ D-45.7
 #374 合并 ｜ 通过 ｜ 7c82fd1（merge #369 b7bcf3a）、fb9c6b9（merge #375） ｜ dce559d ｜ pw1.60 ｜ install typecheck test smoke(8) mp ｜ 2056 / 2055 / 0 / 1；smoke 114 passed；主包 1,511,879（余 60,985） ｜ — ｜ — ｜ — ｜ D-45.7
 D-45.7 ｜ 通过 ｜ 86ffd0e（#374） ｜ d00fb3b ｜ pw1.60 ｜ install typecheck test h5 mp smoke（L62） ｜ 2064 / 2063 / 0 / 1；smoke 114 passed；小程序主包 1,550,634（余 22,230）；H5 截图 32 张像素不变（86ffd0e 给手机页头加了一层不带条件编译的 cx-regions，H5 的 DOM 有变化） ｜ —（不触发 CI） ｜ 微信开发者工具 / 真机 ｜ — ｜ —
@@ -250,7 +251,7 @@ D-45.7 ｜ 通过 ｜ 86ffd0e（#374） ｜ d00fb3b ｜ pw1.60 ｜ install typec
 | 要 Eric 做的一件事 | 解锁 |
 |---|---|
 | 合并顺序与 base：#369 → #375 → #374。删 #369 的分支之前，先把 #374、#375 的 base 都改成 main（删 base 分支会关闭依赖它的 PR，且不能重开）；#369 若 squash 合并，改完 base 后 #374、#375 要再 merge 一次 origin/main | #375、#374 能合，进而首页上线 |
-| c16f0a1（#374）新增的 13 个 key 里有 7 个已进语言包但没接上，分三类：plaza.ref.removed、ref.unlink、hidden、hiddenOwner、appeal 要服务端改 post_items / posts 的 SELECT 策略或加 RPC（P3.5 / P3.6，归 Eric 定）；plaza.restrictedReply 只要拆 App.vue 的受限门禁（D-46 第 3 项 f，OMO 做）；plaza.emptyUnanswered 随 P3.4。另有 plaza.restrictedPost 是 b7bcf3a（#369）加的，不在这 13 个里，同样随 D-46 第 3 项 f。D-47 补记：3f 已在 #369 520e55a 接上 restrictedReply、restrictedPost（L71），还没 merge 进 #374 | 隐藏 / 申诉、引用卡下架 |
+| c16f0a1（#374）新增的 13 个 key 里有 7 个已进语言包但当时没接上。按现在的 head：plaza.ref.removed、ref.unlink、hidden、hiddenOwner、appeal 要服务端改 post_items / posts 的 SELECT 策略或加 RPC（P3.5 / P3.6，归 Eric 定）；plaza.emptyUnanswered 随 P3.4。plaza.restrictedReply 和 #369 的 plaza.restrictedPost 已由 520e55a 接进界面，但受限门禁已由 4a44a41 在 #369 恢复（所有有效 L2–L5 进 pages/suspended），并经 007abf1、4b6f079 进了 #375、#374，L2–L4 暂时看不到；放开要等 D-49 先在服务端拦住写入（本轮停在本地基线，见第四批 D-49 一节）。另：home.typeGuide、home.typeRules 已由 885603e（#374）接上 | 隐藏 / 申诉、引用卡下架、受限账号浏览 |
 | 用微信开发者工具或真机看一遍小程序社区页：首页、手机页头与胶囊对齐（iOS 上页头中心低 2px）、板块页、全部讨论、下拉刷新、暗色、复制 toast；小程序构建要配 VITE_BASE_URL（「关于本站」复制的链接） | 小程序与 H5 同日发布（D-12） |
 | #372 手工合并：除 api/share-post.js、en.ts、zh.ts 外，#374 与 #372 还在 app/src/pages/plaza/index.vue 冲突——c16f0a1 删了「关注的人」名单（SPEC §6.2 改成帖子流），#372 的 BRAND.3 徽章改的正是名单里那段。保留 #374 的删除，不带回名单；#372 在这块的徽章改动丢弃（名单在 pages/following 里，那一页的徽章照 #372）。其余规则同前：保留 #369 的 P2.9 / P2.2 逻辑和措辞，只取 #372 的品牌字串 | 品牌上线 |
 | 主包余量：#369＋#375＋#374 合上后 22,230 字节（H5 stub 环境，CI 环境多 91 字节），低于 D-45 第 4 项的 64 KiB。五个 PR 都合上后的数见第四批（D-46 第 5 项重测） | 后续进主包的功能 |
@@ -286,3 +287,137 @@ D-45.7 ｜ 通过 ｜ 86ffd0e（#374） ｜ d00fb3b ｜ pw1.60 ｜ install typec
 | D-45 第 4 项 | 用 H5 条件编译腾主包空间，不移动页面路径 | D-45 第 4 项「优先不改页面路径」 | 关闭 #375 撤不掉 #374 里由 fb9c6b9 合进来的那一份：要在 #374 上 `git revert -m 1 fb9c6b9`。注意：以后 #375 单独合进 main 的话，#374 上的这个 revert 会在 #374 合并时把 #375 的改动再删一次，所以要么 #375 和 #374 一起撤，要么都不撤 |
 | D-45 第 7 项 | 小程序上「发话题」改为悬浮按钮，「关于本站」「意见反馈」改为复制 | SPEC §8：小程序不用 web-view，外链改复制 | `git revert 86ffd0e` |
 | #374 合入 #375 | 让小程序首页在主包预算内做；#374 因此依赖 #375 | D-45 第 4、7 项 | `git revert -m 1 fb9c6b9`（同时要撤 86ffd0e）；同上，#375 若单独进 main，这个 revert 会把 #375 的改动再删一次 |
+
+## 第四批（D-46）
+
+按 D-46 第 1–6 项做。范围按 D-47、D-48、D-49、D-50 和 supervisor 2026-11-13 18:10、18:20 两条补充扩展，每次扩展都在 STATUS_LOG 记了一笔（L72、L74、L75、L76、L85、L86）。八节格式同上，逐条细节在 STATUS_LOG L63–L92。`latest_batch` 不变。主包数一律用 CI build-mp-weixin 的环境量（run-checks `mpci` 步骤，`https://ci-stub.supabase.co`）。按 D-50 第 2 项，本批交付后结束目标，不再自设新目标，不从 BACKLOG 往下接任务。
+
+### ① 起止与 SHA 范围
+
+- 起止：2026-11-13 11:40 CT（D-46，材料分支 35dabd8）至 2026-11-13 21:36 CT。
+- docs_sha：35dabd8 → 本节所在提交。
+- code_sha（都只 merge，不 rebase，不 force push）：
+  - #369 `codex/community-topics-20261112`：b7bcf3a → 04edaa3（3588c24、520e55a、4a44a41、ae058c2、04edaa3）。
+  - #375 `codex/community-mp-budget-20261113`：4a3cbe6 → 571be45（3d24a8e、8972507、1443d5c、ecc330b、30c4b4d、007abf1、22d9009、0eabe73、8df14c5、73cde94、571be45）。
+  - #374 `codex/community-home-20261112`：86ffd0e → 2e0f582（eca5a8d、73206a0、6d6c598、4b6f079、b35cf8e、885603e、c1ef194、c7b0634、2942e8e、e495ad7、adc6ee7、2e0f582）。
+  - D-49：本地分支 `codex/community-restricted-20261113` 停在 04edaa3，没有功能提交，没推送，没开 PR。
+  - D-46 第 5 项：本地分支 `local/d46-final-integration-20261114` 412e14d（#374 2e0f582 + #373 55716ba + #372 ba070e7）（不推送）。
+  - BRAND.7：本地 local/brand7-20261113 15aa47e，合进材料分支 779c07f；预览部署 dpl_3bG2SKTAmQsa7jEmScy2cHHpnk1y（没有 promote）。
+- 20261112120000 的 sha256 仍是 e2a85c3ec33c98e8317b764a59fc8af1434c15319794e3f64a6606be70e5a92c。
+
+### ② 完成的任务
+
+```text
+D-46.1 ｜ 通过 ｜ —（只改文档） ｜ b2cd9ac ｜ 只读核对 ｜ merge-tree、gh run、Actions 日志、SPEC.md、ci.yml（L63、L64） ｜ D-46 第 1 项每条都成立，全部照改；补 L63 合并记录 ｜ — ｜ 无 ｜ — ｜ D-46.2
+D-46.2 ｜ 通过 ｜ —（只改 PR 文案） ｜ 5f66faa ｜ GitHub REST ｜ gh pr edit 仍报 Projects classic，改用 REST PATCH（L65） ｜ #369、#374 重写，#375 改余量，#371 包名加反引号；四个仍是草稿；run-checks 加 mpci 步骤 ｜ — ｜ 无 ｜ — ｜ D-46.3a
+D-46.3a ｜ 通过 ｜ 3d24a8e（#375） ｜ 08f036c ｜ pw1.60 ｜ install typecheck test h5 mpci smoke（L66） ｜ 修复前主测失败、对照通过；2047 / 2046 / 0 / 1；smoke 15 passed；主包 1,502,862 ｜ —（base 不是 main，不触发 CI） ｜ 分享卡冷启动收提醒（真机） ｜ — ｜ D-46.3b
+D-46.3d ｜ 通过 ｜ eca5a8d（#374） ｜ 9ee2df9 ｜ pw1.60 ｜ 同上，8 份 smoke（L67） ｜ 修复前 4 条失败、2 个对照通过；2070 / 2069 / 0 / 1；smoke 114 passed；主包 1,550,705。D-47 第 3 项补两条测试，见 D-47.4 ｜ — ｜ 真实关注数据 ｜ E3 ｜ D-46.3c
+D-46.3c ｜ 通过 ｜ 73206a0（#374） ｜ 831524e ｜ pw1.60 ｜ 同上（L68） ｜ 修复前同时 9 个、重叠加载 18 个，修复后 ≤ 6；2073 / 2072 / 0 / 1；smoke 114 passed；主包 1,550,883。D-47 第 3 项改成只在小程序限流、作废请求不发，见 D-47.3 ｜ — ｜ 小程序上加轮询后的实际并发 ｜ — ｜ D-46.3e
+D-46.3e ｜ 通过 ｜ 6d6c598（#374） ｜ 790e435 ｜ pw1.60 ｜ 同上（L69） ｜ 29 个 HOME.3 key 与 10 个板块 key 逐字等于 SPEC；2077 / 2076 / 0 / 1；smoke 114 passed；主包 1,551,820；D-45.5b 改回通过。D-47 第 3 项补的分隔符和类型标签见 D-47.2 ｜ — ｜ — ｜ — ｜ D-46.3f
+D-46.3b ｜ 通过（标题问题由 D-48.2 修） ｜ 3588c24（#369） ｜ d2fff8d ｜ pw1.60 ｜ install typecheck test h5 mpci smoke（L70） ｜ 修复前 4 条失败、4 条对照通过；2061 / 2060 / 0 / 1；smoke 35 passed；主包 1,559,431。操作菜单没有标题（uni 运行时用 title 覆盖 alertText），D-48 第 2 项在 ae058c2 修 ｜ run 43491206333（4 个 success，public sweep 等 E4，2 个 skipped） ｜ 真机弹窗 ｜ — ｜ D-46.3f
+D-46.3f ｜ 失败（全局放行由 D-48.1 撤回） ｜ 520e55a（#369） ｜ d2fff8d ｜ pw1.60 ｜ 同上（L71） ｜ 2153 / 2152 / 0 / 1；smoke 53 passed；主包 1,560,420。当时只核了四个 INSERT 触发器就当作「服务端已拦住」，而 520e55a 放开的是整个 app：核查方在 PG17 上用迁移里的真实函数体证明，L2–L4 做商品会话、报价与约见附言、交易评价、改已有商品、改资料、关注、点赞时服务端都不拦，也进不了 pages/suspended 申诉。前提不成立，D-48 第 1 项撤回全局放行 ｜ 同上 ｜ 真实受限账号（E3） ｜ E3 ｜ D-48.1
+D-46.4 ｜ 通过（#375 单独） ｜ 8972507、1443d5c、ecc330b（#375） ｜ 249c708 ｜ pw1.60 ｜ install typecheck test h5 mpci smoke（L73） ｜ 14 个次要页面改同路径分包，4 个模块挪进分包；主包 1,502,862 → 1,322,319；2053 / 2052 / 0 / 1；smoke 只有 4 条已知 stub 失败。L73 原写「修复前失败 1 条」，实为 6 条测试的终稿在 3d24a8e 上 6 / 4 / 2 / 0（缺 14 个分包、内部引用扫描对照缺失；190150Z 是早期 5 条草稿，L84） ｜ — ｜ 分包首次下载、冷启动进分包页（开发者工具） ｜ — ｜ D-46.5
+D-47.1 ｜ 通过 ｜ —（只改文档） ｜ d2fff8d ｜ 只读核对 ｜ git、gh、检查日志（L72） ｜ STATUS 整篇改写；第三批 D-45.5b 行、8 个 key、29、#370 的三次红、L69 更正 ｜ — ｜ 无 ｜ — ｜ D-48.1
+D-48.1 ｜ 通过 ｜ 4a44a41（#369） ｜ 06a0c70 ｜ pw1.60 ｜ cmd install typecheck test h5 mpci smoke（L76） ｜ 测试先按恢复后行为改，在 520e55a 上 104 / 99 / 5 / 0，准确失败在 L2–L4 与限制优先级；恢复后 2153 / 2152 / 0 / 1；smoke 53 passed；主包 1,560,396。不在 #375 上 revert 30c4b4d ｜ run 43500445187（4 个 success，public sweep 预检等 E4，2 个 skipped） ｜ 真机、托管账号 ｜ E3 ｜ D-48.2
+D-48.2 / D-50.1 ｜ 通过 ｜ ae058c2（#369） ｜ d982ec8 ｜ pw1.60 ｜ 同上（L77） ｜ 菜单改传 title，红测 11 / 9 / 2 / 0（中英文标题都被覆盖成 undefined）；showModal 按 D-50 的规则（非 Latin-1 字符算 2，上限 8）扫全 app 小程序可达的调用，两次变异（英文 123456789、中文一二三四五）各自只让对应语言变红；2156 / 2155 / 0 / 1；smoke 53 passed；主包 1,560,392（余 12,472） ｜ run 43503547193 ｜ 早于 3.15.0 的基础库 ｜ — ｜ D-48.3
+D-48.3 ｜ 通过 ｜ 007abf1（#375）、4b6f079、b35cf8e（#374） ｜ 7293b01 ｜ pw1.60 ｜ 定向 + 全量 + 8 份 smoke（L78、L79） ｜ 四个冲突文件手工合，restrictedReply 不重复（无 TS1117），openComposer(board?) 和六个入口都带拦截；定向 112 全过；2189 / 2188 / 0 / 1；浏览器 202 条首轮 191 / 10 / 1，其中 6 条新合入的 L0/L1 用例由 b35cf8e 里的夹具修正关闭（该 spec 29 条全过），剩 4 条已知 stub；主包 1,372,224（只含 #369+#375+#374） ｜ — ｜ — ｜ — ｜ D-47.2
+D-47.2 ｜ 通过 ｜ 885603e（#374） ｜ 7293b01 ｜ pw1.60 ｜ check-20261113T214641Z（L80） ｜ 英文补位行加「 · 」；「新来先看」加 12px「守则 / 指南」标签（按标题判断，见 ④）；活动区块等 P4.8；2190 / 2189 / 0 / 1；浏览器 132 条通过；390 / 1280 × 浅 / 深 4 张截图看过；主包 1,372,454 ｜ — ｜ — ｜ — ｜ D-47.3
+D-47.3 ｜ 通过 ｜ c7b0634（#374） ｜ 7293b01 ｜ pw1.60 ｜ check-20261113T224013Z（L82） ｜ 上限只在 MP-WEIXIN 生效（H5 首发 9 个）；作废请求拿到槽位时不发、释放槽位；8 条事件驱动测试，修复前 8 / 5 / 3；四次变异（读路径漏槽、抛错路径漏槽、回复绕过到 7、按实例排队到 12）都变红；2234 / 2233 / 0 / 1；浏览器 132 条；主包 1,373,057 ｜ — ｜ 真机并发 ｜ — ｜ D-47.4
+D-47.4 ｜ 通过 ｜ 2942e8e（#374，只改测试） ｜ 1d1734c ｜ pw1.60 ｜ check-20261113T232918Z（L83） ｜ 加「全被屏蔽」「关注列表读成功」和失败重试三条；在 86ffd0e 上 9 / 2 / 7 / 0；只删失败分支 invalidatePosts 的变异 2 / 1 / 1 / 0；2237 / 2236 / 0 / 1 ｜ — ｜ — ｜ — ｜ D-47.5
+D-47.5 ｜ 通过 ｜ 22d9009、8df14c5、73cde94（#375）；c1ef194、adc6ee7（#374） ｜ abbd6b0 ｜ pw1.60 ｜ L81、L88 ｜ 六个账号门禁页不弹新的入站提示（[OMO自决]，见 ③）；冷启动页面栈为空或 getCurrentPages 抛错时也不弹，修复前 43 / 39 / 4 / 0；两个旧实时夹具缺页面 API，单独提交 8df14c5 补上前台页面，断言不变；2208 / 2207 / 0 / 1；主包 #375 1,324,735、#374 1,373,060 ｜ — ｜ 真机原生弹层、提示到达时机 ｜ — ｜ D-48.4
+D-48.4 ｜ 通过 ｜ 0eabe73（#375）、e495ad7（#374） ｜ c4557c0 ｜ pw1.60 ｜ L84 ｜ pages.json 里 chat 的注释改对（共享 ChatThread 已在 messages 主包）；变异：history/index.vue 真的引用 detail/useRatings，第 6 条报跨包引用，6 / 5 / 1 / 0；STATUS 删「还差 44,621」；preloadRule 进 ④ ｜ — ｜ 真机分包 ｜ — ｜ D-50.3
+D-50.3 ｜ 通过 ｜ 04edaa3（#369）；传播 571be45（#375）、2e0f582（#374） ｜ ed26304 ｜ pw1.60 ｜ check-20261114T004205Z、023656Z、025250Z（L87、L90） ｜ 扫描把 `#ifdef MP`、`VUE3` 等也算小程序可达，pages/ 下的页面内组件不再跳过；三个真实变异（MP 嵌套 9 单位、VUE3 两个 emoji 加 1、pages/history/USwipeAction.vue 9 单位）旧扫描 2 / 2 通过、新扫描 0 / 2；en.ts 注释改为非 Latin-1 的每个 UTF-16 单元算 2；2156 / 2155 / 0 / 1；传播后两条分支定向 119 / 119、typecheck、mpci 通过 ｜ run 43539761691（Boundary 2156 / 2155 / 0 / 1，4 个 success，public sweep 预检等 E4） ｜ — ｜ — ｜ D-49
+D-49 ｜ 跳过（D-49 第 6 项，本地 L-SQL 过不了就停） ｜ —（本地分支停在 04edaa3） ｜ 45add2a ｜ 本地 L-SQL ｜ lsql-20261114T021033Z、021312Z、021553Z（L89） ｜ 181 / 181 回放，三次都停在夹具设置：owner_id、tgenabled、Storage 的 objects.version 缺失；行为用例 0、有效红测 0、绿测 0；没有迁移、没有 PR，客户端没放开 ｜ — ｜ 全部 ｜ D-49 前置 ｜ D-46.5
+D-46.5 ｜ 通过 ｜ 412e14d（本地 local/d46-final-integration-20261114，不推送）；传播 571be45（#375）、2e0f582（#374） ｜ 39a052c ｜ pw1.65（集成）、pw1.60（传播） ｜ check-20261114T023656Z、025250Z、025755Z、030753Z：typecheck test h5 mpci migrations smoke（12 份） npmaudit（L90） ｜ #374 2e0f582 先合 #373（无冲突）再合 #372（四个冲突按 ④ 的规则手工合）；2248 / 2247 / 0 / 1，pg_skips=0；smoke 204 passed；npm audit 只剩 vite moderate；五个 PR 合上后主包 1,374,461（余 198,403，≥ 64 KiB）；提交的树与检查时一致 ｜ —（不推送） ｜ 集成结果的 CI、真机 ｜ — ｜ D-46.6
+D-46.6 ｜ 通过（DoD ④ 等 Eric promote） ｜ 15aa47e（local/brand7-20261113）→ 材料分支 779c07f ｜ 779c07f ｜ pw1.65 Chromium、Vercel CLI 65.15.0 ｜ verify.js、浏览器检查、vercel inspect（只读）、vercel deploy（预览）、curl（L91） ｜ 新 verify.js 在 bd397ce 的原型上第 1 条就失败，当前 20 个路由状态 271 条断言通过；真实浏览器里 121 / 2001 字被截到 120 / 2000，绕过 maxlength 后提交被拦（「标题最多 120 字」「正文最多 2000 字」），正好 120 / 2000 能发；88 组 overflow 0、<12px 0、axe 对比度 0、页面错误 0；16 张截图逐张看过；五个旧名和「示例」在产品文件里 0 处；预览 dpl_3bG2SKTAmQsa7jEmScy2cHHpnk1y curl 200，生产 CSP 下 Chromium 渲染无报错、无 CSP 违规；生产仍是旧版（grep 玉米地 0），回退用的 production id dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6 ｜ — ｜ promote 后的生产 curl ｜ E12 ｜ D-47.7
+D-47.7 ｜ 通过 ｜ —（只改 PR 文案） ｜ 39a052c、779c07f ｜ GitHub REST ｜ gh api PATCH（L92） ｜ #369、#374、#375、#370 描述按各自最终 head 重写，包名加反引号；四个仍是草稿；D-49 没开 PR，没有描述可写 ｜ — ｜ 无 ｜ — ｜ —（D-50：本轮结束）
+```
+
+### D-49（单独一节）
+
+D-49 是 Eric 在 D-48 两条路里定的「先在服务端拦住写入，再放开浏览」（supervisor 代定，Eric 原话「这个你按照一般标准来吧」）。本轮停在本地 L-SQL 基线，没有交付任何权限变化。
+
+- 准备：只读设计由 st_01a1d75f（ChatGPT deep-high）完成，列了 20 类要拦的写入、21 类照旧允许的操作和 API / 后台路径（`~/work/evidence/D49/d49-readonly-design-chatgpt.md`）。原定的 st_01a1d6e8（Claude）登录过期，没跑出一个工具调用，已停掉。
+- 数据库：st_01a1d7cb（ChatGPT deep-high）在本地分支 `codex/community-restricted-20261113`（从 04edaa3 切出）上先写回归，三次回放都把 181 个既有迁移回放完，然后停在夹具设置：第一次是夹具用了不存在的 `owner_id` 列，第二次是 `tgenabled` 要转成 text，第三次是既有触发器 `private.queue_chat_video_review()` 要读 `NEW.version`，而两个 Storage 的 LOCAL_BOOTSTRAP 都没有这一列（lsql-20261114T021553Z，REGRESSION 第 293 行，errors 1、SQL rc 3）。计划的 96 类 × 25 种状态只是草稿；实际执行的行为用例 0、有效红测 0、绿测 0。
+- 按 D-49 第 6 项「本地 L-SQL 重放过不了，就停下写清停在哪」和每项三次的上限停下：没有第四次回放，也没有靠删用例或替换触发器制造绿色。补本地 Storage 列要改 LOCAL_BOOTSTRAP，不在本项授权里。
+- 另一处前置：测试要用的 `scripts/_postgres-bin.mjs` 在 #371（`~/work/illini-config`），不在 #369 基线。
+- 没做的：新迁移、PRECHECK 以外的 ops 文件、VERIFY、Node 回归、manifest 与计数、新 sha256 冻结、API 侧（`/api/meetup-notify` 调用前查规范状态、微信登录不再读缓存的受限字段）、客户端全部（L2–L4 浏览、提示条、入口先拦、「账号受限」加恢复日期、不报 Sentry、聊天和回帖被拒时不显示「点击重试」）、仓库 RUNBOOK「Schema-coupled release order」的检查项、PR。工作区只有两份未提交的 PRECHECK / REGRESSION 草稿，证据在 `~/work/evidence/D49/sql/BLOCKED.md`。
+- 现状：#369 保持所有有效 L2–L5 进 pages/suspended 的门禁，照原计划上线，不等 D-49。以后恢复 D-49 时，交付顺序仍是 Eric 先在生产应用新迁移并跑 VERIFY，前端才能合。
+
+### ③ [OMO自决] 清单
+
+| 编号 | 事项 |
+|---|---|
+| L63 | #374 合入 #369 b7bcf3a 与 #375（补记，第三批没有编号） |
+| L65 | gh pr edit 报错，改用 REST PATCH；run-checks 加 mpci 步骤量主包 |
+| L72 | 第 3 项按分支三路并行（#375 上 3a；#369 上 3b → 3f；#374 上 3d → 3c → 3e）；第 4、6 项在第 3 项做完前开工 |
+| L73 | 第 4 项用同路径分包，哪些页面留在主包及理由；legal 正文没挪（会让 #372 的品牌名边界测试失败） |
+| L79 | D-48 第 3 项合并后按 D-48 写的顺序接 D-47 第 2–5 项；同一分支同一时间只有主会话推送 |
+| L80 | 「守则 / 指南」标签按官方精选标题判断（SPEC 没有类型字段，见 ④） |
+| L81、L86 | 六个账号门禁页（suspended、reconsent 等）上不弹新的消息与通知提示。依据：SPEC §6.5.1 只规定了发帖入口，没规定入站提示；已经显示的横幅不清掉 |
+| L88 | 冷启动第一个页面入栈前、或 getCurrentPages 抛错时不弹入站提示（改代码并补测试，而不是写进真机检查）；两个旧实时夹具改为单独提交 8df14c5 |
+| L89 | D-49 在本地基线阶段停下；不改 LOCAL_BOOTSTRAP，不把 #371 的 PG helper 搬进 #369 |
+| L90 | #375、#374 传播合并在宿主机 pre-push 因 `initdb ENOENT` 失败（4 条 SQL 测试，宿主机没有 PostgreSQL 17），按 RUNBOOK 第 128 行用 `git push --no-verify`，容器检查先通过 |
+| L90 | 五个 PR 的本地集成先合 #373 再合 #372；#372 的冲突按 ④ 的规则手工合 |
+| L90、L91 | BRAND.7 在 D-46 第 5 项检查还在跑时开工（不同工作树，不同分支） |
+| L91 | 同步原型到 ~/work/demo-publish 时比 BACKLOG 的 rsync 多排除 `.gitignore`（vercel link 建的，`--delete` 会删掉它）；预览页的浏览器检查用 pw1.65 镜像的 Chromium，第一次容器网络报 ERR_NETWORK_CHANGED，第二次加 `--network host` 通过 |
+
+### ④ 等 Eric 的清单（新增，按解锁的任务数从多到少）
+
+| 要 Eric 做的一件事 | 解锁 |
+|---|---|
+| 合并顺序：#371 → #373；#369 → #375 → #374；#372 最后手工合。合 #369 之前先在生产应用 20261112120000 并跑 VERIFY（合 #369 就是发布生产）。删 #369 的分支之前，先把 #374、#375 的 base 都改成 main | 全部代码 PR 上线 |
+| #372 手工合并规则（本地试合按这套规则做过，见 ② D-46.5）：`api/share-post.js` 保留 #369 P2.9 的话题标题逻辑，只取 #372 的「玉米地 · 社区」品牌字串；`en.ts`、`zh.ts` 的 `app.*` 取 #372（含 `app.formerly`），`suspended.sub` 保留 #369 P2.2 的「回复 / reply」措辞，`suspended.subPerma` 取 #372 的品牌名；`app/src/pages/plaza/index.vue` 保留 #374 删掉「关注的人」名单（SPEC §6.2），丢掉 #372 在那段名单里的徽章改动 | 品牌上线 |
+| D-49 以后若恢复：先定本地 Storage `objects.version` 怎么补（改 LOCAL_BOOTSTRAP 要授权），以及 #371 的 PG helper 怎么进 D-49 的验证基线；之后才能做有效基线、一个新迁移和全等级回归。上线时生产先应用新迁移、VERIFY 通过，前端才能合 | L2–L4 浏览、提示条、受限提示与不显示重试 |
+| post/index.vue 第 314 行的「没发出去，点击重试」（`v-if="replyFailed"`）在 `replyRestricted` 的 v-if / v-else 外面，受限用户会同时看到受限提示和重试；它和聊天的「不显示点击重试」都属于 D-49 第 4 项客户端，本轮随 D-49 停下没做。现在 L2–L5 进不了话题页，只有门禁刷新之前就停在页面上的会话会碰到 | 受限回帖的界面 |
+| Eric 本人重新登录 anthropic-subscription 的 default、account-2、account-3（登录过期）；account-4 已到 60% 周上限，不再往它派活 | 恢复 Claude 号池 |
+| BRAND.7：打开预览 https://illini-community-demo-978sy3clx-ericxu-0805s-projects.vercel.app（curl 200）。按 E12 先在 Vercel 记下当前 production deployment id（OMO 用 vercel inspect 读到的是 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6，2026-11-12 11:23Z 建），再 promote；之后 `curl -s https://illini-community-demo.vercel.app/ | grep -c 玉米地` 应不小于 1（DoD ④） | 公开 demo 换成玉米地 |
+| 定「守则 / 指南」的稳定字段或规则。现在按官方精选标题里的「社区守则 / Community guidelines」判断，其他显示「指南」；标题一改名就会分错，SPEC 没有字段 | 首页「新来先看」标签 |
+| 用微信开发者工具和真机核对并定最低基础库：3.8.10 起超过并发上限的请求才排队，更老的可能直接失败，而 manifest 没设最低基础库（这条版本信息来自 supervisor，OMO 没在真机上验证）。首页 6 个、inbox 2 个、notifications 2 个，稳态 10 个，onShow 读资料时可到 11 个 | 小程序网络并发的兼容性 |
+| 在开发者工具和真机上逐一看新增的 14 个分包：首次进入的下载与等待、分享卡和通知链接冷启动、welcome → login → reconsent、离线或下载失败后的提示与返回栈；定要不要加 preloadRule、预加载哪些页面。现在没有 preloadRule，login、search、notifications、settings、legal 等首次进入要下载；调用处没有应用级 fail 回调 | 分包上线 |
+| 小程序其余真机项：操作菜单标题、弹窗按钮、冷启动入站提示、首页渲染与胶囊对齐 | 小程序与 H5 同日发布（D-12） |
+
+### ⑤【硬】与【暂停推送】事件
+
+- 本批没有触发【暂停推送】。没有合并、没有转 ready、没有 force push、没有 rebase 已推送分支、没有改 workflow、没有改 SPEC、没有应用托管迁移；只有 D-49 分支获准新建一个迁移，实际也没建；20261112120000 没动。D-46 第 5 项的集成分支只在本地。BRAND.7 只做了 BACKLOG 授权的预览部署（RUNBOOK §9 ④），没有 promote、没有 `--prod`，生产 demo 仍是旧部署；`vercel inspect` 只读；部署后查过 ~/work/demo-publish 没有 `.env*.local`，全机只有这一个 `.vercel`。
+- 子任务额度、登录中断与接手（资源事件，不算功能验收）：
+
+| 失败子任务 | 原因 | 谁补做、证据 | 还差 |
+|---|---|---|---|
+| st_01a1d44b / P2.5 | Fable 额度中断，留下 DoD③ 证据 | 主会话按 D-42 第 7 项补做，090d2be；L46，lsql-20261113T101110Z 181 / 181 与冻结 sha256 | 无；托管应用归 Eric |
+| st_01a1d65b / D-47 第 2–4 项 | Opus 额度，候选链都不可用 | 主会话接回补丁和测试草稿，885603e、c7b0634、2942e8e；L80–L83 | 无 |
+| st_01a1d655 / BRAND.7 | Claude 号池全被拦 | st_01a1d67e（ChatGPT deep-low）接手；原型提交 15aa47e（L91），主会话核对后合进材料分支 779c07f 并做预览部署 | 只差 Eric promote（E12） |
+| st_01a1d6e8 / D-49 准备 | 登录过期，工具调用 0 次；已停掉并释放 | st_01a1d75f（ChatGPT deep-high）补做只读设计；实现交 st_01a1d7cb，三次 L-SQL 设置失败后停（L89） | D-49 的迁移、API、客户端都没做，见 D-49 一节 |
+
+- b35cf8e 这个 merge 提交里顺带手改了 `community-post-topics.spec.ts`（+5 / −1），修 4b6f079 留下的 6 个 L0 / L1 用例（L79 有记录）。以后这类改动单独成提交（D-47.5 的夹具 8df14c5 就是这样做的）；已推送的历史不改写。
+
+### ⑥ 未测项与风险
+
+- 并发更正：D-46 3c / D-47 第 3 项只把首页限制在 6 个，不是整个 app 限制在 6 个。inbox 和 notifications 各可有 2 个，稳态共 10 个，onShow 读资料时可到 11 个；第三批 ⑥ 里「首页一次并发 9 个……超过 10 个上限」的说法现在只对 H5 首发成立。新版基础库排队不代表旧版也安全，见 ④。
+- #370 的 CI 又红了六次：43493142000、43495796397、43501071827、43503851223、43525055626 是 Build H5 和 public sweep 在 ubuntu-26.04 上装不上 Playwright 1.60（日志「Cannot install dependencies for ubuntu26.04-x64」），和 main 是同一个基础设施问题；43509639602 除了这两处安装失败，Boundary regressions 还多一条失败：`scripts/ci-first-release-supervised-host.test.mjs:133`「unknown connector response retains intent and never automatically repeats dispatch」报 unhandledRejection `supervised_operation_timeout`（1989 / 1987 / 1 / 1）。像是时序不稳的测试，原因没查清，不归作环境问题（证据 `~/work/evidence/CI/supervisor-six-runs-20261113.md`）。之后 45add2a 上的 run 43547172052 也红，失败的同样是 Build H5「Install browsers for compiled admin acceptance」和 public sweep「Install Playwright (webkit + chromium)」两步，Boundary success（只看了 Actions 的步骤结论，没读原始日志）。
+- #369 最新 run 43539761691：4 个 success，public sweep 在浏览器启动前的 schema 预检失败（staging 没应用 20261112120000，等 E4）。#375、#374 的 base 不是 main，不触发 CI，只有本地结果。
+- 受限账号：D-49 没交付，L2–L4 现在仍和 L5 一样进 pages/suspended，看不到社区；服务端对 L2–L4 的写入仍然不拦（门禁只在客户端）。本地只有 Node 与 mock 测试，真实受限账号要 E3。
+- 入站提示的改动只在 mock 的页面栈上验证；真机上的原生弹层和提示到达时机没测。
+- 微信 showModal 的长度规则来自 supervisor 解包的基础库 3.15.0–3.15.2；更老的基础库没核。showActionSheet 只检查 itemList 不超过 6 项，文字不限长。
+- 五个 PR 的集成只在本地（412e14d）验证过。真合并时 #369 若 squash，#375、#374 要再 merge 一次 origin/main，冲突面可能和本地不同。#373 合入后 npm audit 仍报 vite moderate（没有修复版本），CI 的 Boundary 会因 ci.yml 第 182 行没有例外清单继续红，改 workflow 归 Eric。
+- 本地浏览器巡检里 pages.smoke 的首页与社区页（浅 / 深各 2 条）在 stub 环境必然失败，origin/main 同样，要在有真实 staging 的 CI 上跑（等 E4）。
+
+### ⑦ 下一批
+
+按 D-50 第 2 项，本批交付后 OMO 停下等下一条指示，不从 BACKLOG 往下接任务。下面只列下一批可做的事，不代表 OMO 会自己开始：
+
+1. Eric：生产应用 20261112120000 并跑 VERIFY，P2.13 通过后按 ④ 的顺序合 PR；E3 / E4 解锁 P2.6、P2.11、P2.13 和真实账号验证。
+2. Eric：重新登录 Claude 号池；定 D-49 的本地前置（Storage 列、PG helper）是否授权，授权后 D-49 从有效基线重新开始。
+3. Eric：看 BRAND.7 预览并 promote（E12），回退 id 见 STATUS_LOG L91
+4. Eric：微信开发者工具 / 真机清单（④ 后四条）。
+5. 候选：查清 `ci-first-release-supervised-host.test.mjs:133` 的超时是不是时序不稳；SPEC 给「守则 / 指南」加字段。
+
+### ⑧ 代 Eric 定的事（新增）
+
+| 编号 | 选了什么 | 理由 | 怎么撤回 |
+|---|---|---|---|
+| D-46 第 4 项（L73） | 14 个次要页面改同路径分包，tab 页、chat 和启动链路留在主包；4 个只被单个分包用到的模块挪进该分包 | D-45 第 4 项「tab 页留在主包；不加新依赖」，页面路径不变，分享和通知链接不受影响 | 在 #375 上 `git revert ecc330b 1443d5c 8972507`；#374 已合入，要在 #374 上再 merge 一次 |
+| D-47 第 3 项（L82） | 并发上限只在小程序生效，H5 首发 9 个 | D-47 第 3 项；H5 没有微信的 10 个上限 | `git revert c7b0634`（#374） |
+| D-47 第 2 项（L80） | 「守则 / 指南」按标题判断 | SPEC 没有类型字段；不新建迁移 | Eric 定字段后改 `communityHome.ts` 的判断 |
+| D-47 第 5 项（L81、L88） | 账号门禁页、冷启动无页面时不弹新的入站提示 | SPEC §6.5.1 只规定发帖入口；门禁页上弹「新消息」会把人引出门禁 | `git revert 73cde94 22d9009`（#375），#374 再 merge |
+| D-46 第 3 项 b（L70、L77） | 小程序上关闭发帖面板改用带标题的操作菜单，按钮不超过微信上限 | 「Keep draft」加权 10，超过 8 | `git revert ae058c2 3588c24`（#369），#375、#374 再 merge |

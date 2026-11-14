@@ -1120,3 +1120,27 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 集成结果的 CI、真机；BRAND.7 原型与本地集成无关
 - 下一条: D-46 第 6 项 BRAND.7（子任务 st_01a1d67e 在集成检查跑时已开工，见附）、D-47 第 7 项、最终 FINAL 与 STATUS 同提交
 - 附: [OMO自决] 先合 #373 再合 #372，便于分开看依赖与品牌两类冲突；ci.yml 的变化只是合入 #371 现有提交，OMO 没写 workflow，集成分支不推送。BRAND.7 在本条检查还在跑时恢复（不同工作树、不同分支，浏览器检查排在共享容器锁后面），顺序变化当场记在这里。正式 FINAL 的第三批 D-45.5b 行与 ④ 第二行、第四批全文在收尾提交里写入。
+
+### L91 · 2026-11-13 21:30 CT · D-46 第 6 项：BRAND.7 原型提交、并入材料分支与预览部署
+- task_id: D-46.6（BRAND.7）
+- code_sha: 原型 15aa47e51c957b0e077fe03a21f32f59f9a30fae（local/brand7-20261113）→ 材料分支 merge 779c07fa78848c2a0a5577b347d04ddf77bd402f（只动 appendix/prototype/ 8 个文件，已推送）
+- docs_sha: 39a052cda888d21a8aa7cc0f44e79a982725fde9
+- 环境: 子任务 st_01a1d67e（ChatGPT deep-low，GPT-6.1 Sol）在 ~/work/illini-docs-brand7 改原型、跑 verify.js 和 pw1.65 浏览器检查；主会话合并与预览部署；Vercel CLI 65.15.0 经 vercel guard
+- 命令: 子任务：verify.js 对 `git show bd397ce:<path>` 的基线副本和当前原型各跑一次；真实浏览器 121 / 2001 字输入、绕过 maxlength 后提交、正好 120 / 2000；20 个路由状态 × 390 / 1280 × 浅 / 深再加 8 组共 88 组审计；16 张截图（evidence/BRAND.7/final-20261114T031146Z/，REPORT.md、visual-review.md、search-counts.json）。主会话：复跑 verify.js；看了 home-390-light、home-1280-dark；`git merge --no-ff local/brand7-20261113` 推送 779c07f；`vercel inspect https://illini-community-demo.vercel.app`（只读，logs/demo-inspect-prod-20261114T033403Z.log）；BACKLOG 的 rsync（多排除 .gitignore）加 4e459bd 的 vercel.json、robots.txt；核对原型没有内联脚本、外部资源和内联事件，旧 CSP 可用；`vercel deploy --scope ericxu-0805s-projects --yes`（logs/demo-deploy-20261114T033428Z.log）；curl；pw1.65 Chromium 打开预览（第一次容器网络 ERR_NETWORK_CHANGED，第二次 --network host；evidence/BRAND.7/preview-check.log、preview-390-light.png、preview-1280-dark.png）；部署后 find .env*.local 无输出，find ~/work -name .vercel 只有 demo-publish
+- 计数: verify 基线第 1 条失败（BASELINE_EXIT=1），当前 20 个路由状态 271 条断言通过（CURRENT_EXIT=0，主会话复跑同数）；限长四种交互都符合；88 组 overflow 0、<12px 0、axe color-contrast 0、页面错误 0、HTTP 错误 0；五个旧名和「示例」在产品文件 0 处（只在 verify.js:21 的反向断言里各 1 处）；预览 curl 200、玉米地 6 处；Chromium 两个视口 CSP 违规 0、报错 0、5 个板块、图片 3 / 3、溢出 0；生产 curl 200、玉米地 0 [本地测][生产：只读 curl、inspect]
+- ci_run_url: —
+- 未测项: DoD ④（Eric promote 之后的生产 curl）。⑤ 回退 id：dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6（illini-community-demo-jybiddrk5…vercel.app，target production，2026-11-12 11:23Z 建）
+- 下一条: D-47 第 7 项，最终 FINAL 与 STATUS 同提交
+- 附: 预览 https://illini-community-demo-978sy3clx-ericxu-0805s-projects.vercel.app，部署 id dpl_3bG2SKTAmQsa7jEmScy2cHHpnk1y，environment preview。.vercel 已在，没有 vercel link；没有 promote、没有 --prod。[OMO自决] rsync 多排除 .gitignore（vercel link 建的，--delete 会删掉它）。D-46 第 6 项的判断：原型在材料分支，不需要把 #372 合进别的 PR 分支，所以做了。
+
+### L92 · 2026-11-13 21:36 CT · D-47 第 7 项 PR 描述、FINAL 第三批更正与第四批，本轮收尾（D-50）
+- task_id: D-47.7、supervisor 18:20 第 4 项、D-46–D-50 收尾
+- code_sha: #369 04edaa3、#375 571be45、#374 2e0f582（本条不改代码）
+- docs_sha: 779c07fa78848c2a0a5577b347d04ddf77bd402f
+- 环境: GitHub REST（gh api）、本地编辑
+- 命令: `gh api -X PATCH repos/.../pulls/{369,375,374,370}` 只传 body（正文存 ~/work/evidence/FINAL/pr3xx-body.md）；FINAL.md 第三批 ② D-45.5b 行、④ 第二行按当前 head 重写并加更正说明行；FINAL 末尾加「第四批（D-46）」八节和 D-49 一节；本条、STATUS、FINAL 同一提交
+- 计数: 四个 PR 都还是 draft，head 分别 04edaa3、571be45、2e0f582、779c07f [本地测：gh api 返回]
+- ci_run_url: —
+- 未测项: —
+- 下一条: —（D-50：结束目标，取消续跑提醒 sch_8c65fd689233，等下一条指示）
+- 附: 18:20 核查补充六项的落点：1 → L87（04edaa3），经 L90 传播到 #375、#374；2 → L88（73cde94）与第四批 ③；3 → 随 D-49 停下，写进第四批 ④；4 → 本条的第三批更正、第四批 ④ ⑥、STATUS 第 13、15、16 条；5 → 第四批 ⑥ 与 STATUS 的 CI 表；6 → 第四批 ⑤ 与 L80–L83 标题。
