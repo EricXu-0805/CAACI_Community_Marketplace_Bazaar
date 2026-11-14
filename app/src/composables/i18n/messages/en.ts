@@ -472,7 +472,8 @@ const en: Record<string, string> = {
   'publish.priceTooHighConfirm': 'List',
   'publish.priceTooHighCancel': 'Edit',
   // Solicitation soft gate. The member can always continue, so the button
-  // labels stay within wx.showModal's 8 weighted units (Latin-1: 1, others: 2).
+  // labels stay within wx.showModal's 8 weighted units: each Latin-1 UTF-16 code
+  // unit counts as 1; each non-Latin-1 unit counts as 2 (a normal non-BMP emoji: 4).
   'moderation.adTitle': 'Looks like an ad',
   'moderation.adBody': 'This reads like an ad for off-platform services. Illini Market is for students trading items on campus. Post anyway?',
   'moderation.adConfirm': 'Post',
@@ -723,7 +724,8 @@ const en: Record<string, string> = {
   'profile.edit': 'Edit',
   'profile.markSold': 'Mark Sold',
   // showModal button variant — wx.showModal fails outright (no dialog) when
-  // confirmText/cancelText exceed 8 weighted units (Latin-1: 1, others: 2).
+  // confirmText/cancelText exceed 8 weighted units: each Latin-1 UTF-16 code unit
+  // counts as 1; each non-Latin-1 unit counts as 2 (a normal non-BMP emoji: 4).
   'profile.markSoldConfirm': 'Sold',
   'profile.signOutConfirm': 'Exit',
   'profile.markSoldTitle': 'Mark as sold?',
