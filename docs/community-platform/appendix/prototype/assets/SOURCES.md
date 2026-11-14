@@ -1,6 +1,6 @@
 # 演示素材记录
 
-本目录文件均随静态页面离线加载。三张照片仅作 UI 素材，不是出售实物；对应提示保留在二手页、商品详情、图片替代文字和演示说明中。素材没有被用于声称真实卖家、活动、商家合作或商品成色。
+本目录文件均随静态页面离线加载。三张照片仅作 UI 素材，不是出售实物；全站顶部统一说明内容虚构，商品详情的图片替代文字和演示说明另外交代照片来源。素材没有被用于声称真实卖家、活动、商家合作或商品成色。
 
 | 本地文件 | 来源与作者 | 许可 |
 | --- | --- | --- |
@@ -8,6 +8,7 @@
 | `books.jpg` | [George Milton · Close-Up Photo of Stack of Books](https://www.pexels.com/photo/close-up-photo-of-stack-of-books-7034089/) | [Pexels License](https://www.pexels.com/license/) |
 | `lamp.jpg` | [cottonbro studio · Black and Silver Table Lamps on White Table](https://www.pexels.com/photo/black-and-silver-table-lamps-on-white-table-7439756/) | [Pexels License](https://www.pexels.com/license/) |
 | `feather.min.js` | [Feather Icons 4.29.2](https://unpkg.com/feather-icons@4.29.2/dist/feather.min.js) | MIT，完整许可见 `feather-LICENSE.txt` |
+| `seal.svg`、`seal-dark.svg` | BRAND.4 选定的 `appendix/visual/logo/draft-b-mono.svg` 与 `draft-b-mono-dark.svg`，逐字节相同 | 「玉」字轮廓取自 Noto Serif SC Black；字体来源、OFL 1.1 与制作记录见 [logo/SOURCES.md](../../visual/logo/SOURCES.md)；SVG 不含字体文件 |
 
 于 2026-11-12 下载并核对。Pexels 图片以 960 px 宽 JPEG 下载供本原型使用；图标保留上游压缩文件。页面的“关于演示”同时提供可点击的作者、来源和许可链接。
 
