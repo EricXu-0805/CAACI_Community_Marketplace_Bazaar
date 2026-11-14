@@ -168,10 +168,11 @@
 	// #ifdef MP-WEIXIN
 	// Keep existing deep links while downloading these non-tab pages on entry.
 	// Shared components stay in the main package; these are not independent packages.
-	// Each root is the page's own directory, so every route is unchanged. Pages
-	// the app opens by itself stay in the main package: the first-run welcome,
-	// the consent, suspension and recovery gates, and chat. A directory that
-	// holds a tab page (publish, profile) cannot be a root.
+	// Each root is the page's own directory, so every route is unchanged.
+	// First-run welcome and the consent, suspension and recovery gates stay in
+	// main because App.vue opens them. Chat is a small wrapper around ChatThread,
+	// already in main for the messages tab. A directory that holds a tab page
+	// (publish, profile) cannot be a root.
 	"subPackages": [
 		{
 			"root": "pages/detail",
