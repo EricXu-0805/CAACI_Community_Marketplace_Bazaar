@@ -1,11 +1,11 @@
 # STATUS
 
-写于 2026-11-13 17:40 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-13 19:00 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-48 第 4 项（主包证据与注释收尾）`
+`next_task_id: D-50 第 3 项补充（微信可达性扫描盲区）`
 `latest_batch: appendix/batch/FINAL.md`
 
-next_task_id 按 D-48 第 7 项的新优先顺序取第一条未完成项：D-48 1 → 2 → D-50.3 → D-48 3 → D-47 2–5 → D-48 4 → D-49 → D-46 5、6 → D-47 7。D-47 第2–5项已完成；有效L2–L5的门禁恢复已进入#369、#375和#374的远端head，不 revert #375 的合并提交。
+next_task_id 按原顺序及18:20核查补充取第一条未完成项：先补D-50.3扫描与D-47.5冷启动，再进入D-49（含回复重试），之后D-46.5、6和D-47.7，最终同提交写FINAL与STATUS并停止。D-48全部和D-47.2–4已完成；D-49只读准备完成，实施尚未开始。剩余子任务仅用ChatGPT订阅类别或主线程；同分支只有主会话推送。
 
 ## 版本
 
@@ -15,9 +15,9 @@ next_task_id 按 D-48 第 7 项的新优先顺序取第一条未完成项：D-48
 | code_sha | ae058c216027da52d7346361b3be6aaf388d6d35（D-48.1、D-48.2、D-50.3 已完成并推送） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | 1d1734c9c77d78aae0d680538359ce0855c5b32d（本次写回之前材料分支的 HEAD） |
-| 其余代码分支（远端 head） | #374 codex/community-home-20261112 2942e8e（已推送；2942e8e只改关注流测试，构建源码与c7b0634相同；含#369 ae058c2和#375 22d9009，D-47.2为885603e、D-47.5合并为c1ef194、D-47.3为c7b0634；依赖#375）。#375 codex/community-mp-budget-20261113 22d9009（已推送；007abf1合入#369 ae058c2，22d9009抑制门禁页的新入站提示；base #369分支）。#373 codex/deps-crossmajor-20261113 55716ba（base #371）。#372 codex/brand-cornfield-20261112 ba070e7。#371 codex/config-fixes-20261112 b259105。#374/#375依据本次push回执，其余沿用此前ls-remote记录 [本地测] |
-| tony-ws worktree | ~/work/illini ae058c2（#369）；illini-home 2942e8e（#374，干净、与远端一致）；illini-mpbudget 22d9009（#375，干净、与远端一致，子任务已交回）；illini-deps 55716ba；illini-brand ba070e7；illini-config b259105；illini-events wip/P4.1 5f62ddd（本地不推送）；illini-main 7b18f20（只读对照）；illini-docs-brand7 的 local/brand7-20261113 在bd397ce，BRAND.7原型工作暂停保留、未提交；~/work/caaciorg 本地feat/public-events-feed 28d59b1（不推送）；~/work/illini-docs 在codex/community-plan-v5 [本地测] |
+| docs_sha | c4557c094f05d1827ef8790ef0fa9ee77d1c6e72（本次写回之前材料分支的 HEAD） |
+| 其余代码分支（远端 head） | #374 codex/community-home-20261112 e495ad7（已含#369 ae058c2和#375 0eabe73；D-47.2为885603e，D-47.3为c7b0634，D-47.4为2942e8e，D-47.5合并为c1ef194，e495ad7同步D-48.4注释）。#375 codex/community-mp-budget-20261113 0eabe73（22d9009抑制门禁页提示，0eabe73修chat说明；base #369）。#373 55716ba（base #371）；#372 ba070e7；#371 b259105。#374/#375依据本次push回执，其余沿用此前记录 [本地测] |
+| tony-ws worktree | ~/work/illini：st_01a1d777独占D-50.3补充，远端仍ae058c2，尚待最终交回；illini-home e495ad7、illini-mpbudget 0eabe73均已推送；illini-deps 55716ba；illini-brand ba070e7；illini-config b259105；illini-events wip/P4.1 5f62ddd（本地不推）；illini-main 7b18f20（只读）；illini-docs-brand7仍在bd397ce，3个修改文件及2个新SVG未提交，st_01a1d67e暂停保留；~/work/caaciorg本地28d59b1（不推）；材料分支codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 
@@ -38,7 +38,18 @@ PR #369 · run [43503547193](https://github.com/EricXu-0805/CAACI_Community_Mark
 
 上一次：run 43448423151 · head b7bcf3a · failure（public sweep 停在预检，等 E4；Type-check、Boundary 2053 / 2052 / 0 / 1、Build H5、Build mp-weixin 4 个 success，protected staging 与 release readiness 2 个 skipped）[CI run#43448423151]。
 
-材料分支 #370 · 连续 failure，原因都一样：Build H5 的「Install browsers for compiled admin acceptance」和 public sweep 的「Install Playwright (webkit + chromium)」在 ubuntu-26.04 上装不上浏览器（日志「Cannot install dependencies for ubuntu26.04-x64 with Playwright 1.60.0!」），和 main 同一个基础设施问题，改 workflow 归 Eric。run 43470604328（f43bdd1）、43475385858（5f66faa）、43484767294（08f036c）、43487337489（bd397ce）、43490982420（81196fa，Boundary、Type-check、Build mp-weixin success）[CI run#43487337489][CI run#43490982420]。另有 43474247871（35dabd8）、43474954537（b2cd9ac）被取消。
+材料分支 #370：多数已读失败来自ubuntu-26.04不能安装Playwright 1.60浏览器；不能把所有失败都归到这一原因。此前记录的43470604328、43475385858、43484767294、43487337489、43490982420保留；另有43474247871、43474954537取消。新增六次按Actions API和实际job日志核对如下（证据~/work/evidence/CI/supervisor-six-runs-20261113.md）。
+
+| run / head | 失败分类 | 证据 |
+|---|---|---|
+| [43493142000](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43493142000) / 9bc4b55 | H5/public浏览器安装步骤失败，H5日志明确ubuntu26.04与Playwright1.60不兼容；Boundary成功 | [CI run#43493142000] |
+| [43495796397](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43495796397) / f01d04b | H5/public浏览器安装步骤失败，H5日志明确ubuntu26.04与Playwright1.60不兼容；Boundary成功 | [CI run#43495796397] |
+| [43501071827](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43501071827) / d982ec8 | H5/public浏览器安装步骤失败，H5日志明确ubuntu26.04与Playwright1.60不兼容；Boundary成功 | [CI run#43501071827] |
+| [43503851223](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43503851223) / b4788cf | H5/public浏览器安装步骤失败，H5日志明确ubuntu26.04与Playwright1.60不兼容；Boundary成功 | [CI run#43503851223] |
+| [43509639602](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43509639602) / 7293b01 | 另有Boundary测试超时；H5/public浏览器安装步骤也失败 | [CI run#43509639602] |
+| [43525055626](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43525055626) / 1d1734c | H5/public浏览器安装步骤失败，H5日志明确ubuntu26.04与Playwright1.60不兼容；Boundary成功 | [CI run#43525055626] |
+
+43509639602的Boundary为1989 tests / 1987 pass / 1 fail / 1 skipped：scripts/ci-first-release-supervised-host.test.mjs:133，unknown connector response retains intent and never automatically repeats dispatch，failureType=unhandledRejection，error/code=supervised_operation_timeout。像时序不稳，但未复现或定位根因；单列为测试失败，未改测试、未跳过，也不当作Ubuntu安装问题。
 
 主包测量环境：一律按 CI build-mp-weixin 环境（https://ci-stub.supabase.co，ci.yml 第 301–303 行；run-checks 的 `mpci` 步骤）量。第三批及以前的数用 H5 job 的 stub URL 量，每个比 CI 环境多 91 字节。预算 1,572,864 字节。
 
@@ -47,10 +58,12 @@ PR #369 · run [43503547193](https://github.com/EricXu-0805/CAACI_Community_Mark
 | #369 ae058c2 | 1,560,392 | 12,472 | check-20261113T202910Z，L77 [本地测] |
 | #369 4a44a41 | 1,560,396 | 12,468 | check-20261113T200620Z，L76 [本地测] |
 | #369 520e55a | 1,560,420 | 12,444 | check-20261113T190341Z [本地测] |
+| #375 0eabe73 | 1,324,732 | 248,132 | check-20261113T234802Z，6/6、mpci通过，L84 [本地测] |
 | #375 22d9009 | 1,324,732 | 248,132 | check-20261113T213421Z，L81 [本地测] |
 | #375 3d24a8e | 1,502,862 | 70,002 | check-20261113T182923Z [本地测] |
 | #375 ecc330b（D-46 第 4 项） | 1,322,319 | 250,545 | check-20261113T191554Z，L73 [本地测] |
 | #375 30c4b4d（合入 #369 3b、3f） | 1,324,250 | 248,614 | check-20261113T193317Z：test 2162 / 2161 / 0 / 1，smoke 105 passed、只有 4 条已知 pages.smoke 失败 [本地测] |
+| #374 e495ad7（含#369 ae058c2+#375 0eabe73） | 1,373,057 | 199,807 | check-20261113T235304Z，6/6、mpci通过，L84；仍未含#372/#373 [本地测] |
 | #374 c7b0634（含#369 ae058c2+#375 22d9009） | 1,373,057 | 199,807 | check-20261113T224013Z，L82；未含#372/#373 [本地测] |
 | #374 885603e（D-47.2） | 1,372,454 | 200,410 | check-20261113T214641Z，L80 [本地测] |
 | #374 b35cf8e（已含#369+#375） | 1,372,224 | 200,640 | check-20261113T205110Z，L79；未含#372/#373 [本地测] |
@@ -104,7 +117,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | HOME.1 | 通过 | ①–③ 以 design/ 为准（L08）；④ axe 4.14.0：12 个组合 color-contrast 0、<12px 0、溢出 0 [本地测]；⑤ D-35 已定 A |
 | HOME.2 | 通过 | bd6fee5，19 条规则单测 [本地测] |
 | HOME.3 | 通过 | #374 a756081原首页；29个HOME.3语言key由6d6c598补齐。885603e补英文「 · 」和守则/指南标签，四张手机/桌面浅深截图已看，字体12px；标签判别仍有第16条的数据约定问题。home.events、home.allEvents继续等P4.8（L80）[本地测] |
-| HOME.5 | 通过 | #374 c7b0634已含#369 ae058c2和#375 22d9009；CI环境主包1,373,057、余199,807；五PR最终数仍待D-46.5（L82）[本地测] |
+| HOME.5 | 通过 | #374 e495ad7已含#369 ae058c2和#375 0eabe73；最近CI环境主包1,373,057、余199,807；五PR最终数待D-46.5（L84）[本地测] |
 | P2.12 | 通过 | 草稿 PR #374（244a8e7）；12 张截图 <12px 0、axe 0；首屏 390 5 行、1280 9 行 [本地测] |
 | HOME.4 | 通过 | #374 010f8f6；12 组 axe 0、<12px 0、溢出 0；截图 appendix/visual/HOME.4/ [本地测] |
 | D-46 第 1、2 项 | 通过 | L64、L65 |
@@ -112,14 +125,14 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | D-46 第 3 项 b | 通过 | ae058c2的标题映射、D-50长度规则已进入#369、#375 22d9009和#374 c7b0634远端head（L77、L81） |
 | D-46 第 3 项 c、d、e | 通过，D-47补完完成 | 73206a0、eca5a8d、6d6c598为原修复；e由885603e补完，c由c7b0634改为仅小程序限流并取消过期队列。d补测为2942e8e（L80、L82、L83） |
 | D-46 第 3 项 f | 全局放行已撤回 | 有效L2–L5 → suspended已进入#369 ae058c2、#375 22d9009和#374 c7b0634远端head。发帖前拦截和回复提示保留；不 revert 30c4b4d。受限浏览只能在D-49新迁移证明服务端拦截后于独立PR实现（L76、L81、L82） |
-| D-46 第 4 项 | 通过（#375 单独）；五个 PR 合上后的余量待第 5 项 | #375 8972507、1443d5c、ecc330b（已推送）；主包（CI 环境）1,322,319（L73）[本地测] |
+| D-46 第 4 项 | 第二轮腾空间及D-48.4收尾通过；五PR数待集成 | #375最近0eabe73主包1,324,732、余248,132；#374组合余199,807。最终六条测试在3d24a8e上6/4/2/0，真实history→detail导入变异6/5/1/0，见L84；不再用早期五条稿的单条失败代表最终版本 |
 | D-46 第 5、6 项 | 未做 / 暂停 | 第5项排在D-48、D-47第2–5项和D-49之后；第6项原型改动保留，届时按BRAND.7行接续 |
-| D-49 | 待前置项 | Eric 已定先服务端限制写入；D-48 全部、D-47 第 2–5 项后，从修正后的 #369 创建 codex/community-restricted-20261113 草稿 PR，base #369。仅此分支获准一个新迁移；先生产应用并 VERIFY，再合前端。#369 恢复旧门禁后不等待此 PR（L75） |
+| D-49 | 只读准备完成，实施待前置补充 | st_01a1d75f（deep-high，GPT-6 Astra xhigh）完成~/work/evidence/D49/d49-readonly-design-chatgpt.md：20类受限、21类允许操作及API/后台路径。未执行SQL、未创建迁移/分支。D-50.3与D-47.5补充后从修正后的#369切独立草稿PR，只允许一个新迁移，先生产应用和VERIFY再合前端；另处理回复重试（L85、L86） |
 | D-47 第 1 项 | 通过 | 见L72；后续状态按各次写回继续更新 |
 | D-47 第 2 项 | 通过 | 885603e：2190/2189/0/1，132条浏览器通过，四张标签截图已看；类型字段歧义见第16条（L80） |
 | D-47 第 3 项 | 通过 | c7b0634：旧代码8条中3红；新版8条全过，三类真实源码变异均被抓到；2234/2233/0/1、132条浏览器通过（L82） |
 | D-47 第 4 项 | 通过 | 2942e8e：在86ffd0e上9条中7红、2个对照通过，当前9/9；仅移除失败分支invalidatePosts的变异为1红1对照通过。完整单测2237/2236/0/1；没有应用源码变动，构建沿用L82（L83） |
-| D-47 第 5 项 | 通过 | #375 22d9009，已合入#374。按D-48门禁更新后39条先红23、后全过；#375全量2204/2203/0/1；组合全量见L82。真实微信投递时序和原生浮层未测（L81） |
+| D-47 第 5 项 | 原修复通过；冷启动补充待做 | 22d9009已进入#374；39条与原全量证据见L81。SPEC未规定入站提示，此行为属于[OMO自决]；按18:20指示选择补空栈/取栈抛错不弹及测试，保持监听和计数，下一步执行 |
 | P3.1–P3.8 | 未测 | 依赖 P2.13（#369 合并） |
 | P4.7 第一步 | 通过 | appendix/research/campus-events.md；D-33 已按 D-43 代定 A，第二步依赖 P4.1、P4.2 |
 | P4.1 | 通过 | 本地 wip/P4.1 5f62ddd，容器 test 2015/2014/0/1 [本地测]；不推送 |
@@ -153,10 +166,12 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
    | app/src/composables/i18n/messages/en.ts、zh.ts | 自动合并会各留两份 plaza.restrictedReply，手工去重为每语言一份；未改变值 |
 
 12. 删 #369 的分支之前，先把 #374、#375 的 base 都改成 main；删 #371 的分支之前，先把 #373 的 base 改成 main（删 base 分支会关闭依赖它的 PR，且不能重开）。#369 若 squash 合并，改完 base 后 #374、#375 要再 merge 一次 origin/main。
-13. 首页、新页头、板块页、全部讨论已编进小程序。当前#374 2942e8e只改测试；最近构建c7b0634（含#369 ae058c2和#375 22d9009）按CI环境实测主包1,373,057、余199,807（check-20261113T224013Z），64KiB目标满足此三者组合；尚未计入#372/#373，五PR最终数待D-46.5。微信开发者工具/真机仍须验证渲染、胶囊、路由、3b操作菜单标题、门禁页新提示抑制及首次分包下载/离线失败：目前无preloadRule，login/search/notifications/settings/legal等首次进入会下载分包，失败未有提示；本批不加preloadRule。首页6个请求加inbox 2个、notifications 2个稳态共10个，onShow资料读取可能成为第11个；D-47.3只限首页，未加应用级限流，需要开发者工具观察新旧基础库排队行为。小程序构建需要VITE_BASE_URL。D-50长度规则只核验基础库3.15.0–3.15.2，更早版本未核，manifest未设最低基础库；生产英文按钮误报已撤销。
+13. 首页、新页头、板块页、全部讨论已编进小程序。#374 e495ad7（含#369 ae058c2、#375 0eabe73）最近CI环境实测主包1,373,057、余199,807（235304Z），满足此三者的64KiB目标；#372/#373尚未合入，五PR最终数待D-46.5。微信开发者工具/真机仍须验证渲染、胶囊、路由、操作菜单标题、空栈提示抑制、首次分包下载/离线失败与返回栈。没有preloadRule，login/search/notifications/settings/legal等首次进入要下载；本批不加预加载规则。首页6+inbox 2+notifications 2=10，onShow资料读取可到11；D-47.3只限首页。按supervisor核查，基础库3.8.10起超并发请求才排队，更老版本可能直接失败；manifest未设最低基础库，需Eric实测并定最低版本。小程序构建须有VITE_BASE_URL。showModal加权规则只核验3.15.0–3.15.2；showActionSheet只检查itemList不超过6项，title/alertText和条目文字不限长，更早版本未核。
 
 14. D-49：服务端路线已定，不再等待二选一。新草稿 PR 的唯一迁移先在生产应用、VERIFY 通过，前端才能合；staging/生产应用均由 Eric 做。#369 合入 main 后该 PR 的 base 改成 main。D-48 六类路径已由 OMO 追踪最新迁移/调用方做源码核查；未执行新的 PG17 复现，不代表已检查托管库实际状态（证据见 L75）。
 
-15. D-50 撤销 D-48 第 5 项的生产按钮误报：Got it/Restore/Cancel/Messages 按基础库 3.15.0–3.15.2 的加权长度均未超 8；不再请 Eric 针对它们验证超长失败。更早基础库未核，manifest 未设最低版本。D-46 到 D-50 完成或按规定停下、FINAL 第四批和 STATUS 同提交后关闭本目标、取消续跑提醒，不新设目标、不续接 BACKLOG。
+15. D-50撤销生产按钮超长误报；本次再补MP/VUE3条件与pages内非注册组件的扫描盲区，英文注释明确非Latin-1的每个UTF-16单元计2（单个非BMP emoji计4）。showActionSheet只查itemList≤6、文字不限长（已核基础库3.15.0–3.15.2）。所有正式FINAL④/⑥的新增内容在本轮收尾同提交真正写入；内部草稿不算正式报告。D-46到D-50完成或按规定停下后结束目标、取消续跑，不续接BACKLOG。
 
 16. D-47.2：SPEC只给了“守则/指南”标签和社区守则名称，未定义帖子类型字段。当前按官方精选帖标题中的“社区守则/Community guidelines”识别守则，其他显示指南；这不是稳定元数据规则，标题改名/其他守则文档如何分类仍需明确。近期活动的两个key继续等P4.8，不提前实现。
+
+17. [supervisor 指示，2026-11-13 18:10 CT] anthropic-subscription的default、account-2、account-3登录过期，须Eric本人重新登录；OMO不尝试登录。account-4已到Eric设定的60%总周上限，不再派活。剩余子任务只用首模型为ChatGPT订阅的deep-high/ultrabrain/deep-low或主线程；旧st_01a1d6e8已释放，不再恢复。BRAND.7实际仍未本地提交，按D-46.6顺序接续，不提前推送。

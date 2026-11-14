@@ -980,7 +980,7 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 下一条: D-47 第2项。
 - 附: 依D-47第1项的并行许可，D-47.2→3→4由主会话在#374执行，第5项由唯一子任务在#375执行；同分支不同时派两个写者/推送者，所有推送由主会话完成。D-49只读架构准备同步进行，仅写evidence，不建分支、不写迁移或客户端；实际实现仍排在D-48全部和D-47.2–5之后。D-47.2保存的补丁已接回#374，重新验证新基线并生成手机/桌面浅深截图。
 
-## L80 · 2026-11-13 17:07 CT · D-47.2 首页分隔符与类型标签 [OMO自决]
+### L80 · 2026-11-13 17:07 CT · D-47.2 首页分隔符与类型标签 [OMO自决]
 - task_id: D-47.2
 - code_sha: 885603e4a276317e401a64b6bafb4f4d70d6c228（#374，已推送）
 - docs_sha: 7293b0165f93ca13819f2fc1229e8348f87c6d66
@@ -992,7 +992,7 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 附: 390/1280、light/dark四张类型标签截图均已查看，字体12px，证据~/work/evidence/D47/labels/。英文补位用“ · ”，中文不改；语言表测试注明SPEC docs_sha=81196fa，SPEC变表时须一起更新。
 - next_task_id: D-47.3。
 
-## L81 · 2026-11-13 17:07 CT · D-47.5 门禁页入站提示抑制及传播
+### L81 · 2026-11-13 17:07 CT · D-47.5 门禁页入站提示抑制及传播
 - task_id: D-47.5
 - code_sha: #375 22d90095e139fe3f5a0db5e135206e00e5afb54e；#374合并c1ef194d474cfff8506b5cc2e5b50a392f9d2652（均已推送，c1ef194随L82推送）
 - docs_sha: 7293b0165f93ca13819f2fc1229e8348f87c6d66
@@ -1004,7 +1004,7 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 附: 子任务状态一度停在旧WAITING，但仓库已存在21:48的22d9009。主会话核对实际提交、两份红绿日志、全量日志后接管并推送；子任务只补交证据、未再运行或改动。恢复门禁和D-50也随007abf1进入#375远端，不再有“#375远端仍全局放行”的当前状态。
 - next_task_id: 主会话继续D-47.3→4。
 
-## L82 · 2026-11-13 17:07 CT · D-47.3 仅小程序限流及过期队列取消
+### L82 · 2026-11-13 17:07 CT · D-47.3 仅小程序限流及过期队列取消
 - task_id: D-47.3
 - code_sha: c7b06343f51b23f26630ad2c72b905b7eff505a6（#374，已推送）
 - docs_sha: 7293b0165f93ca13819f2fc1229e8348f87c6d66
@@ -1017,7 +1017,7 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 附: H5九个首轮读取一起开始；小程序旧轮拿到槽位后先检查世代，作废时不发查询并归还槽位。读取报错/抛错、回帖、多实例共享和最终数据都有行为断言。STATUS旧Boundary行误引43500445187，按已读的2156条CI证据改为43503547193。D-49只读architect准备因号池限额/不可用退出、工具0次，未产出方案或修改代码；不转额外计费渠道，实际D-49仍待前置项。
 - next_task_id: D-47.4。
 
-## L83 · 2026-11-13 17:40 CT · D-47.4 关注读取与全屏蔽行为测试
+### L83 · 2026-11-13 17:40 CT · D-47.4 关注读取与全屏蔽行为测试
 - task_id: D-47.4
 - code_sha: 2942e8e8491b15360505350829013d3bb045204e（#374，已推送，仅改测试）
 - docs_sha: 1d1734c9c77d78aae0d680538359ce0855c5b32d
@@ -1028,3 +1028,42 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 未重跑不受测试改动影响的页面构建；应用源码、依赖和构建配置与c7b0634完全相同，沿用L82的typecheck、H5、mpci和132条浏览器验收。主包最近实测仍为L82的1,373,057，而不是声称本提交重新构建。LSP不可用，未安装依赖或提问；实际Node测试已执行。
 - 附: loadMyFollowing成功夹具更新following和followingLoaded，与真实成功路径一致；全屏蔽同时检查无posts查询、posts为空、hasMore=false、没有读取错误及SPEC§6.2的plaza.emptyFollowing。原六条行为断言保留，事件条件取代固定微任务次数。容器通过后按RUNBOOK§3 push --no-verify。
 - next_task_id: D-48.4。
+
+### L84 · 2026-11-13 19:00 CT · D-48.4 主包证据与注释收尾
+- task_id: D-48.4
+- code_sha: #375 0eabe7373c9d2324f22f6449878ba73f4c30ea81；#374合并e495ad7582bd677af20ba19bfe2a4b21813e8663（均已推送）
+- docs_sha: c4557c094f05d1827ef8790ef0fa9ee77d1c6e72
+- 环境: 本地pw1.60-node22-pg17，mpci=CI环境
+- 命令/计数: 先读L73引用的190150Z，确实是早期五条稿5/4/1/0；L73却把它接在最终六条说明后，版本混记。最终六条原样放到3d24a8e，234336Z为6/4/2/0：缺14个分包，且“至少一个内部导入”的扫描对照失败。最终版本的修复前失败数更正为2，不是1。
+- 真实变异: 在22d9009隔离树的pages/history/index.vue真实import并调用../detail/useRatings（确有该导出、另一分包）。234447Z为6/5/1/0，第6条明确报history跨包导入detail；不是伪造文件名或注释。随后仅撤回该变异。
+- 注释验证: messages编译产物usingComponents确有../../components/ChatThread，chat为其轻包装，不能说App.vue自动打开chat是保留理由。pages.json注释改正。#375的234802Z为6/6、mpci通过，主包1,324,732/余248,132；验收/提交树a8aa5defc4e4423a67d84dd45d2a0cac9233d9df。#374合并后235304Z为6/6、mpci通过，主包1,373,057/余199,807；验收/提交树642c44c10346bb246aea7a95bf62d65e24faefb0。五PR仍待最终集成。
+- ci_run_url: —（base非main）；未重跑不受纯注释影响的全量应用检查，沿用L81–L83。
+- 未测项: preloadRule未配置；首次分包下载/离线失败/冷启动/返回栈已放入内部FINAL4草稿④和STATUS，正式FINAL待本轮收尾同提交写入，不把草稿当作已发布报告。
+- next_task_id: 原拟D-49；18:20核查补充到达后，先补D-50.3和D-47.5，再按原顺序进入D-49。
+
+### L85 · 2026-11-13 19:00 CT · [supervisor 指示] 18:10子任务路由与失败接手记录
+- task_id: D-43 supervisor 2026-11-13 18:10 CT
+- docs_sha: c4557c094f05d1827ef8790ef0fa9ee77d1c6e72
+- 执行: task_cancel已释放st_01a1d6e8驻留子会话/排队续跑；不再task_send恢复它。仅用ChatGPT订阅的deep-high/ultrabrain/deep-low或主线程，不用architect/visual-engineering/unspecified-high；不尝试登录、不改provider配置、不向account-4派活、不用extra usage。
+- 新接手: st_01a1d75f（deep-high，GPT-6 Astra xhigh）已交回只读设计，主会话已读完整390行。包含20类禁止、21类允许、API/后台、约束与待定项；52个迁移文件引用。没有SQL/测试/托管执行，不算D-49实现通过。D-50补充由st_01a1d777（deep-low，GPT-6.1 Sol）做，仅本地提交，主会话唯一推送者。
+
+| 失败子任务 | 原因 | 后续接手与证据 | 尚缺 |
+|---|---|---|---|
+| st_01a1d44b / P2.5 | Fable额度中断，留下DoD③证据 | 主会话按D-42§7补做，090d2be；L46、lsql-20261113T101110Z的181/181及冻结sha256证据 | 已完成历史接手；托管应用仍归Eric |
+| st_01a1d65b / D-47.2–4 | Opus额度，候选链均不可用 | 主会话接回补丁/测试草稿，885603e、c7b0634、2942e8e；L80–L83 | 已完成这组三项；后续核查补充另跟原项 |
+| st_01a1d655 / BRAND.7 | Claude账号池全被拦 | st_01a1d67e（ChatGPT deep-low）接手后因顺序要求暂停；磁盘仍bd397ce+3个修改文件+2个新SVG | 尚缺最后两处改动复核、20路由/输入提交限制、重拍验图、本地提交及按D-46.6预览部署/推送 |
+| st_01a1d6e8 / D-49准备 | 登录过期/模型额度，工具0次；已停止并释放驻留资源 | 改由st_01a1d75f（ChatGPT deep-high）完成只读设计：evidence/D49/d49-readonly-design-chatgpt.md | 只读准备已补；迁移、API与客户端实现及本地验收仍未做 |
+
+- BRAND.7差异核对: supervisor称已有本地提交，但实读git log/status及st_01a1d67e记录仍为bd397ce和未提交改动；已向supervisor说明，不虚记完成。按D-49→D-46.5→D-46.6恢复。
+- ④事项: default/account-2/account-3须Eric本人重新登录；account-4达60%总周上限，已停派。记录在内部草稿④，正式FINAL同收尾落地。D-50停止约束不变，不新设目标或续接BACKLOG。
+- 文档读取记录: 读取记忆仓库notes/facts/2026-11.md的历史规则时出现原有生产项目标识，仅为文档文字，未作连接/命令URL或env目标；按D-42文档例外记来源，不触发暂停推送。
+
+### L86 · 2026-11-13 19:00 CT · [supervisor 核查补充] 18:20小问题归入原项
+- task_id: D-50.3 / D-47.5 / D-49.4 / FINAL与STATUS收尾
+- docs_sha: c4557c094f05d1827ef8790ef0fa9ee77d1c6e72
+- 核查回执: supervisor独立检查ae058c2、007abf1、22d9009、0eabe73、4b6f079、b35cf8e、885603e、c1ef194、c7b0634、2942e8e及材料至c4557c0，无阻塞/大问题；CI环境余量12,472/248,132/199,807一致；分支、workflow与冻结迁移未被改写；#374 vue-tsc和smoke单测981/981通过。此为supervisor证据，不冒充主会话重跑。
+- 执行安排: D-50补MP/VUE3可达标记、pages内非页面组件，两类真实变异及UTF-16注释；D-47.5选修复空栈/取栈抛错时不弹并加测试；post/index.vue受限回复的retry提示与聊天一起进D-49.4。都属于原任务补充，最多3次，不改顺序。
+- [OMO自决] 入站提示策略: SPEC§6.5.1只规定发帖入口，不规定入站提示。依据D-47.5及本次允许选择，账号恢复/同意/限制流程和页面尚未可判定时不显示非请求的入站提示，避免打断；只改提示出口，监听/计数/普通错误仍保留。空栈修复尚未提交，不能先写通过。
+- 报告纠正: L80/L82提到进入FINAL④，实际正式FINAL自d982ec8未变，只是待汇总内容；本次补齐内部草稿④/⑥，直到最后同提交写入正式文件才算完成。守则/指南标题判别需Eric定；6+2+2与onShow最多11写入⑥；④列3.8.10前可能直接失败、manifest无最低版本。showActionSheet只查条目≤6、文字不限长已补STATUS。第三批②D-45.5b和④将在正式最终写回时按恢复门禁及885603e标签重写。
+- CI实读: Actions API核对43493142000、43495796397、43501071827、43503851223、43509639602、43525055626；五次H5日志明确Ubuntu26.04无法装Playwright1.60。43509639602另有Boundary 1989/1987/1/1，scripts/ci-first-release-supervised-host.test.mjs:133为unhandledRejection/supervised_operation_timeout，疑似时序但未定位；此run也有浏览器安装job失败。证据~/work/evidence/CI/supervisor-six-runs-20261113.md；未改workflow或这些测试。
+- 合并说明: b35cf8e夹带community-post-topics.spec.ts +5/-1，修4b6f079遗留六个L0/L1夹具失败，L79已有详情；正式FINAL⑤补披露，不改写旧提交。今后此类额外夹具修正单独提交。按明确指示把L80–L83标题改成### Lnn；除此不改旧日志正文。
