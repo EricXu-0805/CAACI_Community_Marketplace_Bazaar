@@ -1,8 +1,8 @@
 # STATUS
 
-写于 2026-11-13 19:00 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-13 19:27 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-50 第 3 项补充（微信可达性扫描盲区）`
+`next_task_id: D-47 第 5 项补充（冷启动未知页面不弹提示）`
 `latest_batch: appendix/batch/FINAL.md`
 
 next_task_id 按原顺序及18:20核查补充取第一条未完成项：先补D-50.3扫描与D-47.5冷启动，再进入D-49（含回复重试），之后D-46.5、6和D-47.7，最终同提交写FINAL与STATUS并停止。D-48全部和D-47.2–4已完成；D-49只读准备完成，实施尚未开始。剩余子任务仅用ChatGPT订阅类别或主线程；同分支只有主会话推送。
@@ -11,26 +11,26 @@ next_task_id 按原顺序及18:20核查补充取第一条未完成项：先补D-
 
 | 项 | 值 |
 |---|---|
-| 代码分支 / PR | codex/community-topics-20261112 / #369（草稿，OPEN），远端 ae058c2 [本地测：2026-11-13 git ls-remote] |
-| code_sha | ae058c216027da52d7346361b3be6aaf388d6d35（D-48.1、D-48.2、D-50.3 已完成并推送） |
+| 代码分支 / PR | codex/community-topics-20261112 / #369（草稿，OPEN），远端04edaa3 [本地测：2026-11-13 push回执] |
+| code_sha | 04edaa36a6edd717c069d78dc4afad57ac1f196c（D-48.1、2与D-50.3含盲区补充已推送；补充尚待D-46.5传播到#374/#375） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | c4557c094f05d1827ef8790ef0fa9ee77d1c6e72（本次写回之前材料分支的 HEAD） |
+| docs_sha | ed263049ea31d372e1c07b45112651a0388a17f8（本次写回之前材料分支的 HEAD） |
 | 其余代码分支（远端 head） | #374 codex/community-home-20261112 e495ad7（已含#369 ae058c2和#375 0eabe73；D-47.2为885603e，D-47.3为c7b0634，D-47.4为2942e8e，D-47.5合并为c1ef194，e495ad7同步D-48.4注释）。#375 codex/community-mp-budget-20261113 0eabe73（22d9009抑制门禁页提示，0eabe73修chat说明；base #369）。#373 55716ba（base #371）；#372 ba070e7；#371 b259105。#374/#375依据本次push回执，其余沿用此前记录 [本地测] |
-| tony-ws worktree | ~/work/illini：st_01a1d777独占D-50.3补充，远端仍ae058c2，尚待最终交回；illini-home e495ad7、illini-mpbudget 0eabe73均已推送；illini-deps 55716ba；illini-brand ba070e7；illini-config b259105；illini-events wip/P4.1 5f62ddd（本地不推）；illini-main 7b18f20（只读）；illini-docs-brand7仍在bd397ce，3个修改文件及2个新SVG未提交，st_01a1d67e暂停保留；~/work/caaciorg本地28d59b1（不推）；材料分支codex/community-plan-v5 [本地测] |
+| tony-ws worktree | ~/work/illini 04edaa3（已交回并推送）；illini-mpbudget的D-47.5冷启动两文件由主会话验证中；illini-home e495ad7、illini-mpbudget 0eabe73均已推送；illini-deps 55716ba；illini-brand ba070e7；illini-config b259105；illini-events wip/P4.1 5f62ddd（本地不推）；illini-main 7b18f20（只读）；illini-docs-brand7仍在bd397ce，3个修改文件及2个新SVG未提交，st_01a1d67e暂停保留；~/work/caaciorg本地28d59b1（不推）；材料分支codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 
 ## CI
 
-#369 最新 run 43503547193（ae058c2）已完成；四项success，public sweep停在schema预检等E4，两项skipped。
+#369当前head 04edaa3的run 43539761691已完成：Type-check、Boundary、H5、mp-weixin四项success；public sweep在schema预检报community topic columns HTTP400（E4）；两项skipped。Boundary实读2156/2155/0/1。
 
-PR #369 · run [43503547193](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43503547193) · head ae058c2 · conclusion failure（Type-check、Boundary、Build H5、Build mp-weixin success；public sweep 停在 Verify public read schema before browser startup，等 E4；其余两项 skipped）[CI run#43503547193]
+PR #369 · run [43539761691](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43539761691) · head 04edaa3 · conclusion failure（Type-check、Boundary、Build H5、Build mp-weixin success；public sweep 停在 Verify public read schema before browser startup，等 E4；其余两项 skipped）[CI run#43539761691]
 
 | job | 结论 | 计数 / 原因 |
 |---|---|---|
 | Type-check | success | |
-| Boundary regressions | success | 2156 tests：2155 pass / 0 fail / 1 skipped [CI run#43503547193] |
+| Boundary regressions | success | 2156 tests：2155 pass / 0 fail / 1 skipped [CI run#43539761691] |
 | Build H5 | success | |
 | Build mp-weixin | success | |
 | Smoke (public page sweep) | failure | 预期中：停在「Verify public read schema before browser startup」预检。staging-smoke 还没应用 20261112120000（等 E4） |
@@ -132,7 +132,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | D-47 第 2 项 | 通过 | 885603e：2190/2189/0/1，132条浏览器通过，四张标签截图已看；类型字段歧义见第16条（L80） |
 | D-47 第 3 项 | 通过 | c7b0634：旧代码8条中3红；新版8条全过，三类真实源码变异均被抓到；2234/2233/0/1、132条浏览器通过（L82） |
 | D-47 第 4 项 | 通过 | 2942e8e：在86ffd0e上9条中7红、2个对照通过，当前9/9；仅移除失败分支invalidatePosts的变异为1红1对照通过。完整单测2237/2236/0/1；没有应用源码变动，构建沿用L82（L83） |
-| D-47 第 5 项 | 原修复通过；冷启动补充待做 | 22d9009已进入#374；39条与原全量证据见L81。SPEC未规定入站提示，此行为属于[OMO自决]；按18:20指示选择补空栈/取栈抛错不弹及测试，保持监听和计数，下一步执行 |
+| D-47 第 5 项 | 原修复通过；冷启动补充验证中 | 22d9009已进入#374；39条与原全量证据见L81。SPEC未规定入站提示，此行为属于[OMO自决]；按18:20指示选择补空栈/取栈抛错不弹及测试，保持监听和计数，四条新用例已在旧实现红，完整验证进行中 |
 | P3.1–P3.8 | 未测 | 依赖 P2.13（#369 合并） |
 | P4.7 第一步 | 通过 | appendix/research/campus-events.md；D-33 已按 D-43 代定 A，第二步依赖 P4.1、P4.2 |
 | P4.1 | 通过 | 本地 wip/P4.1 5f62ddd，容器 test 2015/2014/0/1 [本地测]；不推送 |

@@ -1067,3 +1067,16 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 报告纠正: L80/L82提到进入FINAL④，实际正式FINAL自d982ec8未变，只是待汇总内容；本次补齐内部草稿④/⑥，直到最后同提交写入正式文件才算完成。守则/指南标题判别需Eric定；6+2+2与onShow最多11写入⑥；④列3.8.10前可能直接失败、manifest无最低版本。showActionSheet只查条目≤6、文字不限长已补STATUS。第三批②D-45.5b和④将在正式最终写回时按恢复门禁及885603e标签重写。
 - CI实读: Actions API核对43493142000、43495796397、43501071827、43503851223、43509639602、43525055626；五次H5日志明确Ubuntu26.04无法装Playwright1.60。43509639602另有Boundary 1989/1987/1/1，scripts/ci-first-release-supervised-host.test.mjs:133为unhandledRejection/supervised_operation_timeout，疑似时序但未定位；此run也有浏览器安装job失败。证据~/work/evidence/CI/supervisor-six-runs-20261113.md；未改workflow或这些测试。
 - 合并说明: b35cf8e夹带community-post-topics.spec.ts +5/-1，修4b6f079遗留六个L0/L1夹具失败，L79已有详情；正式FINAL⑤补披露，不改写旧提交。今后此类额外夹具修正单独提交。按明确指示把L80–L83标题改成### Lnn；除此不改旧日志正文。
+
+### L87 · 2026-11-13 19:27 CT · D-50.3 条件标记与页面内组件扫描补充
+- task_id: D-50.3（18:20核查补充，原项内）
+- code_sha: 04edaa36a6edd717c069d78dc4afad57ac1f196c（#369，已推送）
+- docs_sha: ed263049ea31d372e1c07b45112651a0388a17f8
+- 执行者: st_01a1d777，ChatGPT deep-low；主会话读diff/原始变异计数/诊断/提交后推送。只改community-mp-dialogs.test.mjs与en.ts两处注释，18增11删，无翻译值或应用行为改动。
+- 根因与修正: 扫描器原来只匹配目标字面标记，现使用锁定uni-cli-shared的initScopedPreContext/preVueContext，按编译器规范化标记；MP、VUE3、MP-WEIXIN都可达。原来把pages/下所有.vue当页面，现只排除“注册过、但MP预处理后未注册”的页面，非入口组件参与扫描。注释明确Latin-1每UTF-16单元1、其余2、单个非BMP emoji4。
+- 变异: 在0eabe73真实历史树内，MP下9个Latin单位、VUE3下两个非BMP emoji加1（9单位）、实际pages/history/USwipeAction.vue中9单位showModal，旧扫描器分别2/2通过，新扫描器分别2/0/2（中英都报实际路径=9units）。8单位Latin/emoji、嵌套H5排除、真实H5-only admin页面对照均通过。所有应用源码变异逐字节恢复，ALL_SOURCE_MUTATIONS_RESTORED=1。证据~/work/evidence/D50-followup/各mutation-node.log与patch。
+- 计数: focused11/11、node --check通过；完整check-20261114T004205Z为2156/2155/0/1，pg_skips=0、rc=0，唯一skip是无本地Vercel输出目录。真实组件proof004730Z rc=0。目录diagnostics.txt记录去注释后的catalog编译输出相同、两个版本诊断均0，因此未虚构新构建或主包数。
+- 过程说明: 第一次组合monitor默认300秒在全量中途到期；已过的focused未重跑，只把未完成的完整suite用1800000ms预算完成。未把被中断的部分结果当作通过；详见handoff.txt及timeout日志。
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43539761691 · head04edaa3；Type-check、Boundary、H5、mp-weixin四项success，Boundary2156/2155/0/1；public sweep在schema预检报community topic columns HTTP400（E4），两项skipped。job132277316686与132277316304日志已实读，不冒充浏览器已运行。
+- 未测项: 更老基础库/真机保持原记录；本提交按supervisor要求留待D-46.5集成传播到#374/#375。
+- next_task_id: D-47.5冷启动补充，之后D-49。
