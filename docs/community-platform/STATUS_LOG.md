@@ -1108,3 +1108,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 收尾: 没有重启第四次回放；task_cancel释放st_01a1d7cb驻留/续跑资源。podman ps确认三次021xxx本地容器均已清理，无托管动作。本地模拟缺口不能推出生产Storage形状。
 - ④与⑦: 正式FINAL的D-49独立节须写明停止、0覆盖、无PR和待解决前置；仍保留“生产先应用新迁移并VERIFY，前端后合”的未来释放条件，不声称已达成。
 - next_task_id: D-46.5，之后D-46.6、D-47.7和最终同提交报告；按D-50停止。
+
+### L90 · 2026-11-13 21:26 CT · D-46 第 5 项：五个 PR 的本地集成试合；D-50 补充传播到 #375、#374 [OMO自决]
+- task_id: D-46.5（含 D-50.3 补充的传播）
+- code_sha: #375 571be45a4bc8b94526ae28b99834c3fa64df49d0（merge 04edaa3，已推送）；#374 2e0f58285a831b9912aeb5c7da356726e3d8f8ef（merge 571be45，已推送）；本地 local/d46-final-integration-20261114：221a90e3f258c7d7e511bf7d203b5146ee4f9e80（2e0f582 合 #373 55716ba）→ 412e14d9a0d7db8752699f31777b4fa2aa8ed7dc（再合 #372 ba070e7），不推送
+- docs_sha: 45add2a37b6bfbd3f487da08ad94441857fb4e8b
+- 环境: 传播检查 localhost/illini-dev:pw1.60-node22-pg17；集成检查 pw1.65（锁文件里的 Playwright 来自 #373 / #371）；mpci = CI build-mp-weixin 环境
+- 命令: ① 传播：#375 merge --no-ff 04edaa3（en.ts 自动合并），RUN_CMD 跑 community-mp-dialogs、account-gate-prompts、chat-realtime-handshake 三份测试 + typecheck + mpci（check-20261114T023656Z），提交 571be45（树 af8ef42 与检查时一致）；#374 merge 571be45，同样三步（check-20261114T025250Z），提交 2e0f582（树 443d296）。② #375 第一次宿主机 git push 被 pre-push 拦下：4 条 SQL 测试 spawnSync initdb ENOENT（activity-notification-triggers、conversation-item-delete-cascade、record-consent-accepts-2026-09-03、report-and-appeal-outcome-notifications），宿主机没有 PostgreSQL 17；按 RUNBOOK 第 128 行在容器检查通过、核对树哈希后用 git push --no-verify，#374 同样。③ 集成：从 2e0f582 建工作树；merge 55716ba 没有冲突（ci.yml 自动带进 #371 已有的 Toolchain versions 一步，App.vue 等是 #371 的品牌色），check-20261114T025755Z install / typecheck / h5 / cmd（postgres-bin、ci-hook-contract、mp-dialogs、mp-subpackages 22 / 22）通过后提交 221a90e；merge ba070e7 有四个冲突，按 STATUS 阻塞第 11 条的规则手工合：api/share-post.js 保留话题标题 headline 逻辑、兜底标题与描述取 #372 的「玉米地 · 社区」；en.ts / zh.ts 的 app.* 取 #372（含 app.formerly），suspended.sub 保留 #369 P2.2 的「回复 / reply」，suspended.subPerma 取 #372 的品牌名；plaza/index.vue 保留 #374 删掉的「关注的人」名单，丢弃 #372 在那段名单里的徽章改动。④ check-20261114T030753Z：typecheck test h5 mpci migrations smoke npmaudit，smoke 用 12 份 spec（原论坛 8 份 + marketplace-responsive、a11y-tree、document-language-follows-the-reader、publish-ad-soft-gate 四份 #372 / #371 动过的）。检查跑在合并结果的工作树上（日志头是合并前的 221a90e），提交 412e14d 的树 f4aaf6c 与检查时 git write-tree 一致。
+- 计数: test 2248 / 2247 / 0 / 1，pg_skips=0；typecheck、h5、mpci、migrations rc=0；smoke 204 passed（11.2 分钟，0 失败）；npmaudit rc=1，只剩 vite 6.4.4 一条 moderate（没有修复版本，D-43 例外清单）。五个 PR 合上后主包（CI 环境）1,374,461，余 198,403，满足 64 KiB 目标；#374 2e0f582 单独 1,373,060（余 199,804），#375 571be45 单独 1,324,735（余 248,129）。传播检查定向 119 / 119 两次 [本地测]
+- ci_run_url: —（集成分支只在本地；#375、#374 的 base 不是 main，不触发 CI）
+- 未测项: 集成结果的 CI、真机；BRAND.7 原型与本地集成无关
+- 下一条: D-46 第 6 项 BRAND.7（子任务 st_01a1d67e 在集成检查跑时已开工，见附）、D-47 第 7 项、最终 FINAL 与 STATUS 同提交
+- 附: [OMO自决] 先合 #373 再合 #372，便于分开看依赖与品牌两类冲突；ci.yml 的变化只是合入 #371 现有提交，OMO 没写 workflow，集成分支不推送。BRAND.7 在本条检查还在跑时恢复（不同工作树、不同分支，浏览器检查排在共享容器锁后面），顺序变化当场记在这里。正式 FINAL 的第三批 D-45.5b 行与 ④ 第二行、第四批全文在收尾提交里写入。

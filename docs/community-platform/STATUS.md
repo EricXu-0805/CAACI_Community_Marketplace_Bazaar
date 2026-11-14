@@ -1,11 +1,11 @@
 # STATUS
 
-写于 2026-11-13 20:34 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-13 21:26 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-46 第 5 项（当前 head 的五 PR 本地集成）`
+`next_task_id: D-46 第 6 项（BRAND.7）`
 `latest_batch: appendix/batch/FINAL.md`
 
-next_task_id 按原顺序及核查补充取第一条可做项：D-50.3和D-47.5补充已通过；D-49按第6项和三次上限停止（L89）。现在做D-46.5五PR本地集成，再做D-46.6、D-47.7，最终FINAL与STATUS同提交后停止。只读准备不等于实现，D-49没有功能提交或PR。剩余子任务仅ChatGPT订阅类别或主线程，同分支仅主会话推送。
+next_task_id 按原顺序及核查补充取第一条可做项：D-46.5 五 PR 本地集成已过（L90，主包余 198,403）；现在做 D-46.6 BRAND.7，再做 D-47.7，最终 FINAL 与 STATUS 同提交后按 D-50 停止。D-49 按第 6 项停（L89）。剩余子任务仅 ChatGPT 订阅类别或主线程，同分支仅主会话推送。
 
 ## 版本
 
@@ -15,9 +15,9 @@ next_task_id 按原顺序及核查补充取第一条可做项：D-50.3和D-47.5�
 | code_sha | 04edaa36a6edd717c069d78dc4afad57ac1f196c（D-48.1、2与D-50.3含盲区补充已推送；补充尚待D-46.5传播到#374/#375） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | f20f44ca2deda0d0b4cc38a98357a3d89e438f6d（本次写回之前材料分支的 HEAD） |
-| 其余代码分支（远端 head） | #374 codex/community-home-20261112 adc6ee7（已含#375 73cde94；D-50补充04edaa3按指示留待D-46.5传播）。#375 codex/community-mp-budget-20261113 73cde94（8df14c5独立修夹具，73cde94修未知页面提示；base #369）。#373 55716ba（base #371）；#372 ba070e7；#371 b259105。#374/#375据push回执，其他沿用已核记录 [本地测] |
-| tony-ws worktree | illini 04edaa3；illini-home adc6ee7；illini-mpbudget 73cde94，三者均已推送且干净。illini-deps 55716ba；illini-brand ba070e7；illini-config b259105；illini-events本地5f62ddd不推；illini-main只读7b18f20；BRAND.7工作树仍bd397ce加未提交改动，待D-46.6；caaciorg本地28d59b1不推；材料codex/community-plan-v5。illini-restricted为本地codex/community-restricted-20261113，HEAD04edaa3，只有2份未提交_ops草稿；未推送、未开PR [本地测] |
+| docs_sha | 45add2a37b6bfbd3f487da08ad94441857fb4e8b（本次写回之前材料分支的 HEAD） |
+| 其余代码分支（远端 head） | #374 codex/community-home-20261112 2e0f582（含 #369 04edaa3、#375 571be45）。#375 codex/community-mp-budget-20261113 571be45（base #369）。#373 55716ba（base #371）；#372 ba070e7；#371 b259105 [本地测：2026-11-14 gh pr view] |
+| tony-ws worktree | illini 04edaa3；illini-home 2e0f582；illini-mpbudget 571be45，三者已推送且干净。illini-d46-integration 为本地 local/d46-final-integration-20261114 412e14d（五 PR 集成，不推送）。illini-restricted 为本地 codex/community-restricted-20261113，HEAD 04edaa3，只有 2 份未提交 _ops 草稿，未推送、无 PR。illini-docs-brand7 bd397ce 加未提交原型改动，BRAND.7 进行中。illini-deps 55716ba；illini-brand ba070e7；illini-config b259105；illini-events 本地 5f62ddd 不推；illini-main 只读 7b18f20；caaciorg 本地 28d59b1 不推；材料 codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，内容仍是 V4 原型 [生产：2026-11-12 curl] |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 
@@ -64,6 +64,9 @@ PR #369 · run [43539761691](https://github.com/EricXu-0805/CAACI_Community_Mark
 | #375 3d24a8e | 1,502,862 | 70,002 | check-20261113T182923Z [本地测] |
 | #375 ecc330b（D-46 第 4 项） | 1,322,319 | 250,545 | check-20261113T191554Z，L73 [本地测] |
 | #375 30c4b4d（合入 #369 3b、3f） | 1,324,250 | 248,614 | check-20261113T193317Z：test 2162 / 2161 / 0 / 1，smoke 105 passed、只有 4 条已知 pages.smoke 失败 [本地测] |
+| 五 PR 本地集成 412e14d（#374 2e0f582 + #373 55716ba + #372 ba070e7） | 1,374,461 | 198,403 | check-20261114T030753Z，L90 [本地测] |
+| #374 2e0f582（含#369 04edaa3+#375 571be45） | 1,373,060 | 199,804 | check-20261114T025250Z，119/119、typecheck/mpci，L90 [本地测] |
+| #375 571be45（含#369 04edaa3） | 1,324,735 | 248,129 | check-20261114T023656Z，119/119、typecheck/mpci，L90 [本地测] |
 | #374 adc6ee7（含#375 73cde94） | 1,373,060 | 199,804 | check-20261114T014642Z，108/108、typecheck/mpci通过，L88；五PR仍待集成 [本地测] |
 | #374 e495ad7（含#369 ae058c2+#375 0eabe73） | 1,373,057 | 199,807 | check-20261113T235304Z，6/6、mpci通过，L84；仍未含#372/#373 [本地测] |
 | #374 c7b0634（含#369 ae058c2+#375 22d9009） | 1,373,057 | 199,807 | check-20261113T224013Z，L82；未含#372/#373 [本地测] |
@@ -128,7 +131,8 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | D-46 第 3 项 c、d、e | 通过，D-47补完完成 | 73206a0、eca5a8d、6d6c598为原修复；e由885603e补完，c由c7b0634改为仅小程序限流并取消过期队列。d补测为2942e8e（L80、L82、L83） |
 | D-46 第 3 项 f | 全局放行已撤回 | 有效L2–L5 → suspended已进入#369 ae058c2、#375 22d9009和#374 c7b0634远端head。发帖前拦截和回复提示保留；不 revert 30c4b4d。受限浏览只能在D-49新迁移证明服务端拦截后于独立PR实现（L76、L81、L82） |
 | D-46 第 4 项 | 第二轮腾空间及D-48.4收尾通过；五PR数待集成 | #375最近0eabe73主包1,324,732、余248,132；#374组合余199,807。最终六条测试在3d24a8e上6/4/2/0，真实history→detail导入变异6/5/1/0，见L84；不再用早期五条稿的单条失败代表最终版本 |
-| D-46 第 5、6 项 | 未做 / 暂停 | 第5项排在D-48、D-47第2–5项和D-49之后；第6项原型改动保留，届时按BRAND.7行接续 |
+| D-46 第 5 项 | 通过 | 本地 412e14d（#374 2e0f582 + #373 + #372，不推送）：test 2248/2247/0/1、pg_skips=0，smoke 12 份 204 passed，typecheck/h5/mpci/migrations rc=0，npm audit 只剩 vite moderate；五 PR 主包 1,374,461、余 198,403（L90）[本地测] |
+| D-46 第 6 项 | 进行中 | BRAND.7 原型在 ~/work/illini-docs-brand7，验证脚本与 README 已更新，浏览器检查与本地提交进行中；预览部署由主会话做，转正归 Eric |
 | D-49 | 【跳过】按停止条件收束 | 只读盘点完成；st_01a1d7cb三次L-SQL基线均回放181条，分别停在夹具owner_id、tgenabled转text、实际缺失storage.objects.version。最终errors=1/done=0/SQLrc3；行为用例0、有效红测0、绿测0。仅PRECHECK/REGRESSION草稿；无迁移/VERIFY/Node测试/manifest修改/客户端或API实现，无草稿PR。PG helper在#371，尚未进入#369基线。保留L2–L5全局门禁；后续须先解决本地平台与helper依赖（L89） |
 | D-47 第 1 项 | 通过 | 见L72；后续状态按各次写回继续更新 |
 | D-47 第 2 项 | 通过 | 885603e：2190/2189/0/1，132条浏览器通过，四张标签截图已看；类型字段歧义见第16条（L80） |
