@@ -12,8 +12,9 @@ const ACCOUNT_GATE_PAGES = new Set([
 export function currentPageAllowsIncomingPrompts(): boolean {
   try {
     const pages = getCurrentPages() as Array<{ route?: string }>
-    return !ACCOUNT_GATE_PAGES.has(pages[pages.length - 1]?.route || '')
+    const route = pages[pages.length - 1]?.route
+    return !!route && !ACCOUNT_GATE_PAGES.has(route)
   } catch {
-    return true
+    return false
   }
 }

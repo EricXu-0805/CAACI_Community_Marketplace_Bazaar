@@ -30,7 +30,7 @@ function preprocess(input, platform) {
 
 function harness(platform, level = 0, bannerHost = true, expired = false) {
   const state = {
-    route: NORMAL_PAGE, native: [], watchers: [], stops: 0,
+    route: NORMAL_PAGE, pageStack: 'ready', native: [], watchers: [], stops: 0,
     inbox: null, notification: null, conversations: [], rows: [], applied: [],
   }
   const user = {
@@ -91,7 +91,11 @@ function harness(platform, level = 0, bannerHost = true, expired = false) {
     readAllAscendingKeyset: async () => [...state.conversations],
   }
   const uni = { showToast: toast => state.native.push(toast) }
-  const getCurrentPages = () => [{ route: NORMAL_PAGE }, { route: state.route }]
+  const getCurrentPages = () => {
+    if (state.pageStack === 'empty') return []
+    if (state.pageStack === 'throws') throw new Error('page_stack_unavailable')
+    return [{ route: NORMAL_PAGE }, { route: state.route }]
+  }
   const cache = new Map()
   function load(path) {
     path = resolve(SRC, path)
@@ -180,6 +184,26 @@ function harness(platform, level = 0, bannerHost = true, expired = false) {
 }
 
 for (const platform of ['MP-WEIXIN', 'H5']) {
+  for (const pageStack of ['empty', 'throws']) {
+    test(`${platform} unavailable page stack (${pageStack}) keeps incoming prompts quiet`, async () => {
+      const h = harness(platform)
+      h.state.pageStack = pageStack
+      await h.start()
+      await h.deliver('startup')
+      h.assertState(1)
+      h.assertPrompts(false)
+      h.uni.showToast({ title: 'error.network', icon: 'none' })
+      h.appToasts.pushToast({ kind: 'system', title: 'error.network' })
+      assert.deepEqual(h.state.native.map(toast => toast.title), ['error.network'])
+      assert.deepEqual(h.appToasts.toasts.value.map(toast => toast.title), ['error.network'])
+      h.resetPrompts()
+      h.state.pageStack = 'ready'
+      await h.deliver('ready')
+      h.assertState(2)
+      h.assertPrompts(true)
+      assert.equal(h.state.watchers.length, 2, 'page availability does not restart listeners')
+    })
+  }
   for (const route of [...ACCOUNT_PAGES, NORMAL_PAGE]) {
     test(`${platform} ${route} gates both prompts while listeners update`, async () => {
       const h = harness(platform)
