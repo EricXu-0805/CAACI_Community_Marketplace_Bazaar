@@ -19,8 +19,10 @@ is dated 2026-11-20; the 2026-10-05 snapshot after it is historical.
 - Upstream fixed the advisory in vite 6.4.5. The way out (route B) is to redo
   the braces 3.0.3 backport on vite 6.4.5 or 6.4.6 and rebuild the local
   archive. Installing 6.4.5 straight from the registry would turn the audit
-  green but silently drop the braces backport, so the copy of braces bundled
-  inside vite would be exposed to GHSA-vfj7-8cjw-p6xm again.
+  green but silently drop the braces backport that limits recursion depth.
+  GHSA-vfj7-8cjw-p6xm, which route B used to cite, was withdrawn by GitHub on
+  2026-10-23, so the value of the braces backport is limiting recursion depth
+  itself.
 - The 2026-10-05 snapshot below predates vite 6.4.4 and this advisory.
 
 ## Historical 2026-10-05 snapshot

@@ -192,7 +192,6 @@ jobs:
             status=0
             timeout 180 npm audit --audit-level=moderate --json >"$tmp/audit.json" 2>"$tmp/audit.err" || status=$?
             cat "$tmp/audit.err"
-            if [ "$status" -eq 0 ]; then exit 0; fi
             if [ "$status" -eq 124 ]; then
               reason="timed out after 180s"
             else
@@ -200,7 +199,7 @@ jobs:
                 *"audit endpoint returned an error"*|*"network timeout"*|*"ENOTFOUND"*|*"ECONNRESET"*)
                   reason="did not reach the registry" ;;
                 *)
-                  AUDIT_TODAY=$(date -u +%Y-%m-%d) node - "$tmp/audit.json" <<'JS'
+                  AUDIT_STATUS="$status" AUDIT_TODAY=$(date -u +%Y-%m-%d) node - "$tmp/audit.json" <<'JS'
           const fs = require('fs')
           // Advisory id -> the one package, the highest severity and the last
           // day (UTC) it is let through on.
@@ -210,7 +209,7 @@ jobs:
           let report = null
           try { report = JSON.parse(fs.readFileSync(process.argv[2], 'utf8')) } catch {}
           const vulns = report && report.vulnerabilities
-          if (!report || report.error || !vulns || typeof vulns !== 'object' || Array.isArray(vulns) || !today) {
+          if (!report || Object.hasOwn(report, 'error') || !Object.hasOwn(report, 'metadata') || !vulns || typeof vulns !== 'object' || Array.isArray(vulns) || !today) {
             console.log('::error::npm audit did not produce a readable advisory report')
             process.exit(1)
           }
@@ -223,6 +222,11 @@ jobs:
               continue
             }
             const paths = (Array.isArray(entry.nodes) && entry.nodes.length ? entry.nodes : [pkg]).join(', ')
+            if ((rank[entry.severity] ?? rank.critical) >= rank.moderate &&
+                !via.some(v => (v && typeof v === 'object' && !Array.isArray(v)) ||
+                  (typeof v === 'string' && Object.hasOwn(vulns, v)))) {
+              blocking.push(`${pkg} ${entry.severity}: no advisory or reported dependency in via (path: ${paths})`)
+            }
             for (const v of via) {
               // A name here points at another entry; its advisory is judged there.
               if (typeof v !== 'object' || !v) continue
@@ -245,7 +249,7 @@ jobs:
           for (const line of blocking) console.log(`::error::${line}`)
           if (blocking.length) process.exit(1)
           // npm failed the audit, so something must explain it.
-          if (!letThrough) {
+          if (process.env.AUDIT_STATUS !== '0' && !letThrough) {
             console.log('::error::npm audit failed but reported no advisory this step lets through')
             process.exit(1)
           }
