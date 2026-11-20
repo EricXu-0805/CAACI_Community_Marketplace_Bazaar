@@ -1987,3 +1987,27 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
   - `probes-home/restriction-state.mjs`：3d2d76704904576bed6bc3b3458b2250e40a4aba850be225527ee0eba34ae783
   - `probes-home/schema-only.mjs`：97cbb8dba474a2671fe4d35c8450b739360b70efcfbd9c44f360679908a67469
   - `probes-home/selfcheck.sh`：1c6a000ef04971879205bbf81b2b5e3d1d7e4ac1b3db0c2d75916213d21ebd8f
+
+### L154 · 2026-11-20 12:10 CT · 重新冻结：20261120100354_community_watch_save_activity（D-54 第 2 项 a、b 第 1 步）
+- task_id: D-54.2a、D-54.2（P3 迁移）、D-54.3（P3）
+- code_sha: codex/community-p3-20261120 085d529b766978e1648b5cac3656d88145d04927（#379，草稿，base 未动），已推送；含 #377 最终 head H 9be6a56（D-54 第 3 项）
+- docs_sha: 0885c8a（本次写回之前材料分支的 HEAD）
+- 环境: 本地、L-SQL
+- 命令: 子任务 st_01a1f9cc：先 git merge 9be6a56，再按 2c、2d、2e、2f 与要改迁移的 mig:P3-m 项原地改迁移，PRECHECK、VERIFY、REGRESSION 跟着改；`lsql-replay.sh`（lsql-20261120T173552Z）；全量门禁 check-20261120T173728Z（unstaged=no）；`git push --no-verify`（推送前日志即 173728Z）；主会话在远端只读核对
+- 计数: 旧 sha256 9e0a044dad8bd31ae7b314aee7cbe513880d10e9f08f1883fc7eb1f37b913622 作废 → 新 sha256 aedc91521ca8961906a7578ae6caac52fa59f8c9bc53911eec65d46e1b619137，manifest 只换这一行且与磁盘一致；L-SQL files=183 replayed=183 errors=0；门禁每步 rc=0，TEST 2784/2783/0/1，pg_skips 0，smoke 142 passed。主会话核过：20261112120000 仍 e2a85c3e…、20261114015420 仍 0dc2ceaf…；ci.yml 与 main 相同；9be6a56 是 085d529 的祖先 [隔离环境 L-SQL][本地测]
+- ci_run_url: —
+- 未测项: P3 的客户端修复（2e 客户端、2f 客户端、2g–2j、client:P3-m）还在做，不再改 supabase/；新对象写进 ENGINEERING §5.3 与 STOP-16a 记录在子任务交回后补
+- 下一条: P4 第二阶段（merge 085d529，重算钉的 md5，2k–2m）
+- 附: 这个迁移这次重新冻结后，例外仍到 FINAL 第八批推送为止（D-54 第 2 项 a）；在 STATUS_LOG 出现这条「重新冻结」之前 supervisor 不在任何托管库应用它；应用时照 E4 第 2 步核对新 sha256 aedc9152…。逐条改了哪些 M、m 项，等子任务交回在第八批补记。
+
+### L155 · 2026-11-20 12:10 CT · D-54 第 2 项 P4 第一阶段：客户端修复（本地提交，未推送）
+- task_id: D-54.2（P4 客户端）
+- code_sha: codex/community-events-20261120 本地 b9fd8ee → 2b0abe8 → de04a67 → 5e961a1（#380 远端仍 b9fd8ee，没推送，迁移没动）
+- docs_sha: 0885c8a（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 子任务 st_01a1f9cd；测试先写、先红；check-20261120T165811Z（红）、170857Z（树 bac9ad4）、172402Z（树 94c7de6 = 5e961a1 的树，typecheck 与 smoke）；主机全量 2719/2680/0/39（39 个是主机跑不了的 PG17 用例）
+- 计数: 红到绿：主机单测 60/39/21 → 65/65；两个活动 spec 26 个里 13 失败 → smoke 92 passed；容器 test 2870/2869/0/1（bac9ad4，与提交只差一个 spec 文件）；主包 1,428,877（余 143,987）
+- ci_run_url: —
+- 未测项: 容器 test 一步跑在 bac9ad4，不是最终提交的树；mp、h5accept、migrations、npmaudit 与完整 2p smoke 清单留给第二阶段门禁；小程序只构建，没在真机或开发者工具里看
+- 下一条: P4 第二阶段
+- 附: client:P4-M1（2n 全天活动）、2m 客户端（NULL、infinity、解析不了的结束时间按「没有结束时间」显示）、m1、m4、m6、m7、m12、m14 已修；m2、m5、m8、m10、m13 只修了一部分，原因写进第八批 ⑥；m3 归第二阶段的 2l；m9 不改（按设计全有或全无）；m11 的 8 张截图主会话看过 390 宽的 4 张（与 1280 宽同一批数据），只有测试夹具数据，收尾时放进 appendix/visual/P4.8/。[OMO自决] 主会话「C-final 之前不起容器」的通知被这个子任务当成工具输出里可能被注入的文字，没照做；它说那之后没起过容器；第二阶段的消息里改成直接写明。

@@ -1,6 +1,6 @@
 # STATUS
 
-写于 2026-11-20 10:57 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-20 12:10 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
 `next_task_id: D-54 第 1 项（第七批更正）与第 2 项（P3、P4 修复，两个子任务）；第 3、4、5 项等 supervisor 通知`
 `latest_batch: appendix/batch/FINAL.md`
@@ -118,8 +118,8 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P2.4 | 通过 | smoke 23 passed、test 2001/2000/0/1 [本地测]；CI [CI run#43383800477] |
 | REGION.1 | 通过 | 列、约束、只读授权、region_in 已并入；test 2001/2000/0/1 [本地测]；④ 的 VERIFY/L-SQL 随 P2.5 |
 | P2.5 | 通过 | 20261112120000 冻结（sha256 e2a85c3e…）；L-SQL 181/181，PRECHECK→REPLAY→VERIFY→REGRESSION 全过；test 2001/2000/0/1 [隔离环境 L-SQL][本地测]；④ staging 探测等 E3 |
-| P1.11 | 通过（7b18f20 基线；C-369 通过；C-final 由 supervisor 另派） | D-53 第 8 项第 4 次：3 passed；3 个 schema 读取 200；A/B/C 同意布尔均为真、already_recorded，核实第 3 次 204×3 的同意仍在；规范首页和标题 3 秒后仍符合，3 张无账号字段截图已看。UI/SDK 共 6 次 local logout 均 HTTP 204，新会话残留 0；第 5 次未用（L129、L130）。C-369（D-53 第 10 项）在 #369 8f5fc43 上 c369-1 通过：3 passed，A/B/C 未受限、同意仍在，13 个探针与 L133 逐字节相同（L138、L139） |
-| P1.12 | 通过（7b18f20 基线；C-369 通过；C-final 由 supervisor 另派） | D-53 第 8 项第 4 次 1 passed；control_A 与 [SYN-P1.12] 正对照通过，缓存窗口 4775ms；B 五次 inspect 四项均 0、身份均为 B，pre/post observer 51/17 次回调、泄漏最大值均 0。welcomed=1 后 page.reload（普通重载，WebKit）仍在帖子页，卡片与作者按钮可见；B 帖已删且查 0 行，验收与最后清理共 7 次 UI/SDK logout 全 204，新会话残留 0。第 5 次未用，最后清理 1 passed、库存与最终查询均 0 行（L130–L133）。C-369 c369-1 在 8f5fc43 上通过：1 passed，B 五次 inspect 与 pre/post 观察器泄漏最大值均 0，缓存窗口 4507ms，B 帖清理后 0 行，新留私信 86cec6b2（L138、L139） |
+| P1.11 | 通过（7b18f20 基线、C-369、C-final 都过；C-final 在 main 3778952 上 cfinal-1，L152–L153） | D-53 第 8 项第 4 次：3 passed；3 个 schema 读取 200；A/B/C 同意布尔均为真、already_recorded，核实第 3 次 204×3 的同意仍在；规范首页和标题 3 秒后仍符合，3 张无账号字段截图已看。UI/SDK 共 6 次 local logout 均 HTTP 204，新会话残留 0；第 5 次未用（L129、L130）。C-369（D-53 第 10 项）在 #369 8f5fc43 上 c369-1 通过：3 passed，A/B/C 未受限、同意仍在，13 个探针与 L133 逐字节相同（L138、L139） |
+| P1.12 | 通过（7b18f20 基线、C-369、C-final 都过；C-final 在 main 3778952 上 cfinal-1，用 probes-home/ 适配版，L152–L153） | D-53 第 8 项第 4 次 1 passed；control_A 与 [SYN-P1.12] 正对照通过，缓存窗口 4775ms；B 五次 inspect 四项均 0、身份均为 B，pre/post observer 51/17 次回调、泄漏最大值均 0。welcomed=1 后 page.reload（普通重载，WebKit）仍在帖子页，卡片与作者按钮可见；B 帖已删且查 0 行，验收与最后清理共 7 次 UI/SDK logout 全 204，新会话残留 0。第 5 次未用，最后清理 1 passed、库存与最终查询均 0 行（L130–L133）。C-369 c369-1 在 8f5fc43 上通过：1 passed，B 五次 inspect 与 pre/post 观察器泄漏最大值均 0，缓存窗口 4507ms，B 帖清理后 0 行，新留私信 86cec6b2（L138、L139） |
 | P2.6 | 通过 | D-53 第 0 项 b 代替「Eric 留言」，D-51 第 6 项代替 DoD ①；schema 预检 5 / 5；#369 head 8257318 的 run 44647478789 五个必需 job 全过（Boundary 2156 / 2155 / 0 / 1，public 472 passed，H5 验收 52 passed）（L102、L126） |
 | P2.11 | 通过 | L126 的 7 个禁止写入全被拒，匿名列表/搜索均查不到已删帖；P1.12 第 4 次通过，依赖解除（L132）。期望已改为同时匹配码与 message，但未重跑；「已改、未执行；L126 的证据出自改之前的版本」。按 §5.2 留下无删除入口的 1 件已售商品、1 个已接受报价、2 个会话，ID 见 L129 |
 | P2.7 | 通过 | smoke 15 passed、test 2001/2000/0/1 [本地测]；CI [CI run#43392843858] |
@@ -165,7 +165,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | D-47 第 4 项 | 通过 | 2942e8e：在86ffd0e上9条中7红、2个对照通过，当前9/9；仅移除失败分支invalidatePosts的变异为1红1对照通过。完整单测2237/2236/0/1；没有应用源码变动，构建沿用L82（L83） |
 | D-47 第 5 项 | 通过，含冷启动补充 | 73cde94：空栈或取栈抛错不弹入站提示，页面恢复后正常；监听/计数/普通错误不变。旧实现43/39/4/0，修正后43/43；全量2208/2207/0/1。夹具修正单独8df14c5，#374合并adc6ee7后108/108及typecheck/mpci通过。依据属[OMO自决]，见L86、L88 |
 | D-47 第 7 项 | 通过 | #369、#374、#375、#370 的描述按各自最终 head 重写，包名加反引号，四个仍是草稿；D-49 没开 PR（L92） |
-| P3.1–P3.8 | 重开（D-54 2a；P3.7 未做，归 Eric） | 迁移 20261120100354 撤销冻结（L144），旧 sha256 9e0a044d… 作废；按 D-54 第 2 项修，重新冻结后改回 |
+| P3.1–P3.8 | 部分（迁移已重新冻结；客户端修复进行中；P3.7 未做，归 Eric） | #379 085d529：20261120100354 重新冻结，新 sha256 aedc9152…（旧 9e0a044d… 作废），L-SQL 183/183，全量 2784/2783/0/1（L154） |
 | P4.7 第一步 | 通过 | appendix/research/campus-events.md；D-33 已按 D-43 代定 A，第二步依赖 P4.1、P4.2 |
 | P4.1 | 通过 | 本地 wip/P4.1 5f62ddd，容器 test 2015/2014/0/1 [本地测]；不推送；已 merge 进 #380（de2d281） |
 | P4.3 | 部分 | caaciorg 本地 28d59b1，Node 20/24 全部通过 [本地测]；推送等 E8，开 PR 由 Eric 做 |
@@ -220,6 +220,6 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 26. D-53 第 9 项（照抄，【supervisor 做】）：#371 在 7c94a11 上的 CI（run 44731585297）只有 Build H5 失败，ubuntu-26.04 上 WebKit 起不来；所以先把 #376 squash 合进 main（b4d615b，12:35Z），再把 main 合进 #371 的分支（6d481d0）。#376 进 main、#371 还没进的这段时间，main 的依赖审计会因 intlify、follow-redirects、glob、minimatch、qs 的 6 条公告变红，属预期，#371 合进去就好。supervisor 已独立核过：#378 在容器里用自己下载的输入重建两次，与提交的归档逐字节相同；#376 的审计步骤过了 55 种输入和真实 registry 的测试。P1.8 仍按 D-53 第 7 项 a 看 #371 的 mergeCommit。
 
 27. D-53 第 8 项 g：P1.11、P1.12 第 4 次都在固定 7b18f20 上通过，仅证明 main 基线与探针本身；合 #369 和合 #377 之前，supervisor 仍要另派同一份探针（sha256 不变）在要合的 head 上各做确认跑，不计入这次 5 次预算。OMO 本轮不推进 main worktree、不改应用代码、不合任何 PR；第七批④、⑥按此保留候选 head 确认跑。
-28. 上线进度（【supervisor 做】，L141、L146、D-54 第 0 项）：supervisor 独立核过第七批的 vite（#378）、#376、P1.11/P1.12 第 4 次、C-369、P1.8 级联；P3、P4 的核查发现在本机清单里（不进仓库，只引编号），按 D-54 第 2 项修。生产 15:04Z 应用 20261112120000 并 VERIFY；#369、#375、#374 依次 squash 进 main（ad986c9、e9c2604、4900722）；staging 15:14Z、生产 16:02Z 应用 20261114015420 并 VERIFY；#377 加 -s ours 合并 9be6a56 后 squash 进 main 05e0959。#375 在 15:08:01Z 改 base 之后于 15:08:27Z 被关闭、15:08:29Z 重开（L141 漏记，D-54 第 1 项 e）。生产 H5 仍是 7b18f20 的部署，没有发布。接下来 #372 → C-final → 受监督发布。
+28. 上线进度（【supervisor 做】，L141、L146、D-54 第 0 项）：supervisor 独立核过第七批的 vite（#378）、#376、P1.11/P1.12 第 4 次、C-369、P1.8 级联；P3、P4 的核查发现在本机清单里（不进仓库，只引编号），按 D-54 第 2 项修。生产 15:04Z 应用 20261112120000 并 VERIFY；#369、#375、#374 依次 squash 进 main（ad986c9、e9c2604、4900722）；staging 15:14Z、生产 16:02Z 应用 20261114015420 并 VERIFY；#377 加 -s ours 合并 9be6a56 后 squash 进 main 05e0959。#375 在 15:08:01Z 改 base 之后于 15:08:27Z 被关闭、15:08:29Z 重开（L141 漏记，D-54 第 1 项 e）。生产 H5 仍是 7b18f20 的部署，没有发布。#372 由 OMO 手工合 main 05e0959（f5dd044，CI 44778423032 全绿）后由 supervisor squash 进 main 3778952；C-final 在 3778952 上 cfinal-1 通过（P1.11 3 passed、P1.12 1 passed，A/B/C 都未受限，L152–L153）。接下来是受监督发布（supervisor 做）。
 29. E6：COMMUNITY_OFFICIAL_PROFILE_ID 没设之前，P3.5 的 set_post_official 和 P4.9 的 create_event_discussion 返回 409 official_profile_not_configured、不落库；set_post_featured、hide_event、unhide_event 不依赖它（D-54 第 1 项 b 更正）。设好后补这两项的另一半。
 30. P4.6 的产品问题：被隐藏或下架的成员活动仍占组织者两个名额之一，作者自己删掉讨论帖的不占，要不要改由 Eric 定（L140）。
