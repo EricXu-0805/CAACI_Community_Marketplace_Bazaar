@@ -223,6 +223,12 @@ test('the suspension refusal parser accepts exactly suspension_active:<level>:<U
     parse('{"statusCode":"403","error":"Unauthorized","message":"suspension_active:3:2026-12-03T12:34:56Z"}'),
     { level: 3, until: '2026-12-03T12:34:56Z' },
   )
+  // /api/meetup-notify's 403 for a restricted caller; its 503 is an ordinary failure.
+  assert.deepEqual(
+    parse('{"error":"suspension_active","message":"suspension_active:2:2026-12-03T12:34:56Z"}'),
+    { level: 2, until: '2026-12-03T12:34:56Z' },
+  )
+  assert.equal(parse('{"error":"account_state_unavailable"}'), null)
   for (const value of [
     'suspension_active:2:', 'suspension_active:2:not-a-date', 'suspension_active:2',
     'suspension_active:1:permanent', 'suspension_active:6:permanent', 'suspension_active:x:permanent',
@@ -338,6 +344,11 @@ test('the notice opens pages/suspended and follows sign-out and account switches
   assert.equal(Vue.unref(mod.restrictionNotice), restrictionText('en'))
   mod.openRestrictionDetails()
   assert.deepEqual(rt.navigations, ['/pages/suspended/index'])
+  // pages/suspended shows the details itself, so the notice steps aside there.
+  mod.setRestrictionDetailsVisible(true)
+  assert.equal(Vue.unref(mod.restrictionNotice), '')
+  mod.setRestrictionDetailsVisible(false)
+  assert.equal(Vue.unref(mod.restrictionNotice), restrictionText('en'))
   rt.currentUser.value = null
   assert.equal(Vue.unref(mod.restrictionNotice), '', 'the notice survived sign-out')
   rt.currentUser.value = { ...profile(0), id: 'user-b' }
@@ -633,6 +644,32 @@ for (const state of STATES) {
     assert.deepEqual(fresh.supabase.log, state.refused ? [] : ['conversations.insert', 'conversations.insert'])
   })
 }
+
+test('a restricted /api/meetup-notify answer is absorbed: no report, no retry, the committed meetup stands', async () => {
+  const rt = restrictionRuntime(profile(0))
+  const supabase = fakeSupabase()
+  const fetches = []
+  let bodyRead
+  const read = new Promise(resolve => { bodyRead = resolve })
+  const body = JSON.stringify({ error: 'suspension_active', message: `suspension_active:2:${UNTIL}` })
+  const { useMeetups } = loadModule('composables/useMeetups.ts', {
+    mocks: {
+      './useSupabase': () => ({
+        useSupabase: () => ({ supabase }),
+        platformFetch: async url => { fetches.push(url); return { status: 403, text: async () => body } },
+      }),
+      './accountScope': accountScope,
+      '../config/runtime': () => ({ BASE_URL: 'https://app.invalid' }),
+      '../api/responseBody': () => ({ readBoundedText: async response => { const text = await response.text(); bodyRead(text); return text } }),
+      './useRestriction': () => requireRestriction(rt),
+    },
+  })
+  const meetup = await useMeetups().proposeMeetup('conv-1', 'Union', UNTIL)
+  assert.equal(meetup.id, 'rpc-row')
+  assert.deepEqual(recognized(await read), { level: 2, until: UNTIL })
+  assert.deepEqual(fetches, ['https://app.invalid/api/meetup-notify'])
+  assert.deepEqual(rt.toasts, [])
+})
 
 function loadItems(rt, supabase, { h5 = true, uploads = [] } = {}) {
   const moderation = []

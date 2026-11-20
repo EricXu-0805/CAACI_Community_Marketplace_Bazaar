@@ -168,8 +168,11 @@ function onTap(t: ToastItem) {
 .at-wrap {
   position: fixed;
   top: calc(env(safe-area-inset-top, 0px) + 10px);
-  left: 50%;
-  transform: translateX(-50%);
+  /* Centred without a transform, so the fixed notice inside stays anchored
+     to the viewport rather than to this box. */
+  left: 0;
+  right: 0;
+  margin: 0 auto;
   width: min(440px, calc(100vw - 24px));
   z-index: 5000;
   display: flex;
@@ -179,11 +182,15 @@ function onTap(t: ToastItem) {
 }
 
 /* D-49 restriction notice: persistent and compact, outside the transient
-   toast stack. Only the pill itself takes touches. */
+   toast stack. Bottom-left above the tab bar and the detail/chat action bars,
+   clear of page headers and the right-hand floating buttons; only the pill
+   itself takes touches. */
 .at-notice {
   pointer-events: auto;
-  align-self: center;
-  max-width: 100%;
+  position: fixed;
+  left: 12px;
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  max-width: calc(100vw - 24px);
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -203,6 +210,12 @@ function onTap(t: ToastItem) {
 }
 .at-notice-text { min-width: 0; overflow-wrap: anywhere; }
 .at-notice:focus-visible { outline: 2px solid var(--accent-action, #C2410C); outline-offset: 2px; }
+/* #ifdef H5 */
+@media (min-width: 768px) {
+  /* beside the desktop sidebar rail */
+  .at-notice { left: calc(var(--sidebar-w, 240px) + 16px); max-width: calc(100vw - var(--sidebar-w, 240px) - 32px); }
+}
+/* #endif */
 
 .at-card {
   pointer-events: auto;

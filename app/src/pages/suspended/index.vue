@@ -96,6 +96,7 @@ import {
   isSuspensionActive,
   nextSuspensionExpiryDelayMs,
 } from '../../utils/suspension'
+import { setRestrictionDetailsVisible } from '../../composables/useRestriction'
 import UIcon from '../../components/UIcon.vue'
 
 const { t, lang } = useI18n()
@@ -169,6 +170,7 @@ const endsText = computed(() => {
 onMounted(async () => {
   pageMounted = true
   pageVisible = true
+  setRestrictionDetailsVisible(true)
   const state = await awaitAuthReady()
   if (!pageMounted || !pageVisible) return
   if (state !== 'authenticated') {
@@ -181,6 +183,7 @@ onMounted(async () => {
 onUnmounted(() => {
   pageMounted = false
   pageVisible = false
+  setRestrictionDetailsVisible(false)
   suspensionLoadEpoch += 1
   appealSubmitEpoch += 1
   gateRefreshEpoch += 1
@@ -189,11 +192,13 @@ onUnmounted(() => {
 
 onShow(() => {
   pageVisible = true
+  setRestrictionDetailsVisible(true)
   if (pageMounted) void reconcileSuspensionGate('show')
 })
 
 onHide(() => {
   pageVisible = false
+  setRestrictionDetailsVisible(false)
   suspensionLoadEpoch += 1
   gateRefreshEpoch += 1
   clearRecoveryTimers()

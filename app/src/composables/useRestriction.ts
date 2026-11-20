@@ -36,18 +36,17 @@ function restrictionText(): string {
   return friendlyErrorMessage(restrictionError(current), (i18n ||= useI18n()).lang.value as 'en' | 'zh')
 }
 
-// #ifdef H5
-/* The H5 host is one body-level app; hide the notice on the gate pages
-   themselves. Mini-program gate pages do not include an AppToast host. */
-const route = ref('')
-// #endif
+/* pages/suspended shows the details itself; the notice steps aside while it
+   is visible (the H5 host is one body-level app that spans every page). */
+const detailsVisible = ref(false)
+export function setRestrictionDetailsVisible(visible: boolean): void {
+  detailsVisible.value = visible
+}
 
 /** Notice text for an active L2-L4 restriction; '' otherwise. */
 export const restrictionNotice = computed(() => {
   const current = restriction()
-  // #ifdef H5
-  if (/pages\/(suspended|reconsent|profile-recovery)\//.test(route.value)) return ''
-  // #endif
+  if (detailsVisible.value) return ''
   return current && current.level < 5 ? restrictionText() : ''
 })
 
@@ -73,13 +72,6 @@ let started = false
 export function startRestrictionNotice(): void {
   if (started) return
   started = true
-  // #ifdef H5
-  if (typeof window !== 'undefined') {
-    const syncRoute = () => { route.value = String(window.location.hash || '') }
-    syncRoute()
-    window.addEventListener('hashchange', syncRoute)
-  }
-  // #endif
   watch(() => [restrictionNotice.value, clock.value], ([text]) => {
     clearTimeout(expiryTimer)
     const delay = text ? nextSuspensionExpiryDelayMs(restriction()?.until) : null
