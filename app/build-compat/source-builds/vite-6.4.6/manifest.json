@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "status": "Verified Vite 6.4.6 source recipe; two independent clean Node 22.23.5 linux-x64 container builds produced identical dist bytes.",
+  "node": {
+    "version": "v22.23.5",
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "pnpm": {
+    "version": "10.8.1",
+    "archive_root": "package",
+    "archive_url": "https://registry.npmjs.org/pnpm/-/pnpm-10.8.1.tgz",
+    "archive_sha256": "d8b2ebbc65cf02c349eca6b45c9640b910f16b6adebdb7b926e9db440e47cac7",
+    "archive_integrity": "sha512-xQCIupmMZ7jKjJnfil4C/Sri4rKaryOP6qnhJCSNP0j5+22yQklJ/5Ac/7teDwzBrWrttgLNKUUHUdEcNQI2dw=="
+  },
+  "vite": {
+    "version": "6.4.6",
+    "commit": "129b54cb423c69048f6a9b5d5766033c0173ef77",
+    "archive_root": "vite-129b54cb423c69048f6a9b5d5766033c0173ef77",
+    "archive_url": "https://codeload.github.com/vitejs/vite/tar.gz/129b54cb423c69048f6a9b5d5766033c0173ef77",
+    "archive_sha256": "0a6a86ddcd1e7e9d7f095cfbff0c9ccb7ed48b9c9cf02f23f4b600254142ae18"
+  },
+  "source_patch": {
+    "file": "vite-source-change.patch",
+    "sha256": "0a7444368b51721e495ca14335dd5dfe34bc1da6a52104578af8aebca147360e",
+    "description": "Regenerated against Vite 6.4.6: register braces patch and update only its frozen-lock references; no dependency version or registry metadata changes."
+  },
+  "braces_patch": {
+    "file": "braces-source.patch",
+    "sha256": "8889beb3edfb82a8a0c9b6354f0b4e6d15212ab79e03cbb399946d116b7f1a3a",
+    "installed_path": "patches/braces@3.0.3.patch",
+    "description": "Applied to source dependencies by pnpm; must equal the file introduced by source_patch."
+  },
+  "patched_inputs": {
+    "package.json": "f6c2d64abd2e45426beef3ceb81383c625f3b04e3b07b04085ff2a11c654220b",
+    "pnpm-lock.yaml": "80a4d3943cd474f953ecf2337b13b054c8d79b16cecb5c4b62ba86c7cf60bc15"
+  },
+  "braces_source_files": [
+    {
+      "path": "lib/constants.js",
+      "sha256": "f9fb688959232eee3e6ad7906a5b0e3234815db49ee857ef86983d65b917dc7c"
+    },
+    {
+      "path": "lib/compile.js",
+      "sha256": "774a7af426e8ff0e89336aea3e7c75d887f955768d64f5906b0394869b3ed7e9"
+    },
+    {
+      "path": "lib/expand.js",
+      "sha256": "102b184ece142d42807b67038c6a893e72b0ad4fb999a7b51f5909b10e179255"
+    },
+    {
+      "path": "lib/parse.js",
+      "sha256": "fb9f4fd9a2f00e584cd9e7d3ffbf0de468081c5c549ce3a78a8d670a0f4a05b5"
+    },
+    {
+      "path": "lib/stringify.js",
+      "sha256": "7c661b9de2494534558b0301d30ed9a86cf70707186f7b67be6846c2fb3e62a1"
+    },
+    {
+      "path": "lib/utils.js",
+      "sha256": "d91ed5e20a91b5e99b46cd2cd5d192176235cd1c8145e4fff57edf3349495ab7"
+    }
+  ],
+  "expected_dist": [
+    {
+      "path": "dist/client/client.mjs",
+      "bytes": 32405,
+      "sha256": "0002f3fbd756eb15b131a549bea3869481a52139c22019dd2a23409f115a83fc"
+    },
+    {
+      "path": "dist/client/env.mjs",
+      "bytes": 643,
+      "sha256": "5bdaca544f5cef6f738fbd103a0f60ceaedacd1051edd3514d912e01448443f2"
+    },
+    {
+      "path": "dist/node/chunks/dep-3RmXg9uo.js",
+      "bytes": 13038,
+      "sha256": "4702c10a382ad3509e53a06b680ea8210775d7f9da1236f8f59b03c5617b2ae7"
+    },
+    {
+      "path": "dist/node/chunks/dep-CvfTChi5.js",
+      "bytes": 339559,
+      "sha256": "c3684e056dda4f4ccc503a963adcbd3ea86f3aafcbbfa25020814ede2707a156"
+    },
+    {
+      "path": "dist/node/chunks/dep-D9E3oCyO.js",
+      "bytes": 19503,
+      "sha256": "8e9ac96e388e1e6d0ba0aaf6cf98736f9a92c67b847fa033569cb96342459806"
+    },
+    {
+      "path": "dist/node/chunks/dep-DSrd_C1q.js",
+      "bytes": 1513688,
+      "sha256": "aad17ba07b3d7bbf53f7db89ad8d1622c7ac54890ad0971f45c889c5727d690f"
+    },
+    {
+      "path": "dist/node/chunks/dep-wEb85qIS.js",
+      "bytes": 235611,
+      "sha256": "424491c19858a099c15293c3c429fa8e9ab5b70edf88b27a16a2e9ea58584b0c"
+    },
+    {
+      "path": "dist/node/cli.js",
+      "bytes": 29164,
+      "sha256": "641c0ffd50377dba5c30acbebe45ea39ccfe81ccb25e9e6db452a252503ff66e"
+    },
+    {
+      "path": "dist/node/constants.js",
+      "bytes": 4186,
+      "sha256": "58c1d17e5f8118fe278a620a1ca11bc2554d3c7fb899ac9d13ffeb5a15279e17"
+    },
+    {
+      "path": "dist/node/index.d.ts",
+      "bytes": 153546,
+      "sha256": "d9030fc0c412a31e7e13d189b9ad032b5177c20217add0f24fd3fff0cf272882"
+    },
+    {
+      "path": "dist/node/index.js",
+      "bytes": 6677,
+      "sha256": "328d93966952f740a0ebbbcd7d509a1a13ffe4b2b7488e99c1b330628114a072"
+    },
+    {
+      "path": "dist/node/module-runner.d.ts",
+      "bytes": 10612,
+      "sha256": "e2ed5b81cbed3a511b21a18ab2539e79ac1f4bc1d1d28f8d35d8104caa3b429f"
+    },
+    {
+      "path": "dist/node/module-runner.js",
+      "bytes": 53266,
+      "sha256": "82300b4a5e6b52632ca2fc9226b3fb3ac11f95b788f7c5b7f89166e91f712823"
+    },
+    {
+      "path": "dist/node/moduleRunnerTransport.d-DJ_mE5sf.d.ts",
+      "bytes": 2969,
+      "sha256": "035d0934d304483f07148427a5bd5b98ac265dae914a6b49749fe23fbd893ec7"
+    },
+    {
+      "path": "dist/node-cjs/publicUtils.cjs",
+      "bytes": 106613,
+      "sha256": "0fbd2324ac278105ca9ad0dab270cb08b6d35e4ceb196d8ff24bdc70ecfd40bd"
+    }
+  ],
+  "verified_rebuilds": 2,
+  "scope": "Only a newly created output directory is written. No application, database, publication, or generated-file patching.",
+  "official_release": {
+    "archive_url": "https://registry.npmjs.org/vite/-/vite-6.4.6.tgz",
+    "archive_sha256": "f807fd45406304489388c00583e84a0458b2eb65c59f35bca8fa55995fd9e9d0",
+    "archive_integrity": "sha512-RtsraAwEG68idOA6iUOoIpOlcSKROnf815aIq9qHTSrDNpLoBrBa12suyfcEd8qn0xwOVQI1Yhm1GbmTjF600A==",
+    "package_json_sha256": "23a60ad52695386a9c9a32aac48c6ac5d73fd8c71bb74929619bbc454749ace0"
+  },
+  "braces_baseline": {
+    "version": "3.0.3",
+    "url": "https://registry.npmjs.org/braces/-/braces-3.0.3.tgz",
+    "integrity": "sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==",
+    "sha1": "490332f40919452272d55a8480adc0c441358789",
+    "archive_sha256": "1cd18e862c8640b4568b1425a7df4ee030ff201d45b2da8f9f222d2987494ffc"
+  }
+}

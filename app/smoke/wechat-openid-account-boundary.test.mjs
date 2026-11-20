@@ -59,7 +59,7 @@ test('text and media write chains revalidate the account after WeChat moderation
   const messageGuard = messages.indexOf('!isAccountRequestCurrent(accountToken)', messageGate)
   assert.ok(messageGate >= 0 && messageGuard > messageGate)
 
-  for (const marker of ['await mpTextGate(trimmed, 3, accountToken)', 'await mpTextGate(trimmed, 2, accountToken)']) {
+  for (const marker of ['await mpTextGate(moderationText, 3, accountToken)', 'await mpTextGate(trimmed, 2, accountToken)']) {
     const gate = plaza.indexOf(marker)
     const guard = plaza.indexOf('assertAccountCurrent()', gate)
     assert.ok(gate >= 0 && guard > gate, `${marker} is missing its post-gate account guard`)

@@ -19,6 +19,7 @@ export async function verifyPublicReadSchema({ url, key, fetchImpl = fetch }) {
     ['item category and street details', 'items', 'id,listing_details,location_verified,location_checked_at'],
     ['plaza attached item details', 'posts', 'id,item:items(id,listing_details)'],
     ['public comment translations', 'post_comments', 'id,content_i18n'],
+    ['community topic columns', 'posts', 'id,title,category,region'],
   ]
   const results = []
   for (const [name, table, select] of checks) {
@@ -36,6 +37,18 @@ export async function verifyPublicReadSchema({ url, key, fetchImpl = fetch }) {
     if (!Array.isArray(body) || body.length !== 0) throw new Error('public_schema_unexpected_response')
     results.push({ name, status: response.status })
   }
+  // The community search RPC ships in the same migration; a read-only call proves it exists.
+  const rpc = await fetchImpl(new URL('/rest/v1/rpc/search_community_posts', url), {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ terms_in: ['x'], limit_in: 1 }),
+    redirect: 'error', signal: AbortSignal.timeout(10_000),
+  })
+  await rpc.body?.cancel()
+  if (!rpc.ok) {
+    throw new Error(`public_schema_mismatch: community search rpc returned HTTP ${rpc.status}; apply the reviewed migrations to this test target before testing the candidate`)
+  }
+  results.push({ name: 'community search rpc', status: rpc.status })
   return results
 }
 

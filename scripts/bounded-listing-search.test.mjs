@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { postgresBinDir } from './_postgres-bin.mjs'
 
 const read = path => readFileSync(new URL(path, import.meta.url), 'utf8')
-const bin = ['/opt/homebrew/opt/postgresql@17/bin', '/usr/lib/postgresql/17/bin'].find(p => existsSync(join(p, 'initdb')))
+const bin = postgresBinDir()
 // Reuse only the established synthetic schema fixture; the oracle is the
 // previously deployed SQL, never a second JavaScript copy of the new formula.
 const fixture = read('./listing-details.test.mjs').split('const setup=`')[1].split('\n`')[0]

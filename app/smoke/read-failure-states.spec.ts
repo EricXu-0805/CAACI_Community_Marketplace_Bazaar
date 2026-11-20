@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
  * Every one of these surfaces holds its rows in a ref that starts empty, so a
  * rejected fetch leaves behind exactly the state a brand-new account has. The
  * pages then paint their designed empty art over it — "You haven't posted
- * anything yet", "No comments yet" — and the only correction is a toast that
+ * anything yet", "No replies yet" — and the only correction is a toast that
  * is gone in a second and a half. On a flaky campus connection a seller is
  * told their listings are gone, and a plaza reader sees a header promising
  * twelve comments above a body saying nobody has commented.
@@ -192,7 +192,7 @@ async function visibleText(page: Page, route: string): Promise<string[]> {
   return previous
 }
 
-const CLAIMS_EMPTY = /haven't posted anything|no listings|haven't saved|No saved|No comments yet|nothing yet/i
+const CLAIMS_EMPTY = /haven't posted anything|no listings|haven't saved|No saved|No replies yet|nothing yet/i
 
 const SURFACES = [
   { label: 'my items', route: 'pages/my-items/index' },
@@ -220,8 +220,8 @@ test('post detail never shows a comment count above "no comments"', async ({ pag
   const joined = (await visibleText(page, `pages/post/index?id=${POST}`)).join(' | ')
   // The count comes from the post row and stays truthful; it is the body that
   // must not contradict it.
-  expect(joined).toMatch(/Comments \(12\)/)
-  expect(joined, 'the header promised 12 comments and the body said there are none').not.toMatch(/No comments yet/i)
+  expect(joined).toMatch(/Replies \(12\)/)
+  expect(joined, 'the header promised 12 comments and the body said there are none').not.toMatch(/No replies yet/i)
 })
 
 /**
@@ -311,7 +311,7 @@ test('comment retry is scoped to comments and keeps the loaded post alive', asyn
   expect(state.requests.posts, 'comment retry reloaded the already-valid main post').toBe(postRequestsBeforeRetry)
   await expect(page.getByText(POST_ROW.content, { exact: true })).toBeVisible()
   await expect(
-    page.getByText('No comments yet', { exact: true }),
+    page.getByText('No replies yet', { exact: true }),
     'comment retry flashed a healthy empty thread while the retry was pending',
   ).toHaveCount(0)
   await expect(page.getByText(COMMENT_ROW.content, { exact: true })).toBeVisible()
@@ -457,27 +457,44 @@ test('following still fills the screen with the failure when the first page fail
   ).toHaveCount(0)
 })
 
-test('plaza Following keeps people visible and retries the failed page without skipping it', async ({ page }) => {
+// SPEC 6.2: the plaza's Following tab lists posts by the people the reader
+// follows, so its pages fail and recover the way the other tabs' do.
+test('plaza Following keeps its posts when the next page fails and retries that page for the same people', async ({ page }) => {
+  const FOLLOWED = '88888888-8888-4888-8888-888888888888'
   const state: PagedState = { pageRequests: {}, failPagesFrom: 1 }
+  const asked: { offset: string; authors: string | null }[] = []
   await seedSession(page)
-  await servePaged(page, '/rest/v1/follows', FOLLOW_PAGE_SIZE, followRows, state)
-  await page.goto('/#/pages/plaza/index', { waitUntil: 'domcontentloaded' })
+  await servePaged(page, '/rest/v1/posts', PLAZA_PAGE_SIZE, postRows, state)
+  // Routes added later are asked first: who the reader follows, and a note of whose posts each read asked for.
+  await page.route('**/rest/v1/follows**', route => route.fulfill({
+    contentType: 'application/json', body: JSON.stringify([{ followee_id: FOLLOWED }]),
+  }))
+  await page.route('**/rest/v1/posts**', route => {
+    const query = new URL(route.request().url()).searchParams
+    asked.push({ offset: query.get('offset') || '0', authors: query.get('user_id') })
+    return route.fallback()
+  })
+
+  await page.goto('/#/pages/plaza/index?view=all', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByText('Paged post 1', { exact: true })).toBeVisible()
   await page.getByRole('tab', { name: 'Following', exact: true }).click()
-  await expect(page.locator('.follow-person')).toHaveCount(FOLLOW_PAGE_SIZE)
+  await expect.poll(() => asked.at(-1)).toEqual({ offset: '0', authors: `in.(${FOLLOWED})` })
+  await expect(page.getByText('Paged post 1', { exact: true })).toBeVisible()
+
   await expect.poll(async () => {
     await scrollFeedToBottom(page, '#plaza-feed-panel')
     return state.pageRequests[1] ?? 0
   }, { timeout: 15_000 }).toBeGreaterThan(0)
-  const retry = page.getByRole('alert').getByRole('button', { name: 'Retry', exact: true })
-  await expect(retry).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Followed 1', exact: true })).toBeVisible()
-  await expect(page.locator('.follow-person')).toHaveCount(FOLLOW_PAGE_SIZE)
-  const attempts = state.pageRequests[1]
+  const retryMore = page.getByRole('alert').getByRole('button', { name: "Couldn't load more. Tap to retry.", exact: true })
+  await expect(retryMore).toBeVisible()
+  await expect(page.getByText(`Paged post ${PLAZA_PAGE_SIZE}`, { exact: true })).toBeVisible()
   state.failPagesFrom = Infinity
-  await retry.click()
-  await expect.poll(() => state.pageRequests[1]).toBeGreaterThan(attempts)
-  await expect(page.locator('.follow-person')).toHaveCount(FOLLOW_PAGE_SIZE * 2)
-  await expect(page.getByRole('button', { name: 'Followed 31', exact: true })).toHaveCount(1)
+  await retryMore.click()
+  await expect(page.getByText(`Paged post ${PLAZA_PAGE_SIZE + 1}`, { exact: true })).toBeVisible()
+  // The page that failed and its retry both asked for the followed people's posts.
+  const secondPage = asked.filter(read => read.offset === String(PLAZA_PAGE_SIZE))
+  expect(secondPage.length).toBeGreaterThanOrEqual(2)
+  expect([...new Set(secondPage.map(read => read.authors))]).toEqual([`in.(${FOLLOWED})`])
   await expect(page.getByRole('alert')).toHaveCount(0)
 })
 
@@ -486,7 +503,7 @@ test('plaza keeps its loaded posts when the next page fails', async ({ page }) =
   await seedSession(page)
   await servePaged(page, '/rest/v1/posts', PLAZA_PAGE_SIZE, postRows, state)
 
-  await page.goto('/#/pages/plaza/index', { waitUntil: 'domcontentloaded' })
+  await page.goto('/#/pages/plaza/index?view=all', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText('Paged post 1', { exact: true })).toBeVisible()
 
   await expect.poll(async () => {
@@ -494,7 +511,9 @@ test('plaza keeps its loaded posts when the next page fails', async ({ page }) =
     return state.pageRequests[1] ?? 0
   }, { timeout: 15_000 }).toBeGreaterThan(0)
 
-  await expect(page.getByRole('alert').getByRole('button', { name: 'Retry', exact: true })).toBeVisible()
+  // A later page that failed leaves one line under the rows to retry it (SPEC 7).
+  const retryMore = page.getByRole('alert').getByRole('button', { name: "Couldn't load more. Tap to retry.", exact: true })
+  await expect(retryMore).toBeVisible()
   await expect(
     page.getByText('Paged post 1', { exact: true }),
     'a failed second page erased the posts already on screen',
@@ -503,7 +522,10 @@ test('plaza keeps its loaded posts when the next page fails', async ({ page }) =
     page.getByText(`Paged post ${PLAZA_PAGE_SIZE}`, { exact: true }),
     'a failed second page erased the posts already on screen',
   ).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible()
+  state.failPagesFrom = Infinity
+  await retryMore.click()
+  await expect(page.getByText(`Paged post ${PLAZA_PAGE_SIZE + 1}`, { exact: true })).toBeVisible()
+  await expect(page.getByRole('alert')).toHaveCount(0)
 })
 
 test('plaza still fills the screen with the failure when the first page fails', async ({ page }) => {
@@ -511,10 +533,11 @@ test('plaza still fills the screen with the failure when the first page fails', 
   await seedSession(page)
   await servePaged(page, '/rest/v1/posts', PLAZA_PAGE_SIZE, postRows, state)
 
-  await page.goto('/#/pages/plaza/index', { waitUntil: 'domcontentloaded' })
+  await page.goto('/#/pages/plaza/index?view=all', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('alert').getByText("Couldn't load. Check your connection and try again.", { exact: true })).toBeVisible()
   await expect(page.getByRole('alert').getByRole('button', { name: 'Retry', exact: true })).toBeVisible()
   await expect(
-    page.getByText('No posts yet. Be the first!', { exact: true }),
+    page.getByText('No topics yet.', { exact: false }),
     'a failed first page was reported as an empty plaza',
   ).toHaveCount(0)
 })

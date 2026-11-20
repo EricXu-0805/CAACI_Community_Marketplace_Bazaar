@@ -249,6 +249,10 @@
           <view v-if="entry.msg.sender_id === currentUser?.id && entry.msg._pending" class="msg-status pending">
             <text class="msg-state-label">{{ t('chat.sending') }}</text>
           </view>
+          <!-- A restriction refusal is terminal: no tap-to-retry (D-49). -->
+          <view v-else-if="entry.msg.sender_id === currentUser?.id && entry.msg._refused" class="msg-status failed" aria-live="assertive" aria-atomic="true">
+            <text class="msg-state-label">{{ t('suspended.badge') }}</text>
+          </view>
           <view v-else-if="entry.msg.sender_id === currentUser?.id && entry.msg._failed" class="msg-status failed" role="button" aria-live="assertive" aria-atomic="true" :aria-label="t('chat.sendFailed')" @click="retrySend(entry.msg)">
             <text class="msg-state-label">{{ t('chat.sendFailed') }}</text>
           </view>
@@ -459,6 +463,8 @@ import { listingPriceLabel, formatPrice, friendlyErrorMessage, navigateBackOr } 
 import { campusDateStringNoIntl, campusPartsNoIntl, campusWallClockToInstant } from '../utils/campusTime'
 import { DIALOG_DANGER } from '../utils/dialogColors'
 import { captureException } from '../utils/sentry'
+import { parseSuspensionRefusal } from '../utils/suspension'
+import { stopIfRestricted } from '../composables/useRestriction'
 import {
   mutationOutcomeError,
 } from '../api/mutationCommit'
@@ -812,13 +818,16 @@ function failOptimisticMessage(tempId: string, error: unknown, preserveRejected 
   if (idx < 0) return
   if (!messages.value[idx]._pending && !messages.value[idx]._failed) return
   const reason = String((error as any)?.message || '')
-  const permanent = reason.startsWith('moderation_block') || reason === 'duplicate_message' || reason === 'message_too_long'
+  const refused = !!parseSuspensionRefusal(error)
+  const permanent = refused || reason.startsWith('moderation_block') || reason === 'duplicate_message' || reason === 'message_too_long'
   if (permanent && !preserveRejected) {
     discardPendingMessage(tempId)
     messages.value.splice(idx, 1)
   } else {
     messages.value[idx]._pending = false
     messages.value[idx]._failed = true
+    // Kept for copying/discarding only; never offered for retry.
+    if (refused) messages.value[idx]._refused = true
   }
 }
 
@@ -1272,7 +1281,7 @@ function goToItem() {
 }
 
 async function sendQuickReply(text: string) {
-  if (!currentUser.value || !conversationId.value) return
+  if (!currentUser.value || !conversationId.value || stopIfRestricted()) return
   const actionEpoch = threadEpoch
   const convId = conversationId.value
   const senderId = currentUser.value.id
@@ -1369,7 +1378,7 @@ function replyPreview(msg: any): string {
 /* Stickers send immediately on tap (panel stays open) — unlike unicode
    emoji, which insert into the input via onPickEmoji above. */
 async function onPickSticker(name: StickerName) {
-  if (!currentUser.value || !conversationId.value || sending.value) return
+  if (!currentUser.value || !conversationId.value || sending.value || stopIfRestricted()) return
   const actionEpoch = threadEpoch
   const convId = conversationId.value
   const senderId = currentUser.value.id
@@ -1400,7 +1409,7 @@ const miniChatVideosEnabled = import.meta.env.VITE_WECHAT_CHAT_VIDEOS_ENABLED ==
 const miniChatPhotosEnabled = import.meta.env.VITE_WECHAT_CHAT_PHOTOS_ENABLED === 'true'
 // #endif
 async function chooseChatMedia(type: 'image'|'video') {
-  if (sending.value || !conversationAccessReady.value || conversationUnavailable.value) return
+  if (sending.value || !conversationAccessReady.value || conversationUnavailable.value || stopIfRestricted()) return
   const token=captureActiveAccountRequest(), epoch=threadEpoch, convId=conversationId.value
   if (!token || !convId) return
   sending.value=true
@@ -1422,7 +1431,8 @@ async function chooseChatMedia(type: 'image'|'video') {
     if(!isThreadEpochCurrent(epoch)||!isAccountRequestCurrent(token))return
     if(String(error?.errMsg||'').includes('cancel'))return
     const reason = String(error?.message || '')
-    const title = reason.includes('too_large') ? t('chat.mediaTooLarge')
+    const title = parseSuspensionRefusal(error) ? friendlyErrorMessage(error, lang.value as 'en' | 'zh')
+      : reason.includes('too_large') ? t('chat.mediaTooLarge')
       : reason.includes('chat_video_review') ? t('chat.videoReviewUnavailable')
       : reason.includes('wechat_media') ? t('chat.mediaReviewUnavailable')
       : reason.includes('invalid_file') ? t('chat.mediaInvalidFile')
@@ -1440,7 +1450,11 @@ async function retrySend(msg: any) {
   const text = msg?.content
   if (!text) return
   const idx = messages.value.findIndex(m => m.id === msg.id)
-  if (idx < 0 || messages.value[idx]._pending || !messages.value[idx]._failed) return
+  if (idx < 0 || messages.value[idx]._pending || !messages.value[idx]._failed || messages.value[idx]._refused) return
+  if (stopIfRestricted()) {
+    messages.value[idx]._refused = true
+    return
+  }
   // Flip the existing bubble back to _pending IN PLACE — never remove it before
   // the resend resolves, or a second failure would lose the message entirely
   // (no copy in the composer either, since the content carries the reply quote).
@@ -1460,6 +1474,7 @@ async function retrySend(msg: any) {
     const i = messages.value.findIndex(m => m.id === msg.id)
     if (i >= 0 && (messages.value[i]._pending || messages.value[i]._failed)) {
       messages.value[i]._pending = false; messages.value[i]._failed = true
+      if (parseSuspensionRefusal(err)) messages.value[i]._refused = true
     }
     uni.showToast({
       title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
@@ -1493,6 +1508,8 @@ async function onSend() {
   const text = inputText.value.trim()
   if (!text || !currentUser.value || !conversationId.value) return
   if (sending.value) return
+  // Keep the draft and skip the optimistic bubble when the send is refused.
+  if (stopIfRestricted()) return
   const actionEpoch = threadEpoch
 
   let finalText = text
@@ -1570,7 +1587,10 @@ async function onSend() {
   } catch (error: any) {
     if (!isThreadEpochCurrent(actionEpoch)) return
     const reason = String(error?.message || '')
+    // A restriction refusal is handled like a content rejection: the text goes
+    // back to the composer (or stays as a terminal bubble beside a newer draft).
     const contentRejected = reason.startsWith('moderation_block') || reason === 'duplicate_message' || reason === 'message_too_long'
+      || !!parseSuspensionRefusal(error)
     uni.showToast({
       title: friendlyErrorMessage(error, lang.value as 'en' | 'zh'),
       icon: 'none',
@@ -1858,6 +1878,7 @@ const quickAmounts = computed<number[]>(() => {
 })
 
 function openOfferSheet() {
+  if (stopIfRestricted()) return
   rememberComposerSheetFocus()
   offerPriceInput.value = ''
   offerNoteInput.value = ''
@@ -1865,6 +1886,7 @@ function openOfferSheet() {
   focusComposerSheetClose()
 }
 function openCounter(o: Offer) {
+  if (stopIfRestricted()) return
   rememberComposerSheetFocus()
   offerPriceInput.value = ''
   offerNoteInput.value = ''
@@ -1995,6 +2017,7 @@ function resetMeetupSheet() {
   meetupNoteInput.value = ''
 }
 function openMeetupSheet() {
+  if (stopIfRestricted()) return
   if (hasPendingMeetup.value) {
     uni.showToast({ title: t('chat.meetupPendingExists'), icon: 'none' })
     return
@@ -2014,6 +2037,7 @@ function openMeetupSheet() {
   focusComposerSheetClose()
 }
 function openReschedule(m: Meetup) {
+  if (stopIfRestricted()) return
   rememberComposerSheetFocus()
   resetMeetupSheet()
   meetupSpotInput.value = m.spot
@@ -2022,6 +2046,7 @@ function openReschedule(m: Meetup) {
 }
 // #6a — either party reschedules an already-accepted meetup (new RPC).
 function openRescheduleAccepted(m: Meetup) {
+  if (stopIfRestricted()) return
   // Mirror openMeetupSheet + the server-side guard (migration 063): a
   // reschedule re-enters pending, so block it when a live pending proposal
   // already exists rather than stacking two — give feedback before the RPC.
@@ -2323,7 +2348,7 @@ function scrollToBottom() {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
 }
 .ic-bottom { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
-.ic-price { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.ic-price { font-size: 14px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
 .ic-sold { font-size: 11px; color: var(--accent-danger); font-weight: 600; }
 .ic-reserved { font-size: 11px; color: var(--warning-text); font-weight: 600; }
 .ic-arrow {
@@ -2383,7 +2408,7 @@ function scrollToBottom() {
 .oc-st-accepted .oc-status { color: var(--success); }
 .oc-st-declined .oc-status, .oc-st-expired .oc-status, .oc-st-cancelled .oc-status { color: var(--text-subtle); }
 .oc-st-countered .oc-status { color: var(--warning-text); }
-.oc-price { display: block; font-family: var(--font-serif); font-size: 26px; font-weight: 600; color: var(--brand); letter-spacing: -0.02em; line-height: 1.1; }
+.oc-price { display: block; font-family: var(--font-serif); font-size: 26px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.1; }
 .oc-st-declined .oc-price, .oc-st-expired .oc-price, .oc-st-countered .oc-price, .oc-st-cancelled .oc-price { color: var(--ink-quiet); text-decoration: line-through; }
 .oc-note { display: block; margin-top: 4px; font-size: 12px; color: var(--ink-soft); line-height: 1.5; }
 .oc-meta { display: block; margin-top: 8px; font-size: 12px; color: var(--ink-quiet); }
@@ -2461,7 +2486,7 @@ function scrollToBottom() {
 }
 .os-ref { display: block; margin-top: 4px; font-size: 12px; color: var(--ink-quiet); }
 .os-input-row { display: flex; align-items: center; gap: 6px; margin-top: 16px; padding: 12px 14px; background: var(--bg-subtle); border-radius: var(--radius-md); }
-.os-dollar { font-family: var(--font-serif); font-size: 22px; font-weight: 600; color: var(--brand); }
+.os-dollar { font-family: var(--font-serif); font-size: 22px; font-weight: 600; color: var(--ink); }
 .os-input { flex: 1; font-family: var(--font-serif); font-size: 22px; color: var(--ink); background: transparent; }
 .os-quick { white-space: nowrap; margin-top: 10px; }
 .os-quick-chip {
@@ -2585,8 +2610,8 @@ function scrollToBottom() {
 .reply-ctx {
   display: flex; align-items: center; gap: 10px;
   padding: 8px 14px;
-  background: rgba(199,74,47,0.08);
-  border-top: 0.5px solid rgba(199,74,47,0.15);
+  background: rgba(185,69,44,0.08);
+  border-top: 0.5px solid rgba(185,69,44,0.15);
   max-width: 480px; margin: 0 auto;
   width: 100%; box-sizing: border-box;
 }
@@ -2602,7 +2627,7 @@ function scrollToBottom() {
   width: 22px; height: 22px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; flex-shrink: 0;
-  &:active { background: rgba(199,74,47,0.15); }
+  &:active { background: rgba(185,69,44,0.15); }
 }
 
 .suggest-row {

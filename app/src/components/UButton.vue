@@ -176,6 +176,7 @@ function onClick(evt: Event) {
 }
 
 /* ===== Hover (desktop only, ≥768px with hover capability) ===== */
+/* #ifdef H5 */
 @media (hover: hover) and (min-width: 768px) {
   .u-btn-primary:hover:not(.is-disabled):not(.is-loading) {
     background: var(--brand-deep);
@@ -196,4 +197,5 @@ function onClick(evt: Event) {
     box-shadow: var(--shadow-pop);
   }
 }
+/* #endif */
 </style>

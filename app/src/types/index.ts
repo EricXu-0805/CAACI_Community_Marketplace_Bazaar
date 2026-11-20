@@ -1,3 +1,4 @@
+import type { PostCategory } from '../utils/communityPost'
 import type { ListingDetails } from '../utils/listingDetails'
 // ============================================
 // CAACI Marketplace - Type Definitions
@@ -123,6 +124,8 @@ export interface Meetup {
 }
 
 export interface Post {
+  title?: string | null
+  category?: PostCategory | null
   id: string
   user_id: string
   content: string
@@ -140,7 +143,9 @@ export interface Post {
   profile?: Profile
   liked_by_me?: boolean
   post_items?: Array<{
+    // user_id comes with every item the API reads back; a composer placeholder has none.
     item: Pick<Item, 'id' | 'title' | 'title_i18n' | 'price' | 'images' | 'image_dimensions' | 'status' | 'listing_type'>
+      & Partial<Pick<Item, 'user_id'>>
     display_order: number
   }>
 }
@@ -224,6 +229,8 @@ export interface Message {
   // success or flips to _failed (tap to retry) on a transient error.
   _pending?: boolean
   _failed?: boolean
+  /** Refused for an account restriction: terminal, never retried (D-49). */
+  _refused?: boolean
 }
 
 export interface Favorite {

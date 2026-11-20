@@ -3,7 +3,9 @@
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
+    <!-- #ifdef H5 -->
     <AppSidebar current="profile" />
+    <!-- #endif -->
 
     <!--
       Profile page — campus-market redesign.
@@ -359,8 +361,11 @@ import { ref, computed, nextTick, watch } from 'vue'
 import { onShow, onHide, onPullDownRefresh, onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
+import { stopIfRestricted } from '../../composables/useRestriction'
 import { useTheme } from '../../composables/useTheme'
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import UAvatar from '../../components/UAvatar.vue'
 import UBadge from '../../components/UBadge.vue'
@@ -714,10 +719,11 @@ function goDetail(id: string) {
 }
 
 function goEdit(id: string) {
+  if (stopIfRestricted()) return
   uni.navigateTo({ url: `/pages/publish/edit?id=${id}` })
 }
 
-function onEditProfile() { uni.navigateTo({ url: '/pages/profile/edit' }) }
+function onEditProfile() { if (!stopIfRestricted()) uni.navigateTo({ url: '/pages/profile/edit' }) }
 
 function onVerifyIllini() {
   uni.navigateTo({ url: '/pages/illini-verify/index' })
@@ -994,7 +1000,7 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
     top: -40px; right: -40px;
     width: 140px; height: 140px;
     border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, rgba(199, 74, 47, 0.45), rgba(199, 74, 47, 0) 65%);
+    background: radial-gradient(circle at 30% 30%, rgba(185, 69, 44, 0.45), rgba(185, 69, 44, 0) 65%);
     pointer-events: none;
   }
   /*
@@ -1046,7 +1052,7 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
   width: 72px; height: 72px; border-radius: 50%;
   background: linear-gradient(135deg, var(--brand-soft) 0%, var(--brand) 100%);
   flex-shrink: 0;
-  box-shadow: 0 6px 16px rgba(199, 74, 47, 0.35);
+  box-shadow: 0 6px 16px rgba(185, 69, 44, 0.35);
   border: 2px solid var(--ink-inverse);
 }
 .user-info { flex: 1; min-width: 0; }
@@ -1378,7 +1384,7 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
   font-family: var(--font-serif);
   font-size: 17px; font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--brand);
+  color: var(--ink);
   display: block;
   line-height: 1;
   font-feature-settings: 'tnum';
@@ -1440,7 +1446,7 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
   font-family: var(--font-serif);
   font-size: 17px; font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--brand);
+  color: var(--ink);
   line-height: 1;
   font-feature-settings: 'tnum';
 }

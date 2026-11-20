@@ -142,6 +142,10 @@ async function loadWithRuntime(relativePath, replacements, runtime, transform = 
   for (const [from, to] of replacements) input = input.replace(from, to.replaceAll('__RUNTIME_KEY__', runtimeKey))
   input = input.replaceAll('__RUNTIME_KEY__', runtimeKey)
   input = input.replace("import { validChatMediaPath } from '../utils/chatMedia'", () => source('src/utils/chatMedia.ts'))
+  // D-49 write backstop; these tests exercise unrestricted accounts.
+  input = input.replace("import { assertWritesAllowed } from './useRestriction'", 'const assertWritesAllowed = () => {}')
+  input = input.replace("import { currentPageAllowsIncomingPrompts } from '../utils/incomingPrompts'", () =>
+    `const { getCurrentPages } = globalThis.${runtimeKey}\n${source('src/utils/incomingPrompts.ts')}`)
   const compiled = ts.transpileModule(input, {
     compilerOptions: {
       target: ts.ScriptTarget.ES2022,
@@ -2602,6 +2606,7 @@ type Notification = any`,
         return () => { transportStops += 1 }
       },
       pushToast: () => { toastCount += 1 },
+      getCurrentPages: () => [{ route: 'pages/plaza/index' }],
       useI18n: () => ({ t: key => key }),
       formatPrice: (price, freeLabel = 'Free') => (
         price === 0 ? freeLabel : `$${(Number.isInteger(price) ? String(price) : price.toFixed(2))
@@ -5565,6 +5570,7 @@ test('no "New message" toast for the conversation being read, but still for the 
   }))
   const toasts = []
   let onNewMessage
+  let foregroundRoute = 'pages/chat/index'
 
   const supabase = createUnreadSnapshotSupabase(() => Promise.resolve({
     data: conversations.map(conversation => ({ ...conversation, unread_messages: [] })),
@@ -5594,6 +5600,7 @@ test('no "New message" toast for the conversation being read, but still for the 
     isAccountRequestCurrent: token => token?.userId === userId,
     onAccountTransition: () => () => {},
     fetchArchivedConversationIds: async () => new Set(),
+    getCurrentPages: () => [{ route: foregroundRoute }],
   })
 
   const previousUni = globalThis.uni
@@ -5623,6 +5630,7 @@ test('no "New message" toast for the conversation being read, but still for the 
 
     // Leaving the thread restores the toast for it.
     module.setOpenConversation(null)
+    foregroundRoute = 'pages/messages/index'
     await onNewMessage({
       id: '33333333-3333-4333-8333-333333333333',
       conversation_id: openConv, sender_id: peer, content: 'still around?',

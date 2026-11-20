@@ -4,7 +4,9 @@
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
+    <!-- #ifdef H5 -->
     <AppSidebar current="index" />
+    <!-- #endif -->
 
     <view class="mobile-header u-glass u-glass--hair-b">
       <!--
@@ -531,6 +533,7 @@ import { onShow, onHide, onShareAppMessage, onShareTimeline, onUnload } from '@d
 import { useItems } from '../../composables/useItems'
 import { useVisualViewportBounds } from '../../composables/useVisualViewportInset'
 import { useI18n } from '../../composables/useI18n'
+import { stopIfRestricted } from '../../composables/useRestriction'
 import { useAuth } from '../../composables/useAuth'
 import { useTheme } from '../../composables/useTheme'
 import { useFavorites } from '../../composables/useFavorites'
@@ -553,7 +556,9 @@ import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import { BASE_URL } from '../../config/runtime'
 // #endif
 import type { ImageDim } from '../../types'
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import UBadge from '../../components/UBadge.vue'
 import UAvatar from '../../components/UAvatar.vue'
@@ -1445,7 +1450,7 @@ async function goPublish() {
   const intent = { listingType: listingType.value, category: selectedCategory.value || '' } as const
   await awaitAuthReady()
   const target = `/pages/publish/index?listingType=${intent.listingType}${intent.category ? `&category=${intent.category}` : ''}`
-  if (!requireAuth(target)) return
+  if (!requireAuth(target) || stopIfRestricted()) return
   stagePublishNavigationIntent(intent, {
     userId: getActiveAccountId(), identityGeneration: captureAccountIdentityGeneration(),
   })
@@ -1852,9 +1857,9 @@ async function goPublish() {
 .afb-chip {
   display: inline-flex; align-items: center;
   padding: 5px 11px; margin-right: 6px; border-radius: 14px;
-  background: rgba(199,74,47,0.08); cursor: pointer;
+  background: rgba(185,69,44,0.08); cursor: pointer;
   .afb-chip-label { font-size: 12px; color: var(--accent-action); font-weight: 500; }
-  &:active { background: rgba(199,74,47,0.16); }
+  &:active { background: rgba(185,69,44,0.16); }
 }
 .afb-clear {
   padding: 5px 10px; border-radius: 14px;
@@ -2002,13 +2007,15 @@ async function goPublish() {
   overflow: hidden; word-break: normal; overflow-wrap: break-word;
 }
 .card-price-row { display: flex; align-items: baseline; gap: 4px; margin-top: 5px; }
-/* Waterfall card price in Fraunces serif + terracotta — matches the
+/* Waterfall card price in Fraunces serif — matches the
    米白书院 "price is the only confident number on the page" rule.
+   Ink, not the brand colour, since SPEC 9.5: the brand is for the one solid
+   button, the current state and links.
    Free items shift to sage so "免费 / Free" reads as positive state. */
 .card-price {
   font-family: var(--font-serif);
   font-size: 17px; font-weight: 600;
-  color: var(--brand);
+  color: var(--ink);
   letter-spacing: -0.01em;
   line-height: 1;
   font-feature-settings: 'tnum';

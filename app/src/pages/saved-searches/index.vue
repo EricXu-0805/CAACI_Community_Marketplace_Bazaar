@@ -1,6 +1,8 @@
 <template>
   <view class="page secondary-page secondary-page--list has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <!-- #ifdef H5 -->
     <AppSidebar current="profile" />
+    <!-- #endif -->
     <view class="secondary-content">
     <view class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
@@ -142,14 +144,16 @@
 <script setup lang="ts">
 import { useDomKeydown } from '../../composables/useDomKeydown'
 import { resolveHtmlElement } from '../../utils/domElement'
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { ref, nextTick, watch, onUnmounted } from 'vue'
 import { onShow, onHide } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
-import { useSavedSearch, type SavedSearchListingType } from '../../composables/useSavedSearch'
+import { useSavedSearch, type SavedSearchListingType } from './useSavedSearch'
 import { friendlyErrorMessage, BROWSE_CATEGORIES, navigateBackOr } from '../../utils'
 import type { ItemCategory } from '../../types'
 import UIcon from '../../components/UIcon.vue'

@@ -100,6 +100,7 @@ function instantFetch({ blockRows = [], blockStatus = 200 } = {}) {
     calls.push({ url, method, body: requestBody(init) })
 
     if (url.pathname === '/auth/v1/user') return json({ id: USER_A })
+    if (url.pathname === '/rest/v1/rpc/get_my_profile') return json({ id: USER_A, suspension_level: 0, suspended_until: null })
     if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return json(true)
     if (url.pathname === '/rest/v1/rpc/resolve_meetup_email_notification') {
       return json([{

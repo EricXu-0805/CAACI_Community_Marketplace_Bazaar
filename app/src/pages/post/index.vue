@@ -1,6 +1,8 @@
 <template>
   <view class="page secondary-page secondary-page--post has-sidebar" :class="mpThemeClass" :style="[mpChrome, viewportStyle]">
+    <!-- #ifdef H5 -->
     <AppSidebar current="plaza" />
+    <!-- #endif -->
     <view class="secondary-content">
     <!-- #ifndef H5 -->
     <AppToast />
@@ -14,12 +16,12 @@
       <view v-else style="width: 32px;"></view>
     </view>
 
-    <scroll-view v-if="post" class="body" scroll-y>
+    <scroll-view v-if="post && !authorBlocked" class="body" scroll-y>
       <view
         class="post-card"
         role="group"
         tabindex="0"
-        :aria-label="displayContent"
+        :aria-label="post.title ? `${post.title}: ${displayContent}` : displayContent"
         aria-keyshortcuts="Shift+F10"
         @keydown="onPostKeyboardMenu"
         @touchstart="postLongPress.onTouchstart()"
@@ -40,6 +42,11 @@
           </view>
         </view>
 
+        <text v-if="post.category" class="post-board" role="button" tabindex="0"
+          @click.stop="openCommunityBoard(post.category)"
+          @keydown.enter.prevent="openCommunityBoard(post.category)"
+          @keydown.space.prevent="openCommunityBoard(post.category)">{{ t(`plaza.category.${post.category}`) }}</text>
+        <text v-if="post.title" class="post-topic-title" role="heading" aria-level="2">{{ post.title }}</text>
         <view class="content-wrap">
           <text class="content">{{ displayContent }}</text>
           <view
@@ -77,6 +84,21 @@
           />
         </view>
 
+        <view v-if="attachBannerVisible" class="attach-pending" role="status">
+          <text class="attach-pending-text">{{ attachBannerText }}</text>
+          <text v-if="attachNotice" class="attach-pending-note">{{ attachNotice }}</text>
+          <view class="attach-pending-actions">
+            <view class="attach-pending-btn primary" :class="{ disabled: attachBusy }" role="button"
+              :aria-disabled="attachBusy ? 'true' : 'false'" @click="onRetryAttach">
+              <text>{{ attachBusy ? t('plaza.attaching') : t('plaza.attachRetry') }}</text>
+            </view>
+            <view class="attach-pending-btn" role="button" @click="onDismissAttach">
+              <text>{{ t('plaza.attachDismiss') }}</text>
+            </view>
+          </view>
+        </view>
+        <text v-else-if="attachNotice" class="attach-pending-note standalone" role="status">{{ attachNotice }}</text>
+
         <view
           v-for="pi in (post.post_items || [])"
           :key="pi.item.id"
@@ -96,8 +118,12 @@
           <view v-else class="aic-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">玉</text></view>
           <view class="aic-body">
             <text class="aic-title">{{ localize(pi.item.title_i18n, pi.item.title) }}</text>
-            <text class="aic-price">{{ listingPriceLabel(pi.item, t) }}</text>
-            <text v-if="pi.item.status === 'sold'" class="aic-sold">{{ t('status.sold') }}</text>
+            <!-- SPEC 6.6: the price, whether the item can still be had, and whether it is the reader's own. -->
+            <view class="aic-meta">
+              <text class="aic-price">{{ listingPriceLabel(pi.item, t) }}</text>
+              <text :class="['aic-tag', `aic-tag-${pi.item.status}`]">{{ t(refStatusKey(pi.item.status)) }}</text>
+              <text v-if="currentUser && pi.item.user_id === currentUser.id" class="aic-tag">{{ t('plaza.ref.mine') }}</text>
+            </view>
           </view>
           <UIcon name="chevron-right" size="sm" color="text-faint" />
         </view>
@@ -225,6 +251,12 @@
       </view>
     </scroll-view>
 
+    <!-- SPEC 6.4: a topic by someone the reader has blocked says so, with the way to undo it. -->
+    <view v-else-if="post" class="not-found">
+      <text>{{ t('plaza.blockedAuthor') }}</text>
+      <view class="back-home" role="button" :aria-disabled="unblocking ? 'true' : 'false'" @click="onUnblockAuthor">{{ t('plaza.unblock') }}</view>
+    </view>
+
     <view v-else-if="loading" class="loading">
       <text>{{ t('home.loading') }}</text>
     </view>
@@ -246,14 +278,17 @@
       <view class="back-home" role="button" @click="goPlaza">{{ t('plaza.backToPlaza') }}</view>
     </view>
 
-    <view v-if="post" class="input-wrapper" :style="kbLift">
-      <view v-if="replyTo" class="reply-bar">
+    <view v-if="post && !authorBlocked" class="input-wrapper" :style="kbLift">
+      <view v-if="replyTo && !replyRestricted" class="reply-bar">
         <text class="reply-label">{{ t('plaza.replyingTo') }} @{{ replyTo.profile?.nickname || t('app.user') }}</text>
         <view class="reply-x" role="button" :aria-label="t('a11y.close')" @click="replyTo = null">
           <view class="rx-inner"></view>
         </view>
       </view>
-      <view class="input-bar">
+      <view v-if="replyRestricted" class="input-bar reply-restricted" role="status">
+        <text>{{ t('plaza.restrictedReply') }}</text>
+      </view>
+      <view v-else :class="['input-bar', { 'has-note': replyFailed }]">
         <input
           v-model="commentText"
           :placeholder="replyTo ? t('plaza.replyHint') : t('plaza.commentHint')"
@@ -275,13 +310,20 @@
           <text class="send-btn-label">{{ replyTo ? t('plaza.reply') : t('plaza.comment') }}</text>
         </view>
       </view>
+      <!-- SPEC 6.4: a reply that did not go out stays in the box, and this line sends it again.
+           Not while the account is restricted: the notice above replaces the input, and a retry would only be refused. -->
+      <view v-if="replyFailed && !replyRestricted" class="reply-failed" role="button" @click="retryReply">
+        <text class="reply-failed-t">{{ t('plaza.replyFailed') }}</text>
+      </view>
     </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 // #ifndef H5
@@ -292,7 +334,8 @@ import { onLoad, onUnload, onShareAppMessage, onShareTimeline } from '@dcloudio/
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
 import { useTheme } from '../../composables/useTheme'
-import { usePlaza, groupCommentsByParent } from '../../composables/usePlaza'
+import { usePlaza, groupCommentsByParent, readPendingPostItems, rememberPendingPostItems } from '../../composables/usePlaza'
+import { useSupabase } from '../../composables/useSupabase'
 import { useModeration } from '../../composables/useModeration'
 import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
@@ -300,13 +343,18 @@ import { useLongPress } from '../../composables/useLongPress'
 import { useKeyboardHeight } from '../../composables/useKeyboardHeight'
 import { useVisualViewportBounds } from '../../composables/useVisualViewportInset'
 import { createOwnedLoading } from '../../composables/ownedLoading'
+import { openCommunityBoard } from '../../api/communityNavigation'
 import {
   captureAccountRequest,
   isAccountRequestCurrent,
   onAccountTransition,
+  type AccountRequestToken,
 } from '../../composables/accountScope'
+import { mutationCommitState } from '../../api/mutationCommit'
+import { clearLocalDuplicate } from '../../utils/contentSafety'
 import { formatTime, friendlyErrorMessage, navigateBackOr, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
 import { DIALOG_DANGER, DIALOG_INK } from '../../utils/dialogColors'
+import { isSuspensionActive } from '../../utils/suspension'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim, Post, PostComment } from '../../types'
 import { BASE_URL } from '../../config/runtime'
@@ -320,8 +368,10 @@ const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
 const { currentUser, requireAuth, awaitAuthReady } = useAuth()
-const { fetchPost, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment } = usePlaza()
-const { reportTarget } = useModeration()
+const replyRestricted = computed(() => isSuspensionActive(currentUser.value))
+const { fetchPost, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, retryAttachPostItems } = usePlaza()
+const { supabase } = useSupabase()
+const { reportTarget, blockedIds, ensureLoaded: ensureBlockedLoaded, unblockUser } = useModeration()
 const { addPostToHistory } = useHistory()
 
 // Mini programs lift the input from their native keyboard event. H5 resizes
@@ -335,6 +385,86 @@ const viewportStyle = computed(() => visibleHeight.value == null ? undefined : (
 }))
 
 const post = ref<Post | null>(null)
+// SPEC 6.6: a linked item's card says whether it can still be had.
+const refStatusKey = (status: string) => status === 'sold' ? 'plaza.ref.sold'
+  : status === 'reserved' ? 'plaza.ref.reserved' : 'plaza.ref.available'
+// SPEC 6.4: the reader blocked this author. The block list hides their posts from
+// the lists; a direct link lands here, so the page says why it shows nothing.
+const authorBlocked = computed(() => !!post.value && !!currentUser.value && blockedIds.value.has(post.value.user_id))
+const unblocking = ref(false)
+async function onUnblockAuthor() {
+  const blocked = post.value
+  if (!blocked || unblocking.value) return
+  unblocking.value = true
+  try {
+    await unblockUser(blocked.user_id)
+  } catch (err: any) {
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
+  } finally {
+    unblocking.value = false
+  }
+}
+// P2.7: items this author's just-published post could not link (author only).
+const attachPendingIds = ref<string[]>([])
+const attachItemNames = ref<Record<string, string>>({})
+const attachBusy = ref(false)
+const attachNotice = ref('')
+const attachBannerVisible = computed(() => !!post.value && !!currentUser.value
+  && currentUser.value.id === post.value.user_id && attachPendingIds.value.length > 0)
+const attachBannerText = computed(() => {
+  const ids = attachPendingIds.value
+  const name = attachItemNames.value[ids[0]] || ''
+  return ids.length > 1 ? t('plaza.attachPending', { name, n: ids.length }) : t('plaza.attachPendingOne', { name })
+})
+
+async function loadAttachPending(p: Post) {
+  attachPendingIds.value = []
+  attachNotice.value = ''
+  const accountId = currentUser.value?.id
+  if (!accountId || accountId !== p.user_id) return
+  const ids = readPendingPostItems(accountId, p.id)
+  if (ids.length === 0) return
+  try {
+    const { data } = await supabase.from('items').select('id, title, title_i18n').in('id', ids)
+    const names: Record<string, string> = {}
+    for (const row of (data || []) as Array<{ id: string; title: string; title_i18n: Record<string, string> | null }>) {
+      names[row.id] = localize(row.title_i18n, row.title)
+    }
+    attachItemNames.value = names
+  } catch { attachItemNames.value = {} }
+  if ((currentUser.value?.id ?? null) === accountId && post.value?.id === p.id) attachPendingIds.value = ids
+}
+
+async function onRetryAttach() {
+  const p = post.value
+  if (!p || attachBusy.value || attachPendingIds.value.length === 0) return
+  attachBusy.value = true
+  attachNotice.value = ''
+  try {
+    const result = await retryAttachPostItems(p.id, attachPendingIds.value)
+    if (post.value?.id !== p.id) return
+    attachPendingIds.value = result.pending
+    if (result.unavailable.length) attachNotice.value = t('plaza.attachUnavailable')
+    else if (result.capped.length) attachNotice.value = t('plaza.attachCap')
+    if (result.linked.length) {
+      const refreshed = await fetchPost(p.id).catch(() => null)
+      if (refreshed && post.value?.id === p.id) post.value = refreshed
+      if (!result.pending.length && !result.unavailable.length && !result.capped.length) {
+        uni.showToast({ title: t('plaza.attachDone'), icon: 'success' })
+      }
+    }
+  } finally {
+    attachBusy.value = false
+  }
+}
+
+function onDismissAttach() {
+  const p = post.value
+  const accountId = currentUser.value?.id
+  if (p && accountId) rememberPendingPostItems(accountId, p.id, [])
+  attachPendingIds.value = []
+  attachNotice.value = ''
+}
 const comments = ref<PostComment[]>([])
 const loading = ref(true)
 const loadingComments = ref(false)
@@ -346,6 +476,15 @@ const commentsError = ref(false)
 const commentText = ref('')
 const replyTo = ref<PostComment | null>(null)
 const submitting = ref(false)
+// SPEC 6.4: a reply whose send failed stays in the box, with a line under it to
+// send it again. failedReply is what that send carried, so the retry can tell
+// whether it was written after all.
+const replyFailed = ref(false)
+let failedReply: { text: string; typed: string; token: AccountRequestToken } | null = null
+watch(commentText, typed => {
+  // The line belongs to the text that failed, not to whatever is typed next.
+  if (replyFailed.value && typed !== failedReply?.typed) replyFailed.value = false
+})
 let postLoadEpoch = 0
 let commentsLoadEpoch = 0
 const reportLoading = createOwnedLoading()
@@ -357,6 +496,8 @@ function resetPostAccountState() {
   commentText.value = ''
   replyTo.value = null
   submitting.value = false
+  replyFailed.value = false
+  failedReply = null
   translated.value = false
   originalShown.value = false
   translationEpoch += 1
@@ -381,6 +522,8 @@ watch(() => currentUser.value?.id ?? null, (userId, previousUserId) => {
   // render. Never expose the previous account's in-progress comment draft.
   commentText.value = ''
   replyTo.value = null
+  attachPendingIds.value = []
+  attachNotice.value = ''
   if (postId.value) void loadPostForCurrentAccount()
 })
 
@@ -503,7 +646,7 @@ onUnload(() => {
 onShareAppMessage(() => {
   const p = post.value
   if (!p) return { title: t('share.plaza'), path: '/pages/plaza/index' }
-  const firstLine = localize(p.content_i18n, p.content || '').split('\n')[0].slice(0, 50).trim() || t('share.plaza')
+  const firstLine = Array.from((p.title || localize(p.content_i18n, p.content || '')).split('\n')[0]).slice(0, 50).join('').trim() || t('share.plaza')
   return {
     title: firstLine,
     path: `/pages/post/index?id=${p.id}`,
@@ -514,7 +657,7 @@ onShareAppMessage(() => {
 onShareTimeline(() => {
   const p = post.value
   if (!p) return { title: t('share.plaza') }
-  const firstLine = localize(p.content_i18n, p.content || '').split('\n')[0].slice(0, 50).trim() || t('share.plaza')
+  const firstLine = Array.from((p.title || localize(p.content_i18n, p.content || '')).split('\n')[0]).slice(0, 50).join('').trim() || t('share.plaza')
   return {
     title: firstLine,
     query: `id=${p.id}`,
@@ -543,11 +686,16 @@ async function loadPostForCurrentAccount() {
     // like as belonging to an anonymous viewer.
     await awaitAuthReady()
     if (!pageMounted || requestEpoch !== postLoadEpoch) return
+    // The block list decides what this page shows, so it is read before the topic.
+    // If it cannot be read the topic still opens: a block hides, it does not gate.
+    if (currentUser.value) await ensureBlockedLoaded()
+    if (!pageMounted || requestEpoch !== postLoadEpoch) return
     const p = await fetchPost(postId.value)
     if (!pageMounted || requestEpoch !== postLoadEpoch) return
     if (p) {
       post.value = p
       addPostToHistory(p)
+      void loadAttachPending(p)
       try {
         const rows = await fetchComments(postId.value)
         if (!pageMounted || requestEpoch !== postLoadEpoch || commentsRequestEpoch !== commentsLoadEpoch) return
@@ -634,7 +782,7 @@ function onShare() {
   if (typeof window !== 'undefined' && window.location?.origin) origin = window.location.origin
   // #endif
   const url = `${origin}/share-post/${post.value.id}`
-  const preview = post.value.content.slice(0, 60).replace(/\n/g, ' ')
+  const preview = (post.value.title || post.value.content).slice(0, 60).replace(/\n/g, ' ')
   uni.setClipboardData({
     data: `${preview}…\n${url}`,
     success: () => uni.showToast({ title: t('plaza.contentCopied'), icon: 'success' }),
@@ -676,6 +824,7 @@ function onDelete() {
 async function onCommentTap(c: PostComment) {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
+  if (replyRestricted.value) return
   replyTo.value = c
 }
 
@@ -754,6 +903,7 @@ async function onCommentLongPress(c: PostComment) {
           },
         })
       } else if (!isMine && res.tapIndex === 0) {
+        if (replyRestricted.value) return
         replyTo.value = c
       } else if (!isMine && res.tapIndex === 1) {
         promptReport('comment', c.id)
@@ -818,14 +968,16 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 async function onSubmitComment() {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
+  if (replyRestricted.value) return
   if (!commentText.value.trim() || !post.value) return
   if (submitting.value) return
   const commentAccountToken = captureAccountRequest(currentUser.value.id)
   const submittedText = commentText.value
   const submittedReply = replyTo.value
   submitting.value = true
+  replyFailed.value = false
+  let text = submittedText
   try {
-    let text = submittedText
     if (submittedReply) {
       const name = submittedReply.profile?.nickname || t('app.user')
       text = `@${name} ${text}`
@@ -852,14 +1004,58 @@ async function onSubmitComment() {
     uni.showToast({ title: t('plaza.commented'), icon: 'success' })
   } catch (err: any) {
     if (!isAccountRequestCurrent(commentAccountToken)) return
-    uni.showToast({
-      title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
-      icon: 'none',
-      duration: 2500,
-    })
+    if (mutationCommitState(err) === 'unknown') {
+      // The request went out and no answer says what became of it: a dropped
+      // connection, a 5xx, a lost response. A refusal with a reason (a rule the
+      // text broke, a rejected write) is not this, and keeps its own message.
+      failedReply = { text: text.trim(), typed: submittedText, token: commentAccountToken }
+      replyFailed.value = true
+    } else {
+      uni.showToast({
+        title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
+        icon: 'none',
+        duration: 2500,
+      })
+    }
   } finally {
     if (isAccountRequestCurrent(commentAccountToken)) submitting.value = false
   }
+}
+
+async function retryReply() {
+  if (replyRestricted.value) return
+  const failed = failedReply
+  const target = post.value
+  if (!failed || !target || submitting.value || !isAccountRequestCurrent(failed.token)) return
+  submitting.value = true
+  try {
+    // The failed send may have been written after all, its answer lost on the
+    // way back. The thread says which: a reply that is there is shown, and only
+    // one that is not is sent again.
+    const rows = await fetchComments(target.id)
+    if (!isAccountRequestCurrent(failed.token) || post.value?.id !== target.id) return
+    comments.value = rows
+    commentsError.value = false
+    if (rows.some(row => row.user_id === failed.token.userId && row.content === failed.text)) {
+      failedReply = null
+      replyFailed.value = false
+      if (commentText.value === failed.typed) {
+        commentText.value = ''
+        replyTo.value = null
+      }
+      target.comment_count = Math.max(target.comment_count || 0, rows.length)
+      uni.showToast({ title: t('plaza.commented'), icon: 'success' })
+      return
+    }
+    // Not there. createComment still holds this text as just sent; release it so the retry is not refused as a duplicate.
+    clearLocalDuplicate(failed.token, `comment:${target.id}`, failed.text)
+  } catch {
+    // The thread cannot be read either. The line stays, to be tapped again.
+    return
+  } finally {
+    if (isAccountRequestCurrent(failed.token)) submitting.value = false
+  }
+  await onSubmitComment()
 }
 </script>
 
@@ -986,8 +1182,16 @@ async function onSubmitComment() {
 .aic-img { width: 52px; height: 52px; border-radius: 8px; flex-shrink: 0; }
 .aic-body { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .aic-title { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.aic-price { font-size: 14px; color: var(--accent-action); font-weight: 700; }
-.aic-sold { font-size: 11px; color: var(--text-muted); }
+.aic-price { font-size: 14px; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.aic-meta { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1) var(--space-2); }
+/* SPEC 6.6 status tags: neutral by default, the warning pair for a reserved item, quiet for a sold one. */
+.aic-tag {
+  flex: none; padding: 0 var(--space-2); border-radius: var(--radius-xs);
+  font-size: var(--t-meta); line-height: var(--space-5); white-space: nowrap;
+  color: var(--ink-soft); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-soft);
+}
+.aic-tag-reserved { color: var(--warning-text); background: var(--warning-soft); box-shadow: none; }
+.aic-tag-sold { color: var(--ink-quiet); }
 
 .stats-row {
   display: flex; gap: 28px; margin-top: 16px;
@@ -1086,7 +1290,7 @@ async function onSubmitComment() {
 .reply-bar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 7px 14px;
-  background: rgba(199,74,47,0.08);
+  background: rgba(185,69,44,0.08);
 }
 .reply-label { font-size: 12px; color: var(--accent-action); font-weight: 500; flex: 1; }
 .reply-x {
@@ -1106,6 +1310,14 @@ async function onSubmitComment() {
   display: flex; gap: 8px; padding: 9px 12px;
   padding-bottom: calc(9px + env(safe-area-inset-bottom));
 }
+/* The line under the box takes over the bottom inset while it is shown. */
+.input-bar.has-note { padding-bottom: var(--space-1); }
+.reply-failed { padding: 0 var(--space-4) calc(var(--space-2) + env(safe-area-inset-bottom)); cursor: pointer; }
+.reply-failed-t { font-size: var(--t-caption); line-height: var(--lh-caption); color: var(--danger); }
+.reply-restricted {
+  min-height: 44px; box-sizing: border-box; align-items: center;
+  font-size: 14px; line-height: 20px; color: var(--ink-soft);
+}
 .input {
   flex: 1; height: 40px; background: var(--bg-subtle); border-radius: 20px;
   padding: 0 14px; font-size: 14px; color: var(--text-primary);
@@ -1117,4 +1329,14 @@ async function onSubmitComment() {
   .send-btn-label { font-size: 13px; color: var(--ink-inverse); font-weight: 600; }
   &.disabled { opacity: 0.3; pointer-events: none; }
 }
+.post-board { display: block; font-size: 12px; color: var(--accent-action); margin-bottom: 6px; }
+.attach-pending { margin: 12px 0; padding: 12px 14px; border-radius: 12px; background: var(--bg-subtle); border: 1px solid var(--line-hair); }
+.attach-pending-text { display: block; font-size: 14px; line-height: 1.5; color: var(--text-primary); }
+.attach-pending-note { display: block; margin-top: 6px; font-size: 13px; color: var(--danger); }
+.attach-pending-note.standalone { margin: 12px 0; }
+.attach-pending-actions { display: flex; gap: 8px; margin-top: 10px; }
+.attach-pending-btn { padding: 6px 14px; border-radius: 999px; font-size: 14px; color: var(--text-secondary); border: 1px solid var(--line-hair); }
+.attach-pending-btn.primary { color: var(--brand); border-color: var(--brand); }
+.attach-pending-btn.disabled { opacity: 0.5; pointer-events: none; }
+.post-topic-title { display: block; font-size: 22px; font-weight: 700; line-height: 1.4; margin-bottom: 12px; overflow-wrap: anywhere; }
 </style>

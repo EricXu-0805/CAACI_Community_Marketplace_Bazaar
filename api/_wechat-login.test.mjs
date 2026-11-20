@@ -115,6 +115,10 @@ function successfulFetch(calls, options = {}) {
     calls.push({ url, method, body: parsedBody, headers: init.headers, redirect: init.redirect, cache: init.cache })
 
     if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return response(true)
+    // Service-only canonical posting gate (D-49); an unrestricted account by default.
+    if (url.pathname === '/rest/v1/rpc/is_posting_allowed') {
+      return options.postingGate ? options.postingGate() : response(true)
+    }
     if (url.hostname === 'api.weixin.qq.com') {
       return response({ openid: OPENID, unionid: UNIONID })
     }
@@ -127,7 +131,7 @@ function successfulFetch(calls, options = {}) {
       })
     }
     if (url.pathname === '/rest/v1/profiles' && method === 'GET') {
-      return response([{ ...profile }])
+      return response([{ ...profile, ...(options.profile || {}) }])
     }
     if (url.pathname === '/rest/v1/profiles' && method === 'PATCH') {
       profile = { ...profile, ...parsedBody }
@@ -792,5 +796,110 @@ test('wechat-login passwordless and abuse boundaries', async (t) => {
     assert.equal(profileState.wechat_unionid, UNIONID)
     assert.equal(calls.some((call) => call.url.pathname.includes('wechat_password_map')), false)
     assert.equal(calls.some((call) => call.url.searchParams.get('grant_type') === 'password'), false)
+  })
+})
+
+/* D-49: the optional nickname seed on a first identity bind is public profile
+   content written with the service key. It must not become a way around a
+   posting restriction, and it must never cost the user their sign-in. The
+   service-only is_posting_allowed gate decides; anything but an explicit yes
+   leaves the nickname out while the identity bind and the session go ahead. */
+test('wechat-login nickname seed respects posting restrictions', async (t) => {
+  const originalFetch = globalThis.fetch
+  const originalConsoleError = console.error
+  const originalConsoleWarn = console.warn
+  t.after(() => {
+    globalThis.fetch = originalFetch
+    console.error = originalConsoleError
+    console.warn = originalConsoleWarn
+    restoreEnv()
+  })
+  const GATE = '/rest/v1/rpc/is_posting_allowed'
+  const isPatch = call => call.url.pathname === '/rest/v1/profiles' && call.method === 'PATCH'
+
+  async function signIn(options = {}, body = { js_code: 'seed-code', nickname: 'Alice' }) {
+    const handler = await loadHandler()
+    const calls = []
+    const logged = []
+    globalThis.fetch = successfulFetch(calls, options)
+    console.error = (...args) => logged.push(['error', ...args])
+    console.warn = (...args) => logged.push(['warn', ...args])
+    const result = await handler(request(body))
+    return { result, payload: await result.json(), calls, logged }
+  }
+
+  await t.test('an unrestricted account gets its nickname seeded, after the gate was asked with the service key', async () => {
+    const { result, payload, calls, logged } = await signIn()
+    assert.equal(result.status, 200)
+    assert.equal(payload.user.id, USER_ID)
+    const gateCalls = calls.filter(call => call.url.pathname === GATE)
+    assert.equal(gateCalls.length, 1)
+    assert.equal(gateCalls[0].method, 'POST')
+    assert.deepEqual(gateCalls[0].body, { profile_id_in: USER_ID })
+    assert.equal(gateCalls[0].headers.apikey, BASE_ENV.SUPABASE_SERVICE_ROLE_KEY)
+    assert.ok(calls.findIndex(call => call.url.pathname === GATE) < calls.findIndex(isPatch))
+    assert.deepEqual(calls.find(isPatch).body, {
+      wechat_openid: OPENID,
+      wechat_unionid: UNIONID,
+      nickname: 'Alice',
+    })
+    assert.deepEqual(logged, [])
+  })
+
+  await t.test('a restricted account still signs in and binds, without the nickname', async () => {
+    const { result, payload, calls, logged } = await signIn({ postingGate: () => response(false) })
+    assert.equal(result.status, 200)
+    assert.equal(payload.access_token, session().access_token)
+    assert.deepEqual(calls.find(isPatch).body, {
+      wechat_openid: OPENID,
+      wechat_unionid: UNIONID,
+    })
+    assert.equal(calls.filter(call => call.url.pathname === GATE).length, 1)
+    // An expected restriction is not a failure and is not logged as one.
+    assert.deepEqual(logged, [])
+  })
+
+  for (const [label, postingGate] of [
+    ['an upstream failure', () => response({ message: 'boom' }, 500)],
+    ['a null answer', () => response(null)],
+    ['a textual answer', () => response('true')],
+    ['an object answer', () => response({ allowed: true })],
+    ['a body that is not JSON', () => new Response('<html>', { status: 200, headers: { 'Content-Type': 'text/html' } })],
+    ['a transport failure', () => { throw new Error(`socket hang up for ${OPENID}`) }],
+  ]) {
+    await t.test(`${label} from the posting gate leaves the nickname out and the sign-in intact`, async () => {
+      const { result, payload, calls, logged } = await signIn({ postingGate })
+      assert.equal(result.status, 200)
+      assert.equal(payload.user.id, USER_ID)
+      assert.deepEqual(calls.find(isPatch).body, {
+        wechat_openid: OPENID,
+        wechat_unionid: UNIONID,
+      })
+      assert.equal(logged.length, 1)
+      assert.equal(logged[0][0], 'warn')
+      const logText = JSON.stringify(logged)
+      assert.match(logText, /posting_gate_unavailable/)
+      assert.equal(logText.includes(OPENID), false)
+      assert.equal(logText.includes(EMAIL), false)
+      assert.equal(logText.includes(USER_ID), false)
+    })
+  }
+
+  await t.test('the gate is not consulted when there is no nickname to seed', async () => {
+    const withoutNickname = await signIn({}, { js_code: 'seed-code' })
+    assert.equal(withoutNickname.result.status, 200)
+    assert.equal(withoutNickname.calls.some(call => call.url.pathname === GATE), false)
+    assert.deepEqual(withoutNickname.calls.find(isPatch).body, {
+      wechat_openid: OPENID,
+      wechat_unionid: UNIONID,
+    })
+
+    const alreadyNamed = await signIn({ profile: { nickname: 'Chosen name' } })
+    assert.equal(alreadyNamed.result.status, 200)
+    assert.equal(alreadyNamed.calls.some(call => call.url.pathname === GATE), false)
+    assert.deepEqual(alreadyNamed.calls.find(isPatch).body, {
+      wechat_openid: OPENID,
+      wechat_unionid: UNIONID,
+    })
   })
 })

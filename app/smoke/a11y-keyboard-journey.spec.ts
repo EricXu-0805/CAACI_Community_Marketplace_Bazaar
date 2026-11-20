@@ -212,7 +212,8 @@ test.describe('keyboard journey', () => {
 // Text entry uses its caret as the focus cue. Eric explicitly requested no
 // red frame; buttons and links still have a keyboard focus indicator above.
 test.describe('text fields use a visible caret without an outline', () => {
-  for (const route of ['pages/search/index', 'pages/login/index', 'pages/plaza/index']) {
+  // The community home has a search icon, not a field; the field is in all discussions.
+  for (const route of ['pages/search/index', 'pages/login/index', 'pages/plaza/index?view=all']) {
     test(route, async ({ page }) => {
       await page.addInitScript(() => { localStorage.setItem('welcomed', '1'); localStorage.setItem('lang', 'en') })
       await page.goto(`/#/${route}`)

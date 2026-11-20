@@ -27,6 +27,10 @@ export const config = { runtime: 'edge' }
  *     accepted, with no error anywhere.
  *   · profiles.email_digest_opt_out is honored — unsubscribed users get
  *     nothing from this path either.
+ *   · A caller under an active posting restriction (canonical level 2-5,
+ *     D-49) is refused before the rate-limit write, any delivery claim, or
+ *     Resend. The database already refuses the meetup RPCs for such a caller,
+ *     but this route can be called on its own for an older event.
  */
 
 function env(name, fallback = '') { return process.env[name] || fallback }
@@ -230,6 +234,59 @@ async function verifyUser(bearer) {
   } catch {
     return null
   }
+}
+
+const TIMESTAMPTZ_RE = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}(?::?\d{2})?)$/
+
+// The end of a restriction as the database prints it in its own refusals
+// (public.trg_enforce_actor): UTC, whole seconds, fraction dropped.
+function restrictionEndLabel(value) {
+  if (value === null || value === 'infinity') return 'permanent'
+  const parts = typeof value === 'string' ? TIMESTAMPTZ_RE.exec(value) : null
+  if (!parts) return ''
+  const [year, month, day, hour, minute, second] = parts.slice(1, 7).map(Number)
+  const zone = parts[7]
+  const offsetMinutes = zone === 'Z'
+    ? 0
+    : (zone[0] === '-' ? -1 : 1) * (Number(zone.slice(1, 3)) * 60 + Number(zone.replace(':', '').slice(3) || 0))
+  const local = Date.UTC(year, month - 1, day, hour, minute, second)
+  const check = new Date(local)
+  if (
+    !Number.isFinite(local) || check.getUTCFullYear() !== year || check.getUTCMonth() !== month - 1 ||
+    check.getUTCDate() !== day || check.getUTCHours() !== hour || check.getUTCMinutes() !== minute ||
+    check.getUTCSeconds() !== second
+  ) return ''
+  const utc = new Date(local - offsetMinutes * 60_000)
+  if (utc.getUTCFullYear() < 1000 || utc.getUTCFullYear() > 9999) return ''
+  return `${utc.toISOString().slice(0, 19)}Z`
+}
+
+/*
+ * The caller's own canonical moderation state. get_my_profile is bound to the
+ * bearer it is called with, so it is asked with the public key and the caller's
+ * already verified token: no service-role read of someone else's state, and no
+ * trust in the cached profiles.suspension_level column. Returns the database's
+ * refusal text for an active level 2-5 restriction and '' otherwise. Anything
+ * that cannot be read as that caller's state throws: it is an outage, and must
+ * never be reported to the caller as a restriction.
+ */
+async function callerRestriction(bearer, callerId) {
+  const r = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/get_my_profile`, {
+    method: 'POST',
+    headers: supabaseHeaders(ANON_KEY, bearer, { 'Content-Type': 'application/json' }),
+    body: '{}',
+  }, SUPABASE_TIMEOUT_MS)
+  if (!r.ok) throw new Error('account state unavailable')
+  const profile = await r.json().catch(() => null)
+  const level = profile?.suspension_level
+  if (
+    !profile || typeof profile !== 'object' || Array.isArray(profile) || profile.id !== callerId ||
+    !Number.isInteger(level) || level < 0 || level > 5
+  ) throw new Error('account state unavailable')
+  if (level < 2) return ''
+  const until = restrictionEndLabel(profile.suspended_until)
+  if (!until) throw new Error('account state unavailable')
+  return `suspension_active:${level}:${until}`
 }
 
 async function sbGet(path) {
@@ -451,7 +508,8 @@ export default async function handler(req) {
   if (!SUPABASE_URL || !SERVICE_KEY) return json({ error: 'not_configured' }, 500)
 
   // JWT first — no anonymous work (ADM-SEC-07 posture).
-  const callerId = await verifyUser(req.headers.get('authorization') || '')
+  const bearer = req.headers.get('authorization') || ''
+  const callerId = await verifyUser(bearer)
   if (!callerId) return json({ error: 'unauthorized' }, 401)
 
   let body
@@ -470,6 +528,18 @@ export default async function handler(req) {
   if (!TEST_EMAIL && LIVE && !liveAppOriginReady()) {
     return json({ error: 'live_app_origin_required' }, 500)
   }
+
+  // A restricted caller is an expected refusal, not a failure: answer with the
+  // database's own refusal text and log nothing. An unreadable state is an
+  // outage and stops here too, before anything is written or sent.
+  let restriction
+  try {
+    restriction = await callerRestriction(bearer, callerId)
+  } catch {
+    console.warn('meetup_notify_account_state_unavailable')
+    return json({ error: 'account_state_unavailable' }, 503)
+  }
+  if (restriction) return json({ error: 'suspension_active', message: restriction }, 403)
 
   // Email is an off-platform side effect. If its abuse counter is unavailable,
   // fail closed rather than turning this authenticated route into an

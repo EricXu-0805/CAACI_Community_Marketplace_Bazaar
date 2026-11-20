@@ -190,6 +190,11 @@ test('accent aliases resolve to their base token in every theme', () => {
 const SURFACES = ['--canvas', '--surface', '--surface-alt', '--bg-subtle']
 const BODY_TEXT = ['--text-primary', '--text-secondary', '--text-tertiary', '--text-muted', '--text-subtle']
 const ACCENT_TEXT = ['--brand', '--success', '--danger']
+// SPEC 9.5: one colour per community board, used for that board's name.
+const BOARD_TEXT = [
+  '--board-campus-life', '--board-settling-market', '--board-alumni-career',
+  '--board-events-social', '--board-local-deals', '--board-market',
+]
 
 for (const [themeName, block] of [['light', LIGHT_ROOT], ['dark', DARK_ATTR]]) {
   test(`${themeName}: body and accent text clears 4.5:1 on every surface`, () => {
@@ -202,6 +207,22 @@ for (const [themeName, block] of [['light', LIGHT_ROOT], ['dark', DARK_ATTR]]) {
           `${themeName} ${token} on ${surface} is ${ratio.toFixed(2)}:1, below the 4.5:1 needed for normal text`,
         )
       }
+    }
+  })
+
+  test(`${themeName}: board names and the verified badge clear 4.5:1`, () => {
+    // A board colour is its board's name on a card. The dark values are this
+    // project's own choice, and SPEC 9.5 sets their floor against --bg-elev-1.
+    for (const token of BOARD_TEXT) {
+      const ratio = contrast(rgb(block, token), rgb(block, '--bg-elev-1'))
+      assert.ok(ratio >= 4.5, `${themeName} ${token} on --bg-elev-1 is ${ratio.toFixed(2)}:1`)
+    }
+    // --success-text is the badge's label on --success-soft, wherever the badge
+    // sits. --success could not be that label: it reads 4.34:1 there in light.
+    for (const surface of SURFACES) {
+      const chip = rgb(block, '--success-soft', surface)
+      const ratio = contrast(rgb(block, '--success-text'), chip)
+      assert.ok(ratio >= 4.5, `${themeName} --success-text on --success-soft over ${surface} is ${ratio.toFixed(2)}:1`)
     }
   })
 
@@ -329,6 +350,32 @@ function cssRules(source) {
   }
   return out
 }
+
+test('no price is painted in the brand colour, and the two post badges use their own tokens', () => {
+  // SPEC 9.5: the brand colour is for the one solid button, the current state
+  // and links. A price is ink. The badge that marks an official post leaves the
+  // school's orange; the verified badge takes the success pair.
+  const BRAND_TEXT = /(^|[;\s])color:\s*var\(--(brand|brand-deep|accent-primary|accent-action)\)/
+  const offenders = []
+  for (const file of vueFiles(srcRoot)) {
+    const source = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '))
+    for (const rule of cssRules(source)) {
+      if (/price|\.os-dollar/i.test(rule.selector) && BRAND_TEXT.test(rule.own)) {
+        offenders.push(`${relative(appRoot, file)}:${source.slice(0, rule.index).split('\n').length} ${rule.selector}`)
+      }
+    }
+  }
+  assert.deepEqual(offenders, [], 'a price is var(--ink), weight 600, in tabular numerals')
+
+  const badge = readFileSync(join(srcRoot, 'components/UBadge.vue'), 'utf8')
+  const official = /\.u-badge--official\s*\{([^}]*)\}/.exec(badge)?.[1] || ''
+  assert.match(official, /background:\s*var\(--surface-alt\)/)
+  assert.match(official, /color:\s*var\(--ink\)/)
+  assert.match(official, /var\(--line-bold\)/)
+  const verified = /\.u-badge--illini\s*\{([^}]*)\}/.exec(badge)?.[1] || ''
+  assert.match(verified, /background:\s*var\(--success-soft\)/)
+  assert.match(verified, /color:\s*var\(--success-text\)/)
+})
 
 test('a fixed dark scrim carrying white text clears 4.5:1 over any photo', () => {
   // These badges sit on user-uploaded images, so the backdrop is unknowable

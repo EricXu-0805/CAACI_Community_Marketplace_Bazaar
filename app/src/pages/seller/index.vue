@@ -1,6 +1,8 @@
 <template>
   <view class="page secondary-page secondary-page--seller has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <!-- #ifdef H5 -->
     <AppSidebar current="index" />
+    <!-- #endif -->
     <view class="secondary-content">
     <!-- #ifndef H5 -->
     <AppToast />
@@ -170,7 +172,9 @@
         <text>{{ t('seller.noPosts') }}</text>
       </view>
       <view v-else class="posts-list u-stagger">
-        <view v-for="post in userPosts" :key="post.id" class="sp-card u-rise" role="button" :aria-label="localize(post.content_i18n, post.content)" @click="goPost(post.id)">
+        <view v-for="post in userPosts" :key="post.id" class="sp-card u-rise" role="button" :aria-label="post.title || localize(post.content_i18n, post.content)" @click="goPost(post.id)">
+          <text v-if="post.category" class="sp-board">{{ t(`plaza.category.${post.category}`) }}</text>
+          <text v-if="post.title" class="sp-title">{{ post.title }}</text>
           <text class="sp-content">{{ localize(post.content_i18n, post.content) }}</text>
           <view v-if="post.images?.length" class="sp-imgs">
             <image
@@ -202,7 +206,9 @@
 </template>
 
 <script setup lang="ts">
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 // #ifndef H5
@@ -746,7 +752,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .gi-price-row { display: flex; align-items: center; gap: 5px; margin-top: 4px; }
-.gi-price { font-size: 15px; font-weight: 700; color: var(--text-primary); display: block; }
+.gi-price { font-size: 15px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; display: block; }
 
 .empty { padding: 60px 16px; text-align: center; color: var(--text-subtle); font-size: 14px; }
 
@@ -791,4 +797,6 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
 }
 .blocked-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
 .blocked-sub { font-size: 13px; color: var(--text-muted); line-height: 1.5; max-width: 240px; }
+.sp-board { display: block; color: var(--accent-action); font-size: 12px; margin-bottom: 4px; }
+.sp-title { display: block; font-weight: 700; font-size: 18px; margin-bottom: 6px; overflow-wrap: anywhere; }
 </style>

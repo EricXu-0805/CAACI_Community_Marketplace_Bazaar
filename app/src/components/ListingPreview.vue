@@ -55,7 +55,7 @@ const priceLabel = computed(() => {
 .preview-cover { width: 96px; height: 108px; flex-shrink: 0; background: var(--bg-subtle); border-radius: 8px; }
 .preview-copy { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .preview-title { font-size: 15px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
-.preview-price { font-size: 17px; font-weight: 700; color: var(--accent-primary); }
+.preview-price { font-size: 17px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
 .preview-price-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .preview-negotiable { font-size: 11px; color: var(--text-secondary); background: var(--bg-subtle); border-radius: 4px; padding: 2px 5px; }
 .preview-description { margin-top: 10px; padding: 12px; background: var(--surface); border-radius: var(--radius-md); }

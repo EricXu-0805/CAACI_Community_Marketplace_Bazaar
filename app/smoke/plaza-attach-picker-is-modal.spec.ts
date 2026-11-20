@@ -69,7 +69,7 @@ async function openPlazaComposer(page: Page) {
   })
 
   await page.goto('/#/pages/plaza/index', { waitUntil: 'networkidle' })
-  await page.getByRole('button', { name: 'New post', exact: true }).filter({ visible: true }).click({ timeout: 15_000 })
+  await page.getByRole('button', { name: 'New topic', exact: true }).filter({ visible: true }).click({ timeout: 15_000 })
   await expect(page.locator('.comp-attach-btn').first()).toBeVisible({ timeout: 10_000 })
 }
 
@@ -86,8 +86,10 @@ test('the attach picker covers the composer it opens over', async ({ page }) => 
   // The control comes first: before the picker opens, this point belongs to
   // the composer. Without it, every assertion below is satisfied by a page
   // that renders a permanent full-screen mask.
-  expect(await whatIsAt(page, ABOVE_THE_SHEET_Y), 'the composer was not under the probe point')
-    .toContain('textarea')
+  expect(await page.evaluate(y => {
+    const hit = document.elementFromPoint(window.innerWidth / 2, y)
+    return !!hit && !!document.querySelector('.composer-fullpage')?.contains(hit)
+  }, ABOVE_THE_SHEET_Y), 'the composer was not under the probe point').toBe(true)
 
   await page.locator('.comp-attach-btn').first().click()
   await expect(page.locator('.attach-sheet')).toBeVisible({ timeout: 10_000 })
@@ -145,7 +147,7 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await resizeVisualViewport()
     await inVisibleArea('.composer-fullpage')
     await inVisibleArea('.comp-bottom-stack')
-    await page.getByRole('button', { name: 'Tag item', exact: true }).tap()
+    await page.getByRole('button', { name: 'Link an item', exact: true }).tap()
     await inVisibleArea('.attach-sheet')
     await page.locator('.attach-sheet').getByRole('button', { name: 'Close', exact: true }).tap()
     await expect(page.locator('.comp-textarea textarea')).toHaveValue('A campus question with the keyboard open')
@@ -158,11 +160,11 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await page.locator('.input-wrapper input').fill('Is this still available?')
     await resizeVisualViewport()
     await inVisibleArea('.input-wrapper')
-    await page.goto('/#/pages/plaza/index')
+    await page.goto('/#/pages/plaza/index?view=all')
     // Reload also discards the previous composer instance retained by tab navigation.
     await page.reload()
-    await page.getByRole('button', { name: 'Comment', exact: true }).tap()
-    await page.locator('.comment-sheet').getByRole('textbox', { name: 'Add a comment...', exact: true }).fill('Interested in this item')
+    await page.getByRole('button', { name: 'Reply', exact: true }).tap()
+    await page.locator('.comment-sheet').getByRole('textbox', { name: 'Write a reply…', exact: true }).fill('Interested in this item')
     await resizeVisualViewport()
     await inVisibleArea('.comment-sheet')
     await inVisibleArea('.ci-send')

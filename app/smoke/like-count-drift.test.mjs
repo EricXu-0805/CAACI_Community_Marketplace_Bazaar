@@ -59,6 +59,8 @@ async function loadPlaza(insertError) {
   }
 
   const mocks = {
+    '../utils/communityPost': source('src/utils/communityPost.ts'),
+    '../utils/region': source('src/utils/region.ts'),
     vue: 'export const ref = value => ({ value })',
     './useSupabase': 'export function useSupabase(){ return { supabase: globalThis.__likeDriftSupabase } }',
     './useAuth': `export function useAuth(){ return { currentUser: { value: { id: '${UID}' } } } }`,
@@ -70,12 +72,14 @@ async function loadPlaza(insertError) {
     '../utils/sentry': 'export const addBreadcrumb=()=>{}, captureException=(e, ctx)=>globalThis.__likeDriftReported.push(ctx)',
     '../utils/publicResource': 'export const assertI18nWrite=()=>{}, assertPublicMediaWrite=()=>{}, sanitizeItemResources=x=>x, sanitizePostResources=x=>x',
     '../api/mutationCommit': 'export const isDefinitiveMutationRejection=()=>false, mutationCommitState=()=>"not_committed", mutationOutcomeError=e=>e, shouldCompensateMutationFailure=()=>false',
+    // D-49 write backstop; these tests exercise unrestricted accounts.
+    './useRestriction': 'export const assertWritesAllowed=()=>{}',
   }
   globalThis.__likeDriftReported = reported
 
   let input = source('src/composables/usePlaza.ts').replace("'./accountScope'", `'${accountScopeUrl}'`)
   for (const [specifier, moduleSource] of Object.entries(mocks)) {
-    input = input.replace(`'${specifier}'`, `'${moduleDataUrl(moduleSource)}'`)
+    input = input.replace(`'${specifier}'`, `'${compiledDataUrl(moduleSource)}'`)
   }
   const { usePlaza } = await import(`${compiledDataUrl(input)}#${insertError ? 'dup' : 'fresh'}`)
   accountScope.transitionAccount(UID)

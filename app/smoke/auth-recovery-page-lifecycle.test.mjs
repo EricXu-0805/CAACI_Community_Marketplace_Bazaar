@@ -87,6 +87,8 @@ async function fixture(t, { account = null, state = 'unavailable', app = false, 
     if (name.endsWith('/useAuth')) return { useAuth: () => auth }
     if (name.endsWith('/useI18n')) return { useI18n: () => ({ t: key => key, lang: ref('en') }) }
     if (name.endsWith('/useTheme')) return { useTheme() {} }
+    if (name.endsWith('/useUnread')) return { useUnread() {} }
+    if (name.endsWith('/useNotifications')) return { useNotifications() {} }
     if (name.endsWith('/useMpChrome')) return { mpChromeVars: () => ({}), mpThemeClass: '' }
     if (name.endsWith('/sentry')) return { captureException() {} }
     if (name.endsWith('/dialogColors')) return { DIALOG_DANGER: '#a00' }
@@ -100,6 +102,7 @@ async function fixture(t, { account = null, state = 'unavailable', app = false, 
     }
     if (name.endsWith('/legal')) return { CURRENT_CONSENT_VERSION: 'test-consent' }
     if (name.endsWith('/suspension')) return { isSuspensionActive: profile => profile.suspension_level >= 2 }
+    if (name.endsWith('/useRestriction')) return { startRestrictionNotice() {} }
     if (name.endsWith('/acquisition')) return { attributeNewAccount() {}, startAcquisition() {} }
     if (name.endsWith('/responseBody')) return {}
     if (name.endsWith('/navigationIntent')) return {
@@ -265,10 +268,19 @@ test('a recovery page entered after readiness still delegates its authorized ret
   assert.deepEqual(h.calls.routes, ['/pages/messages/index'])
 })
 
-test('late readiness respects suspension and consent gates before return navigation', async t => {
+test('late readiness respects every active restriction before consent and return navigation', async t => {
   for (const [profile, destination] of [
-    [{ suspension: 2 }, '/pages/suspended/index'],
+    [{ suspension: 0 }, '/pages/messages/index'],
+    [{ suspension: 1 }, '/pages/messages/index'],
+    // D-49: active L2-L4 browse (the server refuses their writes), so the
+    // authorized return resumes; only permanent L5 keeps pages/suspended.
+    [{ suspension: 2 }, '/pages/messages/index'],
+    [{ suspension: 3 }, '/pages/messages/index'],
+    [{ suspension: 4 }, '/pages/messages/index'],
+    [{ suspension: 5 }, '/pages/suspended/index'],
     [{ consent: '0' }, '/pages/reconsent/index'],
+    [{ suspension: 2, consent: '0' }, '/pages/reconsent/index'],
+    [{ suspension: 5, consent: '0' }, '/pages/suspended/index'],
   ]) {
     const h = await fixture(t, { app: true })
     h.setReturn('/pages/messages/index')

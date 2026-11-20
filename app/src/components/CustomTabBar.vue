@@ -77,6 +77,7 @@
 
 <script setup lang="ts">
 import { useI18n } from '../composables/useI18n'
+import { stopIfRestricted } from '../composables/useRestriction'
 import { useUnread } from '../composables/useUnread'
 import { useNotifications } from '../composables/useNotifications'
 import UIcon from './UIcon.vue'
@@ -119,7 +120,11 @@ onMounted(() => {
 })
 // #endif
 
-function go(url: string) { uni.switchTab({ url }) }
+function go(url: string) {
+  // Publishing is refused while restricted (D-49); the other tabs browse.
+  if (url === '/pages/publish/index' && stopIfRestricted()) return
+  uni.switchTab({ url })
+}
 </script>
 
 <style scoped>

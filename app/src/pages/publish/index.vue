@@ -3,7 +3,9 @@
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
+    <!-- #ifdef H5 -->
     <AppSidebar current="publish" />
+    <!-- #endif -->
 
     <!-- One accessible page heading across desktop and mobile layouts. -->
     <text class="sr-only" role="heading" aria-level="1">{{ t(form.listingType === 'wanted' ? 'home.publishWanted' : 'publish.title') }}</text>
@@ -231,6 +233,7 @@ import { watch, ref, reactive, computed, onUnmounted } from 'vue'
 import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
+import { stopIfRestricted } from '../../composables/useRestriction'
 import { authoredLang } from '../../composables/i18n/format'
 import { useLocation } from '../../composables/useLocation'
 import { useStreetVerification } from '../../composables/useStreetVerification'
@@ -242,7 +245,9 @@ import { checkContent } from '../../utils/contentSafety'
 import { DIALOG_INK, DIALOG_WARN } from '../../utils/dialogColors'
 import { captureException } from '../../utils/sentry'
 import type { ItemCategory, ItemCondition } from '../../types'
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PermissionDeniedModal from '../../components/PermissionDeniedModal.vue'
 import UIcon from '../../components/UIcon.vue'
@@ -747,6 +752,12 @@ async function preparePublishPage() {
     return
   }
   if (!requireAuth() || !currentUser.value) return
+  // The listing form never opens while restricted (D-49); deep links and
+  // back navigation land here without the tab-bar guard.
+  if (stopIfRestricted()) {
+    uni.switchTab({ url: '/pages/index/index' })
+    return
+  }
 
   const nextAccountToken = captureAccountRequest(currentUser.value.id)
   if (
@@ -851,7 +862,7 @@ onUnload(() => {
 onUnmounted(destroyPublishPage)
 
 function chooseImage() {
-  if (submitting.value) return
+  if (submitting.value || stopIfRestricted()) return
   const pickerAccountToken = publishPageAccountToken
   if (!pickerAccountToken || !isAccountRequestCurrent(pickerAccountToken)) return
   const remaining = MAX_IMAGES_PUBLISH - imageList.value.length
@@ -961,6 +972,7 @@ async function onSubmit() {
   // Acquire before the first await (including auth readiness and the high-price
   // confirmation modal). Two rapid taps must never enter parallel upload or
   // create flows while the visible submitting state is still false.
+  if (stopIfRestricted()) return
   if (submitEntryLocked) return
   submitEntryLocked = true
   const operationEpoch = ++publishOperationEpoch

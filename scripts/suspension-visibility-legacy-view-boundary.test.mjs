@@ -119,6 +119,43 @@ test('migration and VERIFY converge on the same explicit secure projection', asy
   assert.match(normalizedVerify, /unexpected items_visible dependents/)
 })
 
+const TOPICS_MIGRATION = new URL(
+  '../supabase/migrations/20261112120000_community_post_topics.sql',
+  import.meta.url,
+)
+const TOPICS_VERIFY = new URL(
+  '../supabase/_ops/VERIFY_20261112120000_community_post_topics.sql',
+  import.meta.url,
+)
+const legacyPostColumns = [
+  'id', 'user_id', 'content', 'images', 'is_official', 'is_pinned',
+  'like_count', 'comment_count', 'status', 'created_at', 'updated_at',
+]
+
+function postsVisibleView(columns) {
+  const projection = columns.map(column => `post\\.${column}`).join(', ')
+  return new RegExp(
+    `CREATE OR REPLACE VIEW public\\.posts_visible WITH \\(security_invoker = true, security_barrier = true\\) AS SELECT ${projection} FROM public\\.posts AS post WHERE post\\.status = 'active' AND moderation_private\\.profile_content_visible\\(post\\.user_id\\);`,
+  )
+}
+
+test('community topics only append columns to posts_visible and keep its filter and rights', async () => {
+  const [base, topics, verify] = await Promise.all([
+    readFile(MIGRATION, 'utf8'),
+    readFile(TOPICS_MIGRATION, 'utf8'),
+    readFile(TOPICS_VERIFY, 'utf8'),
+  ])
+  const topicColumns = [...legacyPostColumns, 'source_lang', 'title', 'category', 'region']
+
+  assert.match(normalizedSql(base), postsVisibleView(legacyPostColumns))
+  assert.match(normalizedSql(topics), postsVisibleView(topicColumns))
+  assert.match(
+    normalizedSql(topics),
+    /REVOKE ALL ON public\.posts_visible FROM PUBLIC; GRANT SELECT ON public\.posts_visible TO anon, authenticated, service_role;/,
+  )
+  assert.ok(normalizedSql(verify).includes(topicColumns.map(column => `'${column}'`).join(', ')))
+})
+
 test('read-only PRECHECK accepts the legacy shape but cannot mutate it', async () => {
   const precheck = await readFile(PRECHECK, 'utf8')
   const normalized = normalizedSql(precheck)

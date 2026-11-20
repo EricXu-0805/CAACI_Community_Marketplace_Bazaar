@@ -204,16 +204,16 @@ const BODY_SENTINELS = {
     en: 'Someone started following you',
   },
   post_comment: {
-    zh: '有人评论了你的动态',
-    en: 'Someone commented on your post',
+    zh: '有人回复了你的帖子',
+    en: 'Someone replied to your post',
   },
   post_like: {
-    zh: '有人点赞了你的动态',
+    zh: '有人点赞了你的帖子',
     en: 'Someone liked your post',
   },
   post_comment_like: {
-    zh: '有人点赞了你的评论',
-    en: 'Someone liked your comment',
+    zh: '有人点赞了你的回复',
+    en: 'Someone liked your reply',
   },
   report_outcome_resolved: {
     zh: '我们已复核你的举报并作出处理',
@@ -297,9 +297,9 @@ const BILINGUAL_TITLES = {
   '账号限制已解除 · Your restriction was lifted': { zh: '账号限制已解除', en: 'Your restriction was lifted' },
   '收到新评价 · New rating': { zh: '收到新评价', en: 'New rating' },
   '有人关注了你 · New follower': { zh: '有人关注了你', en: 'New follower' },
-  '收到新评论 · New comment': { zh: '收到新评论', en: 'New comment' },
+  '收到新评论 · New comment': { zh: '收到新回复', en: 'New reply' },
   '收到新点赞 · New like': { zh: '收到新点赞', en: 'New like' },
-  '你的评论收到点赞 · Comment liked': { zh: '你的评论收到点赞', en: 'Comment liked' },
+  '你的评论收到点赞 · Comment liked': { zh: '你的回复收到点赞', en: 'Reply liked' },
   '卖家已标记售出 · Marked sold': { zh: '卖家已标记售出', en: 'Marked sold' },
 }
 
