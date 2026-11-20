@@ -1034,6 +1034,10 @@ const en: Record<string, string> = {
   'profile.hiddenTag': 'Hidden',
   'report.thanksCommunity': "Received. We'll review it within 48 hours.",
   // P3 topic page and personal lists keys: add new ones directly below this line.
+  'profile.noMyTopics': 'You have not posted anything yet',
+  'profile.noWatchedTopics': 'You are not watching any topics',
+  'profile.noSavedTopics': 'No saved topics yet',
+  'plaza.hiddenOwnerNoReason': 'Your topic was hidden.',
   'plaza.boardDesc.campus-life': 'Classes, exams, campus life',
   'plaza.boardDesc.settling-market': 'Housing, banks, licenses, buses',
   'plaza.boardDesc.alumni-career': 'Courses, internships, grad school',

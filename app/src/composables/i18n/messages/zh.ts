@@ -1026,6 +1026,10 @@ const zh: Record<string, string> = {
   'profile.hiddenTag': '已隐藏',
   'report.thanksCommunity': '已收到，我们会在 48 小时内处理',
   // P3 topic page and personal lists keys: add new ones directly below this line.
+  'profile.noMyTopics': '还没有发过话题',
+  'profile.noWatchedTopics': '还没有订阅话题',
+  'profile.noSavedTopics': '还没有收藏话题',
+  'plaza.hiddenOwnerNoReason': '你的话题已被隐藏',
   'plaza.boardDesc.campus-life': '课程、考试、校园里的事',
   'plaza.boardDesc.settling-market': '租房、银行卡、驾照、公交',
   'plaza.boardDesc.alumni-career': '选课、实习、读研，问过来人',
