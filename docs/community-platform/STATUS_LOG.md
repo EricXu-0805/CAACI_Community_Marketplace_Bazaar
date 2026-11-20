@@ -1355,3 +1355,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 见第五批 ⑥
 - 下一条: —（按 D-51 第 8 项停下，等下一条指示）
 - 附: D-51 第 7 项：④ 的 E12 一行（STATUS 第 18 条、第五批 ④）加了 vercel.live 工具栏 CSP 报错的说明；「转发 · CSSA」保留，没改。
+
+### L109 · 2026-11-20 01:35 CT · D-52 开工：新目标、续跑提醒、用号规则
+- task_id: D-52.5（开工）、D-52.0
+- code_sha: —（本条不改代码）
+- docs_sha: 3ec3cb9（本次写回之前材料分支的 HEAD，已 git pull --ff-only）
+- 环境: 本地
+- 命令: 读 DECISIONS D-52（第 269–310 行）；create_goal（范围 D-52 第 0–4 项，完成线是 FINAL「第六批（D-52）」与 STATUS 同一提交推送）；schedule_prompt list（没有任务）后 create 3600 秒续跑提醒 sch_a410e1ce2a1f
+- 计数: 目标 1 个（active）；续跑提醒 1 个
+- ci_run_url: —
+- 未测项: 各号实时用量 OMO 看不到
+- 下一条: D-52 第 1 项（#377 merge 6bdca97）；第 3 项（#376）与第 4 项穿插
+- 附: 用号按 D-52 第 0 项：default（admin）、account-2（board）不设 60% 上限，用到额度耗尽；account-5、account-4 和 ChatGPT 两个号仍按 60%；顺序 default → account-2 → account-5 → account-4，切 ChatGPT 由 supervisor 做，OMO 不改顺序、不切模型。L95「admin、board 在本周额度重置前不用」作废。停下条件：default、account-2 都用尽，其余号也都到 60%。仓库 07:15Z 起公开：本批起不往仓库加原始日志、带真实数据的截图、账号邮箱、凭据和 /home 开头的绝对路径（D-52 第 4 项 a2）。
