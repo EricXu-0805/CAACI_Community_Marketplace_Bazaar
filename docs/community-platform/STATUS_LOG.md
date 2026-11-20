@@ -1247,3 +1247,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: —
 - 下一条: D-51 第 4 项
 - 附: 更正 L91：「五个旧名和「示例」」应为四个旧名（Illini Market、Illini 集市、校园广场、Campus Plaza）加「示例」。更正 L92：FINAL 第四批开头与 ⑦ 把停止规则引成「D-50 第 2 项」，应为第 6 项。FINAL 第四批开头加了一行更正说明。
+
+### L100 · 2026-11-19 18:55 CT · D-51 第 4 项：只改 ci.yml 的草稿 PR #376
+- task_id: D-51.4
+- code_sha: 87e57c3bc7b3adb6f36b4af9e5e59ad9ad4922f9（cherry-pick c52badf）、92ff5d5c503ff57f266ffaab856422688709b7fb（审计放行），分支 codex/config-ci-runner-20261119，已推送；PR #376 草稿，base main
+- docs_sha: c6542a0883866e13818aaf00155dbd9fd6a3cac0
+- 环境: 本地
+- 命令: `git worktree add -b codex/config-ci-runner-20261119 ~/work/illini-ci-runner 7b18f20`；`git cherry-pick c52badf`；改审计步骤；用 YAML 解析器抽出审计 run 块原样存成 evidence/D51/ci-runner/audit-step.sh，驱动脚本临时放进两个工作树的 .d51-audit/，`run-checks.sh <repo> cmd` 跑五个用例（check-20261120T004618Z、004702Z），之后删掉临时目录；`run-checks.sh ~/work/illini-ci-runner install test`（check-20261120T004804Z，日志头 unstaged=yes：检查跑在提交前的工作树上，ci.yml 之后没再改）；对 7 个 head `git merge-tree`；`git push --no-verify -u origin codex/config-ci-runner-20261119`（宿主机 pre-push 的 PG 环境问题，RUNBOOK §3；推送前的检查是 check-20261120T004804Z）；`gh api -X POST .../pulls`（draft:true）
+- 计数: c52badf：patch-id 相同，ci.yml 与 c52badf 的 blob 相同（3e62435）；只有 build-h5、public-smoke、authenticated-smoke 是 ubuntu-24.04。审计用例：(a) main 7b18f20 锁文件 exit 1，vite 那条「allowed until 2026-12-13」，失败的是 @intlify/core-base、@intlify/shared、follow-redirects（high）和 glob、minimatch、qs（moderate）；(b) 55716ba exit 0；(c) 多一条 moderate exit 1，只有多的那条失败；对照（只有 vite）exit 0；过期（日期 2026-12-14）::warning:: 后 exit 1。YAML 用 Bun YAML 和 PyYAML 都能解析，和改前比只有审计 run 块不同，if: 与 working-directory 没变；工作站没有 actionlint。现有测试全量 1989 / 1988 / 0 / 1，pg_skips=0，ci-hook-contract-boundary 三条都过，没改测试。merge-tree 对 04edaa3、2e0f582、571be45、b259105、55716ba、6bdca97、8257318 都是 0 冲突 [本地测]
+- ci_run_url: #376 的 run 待完成（监视中）
+- 未测项: 放行逻辑在 GitHub 上第一次真跑要等合进 main 后的 push 或每周定时任务（本 PR 没改依赖文件，依赖门会让审计步骤 skipped）
+- 下一条: D-51 第 3 项 b 收尾、第 6 项、第 5 项
+- 附: 推送没有因 workflow 权限被拒，所以没用 format-patch。PR 描述写了两条路（A 本 PR 暂时放行；B 在 vite 6.4.5 上重建 vendor 归档），由 Eric 选；#371 合并以后要不要回到 ubuntu-latest 也由 Eric 定，写进第五批 ④。[OMO自决] 用例里加了「只有 vite」的对照和「过期」两条，过期用例用 PATH 里的假 date 实现，没改 ci.yml。
