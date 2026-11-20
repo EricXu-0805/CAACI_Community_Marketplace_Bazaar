@@ -41,3 +41,13 @@ test('the campus email badge is never named after Illini', () => {
     .filter(line => !/^[^:]+:[0-9]+:[ \t\n\r\f\v]*([*]|\/\/|\/[*])/.test(line))
   assert.deepEqual(hits, [])
 })
+
+// BRAND.4 replaced the 集 seal on photo placeholders with 玉. A page that kept
+// 集 would show the old mark wherever a listing or topic has no photo, and a
+// branch that adds a new placeholder (CommunityHome.vue in #374) brings it back.
+test('photo placeholder seals use 玉, never the old 集', () => {
+  const seals = gitGrep(['-E', 'u-thumb-ph-seal[^"]*"[^>]*>[^<]*<', '--', 'app/src'])
+  assert.ok(seals.some(line => /u-thumb-ph-seal[^"]*"[^>]*>玉</.test(line)),
+    'no placeholder seal found: the search no longer matches the markup')
+  assert.deepEqual(seals.filter(line => /u-thumb-ph-seal[^"]*"[^>]*>[^<]*集/.test(line)), [])
+})
