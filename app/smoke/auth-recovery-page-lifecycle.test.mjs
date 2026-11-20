@@ -100,6 +100,7 @@ async function fixture(t, { account = null, state = 'unavailable', app = false, 
     }
     if (name.endsWith('/legal')) return { CURRENT_CONSENT_VERSION: 'test-consent' }
     if (name.endsWith('/suspension')) return { isSuspensionActive: profile => profile.suspension_level >= 2 }
+    if (name.endsWith('/useRestriction')) return { startRestrictionNotice() {} }
     if (name.endsWith('/acquisition')) return { attributeNewAccount() {}, startAcquisition() {} }
     if (name.endsWith('/responseBody')) return {}
     if (name.endsWith('/navigationIntent')) return {
@@ -269,12 +270,14 @@ test('late readiness respects every active restriction before consent and return
   for (const [profile, destination] of [
     [{ suspension: 0 }, '/pages/messages/index'],
     [{ suspension: 1 }, '/pages/messages/index'],
-    [{ suspension: 2 }, '/pages/suspended/index'],
-    [{ suspension: 3 }, '/pages/suspended/index'],
-    [{ suspension: 4 }, '/pages/suspended/index'],
+    // D-49: active L2-L4 browse (the server refuses their writes), so the
+    // authorized return resumes; only permanent L5 keeps pages/suspended.
+    [{ suspension: 2 }, '/pages/messages/index'],
+    [{ suspension: 3 }, '/pages/messages/index'],
+    [{ suspension: 4 }, '/pages/messages/index'],
     [{ suspension: 5 }, '/pages/suspended/index'],
     [{ consent: '0' }, '/pages/reconsent/index'],
-    [{ suspension: 2, consent: '0' }, '/pages/suspended/index'],
+    [{ suspension: 2, consent: '0' }, '/pages/reconsent/index'],
     [{ suspension: 5, consent: '0' }, '/pages/suspended/index'],
   ]) {
     const h = await fixture(t, { app: true })

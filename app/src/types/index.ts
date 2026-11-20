@@ -227,6 +227,8 @@ export interface Message {
   // success or flips to _failed (tap to retry) on a transient error.
   _pending?: boolean
   _failed?: boolean
+  /** Refused for an account restriction: terminal, never retried (D-49). */
+  _refused?: boolean
 }
 
 export interface Favorite {

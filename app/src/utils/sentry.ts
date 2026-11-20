@@ -5,6 +5,7 @@ import {
   scrubTraceText,
   scrubTraceValue,
 } from './telemetryPrivacy'
+import { parseSuspensionRefusal } from './suspension'
 
 /*
  * Sentry initialisation for Illini Market.
@@ -337,6 +338,8 @@ export function initSentry(app: App): void {
         return sanitizeBreadcrumb(breadcrumb)
       },
       beforeSend(event, hint) {
+        // An expected restriction refusal (D-49) is product state, not a bug.
+        if (parseSuspensionRefusal(hint?.originalException)) return null
         if (event.request) {
           scrubTelemetryRequest(event.request as unknown as Record<string, unknown>)
         }
@@ -419,6 +422,9 @@ export function initSentry(app: App): void {
 }
 
 export function captureException(err: unknown, ctx?: CaptureContext): void {
+  // Only the exact suspension_active refusal is skipped; other P0001s and 403s
+  // stay observable.
+  if (parseSuspensionRefusal(err)) return
   // #ifdef H5
   try {
     const safe = buildSafeCapturedError(err)

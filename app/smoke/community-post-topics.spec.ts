@@ -297,7 +297,7 @@ for (const [lang, width] of [['en', 390], ['zh', 1280]] as const) {
 
 for (const [lang, width] of [['en', 390], ['en', 1280], ['zh', 390]] as const) {
   for (const level of [0, 1, 2, 3, 4, 5]) {
-    test(`L${level} retains the account gate before browsing or composing in ${lang} at ${width}px`, async ({ page }) => {
+    test(`L${level} keeps the D-49 account gate and composer restriction in ${lang} at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 844 })
       let writes = 0
       await openPlazaComposer(page, async () => {
@@ -312,8 +312,21 @@ for (const [lang, width] of [['en', 390], ['en', 1280], ['zh', 390]] as const) {
         })
       }, lang, { open: false, level })
 
-      if (level >= 2) {
+      if (level === 5) {
         await expect(page).toHaveURL(/pages\/suspended\/index/)
+        await expect(page.locator('.composer-fullpage')).toHaveCount(0)
+        expect(writes).toBe(0)
+        return
+      }
+      if (level >= 2) {
+        // D-49: active L2-L4 browse; the composer stops before it opens.
+        await expect(page).toHaveURL(/pages\/plaza\/index/)
+        await expect(page.getByRole('heading', { name: TOPIC.title, exact: true })).toBeVisible()
+        await page.getByRole('button', { name: lang === 'zh' ? '发布新帖' : 'New post', exact: true }).filter({ visible: true }).click()
+        const date = await page.evaluate(lang => new Date('2100-12-03T12:34:56Z').toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US'), lang)
+        await expect(page.locator('uni-toast')).toContainText(lang === 'zh'
+          ? `账号受限期间不能发帖，${date} 恢复`
+          : `You can't post while your account is restricted. Access returns ${date}.`)
         await expect(page.locator('.composer-fullpage')).toHaveCount(0)
         expect(writes).toBe(0)
         return

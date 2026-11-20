@@ -86,6 +86,7 @@ import { computed } from 'vue'
 import UAvatar from './UAvatar.vue'
 import UIcon from './UIcon.vue'
 import { useI18n } from '../composables/useI18n'
+import { stopIfRestricted } from '../composables/useRestriction'
 import { useUnread } from '../composables/useUnread'
 import { useNotifications } from '../composables/useNotifications'
 import { useTheme } from '../composables/useTheme'
@@ -120,6 +121,7 @@ const profileLabel = computed(() =>
 )
 
 function go(url: string) {
+  if (url === '/pages/publish/index' && stopIfRestricted()) return
   // The 5 shell destinations are all tabBar pages.
   uni.switchTab({ url })
 }

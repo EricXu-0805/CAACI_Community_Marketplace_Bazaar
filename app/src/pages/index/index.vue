@@ -531,6 +531,7 @@ import { onShow, onHide, onShareAppMessage, onShareTimeline, onUnload } from '@d
 import { useItems } from '../../composables/useItems'
 import { useVisualViewportBounds } from '../../composables/useVisualViewportInset'
 import { useI18n } from '../../composables/useI18n'
+import { stopIfRestricted } from '../../composables/useRestriction'
 import { useAuth } from '../../composables/useAuth'
 import { useTheme } from '../../composables/useTheme'
 import { useFavorites } from '../../composables/useFavorites'
@@ -1445,7 +1446,7 @@ async function goPublish() {
   const intent = { listingType: listingType.value, category: selectedCategory.value || '' } as const
   await awaitAuthReady()
   const target = `/pages/publish/index?listingType=${intent.listingType}${intent.category ? `&category=${intent.category}` : ''}`
-  if (!requireAuth(target)) return
+  if (!requireAuth(target) || stopIfRestricted()) return
   stagePublishNavigationIntent(intent, {
     userId: getActiveAccountId(), identityGeneration: captureAccountIdentityGeneration(),
   })

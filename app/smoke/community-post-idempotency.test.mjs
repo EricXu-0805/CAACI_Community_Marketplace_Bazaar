@@ -53,6 +53,8 @@ async function fixture({ writeError, readError, commitBeforeError = false, local
     './useSupabase': 'export const useSupabase=()=>({supabase:globalThis.__postIdempotency.supabase})',
     './useAuth': 'export const useAuth=()=>({currentUser:globalThis.__postIdempotency.user})',
     './useModeration': 'export const useModeration=()=>({blockedIds:{value:new Set()},ensureLoaded:async()=>({ok:true})})',
+    // D-49 write backstop; these tests exercise unrestricted accounts.
+    './useRestriction': 'export const assertWritesAllowed=()=>{}',
     './useI18n': "export const useI18n=()=>({t:k=>k,lang:{value:'en'}})",
     '../utils': 'export const expandSearch=x=>[x],friendlyErrorMessage=e=>String(e)',
     '../utils/contentSafety': `export const checkContent=()=>({ok:true}),clearLocalDuplicate=()=>{},

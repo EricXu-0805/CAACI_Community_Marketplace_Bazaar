@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 import { useAuth } from './useAuth'
 import { useModeration } from './useModeration'
+import { assertWritesAllowed } from './useRestriction'
 import { useI18n } from './useI18n'
 import type { Post, PostComment } from '../types'
 import { normalizePostTopic, type PostCategory } from '../utils/communityPost'
@@ -720,6 +721,8 @@ export function usePlaza() {
         post.liked_by_me = false
         post.like_count = Math.max(0, post.like_count - 1)
       } else {
+        // Unlike stays available to a restricted account; a new like does not.
+        assertWritesAllowed()
         const { error } = await supabase
           .from('post_likes')
           .insert({ post_id: post.id, user_id: uid })
@@ -758,6 +761,7 @@ export function usePlaza() {
         comment.liked_by_me = false
         comment.like_count = Math.max(0, (comment.like_count ?? 0) - 1)
       } else {
+        assertWritesAllowed()
         const { error } = await supabase
           .from('post_comment_likes')
           .insert({ comment_id: comment.id, user_id: uid })
