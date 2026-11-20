@@ -476,6 +476,90 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
      - g. **小事。** P1.11、P1.12 证据目录里的 RESULT.md 还是第 1–3 次的失败记录：在文件末尾追加一行，指向 RERUN_RESULT.md；staging/COMMANDS.md 末尾补上第 4 次的命令。都只追加。
      - h. **之后怎么接。** C-369 通过，第 0 项 a 对 #369 就满足了；没通过，照第 8 项 b 处理，#369 不合。C-369 的结果写进第七批 ④。
 
+- **D-54 第八批：更正第七批报告，按独立核查修 P3、P4，接 #377 的最终 head，手工合 #372，跑 C-final**（2026-11-20 CT，Claude（Eric 自己账号上的 supervisor 会话）按 D-43 定并写入）：依据是 Eric 2026-11-20 03:17 CT 原话「可以，所有东西我都批准了，你继续弄吧，反正还有额度，直接猛攻」和 03:59 CT 原话「好的，你继续做就好」。【硬】条照旧高于本条；对 OMO 只放开第 2 项 a 写明的一条具名例外（已写进 RUNBOOK §12 第 9c 条），其余一条都不放开。第 2 项 a 的依据是 Eric 03:17 CT 的原话，不是 D-43；D-43 第 4 项照旧。用号照 D-52 第 0 项。本条下发前过了一轮独立审阅，按审阅意见改过。
+  0. **背景（照抄进 STATUS；照抄前用 `gh pr view <号> --json state,mergeCommit` 核一遍 PR 状态）。**
+     - 第七批验收：vite（#378）、#376、P1.11/P1.12 第 4 次、C-369、P1.8 级联都由 supervisor 独立核过。P3（#379）、P4（#380）的独立核查发现了要修的问题，清单在 tony-ws 的 `~/omo-ctl/review-b7-findings.md`（只在本机，不进仓库，仓库是公开的）。编号带 M 的必须修；带 m 的修，或在 STATUS_LOG 写明不修的理由。
+     - 上线进度【supervisor 做】（UTC）：
+       - 15:04 生产应用 20261112120000 并 VERIFY；
+       - #369 squash 进 main（ad986c9），#375 squash 进 main（e9c2604），#374 squash 进 main（4900722，15:58）；
+       - 15:14 staging、16:02 生产各应用 20261114015420 并 VERIFY（两边账本语句 md5 都是 48b65118…，与 apply body 相同）；
+       - #377 已加 `-s ours` 合并提交 9be6a56（树和 9a31e75 相同），base 改成 main，CI 在跑，绿了由 supervisor 合。
+       - 接下来：#377 → #372 → C-final → 受监督发布。
+     - 在 supervisor 通知之前，不往 #377、#372 的分支推送。
+  1. **第七批的更正（材料分支；STATUS_LOG 只追加，旧条目一个字都不改）。**
+     - a. report:FINAL-M1：L116 被原地改过。追加一条新的「更正 L116、L124」，在条目里引用 L116 被改之前的原文「#376 新 head 的 run 待完成（监视中）」，写明 run 44715711828 的 headSha 是 f0ccd8f，属于 L124（D-53.2）。L116、L124 本身都不动。往后要改旧条目，一律追加一条更正。
+     - b. report:FINAL-M2：set_post_featured 不依赖 E6（api/admin 与测试都是这样）。FINAL ④、STATUS 第 29 条改成只有 set_post_official 和 create_event_discussion 返回 409。
+     - c. report:FINAL-M3：P3、P4 两个迁移在 staging、生产的应用归 Eric（BACKLOG P3.7、P4.11），不是【supervisor 做】；STATUS 里「P3.1–P3.8 通过」改成 P3.7 未做。
+     - d. report:FINAL-M4：#376 已在 12:35Z squash 进 main（b4d615b），④ 里「关掉或留作草稿」那一行删掉，STATUS 阻塞第 1、20 条同步改；⑥ 改引 main 上 run 44739894523（057d07d，第 2 次运行 run_attempt 2，七个 job 全过）。
+     - e. report:FINAL 的 m 项照清单处理。
+  2. **P3、P4 修复（各自的分支，草稿 PR 不转 ready、不改 base）。**
+     - a. **具名例外（只给这两个迁移）。** supervisor 依据 Eric 2026-11-20 03:17 CT 的总批准，对下面这些规则做一次例外：RUNBOOK §12 第 9c 条；RUNBOOK §5.1「已有的迁移文件不改」；ENGINEERING §5.0 第 4 条「只追加」；BACKLOG §0.5 第 3 条；BACKLOG §14 第 12 行（包括「Eric 在 PR 留言同意」和「停这条」）；D-42 第 3 项「12（只走另起新迁移）」；P3.1、P4.2 的回退。
+       - 只限 20261120100354（codex/community-p3-20261120）和 20261120122054（codex/community-events-20261120）。
+       - 条件：两者都不在 staging、生产的账本里。supervisor 2026-11-20 约 16:10Z 用只读查询核过：生产 146 行、staging 199 行，都没有这两条。OMO 不连托管库，照用这次的核查结论。supervisor 在 STATUS_LOG 出现这两条的「重新冻结」记录之前，不在任何托管库应用它们；应用时照 E4 第 2 步核对新 sha256。任一条进了任一边的账本，例外立即失效，改走前向修复迁移。例外到 FINAL 第八批推送为止。
+       - §14 第 12 行要的 Eric 留言，由 Eric 03:17 CT 的总批准代替。OMO 不等 PR 留言，也不代 Eric 留言，只照这一行的格式在 STATUS_LOG 记「撤销冻结」和原因。
+       - 做法：每次改之前在 STATUS_LOG 记「撤销冻结」，原地改，manifest 只替换这两行，PRECHECK、VERIFY、REGRESSION 跟着改，L-SQL 全量回放重跑，改完记「重新冻结」和新旧 sha256。本批内可以多次撤销、重新冻结，每次都记。
+       - 撤销冻结期间，STATUS 里的 P3.1、P4.2 改成「重开（D-54 2a）」，重新冻结后改回去并写上新 sha256。#379、#380 的描述和 P3 迁移头里的发布顺序照 2c 改写，旧 sha256 标明作废。STATUS 阻塞第 1 条加一步「P3 迁移应用后开关保持关闭；P3 的 H5 和小程序都发布后，由 Eric 打开」，第 12 条照第 3 项改。FINAL 第七批、L140、L142 不改，新值只写进第八批。
+       - 20261112120000 和 20261114015420 一个字节不动。
+     - b. **顺序。** P4 的迁移钉着 P3 函数体的 md5，所以：
+       1. P3 迁移改完：2c、2d、2e 和 2f 的服务端部分，以及 2o 里决定要改迁移的 mig:P3-m 项。L-SQL 回放通过后重新冻结、推送。
+       2. P4 分支 `git merge` P3 的新 head（manifest 冲突照 D-42 第 3 项按磁盘重算，迁移文件冲突照 §14 第 14 行 abort）。
+       3. 按新的 P3 回放，重算 P4 迁移的漂移守卫、PRECHECK、VERIFY、REGRESSION 里钉的所有 md5（P4 的 VERIFY 也钉着 P3 定义的函数）。
+       4. 再做 2k–2m，以及 2o 里改 P4 迁移的 mig:P4-m 项。L-SQL 回放通过后重新冻结 P4。
+       2n 和其他客户端修复不用等冻结，可以并行，但同一分支同一时间只让一个子任务推送（D-47 第 1 项）。
+     - c. **mig:P3-M1**（迁移一应用，旧客户端和摘要邮件就会显示 `comment_reply:<id>` 这样的原始键）：任何可能在线的客户端版本、任何邮件都不能出现原始键。默认做法：
+       - 两种新通知由一个开关控制。新建单行表 private.community_reply_notice_config，照 20260919064706 的 private.video_moderation_config 写：singleton boolean 主键，enabled boolean NOT NULL DEFAULT false，ENABLE RLS，REVOKE ALL FROM PUBLIC, anon, authenticated, service_role。notify 触发器是 SECURITY DEFINER，读得到它。
+       - VERIFY 断言这一行存在、表 ACL 为空、RLS 开着，托管库上只打印 enabled 的当前值；「默认关闭」放进 L-SQL 的 REGRESSION 断言。
+       - 开关关着时，触发器一行都不写。
+       - 打开条件：P3 的 H5 已发布，P3 版小程序也已发布。旧版小程序怎么办，由 Eric 定（列进 ④）。
+       - 打开开关是写托管库，staging 和生产分开打开，由 Eric 做，或由 supervisor 在 Eric 具名批准后做，每边各记一次。OMO 只在仓库根目录的 RUNBOOK.md 写开关的 SQL 和核对步骤。
+       - 测试：在事务里打开开关，P3.3 DoD ④ 的原断言不删；另加一条「开关关闭时 0 行」的用例。
+       - 新对象按 STOP-16a 记进 STATUS_LOG，并补进 ENGINEERING §5.3。
+       - 要换别的做法（例如把两个通知触发器挪进以后单独应用的迁移），按 D-43 自决，在 [OMO自决] 写清理由，并有测试证明旧客户端看不到原始键；另起迁移时照 ENGINEERING §5.0 第 1 条同步 manifest、README 计数句和计数断言。
+     - d. **mig:P3-M2**：通知触发器的判断和读权限一致。作者处于有效 L3+ 限制、话题对别人不可见时，不发通知；补回归用例。
+     - e. **client:P3-M1【supervisor 定，待 Eric 确认】**：作者看不到管理员写的下架理由原文。
+       - 服务端：list_own_hidden_posts 不再返回 reason，也不返回 admin_audit_log 里的任何自由文本，在 P3 迁移里改（随 2a 一起）。VERIFY 或 REGRESSION 断言作者调用时返回值里没有理由字段。
+       - 客户端：隐藏页只显示一句通用说明（例如「这条话题因违反社区守则被隐藏」）。
+       - SPEC 6.10 作者视角的「原因：{原因}」本批不做，P3.6 DoD ② 记为「部分」。
+     - f. **client:P3-M2**：回复通知发给真正被回复的那个人（SPEC 6.8）。
+       - 在 P3 迁移里加「被回复的那条回复」字段（2a 允许）。
+       - 写入时由触发器校验：被回复的那条必须和新回复在同一话题、同一顶层楼下，并且没被删除、没被隐藏；不合法就拒绝，或把字段置空、回退到顶层作者。双方有拉黑时不发通知。
+       - 新列的列级 INSERT 授权和 VERIFY 跟着改；去重照 SPEC 6.8 的优先级（帖子作者 > 被回复者 > 订阅者）。
+       - 测试：回复楼中楼；指向别的话题的回复被拒；被回复者就是帖子作者时只收 post_comment。
+     - g. **client:P3-M3**：广场列表里的举报也用 report.thanksCommunity（SPEC 6.10），smoke 补列表这一路。
+     - h. **client:P3-M4**：首页「最新」标签在 360、390 宽度下，中、英文都完整可点，换行或横向滚动都行。测试量每个标签的实际位置，确认在可视区内，不能只看文档有没有溢出。
+     - i. **client:P3-M5**：读状态失败时显示错误和重试，不显示「已被删除」，上报 Sentry，加 requestEpoch 守卫。
+     - j. **client:P3-M6**：申诉按 SPEC 6.10 沿用现有申诉流程和 decide_appeal。现有流程接不上内容下架时：不在 P3 迁移里新建或改申诉表；作者视图不显示「申诉」按钮，只写一句「如有异议，请联系站务」，不带 mailto、不复制邮箱；P3.6 DoD ② 记「部分」，④ 写缺什么，⑥ 写明这个偏差。
+     - k. **mig:P4-M1**：活动的 location、status_note 在 INSERT 和 UPDATE 时都要过内容审核、链接和保留词检查，和帖子一样；VERIFY 跟着改。
+     - l. **mig:P4-M2**：P4.6 的门槛（D-28 的举报值班、DoD ⑥ 的客户端审核）还没满足，迁移里先不给 authenticated 发起成员活动的 EXECUTE、INSERT、UPDATE 权限，留给 P4.6 的迁移去开；VERIFY 断言这几项现在是关的。REGRESSION 和 scripts/community-events.test.mjs 里以 authenticated 调 create_member_event 的用例，在事务里临时 GRANT、跑完 ROLLBACK，原断言不删；另加一条「没授权时 42501」。P4.2 DoD ④ 记「member 写入通道留给 P4.6 打开」。
+     - m. **mig:P4-M3【supervisor 定，待 Eric 确认】**：
+       - 表级约束：starts_at 是有限值；ends_at 为 NULL，或者是有限值且 >= starts_at（SPEC §6.7.10「选填；不早于开始时间」）。
+       - 成员路径上 ends_at 可以为 NULL；不为 NULL 时 ends_at − starts_at ≤ interval '30 days'。这条只加在 create_member_event 和 member guard（source_type = 'member'）上，caaci、campus、partner 不设上限（校历多场次活动要用）。
+       - 客户端遇到 NULL、'infinity' 或解析不了的日期，按「没有结束时间」显示，不抛错。
+     - n. **client:P4-M1**：全天活动按 ENGINEERING §9.3 的数据形状显示（单日不显示跨天标记，多日显示结束日期），补全天活动的测试。
+     - o. 其余 m 项照清单处理。清单标为政策问题的 mig:P3-m4、client:P3-m4（community_post_state 对 anon 也分 hidden 和 missing）不改代码，写进 ④ 请 Eric 定，并在 STATUS_LOG 写明理由。
+     - p. **门禁。** P3 在 ~/work/illini-p3，P4 在 ~/work/illini-events-20261120（不是 ~/work/illini-events），各跑 `$RC <目录> install typecheck h5 h5accept mp mpci migrations test smoke npmaudit`。SMOKE_SPECS 直接写出来：P3 是 `$DEF admin-feedback-journeys.spec.ts community-board-states.spec.ts community-home.spec.ts community-reply-notices.spec.ts community-report-views.spec.ts community-sort-tabs.spec.ts community-watch-save.spec.ts community-tab-label.spec.ts community-topic-row.spec.ts restricted-account-notice.spec.ts`；P4 在 P3 的基础上加 community-events.spec.ts；再加本批新增或改过的 spec，逐个写文件名。另跑 `$LSQL <目录> 20261120100354`，P4 再加 20261120122054。新建 worktree 之前、每次跑 run-checks 之前都先 `umask 022`，并核 `stat -c %a <worktree>` 是 755（gates:P3-P4-m1、gates:P3-P4-m2）；RUNBOOK §1 的 umask 那一行补一句：非交互 shell 不读 .bashrc 的末行。
+  3. **接 #377 的最终 head（等 supervisor 通知）。**
+     - 通知里会给出 #377 的最终 head H 和 main 上的 squash 提交 S。P3 上普通 `git merge H`，P4 再 `git merge` P3 的新 head，不 rebase。H 是 9be6a56，或者 H 的树和 9a31e75 相同时，这次合并不改内容；H 另有新提交时按普通合并处理，迁移或 manifest 冲突照 §14 第 14 行。
+     - P3、P4 的 PR base 先不动，直到 P3 迁移已经在 staging 应用并 VERIFY（P3.7 DoD ①）。然后把 P3 的 base 改到 main 跑 CI，满足 P3.7 DoD ②。P3 改 base 之前，supervisor 不删 codex/community-restricted-20261113；P4 改 base 之前，不删 P3 的分支。
+     - 以后改 base 到 main 时：只有 `git rev-parse S^{tree}` 等于 `git rev-parse H^{tree}`，并且 H 已经是 P3 的祖先，才用 `git merge -s ours S` 记下这次 squash；树不相等就普通 `git merge origin/main`，迁移或 manifest 冲突照 §14 第 14 行处理。
+  4. **#372 手工合并（等 supervisor 通知 #377 合进 main 后的 main SHA）。**
+     - 分支 codex/brand-cornfield-20261112（worktree ~/work/illini-brand，head d6f393d，在 STOP-6b 的允许清单里）。在这个分支上 `git merge <通知的 main SHA>`，普通 merge，不 rebase。
+     - 冲突照 STATUS 阻塞第 11 条处理；CommunityHome.vue 两处 `u-thumb-ph-seal` 占位里的「集」改成「玉」。新出现的冲突按「保留 main 的逻辑，只取 #372 的品牌名和徽章文案（BRAND.1–BRAND.3）」解，逐块记进 STATUS_LOG。
+     - 门禁：跑 BACKLOG §0.3 的全量（含 h5accept），再加 mpci；brand-name-boundary 测试要过；在 CI 环境量主包。快进推送到这个分支，仍是草稿，不转 ready、不合并。
+     - 报告：冲突文件和每块的取舍、门禁结果、主包字节数、run-checks 日志名。
+  5. **C-final（等 supervisor 通知 #372 合进 main 后的 main SHA）。**
+     - 照 D-53 第 10 项 c–f：先做 run-checks.sh 的 PROBES_DIR。改之前先拿到 ~/work/illini-dev-env/.containers.lock，并确认 `pgrep -f run-checks.sh` 没有输出；改法是写新文件再 `mv` 替换，不原地编辑；`.before-*` 备份，diff 记进 STATUS_LOG。
+     - 再建 `~/work/illini-dev-env/probes-home/`：probes/ 的全部 13 个文件（含 restriction-state.mjs），只有 account-switch.spec.ts 不同。D-53 第 10 项 c、f 里的「12 个」以这里的 13 个为准。STATUS_LOG 记 probes-home/ 的 13 个文件加 probe-in-container.sh，共 14 个 sha256，和 L133 的「冻结 13 个」分开写。
+     - 在通知的 SHA 上跑。证据目录 `~/work/evidence/D53/staging/confirm-final/P1.11` 和 `.../P1.12`，residuals.json 从 `~/work/evidence/D53/staging/confirm-369/P1.12/` 复制。
+     - 按 RUNBOOK §4.3 ⑤，适配版复制到 `$DOCS/appendix/env/probes-home/account-switch.spec.ts`，`appendix/env/probes/` 下面的文件不动；新的 run-checks.sh 覆盖 `appendix/env/run-checks.sh`，新旧 sha256 都记下来。复制前照 D-53 第 8 项 e 扫一遍：没有邮箱、token、/home 路径。
+  6. **顺序和收尾。**
+     - 第 1、2 项现在就做，可以分子任务并行，但容器一次只跑一个，用同一把锁（D-53 第 7 项 d）。第 3、4、5 项等通知。
+     - 用 create_goal 设目标，范围是本条第 0–5 项，完成线是 FINAL「第八批（D-54）」和 STATUS 在同一个提交推送。按 D-42 第 8 项建一个 3600 秒的续跑提醒（先 list，只留一个）。
+     - FINAL「第八批（D-54）」用八节格式，每项单独成行，标出 Eric 的选择和 supervisor 代做的事。2a、2e、2m 三条写进 ⑧（选了什么、理由、怎么撤回：2a 撤回是改走两条前向修复迁移，时间戳晚于 20261120122054，P4 的晚于 P3 的；2e 撤回是恢复给作者看的理由；2m 撤回是去掉成员路径上的 30 天上限）。④ 照 D-42 第 10 项列出 Eric 要做的事：P3.7、P4.11、E6，以及打开 2c 的开关和它的前提；另外加五个问题：要不要另设给作者看的理由选项；成员活动结束时间上限是不是 30 天；开关打开之前旧版小程序怎么办；内容下架的申诉流程还缺什么；community_post_state 对 anon 是否区分 hidden 和 missing。
+     - 推送之后再结束目标、取消续跑提醒，然后追加一条 STATUS_LOG 记这两件事；推送前不写成已做。不从 BACKLOG 往下接任务，等下一条指示。
+     - 第 3、4、5 项到 2026-11-21 12:00 CT 还没收到通知：没开工的记【跳过】（等 supervisor）；已经开工的跑完当前门禁、推送，再收尾。
+     - 仓库仍是公开的，安全补充照旧；`review-b7-findings.md` 的内容不要抄进仓库，只引用编号。
+
 ## 待定
 
 ### D-28 轮值伙伴与四项职责的小时数
