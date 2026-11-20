@@ -1863,3 +1863,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: —
 - 下一条: P3 重新冻结之后：P4 merge P3 新 head、重算钉的 md5，再做 2k–2m 与 mig:P4-m，L-SQL 回放后重新冻结
 - 附: 原因：mig:P4-M1（活动 location、status_note 不过审核）、mig:P4-M2（迁移一应用成员活动写入就开了）、mig:P4-M3（ends_at 没有上限、可早于开始）要改这个迁移；P4 的迁移还钉着 P3 函数体的 md5，P3 改了以后必须重算。条件同 L144（不在任何托管库账本里）。STATUS 的 P4.2 在重新冻结之前写「重开（D-54 2a）」。
+
+### L146 · 2026-11-20 10:31 CT · [supervisor 指示] D-54 第 3、4 项开工；三个子任务
+- task_id: D-54.3、D-54.4、D-54.2
+- code_sha: —（本条不改代码）
+- docs_sha: 216ab2b（本次写回之前材料分支的 HEAD）
+- 环境: 真人
+- 命令: 记录 supervisor 通知；子任务 st_01a1f9cc（P3：先 git merge H，再做第 2 项 P3 部分并重新冻结）、st_01a1f9cd（P4：先做客户端修复，P3 重新冻结后再 merge P3、重算 md5、做 2k–2m 并重新冻结）、st_01a1f9ce（#372：git merge S，手工解冲突，全量加 mpci，快进推送）
+- 计数: —
+- ci_run_url: —
+- 未测项: —
+- 下一条: 第 1 项（第七批更正，主会话）
+- 附: supervisor 2026-11-20 把 #377 squash 合进 main。H（#377 最终 head）= 9be6a56b849f8ed8e506666fcd0b24cc5b11c6e0，S（main 上的 squash 提交）= 05e09593ad080879b99a6889118c588bb1539084，supervisor 核过 S 与 H 的树相同（385f7a41db94…），main 现在的 HEAD 就是 S。第 3 项：P3 普通 git merge 9be6a56，P4 再 merge P3 的新 head，不 rebase，PR base 不动；和第 2 项的推送照 D-47 第 1 项排队。第 4 项：在 codex/brand-cornfield-20261112 上 git merge 05e0959，冲突照 STATUS 阻塞第 11 条和 D-54 第 4 项，全量门禁加 mpci，快进推送，仍是草稿；推送后在 STATUS_LOG 记一笔并告诉 supervisor 新 head。第 5 项（C-final）等 #372 合进 main 后的 SHA。[OMO自决] 三个子任务各用自己的分支和目录，每个分支只由对应子任务推送；子任务不写材料分支，STATUS_LOG 草稿放在证据目录，由主会话追加；容器都排同一把锁。
