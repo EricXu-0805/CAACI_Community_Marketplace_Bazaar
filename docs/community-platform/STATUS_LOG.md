@@ -1447,7 +1447,7 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 环境: 本地
 - 命令: 改 .github/workflows/ci.yml 审计步骤的内联脚本与 docs/NPM_DEPENDENCY_TRIAGE.md；用 YAML 解析器抽出审计 run 块（存在 ~/work/evidence/D52/ci-runner/audit-step.sh），驱动脚本临时放进 ~/work/illini-ci-runner 与 ~/work/illini-deps 的 .d52-audit/，`run-checks.sh <repo> cmd` 跑用例（check-20261120T075558Z、075612Z），之后删掉临时目录；`run-checks.sh ~/work/illini-ci-runner install test`（check-20261120T075956Z，tree bad5a87、unstaged=no）；对 8257318、6bdca97、571be45、9c10a7e、d6f393d、b259105、55716ba 跑 `git merge-tree`；`git push --no-verify`（宿主机 pre-push 的 PG 环境问题，RUNBOOK §3；推送前日志 check-20261120T075956Z）；`gh api -X PATCH .../pulls/376` 只传 title 与 body
 - 计数: 用例：main 7b18f20 真实依赖树 exit 1（vite 那条放行，@intlify/core-base、@intlify/shared、follow-redirects 三条 high 与 glob、minimatch、qs 三条 moderate 失败，各带依赖路径）；55716ba 真实依赖树 exit 0；只有 vite（对照）exit 0；多一条 moderate exit 1；非零退出加空 vulnerabilities exit 1；带 error 字段 exit 1；vulnerabilities 是数组 exit 1；同编号在 esbuild 上 ::warning:: 后 exit 1；vite 上升到 high ::warning:: 后 exit 1；日期 2026-12-14 ::warning:: 后 exit 1。Bun YAML 与 PyYAML 都能解析，和 92ff5d5 比只有审计 run 块不同，if: 与 working-directory 没变。现有测试 1989 / 1988 / 0 / 1，pg_skips=0，没改测试（scripts/license-boundary.test.mjs 读 triage 文档的两条断言照过）。merge-tree 7 个 head 都是 0 冲突。#376 仍是草稿 [本地测]
-- ci_run_url: #376 新 head 的 run 待完成（监视中）
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44715711828（success：Build mp-weixin=success; Build H5=success; Smoke (public page sweep)=success; Type-check=success; Boundary regressions=success; Smoke (protected staging account)=skipped; Production release readiness=skipped）[CI run#44715711828]
 - 未测项: 放行逻辑在 GitHub 上第一次真跑要等合进 main；工作站没有 actionlint
 - 下一条: D-52 第 2 项
 - 附: 本分支除 ci.yml 外只多改 docs/NPM_DEPENDENCY_TRIAGE.md 一个文件（D-52 第 3 项放宽的分支范围）。triage 文档加「Status 2026-11-20」：本地重建的 vite 6.4.4（带 braces 3.0.3 回补）、GHSA-8g5g-mxqh-grgj 放行到 2026-12-13、路线 B 要在 vite 6.4.5 或 6.4.6 上重做 braces 回补（直接装 registry 的 6.4.5 会悄悄丢掉它）、2026-10-05 快照改标历史。#376 描述的 A/B 两条路写上了 braces 回补那句。材料分支 RUNBOOK §3 的 illini-ci-runner 一行同步。第六批 ⑧ 用「按公告编号、包名和严重程度一起判断，失败时不放行」取代 D-51.4「按公告编号、不按包名」的理由。
@@ -1535,3 +1535,51 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: —
 - 下一条: D-53 第 2–5 项（子任务）
 - 附: 第 7 项四件事。a：P1.8 的开工条件改成 `gh pr view 371 --json state,mergeCommit` 为 MERGED 且 mergeCommit 是 origin/main 的祖先（#371 只能 squash 合并，b259105 永远不会进 main）；#371 没合时目标继续开着，每次续跑提醒重核，直到 #371 合并、supervisor 通知「E5 延后」或到 2026-11-21 12:00 CT，后两种才把 P1.8、P2.13 记【跳过】。b：vite 那项若记【跳过】，supervisor 先合 #376 再合 #371。c：P1.8 在 #369 上 revert c52badf 以后，用 git merge 把 #369 新 head 依次合进 #375、#374、#377，再从 #377 合进 P3、P4（属 RUNBOOK §12 第 9a 条同一例外）。d：容器一次只跑一个，用一把锁排队，磁盘低于 50 GB 停；tony-ws 与 Tony、danny 共用（STOP-13）。[OMO自决] 新路径做成指向现有锁的符号链接，已经排在旧路径上的任务和新任务排在同一把锁上，不用停掉任何正在写文件的任务；L-SQL 回放也走这把锁，所以同一时间最多 1 个容器，比第 7 项 d 允许的「1 个 run-checks 类加 1 个 L-SQL」更严。四个子任务已收到这条规则；第 3 项子任务提前交回过一次，已让它接着做完。
+
+### L124 · 2026-11-20 04:04 CT · D-53 第 2 项：#376 在 npm 正常退出时也读报告，via 解不开的条目失败
+- task_id: D-53.2
+- code_sha: f0ccd8f1fd39cb2678950a8e9db6d82eca452536（#376，树 00c59f3，已推送）
+- docs_sha: c1921d9（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 子任务 st_01a1f857 改 .github/workflows/ci.yml 审计步骤的内联脚本与 docs/NPM_DEPENDENCY_TRIAGE.md；抽出 run 块到 ~/work/evidence/D53/ci-runner/，临时驱动脚本放进 <repo>/.d53-audit/ 后 `run-checks.sh <repo> cmd` 逐例跑（check-20261120T094805Z 至 095600Z，共 21 例），跑完删掉临时目录；`run-checks.sh ~/work/illini-ci-runner install test`（check-20261120T095603Z）；对 7 个 head 跑 `git merge-tree --write-tree`；`git push --no-verify`（宿主机 pre-push 的 PG 环境问题，RUNBOOK §3；推送前日志 check-20261120T095603Z）；`gh api -X PATCH .../pulls/376` 只传 body
+- 计数: 21 例都符合预期：只有 vite 公告、exit 0 的正常空报告、moderate 条目引用报告里有的 vite 三例 exit 0；其余 18 例 exit 1，含新加的 exit 0 加乱码、exit 0 加空输出、exit 0 带 error 字段、via 为 [null] 的 critical、via 为空的 high、via 引用报告里没有的包，另有 exit 0 缺 metadata、exit 0 vulnerabilities 是数组、exit 0 error 为 null；真实依赖树 illini-ci-runner exit 1（intlify、follow-redirects、glob、minimatch、qs 照拦，带依赖路径）、illini-deps exit 0。现有测试 1989 / 1988 / 0 / 1，pg_skips=0，没改测试。merge-tree 7 个 head（8257318、6bdca97、571be45、dd44f98、d6f393d、b259105、55716ba）0 冲突。主会话核对：工作区干净；和 0e04aca 比只改这两个文件；triage 文档有 2026-10-23 撤回那句；#376 草稿、OPEN、head f0ccd8f、base main，描述里没有 /home 路径 [本地测]
+- ci_run_url: #376 新 head 的 run 待完成（监视中）
+- 未测项: 放行逻辑要等合进 main 才在 GitHub 上真跑；工作站没有 actionlint
+- 下一条: D-53 第 3–5 项（子任务）
+- 附: 没加「metadata 计数相等」的检查（D-53 第 2 项）。原有的放行规则、过期警告、依赖门、重试、180 秒封顶、npm 11 步骤和 `npm audit --audit-level=moderate` 字面串都没动。triage 文档 2026-11-20 一段补了：B 路线原先引用的 GHSA-vfj7-8cjw-p6xm 已在 2026-10-23 被 GitHub 撤回，braces 回补的价值按「限制递归深度」本身写。子任务第一次提前交回过，主会话让它接着做完。
+
+### L125 · 2026-11-20 05:10 CT · D-53 第 3 项：vite 6.4.6 的新重建配方，容器里两次干净构建逐字节一致，草稿 PR #378
+- task_id: D-53.3
+- code_sha: 80b3eb0（codex/config-vite-645-20261120，树 6efd32b，已推送）；草稿 PR #378，base codex/deps-crossmajor-20261113
+- docs_sha: c1921d9（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 子任务 st_01a1f858 新写 vite 6.4.6 配方（app/build-compat/source-builds/vite-6.4.6/，6.4.4 那套不动），在 6.4.6 源码上重新生成 braces 3.0.3 回补，容器里从干净状态构建两次并比对；打包进 app/vendor/source-builds/（manifest.json、CAACI-BUILD-PROVENANCE.json、README 加带日期一段）；app/package.json 与 lockfile 只升 vite；`run-checks.sh ~/work/illini-vite645 install typecheck test h5 mp mpci smoke npmaudit cmd`（check-20261120T100201Z，树 6efd32b、unstaged=no）；test 一步在干净工作树上重跑（check-20261120T110345Z.log）；`git push --no-verify -u`（宿主机 pre-push 的 PG 环境问题，RUNBOOK §3；推送前日志 check-20261120T100201Z）；`gh api -X POST .../pulls`（draft:true）
+- 计数: 上游选 6.4.6（GHSA-8g5g-mxqh-grgj 的修复在 6.4.5 起，D-53 允许更新的 6.4.x）。两次构建 identicalArchives=true，15 个 dist 文件逐字节相同；重新生成的 braces 补丁和审过的补丁逐字节相同。新归档 vite-6.4.6-local.55927b45dd34273c.tgz，633,464 字节，sha256 55927b45dd34273c55cdbb093a4ce00c85795104733cd74a2da436239b1b36c6，integrity sha512-EP+XaODtjozvBCRKO30iXKQBCzaUaMiafpbaaSIXOYblQdvLwvZzsmo1l4fhi/PkbHVzyyKAH0dqMF8kz+qyKA==。install、typecheck、h5、mp、mpci、smoke、npmaudit rc=0；npm 11 与 npm 10 都是 found 0 vulnerabilities。test 第一次 1994 / 1992 / 1 / 1：secret-material-boundary 的 `git ls-files --cached --others` 把工作树里没忽略的上游源码和构建临时文件也列了进来（约 5.1 MB），超过子进程默认缓冲报 ENOBUFS；临时文件移出工作树后，主会话在同一棵树上重跑 1994 / 1993 / 0 / 1，pg_skips=0，没改任何测试。大小和 55716ba 一样：主包 1,534,536 字节、H5 2,568,811 字节（157 个文件）。lockfile 里只有 vite 一条的 version、resolved、integrity 变了。主会话核对：6.4.4 配方和归档没改；#378 草稿、OPEN、head 80b3eb0，描述里没有 /home 路径 [本地测]
+- ci_run_url: —（#378 的 base 不是 main，没有 CI）
+- 未测项: supervisor 会独立复核两次构建；`git diff --cached --check` 只对两个新补丁文件里的空白上下文行报 2（补丁语法本身，保留原字节）
+- 下一条: D-53 第 4、5 项（子任务）
+- 附: [OMO自决] 子任务三次在门禁没跑完时就交回，主会话接手看门禁、重跑失败的 test 一步。证据在 ~/work/evidence/D53/vite645/（RESULTS.md、两次构建日志、archive-comparison.log）。这里的主包 1,534,536 是 #373 这条线（base 55716ba）的数，离 1,572,864 的上限还有 38,328 字节，和 55716ba 相同，本批没让它变大；社区那几个分支的主包另算。
+
+### L126 · 2026-11-20 05:28 CT · D-53 第 5 项：staging 验收 P1.11、P1.12、P2.6、P2.11
+- task_id: D-53.5（P1.11、P1.12、P2.6、P2.11）
+- code_sha: 7b18f20（main 基线，P1.11、P1.12）、8257318（#369，P2.6、P2.11），两个工作树都干净、没提交
+- docs_sha: c1921d9（本次写回之前材料分支的 HEAD）
+- 环境: staging（staging-smoke，只有合成数据，D-53 第 0 项 b）
+- 命令: 子任务 st_01a1f85a 按 RUNBOOK §5.2 跑自检与 S-1 探针，同一时间只跑一个，所有容器步骤用 `flock ~/work/illini-dev-env/.containers.lock` 排队并先查磁盘（236–241 GB）；探针 consent-login.spec.ts（P1.11）、account-switch.spec.ts 与 p1-cleanup.spec.ts（P1.12）、schema-only.mjs（P2.6）、p2-authz-matrix.mjs 与 p2-cleanup.spec.ts（P2.11）；证据在 ~/work/evidence/D53/staging/（SUMMARY.md、COMMANDS.md、各任务 RESULT.md）
+- 计数: 自检每次都过（staging.env 权限 600、禁用引用 0、URL 1 处、正好 8 个变量名）。P1.11 失败（3 次用完）：3 个公开 schema 读取 200，A/B/C 登录 200、同意写入 204；第 3 次探针要求首页 URL 带 pages/index/index，而应用的规范首页是 #/，在截图前失败，0 张截图、测试 0 / 3；前两次失败分别是探针的选择器和会话格式问题。P1.12 失败（3 次用完）：C 发探针消息，A 读后退出，B 不刷新登录，消息、广场、帖子三处 9 次标记计数都是 0、身份都对；强制刷新后 `.more-btn` 一直不可见，刷新后的部分没测到，测试 0 / 1；只替换了 /api/moderate。P2.6 通过：schema 预检 5 / 5；run 44647478789 head 8257318，五个必需 job 全过。P2.11 通过（运行检查）：见下表；删掉的帖子在匿名列表与搜索里 0 / 0；只替换了 /api/moderate [staging]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44647478789（P2.6 引用）
+- 未测项: P1.12 强制刷新以后的隔离；P1.11 最后一次的实际路由没留，不能完全排除应用导航问题
+- 下一条: D-53 第 4 项（子任务）；P1.8、P2.13 按第 7 项 a 等 #371
+- 附: P2.11 的拒绝表（DoD ③）：
+
+  | 动作 | 身份 | HTTP | PostgREST code |
+  |---|---|---:|---|
+  | 挂 B 的商品 | A | 403 | 42501 |
+  | 挂已售商品 | A | 403 | 42501 |
+  | 挂第 4 件商品 | A | 400 | P0001 |
+  | 非法板块 | B | 400 | 23514 |
+  | 标题 121 字 | A | 400 | 22023 |
+  | 话题正文为空 | B | 400 | 22023 |
+  | 改自己的标题 | A | 403 | 42501 |
+
+  7 个请求全部被拒。探针原始输出写成 5 通过 / 2 失败，是因为它对标题过长和正文为空两条只认 23514，而服务端实际按 22023 拒绝，两条都是被拒，符合 DoD；原始日志和 matrix.json 原样保留，没做第 4 次。清理（§5.2）：通过作者入口删了 10 件商品、1 个帖子、2 条生成的通知；P1.12 里 B 的公开帖子 DELETE 204、复查 0 行。没有删除入口、按 §5.2 留下的：P1.12 中 C 的 1 条私信与它的会话；P2.11 中 1 件已售商品、1 个已接受的报价、2 个会话；ID 都记在各自的 RESULT.md。没建图片或存储对象。[OMO自决] P1.11、P1.12 按每项最多 3 次的规则停下，不再加次数；按 D-53 第 0 项 a，这两项没过就不能合 #369，写进第七批 ④、⑥。另：子任务读 DECISIONS 原文时，工具输出里出现过文档中的合成邮箱别名（example.test），没进任何证据文件或仓库；staging.env 的值没有被打印或复制。
