@@ -1,6 +1,6 @@
 # STATUS
 
-写于 2026-11-20 10:35 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-20 10:57 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
 `next_task_id: D-54 第 1 项（第七批更正）与第 2 项（P3、P4 修复，两个子任务）；第 3、4、5 项等 supervisor 通知`
 `latest_batch: appendix/batch/FINAL.md`
@@ -16,7 +16,7 @@ D-54 第八批进行中（L143 起）：范围是 D-54 第 0–5 项；做完写
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
 | docs_sha | 058be85（本次写回之前材料分支的 HEAD） |
-| 其余代码分支（远端 head） | #379 codex/community-p3-20261120 4e0ba6e（base codex/community-restricted-20261113，D-54 修复中）；#380 codex/community-events-20261120 b9fd8ee（base P3 的分支，D-54 修复中）；#372 codex/brand-cornfield-20261112 d6f393d（base main，D-54 第 4 项手工合并中）；以上是草稿。已合进 main：#369、#371、#374、#375、#376、#377；#373、#378 已合进各自 base 分支 [本地测：2026-11-20 gh pr view] |
+| 其余代码分支（远端 head） | #379 codex/community-p3-20261120 4e0ba6e（base codex/community-restricted-20261113，D-54 修复中）；#380 codex/community-events-20261120 b9fd8ee（base P3 的分支，D-54 修复中）；#372 codex/brand-cornfield-20261112 f5dd044（base main，已手工合 main 05e0959、门禁全过，等 supervisor 合，L149）；以上是草稿。已合进 main：#369、#371、#374、#375、#376、#377；#373、#378 已合进各自 base 分支 [本地测：2026-11-20 gh pr view] |
 | tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 4e0ba6e（#379）；illini-events-20261120 b9fd8ee（#380）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand d6f393d（#372）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条） [本地测：git worktree list] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 已由 supervisor promote BRAND.7（新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`grep -c 玉米地` 为 6；回退 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6；D-53 第 0 项 d） |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
