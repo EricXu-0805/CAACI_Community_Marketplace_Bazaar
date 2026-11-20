@@ -266,6 +266,49 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
      - 顺序：先做第 1 项。第 3 项 a 和第 4 项先做（都小）；然后是第 5 项；第 2 项、第 3 项 b、第 6 项穿插着做。同一个分支同一时间只让一个子任务推送；顺序一变，当场在 STATUS_LOG 记 [OMO自决]。每项最多试 3 次，第 5 项按它自己的次数算。
      - 做完或停下以后，写 FINAL「第五批（D-51）」，八节格式照旧，每项单独成行，D-49 单独一节，和 STATUS 一起提交。然后结束目标，取消续跑提醒，不从 BACKLOG 往下接任务，等下一条指示。
 
+- **D-52 第六批：把 #377 叠到 #374 上、补发帖的客户端预检、加固 #376 的放行逻辑、更正第五批报告**（2026-11-20 CT，Claude（Eric 自己账号上的 supervisor 会话）按 D-43 定并写入）：依据是 Eric 2026-11-19 17:18 CT 原话「后面的都给你批准你去监督跑就行了」、2026-11-19 23:56 CT 原话「继续」、2026-11-20 01:16 CT 原话「可以了，我暂时先转public，然后你继续操作吧」。【硬】条照旧高于本条，D-51 第 4 项那一条 STOP-9a 例外照旧只限 #376 的分支。背景：supervisor 对第五批做了五个独立核查（每个配一个反驳方），没有阻断项。在 supervisor 的机器上复现了：Docker 本地 L-SQL 回放 182/182；D-49 全等级回归改后 3,390/0，在 04edaa3 上 2,442/948；8 个重写的函数除了限制检查只有两处已披露的改动。本条下发前又过了一轮独立审阅。
+  0. **用号规则（取代 D-51 第 1 项的相应部分，一直有效）。** Eric 2026-11-19 选「照样用」：default（admin@）、account-2（board@）不设 60% 上限，用到额度耗尽为止；account-5、account-4 和 ChatGPT 的两个号仍按 60%。supervisor 已在 2026-11-19 23:56 CT 用 account_order 把顺序设回 default → account-2 → account-5 → account-4，取消了 account-5 的置顶；STATUS_LOG L95 里「admin、board 在本周额度重置前不用」作废。切到 ChatGPT 仍由 supervisor 做，OMO 不改顺序、不切模型。停下条件：default、account-2 都用尽，其余号也都到 60%。
+  1. **#377 叠到 #374 上（分支 codex/community-restricted-20261113）。** 现在 #377 的 base 是 #369 的分支，可它和 #375、#374 合不到一起：在 app/src/pages/detail/useRatings.ts（#375 把 composables/useRatings.ts 挪到了这里）和 app/smoke/chat-realtime-handshake.test.mjs 上冲突；手工解完以后，全量还有 16 条失败。
+     - 用 `git merge 6bdca97` 把 #374（已含 #369、#375）合进 #377，不 rebase。useRatings 的冲突：保留挪过去的文件，把 `assertWritesAllowed` 的 import 改成 `'../../composables/useRestriction'`；chat-realtime-handshake 两边都留。
+     - 16 条失败里，10 条在 app/smoke/restricted-account-actions.test.mjs：第 546 行还按旧路径载入 composables/useRatings.ts，改成 pages/detail/useRatings.ts；第 548–551 行 mock 的键（'./useSupabase'、'./useAuth'、'./accountScope'、'./useRestriction'）改成新文件里实际的 import 路径（'../../composables/useSupabase' 等）。第 21 行是通用的读文件 helper，不改。
+     - 另外 6 条在 #375 的 account-gate-prompts.test.mjs：第 221 行断言 L2–L4 进 pages/suspended，第 226 行断言 L2–L4 不弹入站提示。合并后的代码已经让 L2–L4 在可浏览的页面上弹新消息和通知横幅。照这个行为改：依据是 SPEC §11 的 suspended.sub 和 D-49 第 3 项「照旧允许：所有读」，受限只限写。第 221、226 行改成只有有效 L5 进 pages/suspended、L2–L4 照常弹提示；pages/suspended 上仍按 D-47 第 5 项不弹。
+     - 合完跑全量、vue-tsc、h5、mpci 和 smoke。smoke 的 SMOKE_SPECS 要包含 restricted-account-notice.spec.ts：它是 D-49 提示条唯一的浏览器测试，run-checks 默认不跑它。在 STATUS_LOG 追加一条更正：第五批的「smoke 35」没跑这条 spec。用 390 和 1280 宽各截一张社区首页带提示条的图，只存在 ~/work/evidence，不进仓库。主包按 CI 环境量（核查方在同一组合上量到 1,379,997，余 192,867）。
+     - 然后用 GitHub REST 把 #377 的 base 改成 `codex/community-home-20261112`，PATCH 只传 base 一个字段，PR 仍是草稿。本项取代 D-49 第 2 项括号里「#369 合进 main 以后改成 main」的 base 规则，以后按第 4 项 b 走。RUNBOOK §3 的 illini-restricted 那一行和 STATUS 的版本行里关于 base 的说法一并改。
+  2. **发帖的客户端预检（在 #377 上，第 1 项之后做；这是本条新加的要求）。** usePlaza 的 createPost 发请求前没有 assertWritesAllowed，只有打开发帖面板（openComposer）那里查。回复在页面层发请求前查了，createComment 本身没查。两处都在 composable 层补上 assertWritesAllowed；测试也写在 composable 层，先在合并后的 #377 上确认会红（页面层的测试在那儿不会红）。CommunityHome 商品区补位卡「发布第一件 ›」的 openPublish 是 switchTab 到商品发布页，那一页自己有拦截，不改，在 STATUS_LOG 记一笔。
+  3. **#376 的放行逻辑加固（只在分支 codex/config-ci-runner-20261119 上）。** ci.yml 的加固仍算 D-51 第 4 项那一处 STOP-9a 例外里的「改动二」。这个分支上除了 ci.yml，只多改 docs/NPM_DEPENDENCY_TRIAGE.md 一个文件：STOP-9a 不管 docs/，这里放宽的是 D-51 第 4 项「只改 ci.yml」的分支范围。
+     - 失败也放行的漏洞：现在 npm 非零退出、但 JSON 能解析出空的 vulnerabilities（或者 vulnerabilities 是数组、或带 error 字段）时，脚本会放行。改成：npm 非零退出、又没有匹配到任何被放行的公告，就失败；报告带 error 字段，或者 vulnerabilities 不是对象，也失败。
+     - 放行条件除了 GHSA 编号，还要求包名是 vite、严重程度不高于 moderate。同一个编号出现在别的包上，或者严重程度升级了，都不放行。被拦下的每条公告把依赖路径打到日志里。
+     - docs/NPM_DEPENDENCY_TRIAGE.md：加一段带日期的「Status 2026-11-20」，写清四件事：仓库装的是本地重建的 vite 6.4.4；GHSA-8g5g-mxqh-grgj（moderate）放行到 2026-12-13；路线 B 要把 braces 3.0.3 的回补在 vite 6.4.5 或 6.4.6 上重做一遍，直接装 registry 上的 6.4.5 能让审计变绿，却会悄悄丢掉这个回补；2026-10-05 那份快照标成历史。
+     - 测试照 D-51 第 4 项的办法：抽出 run 块，至少跑下面这些用例，日志放在 ~/work/evidence：真实依赖树；多一条 moderate；非零退出加空 JSON；带 error；vulnerabilities 是数组；同一编号出现在别的包上；严重程度升到 high；过了到期日。scripts/ci-hook-contract-boundary.test.mjs 等现有测试要原样通过。对 8257318、6bdca97、571be45、9c10a7e、d6f393d、b259105、55716ba 各跑一次 merge-tree，ci.yml 都要 0 冲突。
+     - 同步改三处：#376 的标题和描述（REST 只改 title、body，仍是草稿；A/B 两条路里写上 braces 回补那句）；RUNBOOK §3 里 #376 那一行；第六批 ⑧ 加一行，取代 D-51.4「按公告编号、不按包名」的理由。
+  4. **第五批报告和文档的更正（材料分支；STATUS_LOG 只追加）。**
+     - a. **GitHub Actions 停过一段**：从 2026-11-20 约 01:25Z 起，#370 的 run 44653535391、44660742581、44671115623 都在 4–5 秒内结束（job 只有 2–3 秒），没有一个步骤跑起来。注解原话是「The job was not started because recent account payments have failed or your spending limit needs to be increased.」Eric 2026-11-20 01:16 CT 把仓库改成了公开，07:15Z 起是 PUBLIC，Dependabot 的 job 已经能拿到 runner，可 ci.yml 公开以后还没跑过。把这段写进 STATUS 的 CI 节和第六批 ⑥。本批第一次推送触发的 run，每个 job 都要有步骤（steps>0），也没有付款注解，才算 CI 恢复。要是 run 又在几秒内结束、0 个步骤、注解是付款失败：不重跑、不推空提交，记进 STATUS 的 CI 节和 ④，接着用本地结果。
+     - a2. **仓库现在是公开的**：推上去的提交、PR 描述、PR 评论和 CI 日志，任何人都能看到。从本批起，不往仓库里加新的原始日志、带真实数据的截图、账号邮箱、凭据和 /home 开头的绝对路径。RUNBOOK §3 和 STATUS_LOG「命令」字段里已经在用的 ~/work/... 目录名照旧写，不算违规。④ 加一行给 Eric：材料分支、DECISIONS（含 D-51 里的账号邮箱缩写）和几个 PR 描述里已经有账号邮箱和工作站路径，现在都是公开的；OMO 不改写历史去删它们，要不要处理由 Eric 定。
+     - b. **合并与迁移顺序**（以下写给 Eric，OMO 不执行；托管库的事属于 STOP-2/3）。写成一条完整顺序：
+       - #376 随时可以合；#371 → #373。
+       - P2.13 通过后，依次合 #369 → #375 → #374；#372 在 #374 之后任何时候手工合，规则见 STATUS 第 11 条，含 CommunityHome.vue 两处占位改「玉」，以及 #372 和 #369 在 share-post.js、en.ts、zh.ts 的冲突规则。
+       - #377 最后合，前提是 staging 和生产上都已经应用并 VERIFY 了 20261112120000，再 PRECHECK、应用、VERIFY 了 20261114015420（生产上必须先有前一条，否则 D-49 的 PRECHECK 会报 restricted_account_writes_column_missing）。
+       - 删 #374 的分支之前，先把 #377 的 base 改成 main；如果 #374 是 squash 合并的，改完 base 以后还要往 #377 里 merge 一次 origin/main。#377 的 base 改成 main 之前没有 CI。
+       - 各部分分别写进 STATUS 阻塞第 1 条（迁移和 P2.13）、第 11 条（#372 规则）、第 12 条（改 base）、第 14 条（D-49），以及第六批的 ④、⑦。
+     - c. 仓库 RUNBOOK 的 D-49 一条（de0950f 加的，在 #377 上）补三句：第 0 步，这个项目上已经应用并 VERIFY 过 20261112120000；尽量在低流量时段应用，因为它会在 10 张表上短暂加锁，包括 storage.objects 上的 ACCESS EXCLUSIVE；因 lock_timeout 或死锁中止，整个事务会回滚，重试就行。这一处推送排在第 1、2 项推送之后。#377 的 PR 描述最后按最终 head 重写：写上新的 base、发布顺序，并把待定政策问题补成和 FINAL 一样的 12 条（现在是 11 条）。
+     - d. ⑤ 说 20261112120000 在 #372 上也一样，可 #372 根本没有这个文件，改正。
+     - e. STATUS 过时的几处：
+       - 「版本」表第 1 行还写「远端 04edaa3」，应为 8257318；worktree 一行改成当前的样子；
+       - 第 8 行的用号规则按第 0 项改；
+       - 阻塞第 4 条：CI 例外已由 #376 提供；
+       - 阻塞第 13 条：#374 的 head 是 6bdca97；
+       - 阻塞第 17 条：只用 ChatGPT 打头的类别那条限制已经解除，换成第 0 项的用号规则；
+       - 阻塞第 19 条：按第 4 项 g 改；
+       - 补记 #372 d6f393d 的 CI run 44651530274（Build H5 和 public sweep 失败在装浏览器那一步，是 ubuntu-26.04 的老问题）；
+       - FINAL 第 443 行「（D-51 第 3 项 b 的测试）」重复了一遍，删掉一个；
+       - STATUS_LOG 追加一条更正：第五批 ② 的 D-51.5 和 D-51.1 改成「部分」，理由分别是没写 D-49 第 2 项要求的改 base，以及第 1 项要求的阻塞记录没写。
+     - f. ~/work/illini-restricted-client 是个活着的 worktree，不在 RUNBOOK §3 的表里。如果 local/d49-client-20261120 已经全部合进 #377、工作区也干净，就用不带 `--force` 的 `git worktree remove` 删掉；删不掉就补进表里。
+     - g. SIGSEGV 的说法改准：本地镜像 17.6.1.104（和生产的数据库版本一样）上，用 postgres 或 supabase_admin 登录，再 `SET ROLE` 到 anon、authenticated 或 service_role 去调用没有 EXECUTE 权限的函数，后端会 SIGSEGV；以 authenticator 登录（也就是走 PostgREST）是正常的 42501。所以 App 用户大概率触发不了，运维会话会；托管库上的 supautils 和 PostgREST 版本可能和本地不同，这一点没核。写进第六批 ⑥、STATUS 阻塞第 19 条和 ④，④ 那一行写成给运维的提醒，并附上 17.6.1.167 这个可选版本（核查方在这个版本上没复现崩溃）。
+  5. **目标、顺序和报告。**
+     - 读到本条后用 create_goal 设目标，范围是本条第 0–4 项，完成线是 FINAL「第六批（D-52）」和 STATUS 在同一个提交推送；按 D-42 第 8 项重建一个 3600 秒的续跑提醒（先 list，只留一个）；两件事在 STATUS_LOG 记一笔。
+     - #377 分支上的顺序：第 1 项 → 第 2 项 → 第 4 项 c，PR 描述最后写。第 3 项和第 4 项其余部分穿插着做。同一个分支同一时间只让一个子任务推送（D-47 第 1 项）。每项最多试 3 次。
+     - 做完写 FINAL「第六批（D-52）」，八节格式照旧，每项单独成行，和 STATUS 一起提交；然后结束目标，取消提醒，不从 BACKLOG 往下接任务，等下一条指示。
+
 ## 待定
 
 ### D-28 轮值伙伴与四项职责的小时数
