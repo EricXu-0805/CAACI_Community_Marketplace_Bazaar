@@ -23,6 +23,37 @@ const reply = (n: number) => ({
 const fill = (key: string, values: Record<string, string | number>, form = 0) => text(key).split('|')[form]
   .replace(/\{(\w+)\}/g, (_, name) => String(values[name]))
 
+// SPEC 6.8 says a line whose topic is gone says so and stays. That has to hold when the list could not
+// look its topics up: the line is plain then, and a tap asks about its own topic before it opens anything.
+test('when the list could not look its topics up, a tapped line still finds out whether its topic is gone', async ({ page }) => {
+  await installTopicFixture(page)
+  const rows = [notice(9, `followed_post_reply:${TOPIC.id}`), notice(4, `followed_post_reply:${GONE}`)]
+  await page.route(/\/rest\/v1\/notifications(?:\?|$)/, route => route.request().method() === 'PATCH'
+    ? route.fulfill({ status: 204 })
+    : route.fulfill({
+      status: 200, contentType: 'application/json', headers: { 'content-range': `0-${rows.length - 1}/${rows.length}` }, body: JSON.stringify(rows),
+    }))
+  await page.route('**/rest/v1/post_comments?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([reply(9)]) }))
+  // The list's own lookup of titles fails; one made for a single line later works.
+  let down = true
+  await page.route('**/rest/v1/posts?**', route => {
+    const title = new URL(route.request().url()).searchParams.get('select') === 'id,title,content'
+    return down && title
+      ? route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ code: '57014', message: 'canceling statement due to statement timeout' }) })
+      : route.fallback()
+  })
+  await page.goto('/#/pages/notifications/index', { waitUntil: 'networkidle' })
+  const lines = page.locator('.notif-item')
+  await expect(lines.locator('.notif-body')).toHaveText([text('notif.followedReplyPlain'), text('notif.followedReplyPlain')])
+
+  down = false
+  await lines.nth(1).click()
+  await expect(page.getByText(text('notif.targetGone'), { exact: true })).toBeVisible()
+  await expect(page).toHaveURL(/pages\/notifications\/index/)
+  await lines.nth(0).click()
+  await expect(page).toHaveURL(new RegExp(`pages/post/index\\?id=${TOPIC.id}&reply_at=`))
+})
+
 test('reply notices are merged per watched topic, name the replier, and open the topic at the reply', async ({ page }) => {
   const fixture = await installTopicFixture(page)
   fixture.topic.title = 'Where to buy a cheap desk near campus'

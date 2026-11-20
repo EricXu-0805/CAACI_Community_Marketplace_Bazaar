@@ -252,6 +252,10 @@
             <text v-if="p.locked_at" class="pill pill-pending">{{ t('admin.repliesClosed') }}</text>
           </view>
           <text class="card-meta">{{ p.category ? t(`plaza.category.${p.category}`) : t('admin.topicUpdate') }} · {{ p.author_nickname }} · {{ fmtTime(p.created_at) }}</text>
+          <view v-if="p.thumbnail || topicExcerpt(p)" class="topic-body">
+            <image v-if="p.thumbnail" :src="p.thumbnail" :alt="t('a11y.previewImage')" class="banner-thumb" mode="aspectFill" lazy-load />
+            <text v-if="topicExcerpt(p)" class="card-meta topic-excerpt">{{ topicExcerpt(p) }}</text>
+          </view>
           <view class="card-actions">
             <view v-if="p.status === 'hidden'" :class="['mini-btn', 'primary', { disabled: topicBusy(p) }]" role="button" :tabindex="topicBusy(p) ? -1 : 0" :aria-disabled="topicBusy(p) ? 'true' : 'false'" @click="onRestoreTopic(p)">{{ t('admin.restoreContent') }}</view>
             <template v-else>
@@ -4290,6 +4294,12 @@ const topicMutationKey = (p: CommunityPostRow) => `topic:${p.id}`
 const topicBusy = (p: CommunityPostRow) => moderationMutationBusy(topicMutationKey(p))
 // A topic's title, or the first words of an update.
 const topicLine = (p: CommunityPostRow) => Array.from((p.title || p.content).trim()).slice(0, 60).join('')
+// SPEC 6.11: the start of the body; the list read cuts it at 200 characters. An update has no title,
+// so its line is already the start of its body, and a short one is not printed twice.
+const topicExcerpt = (p: CommunityPostRow) => {
+  const body = p.content.trim()
+  return body === topicLine(p) ? '' : body
+}
 
 async function setTopicStatus(status: 'active' | 'hidden') {
   if (topicStatus.value === status) return
@@ -4912,6 +4922,8 @@ function isExpired(endsAt: string | null): boolean {
 .card.wait-24 { background: var(--warning-soft); }
 .card.wait-48 { background: var(--danger-soft); }
 .pill-wait { background: var(--bg-elev-1); color: var(--text-primary); }
+.topic-body { display: flex; align-items: flex-start; gap: 8px; }
+.topic-excerpt { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .filter-row { display: flex; gap: 8px; margin-bottom: 8px; }
 .plaza-sec-title { font-size: 13px; font-weight: 700; color: var(--text-secondary); margin: 8px 0 2px; }
 .banner-thumb { width: 72px; height: 40px; border-radius: 6px; background: var(--bg-inset); flex-shrink: 0; }

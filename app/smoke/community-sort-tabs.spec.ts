@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { text } from './community-topic-fixture'
+import zh from '../src/composables/i18n/messages/zh'
 
 /*
  * P3.4 (SPEC 5.2 ④, 6.1, 6.2): the community lists can be ordered by latest
@@ -42,6 +43,7 @@ function topics(): Row[] {
 }
 
 interface Served { rows: Row[]; reads: URL[] }
+interface Reply { post_id: string; user_id: string }
 
 // Enough of PostgREST for these lists: eq, in, is.null, not.is.null and gte filters,
 // the keyset condition, order, offset and limit.
@@ -75,18 +77,22 @@ function read(rows: Row[], url: URL): Row[] {
   return out.slice(offset, offset + Number(query.get('limit') || out.length))
 }
 
-async function open(page: Page, path: string, rows: Row[]): Promise<Served> {
+async function open(page: Page, path: string, rows: Row[], options: { lang?: 'en' | 'zh'; replies?: Reply[] } = {}): Promise<Served> {
   const served: Served = { rows, reads: [] }
-  await page.addInitScript(() => {
+  await page.addInitScript(lang => {
     localStorage.setItem('welcomed', '1')
-    localStorage.setItem('lang', 'en')
+    localStorage.setItem('lang', lang)
     localStorage.setItem('theme_pref', 'light')
-  })
+  }, options.lang || 'en')
   await page.route(url => url.pathname.startsWith('/api/'), route => route.fulfill({
     contentType: 'application/json', body: JSON.stringify({ flagged: false, categories: [] }),
   }))
   await page.route('**/*.supabase.co/**', route => {
     const request = route.request(), url = new URL(request.url())
+    // The home asks who replied to this week's busy topics; that decides whether there is a hot list.
+    if (url.pathname.endsWith('/rest/v1/post_comments') && options.replies) {
+      return route.fulfill({ contentType: 'application/json', headers: { 'content-range': '0-0/0' }, body: JSON.stringify(options.replies) })
+    }
     if (!url.pathname.endsWith('/rest/v1/posts')) {
       return route.fulfill({ contentType: 'application/json', headers: { 'content-range': '0-0/0' }, body: '[]' })
     }
@@ -174,6 +180,70 @@ for (const size of [PHONE, DESKTOP]) {
       await expect(tabs(page).nth(2)).toHaveAttribute('aria-selected', 'true')
       await expect.poll(async () => (await listed(page)).slice(0, 3)).toEqual(names(0, 1, 2))
     })
+  })
+}
+
+// D-54 2h: on a phone the latest list has four tabs once there is a hot list. Each one has to be on
+// screen and take a tap, in both languages; a tab that only fits the document is not enough, because
+// the page clips what overflows sideways.
+for (const width of [360, 390]) {
+  test.describe(`home latest tabs at ${width}px`, () => {
+    test.use({
+      viewport: { width, height: 844 }, screen: { width, height: 844 },
+      deviceScaleFactor: 2, isMobile: true, hasTouch: true,
+    })
+    for (const lang of ['zh', 'en'] as const) {
+      test(`every tab is whole, on screen and tappable in ${lang}`, async ({ page }) => {
+        // Every topic is busy enough for the hot list: three replies from two other members.
+        const rows = topics().map(row => ({ ...row, comment_count: 3, answered_at: row.created_at }))
+        const replies = rows.flatMap(row => [author(101), author(102), author(101)].map(member => ({ post_id: row.id, user_id: member.id })))
+        await open(page, '', rows, { lang, replies })
+        const label = (key: string) => (lang === 'zh' ? (zh as Record<string, string>)[key] : text(key))
+        const latest = page.locator('.ch [data-block="latest"]')
+        const latestTabs = latest.locator('[role="tab"]')
+        await expect(latestTabs).toHaveText([
+          label('plaza.tab.active'), label('plaza.tab.recent'), label('plaza.tab.unanswered'), label('home.hotWeek'),
+        ])
+        // Bring the block up without moving anything sideways: its title starts at the left edge.
+        await latest.locator('.ch-sec-t').scrollIntoViewIfNeeded()
+        const sideways = await latestTabs.first().evaluate(node => {
+          let moved = 0
+          for (let box: Element | null = node; box; box = box.parentElement) moved += Math.abs(box.scrollLeft)
+          return moved
+        })
+        expect(sideways).toBe(0)
+        // Every box is measured where it is, before anything is clicked, and every miss is listed.
+        const measured = await latestTabs.evaluateAll((nodes, limits) => {
+          const title = nodes[0].closest('[data-block="latest"]')!.querySelector('.ch-sec-t')!
+          const lines = title.getBoundingClientRect().height / parseFloat(getComputedStyle(title).lineHeight)
+          const problems = lines >= 1.5 ? [`the title takes ${Math.round(lines)} lines`] : []
+          for (const node of nodes) {
+            const name = (node.textContent || '').trim()
+            const rect = node.getBoundingClientRect()
+            // What a finger lands on at the middle of the tab is the tab itself.
+            const top = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+            if (rect.left < 0) problems.push(`${name}: starts at ${Math.round(rect.left)}`)
+            if (rect.right > limits.width) problems.push(`${name}: ends at ${Math.round(rect.right)} of ${limits.width}`)
+            if (rect.top < 0 || rect.bottom > limits.height) problems.push(`${name}: off screen vertically`)
+            if (rect.height < 44) problems.push(`${name}: ${Math.round(rect.height)}px tall`)
+            if (!top || !(top === node || node.contains(top))) problems.push(`${name}: covered or clipped`)
+            if (node.scrollWidth > node.clientWidth + 1) problems.push(`${name}: label cut`)
+          }
+          return problems
+        }, { width, height: 844 })
+        expect(measured).toEqual([])
+
+        for (let index = 0; index < 4; index += 1) {
+          const tab = latestTabs.nth(index)
+          await tab.click()
+          await expect(tab).toHaveAttribute('aria-selected', 'true')
+          await expect(latest.locator('[role="tab"][aria-selected="true"]')).toHaveCount(1)
+        }
+        // The last tab is the week's busiest topics, and it lists some.
+        await expect.poll(() => latest.locator('.ch-lr').count()).toBeGreaterThan(0)
+        await page.screenshot({ path: test.info().outputPath(`home-latest-tabs-${width}-${lang}.png`) })
+      })
+    }
   })
 }
 

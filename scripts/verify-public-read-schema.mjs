@@ -50,6 +50,22 @@ export async function verifyPublicReadSchema({ url, key, fetchImpl = fetch }) {
     throw new Error(`public_schema_mismatch: community search rpc returned HTTP ${rpc.status}; apply the reviewed migrations to this test target before testing the candidate`)
   }
   results.push({ name: 'community search rpc', status: rpc.status })
+  // P3.6: the topic page asks this function why a topic cannot be read. It ships in one transaction
+  // with the watch and save tables and the author's hidden-topic list, which the publishable key
+  // cannot reach, so its answer stands for them too. Asking about a topic that does not exist
+  // reads no row.
+  const state = await fetchImpl(new URL('/rest/v1/rpc/community_post_state', url), {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ post_id_in: '00000000-0000-0000-0000-000000000000' }),
+    redirect: 'error', signal: AbortSignal.timeout(10_000),
+  })
+  if (!state.ok) {
+    await state.body?.cancel()
+    throw new Error(`public_schema_mismatch: community topic state rpc returned HTTP ${state.status}; apply the reviewed migrations to this test target before testing the candidate`)
+  }
+  if (await state.json() !== 'missing') throw new Error('public_schema_unexpected_response')
+  results.push({ name: 'community topic state rpc', status: state.status })
   return results
 }
 

@@ -1,4 +1,5 @@
 import { useSupabase } from './useSupabase'
+import { captureException } from '../utils/sentry'
 import {
   notificationBodyKey,
   notificationDestination,
@@ -101,4 +102,29 @@ export async function fetchReplyNoticeContext(rows: readonly Notification[]): Pr
     if (name) context.names.set(replyNoticeKey(reply.post_id, reply.created_at), name)
   }
   return context
+}
+
+/**
+ * The same lookup for the list, which goes on without it: a failure is reported and answered with
+ * null, so the lines keep their plain wording and each one asks again when it is tapped.
+ */
+export async function loadReplyNoticeContext(rows: readonly Notification[]): Promise<ReplyNoticeContext | null> {
+  try {
+    return await fetchReplyNoticeContext(rows)
+  } catch (error) {
+    captureException(error, { tags: { source: 'notifications.reply_context' } })
+    return null
+  }
+}
+
+/**
+ * SPEC 6.8: whether the topic a line opens can no longer be read. What the list already looked up
+ * is used as it is; a topic it has no answer for is looked up now. null means it still could not be
+ * found out, which is neither "gone" nor "there": the topic's own page says which.
+ */
+export async function noticeTargetGone(line: NotificationLine, context: ReplyNoticeContext | null): Promise<boolean | null> {
+  const target = notificationPostTarget(line.head)
+  if (!target) return false
+  const known = context?.checked.has(target) ? context : await loadReplyNoticeContext(line.rows)
+  return known ? !known.titles.has(target) : null
 }

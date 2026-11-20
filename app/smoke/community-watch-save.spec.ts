@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
-import { installTopicFixture, text, topicUrl, READER, TOPIC } from './community-topic-fixture'
+import { announced, installTopicFixture, text, topicUrl, READER, TOPIC } from './community-topic-fixture'
+import { supabaseRefForBuild } from './supabase-ref'
 
 /*
  * P3.2: a member watches and saves a topic on its page, and both lists under
@@ -86,7 +87,7 @@ test('"我的" lists its entries in the SPEC 6.9 order and opens the three topic
 
   // A hidden topic of the member's own is listed too, and says so.
   fixture.topic.visible = false
-  fixture.ownHidden = [{ id: TOPIC.id, title: TOPIC.title, category: TOPIC.category, content: TOPIC.content, created_at: TOPIC.created_at, hidden_reason: 'Spam' }]
+  fixture.ownHidden = [{ id: TOPIC.id, title: TOPIC.title, category: TOPIC.category, content: TOPIC.content, created_at: TOPIC.created_at }]
   await page.reload({ waitUntil: 'networkidle' })
   await expect(page.locator('[data-test=topic-rows] .row-tag')).toHaveText([text('profile.hiddenTag')])
 
@@ -96,6 +97,48 @@ test('"我的" lists its entries in the SPEC 6.9 order and opens the three topic
   await page.goto('/#/pages/profile/index', { waitUntil: 'networkidle' })
   await page.locator('[data-test=saved-topics]').click()
   await expect(page).toHaveURL(/pages\/my-topics\/index\?view=saved/)
+})
+
+// A read that failed is not "not watching". The page says the marks could not be read, and the
+// first tap reads them again instead of writing over a state it never saw.
+test('marks that could not be read are not shown as unset, and a tap reads them again before anything is written', async ({ page }) => {
+  const fixture = await installTopicFixture(page)
+  fixture.marks.post_follows.add(TOPIC.id) // the member already watches this topic
+  let down = true
+  await page.route(/\/rest\/v1\/post_follows(?:\?|$)/, route => down && route.request().method() === 'GET'
+    ? route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ code: '57014', message: 'canceling statement due to statement timeout' }) })
+    : route.fallback())
+  await page.goto(topicUrl(), { waitUntil: 'networkidle' })
+  await expect.poll(() => announced(page)).toEqual([text('plaza.marksFailed')])
+  await expect(page.locator(watch)).toHaveAttribute('aria-pressed', 'mixed')
+  await expect(page.locator(save)).toHaveAttribute('aria-pressed', 'mixed')
+
+  down = false
+  await page.locator(watch).click()
+  await expect(page.locator(watch)).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator(watch)).toContainText(text('plaza.watching'))
+  await expect(page.locator(save)).toHaveAttribute('aria-pressed', 'false')
+  expect(fixture.writes).toEqual([])
+  // From here a tap means what the button says.
+  await page.locator(watch).click()
+  await expect(page.locator(watch)).toHaveAttribute('aria-pressed', 'false')
+  await expect.poll(() => fixture.writes).toEqual([{ method: 'DELETE', table: 'post_follows', body: null }])
+})
+
+// The lists belong to one account. When that account is gone the page does not go on showing
+// "you have no topics": it loads again for whoever is signed in now, here nobody.
+test('my topics does not show an empty list for an account that has left', async ({ page }) => {
+  const fixture = await installTopicFixture(page)
+  fixture.topic.user_id = READER
+  await page.goto('/#/pages/my-topics/index?view=mine', { waitUntil: 'networkidle' })
+  await expect(page.locator('[data-test=topic-rows] .row-title')).toHaveText([TOPIC.title])
+  await page.evaluate(ref => {
+    const channel = new BroadcastChannel(`sb-${ref}-auth-token`)
+    channel.postMessage({ event: 'SIGNED_OUT', session: null })
+    channel.close()
+  }, supabaseRefForBuild())
+  await expect(page).toHaveURL(/pages\/login\/index/)
+  await expect(page.locator('[data-test=topic-rows-empty]')).toHaveCount(0)
 })
 
 test('a restricted account can still watch and save', async ({ page }) => {

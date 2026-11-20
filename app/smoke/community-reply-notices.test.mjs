@@ -14,14 +14,16 @@ const compile = input => moduleUrl(ts.transpileModule(input, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 },
 }).outputText)
 
-const double = postgrestDouble()
+const double = Object.assign(postgrestDouble(), { reported: [] })
 globalThis.__replyNoticesTest = double
 const apiUrl = compile(source('api/notifications.ts'))
 const { notificationDestination, notificationPostTarget } = await import(apiUrl)
 const {
   notificationLines, notificationLineDestination, notificationTopicTitle, replyNoticeKey, fetchReplyNoticeContext,
+  loadReplyNoticeContext, noticeTargetGone,
 } = await import(compile(source('composables/replyNotices.ts')
   .replace("'./useSupabase'", `'${moduleUrl('export const useSupabase = () => ({ supabase: globalThis.__replyNoticesTest.supabase })')}'`)
+  .replace("'../utils/sentry'", `'${moduleUrl('export const captureException = (error, context) => { globalThis.__replyNoticesTest.reported.push({ error, context }) }')}'`)
   .replace("'../api/notifications'", `'${apiUrl}'`)))
 
 const POST = '22222222-2222-4222-8222-222222222222'
@@ -139,6 +141,44 @@ test('a failed title lookup is reported; a failed name lookup only costs the nam
   const context = await fetchReplyNoticeContext([notice(8, `comment_reply:${POST}`)])
   assert.deepEqual([...context.titles], [[POST, 'T']])
   assert.equal(context.names.size, 0)
+})
+
+// A lookup that failed must not pass for "nothing to say": it is reported, and the question the
+// list could not answer is asked again when a line is tapped.
+test('a lookup the list could not make is reported and leaves the list without context', async () => {
+  const down = { message: 'down' }
+  double.reset({ posts: [{ data: null, error: down }] })
+  double.reported = []
+  assert.equal(await loadReplyNoticeContext([notice(9, `followed_post_reply:${POST}`)]), null)
+  assert.deepEqual(double.reported, [{ error: down, context: { tags: { source: 'notifications.reply_context' } } }])
+  double.reset({ posts: [{ data: [{ id: POST, title: 'T', content: '' }], error: null }] })
+  double.reported = []
+  assert.deepEqual([...(await loadReplyNoticeContext([notice(9, `followed_post_reply:${POST}`)])).titles], [[POST, 'T']])
+  assert.deepEqual(double.reported, [])
+})
+
+test('a tapped line knows whether its topic is gone, asking again when the list could not', async () => {
+  const line = (n, body) => ({ head: notice(n, body), rows: [notice(n, body)] })
+  const known = { titles: new Map([[POST, 'T']]), names: new Map(), checked: new Set([POST, OTHER]) }
+  // What the list already looked up is not asked for again.
+  double.reset()
+  assert.equal(await noticeTargetGone(line(9, `followed_post_reply:${POST}`), known), false)
+  assert.equal(await noticeTargetGone(line(8, `comment_reply:${OTHER}`), known), true)
+  assert.equal(await noticeTargetGone(line(7, `new_follower:${PERSON}`), known), false, 'not about a topic')
+  assert.deepEqual(double.calls, [])
+  // The list has no context, or none for this topic: one lookup for this line.
+  for (const context of [null, { titles: new Map(), names: new Map(), checked: new Set() }]) {
+    double.reset({ posts: [{ data: [], error: null }] })
+    assert.equal(await noticeTargetGone(line(9, `followed_post_reply:${POST}`), context), true)
+    assert.deepEqual(double.calls, [{ table: 'posts', steps: [['select', 'id, title, content'], ['in', 'id', [POST]]] }])
+    double.reset({ posts: [{ data: [{ id: POST, title: 'T', content: '' }], error: null }] })
+    assert.equal(await noticeTargetGone(line(9, `followed_post_reply:${POST}`), context), false)
+  }
+  // Still unreadable: unknown, which is neither "gone" nor "there". The topic page will say which.
+  double.reset({ posts: [{ data: null, error: { message: 'down' } }] })
+  double.reported = []
+  assert.equal(await noticeTargetGone(line(9, `followed_post_reply:${POST}`), null), null)
+  assert.equal(double.reported.length, 1)
 })
 
 test('a toast, or a line whose topic cannot be read, has plain wording for both keys', () => {

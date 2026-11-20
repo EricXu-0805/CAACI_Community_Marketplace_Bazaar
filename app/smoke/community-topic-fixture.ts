@@ -34,6 +34,13 @@ export interface TopicFixture {
   ownHidden: Record<string, unknown>[]
 }
 
+/*
+ * Every toast the page has shown since it loaded, in order. The app announces each toast in one
+ * live region (App.vue installToastAnnouncer); this records what that region says as it says it, so
+ * a test does not have to catch a toast while it is on screen.
+ */
+export const announced = (page: Page) => page.evaluate(() => (window as unknown as { __announced?: string[] }).__announced || [])
+
 const json = (route: Route, body: unknown, status = 200) => route.fulfill({
   status, contentType: 'application/json', headers: { 'content-range': '0-0/1' }, body: JSON.stringify(body),
 })
@@ -46,6 +53,16 @@ export async function installTopicFixture(page: Page, options: { user?: string |
     writes: [], topic: { ...TOPIC, visible: true }, state: 'active', ownHidden: [],
   }
   await page.routeWebSocket(/\.supabase\.co(?:[:/]|$)/, socket => socket.close())
+  await page.addInitScript(() => {
+    const said: string[] = []
+    ;(window as unknown as { __announced: string[] }).__announced = said
+    let last = ''
+    new MutationObserver(() => {
+      const now = document.querySelector('body > div.sr-only[role="status"]')?.textContent?.trim() || ''
+      if (now && now !== last) said.push(now)
+      last = now
+    }).observe(document, { childList: true, subtree: true, characterData: true })
+  })
   await page.addInitScript(([ref, uid]) => {
     localStorage.setItem('welcomed', '1')
     localStorage.setItem('lang', 'en')

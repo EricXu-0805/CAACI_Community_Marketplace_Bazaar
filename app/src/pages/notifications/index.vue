@@ -91,9 +91,10 @@ import {
   notificationTypeLabelKey,
   useNotifications,
 } from '../../composables/useNotifications'
-import { notificationBodyKey, notificationPostTarget } from '../../api/notifications'
+import { notificationBodyKey } from '../../api/notifications'
 import {
-  fetchReplyNoticeContext,
+  loadReplyNoticeContext,
+  noticeTargetGone,
   notificationLineDestination,
   notificationLines,
   replyNoticeKey,
@@ -127,13 +128,11 @@ let replyContextEpoch = 0
 watch(() => notifications.value.map(n => n.id).join(), async () => {
   const requestEpoch = ++replyContextEpoch
   const accountToken = captureActiveAccountRequest()
-  try {
-    const next = await fetchReplyNoticeContext(notifications.value)
-    if (requestEpoch !== replyContextEpoch || !accountToken || !isAccountRequestCurrent(accountToken)) return
-    replyContext.value = next
-  } catch {
-    // The lines keep their plain wording and a tap still opens the topic.
-  }
+  // A lookup that fails is reported where it is made and answers null. The lines it could not
+  // describe keep their plain wording, and each one asks about its own topic when it is tapped.
+  const next = await loadReplyNoticeContext(notifications.value)
+  if (!next || requestEpoch !== replyContextEpoch || !accountToken || !isAccountRequestCurrent(accountToken)) return
+  replyContext.value = next
 }, { immediate: true })
 
 function lineBody(line: NotificationLine): string {
@@ -238,16 +237,26 @@ function onNotificationKeydown(event: KeyboardEvent, line: NotificationLine) {
   onLongPress(line)
 }
 
-function onTap(line: NotificationLine) {
+let openingLine = false
+async function onTap(line: NotificationLine) {
+  if (openingLine) return
   // Decided before anything is marked read: an unread line opens at its earliest reply.
   const destination = notificationLineDestination(line)
-  const target = notificationPostTarget(line.head)
-  const context = replyContext.value
-  // SPEC 6.8: the line stays, but a topic that was hidden or deleted is not opened.
-  const gone = !!target && !!context && context.checked.has(target) && !context.titles.has(target)
+  const accountToken = captureActiveAccountRequest()
+  const tapEpoch = pageLoadEpoch
   for (const row of line.rows) {
     if (!row.is_read) markRead(row.id).catch(() => {})
   }
+  // SPEC 6.8: the line stays, but a topic that was hidden or deleted is not opened. When the list
+  // has no answer for this topic it is asked now; if that fails too the topic's page says what it is.
+  openingLine = true
+  let gone: boolean | null
+  try {
+    gone = await noticeTargetGone(line, replyContext.value)
+  } finally {
+    openingLine = false
+  }
+  if (!pageVisible || tapEpoch !== pageLoadEpoch || !accountToken || !isAccountRequestCurrent(accountToken)) return
   if (gone) {
     uni.showToast({ title: t('notif.targetGone'), icon: 'none' })
     return

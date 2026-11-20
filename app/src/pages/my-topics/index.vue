@@ -75,7 +75,7 @@ const mpChrome = mpChromeVars()
 import AppToast from '../../components/AppToast.vue'
 // #endif
 import { ref, onUnmounted } from 'vue'
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { onLoad, onShow, onHide } from '@dcloudio/uni-app'
 import UIcon from '../../components/UIcon.vue'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
@@ -110,14 +110,25 @@ onLoad((query) => {
   const requested = String((query as Record<string, string> | undefined)?.view || '')
   if (VIEWS.includes(requested as View)) view.value = requested as View
 })
-onShow(() => { void load() })
+let pageVisible = false
+onShow(() => {
+  pageVisible = true
+  void load()
+})
+onHide(() => { pageVisible = false })
 
-// Another account's lists must not stay on screen across a sign-in change.
+// Another account's lists must not stay on screen across a sign-in change, and an empty list
+// must not stand in for the next account's: the page is loading until it has read that account's
+// rows. It reads them now when it is the page on screen, and on its next show otherwise.
 const stopAccountTransitionListener = onAccountTransition(() => {
   loadEpoch += 1
   rows.value = []
+  loadError.value = false
+  loading.value = true
+  if (pageVisible) void Promise.resolve().then(load)
 })
 onUnmounted(() => {
+  pageVisible = false
   loadEpoch += 1
   stopAccountTransitionListener()
 })

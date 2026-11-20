@@ -887,7 +887,12 @@ export function usePlaza() {
     return result
   }
 
-  async function createComment(postId: string, content: string, parentId?: string): Promise<PostComment> {
+  /*
+   * parentId is the reply a thread hangs under (threads are one level deep). replyToId is the reply
+   * that was actually answered, in that thread or at its head: the server tells its author
+   * (SPEC 6.8) and never returns the column, so it is written here and read nowhere.
+   */
+  async function createComment(postId: string, content: string, parentId?: string, replyToId?: string): Promise<PostComment> {
     if (!currentUser.value) throw new Error('Not authenticated')
     const userId = currentUser.value.id
     const accountToken = captureAccountRequest(userId)
@@ -928,6 +933,7 @@ export function usePlaza() {
             user_id: userId,
             content: trimmed,
             parent_comment_id: parentId || null,
+            reply_to_comment_id: replyToId || null,
           })
           .select(`${POST_COMMENT_FIELDS}, profile:profiles!post_comments_user_id_fkey(${PUBLIC_PROFILE_FIELDS})`)
           .single()
