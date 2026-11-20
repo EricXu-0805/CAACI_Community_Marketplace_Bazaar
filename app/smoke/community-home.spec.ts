@@ -445,8 +445,8 @@ for (const size of [PHONE, DESKTOP]) {
 
         await page.locator('.sb-input input').fill('拼车')
         await expect.poll(() => seen.rpc).toContain('search_community_posts')
-        // Until P4.10 the field searches the community only.
-        expect(seen.rpc.filter(name => name !== 'search_community_posts')).toEqual([])
+        // Until P4.10 the field searches the community only; the home's own events read is not a search.
+        expect(seen.rpc.filter(name => name !== 'search_community_posts' && name !== 'list_community_events')).toEqual([])
       })
 
       test('the views have addresses: a board, all discussions, and an unknown one opens the home', async ({ page }) => {
@@ -651,7 +651,7 @@ for (const size of [PHONE, DESKTOP]) {
         await field.locator('input').press('Enter')
         await expect(page).toHaveURL(/pages\/plaza\/index\?view=all$/)
         await expect.poll(() => seen.rpc).toContain('search_community_posts')
-        expect(seen.rpc.filter(name => name !== 'search_community_posts')).toEqual([])
+        expect(seen.rpc.filter(name => name !== 'search_community_posts' && name !== 'list_community_events')).toEqual([])
         await expect(field.locator('input')).toHaveValue('拼车')
       })
 

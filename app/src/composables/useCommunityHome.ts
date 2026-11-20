@@ -3,6 +3,7 @@ import { useSupabase } from './useSupabase'
 import { useAuth } from './useAuth'
 import { useModeration } from './useModeration'
 import type { Item, Profile } from '../types'
+import type { CommunityEvent } from '../utils/communityEvents'
 import type { HomeItem, HomeLatestSort, HomePost, HomePostData } from '../utils/communityHome'
 import { POST_CATEGORIES, type PostCategory } from '../utils/communityPost'
 import { ACTIVE_REGION } from '../utils/region'
@@ -14,6 +15,8 @@ export type CommunityHomeItem = HomeItem & Pick<Item, 'user_id' | 'title_i18n' |
 export interface CommunityHomeData {
   posts: HomePostData
   items: CommunityHomeItem[]
+  /** Upcoming events (P4.8); empty when the list could not be read. */
+  events: CommunityEvent[]
   /** When the snapshot was read; relative times are worded against it. */
   now: number
 }
@@ -87,7 +90,7 @@ export function useCommunityHome() {
         if (!gate.ok) throw new Error('moderation_gate_unavailable')
       }
       const now = Date.now()
-      const [feeds, weekly, total, market] = await Promise.all([
+      const [feeds, weekly, total, market, events] = await Promise.all([
         Promise.all([
           feed(null, 40, isCurrent), feed(null, 40, isCurrent, 'active'), feed(null, 40, isCurrent, 'unanswered'),
           ...POST_CATEGORIES.map(category => feed(category, 8, isCurrent)),
@@ -102,6 +105,8 @@ export function useCommunityHome() {
         // Listings for sale. Items carry no region (ENGINEERING §4).
         readHome(() => supabase.from('items').select(HOME_ITEM_FIELDS).eq('status', 'active').eq('listing_type', 'sell')
           .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(6), isCurrent),
+        // Upcoming events for the "近期活动" block (ENGINEERING §7, §9.6).
+        readHome(() => supabase.rpc('list_community_events', { region_in: ACTIVE_REGION, window_in: 'upcoming', limit_in: 200 }), isCurrent),
       ])
       if (requestId !== latestRequest) return
       const failed = [...feeds, weekly, total, market].find(result => result.error)
@@ -130,8 +135,11 @@ export function useCommunityHome() {
         items: ((market.data || []) as unknown as CommunityHomeItem[])
           .map(sanitizeItemResources)
           .filter(item => !blocked.has(item.user_id)),
+        // The block is hidden when the list cannot be read; the rest of the home does not depend on it.
+        events: events.error ? [] : (events.data || []) as CommunityEvent[],
         now,
       }
+      if (events.error) console.error('[community home] events unavailable')
     } catch {
       if (requestId !== latestRequest) return
       console.error('[community home] load failed')

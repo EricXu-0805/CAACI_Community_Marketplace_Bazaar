@@ -35,6 +35,8 @@
           <text class="cx-pop-i cx-pop-all" role="button" @click="pick(() => emit('all'))">{{ t('plaza.allDiscussions') }}</text>
         </view>
         <text class="cx-nav-i cx-nav-t" role="button" @click="goTab('/pages/index/index')">{{ t('home.navMarket') }}</text>
+        <!-- SPEC 5.2 ①: the events page arrives with P4.8. -->
+        <text class="cx-nav-i cx-nav-t" role="button" data-test="nav-events" @click="goEvents">{{ t('nav.events') }}</text>
       </view>
 
       <view class="cx-right">
@@ -157,6 +159,7 @@ const notifLabel = computed(() => unreadNotifCount.value > 0
   ? `${t('notif.title')}, ${t('a11y.unreadNotifications')}`
   : t('notif.title'))
 function goNotifications() { uni.navigateTo({ url: '/pages/notifications/index' }) }
+function goEvents() { uni.navigateTo({ url: '/pages/events/index' }) }
 
 // #ifdef H5
 // What only the desktop header holds: the board menu, the search field, messages and the avatar.
