@@ -4,6 +4,8 @@ import { useAuth } from './useAuth'
 import { useModeration } from './useModeration'
 import { useI18n } from './useI18n'
 import type { Post, PostComment } from '../types'
+import { normalizePostTopic, type PostCategory } from '../utils/communityPost'
+import { ACTIVE_REGION } from '../utils/region'
 import { expandSearch, friendlyErrorMessage } from '../utils'
 import { checkContent, clearLocalDuplicate, isLocalDuplicate, remoteModerate } from '../utils/contentSafety'
 import { mpTextGate } from './useWechatSecCheck'
@@ -48,6 +50,71 @@ let latestRequestId = 0
  * waiting for page unmount/sign-out cleanup can briefly expose account A's
  * membership state to account B.
  */
+/*
+ * P2.7: items a just-published post could not link, per account and post.
+ * Mirrored to sessionStorage so a reload of the detail tab still offers the
+ * retry; both copies are dropped on any account transition.
+ */
+const PENDING_POST_ITEMS_PREFIX = 'pending-post-items:'
+const pendingPostItems = new Map<string, string[]>()
+const pendingKey = (accountId: string, postId: string) => `${PENDING_POST_ITEMS_PREFIX}${accountId}:${postId}`
+
+function pendingSession(): Storage | null {
+  try { return typeof sessionStorage === 'undefined' ? null : sessionStorage } catch { return null }
+}
+
+export function rememberPendingPostItems(accountId: string, postId: string, itemIds: string[]) {
+  const key = pendingKey(accountId, postId)
+  if (itemIds.length === 0) {
+    pendingPostItems.delete(key)
+    try { pendingSession()?.removeItem(key) } catch { /* storage unavailable */ }
+    return
+  }
+  pendingPostItems.set(key, [...itemIds])
+  try { pendingSession()?.setItem(key, JSON.stringify(itemIds)) } catch { /* storage unavailable */ }
+}
+
+export function readPendingPostItems(accountId: string, postId: string): string[] {
+  const key = pendingKey(accountId, postId)
+  const held = pendingPostItems.get(key)
+  if (held) return [...held]
+  try {
+    const parsed = JSON.parse(pendingSession()?.getItem(key) || 'null')
+    if (Array.isArray(parsed) && parsed.length <= 3 && parsed.every(id => typeof id === 'string' && id)) {
+      pendingPostItems.set(key, parsed)
+      return [...parsed]
+    }
+  } catch { /* ignore malformed mirror */ }
+  return []
+}
+
+function clearAllPendingPostItems() {
+  pendingPostItems.clear()
+  const store = pendingSession()
+  if (!store) return
+  try {
+    const keys: string[] = []
+    for (let i = 0; i < store.length; i += 1) {
+      const key = store.key(i)
+      if (key?.startsWith(PENDING_POST_ITEMS_PREFIX)) keys.push(key)
+    }
+    keys.forEach(key => store.removeItem(key))
+  } catch { /* storage unavailable */ }
+}
+
+export type CreatePostResult =
+  | { id: string; partial: false }
+  | { id: string; partial: 'items_failed'; failedItemIds: string[]; itemsErr?: any }
+  | { id: string; partial: 'refetch_failed'; itemsErr?: any }
+
+export type RetryAttachResult = {
+  linked: string[]
+  unavailable: string[]
+  capped: string[]
+  pending: string[]
+  transientError: unknown | null
+}
+
 function resetPlazaState() {
   latestRequestId += 1
   posts.value = []
@@ -55,6 +122,7 @@ function resetPlazaState() {
   hasMore.value = true
   fetchError.value = ''
   likeInFlight.clear()
+  clearAllPendingPostItems()
 }
 
 onAccountTransition(resetPlazaState)
@@ -70,7 +138,7 @@ const POST_COMMENT_FIELDS = 'id, post_id, user_id, content, content_i18n, parent
 // shipping down the wire even when no UI consumes it. This enumerates
 // all current posts columns; add here when a new read dependency lands.
 const POST_COLUMNS =
-  'id, user_id, content, images, image_dimensions, content_i18n, source_lang, is_official, is_pinned, like_count, comment_count, status, created_at, updated_at'
+  'id, user_id, title, category, content, images, image_dimensions, content_i18n, source_lang, is_official, is_pinned, like_count, comment_count, status, created_at, updated_at'
 // post_items is mig 041's join table; replaces the single posts.attached_item_id
 // column. Display order is enforced by the .order(..., { foreignTable: 'post_items' })
 // clause on every SELECT below — Supabase doesn't sort nested relations otherwise.
@@ -157,8 +225,8 @@ export function usePlaza() {
   const { currentUser } = useAuth()
   const { t, lang } = useI18n()
 
-  async function fetchPosts(options: { page?: number; reset?: boolean; search?: string; sort?: 'recent' | 'hot' } = {}) {
-    const { page = 0, reset = false, search, sort = 'recent' } = options
+  async function fetchPosts(options: { page?: number; reset?: boolean; search?: string; category?: PostCategory; sort?: 'recent' | 'hot' } = {}) {
+    const { page = 0, reset = false, search, category, sort = 'recent' } = options
     const requestId = ++latestRequestId
     if (reset) {
       posts.value = []
@@ -176,7 +244,8 @@ export function usePlaza() {
 
       let data: any, error: any
       if (search && search.trim()) {
-        // Posts fuzzy search (migration 062): trigram match on content OR
+        // Community search includes titles and applies the board before paging.
+        // The legacy search_posts_fuzzy RPC remains for older clients. Match content OR
         // author nickname, ranked — so a person's name surfaces their posts
         // (#11) and typos/partial words match (#12). The RPC sorts internally
         // (pinned → rank → hot/recent → recency) and omits post_items chips.
@@ -187,7 +256,9 @@ export function usePlaza() {
           .map(t => t.replace(/[%_]/g, '\\$&').replace(/[.,()]/g, '').slice(0, 100))
           .filter(Boolean)
         if (terms.length === 0) { hasMore.value = false; return }
-        const res = await supabase.rpc('search_posts_fuzzy', {
+        const res = await supabase.rpc('search_community_posts', {
+          category_in: category ?? null,
+          region_in: ACTIVE_REGION,
           terms_in: terms,
           sort_in: sort,
           limit_in: PAGE_SIZE,
@@ -203,7 +274,9 @@ export function usePlaza() {
           .from('posts')
           .select(POST_SELECT)
           .eq('status', 'active')
+          .eq('region', ACTIVE_REGION)
           .order('is_pinned', { ascending: false })
+        if (category) q = q.eq('category', category)
         if (sort === 'hot') {
           q = q
             .order('like_count', { ascending: false })
@@ -314,6 +387,10 @@ export function usePlaza() {
     images: string[] = [],
     attachedItemIds: string[] = [],
     extras: {
+      postId?: string
+      retryCreate?: boolean
+      title?: string | null
+      category?: PostCategory | null
       image_dimensions?: Array<{ w: number; h: number }>
       content_i18n?: Record<string, string> | null
       source_lang?: string | null
@@ -326,7 +403,7 @@ export function usePlaza() {
        */
       confirmSuspectedAd?: () => Promise<boolean>
     } = {},
-  ): Promise<{ id: string; partial: boolean; itemsErr?: any }> {
+  ): Promise<CreatePostResult> {
     const userId = currentUser.value?.id
     if (!userId) throw new Error('Not authenticated')
     const accountToken = extras.accountToken || captureAccountRequest(userId)
@@ -334,6 +411,7 @@ export function usePlaza() {
     let primaryWriteStarted = false
     let postCommitted = false
     const trimmed = content.trim()
+    let moderationText = trimmed
 
     const assertAccountCurrent = (committed = false) => {
       if (accountToken.userId !== userId || !isAccountRequestCurrent(accountToken)) {
@@ -346,6 +424,19 @@ export function usePlaza() {
 
     try {
       assertAccountCurrent()
+      if (extras.postId && !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(extras.postId)) {
+        throw new Error('Invalid post id')
+      }
+      if (extras.postId && extras.retryCreate) {
+        const recovered = await recoverCreatedPost(extras.postId, attachedItemIds, accountToken)
+        if (recovered) return recovered
+      }
+      const topic = normalizePostTopic(extras.title, extras.category, trimmed)
+      moderationText = topic.title ? `${topic.title}\n${trimmed}` : trimmed
+      if (topic.title) {
+        const safety = checkContent(topic.title, { kind: 'post' })
+        if (!safety.ok) throw new Error(`moderation_block:${safety.category}:${safety.reason || ''}`)
+      }
       if (!trimmed && images.length === 0 && attachedItemIds.length === 0) {
         throw new Error('content_required')
       }
@@ -358,21 +449,31 @@ export function usePlaza() {
       if (trimmed) {
         const safety = checkContent(trimmed, { kind: 'post' })
         if (!safety.ok) throw new Error(`moderation_block:${safety.category}:${safety.reason || ''}`)
-        if (isLocalDuplicate(accountToken, 'post', trimmed)) throw new Error('duplicate_post')
+      }
+      if (moderationText) {
+        if (!extras.retryCreate && isLocalDuplicate(accountToken, 'post', moderationText)) {
+          if (extras.postId) {
+            const recovered = await recoverCreatedPost(extras.postId, attachedItemIds, accountToken)
+            if (recovered) return recovered
+          }
+          throw new Error('duplicate_post')
+        }
         duplicateHeld = true
-        const ai = await remoteModerate(trimmed, accountToken)
+        const ai = await remoteModerate(moderationText, accountToken)
         if (ai.flagged) throw new Error(`moderation_block:sensitive_word:ai(${ai.categories.join(',')})`)
         if (ai.categories.includes('spam_ad') && extras.confirmSuspectedAd) {
           if (!await extras.confirmSuspectedAd()) throw new Error('ad_declined')
         }
         /* mp store review: WeChat's own classifier (no-op on H5). */
-        await mpTextGate(trimmed, 3, accountToken)
+        await mpTextGate(moderationText, 3, accountToken)
         assertAccountCurrent()
       }
 
-      const payloadContent = trimmed || ' '
+      const payloadContent = topic.title ? trimmed : trimmed || ' '
       const basePayload: Record<string, any> = {
+        ...(extras.postId ? { id: extras.postId } : {}),
         user_id: userId,
+        ...topic,
         content: payloadContent,
         images,
       }
@@ -390,12 +491,20 @@ export function usePlaza() {
       try {
         res = await supabase.from('posts').insert(basePayload).select(POST_SELECT).single()
       } catch (writeError) {
-        throw mutationOutcomeError(writeError, 'unknown')
+        res = { error: mutationOutcomeError(writeError, 'unknown') }
+      }
+      const duplicateId = res.error?.code === '23505'
+      if (extras.postId && (res.error || !res.data) && (extras.retryCreate || duplicateId
+        || res.error?.message?.includes('duplicate_post')
+        || !res.data && !isDefinitiveMutationRejection(res.error))) {
+        const recovered = await recoverCreatedPost(extras.postId, attachedItemIds, accountToken)
+        if (recovered) return recovered
       }
       if (res.error) {
         throw mutationOutcomeError(
           res.error,
-          isDefinitiveMutationRejection(res.error) ? 'not_committed' : 'unknown',
+          extras.retryCreate || duplicateId ? 'unknown'
+            : isDefinitiveMutationRejection(res.error) ? 'not_committed' : 'unknown',
         )
       }
       if (!res.data) {
@@ -409,7 +518,7 @@ export function usePlaza() {
 
       /* Step 2: bulk insert post_items in addition order. A failure here is a
          partial success: the post (and every image URL) is already committed. */
-      let partial = false
+      let partial: false | 'items_failed' | 'refetch_failed' = false
       let itemsErr: any = null
       if (attachedItemIds.length > 0) {
         assertAccountCurrent(true)
@@ -426,8 +535,9 @@ export function usePlaza() {
           piErr = error
         }
         if (piErr) {
-          partial = true
+          partial = 'items_failed'
           itemsErr = piErr
+          if (isAccountRequestCurrent(accountToken)) rememberPendingPostItems(userId, newId, attachedItemIds)
           addBreadcrumb({
             category: 'plaza',
             level: 'error',
@@ -451,15 +561,17 @@ export function usePlaza() {
               .single()
             if (full) post = sanitizePostResources(full as unknown as Post)
           } catch (error: any) {
-            partial = true
+            partial = 'refetch_failed'
             itemsErr = error
           }
         }
       }
 
       assertAccountCurrent(true)
-      posts.value = [post, ...posts.value]
-      return { id: newId, partial, itemsErr }
+      posts.value = [post, ...posts.value.filter(row => row.id !== newId)]
+      if (partial === 'items_failed') return { id: newId, partial, failedItemIds: [...attachedItemIds], itemsErr }
+      if (partial === 'refetch_failed') return { id: newId, partial, itemsErr }
+      return { id: newId, partial: false }
     } catch (error) {
       const tagged = mutationCommitState(error)
         ? error
@@ -470,9 +582,41 @@ export function usePlaza() {
       // Keep the duplicate hold for unknown/committed outcomes so a retry
       // cannot create a second post while realtime/history catches up.
       if (duplicateHeld && shouldCompensateMutationFailure(tagged)) {
-        clearLocalDuplicate(accountToken, 'post', trimmed)
+        clearLocalDuplicate(accountToken, 'post', moderationText)
       }
       throw tagged
+    }
+  }
+
+  /** Check an uncertain publish without sending another INSERT. */
+  async function recoverCreatedPost(
+    postId: string,
+    itemIds: string[] = [],
+    expectedToken?: AccountRequestToken,
+  ): Promise<CreatePostResult | null> {
+    const uid = currentUser.value?.id
+    const token = expectedToken || (uid ? captureAccountRequest(uid) : null)
+    try {
+      if (!token || token.userId !== uid || !isAccountRequestCurrent(token)) throw new Error('Account changed while checking post')
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(postId)) throw new Error('Invalid post id')
+      const { data, error } = await supabase.from('posts').select(POST_SELECT)
+        .eq('id', postId).eq('user_id', uid).maybeSingle()
+      if (!isAccountRequestCurrent(token)) throw new Error('Account changed while checking post')
+      if (error) throw error
+      if (!data) return null
+      const post = sanitizePostResources(data as unknown as Post)
+      if (post.id !== postId || post.user_id !== uid) throw new Error('Post recovery mismatch')
+      const linked = new Set(post.post_items?.map(row => row.item?.id))
+      const missing = itemIds.filter(id => !linked.has(id))
+      // The original request may have stopped between posts and post_items.
+      // Keep the existing detail-page retry as the single owner of missing links.
+      rememberPendingPostItems(uid!, postId, missing.length ? itemIds : [])
+      posts.value = [post, ...posts.value.filter(row => row.id !== postId)]
+      return missing.length
+        ? { id: postId, partial: 'items_failed', failedItemIds: missing }
+        : { id: postId, partial: false }
+    } catch (error) {
+      throw mutationOutcomeError(error, 'unknown')
     }
   }
 
@@ -774,6 +918,54 @@ export function usePlaza() {
     resetPlazaState()
   }
 
+  /*
+   * P2.7: link the items a published post is still missing. Reads the
+   * post's current post_items, inserts only the absent ones in their original
+   * order, and never touches posts. 23505 counts as linked; 42501 means the
+   * item can no longer be linked; the cap trigger means the post is full; any
+   * other failure stops and keeps the rest pending for another try.
+   */
+  async function retryAttachPostItems(postId: string, itemIds: string[]): Promise<RetryAttachResult> {
+    const userId = currentUser.value?.id
+    if (!userId) throw new Error('Not authenticated')
+    const token = captureAccountRequest(userId)
+    const result: RetryAttachResult = { linked: [], unavailable: [], capped: [], pending: [], transientError: null }
+    let existing: any
+    try {
+      existing = await supabase.from('post_items').select('item_id, display_order').eq('post_id', postId)
+    } catch (error) {
+      existing = { error }
+    }
+    if (existing.error) {
+      result.pending = [...itemIds]
+      result.transientError = existing.error
+      return result
+    }
+    const rows: Array<{ item_id: string; display_order?: number }> = existing.data || []
+    const have = new Set(rows.map(row => row.item_id))
+    // Pending items always follow the linked ones in the original order, so
+    // appending after the highest existing position keeps that order.
+    let nextOrder = rows.reduce((max, row) => Number.isInteger(row.display_order) ? Math.max(max, row.display_order! + 1) : max, 0)
+    for (const itemId of itemIds) {
+      if (result.transientError) { result.pending.push(itemId); continue }
+      if (have.has(itemId)) { result.linked.push(itemId); continue }
+      if (!isAccountRequestCurrent(token)) { result.pending.push(itemId); continue }
+      let error: any = null
+      try {
+        error = (await supabase.from('post_items').insert({ post_id: postId, item_id: itemId, display_order: nextOrder })).error
+      } catch (thrown) {
+        error = thrown
+      }
+      if (!error) { result.linked.push(itemId); nextOrder += 1 }
+      else if (error.code === '23505') result.linked.push(itemId)
+      else if (error.code === '42501') result.unavailable.push(itemId)
+      else if (/post_items_cap_exceeded/.test(String(error.message || ''))) result.capped.push(itemId)
+      else { result.transientError = error; result.pending.push(itemId) }
+    }
+    if (isAccountRequestCurrent(token)) rememberPendingPostItems(userId, postId, result.pending)
+    return result
+  }
+
   return {
     posts,
     loading,
@@ -782,6 +974,8 @@ export function usePlaza() {
     fetchPosts,
     fetchPost,
     createPost,
+    recoverCreatedPost,
+    retryAttachPostItems,
     updatePostI18n,
     deletePost,
     toggleLike,

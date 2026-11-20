@@ -12,6 +12,10 @@
 
     <view class="page-header">
       <text class="ph-title">{{ t('plaza.title') }}</text>
+      <text class="ph-region" data-test="region-label">{{ regionLabel(lang) }}</text>
+      <view v-if="showRegionSwitcher()" class="ph-region-switcher" data-test="region-switcher">
+        <text v-for="region in REGIONS" :key="region.slug" class="ph-region-option">{{ lang === 'zh' ? region.zh : region.en }}</text>
+      </view>
       <view class="compose-btn" role="button" :aria-label="t('a11y.compose')" @click="openComposer" v-if="isLoggedIn">
         <view class="cb-pen"></view>
         <text class="cb-label">{{ t('plaza.write') }}</text>
@@ -58,6 +62,17 @@
           @keydown="onFeedTabKeydown($event, tab.key)"
         >
           <text class="t-tag ft-label">{{ tab.label }}</text>
+        </view>
+      </view>
+    </scroll-view>
+
+    <scroll-view v-if="activeTab !== 'following'" class="board-filters" scroll-x :show-scrollbar="false">
+      <view class="board-row" :aria-label="t('plaza.board')">
+        <view v-for="category in [null, ...POST_CATEGORIES]" :key="category || 'all'"
+          class="board-chip" :class="{ active: selectedCategory === category }" role="button" tabindex="0"
+          :aria-pressed="selectedCategory === category ? 'true' : 'false'"
+          @click="selectCategory(category)" @keydown.enter="selectCategory(category)" @keydown.space.prevent="selectCategory(category)">
+          <text>{{ category ? t(`plaza.category.${category}`) : t('plaza.allBoards') }}</text>
         </view>
       </view>
     </scroll-view>
@@ -199,6 +214,8 @@
               </view>
             </view>
 
+            <text v-if="post.category" class="post-board">{{ t(`plaza.category.${post.category}`) }}</text>
+            <text v-if="post.title" class="post-topic-title" role="heading" aria-level="2">{{ post.title }}</text>
             <view class="post-content-wrap">
               <text class="post-content">{{ displayPostContent(post) }}</text>
               <view
@@ -443,12 +460,15 @@
       <view v-if="!loadingComments && comments.length > 0" class="cmt-end"><text>{{ t('plaza.noMoreComments') }}</text></view>
       </scroll-view>
 
-      <view v-if="replyTo" class="ci-reply-bar">
+      <view v-if="replyTo && !replyRestricted" class="ci-reply-bar">
         <text class="ci-reply-label">{{ t('plaza.replyingTo') }} @{{ replyTo.profile?.nickname || t('app.user') }}</text>
         <view class="ci-reply-x" role="button" :aria-label="t('a11y.close')" @click.stop="replyTo = null"><view class="ci-rx"></view></view>
       </view>
 
-      <view class="ci-input-bar">
+      <view v-if="replyRestricted" class="ci-input-bar reply-restricted" role="status">
+        <text>{{ t('plaza.restrictedReply') }}</text>
+      </view>
+      <view v-else class="ci-input-bar">
         <textarea
           v-model="commentText"
           class="ci-input"
@@ -478,7 +498,7 @@
       </view>
     </view>
 
-    <view v-if="showComposer" class="composer-backdrop"></view>
+    <view v-if="showComposer" class="composer-backdrop" role="presentation" aria-hidden="true" @click="onComposerCancel"></view>
     <view
       v-if="showComposer"
       ref="composerDialogEl"
@@ -493,25 +513,60 @@
         <text class="comp-cancel" role="button" @click="onComposerCancel">{{ t('plaza.cancel') }}</text>
         <text id="plaza-composer-title" class="comp-title">{{ t('plaza.write') }}</text>
         <text
-          :class="['comp-submit', { disabled: (!composerText.trim() && composerImages.length === 0 && composerAttachedItems.length === 0) || submitting }]"
+          :class="['comp-submit', { disabled: submitDisabled }]"
           role="button"
-          :aria-disabled="(!composerText.trim() && composerImages.length === 0 && composerAttachedItems.length === 0) || submitting ? 'true' : 'false'"
+          :aria-disabled="submitDisabled ? 'true' : 'false'"
           @click="onSubmitPost"
         >
-          {{ submitting ? t('login.wait') : t('plaza.submit') }}
+          {{ submitting
+            ? composerUploadProgress ? t('plaza.uploadingImages', composerUploadProgress) : t('plaza.publishing')
+            : t(outcomeUncertain ? 'plaza.checkPublished' : 'plaza.submit') }}
         </text>
       </view>
       <view class="comp-body">
+        <view v-if="draftRestored" class="composer-notice">
+          <text>{{ t('plaza.draftRestored') }}</text>
+          <text class="composer-clear" role="button" @click="clearComposerDraft">{{ t('plaza.draftClear') }}</text>
+        </view>
+        <text v-if="outcomeUncertain || publicationMissing" class="composer-notice" role="status">
+          {{ t(outcomeUncertain ? 'plaza.publishUnknown' : 'plaza.publishNotFound') }}
+        </text>
+        <view class="composer-mode" role="group" :aria-label="t('plaza.write')">
+          <view v-for="mode in (['topic', 'update'] as const)" :key="mode" class="board-chip"
+            :class="{ active: composerMode === mode }" role="button" tabindex="0"
+            :aria-pressed="composerMode === mode ? 'true' : 'false'"
+            @click="composerMode = mode" @keydown.enter="composerMode = mode" @keydown.space.prevent="composerMode = mode">
+            <text>{{ t(mode === 'topic' ? 'plaza.formatTopic' : 'plaza.formatUpdate') }}</text>
+          </view>
+        </view>
+        <view v-if="composerMode === 'topic'" class="composer-topic">
+          <text class="topic-board-label">{{ t('plaza.chooseBoard') }}</text>
+          <view class="topic-board-options" role="group" :aria-label="t('plaza.chooseBoard')">
+            <view v-for="category in POST_CATEGORIES" :key="category" class="board-chip"
+              :class="{ active: composerCategory === category }" role="button" tabindex="0"
+              :aria-pressed="composerCategory === category ? 'true' : 'false'"
+              @click="composerCategory = category" @keydown.enter="composerCategory = category" @keydown.space.prevent="composerCategory = category">
+              <text>{{ t(`plaza.category.${category}`) }}</text>
+            </view>
+          </view>
+          <text v-if="composerErrors.board" class="field-error" role="alert">{{ t('plaza.errBoard') }}</text>
+          <input v-model="composerTitle" class="topic-title-input" :maxlength="POST_TITLE_MAX" :focus="composerTitleFocused"
+            :placeholder="composerCategory ? t(`plaza.titleHint.${composerCategory}`) : t('plaza.titleHintDefault')"
+            :aria-label="t('plaza.topicTitle')" @blur="composerTitleFocused = false" />
+          <text v-if="composerTitleLeft <= 20" class="title-left">{{ t('plaza.titleLeft', { n: composerTitleLeft }) }}</text>
+          <text v-if="composerErrors.title" class="field-error" role="alert">{{ t('plaza.errTitle') }}</text>
+        </view>
         <textarea
           v-model="composerText"
-          :placeholder="t('plaza.postHint')"
-          :aria-label="t('plaza.postHint')"
+          :placeholder="composerBodyHint"
+          :aria-label="composerMode === 'topic' ? t('plaza.formatTopic') : t('plaza.postHint')"
           class="comp-textarea"
           :adjust-position="false"
           :auto-height="true"
           :focus="composerFocused"
           maxlength="2000"
         />
+        <text v-if="composerMode === 'topic' && composerErrors.body" class="field-error comp-body-error" role="alert">{{ t('plaza.errBody') }}</text>
         <view v-if="composerImages.length > 0" class="comp-images">
           <view v-for="(img, i) in composerImages" :key="i" class="ci-wrap">
             <image :src="img" alt="Photo" class="ci-img" mode="aspectFill" />
@@ -630,13 +685,13 @@ const mpChrome = mpChromeVars()
 import AppToast from '../../components/AppToast.vue'
 // #endif
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
+import { onLoad, onShow, onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
 
 import { useI18n } from '../../composables/useI18n'
 import { authoredLang } from '../../composables/i18n/format'
 import { useAuth } from '../../composables/useAuth'
 import { useTheme } from '../../composables/useTheme'
-import { usePlaza, groupCommentsByParent } from '../../composables/usePlaza'
+import { usePlaza, groupCommentsByParent, type CreatePostResult } from '../../composables/usePlaza'
 import { useFollow } from '../../composables/useFollow'
 import type { FollowedProfile } from '../../composables/useFollow'
 import { useModeration } from '../../composables/useModeration'
@@ -648,9 +703,16 @@ import { useKeyboardHeight } from '../../composables/useKeyboardHeight'
 import { useVisualViewportBounds } from '../../composables/useVisualViewportInset'
 import { localizeLocation } from '../../composables/useCampusSpots'
 import { createOwnedLoading } from '../../composables/ownedLoading'
+import { createClientMessageId } from '../../api/clientMessageId'
+import { communityNavigation } from '../../api/communityNavigation'
+import { readAccountPrivateStorage, writeAccountPrivateStorage, removeAccountPrivateStorage } from '../../api/accountLocalPrivacy'
 import type { Post, PostComment, Item } from '../../types'
+import { POST_CATEGORIES, POST_TITLE_MAX, normalizePostTopic, type PostCategory } from '../../utils/communityPost'
+import { safeItemMediaUrls } from '../../utils/publicResource'
+import { REGIONS, regionLabel, showRegionSwitcher } from '../../utils/region'
 import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
 import { DIALOG_DANGER, DIALOG_WARN } from '../../utils/dialogColors'
+import { isSuspensionActive } from '../../utils/suspension'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
 import AppSidebar from '../../components/AppSidebar.vue'
@@ -680,7 +742,8 @@ const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
 const { currentUser, isLoggedIn, requireAuth, awaitAuthReady } = useAuth()
-const { posts, loading, hasMore, fetchError, fetchPosts, createPost, updatePostI18n, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, fetchMyActiveItems, clearPosts } = usePlaza()
+const replyRestricted = computed(() => isSuspensionActive(currentUser.value))
+const { posts, loading, hasMore, fetchError, fetchPosts, createPost, recoverCreatedPost, updatePostI18n, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, fetchMyActiveItems, clearPosts } = usePlaza()
 const { fetchFollowingProfiles } = useFollow()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
 
@@ -745,7 +808,31 @@ const feedTabs = computed<{ key: FeedTabKey; label: string }[]>(() => [
   { key: 'recent', label: t('plaza.tab.recent') },
 ])
 const feedSort = computed<'recent' | 'hot'>(() => (activeTab.value === 'hot' ? 'hot' : 'recent'))
-const visiblePosts = computed(() => posts.value)
+const selectedCategory = ref<PostCategory | null>(null)
+const visiblePosts = computed(() => selectedCategory.value
+  ? posts.value.filter(post => post.category === selectedCategory.value) : posts.value)
+function selectCategory(category: PostCategory | null) {
+  selectedCategory.value = category
+  pageIdx.value = 0
+  fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: category ?? undefined })
+}
+
+onLoad(options => {
+  if (!options || !('board' in options || 'view' in options)) return
+  communityNavigation.pendingBoard = 'board' in options ? String(options.board || '') : null
+  communityNavigation.pendingView = 'view' in options ? String(options.view || '') : null
+})
+
+onShow(() => {
+  const { pendingBoard, pendingView } = communityNavigation
+  communityNavigation.pendingBoard = null
+  communityNavigation.pendingView = null
+  if (pendingBoard === null && pendingView === null) return
+  searchText.value = ''
+  activeTab.value = 'recent'
+  selectCategory(pendingView === null && POST_CATEGORIES.includes(pendingBoard as PostCategory)
+    ? pendingBoard as PostCategory : null)
+})
 
 function onFeedTabKeydown(event: KeyboardEvent, current: FeedTabKey) {
   const order: FeedTabKey[] = ['following', 'hot', 'recent']
@@ -816,7 +903,7 @@ watch(activeTab, (k) => {
   } else {
     // 热门 / 最新 differ only by server sort — re-fetch on switch.
     pageIdx.value = 0
-    fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value })
+    fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
   }
 })
 
@@ -827,7 +914,7 @@ watch(currentUser, (u, prev) => {
   if (u?.id === prev?.id) return
   // A tab page can survive account switches. Never carry A's in-progress
   // composer or comment draft into B's session.
-  if (showComposer.value) onComposerCancel()
+  if (showComposer.value) resetComposer()
   if (commentingPost.value || commentText.value) closeComments()
   followLoaded.value = false
   followPeople.value = []
@@ -884,27 +971,74 @@ function onSearchInput() {
   if (searchDebounce) clearTimeout(searchDebounce)
   searchDebounce = setTimeout(() => {
     pageIdx.value = 0
-    fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value })
+    fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
   }, 300)
 }
 function onSearchSubmit() {
   if (searchDebounce) clearTimeout(searchDebounce)
   pageIdx.value = 0
-  fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value })
+  fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
 }
 function clearSearch() {
   searchText.value = ''
   pageIdx.value = 0
-  fetchPosts({ reset: true, sort: feedSort.value })
+  fetchPosts({ reset: true, sort: feedSort.value, category: selectedCategory.value ?? undefined })
 }
 
 const showComposer = ref(false)
 const composerDialogEl = ref<unknown>(null)
 useDomKeydown(composerDialogEl, onComposerDialogKeydown)
+const composerMode = ref<'update' | 'topic'>('topic')
+const COMPOSER_DRAFT_KEY = 'plaza_composer_draft_v1'
+const composerPostId = ref('')
+const outcomeUncertain = ref(false)
+const publicationMissing = ref(false)
+const draftRestored = ref(false)
+let composerRetryCreate = false
+type ComposerDraft = {
+  postId: string
+  mode: 'update' | 'topic'
+  title: string
+  category: PostCategory | null
+  text: string
+  itemIds: string[]
+  images: string[]
+  outcomeUncertain: boolean
+}
+const composerTitle = ref('')
+const composerCategory = ref<PostCategory | null>(null)
+const composerTitleFocused = ref(false)
+// P2.4 (SPEC 6.5.3): required-field errors sit under their field; no toast.
+const composerErrors = ref<{ board?: boolean; title?: boolean; body?: boolean }>({})
+const composerTitleLeft = computed(() => POST_TITLE_MAX - Array.from(composerTitle.value).length)
+const composerBodyHint = computed(() => composerMode.value !== 'topic'
+  ? t('plaza.postHint')
+  : composerCategory.value ? t(`plaza.bodyHint.${composerCategory.value}`) : t('plaza.bodyHintDefault'))
+const submitDisabled = computed(() => submitting.value || (!outcomeUncertain.value && composerMode.value !== 'topic'
+  && !composerText.value.trim() && composerImages.value.length === 0 && composerAttachedItems.value.length === 0))
+
+function focusComposerField(field: 'board' | 'title' | 'body') {
+  if (field === 'title') {
+    composerTitleFocused.value = false
+    nextTick(() => { composerTitleFocused.value = true })
+  } else if (field === 'body') {
+    composerFocused.value = false
+    nextTick(() => { composerFocused.value = true })
+  } else {
+    // #ifdef H5
+    ;(document.querySelector('.topic-board-options .board-chip') as HTMLElement | null)?.focus()
+    // #endif
+  }
+}
 const composerText = ref('')
+watch(composerCategory, value => { if (value) composerErrors.value.board = false })
+watch(composerTitle, value => { if (value.trim()) composerErrors.value.title = false })
+watch(composerText, value => { if (value.trim()) composerErrors.value.body = false })
+watch(composerMode, () => { composerErrors.value = {} })
 const composerImages = ref<string[]>([])
 const composerFocused = ref(false)
 const submitting = ref(false)
+const composerUploadProgress = ref<{ done: number; total: number } | null>(null)
 let composerAccountToken: AccountRequestToken | null = null
 let composerSessionId = 0
 
@@ -1081,25 +1215,74 @@ const { addPostToHistory } = useHistory()
 async function openComposer() {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
+  if (isSuspensionActive(currentUser.value)) {
+    if (currentUser.value.suspension_level === 5) {
+      uni.reLaunch({ url: '/pages/suspended/index' })
+    } else {
+      const date = new Date(currentUser.value.suspended_until!).toLocaleDateString(lang.value === 'zh' ? 'zh-CN' : 'en-US')
+      uni.showToast({ title: t('plaza.restrictedPost', { date }), icon: 'none', duration: 3500 })
+    }
+    return
+  }
   composerDialogOpener = activeElement()
   composerSessionId += 1
   composerAccountToken = captureAccountRequest(currentUser.value.id)
-  // N14 layer 3 — baseline reset before show. Defends against any
-  // stale composer state surviving from a prior session via a path
-  // that bypassed onComposerCancel (tab keep-alive, system back,
-  // OAuth roundtrip in keep-alive scenarios). Re-set everything to
-  // the empty default so what the user sees on open is always a
-  // fresh composer. Focus is intentionally still scheduled inside
-  // the existing 300ms setTimeout — focus must fire AFTER the modal
-  // becomes visible, not before, so the soft keyboard mounts on the
-  // visible textarea (mirroring the previous timing contract).
+  const openedSessionId = composerSessionId
+  const openedAccountToken = composerAccountToken
+  composerPostId.value = createClientMessageId()
+  outcomeUncertain.value = false
+  publicationMissing.value = false
+  composerRetryCreate = false
+  draftRestored.value = false
+  composerMode.value = 'topic'
+  composerTitle.value = ''
+  // Opened from a board (the board filter is set): that board is preselected.
+  composerCategory.value = selectedCategory.value
+  composerErrors.value = {}
   composerText.value = ''
   composerImages.value = []
   composerAttachedItems.value = []
   showAttachSheet.value = false
   composerFocused.value = false
   showComposer.value = true
-  setTimeout(() => { composerFocused.value = true }, 300)
+  nextTick(() => {
+    if (showComposer.value && openedSessionId === composerSessionId && isAccountRequestCurrent(openedAccountToken)) {
+      composerFocused.value = true
+    }
+  })
+  const draft = readAccountPrivateStorage<ComposerDraft | null>(COMPOSER_DRAFT_KEY, null).value
+  if (draft && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(draft.postId)
+    && (draft.mode === 'topic' || draft.mode === 'update')
+    && typeof draft.title === 'string' && typeof draft.text === 'string'
+    && (draft.category === null || POST_CATEGORIES.includes(draft.category))
+    && Array.isArray(draft.itemIds) && draft.itemIds.length <= 3 && draft.itemIds.every(id => typeof id === 'string')
+    && Array.isArray(draft.images) && draft.images.length <= 4 && draft.images.every(image => typeof image === 'string' && !image.startsWith('blob:'))) {
+    composerPostId.value = draft.postId
+    composerMode.value = draft.mode
+    composerTitle.value = draft.title
+    composerCategory.value = draft.category
+    composerText.value = draft.text
+    composerImages.value = draft.images
+    composerAttachedItems.value = draft.itemIds.map(id => ({
+      id, title: t('plaza.attachItem'), title_i18n: null, images: [], image_dimensions: [],
+      price: 0, status: 'active', listing_type: 'sell',
+    }))
+    outcomeUncertain.value = draft.outcomeUncertain === true
+    composerRetryCreate = true
+    draftRestored.value = true
+    const token = composerAccountToken
+    const sessionId = composerSessionId
+    if (outcomeUncertain.value) await checkComposerPublication()
+    if (!showComposer.value || sessionId !== composerSessionId || !isAccountRequestCurrent(token)) return
+    if (draft.itemIds.length) {
+      try {
+        const items = await fetchMyActiveItems() as AttachableItem[]
+        if (sessionId !== composerSessionId || !isAccountRequestCurrent(token)) return
+        myActiveItems.value = items
+        composerAttachedItems.value = composerAttachedItems.value.map(item => items.find(row => row.id === item.id) || item)
+      } catch { /* keep the saved ids available for a later link attempt */ }
+    }
+  }
 }
 
 const commentingPost = ref<Post | null>(null)
@@ -1170,7 +1353,7 @@ function resetPlazaAccountState() {
   translationEpoch += 1
   originalPosts.clear()
   plazaAccountEpoch += 1
-  onComposerCancel()
+  resetComposer()
   closeComments()
   myActiveItems.value = []
   searchText.value = ''
@@ -1220,7 +1403,7 @@ async function reloadPlazaForCurrentAccount() {
       return
     }
   }
-  await fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value })
+  await fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
 }
 
 async function togglePostTranslate(post: Post) {
@@ -1259,7 +1442,7 @@ async function onRefresh() {
   pageIdx.value = 0
   const failsafe = setTimeout(() => { refreshing.value = false }, 10000)
   try {
-    await fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value })
+    await fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
   } finally {
     clearTimeout(failsafe)
     refreshing.value = false
@@ -1275,7 +1458,7 @@ async function loadMore(retry = false) {
   }
   if (loading.value || !hasMore.value || (fetchError.value && retry !== true)) return
   const nextPage = pageIdx.value + 1
-  const loaded = await fetchPosts({ page: nextPage, sort: feedSort.value, search: searchText.value })
+  const loaded = await fetchPosts({ page: nextPage, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
   if (loaded) pageIdx.value = nextPage
 }
 
@@ -1300,13 +1483,81 @@ async function onToggleCommentLike(comment: PostComment) {
   }
 }
 
+function saveComposerDraft(): boolean {
+  return writeAccountPrivateStorage(COMPOSER_DRAFT_KEY, {
+    postId: composerPostId.value,
+    mode: composerMode.value,
+    title: composerTitle.value,
+    category: composerCategory.value,
+    text: composerText.value,
+    itemIds: composerAttachedItems.value.map(item => item.id),
+    images: composerImages.value.filter(image => !image.startsWith('blob:')),
+    outcomeUncertain: outcomeUncertain.value,
+  } satisfies ComposerDraft)
+}
+
+function clearComposerDraft() {
+  if (submitting.value) return
+  removeAccountPrivateStorage(COMPOSER_DRAFT_KEY)
+  resetComposer()
+  void openComposer()
+}
+
 function onComposerCancel() {
+  if (submitting.value) return
+  if (!composerTitle.value.trim() && !composerText.value.trim()
+    && !composerImages.value.length && !composerAttachedItems.value.length && !outcomeUncertain.value) {
+    resetComposer()
+    return
+  }
+  const token = composerAccountToken
+  const sessionId = composerSessionId
+  const closeDraft = (keep: boolean) => {
+    if (!token || !isAccountRequestCurrent(token) || sessionId !== composerSessionId || submitting.value) return
+    if (keep) {
+      if (!saveComposerDraft()) {
+        uni.showToast({ title: t('publish.draftSaveFailed'), icon: 'none' })
+        return
+      }
+    } else removeAccountPrivateStorage(COMPOSER_DRAFT_KEY)
+    resetComposer()
+  }
+  // #ifdef MP-WEIXIN
+  // MP base libraries 3.15.0–3.15.2 allow 8 weighted units per modal button
+  // (Latin-1 counts 1, other UTF-16 units 2). "Keep draft" needs 10.
+  uni.showActionSheet({
+    title: t('plaza.draftCloseTitle'),
+    itemList: [t('plaza.draftKeep'), t('plaza.draftDiscard')],
+    success: result => closeDraft(result.tapIndex === 0),
+  })
+  // #endif
+  // #ifndef MP-WEIXIN
+  uni.showModal({
+    title: t('plaza.draftCloseTitle'),
+    confirmText: t('plaza.draftKeep'),
+    cancelText: t('plaza.draftDiscard'),
+    success: result => closeDraft(result.confirm),
+  })
+  // #endif
+}
+
+function resetComposer() {
+  composerUploadProgress.value = null
   composerSessionId += 1
   composerFocused.value = false
   showComposer.value = false
+  composerMode.value = 'topic'
+  composerTitle.value = ''
+  composerCategory.value = null
+  composerErrors.value = {}
   composerText.value = ''
   composerImages.value = []
   composerAttachedItems.value = []
+  composerPostId.value = ''
+  outcomeUncertain.value = false
+  publicationMissing.value = false
+  draftRestored.value = false
+  composerRetryCreate = false
   composerAccountToken = null
   // N14 layer 1 — close any orphan picker sheet so a sheet that was
   // mounted on top of the composer doesn't survive cancel and accept
@@ -1388,10 +1639,63 @@ function confirmSuspectedAd(): Promise<boolean> {
   })
 }
 
+function finishComposerPublication(result: CreatePostResult, partialUpload?: { done: number; total: number } | null) {
+  const isTopic = composerMode.value === 'topic'
+  removeAccountPrivateStorage(COMPOSER_DRAFT_KEY)
+  resetComposer()
+  if (result.partial === 'items_failed') {
+    uni.showToast({ title: t(isTopic ? 'plaza.partialPublish' : 'plaza.partialPublishUpdate'), icon: 'none', duration: 4000 })
+  } else if (partialUpload) {
+    uni.showToast({ title: t('plaza.postedPartial', partialUpload), icon: 'none', duration: 4000 })
+  } else {
+    uni.showToast({ title: t('plaza.posted'), icon: 'success' })
+  }
+  uni.navigateTo({ url: `/pages/post/index?id=${result.id}${result.partial === 'items_failed' ? '&attach=pending' : ''}` })
+}
+
+async function checkComposerPublication() {
+  const token = composerAccountToken
+  if (submitting.value || !token || !isAccountRequestCurrent(token)) return
+  submitting.value = true
+  try {
+    const result = await recoverCreatedPost(composerPostId.value, composerAttachedItems.value.map(item => item.id), token)
+    if (!isAccountRequestCurrent(token)) return
+    if (result) finishComposerPublication(result)
+    else {
+      outcomeUncertain.value = false
+      publicationMissing.value = true
+      composerRetryCreate = true
+      saveComposerDraft()
+    }
+  } catch {
+    if (!isAccountRequestCurrent(token)) return
+    outcomeUncertain.value = true
+    saveComposerDraft()
+  } finally {
+    if (isAccountRequestCurrent(token)) submitting.value = false
+  }
+}
+
 async function onSubmitPost() {
   await awaitAuthReady()
   if (!requireAuth()) return
-  if (
+  if (outcomeUncertain.value) {
+    await checkComposerPublication()
+    return
+  }
+  if (composerMode.value === 'topic') {
+    const errors = {
+      board: !composerCategory.value,
+      title: !composerTitle.value.trim(),
+      body: !composerText.value.trim(),
+    }
+    composerErrors.value = errors
+    const first = (['board', 'title', 'body'] as const).find(field => errors[field])
+    if (first) {
+      focusComposerField(first)
+      return
+    }
+  } else if (
     !composerText.value.trim()
     && composerImages.value.length === 0
     && composerAttachedItems.value.length === 0
@@ -1404,27 +1708,54 @@ async function onSubmitPost() {
     uni.showToast({ title: t('msg.actionFailed'), icon: 'none' })
     return
   }
+  try {
+    if (composerMode.value === 'topic') {
+      if (!composerTitle.value.trim() || !composerCategory.value) throw new Error('post_topic_required')
+      normalizePostTopic(composerTitle.value, composerCategory.value)
+    }
+  } catch (error) {
+    uni.showToast({ title: friendlyErrorMessage(error), icon: 'none' })
+    return
+  }
+  const submitTopic = composerMode.value === 'topic'
+    ? normalizePostTopic(composerTitle.value, composerCategory.value) : { title: null, category: null }
   const submitAccountToken = composerAccountToken
   submitting.value = true
   let imageUrls: string[] = []
+  let newlyUploadedUrls: string[] = []
   let uploadAccountToken: UploadAccountToken | null = null
   let partialUpload: { done: number; total: number } | null = null
   try {
     let imageDims: Array<{ w: number; h: number }> = []
-    const expectedImages = composerImages.value.length
+    const existingImages = safeItemMediaUrls(composerImages.value, submitAccountToken.userId)
+    const uploadedImages = new Set(existingImages)
+    const localImages = composerImages.value.filter(image => !uploadedImages.has(image))
+    imageUrls = [...existingImages]
+    const expectedImages = localImages.length
     if (expectedImages > 0) {
       let up: UploadBatchResult
       try {
-        up = await uploadImagesWithDims(composerImages.value, {
+        up = await uploadImagesWithDims(localImages, {
           entryPoint: 'plaza',
           accountToken: submitAccountToken,
+          onProgress: (done, total) => {
+            if (isAccountRequestCurrent(submitAccountToken)) composerUploadProgress.value = { done, total }
+          },
         })
       } catch (upErr: any) {
         if (upErr?.heic === true) throw new Error(t('heic.unsupported'))
         throw upErr
+      } finally {
+        if (isAccountRequestCurrent(submitAccountToken)) composerUploadProgress.value = null
       }
-      imageUrls = up.urls
-      imageDims = up.dims
+      newlyUploadedUrls = up.urls
+      let localIndex = 0
+      imageUrls = composerImages.value.flatMap(image => {
+        if (uploadedImages.has(image)) return [image]
+        const index = up.sourceIndices.indexOf(localIndex++)
+        return index < 0 ? [] : [up.urls[index]]
+      })
+      imageDims = existingImages.length ? [] : up.dims
       uploadAccountToken = up.accountToken
       if (
         up.accountToken.userId !== submitAccountToken.userId
@@ -1451,6 +1782,9 @@ async function onSubmitPost() {
       imageUrls,
       composerAttachedItems.value.map(c => c.id),
       {
+        ...submitTopic,
+        postId: composerPostId.value,
+        retryCreate: composerRetryCreate,
         image_dimensions: imageDims,
         content_i18n: trimmed ? { [sourceLang]: trimmed } : null,
         source_lang: sourceLang,
@@ -1459,26 +1793,7 @@ async function onSubmitPost() {
       },
     )
 
-    composerText.value = ''
-    composerImages.value = []
-    composerAttachedItems.value = []
-    composerSessionId += 1
-    composerAccountToken = null
-    showComposer.value = false
-
-    if (result.partial) {
-      /* Post row landed but post_items insert failed (RLS reject /
-         net blip / cap overflow). Soft-warn — the post is intact and
-         visible; chips just aren't attached. Sentry breadcrumb fires
-         from createPost itself. */
-      uni.showToast({ title: t('plaza.partialPublish'), icon: 'none', duration: 4000 })
-    } else {
-      if (partialUpload) {
-        uni.showToast({ title: t('plaza.postedPartial', partialUpload), icon: 'none', duration: 4000 })
-      } else {
-        uni.showToast({ title: t('plaza.posted'), icon: 'success' })
-      }
-    }
+    finishComposerPublication(result, partialUpload)
 
     // Fire-and-forget bilingual fill. Same strategy as the item publish
     // flow: don't block the toast, best-effort upsert the other locale.
@@ -1490,10 +1805,10 @@ async function onSubmitPost() {
         .catch(() => console.warn('[plaza] bilingual fill skipped'))
     }
   } catch (err: any) {
-    if (imageUrls.length > 0 && uploadAccountToken) {
+    if (newlyUploadedUrls.length > 0 && uploadAccountToken) {
       if (shouldCompensateMutationFailure(err)) {
         try {
-          await removeOwnedItemImages(imageUrls, {
+          await removeOwnedItemImages(newlyUploadedUrls, {
             ownerUserId: uploadAccountToken.userId,
             telemetrySource: 'plaza.create_compensation',
           })
@@ -1517,8 +1832,22 @@ async function onSubmitPost() {
     // The member pressed Edit on the solicitation confirm. The composer is
     // still open with their text and photos in it.
     if (err?.message === 'ad_declined') return
+    if (mutationCommitState(err) === 'unknown') {
+      outcomeUncertain.value = true
+      composerRetryCreate = true
+      // Reuse the uploaded objects: an earlier request may already reference them.
+      composerImages.value = imageUrls
+      saveComposerDraft()
+      return
+    }
+    composerPostId.value = createClientMessageId()
+    composerRetryCreate = false
+    const restrictedUntil = /^suspension_active:[^:]+:(.+)$/.exec(err?.message || '')?.[1]
+    const restrictionDate = restrictedUntil ? new Date(restrictedUntil) : null
     uni.showToast({
-      title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
+      title: restrictionDate && !Number.isNaN(restrictionDate.getTime())
+        ? t('plaza.restrictedPost', { date: restrictionDate.toLocaleDateString(lang.value === 'zh' ? 'zh-CN' : 'en-US') })
+        : friendlyErrorMessage(err, lang.value as 'en' | 'zh'),
       icon: 'none',
       duration: 2500,
     })
@@ -1597,7 +1926,7 @@ function onSharePost(post: Post) {
   if (typeof window !== 'undefined' && window.location?.origin) origin = window.location.origin
   // #endif
   const url = `${origin}/share-post/${post.id}`
-  const preview = post.content.slice(0, 60).replace(/\n/g, ' ')
+  const preview = (post.title || post.content).slice(0, 60).replace(/\n/g, ' ')
   uni.setClipboardData({
     data: `${preview}…\n${url}`,
     success: () => uni.showToast({ title: t('plaza.contentCopied'), icon: 'success' }),
@@ -1698,6 +2027,7 @@ function onCommentKeydown(e: KeyboardEvent) {
 async function onSubmitComment() {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
+  if (replyRestricted.value) return
   if (!commentText.value.trim() || !commentingPost.value) return
   if (commentSubmitting.value) return
   commentSubmitting.value = true
@@ -1779,6 +2109,7 @@ async function onSubmitComment() {
 async function onCommentTap(c: PostComment) {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
+  if (replyRestricted.value) return
   replyTo.value = c
   inputFocused.value = true
 }
@@ -1833,6 +2164,7 @@ async function onCommentLongPress(c: PostComment) {
     success: (res) => {
       if (!actionIsCurrent()) return
       if (res.tapIndex === 0) {
+        if (replyRestricted.value) return
         replyTo.value = c
         inputFocused.value = true
       } else if (isMine && res.tapIndex === 1) {
@@ -2330,6 +2662,11 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .comp-body {
   flex: 1; min-height: 0; overflow-y: auto;
 }
+.composer-notice {
+  display: flex; gap: 12px; padding: 12px 16px;
+  font-size: 13px; line-height: 1.5; color: var(--text-secondary);
+}
+.composer-clear { flex-shrink: 0; color: var(--accent-action); cursor: pointer; }
 .comp-header {
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
@@ -2652,6 +2989,10 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   background: var(--bg-elev-1);
   border-top: 0.5px solid var(--line-hair);
 }
+.reply-restricted {
+  min-height: 44px; box-sizing: border-box; align-items: center;
+  font-size: 14px; line-height: 20px; color: var(--ink-soft);
+}
 .ci-input {
   flex: 1; min-height: 36px;
   /* Grow up to 4 lines (20px × 4 + 16px padding) then scroll internally.
@@ -2732,7 +3073,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   .page { padding-bottom: 0; height: 100dvh; overflow: hidden; max-width: none; margin: 0; }
   /* Center the whole single column — search, tabs and feed share one
      640px reading width so the toolbar aligns with the posts. */
-  .search-wrap, .feed-tabs, .feed { max-width: 640px; margin-left: auto; margin-right: auto; }
+  .search-wrap, .feed-tabs, .board-filters, .feed { max-width: 640px; margin-left: auto; margin-right: auto; }
   .feed { padding-bottom: 0; }
   /* Search bar + compose button share the toolbar row on desktop. */
   .search-wrap { display: flex; align-items: center; gap: 10px; }
@@ -2762,4 +3103,23 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   .comp-footer { padding: 14px 24px; }
 }
 /* #endif */
+.board-filters { flex-shrink: 0; width: 100%; height: 52px; }
+.board-row { display: flex; gap: 8px; padding: 8px 16px; width: max-content; }
+.board-chip { flex-shrink: 0; padding: 8px 12px; border-radius: 16px; background: var(--bg-subtle); color: var(--text-muted); font-size: 13px; cursor: pointer; }
+.board-chip.active { color: var(--accent-action); background: var(--bg-elev-1); box-shadow: inset 0 0 0 1px var(--accent-action); }
+.board-chip:focus-visible { outline: 2px solid var(--accent-action); outline-offset: 2px; }
+.post-board { display: block; color: var(--accent-action); font-size: 12px; margin-bottom: 6px; }
+.post-topic-title { display: block; font-size: 19px; font-weight: 700; line-height: 1.4; margin-bottom: 8px; overflow-wrap: anywhere; }
+.composer-mode { display: flex; gap: 8px; padding: 12px 16px 4px; }
+.composer-topic { padding: 12px 16px 0; }
+.ph-region { margin-left: 8px; font-size: 13px; color: var(--ink-soft); }
+.ph-region-switcher { display: flex; gap: 8px; margin-left: 8px; }
+.ph-region-option { font-size: 13px; color: var(--ink-soft); }
+.topic-title-input { width: 100%; height: 44px; font-size: 18px; font-weight: 600; color: var(--text-primary); border-bottom: 1px solid var(--line-hair); }
+.topic-board-label { display: block; color: var(--text-muted); font-size: 12px; margin: 12px 0 8px; }
+.topic-board-options { display: flex; gap: 8px; flex-wrap: wrap; }
+.composer-topic .topic-title-input { margin-top: 12px; }
+.field-error { display: block; margin-top: 6px; font-size: 13px; color: var(--danger); }
+.comp-body-error { padding: 0 16px; }
+.title-left { display: block; margin-top: 6px; font-size: 12px; color: var(--text-secondary); }
 </style>

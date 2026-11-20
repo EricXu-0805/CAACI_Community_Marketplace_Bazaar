@@ -19,7 +19,7 @@
         class="post-card"
         role="group"
         tabindex="0"
-        :aria-label="displayContent"
+        :aria-label="post.title ? `${post.title}: ${displayContent}` : displayContent"
         aria-keyshortcuts="Shift+F10"
         @keydown="onPostKeyboardMenu"
         @touchstart="postLongPress.onTouchstart()"
@@ -40,6 +40,11 @@
           </view>
         </view>
 
+        <text v-if="post.category" class="post-board" role="button" tabindex="0"
+          @click.stop="openCommunityBoard(post.category)"
+          @keydown.enter.prevent="openCommunityBoard(post.category)"
+          @keydown.space.prevent="openCommunityBoard(post.category)">{{ t(`plaza.category.${post.category}`) }}</text>
+        <text v-if="post.title" class="post-topic-title" role="heading" aria-level="2">{{ post.title }}</text>
         <view class="content-wrap">
           <text class="content">{{ displayContent }}</text>
           <view
@@ -76,6 +81,21 @@
             @click="previewImage(post.images, i)"
           />
         </view>
+
+        <view v-if="attachBannerVisible" class="attach-pending" role="status">
+          <text class="attach-pending-text">{{ attachBannerText }}</text>
+          <text v-if="attachNotice" class="attach-pending-note">{{ attachNotice }}</text>
+          <view class="attach-pending-actions">
+            <view class="attach-pending-btn primary" :class="{ disabled: attachBusy }" role="button"
+              :aria-disabled="attachBusy ? 'true' : 'false'" @click="onRetryAttach">
+              <text>{{ attachBusy ? t('plaza.attaching') : t('plaza.attachRetry') }}</text>
+            </view>
+            <view class="attach-pending-btn" role="button" @click="onDismissAttach">
+              <text>{{ t('plaza.attachDismiss') }}</text>
+            </view>
+          </view>
+        </view>
+        <text v-else-if="attachNotice" class="attach-pending-note standalone" role="status">{{ attachNotice }}</text>
 
         <view
           v-for="pi in (post.post_items || [])"
@@ -247,13 +267,16 @@
     </view>
 
     <view v-if="post" class="input-wrapper" :style="kbLift">
-      <view v-if="replyTo" class="reply-bar">
+      <view v-if="replyTo && !replyRestricted" class="reply-bar">
         <text class="reply-label">{{ t('plaza.replyingTo') }} @{{ replyTo.profile?.nickname || t('app.user') }}</text>
         <view class="reply-x" role="button" :aria-label="t('a11y.close')" @click="replyTo = null">
           <view class="rx-inner"></view>
         </view>
       </view>
-      <view class="input-bar">
+      <view v-if="replyRestricted" class="input-bar reply-restricted" role="status">
+        <text>{{ t('plaza.restrictedReply') }}</text>
+      </view>
+      <view v-else class="input-bar">
         <input
           v-model="commentText"
           :placeholder="replyTo ? t('plaza.replyHint') : t('plaza.commentHint')"
@@ -292,7 +315,8 @@ import { onLoad, onUnload, onShareAppMessage, onShareTimeline } from '@dcloudio/
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
 import { useTheme } from '../../composables/useTheme'
-import { usePlaza, groupCommentsByParent } from '../../composables/usePlaza'
+import { usePlaza, groupCommentsByParent, readPendingPostItems, rememberPendingPostItems } from '../../composables/usePlaza'
+import { useSupabase } from '../../composables/useSupabase'
 import { useModeration } from '../../composables/useModeration'
 import { useHistory } from '../../composables/useHistory'
 import { useTranslate } from '../../composables/useTranslate'
@@ -300,6 +324,7 @@ import { useLongPress } from '../../composables/useLongPress'
 import { useKeyboardHeight } from '../../composables/useKeyboardHeight'
 import { useVisualViewportBounds } from '../../composables/useVisualViewportInset'
 import { createOwnedLoading } from '../../composables/ownedLoading'
+import { openCommunityBoard } from '../../api/communityNavigation'
 import {
   captureAccountRequest,
   isAccountRequestCurrent,
@@ -307,6 +332,7 @@ import {
 } from '../../composables/accountScope'
 import { formatTime, friendlyErrorMessage, navigateBackOr, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
 import { DIALOG_DANGER, DIALOG_INK } from '../../utils/dialogColors'
+import { isSuspensionActive } from '../../utils/suspension'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim, Post, PostComment } from '../../types'
 import { BASE_URL } from '../../config/runtime'
@@ -320,7 +346,9 @@ const defaultAvatarSrc = computed(() =>
   isDark.value ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'
 )
 const { currentUser, requireAuth, awaitAuthReady } = useAuth()
-const { fetchPost, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment } = usePlaza()
+const replyRestricted = computed(() => isSuspensionActive(currentUser.value))
+const { fetchPost, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, retryAttachPostItems } = usePlaza()
+const { supabase } = useSupabase()
 const { reportTarget } = useModeration()
 const { addPostToHistory } = useHistory()
 
@@ -335,6 +363,67 @@ const viewportStyle = computed(() => visibleHeight.value == null ? undefined : (
 }))
 
 const post = ref<Post | null>(null)
+// P2.7: items this author's just-published post could not link (author only).
+const attachPendingIds = ref<string[]>([])
+const attachItemNames = ref<Record<string, string>>({})
+const attachBusy = ref(false)
+const attachNotice = ref('')
+const attachBannerVisible = computed(() => !!post.value && !!currentUser.value
+  && currentUser.value.id === post.value.user_id && attachPendingIds.value.length > 0)
+const attachBannerText = computed(() => {
+  const ids = attachPendingIds.value
+  const name = attachItemNames.value[ids[0]] || ''
+  return ids.length > 1 ? t('plaza.attachPending', { name, n: ids.length }) : t('plaza.attachPendingOne', { name })
+})
+
+async function loadAttachPending(p: Post) {
+  attachPendingIds.value = []
+  attachNotice.value = ''
+  const accountId = currentUser.value?.id
+  if (!accountId || accountId !== p.user_id) return
+  const ids = readPendingPostItems(accountId, p.id)
+  if (ids.length === 0) return
+  try {
+    const { data } = await supabase.from('items').select('id, title, title_i18n').in('id', ids)
+    const names: Record<string, string> = {}
+    for (const row of (data || []) as Array<{ id: string; title: string; title_i18n: Record<string, string> | null }>) {
+      names[row.id] = localize(row.title_i18n, row.title)
+    }
+    attachItemNames.value = names
+  } catch { attachItemNames.value = {} }
+  if ((currentUser.value?.id ?? null) === accountId && post.value?.id === p.id) attachPendingIds.value = ids
+}
+
+async function onRetryAttach() {
+  const p = post.value
+  if (!p || attachBusy.value || attachPendingIds.value.length === 0) return
+  attachBusy.value = true
+  attachNotice.value = ''
+  try {
+    const result = await retryAttachPostItems(p.id, attachPendingIds.value)
+    if (post.value?.id !== p.id) return
+    attachPendingIds.value = result.pending
+    if (result.unavailable.length) attachNotice.value = t('plaza.attachUnavailable')
+    else if (result.capped.length) attachNotice.value = t('plaza.attachCap')
+    if (result.linked.length) {
+      const refreshed = await fetchPost(p.id).catch(() => null)
+      if (refreshed && post.value?.id === p.id) post.value = refreshed
+      if (!result.pending.length && !result.unavailable.length && !result.capped.length) {
+        uni.showToast({ title: t('plaza.attachDone'), icon: 'success' })
+      }
+    }
+  } finally {
+    attachBusy.value = false
+  }
+}
+
+function onDismissAttach() {
+  const p = post.value
+  const accountId = currentUser.value?.id
+  if (p && accountId) rememberPendingPostItems(accountId, p.id, [])
+  attachPendingIds.value = []
+  attachNotice.value = ''
+}
 const comments = ref<PostComment[]>([])
 const loading = ref(true)
 const loadingComments = ref(false)
@@ -381,6 +470,8 @@ watch(() => currentUser.value?.id ?? null, (userId, previousUserId) => {
   // render. Never expose the previous account's in-progress comment draft.
   commentText.value = ''
   replyTo.value = null
+  attachPendingIds.value = []
+  attachNotice.value = ''
   if (postId.value) void loadPostForCurrentAccount()
 })
 
@@ -503,7 +594,7 @@ onUnload(() => {
 onShareAppMessage(() => {
   const p = post.value
   if (!p) return { title: t('share.plaza'), path: '/pages/plaza/index' }
-  const firstLine = localize(p.content_i18n, p.content || '').split('\n')[0].slice(0, 50).trim() || t('share.plaza')
+  const firstLine = Array.from((p.title || localize(p.content_i18n, p.content || '')).split('\n')[0]).slice(0, 50).join('').trim() || t('share.plaza')
   return {
     title: firstLine,
     path: `/pages/post/index?id=${p.id}`,
@@ -514,7 +605,7 @@ onShareAppMessage(() => {
 onShareTimeline(() => {
   const p = post.value
   if (!p) return { title: t('share.plaza') }
-  const firstLine = localize(p.content_i18n, p.content || '').split('\n')[0].slice(0, 50).trim() || t('share.plaza')
+  const firstLine = Array.from((p.title || localize(p.content_i18n, p.content || '')).split('\n')[0]).slice(0, 50).join('').trim() || t('share.plaza')
   return {
     title: firstLine,
     query: `id=${p.id}`,
@@ -548,6 +639,7 @@ async function loadPostForCurrentAccount() {
     if (p) {
       post.value = p
       addPostToHistory(p)
+      void loadAttachPending(p)
       try {
         const rows = await fetchComments(postId.value)
         if (!pageMounted || requestEpoch !== postLoadEpoch || commentsRequestEpoch !== commentsLoadEpoch) return
@@ -634,7 +726,7 @@ function onShare() {
   if (typeof window !== 'undefined' && window.location?.origin) origin = window.location.origin
   // #endif
   const url = `${origin}/share-post/${post.value.id}`
-  const preview = post.value.content.slice(0, 60).replace(/\n/g, ' ')
+  const preview = (post.value.title || post.value.content).slice(0, 60).replace(/\n/g, ' ')
   uni.setClipboardData({
     data: `${preview}…\n${url}`,
     success: () => uni.showToast({ title: t('plaza.contentCopied'), icon: 'success' }),
@@ -676,6 +768,7 @@ function onDelete() {
 async function onCommentTap(c: PostComment) {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
+  if (replyRestricted.value) return
   replyTo.value = c
 }
 
@@ -754,6 +847,7 @@ async function onCommentLongPress(c: PostComment) {
           },
         })
       } else if (!isMine && res.tapIndex === 0) {
+        if (replyRestricted.value) return
         replyTo.value = c
       } else if (!isMine && res.tapIndex === 1) {
         promptReport('comment', c.id)
@@ -818,6 +912,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 async function onSubmitComment() {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
+  if (replyRestricted.value) return
   if (!commentText.value.trim() || !post.value) return
   if (submitting.value) return
   const commentAccountToken = captureAccountRequest(currentUser.value.id)
@@ -1106,6 +1201,10 @@ async function onSubmitComment() {
   display: flex; gap: 8px; padding: 9px 12px;
   padding-bottom: calc(9px + env(safe-area-inset-bottom));
 }
+.reply-restricted {
+  min-height: 44px; box-sizing: border-box; align-items: center;
+  font-size: 14px; line-height: 20px; color: var(--ink-soft);
+}
 .input {
   flex: 1; height: 40px; background: var(--bg-subtle); border-radius: 20px;
   padding: 0 14px; font-size: 14px; color: var(--text-primary);
@@ -1117,4 +1216,14 @@ async function onSubmitComment() {
   .send-btn-label { font-size: 13px; color: var(--ink-inverse); font-weight: 600; }
   &.disabled { opacity: 0.3; pointer-events: none; }
 }
+.post-board { display: block; font-size: 12px; color: var(--accent-action); margin-bottom: 6px; }
+.attach-pending { margin: 12px 0; padding: 12px 14px; border-radius: 12px; background: var(--bg-subtle); border: 1px solid var(--line-hair); }
+.attach-pending-text { display: block; font-size: 14px; line-height: 1.5; color: var(--text-primary); }
+.attach-pending-note { display: block; margin-top: 6px; font-size: 13px; color: var(--danger); }
+.attach-pending-note.standalone { margin: 12px 0; }
+.attach-pending-actions { display: flex; gap: 8px; margin-top: 10px; }
+.attach-pending-btn { padding: 6px 14px; border-radius: 999px; font-size: 14px; color: var(--text-secondary); border: 1px solid var(--line-hair); }
+.attach-pending-btn.primary { color: var(--brand); border-color: var(--brand); }
+.attach-pending-btn.disabled { opacity: 0.5; pointer-events: none; }
+.post-topic-title { display: block; font-size: 22px; font-weight: 700; line-height: 1.4; margin-bottom: 12px; overflow-wrap: anywhere; }
 </style>

@@ -3253,6 +3253,9 @@ button::after {
 /* #endif */
 
 /* #ifdef H5 */
+/* Native confirmations must cover the composer (1100) and its item picker
+ * (1200), including the draft decision shown before closing the composer. */
+uni-modal { z-index: 1400; }
 /*
  * uni-app's H5 picker popup ships at z-index 999, which puts it UNDER any
  * in-app bottom sheet (ChatThread's offer/meetup sheets sit at 1000/1001).

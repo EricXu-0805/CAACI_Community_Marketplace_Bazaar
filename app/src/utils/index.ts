@@ -174,6 +174,9 @@ const MODERATION_MESSAGES: Record<string, { en: string; zh: string }> = {
 // rate-limit families above. Previously thrown as raw English strings
 // ('Content too long', etc.) or a stray i18n key, which leaked to zh users.
 const CONTENT_MESSAGES: Record<string, { en: string; zh: string }> = {
+  post_title_invalid: { en: 'Use a single-line title of up to 120 characters.', zh: '标题请使用单行，最多 120 字' },
+  post_topic_required: { en: 'Add a title and choose a board for your topic.', zh: '话题请填写标题并选择板块' },
+  post_topic_body_required: { en: 'A topic needs body text as well as a title.', zh: '话题除了标题，还要写正文' },
   content_required: { en: 'Please write something first.',    zh: '请先输入内容' },
   content_too_long: { en: 'Content is too long (max 2000).',  zh: '内容太长（最多 2000 字）' },
   message_too_long: { en: 'Message is too long (max 2000).',  zh: '消息太长（最多 2000 字）' },
@@ -209,6 +212,8 @@ const CONTENT_MESSAGES: Record<string, { en: string; zh: string }> = {
    the same gap CONTENT_MESSAGES above was added to close, one table later.
    Keyed on the lowercased message, like OFFER_MEETUP_MESSAGES. */
 const THROWN_ENGLISH_MESSAGES: Record<string, { en: string; zh: string }> = {
+  'invalid post id': { en: 'This draft could not be restored. Please start a new post.', zh: '此草稿无法恢复，请重新发帖。' },
+  'post recovery mismatch': { en: 'Could not confirm this post. Check again.', zh: '没能确认这条帖子，请再次检查。' },
   'file too large (max 5mb)':   { en: 'That file is too large (max 5MB).',        zh: '文件太大（最多 5MB）' },
   'too many files':             { en: 'Too many files selected.',                 zh: '选择的文件太多' },
   'too many images':            { en: 'Too many images selected.',                zh: '选择的图片太多' },
