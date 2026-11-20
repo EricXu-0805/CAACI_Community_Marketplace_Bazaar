@@ -1741,3 +1741,53 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: —
 - 下一条: C-369（#369 8f5fc43 上的确认跑），交给 staging 子任务 st_01a1f85a
 - 附: supervisor 独立核过 P1.11、P1.12 第 4 次（L130、L132、L133 与原始日志一致，探针与 db13cbd 归档逐字节相同），7b18f20 上的验收算通过，也看了 L136。确认跑分两次：C-369 现在在 #369 当前 head 8f5fc43 上跑，13 个探针一个字节不改，单独的 detached worktree ~/work/confirm-369-8f5fc43，证据分 confirm-369/P1.11 与 confirm-369/P1.12，run-context.json 新写（attempt c369-1 起），residuals.json 从 P1.12 复制并核清单，顺序 restriction-state → consent-login → account-switch → p1-cleanup，都在同一把锁里；新写只读探针 restriction-state.mjs，只输出每个账号受限与否的布尔值，跑前有人受限就照 RUNBOOK §5.2 停下交给 Eric，跑时 A、B、C 写入报 P0001 就记【跳过】交给 supervisor、不重跑。C-final 由 supervisor 在所有合并之后另派，在要发布的 main 提交上跑；适配（第 10 项 c 的 probes-home/ 与 run-checks.sh 的 PROBES_DIR）留给 C-final。C-369 的结果写进第七批 ④。另提醒：#369 主包 1,560,392 字节，离 1,572,864 只剩约 12 KB，写进第七批 ④。[OMO自决] run-checks.sh 的 PROBES_DIR 这次不先改：P3/P4 子任务正在用这个脚本跑门禁，bash 边读边执行，改动正在运行的脚本可能打断它；第 10 项说这次不用做，留到 supervisor 派 C-final 时再做（先做 .before-* 备份，diff 记进 STATUS_LOG）。
+
+### L138 · 2026-11-20 08:26 CT · C-369 第 1 次开跑前：固定 head、CI、探针散列与假设
+- task_id: C-369/P1.11、C-369/P1.12（D-53.10，attempt=c369-1）
+- code_sha: 8f5fc43e3994e5805b056107bc3c1135560f5b50（ls-remote 当前 #369 head；新建 detached worktree confirm-369-8f5fc43）
+- docs_sha: 0cc48749a9260f46438708a71a33c01e3261f875（已 pull --ff-only，工作区初始干净）
+- 环境: 隔离环境 S-1；run-checks 按此 head 的 Playwright 1.65 lockfile 选择 localhost/illini-dev:pw1.65-node22-pg17
+- 命令: 每个容器单独经 `flock ~/work/illini-dev-env/.containers.lock`，锁内核 HEAD、磁盘至少 50G、自检；先 install 准备新 worktree，随后按 restriction-state → consent-login → account-switch → p1-cleanup 的顺序跑，最后清理使用 P1.12 子目录。EV 为 `~/work/evidence/D53/staging/confirm-369/P1.11`、`P1.12`，各自新建 run-context.json；只有 P1.12 复制旧 residuals.json。通过 RUNBOOK §7 Actions 接口核 CI；没有使用 Checks 接口。
+- 计数: 13/13 原探针 sha256 与 L133 相同；CommunityHome.vue 加 class="ch-more" 的组合检查为假，不适配、不动 PROBES_DIR 或 probes-home。CI run 44743800313 的 headSha 完全相同，status=completed、conclusion=success，5 个 success、2 个允许的 skipped（protected staging、Production release readiness），0 fail / 0 pending；本 head 的其他 Actions 运行列表没有额外待处理项。新 restriction-state 谓词 8 个纯逻辑边界用例通过，尚未连 S-1；输出仅 account/restricted，SDK logout 状态静默写证据文件。
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44743800313
+- 未测项: A/B/C 当前是否受限待 restriction-state 查询，任一为真即停下交 Eric，不跑验收。P1.12 已核残留旧消息 3a480e58-fd78-43dc-9d74-1cb91e64471b、本次基线消息 cd44b8ea-49b7-424d-a5ed-f467efb8e556 都在副本里，会话 158773c0-56c1-4568-bc25-831b3b7db9ed；旧 P2.11 四个对象仍按 L134 保留，本轮不操作。C-final 另派。
+- 下一条: 锁内准备依赖并运行只读 restriction-state；全为未受限才跑两项验收。写入若出现 P0001，记 action 与观察时间后【跳过】交 supervisor、不重跑；第 8 项 b 的 (1)–(6) 命中即【跳过】（应用缺陷）、不重跑；其余失败最多 c369-2、c369-3，只能改环境，每次先写假设。最后仍核 B 帖子总数 0 与 UI/SDK logout。
+- 附: STOP-14 假设：#369 不含社区首页的内容门，原探针可直接验证同意持久化、30 秒换号缓存窗口、真实页面正对照、reload 后四项隔离与作者控件；用 pw1.65 对齐本 head 的依赖，避免拿基线 pw1.60 的运行冒充候选证据。只加只读 restriction-state，冻结的 13 个文件一个字节不改。新文件复制前扫描非示例邮箱/token/密钥/工作站绝对路径均 0，归档在 appendix/env/probes/probes/restriction-state.mjs，sha256=3d2d76704904576bed6bc3b3458b2250e40a4aba850be225527ee0eba34ae783；head 的 scripts/verify-public-read-schema.mjs sha256=aba3d199bf58e34dce52853917db3715ae758984f71bf2691652ccfd4afe984a。冻结文件 sha256：
+  - `probe-in-container.sh`：70564aa1f12c7aaf2ed998d14b267d501971e042cd3257bb42d4a979d04044d3
+  - `probes/account-switch.spec.ts`：e0a883990ff4bd71db2bead30e86a3fbbce9809a3da655c47607162f91ba2884
+  - `probes/ci-count-filter.py`：ddd4258f2cc666205a39a3cf8a362ce0297f8ceab633b82f2315275860f7c1b6
+  - `probes/consent-login.spec.ts`：0dfd63ad0004bf8a96364d6b22b7a89bf278cab0f166ea2743750545cca15020
+  - `probes/p1-cleanup.spec.ts`：a906622454fc9429f42adf51b54dc328510024b844197f7b493dfb6b9fe270a7
+  - `probes/p2-authz-matrix.mjs`：7033792de3e4f6463de8958a79e730a5bc77871673d2e63391529b89010e8a45
+  - `probes/p2-cleanup-a.mjs`：55d2264b4f669744ddb19dd4ba00727b868e00136d5b7c45caffde98d876a8f9
+  - `probes/p2-cleanup.spec.ts`：67094aabca3d6ddf54cfbeb45d2ca4cb822bd94801c1a770eb559d07ec59bee1
+  - `probes/playwright.probe.config.ts`：207f95f707fa300f85883b3419d61c2fc3b496a208886dccd8557270f27182c5
+  - `probes/probe-data.mjs`：b9170e66ffe302d5b5ac66c881deb4d354d94368df30df9209405c0b28dff79a
+  - `probes/probe-ui.ts`：458c9f4afdbdbdc3d82221fa9b7c01090572bff4971cc0bfb6516c31fa3acd01
+  - `probes/schema-only.mjs`：97cbb8dba474a2671fe4d35c8450b739360b70efcfbd9c44f360679908a67469
+  - `probes/selfcheck.sh`：1c6a000ef04971879205bbf81b2b5e3d1d7e4ac1b3db0c2d75916213d21ebd8f
+
+### L139 · 2026-11-20 08:41 CT · C-369 第 1 次通过，最后清理 0 行；第七批④的确认结果
+- task_id: C-369/P1.11、C-369/P1.12（D-53.10，attempt=c369-1）
+- code_sha: 8f5fc43e3994e5805b056107bc3c1135560f5b50（各容器前锁内核对，结束后 ls-remote 仍相同）
+- docs_sha: 0cc48749a9260f46438708a71a33c01e3261f875（本次材料未提交）
+- 环境: 隔离环境 S-1；localhost/illini-dev:pw1.65-node22-pg17；detached worktree confirm-369-8f5fc43
+- 命令: install 在同一把 .containers.lock 下结束后，`flock ~/work/illini-dev-env/.containers.lock bash ~/work/evidence/D53/staging/confirm-369/run-attempt.sh c369-1` 串行执行 restriction-state → consent-login → account-switch → p1-cleanup；每个容器前单独检查 HEAD、干净工作树、磁盘与 §5.2 自检。EV 的 P1.11 原始日志分别为 check-20261120T143729Z-probe-restriction-state.log、143733Z-probe-consent-login.log；P1.12 为 143804Z-probe-account-switch.log、143828Z-probe-p1-cleanup.log，均已复制到相应 EV 下 probe-*.log。外层日志为 P1.11/restriction-c369-1.log、P1.11/c369-1.log、P1.12/c369-1.log、P1.12/cleanup-c369-1.log。
+- 计数: A/B/C restricted 均 false；restriction-state rc=0。P1.11 3 passed / 0 failed，三账号 consentCurrent=true、already_recorded，3 张截图通过 ensureScreenshotSafe 且逐张看过，没有账号字段。P1.12 1 passed / 0 failed：control_A inspect 与 observer innerText/textContent 都为 1/1，回调 16；A 列表到 B 消息页 4507ms，缓存窗口已覆盖；B 五次 inspect 四项泄漏计数全 0、身份全是 B；广场/帖子前后正对照通过；pre_reload 回调 51、post_reload 17，两段四项泄漏最大值全 0，普通 page.reload（WebKit）后帖子卡与作者按钮都在。最后 p1-cleanup 1 passed，B 对照帖库存 0、最终 SELECT 200 / 0 行（已在验收中由作者删除）。16 次 /logout 全 204（UI 6、SDK 10，其中 restriction-state SDK 3 次；A 5、B 7、C 4），新会话残留 0。五个容器前磁盘均 234G、自检均 600 / 0 / 1 / 精确八变量；每次探针 head-schema 的四个投影加搜索 RPC 共五项均 200。
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44743800313
+- 未测项: 无【跳过】、无 P0001、无第 8 项 b (1)–(6) 命中、无失败 phase；c369-2、c369-3 均未用。本次新增无删除入口的 C 消息 86cec6b2-3391-448f-879a-2c9e34c4dd66，已累加保留旧 3a480e58-fd78-43dc-9d74-1cb91e64471b、cd44b8ea-49b7-424d-a5ed-f467efb8e556，三条同在 158773c0-56c1-4568-bc25-831b3b7db9ed。旧 P2.11 已售商品 8aca057d-6617-4dac-9819-2572dbb65977、报价 6973bda3-06ef-4c71-9e8c-509cae9e5d5f、会话 47b757ec-053b-40c6-81a9-586e291426a9 与 45afcc07-8b1a-4b71-a4de-0d6fd02639e6 原样保留，本轮没有操作。历史会话未做全局撤销。C-final 由 supervisor 在准备发布的 main 提交上另派，前提仍是 staging 的 20261114015420 已完成 PRECHECK、应用、VERIFY。
+- 下一条: C-369 收尾，P1.11 与 P1.12 确认结果均「通过」；第 0 项 a 对 #369 的这两项前提已满足，结果供第七批④采用。没有改应用、PR、合并、推送或提交；材料由主会话提交。
+- 附: L138 的假设成立，未做社区首页适配，未动 PROBES_DIR/probes-home；13 个冻结文件结束时仍逐字节匹配 L133。D-53.10g 的两个旧 RESULT.md 已各只追加一行指向现有 RERUN_RESULT.md，COMMANDS.md 末尾已追加第 4 次历史命令，未重写旧内容、未重跑第 4 次。新增 restriction-state.mjs 的源与公开副本相同，公开扫描非示例邮箱/token/密钥/工作站绝对路径均 0；其 sha256 单列为 3d2d76704904576bed6bc3b3458b2250e40a4aba850be225527ee0eba34ae783，不计入冻结 13 个。head 的 scripts/verify-public-read-schema.mjs sha256 仍为 aba3d199bf58e34dce52853917db3715ae758984f71bf2691652ccfd4afe984a。冻结文件归档 sha256：
+  - `probe-in-container.sh`：70564aa1f12c7aaf2ed998d14b267d501971e042cd3257bb42d4a979d04044d3
+  - `probes/account-switch.spec.ts`：e0a883990ff4bd71db2bead30e86a3fbbce9809a3da655c47607162f91ba2884
+  - `probes/ci-count-filter.py`：ddd4258f2cc666205a39a3cf8a362ce0297f8ceab633b82f2315275860f7c1b6
+  - `probes/consent-login.spec.ts`：0dfd63ad0004bf8a96364d6b22b7a89bf278cab0f166ea2743750545cca15020
+  - `probes/p1-cleanup.spec.ts`：a906622454fc9429f42adf51b54dc328510024b844197f7b493dfb6b9fe270a7
+  - `probes/p2-authz-matrix.mjs`：7033792de3e4f6463de8958a79e730a5bc77871673d2e63391529b89010e8a45
+  - `probes/p2-cleanup-a.mjs`：55d2264b4f669744ddb19dd4ba00727b868e00136d5b7c45caffde98d876a8f9
+  - `probes/p2-cleanup.spec.ts`：67094aabca3d6ddf54cfbeb45d2ca4cb822bd94801c1a770eb559d07ec59bee1
+  - `probes/playwright.probe.config.ts`：207f95f707fa300f85883b3419d61c2fc3b496a208886dccd8557270f27182c5
+  - `probes/probe-data.mjs`：b9170e66ffe302d5b5ac66c881deb4d354d94368df30df9209405c0b28dff79a
+  - `probes/probe-ui.ts`：458c9f4afdbdbdc3d82221fa9b7c01090572bff4971cc0bfb6516c31fa3acd01
+  - `probes/schema-only.mjs`：97cbb8dba474a2671fe4d35c8450b739360b70efcfbd9c44f360679908a67469
+  - `probes/selfcheck.sh`：1c6a000ef04971879205bbf81b2b5e3d1d7e4ac1b3db0c2d75916213d21ebd8f
