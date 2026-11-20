@@ -1,6 +1,6 @@
 # STATUS
 
-写于 2026-11-20 10:29 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-20 10:35 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
 `next_task_id: D-54 第 1 项（第七批更正）与第 2 项（P3、P4 修复，两个子任务）；第 3、4、5 项等 supervisor 通知`
 `latest_batch: appendix/batch/FINAL.md`
@@ -11,17 +11,19 @@ D-54 第八批进行中（L143 起）：范围是 D-54 第 0–5 项；做完写
 
 | 项 | 值 |
 |---|---|
-| 代码分支 / PR | codex/community-topics-20261112 / #369 已由 supervisor squash 合进 main ad986c9（树同 8f5fc43，2026-11-20，L141）[本地测：gh pr list、git ls-remote] |
-| code_sha | ad986c9（main；#369 的最终 head 8f5fc43 已 squash 合进 main） |
+| 代码分支 / PR | #369、#374、#375、#377 已由 supervisor 依次 squash 进 main（ad986c9、4900722、e9c2604、05e0959；D-54 第 0 项） [本地测：2026-11-20 gh pr view] |
+| code_sha | 05e09593ad080879b99a6889118c588bb1539084（main 当前 HEAD，#377 的 squash；树与 #377 最终 head 9be6a56 相同） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | e8948f8（本次写回之前材料分支的 HEAD） |
-| 其余代码分支（远端 head） | #375 codex/community-mp-budget-20261113 700c7be（supervisor 加的 -s ours 合并，base 已改 main，CI 在跑）；#374 codex/community-home-20261112 75a3447；#377 codex/community-restricted-20261113 9a31e75（base #374 的分支）；#379 codex/community-p3-20261120 4e0ba6e（base #377 的分支）；#380 codex/community-events-20261120 b9fd8ee（base P3 的分支）；#372 d6f393d（base main）；以上都是草稿。已合：#369（ad986c9）、#371（057d07d）、#376（b4d615b）、#373、#378（supervisor 合） [本地测：2026-11-20 gh pr list] |
+| docs_sha | 058be85（本次写回之前材料分支的 HEAD） |
+| 其余代码分支（远端 head） | #379 codex/community-p3-20261120 4e0ba6e（base codex/community-restricted-20261113，D-54 修复中）；#380 codex/community-events-20261120 b9fd8ee（base P3 的分支，D-54 修复中）；#372 codex/brand-cornfield-20261112 d6f393d（base main，D-54 第 4 项手工合并中）；以上是草稿。已合进 main：#369、#371、#374、#375、#376、#377；#373、#378 已合进各自 base 分支 [本地测：2026-11-20 gh pr view] |
 | tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 4e0ba6e（#379）；illini-events-20261120 b9fd8ee（#380）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand d6f393d（#372）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条） [本地测：git worktree list] |
-| 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，仍是 V4 原型（grep 玉米地 0），回退 id dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6 [生产：2026-11-14 curl、vercel inspect 只读]。BRAND.7 预览 https://illini-community-demo-978sy3clx-ericxu-0805s-projects.vercel.app（dpl_3bG2SKTAmQsa7jEmScy2cHHpnk1y）返回 200，等 Eric promote（E12）[本地测] |
+| 公开 demo | https://illini-community-demo.vercel.app/ 已由 supervisor promote BRAND.7（新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`grep -c 玉米地` 为 6；回退 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6；D-53 第 0 项 d） |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 
 ## CI
+
+现状（2026-11-20，D-54 第 1 项 e 更正）：main 上 run 44739894523（057d07d，run_attempt 2）七个 job 全过；之后 main 依次是 ad986c9、e9c2604、4900722、05e0959（supervisor 的 squash 合并）。下面关于 8257318、0e04aca 等的段落是历史记录。
 
 **GitHub Actions 停过一段（D-52 第 4 项 a）。** 2026-11-20 约 01:25Z 起，#370 的 run 44653535391（f86ada1）、44660742581（7dda6cb）、44671115623（0c95cc4）都在 4–5 秒内结束，每个 job 0 个步骤，注解原话是「The job was not started because recent account payments have failed or your spending limit needs to be increased.」Eric 2026-11-20 01:16 CT 把仓库改成公开，07:15Z 起是 PUBLIC。本批第一次推送（材料分支 ea66373）触发的 run 44696137300：每个启动的 job 都有步骤（Type-check 8、Build mp-weixin 10、Boundary 13、public sweep 12、Build H5 13；protected staging 与 release readiness 按条件 skipped），没有付款注解，按 D-52 的标准 CI 已恢复（L111）。这个 run 的 Build H5、public sweep 失败在装浏览器那一步，是 #370 分支没有 c52badf、ubuntu-26.04 的老问题。#372 d6f393d 的 run 44651530274 也一样：Type-check、Boundary、Build mp-weixin 成功，Build H5「Install browsers for compiled admin acceptance」和 public sweep「Install Playwright (webkit + chromium)」失败 [CI run#44696137300][CI run#44651530274]。
 
@@ -174,7 +176,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 
 ## 阻塞与等待 Eric
 
-1. 合并与迁移的完整顺序（写给 Eric，OMO 不执行；托管库的事属于 STOP-2/3，D-52 第 4 项 b）：① #376 随时可以合；#371 → #373。② 在生产应用 20261112120000 并跑它的 VERIFY（staging 已做，L102；ENGINEERING §6；应用后 VERIFY_20260718_reconcile_app_table_acl_boundaries 报 posts 列漂移属预期，见 L46），并且 P2.13 通过以后，依次合 #369 → #375 → #374。合 #369 进 main 就是把前端发布到 illinimarket.com 生产。③ #372 在 #374 之后任何时候手工合，规则见第 11 条。④ #377 最后合：前提是 staging 和生产上都已应用并 VERIFY 了 20261112120000，再 PRECHECK、应用、VERIFY 了 20261114015420（生产上必须先有前一条，否则 D-49 的 PRECHECK 会报 restricted_account_writes_column_missing），见第 14 条。⑤ 删分支之前先改 base，见第 12 条。
+1. 合并与上线顺序（D-53 第 0 项 g、D-54 第 0 项；托管库的事属于 STOP-2/3，OMO 不执行）：已由 supervisor 做完——#376（b4d615b）、#371（057d07d，含 #373、#378）、#369（ad986c9）、#375（e9c2604）、#374（4900722）、#377（05e0959）都已 squash 进 main；20261112120000 已在生产 15:04Z 应用并 VERIFY；20261114015420 已在 staging 15:14Z、生产 16:02Z 应用并 VERIFY（两边账本语句 md5 都是 48b65118…）。接下来：#372 由 OMO 手工合 main（D-54 第 4 项）后由 supervisor 合 → C-final（D-54 第 5 项）→ 受监督发布。合进 main 不会上生产：vercel.json 关了自动部署，H5 生产只走 docs/SUPERVISED_RELEASE.md 的受监督发布（D-53 第 10 项 a）。P3、P4 的两个迁移由 Eric 在 staging、生产应用（P3.7、P4.11），不在这一轮上线范围；P3 迁移应用后通知开关保持关闭，P3 的 H5 和小程序都发布后，由 Eric 打开（D-54 第 2 项 c）。
 2. D-29 → E2、E3：已完成（D-53 第 0 项 b、c，supervisor 代做）。D-29 定为 A：supervisor 2026-11-20 约 03:20 与 03:45 CT 只读核对 staging-smoke，auth.users 5 个 example.invalid 合成号加 1 个冒烟号、profiles 9 行、items 2 行、posts 0 行、messages 2 行都归合成号或冒烟号；E3 的 syn-a、syn-b、syn-c 已注册确认并能登录，~/.config/illini/staging.env 已写好（600）。OMO 不在 #369 代 Eric 留言；staging.env 不 cat、不打印。P1.11、P1.12、P2.6、P2.11 由第七批第 5 项跑。
 3. E4：staging 那一半已完成——supervisor 按 Eric 2026-11-19 批准把 20261112120000 应用到 staging-smoke 并 VERIFY 通过（D-51 第 6 项），#369 的 public sweep 已过（L102）。P2.6 已通过（D-53 第 5 项，L126）；P2.13 已通过（L136）。
 4. P1.6 跨大版本已按 D-44 做成草稿 PR #373（base #371）：合不合由 Eric 定；合之前请在带 SENTRY_AUTH_TOKEN 的发布构建里确认 source map 上传。#373 不触发 CI（ci.yml 只认 base=main）。vite 6.4.4 那条 moderate 的 CI 例外已由 #376 提供（只放行 vite 包上的 GHSA-8g5g-mxqh-grgj、严重程度不高于 moderate、到 2026-12-13，见第 20 条）；#376、#371、#373 都合并后 main 上的 Boundary 才会绿。
@@ -196,7 +198,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
    | app/smoke/community-post-topics.spec.ts | 保留 view=all 和 New topic/发话题；加入 L2–L5 门禁与 options.open；正常账号夹具同时提供话题与旧式动态，保留两种回复入口验证 |
    | app/src/composables/i18n/messages/en.ts、zh.ts | 自动合并会各留两份 plaza.restrictedReply，手工去重为每语言一份；未改变值 |
 
-12. 删 #369 的分支之前，先把 #374、#375 的 base 都改成 main；删 #371 的分支之前，先把 #373 的 base 改成 main；删 #374 的分支之前，先把 #377 的 base 改成 main（删 base 分支会关闭依赖它的 PR，且不能重开）。#369 若 squash 合并，改完 base 后 #374、#375 要再 merge 一次 origin/main；#374 若 squash 合并，#377 改完 base 后也要再 merge 一次 origin/main。#377 的 base 改成 main 之前没有 CI（ci.yml 只认 base=main）。另按 D-53 第 4 项：删 #373 的分支之前，先把 #378（vite）的 base 改成 main；删 #377 的分支之前，先把 P3 的 PR 的 base 改成 main；删 P3 的分支之前，先改 P4 的 PR 的 base。被改 base 的那个分支若是 squash 合并的，改完以后都要再 merge 一次 origin/main。
+12. 改 base 与删分支（D-54 第 3 项）：#379（P3）、#380（P4）的 base 先不动，直到 P3 迁移已在 staging 应用并 VERIFY（P3.7 DoD ①）；然后把 P3 的 base 改到 main 跑 CI（P3.7 DoD ②）。P3 改 base 之前 supervisor 不删 codex/community-restricted-20261113；P4 改 base 之前不删 P3 的分支。改 base 到 main 时：只有 `git rev-parse S^{tree}` 等于 `git rev-parse H^{tree}`、并且 H 已是 P3 的祖先，才 `git merge -s ours S` 记下这次 squash；树不相等就普通 `git merge origin/main`，迁移或 manifest 冲突照 BACKLOG §14 第 14 行。#377 的 H = 9be6a56、S = 05e0959（树相同，L146）。删 base 分支会关闭依赖它的 PR 且不能重开。
 13. 首页、新页头、板块页、全部讨论已编进小程序。#374 6bdca97（含 #369 04edaa3、#375 571be45）CI 环境主包 1,373,060、余 199,804；五个 PR 本地集成（再加 #373、#372）1,374,461、余 198,403（L90），满足 64 KiB 目标。微信开发者工具/真机仍须验证渲染、胶囊、路由、操作菜单标题、空栈提示抑制、首次分包下载/离线失败与返回栈。没有preloadRule，login/search/notifications/settings/legal等首次进入要下载；本批不加预加载规则。首页6+inbox 2+notifications 2=10，onShow资料读取可到11；D-47.3只限首页。按supervisor核查，基础库3.8.10起超并发请求才排队，更老版本可能直接失败；manifest未设最低基础库，需Eric实测并定最低版本。小程序构建须有VITE_BASE_URL。showModal加权规则只核验3.15.0–3.15.2；showActionSheet只检查itemList不超过6项，title/alertText和条目文字不限长，更早版本未核。
 
 14. D-49（#377，草稿，head dd44f98，base 是 #374 的分支 codex/community-home-20261112，D-52 第 1 项）：#377 最后合。前提是 staging 和生产上都已应用并 VERIFY 了 20261112120000，再在两边依次跑 PRECHECK_20261114015420 → 应用迁移 → VERIFY（都返回空、不报错）；生产上没有前一条时 D-49 的 PRECHECK 会报 restricted_account_writes_column_missing。尽量在低流量时段应用（会在 10 张表上短暂加锁，含 storage.objects 上的 ACCESS EXCLUSIVE），因 lock_timeout 或死锁中止会整体回滚，重跑即可（仓库 RUNBOOK，dd44f98）。没有 ROLLBACK 文件，删两条新的 storage.objects 策略要用 Dashboard。删 #374 的分支之前先把 #377 的 base 改成 main（第 12 条）；#377 改成 main 之前没有 CI。12 条待定政策问题见 #377 描述与 FINAL 第五批 D-49 一节。
@@ -209,7 +211,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 
 18. BRAND.7（E12）：已完成（D-53 第 0 项 d，supervisor 代做）。supervisor 2026-11-20 约 03:22 CT promote 预览 dpl_3bG2SKTAmQsa7jEmScy2cHHpnk1y，新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`curl … | grep -c 玉米地` 为 6；回退用 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6。BRAND.7 的 DoD ④ 完成。「转发 · CSSA」的虚构活动按 Eric 2026-11-19 的选择保留。D-37（董事会同意）仍未拿到，LEGAL.1 照旧开着，这是 Eric 的取舍。
 19. 给运维的提醒（D-52 第 4 项 g，更正 L105 的说法）：本地镜像 supabase/postgres 17.6.1.104（和生产的数据库版本一样）上，用 postgres 或 supabase_admin 登录，再 `SET ROLE` 到 anon、authenticated 或 service_role 去调用没有 EXECUTE 权限的函数，后端会 SIGSEGV、整库重启；以 authenticator 登录（也就是走 PostgREST）是正常的 42501。所以 App 用户大概率触发不了，运维会话会。托管库上的 supautils 和 PostgREST 版本可能和本地不同，这一点没核；OMO 没碰任何托管库。可选的镜像版本 17.6.1.167：核查方在这个版本上没复现崩溃。
-20. #376：Eric 选 B 路线（D-53 第 0 项 e）：vite 6.4.5 的新重建配方在分支 codex/config-vite-645-20261120（base #373 的分支，第七批第 3 项）。vite PR 和 #371 进了 main 以后，#376 的钉版本和放行都用不上了，supervisor 会关掉它或留作草稿。后备：#373 到 2026-12-06 还没合，由 Eric 定把 vite PR 改到 #371 或 main 上，还是延长 #376 的放行。
+20. #376 已在 2026-11-20 12:35Z squash 进 main（b4d615b）；Eric 选的 B 路线由 #378（vite 6.4.6）完成，已随 #373、#371 进 main（057d07d）；main 上 run 44739894523（057d07d，run_attempt 2）七个 job 全过（D-54 第 1 项 d）。#371 合并后三个浏览器 job 要不要回到 ubuntu-latest（P1.5 DoD ③）仍由 Eric 定。
 21. staging 上 posts_visible 的写权限是 041 建视图时的默认权限，没收回（security_invoker，不算提权）；要不要收回由 Eric 定。
 22. staging 另缺 3 条和 20261112120000 无关的旧迁移：20260811140018、20260811143207、20261003175231，这次不补。
 23. 5 个留下的证明 worktree 要删得用 --force（RUNBOOK §3 不许 OMO 做）；改动和未跟踪文件已存进 ~/work/evidence/D51/worktrees/（L97）。
@@ -218,6 +220,6 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 26. D-53 第 9 项（照抄，【supervisor 做】）：#371 在 7c94a11 上的 CI（run 44731585297）只有 Build H5 失败，ubuntu-26.04 上 WebKit 起不来；所以先把 #376 squash 合进 main（b4d615b，12:35Z），再把 main 合进 #371 的分支（6d481d0）。#376 进 main、#371 还没进的这段时间，main 的依赖审计会因 intlify、follow-redirects、glob、minimatch、qs 的 6 条公告变红，属预期，#371 合进去就好。supervisor 已独立核过：#378 在容器里用自己下载的输入重建两次，与提交的归档逐字节相同；#376 的审计步骤过了 55 种输入和真实 registry 的测试。P1.8 仍按 D-53 第 7 项 a 看 #371 的 mergeCommit。
 
 27. D-53 第 8 项 g：P1.11、P1.12 第 4 次都在固定 7b18f20 上通过，仅证明 main 基线与探针本身；合 #369 和合 #377 之前，supervisor 仍要另派同一份探针（sha256 不变）在要合的 head 上各做确认跑，不计入这次 5 次预算。OMO 本轮不推进 main worktree、不改应用代码、不合任何 PR；第七批④、⑥按此保留候选 head 确认跑。
-28. 上线进度（D-53 第 0 项 g，【supervisor 做】，L141）：2026-11-20 15:04Z 在生产库应用 20261112120000，PRECHECK 两次、VERIFY 都过，账本 20261120150411，语句与 4 个函数 md5 与 staging 相同，posts 7 行新列为默认值，应用后 edge 请求 102 个全 200；生产 H5 仍是 7b18f20 的部署，没有发布。#369 已 squash 进 main ad986c9；#375 加 -s ours 合并 700c7be、base 改 main，CI 绿了由 supervisor 合，#374、#377 照做。supervisor 通知之前 OMO 不往 #375、#374、#377 推送；P3、P4 等 #377 新 head 再合。C-final 由 supervisor 在要发布的 main 提交上另派。
-29. E6：COMMUNITY_OFFICIAL_PROFILE_ID 没设之前，P3.5 的 set_post_official、set_post_featured 和 P4.9 的 create_event_discussion 都返回 409 official_profile_not_configured、不落库；设好后补这两项的另一半（L140）。
+28. 上线进度（【supervisor 做】，L141、L146、D-54 第 0 项）：supervisor 独立核过第七批的 vite（#378）、#376、P1.11/P1.12 第 4 次、C-369、P1.8 级联；P3、P4 的核查发现在本机清单里（不进仓库，只引编号），按 D-54 第 2 项修。生产 15:04Z 应用 20261112120000 并 VERIFY；#369、#375、#374 依次 squash 进 main（ad986c9、e9c2604、4900722）；staging 15:14Z、生产 16:02Z 应用 20261114015420 并 VERIFY；#377 加 -s ours 合并 9be6a56 后 squash 进 main 05e0959。#375 在 15:08:01Z 改 base 之后于 15:08:27Z 被关闭、15:08:29Z 重开（L141 漏记，D-54 第 1 项 e）。生产 H5 仍是 7b18f20 的部署，没有发布。接下来 #372 → C-final → 受监督发布。
+29. E6：COMMUNITY_OFFICIAL_PROFILE_ID 没设之前，P3.5 的 set_post_official 和 P4.9 的 create_event_discussion 返回 409 official_profile_not_configured、不落库；set_post_featured、hide_event、unhide_event 不依赖它（D-54 第 1 项 b 更正）。设好后补这两项的另一半。
 30. P4.6 的产品问题：被隐藏或下架的成员活动仍占组织者两个名额之一，作者自己删掉讨论帖的不占，要不要改由 Eric 定（L140）。

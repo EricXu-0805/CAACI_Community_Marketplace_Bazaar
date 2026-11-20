@@ -1875,3 +1875,27 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: —
 - 下一条: 第 1 项（第七批更正，主会话）
 - 附: supervisor 2026-11-20 把 #377 squash 合进 main。H（#377 最终 head）= 9be6a56b849f8ed8e506666fcd0b24cc5b11c6e0，S（main 上的 squash 提交）= 05e09593ad080879b99a6889118c588bb1539084，supervisor 核过 S 与 H 的树相同（385f7a41db94…），main 现在的 HEAD 就是 S。第 3 项：P3 普通 git merge 9be6a56，P4 再 merge P3 的新 head，不 rebase，PR base 不动；和第 2 项的推送照 D-47 第 1 项排队。第 4 项：在 codex/brand-cornfield-20261112 上 git merge 05e0959，冲突照 STATUS 阻塞第 11 条和 D-54 第 4 项，全量门禁加 mpci，快进推送，仍是草稿；推送后在 STATUS_LOG 记一笔并告诉 supervisor 新 head。第 5 项（C-final）等 #372 合进 main 后的 SHA。[OMO自决] 三个子任务各用自己的分支和目录，每个分支只由对应子任务推送；子任务不写材料分支，STATUS_LOG 草稿放在证据目录，由主会话追加；容器都排同一把锁。
+
+### L147 · 2026-11-20 10:35 CT · 更正 L116、L124（report:FINAL-M1）
+- task_id: D-54.1a
+- code_sha: —
+- docs_sha: 058be85（本次写回之前材料分支的 HEAD）
+- 环境: 本地、CI
+- 命令: `gh run view 44715711828 --json headSha` 只读核对；L116、L124 原文都不动
+- 计数: run 44715711828 的 headSha 是 f0ccd8f，属于 L124（D-53.2，#376 f0ccd8f）
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44715711828
+- 未测项: —
+- 下一条: D-54 第 1 项 b–e（L148）
+- 附: 提交 cae8c22 把 L116（第六批，#376 0e04aca）的 ci_run_url 原地改了：L116 被改之前的原文是「#376 新 head 的 run 待完成（监视中）」，被换成了 run 44715711828。L124 的 ci_run_url 原文也是这句，两行字一样，替换落在了第一处，所以改错了条目，也违反了 STATUS_LOG「旧条目不改不删」的规矩。更正：run 44715711828 属于 L124（f0ccd8f，D-53.2）；L116（0e04aca）的 CI 是 run 44699877648（L120 已记）。L116、L124 本身都不再动；往后要改旧条目，一律追加一条更正。
+
+### L148 · 2026-11-20 10:35 CT · 第七批报告与 STATUS 的更正（D-54 第 1 项 b–e，report:FINAL-M2–M4、m1–m13）
+- task_id: D-54.1b–e、D-54.0
+- code_sha: —
+- docs_sha: 058be85（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 改 FINAL 第七批（标题下加一行更正说明，正文按下面各条改）、STATUS（阻塞第 1、12、20、28、29 条，版本表三行，公开 demo 行，CI 节加现状一段）；`gh pr view` 核 #369–#380 的状态
+- 计数: #369、#374、#375、#376、#377 已 MERGED（ad986c9、4900722、e9c2604、b4d615b、05e0959）；#371 MERGED 057d07d；#373、#378 已合进各自 base；#372、#379、#380 是草稿、OPEN [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-54 第 2 项（子任务）
+- 附: M2：set_post_featured 不依赖 E6，FINAL ④ 与 STATUS 第 29 条改成只有 set_post_official 和 create_event_discussion 返回 409。M3：P3、P4 迁移的托管应用归 Eric（P3.7、P4.11），④ 那一行改标 Eric；STATUS 的 P3.1–P3.8 已写 P3.7 未做。M4：#376 已在 12:35Z squash 进 main（b4d615b），④ 里「关掉或留作草稿」一行删掉，STATUS 第 1、20 条改，⑥ 改引 main 上 run 44739894523（057d07d，run_attempt 2，七个 job 全过）。m1：⑤ 补上 #369 a37667b 按第 9a 条第二个例外 revert c52badf、随级联进各分支、各 head 的 ci.yml 与 main 相同、没动 vercel.json。m2：P3 行改「部分」，写明 P3.8 的基线是 180378c 而不是 #369 合并后的 main、DoD ③ 没满足，P3.5 客户端与 P3.8 没有红绿一步。m3：L140 一条盖了约 4 小时、14 个提交，也没打 [OMO自决]；FINAL 里有几句只在本机 REPORT.md 里：P4.8 接上 home.events、home.allEvents，D-49 归类那句，「红灯对着空的替身迁移」。REPORT.md 里没进 FINAL 的：P4 两个约束名与 ENGINEERING 不同（STOP-16a，L140 漏记，本条补记）、community-home.spec.ts 两处断言改成不算 list_community_events、P4.8 的 8 张截图只在本机（不在 DoD ⑦ 要的 appendix/visual/P4.8/）、边界测试按摘要匹配官网项目 ref。这些写进第八批 ⑥，第八批起每个子任务一条记录、带 [OMO自决]。m4：P4 行改「部分」（P4.2 DoD ④ 的 caaci、campus、partner 写入通道没有）。m5：⑤ 的磁盘改成最低 234 GB。m6：⑤ 说查过外部评论，但第七批没有 STATUS_LOG 记录；本条补记：那次只读检查 07:00Z 以后 0 条外部评论、0 个外部 issue 或 PR（supervisor 复核同为 0）。m7：① 的 P4 链补上 d652732 也是合并（P3 9b679c1）。m8：④ 改 base 一行删掉「删 #373 的分支前把 #378 改到 main」（#378 11:55:38Z 已合进 #373 的分支）。m9：④ 的 #369 主包一行解锁条件改成已合，余量风险移进第八批 ⑥。m10：② P2.6 行的计数出处改成 L102（schema 预检是 L126）。m11：STATUS 的公开 demo 行（E12 已做）、阻塞第 1 条（合进 main 不会上生产）、CI 节（加现状一段）都改了。m12：L142 和 STATUS 抬头在推送前就写了「目标已结束、提醒已取消」；这一批照 D-54 第 6 项，推送之后再结束目标、取消提醒，然后单独追加一条。m13：#375 在 15:08:01Z 改 base 后，15:08:27Z 被关闭、15:08:29Z 重开，L141 和 ④ 都没记，补进 STATUS 第 28 条。

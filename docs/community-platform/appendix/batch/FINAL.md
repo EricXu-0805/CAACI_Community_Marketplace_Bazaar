@@ -642,6 +642,8 @@ D-52.4g ｜ 通过 ｜ —（只改文档） ｜ ea66373 ｜ 本地 ｜ L112、S
 
 ## 第七批（D-53）
 
+> 2026-11-20 按 D-54 第 1 项更正（L147、L148）：b set_post_featured 不依赖 E6；c P3、P4 迁移的托管应用归 Eric（P3.7、P4.11）；d #376 已合进 main；e report:FINAL 的 m 项。sha256 等旧值照原样保留，新值只写进第八批。
+
 按 DECISIONS D-53 第 0–5 项做（材料分支 362087f），第 7 项补充（5ce489f）与前面冲突处以第 7 项为准；第 6 项的目标与续跑提醒记在 L121、L123。八节格式同上，每项单独成行；【Eric 选】是 Eric 2026-11-20 的选择，【supervisor 做】是 supervisor 依 Eric 03:17 CT 的总批准代做或将做的事，OMO 都不做。逐条细节在 STATUS_LOG L121–L142。`latest_batch` 不变。按 D-53 第 6 项，本批交付后结束目标、取消续跑提醒，不从 BACKLOG 往下接任务。仓库仍公开，本批没有往仓库加原始日志、带真实数据的截图、账号邮箱、凭据或 /home 开头的绝对路径。
 
 ### ① 起止与 SHA 范围
@@ -652,7 +654,7 @@ D-52.4g ｜ 通过 ｜ —（只改文档） ｜ ea66373 ｜ 本地 ｜ L112、S
   - #376 `codex/config-ci-runner-20261119`：0e04aca → f0ccd8f。
   - #378 `codex/config-vite-645-20261120`（新，base #373 的分支）：55716ba → 80b3eb0。
 - P3 `codex/community-p3-20261120`（#379，草稿，base #377 的分支）：dd44f98 → d7165e6（迁移冻结）→ 180378c → 98afd0a → e5de9a4 → 290b098 → 9b679c1 → d97d8c4（merge #377 9a31e75）→ 4e0ba6e。
-- P4 `codex/community-events-20261120`（#380，草稿，base P3 的分支）：de2d281（merge wip/P4.1 5f62ddd）→ d652732 → e67a944（迁移冻结）→ 1cffc41 → fe05508 → fde9c3f → e74faf6（merge P3 4e0ba6e）→ b9fd8ee。
+- P4 `codex/community-events-20261120`（#380，草稿，base P3 的分支）：de2d281（merge wip/P4.1 5f62ddd）→ d652732（merge P3 9b679c1）→ e67a944（迁移冻结）→ 1cffc41 → fe05508 → fde9c3f → e74faf6（merge P3 4e0ba6e）→ b9fd8ee。
 - P1.8 级联（D-53 第 7 项 c，只 merge、快进推送）：#369 8257318 → a37667b（revert c52badf）→ 8f5fc43（merge main 057d07d）；#375 571be45 → dfa1aa0；#374 6bdca97 → 75a3447；#377 dd44f98 → 9a31e75。
 - 20261112120000、20261114015420 的 sha256：20261112120000 仍是 e2a85c3e…、20261114015420 仍是 0dc2ceaf…（在叠了所有下游的 P4 分支上核）；本批新冻结 20261120100354（P3）9e0a044d…、20261120122054（P4）6fcddd0e…。
 
@@ -664,9 +666,9 @@ D-53.0 ｜ 通过 ｜ —（只改文档） ｜ 362087f ｜ 本地 ｜ L122、ST
 D-53.1 ｜ 通过 ｜ —（只改文档） ｜ 362087f ｜ 本地 ｜ L122 ｜ 第六批开始时间 01:35 CT；L110→L111；验收表 D-52 第 4 项改引 L111–L115、L119、L120；截图共 6 张（社区首页 2、二手首页 4）；#370 run 44698816891、44703187712 补记；「87e57c3（c52badf 的 cherry-pick）钉的」；第六批目标 08:31:28Z 结束、提醒已取消 ｜ — ｜ — ｜ — ｜ D-53.2
 D-53.2 ｜ 通过 ｜ f0ccd8f（#376，草稿，base main） ｜ c1921d9 ｜ 本地、CI ｜ L124 ｜ exit 0 也读报告；via 解不开的 moderate 及以上条目失败；21 个用例都符合预期（含新加 6 个）；两棵真实依赖树一失败一通过；现有测试 1989 / 1988 / 0 / 1；merge-tree 7 个 head 0 冲突 ｜ CI run#44715711828（5 个 success） ｜ 放行逻辑要合进 main 才真跑；没有 actionlint ｜ — ｜ D-53.3
 D-53.3 ｜ 通过 ｜ 80b3eb0（#378，草稿，base #373 的分支） ｜ c1921d9 ｜ 本地 ｜ L125 ｜ vite 6.4.6 新配方，6.4.4 那套不动；两次干净构建 identicalArchives=true、15 个 dist 文件逐字节相同；install、typecheck、test（重跑）、h5、mp、mpci、smoke、npmaudit 都过，audit 0；主包 1,534,536、H5 2,568,811，与 55716ba 相同；lockfile 只改 vite ｜ —（base 不是 main） ｜ supervisor 独立复核 ｜ — ｜ D-53.4
-D-53.4（P3） ｜ 通过（P3.7 归 Eric；P3.5 另一半等 E6） ｜ 4e0ba6e（#379，草稿，base #377 的分支） ｜ e8948f8 ｜ 本地、L-SQL ｜ L140 ｜ 一个迁移 20261120100354 装下 P3.1、P3.3、P3.4、P3.5 的库改动，配 PRECHECK / VERIFY / REGRESSION，L-SQL 183 / 183、627 / 627，冻结 9e0a044d…；客户端 P3.2–P3.6、P3.8 各自先红后绿；受限账号按 D-49 归类（收藏、订阅话题允许，别人看得到或会通知别人的写入挂拦截）；合 #377 9a31e75 后全量 2780 / 2779 / 0 / 1、pg_skips 0、smoke 114，主包 1,392,221（余 180,643） ｜ —（base 不是 main） ｜ 迁移没应用到任何托管库 ｜ ④ E6 ｜ D-53.4（P4）
-D-53.4（P4） ｜ 通过（P4.9 另一半等 E6） ｜ b9fd8ee（#380，草稿，base P3 的分支） ｜ e8948f8 ｜ 本地、L-SQL ｜ L140 ｜ 先 merge wip/P4.1；迁移 20261120122054（community_events 与同步状态）L-SQL 184 / 184、EV 627 / 627、P3 仍 627 / 627，冻结 6fcddd0e…；P4.8 活动页与首页「近期活动」接上 home.events、home.allEvents，P4.9 后台；合 P3 4e0ba6e 后第一次 test 1 失败（直读表清单漏 community_events），b9fd8ee 修后全量 2852 / 2851 / 0 / 1、pg_skips 0、smoke 131，主包 1,426,693（余 146,171） ｜ — ｜ P4.4 同步新鲜度、P4.6 发起活动入口没做；迁移没应用 ｜ ④ E6 ｜ —
-D-53.5（P2.6） ｜ 通过 ｜ 8257318（#369，当时） ｜ c1921d9 ｜ staging、CI ｜ L126 ｜ schema 预检 5 / 5；run 44647478789 五个必需 job 全过（Boundary 2156 / 2155 / 0 / 1，public 472 passed，H5 验收 52 passed）；D-53 第 0 项 b 代替「Eric 留言」 ｜ CI run#44647478789 ｜ — ｜ — ｜ —
+D-53.4（P3） ｜ 部分（P3.7 归 Eric、未做；P3.8 DoD ③ 基线不对；P3.5 另一半等 E6） ｜ 4e0ba6e（#379，草稿，base #377 的分支） ｜ e8948f8 ｜ 本地、L-SQL ｜ L140 ｜ 一个迁移 20261120100354 装下 P3.1、P3.3、P3.4、P3.5 的库改动，配 PRECHECK / VERIFY / REGRESSION，L-SQL 183 / 183、627 / 627，冻结 9e0a044d…；客户端 P3.2–P3.4、P3.6 各自先红后绿（P3.5 客户端没有单独的红灯；P3.8 是体积测量，没有红绿一步，基线用的是 180378c，不是 BACKLOG 要的 #369 合并后的 main）；受限账号按 D-49 归类（收藏、订阅话题允许，别人看得到或会通知别人的写入挂拦截）；合 #377 9a31e75 后全量 2780 / 2779 / 0 / 1、pg_skips 0、smoke 114，主包 1,392,221（余 180,643） ｜ —（base 不是 main） ｜ 迁移没应用到任何托管库 ｜ ④ E6 ｜ D-53.4（P4）
+D-53.4（P4） ｜ 部分（P4.2 DoD ④ 的 caaci、campus、partner 写入通道没有；P4.9 另一半等 E6） ｜ b9fd8ee（#380，草稿，base P3 的分支） ｜ e8948f8 ｜ 本地、L-SQL ｜ L140 ｜ 先 merge wip/P4.1；迁移 20261120122054（community_events 与同步状态）L-SQL 184 / 184、EV 627 / 627、P3 仍 627 / 627，冻结 6fcddd0e…；P4.8 活动页与首页「近期活动」接上 home.events、home.allEvents，P4.9 后台；合 P3 4e0ba6e 后第一次 test 1 失败（直读表清单漏 community_events），b9fd8ee 修后全量 2852 / 2851 / 0 / 1、pg_skips 0、smoke 131，主包 1,426,693（余 146,171） ｜ — ｜ P4.4 同步新鲜度、P4.6 发起活动入口没做；迁移没应用 ｜ ④ E6 ｜ —
+D-53.5（P2.6） ｜ 通过 ｜ 8257318（#369，当时） ｜ c1921d9 ｜ staging、CI ｜ L126（schema 预检）、L102（CI 计数） ｜ schema 预检 5 / 5；run 44647478789 五个必需 job 全过（Boundary 2156 / 2155 / 0 / 1，public 472 passed，H5 验收 52 passed）；D-53 第 0 项 b 代替「Eric 留言」 ｜ CI run#44647478789 ｜ — ｜ — ｜ —
 D-53.5（P2.11） ｜ 通过 ｜ 8257318（#369，当时） ｜ c1921d9 ｜ staging ｜ L126、L128、L132 ｜ 7 个禁止写入 7 个被拒、0 个被接受；删掉的帖子匿名列表与搜索 0 / 0；探针期望按第 8 项 f 改成码加 message，未重跑（「已改、未执行；L126 的证据出自改之前的版本」）；P1.12 通过后依赖解除 ｜ — ｜ ENGINEERING §5.2 映射表空正文一行与实际先报的错不一致（STOP-16a，L128） ｜ — ｜ —
 D-53.5、D-53.8（P1.11） ｜ 通过（7b18f20 基线；候选 head 确认跑由 supervisor 另派） ｜ 7b18f20（main 基线，代码没改） ｜ 7f67dc6 ｜ staging ｜ L126、L129、L130 ｜ 前 3 次失败是探针问题（选择器、会话格式、首页地址只认 pages/index/index）；按第 8 项 c 改探针后第 4 次 3 passed：A/B/C 同意状态 already_recorded，规范首页 3 秒稳定，3 张截图过安全检查；第 5 次没用 ｜ — ｜ 候选 head 上的确认跑（第 8 项 g） ｜ — ｜ —
 D-53.5、D-53.8（P1.12） ｜ 通过（7b18f20 基线；候选 head 确认跑由 supervisor 另派） ｜ 7b18f20 ｜ 7f67dc6 ｜ staging ｜ L126、L130–L134 ｜ 前 3 次失败是探针问题（没写 welcomed，reload 落到欢迎页）；按第 8 项 d 改探针后第 4 次 1 passed：B 的四项泄漏计数刷新前后都是 0、身份始终是 B，control_A 与 [SYN-P1.12] 正向对照都过，缓存窗口内 4,775 ms；第 8 项 b 的 6 条应用缺陷一条没中；13 次退出 204，新会话残留 0 ｜ — ｜ 候选 head 上的确认跑（第 8 项 g） ｜ — ｜ —
@@ -700,26 +702,25 @@ E2、E3、E12 已由 supervisor 做完，E5 的合并顺序归 supervisor（D-53
 |---|---|---|
 | 合并：已由 supervisor 做完（第 9 项）：#378 → #373 的分支（3b51e92）→ #371 的分支（7c94a11）；#376 先 squash 进 main（b4d615b），main 再合进 #371（6d481d0），#371 squash 进 main（057d07d，E5 完成）。#373 的后备日期一条因此不再需要 | 【supervisor 做】（已做） | P1.8、P2.13 已解锁并完成 |
 | 验收通过后的上线顺序：生产应用 20261112120000 并 VERIFY → 依次合 #369 → #375 → #374 → staging、生产先后对 20261114015420 做 PRECHECK、应用、VERIFY 后合 #377 → 手工合 #372，每步之后看生产 | 【supervisor 做】 | 生产上线 |
-| #376：#378 与 #371 进了 main 以后，钉版本和放行都用不上，由 supervisor 关掉或留作草稿 | 【supervisor 做】 | — |
-| 删 base 分支前先改 base：删 #373 的分支前把 #378 改到 main；删 #377 的前把 P3 的 PR 改到 main；删 P3 的前改 P4 的 PR；base 若 squash 合并，改完都要再 merge 一次 origin/main（STATUS 阻塞第 12 条） | supervisor | P3、P4 上线时 |
+| 删 base 分支前先改 base：删 #377 的前把 P3 的 PR 改到 main；#374 合并前 base 是 #369 的分支，要先改；删 P3 的前改 P4 的 PR；base 若 squash 合并，改完都要再 merge 一次 origin/main（STATUS 阻塞第 12 条） | supervisor | P3、P4 上线时 |
 | 上线进度（2026-11-20，L141）：15:04Z 在生产库应用 20261112120000，PRECHECK 两次、VERIFY 都过，账本 20261120150411，语句与 4 个函数 md5 与 staging 相同，应用后 edge 请求 102 个全 200；生产 H5 仍是 7b18f20 的部署。#369 已 squash 进 main ad986c9；#375 加 `-s ours` 合并 700c7be、base 改 main、CI 在跑，绿了合，#374、#377 照做。通知之前 OMO 不往 #375、#374、#377 推送；P3、P4 等 #377 新 head 再合 | 【supervisor 做】 | 生产发布 |
-| E6：设 COMMUNITY_OFFICIAL_PROFILE_ID（官方账号的 profile id）。没设之前，P3.5 的 set_post_official、set_post_featured 和 P4.9 的 create_event_discussion 都返回 409 `official_profile_not_configured`、不落库（各有测试）；hide_event、unhide_event 不依赖它 | Eric | P3.5、P4.9 的另一半 |
+| E6：设 COMMUNITY_OFFICIAL_PROFILE_ID（官方账号的 profile id）。没设之前，P3.5 的 set_post_official 和 P4.9 的 create_event_discussion 返回 409 `official_profile_not_configured`、不落库（各有测试）；set_post_featured、hide_event、unhide_event 不依赖它 | Eric | P3.5、P4.9 的另一半 |
 | P4.6 的产品问题：被隐藏或下架的成员活动仍占组织者两个名额之一，作者自己删掉讨论帖的不占；要不要改 | Eric | P4.6 |
-| P3、P4 两个迁移在 staging、生产应用并 VERIFY（不在本批上线范围，第 0 项 g） | 【supervisor 做】 | #379、#380 合并 |
+| P3、P4 两个迁移在 staging、生产应用并 VERIFY（P3.7、P4.11；不在本批上线范围，第 0 项 g） | Eric（原写【supervisor 做】，D-54 第 1 项 c 更正） | #379、#380 合并 |
 | C-final：所有合并做完以后，在要发布的 main 提交上用 probes-home/ 的适配版探针再跑一次 P1.11、P1.12（第 10 项 b、c；前提是 staging 已对 20261114015420 做完 PRECHECK、应用、VERIFY）。C-369 已在 #369 8f5fc43 上通过（L139），第 0 项 a 对 #369 已满足 | 【supervisor 做】派，OMO 跑 | 生产发布 |
-| #369 主包 1,560,392 字节，离 1,572,864 只剩约 12 KB（远低于 64 KiB 的余量目标）；#375 合进来以后主包会大幅变小（#374 那条线 1,373,060），上线顺序里 #369 不要单独再加东西 | supervisor | 合 #369 |
+| #369 主包 1,560,392 字节，离 1,572,864 只剩约 12 KB（远低于 64 KiB 的余量目标）；#375 合进来以后主包会大幅变小（#374 那条线 1,373,060），上线顺序里 #369 不要单独再加东西 | supervisor | —（#369 已于 15:06:35Z 合进 main，余量问题见第八批 ⑥） |
 | D-37（董事会同意）仍没拿到，LEGAL.1 照旧开着 | Eric | LEGAL |
 
 ### ⑤【硬】与【暂停推送】事件
 
-- 本批没有触发【暂停推送】。没有合并、没有转 ready、没有 force push、没有 rebase 已推送分支、没有改 SPEC、没有应用托管迁移；20261112120000 与 20261114015420 没动。`.github/workflows` 只在 #376 的分支上改了 ci.yml 审计步骤的 run 块（第 9a 条例外）。
+- 本批没有触发【暂停推送】。没有合并、没有转 ready、没有 force push、没有 rebase 已推送分支、没有改 SPEC、没有应用托管迁移；20261112120000 与 20261114015420 没动。`.github/workflows` 只在 #376 的分支上改了 ci.yml 审计步骤的 run 块（第 9a 条例外）；另有 #369 上的 a37667b 按第 9a 条的第二个具名例外 revert c52badf，随 P1.8 级联进 #375、#374、#377、P3、P4，各 head 的 ci.yml 都与 main 逐字节相同；没有提交动过 vercel.json。
 - staging.env 没有被 cat 或打印，只跑了 §5.2 的自检（L126、L129）。
 - 代码推送都用 `git push --no-verify`，推送前那次 run-checks 的日志名写在 STATUS_LOG「命令」字段：#376 f0ccd8f（L124）、#378 80b3eb0（L125）、P1.8 级联 #369 8f5fc43、#375 dfa1aa0、#374 75a3447、#377 9a31e75（L136）、P3 9b679c1 与 4e0ba6e、P4 b9fd8ee（L140）。
-- 2026-11-20 收到 supervisor 第 7 项补充（L123）。容器从此一次只跑一个，磁盘始终在 235 GB 以上。只读查过外部评论：07:00Z 以后没有新评论，新出现的 #378 是本批自己的草稿 PR。
+- 2026-11-20 收到 supervisor 第 7 项补充（L123）。容器从此一次只跑一个，磁盘最低 234 GB（L130、L136、L139）。只读查过外部评论：07:00Z 以后没有新评论，新出现的 #378 是本批自己的草稿 PR（这次检查当时没记进 STATUS_LOG，补记在 L148；supervisor 复核同样是 0）。
 
 ### ⑥ 未测项与风险
 
-- #376 的放行逻辑、#378 的新归档都要合进 main 以后才在 GitHub CI 上真跑；#378 的 base 不是 main，本批没有 CI。
+- #376 的放行逻辑与 #378 的新归档已进 main：main 上 run 44739894523（057d07d，第 2 次运行 run_attempt 2）七个 job 全过（D-54 第 1 项 d 更正）。
 - #373 这条线（55716ba 与 #378）主包 1,534,536 字节，离 1,572,864 的上限只有 38,328 字节，低于 64 KiB；本批没让它变大，社区几个分支另算。
 - #369 单独看主包只剩约 12 KB 余量，#375 合进来以后才回到约 195 KB（见 ④）。
 - #377 上 scripts/restricted-account-writes.test.mjs:20 仍写死 PG 路径；它在容器里能跑，换了 PG 位置的环境会挂。
