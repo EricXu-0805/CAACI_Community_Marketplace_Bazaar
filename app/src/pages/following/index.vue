@@ -33,7 +33,7 @@
           <view class="pr-info">
             <view class="pr-name-row">
               <text class="pr-name">{{ p.nickname || t('app.user') }}</text>
-              <UBadge v-if="p.is_illini_verified" variant="illini" label="Illini" />
+              <UBadge v-if="p.is_illini_verified" variant="illini" :title="t('profile.illiniVerified')" :aria-label="t('profile.illiniVerified')" :label="t('profile.verifiedShort')" />
             </view>
             <text v-if="p.status_text" class="pr-status">{{ p.status_emoji ? p.status_emoji + ' ' : '' }}{{ p.status_text }}</text>
             <text v-else-if="p.location" class="pr-status">{{ localizedLocation(p.location) }}</text>
