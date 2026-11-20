@@ -1295,3 +1295,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 客户端和服务端合起来的全量检查，等两边都完成后由主会话在 D-49 分支上做
 - 下一条: D-49 两个子任务的结果
 - 附: D-49 第 4 项的客户端原定在服务端通过以后再做。为了省时间，客户端先在单独的工作树上开工，只在本地提交；服务端的回放和全等级回归通过之前，不把客户端合进 D-49 分支，也不放开任何浏览（「先在服务端拦住写入，再放开浏览」不变）。两个子任务各用自己的工作树，不碰对方的文件，D-49 分支只由主会话推送。
+
+### L104 · 2026-11-19 19:25 CT · 补记 L100：#376 的 CI 结果
+- task_id: D-51.4
+- code_sha: 92ff5d5c503ff57f266ffaab856422688709b7fb（#376）
+- docs_sha: 510ae5c（本次写回之前材料分支的 HEAD）
+- 环境: CI
+- 命令: `gh run view 44649596522 --json headSha,conclusion,jobs`
+- 计数: conclusion success：Type-check、Boundary regressions、Build H5、Build mp-weixin、Smoke (public page sweep) 5 个 success，protected staging 与 release readiness 2 个 skipped。Boundary 里「Do dependencies change here?」success，「Use an npm whose audit endpoint is still served」和「Audit production and build dependencies」skipped（本 PR 没改依赖文件，依赖门不放审计跑），和 PR 描述写的预期一致 [CI run#44649596522]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44649596522
+- 未测项: 放行逻辑在 GitHub 上第一次真跑要等合进 main 后的 push 或每周定时任务
+- 下一条: D-49 两个子任务的结果
+- 附: main 的代码加上 c52badf 的钉版本，Build H5 和 public sweep 在 ubuntu-24.04 上都过了，说明 main 那两步红确实只是 runner 的问题。
