@@ -475,10 +475,16 @@ second. Both halves being in the same PR is not the problem; the order is.
 The frontend in that PR lets L2–L4 accounts browse again. That is only safe once
 the database refuses their writes, so the same order applies, on both projects:
 
+0. Confirm `20261112120000_community_post_topics` is already applied on this
+   project and its VERIFY passes. Without it the D-49 PRECHECK stops with
+   `restricted_account_writes_column_missing`.
 1. Run `supabase/_ops/PRECHECK_20261114015420_restricted_account_writes.sql`
    on staging, apply the migration, then run
    `supabase/_ops/VERIFY_20261114015420_restricted_account_writes.sql`. Both must
-   return no rows and raise nothing.
+   return no rows and raise nothing. Apply it in a low-traffic window if you can:
+   it briefly locks 10 tables, including an ACCESS EXCLUSIVE lock on
+   `storage.objects`. If it stops on `lock_timeout` or a deadlock, the whole
+   transaction rolls back, so simply run it again.
 2. Repeat step 1 on production.
 3. Only then merge the frontend. Until then the current gate (every active
    L2–L5 account goes to the suspended page) stays live.
