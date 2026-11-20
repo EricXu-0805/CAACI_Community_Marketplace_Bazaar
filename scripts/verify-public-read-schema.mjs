@@ -20,6 +20,7 @@ export async function verifyPublicReadSchema({ url, key, fetchImpl = fetch }) {
     ['plaza attached item details', 'posts', 'id,item:items(id,listing_details)'],
     ['public comment translations', 'post_comments', 'id,content_i18n'],
     ['community topic columns', 'posts', 'id,title,category,region'],
+    ['community topic activity columns', 'posts', 'id,last_activity_at,answered_at,is_featured,locked_at'],
   ]
   const results = []
   for (const [name, table, select] of checks) {

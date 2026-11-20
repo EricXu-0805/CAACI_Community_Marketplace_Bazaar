@@ -139,7 +139,7 @@ const POST_COMMENT_FIELDS = 'id, post_id, user_id, content, content_i18n, parent
 // shipping down the wire even when no UI consumes it. This enumerates
 // all current posts columns; add here when a new read dependency lands.
 const POST_COLUMNS =
-  'id, user_id, title, category, content, images, image_dimensions, content_i18n, source_lang, is_official, is_pinned, like_count, comment_count, status, created_at, updated_at'
+  'id, user_id, title, category, content, images, image_dimensions, content_i18n, source_lang, is_official, is_pinned, like_count, comment_count, status, created_at, updated_at, last_activity_at, answered_at, is_featured, locked_at'
 // post_items is mig 041's join table; replaces the single posts.attached_item_id
 // column. Display order is enforced by the .order(..., { foreignTable: 'post_items' })
 // clause on every SELECT below — Supabase doesn't sort nested relations otherwise.

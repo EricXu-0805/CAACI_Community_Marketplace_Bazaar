@@ -8,9 +8,9 @@ test('public schema preflight checks listing, post and comment projections witho
   const results = await verifyPublicReadSchema({ url, key, fetchImpl: async (target, init) => {
     seen.push({ target, init }); return new Response('[]', { status: 200 })
   } })
-  assert.equal(results.length, 5)
+  assert.equal(results.length, 6)
   const reads = seen.filter(({ target }) => !target.pathname.includes('/rpc/'))
-  assert.equal(reads.length, 4)
+  assert.equal(reads.length, 5)
   for (const { target, init } of reads) {
     assert.equal(target.searchParams.get('limit'), '0')
     assert.equal(init.method, undefined)
@@ -22,6 +22,7 @@ test('public schema preflight checks listing, post and comment projections witho
   assert.match(seen[0].target.searchParams.get('select'), /location_checked_at/)
   assert.equal(seen[2].target.searchParams.get('select'), 'id,content_i18n')
   assert.equal(seen[3].target.searchParams.get('select'), 'id,title,category,region')
+  assert.equal(seen[4].target.searchParams.get('select'), 'id,last_activity_at,answered_at,is_featured,locked_at')
   const [rpc] = seen.filter(({ target }) => target.pathname === '/rest/v1/rpc/search_community_posts')
   assert.equal(rpc.init.method, 'POST')
   assert.deepEqual(JSON.parse(rpc.init.body), { terms_in: ['x'], limit_in: 1 })
@@ -39,6 +40,11 @@ test('a candidate without the community topic migration fails before any browser
     ? new Response('{}', { status: 400 })
     : new Response('[]', { status: 200 })
   await assert.rejects(verifyPublicReadSchema({ url, key, fetchImpl: missingColumns }), /public_schema_mismatch: community topic columns returned HTTP 400/)
+  // P3: the client reads the activity columns on every list, so a target without them fails here too.
+  const missingActivity = async target => target.searchParams.get('select')?.includes('last_activity_at')
+    ? new Response('{}', { status: 400 })
+    : new Response('[]', { status: 200 })
+  await assert.rejects(verifyPublicReadSchema({ url, key, fetchImpl: missingActivity }), /public_schema_mismatch: community topic activity columns returned HTTP 400/)
   const missingRpc = async target => target.pathname.includes('/rpc/') ? new Response('{}', { status: 404 }) : new Response('[]', { status: 200 })
   await assert.rejects(verifyPublicReadSchema({ url, key, fetchImpl: missingRpc }), /public_schema_mismatch: community search rpc returned HTTP 404/)
 })
