@@ -310,8 +310,9 @@
           <text class="send-btn-label">{{ replyTo ? t('plaza.reply') : t('plaza.comment') }}</text>
         </view>
       </view>
-      <!-- SPEC 6.4: a reply that did not go out stays in the box, and this line sends it again. -->
-      <view v-if="replyFailed" class="reply-failed" role="button" @click="retryReply">
+      <!-- SPEC 6.4: a reply that did not go out stays in the box, and this line sends it again.
+           Not while the account is restricted: the notice above replaces the input, and a retry would only be refused. -->
+      <view v-if="replyFailed && !replyRestricted" class="reply-failed" role="button" @click="retryReply">
         <text class="reply-failed-t">{{ t('plaza.replyFailed') }}</text>
       </view>
     </view>
@@ -1022,6 +1023,7 @@ async function onSubmitComment() {
 }
 
 async function retryReply() {
+  if (replyRestricted.value) return
   const failed = failedReply
   const target = post.value
   if (!failed || !target || submitting.value || !isAccountRequestCurrent(failed.token)) return
