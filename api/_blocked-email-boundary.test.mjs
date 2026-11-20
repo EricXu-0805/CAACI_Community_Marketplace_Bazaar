@@ -567,6 +567,50 @@ test('a listing reminder without its item attribution cannot be emailed', async 
   assert.equal(mock.calls.some(call => call.url.hostname === 'api.resend.com'), false)
 })
 
+/*
+ * SPEC 6.8 (P3.3): a reply to a reply and a reply in a watched topic stay in
+ * the app. They share the post_comment type with the notice a topic's author
+ * gets, so the body key is the only thing that tells them apart.
+ */
+const TOPIC = '0f3e5c1a-2b4d-4e6f-8a9b-1c2d3e4f5a6b'
+const replyNotice = (key, id = NOTIFICATION) => queuedNotification({
+  id, type: 'post_comment', title: '收到新评论 · New comment', body: `${key}:${TOPIC}`, conversation_id: null,
+})
+
+for (const key of ['comment_reply', 'followed_post_reply']) {
+  test(`a ${key} notice is never emailed and stays un-stamped`, async () => {
+    const mock = digestFetch({ notifications: [replyNotice(key)], profiles: [recipientProfile()] })
+    const response = await runDigest(mock.fetch)
+    assert.equal(response.status, 200)
+    assert.equal((await response.json()).usersNotified, 0)
+    assert.equal(mock.calls.some(call => call.url.hostname === 'api.resend.com'), false)
+    assert.equal(mock.calls.some(call => call.url.pathname.endsWith('/claim_notification_email_delivery')), false)
+    assert.equal(mock.calls.some(call => call.method === 'PATCH'), false)
+  })
+}
+
+test('an in-app-only notice does not keep the mailable one next to it out of the digest', async () => {
+  const mock = digestFetch({
+    notifications: [replyNotice('followed_post_reply'), replyNotice('post_comment', NOTIFICATION_2)],
+    profiles: [recipientProfile()],
+  })
+  const body = await (await runDigest(mock.fetch)).json()
+  assert.equal(body.usersNotified, 1)
+  assert.equal(body.notifications, 1)
+  assert.deepEqual(
+    mock.calls.find(call => call.url.pathname.endsWith('/rpc/claim_notification_email_delivery')).body.notification_ids_in,
+    [NOTIFICATION_2],
+  )
+})
+
+test('the digest does not load in-app-only notices in the first place', async () => {
+  const mock = digestFetch({ notifications: [], profiles: [] })
+  await runDigest(mock.fetch)
+  const pending = mock.calls.find(call => call.url.pathname === '/rest/v1/notifications'
+    && call.url.searchParams.get('emailed_at') === 'is.null')
+  assert.deepEqual(pending.url.searchParams.getAll('body'), ['not.like.comment_reply:*', 'not.like.followed_post_reply:*'])
+})
+
 test('queued conversation notifications send and stamp when the pair is unblocked', async () => {
   const mock = digestFetch({
     notifications: [queuedNotification()],

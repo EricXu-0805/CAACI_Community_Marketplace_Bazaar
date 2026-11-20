@@ -59,8 +59,10 @@ test('migration inventory covers every shipped direct relation plus view depende
     'messages',
     'notifications',
     'offers',
+    'post_bookmarks',
     'post_comment_likes',
     'post_comments',
+    'post_follows',
     'post_items',
     'post_likes',
     'posts',
@@ -71,7 +73,9 @@ test('migration inventory covers every shipped direct relation plus view depende
     'suspensions',
   ])
 
+  // post_follows and post_bookmarks are created, with their grants and policies, by the P3 migration.
   const migration = (await readFile(migrationUrl, 'utf8')) + (await readFile(new URL('../supabase/migrations/20260916195510_discovery_preferences.sql', import.meta.url), 'utf8'))
+    + (await readFile(new URL('../supabase/migrations/20261120100354_community_watch_save_activity.sql', import.meta.url), 'utf8'))
   for (const relation of relations) {
     assert.match(migration, new RegExp(`public\\.${relation}\\b`), relation)
   }

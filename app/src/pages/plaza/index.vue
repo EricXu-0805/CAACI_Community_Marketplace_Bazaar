@@ -376,6 +376,8 @@
         :failed="homeFailed"
         :desktop="isDesktop"
         :is-logged-in="isLoggedIn"
+        :latest-sort="homeLatestSort"
+        @latest-sort="homeLatestSort = $event"
         @board="showBoard"
         @all="showAll"
         @compose="openComposer"
@@ -746,7 +748,7 @@ import { useI18n } from '../../composables/useI18n'
 import { authoredLang } from '../../composables/i18n/format'
 import { useAuth } from '../../composables/useAuth'
 import { useTheme } from '../../composables/useTheme'
-import { usePlaza, groupCommentsByParent, type CreatePostResult } from '../../composables/usePlaza'
+import { usePlaza, groupCommentsByParent, type CreatePostResult, type PlazaSort } from '../../composables/usePlaza'
 import { useFollow } from '../../composables/useFollow'
 import { useModeration } from '../../composables/useModeration'
 import { useItems, type UploadAccountToken, type UploadBatchResult } from '../../composables/useItems'
@@ -779,7 +781,7 @@ import CommunityAbout from '../../components/CommunityAbout.vue'
 import CommunityHeader from '../../components/CommunityHeader.vue'
 import CommunityHome from '../../components/CommunityHome.vue'
 import { useCommunityHome } from '../../composables/useCommunityHome'
-import { boardFiller, buildHomeSections, type HomePostData } from '../../utils/communityHome'
+import { boardFiller, buildHomeSections, type HomeLatestSort, type HomePostData } from '../../utils/communityHome'
 import UAvatar from '../../components/UAvatar.vue'
 import UBadge from '../../components/UBadge.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
@@ -850,22 +852,25 @@ let plazaAccountEpoch = 0
 const reportLoading = createOwnedLoading()
 
 /*
- * Feed sub-tabs (SPEC 6.2: 新发布 / 热门 / 关注的人). 热门 and 新发布 both show all
- * posts but差 in server sort — 热门 ranks by engagement, 新发布 by recency —
- * so switching between them re-fetches. 关注的人 is the same list, newest
- * first, narrowed to posts written by the people the reader follows; the
- * people themselves are listed on pages/following. CAACI 官方 posts surface
- * inline (pinned-first + OFFICIAL badge) rather than via a dedicated tab.
+ * Feed sub-tabs (SPEC 6.1, 6.2, from P3.4: 最新回复 / 新发布 / 待回答 / 热门 /
+ * 关注的人, opening on 最新回复). The first four show everyone's posts and differ
+ * in what the server is asked for, so switching between them re-fetches.
+ * 关注的人 is the 新发布 list narrowed to posts written by the people the reader
+ * follows; the people themselves are listed on pages/following. CAACI 官方
+ * posts surface inline (pinned-first + OFFICIAL badge) rather than via a
+ * dedicated tab.
  */
-type FeedTabKey = 'following' | 'hot' | 'recent'
-const activeTab = ref<FeedTabKey>('recent')
-// SPEC 6.1, 6.2, until P3.4: 新发布｜热门｜关注的人, and a board page has no 关注的人.
+type FeedTabKey = PlazaSort | 'following'
+const activeTab = ref<FeedTabKey>('active')
+// A board page has no 关注的人.
 const feedTabs = computed<{ key: FeedTabKey; label: string }[]>(() => [
+  { key: 'active' as const, label: t('plaza.tab.active') },
   { key: 'recent' as const, label: t('plaza.tab.recent') },
+  { key: 'unanswered' as const, label: t('plaza.tab.unanswered') },
   { key: 'hot' as const, label: t('plaza.tab.hot') },
   { key: 'following' as const, label: t('plaza.tab.following') },
 ].filter(tab => view.value !== 'board' || tab.key !== 'following'))
-const feedSort = computed<'recent' | 'hot'>(() => (activeTab.value === 'hot' ? 'hot' : 'recent'))
+const feedSort = computed<PlazaSort>(() => (activeTab.value === 'following' ? 'recent' : activeTab.value))
 const selectedCategory = ref<PostCategory | null>(null)
 const visiblePosts = computed(() => selectedCategory.value
   ? posts.value.filter(post => post.category === selectedCategory.value) : posts.value)
@@ -933,10 +938,12 @@ if (typeof desktopMedia?.addEventListener === 'function') {
 
 const { homeData, homeFailed, loadHome, clearHome } = useCommunityHome()
 const EMPTY_HOME: HomePostData = { candidates: [], weeklyCategories: [], totalDiscussionCount: 0 }
+// SPEC 5.2 ④: the order of the home's latest list, chosen by its tabs.
+const homeLatestSort = ref<HomeLatestSort>('active')
 // No event source exists before P4.8, so the events block has nothing to show.
 const homeSections = computed(() => buildHomeSections(
   homeData.value?.posts ?? EMPTY_HOME, homeData.value?.items ?? [], [], homeData.value?.now ?? 0,
-  isDesktop.value ? 'desktop' : 'phone',
+  isDesktop.value ? 'desktop' : 'phone', homeLatestSort.value,
 ))
 
 // An unknown board or view opens the home (SPEC 4.4).
@@ -1020,7 +1027,7 @@ function showHome() {
 function showBoard(category: PostCategory) {
   view.value = 'board'
   searchText.value = ''
-  if (activeTab.value === 'following') activeTab.value = 'recent'
+  if (activeTab.value === 'following') activeTab.value = 'active'
   selectCategory(category)
   syncAddress()
 }
@@ -1028,7 +1035,9 @@ const boardFillText = computed(() => {
   if (!selectedCategory.value) return ''
   return boardFiller(selectedCategory.value, t, lang.value)
 })
-function showAll() {
+// "查看更多" under the home's latest list names the order that list was in (SPEC 5.2 ④).
+function showAll(sort?: PlazaSort) {
+  if (typeof sort === 'string') activeTab.value = sort
   if (view.value === 'all') return
   view.value = 'all'
   selectCategory(null)
@@ -1129,7 +1138,7 @@ function runSearch() {
   }
   // The search RPC cannot narrow by author, so a search runs over everyone's posts.
   if (activeTab.value === 'following' && searchText.value.trim()) {
-    activeTab.value = 'recent'
+    activeTab.value = 'active'
     return
   }
   pageIdx.value = 0
@@ -1148,6 +1157,7 @@ const emptyText = computed(() => {
   const query = searchText.value.trim()
   if (query) return t('plaza.searchEmpty', { q: query })
   if (activeTab.value === 'following') return t('plaza.emptyFollowing')
+  if (activeTab.value === 'unanswered') return t('plaza.emptyUnanswered')
   return selectedCategory.value ? t('plaza.emptyBoard') : t('plaza.empty')
 })
 // SPEC 6.2: a search that found nothing becomes the title of the topic that asks it.
@@ -2090,9 +2100,9 @@ function topicExcerpt(post: Post) {
   return Array.from(text).slice(0, TOPIC_EXCERPT_CHARS).join('')
 }
 
-// SPEC 5.5, until P3.4: no reply yet and posted within the last 30 days.
+// SPEC 5.5, from P3.4: nobody but its author has replied, and it was posted within the last 30 days.
 function topicIsUnanswered(post: Post) {
-  return post.comment_count === 0
+  return !post.answered_at
     && Date.now() - new Date(post.created_at).getTime() <= UNANSWERED_WINDOW_MS
 }
 

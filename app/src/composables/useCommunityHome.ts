@@ -3,7 +3,7 @@ import { useSupabase } from './useSupabase'
 import { useAuth } from './useAuth'
 import { useModeration } from './useModeration'
 import type { Item, Profile } from '../types'
-import type { HomeItem, HomePost, HomePostData } from '../utils/communityHome'
+import type { HomeItem, HomeLatestSort, HomePost, HomePostData } from '../utils/communityHome'
 import { POST_CATEGORIES, type PostCategory } from '../utils/communityPost'
 import { ACTIVE_REGION } from '../utils/region'
 import { sanitizeItemResources } from '../utils/publicResource'
@@ -20,7 +20,7 @@ export interface CommunityHomeData {
 
 const WEEK = 7 * 86_400_000
 // Titles only: the home shows no body text and no post images (SPEC 5.4).
-const HOME_POST_SELECT = 'id, user_id, title, category, is_official, is_pinned, comment_count, status, created_at, profile:profiles!posts_user_id_fkey(id, nickname, avatar_url)'
+const HOME_POST_SELECT = 'id, user_id, title, category, is_official, is_pinned, is_featured, comment_count, status, created_at, last_activity_at, answered_at, profile:profiles!posts_user_id_fkey(id, nickname, avatar_url)'
 const HOME_ITEM_FIELDS = 'id, user_id, title, title_i18n, price, images, status, listing_type, listing_details, created_at'
 
 // Only mini-program home reads need a shared budget. H5 starts its reads together.
@@ -58,13 +58,18 @@ export function useCommunityHome() {
   const homeFailed = ref(false)
   let latestRequest = 0
 
-  // One feed per board, plus topics across boards; queries start inside a slot.
-  function feed(category: PostCategory | null, limit: number, isCurrent: () => boolean) {
+  // One feed per board, plus topics across boards in each order the latest list
+  // can be shown in (P3.4); queries start inside a slot.
+  function feed(category: PostCategory | null, limit: number, isCurrent: () => boolean, sort: HomeLatestSort = 'recent') {
     return readHome(() => {
-      const scoped = supabase.from('posts').select(HOME_POST_SELECT).eq('region', ACTIVE_REGION).eq('status', 'active')
-      return (category ? scoped.eq('category', category) : scoped.not('title', 'is', null))
+      let scoped = supabase.from('posts').select(HOME_POST_SELECT).eq('region', ACTIVE_REGION).eq('status', 'active')
+      scoped = category ? scoped.eq('category', category) : scoped.not('title', 'is', null)
+      if (sort === 'unanswered') {
+        scoped = scoped.is('answered_at', null).gte('created_at', new Date(Date.now() - 30 * 86_400_000).toISOString())
+      }
+      return scoped
         .order('is_pinned', { ascending: false })
-        .order('created_at', { ascending: false })
+        .order(sort === 'active' ? 'last_activity_at' : 'created_at', { ascending: false })
         .order('id', { ascending: false })
         .limit(limit)
     }, isCurrent)
@@ -83,7 +88,10 @@ export function useCommunityHome() {
       }
       const now = Date.now()
       const [feeds, weekly, total, market] = await Promise.all([
-        Promise.all([feed(null, 40, isCurrent), ...POST_CATEGORIES.map(category => feed(category, 8, isCurrent))]),
+        Promise.all([
+          feed(null, 40, isCurrent), feed(null, 40, isCurrent, 'active'), feed(null, 40, isCurrent, 'unanswered'),
+          ...POST_CATEGORIES.map(category => feed(category, 8, isCurrent)),
+        ]),
         // This week's topics, counted per board on the client.
         readHome(() => supabase.from('posts').select('id, category, comment_count')
           .eq('region', ACTIVE_REGION).eq('status', 'active').not('title', 'is', null)

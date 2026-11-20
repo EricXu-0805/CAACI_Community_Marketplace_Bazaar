@@ -22,7 +22,7 @@ async function setup(page:Page){
   }
   const data=resource==='whoami'?{admin_id:owner,token_id:person,admin_name:'Test owner',admin_email:'owner@example.invalid',role:'owner',source:'token',expires_at:null,server_now:new Date().toISOString(),capabilities:['apply_ban','resolve_target_reports','set_post_pinned','upsert_banner','delete_banner']}
    :resource==='stats'?{active_suspensions:0,pending_reports:groups.length?2:0,pending_appeals:0,shadow_banned:0,oldest_pending_hours:null}
-   :resource==='reports_grouped'?groups:resource==='plaza_posts'?[post]:resource==='banners'?[banner]
+   :resource==='reports_grouped'?groups:resource==='report_queue'?groups.map(group=>({...group,oldest_pending_at:group.first_created_at})):resource==='plaza_posts'?[post]:resource==='banners'?[banner]
    :resource==='search_users'?[{id:person,nickname:'Synthetic user',email:'synthetic@example.invalid',avatar_url:null,trust_score:90,warning_count:0,suspension_level:0,suspended_until:null,shadow_banned:false,created_at:time}]:[]
   return r.fulfill({json:{data}})
  })

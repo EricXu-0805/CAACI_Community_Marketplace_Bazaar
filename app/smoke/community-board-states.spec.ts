@@ -22,12 +22,17 @@ test.beforeEach(async ({ page }) => {
 
 const AUTHOR = { id: uuid('10000000', 2), nickname: 'Kevin Z.', avatar_url: null, is_illini_verified: false, uid: null }
 type Row = Record<string, unknown> & { id: string; category: string | null; title: string | null }
-const topic = (n: number, category: string, title: string, fields: Record<string, unknown> = {}): Row => ({
-  id: uuid('30000000', n), user_id: AUTHOR.id, title, category, content: '想听听大家的经验，先谢谢了。',
-  images: [], image_dimensions: [], content_i18n: null, source_lang: 'zh', is_official: false, is_pinned: false,
-  like_count: 0, comment_count: n % 4, status: 'active', created_at: ago(n * 7 * MINUTE + HOUR), updated_at: ago(HOUR),
-  profile: AUTHOR, post_items: [], ...fields,
-})
+const topic = (n: number, category: string, title: string, fields: Record<string, unknown> = {}): Row => {
+  const posted = ago(n * 7 * MINUTE + HOUR)
+  return {
+    id: uuid('30000000', n), user_id: AUTHOR.id, title, category, content: '想听听大家的经验，先谢谢了。',
+    images: [], image_dimensions: [], content_i18n: null, source_lang: 'zh', is_official: false, is_pinned: false,
+    like_count: 0, comment_count: n % 4, status: 'active', created_at: posted, updated_at: ago(HOUR),
+    // P3.1: last active when it was posted, and answered once somebody other than its author replied.
+    last_activity_at: posted, answered_at: n % 4 ? posted : null, is_featured: false, locked_at: null,
+    profile: AUTHOR, post_items: [], ...fields,
+  }
+}
 const SETTLING = [
   '刚到香槟还没有 SSN，哪家银行能先开户？', 'Green Street 附近一居室月租 1200 美元算贵吗？',
   '伊利诺伊驾照笔试能选中文吗？在 Champaign 哪里考？', '两室公寓冬天暖气费一个月大概多少', 'MTD 22 路晚上 10 点以后还有车吗',
@@ -41,7 +46,7 @@ const STRANGERS = ['CS 225 和 MATH 241 放同一学期会不会太累？', '附
 
 interface Feed {
   rows: Row[]
-  /** Offsets at or past this one answer 500. */
+  /** Reads that start at or past this row of the list answer 500. */
   failFrom: number
   /** Resolves when the first page may be answered. */
   hold: Promise<void> | null
@@ -62,17 +67,22 @@ async function serve(page: Page, state: Feed, profile?: Record<string, unknown>)
     const request = route.request(), url = new URL(request.url())
     const json = (body: unknown) => route.fulfill({ contentType: 'application/json', headers: { 'content-range': '0-0/0' }, body: JSON.stringify(body) })
     if (url.pathname.endsWith('/rest/v1/posts')) {
-      const offset = Number(url.searchParams.get('offset') || 0), limit = Number(url.searchParams.get('limit') || 20)
+      const limit = Number(url.searchParams.get('limit') || 20)
+      const category = url.searchParams.get('category')?.replace(/^eq\./, '')
+      const filter = url.searchParams.get('user_id') || ''
+      const authors = /^in\.\((.*)\)$/.exec(filter)?.[1].split(',')
+      const unanswered = url.searchParams.get('answered_at') === 'is.null'
+      const rows = state.rows.filter(row => (!category || row.category === category)
+        && (!authors || authors.includes(String(row.user_id))) && (!unanswered || row.answered_at === null))
+      // From P3.4 a list names the row its next page starts after; 热门 still sends an offset.
+      // The fixture rows are already newest first, so either one is a position in them.
+      const after = /\.lt\.[^,]+,and\(\w+\.eq\.[^,]+,id\.lt\.([^)]+)\)/.exec(url.searchParams.get('or') || '')
+      const offset = after ? rows.findIndex(row => row.id === after[1]) + 1 : Number(url.searchParams.get('offset') || 0)
       state.requests.push(offset)
       if (state.hold) await state.hold
       if (offset >= state.failFrom) return route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"boom"}' })
-      const category = url.searchParams.get('category')?.replace(/^eq\./, '')
-      const filter = url.searchParams.get('user_id') || ''
       state.authors.push(filter)
-      const authors = /^in\.\((.*)\)$/.exec(filter)?.[1].split(',')
-      return json(state.rows
-        .filter(row => (!category || row.category === category) && (!authors || authors.includes(String(row.user_id))))
-        .slice(offset, offset + limit))
+      return json(rows.slice(offset, offset + limit))
     }
     if (url.pathname.endsWith('/rest/v1/follows')) {
       if (!state.follows) return route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"boom"}' })
@@ -168,9 +178,9 @@ for (const size of [PHONE, DESKTOP]) {
       await expect(composerBoard(page, '找搭子')).toHaveAttribute('aria-pressed', 'true')
     })
 
-    test('② all discussions has 新发布｜热门｜关注的人; a board page has no 关注的人', async ({ page }) => {
+    test('② all discussions has 最新回复｜新发布｜待回答｜热门｜关注的人; a board page has no 关注的人', async ({ page }) => {
       await open(page, '?view=all', feed([...SETTLING, ...BUDDIES]))
-      await expect(tabs(page)).toHaveText(['新发布', '热门', '关注的人'])
+      await expect(tabs(page)).toHaveText(['最新回复', '新发布', '待回答', '热门', '关注的人'])
       await expect(tabs(page).first()).toHaveAttribute('aria-selected', 'true')
       await expect(page.locator('.topic-row')).toHaveCount(7)
       for (const label of await tabs(page).locator('.ft-label').all()) await expect(label).toHaveCSS('font-size', '14px')
@@ -179,7 +189,7 @@ for (const size of [PHONE, DESKTOP]) {
       await page.keyboard.press('ArrowRight')
       await expect(tabs(page).nth(1)).toHaveAttribute('aria-selected', 'true')
       await page.keyboard.press('End')
-      await expect(tabs(page).nth(2)).toHaveAttribute('aria-selected', 'true')
+      await expect(tabs(page).nth(4)).toHaveAttribute('aria-selected', 'true')
       // Nobody is signed in: the tab can only ask for that, and there is nothing to filter.
       const signIn = page.locator('#plaza-feed-panel .empty')
       await expect(signIn.locator('.empty-text')).toHaveText('登录后能看到你关注的人发的内容')
@@ -189,7 +199,7 @@ for (const size of [PHONE, DESKTOP]) {
 
       await page.goto('/#/pages/plaza/index?board=settling-market')
       await page.reload()
-      await expect(tabs(page)).toHaveText(['新发布', '热门'])
+      await expect(tabs(page)).toHaveText(['最新回复', '新发布', '待回答', '热门'])
       await expect(tabs(page).first()).toHaveAttribute('aria-selected', 'true')
     })
 
@@ -198,7 +208,7 @@ for (const size of [PHONE, DESKTOP]) {
       state.follows = [AUTHOR.id]
       await open(page, '?view=all', state, { signedIn: true })
       await expect(page.locator('.topic-row')).toHaveCount(9)
-      await tabs(page).nth(2).click()
+      await tabs(page).nth(4).click()
       await expect(page.locator('.topic-row')).toHaveCount(7)
       expect(state.authors.at(-1)).toBe(`in.(${AUTHOR.id})`)
       await expect(page.locator('.topic-row .tr-author')).toHaveText(Array(7).fill('Kevin Z.'))
@@ -206,7 +216,7 @@ for (const size of [PHONE, DESKTOP]) {
       await page.locator('.board-filters').getByRole('button', { name: '找搭子', exact: true }).click()
       await expect(page.locator('.topic-row')).toHaveCount(2)
       expect(state.authors.at(-1)).toBe(`in.(${AUTHOR.id})`)
-      // Back on 新发布 the same board shows everyone again.
+      // Back on 最新回复 the same board shows everyone again.
       await tabs(page).first().click()
       await expect.poll(() => state.authors.at(-1)).toBe('')
       await expect(page.locator('.topic-row')).toHaveCount(2)
@@ -217,15 +227,15 @@ for (const size of [PHONE, DESKTOP]) {
       state.follows = [AUTHOR.id]
       await open(page, '?view=all', state, { signedIn: true })
       await expect(page.locator('.topic-row')).toHaveCount(7)
-      await tabs(page).nth(2).click()
+      await tabs(page).nth(4).click()
       await expect(page.locator('.topic-row')).toHaveCount(5)
       const field = page.locator(size.mobile ? '.sb-input input' : '.cx-search input')
       await field.fill('二手冰箱')
-      // The search RPC cannot narrow by author, so the result is shown under 新发布.
+      // The search RPC cannot narrow by author, so the result is shown under the first tab.
       await expect(page.locator('#plaza-feed-panel .empty .empty-text')).toHaveText('没找到和「二手冰箱」有关的话题')
       await expect(tabs(page).first()).toHaveAttribute('aria-selected', 'true')
       expect(state.searches.length).toBeGreaterThan(0)
-      await tabs(page).nth(2).click()
+      await tabs(page).nth(4).click()
       await expect(field).toHaveValue('')
       await expect(page.locator('.topic-row')).toHaveCount(5)
       expect(state.authors.at(-1)).toBe(`in.(${AUTHOR.id})`)
@@ -236,7 +246,7 @@ for (const size of [PHONE, DESKTOP]) {
       await open(page, '?view=all', state, { signedIn: true })
       await expect(page.locator('.topic-row')).toHaveCount(7)
       const reads = state.requests.length
-      await tabs(page).nth(2).click()
+      await tabs(page).nth(4).click()
       const empty = page.locator('#plaza-feed-panel .empty')
       await expect(empty.locator('.empty-text')).toHaveText('你关注的人还没有发帖')
       await expect(empty.getByRole('button')).toHaveCount(0)
@@ -249,7 +259,7 @@ for (const size of [PHONE, DESKTOP]) {
       await expect(page.locator('.topic-row')).toHaveCount(7)
       await page.reload()
       await expect(page.locator('.topic-row')).toHaveCount(7)
-      await tabs(page).nth(2).click()
+      await tabs(page).nth(4).click()
       await expect(empty.locator('.empty-text')).toHaveText('你关注的人还没有发帖')
       expect(state.authors.at(-1)).toBe(`in.(${uuid('10000000', 9)})`)
     })
@@ -259,7 +269,7 @@ for (const size of [PHONE, DESKTOP]) {
       state.follows = null
       await open(page, '?view=all', state, { signedIn: true })
       await expect(page.locator('.topic-row')).toHaveCount(7)
-      await tabs(page).nth(2).click()
+      await tabs(page).nth(4).click()
       const failure = page.locator('#plaza-feed-panel').getByRole('alert')
       await expect(failure.locator('.empty-text')).toHaveText('没加载出来，检查网络后再试')
       await expect(page.getByText('你关注的人还没有发帖')).toHaveCount(0)

@@ -53,7 +53,8 @@ test('board links stage pendingBoard before switchTab and onShow consumes and cl
   assert.deepEqual(h.selected, ['events-social'])
   assert.equal(h.view.value, 'board')
   assert.equal(h.selectedCategory.value, 'events-social')
-  assert.equal(h.activeTab.value, 'recent')
+  // A board page has no 关注的人, so it opens on the first tab, 最新回复 (P3.4).
+  assert.equal(h.activeTab.value, 'active')
   assert.equal(h.searchText.value, '')
   assert.deepEqual(communityNavigation, { pendingBoard: null, pendingView: null })
   h.onShow()

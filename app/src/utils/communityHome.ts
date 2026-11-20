@@ -7,6 +7,7 @@ export interface HomeText { zh: string; en: string }
 export interface HomeMessage { key: string; params?: Record<string, string | number> }
 export type HomePost = Pick<Post,
   'id' | 'user_id' | 'title' | 'category' | 'is_pinned' | 'is_official' | 'comment_count' | 'created_at' | 'status'
+  | 'last_activity_at' | 'answered_at'
 > & {
   /** User ids from the visible post_comments projection; repeated replies are allowed. */
   reply_user_ids?: readonly string[]
@@ -21,6 +22,8 @@ export interface HomeEvent {
   availability: 'visible' | 'unavailable' | 'hidden'
   duplicate_of?: string | null
 }
+/** The orders the latest list can be in (SPEC 5.2 ④, from P3.4). */
+export type HomeLatestSort = 'active' | 'recent' | 'unanswered'
 export interface HomePostData {
   /** Union of the five board feeds and the latest feed, keyed by post id. */
   candidates: readonly HomePost[]
@@ -78,6 +81,9 @@ export function boardFiller(category: PostCategory, t: (key: string) => string, 
 const idDescending = (a: { id: string }, b: { id: string }) => a.id < b.id ? 1 : a.id > b.id ? -1 : 0
 const newest = (a: { id: string; created_at: string }, b: { id: string; created_at: string }) =>
   Date.parse(b.created_at) - Date.parse(a.created_at) || idDescending(a, b)
+// A topic nobody has replied to was last active when it was posted.
+const lastActive = (post: HomePost) => Date.parse(post.last_activity_at || post.created_at)
+const mostRecentlyActive = (a: HomePost, b: HomePost) => lastActive(b) - lastActive(a) || idDescending(a, b)
 
 function timeLabel(createdAt: string, now: number): HomeText {
   const instant = Date.parse(createdAt)
@@ -120,6 +126,7 @@ export function buildHomeSections(
   events: readonly HomeEvent[],
   now: number | Date,
   viewport: HomeViewport,
+  latestSort: HomeLatestSort = 'recent',
 ): HomeSections {
   const nowMs = typeof now === 'number' ? now : now.getTime()
   const data = 'candidates' in posts ? posts : null
@@ -131,10 +138,12 @@ export function buildHomeSections(
   const officialIds = new Set(topics.filter(p => p.is_official).slice(0, 3).map(p => p.id))
   const allowed = topics.filter(p => !p.is_official || officialIds.has(p.id))
   const used = new Set<string>()
+  // SPEC 5.5, from P3.4: nobody but the author has replied, and it was posted within 30 days.
+  const unanswered = (post: HomePost) => !post.answered_at && nowMs - Date.parse(post.created_at) <= 30 * DAY
   const row = (post: HomePost): HomePostRow => ({
     kind: 'post', post, time: timeLabel(post.created_at, nowMs),
     ...(post.comment_count > 0 ? { replyCount: post.comment_count } : {}),
-    unanswered: post.comment_count === 0 && nowMs - Date.parse(post.created_at) <= 30 * DAY,
+    unanswered: unanswered(post),
   })
   const take = (post: HomePost) => { used.add(post.id); return row(post) }
   const rowLimit = viewport === 'desktop' ? 4 : 3
@@ -180,7 +189,12 @@ export function buildHomeSections(
   }
 
   const remaining = allowed.filter(p => !used.has(p.id))
-  const latestRows = remaining.length >= 5 ? remaining.slice(0, viewport === 'desktop' ? 15 : 10).map(take) : []
+  // Whether the block is a list is decided by what is left for it, not by the order
+  // chosen: an order with nothing to show must not take its own tabs away.
+  const listed = remaining.length >= 5
+  const ordered = latestSort === 'active' ? [...remaining].sort(mostRecentlyActive)
+    : latestSort === 'unanswered' ? remaining.filter(unanswered) : remaining
+  const latestRows = listed ? ordered.slice(0, viewport === 'desktop' ? 15 : 10).map(take) : []
   const total = data ? data.totalDiscussionCount : visible.length
   const hotCandidates = topics.filter(p => inWeek(p) && p.comment_count >= 3
     && new Set((p.reply_user_ids || []).filter(id => id !== p.user_id)).size >= 2)
@@ -204,7 +218,7 @@ export function buildHomeSections(
   return {
     cards: [...cards, market],
     latest: {
-      mode: latestRows.length ? 'list' : 'link', rows: latestRows,
+      mode: listed ? 'list' : 'link', rows: latestRows,
       link: total > 0
         ? { key: 'home.collapsed', params: { n: total } }
         : { key: 'home.allDiscussions' },
