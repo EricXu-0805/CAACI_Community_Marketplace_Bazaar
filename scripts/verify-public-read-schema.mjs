@@ -21,6 +21,7 @@ export async function verifyPublicReadSchema({ url, key, fetchImpl = fetch }) {
     ['public comment translations', 'post_comments', 'id,content_i18n'],
     ['community topic columns', 'posts', 'id,title,category,region'],
     ['community topic activity columns', 'posts', 'id,last_activity_at,answered_at,is_featured,locked_at'],
+    ['community events', 'community_events', 'id,source_type,starts_at,availability'],
   ]
   const results = []
   for (const [name, table, select] of checks) {
@@ -38,18 +39,24 @@ export async function verifyPublicReadSchema({ url, key, fetchImpl = fetch }) {
     if (!Array.isArray(body) || body.length !== 0) throw new Error('public_schema_unexpected_response')
     results.push({ name, status: response.status })
   }
-  // The community search RPC ships in the same migration; a read-only call proves it exists.
-  const rpc = await fetchImpl(new URL('/rest/v1/rpc/search_community_posts', url), {
-    method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ terms_in: ['x'], limit_in: 1 }),
-    redirect: 'error', signal: AbortSignal.timeout(10_000),
-  })
-  await rpc.body?.cancel()
-  if (!rpc.ok) {
-    throw new Error(`public_schema_mismatch: community search rpc returned HTTP ${rpc.status}; apply the reviewed migrations to this test target before testing the candidate`)
+  // The functions the client reads through ship with those columns; a read-only call proves each exists.
+  const functions = [
+    ['community search rpc', 'search_community_posts', { terms_in: ['x'], limit_in: 1 }],
+    ['community events rpc', 'list_community_events', { limit_in: 1 }],
+  ]
+  for (const [name, routine, args] of functions) {
+    const rpc = await fetchImpl(new URL(`/rest/v1/rpc/${routine}`, url), {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify(args),
+      redirect: 'error', signal: AbortSignal.timeout(10_000),
+    })
+    await rpc.body?.cancel()
+    if (!rpc.ok) {
+      throw new Error(`public_schema_mismatch: ${name} returned HTTP ${rpc.status}; apply the reviewed migrations to this test target before testing the candidate`)
+    }
+    results.push({ name, status: rpc.status })
   }
-  results.push({ name: 'community search rpc', status: rpc.status })
   return results
 }
 
