@@ -1,5 +1,7 @@
 <template>
+  <!-- #ifdef H5 -->
   <AppSidebar current="" />
+  <!-- #endif -->
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
@@ -418,7 +420,7 @@ import { formatTime, haptic, formatPrice, listingPriceLabel, navigateBackOr, thu
 import { readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim } from '../../types'
 import { localizeLocation, pickupTier } from '../../composables/useCampusSpots'
-import { useRatings } from '../../composables/useRatings'
+import { useRatings } from './useRatings'
 import { createOwnedLoading } from '../../composables/ownedLoading'
 import { useTranslate } from '../../composables/useTranslate'
 import { detectsAsForeign } from '../../composables/i18n/format'
@@ -426,7 +428,9 @@ import { computed, onUnmounted, watch, nextTick, getCurrentInstance } from 'vue'
 import UBadge from '../../components/UBadge.vue'
 import UAvatar from '../../components/UAvatar.vue'
 import UIcon from '../../components/UIcon.vue'
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 import { captureException } from '../../utils/sentry'
 import {
   captureAccountRequest,

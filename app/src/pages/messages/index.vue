@@ -3,7 +3,9 @@
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
+    <!-- #ifdef H5 -->
     <AppSidebar current="messages" />
+    <!-- #endif -->
 
     <!-- .page-header is display:none at >=768px, and display:none drops the
          node from the accessibility tree — so the heading has to live outside
@@ -248,7 +250,9 @@ import {
 import { formatTime, thumbUrl, friendlyErrorMessage } from '../../utils'
 import { DIALOG_INK } from '../../utils/dialogColors'
 import type { Conversation, Profile } from '../../types'
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 import ChatThread from '../../components/ChatThread.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import UAvatar from '../../components/UAvatar.vue'

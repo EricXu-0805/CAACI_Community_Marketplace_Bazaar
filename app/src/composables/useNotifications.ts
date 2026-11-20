@@ -5,6 +5,7 @@ import { subscribeToUserNotifications } from './useRealtimeFallback'
 import { pushToast } from './useAppToast'
 import { useI18n } from './useI18n'
 import { formatPrice } from '../utils'
+import { currentPageAllowsIncomingPrompts } from '../utils/incomingPrompts'
 import { invalidateConversations, useMessages } from './useMessages'
 import {
   captureAccountRequest,
@@ -370,7 +371,7 @@ function handleIncoming(row: Notification) {
   }
   if (!isFirstLiveDelivery || wasLocallyRead) return
   // Already rendered in-list on the notifications page — don't double-surface.
-  if (currentPageIsNotifications()) return
+  if (currentPageIsNotifications() || !currentPageAllowsIncomingPrompts()) return
   const { t, tc } = useI18n()
   const destination = notificationDestination(row)
   pushToast({

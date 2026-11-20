@@ -1,4 +1,5 @@
 const zh: Record<string, string> = {
+  // #ifdef H5
   'admin.support.title': "客服邮件",
   'admin.support.open': "打开回复",
   'admin.support.close': "收起",
@@ -57,6 +58,7 @@ const zh: Record<string, string> = {
   'admin.support.error.receipt': "暂时无法确认回执。请保留请求编号，稍后重新查询或查看 Resend 记录，勿重复发送。",
   'admin.support.error.rateLimited': "已达到发送频率限制，此回复尚未提交。请稍后重新预览回复，并再次明确确认发送。",
   'admin.support.error.notAttempted': "提交前邮件服务已不可用，此回复尚未提交。请先检查服务状态，再重新预览回复并明确确认发送。",
+  // #endif
   'sort.recommended': "为你推荐",
   'discovery.browse': "浏览商品",
   'discovery.nearby': "附近",
@@ -1153,6 +1155,7 @@ const zh: Record<string, string> = {
 
   // Moderation dashboard (/pages/admin). Internal CAACI moderator tool.
   'admin.title':            '审核后台',
+  // #ifdef H5
   'admin.signOut':          '退出',
   'admin.legacyAdmin':      '管理员',
   'admin.legacyKey':        '(旧版共享密钥)',
@@ -1409,7 +1412,9 @@ const zh: Record<string, string> = {
   'admin.reportFilterAll':        '全部',
   'admin.loadMore':               '加载更多',
   'admin.tabPlaza':               '社区',
+  // #endif
   'admin.plazaBanners':           'Banner 管理',
+  // #ifdef H5
   'admin.plazaPins':              '置顶管理',
   'admin.plazaNoPosts':           '暂无帖子',
   'admin.pillPinned':             '置顶',
@@ -1460,6 +1465,7 @@ const zh: Record<string, string> = {
   'admin.resolveAllConfirmTitle': '解决该目标的所有举报?',
   'admin.dismissAllConfirmTitle': '驳回该目标的所有举报?',
   'admin.resolveAllConfirmBody':  '目标：\n{target}\n影响：关闭该目标的 {n} 条待处理举报。',
+  // #endif
   'a2hs.title':             '添加到主屏幕',
   'a2hs.body':              '全屏打开更顺滑 —— 点底部分享按钮,选「添加到主屏幕」。',
   'publish.permissionModalBodyMp': '请打开设置并允许使用位置，然后重试。你也可以手动选择取货地点。',

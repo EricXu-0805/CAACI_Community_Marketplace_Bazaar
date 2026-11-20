@@ -1,4 +1,5 @@
 const en: Record<string, string> = {
+  // #ifdef H5
   'admin.support.title': "Support email",
   'admin.support.open': "Open replies",
   'admin.support.close': "Collapse",
@@ -57,6 +58,7 @@ const en: Record<string, string> = {
   'admin.support.error.receipt': "The receipt could not be confirmed. Keep this request ID and check again or inspect Resend records. Do not resend.",
   'admin.support.error.rateLimited': "The send limit was reached and this reply was not submitted. Wait before trying again, then review the reply and explicitly confirm a new send.",
   'admin.support.error.notAttempted': "The service was unavailable before this reply was submitted. Check availability, then review the reply and explicitly confirm a new send.",
+  // #endif
   'sort.recommended': "For you",
   'discovery.browse': "Browse listings",
   'discovery.nearby': "Nearby",
@@ -1159,6 +1161,7 @@ const en: Record<string, string> = {
 
   // Moderation dashboard (/pages/admin). Internal CAACI moderator tool.
   'admin.title':            'Moderation Dashboard',
+  // #ifdef H5
   'admin.signOut':          'Sign out',
   'admin.legacyAdmin':      'Admin',
   'admin.legacyKey':        '(legacy shared key)',
@@ -1415,7 +1418,9 @@ const en: Record<string, string> = {
   'admin.reportFilterAll':        'All',
   'admin.loadMore':               'Load more',
   'admin.tabPlaza':               'Community',
+  // #endif
   'admin.plazaBanners':           'Banners',
+  // #ifdef H5
   'admin.plazaPins':              'Pinned posts',
   'admin.plazaNoPosts':           'No posts',
   'admin.pillPinned':             'Pinned',
@@ -1466,6 +1471,7 @@ const en: Record<string, string> = {
   'admin.resolveAllConfirmTitle': 'Resolve all reports on this target?',
   'admin.dismissAllConfirmTitle': 'Dismiss all reports on this target?',
   'admin.resolveAllConfirmBody':  'Target:\n{target}\nImpact: closes {n} pending report(s) on this target.',
+  // #endif
   'a2hs.title':             'Add to Home Screen',
   'a2hs.body':              'Open fullscreen for a smoother feel — tap Share, then “Add to Home Screen”.',
   'publish.permissionModalBodyMp': 'Open settings and allow Location, then try again. You can also choose a pickup location manually.',

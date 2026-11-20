@@ -440,7 +440,7 @@ test('long-press-only moderation and history actions have keyboard alternatives'
     '@keydown="onCommentKeyboardMenu($event, thread.parent)"',
     'function onPostKeyboardMenu(event: KeyboardEvent)',
   ])
-  expectSnippets('src/components/USwipeAction.vue', [
+  expectSnippets('src/pages/history/USwipeAction.vue', [
     'aria-keyshortcuts="Delete Shift+F10"',
     'useDomKeydown(linkEl, keydown)',
   ])

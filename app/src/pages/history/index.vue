@@ -1,6 +1,8 @@
 <template>
   <view class="page secondary-page secondary-page--list has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <!-- #ifdef H5 -->
     <AppSidebar current="profile" />
+    <!-- #endif -->
     <view class="secondary-content">
     <view class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
@@ -89,7 +91,9 @@
 </template>
 
 <script setup lang="ts">
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
@@ -101,7 +105,7 @@ import { listingPriceLabel, navigateBackOr, thumbUrl } from '../../utils'
 import UAvatar from '../../components/UAvatar.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
 import UIcon from '../../components/UIcon.vue'
-import USwipeAction from '../../components/USwipeAction.vue'
+import USwipeAction from './USwipeAction.vue'
 import { onAccountTransition } from '../../composables/accountScope'
 
 const { t, localize } = useI18n()
