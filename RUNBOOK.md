@@ -471,6 +471,22 @@ second. Both halves being in the same PR is not the problem; the order is.
    apply the migration immediately — that alone restores service, no redeploy
    or revert needed.
 
+**Restricted-account writes (D-49, `20261114015420_restricted_account_writes`).**
+The frontend in that PR lets L2–L4 accounts browse again. That is only safe once
+the database refuses their writes, so the same order applies, on both projects:
+
+1. Run `supabase/_ops/PRECHECK_20261114015420_restricted_account_writes.sql`
+   on staging, apply the migration, then run
+   `supabase/_ops/VERIFY_20261114015420_restricted_account_writes.sql`. Both must
+   return no rows and raise nothing.
+2. Repeat step 1 on production.
+3. Only then merge the frontend. Until then the current gate (every active
+   L2–L5 account goes to the suspended page) stays live.
+4. If the frontend merged first, restricted accounts can browse and their
+   writes still go through until the migration is applied: apply it at once.
+   Removing the two new `storage.objects` policies later needs the Dashboard;
+   there is no rollback file.
+
 `scripts/consent-version-deploy-order-boundary.test.mjs` pins the half CI can
 see from the repo alone (the constant must already be accepted by the newest
 `record_consent` in the repo). It cannot see any database.
