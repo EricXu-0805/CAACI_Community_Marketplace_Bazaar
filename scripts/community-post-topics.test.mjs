@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { postgresBinDir } from './_postgres-bin.mjs'
 
-const bin = ['/opt/homebrew/opt/postgresql@17/bin', '/usr/lib/postgresql/17/bin'].find(p => existsSync(join(p, 'initdb')))
+const bin = postgresBinDir()
 const read = name => readFileSync(new URL(`../supabase/migrations/${name}`, import.meta.url), 'utf8')
 const migration = read('20261112120000_community_post_topics.sql')
 const boundary = read('20260718230000_authoritative_public_write_resource_boundaries.sql')

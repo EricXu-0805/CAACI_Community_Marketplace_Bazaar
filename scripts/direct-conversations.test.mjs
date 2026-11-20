@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { execFileSync, execFile } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { promisify } from 'node:util'
-const bin = ['/opt/homebrew/opt/postgresql@17/bin','/usr/lib/postgresql/17/bin'].find(p => existsSync(join(p,'initdb')))
+import { postgresBinDir } from './_postgres-bin.mjs'
+const bin = postgresBinDir()
 const read = name => readFileSync(new URL('../supabase/migrations/'+name,import.meta.url),'utf8')
 const legacy = read('20260717141822_enforce_symmetric_chat_block_boundary.sql')
 const migration = read('20260916050227_direct_profile_conversations.sql')
