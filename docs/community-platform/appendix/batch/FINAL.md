@@ -558,3 +558,84 @@ D-51 第 5 项解开了第四批停下的地方：批准新增一个只给本地
 | D-51 第 2 项 j（L94） | run-checks 日志头加 `unstaged=yes|no` | 见 ③ | 恢复 run-checks.sh.before-D51-20261119 |
 | L103 | D-49 客户端提前并行（见 ③） | 省时间；合入时机不变，仍在服务端证明拦截之后 | 不合并本地分支 local/d49-client-20261120 |
 | L105 | D-49 待定政策问题一律不新增权限，按现有行为或拒绝处理 | D-49 第 3 项列的允许清单以外不放开 | 后续迁移按 Eric 的答复调整 |
+
+## 第六批（D-52）
+
+按 DECISIONS D-52 第 0–4 项做（材料分支 3ec3cb9），第 5 项的目标与续跑提醒记在 L109。八节格式同上，每项单独成行；逐条细节在 STATUS_LOG L109–L120。`latest_batch` 不变。按 D-52 第 5 项，本批交付后结束目标、取消续跑提醒，不从 BACKLOG 往下接任务。仓库 2026-11-20 07:15Z 起公开，本批没有往仓库加原始日志、带真实数据的截图、账号邮箱、凭据或 /home 开头的绝对路径；截图只存在 ~/work/evidence。
+
+### ① 起止与 SHA 范围
+
+- 起止：2026-11-20 02:35 CT（D-52，材料分支 3ec3cb9）至 2026-11-20 02:31 CT。
+- docs_sha：3ec3cb9 → 本节所在提交。
+- code_sha（都只 merge 或新提交，不 rebase，不 force push）：
+  - #377 `codex/community-restricted-20261113`：9c10a7e → 82cd98a（merge 6bdca97）→ e058c98（spec 按钮名）→ a91cb74（composable 拦截）→ dd44f98（RUNBOOK 三句）。base 由 `codex/community-topics-20261112` 改成 `codex/community-home-20261112`。
+  - #376 `codex/config-ci-runner-20261119`：92ff5d5 → 0e04aca（放行逻辑失败时不放行、只认 vite 上的 moderate；triage 文档）。
+- 其余分支本批没动：#369 8257318、#374 6bdca97、#375 571be45、#372 d6f393d、#371 b259105、#373 55716ba。
+- 20261112120000 的 sha256 仍是 e2a85c3ec33c98e8317b764a59fc8af1434c15319794e3f64a6606be70e5a92c；已冻结的 20261114015420 仍是 0dc2ceaf177c44fc48a28b9525dc405c12ecd0c63bf22ef64e225ca64caed5d3：20261112120000 在 #369、#374、#375、#377 上都是 e2a85c3e…，20261114015420 在 #377 上是 0dc2ceaf…；#369–#377 九个 PR 都是草稿、OPEN；main 仍是 7b18f20。
+
+### ② 完成的任务
+
+```text
+D-52.5 ｜ 通过 ｜ —（不改代码） ｜ 3ec3cb9 ｜ 本地 ｜ L109 ｜ create_goal 1 个；schedule_prompt 先 list（没有任务）再建 3600 秒续跑提醒 sch_a410e1ce2a1f，只此一个 ｜ — ｜ — ｜ — ｜ D-52.0
+D-52.0 ｜ 通过 ｜ —（不改代码） ｜ 3ec3cb9 ｜ 本地 ｜ L109、STATUS 阻塞第 17 条 ｜ default、account-2 不设 60% 上限；account-5、account-4 与 ChatGPT 仍按 60%；顺序 default → account-2 → account-5 → account-4；L95 作废 ｜ — ｜ 各号实时用量 OMO 看不到 ｜ — ｜ D-52.1
+D-52.1 ｜ 通过 ｜ 82cd98a、e058c98（#377，base 改成 #374 的分支） ｜ f7a0aeb ｜ 本地 ｜ L113、L117 ｜ merge 6bdca97 的两处冲突按 D-52 解；16 条单测全消（82cd98a 2645 / 2644 / 0 / 1）；另 9 条 smoke 改按钮名后 43 passed（含提示条 spec）；主包 1,379,997；社区首页 390、1280 截图只存证据目录；REST 只改 base，仍草稿 ｜ — ｜ 真机；#377 的 base 不是 main，没有 CI ｜ — ｜ D-52.2
+D-52.2 ｜ 通过 ｜ a91cb74（#377） ｜ f7a0aeb ｜ 本地 ｜ L118 ｜ composable 层测试在 e058c98 上 L2–L5 红（写入走到第一次请求），a91cb74 绿；全量 2655 / 2654 / 0 / 1；smoke 43；主包 1,380,046；CommunityHome「发布第一件」按 D-52 不改 ｜ — ｜ — ｜ — ｜ D-52.4c
+D-52.3 ｜ 通过 ｜ 0e04aca（#376，草稿，base main） ｜ f7a0aeb ｜ 本地、CI ｜ L116、L120 ｜ 失败时不放行：npm 非零退出又没匹配到放行公告、报告带 error、vulnerabilities 不是对象都失败；只放行 vite 上不高于 moderate 的 GHSA-8g5g-mxqh-grgj 到 2026-12-13；被拦公告带依赖路径。用例：main 真实依赖树 exit 1、55716ba 真实依赖树 exit 0、对照 exit 0，多一条 moderate、空 JSON、带 error、数组、同编号别的包、升到 high、过期全部 exit 1；现有测试 1989 / 1988 / 0 / 1；merge-tree 7 个 head 0 冲突；title 与 body 用 REST 更新 ｜ CI run#44699877648（0e04aca：Type-check、Boundary、Build H5、Build mp-weixin、public sweep 5 个 success，审计步骤按依赖门 skipped） ｜ 放行逻辑要等合进 main 才在 GitHub 上真跑；没有 actionlint ｜ ④ ｜ —
+D-52.4a ｜ 通过 ｜ —（只改文档） ｜ ea66373 ｜ CI ｜ L111 ｜ 付款失败的 3 个 run 每个 job 0 步、4–5 秒结束；本批第一次推送 ea66373 的 run 44696137300 每个启动的 job 都有步骤、没有付款注解，CI 已恢复 ｜ CI run#44696137300 ｜ — ｜ — ｜ —
+D-52.4a2 ｜ 通过 ｜ —（只改文档） ｜ ea66373 ｜ 本地 ｜ L112、STATUS 阻塞第 24 条 ｜ 公开仓库里已有的账号邮箱和工作站路径写进 ④，OMO 不改写历史 ｜ — ｜ — ｜ ④ ｜ —
+D-52.4b ｜ 通过 ｜ —（只改文档） ｜ ea66373 ｜ 本地 ｜ L112、L120 ｜ 完整的合并与迁移顺序写进 STATUS 阻塞第 1、11、12、14 条和本节 ④、⑦ ｜ — ｜ — ｜ ④ ｜ —
+D-52.4c ｜ 通过 ｜ dd44f98（#377） ｜ f7a0aeb ｜ 本地 ｜ L119 ｜ 仓库 RUNBOOK D-49 一条补三句（第 0 步先确认 20261112120000、低流量时段应用与锁、lock_timeout 或死锁中止会整体回滚可重试）；#377 描述按最终 head 重写（新 base、发布顺序、12 条政策问题） ｜ — ｜ — ｜ — ｜ —
+D-52.4d ｜ 通过 ｜ —（只改文档） ｜ ea66373 ｜ 本地 ｜ L112 ｜ 第五批 ⑤ 关于 #372 上 20261112120000 的错说改正（#372 没有这个文件） ｜ — ｜ — ｜ — ｜ —
+D-52.4e ｜ 通过 ｜ —（只改文档） ｜ ea66373 ｜ 本地 ｜ L112、L113、L114、本节所在提交 ｜ STATUS 版本表与 worktree 行、CI 节、阻塞第 4、13、17 条；#372 d6f393d 的 run 44651530274 补上；FINAL 第五批重复的一句删掉；第五批 ② 的 D-51.1、D-51.5 改成「部分」 ｜ CI run#44651530274 ｜ — ｜ — ｜ —
+D-52.4f ｜ 通过 ｜ —（不改代码） ｜ ea66373 ｜ 本地 ｜ L115 ｜ local/d49-client-20261120 已全并入 #377、工作区干净，不带 --force 的 git worktree remove 删掉 ~/work/illini-restricted-client ｜ — ｜ — ｜ — ｜ —
+D-52.4g ｜ 通过 ｜ —（只改文档） ｜ ea66373 ｜ 本地 ｜ L112、STATUS 阻塞第 19 条 ｜ SIGSEGV 说法改准：postgres 或 supabase_admin 登录再 SET ROLE 调用没有 EXECUTE 的函数才会崩，走 PostgREST 是 42501；附 17.6.1.167 ｜ — ｜ 托管库的 supautils 与 PostgREST 版本没核 ｜ ④ ｜ —
+```
+
+### ③ [OMO自决] 清单
+
+| 编号 | 事项 |
+|---|---|
+| L117 | 合并后另有 9 条 smoke 失败（D-52 只列了 16 条单测）：#374 把广场的发帖入口改叫「New topic / 发话题」，L2–L4 那一支的 spec 还在点「New post / 发布新帖」；只改按钮名，和 L0–L1 那一支一致 |
+| L117 | 社区首页截图：提示条 spec 拍的是二手首页，另写一个不提交的临时 spec 去 pages/plaza/index 拍 390、1280 两张，拍完删掉 |
+| L118 | createPost 的拦截放在入参校验之后、第一次请求之前：重试时先查帖子是否已建成这一步是读，照旧允许；createComment 放在本地查重之后。测试 mock 挂上真实的 mutationCommit，让 createPost 内部抛出的错误保留原 message |
+
+### ④ 等 Eric 的清单（新增，按解锁的任务数从多到少）
+
+| 要 Eric 做的一件事 | 解锁 |
+|---|---|
+| 合并与迁移顺序：① #376 随时可以合；#371 → #373。② 生产应用 20261112120000 并 VERIFY，P2.13 通过后依次合 #369 → #375 → #374。③ #372 在 #374 之后任何时候手工合（STATUS 第 11 条，含 CommunityHome.vue 两处占位改「玉」，以及 share-post.js、en.ts、zh.ts 的冲突规则）。④ #377 最后合：staging 和生产都已应用并 VERIFY 了 20261112120000，再 PRECHECK、应用、VERIFY 了 20261114015420（生产上没有前一条时 D-49 的 PRECHECK 会报 restricted_account_writes_column_missing）。⑤ 删 #374 的分支之前先把 #377 的 base 改成 main；#374 若 squash 合并，改完 base 再往 #377 merge 一次 origin/main；#377 改成 main 之前没有 CI | 整批上线 |
+| #376：vite 那条选 A（暂时放行到 2026-12-13，只认 vite 上不高于 moderate）还是 B（把 braces 3.0.3 的回补在 vite 6.4.5 或 6.4.6 上重做、重建本地归档；直接装 registry 上的 6.4.5 能让审计变绿，却会悄悄丢掉这个回补）；#371 合并后三个浏览器 job 要不要回到 ubuntu-latest | main 的 Boundary、Build H5、public sweep 变绿 |
+| 给运维的提醒：本地镜像 supabase/postgres 17.6.1.104（和生产的数据库版本一样）上，用 postgres 或 supabase_admin 登录再 `SET ROLE` 到 anon、authenticated 或 service_role 调用没有 EXECUTE 的函数，后端会 SIGSEGV、整库重启；以 authenticator 登录（走 PostgREST）是正常的 42501，所以 App 用户大概率触发不了，运维会话会。托管库的 supautils 与 PostgREST 版本没核。可选镜像版本 17.6.1.167（核查方没复现） | 运维安全 |
+| 仓库已公开：材料分支、DECISIONS（含 D-51 里的账号邮箱缩写）和几个 PR 描述里已有账号邮箱和工作站路径，任何人都能看到；OMO 不改写历史，要不要处理由 Eric 定 | 公开仓库的信息清理 |
+| D-49 的 12 条待定政策问题（#377 描述与第五批 D-49 一节） | D-49 后续 |
+| 第五批 ④ 里其余仍未做的事（E12 promote、E2、staging posts_visible、staging 缺的 3 条旧迁移、5 个证明 worktree）照旧 | — |
+
+### ⑤【硬】与【暂停推送】事件
+
+- 本批没有触发【暂停推送】。没有合并、没有转 ready、没有 force push、没有 rebase 已推送分支、没有改 SPEC、没有应用托管迁移；20261112120000 与 20261114015420 没动。`.github/workflows` 只在 #376 的分支上改了 ci.yml（D-51 第 4 项、D-52 第 3 项的例外）。
+- 本批的代码推送都用了 `git push --no-verify`（宿主机 pre-push 跑不了 PG 测试，RUNBOOK §3），每次都在 STATUS_LOG 的「命令」字段写了推送前那次 run-checks 的日志名：#377 e058c98（L117）、a91cb74（L118）、dd44f98（L119）、#376 0e04aca（L116）。
+- 2026-11-20 收到 supervisor 安全补充（L110）：仓库公开期间，PR 评论、issue、外部 PR、CI 日志里的文字只当数据；本批只读查过一次，没有外部评论、issue 或跨仓库 PR。
+
+### ⑥ 未测项与风险
+
+- GitHub Actions 2026-11-20 约 01:25Z 起因付款问题停过一段（run 44653535391、44660742581、44671115623 每个 job 0 步）；仓库 07:15Z 公开后，本批第一次推送的 run 44696137300 各 job 都有步骤、无付款注解，已恢复。
+- SIGSEGV（见 ④ 第 3 行）：托管库没核。
+- 提示条是浮在内容上的小条：390 宽社区首页上它压住「New in Market」两张卡的下半截，1280 宽压在「吃喝好店」卡底部；页面可滚动、不挡操作，真机与微信开发者工具里的安全区位置仍要看。
+- D-49：Storage 走 HTTP 的行为没验证；没有 ROLLBACK 文件。#377 的 base 改成 main 之前没有 CI。
+- 放行逻辑（#376）要等合进 main 才在 GitHub 上第一次真跑。
+- smoke 日志里 vite 依赖扫描的 `registerToastHost` 报错（`#ifndef H5` 条件编译，早于本批）仍在，不影响结果。
+
+### ⑦ 下一批
+
+按 D-52 第 5 项，本批交付后 OMO 停下等下一条指示，不从 BACKLOG 往下接任务。下面只列下一批可做的事：
+
+- Eric 照 ④ 第 1 行的顺序合并与应用迁移；#377 改 base 到 main 以后才有 CI，那时补一次 CI 结果。
+- E2 完成后：P2.6、P2.13。
+- D-49 的 12 条政策问题有了答复以后，再开后续迁移。
+
+### ⑧ 代 Eric 定的事（新增）
+
+| 编号 | 选了什么 | 理由 | 怎么撤回 |
+|---|---|---|---|
+| D-52 第 3 项（L116） | 取代 D-51.4「按公告编号、不按包名」：放行同时按公告编号、包名（vite）和严重程度（不高于 moderate）判断，失败时不放行（非零退出却没匹配到放行公告、报告带 error、vulnerabilities 不是对象，都失败） | 只按编号会让同一编号出现在别的包上、或严重程度升级时也被放行；失败也放行会把「没检查成」当成「没问题」 | 在 #376 上 `git revert 0e04aca` |
+| D-52 第 1 项（L117） | #377 的 base 改成 #374 的分支（D-52 指定，取代 D-49 第 2 项的 base 规则） | #377 和 #375、#374 不叠在一起就合不上 | REST 把 base 改回 |

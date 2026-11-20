@@ -1439,3 +1439,63 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: —
 - 下一条: D-52 第 1 项
 - 附: 这个 worktree 不在 RUNBOOK §3 表里；删掉以后不用补表。
+
+### L116 · 2026-11-20 02:06 CT · D-52 第 3 项：#376 的放行逻辑改成失败时不放行，只认 vite 上的 moderate
+- task_id: D-52.3
+- code_sha: 0e04aca8eb7cc15d833857b37e51ceb4bfc4e4f7（#376，已推送，树 bad5a87）
+- docs_sha: f7a0aeb（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 改 .github/workflows/ci.yml 审计步骤的内联脚本与 docs/NPM_DEPENDENCY_TRIAGE.md；用 YAML 解析器抽出审计 run 块（存在 ~/work/evidence/D52/ci-runner/audit-step.sh），驱动脚本临时放进 ~/work/illini-ci-runner 与 ~/work/illini-deps 的 .d52-audit/，`run-checks.sh <repo> cmd` 跑用例（check-20261120T075558Z、075612Z），之后删掉临时目录；`run-checks.sh ~/work/illini-ci-runner install test`（check-20261120T075956Z，tree bad5a87、unstaged=no）；对 8257318、6bdca97、571be45、9c10a7e、d6f393d、b259105、55716ba 跑 `git merge-tree`；`git push --no-verify`（宿主机 pre-push 的 PG 环境问题，RUNBOOK §3；推送前日志 check-20261120T075956Z）；`gh api -X PATCH .../pulls/376` 只传 title 与 body
+- 计数: 用例：main 7b18f20 真实依赖树 exit 1（vite 那条放行，@intlify/core-base、@intlify/shared、follow-redirects 三条 high 与 glob、minimatch、qs 三条 moderate 失败，各带依赖路径）；55716ba 真实依赖树 exit 0；只有 vite（对照）exit 0；多一条 moderate exit 1；非零退出加空 vulnerabilities exit 1；带 error 字段 exit 1；vulnerabilities 是数组 exit 1；同编号在 esbuild 上 ::warning:: 后 exit 1；vite 上升到 high ::warning:: 后 exit 1；日期 2026-12-14 ::warning:: 后 exit 1。Bun YAML 与 PyYAML 都能解析，和 92ff5d5 比只有审计 run 块不同，if: 与 working-directory 没变。现有测试 1989 / 1988 / 0 / 1，pg_skips=0，没改测试（scripts/license-boundary.test.mjs 读 triage 文档的两条断言照过）。merge-tree 7 个 head 都是 0 冲突。#376 仍是草稿 [本地测]
+- ci_run_url: #376 新 head 的 run 待完成（监视中）
+- 未测项: 放行逻辑在 GitHub 上第一次真跑要等合进 main；工作站没有 actionlint
+- 下一条: D-52 第 2 项
+- 附: 本分支除 ci.yml 外只多改 docs/NPM_DEPENDENCY_TRIAGE.md 一个文件（D-52 第 3 项放宽的分支范围）。triage 文档加「Status 2026-11-20」：本地重建的 vite 6.4.4（带 braces 3.0.3 回补）、GHSA-8g5g-mxqh-grgj 放行到 2026-12-13、路线 B 要在 vite 6.4.5 或 6.4.6 上重做 braces 回补（直接装 registry 的 6.4.5 会悄悄丢掉它）、2026-10-05 快照改标历史。#376 描述的 A/B 两条路写上了 braces 回补那句。材料分支 RUNBOOK §3 的 illini-ci-runner 一行同步。第六批 ⑧ 用「按公告编号、包名和严重程度一起判断，失败时不放行」取代 D-51.4「按公告编号、不按包名」的理由。
+
+### L117 · 2026-11-20 02:20 CT · D-52 第 1 项：#377 合进 #374（6bdca97），修完失败，base 改成 #374 的分支
+- task_id: D-52.1
+- code_sha: 82cd98ad93e9d4e645454139567cab94b5344341（merge 6bdca97，树 6676c8e）、e058c983798166bd80d5dcd20745b3827bd745c1（spec 按钮名，树 20257f3），已推送；PR #377 base 改成 codex/community-home-20261112，仍草稿
+- docs_sha: f7a0aeb（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: `git merge --no-ff --no-commit 6bdca97`：useRatings（已挪到 pages/detail/useRatings.ts）保留挪过去的文件、import 改 `../../composables/useRestriction`；chat-realtime-handshake 两边的替换都留；restricted-account-actions.test.mjs 第 546–551 行改按 pages/detail/useRatings.ts 载入、mock 键换成实际 import；account-gate-prompts.test.mjs 第 221、226 行改成只有有效 L5 进 pages/suspended、L2–L4 照常弹提示（标题 D-48 改 D-49）。`SMOKE_SPECS='community-post-topics.spec.ts plaza-attach-picker-is-modal.spec.ts restricted-account-notice.spec.ts' run-checks.sh ~/work/illini-restricted install typecheck test h5 mpci smoke migrations`（check-20261120T073654Z，head 82cd98a、unstaged=no）；smoke 另有 9 条失败后改 community-post-topics.spec.ts 的按钮名，`typecheck smoke`（check-20261120T075633Z，head e058c98、unstaged=no）；临时 spec 拍社区首页截图（check-20261120T080551Z，拍完删掉，不提交）；`git push --no-verify`（宿主机 pre-push 的 PG 环境问题，RUNBOOK §3；推送前日志 check-20261120T073654Z、075633Z）；`gh api -X PATCH .../pulls/377 -f base=codex/community-home-20261112`
+- 计数: 82cd98a：测试 2645 / 2644 / 0 / 1，pg_skips=0，D-52 列的 16 条全消；install、typecheck、h5、mpci、migrations rc=0；smoke 34 passed / 9 failed（都在 L2–L4：spec 点「New post / 发布新帖」，#374 已改叫「New topic / 发话题」，等满 60 秒超时）。e058c98：typecheck rc=0，smoke 43 passed（含提示条 spec 8 条）。主包按 CI 环境 1,379,997（余 192,867，和核查方一致）。截图 4 张存在 ~/work/evidence/D52/d49-notice/（社区首页 390 浅色英文、1280 深色中文，另有二手首页 4 张）[本地测]
+- ci_run_url: —（#377 的 base 不是 main，没有 CI）
+- 未测项: 真机与微信开发者工具
+- 下一条: D-52 第 2 项
+- 附: [OMO自决] D-52 只列了 16 条单测失败；合并后 smoke 另有 9 条，只改了 spec 的按钮名，和 L0–L1 那一支一致。截图看到：提示条是浮在内容上的小条，390 宽社区首页上压住「New in Market」两张卡的下半截，1280 宽压在「吃喝好店」卡底部；页面可滚动、不挡操作，写进第六批 ⑥。第五批「smoke 35」没跑提示条 spec 的更正在 L113。材料分支 RUNBOOK §3 illini-restricted 一行与 STATUS 版本行的 base 说法已同步。
+
+### L118 · 2026-11-20 02:20 CT · D-52 第 2 项：createPost 与 createComment 在 composable 层拦截受限账号
+- task_id: D-52.2
+- code_sha: a91cb744d1fbae54af3e5b2cf7d41ada12c116f5（#377，树 04308ed，已推送）
+- docs_sha: f7a0aeb（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 先在 restricted-account-actions.test.mjs 加一组 composable 层用例（L0–L5、过期等各状态：受限时 createPost、createComment 在第一次请求之前拒绝，不受限时走到第一次请求；挂上真实的 mutationCommit）；在未改源码的 e058c98 上 `RUN_CMD='cd app && node --test smoke/restricted-account-actions.test.mjs' run-checks.sh ~/work/illini-restricted cmd`（check-20261120T080702Z 第一次、080800Z 第二次）；改 usePlaza.ts 后全量 `install typecheck test h5 mpci smoke migrations`（check-20261120T080830Z，head a91cb74、unstaged=no）；`git push --no-verify`（推送前日志 check-20261120T080830Z）
+- 计数: 红：306 / 302 / 4，失败的正是 L2–L5 的新用例，报「test: first request reached」（写入走到了第一次请求），对照都过。第一次红测没挂真实的 mutationCommit，createPost 的 catch 抛出的是 undefined，失败原因不对，换掉以后重跑。绿：全量 2655 / 2654 / 0 / 1，pg_skips=0；smoke 43 passed（含提示条 spec）；主包 1,380,046（余 192,818）[本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-52 第 4 项 c
+- 附: createPost 的拦截放在入参校验之后、第一次请求之前：重试时先查帖子是否已建成这一步是读，照旧允许；createComment 放在本地查重之后。页面层和发帖面板的拦截照旧。社区首页「二手好物」里的「发布第一件 ›」（openPublish）是 switchTab 到商品发布页，那一页自己有拦截，按 D-52 第 2 项不改。
+
+### L119 · 2026-11-20 02:20 CT · D-52 第 4 项 c：仓库 RUNBOOK 的 D-49 一条补三句，#377 描述按最终 head 重写
+- task_id: D-52.4c
+- code_sha: dd44f98f27bcb6cb04d4654be43f69ccc21565fc（#377，树 f5d708f，已推送）
+- docs_sha: f7a0aeb（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 改仓库 RUNBOOK.md「Restricted-account writes (D-49…)」一条；`RUN_CMD` 跑读 RUNBOOK.md 的 9 个测试文件（check-20261120T081838Z，head dd44f98、unstaged=no）；`git push --no-verify`（推送前日志 check-20261120T081838Z）；`gh api -X PATCH .../pulls/377` 只传 body
+- 计数: 9 个文件 40 / 40；#377 仍草稿、base codex/community-home-20261112、head dd44f98；描述的待定政策问题 12 条 [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: 第六批报告
+- 附: 三句：第 0 步先确认这个项目上已应用 20261112120000 且 VERIFY 通过（否则 PRECHECK 报 restricted_account_writes_column_missing）；尽量低流量时段应用（10 张表短暂加锁，含 storage.objects 上的 ACCESS EXCLUSIVE）；因 lock_timeout 或死锁中止会整体回滚，重跑即可。推送排在第 1、2 项之后。描述写上新 base、完整发布顺序、D-52 的改动和 12 条政策问题，没有 /home 开头的路径。
+
+### L120 · 2026-11-20 02:31 CT · D-52 第六批报告与 STATUS，结束目标
+- task_id: D-52.5（收尾）、D-52.3（CI）、D-52.4b、D-52.4e
+- code_sha: #377 dd44f98、#376 0e04aca（都是草稿）；其余分支本批没动
+- docs_sha: f7a0aeb（本次写回之前材料分支的 HEAD）
+- 环境: CI、本地
+- 命令: `gh run view 44699877648 --json status,conclusion,jobs`；推送前核 20261112120000 与 20261114015420 的 sha256、`gh pr list`、`git ls-remote origin main`；FINAL「第六批（D-52）」追加到 appendix/batch/FINAL.md，STATUS 改写（版本表、worktree 行、CI 节、阻塞第 14 条、验收表），材料分支 RUNBOOK §3 两行，与本条和 L116–L119 同一提交；推送后 schedule_prompt cancel sch_a410e1ce2a1f，update_goal complete
+- 计数: #376 run 44699877648 conclusion success：Type-check、Boundary、Build H5、Build mp-weixin、public sweep 5 个 success，protected staging 与 release readiness skipped，审计步骤按依赖门 skipped。20261112120000 在 #369、#374、#375、#377 上都是 e2a85c3e…；20261114015420 在 #377 上是 0dc2ceaf…；#369–#377 九个 PR 都是草稿、OPEN；main 仍是 7b18f20 [CI run#44699877648][本地测]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44699877648
+- 未测项: 见第六批 ⑥
+- 下一条: —（按 D-52 第 5 项停下，等下一条指示）
+- 附: STATUS 阻塞第 14 条按 #377 的新 base 与发布顺序重写（D-52 第 4 项 b）；版本表第 1 行改成远端 8257318，worktree 行按 git worktree list 重写（D-52 第 4 项 e）。
