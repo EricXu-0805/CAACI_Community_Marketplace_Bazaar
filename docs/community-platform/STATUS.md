@@ -1,8 +1,8 @@
 # STATUS
 
-写于 2026-11-19 18:33 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-19 18:47 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-51 第 3 项 a（#374 受限时隐藏回帖重试）与第 4 项（ci.yml 草稿 PR）；D-49 数据库部分并行`
+`next_task_id: D-51 第 4 项（ci.yml 草稿 PR）；第 5 项 D-49 在子任务里，第 3 项 b、第 6 项穿插`
 `latest_batch: appendix/batch/FINAL.md`
 
 D-51 第五批进行中（L93）：范围是 D-51 第 1–7 项，做完写 FINAL「第五批（D-51）」与本文件同一提交，然后结束目标、取消续跑提醒，不从 BACKLOG 往下接。号池按 D-51 第 1 项，每个号周用量到 60% 停用。
@@ -15,8 +15,8 @@ D-51 第五批进行中（L93）：范围是 D-51 第 1–7 项，做完写 FINA
 | code_sha | 04edaa36a6edd717c069d78dc4afad57ac1f196c（#369 最终 head；D-50 补充已传播到 #375 571be45、#374 2e0f582） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | eb4fc56（本次写回之前材料分支的 HEAD） |
-| 其余代码分支（远端 head） | #374 codex/community-home-20261112 2e0f582（含 #369 04edaa3、#375 571be45）。#375 codex/community-mp-budget-20261113 571be45（base #369）。#373 55716ba（base #371）；#372 ba070e7；#371 b259105。四个都是草稿 [本地测：2026-11-14 gh pr view] |
+| docs_sha | e1009661bf0c253e6eb2fc3325dc042e8a89acb9（本次写回之前材料分支的 HEAD） |
+| 其余代码分支（远端 head） | #374 codex/community-home-20261112 6bdca97（含 #369 04edaa3、#375 571be45；D-51 3a）。#375 codex/community-mp-budget-20261113 571be45（base #369）。#373 55716ba（base #371）；#372 ba070e7；#371 b259105。这五个都是草稿；另有 #369、#370 也是草稿 [本地测：2026-11-20 gh pr view] |
 | tony-ws worktree | illini 04edaa3；illini-home 2e0f582；illini-mpbudget 571be45，三者已推送且干净。illini-d46-integration 为本地 local/d46-final-integration-20261114 412e14d（五 PR 集成，不推送）。illini-restricted 为本地 codex/community-restricted-20261113，HEAD 04edaa3，只有 2 份未提交 _ops 草稿，未推送、无 PR。illini-docs-brand7 local/brand7-20261113 15aa47e（已合进材料分支 779c07f，干净）。illini-deps 55716ba；illini-brand ba070e7；illini-config b259105；illini-events 本地 5f62ddd 不推；illini-main 只读 7b18f20；caaciorg 本地 28d59b1 不推；材料 codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，仍是 V4 原型（grep 玉米地 0），回退 id dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6 [生产：2026-11-14 curl、vercel inspect 只读]。BRAND.7 预览 https://illini-community-demo-978sy3clx-ericxu-0805s-projects.vercel.app（dpl_3bG2SKTAmQsa7jEmScy2cHHpnk1y）返回 200，等 Eric promote（E12）[本地测] |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
@@ -36,7 +36,7 @@ PR #369 · run [43539761691](https://github.com/EricXu-0805/CAACI_Community_Mark
 | Smoke (public page sweep) | failure | 预期中：停在「Verify public read schema before browser startup」预检。staging-smoke 还没应用 20261112120000（等 E4） |
 | Smoke (protected staging account) | skipped | |
 
-上一次：run 43448423151 · head b7bcf3a · failure（public sweep 停在预检，等 E4；Type-check、Boundary 2053 / 2052 / 0 / 1、Build H5、Build mp-weixin 4 个 success，protected staging 与 release readiness 2 个 skipped）[CI run#43448423151]。
+上一次：run 43503547193 · head ae058c2 · failure（Type-check、Boundary regressions、Build H5、Build mp-weixin 4 个 success；失败的是 Smoke (public page sweep): Verify public read schema before browser startup；protected staging 与 release readiness 2 个 skipped）[CI run#43503547193]。
 
 材料分支 #370：多数已读失败来自ubuntu-26.04不能安装Playwright 1.60浏览器；不能把所有失败都归到这一原因。此前记录的43470604328、43475385858、43484767294、43487337489、43490982420保留；另有43474247871、43474954537取消。新增六次按Actions API和实际job日志核对如下（证据~/work/evidence/CI/supervisor-six-runs-20261113.md）。
 
@@ -48,6 +48,12 @@ PR #369 · run [43539761691](https://github.com/EricXu-0805/CAACI_Community_Mark
 | [43503851223](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43503851223) / b4788cf | H5/public浏览器安装步骤失败，H5日志明确ubuntu26.04与Playwright1.60不兼容；Boundary成功 | [CI run#43503851223] |
 | [43509639602](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43509639602) / 7293b01 | 另有Boundary测试超时；H5/public浏览器安装步骤也失败 | [CI run#43509639602] |
 | [43525055626](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43525055626) / 1d1734c | H5/public浏览器安装步骤失败，H5日志明确ubuntu26.04与Playwright1.60不兼容；Boundary成功 | [CI run#43525055626] |
+| [43528915421](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43528915421) / c4557c0 | H5/public 浏览器安装步骤失败（同 43493142000）；Boundary 成功 | [CI run#43528915421] |
+| [43538315477](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43538315477) / ed26304 | H5/public 浏览器安装步骤失败（同 43493142000）；Boundary 成功 | [CI run#43538315477] |
+| [43542174637](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43542174637) / abbd6b0 | H5/public 浏览器安装步骤失败（同 43493142000）；Boundary 成功 | [CI run#43542174637] |
+| [43543108152](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43543108152) / f20f44c | H5/public 浏览器安装步骤失败（同 43493142000）；Boundary 成功 | [CI run#43543108152] |
+| [43547172052](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43547172052) / 45add2a | H5/public 浏览器安装步骤失败（同 43493142000）；Boundary 成功 | [CI run#43547172052] |
+| [43552639055](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43552639055) / 82b4ccf | H5/public 浏览器安装步骤失败（同 43493142000）；Boundary 成功 | [CI run#43552639055] |
 
 43509639602的Boundary为1989 tests / 1987 pass / 1 fail / 1 skipped：scripts/ci-first-release-supervised-host.test.mjs:133，unknown connector response retains intent and never automatically repeats dispatch，failureType=unhandledRejection，error/code=supervised_operation_timeout。像时序不稳，但未复现或定位根因；单列为测试失败，未改测试、未跳过，也不当作Ubuntu安装问题。
 
@@ -127,10 +133,10 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | HOME.4 | 通过 | #374 010f8f6；12 组 axe 0、<12px 0、溢出 0；截图 appendix/visual/HOME.4/ [本地测] |
 | D-46 第 1、2 项 | 通过 | L64、L65 |
 | D-46 第 3 项 a | 通过 | 3d24a8e已进入#374；所有小程序页启动监听。门禁页的新入站提示由22d9009抑制，已通过c1ef194合入#374；未改普通错误提示或停监听（L81、L82） |
-| D-46 第 3 项 b | 通过 | ae058c2的标题映射、D-50长度规则已进入#369、#375 22d9009和#374 c7b0634远端head（L77、L81） |
+| D-46 第 3 项 b | 通过 | ae058c2 的标题映射和 D-50 长度规则在当前 head 上都有：#369 8257318（树同 04edaa3）、#375 571be45、#374 6bdca97（L77、L81、L90） |
 | D-46 第 3 项 c、d、e | 通过，D-47补完完成 | 73206a0、eca5a8d、6d6c598为原修复；e由885603e补完，c由c7b0634改为仅小程序限流并取消过期队列。d补测为2942e8e（L80、L82、L83） |
-| D-46 第 3 项 f | 全局放行已撤回 | 有效L2–L5 → suspended已进入#369 ae058c2、#375 22d9009和#374 c7b0634远端head。发帖前拦截和回复提示保留；不 revert 30c4b4d。受限浏览只能在D-49新迁移证明服务端拦截后于独立PR实现（L76、L81、L82） |
-| D-46 第 4 项 | 通过 | 五个 PR 本地集成主包 1,374,461、余 198,403（L90）。#375最近0eabe73主包1,324,732、余248,132；#374组合余199,807。最终六条测试在3d24a8e上6/4/2/0，真实history→detail导入变异6/5/1/0，见L84；不再用早期五条稿的单条失败代表最终版本 |
+| D-46 第 3 项 f | 全局放行已撤回 | 有效 L2–L5 → suspended 在当前 head 上都有：#369 8257318（树同 04edaa3）、#375 571be45、#374 6bdca97。发帖前拦截和回复提示保留；不 revert 30c4b4d；受限时回帖不再显示重试（D-51 3a，6bdca97）。受限浏览要等 D-49 的新迁移证明服务端拦截后在独立 PR 里做（L76、L81、L82、L98） |
+| D-46 第 4 项 | 通过 | 当前 head：#375 571be45 主包 1,324,735、余 248,129；#374 6bdca97 主包 1,373,060、余 199,804；五个 PR 本地集成 412e14d 主包 1,374,461、余 198,403（L90、L98）。最终六条测试在 3d24a8e 上 6/4/2/0，真实 history→detail 导入变异 6/5/1/0（L84） |
 | D-46 第 5 项 | 通过 | 本地 412e14d（#374 2e0f582 + #373 + #372，不推送）：test 2248/2247/0/1、pg_skips=0，smoke 12 份 204 passed，typecheck/h5/mpci/migrations rc=0，npm audit 只剩 vite moderate；五 PR 主包 1,374,461、余 198,403（L90）[本地测] |
 | D-46 第 6 项 | 通过（DoD ④ 等 Eric promote） | 见 BRAND.7 行（L91） |
 | D-49 | 【跳过】按停止条件收束 | 只读盘点完成；st_01a1d7cb三次L-SQL基线均回放181条，分别停在夹具owner_id、tgenabled转text、实际缺失storage.objects.version。最终errors=1/done=0/SQLrc3；行为用例0、有效红测0、绿测0。仅PRECHECK/REGRESSION草稿；无迁移/VERIFY/Node测试/manifest修改/客户端或API实现，无草稿PR。PG helper在#371，尚未进入#369基线。保留L2–L5全局门禁；后续须先解决本地平台与helper依赖（L89） |
@@ -160,7 +166,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 8. D-37（董事会同意）挡住 LEGAL.1–LEGAL.3；D-28（轮值伙伴）挡住 LEGAL.6 与 P5；D-36 已按 D-43 代定 D（延后），BRAND.6 等内测之后，P5.1 前 Eric 要重新答复。
 9. E6（官方账号 profile id）在 P3.5 与 P4.9 前需要；D-32、D-33、D-38、D-39、D-40 的截止任务见 [DECISIONS.md](DECISIONS.md)。
 10. BRAND（#372）生产发布后：Eric 在 STATUS_LOG 记发布日；「原 Illini Market」（app.formerly，登录页与 /about）在发布日 + 90 天移除；同时做 E10（邮件模板、生产 DIGEST_FROM）。
-11. #372 要手工合：与 #369 冲突在 api/share-post.js、en.ts、zh.ts（#374 另有 app.name / app.desc / app.tagline / app.formerly 一块）；保留 #369 的 P2.9 topicTitle / headline 逻辑与 P2.2「回复 / reply」措辞，只取 #372 的品牌字串。#374 与 #372 还在 app/src/pages/plaza/index.vue 冲突：c16f0a1 删了「关注的人」名单，#372 的 BRAND.3 徽章改的正是那段；保留 #374 的删除，这块的徽章改动丢弃（名单在 pages/following，那一页照 #372）。
+11. #372 要手工合：与 #369 冲突在 api/share-post.js、en.ts、zh.ts（#374 另有 app.name / app.desc / app.tagline / app.formerly 一块）；保留 #369 的 P2.9 topicTitle / headline 逻辑与 P2.2「回复 / reply」措辞；api/share-post.js 兜底的标题和描述都取 #372（无帖时标题「玉米地 · 社区」，没有正文时描述「A post on Cornfield」，无帖时描述取 #372 的双语一句），412e14d 就是这样合的。#374 与 #372 还在 app/src/pages/plaza/index.vue 冲突：c16f0a1 删了「关注的人」名单，#372 的 BRAND.3 徽章改的正是那段；保留 #374 的删除，这块的徽章改动丢弃（名单在 pages/following，那一页照 #372）。
 
    #369 → #374 冲突图（D-48.3，实合 ae058c2）：
 

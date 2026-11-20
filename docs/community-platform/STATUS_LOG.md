@@ -1223,3 +1223,27 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: —
 - 下一条: D-51 第 3 项 a 收尾、第 4 项
 - 附: RUNBOOK §3 表加了 illini-mpbudget、illini-deps、illini-restricted、illini-ci-runner、illini-d46-integration、illini-d51-seal（第 3 项 b 将建）、illini-docs-brand7 和留下的 5 个证明 worktree 一行；删不掉的 5 个要不要删由 Eric 定，写进第五批 ④。
+
+### L98 · 2026-11-19 18:47 CT · D-51 第 3 项 a：#374 受限账号的话题页不再显示回帖重试
+- task_id: D-51.3a
+- code_sha: 6bdca97740cd02d7416246638ecc274dc2556277（#374，已推送，树 8f95a92）
+- docs_sha: e1009661bf0c253e6eb2fc3325dc042e8a89acb9
+- 环境: 本地
+- 命令: 先在 app/smoke/community-restricted-account.test.mjs 加两组用例（L0–L5 × 中英：带 replyFailed 渲染 post 页回复区时重试行只在可回复时出现；受限时 retryReply 不读评论、不重发）；在未改源码的 2e0f582 上跑 `RUN_CMD='cd app && node --test smoke/community-restricted-account.test.mjs' run-checks.sh ~/work/illini-home cmd`（check-20261120T003518Z）；再改 app/src/pages/post/index.vue：重试行改为 `v-if="replyFailed && !replyRestricted"`，retryReply 开头受限直接返回；`run-checks.sh ~/work/illini-home cmd typecheck test h5 mpci smoke`（check-20261120T003544Z，日志头 head 2e0f582：检查跑在提交前的工作树上，之后没再改文件）；`git push --no-verify`（宿主机 pre-push 的 4 条 initdb ENOENT，RUNBOOK §3）
+- 计数: 修复前 116 / 100 / 16 / 0，失败的正好是 L2–L5 × 中英 × 2 组新用例，L0、L1 对照和原有 92 条都通过；修复后定向 116 / 116；全量 2265 / 2264 / 0 / 1，pg_skips=0；typecheck、h5、mpci rc=0；smoke 35 passed；主包 1,373,060（余 199,804，与 2e0f582 相同）[本地测]
+- ci_run_url: —（#374 的 base 不是 main）
+- 未测项: 真机；受限账号在门禁恢复后到不了话题页，这一行只在门禁刷新前就停在页面上的会话里出现
+- 下一条: D-51 第 4 项
+- 附: 聊天的「发送失败 - 点击重试」归 D-49 客户端（D-51 第 5 项），这里没改。
+
+### L99 · 2026-11-19 18:47 CT · 更正 L91、L92：第四批报告与 STATUS 按 D-51 第 2 项 a–g 改
+- task_id: D-51.2a–g
+- code_sha: —（只改文档）
+- docs_sha: e1009661bf0c253e6eb2fc3325dc042e8a89acb9
+- 环境: 本地
+- 命令: 逐条对照 STATUS_LOG 原条目和 gh 实查后改 FINAL 第四批与 STATUS；#370 的 6 个 run 用 `gh run view <id> --json headSha,conclusion,jobs` 逐个核了失败步骤
+- 计数: a 停止规则的引用 2 处改成 D-50 第 6 项；b ② 的 docs_sha 一列 14 行改成各自 STATUS_LOG 条目的 docs_sha（写回前的材料分支 head）：D-46.1 d2f9f25、D-46.2 b2cd9ac、3a 5f66faa、3d 08f036c、3c 9ee2df9、3e 831524e、3b 81196fa、3f 81196fa、D-46.4 e9c69be、D-47.1 81196fa、D-49 f20f44c、D-46.5 45add2a、D-46.6 39a052c、D-47.7 779c07f；c 补 D-47.6、D-48.5、D-48.6、D-50.1 四行，「D-48.2 / D-50.1」改成「D-48.2 / D-50.3」（那一行是标题修正和加权规则测试），04edaa3 那行标成「D-50.3（18:20 补充）」，③ 补 L71 的更正；d ⑥ 补 43528915421、43538315477、43542174637、43543108152、43552639055，STATUS 的 #370 表再加 43547172052，六个都是 Build H5「Install browsers for compiled admin acceptance」和 public sweep「Install Playwright (webkit + chromium)」两步失败；e STATUS 的「上一次」改成 43503547193（ae058c2），3b、3f、第 4 项三行改成当前 head 和字节数，「四个都是草稿」改成五个；f ④ 与 STATUS 第 11 条的 share-post.js 规则照 412e14d 实写（兜底标题和描述都取 #372）；g「五个旧名」改成四个旧名加「示例」[本地测][CI run#43528915421 等]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43503547193
+- 未测项: —
+- 下一条: D-51 第 4 项
+- 附: 更正 L91：「五个旧名和「示例」」应为四个旧名（Illini Market、Illini 集市、校园广场、Campus Plaza）加「示例」。更正 L92：FINAL 第四批开头与 ⑦ 把停止规则引成「D-50 第 2 项」，应为第 6 项。FINAL 第四批开头加了一行更正说明。

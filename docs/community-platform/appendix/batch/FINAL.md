@@ -290,7 +290,9 @@ D-45.7 ｜ 通过 ｜ 86ffd0e（#374） ｜ d00fb3b ｜ pw1.60 ｜ install typec
 
 ## 第四批（D-46）
 
-按 D-46 第 1–6 项做。范围按 D-47、D-48、D-49、D-50 和 supervisor 2026-11-13 18:10、18:20 两条补充扩展，每次扩展都在 STATUS_LOG 记了一笔（L72、L74、L75、L76、L85、L86）。八节格式同上，逐条细节在 STATUS_LOG L63–L92。`latest_batch` 不变。主包数一律用 CI build-mp-weixin 的环境量（run-checks `mpci` 步骤，`https://ci-stub.supabase.co`）。按 D-50 第 2 项，本批交付后结束目标，不再自设新目标，不从 BACKLOG 往下接任务。
+> 2026-11-20 按 D-51 第 2 项 a–g 更正：停止规则的引用、② 的 docs_sha 一列、补四行和标签、③ 的 L71、⑥ 的 #370 红 run、④ 的 share-post.js 规则、旧名数目，记录见 STATUS_LOG L99。
+
+按 D-46 第 1–6 项做。范围按 D-47、D-48、D-49、D-50 和 supervisor 2026-11-13 18:10、18:20 两条补充扩展，每次扩展都在 STATUS_LOG 记了一笔（L72、L74、L75、L76、L85、L86）。八节格式同上，逐条细节在 STATUS_LOG L63–L92。`latest_batch` 不变。主包数一律用 CI build-mp-weixin 的环境量（run-checks `mpci` 步骤，`https://ci-stub.supabase.co`）。按 D-50 第 6 项，本批交付后结束目标，不再自设新目标，不从 BACKLOG 往下接任务。
 
 ### ① 起止与 SHA 范围
 
@@ -308,29 +310,33 @@ D-45.7 ｜ 通过 ｜ 86ffd0e（#374） ｜ d00fb3b ｜ pw1.60 ｜ install typec
 ### ② 完成的任务
 
 ```text
-D-46.1 ｜ 通过 ｜ —（只改文档） ｜ b2cd9ac ｜ 只读核对 ｜ merge-tree、gh run、Actions 日志、SPEC.md、ci.yml（L63、L64） ｜ D-46 第 1 项每条都成立，全部照改；补 L63 合并记录 ｜ — ｜ 无 ｜ — ｜ D-46.2
-D-46.2 ｜ 通过 ｜ —（只改 PR 文案） ｜ 5f66faa ｜ GitHub REST ｜ gh pr edit 仍报 Projects classic，改用 REST PATCH（L65） ｜ #369、#374 重写，#375 改余量，#371 包名加反引号；四个仍是草稿；run-checks 加 mpci 步骤 ｜ — ｜ 无 ｜ — ｜ D-46.3a
-D-46.3a ｜ 通过 ｜ 3d24a8e（#375） ｜ 08f036c ｜ pw1.60 ｜ install typecheck test h5 mpci smoke（L66） ｜ 修复前主测失败、对照通过；2047 / 2046 / 0 / 1；smoke 15 passed；主包 1,502,862 ｜ —（base 不是 main，不触发 CI） ｜ 分享卡冷启动收提醒（真机） ｜ — ｜ D-46.3b
-D-46.3d ｜ 通过 ｜ eca5a8d（#374） ｜ 9ee2df9 ｜ pw1.60 ｜ 同上，8 份 smoke（L67） ｜ 修复前 4 条失败、2 个对照通过；2070 / 2069 / 0 / 1；smoke 114 passed；主包 1,550,705。D-47 第 3 项补两条测试，见 D-47.4 ｜ — ｜ 真实关注数据 ｜ E3 ｜ D-46.3c
-D-46.3c ｜ 通过 ｜ 73206a0（#374） ｜ 831524e ｜ pw1.60 ｜ 同上（L68） ｜ 修复前同时 9 个、重叠加载 18 个，修复后 ≤ 6；2073 / 2072 / 0 / 1；smoke 114 passed；主包 1,550,883。D-47 第 3 项改成只在小程序限流、作废请求不发，见 D-47.3 ｜ — ｜ 小程序上加轮询后的实际并发 ｜ — ｜ D-46.3e
-D-46.3e ｜ 通过 ｜ 6d6c598（#374） ｜ 790e435 ｜ pw1.60 ｜ 同上（L69） ｜ 29 个 HOME.3 key 与 10 个板块 key 逐字等于 SPEC；2077 / 2076 / 0 / 1；smoke 114 passed；主包 1,551,820；D-45.5b 改回通过。D-47 第 3 项补的分隔符和类型标签见 D-47.2 ｜ — ｜ — ｜ — ｜ D-46.3f
-D-46.3b ｜ 通过（标题问题由 D-48.2 修） ｜ 3588c24（#369） ｜ d2fff8d ｜ pw1.60 ｜ install typecheck test h5 mpci smoke（L70） ｜ 修复前 4 条失败、4 条对照通过；2061 / 2060 / 0 / 1；smoke 35 passed；主包 1,559,431。操作菜单没有标题（uni 运行时用 title 覆盖 alertText），D-48 第 2 项在 ae058c2 修 ｜ run 43491206333（4 个 success，public sweep 等 E4，2 个 skipped） ｜ 真机弹窗 ｜ — ｜ D-46.3f
-D-46.3f ｜ 失败（全局放行由 D-48.1 撤回） ｜ 520e55a（#369） ｜ d2fff8d ｜ pw1.60 ｜ 同上（L71） ｜ 2153 / 2152 / 0 / 1；smoke 53 passed；主包 1,560,420。当时只核了四个 INSERT 触发器就当作「服务端已拦住」，而 520e55a 放开的是整个 app：核查方在 PG17 上用迁移里的真实函数体证明，L2–L4 做商品会话、报价与约见附言、交易评价、改已有商品、改资料、关注、点赞时服务端都不拦，也进不了 pages/suspended 申诉。前提不成立，D-48 第 1 项撤回全局放行 ｜ 同上 ｜ 真实受限账号（E3） ｜ E3 ｜ D-48.1
-D-46.4 ｜ 通过（#375 单独） ｜ 8972507、1443d5c、ecc330b（#375） ｜ 249c708 ｜ pw1.60 ｜ install typecheck test h5 mpci smoke（L73） ｜ 14 个次要页面改同路径分包，4 个模块挪进分包；主包 1,502,862 → 1,322,319；2053 / 2052 / 0 / 1；smoke 只有 4 条已知 stub 失败。L73 原写「修复前失败 1 条」，实为 6 条测试的终稿在 3d24a8e 上 6 / 4 / 2 / 0（缺 14 个分包、内部引用扫描对照缺失；190150Z 是早期 5 条草稿，L84） ｜ — ｜ 分包首次下载、冷启动进分包页（开发者工具） ｜ — ｜ D-46.5
-D-47.1 ｜ 通过 ｜ —（只改文档） ｜ d2fff8d ｜ 只读核对 ｜ git、gh、检查日志（L72） ｜ STATUS 整篇改写；第三批 D-45.5b 行、8 个 key、29、#370 的三次红、L69 更正 ｜ — ｜ 无 ｜ — ｜ D-48.1
+D-46.1 ｜ 通过 ｜ —（只改文档） ｜ d2f9f25 ｜ 只读核对 ｜ merge-tree、gh run、Actions 日志、SPEC.md、ci.yml（L63、L64） ｜ D-46 第 1 项每条都成立，全部照改；补 L63 合并记录 ｜ — ｜ 无 ｜ — ｜ D-46.2
+D-46.2 ｜ 通过 ｜ —（只改 PR 文案） ｜ b2cd9ac ｜ GitHub REST ｜ gh pr edit 仍报 Projects classic，改用 REST PATCH（L65） ｜ #369、#374 重写，#375 改余量，#371 包名加反引号；四个仍是草稿；run-checks 加 mpci 步骤 ｜ — ｜ 无 ｜ — ｜ D-46.3a
+D-46.3a ｜ 通过 ｜ 3d24a8e（#375） ｜ 5f66faa ｜ pw1.60 ｜ install typecheck test h5 mpci smoke（L66） ｜ 修复前主测失败、对照通过；2047 / 2046 / 0 / 1；smoke 15 passed；主包 1,502,862 ｜ —（base 不是 main，不触发 CI） ｜ 分享卡冷启动收提醒（真机） ｜ — ｜ D-46.3b
+D-46.3d ｜ 通过 ｜ eca5a8d（#374） ｜ 08f036c ｜ pw1.60 ｜ 同上，8 份 smoke（L67） ｜ 修复前 4 条失败、2 个对照通过；2070 / 2069 / 0 / 1；smoke 114 passed；主包 1,550,705。D-47 第 3 项补两条测试，见 D-47.4 ｜ — ｜ 真实关注数据 ｜ E3 ｜ D-46.3c
+D-46.3c ｜ 通过 ｜ 73206a0（#374） ｜ 9ee2df9 ｜ pw1.60 ｜ 同上（L68） ｜ 修复前同时 9 个、重叠加载 18 个，修复后 ≤ 6；2073 / 2072 / 0 / 1；smoke 114 passed；主包 1,550,883。D-47 第 3 项改成只在小程序限流、作废请求不发，见 D-47.3 ｜ — ｜ 小程序上加轮询后的实际并发 ｜ — ｜ D-46.3e
+D-46.3e ｜ 通过 ｜ 6d6c598（#374） ｜ 831524e ｜ pw1.60 ｜ 同上（L69） ｜ 29 个 HOME.3 key 与 10 个板块 key 逐字等于 SPEC；2077 / 2076 / 0 / 1；smoke 114 passed；主包 1,551,820；D-45.5b 改回通过。D-47 第 3 项补的分隔符和类型标签见 D-47.2 ｜ — ｜ — ｜ — ｜ D-46.3f
+D-46.3b ｜ 通过（标题问题由 D-48.2 修） ｜ 3588c24（#369） ｜ 81196fa ｜ pw1.60 ｜ install typecheck test h5 mpci smoke（L70） ｜ 修复前 4 条失败、4 条对照通过；2061 / 2060 / 0 / 1；smoke 35 passed；主包 1,559,431。操作菜单没有标题（uni 运行时用 title 覆盖 alertText），D-48 第 2 项在 ae058c2 修 ｜ run 43491206333（4 个 success，public sweep 等 E4，2 个 skipped） ｜ 真机弹窗 ｜ — ｜ D-46.3f
+D-46.3f ｜ 失败（全局放行由 D-48.1 撤回） ｜ 520e55a（#369） ｜ 81196fa ｜ pw1.60 ｜ 同上（L71） ｜ 2153 / 2152 / 0 / 1；smoke 53 passed；主包 1,560,420。当时只核了四个 INSERT 触发器就当作「服务端已拦住」，而 520e55a 放开的是整个 app：核查方在 PG17 上用迁移里的真实函数体证明，L2–L4 做商品会话、报价与约见附言、交易评价、改已有商品、改资料、关注、点赞时服务端都不拦，也进不了 pages/suspended 申诉。前提不成立，D-48 第 1 项撤回全局放行 ｜ 同上 ｜ 真实受限账号（E3） ｜ E3 ｜ D-48.1
+D-46.4 ｜ 通过（#375 单独） ｜ 8972507、1443d5c、ecc330b（#375） ｜ e9c69be ｜ pw1.60 ｜ install typecheck test h5 mpci smoke（L73） ｜ 14 个次要页面改同路径分包，4 个模块挪进分包；主包 1,502,862 → 1,322,319；2053 / 2052 / 0 / 1；smoke 只有 4 条已知 stub 失败。L73 原写「修复前失败 1 条」，实为 6 条测试的终稿在 3d24a8e 上 6 / 4 / 2 / 0（缺 14 个分包、内部引用扫描对照缺失；190150Z 是早期 5 条草稿，L84） ｜ — ｜ 分包首次下载、冷启动进分包页（开发者工具） ｜ — ｜ D-46.5
+D-47.1 ｜ 通过 ｜ —（只改文档） ｜ 81196fa ｜ 只读核对 ｜ git、gh、检查日志（L72） ｜ STATUS 整篇改写；第三批 D-45.5b 行、8 个 key、29、#370 的三次红、L69 更正 ｜ — ｜ 无 ｜ — ｜ D-48.1
 D-48.1 ｜ 通过 ｜ 4a44a41（#369） ｜ 06a0c70 ｜ pw1.60 ｜ cmd install typecheck test h5 mpci smoke（L76） ｜ 测试先按恢复后行为改，在 520e55a 上 104 / 99 / 5 / 0，准确失败在 L2–L4 与限制优先级；恢复后 2153 / 2152 / 0 / 1；smoke 53 passed；主包 1,560,396。不在 #375 上 revert 30c4b4d ｜ run 43500445187（4 个 success，public sweep 预检等 E4，2 个 skipped） ｜ 真机、托管账号 ｜ E3 ｜ D-48.2
-D-48.2 / D-50.1 ｜ 通过 ｜ ae058c2（#369） ｜ d982ec8 ｜ pw1.60 ｜ 同上（L77） ｜ 菜单改传 title，红测 11 / 9 / 2 / 0（中英文标题都被覆盖成 undefined）；showModal 按 D-50 的规则（非 Latin-1 字符算 2，上限 8）扫全 app 小程序可达的调用，两次变异（英文 123456789、中文一二三四五）各自只让对应语言变红；2156 / 2155 / 0 / 1；smoke 53 passed；主包 1,560,392（余 12,472） ｜ run 43503547193 ｜ 早于 3.15.0 的基础库 ｜ — ｜ D-48.3
+D-48.2 / D-50.3 ｜ 通过 ｜ ae058c2（#369） ｜ d982ec8 ｜ pw1.60 ｜ 同上（L77） ｜ 菜单改传 title，红测 11 / 9 / 2 / 0（中英文标题都被覆盖成 undefined）；showModal 按 D-50 的规则（非 Latin-1 字符算 2，上限 8）扫全 app 小程序可达的调用，两次变异（英文 123456789、中文一二三四五）各自只让对应语言变红；2156 / 2155 / 0 / 1；smoke 53 passed；主包 1,560,392（余 12,472） ｜ run 43503547193 ｜ 早于 3.15.0 的基础库 ｜ — ｜ D-48.3
 D-48.3 ｜ 通过 ｜ 007abf1（#375）、4b6f079、b35cf8e（#374） ｜ 7293b01 ｜ pw1.60 ｜ 定向 + 全量 + 8 份 smoke（L78、L79） ｜ 四个冲突文件手工合，restrictedReply 不重复（无 TS1117），openComposer(board?) 和六个入口都带拦截；定向 112 全过；2189 / 2188 / 0 / 1；浏览器 202 条首轮 191 / 10 / 1，其中 6 条新合入的 L0/L1 用例由 b35cf8e 里的夹具修正关闭（该 spec 29 条全过），剩 4 条已知 stub；主包 1,372,224（只含 #369+#375+#374） ｜ — ｜ — ｜ — ｜ D-47.2
 D-47.2 ｜ 通过 ｜ 885603e（#374） ｜ 7293b01 ｜ pw1.60 ｜ check-20261113T214641Z（L80） ｜ 英文补位行加「 · 」；「新来先看」加 12px「守则 / 指南」标签（按标题判断，见 ④）；活动区块等 P4.8；2190 / 2189 / 0 / 1；浏览器 132 条通过；390 / 1280 × 浅 / 深 4 张截图看过；主包 1,372,454 ｜ — ｜ — ｜ — ｜ D-47.3
 D-47.3 ｜ 通过 ｜ c7b0634（#374） ｜ 7293b01 ｜ pw1.60 ｜ check-20261113T224013Z（L82） ｜ 上限只在 MP-WEIXIN 生效（H5 首发 9 个）；作废请求拿到槽位时不发、释放槽位；8 条事件驱动测试，修复前 8 / 5 / 3；四次变异（读路径漏槽、抛错路径漏槽、回复绕过到 7、按实例排队到 12）都变红；2234 / 2233 / 0 / 1；浏览器 132 条；主包 1,373,057 ｜ — ｜ 真机并发 ｜ — ｜ D-47.4
 D-47.4 ｜ 通过 ｜ 2942e8e（#374，只改测试） ｜ 1d1734c ｜ pw1.60 ｜ check-20261113T232918Z（L83） ｜ 加「全被屏蔽」「关注列表读成功」和失败重试三条；在 86ffd0e 上 9 / 2 / 7 / 0；只删失败分支 invalidatePosts 的变异 2 / 1 / 1 / 0；2237 / 2236 / 0 / 1 ｜ — ｜ — ｜ — ｜ D-47.5
 D-47.5 ｜ 通过 ｜ 22d9009、8df14c5、73cde94（#375）；c1ef194、adc6ee7（#374） ｜ abbd6b0 ｜ pw1.60 ｜ L81、L88 ｜ 六个账号门禁页不弹新的入站提示（[OMO自决]，见 ③）；冷启动页面栈为空或 getCurrentPages 抛错时也不弹，修复前 43 / 39 / 4 / 0；两个旧实时夹具缺页面 API，单独提交 8df14c5 补上前台页面，断言不变；2208 / 2207 / 0 / 1；主包 #375 1,324,735、#374 1,373,060 ｜ — ｜ 真机原生弹层、提示到达时机 ｜ — ｜ D-48.4
+D-47.6 ｜ 通过（数字说明，由 D-46.4 解决） ｜ —（不改代码） ｜ c4557c0 ｜ CI 环境 mpci ｜ L84 ｜ supervisor 按 CI 环境试合 #374 6d6c598＋3d24a8e：主包 1,551,949、余 20,915，离 64 KiB 差 44,621；第二轮拆包后 #374＋#375 余 199,807（L84），五个 PR 余 198,403（L90）；STATUS 的「还差 44,621」已删 ｜ — ｜ — ｜ — ｜ D-48.4
 D-48.4 ｜ 通过 ｜ 0eabe73（#375）、e495ad7（#374） ｜ c4557c0 ｜ pw1.60 ｜ L84 ｜ pages.json 里 chat 的注释改对（共享 ChatThread 已在 messages 主包）；变异：history/index.vue 真的引用 detail/useRatings，第 6 条报跨包引用，6 / 5 / 1 / 0；STATUS 删「还差 44,621」；preloadRule 进 ④ ｜ — ｜ 真机分包 ｜ — ｜ D-50.3
-D-50.3 ｜ 通过 ｜ 04edaa3（#369）；传播 571be45（#375）、2e0f582（#374） ｜ ed26304 ｜ pw1.60 ｜ check-20261114T004205Z、023656Z、025250Z（L87、L90） ｜ 扫描把 `#ifdef MP`、`VUE3` 等也算小程序可达，pages/ 下的页面内组件不再跳过；三个真实变异（MP 嵌套 9 单位、VUE3 两个 emoji 加 1、pages/history/USwipeAction.vue 9 单位）旧扫描 2 / 2 通过、新扫描 0 / 2；en.ts 注释改为非 Latin-1 的每个 UTF-16 单元算 2；2156 / 2155 / 0 / 1；传播后两条分支定向 119 / 119、typecheck、mpci 通过 ｜ run 43539761691（Boundary 2156 / 2155 / 0 / 1，4 个 success，public sweep 预检等 E4） ｜ — ｜ — ｜ D-49
-D-49 ｜ 跳过（D-49 第 6 项，本地 L-SQL 过不了就停） ｜ —（本地分支停在 04edaa3） ｜ 45add2a ｜ 本地 L-SQL ｜ lsql-20261114T021033Z、021312Z、021553Z（L89） ｜ 181 / 181 回放，三次都停在夹具设置：owner_id、tgenabled、Storage 的 objects.version 缺失；行为用例 0、有效红测 0、绿测 0；没有迁移、没有 PR，客户端没放开 ｜ — ｜ 全部 ｜ D-49 前置 ｜ D-46.5
-D-46.5 ｜ 通过 ｜ 412e14d（本地 local/d46-final-integration-20261114，不推送）；传播 571be45（#375）、2e0f582（#374） ｜ 39a052c ｜ pw1.65（集成）、pw1.60（传播） ｜ check-20261114T023656Z、025250Z、025755Z、030753Z：typecheck test h5 mpci migrations smoke（12 份） npmaudit（L90） ｜ #374 2e0f582 先合 #373（无冲突）再合 #372（四个冲突按 ④ 的规则手工合）；2248 / 2247 / 0 / 1，pg_skips=0；smoke 204 passed；npm audit 只剩 vite moderate；五个 PR 合上后主包 1,374,461（余 198,403，≥ 64 KiB）；提交的树与检查时一致 ｜ —（不推送） ｜ 集成结果的 CI、真机 ｜ — ｜ D-46.6
-D-46.6 ｜ 通过（DoD ④ 等 Eric promote） ｜ 15aa47e（local/brand7-20261113）→ 材料分支 779c07f ｜ 779c07f ｜ pw1.65 Chromium、Vercel CLI 65.15.0 ｜ verify.js、浏览器检查、vercel inspect（只读）、vercel deploy（预览）、curl（L91） ｜ 新 verify.js 在 bd397ce 的原型上第 1 条就失败，当前 20 个路由状态 271 条断言通过；真实浏览器里 121 / 2001 字被截到 120 / 2000，绕过 maxlength 后提交被拦（「标题最多 120 字」「正文最多 2000 字」），正好 120 / 2000 能发；88 组 overflow 0、<12px 0、axe 对比度 0、页面错误 0；16 张截图逐张看过；五个旧名和「示例」在产品文件里 0 处；预览 dpl_3bG2SKTAmQsa7jEmScy2cHHpnk1y curl 200，生产 CSP 下 Chromium 渲染无报错、无 CSP 违规；生产仍是旧版（grep 玉米地 0），回退用的 production id dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6 ｜ — ｜ promote 后的生产 curl ｜ E12 ｜ D-47.7
-D-47.7 ｜ 通过 ｜ —（只改 PR 文案） ｜ 39a052c、779c07f ｜ GitHub REST ｜ gh api PATCH（L92） ｜ #369、#374、#375、#370 描述按各自最终 head 重写，包名加反引号；四个仍是草稿；D-49 没开 PR，没有描述可写 ｜ — ｜ 无 ｜ — ｜ —（D-50：本轮结束）
+D-48.5 ｜ 撤销（D-50.1） ｜ —（不改代码） ｜ 06a0c70 ｜ 只读核对 ｜ L76 附 ｜ 生产上的英文 showModal 按钮按 D-50 的加权规则都没超（Got it 6、Restore 7、Cancel 6、Messages 8），没写进 ④ ｜ — ｜ — ｜ — ｜ —
+D-48.6 ｜ 通过 ｜ —（只改文档） ｜ 38cc32c ｜ 只读核对 ｜ L74 ｜ STATUS 的 docs_sha 改成本次写回之前的材料分支 head（RUNBOOK §8 第 2 步） ｜ — ｜ — ｜ — ｜ D-48.1
+D-50.1 ｜ 通过 ｜ —（只改文档；测试规则见 D-48.2 / D-50.3） ｜ 06a0c70 ｜ 只读核对 ｜ L76 附、L77 ｜ 按基础库 3.15.0–3.15.2 的 showModal 规则，生产四个英文按钮都没超，D-48 第 5 项撤销；只有 Keep draft（10）超，3b 的改法照旧 ｜ — ｜ 早于 3.15.0 的基础库 ｜ — ｜ D-48.2
+D-50.3（18:20 补充） ｜ 通过 ｜ 04edaa3（#369）；传播 571be45（#375）、2e0f582（#374） ｜ ed26304 ｜ pw1.60 ｜ check-20261114T004205Z、023656Z、025250Z（L87、L90） ｜ 扫描把 `#ifdef MP`、`VUE3` 等也算小程序可达，pages/ 下的页面内组件不再跳过；三个真实变异（MP 嵌套 9 单位、VUE3 两个 emoji 加 1、pages/history/USwipeAction.vue 9 单位）旧扫描 2 / 2 通过、新扫描 0 / 2；en.ts 注释改为非 Latin-1 的每个 UTF-16 单元算 2；2156 / 2155 / 0 / 1；传播后两条分支定向 119 / 119、typecheck、mpci 通过 ｜ run 43539761691（Boundary 2156 / 2155 / 0 / 1，4 个 success，public sweep 预检等 E4） ｜ — ｜ — ｜ D-49
+D-49 ｜ 跳过（D-49 第 6 项，本地 L-SQL 过不了就停） ｜ —（本地分支停在 04edaa3） ｜ f20f44c ｜ 本地 L-SQL ｜ lsql-20261114T021033Z、021312Z、021553Z（L89） ｜ 181 / 181 回放，三次都停在夹具设置：owner_id、tgenabled、Storage 的 objects.version 缺失；行为用例 0、有效红测 0、绿测 0；没有迁移、没有 PR，客户端没放开 ｜ — ｜ 全部 ｜ D-49 前置 ｜ D-46.5
+D-46.5 ｜ 通过 ｜ 412e14d（本地 local/d46-final-integration-20261114，不推送）；传播 571be45（#375）、2e0f582（#374） ｜ 45add2a ｜ pw1.65（集成）、pw1.60（传播） ｜ check-20261114T023656Z、025250Z、025755Z、030753Z：typecheck test h5 mpci migrations smoke（12 份） npmaudit（L90） ｜ #374 2e0f582 先合 #373（无冲突）再合 #372（四个冲突按 ④ 的规则手工合）；2248 / 2247 / 0 / 1，pg_skips=0；smoke 204 passed；npm audit 只剩 vite moderate；五个 PR 合上后主包 1,374,461（余 198,403，≥ 64 KiB）；提交的树与检查时一致 ｜ —（不推送） ｜ 集成结果的 CI、真机 ｜ — ｜ D-46.6
+D-46.6 ｜ 通过（DoD ④ 等 Eric promote） ｜ 15aa47e（local/brand7-20261113）→ 材料分支 779c07f ｜ 39a052c ｜ pw1.65 Chromium、Vercel CLI 65.15.0 ｜ verify.js、浏览器检查、vercel inspect（只读）、vercel deploy（预览）、curl（L91） ｜ 新 verify.js 在 bd397ce 的原型上第 1 条就失败，当前 20 个路由状态 271 条断言通过；真实浏览器里 121 / 2001 字被截到 120 / 2000，绕过 maxlength 后提交被拦（「标题最多 120 字」「正文最多 2000 字」），正好 120 / 2000 能发；88 组 overflow 0、<12px 0、axe 对比度 0、页面错误 0；16 张截图逐张看过；四个旧名（Illini Market、Illini 集市、校园广场、Campus Plaza）和「示例」在产品文件里 0 处；预览 dpl_3bG2SKTAmQsa7jEmScy2cHHpnk1y curl 200，生产 CSP 下 Chromium 渲染无报错、无 CSP 违规；生产仍是旧版（grep 玉米地 0），回退用的 production id dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6 ｜ — ｜ promote 后的生产 curl ｜ E12 ｜ D-47.7
+D-47.7 ｜ 通过 ｜ —（只改 PR 文案） ｜ 779c07f ｜ GitHub REST ｜ gh api PATCH（L92） ｜ #369、#374、#375、#370 描述按各自最终 head 重写，包名加反引号；四个仍是草稿；D-49 没开 PR，没有描述可写 ｜ — ｜ 无 ｜ — ｜ —（D-50：本轮结束）
 ```
 
 ### D-49（单独一节）
@@ -350,6 +356,7 @@ D-49 是 Eric 在 D-48 两条路里定的「先在服务端拦住写入，再放
 |---|---|
 | L63 | #374 合入 #369 b7bcf3a 与 #375（补记，第三批没有编号） |
 | L65 | gh pr edit 报错，改用 REST PATCH；run-checks 加 mpci 步骤量主包 |
+| L71（更正，L74–L76） | 3f 当时只核了 posts、post_comments、items、messages 四个 BEFORE INSERT 触发器，就当作服务端已拦住受限账号写入；而 520e55a 放开的是整个 app。前提不成立，D-48 第 1 项撤回全局放行（4a44a41） |
 | L72 | 第 3 项按分支三路并行（#375 上 3a；#369 上 3b → 3f；#374 上 3d → 3c → 3e）；第 4、6 项在第 3 项做完前开工 |
 | L73 | 第 4 项用同路径分包，哪些页面留在主包及理由；legal 正文没挪（会让 #372 的品牌名边界测试失败） |
 | L79 | D-48 第 3 项合并后按 D-48 写的顺序接 D-47 第 2–5 项；同一分支同一时间只有主会话推送 |
@@ -367,7 +374,7 @@ D-49 是 Eric 在 D-48 两条路里定的「先在服务端拦住写入，再放
 | 要 Eric 做的一件事 | 解锁 |
 |---|---|
 | 合并顺序：#371 → #373；#369 → #375 → #374；#372 最后手工合。合 #369 之前先在生产应用 20261112120000 并跑 VERIFY（合 #369 就是发布生产）。删 #369 的分支之前，先把 #374、#375 的 base 都改成 main | 全部代码 PR 上线 |
-| #372 手工合并规则（本地试合按这套规则做过，见 ② D-46.5）：`api/share-post.js` 保留 #369 P2.9 的话题标题逻辑，只取 #372 的「玉米地 · 社区」品牌字串；`en.ts`、`zh.ts` 的 `app.*` 取 #372（含 `app.formerly`），`suspended.sub` 保留 #369 P2.2 的「回复 / reply」措辞，`suspended.subPerma` 取 #372 的品牌名；`app/src/pages/plaza/index.vue` 保留 #374 删掉「关注的人」名单（SPEC §6.2），丢掉 #372 在那段名单里的徽章改动 | 品牌上线 |
+| #372 手工合并规则（本地试合按这套规则做过，见 ② D-46.5）：`api/share-post.js` 保留 #369 P2.9 的话题标题逻辑（topicTitle / headline），兜底的标题和描述都取 #372：无帖时标题「玉米地 · 社区」，帖子没有正文时描述「A post on Cornfield」，无帖时描述「Chinese community in Illinois, now open in Champaign-Urbana. 伊利诺伊华人论坛，现开放香槟地区。」（412e14d 就是这样合的）；`en.ts`、`zh.ts` 的 `app.*` 取 #372（含 `app.formerly`），`suspended.sub` 保留 #369 P2.2 的「回复 / reply」措辞，`suspended.subPerma` 取 #372 的品牌名；`app/src/pages/plaza/index.vue` 保留 #374 删掉「关注的人」名单（SPEC §6.2），丢掉 #372 在那段名单里的徽章改动 | 品牌上线 |
 | D-49 以后若恢复：先定本地 Storage `objects.version` 怎么补（改 LOCAL_BOOTSTRAP 要授权），以及 #371 的 PG helper 怎么进 D-49 的验证基线；之后才能做有效基线、一个新迁移和全等级回归。上线时生产先应用新迁移、VERIFY 通过，前端才能合 | L2–L4 浏览、提示条、受限提示与不显示重试 |
 | post/index.vue 第 314 行的「没发出去，点击重试」（`v-if="replyFailed"`）在 `replyRestricted` 的 v-if / v-else 外面，受限用户会同时看到受限提示和重试；它和聊天的「不显示点击重试」都属于 D-49 第 4 项客户端，本轮随 D-49 停下没做。现在 L2–L5 进不了话题页，只有门禁刷新之前就停在页面上的会话会碰到 | 受限回帖的界面 |
 | Eric 本人重新登录 anthropic-subscription 的 default、account-2、account-3（登录过期）；account-4 已到 60% 周上限，不再往它派活 | 恢复 Claude 号池 |
@@ -394,7 +401,7 @@ D-49 是 Eric 在 D-48 两条路里定的「先在服务端拦住写入，再放
 ### ⑥ 未测项与风险
 
 - 并发更正：D-46 3c / D-47 第 3 项只把首页限制在 6 个，不是整个 app 限制在 6 个。inbox 和 notifications 各可有 2 个，稳态共 10 个，onShow 读资料时可到 11 个；第三批 ⑥ 里「首页一次并发 9 个……超过 10 个上限」的说法现在只对 H5 首发成立。新版基础库排队不代表旧版也安全，见 ④。
-- #370 的 CI 又红了六次：43493142000、43495796397、43501071827、43503851223、43525055626 是 Build H5 和 public sweep 在 ubuntu-26.04 上装不上 Playwright 1.60（日志「Cannot install dependencies for ubuntu26.04-x64」），和 main 是同一个基础设施问题；43509639602 除了这两处安装失败，Boundary regressions 还多一条失败：`scripts/ci-first-release-supervised-host.test.mjs:133`「unknown connector response retains intent and never automatically repeats dispatch」报 unhandledRejection `supervised_operation_timeout`（1989 / 1987 / 1 / 1）。像是时序不稳的测试，原因没查清，不归作环境问题（证据 `~/work/evidence/CI/supervisor-six-runs-20261113.md`）。之后 45add2a 上的 run 43547172052 也红，失败的同样是 Build H5「Install browsers for compiled admin acceptance」和 public sweep「Install Playwright (webkit + chromium)」两步，Boundary success（只看了 Actions 的步骤结论，没读原始日志）。
+- #370 的 CI 又红了六次：43493142000、43495796397、43501071827、43503851223、43525055626 是 Build H5 和 public sweep 在 ubuntu-26.04 上装不上 Playwright 1.60（日志「Cannot install dependencies for ubuntu26.04-x64」），和 main 是同一个基础设施问题；43509639602 除了这两处安装失败，Boundary regressions 还多一条失败：`scripts/ci-first-release-supervised-host.test.mjs:133`「unknown connector response retains intent and never automatically repeats dispatch」报 unhandledRejection `supervised_operation_timeout`（1989 / 1987 / 1 / 1）。像是时序不稳的测试，原因没查清，不归作环境问题（证据 `~/work/evidence/CI/supervisor-six-runs-20261113.md`）。另外 43528915421（c4557c0）、43538315477（ed26304）、43542174637（abbd6b0）、43543108152（f20f44c）、43552639055（82b4ccf）也是同样两步装不上浏览器（D-51 第 2 项 d 补，gh 实查失败步骤）：f43bdd1 以后 #370 每次跑完的 run 都是这一失败，43509639602 另有 Boundary 那一处。之后 45add2a 上的 run 43547172052 也红，失败的同样是 Build H5「Install browsers for compiled admin acceptance」和 public sweep「Install Playwright (webkit + chromium)」两步，Boundary success（只看了 Actions 的步骤结论，没读原始日志）。
 - #369 最新 run 43539761691：4 个 success，public sweep 在浏览器启动前的 schema 预检失败（staging 没应用 20261112120000，等 E4）。#375、#374 的 base 不是 main，不触发 CI，只有本地结果。
 - 受限账号：D-49 没交付，L2–L4 现在仍和 L5 一样进 pages/suspended，看不到社区；服务端对 L2–L4 的写入仍然不拦（门禁只在客户端）。本地只有 Node 与 mock 测试，真实受限账号要 E3。
 - 入站提示的改动只在 mock 的页面栈上验证；真机上的原生弹层和提示到达时机没测。
@@ -404,7 +411,7 @@ D-49 是 Eric 在 D-48 两条路里定的「先在服务端拦住写入，再放
 
 ### ⑦ 下一批
 
-按 D-50 第 2 项，本批交付后 OMO 停下等下一条指示，不从 BACKLOG 往下接任务。下面只列下一批可做的事，不代表 OMO 会自己开始：
+按 D-50 第 6 项，本批交付后 OMO 停下等下一条指示，不从 BACKLOG 往下接任务。下面只列下一批可做的事，不代表 OMO 会自己开始：
 
 1. Eric：生产应用 20261112120000 并跑 VERIFY，P2.13 通过后按 ④ 的顺序合 PR；E3 / E4 解锁 P2.6、P2.11、P2.13 和真实账号验证。
 2. Eric：重新登录 Claude 号池；定 D-49 的本地前置（Storage 列、PG helper）是否授权，授权后 D-49 从有效基线重新开始。
