@@ -8,6 +8,7 @@
 #   IMAGE=... forces an image (default: picked from @playwright/test in app/package-lock.json).
 set -uo pipefail
 ENVDIR=$HOME/work/illini-dev-env
+PROBES_DIR=${PROBES_DIR:-$ENVDIR/probes}
 
 gate() {  # $1 = node --test output; prints the TEST line; succeeds only for fail 0, skipped 1, no PostgreSQL/initdb skip
   local tests pass fail skipped pgskip
@@ -72,12 +73,12 @@ while [ $# -gt 0 ]; do
   if [ "$s" = probe ]; then
     f=${1:-}; shift || true; label=probe-${f%%.*}
     ENVF=$HOME/.config/illini/staging.env
-    if [ -z "$f" ] || [ ! -f "$ENVDIR/probes/$f" ] || [ "$(stat -c %a "$ENVF" 2>/dev/null)" != 600 ] \
+    if [ -z "$f" ] || [ ! -f "$PROBES_DIR/$f" ] || [ "$(stat -c %a "$ENVF" 2>/dev/null)" != 600 ] \
        || grep -qE 'service_role|sb_secret|lfhvgprfphyfvhidegum|wslzeqhipvibeflmxznh' "$ENVF"; then
       echo "STEP $label rc=3 probe-file-or-staging.env-check-failed" | tee -a "$LOG"; overall=1; continue
     fi
     install -d "${EV:-$HOME/work/evidence/misc}"
-    EXTRA=(-v "$ENVDIR/probes:$REPO/app/.probes:ro" -v "$ENVF:/run/illini/staging.env:ro"
+    EXTRA=(-v "$PROBES_DIR:$REPO/app/.probes:ro" -v "$ENVF:/run/illini/staging.env:ro"
            -v "$HOME/work/evidence:$HOME/work/evidence" -e "PROBE_FILE=$f" -e "EV=${EV:-$HOME/work/evidence/misc}")
   fi
   if [ -z "${CMD[$s]+x}" ]; then echo "STEP $s rc=2 unknown-step" | tee -a "$LOG"; overall=1; continue; fi

@@ -1935,3 +1935,55 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: —
 - 下一条: C-final（子任务 st_01a1f85a）
 - 附: supervisor 2026-11-20 把 #372 squash 进 main 37789526983b71d2ac154961cb4c7bd92104ce70，这就是准备发布的 main 提交。C-final 照 D-54 第 5 项与 D-53 第 10 项 c–f：先拿锁、确认没有 run-checks 在跑，再改 run-checks.sh 的 PROBES_DIR（.before-* 备份，写新文件再 mv）；建 probes-home/（13 个文件，只有 account-switch.spec.ts 不同，适配只改进广场那一步）；detached worktree ~/work/confirm-final-3778952；证据 ~/work/evidence/D53/staging/confirm-final/P1.11、P1.12，residuals.json 从 confirm-369/P1.12 复制；顺序 restriction-state → consent-login → account-switch → p1-cleanup，同一把锁。staging 两条迁移都已应用并 VERIFY；A、B、C 有人受限就停、交 Eric；P0001 就【跳过】交 supervisor；第 8 项 b 清单命中就【跳过】（应用缺陷）。这是发布前最后一道门，跑完立刻在 STATUS_LOG 记结果，supervisor 看到就发布或停下。C-final 优先于第 2 项的容器步骤，P3、P4 的门禁让一让，不停掉正在写文件的任务。[OMO自决] 为了让结果立刻可见，C-final 期间 STATUS_LOG 由 C-final 子任务直接追加并推送（只提交 STATUS_LOG 与 appendix/env 的两个归档文件），主会话那段时间不写材料分支；P3、P4 子任务正在跑的容器步骤跑完，但在 C-final 结束之前不再起新的容器步骤。
+
+### L152 · 2026-11-20 11:48 CT · C-final 第 1 次开跑前：候选字节、适配差异、执行门与假设
+- task_id: C-final/P1.11、C-final/P1.12（D-54.5，attempt=cfinal-1）
+- code_sha: 37789526983b71d2ac154961cb4c7bd92104ce70（fetch 后 origin/main 相同；detached worktree confirm-final-3778952）
+- docs_sha: e160de8c7c8b5e57024b11c660f1fe80e3756c5d（已 pull --ff-only，初始材料工作区干净）
+- 环境: 隔离环境 S-1；候选 lockfile 的 Playwright 1.65，镜像 localhost/illini-dev:pw1.65-node22-pg17；staging 两条迁移已应用并 VERIFY，依据 L151 的 supervisor 通知，不由本任务操作迁移
+- 命令: 原子替换执行器只在 .containers.lock 内且 pgrep 的 run-checks.sh 匹配为空时备份 .before-UTC、单独写新文件并 mv；遇现有任务就释放锁等待，不杀任务。然后复制完整 probes/ 为 probes-home/，只换指定的 account-switch 广场入口，正式副本逐项匹配下列 14 个哈希后才允许开跑。所有容器在 `umask 022; flock ~/work/illini-dev-env/.containers.lock` 内，PROBES_DIR 指向 probes-home；每个容器前核 HEAD、干净树、磁盘至少 50G、自检。新 worktree 先 install，探针顺序 restriction-state → consent-login → account-switch → p1-cleanup，最后清理使用 P1.12 子目录。
+- 计数: 内容检查 CommunityHome.vue 加 class="ch-more" 成立，必须适配；worktree mode=755。原 probes/ 全部 13 文件已取哈希，L133 的冻结文件和另记的 restriction-state 都相同。下列 14 个目标哈希已从完整源文件与独立候选文件计算，正式副本开跑前必须逐项相同；没有改 shared probes/。当前已有任务仍在使用锁，尚未运行本轮验收。初始 CI 查询：run 44783052160 在同一 SHA 上 in_progress，4 个 success、2 个进行中，尚未观察到 failure；按本次指示记录但不等 CI。
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44783052160
+- 未测项: A/B/C 是否受限待只读检查，任一为真即停交 Eric。写入 P0001 记 action 与时间后【跳过】交 supervisor、不重跑；D-53 第 8 项 b (1)–(6) 命中即【跳过】（应用缺陷）、不重跑；其余最多 cfinal-2、cfinal-3，只能改环境且每次先写假设，probes-home 字节冻结。P1.12 副本保留 3a480e58-fd78-43dc-9d74-1cb91e64471b、cd44b8ea-49b7-424d-a5ed-f467efb8e556、86cec6b2-3391-448f-879a-2c9e34c4dd66，均在会话 158773c0-56c1-4568-bc25-831b3b7db9ed；没有删除入口的旧对象继续保留。
+- 下一条: 等现有任务结束后完成原子替换、复制、公开扫描与归档，再执行 cfinal-1；结果立即追加并只提交指定三个材料路径、推送，推送之后才创建 CFINAL_DONE。
+- 附: STOP-14 假设：main 含社区首页，B 的无标题对照帖需先经「全部」入口；只增加这一段导航，不改变隔离计数、正对照、缓存窗口、reload、作者按钮或删帖后的无查询串 URL 断言。run-checks 原 sha256=45e9733314a2f86573e7d5a56528d05f96c9ca785a3f946667d0c069844d28a0，新候选 sha256=36a984b94ab1306ad2e9ff950769039442bb4cf0b73b96b7710d06f005e1a6c6；差异仅新增 `PROBES_DIR=${PROBES_DIR:-$ENVDIR/probes}`，存在检查改用 `$PROBES_DIR/$f`，只读挂载源改用 `$PROBES_DIR`。account-switch 原 sha256=e0a883990ff4bd71db2bead30e86a3fbbce9809a3da655c47607162f91ba2884，新候选 sha256=c85868aefe26f5f34e246ef1e152a16299c3d63dbfdfe23cb4ecc89be1fbc612；统一差异仅在原 plaza URL 断言后增加 8 行：等待 `.ch-more, .ch-state[role=alert]` 第一项可见；alert 则 phase=community_home_failed 并失败，否则点 .ch-more，再断言 `?view=all`，之后仍找原 B 对照帖。完整统一差异保存在 EV 的 run-checks.diff、account-switch.diff；归档前必须扫描非示例邮箱、token/密钥、工作站绝对路径。head 的 scripts/verify-public-read-schema.mjs sha256=aba3d199bf58e34dce52853917db3715ae758984f71bf2691652ccfd4afe984a。本次适配包 14 个哈希单列，不替代或改写 L133：
+  - `probe-in-container.sh`：70564aa1f12c7aaf2ed998d14b267d501971e042cd3257bb42d4a979d04044d3
+  - `probes-home/account-switch.spec.ts`：c85868aefe26f5f34e246ef1e152a16299c3d63dbfdfe23cb4ecc89be1fbc612
+  - `probes-home/ci-count-filter.py`：ddd4258f2cc666205a39a3cf8a362ce0297f8ceab633b82f2315275860f7c1b6
+  - `probes-home/consent-login.spec.ts`：0dfd63ad0004bf8a96364d6b22b7a89bf278cab0f166ea2743750545cca15020
+  - `probes-home/p1-cleanup.spec.ts`：a906622454fc9429f42adf51b54dc328510024b844197f7b493dfb6b9fe270a7
+  - `probes-home/p2-authz-matrix.mjs`：7033792de3e4f6463de8958a79e730a5bc77871673d2e63391529b89010e8a45
+  - `probes-home/p2-cleanup-a.mjs`：55d2264b4f669744ddb19dd4ba00727b868e00136d5b7c45caffde98d876a8f9
+  - `probes-home/p2-cleanup.spec.ts`：67094aabca3d6ddf54cfbeb45d2ca4cb822bd94801c1a770eb559d07ec59bee1
+  - `probes-home/playwright.probe.config.ts`：207f95f707fa300f85883b3419d61c2fc3b496a208886dccd8557270f27182c5
+  - `probes-home/probe-data.mjs`：b9170e66ffe302d5b5ac66c881deb4d354d94368df30df9209405c0b28dff79a
+  - `probes-home/probe-ui.ts`：458c9f4afdbdbdc3d82221fa9b7c01090572bff4971cc0bfb6516c31fa3acd01
+  - `probes-home/restriction-state.mjs`：3d2d76704904576bed6bc3b3458b2250e40a4aba850be225527ee0eba34ae783
+  - `probes-home/schema-only.mjs`：97cbb8dba474a2671fe4d35c8450b739360b70efcfbd9c44f360679908a67469
+  - `probes-home/selfcheck.sh`：1c6a000ef04971879205bbf81b2b5e3d1d7e4ac1b3db0c2d75916213d21ebd8f
+
+### L153 · 2026-11-20 12:00 CT · C-final 第 1 次通过；立即发布候选验收结果
+- task_id: C-final/P1.11、C-final/P1.12（D-54.5，attempt=cfinal-1）
+- code_sha: 37789526983b71d2ac154961cb4c7bd92104ce70（各容器前锁内核对相同，detached worktree mode=755）
+- docs_sha: e160de8c7c8b5e57024b11c660f1fe80e3756c5d（本条提交之前的材料 HEAD）
+- 环境: 隔离环境 S-1；localhost/illini-dev:pw1.65-node22-pg17；PROBES_DIR 指向独立 probes-home
+- 命令: 原有任务结束后，锁内 pgrep 无匹配，备份为 run-checks.sh.before-20261120T175638Z，再复制独立候选到新文件、校验语法并 mv；随后完整复制 13 文件、校验 14 个目标哈希、公开扫描并归档。全部容器经 `umask 022; flock ~/work/illini-dev-env/.containers.lock bash ~/work/evidence/D53/staging/confirm-final/run-attempt.sh cfinal-1`，顺序 install、restriction-state、consent-login、account-switch、p1-cleanup。原始日志：check-20261120T175651Z-probe-restriction-state.log、175655Z-probe-consent-login.log、175728Z-probe-account-switch.log、175755Z-probe-p1-cleanup.log。外层日志分别在 confirm-final/P1.11/restriction-cfinal-1.log、P1.11/cfinal-1.log、P1.12/cfinal-1.log、P1.12/cleanup-cfinal-1.log。
+- 计数: A/B/C restricted 全 false。P1.11 3 passed / 0 failed，三账号 consentCurrent=true、already_recorded，3 张截图通过 ensureScreenshotSafe。P1.12 1 passed / 0 failed：已点社区首页 .ch-more 并核 ?view=all；control_A inspect/observer innerText、textContent 都为 1/1，observer 回调 16；缓存窗口 4296ms；B 五次 inspect 四项泄漏全 0、身份全为 B，广场/帖子前后正对照均通过；pre_reload 52 次、post_reload 17 次回调，两段四项泄漏最大值全 0；普通 page.reload（WebKit）后帖子卡、作者按钮、身份与计数均通过。最后 p1-cleanup 1 passed，B 对照帖已在验收中正常删除，清理库存 0、最终 SELECT 200 / 0 行，UI/SDK B logout 均 204。全轮 16 次 /logout 全 204（UI 6、SDK 10，含 restriction-state 的 SDK 3 次），新会话残留 0。四个探针前磁盘均 229G，自检均 600 / 0 / 1 / 精确八变量，所有探针前的五个 schema/RPC 检查均 200。CI run 44783052160 已 completed/success，精确同一 SHA，7 个 job 全 success，0 fail / 0 pending；未等待 CI 才开跑。
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44783052160
+- 未测项: 无【跳过】、无 P0001、无 D-53.8b (1)–(6) 命中、无失败 phase，community_home_failed 未出现；cfinal-2、cfinal-3 未用。无正常删除入口的 C 私信累加为四条：3a480e58-fd78-43dc-9d74-1cb91e64471b、cd44b8ea-49b7-424d-a5ed-f467efb8e556、86cec6b2-3391-448f-879a-2c9e34c4dd66、本次 138586e2-0a98-47c3-b4b0-822e4c2fbba3，均在会话 158773c0-56c1-4568-bc25-831b3b7db9ed。旧 P2.11 已售商品 8aca057d-6617-4dac-9819-2572dbb65977、报价 6973bda3-06ef-4c71-9e8c-509cae9e5d5f、会话 47b757ec-053b-40c6-81a9-586e291426a9、45afcc07-8b1a-4b71-a4de-0d6fd02639e6 原样保留；本轮不操作这些旧对象。历史会话未做全局撤销。
+- 下一条: 按本次授权立即 pull --ff-only，只暂存并提交本日志、appendix/env/probes-home/account-switch.spec.ts、appendix/env/run-checks.sh，推送 codex/community-plan-v5；成功后才创建 CFINAL_DONE。本轮未改应用代码、未开 PR、未合并。
+- 附: 原子替换实际旧 sha256=45e9733314a2f86573e7d5a56528d05f96c9ca785a3f946667d0c069844d28a0，新 sha256=36a984b94ab1306ad2e9ff950769039442bb4cf0b73b96b7710d06f005e1a6c6，差异恰为 PROBES_DIR 默认值、文件存在检查、只读挂载源三处。account-switch 统一差异仅广场入口增加 8 行，旧 e0a883990ff4bd71db2bead30e86a3fbbce9809a3da655c47607162f91ba2884 → 新 c85868aefe26f5f34e246ef1e152a16299c3d63dbfdfe23cb4ecc89be1fbc612；删帖后的 URL 断言未改。运行后 shared probes/ 的 13 文件全部未变、适配包 14 文件与开跑清单全部相同；appendix/env/probes/ 未改。两份归档复制前扫描非示例邮箱、token/密钥、工作站绝对路径均 0。head 的 scripts/verify-public-read-schema.mjs sha256=aba3d199bf58e34dce52853917db3715ae758984f71bf2691652ccfd4afe984a。实际运行的 14 个 sha256（独立于 L133 冻结包）：
+  - `probe-in-container.sh`：70564aa1f12c7aaf2ed998d14b267d501971e042cd3257bb42d4a979d04044d3
+  - `probes-home/account-switch.spec.ts`：c85868aefe26f5f34e246ef1e152a16299c3d63dbfdfe23cb4ecc89be1fbc612
+  - `probes-home/ci-count-filter.py`：ddd4258f2cc666205a39a3cf8a362ce0297f8ceab633b82f2315275860f7c1b6
+  - `probes-home/consent-login.spec.ts`：0dfd63ad0004bf8a96364d6b22b7a89bf278cab0f166ea2743750545cca15020
+  - `probes-home/p1-cleanup.spec.ts`：a906622454fc9429f42adf51b54dc328510024b844197f7b493dfb6b9fe270a7
+  - `probes-home/p2-authz-matrix.mjs`：7033792de3e4f6463de8958a79e730a5bc77871673d2e63391529b89010e8a45
+  - `probes-home/p2-cleanup-a.mjs`：55d2264b4f669744ddb19dd4ba00727b868e00136d5b7c45caffde98d876a8f9
+  - `probes-home/p2-cleanup.spec.ts`：67094aabca3d6ddf54cfbeb45d2ca4cb822bd94801c1a770eb559d07ec59bee1
+  - `probes-home/playwright.probe.config.ts`：207f95f707fa300f85883b3419d61c2fc3b496a208886dccd8557270f27182c5
+  - `probes-home/probe-data.mjs`：b9170e66ffe302d5b5ac66c881deb4d354d94368df30df9209405c0b28dff79a
+  - `probes-home/probe-ui.ts`：458c9f4afdbdbdc3d82221fa9b7c01090572bff4971cc0bfb6516c31fa3acd01
+  - `probes-home/restriction-state.mjs`：3d2d76704904576bed6bc3b3458b2250e40a4aba850be225527ee0eba34ae783
+  - `probes-home/schema-only.mjs`：97cbb8dba474a2671fe4d35c8450b739360b70efcfbd9c44f360679908a67469
+  - `probes-home/selfcheck.sh`：1c6a000ef04971879205bbf81b2b5e3d1d7e4ac1b3db0c2d75916213d21ebd8f
