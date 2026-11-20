@@ -20,7 +20,7 @@
 | 项 | 约定 |
 |---|---|
 | 共用 | tony-ws 与 Tony、danny 共用。只动 `/home/guoyi` 下的文件，不碰别人的进程、容器和文件，不用 sudo |
-| umask | 022，写在 .bashrc 末行。新建 worktree 或文件前，`umask` 要输出 `0022`。目录组可写会让测试失败，2026-11-12 首轮 14 个失败里有一类就是这个原因 |
+| umask | 022，写在 .bashrc 末行。新建 worktree 或文件前，`umask` 要输出 `0022`。目录组可写会让测试失败，2026-11-12 首轮 14 个失败里有一类就是这个原因。非交互 shell 不读 .bashrc 的末行，子任务和 run-checks 拿不到这个 umask：新建 worktree、跑 run-checks 之前在同一条命令里先 `umask 022`，再用 `stat -c %a <worktree>` 核是 755（D-54 第 2 项 p，gates:P3-P4-m1、m2） |
 | 时区 | 系统时区是 UTC。run-checks 的日志和 `$EV` 下的证据文件名用 UTC 时刻（BACKLOG §0.2 的 `$TS`）；`.before-*` 备份文件的后缀用 CT 日期 `$D`；STATUS 和 STATUS_LOG 里的时间一律写 CT：`TZ=America/Chicago date '+%Y-%m-%d %H:%M CT'` |
 | PATH | .bashrc 把 `~/.local/opt/node/bin`（Node 22.23.5、npm、vercel）和 `~/.local/bin`（omo）加进 PATH，只有交互 shell 生效。2026-11-12 实测 `ssh tony-ws node -v` 报 command not found；从 Mac 单跑一条命令要写成 `ssh tony-ws "bash -ic 'node -v'"` |
 | 宿主机 PostgreSQL | 只有 18（/usr/lib/postgresql/18），没有 17。SQL 测试只在容器里跑；宿主机上不设 PG_BIN_DIR，也不把它指向 18 |

@@ -1827,3 +1827,39 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 见第七批 ⑥
 - 下一条: —（按 D-53 第 6 项停下，等下一条指示）
 - 附: —
+
+### L143 · 2026-11-20 10:29 CT · [supervisor 指示] D-54 第八批开工：新目标、续跑提醒
+- task_id: D-54.6（开工）
+- code_sha: —
+- docs_sha: 9a6f3a4（本次写回之前材料分支的 HEAD）
+- 环境: 真人
+- 命令: 读 DECISIONS D-54（第 479–562 行）与 RUNBOOK §12 第 9c 条；只读看了本机 ~/omo-ctl/review-b7-findings.md 的编号（内容不进仓库）；create_goal（范围 D-54 第 0–5 项，完成线 FINAL「第八批（D-54）」与 STATUS 同一提交推送）；schedule_prompt list（没有任务）后 create 3600 秒续跑提醒 sch_3f821ab3ab68
+- 计数: 目标 1 个；续跑提醒 1 个；核查清单 report:FINAL 4 M + 13 m、mig:P3 2 M + 11 m、client:P3 6 M + 17 m、mig:P4 3 M + 10 m、client:P4 1 M + 14 m、gates:P3-P4 3 m
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-54 第 1、2 项
+- 附: supervisor 已独立核完第七批；带 M 的必须修，带 m 的修或在 STATUS_LOG 写明不修的理由。2c（通知开关）、2e（作者看不到下架理由原文）、2m（成员活动 30 天上限）是 supervisor 代定，写进第八批 ⑧；mig:P3-m4、client:P3-m4 是政策问题，不改代码，进 ④。第 3、4、5 项等 supervisor 通知（#377 合进 main 后发 H 与 S；#372 合进 main 后发 main SHA）；通知之前不往 #377、#372 的分支推送，P3、P4 的 PR base 不动。容器一次只跑一个，同一把锁；新建 worktree 与跑 run-checks 之前先 umask 022。推送 FINAL 第八批之后再结束目标、取消提醒、追加一条 STATUS_LOG（report:FINAL-m12 指出 L142 在推送前就写成已做，这次不再这样）。
+
+### L144 · 2026-11-20 10:29 CT · 撤销冻结：20261120100354_community_watch_save_activity（D-54 第 2 项 a）
+- task_id: D-54.2a（P3.1）
+- code_sha: codex/community-p3-20261120 4e0ba6e（#379，草稿）
+- docs_sha: 9a6f3a4（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: —（只记录；按 BACKLOG §14 第 12 行的格式，Eric 留言由 Eric 2026-11-20 03:17 CT 的总批准代替，OMO 不等 PR 留言、不代 Eric 留言）
+- 计数: 旧 sha256 9e0a044dad8bd31ae7b314aee7cbe513880d10e9f08f1883fc7eb1f37b913622 作废（L140 与 FINAL 第七批里的这个值不改，新值只写进第八批）
+- ci_run_url: —
+- 未测项: —
+- 下一条: P3 迁移按 2c、2d、2e、2f 与要改迁移的 mig:P3-m 项修改，L-SQL 回放后重新冻结
+- 附: 原因：supervisor 第七批核查的 mig:P3-M1（迁移一应用，旧客户端和摘要邮件会显示通知的原始键）、mig:P3-M2（通知不看读权限）、client:P3-M1（作者看得到下架理由原文）、client:P3-M2（回复通知发错人）都要改这个迁移。例外的条件：这个迁移不在 staging、生产的账本里（supervisor 约 16:10Z 只读核过：生产 146 行、staging 199 行都没有它）；OMO 不连托管库，照用这次核查。任一进了账本，例外立即失效，改走前向修复迁移。STATUS 的 P3.1 在重新冻结之前写「重开（D-54 2a）」。
+
+### L145 · 2026-11-20 10:29 CT · 撤销冻结：20261120122054_community_events（D-54 第 2 项 a）
+- task_id: D-54.2a（P4.2）
+- code_sha: codex/community-events-20261120 b9fd8ee（#380，草稿）
+- docs_sha: 9a6f3a4（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: —（只记录，同 L144）
+- 计数: 旧 sha256 6fcddd0e81985979843aa80eb0c828d953f232e2c2c19e972c6ca03b3fc2d993 作废（L140 与 FINAL 第七批不改）
+- ci_run_url: —
+- 未测项: —
+- 下一条: P3 重新冻结之后：P4 merge P3 新 head、重算钉的 md5，再做 2k–2m 与 mig:P4-m，L-SQL 回放后重新冻结
+- 附: 原因：mig:P4-M1（活动 location、status_note 不过审核）、mig:P4-M2（迁移一应用成员活动写入就开了）、mig:P4-M3（ends_at 没有上限、可早于开始）要改这个迁移；P4 的迁移还钉着 P3 函数体的 md5，P3 改了以后必须重算。条件同 L144（不在任何托管库账本里）。STATUS 的 P4.2 在重新冻结之前写「重开（D-54 2a）」。
