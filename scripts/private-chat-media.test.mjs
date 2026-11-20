@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-const bin=['/opt/homebrew/opt/postgresql@17/bin','/usr/lib/postgresql/17/bin'].find(p=>existsSync(join(p,'initdb')))
+import { postgresBinDir } from './_postgres-bin.mjs'
+const bin=postgresBinDir()
 const migration=readFileSync(new URL('../supabase/migrations/20260916192738_private_conversation_media.sql',import.meta.url),'utf8')
 const buyer='11111111-1111-4111-8111-111111111111',seller='22222222-2222-4222-8222-222222222222',stranger='33333333-3333-4333-8333-333333333333',conv='44444444-4444-4444-8444-444444444444',msg='55555555-5555-4555-8555-555555555555'
 const path=`items/${buyer}/${conv}/${msg}.jpg`

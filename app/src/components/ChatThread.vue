@@ -2610,8 +2610,8 @@ function scrollToBottom() {
 .reply-ctx {
   display: flex; align-items: center; gap: 10px;
   padding: 8px 14px;
-  background: rgba(199,74,47,0.08);
-  border-top: 0.5px solid rgba(199,74,47,0.15);
+  background: rgba(185,69,44,0.08);
+  border-top: 0.5px solid rgba(185,69,44,0.15);
   max-width: 480px; margin: 0 auto;
   width: 100%; box-sizing: border-box;
 }
@@ -2627,7 +2627,7 @@ function scrollToBottom() {
   width: 22px; height: 22px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; flex-shrink: 0;
-  &:active { background: rgba(199,74,47,0.15); }
+  &:active { background: rgba(185,69,44,0.15); }
 }
 
 .suggest-row {

@@ -1,11 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {execFileSync} from 'node:child_process'
-import {existsSync,mkdtempSync,readFileSync,rmSync} from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
+import { postgresBinDir } from './_postgres-bin.mjs'
 const read=p=>readFileSync(new URL(p,import.meta.url),'utf8')
-const bin=['/opt/homebrew/opt/postgresql@17/bin','/usr/lib/postgresql/17/bin'].find(p=>existsSync(join(p,'initdb')))
+const bin=postgresBinDir()
 test('street receipts and public English use actual SQL: no client forgery, replay, stale source or private queue access',{skip:!bin&&'PostgreSQL17 unavailable'},()=>{
  const dir=mkdtempSync(join(tmpdir(),'street-public-')),data=join(dir,'data'),port=String(50000+Math.floor(Math.random()*10000))
  const run=(n,args,input)=>execFileSync(join(bin,n),args,{input,encoding:'utf8',stdio:['pipe','pipe','pipe'],timeout:60000})
