@@ -3,27 +3,40 @@
 -- one migration, so the read functions P3.5's console and P3.6's views need
 -- are here as well. Everything is additive.
 --
--- Release order: apply this and pass VERIFY before the client or the Edge API
--- that uses it is deployed. What is already deployed keeps working:
+-- Release order (D-54 2c):
+--   1. PRECHECK, this migration, VERIFY. The two new reply notices are behind
+--      private.community_reply_notice_config, which this migration creates
+--      switched off, so applying it writes no notification that an installed
+--      client or the digest job cannot read.
+--   2. Deploy the P3 Edge API and the P3 H5 client and release the P3 Mini
+--      Program. They read the comment_reply and followed_post_reply keys and
+--      keep both out of the digest mail.
+--   3. Only then turn the switch on, on staging and on production separately.
+--      That is a write to a hosted database: the release owner does it, or
+--      somebody the release owner approves by name for this step. The
+--      statement and the checks are in RUNBOOK.md, "Reply notice switch".
+-- What is already deployed keeps working from step 1 on:
 --   * old clients ignore the new columns and get two more fields from the
---     search function;
+--     search function. A search sorted by 'hot' returns only topics from the
+--     last 14 days from step 1 on; the hot list of a client from before P3
+--     has no such limit until step 2;
 --   * the Edge API in production compares the capability list from
 --     admin_token_authorization_v2 with its own, exactly. That projection is
 --     frozen to the vocabulary it has always reported, so the five new
 --     actions do not lock every administrator out until the new API ships;
---   * a reply to a reply now writes one more notification row. An old client
---     shows its title translated and its body key as written until it is
---     refreshed, and the old digest job would mail that key. Deploy the API
---     right after this migration.
+--   * while the switch is off a reply writes the one post_comment notice to
+--     the topic author that it always has, and nothing else.
 --
 -- D-49 classification of the new write paths:
 --   post_bookmarks  a save. Only its owner reads it and nobody is notified,
 --                   so a restricted account (level 2-5) keeps it, as it keeps
 --                   favorites.
 --   post_follows    a watch. Private to its owner and notifies nobody: kept.
---   Nothing else here is client-writable. A reply is still refused by
---   public.trg_enforce_actor, which fires before the new lock rule, and the
---   five administrator actions run only through the service-role dispatcher.
+--   Nothing else here is client-writable, except that a member writing a
+--   reply may name the reply it answers (post_comments.reply_to_comment_id,
+--   INSERT only). A reply is still refused by public.trg_enforce_actor, which
+--   fires before the new lock rule and the reply target check, and the five
+--   administrator actions run only through the service-role dispatcher.
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '60s';
@@ -47,6 +60,7 @@ BEGIN
     ('public.admin_list_moderation_audit_log(integer,integer,text)', '2e788091d546d9fc34c908c3d7951d94'),
     ('private.enqueue_activity_notification(uuid,uuid,text,text,text,uuid,text)', 'fdb7928eb1930389cdd68173ea7f55eb'),
     ('moderation_private.profile_content_visible(uuid)', 'a41223ba4e42754a12eec610e9ab03cf'),
+    ('moderation_private.current_profile_state(uuid)', '9c0b020a7ecdaa83372062a1cc85edc6'),
     ('private.current_user_can_access_pair(uuid,uuid)', '3602822522f16a11d5b110fe20c63dc6'),
     ('public.admin_assert_mutation_capability(uuid,text)', '51c79ee5189f512333e2e8a3e4b47ba0'),
     ('public.record_audit(text,uuid,uuid,jsonb)', '38cb635c4cf81051966bc563ebf6142d'),
@@ -92,6 +106,12 @@ BEGIN
   END LOOP;
 END
 $guard$;
+
+-- Take the two busiest locks first, in the order a reply takes them: the
+-- reply, then its topic through the counter trigger. Taking them in the order
+-- the statements below need them (topics first) could deadlock with a reply
+-- that is in flight; this way the migration waits for it, up to lock_timeout.
+LOCK TABLE public.post_comments, public.posts IN ACCESS EXCLUSIVE MODE;
 
 -- ---------------------------------------------------------------------------
 -- P3.1  Watching and saving a topic
@@ -185,7 +205,11 @@ ALTER TABLE public.posts
 
 -- A topic was last active at its latest visible reply, and was answered at
 -- the first visible reply from somebody other than its author. One statement,
--- so every row and its triggers are touched once.
+-- so every row and its triggers are touched once. The BEFORE UPDATE row
+-- triggers that fire for it are the three without a column list (PRECHECK
+-- pins the set): authoritative_public_write_boundary and
+-- guard_moderation_status look only at columns this leaves alone, and
+-- set_posts_updated_at moves updated_at, as it does for every reply and like.
 UPDATE public.posts AS post
    SET last_activity_at = greatest(post.created_at, coalesce(activity.latest_reply_at, post.created_at)),
        answered_at = activity.first_answer_at
@@ -266,21 +290,86 @@ $function$;
 REVOKE ALL ON FUNCTION private.reject_reply_to_locked_post()
   FROM PUBLIC, anon, authenticated, service_role;
 
--- The name sorts right after enforce_actor_post_comments, so a restricted
--- account is told about its restriction first (D-49), and before the
--- moderation, serialization and rate-limit triggers, so a refused reply costs
--- none of them.
+-- BEFORE INSERT row triggers fire in name order.
+-- authoritative_public_write_boundary comes first, so a reply that is too
+-- long is refused for its size even on a closed topic. This one sorts right
+-- after enforce_actor_post_comments, so a restricted account is told about
+-- its restriction before the lock (D-49), and before the moderation,
+-- serialization and rate-limit triggers, so a reply refused here costs none
+-- of those.
 CREATE TRIGGER enforce_locked_post_reply
   BEFORE INSERT ON public.post_comments
   FOR EACH ROW EXECUTE FUNCTION private.reject_reply_to_locked_post();
 
+-- P3.3 (D-54 2f): the reply a member is answering. A thread is one level deep
+-- (parent_comment_id names the reply the thread hangs under), so an answer to
+-- a reply inside a thread needs its own pointer for the notice to reach the
+-- right person. It must be a visible reply of the same thread in the same
+-- topic. One that was taken down or removed since the page was loaded costs
+-- the member nothing: the reply is stored without it and the thread's first
+-- author is the person answered. A reply nobody can read is treated as gone
+-- wherever it is, so the answer does not say where it was.
+ALTER TABLE public.post_comments
+  ADD COLUMN reply_to_comment_id uuid
+    REFERENCES public.post_comments(id) ON DELETE SET NULL;
+-- Removing a reply clears the pointers to it; without this that scans the table.
+CREATE INDEX post_comments_reply_to_comment_id_idx
+  ON public.post_comments (reply_to_comment_id)
+  WHERE reply_to_comment_id IS NOT NULL;
+-- Set once, when the reply is written. No SELECT or UPDATE grant: the client
+-- has no use for reading it back, and the restricted-account guard of
+-- 20261114015420 still names every column a client can change.
+GRANT INSERT (reply_to_comment_id) ON TABLE public.post_comments TO authenticated;
+
+CREATE FUNCTION private.validate_comment_reply_target()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $function$
+DECLARE
+  target_post uuid;
+  target_thread uuid;
+BEGIN
+  IF NEW.reply_to_comment_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT target.post_id, coalesce(target.parent_comment_id, target.id)
+    INTO target_post, target_thread
+    FROM public.post_comments AS target
+   WHERE target.id = NEW.reply_to_comment_id
+     AND target.status = 'active';
+  IF NOT FOUND THEN
+    NEW.reply_to_comment_id := NULL;
+    RETURN NEW;
+  END IF;
+
+  IF target_post IS DISTINCT FROM NEW.post_id
+     OR target_thread IS DISTINCT FROM NEW.parent_comment_id THEN
+    RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'comment_reply_target_invalid';
+  END IF;
+  RETURN NEW;
+END
+$function$;
+
+REVOKE ALL ON FUNCTION private.validate_comment_reply_target()
+  FROM PUBLIC, anon, authenticated, service_role;
+
+-- Sorts right after the lock refusal: a restricted account is still told
+-- about its restriction first (D-49) and a closed topic second.
+CREATE TRIGGER enforce_reply_target
+  BEFORE INSERT ON public.post_comments
+  FOR EACH ROW EXECUTE FUNCTION private.validate_comment_reply_target();
+
 -- ---------------------------------------------------------------------------
 -- P3.3  Reply notifications
 -- ---------------------------------------------------------------------------
--- One reply reaches each person once. The topic author keeps the existing
--- post_comment notice (public.notify_post_comment, unchanged). The author of
--- the reply that was answered gets comment_reply. Everybody else who watches
--- the topic gets followed_post_reply, the first 500 by watch time. The type,
+-- One reply reaches each person once, in this order (SPEC 6.8). The topic
+-- author keeps the existing post_comment notice (public.notify_post_comment,
+-- unchanged). The author of the reply that was answered gets comment_reply.
+-- Everybody else who watches the topic gets followed_post_reply, the first
+-- 500 by watch time. Nobody is told about a topic they cannot open. The type,
 -- the fixed title and the '<key>:<post id>' body follow 20260903070000, and
 -- private.enqueue_activity_notification keeps owning the three rules: never
 -- yourself, never across a block, never the same event twice.
@@ -289,6 +378,20 @@ CREATE TRIGGER enforce_locked_post_reply
 -- the same created_at. The client relies on that to find the reply a notice
 -- is about (topic and instant); notifications has no column for it and its
 -- column grant is pinned.
+
+-- The release switch for the two new notices (D-54 2c). A client from before
+-- P3 shows a body key it does not know as it is written, and the digest job
+-- from before P3 would mail it, so the notices stay off until both have been
+-- replaced. One row; only the owner of the table reads or changes it.
+CREATE TABLE private.community_reply_notice_config (
+  singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
+  enabled boolean NOT NULL DEFAULT false
+);
+INSERT INTO private.community_reply_notice_config DEFAULT VALUES;
+ALTER TABLE private.community_reply_notice_config ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE private.community_reply_notice_config
+  FROM PUBLIC, anon, authenticated, service_role;
+
 CREATE FUNCTION private.notify_topic_reply()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -298,8 +401,16 @@ AS $function$
 DECLARE
   post_author uuid;
   post_status text;
-  parent_author uuid;
+  answered_author uuid;
 BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+      FROM private.community_reply_notice_config AS release_switch
+     WHERE release_switch.enabled
+  ) THEN
+    RETURN NULL;
+  END IF;
+
   IF NEW.status IS DISTINCT FROM 'active' THEN
     RETURN NULL;
   END IF;
@@ -312,18 +423,31 @@ BEGIN
     RETURN NULL;
   END IF;
 
+  -- A notice follows the right to read. An author under an active level 3+
+  -- restriction is hidden from everyone else (the read policy on posts), and
+  -- the people told here are never the author, so nobody is told.
+  IF (
+    SELECT author_state.shadow_banned
+      FROM moderation_private.current_profile_state(post_author) AS author_state
+  ) THEN
+    RETURN NULL;
+  END IF;
+
   IF NEW.parent_comment_id IS NOT NULL THEN
-    SELECT parent.user_id
-      INTO parent_author
-      FROM public.post_comments AS parent
-     WHERE parent.id = NEW.parent_comment_id
-       AND parent.post_id = NEW.post_id
-       AND parent.status = 'active';
+    -- The reply that was answered: the one the member named, which
+    -- private.validate_comment_reply_target checked when this row was
+    -- written, or else the reply the thread hangs under.
+    SELECT answered.user_id
+      INTO answered_author
+      FROM public.post_comments AS answered
+     WHERE answered.id = coalesce(NEW.reply_to_comment_id, NEW.parent_comment_id)
+       AND answered.post_id = NEW.post_id
+       AND answered.status = 'active';
 
     -- The topic author already has post_comment for this reply.
-    IF parent_author IS NOT NULL AND parent_author IS DISTINCT FROM post_author THEN
+    IF answered_author IS NOT NULL AND answered_author IS DISTINCT FROM post_author THEN
       PERFORM private.enqueue_activity_notification(
-        parent_author,
+        answered_author,
         NEW.user_id,
         'post_comment',
         '收到新评论 · New comment',
@@ -334,7 +458,9 @@ BEGIN
     END IF;
   END IF;
 
-  -- Blocked pairs are left out before the cap, so they do not use up places.
+  -- A watcher with a block to or from the person who replied, or to or from
+  -- the topic author (the pair the watch rule refuses), is left out before
+  -- the cap, so they do not use up places.
   PERFORM private.enqueue_activity_notification(
     watcher.user_id,
     NEW.user_id,
@@ -350,12 +476,14 @@ BEGIN
      WHERE follow.post_id = NEW.post_id
        AND follow.user_id <> NEW.user_id
        AND follow.user_id IS DISTINCT FROM post_author
-       AND follow.user_id IS DISTINCT FROM parent_author
+       AND follow.user_id IS DISTINCT FROM answered_author
        AND NOT EXISTS (
          SELECT 1
            FROM public.blocks AS block_relation
-          WHERE (block_relation.blocker_id = follow.user_id AND block_relation.blocked_id = NEW.user_id)
-             OR (block_relation.blocker_id = NEW.user_id AND block_relation.blocked_id = follow.user_id)
+          WHERE (block_relation.blocker_id = follow.user_id
+                 AND block_relation.blocked_id IN (NEW.user_id, post_author))
+             OR (block_relation.blocked_id = follow.user_id
+                 AND block_relation.blocker_id IN (NEW.user_id, post_author))
        )
      ORDER BY follow.created_at, follow.user_id
      LIMIT 500
@@ -1475,17 +1603,18 @@ REVOKE ALL ON FUNCTION public.community_post_state(uuid)
 GRANT EXECUTE ON FUNCTION public.community_post_state(uuid)
   TO anon, authenticated;
 
--- The caller's own hidden topics: the text they wrote and the reason the
--- moderator recorded with the latest takedown. No images: they were moved out
--- of the public bucket when the topic was hidden.
+-- The caller's own hidden topics: the text they wrote and nothing else. No
+-- images: they were moved out of the public bucket when the topic was hidden.
+-- No reason either (D-54 2e): what a moderator typed for the takedown is an
+-- internal audit note that may name the reporter, so this function does not
+-- read the audit log at all.
 CREATE FUNCTION public.list_own_hidden_posts(post_id_in uuid DEFAULT NULL)
 RETURNS TABLE (
   id uuid,
   title text,
   category text,
   content text,
-  created_at timestamptz,
-  hidden_reason text
+  created_at timestamptz
 )
 LANGUAGE sql
 STABLE
@@ -1498,16 +1627,7 @@ AS $function$
     post.title,
     post.category,
     post.content,
-    post.created_at,
-    (
-      SELECT audit.details ->> 'reason'
-        FROM public.admin_audit_log AS audit
-       WHERE audit.event_kind = 'content_takedown'
-         AND audit.target_id = post.id
-         AND audit.details ->> 'target_type' = 'post'
-       ORDER BY audit.created_at DESC, audit.id DESC
-       LIMIT 1
-    )
+    post.created_at
   FROM public.posts AS post
   WHERE post.user_id = (SELECT auth.uid())
     AND post.status = 'hidden'
@@ -1548,7 +1668,11 @@ COMMENT ON FUNCTION public.admin_list_report_queue(integer, integer) IS
 COMMENT ON FUNCTION public.community_post_state(uuid) IS
   'active, hidden or missing for one topic, so a page can tell a hidden topic from a deleted one without reading it.';
 COMMENT ON FUNCTION public.list_own_hidden_posts(uuid) IS
-  'The caller''s own hidden topics with the moderator''s reason. Row security on posts is unchanged.';
+  'The caller''s own hidden topics: their own text and nothing from the audit log. Row security on posts is unchanged.';
+COMMENT ON TABLE private.community_reply_notice_config IS
+  'Release switch for the comment_reply and followed_post_reply notices (private.notify_topic_reply). Off until the P3 clients and API are released; see RUNBOOK.md, "Reply notice switch".';
+COMMENT ON COLUMN public.post_comments.reply_to_comment_id IS
+  'The reply this one answers, when the member named one: a visible reply of the same thread (private.validate_comment_reply_target). Its author gets the comment_reply notice.';
 
 NOTIFY pgrst, 'reload schema';
 COMMIT;

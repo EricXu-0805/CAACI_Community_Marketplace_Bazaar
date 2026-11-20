@@ -69,6 +69,7 @@ export const DISPATCHER = 'public.admin_execute_mutation(text,uuid,text,text,jso
 export const PREDECESSOR = 'public.admin_execute_mutation_pre_community_governance(text,uuid,text,text,jsonb)'
 export const HELPERS = [
   'private.enqueue_activity_notification(uuid,uuid,text,text,text,uuid,text)',
+  'moderation_private.current_profile_state(uuid)',
   'moderation_private.profile_content_visible(uuid)',
   'private.current_user_can_access_pair(uuid,uuid)',
   'public.admin_assert_mutation_capability(uuid,text)',
@@ -78,6 +79,7 @@ export const HELPERS = [
 ]
 export const CREATED = [
   'private.reject_reply_to_locked_post()',
+  'private.validate_comment_reply_target()',
   'private.notify_topic_reply()',
   'public.admin_execute_community_governance(text,uuid,text,text,jsonb)',
   'public.admin_list_community_posts(integer,integer,text)',

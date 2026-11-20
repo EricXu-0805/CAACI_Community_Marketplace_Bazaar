@@ -22,6 +22,7 @@ explicit pre-conditions, an "if it goes wrong" exit.
 | Privileged Supabase key leaked | [Privileged key incident / rotation](#privileged-supabase-key-incident--rotation) |
 | New admin needs access | [Admin token mint](#admin-token-mint) |
 | Need to ship a hotfix to prod fast | [Hotfix deploy](#hotfix-deploy) |
+| Community P3 is released; reply notices are still off | [Reply notice switch](#reply-notice-switch) |
 
 ## Common emergencies
 
@@ -570,6 +571,86 @@ in that script for why and for when the exemption should be removed.
 
 It compares existence, not shape: an object that exists but whose body, columns
 or grants have drifted still reads as present.
+
+## Reply notice switch
+
+> When: migration `20261120100354_community_watch_save_activity` has been
+> applied and the community P3 release has reached users. Staging and
+> production are switched separately.
+
+The migration adds two in-app notices: `comment_reply:<post id>` (somebody
+answered your reply) and `followed_post_reply:<post id>` (a new reply in a topic
+you watch). A client from before P3 does not know either key and shows it as it
+is stored, and the digest job from before P3 would mail it. So the migration
+ships them **switched off**: `private.community_reply_notice_config` holds one
+row with `enabled = false`, and `private.notify_topic_reply()` writes nothing
+while it is off. The notice a topic's author has always had (`post_comment`) is
+not behind the switch.
+
+Turning the switch on is a write to a hosted database. The release owner does
+it, or somebody the release owner approves by name for this step. Nobody else,
+and no script.
+
+**Before turning it on, all of these hold for the database in question:**
+
+1. `supabase/_ops/VERIFY_20261120100354_community_watch_save_activity.sql`
+   passes. Its notice line reads `community_reply_notice_switch|enabled=f`.
+2. The H5 deployment that reads this database is the P3 release or later. The
+   same deployment carries `api/notification-digest.js`, which keeps both keys
+   out of the digest mail.
+3. The P3 Mini Program version is released, and the release owner has decided
+   what happens to Mini Program versions from before P3 that are still
+   installed. An older version shows the raw key for every notice written after
+   the switch is on.
+
+**Turn it on** (SQL editor of the target project, as `postgres`):
+
+```sql
+-- Before: one row, off.
+SELECT singleton, enabled FROM private.community_reply_notice_config;
+
+UPDATE private.community_reply_notice_config
+   SET enabled = true
+ WHERE singleton
+RETURNING enabled;          -- one row: true
+```
+
+**Check it:**
+
+```sql
+-- One row, on.
+SELECT count(*) AS switch_rows, bool_and(enabled) AS enabled
+  FROM private.community_reply_notice_config;
+
+-- Still closed to every API role (all three false).
+SELECT has_table_privilege('anon', 'private.community_reply_notice_config', 'SELECT') AS anon_reads,
+       has_table_privilege('authenticated', 'private.community_reply_notice_config', 'SELECT') AS member_reads,
+       has_table_privilege('service_role', 'private.community_reply_notice_config', 'UPDATE') AS service_writes;
+
+-- After the next digest run: none of the new notices was mailed (0).
+SELECT count(*)
+  FROM public.notifications
+ WHERE (body LIKE 'comment_reply:%' OR body LIKE 'followed_post_reply:%')
+   AND emailed_at IS NOT NULL;
+```
+
+Then, in the app, with accounts made for testing: one posts a topic, a second
+watches it, a third replies. The second account's notification list shows one
+line that names the topic. A line that reads `followed_post_reply:` followed by
+an id means the client in front of you is from before P3: turn the switch off.
+
+Record the time for each database where the release is tracked. VERIFY can be
+run again afterwards; it reports the switch and does not judge it.
+
+**If it goes wrong**, turn it off. New replies stop producing the two notices at
+once; rows already written stay where they are.
+
+```sql
+UPDATE private.community_reply_notice_config
+   SET enabled = false
+ WHERE singleton
+RETURNING enabled;          -- one row: false
+```
 
 ## Hotfix deploy
 
