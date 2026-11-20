@@ -9,9 +9,10 @@ import {
  * The throwaway PostgreSQL 17 cluster of the P3 tests, with the P3 migration
  * applied, plus what the events migration reads from the rest of the chain:
  * the D-49 posting assertion and the generic updated_at trigger function, both
- * as their real stored text, and stand-ins for the two topic triggers a retry
- * meets (the per-author lock and the repeated-text limit). The whole events
- * migration then runs on top. The full-chain behaviour is
+ * as their real stored text, the keyword filter's assertion as its real stored
+ * text over a stand-in word list, and stand-ins for the two topic triggers a
+ * retry meets (the per-author lock and the repeated-text limit). The whole
+ * events migration then runs on top. The full-chain behaviour is
  * REGRESSION_20261120122054 under L-SQL.
  */
 export const MIGRATION = '20261120122054_community_events.sql'
@@ -41,16 +42,33 @@ export const READ = [
   'moderation_private.assert_posting_allowed(uuid)',
   'public.update_updated_at()',
   'public.trg_enforce_actor()',
+  'private.assert_moderated_text(text,text)',
 ]
 export const CREATED = [
   'private.community_events_schedule_change()',
   'private.community_events_member_guard()',
+  'private.community_events_moderate_text()',
   'private.community_events_post_link()',
   'private.community_events_follow_topic()',
   'public.create_member_event(uuid,text,text,jsonb)',
   'public.list_community_events(text,text,text,integer)',
   'public.admin_execute_community_events(text,uuid,text,text,jsonb)',
 ]
+
+// The one word the stand-in keyword filter refuses.
+export const BLOCKED_WORD = 'fixtureblockedword'
+
+// The three grants that open the member write channel. The events migration withholds them (D-54 2l); the
+// migration of P4.6 makes them. A test that writes as a member makes them inside its own transaction, which
+// rolls back or takes them back before it commits, so the database is never left with the channel open.
+const CHANNEL = [
+  'EXECUTE ON FUNCTION public.create_member_event(uuid, text, text, jsonb)',
+  `INSERT (source_type, source_key, organizer_user_id, discussion_post_id, starts_at, ends_at, location, registration_mode)
+    ON TABLE public.community_events`,
+  'UPDATE (cancelled_at, status_note) ON TABLE public.community_events',
+]
+export const OPEN_CHANNEL = CHANNEL.map(grant => `GRANT ${grant} TO authenticated;`).join(' ')
+export const CLOSE_CHANNEL = CHANNEL.map(grant => `REVOKE ${grant} FROM authenticated;`).join(' ')
 
 // The three shapes an organization's row may have, as their writers will produce them.
 export const organizationRows = `
@@ -70,8 +88,9 @@ export const organizationRows = `
   INSERT INTO public.community_events (id, source_type, source_key, partner_id, consent_ref, title, summary, starts_at, page_url, registration_mode)
   VALUES ('${EVENT_REVOKED}', 'partner', 'old-club|https://old.example.test/meet', '${PARTNER_REVOKED}', 'CONSENT-002', '旧活动', 'Old meetup.',
     now() + interval '4 days', 'https://old.example.test/meet', 'info_only');
-  INSERT INTO public.community_events (id, source_type, source_key, title, starts_at, page_url, registration_mode, availability)
-  VALUES ('${EVENT_UNAVAILABLE}', 'caaci', '${id(9002)}', '已撤下', now() + interval '5 days', 'https://caaciorg.com/events/#gone', 'info_only', 'unavailable');`
+  INSERT INTO public.community_events (id, source_type, source_key, title, starts_at, page_url, registration_mode, availability, missing_checks, missing_since)
+  VALUES ('${EVENT_UNAVAILABLE}', 'caaci', '${id(9002)}', '已撤下', now() + interval '5 days', 'https://caaciorg.com/events/#gone', 'info_only', 'unavailable',
+    2, now() - interval '1 day');`
 
 /** @param {{ migrate?: boolean }} options */
 export function startEventsDatabase({ migrate = true } = {}) {
@@ -80,7 +99,12 @@ export function startEventsDatabase({ migrate = true } = {}) {
   try {
     db.sql(functionSql(readMigration('20261114015420_restricted_account_writes.sql'), 'moderation_private.assert_posting_allowed'))
     db.sql(functionSql(readMigration('001_initial_schema.sql'), 'update_updated_at'))
-    db.sql(`ALTER FUNCTION public.update_updated_at() SET search_path = public;
+    // The keyword filter: the assertion a topic's title passes, as stored, over a stand-in list of one word.
+    db.sql(`CREATE FUNCTION public.content_moderation_check(raw text) RETURNS text LANGUAGE sql STABLE AS
+      $$ SELECT CASE WHEN lower(raw) LIKE '%${BLOCKED_WORD}%' THEN 'sensitive_word' END $$;`)
+    db.sql(functionSql(readMigration('20260718230000_authoritative_public_write_resource_boundaries.sql'), 'private.assert_moderated_text'))
+    db.sql(`REVOKE ALL ON FUNCTION private.assert_moderated_text(text, text) FROM PUBLIC;
+      ALTER FUNCTION public.update_updated_at() SET search_path = public;
       REVOKE ALL ON FUNCTION moderation_private.assert_posting_allowed(uuid) FROM PUBLIC, anon, authenticated, service_role;
       INSERT INTO public.profiles (id, nickname, is_illini_verified) VALUES
         ('${MEMBER_A}', 'Member A', true), ('${MEMBER_B}', 'Member B', true),
@@ -112,18 +136,38 @@ export function startEventsDatabase({ migrate = true } = {}) {
   }
 
   // One member event through the function. Each topic id gets its own text, as two different events would.
-  const eventJson = (starts = "now() + interval '2 days'", location = 'ARC court 3') =>
-    `jsonb_build_object('starts_at', ${starts}, 'location', '${location}')`
-  const createEvent = (uid, postId, { title = 'Badminton on Saturday', content = `Three of us, three more welcome (${postId.slice(-4)}).`, starts, location } = {}) =>
-    `SELECT public.create_member_event('${postId}', '${title}', '${content}', ${eventJson(starts, location)})`
+  const eventJson = (starts = "now() + interval '2 days'", location = 'ARC court 3', ends = null) =>
+    `jsonb_build_object('starts_at', ${starts}, 'location', '${location}'${ends ? `, 'ends_at', ${ends}` : ''})`
+  const createEvent = (uid, postId, { title = 'Badminton on Saturday', content = `Three of us, three more welcome (${postId.slice(-4)}).`, starts, location, ends } = {}) =>
+    `SELECT public.create_member_event('${postId}', '${title}', '${content}', ${eventJson(starts, location, ends)})`
+
+  // One rolled-back attempt. A signed-in member's is made with the write channel open, unless channel is false:
+  // the grants are made in the transaction the attempt runs in, and go with it.
+  const attempt = (action, { role = 'authenticated', uid = MEMBER_A, ask = false, channel = role === 'authenticated' } = {}) => channel
+    ? db.sql(`BEGIN; ${OPEN_CHANNEL} SELECT harness.attempt('${role}', '${uid}', $attempt$${action}$attempt$, ${ask}); ROLLBACK;`)
+    : db.attempt(action, { role, uid, ask })
+  // A committed statement. A signed-in member's is made with the write channel open for that transaction only:
+  // the grants are taken back before it commits, and what the statement wrote stays.
+  const as = (input, role = 'authenticated', uid = MEMBER_A, { channel = role === 'authenticated' } = {}) => channel
+    ? db.sql(`BEGIN; ${OPEN_CHANNEL} SET LOCAL ROLE ${role}; SET LOCAL request.jwt.claim.sub = '${uid}'; ${input}; RESET ROLE; ${CLOSE_CHANNEL} COMMIT;`)
+    : db.as(input, role, uid)
 
   // Statements on separate real connections at once; each resolves to its last output line, or 'refused:<message>'.
   const connection = db.sql("SELECT current_setting('unix_socket_directories') || ' ' || current_setting('port')").split(' ')
   const run = promisify(execFile)
-  const together = (statements, { role = 'service_role', uid = '' } = {}) => Promise.all(statements.map(statement => run(join(bin, 'psql'),
-    ['-X', '-h', connection[0], '-p', connection[1], '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-qtA',
-      '-c', `BEGIN; SET LOCAL ROLE ${role}; SET LOCAL request.jwt.claim.sub = '${uid}'; ${statement}; COMMIT;`])
-    .then(result => result.stdout.trim().split('\n').pop(), error => `refused:${/ERROR:\s+(.*)/.exec(String(error.stderr))?.[1] || 'unknown'}`)))
+  // Two connections cannot both see a grant that is never committed. So when members write at once, and only
+  // then, the channel is opened for the length of the call and closed again whatever the outcome.
+  const together = async (statements, { role = 'service_role', uid = '' } = {}) => {
+    if (role === 'authenticated') db.sql(OPEN_CHANNEL)
+    try {
+      return await Promise.all(statements.map(statement => run(join(bin, 'psql'),
+        ['-X', '-h', connection[0], '-p', connection[1], '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-qtA',
+          '-c', `BEGIN; SET LOCAL ROLE ${role}; SET LOCAL request.jwt.claim.sub = '${uid}'; ${statement}; COMMIT;`])
+        .then(result => result.stdout.trim().split('\n').pop(), error => `refused:${/ERROR:\s+(.*)/.exec(String(error.stderr))?.[1] || 'unknown'}`)))
+    } finally {
+      if (role === 'authenticated') db.sql(CLOSE_CHANNEL)
+    }
+  }
 
-  return { ...db, readBefore, createEvent, together }
+  return { ...db, readBefore, createEvent, together, attempt, as }
 }

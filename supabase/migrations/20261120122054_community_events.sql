@@ -3,15 +3,23 @@
 -- Events from four sources live in one table: caaci, partner, campus and
 -- member. Each source has its own way in. Everything is additive.
 --
--- Release order: apply this and pass VERIFY before the client or the Edge API
--- that uses it is deployed. What is already deployed keeps working: nothing
+-- Release order: after 20261120100354 (P3) has been applied and verified, run
+-- PRECHECK, this migration and VERIFY, and only then deploy the Edge API and
+-- the clients that use it. What is already deployed keeps working: nothing
 -- existing changes shape, and admin_token_authorization(_v2) keep reporting
 -- the vocabulary they always have, so the three new administrator actions do
--- not lock anyone out before the new API ships.
+-- not lock anyone out before the new API ships. Applying this migration opens
+-- no client write: see "member" below.
 --
 -- Who writes what:
---   member   only public.create_member_event, which writes the topic and the
---            event in one transaction; the guard refuses a direct insert.
+--   member   nobody yet (D-54 2l). public.create_member_event writes the
+--            topic and the event in one transaction and the guard refuses a
+--            direct insert, but this migration grants no role EXECUTE on the
+--            function and no client INSERT or UPDATE on the table. The three
+--            grants that open the member write channel belong to the
+--            migration of P4.6, whose conditions (the report rota of D-28
+--            and the client-side review of what a member writes) are not met
+--            yet. VERIFY asserts that the channel is closed.
 --   caaci, campus, partner
 --            no client or service write is granted here. Their writers (the
 --            CAACI sync, the campus import and the partner actions: P4.4,
@@ -32,6 +40,19 @@
 --   member_event_not_eligible therefore means only "campus email not
 --   verified". The aa_restricted_account_write trigger is not attached to the
 --   new table; the member guard calls the assertion itself.
+--
+-- Text other people read (D-54 2k): location and status_note pass the keyword
+-- filter a topic's title passes (private.assert_moderated_text), on insert
+-- and whenever they change, whatever the source. A writer whose row is
+-- refused (moderation_block:event_location or :event_status_note) has to
+-- leave that row out. A member's event may carry neither a link nor reserved
+-- wording ("官方", "official" and the like) in either field, on insert and on
+-- update, as in its topic's title.
+--
+-- Times (D-54 2m): starts_at and ends_at are instants, never 'infinity', and
+-- an event does not end before it starts (table constraint). A member's
+-- event also ends within 30 days of its start; that limit is on the member
+-- path only (create_member_event and the member guard).
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '60s';
@@ -53,7 +74,8 @@ BEGIN
     ('public.admin_moderation_reason_valid(text)', '3f75864d5dfc236033a8cd232238baf2'),
     ('moderation_private.profile_content_visible(uuid)', 'a41223ba4e42754a12eec610e9ab03cf'),
     ('moderation_private.assert_posting_allowed(uuid)', 'bce717345cade3cf4d4656b20d5ae2df'),
-    ('public.update_updated_at()', 'da5ac28a58c8b4bb30209bf0d3d7082c')
+    ('public.update_updated_at()', 'da5ac28a58c8b4bb30209bf0d3d7082c'),
+    ('private.assert_moderated_text(text,text)', 'bae3b8646a2fb7121a92f0ba17a90c1d')
     ) AS known(signature, body_md5)
   LOOP
     SELECT pg_catalog.md5(routine.prosrc) INTO stored
@@ -161,9 +183,15 @@ CREATE TABLE public.community_events (
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT community_events_region_check CHECK (region IN ('cu')),
   CONSTRAINT community_events_source_unique UNIQUE (source_type, source_key),
-  CONSTRAINT community_events_time_order_check CHECK (ends_at IS NULL OR ends_at >= starts_at),
+  -- Both ends of an event are instants: 'infinity' is not a time a page can show.
+  CONSTRAINT community_events_time_order_check CHECK (
+    isfinite(starts_at) AND (ends_at IS NULL OR (isfinite(ends_at) AND ends_at >= starts_at))),
   CONSTRAINT community_events_duplicate_check CHECK (duplicate_of IS NULL OR duplicate_of <> id),
   CONSTRAINT community_events_hidden_pair_check CHECK ((availability = 'hidden') = (hidden_reason IS NOT NULL)),
+  -- A row is withdrawn only on its source's own evidence: two checks in a row
+  -- that did not find it. unhide_event reads the same count to put back a
+  -- takedown's row where its source left it.
+  CONSTRAINT community_events_unavailable_check CHECK (availability <> 'unavailable' OR missing_checks >= 2),
   CONSTRAINT community_events_cancel_member_check CHECK (cancelled_at IS NULL OR source_type = 'member'),
   CONSTRAINT community_events_display_title_check CHECK (
     source_type = 'member' OR coalesce(title, '') <> '' OR coalesce(title_en, '') <> ''),
@@ -174,7 +202,7 @@ CREATE TABLE public.community_events (
     AND registration_mode IN ('caaci_site','info_only')
     AND partner_id IS NULL AND organizer_user_id IS NULL)),
   CONSTRAINT community_events_partner_shape CHECK (source_type <> 'partner' OR (
-    partner_id IS NOT NULL AND consent_ref IS NOT NULL
+    partner_id IS NOT NULL AND consent_ref IS NOT NULL AND consent_ref ~ '^[A-Za-z0-9-]{3,40}$'
     AND page_url ~ '^https://' AND (register_url IS NULL OR register_url ~ '^https://')
     AND registration_mode IN ('external_link','info_only')
     AND ((registration_mode = 'external_link') = (register_url IS NOT NULL))
@@ -233,11 +261,15 @@ GRANT SELECT (
 ) ON TABLE public.community_events TO anon, authenticated;
 
 -- Only visible rows are public. An organization's event needs its partner to
--- be active, and a member's event needs its organizer to be visible.
+-- be active, and a member's event needs its organizer to be visible. Readers
+-- get what the list can show: an event that ended more than 180 days ago is
+-- no longer served, so nobody's past places and times can be collected from
+-- the table.
 CREATE POLICY "Anyone can view visible events" ON public.community_events
   FOR SELECT TO anon, authenticated
   USING (
     availability = 'visible'
+    AND coalesce(ends_at, starts_at) >= pg_catalog.now() - interval '180 days'
     AND (partner_id IS NULL OR EXISTS (
       SELECT 1
         FROM public.community_event_partners AS partner
@@ -251,16 +283,21 @@ CREATE POLICY "Organizers can view own events" ON public.community_events
   FOR SELECT TO authenticated
   USING (organizer_user_id = (SELECT auth.uid()));
 
-GRANT INSERT (
-  source_type, source_key, organizer_user_id, discussion_post_id, starts_at, ends_at, location, registration_mode
-) ON TABLE public.community_events TO authenticated;
+-- The member write channel (P4.6). The two policies say what a member may
+-- write once it is open: an event of their own, and after that only its
+-- cancellation and a short note; time and place cannot be edited and there is
+-- no DELETE. Here they are inert, because this migration grants authenticated
+-- neither INSERT nor UPDATE on the table, nor EXECUTE on create_member_event
+-- below (D-54 2l). The migration that opens the channel grants authenticated
+-- exactly
+--   INSERT (source_type, source_key, organizer_user_id, discussion_post_id,
+--           starts_at, ends_at, location, registration_mode)
+--   UPDATE (cancelled_at, status_note)
+--   EXECUTE on public.create_member_event(uuid, text, text, jsonb)
 CREATE POLICY "Members can create own events" ON public.community_events
   FOR INSERT TO authenticated
   WITH CHECK (source_type = 'member' AND organizer_user_id = (SELECT auth.uid()));
 
--- An organizer may cancel and may leave a short note; time and place cannot
--- be edited. There is no DELETE.
-GRANT UPDATE (cancelled_at, status_note) ON TABLE public.community_events TO authenticated;
 CREATE POLICY "Organizers can cancel own events" ON public.community_events
   FOR UPDATE TO authenticated
   USING (source_type = 'member' AND organizer_user_id = (SELECT auth.uid()))
@@ -317,8 +354,11 @@ CREATE TRIGGER community_events_schedule_change
 -- Everything a member's event has to satisfy. An insert is only accepted for
 -- a topic the caller wrote in this same transaction, which a direct table
 -- write cannot arrange: a client has no INSERT privilege on posts.created_at.
--- An update is checked only when cancelled_at or status_note changes, so the
--- system's own updates (a deleted topic, a takedown) do not pass through here.
+-- Every rule of create_member_event is held here as well, the length of the
+-- title included, so a topic and its event written in one transaction some
+-- other way gain nothing over the function. An update is checked for what it
+-- changes (the cancellation, the note, the place, the times), so the system's
+-- own updates (a deleted topic, a takedown) pass through untouched.
 CREATE FUNCTION private.community_events_member_guard()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -328,6 +368,7 @@ AS $function$
 DECLARE
   link_pattern constant text :=
     '(https?://|www[.]|[a-z0-9-]+[.](com|net|org|edu|cn|io|me|ly|link)\y)';
+  reserved_pattern constant text := '(官方|主办|official|hosted by)';
   topic_author uuid;
   topic_status text;
   topic_category text;
@@ -335,76 +376,111 @@ DECLARE
   topic_title text;
   topic_content text;
   open_events integer;
+  -- What this write sets: an insert sets everything, an update what it changes.
+  sets_place boolean := true;
+  sets_note boolean := true;
+  sets_times boolean := true;
 BEGIN
   IF NEW.source_type <> 'member' THEN
     RETURN NEW;
   END IF;
 
   IF TG_OP = 'UPDATE' THEN
-    IF NEW.cancelled_at IS NOT DISTINCT FROM OLD.cancelled_at
-       AND NEW.status_note IS NOT DISTINCT FROM OLD.status_note THEN
-      RETURN NEW;
-    END IF;
+    sets_place := NEW.location IS DISTINCT FROM OLD.location;
+    sets_note := NEW.status_note IS DISTINCT FROM OLD.status_note;
+    sets_times := NEW.starts_at IS DISTINCT FROM OLD.starts_at
+      OR NEW.ends_at IS DISTINCT FROM OLD.ends_at;
     IF OLD.cancelled_at IS NOT NULL AND NEW.cancelled_at IS DISTINCT FROM OLD.cancelled_at THEN
       RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'member_event_cancel_final';
     END IF;
+    -- A cancellation is dated by the server, whatever instant the client sent:
+    -- the list reads "cancelled" and "over" from it.
+    IF OLD.cancelled_at IS NULL AND NEW.cancelled_at IS NOT NULL THEN
+      NEW.cancelled_at := pg_catalog.now();
+    END IF;
     -- D-49: a note is text other people read. Cancelling without one stays open.
-    IF NEW.status_note IS NOT NULL AND NEW.status_note IS DISTINCT FROM OLD.status_note THEN
+    IF sets_note AND NEW.status_note IS NOT NULL THEN
       PERFORM moderation_private.assert_posting_allowed(NEW.organizer_user_id);
     END IF;
-    RETURN NEW;
+  ELSE
+    SELECT post.user_id, post.status, post.category, post.created_at, post.title, post.content
+      INTO topic_author, topic_status, topic_category, topic_created_at, topic_title, topic_content
+      FROM public.posts AS post
+     WHERE post.id = NEW.discussion_post_id;
+    IF NOT FOUND
+       OR topic_author IS DISTINCT FROM (SELECT auth.uid())
+       OR topic_author IS DISTINCT FROM NEW.organizer_user_id
+       OR topic_status IS DISTINCT FROM 'active'
+       OR topic_category IS DISTINCT FROM 'events-social'
+       OR topic_created_at IS DISTINCT FROM pg_catalog.now()
+       OR NEW.source_key IS DISTINCT FROM NEW.discussion_post_id::text THEN
+      RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'member_event_rpc_required';
+    END IF;
+
+    -- D-49: other people see a member's event. The topic's own trigger refuses
+    -- a restricted account first; this holds the rule for the event itself.
+    PERFORM moderation_private.assert_posting_allowed(NEW.organizer_user_id);
+
+    IF NOT EXISTS (
+      SELECT 1
+        FROM public.profiles AS member
+       WHERE member.id = NEW.organizer_user_id
+         AND member.is_illini_verified
+    ) THEN
+      RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'member_event_not_eligible';
+    END IF;
+
+    -- The length create_member_event allows a title.
+    IF pg_catalog.char_length(topic_title) > 60 THEN
+      RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'member_event_title_too_long';
+    END IF;
+
+    IF NEW.starts_at <= pg_catalog.now()
+       OR NEW.starts_at > pg_catalog.now() + interval '60 days' THEN
+      RAISE EXCEPTION USING ERRCODE = '22008', MESSAGE = 'member_event_time_out_of_range';
+    END IF;
+
+    -- An event whose topic its author deleted is gone for good (the link is
+    -- cleared and nothing can restore it), so it holds no place.
+    SELECT pg_catalog.count(*) INTO open_events
+      FROM public.community_events AS event
+     WHERE event.source_type = 'member'
+       AND event.organizer_user_id = NEW.organizer_user_id
+       AND event.cancelled_at IS NULL
+       AND event.discussion_post_id IS NOT NULL
+       AND coalesce(event.ends_at, event.starts_at) >= pg_catalog.now();
+    IF open_events >= 2 THEN
+      RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'member_event_active_limit';
+    END IF;
+
+    IF topic_title ~* reserved_pattern THEN
+      RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'member_event_reserved_wording';
+    END IF;
+    IF coalesce(topic_title, '') ~* link_pattern
+       OR coalesce(topic_content, '') ~* link_pattern THEN
+      RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'member_event_link_not_allowed';
+    END IF;
   END IF;
 
-  SELECT post.user_id, post.status, post.category, post.created_at, post.title, post.content
-    INTO topic_author, topic_status, topic_category, topic_created_at, topic_title, topic_content
-    FROM public.posts AS post
-   WHERE post.id = NEW.discussion_post_id;
-  IF NOT FOUND
-     OR topic_author IS DISTINCT FROM (SELECT auth.uid())
-     OR topic_author IS DISTINCT FROM NEW.organizer_user_id
-     OR topic_status IS DISTINCT FROM 'active'
-     OR topic_category IS DISTINCT FROM 'events-social'
-     OR topic_created_at IS DISTINCT FROM pg_catalog.now()
-     OR NEW.source_key IS DISTINCT FROM NEW.discussion_post_id::text THEN
-    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'member_event_rpc_required';
+  -- An end is an instant, not before the start and within 30 days of it.
+  IF sets_times AND NEW.ends_at IS NOT NULL THEN
+    IF NOT pg_catalog.isfinite(NEW.starts_at) OR NOT pg_catalog.isfinite(NEW.ends_at)
+       OR NEW.ends_at < NEW.starts_at THEN
+      RAISE EXCEPTION USING ERRCODE = '22008', MESSAGE = 'member_event_time_out_of_range';
+    END IF;
+    IF NEW.ends_at - NEW.starts_at > interval '30 days' THEN
+      RAISE EXCEPTION USING ERRCODE = '22008', MESSAGE = 'member_event_time_out_of_range';
+    END IF;
   END IF;
 
-  -- D-49: other people see a member's event.
-  PERFORM moderation_private.assert_posting_allowed(NEW.organizer_user_id);
-
-  IF NOT EXISTS (
-    SELECT 1
-      FROM public.profiles AS member
-     WHERE member.id = NEW.organizer_user_id
-       AND member.is_illini_verified
-  ) THEN
-    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'member_event_not_eligible';
-  END IF;
-
-  IF NEW.starts_at <= pg_catalog.now()
-     OR NEW.starts_at > pg_catalog.now() + interval '60 days' THEN
-    RAISE EXCEPTION USING ERRCODE = '22008', MESSAGE = 'member_event_time_out_of_range';
-  END IF;
-
-  -- An event whose topic its author deleted is gone for good (the link is
-  -- cleared and nothing can restore it), so it holds no place.
-  SELECT pg_catalog.count(*) INTO open_events
-    FROM public.community_events AS event
-   WHERE event.source_type = 'member'
-     AND event.organizer_user_id = NEW.organizer_user_id
-     AND event.cancelled_at IS NULL
-     AND event.discussion_post_id IS NOT NULL
-     AND coalesce(event.ends_at, event.starts_at) >= pg_catalog.now();
-  IF open_events >= 2 THEN
-    RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'member_event_active_limit';
-  END IF;
-
-  IF topic_title ~* '(官方|主办|official|hosted by)' THEN
+  -- The place and the note are text other people read: no reserved wording
+  -- and no link, as in the topic's title.
+  IF (sets_place AND NEW.location ~* reserved_pattern)
+     OR (sets_note AND NEW.status_note ~* reserved_pattern) THEN
     RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'member_event_reserved_wording';
   END IF;
-  IF coalesce(topic_title, '') ~* link_pattern
-     OR coalesce(topic_content, '') ~* link_pattern
-     OR coalesce(NEW.location, '') ~* link_pattern THEN
+  IF (sets_place AND NEW.location ~* link_pattern)
+     OR (sets_note AND NEW.status_note ~* link_pattern) THEN
     RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'member_event_link_not_allowed';
   END IF;
 
@@ -418,6 +494,39 @@ REVOKE ALL ON FUNCTION private.community_events_member_guard()
 CREATE TRIGGER community_events_member_guard
   BEFORE INSERT OR UPDATE ON public.community_events
   FOR EACH ROW EXECUTE FUNCTION private.community_events_member_guard();
+
+-- The place and the note are free text every reader sees. They pass the
+-- keyword filter a topic's title passes, on insert and whenever they change,
+-- whatever the source of the row. The member guard above fires first, so a
+-- restricted member is told about the restriction and not about the text.
+CREATE FUNCTION private.community_events_moderate_text()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $function$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    PERFORM private.assert_moderated_text(NEW.location, 'event_location');
+    PERFORM private.assert_moderated_text(NEW.status_note, 'event_status_note');
+    RETURN NEW;
+  END IF;
+  IF NEW.location IS DISTINCT FROM OLD.location THEN
+    PERFORM private.assert_moderated_text(NEW.location, 'event_location');
+  END IF;
+  IF NEW.status_note IS DISTINCT FROM OLD.status_note THEN
+    PERFORM private.assert_moderated_text(NEW.status_note, 'event_status_note');
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION private.community_events_moderate_text()
+  FROM PUBLIC, anon, authenticated, service_role;
+
+CREATE TRIGGER community_events_moderate_text
+  BEFORE INSERT OR UPDATE OF location, status_note ON public.community_events
+  FOR EACH ROW EXECUTE FUNCTION private.community_events_moderate_text();
 
 -- A member's event lives with its topic. When the author deletes the topic
 -- the foreign key clears the link, and the event goes with it.
@@ -497,6 +606,8 @@ CREATE TRIGGER community_events_follow_topic
 -- end the same way, through the handler below.
 --
 --   event_in: {"starts_at": timestamptz, "ends_at": timestamptz|null, "location": text}
+-- Both times are instants; an end, when there is one, is not before the start
+-- and within 30 days of it.
 CREATE FUNCTION public.create_member_event(
   post_id_in uuid,
   title_in text,
@@ -535,8 +646,16 @@ BEGIN
   EXCEPTION WHEN others THEN
     RAISE EXCEPTION USING ERRCODE = '22008', MESSAGE = 'member_event_time_out_of_range';
   END;
-  IF starts_value IS NULL OR (ends_value IS NOT NULL AND ends_value < starts_value) THEN
+  IF starts_value IS NULL OR NOT pg_catalog.isfinite(starts_value) THEN
     RAISE EXCEPTION USING ERRCODE = '22008', MESSAGE = 'member_event_time_out_of_range';
+  END IF;
+  IF ends_value IS NOT NULL THEN
+    IF NOT pg_catalog.isfinite(ends_value) OR ends_value < starts_value THEN
+      RAISE EXCEPTION USING ERRCODE = '22008', MESSAGE = 'member_event_time_out_of_range';
+    END IF;
+    IF ends_value - starts_value > interval '30 days' THEN
+      RAISE EXCEPTION USING ERRCODE = '22008', MESSAGE = 'member_event_time_out_of_range';
+    END IF;
   END IF;
 
   SELECT event.id INTO event_id_value
@@ -578,10 +697,10 @@ BEGIN
 END;
 $function$;
 
+-- No role may execute it yet: the grant to authenticated belongs to the
+-- migration that opens the member write channel (P4.6, D-54 2l).
 REVOKE ALL ON FUNCTION public.create_member_event(uuid, text, text, jsonb)
   FROM PUBLIC, anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.create_member_event(uuid, text, text, jsonb)
-  TO authenticated;
 
 -- ---------------------------------------------------------------------------
 -- The list the events page reads (ENGINEERING 9.6)
@@ -832,8 +951,12 @@ REVOKE ALL ON FUNCTION public.admin_execute_mutation_pre_community_events(
 -- configured, or names no profile, the action is refused by name and nothing
 -- is written. A member's event already has its own topic and is not accepted.
 --
--- hide_event takes any event down at once. unhide_event undoes only that: an
--- event that is hidden because its topic is gone stays hidden.
+-- hide_event takes any event down at once. unhide_event undoes only that and
+-- puts the row where it would be without the takedown: an event that is
+-- hidden because its topic is gone stays hidden, and a row its source has
+-- withdrawn goes back to unavailable. Each says where the takedown should be,
+-- so asking twice changes nothing and is answered the same way; only an id
+-- that names no event is refused.
 CREATE FUNCTION public.admin_execute_community_events(
   p_token_hash text,
   p_idempotency_key uuid,
@@ -871,8 +994,13 @@ DECLARE
   event_duplicate_of uuid;
   event_partner_id uuid;
   event_title text;
+  event_hidden_reason text;
+  event_missing_checks smallint;
   discussion_post_value uuid;
   discussion_created boolean := false;
+  taken_down boolean;
+  topic_gone boolean;
+  event_changed boolean := false;
   affected_rows integer := 0;
   event_kind_value text;
   audit_details jsonb;
@@ -1051,6 +1179,8 @@ BEGIN
       discussion_created := true;
     END IF;
 
+    -- Every completed request leaves its audit row, as the channel requires;
+    -- 'created' says whether this one opened the topic or found it there.
     event_kind_value := 'event_discussion_created';
     audit_details := pg_catalog.jsonb_build_object(
       'event_id', event_id_value,
@@ -1065,44 +1195,54 @@ BEGIN
         'created', discussion_created
       )
     );
-  ELSIF p_action = 'hide_event' THEN
-    UPDATE public.community_events AS event
-       SET availability = 'hidden',
-           hidden_reason = 'admin'
-     WHERE event.id = event_id_value
-       AND (event.availability <> 'hidden' OR event.hidden_reason IS DISTINCT FROM 'admin');
-    GET DIAGNOSTICS affected_rows = ROW_COUNT;
-    IF affected_rows = 0 THEN
-      RAISE EXCEPTION USING ERRCODE = 'P0002', MESSAGE = 'event_not_found';
-    END IF;
-    event_kind_value := 'event_hidden';
-    audit_details := pg_catalog.jsonb_build_object('event_id', event_id_value, 'reason', reason_value);
-    result_value := pg_catalog.jsonb_build_object('success', true);
   ELSE
-    -- A member's event whose topic is gone goes back to hidden for that reason.
-    UPDATE public.community_events AS event
-       SET availability = CASE WHEN gone.topic_gone THEN 'hidden' ELSE 'visible' END,
-           hidden_reason = CASE WHEN gone.topic_gone THEN 'post_removed' END
-      FROM (
-        SELECT candidate.id,
-               candidate.source_type = 'member' AND NOT EXISTS (
-                 SELECT 1
-                   FROM public.posts AS topic
-                  WHERE topic.id = candidate.discussion_post_id
-                    AND topic.status = 'active'
-               ) AS topic_gone
-          FROM public.community_events AS candidate
-         WHERE candidate.id = event_id_value
-      ) AS gone
-     WHERE event.id = gone.id
-       AND event.availability = 'hidden'
-       AND event.hidden_reason = 'admin';
-    GET DIAGNOSTICS affected_rows = ROW_COUNT;
-    IF affected_rows = 0 THEN
+    SELECT event.source_type, event.availability, event.hidden_reason, event.missing_checks,
+           event.discussion_post_id
+      INTO event_source, event_availability, event_hidden_reason, event_missing_checks,
+           discussion_post_value
+      FROM public.community_events AS event
+     WHERE event.id = event_id_value
+     FOR UPDATE;
+    IF NOT FOUND THEN
       RAISE EXCEPTION USING ERRCODE = 'P0002', MESSAGE = 'event_not_found';
     END IF;
-    event_kind_value := 'event_unhidden';
-    audit_details := pg_catalog.jsonb_build_object('event_id', event_id_value, 'reason', reason_value);
+    taken_down := event_availability = 'hidden' AND event_hidden_reason = 'admin';
+
+    IF p_action = 'hide_event' THEN
+      IF NOT taken_down THEN
+        UPDATE public.community_events AS event
+           SET availability = 'hidden',
+               hidden_reason = 'admin'
+         WHERE event.id = event_id_value;
+        event_changed := true;
+      END IF;
+      event_kind_value := 'event_hidden';
+    ELSE
+      IF taken_down THEN
+        -- A member's event whose topic is gone goes back to hidden for that
+        -- reason, and a row its source has missed twice to unavailable.
+        topic_gone := event_source = 'member' AND NOT EXISTS (
+          SELECT 1
+            FROM public.posts AS topic
+           WHERE topic.id = discussion_post_value
+             AND topic.status = 'active'
+        );
+        UPDATE public.community_events AS event
+           SET availability = CASE WHEN topic_gone THEN 'hidden'
+                                   WHEN event_missing_checks >= 2 THEN 'unavailable'
+                                   ELSE 'visible' END,
+               hidden_reason = CASE WHEN topic_gone THEN 'post_removed' END
+         WHERE event.id = event_id_value;
+        event_changed := true;
+      END IF;
+      event_kind_value := 'event_unhidden';
+    END IF;
+    -- 'changed' is false for a request that found the row already where it asked.
+    audit_details := pg_catalog.jsonb_build_object(
+      'event_id', event_id_value,
+      'changed', event_changed,
+      'reason', reason_value
+    );
     result_value := pg_catalog.jsonb_build_object('success', true);
   END IF;
 
@@ -1186,16 +1326,16 @@ GRANT EXECUTE ON FUNCTION public.admin_execute_mutation(
 ) TO service_role;
 
 COMMENT ON TABLE public.community_events IS
-  'Events from four sources (caaci, partner, campus, member). Readers see visible rows through an allowlist of columns. A member row is written only by create_member_event; the other sources get their writers in a later migration.';
+  'Events from four sources (caaci, partner, campus, member). Readers see visible rows that ended no more than 180 days ago, through an allowlist of columns. A member row is written only by create_member_event, which no role may execute until a later migration opens the member write channel; the other sources get their writers in a later migration too.';
 COMMENT ON TABLE public.community_event_partners IS
   'Organizations whose events may be listed. A row needs a recorded consent reference; only active partners are readable.';
 COMMENT ON TABLE public.community_event_sync_state IS
   'Outcome of the last CAACI and campus synchronisation attempts. No secrets.';
 COMMENT ON FUNCTION public.create_member_event(uuid, text, text, jsonb) IS
-  'Writes a member''s topic and event in one transaction as the caller. A retry with the same post id returns the existing pair.';
+  'Writes a member''s topic and event in one transaction as the caller. A retry with the same post id returns the existing pair. Granted to no role yet.';
 COMMENT ON FUNCTION public.list_community_events(text, text, text, integer) IS
   'Visible, non-duplicate events of a region for the upcoming or past 180-day window, at most 200 rows, under the caller''s row security.';
 COMMENT ON FUNCTION public.admin_execute_community_events(text, uuid, text, text, jsonb) IS
-  'Atomic administrator actions on events: create_event_discussion (owner), hide_event and unhide_event (operator and owner). Reached only through admin_execute_mutation.';
+  'Atomic administrator actions on events: create_event_discussion (owner), hide_event and unhide_event (operator and owner; asking twice changes nothing). Reached only through admin_execute_mutation.';
 
 COMMIT;

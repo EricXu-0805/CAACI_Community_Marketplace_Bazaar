@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { ADMIN, PRE_P3_CAPABILITIES } from './fixtures/community-p3-database.mjs'
 import {
-  CREATED, DISPATCHER, EVENT_CAACI, EVENT_CAMPUS, EVENT_PARTNER, EVENT_REVOKED, EVENT_UNAVAILABLE, MEMBER_A, MEMBER_B, OFFICIAL,
-  PARTNER, PREDECESSOR, RESTRICTED, SKIP, STATES, TOKENS, UNVERIFIED, id, pinned, readOps, setState, startEventsDatabase,
+  BLOCKED_WORD, CREATED, DISPATCHER, EVENT_CAACI, EVENT_CAMPUS, EVENT_PARTNER, EVENT_REVOKED, EVENT_UNAVAILABLE, MEMBER_A, MEMBER_B, OFFICIAL,
+  OPEN_CHANNEL, PARTNER, PREDECESSOR, RESTRICTED, SKIP, STATES, TOKENS, UNVERIFIED, id, pinned, readOps, setState, startEventsDatabase,
 } from './fixtures/community-events-database.mjs'
 
 /*
@@ -12,6 +12,10 @@ import {
  * and the database side of P4.8 (the list the events page reads) and P4.9 (one
  * discussion topic per event, takedown). Asked as anon, two verified members,
  * an unverified member, a restricted member and the service role.
+ *
+ * The migration leaves the member write channel closed (D-54 2l). The cases
+ * that write as a member open it for their own transaction: the fixture makes
+ * the three grants of P4.6 there and they never outlive it.
  */
 const EVENTS = 'public.admin_execute_community_events(text,uuid,text,text,jsonb)'
 const CREATE = 'public.create_member_event(uuid,text,text,jsonb)'
@@ -35,10 +39,14 @@ test('P4.2 community events', { skip: SKIP }, async t => {
     const event = (eventId, columns) => sql(`SELECT ${columns} FROM public.community_events WHERE id = '${eventId}'`)
     const written = () => sql(`SELECT (SELECT count(*) FROM public.admin_audit_log) || ':' || (SELECT count(*) FROM public.admin_mutation_requests)
       || ':' || (SELECT count(*) FROM public.posts)`)
+    // What the migration itself leaves: nobody executes the function, and no API role may insert or update a column.
+    const channel = () => sql(`SELECT (SELECT count(*) FROM unnest(ARRAY['anon','authenticated','service_role']) AS r WHERE has_function_privilege(r, '${CREATE}', 'EXECUTE'))
+      || ':' || (SELECT count(*) FROM pg_attribute AS a, unnest(ARRAY['anon','authenticated','service_role']) AS r, unnest(ARRAY['INSERT','UPDATE']) AS p
+        WHERE a.attrelid = 'public.community_events'::regclass AND a.attnum > 0 AND NOT a.attisdropped AND has_column_privilege(r, a.attrelid, a.attnum, p))`)
 
     await t.test('the ops files pin what the migration reads and what it stores', () => {
       const precheck = pinned(readOps('PRECHECK_20261120122054_community_events.sql'))
-      assert.equal(db.readBefore.size, 8)
+      assert.equal(db.readBefore.size, 9)
       for (const [signature, md5] of db.readBefore) assert.equal(precheck.get(signature), md5, `PRECHECK does not pin the stored ${signature}`)
       const verify = pinned(readOps('VERIFY_20261120122054_community_events.sql'))
       const after = db.bodyMd5([DISPATCHER, PREDECESSOR, ...CREATED])
@@ -49,6 +57,23 @@ test('P4.2 community events', { skip: SKIP }, async t => {
       assert.notEqual(after.get(DISPATCHER), db.readBefore.get(DISPATCHER))
       const untouched = [...db.readBefore.keys()].filter(signature => signature !== DISPATCHER)
       assert.deepEqual(db.bodyMd5(untouched), new Map([...db.readBefore].filter(([signature]) => signature !== DISPATCHER)))
+    })
+
+    await t.test('the member write channel is closed: without the grants every member write is refused with 42501 (D-54 2l)', () => {
+      assert.equal(channel(), '0:0')
+      const closed = { role: 'authenticated', uid: MEMBER_A, channel: false }
+      const before = written()
+      assert.equal(attempt(createEvent(MEMBER_A, post(41)), closed), '42501:permission denied for function create_member_event')
+      assert.equal(attempt(`INSERT INTO public.community_events (source_type, source_key, organizer_user_id, starts_at, location, registration_mode)
+        VALUES ('member', '${post(41)}', '${MEMBER_A}', now() + interval '1 day', 'ARC', 'discussion')`, closed), '42501:permission denied for table community_events')
+      assert.equal(attempt(`UPDATE public.community_events SET cancelled_at = now(), status_note = 'Court is closed'`, closed), '42501:permission denied for table community_events')
+      // Not rolled back by the caller either: the call fails and nothing is written.
+      assert.throws(() => as(createEvent(MEMBER_A, post(41)), 'authenticated', MEMBER_A, { channel: false }), /permission denied for function create_member_event/)
+      assert.equal(written(), before)
+      assert.equal(sql(`SELECT count(*) FROM public.community_events WHERE source_type = 'member'`), '0')
+      // With the grants of P4.6 made in the same transaction the same call goes through; they go with the transaction.
+      assert.equal(attempt(createEvent(MEMBER_A, post(41))), 'ok:1')
+      assert.equal(channel(), '0:0')
     })
 
     await t.test('four sources, one row per source key, and a partner row needs its consent', () => {
@@ -65,6 +90,29 @@ test('P4.2 community events', { skip: SKIP }, async t => {
         VALUES ('no-consent', '无', 'None', '2026-11-01', 'President')`), /consent_ref/)
       assert.match(owner(`INSERT INTO public.community_events (source_type, source_key, partner_id, title, summary, starts_at, page_url, registration_mode)
         VALUES ('partner', 'chess-club|https://chess.example.test/b', '${PARTNER}', 'B', 'S', now(), 'https://chess.example.test/b', 'info_only')`), /community_events_partner_shape/)
+      // The reference has the form a partner's own has: an empty one, or free text, is not a consent on record.
+      for (const reference of ['', 'x', 'CONSENT 001']) {
+        assert.match(owner(`INSERT INTO public.community_events (source_type, source_key, partner_id, consent_ref, title, summary, starts_at, page_url, registration_mode)
+          VALUES ('partner', 'chess-club|https://chess.example.test/b', '${PARTNER}', '${reference}', 'B', 'S', now(), 'https://chess.example.test/b', 'info_only')`),
+        /community_events_partner_shape/, reference)
+      }
+      // Both ends of an event are instants and in order, whatever the source; an organization's event may run for months.
+      for (const times of [`starts_at = 'infinity'`, `starts_at = '-infinity'`, `ends_at = 'infinity'`, `ends_at = starts_at - interval '1 second'`]) {
+        assert.match(owner(`UPDATE public.community_events SET ${times} WHERE id = '${EVENT_CAMPUS}'`), /community_events_time_order_check/, times)
+      }
+      assert.equal(attempt(`UPDATE public.community_events SET ends_at = starts_at + interval '90 days' WHERE id = '${EVENT_CAMPUS}'`, { role: 'postgres' }), 'ok:1')
+      // A row is withdrawn only on its source's evidence: two checks in a row that did not find it.
+      assert.match(owner(`UPDATE public.community_events SET availability = 'unavailable' WHERE id = '${EVENT_CAMPUS}'`), /community_events_unavailable_check/)
+      // The place and the note pass the keyword filter whatever the source, on insert and when they change.
+      assert.equal(attempt(`UPDATE public.community_events SET location = 'A ${BLOCKED_WORD} hall' WHERE id = '${EVENT_CAMPUS}'`, { role: 'postgres' }),
+        '22023:moderation_block:event_location:sensitive_word')
+      assert.equal(attempt(`UPDATE public.community_events SET status_note = '${BLOCKED_WORD}' WHERE id = '${EVENT_CAACI}'`, { role: 'postgres' }),
+        '22023:moderation_block:event_status_note:sensitive_word')
+      assert.equal(attempt(`INSERT INTO public.community_events (source_type, source_key, organizer_name, title_en, starts_at, page_url, registration_mode, location)
+        VALUES ('campus', '7/123457', 'University Library', 'Blocked place', now(), 'https://calendars.illinois.edu/detail/7/123457', 'calendar_page', '${BLOCKED_WORD}')`,
+      { role: 'postgres' }), '22023:moderation_block:event_location:sensitive_word')
+      // A link and reserved wording are a member's rule: an organization's place may say either.
+      assert.equal(attempt(`UPDATE public.community_events SET location = 'Official residence, www.example.org' WHERE id = '${EVENT_CAMPUS}'`, { role: 'postgres' }), 'ok:1')
       // An organization's row never carries a cancellation: that is for a member's own event.
       assert.match(owner(`UPDATE public.community_events SET cancelled_at = now() WHERE id = '${EVENT_CAACI}'`), /community_events_cancel_member_check/)
       assert.equal(sql(`SELECT count(*) FROM public.community_event_sync_state`), '0')
@@ -138,6 +186,25 @@ test('P4.2 community events', { skip: SKIP }, async t => {
       for (const options of [{ title: 'Sign up at example.com' }, { content: 'Details: https://forms.example.test/x' }, { location: 'www.example.org lobby' }, { content: 'see bit.ly/abc' }]) {
         assert.equal(attempt(createEvent(MEMBER_A, post(2), options), member()), '23514:member_event_link_not_allowed', JSON.stringify(options))
       }
+      // The place is text other people read: no reserved wording, and nothing the keyword filter refuses.
+      for (const location of ['Official court', '学生会主办的场地']) {
+        assert.equal(attempt(createEvent(MEMBER_A, post(2), { location }), member()), '23514:member_event_reserved_wording', location)
+      }
+      assert.equal(attempt(createEvent(MEMBER_A, post(2), { location: `A ${BLOCKED_WORD} hall` }), member()), '22023:moderation_block:event_location:sensitive_word')
+      // An end is an instant, not before the start and within 30 days of it.
+      const starts = "now() + interval '2 days'"
+      for (const ends of ["'infinity'", `${starts} - interval '1 second'`, `${starts} + interval '30 days 1 second'`]) {
+        assert.equal(attempt(createEvent(MEMBER_A, post(2), { ends }), member()), '22008:member_event_time_out_of_range', ends)
+      }
+      assert.equal(attempt(createEvent(MEMBER_A, post(2), { ends: `${starts} + interval '30 days'` }), member()), 'ok:1')
+      // A topic and its event written in one transaction around the function (one batched request can do that):
+      // the guard holds every rule of the function, the length of the title included, so nothing is gained.
+      const around = title => attempt(`INSERT INTO public.posts (id, user_id, content, title, category)
+          VALUES ('${post(2)}', '${MEMBER_A}', 'Written directly, in one transaction.', '${title}', 'events-social');
+        INSERT INTO public.community_events (source_type, source_key, organizer_user_id, discussion_post_id, starts_at, location, registration_mode)
+          VALUES ('member', '${post(2)}', '${MEMBER_A}', '${post(2)}', now() + interval '1 day', 'ARC', 'discussion')`, member())
+      assert.equal(around('x'.repeat(61)), '22023:member_event_title_too_long')
+      assert.equal(around('x'.repeat(60)), 'ok:1')
       // A refused call leaves no topic behind, also when it is not rolled back by the caller.
       assert.throws(() => as(createEvent(UNVERIFIED, post(2)), 'authenticated', UNVERIFIED), /member_event_not_eligible/)
       assert.equal(sql(`SELECT count(*) FROM public.posts WHERE id = '${post(2)}'`), '0')
@@ -165,6 +232,15 @@ test('P4.2 community events', { skip: SKIP }, async t => {
       assert.match(attempt(`UPDATE public.community_events SET starts_at = now() + interval '5 days' WHERE id = '${eventId}'`, own), /^42501:/)
       assert.match(attempt(`UPDATE public.community_events SET location = 'Elsewhere' WHERE id = '${eventId}'`, own), /^42501:/)
       assert.equal(attempt(`UPDATE public.community_events SET cancelled_at = now() WHERE id = '${eventId}'`, member(MEMBER_B)), 'ok:0', 'not their event')
+      // A note is text other people read: no link, no reserved wording, nothing the keyword filter refuses.
+      const note = text => attempt(`UPDATE public.community_events SET cancelled_at = now(), status_note = '${text}' WHERE id = '${eventId}'`, own)
+      assert.equal(note('see example.com'), '23514:member_event_link_not_allowed')
+      assert.equal(note('Official notice'), '23514:member_event_reserved_wording')
+      assert.equal(note(`Closed, ${BLOCKED_WORD}`), '22023:moderation_block:event_status_note:sensitive_word')
+      // A cancellation is dated by the server, whatever instant the client sent.
+      for (const instant of ["'1970-01-01T00:00:00Z'", "now() + interval '1 day'"]) {
+        assert.equal(ask(`UPDATE public.community_events SET cancelled_at = ${instant} WHERE id = '${eventId}' RETURNING (cancelled_at = now())::text`, own), 'value:true', instant)
+      }
       as(`UPDATE public.community_events SET cancelled_at = now(), status_note = 'Court is closed' WHERE id = '${eventId}'`, 'authenticated', MEMBER_A)
       assert.equal(event(eventId, `(cancelled_at IS NOT NULL)::text || '|' || status_note`), 'true|Court is closed')
       assert.equal(attempt(`UPDATE public.community_events SET cancelled_at = NULL WHERE id = '${eventId}'`, own), '23514:member_event_cancel_final')
@@ -250,6 +326,10 @@ test('P4.2 community events', { skip: SKIP }, async t => {
       assert.equal(titles(`limit_in => 1`), 'Started, still on')
       assert.equal(titles(`limit_in => 0`), 'Started, still on')
       assert.equal(titles(`limit_in => 100000`).split(' > ').length, upcoming.length)
+      // Readers are served what the list can show: a row that ended more than 180 days ago is not a visitor's to read
+      // from the table either, so nobody's past places and times can be collected there.
+      assert.equal(ask(`SELECT string_agg(title_en, ',' ORDER BY title_en) FROM public.community_events WHERE id IN ('${id(62)}', '${id(63)}')`, ANON), 'value:Over last week')
+      assert.equal(ask(`SELECT count(*) FROM public.community_events WHERE id = '${id(63)}'`, member()), 'value:0')
       // A member event whose topic is hidden is not listed.
       sql(`UPDATE public.posts SET status = 'hidden' WHERE id = '${post(3)}'`)
       assert.equal(titles('').split(' > ').filter(title => title === 'Badminton on Saturday').length, 2)
@@ -305,8 +385,9 @@ test('P4.2 community events', { skip: SKIP }, async t => {
       assert.equal(accepts('admin_role_action_capabilities', 'admin_role_action_capabilities_action_check').length, 21)
       assert.equal(accepts('admin_audit_log', 'admin_audit_log_event_kind_check').length, 22)
       for (const action of ACTIONS) assert.ok(accepts('admin_mutation_requests', 'admin_mutation_requests_action_check').includes(action), action)
+      // create_member_event is nobody's to execute until the member write channel is opened (D-54 2l).
       assert.deepEqual(db.grants([DISPATCHER, PREDECESSOR, EVENTS, CREATE, LIST]), [
-        `${EVENTS}:`, `${DISPATCHER}:service_role`, `${PREDECESSOR}:`, `${CREATE}:authenticated`, `${LIST}:anon,authenticated`,
+        `${EVENTS}:`, `${DISPATCHER}:service_role`, `${PREDECESSOR}:`, `${CREATE}:`, `${LIST}:anon,authenticated`,
       ].sort())
       assert.deepEqual(db.grants(CREATED.filter(signature => signature.startsWith('private.'))),
         CREATED.filter(signature => signature.startsWith('private.')).map(signature => `${signature}:`).sort())
@@ -320,7 +401,7 @@ test('P4.2 community events', { skip: SKIP }, async t => {
       assert.equal(mutate('operator', 'hide_event', { event_id: EVENT_CAMPUS, reason: REASON, official_profile_id: OFFICIAL }), 'refused:admin_mutation_invalid_payload')
       assert.equal(mutate('operator', 'hide_event', { event_id: 'nope', reason: REASON }), 'refused:admin_mutation_invalid_payload')
       assert.equal(mutate('operator', 'hide_event', { event_id: id(99999), reason: REASON }), 'refused:event_not_found')
-      assert.equal(mutate('operator', 'unhide_event', { event_id: EVENT_CAMPUS, reason: REASON }), 'refused:event_not_found', 'it is not hidden')
+      assert.equal(mutate('operator', 'unhide_event', { event_id: id(99999), reason: REASON }), 'refused:event_not_found')
 
       // Takedown and back, each with one audit row; a replay with the same key changes nothing more.
       const before = written()
@@ -331,16 +412,30 @@ test('P4.2 community events', { skip: SKIP }, async t => {
       assert.deepEqual(mutate('operator', 'hide_event', { event_id: EVENT_CAMPUS, reason: `  ${REASON}  ` }, key), { success: true })
       assert.equal(mutate('operator', 'hide_event', { event_id: EVENT_CAMPUS, reason: 'Another reason' }, key, 'e'.repeat(64)), 'refused:idempotency_conflict')
       assert.equal(mutate('operator', 'unhide_event', { event_id: EVENT_CAMPUS, reason: REASON }, key), 'refused:idempotency_conflict')
-      assert.equal(mutate('operator', 'hide_event', { event_id: EVENT_CAMPUS, reason: REASON }), 'refused:event_not_found', 'already taken down')
+      // Each action says where the takedown should be, so asking again under a new key is answered the same way
+      // and changes nothing; its audit row says so.
+      assert.deepEqual(mutate('operator', 'hide_event', { event_id: EVENT_CAMPUS, reason: REASON }), { success: true }, 'already taken down')
+      assert.equal(event(EVENT_CAMPUS, `availability || '|' || hidden_reason`), 'hidden|admin')
       assert.deepEqual(mutate('owner', 'unhide_event', { event_id: EVENT_CAMPUS, reason: REASON }), { success: true })
       assert.equal(event(EVENT_CAMPUS, `availability || '|' || coalesce(hidden_reason, '-')`), 'visible|-')
+      assert.deepEqual(mutate('owner', 'unhide_event', { event_id: EVENT_CAMPUS, reason: REASON }), { success: true }, 'already back')
+      assert.equal(event(EVENT_CAMPUS, `availability || '|' || coalesce(hidden_reason, '-')`), 'visible|-')
       const [audits, requests] = written().split(':').map(Number), [auditsBefore, requestsBefore] = before.split(':').map(Number)
-      assert.deepEqual([audits - auditsBefore, requests - requestsBefore], [2, 2])
-      assert.deepEqual(JSON.parse(sql(`SELECT json_agg(json_build_object('kind', event_kind, 'actor', actor_id, 'target', target_id, 'reason', details ->> 'reason') ORDER BY id)
-        FROM (SELECT * FROM public.admin_audit_log ORDER BY id DESC LIMIT 2) AS last`)), [
-        { kind: 'event_hidden', actor: ADMIN, target: EVENT_CAMPUS, reason: REASON },
-        { kind: 'event_unhidden', actor: ADMIN, target: EVENT_CAMPUS, reason: REASON },
+      assert.deepEqual([audits - auditsBefore, requests - requestsBefore], [4, 4])
+      assert.deepEqual(JSON.parse(sql(`SELECT json_agg(json_build_object('kind', event_kind, 'actor', actor_id, 'target', target_id, 'reason', details ->> 'reason',
+          'changed', details -> 'changed') ORDER BY id)
+        FROM (SELECT * FROM public.admin_audit_log ORDER BY id DESC LIMIT 4) AS last`)), [
+        { kind: 'event_hidden', actor: ADMIN, target: EVENT_CAMPUS, reason: REASON, changed: true },
+        { kind: 'event_hidden', actor: ADMIN, target: EVENT_CAMPUS, reason: REASON, changed: false },
+        { kind: 'event_unhidden', actor: ADMIN, target: EVENT_CAMPUS, reason: REASON, changed: true },
+        { kind: 'event_unhidden', actor: ADMIN, target: EVENT_CAMPUS, reason: REASON, changed: false },
       ])
+      // A row its source withdrew: a takedown and its undo leave it withdrawn. It does not come back to readers.
+      assert.deepEqual(mutate('operator', 'hide_event', { event_id: EVENT_UNAVAILABLE, reason: REASON }), { success: true })
+      assert.equal(event(EVENT_UNAVAILABLE, `availability || '|' || hidden_reason`), 'hidden|admin')
+      assert.deepEqual(mutate('operator', 'unhide_event', { event_id: EVENT_UNAVAILABLE, reason: REASON }), { success: true })
+      assert.equal(event(EVENT_UNAVAILABLE, `availability || '|' || coalesce(hidden_reason, '-')`), 'unavailable|-')
+      assert.equal(ask(`SELECT count(*) FROM public.community_events WHERE id = '${EVENT_UNAVAILABLE}'`, ANON), 'value:0')
       // Earlier actions still go where they went.
       assert.equal(mutate('operator', 'set_post_locked', { post_id: id(99999), locked: true, reason: REASON }), 'refused:post_not_found')
     })
@@ -381,6 +476,9 @@ test('P4.2 community events', { skip: SKIP }, async t => {
       // Asked again with a new key: the same topic, not a second one.
       assert.deepEqual(mutate('owner', 'create_event_discussion', payload(EVENT_CAACI)).data, { event_id: EVENT_CAACI, post_id: made.data.post_id, created: false })
       assert.equal(sql(`SELECT count(*) FROM public.posts WHERE user_id = '${OFFICIAL}' AND title = '迎新晚会'`), '1')
+      // Every completed request leaves its audit row; this one says that it opened nothing.
+      assert.equal(sql(`SELECT event_kind || '|' || target_id || '|' || (details ->> 'post_id') || '|' || (details ->> 'created') FROM public.admin_audit_log ORDER BY id DESC LIMIT 1`),
+        `event_discussion_created|${EVENT_CAACI}|${made.data.post_id}|false`)
       // The list carries it.
       assert.equal(ask(`SELECT discussion_post_id || '|' || discussion_count FROM public.list_community_events(source_in => 'caaci')`, ANON), `value:${made.data.post_id}|0`)
       // An English-only event takes its English title.
@@ -421,6 +519,22 @@ test('P4.2 community events', { skip: SKIP }, async t => {
         const cancelWithNote = attempt(`UPDATE public.community_events SET cancelled_at = now(), status_note = 'Rained out' WHERE id = '${made.event_id}'`, own)
         const cancel = attempt(`UPDATE public.community_events SET cancelled_at = now() WHERE id = '${made.event_id}'`, own)
         const expected = state.refusal || 'ok:1'
+        // The topic's own trigger refuses a restricted account before the event is reached. So that the guard's
+        // own assertion is asked too, the topic is written first here, while no restriction is on record, and the
+        // event after it, in one transaction as a batched request would.
+        const eventAfterItsTopic = owner(`BEGIN; ${OPEN_CHANNEL}
+          DELETE FROM public.suspensions WHERE profile_id = '${RESTRICTED}';
+          SET LOCAL request.jwt.claim.sub = '${RESTRICTED}'; SET LOCAL ROLE authenticated;
+          INSERT INTO public.posts (id, user_id, content, title, category)
+            VALUES ('${post(23)}', '${RESTRICTED}', 'Written directly, before the restriction.', 'Topic first', 'events-social');
+          RESET ROLE;
+          ${state.rows.length ? `INSERT INTO public.suspensions (profile_id, level, started_at, ends_at) VALUES ${state.rows.map(([level, startedAt, endsAt]) =>
+    `('${RESTRICTED}', ${level}, '${startedAt}', ${endsAt ? `'${endsAt}'` : 'NULL'})`).join(',')};` : ''}
+          SET LOCAL ROLE authenticated;
+          INSERT INTO public.community_events (source_type, source_key, organizer_user_id, discussion_post_id, starts_at, location, registration_mode)
+            VALUES ('member', '${post(23)}', '${RESTRICTED}', '${post(23)}', now() + interval '1 day', 'ARC', 'discussion');
+          ROLLBACK;`)
+        assert.equal(eventAfterItsTopic, state.refusal ? state.refusal.replace(/^P0001:/, '') : 'ok', `${state.name}: the event after its topic`)
         assert.equal(create, expected, `${state.name}: create`)
         assert.equal(note, expected, `${state.name}: note`)
         assert.equal(cancelWithNote, expected, `${state.name}: cancel with a note`)
@@ -432,6 +546,12 @@ test('P4.2 community events', { skip: SKIP }, async t => {
       // The cached column is not consulted: only the action log decides.
       sql(`UPDATE public.profiles SET suspension_level = 5 WHERE id = '${RESTRICTED}'`)
       assert.equal(attempt(createEvent(RESTRICTED, post(22)), own), 'ok:1')
+    })
+
+    await t.test('after every case above the member write channel is closed, as the migration left it', () => {
+      assert.equal(channel(), '0:0')
+      assert.equal(attempt(createEvent(MEMBER_A, post(51)), { role: 'authenticated', uid: MEMBER_A, channel: false }),
+        '42501:permission denied for function create_member_event')
     })
   } finally {
     db.stop()

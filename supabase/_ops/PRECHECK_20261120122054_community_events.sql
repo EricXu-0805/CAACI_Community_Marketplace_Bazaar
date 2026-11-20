@@ -18,7 +18,9 @@ DECLARE
   object_name text;
 BEGIN
   -- 1. The dispatcher the migration renames and wraps, the helpers its new
-  --    code calls, and two triggers on topics it relies on: trg_enforce_actor
+  --    code calls (the keyword filter of a topic's title among them, which
+  --    the place and the note of an event now pass: D-54 2k), and two
+  --    triggers on topics it relies on: trg_enforce_actor
   --    refuses a restricted account's topic (D-49), and rl_posts_before_insert
   --    lets an official topic through and names a repeated text
   --    duplicate_post, which create_member_event answers from the pair that
@@ -27,13 +29,14 @@ BEGIN
   --    authenticated).
   FOR expected IN
     SELECT * FROM (VALUES
-    ('public.admin_execute_mutation(text,uuid,text,text,jsonb)', '64d6f1d37e03577d534ccc5e1d496499', '20261120100354:1129', true, 'v', 'search_path=pg_catalog', 'service_role'),
+    ('public.admin_execute_mutation(text,uuid,text,text,jsonb)', '64d6f1d37e03577d534ccc5e1d496499', '20261120100354:1257', true, 'v', 'search_path=pg_catalog', 'service_role'),
     ('public.admin_assert_mutation_capability(uuid,text)', '51c79ee5189f512333e2e8a3e4b47ba0', '20260718190000:74', true, 'v', 'search_path=pg_catalog', 'internal'),
     ('public.record_audit(text,uuid,uuid,jsonb)', '38cb635c4cf81051966bc563ebf6142d', '20260720035037:384', true, 'v', 'search_path=pg_catalog', 'service_role'),
     ('public.admin_moderation_reason_valid(text)', '3f75864d5dfc236033a8cd232238baf2', '20260720035037:22', false, 'i', 'search_path=pg_catalog', 'internal'),
     ('moderation_private.profile_content_visible(uuid)', 'a41223ba4e42754a12eec610e9ab03cf', '20260718160000:342', true, 's', 'search_path=pg_catalog', 'anon,authenticated,service_role'),
     ('moderation_private.assert_posting_allowed(uuid)', 'bce717345cade3cf4d4656b20d5ae2df', '20261114015420:54', true, 's', 'search_path=pg_catalog', 'internal'),
     ('public.update_updated_at()', 'da5ac28a58c8b4bb30209bf0d3d7082c', '001:140', false, 'v', 'search_path=public', 'PUBLIC,anon,authenticated,service_role'),
+    ('private.assert_moderated_text(text,text)', 'bae3b8646a2fb7121a92f0ba17a90c1d', '20260718230000:233', true, 's', 'search_path=pg_catalog', 'internal'),
     ('public.trg_enforce_actor()', '9f2166257b987ce4147e11eb4f441dbf', '20260718160000:633', true, 'v', 'search_path=pg_catalog', 'internal'),
     ('public.rl_posts_before_insert()', '9a9c58f8ae22fc7785f85cead870e834', '044:73', true, 'v', 'search_path=public', 'internal')
     ) AS known(signature, body_md5, note, definer, volatility, settings, api_roles)
@@ -82,6 +85,7 @@ BEGIN
   FOREACH object_name IN ARRAY ARRAY[
     'private.community_events_schedule_change()',
     'private.community_events_member_guard()',
+    'private.community_events_moderate_text()',
     'private.community_events_post_link()',
     'private.community_events_follow_topic()',
     'public.create_member_event(uuid,text,text,jsonb)',
@@ -196,6 +200,15 @@ BEGIN
       RAISE EXCEPTION 'community_events_topic_trigger:%', expected.trigger_name;
     END IF;
   END LOOP;
+  -- Every trigger on topics, by name and kind, as the full replay has them
+  -- after 20261120100354. VERIFY expects this set and the one trigger this
+  -- migration adds; a trigger that is not listed here must be read first.
+  SELECT pg_catalog.string_agg(t.tgname::text || ':' || t.tgtype::text, ',' ORDER BY t.tgname::text COLLATE "C") INTO listed
+    FROM pg_catalog.pg_trigger AS t
+   WHERE t.tgrelid = 'public.posts'::pg_catalog.regclass AND NOT t.tgisinternal;
+  IF listed IS DISTINCT FROM 'aa_restricted_account_write:19,authoritative_public_write_boundary:23,enforce_actor_posts:7,enqueue_moderation_media_cleanup:21,guard_moderation_status:19,invalidate_post_english:19,moderate_posts:23,queue_public_post_english:29,serialize_public_write_actor:7,set_posts_updated_at:19,trg_rl_posts_before_insert:7,validate_post_topic:23' THEN
+    RAISE EXCEPTION 'community_events_topic_triggers:%', coalesce(listed, 'none');
+  END IF;
 
   -- 5. The list function reads an organizer's public profile as the caller.
   FOR expected IN
