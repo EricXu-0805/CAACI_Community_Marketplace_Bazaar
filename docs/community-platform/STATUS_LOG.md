@@ -1923,3 +1923,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: —
 - 下一条: D-54 第 2 项（P3、P4 子任务）；第 5 项等 supervisor 通知 #372 合进 main 后的 SHA
 - 附: L149 的 ci_run_url 写的是「待完成（监视中）」，结果补在这里，L149 不改。#372 可以由 supervisor 合进 main。
+
+### L151 · 2026-11-20 11:27 CT · [supervisor 指示] D-54 第 5 项（C-final）开工
+- task_id: D-54.5
+- code_sha: main 37789526983b71d2ac154961cb4c7bd92104ce70（#372 的 squash，树与 f5dd044 相同）
+- docs_sha: e81aad6（本次写回之前材料分支的 HEAD）
+- 环境: 真人
+- 命令: 记录 supervisor 通知；git fetch 后核 origin/main 与两棵树；gh pr view 372 --json state,mergeCommit
+- 计数: —
+- ci_run_url: —
+- 未测项: —
+- 下一条: C-final（子任务 st_01a1f85a）
+- 附: supervisor 2026-11-20 把 #372 squash 进 main 37789526983b71d2ac154961cb4c7bd92104ce70，这就是准备发布的 main 提交。C-final 照 D-54 第 5 项与 D-53 第 10 项 c–f：先拿锁、确认没有 run-checks 在跑，再改 run-checks.sh 的 PROBES_DIR（.before-* 备份，写新文件再 mv）；建 probes-home/（13 个文件，只有 account-switch.spec.ts 不同，适配只改进广场那一步）；detached worktree ~/work/confirm-final-3778952；证据 ~/work/evidence/D53/staging/confirm-final/P1.11、P1.12，residuals.json 从 confirm-369/P1.12 复制；顺序 restriction-state → consent-login → account-switch → p1-cleanup，同一把锁。staging 两条迁移都已应用并 VERIFY；A、B、C 有人受限就停、交 Eric；P0001 就【跳过】交 supervisor；第 8 项 b 清单命中就【跳过】（应用缺陷）。这是发布前最后一道门，跑完立刻在 STATUS_LOG 记结果，supervisor 看到就发布或停下。C-final 优先于第 2 项的容器步骤，P3、P4 的门禁让一让，不停掉正在写文件的任务。[OMO自决] 为了让结果立刻可见，C-final 期间 STATUS_LOG 由 C-final 子任务直接追加并推送（只提交 STATUS_LOG 与 appendix/env 的两个归档文件），主会话那段时间不写材料分支；P3、P4 子任务正在跑的容器步骤跑完，但在 C-final 结束之前不再起新的容器步骤。
