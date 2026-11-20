@@ -1607,3 +1607,113 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: P2.11 的探针期望改成码加 message 以后不重跑（每跑一次都会留下删不掉的行）
 - 下一条: L129
 - 附: ENGINEERING §5.2 的错误映射表（L228–230）空正文那一行只列了 23514 `post_topic_body_required`；实际先报的是 22023 `public_write_boundary:post_content_size`（authoritative_public_write_boundary 按名字排在 validate_post_topic 之前）。§5.1 第 3 条对 validate_post_topic 本身的描述和源码一致，只是正文为空时轮不到它。按 STOP-16a 只记录，不改 ENGINEERING。更正 L126：P2.11 的结论改为「运行通过，7/7 被拒；等 P1.12（依赖）」——P1.12 通过后改成「通过」，P1.12 记【跳过】时 P2.11 也记【跳过】（等 P1.12）。
+
+### L129 · 2026-11-20 06:59 CT · P1.11 第 4 次前：按 D-53 第 8 项改探针并写明假设
+- task_id: P1.11、D-53.8c、D-53.8e、D-53.8f
+- code_sha: 7b18f2052e52a4268c25407d0584748477cbf978（固定 main 基线，运行前在锁内再核对）
+- docs_sha: 7f67dc686b73c8377a91f3917e39da0db0c10b8d（本次追加之前的材料 HEAD）
+- 环境: 隔离环境 S-1（staging-smoke；第 4 次尚未执行）
+- 命令: `GIT_MASTER=1 git -C ~/work/illini-main rev-parse HEAD`；`EV=~/work/evidence/D53/staging/P1.11 flock ~/work/illini-dev-env/.containers.lock` 内先核 HEAD、`df -BG --output=avail` 至少 50G、§5.2 自检，再执行 `~/work/illini-dev-env/run-checks.sh ~/work/illini-main probe consent-login.spec.ts`；输出 attempt-4.log
+- 计数: 本条是运行前记录，不报验收通过。10 个 TS/MJS 探针仅做语法解析，全部通过；retries 仍为 0，timeout 仍为 120000ms。consent-login 新 sha256 为 0dfd63ad0004bf8a96364d6b22b7a89bf278cab0f166ea2743750545cca15020。
+- ci_run_url: —
+- 未测项: 前 3 次的 6 个无正常删除入口残留继续保留：P1.12 消息 3a480e58-fd78-43dc-9d74-1cb91e64471b、会话 158773c0-56c1-4568-bc25-831b3b7db9ed；P2.11 已售商品 8aca057d-6617-4dac-9819-2572dbb65977、报价 6973bda3-06ef-4c71-9e8c-509cae9e5d5f、会话 47b757ec-053b-40c6-81a9-586e291426a9 与 45afcc07-8b1a-4b71-a4de-0d6fd02639e6。历史会话没有用全局退出代为撤销；本轮只记录本轮每个 local logout 的 HTTP 状态。
+- 下一条: 读 P1.11 attempt-4 的三项结果；命中第 8 项 b 的封闭清单就记【跳过】（应用缺陷）并停止；仅清单外失败可先记新假设后用 attempt-5。
+- 附: 假设：第 3 次的 204×3 已持久记录同意，get_my_profile 的同意布尔应为真；接受规范首页 #/、核 Home/首页标题、3 秒后仍为首页，并取 3 张无账号字段截图后，应为 3 passed。改动：以 CURRENT_CONSENT_VERSION 判服务端布尔，匹配首页或同意页，补 phase/错误类别/路由布尔门；SDK 在界面步骤结束后 signOut local，UI 截图与断言之后单独退出，HTTP 状态单独记。P1.12 已加 welcomed、每次新消息与累加残留、control_A/页面正对照、MutationObserver 两段最大值、渲染门与 scoped post-card，尚未执行。P2.11 只改码和 message 的精确匹配，不执行；旧 sha256 493163882bc6f1f34160deab6d1b337b723668394ac310dc2d65007ade747849，新 sha256 7033792de3e4f6463de8958a79e730a5bc77871673d2e63391529b89010e8a45，标注「已改、未执行；L126 的证据出自改之前的版本」。按 STOP-16a 再确认空正文先报 22023 public_write_boundary:post_content_size，ENGINEERING 表漏列，本轮不改 ENGINEERING。
+
+### L130 · 2026-11-20 07:04 CT · P1.11 第 4 次通过；P1.12 第 4 次前假设与改动
+- task_id: P1.11、P1.12、D-53.8c、D-53.8d、D-53.8e
+- code_sha: 7b18f2052e52a4268c25407d0584748477cbf978（P1.11 锁内实测一致；P1.12 运行前再核）
+- docs_sha: 7f67dc686b73c8377a91f3917e39da0db0c10b8d
+- 环境: 隔离环境 S-1（P1.11 第 4 次已完成；P1.12 第 4 次尚未执行）
+- 命令: P1.11 `probe consent-login.spec.ts` 已完成，外层日志 `~/work/evidence/D53/staging/P1.11/attempt-4.log`，原始日志 `check-20261120T130036Z-probe-consent-login.log`。下一步只用 `EV=~/work/evidence/D53/staging/P1.12 flock ~/work/illini-dev-env/.containers.lock`，锁内核 HEAD、磁盘至少 50G、§5.2 自检后，运行 `~/work/illini-dev-env/run-checks.sh ~/work/illini-main probe account-switch.spec.ts`，输出 attempt-4.log。
+- 计数: P1.11 3 passed / 0 failed，3 个 schema 状态 200，A/B/C 的同意布尔均为真并记 already_recorded，3 张截图已逐张看过，均无邮箱密码。DoD③ 改按「第 3 次 record_consent 204×3 记录同意，本次核实同意仍在」记通过；首页标题与 URL 在 3 秒后仍符合。6 次新会话退出（UI 3、SDK 3）全部 /logout HTTP 204，残留会话数 0。磁盘 234G，自检 600 / 0 / 1 / 精确 8 个变量。P1.12 尚无本轮结果。
+- ci_run_url: —
+- 未测项: P1.11 attempt-5 不再运行，因为第 4 次已通过。先前 6 个内容残留仍见 L129；本轮 P1.12 将由 C 新发带当天 CT 日期和 attempt-4 后缀的消息，无法删除的消息将累加到 residuals.json，不覆盖旧消息 3a480e58-fd78-43dc-9d74-1cb91e64471b。这里只证明 7b18f20 基线；#369/#377 的确认跑由 supervisor 另派。
+- 下一条: P1.12 attempt-4；若命中封闭应用缺陷清单就记【跳过】（应用缺陷）并停止，不用 attempt-5；清单外失败才可写新假设后用第 5 次。
+- 附: P1.12 假设：welcomed=1 防止冷启动欢迎页劫走帖子；先在 A 会话列表看到新标记并做 control_A，再读聊天，退出后把 observer 清零、开启，覆盖 B 登录和导航；A 列表画出到 B 消息页应在 30 秒内。消息页、广场、scoped 帖子卡先过渲染门；inspect 与 MutationObserver 同时统计 innerText/textContent/localStorage/sessionStorage 中所有日期的标记，并核 [SYN-P1.12] 正对照。pre_reload 和 post_reload 两段回调数须大于 0，泄漏最大值须全为 0；page.reload（普通重载，WebKit）之后先 inspect，再等作者控件，再 inspect。任何 B 身份缺失或不匹配、隐藏 DOM 命中、welcomed 已种而离开帖子等只按第 8 项 b 的封闭清单归因。account-switch sha256 e0a883990ff4bd71db2bead30e86a3fbbce9809a3da655c47607162f91ba2884；retries 与 timeout 未改。
+
+### L131 · 2026-11-20 07:14 CT · P1.12 清理前假设：等待第 4 次结束后删 B 的对照帖并退出
+- task_id: P1.12-cleanup、D-53.8d8、D-53.8e
+- code_sha: 7b18f2052e52a4268c25407d0584748477cbf978（清理运行前在锁内核对）
+- docs_sha: 7f67dc686b73c8377a91f3917e39da0db0c10b8d
+- 环境: 隔离环境 S-1（清理任务尚未执行，不计 consent-login/account-switch 的验收次数）
+- 命令: 外层先等 attempt-4.log 出现 `STEP probe-account-switch rc=`，然后只用 `EV=~/work/evidence/D53/staging/P1.12 flock ~/work/illini-dev-env/.containers.lock`；锁内核 HEAD、磁盘至少 50G、§5.2 自检，再执行 `~/work/illini-dev-env/run-checks.sh ~/work/illini-main probe p1-cleanup.spec.ts`；日志 cleanup-after-attempt-4.log。
+- 计数: 第 4 次目前尚在等共享锁，不能填验收结果。假设清理时 B 的对照帖可能仍存在：用 B 查询 [SYN-P1.12] 前缀帖子，只走作者删除入口，逐帖与最终总数都断言剩 0 行。UI logout 在清理断言之后单独执行，SDK local logout 最后执行，各记 /logout HTTP 状态。
+- ci_run_url: —
+- 未测项: C 的每次新私信和旧消息仍按 §5.2 留在累加 residuals.json；旧 6 个内容残留见 L129。当前没有根据去判 P1.12 通过、应用缺陷或探针失败；不启动另一次 account-switch。
+- 下一条: 读 attempt-4 与本次清理结果；封闭清单命中即停止验收并记【跳过】（应用缺陷），仅非清单失败才考虑先写新假设后使用 attempt-5；如确需第 5 次，最后仍执行同样清理。
+- 附: p1-cleanup sha256 a906622454fc9429f42adf51b54dc328510024b844197f7b493dfb6b9fe270a7。等待脚本不重复启动验收 spec；所有容器与自检串行使用同一锁，不杀别人的任务，不调 Playwright timeout、不加 retries、不删断言。公开探针归档已复制并逐文件确认与源一致，13 个文件均无非示例邮箱、token/密钥或工作站绝对路径，最终条目会记录全部 sha256。
+
+### L132 · 2026-11-20 07:18 CT · P1.12 第 4 次通过；P2.11 依赖解除
+- task_id: P1.12、P2.11、D-53.8d、D-53.8e、D-53.8f
+- code_sha: 7b18f2052e52a4268c25407d0584748477cbf978（第 4 次锁内核对通过，未移动 main worktree）
+- docs_sha: 7f67dc686b73c8377a91f3917e39da0db0c10b8d
+- 环境: 隔离环境 S-1
+- 命令: `probe account-switch.spec.ts`，外层 `~/work/evidence/D53/staging/P1.12/attempt-4.log`，原始 `check-20261120T131158Z-probe-account-switch.log`，结果与计数在 attempt-4-results.json、attempt-4-counts.json。L131 所记的 p1-cleanup 仍按依赖顺序等待执行，不重复启动 account-switch。
+- 计数: 1 passed / 0 failed，未命中封闭应用缺陷清单。control_A 的 inspect 与 observer 均 innerText=1、textContent=1，observer 回调 16 次；A 列表画出到 B 消息页 4775ms，30 秒缓存窗口已覆盖。B 五次 inspect 四项泄漏计数全部 0，身份均为 B；广场、帖子与重载后的 [SYN-P1.12] 界面正对照均至少 1。pre_reload 回调 51 次、post_reload 17 次，两段四项泄漏最大值全 0，正对照 innerText/textContent 均至少 1。page.reload（普通重载，WebKit）后帖子卡和作者按钮都可见，两次 inspect 都通过。帖子在验收中已由 B 正常删除并 SELECT 验证 0 行。UI A/B、SDK A/B/C 共 5 次 /logout HTTP 204，新会话残留 0。schema 3 项 200；自检 600 / 0 / 1 / 精确 8 个变量；磁盘 236G。
+- ci_run_url: —
+- 未测项: attempt-5 不用，因为第 4 次已通过。新私信 cd44b8ea-49b7-424d-a5ed-f467efb8e556 与旧消息 3a480e58-fd78-43dc-9d74-1cb91e64471b 同在会话 158773c0-56c1-4568-bc25-831b3b7db9ed，均无删除入口，已累加保存；旧 P2.11 的 4 个残留 ID 仍见 L129。P2.11 新码加 message 的版本没有执行，L126 是修改前版本的运行证据。
+- 下一条: 完成 L131 的 p1-cleanup（最终再次核 B 的对照帖总数 0、UI logout、SDK local logout）；然后追加全套归档 sha256 与最终结论，不再运行验收 spec。
+- 附: 假设得到证实：welcomed=1 修复了探针冷启动条件，带正确页面门和正向对照的泄漏观察在 main 基线通过。按 D-53 第 8 项 f，P2.11 状态由「运行通过，7/7 被拒；等 P1.12（依赖）」改为「通过」。P2.11 仍标「已改、未执行；L126 的证据出自改之前的版本」，旧 sha256 493163882bc6f1f34160deab6d1b337b723668394ac310dc2d65007ade747849，新 7033792de3e4f6463de8958a79e730a5bc77871673d2e63391529b89010e8a45。只证明 7b18f20；第 8 项 g 的 #369/#377 上线 head 确认跑仍由 supervisor 另派，不是合并许可。
+
+### L133 · 2026-11-20 07:26 CT · D-53 第 8 项收尾：清理通过、归档 sha256 与最终结论
+- task_id: P1.11、P1.12、P2.11、D-53.8
+- code_sha: 7b18f2052e52a4268c25407d0584748477cbf978（两项验收和最后清理前均锁内核对相同）
+- docs_sha: 7f67dc686b73c8377a91f3917e39da0db0c10b8d（仅本地未提交修改）
+- 环境: 隔离环境 S-1；本地主机公开归档扫描
+- 命令: 最后 `probe p1-cleanup.spec.ts` 已结束，外层 `~/work/evidence/D53/staging/P1.12/cleanup-after-attempt-4.log`，原始 `check-20261120T132346Z-probe-p1-cleanup.log`；将 `~/work/illini-dev-env/probes/` 与 probe-in-container.sh 复制到 `docs/community-platform/appendix/env/probes/`，逐文件 `sha256sum` 并比对源文件；不提交、不推送。
+- 计数: 最后清理 1 passed / 0 failed，B 的 [SYN-P1.12] 帖子清理前库存 0、最终 SELECT 200 / 0 行（已在验收中删除），UI B logout 204，SDK B logout 204。两项本轮加清理共 13 次 /logout 全为 204（UI 6、SDK 7；按账号 A 4、B 6、C 3），新会话残留 0。最终自检 600 / 0 / 1 / 精确 8 个变量，磁盘 237G。公开归档 13 个文件与源逐字节相同，非示例邮箱 0、token/密钥 0、工作站绝对路径 0。P1.11 第 4 次 3 passed，P1.12 第 4 次 1 passed；两个第 5 次均未用。
+- ci_run_url: —
+- 未测项: 无正常删除入口的累加内容残留共 7 个 ID：C 消息 3a480e58-fd78-43dc-9d74-1cb91e64471b 与本次 cd44b8ea-49b7-424d-a5ed-f467efb8e556；其会话 158773c0-56c1-4568-bc25-831b3b7db9ed；旧 P2.11 已售商品 8aca057d-6617-4dac-9819-2572dbb65977、报价 6973bda3-06ef-4c71-9e8c-509cae9e5d5f、会话 47b757ec-053b-40c6-81a9-586e291426a9 与 45afcc07-8b1a-4b71-a4de-0d6fd02639e6。旧 ID 未从清单丢失，没有用特权接口清掉它们。本轮只核实新会话都 local logout，不声称已撤销历史会话。P2.11 不重跑；#369/#377 确认跑仍按第 8 项 g 另派；P1.8/P2.13 不在本子任务内。
+- 下一条: 本轮结束；由主会话提交材料。本轮最终状态：P1.11 通过、P1.12 通过、P2.11 通过；均不是合并许可。
+- 附: P2.11「已改、未执行；L126 的证据出自改之前的版本」：旧 sha256 493163882bc6f1f34160deab6d1b337b723668394ac310dc2d65007ade747849，新 sha256 7033792de3e4f6463de8958a79e730a5bc77871673d2e63391529b89010e8a45。按 STOP-16a，ENGINEERING 空正文映射表漏列先报的 22023 public_write_boundary:post_content_size，已在 L128/L129 记录，本轮不改该表。归档根目录是 `docs/community-platform/appendix/env/probes/`，其下全部文件 sha256：
+  - `probe-in-container.sh`：70564aa1f12c7aaf2ed998d14b267d501971e042cd3257bb42d4a979d04044d3
+  - `probes/account-switch.spec.ts`：e0a883990ff4bd71db2bead30e86a3fbbce9809a3da655c47607162f91ba2884
+  - `probes/ci-count-filter.py`：ddd4258f2cc666205a39a3cf8a362ce0297f8ceab633b82f2315275860f7c1b6
+  - `probes/consent-login.spec.ts`：0dfd63ad0004bf8a96364d6b22b7a89bf278cab0f166ea2743750545cca15020
+  - `probes/p1-cleanup.spec.ts`：a906622454fc9429f42adf51b54dc328510024b844197f7b493dfb6b9fe270a7
+  - `probes/p2-authz-matrix.mjs`：7033792de3e4f6463de8958a79e730a5bc77871673d2e63391529b89010e8a45
+  - `probes/p2-cleanup-a.mjs`：55d2264b4f669744ddb19dd4ba00727b868e00136d5b7c45caffde98d876a8f9
+  - `probes/p2-cleanup.spec.ts`：67094aabca3d6ddf54cfbeb45d2ca4cb822bd94801c1a770eb559d07ec59bee1
+  - `probes/playwright.probe.config.ts`：207f95f707fa300f85883b3419d61c2fc3b496a208886dccd8557270f27182c5
+  - `probes/probe-data.mjs`：b9170e66ffe302d5b5ac66c881deb4d354d94368df30df9209405c0b28dff79a
+  - `probes/probe-ui.ts`：458c9f4afdbdbdc3d82221fa9b7c01090572bff4971cc0bfb6516c31fa3acd01
+  - `probes/schema-only.mjs`：97cbb8dba474a2671fe4d35c8450b739360b70efcfbd9c44f360679908a67469
+  - `probes/selfcheck.sh`：1c6a000ef04971879205bbf81b2b5e3d1d7e4ac1b3db0c2d75916213d21ebd8f
+
+### L134 · 2026-11-20 07:35 CT · 仅追加更正 L131 的过期排队观察；最终结论与归档散列不变
+- task_id: D-53.8-log-correction
+- code_sha: 7b18f2052e52a4268c25407d0584748477cbf978
+- docs_sha: 7f67dc686b73c8377a91f3917e39da0db0c10b8d（仍未提交）
+- 环境: 本地只读对照证据；没有新增 S-1 运行
+- 命令: 对照 `check-20261120T131158Z-probe-account-switch.log`、attempt-4.log、session-logouts.json 与 L131；只追加本条，不改已有条目。L133 的清理结果与逐文件 sha256 均保持有效。
+- 计数: L131 在 07:14 CT 写「第 4 次尚在等共享锁」是沿用较早空日志的过期观察，并非即时状态。按 13:11:58Z 日志时间与 91 秒步骤耗时推算，第 4 次约在 07:13:29 CT 已结束；当时等待的是后续清理。实际验收结果仍为 1 passed，最后清理仍为 1 passed。验收仍只有两项各第 4 次，两项第 5 次都未用；13 次 /logout 仍全部 204，新会话残留仍为 0。所有本子任务运行及等待进程现已结束，没有杀容器任务。
+- ci_run_url: —
+- 未测项: 仍仅有 7 个无正常删除入口的内容 ID：消息 3a480e58-fd78-43dc-9d74-1cb91e64471b、cd44b8ea-49b7-424d-a5ed-f467efb8e556；会话 158773c0-56c1-4568-bc25-831b3b7db9ed；已售商品 8aca057d-6617-4dac-9819-2572dbb65977；报价 6973bda3-06ef-4c71-9e8c-509cae9e5d5f；会话 47b757ec-053b-40c6-81a9-586e291426a9、45afcc07-8b1a-4b71-a4de-0d6fd02639e6。历史会话未做全局撤销；P2.11 新版未执行；候选 head 确认跑仍由 supervisor 另派。
+- 下一条: 本子任务结束，最终状态仍为 P1.11 通过、P1.12 通过、P2.11 通过；材料由主会话提交，本子任务不提交、不推送。
+- 附: 为使最后一条仍含全部文件散列，重列归档 `docs/community-platform/appendix/env/probes/` 的 13 个 sha256。P2.11「已改、未执行；L126 的证据出自改之前的版本」：旧 sha256 493163882bc6f1f34160deab6d1b337b723668394ac310dc2d65007ade747849，新 sha256 7033792de3e4f6463de8958a79e730a5bc77871673d2e63391529b89010e8a45。
+  - `probe-in-container.sh`：70564aa1f12c7aaf2ed998d14b267d501971e042cd3257bb42d4a979d04044d3
+  - `probes/account-switch.spec.ts`：e0a883990ff4bd71db2bead30e86a3fbbce9809a3da655c47607162f91ba2884
+  - `probes/ci-count-filter.py`：ddd4258f2cc666205a39a3cf8a362ce0297f8ceab633b82f2315275860f7c1b6
+  - `probes/consent-login.spec.ts`：0dfd63ad0004bf8a96364d6b22b7a89bf278cab0f166ea2743750545cca15020
+  - `probes/p1-cleanup.spec.ts`：a906622454fc9429f42adf51b54dc328510024b844197f7b493dfb6b9fe270a7
+  - `probes/p2-authz-matrix.mjs`：7033792de3e4f6463de8958a79e730a5bc77871673d2e63391529b89010e8a45
+  - `probes/p2-cleanup-a.mjs`：55d2264b4f669744ddb19dd4ba00727b868e00136d5b7c45caffde98d876a8f9
+  - `probes/p2-cleanup.spec.ts`：67094aabca3d6ddf54cfbeb45d2ca4cb822bd94801c1a770eb559d07ec59bee1
+  - `probes/playwright.probe.config.ts`：207f95f707fa300f85883b3419d61c2fc3b496a208886dccd8557270f27182c5
+  - `probes/probe-data.mjs`：b9170e66ffe302d5b5ac66c881deb4d354d94368df30df9209405c0b28dff79a
+  - `probes/probe-ui.ts`：458c9f4afdbdbdc3d82221fa9b7c01090572bff4971cc0bfb6516c31fa3acd01
+  - `probes/schema-only.mjs`：97cbb8dba474a2671fe4d35c8450b739360b70efcfbd9c44f360679908a67469
+  - `probes/selfcheck.sh`：1c6a000ef04971879205bbf81b2b5e3d1d7e4ac1b3db0c2d75916213d21ebd8f
+
+### L135 · 2026-11-20 06:59 CT · [supervisor 指示] E5 完成：#371 已合进 main，P1.8 与 P2.13 开工
+- task_id: D-53.5（P1.8、P2.13）、D-53.7a
+- code_sha: main 057d07de5cf78f3b0f3bedf91f367c5ae29db001（#371 squash）
+- docs_sha: 7f67dc6（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: `git fetch origin`；`gh pr view 371 --json state,mergeCommit` → MERGED 057d07d；`git merge-base --is-ancestor 057d07d origin/main` 成立（origin/main 就是 057d07d）；读 BACKLOG P1.8（第 305 行）、P2.13（第 721 行）；派子任务 st_01a1f90a（deep-high）做 P1.8、下游合并（#375、#374、#377）与 P2.13；RUNBOOK §11 E5 记完成；STATUS 阻塞第 5 条与 next_task_id 改写
+- 计数: #371 state=MERGED；mergeCommit 是 origin/main 的祖先 [本地测]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44737046939（supervisor 引，#371 在 6d481d0 上全绿）
+- 未测项: —
+- 下一条: P1.8 子任务结果
+- 附: D-53 第 7 项 a 的开工条件满足。[OMO自决] P1.8 先 `git revert c52badf` 再 `git merge origin/main`：main 已经带着 #376 的三处 ubuntu-24.04，如果先 merge 再 revert，会把 main 提供的钉版本也删掉；按这个顺序，#369 的 ci.yml 与 main 逐字节相同（D-53 第 9 项「由 main 提供」，优先于 BACKLOG P1.8 DoD ②「ci.yml 里没有 ubuntu-24.04」）。下游：#375 合 #369 新 head，#374 合 #375 新 head，#377 合 #374 新 head；P3、P4 的分支此刻由 st_01a1f859 推送，等它收尾后再从 #377 合进去（同一分支同一时间只让一个任务推送）。第 8 项（P1.11、P1.12 重跑）照常，代码仍固定在 7b18f20。[OMO自决] 这一条在 P1.11、P1.12 重跑期间写成，那段时间 STATUS_LOG 由重跑子任务独占追加，所以本条等它交回后再按顺序插入，时间戳是实际写成的时间。

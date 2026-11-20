@@ -1,6 +1,6 @@
 # STATUS
 
-写于 2026-11-20 06:59 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-20 07:39 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
 `next_task_id: D-53 第 4 项（P3、P4，子任务）；P1.8 → 下游合并 → P2.13（子任务，#371 已合）；D-53 第 8 项 P1.11、P1.12 重跑（子任务）`
 `latest_batch: appendix/batch/FINAL.md`
@@ -116,10 +116,10 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P2.4 | 通过 | smoke 23 passed、test 2001/2000/0/1 [本地测]；CI [CI run#43383800477] |
 | REGION.1 | 通过 | 列、约束、只读授权、region_in 已并入；test 2001/2000/0/1 [本地测]；④ 的 VERIFY/L-SQL 随 P2.5 |
 | P2.5 | 通过 | 20261112120000 冻结（sha256 e2a85c3e…）；L-SQL 181/181，PRECHECK→REPLAY→VERIFY→REGRESSION 全过；test 2001/2000/0/1 [隔离环境 L-SQL][本地测]；④ staging 探测等 E3 |
-| P1.11 | 重跑中（D-53 第 8 项：探针问题，最多再 2 次，共 5 次） | 前 3 次：staging 自检过、3 个 schema 读取 200、A/B/C 登录 200、同意写入 204；但第 3 次探针在截图前就失败（要求首页 URL 带 pages/index/index，应用的规范首页是 #/），0 张截图、测试 0 / 3。前两次是探针的选择器和会话格式问题；最后的路由没留，不能完全排除应用导航问题（L126） |
-| P1.12 | 重跑中（D-53 第 8 项：探针问题，最多再 2 次，共 5 次；依赖 P1.11） | 前 3 次：换号不刷新：B 在消息、广场、帖子三处 9 次计数都是 0，身份都对；强制刷新后 `.more-btn` 一直不可见，刷新后的隔离没验证到，测试 0 / 1。前两次是探针问题（L126） |
+| P1.11 | 通过（7b18f20 基线；候选 head 确认跑另派） | D-53 第 8 项第 4 次：3 passed；3 个 schema 读取 200；A/B/C 同意布尔均为真、already_recorded，核实第 3 次 204×3 的同意仍在；规范首页和标题 3 秒后仍符合，3 张无账号字段截图已看。UI/SDK 共 6 次 local logout 均 HTTP 204，新会话残留 0；第 5 次未用（L129、L130） |
+| P1.12 | 通过（7b18f20 基线；候选 head 确认跑另派） | D-53 第 8 项第 4 次 1 passed；control_A 与 [SYN-P1.12] 正对照通过，缓存窗口 4775ms；B 五次 inspect 四项均 0、身份均为 B，pre/post observer 51/17 次回调、泄漏最大值均 0。welcomed=1 后 page.reload（普通重载，WebKit）仍在帖子页，卡片与作者按钮可见；B 帖已删且查 0 行，验收与最后清理共 7 次 UI/SDK logout 全 204，新会话残留 0。第 5 次未用，最后清理 1 passed、库存与最终查询均 0 行（L130–L133） |
 | P2.6 | 通过 | D-53 第 0 项 b 代替「Eric 留言」，D-51 第 6 项代替 DoD ①；schema 预检 5 / 5；#369 head 8257318 的 run 44647478789 五个必需 job 全过（Boundary 2156 / 2155 / 0 / 1，public 472 passed，H5 验收 52 passed）（L102、L126） |
-| P2.11 | 运行通过，7/7 被拒；等 P1.12（依赖） | 7 个禁止的写入 7 个被拒、0 个被接受；删掉的帖子匿名列表与搜索都查不到；只替换了 /api/moderate；按 §5.2 清理，留下没有删除入口的 1 件已售商品、1 个已接受的报价、2 个会话（L126） |
+| P2.11 | 通过 | L126 的 7 个禁止写入全被拒，匿名列表/搜索均查不到已删帖；P1.12 第 4 次通过，依赖解除（L132）。期望已改为同时匹配码与 message，但未重跑；「已改、未执行；L126 的证据出自改之前的版本」。按 §5.2 留下无删除入口的 1 件已售商品、1 个已接受报价、2 个会话，ID 见 L129 |
 | P2.7 | 通过 | smoke 15 passed、test 2001/2000/0/1 [本地测]；CI [CI run#43392843858] |
 | P2.8 | 通过 | 46e69b8（已推送 #369）；test 2035/2034/0/1、pg_skips=0，smoke 19 passed，typecheck rc=0；见 STATUS_LOG L51 [本地测] |
 | P2.10 | 通过 | 92698d1；主包 1,558,489（CI 环境，由当时 H5 stub 环境实测的 1,558,580 按 D-46 的 91 字节差换算；预算余 14,375）[本地测] |
@@ -215,3 +215,5 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 24. 仓库 2026-11-20 07:15Z 起公开（D-52 第 4 项 a2）：材料分支、DECISIONS（含 D-51 里的账号邮箱缩写）和几个 PR 描述里已经有账号邮箱和工作站路径，现在任何人都能看到。OMO 不改写历史去删它们，要不要处理由 Eric 定。本批起不再往仓库加原始日志、带真实数据的截图、账号邮箱、凭据和 /home 开头的绝对路径。
 25. D-53 第 0 项（照抄）：a【Eric 选】生产上线走「先验收再上线」：合 #369 之前，P1.11、P1.12、P2.6、P2.11 要在 staging 上通过，P2.13 也要完成。b、c【supervisor 做】E2（D-29 定 A）、E3 已完成，见第 2 条。d【Eric 选】品牌和 demo 现在就上；E12 由 supervisor 做完，见第 18 条；#372 由 supervisor 按上线顺序手工合。e【Eric 选】vite 走 B 路线，见第 20 条。f【Eric 选】D-49 的 12 条政策问题全部按「不新增权限」定：行为类维持现在的服务端行为，措辞类沿用现有文字，代码不改。g【supervisor 做或将做，只授权 supervisor，不授权 OMO】合并：vite PR → #373 的分支 → #371 的分支 → main（E5）；验收通过后：生产应用 20261112120000 并 VERIFY，依次合 #369 → #375 → #374，staging、生产先后对 20261114015420 做 PRECHECK、应用、VERIFY 后合 #377，再手工合 #372，每步之后看生产。P3、P4 的迁移不在本批上线范围。RUNBOOK §11 的 E2、E3、E5、E12 已由 supervisor 在 362087f 按此标状态。
 26. D-53 第 9 项（照抄，【supervisor 做】）：#371 在 7c94a11 上的 CI（run 44731585297）只有 Build H5 失败，ubuntu-26.04 上 WebKit 起不来；所以先把 #376 squash 合进 main（b4d615b，12:35Z），再把 main 合进 #371 的分支（6d481d0）。#376 进 main、#371 还没进的这段时间，main 的依赖审计会因 intlify、follow-redirects、glob、minimatch、qs 的 6 条公告变红，属预期，#371 合进去就好。supervisor 已独立核过：#378 在容器里用自己下载的输入重建两次，与提交的归档逐字节相同；#376 的审计步骤过了 55 种输入和真实 registry 的测试。P1.8 仍按 D-53 第 7 项 a 看 #371 的 mergeCommit。
+
+27. D-53 第 8 项 g：P1.11、P1.12 第 4 次都在固定 7b18f20 上通过，仅证明 main 基线与探针本身；合 #369 和合 #377 之前，supervisor 仍要另派同一份探针（sha256 不变）在要合的 head 上各做确认跑，不计入这次 5 次预算。OMO 本轮不推进 main worktree、不改应用代码、不合任何 PR；第七批④、⑥按此保留候选 head 确认跑。
