@@ -708,7 +708,7 @@ OMO 自己的规则：
   2. 在 Mac 上执行 `git fetch && git switch codex/community-topics-20261112 && git pull`，再执行 `shasum -a 256 supabase/migrations/20261112120000_community_post_topics.sql`，结果要与冻结值一致。
   3. 按仓库 RUNBOOK.md 托管迁移一节（「2026-07 candidate release sequence」第 15–16 条，出处见 [ENGINEERING.md](ENGINEERING.md) §11），只对 hygkwxugskijadgfisji 依次执行：只读 PRECHECK_20261112120000、经 ledger-aware migrations 端点应用、只读 VERIFY_20261112120000。不用 db push、raw psql 或 dashboard 的 SQL 编辑器。
   4. 在 PR #369 留言应用时间和 VERIFY 的输出。
-- **E5**【2026-11-20 起由 supervisor 合并，见 DECISIONS D-53 第 0 项 g】合并配置修正 PR（解锁 P1.8）。P1.7 的 PR 全绿后审阅 diff，按仓库习惯合并到 main，OMO 不合并。D-41 如果选了单独的依赖修复 PR，同样由 Eric 合并。
+- **E5**【已完成 2026-11-20：supervisor 把 #371 squash 合进 main，mergeCommit 057d07de5cf78f3b0f3bedf91f367c5ae29db001，CI run 44737046939 全绿（在 6d481d0 上）；见 DECISIONS D-53 第 0 项 g、第 9 项】合并配置修正 PR（解锁 P1.8）。P1.7 的 PR 全绿后审阅 diff，按仓库习惯合并到 main，OMO 不合并。D-41 如果选了单独的依赖修复 PR，同样由 Eric 合并。
 - **E6** 官方账号的 profile id（D-13；P3.5、P4.9、P4.11 之前）。用 admin@caaciorg.com 在 staging（本地 dev 指向 staging）和生产站点各登录一次，并接受同意书。把两个 profile id 留言到 PR，它们不是机密。P4.11 发布时，在生产 Vercel 环境变量里设 COMMUNITY_OFFICIAL_PROFILE_ID。
 - **E7** 微信后台核对与改名（D-27、D-30；解锁 BRAND.5）。
   1. 登录 mp.weixin.qq.com（AppID wxc3da81aa8852a6ff）。
