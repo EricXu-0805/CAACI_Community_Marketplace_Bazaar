@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 import { useAuth } from './useAuth'
 import { useModeration } from './useModeration'
+import { assertWritesAllowed } from './useRestriction'
 import { captureException } from '../utils/sentry'
 import type { Item } from '../types'
 import {
@@ -101,6 +102,8 @@ export function useFollow() {
       following.value.delete(sellerId)
       return false
     } else {
+      // Unfollow stays available to a restricted account; a new follow does not.
+      assertWritesAllowed()
       const { error } = await supabase
         .from('follows')
         .insert({ follower_id: uid, followee_id: sellerId })

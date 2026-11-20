@@ -359,6 +359,7 @@ import { ref, computed, nextTick, watch } from 'vue'
 import { onShow, onHide, onPullDownRefresh, onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
+import { stopIfRestricted } from '../../composables/useRestriction'
 import { useTheme } from '../../composables/useTheme'
 import AppSidebar from '../../components/AppSidebar.vue'
 import CustomTabBar from '../../components/CustomTabBar.vue'
@@ -714,10 +715,11 @@ function goDetail(id: string) {
 }
 
 function goEdit(id: string) {
+  if (stopIfRestricted()) return
   uni.navigateTo({ url: `/pages/publish/edit?id=${id}` })
 }
 
-function onEditProfile() { uni.navigateTo({ url: '/pages/profile/edit' }) }
+function onEditProfile() { if (!stopIfRestricted()) uni.navigateTo({ url: '/pages/profile/edit' }) }
 
 function onVerifyIllini() {
   uni.navigateTo({ url: '/pages/illini-verify/index' })

@@ -210,6 +210,7 @@ import { watch, ref, reactive, computed, onUnmounted } from 'vue'
 import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
+import { stopIfRestricted } from '../../composables/useRestriction'
 import { authoredLang } from '../../composables/i18n/format'
 import { useLocation } from '../../composables/useLocation'
 import { useStreetVerification } from '../../composables/useStreetVerification'
@@ -564,6 +565,7 @@ async function prepareEditPage(itemId: string) {
     }
     return
   }
+  if (stopIfRestricted()) { goBack(); return }
   const accountToken = captureAccountRequest(currentUser.value.id)
   if (!isAccountRequestCurrent(accountToken)) return
   editPageAccountToken = accountToken
@@ -695,7 +697,7 @@ onUnmounted(destroyEditPage)
 const MAX_IMAGES_PUBLISH = 9
 
 function chooseImage() {
-  if (submitting.value) return
+  if (submitting.value || stopIfRestricted()) return
   const pickerAccountToken = editPageAccountToken
   if (
     !editReady.value
@@ -821,6 +823,7 @@ async function onDetectLocation() {
 async function onSubmit() {
   // Lock before auth readiness and the high-price confirmation modal so
   // rapid clicks cannot launch two edit/upload transactions in parallel.
+  if (stopIfRestricted()) return
   if (submitEntryLocked) return
   submitEntryLocked = true
   const operationEpoch = ++editOperationEpoch

@@ -72,6 +72,8 @@ async function loadPlaza(insertError) {
     '../utils/sentry': 'export const addBreadcrumb=()=>{}, captureException=(e, ctx)=>globalThis.__likeDriftReported.push(ctx)',
     '../utils/publicResource': 'export const assertI18nWrite=()=>{}, assertPublicMediaWrite=()=>{}, sanitizeItemResources=x=>x, sanitizePostResources=x=>x',
     '../api/mutationCommit': 'export const isDefinitiveMutationRejection=()=>false, mutationCommitState=()=>"not_committed", mutationOutcomeError=e=>e, shouldCompensateMutationFailure=()=>false',
+    // D-49 write backstop; these tests exercise unrestricted accounts.
+    './useRestriction': 'export const assertWritesAllowed=()=>{}',
   }
   globalThis.__likeDriftReported = reported
 

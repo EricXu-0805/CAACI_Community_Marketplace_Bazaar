@@ -39,10 +39,12 @@ async function loadSentryHarness() {
   const sentrySource = source('src/utils/sentry.ts')
     .replace(/import type \{ App \} from 'vue'\n/, '')
     .replace(/import \{[\s\S]*?\} from '\.\/telemetryPrivacy'\n/, '')
+    // D-49: sentry.ts recognizes restriction refusals with the suspension parser.
+    .replace(/import \{ parseSuspensionRefusal \} from '\.\/suspension'\n/, '')
     .replace(/import \* as Sentry from '@sentry\/vue'/, 'const Sentry = globalThis.__SENTRY_STUB__')
     .replaceAll('import.meta.env', 'globalThis.__SENTRY_TEST_ENV__')
 
-  const compiled = ts.transpileModule(`${privacySource}\n${sentrySource}`, {
+  const compiled = ts.transpileModule(`${privacySource}\n${source('src/utils/suspension.ts')}\n${sentrySource}`, {
     compilerOptions: {
       target: ts.ScriptTarget.ES2022,
       module: ts.ModuleKind.ES2022,

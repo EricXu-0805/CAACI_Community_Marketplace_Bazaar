@@ -362,7 +362,9 @@ test('the notice disappears at expiry while the app stays open', async (t) => {
   assert.equal(mod.stopIfRestricted(), false, 'writes stayed blocked after expiry')
 })
 
-test('H5 mounts the notice host for an active restriction without any toast', async () => {
+test('H5 mounts the notice host for an active restriction without any toast', async (t) => {
+  // The expiry refresh schedules a long timer; keep it off the real clock.
+  t.mock.timers.enable({ apis: ['setTimeout'] })
   for (const state of STATES) {
     const rt = restrictionRuntime(state.user)
     requireRestriction(rt).startRestrictionNotice()
@@ -431,11 +433,17 @@ for (const h5 of [true, false]) {
     for (const state of STATES) {
       const rt = restrictionRuntime(state.user, { h5 })
       const mod = requireRestriction(rt)
+      let opened = 0
       const nodes = renderTemplate('components/AppToast.vue', {
         toasts: [], restrictionNotice: Vue.unref(mod.restrictionNotice),
-        openRestrictionDetails: mod.openRestrictionDetails, i18nT: translate('en'),
+        openRestrictionDetails: () => { opened += 1 }, i18nT: translate('en'),
       }, { h5 })
-      const notice = nodes.find(n => n.props.onClick === mod.openRestrictionDetails)
+      const notice = nodes.find(n => {
+        if (typeof n.props.onClick !== 'function') return false
+        const before = opened
+        n.props.onClick()
+        return opened > before
+      })
       if (state.refused && state.level < 5) {
         assert.ok(notice, `${state.name}: no tappable notice`)
         assert.ok(notice.text.includes(restrictionText('en')), notice.text)

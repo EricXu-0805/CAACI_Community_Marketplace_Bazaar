@@ -58,6 +58,11 @@
     </view>
 
     <view class="footer">
+      <!-- D-49: L2-L4 can browse, so a visit from the notice needs a way back.
+           L5 stays here (App.vue's gate). -->
+      <view v-if="level < 5" class="btn-ghost" role="button" :aria-label="t('nav.home')" @click="goHome">
+        <text>{{ t('nav.home') }}</text>
+      </view>
       <view class="btn-ghost" role="button" :aria-label="t('suspended.viewTerms')" @click="goLegal">
         <text>{{ t('suspended.viewTerms') }}</text>
       </view>
@@ -471,6 +476,11 @@ async function onSubmitAppeal() {
       submittingAppeal.value = false
     }
   }
+}
+
+function goHome() {
+  // switchTab works even when this page is the only one in the stack.
+  uni.switchTab({ url: '/pages/index/index' })
 }
 
 function goLegal() {

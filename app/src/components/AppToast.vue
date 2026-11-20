@@ -16,6 +16,11 @@
 <template>
   <!-- #ifdef H5 -->
   <div class="at-wrap" aria-live="polite">
+    <div v-if="restrictionNotice" class="at-notice" role="link" tabindex="0" @click="openRestrictionDetails" @keydown.enter.prevent="openRestrictionDetails" @keydown.space.prevent="openRestrictionDetails">
+      <UIcon name="shield" size="xs" color="currentColor" aria-hidden="true" />
+      <span class="at-notice-text">{{ restrictionNotice }}</span>
+      <UIcon name="chevron-right" size="xs" color="currentColor" aria-hidden="true" />
+    </div>
     <transition-group name="at">
       <div
         v-for="t in toasts"
@@ -45,6 +50,11 @@
   <!-- #endif -->
   <!-- #ifndef H5 -->
   <view class="at-wrap" :style="mpChrome" aria-live="polite" aria-atomic="false">
+    <view v-if="restrictionNotice" class="at-notice" role="link" @click="openRestrictionDetails">
+      <UIcon name="shield" size="xs" color="currentColor" aria-hidden="true" />
+      <text class="at-notice-text">{{ restrictionNotice }}</text>
+      <UIcon name="chevron-right" size="xs" color="currentColor" aria-hidden="true" />
+    </view>
     <view
       v-for="t in toasts"
       :key="t.id"
@@ -73,6 +83,7 @@ import { registerToastHost } from '../composables/useAppToast'
 import { mpChromeVars } from '../composables/useMpChrome'
 // #endif
 import { useI18n } from '../composables/useI18n'
+import { openRestrictionDetails, restrictionNotice } from '../composables/useRestriction'
 import UIcon from './UIcon.vue'
 
 const { toasts, dismissToast } = useAppToast()
@@ -166,6 +177,32 @@ function onTap(t: ToastItem) {
   gap: 8px;
   pointer-events: none;
 }
+
+/* D-49 restriction notice: persistent and compact, outside the transient
+   toast stack. Only the pill itself takes touches. */
+.at-notice {
+  pointer-events: auto;
+  align-self: center;
+  max-width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--warning-soft, #FBEBD0);
+  color: var(--warning-text, #8A5A00);
+  border: 0.5px solid var(--line-hair, rgba(0, 0, 0, 0.06));
+  box-shadow: var(--shadow-float, 0 12px 32px rgba(40, 30, 20, 0.18));
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.at-notice-text { min-width: 0; overflow-wrap: anywhere; }
+.at-notice:focus-visible { outline: 2px solid var(--accent-action, #C2410C); outline-offset: 2px; }
 
 .at-card {
   pointer-events: auto;

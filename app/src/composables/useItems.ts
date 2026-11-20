@@ -18,6 +18,8 @@ import {
   type MutationOutcomeError,
 } from '../api/mutationCommit'
 import { ownedItemImagePaths } from '../utils/itemStorage'
+import { parseSuspensionRefusal, restrictionError } from '../utils/suspension'
+import { assertWritesAllowed } from './useRestriction'
 import { captureException } from '../utils/sentry'
 import {
   assertI18nWrite,
@@ -517,6 +519,7 @@ export function useItems() {
     negotiable?: boolean
     listing_type?: 'sell' | 'wanted'
   }, options?: Pick<ItemMutationOptions, 'accountToken' | 'confirmSuspectedAd' | 'locationCheckToken'> & { itemId?: string; retryCreate?: boolean }) {
+    assertWritesAllowed()
     const entryUserId = getActiveAccountId()
     const accountToken = options?.accountToken
       || (entryUserId ? captureAccountRequest(entryUserId) : null)
@@ -675,6 +678,8 @@ export function useItems() {
     updates: Partial<Pick<Item, 'title' | 'description' | 'price' | 'category' | 'condition' | 'location' | 'images' | 'image_dimensions' | 'title_i18n' | 'description_i18n' | 'source_lang' | 'negotiable' | 'listing_details'>>,
     options?: ItemMutationOptions,
   ) {
+    // Every column accepted here is public listing content.
+    assertWritesAllowed()
     const entryUserId = getActiveAccountId()
     const accountToken = options?.accountToken
       || (entryUserId ? captureAccountRequest(entryUserId) : null)
@@ -852,6 +857,7 @@ export function useItems() {
     },
   ): Promise<UploadBatchResult> {
     if (tempFiles.length > MAX_IMAGES) throw new Error('Too many files')
+    assertWritesAllowed()
     options?.onProgress?.(0, tempFiles.length)
     const urls: string[] = []
     const dims: Array<{ w: number; h: number }> = []
@@ -941,7 +947,8 @@ export function useItems() {
             uploadError = null
           } else {
             console.warn('[upload] Mini Program image upload failed')
-            uploadError = new Error(`Upload HTTP ${mpResult.statusCode}`)
+            const refusal = parseSuspensionRefusal(mpResult.data)
+            uploadError = refusal ? restrictionError(refusal) : new Error(`Upload HTTP ${mpResult.statusCode}`)
           }
         } catch (error) {
           console.warn('[upload] Mini Program image upload failed')
@@ -961,6 +968,9 @@ export function useItems() {
           dims.push(naturalDims)
           sourceIndices.push(sourceIndex)
         } else {
+          // A restriction refusal stops the whole batch (cleaned below) rather
+          // than publishing with the remaining images.
+          if (parseSuspensionRefusal(uploadError)) throw uploadError
           // A transport can report failure after Storage accepted the bytes.
           // No item/message references this candidate yet, so removal is safe.
           await cleanupFailedUploadBatch(
@@ -972,7 +982,8 @@ export function useItems() {
           console.warn('[upload] Skipping an image after upload failure')
         }
       } catch (err) {
-        if (isAccountChangedError(err) || (err as { heic?: unknown })?.heic === true) {
+        const refused = !!parseSuspensionRefusal(err)
+        if (refused || isAccountChangedError(err) || (err as { heic?: unknown })?.heic === true) {
           // A later HEIC can fail after earlier files in the same selection
           // have already uploaded. The caller never receives those partial
           // URLs when we throw. Account-change failures use the same path; if
@@ -981,7 +992,8 @@ export function useItems() {
           await cleanupFailedUploadBatch(
             uploadAttempted ? [...urls, candidateUrl] : urls,
             accountToken,
-            isAccountChangedError(err)
+            refused ? 'items.restricted_upload_cleanup'
+              : isAccountChangedError(err)
               ? 'items.account_changed_upload_cleanup'
               : 'items.heic_batch_upload_cleanup',
           )
@@ -1050,6 +1062,7 @@ export function useItems() {
     dims: { w: number; h: number }
     accountToken: UploadAccountToken
   }> {
+    assertWritesAllowed()
     const entryUserId = getActiveAccountId()
     const accountToken = options?.accountToken
       || (entryUserId ? captureAccountRequest(entryUserId) : null)
@@ -1102,7 +1115,7 @@ export function useItems() {
         'items.single_image_upload_rejected_cleanup',
       )
       console.warn('[upload] H5 image upload failed')
-      throw new Error(`Storage upload failed: ${h5Err.message || 'unknown'}`)
+      throw parseSuspensionRefusal(h5Err) ? h5Err : new Error(`Storage upload failed: ${h5Err.message || 'unknown'}`)
     }
     // #endif
 
@@ -1138,7 +1151,8 @@ export function useItems() {
       ))
       if (result.statusCode < 200 || result.statusCode >= 300) {
         console.warn('[upload] Mini Program image upload failed')
-        throw new Error(`Storage upload failed: HTTP ${result.statusCode}`)
+        const refusal = parseSuspensionRefusal(result.data)
+        throw refusal ? restrictionError(refusal) : new Error(`Storage upload failed: HTTP ${result.statusCode}`)
       }
     } catch (uploadError) {
       await cleanupFailedUploadBatch(
@@ -1212,6 +1226,8 @@ export function useItems() {
   async function updateItemStatus(id: string, status: ItemStatus) {
     if (!VALID_STATUSES.includes(status)) throw new Error('Invalid status')
     if (status === 'sold') throw new Error('mark_item_sold_rpc_required')
+    // Relisting is refused while restricted; reserving (a takedown) is not.
+    if (status === 'active') assertWritesAllowed()
 
     const entryUserId = getActiveAccountId()
     if (!entryUserId) throw new Error('Not authenticated')

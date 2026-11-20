@@ -147,6 +147,9 @@ test('fetchMyItems never caches or returns A after B becomes current', async () 
     '../utils/itemStorage': 'export const ownedItemImagePaths=()=>[]',
     '../utils/publicResource': 'export const assertI18nWrite=()=>{}, assertPublicMediaWrite=()=>{}, sanitizeItemResources=x=>x',
     '../utils/sentry': 'export const captureException=()=>{}',
+    // D-49 write backstop and refusal parser; this test reads as an unrestricted account.
+    './useRestriction': 'export const assertWritesAllowed=()=>{}',
+    '../utils/suspension': source('src/utils/suspension.ts'),
   }
 
   let itemsInput = source('src/composables/useItems.ts')

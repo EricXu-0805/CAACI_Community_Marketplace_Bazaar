@@ -25,6 +25,7 @@ import {
   type AccountRequestToken,
 } from './accountScope'
 import { createClientMessageId } from '../api/clientMessageId'
+import { assertWritesAllowed } from './useRestriction'
 import { fetchArchivedConversationIds } from '../api/conversationArchive'
 import { readAllAscendingKeyset } from '../api/paginatedRead'
 import {
@@ -494,6 +495,7 @@ export function useMessages() {
       isRetry?: boolean
     },
   ) {
+    assertWritesAllowed()
     const accountToken = options?.accountToken || captureAccountRequest(senderId)
     const messageId = options?.messageId || createClientMessageId()
     let mutationStarted = false
@@ -685,6 +687,8 @@ export function useMessages() {
     assertCurrentAccount()
     if (findErr) throw findErr
     if (existing) return existing as Conversation
+    // Opening an existing thread is a read; starting one is refused while restricted.
+    assertWritesAllowed()
 
     const { data, error } = await supabase
       .from('conversations')
@@ -734,6 +738,7 @@ export function useMessages() {
     assertCurrent()
     if (existing.error) throw existing.error
     if (existing.data) return existing.data as Conversation
+    assertWritesAllowed()
     const created = await supabase.from('conversations')
       .insert({ item_id: null, buyer_id: userId, seller_id: peerId, is_direct: true })
       .select(CONVERSATION_FIELDS).single()

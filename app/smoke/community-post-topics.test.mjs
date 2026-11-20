@@ -60,6 +60,8 @@ async function loadPlaza({ postError = null, attachmentError = null, switchAccou
     './useSupabase': 'export const useSupabase = () => ({ supabase: globalThis.__communityTopicTest.supabase })',
     './useAuth': "export const useAuth = () => ({currentUser: {value: {id: 'user-a'}}})",
     './useModeration': 'export const useModeration = () => ({ensureLoaded: async()=>({ok:true}), blockedIds: {value: new Set()}})',
+    // D-49 write backstop; these tests exercise unrestricted accounts.
+    './useRestriction': 'export const assertWritesAllowed = () => {}',
     './useI18n': "export const useI18n=()=>({t:k=>k,lang:{value:'en'}})",
     '../utils': 'export const expandSearch=x=>[x], friendlyErrorMessage=e=>String(e)',
     '../utils/contentSafety': `export const checkContent=text=>({ok:!text.includes('forbidden'),category:'sensitive_word'}),
