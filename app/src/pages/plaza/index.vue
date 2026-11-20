@@ -7,24 +7,27 @@
     <AppSidebar current="plaza" />
     <!-- #endif -->
 
-    <!-- .page-header is display:none at >=768px, and display:none drops the
-         node from the accessibility tree — so the heading has to live outside
-         it or Mac/iPad get no heading at all. -->
-    <text class="sr-only" role="heading" aria-level="1">{{ t('plaza.title') }}</text>
+    <!-- The header below names no heading, and a board page's head is its own
+         (SPEC 6.1), so the other two views get theirs here. -->
+    <text v-if="view !== 'board'" class="sr-only" role="heading" aria-level="1">{{ pageHeading }}</text>
 
-    <view class="page-header">
-      <text class="ph-title">{{ t('plaza.title') }}</text>
-      <text class="ph-region" data-test="region-label">{{ regionLabel(lang) }}</text>
-      <view v-if="showRegionSwitcher()" class="ph-region-switcher" data-test="region-switcher">
-        <text v-for="region in REGIONS" :key="region.slug" class="ph-region-option">{{ lang === 'zh' ? region.zh : region.en }}</text>
-      </view>
-      <view class="compose-btn" role="button" :aria-label="t('a11y.compose')" @click="openComposer" v-if="isLoggedIn">
-        <view class="cb-pen"></view>
-        <text class="cb-label">{{ t('plaza.write') }}</text>
-      </view>
-    </view>
+    <CommunityHeader
+      v-model:search="searchText"
+      :view="view"
+      :board="view === 'board' ? selectedCategory : null"
+      :desktop="isDesktop"
+      :is-logged-in="isLoggedIn"
+      @home="showHome"
+      @all="showAll"
+      @board="showBoard"
+      @compose="openComposer"
+      @login="goToLogin"
+      @search-input="onSearchInput"
+      @search-submit="onSearchSubmit"
+      @search-open="openSearch"
+    />
 
-    <view class="search-wrap">
+    <view v-if="view === 'all'" class="search-wrap">
       <view class="search-bar">
         <view class="sb-icon"></view>
         <input
@@ -33,24 +36,28 @@
           :aria-label="t('plaza.searchPlaceholder')"
           class="sb-input"
           confirm-type="search"
+          :focus="searchFocused"
           @input="onSearchInput"
           @confirm="onSearchSubmit"
+          @blur="searchFocused = false"
         />
         <view v-if="searchText" class="sb-clear" role="button" :aria-label="t('a11y.searchClear')" @click="clearSearch"></view>
       </view>
-      <!-- Desktop-only compose entry: the mobile compose-btn lives in
-           .page-header, which is display:none ≥768px, so on Mac/iPad there was
-           no way to write a post (the sidebar +发布 creates an item, not a
-           post). Sits beside the search bar on the desktop reading column. -->
-      <view v-if="isLoggedIn" class="plaza-compose-d" role="button" :aria-label="t('a11y.compose')" @click="openComposer">
-        <UIcon name="edit" size="sm" color="ink-inverse" />
-        <text class="pcd-label">{{ t('plaza.write') }}</text>
+    </view>
+
+    <!-- SPEC 6.1: a board page opens with its name, what belongs there, and a way
+         to start a topic there; the sort tabs come under it. -->
+    <view v-if="view === 'board' && selectedCategory" class="board-head">
+      <view class="bh-text">
+        <text class="bh-name" role="heading" aria-level="1">{{ t(`plaza.category.${selectedCategory}`) }}</text>
+        <text class="bh-scope">{{ t(`plaza.boardScope.${selectedCategory}`) }}</text>
       </view>
+      <text class="bh-compose" role="button" @click="openComposer">{{ t('plaza.write') }}</text>
     </view>
 
     <!-- Feed tabs live OUTSIDE the scroll area (directly under search) so
          they stay put while the feed scrolls — 闲鱼/xhs pattern. -->
-    <scroll-view class="feed-tabs" scroll-x :show-scrollbar="false">
+    <scroll-view v-if="view !== 'home'" class="feed-tabs" scroll-x :show-scrollbar="false">
       <view class="ft-row" role="tablist" :aria-label="t('plaza.title')">
         <view
           v-for="tab in feedTabs"
@@ -63,12 +70,12 @@
           @click="activeTab = tab.key"
           @keydown="onFeedTabKeydown($event, tab.key)"
         >
-          <text class="t-tag ft-label">{{ tab.label }}</text>
+          <text class="ft-label">{{ tab.label }}</text>
         </view>
       </view>
     </scroll-view>
 
-    <scroll-view v-if="activeTab !== 'following'" class="board-filters" scroll-x :show-scrollbar="false">
+    <scroll-view v-if="view === 'all' && !followingSignedOut" class="board-filters" scroll-x :show-scrollbar="false">
       <view class="board-row" :aria-label="t('plaza.board')">
         <view v-for="category in [null, ...POST_CATEGORIES]" :key="category || 'all'"
           class="board-chip" :class="{ active: selectedCategory === category }" role="button" tabindex="0"
@@ -80,6 +87,7 @@
     </scroll-view>
 
     <scroll-view
+      v-if="view !== 'home'"
       id="plaza-feed-panel"
       class="feed"
       role="tabpanel"
@@ -89,47 +97,18 @@
       @refresherrefresh="onRefresh"
       @scrolltolower="loadMore"
     >
-      <PlazaBannerCarousel />
+      <view class="feed-cols">
+      <view class="feed-main">
+      <!-- SPEC 6.2: the banners stay with all discussions; the home and the board pages have none. -->
+      <PlazaBannerCarousel v-if="view === 'all'" />
 
-      <template v-if="activeTab === 'following'">
-        <view v-if="followLoading && followPeople.length === 0" class="loading">
-          <text>{{ t('home.loading') }}...</text>
-        </view>
-
-        <view v-if="followError" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
-          <UEmptyArt name="following" />
-          <text class="empty-text">{{ followError }}</text>
-          <view class="cta-btn" role="button" @click="loadFollowing(followPeople.length === 0)">{{ t('home.retry') }}</view>
-        </view>
-
-        <view v-if="!followLoading && !followError && followPeople.length === 0" class="empty">
-          <UEmptyArt name="following" />
-          <text class="empty-text">{{ isLoggedIn ? t('follow.emptyPeople') : t('follow.signInHint') }}</text>
-          <view v-if="!isLoggedIn" class="cta-btn" role="button" @click="goToLogin">{{ t('login.signIn') }}</view>
-        </view>
-
-        <view v-if="followPeople.length > 0" class="follow-people u-stagger">
-          <view
-            v-for="p in followPeople"
-            :key="p.id"
-            class="follow-person u-rise"
-            role="button"
-            :aria-label="p.nickname || t('app.user')"
-            @click="goToFollowSeller(p.id)"
-          >
-            <UAvatar :src="p.avatar_url" :owner="p.id" :fallback="defaultAvatarSrc" :alt="p.nickname || 'avatar'" class="fp-avatar" lazy />
-            <view class="fp-info">
-              <view class="fp-name-row">
-                <text class="fp-name">{{ p.nickname || t('app.user') }}</text>
-                <UBadge v-if="p.is_illini_verified" variant="illini" label="Illini" />
-              </view>
-              <text v-if="p.status_text" class="fp-status">{{ p.status_emoji ? p.status_emoji + ' ' : '' }}{{ p.status_text }}</text>
-              <text v-else-if="p.location" class="fp-status">{{ localizedLocation(p.location) }}</text>
-            </view>
-            <UIcon name="chevron-right" size="sm" color="text-faint" />
-          </view>
-        </view>
-      </template>
+      <!-- SPEC 6.2: 关注的人 is the same list, narrowed to what the people the reader
+           follows have posted. Without an account it can only ask to sign in. -->
+      <view v-if="followingSignedOut" class="empty">
+        <UEmptyArt name="following" />
+        <text class="empty-text">{{ t('plaza.signInFollowing') }}</text>
+        <view class="state-btn" role="button" @click="goToLogin">{{ t('login.signIn') }}</view>
+      </view>
 
       <view v-else-if="loading && posts.length === 0" class="post-skel-list">
         <view v-for="n in 3" :key="'ps' + n" class="post-skel">
@@ -147,7 +126,46 @@
       </view>
 
       <view v-else class="posts u-stagger" :key="activeTab">
-        <view v-for="post in visiblePosts" :key="post.id" class="post-card u-rise">
+        <template v-for="post in visiblePosts" :key="post.id">
+        <!--
+          A topic (a post with a title) lists as one row (SPEC 6.3.2). The whole
+          row opens the topic; like, share, translate and report are on that
+          page. An update has no title and keeps the card below.
+        -->
+        <view
+          v-if="post.title"
+          :class="['topic-row', 'u-rise', { 'has-thumb': post.images && post.images.length > 0 }]"
+          role="button"
+          :aria-label="topicRowLabel(post)"
+          @click="goPostDetail(post)"
+        >
+          <view class="tr-text">
+            <text class="tr-title" role="heading" aria-level="2">{{ post.title }}</text>
+            <text v-if="post.content" class="tr-excerpt">{{ topicExcerpt(post) }}</text>
+          </view>
+          <view v-if="post.images && post.images.length > 0" class="tr-thumb" aria-hidden="true">
+            <image class="tr-thumb-img" :src="thumbUrl(post.images[0], 'list')" mode="aspectFill" />
+            <text v-if="post.images.length > 1" class="tr-thumb-more">+{{ post.images.length - 1 }}</text>
+          </view>
+          <text v-if="post.post_items && post.post_items.length > 0" class="tr-linked">{{ topicLinkedLine(post) }}</text>
+          <view class="tr-meta">
+            <template v-if="post.is_pinned">
+              <text class="tr-meta-item">{{ t('plaza.pinned') }}</text>
+              <text class="tr-meta-item">·</text>
+            </template>
+            <template v-if="post.category && !selectedCategory">
+              <text class="tr-meta-item">{{ t(`plaza.category.${post.category}`) }}</text>
+              <text class="tr-meta-item">·</text>
+            </template>
+            <text class="tr-meta-item tr-author">{{ post.profile?.nickname || t('app.user') }}</text>
+            <text v-if="post.is_official" class="tr-tag">{{ t('plaza.official') }}</text>
+            <text class="tr-meta-item">·</text>
+            <text class="tr-meta-item">{{ formatTime(post.created_at) }}</text>
+          </view>
+          <text v-if="post.comment_count > 0" class="tr-replies tr-count">{{ post.comment_count }}</text>
+          <text v-else-if="topicIsUnanswered(post)" class="tr-replies tr-tag tr-tag-ask">{{ t('plaza.unansweredTag') }}</text>
+        </view>
+        <view v-else class="post-card u-rise">
           <!--
             Pinned-collapsed surface: when a pinned announcement is in
             its compact state, render a single-line summary that the
@@ -216,8 +234,6 @@
               </view>
             </view>
 
-            <text v-if="post.category" class="post-board">{{ t(`plaza.category.${post.category}`) }}</text>
-            <text v-if="post.title" class="post-topic-title" role="heading" aria-level="2">{{ post.title }}</text>
             <view class="post-content-wrap">
               <text class="post-content">{{ displayPostContent(post) }}</text>
               <view
@@ -305,6 +321,7 @@
           </view>
 
         </view>
+        </template>
       </view>
 
       <!--
@@ -313,27 +330,63 @@
         underneath them. With nothing loaded yet this same block is the whole
         screen, which is what an initial failure should look like.
       -->
-      <template v-if="activeTab !== 'following'">
-        <view v-if="fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true">
-          <UIcon name="shield" size="lg" color="ink-soft" />
-          <text class="empty-text">{{ fetchError }}</text>
-          <view class="cta-btn" role="button" @click="posts.length ? loadMore(true) : onRefresh()">{{ t('home.retry') }}</view>
+      <template v-if="!followingSignedOut">
+        <view v-if="fetchError && !loading" class="empty" role="alert" aria-live="assertive" aria-atomic="true" :class="{ 'empty-more': posts.length > 0 }">
+          <!-- SPEC 7: a later page that failed keeps the rows and offers one line under them. -->
+          <view v-if="posts.length > 0" class="more-retry" role="button" @click="loadMore(true)">
+            <text class="more-retry-t">{{ t('plaza.loadMoreFailed') }}</text>
+          </view>
+          <template v-else>
+            <text class="empty-text">{{ t('plaza.loadFailed') }}</text>
+            <view class="state-btn" role="button" @click="onRefresh()">{{ t('plaza.retry') }}</view>
+          </template>
         </view>
 
         <view v-else-if="!loading && visiblePosts.length === 0" class="empty">
-          <UEmptyArt name="posts" />
-          <text class="empty-text">{{ t('plaza.empty') }}</text>
-          <view v-if="isLoggedIn" class="cta-btn" role="button" @click="openComposer">{{ t('plaza.write') }}</view>
+          <UEmptyArt :name="activeTab === 'following' ? 'following' : 'posts'" />
+          <text class="empty-text">{{ emptyText }}</text>
+          <view v-if="view === 'board' && !searchText.trim()" class="board-fill" role="button" @click="openComposer">
+            <text class="board-fill-t">{{ boardFillText }}</text>
+          </view>
+          <!-- SPEC 6.2: when nobody the reader follows has posted, the sentence stands alone. -->
+          <view v-if="activeTab !== 'following'" class="state-btn" role="button" @click="composeFromEmpty">{{ t('plaza.write') }}</view>
+        </view>
+        <!-- SPEC 6.1: a board with fewer than three topics says what to ask there. -->
+        <view v-else-if="view === 'board' && !loading && !hasMore && visiblePosts.length < 3" class="board-fill" role="button" @click="openComposer">
+          <text class="board-fill-t">{{ boardFillText }}</text>
         </view>
       </template>
 
-      <view
-        v-if="activeTab === 'following' ? (!followHasMore && followPeople.length > 0) : (!hasMore && visiblePosts.length > 0)"
-        class="end-tip"
-      >
+      <view v-if="!followingSignedOut && !hasMore && visiblePosts.length > 0" class="end-tip">
         <text>{{ t('home.endOf') }}</text>
       </view>
+      </view>
+      <!-- #ifdef H5 -->
+      <!-- SPEC 6.1: on desktop the lists keep the home's sidebar. Until P3.5 and P4.8 give it more, that is the about block. -->
+      <CommunityAbout v-if="isDesktop" class="feed-side" />
+      <!-- #endif -->
+      </view>
     </scroll-view>
+
+    <scroll-view v-if="view === 'home'" class="home-scroll" scroll-y refresher-enabled
+      :refresher-triggered="refreshing" @refresherrefresh="onRefresh">
+      <CommunityHome
+        :sections="homeSections"
+        :ready="!!homeData"
+        :failed="homeFailed"
+        :desktop="isDesktop"
+        :is-logged-in="isLoggedIn"
+        @board="showBoard"
+        @all="showAll"
+        @compose="openComposer"
+        @retry="loadHome"
+        @login="goToLogin"
+      />
+    </scroll-view>
+    <!-- SPEC 5.3 ⑩: below 1024px the way to start a topic floats above the tab bar. -->
+    <view v-if="!isDesktop && !showComposer" class="community-fab" role="button" :aria-label="t('plaza.write')" @click="openComposer">
+      <UIcon name="plus" size="md" color="ink-inverse" />
+    </view>
 
     <!-- Comment sheet (QA6 #7, r3). HOISTED to the page root (single instance,
          driven by commentingPost) so its position:fixed anchors to the VIEWPORT.
@@ -695,7 +748,6 @@ import { useAuth } from '../../composables/useAuth'
 import { useTheme } from '../../composables/useTheme'
 import { usePlaza, groupCommentsByParent, type CreatePostResult } from '../../composables/usePlaza'
 import { useFollow } from '../../composables/useFollow'
-import type { FollowedProfile } from '../../composables/useFollow'
 import { useModeration } from '../../composables/useModeration'
 import { useItems, type UploadAccountToken, type UploadBatchResult } from '../../composables/useItems'
 import { useHistory } from '../../composables/useHistory'
@@ -703,7 +755,6 @@ import { useTranslate } from '../../composables/useTranslate'
 import { useLongPress } from '../../composables/useLongPress'
 import { useKeyboardHeight } from '../../composables/useKeyboardHeight'
 import { useVisualViewportBounds } from '../../composables/useVisualViewportInset'
-import { localizeLocation } from '../../composables/useCampusSpots'
 import { createOwnedLoading } from '../../composables/ownedLoading'
 import { createClientMessageId } from '../../api/clientMessageId'
 import { communityNavigation } from '../../api/communityNavigation'
@@ -711,8 +762,7 @@ import { readAccountPrivateStorage, writeAccountPrivateStorage, removeAccountPri
 import type { Post, PostComment, Item } from '../../types'
 import { POST_CATEGORIES, POST_TITLE_MAX, normalizePostTopic, type PostCategory } from '../../utils/communityPost'
 import { safeItemMediaUrls } from '../../utils/publicResource'
-import { REGIONS, regionLabel, showRegionSwitcher } from '../../utils/region'
-import { formatTime, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
+import { formatTime, formatPrice, compressImage, friendlyErrorMessage, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
 import { DIALOG_DANGER, DIALOG_WARN } from '../../utils/dialogColors'
 import { isSuspensionActive } from '../../utils/suspension'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
@@ -723,6 +773,13 @@ import AppSidebar from '../../components/AppSidebar.vue'
 import { BASE_URL } from '../../config/runtime'
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PlazaBannerCarousel from '../../components/PlazaBannerCarousel.vue'
+// #ifdef H5
+import CommunityAbout from '../../components/CommunityAbout.vue'
+// #endif
+import CommunityHeader from '../../components/CommunityHeader.vue'
+import CommunityHome from '../../components/CommunityHome.vue'
+import { useCommunityHome } from '../../composables/useCommunityHome'
+import { boardFiller, buildHomeSections, type HomePostData } from '../../utils/communityHome'
 import UAvatar from '../../components/UAvatar.vue'
 import UBadge from '../../components/UBadge.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
@@ -747,13 +804,10 @@ const defaultAvatarSrc = computed(() =>
 )
 const { currentUser, isLoggedIn, requireAuth, awaitAuthReady } = useAuth()
 const replyRestricted = computed(() => isSuspensionActive(currentUser.value))
-const { posts, loading, hasMore, fetchError, fetchPosts, createPost, recoverCreatedPost, updatePostI18n, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, fetchMyActiveItems, clearPosts } = usePlaza()
-const { fetchFollowingProfiles } = useFollow()
+const { posts, loading, hasMore, fetchError, fetchPosts, invalidatePosts, createPost, recoverCreatedPost, updatePostI18n, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, fetchMyActiveItems, clearPosts } = usePlaza()
+const { following, followingLoaded, loadMyFollowing } = useFollow()
 const { ensureLoaded: ensureBlockedLoaded, reportTarget } = useModeration()
 
-function localizedLocation(raw: string | null | undefined) {
-  return localizeLocation(raw, lang.value as 'en' | 'zh')
-}
 const kb = useKeyboardHeight()
 /*
  * kb.height is a nested Ref in a plain object — Vue templates only unwrap
@@ -796,50 +850,199 @@ let plazaAccountEpoch = 0
 const reportLoading = createOwnedLoading()
 
 /*
- * Feed sub-tabs (v5 kit: 关注 / 热门 / 最新). 热门 and 最新 both show all
- * posts but差 in server sort — 热门 ranks by engagement, 最新 by recency —
- * so switching between them re-fetches. 关注 lists the PEOPLE the current
- * user follows via useFollow.fetchFollowingProfiles (tap → seller page) —
- * not their listings. The prior 推荐/官方 split was replaced to
- * match the v5 design; CAACI 官方 posts still surface inline (pinned-first
- * + OFFICIAL badge) rather than via a dedicated tab.
+ * Feed sub-tabs (SPEC 6.2: 新发布 / 热门 / 关注的人). 热门 and 新发布 both show all
+ * posts but差 in server sort — 热门 ranks by engagement, 新发布 by recency —
+ * so switching between them re-fetches. 关注的人 is the same list, newest
+ * first, narrowed to posts written by the people the reader follows; the
+ * people themselves are listed on pages/following. CAACI 官方 posts surface
+ * inline (pinned-first + OFFICIAL badge) rather than via a dedicated tab.
  */
 type FeedTabKey = 'following' | 'hot' | 'recent'
 const activeTab = ref<FeedTabKey>('recent')
+// SPEC 6.1, 6.2, until P3.4: 新发布｜热门｜关注的人, and a board page has no 关注的人.
 const feedTabs = computed<{ key: FeedTabKey; label: string }[]>(() => [
-  { key: 'following', label: t('plaza.tab.following') },
-  { key: 'hot', label: t('plaza.tab.hot') },
-  { key: 'recent', label: t('plaza.tab.recent') },
-])
+  { key: 'recent' as const, label: t('plaza.tab.recent') },
+  { key: 'hot' as const, label: t('plaza.tab.hot') },
+  { key: 'following' as const, label: t('plaza.tab.following') },
+].filter(tab => view.value !== 'board' || tab.key !== 'following'))
 const feedSort = computed<'recent' | 'hot'>(() => (activeTab.value === 'hot' ? 'hot' : 'recent'))
 const selectedCategory = ref<PostCategory | null>(null)
 const visiblePosts = computed(() => selectedCategory.value
   ? posts.value.filter(post => post.category === selectedCategory.value) : posts.value)
+// 关注的人 without an account: there is nobody to follow, so the tab asks to sign in.
+const followingSignedOut = computed(() => activeTab.value === 'following' && !isLoggedIn.value)
+
+// Every read of the list goes through here, so the tab, the board filter and the search stay in step.
+async function loadFeed(page = 0) {
+  let authors: string[] | undefined
+  if (activeTab.value === 'following') {
+    if (!currentUser.value) {
+      posts.value = []
+      return false
+    }
+    const epoch = plazaAccountEpoch
+    loading.value = true
+    if (!followingLoaded.value) await loadMyFollowing()
+    if (epoch !== plazaAccountEpoch || activeTab.value !== 'following') return false
+    if (!followingLoaded.value) {
+      // Who the reader follows could not be read. That is a failed load, not an empty list.
+      invalidatePosts()
+      fetchError.value = t('plaza.loadFailed')
+      return false
+    }
+    authors = [...following.value]
+  }
+  return fetchPosts({
+    page, reset: page === 0, sort: feedSort.value, search: searchText.value,
+    category: selectedCategory.value ?? undefined, authors,
+  })
+}
 function selectCategory(category: PostCategory | null) {
   selectedCategory.value = category
   pageIdx.value = 0
-  fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: category ?? undefined })
+  void loadFeed()
 }
 
-onLoad(options => {
-  if (!options || !('board' in options || 'view' in options)) return
-  communityNavigation.pendingBoard = 'board' in options ? String(options.board || '') : null
-  communityNavigation.pendingView = 'view' in options ? String(options.view || '') : null
+/*
+ * The views of this page (SPEC 4.4): the forum home, one board, or all
+ * discussions, which is the flat list this page used to open on. On H5 each has
+ * an address that opens it directly. The mini program has no address, so there
+ * a view is plain state (SPEC 8).
+ */
+type CommunityView = 'home' | 'board' | 'all'
+const view = ref<CommunityView>('home')
+const pageHeading = computed(() => {
+  if (view.value === 'all') return t('plaza.allDiscussions')
+  if (view.value === 'board' && selectedCategory.value) return t(`plaza.category.${selectedCategory.value}`)
+  return t('plaza.title')
 })
 
+// The home lays out differently from 1024px (SPEC 5.2, 5.3), and holds more rows there.
+// The mini program has the phone layout only (SPEC 8), so there this stays false.
+const isDesktop = ref(false)
+// #ifdef H5
+const desktopMedia = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+  ? window.matchMedia('(min-width: 1024px)') : null
+isDesktop.value = !!desktopMedia?.matches
+const onDesktopChange = (event: MediaQueryListEvent) => { isDesktop.value = event.matches }
+if (typeof desktopMedia?.addEventListener === 'function') {
+  desktopMedia.addEventListener('change', onDesktopChange)
+  onUnmounted(() => desktopMedia.removeEventListener('change', onDesktopChange))
+}
+// #endif
+
+const { homeData, homeFailed, loadHome, clearHome } = useCommunityHome()
+const EMPTY_HOME: HomePostData = { candidates: [], weeklyCategories: [], totalDiscussionCount: 0 }
+// No event source exists before P4.8, so the events block has nothing to show.
+const homeSections = computed(() => buildHomeSections(
+  homeData.value?.posts ?? EMPTY_HOME, homeData.value?.items ?? [], [], homeData.value?.now ?? 0,
+  isDesktop.value ? 'desktop' : 'phone',
+))
+
+// An unknown board or view opens the home (SPEC 4.4).
+function routeOf(query: { board?: unknown; view?: unknown }): { view: CommunityView; board: PostCategory | null } {
+  const board = POST_CATEGORIES.find(category => category === query.board)
+  if (board) return { view: 'board', board }
+  return { view: query.view === 'all' ? 'all' : 'home', board: null }
+}
+// A query names the view: the address on H5, and in the mini program a path that carries one.
+onLoad((query) => {
+  const route = routeOf(query || {})
+  view.value = route.view
+  selectedCategory.value = route.board
+})
+
+// Keeps the address on the view being shown, so a reload or a shared link opens the same one.
+function syncAddress() {
+  // #ifdef H5
+  if (typeof window === 'undefined' || !window.location.hash.startsWith('#/pages/plaza/index')) return
+  const query = view.value === 'board' ? `?board=${selectedCategory.value}` : view.value === 'all' ? '?view=all' : ''
+  const hash = `#/pages/plaza/index${query}`
+  if (window.location.hash !== hash) window.history.replaceState(window.history.state, '', hash)
+  // #endif
+}
+/*
+ * This tab page is kept alive, so an address that names a view can arrive
+ * without a load: from another page, or typed over this one. The address wins
+ * then. A bare address is what the tab bar opens, and keeps the view as it was.
+ */
+function followAddress() {
+  // #ifdef H5
+  if (typeof window === 'undefined') return
+  const [path, search] = window.location.hash.split('?')
+  if (path !== '#/pages/plaza/index' || !search) return
+  const params = new URLSearchParams(search)
+  const route = routeOf({ board: params.get('board'), view: params.get('view') })
+  if (route.view === view.value && route.board === (view.value === 'board' ? selectedCategory.value : null)) return
+  if (route.board) showBoard(route.board)
+  else if (route.view === 'all') showAll()
+  else showHome()
+  // #endif
+}
+// #ifdef H5
+if (typeof window !== 'undefined') {
+  window.addEventListener('hashchange', followAddress)
+  onUnmounted(() => window.removeEventListener('hashchange', followAddress))
+}
+// #endif
+
+// A topic published from here belongs on the home, so the snapshot is read again once the home is back.
+let homeStale = false
+function refreshStaleHome() {
+  if (view.value !== 'home' || (homeData.value && !homeStale)) return
+  homeStale = false
+  void loadHome()
+}
 onShow(() => {
+  // A board link on another page stages its target before switchTab, which carries no query (P2.10).
   const { pendingBoard, pendingView } = communityNavigation
   communityNavigation.pendingBoard = null
   communityNavigation.pendingView = null
-  if (pendingBoard === null && pendingView === null) return
-  searchText.value = ''
-  activeTab.value = 'recent'
-  selectCategory(pendingView === null && POST_CATEGORIES.includes(pendingBoard as PostCategory)
-    ? pendingBoard as PostCategory : null)
+  if (pendingBoard !== null || pendingView !== null) {
+    const route = routeOf({ board: pendingBoard, view: pendingView })
+    if (route.board) showBoard(route.board)
+    else if (route.view === 'all') showAll()
+    else showHome()
+  } else {
+    followAddress()
+  }
+  syncAddress()
+  if (homeStale) refreshStaleHome()
 })
 
+function showHome() {
+  view.value = 'home'
+  selectedCategory.value = null
+  searchText.value = ''
+  syncAddress()
+  refreshStaleHome()
+}
+function showBoard(category: PostCategory) {
+  view.value = 'board'
+  searchText.value = ''
+  if (activeTab.value === 'following') activeTab.value = 'recent'
+  selectCategory(category)
+  syncAddress()
+}
+const boardFillText = computed(() => {
+  if (!selectedCategory.value) return ''
+  return boardFiller(selectedCategory.value, t, lang.value)
+})
+function showAll() {
+  if (view.value === 'all') return
+  view.value = 'all'
+  selectCategory(null)
+  syncAddress()
+}
+// The phone top bar has a search icon, not a field: the field is in all discussions.
+function openSearch() {
+  showAll()
+  searchFocused.value = false
+  nextTick(() => { searchFocused.value = true })
+}
+
 function onFeedTabKeydown(event: KeyboardEvent, current: FeedTabKey) {
-  const order: FeedTabKey[] = ['following', 'hot', 'recent']
+  const order = feedTabs.value.map(tab => tab.key)
   let nextIndex = order.indexOf(current)
   if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (nextIndex + 1) % order.length
   else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (nextIndex - 1 + order.length) % order.length
@@ -852,81 +1055,25 @@ function onFeedTabKeydown(event: KeyboardEvent, current: FeedTabKey) {
   nextTick(() => tabList?.querySelectorAll<HTMLElement>('[role="tab"]')[nextIndex]?.focus())
 }
 
-/* 关注 tab — the PEOPLE you follow (not their listings). Lazy-loaded the
- * first time the user opens the tab, then paginated via the scroll-view's
- * bottom-reach handler. followLoaded gates the one-shot initial fetch;
- * followLoading guards against concurrent loads. */
-const FOLLOW_PAGE_SIZE = 30
-const followPeople = ref<FollowedProfile[]>([])
-const followLoading = ref(false)
-const followHasMore = ref(true)
-const followPage = ref(0)
-const followLoaded = ref(false)
-const followError = ref('')
-
-async function loadFollowing(reset: boolean) {
-  if (followLoading.value) return
-  await awaitAuthReady()
-  const requestEpoch = plazaAccountEpoch
-  if (!currentUser.value) {
-    followPeople.value = []
-    followError.value = ''
-    followLoaded.value = true
-    return
-  }
-  const accountToken = captureAccountRequest(currentUser.value.id)
-  if (!isAccountRequestCurrent(accountToken)) return
-  if (reset) followPage.value = 0
-  const requestedPage = reset ? 0 : followPage.value + 1
-  followLoading.value = true
-  followError.value = ''
-  try {
-    const rows = await fetchFollowingProfiles(requestedPage, FOLLOW_PAGE_SIZE)
-    if (requestEpoch !== plazaAccountEpoch || !isAccountRequestCurrent(accountToken)) return
-    if (reset) followPeople.value = rows
-    else {
-      const seen = new Set(followPeople.value.map(profile => profile.id))
-      followPeople.value.push(...rows.filter(profile => !seen.has(profile.id) && !!seen.add(profile.id)))
-    }
-    followPage.value = requestedPage
-    followHasMore.value = rows.length === FOLLOW_PAGE_SIZE
-    followLoaded.value = true
-  } catch (error: any) {
-    if (requestEpoch !== plazaAccountEpoch || !isAccountRequestCurrent(accountToken)) return
-    if (reset) followPeople.value = []
-    followError.value = friendlyErrorMessage(error, lang.value as 'en' | 'zh') || t('error.loadFailed')
-    uni.showToast({ title: followError.value, icon: 'none', duration: 2500 })
-  } finally {
-    if (requestEpoch === plazaAccountEpoch && isAccountRequestCurrent(accountToken)) followLoading.value = false
-  }
-}
-
-watch(activeTab, (k) => {
-  if (k === 'following') {
-    if (!followLoaded.value) loadFollowing(true)
-  } else {
-    // 热门 / 最新 differ only by server sort — re-fetch on switch.
-    pageIdx.value = 0
-    fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
-  }
+// The three tabs differ by server sort or by whose posts are asked for, so a switch reads again.
+watch(activeTab, tab => {
+  invalidatePosts()
+  // A search runs over everyone's posts (see runSearch), so opening 关注的人 ends it.
+  if (tab === 'following') searchText.value = ''
+  pageIdx.value = 0
+  void loadFeed()
 })
 
-// The page-local following result is account-scoped. If auth hydrates after
-// the tab was opened (or the account changes without destroying this tab),
-// invalidate the anonymous/previous-account snapshot and reload in place.
+// What the list holds is account-scoped (likes, blocks, who is followed). If
+// auth hydrates after the page opened, or the account changes without
+// destroying this tab, reload in place.
 watch(currentUser, (u, prev) => {
   if (u?.id === prev?.id) return
   // A tab page can survive account switches. Never carry A's in-progress
   // composer or comment draft into B's session.
   if (showComposer.value) resetComposer()
   if (commentingPost.value || commentText.value) closeComments()
-  followLoaded.value = false
-  followPeople.value = []
-  followError.value = ''
-  followPage.value = 0
-  followHasMore.value = true
-  if (activeTab.value === 'following') void loadFollowing(true)
-  else void reloadPlazaForCurrentAccount()
+  void reloadPlazaForCurrentAccount()
 })
 
 /*
@@ -970,23 +1117,49 @@ function onImgLoad(e: any, post: Post, idx: number) {
 }
 
 const searchText = ref('')
+const searchFocused = ref(false)
 let searchDebounce: ReturnType<typeof setTimeout> | null = null
+function runSearch() {
+  // The header field is on every view; a search lists across boards, in all discussions.
+  if (view.value !== 'all') {
+    if (!searchText.value.trim()) return
+    view.value = 'all'
+    selectedCategory.value = null
+    syncAddress()
+  }
+  // The search RPC cannot narrow by author, so a search runs over everyone's posts.
+  if (activeTab.value === 'following' && searchText.value.trim()) {
+    activeTab.value = 'recent'
+    return
+  }
+  pageIdx.value = 0
+  void loadFeed()
+}
 function onSearchInput() {
   if (searchDebounce) clearTimeout(searchDebounce)
-  searchDebounce = setTimeout(() => {
-    pageIdx.value = 0
-    fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
-  }, 300)
+  searchDebounce = setTimeout(runSearch, 300)
 }
 function onSearchSubmit() {
   if (searchDebounce) clearTimeout(searchDebounce)
-  pageIdx.value = 0
-  fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
+  runSearch()
+}
+// SPEC 7: what an empty list says depends on why it is empty.
+const emptyText = computed(() => {
+  const query = searchText.value.trim()
+  if (query) return t('plaza.searchEmpty', { q: query })
+  if (activeTab.value === 'following') return t('plaza.emptyFollowing')
+  return selectedCategory.value ? t('plaza.emptyBoard') : t('plaza.empty')
+})
+// SPEC 6.2: a search that found nothing becomes the title of the topic that asks it.
+async function composeFromEmpty() {
+  const question = searchText.value.trim()
+  await openComposer()
+  if (question && showComposer.value) composerTitle.value = Array.from(question).slice(0, POST_TITLE_MAX).join('')
 }
 function clearSearch() {
   searchText.value = ''
   pageIdx.value = 0
-  fetchPosts({ reset: true, sort: feedSort.value, category: selectedCategory.value ?? undefined })
+  void loadFeed()
 }
 
 const showComposer = ref(false)
@@ -1198,10 +1371,6 @@ function goToAttachedItem(id: string) {
   uni.navigateTo({ url: `/pages/detail/index?id=${id}` })
 }
 
-function goToFollowSeller(id: string) {
-  uni.navigateTo({ url: `/pages/seller/index?id=${id}` })
-}
-
 function goToLogin() {
   requireAuth('/pages/plaza/index')
 }
@@ -1216,7 +1385,7 @@ const { uploadImagesWithDims, removeOwnedItemImages } = useItems()
 const { translateContentToAll } = useTranslate()
 const { addPostToHistory } = useHistory()
 
-async function openComposer() {
+async function openComposer(board?: unknown) {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
   if (isSuspensionActive(currentUser.value)) {
@@ -1240,8 +1409,9 @@ async function openComposer() {
   draftRestored.value = false
   composerMode.value = 'topic'
   composerTitle.value = ''
-  // Opened from a board (the board filter is set): that board is preselected.
-  composerCategory.value = selectedCategory.value
+  // Opened from a board (a home card's filler, or the board filter is set): that
+  // board is preselected. A click passes its event here, which names no board.
+  composerCategory.value = POST_CATEGORIES.find(category => category === board) ?? selectedCategory.value
   composerErrors.value = {}
   composerText.value = ''
   composerImages.value = []
@@ -1363,12 +1533,6 @@ function resetPlazaAccountState() {
   searchText.value = ''
   if (searchDebounce) clearTimeout(searchDebounce)
   searchDebounce = null
-  followPeople.value = []
-  followLoading.value = false
-  followLoaded.value = false
-  followError.value = ''
-  followPage.value = 0
-  followHasMore.value = true
   refreshing.value = false
   submitting.value = false
   commentSubmitting.value = false
@@ -1376,6 +1540,7 @@ function resetPlazaAccountState() {
   for (const id of Object.keys(translations)) delete translations[id]
   reportLoading.cancel()
   clearPosts()
+  clearHome()
 }
 
 const stopAccountTransitionListener = onAccountTransition(resetPlazaAccountState)
@@ -1392,6 +1557,11 @@ async function reloadPlazaForCurrentAccount() {
   const userId = currentUser.value?.id
   const accountToken = userId ? captureAccountRequest(userId) : null
   if (accountToken && !isAccountRequestCurrent(accountToken)) return
+  // The home read waits on the same block list itself.
+  if (view.value === 'home') {
+    await loadHome()
+    return
+  }
   if (accountToken) {
     const moderationGate = await ensureBlockedLoaded()
     if (
@@ -1407,7 +1577,7 @@ async function reloadPlazaForCurrentAccount() {
       return
     }
   }
-  await fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
+  await loadFeed()
 }
 
 async function togglePostTranslate(post: Post) {
@@ -1446,7 +1616,13 @@ async function onRefresh() {
   pageIdx.value = 0
   const failsafe = setTimeout(() => { refreshing.value = false }, 10000)
   try {
-    await fetchPosts({ reset: true, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
+    if (view.value === 'home') {
+      await loadHome()
+      // The last snapshot stays on screen, so a refresh that failed has to say so.
+      if (homeFailed.value && homeData.value) uni.showToast({ title: t('plaza.loadFailed'), icon: 'none', duration: 3000 })
+      return
+    }
+    await loadFeed()
   } finally {
     clearTimeout(failsafe)
     refreshing.value = false
@@ -1454,15 +1630,9 @@ async function onRefresh() {
 }
 
 async function loadMore(retry = false) {
-  if (activeTab.value === 'following') {
-    if (!followLoading.value && followHasMore.value && !followError.value) {
-      await loadFollowing(false)
-    }
-    return
-  }
-  if (loading.value || !hasMore.value || (fetchError.value && retry !== true)) return
+  if (followingSignedOut.value || loading.value || !hasMore.value || (fetchError.value && retry !== true)) return
   const nextPage = pageIdx.value + 1
-  const loaded = await fetchPosts({ page: nextPage, sort: feedSort.value, search: searchText.value, category: selectedCategory.value ?? undefined })
+  const loaded = await loadFeed(nextPage)
   if (loaded) pageIdx.value = nextPage
 }
 
@@ -1654,6 +1824,7 @@ function finishComposerPublication(result: CreatePostResult, partialUpload?: { d
   } else {
     uni.showToast({ title: t('plaza.posted'), icon: 'success' })
   }
+  homeStale = true
   uni.navigateTo({ url: `/pages/post/index?id=${result.id}${result.partial === 'items_failed' ? '&attach=pending' : ''}` })
 }
 
@@ -1906,6 +2077,57 @@ function postCardLabel(post: Post) {
   const excerpt = characters.slice(0, 100).join('') + (characters.length > 100 ? '…' : '')
   const action = t('plaza.openPostBy', { name: author })
   return excerpt ? `${action}: ${excerpt}` : action
+}
+
+/* ---------- Topic rows (SPEC 6.3.2) ---------- */
+const TOPIC_EXCERPT_CHARS = 160
+const UNANSWERED_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
+
+function topicExcerpt(post: Post) {
+  // The row clamps this to two lines; the rest of a 2,000-character body would
+  // only be weight in the list.
+  const text = localize(post.content_i18n, post.content).replace(/\s+/g, ' ').trim()
+  return Array.from(text).slice(0, TOPIC_EXCERPT_CHARS).join('')
+}
+
+// SPEC 5.5, until P3.4: no reply yet and posted within the last 30 days.
+function topicIsUnanswered(post: Post) {
+  return post.comment_count === 0
+    && Date.now() - new Date(post.created_at).getTime() <= UNANSWERED_WINDOW_MS
+}
+
+// Names the first linked item only; the topic page shows all of them (SPEC 6.6).
+function topicLinkedLine(post: Post) {
+  const linked = post.post_items || []
+  const first = linked[0]?.item
+  if (!first) return ''
+  if (first.status === 'deleted') return t('plaza.ref.rowRemoved')
+  const status = first.status === 'sold' ? t('plaza.ref.sold')
+    : first.status === 'reserved' ? t('plaza.ref.reserved')
+    : t('plaza.ref.available')
+  const line = t('plaza.ref.row', {
+    name: localize(first.title_i18n, first.title),
+    // The message carries the "$" itself, so it takes the bare amount.
+    price: formatPrice(first.price, '$0').replace(/^\$/, ''),
+    status,
+  })
+  // SPEC 11 words the two languages differently: 「等 3 件」 counts every linked
+  // item, "+2 more" counts those after the one named.
+  return linked.length > 1
+    ? `${line} · ${t('plaza.ref.more', { n: lang.value === 'zh' ? linked.length : linked.length - 1 })}`
+    : line
+}
+
+// The row is one button, so its name carries what the row shows, minus the excerpt.
+function topicRowLabel(post: Post) {
+  const author = post.profile?.nickname || t('app.user')
+  const parts = post.is_pinned ? [t('plaza.pinned'), post.title || ''] : [post.title || '']
+  if (post.category && !selectedCategory.value) parts.push(t(`plaza.category.${post.category}`))
+  parts.push(post.is_official ? `${author} ${t('plaza.official')}` : author, formatTime(post.created_at))
+  if (post.comment_count > 0) parts.push(t('plaza.commentCount', { count: post.comment_count }))
+  else if (topicIsUnanswered(post)) parts.push(t('plaza.unansweredTag'))
+  if (post.post_items?.length) parts.push(topicLinkedLine(post))
+  return parts.join(' · ')
 }
 
 function goPostDetail(post: Post) {
@@ -2256,61 +2478,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   overflow: hidden;
 }
 
-.page-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 11px 16px;
-  padding-top: calc(11px + var(--mp-status-bar, env(safe-area-inset-top, 0px)));
-  /* #ifdef MP-WEIXIN */
-  /* keep the compose button out from under the native capsule */
-  padding-right: var(--mp-navbar-right-pad, 0px);
-  /* #endif */
-  background: var(--canvas);
-  border-bottom: 0.5px solid var(--border);
-  z-index: 20;
-}
-.ph-title {
-  font-family: var(--font-serif);
-  font-size: 18px;
-  font-weight: 500;
-  color: var(--ink);
-  letter-spacing: 0.02em;
-}
-
-/* P1 §1.6: soften page-title color in dark — see commentary in
- * profile/index.vue. Plaza's title uses --ink directly (vs the
- * --text-primary alias used in profile/publish) but both resolve to
- * #F0E8D6 cream in dark, with the same 14:1 over-contrast problem.
- * --ink-strong (0.92α) drops to ~12:1. Light unchanged. */
-/* #ifdef H5 */
-[data-theme="dark"] .ph-title { color: var(--ink-strong); }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .ph-title { color: var(--ink-strong); }
-}
-/* #endif */
-.compose-btn {
-  height: 32px; padding: 0 13px 0 11px;
-  border-radius: var(--radius-pill);
-  background: var(--brand);
-  display: inline-flex; align-items: center; gap: 6px;
-  cursor: pointer;
-  box-shadow: var(--shadow-cta);
-  transition: background var(--dur-1, 120ms) var(--ease-std, ease);
-  &:active { background: var(--brand-deep); }
-}
-.cb-pen {
-  width: 12px; height: 12px; position: relative;
-  &::before {
-    content: ''; position: absolute; inset: 0;
-    background: #fff;
-    clip-path: polygon(0 100%, 40% 100%, 100% 40%, 60% 0, 0 60%);
-  }
-}
-.cb-label {
-  font-size: 13px; color: #fff; font-weight: 600;
-  line-height: 1;
-  letter-spacing: 0.02em;
-}
-
 /*
  * Plaza search — refinement pattern: white input on canvas, UIUC
  * navy alpha border. Was previously parchment-on-white which blended
@@ -2321,10 +2488,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   background: var(--canvas);
   border-bottom: 0.5px solid var(--border);
 }
-/* Desktop compose button — hidden on mobile (the header compose-btn covers
-   that case); revealed + laid out beside the search bar in the 768 block. */
-.plaza-compose-d { display: none; }
-.pcd-label { font-size: 14px; font-weight: 600; color: #fff; white-space: nowrap; letter-spacing: 0.01em; }
 .search-bar {
   display: flex; align-items: center; gap: 8px;
   background: var(--surface-alt);
@@ -2360,55 +2523,37 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 }
 
 /*
- * Feed sub-tabs — ink-fill active chip row (active = --ink bg /
- * --ink-inverse text; inactive = --ink-quiet on transparent). Brand is
- * reserved for price/CTA/official, so selection state uses ink per the
- * nav-filter convention. Horizontally scrollable, 32px chips.
+ * Sort tabs (SPEC 6.1, 6.2): 14px text, the current one underlined in the brand
+ * colour, the way direction A marks every current tab. They sit outside the
+ * scroll area, so they stay put while the list scrolls.
  */
 .feed-tabs {
   width: 100%;
   white-space: nowrap;
-  padding: var(--space-2) 0;
-  /* Sits outside the scroll area now — paint the same canvas as the
-     search bar above so the fixed header reads as one block. */
   background: var(--canvas);
-  border-bottom: 0.5px solid var(--line-hair);
+  border-bottom: 1px solid var(--line-hair);
 }
 .ft-row {
-  /* Three tabs, equal width, no h-scroll — fills the row like a native
-     segmented control (活动 tab removed 2026-06 so everything fits). */
   display: flex;
-  width: 100%;
-  box-sizing: border-box;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-5);
+  box-sizing: border-box;
   padding: 0 var(--space-4);
 }
 .ft-chip {
-  flex: 1 1 auto;
-  justify-content: center;
-  height: 32px;
-  padding: 0 var(--space-1);
-  border-radius: var(--radius-pill);
-  border: 0.5px solid var(--border);
-  background: transparent;
+  flex: none;
   display: inline-flex;
   align-items: center;
+  height: 44px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background var(--dur-1, 120ms) var(--ease-std, ease),
-    color var(--dur-1, 120ms) var(--ease-std, ease);
-  &:active { opacity: 0.7; }
-  &.active {
-    background: var(--ink);
-    border-color: var(--ink);
-  }
+  &.active { box-shadow: inset 0 -2px 0 var(--brand); }
 }
 .ft-label {
-  color: var(--ink-quiet);
-  line-height: 1;
+  font-size: 14px;
+  color: var(--ink-soft);
   white-space: nowrap;
-  .ft-chip.active & { color: var(--ink-inverse); }
+  .ft-chip.active & { color: var(--ink); font-weight: 600; }
 }
 
 .feed {
@@ -2421,40 +2566,17 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   display: flex; flex-direction: column; align-items: center;
   padding: 80px 16px; gap: 12px; color: var(--text-subtle); font-size: 14px;
 }
-.empty-text { font-size: 14px; color: var(--text-muted); }
-.cta-btn {
-  margin-top: 8px; padding: 10px 28px;
-  background: var(--accent-primary); color: var(--ink-inverse); border-radius: 22px;
-  font-size: 14px; font-weight: 600; cursor: pointer;
-  &:active { opacity: 0.85; }
+.empty-text { font-size: 14px; color: var(--text-muted); text-align: center; }
+/* SPEC 7 states. One solid button a screen is the way to start a topic, so these are outlined. */
+.state-btn {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--space-5);
+  border-radius: var(--radius-sm); box-shadow: inset 0 0 0 1px var(--line-bold);
+  font-size: 14px; color: var(--ink); background: var(--surface); cursor: pointer;
+  &:active { background: var(--surface-alt); }
 }
-
-/* 关注 tab — 2-col grid of followed sellers' active listings (item
-   cards, visually distinct from the post-cards in 推荐/官方). Tokenized
-   to ivory_academy v5 — surface card on warm border, terracotta price. */
-.follow-people { padding: 4px 0; }
-.follow-person {
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 16px; cursor: pointer;
-  border-bottom: 0.5px solid var(--line-hair);
-  -webkit-tap-highlight-color: transparent;
-  &:active { background: var(--bg-subtle); }
-}
-.fp-avatar {
-  width: 44px; height: 44px; border-radius: 50%;
-  background: var(--bg-subtle); flex-shrink: 0;
-}
-.fp-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.fp-name-row { display: flex; align-items: center; gap: 6px; }
-.fp-name {
-  font-size: 15px; font-weight: 600; color: var(--ink);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.fp-status {
-  font-size: 12px; color: var(--ink-quiet);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-
+.empty.empty-more { padding: var(--space-2) var(--space-4) var(--space-5); }
+.more-retry { display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 var(--space-4); cursor: pointer; }
+.more-retry-t { font-size: 14px; color: var(--ink-soft); }
 .posts { padding: 8px 0 20px; }
 .post-skel {
   background: var(--bg-elev-1); padding: 14px 16px;
@@ -2466,6 +2588,75 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .ps-meta { flex: 1; display: flex; flex-direction: column; gap: 7px; }
 .ps-line { height: 11px; }
 .ps-img { height: 168px; border-radius: 12px; margin-top: 2px; }
+
+/*
+ * Topic row (SPEC 6.3.2): a forum row, not a card. On phones the title and
+ * excerpt sit beside the first image, and the linked item and the meta line run
+ * full width below it, so reply counts line up at the right edge of every row.
+ * From 1024px (H5 block below) the excerpt and the meta line share one line.
+ * The whole row is the only tap target.
+ */
+.topic-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line-hair);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  &:active { background: var(--surface-alt); }
+}
+.tr-text {
+  grid-column: 1 / -1;
+  min-width: 0;
+  display: flex; flex-direction: column; gap: var(--space-1);
+}
+.has-thumb .tr-text { grid-column: 1; align-self: start; }
+.tr-title, .tr-excerpt {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden; overflow-wrap: anywhere;
+}
+.tr-title { font-size: var(--t-h3); line-height: var(--lh-h3); font-weight: 600; color: var(--ink); }
+.tr-excerpt { font-size: 14px; line-height: var(--lh-caption); color: var(--ink-soft); }
+.tr-thumb {
+  grid-column: 2; grid-row: 1; align-self: start;
+  position: relative; width: 72px; height: 72px;
+  border-radius: var(--radius-sm); overflow: hidden; background: var(--surface-alt);
+}
+.tr-thumb-img { display: block; width: 100%; height: 100%; }
+.tr-linked {
+  grid-column: 1 / -1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.tr-linked, .tr-meta-item { font-size: var(--t-caption); line-height: var(--lh-caption); color: var(--ink-quiet); }
+.tr-meta {
+  grid-column: 1;
+  min-width: 0; min-height: var(--space-5);
+  display: flex; align-items: center; gap: var(--space-1);
+}
+/* On the item itself: uni-h5's own text rule would beat an inherited nowrap. */
+.tr-meta-item { flex: none; white-space: nowrap; }
+/* A long nickname gives way first, so the time stays readable. */
+.tr-author { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tr-tag {
+  flex: none; padding: 0 var(--space-2); border-radius: var(--radius-xs);
+  font-size: var(--t-meta); line-height: var(--space-5); font-weight: 500; white-space: nowrap;
+  color: var(--ink); background: var(--surface-alt); box-shadow: inset 0 0 0 1px var(--line-bold);
+}
+.tr-tag-ask { color: var(--warning-text); background: var(--warning-soft); box-shadow: none; }
+.tr-replies { grid-column: 2; justify-self: end; }
+.tr-count {
+  font-size: var(--t-body); line-height: var(--space-5); font-weight: 500;
+  color: var(--ink-soft); font-variant-numeric: tabular-nums;
+}
+.tr-thumb-more {
+  position: absolute; right: var(--space-1); bottom: var(--space-1);
+  padding: 0 var(--space-1); border-radius: var(--radius-xs);
+  font-size: var(--t-meta); line-height: var(--lh-meta); font-weight: 500;
+  color: var(--ink-soft); background: var(--surface); font-variant-numeric: tabular-nums;
+}
 
 .post-card {
   background: var(--bg-elev-1); padding: 14px 16px;
@@ -2765,7 +2956,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .ca-img { width: 48px; height: 48px; border-radius: 8px; flex-shrink: 0; }
 .ca-body { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ca-title { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ca-price { font-size: 13px; color: var(--accent-action); font-weight: 600; }
+.ca-price { font-size: 13px; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .ca-remove {
   width: 22px; height: 22px; border-radius: 50%;
   background: var(--ink-soft); display: flex; align-items: center; justify-content: center;
@@ -2793,7 +2984,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .aic-img { width: 52px; height: 52px; border-radius: 8px; flex-shrink: 0; }
 .aic-body { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .aic-title { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.aic-price { font-size: 14px; color: var(--accent-action); font-weight: 700; }
+.aic-price { font-size: 14px; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .aic-sold { font-size: 11px; color: var(--text-muted); }
 
 /* Attach-item picker opens ON TOP of the compose-fullpage (z-index 1100).
@@ -2849,7 +3040,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .as-img { width: 56px; height: 56px; border-radius: 8px; flex-shrink: 0; }
 .as-body { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .as-title-text { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.as-price { font-size: 13px; color: var(--accent-action); font-weight: 600; }
+.as-price { font-size: 13px; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .cs-item {
   display: flex; gap: 10px; padding: 12px 16px;
@@ -3066,7 +3257,6 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .comp-textarea { min-height: 232px; }
 .comp-textarea :deep(.uni-textarea-wrapper) { min-height: 200px; }
 @media (min-width: 768px) {
-  .page-header { display: none; }
   /* Drop the base 480px centering — the sidebar rail (.has-sidebar in
      App.vue) already reserves the left column via padding-left, so
      centering the whole .page fights the rail. */
@@ -3079,17 +3269,41 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
      640px reading width so the toolbar aligns with the posts. */
   .search-wrap, .feed-tabs, .board-filters, .feed { max-width: 640px; margin-left: auto; margin-right: auto; }
   .feed { padding-bottom: 0; }
-  /* Search bar + compose button share the toolbar row on desktop. */
-  .search-wrap { display: flex; align-items: center; gap: 10px; }
-  .search-bar { flex: 1; min-width: 0; }
-  .plaza-compose-d {
-    display: inline-flex; align-items: center; gap: 7px; flex: none;
-    padding: 9px 16px; border-radius: var(--radius-md);
-    background: var(--brand); cursor: pointer;
-    transition: transform var(--dur-1, 120ms) var(--ease-std, ease), background var(--dur-1, 120ms) var(--ease-std, ease);
+  /* SPEC 6.3.2: on desktop the list sits in one surface container. */
+  .posts {
+    margin: var(--space-2) 0 var(--space-5); padding: 0;
+    border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+    background: var(--surface); overflow: hidden;
   }
-  .plaza-compose-d:active { transform: scale(0.96); background: var(--brand-deep); }
+  .topic-row:last-child, .post-card:last-child { border-bottom: 0; }
 }
+@media (min-width: 1024px) {
+  /* SPEC 6.3.2 desktop: a one-line title; the excerpt, the meta line (240px)
+     and the reply count share the second line; the first image is centred at
+     the right. display: contents lets the title and excerpt join this grid. */
+  /* The meta column is 240px so rows line up; a longer line (pinned, official)
+     widens its own row's column, up to 60%, before the author is cut. */
+  .topic-row { grid-template-columns: minmax(0, 1fr) fit-content(60%) auto; align-content: center; row-gap: 0; }
+  .tr-meta { min-width: 240px; }
+  .tr-text { display: contents; }
+  .tr-title, .tr-excerpt { -webkit-line-clamp: 1; }
+  .tr-title { grid-column: 1 / -1; grid-row: 1; }
+  .tr-excerpt { grid-column: 1; grid-row: 2; }
+  .tr-meta { grid-column: 2; grid-row: 2; }
+  .tr-replies { grid-column: 3; grid-row: 2; }
+  .tr-linked { grid-column: 1 / -1; grid-row: 3; }
+  .topic-row.has-thumb {
+    position: relative;
+    min-height: calc(72px + 2 * var(--space-3));
+    padding-right: calc(var(--space-4) + 72px + var(--space-3));
+  }
+  .has-thumb .tr-thumb {
+    position: absolute; grid-column: auto; grid-row: auto;
+    top: 50%; right: var(--space-4); transform: translateY(-50%);
+  }
+}
+/* The row is full-bleed, so draw the focus ring inside it. */
+.topic-row:focus-visible { outline-offset: -2px; }
 /* #endif */
 /* #ifdef H5 */
 @media (min-width: 768px) {
@@ -3112,13 +3326,8 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .board-chip { flex-shrink: 0; padding: 8px 12px; border-radius: 16px; background: var(--bg-subtle); color: var(--text-muted); font-size: 13px; cursor: pointer; }
 .board-chip.active { color: var(--accent-action); background: var(--bg-elev-1); box-shadow: inset 0 0 0 1px var(--accent-action); }
 .board-chip:focus-visible { outline: 2px solid var(--accent-action); outline-offset: 2px; }
-.post-board { display: block; color: var(--accent-action); font-size: 12px; margin-bottom: 6px; }
-.post-topic-title { display: block; font-size: 19px; font-weight: 700; line-height: 1.4; margin-bottom: 8px; overflow-wrap: anywhere; }
 .composer-mode { display: flex; gap: 8px; padding: 12px 16px 4px; }
 .composer-topic { padding: 12px 16px 0; }
-.ph-region { margin-left: 8px; font-size: 13px; color: var(--ink-soft); }
-.ph-region-switcher { display: flex; gap: 8px; margin-left: 8px; }
-.ph-region-option { font-size: 13px; color: var(--ink-soft); }
 .topic-title-input { width: 100%; height: 44px; font-size: 18px; font-weight: 600; color: var(--text-primary); border-bottom: 1px solid var(--line-hair); }
 .topic-board-label { display: block; color: var(--text-muted); font-size: 12px; margin: 12px 0 8px; }
 .topic-board-options { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -3126,4 +3335,65 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .field-error { display: block; margin-top: 6px; font-size: 13px; color: var(--danger); }
 .comp-body-error { padding: 0 16px; }
 .title-left { display: block; margin-top: 6px; font-size: 12px; color: var(--text-secondary); }
+
+.home-scroll { flex: 1; min-height: 0; }
+/* Board page head (SPEC 6.1): the page name, what belongs here, and a way to start a topic here. */
+.board-head {
+  flex: none; display: flex; align-items: flex-start; gap: var(--space-3); box-sizing: border-box; width: 100%;
+  padding: var(--space-4) var(--space-4) var(--space-3); background: var(--surface);
+}
+.bh-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.bh-name { font-family: var(--font-serif); font-size: var(--t-h2); line-height: var(--lh-h2); font-weight: 600; color: var(--ink); }
+.bh-scope { font-size: var(--t-caption); line-height: var(--lh-caption); color: var(--ink-soft); }
+.bh-compose {
+  flex: none; padding: 0 var(--space-3); border-radius: var(--radius-sm);
+  font-size: 14px; line-height: var(--space-7); color: var(--ink); white-space: nowrap;
+  box-shadow: inset 0 0 0 1px var(--line-bold); cursor: pointer;
+}
+.board-fill { padding: var(--space-3) var(--space-4); background: var(--surface); cursor: pointer; }
+.board-fill-t { font-size: var(--t-caption); line-height: var(--lh-caption); color: var(--ink-quiet); }
+.empty .board-fill { padding: 0; background: transparent; text-align: center; }
+/* 52px round, 16px above the 62px tab bar (SPEC 5.3 ⑩). */
+.community-fab {
+  position: fixed; right: var(--space-4); z-index: 30;
+  bottom: calc(62px + var(--space-4) + env(safe-area-inset-bottom, 0px));
+  width: 52px; height: 52px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--brand); box-shadow: var(--shadow-pop); cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  &:active { background: var(--brand-deep); }
+}
+/* #ifdef H5 */
+@media (min-width: 768px) {
+  /* No tab bar from here up. */
+  .community-fab { right: var(--space-6); bottom: var(--space-6); }
+  /* The same 640px column as the tabs and the list. */
+  .board-head { max-width: 640px; margin-left: auto; margin-right: auto; }
+}
+@media (min-width: 1024px) {
+  /* SPEC 4.3: the community page has its own 56px header and no left rail;
+     that header holds the search field. */
+  .page.has-sidebar { padding-left: 0; }
+  .page :deep(.app-sidebar) { display: none; }
+  .search-wrap { display: none; }
+  /* SPEC 6.1: board pages and all discussions keep the home's columns, 876px of list beside the 300px sidebar. */
+  .feed-tabs, .board-filters, .board-head {
+    box-sizing: border-box; width: min(1200px, calc(100% - var(--space-8))); max-width: none;
+    margin-left: auto; margin-right: auto;
+  }
+  .feed-tabs, .board-filters { padding-right: calc(300px + var(--space-6)); }
+  /* The head is a card as wide as the list under it. */
+  .board-head {
+    margin-top: var(--space-4); border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+    width: calc(min(1200px, 100% - var(--space-8)) - 300px - var(--space-6));
+    margin-right: calc((100% - min(1200px, 100% - var(--space-8))) / 2 + 300px + var(--space-6));
+  }
+  .feed { max-width: none; }
+  .feed-cols {
+    display: grid; grid-template-columns: minmax(0, 1fr) 300px; column-gap: var(--space-6); align-items: start;
+    width: min(1200px, calc(100% - var(--space-8))); margin: 0 auto;
+  }
+  .feed-side { margin-top: var(--space-2); }
+}
+/* #endif */
 </style>

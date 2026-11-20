@@ -46,12 +46,12 @@ async function openPlazaComposer(page: Page, install: () => Promise<void>, lang:
   })
 
   await install()
-  await page.goto('/#/pages/plaza/index', { waitUntil: 'networkidle' })
+  await page.goto('/#/pages/plaza/index?view=all', { waitUntil: 'networkidle' })
   if (options.level !== undefined && options.level >= 2) return
   await expect(page.locator('[data-test=region-switcher]')).toHaveCount(0)
   await expect(page.locator('[data-test=region-label]').first()).toHaveText(/^(Champaign-Urbana|香槟)$/)
   if (options.open === false) return
-  await page.getByRole('button', { name: lang === 'zh' ? '发布新帖' : 'New post', exact: true }).filter({ visible: true }).click({ timeout: 15_000 })
+  await page.getByRole('button', { name: lang === 'zh' ? '发话题' : 'New topic', exact: true }).filter({ visible: true }).click({ timeout: 15_000 })
   await expect(page.locator('.comp-attach-btn').first()).toBeVisible({ timeout: 10_000 })
 }
 
@@ -103,7 +103,9 @@ for (const width of [390, 1280]) {
     await expect(page.getByRole('heading', { name: TOPIC.title })).toBeVisible()
     await page.locator('.board-filters').getByRole('button', { name: 'Campus life', exact: true }).click()
     await expect(page.getByText('Legacy campus update', { exact: true })).toHaveCount(0)
-    await page.locator('.sb-input input').fill('Quantum')
+    // All discussions searches from the top bar on phones and from the page header on desktop (HOME.3).
+    const search = page.locator(width < 1024 ? '.sb-input input' : '.cx-search input')
+    await search.fill('Quantum')
     await expect.poll(() => h.searches.length).toBeGreaterThan(0)
     expect(h.searches.at(-1)?.category_in).toBe('campus-life')
     await page.getByRole('heading', { name: TOPIC.title }).click()
@@ -111,12 +113,18 @@ for (const width of [390, 1280]) {
     await expect(page.locator('.post-topic-title')).toHaveText(TOPIC.title)
     await expect(page.locator('.post-board')).toHaveText('Campus life')
     await page.screenshot({ path: `test-results/visual/P2.10/board-link-${width}-light-en.png` })
+    const searchesBeforeBoardLink = h.searches.length
     await page.locator('.post-board').click()
-    await expect(page).toHaveURL(/#\/pages\/plaza\/index$/)
-    await expect(page.locator('.board-filters').getByRole('button', { name: 'Campus life', exact: true })).toHaveAttribute('aria-pressed', 'true')
-    await expect(page.locator('.sb-input input')).toHaveValue('')
+    // On H5 the board link opens that board's page, whose address names it (HOME.5).
+    await expect(page).toHaveURL(/#\/pages\/plaza\/index\?board=campus-life$/)
+    await expect(page.locator('.board-head').getByRole('heading', { level: 1 })).toHaveText('Campus life')
+    // Desktop keeps the header search on every view; a phone board page has none.
+    if (width >= 1024) await expect(search).toHaveValue('')
+    else await expect(page.locator('.sb-input')).toHaveCount(0)
     await expect(page.getByText('Legacy campus update', { exact: true })).toHaveCount(0)
     await expect(page.getByRole('heading', { name: TOPIC.title })).toBeVisible()
+    // The board list was read without the earlier words: no further search request.
+    expect(h.searches.length).toBe(searchesBeforeBoardLink)
   })
 }
 
@@ -124,7 +132,7 @@ test('topic validates metadata before writing and sends the selected board', asy
   const h = await fixture(page)
   await page.locator('.comp-cancel').click()
   await page.locator('.board-filters').getByRole('button', { name: 'Campus life', exact: true }).click()
-  await page.getByRole('button', { name: 'New post', exact: true }).filter({ visible: true }).click()
+  await page.getByRole('button', { name: 'New topic', exact: true }).filter({ visible: true }).click()
   const composer = page.locator('.composer-fullpage')
   await expect(composer.getByRole('button', { name: 'Topic', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await expect(composer.getByRole('button', { name: 'Campus life', exact: true })).toHaveAttribute('aria-pressed', 'true')
@@ -147,7 +155,7 @@ test('existing update entry publishes without topic metadata', async ({ page }) 
   const h = await fixture(page)
   await page.locator('.comp-cancel').click()
   await page.locator('.board-filters').getByRole('button', { name: 'Campus life', exact: true }).click()
-  await page.getByRole('button', { name: 'New post', exact: true }).filter({ visible: true }).click()
+  await page.getByRole('button', { name: 'New topic', exact: true }).filter({ visible: true }).click()
   await page.locator('.composer-fullpage').getByRole('button', { name: 'Update', exact: true }).click()
   await expect(page.locator('.topic-title-input')).toHaveCount(0)
   await page.locator('.comp-textarea textarea').fill('A short campus update')
@@ -210,7 +218,7 @@ for (const width of [390, 1280]) {
     await page.screenshot({ path: `test-results/visual/P2.8/draft-confirm-${width}-light-en.png` })
     await page.getByRole('button', { name: 'Keep draft', exact: true }).click()
     await expect(page.locator('.composer-fullpage')).toHaveCount(0)
-    await page.getByRole('button', { name: 'New post', exact: true }).filter({ visible: true }).click()
+    await page.getByRole('button', { name: 'New topic', exact: true }).filter({ visible: true }).click()
     await expect(page.locator('.composer-fullpage')).toContainText('Restored your unsent draft')
     await expect(page.locator('.topic-title-input input')).toHaveValue(RETRY_TITLE)
     await expect(page.locator('.comp-textarea textarea')).toHaveValue('Meet at the library')
@@ -247,12 +255,12 @@ test('discarding a composer removes its saved draft and account changes remove i
   await fillRetryTopic(page)
   await page.locator('.comp-cancel').click()
   await page.getByRole('button', { name: 'Keep draft', exact: true }).click()
-  await page.getByRole('button', { name: 'New post', exact: true }).filter({ visible: true }).click()
+  await page.getByRole('button', { name: 'New topic', exact: true }).filter({ visible: true }).click()
   await expect(page.locator('.composer-fullpage')).toContainText('Restored your unsent draft')
   await page.locator('.comp-cancel').click()
   await page.getByRole('button', { name: 'Discard', exact: true }).click()
   expect(await page.evaluate(() => localStorage.getItem('plaza_composer_draft_v1'))).toBeNull()
-  await page.getByRole('button', { name: 'New post', exact: true }).filter({ visible: true }).click()
+  await page.getByRole('button', { name: 'New topic', exact: true }).filter({ visible: true }).click()
   await expect(page.locator('.topic-title-input input')).toHaveValue('')
   await fillRetryTopic(page)
   await page.locator('.comp-cancel').click()
@@ -303,7 +311,10 @@ for (const [lang, width] of [['en', 390], ['en', 1280], ['zh', 390]] as const) {
       await openPlazaComposer(page, async () => {
         await page.route('**/rest/v1/posts?**', route => {
           if (route.request().method() !== 'GET') writes++
-          const body = route.request().headers().accept?.includes('vnd.pgrst.object') ? TOPIC : [TOPIC]
+          // Topic rows open their detail page; only legacy updates have an inline reply sheet.
+          const idFilter = new URL(route.request().url()).searchParams.get('id')
+          const rows = [TOPIC, LEGACY].filter(post => !idFilter || idFilter === `eq.${post.id}`)
+          const body = route.request().headers().accept?.includes('vnd.pgrst.object') ? rows[0] ?? null : rows
           return route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) })
         })
         await page.route('**/rest/v1/post_comments?**', route => {
@@ -320,6 +331,7 @@ for (const [lang, width] of [['en', 390], ['en', 1280], ['zh', 390]] as const) {
       }
       await expect(page).toHaveURL(/pages\/plaza\/index/)
       await expect(page.getByRole('heading', { name: TOPIC.title, exact: true })).toBeVisible()
+      await expect(page.locator('.post-card')).toContainText(LEGACY.content)
       await page.locator('.post-card').getByRole('button', { name: lang === 'zh' ? '回复' : 'Reply', exact: true }).click()
       const sheet = page.locator('.comment-sheet')
       await expect(sheet).toBeVisible()
@@ -327,7 +339,7 @@ for (const [lang, width] of [['en', 390], ['en', 1280], ['zh', 390]] as const) {
       await sheet.locator('.as-close').click()
       await expect(sheet).toHaveCount(0)
 
-      await page.getByRole('button', { name: lang === 'zh' ? '发布新帖' : 'New post', exact: true }).filter({ visible: true }).click()
+      await page.getByRole('button', { name: lang === 'zh' ? '发话题' : 'New topic', exact: true }).filter({ visible: true }).click()
       await expect(page.locator('.composer-fullpage')).toBeVisible()
       await page.locator('.comp-cancel').click()
       await page.getByRole('heading', { name: TOPIC.title, exact: true }).click()

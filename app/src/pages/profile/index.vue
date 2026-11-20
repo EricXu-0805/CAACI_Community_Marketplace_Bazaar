@@ -1382,7 +1382,7 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
   font-family: var(--font-serif);
   font-size: 17px; font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--brand);
+  color: var(--ink);
   display: block;
   line-height: 1;
   font-feature-settings: 'tnum';
@@ -1444,7 +1444,7 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
   font-family: var(--font-serif);
   font-size: 17px; font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--brand);
+  color: var(--ink);
   line-height: 1;
   font-feature-settings: 'tnum';
 }

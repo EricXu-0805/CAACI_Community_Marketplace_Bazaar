@@ -250,7 +250,7 @@ function onClear() {
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .item-price-row { display: flex; align-items: center; gap: 5px; margin-top: 2px; }
-.item-price { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.item-price { font-size: 15px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
 
 .post-row {
   display: flex; padding: 12px 16px; gap: 10px;

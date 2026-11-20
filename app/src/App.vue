@@ -1813,12 +1813,19 @@ page,
   --accent-danger:       var(--danger);
   --success:      #567345;
   --success-soft: #E4EADA;
+  --success-text: #3F5A31;
   --warning:      #D4923C;
   --warning-text: #8A5A13;
   --warning-surface: #8A5A13;
   --warning-soft: #F5E4CB;
   --danger:       #B53333;
   --danger-soft:  #F0D4D4;
+  --board-campus-life:     #4F6A8A;
+  --board-settling-market: #5E7343;
+  --board-alumni-career:   #7A5A8C;
+  --board-events-social:   #93591C;
+  --board-local-deals:     #3D756D;
+  --board-market:          #7A6A55;
   --radius-xs:    4px;
   --radius-sm:    8px;
   --radius-md:   12px;
@@ -1838,7 +1845,7 @@ page,
   --font-weight-semi:    600;
   --font-weight-bold:    700;
   --font-serif: 'Fraunces Variable', 'Songti SC', 'STSong', 'SimSun', 'Noto Serif CJK SC', Georgia, 'Times New Roman', serif;
-  --font-hei:   -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Helvetica Neue', sans-serif;
+  --font-hei:   -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Helvetica Neue', sans-serif;
   --font-mono:  'JetBrains Mono', 'SF Mono', Menlo, ui-monospace, monospace;
   --font-sans:  var(--font-hei);
   --shadow-hair:  0 0 0 1px rgba(54, 40, 28, 0.07);
@@ -2273,7 +2280,7 @@ textarea:focus-visible,
   --border-warm:   #ECE5DA;   /* same as default; kept for back-compat */
 
   /* ---------- BRAND (terracotta — pottery red) ---------- */
-  --brand:          #B9452C;   /* terracotta — price · CTA · seal */
+  --brand:          #B9452C;   /* terracotta — CTA · current state · link · seal */
   --brand-deep:     #A23A22;   /* hover / pressed */
   --brand-soft:     #F5D9CE;   /* chip bg · soft fill */
   --brand-ghost:    #FBEAE2;   /* hover tint on white */
@@ -2316,12 +2323,25 @@ textarea:focus-visible,
   /* Explicit success / warn / danger pairs (soft bg + foreground) */
   --success:      #567345;
   --success-soft: #E4EADA;
+  /* Text on --success-soft (the verified badge). --success reads 4.34:1
+   * there; this step reads 6.28:1 (SPEC 9.5). */
+  --success-text: #3F5A31;
   --warning:      #D4923C;
   --warning-text: #8A5A13;   /* AA foreground on white, canvas, inset and warning-soft */
   --warning-surface: #8A5A13; /* stable fill for white labels in both themes */
   --warning-soft: #F5E4CB;
   --danger:       #B53333;
   --danger-soft:  #F0D4D4;
+
+  /* ---------- BOARDS (SPEC 9.5) ----------
+   * One colour per community board, for its 3px bar and its name and
+   * nothing else. 5.2–5.7:1 on white; none is the school's orange or navy. */
+  --board-campus-life:     #4F6A8A;
+  --board-settling-market: #5E7343;
+  --board-alumni-career:   #7A5A8C;
+  --board-events-social:   #93591C;
+  --board-local-deals:     #3D756D;
+  --board-market:          #7A6A55;
 
   /* ---------- RADII (ivory_academy 5 steps) ---------- */
   --radius-xs:    4px;
@@ -2352,8 +2372,8 @@ textarea:focus-visible,
     'Fraunces Variable', 'Songti SC', 'STSong', 'SimSun', 'Noto Serif CJK SC',
     Georgia, 'Times New Roman', serif;
   --font-hei:
-    -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei',
-    'Noto Sans CJK SC', 'Helvetica Neue', sans-serif;
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Noto Sans CJK SC', 'Helvetica Neue', sans-serif;
   --font-mono:
     'JetBrains Mono', 'SF Mono', Menlo, ui-monospace, monospace;
   --font-sans:  var(--font-hei);
@@ -2553,6 +2573,17 @@ textarea:focus-visible,
   --accent-warn:   var(--warning);
   --accent-danger: var(--danger);
 
+  /* SPEC 9.5: the verified-badge text and the six board colours, lifted for
+   * dark. Each board colour reads 6.3:1 on --bg-elev-1; --success-text clears
+   * 4.5:1 on --success-soft over the canvas, a card and a chip alike. */
+  --success-text: #9DB583;
+  --board-campus-life:     #8BA2BC;
+  --board-settling-market: #8DA96B;
+  --board-alumni-career:   #AE97BC;
+  --board-events-social:   #C2986A;
+  --board-local-deals:     #61ADA2;
+  --board-market:          #AD9D89;
+
   /* P0-2: shadows go warm-deep rgba(8,6,4,...) instead of pure black,
    * matching the warm canvas undertone so shadows read as "paper on
    * paper at night" rather than "object floating in void". --shadow-hair
@@ -2646,6 +2677,15 @@ textarea:focus-visible,
     --accent-warn:   var(--warning);
     --accent-danger: var(--danger);
 
+    /* SPEC 9.5: mirror of the [data-theme="dark"] block. */
+    --success-text: #9DB583;
+    --board-campus-life:     #8BA2BC;
+    --board-settling-market: #8DA96B;
+    --board-alumni-career:   #AE97BC;
+    --board-events-social:   #C2986A;
+    --board-local-deals:     #61ADA2;
+    --board-market:          #AD9D89;
+
     --campus-blue:      #6A8AC2;
     --campus-blue-on-soft: #8FA9D6;
     --campus-blue-soft: rgba(106, 138, 194, 0.15);
@@ -2721,7 +2761,8 @@ textarea:focus-visible,
               color: var(--ink-quiet); }
 
 .t-price        { font-family: var(--font-serif); font-weight: var(--font-weight-semi);
-                  letter-spacing: var(--ls-price); color: var(--brand); }
+                  letter-spacing: var(--ls-price); color: var(--ink);
+                  font-variant-numeric: tabular-nums; }
 .t-price.lg     { font-size: var(--t-price-lg); }
 .t-price.md     { font-size: var(--t-price-md); }
 .t-price.sm     { font-size: var(--t-price-sm); }
@@ -3037,6 +3078,14 @@ page, .page { overflow-x: clip; }
   --accent-good:   var(--success);
   --accent-warn:   var(--warning);
   --accent-danger: var(--danger);
+
+  --success-text: #9DB583;
+  --board-campus-life:     #8BA2BC;
+  --board-settling-market: #8DA96B;
+  --board-alumni-career:   #AE97BC;
+  --board-events-social:   #C2986A;
+  --board-local-deals:     #61ADA2;
+  --board-market:          #AD9D89;
 
   --shadow-hair: inset 0 0 0 0.5px rgba(240, 232, 214, 0.06);
   --shadow-soft: 0 1px 2px rgba(8, 6, 4, 0.6),  0 4px 12px rgba(8, 6, 4, 0.5);

@@ -106,6 +106,18 @@ test('WeChat tablet keeps primary navigation and page headers without an H5 side
       rule.walkDecls('display', decl => assert.notEqual(decl.value, 'none', `${page}: no sidebar may replace this header in mp`))
     })
   }
+  // The community tab's header is a component: its phone bar and board chips are
+  // the mini program's, and the desktop header that replaces the H5 sidebar is not.
+  const communityHeader = []
+  cssFor('components/CommunityHeader.vue').walkRules(rule => {
+    communityHeader.push(rule.selector)
+    if (!['.cx-m', '.cx-top', '.cx-chips'].includes(rule.selector)) return
+    rule.walkDecls('display', decl => assert.notEqual(decl.value, 'none', 'plaza: no sidebar may replace this header in mp'))
+  })
+  for (const selector of ['.cx-m', '.cx-top', '.cx-chips']) {
+    assert.ok(communityHeader.includes(selector), `plaza: ${selector} must be styled in mp`)
+  }
+  assert.deepEqual(communityHeader.filter(selector => selector.includes('.cx-hdr')), [], 'plaza: the desktop header is H5 only')
   for (const page of ['detail/index', 'publish/edit']) {
     cssFor(`pages/${page}.vue`).walkDecls(decl => {
       assert.doesNotMatch(decl.value, /var\(--sidebar-w/, `${page}: mini-program actions must not reserve an absent sidebar`)

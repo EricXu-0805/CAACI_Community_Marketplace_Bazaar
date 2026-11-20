@@ -2323,7 +2323,7 @@ function scrollToBottom() {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
 }
 .ic-bottom { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
-.ic-price { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.ic-price { font-size: 14px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
 .ic-sold { font-size: 11px; color: var(--accent-danger); font-weight: 600; }
 .ic-reserved { font-size: 11px; color: var(--warning-text); font-weight: 600; }
 .ic-arrow {
@@ -2383,7 +2383,7 @@ function scrollToBottom() {
 .oc-st-accepted .oc-status { color: var(--success); }
 .oc-st-declined .oc-status, .oc-st-expired .oc-status, .oc-st-cancelled .oc-status { color: var(--text-subtle); }
 .oc-st-countered .oc-status { color: var(--warning-text); }
-.oc-price { display: block; font-family: var(--font-serif); font-size: 26px; font-weight: 600; color: var(--brand); letter-spacing: -0.02em; line-height: 1.1; }
+.oc-price { display: block; font-family: var(--font-serif); font-size: 26px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.1; }
 .oc-st-declined .oc-price, .oc-st-expired .oc-price, .oc-st-countered .oc-price, .oc-st-cancelled .oc-price { color: var(--ink-quiet); text-decoration: line-through; }
 .oc-note { display: block; margin-top: 4px; font-size: 12px; color: var(--ink-soft); line-height: 1.5; }
 .oc-meta { display: block; margin-top: 8px; font-size: 12px; color: var(--ink-quiet); }
@@ -2461,7 +2461,7 @@ function scrollToBottom() {
 }
 .os-ref { display: block; margin-top: 4px; font-size: 12px; color: var(--ink-quiet); }
 .os-input-row { display: flex; align-items: center; gap: 6px; margin-top: 16px; padding: 12px 14px; background: var(--bg-subtle); border-radius: var(--radius-md); }
-.os-dollar { font-family: var(--font-serif); font-size: 22px; font-weight: 600; color: var(--brand); }
+.os-dollar { font-family: var(--font-serif); font-size: 22px; font-weight: 600; color: var(--ink); }
 .os-input { flex: 1; font-family: var(--font-serif); font-size: 22px; color: var(--ink); background: transparent; }
 .os-quick { white-space: nowrap; margin-top: 10px; }
 .os-quick-chip {

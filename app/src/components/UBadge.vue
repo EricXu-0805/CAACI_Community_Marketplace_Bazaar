@@ -77,15 +77,14 @@ defineProps<{
 .u-badge--mint::before     { background: var(--success); }
 .u-badge--defect::before   { background: var(--danger); }
 .u-badge--reserved::before { background: var(--warning); }
-/* post/plaza pills (1px 6px, weight 700, #fff on fill). official = campus-orange
-   per D1 (university-identity), matching reconcile's .badge-official recolor.
-   Fills use the *-surface tokens (background-stable across themes) so white
-   stays AA-legible; the plain --campus-orange/--campus-blue tokens flip to
-   light TEXT values in dark mode and drop white-on-fill below 4.5:1 (QA8). */
-.u-badge--official { background: var(--campus-orange-surface); color: #fff; padding: 1px 6px; font-weight: 700; }
+/* post/plaza pills. official (SPEC 9.5): ink on the tag paper inside a 1px
+   rule. The school's orange stays out of brand elements (SPEC 1.3); the rule
+   is an inset shadow, so the pill keeps the box it had as a solid fill. */
+.u-badge--official { background: var(--surface-alt); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-bold); padding: 1px 6px; font-weight: 600; }
 /* illini badge leads with the design-system check icon so it reads explicitly as "verified", not just a
-   campus label (QA7 r2 — Eric: 加一个 verified 更明了). */
-.u-badge--illini   { display: inline-flex; align-items: center; gap: 3px; background: var(--surface-alt); color: var(--text-secondary); border: 1px solid var(--border-hair); border-radius: var(--radius-pill); padding: 1px 6px; font-weight: 600; }
+   campus label (QA7 r2 — Eric: 加一个 verified 更明了). SPEC 9.5: --success-text on --success-soft;
+   --success itself reads 4.34:1 there. The base 2px 7px padding stands in for the old 1px border. */
+.u-badge--illini   { display: inline-flex; align-items: center; gap: 3px; background: var(--success-soft); color: var(--success-text); border-radius: var(--radius-pill); font-weight: 600; }
 .u-badge--illini :deep(.u-icon) { width: 10px !important; height: 10px !important; }
 /* wanted/ISO tag — solid campus-blue so it reads as a listing-TYPE marker,
    distinct from the frosted condition chips. */

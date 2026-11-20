@@ -62,7 +62,9 @@ test('H5 bundles only the bounded Latin brand face and leaves CJK to system font
   assert.doesNotMatch(appSource, /import\s+['"]@fontsource-variable\/noto-(?:sans|serif)-sc\//)
   assert.match(appSource, /import\s+['"]@fontsource-variable\/fraunces\/opsz\.css['"]/)
   assert.match(appSource, /--font-serif:[^;]*'Fraunces Variable'[^;]*'Songti SC'[^;]*'STSong'[^;]*'SimSun'/s)
-  assert.match(appSource, /--font-hei:[^;]*-apple-system[^;]*'PingFang SC'[^;]*'Microsoft YaHei'[^;]*'Noto Sans CJK SC'/s)
+  // SPEC 9.5: Windows and older macOS get a named face ahead of the generic
+  // fallback. Both light palette blocks declare the stack, so both carry it.
+  assert.equal((appSource.match(/--font-hei:[^;]*-apple-system[^;]*'Segoe UI'[^;]*'PingFang SC'[^;]*'Hiragino Sans GB'[^;]*'Microsoft YaHei'[^;]*'Noto Sans CJK SC'/g) || []).length, 2)
 
   const imports = [...appSource.matchAll(/import\s+['"](@fontsource-variable\/[^'"]+\.css)['"]/g)]
     .map(match => match[1])

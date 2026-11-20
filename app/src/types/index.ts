@@ -143,7 +143,9 @@ export interface Post {
   profile?: Profile
   liked_by_me?: boolean
   post_items?: Array<{
+    // user_id comes with every item the API reads back; a composer placeholder has none.
     item: Pick<Item, 'id' | 'title' | 'title_i18n' | 'price' | 'images' | 'image_dimensions' | 'status' | 'listing_type'>
+      & Partial<Pick<Item, 'user_id'>>
     display_order: number
   }>
 }
