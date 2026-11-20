@@ -33,7 +33,7 @@ function harness(platform = 'MP-WEIXIN', fault = null) {
   // P4.8: what list_community_events answers; the home keeps the rows as they come.
   const eventRows = [{ id: 'event-1', source_type: 'caaci', starts_at: new Date(now + 86_400_000).toISOString(), availability: 'visible' }]
   const events = new EventEmitter()
-  const requests = [], loads = new Set()
+  const requests = [], loads = new Set(), kept = []
   let active = 0, peak = 0, ownerId = 0, injected = false
   // One read in flight: it takes a slot when it is awaited and gives it back when the test finishes it.
   const start = (args) => {
@@ -95,6 +95,8 @@ function harness(platform = 'MP-WEIXIN', fault = null) {
     useAuth: () => ({ currentUser: ref({ id: 'reader' }) }),
     useModeration: () => ({ ensureLoaded: async () => ({ ok: true }), blockedIds: ref(new Set()) }),
     POST_CATEGORIES: categories, ACTIVE_REGION: 'champaign', sanitizeItemResources: item => item,
+    // The events composable keeps the rows for the page a card opens, and gives back the ones to show.
+    keepCommunityEvents: (window, rows) => { kept.push([window, rows]); return rows },
     Date: class extends Date { static now() { return now } },
   }
   const input = forPlatform(source('composables/useCommunityHome.ts'), platform)
@@ -102,7 +104,7 @@ function harness(platform = 'MP-WEIXIN', fault = null) {
   const createHome = new Function(...Object.keys(mocks),
     `${compile(input).replace(/\bexport /g, '')}; return useCommunityHome`)(...Object.values(mocks))
   return {
-    createHome, requests, peak: () => peak, resetPeak: () => { peak = active },
+    createHome, requests, kept, eventRows, peak: () => peak, resetPeak: () => { peak = active },
     run(home) {
       const promise = home.loadHome()
       loads.add(promise)
@@ -140,6 +142,8 @@ for (const [platform, peak] of [['MP-WEIXIN', 6], ['H5', 12]]) {
     await h.finish()
     assert.equal(h.peak(), peak)
     assert.deepEqual(home.homeData.value, h.expected)
+    // The rows the home read are handed on, so opening one of its cards asks for nothing again.
+    assert.deepEqual(h.kept, [['upcoming', h.eventRows]])
   })
 }
 
@@ -211,6 +215,7 @@ test('a failed events read hides the block and does not fail the home', options,
   await h.finish()
   assert.equal(home.homeFailed.value, false)
   assert.deepEqual(home.homeData.value, { ...h.expected, events: [] })
+  assert.deepEqual(h.kept, [], 'a read that failed hands nothing on')
   const [read] = h.requests.filter(request => request.table === 'rpc:list_community_events')
   assert.deepEqual(read.params, { region_in: 'champaign', window_in: 'upcoming', limit_in: 200 })
 })

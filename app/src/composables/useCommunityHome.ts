@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 import { useAuth } from './useAuth'
+import { keepCommunityEvents } from './useCommunityEvents'
 import { useModeration } from './useModeration'
 import type { Item, Profile } from '../types'
 import type { CommunityEvent } from '../utils/communityEvents'
@@ -136,7 +137,8 @@ export function useCommunityHome() {
           .map(sanitizeItemResources)
           .filter(item => !blocked.has(item.user_id)),
         // The block is hidden when the list cannot be read; the rest of the home does not depend on it.
-        events: events.error ? [] : (events.data || []) as CommunityEvent[],
+        // The rows are kept for the event page a card opens, so that page does not read the list again.
+        events: events.error ? [] : keepCommunityEvents('upcoming', (events.data || []) as CommunityEvent[]),
         now,
       }
       if (events.error) console.error('[community home] events unavailable')
