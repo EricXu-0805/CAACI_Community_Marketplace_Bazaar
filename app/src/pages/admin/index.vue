@@ -208,7 +208,7 @@
           <view
             v-for="g in reportGroups"
             :key="g.target_type + ':' + g.target_id"
-            :class="['card', { 'card-selected': isSelected(g) }]"
+            :class="['card', { 'card-selected': isSelected(g) }, reportWait(g) ? 'wait-' + reportWait(g) : '']"
             :role="selectMode && g.pending_count > 0 ? 'button' : undefined"
             :tabindex="selectMode && g.pending_count > 0 ? 0 : undefined"
             :aria-pressed="selectMode && g.pending_count > 0 ? (isSelected(g) ? 'true' : 'false') : undefined"
@@ -219,6 +219,7 @@
                 <UIcon v-if="isSelected(g)" name="check" size="xs" color="#fff" />
               </view>
               <text class="card-title">{{ g.target_type }} · {{ g.last_reason }}</text>
+              <text v-if="reportWait(g)" class="pill pill-wait">{{ t(reportWait(g) === 48 ? 'admin.waitOver48' : 'admin.waitOver24') }}</text>
               <text class="pill pill-count">{{ t('admin.reportGroupCount', { reports: g.report_count, people: g.reporter_count }) }}</text>
             </view>
             <text class="card-meta">{{ t('admin.reportGroupMeta', { pending: g.pending_count, name: g.last_reporter_nickname || '—' }) }}</text>
@@ -234,6 +235,39 @@
             <text>{{ reportLoadingMore ? t('admin.checking') : t('admin.loadMore') }}</text>
           </view>
         </template>
+      </view>
+
+      <!-- P3.5: topics, visible or hidden, with the governance actions. -->
+      <view v-else-if="activeTab === 'community_posts'" id="admin-tab-panel" class="list u-stagger" role="tabpanel">
+        <view class="filter-row" role="group" :aria-label="t('admin.tabTopics')">
+          <view :class="['chip', { active: topicStatus === 'active' }]" role="button" tabindex="0" :aria-pressed="topicStatus === 'active' ? 'true' : 'false'" @click="setTopicStatus('active')">{{ t('admin.topicsVisible') }}</view>
+          <view :class="['chip', { active: topicStatus === 'hidden' }]" role="button" tabindex="0" :aria-pressed="topicStatus === 'hidden' ? 'true' : 'false'" @click="setTopicStatus('hidden')">{{ t('admin.topicsHidden') }}</view>
+        </view>
+        <view v-if="activeReadState.phase === 'ready' && communityPosts.length === 0" class="empty"><text>{{ t('admin.emptyTopics') }}</text></view>
+        <view v-for="p in communityPosts" :key="p.id" class="card" :data-topic-id="p.id">
+          <view class="card-head">
+            <text class="card-title">{{ topicLine(p) }}</text>
+            <text v-if="p.is_official" class="pill pill-count">{{ t('plaza.official') }}</text>
+            <text v-if="p.is_featured" class="pill pill-count">{{ t('home.startHere') }}</text>
+            <text v-if="p.locked_at" class="pill pill-pending">{{ t('admin.repliesClosed') }}</text>
+          </view>
+          <text class="card-meta">{{ p.category ? t(`plaza.category.${p.category}`) : t('admin.topicUpdate') }} · {{ p.author_nickname }} · {{ fmtTime(p.created_at) }}</text>
+          <view class="card-actions">
+            <view v-if="p.status === 'hidden'" :class="['mini-btn', 'primary', { disabled: topicBusy(p) }]" role="button" :tabindex="topicBusy(p) ? -1 : 0" :aria-disabled="topicBusy(p) ? 'true' : 'false'" @click="onRestoreTopic(p)">{{ t('admin.restoreContent') }}</view>
+            <template v-else>
+              <view :class="['mini-btn', { disabled: topicBusy(p) }]" role="button" :tabindex="topicBusy(p) ? -1 : 0" :aria-disabled="topicBusy(p) ? 'true' : 'false'" @click="onLockTopic(p)">{{ t(p.locked_at ? 'admin.unlockReplies' : 'admin.lockReplies') }}</view>
+              <view v-if="p.title" :class="['mini-btn', { disabled: topicBusy(p) }]" role="button" :tabindex="topicBusy(p) ? -1 : 0" :aria-disabled="topicBusy(p) ? 'true' : 'false'" @click="onMoveTopic(p)">{{ t('admin.changeBoard') }}</view>
+              <template v-if="canMarkOfficial">
+                <view :class="['mini-btn', { disabled: topicBusy(p) }]" role="button" :tabindex="topicBusy(p) ? -1 : 0" :aria-disabled="topicBusy(p) ? 'true' : 'false'" @click="onOfficialTopic(p)">{{ t(p.is_official ? 'admin.unsetOfficial' : 'admin.setOfficial') }}</view>
+                <view :class="['mini-btn', { disabled: topicBusy(p) || !p.is_official }]" role="button" :tabindex="topicBusy(p) || !p.is_official ? -1 : 0" :aria-disabled="topicBusy(p) || !p.is_official ? 'true' : 'false'" @click="onFeatureTopic(p)">{{ t(p.is_featured ? 'admin.unfeature' : 'admin.feature') }}</view>
+              </template>
+            </template>
+          </view>
+          <text v-if="canMarkOfficial && p.status === 'active' && !p.is_official" class="card-meta">{{ t('admin.featureOfficialOnly') }}</text>
+        </view>
+        <view v-if="listHasMore.community_posts" class="load-more" role="button" :tabindex="listLoadingMore ? -1 : 0" :aria-disabled="listLoadingMore ? 'true' : 'false'" @click="loadMoreAdminList('community_posts')">
+          <text>{{ listLoadingMore ? t('admin.checking') : t('admin.loadMore') }}</text>
+        </view>
       </view>
 
       <view v-else-if="activeTab === 'users'" id="admin-tab-panel" class="list" role="tabpanel">
@@ -824,6 +858,8 @@ import { resolveHtmlElement } from '../../utils/domElement'
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { POST_CATEGORIES } from '../../utils/communityPost'
+import { reportWaitLevel } from '../../utils/reportWait'
 import { onHide, onUnload } from '@dcloudio/uni-app'
 import { platformFetch } from '../../composables/useSupabase'
 import { readBoundedJson } from '../../api/responseBody'
@@ -866,8 +902,8 @@ const ADMIN_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
 const ADMIN_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/
 
 type AdminRole = 'operator' | 'security_admin' | 'owner'
-type TabId = 'reports' | 'users' | 'plaza' | 'suspensions' | 'appeals' | 'warnings' | 'audit' | 'tokens'
-type PagedAdminTab = 'suspensions' | 'appeals' | 'warnings' | 'audit'
+type TabId = 'reports' | 'community_posts' | 'users' | 'plaza' | 'suspensions' | 'appeals' | 'warnings' | 'audit' | 'tokens'
+type PagedAdminTab = 'suspensions' | 'appeals' | 'warnings' | 'audit' | 'community_posts'
 type AppealDecision = 'accepted' | 'denied' | 'more_information_required'
 type AppealReviewStatus = 'pending' | 'more_information_required'
 type AdminReadPhase = 'idle' | 'ready' | 'error'
@@ -893,6 +929,16 @@ interface ReportGroup {
   report_count: number; pending_count: number; reporter_count: number
   last_reason: string; last_note: string | null; last_reporter_nickname: string; last_status: string
   first_created_at: string; last_created_at: string; last_report_id: string
+  /** P3.6: when the oldest report still pending was filed. Only the pending queue carries it. */
+  oldest_pending_at?: string
+}
+/** P3.5: a row of the topic list, with what the five governance buttons need. */
+interface CommunityPostRow {
+  id: string; title: string | null; category: string | null; content: string
+  author_nickname: string; author_id: string; status: 'active' | 'hidden'
+  is_pinned: boolean; is_official: boolean; is_featured: boolean; locked_at: string | null
+  like_count: number; comment_count: number; thumbnail: string | null
+  created_at: string; last_activity_at: string
 }
 interface SuspensionRow {
   id: string; profile_id: string; profile_nickname: string; profile_avatar_url: string | null
@@ -1046,7 +1092,11 @@ function showAdminRequestError(err: unknown, fallback: string) {
               : message === 'appeal_already_decided' ? t('admin.appealAlreadyDecided')
                 : message === 'self_appeal_decision_forbidden' ? t('admin.appealSelfDecisionForbidden')
                   : message === 'admin_mutation_conflict' ? t('admin.toastMutationConflict')
-                    : fallback
+                    : message === 'official_profile_not_configured' ? t('admin.errOfficialNotConfigured')
+                      : message === 'post_not_official_account' ? t('admin.errNotOfficialAccount')
+                        : message === 'post_not_official' ? t('admin.featureOfficialOnly')
+                          : message === 'post_not_topic' ? t('admin.errNotTopic')
+                            : fallback
   uni.showToast({
     title: localized,
     icon: 'none',
@@ -1282,6 +1332,7 @@ const currentAdmin = computed(() => {
 
 const allTabs: Array<{ id: TabId; labelKey: string; domain: 'moderation' | 'plaza' | 'tokens' }> = [
   { id: 'reports',     labelKey: 'admin.tabReports', domain: 'moderation' },
+  { id: 'community_posts', labelKey: 'admin.tabTopics', domain: 'moderation' },
   { id: 'users',       labelKey: 'admin.tabUsers', domain: 'moderation' },
   { id: 'plaza',       labelKey: 'admin.tabPlaza', domain: 'plaza' },
   { id: 'suspensions', labelKey: 'admin.tabSuspensions', domain: 'moderation' },
@@ -1298,6 +1349,7 @@ const tabList = computed(() => allTabs.filter((tab) => (
 const activeTab = ref<TabId>('reports')
 const tabReadStates = ref<Record<TabId, AdminReadState>>({
   reports: newAdminReadState(),
+  community_posts: newAdminReadState(),
   users: newAdminReadState(),
   plaza: newAdminReadState(),
   suspensions: newAdminReadState(),
@@ -1559,6 +1611,41 @@ function isStrictReportGroup(value: unknown): value is ReportGroup {
     && isAdminUuid(value.last_report_id)
 }
 
+// P3.6: a row of the pending queue is a report group plus when its oldest pending report was filed.
+function isStrictReportQueueRow(value: unknown): value is ReportGroup {
+  if (!hasExactAdminKeys(value, [
+    'target_type', 'target_id', 'report_count', 'pending_count', 'reporter_count',
+    'last_reason', 'last_note', 'last_reporter_nickname', 'last_status',
+    'first_created_at', 'last_created_at', 'last_report_id', 'oldest_pending_at',
+  ])) return false
+  const { oldest_pending_at: oldest, ...group } = value
+  return isAdminIsoTimestamp(oldest) && isStrictReportGroup(group)
+}
+
+function isStrictCommunityPostRow(value: unknown): value is CommunityPostRow {
+  if (!hasExactAdminKeys(value, [
+    'id', 'title', 'category', 'content', 'author_nickname', 'author_id', 'status',
+    'is_pinned', 'is_official', 'is_featured', 'locked_at', 'like_count', 'comment_count',
+    'thumbnail', 'created_at', 'last_activity_at',
+  ])) return false
+  return isAdminUuid(value.id)
+    && isNullableAdminString(value.title)
+    && isNullableAdminString(value.category)
+    && typeof value.content === 'string'
+    && typeof value.author_nickname === 'string'
+    && isAdminUuid(value.author_id)
+    && (value.status === 'active' || value.status === 'hidden')
+    && typeof value.is_pinned === 'boolean'
+    && typeof value.is_official === 'boolean'
+    && typeof value.is_featured === 'boolean'
+    && (value.locked_at === null || isAdminIsoTimestamp(value.locked_at))
+    && isAdminSafeInteger(value.like_count)
+    && isAdminSafeInteger(value.comment_count)
+    && isNullableAdminString(value.thumbnail)
+    && isAdminIsoTimestamp(value.created_at)
+    && isAdminIsoTimestamp(value.last_activity_at)
+}
+
 function isStrictSuspensionRow(value: unknown): value is SuspensionRow {
   if (!hasExactAdminKeys(value, [
     'id', 'profile_id', 'profile_nickname', 'profile_avatar_url', 'level', 'reason',
@@ -1716,6 +1803,7 @@ function isStrictPagedAdminRows(tab: PagedAdminTab, value: unknown): value is an
   if (tab === 'suspensions') return isStrictAdminRows(value, isStrictSuspensionRow)
   if (tab === 'appeals') return isStrictAdminRows(value, isStrictAppealRow)
   if (tab === 'warnings') return isStrictAdminRows(value, isStrictWarningRow)
+  if (tab === 'community_posts') return isStrictAdminRows(value, isStrictCommunityPostRow)
   return isStrictAdminRows(value, isStrictAuditRow)
 }
 
@@ -1846,11 +1934,15 @@ function banMutationBusy(targetId: string): boolean {
 }
 
 const warnings = ref<WarningRow[]>([])
+// P3.5: the topic list, visible topics or hidden ones.
+const communityPosts = ref<CommunityPostRow[]>([])
+const topicStatus = ref<'active' | 'hidden'>('active')
 const listHasMore = ref<Record<PagedAdminTab, boolean>>({
   suspensions: false,
   appeals: false,
   warnings: false,
   audit: false,
+  community_posts: false,
 })
 const listLoadingMore = ref(false)
 let listLoadingMoreEpoch = 0
@@ -1859,6 +1951,7 @@ const listOffsets = ref<Record<PagedAdminTab, number>>({
   appeals: 0,
   warnings: 0,
   audit: 0,
+  community_posts: 0,
 })
 
 interface UserRow {
@@ -2847,6 +2940,11 @@ const DEFINITIVE_ADMIN_NO_COMMIT_ERRORS = new Set([
   'admin_mutation_conflict',
   'admin_mutation_invalid',
   'admin_mutation_not_found',
+  // P3.5: the API names these before anything is written.
+  'official_profile_not_configured',
+  'post_not_official_account',
+  'post_not_official',
+  'post_not_topic',
   'bad_json',
   'bad_multipart',
   'body_too_large',
@@ -3118,7 +3216,8 @@ async function strictReloadAdminState(owner: AdminSessionOwner) {
   if (whoami.value?.role === 'owner') {
     const pendingOnly = reportPendingOnly.value
     const refreshUserReview = !!appliedUserQuery.value.trim()
-    const pagedTabs: PagedAdminTab[] = ['suspensions', 'appeals', 'warnings', 'audit']
+    const pagedTabs: PagedAdminTab[] = ['suspensions', 'appeals', 'warnings', 'audit', 'community_posts']
+    const topicsStatus = topicStatus.value
     const refreshedTabs: TabId[] = [
       'reports', 'plaza', ...pagedTabs, 'tokens',
       ...(refreshUserReview ? ['users' as const] : []),
@@ -3164,14 +3263,13 @@ async function strictReloadAdminState(owner: AdminSessionOwner) {
       nextPosts,
       nextBanners,
       nextInventory,
+      nextTopics,
     ] = await Promise.all([
       apiGet<StatsRow>({ resource: 'stats' }, owner),
-      apiGet<ReportGroup[]>({
-        resource: 'reports_grouped',
-        limit: String(REPORTS_PAGE + 1),
-        offset: '0',
-        pending: pendingOnly ? '1' : '0',
-      }, owner),
+      // P3.6: the pending view is the queue by longest wait; "all" keeps the grouped list.
+      apiGet<ReportGroup[]>(pendingOnly
+        ? { resource: 'report_queue', limit: String(REPORTS_PAGE + 1), offset: '0' }
+        : { resource: 'reports_grouped', limit: String(REPORTS_PAGE + 1), offset: '0', pending: '0' }, owner),
       apiGet<SuspensionRow[]>({ resource: 'suspensions', limit: String(ADMIN_LIST_PAGE + 1), offset: '0' }, owner),
       apiGet<AppealRow[]>({ resource: 'appeals', limit: String(ADMIN_LIST_PAGE + 1), offset: '0' }, owner),
       apiGet<WarningRow[]>({ resource: 'warnings', limit: String(ADMIN_LIST_PAGE + 1), offset: '0' }, owner),
@@ -3179,18 +3277,24 @@ async function strictReloadAdminState(owner: AdminSessionOwner) {
       apiGet<PlazaPostRow[]>({ resource: 'plaza_posts', limit: String(PLAZA_PAGE + 1), offset: '0' }, owner),
       apiGet<BannerRow[]>({ resource: 'banners', limit: String(PLAZA_PAGE + 1), offset: '0' }, owner),
       apiGet<AdminTokenInventory>({ resource: 'tokens' }, owner),
+      apiGet<CommunityPostRow[]>({
+        resource: 'community_posts', limit: String(ADMIN_LIST_PAGE + 1), offset: '0', status: topicsStatus,
+      }, owner),
     ]).catch((err) => {
       failStrictRead()
       throw err
     })
     if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
-    if (reportPendingOnly.value !== pendingOnly) {
+    if (reportPendingOnly.value !== pendingOnly || topicStatus.value !== topicsStatus) {
       failStrictRead()
       throw new Error('admin_read_stale')
     }
     if (
       !isStrictAdminStats(nextStats)
-      || !isStrictAdminRows(nextReports, isStrictReportGroup)
+      || !(pendingOnly
+        ? isStrictAdminRows(nextReports, isStrictReportQueueRow)
+        : isStrictAdminRows(nextReports, isStrictReportGroup))
+      || !isStrictAdminRows(nextTopics, isStrictCommunityPostRow)
       || !isStrictAdminRows(nextSuspensions, isStrictSuspensionRow)
       || !isStrictAdminRows(nextAppeals, isStrictAppealRow)
       || !isStrictAdminRows(nextWarnings, isStrictWarningRow)
@@ -3211,6 +3315,7 @@ async function strictReloadAdminState(owner: AdminSessionOwner) {
     applyAdminListFirstPage('appeals', nextAppeals)
     applyAdminListFirstPage('warnings', nextWarnings)
     applyAdminListFirstPage('audit', nextAudit)
+    applyAdminListFirstPage('community_posts', nextTopics)
     applyPlazaFirstPages(nextPosts, nextBanners)
     adminTokens.value = nextInventory.tokens
     ownerRecovery.value = nextInventory.owner_recovery
@@ -3392,6 +3497,7 @@ function resetAdminPrivateState() {
   whoami.value = null
   tabReadStates.value = {
     reports: newAdminReadState(),
+    community_posts: newAdminReadState(),
     users: newAdminReadState(),
     plaza: newAdminReadState(),
     suspensions: newAdminReadState(),
@@ -3416,8 +3522,10 @@ function resetAdminPrivateState() {
   moderationMutationKeys.value = []
   warnings.value = []
   auditLog.value = []
-  listOffsets.value = { suspensions: 0, appeals: 0, warnings: 0, audit: 0 }
-  listHasMore.value = { suspensions: false, appeals: false, warnings: false, audit: false }
+  communityPosts.value = []
+  topicStatus.value = 'active'
+  listOffsets.value = { suspensions: 0, appeals: 0, warnings: 0, audit: 0, community_posts: 0 }
+  listHasMore.value = { suspensions: false, appeals: false, warnings: false, audit: false, community_posts: false }
   resetListLoadingMore()
   adminTokens.value = []
   ownerRecovery.value = null
@@ -3555,14 +3663,12 @@ async function loadReports(
   if (reset) reportLoadingMore.value = false
   const offset = reset ? 0 : reportOffset.value
   try {
-    const page = (await apiGet<ReportGroup[]>({
-      resource: 'reports_grouped',
-      limit: String(REPORTS_PAGE + 1),
-      offset: String(offset),
-      pending: pendingOnly ? '1' : '0',
-    }, request)) || []
+    // P3.6: the pending view is the queue by longest wait; "all" keeps the grouped list.
+    const page = (await apiGet<ReportGroup[]>(pendingOnly
+      ? { resource: 'report_queue', limit: String(REPORTS_PAGE + 1), offset: String(offset) }
+      : { resource: 'reports_grouped', limit: String(REPORTS_PAGE + 1), offset: String(offset), pending: '0' }, request)) || []
     if (!isAdminRequestCurrent(request) || reportPendingOnly.value !== pendingOnly) return
-    if (!isStrictAdminRows(page, isStrictReportGroup)) throw new Error('admin_response_invalid')
+    if (!isStrictAdminRows(page, pendingOnly ? isStrictReportQueueRow : isStrictReportGroup)) throw new Error('admin_response_invalid')
     const visible = page.slice(0, REPORTS_PAGE)
     if (reset) {
       applyReportsFirstPage(page)
@@ -3622,6 +3728,7 @@ function adminListRows(tab: PagedAdminTab): any[] {
   if (tab === 'suspensions') return suspensions.value
   if (tab === 'appeals') return appeals.value
   if (tab === 'warnings') return warnings.value
+  if (tab === 'community_posts') return communityPosts.value
   return auditLog.value
 }
 
@@ -3629,6 +3736,7 @@ function applyAdminListRows(tab: PagedAdminTab, rows: any[]) {
   if (tab === 'suspensions') suspensions.value = rows as SuspensionRow[]
   else if (tab === 'appeals') appeals.value = rows as AppealRow[]
   else if (tab === 'warnings') warnings.value = rows as WarningRow[]
+  else if (tab === 'community_posts') communityPosts.value = rows as CommunityPostRow[]
   else auditLog.value = rows as AuditRow[]
 }
 
@@ -3657,13 +3765,17 @@ async function loadPagedAdminTab(
   if (reset) resetListLoadingMore()
   beginTabRead(tab)
   const current = adminListRows(tab)
+  // The topic list is one of two lists; an answer for the other one is not applied.
+  const status = topicStatus.value
   try {
     const page = await apiGet<any[]>({
       resource: tab,
       limit: String(ADMIN_LIST_PAGE + 1),
       offset: String(reset ? 0 : listOffsets.value[tab]),
+      ...(tab === 'community_posts' ? { status } : {}),
     }, request)
     if (!isAdminRequestCurrent(request)) return
+    if (tab === 'community_posts' && topicStatus.value !== status) return
     if (!isStrictPagedAdminRows(tab, page)) throw new Error('admin_response_invalid')
     const visible = page.slice(0, ADMIN_LIST_PAGE)
     if (reset) {
@@ -3718,7 +3830,7 @@ async function loadTab(
       await loadReports(true, reportsRequest)
     } else if (tab === 'plaza') {
       await loadPlaza(tabRequest)
-    } else if (tab === 'suspensions' || tab === 'appeals' || tab === 'warnings' || tab === 'audit') {
+    } else if (tab === 'suspensions' || tab === 'appeals' || tab === 'warnings' || tab === 'audit' || tab === 'community_posts') {
       await loadPagedAdminTab(tab, true, tabRequest)
     } else if (tab === 'tokens') {
       await loadTokens(tabRequest)
@@ -4166,6 +4278,92 @@ async function refreshAppealDecisionState(owner: AdminSessionOwner) {
 
 // Editable uni.showModal uses content as the input value and hides the
 // explanation. Keep the impact separate from an intentionally blank reason.
+// P3.6 (SPEC 6.10): how long a reported target has waited, as the queue colours it.
+function reportWait(g: ReportGroup) {
+  return reportWaitLevel(g.oldest_pending_at, Date.now())
+}
+
+// P3.5: the topic list and its governance buttons. Marking a topic official and
+// putting it under "Start here" are the owner's; the database checks that again.
+const canMarkOfficial = computed(() => whoami.value?.role === 'owner')
+const topicMutationKey = (p: CommunityPostRow) => `topic:${p.id}`
+const topicBusy = (p: CommunityPostRow) => moderationMutationBusy(topicMutationKey(p))
+// A topic's title, or the first words of an update.
+const topicLine = (p: CommunityPostRow) => Array.from((p.title || p.content).trim()).slice(0, 60).join('')
+
+async function setTopicStatus(status: 'active' | 'hidden') {
+  if (topicStatus.value === status) return
+  const owner = captureAdminSessionOwner()
+  if (!owner) return
+  topicStatus.value = status
+  communityPosts.value = []
+  listHasMore.value = { ...listHasMore.value, community_posts: false }
+  updateTabReadState('community_posts', newAdminReadState())
+  await loadTab('community_posts', owner)
+}
+
+// Every governance action asks for a reason, goes through the journaled POST and then re-reads the list.
+function governTopic(p: CommunityPostRow, label: string, change: Record<string, unknown>) {
+  const owner = captureAdminSessionOwner()
+  const mutationKey = topicMutationKey(p)
+  if (!owner || moderationMutationBusy(mutationKey)) return
+  showModerationReason({
+    title: label,
+    content: topicLine(p),
+    placeholderText: t('admin.governReasonPh'),
+    confirmText: label,
+    success: async (r) => {
+      if (!r.confirm || !isAdminSessionOwnerCurrent(owner) || moderationMutationBusy(mutationKey)) return
+      const reason = moderationReasonOrNotify(r.content)
+      if (reason === null) return
+      if (!beginModerationMutation(mutationKey)) return
+      try {
+        const result = await apiPost<{ media_restore_pending?: boolean }>({ ...change, reason }, owner, async () => {
+          if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
+          await loadTab('community_posts', owner, true)
+          if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
+        })
+        if (!isAdminSessionOwnerCurrent(owner)) return
+        // The topic is back either way; its photos may still be on their way.
+        if (result.media_restore_pending) uni.showModal({ title: label, content: t('admin.mediaRestorePending'), showCancel: false })
+        else uni.showToast({ title: t('admin.toastGovernDone'), icon: 'success' })
+      } catch (err: any) {
+        showAdminRequestError(err, t('admin.toastGovernFailed'))
+      } finally {
+        if (isAdminSessionOwnerCurrent(owner)) endModerationMutation(mutationKey)
+      }
+    },
+  })
+}
+function onRestoreTopic(p: CommunityPostRow) {
+  governTopic(p, t('admin.restoreContent'), { action: 'restore_content', target_type: 'post', target_id: p.id })
+}
+function onLockTopic(p: CommunityPostRow) {
+  governTopic(p, t(p.locked_at ? 'admin.unlockReplies' : 'admin.lockReplies'),
+    { action: 'set_post_locked', post_id: p.id, locked: !p.locked_at })
+}
+function onOfficialTopic(p: CommunityPostRow) {
+  governTopic(p, t(p.is_official ? 'admin.unsetOfficial' : 'admin.setOfficial'),
+    { action: 'set_post_official', post_id: p.id, official: !p.is_official })
+}
+function onFeatureTopic(p: CommunityPostRow) {
+  // Only an official topic can be put under "Start here"; the button says so when it is not.
+  if (!p.is_official) return
+  governTopic(p, t(p.is_featured ? 'admin.unfeature' : 'admin.feature'),
+    { action: 'set_post_featured', post_id: p.id, featured: !p.is_featured })
+}
+function onMoveTopic(p: CommunityPostRow) {
+  if (topicBusy(p)) return
+  const boards = POST_CATEGORIES.filter(category => category !== p.category)
+  uni.showActionSheet({
+    itemList: boards.map(category => t(`plaza.category.${category}`)),
+    success: (res) => {
+      const category = boards[res.tapIndex]
+      if (category) governTopic(p, t('admin.changeBoard'), { action: 'set_post_category', post_id: p.id, category })
+    },
+  })
+}
+
 interface ModerationReasonPrompt {
   title: string
   content: string
@@ -4710,6 +4908,10 @@ function isExpired(endsAt: string | null): boolean {
 .select-box.checked { background: var(--campus-blue); }
 .select-box.disabled { border-color: var(--text-faint); opacity: 0.6; }
 .card-selected { outline: 2px solid var(--campus-blue); outline-offset: -1px; }
+/* P3.6: a reported target that has waited more than 24 hours, and more than 48. */
+.card.wait-24 { background: var(--warning-soft); }
+.card.wait-48 { background: var(--danger-soft); }
+.pill-wait { background: var(--bg-elev-1); color: var(--text-primary); }
 .filter-row { display: flex; gap: 8px; margin-bottom: 8px; }
 .plaza-sec-title { font-size: 13px; font-weight: 700; color: var(--text-secondary); margin: 8px 0 2px; }
 .banner-thumb { width: 72px; height: 40px; border-radius: 6px; background: var(--bg-inset); flex-shrink: 0; }
