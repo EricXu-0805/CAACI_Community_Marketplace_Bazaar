@@ -236,13 +236,13 @@ async function verifyUser(bearer) {
   }
 }
 
-const UTC_TIMESTAMP_RE = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}(?::?\d{2})?)$/
+const TIMESTAMPTZ_RE = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}(?::?\d{2})?)$/
 
 // The end of a restriction as the database prints it in its own refusals
 // (public.trg_enforce_actor): UTC, whole seconds, fraction dropped.
 function restrictionEndLabel(value) {
   if (value === null || value === 'infinity') return 'permanent'
-  const parts = typeof value === 'string' ? UTC_TIMESTAMP_RE.exec(value) : null
+  const parts = typeof value === 'string' ? TIMESTAMPTZ_RE.exec(value) : null
   if (!parts) return ''
   const [year, month, day, hour, minute, second] = parts.slice(1, 7).map(Number)
   const zone = parts[7]
