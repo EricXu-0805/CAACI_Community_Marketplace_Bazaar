@@ -426,6 +426,7 @@ test('live meetup mail resolves and stamps one exact event, then closes replays 
     calls.push({ url, method, body, signal: init.signal, headers: init.headers || {} })
 
     if (url.pathname === '/auth/v1/user') return json({ id: USER_A })
+    if (url.pathname.endsWith('/rpc/get_my_profile')) return json({ id: USER_A, suspension_level: 0, suspended_until: null })
     if (url.pathname.endsWith('/rpc/edge_rate_hit')) {
       return json(true)
     }

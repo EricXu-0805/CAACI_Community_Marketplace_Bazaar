@@ -30,6 +30,7 @@ const ENV_KEYS = [
 const originalEnv = new Map(ENV_KEYS.map(key => [key, process.env[key]]))
 const originalFetch = globalThis.fetch
 const originalConsoleError = console.error
+const originalConsoleWarn = console.warn
 let nonce = 0
 
 afterEach(() => {
@@ -40,6 +41,7 @@ afterEach(() => {
   }
   globalThis.fetch = originalFetch
   console.error = originalConsoleError
+  console.warn = originalConsoleWarn
 })
 
 async function loadHandler(overrides = {}) {
@@ -92,13 +94,16 @@ function meetup({
   }
 }
 
-function makeHarness({ meetups, notifications, resendStatuses = [] }) {
+function makeHarness({ meetups, notifications, resendStatuses = [], cachedProfileFields = {} }) {
   const calls = []
   const emailed = new Map()
   const deliveries = new Map()
   let callerId = BUYER_A
   let resendIndex = 0
   let tokenIndex = 0
+  // get_my_profile answers for the bearer's own account with the canonical
+  // moderation state. The default is an unrestricted caller.
+  let canonicalProfile = id => json({ id, suspension_level: 0, suspended_until: null })
 
   const fetch = async (input, init = {}) => {
     const url = new URL(input instanceof Request ? input.url : String(input))
@@ -107,6 +112,7 @@ function makeHarness({ meetups, notifications, resendStatuses = [] }) {
     calls.push({ url, method, body, headers: init.headers || {}, signal: init.signal })
 
     if (url.pathname === '/auth/v1/user') return json({ id: callerId })
+    if (url.pathname === '/rest/v1/rpc/get_my_profile') return canonicalProfile(callerId)
     if (url.pathname === '/rest/v1/rpc/edge_rate_hit') return json(true)
     if (url.pathname === '/rest/v1/rpc/resolve_meetup_email_notification') {
       const key = `meetup:${body.meetup_id_in}:${body.event_kind_in}`
@@ -184,7 +190,7 @@ function makeHarness({ meetups, notifications, resendStatuses = [] }) {
         { id: BUYER_A, email: 'buyer-a@example.com', nickname: 'Buyer A', email_digest_opt_out: false },
         { id: BUYER_B, email: 'buyer-b@example.com', nickname: 'Buyer B', email_digest_opt_out: false },
         { id: SELLER, email: 'seller@example.com', nickname: 'Seller', email_digest_opt_out: false },
-      ])
+      ].map(row => ({ ...row, ...cachedProfileFields })))
     }
     if (url.pathname === '/rest/v1/items') return json([{ title: 'Desk lamp' }])
     if (url.pathname === '/rest/v1/blocks') return json([])
@@ -200,6 +206,7 @@ function makeHarness({ meetups, notifications, resendStatuses = [] }) {
     emailed,
     fetch,
     setCaller(value) { callerId = value },
+    setCanonicalProfile(value) { canonicalProfile = value },
   }
 }
 
@@ -372,3 +379,150 @@ test('neither flag set stays inert, so the split did not open a send path', asyn
   assert.deepEqual(body, { skipped: 'inert' })
   assert.equal(harness.emailed.has(NOTIFICATION_A), false)
 })
+
+/* D-49: an account under an active posting restriction (canonical level 2-5)
+   must not trigger immediate meetup mail. The database refuses the meetup RPCs,
+   so the normal follow-up call never happens, but this endpoint can be called
+   on its own for an older event. The caller's state comes from get_my_profile,
+   asked with the caller's own bearer and the public key, after the inert and
+   configuration exits and before the rate-limit write, any delivery claim, or
+   Resend. An answer that cannot be read is an outage, never a restriction. */
+
+const CANONICAL_PATH = '/rest/v1/rpc/get_my_profile'
+
+async function attemptWithCanonical(canonicalProfile, { env = {}, cachedProfileFields = {} } = {}) {
+  const meetups = new Map([
+    [MEETUP_A, meetup({ id: MEETUP_A, conversationId: CONVERSATION_A, fromUser: BUYER_A, toUser: SELLER })],
+  ])
+  const notifications = new Map([[`meetup:${MEETUP_A}:pending`, NOTIFICATION_A]])
+  const harness = makeHarness({ meetups, notifications, cachedProfileFields })
+  harness.setCaller(BUYER_A)
+  harness.setCanonicalProfile(canonicalProfile)
+  globalThis.fetch = harness.fetch
+  const logged = []
+  console.error = (...args) => logged.push(['error', ...args])
+  console.warn = (...args) => logged.push(['warn', ...args])
+  const handler = await loadHandler(env)
+  const response = await invoke(handler, MEETUP_A)
+  return { response, body: await response.json(), harness, logged }
+}
+
+function contacted(harness) {
+  return harness.calls.map(call => (
+    call.url.hostname === 'api.resend.com' ? 'resend' : call.url.pathname
+  ))
+}
+
+const ACTIVE_RESTRICTIONS = [
+  ['L2 with a finite end', 2, '2026-12-01T03:04:05.678901+00:00', 'suspension_active:2:2026-12-01T03:04:05Z'],
+  ['L2 with no end', 2, null, 'suspension_active:2:permanent'],
+  ['L3 with a finite end in another zone', 3, '2026-12-01T03:04:05-06:00', 'suspension_active:3:2026-12-01T09:04:05Z'],
+  ['L3 with no end', 3, null, 'suspension_active:3:permanent'],
+  ['L4 with a finite end', 4, '2027-01-02T00:00:00Z', 'suspension_active:4:2027-01-02T00:00:00Z'],
+  ['L4 with an infinite end', 4, 'infinity', 'suspension_active:4:permanent'],
+  ['L5 with a finite end', 5, '2026-11-30T23:59:59+00:00', 'suspension_active:5:2026-11-30T23:59:59Z'],
+  ['L5 with an infinite end', 5, 'infinity', 'suspension_active:5:permanent'],
+]
+const SEND_MODES = [
+  ['live', {}],
+  ['test-sink', { DIGEST_LIVE: undefined, DIGEST_TEST_EMAIL: 'sink@example.com' }],
+]
+
+for (const [label, level, until, message] of ACTIVE_RESTRICTIONS) {
+  for (const [mode, env] of SEND_MODES) {
+    test(`a caller under ${label} is refused before any ${mode} side effect`, async () => {
+      const { response, body, harness, logged } = await attemptWithCanonical(
+        id => json({ id, suspension_level: level, suspended_until: until }),
+        { env },
+      )
+      assert.equal(response.status, 403)
+      assert.deepEqual(body, { error: 'suspension_active', message })
+      // Nothing after the canonical lookup: no rate-limit write, no meetup or
+      // notification read, no delivery claim, no provider call.
+      assert.deepEqual(contacted(harness), ['/auth/v1/user', CANONICAL_PATH])
+      assert.equal(harness.emailed.size, 0)
+      // An expected refusal is not an error and is not logged as one.
+      assert.deepEqual(logged, [])
+    })
+  }
+}
+
+for (const [label, level, until] of [
+  ['L0', 0, null],
+  ['L1 with a finite end', 1, '2026-12-01T03:04:05+00:00'],
+  ['L1 with no end', 1, null],
+  ['L1 with an infinite end', 1, 'infinity'],
+]) {
+  test(`a caller at ${label} still sends`, async () => {
+    const { body, harness } = await attemptWithCanonical(
+      id => json({ id, suspension_level: level, suspended_until: until }),
+    )
+    assert.deepEqual(body, { sent: true, mode: 'live' })
+    assert.equal(harness.emailed.has(NOTIFICATION_A), true)
+  })
+}
+
+test('an expired or lifted restriction that survives only in the cached profile columns does not block', async () => {
+  // The canonical state stops reporting a restriction once it expires or is
+  // lifted; the public cache can still show level 5 with a future end.
+  const { body, harness } = await attemptWithCanonical(
+    id => json({ id, suspension_level: 0, suspended_until: null }),
+    { cachedProfileFields: { suspension_level: 5, suspended_until: '2099-01-01T00:00:00+00:00' } },
+  )
+  assert.deepEqual(body, { sent: true, mode: 'live' })
+  assert.equal(harness.emailed.has(NOTIFICATION_A), true)
+})
+
+test('an active restriction is refused even when the cached profile columns look unrestricted', async () => {
+  const { response, body, harness } = await attemptWithCanonical(
+    id => json({ id, suspension_level: 3, suspended_until: '2026-12-01T03:04:05+00:00' }),
+    { cachedProfileFields: { suspension_level: 0, suspended_until: null } },
+  )
+  assert.equal(response.status, 403)
+  assert.deepEqual(body, { error: 'suspension_active', message: 'suspension_active:3:2026-12-01T03:04:05Z' })
+  assert.deepEqual(contacted(harness), ['/auth/v1/user', CANONICAL_PATH])
+})
+
+test('the canonical state is asked with the public key and the caller bearer, before the rate-limit write', async () => {
+  const { body, harness } = await attemptWithCanonical(
+    id => json({ id, suspension_level: 0, suspended_until: null }),
+  )
+  assert.deepEqual(body, { sent: true, mode: 'live' })
+  const lookups = harness.calls.filter(call => call.url.pathname === CANONICAL_PATH)
+  assert.equal(lookups.length, 1)
+  assert.equal(lookups[0].method, 'POST')
+  assert.equal(lookups[0].headers.apikey, 'anon-test')
+  assert.equal(lookups[0].headers.Authorization, 'Bearer user-token')
+  assert.equal(JSON.stringify(lookups[0].headers).includes('service-test'), false)
+  const order = contacted(harness)
+  assert.equal(order.indexOf(CANONICAL_PATH), 1)
+  assert.ok(order.indexOf(CANONICAL_PATH) < order.indexOf('/rest/v1/rpc/edge_rate_hit'))
+})
+
+for (const [label, answer] of [
+  ['an upstream failure', () => json({ message: 'boom' }, 500)],
+  ['a permission failure', () => json({ code: '42501', message: 'permission denied' }, 403)],
+  ['a body that is not JSON', () => new Response('<html>', { status: 200, headers: { 'Content-Type': 'text/html' } })],
+  ['a null profile', () => json(null)],
+  ['an array of profiles', id => json([{ id, suspension_level: 0, suspended_until: null }])],
+  ['another account', () => json({ id: BUYER_B, suspension_level: 0, suspended_until: null })],
+  ['a missing id', () => json({ suspension_level: 0, suspended_until: null })],
+  ['a missing level', id => json({ id, suspended_until: null })],
+  ['a null level', id => json({ id, suspension_level: null, suspended_until: null })],
+  ['a textual level', id => json({ id, suspension_level: '3', suspended_until: null })],
+  ['a fractional level', id => json({ id, suspension_level: 2.5, suspended_until: null })],
+  ['a level above the scale', id => json({ id, suspension_level: 6, suspended_until: null })],
+  ['a negative level', id => json({ id, suspension_level: -1, suspended_until: null })],
+  ['an unreadable end on an active level', id => json({ id, suspension_level: 3, suspended_until: 'next tuesday' })],
+  ['a numeric end on an active level', id => json({ id, suspension_level: 3, suspended_until: 1764547200 })],
+  ['a transport failure', () => { throw new Error('socket hang up') }],
+]) {
+  test(`${label} from the canonical lookup is an outage, not a restriction`, async () => {
+    const { response, body, harness, logged } = await attemptWithCanonical(answer)
+    assert.equal(response.status, 503)
+    assert.deepEqual(body, { error: 'account_state_unavailable' })
+    assert.deepEqual(contacted(harness), ['/auth/v1/user', CANONICAL_PATH])
+    assert.equal(harness.emailed.size, 0)
+    assert.deepEqual(logged, [['warn', 'meetup_notify_account_state_unavailable']])
+  })
+}

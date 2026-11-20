@@ -279,6 +279,7 @@ test('meetup email fails closed before any recipient lookup or Resend call when 
     const url = urlOf(input)
     calls.push(url)
     if (url.pathname === '/auth/v1/user') return json({ id: USER_ID })
+    if (url.pathname.endsWith('/rpc/get_my_profile')) return json({ id: USER_ID, suspension_level: 0, suspended_until: null })
     if (url.pathname.endsWith('/rpc/edge_rate_hit')) return json({ error: 'down' }, 503)
     throw new Error(`unexpected fetch ${url}`)
   }
@@ -307,6 +308,7 @@ for (const [responseKind, limiterResponse] of malformedLimiterResponses) {
       const url = urlOf(input)
       calls.push(url)
       if (url.pathname === '/auth/v1/user') return json({ id: USER_ID })
+      if (url.pathname.endsWith('/rpc/get_my_profile')) return json({ id: USER_ID, suspension_level: 0, suspended_until: null })
       if (url.pathname.endsWith('/rpc/edge_rate_hit')) return limiterResponse()
       throw new Error(`unexpected fetch ${url}`)
     }
