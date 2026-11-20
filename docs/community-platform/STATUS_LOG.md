@@ -1499,3 +1499,27 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 见第六批 ⑥
 - 下一条: —（按 D-52 第 5 项停下，等下一条指示）
 - 附: STATUS 阻塞第 14 条按 #377 的新 base 与发布顺序重写（D-52 第 4 项 b）；版本表第 1 行改成远端 8257318，worktree 行按 git worktree list 重写（D-52 第 4 项 e）。
+
+### L121 · 2026-11-20 03:44 CT · D-53 开工：新目标、续跑提醒、四个子任务
+- task_id: D-53.6（开工）
+- code_sha: —
+- docs_sha: 362087f（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 读 DECISIONS D-53（第 312–380 行）；create_goal（范围 D-53 第 0–5 项，完成线 FINAL「第七批（D-53）」与 STATUS 同一提交推送）；schedule_prompt list（没有任务）后 create 3600 秒续跑提醒 sch_88a74d279638；子任务 st_01a1f857（第 2 项，#376）、st_01a1f858（第 3 项，vite 6.4.5）、st_01a1f859（第 4 项，P3 后 P4）、st_01a1f85a（第 5 项，staging 验收，只留证据）
+- 计数: 目标 1 个；续跑提醒 1 个；子任务 4 个
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-53 第 0、1 项（主会话）
+- 附: [OMO自决] 第 2–5 项按 D-53 第 6 项并行，各用自己的分支和目录，每个分支只由对应子任务推送；材料分支只由主会话写。
+
+### L122 · 2026-11-20 03:44 CT · D-53 第 0、1 项：照抄 Eric 的选择与 supervisor 代做的事；第六批收尾更正（更正 L111、L117、L120）
+- task_id: D-53.0、D-53.1
+- code_sha: —
+- docs_sha: 362087f（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 改 STATUS 阻塞第 2、18、20 条、新增第 25 条，CI 段与验收表；FINAL 第六批 ① 开始时间；RUNBOOK §11 的 E2、E3、E5、E12 已由 supervisor 在 362087f 改好，没再动
+- 计数: 第 0 项 a–g 写进 STATUS 第 25 条（标出 Eric 选与 supervisor 做）；FINAL 第六批 ① 开始时间改成 01:35 CT；STATUS CI 段的 L110 改成 L111；验收表 D-52 第 4 项改引 L111–L115、L119、L120；「c52badf 钉的」改成「87e57c3（c52badf 的 cherry-pick）钉的」；#370 的 run 44698816891、44703187712 补记 [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-53 第 2–5 项（子任务）
+- 附: 更正 L117：截图共 6 张，社区首页 2 张、二手首页 4 张。补记：#370 的 run 44698816891、44703187712 失败在 Build H5「Install browsers for compiled admin acceptance」和 public sweep「Install Playwright (webkit + chromium)」，是 #370 分支上 ubuntu-26.04 的老问题，不是付款问题。确认：第六批的目标在 2026-11-20T08:31:28Z 结束，续跑提醒 sch_a410e1ce2a1f 已取消。#377 描述里政策问题一节从「待定」改成「已定（D-53）」。

@@ -565,7 +565,7 @@ D-51 第 5 项解开了第四批停下的地方：批准新增一个只给本地
 
 ### ① 起止与 SHA 范围
 
-- 起止：2026-11-20 02:35 CT（D-52，材料分支 3ec3cb9）至 2026-11-20 02:31 CT。
+- 起止：2026-11-20 01:35 CT（D-52，材料分支 3ec3cb9；D-53 第 1 项更正，原写 02:35）至 2026-11-20 02:31 CT。
 - docs_sha：3ec3cb9 → 本节所在提交。
 - code_sha（都只 merge 或新提交，不 rebase，不 force push）：
   - #377 `codex/community-restricted-20261113`：9c10a7e → 82cd98a（merge 6bdca97）→ e058c98（spec 按钮名）→ a91cb74（composable 拦截）→ dd44f98（RUNBOOK 三句）。base 由 `codex/community-topics-20261112` 改成 `codex/community-home-20261112`。

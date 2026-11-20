@@ -23,9 +23,9 @@ D-52 第六批已交付（L109–L120，FINAL「第六批（D-52）」与本文�
 
 ## CI
 
-**GitHub Actions 停过一段（D-52 第 4 项 a）。** 2026-11-20 约 01:25Z 起，#370 的 run 44653535391（f86ada1）、44660742581（7dda6cb）、44671115623（0c95cc4）都在 4–5 秒内结束，每个 job 0 个步骤，注解原话是「The job was not started because recent account payments have failed or your spending limit needs to be increased.」Eric 2026-11-20 01:16 CT 把仓库改成公开，07:15Z 起是 PUBLIC。本批第一次推送（材料分支 ea66373）触发的 run 44696137300：每个启动的 job 都有步骤（Type-check 8、Build mp-weixin 10、Boundary 13、public sweep 12、Build H5 13；protected staging 与 release readiness 按条件 skipped），没有付款注解，按 D-52 的标准 CI 已恢复（L110）。这个 run 的 Build H5、public sweep 失败在装浏览器那一步，是 #370 分支没有 c52badf、ubuntu-26.04 的老问题。#372 d6f393d 的 run 44651530274 也一样：Type-check、Boundary、Build mp-weixin 成功，Build H5「Install browsers for compiled admin acceptance」和 public sweep「Install Playwright (webkit + chromium)」失败 [CI run#44696137300][CI run#44651530274]。
+**GitHub Actions 停过一段（D-52 第 4 项 a）。** 2026-11-20 约 01:25Z 起，#370 的 run 44653535391（f86ada1）、44660742581（7dda6cb）、44671115623（0c95cc4）都在 4–5 秒内结束，每个 job 0 个步骤，注解原话是「The job was not started because recent account payments have failed or your spending limit needs to be increased.」Eric 2026-11-20 01:16 CT 把仓库改成公开，07:15Z 起是 PUBLIC。本批第一次推送（材料分支 ea66373）触发的 run 44696137300：每个启动的 job 都有步骤（Type-check 8、Build mp-weixin 10、Boundary 13、public sweep 12、Build H5 13；protected staging 与 release readiness 按条件 skipped），没有付款注解，按 D-52 的标准 CI 已恢复（L111）。这个 run 的 Build H5、public sweep 失败在装浏览器那一步，是 #370 分支没有 c52badf、ubuntu-26.04 的老问题。#372 d6f393d 的 run 44651530274 也一样：Type-check、Boundary、Build mp-weixin 成功，Build H5「Install browsers for compiled admin acceptance」和 public sweep「Install Playwright (webkit + chromium)」失败 [CI run#44696137300][CI run#44651530274]。
 
-#376 新 head 0e04aca 的 run 44699877648：Type-check、Boundary、Build H5、Build mp-weixin、public sweep 5 个 success（Build H5 和 public sweep 跑在 c52badf 钉的 ubuntu-24.04 上），审计步骤按依赖门 skipped [CI run#44699877648]。#377 的 base 是 #374 的分支，没有 CI。
+#376 新 head 0e04aca 的 run 44699877648：Type-check、Boundary、Build H5、Build mp-weixin、public sweep 5 个 success（Build H5 和 public sweep 跑在 87e57c3（c52badf 的 cherry-pick）钉的 ubuntu-24.04 上），审计步骤按依赖门 skipped [CI run#44699877648]。#377 的 base 是 #374 的分支，没有 CI。#370 的 run 44698816891、44703187712：Build H5 和 public sweep 失败在装浏览器那一步，是 ubuntu-26.04 的老问题，不是付款问题（D-53 第 1 项，L122）。
 
 #369 当前 head 8257318（空提交，树同 04edaa3）的 run 44647478789：5 个 job 全部 success，public sweep 的 schema 预检五项都是 200、浏览器巡检 472 passed；protected staging 与 release readiness 2 个 skipped（L102）。
 
@@ -145,7 +145,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | D-46 第 6 项 | 通过（DoD ④ 等 Eric promote） | 见 BRAND.7 行（L91） |
 | D-49（D-51 第 5 项、D-52 第 1、2 项） | 通过（等 Eric 先应用迁移） | #377 草稿 dd44f98，base #374 的分支：merge 6bdca97 后修 16 条单测与 9 条 smoke；createPost、createComment 在 composable 层拦截（e058c98 上 L2–L5 红，a91cb74 绿）；a91cb74 全量 2655 / 2654 / 0 / 1、smoke 43（含提示条 spec）、主包 1,380,046；迁移 sha256 0dc2ceaf… 冻结未动（L106、L117、L118、L119） |
 | D-52 第 3 项 | 通过 | #376 草稿 0e04aca：失败时不放行、只认 vite 上不高于 moderate 的 GHSA-8g5g-mxqh-grgj；11 个用例符合预期；现有测试 1989 / 1988 / 0 / 1（L116） |
-| D-52 第 4 项 | 通过 | a、a2、b、c、d、e、f、g（L110–L115、L119） |
+| D-52 第 4 项 | 通过 | a、a2、b、c、d、e、f、g（L111–L115、L119、L120） |
 | D-51 第 2 项 | 通过（i 按规则留下 5 个 worktree） | L94、L96、L97、L99 |
 | D-51 第 3 项 a | 通过 | #374 6bdca97（L98） |
 | D-51 第 3 项 b | 通过 | #372 d6f393d；本地集成改前红、改后绿（L101） |
@@ -168,7 +168,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 ## 阻塞与等待 Eric
 
 1. 合并与迁移的完整顺序（写给 Eric，OMO 不执行；托管库的事属于 STOP-2/3，D-52 第 4 项 b）：① #376 随时可以合；#371 → #373。② 在生产应用 20261112120000 并跑它的 VERIFY（staging 已做，L102；ENGINEERING §6；应用后 VERIFY_20260718_reconcile_app_table_acl_boundaries 报 posts 列漂移属预期，见 L46），并且 P2.13 通过以后，依次合 #369 → #375 → #374。合 #369 进 main 就是把前端发布到 illinimarket.com 生产。③ #372 在 #374 之后任何时候手工合，规则见第 11 条。④ #377 最后合：前提是 staging 和生产上都已应用并 VERIFY 了 20261112120000，再 PRECHECK、应用、VERIFY 了 20261114015420（生产上必须先有前一条，否则 D-49 的 PRECHECK 会报 restricted_account_writes_column_missing），见第 14 条。⑤ 删分支之前先改 base，见第 12 条。
-2. D-29 → E2、E3：staging-smoke 只有合成数据的书面确认与 A/B/C 账号。挡住 P1.11、P1.12、P2.6、P2.11。
+2. D-29 → E2、E3：已完成（D-53 第 0 项 b、c，supervisor 代做）。D-29 定为 A：supervisor 2026-11-20 约 03:20 与 03:45 CT 只读核对 staging-smoke，auth.users 5 个 example.invalid 合成号加 1 个冒烟号、profiles 9 行、items 2 行、posts 0 行、messages 2 行都归合成号或冒烟号；E3 的 syn-a、syn-b、syn-c 已注册确认并能登录，~/.config/illini/staging.env 已写好（600）。OMO 不在 #369 代 Eric 留言；staging.env 不 cat、不打印。P1.11、P1.12、P2.6、P2.11 由第七批第 5 项跑。
 3. E4：staging 那一半已完成——supervisor 按 Eric 2026-11-19 批准把 20261112120000 应用到 staging-smoke 并 VERIFY 通过（D-51 第 6 项），#369 的 public sweep 已过（L102）。P2.6、P2.13 仍等 E2（D-29）、E3、E5。
 4. P1.6 跨大版本已按 D-44 做成草稿 PR #373（base #371）：合不合由 Eric 定；合之前请在带 SENTRY_AUTH_TOKEN 的发布构建里确认 source map 上传。#373 不触发 CI（ci.yml 只认 base=main）。vite 6.4.4 那条 moderate 的 CI 例外已由 #376 提供（只放行 vite 包上的 GHSA-8g5g-mxqh-grgj、严重程度不高于 moderate、到 2026-12-13，见第 20 条）；#376、#371、#373 都合并后 main 上的 Boundary 才会绿。
 5. E5：合并 P1.7 的 PR（#371）。挡住 P1.8（进而 P2.13），以及 BRAND.2 ⑦ 的 Build H5。
@@ -200,10 +200,11 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 
 17. 用号按 D-52 第 0 项（2026-11-13 18:10「子任务只用 ChatGPT 打头的类别」那条已由 D-51 第 1 项解除，L95「admin、board 不用」由 D-52 第 0 项作废）：default（admin）、account-2（board）不设 60% 上限，用到额度耗尽；account-5、account-4 和 ChatGPT 两个号仍按 60%；顺序 default → account-2 → account-5 → account-4，切 ChatGPT 由 supervisor 做，OMO 不改顺序、不切模型。停下条件：default、account-2 都用尽，其余号也都到 60%。
 
-18. BRAND.7（E12）：看预览 https://illini-community-demo-978sy3clx-ericxu-0805s-projects.vercel.app 后由 Eric promote；先在 Vercel 记下当前 production deployment id（OMO 用 vercel inspect 读到 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6），promote 后 `curl -s https://illini-community-demo.vercel.app/ | grep -c 玉米地` 应不小于 1。 预览在真实 Chrome 里会报 1 条 CSP 错误，来源是 Vercel 给预览页注入的工具栏脚本（vercel.live），被 demo 自己的 `script-src 'self'` 拦下，不是 demo 本身的问题，生产不会注入（D-51 第 7 项）。「转发 · CSSA」的虚构活动按 Eric 2026-11-19 的选择保留。
+18. BRAND.7（E12）：已完成（D-53 第 0 项 d，supervisor 代做）。supervisor 2026-11-20 约 03:22 CT promote 预览 dpl_3bG2SKTAmQsa7jEmScy2cHHpnk1y，新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`curl … | grep -c 玉米地` 为 6；回退用 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6。BRAND.7 的 DoD ④ 完成。「转发 · CSSA」的虚构活动按 Eric 2026-11-19 的选择保留。D-37（董事会同意）仍未拿到，LEGAL.1 照旧开着，这是 Eric 的取舍。
 19. 给运维的提醒（D-52 第 4 项 g，更正 L105 的说法）：本地镜像 supabase/postgres 17.6.1.104（和生产的数据库版本一样）上，用 postgres 或 supabase_admin 登录，再 `SET ROLE` 到 anon、authenticated 或 service_role 去调用没有 EXECUTE 权限的函数，后端会 SIGSEGV、整库重启；以 authenticator 登录（也就是走 PostgREST）是正常的 42501。所以 App 用户大概率触发不了，运维会话会。托管库上的 supautils 和 PostgREST 版本可能和本地不同，这一点没核；OMO 没碰任何托管库。可选的镜像版本 17.6.1.167：核查方在这个版本上没复现崩溃。
-20. #376：vite 那条公告选 A（暂时放行到 2026-12-13，只认 vite 包、严重程度不高于 moderate）还是 B（把 braces 3.0.3 的回补在 vite 6.4.5 或 6.4.6 上重做、重建本地归档；直接装 registry 上的 6.4.5 能让审计变绿，却会悄悄丢掉这个回补）；#371 合并以后三个浏览器 job 要不要回到 ubuntu-latest（P1.5 DoD ③）。#376 可以先合。
+20. #376：Eric 选 B 路线（D-53 第 0 项 e）：vite 6.4.5 的新重建配方在分支 codex/config-vite-645-20261120（base #373 的分支，第七批第 3 项）。vite PR 和 #371 进了 main 以后，#376 的钉版本和放行都用不上了，supervisor 会关掉它或留作草稿。后备：#373 到 2026-12-06 还没合，由 Eric 定把 vite PR 改到 #371 或 main 上，还是延长 #376 的放行。
 21. staging 上 posts_visible 的写权限是 041 建视图时的默认权限，没收回（security_invoker，不算提权）；要不要收回由 Eric 定。
 22. staging 另缺 3 条和 20261112120000 无关的旧迁移：20260811140018、20260811143207、20261003175231，这次不补。
 23. 5 个留下的证明 worktree 要删得用 --force（RUNBOOK §3 不许 OMO 做）；改动和未跟踪文件已存进 ~/work/evidence/D51/worktrees/（L97）。
 24. 仓库 2026-11-20 07:15Z 起公开（D-52 第 4 项 a2）：材料分支、DECISIONS（含 D-51 里的账号邮箱缩写）和几个 PR 描述里已经有账号邮箱和工作站路径，现在任何人都能看到。OMO 不改写历史去删它们，要不要处理由 Eric 定。本批起不再往仓库加原始日志、带真实数据的截图、账号邮箱、凭据和 /home 开头的绝对路径。
+25. D-53 第 0 项（照抄）：a【Eric 选】生产上线走「先验收再上线」：合 #369 之前，P1.11、P1.12、P2.6、P2.11 要在 staging 上通过，P2.13 也要完成。b、c【supervisor 做】E2（D-29 定 A）、E3 已完成，见第 2 条。d【Eric 选】品牌和 demo 现在就上；E12 由 supervisor 做完，见第 18 条；#372 由 supervisor 按上线顺序手工合。e【Eric 选】vite 走 B 路线，见第 20 条。f【Eric 选】D-49 的 12 条政策问题全部按「不新增权限」定：行为类维持现在的服务端行为，措辞类沿用现有文字，代码不改。g【supervisor 做或将做，只授权 supervisor，不授权 OMO】合并：vite PR → #373 的分支 → #371 的分支 → main（E5）；验收通过后：生产应用 20261112120000 并 VERIFY，依次合 #369 → #375 → #374，staging、生产先后对 20261114015420 做 PRECHECK、应用、VERIFY 后合 #377，再手工合 #372，每步之后看生产。P3、P4 的迁移不在本批上线范围。RUNBOOK §11 的 E2、E3、E5、E12 已由 supervisor 在 362087f 按此标状态。
