@@ -111,7 +111,9 @@ function harness(platform = 'MP-WEIXIN', fault = null) {
     },
     expected: {
       posts: {
-        candidates: [posts.slice(0, 40), ...categories.map(category => posts.filter(post => post.category === category).slice(0, 8))]
+        // P3.4: three feeds across boards, one per order of the latest list, then one per board.
+        candidates: [posts.slice(0, 40), posts.slice(0, 40), posts.slice(0, 40),
+          ...categories.map(category => posts.filter(post => post.category === category).slice(0, 8))]
           .flat().map(post => ({ ...post, reply_user_ids: ['one', 'two', 'one'] })),
         weeklyCategories: weekly, totalDiscussionCount: 99,
       },
@@ -120,7 +122,7 @@ function harness(platform = 'MP-WEIXIN', fault = null) {
   }
 }
 
-for (const [platform, peak] of [['MP-WEIXIN', 6], ['H5', 9]]) {
+for (const [platform, peak] of [['MP-WEIXIN', 6], ['H5', 11]]) {
   test(`${platform} loads the same snapshot with ${peak} initial reads in flight`, options, async () => {
     const h = harness(platform), home = h.createHome()
     h.run(home)
@@ -139,8 +141,8 @@ for (const restart of [false, true]) {
     else home.clearHome()
     await h.finish()
     // Six old reads were sent before invalidation. Only a fresh round, if any,
-    // sends the nine initial reads and the one replies read after that.
-    assert.equal(h.requests.length, restart ? 16 : 6)
+    // sends the eleven initial reads and the one replies read after that.
+    assert.equal(h.requests.length, restart ? 18 : 6)
     assert.equal(h.peak(), 6)
     assert.deepEqual(home.homeData.value, restart ? h.expected : null)
   })
@@ -176,13 +178,13 @@ test('the reply query waits for a slot while another MP instance fills the budge
   h.run(first)
   await h.started(6)
   h.requests.filter(request => !request.settled).forEach(request => request.finish())
-  await h.started(9)
+  await h.started(11)
   h.run(second)
   await h.started(12)
-  // First has only its last three initial reads left. Releasing them makes its
+  // First has only its last five initial reads left. Releasing them makes its
   // reply query eligible while handing all slots to the second instance.
   h.requests.filter(request => request.owner === 1 && !request.settled).forEach(request => request.finish())
-  await h.started(15)
+  await h.started(17)
   await h.finish()
   assert.equal(h.peak(), 6)
   assert.equal(h.requests.filter(request => request.table === 'post_comments').length, 2)

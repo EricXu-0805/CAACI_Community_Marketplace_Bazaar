@@ -40,6 +40,8 @@ async function loadPlaza({ postError = null, attachmentError = null, switchAccou
         const chain = {
           insert(value) { payload = value; writes.push({ table, value }); return chain },
           select() { return chain }, order() { return chain }, range() { return chain }, in() { return chain },
+          // P3.4: the list also filters by window and pages by a keyset.
+          limit() { return chain }, not() { return chain }, is() { return chain }, gte() { return chain }, or() { return chain },
           eq(key, value) { query.push([key, value]); return chain },
           async single() {
             if (switchAccountAfterInsert) scope.transitionAccount('user-b')
@@ -135,7 +137,8 @@ test('unknown write and stale-account success retain duplicate guard; definite r
 
 test('category is applied on the server for ordinary and search pagination', async () => {
   const h = await loadPlaza()
-  await h.plaza.fetchPosts({ category: 'campus-life', page: 1 })
+  // The ordinary list pages by a keyset from P3.4 on (community-feed-sorts.test.mjs), so this reads its first page.
+  await h.plaza.fetchPosts({ category: 'campus-life' })
   assert.ok(h.query.some(([key, value]) => key === 'category' && value === 'campus-life'))
   assert.ok(h.query.some(([key, value]) => key === 'region' && value === 'cu'))
   await h.plaza.fetchPosts({ category: 'alumni-career', search: 'Quantum', page: 2 })

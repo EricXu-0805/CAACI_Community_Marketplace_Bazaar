@@ -3,12 +3,15 @@ export const day = 86_400_000
 export const categories = ['campus-life', 'settling-market', 'alumni-career', 'events-social', 'local-deals']
 
 export function makePost(id, overrides = {}) {
-  return {
+  const post = {
     id, user_id: `author-${id}`, title: `Topic ${id}`, category: 'campus-life',
     is_pinned: false, is_official: false, comment_count: 0, status: 'active',
     created_at: new Date(now - 3_600_000).toISOString(),
     ...overrides,
   }
+  // P3.1: a topic was last active when it was posted, and is answered once somebody other
+  // than its author replies. A fixture's replies are other people's unless a test says otherwise.
+  return { last_activity_at: post.created_at, answered_at: post.comment_count > 0 ? post.created_at : null, ...post }
 }
 
 export function makePosts(count, boards = categories) {
