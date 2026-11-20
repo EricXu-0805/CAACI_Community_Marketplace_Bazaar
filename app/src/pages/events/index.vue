@@ -71,9 +71,9 @@
               </view>
               <!-- SPEC 6.7.1 rules 5 and 6: what the "all" view folds away is one tap from its own filter. -->
               <text v-if="group.memberMore" class="ev-more" role="button" tabindex="0" data-test="events-more-members"
-                @click="setFilter('member')" @keydown.enter.prevent="setFilter('member')">{{ t('events.moreMembers', { n: group.memberMore }) }}</text>
+                @click="setFilter('member')" @keydown.enter.prevent="setFilter('member')">{{ tc('events.moreMembers', group.memberMore, { n: group.memberMore }) }}</text>
               <text v-if="group.campusMore" class="ev-more" role="button" tabindex="0" data-test="events-more-campus"
-                @click="setFilter('campus')" @keydown.enter.prevent="setFilter('campus')">{{ t(group.head.kind === 'month' ? 'events.moreCampus' : 'events.moreCampusWeek', { n: group.campusMore }) }}</text>
+                @click="setFilter('campus')" @keydown.enter.prevent="setFilter('campus')">{{ group.head.kind === 'month' ? tc('events.moreCampus', group.campusMore, { n: group.campusMore }) : tc('events.moreCampusWeek', group.campusMore, { n: group.campusMore }) }}</text>
             </view>
           </template>
           <view class="ev-foot">
@@ -121,17 +121,20 @@ import { useCommunityEvents } from '../../composables/useCommunityEvents'
 import { useI18n } from '../../composables/useI18n'
 import { navigateBackOr } from '../../utils'
 import {
-  EVENT_FILTERS, buildEventList, formatEventGroupHead,
+  EVENT_FILTERS, buildEventList, eventEmptyLinks, formatEventGroupHead,
   type CommunityEvent, type EventDateHead, type EventFilter, type EventSource,
 } from '../../utils/communityEvents'
 import { openExternalLink } from '../../utils/eventLinks'
 
 const SOURCES: EventSource[] = ['caaci', 'partner', 'campus', 'member']
 const FILTER_KEY = 'community_events_filter'
-const CAACI_EVENTS = 'https://caaciorg.com/events/'
-const CAMPUS_CALENDAR = 'https://calendars.illinois.edu/list/3715'
+// SPEC 6.7.9: the mini program opens no web page; a link there copies its address, and its label says so.
+let copiesLinks = true
+// #ifdef H5
+copiesLinks = false
+// #endif
 
-const { t, lang } = useI18n()
+const { t, tc, lang } = useI18n()
 const { listEvents } = useCommunityEvents()
 const language = computed(() => (lang.value === 'zh' ? 'zh' : 'en'))
 
@@ -156,10 +159,7 @@ const view = computed(() => buildEventList(rows.value, filter.value, now.value, 
 const groupHead = (head: EventDateHead) => formatEventGroupHead(head, language.value,
   { today: t('events.today'), tomorrow: t('events.tomorrow') }, now.value)
 // SPEC 6.7.12: where to look when a source has nothing listed here.
-const emptyLinks = computed(() => [
-  ...(filter.value === 'all' || filter.value === 'caaci' ? [{ key: 'events.empty.caaciLink', url: CAACI_EVENTS }] : []),
-  ...(filter.value === 'all' || filter.value === 'campus' ? [{ key: 'events.empty.campusLink', url: CAMPUS_CALENDAR }] : []),
-])
+const emptyLinks = computed(() => eventEmptyLinks(filter.value, copiesLinks))
 
 async function load() {
   const mine = ++epoch
@@ -191,7 +191,7 @@ function showPast(value: boolean) {
   void load()
 }
 function openEvent(id: string) { uni.navigateTo({ url: `/pages/event/detail/index?id=${encodeURIComponent(id)}` }) }
-function openLink(url: string) { openExternalLink(url, [], language.value) }
+function openLink(url: string) { openExternalLink(url, [], language.value, t('events.linkCopied')) }
 function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/plaza/index' })) }
 </script>
 
@@ -204,7 +204,16 @@ function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/plaza/inde
 }
 .back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .header-title { flex: 1; font-size: 17px; font-weight: 600; color: var(--ink); }
-.ev-chips { height: 44px; background: var(--surface); box-shadow: inset 0 -1px 0 var(--line-hair); white-space: nowrap; }
+/* SPEC 6.7.4 item 2: the source filter stays at the top while the list scrolls under it. */
+.ev-chips {
+  height: 44px; background: var(--surface); box-shadow: inset 0 -1px 0 var(--line-hair); white-space: nowrap;
+  position: sticky; top: 0; z-index: 5;
+}
+/* #ifndef H5 */
+/* The mini program draws its status bar and capsule over the page, so there the top bar stays as well and the filter sits under it. */
+.header { position: sticky; top: 0; z-index: 6; }
+.ev-chips { top: calc(var(--space-3) * 2 + 32px + var(--mp-status-bar, 0px)); }
+/* #endif */
 .ev-chips-row { display: flex; align-items: center; gap: var(--space-2); height: 44px; padding: 0 var(--space-4); }
 .ev-chip {
   flex: none; display: flex; align-items: center; height: 30px; padding: 0 var(--space-3); border-radius: var(--radius-pill);
@@ -230,6 +239,10 @@ function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/plaza/inde
   font-size: 14px; font-weight: 600; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-bold); cursor: pointer;
 }
 /* #ifdef H5 */
+/* SPEC 6.7.4, desktop: the title row is 22px, where the shared desktop layout of secondary pages begins. */
+@media (min-width: 768px) {
+  .header-title { font-size: 22px; line-height: 1.4; }
+}
 @media (min-width: 1024px) {
   .ev-cols { max-width: 1200px; margin: var(--space-5) auto 0; padding: 0 var(--space-6); box-sizing: border-box; }
   .ev-main { max-width: 876px; }

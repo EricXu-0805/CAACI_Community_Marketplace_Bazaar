@@ -42,30 +42,32 @@ test('event links enforce the same offline allowlist on H5 and mp-weixin', async
       const opened = { opener: {} }
       globalThis.window = { open: (...args) => { calls.push(args); return opened } }
       globalThis.uni = { setClipboardData: () => assert.fail('H5 copied instead of opening') }
-      assert.equal(h5.openExternalLink('https://caaciorg.com/events/#fixture'), true)
+      assert.equal(h5.openExternalLink('https://caaciorg.com/events/#fixture', [], 'zh', 'not shown on the web'), true)
       assert.deepEqual(calls, [['https://caaciorg.com/zh/events/#fixture', '_blank', 'noopener,noreferrer']])
       assert.equal(opened.opener, null)
-      assert.equal(h5.openExternalLink('https://evil.example.test'), false)
+      assert.equal(h5.openExternalLink('https://evil.example.test', [], 'zh', 'not shown on the web'), false)
       assert.equal(calls.length, 1)
-      assert.equal(h5.eventExternalLinkLabel(true), '去主办方报名')
+      // Button labels come from the message catalog; this module only checks, rewrites and opens links.
+      for (const client of [h5, mp]) assert.deepEqual(Object.keys(client).sort(), ['isAllowedEventLink', 'localizeEventLink', 'openExternalLink'])
     })
-    await t.test('mp-weixin copies registration and page links, then shows the prescribed toast', () => {
+    await t.test('mp-weixin copies registration and page links, then shows the toast its caller worded', () => {
       const copied = [], toasts = []
       globalThis.window = { open: () => assert.fail('Mini Program opened a window') }
       globalThis.uni = {
         setClipboardData: options => { copied.push(options.data); options.success() },
         showToast: options => toasts.push(options),
       }
-      assert.equal(mp.openExternalLink('https://forms.example.test/form', ['forms.example.test']), true)
+      assert.equal(mp.openExternalLink('https://forms.example.test/form', ['forms.example.test'], 'zh', 'copied, in the reader\'s words'), true)
       assert.deepEqual(copied, ['https://forms.example.test/form'])
-      assert.deepEqual(toasts, [{ title: '链接已复制，请在浏览器打开', icon: 'none' }])
-      assert.equal(mp.openExternalLink('https://evil.example.test'), false)
+      assert.deepEqual(toasts, [{ title: 'copied, in the reader\'s words', icon: 'none' }])
+      assert.equal(mp.openExternalLink('https://evil.example.test', [], 'zh', 'never shown'), false)
       assert.equal(copied.length, 1)
-      assert.equal(mp.eventExternalLinkLabel(true), '复制报名链接')
-      assert.equal(mp.eventExternalLinkLabel(false), '复制链接')
-      assert.equal(mp.eventExternalLinkLabel(true, 'en'), 'Copy registration link')
-      assert.equal(mp.openExternalLink('https://illinois.edu/', [], 'en'), true)
-      assert.equal(toasts.at(-1).title, 'Link copied. Open it in your browser.')
+      assert.equal(toasts.length, 1)
+      // A Chinese reader's copied link is the Chinese page, as on H5.
+      assert.equal(mp.openExternalLink('https://caaciorg.com/events/', [], 'zh', 'copied'), true)
+      assert.equal(copied.at(-1), 'https://caaciorg.com/zh/events/')
+      assert.equal(mp.openExternalLink('https://illinois.edu/', [], 'en', 'copied'), true)
+      assert.equal(toasts.at(-1).title, 'copied')
     })
     await t.test('fetch was called zero times', () => assert.equal(fetchCalls, 0))
   } finally {

@@ -36,8 +36,10 @@ export function normalizeEventUrl(value) {
   }
 }
 
+// A missing end, 'infinity' and anything else that is not a time all read as no end.
 export function eventEffectiveEnd(event) {
-  return event.ends_at ?? event.starts_at
+  const end = event.ends_at
+  return typeof end === 'string' && Number.isFinite(Date.parse(end)) ? end : event.starts_at
 }
 
 // This is the same output shape for feed projections, table rows and RPC joins.
@@ -194,8 +196,10 @@ export function deriveEventState(event, now, lang = 'zh', partner) {
   else if (event.availability === 'unavailable') key = 'unavailable'
   else if (ended) key = 'ended'
   else if (event.source_type === 'member' && event.cancelled_at) key = 'cancelled'
-  else if (event.previous_starts_at && clock >= changed && clock - changed <= TWO_WEEKS) key = 'rescheduled'
+  // On now comes before moved: the list groups everything that is on under "on now" (SPEC 6.7.4 item 3).
+  // app/src/utils/communityEvents.ts#eventState decides the same way; both are run against event-states.json.
   else if (clock >= Date.parse(event.starts_at)) key = 'ongoing'
+  else if (event.previous_starts_at && clock >= changed && clock - changed <= TWO_WEEKS) key = 'rescheduled'
   const en = lang === 'en'
   const labels = {
     normal: '', ongoing: en ? 'Happening now' : '进行中',

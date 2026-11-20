@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { ADMIN, PRE_P3_CAPABILITIES } from './fixtures/community-p3-database.mjs'
 import {
@@ -260,6 +261,30 @@ test('P4.2 community events', { skip: SKIP }, async t => {
           || '|' || (cancelled_at IS NOT NULL)::text || '|' || status_note
         FROM public.list_community_events(source_in => 'member') WHERE organizer_user_id = '${MEMBER_A}' AND discussion_post_id = '${post(1)}'`, member(MEMBER_B)),
       'value:Member A|true|0|true|true|Court is closed')
+    })
+
+    await t.test('the list and the app agree on when an event is over: the shared effective-end rows, either side of now', () => {
+      // The two JavaScript implementations are run against the same file (ENGINEERING 5.5).
+      const rows = JSON.parse(readFileSync(new URL('../api/__fixtures__/community-events/effective-end.json', import.meta.url), 'utf8'))
+      assert.ok(rows.length >= 4, `only ${rows.length} rows`)
+      const stamp = value => (value == null ? 'NULL' : `'${value}'::timestamptz + moved.by`)
+      // Each row twice, moved as a whole so that its effective end is an hour ahead of now, and an hour behind.
+      const place = (row, index, side) => {
+        const key = 8000 + index * 2 + (side === 'ahead' ? 0 : 1)
+        sql(`INSERT INTO public.community_events (id, source_type, source_key, organizer_name, title_en, starts_at, ends_at, all_day, occurrence_count, page_url, registration_mode)
+          SELECT '${id(key)}', 'campus', '7/${key}', 'Library', 'Effective end ${key}', ${stamp(row.starts_at)}, ${stamp(row.ends_at)},
+            ${row.all_day === true}, ${row.occurrence_count || 1}, 'https://calendars.illinois.edu/detail/7/${key}', 'calendar_page'
+          FROM (SELECT now() ${side === 'ahead' ? '+' : '-'} interval '1 hour' - '${row.effective_end}'::timestamptz AS by) AS moved`)
+        return id(key)
+      }
+      const ahead = rows.map((row, index) => place(row, index, 'ahead'))
+      const behind = rows.map((row, index) => place(row, index, 'behind'))
+      const listed = window => ask(`SELECT coalesce(string_agg(listed.id::text, ',' ORDER BY listed.id), '')
+        FROM public.list_community_events(source_in => 'campus', window_in => '${window}') AS listed
+        WHERE listed.id IN (${[...ahead, ...behind].map(value => `'${value}'`).join(', ')})`, ANON).replace(/^value:/, '')
+      assert.equal(listed('upcoming'), [...ahead].sort().join(','), rows.map(row => row.name).join(', '))
+      assert.equal(listed('past'), [...behind].sort().join(','), rows.map(row => row.name).join(', '))
+      sql(`DELETE FROM public.community_events WHERE id IN (${[...ahead, ...behind].map(value => `'${value}'`).join(', ')})`)
     })
 
     await t.test('the three administrator actions: who may, what they change, and one audit row each', () => {

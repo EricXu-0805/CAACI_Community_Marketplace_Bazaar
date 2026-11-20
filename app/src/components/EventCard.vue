@@ -21,7 +21,7 @@
         <text v-if="stateKey" class="evc-tag evc-tag-st" data-test="event-state">{{ t(stateKey) }}</text>
       </view>
     </view>
-    <text v-if="!compact && event.discussion_count" class="evc-replies">{{ t('events.replies', { n: event.discussion_count }) }}</text>
+    <text v-if="!compact && event.discussion_count" class="evc-replies">{{ tc('events.replies', event.discussion_count, { n: event.discussion_count }) }}</text>
   </view>
 </template>
 
@@ -33,7 +33,7 @@ import { formatEventListTime } from '../utils/eventTime'
 
 const props = defineProps<{ event: CommunityEvent; now: number; compact?: boolean }>()
 const emit = defineEmits<{ (event: 'open', id: string): void }>()
-const { t, lang } = useI18n()
+const { t, tc, lang } = useI18n()
 
 const language = computed(() => (lang.value === 'zh' ? 'zh' : 'en'))
 const state = computed(() => eventState(props.event, props.now))
@@ -53,9 +53,10 @@ const when = computed(() => {
   const clock = props.event.all_day ? `${time.split(' ')[0]} ${t('events.allDay')}` : time
   return props.event.location ? `${clock} · ${props.event.location}` : clock
 })
-// The card is one button, so its name carries what it shows.
-const label = computed(() => [title.value, `${block.value.month}${block.value.day}`, when.value, source.value,
-  stateKey.value ? t(stateKey.value) : ''].filter(Boolean).join(' · '))
+// The card is one button, so its name carries what it shows; the date is worded the way it is read aloud.
+const label = computed(() => [title.value,
+  language.value === 'zh' ? `${block.value.month}${block.value.day}日` : `${block.value.month} ${block.value.day}`,
+  when.value, source.value, stateKey.value ? t(stateKey.value) : ''].filter(Boolean).join(' · '))
 </script>
 
 <style lang="scss" scoped>

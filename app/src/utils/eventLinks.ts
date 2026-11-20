@@ -29,18 +29,12 @@ export function localizeEventLink(value: string, lang: Language): string {
   return value
 }
 
-export function eventExternalLinkLabel(registration: boolean, lang: Language = 'zh'): string {
-  // #ifdef MP-WEIXIN
-  return lang === 'zh' ? (registration ? '复制报名链接' : '复制链接')
-    : (registration ? 'Copy registration link' : 'Copy link')
-  // #endif
-  // #ifdef H5
-  return lang === 'zh' ? (registration ? '去主办方报名' : '查看原页')
-    : (registration ? 'Register with organizer' : 'View source')
-  // #endif
-}
-
-export function openExternalLink(url: string, extraHosts: readonly string[] = [], lang: Language = 'zh'): boolean {
+/**
+ * Opens a link that is on the allowlist, and reports whether it was. The mini
+ * program cannot open a web page, so it copies the address and then shows
+ * `copied`, the caller's words for "link copied, open it in your browser".
+ */
+export function openExternalLink(url: string, extraHosts: readonly string[], lang: Language, copied: string): boolean {
   if (!isAllowedEventLink(url, extraHosts)) return false
   const target = localizeEventLink(url, lang)
   // #ifdef H5
@@ -51,13 +45,7 @@ export function openExternalLink(url: string, extraHosts: readonly string[] = []
   }
   // #endif
   // #ifdef MP-WEIXIN
-  uni.setClipboardData({
-    data: target,
-    success: () => uni.showToast({
-      title: lang === 'zh' ? '链接已复制，请在浏览器打开' : 'Link copied. Open it in your browser.',
-      icon: 'none',
-    }),
-  })
+  uni.setClipboardData({ data: target, success: () => uni.showToast({ title: copied, icon: 'none' }) })
   return true
   // #endif
   return false

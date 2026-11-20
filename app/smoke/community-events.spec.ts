@@ -117,6 +117,11 @@ test.beforeEach(async ({ page }) => {
 
 const PHONE = { width: 390, height: 844, scale: 2, mobile: true }
 const DESKTOP = { width: 1280, height: 800, scale: 1, mobile: false }
+// uni-h5 reads the window width from the screen, so both have to move.
+const phone = {
+  viewport: { width: PHONE.width, height: PHONE.height }, screen: { width: PHONE.width, height: PHONE.height },
+  deviceScaleFactor: PHONE.scale, isMobile: true, hasTouch: true,
+}
 
 for (const size of [PHONE, DESKTOP]) {
   test.describe(`events at ${size.width}px`, () => {
@@ -136,6 +141,8 @@ for (const size of [PHONE, DESKTOP]) {
       // SPEC 6.7.4: the five filters, "all" chosen; what is on now first, then by Champaign date.
       await expect(page.locator('.ev-chip')).toHaveText(['全部', 'CAACI', '合作组织', '学校', '网友发起'])
       await expect(page.locator('.ev-chip[data-filter="all"]')).toHaveAttribute('aria-selected', 'true')
+      // SPEC 6.7.4: the page title is 17px on a phone and 22px in the desktop layout.
+      await expect(page.locator('.header-title')).toHaveCSS('font-size', size === DESKTOP ? '22px' : '17px')
       await expect(page.locator('.ev-group-h')).toHaveText(['进行中', '明天 · 11月21日 周六', '11月22日 周日', '11月23日 周一'])
       expect(await titles(page)).toEqual(['Library tour', '迎新晚会', '公开赛', '周六羽毛球，3 缺 3', 'Research workshop', '周日约饭', '读书会'])
 
@@ -162,6 +169,9 @@ for (const size of [PHONE, DESKTOP]) {
       await expect(card.locator('.evc-when')).toHaveText('周六 10:00 · Illini Union')
       await expect(card.locator('.evc-replies')).toHaveText('3 条回复')
       await expect(page.locator(`.evc[data-event-id="${MEMBER.id}"] .evc-replies`)).toHaveCount(0)
+      // An event that ends the day it starts carries no multi-day mark, and the card's name says its date in words.
+      await expect(card.locator('.evc-on')).toHaveCount(0)
+      await expect(card).toHaveAttribute('aria-label', '迎新晚会 · 11月21日 · 周六 10:00 · Illini Union · CAACI 主办')
       // v1 renders no image of any source, and opens no web view.
       await expect(page.locator('.ev-main img, .ev-main uni-image, .ev-main uni-web-view, .ev-main iframe')).toHaveCount(0)
 
@@ -175,6 +185,28 @@ for (const size of [PHONE, DESKTOP]) {
       const sources = page.locator('[data-block="event-sources"]')
       if (size === DESKTOP) await expect(sources.locator('.ev-side-row')).toHaveCount(4)
       else await expect(sources).toBeHidden()
+    })
+
+    test('the source filter stays at the top while the list scrolls (SPEC 6.7.4 item 2)', async ({ page }) => {
+      const many = Array.from({ length: 24 }, (_, index) => event('campus', (index + 1) * DAY, {
+        title_en: `Workshop ${index + 1}`, organizer_name: 'University Library', location: 'Room 106',
+        page_url: `https://calendars.illinois.edu/detail/7/2${String(index).padStart(5, '0')}`, registration_mode: 'calendar_page',
+      }))
+      await serve(page, { upcoming: many })
+      await page.goto('/#/pages/events/index', { waitUntil: 'networkidle' })
+      await expect(cards(page).first()).toBeVisible({ timeout: 15_000 })
+      const chips = page.locator('.ev-chips')
+      const top = async (target: ReturnType<Page['locator']>) => (await target.boundingBox())!.y
+      const chipsAt = await top(chips), firstAt = await top(cards(page).first())
+      expect(chipsAt).toBeGreaterThan(0)
+      await cards(page).last().scrollIntoViewIfNeeded()
+      // The list has moved up by more than the row's own distance from the top, and the row is still there.
+      expect(firstAt - await top(cards(page).first())).toBeGreaterThan(chipsAt)
+      await expect(chips).toBeInViewport()
+      expect(Math.abs(await top(chips))).toBeLessThanOrEqual(1)
+      // It still works from there.
+      await page.locator('.ev-chip[data-filter="caaci"]').click()
+      await expect(page.locator('[data-test="events-empty"] .ev-state-t')).toHaveText('CAACI 近期没有已发布的活动。往期活动在 CAACI 官网。')
     })
 
     test('a filter lists its source only and is remembered; the past is one tap away', async ({ page }) => {
@@ -283,8 +315,10 @@ for (const size of [PHONE, DESKTOP]) {
       await expect(page.locator('[data-test="event-banner"] .ed-banner-t')).toHaveText('时间已更新：原 11月21日 周六 10:00 CT')
       await expect(page.locator('.ed-act')).toHaveText(['查看学校页面'])
 
+      // SPEC 6.7.7: what is on now has no banner in Chinese; the list says 进行中.
       await open(LIVE)
-      await expect(page.locator('[data-test="event-banner"] .ed-banner-t')).toHaveText('进行中')
+      await expect(page.locator('.ed')).toHaveAttribute('data-state', 'live')
+      await expect(page.locator('[data-test="event-banner"]')).toHaveCount(0)
 
       await open(MEMBER)
       await expect(page.locator('.ed-source-t')).toHaveText('网友自发组织，不是 CAACI 或学校的活动。')
@@ -345,6 +379,99 @@ for (const size of [PHONE, DESKTOP]) {
   })
 }
 
+test.describe('events for an English reader', () => {
+  test.use(phone)
+
+  test('one reply is "1 reply", the card names its date, and what is on now says so on its page', async ({ page }) => {
+    const one = { ...CAACI, discussion_count: 1 }
+    await serve(page, { upcoming: [LIVE, one] })
+    await page.addInitScript(() => localStorage.setItem('lang', 'en'))
+    await page.goto('/#/pages/events/index', { waitUntil: 'networkidle' })
+    const card = page.locator(`.evc[data-event-id="${one.id}"]`)
+    await expect(card.locator('.evc-replies')).toHaveText('1 reply')
+    await expect(card).toHaveAttribute('aria-label', 'Welcome night · Nov 21 · Sat 10:00 AM · Illini Union · Hosted by CAACI')
+    await card.click()
+    await expect(page.locator('.ed')).toHaveAttribute('data-event-id', one.id)
+    await expect(page.locator('.ed [data-action="discuss"]')).toHaveText('Join discussion · 1 reply ›')
+    // SPEC 6.7.7: English has a banner for what is on now.
+    await openFresh(page, `/pages/event/detail/index?id=${LIVE.id}`)
+    await expect(page.locator('.ed')).toHaveAttribute('data-event-id', LIVE.id)
+    await expect(page.locator('[data-test="event-banner"] .ed-banner-t')).toHaveText('Happening now')
+  })
+})
+
+test.describe('event times, for a reader whose device is not on Champaign time', () => {
+  test.use({ ...phone, timezoneId: 'Asia/Shanghai' })
+
+  // ENGINEERING 9.3: a calendar gives an all-day event from 00:00 of its first day to 00:00 of the day after its last.
+  const ONE_DAY = event('campus', 0, {
+    title_en: 'Quad Day', organizer_name: 'Student Affairs', location: 'Main Quad', all_day: true,
+    starts_at: '2026-11-23T06:00:00Z', ends_at: '2026-11-24T06:00:00Z',
+    page_url: 'https://calendars.illinois.edu/detail/7/100011', registration_mode: 'calendar_page',
+  })
+  const THREE_DAYS = event('campus', 0, {
+    title_en: 'Book fair', organizer_name: 'University Library', location: 'Main Library', all_day: true,
+    starts_at: '2026-11-24T06:00:00Z', ends_at: '2026-11-27T06:00:00Z',
+    page_url: 'https://calendars.illinois.edu/detail/7/100012', registration_mode: 'calendar_page',
+  })
+  // A member's event whose end is not a time at all.
+  const ENDLESS = event('member', 0, {
+    title: '周末徒步', location: 'Allerton Park', registration_mode: 'discussion', organizer_nickname: '小林',
+    starts_at: '2026-11-21T17:30:00Z', ends_at: 'infinity', discussion_post_id: '71000000-0000-4000-8000-000000000004',
+  })
+
+  test('an all-day event shows its own days and no time of the reader\'s own', async ({ page }) => {
+    await serve(page, { upcoming: [CAACI, ONE_DAY, THREE_DAYS] })
+    await page.goto('/#/pages/events/index', { waitUntil: 'networkidle' })
+    const one = page.locator(`.evc[data-event-id="${ONE_DAY.id}"]`)
+    await expect(one.locator('.evc-day')).toHaveText('23')
+    await expect(one.locator('.evc-when')).toHaveText('周一 全天 · Main Quad')
+    // One day: no multi-day mark.
+    await expect(one.locator('.evc-on')).toHaveCount(0)
+    const several = page.locator(`.evc[data-event-id="${THREE_DAYS.id}"]`)
+    await expect(several.locator('.evc-day')).toHaveText('24')
+    await expect(several.locator('.evc-on')).toHaveText('起')
+
+    await one.click()
+    await expect(page.locator('.ed')).toHaveAttribute('data-event-id', ONE_DAY.id)
+    await expect(page.locator('[data-test="event-time"]')).toHaveText('2026年11月23日（周一） 全天（美国中部时间）')
+    // A calendar day in Champaign is not an instant to convert.
+    await expect(page.locator('[data-test="event-device-time"]')).toHaveCount(0)
+    // Several days: the page names the last one.
+    await openFresh(page, `/pages/event/detail/index?id=${THREE_DAYS.id}`)
+    await expect(page.locator('.ed')).toHaveAttribute('data-event-id', THREE_DAYS.id)
+    await expect(page.locator('[data-test="event-time"]')).toHaveText('2026年11月24日（周二） – 11月26日（周四） 全天（美国中部时间）')
+    await expect(page.locator('[data-test="event-device-time"]')).toHaveCount(0)
+    // A timed event: the reader's own time, as SPEC 6.7.8 writes it.
+    await openFresh(page, `/pages/event/detail/index?id=${CAACI.id}`)
+    await expect(page.locator('.ed')).toHaveAttribute('data-event-id', CAACI.id)
+    await expect(page.locator('[data-test="event-time"]')).toHaveText('2026年11月21日（周六）10:00–12:00（美国中部时间）')
+    await expect(page.locator('[data-test="event-device-time"]')).toHaveText('你的时间：11月22日（周日）00:00–02:00（中国标准时间）')
+  })
+
+  test('an end that is not a time reads as no end time, and the page still opens', async ({ page }) => {
+    const errors: string[] = []
+    page.on('pageerror', error => errors.push(error.message))
+    await serve(page, { upcoming: [ENDLESS] })
+    await page.goto('/#/pages/events/index', { waitUntil: 'networkidle' })
+    const card = page.locator(`.evc[data-event-id="${ENDLESS.id}"]`)
+    await expect(card.locator('.evc-when')).toHaveText('周六 11:30 · Allerton Park')
+    await expect(card.locator('.evc-on')).toHaveCount(0)
+    await card.click()
+    await expect(page.locator('.ed')).toHaveAttribute('data-event-id', ENDLESS.id)
+    await expect(page.locator('[data-test="event-time"]')).toHaveText('2026年11月21日（周六）11:30 开始（美国中部时间）')
+    await expect(page.locator('[data-test="event-device-time"]')).toHaveText('你的时间：11月22日（周日）01:30 开始（中国标准时间）')
+    expect(errors).toEqual([])
+    // With no end time an event is over once it has started: opened again half an hour in, it is not "on now".
+    await page.clock.setFixedTime(new Date('2026-11-21T18:00:00Z'))
+    await page.reload({ waitUntil: 'networkidle' })
+    await expect(page.locator('.ed')).toHaveAttribute('data-event-id', ENDLESS.id)
+    await expect(page.locator('.ed')).toHaveAttribute('data-state', 'ended')
+    await expect(page.locator('[data-test="event-banner"] .ed-banner-t')).toHaveText('活动已结束')
+    expect(errors).toEqual([])
+  })
+})
+
 test.describe('events from the desktop header and on a topic page', () => {
   test.use({ viewport: { width: DESKTOP.width, height: DESKTOP.height }, screen: { width: DESKTOP.width, height: DESKTOP.height } })
 
@@ -384,6 +511,9 @@ test.describe('events from the desktop header and on a topic page', () => {
     await expect(card.locator('.evc-when')).toHaveText('Sat 10:00 AM · Illini Union')
     // ENGINEERING 9.7: one row by discussion topic, through the allowlisted columns.
     expect(asked[0].searchParams.get('discussion_post_id')).toBe(`eq.${fixture.topic.id}`)
+    // Only an event readers are shown: the organizer's own policy also returns one that was taken down.
+    expect(asked[0].searchParams.get('availability')).toBe('eq.visible')
+    expect(asked[0].searchParams.get('duplicate_of')).toBe('is.null')
     expect(asked[0].searchParams.get('limit')).toBe('1')
     expect(asked[0].searchParams.get('select')).not.toMatch(/consent_ref|hidden_reason|content_hash|\*/)
     await card.click()

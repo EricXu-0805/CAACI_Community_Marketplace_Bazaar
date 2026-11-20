@@ -1,5 +1,5 @@
 import { isAllowedEventLink } from './eventLinks'
-import { eventEffectiveEnd, eventTimeParts } from './eventTime'
+import { eventEffectiveEnd, eventLastDay, eventTimeParts } from './eventTime'
 
 /*
  * P4.8 (SPEC 6.7): how the events page arranges what list_community_events
@@ -56,12 +56,19 @@ export interface EventMessage { key: string; params?: Record<string, string | nu
 
 const DAY = 86_400_000
 
-/** SPEC 6.7.7. Over wins, then cancelled by its organizer, then on now, then moved within 14 days. */
+/**
+ * SPEC 6.7.7. Over wins, then cancelled by its organizer, then on now, then moved within the last 14 days.
+ * api/_community-events.js#deriveEventState decides the same way; both are run against
+ * api/__fixtures__/community-events/event-states.json.
+ */
 export function eventState(event: CommunityEvent, now: number): EventState {
   if (now > Date.parse(eventEffectiveEnd(event))) return 'ended'
   if (event.source_type === 'member' && event.cancelled_at) return 'cancelled'
   if (Date.parse(event.starts_at) <= now) return 'live'
-  if (event.previous_starts_at && event.schedule_changed_at && now - Date.parse(event.schedule_changed_at) <= 14 * DAY) return 'rescheduled'
+  if (event.previous_starts_at && event.schedule_changed_at) {
+    const since = now - Date.parse(event.schedule_changed_at)
+    if (since >= 0 && since <= 14 * DAY) return 'rescheduled'
+  }
   return 'normal'
 }
 
@@ -172,15 +179,30 @@ export function formatEventGroupHead(head: EventDateHead, lang: Language, words:
   return head.kind === 'day' ? date : `${words[head.kind]} · ${date}`
 }
 
-/** The 44x48 block of a card: the first day, and whether the event runs past it (SPEC 6.7.5). */
+/** The 44x48 block of a card: the first day, and whether the event is on after that day (SPEC 6.7.5). */
 export function eventDateBlock(event: CommunityEvent, lang: Language): { month: string; day: string; runsOn: boolean } {
   const start = eventTimeParts(event.starts_at)
-  const end = event.ends_at ? eventTimeParts(event.ends_at) : start
   return {
     month: lang === 'zh' ? `${start.month}月` : MONTH_EN[start.month - 1].slice(0, 3),
     day: String(start.day),
-    runsOn: dayNumber(end) > dayNumber(start),
+    runsOn: dayNumber(eventLastDay(event)) > dayNumber(start),
   }
+}
+
+const CAACI_EVENTS = 'https://caaciorg.com/events/'
+const CAMPUS_CALENDAR = 'https://calendars.illinois.edu/list/3715'
+
+/**
+ * Where to look when a source has nothing listed here (SPEC 6.7.12). The mini
+ * program opens no web page: there a link copies its address, and its label
+ * says so (SPEC 6.7.9).
+ */
+export function eventEmptyLinks(filter: EventFilter, copies: boolean): { key: string; url: string }[] {
+  const suffix = copies ? 'Copy' : ''
+  return [
+    ...(filter === 'all' || filter === 'caaci' ? [{ key: `events.empty.caaciLink${suffix}`, url: CAACI_EVENTS }] : []),
+    ...(filter === 'all' || filter === 'campus' ? [{ key: `events.empty.campusLink${suffix}`, url: CAMPUS_CALENDAR }] : []),
+  ]
 }
 
 export interface EventAction {

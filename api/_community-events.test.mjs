@@ -145,6 +145,21 @@ test('rescheduling expires at 14 days, never appears for a future or missing cha
   assert.equal(deriveEventState({ ...row, schedule_changed_at: null }, now).key, 'normal')
 })
 
+test('states follow the table the app reads too, one row at a time (SPEC 6.7.7)', () => {
+  // app/smoke/community-event-list.test.mjs reads the same rows, so the two implementations cannot drift apart.
+  const rows = json('event-states')
+  assert.ok(rows.length >= 20, `only ${rows.length} rows`)
+  const appName = { ongoing: 'live' }
+  for (const row of rows) {
+    const key = deriveEventState({ availability: 'visible', ...row.event }, row.now).key
+    assert.equal(appName[key] || key, row.state, row.name)
+  }
+  // An end that is missing, infinite or not a time is no end.
+  for (const ends_at of [null, undefined, 'infinity', '-infinity', 'not a time', '', 42]) {
+    assert.equal(eventEffectiveEnd({ starts_at: future.starts_at, ends_at }), future.starts_at, String(ends_at))
+  }
+})
+
 test('effective end is the shared coalesce fixture, with exact boundaries and state precedence', () => {
   for (const row of json('effective-end')) {
     assert.equal(eventEffectiveEnd(row), row.effective_end, row.name)

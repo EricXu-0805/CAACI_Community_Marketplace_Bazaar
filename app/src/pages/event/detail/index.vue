@@ -40,7 +40,7 @@
 
       <view class="ed-facts">
         <text class="ed-fact" data-test="event-time">{{ formatEventDetailTime(event, language) }}</text>
-        <text v-if="deviceTime" class="ed-fact ed-quiet">{{ deviceTime }}</text>
+        <text v-if="deviceTime" class="ed-fact ed-quiet" data-test="event-device-time">{{ deviceTime }}</text>
         <text v-if="place" class="ed-fact" data-test="event-place">{{ place }}</text>
         <text v-if="event.source_type === 'member' && event.organizer_nickname" class="ed-fact ed-quiet">{{ t('events.organizer', { name: event.organizer_nickname }) }}</text>
       </view>
@@ -94,7 +94,7 @@ import {
 import { openExternalLink } from '../../../utils/eventLinks'
 import { formatEventDetailTime, formatEventDeviceTime, formatEventPreviousTime } from '../../../utils/eventTime'
 
-const { t, lang } = useI18n()
+const { t, tc, lang } = useI18n()
 const { findEvent } = useCommunityEvents()
 const language = computed(() => (lang.value === 'zh' ? 'zh' : 'en'))
 
@@ -148,7 +148,8 @@ const sourceLine = computed(() => {
 const banner = computed(() => {
   const row = event.value
   if (!row) return ''
-  if (state.value === 'live') return t('events.status.live')
+  // SPEC 6.7.7: what is on now has a banner in English only; in Chinese the list says 进行中 and the page says nothing.
+  if (state.value === 'live') return language.value === 'en' ? t('events.status.live') : ''
   if (state.value === 'ended') return t('events.status.ended')
   if (state.value === 'cancelled') return t('events.status.cancelled')
   if (state.value === 'rescheduled' && row.previous_starts_at) {
@@ -169,7 +170,7 @@ const actions = computed(() => (event.value ? eventActions(event.value, state.va
 function actionLabel(action: EventAction) {
   if (action.kind === 'discuss') {
     const count = event.value?.discussion_count || 0
-    return count ? t('events.cta.discussCount', { n: count }) : t('events.cta.discuss')
+    return count ? tc('events.cta.discussCount', count, { n: count }) : t('events.cta.discuss')
   }
   if (action.kind === 'caaciClosed') return t('events.cta.caaciClosed')
   // SPEC 6.7.9: the mini program opens no web page, so its buttons say what they do, which is copy.
@@ -186,7 +187,7 @@ function run(action: EventAction) {
   if (action.kind === 'discuss') {
     uni.navigateTo({ url: `/pages/post/index?id=${encodeURIComponent(row.discussion_post_id || '')}` })
   } else if (action.url) {
-    openExternalLink(action.url, row.allowed_link_hosts || [], language.value)
+    openExternalLink(action.url, row.allowed_link_hosts || [], language.value, t('events.linkCopied'))
   }
 }
 function reportWrongInfo() {

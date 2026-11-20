@@ -17,8 +17,10 @@ const input = source('utils/communityEvents.ts')
   .replace("'./eventTime'", `'${compile(source('utils/eventTime.ts'))}'`)
   .replace("'./eventLinks'", `'${compile(source('utils/eventLinks.ts'))}'`)
 const {
-  EVENT_FILTERS, buildEventList, eventActions, eventDateBlock, eventSourceLabel, eventState, eventTitle, formatEventGroupHead,
+  EVENT_FILTERS, buildEventList, eventActions, eventDateBlock, eventEmptyLinks, eventSourceLabel, eventState, eventTitle, formatEventGroupHead,
 } = await import(compile(input))
+// SPEC 6.7.7 as rows. api/_community-events.test.mjs reads the same file, so the two cannot drift apart.
+const STATE_ROWS = JSON.parse(readFileSync(new URL('../../api/__fixtures__/community-events/event-states.json', import.meta.url), 'utf8'))
 
 // Friday 2026-11-20 10:00 in Champaign (16:00 UTC, standard time).
 const NOW = Date.parse('2026-11-20T16:00:00Z')
@@ -59,6 +61,21 @@ test('states: live, rescheduled, cancelled by its organizer, ended', () => {
   // A cancelled event that would be on right now is cancelled, not live; an organization's row has no such state.
   assert.equal(eventState(event('member', -HOUR, { ends_at: iso(NOW + HOUR), cancelled_at: iso(NOW - DAY) }), NOW), 'cancelled')
   assert.equal(eventState(event('caaci', 2 * DAY, { cancelled_at: iso(NOW - HOUR) }), NOW), 'normal')
+})
+
+test('states follow the table the API reads too, one row at a time (SPEC 6.7.7)', () => {
+  assert.ok(STATE_ROWS.length >= 20, `only ${STATE_ROWS.length} rows`)
+  for (const row of STATE_ROWS) {
+    assert.equal(eventState(event(row.event.source_type, 0, row.event), Date.parse(row.now)), row.state, row.name)
+  }
+  // What is on now is listed as on now, moved or not (SPEC 6.7.4 item 3).
+  const moved = STATE_ROWS.find(row => row.name === 'moved, and on now')
+  const view = buildEventList([event('campus', 0, moved.event)], 'all', Date.parse(moved.now))
+  assert.equal(view.live.length, 1)
+  assert.deepEqual(view.groups, [])
+  // An end that is not a time counts as no end: once started the event is over, and it is not kept on the list.
+  const endless = STATE_ROWS.find(row => row.name === 'an end of infinity reads as no end')
+  assert.equal(buildEventList([event('member', 0, endless.event)], 'all', Date.parse(endless.now)).total, 0)
 })
 
 test('titles follow the reader language and fall back; the source is named in words', () => {
@@ -158,6 +175,47 @@ test('the date block names the first day, and says when an event runs on', () =>
   assert.deepEqual(eventDateBlock(event('caaci', 2 * HOUR), 'en'), { month: 'Nov', day: '20', runsOn: false })
   assert.deepEqual(eventDateBlock(event('caaci', 2 * HOUR, { ends_at: iso(NOW + 3 * HOUR) }), 'zh').runsOn, false)
   assert.deepEqual(eventDateBlock(event('caaci', 2 * HOUR, { ends_at: iso(NOW + 30 * HOUR) }), 'zh'), { month: '11月', day: '20', runsOn: true })
+  // An end that is not a time is no end: nothing runs on.
+  for (const ends_at of ['infinity', 'not a time']) {
+    assert.deepEqual(eventDateBlock(event('member', 2 * HOUR, { ends_at }), 'zh'), { month: '11月', day: '20', runsOn: false }, ends_at)
+  }
+})
+
+test('an all-day event occupies its own days only (ENGINEERING 9.3)', () => {
+  // A calendar gives it from 00:00 of its first day to 00:00 of the day after its last, in Champaign.
+  const allDay = (starts_at, ends_at) => eventDateBlock(event('campus', 0, { all_day: true, starts_at, ends_at }), 'zh')
+  // One day, with or without a DTEND in the source: no multi-day mark.
+  assert.deepEqual(allDay('2026-11-23T06:00:00Z', '2026-11-24T06:00:00Z'), { month: '11月', day: '23', runsOn: false })
+  // Two days.
+  assert.deepEqual(allDay('2026-11-20T06:00:00Z', '2026-11-22T06:00:00Z'), { month: '11月', day: '20', runsOn: true })
+  // The 25-hour day the clocks go back and the 23-hour day they go forward are one day each.
+  assert.equal(allDay('2026-11-01T05:00:00Z', '2026-11-02T06:00:00Z').runsOn, false)
+  assert.equal(allDay('2027-03-14T06:00:00Z', '2027-03-15T05:00:00Z').runsOn, false)
+  assert.equal(allDay('2026-10-31T05:00:00Z', '2026-11-02T06:00:00Z').runsOn, true)
+  // No end that is later than the start: the first day alone.
+  for (const ends_at of [null, 'infinity', 'not a time', '2026-11-23T06:00:00Z']) {
+    assert.equal(allDay('2026-11-23T06:00:00Z', ends_at).runsOn, false, String(ends_at))
+  }
+})
+
+test('where to look when nothing is listed; in the mini program a link copies, and its label says so', () => {
+  const keys = (filter, copies) => eventEmptyLinks(filter, copies).map(link => link.key)
+  assert.deepEqual(keys('all', false), ['events.empty.caaciLink', 'events.empty.campusLink'])
+  assert.deepEqual(keys('caaci', false), ['events.empty.caaciLink'])
+  assert.deepEqual(keys('campus', false), ['events.empty.campusLink'])
+  assert.deepEqual(keys('partner', false), [])
+  assert.deepEqual(keys('member', false), [])
+  assert.deepEqual(keys('all', true), ['events.empty.caaciLinkCopy', 'events.empty.campusLinkCopy'])
+  assert.deepEqual(keys('campus', true), ['events.empty.campusLinkCopy'])
+  // The same two places either way.
+  for (const copies of [false, true]) {
+    assert.deepEqual(eventEmptyLinks('all', copies).map(link => link.url), ['https://caaciorg.com/events/', 'https://calendars.illinois.edu/list/3715'])
+  }
+  // The page looks these keys up by name, so both catalogs must carry them.
+  for (const language of ['zh', 'en']) {
+    const catalog = source(`composables/i18n/messages/${language}.ts`)
+    for (const key of [...keys('all', false), ...keys('all', true)]) assert.ok(catalog.includes(`'${key}':`), `${language} ${key}`)
+  }
 })
 
 test('buttons: registration stays with the organizer, and a link off the allowlist gets no button', () => {

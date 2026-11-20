@@ -46,7 +46,8 @@ test('an events page opens no web view, renders no image, and sends every outbou
     assert.doesNotMatch(read(path), /cover_url|image_url/, path)
   }
   const detail = read('app/src/pages/event/detail/index.vue')
-  assert.match(detail, /openExternalLink\(action\.url, row\.allowed_link_hosts \|\| \[\], language\.value\)/)
+  // The fourth argument is only what the mini program says after it copied the link.
+  assert.match(detail, /openExternalLink\(action\.url, row\.allowed_link_hosts \|\| \[\], language\.value, t\('events\.linkCopied'\)\)/)
   assert.match(read('app/src/utils/communityEvents.ts'), /isAllowedEventLink\(url, hosts\)/)
   // The pages read one function and one allowlisted projection; neither composable writes anything.
   const reads = read('app/src/composables/useCommunityEvents.ts')
