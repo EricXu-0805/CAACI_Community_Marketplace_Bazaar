@@ -16,13 +16,14 @@ const compile = input => moduleUrl(ts.transpileModule(input, {
 
 const USER = '11111111-1111-4111-8111-111111111111'
 const POST = '22222222-2222-4222-8222-222222222222'
-const state = Object.assign(postgrestDouble(), { current: true })
+const state = Object.assign(postgrestDouble(), { current: true, reported: [] })
 globalThis.__topicListsTest = state
 const { useTopicLists, topicRowTitle, markedTopicRows, ownTopicRows } = await import(compile(source('composables/useTopicLists.ts')
   .replace("'./useSupabase'", `'${moduleUrl('export const useSupabase = () => ({ supabase: globalThis.__topicListsTest.supabase })')}'`)
-  .replace("'./accountScope'", `'${moduleUrl('export const captureAccountRequest = userId => ({ userId }); export const isAccountRequestCurrent = () => globalThis.__topicListsTest.current')}'`)))
+  .replace("'./accountScope'", `'${moduleUrl('export const captureAccountRequest = userId => ({ userId }); export const isAccountRequestCurrent = () => globalThis.__topicListsTest.current')}'`)
+  .replace("'../utils/sentry'", `'${moduleUrl('export const captureException = (error, context) => { globalThis.__topicListsTest.reported.push({ error, context }) }')}'`)))
 const lists = useTopicLists()
-const reset = answers => { state.reset(answers); state.current = true }
+const reset = answers => { state.reset(answers); state.current = true; state.reported = [] }
 const row = (id, created_at, extra = {}) => ({ id, title: `Topic ${id}`, category: 'campus-life', content: 'Body', comment_count: 0, created_at, ...extra })
 
 test('a watch and a save write one private row each, in their own tables', async () => {
@@ -84,11 +85,10 @@ test('saved and watched lists are newest first and leave out topics that are no 
 test('my topics lists visible and hidden ones together, hidden ones tagged', async () => {
   reset({
     posts: [{ data: [row('new', '2026-11-05T00:00:00Z'), row('old', '2026-11-01T00:00:00Z')], error: null }],
-    list_own_hidden_posts: [{ data: [{ id: 'gone', title: 'Hidden one', category: 'campus-life', content: 'Body', created_at: '2026-11-03T00:00:00Z', hidden_reason: 'Spam' }], error: null }],
+    list_own_hidden_posts: [{ data: [{ id: 'gone', title: 'Hidden one', category: 'campus-life', content: 'Body', created_at: '2026-11-03T00:00:00Z' }], error: null }],
   })
   const mine = await lists.fetchOwnTopics(USER)
-  assert.deepEqual(mine.map(topic => [topic.id, topic.hidden === true, topic.hidden_reason ?? null]),
-    [['new', false, null], ['gone', true, 'Spam'], ['old', false, null]])
+  assert.deepEqual(mine.map(topic => [topic.id, topic.hidden === true]), [['new', false], ['gone', true], ['old', false]])
   assert.deepEqual(state.calls[1], { rpc: 'list_own_hidden_posts', args: {} })
   assert.deepEqual(state.calls[0].steps.filter(step => step[0] === 'eq'), [['eq', 'user_id', USER], ['eq', 'status', 'active']])
   assert.deepEqual(ownTopicRows(null, null), [])
@@ -100,12 +100,52 @@ test('a topic that cannot be loaded is hidden or missing; only its author gets t
     assert.equal(await lists.fetchPostState(POST), expected)
     assert.deepEqual(state.calls, [{ rpc: 'community_post_state', args: { post_id_in: POST } }])
   }
-  reset({ list_own_hidden_posts: [{ data: [{ id: POST, title: 'Mine', category: 'campus-life', content: 'Body', created_at: '2026-11-03T00:00:00Z', hidden_reason: null }], error: null }] })
+  reset({ list_own_hidden_posts: [{ data: [{ id: POST, title: 'Mine', category: 'campus-life', content: 'Body', created_at: '2026-11-03T00:00:00Z' }], error: null }] })
   assert.deepEqual(await lists.fetchOwnHiddenPost(POST), { id: POST, title: 'Mine', category: 'campus-life', content: 'Body',
-    created_at: '2026-11-03T00:00:00Z', hidden_reason: null, comment_count: 0, hidden: true })
+    created_at: '2026-11-03T00:00:00Z', comment_count: 0, hidden: true })
   assert.deepEqual(state.calls, [{ rpc: 'list_own_hidden_posts', args: { post_id_in: POST } }])
   reset({ list_own_hidden_posts: [{ data: [], error: null }] })
   assert.equal(await lists.fetchOwnHiddenPost(POST), null)
+})
+
+// D-54 2e: what a moderator typed for a takedown is not the author's to read. The server no longer
+// sends it; a row that still carried one is kept out of what the pages are given.
+test('an own hidden topic never carries a moderator\'s note into the page', async () => {
+  const stale = { id: POST, title: 'Mine', category: 'campus-life', content: 'Body', created_at: '2026-11-03T00:00:00Z', hidden_reason: 'An internal note' }
+  reset({ list_own_hidden_posts: [{ data: [stale], error: null }] })
+  assert.deepEqual(Object.keys(await lists.fetchOwnHiddenPost(POST)).sort(), ['category', 'comment_count', 'content', 'created_at', 'hidden', 'id', 'title'])
+  reset({ posts: [{ data: [], error: null }], list_own_hidden_posts: [{ data: [stale], error: null }] })
+  assert.doesNotMatch(JSON.stringify(await lists.fetchOwnTopics(USER)), /An internal note|hidden_reason/)
+  assert.doesNotMatch(JSON.stringify(ownTopicRows([], [stale])), /An internal note|hidden_reason/)
+})
+
+// D-54 2i: "hidden" and "gone" are answers. A read that failed is neither: it is reported and thrown,
+// so the page offers a retry instead of telling an author their topic was deleted.
+test('what stands in for an unreadable topic: hidden with the author\'s own copy, gone, or a reported failure', async () => {
+  const own = { id: POST, title: 'Mine', category: 'campus-life', content: 'Body', created_at: '2026-11-03T00:00:00Z' }
+  reset({ community_post_state: [{ data: 'hidden', error: null }], list_own_hidden_posts: [{ data: [own], error: null }] })
+  assert.deepEqual(await lists.fetchGoneTopic(POST, true), { state: 'hidden', own: { ...own, comment_count: 0, hidden: true } })
+  // A member who did not write it gets no copy back; a signed-out visitor is not asked the second question at all.
+  reset({ community_post_state: [{ data: 'hidden', error: null }], list_own_hidden_posts: [{ data: [], error: null }] })
+  assert.deepEqual(await lists.fetchGoneTopic(POST, true), { state: 'hidden', own: null })
+  reset({ community_post_state: [{ data: 'hidden', error: null }] })
+  assert.deepEqual(await lists.fetchGoneTopic(POST, false), { state: 'hidden', own: null })
+  assert.deepEqual(state.calls, [{ rpc: 'community_post_state', args: { post_id_in: POST } }])
+  for (const data of ['missing', 'active', null]) {
+    reset({ community_post_state: [{ data, error: null }] })
+    assert.deepEqual(await lists.fetchGoneTopic(POST, true), { state: 'missing', own: null })
+    assert.deepEqual(state.calls, [{ rpc: 'community_post_state', args: { post_id_in: POST } }])
+  }
+  assert.deepEqual(state.reported, [])
+
+  const down = { code: '57014', message: 'canceling statement due to statement timeout' }
+  reset({ community_post_state: [{ data: null, error: down }] })
+  await assert.rejects(lists.fetchGoneTopic(POST, true), down)
+  assert.deepEqual(state.reported, [{ error: down, context: { tags: { source: 'post.gone_state' } } }])
+  // The first read answered and the author's own copy could not be read: still a failure, not "hidden for others".
+  reset({ community_post_state: [{ data: 'hidden', error: null }], list_own_hidden_posts: [{ data: null, error: down }] })
+  await assert.rejects(lists.fetchGoneTopic(POST, true), down)
+  assert.deepEqual(state.reported, [{ error: down, context: { tags: { source: 'post.gone_state' } } }])
 })
 
 test('a list line is the title, or the first 40 characters of an update', () => {

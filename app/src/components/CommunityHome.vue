@@ -166,7 +166,7 @@
                   <text v-if="desktop" class="ch-link" role="button" @click="emit('all')">{{ t('home.allDiscussions') }}</text>
                   <!-- #endif -->
                 </view>
-                <text v-if="latestRows.length === 0" class="ch-none">{{ t('plaza.emptyUnanswered') }}</text>
+                <text v-if="latestRows.length === 0" class="ch-none">{{ sections.latest.empty ? tx(sections.latest.empty) : t('plaza.emptyUnanswered') }}</text>
                 <view v-else class="ch-list">
                   <view v-for="row in latestRows" :key="row.post.id" class="ch-lr" role="button"
                     :data-post-id="row.post.id" :aria-label="rowLabel(row)" @click="openPost(row.post.id)">
@@ -489,7 +489,10 @@ function copyAbout() {
 .ch-tile-go { height: 128px; align-items: center; justify-content: center; border-radius: var(--radius-sm); box-shadow: inset 0 0 0 1px var(--line-soft); }
 .ch-tile-go-t { padding: 0 var(--space-2); font-size: var(--t-caption); color: var(--ink-soft); white-space: normal; text-align: center; }
 .ch-m .ch-latest { padding-bottom: var(--space-4); }
-.ch-m .ch-sec-h { min-height: 52px; padding: 0 var(--space-4); }
+/* The title takes a line of its own and the tabs wrap under it, so every tab is on screen and takes a
+   tap at 360px in either language. Nothing here scrolls sideways: the page clips what overflows. */
+.ch-m .ch-sec-h { flex-wrap: wrap; gap: 0 var(--space-4); min-height: 52px; padding: var(--space-3) var(--space-4) 0; }
+.ch-m .ch-tabs { flex: 1 0 100%; flex-wrap: wrap; row-gap: 0; }
 .ch-m .ch-lr { padding: var(--space-3) var(--space-4); }
 .ch-m .ch-more { height: 44px; margin: var(--space-2) var(--space-4) 0; box-shadow: inset 0 0 0 1px var(--line-bold); }
 .ch-m .ch-more-t { font-size: var(--t-body); color: var(--ink); }

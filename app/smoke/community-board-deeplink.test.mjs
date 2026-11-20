@@ -9,7 +9,7 @@ const compile = input => ts.transpileModule(input, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 },
 }).outputText
 const moduleUrl = input => `data:text/javascript;base64,${Buffer.from(compile(input)).toString('base64')}`
-const { normalizePostTopic } = await import(moduleUrl(source('utils/communityPost.ts')))
+const { normalizePostTopic, hiddenTopicShare } = await import(moduleUrl(source('utils/communityPost.ts')))
 const { isSuspensionActive } = await import(moduleUrl(source('utils/suspension.ts')))
 const plaza = source('pages/plaza/index.vue')
 const postPage = source('pages/post/index.vue')
@@ -133,7 +133,7 @@ test('mini-program topic shares use the original title, at most 50 Unicode chara
   for (const title of ['A campus question', '\u754c'.repeat(70), '\u{1f33d}'.repeat(70)]) {
     let translations = 0
     const post = { value: { id: POST, title, content: 'Body', content_i18n: { en: 'Translated body' }, images: ['photo'] } }
-    const dependencies = { post, t: () => 'Community', localize: () => { translations++; return 'Translated body' } }
+    const dependencies = { post, t: () => 'Community', localize: () => { translations++; return 'Translated body' }, goneState: { value: null }, postId: { value: POST }, hiddenTopicShare }
     const share = hook(postPage, 'onShareAppMessage', dependencies)()
     assert.equal(share.title, Array.from(title).slice(0, 50).join(''))
     assert.ok(Array.from(share.title).length <= 50)
@@ -147,11 +147,28 @@ test('mini-program topic shares use the original title, at most 50 Unicode chara
 
 test('legacy update and missing-post shares retain their existing fallbacks', () => {
   const post = { value: { id: POST, title: null, content: 'First line\nSecond line', images: [] } }
-  const dependencies = { post, t: () => 'Community', localize: (_translations, content) => content }
+  const goneState = { value: null }
+  const dependencies = { post, t: () => 'Community', localize: (_translations, content) => content, goneState, postId: { value: POST }, hiddenTopicShare }
   const share = hook(postPage, 'onShareAppMessage', dependencies)
   assert.deepEqual(share(), { title: 'First line', path: `/pages/post/index?id=${POST}`, imageUrl: '' })
   post.value = null
   assert.deepEqual(share(), { title: 'Community', path: '/pages/plaza/index' })
+  // A topic that is gone, or whose state was never read, keeps the same fallback.
+  goneState.value = 'missing'
+  assert.deepEqual(share(), { title: 'Community', path: '/pages/plaza/index' })
+})
+
+// SPEC 6.10: the page's own share callbacks, for a topic that was hidden.
+test('a hidden topic is shared as a notice about itself: no title, no text and none of its images', () => {
+  const said = { 'plaza.hidden': 'HIDDEN', 'app.name': 'APP', 'share.plaza': 'Community' }
+  const dependencies = {
+    post: { value: null }, t: key => said[key], localize: () => assert.fail('nothing of the topic is read'),
+    goneState: { value: 'hidden' }, postId: { value: POST }, hiddenTopicShare,
+  }
+  assert.deepEqual(hook(postPage, 'onShareAppMessage', dependencies)(),
+    { title: 'HIDDEN · APP', path: `/pages/post/index?id=${POST}`, imageUrl: '/static/app-icon-512.png' })
+  assert.deepEqual(hook(postPage, 'onShareTimeline', dependencies)(),
+    { title: 'HIDDEN · APP', query: `id=${POST}`, imageUrl: '/static/app-icon-512.png' })
 })
 
 test('mini-program temporary HTTP photos upload while owned draft URLs are reused in order', async () => {

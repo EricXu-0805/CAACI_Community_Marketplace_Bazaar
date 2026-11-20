@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { useSupabase } from './useSupabase'
 import { captureAccountRequest, isAccountRequestCurrent } from './accountScope'
 import type { PostCategory } from '../utils/communityPost'
+import { captureException } from '../utils/sentry'
 
 /*
  * P3.2: watching and saving a topic, and the member's own topic lists.
@@ -24,7 +25,11 @@ export interface TopicListRow {
   created_at: string
   /** Only the author's own list carries hidden topics. */
   hidden?: boolean
-  hidden_reason?: string | null
+}
+/** What stands in for a topic that cannot be read, and the author's own copy when the caller wrote it. */
+export interface GoneTopic {
+  state: 'hidden' | 'missing'
+  own: TopicListRow | null
 }
 
 const ROW_FIELDS = 'id, title, category, content, comment_count, created_at'
@@ -43,14 +48,24 @@ export function markedTopicRows(rows: ReadonlyArray<{ post?: TopicListRow | null
   return (rows || []).map(row => row.post).filter((post): post is TopicListRow => !!post)
 }
 
+/*
+ * The author's own hidden topic as the pages get it: the text they wrote and nothing else. The fields
+ * are named one by one, so whatever else a response carries, a moderator's note for one, stays out.
+ */
+type OwnHiddenRow = Pick<TopicListRow, 'id' | 'title' | 'category' | 'content' | 'created_at'>
+const ownHiddenRow = (row: OwnHiddenRow): TopicListRow => ({
+  id: row.id, title: row.title, category: row.category, content: row.content, created_at: row.created_at,
+  comment_count: 0, hidden: true,
+})
+
 /** The author's visible and hidden topics as one list, newest first. */
 export function ownTopicRows(
   visible: ReadonlyArray<TopicListRow> | null,
-  hidden: ReadonlyArray<Omit<TopicListRow, 'comment_count'>> | null,
+  hidden: ReadonlyArray<OwnHiddenRow> | null,
 ): TopicListRow[] {
   return [
     ...(visible || []),
-    ...(hidden || []).map(row => ({ ...row, comment_count: 0, hidden: true })),
+    ...(hidden || []).map(ownHiddenRow),
   ].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || (a.id < b.id ? 1 : -1))
 }
 
@@ -122,13 +137,29 @@ export function useTopicLists() {
     return data === 'active' || data === 'hidden' ? data : 'missing'
   }
 
-  /** The signed-in author's own hidden topic, with the moderator's reason; null for anyone else. */
+  /** The signed-in author's own hidden topic; null for anyone else. */
   async function fetchOwnHiddenPost(postId: string): Promise<TopicListRow | null> {
     const { data, error } = await supabase.rpc('list_own_hidden_posts', { post_id_in: postId })
     if (error) throw error
-    const row = (data as unknown as TopicListRow[] | null)?.[0]
-    return row ? { ...row, comment_count: 0, hidden: true } : null
+    const row = (data as unknown as OwnHiddenRow[] | null)?.[0]
+    return row ? ownHiddenRow(row) : null
   }
 
-  return { loadTopicMarks, setTopicMark, fetchMarkedTopics, fetchOwnTopics, fetchPostState, fetchOwnHiddenPost }
+  /*
+   * Why a topic page has no topic to show. "Hidden" and "gone" are answers; a read that failed is
+   * neither, so it is reported and thrown and the page offers a retry. Telling an author that their
+   * hidden topic was deleted because one request timed out is the thing this must never do.
+   */
+  async function fetchGoneTopic(postId: string, signedIn: boolean): Promise<GoneTopic> {
+    try {
+      const state = await fetchPostState(postId)
+      if (state !== 'hidden') return { state: 'missing', own: null }
+      return { state, own: signedIn ? await fetchOwnHiddenPost(postId) : null }
+    } catch (error) {
+      captureException(error, { tags: { source: 'post.gone_state' } })
+      throw error
+    }
+  }
+
+  return { loadTopicMarks, setTopicMark, fetchMarkedTopics, fetchOwnTopics, fetchPostState, fetchOwnHiddenPost, fetchGoneTopic }
 }

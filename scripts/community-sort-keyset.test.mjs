@@ -9,9 +9,16 @@ import {
  * repeats nor skips a topic when the list changes between two pages.
  *
  * The lists are read through PostgREST, so the page queries here are the SQL
- * those requests become: equality filters, the keyset condition
- * or=(<time>.lt.T,and(<time>.eq.T,id.lt.I)) and the same ORDER BY and LIMIT.
- * They run as anon, under the real row policy and column grants.
+ * those requests become: equality filters, the same ORDER BY and LIMIT, and
+ * the client's two keyset conditions (usePlaza.ts). After an unpinned row:
+ *   is_pinned=eq.false & or=(<time>.lt.T,and(<time>.eq.T,id.lt.I))
+ * After a pinned row, which is what a page that ends inside the pinned
+ * topics has for a cursor:
+ *   or=(and(is_pinned.eq.true,or(<the same>)),is_pinned.eq.false)
+ * They run as anon against the fixture's stand-ins for the row policy and the
+ * column grants (fixtures/community-p3-database.mjs builds them in the shape
+ * of the replayed database). The real policy and grants are exercised by
+ * REGRESSION_20261120100354 under L-SQL.
  */
 
 const topic = n => id(500 + n)
@@ -28,13 +35,16 @@ test('P3.4 ordering and keyset pages', { skip: SKIP }, async t => {
         now() - interval '2 days' + n * interval '1 hour', now() - interval '2 days' + n * interval '1 hour'
       FROM generate_series(1, 12) AS n`)
     const numbered = rows => rows.map(row => Number(row.id.slice(-12)) - 500)
-    // One page as anon. cursor = the last row of the previous page.
+    // One page as anon. cursor = the last row of the previous page, pinned or not.
     const page = ({ by = 'last_activity_at', limit = 5, cursor = null, where = '' } = {}) => {
-      const order = `${cursor ? '' : 'is_pinned DESC, '}${by} DESC, id DESC`
-      return JSON.parse(as(`SELECT coalesce(json_agg(json_build_object('id', t.id, 'at', t.at) ORDER BY t.n), '[]')
-        FROM (SELECT id, ${by}::text AS at, row_number() OVER (ORDER BY ${order}) AS n FROM public.posts
-          WHERE status = 'active' AND region = 'cu' ${where}
-            ${cursor ? `AND is_pinned = false AND (${by} < '${cursor.at}' OR (${by} = '${cursor.at}' AND id < '${cursor.id}'))` : ''}
+      const order = `is_pinned DESC, ${by} DESC, id DESC`
+      const after = cursor && `(${by} < '${cursor.at}' OR (${by} = '${cursor.at}' AND id < '${cursor.id}'))`
+      const keyset = !cursor ? ''
+        : cursor.pinned ? `AND ((is_pinned = true AND ${after}) OR is_pinned = false)`
+          : `AND is_pinned = false AND ${after}`
+      return JSON.parse(as(`SELECT coalesce(json_agg(json_build_object('id', t.id, 'at', t.at, 'pinned', t.is_pinned) ORDER BY t.n), '[]')
+        FROM (SELECT id, is_pinned, ${by}::text AS at, row_number() OVER (ORDER BY ${order}) AS n FROM public.posts
+          WHERE status = 'active' AND region = 'cu' ${where} ${keyset}
           ORDER BY ${order} LIMIT ${limit}) AS t`, 'anon', ''))
     }
     // The search function's rows, in the order it returns them.
@@ -91,8 +101,31 @@ test('P3.4 ordering and keyset pages', { skip: SKIP }, async t => {
       // A first page made only of pinned topics starts the unpinned list from its top.
       const pinnedOnly = page({ limit: 2 })
       assert.deepEqual(numbered(pinnedOnly), [7, 2])
-      assert.deepEqual(numbered(page({ limit: 3, where: 'AND is_pinned = false' })), [12, 11, 10])
+      assert.equal(pinnedOnly.at(-1).pinned, true)
+      assert.deepEqual(numbered(page({ limit: 3, cursor: pinnedOnly.at(-1) })), [12, 11, 10])
       sql('UPDATE public.posts SET is_pinned = false')
+    })
+
+    await t.test('a page that ends inside the pinned topics goes on with the pinned ones behind it, then every unpinned one', () => {
+      sql(`UPDATE public.posts SET is_pinned = true WHERE id IN ('${topic(2)}', '${topic(7)}', '${topic(9)}')`)
+      const whole = numbered(page({ limit: 100 }))
+      assert.deepEqual(whole, [9, 7, 2, 12, 11, 10, 8, 6, 5, 4, 3, 1])
+      for (const limit of [1, 2, 3, 4, 5]) {
+        const seen = []
+        for (let cursor = null, rows; (rows = page({ limit, cursor })).length; cursor = rows.at(-1)) seen.push(...numbered(rows))
+        assert.deepEqual(seen, whole, `pages of ${limit}`)
+      }
+      // Between two pages a topic is posted. The pinned topics still to come are not skipped, and the
+      // unpinned list then starts at its top, where the new topic now is.
+      const first = page({ limit: 1 })
+      assert.deepEqual(numbered(first), [9])
+      const inserted = as(`INSERT INTO public.posts(user_id, content, title, category) VALUES ('${OTHER}', 'Posted in between', 'Posted in between', 'campus-life') RETURNING id`, 'authenticated', OTHER)
+      const second = page({ limit: 2, cursor: first.at(-1) })
+      assert.deepEqual(numbered(second), [7, 2])
+      const third = page({ limit: 3, cursor: second.at(-1) })
+      assert.equal(third[0].id, inserted, 'the unpinned list starts at its top, where the new topic now is')
+      assert.deepEqual(numbered(third.slice(1)), [12, 11])
+      sql(`DELETE FROM public.posts WHERE id = '${inserted}'; UPDATE public.posts SET is_pinned = false`)
     })
 
     await t.test('a board filter pages on its own index order', () => {

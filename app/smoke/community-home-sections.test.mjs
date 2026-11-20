@@ -310,6 +310,34 @@ test('an unanswered list with nothing in it keeps the block, so its tabs stay re
   assert.equal(buildHomeSections(makePosts(8, ['campus-life']), items, [], now, 'desktop', 'unanswered').latest.mode, 'link')
 })
 
+// A topic is drawn once, so the unanswered list holds only what the board cards did not take.
+// When it is empty the line under the tabs has to say which of the two things happened.
+test('an empty unanswered list says whether every topic is answered or the open ones are in the cards above', () => {
+  const empty = posts => buildHomeSections(posts, items, [], now, 'desktop', 'unanswered').latest
+  const answered = makePosts(12, ['campus-life']).map(post => ({ ...post, comment_count: 1, answered_at: post.created_at }))
+  assert.deepEqual(empty(answered).rows, [])
+  assert.deepEqual(empty(answered).empty, { key: 'plaza.emptyUnanswered' })
+
+  // The four newest are unanswered and the board card shows all four; the eight left over are answered.
+  const above = answered.map((post, index) => (index < 4 ? { ...post, comment_count: 0, answered_at: null } : post))
+  const latest = empty(above)
+  assert.deepEqual(latest.rows, [])
+  assert.equal(latest.mode, 'list')
+  assert.deepEqual(latest.empty, { key: 'home.unansweredAbove' })
+  // Both catalogs have the line, and it is not the one that claims every topic was answered.
+  assert.notEqual(label(latest.empty), label(empty(answered).empty))
+  assert.notEqual(label(latest.empty, 'en'), label(empty(answered).empty, 'en'))
+
+  // One the cards did not take is listed, and then nothing needs explaining.
+  const listed = empty(answered.map((post, index) => (index === 11 ? { ...post, comment_count: 0, answered_at: null } : post)))
+  assert.deepEqual(ids(listed.rows), ['post-011'])
+  assert.equal(listed.empty, undefined)
+  // The other two orders never come up empty while the block is a list.
+  for (const sort of ['active', 'recent']) {
+    assert.equal(buildHomeSections(above, items, [], now, 'desktop', sort).latest.empty, undefined, sort)
+  }
+})
+
 test('hot never repeats a row of the latest list, whichever order that list is in', () => {
   // Twenty busy topics from this week in one board; the oldest got its replies last.
   const busy = makePosts(20, ['campus-life']).map((post, index) => hotPost(post.id, {

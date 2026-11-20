@@ -135,13 +135,13 @@
         <!-- SPEC 6.4: watch (new replies are announced) and save (a private bookmark). -->
         <view class="topic-marks">
           <view :class="['mark-btn', { on: marks.watch }]" role="button" tabindex="0" data-test="topic-watch"
-            :aria-pressed="marks.watch ? 'true' : 'false'" @click="onToggleMark('watch')"
+            :aria-pressed="markPressed('watch')" @click="onToggleMark('watch')"
             @keydown.enter.prevent="onToggleMark('watch')" @keydown.space.prevent="onToggleMark('watch')">
             <text class="mark-label">{{ t(marks.watch ? 'plaza.watching' : 'plaza.watch') }}</text>
             <text class="mark-hint">{{ t('plaza.watchHint') }}</text>
           </view>
           <view :class="['mark-btn', { on: marks.save }]" role="button" tabindex="0" data-test="topic-save"
-            :aria-pressed="marks.save ? 'true' : 'false'" @click="onToggleMark('save')"
+            :aria-pressed="markPressed('save')" @click="onToggleMark('save')"
             @keydown.enter.prevent="onToggleMark('save')" @keydown.space.prevent="onToggleMark('save')">
             <text class="mark-label">{{ t(marks.save ? 'plaza.saved' : 'plaza.save') }}</text>
           </view>
@@ -211,7 +211,7 @@
                   <image :src="thread.parent.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                   <text v-if="(thread.parent.like_count ?? 0) > 0" :class="['cs-like-num', { active: thread.parent.liked_by_me }]">{{ thread.parent.like_count }}</text>
                 </view>
-                <text class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
+                <text v-if="!post.locked_at" class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
               </view>
             </view>
           </view>
@@ -252,7 +252,7 @@
                     <image :src="child.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                     <text v-if="(child.like_count ?? 0) > 0" :class="['cs-like-num', { active: child.liked_by_me }]">{{ child.like_count }}</text>
                   </view>
-                  <text class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
+                  <text v-if="!post.locked_at" class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
                 </view>
               </view>
             </view>
@@ -296,12 +296,15 @@
       <view class="back-home" role="button" :aria-label="t('home.retry')" @click="loadPostForCurrentAccount">{{ t('home.retry') }}</view>
     </view>
 
-    <!-- SPEC 6.10: a hidden topic. Its author reads their own text, the reason and how to appeal;
-         everybody else learns only that it was hidden: no title, author or image. -->
+    <!-- SPEC 6.10: a hidden topic. Its author reads their own text under one general sentence;
+         everybody else learns only that it was hidden: no title, author or image.
+         D-54 2e, 2j: no reason is shown, because what a moderator typed for a takedown is an internal
+         note, and no appeal is offered, because a takedown has no appeal record to open yet. The
+         author is told whom to write to, and nothing here opens a mail app or copies an address. -->
     <view v-else-if="goneState === 'hidden' && ownHidden" class="hidden-own" data-test="hidden-own">
       <view class="hidden-banner" role="status">
-        <text class="hidden-banner-t">{{ ownHidden.hidden_reason ? t('plaza.hiddenOwner', { reason: ownHidden.hidden_reason }) : t('plaza.hiddenOwnerNoReason') }}</text>
-        <view class="hidden-appeal" role="button" tabindex="0" @click="onAppealHidden" @keydown.enter.prevent="onAppealHidden" @keydown.space.prevent="onAppealHidden">{{ t('plaza.appeal') }}</view>
+        <text class="hidden-banner-t">{{ t('plaza.hiddenOwner') }}</text>
+        <text class="hidden-banner-t">{{ t('plaza.hiddenContact') }}</text>
       </view>
       <text v-if="ownHidden.title" class="post-topic-title hidden-text">{{ ownHidden.title }}</text>
       <text class="content hidden-text">{{ ownHidden.content }}</text>
@@ -399,12 +402,14 @@ import { clearLocalDuplicate } from '../../utils/contentSafety'
 import { formatTime, friendlyErrorMessage, navigateBackOr, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
 import { DIALOG_DANGER, DIALOG_INK } from '../../utils/dialogColors'
 import { isSuspensionActive } from '../../utils/suspension'
+import { captureException } from '../../utils/sentry'
+import { hiddenTopicShare } from '../../utils/communityPost'
 import { useTopicLists, type TopicListRow, type TopicMark } from '../../composables/useTopicLists'
 import { useCommunityEvents } from '../../composables/useCommunityEvents'
 import type { CommunityEvent } from '../../utils/communityEvents'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim, Post, PostComment } from '../../types'
-import { BASE_URL, SUPPORT_EMAIL } from '../../config/runtime'
+import { BASE_URL } from '../../config/runtime'
 import EventCard from '../../components/EventCard.vue'
 import UBadge from '../../components/UBadge.vue'
 import UAvatar from '../../components/UAvatar.vue'
@@ -447,26 +452,41 @@ const viewportStyle = computed(() => visibleHeight.value == null ? undefined : (
 }))
 
 const post = ref<Post | null>(null)
-const { loadTopicMarks, setTopicMark, fetchPostState, fetchOwnHiddenPost } = useTopicLists()
+const { loadTopicMarks, setTopicMark, fetchGoneTopic } = useTopicLists()
 
 
 // P3.2: the signed-in member's own marks on this topic.
 const marks = ref<Record<TopicMark, boolean>>({ watch: false, save: false })
+// The marks could not be read. "Not watching" would be a guess, so the buttons say neither and
+// the next tap reads them again before anything is written.
+const marksUnknown = ref(false)
+const markPressed = (mark: TopicMark) => (marksUnknown.value ? 'mixed' : marks.value[mark] ? 'true' : 'false')
 const markBusy: Record<TopicMark, boolean> = { watch: false, save: false }
 async function loadMarks(target: Post) {
   const userId = currentUser.value?.id
   marks.value = { watch: false, save: false }
+  marksUnknown.value = false
   if (!userId) return
+  const current = () => post.value?.id === target.id && currentUser.value?.id === userId
   try {
     const loaded = await loadTopicMarks(userId, target.id)
-    if (post.value?.id === target.id && currentUser.value?.id === userId) marks.value = loaded
-  } catch {
-    // The buttons start unset; a tap still writes the right row.
+    if (current()) marks.value = loaded
+  } catch (err) {
+    if (!current()) return
+    marksUnknown.value = true
+    captureException(err, { tags: { source: 'post.topic_marks' } })
+    uni.showToast({ title: t('plaza.marksFailed'), icon: 'none', duration: 2500 })
   }
 }
 async function onToggleMark(mark: TopicMark) {
   await awaitAuthReady()
   if (!requireAuth() || !post.value || !currentUser.value || markBusy[mark]) return
+  if (marksUnknown.value) {
+    // Read first: what the button would do depends on a state this page has not seen yet.
+    markBusy[mark] = true
+    try { await loadMarks(post.value) } finally { markBusy[mark] = false }
+    return
+  }
   const userId = currentUser.value.id
   const target = post.value.id
   const next = !marks.value[mark]
@@ -485,20 +505,6 @@ async function onToggleMark(mark: TopicMark) {
 // P3.6: why the topic could not be loaded, and the author's own copy of a hidden one.
 const goneState = ref<'hidden' | 'missing' | null>(null)
 const ownHidden = ref<TopicListRow | null>(null)
-function onAppealHidden() {
-  // An account under a restriction appeals on the page that already handles it.
-  if (isSuspensionActive(currentUser.value)) {
-    uni.navigateTo({ url: '/pages/suspended/index' })
-    return
-  }
-  // A hidden topic alone gives that flow nothing to act on, so the member writes to the site team.
-  // #ifdef H5
-  window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(`Hidden topic ${postId.value}`)}`
-  // #endif
-  // #ifndef H5
-  uni.setClipboardData({ data: SUPPORT_EMAIL })
-  // #endif
-}
 
 // P3.3: a notification link names the reply it is about by its instant, or by its id.
 const anchorQuery = { at: '', id: '' }
@@ -510,7 +516,11 @@ function applyReplyAnchor() {
   const hit = comments.value.find(c => c.id === anchorQuery.id || Date.parse(c.created_at) === instant)
   anchorQuery.at = ''
   anchorQuery.id = ''
-  if (!hit) return
+  if (!hit) {
+    // Removed since, or older than the replies this page loads: say so instead of opening on nothing.
+    uni.showToast({ title: t('plaza.replyNotFound'), icon: 'none', duration: 2500 })
+    return
+  }
   // A reply folded behind "show more" has to be on screen before it can be scrolled to.
   if (hit.parent_comment_id) expandedReplies.value = new Set([...expandedReplies.value, hit.parent_comment_id])
   anchorId.value = hit.id
@@ -784,6 +794,11 @@ onUnload(() => {
 
 onShareAppMessage(() => {
   const p = post.value
+  // SPEC 6.10: a hidden topic is shared as a notice about itself, with none of its text or images.
+  if (!p && goneState.value === 'hidden') {
+    const { title, path, imageUrl } = hiddenTopicShare(postId.value, t)
+    return { title, path, imageUrl }
+  }
   if (!p) return { title: t('share.plaza'), path: '/pages/plaza/index' }
   const firstLine = Array.from((p.title || localize(p.content_i18n, p.content || '')).split('\n')[0]).slice(0, 50).join('').trim() || t('share.plaza')
   return {
@@ -795,6 +810,10 @@ onShareAppMessage(() => {
 
 onShareTimeline(() => {
   const p = post.value
+  if (!p && goneState.value === 'hidden') {
+    const { title, query, imageUrl } = hiddenTopicShare(postId.value, t)
+    return { title, query, imageUrl }
+  }
   if (!p) return { title: t('share.plaza') }
   const firstLine = Array.from((p.title || localize(p.content_i18n, p.content || '')).split('\n')[0]).slice(0, 50).join('').trim() || t('share.plaza')
   return {
@@ -855,19 +874,14 @@ async function loadPostForCurrentAccount() {
         uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
       }
     } else {
-      // Row security answers "no row" for a hidden topic and for a deleted one alike.
-      // Ask which it is; if that cannot be told, keep the deleted view this page always showed.
+      // Row security answers "no row" for a hidden topic and for a deleted one alike, so ask
+      // which it is. If that cannot be read either, this is a failed load like any other: the
+      // catch below names it and offers the retry. It is never shown as a deleted topic.
       post.value = null
-      try {
-        const state = await fetchPostState(postId.value)
-        if (!pageMounted || requestEpoch !== postLoadEpoch) return
-        const own = state === 'hidden' && currentUser.value ? await fetchOwnHiddenPost(postId.value) : null
-        if (!pageMounted || requestEpoch !== postLoadEpoch) return
-        ownHidden.value = own
-        goneState.value = state === 'hidden' ? 'hidden' : 'missing'
-      } catch {
-        goneState.value = 'missing'
-      }
+      const gone = await fetchGoneTopic(postId.value, !!currentUser.value)
+      if (!pageMounted || requestEpoch !== postLoadEpoch) return
+      ownHidden.value = gone.own
+      goneState.value = gone.state
     }
   } catch (err: any) {
     if (!pageMounted || requestEpoch !== postLoadEpoch) return
@@ -982,7 +996,7 @@ function onDelete() {
 async function onCommentTap(c: PostComment) {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
-  if (replyRestricted.value) return
+  if (replyRestricted.value || post.value?.locked_at) return
   replyTo.value = c
 }
 
@@ -1032,42 +1046,39 @@ async function onCommentLongPress(c: PostComment) {
     && isAccountRequestCurrent(accountToken)
     && post.value?.id === actionPostId
   )
-  const items = isMine
-    ? [t('plaza.delete')]
-    : [t('plaza.reply'), t('plaza.reportComment'), t('plaza.reportUser')]
+  const confirmDelete = () => uni.showModal({
+    title: t('plaza.commentDeleteConfirm'),
+    confirmColor: DIALOG_DANGER,
+    success: async (r) => {
+      if (!r.confirm || !actionIsCurrent()) return
+      try {
+        await deleteComment(c.id, actionPostId)
+        if (!actionIsCurrent()) return
+        comments.value = comments.value.filter(x => x.id !== c.id)
+        // Mirror the add path (line ~597) — usePlaza.deleteComment only
+        // decrements the feed-list copy, not this detail page's post ref,
+        // so the header count would otherwise go stale.
+        if (post.value) post.value.comment_count = Math.max(0, (post.value.comment_count || 0) - 1)
+      } catch (err: any) {
+        if (!actionIsCurrent()) return
+        uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none' })
+      }
+    },
+  })
+  // A closed topic takes no replies, so its menu does not offer one.
+  const actions: Array<{ label: string; run: () => void }> = isMine
+    ? [{ label: t('plaza.delete'), run: confirmDelete }]
+    : [
+      ...(post.value?.locked_at ? [] : [{ label: t('plaza.reply'), run: () => { if (!replyRestricted.value) replyTo.value = c } }]),
+      { label: t('plaza.reportComment'), run: () => promptReport('comment', c.id) },
+      { label: t('plaza.reportUser'), run: () => promptReportUser(c.user_id) },
+    ]
   uni.showActionSheet({
-    itemList: items,
+    itemList: actions.map(action => action.label),
     itemColor: isMine ? DIALOG_DANGER : DIALOG_INK,
     success: (res) => {
       if (!actionIsCurrent()) return
-      if (isMine && res.tapIndex === 0) {
-        uni.showModal({
-          title: t('plaza.commentDeleteConfirm'),
-          confirmColor: DIALOG_DANGER,
-          success: async (r) => {
-            if (!r.confirm || !actionIsCurrent()) return
-            try {
-              await deleteComment(c.id, actionPostId)
-              if (!actionIsCurrent()) return
-              comments.value = comments.value.filter(x => x.id !== c.id)
-              // Mirror the add path (line ~597) — usePlaza.deleteComment only
-              // decrements the feed-list copy, not this detail page's post ref,
-              // so the header count would otherwise go stale.
-              if (post.value) post.value.comment_count = Math.max(0, (post.value.comment_count || 0) - 1)
-            } catch (err: any) {
-              if (!actionIsCurrent()) return
-              uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none' })
-            }
-          },
-        })
-      } else if (!isMine && res.tapIndex === 0) {
-        if (replyRestricted.value) return
-        replyTo.value = c
-      } else if (!isMine && res.tapIndex === 1) {
-        promptReport('comment', c.id)
-      } else if (!isMine && res.tapIndex === 2) {
-        promptReportUser(c.user_id)
-      }
+      actions[res.tapIndex]?.run()
     },
   })
 }
@@ -1147,7 +1158,8 @@ async function onSubmitComment() {
     const parentId = submittedReply
       ? (submittedReply.parent_comment_id ?? submittedReply.id)
       : undefined
-    const c = await createComment(post.value.id, text, parentId)
+    // SPEC 6.8: the reply that was answered is named too, so its author is the one told.
+    const c = await createComment(post.value.id, text, parentId, submittedReply?.id)
     if (!isAccountRequestCurrent(commentAccountToken)) return
     // fetchComments hydrates reply_to_name from DB on next refresh; for the
     // optimistic push here we mirror the same logic by reading replyTo's nickname.
@@ -1520,10 +1532,10 @@ async function retryReply() {
 /* P3.6: the author's own view of a hidden topic. */
 .hidden-own { padding: var(--space-4); }
 .hidden-banner {
-  display: flex; align-items: center; gap: var(--space-3);
+  display: flex; flex-direction: column; gap: var(--space-1);
   padding: var(--space-3); border-radius: var(--radius-sm); background: var(--warning-soft);
 }
-.hidden-banner-t { flex: 1; font-size: 14px; line-height: 20px; color: var(--ink); }
-.hidden-appeal { display: flex; align-items: center; min-height: 44px; font-size: 14px; color: var(--ink); text-decoration: underline; cursor: pointer; }
-.hidden-text { display: block; margin-top: var(--space-3); opacity: 0.55; }
+.hidden-banner-t { font-size: 14px; line-height: 20px; color: var(--ink); }
+/* Greyed out by its colour, not by opacity: the quieter ink still reads at 4.5:1 on the page. */
+.hidden-text { display: block; margin-top: var(--space-3); color: var(--ink-soft); }
 </style>

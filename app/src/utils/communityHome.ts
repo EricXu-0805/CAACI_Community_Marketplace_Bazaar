@@ -59,7 +59,8 @@ export interface HomeMarketCard {
 }
 export interface HomeSections {
   cards: (HomeBoardCard | HomeMarketCard)[]
-  latest: { mode: 'list' | 'link'; rows: HomePostRow[]; link: HomeMessage }
+  /** `empty` is what a list with no rows says; only the unanswered order can come up empty. */
+  latest: { mode: 'list' | 'link'; rows: HomePostRow[]; link: HomeMessage; empty?: HomeMessage }
   newHere: HomeStartRow[] | null
   events: HomeEvent[] | null
   hot: { presentation: 'sidebar' | 'tab'; rows: HomePostRow[] } | null
@@ -194,6 +195,11 @@ export function buildHomeSections(
   const listed = remaining.length >= 5
   const ordered = latestSort === 'active' ? [...remaining].sort(mostRecentlyActive)
     : latestSort === 'unanswered' ? remaining.filter(unanswered) : remaining
+  // A topic is drawn once, so an unanswered topic the cards above already show is not listed again.
+  // An empty list then means one of two things, and the line under the tabs must not claim the other.
+  const latestEmpty: HomeMessage | undefined = listed && ordered.length === 0
+    ? { key: allowed.some(p => used.has(p.id) && unanswered(p)) ? 'home.unansweredAbove' : 'plaza.emptyUnanswered' }
+    : undefined
   const latestRows = listed ? ordered.slice(0, viewport === 'desktop' ? 15 : 10).map(take) : []
   const total = data ? data.totalDiscussionCount : visible.length
   const hotCandidates = topics.filter(p => inWeek(p) && p.comment_count >= 3
@@ -222,6 +228,7 @@ export function buildHomeSections(
       link: total > 0
         ? { key: 'home.collapsed', params: { n: total } }
         : { key: 'home.allDiscussions' },
+      ...(latestEmpty ? { empty: latestEmpty } : {}),
     },
     newHere: newHere.length ? newHere : null,
     events: upcoming.length ? upcoming : null,

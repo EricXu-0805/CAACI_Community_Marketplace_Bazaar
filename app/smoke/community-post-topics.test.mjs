@@ -8,7 +8,19 @@ const compile = input => `data:text/javascript;base64,${Buffer.from(ts.transpile
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 },
 }).outputText).toString('base64')}`
 const topicModule = compile(source('utils/communityPost.ts'))
-const { normalizePostTopic } = await import(topicModule)
+const { normalizePostTopic, hiddenTopicShare } = await import(topicModule)
+
+// SPEC 6.10: a hidden topic is shared as a notice about itself. The card names the topic's page, so
+// whoever opens it gets the same notice, and carries the app's icon: none of the topic's images, and
+// not a screenshot of the author's own view of the text.
+test('a hidden topic is shared without its title, its text or any of its images', () => {
+  const said = { 'plaza.hidden': 'HIDDEN', 'app.name': 'APP' }
+  const id = '33333333-3333-4333-8333-333333333333'
+  assert.deepEqual(hiddenTopicShare(id, key => said[key]), {
+    title: 'HIDDEN · APP', path: `/pages/post/index?id=${id}`, query: `id=${id}`, imageUrl: '/static/app-icon-512.png',
+  })
+  assert.ok(readFileSync(new URL('../src/static/app-icon-512.png', import.meta.url)).length > 0)
+})
 
 test('topic input keeps legacy updates nullable and rejects incomplete/invalid metadata', () => {
   assert.deepEqual(normalizePostTopic(), { title: null, category: null })

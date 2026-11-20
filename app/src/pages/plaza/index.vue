@@ -461,7 +461,7 @@
                 <image :src="thread.parent.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                 <text v-if="(thread.parent.like_count ?? 0) > 0" :class="['cs-like-num', { active: thread.parent.liked_by_me }]">{{ thread.parent.like_count }}</text>
               </view>
-              <text class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
+              <text v-if="!commentingPost.locked_at" class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
             </view>
           </view>
         </view>
@@ -500,7 +500,7 @@
                   <image :src="child.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                   <text v-if="(child.like_count ?? 0) > 0" :class="['cs-like-num', { active: child.liked_by_me }]">{{ child.like_count }}</text>
                 </view>
-                <text class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
+                <text v-if="!commentingPost.locked_at" class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
               </view>
             </view>
           </view>
@@ -522,13 +522,17 @@
       <view v-if="!loadingComments && comments.length > 0" class="cmt-end"><text>{{ t('plaza.noMoreComments') }}</text></view>
       </scroll-view>
 
-      <view v-if="replyTo && !replyRestricted" class="ci-reply-bar">
+      <view v-if="replyTo && !replyRestricted && !commentingPost.locked_at" class="ci-reply-bar">
         <text class="ci-reply-label">{{ t('plaza.replyingTo') }} @{{ replyTo.profile?.nickname || t('app.user') }}</text>
         <view class="ci-reply-x" role="button" :aria-label="t('a11y.close')" @click.stop="replyTo = null"><view class="ci-rx"></view></view>
       </view>
 
       <view v-if="replyRestricted" class="ci-input-bar reply-restricted" role="status">
         <text>{{ t('plaza.restrictedReply') }}</text>
+      </view>
+      <!-- P3.5: closed to new replies. The notice stands where the box would be, so nobody types a reply that cannot be sent. -->
+      <view v-else-if="commentingPost.locked_at" class="ci-input-bar reply-restricted" role="status" data-test="reply-locked">
+        <text>{{ t('plaza.locked') }}</text>
       </view>
       <view v-else class="ci-input-bar">
         <textarea
@@ -2291,6 +2295,8 @@ async function onSubmitComment() {
     ? (reply.parent_comment_id ?? reply.id)
     : undefined
   const replyName = reply ? (reply.profile?.nickname ?? null) : null
+  // SPEC 6.8: the reply that was answered is named too, so its author is the one told.
+  const replyToId = reply?.id
 
   // QA7-r2 #2: optimistic — show the comment instantly. createComment awaits
   // local + AI (OpenAI) moderation + the insert (~1s), which felt as laggy as
@@ -2315,7 +2321,7 @@ async function onSubmitComment() {
   replyTo.value = null
 
   try {
-    const c = await createComment(postId, text, parentId)
+    const c = await createComment(postId, text, parentId, replyToId)
     if (!isAccountRequestCurrent(commentAccountToken)) return
     if (sheetEpoch !== commentSheetEpoch) return
     // fetchComments hydrates reply_to_name from DB on next refresh; mirror it
@@ -2330,6 +2336,10 @@ async function onSubmitComment() {
     if (sheetEpoch !== commentSheetEpoch) return
     const i = comments.value.findIndex(x => x.id === tempId)
     if (i !== -1) comments.value.splice(i, 1)
+    // Closed after this sheet was opened: show the closed notice from now on.
+    if (commentingPost.value?.id === postId && String(err?.message || '').includes('post_locked')) {
+      commentingPost.value.locked_at = new Date().toISOString()
+    }
     // Restore only an untouched composer. A newer draft/reply belongs to the
     // user and must never be replaced by a failed earlier submission.
     if (!commentText.value && !replyTo.value) {
@@ -2351,7 +2361,7 @@ async function onSubmitComment() {
 async function onCommentTap(c: PostComment) {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
-  if (replyRestricted.value) return
+  if (replyRestricted.value || commentingPost.value?.locked_at) return
   replyTo.value = c
   inputFocused.value = true
 }
@@ -2398,38 +2408,41 @@ async function onCommentLongPress(c: PostComment) {
   // Non-owner: 回复 / 举报评论 / 举报用户 — 三选一拆开是因为举报评论内容
   // 和举报用户是不同的 moderation queue case (评论可能炒人 vs 用户多次违规)。
   // ReportTarget type 已含 'comment'（useModeration.ts:4），schema ready 不需要 migration。
-  const items = isMine
-    ? [t('plaza.reply'), t('plaza.delete')]
-    : [t('plaza.reply'), t('plaza.reportComment'), t('plaza.reportUser')]
+  const reply = () => {
+    if (replyRestricted.value) return
+    replyTo.value = c
+    inputFocused.value = true
+  }
+  const confirmDelete = () => uni.showModal({
+    title: t('plaza.commentDeleteConfirm'),
+    confirmColor: DIALOG_DANGER,
+    success: async (r) => {
+      if (!r.confirm || !actionIsCurrent()) return
+      try {
+        await deleteComment(c.id, actionPostId)
+        if (!actionIsCurrent()) return
+        comments.value = comments.value.filter(x => x.id !== c.id)
+      } catch (err: any) {
+        if (!actionIsCurrent()) return
+        uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
+      }
+    },
+  })
+  // A closed update takes no replies, so its menu does not offer one.
+  const actions: Array<{ label: string; run: () => void }> = [
+    ...(commentingPost.value?.locked_at ? [] : [{ label: t('plaza.reply'), run: reply }]),
+    ...(isMine
+      ? [{ label: t('plaza.delete'), run: confirmDelete }]
+      : [
+        { label: t('plaza.reportComment'), run: () => promptReport('comment', c.id) },
+        { label: t('plaza.reportUser'), run: () => promptReportUser(c.user_id) },
+      ]),
+  ]
   uni.showActionSheet({
-    itemList: items,
+    itemList: actions.map(action => action.label),
     success: (res) => {
       if (!actionIsCurrent()) return
-      if (res.tapIndex === 0) {
-        if (replyRestricted.value) return
-        replyTo.value = c
-        inputFocused.value = true
-      } else if (isMine && res.tapIndex === 1) {
-        uni.showModal({
-          title: t('plaza.commentDeleteConfirm'),
-          confirmColor: DIALOG_DANGER,
-          success: async (r) => {
-            if (!r.confirm || !actionIsCurrent()) return
-            try {
-              await deleteComment(c.id, actionPostId)
-              if (!actionIsCurrent()) return
-              comments.value = comments.value.filter(x => x.id !== c.id)
-            } catch (err: any) {
-              if (!actionIsCurrent()) return
-              uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
-            }
-          },
-        })
-      } else if (!isMine && res.tapIndex === 1) {
-        promptReport('comment', c.id)
-      } else if (!isMine && res.tapIndex === 2) {
-        promptReportUser(c.user_id)
-      }
+      actions[res.tapIndex]?.run()
     },
   })
 }
@@ -2472,7 +2485,9 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
         await reportTarget(targetType, targetId, reason)
         reportLoading.hide(loadingOwner)
         if (!actionIsCurrent()) return
-        uni.showToast({ title: t('report.thanks'), icon: 'success' })
+        // SPEC 6.10: a report on a topic, an update or a reply says when it will be looked at.
+        if (targetType === 'post' || targetType === 'comment') uni.showToast({ title: t('report.thanksCommunity'), icon: 'none', duration: 2500 })
+        else uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
         reportLoading.hide(loadingOwner)
         if (!actionIsCurrent()) return
