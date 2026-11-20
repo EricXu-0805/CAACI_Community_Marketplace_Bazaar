@@ -309,6 +309,76 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
      - #377 分支上的顺序：第 1 项 → 第 2 项 → 第 4 项 c，PR 描述最后写。第 3 项和第 4 项其余部分穿插着做。同一个分支同一时间只让一个子任务推送（D-47 第 1 项）。每项最多试 3 次。
      - 做完写 FINAL「第六批（D-52）」，八节格式照旧，每项单独成行，和 STATUS 一起提交；然后结束目标，取消提醒，不从 BACKLOG 往下接任务，等下一条指示。
 
+- **D-53 第七批：记下 Eric 的决定和 supervisor 代做的事，收第六批的尾，vite 走 B 路线，P3、P4 在叠加分支上开发，跑 staging 验收**（2026-11-20 CT，Claude（Eric 自己账号上的 supervisor 会话）按 D-43 定并写入）：依据是 Eric 2026-11-20 03:17 CT 原话「可以，所有东西我都批准了，你继续弄吧，反正还有额度，直接猛攻」，以及他同日在弹窗里的四个选择（第 0 项 a、d、e、f）。【硬】条照旧高于本条，对 OMO 一条都不放开；本条第 0 项 g 列的是 supervisor（不是 OMO）根据 Eric 这次批准做或将做的事。用号照 D-52 第 0 项。背景：supervisor 对第六批做了三个独立核查（每个配一个反驳方），没有阻断项，也没有 major。本条下发前过了一轮独立审阅，按审阅意见改过。
+  0. **Eric 的决定和 supervisor 代做的事（照抄进 STATUS、RUNBOOK §11 的状态和第七批报告）。**
+     - a. 【Eric 选】生产上线走「先验收再上线」：合 #369 之前，P1.11、P1.12、P2.6、P2.11 要在 staging 上通过，P2.13 也要完成（PR 描述、#369 的 CI 全绿、仍是草稿）。
+     - b. 【supervisor 做】E2 / D-29：supervisor 2026-11-20 约 03:20 CT 只读查了 staging-smoke。auth.users 有 5 个 example.invalid 的合成号和 1 个 illinimarket.com 的冒烟号，没有真实用户；约 03:45 CT 又抽看了 profiles 9 行、items 2 行、posts 0 行、messages 2 行，归属全是合成号或冒烟号。加上 Eric 03:17 的总批准，D-29 定为 A，E2 记为完成；原「待定」里的 D-29 一节移除，结论记在这里。RUNBOOK §5.2 前提第一句、P1.11 和 P2.6 里「Eric 在 #369 留言」的要求，由本项代替；P2.6 的 DoD ① 由 D-51 第 6 项（staging 已应用并 VERIFY）代替。OMO 不在 #369 代 Eric 留言。
+     - c. 【supervisor 做】E3 已完成。Eric 2026-11-20 03:25 CT 原话「给你权限，直接用我的浏览器做」。
+       - supervisor 先在 Supabase 后台把 staging-smoke 的「Confirm email」临时关掉，约 03:36–03:40 CT。
+       - 然后在 tony-ws 上跑 `~/omo-ctl/e3-auto.py`：本机随机生成 3 个 24 位密码，注册 syn-a、syn-b、syn-c@example.test（都已确认），写 ~/.config/illini/staging.env（600，8 个字段），再逐个试登录，都是 HTTP 200。
+       - 之后把「Confirm email」开回去，/auth/v1/settings 复核 mailer_autoconfirm=false。
+       - 密码只在 staging.env 里，没出现在任何输出、日志或对话中；RUNBOOK §5.2 的自检都过了。
+       - OMO 对 staging.env：不 cat、不打印、不改；§5.2 的自检和 probe 步骤照常。
+     - d. 【Eric 选】品牌和 demo「现在就上」。
+       - E12 由 supervisor 在 2026-11-20 约 03:22 CT 做完：vercel promote 预览 dpl_3bG2SKTAmQsa7jEmScy2cHHpnk1y，新的生产部署是 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b（03:21:47 CT 建），`curl … | grep -c 玉米地` 等于 6；回退用 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6。BRAND.7 的 DoD ④ 记为完成。
+       - #372 在 app 里的品牌改名，按第 0 项 g 的上线顺序由 supervisor 手工合。
+       - D-37（董事会同意）仍未拿到，LEGAL.1 照旧开着，这是 Eric 的取舍，照实记。
+     - e. 【Eric 选】#376 的 vite 走 B 路线，见第 3 项。
+     - f. 【Eric 选】D-49 的 12 条待定政策问题全部按「不新增权限」定。
+       - 行为类：保留商品是否算下架、清空资料字段、绑定新微信身份、打字和在线状态与广播、街区核验回执与微信媒体审核、限制前已排队的通知和邮件、L5 能到哪些清理页面、跟受限的人开新会话、请求中途生效的管理员操作。这几条一律维持现在的服务端行为。
+       - 措辞类：非发帖操作、提示条、回首页的措辞，有限期 L5 与无限期 L2–L4 的措辞，Storage 走 HTTP 的错误文字。这几条沿用现有文字。
+       - 逐条写进第七批报告，#377 描述里那一节从「待定」改成「已定（D-53）」。代码不用改。
+     - g. 【supervisor 做或将做，依据 Eric 03:17 的批准和 a 项的选择；这是对授权边界表「每次单独」的一次有名有姓的例外，只授权 supervisor，不授权 OMO】：
+       - 已做：E2、E3、E12。
+       - 合并（都由 supervisor 做）：vite PR 合进 #373 的分支 → #373 合进 #371 的分支 → #371 合进 main（E5）。
+       - 验收（第 0 项 a）通过以后的上线顺序：
+         - 生产应用 20261112120000 并 VERIFY；
+         - 依次合 #369 → #375 → #374；
+         - staging、生产先后对 20261114015420 做 PRECHECK、应用、VERIFY，然后合 #377；
+         - 手工合 #372；
+         - 每一步之后看生产。
+       - P3、P4 的迁移不在本批上线范围。
+       - RUNBOOK §11 的 E2、E3、E5、E12 照此标状态，第七批 ④ 不再把它们列成等 Eric。
+  1. **第六批的收尾（材料分支；STATUS_LOG 只追加）。**
+     - FINAL 第六批 ① 的开始时间改成 01:35 CT。
+     - STATUS 的 CI 段落把 L110 改成 L111；验收表 D-52 第 4 项一行引 L111–L115、L119、L120。
+     - L117 截图张数的更正：社区首页 2 张，二手首页 4 张，共 6 张。
+     - 补记 #370 的 run 44698816891、44703187712：Build H5 和 public sweep 失败在装浏览器那一步，是 ubuntu-26.04 的老问题，不是付款问题。
+     - STATUS 里「c52badf 钉的」改成「87e57c3（c52badf 的 cherry-pick）钉的」。
+     - 追加一条确认：第六批的目标在 08:31:28Z 结束，续跑提醒已取消。
+  2. **#376 再补一处（只在分支 codex/config-ci-runner-20261119 上；仍属 STOP-9a 例外的「改动二」，加上 D-52 第 3 项放宽的那一个文档文件）。**
+     - npm 正常退出（exit 0）时也要读报告：报告解析不了、带 error 字段、vulnerabilities 不是对象、没有 metadata，都失败；正常的空报告照样通过。
+     - 在放行的 vite 公告旁边，任何自身严重程度在 moderate 及以上的条目，如果 via 里既没有公告对象、也没有能在报告里找到的包名，就失败。不加「metadata 计数相等」那种检查（npm 按包计数、脚本按公告计数，两边单位不同）。
+     - docs/NPM_DEPENDENCY_TRIAGE.md 的 2026-11-20 那段补一句：B 路线原先引用的 GHSA-vfj7-8cjw-p6xm 已在 2026-10-23 被 GitHub 撤回，braces 回补的价值按「限制递归深度」本身写。
+     - 用例照 D-52 第 3 项，再加：exit 0 加乱码、exit 0 加空输出、exit 0 加 error 字段、via 为 [null] 的 critical、via 为空的 high、via 名字不在报告里的。现有测试原样通过；对各 PR 当前的 head 跑 merge-tree，ci.yml 都要 0 冲突。#376 描述同步改。
+     - #376 合不合：vite PR 和 #371 进了 main 以后，#376 的钉版本和放行都用不上了，supervisor 会把它关掉或留作草稿，在 ④ 写明。
+  3. **vite 走 B 路线（新分支 codex/config-vite-645-20261120，base 是 #373 的分支 `codex/deps-crossmajor-20261113`；Eric 批准，STOP-8b 只对这一次升级解除，已写进 RUNBOOK §12 第 8 条）。** 仓库里现有的重建配方（app/build-compat/source-builds/vite/）只认 macOS arm64 的 Node 22.23.3，manifest 也钉死了 6.4.4 的 commit、源码哈希、补过的 package.json 和 pnpm-lock；package-build.py 只能原样重建已审过的归档，不能生成新清单。所以这次要为 6.4.5 新写一套配方，6.4.4 那套不动：
+     - 目标版本：上游 vite 6.4.5，或已发布的更新的 6.4.x 补丁版（GHSA-8g5g-mxqh-grgj 的首个修复版是 6.4.5）。
+     - 在 6.4.5 的源码上重新生成 braces 3.0.3 的回补补丁，新写一份 manifest：commit、源码归档 sha256、补丁和 patched_inputs、dist 清单。
+     - 运行时：这份新配方认 tony-ws 测试容器里的 Node 22.23.5 linux-x64，并在 manifest 里写明。
+     - 在容器里从干净状态独立构建两次，两次的归档要逐字节一致，两份日志都留下。
+     - 新归档的 sha256、integrity、fileHashes 写进 app/vendor/source-builds/manifest.json，来源写进新的 vite manifest 和 CAACI-BUILD-PROVENANCE.json，README 加一段带日期的说明；CAACI-PATCH-NOTICE 不写归档自己的哈希。scripts/bundled-braces-source.test.mjs 等守卫照新清单通过，测试只按新版本改数据，不删断言。
+     - app/package.json 的 `file:` 引用和 lockfile 跟着改，只升 vite；lockfile 里 vite 以外的变化逐条列原因。
+     - 验证：install、typecheck、test、h5、mp、mpci、smoke 都过；在这个分支上 `npm audit --audit-level=moderate` 应当 0 告警；主包和 h5 产物大小与 55716ba 对比。
+     - 草稿 PR，描述写清新配方、两次构建一致的证据，以及 supervisor 会独立复核。
+     - 最多试 3 次，做不到就记【跳过】，原因写进 ④；那时上线改走「先合 #376 拿到放行」的后备。
+     - 后备日期：#373 到 2026-12-06 还没合，由 Eric 定是把 vite PR 改到 #371 或 main 上，还是延长 #376 的放行。写进 ④。
+  4. **P3、P4 在叠加分支上开发（猛攻部分；只开发和本地验证，不合并、不上线）。**
+     - 解除旧限制：BACKLOG 写 P3.1 依赖 P2.13、P4.2 依赖 #369 合并，这里说的是上线顺序；现在就可以在叠加分支上开发，合并顺序不变，排在 #377 之后。D-45 第 8 项、D-46 第 7 项、D-49 第 2 项里「不新建迁移、不改 RLS 和函数」，对下面两个分支解除；BACKLOG §1 的 wip 规则和 RUNBOOK §3 里 illini-p3、illini-events 两行的 wip 流程，由本项取代。
+     - **P3：一个分支、一个草稿 PR。** 分支 `codex/community-p3-20261120`，目录 ~/work/illini-p3，从 #377 的 head dd44f98 切出，PR 的 base 是 `codex/community-restricted-20261113`。P3 的库改动（P3.1、P3.3、P3.4、P3.5）照 ENGINEERING §5.3 放进同一个迁移，先做、先冻结，再做客户端。顺序：P3.1（连同上面那几项的库改动）→ P3.2、P3.3、P3.4 → P3.5 → P3.6 → P3.8。
+     - **P4：一个分支、一个草稿 PR。** 分支 `codex/community-events-20261120`，目录 ~/work/illini-events（现有那个 worktree 上的 wip/P4.1 保留不动；放不下就另开目录，并补进 RUNBOOK §3 的表），从 P3 分支冻结迁移以后的 head 切出，先 `git merge wip/P4.1`（5f62ddd，只 merge，不 rebase），PR 的 base 是 P3 的分支。顺序：P4.2（community_events 与同步状态的迁移）→ P4.8（活动页和首页「近期活动」，接上 home.events、home.allEvents）→ P4.9。
+     - 迁移：照 ENGINEERING §5、§6 和 P2.5 的做法，配 PRECHECK、VERIFY、REGRESSION，本地 L-SQL 回放，sha256 冻结，manifest 追加一行。时间戳一律晚于它下面所有分支上的迁移（20261114015420 之后，P4 的晚于 P3 的）。改写已有函数时，比对基准用叠加分支的 base head，不用 origin/main；PRECHECK 里的 md5(prosrc) 取 L-SQL 回放到 20261114015420（P4 则是回放到 P3 的迁移）之后的值。应用到托管库不在本批。
+     - 受限账号：新写入路径照 D-49 的标准归类。post_bookmarks 算「收藏」，允许；post_follows（订阅话题）只有自己看得到、不通知别人，允许。任何会被别人看到或通知到别人的新写入，挂上 D-49 的拦截。REGRESSION 覆盖 L0、L1、过期的 L2–L5 和有效的 L2–L5。
+     - E6 没到位：P3.5、P4.9 读 COMMUNITY_OFFICIAL_PROFILE_ID；没设时一律拒绝，返回具名错误 `official_profile_not_configured`，不落库，每个动作各配一条测试；DoD 里要 E6 的那一半写进 ④。
+     - 主包每个分支都量（CI 环境），余量守住 64 KiB（D-46 第 4 项）；不够就在 ④ 写明，不硬塞。
+     - 删 base 分支之前先改 base（写进 STATUS 阻塞第 12 条）：删 #373 的分支之前，先把 vite PR 的 base 改成 main；删 #377 的分支之前，先把 P3 PR 的 base 改成 main；删 P3 的分支之前，先改 P4 PR 的 base。base 是 squash 合并的，改完以后都要再 merge 一次 origin/main。
+  5. **staging 验收（E3 已到位）。** 照 BACKLOG 和 RUNBOOK §5.2 做 P1.11、P1.12（main 基线）、P2.6、P2.11（#369），合成内容按 §5.2 清理。同一时间只跑一个 S-1。
+     - P1.8 要等 #371 合进 main：先用 `git merge-base --is-ancestor b259105 origin/main` 核实。
+     - 核实以后，在 #369 上 merge origin/main，按 BACKLOG 改用 postgresBinDir，并 `git revert c52badf` 去掉三处 ubuntu-24.04。#371 带来的 Playwright 1.65 已能在 ubuntu-26.04 上跑，这和 D-16 一致；这一个 revert 是 STOP-9a 的具名例外，已写进 RUNBOOK §12 第 9a 条。
+     - 然后做 P2.13。P1.8 之后先不往 #375、#374、#377、P3、P4 合并，等上线时一起处理。
+     - 第 0–4 项做完时 #371 还没合：P1.8、P2.13 记【跳过】（等 E5），照常收尾。
+  6. **目标、顺序和报告。** 读到本条后用 create_goal 设目标，范围是第 0–5 项，完成线是 FINAL「第七批（D-53）」和 STATUS 在同一个提交推送；按 D-42 第 8 项重建一个 3600 秒的续跑提醒（先 list，只留一个）；两件事在 STATUS_LOG 记一笔。顺序：第 0、1 项先做（只改文档）；第 2、3、4、5 项可以并行（不同分支、不同目录），staging 一次只跑一个 S-1。同一个分支同一时间只让一个子任务推送；每项最多试 3 次。仓库仍是公开的，D-52 第 4 项 a2 和 supervisor 的安全补充照旧有效。做完写 FINAL「第七批（D-53）」，八节格式照旧，每项单独成行，并标出哪些是 Eric 的选择、哪些是 supervisor 代做；和 STATUS 一起提交，然后结束目标，取消提醒，不从 BACKLOG 往下接任务，等下一条指示。
+
 ## 待定
 
 ### D-28 轮值伙伴与四项职责的小时数
@@ -316,12 +386,6 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
 - 选项：A 指定 1 位轮值伙伴，和 Eric 两人轮流；B 按板块分给 2–3 位董事或志愿者。
 - 建议：A。内测只有 30–60 人，一个固定搭档比多人分摊好交接（判断）。排班要保证每天有一人看一次举报队列和版权投诉邮箱，因为举报（P3.6）、版权投诉（LEGAL.4）和合作组织撤回后的下架（SPEC 6.7.11）都定了 48 小时。
 - 谁定：Eric。截止：LEGAL.6（P5.1 之前）。任一格为空就不进 P5。
-
-### D-29 staging-smoke 只有合成数据的书面确认
-- 现状：仓库根 RUNBOOK.md:1290-1291（7b18f20）指定 staging-smoke（hygkwxugskijadgfisji）为唯一获准的托管可丢弃目标；PR CI 的公开巡检经 vars.PR_SMOKE_SUPABASE_URL 连它（.github/workflows/ci.yml:321，005ca9d；main 上是 :319）。这个库没有应用 20261112120000，PR #369 的 CI 因此失败（STATUS「CI」）。库里有没有真实用户、有没有别人在用，只有 Eric 能在后台看到。
-- 选项：A 只有合成数据：Eric 按 E2 留言，再做 E3、E4；B 发现真实数据或有人在用：不在这个库上应用迁移，Eric 另建一个免费 Supabase 项目当测试库，并改仓库 Actions 变量 PR_SMOKE_SUPABASE_URL、PR_SMOKE_SUPABASE_PUBLISHABLE_KEY、PR_SMOKE_SUPABASE_ANON_KEY（005ca9d 的 ci.yml:321-323 读这三个；OMO 的令牌没有 Variables 权限）。
-- 建议：A，前提是 E2 逐页看过 Authentication → Users。
-- 谁定：Eric。截止：P2.6（P1.11 已经需要）。
 
 ### D-30 微信后台核对结果
 - 现状：AppID wxc3da81aa8852a6ff（app/src/manifest.json:42），现名「香槟市集」，开发版 2026-10-26 上传，未提审、未发布，没有已安装的用户。小程序从二手交易改成论坛，至少牵涉四件事：服务类目资质、名称能否带「论坛」、UGC 内容安全接口、个人主体能否开 UGC。cold-start-legal.md 2026-11-12 没查到这四件的官方答案。

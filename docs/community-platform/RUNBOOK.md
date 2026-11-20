@@ -466,7 +466,7 @@ ROLLBACK;
 
 ### 5.2 S-1：staging-smoke 与合成账号
 
-**前提与自检。** #369 上已有 Eric 按 E2 留下的书面确认（D-29），E3 已完成。每次跑 S-1 之前先自检。不要 `cat` 这个文件：
+**前提与自检。** #369 上已有 Eric 按 E2 留下的书面确认（D-29），E3 已完成（2026-11-20 起两者都由 DECISIONS D-53 第 0 项 b、c 代替）。每次跑 S-1 之前先自检。不要 `cat` 这个文件：
 
 ```bash
 stat -c %a ~/.config/illini/staging.env                                                    # 600
@@ -697,8 +697,8 @@ OMO 自己的规则：
 括号里写这一项解锁哪些任务。完成后，在相关 PR 留言或在 STATUS_LOG 留痕；OMO 读到后抄进 STATUS。
 
 - **E1** 提交并推送 V5 分支，开草稿 PR（D-14；解锁 P1.1 ④）。**2026-11-12 已完成**（617055e，草稿 PR #370，见 STATUS_LOG L13）；以下是当时的步骤，留作重建分支时参考。在 Mac 上执行 `cd /Users/xiaogangxu/Downloads/CAACI/Community-Platform/plan-v5 && git add -A docs/community-platform && git commit -m 'docs: 玉米地社区方案 V5' && git push -u origin codex/community-plan-v5`，再执行 `gh pr create --draft --base main --head codex/community-plan-v5 --repo EricXu-0805/CAACI_Community_Marketplace_Bazaar --title 'docs: 玉米地社区方案 V5'`。不合并。
-- **E2** 书面确认 staging-smoke 只有合成数据（D-29；解锁 P1.11、P2.6）。在 Supabase 后台打开项目 hygkwxugskijadgfisji → Authentication → Users，逐页看邮箱，确认没有真实用户；在 Table Editor 里抽看 profiles、items、posts、messages。确认后在 PR #369 留言「YYYY-MM-DD HH:MM CT 核对：staging-smoke 只有合成数据」。
-- **E3** 建合成账号和凭据文件（解锁 P1.11）。
+- **E2**【2026-11-20 已完成，supervisor 代做，见 DECISIONS D-53 第 0 项 b】书面确认 staging-smoke 只有合成数据（D-29；解锁 P1.11、P2.6）。在 Supabase 后台打开项目 hygkwxugskijadgfisji → Authentication → Users，逐页看邮箱，确认没有真实用户；在 Table Editor 里抽看 profiles、items、posts、messages。确认后在 PR #369 留言「YYYY-MM-DD HH:MM CT 核对：staging-smoke 只有合成数据」。
+- **E3**【2026-11-20 已完成，supervisor 代做，见 DECISIONS D-53 第 0 项 c】建合成账号和凭据文件（解锁 P1.11）。
   1. 在同一项目的 Authentication → Users → Add user → Create new user 里，依次建 syn-a@example.test、syn-b@example.test、syn-c@example.test，各用 24 位随机密码，并勾选 Auto Confirm User。
   2. 在 tony-ws 上执行 `install -d -m 700 ~/.config/illini && install -m 600 /dev/null ~/.config/illini/staging.env`。
   3. 写入 8 行：`STAGING_SUPABASE_URL=https://hygkwxugskijadgfisji.supabase.co`；`STAGING_SUPABASE_ANON_KEY=`（与仓库 Actions 变量 PR_SMOKE_SUPABASE_ANON_KEY 相同的公开 key，OMO 的令牌读不到变量）；以及 SYN_A_EMAIL、SYN_A_PASSWORD、SYN_B_EMAIL、SYN_B_PASSWORD、SYN_C_EMAIL、SYN_C_PASSWORD。
@@ -708,7 +708,7 @@ OMO 自己的规则：
   2. 在 Mac 上执行 `git fetch && git switch codex/community-topics-20261112 && git pull`，再执行 `shasum -a 256 supabase/migrations/20261112120000_community_post_topics.sql`，结果要与冻结值一致。
   3. 按仓库 RUNBOOK.md 托管迁移一节（「2026-07 candidate release sequence」第 15–16 条，出处见 [ENGINEERING.md](ENGINEERING.md) §11），只对 hygkwxugskijadgfisji 依次执行：只读 PRECHECK_20261112120000、经 ledger-aware migrations 端点应用、只读 VERIFY_20261112120000。不用 db push、raw psql 或 dashboard 的 SQL 编辑器。
   4. 在 PR #369 留言应用时间和 VERIFY 的输出。
-- **E5** 合并配置修正 PR（解锁 P1.8）。P1.7 的 PR 全绿后审阅 diff，按仓库习惯合并到 main，OMO 不合并。D-41 如果选了单独的依赖修复 PR，同样由 Eric 合并。
+- **E5**【2026-11-20 起由 supervisor 合并，见 DECISIONS D-53 第 0 项 g】合并配置修正 PR（解锁 P1.8）。P1.7 的 PR 全绿后审阅 diff，按仓库习惯合并到 main，OMO 不合并。D-41 如果选了单独的依赖修复 PR，同样由 Eric 合并。
 - **E6** 官方账号的 profile id（D-13；P3.5、P4.9、P4.11 之前）。用 admin@caaciorg.com 在 staging（本地 dev 指向 staging）和生产站点各登录一次，并接受同意书。把两个 profile id 留言到 PR，它们不是机密。P4.11 发布时，在生产 Vercel 环境变量里设 COMMUNITY_OFFICIAL_PROFILE_ID。
 - **E7** 微信后台核对与改名（D-27、D-30；解锁 BRAND.5）。
   1. 登录 mp.weixin.qq.com（AppID wxc3da81aa8852a6ff）。
@@ -730,7 +730,7 @@ OMO 自己的规则：
 - **E11** 两张私有表格（解锁 CONTENT.1、CONTENT.4）。在 CAACI 名下的 Google Drive 建两张表，只共享给 Eric 和轮值伙伴，OMO 不访问：
   - 「问题库」：问题、板块、原帖链接、日期、是否敏感；
   - 「授权记录」：作者、平台、原文链接、授权凭证截图、授权范围、展示范围、期限、能否撤回、署名方式、允许的改动、是否无偿、日期。
-- **E12** demo 转正（BRAND.7）。看过 OMO 给的预览 URL 后，先在 Vercel 网页 demo 项目的 Deployments 里记下当前的 production deployment id；再对这个预览点 Promote，或者本人执行 `vercel promote <预览URL> --scope ericxu-0805s-projects`。
+- **E12**【2026-11-20 已完成，supervisor 代做，见 DECISIONS D-53 第 0 项 d】demo 转正（BRAND.7）。看过 OMO 给的预览 URL 后，先在 Vercel 网页 demo 项目的 Deployments 里记下当前的 production deployment id；再对这个预览点 Promote，或者本人执行 `vercel promote <预览URL> --scope ericxu-0805s-projects`。
 - **E13** 生产发布（P2、P3、P4、P5）。生产迁移按仓库 RUNBOOK 托管迁移一节，H5 按 docs/SUPERVISED_RELEASE.md，小程序在微信后台提审和发布，每次单独执行。OMO 不做。
 - **E14** 答复 D-41（依赖审计）和其余待定项：D-28 轮值伙伴、D-34 logo、D-35 视觉、D-32 合作组织、D-33 学校日历、D-38 代理人信息、D-40 是否请律师。答复写在 PR 留言里，由 OMO 抄进 DECISIONS。
 
@@ -745,8 +745,8 @@ OMO 自己的规则：
 5. **对外动作**：不发邮件、Brevo、Discord、微信、小红书、Reddit 私信，不在任何外站发帖，不联系合作组织、作者或官网维护者；不碰 Brevo、周报 cron、OpenClaw、Codex 自动化。caaciorg 只做 D-11 授权的 P4.3 那一个 PR，并且 D-31 的权限到位后才推；上游 PR 由 Eric 在网页上开。【硬】。例外：`[OMO]` 评论发在本仓库的 #369、#370 上，不算对外动作（D-42 第 6 项）。
 6. **Git**：不 merge 任何 PR、不转 ready、不推 main、不 force push、不 rebase 已推送的分支、不删远端分支；不对他人改动执行 `git reset --hard` 或 `git clean`。以上是 6a【硬】。6b【自决】：新分支名只用 `codex/community-` 或 `codex/config-` 开头，`wip/*` 不推；已有的分支只推 BACKLOG 写明的那些（codex/config-fixes-20261112、codex/community-topics-20261112、codex/brand-cornfield-20261112、codex/community-home-20261112、codex/community-p3-*、codex/community-events-*、codex/community-plan-v5、caaciorg fork 上的功能分支）。
 7. **Vercel**：禁止 `vercel deploy --prod`、promote、rollback、env pull/add/rm、domains、alias；只允许 link 到 P1.13 记录的 demo 项目，预览部署只发到该项目；要碰任何其他项目 →【硬】。
-8. **依赖与 lockfile**：只允许 D-16 的两项变化（packageManager 声明；@playwright/test 1.65.0 及其 playwright、playwright-core）和 D-41 批准的清单；8a【自决】：已批准的升级自己带出的传递变化（例如 STATUS_LOG L19 的 fsevents 删除），lockfile diff 存 $EV。8b【跳过】：新增依赖，或升级批准清单以外的包（包括改 overrides），把包名、版本、原因列进批次报告。
-9. **工作流与发布配置**：9a【硬】.github/workflows 只做 P1.2 与 P1.5 写明的改动（例外：DECISIONS D-51 第 4 项，只限分支 codex/config-ci-runner-20261119 上 ci.yml 的两处改动，Eric 2026-11-19 批准）。9b【硬】vercel.json 不改（BRAND.6 经 D-36 的那一处除外）。9c【硬】manifest.sha256 里已有的行、已应用到托管库或已在 main 上的迁移文件都不改。9d【自决】20261112120000 在 STATUS_LOG 记下「冻结」后不再改、也永远不改名，后续变更另起迁移，冻结后交 Eric（E4）；撤销冻结仍要 Eric 留言同意。
+8. **依赖与 lockfile**：只允许 D-16 的两项变化（packageManager 声明；@playwright/test 1.65.0 及其 playwright、playwright-core）和 D-41 批准的清单；8a【自决】：已批准的升级自己带出的传递变化（例如 STATUS_LOG L19 的 fsevents 删除），lockfile diff 存 $EV。8b【跳过】：新增依赖，或升级批准清单以外的包（包括改 overrides），把包名、版本、原因列进批次报告（例外：DECISIONS D-53 第 3 项，只限分支 codex/config-vite-645-20261120 上把本地重建的 vite 升到 6.4.5 或更新的 6.4.x 补丁版，Eric 2026-11-20 批准）。
+9. **工作流与发布配置**：9a【硬】.github/workflows 只做 P1.2 与 P1.5 写明的改动（例外：DECISIONS D-51 第 4 项，只限分支 codex/config-ci-runner-20261119 上 ci.yml 的两处改动，Eric 2026-11-19 批准；DECISIONS D-53 第 5 项，只限在 #369 做 P1.8 时 `git revert c52badf` 这一个提交，Eric 2026-11-20 批准）。9b【硬】vercel.json 不改（BRAND.6 经 D-36 的那一处除外）。9c【硬】manifest.sha256 里已有的行、已应用到托管库或已在 main 上的迁移文件都不改。9d【自决】20261112120000 在 STATUS_LOG 记下「冻结」后不再改、也永远不改名，后续变更另起迁移，冻结后交 Eric（E4）；撤销冻结仍要 Eric 留言同意。
 10. **视觉**：D-35 选定之前，不改现有页面的颜色、字号、间距和组件样式；新页面只用 App.vue 已有的 token，新增 CSS 不写 hex 字面量。D-35 已定 A，按方向 A 做【自决】。
 11. **外站内容**：不对 Reddit、一亩三分地、美卡、知乎、小红书做任何访问、脚本、无头浏览器、镜像站、SERP API 或代理请求；冷启动内容由真人完成（CONTENT 组）。UIUC 日历只读官方文档与官方 feed（P4.7），只有抓 HTML 才拿得到 → 这条任务【跳过】。抓取本身【硬】。
 12. **法律、品牌与付费**：法律文本、品牌名、运营方的变更不发布到生产；生产发布、小程序提审、域名注册、DMCA 登记和任何付费只由 Eric 做。LEGAL.1 未完成时，不把运营方改成 CAACI。【硬】
