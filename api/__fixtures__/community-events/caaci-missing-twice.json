@@ -1,0 +1,16 @@
+{
+  "event": {
+    "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "source_type": "caaci",
+    "source_key": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "title_en": "Synthetic withdrawn event",
+    "starts_at": "2026-11-20T17:30:00Z",
+    "ends_at": "2026-11-20T19:30:00Z",
+    "missing_checks": 2,
+    "availability": "unavailable"
+  },
+  "snapshots": [
+    {"schema":"caaci.public-events.v1","generated_at":"2026-11-13T18:00:00Z","complete":true,"events":[]},
+    {"schema":"caaci.public-events.v1","generated_at":"2026-11-13T18:14:00Z","complete":true,"events":[]}
+  ]
+}

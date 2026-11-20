@@ -1,0 +1,8 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:synthetic-malformed
+SUMMARY:Synthetic malformed event
+DTSTART:not-a-date
+DESCRIPTION:Synthetic description.
+END:VCALENDAR
