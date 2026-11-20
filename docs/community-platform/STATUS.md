@@ -23,20 +23,20 @@ D-51 第五批进行中（L93）：范围是 D-51 第 1–7 项，做完写 FINA
 
 ## CI
 
-#369当前head 04edaa3的run 43539761691已完成：Type-check、Boundary、H5、mp-weixin四项success；public sweep在schema预检报community topic columns HTTP400（E4）；两项skipped。Boundary实读2156/2155/0/1。
+#369 当前 head 8257318（空提交，树同 04edaa3）的 run 44647478789：5 个 job 全部 success，public sweep 的 schema 预检五项都是 200、浏览器巡检 472 passed；protected staging 与 release readiness 2 个 skipped（L102）。
 
-PR #369 · run [43539761691](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/43539761691) · head 04edaa3 · conclusion failure（Type-check、Boundary、Build H5、Build mp-weixin success；public sweep 停在 Verify public read schema before browser startup，等 E4；其余两项 skipped）[CI run#43539761691]
+PR #369 · run [44647478789](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44647478789) · head 8257318 · conclusion success [CI run#44647478789]
 
 | job | 结论 | 计数 / 原因 |
 |---|---|---|
 | Type-check | success | |
-| Boundary regressions | success | 2156 tests：2155 pass / 0 fail / 1 skipped [CI run#43539761691] |
+| Boundary regressions | success | 2156 tests：2155 pass / 0 fail / 1 skipped；runner ubuntu-26.04 [CI run#44647478789] |
 | Build H5 | success | |
 | Build mp-weixin | success | |
-| Smoke (public page sweep) | failure | 预期中：停在「Verify public read schema before browser startup」预检。staging-smoke 还没应用 20261112120000（等 E4） |
+| Smoke (public page sweep) | success | schema 预检五项 200；472 passed（25.5 分钟）；runner ubuntu-24.04（c52badf）[CI run#44647478789] |
 | Smoke (protected staging account) | skipped | |
 
-上一次：run 43503547193 · head ae058c2 · failure（Type-check、Boundary regressions、Build H5、Build mp-weixin 4 个 success；失败的是 Smoke (public page sweep): Verify public read schema before browser startup；protected staging 与 release readiness 2 个 skipped）[CI run#43503547193]。
+上一次：run 43539761691 · head 04edaa3 · failure（4 个 success；public sweep 停在 schema 预检，当时 staging 还没有 20261112120000）[CI run#43539761691]。
 
 材料分支 #370：多数已读失败来自ubuntu-26.04不能安装Playwright 1.60浏览器；不能把所有失败都归到这一原因。此前记录的43470604328、43475385858、43484767294、43487337489、43490982420保留；另有43474247871、43474954537取消。新增六次按Actions API和实际job日志核对如下（证据~/work/evidence/CI/supervisor-six-runs-20261113.md）。
 
@@ -112,7 +112,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P2.4 | 通过 | smoke 23 passed、test 2001/2000/0/1 [本地测]；CI [CI run#43383800477] |
 | REGION.1 | 通过 | 列、约束、只读授权、region_in 已并入；test 2001/2000/0/1 [本地测]；④ 的 VERIFY/L-SQL 随 P2.5 |
 | P2.5 | 通过 | 20261112120000 冻结（sha256 e2a85c3e…）；L-SQL 181/181，PRECHECK→REPLAY→VERIFY→REGRESSION 全过；test 2001/2000/0/1 [隔离环境 L-SQL][本地测]；④ staging 探测等 E3 |
-| P2.6 | 失败 | public sweep 停在预检（上表）；等 D-29、E4 |
+| P2.6 | 未测 | #369 的 public sweep 已过 schema 预检并全绿（run 44647478789，L102）；P2.6 本身仍等 D-29 / E2，不因此开工 |
 | P2.7 | 通过 | smoke 15 passed、test 2001/2000/0/1 [本地测]；CI [CI run#43392843858] |
 | P2.8 | 通过 | 46e69b8（已推送 #369）；test 2035/2034/0/1、pg_skips=0，smoke 19 passed，typecheck rc=0；见 STATUS_LOG L51 [本地测] |
 | P2.10 | 通过 | 92698d1；主包 1,558,489（CI 环境，由当时 H5 stub 环境实测的 1,558,580 按 D-46 的 91 字节差换算；预算余 14,375）[本地测] |
@@ -158,7 +158,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 
 1. 合 #369 进 main 就是把前端发布到 illinimarket.com 生产：之前必须先在生产应用 20261112120000 并跑它的 VERIFY（ENGINEERING §6；P2.5 DoD ④ 生产那一半由 Eric 核；应用后 VERIFY_20260718_reconcile_app_table_acl_boundaries 报 posts 列漂移属预期，见 L46），BACKLOG 还要求合并前 P2.13 通过。
 2. D-29 → E2、E3：staging-smoke 只有合成数据的书面确认与 A/B/C 账号。挡住 P1.11、P1.12、P2.6、P2.11。
-3. E4：P2.5 在 STATUS_LOG 写出「20261112120000 冻结」后，Eric 把迁移应用到 hygkwxugskijadgfisji（staging-smoke）。挡住 P2.6、P2.13。
+3. E4：staging 那一半已完成——supervisor 按 Eric 2026-11-19 批准把 20261112120000 应用到 staging-smoke 并 VERIFY 通过（D-51 第 6 项），#369 的 public sweep 已过（L102）。P2.6、P2.13 仍等 E2（D-29）、E3、E5。
 4. P1.6 跨大版本已按 D-44 做成草稿 PR #373（base #371）：合不合由 Eric 定；合之前请在带 SENTRY_AUTH_TOKEN 的发布构建里确认 source map 上传。#373 不触发 CI（ci.yml 只认 base=main）。两者都合并后 Boundary 仍红：ci.yml 第 182 行的 `npm audit --audit-level=moderate` 没有例外清单，vite 6.4.4 的 moderate 还在；让 CI 认例外清单要改 workflow，归 Eric。
 5. E5：合并 P1.7 的 PR（#371）。挡住 P1.8（进而 P2.13），以及 BRAND.2 ⑦ 的 Build H5。
 6. D-35 已定（A 纸本书院），HOME.4、P2.12、BRAND.7 只剩各自的任务依赖；D-34 已按 D-43 代定（B 的单字「玉」），BRAND.4 ② 由 OMO 做。

@@ -1271,3 +1271,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: supervised-host 那条在全量并发下偶发超时，没查根因（不在 D-51 范围），写进第五批 ⑥
 - 下一条: D-51 第 6 项（等 #369 CI）、第 5 项（D-49 子任务）
 - 附: #374 上 CommunityHome.vue 不改（#374 比 #372 先上线，那时其他页面也还是「集」）。合并规则加一句：合 #372 时 CommunityHome.vue 两处占位改成「玉」，写进 STATUS 第 11 条和第五批 ④。
+
+### L102 · 2026-11-19 19:16 CT · D-51 第 6 项：staging 应用 20261112120000 之后 #369 重跑 CI，public sweep 通过，E4（staging 那一半）完成
+- task_id: D-51.6
+- code_sha: 8257318a95cba86bee6ae4c5b8fbb2578f377dcc（#369 空提交，树 c1ef718 与 04edaa3 相同，已推送）
+- docs_sha: c4997a4（本次写回之前材料分支的 HEAD）
+- 环境: CI
+- 命令: `sha256sum` 核对 #369 上 20261112120000 的三个伴随文件；`git commit --allow-empty`，核对 HEAD^{tree} 等于 04edaa3^{tree} 后 `git push --no-verify`（宿主机 pre-push 的 PG 环境问题，RUNBOOK §3；这棵树推送前的容器全量是 check-20261114T004205Z）；`gh run view 44647478789 --json jobs`；`gh run view --log` 在 tony-ws 上因 /tmp/gh-cli-cache 属于别的用户而失败，改用 `gh api .../actions/jobs/<id>/logs` 逐个取 Boundary、public sweep、Build H5 的日志（存在 ~/work/evidence/D51/ci369/）
+- 计数: 三个伴随文件的 sha256 和 D-51 第 6 项一致：PRECHECK a4e6250914f7cd244d26c9852956793872b4046ed6fe56b16974943cdf6d6624，VERIFY de45bb91e09a1ebb22c8f23774994417eb84f139b105e4d6e042a777c5d277ac，REGRESSION e7d4caedc836bec780d1311b950ead706306210a3ca81f020aa324a1cd3c52f2；迁移本身仍是 e2a85c3e…。run 44647478789 conclusion success：Type-check、Boundary regressions（2156 / 2155 / 0 / 1）、Build H5、Build mp-weixin、Smoke (public page sweep) 5 个 success，protected staging 与 release readiness 2 个 skipped。schema 预检 verify-public-read-schema 五项都是 200（item category and street details、plaza attached item details、public comment translations、community topic columns、community search rpc）；public sweep 472 passed（25.5 分钟）和另一组 1 passed，0 失败。runner 镜像：Boundary 是 ubuntu-26.04（20261116.202.1），public sweep 是 ubuntu-24.04（20261116.133.1），Build H5 是 ubuntu-24.04（20261111.370.1），后两个是 #369 上 c52badf 钉的 [CI run#44647478789]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44647478789
+- 未测项: P2.6、P2.13 仍等 E2（D-29 书面确认 staging 只有合成数据）、E3、E5，不因本项开工
+- 下一条: D-51 第 5 项（D-49 子任务）、第 7 项、第五批报告
+- 附: E4 的 staging 那一半（20261112120000 应用到 staging-smoke 并 VERIFY 通过）由 supervisor 按 Eric 2026-11-19 的批准代做，见 D-51 第 6 项；生产没动。写进第五批 ④：staging 上 posts_visible 的写权限是 041 建视图时的默认权限，没收回（视图是 security_invoker，经视图写入仍按 posts 的列权限判，不算提权），本批任何迁移都不做，由 Eric 定；staging 另缺 3 条与本迁移无关的旧迁移 20260811140018、20260811143207、20261003175231，这次不补。
