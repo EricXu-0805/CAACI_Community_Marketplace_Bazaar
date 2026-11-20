@@ -1307,3 +1307,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 放行逻辑在 GitHub 上第一次真跑要等合进 main 后的 push 或每周定时任务
 - 下一条: D-49 两个子任务的结果
 - 附: main 的代码加上 c52badf 的钉版本，Build H5 和 public sweep 在 ubuntu-24.04 上都过了，说明 main 那两步红确实只是 runner 的问题。
+
+### L105 · 2026-11-19 20:25 CT · D-51 第 5 项：D-49 服务端（本地 bootstrap、一个迁移、ops 文件、两个 API）在本地完成
+- task_id: D-51.5（服务端）
+- code_sha: 本地 codex/community-restricted-20261113：12aec64（LOCAL_BOOTSTRAP_20260916211900_storage_objects_version.sql）、35059e1（meetup-notify、wechat-login）、6747b8a（迁移 20261114015420 与 PRECHECK / VERIFY / REGRESSION、scripts/restricted-account-writes.test.mjs、manifest 追加一行、README 与计数断言）、13c989b（改常量名）、34fb770（修 ops 文件）；未推送
+- docs_sha: f86ada1（本次写回之前材料分支的 HEAD）
+- 环境: L-SQL、本地
+- 命令: 子任务 st_01a1f660（architect，Claude Fable 5.2）；强制失败验证、夹具单独试跑、计数回放、`run-checks.sh ~/work/illini-restricted install typecheck test h5 mpci migrations`；证据 ~/work/evidence/D49/restart/（先读 README.md）
+- 计数: 强制失败：去掉 version 列 files=181 replayed=181 errors=1 rc=3，停在夹具第一条 storage.objects 插入「record "new" has no field "version"」；补回后 errors=0 rc=0（不计次数）。计数回放第 1 次就过：LSQL head=34fb770 files=182 replayed=182 errors=0 done=1 rc=0（lsql-20261120T015111Z），顺序 PRECHECK → 迁移 → VERIFY → REGRESSION。全等级回归 30 种状态 × 113 例：改前 2442 / 948 失败（每个受限状态 55 条：46 条禁止的写入被接受、7 条报错不对、2 条允许的操作被误拒），改后 3390 / 0；被拒的写入没改动 32 张被监视的表。Node PG17：改前 33 / 1 / 32，改后 33 / 33。全量门禁 check-20261120T020800Z：2240 / 2239 / 0 / 1，pg_skips=0，install / typecheck / h5 / mpci / migrations rc=0。API：meetup-notify 47 条改前 34 失败、改后全过；wechat-login 40 条改前 11 失败、改后全过 [隔离环境 L-SQL][本地测]
+- ci_run_url: —（未推送）
+- 未测项: Storage 走 HTTP 时的行为（只证明了行触发器和策略拒插入）；没有 ROLLBACK 文件（托管上 postgres 不能删 storage.objects 的策略）；迁移 sha256 待客户端合入、全量通过后再冻结。候选 sha256 0dc2ceaf177c44fc48a28b9525dc405c12ecd0c63bf22ef64e225ca64caed5d3；20261112120000 仍是 e2a85c3e…
+- 下一条: 等客户端子任务 st_01a1f688，合并后全量、冻结、开草稿 PR
+- 附: 子任务报告了一个本地镜像现象：supabase/postgres 17.6.1.104 上，在 supabase_admin 会话里 `SET LOCAL ROLE authenticated` 后调用一个没有 EXECUTE 权限的函数，后端进程 SIGSEGV、整个库重启（复现于旧的 make_offer(uuid,numeric,text) 和 is_posting_allowed(uuid)）。没查原因，也没碰任何托管库；写进第五批 ④ 请 Eric 判断托管上是否一样。和设计不同的三处选择（四个既有 actor 触发器没改名、帖子与回复的守卫列出全部作者列、PRECHECK 多查了 VERIFY 要的现有对象）和 12 条待定政策问题照子任务报告写进第五批 D-49 一节。
