@@ -445,6 +445,37 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
      - 第 7 项 a 不变：P1.8 仍看 `gh pr view 371 --json state,mergeCommit`。#376 已在 main 上，P1.8 revert c52badf 以后，#369 一线的三处 ubuntu-24.04 由 main 提供。
      - 预期中的红：#376 进 main、#371 还没进的这段时间，main 的依赖审计会因为 intlify、follow-redirects、glob、minimatch、qs 的 6 条公告变红。#371 的 lockfile 审计是干净的，合进去就好。
 
+  10. **补充（2026-11-20 08:20 CT）：确认跑怎么做。本项替换第 8 项 g 的第一条。**
+     - a. **依据。**
+       - supervisor 独立核过 P1.11、P1.12 第 4 次：L130、L132、L133 的数字和原始日志、JSON 一致；跑的探针和 db13cbd 归档逐字节相同，跑之前没改过；没有重试。7b18f20 上的验收算通过。
+       - 第 8 项 g 原写「合 #369 之前和合 #377 之前，在要合的 head 上用同一份探针跑」。这在 #377 上做不到：#374 起，广场默认打开社区首页，只列有标题的帖子（plaza/index.vue:912–913，useCommunityHome.ts:64–65，utils/communityHome.ts:129）。B 的对照帖没有标题，account-switch.spec.ts:207 必然超时，后面的帖子页、reload、作者按钮都测不到。
+       - 合进 main 不会上生产：vercel.json 关了自动部署，H5 生产只走 docs/SUPERVISED_RELEASE.md 的受监督发布。所以确认跑要放在真正发布的那个提交上。
+     - b. **两次确认跑。**
+       1. **C-369**：现在跑，在 #369 当前 head 上（8f5fc43；如果它又动了，用当时的 head）。开跑前它的 CI 不能有 fail 或 pending；Production release readiness、Smoke (protected staging account)、Supabase Preview 这三项在 PR 上照设计是 skipping，可以。在 tony-ws 上照 RUNBOOK §7 用 Actions 接口核。13 个探针文件和 L133 的 sha256 一样，一个字节不改。
+       2. **C-final**：所有合并做完以后，在 supervisor 准备发布的那个 main 提交上跑。前提：staging 已由 supervisor 对 20261114015420 做完 PRECHECK、应用、VERIFY。生产发布等它通过。这一次由 supervisor 另派，不在第七批里。
+     - c. **适配（只给含社区首页的提交）。**
+       - 判断按内容，不按祖先关系（main 是 squash 合并，#374 的提交永远不会是 main 的祖先）：`git cat-file -e <head>:app/src/components/CommunityHome.vue && git grep -q 'class="ch-more"' <head> -- app/src/components/CommunityHome.vue`。成立就要适配。C-369 不成立，不适配。
+       - 只改 account-switch.spec.ts 进广场那一步：navigate 到 `/pages/plaza/index` → `toHaveURL(/#\/pages\/plaza\/index$/)` → 等 `page.locator('.ch-more, .ch-state[role=alert]').first()` 可见 → 是 `.ch-state[role=alert]` 就把 phase 记成 `community_home_failed` 然后失败；否则点 `.ch-more` → `toHaveURL(/#\/pages\/plaza\/index\?view=all$/)`，然后照原样找 B 的对照帖。删帖后的 URL 断言（:265）不用改：reload 后页面栈只有帖子页，删帖后 switchTab 回到的是首页视图，hash 不带查询串。其余文件、其余行都不动。
+       - 改过的副本不放进共用的 `~/work/illini-dev-env/probes/`（那 13 个文件的 sha256 钉在 L133，别的任务也读它）。做法：
+         - 先照 RUNBOOK 做带时间戳的 `run-checks.sh.before-*` 备份；
+         - 再让 run-checks.sh 认一个 `PROBES_DIR` 变量（默认 `$ENVDIR/probes`），把检查文件存在和只读挂载这两处的 `$ENVDIR/probes` 都换成它；
+         - 适配版放在 `~/work/illini-dev-env/probes-home/`，是 12 个文件的完整副本，只有 account-switch.spec.ts 不同。
+         - 跑之前把 run-checks.sh 的 diff、account-switch.spec.ts 的统一 diff、改前改后的 sha256 记进 STATUS_LOG。
+     - d. **怎么跑。**
+       - 每次确认跑用单独的 detached worktree：`~/work/confirm-<名字>-<sha 前 7 位>`（例如 confirm-369-8f5fc43），从现有仓库 `git worktree add --detach`，不在别的子任务的目录里跑。
+       - EV 分两个子目录：`~/work/evidence/D53/staging/confirm-<名字>/P1.11` 和 `.../P1.12`。每个子目录新写一份 run-context.json，不要复制旧的：例如 `{"attempt":"c369-1","task":"C-369/P1.12","code_sha":"<完整 SHA>"}`，重跑一次 attempt 加一（c369-2、c369-3），不和第 1–4 次重号。
+       - residuals.json 只放进 P1.12 子目录，从最近一次的 P1.12 证据复制：C-369 从 `P1.12/`，C-final 从 `confirm-369/P1.12/`。跑之前核清单里有 3a480e58、cd44b8ea，以及之前每次确认跑留下的私信 ID。
+       - 顺序：restriction-state → consent-login → account-switch → p1-cleanup，都在 `flock ~/work/illini-dev-env/.containers.lock` 里，p1-cleanup 用 P1.12 子目录。
+       - 跑之前在 STATUS_LOG 记：要测的完整 SHA；run-checks 选的镜像（head 的 lockfile 是 Playwright 1.65 就是 pw1.65，第 4 次用的是 pw1.60）；13 个探针的 sha256；head 上 `scripts/verify-public-read-schema.mjs` 的 sha256（probe-in-container.sh 跑的是 head 上的这个文件）。
+     - e. **账号受限。**
+       - 准许新加一个只读探针 `restriction-state.mjs`（走 `probe restriction-state.mjs`），每个账号用自己的会话调 `rpc('get_my_profile')`，照 utils/suspension.ts 的 isSuspensionActive 判断，只输出 `{account, restricted: 布尔}`。它的 sha256 单独记，不算进那 13 个文件；第 8 项 e 的公开归档照样复制、照样扫。
+       - 跑之前查出任何一个账号受限：照 RUNBOOK §5.2 最后一条停下交给 Eric，不跑。
+       - 跑之前都没受限，跑的时候 A、B、C 的写入（create_probe_message、create_public_detail、create_conversation 等）返回 code P0001：记 action 名和时间，记【跳过】交给 supervisor 判断是 `suspension_active:<level>:<until>` 还是限流，不算探针问题，不重跑。C-369 和 C-final 都照这条（D-49 之前的 trg_enforce_actor 也会拒受限账号发帖、发私信）。
+       - 停止清单其余照第 8 项 b 的 (1)–(6)。
+     - f. **次数。** 每次确认跑，清单以外的失败最多再跑 2 次，每次之前照 STOP-14 写假设。重跑时探针文件逐字节不变（C-369 是那 13 个，C-final 是 probes-home/ 那 12 个），只能动环境（重新 install、等 runner 空出来再跑等）；要改探针才能过，这次确认跑到此结束，交回 supervisor。测完以后、合并或发布之前，要测的提交要是动了（比如又合了 main），就在新提交上重跑，次数重新算。最后都跑一次 p1-cleanup，确认 B 的帖子剩 0 行；界面、SDK 的退出照第 8 项 e 记。
+     - g. **小事。** P1.11、P1.12 证据目录里的 RESULT.md 还是第 1–3 次的失败记录：在文件末尾追加一行，指向 RERUN_RESULT.md；staging/COMMANDS.md 末尾补上第 4 次的命令。都只追加。
+     - h. **之后怎么接。** C-369 通过，第 0 项 a 对 #369 就满足了；没通过，照第 8 项 b 处理，#369 不合。C-369 的结果写进第七批 ④。
+
 ## 待定
 
 ### D-28 轮值伙伴与四项职责的小时数
