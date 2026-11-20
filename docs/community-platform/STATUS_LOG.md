@@ -1144,3 +1144,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: —
 - 下一条: —（D-50：结束目标，取消续跑提醒 sch_8c65fd689233，等下一条指示）
 - 附: 18:20 核查补充六项的落点：1 → L87（04edaa3），经 L90 传播到 #375、#374；2 → L88（73cde94）与第四批 ③；3 → 随 D-49 停下，写进第四批 ④；4 → 本条的第三批更正、第四批 ④ ⑥、STATUS 第 13、15、16 条；5 → 第四批 ⑥ 与 STATUS 的 CI 表；6 → 第四批 ⑤ 与 L80–L83 标题。
+
+### L93 · 2026-11-19 18:33 CT · D-51 开工：新目标、续跑提醒、号池规则 [OMO自决]
+- task_id: D-51.8（开工）、D-51.1
+- code_sha: —（本条不改代码）
+- docs_sha: eb4fc56（本次写回之前材料分支的 HEAD，已 git pull --ff-only）
+- 环境: tony-ws 主会话
+- 命令: 读 DECISIONS D-51（第 218–267 行）和 RUNBOOK §12 第 9a 条；create_goal（范围 D-51 第 1–7 项，完成线是 FINAL「第五批（D-51）」与 STATUS 同一提交推送）；schedule_prompt list（返回没有任务）后 create 3600 秒续跑提醒 sch_4d17c07102ac
+- 计数: 目标 1 个（active）；续跑提醒 1 个
+- ci_run_url: —
+- 未测项: 各号周用量 OMO 看不到实时数字，由 supervisor 调整号池顺序和切主线程；OMO 只在挑子任务类别时避开已知到 60% 的号，并在 STATUS「阻塞」里记
+- 下一条: D-51 第 3 项 a（#374）与第 4 项（ci.yml 草稿 PR），D-49（第 5 项）的数据库部分同时交给子任务
+- 附: 号池按 D-51 第 1 项：Claude default（admin）→ account-2（board）→ account-5（新加的 Ultra 号）→ account-4（Lucia），account-3 不用；ChatGPT 由 supervisor 切入；每个号周用量到 60% 停用；18:10「子任务只用 ChatGPT」解除。上一条「account-2」按 supervisor 说明是误发，不是任务。[OMO自决] 顺序：第 5 项耗时最长，把 D-49 的数据库部分在第 3 项 a、第 4 项做的同时交给子任务（不同工作树和分支；D-49 分支只由主会话推送），其余照 D-51 第 8 项。本条起 STATUS_LOG 每条写全 9 个固定字段。

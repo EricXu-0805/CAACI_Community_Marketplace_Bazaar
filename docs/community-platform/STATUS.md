@@ -1,11 +1,11 @@
 # STATUS
 
-写于 2026-11-13 21:36 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-19 18:33 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: —（D-50 第 2 项：D-46 到 D-50 本轮已做完或按规定停下，等下一条指示，不从 BACKLOG 往下接）`
+`next_task_id: D-51 第 3 项 a（#374 受限时隐藏回帖重试）与第 4 项（ci.yml 草稿 PR）；D-49 数据库部分并行`
 `latest_batch: appendix/batch/FINAL.md`
 
-本轮（D-46 到 D-50，含 supervisor 18:10、18:20 两条补充）已收尾：FINAL「第四批（D-46）」与本文件在同一提交。D-49 按第 6 项停在本地 L-SQL 基线（L89），没有迁移、没有 PR。按 D-50 结束目标、取消续跑提醒，不再自设目标，不从 BACKLOG 接新任务。
+D-51 第五批进行中（L93）：范围是 D-51 第 1–7 项，做完写 FINAL「第五批（D-51）」与本文件同一提交，然后结束目标、取消续跑提醒，不从 BACKLOG 往下接。号池按 D-51 第 1 项，每个号周用量到 60% 停用。
 
 ## 版本
 
@@ -15,7 +15,7 @@
 | code_sha | 04edaa36a6edd717c069d78dc4afad57ac1f196c（#369 最终 head；D-50 补充已传播到 #375 571be45、#374 2e0f582） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | 779c07fa78848c2a0a5577b347d04ddf77bd402f（本次写回之前材料分支的 HEAD） |
+| docs_sha | eb4fc56（本次写回之前材料分支的 HEAD） |
 | 其余代码分支（远端 head） | #374 codex/community-home-20261112 2e0f582（含 #369 04edaa3、#375 571be45）。#375 codex/community-mp-budget-20261113 571be45（base #369）。#373 55716ba（base #371）；#372 ba070e7；#371 b259105。四个都是草稿 [本地测：2026-11-14 gh pr view] |
 | tony-ws worktree | illini 04edaa3；illini-home 2e0f582；illini-mpbudget 571be45，三者已推送且干净。illini-d46-integration 为本地 local/d46-final-integration-20261114 412e14d（五 PR 集成，不推送）。illini-restricted 为本地 codex/community-restricted-20261113，HEAD 04edaa3，只有 2 份未提交 _ops 草稿，未推送、无 PR。illini-docs-brand7 local/brand7-20261113 15aa47e（已合进材料分支 779c07f，干净）。illini-deps 55716ba；illini-brand ba070e7；illini-config b259105；illini-events 本地 5f62ddd 不推；illini-main 只读 7b18f20；caaciorg 本地 28d59b1 不推；材料 codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，仍是 V4 原型（grep 玉米地 0），回退 id dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6 [生产：2026-11-14 curl、vercel inspect 只读]。BRAND.7 预览 https://illini-community-demo-978sy3clx-ericxu-0805s-projects.vercel.app（dpl_3bG2SKTAmQsa7jEmScy2cHHpnk1y）返回 200，等 Eric promote（E12）[本地测] |
