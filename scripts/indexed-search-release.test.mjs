@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
-import {readFileSync,mkdtempSync,rmSync,existsSync} from 'node:fs';
+import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-const postgresBin=['/opt/homebrew/opt/postgresql@17/bin','/usr/lib/postgresql/17/bin'].find(p=>existsSync(join(p,'initdb')));
+import { postgresBinDir } from './_postgres-bin.mjs'
+const postgresBin=postgresBinDir();
 test('indexed search review package rejects version drift, restores exact data and rolls back', {skip:!postgresBin&&'PostgreSQL 17 unavailable'}, t=>{
 const bin=postgresBin;
 const root=fileURLToPath(new URL('..',import.meta.url));

@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { execFileSync, execFile } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { promisify } from 'node:util'
+import { postgresBinDir } from './_postgres-bin.mjs'
 
 const read = path => readFileSync(new URL(path, import.meta.url), 'utf8')
-const bin = ['/opt/homebrew/opt/postgresql@17/bin', '/usr/lib/postgresql/17/bin'].find(p => existsSync(join(p, 'initdb')))
+const bin = postgresBinDir()
 const migration = read('../supabase/migrations/20260914200143_statement_scoped_listing_search.sql')
 const quote = value => "'" + value.replaceAll("'", "''") + "'"
 const id = n => 'caac0914-2026-4000-8000-' + String(n).padStart(12, '0')

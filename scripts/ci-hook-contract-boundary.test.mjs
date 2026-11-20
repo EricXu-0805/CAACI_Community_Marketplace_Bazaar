@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
+import { LINUX_PG17_BIN } from './_postgres-bin.mjs'
 
 const ROOT = new URL('../', import.meta.url)
 
@@ -44,7 +45,7 @@ test('public smoke skips missing configuration while account smoke is protected 
   assert.ok(publicJob.indexOf('verify-public-read-schema.mjs') < publicJob.indexOf('npx playwright install'))
   const boundaryJob = ci.slice(ci.indexOf('  boundary-tests:'), ci.indexOf('  build-h5:'))
   assert.match(boundaryJob, /postgresql-17/)
-  assert.ok(boundaryJob.indexOf('/usr/lib/postgresql/17/bin/initdb --version') < boundaryJob.indexOf('node --test'))
+  assert.ok(boundaryJob.indexOf(`${LINUX_PG17_BIN}/initdb --version`) < boundaryJob.indexOf('node --test'))
   assert.match(ci, /authenticated-smoke:[\s\S]*?environment: staging-smoke/)
   assert.match(ci, /github\.event_name == 'push'[\s\S]*?refs\/heads\/main[\s\S]*?github\.event_name == 'workflow_dispatch'[\s\S]*?refs\/heads\/main/)
   assert.match(ci, /SMOKE_EXPECTED_SUPABASE_PROJECT_REF:[\s\S]*?SMOKE_EXPECTED_USER_ID:/)

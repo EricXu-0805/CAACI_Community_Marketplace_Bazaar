@@ -6,7 +6,7 @@
     "test": "cd app && node --test --test-concurrency=2 ../api/*.test.mjs ../scripts/*.test.mjs smoke/*.test.mjs",
     "verify:migrations": "cd supabase/migrations && shasum -a 256 -c manifest.sha256"
   },
-  "packageManager": "npm@10.8.2",
+  "packageManager": "npm@10.9.9",
   "engines": {
     "node": ">=22.15.0 <23"
   }

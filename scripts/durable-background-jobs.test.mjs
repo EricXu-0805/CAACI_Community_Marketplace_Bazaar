@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { execFile, execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
+import { postgresBinDir } from './_postgres-bin.mjs'
 
 const exec = promisify(execFile)
-const bin = ['/opt/homebrew/opt/postgresql@17/bin', '/opt/homebrew/opt/postgresql@16/bin',
-  '/usr/lib/postgresql/17/bin', '/usr/lib/postgresql/16/bin'].find(dir => existsSync(join(dir, 'initdb')))
+const bin = postgresBinDir()
 const root = new URL('../supabase/migrations/', import.meta.url)
 const read = name => readFileSync(new URL(name, root), 'utf8')
 const ops = name => readFileSync(new URL(`../_ops/${name}_20260905_block_safe_listing_notifications.sql`, root), 'utf8')

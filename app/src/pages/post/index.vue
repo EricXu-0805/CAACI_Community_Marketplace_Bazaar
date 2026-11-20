@@ -1185,7 +1185,7 @@ async function onSubmitComment() {
 .reply-bar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 7px 14px;
-  background: rgba(199,74,47,0.08);
+  background: rgba(185,69,44,0.08);
 }
 .reply-label { font-size: 12px; color: var(--accent-action); font-weight: 500; flex: 1; }
 .reply-x {
