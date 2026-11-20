@@ -92,14 +92,18 @@ for (const width of [390, 1280]) {
       const home = page.locator('.footer').getByRole('button', { name: lang === 'zh' ? '首页' : 'Home', exact: true })
       await expect(home).toBeVisible()
       await expect(page.getByText('Repeated spam listings')).toBeVisible()
-      await page.screenshot({ path: `test-results/visual/D49/suspended-visit-${width}-${theme}-${lang}.png`, fullPage: true })
+      await page.screenshot({ path: `test-results/visual/D49/suspended-visit-${width}-${theme}-${lang}.png` })
+      // The page scrolls internally; capture the appeal form and the way home too.
+      await home.scrollIntoViewIfNeeded()
+      await page.screenshot({ path: `test-results/visual/D49/suspended-visit-footer-${width}-${theme}-${lang}.png` })
 
       // No auto-bounce while an active L3 reads the details.
       await page.waitForLoadState('networkidle')
       await expect(page).toHaveURL(/pages\/suspended\/index/)
 
       await home.click()
-      await expect(page).toHaveURL(/pages\/index\/index/)
+      // uni H5 serves the first tab page (pages/index/index) as #/.
+      await expect(page).toHaveURL(/#\/(?:pages\/index\/index)?$/)
       await expect(notice).toBeVisible()
       expect(writes).toEqual([])
     })
