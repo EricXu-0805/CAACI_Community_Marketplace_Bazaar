@@ -2186,3 +2186,15 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: 真机与微信开发者工具；P3、P4 迁移在托管库的应用（P3.7、P4.11，归 Eric）
 - 下一条: 推送本提交之后结束目标、取消续跑提醒，记在下一条
 - 附: ENGINEERING §5.5 补 P4 新对象（STOP-16a，见 L161），§9 里 official_account_unset 改成 official_profile_not_configured（mig:P4-m9）；RUNBOOK §3 补 worktree 行；P4.8 的 8 张截图（390、1280，只含测试夹具数据，主会话看过 390 宽 4 张）放进 appendix/visual/P4.8/（client:P4-m11）；首页截图里仍是旧品牌名，因为 P4 分支还没合 #372 的改名。第八批报告接在 FINAL.md 末尾，和 STATUS 同一提交。
+
+### L164 · 2026-11-20 13:50 CT · 第八批推送之后：目标结束、续跑提醒取消（D-54 第 6 项）
+- task_id: D-54.6（收尾）
+- code_sha: —（本条不改代码）
+- docs_sha: cce53c3（FINAL「第八批（D-54）」与 STATUS 的提交，已推送）
+- 环境: 真人
+- 命令: 推送 cce53c3 之后：schedule_prompt cancel sch_3f821ab3ab68（返回 Cancelled）；update_goal complete（返回 status complete）
+- 计数: 目标用时 12,103 秒、156,628 tokens；续跑提醒剩 0 个 [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: 无。不从 BACKLOG 往下接，等下一条指示
+- 附: 这两件事都在 FINAL 第八批推送之后才做，也是在做完之后才写进这里（第七批 L142 在推送前就写成已做，report:FINAL-m12）。
