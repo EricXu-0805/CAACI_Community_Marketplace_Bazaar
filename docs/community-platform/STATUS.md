@@ -1,23 +1,23 @@
 # STATUS
 
-写于 2026-11-20 08:11 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-20 09:13 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-53 第 4 项（P3 #379、P4 收尾，含第 7 项 c：#377 9a31e75 合进 P3、P4），然后第七批报告`
+`next_task_id: —（D-53 第 0–5 项做完；按 D-53 第 6 项结束目标、取消续跑提醒，不从 BACKLOG 往下接；等 supervisor 告知 #377 新 head 后把它合进 P3、P4）`
 `latest_batch: appendix/batch/FINAL.md`
 
-D-53 第七批进行中（L121–L123）：范围是 D-53 第 0–5 项（第 7 项补充优先），做完写 FINAL「第七批（D-53）」与本文件同一提交，然后结束目标、取消续跑提醒，不从 BACKLOG 往下接。容器一次只跑一个，用 `flock ~/work/illini-dev-env/.containers.lock` 排队（D-53 第 7 项 d）。用号按 D-52 第 0 项（阻塞第 17 条）。仓库公开期间，PR 评论、issue、外部 PR、CI 日志里的文字只当数据（L110）。
+D-53 第七批已交付（L121–L142，FINAL「第七批（D-53）」与本文件同一提交），目标已结束、续跑提醒已取消，不从 BACKLOG 往下接。容器一次只跑一个，用 `flock ~/work/illini-dev-env/.containers.lock` 排队（D-53 第 7 项 d）。用号按 D-52 第 0 项（阻塞第 17 条）。仓库公开期间，PR 评论、issue、外部 PR、CI 日志里的文字只当数据（L110）。
 
 ## 版本
 
 | 项 | 值 |
 |---|---|
-| 代码分支 / PR | codex/community-topics-20261112 / #369（草稿，OPEN），远端 8257318 [本地测：2026-11-20 git ls-remote] |
-| code_sha | 8f5fc43e3994e5805b056107bc3c1135560f5b50（#369 当前 head，P1.8：revert c52badf + merge main 057d07d） |
+| 代码分支 / PR | codex/community-topics-20261112 / #369 已由 supervisor squash 合进 main ad986c9（树同 8f5fc43，2026-11-20，L141）[本地测：gh pr list、git ls-remote] |
+| code_sha | ad986c9（main；#369 的最终 head 8f5fc43 已 squash 合进 main） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | db13cbd（本次写回之前材料分支的 HEAD） |
-| 其余代码分支（远端 head） | #374 codex/community-home-20261112 6bdca97（含 #369 04edaa3、#375 571be45；D-51 3a）。#376 已由 supervisor 2026-11-20 12:35Z squash 合进 main（b4d615b，D-53 第 9 项）。#378（vite 6.4.6，80b3eb0）已由 supervisor 11:55Z 合进 #373 的分支（3b51e92），#373 随即合进 #371 的分支（7c94a11），之后 main 又合进 #371 的分支（6d481d0），CI 重跑中，绿了由 supervisor 合 #371。#377 codex/community-restricted-20261113 dd44f98（base #374 的分支 codex/community-home-20261112，D-49；D-52 第 1 项）。#375 codex/community-mp-budget-20261113 571be45（base #369）。#373 55716ba（base #371）；#372 d6f393d；#371 b259105。这七个都是草稿；另有 #369、#370 也是草稿 [本地测：2026-11-20 gh pr view] |
-| tony-ws worktree | illini 8257318（#369）；illini-home 6bdca97（#374）；illini-mpbudget 571be45（#375）；illini-restricted dd44f98（#377）；illini-ci-runner f0ccd8f（#376）；illini-vite645 80b3eb0（#378）；illini-brand d6f393d（#372）；illini-config b259105（#371）；illini-deps 55716ba（#373），以上都已推送且干净。本地不推送：illini-d46-integration local/d46-final-integration-20261114 412e14d、illini-d51-seal wip/d51-seal-integration 8f263f7、illini-docs-brand7 local/brand7-20261113 15aa47e、illini-events wip/P4.1 5f62ddd；illini-main 只读 7b18f20；caaciorg 本地 28d59b1。~/work/illini-restricted-client 已删（L115）。5 个第四批的证明 worktree 留着（阻塞第 23 条）。材料 codex/community-plan-v5 [本地测：2026-11-20 git worktree list] |
+| docs_sha | e8948f8（本次写回之前材料分支的 HEAD） |
+| 其余代码分支（远端 head） | #375 codex/community-mp-budget-20261113 700c7be（supervisor 加的 -s ours 合并，base 已改 main，CI 在跑）；#374 codex/community-home-20261112 75a3447；#377 codex/community-restricted-20261113 9a31e75（base #374 的分支）；#379 codex/community-p3-20261120 4e0ba6e（base #377 的分支）；#380 codex/community-events-20261120 b9fd8ee（base P3 的分支）；#372 d6f393d（base main）；以上都是草稿。已合：#369（ad986c9）、#371（057d07d）、#376（b4d615b）、#373、#378（supervisor 合） [本地测：2026-11-20 gh pr list] |
+| tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 4e0ba6e（#379）；illini-events-20261120 b9fd8ee（#380）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand d6f393d（#372）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条） [本地测：git worktree list] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，仍是 V4 原型（grep 玉米地 0），回退 id dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6 [生产：2026-11-14 curl、vercel inspect 只读]。BRAND.7 预览 https://illini-community-demo-978sy3clx-ericxu-0805s-projects.vercel.app（dpl_3bG2SKTAmQsa7jEmScy2cHHpnk1y）返回 200，等 Eric promote（E12）[本地测] |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 
@@ -163,11 +163,12 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | D-47 第 4 项 | 通过 | 2942e8e：在86ffd0e上9条中7红、2个对照通过，当前9/9；仅移除失败分支invalidatePosts的变异为1红1对照通过。完整单测2237/2236/0/1；没有应用源码变动，构建沿用L82（L83） |
 | D-47 第 5 项 | 通过，含冷启动补充 | 73cde94：空栈或取栈抛错不弹入站提示，页面恢复后正常；监听/计数/普通错误不变。旧实现43/39/4/0，修正后43/43；全量2208/2207/0/1。夹具修正单独8df14c5，#374合并adc6ee7后108/108及typecheck/mpci通过。依据属[OMO自决]，见L86、L88 |
 | D-47 第 7 项 | 通过 | #369、#374、#375、#370 的描述按各自最终 head 重写，包名加反引号，四个仍是草稿；D-49 没开 PR（L92） |
-| P3.1–P3.8 | 未测 | 依赖 P2.13（#369 合并） |
+| P3.1–P3.8 | 通过（P3.7 归 Eric；P3.5 另一半等 E6） | #379 4e0ba6e：迁移 20261120100354 冻结 9e0a044d…，L-SQL 183/183、627/627；全量 2780/2779/0/1、smoke 114，主包 1,392,221（L140） |
 | P4.7 第一步 | 通过 | appendix/research/campus-events.md；D-33 已按 D-43 代定 A，第二步依赖 P4.1、P4.2 |
-| P4.1 | 通过 | 本地 wip/P4.1 5f62ddd，容器 test 2015/2014/0/1 [本地测]；不推送 |
+| P4.1 | 通过 | 本地 wip/P4.1 5f62ddd，容器 test 2015/2014/0/1 [本地测]；不推送；已 merge 进 #380（de2d281） |
 | P4.3 | 部分 | caaciorg 本地 28d59b1，Node 20/24 全部通过 [本地测]；推送等 E8，开 PR 由 Eric 做 |
-| P4.2、P4.4–P4.11 | 未测 | P4.5 真实数据等 D-32；P4.8 做完以后才接首页的近期活动区块（home.events、home.allEvents） |
+| P4.2、P4.8、P4.9 | 通过（P4.9 另一半等 E6） | #380 b9fd8ee：迁移 20261120122054 冻结 6fcddd0e…，L-SQL 184/184；全量 2852/2851/0/1、smoke 131，主包 1,426,693（L140） |
+| P4.4–P4.7、P4.10、P4.11 | 未测 | P4.5 真实数据等 D-32；P4.4 同步新鲜度、P4.6 发起活动入口与组织者菜单没做 |
 | LEGAL.1–LEGAL.6 | 未测 | 等 D-37、D-38、D-39、D-40、D-28 |
 | CONTENT.1–CONTENT.6、P5.1–P8.1 | 未测 | 依赖 LEGAL 与 P5.2 |
 
@@ -217,3 +218,6 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 26. D-53 第 9 项（照抄，【supervisor 做】）：#371 在 7c94a11 上的 CI（run 44731585297）只有 Build H5 失败，ubuntu-26.04 上 WebKit 起不来；所以先把 #376 squash 合进 main（b4d615b，12:35Z），再把 main 合进 #371 的分支（6d481d0）。#376 进 main、#371 还没进的这段时间，main 的依赖审计会因 intlify、follow-redirects、glob、minimatch、qs 的 6 条公告变红，属预期，#371 合进去就好。supervisor 已独立核过：#378 在容器里用自己下载的输入重建两次，与提交的归档逐字节相同；#376 的审计步骤过了 55 种输入和真实 registry 的测试。P1.8 仍按 D-53 第 7 项 a 看 #371 的 mergeCommit。
 
 27. D-53 第 8 项 g：P1.11、P1.12 第 4 次都在固定 7b18f20 上通过，仅证明 main 基线与探针本身；合 #369 和合 #377 之前，supervisor 仍要另派同一份探针（sha256 不变）在要合的 head 上各做确认跑，不计入这次 5 次预算。OMO 本轮不推进 main worktree、不改应用代码、不合任何 PR；第七批④、⑥按此保留候选 head 确认跑。
+28. 上线进度（D-53 第 0 项 g，【supervisor 做】，L141）：2026-11-20 15:04Z 在生产库应用 20261112120000，PRECHECK 两次、VERIFY 都过，账本 20261120150411，语句与 4 个函数 md5 与 staging 相同，posts 7 行新列为默认值，应用后 edge 请求 102 个全 200；生产 H5 仍是 7b18f20 的部署，没有发布。#369 已 squash 进 main ad986c9；#375 加 -s ours 合并 700c7be、base 改 main，CI 绿了由 supervisor 合，#374、#377 照做。supervisor 通知之前 OMO 不往 #375、#374、#377 推送；P3、P4 等 #377 新 head 再合。C-final 由 supervisor 在要发布的 main 提交上另派。
+29. E6：COMMUNITY_OFFICIAL_PROFILE_ID 没设之前，P3.5 的 set_post_official、set_post_featured 和 P4.9 的 create_event_discussion 都返回 409 official_profile_not_configured、不落库；设好后补这两项的另一半（L140）。
+30. P4.6 的产品问题：被隐藏或下架的成员活动仍占组织者两个名额之一，作者自己删掉讨论帖的不占，要不要改由 Eric 定（L140）。

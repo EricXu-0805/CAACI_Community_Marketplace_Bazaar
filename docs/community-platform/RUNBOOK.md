@@ -119,8 +119,11 @@ rm "$T"/node-$V-linux-x64.tar.xz "$T"/SHASUMS256.txt && rmdir "$T"
 | ~/work/illini-d51-seal | 本地 wip/d51-seal-integration | 「集」字印章测试的本地集成（D-51 第 3 项 b），不推送 | 从 #374 head 建；照 412e14d 的做法 merge 五个 PR |
 | ~/work/illini-docs-brand7 | 本地 local/brand7-20261113 | BRAND.7 原型（已合进材料分支），不推送 | `git -C ~/work/illini worktree add -b local/brand7-20261113 ~/work/illini-docs-brand7 <材料分支 head>` |
 | ~/.cache/illini-d50-dialog-proof、~/.cache/illini-following-d47-proof、~/.cache/illini-home-proof-st01a1d65b、~/.cache/illini-subpackage-d48-baseline、~/work/evidence/D50-followup/history-tree | 游离 HEAD | 第四批的红测证明用 worktree。D-51 第 2 项 i 先把改动和未跟踪文件存进 ~/work/evidence/D51/worktrees/，再用不带 `--force` 的 `git worktree remove`：这 5 个有改动或未跟踪文件，被拒，按规则留着（~/.cache/illini-subpackage-d48-mutation 干净，已删） | 不再新建；要删得由 Eric 定 |
-| ~/work/illini-p3 | #369 合并前是本地 wip/P3.1，之后改名 codex/community-p3-\<YYYYMMDD\> | P3、LEGAL.2、LEGAL.4、LEGAL.5、P5.5 | 按 BACKLOG P3.1 的命令：#369 合并前从 #369 分支建 wip/P3.1；合并后在同一目录 `git merge origin/main` 再 `git branch -m`（BACKLOG §1） |
-| ~/work/illini-events | #369 合并前是本地 wip/P4.1，之后改名 codex/community-events-\<YYYYMMDD\> | P4 里 Illini 仓库的部分 | 按 BACKLOG P4.1（从 origin/main 建 wip/P4.1）和 P4.2（merge 后改名）的命令 |
+| ~/work/illini-p3 | codex/community-p3-20261120（PR #379，草稿，base #377 的分支） | P3（D-53 第 4 项，取代原来的 wip 流程） | `git -C ~/work/illini worktree add -b codex/community-p3-20261120 ~/work/illini-p3 dd44f98`；跟进 #377 用 `git merge` |
+| ~/work/illini-events | 本地 wip/P4.1（5f62ddd，不推送，已 merge 进 #380） | P4.1 的纯规则与夹具，保留不动 | 已建好，不再改 |
+| ~/work/illini-events-20261120 | codex/community-events-20261120（PR #380，草稿，base P3 的分支） | P4.2、P4.8、P4.9（D-53 第 4 项） | `git -C ~/work/illini worktree add -b codex/community-events-20261120 ~/work/illini-events-20261120 <P3 迁移冻结后的 head>`，再 `git merge wip/P4.1` |
+| ~/work/illini-vite645 | codex/config-vite-645-20261120（#378，已由 supervisor 合进 #373 的分支） | vite 6.4.6 的重建配方（D-53 第 3 项） | `git -C ~/work/illini worktree add -b codex/config-vite-645-20261120 ~/work/illini-vite645 origin/codex/deps-crossmajor-20261113` |
+| ~/work/confirm-369-8f5fc43 | detached 8f5fc43 | C-369 确认跑（D-53 第 10 项），只跑探针，不提交 | `git -C ~/work/illini worktree add --detach ~/work/confirm-369-8f5fc43 8f5fc43` |
 | ~/work/caaciorg | feat/public-events-feed；origin = fork EricXu-0805/caaciorg，upstream = a2751012962/caaciorg | P4.3 | 按 BACKLOG P4.3 的命令：E8 之前只读 clone 上游并把 remote 改名为 upstream，在本地写；E8 之后再加 fork 为 origin 并推送。git 已配置用 gh 做凭据（2026-11-12 核对） |
 | ~/work/demo-publish | 不是 git 目录 | demo 预览部署（P1.13、BRAND.7）。全机只有这里允许有 .vercel | 见 §9 |
 | ~/work/evidence/\<任务编号\> | 不是 git 目录 | BACKLOG 的 `$EV`：每个任务的原始输出 | `mkdir -p "$EV"` |

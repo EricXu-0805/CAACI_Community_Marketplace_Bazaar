@@ -1791,3 +1791,39 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
   - `probes/probe-ui.ts`：458c9f4afdbdbdc3d82221fa9b7c01090572bff4971cc0bfb6516c31fa3acd01
   - `probes/schema-only.mjs`：97cbb8dba474a2671fe4d35c8450b739360b70efcfbd9c44f360679908a67469
   - `probes/selfcheck.sh`：1c6a000ef04971879205bbf81b2b5e3d1d7e4ac1b3db0c2d75916213d21ebd8f
+
+### L140 · 2026-11-20 09:13 CT · D-53 第 4 项与第 7 项 c 后半：P3（#379）、P4（#380）草稿 PR，两个迁移冻结，#377 9a31e75 合进 P3、P4
+- task_id: D-53.4、D-53.7c
+- code_sha: P3 codex/community-p3-20261120 4e0ba6e（dd44f98 → d7165e6 迁移冻结 → 180378c → 98afd0a → e5de9a4 → 290b098 → 9b679c1 → d97d8c4 merge #377 9a31e75 → 4e0ba6e），草稿 PR #379，base codex/community-restricted-20261113；P4 codex/community-events-20261120 b9fd8ee（de2d281 merge wip/P4.1 5f62ddd → d652732 → e67a944 迁移冻结 → 1cffc41 → fe05508 → fde9c3f → e74faf6 merge P3 4e0ba6e → b9fd8ee），草稿 PR #380，base codex/community-p3-20261120；都已推送，没有 force push
+- docs_sha: e8948f8（本次写回之前材料分支的 HEAD）
+- 环境: 本地、L-SQL
+- 命令: 子任务 st_01a1f859（architect）；L-SQL lsql-20261120T105454Z（P3）与 134354Z（P4，第 4 次回放；131028Z、133314Z 各 errors=1 是回归脚本与列表场景自己的期望，132216Z 在设计改动前）；门禁 check-20261120T123659Z（P3 9b679c1）、142123Z（P3 4e0ba6e）、143841Z（P4 e74faf6，test 1 失败）、145220Z（P4 b9fd8ee），都是 unstaged=no、镜像 pw1.65-node22-pg17，容器都经 .containers.lock；`git push --no-verify`（推送前日志即 123659Z、142123Z、145220Z）
+- 计数: 迁移 20261120100354_community_watch_save_activity 冻结 sha256 9e0a044dad8bd31ae7b314aee7cbe513880d10e9f08f1883fc7eb1f37b913622，L-SQL 183/183、P3_TOTAL 627/627；迁移 20261120122054_community_events 冻结 6fcddd0e81985979843aa80eb0c828d953f232e2c2c19e972c6ca03b3fc2d993，L-SQL 184/184、EV_TOTAL 627/627、P3_TOTAL 仍 627/627。先红后绿：P3 库与后台 API 52/1/51 → 61/61，P3.2/P3.6、P3.3、P3.4、P3.6 队列各自先红；P4 库 7/3/4 → 21/21，后台 API 14/0/14 → 绿，客户端先红后 42 passed。P3 4e0ba6e 全量 2780/2779/0/1、pg_skips 0、smoke 114、主包 1,392,221（余 180,643）；P4 e74faf6 第一次 test 2852/2850/1/1（直读表清单漏 community_events），b9fd8ee 修后 2852/2851/0/1、pg_skips 0、smoke 131、主包 1,426,693（余 146,171，pages/event 分包 11,702）。两次合并都无冲突，两个分支 ci.yml 与 main 相同，四个冻结迁移都没变 [隔离环境 L-SQL][本地测]
+- ci_run_url: —（两个 PR 的 base 都不是 main）
+- 未测项: 两个迁移没应用到任何托管库（不在本批上线范围）；P3.5、P4.9 要 E6 的那一半；P3.7 是 Eric 的步骤；P4.4 同步新鲜度、P4.6 发起活动入口与组织者菜单没做
+- 下一条: 第七批报告（L142）
+- 附: 合 #377 时 P3 的数据库测试夹具改用 main 带来的 scripts/_postgres-bin.mjs（4e0ba6e），P4 的夹具引用它；错误名照 D-53 用 official_profile_not_configured（HTTP 409，不落库），不用 ENGINEERING 的 official_account_unset；P4 的工作树是新目录 ~/work/illini-events-20261120，原 ~/work/illini-events 的 wip/P4.1 没动。子任务曾在本机误打印过一整份 check 日志，没进仓库。完整报告在 ~/work/evidence/D53/p3p4/REPORT.md。
+
+### L141 · 2026-11-20 09:13 CT · [supervisor 指示] 上线进度（D-53 第 0 项 g）
+- task_id: D-53.0g
+- code_sha: main ad986c9（#369 squash，树同 8f5fc43）；#375 700c7be（supervisor 的 -s ours 合并，树同 dfa1aa0）
+- docs_sha: e8948f8（本次写回之前材料分支的 HEAD）
+- 环境: 真人
+- 命令: —（照抄 supervisor 消息，并只读核了 gh pr list 与 git ls-remote）
+- 计数: #369 MERGED；main ad986c9；#375 head 700c7be、base main；#374、#377、#379、#380 仍是草稿 [本地测]
+- ci_run_url: —
+- 未测项: 生产 H5 仍是 7b18f20 的部署，没有发布
+- 下一条: 等 supervisor 通知 #377 的新 head，再把它合进 P3、P4
+- 附: supervisor 独立核过 C-369：L139 的数字和原始日志一致，restriction-state.mjs 与 app 的 isSuspensionActive 在 145 种组合上结果相同。生产迁移：2026-11-20 15:04Z 由 supervisor 在生产库应用 20261112120000_community_post_topics；PRECHECK 两次通过（应用前无活动会话、无锁），VERIFY 通过，账本新行 version 20261120150411，语句 md5 61a5464210db0506fa7761eef79b5eb8 与 staging 相同，4 个函数 md5 与 staging 相同，posts 7 行、新列全为默认值，应用后 edge 请求 102 个全 200、分享预览正常。#369 已 squash 进 main ad986c9。#375 由 supervisor 加 -s ours 合并 700c7be、base 改 main，CI 在跑，绿了由 supervisor 合；#374、#377 照同样做法。supervisor 通知之前 OMO 不往 #375、#374、#377 的分支推送；P3、P4 要从 #377 合进来的，等 supervisor 告知 #377 新 head 再合。
+
+### L142 · 2026-11-20 09:13 CT · D-53 第七批报告与 STATUS，结束目标
+- task_id: D-53.6（收尾）
+- code_sha: #379 4e0ba6e、#380 b9fd8ee、#377 9a31e75、#374 75a3447（都是草稿）；main ad986c9
+- docs_sha: e8948f8（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: FINAL「第七批（D-53）」追加到 appendix/batch/FINAL.md，STATUS 改写（版本、worktree、P3/P4 行、阻塞第 28–30 条），RUNBOOK §3 改 illini-p3、illini-events 两行并补 illini-events-20261120、illini-vite645、confirm-369-8f5fc43 三行，与本条同一提交；推送前核四个冻结迁移的 sha256、gh pr list、git ls-remote；推送后 schedule_prompt cancel sch_ed550a449f65，update_goal complete
+- 计数: 20261112120000 e2a85c3e…、20261114015420 0dc2ceaf…、20261120100354 9e0a044d…、20261120122054 6fcddd0e…（在叠了所有下游的 P4 分支上核）；#369、#371、#373、#376、#378 已由 supervisor 合并，其余都是草稿、OPEN [本地测]
+- ci_run_url: —
+- 未测项: 见第七批 ⑥
+- 下一条: —（按 D-53 第 6 项停下，等下一条指示）
+- 附: —
