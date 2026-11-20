@@ -173,23 +173,63 @@ jobs:
         if: steps.deps.outputs.changed == 'true'
         run: npm install -g npm@11
 
+      # One advisory is let through, and only until its review date:
+      # GHSA-8g5g-mxqh-grgj (vite server.fs.deny bypass). Upstream fixed it in
+      # vite 6.4.5, but app/package.json installs a locally rebuilt 6.4.4
+      # archive (file:./vendor/source-builds/...), so npm cannot move to the fix
+      # on its own; rebuilding that archive on 6.4.5 is the other way out. Every
+      # other moderate-or-worse advisory still fails this step, and after the
+      # review date this one does again, with a warning saying so.
       - name: Audit production and build dependencies
         if: steps.deps.outputs.changed == 'true'
         working-directory: app
         run: |
+          tmp=$(mktemp -d)
           for attempt in 1 2 3; do
             status=0
-            output=$(timeout 180 npm audit --audit-level=moderate 2>&1) || status=$?
-            echo "$output"
+            timeout 180 npm audit --audit-level=moderate --json >"$tmp/audit.json" 2>"$tmp/audit.err" || status=$?
+            cat "$tmp/audit.err"
             if [ "$status" -eq 0 ]; then exit 0; fi
             if [ "$status" -eq 124 ]; then
               reason="timed out after 180s"
             else
-              case "$output" in
+              case "$(cat "$tmp/audit.json" "$tmp/audit.err")" in
                 *"audit endpoint returned an error"*|*"network timeout"*|*"ENOTFOUND"*|*"ECONNRESET"*)
                   reason="did not reach the registry" ;;
                 *)
-                  exit "$status" ;;
+                  AUDIT_TODAY=$(date -u +%Y-%m-%d) node - "$tmp/audit.json" <<'JS'
+          const fs = require('fs')
+          // Advisory id -> last day (UTC) it is let through.
+          const allowed = { 'GHSA-8g5g-mxqh-grgj': '2026-12-13' }
+          const rank = { info: 0, low: 1, moderate: 2, high: 3, critical: 4 }
+          const today = process.env.AUDIT_TODAY
+          let report = null
+          try { report = JSON.parse(fs.readFileSync(process.argv[2], 'utf8')) } catch {}
+          if (!report || typeof report.vulnerabilities !== 'object' || !today) {
+            console.log('::error::npm audit did not produce a readable report')
+            process.exit(1)
+          }
+          const blocking = []
+          for (const [pkg, entry] of Object.entries(report.vulnerabilities)) {
+            for (const via of entry.via || []) {
+              // A name here points at another entry; its advisory is judged there.
+              if (typeof via !== 'object') continue
+              if ((rank[via.severity] ?? rank.critical) < rank.moderate) continue
+              const id = (String(via.url || '').match(/GHSA(-[0-9a-z]{4}){3}/i) || [''])[0]
+              const line = `${pkg} ${via.severity} ${id || via.source} ${via.title || ''}`
+              const until = allowed[id]
+              if (until && today <= until) {
+                console.log(`allowed until ${until}: ${line}`)
+                continue
+              }
+              if (until) console.log(`::warning::${id} was allowed until ${until}; it fails the audit again. Review it.`)
+              blocking.push(line)
+            }
+          }
+          for (const line of blocking) console.log(`::error::${line}`)
+          process.exit(blocking.length ? 1 : 0)
+          JS
+                  exit $? ;;
               esac
             fi
             echo "::warning::npm audit $reason (attempt $attempt/3)"
