@@ -37,7 +37,8 @@ async function signIn(page: Page, { lang, theme, level }: { lang: 'en' | 'zh'; t
   await page.route('**/*.supabase.co/**', async route => {
     const request = route.request()
     const url = request.url()
-    if (request.method() !== 'GET' && !url.includes('/rpc/')) writes.push(url)
+    // HEAD is a count read; only data-changing verbs are writes.
+    if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(request.method()) && !url.includes('/rpc/')) writes.push(url)
     let body: unknown = []
     if (url.includes('/rpc/get_my_profile')) {
       body = {
