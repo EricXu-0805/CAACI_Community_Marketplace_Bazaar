@@ -1583,3 +1583,27 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
   | 改自己的标题 | A | 403 | 42501 |
 
   7 个请求全部被拒。探针原始输出写成 5 通过 / 2 失败，是因为它对标题过长和正文为空两条只认 23514，而服务端实际按 22023 拒绝，两条都是被拒，符合 DoD；原始日志和 matrix.json 原样保留，没做第 4 次。清理（§5.2）：通过作者入口删了 10 件商品、1 个帖子、2 条生成的通知；P1.12 里 B 的公开帖子 DELETE 204、复查 0 行。没有删除入口、按 §5.2 留下的：P1.12 中 C 的 1 条私信与它的会话；P2.11 中 1 件已售商品、1 个已接受的报价、2 个会话；ID 都记在各自的 RESULT.md。没建图片或存储对象。[OMO自决] P1.11、P1.12 按每项最多 3 次的规则停下，不再加次数；按 D-53 第 0 项 a，这两项没过就不能合 #369，写进第七批 ④、⑥。另：子任务读 DECISIONS 原文时，工具输出里出现过文档中的合成邮箱别名（example.test），没进任何证据文件或仓库；staging.env 的值没有被打印或复制。
+
+### L127 · 2026-11-20 06:48 CT · [supervisor 指示] D-53 第 8、9 项：P1.11、P1.12 是探针问题，改探针再跑；#376 先进 main
+- task_id: D-53.8、D-53.9
+- code_sha: —（本条不改代码）
+- docs_sha: 76477e4（本次写回之前材料分支的 HEAD，已 git pull）
+- 环境: 本地
+- 命令: 读 DECISIONS D-53 第 8、9 项（第 388–447 行）；改 STATUS（P1.11、P1.12、P2.11 三行，版本行，新增阻塞第 26 条）
+- 计数: —
+- ci_run_url: —
+- 未测项: 前 3 次留下、没有正常删除入口的 6 个残留 ID（D-53 第 8 项 e）：P1.12 消息 3a480e58-fd78-43dc-9d74-1cb91e64471b、会话 158773c0-56c1-4568-bc25-831b3b7db9ed；P2.11 已售商品 8aca057d-6617-4dac-9819-2572dbb65977、报价 6973bda3-06ef-4c71-9e8c-509cae9e5d5f、会话 47b757ec-053b-40c6-81a9-586e291426a9 与 45afcc07-8b1a-4b71-a4de-0d6fd02639e6（45afcc07 是第 2 次留下的）
+- 下一条: P1.11 第 4 次（先写假设与改动，再跑）
+- 附: 第 8 项：supervisor 在 7b18f20 的 H5 上复现，P1.11 同意后落地 hash 是 #/，probe-ui.ts:54 只认 /pages/index/index，永远过不了；P1.12 没写 welcomed，reload 落到欢迎页。按第 8 项 c、d、e 改探针，各最多再跑 2 次（共 5 次，STOP-14），代码固定在 7b18f20，每次跑前核 HEAD，只用 ~/work/illini-dev-env/.containers.lock。命中第 8 项 b 的封闭清单（6 条）就记【跳过】（应用缺陷），不改应用代码、不再重跑，等 supervisor；清单以外的失败算探针或环境问题。P1.12 依赖 P1.11。P2.11 只改期望（码加 message），不重跑。探针改完按 RUNBOOK §4.3 ⑤ 复制到 appendix/env/probes/，复制前扫邮箱、token、密钥、/home 路径。之后 supervisor 会在要合的 head 上另派确认跑，不计入 5 次。第 9 项：supervisor 已合 #378 → #373 的分支（3b51e92）、#373 → #371 的分支（7c94a11），12:35Z 把 #376 squash 合进 main（b4d615b），再把 main 合进 #371 的分支（6d481d0）；supervisor 已独立复核 #378 两次重建逐字节相同。#376、#373、#378 OMO 不再动。[OMO自决] 改探针与重跑交给原来做 staging 验收的子任务 st_01a1f85a；STOP-14 要求「每次跑之前在 STATUS_LOG 写假设和改动」，这段时间 STATUS_LOG 只由它在本地追加（L129 起），主会话不同时写，收尾时一起提交推送。
+
+### L128 · 2026-11-20 06:48 CT · STOP-16a：ENGINEERING §5.2 错误映射表空正文一行与实际先报的错误不一致；更正 L126 的 P2.11 结论
+- task_id: D-53.8f
+- code_sha: —
+- docs_sha: 76477e4
+- 环境: 本地
+- 命令: 对照 DECISIONS D-53 第 8 项 f 与 L126
+- 计数: —
+- ci_run_url: —
+- 未测项: P2.11 的探针期望改成码加 message 以后不重跑（每跑一次都会留下删不掉的行）
+- 下一条: L129
+- 附: ENGINEERING §5.2 的错误映射表（L228–230）空正文那一行只列了 23514 `post_topic_body_required`；实际先报的是 22023 `public_write_boundary:post_content_size`（authoritative_public_write_boundary 按名字排在 validate_post_topic 之前）。§5.1 第 3 条对 validate_post_topic 本身的描述和源码一致，只是正文为空时轮不到它。按 STOP-16a 只记录，不改 ENGINEERING。更正 L126：P2.11 的结论改为「运行通过，7/7 被拒；等 P1.12（依赖）」——P1.12 通过后改成「通过」，P1.12 记【跳过】时 P2.11 也记【跳过】（等 P1.12）。

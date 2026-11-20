@@ -1,6 +1,6 @@
 # STATUS
 
-写于 2026-11-20 05:33 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-20 06:48 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
 `next_task_id: D-53 第 2–5 项（子任务进行中）；P1.8、P2.13 按 D-53 第 7 项 a 等 #371 合并（最晚 2026-11-21 12:00 CT）`
 `latest_batch: appendix/batch/FINAL.md`
@@ -15,8 +15,8 @@ D-53 第七批进行中（L121–L123）：范围是 D-53 第 0–5 项（第 7 
 | code_sha | 8257318a95cba86bee6ae4c5b8fbb2578f377dcc（#369 当前 head，空提交，树同 04edaa3；D-51 第 6 项） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | 5ce489f（本次写回之前材料分支的 HEAD） |
-| 其余代码分支（远端 head） | #374 codex/community-home-20261112 6bdca97（含 #369 04edaa3、#375 571be45；D-51 3a）。#376 codex/config-ci-runner-20261119 f0ccd8f（base main，只改 ci.yml 与 docs/NPM_DEPENDENCY_TRIAGE.md）。#378 codex/config-vite-645-20261120 80b3eb0（base #373 的分支 codex/deps-crossmajor-20261113，vite 6.4.6；D-53 第 3 项）。#377 codex/community-restricted-20261113 dd44f98（base #374 的分支 codex/community-home-20261112，D-49；D-52 第 1 项）。#375 codex/community-mp-budget-20261113 571be45（base #369）。#373 55716ba（base #371）；#372 d6f393d；#371 b259105。这七个都是草稿；另有 #369、#370 也是草稿 [本地测：2026-11-20 gh pr view] |
+| docs_sha | 76477e4（本次写回之前材料分支的 HEAD） |
+| 其余代码分支（远端 head） | #374 codex/community-home-20261112 6bdca97（含 #369 04edaa3、#375 571be45；D-51 3a）。#376 已由 supervisor 2026-11-20 12:35Z squash 合进 main（b4d615b，D-53 第 9 项）。#378（vite 6.4.6，80b3eb0）已由 supervisor 11:55Z 合进 #373 的分支（3b51e92），#373 随即合进 #371 的分支（7c94a11），之后 main 又合进 #371 的分支（6d481d0），CI 重跑中，绿了由 supervisor 合 #371。#377 codex/community-restricted-20261113 dd44f98（base #374 的分支 codex/community-home-20261112，D-49；D-52 第 1 项）。#375 codex/community-mp-budget-20261113 571be45（base #369）。#373 55716ba（base #371）；#372 d6f393d；#371 b259105。这七个都是草稿；另有 #369、#370 也是草稿 [本地测：2026-11-20 gh pr view] |
 | tony-ws worktree | illini 8257318（#369）；illini-home 6bdca97（#374）；illini-mpbudget 571be45（#375）；illini-restricted dd44f98（#377）；illini-ci-runner f0ccd8f（#376）；illini-vite645 80b3eb0（#378）；illini-brand d6f393d（#372）；illini-config b259105（#371）；illini-deps 55716ba（#373），以上都已推送且干净。本地不推送：illini-d46-integration local/d46-final-integration-20261114 412e14d、illini-d51-seal wip/d51-seal-integration 8f263f7、illini-docs-brand7 local/brand7-20261113 15aa47e、illini-events wip/P4.1 5f62ddd；illini-main 只读 7b18f20；caaciorg 本地 28d59b1。~/work/illini-restricted-client 已删（L115）。5 个第四批的证明 worktree 留着（阻塞第 23 条）。材料 codex/community-plan-v5 [本地测：2026-11-20 git worktree list] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，仍是 V4 原型（grep 玉米地 0），回退 id dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6 [生产：2026-11-14 curl、vercel inspect 只读]。BRAND.7 预览 https://illini-community-demo-978sy3clx-ericxu-0805s-projects.vercel.app（dpl_3bG2SKTAmQsa7jEmScy2cHHpnk1y）返回 200，等 Eric promote（E12）[本地测] |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
@@ -116,10 +116,10 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P2.4 | 通过 | smoke 23 passed、test 2001/2000/0/1 [本地测]；CI [CI run#43383800477] |
 | REGION.1 | 通过 | 列、约束、只读授权、region_in 已并入；test 2001/2000/0/1 [本地测]；④ 的 VERIFY/L-SQL 随 P2.5 |
 | P2.5 | 通过 | 20261112120000 冻结（sha256 e2a85c3e…）；L-SQL 181/181，PRECHECK→REPLAY→VERIFY→REGRESSION 全过；test 2001/2000/0/1 [隔离环境 L-SQL][本地测]；④ staging 探测等 E3 |
-| P1.11 | 失败（3 次用完） | staging 自检过、3 个 schema 读取 200、A/B/C 登录 200、同意写入 204；但第 3 次探针在截图前就失败（要求首页 URL 带 pages/index/index，应用的规范首页是 #/），0 张截图、测试 0 / 3。前两次是探针的选择器和会话格式问题；最后的路由没留，不能完全排除应用导航问题（L126） |
-| P1.12 | 失败（3 次用完） | 换号不刷新：B 在消息、广场、帖子三处 9 次计数都是 0，身份都对；强制刷新后 `.more-btn` 一直不可见，刷新后的隔离没验证到，测试 0 / 1。前两次是探针问题（L126） |
+| P1.11 | 重跑中（D-53 第 8 项：探针问题，最多再 2 次，共 5 次） | 前 3 次：staging 自检过、3 个 schema 读取 200、A/B/C 登录 200、同意写入 204；但第 3 次探针在截图前就失败（要求首页 URL 带 pages/index/index，应用的规范首页是 #/），0 张截图、测试 0 / 3。前两次是探针的选择器和会话格式问题；最后的路由没留，不能完全排除应用导航问题（L126） |
+| P1.12 | 重跑中（D-53 第 8 项：探针问题，最多再 2 次，共 5 次；依赖 P1.11） | 前 3 次：换号不刷新：B 在消息、广场、帖子三处 9 次计数都是 0，身份都对；强制刷新后 `.more-btn` 一直不可见，刷新后的隔离没验证到，测试 0 / 1。前两次是探针问题（L126） |
 | P2.6 | 通过 | D-53 第 0 项 b 代替「Eric 留言」，D-51 第 6 项代替 DoD ①；schema 预检 5 / 5；#369 head 8257318 的 run 44647478789 五个必需 job 全过（Boundary 2156 / 2155 / 0 / 1，public 472 passed，H5 验收 52 passed）（L102、L126） |
-| P2.11 | 通过（运行检查）；表格补写在 L126 | 7 个禁止的写入 7 个被拒、0 个被接受；删掉的帖子匿名列表与搜索都查不到；只替换了 /api/moderate；按 §5.2 清理，留下没有删除入口的 1 件已售商品、1 个已接受的报价、2 个会话（L126） |
+| P2.11 | 运行通过，7/7 被拒；等 P1.12（依赖） | 7 个禁止的写入 7 个被拒、0 个被接受；删掉的帖子匿名列表与搜索都查不到；只替换了 /api/moderate；按 §5.2 清理，留下没有删除入口的 1 件已售商品、1 个已接受的报价、2 个会话（L126） |
 | P2.7 | 通过 | smoke 15 passed、test 2001/2000/0/1 [本地测]；CI [CI run#43392843858] |
 | P2.8 | 通过 | 46e69b8（已推送 #369）；test 2035/2034/0/1、pg_skips=0，smoke 19 passed，typecheck rc=0；见 STATUS_LOG L51 [本地测] |
 | P2.10 | 通过 | 92698d1；主包 1,558,489（CI 环境，由当时 H5 stub 环境实测的 1,558,580 按 D-46 的 91 字节差换算；预算余 14,375）[本地测] |
@@ -214,3 +214,4 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 23. 5 个留下的证明 worktree 要删得用 --force（RUNBOOK §3 不许 OMO 做）；改动和未跟踪文件已存进 ~/work/evidence/D51/worktrees/（L97）。
 24. 仓库 2026-11-20 07:15Z 起公开（D-52 第 4 项 a2）：材料分支、DECISIONS（含 D-51 里的账号邮箱缩写）和几个 PR 描述里已经有账号邮箱和工作站路径，现在任何人都能看到。OMO 不改写历史去删它们，要不要处理由 Eric 定。本批起不再往仓库加原始日志、带真实数据的截图、账号邮箱、凭据和 /home 开头的绝对路径。
 25. D-53 第 0 项（照抄）：a【Eric 选】生产上线走「先验收再上线」：合 #369 之前，P1.11、P1.12、P2.6、P2.11 要在 staging 上通过，P2.13 也要完成。b、c【supervisor 做】E2（D-29 定 A）、E3 已完成，见第 2 条。d【Eric 选】品牌和 demo 现在就上；E12 由 supervisor 做完，见第 18 条；#372 由 supervisor 按上线顺序手工合。e【Eric 选】vite 走 B 路线，见第 20 条。f【Eric 选】D-49 的 12 条政策问题全部按「不新增权限」定：行为类维持现在的服务端行为，措辞类沿用现有文字，代码不改。g【supervisor 做或将做，只授权 supervisor，不授权 OMO】合并：vite PR → #373 的分支 → #371 的分支 → main（E5）；验收通过后：生产应用 20261112120000 并 VERIFY，依次合 #369 → #375 → #374，staging、生产先后对 20261114015420 做 PRECHECK、应用、VERIFY 后合 #377，再手工合 #372，每步之后看生产。P3、P4 的迁移不在本批上线范围。RUNBOOK §11 的 E2、E3、E5、E12 已由 supervisor 在 362087f 按此标状态。
+26. D-53 第 9 项（照抄，【supervisor 做】）：#371 在 7c94a11 上的 CI（run 44731585297）只有 Build H5 失败，ubuntu-26.04 上 WebKit 起不来；所以先把 #376 squash 合进 main（b4d615b，12:35Z），再把 main 合进 #371 的分支（6d481d0）。#376 进 main、#371 还没进的这段时间，main 的依赖审计会因 intlify、follow-redirects、glob、minimatch、qs 的 6 条公告变红，属预期，#371 合进去就好。supervisor 已独立核过：#378 在容器里用自己下载的输入重建两次，与提交的归档逐字节相同；#376 的审计步骤过了 55 种输入和真实 registry 的测试。P1.8 仍按 D-53 第 7 项 a 看 #371 的 mergeCommit。
