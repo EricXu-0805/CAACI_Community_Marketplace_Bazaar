@@ -111,6 +111,14 @@ rm "$T"/node-$V-linux-x64.tar.xz "$T"/SHASUMS256.txt && rmdir "$T"
 | ~/work/illini-brand | codex/brand-cornfield-20261112 | BRAND.x 代码 | `git -C ~/work/illini worktree add -b codex/brand-cornfield-20261112 ~/work/illini-brand origin/main` |
 | ~/work/illini-7b18f20 | 游离在 7b18f20 | P2.10 的包体基线，只读，不提交 | `git -C ~/work/illini worktree add --detach ~/work/illini-7b18f20 7b18f20`；P2.10 做完执行 `git -C ~/work/illini worktree remove ~/work/illini-7b18f20` |
 | ~/work/illini-home | codex/community-home-20261112 | HOME.3–HOME.5、P2.12（HOME.2 在 #369 分支上做，BACKLOG §1） | `git -C ~/work/illini worktree add -b codex/community-home-20261112 ~/work/illini-home codex/community-topics-20261112`；#369 前进后用 `git merge` 跟进 |
+| ~/work/illini-mpbudget | codex/community-mp-budget-20261113（PR #375） | 小程序主包腾空间（D-45 第 4 项、D-46 第 4 项）；base 是 #369 的分支 | `git -C ~/work/illini worktree add -b codex/community-mp-budget-20261113 ~/work/illini-mpbudget codex/community-topics-20261112` |
+| ~/work/illini-deps | codex/deps-crossmajor-20261113（PR #373） | P1.6 跨大版本依赖（D-44 第 3 项）；base 是 #371 的分支 | `git -C ~/work/illini worktree add -b codex/deps-crossmajor-20261113 ~/work/illini-deps codex/config-fixes-20261112` |
+| ~/work/illini-restricted | codex/community-restricted-20261113 | D-49 受限账号的服务端拦截与客户端（D-51 第 5 项重启）；草稿 PR 的 base 是 #369 的分支 | `git -C ~/work/illini worktree add -b codex/community-restricted-20261113 ~/work/illini-restricted codex/community-topics-20261112` |
+| ~/work/illini-ci-runner | codex/config-ci-runner-20261119 | 只改 ci.yml 的草稿 PR（D-51 第 4 项，§12 第 9a 条的例外） | `git -C ~/work/illini worktree add -b codex/config-ci-runner-20261119 ~/work/illini-ci-runner 7b18f20` |
+| ~/work/illini-d46-integration | 本地 local/d46-final-integration-20261114 | 五个 PR 的本地集成试合（D-46 第 5 项），不推送 | 从 #374 head 建；只 merge |
+| ~/work/illini-d51-seal | 本地 wip/d51-seal-integration | 「集」字印章测试的本地集成（D-51 第 3 项 b），不推送 | 从 #374 head 建；照 412e14d 的做法 merge 五个 PR |
+| ~/work/illini-docs-brand7 | 本地 local/brand7-20261113 | BRAND.7 原型（已合进材料分支），不推送 | `git -C ~/work/illini worktree add -b local/brand7-20261113 ~/work/illini-docs-brand7 <材料分支 head>` |
+| ~/.cache/illini-d50-dialog-proof、~/.cache/illini-following-d47-proof、~/.cache/illini-home-proof-st01a1d65b、~/.cache/illini-subpackage-d48-baseline、~/work/evidence/D50-followup/history-tree | 游离 HEAD | 第四批的红测证明用 worktree。D-51 第 2 项 i 先把改动和未跟踪文件存进 ~/work/evidence/D51/worktrees/，再用不带 `--force` 的 `git worktree remove`：这 5 个有改动或未跟踪文件，被拒，按规则留着（~/.cache/illini-subpackage-d48-mutation 干净，已删） | 不再新建；要删得由 Eric 定 |
 | ~/work/illini-p3 | #369 合并前是本地 wip/P3.1，之后改名 codex/community-p3-\<YYYYMMDD\> | P3、LEGAL.2、LEGAL.4、LEGAL.5、P5.5 | 按 BACKLOG P3.1 的命令：#369 合并前从 #369 分支建 wip/P3.1；合并后在同一目录 `git merge origin/main` 再 `git branch -m`（BACKLOG §1） |
 | ~/work/illini-events | #369 合并前是本地 wip/P4.1，之后改名 codex/community-events-\<YYYYMMDD\> | P4 里 Illini 仓库的部分 | 按 BACKLOG P4.1（从 origin/main 建 wip/P4.1）和 P4.2（merge 后改名）的命令 |
 | ~/work/caaciorg | feat/public-events-feed；origin = fork EricXu-0805/caaciorg，upstream = a2751012962/caaciorg | P4.3 | 按 BACKLOG P4.3 的命令：E8 之前只读 clone 上游并把 remote 改名为 upstream，在本地写；E8 之后再加 fork 为 origin 并推送。git 已配置用 gh 做凭据（2026-11-12 核对） |
@@ -125,7 +133,7 @@ rm "$T"/node-$V-linux-x64.tar.xz "$T"/SHASUMS256.txt && rmdir "$T"
 - 一个任务只在它对应的目录里改。`git worktree list` 只应列出上表里的目录。
 - 跟进上游分支只用 `git merge`，和 P1.8 的做法一样。不 rebase 已推送的分支，不 force push。
 - 任何目录都不执行 `git reset --hard`、`git clean`、`git checkout -- .` 或 `git worktree remove --force`。遇到不是本任务产生的改动，按 STOP-1 停下。
-- 推送前，同一个 HEAD 要先用 run-checks 跑完该任务要求的步骤，全部 `rc=0`。仓库把 `core.hooksPath` 设成了 `.githooks`（2026-11-12 核对），所以宿主机 `git push` 会先跑 pre-push。它在宿主机上的结果不算证据：宿主机没有 PostgreSQL 17，SQL 测试会跳过。pre-push 因为这类环境原因失败时，用 `git push --no-verify`，并在 STATUS_LOG 的「命令」字段写明。材料分支只改文档，pre-push 会把它判成纯文档、跳过检查，直接 `git push` 即可。
+- 推送前，同一个 HEAD 要先用 run-checks 跑完该任务要求的步骤，全部 `rc=0`。仓库把 `core.hooksPath` 设成了 `.githooks`（2026-11-12 核对），所以宿主机 `git push` 会先跑 pre-push。它在宿主机上的结果不算证据：宿主机没有 PostgreSQL 17，多数 SQL 测试会跳过，但 4 个写死 PG 查找路径的测试（activity-notification-triggers、conversation-item-delete-cascade、record-consent-accepts-2026-09-03、report-and-appeal-outcome-notifications）会报 `spawnSync initdb ENOENT` 失败（#371 的 postgresBinDir 合进 main 以后会消掉）。pre-push 因为这类环境原因失败时，用 `git push --no-verify`，并在 STATUS_LOG 的「命令」字段写明，连同推送前那次 run-checks 的日志名。材料分支只改文档，pre-push 会把它判成纯文档、跳过检查，直接 `git push` 即可。
 
 ## 4 测试镜像与 run-checks.sh
 

@@ -1168,3 +1168,58 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 下一次真实检查的日志头（本条之后的第一份 check-*.log 会带 tree=…）
 - 下一条: D-51 第 3 项 a、第 4 项的检查结果
 - 附: 日志头新增 `tree=<git write-tree>`、`unstaged=yes|no`（工作树和这个 index 树是否不同），有合并进行中时加 `merge_head=<sha>`。write-tree 取的是 index 的树，所以加了 unstaged 标记：unstaged=no 时日志里的 tree 就是检查跑的那棵树。[OMO自决] unstaged 标记是 D-51 第 2 项 j 之外多加的一个字段，理由同上。
+
+### L95 · 2026-11-19 18:45 CT · D-51 第 1 项补充：号池实查用量与新顺序（supervisor）
+- task_id: D-51.1
+- code_sha: —
+- docs_sha: 4537b8a15b1884f61e4dcf890b6550d126b082a4
+- 环境: 真人
+- 命令: —（记录 supervisor 消息）
+- 计数: supervisor 实查本周用量：default（admin）86%，account-2（board）92%，都超过 60% 上限 [真人：supervisor]
+- ci_run_url: —
+- 未测项: OMO 看不到各号实时用量
+- 下一条: D-51 其余各项照常
+- 附: supervisor 已把 Claude 号的顺序改成 account-5 → account-4 → account-2 → default；admin、board 在本周额度重置前不用（board 约 11-20 00:00 CT 重置，admin 约 11-22 18:00 CT 重置）。OMO 不切号、不改 ~/.omo。本批已派的两个子任务：st_01a1f660（architect，D-49）和 st_01a1f664（unspecified-low，已完成，记录显示用的是 Claude Sonnet 5.5）。
+
+### L96 · 2026-11-19 18:45 CT · 更正 L66、L76、L77、L80、L82、L83、L90：补记第四批 19 次代码推送都用了 --no-verify
+- task_id: D-51.2h
+- code_sha: —（补记，不改代码）
+- docs_sha: 4537b8a15b1884f61e4dcf890b6550d126b082a4
+- 环境: 本地
+- 命令: 子任务 st_01a1f664 只读核对：远端跟踪分支 reflog 的「update by push」、主会话记录里的 git push 命令、~/work/illini-dev-env/logs/check-*.log 的日志头与 STEP 行；清单 ~/work/evidence/D51/no-verify-pushes.md。主会话复核了第 14–16 行 smoke rc=1 的失败用例名
+- 计数: 2026-11-13T17:40Z 到 11-14T04:00Z 之间代码推送 19 次（#369 4、#374 8、#375 7），19 次都是 `git push --no-verify`，0 次不带，0 次查不清；每次都能找到推送前的 run-checks 日志 [本地测]
+  - 1. 19:19:57Z #369 b7bcf3a..520e55a：推送前日志 check-20261113T190341Z（日志头 head 3588c24）；install/typecheck/test/h5/mpci/smoke 全 0
+  - 2. 20:19:04Z #369 520e55a..4a44a41：推送前日志 check-20261113T200620Z（日志头 head 520e55a）；cmd/install/typecheck/test/h5/mpci/smoke 全 0
+  - 3. 20:39:16Z #369 4a44a41..ae058c2：推送前日志 check-20261113T202910Z（日志头 head 4a44a41）；cmd/install/typecheck/test/h5/mpci/smoke 全 0
+  - 4. 11-14 01:18:09Z #369 ae058c2..04edaa3：推送前日志 check-20261114T004205Z（日志头 head ae058c2）；test 0
+  - 5. 18:55:25Z #374 86ffd0e..6d6c598：推送前日志 check-20261113T183852Z（日志头 head 73206a0）；install/typecheck/test/h5/mpci/smoke 全 0
+  - 6. 21:26:01Z #374 6d6c598..b35cf8e：推送前日志 check-20261113T212151Z（日志头 head 4b6f079）；smoke 0（组合全量在 check-20261113T205110Z）
+  - 7. 22:05:34Z #374 b35cf8e..885603e：推送前日志 check-20261113T214641Z（日志头 head b35cf8e）；cmd/install/typecheck/test/h5/mpci/smoke 全 0
+  - 8. 23:02:44Z #374 885603e..c7b0634：推送前日志 check-20261113T224013Z（日志头 head c1ef194）；cmd/install/typecheck/test/h5/mpci/smoke 全 0
+  - 9. 23:39:01Z #374 c7b0634..2942e8e：推送前日志 check-20261113T232918Z（日志头 head c7b0634）；test 0
+  - 10. 11-14 00:15:06Z #374 2942e8e..e495ad7：推送前日志 check-20261113T235304Z（日志头 head 2942e8e）；cmd/mpci 0
+  - 11. 11-14 01:48:33Z #374 e495ad7..adc6ee7：推送前日志 check-20261114T014642Z（日志头 head e495ad7）；cmd/typecheck/mpci 0
+  - 12. 11-14 02:54:40Z #374 adc6ee7..2e0f582：推送前日志 check-20261114T025250Z（日志头 head adc6ee7）；cmd/typecheck/mpci 0
+  - 13. 18:39:13Z #375 4a3cbe6..3d24a8e：推送前日志 check-20261113T182923Z（日志头 head 4a3cbe6）；install/typecheck/test/h5/mpci/smoke 全 0
+  - 14. 19:31:05Z #375 3d24a8e..ecc330b：推送前日志 check-20261113T191554Z（日志头 head ecc330b）；smoke 1（只有 pages.smoke 的 index、plaza 浅 / 深 4 条已知 stub 失败），其余 0
+  - 15. 19:48:52Z #375 ecc330b..30c4b4d：推送前日志 check-20261113T193317Z（日志头 head 30c4b4d）；smoke 1（同上 4 条），其余 0
+  - 16. 22:16:27Z #375 30c4b4d..22d9009：推送前日志 check-20261113T213421Z（日志头 head 007abf1）；smoke 1（同上 4 条），其余 0
+  - 17. 23:51:42Z #375 22d9009..0eabe73：推送前日志 check-20261113T234802Z（日志头 head 22d9009）；cmd/mpci 0
+  - 18. 11-14 01:46:26Z #375 0eabe73..73cde94：推送前日志 check-20261114T013858Z（日志头 head 8df14c5）；test 0（typecheck/H5/mpci 沿用 012024Z）
+  - 19. 11-14 02:52:37Z #375 73cde94..571be45：推送前日志 check-20261114T023656Z（日志头 head 73cde94）；cmd/typecheck/mpci 0
+- ci_run_url: —
+- 未测项: 第 6、9、10、11、12、17、18、19 行推送前只跑了部分步骤，全量在这一批更早的日志里；19 行里只有第 14、15 行的日志头 head 等于推送的 SHA，其余都是提交前先在工作树上检查（D-51 第 2 项 j 起日志头带 write-tree，L94）
+- 下一条: D-51 第 2 项 i
+- 附: 原来只有 L66、L76、L77、L80、L82、L83、L90 提到 --no-verify；第 6、10、11、14、17、18 行（b35cf8e、e495ad7、adc6ee7、ecc330b、0eabe73、73cde94）此前没有写明。原因都是宿主机 pre-push 跑不了 PG 测试（L90 记的 4 条 initdb ENOENT）。RUNBOOK 第 128 行原写「SQL 测试会跳过」，已改成实情，并要求以后「命令」字段写明 --no-verify 和推送前的日志名。D-51 本批第一次 --no-verify 是 #369 的空提交 8257318，记在 D-51 第 6 项那条。
+
+### L97 · 2026-11-19 18:45 CT · D-51 第 2 项 i：worktree 表补齐，6 个证明用 worktree 逐个处理
+- task_id: D-51.2i
+- code_sha: —
+- docs_sha: 4537b8a15b1884f61e4dcf890b6550d126b082a4
+- 环境: 本地
+- 命令: 对 ~/.cache/illini-d50-dialog-proof、~/.cache/illini-following-d47-proof、~/.cache/illini-home-proof-st01a1d65b、~/.cache/illini-subpackage-d48-baseline、~/.cache/illini-subpackage-d48-mutation、~/work/evidence/D50-followup/history-tree 逐个：`git rev-parse HEAD`、`git diff`、`git ls-files --others --exclude-standard` 和那些文件本身存进 ~/work/evidence/D51/worktrees/<目录名>/；然后逐个 `git worktree remove <路径>`（不带 --force，不用通配）。~/.cache/illini-dev 没碰
+- 计数: 删掉 1 个（illini-subpackage-d48-mutation，干净）；被拒 5 个（d50-dialog-proof 改 1 个文件，diff 153 行；following-d47-proof 改 2 个、未跟踪 1 个；home-proof-st01a1d65b 改 3 个、未跟踪 3 个；subpackage-d48-baseline 未跟踪 1 个；history-tree 改 1 个、未跟踪 1 个，diff 59 行），都是「contains modified or untracked files」，按规则留着 [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-51 第 3 项 a 收尾、第 4 项
+- 附: RUNBOOK §3 表加了 illini-mpbudget、illini-deps、illini-restricted、illini-ci-runner、illini-d46-integration、illini-d51-seal（第 3 项 b 将建）、illini-docs-brand7 和留下的 5 个证明 worktree 一行；删不掉的 5 个要不要删由 Eric 定，写进第五批 ④。
